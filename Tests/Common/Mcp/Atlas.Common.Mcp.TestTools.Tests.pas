@@ -72,7 +72,9 @@ var
 begin
   SetLength(Result, Length(RechnerTests));
   for Index := 0 to High(RechnerTests) do
+  begin
     Result[Index] := RechnerTests[Index];
+  end;
 end;
 
 function Reader: TMcpReadLines;
@@ -82,9 +84,13 @@ begin
     begin
       Result := AFileName.EndsWith('Rechner.Tests.pas');
       if Result then
-        ALines := Lines
+      begin
+        ALines := Lines;
+      end
       else
+      begin
         ALines := nil;
+      end;
     end;
 end;
 
@@ -248,8 +254,8 @@ begin
   Passed.FullName := 'Rechner.Tests.TRechnerTests.Addiert';
   Passed.Outcome := TTestOutcome.Passed;
   Run.Cases := [Passed, FailedCase];
-  Json := TJSONObject.ParseJSONValue(TMcpTestTools.Report(Target, ['Rechner.Tests.TRechnerTests'], Run, 1, nil, nil,
-    Reader())) as TJSONObject;
+  Json := TJSONObject.ParseJSONValue(TMcpTestTools.Report(Target, ['Rechner.Tests.TRechnerTests'], Run,
+    TMcpTestProcess.Make(1, nil), nil, Reader())) as TJSONObject;
   try
     Assert.AreEqual('failed', Json.GetValue('result').Value);
     Assert.AreEqual('Win64', Json.GetValue('platform').Value);
@@ -266,7 +272,7 @@ begin
     Json.Free;
   end;
   Run.Cases := [Passed];
-  Json := TJSONObject.ParseJSONValue(TMcpTestTools.Report(Target, nil, Run, 0, nil, nil, Reader())) as TJSONObject;
+  Json := TJSONObject.ParseJSONValue(TMcpTestTools.Report(Target, nil, Run, TMcpTestProcess.Make(0, nil), nil, Reader())) as TJSONObject;
   try
     Assert.AreEqual('passed', Json.GetValue('result').Value);
     Assert.IsNull(Json.GetValue('tests'), 'ohne Filter kein Feld tests');
@@ -281,7 +287,8 @@ var
   Json: TJSONObject;
 begin
   Run := TTestResults.Parse('');
-  Json := TJSONObject.ParseJSONValue(TMcpTestTools.Report(Target, nil, Run, 3, ['Zugriffsverletzung'], nil, Reader()))
+  Json := TJSONObject.ParseJSONValue(TMcpTestTools.Report(Target, nil, Run,
+    TMcpTestProcess.Make(3, TArray<string>.Create('Zugriffsverletzung')), nil, Reader()))
     as TJSONObject;
   try
     Assert.AreEqual('noReport', Json.GetValue('result').Value);

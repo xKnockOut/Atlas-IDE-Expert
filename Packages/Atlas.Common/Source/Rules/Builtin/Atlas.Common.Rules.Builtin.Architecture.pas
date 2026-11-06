@@ -76,6 +76,12 @@ type
 
   /// <summary>Importmatrix des Rollenkonzepts (Konzept 8.1/8.3, docs/Architektur.md "Importregeln").</summary>
   TArchitectureMatrix = class
+  private
+    class function LongestPrefix(const AUnitName: string; const APrefixes: TArray<string>): string; static;
+    class function FeatureRole(const ARoleName: string): TArchitectureRole; static;
+    class function ClassifyFeature(const AUnitName, APrefix: string): TArchitectureUnit; static;
+    class function ClassifyHost(const AUnitName: string; const AHostRoles: TArray<string>): TArchitectureUnit;
+      static;
   public
     /// <summary>Ordnet AUnitName ein; Role = None für externe Units.</summary>
     class function Classify(const AUnitName: string; const APrefixes, AHostRoles: TArray<string>):
@@ -127,7 +133,34 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Editing.UsesClause;
+  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TArchitectureText = (LayerTitle, LayerViolation, Describe, RoleTitle, RoleViolation, ContractTitle, ContractClass,
+    Foreign, Own);
+
+const
+  cTexts: array[TArchitectureText] of TAtlasText = (
+    (De: 'uses-Eintrag verletzt eine Schichtregel aus atlas.json';
+     En: 'uses entry violates a layer rule from atlas.json'),
+    (De: '%s darf %s nicht verwenden (Schicht "%s")'; En: '%s must not use %s (layer "%s")'),
+    (De: '%s %s aus %s'; En: '%s %s from %s'),
+    (De: 'uses-Eintrag verletzt die Rollenmatrix (Konzept 8.1/8.3)';
+     En: 'uses entry violates the role matrix (concept 8.1/8.3)'),
+    (De: '%s darf %s nicht importieren (%s)'; En: '%s must not import %s (%s)'),
+    (De: 'Contract-Unit deklariert eine Klasse'; En: 'Contract unit declares a class'),
+    (De: '%s ist eine Klasse in einer Contract-Unit; Contract enthält nur Records, Interfaces, Aufzählungen und ' +
+      'Ausnahmen (Konzept 7.1)';
+     En: '%s is a class in a contract unit; a contract contains only records, interfaces, enumerations and ' +
+      'exceptions (concept 7.1)'),
+    (De: 'fremde'; En: 'foreign'),
+    (De: 'eigene'; En: 'own'));
+
+{$SCOPEDENUMS OFF}
 
 const
   RoleNames: array[TArchitectureRole] of string =
@@ -168,10 +201,16 @@ var
 begin
   Result := nil;
   if not AObject.TryGetValue<TJSONArray>(AName, List) then
+  begin
     Exit;
+  end;
   for Item in List do
+  begin
     if Item is TJSONString then
+    begin
       Result := Result + [Item.Value];
+    end;
+  end;
 end;
 
 function MatchesAny(const APatterns: TArray<string>; const AName: string): Boolean;
@@ -179,8 +218,12 @@ var
   Pattern: string;
 begin
   for Pattern in APatterns do
+  begin
     if MatchesGlob(Pattern, AName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -189,7 +232,7 @@ end;
 function TForbiddenUsesRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('forbidden-uses', TRuleSeverity.Error,
-    'uses-Eintrag verletzt eine Schichtregel aus atlas.json');
+    cTexts[TArchitectureText.LayerTitle].Text);
 end;
 
 class function TForbiddenUsesRule.ParseLayers(const AOptions: string): TArray<TArchitectureLayer>;
@@ -201,20 +244,28 @@ var
 begin
   Result := nil;
   if Trim(AOptions) = '' then
+  begin
     Exit;
+  end;
   Value := TJSONObject.ParseJSONValue(AOptions);
   try
     if not ((Value is TJSONObject) and TJSONObject(Value).TryGetValue<TJSONArray>('layers', List)) then
+    begin
       Exit;
+    end;
     for Item in List do
     begin
       if not ((Item is TJSONObject) and TJSONObject(Item).TryGetValue<string>('from', Layer.From)) or
         (Trim(Layer.From) = '') then
+      begin
         Continue;
+      end;
       Layer.Deny := ReadStrings(TJSONObject(Item), 'deny');
       Layer.Allow := ReadStrings(TJSONObject(Item), 'allow');
       if Layer.Deny <> nil then
+      begin
         Result := Result + [Layer];
+      end;
     end;
   finally
     Value.Free;
@@ -230,11 +281,17 @@ begin
   for Layer in ALayers do
   begin
     if Pos('/', Layer.From) > 0 then
-      Subject := StringReplace(ARelativePath, '\', '/', [rfReplaceAll])
+    begin
+      Subject := StringReplace(ARelativePath, '\', '/', [rfReplaceAll]);
+    end
     else
+    begin
       Subject := AUnitName;
+    end;
     if (Subject = '') or not MatchesGlob(Layer.From, Subject) then
+    begin
       Continue;
+    end;
     if MatchesAny(Layer.Deny, AUsedUnit) and not MatchesAny(Layer.Allow, AUsedUnit) then
     begin
       ALayer := Layer;
@@ -251,14 +308,21 @@ var
   Used: TUsesReference;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Layers := ParseLayers(AContext.Options);
   if Layers = nil then
+  begin
     Exit;
+  end;
   for Used in TUsesClauses.References(AContext.Tree.Tokens) do
+  begin
     if Violates(Layers, AContext.UnitName, AContext.RelativePath, Used.Name, Layer) then
-      AReport.Add(Used.Range, Format('%s darf %s nicht verwenden (Schicht "%s")',
-        [AContext.UnitName, Used.Name, Layer.From]));
+    begin
+      AReport.Add(Used.Range, cTexts[TArchitectureText.LayerViolation].Fmt([AContext.UnitName, Used.Name, Layer.From]));
+    end;
+  end;
 end;
 
 { TArchitectureUnit }
@@ -280,65 +344,124 @@ begin
   Result := ['Foundation', 'Core', 'Shell', 'Adapters', 'Platform'];
 end;
 
-class function TArchitectureMatrix.Classify(const AUnitName: string; const APrefixes,
-  AHostRoles: TArray<string>): TArchitectureUnit;
+class function TArchitectureMatrix.LongestPrefix(const AUnitName: string;
+  const APrefixes: TArray<string>): string;
 var
-  Prefix, Best: string;
-  Parts: TArray<string>;
-  Role: TArchitectureRole;
+  mPrefix: string;
+begin
+  Result := '';
+  for mPrefix in APrefixes do
+  begin
+    if (mPrefix <> '') and (Length(mPrefix) > Length(Result)) and StartsText(mPrefix + '.', AUnitName) then
+    begin
+      Result := mPrefix;
+    end;
+  end;
+end;
+
+class function TArchitectureMatrix.FeatureRole(const ARoleName: string): TArchitectureRole;
+var
+  mRole: TArchitectureRole;
+begin
+  Result := TArchitectureRole.Root;
+  for mRole := Low(TArchitectureRole) to High(TArchitectureRole) do
+  begin
+    if (mRole in FeatureRoles) and SameText(RoleNames[mRole], ARoleName) then
+    begin
+      Result := mRole;
+    end;
+  end;
+end;
+
+class function TArchitectureMatrix.ClassifyFeature(const AUnitName, APrefix: string): TArchitectureUnit;
+var
+  mParts: TArray<string>;
 begin
   Result := Default(TArchitectureUnit);
-  Best := '';
-  for Prefix in APrefixes do
-    if (Prefix <> '') and (Length(Prefix) > Length(Best)) and StartsText(Prefix + '.', AUnitName) then
-      Best := Prefix;
-  if Best <> '' then
+  mParts := Copy(AUnitName, Length(APrefix) + 2, MaxInt).Split(['.']);
+  if (Length(mParts) = 0) or (mParts[0] = '') then
   begin
-    Parts := Copy(AUnitName, Length(Best) + 2, MaxInt).Split(['.']);
-    if (Length(Parts) = 0) or (Parts[0] = '') then
-      Exit;
-    Result.Artefact := Best;
-    Result.Feature := Parts[0];
-    Result.Role := TArchitectureRole.Root;
-    if Length(Parts) >= 2 then
-      for Role := Low(TArchitectureRole) to High(TArchitectureRole) do
-        if (Role in FeatureRoles) and SameText(RoleNames[Role], Parts[1]) then
-          Result.Role := Role;
     Exit;
   end;
-  Parts := AUnitName.Split(['.']);
-  if Length(Parts) < 2 then
+  Result.Artefact := APrefix;
+  Result.Feature := mParts[0];
+  Result.Role := TArchitectureRole.Root;
+  if Length(mParts) >= 2 then
+  begin
+    Result.Role := FeatureRole(mParts[1]);
+  end;
+end;
+
+class function TArchitectureMatrix.ClassifyHost(const AUnitName: string;
+  const AHostRoles: TArray<string>): TArchitectureUnit;
+var
+  mPrefix: string;
+  mParts: TArray<string>;
+begin
+  Result := Default(TArchitectureUnit);
+  mParts := AUnitName.Split(['.']);
+  if Length(mParts) < 2 then
+  begin
     Exit;
-  for Prefix in AHostRoles do
-    if SameText(Prefix, Parts[0]) then
+  end;
+  for mPrefix in AHostRoles do
+  begin
+    if SameText(mPrefix, mParts[0]) then
     begin
-      Result.Feature := Prefix;
+      Result.Feature := mPrefix;
       Result.Role := TArchitectureRole.Host;
       Exit;
     end;
+  end;
+end;
+
+class function TArchitectureMatrix.Classify(const AUnitName: string; const APrefixes,
+  AHostRoles: TArray<string>): TArchitectureUnit;
+var
+  mBest: string;
+begin
+  mBest := LongestPrefix(AUnitName, APrefixes);
+  if mBest <> '' then
+  begin
+    Result := ClassifyFeature(AUnitName, mBest);
+  end
+  else
+  begin
+    Result := ClassifyHost(AUnitName, AHostRoles);
+  end;
 end;
 
 class function TArchitectureMatrix.Allowed(const ASource, ATarget: TArchitectureUnit): Boolean;
 begin
   if not (ASource.Known and ATarget.Known) then
+  begin
     Exit(True);
+  end;
   // Platform-Features importieren nie den Host (8.3); Host-Units untereinander frei.
   if ATarget.Role = TArchitectureRole.Host then
+  begin
     Exit(ASource.Role = TArchitectureRole.Host);
+  end;
   if (ASource.Role <> TArchitectureRole.Host) and ASource.SameFeature(ATarget) then
-    Result := ATarget.Role in OwnAllowed[ASource.Role]
+  begin
+    Result := ATarget.Role in OwnAllowed[ASource.Role];
+  end
   else
+  begin
     Result := ATarget.Role in ForeignAllowed[ASource.Role];
+  end;
 end;
 
 class function TArchitectureMatrix.Describe(const ASource, ATarget: TArchitectureUnit): string;
 var
   Kind: string;
 begin
-  Kind := 'fremde';
+  Kind := cTexts[TArchitectureText.Foreign].Text;
   if (ASource.Role <> TArchitectureRole.Host) and ASource.SameFeature(ATarget) then
-    Kind := 'eigene';
-  Result := Format('%s %s aus %s', [Kind, RoleNames[ATarget.Role], RoleNames[ASource.Role]]);
+  begin
+    Kind := cTexts[TArchitectureText.Own].Text;
+  end;
+  Result := cTexts[TArchitectureText.Describe].Fmt([Kind, RoleNames[ATarget.Role], RoleNames[ASource.Role]]);
 end;
 
 { TRoleImportRule }
@@ -346,7 +469,7 @@ end;
 function TRoleImportRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('architecture-role-import', TRuleSeverity.Warning,
-    'uses-Eintrag verletzt die Rollenmatrix (Konzept 8.1/8.3)', True);
+    cTexts[TArchitectureText.RoleTitle].Text, True);
 end;
 
 class function TRoleImportRule.ParseOptions(const AOptions: string): TRoleImportOptions;
@@ -356,15 +479,21 @@ begin
   Result := Default(TRoleImportOptions);
   Result.HostRoles := TArchitectureMatrix.DefaultHostRoles;
   if Trim(AOptions) = '' then
+  begin
     Exit;
+  end;
   Value := TJSONObject.ParseJSONValue(AOptions);
   try
     if not (Value is TJSONObject) then
+    begin
       Exit;
+    end;
     Result.Prefixes := ReadStrings(TJSONObject(Value), 'prefixes');
     Result.Allow := ReadStrings(TJSONObject(Value), 'allow');
     if TJSONObject(Value).GetValue('hostRoles') <> nil then
+    begin
       Result.HostRoles := ReadStrings(TJSONObject(Value), 'hostRoles');
+    end;
   finally
     Value.Free;
   end;
@@ -379,10 +508,14 @@ begin
   begin
     Separator := Pos('->', Entry);
     if Separator = 0 then
+    begin
       Continue;
+    end;
     if MatchesGlob(Trim(Copy(Entry, 1, Separator - 1)), ASource) and
       MatchesGlob(Trim(Copy(Entry, Separator + 2, MaxInt)), ATarget) then
+    begin
       Exit(True);
+    end;
   end;
   Result := False;
 end;
@@ -391,7 +524,9 @@ function OwnUnitName(const AContext: TRuleContext): string;
 begin
   Result := TUsesClauses.OwnName(AContext.Tree.Tokens);
   if Result = '' then
+  begin
     Result := AContext.UnitName;
+  end;
 end;
 
 procedure TRoleImportRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -402,28 +537,40 @@ var
   Used: TUsesReference;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Options := ParseOptions(AContext.Options);
   // Ohne Präfixe schweigt die Regel: Projekte ohne Rollenkonzept sehen nichts.
   if Options.Prefixes = nil then
+  begin
     Exit;
+  end;
   // Test-Units tragen den Namen der getesteten Unit (X.Contract.Tests), gehören aber zu keiner Rolle (Konzept:
   // Tests werden nicht geprüft).
   if TUsesClauses.IsTestUnit(AContext.Tree.Tokens) then
+  begin
     Exit;
+  end;
   OwnName := OwnUnitName(AContext);
   Source := TArchitectureMatrix.Classify(OwnName, Options.Prefixes, Options.HostRoles);
   if not Source.Known then
+  begin
     Exit;
+  end;
   for Used in TUsesClauses.References(AContext.Tree.Tokens) do
   begin
     // contains eines Packages nimmt Units auf, statt sie einzubinden (#1109): Das Package ist keine Rolle.
     if Used.List = TUsesListKind.ContainsList then
+    begin
       Continue;
+    end;
     Target := TArchitectureMatrix.Classify(Used.Name, Options.Prefixes, Options.HostRoles);
     if TArchitectureMatrix.Allowed(Source, Target) or Approved(Options.Allow, OwnName, Used.Name) then
+    begin
       Continue;
-    AReport.Add(Used.Range, Format('%s darf %s nicht importieren (%s)',
+    end;
+    AReport.Add(Used.Range, cTexts[TArchitectureText.RoleViolation].Fmt(
       [OwnName, Used.Name, TArchitectureMatrix.Describe(Source, Target)]));
   end;
 end;
@@ -432,7 +579,8 @@ end;
 
 function TContractContentRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('architecture-contract-content', TRuleSeverity.Warning, 'Contract-Unit deklariert eine Klasse', True);
+  Result := TRuleDescriptor.Create('architecture-contract-content', TRuleSeverity.Warning,
+    cTexts[TArchitectureText.ContractTitle].Text, True);
 end;
 
 function IsExceptionName(const AName: string): Boolean;
@@ -441,55 +589,73 @@ var
 begin
   Last := AName;
   if LastDelimiter('.', Last) > 0 then
+  begin
     Last := Copy(Last, LastDelimiter('.', Last) + 1, MaxInt);
+  end;
   Result := SameText(Last, 'Exception') or
     ((Length(Last) >= 2) and (Last[1] = 'E') and CharInSet(Last[2], ['A'..'Z']));
 end;
 
+/// <summary>True, wenn die Unit von AContext eine Contract-Unit ist, die die Regel prüft.</summary>
+function IsCheckedContract(const AContext: TRuleContext; const AOptions: TRoleImportOptions;
+  const AOwnName: string): Boolean;
+begin
+  Result := (AOptions.Prefixes <> nil) and not TUsesClauses.IsTestUnit(AContext.Tree.Tokens) and
+    (TArchitectureMatrix.Classify(AOwnName, AOptions.Prefixes, AOptions.HostRoles).Role =
+    TArchitectureRole.Contract);
+end;
+
+/// <summary>True, wenn ATypeDecl eine Klasse ist, die keine Ausnahme ist und kein allow-Eintrag erlaubt.</summary>
+function IsForbiddenContractClass(const ATypeDecl: TSyntaxNode; const AAllow: TArray<string>;
+  const AOwnName: string): Boolean;
+var
+  mClassNode, mAncestor: TSyntaxNode;
+  mIndex: Integer;
+begin
+  mClassNode := ATypeDecl.FindChild(TSyntaxKind.ClassType);
+  Result := mClassNode <> nil;
+  if Result then
+  begin
+    mAncestor := mClassNode.FindChild(TSyntaxKind.TypeReference);
+    Result := (mAncestor = nil) or not IsExceptionName(mAncestor.Name);
+  end;
+  mIndex := 0;
+  while Result and (mIndex <= High(AAllow)) do
+  begin
+    Result := not MatchesGlob(AAllow[mIndex], AOwnName + '.' + ATypeDecl.Name);
+    Inc(mIndex);
+  end;
+end;
+
 procedure TContractContentRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Options: TRoleImportOptions;
-  OwnName: string;
-  InterfaceNode: TSyntaxNode;
-  Report: IRuleReport;
+  mOptions: TRoleImportOptions;
+  mOwnName: string;
+  mInterfaceNode: TSyntaxNode;
+  mReport: IRuleReport;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
-  Options := TRoleImportRule.ParseOptions(AContext.Options);
-  if Options.Prefixes = nil then
+  end;
+  mOptions := TRoleImportRule.ParseOptions(AContext.Options);
+  mOwnName := OwnUnitName(AContext);
+  mInterfaceNode := AContext.Tree.Root.FindChild(TSyntaxKind.InterfaceSection);
+  if (mInterfaceNode = nil) or not IsCheckedContract(AContext, mOptions, mOwnName) then
+  begin
     Exit;
-  if TUsesClauses.IsTestUnit(AContext.Tree.Tokens) then
-    Exit;
-  OwnName := OwnUnitName(AContext);
-  if TArchitectureMatrix.Classify(OwnName, Options.Prefixes, Options.HostRoles).Role <>
-    TArchitectureRole.Contract then
-    Exit;
-  InterfaceNode := AContext.Tree.Root.FindChild(TSyntaxKind.InterfaceSection);
-  if InterfaceNode = nil then
-    Exit;
-  Report := AReport;
+  end;
+  mReport := AReport;
   // Iterativ (Bericht M1): Konstanten im interface können lange Ausdrücke enthalten.
-  InterfaceNode.Walk(
+  mInterfaceNode.Walk(
     function(ANode: TSyntaxNode): Boolean
-    var
-      Index: Integer;
-      ClassNode, Ancestor: TSyntaxNode;
     begin
       Result := ANode.Kind <> TSyntaxKind.TypeDecl;
-      if Result then
-        Exit;
-      ClassNode := ANode.FindChild(TSyntaxKind.ClassType);
-      if ClassNode = nil then
-        Exit;
-      Ancestor := ClassNode.FindChild(TSyntaxKind.TypeReference);
-      if (Ancestor <> nil) and IsExceptionName(Ancestor.Name) then
-        Exit;
-      for Index := 0 to High(Options.Allow) do
-        if MatchesGlob(Options.Allow[Index], OwnName + '.' + ANode.Name) then
-          Exit;
-      Report.Add(TTextRange.Create(ANode.StartPos.Line, ANode.StartPos.Character, ANode.StartPos.Line,
-        ANode.StartPos.Character + Length(ANode.Name)), Format('%s ist eine Klasse in einer Contract-Unit; ' +
-        'Contract enthält nur Records, Interfaces, Aufzählungen und Ausnahmen (Konzept 7.1)', [ANode.Name]));
+      if not Result and IsForbiddenContractClass(ANode, mOptions.Allow, mOwnName) then
+      begin
+        mReport.Add(TTextRange.Create(ANode.StartPos.Line, ANode.StartPos.Character, ANode.StartPos.Line,
+          ANode.StartPos.Character + Length(ANode.Name)), cTexts[TArchitectureText.ContractClass].Fmt([ANode.Name]));
+      end;
     end);
 end;
 
@@ -499,5 +665,8 @@ begin
   ARegistry.Register(TRoleImportRule.Create);
   ARegistry.Register(TContractContentRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Architecture', cTexts);
 
 end.

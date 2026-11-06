@@ -13,6 +13,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerProjectsTests = class
   public
     [Test]
@@ -52,7 +53,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Projects,
-  Atlas.Core.Welcome.Issues;
+  Atlas.Core.Tracker.MyIssues;
 
 const
   cKassePath = 'C:\Projekte\Kasse';
@@ -271,25 +272,25 @@ begin
     TAtlasTrackerProjectMapping.Create('C:\Projekte\Atlas', 'GitHub', 'xKnockOut/Atlas-IDE-Expert')];
   // Persönlich: Anbieter der Verbindung; issues.tracker ändert ihn nicht.
   mResult := TAtlasTrackerProjects.Resolve(NoTeam, mRows, Connections, cKasseProject, cKasseGroup);
-  mTarget := TAtlasWelcomeIssues.TargetFor(mResult, 'github', 'assignee: meine #Ungelöst');
+  mTarget := TAtlasMyIssues.TargetFor(mResult, 'github', 'assignee: meine #Ungelöst');
   Assert.AreEqual('youtrack', mTarget.Provider);
   Assert.AreEqual('https://youtrack.firma.local', mTarget.Server);
   Assert.AreEqual('KASSE', mTarget.Project);
   Assert.AreEqual('assignee: meine #Ungelöst', mTarget.Query);
   Assert.IsTrue(mTarget.Configured);
   mResult := TAtlasTrackerProjects.Resolve(NoTeam, mRows, Connections, 'C:\Projekte\Atlas\Atlas.dproj', '');
-  mTarget := TAtlasWelcomeIssues.TargetFor(mResult, '', '');
+  mTarget := TAtlasMyIssues.TargetFor(mResult, '', '');
   Assert.AreEqual('github', mTarget.Provider);
   Assert.AreEqual('xKnockOut/Atlas-IDE-Expert', mTarget.Project);
   Assert.IsTrue(mTarget.Configured);
   // .atlas: wie bisher, issues.tracker ersetzt den Anbieter.
   mResult := TAtlasTrackerProjects.Resolve(TAtlasTrackerTarget.Create('github', 'https://github.com',
     'owner/repo', ''), mRows, Connections, cKasseProject, cKasseGroup);
-  Assert.AreEqual('github', TAtlasWelcomeIssues.TargetFor(mResult, '', '').Provider);
-  Assert.AreEqual('owner/repo', TAtlasWelcomeIssues.TargetFor(mResult, '', '').Project);
+  Assert.AreEqual('github', TAtlasMyIssues.TargetFor(mResult, '', '').Provider);
+  Assert.AreEqual('owner/repo', TAtlasMyIssues.TargetFor(mResult, '', '').Project);
   // Ohne Treffer: kein Ziel, „Meine Issues“ bietet „zuordnen …“ an.
   mResult := TAtlasTrackerProjects.Resolve(NoTeam, mRows, Connections, 'D:\X\X.dproj', '');
-  Assert.IsFalse(TAtlasWelcomeIssues.TargetFor(mResult, '', '').Configured);
+  Assert.IsFalse(TAtlasMyIssues.TargetFor(mResult, '', '').Configured);
   mRows := nil;
 end;
 

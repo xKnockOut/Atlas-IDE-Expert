@@ -100,7 +100,62 @@ uses
   Atlas.Common.Dfm.Contract,
   Atlas.Common.Dfm.Parser,
   Atlas.Common.Dfm.FormModel,
-  Atlas.Common.Rules.Derived;
+  Atlas.Common.Rules.Derived,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TUnicodeText = (CharCount, RemoveChar, RemoveInForm, InFormFile, BidiTitle, Bidi, InvisibleTitle, Invisible,
+    ControlTitle, InvalidUtf8, ControlPrefix, Control, InvalidUtf8Form, RejectedTitle, ReplaceWithString,
+    ReplaceWithQuoted, CharNotAllowed, Utf32, ConfusableTitle, ReplaceLatin, Confusable, MixedScripts, NonAscii,
+    ReplaceWith, ReplaceInForm, Typographic, DoubleQuotes);
+
+const
+  cTexts: array[TUnicodeText] of TAtlasText = (
+    (De: '%d Zeichen %s'; En: '%d characters %s'),
+    (De: 'Zeichen entfernen'; En: 'Remove character'),
+    (De: 'In der Formulardatei entfernen'; En: 'Remove in the form file'),
+    (De: 'Formulardatei, Zeile %d%s: %s %s'; En: 'Form file, line %d%s: %s %s'),
+    (De: 'Bidirektionale Steuerzeichen können Code anders anzeigen, als er kompiliert wird (Trojan Source)';
+     En: 'Bidirectional control characters can display code differently from how it is compiled (Trojan Source)'),
+    (De: 'Bidirektionales Steuerzeichen, Anzeige und Bedeutung können abweichen (Trojan Source):';
+     En: 'Bidirectional control character, display and meaning can differ (Trojan Source):'),
+    (De: 'Unsichtbare oder Nullbreiten-Zeichen im Quelltext'; En: 'Invisible or zero-width characters in the source'),
+    (De: 'Unsichtbares Zeichen'; En: 'Invisible character'),
+    (De: 'NUL- und Steuerzeichen oder ungültige UTF-8-Bytes im Quelltext und in der Formulardatei';
+     En: 'NUL and control characters or invalid UTF-8 bytes in the source and in the form file'),
+    (De: 'Ungültiges UTF-8-Byte $%s (Byte %d der Datei)'; En: 'Invalid UTF-8 byte $%s (byte %d of the file)'),
+    (De: 'Steuerzeichen oder ungültiges Byte '; En: 'Control character or invalid byte '),
+    (De: 'Steuerzeichen oder ungültiges Byte'; En: 'Control character or invalid byte'),
+    (De: 'Formulardatei, Zeile %d, Spalte %d: ungültiges UTF-8-Byte $%s';
+     En: 'Form file, line %d, column %d: invalid UTF-8 byte $%s'),
+    (De: 'Datei in UTF-32 oder Zeichen im Code, die der Compiler nicht annimmt (wie F2438, E2038)';
+     En: 'File in UTF-32 or characters in the code that the compiler does not accept (like F2438, E2038)'),
+    (De: 'Durch den String %s ersetzen'; En: 'Replace with the string %s'),
+    (De: 'Durch "%s" ersetzen'; En: 'Replace with "%s"'),
+    (De: 'Zeichen ''%s'' (#$%s) ist im Quelltext nicht erlaubt (wie E2038).';
+     En: 'Character ''%s'' (#$%s) is not allowed in the source (like E2038).'),
+    (De: 'Die Datei ist UTF-32 kodiert; der Compiler liest nur UTF-8, UTF-16 und ANSI (wie F2438). In UTF-8 mit BOM ' +
+      'speichern.';
+     En: 'The file is UTF-32 encoded; the compiler reads only UTF-8, UTF-16 and ANSI (like F2438). Save it in UTF-8 ' +
+      'with BOM.'),
+    (De: 'Bezeichner mit Zeichen aus mehreren Schriften oder Nicht-ASCII-Zeichen (Verwechslungsgefahr)';
+     En: 'Identifier with characters from several scripts or non-ASCII characters (risk of confusion)'),
+    (De: 'Durch "%s" mit lateinischen Zeichen ersetzen'; En: 'Replace with "%s" in Latin characters'),
+    (De: 'Bezeichner "%s" enthält Zeichen, die lateinischen gleichen; Verwechslung mit "%s" möglich';
+     En: 'Identifier "%s" contains characters resembling Latin ones; confusion with "%s" possible'),
+    (De: 'Bezeichner "%s" mischt Schriften'; En: 'Identifier "%s" mixes scripts'),
+    (De: 'Bezeichner "%s" enthält Nicht-ASCII-Zeichen'; En: 'Identifier "%s" contains non-ASCII characters'),
+    (De: 'Durch %s ersetzen'; En: 'Replace with %s'),
+    (De: 'In der Formulardatei durch %s ersetzen'; En: 'Replace with %s in the form file'),
+    (De: 'Typografische Anführungszeichen sind im Quelltext nicht erlaubt (wie E2038).';
+     En: 'Typographic quotation marks are not allowed in the source (like E2038).'),
+    (De: 'Doppelte Anführungszeichen sind im Quelltext nicht erlaubt, Strings stehen in '' (wie E2038).';
+     En: 'Double quotation marks are not allowed in the source, strings are enclosed in '' (like E2038).'));
+
+{$SCOPEDENUMS OFF}
 
 type
   {$SCOPEDENUMS ON}
@@ -206,17 +261,25 @@ begin
   Codes := TList<Integer>.Create;
   try
     for Hit in ARun.Hits do
+    begin
       if not Codes.Contains(Hit.Code) then
+      begin
         Codes.Add(Hit.Code);
+      end;
+    end;
     Result := '';
     for Code in Codes do
     begin
       if Result <> '' then
+      begin
         Result := Result + ', ';
+      end;
       Result := Result + CodeName(Code);
     end;
     if Length(ARun.Hits) > 1 then
-      Result := Format('%d Zeichen %s', [Length(ARun.Hits), Result]);
+    begin
+      Result := cTexts[TUnicodeText.CharCount].Fmt([Length(ARun.Hits), Result]);
+    end;
   finally
     Codes.Free;
   end;
@@ -241,7 +304,9 @@ begin
     ATokenEnd[Index] := Index + 1;
   end;
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   for Token in AContext.Tree.Tokens do
   begin
     case Token.Kind of
@@ -254,7 +319,9 @@ begin
     end;
     Last := Token.Offset + Length(Token.Text);
     if Last > Length(AContext.Text) then
+    begin
       Last := Length(AContext.Text);
+    end;
     for Index := Token.Offset + 1 to Last do
     begin
       Result[Index] := Place;
@@ -282,7 +349,9 @@ begin
         begin
           Dec(Embeddings);
           if Embeddings < 0 then
+          begin
             Exit(False);
+          end;
         end;
       $2066..$2068:
         Inc(Isolates);
@@ -290,11 +359,15 @@ begin
         begin
           Dec(Isolates);
           if Isolates < 0 then
+          begin
             Exit(False);
+          end;
         end;
     else
       if IsRtlLetter(AText[Index]) then
+      begin
         Rtl := True;
+      end;
     end;
   Result := Rtl and (Embeddings = 0) and (Isolates = 0);
 end;
@@ -305,75 +378,135 @@ begin
   case ARule of
     TCharRule.Bidi:
       if IsBidiMark(ACode) or ((APlace = TCharPlace.StringLiteral) and ABalancedRtl) then
+      begin
         Result := TRuleConfidence.Low;
+      end;
     TCharRule.Invisible:
       if APlace <> TCharPlace.Code then
+      begin
         Result := TRuleConfidence.Medium;
+      end;
     TCharRule.Control: ;
+  end;
+end;
+
+type
+  /// <summary>Fasst Treffer zu Bereichen zusammen: gleicher Ort, Zeichen direkt hintereinander.</summary>
+  TRunBuilder = class
+  private
+    FRuns: TArray<TRun>;
+    FRun: TRun;
+    FOpen: Boolean;
+  public
+    /// <summary>Schließt den offenen Bereich ab.</summary>
+    procedure Flush;
+    /// <summary>Hängt einen Treffer an; ein anderer Ort oder eine Lücke beginnt einen neuen Bereich.</summary>
+    procedure Add(const AHit: THit; APlace: TCharPlace; AMultiLine: Boolean; AStop: Integer;
+      const AEndPos: TTextPosition);
+    /// <summary>Alle Bereiche, der offene eingeschlossen.</summary>
+    function Runs: TArray<TRun>;
+  end;
+
+procedure TRunBuilder.Flush;
+begin
+  if FOpen then
+  begin
+    FRuns := FRuns + [FRun];
+  end;
+  FOpen := False;
+end;
+
+procedure TRunBuilder.Add(const AHit: THit; APlace: TCharPlace; AMultiLine: Boolean; AStop: Integer;
+  const AEndPos: TTextPosition);
+begin
+  if FOpen and ((FRun.EndOffset <> AHit.Offset) or (FRun.Place <> APlace)) then
+  begin
+    Flush;
+  end;
+  if not FOpen then
+  begin
+    FRun := Default(TRun);
+    FRun.Place := APlace;
+    FRun.MultiLine := AMultiLine;
+    FOpen := True;
+  end;
+  FRun.Hits := FRun.Hits + [AHit];
+  FRun.EndOffset := AStop;
+  FRun.EndPos := AEndPos;
+end;
+
+function TRunBuilder.Runs: TArray<TRun>;
+begin
+  Flush;
+  Result := FRuns;
+end;
+
+/// <summary>Ein Treffer an APos.</summary>
+function MakeHit(ACode, AOffset: Integer; const APos: TTextPosition; ARaw: Boolean;
+  AConfidence: TRuleConfidence): THit;
+begin
+  Result.Code := ACode;
+  Result.Offset := AOffset;
+  Result.Pos := APos;
+  Result.Raw := ARaw;
+  Result.Confidence := AConfidence;
+end;
+
+/// <summary>Meldet die Regel das Zeichen an AIndex (ab 1)? Eine BOM am Dateianfang ist erlaubt.</summary>
+function Flagged(ARule: TCharRule; ACode, AIndex: Integer): Boolean;
+begin
+  Result := Matches(ARule, ACode) and not ((AIndex = 1) and (ACode = $FEFF));
+end;
+
+/// <summary>Zeile und Spalte hinter AChar.</summary>
+procedure Advance(AChar: Char; var ALine, AColumn: Integer);
+begin
+  if AChar = #10 then
+  begin
+    Inc(ALine);
+    AColumn := 0;
+  end
+  else
+  begin
+    Inc(AColumn);
   end;
 end;
 
 /// <summary>Zusammenhängende Bereiche: gleiche Stelle (Ort), Zeichen direkt hintereinander.</summary>
 function RunsOf(ARule: TCharRule; const AContext: TRuleContext): TArray<TRun>;
 var
-  Places: TArray<TCharPlace>;
-  MultiLine: TArray<Boolean>;
-  TokenStart, TokenEnd: TArray<Integer>;
-  Index, Line, Column: Integer;
-  Hit: THit;
-  Run: TRun;
-  Open: Boolean;
-  Code: Integer;
-
-  procedure Flush;
-  begin
-    if Open then
-      Result := Result + [Run];
-    Open := False;
-  end;
-
+  mPlaces: TArray<TCharPlace>;
+  mMultiLine: TArray<Boolean>;
+  mTokenStart, mTokenEnd: TArray<Integer>;
+  mIndex, mLine, mColumn, mCode: Integer;
+  mConfidence: TRuleConfidence;
+  mBuilder: TRunBuilder;
 begin
-  Result := nil;
-  Places := PlacesOf(AContext, MultiLine, TokenStart, TokenEnd);
-  Line := 0;
-  Column := 0;
-  Open := False;
-  for Index := 1 to Length(AContext.Text) do
-  begin
-    Code := Ord(AContext.Text[Index]);
-    // BOM am Dateianfang ist erlaubt.
-    if Matches(ARule, Code) and not ((Index = 1) and (Code = $FEFF)) then
+  mPlaces := PlacesOf(AContext, mMultiLine, mTokenStart, mTokenEnd);
+  mLine := 0;
+  mColumn := 0;
+  mBuilder := TRunBuilder.Create;
+  try
+    for mIndex := 1 to Length(AContext.Text) do
     begin
-      Hit.Code := Code;
-      Hit.Offset := Index;
-      Hit.Pos := TTextPosition.Create(Line, Column);
-      Hit.Raw := True;
-      Hit.Confidence := ConfidenceOf(ARule, Code, Places[Index],
-        BalancedRtl(AContext.Text, TokenStart[Index], TokenEnd[Index]));
-      if Open and ((Run.EndOffset <> Index) or (Run.Place <> Places[Index])) then
-        Flush;
-      if not Open then
+      mCode := Ord(AContext.Text[mIndex]);
+      if Flagged(ARule, mCode, mIndex) then
       begin
-        Run := Default(TRun);
-        Run.Place := Places[Index];
-        Run.MultiLine := MultiLine[Index];
-        Open := True;
+        mConfidence := ConfidenceOf(ARule, mCode, mPlaces[mIndex],
+          BalancedRtl(AContext.Text, mTokenStart[mIndex], mTokenEnd[mIndex]));
+        mBuilder.Add(MakeHit(mCode, mIndex, TTextPosition.Create(mLine, mColumn), True, mConfidence),
+          mPlaces[mIndex], mMultiLine[mIndex], mIndex + 1, TTextPosition.Create(mLine, mColumn + 1));
+      end
+      else
+      begin
+        mBuilder.Flush;
       end;
-      Run.Hits := Run.Hits + [Hit];
-      Run.EndOffset := Index + 1;
-      Run.EndPos := TTextPosition.Create(Line, Column + 1);
-    end
-    else
-      Flush;
-    if AContext.Text[Index] = #10 then
-    begin
-      Inc(Line);
-      Column := 0;
-    end
-    else
-      Inc(Column);
+      Advance(AContext.Text[mIndex], mLine, mColumn);
+    end;
+    Result := mBuilder.Runs;
+  finally
+    mBuilder.Free;
   end;
-  Flush;
 end;
 
 /// <summary>Höchste Konfidenz eines Bereichs: ein gefährliches Zeichen macht den ganzen Bereich gefährlich.</summary>
@@ -383,8 +516,12 @@ var
 begin
   Result := TRuleConfidence.Low;
   for Hit in ARun.Hits do
+  begin
     if Ord(Hit.Confidence) > Ord(Result) then
+    begin
       Result := Hit.Confidence;
+    end;
+  end;
 end;
 
 /// <summary>"#$200B#$200B" für die Zeichen eines Bereichs.</summary>
@@ -394,10 +531,16 @@ var
 begin
   Result := '';
   for Hit in ARun.Hits do
+  begin
     if ADecimal then
-      Result := Result + '#' + IntToStr(Hit.Code)
+    begin
+      Result := Result + '#' + IntToStr(Hit.Code);
+    end
     else
+    begin
       Result := Result + '#$' + IntToHex(Hit.Code, 4);
+    end;
+  end;
 end;
 
 /// <summary>Korrektur eines Bereichs in der geprüften Datei; nil ohne passende.</summary>
@@ -411,11 +554,15 @@ begin
   begin
     // 'a<ZWSP>b' → 'a'#$200B'b': gleicher Wert, sichtbar. Mehrzeilige Strings lassen sich nicht teilen.
     if not ARun.MultiLine then
-      Result := [TRuleFix.Create('Durch ' + CharLiterals(ARun, False) + ' ersetzen',
+    begin
+      Result := [TRuleFix.Create(cTexts[TUnicodeText.ReplaceWith].Fmt([CharLiterals(ARun, False)]),
         [TRuleEdit.Create(Range, '''' + CharLiterals(ARun, False) + '''')], True)];
+    end;
   end
   else
-    Result := [TRuleFix.Create('Zeichen entfernen', [TRuleEdit.Create(Range, '')])];
+  begin
+    Result := [TRuleFix.Create(cTexts[TUnicodeText.RemoveChar].Text, [TRuleEdit.Create(Range, '')])];
+  end;
 end;
 
 function RunRange(const ARun: TRun): TTextRange;
@@ -454,112 +601,158 @@ begin
   inherited;
 end;
 
+type
+  /// <summary>Liest die Bereiche einer Regel aus dem Text einer Formulardatei.</summary>
+  TFormRunScanner = class
+  private
+    FText: string;
+    FRule: TCharRule;
+    FBuilder: TRunBuilder;
+    FIndex: Integer;
+    FLine: Integer;
+    FColumn: Integer;
+    FInQuote: Boolean;
+    /// <summary>Treffer von AOffset bis AStop (exklusiv) an der aktuellen Spalte.</summary>
+    procedure AddHit(ACode, AOffset, AStop: Integer; APlace: TCharPlace; ARaw: Boolean);
+    procedure SkipWhile(const AChars: TSysCharSet);
+    procedure ScanQuote;
+    procedure ScanCharConstant;
+    procedure ScanChar;
+  public
+    constructor Create(const AText: string; ARule: TCharRule);
+    destructor Destroy; override;
+    function Run: TArray<TRun>;
+  end;
+
+constructor TFormRunScanner.Create(const AText: string; ARule: TCharRule);
+begin
+  inherited Create;
+  FText := AText;
+  FRule := ARule;
+  FBuilder := TRunBuilder.Create;
+end;
+
+destructor TFormRunScanner.Destroy;
+begin
+  FBuilder.Free;
+  inherited;
+end;
+
+procedure TFormRunScanner.AddHit(ACode, AOffset, AStop: Integer; APlace: TCharPlace; ARaw: Boolean);
+begin
+  FBuilder.Add(MakeHit(ACode, AOffset, TTextPosition.Create(FLine, FColumn), ARaw,
+    ConfidenceOf(FRule, ACode, APlace, False)), APlace, False, AStop,
+    TTextPosition.Create(FLine, FColumn + AStop - AOffset));
+end;
+
+procedure TFormRunScanner.SkipWhile(const AChars: TSysCharSet);
+begin
+  while (FIndex <= Length(FText)) and CharInSet(FText[FIndex], AChars) do
+  begin
+    Inc(FIndex);
+  end;
+end;
+
+procedure TFormRunScanner.ScanQuote;
+begin
+  FBuilder.Flush;
+  // '' innerhalb eines Strings ist ein Hochkomma, kein Ende.
+  if FInQuote and (FIndex < Length(FText)) and (FText[FIndex + 1] = '''') then
+  begin
+    Inc(FIndex, 2);
+    Inc(FColumn, 2);
+    Exit;
+  end;
+  FInQuote := not FInQuote;
+  Inc(FIndex);
+  Inc(FColumn);
+end;
+
+procedure TFormRunScanner.ScanCharConstant;
+var
+  mStart, mCode: Integer;
+  mDigits: string;
+begin
+  // Zeichenkonstante #8238 oder #$202E.
+  mStart := FIndex;
+  Inc(FIndex);
+  if (FIndex <= Length(FText)) and (FText[FIndex] = '$') then
+  begin
+    Inc(FIndex);
+    SkipWhile(['0'..'9', 'A'..'F', 'a'..'f']);
+    mDigits := '$' + Copy(FText, mStart + 2, FIndex - mStart - 2);
+  end
+  else
+  begin
+    SkipWhile(['0'..'9']);
+    mDigits := Copy(FText, mStart + 1, FIndex - mStart - 1);
+  end;
+  // Direkt folgende Konstanten setzen den Bereich fort: #8203#8203 ist eine Folge.
+  if TryStrToInt(mDigits, mCode) and Matches(FRule, mCode) then
+  begin
+    AddHit(mCode, mStart, FIndex, TCharPlace.StringLiteral, False);
+  end
+  else
+  begin
+    FBuilder.Flush;
+  end;
+  Inc(FColumn, FIndex - mStart);
+end;
+
+procedure TFormRunScanner.ScanChar;
+var
+  mCode: Integer;
+  mPlace: TCharPlace;
+begin
+  mCode := Ord(FText[FIndex]);
+  if Flagged(FRule, mCode, FIndex) then
+  begin
+    mPlace := TCharPlace.Code;
+    if FInQuote then
+    begin
+      mPlace := TCharPlace.StringLiteral;
+    end;
+    AddHit(mCode, FIndex, FIndex + 1, mPlace, True);
+  end
+  else
+  begin
+    FBuilder.Flush;
+  end;
+  Advance(FText[FIndex], FLine, FColumn);
+  Inc(FIndex);
+end;
+
+function TFormRunScanner.Run: TArray<TRun>;
+begin
+  FIndex := 1;
+  while FIndex <= Length(FText) do
+  begin
+    if FText[FIndex] = '''' then
+    begin
+      ScanQuote;
+    end
+    else if not FInQuote and (FText[FIndex] = '#') then
+    begin
+      ScanCharConstant;
+    end
+    else
+    begin
+      ScanChar;
+    end;
+  end;
+  Result := FBuilder.Runs;
+end;
+
 function TFormScan.Runs(ARule: TCharRule): TArray<TRun>;
 var
-  Index, Line, Column, Start, Code: Integer;
-  InQuote, Open: Boolean;
-  Run: TRun;
-  Hit: THit;
-  Digits: string;
-
-  procedure Flush;
-  begin
-    if Open then
-      Result := Result + [Run];
-    Open := False;
-  end;
-
-  procedure Add(ACode, AOffset, AStop: Integer; APlace: TCharPlace; ARaw: Boolean; AColumnStop: Integer);
-  begin
-    Hit.Code := ACode;
-    Hit.Offset := AOffset;
-    Hit.Pos := TTextPosition.Create(Line, Column);
-    Hit.Raw := ARaw;
-    Hit.Confidence := ConfidenceOf(ARule, ACode, APlace, False);
-    if Open and ((Run.EndOffset <> AOffset) or (Run.Place <> APlace)) then
-      Flush;
-    if not Open then
-    begin
-      Run := Default(TRun);
-      Run.Place := APlace;
-      Open := True;
-    end;
-    Run.Hits := Run.Hits + [Hit];
-    Run.EndOffset := AStop;
-    Run.EndPos := TTextPosition.Create(Line, AColumnStop);
-  end;
-
+  mScanner: TFormRunScanner;
 begin
-  Result := nil;
-  Line := 0;
-  Column := 0;
-  InQuote := False;
-  Open := False;
-  Index := 1;
-  while Index <= Length(FText) do
-  begin
-    Code := Ord(FText[Index]);
-    if FText[Index] = '''' then
-    begin
-      // '' innerhalb eines Strings ist ein Hochkomma, kein Ende.
-      if InQuote and (Index < Length(FText)) and (FText[Index + 1] = '''') then
-      begin
-        Flush;
-        Inc(Index, 2);
-        Inc(Column, 2);
-        Continue;
-      end;
-      InQuote := not InQuote;
-      Flush;
-      Inc(Index);
-      Inc(Column);
-      Continue;
-    end;
-    if not InQuote and (FText[Index] = '#') then
-    begin
-      // Zeichenkonstante #8238 oder #$202E.
-      Start := Index;
-      Inc(Index);
-      if (Index <= Length(FText)) and (FText[Index] = '$') then
-      begin
-        Inc(Index);
-        while (Index <= Length(FText)) and CharInSet(FText[Index], ['0'..'9', 'A'..'F', 'a'..'f']) do
-          Inc(Index);
-        Digits := '$' + Copy(FText, Start + 2, Index - Start - 2);
-      end
-      else
-      begin
-        while (Index <= Length(FText)) and CharInSet(FText[Index], ['0'..'9']) do
-          Inc(Index);
-        Digits := Copy(FText, Start + 1, Index - Start - 1);
-      end;
-      // Direkt folgende Konstanten setzen den Bereich fort: #8203#8203 ist eine Folge.
-      if TryStrToInt(Digits, Code) and Matches(ARule, Code) then
-        Add(Code, Start, Index, TCharPlace.StringLiteral, False, Column + Index - Start)
-      else
-        Flush;
-      Inc(Column, Index - Start);
-      Continue;
-    end;
-    if Matches(ARule, Code) and not ((Index = 1) and (Code = $FEFF)) then
-    begin
-      if InQuote then
-        Add(Code, Index, Index + 1, TCharPlace.StringLiteral, True, Column + 1)
-      else
-        Add(Code, Index, Index + 1, TCharPlace.Code, True, Column + 1);
-    end
-    else
-      Flush;
-    if FText[Index] = #10 then
-    begin
-      Inc(Line);
-      Column := 0;
-    end
-    else
-      Inc(Column);
-    Inc(Index);
+  mScanner := TFormRunScanner.Create(FText, ARule);
+  try
+    Result := mScanner.Run;
+  finally
+    mScanner.Free;
   end;
-  Flush;
 end;
 
 function Contains(const ARange: TTextRange; const APos: TTextPosition): Boolean;
@@ -577,21 +770,31 @@ procedure TFormScan.Locate(const APos: TTextPosition; out AObject: TDfmObject; o
     Prop: TDfmProperty;
   begin
     if not Contains(AObj.Range, APos) then
+    begin
       Exit;
+    end;
     AObject := AObj;
     AProperty := '';
     for Prop in AObj.Properties do
+    begin
       if Contains(Prop.ValueRange, APos) or Contains(Prop.NameRange, APos) then
+      begin
         AProperty := Prop.Name;
+      end;
+    end;
     for Child in AObj.Children do
+    begin
       Visit(Child);
+    end;
   end;
 
 begin
   AObject := nil;
   AProperty := '';
   if FDocument.Root <> nil then
+  begin
     Visit(FDocument.Root);
+  end;
 end;
 
 function OnlyReplacement(const ARun: TRun): Boolean;
@@ -599,8 +802,12 @@ var
   Hit: THit;
 begin
   for Hit in ARun.Hits do
+  begin
     if Hit.Code <> $FFFD then
+    begin
       Exit(False);
+    end;
+  end;
   Result := True;
 end;
 
@@ -613,7 +820,9 @@ function ReplacementSeverity(ARule: TCharRule; const ARun: TRun): TRuleSeverity;
 begin
   Result := TRuleSeverity.Default;
   if (ARule <> TCharRule.Control) or not OnlyReplacement(ARun) then
+  begin
     Exit;
+  end;
   case ARun.Place of
     TCharPlace.Comment:
       Result := TRuleSeverity.Off;
@@ -631,11 +840,17 @@ var
 begin
   mSeverity := ReplacementSeverity(ARule, ARun);
   if mSeverity = TRuleSeverity.Off then
+  begin
     Exit;
+  end;
   if mSeverity = TRuleSeverity.Default then
-    AReport.Add(ARange, AMessage, RunConfidence(ARun), AFixes)
+  begin
+    AReport.Add(ARange, AMessage, RunConfidence(ARun), AFixes);
+  end
   else
+  begin
     AReport.AddWithSeverity(ARange, AMessage, mSeverity, AFixes);
+  end;
 end;
 
 /// <summary>Name der Formularklasse in der Unit; Default(TTextRange) ohne.</summary>
@@ -645,81 +860,174 @@ var
 begin
   Result := Default(TTextRange);
   for Symbol in AUnitIndex.Symbols do
+  begin
     if (Symbol.Kind = TIndexSymbolKind.ClassType) and (Symbol.Container = '') and SameText(Symbol.Name, AFormClass) then
+    begin
       Exit(Symbol.SelectionRange);
+    end;
+  end;
+end;
+
+type
+  /// <summary>Meldet die Bereiche einer Regel in der Formulardatei an der passenden Stelle der Unit.</summary>
+  TFormCharCheck = class
+  private
+    FRule: TCharRule;
+    FContext: TRuleContext;
+    FReport: IRuleReport;
+    FWhat: string;
+    FScan: TFormScan;
+    FCache: IRuleDerivedCache;
+    FUnitIndex: TUnitIndex;
+    FFormClass: string;
+    FClassRange: TTextRange;
+    /// <summary>Feld der Komponente in der Formularklasse; sonst die Formularklasse.</summary>
+    function FieldRange(AObject: TDfmObject): TTextRange;
+    /// <summary>AFix als einzige Korrektur, angewendet auf die Formulardatei.</summary>
+    function InFormFile(const AFix: TRuleFix): TArray<TRuleFix>;
+    /// <summary>Korrektur in der Formulardatei; nil ohne.</summary>
+    function FormFixes(const ARun: TRun): TArray<TRuleFix>;
+    procedure ReportRun(const ARun: TRun);
+  public
+    constructor Create(ARule: TCharRule; const AContext: TRuleContext; const AReport: IRuleReport;
+      const AWhat: string);
+    destructor Destroy; override;
+    /// <summary>ASkipReplacement: Bereiche nur aus U+FFFD übergehen.</summary>
+    procedure Run(ASkipReplacement: Boolean);
+  end;
+
+constructor TFormCharCheck.Create(ARule: TCharRule; const AContext: TRuleContext; const AReport: IRuleReport;
+  const AWhat: string);
+begin
+  inherited Create;
+  FRule := ARule;
+  FContext := AContext;
+  FReport := AReport;
+  FWhat := AWhat;
+  FScan := TFormScan.Create(AContext.FormText);
+end;
+
+destructor TFormCharCheck.Destroy;
+begin
+  FScan.Free;
+  inherited;
+end;
+
+function TFormCharCheck.FieldRange(AObject: TDfmObject): TTextRange;
+var
+  mSymbol: TIndexSymbol;
+begin
+  Result := FClassRange;
+  if (AObject = nil) or (AObject = FScan.Document.Root) then
+  begin
+    Exit;
+  end;
+  for mSymbol in FUnitIndex.Symbols do
+  begin
+    if (mSymbol.Kind = TIndexSymbolKind.Field) and SameText(mSymbol.Container, FFormClass) and
+      SameText(mSymbol.Name, AObject.Name) then
+    begin
+      Exit(mSymbol.SelectionRange);
+    end;
+  end;
+end;
+
+/// <summary>" (Objekt.Property)" für die Meldung; '' ohne Objekt.</summary>
+function WhereText(AObject: TDfmObject; const AProperty: string): string;
+begin
+  Result := '';
+  if AObject = nil then
+  begin
+    Exit;
+  end;
+  Result := AObject.Name;
+  if AProperty <> '' then
+  begin
+    Result := Result + '.' + AProperty;
+  end;
+  if Result <> '' then
+  begin
+    Result := ' (' + Result + ')';
+  end;
+end;
+
+function TFormCharCheck.InFormFile(const AFix: TRuleFix): TArray<TRuleFix>;
+var
+  mFix: TRuleFix;
+begin
+  mFix := AFix;
+  mFix.FileName := FContext.FormFile;
+  Result := [mFix];
+end;
+
+function TFormCharCheck.FormFixes(const ARun: TRun): TArray<TRuleFix>;
+begin
+  Result := nil;
+  if FContext.FormFile = '' then
+  begin
+    Exit;
+  end;
+  // Rohe Zeichen in einem String der Formulardatei: als #nnnn ausschreiben, wie Delphi es tut.
+  if (ARun.Place = TCharPlace.StringLiteral) and ARun.Hits[0].Raw and ARun.Hits[High(ARun.Hits)].Raw then
+  begin
+    Result := InFormFile(TRuleFix.Create(cTexts[TUnicodeText.ReplaceInForm].Fmt([CharLiterals(ARun, True)]),
+      [TRuleEdit.Create(RunRange(ARun), '''' + CharLiterals(ARun, True) + '''')], True));
+  end
+  else if ARun.Place = TCharPlace.Code then
+  begin
+    Result := InFormFile(TRuleFix.Create(cTexts[TUnicodeText.RemoveInForm].Text, [TRuleEdit.Create(RunRange(ARun),
+      '')]));
+  end;
+end;
+
+procedure TFormCharCheck.ReportRun(const ARun: TRun);
+var
+  mObject: TDfmObject;
+  mProperty: string;
+begin
+  FScan.Locate(ARun.Hits[0].Pos, mObject, mProperty);
+  AddRun(FRule, ARun, FReport, FieldRange(mObject), cTexts[TUnicodeText.InFormFile].Fmt(
+    [ARun.Hits[0].Pos.Line + 1, WhereText(mObject, mProperty), FWhat, RunCodes(ARun)]), FormFixes(ARun));
+end;
+
+procedure TFormCharCheck.Run(ASkipReplacement: Boolean);
+var
+  mRun: TRun;
+begin
+  if FScan.Document.Root = nil then
+  begin
+    Exit;
+  end;
+  FFormClass := FScan.Document.Root.TypeName;
+  FCache := TRuleDerived.Open(FContext);
+  FUnitIndex := TRuleDerived.UnitIndex(FCache, FContext);
+  // Ohne Formularklasse in der Unit: am Anfang der Unit.
+  FClassRange := FormClassRange(FUnitIndex, FFormClass);
+  for mRun in FScan.Runs(FRule) do
+  begin
+    // U+FFFD an ungültigen Bytes meldet control-char schon mit Zeile und Spalte.
+    if not (ASkipReplacement and OnlyReplacement(mRun)) then
+    begin
+      ReportRun(mRun);
+    end;
+  end;
 end;
 
 /// <summary>Meldet die Bereiche einer Regel in der Formulardatei an der passenden Stelle der Unit.</summary>
 procedure CheckForm(ARule: TCharRule; const AContext: TRuleContext; const AReport: IRuleReport;
   const AWhat: string; ASkipReplacement: Boolean);
 var
-  Scan: TFormScan;
-  Run: TRun;
-  Obj: TDfmObject;
-  PropertyName, Where, FormClass: string;
-  Cache: IRuleDerivedCache;
-  UnitIndex: TUnitIndex;
-  Symbol: TIndexSymbol;
-  ClassRange, Range: TTextRange;
-  Fixes: TArray<TRuleFix>;
-  Fix: TRuleFix;
+  mCheck: TFormCharCheck;
 begin
   if (AContext.FormText = '') or (AContext.Tree = nil) or TFormModel.IsBinary(AContext.FormText) then
+  begin
     Exit;
-  Scan := TFormScan.Create(AContext.FormText);
+  end;
+  mCheck := TFormCharCheck.Create(ARule, AContext, AReport, AWhat);
   try
-    if Scan.Document.Root = nil then
-      Exit;
-    FormClass := Scan.Document.Root.TypeName;
-    Cache := TRuleDerived.Open(AContext);
-    UnitIndex := TRuleDerived.UnitIndex(Cache, AContext);
-    // Ohne Formularklasse in der Unit: am Anfang der Unit.
-    ClassRange := FormClassRange(UnitIndex, FormClass);
-    for Run in Scan.Runs(ARule) do
-    begin
-      // U+FFFD an ungültigen Bytes meldet control-char schon mit Zeile und Spalte.
-      if ASkipReplacement and OnlyReplacement(Run) then
-        Continue;
-      Scan.Locate(Run.Hits[0].Pos, Obj, PropertyName);
-      Range := ClassRange;
-      Where := '';
-      if Obj <> nil then
-      begin
-        Where := Obj.Name;
-        if PropertyName <> '' then
-          Where := Where + '.' + PropertyName;
-        if Obj <> Scan.Document.Root then
-          for Symbol in UnitIndex.Symbols do
-            if (Symbol.Kind = TIndexSymbolKind.Field) and SameText(Symbol.Container, FormClass) and
-              SameText(Symbol.Name, Obj.Name) then
-            begin
-              Range := Symbol.SelectionRange;
-              Break;
-            end;
-      end;
-      if Where <> '' then
-        Where := ' (' + Where + ')';
-      Fixes := nil;
-      // Rohe Zeichen in einem String der Formulardatei: als #nnnn ausschreiben, wie Delphi es tut.
-      if (AContext.FormFile <> '') and (Run.Place = TCharPlace.StringLiteral) and Run.Hits[0].Raw and
-        Run.Hits[High(Run.Hits)].Raw then
-      begin
-        Fix := TRuleFix.Create('In der Formulardatei durch ' + CharLiterals(Run, True) + ' ersetzen',
-          [TRuleEdit.Create(RunRange(Run), '''' + CharLiterals(Run, True) + '''')], True);
-        Fix.FileName := AContext.FormFile;
-        Fixes := [Fix];
-      end
-      else if (AContext.FormFile <> '') and (Run.Place = TCharPlace.Code) then
-      begin
-        Fix := TRuleFix.Create('In der Formulardatei entfernen', [TRuleEdit.Create(RunRange(Run), '')]);
-        Fix.FileName := AContext.FormFile;
-        Fixes := [Fix];
-      end;
-      AddRun(ARule, Run, AReport, Range, Format('Formulardatei, Zeile %d%s: %s %s', [Run.Hits[0].Pos.Line + 1,
-        Where, AWhat, RunCodes(Run)]), Fixes);
-    end;
+    mCheck.Run(ASkipReplacement);
   finally
-    Scan.Free;
+    mCheck.Free;
   end;
 end;
 
@@ -730,7 +1038,9 @@ var
   Run: TRun;
 begin
   for Run in RunsOf(ARule, AContext) do
+  begin
     AReport.Add(RunRange(Run), AWhat + ' ' + RunCodes(Run), RunConfidence(Run), RunFixes(Run));
+  end;
   CheckForm(ARule, AContext, AReport, AWhat, False);
 end;
 
@@ -739,13 +1049,13 @@ end;
 function TBidiControlRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('bidi-control', TRuleSeverity.Error,
-    'Bidirektionale Steuerzeichen können Code anders anzeigen, als er kompiliert wird (Trojan Source)');
+    cTexts[TUnicodeText.BidiTitle].Text);
 end;
 
 procedure TBidiControlRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
   CheckText(TCharRule.Bidi, AContext, AReport,
-    'Bidirektionales Steuerzeichen, Anzeige und Bedeutung können abweichen (Trojan Source):');
+    cTexts[TUnicodeText.Bidi].Text);
 end;
 
 { TInvisibleCharRule }
@@ -753,12 +1063,12 @@ end;
 function TInvisibleCharRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('invisible-char', TRuleSeverity.Warning,
-    'Unsichtbare oder Nullbreiten-Zeichen im Quelltext');
+    cTexts[TUnicodeText.InvisibleTitle].Text);
 end;
 
 procedure TInvisibleCharRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
-  CheckText(TCharRule.Invisible, AContext, AReport, 'Unsichtbares Zeichen');
+  CheckText(TCharRule.Invisible, AContext, AReport, cTexts[TUnicodeText.Invisible].Text);
 end;
 
 { TControlCharRule }
@@ -766,7 +1076,7 @@ end;
 function TControlCharRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('control-char', TRuleSeverity.Error,
-    'NUL- und Steuerzeichen oder ungültige UTF-8-Bytes im Quelltext und in der Formulardatei');
+    cTexts[TUnicodeText.ControlTitle].Text);
 end;
 
 /// <summary>Text ohne CR, damit Puffer mit anderen Zeilenenden als die Datei vergleichbar bleiben.</summary>
@@ -791,12 +1101,18 @@ var
 begin
   Result := nil;
   if not ReadBytes(AContext, AFileName, Bytes) then
+  begin
     Exit;
+  end;
   if TFileEncoding.IsBinaryForm(Bytes) then
+  begin
     Exit;
+  end;
   // Nur, wenn der geprüfte Text der Inhalt der Datei ist: sonst passen die Stellen nicht.
   if WithoutCr(TFileEncoding.Decode(Bytes, Format)) <> WithoutCr(AText) then
+  begin
     Exit;
+  end;
   Result := TFileEncoding.InvalidUtf8(Bytes, Format);
 end;
 
@@ -809,8 +1125,12 @@ var
 begin
   Lines := WithoutCr(AText).Split([#10]);
   for Item in AInvalid do
+  begin
     if (Item.Position.Line > High(Lines)) or (Item.Position.Character >= Length(Lines[Item.Position.Line])) then
+    begin
       Exit(False);
+    end;
+  end;
   Result := True;
 end;
 
@@ -823,62 +1143,107 @@ begin
   Document := TDfmParser.Parse(AFormText);
   try
     if Document.Root <> nil then
+    begin
       Result := Document.Root.TypeName;
+    end;
   finally
     Document.Free;
   end;
 end;
 
+procedure ReportInvalidBytes(const AReport: IRuleReport; const AInvalid: TArray<TInvalidUtf8>);
+var
+  mItem: TInvalidUtf8;
+begin
+  for mItem in AInvalid do
+  begin
+    AReport.Add(TTextRange.Create(mItem.Position, TTextPosition.Create(mItem.Position.Line,
+      mItem.Position.Character + 1)), cTexts[TUnicodeText.InvalidUtf8].Fmt(
+      [IntToHex(mItem.Value, 2), mItem.ByteOffset]));
+  end;
+end;
+
+/// <summary>Steht ein U+FFFD des Bereichs an einer schon gemeldeten Fehlstelle?</summary>
+function CoveredByInvalid(const ARun: TRun; const AInvalid: TArray<TInvalidUtf8>): Boolean;
+var
+  mHit: THit;
+  mItem: TInvalidUtf8;
+begin
+  for mHit in ARun.Hits do
+  begin
+    for mItem in AInvalid do
+    begin
+      if (mHit.Code = $FFFD) and (mItem.Position.Line = mHit.Pos.Line) and
+        (mItem.Position.Character = mHit.Pos.Character) then
+      begin
+        Exit(True);
+      end;
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Steuerzeichen der Unit; U+FFFD an einer schon gemeldeten Fehlstelle nicht doppelt.</summary>
+procedure ReportControlRuns(const AContext: TRuleContext; const AReport: IRuleReport;
+  const AInvalid: TArray<TInvalidUtf8>);
+var
+  mRun: TRun;
+begin
+  for mRun in RunsOf(TCharRule.Control, AContext) do
+  begin
+    if not CoveredByInvalid(mRun, AInvalid) then
+    begin
+      AddRun(TCharRule.Control, mRun, AReport, RunRange(mRun), cTexts[TUnicodeText.ControlPrefix].Text +
+        RunCodes(mRun), RunFixes(mRun));
+    end;
+  end;
+end;
+
+/// <summary>Steuerzeichen und ungültige Bytes der Formulardatei: an der Formularklasse, mit Zeile und Spalte der
+/// Formulardatei.</summary>
+procedure CheckFormBytes(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mInvalid: TArray<TInvalidUtf8>;
+  mItem: TInvalidUtf8;
+  mCache: IRuleDerivedCache;
+  mRange: TTextRange;
+begin
+  mInvalid := nil;
+  if (AContext.FormFile <> '') and (AContext.Tree <> nil) and not TFormModel.IsBinary(AContext.FormText) then
+  begin
+    mInvalid := InvalidBytes(AContext, AContext.FormFile, AContext.FormText);
+  end;
+  CheckForm(TCharRule.Control, AContext, AReport, cTexts[TUnicodeText.Control].Text, Length(mInvalid) > 0);
+  if Length(mInvalid) = 0 then
+  begin
+    Exit;
+  end;
+  mCache := TRuleDerived.Open(AContext);
+  mRange := FormClassRange(TRuleDerived.UnitIndex(mCache, AContext), FormClassOf(AContext.FormText));
+  for mItem in mInvalid do
+  begin
+    AReport.Add(mRange, cTexts[TUnicodeText.InvalidUtf8Form].Fmt(
+      [mItem.Position.Line + 1, mItem.Position.Character + 1, IntToHex(mItem.Value, 2)]));
+  end;
+end;
+
 procedure TControlCharRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Invalid: TArray<TInvalidUtf8>;
-  Item: TInvalidUtf8;
-  Run: TRun;
-  Hit: THit;
-  Covered: Boolean;
-  Cache: IRuleDerivedCache;
-  Range: TTextRange;
-  Bytes: TBytes;
-  Utf32: Boolean;
+  mInvalid: TArray<TInvalidUtf8>;
+  mBytes: TBytes;
 begin
   // Eine UTF-32-Datei ist als Text falsch dekodiert (lauter NUL); das meldet file-encoding-unsupported.
-  Utf32 := ReadBytes(AContext, AContext.RelativePath, Bytes) and TFileEncoding.HasUtf32Bom(Bytes);
-  Invalid := nil;
-  if not Utf32 then
-    Invalid := InvalidBytes(AContext, AContext.RelativePath, AContext.Text);
-  if not Verified(Invalid, AContext.Text) then
-    Invalid := nil;
-  for Item in Invalid do
-    AReport.Add(TTextRange.Create(Item.Position, TTextPosition.Create(Item.Position.Line,
-      Item.Position.Character + 1)), Format('Ungültiges UTF-8-Byte $%s (Byte %d der Datei)',
-      [IntToHex(Item.Value, 2), Item.ByteOffset]));
-  // U+FFFD an einer schon gemeldeten Fehlstelle nicht doppelt melden.
-  for Run in RunsOf(TCharRule.Control, AContext) do
+  if not (ReadBytes(AContext, AContext.RelativePath, mBytes) and TFileEncoding.HasUtf32Bom(mBytes)) then
   begin
-    if Utf32 then
-      Break;
-    Covered := False;
-    for Hit in Run.Hits do
-      for Item in Invalid do
-        if (Hit.Code = $FFFD) and (Item.Position.Line = Hit.Pos.Line) and
-          (Item.Position.Character = Hit.Pos.Character) then
-          Covered := True;
-    if not Covered then
-      AddRun(TCharRule.Control, Run, AReport, RunRange(Run), 'Steuerzeichen oder ungültiges Byte ' + RunCodes(Run),
-        RunFixes(Run));
+    mInvalid := InvalidBytes(AContext, AContext.RelativePath, AContext.Text);
+    if not Verified(mInvalid, AContext.Text) then
+    begin
+      mInvalid := nil;
+    end;
+    ReportInvalidBytes(AReport, mInvalid);
+    ReportControlRuns(AContext, AReport, mInvalid);
   end;
-  // Ungültige Bytes der Formulardatei: an der Formularklasse, mit Zeile und Spalte der Formulardatei.
-  Invalid := nil;
-  if (AContext.FormFile <> '') and (AContext.Tree <> nil) and not TFormModel.IsBinary(AContext.FormText) then
-    Invalid := InvalidBytes(AContext, AContext.FormFile, AContext.FormText);
-  CheckForm(TCharRule.Control, AContext, AReport, 'Steuerzeichen oder ungültiges Byte', Length(Invalid) > 0);
-  if Length(Invalid) = 0 then
-    Exit;
-  Cache := TRuleDerived.Open(AContext);
-  Range := FormClassRange(TRuleDerived.UnitIndex(Cache, AContext), FormClassOf(AContext.FormText));
-  for Item in Invalid do
-    AReport.Add(Range, Format('Formulardatei, Zeile %d, Spalte %d: ungültiges UTF-8-Byte $%s',
-      [Item.Position.Line + 1, Item.Position.Character + 1, IntToHex(Item.Value, 2)]));
+  CheckFormBytes(AContext, AReport);
 end;
 
 { TFileEncodingUnsupportedRule }
@@ -929,10 +1294,14 @@ begin
   Result := Ord(AText[AIndex]);
   ASize := 1;
   if (Result < $D800) or (Result > $DBFF) or (AIndex >= Length(AText)) then
+  begin
     Exit;
+  end;
   Trail := Ord(AText[AIndex + 1]);
   if (Trail < $DC00) or (Trail > $DFFF) then
+  begin
     Exit;
+  end;
   Result := $10000 + ((Result - $D800) shl 10) + (Trail - $DC00);
   ASize := 2;
 end;
@@ -945,7 +1314,9 @@ begin
   while Index <= Length(AText) do
   begin
     if TFileEncodingUnsupportedRule.IsIllegal(CodeAt(AText, Index, Size)) then
+    begin
       Exit(True);
+    end;
     Inc(Index, Size);
   end;
   Result := False;
@@ -1007,57 +1378,80 @@ begin
       begin
         Result := Chr(ACode - $FEE0);
         if Pos(Result, '+-*/=<>[].,():;^@') = 0 then
+        begin
           Result := '';
+        end;
       end;
   else
     Result := '';
   end;
 end;
 
+/// <summary>Steht der Scanner nach AToken in einem asm-Block? Der Parser endet den Block am nächsten end.</summary>
+function InAsmAfter(const AToken: TPascalToken; AInAsm: Boolean): Boolean;
+begin
+  Result := AInAsm;
+  if AToken.IsKeyword('asm') then
+  begin
+    Result := True;
+  end
+  else if AToken.IsKeyword('end') then
+  begin
+    Result := False;
+  end;
+end;
+
+/// <summary>Hängt die unzulässigen Zeichen des Tokens AIndex an AResult[0..ACount-1] an.</summary>
+procedure CollectIllegal(const AToken: TPascalToken; AIndex: Integer; var AResult: TArray<TIllegalChar>;
+  var ACount: Integer);
+var
+  mPosition, mSize: Integer;
+  mItem: TIllegalChar;
+begin
+  mPosition := 1;
+  while mPosition <= Length(AToken.Text) do
+  begin
+    mItem.Code := CodeAt(AToken.Text, mPosition, mSize);
+    if TFileEncodingUnsupportedRule.IsIllegal(mItem.Code) then
+    begin
+      mItem.Offset := AToken.Offset + mPosition - 1;
+      mItem.Size := mSize;
+      mItem.Pos := TTextPosition.Create(AToken.StartPos.Line, AToken.StartPos.Character + mPosition - 1);
+      mItem.Quote := QuoteKindOf(mItem.Code);
+      mItem.Token := AIndex;
+      if ACount = Length(AResult) then
+      begin
+        SetLength(AResult, ACount * 2 + 4);
+      end;
+      AResult[ACount] := mItem;
+      Inc(ACount);
+    end;
+    Inc(mPosition, mSize);
+  end;
+end;
+
 /// <summary>Zeichen im Code außerhalb von asm-Blöcken und {$IF…}-Zweigen, die der Compiler nicht annimmt.</summary>
 function IllegalChars(const ATokens: TArray<TPascalToken>): TArray<TIllegalChar>;
 var
-  Paths: TArray<string>;
-  Index, Position, Size, Count: Integer;
-  InAsm: Boolean;
-  Token: TPascalToken;
-  Item: TIllegalChar;
+  mPaths: TArray<string>;
+  mIndex, mCount: Integer;
+  mInAsm: Boolean;
 begin
   Result := nil;
-  Count := 0;
-  Paths := TConditionalBranches.Paths(ATokens);
-  InAsm := False;
-  for Index := 0 to High(ATokens) do
+  mCount := 0;
+  mPaths := TConditionalBranches.Paths(ATokens);
+  mInAsm := False;
+  for mIndex := 0 to High(ATokens) do
   begin
-    Token := ATokens[Index];
-    // Im Assembler gelten andere Zeichen, etwa "…" als String; der Parser endet den Block am nächsten end.
-    if Token.IsKeyword('asm') then
-      InAsm := True
-    else if Token.IsKeyword('end') then
-      InAsm := False;
-    if InAsm or (TConditionalBranches.PathAt(Paths, Index) <> '') or
-      not (Token.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Unknown]) then
-      Continue;
-    Position := 1;
-    while Position <= Length(Token.Text) do
+    // Im Assembler gelten andere Zeichen, etwa "…" als String.
+    mInAsm := InAsmAfter(ATokens[mIndex], mInAsm);
+    if not mInAsm and (TConditionalBranches.PathAt(mPaths, mIndex) = '') and
+      (ATokens[mIndex].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Unknown]) then
     begin
-      Item.Code := CodeAt(Token.Text, Position, Size);
-      if TFileEncodingUnsupportedRule.IsIllegal(Item.Code) then
-      begin
-        Item.Offset := Token.Offset + Position - 1;
-        Item.Size := Size;
-        Item.Pos := TTextPosition.Create(Token.StartPos.Line, Token.StartPos.Character + Position - 1);
-        Item.Quote := QuoteKindOf(Item.Code);
-        Item.Token := Index;
-        if Count = Length(Result) then
-          SetLength(Result, Count * 2 + 4);
-        Result[Count] := Item;
-        Inc(Count);
-      end;
-      Inc(Position, Size);
+      CollectIllegal(ATokens[mIndex], mIndex, Result, mCount);
     end;
   end;
-  SetLength(Result, Count);
+  SetLength(Result, mCount);
 end;
 
 /// <summary>Stehen zwischen den Tokens AFirst und ALast nur Code-Tokens? Sonst begänne im Zitat ein String
@@ -1067,9 +1461,13 @@ var
   Index: Integer;
 begin
   for Index := AFirst + 1 to ALast - 1 do
+  begin
     if not (ATokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword,
       TPascalTokenKind.Number, TPascalTokenKind.Symbol, TPascalTokenKind.Unknown]) then
+    begin
       Exit(False);
+    end;
+  end;
   Result := True;
 end;
 
@@ -1082,11 +1480,15 @@ begin
   for Index := AOpen + 1 to High(AChars) do
   begin
     if AChars[Index].Pos.Line <> AChars[AOpen].Pos.Line then
+    begin
       Break;
+    end;
     if Closes(AChars[AOpen].Code, AChars[Index].Code) then
     begin
       if OnlyCodeBetween(ATokens, AChars[AOpen].Token, AChars[Index].Token) then
+      begin
         Exit(Index);
+      end;
       Break;
     end;
   end;
@@ -1096,68 +1498,93 @@ end;
 function TFileEncodingUnsupportedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('file-encoding-unsupported', TRuleSeverity.Error,
-    'Datei in UTF-32 oder Zeichen im Code, die der Compiler nicht annimmt (wie F2438, E2038)');
+    cTexts[TUnicodeText.RejectedTitle].Text);
 end;
 
-procedure TFileEncodingUnsupportedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
-const
-  TypographicMessage = 'Typografische Anführungszeichen sind im Quelltext nicht erlaubt (wie E2038).';
-  DoubleMessage = 'Doppelte Anführungszeichen sind im Quelltext nicht erlaubt, Strings stehen in '' (wie E2038).';
+/// <summary>Korrektur eines Zitats von AOpen bis AClose zum String; ARange deckt beide Anführungszeichen ab.</summary>
+function QuoteFixes(const AText: string; const AOpen, AClose: TIllegalChar; out ARange: TTextRange):
+  TArray<TRuleFix>;
 var
-  Bytes: TBytes;
-  Chars: TArray<TIllegalChar>;
-  Index, Closing: Integer;
-  Range: TTextRange;
-  Literal, MessageText, Ascii: string;
-  Fixes: TArray<TRuleFix>;
+  mLiteral: string;
 begin
-  if ReadBytes(AContext, AContext.RelativePath, Bytes) and TFileEncoding.HasUtf32Bom(Bytes) then
+  ARange := TTextRange.Create(AOpen.Pos, TTextPosition.Create(AClose.Pos.Line, AClose.Pos.Character + AClose.Size));
+  mLiteral := QuotedStr(Copy(AText, AOpen.Offset + AOpen.Size + 1, AClose.Offset - AOpen.Offset - AOpen.Size));
+  Result := [TRuleFix.Create(cTexts[TUnicodeText.ReplaceWithString].Fmt([mLiteral]),
+    [TRuleEdit.Create(ARange, mLiteral)])];
+end;
+
+/// <summary>Ersatz eines einzelnen Zeichens durch sein ASCII-Gegenstück; nil ohne.</summary>
+function CharFixes(const AChar: TIllegalChar; out ARange: TTextRange): TArray<TRuleFix>;
+var
+  mAscii: string;
+begin
+  ARange := TTextRange.Create(AChar.Pos, TTextPosition.Create(AChar.Pos.Line, AChar.Pos.Character + AChar.Size));
+  Result := nil;
+  mAscii := AsciiOf(AChar.Code);
+  if mAscii <> '' then
   begin
-    // Der Text ist dann falsch dekodiert; weitere Meldungen wären Folgefehler.
-    AReport.Add(TTextRange.Create(TTextPosition.Create(0, 0), TTextPosition.Create(0, 1)),
-      'Die Datei ist UTF-32 kodiert; der Compiler liest nur UTF-8, UTF-16 und ANSI (wie F2438). ' +
-      'In UTF-8 mit BOM speichern.', TRuleConfidence.High);
-    Exit;
+    Result := [TRuleFix.Create(cTexts[TUnicodeText.ReplaceWithQuoted].Fmt([mAscii]), [TRuleEdit.Create(ARange,
+      mAscii)])];
   end;
-  if AContext.Tree = nil then
-    Exit;
-  Chars := IllegalChars(AContext.Tree.Tokens);
-  Index := 0;
-  while Index <= High(Chars) do
+end;
+
+function IllegalMessage(const AText: string; const AChar: TIllegalChar): string;
+begin
+  case AChar.Quote of
+    TQuoteKind.Typographic:
+      Result := cTexts[TUnicodeText.Typographic].Text;
+    TQuoteKind.Double:
+      Result := cTexts[TUnicodeText.DoubleQuotes].Text;
+  else
+    Result := cTexts[TUnicodeText.CharNotAllowed].Fmt(
+      [Copy(AText, AChar.Offset + 1, AChar.Size), IntToHex(AChar.Code, 4)]);
+  end;
+end;
+
+procedure ReportIllegalChars(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mChars: TArray<TIllegalChar>;
+  mIndex, mClosing: Integer;
+  mRange: TTextRange;
+  mFixes: TArray<TRuleFix>;
+begin
+  mChars := IllegalChars(AContext.Tree.Tokens);
+  mIndex := 0;
+  while mIndex <= High(mChars) do
   begin
-    Closing := -1;
-    if Chars[Index].Quote <> TQuoteKind.None then
-      Closing := ClosingQuote(Chars, Index, AContext.Tree.Tokens);
-    Fixes := nil;
-    if Closing >= 0 then
+    mClosing := -1;
+    if mChars[mIndex].Quote <> TQuoteKind.None then
     begin
-      Range := TTextRange.Create(Chars[Index].Pos, TTextPosition.Create(Chars[Closing].Pos.Line,
-        Chars[Closing].Pos.Character + Chars[Closing].Size));
-      Literal := QuotedStr(Copy(AContext.Text, Chars[Index].Offset + Chars[Index].Size + 1,
-        Chars[Closing].Offset - Chars[Index].Offset - Chars[Index].Size));
-      Fixes := [TRuleFix.Create(Format('Durch den String %s ersetzen', [Literal]),
-        [TRuleEdit.Create(Range, Literal)])];
-      Index := Closing;
+      mClosing := ClosingQuote(mChars, mIndex, AContext.Tree.Tokens);
+    end;
+    if mClosing >= 0 then
+    begin
+      mFixes := QuoteFixes(AContext.Text, mChars[mIndex], mChars[mClosing], mRange);
+      mIndex := mClosing;
     end
     else
     begin
-      Range := TTextRange.Create(Chars[Index].Pos, TTextPosition.Create(Chars[Index].Pos.Line,
-        Chars[Index].Pos.Character + Chars[Index].Size));
-      Ascii := AsciiOf(Chars[Index].Code);
-      if Ascii <> '' then
-        Fixes := [TRuleFix.Create(Format('Durch "%s" ersetzen', [Ascii]), [TRuleEdit.Create(Range, Ascii)])];
+      mFixes := CharFixes(mChars[mIndex], mRange);
     end;
-    case Chars[Index].Quote of
-      TQuoteKind.Typographic:
-        MessageText := TypographicMessage;
-      TQuoteKind.Double:
-        MessageText := DoubleMessage;
-    else
-      MessageText := Format('Zeichen ''%s'' (#$%s) ist im Quelltext nicht erlaubt (wie E2038).',
-        [Copy(AContext.Text, Chars[Index].Offset + 1, Chars[Index].Size), IntToHex(Chars[Index].Code, 4)]);
-    end;
-    AReport.Add(Range, MessageText, TRuleConfidence.High, Fixes);
-    Inc(Index);
+    AReport.Add(mRange, IllegalMessage(AContext.Text, mChars[mIndex]), TRuleConfidence.High, mFixes);
+    Inc(mIndex);
+  end;
+end;
+
+procedure TFileEncodingUnsupportedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
+var
+  mBytes: TBytes;
+begin
+  if ReadBytes(AContext, AContext.RelativePath, mBytes) and TFileEncoding.HasUtf32Bom(mBytes) then
+  begin
+    // Der Text ist dann falsch dekodiert; weitere Meldungen wären Folgefehler.
+    AReport.Add(TTextRange.Create(TTextPosition.Create(0, 0), TTextPosition.Create(0, 1)),
+      cTexts[TUnicodeText.Utf32].Text, TRuleConfidence.High);
+    Exit;
+  end;
+  if AContext.Tree <> nil then
+  begin
+    ReportIllegalChars(AContext, AReport);
   end;
 end;
 
@@ -1180,118 +1607,127 @@ begin
   end;
 end;
 
+const
+  // Auszug aus der Unicode-Confusables-Liste: Zeichen, die lateinischen Buchstaben gleichen; cConfusableLatin
+  // nennt an gleicher Stelle das lateinische Gegenstück.
+  cConfusableChars =
+    // Kyrillisch klein
+    #$0430#$0435#$043E#$0440#$0441#$0445#$0443#$0456#$0458#$0455#$0501#$04BB +
+    // Kyrillisch groß
+    #$0410#$0412#$0415#$041A#$041C#$041D#$041E#$0420#$0421#$0422#$0425#$0406#$0408#$0405 +
+    // Griechisch
+    #$03BF#$03BD#$0391#$0392#$0395#$0396#$0397#$0399#$039A#$039C#$039D#$039F#$03A1#$03A4#$03A5#$03A7;
+  cConfusableLatin = 'aeopcxyijsdh' + 'ABEKMHOPCTXIJS' + 'ovABEZHIKMNOPTYX';
+
 class function TConfusableIdentifierRule.LatinOf(C: Char): Char;
+var
+  mIndex: Integer;
 begin
-  // Auszug aus der Unicode-Confusables-Liste: Zeichen, die lateinischen Buchstaben gleichen.
-  case Ord(C) of
-    $0430: Result := 'a';
-    $0435: Result := 'e';
-    $043E: Result := 'o';
-    $0440: Result := 'p';
-    $0441: Result := 'c';
-    $0445: Result := 'x';
-    $0443: Result := 'y';
-    $0456: Result := 'i';
-    $0458: Result := 'j';
-    $0455: Result := 's';
-    $0501: Result := 'd';
-    $04BB: Result := 'h';
-    $0410: Result := 'A';
-    $0412: Result := 'B';
-    $0415: Result := 'E';
-    $041A: Result := 'K';
-    $041C: Result := 'M';
-    $041D: Result := 'H';
-    $041E: Result := 'O';
-    $0420: Result := 'P';
-    $0421: Result := 'C';
-    $0422: Result := 'T';
-    $0425: Result := 'X';
-    $0406: Result := 'I';
-    $0408: Result := 'J';
-    $0405: Result := 'S';
-    $03BF: Result := 'o';
-    $03BD: Result := 'v';
-    $0391: Result := 'A';
-    $0392: Result := 'B';
-    $0395: Result := 'E';
-    $0396: Result := 'Z';
-    $0397: Result := 'H';
-    $0399: Result := 'I';
-    $039A: Result := 'K';
-    $039C: Result := 'M';
-    $039D: Result := 'N';
-    $039F: Result := 'O';
-    $03A1: Result := 'P';
-    $03A4: Result := 'T';
-    $03A5: Result := 'Y';
-    $03A7: Result := 'X';
-  else
+  mIndex := Pos(C, cConfusableChars);
+  if mIndex = 0 then
+  begin
     Result := #0;
+  end
+  else
+  begin
+    Result := cConfusableLatin[mIndex];
   end;
 end;
 
 function TConfusableIdentifierRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('confusable-identifier', TRuleSeverity.Warning,
-    'Bezeichner mit Zeichen aus mehreren Schriften oder Nicht-ASCII-Zeichen (Verwechslungsgefahr)');
+    cTexts[TUnicodeText.ConfusableTitle].Text);
+end;
+
+type
+  TScripts = set of TScript;
+
+  /// <summary>Schriften und Gegenstücke der Zeichen eines Bezeichners.</summary>
+  TIdentifierScan = record
+    Scripts: TScripts;
+    NonAscii: Boolean;
+    /// <summary>Mindestens ein Zeichen hat ein lateinisches Gegenstück.</summary>
+    Confusable: Boolean;
+    /// <summary>Jedes Nicht-ASCII-Zeichen hat ein lateinisches Gegenstück.</summary>
+    OnlyLookalikes: Boolean;
+    /// <summary>Bezeichner mit lateinischen Gegenstücken.</summary>
+    Replaced: string;
+  end;
+
+function ScanIdentifier(const AText: string): TIdentifierScan;
+var
+  mChar, mLatin: Char;
+begin
+  Result := Default(TIdentifierScan);
+  Result.OnlyLookalikes := True;
+  for mChar in AText do
+  begin
+    mLatin := mChar;
+    if Ord(mChar) > 127 then
+    begin
+      Result.NonAscii := True;
+      mLatin := TConfusableIdentifierRule.LatinOf(mChar);
+      Result.Confusable := Result.Confusable or (mLatin <> #0);
+      Result.OnlyLookalikes := Result.OnlyLookalikes and (mLatin <> #0);
+    end;
+    if mLatin = #0 then
+    begin
+      mLatin := mChar;
+    end;
+    Result.Replaced := Result.Replaced + mLatin;
+    Include(Result.Scripts, ScriptOf(mChar));
+  end;
+end;
+
+procedure ReportIdentifier(const AToken: TPascalToken; const AScan: TIdentifierScan; const AReport: IRuleReport);
+var
+  mRange: TTextRange;
+  mFixes: TArray<TRuleFix>;
+begin
+  mRange := TTextRange.Create(AToken.StartPos, AToken.EndPos);
+  if AScan.Confusable and ((TScript.Latin in AScan.Scripts) or AScan.OnlyLookalikes) then
+  begin
+    mFixes := nil;
+    // Eindeutig nur, wenn jedes Nicht-ASCII-Zeichen ein lateinisches Gegenstück hat.
+    if AScan.OnlyLookalikes then
+    begin
+      mFixes := [TRuleFix.Create(cTexts[TUnicodeText.ReplaceLatin].Fmt([AScan.Replaced]),
+        [TRuleEdit.Create(mRange, AScan.Replaced)])];
+    end;
+    AReport.Add(mRange, cTexts[TUnicodeText.Confusable].Fmt([AToken.Text, AScan.Replaced]), TRuleConfidence.High,
+      mFixes);
+  end
+  else if (TScript.Latin in AScan.Scripts) and (AScan.Scripts * [TScript.Greek, TScript.Cyrillic] <> []) then
+  begin
+    AReport.Add(mRange, cTexts[TUnicodeText.MixedScripts].Fmt([AToken.Text]), TRuleConfidence.Medium);
+  end
+  else
+  begin
+    AReport.Add(mRange, cTexts[TUnicodeText.NonAscii].Fmt([AToken.Text]), TRuleConfidence.Low);
+  end;
 end;
 
 procedure TConfusableIdentifierRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Token: TPascalToken;
-  C, Latin: Char;
-  Scripts: set of TScript;
-  NonAscii, Confusable, OnlyLookalikes: Boolean;
-  Range: TTextRange;
-  Replaced: string;
-  Fixes: TArray<TRuleFix>;
+  mToken: TPascalToken;
+  mScan: TIdentifierScan;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
-  for Token in AContext.Tree.Tokens do
+  end;
+  for mToken in AContext.Tree.Tokens do
   begin
     // Satz- und Sonderzeichen machen keinen Bezeichner; das meldet file-encoding-unsupported.
-    if (Token.Kind <> TPascalTokenKind.Identifier) or HasIllegalChar(Token.Text) then
-      Continue;
-    Scripts := [];
-    NonAscii := False;
-    Confusable := False;
-    OnlyLookalikes := True;
-    Replaced := '';
-    for C in Token.Text do
+    if (mToken.Kind = TPascalTokenKind.Identifier) and not HasIllegalChar(mToken.Text) then
     begin
-      Latin := C;
-      if Ord(C) > 127 then
+      mScan := ScanIdentifier(mToken.Text);
+      if mScan.NonAscii then
       begin
-        NonAscii := True;
-        Latin := LatinOf(C);
-        if Latin <> #0 then
-          Confusable := True
-        else
-          OnlyLookalikes := False;
+        ReportIdentifier(mToken, mScan, AReport);
       end;
-      if Latin = #0 then
-        Replaced := Replaced + C
-      else
-        Replaced := Replaced + Latin;
-      Include(Scripts, ScriptOf(C));
     end;
-    if not NonAscii then
-      Continue;
-    Range := TTextRange.Create(Token.StartPos, Token.EndPos);
-    Fixes := nil;
-    // Eindeutig nur, wenn jedes Nicht-ASCII-Zeichen ein lateinisches Gegenstück hat.
-    if Confusable and OnlyLookalikes then
-      Fixes := [TRuleFix.Create(Format('Durch "%s" mit lateinischen Zeichen ersetzen', [Replaced]),
-        [TRuleEdit.Create(Range, Replaced)])];
-    if Confusable and ((TScript.Latin in Scripts) or OnlyLookalikes) then
-      AReport.Add(Range, Format('Bezeichner "%s" enthält Zeichen, die lateinischen gleichen; Verwechslung mit "%s" ' +
-        'möglich', [Token.Text, Replaced]), TRuleConfidence.High, Fixes)
-    else if (TScript.Latin in Scripts) and ((TScript.Greek in Scripts) or (TScript.Cyrillic in Scripts)) then
-      AReport.Add(Range, Format('Bezeichner "%s" mischt Schriften', [Token.Text]), TRuleConfidence.Medium)
-    else
-      AReport.Add(Range, Format('Bezeichner "%s" enthält Nicht-ASCII-Zeichen', [Token.Text]), TRuleConfidence.Low);
   end;
 end;
 
@@ -1303,5 +1739,8 @@ begin
   ARegistry.Register(TConfusableIdentifierRule.Create);
   ARegistry.Register(TFileEncodingUnsupportedRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Unicode', cTexts);
 
 end.

@@ -43,6 +43,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.Completion.Lists,
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
@@ -129,8 +130,12 @@ begin
   Lines := AText.Split([#10]);
   Position := TTextPosition.Create(0, 0);
   for Line := 0 to High(Lines) do
+  begin
     if Pos(AMarker, Lines[Line]) > 0 then
+    begin
       Position := TTextPosition.Create(Line, Pos(AMarker, Lines[Line]) - 1 + Length(AMarker));
+    end;
+  end;
   Tree := TPascalParser.Parse(AText);
   Resolver := TNameResolver.Create(AIndex);
   Request := TCompletionRequest.Create(AText, HauptFile, Position);
@@ -141,7 +146,7 @@ begin
     Request.Matching := TCompletionMatching.Prefix;
     Request.Settings := ASettings;
     Postfix := Default(TPostfixOptions);
-    Result := TLspCompletion.Collect(Request, Postfix, nil);
+    Result := TCompletionLists.Collect(Request, Postfix, nil);
   finally
     Request.Free;
     Resolver.Free;
@@ -323,7 +328,9 @@ begin
   Settings.InheritedCall := False;
   Items := ItemsAt(FIndex, Code('  { Create }', '  inherited '), 'inherited ', Settings);
   for Item in Items.Items do
+  begin
     Assert.AreEqual('', Item.InheritedMatch, Item.Name);
+  end;
   Assert.AreEqual('Create', Items.Items[0].Name);
 end;
 

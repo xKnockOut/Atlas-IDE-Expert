@@ -130,7 +130,9 @@ function Compare(const A, B: TTextPosition): Integer;
 begin
   Result := A.Line - B.Line;
   if Result = 0 then
+  begin
     Result := A.Character - B.Character;
+  end;
 end;
 
 function IsKeywordIn(const AToken: TPascalToken; const AWords: array of string): Boolean;
@@ -139,10 +141,16 @@ var
 begin
   Result := False;
   if AToken.Kind <> TPascalTokenKind.Keyword then
+  begin
     Exit;
+  end;
   for Word in AWords do
+  begin
     if AToken.IsKeyword(Word) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 /// <summary>Vor diesem Token beginnt eine Anweisung.</summary>
@@ -164,12 +172,16 @@ var
 begin
   Result := '';
   for Index := AFirst to ALast do
+  begin
     if not (ATokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
     begin
       if (Result <> '') and (ATokens[Index].Offset > ATokens[Index - 1].Offset + Length(ATokens[Index - 1].Text)) then
+      begin
         Result := Result + ' ';
+      end;
       Result := Result + ATokens[Index].Text;
     end;
+  end;
 end;
 
 function StripPrefix(const AName, APrefix: string): string;
@@ -177,7 +189,302 @@ begin
   Result := AName;
   if (Length(AName) > Length(APrefix)) and StartsText(APrefix, AName) and
     CharInSet(AName[Length(APrefix) + 1], ['A'..'Z']) then
+  begin
     Result := Copy(AName, Length(APrefix) + 1, MaxInt);
+  end;
+end;
+
+function IsOpening(const AToken: TPascalToken): Boolean;
+begin
+  Result := AToken.IsSymbol('(') or AToken.IsSymbol('[');
+end;
+
+function IsClosing(const AToken: TPascalToken): Boolean;
+begin
+  Result := AToken.IsSymbol(')') or AToken.IsSymbol(']');
+end;
+
+/// <summary>Mit diesem Token auf Klammertiefe 0 endet ein Argument.</summary>
+function EndsArgument(const AToken: TPascalToken): Boolean;
+begin
+  Result := AToken.IsSymbol(',') or AToken.IsSymbol(')') or EndsStatement(AToken) or
+    IsKeywordIn(AToken, ['then', 'do', 'of', 'begin', 'to', 'downto']);
+end;
+
+/// <summary>Letztes Token ohne Kommentare und Direktiven, das vor APosition beginnt; -1 ohne.</summary>
+function LastCodeTokenBefore(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
+var
+  mScan: Integer;
+begin
+  Result := -1;
+  mScan := 0;
+  while (mScan <= High(ATokens)) and (Compare(ATokens[mScan].StartPos, APosition) < 0) do
+  begin
+    if not (ATokens[mScan].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+    begin
+      Result := mScan;
+    end;
+    Inc(mScan);
+  end;
+end;
+
+/// <summary>Name am Cursor ausgehend vom Token AIndex: das Token selbst, wenn APosition darauf steht, bzw. das
+/// davor bei "Name(|"; -1, wenn dort kein Bezeichner steht.</summary>
+function NameIndexAt(const ATokens: TArray<TPascalToken>; AIndex: Integer; const APosition: TTextPosition): Integer;
+begin
+  Result := AIndex;
+  if ATokens[AIndex].IsSymbol('(') and (Compare(ATokens[AIndex].EndPos, APosition) = 0) then
+  begin
+    Result := TRoutineBody.PreviousToken(ATokens, AIndex);
+  end
+  else if Compare(ATokens[AIndex].EndPos, APosition) < 0 then
+  begin
+    Result := -1;
+  end;
+  if (Result >= 0) and (ATokens[Result].Kind <> TPascalTokenKind.Identifier) then
+  begin
+    Result := -1;
+  end;
+end;
+
+type
+  /// <summary>Liest den Aufruf am Cursor für TCreateMethod.Site.</summary>
+  TCallSiteScan = record
+    Tokens: TArray<TPascalToken>;
+    Site: TCreateCallSite;
+    /// <summary>Token vor dem Aufruf samt Qualifizierer; -1 ohne.</summary>
+    Before: Integer;
+    function Read(const APosition: TTextPosition): Boolean;
+    /// <summary>Name und öffnende Klammer am Cursor.</summary>
+    function FindName(const APosition: TTextPosition): Boolean;
+    /// <summary>Qualifizierer: nur Bezeichner mit Punkten.</summary>
+    function ReadQualifier: Boolean;
+    /// <summary>procedure, function, constructor, destructor, property oder operator davor.</summary>
+    function IsDeclaration: Boolean;
+    /// <summary>Argumente bis zur passenden ")"; mit AOpenLineOnly nur bis zum Ende der Zeile der "(".
+    /// True, wenn die ")" gefunden wurde.</summary>
+    function ReadArguments(AOpenLineOnly: Boolean): Boolean;
+    /// <summary>Behandelt das Token AScan; True, wenn die Argumente dort enden.</summary>
+    function ArgumentStep(AScan: Integer; AOpenLineOnly: Boolean; var ADepth, AStart: Integer): Boolean;
+    procedure AddArgument(AStart, AScan: Integer);
+    /// <summary>Umgebung aus dem Token vor dem Aufruf und dem nach der Klammer.</summary>
+    procedure ReadContext;
+    procedure ReadAssignmentTarget;
+    /// <summary>Anfang der Anweisung: zurück bis zu ";" oder begin auf Klammertiefe 0.</summary>
+    function StatementStart: Integer;
+  end;
+
+function TCallSiteScan.FindName(const APosition: TTextPosition): Boolean;
+var
+  mIndex: Integer;
+begin
+  mIndex := LastCodeTokenBefore(Tokens, APosition);
+  if mIndex >= 0 then
+  begin
+    mIndex := NameIndexAt(Tokens, mIndex, APosition);
+  end;
+  Result := mIndex >= 0;
+  if Result then
+  begin
+    Site.NameIndex := mIndex;
+    Site.Name := Tokens[mIndex].Text;
+    Site.NameRange := TTextRange.Create(Tokens[mIndex].StartPos, Tokens[mIndex].EndPos);
+    Site.OpenIndex := TRoutineBody.NextToken(Tokens, mIndex);
+    Result := (Site.OpenIndex <= High(Tokens)) and Tokens[Site.OpenIndex].IsSymbol('(');
+  end;
+end;
+
+function TCallSiteScan.ReadQualifier: Boolean;
+var
+  mScan: Integer;
+begin
+  Result := True;
+  Site.CallStart := Site.NameIndex;
+  Before := TRoutineBody.PreviousToken(Tokens, Site.NameIndex);
+  while Result and (Before >= 1) and Tokens[Before].IsSymbol('.') do
+  begin
+    mScan := TRoutineBody.PreviousToken(Tokens, Before);
+    Result := (mScan >= 0) and (Tokens[mScan].Kind = TPascalTokenKind.Identifier);
+    if Result then
+    begin
+      Site.CallStart := mScan;
+      Before := TRoutineBody.PreviousToken(Tokens, mScan);
+    end;
+  end;
+  if Site.CallStart < Site.NameIndex then
+  begin
+    Site.Qualifier := TokensText(Tokens, Site.CallStart, TRoutineBody.PreviousToken(Tokens, Site.NameIndex) - 1);
+  end;
+end;
+
+function TCallSiteScan.IsDeclaration: Boolean;
+begin
+  Result := (Before >= 0) and IsKeywordIn(Tokens[Before], ['procedure', 'function', 'constructor', 'destructor',
+    'property', 'operator']);
+end;
+
+procedure TCallSiteScan.AddArgument(AStart, AScan: Integer);
+var
+  mArgument: TCallArgument;
+begin
+  if AStart < AScan then
+  begin
+    mArgument.First := AStart;
+    mArgument.Last := TRoutineBody.PreviousToken(Tokens, AScan);
+    mArgument.Text := TokensText(Tokens, mArgument.First, mArgument.Last);
+    Site.Arguments := Site.Arguments + [mArgument];
+  end;
+end;
+
+function TCallSiteScan.ArgumentStep(AScan: Integer; AOpenLineOnly: Boolean; var ADepth, AStart: Integer): Boolean;
+begin
+  Result := (AScan > High(Tokens)) or
+    (AOpenLineOnly and (Tokens[AScan].StartPos.Line > Tokens[Site.OpenIndex].StartPos.Line));
+  if Result then
+  begin
+    AddArgument(AStart, AScan);
+  end
+  else if IsOpening(Tokens[AScan]) then
+  begin
+    Inc(ADepth);
+  end
+  else if IsClosing(Tokens[AScan]) and (ADepth > 0) then
+  begin
+    Dec(ADepth);
+  end
+  else if (ADepth = 0) and EndsArgument(Tokens[AScan]) then
+  begin
+    AddArgument(AStart, AScan);
+    if Tokens[AScan].IsSymbol(')') then
+    begin
+      Site.CloseIndex := AScan;
+    end;
+    Result := not Tokens[AScan].IsSymbol(',');
+    AStart := TRoutineBody.NextToken(Tokens, AScan);
+  end;
+end;
+
+function TCallSiteScan.ReadArguments(AOpenLineOnly: Boolean): Boolean;
+var
+  mScan, mDepth, mStart: Integer;
+begin
+  Site.Arguments := nil;
+  mDepth := 0;
+  mScan := TRoutineBody.NextToken(Tokens, Site.OpenIndex);
+  mStart := mScan;
+  while (mScan <= High(Tokens) + 1) and not ArgumentStep(mScan, AOpenLineOnly, mDepth, mStart) do
+  begin
+    mScan := TRoutineBody.NextToken(Tokens, mScan);
+  end;
+  Result := Site.CloseIndex >= 0;
+end;
+
+procedure TCallSiteScan.ReadAssignmentTarget;
+var
+  mTarget, mPrior: Integer;
+begin
+  mTarget := TRoutineBody.PreviousToken(Tokens, Before);
+  mPrior := TRoutineBody.PreviousToken(Tokens, mTarget);
+  while (mPrior >= 0) and not StartsStatementAfter(Tokens[mPrior]) do
+  begin
+    mTarget := mPrior;
+    mPrior := TRoutineBody.PreviousToken(Tokens, mTarget);
+  end;
+  if mTarget >= 0 then
+  begin
+    Site.Target := TokensText(Tokens, mTarget, TRoutineBody.PreviousToken(Tokens, Before));
+  end;
+end;
+
+procedure TCallSiteScan.ReadContext;
+var
+  mAfter: Integer;
+  mEndsHere: Boolean;
+begin
+  mAfter := Length(Tokens);
+  if Site.CloseIndex >= 0 then
+  begin
+    mAfter := TRoutineBody.NextToken(Tokens, Site.CloseIndex);
+  end;
+  mEndsHere := (Site.CloseIndex < 0) or (mAfter > High(Tokens)) or EndsStatement(Tokens[mAfter]);
+  Site.Context := TCallContext.Expression;
+  if (Before >= 0) and Tokens[Before].IsSymbol(':=') then
+  begin
+    if mEndsHere then
+    begin
+      Site.Context := TCallContext.Assignment;
+      ReadAssignmentTarget;
+    end;
+  end
+  else if (Before >= 0) and IsKeywordIn(Tokens[Before], ['if', 'while', 'until', 'not', 'and', 'or']) then
+  begin
+    Site.Context := TCallContext.Condition;
+  end
+  else if ((Before < 0) or StartsStatementAfter(Tokens[Before])) and mEndsHere then
+  begin
+    Site.Context := TCallContext.Statement;
+  end;
+end;
+
+/// <summary>Kopf einer Anweisung, der zu ihr gehört.</summary>
+function IsStatementHead(const AToken: TPascalToken): Boolean;
+begin
+  Result := IsKeywordIn(AToken, ['if', 'while', 'until', 'case', 'for', 'with']);
+end;
+
+function TCallSiteScan.StatementStart: Integer;
+var
+  mBefore, mDepth: Integer;
+  mDone: Boolean;
+begin
+  Result := Site.CallStart;
+  mDepth := 0;
+  mDone := False;
+  while not mDone do
+  begin
+    mBefore := TRoutineBody.PreviousToken(Tokens, Result);
+    if mBefore < 0 then
+    begin
+      mDone := True;
+    end
+    else if IsClosing(Tokens[mBefore]) then
+    begin
+      Inc(mDepth);
+    end
+    else if IsOpening(Tokens[mBefore]) and (mDepth > 0) then
+    begin
+      Dec(mDepth);
+    end
+    else if (mDepth = 0) and IsStatementHead(Tokens[mBefore]) then
+    begin
+      Result := mBefore;
+      mDone := True;
+    end
+    else
+    begin
+      mDone := (mDepth = 0) and StartsStatementAfter(Tokens[mBefore]);
+    end;
+    if not mDone then
+    begin
+      Result := mBefore;
+    end;
+  end;
+end;
+
+function TCallSiteScan.Read(const APosition: TTextPosition): Boolean;
+begin
+  Result := FindName(APosition) and ReadQualifier and not IsDeclaration;
+  if Result then
+  begin
+    // Fehlt die ")" (gerade getippt), zählt nur der Rest der Zeile: Die nächste Zeile ist dann meist schon die
+    // nächste Anweisung.
+    if not ReadArguments(False) then
+    begin
+      ReadArguments(True);
+    end;
+    ReadContext;
+    Site.StatementStart := StatementStart;
+  end;
 end;
 
 { TCreateMethod }
@@ -185,142 +492,13 @@ end;
 class function TCreateMethod.Site(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition;
   out ASite: TCreateCallSite): Boolean;
 var
-  Index, Before, Scan, Depth, ArgStart, Target, Prior, Pass: Integer;
-  Argument: TCallArgument;
-  Stop: Boolean;
+  mScan: TCallSiteScan;
 begin
-  ASite := Default(TCreateCallSite);
-  ASite.CloseIndex := -1;
-  Result := False;
-  // Letztes Token, das vor dem Cursor beginnt.
-  Index := -1;
-  for Scan := 0 to High(ATokens) do
-  begin
-    if Compare(ATokens[Scan].StartPos, APosition) >= 0 then
-      Break;
-    if not (ATokens[Scan].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
-      Index := Scan;
-  end;
-  if Index < 0 then
-    Exit;
-  if ATokens[Index].IsSymbol('(') and (Compare(ATokens[Index].EndPos, APosition) = 0) then
-    Index := TRoutineBody.PreviousToken(ATokens, Index)
-  else if Compare(ATokens[Index].EndPos, APosition) < 0 then
-    Exit;
-  if (Index < 0) or (ATokens[Index].Kind <> TPascalTokenKind.Identifier) then
-    Exit;
-  ASite.NameIndex := Index;
-  ASite.Name := ATokens[Index].Text;
-  ASite.NameRange := TTextRange.Create(ATokens[Index].StartPos, ATokens[Index].EndPos);
-  ASite.OpenIndex := TRoutineBody.NextToken(ATokens, Index);
-  if (ASite.OpenIndex > High(ATokens)) or not ATokens[ASite.OpenIndex].IsSymbol('(') then
-    Exit;
-  // Qualifizierer: nur Bezeichner mit Punkten.
-  ASite.CallStart := Index;
-  Before := TRoutineBody.PreviousToken(ATokens, Index);
-  while (Before >= 1) and ATokens[Before].IsSymbol('.') do
-  begin
-    Scan := TRoutineBody.PreviousToken(ATokens, Before);
-    if (Scan < 0) or (ATokens[Scan].Kind <> TPascalTokenKind.Identifier) then
-      Exit;
-    ASite.CallStart := Scan;
-    Before := TRoutineBody.PreviousToken(ATokens, Scan);
-  end;
-  if ASite.CallStart < Index then
-    ASite.Qualifier := TokensText(ATokens, ASite.CallStart, TRoutineBody.PreviousToken(ATokens, Index) - 1);
-  // Keine Deklaration: kein procedure, function, constructor, destructor oder property davor.
-  if (Before >= 0) and IsKeywordIn(ATokens[Before], ['procedure', 'function', 'constructor', 'destructor',
-    'property', 'operator']) then
-    Exit;
-  // Argumente bis zur passenden ")". Fehlt sie (gerade getippt), zählt nur der Rest der Zeile: Die nächste Zeile
-  // ist dann meist schon die nächste Anweisung.
-  for Pass := 0 to 1 do
-  begin
-    ASite.Arguments := nil;
-    Depth := 0;
-    Scan := TRoutineBody.NextToken(ATokens, ASite.OpenIndex);
-    ArgStart := Scan;
-    while Scan <= High(ATokens) + 1 do
-    begin
-      Stop := (Scan > High(ATokens)) or ((Pass = 1) and
-        (ATokens[Scan].StartPos.Line > ATokens[ASite.OpenIndex].StartPos.Line));
-      if not Stop and (ATokens[Scan].IsSymbol('(') or ATokens[Scan].IsSymbol('[')) then
-        Inc(Depth)
-      else if not Stop and (ATokens[Scan].IsSymbol(')') or ATokens[Scan].IsSymbol(']')) and (Depth > 0) then
-        Dec(Depth)
-      else if Stop or ((Depth = 0) and (ATokens[Scan].IsSymbol(',') or ATokens[Scan].IsSymbol(')') or
-        EndsStatement(ATokens[Scan]) or IsKeywordIn(ATokens[Scan], ['then', 'do', 'of', 'begin', 'to', 'downto']))) then
-      begin
-        if ArgStart < Scan then
-        begin
-          Argument.First := ArgStart;
-          Argument.Last := TRoutineBody.PreviousToken(ATokens, Scan);
-          Argument.Text := TokensText(ATokens, Argument.First, Argument.Last);
-          ASite.Arguments := ASite.Arguments + [Argument];
-        end;
-        if not Stop and ATokens[Scan].IsSymbol(')') then
-        begin
-          ASite.CloseIndex := Scan;
-          Break;
-        end;
-        if Stop or not ATokens[Scan].IsSymbol(',') then
-          Break;
-        ArgStart := TRoutineBody.NextToken(ATokens, Scan);
-      end;
-      Scan := TRoutineBody.NextToken(ATokens, Scan);
-    end;
-    if ASite.CloseIndex >= 0 then
-      Break;
-  end;
-  // Umgebung aus dem Token vor dem Aufruf und dem nach der Klammer.
-  Scan := Length(ATokens);
-  if ASite.CloseIndex >= 0 then
-    Scan := TRoutineBody.NextToken(ATokens, ASite.CloseIndex);
-  ASite.Context := TCallContext.Expression;
-  if (Before >= 0) and ATokens[Before].IsSymbol(':=') then
-  begin
-    if (ASite.CloseIndex < 0) or (Scan > High(ATokens)) or EndsStatement(ATokens[Scan]) then
-    begin
-      ASite.Context := TCallContext.Assignment;
-      Target := TRoutineBody.PreviousToken(ATokens, Before);
-      Prior := TRoutineBody.PreviousToken(ATokens, Target);
-      while (Prior >= 0) and not StartsStatementAfter(ATokens[Prior]) do
-      begin
-        Target := Prior;
-        Prior := TRoutineBody.PreviousToken(ATokens, Target);
-      end;
-      if Target >= 0 then
-        ASite.Target := TokensText(ATokens, Target, TRoutineBody.PreviousToken(ATokens, Before));
-    end;
-  end
-  else if (Before >= 0) and IsKeywordIn(ATokens[Before], ['if', 'while', 'until', 'not', 'and', 'or']) then
-    ASite.Context := TCallContext.Condition
-  else if ((Before < 0) or StartsStatementAfter(ATokens[Before])) and
-    ((ASite.CloseIndex < 0) or (Scan > High(ATokens)) or EndsStatement(ATokens[Scan])) then
-    ASite.Context := TCallContext.Statement;
-  // Anfang der Anweisung: zurück bis zu ";" oder begin auf Klammertiefe 0.
-  Scan := ASite.CallStart;
-  Depth := 0;
-  while True do
-  begin
-    Before := TRoutineBody.PreviousToken(ATokens, Scan);
-    if Before < 0 then
-      Break;
-    if ATokens[Before].IsSymbol(')') or ATokens[Before].IsSymbol(']') then
-      Inc(Depth)
-    else if (ATokens[Before].IsSymbol('(') or ATokens[Before].IsSymbol('[')) and (Depth > 0) then
-      Dec(Depth)
-    else if (Depth = 0) and (StartsStatementAfter(ATokens[Before]) or IsKeywordIn(ATokens[Before], ['if', 'while',
-      'until', 'case', 'for', 'with'])) then
-    begin
-      if IsKeywordIn(ATokens[Before], ['if', 'while', 'until', 'case', 'for', 'with']) then
-        Scan := Before;
-      Break;
-    end;
-    Scan := Before;
-  end;
-  ASite.StatementStart := Scan;
-  Result := True;
+  mScan := Default(TCallSiteScan);
+  mScan.Tokens := ATokens;
+  mScan.Site.CloseIndex := -1;
+  Result := mScan.Read(APosition);
+  ASite := mScan.Site;
 end;
 
 class function TCreateMethod.LiteralType(const ATokens: TArray<TPascalToken>; const AArgument: TCallArgument): string;
@@ -332,99 +510,180 @@ begin
   First := AArgument.First;
   // Vorzeichen gehört zur Zahl.
   if (First < AArgument.Last) and (ATokens[First].IsSymbol('-') or ATokens[First].IsSymbol('+')) then
+  begin
     First := TRoutineBody.NextToken(ATokens, First);
+  end;
   if First <> AArgument.Last then
+  begin
     Exit;
+  end;
   Token := ATokens[First];
   case Token.Kind of
     TPascalTokenKind.Number:
       if (Token.Text[1] <> '$') and (Token.Text[1] <> '%') and
         ((Pos('.', Token.Text) > 0) or (Pos('e', LowerCase(Token.Text)) > 0)) then
-        Result := 'Double'
+      begin
+        Result := 'Double';
+      end
       else
+      begin
         Result := 'Integer';
+      end;
     TPascalTokenKind.StringLiteral:
       Result := 'string';
     TPascalTokenKind.CharLiteral:
       Result := 'Char';
     TPascalTokenKind.Identifier:
       if SameText(Token.Text, 'True') or SameText(Token.Text, 'False') then
+      begin
         Result := 'Boolean';
+      end;
   else
     // Übrige Werte bewusst ohne Wirkung.
+  end;
+end;
+
+/// <summary>Name aus einem Literal: Anteil zwischen 0 und 1 ist ein Satz (0.1 → Rate), sonst aus dem Typ.
+/// </summary>
+function LiteralName(const ATokens: TArray<TPascalToken>; const AArgument: TCallArgument;
+  const ALiteral: string): string;
+var
+  mValue: Double;
+  mSettings: TFormatSettings;
+begin
+  Result := TCreateMethod.NameFromType(ALiteral);
+  mSettings := TFormatSettings.Invariant;
+  if (ALiteral = 'Double') and TryStrToFloat(ATokens[AArgument.Last].Text, mValue, mSettings) and (mValue > 0) and
+    (mValue < 1) and not ATokens[AArgument.First].IsSymbol('-') then
+  begin
+    Result := 'Rate';
+  end;
+end;
+
+/// <summary>"(" zur ")" in ALast; AFirst - 1, wenn sie fehlt.</summary>
+function OpeningParen(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer): Integer;
+var
+  mDepth: Integer;
+  mFound: Boolean;
+begin
+  Result := ALast;
+  mDepth := 0;
+  mFound := False;
+  while not mFound and (Result >= AFirst) do
+  begin
+    if ATokens[Result].IsSymbol(')') then
+    begin
+      Inc(mDepth);
+    end
+    else if ATokens[Result].IsSymbol('(') then
+    begin
+      Dec(mDepth);
+      mFound := mDepth = 0;
+    end;
+    if not mFound then
+    begin
+      Dec(Result);
+    end;
+  end;
+end;
+
+/// <summary>TKunde: T und ein Großbuchstabe.</summary>
+function LooksLikeTypeName(const AName: string): Boolean;
+begin
+  Result := (Length(AName) > 1) and (AName[1] = 'T') and CharInSet(AName[2], ['A'..'Z']);
+end;
+
+/// <summary>Aufruf oder Typumwandlung: Name vor der äußeren Klammer am Ende; '' ohne.</summary>
+function CallName(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer): string;
+var
+  mLast: Integer;
+begin
+  Result := '';
+  mLast := TRoutineBody.PreviousToken(ATokens, OpeningParen(ATokens, AFirst, ALast));
+  if (mLast < AFirst) or (ATokens[mLast].Kind <> TPascalTokenKind.Identifier) then
+  begin
+    Exit;
+  end;
+  // Typumwandlung TKunde(X): Name aus dem Typ.
+  if (mLast = AFirst) and LooksLikeTypeName(ATokens[mLast].Text) then
+  begin
+    Result := TCreateMethod.NameFromType(ATokens[mLast].Text);
+  end
+  else
+  begin
+    Result := StripPrefix(ATokens[mLast].Text, 'Get');
+  end;
+end;
+
+function IsChainToken(const AToken: TPascalToken): Boolean;
+begin
+  Result := (AToken.Kind = TPascalTokenKind.Identifier) or AToken.IsSymbol('.') or AToken.IsSymbol('^');
+end;
+
+/// <summary>Bezeichner, der einen Namen hergibt: nicht Self, nil oder Result.</summary>
+function IsNamingIdentifier(const AToken: TPascalToken): Boolean;
+begin
+  Result := (AToken.Kind = TPascalTokenKind.Identifier) and not MatchText(AToken.Text, ['Self', 'nil', 'Result']);
+end;
+
+/// <summary>Kette A.B.C: letzter Bezeichner; bei einem einzelnen Namen ohne F-, A- bzw. L-Präfix. '' ohne.
+/// </summary>
+function ChainName(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer): string;
+var
+  mIndex, mLast: Integer;
+begin
+  Result := '';
+  for mIndex := AFirst to ALast do
+  begin
+    if not IsChainToken(ATokens[mIndex]) then
+    begin
+      Exit;
+    end;
+  end;
+  mLast := ALast;
+  if ATokens[mLast].IsSymbol('^') then
+  begin
+    mLast := TRoutineBody.PreviousToken(ATokens, mLast);
+  end;
+  if (mLast < AFirst) or not IsNamingIdentifier(ATokens[mLast]) then
+  begin
+    Exit;
+  end;
+  Result := StripPrefix(ATokens[mLast].Text, 'Get');
+  if AFirst = mLast then
+  begin
+    Result := StripPrefix(StripPrefix(StripPrefix(Result, 'F'), 'A'), 'L');
   end;
 end;
 
 class function TCreateMethod.ArgumentName(const ATokens: TArray<TPascalToken>;
   const AArgument: TCallArgument): string;
 var
-  First, Last, Index, Depth: Integer;
-  Value: Double;
-  Settings: TFormatSettings;
-  Literal: string;
+  mFirst: Integer;
+  mLiteral: string;
 begin
   Result := '';
-  First := AArgument.First;
-  Last := AArgument.Last;
-  Literal := LiteralType(ATokens, AArgument);
-  if Literal <> '' then
+  mLiteral := LiteralType(ATokens, AArgument);
+  if mLiteral <> '' then
   begin
-    if Literal = 'Double' then
-    begin
-      Settings := TFormatSettings.Invariant;
-      // Anteil zwischen 0 und 1: ein Satz (0.1 → Rate).
-      if TryStrToFloat(ATokens[Last].Text, Value, Settings) and (Value > 0) and (Value < 1) and
-        not ATokens[First].IsSymbol('-') then
-        Exit('Rate');
-    end;
-    Exit(NameFromType(Literal));
+    Exit(LiteralName(ATokens, AArgument, mLiteral));
   end;
-  if ATokens[First].IsSymbol('@') then
-    First := TRoutineBody.NextToken(ATokens, First);
-  if First > Last then
-    Exit;
-  // Aufruf oder Typumwandlung: Name vor der äußeren Klammer am Ende.
-  if ATokens[Last].IsSymbol(')') then
+  mFirst := AArgument.First;
+  if ATokens[mFirst].IsSymbol('@') then
   begin
-    Depth := 0;
-    Index := Last;
-    while Index >= First do
-    begin
-      if ATokens[Index].IsSymbol(')') then
-        Inc(Depth)
-      else if ATokens[Index].IsSymbol('(') then
-      begin
-        Dec(Depth);
-        if Depth = 0 then
-          Break;
-      end;
-      Dec(Index);
-    end;
-    Last := TRoutineBody.PreviousToken(ATokens, Index);
-    if (Last < First) or (ATokens[Last].Kind <> TPascalTokenKind.Identifier) then
-      Exit;
-    // Typumwandlung TKunde(X): Name aus dem Typ.
-    if (Last = First) and (Length(ATokens[Last].Text) > 1) and CharInSet(ATokens[Last].Text[1], ['T']) and
-      CharInSet(ATokens[Last].Text[2], ['A'..'Z']) then
-      Exit(NameFromType(ATokens[Last].Text));
-    Exit(StripPrefix(ATokens[Last].Text, 'Get'));
+    mFirst := TRoutineBody.NextToken(ATokens, mFirst);
   end;
-  // Kette A.B.C: letzter Bezeichner.
-  for Index := First to Last do
-    if not ((ATokens[Index].Kind = TPascalTokenKind.Identifier) or ATokens[Index].IsSymbol('.') or
-      ATokens[Index].IsSymbol('^')) then
-      Exit;
-  if ATokens[Last].IsSymbol('^') then
-    Last := TRoutineBody.PreviousToken(ATokens, Last);
-  if (Last < First) or (ATokens[Last].Kind <> TPascalTokenKind.Identifier) or SameText(ATokens[Last].Text, 'Self') or
-    SameText(ATokens[Last].Text, 'nil') or SameText(ATokens[Last].Text, 'Result') then
-    Exit;
-  Result := StripPrefix(ATokens[Last].Text, 'Get');
-  if First = Last then
+  if mFirst > AArgument.Last then
   begin
-    Result := StripPrefix(Result, 'F');
-    Result := StripPrefix(Result, 'A');
-    Result := StripPrefix(Result, 'L');
+    Exit;
+  end;
+  if ATokens[AArgument.Last].IsSymbol(')') then
+  begin
+    Result := CallName(ATokens, mFirst, AArgument.Last);
+  end
+  else
+  begin
+    Result := ChainName(ATokens, mFirst, AArgument.Last);
   end;
 end;
 
@@ -432,21 +691,33 @@ class function TCreateMethod.NameFromType(const ATypeName: string): string;
 begin
   Result := ATypeName;
   if Pos('<', Result) > 0 then
+  begin
     Result := Copy(Result, 1, Pos('<', Result) - 1);
+  end;
   Result := Result.Substring(Result.LastIndexOf('.') + 1);
   if (Length(Result) > 1) and CharInSet(Result[1], ['T', 'I']) and CharInSet(Result[2], ['A'..'Z']) then
+  begin
     Result := Copy(Result, 2, MaxInt);
+  end;
   if MatchText(Result, ['string', 'UnicodeString', 'AnsiString', 'WideString', 'RawByteString', 'UTF8String',
     'ShortString']) then
-    Result := 'Text'
+  begin
+    Result := 'Text';
+  end
   else if MatchText(Result, ['Char', 'WideChar', 'AnsiChar']) then
-    Result := 'Ch'
+  begin
+    Result := 'Ch';
+  end
   else if SameText(Result, 'Boolean') then
-    Result := 'Flag'
+  begin
+    Result := 'Flag';
+  end
   else if MatchText(Result, ['Integer', 'Cardinal', 'Int64', 'UInt64', 'NativeInt', 'NativeUInt', 'Byte', 'Word',
     'SmallInt', 'ShortInt', 'LongInt', 'LongWord', 'Double', 'Single', 'Extended', 'Real', 'Currency', 'Comp',
     'Variant', 'Pointer', '']) or StartsStr('{', Result) then
+  begin
     Result := 'Value';
+  end;
 end;
 
 class function TCreateMethod.WantsConst(const ATypeName: string; AIsRecord, AIsInterface: Boolean): Boolean;
@@ -468,8 +739,12 @@ begin
     repeat
       Taken := False;
       for Other := 0 to Index - 1 do
+      begin
         if SameText(Result[Other], Result[Index]) then
+        begin
           Taken := True;
+        end;
+      end;
       if Taken then
       begin
         Inc(Number);
@@ -485,13 +760,19 @@ var
 begin
   Result := '';
   if AParameters = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to High(AParameters) do
   begin
     if Index > 0 then
+    begin
       Result := Result + '; ';
+    end;
     if AParameters[Index].IsConst then
+    begin
       Result := Result + 'const ';
+    end;
     Result := Result + AParameters[Index].Name + ': ' + AParameters[Index].TypeName;
   end;
   Result := '(' + Result + ')';
@@ -500,16 +781,26 @@ end;
 class function TCreateMethod.Header(const APlan: TCreateMethodPlan; AQualified: Boolean): string;
 begin
   if APlan.ResultType = '' then
-    Result := 'procedure '
+  begin
+    Result := 'procedure ';
+  end
   else
+  begin
     Result := 'function ';
+  end;
   if APlan.IsClassMethod then
+  begin
     Result := 'class ' + Result;
+  end;
   if AQualified and (APlan.TypeName <> '') then
+  begin
     Result := Result + APlan.TypeName + '.';
+  end;
   Result := Result + APlan.Name + ParameterList(APlan.Parameters);
   if APlan.ResultType <> '' then
+  begin
     Result := Result + ': ' + APlan.ResultType;
+  end;
 end;
 
 function BodyText(const APlan: TCreateMethodPlan; const ALineBreak: string): string;
@@ -518,7 +809,9 @@ var
 begin
   Inner := '';
   if APlan.CaretInBody then
+  begin
     Inner := TRoutineBody.IndentUnit(APlan.Style) + '$0';
+  end;
   Result := TCreateMethod.Header(APlan, True) + ';' + ALineBreak + 'begin' + ALineBreak + Inner + ALineBreak + 'end;';
 end;
 
@@ -533,17 +826,25 @@ begin
   Result := False;
   Body := TRoutineBody.TypeBody(ATree.Root, APlan.TypeName.Substring(APlan.TypeName.LastIndexOf('.') + 1));
   if Body = nil then
+  begin
     Exit;
+  end;
   Section := APlan.Section;
   if Section = '' then
+  begin
     Section := 'private';
-  if not TRoutineBody.MemberDeclaration(AText, ATree, Body, Section, TCreateMethod.Header(APlan, False) + ';',
-    APlan.Style, Edit) then
+  end;
+  if not TRoutineBody.MemberDeclaration(AText, ATree, Body,
+    TMemberEntry.Create(Section, TCreateMethod.Header(APlan, False) + ';'), APlan.Style, Edit) then
+  begin
     Exit;
+  end;
   AEdits := [Edit];
   if not TClassCompletion.BodyEdit(ATree, AText, APlan.TypeName, BodyText(APlan, TTextLines.LineBreakOf(AText)),
     Edit) then
+  begin
     Exit;
+  end;
   AEdits := AEdits + [Edit];
   Result := True;
 end;

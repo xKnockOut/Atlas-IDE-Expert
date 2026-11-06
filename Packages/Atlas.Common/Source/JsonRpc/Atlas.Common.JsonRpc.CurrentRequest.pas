@@ -55,7 +55,9 @@ var
 begin
   Active := Token;
   if Active <> nil then
+  begin
     Active.ThrowIfCancellationRequested;
+  end;
 end;
 
 end.

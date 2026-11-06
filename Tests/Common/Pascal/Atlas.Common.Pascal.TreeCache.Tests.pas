@@ -139,7 +139,9 @@ begin
   // Groß genug, dass alle Anfragen während des ersten Parse eintreffen.
   Text := 'unit A;'#10'interface'#10'implementation'#10;
   for Index := 1 to 3000 do
+  begin
     Text := Text + Format('procedure P%d;'#10'begin'#10'  X := %d;'#10'end;'#10, [Index, Index]);
+  end;
   Text := Text + 'end.';
   Document := NewDocument(1, Text);
   Before := TSyntaxTreeCache.ParseCount;
@@ -165,7 +167,9 @@ begin
   Shared := TSyntaxTreeCache.Get(Document);
   try
     for Index := 0 to Features - 1 do
+    begin
       Assert.IsTrue(SharedTrees[Index] = Shared.Tree);
+    end;
   finally
     // Unit-Variable: sonst bleibt das Array über den Test hinaus liegen (Leck-Monitor).
     SharedTrees := nil;
@@ -197,40 +201,69 @@ begin
   Assert.AreEqual(2, Calls);
 end;
 
+/// <summary>Ordner über der Test-exe, der Packages enthält; '' ohne.</summary>
+function SourceRoot: string;
+var
+  mDirectory: string;
+begin
+  Result := '';
+  mDirectory := ExtractFileDir(ParamStr(0));
+  while mDirectory <> '' do
+  begin
+    if TDirectory.Exists(TPath.Combine(mDirectory, 'Packages')) then
+    begin
+      Exit(mDirectory);
+    end;
+    if ExtractFileDir(mDirectory) = mDirectory then
+    begin
+      Break;
+    end;
+    mDirectory := ExtractFileDir(mDirectory);
+  end;
+end;
+
+/// <summary>Units unter ADirectory außer Parser und Cache, die TPascalParser.Parse aufrufen, je mit Leerzeichen
+/// davor.</summary>
+function ParserCallers(const ADirectory: string): string;
+var
+  mFileName, mName: string;
+begin
+  Result := '';
+  for mFileName in TDirectory.GetFiles(ADirectory, '*.pas', TSearchOption.soAllDirectories) do
+  begin
+    mName := ExtractFileName(mFileName);
+    if SameText(mName, 'Atlas.Common.Pascal.Parser.pas') or SameText(mName, 'Atlas.Common.Pascal.TreeCache.pas') then
+    begin
+      Continue;
+    end;
+    if Pos('TPascalParser.Parse', TFile.ReadAllText(mFileName, TEncoding.UTF8)) > 0 then
+    begin
+      Result := Result + ' ' + mName;
+    end;
+  end;
+end;
+
 procedure TSyntaxTreeCacheTests.NoParserCallsOutsideCache;
 var
-  Directory, Root, FileName, Name: string;
+  Directory, Root: string;
   Offenders: string;
   Folders: TArray<string>;
 begin
   // Wächter (#262): außerhalb des Caches ruft niemand den Parser direkt auf.
-  Root := '';
-  Directory := ExtractFileDir(ParamStr(0));
-  while Directory <> '' do
-  begin
-    if TDirectory.Exists(TPath.Combine(Directory, 'Packages')) then
-    begin
-      Root := Directory;
-      Break;
-    end;
-    if ExtractFileDir(Directory) = Directory then
-      Break;
-    Directory := ExtractFileDir(Directory);
-  end;
+  Root := SourceRoot;
   if Root = '' then
+  begin
     Assert.Pass('Quelltexte nicht gefunden; Prüfung übersprungen');
+  end;
   Offenders := '';
   Folders := [TPath.Combine(Root, 'Packages'), TPath.Combine(Root, 'Application')];
   for Directory in Folders do
+  begin
     if TDirectory.Exists(Directory) then
-      for FileName in TDirectory.GetFiles(Directory, '*.pas', TSearchOption.soAllDirectories) do
-      begin
-        Name := ExtractFileName(FileName);
-        if SameText(Name, 'Atlas.Common.Pascal.Parser.pas') or SameText(Name, 'Atlas.Common.Pascal.TreeCache.pas') then
-          Continue;
-        if Pos('TPascalParser.Parse', TFile.ReadAllText(FileName, TEncoding.UTF8)) > 0 then
-          Offenders := Offenders + ' ' + Name;
-      end;
+    begin
+      Offenders := Offenders + ParserCallers(Directory);
+    end;
+  end;
   Assert.AreEqual('', Offenders, 'TPascalParser.Parse außerhalb des Caches');
 end;
 

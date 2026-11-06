@@ -4,6 +4,8 @@
 // Absturzes, Zählung wiederholter Abstürze, langsamer Start ist kein Absturz
 // (Bericht N4), Taste und Kommandozeile, Auswahl der Funktionen im
 // abgesicherten Modus, Vorschlag und Einstellungsstände zurücksetzen.
+// Sitzungen mit ATLAS_NO_SESSION_MARKER schreiben keine Marke und zählen keine
+// fremden Abstürze.
 
 interface
 
@@ -42,6 +44,12 @@ type
     procedure LogLinesOfCrashedSession;
     [Test]
     procedure MarkerFilesFindCrashedSessions;
+    [Test]
+    procedure NoMarkerSwitchValues;
+    [Test]
+    procedure SessionWithoutMarkerLeavesNoTrace;
+    [Test]
+    procedure TrackedSessionKeepsItsBook;
   end;
 
 implementation
@@ -53,6 +61,7 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.History,
   Atlas.Core.Settings.QuickToggles,
+  Atlas.Core.Modules.Contract,
   Atlas.Core.Diagnostics.SafeMode;
 
 function Options: TAtlasSafeOptions;
@@ -420,10 +429,108 @@ begin
     Assert.IsFalse(TFile.Exists(TAtlasSessionFiles.StateFile(Folder) + '.bak'), 'keine Sicherung');
   finally
     if TDirectory.Exists(Folder) then
+    begin
       TDirectory.Delete(Folder, True);
+    end;
   end;
   State := TAtlasSessionFiles.ReadState(Folder);
   Assert.AreEqual(0, State.CrashCount, 'ohne Datei leer');
+end;
+
+procedure TAtlasSafeModeTests.NoMarkerSwitchValues;
+begin
+  Assert.IsTrue(TAtlasSafeMode.IsSwitchOn('1'));
+  Assert.IsTrue(TAtlasSafeMode.IsSwitchOn(' TRUE '));
+  Assert.IsTrue(TAtlasSafeMode.IsSwitchOn('yes'));
+  Assert.IsFalse(TAtlasSafeMode.IsSwitchOn(''));
+  Assert.IsFalse(TAtlasSafeMode.IsSwitchOn('0'));
+  Assert.IsFalse(TAtlasSafeMode.IsSwitchOn('no'));
+  Assert.IsFalse(TAtlasSessionBook.Create('x', 1, '1').Tracked, 'Variable gesetzt: kein Buch');
+  Assert.IsTrue(TAtlasSessionBook.Create('x', 1, '').Tracked, 'ohne Variable: Buch');
+  Assert.IsTrue(TAtlasSessionBook.Create('x', 1, '0').Tracked, '0: Buch');
+end;
+
+function NoneAlive(AProcessId: Cardinal; AStartedAt: TDateTime): Boolean;
+begin
+  Result := False;
+end;
+
+function TempFolder: string;
+begin
+  Result := TPath.Combine(TPath.GetTempPath, 'atlas-safemode-' + IntToStr(Random(MaxInt)));
+end;
+
+procedure TAtlasSafeModeTests.SessionWithoutMarkerLeavesNoTrace;
+var
+  mFolder: string;
+  mBook: TAtlasSessionBook;
+  mState: TAtlasSafeState;
+  mFound: TArray<TAtlasSessionMarker>;
+  mDecision: TAtlasSafeDecision;
+  mNow: TDateTime;
+begin
+  mFolder := TempFolder;
+  mNow := EncodeDateTime(2026, 11, 5, 12, 0, 0, 0);
+  try
+    // Eine abgewürgte Sitzung mit Buch und ein Zustand mit einem Absturz liegen schon da.
+    TAtlasSessionFiles.WriteMarker(mFolder, Crashed(30, IncMinute(mNow, -30)));
+    mState := Default(TAtlasSafeState);
+    mState.CrashCount := 1;
+    mState.LastCrashAt := IncMinute(mNow, -5);
+    TAtlasSessionFiles.WriteState(mFolder, mState);
+    // Bau-IDE mit ATLAS_NO_SESSION_MARKER=1.
+    mBook := TAtlasSessionBook.Create(mFolder, 10, '1');
+    mBook.Open(NoneAlive, mState, mFound);
+    Assert.AreEqual(0, Integer(Length(mFound)), 'keine fremden Marken ausgewertet');
+    mDecision := TAtlasSafeMode.Decide(mState, mFound, mNow, Options, TAtlasStartupKey.None, False);
+    Assert.IsTrue(mDecision.Level = TAtlasSafeLevel.Normal, 'normal gestartet');
+    Assert.IsFalse(mDecision.Crashed, 'kein Absturz');
+    mBook.SaveState(mState);
+    mBook.SaveMarker(TAtlasSessionMarker.Create(10, '1.0.0', mNow));
+    Assert.IsFalse(TFile.Exists(TAtlasSessionFiles.MarkerFile(mFolder, 10)), 'keine eigene Marke');
+    Assert.IsTrue(TFile.Exists(TAtlasSessionFiles.MarkerFile(mFolder, 30)), 'fremde Marke bleibt liegen');
+    Assert.AreEqual(1, TAtlasSessionFiles.ReadState(mFolder).CrashCount, 'Zähler nach dem Start unverändert');
+    mBook.Close;
+    Assert.AreEqual(1, TAtlasSessionFiles.ReadState(mFolder).CrashCount, 'Zähler nach dem Ende unverändert');
+    // Die nächste Sitzung mit Buch sieht den Absturz weiterhin.
+    mBook := TAtlasSessionBook.Create(mFolder, 11, '');
+    mBook.Open(NoneAlive, mState, mFound);
+    Assert.AreEqual(1, Integer(Length(mFound)));
+    Assert.AreEqual(Int64(30), Int64(mFound[0].ProcessId));
+  finally
+    if TDirectory.Exists(mFolder) then
+    begin
+      TDirectory.Delete(mFolder, True);
+    end;
+  end;
+end;
+
+procedure TAtlasSafeModeTests.TrackedSessionKeepsItsBook;
+var
+  mFolder: string;
+  mBook: TAtlasSessionBook;
+  mState: TAtlasSafeState;
+  mFound: TArray<TAtlasSessionMarker>;
+begin
+  mFolder := TempFolder;
+  try
+    mBook := TAtlasSessionBook.Create(mFolder, 10, '');
+    mBook.Open(NoneAlive, mState, mFound);
+    Assert.AreEqual(0, Integer(Length(mFound)));
+    mState.CrashCount := 2;
+    mBook.SaveState(mState);
+    mBook.SaveMarker(TAtlasSessionMarker.Create(10, '1.0.0', EncodeDateTime(2026, 11, 5, 12, 0, 0, 0)));
+    Assert.IsTrue(TFile.Exists(TAtlasSessionFiles.MarkerFile(mFolder, 10)), 'eigene Marke geschrieben');
+    Assert.AreEqual(2, TAtlasSessionFiles.ReadState(mFolder).CrashCount);
+    mBook.Close;
+    Assert.IsFalse(TFile.Exists(TAtlasSessionFiles.MarkerFile(mFolder, 10)), 'Marke beim Ende gelöscht');
+    Assert.AreEqual(0, TAtlasSessionFiles.ReadState(mFolder).CrashCount, 'sauberes Ende setzt zurück');
+  finally
+    if TDirectory.Exists(mFolder) then
+    begin
+      TDirectory.Delete(mFolder, True);
+    end;
+  end;
 end;
 
 initialization

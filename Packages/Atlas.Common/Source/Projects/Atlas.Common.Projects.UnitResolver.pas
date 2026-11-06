@@ -7,7 +7,8 @@
 //   3. Suchpfade des Projekts, dann Bibliotheks- und Quellpfade der Installation
 //
 // In jedem Ordner wird zuerst der Name selbst gesucht, danach mit jedem
-// Unit-Namespace als Präfix (SysUtils → System.SysUtils). Ergebnisse werden
+// Unit-Namespace als Präfix (SysUtils → System.SysUtils), für einen Unit-Alias
+// danach seine Unit (WinTypes → Winapi.Windows). Ergebnisse werden
 // zwischengespeichert; Invalidate leert den Speicher, z. B. nach
 // Dateiänderungen. Die Klasse ist threadsicher.
 //
@@ -20,12 +21,15 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Common.Projects.Contract;
+  Atlas.Common.Projects.Contract,
+  Atlas.Common.Projects.UnitAliases;
 
 type
   TUnitResolver = class
   private
     FProject: TProjectInfo;
+    // Unit-Aliase des Projekts samt Vorgaben von Delphi; nach dem Konstruktor nur gelesen.
+    FAliases: TArray<TUnitAlias>;
     FDirectories: TArray<string>;
     FFileExists: TFunc<string, Boolean>;
     FCache: TDictionary<string, string>;
@@ -35,6 +39,7 @@ type
     FListings: TObjectDictionary<string, TDictionary<string, string>>;
     /// <summary>Pfad von AName.pas in ADirectory, über die Auflistung oder FFileExists.</summary>
     function FileIn(const ADirectory, AName: string; out APath: string): Boolean;
+    function FileInAny(const ADirectory: string; const ANames: TArray<string>; out APath: string): Boolean;
     function Candidates(const AUnitName: string): TArray<string>;
     function Search(const AUnitName, AFromDirectory: string): string;
   public
@@ -70,6 +75,7 @@ var
 begin
   inherited Create;
   FProject := AProject;
+  FAliases := TUnitAliases.OfProject(AProject);
   FFileExists := AFileExists;
   FCache := TDictionary<string, string>.Create;
   FLock := TObject.Create;
@@ -77,11 +83,17 @@ begin
   Directories := TList<string>.Create;
   try
     if AProject.FileName <> '' then
+    begin
       Directories.Add(TProjectPaths.DirectoryOf(AProject.FileName));
+    end;
     for Directory in AProject.SearchPaths do
+    begin
       Directories.Add(Directory);
+    end;
     for Directory in ALibraryPaths do
+    begin
       Directories.Add(Directory);
+    end;
     FDirectories := Directories.ToArray;
   finally
     Directories.Free;
@@ -99,13 +111,23 @@ end;
 function TUnitResolver.Candidates(const AUnitName: string): TArray<string>;
 var
   Names: TList<string>;
-  Namespace: string;
+  Namespace, mTarget: string;
 begin
   Names := TList<string>.Create;
   try
     Names.Add(AUnitName);
     for Namespace in FProject.Namespaces do
+    begin
       Names.Add(Namespace + '.' + AUnitName);
+    end;
+    if TUnitAliases.Target(FAliases, AUnitName, mTarget) then
+    begin
+      Names.Add(mTarget);
+      for Namespace in FProject.Namespaces do
+      begin
+        Names.Add(Namespace + '.' + mTarget);
+      end;
+    end;
     Result := Names.ToArray;
   finally
     Names.Free;
@@ -129,7 +151,9 @@ begin
     begin
       Listing := TDictionary<string, string>.Create;
       for FileName in FListUnits(ADirectory) do
+      begin
         Listing.AddOrSetValue(LowerCase(ChangeFileExt(ExtractFileName(FileName), '')), FileName);
+      end;
       FListings.Add(Key, Listing);
     end;
     Result := Listing.TryGetValue(LowerCase(AName), APath);
@@ -138,27 +162,48 @@ begin
   end;
 end;
 
+function TUnitResolver.FileInAny(const ADirectory: string; const ANames: TArray<string>; out APath: string): Boolean;
+var
+  mName: string;
+begin
+  Result := False;
+  for mName in ANames do
+  begin
+    if FileIn(ADirectory, mName, APath) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
 function TUnitResolver.Search(const AUnitName, AFromDirectory: string): string;
 var
-  ProjectUnit: TProjectUnit;
-  Names: TArray<string>;
-  Name: string;
-  Directory: string;
-  Candidate: string;
+  mUnit: TProjectUnit;
+  mNames: TArray<string>;
+  mName, mDirectory: string;
 begin
-  Names := Candidates(AUnitName);
-  for Name in Names do
-    for ProjectUnit in FProject.Units do
-      if SameText(ProjectUnit.Name, Name) then
-        Exit(ProjectUnit.FileName);
-  if AFromDirectory <> '' then
-    for Name in Names do
-      if FileIn(AFromDirectory, Name, Candidate) then
-        Exit(Candidate);
-  for Directory in FDirectories do
-    for Name in Names do
-      if FileIn(Directory, Name, Candidate) then
-        Exit(Candidate);
+  mNames := Candidates(AUnitName);
+  for mName in mNames do
+  begin
+    for mUnit in FProject.Units do
+    begin
+      if SameText(mUnit.Name, mName) then
+      begin
+        Exit(mUnit.FileName);
+      end;
+    end;
+  end;
+  if (AFromDirectory <> '') and FileInAny(AFromDirectory, mNames, Result) then
+  begin
+    Exit;
+  end;
+  for mDirectory in FDirectories do
+  begin
+    if FileInAny(mDirectory, mNames, Result) then
+    begin
+      Exit;
+    end;
+  end;
   Result := '';
 end;
 
@@ -172,12 +217,16 @@ var
   Key: string;
 begin
   if Trim(AUnitName) = '' then
+  begin
     Exit('');
+  end;
   Key := LowerCase(AUnitName) + '|' + LowerCase(AFromDirectory);
   TMonitor.Enter(FLock);
   try
     if FCache.TryGetValue(Key, Result) then
+    begin
       Exit;
+    end;
   finally
     TMonitor.Exit(FLock);
   end;

@@ -54,6 +54,8 @@ type
       FLines: TDictionary<string, TArray<string>>;
       function LinesOf(const AFileName: string; out ALines: TArray<string>): Boolean;
       function DocOf(const ASymbol: TResolvedSymbol; ADepth: Integer): TXmlDoc;
+      function OwnerOf(const ASymbol: TResolvedSymbol; out AOwner: TResolvedSymbol): Boolean;
+      function BasesOf(const AOwner: TResolvedSymbol): TArray<TResolvedSymbol>;
       function AncestorDoc(const ASymbol: TResolvedSymbol; ADepth: Integer): TXmlDoc;
       function Resolve(const ASymbol: TResolvedSymbol; const ADoc: TXmlDoc; ADepth: Integer): TXmlDoc;
     public
@@ -106,10 +108,14 @@ var
   Text: string;
 begin
   if FLines.TryGetValue(UpperCase(AFileName), ALines) then
+  begin
     Exit(True);
+  end;
   Result := Assigned(FReadText) and FReadText(AFileName, Text);
   if not Result then
+  begin
     Exit;
+  end;
   ALines := TLspDocumentation.SplitLines(Text);
   FLines.AddOrSetValue(UpperCase(AFileName), ALines);
 end;
@@ -120,59 +126,93 @@ var
 begin
   Result := Default(TXmlDoc);
   if (ASymbol.FileName = '') or not LinesOf(ASymbol.FileName, Lines) then
+  begin
     Exit;
+  end;
   Result := TXmlDoc.Parse(TXmlDoc.CommentAbove(Lines, ASymbol.Range.StartPos.Line));
   if Result.InheritDoc then
+  begin
     Result := Resolve(ASymbol, Result, ADepth);
+  end;
+end;
+
+function TLspDocumentation.TLoader.OwnerOf(const ASymbol: TResolvedSymbol; out AOwner: TResolvedSymbol): Boolean;
+var
+  mOwnerUnit: TUnitIndex;
+begin
+  // Ein Typ ist sein eigener Träger, ein Member gehört zum Typ ASymbol.Container.
+  if ASymbol.Container = '' then
+  begin
+    AOwner := ASymbol;
+    Result := ASymbol.IsType;
+  end
+  else
+  begin
+    Result := FResolver.DeclaringUnit(ASymbol, mOwnerUnit) and
+      FResolver.ResolveTypeFrom(mOwnerUnit, ASymbol.Container, AOwner);
+  end;
+end;
+
+function TLspDocumentation.TLoader.BasesOf(const AOwner: TResolvedSymbol): TArray<TResolvedSymbol>;
+var
+  mTypeUnit: TUnitIndex;
+  mBase: TResolvedSymbol;
+  mIndex: Integer;
+begin
+  // Vorfahr zuerst, dann die implementierten Interfaces.
+  Result := nil;
+  // Helfer: nur der Vorfahr-Helfer (#848); der Zieltyp am Ende von Ancestors ist kein Vorfahr.
+  if AOwner.SymbolKind = TIndexSymbolKind.HelperType then
+  begin
+    if FResolver.Queries.HelperParent(AOwner, mBase) then
+    begin
+      Result := [mBase];
+    end;
+    Exit;
+  end;
+  if FResolver.AncestorOf(AOwner, mBase) then
+  begin
+    Result := Result + [mBase];
+  end;
+  if not FResolver.DeclaringUnit(AOwner, mTypeUnit) then
+  begin
+    Exit;
+  end;
+  for mIndex := 1 to High(AOwner.Ancestors) do
+  begin
+    if FResolver.ResolveTypeFrom(mTypeUnit, AOwner.Ancestors[mIndex], mBase) then
+    begin
+      Result := Result + [mBase];
+    end;
+  end;
 end;
 
 function TLspDocumentation.TLoader.AncestorDoc(const ASymbol: TResolvedSymbol; ADepth: Integer): TXmlDoc;
 var
-  OwnerUnit, TypeUnit: TUnitIndex;
-  Owner, Base, Candidate: TResolvedSymbol;
-  Bases: TArray<TResolvedSymbol>;
-  Index: Integer;
-  IsType: Boolean;
+  mOwner, mBase, mCandidate: TResolvedSymbol;
 begin
   Result := Default(TXmlDoc);
-  if ADepth > TLspDocumentation.MaxInheritDepth then
+  if (ADepth > TLspDocumentation.MaxInheritDepth) or not OwnerOf(ASymbol, mOwner) then
+  begin
     Exit;
-  IsType := ASymbol.Container = '';
-  if IsType then
+  end;
+  for mBase in BasesOf(mOwner) do
   begin
-    if not ASymbol.IsType then
-      Exit;
-    Owner := ASymbol;
-  end
-  else if not (FResolver.DeclaringUnit(ASymbol, OwnerUnit) and
-    FResolver.ResolveTypeFrom(OwnerUnit, ASymbol.Container, Owner)) then
-    Exit;
-  // Vorfahr zuerst, dann die implementierten Interfaces.
-  Bases := nil;
-  // Helfer: nur der Vorfahr-Helfer (#848); der Zieltyp am Ende von Ancestors ist kein Vorfahr.
-  if Owner.SymbolKind = TIndexSymbolKind.HelperType then
-  begin
-    if FResolver.HelperParent(Owner, Base) then
-      Bases := [Base];
-  end
-  else if FResolver.AncestorOf(Owner, Base) then
-    Bases := Bases + [Base];
-  if (Owner.SymbolKind <> TIndexSymbolKind.HelperType) and FResolver.DeclaringUnit(Owner, TypeUnit) then
-    for Index := 1 to High(Owner.Ancestors) do
-      if FResolver.ResolveTypeFrom(TypeUnit, Owner.Ancestors[Index], Base) then
-        Bases := Bases + [Base];
-  for Base in Bases do
-  begin
-    if IsType then
-      Candidate := Base
-    else if not FResolver.DeclaredMember(Base, ASymbol.Name, Candidate) then
+    mCandidate := mBase;
+    if (ASymbol.Container <> '') and not FResolver.DeclaredMember(mBase, ASymbol.Name, mCandidate) then
+    begin
       Continue;
-    Result := DocOf(Candidate, ADepth + 1);
+    end;
+    Result := DocOf(mCandidate, ADepth + 1);
     // Ohne eigene Doku dort weiter oben suchen.
     if Result.IsEmpty then
-      Result := AncestorDoc(Candidate, ADepth + 1);
+    begin
+      Result := AncestorDoc(mCandidate, ADepth + 1);
+    end;
     if not Result.IsEmpty then
+    begin
       Exit;
+    end;
   end;
 end;
 
@@ -185,14 +225,20 @@ var
 begin
   Base := Default(TXmlDoc);
   if ADepth <= TLspDocumentation.MaxInheritDepth then
+  begin
     if ADoc.InheritCref <> '' then
     begin
       if FResolver.DeclaringUnit(ASymbol, FromUnit) and
         FResolver.LocateCref(FromUnit, ASymbol.Container, ADoc.InheritCref, Target) then
+      begin
         Base := DocOf(Target, ADepth + 1);
+      end;
     end
     else
+    begin
       Base := AncestorDoc(ASymbol, ADepth);
+    end;
+  end;
   Result := ADoc.Inherit(Base);
 end;
 
@@ -232,7 +278,9 @@ var
 begin
   Result := TXmlDoc.Parse(TXmlDoc.CommentAbove(ALines, ALine));
   if not Result.InheritDoc or (AResolver = nil) or not ASymbol.Found then
+  begin
     Exit;
+  end;
   Loader := TLoader.Create(AResolver, AReadText);
   try
     Result := Loader.Resolve(ASymbol, Result, 0);
@@ -254,10 +302,14 @@ var
     Target: TDocTarget;
   begin
     if (ACref = '') or Seen.ContainsKey(ACref) then
+    begin
       Exit;
+    end;
     Seen.Add(ACref, True);
     if not AResolver.LocateCref(AFromUnit, AContainer, ACref, Symbol) then
+    begin
       Exit;
+    end;
     Target.Cref := ACref;
     Target.Name := Symbol.Name;
     Target.UnitName := Symbol.UnitName;
@@ -270,16 +322,24 @@ var
 begin
   Result := nil;
   if AResolver = nil then
+  begin
     Exit;
+  end;
   Seen := TDictionary<string, Boolean>.Create;
   try
     for Section in ADoc.Sections do
     begin
       if Section.Kind = TXmlDocSectionKind.Exception then
+      begin
         Add(Section.Name);
+      end;
       for Run in Section.Runs do
+      begin
         if Run.Kind = TXmlDocRunKind.Ref then
+        begin
           Add(Run.Target);
+        end;
+      end;
     end;
   finally
     Seen.Free;
@@ -291,11 +351,13 @@ var
   Target: TDocTarget;
 begin
   for Target in ATargets do
+  begin
     if Target.Cref = ACref then
     begin
       ATarget := Target;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -303,56 +365,79 @@ procedure AddLocation(AObject: TJSONObject; const ATarget: TDocTarget);
 begin
   AObject.AddPair('name', ATarget.Name);
   if ATarget.UnitName <> '' then
+  begin
     AObject.AddPair('unit', ATarget.UnitName);
+  end;
   AObject.AddPair('file', ATarget.FileName);
   AObject.AddPair('line', TJSONNumber.Create(ATarget.Line));
   AObject.AddPair('character', TJSONNumber.Create(ATarget.Character));
 end;
 
-class function TLspDocumentation.ToJson(const ADoc: TXmlDoc; const ATargets: TArray<TDocTarget>): TJSONObject;
+/// <summary>Ein Teilstück als JSON; ein Verweis mit Eintrag in ATargets trägt seinen Fundort.</summary>
+function RunJson(const ARun: TXmlDocRun; const ATargets: TArray<TDocTarget>): TJSONObject;
 var
-  Sections, Runs: TJSONArray;
-  Section: TXmlDocSection;
-  Run: TXmlDocRun;
-  Item, RunItem, RefItem: TJSONObject;
-  Target: TDocTarget;
+  mTarget: TDocTarget;
 begin
   Result := TJSONObject.Create;
-  Sections := TJSONArray.Create;
-  Result.AddPair('sections', Sections);
-  for Section in ADoc.Sections do
+  Result.AddPair('kind', TXmlDoc.RunKindName(ARun.Kind));
+  if ARun.Text <> '' then
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('kind', TXmlDoc.SectionName(Section.Kind));
-    if Section.Name <> '' then
-      Item.AddPair('name', Section.Name);
-    if (Section.Kind = TXmlDocSectionKind.Exception) and FindTarget(ATargets, Section.Name, Target) then
+    Result.AddPair('text', ARun.Text);
+  end;
+  if ARun.Target <> '' then
+  begin
+    Result.AddPair('target', ARun.Target);
+  end;
+  if TXmlDocStyle.Bold in ARun.Styles then
+  begin
+    Result.AddPair('bold', TJSONTrue.Create);
+  end;
+  if TXmlDocStyle.Italic in ARun.Styles then
+  begin
+    Result.AddPair('italic', TJSONTrue.Create);
+  end;
+  if ARun.Level > 0 then
+  begin
+    Result.AddPair('level', TJSONNumber.Create(ARun.Level));
+  end;
+  if (ARun.Kind = TXmlDocRunKind.Ref) and FindTarget(ATargets, ARun.Target, mTarget) then
+  begin
+    AddLocation(Result, mTarget);
+  end;
+end;
+
+class function TLspDocumentation.ToJson(const ADoc: TXmlDoc; const ATargets: TArray<TDocTarget>): TJSONObject;
+var
+  mSections, mRuns: TJSONArray;
+  mSection: TXmlDocSection;
+  mRun: TXmlDocRun;
+  mItem, mRefItem: TJSONObject;
+  mTarget: TDocTarget;
+begin
+  Result := TJSONObject.Create;
+  mSections := TJSONArray.Create;
+  Result.AddPair('sections', mSections);
+  for mSection in ADoc.Sections do
+  begin
+    mItem := TJSONObject.Create;
+    mItem.AddPair('kind', TXmlDoc.SectionName(mSection.Kind));
+    if mSection.Name <> '' then
     begin
-      RefItem := TJSONObject.Create;
-      AddLocation(RefItem, Target);
-      Item.AddPair('ref', RefItem);
+      mItem.AddPair('name', mSection.Name);
     end;
-    Runs := TJSONArray.Create;
-    for Run in Section.Runs do
+    if (mSection.Kind = TXmlDocSectionKind.Exception) and FindTarget(ATargets, mSection.Name, mTarget) then
     begin
-      RunItem := TJSONObject.Create;
-      RunItem.AddPair('kind', TXmlDoc.RunKindName(Run.Kind));
-      if Run.Text <> '' then
-        RunItem.AddPair('text', Run.Text);
-      if Run.Target <> '' then
-        RunItem.AddPair('target', Run.Target);
-      if TXmlDocStyle.Bold in Run.Styles then
-        RunItem.AddPair('bold', TJSONTrue.Create);
-      if TXmlDocStyle.Italic in Run.Styles then
-        RunItem.AddPair('italic', TJSONTrue.Create);
-      if Run.Level > 0 then
-        RunItem.AddPair('level', TJSONNumber.Create(Run.Level));
-      if (Run.Kind = TXmlDocRunKind.Ref) and FindTarget(ATargets, Run.Target, Target) then
-        AddLocation(RunItem, Target);
-      Runs.AddElement(RunItem);
+      mRefItem := TJSONObject.Create;
+      AddLocation(mRefItem, mTarget);
+      mItem.AddPair('ref', mRefItem);
     end;
-    Item.AddPair('runs', Runs);
-    Sections.AddElement(Item);
+    mRuns := TJSONArray.Create;
+    for mRun in mSection.Runs do
+    begin
+      mRuns.AddElement(RunJson(mRun, ATargets));
+    end;
+    mItem.AddPair('runs', mRuns);
+    mSections.AddElement(mItem);
   end;
 end;
 

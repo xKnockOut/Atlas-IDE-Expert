@@ -144,10 +144,14 @@ begin
   Found := TDictionary<string, TAtlasSettingField>.Create;
   try
     for Field in Fields do
+    begin
       Found.AddOrSetValue(Field.Path, Field);
+    end;
     for Key in TArray<string>.Create('compiler.onSave', 'language', 'format.indentSize', 'exclude', 'rules', 'overrides',
       'sortUses', 'profile', 'mcp.globalSettings', 'mcp.disabledTools') do
+    begin
       Assert.IsTrue(Found.ContainsKey(Key), Format('%s fehlt (%d Felder)', [Key, Length(Fields)]));
+    end;
     Assert.IsFalse(Found.ContainsKey('$schema'));
     Assert.IsTrue(Found['compiler.onSave'].Kind = TAtlasSettingKind.Boolean_);
     Assert.AreEqual('Compiler', Found['compiler.onSave'].Page);

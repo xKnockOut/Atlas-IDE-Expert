@@ -1,6 +1,6 @@
 # 0012: Plugin ohne Atlas.Common; gemeinsamer Code in Atlas.Text
 
-- Status: Angenommen
+- Status: Angenommen; der Grundsatz „ein BPL“ ist ersetzt durch [ADR 0017](0017-funktions-packages.md), das Teilen über Atlas.Text bleibt
 - Datum: 2026-10-15
 - Bezug: ADR 0002 Package-Aufteilung, ADR 0006 IDE-Plugin, #406 Package-Struktur des Plugins, Code-Review D-01 bis D-06, D-10, K-02
 
@@ -46,5 +46,5 @@ Die Folge waren Kopien mit Drift. Das Code-Review zählte unter anderem:
 
 - Eine Quelle für Zeilen, Kodierung, URIs, Fuzzy-Regeln und Versionsangabe; Server und Plugin entscheiden gleich. Gleichlauftests (`Atlas.Core.Text.Agreement.Tests`) halten Kodierung, Vervollständigung und Anonymisierung fest.
 - Sichtbare Änderungen im Plugin: strenges UTF-8, URIs mit kleinem Laufwerksbuchstaben (`file:///c%3A/…`), ein Offset zwischen CR und LF zählt zum Zeilenende, numerische Entities in Live-Templates, `//` in `settings.json` endet auch an CR, Wortanfänge auch nach „.“ und bei Kleinbuchstaben nach Ziffern.
-- Die Projektgruppe baut `Atlas.Text` zuerst. Neue Units in Atlas.Text stehen in `Atlas.Text.dpk`/`.dproj` **und** in `Atlas.IDE.Expert.dpk`/`.dproj`; das Prüfskript meldet eine fehlende.
+- Die Projektgruppe baut `Atlas.Text` zuerst. Neue Units in Atlas.Text stehen in `Atlas.Text.dpk`/`.dproj` **und** in `Atlas.IDE.Base.dpk`/`.dproj`; das Prüfskript meldet eine fehlende.
 - `Atlas.Core.Vcs.*` bleibt das umgekehrte Muster (Plugin-Units, die der Server als Quelltext mitübersetzt).

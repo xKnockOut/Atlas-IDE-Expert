@@ -103,11 +103,15 @@ begin
     try
       Layout := TStatementLayout.Create('', '  ', #10);
       if AToCase then
+      begin
         Result := TIfCase.ToCase(AText, Tree, PositionOf(AText, AMarker),
-          TIfCaseLookup.FromResolver(Resolver, Tree, FileName), Layout, Conversion)
+          TIfCaseLookup.FromResolver(Resolver, Tree, FileName), Layout, Conversion);
+      end
       else
+      begin
         Result := TIfCase.ToIf(AText, Tree, PositionOf(AText, AMarker),
           TIfCaseLookup.FromResolver(Resolver, Tree, FileName), Layout, Conversion);
+      end;
       if Result then
       begin
         AResult := ApplyEdit(AText, Conversion.Edit);
@@ -335,7 +339,9 @@ begin
         begin
           Result := TSyntaxSearchStep.Descend;
           if ANode.Kind = TSyntaxKind.IfStatement then
+          begin
             Result := TSyntaxSearchStep.Found;
+          end;
         end);
       Assert.AreEqual(3, TIfCase.ConvertibleConditions(Text, Tree, Head, TIfCaseLookup.FromResolver(Resolver, Tree,
         FileName)));

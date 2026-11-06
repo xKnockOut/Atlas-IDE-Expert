@@ -1,0 +1,119 @@
+﻿package Atlas.IDE.Welcome;
+
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'Atlas IDE Expert – Willkommensseite'}
+{$DESIGNONLY}
+{$IMPLICITBUILD OFF}
+{$LIBSUFFIX AUTO}
+
+// Modul Willkommensseite (#1456, ADR 0017): Fenster „Atlas-Start“ und Bereiche auf der Willkommensseite
+// der IDE, Weiterarbeiten, Projekte, Projektverlauf, Schnellaktionen, Atlas entdecken, Hilfe, Einrichten
+// und ihr Abschnitt im Optionsdialog. Meldet sich in der Unit-Initialisierung von
+// Atlas.IDE.Welcome.Composition über die Registry des Kern-Packages Atlas.IDE.Base an und lässt sich
+// ohne Neustart der IDE laden und entladen (Regeln 1 bis 4). Requiret nur das Kern-Package
+// (mit den Verträgen zwischen Modulen), kein anderes Modul (Regel 9); Kacheln anderer Module kommen über den Vertrag Atlas.IDE.Contracts.WelcomeTiles in Base.
+
+requires
+  rtl,
+  vcl,
+  vclwinx,
+  designide,
+  Atlas.IDE.Base;
+
+contains
+  Atlas.UI.Welcome.Strings in 'Source\UI\Welcome\Atlas.UI.Welcome.Strings.pas',
+  Atlas.Core.Welcome.Sections in 'Source\Core\Welcome\Atlas.Core.Welcome.Sections.pas',
+  Atlas.Core.Welcome.Layout in 'Source\Core\Welcome\Atlas.Core.Welcome.Layout.pas',
+  Atlas.Core.Welcome.Layouts in 'Source\Core\Welcome\Atlas.Core.Welcome.Layouts.pas',
+  Atlas.Core.Welcome.AccountName in 'Source\Core\Welcome\Atlas.Core.Welcome.AccountName.pas',
+  Atlas.Core.Welcome.Greeting in 'Source\Core\Welcome\Atlas.Core.Welcome.Greeting.pas',
+  Atlas.Core.Welcome.Scroll in 'Source\Core\Welcome\Atlas.Core.Welcome.Scroll.pas',
+  Atlas.Core.Welcome.Backup in 'Source\Core\Welcome\Atlas.Core.Welcome.Backup.pas',
+  Atlas.Core.Welcome.HostLayout in 'Source\Core\Welcome\Atlas.Core.Welcome.HostLayout.pas',
+  Atlas.Core.Welcome.IndexFiles in 'Source\Core\Welcome\Atlas.Core.Welcome.IndexFiles.pas',
+  Atlas.Core.Welcome.Search in 'Source\Core\Welcome\Atlas.Core.Welcome.Search.pas',
+  Atlas.Core.Welcome.WhatsNew in 'Source\Core\Welcome\Atlas.Core.Welcome.WhatsNew.pas',
+  Atlas.Core.Welcome.Projects in 'Source\Core\Welcome\Atlas.Core.Welcome.Projects.pas',
+  Atlas.Core.Welcome.Trends in 'Source\Core\Welcome\Atlas.Core.Welcome.Trends.pas',
+  Atlas.Core.Welcome.Unsaved in 'Source\Core\Welcome\Atlas.Core.Welcome.Unsaved.pas',
+  Atlas.Core.Welcome.Continue in 'Source\Core\Welcome\Atlas.Core.Welcome.Continue.pas',
+  Atlas.Core.Welcome.QuickActions in 'Source\Core\Welcome\Atlas.Core.Welcome.QuickActions.pas',
+  Atlas.Core.Welcome.Saved in 'Source\Core\Welcome\Atlas.Core.Welcome.Saved.pas',
+  Atlas.Core.Welcome.State in 'Source\Core\Welcome\Atlas.Core.Welcome.State.pas',
+  Atlas.Core.Welcome.Discover in 'Source\Core\Welcome\Atlas.Core.Welcome.Discover.pas',
+  Atlas.Core.Welcome.Help in 'Source\Core\Welcome\Atlas.Core.Welcome.Help.pas',
+  Atlas.Core.Welcome.Setup in 'Source\Core\Welcome\Atlas.Core.Welcome.Setup.pas',
+  Atlas.UI.Welcome.Frame in 'Source\UI\Welcome\Atlas.UI.Welcome.Frame.pas' {AtlasWelcomeFrame: TFrame},
+  Atlas.UI.Welcome.Search in 'Source\UI\Welcome\Atlas.UI.Welcome.Search.pas',
+  Atlas.UI.Welcome.Header in 'Source\UI\Welcome\Atlas.UI.Welcome.Header.pas',
+  Atlas.UI.Welcome.Arrange in 'Source\UI\Welcome\Atlas.UI.Welcome.Arrange.pas',
+  Atlas.UI.Welcome.Board in 'Source\UI\Welcome\Atlas.UI.Welcome.Board.pas',
+  Atlas.UI.Welcome.WhatsNew in 'Source\UI\Welcome\Atlas.UI.Welcome.WhatsNew.pas',
+  Atlas.UI.Welcome.Projects in 'Source\UI\Welcome\Atlas.UI.Welcome.Projects.pas',
+  Atlas.UI.Welcome.Trends in 'Source\UI\Welcome\Atlas.UI.Welcome.Trends.pas',
+  Atlas.UI.Welcome.Unsaved in 'Source\UI\Welcome\Atlas.UI.Welcome.Unsaved.pas',
+  Atlas.UI.Welcome.Continue in 'Source\UI\Welcome\Atlas.UI.Welcome.Continue.pas',
+  Atlas.UI.Welcome.QuickActions in 'Source\UI\Welcome\Atlas.UI.Welcome.QuickActions.pas',
+  Atlas.UI.Welcome.SettingsLayouts in 'Source\UI\Welcome\Atlas.UI.Welcome.SettingsLayouts.pas',
+  Atlas.UI.Welcome.SettingsSection in 'Source\UI\Welcome\Atlas.UI.Welcome.SettingsSection.pas',
+  Atlas.UI.Welcome.State in 'Source\UI\Welcome\Atlas.UI.Welcome.State.pas',
+  Atlas.UI.Welcome.Discover in 'Source\UI\Welcome\Atlas.UI.Welcome.Discover.pas',
+  Atlas.UI.Welcome.Help in 'Source\UI\Welcome\Atlas.UI.Welcome.Help.pas',
+  Atlas.UI.Welcome.Setup in 'Source\UI\Welcome\Atlas.UI.Welcome.Setup.pas',
+  Atlas.UI.Welcome.SetupPreview in 'Source\UI\Welcome\Atlas.UI.Welcome.SetupPreview.pas',
+  Atlas.UI.Welcome.Push in 'Source\UI\Welcome\Atlas.UI.Welcome.Push.pas',
+  Atlas.IDE.Welcome.Registry in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Registry.pas',
+  Atlas.IDE.Welcome.Window in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Window.pas',
+  Atlas.IDE.Welcome.Page in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Page.pas',
+  Atlas.IDE.Welcome.Search in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Search.pas',
+  Atlas.IDE.Welcome.WhatsNew in 'Source\IDE\Welcome\Atlas.IDE.Welcome.WhatsNew.pas',
+  Atlas.IDE.Welcome.Projects in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Projects.pas',
+  Atlas.IDE.Welcome.Trends in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Trends.pas',
+  Atlas.IDE.Welcome.Unsaved in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Unsaved.pas',
+  Atlas.IDE.Welcome.Continue in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Continue.pas',
+  Atlas.IDE.Welcome.Continue.Editor in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Continue.Editor.pas',
+  Atlas.IDE.Welcome.Continue.Saved in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Continue.Saved.pas',
+  Atlas.IDE.Welcome.QuickActions in 'Source\IDE\Welcome\Atlas.IDE.Welcome.QuickActions.pas',
+  Atlas.IDE.Welcome.State in 'Source\IDE\Welcome\Atlas.IDE.Welcome.State.pas',
+  Atlas.IDE.Welcome.Discover in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Discover.pas',
+  Atlas.IDE.Welcome.Help in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Help.pas',
+  Atlas.IDE.Welcome.Setup in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Setup.pas',
+  Atlas.IDE.Welcome.Setup.Paths in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Setup.Paths.pas',
+  Atlas.IDE.Welcome.Setup.ProjectEvents in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Setup.ProjectEvents.pas',
+  Atlas.IDE.Welcome.Layouts in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Layouts.pas',
+  Atlas.IDE.Welcome.Tiles in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Tiles.pas',
+  Atlas.IDE.Welcome.TileProjects in 'Source\IDE\Welcome\Atlas.IDE.Welcome.TileProjects.pas',
+  Atlas.IDE.Welcome.Composition in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Composition.pas',
+  Atlas.IDE.Welcome.Startup in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Startup.pas',
+  Atlas.IDE.Welcome.Listener in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Listener.pas',
+  Atlas.IDE.Welcome.Settings in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Settings.pas',
+  Atlas.IDE.Welcome.Neighbors in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Neighbors.pas',
+  Atlas.IDE.Welcome.Areas in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Areas.pas',
+  Atlas.IDE.Welcome.IdeLayout in 'Source\IDE\Welcome\Atlas.IDE.Welcome.IdeLayout.pas',
+  Atlas.IDE.Welcome.ProjectWatch in 'Source\IDE\Welcome\Atlas.IDE.Welcome.ProjectWatch.pas',
+  Atlas.IDE.Welcome.Commands in 'Source\IDE\Welcome\Atlas.IDE.Welcome.Commands.pas';
+
+end.

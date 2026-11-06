@@ -12,6 +12,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Designer')]
   TAtlasTabOrderOverlayTests = class
   private
     FOverlay: TAtlasTabOrderOverlay;

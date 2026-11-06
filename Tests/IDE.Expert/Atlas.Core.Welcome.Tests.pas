@@ -14,6 +14,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeSectionsTests = class
   public
     [Test]
@@ -29,6 +30,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeLayoutTests = class
   public
     [Test]
@@ -48,6 +50,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeGreetingTests = class
   public
     [Test]
@@ -61,6 +64,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeBackupTests = class
   public
     [Test]
@@ -76,6 +80,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasHostLayoutTests = class
   public
     [Test]
@@ -105,6 +110,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasIdePageStepsTests = class
   public
     [Test]
@@ -118,6 +124,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeRetireTests = class
   public
     [Test]
@@ -131,6 +138,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeSettingsTests = class
   public
     [Test]
@@ -169,10 +177,16 @@ var
 begin
   Result := '';
   for Id in AIds do
+  begin
     if Result = '' then
-      Result := Id
+    begin
+      Result := Id;
+    end
     else
+    begin
       Result := Result + ',' + Id;
+    end;
+  end;
 end;
 
 function Number(const AName: string; AValue: Integer): TAtlasRegValue;
@@ -180,17 +194,18 @@ begin
   Result := TAtlasRegValue.Create(AName, TAtlasRegKind.Number, IntToStr(AValue));
 end;
 
-procedure AddItem(ALayout: TAtlasRegKey; AIndex: Integer; const AId: string; ARow, AColumn, ARowSpan,
-  AColumnSpan: Integer);
+/// <summary>Kachel AId an APlace: Zeile, Spalte, Zeilen- und Spaltenspanne.</summary>
+procedure AddItem(ALayout: TAtlasRegKey; AIndex: Integer; const AId: string; const APlace: array of Integer);
 var
   Item: TAtlasRegKey;
 begin
+  Assert.AreEqual(4, Integer(Length(APlace)), 'Zeile, Spalte, Zeilenspanne, Spaltenspanne');
   Item := ALayout.AddKey('Item ' + IntToStr(AIndex));
   Item.SetValue(TAtlasRegValue.Create('PluginID', TAtlasRegKind.Text, AId));
-  Item.SetValue(Number('Row', ARow));
-  Item.SetValue(Number('Column', AColumn));
-  Item.SetValue(Number('RowSpan', ARowSpan));
-  Item.SetValue(Number('ColumnSpan', AColumnSpan));
+  Item.SetValue(Number('Row', APlace[0]));
+  Item.SetValue(Number('Column', APlace[1]));
+  Item.SetValue(Number('RowSpan', APlace[2]));
+  Item.SetValue(Number('ColumnSpan', APlace[3]));
 end;
 
 /// <summary>Schlüssel WelcomePage wie in Marcos Export aus Delphi 12 (BDS 23.0).</summary>
@@ -208,9 +223,9 @@ begin
   Layout := Result.AddKey('Layout');
   Layout.SetValue(Number('RowsCount', 2));
   Layout.SetValue(Number('ColumnsCount', 3));
-  AddItem(Layout, 0, 'Embarcadero.WelcomePagePlugin.GetItNewIn', 0, 0, 2, 1);
-  AddItem(Layout, 1, 'Embarcadero.WelcomePagePlugin.OpenRecent', 0, 1, 2, 1);
-  AddItem(Layout, 2, 'Embarcadero.WelcomePagePlugin.Learn', 0, 2, 2, 1);
+  AddItem(Layout, 0, 'Embarcadero.WelcomePagePlugin.GetItNewIn', [0, 0, 2, 1]);
+  AddItem(Layout, 1, 'Embarcadero.WelcomePagePlugin.OpenRecent', [0, 1, 2, 1]);
+  AddItem(Layout, 2, 'Embarcadero.WelcomePagePlugin.Learn', [0, 2, 2, 1]);
 end;
 
 /// <summary>Schlüssel WelcomePage nach „Atlas-Layout anwenden“ früherer Fassungen: „Atlas“ oben über zwei
@@ -228,10 +243,10 @@ begin
   Layout := Result.AddKey('Layout');
   Layout.SetValue(Number('RowsCount', 4));
   Layout.SetValue(Number('ColumnsCount', 3));
-  AddItem(Layout, 0, 'Atlas.Welcome.board', 0, 0, 2, 3);
-  AddItem(Layout, 1, 'Embarcadero.WelcomePagePlugin.GetItNewIn', 2, 0, 2, 1);
-  AddItem(Layout, 2, 'Embarcadero.WelcomePagePlugin.OpenRecent', 2, 1, 2, 1);
-  AddItem(Layout, 3, 'Embarcadero.WelcomePagePlugin.Learn', 2, 2, 2, 1);
+  AddItem(Layout, 0, 'Atlas.Welcome.board', [0, 0, 2, 3]);
+  AddItem(Layout, 1, 'Embarcadero.WelcomePagePlugin.GetItNewIn', [2, 0, 2, 1]);
+  AddItem(Layout, 2, 'Embarcadero.WelcomePagePlugin.OpenRecent', [2, 1, 2, 1]);
+  AddItem(Layout, 3, 'Embarcadero.WelcomePagePlugin.Learn', [2, 2, 2, 1]);
 end;
 
 function ReadLayout(AKey: TAtlasRegKey): TAtlasHostLayout;
@@ -846,7 +861,9 @@ var
 begin
   Result := '';
   for Step in ASteps do
+  begin
     Result := Result + IntToStr(Ord(Step)) + ';';
+  end;
 end;
 
 function Expected(const ASteps: array of TAtlasIdePageStep): string;
@@ -855,7 +872,9 @@ var
 begin
   Result := '';
   for Step in ASteps do
+  begin
     Result := Result + IntToStr(Ord(Step)) + ';';
+  end;
 end;
 
 procedure TAtlasIdePageStepsTests.FirstSyncDoesNothing;
@@ -1032,7 +1051,9 @@ var
 begin
   Result := ADefault;
   if FValues.TryGetValue(AName, Text) then
+  begin
     Result := StrToIntDef(Text, ADefault);
+  end;
 end;
 
 procedure TMemoryStore.WriteInteger(const AName: string; AValue: Integer);
@@ -1043,7 +1064,9 @@ end;
 function TMemoryStore.ReadString(const AName, ADefault: string): string;
 begin
   if not FValues.TryGetValue(AName, Result) then
+  begin
     Result := ADefault;
+  end;
 end;
 
 procedure TMemoryStore.WriteString(const AName, AValue: string);
@@ -1163,116 +1186,134 @@ begin
   Assert.AreEqual('Arbeit', Settings.WelcomePageActiveLayout);
 end;
 
+/// <summary>Einstellungen der Willkommensseite, alle abweichend von der Vorgabe.</summary>
+function ChangedWelcomeSettings: TAtlasPluginSettings;
+begin
+  Result := TAtlasPluginSettings.Defaults;
+  Result.WelcomePage := False;
+  Result.WelcomePageOpenOnStart := True;
+  Result.WelcomePageIdePage := False;
+  Result.WelcomePageLayout := 'atlas';
+  Result.WelcomePageHeader := False;
+  Result.WelcomePageGreeting := False;
+  Result.WelcomePageWhatsNew := 'always';
+  Result.WhatsNewSeen := '1.1.0';
+  Result.WelcomePageContinue := False;
+  Result.WelcomePageContinueCount := 7;
+  Result.WelcomePageContinueIncoming := False;
+  Result.WelcomePageContinueFetch := True;
+  Result.WelcomePageSaved := False;
+  Result.WelcomePageProjectStatus := False;
+  Result.WelcomePageMaxProjects := 12;
+  Result.WelcomePageRefreshVcs := False;
+  Result.WelcomePageUnsaved := False;
+  Result.WelcomePageUnsavedMinAgeHours := 3;
+  Result.WelcomePageUnsavedWarnHours := 10;
+  Result.WelcomePageUnsavedAlertHours := 20;
+  Result.WelcomePageUnsavedHideWhenClean := True;
+  Result.WelcomePageStatusTile := False;
+  Result.WelcomePageStatusTileOnlyProblems := True;
+  Result.WelcomePageDiscover := False;
+  Result.TipsUsageTracking := False;
+  Result.WelcomePageHelp := False;
+  Result.WelcomePageHelpReportUrl := 'https://example.org/issues/new';
+  Result.WelcomePageHelpReportFolder := 'D:\Diagnose';
+  Result.WelcomePageProjectSetup := False;
+  Result.WelcomePageNewFromTemplate := False;
+  Result.WelcomePageCustomLayout := False;
+  Result.WelcomePageColumns := 3;
+  Result.WelcomePageLayouts := '[{"name":"Arbeit","columns":3,"slots":[]}]';
+  Result.WelcomePageActiveLayout := 'Arbeit';
+end;
+
+/// <summary>Die geänderten Einstellungen stehen unter ihren Registry-Namen im Speicher.</summary>
+procedure AssertWelcomeStored(const AStore: IAtlasSettingsStore);
+begin
+  Assert.AreEqual(0, AStore.ReadInteger('WelcomePageCustomLayout', 1), 'Registry-Name (#767)');
+  Assert.AreEqual(3, AStore.ReadInteger('WelcomePageColumns', 0));
+  Assert.AreEqual('[{"name":"Arbeit","columns":3,"slots":[]}]', AStore.ReadString('WelcomePageLayouts', ''));
+  Assert.AreEqual('Arbeit', AStore.ReadString('WelcomePageActiveLayout', ''));
+  Assert.AreEqual(0, AStore.ReadInteger('WelcomePageHelp', 1), 'Registry-Name (#766)');
+  Assert.AreEqual('https://example.org/issues/new', AStore.ReadString('WelcomePageHelpReportUrl', ''));
+  Assert.AreEqual('D:\Diagnose', AStore.ReadString('WelcomePageHelpReportFolder', ''));
+  Assert.AreEqual(0, AStore.ReadInteger('WelcomePageProjectSetup', 1), 'Registry-Name (#759)');
+  Assert.AreEqual(0, AStore.ReadInteger('WelcomePageNewFromTemplate', 1), 'Registry-Name (#759)');
+  Assert.AreEqual(0, AStore.ReadInteger('WelcomePageDiscover', 1), 'Registry-Name (#757)');
+  Assert.AreEqual(0, AStore.ReadInteger('TipsUsageTracking', 1), 'Registry-Name (#757)');
+  Assert.AreEqual(0, AStore.ReadInteger('WelcomePageStatusTile', 1), 'Registry-Name (#754)');
+  Assert.AreEqual(1, AStore.ReadInteger('WelcomePageStatusTileOnlyProblems', 0));
+  Assert.AreEqual(0, AStore.ReadInteger('WelcomePageUnsaved', 1), 'Registry-Name (#762)');
+  Assert.AreEqual(3, AStore.ReadInteger('WelcomePageUnsavedMinAgeHours', 0));
+  Assert.AreEqual(10, AStore.ReadInteger('WelcomePageUnsavedWarnHours', 0));
+  Assert.AreEqual(20, AStore.ReadInteger('WelcomePageUnsavedAlertHours', 0));
+  Assert.AreEqual(1, AStore.ReadInteger('WelcomePageUnsavedHideWhenClean', 0));
+  Assert.AreEqual(0, AStore.ReadInteger('WelcomePageContinue', 1), 'Registry-Name (#755)');
+  Assert.AreEqual(7, AStore.ReadInteger('WelcomePageContinueCount', 0));
+  Assert.AreEqual(0, AStore.ReadInteger('WelcomePageContinueIncoming', 1));
+  Assert.AreEqual(1, AStore.ReadInteger('WelcomePageContinueFetch', 0));
+  Assert.AreEqual(0, AStore.ReadInteger('WelcomePageSaved', 1));
+  Assert.AreEqual(0, AStore.ReadInteger('WelcomePageProjectStatus', 1), 'Registry-Name (#592)');
+  Assert.AreEqual(12, AStore.ReadInteger('WelcomePageMaxProjects', 0));
+  Assert.AreEqual(0, AStore.ReadInteger('WelcomePageRefreshVcs', 1));
+  Assert.AreEqual(0, AStore.ReadInteger('WelcomePage', 1), 'Registry-Name');
+  Assert.AreEqual(1, AStore.ReadInteger('WelcomePageOpenOnStart', 0), 'Registry-Name (#1114)');
+  Assert.AreEqual(0, AStore.ReadInteger('WelcomePageIdePage', 1), 'Registry-Name (#761)');
+  Assert.AreEqual('atlas', AStore.ReadString('WelcomePageLayout', ''));
+  Assert.AreEqual('always', AStore.ReadString('WelcomePageWhatsNew', ''));
+  Assert.AreEqual('1.1.0', AStore.ReadString('WhatsNewSeen', ''));
+end;
+
+/// <summary>Geladen kommen alle geänderten Einstellungen wieder.</summary>
+procedure AssertWelcomeLoaded(const ALoaded: TAtlasPluginSettings);
+begin
+  Assert.IsFalse(ALoaded.WelcomePage);
+  Assert.IsTrue(ALoaded.WelcomePageOpenOnStart);
+  Assert.IsFalse(ALoaded.WelcomePageIdePage);
+  Assert.AreEqual('atlas', ALoaded.WelcomePageLayout);
+  Assert.IsFalse(ALoaded.WelcomePageHeader);
+  Assert.IsFalse(ALoaded.WelcomePageGreeting);
+  Assert.AreEqual('always', ALoaded.WelcomePageWhatsNew);
+  Assert.AreEqual('1.1.0', ALoaded.WhatsNewSeen);
+  Assert.IsFalse(ALoaded.WelcomePageContinue);
+  Assert.AreEqual(7, ALoaded.WelcomePageContinueCount);
+  Assert.IsFalse(ALoaded.WelcomePageContinueIncoming);
+  Assert.IsTrue(ALoaded.WelcomePageContinueFetch);
+  Assert.IsFalse(ALoaded.WelcomePageSaved);
+  Assert.IsFalse(ALoaded.WelcomePageCustomLayout);
+  Assert.AreEqual(3, ALoaded.WelcomePageColumns);
+  Assert.AreEqual('[{"name":"Arbeit","columns":3,"slots":[]}]', ALoaded.WelcomePageLayouts);
+  Assert.AreEqual('Arbeit', ALoaded.WelcomePageActiveLayout);
+  Assert.IsFalse(ALoaded.WelcomePageProjectStatus);
+  Assert.AreEqual(12, ALoaded.WelcomePageMaxProjects);
+  Assert.IsFalse(ALoaded.WelcomePageRefreshVcs);
+  Assert.IsFalse(ALoaded.WelcomePageUnsaved);
+  Assert.AreEqual(3, ALoaded.WelcomePageUnsavedMinAgeHours);
+  Assert.AreEqual(10, ALoaded.WelcomePageUnsavedWarnHours);
+  Assert.AreEqual(20, ALoaded.WelcomePageUnsavedAlertHours);
+  Assert.IsTrue(ALoaded.WelcomePageUnsavedHideWhenClean);
+  Assert.IsFalse(ALoaded.WelcomePageStatusTile);
+  Assert.IsTrue(ALoaded.WelcomePageStatusTileOnlyProblems);
+  Assert.IsFalse(ALoaded.WelcomePageDiscover);
+  Assert.IsFalse(ALoaded.TipsUsageTracking);
+  Assert.IsFalse(ALoaded.WelcomePageHelp);
+  Assert.AreEqual('https://example.org/issues/new', ALoaded.WelcomePageHelpReportUrl);
+  Assert.AreEqual('D:\Diagnose', ALoaded.WelcomePageHelpReportFolder);
+  Assert.IsFalse(ALoaded.WelcomePageProjectSetup);
+  Assert.IsFalse(ALoaded.WelcomePageNewFromTemplate);
+end;
+
 procedure TAtlasWelcomeSettingsTests.SaveAndLoadRoundTrip;
 var
   Store: IAtlasSettingsStore;
   Saved, Loaded: TAtlasPluginSettings;
 begin
   Store := TMemoryStore.Create;
-  Saved := TAtlasPluginSettings.Defaults;
-  Saved.WelcomePage := False;
-  Saved.WelcomePageOpenOnStart := True;
-  Saved.WelcomePageIdePage := False;
-  Saved.WelcomePageLayout := 'atlas';
-  Saved.WelcomePageHeader := False;
-  Saved.WelcomePageGreeting := False;
-  Saved.WelcomePageWhatsNew := 'always';
-  Saved.WhatsNewSeen := '1.1.0';
-  Saved.WelcomePageContinue := False;
-  Saved.WelcomePageContinueCount := 7;
-  Saved.WelcomePageContinueIncoming := False;
-  Saved.WelcomePageContinueFetch := True;
-  Saved.WelcomePageSaved := False;
-  Saved.WelcomePageProjectStatus := False;
-  Saved.WelcomePageMaxProjects := 12;
-  Saved.WelcomePageRefreshVcs := False;
-  Saved.WelcomePageUnsaved := False;
-  Saved.WelcomePageUnsavedMinAgeHours := 3;
-  Saved.WelcomePageUnsavedWarnHours := 10;
-  Saved.WelcomePageUnsavedAlertHours := 20;
-  Saved.WelcomePageUnsavedHideWhenClean := True;
-  Saved.WelcomePageStatusTile := False;
-  Saved.WelcomePageStatusTileOnlyProblems := True;
-  Saved.WelcomePageDiscover := False;
-  Saved.TipsUsageTracking := False;
-  Saved.WelcomePageHelp := False;
-  Saved.WelcomePageHelpReportUrl := 'https://example.org/issues/new';
-  Saved.WelcomePageHelpReportFolder := 'D:\Diagnose';
-  Saved.WelcomePageProjectSetup := False;
-  Saved.WelcomePageNewFromTemplate := False;
-  Saved.WelcomePageCustomLayout := False;
-  Saved.WelcomePageColumns := 3;
-  Saved.WelcomePageLayouts := '[{"name":"Arbeit","columns":3,"slots":[]}]';
-  Saved.WelcomePageActiveLayout := 'Arbeit';
+  Saved := ChangedWelcomeSettings;
   Saved.Save(Store);
-  Assert.AreEqual(0, Store.ReadInteger('WelcomePageCustomLayout', 1), 'Registry-Name (#767)');
-  Assert.AreEqual(3, Store.ReadInteger('WelcomePageColumns', 0));
-  Assert.AreEqual('[{"name":"Arbeit","columns":3,"slots":[]}]', Store.ReadString('WelcomePageLayouts', ''));
-  Assert.AreEqual('Arbeit', Store.ReadString('WelcomePageActiveLayout', ''));
-  Assert.AreEqual(0, Store.ReadInteger('WelcomePageHelp', 1), 'Registry-Name (#766)');
-  Assert.AreEqual('https://example.org/issues/new', Store.ReadString('WelcomePageHelpReportUrl', ''));
-  Assert.AreEqual('D:\Diagnose', Store.ReadString('WelcomePageHelpReportFolder', ''));
-  Assert.AreEqual(0, Store.ReadInteger('WelcomePageProjectSetup', 1), 'Registry-Name (#759)');
-  Assert.AreEqual(0, Store.ReadInteger('WelcomePageNewFromTemplate', 1), 'Registry-Name (#759)');
-  Assert.AreEqual(0, Store.ReadInteger('WelcomePageDiscover', 1), 'Registry-Name (#757)');
-  Assert.AreEqual(0, Store.ReadInteger('TipsUsageTracking', 1), 'Registry-Name (#757)');
-  Assert.AreEqual(0, Store.ReadInteger('WelcomePageStatusTile', 1), 'Registry-Name (#754)');
-  Assert.AreEqual(1, Store.ReadInteger('WelcomePageStatusTileOnlyProblems', 0));
-  Assert.AreEqual(0, Store.ReadInteger('WelcomePageUnsaved', 1), 'Registry-Name (#762)');
-  Assert.AreEqual(3, Store.ReadInteger('WelcomePageUnsavedMinAgeHours', 0));
-  Assert.AreEqual(10, Store.ReadInteger('WelcomePageUnsavedWarnHours', 0));
-  Assert.AreEqual(20, Store.ReadInteger('WelcomePageUnsavedAlertHours', 0));
-  Assert.AreEqual(1, Store.ReadInteger('WelcomePageUnsavedHideWhenClean', 0));
-  Assert.AreEqual(0, Store.ReadInteger('WelcomePageContinue', 1), 'Registry-Name (#755)');
-  Assert.AreEqual(7, Store.ReadInteger('WelcomePageContinueCount', 0));
-  Assert.AreEqual(0, Store.ReadInteger('WelcomePageContinueIncoming', 1));
-  Assert.AreEqual(1, Store.ReadInteger('WelcomePageContinueFetch', 0));
-  Assert.AreEqual(0, Store.ReadInteger('WelcomePageSaved', 1));
-  Assert.AreEqual(0, Store.ReadInteger('WelcomePageProjectStatus', 1), 'Registry-Name (#592)');
-  Assert.AreEqual(12, Store.ReadInteger('WelcomePageMaxProjects', 0));
-  Assert.AreEqual(0, Store.ReadInteger('WelcomePageRefreshVcs', 1));
-  Assert.AreEqual(0, Store.ReadInteger('WelcomePage', 1), 'Registry-Name');
-  Assert.AreEqual(1, Store.ReadInteger('WelcomePageOpenOnStart', 0), 'Registry-Name (#1114)');
-  Assert.AreEqual(0, Store.ReadInteger('WelcomePageIdePage', 1), 'Registry-Name (#761)');
-  Assert.AreEqual('atlas', Store.ReadString('WelcomePageLayout', ''));
-  Assert.AreEqual('always', Store.ReadString('WelcomePageWhatsNew', ''));
-  Assert.AreEqual('1.1.0', Store.ReadString('WhatsNewSeen', ''));
+  AssertWelcomeStored(Store);
   Loaded := Default(TAtlasPluginSettings);
   Loaded.Load(Store);
-  Assert.IsFalse(Loaded.WelcomePage);
-  Assert.IsTrue(Loaded.WelcomePageOpenOnStart);
-  Assert.IsFalse(Loaded.WelcomePageIdePage);
-  Assert.AreEqual('atlas', Loaded.WelcomePageLayout);
-  Assert.IsFalse(Loaded.WelcomePageHeader);
-  Assert.IsFalse(Loaded.WelcomePageGreeting);
-  Assert.AreEqual('always', Loaded.WelcomePageWhatsNew);
-  Assert.AreEqual('1.1.0', Loaded.WhatsNewSeen);
-  Assert.IsFalse(Loaded.WelcomePageContinue);
-  Assert.AreEqual(7, Loaded.WelcomePageContinueCount);
-  Assert.IsFalse(Loaded.WelcomePageContinueIncoming);
-  Assert.IsTrue(Loaded.WelcomePageContinueFetch);
-  Assert.IsFalse(Loaded.WelcomePageSaved);
-  Assert.IsFalse(Loaded.WelcomePageCustomLayout);
-  Assert.AreEqual(3, Loaded.WelcomePageColumns);
-  Assert.AreEqual('[{"name":"Arbeit","columns":3,"slots":[]}]', Loaded.WelcomePageLayouts);
-  Assert.AreEqual('Arbeit', Loaded.WelcomePageActiveLayout);
-  Assert.IsFalse(Loaded.WelcomePageProjectStatus);
-  Assert.AreEqual(12, Loaded.WelcomePageMaxProjects);
-  Assert.IsFalse(Loaded.WelcomePageRefreshVcs);
-  Assert.IsFalse(Loaded.WelcomePageUnsaved);
-  Assert.AreEqual(3, Loaded.WelcomePageUnsavedMinAgeHours);
-  Assert.AreEqual(10, Loaded.WelcomePageUnsavedWarnHours);
-  Assert.AreEqual(20, Loaded.WelcomePageUnsavedAlertHours);
-  Assert.IsTrue(Loaded.WelcomePageUnsavedHideWhenClean);
-  Assert.IsFalse(Loaded.WelcomePageStatusTile);
-  Assert.IsTrue(Loaded.WelcomePageStatusTileOnlyProblems);
-  Assert.IsFalse(Loaded.WelcomePageDiscover);
-  Assert.IsFalse(Loaded.TipsUsageTracking);
-  Assert.IsFalse(Loaded.WelcomePageHelp);
-  Assert.AreEqual('https://example.org/issues/new', Loaded.WelcomePageHelpReportUrl);
-  Assert.AreEqual('D:\Diagnose', Loaded.WelcomePageHelpReportFolder);
-  Assert.IsFalse(Loaded.WelcomePageProjectSetup);
-  Assert.IsFalse(Loaded.WelcomePageNewFromTemplate);
+  AssertWelcomeLoaded(Loaded);
 end;
 
 initialization

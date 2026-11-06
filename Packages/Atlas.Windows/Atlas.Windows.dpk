@@ -50,6 +50,13 @@ contains
   Atlas.Windows.Documents.FileWatcher in 'Source\Documents\Atlas.Windows.Documents.FileWatcher.pas',
   Atlas.Windows.Documents.SharedRead in 'Source\Documents\Atlas.Windows.Documents.SharedRead.pas',
   Atlas.Windows.Console.StdStreams in 'Source\Console\Atlas.Windows.Console.StdStreams.pas',
-  Atlas.Windows.Editing.SystemColors in 'Source\Editing\Atlas.Windows.Editing.SystemColors.pas';
+  Atlas.Windows.Editing.SystemColors in 'Source\Editing\Atlas.Windows.Editing.SystemColors.pas',
+  Atlas.Windows.Updates.Adapters.Registry in 'Source\Updates\Atlas.Windows.Updates.Adapters.Registry.pas',
+  Atlas.Windows.Updates.Adapters.Files in 'Source\Updates\Atlas.Windows.Updates.Adapters.Files.pas',
+  Atlas.Windows.Updates.Adapters.Processes in 'Source\Updates\Atlas.Windows.Updates.Adapters.Processes.pas',
+  Atlas.Windows.Updates.Adapters.Trust in 'Source\Updates\Atlas.Windows.Updates.Adapters.Trust.pas',
+  Atlas.Windows.Updates.Adapters.Network in 'Source\Updates\Atlas.Windows.Updates.Adapters.Network.pas',
+  Atlas.Windows.Updates.Adapters.Archive in 'Source\Updates\Atlas.Windows.Updates.Adapters.Archive.pas',
+  Atlas.Windows.Updates.Adapters.Builder in 'Source\Updates\Atlas.Windows.Updates.Adapters.Builder.pas';
 
 end.

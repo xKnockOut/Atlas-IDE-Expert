@@ -42,6 +42,21 @@ type
 
 implementation
 
+uses
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TTextDocumentText = (InvalidRangeInEndLies);
+
+const
+  cTexts: array[TTextDocumentText] of TAtlasText = (
+    (De: 'Ungültiger Bereich in %s: Ende liegt vor dem Anfang'; En: 'Invalid range in %s: end lies before start'));
+
+{$SCOPEDENUMS OFF}
+
 { TTextDocument }
 
 constructor TTextDocument.Create(const AUri, ALanguageId: string; AVersion: Integer; const AText: string);
@@ -82,7 +97,9 @@ end;
 function TTextDocument.LineText(ALine: Integer): string;
 begin
   if (ALine < 0) or (ALine >= FLines.LineCount) then
+  begin
     Exit('');
+  end;
   Result := Copy(FText, FLines.LineStart(ALine) + 1, FLines.LineContentEnd(ALine) - FLines.LineStart(ALine));
 end;
 
@@ -108,12 +125,16 @@ begin
   TMonitor.Enter(Self);
   try
     if (FDerived <> nil) and FDerived.TryGetValue(AKey, Result) then
+    begin
       Exit;
+    end;
     Result := AFactory();
     if Result <> nil then
     begin
       if FDerived = nil then
+      begin
         FDerived := TDictionary<string, IInterface>.Create;
+      end;
       FDerived.Add(AKey, Result);
     end;
   finally
@@ -148,16 +169,25 @@ begin
         EndOffset := Intermediate.OffsetAt(Change.Range.EndPos);
       end;
       if EndOffset < StartOffset then
-        raise EDocumentError.CreateFmt('Ungültiger Bereich in %s: Ende liegt vor dem Anfang', [FUri]);
+      begin
+        raise EDocumentError.CreateFmt(cTexts[TTextDocumentText.InvalidRangeInEndLies].Text, [FUri]);
+      end;
       Text := Copy(Text, 1, StartOffset) + Change.Text + Copy(Text, EndOffset + 1, MaxInt);
     end
     else
+    begin
       Text := Change.Text;
+    end;
     Intermediate := TTextDocument.Create(FUri, FLanguageId, AVersion, Text);
   end;
   if Intermediate = nil then
+  begin
     Intermediate := TTextDocument.Create(FUri, FLanguageId, AVersion, Text);
+  end;
   Result := Intermediate;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Documents.TextDocument', cTexts);
 
 end.

@@ -49,6 +49,10 @@ type
     /// in TCustomListView.ClearSelection).</summary>
     [Test]
     procedure RefillReselectsWithoutFetchingEveryRow;
+    /// <summary>#1843: Einzelprojekte der Gruppe unter einem Trennstrich, der Trennstrich lässt sich nicht wählen,
+    /// ein fehlendes Projekt fällt auf das aktive zurück, Schalter aus = nur feste Einträge.</summary>
+    [Test]
+    procedure ScopeListOffersGroupProjects;
   end;
 
 implementation
@@ -60,8 +64,12 @@ uses
   Vcl.Forms,
   Vcl.Menus,
   Vcl.ComCtrls,
+  Vcl.Buttons,
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Findings,
+  Atlas.Core.Problems.ScopeProjects,
+  Atlas.Core.Settings.ProblemsUpdate,
+  Atlas.UI.Problems.ScopeBox,
   Atlas.UI.Problems.Frame,
   Atlas.UI.Problems.Explain;
 
@@ -78,7 +86,9 @@ procedure TFetchCounter.Fetch(Sender: TObject; Item: TListItem);
 begin
   Inc(Count);
   if Assigned(Inner) then
+  begin
     Inner(Sender, Item);
+  end;
 end;
 
 function Problem(ALine: Integer; const ASource, ACode, AMessage: string; ASeverity: TAtlasProblemSeverity;
@@ -113,6 +123,22 @@ begin
   Result.Parent := AHost;
   Result.ApplySettings(TAtlasFindingScope.Group, TAtlasFindingGrouping.ByFile, '', True);
   Result.SetFindings(Sample, 'C:\P\Kunde.pas', nil);
+end;
+
+/// <summary>True, wenn AFrame einen Knopf mit der Beschriftung ACaption besitzt.</summary>
+function HasButton(AFrame: TAtlasProblemsFrame; const ACaption: string): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := False;
+  for mIndex := 0 to AFrame.ComponentCount - 1 do
+  begin
+    if (AFrame.Components[mIndex] is TSpeedButton) and
+      SameStr(TSpeedButton(AFrame.Components[mIndex]).Caption, ACaption) then
+    begin
+      Exit(True);
+    end;
+  end;
 end;
 
 { TAtlasProblemsFrameTests }
@@ -280,8 +306,10 @@ var
 begin
   SetLength(Problems, 300);
   for Index := 0 to High(Problems) do
+  begin
     Problems[Index] := Problem(Index, 'Atlas', 'empty-except', 'Leerer except-Block', TAtlasProblemSeverity.Warning,
       '');
+  end;
   Host := TForm.CreateNew(nil);
   Counter := TFetchCounter.Create;
   try
@@ -360,8 +388,12 @@ var
   begin
     Result := nil;
     for Index := 0 to Frame.Menu.Items.Count - 1 do
+    begin
       if StripHotkey(Frame.Menu.Items[Index].Caption).StartsWith(ACaption) then
+      begin
         Exit(Frame.Menu.Items[Index]);
+      end;
+    end;
   end;
 
 begin
@@ -403,8 +435,12 @@ var
   begin
     Result := nil;
     for Index := 0 to Frame.Menu.Items.Count - 1 do
+    begin
       if StripHotkey(Frame.Menu.Items[Index].Caption).StartsWith('Alle sicheren Treffer von') then
+      begin
         Exit(Frame.Menu.Items[Index]);
+      end;
+    end;
   end;
 
 begin
@@ -481,10 +517,14 @@ begin
   Host := TForm.CreateNew(nil);
   try
     Frame := NewFrame(Host);
-    Frame.SetLive(True);
+    Frame.SetUpdate(TAtlasProblemsUpdate.Live);
     Assert.AreEqual('● Live', Frame.LiveLabel.Caption);
-    Frame.SetLive(False);
-    Assert.AreEqual('Angehalten', Frame.LiveLabel.Caption);
+    Frame.SetUpdate(TAtlasProblemsUpdate.Save);
+    Assert.AreEqual('Beim Speichern', Frame.LiveLabel.Caption);
+    Frame.SetUpdate(TAtlasProblemsUpdate.Manual);
+    Assert.AreEqual('Manuell', Frame.LiveLabel.Caption);
+    // Die aktuelle Datei prüft die Schaltfläche der Atlas-Statusleiste, das Fenster hat keinen eigenen Knopf.
+    Assert.IsFalse(HasButton(Frame, 'Datei jetzt prüfen'), 'kein Knopf „Datei jetzt prüfen“');
     Frame.SetStatus('3 Befunde in 2 Dateien');
     Assert.AreEqual('3 Befunde in 2 Dateien', Frame.StatusLabel.Caption);
     Frame.SetFindings(nil, '', nil);
@@ -518,6 +558,73 @@ begin
   finally
     Dialog.Free;
   end;
+end;
+
+procedure TAtlasProblemsFrameTests.ScopeListOffersGroupProjects;
+var
+  mHost: TForm;
+  mFrame: TAtlasProblemsFrame;
+  mScopes, mLayouts: Integer;
+  mProjects: TArray<TAtlasScopeProject>;
+begin
+  mScopes := 0;
+  mLayouts := 0;
+  mProjects := TArray<TAtlasScopeProject>.Create(TAtlasScopeProject.Create('C:\G\Atlas.Common.dproj', False),
+    TAtlasScopeProject.Create('C:\G\Atlas.IDE.Base.dproj', True));
+  mHost := TForm.CreateNew(nil);
+  try
+    mFrame := NewFrame(mHost);
+    mFrame.OnScope :=
+      procedure(AScope: TAtlasFindingScope)
+      begin
+        Inc(mScopes);
+      end;
+    mFrame.OnLayout :=
+      procedure
+      begin
+        Inc(mLayouts);
+      end;
+    mFrame.ScopeBox.HandleNeeded;
+    Assert.AreEqual(3, Integer(mFrame.ScopeBox.Items.Count), 'ohne Gruppe nur die festen Einträge');
+    Assert.AreEqual('Aktuelles Projekt', mFrame.ScopeBox.Items[1]);
+    mFrame.SetScopeProjects(mProjects);
+    Assert.AreEqual(6, Integer(mFrame.ScopeBox.Items.Count), 'Trennstrich und zwei Projekte');
+    Assert.AreEqual('Atlas.Common', mFrame.ScopeBox.Items[4]);
+    Assert.AreEqual('Atlas.IDE.Base (aktiv)', mFrame.ScopeBox.Items[5]);
+    Assert.AreEqual(2, mFrame.ScopeBox.ItemIndex, 'Projektgruppe bleibt gewählt');
+    // Trennstrich: die vorige Wahl bleibt.
+    mFrame.ScopeBox.ItemIndex := 3;
+    mFrame.ScopeBox.OnChange(mFrame.ScopeBox);
+    Assert.AreEqual(2, mFrame.ScopeBox.ItemIndex);
+    Assert.AreEqual(0, mScopes);
+    // Einzelprojekt wählen.
+    mFrame.ScopeBox.ItemIndex := 4;
+    mFrame.ScopeBox.OnChange(mFrame.ScopeBox);
+    Assert.IsTrue(mFrame.Scope = TAtlasFindingScope.Project);
+    Assert.AreEqual('Atlas.Common', mFrame.ScopeProject);
+    Assert.AreEqual(1, mScopes);
+    Assert.AreEqual(1, mLayouts);
+    // Das Projekt verlässt die Gruppe: aktives Projekt, gespeichert über OnLayout.
+    mFrame.SetScopeProjects(TArray<TAtlasScopeProject>.Create(mProjects[1],
+      TAtlasScopeProject.Create('C:\G\Atlas.Tests.dproj', False)));
+    Assert.AreEqual('', mFrame.ScopeProject);
+    Assert.AreEqual(1, mFrame.ScopeBox.ItemIndex);
+    Assert.AreEqual(2, mLayouts);
+    // Gespeichertes Einzelprojekt beim Start; Schalter aus: nur die festen Einträge.
+    mFrame.ApplyScopeSettings(True, 'Atlas.Tests');
+    Assert.AreEqual(5, mFrame.ScopeBox.ItemIndex);
+    mFrame.ApplyScopeSettings(False, 'Atlas.Tests');
+    Assert.AreEqual(3, Integer(mFrame.ScopeBox.Items.Count));
+    Assert.AreEqual('', mFrame.ScopeProject);
+    Assert.AreEqual(1, mFrame.ScopeBox.ItemIndex);
+  finally
+    mHost.Free;
+  end;
+  TAtlasStrings.Language := TAtlasLanguage.English;
+  Assert.AreEqual('Atlas.Tests (active)', Format(TAtlasProblemsScopeBox.Text(TAtlasScopeBoxText.ActiveMark),
+    ['Atlas.Tests']));
+  Assert.AreEqual('Individual projects of the group in the window''s scope list',
+    TAtlasProblemsScopeBox.Text(TAtlasScopeBoxText.Setting));
 end;
 
 initialization

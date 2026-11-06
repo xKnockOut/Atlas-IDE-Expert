@@ -91,7 +91,9 @@ begin
   FRecent.Free;
   FLock.Free;
   if FOwnsTrace then
+  begin
     FTrace.Free;
+  end;
   inherited;
 end;
 
@@ -126,7 +128,9 @@ begin
   Inc(FRecentChars, Length(ALine));
   while (FRecent.Count > 1) and ((FRecentChars > RecentMaxChars) or
     (FRecent.Peek.Time < ATime - RecentMinutes / MinsPerDay)) do
+  begin
     Dec(FRecentChars, Length(FRecent.Dequeue.Text));
+  end;
 end;
 
 function TJsonRpcTracingTransport.RecentLines(AMinutes: Integer; ANow: TDateTime): TArray<string>;
@@ -136,15 +140,21 @@ var
   mLines: TList<string>;
 begin
   if AMinutes > RecentMinutes then
+  begin
     AMinutes := RecentMinutes;
+  end;
   mSince := ANow - AMinutes / MinsPerDay;
   mLines := TList<string>.Create;
   try
     FLock.Enter;
     try
       for mLine in FRecent do
+      begin
         if mLine.Time >= mSince then
+        begin
           mLines.Add(mLine.Text);
+        end;
+      end;
     finally
       FLock.Leave;
     end;

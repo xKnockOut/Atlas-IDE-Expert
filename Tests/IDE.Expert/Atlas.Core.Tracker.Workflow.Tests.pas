@@ -13,12 +13,17 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerWorkflowTests = class
   public
     [Test]
     procedure ParseListAndListText;
     [Test]
     procedure FillReplacesPlaceholders;
+    /// <summary>Unveränderte Vorgabe von issues.endComment folgt der Sprache der Oberfläche, eigener Text bleibt
+    /// (#1458); die deutsche Vorgabe ist die des Schemas.</summary>
+    [Test]
+    procedure EndCommentFollowsLanguage;
     [Test]
     procedure MentionsKeyAsOwnWord;
     [Test]
@@ -45,6 +50,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerWriterTests = class
   public
     /// <summary>Namen mit Leerzeichen oder Satzzeichen in {}, Umlaute ohne.</summary>
@@ -80,12 +86,17 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
+  Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Workflow,
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Providers.YouTrack,
-  Atlas.Core.Vcs.Contract;
+  Atlas.Core.Vcs.Contract,
+  Atlas.Core.Tracker.Internals.GitHubApi,
+  Atlas.Core.Tracker.YouTrackApi,
+  Atlas.Core.Tracker.YouTrackParse;
 
 type
   /// <summary>Transport mit festen Antworten je Methode und Adressanfang; merkt sich Aufrufe und Inhalte.</summary>
@@ -102,8 +113,8 @@ type
     function Reply(const AMethod, AUrl: string; out AStatus: Integer; out AText: string): Boolean;
     function Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
       out AError: TAtlasCiFetchError): Boolean;
-    function Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
-      out AError: TAtlasCiFetchError): Boolean;
+    function Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AResponse: TAtlasCiResponse):
+      Boolean;
   end;
 
   /// <summary>Nur GET, kein IAtlasCiSend.</summary>
@@ -149,12 +160,14 @@ begin
   AText := '';
   Result := True;
   for mIndex := 0 to High(FPrefixes) do
+  begin
     if (FMethods[mIndex] = AMethod) and (Copy(AUrl, 1, Length(FPrefixes[mIndex])) = FPrefixes[mIndex]) then
     begin
       AStatus := FStatus[mIndex];
       AText := FTexts[mIndex];
       Exit;
     end;
+  end;
 end;
 
 function TFakeSendTransport.Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
@@ -164,12 +177,12 @@ begin
   Result := Reply('GET', AUrl, AStatus, AText);
 end;
 
-function TFakeSendTransport.Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AStatus: Integer;
-  out AText: string; out AError: TAtlasCiFetchError): Boolean;
+function TFakeSendTransport.Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer;
+  out AResponse: TAtlasCiResponse): Boolean;
 begin
-  AError := TAtlasCiFetchError.None;
+  AResponse := TAtlasCiResponse.Failed(TAtlasCiFetchError.None);
   Bodies := Bodies + [ABody];
-  Result := Reply(AMethod, AUrl, AStatus, AText);
+  Result := Reply(AMethod, AUrl, AResponse.Status, AResponse.Text);
 end;
 
 { TFakeGetTransport }
@@ -216,7 +229,9 @@ begin
   Asked := Asked + [AUpstream];
   ACommits := nil;
   if AUpstream <> FGoodBase then
+  begin
     Exit(TAtlasVcsOutcome.Failed);
+  end;
   ACommits := FCommits;
   Result := TAtlasVcsOutcome.Ok;
 end;
@@ -251,8 +266,8 @@ end;
 
 function Options(const AEndStates: string): TAtlasTrackerSyncOptions;
 begin
-  Result := TAtlasTrackerSyncOptions.Create(True, '', '', 'In Arbeit', True, 'Beginne {kennung}', AEndStates,
-    TAtlasTrackerWorkflow.DefaultEndComment);
+  Result := TAtlasTrackerSyncOptions.Create(True, '', '').WithStart('In Arbeit', True,
+    'Beginne {kennung}').WithEnd(AEndStates, TAtlasTrackerWorkflow.DefaultEndComment);
 end;
 
 /// <summary>Wert AName des JSON-Objekts AJson als Text ('' ohne).</summary>
@@ -268,9 +283,13 @@ begin
     begin
       mItem := TJSONObject(mValue).Values[AName];
       if mItem is TJSONArray then
-        Result := mItem.ToJSON
+      begin
+        Result := mItem.ToJSON;
+      end
       else if mItem <> nil then
+      begin
         Result := mItem.Value;
+      end;
     end;
   finally
     mValue.Free;
@@ -298,6 +317,19 @@ begin
   Assert.IsFalse(TAtlasTrackerWorkflow.UsesFields(TAtlasTrackerTarget.GitHub), 'GitHub');
   Assert.IsFalse(TAtlasTrackerWorkflow.UsesFields(' GitHub '), 'Schreibweise und Leerraum');
   Assert.IsTrue(TAtlasTrackerWorkflow.UsesFields(''), 'ohne Anbieter');
+end;
+
+procedure TAtlasTrackerWorkflowTests.EndCommentFollowsLanguage;
+begin
+  Assert.AreEqual(TAtlasPluginSettings.DefaultIssuesEndComment, TAtlasTrackerWorkflow.DefaultEndComment);
+  Assert.AreEqual(TAtlasTrackerWorkflow.DefaultEndCommentEn,
+    TAtlasTrackerWorkflow.EndCommentFor(TAtlasTrackerWorkflow.DefaultEndComment, True));
+  Assert.AreEqual(TAtlasTrackerWorkflow.DefaultEndComment,
+    TAtlasTrackerWorkflow.EndCommentFor(TAtlasTrackerWorkflow.DefaultEndCommentEn, False));
+  Assert.AreEqual(TAtlasTrackerWorkflow.DefaultEndComment,
+    TAtlasTrackerWorkflow.EndCommentFor(TAtlasTrackerWorkflow.DefaultEndComment, False));
+  Assert.AreEqual('Fertig: {pr}', TAtlasTrackerWorkflow.EndCommentFor('Fertig: {pr}', True), 'eigener Text');
+  Assert.AreEqual('', TAtlasTrackerWorkflow.EndCommentFor('', True), 'leer = kein Kommentar');
 end;
 
 procedure TAtlasTrackerWorkflowTests.FillReplacesPlaceholders;
@@ -345,7 +377,9 @@ begin
   Assert.AreEqual('', TAtlasTrackerWorkflow.CommitLines(mCommits, 'ATL-9'));
   mCommits := nil;
   for mIndex := 1 to TAtlasTrackerWorkflow.MaxCommits + 5 do
+  begin
     mCommits := mCommits + [Commit(Format('%.7d', [mIndex]), 'ATL-123: ' + IntToStr(mIndex))];
+  end;
   mLines := TAtlasTrackerWorkflow.CommitLines(mCommits, 'ATL-123').Split([#10]);
   Assert.AreEqual(TAtlasTrackerWorkflow.MaxCommits, Integer(Length(mLines)), 'höchstens MaxCommits');
 end;
@@ -408,7 +442,7 @@ begin
   Assert.IsFalse(mOptions.HasStartWork);
   Assert.IsFalse(TAtlasTrackerWorkflow.StartChange(mOptions, TAtlasTrackerPlaceholders.Create('ATL-1', '')).HasWork,
     'syncState aus: „Beginnen“ wie bisher');
-  mOptions := TAtlasTrackerSyncOptions.Create(True, '', '', '', False, '', '', '');
+  mOptions := TAtlasTrackerSyncOptions.Create(True, '', '');
   Assert.IsFalse(mOptions.HasStartWork, 'nichts eingestellt');
 end;
 
@@ -477,22 +511,22 @@ procedure TAtlasTrackerWriterTests.YouTrackCommandWithBraces;
 var
   mChange: TAtlasTrackerWrite;
 begin
-  Assert.AreEqual('Erledigt', TAtlasYouTrackTracker.CommandWord('Erledigt'));
-  Assert.AreEqual('Geprüft', TAtlasYouTrackTracker.CommandWord(' Geprüft '), 'Umlaute ohne Klammern');
-  Assert.AreEqual('{In Arbeit}', TAtlasYouTrackTracker.CommandWord('In Arbeit'));
-  Assert.AreEqual('{Won''t fix}', TAtlasYouTrackTracker.CommandWord('Won''t fix'));
-  Assert.AreEqual('{a b}', TAtlasYouTrackTracker.CommandWord('a {b}'), 'Klammern im Namen entfallen');
+  Assert.AreEqual('Erledigt', TAtlasYouTrackBodies.CommandWord('Erledigt'));
+  Assert.AreEqual('Geprüft', TAtlasYouTrackBodies.CommandWord(' Geprüft '), 'Umlaute ohne Klammern');
+  Assert.AreEqual('{In Arbeit}', TAtlasYouTrackBodies.CommandWord('In Arbeit'));
+  Assert.AreEqual('{Won''t fix}', TAtlasYouTrackBodies.CommandWord('Won''t fix'));
+  Assert.AreEqual('{a b}', TAtlasYouTrackBodies.CommandWord('a {b}'), 'Klammern im Namen entfallen');
   mChange := TAtlasTrackerWrite.Empty;
   mChange.StateField := 'Status';
   mChange.State := 'In Arbeit';
   mChange.Assign := TAtlasTrackerAssign.Me;
-  Assert.AreEqual('Status {In Arbeit} Assignee me', TAtlasYouTrackTracker.CommandQuery(mChange));
+  Assert.AreEqual('Status {In Arbeit} Assignee me', TAtlasYouTrackBodies.CommandQuery(mChange));
   mChange.AssigneeField := 'Zuständige Person';
   mChange.Assign := TAtlasTrackerAssign.User;
   mChange.Assignee := 'anna.m';
-  Assert.AreEqual('Status {In Arbeit} {Zuständige Person} anna.m', TAtlasYouTrackTracker.CommandQuery(mChange));
+  Assert.AreEqual('Status {In Arbeit} {Zuständige Person} anna.m', TAtlasYouTrackBodies.CommandQuery(mChange));
   mChange := TAtlasTrackerWrite.CommentOnly('Nur Text');
-  Assert.AreEqual('', TAtlasYouTrackTracker.CommandQuery(mChange), 'nur Kommentar: kein Befehl');
+  Assert.AreEqual('', TAtlasYouTrackBodies.CommandQuery(mChange), 'nur Kommentar: kein Befehl');
 end;
 
 procedure TAtlasTrackerWriterTests.YouTrackCommandJson;
@@ -500,7 +534,7 @@ var
   mJson: string;
   mValue: TJSONValue;
 begin
-  mJson := TAtlasYouTrackTracker.CommandJson('ATL-123', 'State {In Arbeit} Assignee me', 'Beginne');
+  mJson := TAtlasYouTrackBodies.CommandJson('ATL-123', 'State {In Arbeit} Assignee me', 'Beginne');
   Assert.AreEqual('State {In Arbeit} Assignee me', JsonText(mJson, 'query'));
   Assert.AreEqual('Beginne', JsonText(mJson, 'comment'));
   mValue := TJSONObject.ParseJSONValue(mJson);
@@ -510,9 +544,9 @@ begin
   finally
     mValue.Free;
   end;
-  Assert.AreEqual('', JsonText(TAtlasYouTrackTracker.CommandJson('ATL-1', 'State Erledigt', ''), 'comment'),
+  Assert.AreEqual('', JsonText(TAtlasYouTrackBodies.CommandJson('ATL-1', 'State Erledigt', ''), 'comment'),
     'ohne Kommentar kein Feld');
-  Assert.AreEqual('Hallo', JsonText(TAtlasYouTrackTracker.CommentJson('Hallo'), 'text'));
+  Assert.AreEqual('Hallo', JsonText(TAtlasYouTrackBodies.CommentJson('Hallo'), 'text'));
 end;
 
 procedure TAtlasTrackerWriterTests.YouTrackApplyCommandOrComment;
@@ -561,25 +595,25 @@ const
 var
   mValues: TArray<string>;
 begin
-  Assert.IsTrue(TAtlasYouTrackTracker.ParseFieldValues(cProjects, 'ATL', TAtlasTrackerValueKind.States, 'Status',
+  Assert.IsTrue(TAtlasYouTrackParse.ParseFieldValues(cProjects, 'ATL', TAtlasTrackerValueKind.States, 'Status',
     mValues));
   Assert.AreEqual(2, Integer(Length(mValues)), 'archivierte entfallen, nur das eigene Projekt');
   Assert.AreEqual('In Arbeit', mValues[1]);
-  Assert.IsTrue(TAtlasYouTrackTracker.ParseFieldValues(cProjects, 'ATL', TAtlasTrackerValueKind.StateFields, '',
+  Assert.IsTrue(TAtlasYouTrackParse.ParseFieldValues(cProjects, 'ATL', TAtlasTrackerValueKind.StateFields, '',
     mValues));
   Assert.AreEqual(1, Integer(Length(mValues)));
   Assert.AreEqual('Status', mValues[0]);
-  Assert.IsTrue(TAtlasYouTrackTracker.ParseFieldValues(cProjects, 'ATL', TAtlasTrackerValueKind.UserFields, '',
+  Assert.IsTrue(TAtlasYouTrackParse.ParseFieldValues(cProjects, 'ATL', TAtlasTrackerValueKind.UserFields, '',
     mValues));
   Assert.AreEqual('Zuständig', mValues[0]);
-  Assert.IsTrue(TAtlasYouTrackTracker.ParseFieldValues(cProjects, '', TAtlasTrackerValueKind.States, 'Status',
+  Assert.IsTrue(TAtlasYouTrackParse.ParseFieldValues(cProjects, '', TAtlasTrackerValueKind.States, 'Status',
     mValues));
   Assert.AreEqual(3, Integer(Length(mValues)), 'ohne Projekt alle Projekte');
-  Assert.IsTrue(TAtlasYouTrackTracker.ParseUsers('[{"login":"anna","banned":false},{"login":"alt","banned":true},' +
+  Assert.IsTrue(TAtlasYouTrackParse.ParseUsers('[{"login":"anna","banned":false},{"login":"alt","banned":true},' +
     '{"login":"bert"}]', mValues));
   Assert.AreEqual(2, Integer(Length(mValues)), 'gesperrte entfallen');
   Assert.AreEqual('bert', mValues[1]);
-  Assert.IsFalse(TAtlasYouTrackTracker.ParseUsers('kein JSON', mValues));
+  Assert.IsFalse(TAtlasYouTrackParse.ParseUsers('kein JSON', mValues));
 end;
 
 procedure TAtlasTrackerWriterTests.YouTrackErrors;
@@ -621,19 +655,19 @@ var
   mChange: TAtlasTrackerWrite;
   mJson: string;
 begin
-  Assert.IsTrue(TAtlasGitHubTracker.ClosesIssue('Erledigt'));
-  Assert.IsTrue(TAtlasGitHubTracker.ClosesIssue('done'));
-  Assert.IsFalse(TAtlasGitHubTracker.ClosesIssue('Zur Prüfung'));
+  Assert.IsTrue(TAtlasGitHubApi.ClosesIssue('Erledigt'));
+  Assert.IsTrue(TAtlasGitHubApi.ClosesIssue('done'));
+  Assert.IsFalse(TAtlasGitHubApi.ClosesIssue('Zur Prüfung'));
   // Beginnen: Label dazu, mich als Zuständigen dazu.
   mChange := TAtlasTrackerWrite.Empty;
   mChange.State := 'in arbeit';
   mChange.Assign := TAtlasTrackerAssign.Me;
-  mJson := TAtlasGitHubTracker.PatchJson(TArray<string>.Create('bug'), TArray<string>.Create('bert'), mChange, 'anna');
+  mJson := TAtlasGitHubApi.PatchJson(TArray<string>.Create('bug'), TArray<string>.Create('bert'), mChange, 'anna');
   Assert.AreEqual('["bug","in arbeit"]', JsonText(mJson, 'labels'));
   Assert.AreEqual('["bert","anna"]', JsonText(mJson, 'assignees'));
   Assert.AreEqual('', JsonText(mJson, 'state'));
   // Schon so: nichts zu ändern.
-  Assert.AreEqual('', TAtlasGitHubTracker.PatchJson(TArray<string>.Create('in arbeit'), TArray<string>.Create('anna'),
+  Assert.AreEqual('', TAtlasGitHubApi.PatchJson(TArray<string>.Create('in arbeit'), TArray<string>.Create('anna'),
     mChange, 'anna'));
   // Beenden: Label aus „Beginnen“ weg, „Erledigt“ schließt (ohne Label), übergeben ersetzt die Zuständigen.
   mChange := TAtlasTrackerWrite.Empty;
@@ -641,7 +675,7 @@ begin
   mChange.PreviousState := 'in arbeit';
   mChange.Assign := TAtlasTrackerAssign.User;
   mChange.Assignee := 'carl';
-  mJson := TAtlasGitHubTracker.PatchJson(TArray<string>.Create('bug', 'In Arbeit'), TArray<string>.Create('anna',
+  mJson := TAtlasGitHubApi.PatchJson(TArray<string>.Create('bug', 'In Arbeit'), TArray<string>.Create('anna',
     'bert'), mChange, '');
   Assert.AreEqual('["bug"]', JsonText(mJson, 'labels'));
   Assert.AreEqual('["carl"]', JsonText(mJson, 'assignees'));

@@ -16,6 +16,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Debugger')]
   TVisualizerTests = class
   private
     FValues: TDictionary<string, string>;
@@ -70,7 +71,7 @@ type
     [Test]
     procedure KindSwitchedOff;
     [Test]
-    procedure DeclaredTypeFromHover;
+    procedure KindFromHoverChain;
   end;
 
 implementation
@@ -113,7 +114,9 @@ begin
       Result := (AAddress = Self_.FMemoryAddress) and (ACount <= Length(Self_.FMemory));
       ABytes := nil;
       if Result then
+      begin
         ABytes := Copy(Self_.FMemory, 0, ACount);
+      end;
     end;
 end;
 
@@ -168,19 +171,27 @@ begin
   Types := TAtlasVisualizers.SupportedTypes(TAtlasVisualizerKind.Lists);
   Found := False;
   for Item in Types do
+  begin
     if Item.TypeName = 'System.Generics.Collections.TObjectList<T>' then
     begin
       Found := True;
       Assert.IsTrue(Item.IsGeneric);
       Assert.IsTrue(Item.AllDescendants);
     end;
+  end;
   Assert.IsTrue(Found);
   for Kind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
+  begin
     Assert.IsTrue(Length(TAtlasVisualizers.SupportedTypes(Kind)) > 0, TAtlasVisualizerSettings.KindNames[Kind]);
+  end;
   Found := False;
   for Item in TAtlasVisualizers.SupportedTypes(TAtlasVisualizerKind.DataSets) do
+  begin
     if (Item.TypeName = 'Data.DB.TDataSet') and Item.AllDescendants and not Item.IsGeneric then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found, 'TDataSet samt Nachfahren');
 end;
 
@@ -270,7 +281,9 @@ begin
   // Count nur über das Feld der Hilfsstruktur, Elemente über FItems, sieben Einträge: fünf und „…“.
   FValues.Add('Zahlen.FListHelper.FCount', '7');
   for Index := 0 to 6 do
+  begin
     FValues.Add(Format('Zahlen.FItems[%d]', [Index]), IntToStr(Index * 10));
+  end;
   Text := TAtlasVisualizers.Replacement(TAtlasVisualizerKind.Lists, 'Zahlen', 'TList<System.Integer>', '',
     Options(TAtlasVisualizerEvaluation.Fields), Context);
   Assert.AreEqual('TList<Integer> · Count = 7 · [0, 10, 20, 30, 40, …]', Text);
@@ -375,7 +388,9 @@ begin
   // 4096 Bytes: Länge und Anfang; das Fenster liest alles aus dem Speicher.
   SetLength(FMemory, 4096);
   for Index := 0 to High(FMemory) do
+  begin
     FMemory[Index] := Byte(Index);
+  end;
   FMemoryAddress := $10000;
   FValues.Add('Length(Gross)', '4096');
   FValues.Add('Pointer(Gross)', '$10000');
@@ -523,10 +538,13 @@ procedure TVisualizerTests.DibPixelsBottomUp;
 var
   Pixels: TArray<Cardinal>;
 begin
-  Assert.IsTrue(TAtlasVisualizerFormat.DibPixels(TBytes.Create(1, 2, 3, 128), 1, 1, 32, 4, False, Pixels));
+  Assert.IsTrue(TAtlasVisualizerFormat.DibPixels(TBytes.Create(1, 2, 3, 128), TAtlasDibLayout.Create(1, 1, 32, 4,
+    False), Pixels));
   Assert.AreEqual(Int64($80030201), Int64(Pixels[0]));
-  Assert.IsFalse(TAtlasVisualizerFormat.DibPixels(TBytes.Create(1, 2), 1, 1, 8, 4, False, Pixels), '8 Bit');
-  Assert.IsFalse(TAtlasVisualizerFormat.DibPixels(TBytes.Create(1, 2, 3), 2, 1, 24, 6, False, Pixels), 'zu kurz');
+  Assert.IsFalse(TAtlasVisualizerFormat.DibPixels(TBytes.Create(1, 2), TAtlasDibLayout.Create(1, 1, 8, 4, False),
+    Pixels), '8 Bit');
+  Assert.IsFalse(TAtlasVisualizerFormat.DibPixels(TBytes.Create(1, 2, 3), TAtlasDibLayout.Create(2, 1, 24, 6,
+    False), Pixels), 'zu kurz');
 end;
 
 procedure TVisualizerTests.HexLines;
@@ -556,21 +574,12 @@ begin
     Context));
   Assert.AreEqual(0, Integer(FAsked.Count), 'Abgeschaltet: keine Auswertung');
 end;
-procedure TVisualizerTests.DeclaredTypeFromHover;
+procedure TVisualizerTests.KindFromHoverChain;
 var
   Kind: TAtlasVisualizerKind;
 begin
-  Assert.AreEqual('TObjectList<TKunde>', TAtlasVisualizers.DeclaredType('var Kunden: TObjectList<TKunde>'));
-  Assert.AreEqual('TList<Integer>', TAtlasVisualizers.DeclaredType('property Items: TList<Integer> read FItems'));
-  Assert.AreEqual('TPoint', TAtlasVisualizers.DeclaredType('function Mitte(A, B: Integer): TPoint;'));
-  Assert.AreEqual('TDictionary<string, TKunde>',
-    TAtlasVisualizers.DeclaredType('Index: TDictionary<string, TKunde> = nil'));
-  Assert.AreEqual('System.SysUtils.TBytes', TAtlasVisualizers.DeclaredType('Daten: System.SysUtils.TBytes;'));
-  Assert.AreEqual('array of Byte', TAtlasVisualizers.DeclaredType('Puffer: array of Byte'));
-  Assert.AreEqual('TÜbersicht', TAtlasVisualizers.DeclaredType('Ü: TÜbersicht'));
-  Assert.AreEqual('', TAtlasVisualizers.DeclaredType('procedure Speichern'));
-  // Hover → Art: Typ aus der Deklaration, dann die Vorfahren.
-  Assert.IsTrue(TAtlasVisualizers.KindOfChain([TAtlasVisualizers.DeclaredType('Q: TFDQuery'), 'TFDQuery',
+  // Typkette des Hovers (Typ aus der Deklaration, dann die Vorfahren; TAtlasHoverDeclaration rechnet den Typ).
+  Assert.IsTrue(TAtlasVisualizers.KindOfChain(['TFDQuery', 'TFDQuery',
     'TFDCustomQuery', 'TDataSet'], Kind));
   Assert.AreEqual(Ord(TAtlasVisualizerKind.DataSets), Ord(Kind));
 end;

@@ -13,6 +13,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWhatsNewTests = class
   public
     [Test]
@@ -71,7 +72,9 @@ begin
   for Version in AVersions do
   begin
     if Result <> '' then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + Version.Version;
   end;
 end;
@@ -84,7 +87,9 @@ begin
   for Item in AItems do
   begin
     if Result <> '' then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + Item.Title;
   end;
 end;
@@ -262,7 +267,9 @@ var
   Mode: TAtlasWhatsNewMode;
 begin
   for Mode := Low(TAtlasWhatsNewMode) to High(TAtlasWhatsNewMode) do
+  begin
     Assert.IsTrue(TAtlasWhatsNew.ModeOf(TAtlasWhatsNew.ModeName(Mode)) = Mode);
+  end;
   Assert.IsTrue(TAtlasWhatsNew.ModeOf('ALWAYS') = TAtlasWhatsNewMode.Always);
   Assert.IsTrue(TAtlasWhatsNew.ModeOf('irgendwas') = TAtlasWhatsNewMode.AfterUpdate);
 end;

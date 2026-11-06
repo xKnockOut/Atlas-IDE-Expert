@@ -1,0 +1,505 @@
+﻿unit Atlas.Core.Welcome.HostLayout;
+
+// Raster der Willkommensseite der IDE (#753), ohne Windows: So speichert
+// RAD Studio (12 und 13) das Layout unter …\BDS\<Version>\WelcomePage:
+//   Layout             RowsCount, ColumnsCount (DWORD)
+//   Layout\Item <n>    PluginID (Text), Row, Column, RowSpan, ColumnSpan (DWORD)
+//   AvailablePlugins   "0", "1", … = Kennungen der ausgeblendeten Bereiche
+// TAtlasHostLayout liest und schreibt das auf einem TAtlasRegKey (Kopie des
+// Schlüssels WelcomePage). WithAtlasOnTop baut das Atlas-Layout: Der Bereich
+// „Atlas“ (alle Atlas-Bereiche in einem Frame) steht oben über die ganze
+// Breite, alle übrigen Bereiche rücken um seine Höhe nach unten, einzelne
+// Atlas-Bereiche verschwinden aus Raster und Liste der ausgeblendeten.
+// WithoutAtlas nimmt alle Atlas-Kennungen aus Raster und Liste der
+// ausgeblendeten und lässt leere Zeilen zusammenrücken. TAtlasWelcomeRetire
+// räumt damit auf, solange Atlas nicht auf der Willkommensseite der IDE
+// stehen soll (welcomePage.ideWelcomePage aus, #761; bis dahin #1114): Gibt es
+// die Sicherung von „Atlas-Layout anwenden“, gilt sie, sonst das Raster ohne
+// Atlas.
+
+interface
+
+uses
+  System.SysUtils,
+  Atlas.Core.Welcome.Backup;
+
+type
+  TAtlasHostItem = record
+    PluginId: string;
+    Row, Column, RowSpan, ColumnSpan: Integer;
+    class function Create(const APluginId: string; ARow, AColumn, ARowSpan, AColumnSpan: Integer): TAtlasHostItem;
+      static;
+  end;
+
+  TAtlasHostLayout = record
+  public const
+    LayoutKey = 'Layout';
+    AvailableKey = 'AvailablePlugins';
+    ItemPrefix = 'Item ';
+    /// <summary>Höhe des Bereichs „Atlas“ in Rasterzeilen.</summary>
+    BoardRows = 2;
+  public
+    Rows: Integer;
+    Columns: Integer;
+    Items: TArray<TAtlasHostItem>;
+    /// <summary>Ausgeblendete Bereiche (Kennungen).</summary>
+    Available: TArray<string>;
+    /// <summary>False, wenn AWelcomeKey kein Raster enthält (die IDE nutzt dann ihre Vorgabe).</summary>
+    class function Read(AWelcomeKey: TAtlasRegKey; out ALayout: TAtlasHostLayout): Boolean; static;
+    /// <summary>Ersetzt Layout und AvailablePlugins in AWelcomeKey; andere Werte bleiben. Ohne Bereiche
+    /// entfällt das Raster, die IDE zeigt dann ihre Vorgabe.</summary>
+    procedure WriteTo(AWelcomeKey: TAtlasRegKey);
+    function IndexOf(const APluginId: string): Integer;
+    function Contains(const APluginId: string): Boolean;
+    /// <summary>Steht ein Bereich mit der Kennung APrefix… im Raster oder unter den ausgeblendeten?</summary>
+    function ContainsAtlas(const APrefix: string): Boolean;
+    /// <summary>Raster ohne Bereiche mit der Kennung APrefix…; Zeilen, die danach leer sind, entfallen und
+    /// die Bereiche darunter rücken nach oben.</summary>
+    function WithoutAtlas(const APrefix: string): TAtlasHostLayout;
+    /// <summary>Atlas-Layout: ABoardId oben über alle Spalten, übrige Bereiche darunter, Plugins mit
+    /// APrefix (einzelne Atlas-Bereiche) entfernt.</summary>
+    function WithAtlasOnTop(const ABoardId, APrefix: string): TAtlasHostLayout;
+    /// <summary>Steht ABoardId oben über alle Spalten und fehlen einzelne Atlas-Bereiche (APrefix)?</summary>
+    function HasAtlasOnTop(const ABoardId, APrefix: string): Boolean;
+    /// <summary>Vorgabe der IDE (RAD Studio 12/13), wenn die Registry noch kein Raster enthält:
+    /// „Neu in GetIt“, „Zuletzt geöffnet“, „Lernen“ nebeneinander, je zwei Zeilen hoch.</summary>
+    class function IdeDefault: TAtlasHostLayout; static;
+  end;
+
+  TAtlasRetireResult = (Nothing, Restored, Removed);
+
+  /// <summary>Atlas-Bereiche von der Willkommensseite der IDE nehmen (#1114, #761).</summary>
+  TAtlasWelcomeRetire = record
+  public
+    /// <summary>ABackup (Sicherung von „Atlas-Layout anwenden“, leer = keine) zurückschreiben; sonst die
+    /// Kennungen APrefix… aus dem Schlüssel AWelcomePath nehmen. ASnapshot ist danach der gewünschte Stand
+    /// (für die Marke, falls die IDE ihr Layout beim Beenden zurückschreibt); leer bei Nothing.</summary>
+    class function Run(const AAccess: IAtlasRegistryAccess; const AWelcomePath, ABackup, APrefix: string;
+      out ASnapshot: string): TAtlasRetireResult; static;
+  end;
+
+  /// <summary>Was beim Umschalten in den Optionen auf der Willkommensseite der IDE geschieht (#761).</summary>
+  TAtlasIdePageStep = (None, Retire, PlaceBoard, Unplace, ClearPending);
+
+  TAtlasIdePageSteps = record
+  public
+    /// <summary>Schritte nach einem Sync. AStarted: nicht der erste Sync (beim Start gilt, was die IDE aus der
+    /// Registry liest); AWasShown/AShown: Atlas-Bereiche auf der Willkommensseite der IDE vorher/jetzt
+    /// gewollt; ALastLayout/ALayout: welcomePage.layout vorher/jetzt.</summary>
+    class function After(AStarted, AWasShown, AShown: Boolean; const ALastLayout, ALayout: string)
+      : TArray<TAtlasIdePageStep>; static;
+  end;
+
+implementation
+
+uses
+  System.Math;
+
+{ TAtlasHostItem }
+
+class function TAtlasHostItem.Create(const APluginId: string; ARow, AColumn, ARowSpan,
+  AColumnSpan: Integer): TAtlasHostItem;
+begin
+  Result.PluginId := APluginId;
+  Result.Row := ARow;
+  Result.Column := AColumn;
+  Result.RowSpan := ARowSpan;
+  Result.ColumnSpan := AColumnSpan;
+end;
+
+{ TAtlasHostLayout }
+
+function NumberOf(AKey: TAtlasRegKey; const AName: string; ADefault: Integer): Integer;
+var
+  Value: TAtlasRegValue;
+begin
+  Result := ADefault;
+  if AKey.FindValue(AName, Value) and (Value.Kind in [TAtlasRegKind.Number, TAtlasRegKind.Number64]) then
+  begin
+    Result := StrToIntDef(Value.Data, ADefault);
+  end;
+end;
+
+function TextOf(AKey: TAtlasRegKey; const AName: string): string;
+var
+  Value: TAtlasRegValue;
+begin
+  Result := '';
+  if AKey.FindValue(AName, Value) and (Value.Kind in [TAtlasRegKind.Text, TAtlasRegKind.ExpandText]) then
+  begin
+    Result := Value.Data;
+  end;
+end;
+
+function Number(const AName: string; AValue: Integer): TAtlasRegValue;
+begin
+  Result := TAtlasRegValue.Create(AName, TAtlasRegKind.Number, IntToStr(AValue));
+end;
+
+class function TAtlasHostLayout.Read(AWelcomeKey: TAtlasRegKey; out ALayout: TAtlasHostLayout): Boolean;
+var
+  Layout, Available, Item: TAtlasRegKey;
+  Value: TAtlasRegValue;
+  Index: Integer;
+  Id: string;
+begin
+  ALayout.Rows := 0;
+  ALayout.Columns := 0;
+  ALayout.Items := nil;
+  ALayout.Available := nil;
+  Result := False;
+  if AWelcomeKey = nil then
+  begin
+    Exit;
+  end;
+  Layout := AWelcomeKey.FindKey(LayoutKey);
+  if Layout = nil then
+  begin
+    Exit;
+  end;
+  ALayout.Rows := NumberOf(Layout, 'RowsCount', 0);
+  ALayout.Columns := NumberOf(Layout, 'ColumnsCount', 0);
+  // Nach der Nummer im Namen, damit die Reihenfolge der IDE erhalten bleibt.
+  Index := 0;
+  while True do
+  begin
+    Item := Layout.FindKey(ItemPrefix + IntToStr(Index));
+    if Item = nil then
+    begin
+      Break;
+    end;
+    Id := TextOf(Item, 'PluginID');
+    if Id <> '' then
+    begin
+      ALayout.Items := ALayout.Items + [TAtlasHostItem.Create(Id, NumberOf(Item, 'Row', 0),
+        NumberOf(Item, 'Column', 0), NumberOf(Item, 'RowSpan', 1), NumberOf(Item, 'ColumnSpan', 1))];
+    end;
+    Inc(Index);
+  end;
+  Available := AWelcomeKey.FindKey(AvailableKey);
+  if Available <> nil then
+  begin
+    Index := 0;
+    while Available.FindValue(IntToStr(Index), Value) do
+    begin
+      if Value.Data <> '' then
+      begin
+        ALayout.Available := ALayout.Available + [Value.Data];
+      end;
+      Inc(Index);
+    end;
+  end;
+  Result := (ALayout.Rows > 0) and (ALayout.Columns > 0);
+end;
+
+procedure TAtlasHostLayout.WriteTo(AWelcomeKey: TAtlasRegKey);
+var
+  Layout, Available, Key: TAtlasRegKey;
+  Index: Integer;
+begin
+  Index := AWelcomeKey.Keys.IndexOf(AWelcomeKey.FindKey(LayoutKey));
+  if Index >= 0 then
+  begin
+    AWelcomeKey.Keys.Delete(Index);
+  end;
+  Index := AWelcomeKey.Keys.IndexOf(AWelcomeKey.FindKey(AvailableKey));
+  if Index >= 0 then
+  begin
+    AWelcomeKey.Keys.Delete(Index);
+  end;
+  Available := AWelcomeKey.AddKey(AvailableKey);
+  for Index := 0 to High(Self.Available) do
+  begin
+    Available.SetValue(TAtlasRegValue.Create(IntToStr(Index), TAtlasRegKind.Text, Self.Available[Index]));
+  end;
+  if Items = nil then
+  begin
+    Exit;
+  end;
+  Layout := AWelcomeKey.AddKey(LayoutKey);
+  Layout.SetValue(Number('RowsCount', Rows));
+  Layout.SetValue(Number('ColumnsCount', Columns));
+  for Index := 0 to High(Items) do
+  begin
+    Key := Layout.AddKey(ItemPrefix + IntToStr(Index));
+    Key.SetValue(TAtlasRegValue.Create('PluginID', TAtlasRegKind.Text, Items[Index].PluginId));
+    Key.SetValue(Number('Row', Items[Index].Row));
+    Key.SetValue(Number('Column', Items[Index].Column));
+    Key.SetValue(Number('RowSpan', Items[Index].RowSpan));
+    Key.SetValue(Number('ColumnSpan', Items[Index].ColumnSpan));
+  end;
+end;
+
+function TAtlasHostLayout.IndexOf(const APluginId: string): Integer;
+var
+  Index: Integer;
+begin
+  for Index := 0 to High(Items) do
+  begin
+    if SameText(Items[Index].PluginId, APluginId) then
+    begin
+      Exit(Index);
+    end;
+  end;
+  Result := -1;
+end;
+
+function TAtlasHostLayout.Contains(const APluginId: string): Boolean;
+begin
+  Result := IndexOf(APluginId) >= 0;
+end;
+
+function StartsWith(const AText, APrefix: string): Boolean;
+begin
+  Result := (APrefix <> '') and SameText(Copy(AText, 1, Length(APrefix)), APrefix);
+end;
+
+function TAtlasHostLayout.ContainsAtlas(const APrefix: string): Boolean;
+var
+  Item: TAtlasHostItem;
+  Id: string;
+begin
+  Result := True;
+  for Item in Items do
+  begin
+    if StartsWith(Item.PluginId, APrefix) then
+    begin
+      Exit;
+    end;
+  end;
+  for Id in Available do
+  begin
+    if StartsWith(Id, APrefix) then
+    begin
+      Exit;
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Belegte Zeilen von AItems; Bereiche, die über ARows hinausragen, vergrößern das Raster.</summary>
+function CoveredRows(const AItems: TArray<TAtlasHostItem>; ARows: Integer): TArray<Boolean>;
+var
+  mItem: TAtlasHostItem;
+  mRow, mLast: Integer;
+begin
+  mLast := ARows;
+  for mItem in AItems do
+  begin
+    mLast := Max(mLast, mItem.Row + mItem.RowSpan);
+  end;
+  SetLength(Result, mLast);
+  for mRow := 0 to mLast - 1 do
+  begin
+    Result[mRow] := False;
+  end;
+  for mItem in AItems do
+  begin
+    for mRow := Max(0, mItem.Row) to mItem.Row + mItem.RowSpan - 1 do
+    begin
+      Result[mRow] := True;
+    end;
+  end;
+end;
+
+/// <summary>Leere Zeilen von ALayout fallen weg, die folgenden rücken nach.</summary>
+procedure CompactRows(var ALayout: TAtlasHostLayout);
+var
+  mCovered: TArray<Boolean>;
+  mNewRow: TArray<Integer>;
+  mRow, mCount, mIndex: Integer;
+begin
+  mCovered := CoveredRows(ALayout.Items, ALayout.Rows);
+  SetLength(mNewRow, Length(mCovered));
+  mCount := 0;
+  for mRow := 0 to High(mCovered) do
+  begin
+    mNewRow[mRow] := mCount;
+    if mCovered[mRow] then
+    begin
+      Inc(mCount);
+    end;
+  end;
+  for mIndex := 0 to High(ALayout.Items) do
+  begin
+    if ALayout.Items[mIndex].Row >= 0 then
+    begin
+      ALayout.Items[mIndex].Row := mNewRow[ALayout.Items[mIndex].Row];
+    end;
+  end;
+  ALayout.Rows := mCount;
+end;
+
+function TAtlasHostLayout.WithoutAtlas(const APrefix: string): TAtlasHostLayout;
+var
+  Item: TAtlasHostItem;
+  Id: string;
+begin
+  Result.Columns := Columns;
+  Result.Rows := Rows;
+  Result.Items := nil;
+  for Item in Items do
+  begin
+    if not StartsWith(Item.PluginId, APrefix) then
+    begin
+      Result.Items := Result.Items + [Item];
+    end;
+  end;
+  Result.Available := nil;
+  for Id in Available do
+  begin
+    if not StartsWith(Id, APrefix) then
+    begin
+      Result.Available := Result.Available + [Id];
+    end;
+  end;
+  CompactRows(Result);
+end;
+
+function TAtlasHostLayout.WithAtlasOnTop(const ABoardId, APrefix: string): TAtlasHostLayout;
+var
+  Item: TAtlasHostItem;
+  Id: string;
+begin
+  Result.Columns := Columns;
+  if Result.Columns < 1 then
+  begin
+    Result.Columns := 1;
+  end;
+  Result.Rows := Rows + BoardRows;
+  Result.Items := [TAtlasHostItem.Create(ABoardId, 0, 0, BoardRows, Result.Columns)];
+  for Item in Items do
+  begin
+    if not SameText(Item.PluginId, ABoardId) and not StartsWith(Item.PluginId, APrefix) then
+    begin
+      Result.Items := Result.Items + [TAtlasHostItem.Create(Item.PluginId, Item.Row + BoardRows, Item.Column,
+        Item.RowSpan, Item.ColumnSpan)];
+    end;
+  end;
+  Result.Available := nil;
+  for Id in Available do
+  begin
+    if not SameText(Id, ABoardId) and not StartsWith(Id, APrefix) then
+    begin
+      Result.Available := Result.Available + [Id];
+    end;
+  end;
+end;
+
+function TAtlasHostLayout.HasAtlasOnTop(const ABoardId, APrefix: string): Boolean;
+var
+  Index: Integer;
+  Item: TAtlasHostItem;
+  Id: string;
+begin
+  Index := IndexOf(ABoardId);
+  if Index < 0 then
+  begin
+    Exit(False);
+  end;
+  Item := Items[Index];
+  if (Item.Row <> 0) or (Item.Column <> 0) or (Item.ColumnSpan < Columns) then
+  begin
+    Exit(False);
+  end;
+  for Item in Items do
+  begin
+    if not SameText(Item.PluginId, ABoardId) and StartsWith(Item.PluginId, APrefix) then
+    begin
+      Exit(False);
+    end;
+  end;
+  for Id in Available do
+  begin
+    if SameText(Id, ABoardId) then
+    begin
+      Exit(False);
+    end;
+  end;
+  Result := True;
+end;
+
+class function TAtlasHostLayout.IdeDefault: TAtlasHostLayout;
+begin
+  Result.Rows := 2;
+  Result.Columns := 3;
+  Result.Items := [TAtlasHostItem.Create('Embarcadero.WelcomePagePlugin.GetItNewIn', 0, 0, 2, 1),
+    TAtlasHostItem.Create('Embarcadero.WelcomePagePlugin.OpenRecent', 0, 1, 2, 1),
+    TAtlasHostItem.Create('Embarcadero.WelcomePagePlugin.Learn', 0, 2, 2, 1)];
+  Result.Available := ['Embarcadero.WelcomePagePlugin.GetItPromoted', 'Embarcadero.WelcomePagePlugin.CreateNew'];
+end;
+
+{ TAtlasIdePageSteps }
+
+class function TAtlasIdePageSteps.After(AStarted, AWasShown, AShown: Boolean; const ALastLayout, ALayout: string)
+  : TArray<TAtlasIdePageStep>;
+var
+  Atlas: Boolean;
+begin
+  Result := nil;
+  if not AStarted then
+  begin
+    Exit;
+  end;
+  Atlas := SameText(ALayout, 'atlas');
+  if AWasShown and not AShown then
+  begin
+    // Abgeschaltet: Sicherung zurück bzw. Atlas aus dem Raster der IDE nehmen.
+    Result := [TAtlasIdePageStep.Retire];
+  end
+  else if AShown and not AWasShown then
+  begin
+    // Wieder eingeschaltet: Der beim Abschalten gemerkte Stand ohne Atlas gilt nicht mehr.
+    Result := [TAtlasIdePageStep.ClearPending];
+    if Atlas then
+    begin
+      Result := Result + [TAtlasIdePageStep.PlaceBoard];
+    end;
+  end
+  else if AShown and not SameText(ALastLayout, ALayout) then
+  begin
+    if Atlas then
+    begin
+      Result := [TAtlasIdePageStep.PlaceBoard];
+    end
+    else
+    begin
+      Result := [TAtlasIdePageStep.Unplace];
+    end;
+  end;
+end;
+
+{ TAtlasWelcomeRetire }
+
+class function TAtlasWelcomeRetire.Run(const AAccess: IAtlasRegistryAccess; const AWelcomePath, ABackup,
+  APrefix: string; out ASnapshot: string): TAtlasRetireResult;
+var
+  Key: TAtlasRegKey;
+  Layout, Cleaned: TAtlasHostLayout;
+begin
+  ASnapshot := '';
+  Result := TAtlasRetireResult.Nothing;
+  // Die Sicherung hält das Layout von vor Atlas; ist sie lesbar, gilt sie.
+  if (ABackup <> '') and TAtlasWelcomeBackup.Restore(AAccess, ABackup) then
+  begin
+    ASnapshot := ABackup;
+    Result := TAtlasRetireResult.Restored;
+    Exit;
+  end;
+  Key := AAccess.Read(AWelcomePath);
+  try
+    if (Key = nil) or not TAtlasHostLayout.Read(Key, Layout) or not Layout.ContainsAtlas(APrefix) then
+    begin
+      Exit;
+    end;
+    Cleaned := Layout.WithoutAtlas(APrefix);
+    Cleaned.WriteTo(Key);
+    AAccess.Replace(AWelcomePath, Key);
+  finally
+    Key.Free;
+  end;
+  ASnapshot := TAtlasWelcomeBackup.Snapshot(AAccess, AWelcomePath);
+  Result := TAtlasRetireResult.Removed;
+end;
+
+end.

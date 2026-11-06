@@ -32,6 +32,8 @@ type
     FBuildKeys: TDictionary<string, string>;
     FScopeKeys: TDictionary<string, string>;
     procedure Save;
+    procedure LoadBuilds(ABuilds: TJSONObject);
+    procedure LoadProjects(AProjects: TJSONObject);
   public
     /// <summary>AFileName '' = nur im Speicher (Tests, CLI).</summary>
     constructor Create(const AFileName: string);
@@ -92,18 +94,56 @@ begin
   inherited;
 end;
 
+procedure TProjectSelection.LoadBuilds(ABuilds: TJSONObject);
+var
+  mPair: TJSONPair;
+  mItem: TJSONObject;
+  mChoice: TProjectBuildChoice;
+begin
+  for mPair in ABuilds do
+  begin
+    if not (mPair.JsonValue is TJSONObject) then
+    begin
+      Continue;
+    end;
+    mItem := TJSONObject(mPair.JsonValue);
+    mChoice := Default(TProjectBuildChoice);
+    mChoice.Config := mItem.GetValue<string>('config', '');
+    mChoice.Platform := mItem.GetValue<string>('platform', '');
+    if (mChoice.Config <> '') or (mChoice.Platform <> '') then
+    begin
+      FBuilds.AddOrSetValue(AnsiUpperCase(mPair.JsonString.Value), mChoice);
+      FBuildKeys.AddOrSetValue(AnsiUpperCase(mPair.JsonString.Value), mPair.JsonString.Value);
+    end;
+  end;
+end;
+
+procedure TProjectSelection.LoadProjects(AProjects: TJSONObject);
+var
+  mPair: TJSONPair;
+begin
+  for mPair in AProjects do
+  begin
+    // TJSONNumber erbt von TJSONString.
+    if (mPair.JsonValue is TJSONString) and not (mPair.JsonValue is TJSONNumber) and
+      (mPair.JsonValue.Value <> '') then
+    begin
+      FProjects.AddOrSetValue(AnsiUpperCase(mPair.JsonString.Value), mPair.JsonValue.Value);
+      FScopeKeys.AddOrSetValue(AnsiUpperCase(mPair.JsonString.Value), mPair.JsonString.Value);
+    end;
+  end;
+end;
+
 procedure TProjectSelection.LoadText(const AText: string);
 var
-  Root: TJSONValue;
-  Builds, Projects, Item: TJSONObject;
-  Pair: TJSONPair;
-  Choice: TProjectBuildChoice;
+  mRoot: TJSONValue;
+  mBuilds, mProjects: TJSONObject;
 begin
   try
-    Root := TJSONObject.ParseJSONValue(AText);
+    mRoot := TJSONObject.ParseJSONValue(AText);
   except
     on Exception do
-      Root := nil;
+      mRoot := nil;
   end;
   TMonitor.Enter(FLock);
   try
@@ -111,34 +151,21 @@ begin
     FBuildKeys.Clear;
     FProjects.Clear;
     FScopeKeys.Clear;
-    if not (Root is TJSONObject) then
+    if not (mRoot is TJSONObject) then
+    begin
       Exit;
-    if TJSONObject(Root).TryGetValue<TJSONObject>('builds', Builds) then
-      for Pair in Builds do
-        if Pair.JsonValue is TJSONObject then
-        begin
-          Item := TJSONObject(Pair.JsonValue);
-          Choice := Default(TProjectBuildChoice);
-          Choice.Config := Item.GetValue<string>('config', '');
-          Choice.Platform := Item.GetValue<string>('platform', '');
-          if (Choice.Config <> '') or (Choice.Platform <> '') then
-          begin
-            FBuilds.AddOrSetValue(AnsiUpperCase(Pair.JsonString.Value), Choice);
-            FBuildKeys.AddOrSetValue(AnsiUpperCase(Pair.JsonString.Value), Pair.JsonString.Value);
-          end;
-        end;
-    if TJSONObject(Root).TryGetValue<TJSONObject>('projects', Projects) then
-      for Pair in Projects do
-        // TJSONNumber erbt von TJSONString.
-        if (Pair.JsonValue is TJSONString) and not (Pair.JsonValue is TJSONNumber) and
-          (Pair.JsonValue.Value <> '') then
-        begin
-          FProjects.AddOrSetValue(AnsiUpperCase(Pair.JsonString.Value), Pair.JsonValue.Value);
-          FScopeKeys.AddOrSetValue(AnsiUpperCase(Pair.JsonString.Value), Pair.JsonString.Value);
-        end;
+    end;
+    if TJSONObject(mRoot).TryGetValue<TJSONObject>('builds', mBuilds) then
+    begin
+      LoadBuilds(mBuilds);
+    end;
+    if TJSONObject(mRoot).TryGetValue<TJSONObject>('projects', mProjects) then
+    begin
+      LoadProjects(mProjects);
+    end;
   finally
     TMonitor.Exit(FLock);
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
@@ -165,15 +192,21 @@ begin
         Choice := FBuilds[Key];
         Item := TJSONObject.Create;
         if Choice.Config <> '' then
+        begin
           Item.AddPair('config', Choice.Config);
+        end;
         if Choice.Platform <> '' then
+        begin
           Item.AddPair('platform', Choice.Platform);
+        end;
         Builds.AddPair(FBuildKeys[Key], Item);
       end;
       Keys := FProjects.Keys.ToArray;
       TArray.Sort<string>(Keys);
       for Key in Keys do
+      begin
         Projects.AddPair(FScopeKeys[Key], FProjects[Key]);
+      end;
     finally
       TMonitor.Exit(FLock);
     end;
@@ -186,7 +219,9 @@ end;
 procedure TProjectSelection.Save;
 begin
   if FFileName = '' then
+  begin
     Exit;
+  end;
   try
     TDirectory.CreateDirectory(ExtractFileDir(FFileName));
     TFile.WriteAllText(FFileName, ToText, TEncoding.UTF8);
@@ -213,16 +248,24 @@ var
   Key: string;
 begin
   if AProject = '' then
+  begin
     Exit;
+  end;
   Key := AnsiUpperCase(AProject);
   TMonitor.Enter(FLock);
   try
     if not FBuilds.TryGetValue(Key, Choice) then
+    begin
       Choice := Default(TProjectBuildChoice);
+    end;
     if AConfig <> '' then
+    begin
       Choice.Config := AConfig;
+    end;
     if APlatform <> '' then
+    begin
       Choice.Platform := APlatform;
+    end;
     if (AConfig = '') and (APlatform = '') then
     begin
       FBuilds.Remove(Key);
@@ -244,7 +287,9 @@ begin
   TMonitor.Enter(FLock);
   try
     if not FProjects.TryGetValue(AnsiUpperCase(AScope), Result) then
+    begin
       Result := '';
+    end;
   finally
     TMonitor.Exit(FLock);
   end;

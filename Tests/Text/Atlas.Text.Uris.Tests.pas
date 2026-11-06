@@ -91,8 +91,10 @@ var
   Path: string;
 begin
   for Path in Paths do
+  begin
     Assert.AreEqual(TTextUris.NormalizePath(Path), TTextUris.NormalizePath(TTextUris.ToPath(TTextUris.FromPath(Path))),
       Path);
+  end;
 end;
 
 initialization

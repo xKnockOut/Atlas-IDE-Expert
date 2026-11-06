@@ -120,7 +120,9 @@ var
 begin
   Result := '';
   for Item in AAccessors do
+  begin
     Result := Result + Item.Name + '=' + Item.Field + ' ';
+  end;
   Result := Trim(Result);
 end;
 
@@ -142,7 +144,9 @@ begin
   try
     if TInlineAccessor.Check(Layout, Layout.Find(AName)[0], Options(AEqualityCheck), AInterfaces, Accessor,
       Result) then
+    begin
       Result := '';
+    end;
   finally
     Layout.Free;
     Tree.Free;

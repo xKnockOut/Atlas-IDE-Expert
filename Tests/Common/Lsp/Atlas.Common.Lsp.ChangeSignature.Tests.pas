@@ -9,8 +9,11 @@ uses
   DUnitX.TestFramework,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Lsp.ChangeSignature;
+  Atlas.Common.Lsp.ChangeSignature,
+  Atlas.Common.Lsp.ChangeSignature.Collector;
 
 type
   [TestFixture]
@@ -22,6 +25,8 @@ type
     FReadOnly: string;
     procedure AddFile(const AFileName, AText: string);
     function TextOf(const AFileName: string): string;
+    function SourceAt(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+      const APosition: TTextPosition): TChangeSignatureSource;
     function Info(const AFileName, AMarker: string): TChangeSignatureInfo;
     function Run(const AFileName, AMarker: string; const AChanges: TArray<TParameterChange>;
       AMode: TNewParameterMode): TChangeSignatureOutcome; overload;
@@ -80,11 +85,9 @@ uses
   System.JSON,
   System.Generics.Collections,
   Atlas.Common.JsonRpc.Contract,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.Rename;
 
 const
@@ -212,15 +215,19 @@ var
 begin
   Index := Pos(AMarker, AText);
   if Index = 0 then
+  begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+  end;
   Line := 0;
   LineStart := 1;
   for I := 1 to Index - 1 do
+  begin
     if AText[I] = #10 then
     begin
       Inc(Line);
       LineStart := I + 1;
     end;
+  end;
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
@@ -260,7 +267,9 @@ begin
   FFiles := FFiles + [AFileName];
   FTexts := FTexts + [AText];
   if SameText(ExtractFileExt(AFileName), '.pas') then
+  begin
     FIndex.AddUnit(TIndexExtractor.ExtractText(AText, AFileName, nil));
+  end;
 end;
 
 function TLspChangeSignatureTests.TextOf(const AFileName: string): string;
@@ -268,8 +277,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(FFiles) do
+  begin
     if SameText(FFiles[Index], AFileName) then
+    begin
       Exit(FTexts[Index]);
+    end;
+  end;
   Result := '';
 end;
 
@@ -277,6 +290,24 @@ procedure TLspChangeSignatureTests.LoadProject;
 begin
   AddFile(BasisFile, UnitBasis);
   AddFile(HauptFile, UnitHaupt);
+end;
+
+function TLspChangeSignatureTests.SourceAt(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+  const APosition: TTextPosition): TChangeSignatureSource;
+begin
+  Result := Default(TChangeSignatureSource);
+  Result.Resolver := AResolver;
+  Result.Index := FIndex;
+  Result.Tree := ATree;
+  Result.FileName := AFileName;
+  Result.Position := APosition;
+  Result.Files := [BasisFile, HauptFile, MaskeFile, MaskeDfm];
+  Result.ReadText :=
+    function(const AName: string; out AText: string): Boolean
+    begin
+      AText := TextOf(AName);
+      Result := AText <> '';
+    end;
 end;
 
 function TLspChangeSignatureTests.Info(const AFileName, AMarker: string): TChangeSignatureInfo;
@@ -289,13 +320,7 @@ begin
   Resolver := TNameResolver.Create(FIndex);
   Tree := TPascalParser.Parse(Text);
   try
-    Result := TLspChangeSignature.Prepare(Resolver, FIndex, Tree, AFileName, PositionOf(Text, AMarker),
-      [BasisFile, HauptFile, MaskeFile, MaskeDfm],
-      function(const AName: string; out AText: string): Boolean
-      begin
-        AText := TextOf(AName);
-        Result := AText <> '';
-      end, nil);
+    Result := TLspChangeSignature.Prepare(SourceAt(Resolver, Tree, AFileName, PositionOf(Text, AMarker)));
   finally
     Tree.Free;
     Resolver.Free;
@@ -323,17 +348,11 @@ begin
   Resolver := TNameResolver.Create(FIndex);
   Tree := TPascalParser.Parse(Text);
   try
-    Result := TLspChangeSignature.Execute(Resolver, FIndex, Tree, AFileName, PositionOf(Text, AMarker), Request,
-      [BasisFile, HauptFile, MaskeFile, MaskeDfm],
-      function(const AName: string; out AText: string): Boolean
-      begin
-        AText := TextOf(AName);
-        Result := AText <> '';
-      end,
+    Result := TLspChangeSignature.Execute(SourceAt(Resolver, Tree, AFileName, PositionOf(Text, AMarker)), Request,
       function(const AName: string): Boolean
       begin
         Result := SameText(AName, FReadOnly);
-      end, nil);
+      end);
   finally
     Tree.Free;
     Resolver.Free;
@@ -359,8 +378,12 @@ var
 begin
   Edits := nil;
   for Edit in AOutcome.Edits do
+  begin
     if SameText(Edit.FileName, AFileName) then
+    begin
       Edits := Edits + [TTextEdit.Create(Edit.Range, Edit.NewText)];
+    end;
+  end;
   Result := TChangeSignature.ApplyEdits(TextOf(AFileName), Edits);
 end;
 
@@ -372,7 +395,9 @@ begin
   for FileName in [BasisFile, HauptFile, MaskeFile] do
   begin
     if TextOf(FileName) = '' then
+    begin
       Continue;
+    end;
     Tree := TPascalParser.Parse(Applied(AOutcome, FileName));
     try
       Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), FileName);
@@ -649,7 +674,9 @@ begin
       Assert.AreEqual(TLspChangeSignature.ClientCommand, Actions[0].GetValue<string>('command.command'));
     finally
       for Action in Actions do
+      begin
         Action.Free;
+      end;
     end;
     Assert.AreEqual(0, Integer(Length(TLspChangeSignature.Actions(False, Resolver, Tree, HauptFile, 'x',
       PositionOf(UnitHaupt, 'Teile(6')))));

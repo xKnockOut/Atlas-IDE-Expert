@@ -71,7 +71,9 @@ var
 begin
   Result := '';
   for Index := 0 to High(ALines) do
+  begin
     Result := Result + ALines[Index] + #10;
+  end;
 end;
 
 /// <summary>Wendet AEdits an; sie dürfen sich nicht überlappen. Gleiche Stelle in der gegebenen Reihenfolge.</summary>
@@ -87,7 +89,9 @@ var
   begin
     Result := 0;
     for Line := 0 to APos.Line - 1 do
+    begin
       Inc(Result, Length(Lines[Line]) + 1);
+    end;
     Inc(Result, APos.Character);
   end;
 
@@ -95,16 +99,22 @@ begin
   Lines := AText.Split([#10]);
   SetLength(Order, Length(AEdits));
   for Index := 0 to High(Order) do
+  begin
     Order[Index] := Index;
+  end;
   // Von hinten anwenden.
   for Index := 0 to High(Order) do
+  begin
     for Inner := Index + 1 to High(Order) do
+    begin
       if OffsetOf(AEdits[Order[Index]].Range.StartPos) <= OffsetOf(AEdits[Order[Inner]].Range.StartPos) then
       begin
         Swap := Order[Index];
         Order[Index] := Order[Inner];
         Order[Inner] := Swap;
       end;
+    end;
+  end;
   Result := AText;
   for Index in Order do
   begin
@@ -148,19 +158,23 @@ begin
   Slash.Text := AText;
   Slash.Line := -1;
   for Line := 0 to High(Lines) do
+  begin
     if Pos(AMarker, Lines[Line]) > 0 then
     begin
       Slash.Line := Line;
       Slash.LineText := Lines[Line];
       Break;
     end;
+  end;
   Assert.IsTrue(Slash.Line >= 0, AMarker);
   Slash.Index := AIndex;
   Source := TCommandSource.Create(Slash);
   try
     Assert.IsTrue(Source.ClassAt(ClassSymbol), 'Klasse');
     if TAccessorCreation.Edits(Source, AIndex, ClassSymbol, APlan, Edits, AWithField) then
+    begin
       Result := ApplyEdits(AText, Edits);
+    end;
   finally
     Source.Free;
   end;

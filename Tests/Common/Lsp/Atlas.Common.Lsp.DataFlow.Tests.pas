@@ -160,15 +160,19 @@ var
 begin
   Index := Pos(AMarker, AText);
   if Index = 0 then
+  begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+  end;
   Line := 0;
   LineStart := 1;
   for Scan := 1 to Index - 1 do
+  begin
     if AText[Scan] = #10 then
     begin
       Inc(Line);
       LineStart := Scan + 1;
     end;
+  end;
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
@@ -176,13 +180,21 @@ function ReadFile(const AFileName: string; out AText: string): Boolean;
 begin
   Result := True;
   if SameText(AFileName, DatenFile) then
-    AText := UnitDaten
+  begin
+    AText := UnitDaten;
+  end
   else if SameText(AFileName, HauptFile) then
-    AText := UnitHaupt
+  begin
+    AText := UnitHaupt;
+  end
   else if SameText(AFileName, PruefFile) then
-    AText := UnitPruefung
+  begin
+    AText := UnitPruefung;
+  end
   else
+  begin
     Result := False;
+  end;
 end;
 
 { TLspDataFlowTests }
@@ -211,52 +223,85 @@ function TLspDataFlowTests.Flow(const AFileName, AMarker: string; ADirection: TD
   const AOptions: TDataFlowOptions): TDataFlowResult;
 var
   Text: string;
-  Tree: TSyntaxTree;
+  mRequest: TDataFlowRequest;
 begin
   ReadFile(AFileName, Text);
-  Tree := TSyntaxTreeCache.Parse(Text);
+  mRequest := Default(TDataFlowRequest);
+  mRequest.Resolver := FResolver;
+  mRequest.Index := FIndex;
+  mRequest.FileName := AFileName;
+  mRequest.Position := PositionOf(Text, AMarker);
+  mRequest.Direction := ADirection;
+  mRequest.Options := AOptions;
+  mRequest.Files := TArray<string>.Create(DatenFile, HauptFile, PruefFile);
+  mRequest.ReadText := ReadFile;
+  mRequest.Tree := TSyntaxTreeCache.Parse(Text);
   try
-    Result := TLspDataFlow.Analyze(FResolver, FIndex, Tree, AFileName, PositionOf(Text, AMarker), ADirection, AOptions,
-      TArray<string>.Create(DatenFile, HauptFile, PruefFile), ReadFile, nil);
+    Result := TLspDataFlow.Analyze(mRequest);
   finally
-    Tree.Free;
+    mRequest.Tree.Free;
+  end;
+end;
+
+/// <summary>Quellen von ANode als "Quelle/leaf,…".</summary>
+function SourcesText(const ANode: TDataFlowNode): string;
+var
+  mSource: TDataFlowSymbol;
+begin
+  Result := '';
+  for mSource in ANode.Sources do
+  begin
+    if Result <> '' then
+    begin
+      Result := Result + ',';
+    end;
+    Result := Result + mSource.Name;
+    if mSource.Leaf <> TDataFlowLeaf.None then
+    begin
+      Result := Result + '/' + TLspDataFlow.LeafName(mSource.Leaf);
+    end;
+  end;
+end;
+
+/// <summary>ANode als "kind[detail](via)xN!lit!grund&lt;-Quellen".</summary>
+function NodeText(const ANode: TDataFlowNode): string;
+begin
+  Result := TLspDataFlow.KindName(ANode.Kind) + '[' + ANode.Detail + ']';
+  if ANode.Via <> '' then
+  begin
+    Result := Result + '(' + ANode.Via + ')';
+  end;
+  if Length(ANode.Places) > 1 then
+  begin
+    Result := Result + 'x' + IntToStr(Length(ANode.Places));
+  end;
+  if ANode.Literal then
+  begin
+    Result := Result + '!lit';
+  end;
+  if ANode.Unsafe then
+  begin
+    Result := Result + '!' + ANode.UnsafeReason;
+  end;
+  if Length(ANode.Sources) > 0 then
+  begin
+    Result := Result + '<-' + SourcesText(ANode);
   end;
 end;
 
 function TLspDataFlowTests.Describe(const AResult: TDataFlowResult): string;
 var
   Node: TDataFlowNode;
-  Source: TDataFlowSymbol;
-  Line: string;
 begin
   // "kind[detail](via)xN<-Quelle/leaf,…" je Knoten, mit "; " verbunden.
   Result := '';
   for Node in AResult.Nodes do
   begin
-    Line := TLspDataFlow.KindName(Node.Kind) + '[' + Node.Detail + ']';
-    if Node.Via <> '' then
-      Line := Line + '(' + Node.Via + ')';
-    if Length(Node.Places) > 1 then
-      Line := Line + 'x' + IntToStr(Length(Node.Places));
-    if Node.Literal then
-      Line := Line + '!lit';
-    if Node.Unsafe then
-      Line := Line + '!' + Node.UnsafeReason;
-    if Length(Node.Sources) > 0 then
-    begin
-      Line := Line + '<-';
-      for Source in Node.Sources do
-      begin
-        Line := Line + Source.Name;
-        if Source.Leaf <> TDataFlowLeaf.None then
-          Line := Line + '/' + TLspDataFlow.LeafName(Source.Leaf);
-        Line := Line + ',';
-      end;
-      SetLength(Line, Length(Line) - 1);
-    end;
     if Result <> '' then
+    begin
       Result := Result + '; ';
-    Result := Result + Line;
+    end;
+    Result := Result + NodeText(Node);
   end;
 end;
 

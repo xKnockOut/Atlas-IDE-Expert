@@ -80,7 +80,26 @@ implementation
 
 uses
   System.JSON,
-  Atlas.Common.Projects.Paths;
+  Atlas.Common.Projects.Paths,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TEditionText = (NoCommandLineCompilerStarter, NoCommandLineCompilerStarter2, CommandLineCompilerNotChecked,
+    CommandLineCompilerAvailable);
+
+const
+  cTexts: array[TEditionText] of TAtlasText = (
+    (De: 'kein Kommandozeilen-Compiler (Starter Edition: dcc32/dcc64 melden nur den Lizenztext)';
+     En: 'no command-line compiler (Starter Edition: dcc32/dcc64 only report the license text)'),
+    (De: 'kein Kommandozeilen-Compiler (Starter Edition: dcc32/dcc64 fehlen im Ordner bin)';
+     En: 'no command-line compiler (Starter Edition: dcc32/dcc64 missing in the bin folder)'),
+    (De: 'Kommandozeilen-Compiler noch nicht geprüft'; En: 'Command-line compiler not checked yet'),
+    (De: 'Kommandozeilen-Compiler vorhanden'; En: 'Command line compiler available'));
+
+{$SCOPEDENUMS OFF}
 
 const
   EditionTexts: array[TCompilerEdition] of string = ('unknown', 'commandLine', 'noCommandLine', 'missing');
@@ -108,8 +127,12 @@ var
   Line: string;
 begin
   for Line in AOutput do
+  begin
     if IsLicenseLine(Line) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -118,13 +141,21 @@ var
   Line: string;
 begin
   if not AExists then
+  begin
     Exit(TCompilerEdition.Missing);
+  end;
   if HasLicenseText(AOutput) then
+  begin
     Exit(TCompilerEdition.NoCommandLine);
+  end;
   // Ein nutzbarer Compiler nennt sich ohne Argumente mit Kopfzeile und Aufrufhilfe.
   for Line in AOutput do
+  begin
     if Trim(Line) <> '' then
+    begin
       Exit(TCompilerEdition.CommandLine);
+    end;
+  end;
   // Keine Ausgabe: unklar; der echte Lauf entscheidet.
   Result := TCompilerEdition.Unknown;
 end;
@@ -139,8 +170,12 @@ var
   Edition: TCompilerEdition;
 begin
   for Edition := Low(TCompilerEdition) to High(TCompilerEdition) do
+  begin
     if SameText(EditionTexts[Edition], AText) then
+    begin
       Exit(Edition);
+    end;
+  end;
   Result := TCompilerEdition.Unknown;
 end;
 
@@ -148,13 +183,13 @@ class function TCompilerEditions.Describe(AEdition: TCompilerEdition): string;
 begin
   case AEdition of
     TCompilerEdition.CommandLine:
-      Result := 'Kommandozeilen-Compiler vorhanden';
+      Result := cTexts[TEditionText.CommandLineCompilerAvailable].Text;
     TCompilerEdition.NoCommandLine:
-      Result := 'kein Kommandozeilen-Compiler (Starter Edition: dcc32/dcc64 melden nur den Lizenztext)';
+      Result := cTexts[TEditionText.NoCommandLineCompilerStarter].Text;
     TCompilerEdition.Missing:
-      Result := 'kein Kommandozeilen-Compiler (Starter Edition: dcc32/dcc64 fehlen im Ordner bin)';
+      Result := cTexts[TEditionText.NoCommandLineCompilerStarter2].Text;
   else
-    Result := 'Kommandozeilen-Compiler noch nicht geprüft';
+    Result := cTexts[TEditionText.CommandLineCompilerNotChecked].Text;
   end;
 end;
 
@@ -183,8 +218,12 @@ var
 begin
   Root := TProjectPaths.Normalize(ARoot);
   for Result := 0 to FEntries.Count - 1 do
+  begin
     if SameText(TProjectPaths.Normalize(FEntries[Result].Root), Root) and (FEntries[Result].Version = AVersion) then
+    begin
       Exit;
+    end;
+  end;
   Result := -1;
 end;
 
@@ -194,7 +233,9 @@ var
 begin
   Index := IndexOf(ARoot, AVersion);
   if (Index < 0) or (FEntries[Index].Stamp <> AStamp) then
+  begin
     Exit(TCompilerEdition.Unknown);
+  end;
   Result := FEntries[Index].Edition;
 end;
 
@@ -204,9 +245,13 @@ var
 begin
   Index := IndexOf(AEntry.Root, AEntry.Version);
   if Index >= 0 then
-    FEntries[Index] := AEntry
+  begin
+    FEntries[Index] := AEntry;
+  end
   else
+  begin
     FEntries.Add(AEntry);
+  end;
 end;
 
 procedure TCompilerEditionCache.Load(const AText: string);
@@ -219,8 +264,11 @@ begin
   Value := TJSONObject.ParseJSONValue(AText);
   try
     if not (Value is TJSONObject) or not TJSONObject(Value).TryGetValue<TJSONArray>('entries', Items) then
+    begin
       Exit;
+    end;
     for Item in Items do
+    begin
       if Item is TJSONObject then
       begin
         Entry := Default(TCompilerEditionEntry);
@@ -230,8 +278,11 @@ begin
         Entry.Stamp := TJSONObject(Item).GetValue<string>('stamp', '');
         Entry.Checked := TJSONObject(Item).GetValue<string>('checked', '');
         if (Entry.Root <> '') and (Entry.Edition <> TCompilerEdition.Unknown) then
+        begin
           Store(Entry);
+        end;
       end;
+    end;
   finally
     Value.Free;
   end;
@@ -263,5 +314,8 @@ begin
     Root.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Compiler.Edition', cTexts);
 
 end.

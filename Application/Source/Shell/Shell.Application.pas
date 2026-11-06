@@ -26,43 +26,74 @@ uses
   Shell.ReplayServer,
   Shell.Linter;
 
+function RunServer(const AOptions: TCommandLineOptions): Integer;
+var
+  mComposition: TServerComposition;
+begin
+  mComposition := TServerComposition.CreateForStdio(AOptions);
+  try
+    Result := mComposition.Run;
+  finally
+    mComposition.Free;
+  end;
+end;
+
+// Führt den Modus aus AOptions aus; ohne Modus läuft der Server über stdio.
+function RunMode(const AOptions: TCommandLineOptions): Integer;
+begin
+  if AOptions.ClearCache then
+  begin
+    Result := TLinterShell.ClearCache;
+  end
+  // Absturzfall nachstellen (#1355): eigener Server im Prozess, Ergebnis auf stderr.
+  else if AOptions.ReplayFile <> '' then
+  begin
+    Result := TShellReplayServer.Main(AOptions.ReplayFile);
+  end
+  // Vor --check: Das Ziel aus --check ist hier nur das Projekt des Berichts.
+  else if AOptions.ArchitectureFile <> '' then
+  begin
+    Result := TLinterShell.Architecture(AOptions);
+  end
+  // Vor --check: Das Ziel aus --check ist hier das Testprojekt (#1353).
+  else if AOptions.AffectedTests then
+  begin
+    Result := TLinterShell.AffectedTests(AOptions);
+  end
+  // Code-Abfrage (#1351): das Ziel aus --check ist hier nur das Projekt der Abfrage.
+  else if AOptions.QueryText <> '' then
+  begin
+    Result := TLinterShell.Query(AOptions);
+  end
+  else if AOptions.HotspotsFile <> '' then
+  begin
+    Result := TLinterShell.Hotspots(AOptions);
+  end
+  else if AOptions.CheckTarget <> '' then
+  begin
+    Result := TLinterShell.Run(AOptions);
+  end
+  else if AOptions.Mcp then
+  begin
+    Result := TMcpShell.Run(AOptions);
+  end
+  else
+  begin
+    Result := RunServer(AOptions);
+  end;
+end;
+
 class function TApplicationShell.Run: Integer;
 var
-  Options: TCommandLineOptions;
-  Composition: TServerComposition;
+  mOptions: TCommandLineOptions;
 begin
   try
-    Options := TCommandLineOptions.FromProcess;
-    TShutdownLeaks.SetLogFile(Options.LogFile);
+    mOptions := TCommandLineOptions.FromProcess;
+    TShutdownLeaks.SetLogFile(mOptions.LogFile);
     // Sprache der Texte (#1458) für alle Modi: --locale, sonst language aus settings.json, sonst Englisch. Der
     // LSP-Server wählt nach initialize mit der Sprache des Clients neu.
-    TShellBootstrap.UseTextLanguage(Options.Locale);
-    if Options.ClearCache then
-      Exit(TLinterShell.ClearCache);
-    // Absturzfall nachstellen (#1355): eigener Server im Prozess, Ergebnis auf stderr.
-    if Options.ReplayFile <> '' then
-      Exit(TShellReplayServer.Main(Options.ReplayFile));
-    // Vor --check: Das Ziel aus --check ist hier nur das Projekt des Berichts.
-    if Options.ArchitectureFile <> '' then
-      Exit(TLinterShell.Architecture(Options));
-    // Vor --check: Das Ziel aus --check ist hier das Testprojekt (#1353).
-    if Options.AffectedTests then
-      Exit(TLinterShell.AffectedTests(Options));
-    // Code-Abfrage (#1351): das Ziel aus --check ist hier nur das Projekt der Abfrage.
-    if Options.QueryText <> '' then
-      Exit(TLinterShell.Query(Options));
-    if Options.HotspotsFile <> '' then
-      Exit(TLinterShell.Hotspots(Options));
-    if Options.CheckTarget <> '' then
-      Exit(TLinterShell.Run(Options));
-    if Options.Mcp then
-      Exit(TMcpShell.Run(Options));
-    Composition := TServerComposition.CreateForStdio(Options);
-    try
-      Result := Composition.Run;
-    finally
-      Composition.Free;
-    end;
+    TShellBootstrap.UseTextLanguage(mOptions.Locale);
+    Result := RunMode(mOptions);
   except
     // Letzte Auffangstelle, falls schon der Aufbau scheitert und kein Logger existiert.
     on E: Exception do

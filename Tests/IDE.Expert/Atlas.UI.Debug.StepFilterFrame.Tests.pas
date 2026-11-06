@@ -10,14 +10,19 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Debug.Strings;
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Debugger')]
   TAtlasDebugStepFilterFrameTests = class
   private
     FLanguage: TAtlasLanguage;
   public
+    /// <summary>Einmal-Belegungen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -79,6 +84,16 @@ end;
 
 { TAtlasDebugStepFilterFrameTests }
 
+procedure TAtlasDebugStepFilterFrameTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    AddReplaceRemovePatterns;
+  finally
+    TearDown;
+  end;
+end;
+
 procedure TAtlasDebugStepFilterFrameTests.Setup;
 begin
   FLanguage := TAtlasStrings.Language;
@@ -95,13 +110,13 @@ var
   mVerdict: TAtlasStepVerdict;
 begin
   mVerdict := Default(TAtlasStepVerdict);
-  Assert.AreEqual('', TAtlasDebugStepFilterFrame.VerdictText(mVerdict));
+  Assert.AreEqual('', TAtlasStepFilterTexts.VerdictText(mVerdict));
   mVerdict.Kind := TAtlasStepVerdictKind.Kind;
   mVerdict.FilterKind := TStepFilterKind.Getters;
-  Assert.AreEqual('Getter von Eigenschaften (eine Anweisung)', TAtlasDebugStepFilterFrame.VerdictText(mVerdict));
+  Assert.AreEqual('Getter von Eigenschaften (eine Anweisung)', TAtlasStepFilterTexts.VerdictText(mVerdict));
   mVerdict.Kind := TAtlasStepVerdictKind.Pattern;
   mVerdict.Pattern := '*.Log*';
-  Assert.AreEqual('Muster *.Log*', TAtlasDebugStepFilterFrame.VerdictText(mVerdict));
+  Assert.AreEqual('Muster *.Log*', TAtlasStepFilterTexts.VerdictText(mVerdict));
 end;
 
 procedure TAtlasDebugStepFilterFrameTests.HitsOnlyWhenCounted;
@@ -110,14 +125,14 @@ var
 begin
   mCounts := Counted;
   Assert.AreEqual('Getter von Eigenschaften (eine Anweisung)',
-    TAtlasDebugStepFilterFrame.KindCaption(TStepFilterKind.Getters, TAtlasStepCountsState.Counting, mCounts));
+    TAtlasStepFilterTexts.KindCaption(TStepFilterKind.Getters, TAtlasStepCountsState.Counting, mCounts));
   Assert.AreEqual('Getter von Eigenschaften (eine Anweisung) – 41',
-    TAtlasDebugStepFilterFrame.KindCaption(TStepFilterKind.Getters, TAtlasStepCountsState.Ready, mCounts));
-  Assert.AreEqual('3', TAtlasDebugStepFilterFrame.PatternHits(0, TAtlasStepCountsState.Ready, mCounts));
-  Assert.AreEqual('0', TAtlasDebugStepFilterFrame.PatternHits(1, TAtlasStepCountsState.Ready, mCounts));
-  Assert.AreEqual('', TAtlasDebugStepFilterFrame.PatternHits(2, TAtlasStepCountsState.Ready, mCounts),
+    TAtlasStepFilterTexts.KindCaption(TStepFilterKind.Getters, TAtlasStepCountsState.Ready, mCounts));
+  Assert.AreEqual('3', TAtlasStepFilterTexts.PatternHits(0, TAtlasStepCountsState.Ready, mCounts));
+  Assert.AreEqual('0', TAtlasStepFilterTexts.PatternHits(1, TAtlasStepCountsState.Ready, mCounts));
+  Assert.AreEqual('', TAtlasStepFilterTexts.PatternHits(2, TAtlasStepCountsState.Ready, mCounts),
     'neues Muster, noch nicht gezählt');
-  Assert.AreEqual('', TAtlasDebugStepFilterFrame.PatternHits(0, TAtlasStepCountsState.Unavailable, mCounts));
+  Assert.AreEqual('', TAtlasStepFilterTexts.PatternHits(0, TAtlasStepCountsState.Unavailable, mCounts));
 end;
 
 procedure TAtlasDebugStepFilterFrameTests.SummaryAndSession;
@@ -126,21 +141,21 @@ var
 begin
   mCounts := Counted;
   Assert.AreEqual('340 Routinen in 12 Dateien des Projekts',
-    TAtlasDebugStepFilterFrame.SummaryText(TAtlasStepCountsState.Ready, mCounts));
+    TAtlasStepFilterTexts.SummaryText(TAtlasStepCountsState.Ready, mCounts));
   mCounts.Truncated := True;
   Assert.AreEqual('340 Routinen in 12 Dateien des Projekts (nur die ersten 12 Dateien)',
-    TAtlasDebugStepFilterFrame.SummaryText(TAtlasStepCountsState.Ready, mCounts));
-  Assert.AreEqual('Zähle im Index …', TAtlasDebugStepFilterFrame.SummaryText(TAtlasStepCountsState.Counting,
+    TAtlasStepFilterTexts.SummaryText(TAtlasStepCountsState.Ready, mCounts));
+  Assert.AreEqual('Zähle im Index …', TAtlasStepFilterTexts.SummaryText(TAtlasStepCountsState.Counting,
     mCounts));
   Assert.AreEqual('Treffer gibt es erst mit laufendem Server.',
-    TAtlasDebugStepFilterFrame.SummaryText(TAtlasStepCountsState.Unavailable, mCounts));
-  Assert.AreEqual('', TAtlasDebugStepFilterFrame.SummaryText(TAtlasStepCountsState.None, mCounts));
+    TAtlasStepFilterTexts.SummaryText(TAtlasStepCountsState.Unavailable, mCounts));
+  Assert.AreEqual('', TAtlasStepFilterTexts.SummaryText(TAtlasStepCountsState.None, mCounts));
   Assert.AreEqual('In dieser Debug-Sitzung übersprungen: 0',
-    TAtlasDebugStepFilterFrame.SessionText(True, 0, '', ''));
+    TAtlasStepFilterTexts.SessionText(True, 0, '', ''));
   Assert.AreEqual('In dieser Debug-Sitzung übersprungen: 3 · zuletzt Kunden.TKunde.GetName (Muster *.Get*)',
-    TAtlasDebugStepFilterFrame.SessionText(True, 3, 'Kunden.TKunde.GetName', 'Muster *.Get*'));
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.StepFilterInactive),
-    TAtlasDebugStepFilterFrame.SessionText(False, 3, 'Kunden.TKunde.GetName', 'Muster *.Get*'));
+    TAtlasStepFilterTexts.SessionText(True, 3, 'Kunden.TKunde.GetName', 'Muster *.Get*'));
+  Assert.AreEqual(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepFilterInactive),
+    TAtlasStepFilterTexts.SessionText(False, 3, 'Kunden.TKunde.GetName', 'Muster *.Get*'));
   mCounts.Patterns := nil;
 end;
 

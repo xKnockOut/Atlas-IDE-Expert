@@ -129,9 +129,13 @@ begin
   begin
     Code := Diagnostic.Code;
     if Code = '' then
+    begin
       Code := '-';
+    end;
     if Result <> '' then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + Code;
   end;
 end;
@@ -147,7 +151,9 @@ var
   begin
     Position := 0;
     for Line := 1 to APosition.Line do
+    begin
       Position := Pos(#10, AText, Position + 1);
+    end;
     Result := Position + APosition.Character;
   end;
 
@@ -168,7 +174,9 @@ var
 begin
   SetLength(Body, Length(ABody));
   for Index := 0 to High(ABody) do
+  begin
     Body[Index] := ABody[Index];
+  end;
   // Mit TArray beginnen: Ein Literal vorn läse Delphi als Menge (E2001).
   Result := Lines(TArray<string>.Create('program P;', 'var', '  A: Boolean;', '  B: Integer;', 'begin') + Body +
     ['end.']);
@@ -181,10 +189,14 @@ var
 begin
   Text := ['unit U;', '', 'interface', ''];
   for Index := 0 to High(AInterface) do
+  begin
     Text := Text + [AInterface[Index]];
+  end;
   Text := Text + ['', 'implementation', ''];
   for Index := 0 to High(AImplementation) do
+  begin
     Text := Text + [AImplementation[Index]];
+  end;
   Result := Lines(Text + ['', 'end.']);
 end;
 

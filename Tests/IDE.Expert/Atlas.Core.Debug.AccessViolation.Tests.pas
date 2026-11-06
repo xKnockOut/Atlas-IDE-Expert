@@ -13,6 +13,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Debugger')]
   TAtlasAccessViolationTests = class
   private
     FAnswers: TDictionary<string, string>;
@@ -81,7 +82,9 @@ begin
   Result.Expression := AExpression;
   Result.Name := AExpression;
   if LastDelimiter('.', AExpression) > 0 then
+  begin
     Result.Name := Copy(AExpression, LastDelimiter('.', AExpression) + 1, MaxInt);
+  end;
   Result.Kind := AKind;
   Result.TypeName := ATypeName;
 end;
@@ -158,12 +161,18 @@ begin
     FAsked := FAsked + [Request.Expression];
     FSideEffects := FSideEffects + [Request.SideEffects];
     if FAnswers.TryGetValue(Request.Expression, Value) then
-      AAnalysis.Answer(True, Value)
+    begin
+      AAnalysis.Answer(True, Value);
+    end
     else
+    begin
       AAnalysis.Answer(False, 'E2003 Undeklarierter Bezeichner');
+    end;
     Inc(Steps);
     if Steps > 200 then
+    begin
       Assert.Fail('Die Analyse endet nicht');
+    end;
   end;
   Assert.IsTrue(AAnalysis.Done);
 end;
@@ -173,8 +182,12 @@ var
   Item: string;
 begin
   for Item in FAsked do
+  begin
     if Item = AExpression then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -235,39 +248,39 @@ var
   Value: UInt64;
   Number: Int64;
 begin
-  Assert.IsTrue(TAtlasAvAnalysis.ParseAddress('nil', Value));
+  Assert.IsTrue(TAtlasAvValues.ParseAddress('nil', Value));
   Assert.AreEqual<UInt64>(UInt64(0), Value);
-  Assert.IsTrue(TAtlasAvAnalysis.ParseAddress('$02A41230', Value));
+  Assert.IsTrue(TAtlasAvValues.ParseAddress('$02A41230', Value));
   Assert.AreEqual<UInt64>(UInt64($02A41230), Value);
-  Assert.IsTrue(TAtlasAvAnalysis.ParseAddress('0x7ff6a1b2', Value));
+  Assert.IsTrue(TAtlasAvValues.ParseAddress('0x7ff6a1b2', Value));
   Assert.AreEqual<UInt64>(UInt64($7FF6A1B2), Value);
-  Assert.IsTrue(TAtlasAvAnalysis.ParseAddress('($1C)', Value));
+  Assert.IsTrue(TAtlasAvValues.ParseAddress('($1C)', Value));
   Assert.AreEqual<UInt64>(UInt64($1C), Value);
-  Assert.IsTrue(TAtlasAvAnalysis.ParseAddress('28', Value));
+  Assert.IsTrue(TAtlasAvValues.ParseAddress('28', Value));
   Assert.AreEqual<UInt64>(UInt64(28), Value);
-  Assert.IsTrue(TAtlasAvAnalysis.ParseAddress('18369900232523579118', Value));
+  Assert.IsTrue(TAtlasAvValues.ParseAddress('18369900232523579118', Value));
   Assert.AreEqual<UInt64>(UInt64($FEEEFEEEFEEEFEEE), Value);
-  Assert.IsFalse(TAtlasAvAnalysis.ParseAddress('''Text''', Value));
-  Assert.IsFalse(TAtlasAvAnalysis.ParseAddress('', Value));
-  Assert.IsTrue(TAtlasAvAnalysis.ParseInteger(' 7 ', Number));
+  Assert.IsFalse(TAtlasAvValues.ParseAddress('''Text''', Value));
+  Assert.IsFalse(TAtlasAvValues.ParseAddress('', Value));
+  Assert.IsTrue(TAtlasAvValues.ParseInteger(' 7 ', Number));
   Assert.AreEqual<Int64>(Int64(7), Number);
-  Assert.IsTrue(TAtlasAvAnalysis.ParseInteger('-1', Number));
+  Assert.IsTrue(TAtlasAvValues.ParseInteger('-1', Number));
   Assert.AreEqual<Int64>(Int64(-1), Number);
-  Assert.AreEqual('$0000001C', TAtlasAvAnalysis.HexText($1C));
-  Assert.AreEqual('$00007FF6A1B21234', TAtlasAvAnalysis.HexText($7FF6A1B21234));
+  Assert.AreEqual('$0000001C', TAtlasAvValues.HexText($1C));
+  Assert.AreEqual('$00007FF6A1B21234', TAtlasAvValues.HexText($7FF6A1B21234));
 end;
 
 procedure TAtlasAccessViolationTests.RecognisesFreedPatterns;
 begin
-  Assert.IsTrue(TAtlasAvAnalysis.IsFreedPattern($80808080, 4));
-  Assert.IsTrue(TAtlasAvAnalysis.IsFreedPattern($FEEEFEEE, 4));
-  Assert.IsFalse(TAtlasAvAnalysis.IsFreedPattern($8080808080808080, 4));
-  Assert.IsTrue(TAtlasAvAnalysis.IsFreedPattern($8080808080808080, 8));
-  Assert.IsTrue(TAtlasAvAnalysis.IsFreedPattern($80808080, 8));
-  Assert.IsFalse(TAtlasAvAnalysis.IsFreedPattern($02A41230, 4));
-  Assert.IsTrue(TAtlasAvAnalysis.NearFreedPattern($80808094, 4));
-  Assert.IsFalse(TAtlasAvAnalysis.NearFreedPattern($80908080, 4));
-  Assert.IsTrue(TAtlasAvAnalysis.NearFreedPattern($FEEEFEEEFEEEFEF2, 8));
+  Assert.IsTrue(TAtlasAvValues.IsFreedPattern($80808080, 4));
+  Assert.IsTrue(TAtlasAvValues.IsFreedPattern($FEEEFEEE, 4));
+  Assert.IsFalse(TAtlasAvValues.IsFreedPattern($8080808080808080, 4));
+  Assert.IsTrue(TAtlasAvValues.IsFreedPattern($8080808080808080, 8));
+  Assert.IsTrue(TAtlasAvValues.IsFreedPattern($80808080, 8));
+  Assert.IsFalse(TAtlasAvValues.IsFreedPattern($02A41230, 4));
+  Assert.IsTrue(TAtlasAvValues.NearFreedPattern($80808094, 4));
+  Assert.IsFalse(TAtlasAvValues.NearFreedPattern($80908080, 4));
+  Assert.IsTrue(TAtlasAvValues.NearFreedPattern($FEEEFEEEFEEEFEF2, 8));
 end;
 
 procedure TAtlasAccessViolationTests.NilLinkWithConfirmedField;
@@ -527,7 +540,9 @@ begin
     Assert.IsTrue(Analysis.Verdict.Kind = TAtlasAvVerdictKind.NilLink);
     Assert.AreEqual('Auftrag.Kunde', Analysis.Verdict.Culprit.Expression);
     for Index := 0 to High(FAsked) do
+    begin
       Assert.AreEqual(FAsked[Index] = 'Pointer(Auftrag.Kunde)', FSideEffects[Index], FAsked[Index]);
+    end;
   finally
     Analysis.Free;
   end;

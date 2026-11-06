@@ -77,7 +77,9 @@ class function TCompilerIdeCommand.BuildArguments(APid: Cardinal; const AProject
 begin
   Result := ['build', '-Instance', IntToStr(APid), '-Project', AProject];
   if APlatform <> '' then
+  begin
     Result := Result + ['-Platform', APlatform];
+  end;
   Result := Result + ['-Json'];
 end;
 
@@ -98,15 +100,21 @@ begin
     Lower := LowerCase(Line);
     Index := Pos('pid', Lower);
     if Index = 0 then
+    begin
       Continue;
+    end;
     Index := Index + 3;
     // "pid N", "pid: N", "pid=N"
     while (Index <= Length(Lower)) and not CharInSet(Lower[Index], ['0'..'9']) and
       CharInSet(Lower[Index], [' ', ':', '=', #9]) do
+    begin
       Inc(Index);
+    end;
     Start := Index;
     while (Index <= Length(Lower)) and CharInSet(Lower[Index], ['0'..'9']) do
+    begin
       Inc(Index);
+    end;
     if (Index > Start) and TryStrToInt64(Copy(Lower, Start, Index - Start), Value) and (Value > 0) and
       (Value <= High(Cardinal)) then
     begin
@@ -129,19 +137,25 @@ begin
   First := Pos('{', Text);
   Last := LastDelimiter('}', Text);
   if (First = 0) or (Last < First) then
+  begin
     Exit(False);
+  end;
   Value := TJSONObject.ParseJSONValue(Copy(Text, First, Last - First + 1));
   try
     Result := Value is TJSONObject;
     if not Result then
+    begin
       Exit;
+    end;
     Root := TJSONObject(Value);
     AReport.Ok := Root.GetValue<Boolean>('ok', False);
     AReport.OutputWritten := Root.GetValue<Boolean>('outputWritten', False);
     AReport.LogFile := Root.GetValue<string>('logFile', '');
     AReport.Error := Root.GetValue<string>('error', '');
     if AReport.Error = '' then
+    begin
       AReport.Error := Root.GetValue<string>('message', '');
+    end;
   finally
     Value.Free;
   end;

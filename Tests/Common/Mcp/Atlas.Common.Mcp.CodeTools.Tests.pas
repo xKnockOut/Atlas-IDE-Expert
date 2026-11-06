@@ -18,22 +18,6 @@ type
     [Test]
     procedure ReportsUnknownSymbol;
     [Test]
-    procedure ListsDiagnosticsWithLocation;
-    [Test]
-    procedure HookDiagnosticsReportsWarningsAsHookOutput;
-    [Test]
-    procedure HookDiagnosticsIsEmptyForOtherFiles;
-    [Test]
-    procedure HookDiagnosticsIsEmptyWithoutFindings;
-    [Test]
-    procedure ParsesHookSeverity;
-    [Test]
-    procedure ReportsMetrics;
-    [Test]
-    procedure ReportsTodosOfProjectFilesOnly;
-    [Test]
-    procedure FiltersTodos;
-    [Test]
     procedure ParsesDirection;
     [Test]
     procedure ReplacesLineRange;
@@ -59,8 +43,9 @@ uses
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Lsp.References,
   Atlas.Common.Mcp.Server,
+  Atlas.Common.Mcp.Contract,
   Atlas.Common.Mcp.CodeTools,
-  Atlas.Common.Todos.Contract;
+  Atlas.Common.Mcp.CheckTools;
 
 const
   WorkerFile = 'C:\P\Worker.pas';
@@ -103,11 +88,17 @@ function ReadText(const AFileName: string; out AText: string): Boolean;
 begin
   Result := True;
   if SameText(AFileName, WorkerFile) then
-    AText := WorkerUnit
+  begin
+    AText := WorkerUnit;
+  end
   else if SameText(AFileName, MainFile) then
-    AText := MainUnit
+  begin
+    AText := MainUnit;
+  end
   else
+  begin
     Result := False;
+  end;
 end;
 
 function NewTools: TMcpCodeTools;
@@ -191,141 +182,6 @@ begin
   end;
 end;
 
-procedure TMcpCodeToolsTests.ListsDiagnosticsWithLocation;
-var
-  Text: string;
-begin
-  Text := TMcpCodeTools.Diagnostics(BuiltinRules, TServerSettings.Default, 'C:\P', ['C:\P\Kaputt.pas'],
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      AText := 'unit Kaputt;'#10'interface'#10'implementation'#10'procedure X;'#10'begin'#10'  if then'#10'end;'#10'end.';
-      Result := True;
-    end);
-  Assert.Contains(Text, 'C:\P\Kaputt.pas:6:');
-  Assert.Contains(Text, 'in 1 Dateien');
-end;
-
-procedure TMcpCodeToolsTests.HookDiagnosticsReportsWarningsAsHookOutput;
-var
-  Text: string;
-begin
-  Text := TMcpCodeTools.HookDiagnostics(BuiltinRules, TServerSettings.Default, 'C:\P', 'C:\P\Kaputt.pas',
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      AText := 'unit Kaputt;'#10'interface'#10'implementation'#10'procedure X;'#10'begin'#10'  if then'#10'end;'#10'end.';
-      Result := True;
-    end, nil, nil, TRuleSeverity.Warning);
-  Assert.StartsWith('{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"', Text);
-  Assert.Contains(Text, 'C:\\P\\Kaputt.pas');
-  Assert.Contains(Text, '6:');
-end;
-
-procedure TMcpCodeToolsTests.HookDiagnosticsIsEmptyForOtherFiles;
-var
-  Read: Boolean;
-begin
-  Read := False;
-  Assert.AreEqual('', TMcpCodeTools.HookDiagnostics(BuiltinRules, TServerSettings.Default, 'C:\P', 'C:\P\README.md',
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Read := True;
-      AText := 'if then';
-      Result := True;
-    end, nil, nil, TRuleSeverity.Warning));
-  Assert.IsFalse(Read, 'Andere Dateien liest hook_check gar nicht erst');
-end;
-
-procedure TMcpCodeToolsTests.HookDiagnosticsIsEmptyWithoutFindings;
-begin
-  Assert.AreEqual('', TMcpCodeTools.HookDiagnostics(BuiltinRules, TServerSettings.Default, 'C:\P', 'C:\P\Gut.pas',
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      AText := 'unit Gut;'#10'interface'#10'implementation'#10'end.';
-      Result := True;
-    end, nil, nil, TRuleSeverity.Error));
-end;
-
-procedure TMcpCodeToolsTests.ParsesHookSeverity;
-begin
-  Assert.IsTrue(TMcpCodeTools.ParseHookSeverity('') = TRuleSeverity.Warning);
-  Assert.IsTrue(TMcpCodeTools.ParseHookSeverity('Error') = TRuleSeverity.Error);
-  Assert.IsTrue(TMcpCodeTools.ParseHookSeverity('hint') = TRuleSeverity.Hint);
-  Assert.WillRaise(
-    procedure
-    begin
-      TMcpCodeTools.ParseHookSeverity('laut');
-    end, EMcpToolError);
-end;
-
-procedure TMcpCodeToolsTests.ReportsMetrics;
-var
-  Text: string;
-  ReadText: TReferenceReadText;
-begin
-  ReadText :=
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      AText := 'unit Lang;'#10'interface'#10'implementation'#10 +
-        'procedure Viele(A, B, C, D, E, F, G: Integer);'#10'begin'#10'end;'#10'end.';
-      Result := True;
-    end;
-  Text := TMcpCodeTools.Metrics(TServerSettings.Default, 'C:\P', ['C:\P\Lang.pas'], ReadText, False);
-  Assert.Contains(Text, '# Code-Metriken: P');
-  Assert.Contains(Text, '| Viele | Lang.pas | 4 | 3 | 0 | 1 | 0 | **7** |');
-  Text := TMcpCodeTools.Metrics(TServerSettings.Default, 'C:\P', ['C:\P\Lang.pas'], ReadText, True);
-  Assert.Contains(Text, '"exceeded": ["parameters"]');
-end;
-
-/// <summary>Zwei Projektdateien mit TODOs; Fremd.pas läge auch im Ordner, gehört aber nicht zum Projekt.</summary>
-function TodoText(const AFileName: string; out AText: string): Boolean;
-begin
-  Result := True;
-  if AFileName.EndsWith('Kasse.pas') then
-    AText := 'unit Kasse;'#10'// TODO 1 -oMarco -cGUI : Fokus setzen'#10'{ DONE -oAnna : Rundung }'#10 +
-      '// FIXME: Rabatt doppelt'#10'end.'
-  else if AFileName.EndsWith('Lager.pas') then
-    AText := 'unit Lager;'#10'{ TODO 2 -oAnna -cDaten : Index anlegen }'#10'end.'
-  else
-    AText := 'unit Fremd;'#10'// TODO fremd'#10'end.';
-end;
-
-procedure TMcpCodeToolsTests.ReportsTodosOfProjectFilesOnly;
-var
-  Text: string;
-begin
-  Text := TMcpCodeTools.Todos(TServerSettings.Default, 'C:\P', ['C:\P\Kasse.pas', 'C:\P\Lager.pas'], TodoText,
-    TTodoFilter.Default, False);
-  Assert.Contains(Text, '# TODOs: P');
-  Assert.Contains(Text, '3 offene Einträge in 2 Dateien (FIXME 1, TODO 2).');
-  Assert.Contains(Text, '| 2 | TODO | 1 | GUI | Marco | Fokus setzen |');
-  Assert.DoesNotContain(Text, 'Rundung');
-  Assert.DoesNotContain(Text, 'fremd');
-  Text := TMcpCodeTools.Todos(TServerSettings.Default, 'C:\P', ['C:\P\Kasse.pas'], TodoText,
-    TTodoFilter.All, True);
-  Assert.Contains(Text, '"keyword": "DONE", "done": true');
-  Assert.Contains(Text, '"open": 2, "done": 1');
-end;
-
-procedure TMcpCodeToolsTests.FiltersTodos;
-var
-  Filter: TTodoFilter;
-  Text: string;
-begin
-  Filter := TTodoFilter.Default;
-  Filter.Owner := 'anna';
-  Text := TMcpCodeTools.Todos(TServerSettings.Default, 'C:\P', ['C:\P\Kasse.pas', 'C:\P\Lager.pas'], TodoText,
-    Filter, True);
-  Assert.Contains(Text, '"text": "Index anlegen"');
-  Assert.DoesNotContain(Text, 'Fokus');
-  Filter := TTodoFilter.Default;
-  Filter.Category := 'GUI';
-  Filter.UnitName := 'Kasse';
-  Text := TMcpCodeTools.Todos(TServerSettings.Default, 'C:\P', ['C:\P\Kasse.pas', 'C:\P\Lager.pas'], TodoText,
-    Filter, True);
-  Assert.Contains(Text, '"open": 1');
-  Assert.Contains(Text, '"unit": "Kasse"');
-end;
-
 procedure TMcpCodeToolsTests.ReplacesLineRange;
 begin
   Assert.AreEqual('a'#13#10'X'#13#10'c', TMcpCodeTools.ReplaceLines('a'#13#10'b'#13#10'c', 'X', 2, 2));
@@ -347,12 +203,14 @@ begin
   Tools := NewTools;
   try
     // Zeile 9 ("begin") bleibt, Zeile 10 "W.Run;" wird durch fehlerhaften Code ersetzt.
-    Text := Tools.CheckCode(BuiltinRules, TServerSettings.Default, 'C:\P', MainFile, '  if then', 10, 10);
+    Text := Tools.CheckCode(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, 'C:\P'),
+      MainFile, '  if then', 10, 10);
     Assert.Contains(Text, '10:');
     Assert.Contains(Text, '[syntax]');
     // Ohne System im Index werden Bezeichner nicht geprüft, und das steht dabei.
     Assert.Contains(Text, 'Unit System ist nicht im Index');
-    Text := Tools.CheckCode(BuiltinRules, TServerSettings.Default, 'C:\P', MainFile, MainUnit, 0, 0);
+    Text := Tools.CheckCode(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, 'C:\P'),
+      MainFile, MainUnit, 0, 0);
     Assert.Contains(Text, 'Keine Befunde');
   finally
     Tools.Free;
@@ -387,17 +245,21 @@ begin
   Tools := NewTools;
   try
     // Ohne Projekt gelten Win32 und Delphi 13: Der {$ELSE}-Zweig ist aktiv und kaputt.
-    Assert.Contains(Tools.CheckCode(BuiltinRules, TServerSettings.Default, 'C:\P', ZielFile, Win64Unit, 0, 0),
+    Assert.Contains(Tools.CheckCode(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, 'C:\P'),
+      ZielFile, Win64Unit, 0, 0),
       '[syntax]');
     Tools.CheckSource := Win64;
-    Assert.Contains(Tools.CheckCode(BuiltinRules, TServerSettings.Default, 'C:\P', ZielFile, Win64Unit, 0, 0),
+    Assert.Contains(Tools.CheckCode(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, 'C:\P'),
+      ZielFile, Win64Unit, 0, 0),
       'Keine Befunde');
   finally
     Tools.Free;
   end;
-  Assert.Contains(TMcpCodeTools.Diagnostics(BuiltinRules, TServerSettings.Default, 'C:\P', [ZielFile],
+  Assert.Contains(TMcpCheckTools.Diagnostics(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, 'C:\P'),
+    [ZielFile],
     ReadWin64), '[syntax]');
-  Assert.Contains(TMcpCodeTools.Diagnostics(BuiltinRules, TServerSettings.Default, 'C:\P', [ZielFile],
+  Assert.Contains(TMcpCheckTools.Diagnostics(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, 'C:\P'),
+    [ZielFile],
     ReadWin64, Win64), '0 Befunde');
 end;
 

@@ -144,9 +144,13 @@ begin
   Result := Default(TSuperclassRequest);
   Result.Name := AName;
   for Name in AMembers do
+  begin
     Result.Members := Result.Members + [IdOf(AText, ALine, Name)];
+  end;
   for Name in AAbstract do
+  begin
     Result.Abstract := Result.Abstract + [IdOf(AText, ALine, Name)];
+  end;
   Result.SameUnit := ASameUnit;
   Result.RaiseVisibility := TClassVisibility.Protected_;
 end;
@@ -158,7 +162,7 @@ var
 begin
   Tree := TPascalParser.Parse(AText);
   try
-    Result := TExtractSuperclass.Plan(Tree, AText, ALine, ARequest, nil, nil, APlan, AReason);
+    Result := TExtractSuperclass.Plan(TClassSource.Create(Tree, AText, ALine), ARequest, nil, nil, APlan, AReason);
   finally
     Tree.Free;
   end;
@@ -171,11 +175,15 @@ var
 begin
   Start := Pos(AFrom, AText);
   if Start = 0 then
+  begin
     Exit('');
+  end;
   Start := Start + Length(AFrom);
   Stop := PosEx(ATo, AText, Start);
   if Stop = 0 then
+  begin
     Exit('');
+  end;
   Result := Copy(AText, Start, Stop - Start);
 end;
 
@@ -197,7 +205,7 @@ var
 begin
   Tree := TPascalParser.Parse(Export_);
   try
-    Assert.IsTrue(TExtractSuperclass.Prepare(Tree, Export_, 4, 'Base',
+    Assert.IsTrue(TExtractSuperclass.Prepare(TClassSource.Create(Tree, Export_, 4), 'Base',
       function(const AName: string): Boolean
       begin
         Result := SameText(AName, 'TExportBase');
@@ -211,7 +219,9 @@ begin
   Assert.AreEqual('TComponent', Info.Ancestor);
   Names := '';
   for Item in Info.Candidates do
+  begin
     Names := Names + Item.Name + ' ';
+  end;
   Assert.AreEqual('FTitle FPages FCompressed GetTitle Run WritePage Title ', Names);
   Assert.IsTrue(Info.Candidates[3].CanAbstract);
   // Run braucht WritePage und FTitle.

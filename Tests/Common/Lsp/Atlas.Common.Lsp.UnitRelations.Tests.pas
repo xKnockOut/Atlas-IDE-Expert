@@ -77,7 +77,9 @@ var
 begin
   Result := TJSONArray.Create;
   for Value in AValues do
+  begin
     Result.Add(Value);
+  end;
 end;
 
 /// <summary>Text nach den Edits des WorkspaceEdit aus der Antwort {"edit": …}.</summary>
@@ -148,7 +150,9 @@ begin
           Result := Default(TUsesUnitInfo);
           Result.Known := True;
           if SameText(AUnitName, 'B') then
+          begin
             Result.Names := ['TB'];
+          end;
         end;
       Result := True;
     end,

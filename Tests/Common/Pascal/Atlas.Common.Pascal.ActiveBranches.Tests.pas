@@ -110,7 +110,9 @@ begin
       while Outer <> nil do
       begin
         if Outer.Kind = TSyntaxKind.RoutineDecl then
+        begin
           Prefix := Prefix + '>';
+        end;
         Outer := Outer.Parent;
       end;
       case ANode.Kind of
@@ -118,7 +120,9 @@ begin
           Parts := Parts + ' ' + Prefix + ANode.Name;
         TSyntaxKind.TypeReference:
           if (ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.ClassType) then
+          begin
             Parts := Parts + ' (' + ANode.Name + ')';
+          end;
         TSyntaxKind.InitializationSection:
           Parts := Parts + ' init';
       else
@@ -277,8 +281,12 @@ begin
   Shared := TSyntaxTreeCache.Get(NewDocument(CaseBodies));
   Active := '';
   for Conditional in Shared.Conditionals do
+  begin
     if Conditional.Active then
+    begin
       Active := Active + Conditional.Condition + ' ' + IntToStr(Conditional.Range.StartPos.Line);
+    end;
+  end;
   Assert.AreEqual('MSWINDOWS 6', Active);
   Assert.AreEqual(2, Integer(Length(Shared.Conditionals)));
 end;

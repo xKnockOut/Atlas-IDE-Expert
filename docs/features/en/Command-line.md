@@ -6,8 +6,8 @@ Back to the [README](../../../README.md)
 
 | Parameter | Meaning |
 |---|---|
-| `--log <file>` | log file, appended; paths, project, unit and user names are replaced by IDs (`datei#3`, `name#2`) |
-| `--log-names` | write the log file with real paths and names (local debugging only) |
+| `--log <file>` | log file, appended; paths, project, unit and user names and messages are replaced by IDs (`datei#3`, `name#2`, `wert#1`, #1478) |
+| `--log-names` | write the log file and `--timings` with real paths and names (local debugging only) |
 | `--log-level <level>` | `debug`, `info` (default), `warning`, `error`; applies to the log file and `window/logMessage` |
 | `--trace <file>` | trace of all JSON messages (`-->` received, `<--` sent) |
 

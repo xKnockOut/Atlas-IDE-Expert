@@ -98,19 +98,19 @@ var
   Results: TArray<TAtlasSetupResult>;
 begin
   Results := TAtlasSetupChecklist.Evaluate(Input);
-  Assert.AreEqual('Server gefunden, gestartet, Version passt', TAtlasSetupWindow.ResultText(Results[0]));
-  Assert.AreEqual('AtlasServer 0.1.0', TAtlasSetupWindow.DetailText(Results[0]));
-  Assert.AreEqual('Delphi 13 (37.0) erkannt', TAtlasSetupWindow.ResultText(Results[1]));
-  Assert.AreEqual('Plattform Win64', TAtlasSetupWindow.DetailText(Results[1]));
+  Assert.AreEqual('Server gefunden, gestartet, Version passt', TAtlasSetupTexts.ResultText(Results[0]));
+  Assert.AreEqual('AtlasServer 0.1.0', TAtlasSetupTexts.DetailText(Results[0]));
+  Assert.AreEqual('Delphi 13 (37.0) erkannt', TAtlasSetupTexts.ResultText(Results[1]));
+  Assert.AreEqual('Plattform Win64', TAtlasSetupTexts.DetailText(Results[1]));
   Assert.AreEqual('Projektgruppe: 1 von 2 Projekten nicht im Index (Export)',
-    TAtlasSetupWindow.ResultText(Results[2]));
-  Assert.AreEqual('Bibliotheks-Cache fehlt, erster Start dauert länger', TAtlasSetupWindow.ResultText(Results[3]));
-  Assert.AreEqual('Error Insight der IDE ist noch an (doppelte Meldungen)', TAtlasSetupWindow.ResultText(Results[4]));
-  Assert.AreEqual('Tastenkürzel ohne Konflikt', TAtlasSetupWindow.ResultText(Results[5]));
-  Assert.AreEqual('Server-Pfad wählen…', TAtlasSetupWindow.FixCaption(TAtlasSetupFix.ChooseServerPath));
-  Assert.AreEqual('Index neu aufbauen', TAtlasSetupWindow.FixCaption(TAtlasSetupFix.RebuildIndex));
-  Assert.AreEqual('Error Insight abschalten', TAtlasSetupWindow.FixCaption(TAtlasSetupFix.DisableErrorInsight));
-  Assert.AreEqual('', TAtlasSetupWindow.FixCaption(TAtlasSetupFix.None));
+    TAtlasSetupTexts.ResultText(Results[2]));
+  Assert.AreEqual('Bibliotheks-Cache fehlt, erster Start dauert länger', TAtlasSetupTexts.ResultText(Results[3]));
+  Assert.AreEqual('Error Insight der IDE ist noch an (doppelte Meldungen)', TAtlasSetupTexts.ResultText(Results[4]));
+  Assert.AreEqual('Tastenkürzel ohne Konflikt', TAtlasSetupTexts.ResultText(Results[5]));
+  Assert.AreEqual('Server-Pfad wählen…', TAtlasSetupTexts.FixCaption(TAtlasSetupFix.ChooseServerPath));
+  Assert.AreEqual('Index neu aufbauen', TAtlasSetupTexts.FixCaption(TAtlasSetupFix.RebuildIndex));
+  Assert.AreEqual('Error Insight abschalten', TAtlasSetupTexts.FixCaption(TAtlasSetupFix.DisableErrorInsight));
+  Assert.AreEqual('', TAtlasSetupTexts.FixCaption(TAtlasSetupFix.None));
 end;
 
 procedure TAtlasSetupWindowTests.ButtonOnlyForNonGreenPoints;
@@ -124,8 +124,10 @@ begin
   try
     Window.SetResults(Results);
     for Index := 0 to High(Results) do
+    begin
       Assert.IsTrue((Results[Index].State <> TAtlasStatusState.Green) = Window.FixButtons[Index].Visible,
         'Knopf genau bei gelb oder rot: ' + IntToStr(Index));
+    end;
     Assert.AreEqual('Jetzt aufbauen', Window.FixButtons[3].Caption);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SetupCopy), Window.CopyButton.Caption);
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SetupRecheck), Window.RecheckButton.Caption);
@@ -216,8 +218,8 @@ begin
     Height1 := Window.ClientHeight;
     Window.SetResults(TAtlasSetupChecklist.Evaluate(Input));
     Assert.IsTrue(Window.ClientHeight > Height1, 'zwei Projektzeilen unter dem Index');
-    Assert.AreEqual('Kunden: fertig', TAtlasSetupWindow.ProjectText(Window.Results[2].Projects[0]));
-    Assert.AreEqual('Export: fehlt im Index', TAtlasSetupWindow.ProjectText(Window.Results[2].Projects[1]));
+    Assert.AreEqual('Kunden: fertig', TAtlasSetupTexts.ProjectText(Window.Results[2].Projects[0]));
+    Assert.AreEqual('Export: fehlt im Index', TAtlasSetupTexts.ProjectText(Window.Results[2].Projects[1]));
   finally
     Window.Free;
   end;
@@ -229,8 +231,8 @@ var
   Lines: TArray<TAtlasSetupReportLine>;
 begin
   Results := TAtlasSetupChecklist.Evaluate(Input);
-  Assert.AreEqual('3 von 6 erledigt', TAtlasSetupWindow.ProgressText(Results));
-  Lines := TAtlasSetupWindow.ReportLines(Results);
+  Assert.AreEqual('3 von 6 erledigt', TAtlasSetupTexts.ProgressText(Results));
+  Lines := TAtlasSetupTexts.ReportLines(Results);
   // Sechs Prüfungen und zwei Projekte.
   Assert.AreEqual(8, Integer(Length(Lines)));
   Assert.AreEqual('Server gefunden, gestartet, Version passt (AtlasServer 0.1.0)', Lines[0].Text);

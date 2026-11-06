@@ -410,10 +410,16 @@ begin
     Input.ErrorInsight := Phase = TAtlasServerPhase.Running;
     Input.Platform := '';
     for Item in TAtlasSetupChecklist.Evaluate(Input) do
+    begin
       if Item.State <> TAtlasStatusState.Green then
-        Assert.AreNotEqual(Ord(TAtlasSetupFix.None), Ord(Item.Fix), 'Punkt ohne Knopf: ' + IntToStr(Ord(Item.Finding)))
+      begin
+        Assert.AreNotEqual(Ord(TAtlasSetupFix.None), Ord(Item.Fix), 'Punkt ohne Knopf: ' + IntToStr(Ord(Item.Finding)));
+      end
       else
+      begin
         Assert.AreEqual(Ord(TAtlasSetupFix.None), Ord(Item.Fix));
+      end;
+    end;
   end;
 end;
 
@@ -542,9 +548,13 @@ begin
   // Ohne gespeicherten Pfad kein Server; mit Pfad läuft er erst nach dem (Neu-)Start.
   Result.ServerFound := Path <> '';
   if not Result.ServerFound then
-    Result.Server.Phase := TAtlasServerPhase.Failed
+  begin
+    Result.Server.Phase := TAtlasServerPhase.Failed;
+  end
   else if Starts + Restarts = 0 then
+  begin
     Result.Server.Phase := TAtlasServerPhase.NotStarted;
+  end;
 end;
 
 function TFakeEnvironment.ChooseServerPath(out APath: string): Boolean;
@@ -561,9 +571,13 @@ end;
 function TFakeEnvironment.StartServer(ARestart: Boolean): Boolean;
 begin
   if ARestart then
-    Inc(Restarts)
+  begin
+    Inc(Restarts);
+  end
   else
+  begin
     Inc(Starts);
+  end;
   Result := Path <> '';
 end;
 

@@ -7,9 +7,10 @@
 // - Ein Treffer zählt nur mit Konfidenz ab MinConfidence (fix.minConfidence,
 //   Vorgabe hoch) und nur mit genau einer Korrektur, die Text der geprüften
 //   Datei ändert, als sicher markiert ist (TRuleFix.Safe) und zu einer Regel
-//   gehört, die der Katalog mit "safeFix" kennzeichnet. Korrekturen mit Auswahl
-//   (mehrere Kandidaten, Alternative), in anderen Dateien oder in der
-//   Formulardatei sind nie sicher.
+//   gehört, die der Katalog mit "safeFix" kennzeichnet. Weitere, nicht sichere
+//   Korrekturen daneben (begin … end in der ganzen Methode) stören nicht, wie
+//   bei source.fixAll. Korrekturen mit Auswahl (mehrere sichere, Alternative),
+//   in anderen Dateien oder in der Formulardatei sind nie sicher.
 // - Je Durchgang werden die Korrekturen nach Position von hinten nach vorn
 //   genommen; überlappt eine eine schon genommene, bleibt sie für den nächsten
 //   Durchgang, der den geänderten Text neu prüft. Höchstens MaxPasses
@@ -185,7 +186,30 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Configuration.Parser,
-  Atlas.Common.Editing.TextChanges;
+  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TBulkFixText = (MinConfidenceValues, MinConfidenceBelow, Skipped, Preview, Written, Discarded, WriteFailed);
+
+const
+  cTexts: array[TBulkFixText] of TAtlasText = (
+    (De: 'minConfidence ist "medium" oder "high"'; En: 'minConfidence is "medium" or "high"'),
+    (De: 'minConfidence "%s" liegt unter fix.minConfidence (%s)';
+     En: 'minConfidence "%s" is below fix.minConfidence (%s)'),
+    (De: 'Übersprungen: %d mit zu niedriger Konfidenz, %d unsicher, %d Konflikt, %d ohne Korrektur';
+     En: 'Skipped: %d with too low confidence, %d unsafe, %d conflict, %d without fix'),
+    (De: 'Vorschau: %d Korrekturen in %d Dateien, nichts geschrieben';
+     En: 'Preview: %d fixes in %d files, nothing written'),
+    (De: '%d Korrekturen in %d Dateien geschrieben'; En: '%d fixes written in %d files'),
+    (De: 'Verworfen (die Korrekturen hätten Syntaxfehler erzeugt): %s';
+     En: 'Discarded (the fixes would have caused syntax errors): %s'),
+    (De: 'Schreiben fehlgeschlagen (%s); alle Dateien zurückgesetzt.'; En: 'Writing failed (%s); all files restored.'));
+
+{$SCOPEDENUMS OFF}
 
 const
   cAllRules = 'all';
@@ -202,9 +226,13 @@ type
 function ComparePosition(const A, B: TTextPosition): Integer;
 begin
   if A.Line <> B.Line then
-    Result := CompareValue(A.Line, B.Line)
+  begin
+    Result := CompareValue(A.Line, B.Line);
+  end
   else
+  begin
     Result := CompareValue(A.Character, B.Character);
+  end;
 end;
 
 function LineBreaksIn(const AText: string): Integer;
@@ -223,10 +251,16 @@ begin
   Result.MinConfidence := AMinConfidence;
   Result.SafeRules := TBulkFix.SafeRulesOf(ACatalog);
   for mRule in ARules do
+  begin
     if SameText(Trim(mRule), cAllRules) then
-      Result.All := True
+    begin
+      Result.All := True;
+    end
     else if Trim(mRule) <> '' then
+    begin
       Result.Rules := Result.Rules + [LowerCase(Trim(mRule))];
+    end;
+  end;
 end;
 
 function TBulkFixOptions.Wants(const ARuleId: string): Boolean;
@@ -244,54 +278,85 @@ end;
 function TBulkFixLineMap.Original(ALine: Integer): Integer;
 begin
   if (FLines = nil) or (ALine < 0) or (ALine > High(FLines)) then
-    Result := ALine
+  begin
+    Result := ALine;
+  end
   else
+  begin
     Result := FLines[ALine];
+  end;
 end;
 
-function TBulkFixLineMap.After(ALineCount: Integer; const AEdits: TArray<TTextEdit>): TBulkFixLineMap;
-var
-  mSorted: TArray<TTextEdit>;
-  mEdit: TTextEdit;
-  mList: TList<Integer>;
-  mCursor, mLine, mBreaks, mBreak, mStart, mEnd: Integer;
+/// <summary>AEdits nach Anfang, bei gleichem Anfang nach Ende.</summary>
+function SortedEdits(const AEdits: TArray<TTextEdit>): TArray<TTextEdit>;
 begin
-  mSorted := Copy(AEdits);
-  TArray.Sort<TTextEdit>(mSorted, TComparer<TTextEdit>.Construct(
+  Result := Copy(AEdits);
+  TArray.Sort<TTextEdit>(Result, TComparer<TTextEdit>.Construct(
     function(const A, B: TTextEdit): Integer
     begin
       Result := ComparePosition(A.Range.StartPos, B.Range.StartPos);
       if Result = 0 then
+      begin
         Result := ComparePosition(A.Range.EndPos, B.Range.EndPos);
+      end;
     end));
+end;
+
+/// <summary>Zeilen bis einschließlich der Korrektur AEdit in AList; ACursor ist die erste noch nicht
+/// eingetragene Zeile des Ausgangstexts.</summary>
+procedure AddEditLines(const AMap: TBulkFixLineMap; AList: TList<Integer>; const AEdit: TTextEdit;
+  var ACursor: Integer);
+var
+  mLine, mBreaks, mBreak, mStart, mEnd: Integer;
+begin
+  mStart := AEdit.Range.StartPos.Line;
+  mEnd := Max(mStart, AEdit.Range.EndPos.Line);
+  mBreaks := LineBreaksIn(AEdit.NewText);
+  // Liegt der Anfang in der Zeile, in der die vorige Korrektur endet, steht diese Zeile schon in der Tabelle.
+  if mStart >= ACursor then
+  begin
+    for mLine := ACursor to mStart - 1 do
+    begin
+      AList.Add(AMap.Original(mLine));
+    end;
+    // Ganze Zeilen gelöscht: Die Zeile beginnt mit dem Rest der letzten Zeile der Korrektur.
+    if (mBreaks = 0) and (AEdit.Range.StartPos.Character = 0) and (AEdit.NewText = '') then
+    begin
+      AList.Add(AMap.Original(mEnd));
+    end
+    else
+    begin
+      AList.Add(AMap.Original(mStart));
+    end;
+  end;
+  for mBreak := 1 to mBreaks - 1 do
+  begin
+    AList.Add(AMap.Original(mStart));
+  end;
+  if mBreaks > 0 then
+  begin
+    AList.Add(AMap.Original(mEnd));
+  end;
+  ACursor := Max(ACursor, mEnd + 1);
+end;
+
+function TBulkFixLineMap.After(ALineCount: Integer; const AEdits: TArray<TTextEdit>): TBulkFixLineMap;
+var
+  mEdit: TTextEdit;
+  mList: TList<Integer>;
+  mCursor, mLine: Integer;
+begin
   mList := TList<Integer>.Create;
   try
     mCursor := 0;
-    for mEdit in mSorted do
+    for mEdit in SortedEdits(AEdits) do
     begin
-      mStart := mEdit.Range.StartPos.Line;
-      mEnd := Max(mStart, mEdit.Range.EndPos.Line);
-      mBreaks := LineBreaksIn(mEdit.NewText);
-      // Liegt der Anfang in der Zeile, in der die vorige Korrektur endet, steht diese Zeile schon in der Tabelle.
-      if mStart >= mCursor then
-      begin
-        for mLine := mCursor to mStart - 1 do
-          mList.Add(Original(mLine));
-        // Ganze Zeilen gelöscht: Die Zeile beginnt mit dem Rest der letzten Zeile der Korrektur.
-        if (mBreaks = 0) and (mEdit.Range.StartPos.Character = 0) and (mEdit.NewText = '') then
-          mList.Add(Original(mEnd))
-        else
-          mList.Add(Original(mStart));
-      end;
-      for mBreak := 1 to mBreaks do
-        if mBreak = mBreaks then
-          mList.Add(Original(mEnd))
-        else
-          mList.Add(Original(mStart));
-      mCursor := Max(mCursor, mEnd + 1);
+      AddEditLines(Self, mList, mEdit, mCursor);
     end;
     for mLine := mCursor to ALineCount - 1 do
+    begin
       mList.Add(Original(mLine));
+    end;
     Result.FLines := mList.ToArray;
   finally
     mList.Free;
@@ -311,7 +376,9 @@ var
 begin
   Result := 0;
   for mCount in Applied do
+  begin
     Inc(Result, mCount.Count);
+  end;
 end;
 
 { TBulkFix }
@@ -322,8 +389,12 @@ var
 begin
   Result := nil;
   for mEntry in ACatalog do
+  begin
     if mEntry.SafeFix then
+    begin
       Result := Result + [LowerCase(mEntry.Id)];
+    end;
+  end;
 end;
 
 class function TBulkFix.ConfidenceText(AConfidence: TRuleConfidence): string;
@@ -344,17 +415,19 @@ begin
   AError := '';
   AConfidence := ASetting;
   if Trim(ARequested) = '' then
+  begin
     Exit(True);
+  end;
   Result := TConfigurationParser.TryParseConfidence(Trim(ARequested), AConfidence) and
     (AConfidence <> TRuleConfidence.Low);
   if not Result then
   begin
-    AError := 'minConfidence ist "medium" oder "high"';
+    AError := cTexts[TBulkFixText.MinConfidenceValues].Text;
     Exit;
   end;
   if Ord(AConfidence) < Ord(ASetting) then
   begin
-    AError := Format('minConfidence "%s" liegt unter fix.minConfidence (%s)', [Trim(ARequested),
+    AError := cTexts[TBulkFixText.MinConfidenceBelow].Fmt([Trim(ARequested),
       ConfidenceText(ASetting)]);
     Result := False;
   end;
@@ -370,16 +443,22 @@ begin
   for mId in AFixRules do
   begin
     if SameText(Trim(mId), cAllRules) then
+    begin
       Exit(AAll);
+    end;
     mFound := False;
     for mRule in AAll do
+    begin
       if SameText(mRule.Descriptor.Id, Trim(mId)) then
       begin
         Result := Result + [mRule];
         mFound := True;
       end;
+    end;
     if not mFound then
+    begin
       Exit(AAll);
+    end;
   end;
 end;
 
@@ -391,7 +470,8 @@ begin
     var
       mScopes: TFindingScopes;
     begin
-      Result := TFileChecker.CheckText(ARules, ASettings, ARelativePath, AText, AProject, ASource, mScopes);
+      Result := TFileChecker.CheckText(ARules, ASettings, ARelativePath, AText,
+        TCheckOrigin.Make(AProject, ASource), mScopes);
     end;
 end;
 
@@ -400,13 +480,16 @@ class function TBulkFix.CheckWith(const ARules: TArray<IRule>; const ASettings: 
   const ABaseline: IRuleBaseline): TBulkFixCheck;
 begin
   if ABaseline = nil then
+  begin
     Exit(CheckWith(ARules, ASettings, ARelativePath, AProject, ASource));
+  end;
   Result :=
     function(const AText: string; const ALines: TBulkFixLineMap): TArray<TRuleFinding>
     var
       mScopes: TFindingScopes;
     begin
-      Result := TFileChecker.CheckText(ARules, ASettings, ARelativePath, AText, AProject, ASource, mScopes);
+      Result := TFileChecker.CheckText(ARules, ASettings, ARelativePath, AText,
+        TCheckOrigin.Make(AProject, ASource), mScopes);
       Result := ABaseline.Filter(ARelativePath, AText, mScopes, Result);
     end;
 end;
@@ -431,7 +514,9 @@ end;
 class function TBulkFix.Overlaps(const A, B: TTextRange): Boolean;
 begin
   if A.StartPos = B.StartPos then
+  begin
     Exit(True);
+  end;
   Result := (ComparePosition(A.StartPos, B.EndPos) < 0) and (ComparePosition(B.StartPos, A.EndPos) < 0);
 end;
 
@@ -439,7 +524,7 @@ class function TBulkFix.SafeFixOf(const AFinding: TRuleFinding; const AOptions: 
   out ASkip: TBulkFixSkip): Boolean;
 var
   mFix: TRuleFix;
-  mCount: Integer;
+  mCount, mTextFixes: Integer;
 begin
   Result := False;
   AFix := Default(TRuleFix);
@@ -448,24 +533,159 @@ begin
     ASkip := TBulkFixSkip.Confidence;
     Exit;
   end;
-  // Nur Korrekturen, die Text ändern: Sprünge und „Graph zeigen“ zählen nicht.
+  // Nur Korrekturen, die Text ändern: Sprünge und „Graph zeigen“ zählen nicht. Genommen wird die eine sichere
+  // Korrektur wie bei source.fixAll; weitere, nicht sichere (begin … end in der ganzen Methode) bleiben eine
+  // Auswahl für den Benutzer. Zwei sichere sind selbst eine Auswahl.
+  mTextFixes := 0;
   mCount := 0;
   for mFix in AFinding.Fixes do
+  begin
     if (mFix.Edits <> nil) or (mFix.OtherFiles <> nil) then
     begin
-      Inc(mCount);
-      AFix := mFix;
+      Inc(mTextFixes);
+      if mFix.Safe and not mFix.Alternative then
+      begin
+        Inc(mCount);
+        AFix := mFix;
+      end;
     end;
-  if mCount = 0 then
+  end;
+  if mTextFixes = 0 then
   begin
     ASkip := TBulkFixSkip.NoFix;
     Exit;
   end;
   ASkip := TBulkFixSkip.Unsafe;
-  if (mCount > 1) or (IndexText(AFinding.RuleId, AOptions.SafeRules) < 0) or not AFix.Safe or AFix.Alternative or
-    (AFix.OtherFiles <> nil) or (AFix.FileName <> '') or (AFix.Edits = nil) then
+  if (mCount <> 1) or (IndexText(AFinding.RuleId, AOptions.SafeRules) < 0) or (AFix.OtherFiles <> nil) or
+    (AFix.FileName <> '') or (AFix.Edits = nil) then
+  begin
+    AFix := Default(TRuleFix);
     Exit;
+  end;
   Result := True;
+end;
+
+/// <summary>Zählt eine angewendete Korrektur der Regel ARuleId.</summary>
+procedure CountRule(var AApplied: TArray<TBulkFixRuleCount>; const ARuleId: string; ACount: Integer);
+var
+  mPosition: Integer;
+begin
+  for mPosition := 0 to High(AApplied) do
+  begin
+    if SameText(AApplied[mPosition].RuleId, ARuleId) then
+    begin
+      Inc(AApplied[mPosition].Count, ACount);
+      Exit;
+    end;
+  end;
+  SetLength(AApplied, Length(AApplied) + 1);
+  AApplied[High(AApplied)].RuleId := ARuleId;
+  AApplied[High(AApplied)].Count := ACount;
+end;
+
+/// <summary>Kandidat zu AFix mit der frühesten Stelle seiner Edits.</summary>
+function CandidateOf(const ARuleId: string; const AFix: TRuleFix): TCandidate;
+var
+  mEdit: TTextEdit;
+begin
+  Result.RuleId := ARuleId;
+  Result.Fix := AFix;
+  Result.Start := AFix.Edits[0].Range.StartPos;
+  for mEdit in AFix.Edits do
+  begin
+    if ComparePosition(mEdit.Range.StartPos, Result.Start) < 0 then
+    begin
+      Result.Start := mEdit.Range.StartPos;
+    end;
+  end;
+end;
+
+/// <summary>Sichere Korrekturen aus AFindings von hinten nach vorn; bei gleicher Stelle nach Regel und Titel,
+/// damit die Reihenfolge feststeht (Sort ist nicht stabil). Übersprungene zählen nur mit ACountSkipped, also nach
+/// dem Ausgangstext; spätere Durchgänge sehen dieselben Treffer noch einmal.</summary>
+function CandidatesOf(const AFindings: TArray<TRuleFinding>; const AOptions: TBulkFixOptions;
+  ACountSkipped: Boolean; var ASkipped: TBulkFixSkipCounts): TArray<TCandidate>;
+var
+  mFinding: TRuleFinding;
+  mFix: TRuleFix;
+  mSkip: TBulkFixSkip;
+begin
+  Result := nil;
+  for mFinding in AFindings do
+  begin
+    if not AOptions.Wants(mFinding.RuleId) then
+    begin
+      Continue;
+    end;
+    if TBulkFix.SafeFixOf(mFinding, AOptions, mFix, mSkip) then
+    begin
+      Result := Result + [CandidateOf(mFinding.RuleId, mFix)];
+    end
+    else if ACountSkipped then
+    begin
+      Inc(ASkipped[mSkip]);
+    end;
+  end;
+  TArray.Sort<TCandidate>(Result, TComparer<TCandidate>.Construct(
+    function(const A, B: TCandidate): Integer
+    begin
+      Result := ComparePosition(B.Start, A.Start);
+      if Result = 0 then
+      begin
+        Result := CompareText(A.RuleId, B.RuleId);
+      end;
+      if Result = 0 then
+      begin
+        Result := CompareText(A.Fix.Title, B.Fix.Title);
+      end;
+    end));
+end;
+
+/// <summary>Überlappt keine Änderung aus AEdits eine aus ATaken?</summary>
+function FitsBeside(const AEdits: TArray<TTextEdit>; ATaken: TList<TTextEdit>): Boolean;
+var
+  mEdit, mOther: TTextEdit;
+begin
+  for mEdit in AEdits do
+  begin
+    for mOther in ATaken do
+    begin
+      if TBulkFix.Overlaps(mEdit.Range, mOther.Range) then
+      begin
+        Exit(False);
+      end;
+    end;
+  end;
+  Result := True;
+end;
+
+/// <summary>Die Edits der Kandidaten, die sich nicht überlappen: eine Korrektur ganz oder gar nicht, die
+/// überlappende kommt im nächsten Durchgang dran (ADeferred).</summary>
+function TakeFitting(const ACandidates: TArray<TCandidate>; var AApplied: TArray<TBulkFixRuleCount>;
+  out ADeferred: Integer): TArray<TTextEdit>;
+var
+  mCandidate: TCandidate;
+  mTaken: TList<TTextEdit>;
+begin
+  ADeferred := 0;
+  mTaken := TList<TTextEdit>.Create;
+  try
+    for mCandidate in ACandidates do
+    begin
+      if FitsBeside(mCandidate.Fix.Edits, mTaken) then
+      begin
+        mTaken.AddRange(mCandidate.Fix.Edits);
+        CountRule(AApplied, mCandidate.RuleId, 1);
+      end
+      else
+      begin
+        Inc(ADeferred);
+      end;
+    end;
+    Result := mTaken.ToArray;
+  finally
+    mTaken.Free;
+  end;
 end;
 
 class function TBulkFix.Run(const AFileName, AText: string; const AOptions: TBulkFixOptions;
@@ -473,30 +693,9 @@ class function TBulkFix.Run(const AFileName, AText: string; const AOptions: TBul
 var
   mText: string;
   mLines: TBulkFixLineMap;
-  mPass, mIndex, mDeferred: Integer;
-  mFinding: TRuleFinding;
-  mCandidate: TCandidate;
-  mCandidates: TList<TCandidate>;
-  mTaken: TList<TTextEdit>;
-  mEdit, mOther: TTextEdit;
-  mSkip: TBulkFixSkip;
-  mFits: Boolean;
-
-  procedure Count(const ARuleId: string);
-  var
-    mPosition: Integer;
-  begin
-    for mPosition := 0 to High(Result.Applied) do
-      if SameText(Result.Applied[mPosition].RuleId, ARuleId) then
-      begin
-        Inc(Result.Applied[mPosition].Count);
-        Exit;
-      end;
-    SetLength(Result.Applied, Length(Result.Applied) + 1);
-    Result.Applied[High(Result.Applied)].RuleId := ARuleId;
-    Result.Applied[High(Result.Applied)].Count := 1;
-  end;
-
+  mPass, mDeferred: Integer;
+  mCandidates: TArray<TCandidate>;
+  mTaken: TArray<TTextEdit>;
 begin
   Result := Default(TBulkFixFile);
   Result.FileName := AFileName;
@@ -505,155 +704,134 @@ begin
   Result.Lines := TBulkFixLineMap.Identity;
   mText := AText;
   mLines := TBulkFixLineMap.Identity;
-  mCandidates := TList<TCandidate>.Create;
-  mTaken := TList<TTextEdit>.Create;
-  try
-    for mPass := 1 to MaxPasses do
+  for mPass := 1 to MaxPasses do
+  begin
+    mCandidates := CandidatesOf(ACheck(mText, mLines), AOptions, mPass = 1, Result.Skipped);
+    if mCandidates = nil then
     begin
-      mCandidates.Clear;
-      for mFinding in ACheck(mText, mLines) do
-      begin
-        if not AOptions.Wants(mFinding.RuleId) then
-          Continue;
-        if TBulkFix.SafeFixOf(mFinding, AOptions, mCandidate.Fix, mSkip) then
-        begin
-          mCandidate.RuleId := mFinding.RuleId;
-          mCandidate.Start := mCandidate.Fix.Edits[0].Range.StartPos;
-          for mEdit in mCandidate.Fix.Edits do
-            if ComparePosition(mEdit.Range.StartPos, mCandidate.Start) < 0 then
-              mCandidate.Start := mEdit.Range.StartPos;
-          mCandidates.Add(mCandidate);
-        end
-        // Übersprungen wird nach dem Ausgangstext gezählt; spätere Durchgänge sehen dieselben Treffer noch einmal.
-        else if mPass = 1 then
-          Inc(Result.Skipped[mSkip]);
-      end;
-      if mCandidates.Count = 0 then
-        Break;
-      // Von hinten nach vorn; bei gleicher Stelle nach Regel, damit die Reihenfolge feststeht (Sort ist nicht stabil).
-      mCandidates.Sort(TComparer<TCandidate>.Construct(
-        function(const A, B: TCandidate): Integer
-        begin
-          Result := ComparePosition(B.Start, A.Start);
-          if Result = 0 then
-            Result := CompareText(A.RuleId, B.RuleId);
-          if Result = 0 then
-            Result := CompareText(A.Fix.Title, B.Fix.Title);
-        end));
-      mTaken.Clear;
-      mDeferred := 0;
-      for mIndex := 0 to mCandidates.Count - 1 do
-      begin
-        mCandidate := mCandidates[mIndex];
-        mFits := True;
-        for mEdit in mCandidate.Fix.Edits do
-          for mOther in mTaken do
-            if Overlaps(mEdit.Range, mOther.Range) then
-              mFits := False;
-        // Eine Korrektur ganz oder gar nicht; die überlappende kommt im nächsten Durchgang dran.
-        if not mFits then
-        begin
-          Inc(mDeferred);
-          Continue;
-        end;
-        mTaken.AddRange(mCandidate.Fix.Edits);
-        Count(mCandidate.RuleId);
-      end;
-      mLines := mLines.After(TLineTable.Build(mText).LineCount, mTaken.ToArray);
-      mText := TTextChanges.Apply(mText, mTaken.ToArray);
-      Result.Passes := mPass;
-      if mDeferred = 0 then
-        Break;
-      if mPass = MaxPasses then
-        Inc(Result.Skipped[TBulkFixSkip.Conflict], mDeferred);
+      Break;
     end;
-  finally
-    mTaken.Free;
-    mCandidates.Free;
+    mTaken := TakeFitting(mCandidates, Result.Applied, mDeferred);
+    mLines := mLines.After(TLineTable.Build(mText).LineCount, mTaken);
+    mText := TTextChanges.Apply(mText, mTaken);
+    Result.Passes := mPass;
+    if (mDeferred > 0) and (mPass = MaxPasses) then
+    begin
+      Inc(Result.Skipped[TBulkFixSkip.Conflict], mDeferred);
+    end;
+    if mDeferred = 0 then
+    begin
+      Break;
+    end;
   end;
-  if mText = AText then
-    Exit;
   // Keine neuen Syntaxfehler: sonst bleibt die Datei, wie sie ist.
-  if ASyntaxErrors(mText) > ASyntaxErrors(AText) then
+  if (mText <> AText) and (ASyntaxErrors(mText) > ASyntaxErrors(AText)) then
   begin
     Result.Rejected := True;
-    Exit;
+  end
+  else if mText <> AText then
+  begin
+    Result.NewText := mText;
+    Result.Lines := mLines;
   end;
-  Result.NewText := mText;
-  Result.Lines := mLines;
 end;
 
 class function TBulkFix.Diff(const ADisplayName: string; const AFile: TBulkFixFile): string;
 begin
   if not AFile.Changed then
+  begin
     Exit('');
+  end;
   Result := string.Join(sLineBreak, TTextDiff.Unified('a/' + ADisplayName, 'b/' + ADisplayName,
     TTextLines.SplitLines(AFile.OldText), TTextLines.SplitLines(AFile.NewText), DiffContext)) + sLineBreak;
+end;
+
+/// <summary>Zeile "Übersprungen: …"; '' ohne übersprungene Treffer.</summary>
+function SkippedLine(const ASkipped: TBulkFixSkipCounts): string;
+begin
+  Result := '';
+  if ASkipped[TBulkFixSkip.Confidence] + ASkipped[TBulkFixSkip.Unsafe] + ASkipped[TBulkFixSkip.Conflict] +
+    ASkipped[TBulkFixSkip.NoFix] > 0 then
+  begin
+    Result := cTexts[TBulkFixText.Skipped].Fmt(
+      [ASkipped[TBulkFixSkip.Confidence], ASkipped[TBulkFixSkip.Unsafe], ASkipped[TBulkFixSkip.Conflict],
+      ASkipped[TBulkFixSkip.NoFix]]);
+  end;
+end;
+
+/// <summary>Summen über alle geänderten Dateien: Korrekturen je Regel (nach Kennung sortiert), Übersprungene
+/// über alle Dateien.</summary>
+procedure AddTotals(const AFiles: TArray<TBulkFixFile>; var ATotals: TArray<TBulkFixRuleCount>;
+  var ASkipped: TBulkFixSkipCounts; out AChanged: Integer);
+var
+  mFile: TBulkFixFile;
+  mCount: TBulkFixRuleCount;
+  mSkip: TBulkFixSkip;
+begin
+  AChanged := 0;
+  for mFile in AFiles do
+  begin
+    for mSkip := Low(TBulkFixSkip) to High(TBulkFixSkip) do
+    begin
+      Inc(ASkipped[mSkip], mFile.Skipped[mSkip]);
+    end;
+    if mFile.Changed then
+    begin
+      Inc(AChanged);
+      for mCount in mFile.Applied do
+      begin
+        CountRule(ATotals, mCount.RuleId, mCount.Count);
+      end;
+    end;
+  end;
+  // Kennungen sind eindeutig: Die Reihenfolge steht fest, obwohl Sort nicht stabil ist.
+  TArray.Sort<TBulkFixRuleCount>(ATotals, TComparer<TBulkFixRuleCount>.Construct(
+    function(const A, B: TBulkFixRuleCount): Integer
+    begin
+      Result := CompareText(A.RuleId, B.RuleId);
+    end));
 end;
 
 class function TBulkFix.Summary(const AFiles: TArray<TBulkFixFile>; ADryRun: Boolean; const ALineBreak: string):
   string;
 var
   mFile: TBulkFixFile;
-  mCount: TBulkFixRuleCount;
-  mTotals: TList<TBulkFixRuleCount>;
-  mSkipped: TBulkFixSkipCounts;
-  mSkip: TBulkFixSkip;
-  mChanged, mFixes, mIndex: Integer;
-  mFound: Boolean;
-  mLines: TArray<string>;
+  mTotals: TArray<TBulkFixRuleCount>;
   mTotal: TBulkFixRuleCount;
+  mSkipped: TBulkFixSkipCounts;
+  mChanged, mFixes: Integer;
+  mLines: TArray<string>;
 begin
   mSkipped := Default(TBulkFixSkipCounts);
-  mChanged := 0;
+  mTotals := nil;
+  AddTotals(AFiles, mTotals, mSkipped, mChanged);
   mFixes := 0;
-  mLines := nil;
-  mTotals := TList<TBulkFixRuleCount>.Create;
-  try
-    for mFile in AFiles do
+  for mTotal in mTotals do
+  begin
+    Inc(mFixes, mTotal.Count);
+  end;
+  if ADryRun then
+  begin
+    mLines := [cTexts[TBulkFixText.Preview].Fmt([mFixes, mChanged])];
+  end
+  else
+  begin
+    mLines := [cTexts[TBulkFixText.Written].Fmt([mFixes, mChanged])];
+  end;
+  for mTotal in mTotals do
+  begin
+    mLines := mLines + [Format('  %s: %d', [mTotal.RuleId, mTotal.Count])];
+  end;
+  if SkippedLine(mSkipped) <> '' then
+  begin
+    mLines := mLines + [SkippedLine(mSkipped)];
+  end;
+  for mFile in AFiles do
+  begin
+    if mFile.Rejected then
     begin
-      for mSkip := Low(TBulkFixSkip) to High(TBulkFixSkip) do
-        Inc(mSkipped[mSkip], mFile.Skipped[mSkip]);
-      if not mFile.Changed then
-        Continue;
-      Inc(mChanged);
-      for mCount in mFile.Applied do
-      begin
-        Inc(mFixes, mCount.Count);
-        mFound := False;
-        for mIndex := 0 to mTotals.Count - 1 do
-          if SameText(mTotals[mIndex].RuleId, mCount.RuleId) then
-          begin
-            mTotal := mTotals[mIndex];
-            Inc(mTotal.Count, mCount.Count);
-            mTotals[mIndex] := mTotal;
-            mFound := True;
-          end;
-        if not mFound then
-          mTotals.Add(mCount);
-      end;
+      mLines := mLines + [cTexts[TBulkFixText.Discarded].Fmt([mFile.FileName])];
     end;
-    if ADryRun then
-      mLines := mLines + [Format('Vorschau: %d Korrekturen in %d Dateien, nichts geschrieben', [mFixes, mChanged])]
-    else
-      mLines := mLines + [Format('%d Korrekturen in %d Dateien geschrieben', [mFixes, mChanged])];
-    mTotals.Sort(TComparer<TBulkFixRuleCount>.Construct(
-      function(const A, B: TBulkFixRuleCount): Integer
-      begin
-        Result := CompareText(A.RuleId, B.RuleId);
-      end));
-    for mTotal in mTotals do
-      mLines := mLines + [Format('  %s: %d', [mTotal.RuleId, mTotal.Count])];
-    if mSkipped[TBulkFixSkip.Confidence] + mSkipped[TBulkFixSkip.Unsafe] + mSkipped[TBulkFixSkip.Conflict] +
-      mSkipped[TBulkFixSkip.NoFix] > 0 then
-      mLines := mLines + [Format('Übersprungen: %d mit zu niedriger Konfidenz, %d unsicher, %d Konflikt, %d ohne ' +
-        'Korrektur', [mSkipped[TBulkFixSkip.Confidence], mSkipped[TBulkFixSkip.Unsafe],
-        mSkipped[TBulkFixSkip.Conflict], mSkipped[TBulkFixSkip.NoFix]])];
-    for mFile in AFiles do
-      if mFile.Rejected then
-        mLines := mLines + [Format('Verworfen (die Korrekturen hätten Syntaxfehler erzeugt): %s', [mFile.FileName])];
-  finally
-    mTotals.Free;
   end;
   Result := string.Join(ALineBreak, mLines);
 end;
@@ -667,12 +845,14 @@ begin
   mOld := nil;
   mNew := nil;
   for mFile in AFiles do
+  begin
     if mFile.Changed then
     begin
       mNames := mNames + [mFile.FileName];
       mOld := mOld + [mFile.OldText];
       mNew := mNew + [mFile.NewText];
     end;
+  end;
   Result := WriteAll(mNames, mOld, mNew, AWrite);
 end;
 
@@ -700,10 +880,13 @@ begin
           on Exception do
             Continue;
         end;
-      raise EBulkFixWrite.CreateFmt('Schreiben fehlgeschlagen (%s); alle Dateien zurückgesetzt.', [E.Message]);
+      raise EBulkFixWrite.CreateFmt(cTexts[TBulkFixText.WriteFailed].Text, [E.Message]);
     end;
   end;
   Result := mWritten;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.BulkFix', cTexts);
 
 end.

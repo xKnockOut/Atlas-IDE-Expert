@@ -103,7 +103,9 @@ begin
   for Row in AFrame.Rows do
   begin
     if Result <> '' then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + AFrame.Nodes[Row.Node].Name;
   end;
 end;
@@ -113,8 +115,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(AFrame.Rows) do
+  begin
     if AFrame.Nodes[AFrame.Rows[Index].Node].Name = AName then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -123,8 +129,12 @@ var
   Item: TMenuItem;
 begin
   for Item in AMenu.Items do
+  begin
     if Item.Caption = ACaption then
+    begin
       Exit(Item);
+    end;
+  end;
   Result := nil;
 end;
 
@@ -264,8 +274,12 @@ begin
   // #845: Bedingung des aktiven Zweigs hinter dem Eintrag, abschaltbar.
   List := FFrame.Nodes;
   for Index := 0 to High(List) do
+  begin
     if List[Index].Name = 'Make' then
+    begin
       List[Index].Condition := 'CPUX64';
+    end;
+  end;
   FFrame.SetNodes(List);
   Assert.AreEqual('+ Make · class · CPUX64', FFrame.RowText(RowOf(FFrame, 'Make')));
   FFrame.ShowConditions := False;

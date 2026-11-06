@@ -25,6 +25,9 @@ type
     /// <summary>#1458: Sprache der Oberfläche als initializationOptions.locale und locale.</summary>
     [Test]
     procedure InitializeParamsCarriesLocale;
+    /// <summary>#1458: Angaben nur mit Sprache, ohne Einstellungen.</summary>
+    [Test]
+    procedure InitializeOptionsForLocale;
     [Test]
     procedure ApplyEditAnswerOmitsEmptyReason;
     /// <summary>#621: data.tag einer CodeAction landet in Tag.</summary>
@@ -48,6 +51,9 @@ type
     /// <summary>Antwort von atlas/affectedTests (#1353): Tests mit Gründen, alle nötig, ohne Objekt.</summary>
     [Test]
     procedure AffectedTestsFromJson;
+    /// <summary>Vorfahr TLspSessionJson allein: ohne Objekt leere Ergebnisse; Einrückung für Formatieren.</summary>
+    [Test]
+    procedure JsonClassWithoutObject;
   end;
 
 implementation
@@ -58,7 +64,8 @@ uses
   System.JSON,
   Atlas.Core.Projects.Contract,
   Atlas.Core.Lsp.Contract,
-  Atlas.Core.Lsp.Session;
+  Atlas.Core.Lsp.Session,
+  Atlas.Core.Lsp.Session.Json;
 
 function Context(const AProject: string): TAtlasProjectContext;
 begin
@@ -124,6 +131,15 @@ begin
   finally
     Params.Free;
   end;
+end;
+
+procedure TLspInitializeParamsTests.InitializeOptionsForLocale;
+var
+  mOptions: TLspInitializeOptions;
+begin
+  mOptions := TLspInitializeOptions.ForLocale('de');
+  Assert.AreEqual('de', mOptions.Locale);
+  Assert.AreEqual('', mOptions.Settings);
 end;
 
 procedure TLspInitializeParamsTests.InitializeParamsCarriesLocale;
@@ -407,6 +423,18 @@ begin
   Assert.AreEqual('Datum', Refs[1].Name);
   Assert.AreEqual('', Refs[1].TypeName);
   Assert.AreEqual(0, Integer(Length(TLspSession.InlineValueRefsOf(nil))), 'ohne Antwort');
+end;
+
+procedure TLspImpactResponseTests.JsonClassWithoutObject;
+var
+  Options: TLspFormatOptions;
+begin
+  Assert.AreEqual(0, Integer(Length(TLspSessionJson.ImpactFromJson(nil).Places)));
+  Assert.AreEqual(0, Integer(Length(TLspSessionJson.AffectedTestsFromJson(nil).Tests)));
+  Assert.AreEqual(0, Integer(Length(TLspSessionJson.LocationsOf(nil))));
+  Options := TLspFormatOptions.Create(4, False);
+  Assert.AreEqual(4, Options.TabSize);
+  Assert.IsFalse(Options.InsertSpaces);
 end;
 
 initialization

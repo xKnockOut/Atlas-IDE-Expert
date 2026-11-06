@@ -44,7 +44,22 @@ type
 implementation
 
 uses
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TWinApiDocsText = (For64BitUseTruncates, MicrosoftDocumentation);
+
+const
+  cTexts: array[TWinApiDocsText] of TAtlasText = (
+    (De: 'Für 64 Bit `%s` verwenden; `%s` schneidet Zeiger und Handles ab.';
+     En: 'For 64 bit use `%s`; `%s` truncates pointers and handles.'),
+    (De: '[Microsoft-Dokumentation](%s)'; En: '[Microsoft documentation](%s)'));
+
+{$SCOPEDENUMS OFF}
 
 type
   /// <summary>Kind: nf = Funktion, ns = Struktur. WideVariant: Seite gibt es als …a und …w.</summary>
@@ -139,23 +154,29 @@ var
 begin
   ASuffix := '';
   for Candidate in Pages do
+  begin
     if SameText(Candidate.Name, AName) then
     begin
       APage := Candidate;
       if Candidate.WideVariant then
+      begin
         ASuffix := 'w';
+      end;
       Exit(True);
     end;
+  end;
   if (Length(AName) > 1) and CharInSet(AName[Length(AName)], ['A', 'W']) then
   begin
     Base := Copy(AName, 1, Length(AName) - 1);
     for Candidate in Pages do
+    begin
       if Candidate.WideVariant and SameText(Candidate.Name, Base) then
       begin
         APage := Candidate;
         ASuffix := LowerCase(AName[Length(AName)]);
         Exit(True);
       end;
+    end;
   end;
   Result := False;
 end;
@@ -185,9 +206,13 @@ var
   Suffix: string;
 begin
   if FindPage(AName, Found, Suffix) then
-    Result := PageUrl(Found, Suffix)
+  begin
+    Result := PageUrl(Found, Suffix);
+  end
   else
+  begin
     Result := SearchBase + AName;
+  end;
 end;
 
 class function TWinApiDocs.PtrVariants: TArray<TPtrVariant>;
@@ -209,10 +234,16 @@ var
 begin
   Base := AName;
   if (Length(Base) > 1) and CharInSet(Base[Length(Base)], ['A', 'W']) then
+  begin
     Base := Copy(Base, 1, Length(Base) - 1);
+  end;
   for Variant in PtrVariants do
+  begin
     if SameText(Variant.Name, AName) or SameText(Variant.Name, Base) then
+    begin
       Exit(Variant.Replacement);
+    end;
+  end;
   Result := '';
 end;
 
@@ -222,21 +253,31 @@ var
 begin
   Result := nil;
   for Candidate in Pages do
+  begin
     if Candidate.WideVariant then
-      Result := Result + [PageUrl(Candidate, 'w')]
+    begin
+      Result := Result + [PageUrl(Candidate, 'w')];
+    end
     else
+    begin
       Result := Result + [PageUrl(Candidate, '')];
+    end;
+  end;
 end;
 
 class function TWinApiDocs.HoverText(const AName: string): string;
 var
   Replacement: string;
 begin
-  Result := '[Microsoft-Dokumentation](' + Url(AName) + ')';
+  Result := cTexts[TWinApiDocsText.MicrosoftDocumentation].Fmt([Url(AName)]);
   Replacement := PtrVariant(AName);
   if Replacement <> '' then
-    Result := Result + #10#10 + Format('Für 64 Bit `%s` verwenden; `%s` schneidet Zeiger und Handles ab.',
-      [Replacement, AName]);
+  begin
+    Result := Result + #10#10 + cTexts[TWinApiDocsText.For64BitUseTruncates].Fmt([Replacement, AName]);
+  end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.WinApiDocs', cTexts);
 
 end.

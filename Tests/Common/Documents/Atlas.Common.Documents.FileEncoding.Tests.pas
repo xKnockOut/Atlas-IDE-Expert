@@ -119,7 +119,9 @@ var
 begin
   SetLength(Result, Length(AValues));
   for Index := 0 to High(AValues) do
+  begin
     Result[Index] := AValues[Index];
+  end;
 end;
 
 function SameBytes(const A, B: TBytes): Boolean;
@@ -128,9 +130,15 @@ var
 begin
   Result := Length(A) = Length(B);
   if Result then
+  begin
     for Index := 0 to High(A) do
+    begin
       if A[Index] <> B[Index] then
+      begin
         Exit(False);
+      end;
+    end;
+  end;
 end;
 
 { TFileEncodingTests }
@@ -300,7 +308,9 @@ begin
   TFileEncoding.Reader := nil;
   TFileEncodingDefaults.Clear;
   if DirectoryExists(FFolder) then
+  begin
     TDirectory.Delete(FFolder, True);
+  end;
   FFolder := '';
 end;
 
@@ -311,7 +321,9 @@ begin
   Stream := TFileStream.Create(AFileName, fmCreate);
   try
     if Length(ABytes) > 0 then
+    begin
       Stream.WriteBuffer(ABytes[0], Length(ABytes));
+    end;
   finally
     Stream.Free;
   end;
@@ -325,7 +337,9 @@ begin
   try
     SetLength(Result, Stream.Size);
     if Length(Result) > 0 then
+    begin
       Stream.ReadBuffer(Result[0], Length(Result));
+    end;
   finally
     Stream.Free;
   end;

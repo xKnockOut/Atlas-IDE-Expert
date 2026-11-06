@@ -51,7 +51,7 @@ jobs:
           key: atlas-fpc-${{ steps.fpc.outputs.commit }}
 
       - name: Startcompiler FPC 3.2.2
-        run: sudo apt-get update && sudo apt-get install -y fp-compiler fp-units-rtl
+        run: sudo apt-get update && sudo apt-get install -y fp-compiler fp-units-rtl libpcre2-16-0
 
       - name: AtlasServer bauen
         run: Tools/Linux/Build-AtlasServer.sh --no-download --package "$RUNNER_TEMP/cloud-linux"
@@ -64,6 +64,30 @@ jobs:
             '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' |
             timeout 60 Output/Linux64/Bin/AtlasServer --mcp > "$RUNNER_TEMP/mcp.out" || true
           grep -q '"get_diagnostics"' "$RUNNER_TEMP/mcp.out" || { cat "$RUNNER_TEMP/mcp.out"; exit 1; }
+
+      - name: Regex zählt Zeichen (#1751)
+        # Hinter „für“ steht im anonymen Log der Arbeitsbereich als name#1. Zählt TMatch.Index UTF-8-Bytes statt
+        # Zeichen, setzt der Anonymisierer die Zeile falsch zusammen („fürrnname1: DDelphi“).
+        run: |
+          mkdir -p "$RUNNER_TEMP/probe/Kasse"
+          python3 - Output/Linux64/Bin/AtlasServer "$RUNNER_TEMP/probe/Kasse" "$RUNNER_TEMP/probe.log" <<'PY'
+          import json, subprocess, sys, time
+          server, root, log = sys.argv[1:]
+          proc = subprocess.Popen([server, '--log', log], stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
+                                  stderr=subprocess.DEVNULL)
+          def send(message):
+              data = json.dumps(message).encode()
+              proc.stdin.write(b'Content-Length: %d\r\n\r\n' % len(data) + data)
+              proc.stdin.flush()
+          send({'jsonrpc': '2.0', 'id': 1, 'method': 'initialize',
+                'params': {'processId': None, 'rootUri': 'file://' + root, 'capabilities': {}}})
+          send({'jsonrpc': '2.0', 'method': 'initialized', 'params': {}})
+          time.sleep(5)
+          send({'jsonrpc': '2.0', 'id': 2, 'method': 'shutdown'})
+          send({'jsonrpc': '2.0', 'method': 'exit'})
+          proc.wait(30)
+          PY
+          grep -q 'Einstellungen für name#1: Delphi' "$RUNNER_TEMP/probe.log" || { cat "$RUNNER_TEMP/probe.log"; exit 1; }
 
       - name: Release cloud-linux aktualisieren
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'

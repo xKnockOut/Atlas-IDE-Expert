@@ -197,6 +197,7 @@ Einstellungen: `debug.completionInDialogs`
 - Seit dem letzten Halt geänderte Werte sind hervorgehoben.
 - Objekte, Records und Arrays klappen zu ihren Feldern auf (aus dem Atlas-Index, jedes einzeln ausgewertet).
 - Der gewählte Wert steht als Text mit sichtbaren Steuerzeichen, als Zeilen einer `TStrings`, als eingerücktes JSON oder als Hex da.
+- Während die Werte nach und nach eintreffen, bleibt das Fenster bedienbar: Der Baum wird nur dort geändert, wo sich etwas geändert hat, statt jedes Mal neu aufgebaut zu werden; aufgeklappte Zeilen, Auswahl und Bildlaufposition bleiben stehen. Baum und Ansicht füllen das Fenster in jeder Größe, die Tastenhilfe umbricht nach Breite.
 - „Nebenwirkungen erlauben“ (aus) lässt Funktionsaufrufe und Getter zu.
 
 | Bedienung | Wirkung |

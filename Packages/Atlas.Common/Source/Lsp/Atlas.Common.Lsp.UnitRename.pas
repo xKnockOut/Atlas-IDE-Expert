@@ -37,15 +37,57 @@ uses
   Atlas.Common.Editing.UnitRename,
   Atlas.Common.Lsp.Positions;
 
+/// <summary>Änderungen einer Datei als TextDocumentEdit.</summary>
+function DocumentJson(const AFileName: string; const AEdits: TArray<TTextEdit>): TJSONObject;
+var
+  Edit: TTextEdit;
+  List: TJSONArray;
+  Item, Identifier: TJSONObject;
+begin
+  Identifier := TJSONObject.Create;
+  Identifier.AddPair('uri', TDocumentUris.FromPath(AFileName));
+  Identifier.AddPair('version', TJSONNull.Create);
+  List := TJSONArray.Create;
+  for Edit in AEdits do
+  begin
+    Item := TJSONObject.Create;
+    Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
+    Item.AddPair('newText', Edit.NewText);
+    List.AddElement(Item);
+  end;
+  Result := TJSONObject.Create;
+  Result.AddPair('textDocument', Identifier);
+  Result.AddPair('edits', List);
+end;
+
+/// <summary>Umbenennungen von AOldName in der Datei AFileName; False, wenn sie ihn nicht verwendet.</summary>
+function FileEdits(const AFileName, AOldName, ANewName: string; const AReadText: TReferenceReadText;
+  out AEdits: TArray<TTextEdit>): Boolean;
+var
+  Text: string;
+  Tree: TSyntaxTree;
+begin
+  Result := MatchText(ExtractFileExt(AFileName), ['.pas', '.dpr', '.dpk', '.inc']) and Assigned(AReadText) and
+    AReadText(AFileName, Text) and (Pos(LowerCase(AOldName), LowerCase(Text)) > 0);
+  if not Result then
+  begin
+    Exit;
+  end;
+  Tree := TSyntaxTreeCache.Parse(Text);
+  try
+    Result := TUnitRename.Edits(AFileName, Text, Tree, AOldName, ANewName, AEdits);
+  finally
+    Tree.Free;
+  end;
+end;
+
 class function TLspUnitRename.Execute(const AOldFile, ANewFile: string; const AFiles: TArray<string>;
   const AReadText: TReferenceReadText): TJSONObject;
 var
-  OldName, NewName, FileName, Text: string;
-  Tree: TSyntaxTree;
+  OldName, NewName, FileName: string;
   Edits: TArray<TTextEdit>;
-  Edit: TTextEdit;
-  Changes, List: TJSONArray;
-  Document, Item, Identifier, WorkspaceEdit: TJSONObject;
+  Changes: TJSONArray;
+  WorkspaceEdit: TJSONObject;
   Count: Integer;
 begin
   OldName := TUnitRename.UnitNameOf(AOldFile);
@@ -53,35 +95,16 @@ begin
   Changes := TJSONArray.Create;
   Count := 0;
   if (OldName <> '') and (NewName <> '') and not SameText(OldName, NewName) then
+  begin
     for FileName in AFiles do
     begin
-      if not MatchText(ExtractFileExt(FileName), ['.pas', '.dpr', '.dpk', '.inc']) or
-        not (Assigned(AReadText) and AReadText(FileName, Text)) or (Pos(LowerCase(OldName), LowerCase(Text)) = 0) then
-        Continue;
-      Tree := TSyntaxTreeCache.Parse(Text);
-      try
-        if not TUnitRename.Edits(FileName, Text, Tree, OldName, NewName, Edits) then
-          Continue;
-      finally
-        Tree.Free;
-      end;
-      Inc(Count);
-      Identifier := TJSONObject.Create;
-      Identifier.AddPair('uri', TDocumentUris.FromPath(FileName));
-      Identifier.AddPair('version', TJSONNull.Create);
-      List := TJSONArray.Create;
-      for Edit in Edits do
+      if FileEdits(FileName, OldName, NewName, AReadText, Edits) then
       begin
-        Item := TJSONObject.Create;
-        Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
-        Item.AddPair('newText', Edit.NewText);
-        List.AddElement(Item);
+        Inc(Count);
+        Changes.AddElement(DocumentJson(FileName, Edits));
       end;
-      Document := TJSONObject.Create;
-      Document.AddPair('textDocument', Identifier);
-      Document.AddPair('edits', List);
-      Changes.AddElement(Document);
     end;
+  end;
   WorkspaceEdit := TJSONObject.Create;
   WorkspaceEdit.AddPair('documentChanges', Changes);
   Result := TJSONObject.Create;

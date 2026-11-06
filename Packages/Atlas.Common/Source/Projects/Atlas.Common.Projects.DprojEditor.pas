@@ -65,16 +65,24 @@ begin
   Result := '';
   Start := FindText(AName + '=', ATag, 1);
   if Start = 0 then
+  begin
     Exit;
+  end;
   Start := Start + Length(AName) + 1;
   if Start > Length(ATag) then
+  begin
     Exit;
+  end;
   Quote := ATag[Start];
   if (Quote <> '"') and (Quote <> '''') then
+  begin
     Exit;
+  end;
   Stop := Pos(Quote, ATag, Start + 1);
   if Stop > 0 then
+  begin
     Result := Copy(ATag, Start + 1, Stop - Start - 1);
+  end;
 end;
 
 function WithoutSpaces(const AText: string): string;
@@ -83,8 +91,12 @@ var
 begin
   Result := '';
   for Ch in AText do
+  begin
     if Ch > ' ' then
+    begin
       Result := Result + Ch;
+    end;
+  end;
 end;
 
 /// <summary>Einrückung der Zeile, in der Position APos (ab 1) steht.</summary>
@@ -94,10 +106,14 @@ var
 begin
   Start := APos;
   while (Start > 1) and (AText[Start - 1] <> #10) do
+  begin
     Dec(Start);
+  end;
   Index := Start;
   while (Index <= Length(AText)) and ((AText[Index] = ' ') or (AText[Index] = #9)) do
+  begin
     Inc(Index);
+  end;
   Result := Copy(AText, Start, Index - Start);
 end;
 
@@ -106,7 +122,9 @@ function ListItem(const AItem: string): string;
 begin
   Result := Trim(AItem);
   while (Result <> '') and ((Result[Length(Result)] = '\') or (Result[Length(Result)] = '/')) do
+  begin
     Delete(Result, Length(Result), 1);
+  end;
 end;
 
 { TDprojEditor }
@@ -116,21 +134,27 @@ var
   Start, TagEnd, Stop, KeyStart, KeyEnd: Integer;
 begin
   if SameText(AConfig, 'Base') then
+  begin
     Exit('Base');
+  end;
   Result := '';
   Start := FindText('<BuildConfiguration', AText, 1);
   while Start > 0 do
   begin
     TagEnd := Pos('>', AText, Start);
     if TagEnd = 0 then
+    begin
       Exit;
+    end;
     Stop := FindText('</BuildConfiguration>', AText, TagEnd);
     if (Stop > 0) and SameText(Attribute(Copy(AText, Start, TagEnd - Start + 1), 'Include'), AConfig) then
     begin
       KeyStart := FindText('<Key>', AText, TagEnd);
       KeyEnd := FindText('</Key>', AText, KeyStart);
       if (KeyStart > 0) and (KeyStart < Stop) and (KeyEnd > 0) then
+      begin
         Result := Trim(Copy(AText, KeyStart + 5, KeyEnd - KeyStart - 5));
+      end;
       Exit;
     end;
     Start := FindText('<BuildConfiguration', AText, TagEnd);
@@ -147,62 +171,123 @@ begin
   while Separator > 0 do
   begin
     if SameText(ListItem(Copy(Rest, 1, Separator - 1)), ListItem(AValue)) then
+    begin
       Exit(True);
+    end;
     Delete(Rest, 1, Separator);
     Separator := Pos(';', Rest);
   end;
   Result := False;
 end;
 
+type
+  /// <summary>PropertyGroup im Text: Anfang von "&lt;PropertyGroup", Ende des öffnenden Tags und Anfang von
+  /// "&lt;/PropertyGroup&gt;".</summary>
+  TPropertyGroupSpan = record
+    Start: Integer;
+    TagEnd: Integer;
+    GroupEnd: Integer;
+  end;
+
+/// <summary>Erste PropertyGroup mit der Bedingung "'$(AKey)'!=''"; False ohne oder bei unvollständigem Text.</summary>
+function FindGroup(const AText, AKey: string; out ASpan: TPropertyGroupSpan): Boolean;
+var
+  mWanted: string;
+begin
+  Result := False;
+  mWanted := WithoutSpaces('''$(' + AKey + ')''!=''''');
+  ASpan := Default(TPropertyGroupSpan);
+  ASpan.Start := FindText('<PropertyGroup', AText, 1);
+  while ASpan.Start > 0 do
+  begin
+    ASpan.TagEnd := Pos('>', AText, ASpan.Start);
+    if ASpan.TagEnd = 0 then
+    begin
+      Exit;
+    end;
+    if SameText(WithoutSpaces(Attribute(Copy(AText, ASpan.Start, ASpan.TagEnd - ASpan.Start + 1), 'Condition')),
+      mWanted) then
+    begin
+      ASpan.GroupEnd := FindText('</PropertyGroup>', AText, ASpan.TagEnd);
+      Exit(ASpan.GroupEnd > 0);
+    end;
+    ASpan.Start := FindText('<PropertyGroup', AText, ASpan.TagEnd);
+  end;
+end;
+
+/// <summary>Setzt AValue vorn in die vorhandene Eigenschaft ab AOpenPos.</summary>
+function AddToValue(const AText, AProperty, AValue: string; AOpenPos, AGroupEnd: Integer;
+  out ANewText: string): TDprojEditResult;
+var
+  mValueStart, mValueEnd: Integer;
+  mSeparator: string;
+begin
+  mValueStart := AOpenPos + Length(AProperty) + 2;
+  mValueEnd := FindText('</' + AProperty + '>', AText, mValueStart);
+  if (mValueEnd = 0) or (mValueEnd > AGroupEnd) then
+  begin
+    Exit(TDprojEditResult.NoGroup);
+  end;
+  if TDprojEditor.ListContains(Copy(AText, mValueStart, mValueEnd - mValueStart), AValue) then
+  begin
+    Exit(TDprojEditResult.Present);
+  end;
+  mSeparator := ';';
+  if mValueEnd = mValueStart then
+  begin
+    mSeparator := '';
+  end;
+  ANewText := Copy(AText, 1, mValueStart - 1) + EscapeXml(AValue) + mSeparator + Copy(AText, mValueStart, MaxInt);
+  Result := TDprojEditResult.Added;
+end;
+
+/// <summary>Neue Zeile direkt nach dem öffnenden Tag, eingerückt wie die erste Eigenschaft.</summary>
+function AddLine(const AText, AProperty, AValue: string; const ASpan: TPropertyGroupSpan;
+  out ANewText: string): TDprojEditResult;
+var
+  mLineEnd: Integer;
+  mIndent, mLine: string;
+begin
+  mLineEnd := Pos(#10, AText, ASpan.TagEnd);
+  if mLineEnd = 0 then
+  begin
+    Exit(TDprojEditResult.NoGroup);
+  end;
+  mIndent := IndentAt(AText, mLineEnd + 1);
+  if mLineEnd + 1 + Length(mIndent) >= ASpan.GroupEnd then
+  begin
+    mIndent := IndentAt(AText, ASpan.Start) + '    ';
+  end;
+  mLine := Format('%s<%s>%s;$(%s)</%s>', [mIndent, AProperty, EscapeXml(AValue), AProperty, AProperty]) +
+    TTextLines.LineBreakOf(AText);
+  ANewText := Copy(AText, 1, mLineEnd) + mLine + Copy(AText, mLineEnd + 1, MaxInt);
+  Result := TDprojEditResult.Added;
+end;
+
 class function TDprojEditor.AddToList(const AText, AKey, AProperty, AValue: string;
   out ANewText: string): TDprojEditResult;
 var
-  Start, TagEnd, GroupEnd, OpenPos, ValueStart, ValueEnd, LineEnd: Integer;
-  Wanted, Indent, Line: string;
+  mSpan: TPropertyGroupSpan;
+  mOpenPos: Integer;
 begin
   ANewText := AText;
-  Wanted := WithoutSpaces('''$(' + AKey + ')''!=''''');
-  Start := FindText('<PropertyGroup', AText, 1);
-  while Start > 0 do
+  if not FindGroup(AText, AKey, mSpan) then
   begin
-    TagEnd := Pos('>', AText, Start);
-    if TagEnd = 0 then
-      Break;
-    if SameText(WithoutSpaces(Attribute(Copy(AText, Start, TagEnd - Start + 1), 'Condition')), Wanted) then
-    begin
-      GroupEnd := FindText('</PropertyGroup>', AText, TagEnd);
-      if GroupEnd = 0 then
-        Break;
-      OpenPos := FindText('<' + AProperty + '>', AText, TagEnd);
-      if (OpenPos > 0) and (OpenPos < GroupEnd) then
-      begin
-        ValueStart := OpenPos + Length(AProperty) + 2;
-        ValueEnd := FindText('</' + AProperty + '>', AText, ValueStart);
-        if (ValueEnd = 0) or (ValueEnd > GroupEnd) then
-          Break;
-        if ListContains(Copy(AText, ValueStart, ValueEnd - ValueStart), AValue) then
-          Exit(TDprojEditResult.Present);
-        if ValueEnd = ValueStart then
-          ANewText := Copy(AText, 1, ValueStart - 1) + EscapeXml(AValue) + Copy(AText, ValueStart, MaxInt)
-        else
-          ANewText := Copy(AText, 1, ValueStart - 1) + EscapeXml(AValue) + ';' + Copy(AText, ValueStart, MaxInt);
-        Exit(TDprojEditResult.Added);
-      end;
-      // Neue Zeile direkt nach dem öffnenden Tag, eingerückt wie die erste Eigenschaft.
-      LineEnd := Pos(#10, AText, TagEnd);
-      if LineEnd = 0 then
-        Break;
-      Indent := IndentAt(AText, LineEnd + 1);
-      if LineEnd + 1 + Length(Indent) >= GroupEnd then
-        Indent := IndentAt(AText, Start) + '    ';
-      Line := Format('%s<%s>%s;$(%s)</%s>', [Indent, AProperty, EscapeXml(AValue), AProperty, AProperty]) +
-        TTextLines.LineBreakOf(AText);
-      ANewText := Copy(AText, 1, LineEnd) + Line + Copy(AText, LineEnd + 1, MaxInt);
-      Exit(TDprojEditResult.Added);
-    end;
-    Start := FindText('<PropertyGroup', AText, TagEnd);
+    Exit(TDprojEditResult.NoGroup);
   end;
-  Result := TDprojEditResult.NoGroup;
+  mOpenPos := FindText('<' + AProperty + '>', AText, mSpan.TagEnd);
+  if (mOpenPos > 0) and (mOpenPos < mSpan.GroupEnd) then
+  begin
+    Result := AddToValue(AText, AProperty, AValue, mOpenPos, mSpan.GroupEnd, ANewText);
+  end
+  else
+  begin
+    Result := AddLine(AText, AProperty, AValue, mSpan, ANewText);
+  end;
+  if Result <> TDprojEditResult.Added then
+  begin
+    ANewText := AText;
+  end;
 end;
 
 end.

@@ -153,6 +153,8 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Rules.Builtin.Components,
+  Atlas.Common.Rules.Builtin.Components.InheritedCalls,
+  Atlas.Common.Rules.Builtin.Components.Members,
   Atlas.Tests.RuleAssert;
 
 const
@@ -178,7 +180,9 @@ var
   begin
     Position := 0;
     for Line := 1 to APosition.Line do
+    begin
       Position := Pos(#10, AText, Position + 1);
+    end;
     Result := Position + APosition.Character;
   end;
 
@@ -1039,7 +1043,9 @@ var
 begin
   Parent := '';
   if AParent <> '' then
+  begin
     Parent := '(' + AParent + ')';
+  end;
   Result := 'unit Kunden;'#10'interface'#10'uses'#10'  System.SysUtils;'#10'type'#10 +
     '  TKundenNr = class' + Parent + #10'  private'#10'    FNummer: Integer;'#10'    FName: string;'#10'  public'#10 +
     '    function Equals(Obj: TObject): Boolean; override;'#10 + AMembers + '  end;'#10'implementation'#10 +
@@ -1132,7 +1138,9 @@ var
 begin
   Operator_ := '';
   if AOperator then
+  begin
     Operator_ := '    class operator Equal(const A, B: TSchluessel): Boolean;'#10;
+  end;
   Result := 'unit Schluessel;'#10'interface'#10'uses'#10'  System.Generics.Collections;'#10'type'#10 +
     '  TSchluessel = record'#10 + AFields + Operator_ + '  end;'#10'implementation'#10'procedure Zaehlen;'#10 +
     'var'#10'  D: TDictionary<TSchluessel, Integer>;'#10'begin'#10 + ACode + 'end;'#10'end.';

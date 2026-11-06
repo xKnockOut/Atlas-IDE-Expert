@@ -87,7 +87,9 @@ function TFakeItems.AccessibleStatus(APosition: Integer): string;
 begin
   Result := '';
   if Names[APosition] = 'AddPair' then
+  begin
     Result := 'deprecated';
+  end;
 end;
 
 function TFakeItems.AccessibleHelp(APosition: Integer): string;

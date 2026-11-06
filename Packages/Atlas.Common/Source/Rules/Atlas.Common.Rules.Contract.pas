@@ -128,6 +128,16 @@ type
 {$SCOPEDENUMS OFF}
   TRuleUnitSources = set of TRuleUnitSource;
 
+  /// <summary>Typen, die die laufende IDE aus ihren geladenen Packages kennt (RTTI der BPLs, über
+  /// RegisterComponents angemeldete Komponenten), auch ohne Quelltext. unresolved-type und unresolved-identifier
+  /// schweigen für einen solchen Typ, wenn seine Unit im uses steht. nil = ohne IDE (Linter, MCP).</summary>
+  IRuleIdeTypes = interface
+    ['{5B0E7C42-91D3-4F6A-8E27-C4A1D96B3F05}']
+    /// <summary>Units, in denen die IDE einen Typ ATypeName (ohne Unit-Präfix, ohne Groß-/Kleinschreibung)
+    /// kennt; nil = unbekannt.</summary>
+    function UnitsOf(const ATypeName: string): TArray<string>;
+  end;
+
   /// <summary>Unit-Suche wie beim Compiler für uses-unit-not-found (#1016); nil = unbekannt, die Regel
   /// schweigt bis auf Prüfungen ohne Pfade.</summary>
   IRuleUnitLookup = interface
@@ -339,6 +349,9 @@ type
     /// <summary>Formatierung aus den Einstellungen (format, #938): Tabbreite und Einrückung für Regeln, die
     /// Spalten zählen oder umbrechen; setzt TRuleEngine.Run. IndentSize 0 = nicht gesetzt.</summary>
     Formatting: TFormatStyle;
+    /// <summary>Klassenvervollständigung (classCompletion, #1834) für die Korrektur fehlender Rümpfe; setzt
+    /// TRuleEngine.Run. TypeComment '' = nicht gesetzt, es gelten die Vorgaben.</summary>
+    ClassCompletion: TClassCompletionSettings;
     /// <summary>Projekte der Gruppe für projektweite Regeln (#1102); nil = unbekannt, diese Regeln schweigen.
     /// </summary>
     ProjectFiles: IRuleProjectFiles;
@@ -378,6 +391,8 @@ type
     /// <summary>Code-Abfragen des Arbeitsbereichs (#1351) für die Regeln query:&lt;name&gt;; nil = keine, gespeicherte
     /// Abfragen mit failIfAny laufen dann nicht.</summary>
     Queries: ICodeQueries;
+    /// <summary>Typen der laufenden IDE ohne Quelltext (IRuleIdeTypes); nil = ohne IDE.</summary>
+    IdeTypes: IRuleIdeTypes;
   end;
 
   /// <summary>Dienste des Projekts für die Regeln (#1112): Symbolindex, Nachladen von Units, Unit-Suche,
@@ -407,6 +422,8 @@ type
     ProjectWarnings: TArray<string>;
     /// <summary>Code-Abfragen des Arbeitsbereichs (#1351); nil = keine.</summary>
     Queries: ICodeQueries;
+    /// <summary>Typen der laufenden IDE ohne Quelltext; nil = ohne IDE.</summary>
+    IdeTypes: IRuleIdeTypes;
     /// <summary>Trägt die Dienste in AContext ein.</summary>
     procedure ApplyTo(var AContext: TRuleContext);
   end;
@@ -450,6 +467,25 @@ type
     ['{3F9C2B71-5D84-4A6E-B1C7-8E2D40A95F13}']
     /// <summary>Präfixe neuer Namen; AContext trägt die Optionen dieser Regel.</summary>
     function NewNames(const AContext: TRuleContext): TPascalNamePrefixes;
+  end;
+
+  /// <summary>Regel, die je Datei entscheidet, ob sie prüfen kann (#1135), z. B. unused-uses nicht im Editor und
+  /// nicht ohne Index. Prüft sie nicht, zählt sie nicht als gelaufen: Ein lsp-ignore für sie ist dann nicht
+  /// unused-suppression (dessen sichere Korrektur entfernte den Kommentar sonst beim Speichern).</summary>
+  IRuleCondition = interface
+    ['{8E3B5C17-2A94-4D6F-B0E8-51C7F92A3D60}']
+    /// <summary>False: Die Regel prüft AContext nicht. AContext trägt die Optionen dieser Regel.</summary>
+    function Applies(const AContext: TRuleContext): Boolean;
+  end;
+
+  /// <summary>Regel, die einzelne Stellen mangels Wissen nicht entscheiden kann, z. B. inline-not-expanded bei
+  /// einer Routine, die der Index nicht kennt (RTL unter Linux). Ein lsp-ignore für sie in einer solchen Zeile
+  /// gilt nicht als unused-suppression: Mit vollständigem Index meldete die Regel dort womöglich etwas.</summary>
+  IRuleLineCertainty = interface
+    ['{D81A25A9-CD8F-4412-9468-DAFFB794F2A7}']
+    /// <summary>False: Die Regel konnte die Zeile ALine (ab 0; -1 = ganze Datei) nicht sicher prüfen. AContext ist
+    /// der Kontext ihres Laufs.</summary>
+    function Decides(const AContext: TRuleContext; ALine: Integer): Boolean;
   end;
 
   /// <summary>Regel, die nach allen anderen die rohen Treffer sieht (vor Unterdrückung und Konfidenzfilter),
@@ -512,6 +548,7 @@ begin
   AContext.Naming := Naming;
   AContext.ProjectWarnings := ProjectWarnings;
   AContext.Queries := Queries;
+  AContext.IdeTypes := IdeTypes;
 end;
 
 { TRuleDescriptor }

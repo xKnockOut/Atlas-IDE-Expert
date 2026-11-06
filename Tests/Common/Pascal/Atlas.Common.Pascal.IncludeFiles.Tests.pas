@@ -43,6 +43,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.Completion.Lists,
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
@@ -156,7 +157,9 @@ begin
   UnitIndex := TIndexExtractor.ExtractText(Text, MainFile, nil, Resolver(['C:\Lib']));
   Names := '';
   for Symbol in UnitIndex.Symbols do
+  begin
     Names := Names + Symbol.Name + ';';
+  end;
   Assert.Contains(Names, 'MitFeature');
   Assert.DoesNotContain(Names, 'OhneFeature');
   Assert.AreEqual(1, Integer(Length(UnitIndex.Includes)));
@@ -233,11 +236,13 @@ var
   Symbol: TIndexSymbol;
 begin
   for Symbol in AUnit.Symbols do
+  begin
     if SameText(Symbol.Name, AName) and SameText(Symbol.Container, AContainer) and SameText(Symbol.FileName, AFile) then
     begin
       ASymbol := Symbol;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -283,8 +288,12 @@ begin
     MainFile, nil, Resolver(nil));
   Count := 0;
   for Symbol in UnitIndex.Symbols do
+  begin
     if SameText(Symbol.Name, 'WertA') or SameText(Symbol.Name, 'WertB') then
+    begin
       Inc(Count);
+    end;
+  end;
   Assert.AreEqual(2, Count);
 end;
 
@@ -319,17 +328,19 @@ begin
     // Vervollständigung bietet TKunde an, Details kommen aus der .inc.
     Tree := TPascalParser.Parse(TippText);
     try
-      Items := TLspCompletion.Collect(Resolver_, Index, Tree, 'C:\P\Dritte.pas', TTextPosition.Create(3, 10));
+      Items := TCompletionLists.Collect(Resolver_, Index, Tree, 'C:\P\Dritte.pas', TTextPosition.Create(3, 10));
     finally
       Tree.Free;
     end;
     Found := False;
     for Item in Items.Items do
+    begin
       if Item.Name = 'TKunde' then
       begin
         Found := True;
         Assert.AreEqual('C:\P\Typen.inc', Item.SourceFile);
       end;
+    end;
     Assert.IsTrue(Found, 'TKunde fehlt in der Vervollständigung');
   finally
     Resolver_.Free;

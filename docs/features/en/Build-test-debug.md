@@ -197,6 +197,7 @@ Settings: `debug.completionInDialogs`
 - Values that changed since the last stop are highlighted.
 - Objects, records and arrays expand into their fields (taken from the Atlas index, each evaluated on its own).
 - The selected value shows as text with visible control characters, as the lines of a `TStrings`, as formatted JSON or as hex.
+- While the values come in one by one the window stays responsive: the tree is only changed where something changed instead of being rebuilt every time; expanded rows, the selection and the scroll position stay put. Tree and value view fill the window at any size, the key help wraps to the width.
 - "Allow side effects" (off) permits function calls and getters.
 
 | Key / command | Action |

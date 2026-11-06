@@ -52,8 +52,12 @@ var
   mFile: TServerPackageFile;
 begin
   for mFile in AFiles do
+  begin
     if mFile.Name = AName then
+    begin
       Exit(mFile.Content);
+    end;
+  end;
   Result := '';
 end;
 

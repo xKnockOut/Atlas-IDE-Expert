@@ -40,7 +40,9 @@ uses
 class function TParentWatcher.Running(APid: Cardinal): Boolean;
 begin
   if APid = 0 then
+  begin
     Exit(False);
+  end;
   Result := (FpKill(TPid(APid), 0) = 0) or (FpGetErrno = ESysEPERM);
 end;
 
@@ -64,11 +66,13 @@ begin
     procedure
     begin
       while Stop.WaitFor(PollMs) = wrTimeout do
+      begin
         if not TParentWatcher.Running(ProcessId) then
         begin
           OnExited();
           Exit;
         end;
+      end;
     end);
   FThread.FreeOnTerminate := False;
   FThread.Start;

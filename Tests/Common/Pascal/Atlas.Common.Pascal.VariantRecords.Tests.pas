@@ -30,6 +30,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.Completion.Lists,
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
@@ -73,12 +74,16 @@ var
   Index: Integer;
 begin
   if ANode.Kind = AKind then
+  begin
     Exit(ANode);
+  end;
   for Index := 0 to ANode.ChildCount - 1 do
   begin
     Result := FindNode(ANode[Index], AKind);
     if Result <> nil then
+    begin
       Exit;
+    end;
   end;
   Result := nil;
 end;
@@ -90,8 +95,12 @@ var
 begin
   Result := '';
   for Symbol in AUnit.Symbols do
+  begin
     if (Symbol.Container = AContainer) and (Symbol.Kind = TIndexSymbolKind.Field) then
+    begin
       Result := Result + Symbol.Name + '=' + Symbol.VariantBranch + ';';
+    end;
+  end;
 end;
 
 /// <summary>Namen der Kinder eines Gliederungssymbols, eine Gruppe als "[Name: Kinder]".</summary>
@@ -102,31 +111,65 @@ var
 begin
   Result := '';
   if not (AChildren is TJSONArray) then
+  begin
     Exit;
+  end;
   for Item in TJSONArray(AChildren) do
   begin
     Entry := TJSONObject(Item);
     if Result <> '' then
+    begin
       Result := Result + ' ';
+    end;
     if Entry.GetValue<Integer>('kind', 0) = TLspSymbolKind.Namespace then
-      Result := Result + '[' + Entry.GetValue<string>('name', '') + ': ' + Names(Entry.GetValue('children')) + ']'
+    begin
+      Result := Result + '[' + Entry.GetValue<string>('name', '') + ': ' + Names(Entry.GetValue('children')) + ']';
+    end
     else
+    begin
       Result := Result + Entry.GetValue<string>('name', '');
+    end;
+  end;
+end;
+
+/// <summary>Eintrag ATypeName unter den Kindern von ASection.</summary>
+function FindTypeEntry(ASection: TJSONValue; const ATypeName: string; out AEntry: TJSONObject): Boolean;
+var
+  mEntry: TJSONValue;
+begin
+  Result := False;
+  AEntry := nil;
+  if not (TJSONObject(ASection).GetValue('children') is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mEntry in TJSONArray(TJSONObject(ASection).GetValue('children')) do
+  begin
+    if TJSONObject(mEntry).GetValue<string>('name', '') = ATypeName then
+    begin
+      AEntry := TJSONObject(mEntry);
+      Exit(True);
+    end;
   end;
 end;
 
 /// <summary>Kinder des Typs ATypeName in der Gliederung (unter interface).</summary>
 function TypeChildren(ASymbols: TJSONArray; const ATypeName: string): string;
 var
-  Root, Section, Entry: TJSONValue;
+  Root, Section: TJSONValue;
+  Entry: TJSONObject;
 begin
   Result := '';
   for Root in ASymbols do
+  begin
     for Section in TJSONArray(TJSONObject(Root).GetValue('children')) do
-      if TJSONObject(Section).GetValue('children') is TJSONArray then
-        for Entry in TJSONArray(TJSONObject(Section).GetValue('children')) do
-          if TJSONObject(Entry).GetValue<string>('name', '') = ATypeName then
-            Exit(Names(TJSONObject(Entry).GetValue('children')));
+    begin
+      if FindTypeEntry(Section, ATypeName, Entry) then
+      begin
+        Exit(Names(Entry.GetValue('children')));
+      end;
+    end;
+  end;
 end;
 
 { TVariantRecordsTests }
@@ -166,11 +209,13 @@ begin
   Assert.AreEqual('Left=0;Top=0;Right=0;Bottom=0;TopLeft=1;BottomRight=1;', Branches(U, 'TRect2'));
   Found := False;
   for Symbol in U.Symbols do
+  begin
     if (Symbol.Container = 'TRect2') and (Symbol.Name = 'TopLeft') then
     begin
       Found := True;
       Assert.AreEqual('TPoint', Symbol.TypeName);
     end;
+  end;
   Assert.IsTrue(Found);
   // Gewöhnliche Felder haben keinen Zweig.
   Assert.AreEqual('X=;Y=;', Branches(U, 'TPoint'));
@@ -239,7 +284,7 @@ begin
     Request.Index := Index;
     Request.Matching := TCompletionMatching.Prefix;
     Request.Settings := TCompletionSettings.Default;
-    Items := TLspCompletion.Collect(Request, TPostfixOptions.Default, nil);
+    Items := TCompletionLists.Collect(Request, TPostfixOptions.Default, nil);
   finally
     Request.Free;
     Resolver.Free;
@@ -251,7 +296,9 @@ begin
   begin
     Listed := Listed + Item.Name + ' ';
     if Item.Name = 'Left' then
+    begin
       Position := Length(Listed);
+    end;
   end;
   Assert.IsTrue(Position > 0, Listed);
   Assert.Contains(Listed, 'BottomRight ');
@@ -261,8 +308,12 @@ begin
   try
     Data := nil;
     for Position := 0 to Json.Count - 1 do
+    begin
       if TJSONObject(Json.Items[Position]).GetValue<string>('label', '') = 'TopLeft' then
+      begin
         Data := TJSONObject(TJSONObject(Json.Items[Position]).GetValue('data'));
+      end;
+    end;
     Assert.IsNotNull(Data);
     Assert.AreEqual('1', Data.GetValue<string>('variant', ''));
   finally

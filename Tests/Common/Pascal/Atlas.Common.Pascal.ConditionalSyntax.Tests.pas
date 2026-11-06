@@ -411,7 +411,9 @@ var
 begin
   Result := '';
   for Diagnostic in ADiagnostics do
+  begin
     Result := Result + Format('Z. %d: %s; ', [Diagnostic.StartPos.Line + 1, Diagnostic.Message]);
+  end;
 end;
 
 function SyntaxErrors(const AText: string; const ADefines: TArray<string>): TArray<TSyntaxDiagnostic>;
@@ -419,7 +421,9 @@ var
   Tree: TSyntaxTree;
 begin
   if TPascalParser.ActiveDiagnostics(AText, ADefines, Result) then
+  begin
     Exit;
+  end;
   Tree := TPascalParser.Parse(AText);
   try
     Result := Tree.Diagnostics;

@@ -62,7 +62,34 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
-  Atlas.Common.Metrics.Report;
+  Atlas.Common.Metrics.Report,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TTodosReportText = (Entries, OpenEntriesIn, LineMarkerPriorityCategoryPerson, NoEntries, ByCategory, ByPerson, Done,
+    Done2, Category);
+
+const
+  cTexts: array[TTodosReportText] of TAtlasText = (
+    (De: ' | Einträge |'; En: ' | Entries |'),
+    (De: ' offene Einträge in '; En: ' open entries in '),
+    (De: '| Zeile | Marke | Priorität | Kategorie | Person | Text |';
+     En: '| Line | Marker | Priority | Category | Person | Text |'),
+    (De: 'Keine Einträge.'; En: 'No entries.'),
+    (De: 'Nach Kategorie'; En: 'By category'),
+    (De: 'Nach Person'; En: 'By person'),
+    (De: ' erledigt'; En: ' done'),
+    (De: ' (erledigt)'; En: ' (done)'),
+    (De: 'Kategorie'; En: 'Category'));
+
+{$SCOPEDENUMS OFF}
+
+type
+  /// <summary>Wert und Anzahl seiner Einträge.</summary>
+  TCountPair = TPair<string, Integer>;
 
 const
   LineBreak = #13#10;
@@ -84,52 +111,81 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(Keywords) do
+  begin
     if SameText(Keywords[Index], AKeyword) then
+    begin
       Exit(KeywordCounts[Index]);
+    end;
+  end;
   Result := 0;
+end;
+
+/// <summary>Zählt AKey in ACounts um eins hoch.</summary>
+procedure CountKey(ACounts: TDictionary<string, Integer>; const AKey: string);
+var
+  mCount: Integer;
+begin
+  if not ACounts.TryGetValue(AKey, mCount) then
+  begin
+    mCount := 0;
+  end;
+  ACounts.AddOrSetValue(AKey, mCount + 1);
+end;
+
+/// <summary>Zählt die Einträge von AFile in ASummary und offene je Marke in ACounts.</summary>
+procedure SummarizeFile(const AFile: TFileTodos; var ASummary: TTodoSummary; ACounts: TDictionary<string, Integer>);
+var
+  mEntry: TTodoEntry;
+  mHasOpen: Boolean;
+begin
+  mHasOpen := False;
+  for mEntry in AFile.Entries do
+  begin
+    if mEntry.Done then
+    begin
+      Inc(ASummary.Done);
+    end
+    else
+    begin
+      Inc(ASummary.Open);
+      mHasOpen := True;
+      CountKey(ACounts, mEntry.Keyword);
+    end;
+  end;
+  if mHasOpen then
+  begin
+    Inc(ASummary.Files);
+  end;
 end;
 
 { TTodoReport }
 
 class function TTodoReport.Summarize(const AFiles: TArray<TFileTodos>): TTodoSummary;
 var
-  Counts: TDictionary<string, Integer>;
-  FileItem: TFileTodos;
-  Entry: TTodoEntry;
-  HasOpen: Boolean;
-  Count, Index: Integer;
-  Names: TArray<string>;
+  mCounts: TDictionary<string, Integer>;
+  mFileItem: TFileTodos;
+  mIndex: Integer;
+  mNames: TArray<string>;
 begin
   Result := Default(TTodoSummary);
   Result.Keywords := nil;
   Result.KeywordCounts := nil;
-  Counts := TDictionary<string, Integer>.Create;
+  mCounts := TDictionary<string, Integer>.Create;
   try
-    for FileItem in AFiles do
+    for mFileItem in AFiles do
     begin
-      HasOpen := False;
-      for Entry in FileItem.Entries do
-        if Entry.Done then
-          Inc(Result.Done)
-        else
-        begin
-          Inc(Result.Open);
-          HasOpen := True;
-          if not Counts.TryGetValue(Entry.Keyword, Count) then
-            Count := 0;
-          Counts.AddOrSetValue(Entry.Keyword, Count + 1);
-        end;
-      if HasOpen then
-        Inc(Result.Files);
+      SummarizeFile(mFileItem, Result, mCounts);
     end;
-    Names := Counts.Keys.ToArray;
-    TArray.Sort<string>(Names);
-    SetLength(Result.KeywordCounts, Length(Names));
-    for Index := 0 to High(Names) do
-      Result.KeywordCounts[Index] := Counts[Names[Index]];
-    Result.Keywords := Names;
+    mNames := mCounts.Keys.ToArray;
+    TArray.Sort<string>(mNames);
+    SetLength(Result.KeywordCounts, Length(mNames));
+    for mIndex := 0 to High(mNames) do
+    begin
+      Result.KeywordCounts[mIndex] := mCounts[mNames[mIndex]];
+    end;
+    Result.Keywords := mNames;
   finally
-    Counts.Free;
+    mCounts.Free;
   end;
 end;
 
@@ -142,7 +198,9 @@ begin
   for Index := 0 to High(ASummary.Keywords) do
   begin
     if Index > 0 then
+    begin
       Keywords := Keywords + ', ';
+    end;
     Keywords := Keywords + JsonText(ASummary.Keywords[Index]) + ': ' + IntToStr(ASummary.KeywordCounts[Index]);
   end;
   Result := '{"files": ' + IntToStr(ASummary.Files) + ', "open": ' + IntToStr(ASummary.Open) + ', "done": ' +
@@ -166,7 +224,9 @@ begin
   for Index := 0 to High(AFile.Entries) do
   begin
     if Index > 0 then
+    begin
       Result := Result + ', ';
+    end;
     Result := Result + EntryJson(AFile.Entries[Index]);
   end;
   Result := Result + ']}';
@@ -181,12 +241,16 @@ begin
   try
     Builder.Append('{"format": ').Append(IntToStr(Format));
     if ARoot <> '' then
+    begin
       Builder.Append(', "root": ').Append(JsonText(ARoot));
+    end;
     Builder.Append(', "summary": ').Append(SummaryJson(Summarize(AFiles))).Append(', "files": [');
     for Index := 0 to High(AFiles) do
     begin
       if Index > 0 then
+      begin
         Builder.Append(',');
+      end;
       Builder.Append(LineBreak).Append('  ').Append(FileJson(AFiles[Index]));
     end;
     Builder.Append(']}').Append(LineBreak);
@@ -207,134 +271,188 @@ var
 begin
   Result := AEntry.Keyword;
   if AEntry.Priority > 0 then
+  begin
     Result := Result + ' ' + IntToStr(AEntry.Priority);
+  end;
   Details := AEntry.Category;
   if AEntry.Owner <> '' then
   begin
     if Details <> '' then
+    begin
       Details := Details + ', ';
+    end;
     Details := Details + AEntry.Owner;
   end;
   if Details <> '' then
+  begin
     Result := Result + ' [' + Details + ']';
+  end;
   if AEntry.Text <> '' then
+  begin
     Result := Result + ': ' + AEntry.Text;
+  end;
+end;
+
+/// <summary>Anzahl der Einträge je Kategorie bzw. (AOwner) Person; leere Werte als „(ohne)“.</summary>
+procedure CountValues(ACounts: TDictionary<string, Integer>; const AFiles: TArray<TFileTodos>; AOwner: Boolean);
+var
+  mFileItem: TFileTodos;
+  mEntry: TTodoEntry;
+  mValue: string;
+begin
+  for mFileItem in AFiles do
+  begin
+    for mEntry in mFileItem.Entries do
+    begin
+      mValue := mEntry.Category;
+      if AOwner then
+      begin
+        mValue := mEntry.Owner;
+      end;
+      if mValue = '' then
+      begin
+        mValue := '(ohne)';
+      end;
+      CountKey(ACounts, mValue);
+    end;
+  end;
+end;
+
+/// <summary>Werte und Anzahlen aus ACounts, meiste zuerst, bei Gleichstand nach Name.</summary>
+function ByCount(ACounts: TDictionary<string, Integer>): TArray<TCountPair>;
+begin
+  Result := ACounts.ToArray;
+  TArray.Sort<TCountPair>(Result, TComparer<TCountPair>.Construct(
+    function(const A, B: TCountPair): Integer
+    begin
+      Result := B.Value - A.Value;
+      if Result = 0 then
+      begin
+        Result := CompareText(A.Key, B.Key);
+      end;
+    end));
 end;
 
 /// <summary>Anzahl der Einträge je Wert (Kategorie oder Person), meiste zuerst; leere Werte als „(ohne)“.</summary>
 procedure AppendCounts(ABuilder: TStringBuilder; const AFiles: TArray<TFileTodos>; AOwner: Boolean;
   const AHeading, AColumn: string);
 var
-  Counts: TDictionary<string, Integer>;
-  FileItem: TFileTodos;
-  Entry: TTodoEntry;
-  Value: string;
-  Count: Integer;
-  Names: TArray<string>;
+  mCounts: TDictionary<string, Integer>;
+  mPair: TCountPair;
 begin
-  Counts := TDictionary<string, Integer>.Create;
+  mCounts := TDictionary<string, Integer>.Create;
   try
-    for FileItem in AFiles do
-      for Entry in FileItem.Entries do
-      begin
-        if AOwner then
-          Value := Entry.Owner
-        else
-          Value := Entry.Category;
-        if Value = '' then
-          Value := '(ohne)';
-        if not Counts.TryGetValue(Value, Count) then
-          Count := 0;
-        Counts.AddOrSetValue(Value, Count + 1);
-      end;
+    CountValues(mCounts, AFiles, AOwner);
     // Nur ein Wert „(ohne)“: die Tabelle sagt nichts.
-    if (Counts.Count = 0) or ((Counts.Count = 1) and Counts.ContainsKey('(ohne)')) then
+    if (mCounts.Count = 0) or ((mCounts.Count = 1) and mCounts.ContainsKey('(ohne)')) then
+    begin
       Exit;
-    Names := Counts.Keys.ToArray;
-    TArray.Sort<string>(Names, TComparer<string>.Construct(
-      function(const A, B: string): Integer
-      begin
-        Result := Counts[B] - Counts[A];
-        if Result = 0 then
-          Result := CompareText(A, B);
-      end));
+    end;
     ABuilder.Append(LineBreak).Append('## ').Append(AHeading).Append(LineBreak).Append(LineBreak);
-    ABuilder.Append('| ').Append(AColumn).Append(' | Einträge |').Append(LineBreak);
+    ABuilder.Append('| ').Append(AColumn).Append(cTexts[TTodosReportText.Entries].Text).Append(LineBreak);
     ABuilder.Append('|---|---:|').Append(LineBreak);
-    for Value in Names do
-      ABuilder.Append('| ').Append(Cell(Value)).Append(' | ').Append(IntToStr(Counts[Value])).Append(' |')
+    for mPair in ByCount(mCounts) do
+    begin
+      ABuilder.Append('| ').Append(Cell(mPair.Key)).Append(' | ').Append(IntToStr(mPair.Value)).Append(' |')
         .Append(LineBreak);
+    end;
   finally
-    Counts.Free;
+    mCounts.Free;
+  end;
+end;
+
+/// <summary>Kopfzeile mit Titel und Zusammenfassung des Markdown-Berichts.</summary>
+procedure AppendHeader(ABuilder: TStringBuilder; const ASummary: TTodoSummary; const ATitle: string);
+var
+  mIndex: Integer;
+begin
+  ABuilder.Append('# TODOs');
+  if ATitle <> '' then
+  begin
+    ABuilder.Append(': ').Append(ATitle);
+  end;
+  ABuilder.Append(LineBreak).Append(LineBreak);
+  ABuilder.Append(IntToStr(ASummary.Open)).Append(cTexts[TTodosReportText.OpenEntriesIn].Text)
+    .Append(IntToStr(ASummary.Files))
+    .Append(' Dateien');
+  if ASummary.Done > 0 then
+  begin
+    ABuilder.Append(', ').Append(IntToStr(ASummary.Done)).Append(cTexts[TTodosReportText.Done].Text);
+  end;
+  if Length(ASummary.Keywords) > 0 then
+  begin
+    ABuilder.Append(' (');
+    for mIndex := 0 to High(ASummary.Keywords) do
+    begin
+      if mIndex > 0 then
+      begin
+        ABuilder.Append(', ');
+      end;
+      ABuilder.Append(ASummary.Keywords[mIndex]).Append(' ').Append(IntToStr(ASummary.KeywordCounts[mIndex]));
+    end;
+    ABuilder.Append(')');
+  end;
+  ABuilder.Append('.').Append(LineBreak);
+end;
+
+/// <summary>Tabelle der Einträge einer Datei.</summary>
+procedure AppendFile(ABuilder: TStringBuilder; const AFile: TFileTodos);
+var
+  mEntry: TTodoEntry;
+  mKind, mPriority: string;
+begin
+  ABuilder.Append(LineBreak).Append('## ').Append(AFile.UnitName).Append(' (')
+    .Append(IntToStr(Length(AFile.Entries))).Append(')').Append(LineBreak).Append(LineBreak);
+  ABuilder.Append('`').Append(AFile.Path).Append('`').Append(LineBreak).Append(LineBreak);
+  ABuilder.Append(cTexts[TTodosReportText.LineMarkerPriorityCategoryPerson].Text).Append(LineBreak);
+  ABuilder.Append('|---:|---|---:|---|---|---|').Append(LineBreak);
+  for mEntry in AFile.Entries do
+  begin
+    mKind := mEntry.Keyword;
+    if mEntry.Done then
+    begin
+      mKind := mKind + cTexts[TTodosReportText.Done2].Text;
+    end;
+    mPriority := '';
+    if mEntry.Priority > 0 then
+    begin
+      mPriority := IntToStr(mEntry.Priority);
+    end;
+    ABuilder.Append('| ').Append(IntToStr(mEntry.Range.StartPos.Line + 1)).Append(' | ').Append(mKind)
+      .Append(' | ').Append(mPriority).Append(' | ').Append(Cell(mEntry.Category)).Append(' | ')
+      .Append(Cell(mEntry.Owner)).Append(' | ').Append(Cell(mEntry.Text)).Append(' |').Append(LineBreak);
   end;
 end;
 
 class function TTodoReport.Markdown(const AFiles: TArray<TFileTodos>; const ATitle: string): string;
 var
-  Builder: TStringBuilder;
-  Summary: TTodoSummary;
-  FileItem: TFileTodos;
-  Entry: TTodoEntry;
-  Index: Integer;
-  Kind, Priority: string;
+  mBuilder: TStringBuilder;
+  mFileItem: TFileTodos;
 begin
-  Summary := Summarize(AFiles);
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    if ATitle <> '' then
-      Builder.Append('# TODOs: ').Append(ATitle).Append(LineBreak)
-    else
-      Builder.Append('# TODOs').Append(LineBreak);
-    Builder.Append(LineBreak);
-    Builder.Append(IntToStr(Summary.Open)).Append(' offene Einträge in ').Append(IntToStr(Summary.Files))
-      .Append(' Dateien');
-    if Summary.Done > 0 then
-      Builder.Append(', ').Append(IntToStr(Summary.Done)).Append(' erledigt');
-    if Length(Summary.Keywords) > 0 then
-    begin
-      Builder.Append(' (');
-      for Index := 0 to High(Summary.Keywords) do
-      begin
-        if Index > 0 then
-          Builder.Append(', ');
-        Builder.Append(Summary.Keywords[Index]).Append(' ').Append(IntToStr(Summary.KeywordCounts[Index]));
-      end;
-      Builder.Append(')');
-    end;
-    Builder.Append('.').Append(LineBreak);
+    AppendHeader(mBuilder, Summarize(AFiles), ATitle);
     if Length(AFiles) = 0 then
     begin
-      Builder.Append(LineBreak).Append('Keine Einträge.').Append(LineBreak);
-      Exit(Builder.ToString);
-    end;
-
-    AppendCounts(Builder, AFiles, False, 'Nach Kategorie', 'Kategorie');
-    AppendCounts(Builder, AFiles, True, 'Nach Person', 'Person');
-
-    for FileItem in AFiles do
+      mBuilder.Append(LineBreak).Append(cTexts[TTodosReportText.NoEntries].Text).Append(LineBreak);
+    end
+    else
     begin
-      Builder.Append(LineBreak).Append('## ').Append(FileItem.UnitName).Append(' (')
-        .Append(IntToStr(Length(FileItem.Entries))).Append(')').Append(LineBreak).Append(LineBreak);
-      Builder.Append('`').Append(FileItem.Path).Append('`').Append(LineBreak).Append(LineBreak);
-      Builder.Append('| Zeile | Marke | Priorität | Kategorie | Person | Text |').Append(LineBreak);
-      Builder.Append('|---:|---|---:|---|---|---|').Append(LineBreak);
-      for Entry in FileItem.Entries do
+      AppendCounts(mBuilder, AFiles, False, cTexts[TTodosReportText.ByCategory].Text,
+        cTexts[TTodosReportText.Category].Text);
+      AppendCounts(mBuilder, AFiles, True, cTexts[TTodosReportText.ByPerson].Text, 'Person');
+      for mFileItem in AFiles do
       begin
-        Kind := Entry.Keyword;
-        if Entry.Done then
-          Kind := Kind + ' (erledigt)';
-        Priority := '';
-        if Entry.Priority > 0 then
-          Priority := IntToStr(Entry.Priority);
-        Builder.Append('| ').Append(IntToStr(Entry.Range.StartPos.Line + 1)).Append(' | ').Append(Kind)
-          .Append(' | ').Append(Priority).Append(' | ').Append(Cell(Entry.Category)).Append(' | ')
-          .Append(Cell(Entry.Owner)).Append(' | ').Append(Cell(Entry.Text)).Append(' |').Append(LineBreak);
+        AppendFile(mBuilder, mFileItem);
       end;
     end;
-    Result := Builder.ToString;
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Todos.Report', cTexts);
 
 end.

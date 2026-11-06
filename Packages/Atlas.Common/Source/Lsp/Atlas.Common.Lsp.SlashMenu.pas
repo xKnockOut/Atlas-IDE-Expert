@@ -83,6 +83,8 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.CompletionRequest,
+  Atlas.Common.Lsp.Completion.Declarations,
   System.Generics.Collections,
   Atlas.Text.Lines,
   Atlas.Common.JsonRpc.Contract,
@@ -91,7 +93,28 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.Positions,
-  Atlas.Common.Editing.InterfaceStubs;
+  Atlas.Common.Editing.InterfaceStubs,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLspSlashMenuText = (URIPositionAndLastLine, DocumentIsNotOpen, NoMethodsOfAnInterface, NoneOfTheChosenMethods,
+    CreateMissingMethodsOfThe, SlashCommandsAreSwitchedOff);
+
+const
+  cTexts: array[TLspSlashMenuText] of TAtlasText = (
+    (De: 'Erwartet werden URI, Position und letzte Zeile der Markierung';
+     En: 'URI, position and last line of the selection expected'),
+    (De: 'Dokument ist nicht geöffnet'; En: 'Document is not open'),
+    (De: 'Hier fehlen keine Methoden eines Interfaces'; En: 'No methods of an interface are missing here'),
+    (De: 'Keine der gewählten Methoden fehlt: '; En: 'None of the chosen methods is missing: '),
+    (De: 'Fehlende Methoden der Interfaces anlegen'; En: 'Create missing methods of the interfaces'),
+    (De: 'Schnellbefehle sind für diese Datei abgeschaltet (slashCommands)';
+     En: 'Slash commands are switched off for this file (slashCommands)'));
+
+{$SCOPEDENUMS OFF}
 
 /// <summary>Dokument zur URI und Stelle samt Markierung aus den ersten drei Argumenten.</summary>
 function ReadSpot(const AStore: IDocumentStore; const AArguments: TJSONArray; ACount: Integer; out AUri: string;
@@ -101,15 +124,20 @@ var
   EndLine: Integer;
 begin
   if (AArguments = nil) or (AArguments.Count < ACount) or not (AArguments.Items[0] is TJSONString) then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Erwartet werden URI, Position und letzte Zeile ' +
-      'der Markierung');
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TLspSlashMenuText.URIPositionAndLastLine].Text);
+  end;
   AUri := AArguments.Items[0].Value;
   if not AStore.TryGet(AUri, Result) then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Dokument ist nicht geöffnet');
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TLspSlashMenuText.DocumentIsNotOpen].Text);
+  end;
   Position := TLspPositions.ReadPosition(AArguments.Items[1]);
   EndLine := -1;
   if AArguments.Items[2] is TJSONNumber then
+  begin
     EndLine := TJSONNumber(AArguments.Items[2]).AsInt;
+  end;
   ASpot := TSlashSpot.Create(Position.Line, Position.Character, EndLine);
 end;
 
@@ -117,7 +145,9 @@ function StringAt(const AArguments: TJSONArray; AIndex: Integer): string;
 begin
   Result := '';
   if (AArguments.Count > AIndex) and (AArguments.Items[AIndex] is TJSONString) then
+  begin
     Result := AArguments.Items[AIndex].Value;
+  end;
 end;
 
 function Contains(const AList: TArray<string>; const AName: string): Boolean;
@@ -126,8 +156,12 @@ var
 begin
   Result := False;
   for Item in AList do
+  begin
     if SameText(Trim(Item), Trim(AName)) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function NamesToJson(const ANames: TArray<string>): TJSONArray;
@@ -136,7 +170,9 @@ var
 begin
   Result := TJSONArray.Create;
   for Name in ANames do
+  begin
     Result.Add(Name);
+  end;
 end;
 
 { TLspSlashMenu }
@@ -152,7 +188,9 @@ begin
   ADisabled := nil;
   Result := True;
   if Assigned(FSlashCommandsFor) then
+  begin
     Result := FSlashCommandsFor(AUri, ADisabled);
+  end;
 end;
 
 function TLspSlashMenu.MissingInterfaceMethods(const AUri, AText: string; const ASpot: TSlashSpot;
@@ -164,37 +202,50 @@ var
   Resolver: TNameResolver;
   Settings: TCompletionSettings;
   Batch: Boolean;
+  Request: TCompletionRequest;
 begin
   AItems := nil;
   ACommandLine := -1;
   Result := False;
   if (FCompletion = nil) or (FIndex = nil) or ASpot.HasSelection then
+  begin
     Exit;
+  end;
   // Gedachte leere Zeile wie für einen Schnellbefehl; dort bietet die Vervollständigung alle fehlenden Methoden an.
   if not TSlashMenu.Prepare(AText, TSlashSpot.Create(ASpot.Line, ASpot.Character, -1), '', Virtual, ACommandLine,
     WrapUntil) then
+  begin
     Exit;
+  end;
   Line := TTextLines.SplitLines(Virtual)[ACommandLine];
   Settings := TCompletionSettings.Default;
-  if Assigned(FCompletion.SettingsFor) then
-    Settings := FCompletion.SettingsFor(AUri);
+  if Assigned(FCompletion.Hooks.SettingsFor) then
+  begin
+    Settings := FCompletion.Hooks.SettingsFor(AUri);
+  end;
   // Über den Cache: TSyntaxTreeCacheTests.NoParserCallsOutsideCache.
   Tree := TSyntaxTreeCache.Parse(Virtual);
+  Resolver := nil;
+  Request := nil;
   try
     Resolver := TNameResolver.Create(FIndex);
-    try
-      Resolver.Namespaces := FCompletion.Namespaces;
-      Result := TLspCompletion.InterfaceItems(Resolver, Tree, Virtual, TDocumentUris.ToPath(AUri),
-        TTextPosition.Create(ACommandLine, Length(Line)), FCompletion.ReadText,
-        Settings.InterfaceSection, AItems, Batch) and Batch;
-    finally
-      Resolver.Free;
-    end;
+    Resolver.Namespaces := FCompletion.Hooks.Namespaces;
+    Request := TCompletionRequest.Create(Virtual, TDocumentUris.ToPath(AUri),
+      TTextPosition.Create(ACommandLine, Length(Line)));
+    Request.Tree := Tree;
+    Request.Resolver := Resolver;
+    Request.ReadText := FCompletion.Hooks.ReadText;
+    Request.Settings := Settings;
+    Result := TCompletionDeclarations.InterfaceItems(Request, AItems, Batch) and Batch;
   finally
+    Request.Free;
+    Resolver.Free;
     Tree.Free;
   end;
   if not Result then
+  begin
     AItems := nil;
+  end;
 end;
 
 function TLspSlashMenu.RunImplement(const AUri, AText: string; const ASpot: TSlashSpot; const AArguments: string;
@@ -211,17 +262,21 @@ begin
   AReason := '';
   if not MissingInterfaceMethods(AUri, AText, ASpot, Items, CommandLine) then
   begin
-    AReason := 'Hier fehlen keine Methoden eines Interfaces';
+    AReason := cTexts[TLspSlashMenuText.NoMethodsOfAnInterface].Text;
     Exit(False);
   end;
   Chosen := AArguments.Split([',', ';'], TStringSplitOptions.ExcludeEmpty);
   Edits := nil;
   for Item in Items do
+  begin
     if (Length(Chosen) = 0) or Contains(Chosen, Item.Container + '.' + Item.Name) or Contains(Chosen, Item.Name) then
+    begin
       Edits := Edits + Item.AdditionalEdits;
+    end;
+  end;
   if Length(Edits) = 0 then
   begin
-    AReason := 'Keine der gewählten Methoden fehlt: ' + AArguments;
+    AReason := cTexts[TLspSlashMenuText.NoneOfTheChosenMethods].Text + AArguments;
     Exit(False);
   end;
   LineBreak := TTextLines.LineBreakOf(AText);
@@ -248,7 +303,7 @@ var
   begin
     Item := TJSONObject.Create;
     Item.AddPair('name', ImplementName);
-    Item.AddPair('summary', 'Fehlende Methoden der Interfaces anlegen');
+    Item.AddPair('summary', cTexts[TLspSlashMenuText.CreateMissingMethodsOfThe].Text);
     Item.AddPair('example', '');
     Item.AddPair('group', TSlashMenu.GroupName(TSlashGroup.Generate));
     Item.AddPair('argument', TSlashMenu.ArgumentName(TSlashArgument.Optional));
@@ -269,12 +324,16 @@ begin
     Commands := TJSONArray.Create;
     TJSONObject(Result).AddPair('commands', Commands);
     if not IsEnabled then
+    begin
       Exit;
+    end;
     for Entry in TSlashMenu.Catalog do
     begin
       if Contains(Disabled, Entry.Name) or not TSlashMenu.Fits(Entry, Places, Spot.HasSelection) or
         not TSlashCommandRegistry.Shared.Find(Entry.Name, Command) then
+      begin
         Continue;
+      end;
       Item := TJSONObject.Create;
       Item.AddPair('name', Entry.Name);
       Item.AddPair('summary', Command.Summary);
@@ -288,7 +347,9 @@ begin
       // „Interface implementieren“ (#466) nach /override, wie im Mockup.
       if SameText(Entry.Name, 'override') and MissingInterfaceMethods(Uri, Document.Text, Spot, Missing,
         CommandLine) then
+      begin
         AddImplement;
+      end;
     end;
   except
     Result.Free;
@@ -311,8 +372,12 @@ begin
   begin
     Names := nil;
     if MissingInterfaceMethods(Uri, Document.Text, Spot, Missing, CommandLine) then
+    begin
       for Item in Missing do
+      begin
         Names := Names + [Item.Container + '.' + Item.Name];
+      end;
+    end;
     Exit(NamesToJson(Names));
   end;
   Result := NamesToJson(TSlashMenu.Choices(Document.Text, Spot, StringAt(AArguments, 3), FIndex));
@@ -333,20 +398,31 @@ begin
   Document := ReadSpot(FStore, AArguments, 4, Uri, Spot);
   Edits := nil;
   if not Enabled(Uri, Disabled) then
-    Reason := 'Schnellbefehle sind für diese Datei abgeschaltet (slashCommands)'
+  begin
+    Reason := cTexts[TLspSlashMenuText.SlashCommandsAreSwitchedOff].Text;
+  end
   else
   begin
     Version := '';
     if Assigned(FDelphiVersionFor) then
+    begin
       Version := FDelphiVersionFor(Uri);
+    end;
     Style := TFormatStyle.Default;
     if Assigned(FFormatStyleFor) then
+    begin
       Style := FFormatStyleFor(Uri);
+    end;
     if SameText(StringAt(AArguments, 3), ImplementName) then
-      RunImplement(Uri, Document.Text, Spot, StringAt(AArguments, 4), Edits, Reason)
+    begin
+      RunImplement(Uri, Document.Text, Spot, StringAt(AArguments, 4), Edits, Reason);
+    end
     else
-      TSlashMenu.Run(TSlashCommandRegistry.Shared, Document.Text, Spot, StringAt(AArguments, 3),
-        StringAt(AArguments, 4), Disabled, FIndex, Version, Uri, FSlashHost, Style, Edits, Reason);
+    begin
+      TSlashMenu.Run(TSlashCommandRegistry.Shared, Document.Text, Spot,
+        TSlashMenuCall.Create(StringAt(AArguments, 3), StringAt(AArguments, 4),
+        TSlashEnvironment.Create(nil, Disabled, FIndex, Version, Uri, FSlashHost).WithStyle(Style)), Edits, Reason);
+    end;
   end;
   Result := TJSONObject.Create;
   try
@@ -365,5 +441,8 @@ begin
     raise;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.SlashMenu', cTexts);
 
 end.

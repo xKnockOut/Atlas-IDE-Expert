@@ -99,13 +99,33 @@ begin
     end;
 end;
 
+/// <summary>Ereignisse mit Text aus "events".</summary>
+function ReadEvents(AItems: TJSONArray): TArray<TIndexProcessEvent>;
+var
+  mValue: TJSONValue;
+  mEvent: TIndexProcessEvent;
+begin
+  Result := nil;
+  for mValue in AItems do
+  begin
+    if not (mValue is TJSONObject) then
+    begin
+      Continue;
+    end;
+    mEvent.Time := ReadTime(TJSONObject(mValue), 'time');
+    mEvent.Text := TJSONObject(mValue).GetValue<string>('text', '');
+    if mEvent.Text <> '' then
+    begin
+      Result := Result + [mEvent];
+    end;
+  end;
+end;
+
 class function TIndexProcessInfo.FromJson(const AText: string; out AInfo: TIndexProcessInfo): Boolean;
 var
   Root: TJSONValue;
   Item: TJSONObject;
   Items: TJSONArray;
-  Value: TJSONValue;
-  Event: TIndexProcessEvent;
   Pid: Integer;
 begin
   AInfo := Default(TIndexProcessInfo);
@@ -118,7 +138,9 @@ begin
   try
     Result := (Root is TJSONObject) and TJSONObject(Root).TryGetValue<Integer>('pid', Pid);
     if not Result then
+    begin
       Exit;
+    end;
     Item := TJSONObject(Root);
     AInfo.Pid := Cardinal(Pid);
     AInfo.Kind := Item.GetValue<string>('kind', '');
@@ -128,14 +150,9 @@ begin
     AInfo.Writer := (Item.GetValue('writer') is TJSONBool) and TJSONBool(Item.GetValue('writer')).AsBoolean;
     AInfo.Started := ReadTime(Item, 'started');
     if Item.TryGetValue<TJSONArray>('events', Items) then
-      for Value in Items do
-        if Value is TJSONObject then
-        begin
-          Event.Time := ReadTime(TJSONObject(Value), 'time');
-          Event.Text := TJSONObject(Value).GetValue<string>('text', '');
-          if Event.Text <> '' then
-            AInfo.Events := AInfo.Events + [Event];
-        end;
+    begin
+      AInfo.Events := ReadEvents(Items);
+    end;
   finally
     Root.Free;
   end;
@@ -157,23 +174,33 @@ begin
     for Process in AProcesses do
     begin
       if not Kinds.TryGetValue(Process.Kind, Count) then
+      begin
         Count := 0;
+      end;
       Kinds.AddOrSetValue(Process.Kind, Count + 1);
     end;
     for Process in AProcesses do
+    begin
       for Event in Process.Events do
       begin
         Item.Time := Event.Time;
         if Kinds[Process.Kind] > 1 then
-          Item.Text := Format('%s %d: %s', [Process.Kind, Process.Pid, Event.Text])
+        begin
+          Item.Text := Format('%s %d: %s', [Process.Kind, Process.Pid, Event.Text]);
+        end
         else
+        begin
           Item.Text := Process.Kind + ': ' + Event.Text;
+        end;
         // Stabil einsortieren: Gleichzeitige Ereignisse eines Prozesses behalten ihre Reihenfolge.
         Index := Length(Result);
         while (Index > 0) and (Result[Index - 1].Time > Item.Time) do
+        begin
           Dec(Index);
+        end;
         Insert(Item, Result, Index);
       end;
+    end;
   finally
     Kinds.Free;
   end;

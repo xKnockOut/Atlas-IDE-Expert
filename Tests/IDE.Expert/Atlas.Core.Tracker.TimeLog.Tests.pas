@@ -15,6 +15,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTimeClockTests = class
   private
     FNow: TDateTime;
@@ -48,10 +49,13 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTimeLogTests = class
   private
     FFolder: string;
   public
+    [Setup]
+    procedure Setup;
     [TearDown]
     procedure TearDown;
     /// <summary>Zwei IDE-Instanzen melden dieselbe Zeit: sie zählt einmal.</summary>
@@ -78,6 +82,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTimeRoundingTests = class
   public
     [Test]
@@ -89,6 +94,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerTimeWriterTests = class
   public
     [Test]
@@ -115,8 +121,12 @@ uses
   System.Generics.Collections,
   System.JSON,
   Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
-  Atlas.Core.Tracker.Providers.YouTrack;
+  Atlas.Core.Tracker.Providers.YouTrack,
+  Atlas.Core.Tracker.Files,
+  Atlas.Core.Tracker.Adapters.LocalFiles,
+  Atlas.Core.Tracker.YouTrackApi;
 
 type
   /// <summary>Transport mit festen Antworten je Methode und Adressanfang; merkt sich Aufrufe und Inhalte.</summary>
@@ -133,8 +143,8 @@ type
     procedure Answer(const AMethod, APrefix: string; AStatus: Integer; const AText: string);
     function Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
       out AError: TAtlasCiFetchError): Boolean;
-    function Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
-      out AError: TAtlasCiFetchError): Boolean;
+    function Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AResponse: TAtlasCiResponse):
+      Boolean;
   end;
 
 procedure TFakeTimeTransport.Answer(const AMethod, APrefix: string; AStatus: Integer; const AText: string);
@@ -154,12 +164,14 @@ begin
   AText := '';
   Result := True;
   for mIndex := 0 to High(FPrefixes) do
+  begin
     if (FMethods[mIndex] = AMethod) and (Copy(AUrl, 1, Length(FPrefixes[mIndex])) = FPrefixes[mIndex]) then
     begin
       AStatus := FStatus[mIndex];
       AText := FTexts[mIndex];
       Exit;
     end;
+  end;
 end;
 
 function TFakeTimeTransport.Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
@@ -169,12 +181,12 @@ begin
   Result := Reply('GET', AUrl, AStatus, AText);
 end;
 
-function TFakeTimeTransport.Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AStatus: Integer;
-  out AText: string; out AError: TAtlasCiFetchError): Boolean;
+function TFakeTimeTransport.Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer;
+  out AResponse: TAtlasCiResponse): Boolean;
 begin
-  AError := TAtlasCiFetchError.None;
+  AResponse := TAtlasCiResponse.Failed(TAtlasCiFetchError.None);
   Bodies := Bodies + [ABody];
-  Result := Reply(AMethod, AUrl, AStatus, AText);
+  Result := Reply(AMethod, AUrl, AResponse.Status, AResponse.Text);
 end;
 
 function YouTrackIssue(const AKey: string): TAtlasTimeIssue;
@@ -220,7 +232,9 @@ var
 begin
   Result := 0;
   for mSpan in ASpans do
+  begin
     Inc(Result, mSpan.Seconds);
+  end;
 end;
 
 procedure TAtlasTimeClockTests.IdleStopsAndIsNotCounted;
@@ -344,7 +358,9 @@ begin
   FClock.Activity(EncodeDateTime(2026, 10, 29, 0, 10, 0, 0));
   mLog := TAtlasTimeLog.Empty;
   for mSpan in FClock.Take do
+  begin
     mLog.Add(mSpan);
+  end;
   Assert.AreEqual(2, Integer(Length(mLog.Entries)));
   Assert.AreEqual(Integer(Trunc(At(0, 0))), mLog.Entries[0].Day);
   Assert.AreEqual(10 * 60, Integer(mLog.Entries[0].Seconds), 'bis Mitternacht');
@@ -355,10 +371,18 @@ end;
 
 { TAtlasTimeLogTests }
 
+procedure TAtlasTimeLogTests.Setup;
+begin
+  TAtlasTrackerFiles.Install(TAtlasTrackerLocalFiles.Create, nil);
+end;
+
 procedure TAtlasTimeLogTests.TearDown;
 begin
+  TAtlasTrackerFiles.Uninstall;
   if (FFolder <> '') and TDirectory.Exists(FFolder) then
+  begin
     TDirectory.Delete(FFolder, True);
+  end;
   FFolder := '';
 end;
 
@@ -589,6 +613,10 @@ begin
   Assert.AreEqual(90, mMinutes);
   Assert.IsTrue(TAtlasTimeRounding.ParseDuration('2 Std', mMinutes));
   Assert.AreEqual(120, mMinutes);
+  Assert.IsTrue(TAtlasTimeRounding.ParseDuration('2 hours 30 minutes', mMinutes), 'englische Einheiten');
+  Assert.AreEqual(150, mMinutes);
+  Assert.IsTrue(TAtlasTimeRounding.ParseDuration('1 hour', mMinutes));
+  Assert.AreEqual(60, mMinutes);
   Assert.IsFalse(TAtlasTimeRounding.ParseDuration('', mMinutes));
   Assert.IsFalse(TAtlasTimeRounding.ParseDuration('0', mMinutes));
   Assert.IsFalse(TAtlasTimeRounding.ParseDuration('1:75', mMinutes));
@@ -606,7 +634,7 @@ var
   mObject: TJSONObject;
   mJson: string;
 begin
-  mJson := TAtlasYouTrackTracker.WorkItemJson(TAtlasTrackerWorkItem.Create(85, At(17, 30), 'Entwicklung',
+  mJson := TAtlasYouTrackBodies.WorkItemJson(TAtlasTrackerWorkItem.Create(85, At(17, 30), 'Entwicklung',
     'Parser repariert'));
   mValue := TJSONObject.ParseJSONValue(mJson);
   try
@@ -621,7 +649,7 @@ begin
   finally
     mValue.Free;
   end;
-  mJson := TAtlasYouTrackTracker.WorkItemJson(TAtlasTrackerWorkItem.Create(30, At(9, 0), '', ''));
+  mJson := TAtlasYouTrackBodies.WorkItemJson(TAtlasTrackerWorkItem.Create(30, At(9, 0), '', ''));
   Assert.IsFalse(mJson.Contains('"type"'), 'ohne Arbeitstyp kein Feld');
   Assert.IsFalse(mJson.Contains('"text"'), 'ohne Beschreibung kein Feld');
 end;
@@ -692,9 +720,9 @@ begin
   Assert.IsFalse(mSettings.Enabled);
   Assert.AreEqual(2, Integer(Length(mSettings.WorkTypes)));
   Assert.AreEqual('Test', mSettings.WorkTypes[1]);
-  Assert.AreEqual('ATL', TAtlasYouTrackTracker.ProjectOfKey('ATL-123'));
-  Assert.AreEqual('MY-PRJ', TAtlasYouTrackTracker.ProjectOfKey('MY-PRJ-7'));
-  Assert.AreEqual('', TAtlasYouTrackTracker.ProjectOfKey('123'));
+  Assert.AreEqual('ATL', TAtlasYouTrackApi.ProjectOfKey('ATL-123'));
+  Assert.AreEqual('MY-PRJ', TAtlasYouTrackApi.ProjectOfKey('MY-PRJ-7'));
+  Assert.AreEqual('', TAtlasYouTrackApi.ProjectOfKey('123'));
 end;
 
 procedure TAtlasTrackerTimeWriterTests.TimeSettingsWithoutProjectRights;

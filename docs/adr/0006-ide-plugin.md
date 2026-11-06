@@ -1,6 +1,6 @@
 ﻿# 0006: IDE-Plugin als Code Insight-Manager für RAD Studio
 
-- Status: Angenommen
+- Status: Angenommen; der Grundsatz „ein BPL“ ist ersetzt durch [ADR 0017](0017-funktions-packages.md)
 - Datum: 2026-10-09
 - Bezug: #175 RAD Studio als LSP-Client, #63 Hybrid-Modus (ADR 0005)
 
@@ -69,3 +69,8 @@ Bis Schritt 5 umgesetzt ist, liefert der eingebaute LSP-Weg die Diagnosen, sofer
 - `Atlas.IDE.CodeInsight.Composition` ist die Kompositionswurzel: Nur sie erzeugt Serverprozess, Ordnerbeobachter, Quellen von Vervollständigung und Parameter-Hint, Ziel und Sicherung des Änderungsprotokolls und den Prozessläufer der Versionsverwaltung und reicht sie über Schnittstellen (`IAtlasLspServer`, `IAtlasFolderWatcher`, `IAtlasSignatureSource`) und Fabriken an die Features.
 - Laden und Entladen laufen über `TAtlasFeatureTable`: Startreihenfolge einmal festgelegt, Abbau streng rückwärts. Gegenüber vorher ändert sich die Abbaureihenfolge leicht (Palette vor Tastenübersicht, Einrichtung und Diagnosemodus; Reloader und Auftragseingang früher); alle Bedingungen „vor dem Statusfeld“ bleiben erfüllt.
 
+## Fortschreibung: Module mit eigener Komposition (#1455, ADR 0017, 01.11.2026)
+
+- Die Kompositionswurzel `Atlas.IDE.CodeInsight.Composition` bleibt die Wurzel von Base. Jedes Modul hat seine eigene Kompositions-Unit `Atlas.IDE.<Modul>.Composition` und meldet sich in deren Initialisierung bei der Registry von Base an. Die Feature-Tabelle führt die Module und ihre Teile (`TAtlasModuleHosting`). Bisher umgezogen sind Debugger, Lesezeichen, Build-Werkzeuge, Tests, Designer, Suche, Analyse und Prüfregeln; Tracker und Willkommensseite folgen.
+- Die Wurzel kennt keine Modul-Units mehr, abgesehen vom Klebstoff der Willkommensseite bis zu deren Modul. Sie sammelt Beiträge über `TAtlasModuleContributions` und bietet Dienste über `TAtlasIdeHost` an. Das Muster steht in `docs/Architektur.md`, Abschnitt „Muster eines Moduls“.
+- Bis zum Pilot (#1456) liegt alles weiter in einem BPL; die Trennung in Packages folgt der Tabelle `docs/adr/0017-unit-zuordnung.md`.

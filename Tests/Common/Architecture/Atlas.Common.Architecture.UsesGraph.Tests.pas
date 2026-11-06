@@ -80,7 +80,9 @@ begin
   for Node in ANodes do
   begin
     if Result <> '' then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + AGraph.Node(Node).UnitName;
   end;
 end;
@@ -398,13 +400,17 @@ begin
     UsesUnit('K', nil, ['L']), UsesUnit('L', ['K'], nil)];
   SetLength(Reversed, Length(Units));
   for Index := 0 to High(Units) do
+  begin
     Reversed[High(Units) - Index] := Units[Index];
+  end;
   First := NewGraph(Units);
   Second := NewGraph(Reversed);
   try
     Assert.AreEqual(Integer(Length(First.AllCycles)), Integer(Length(Second.AllCycles)));
     for Index := 0 to High(First.AllCycles) do
+    begin
       Assert.AreEqual(First.Describe(First.AllCycles[Index].Edges), Second.Describe(Second.AllCycles[Index].Edges));
+    end;
   finally
     Second.Free;
     First.Free;
@@ -421,8 +427,10 @@ begin
   // Ring über 2000 Units mit Querverweisen: Aufbau, Zyklen und Neuübersetzung zusammen deutlich unter 2 s.
   SetLength(Units, 2000);
   for Index := 0 to High(Units) do
+  begin
     Units[Index] := UsesUnit(Format('U%.4d', [Index]), [Format('U%.4d', [(Index + 1) mod 2000])],
       [Format('U%.4d', [(Index * 7) mod 2000]), Format('U%.4d', [(Index * 13 + 5) mod 2000])]);
+  end;
   Watch := TStopwatch.StartNew;
   Graph := NewGraph(Units);
   try

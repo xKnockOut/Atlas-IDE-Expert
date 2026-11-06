@@ -38,7 +38,21 @@ uses
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Lsp.Internals.Cancellation;
+  Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TSelectionRangesText = (FieldsTextDocumentUriAndPositions);
+
+const
+  cTexts: array[TSelectionRangesText] of TAtlasText = (
+    (De: 'Felder "textDocument.uri" und "positions" fehlen in ';
+     En: 'Fields "textDocument.uri" and "positions" missing in '));
+
+{$SCOPEDENUMS OFF}
 
 // Erstes Kind, das den Bereich AStart..AEnd umschließt, sonst nil.
 function ChildAround(ANode: TSyntaxNode; AStart, AEnd: Integer): TSyntaxNode;
@@ -46,8 +60,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to ANode.ChildCount - 1 do
+  begin
     if (ANode[Index].StartOffset <= AStart) and (AEnd <= ANode[Index].EndOffset) then
+    begin
       Exit(ANode[Index]);
+    end;
+  end;
   Result := nil;
 end;
 
@@ -56,7 +74,9 @@ begin
   // Gleiche Bereiche hintereinander (z. B. Anweisung und ihr einziger Ausdruck) nur einmal.
   if (Length(ARanges) > 0) and (ARanges[High(ARanges)].StartPos = ARange.StartPos) and
     (ARanges[High(ARanges)].EndPos = ARange.EndPos) then
+  begin
     Exit;
+  end;
   ARanges := ARanges + [ARange];
 end;
 
@@ -74,69 +94,84 @@ begin
   ADispatcher.RegisterConcurrentRequest(Method, HandleSelectionRange);
 end;
 
+/// <summary>Token unter dem Cursor AOffset, auch Kommentare und Strings. Zwischen zwei Token gewinnt das rechte,
+/// außer es ist ein Satzzeichen wie ";".</summary>
+function TokenAt(ATree: TSyntaxTree; AOffset: Integer; out ABest: TPascalToken): Boolean;
+var
+  mToken: TPascalToken;
+begin
+  ABest := Default(TPascalToken);
+  Result := False;
+  for mToken in ATree.Tokens do
+  begin
+    if mToken.Offset > AOffset then
+    begin
+      Break;
+    end;
+    if AOffset < mToken.Offset + Length(mToken.Text) then
+    begin
+      if not (Result and (mToken.Kind = TPascalTokenKind.Symbol) and (ABest.Kind <> TPascalTokenKind.Symbol)) then
+      begin
+        ABest := mToken;
+      end;
+      Exit(True);
+    end;
+    if AOffset = mToken.Offset + Length(mToken.Text) then
+    begin
+      ABest := mToken;
+      Result := True;
+    end;
+  end;
+end;
+
+/// <summary>Pfad von der Wurzel zum innersten Knoten, der AStart bis AEnd umschließt.</summary>
+function PathTo(ATree: TSyntaxTree; AStart, AEnd: Integer): TArray<TSyntaxNode>;
+var
+  mPath: TList<TSyntaxNode>;
+  mNode: TSyntaxNode;
+begin
+  mPath := TList<TSyntaxNode>.Create;
+  try
+    mNode := ATree.Root;
+    while mNode <> nil do
+    begin
+      mPath.Add(mNode);
+      mNode := ChildAround(mNode, AStart, AEnd);
+    end;
+    Result := mPath.ToArray;
+  finally
+    mPath.Free;
+  end;
+end;
+
 class function TLspSelectionRanges.RangesAt(ATree: TSyntaxTree; AOffset: Integer): TArray<TTextRange>;
 var
-  Token: TPascalToken;
-  Best: TPascalToken;
-  Found: Boolean;
-  Path: TList<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Index: Integer;
-  InnerStart: Integer;
-  InnerEnd: Integer;
+  mBest: TPascalToken;
+  mPath: TArray<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex, mInnerStart, mInnerEnd: Integer;
 begin
   Result := nil;
-  // Innerster Bereich: das Token unter dem Cursor, auch Kommentare und Strings.
-  // Zwischen zwei Token gewinnt das rechte, außer es ist ein Satzzeichen wie ";".
-  Best := Default(TPascalToken);
-  Found := False;
-  for Token in ATree.Tokens do
+  mInnerStart := AOffset;
+  mInnerEnd := AOffset;
+  // Innerster Bereich: das Token unter dem Cursor.
+  if TokenAt(ATree, AOffset, mBest) then
   begin
-    if Token.Offset > AOffset then
-      Break;
-    if AOffset < Token.Offset + Length(Token.Text) then
-    begin
-      if not (Found and (Token.Kind = TPascalTokenKind.Symbol) and (Best.Kind <> TPascalTokenKind.Symbol)) then
-        Best := Token;
-      Found := True;
-      Break;
-    end;
-    if AOffset = Token.Offset + Length(Token.Text) then
-    begin
-      Best := Token;
-      Found := True;
-    end;
+    AddRange(Result, TTextRange.Create(mBest.StartPos, mBest.EndPos));
+    mInnerStart := mBest.Offset;
+    mInnerEnd := mBest.Offset + Length(mBest.Text);
   end;
-  InnerStart := AOffset;
-  InnerEnd := AOffset;
-  if Found then
+  mPath := PathTo(ATree, mInnerStart, mInnerEnd);
+  for mIndex := High(mPath) downto 0 do
   begin
-    AddRange(Result, TTextRange.Create(Best.StartPos, Best.EndPos));
-    InnerStart := Best.Offset;
-    InnerEnd := Best.Offset + Length(Best.Text);
-  end;
-
-  // Pfad von der Wurzel zum innersten Knoten, der das Token umschließt.
-  Path := TList<TSyntaxNode>.Create;
-  try
-    Node := ATree.Root;
-    while Node <> nil do
+    mNode := mPath[mIndex];
+    // Jeder Bereich muss den inneren umschließen (z. B. nicht bei Cursor vor dem ersten Token).
+    if (mNode.StartOffset <= mInnerStart) and (mNode.EndOffset >= mInnerEnd) then
     begin
-      Path.Add(Node);
-      Node := ChildAround(Node, InnerStart, InnerEnd);
+      AddRange(Result, TTextRange.Create(mNode.StartPos, mNode.EndPos));
+      mInnerStart := mNode.StartOffset;
+      mInnerEnd := mNode.EndOffset;
     end;
-    for Index := Path.Count - 1 downto 0 do
-    begin
-      Node := Path[Index];
-      // Jeder Bereich muss den inneren umschließen (z. B. nicht bei Cursor vor dem ersten Token).
-      if (Node.StartOffset > InnerStart) or (Node.EndOffset < InnerEnd) then
-        Continue;
-      AddRange(Result, TTextRange.Create(Node.StartPos, Node.EndPos));
-      InnerStart := Node.StartOffset;
-      InnerEnd := Node.EndOffset;
-    end;
-  finally
-    Path.Free;
   end;
 end;
 
@@ -151,7 +186,9 @@ begin
     Item := TJSONObject.Create;
     Item.AddPair('range', TLspPositions.RangeToJson(ARanges[Index]));
     if Result <> nil then
+    begin
       Item.AddPair('parent', Result);
+    end;
     Result := Item;
   end;
 end;
@@ -171,10 +208,14 @@ var
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONArray>('positions', Positions)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Felder "textDocument.uri" und "positions" fehlen in ' + Method);
+      cTexts[TSelectionRangesText.FieldsTextDocumentUriAndPositions].Text + Method);
+  end;
   if not FStore.TryGet(Uri, Document) then
+  begin
     Exit(TJSONNull.Create);
+  end;
   // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
   Cancellation := TRequestCancellation.Create(ACancellation);
   Shared := TSyntaxTreeCache.Get(Document, Cancellation);
@@ -200,5 +241,8 @@ begin
     raise;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.SelectionRanges', cTexts);
 
 end.

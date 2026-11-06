@@ -59,6 +59,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.Completion.Lists,
   System.Generics.Collections,
   System.SysUtils,
   System.JSON,
@@ -68,7 +69,10 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
-  Atlas.Common.Lsp.CompletionRequest;
+  Atlas.Common.Lsp.CompletionRequest,
+  Atlas.Common.Lsp.Completion.TestSupport,
+  Atlas.Common.Lsp.Completion.Declarations,
+  Atlas.Common.Lsp.Completion.Details;
 
 const
   HauptFile = 'C:\P\Haupt.pas';
@@ -136,16 +140,20 @@ begin
   // Cursor hinter AMarker.
   Index := Pos(AMarker, AText);
   if Index = 0 then
+  begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+  end;
   Inc(Index, Length(AMarker));
   Line := 0;
   LineStart := 1;
   for Scan := 1 to Index - 1 do
+  begin
     if AText[Scan] = #10 then
     begin
       Inc(Line);
       LineStart := Scan + 1;
     end;
+  end;
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
@@ -180,7 +188,7 @@ var
 begin
   Tree := TPascalParser.Parse(AText);
   try
-    Result := TLspCompletion.Collect(FResolver, FIndex, Tree, HauptFile, PositionOf(AText, AMarker),
+    Result := TCompletionLists.Collect(FResolver, FIndex, Tree, HauptFile, PositionOf(AText, AMarker),
       TCompletionMatching.Prefix);
   finally
     Tree.Free;
@@ -193,7 +201,9 @@ var
 begin
   Result := '';
   for Item in AItems.Items do
+  begin
     Result := Result + Item.Name + ' ';
+  end;
   Result := Result.Trim;
 end;
 
@@ -203,8 +213,12 @@ var
 begin
   Result := False;
   for Item in AItems.Items do
+  begin
     if SameText(Item.Name, AName) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 procedure TLspCompletionContextTests.PrivateFieldOfOtherUnitIsHidden;
@@ -333,16 +347,16 @@ var
 begin
   Tree := TPascalParser.Parse(Text);
   try
-    Assert.IsTrue(TLspCompletion.PropertyItems(FResolver, Tree, Text, HauptFile,
+    Assert.IsTrue(PropertyAt(LookupOf(FResolver, nil, Tree, Text, nil),
       PositionOf(Text, 'Wert: Integer read '), TCompletionMatching.Prefix, Items));
     // Felder und Funktionen vom Typ Integer, auch geerbte (Zaehler, Anzahl); kein string, kein Setter.
     Assert.AreEqual('FWert GetWert Zaehler Anzahl', Names(Items));
-    Assert.IsTrue(TLspCompletion.PropertyItems(FResolver, Tree, Text, HauptFile,
+    Assert.IsTrue(PropertyAt(LookupOf(FResolver, nil, Tree, Text, nil),
       PositionOf(Text, 'string read '), TCompletionMatching.Prefix, Items));
     // Dazu „GetItems anlegen“ (#467) oben; ein Feld gibt es zu Indexeigenschaften nicht.
     Assert.AreEqual('GetItems anlegen GetItem', Names(Items));
     // Außerhalb einer property-Zeile kein Kontext.
-    Assert.IsFalse(TLspCompletion.PropertyItems(FResolver, Tree, Text, HauptFile,
+    Assert.IsFalse(PropertyAt(LookupOf(FResolver, nil, Tree, Text, nil),
       PositionOf(Text, 'FWert: '), TCompletionMatching.Prefix, Items));
   finally
     Tree.Free;
@@ -372,8 +386,8 @@ var
 begin
   Tree := TPascalParser.Parse(Text);
   try
-    Assert.IsTrue(TLspCompletion.PropertyItems(FResolver, Tree, Text, HauptFile, PositionOf(Text, 'write Se'),
-      TCompletionMatching.Prefix, Items));
+    Assert.IsTrue(PropertyAt(LookupOf(FResolver, nil, Tree, Text, nil),
+      PositionOf(Text, 'write Se'), TCompletionMatching.Prefix, Items));
     Assert.AreEqual('SetWert', Names(Items));
   finally
     Tree.Free;
@@ -408,8 +422,12 @@ begin
   Lines := string(UnitEigenschaft).Split([#10]);
   Position := TTextPosition.Create(0, 0);
   for Line := 0 to High(Lines) do
+  begin
     if Pos(AMarker, Lines[Line]) > 0 then
+    begin
       Position := TTextPosition.Create(Line, Pos(AMarker, Lines[Line]) - 1 + Length(AMarker));
+    end;
+  end;
   Tree := TPascalParser.Parse(UnitEigenschaft);
   Request := TCompletionRequest.Create(UnitEigenschaft, HauptFile, Position);
   try
@@ -417,7 +435,7 @@ begin
     Request.Resolver := AResolver;
     Request.Matching := TCompletionMatching.Prefix;
     Request.Settings := ASettings;
-    Assert.IsTrue(TLspCompletion.PropertyItems(Request, Result));
+    Assert.IsTrue(TCompletionDeclarations.PropertyItems(Request, Result));
   finally
     Request.Free;
     Tree.Free;
@@ -449,7 +467,9 @@ begin
   // Der Getter hat Deklaration und Rumpf.
   Inserted := '';
   for Edit in Items.Items[1].AdditionalEdits do
+  begin
     Inserted := Inserted + Edit.NewText;
+  end;
   Assert.Contains(Inserted, 'function GetCaption: string;');
   Assert.Contains(Inserted, 'function TFoo.GetCaption: string;');
   // Nach "write " ohne Feld FTitel: „Feld FTitel anlegen“, „SetTitel anlegen“ legt das Feld mit an; danach das
@@ -471,7 +491,9 @@ begin
   Items := AccessorItemsAt(FResolver, 'read Ca', Settings);
   Inserted := '';
   for Edit in Items.Items[1].AdditionalEdits do
+  begin
     Inserted := Inserted + Edit.NewText;
+  end;
   // Kein protected vor der Eigenschaft: eigener Abschnitt, danach weiter public.
   Assert.Contains(Inserted, '  protected'#10'    function GetCaption: string;'#10'  public'#10);
   // Abgeschaltet: nur vorhandene Mitglieder.
@@ -503,20 +525,22 @@ var
 begin
   Tree := TPascalParser.Parse(Text);
   try
-    Assert.IsTrue(TLspCompletion.OverrideItems(FResolver, Tree, Text, HauptFile, PositionOf(Text, '    override '),
+    Assert.IsTrue(OverrideAt(LookupOf(FResolver, nil, Tree, Text,
       function(const AFileName: string; out AText: string): Boolean
       begin
         AText := UnitBasis;
         Result := SameText(AFileName, BasisFile);
-      end, Items));
+      end),
+      PositionOf(Text, '    override '), Items));
     Assert.AreEqual('Geschuetzt Oeffentlich', Names(Items));
     Assert.IsTrue(Items.Items[1].HasTextEdit);
     Assert.AreEqual('procedure Oeffentlich; override;', Items.Items[1].TextEdit.NewText);
     Assert.AreEqual(4, Items.Items[1].TextEdit.Range.StartPos.Character);
     Assert.AreEqual('override Oeffentlich', Items.Items[1].FilterText);
     // In einem Routinenrumpf kein Override-Kontext.
-    Assert.IsFalse(TLspCompletion.OverrideItems(FResolver, Tree, Text, HauptFile, PositionOf(Text,
-      'begin'#10'  override '), nil, Items));
+    Assert.IsFalse(OverrideAt(LookupOf(FResolver, nil, Tree, Text, nil),
+      PositionOf(Text,
+      'begin'#10'  override '), Items));
   finally
     Tree.Free;
   end;
@@ -552,25 +576,25 @@ begin
   Params := TJSONObject.ParseJSONValue('{"capabilities":{"textDocument":{"completion":{"completionItem":' +
     '{"documentationFormat":["plaintext"]}}}}}') as TJSONObject;
   try
-    Assert.IsFalse(TLspCompletion.ClientPrefersMarkdown(Params), 'plaintext');
+    Assert.IsFalse(TCompletionDetails.ClientPrefersMarkdown(Params), 'plaintext');
   finally
     Params.Free;
   end;
   Params := TJSONObject.ParseJSONValue('{"capabilities":{"textDocument":{"completion":{"completionItem":' +
     '{"documentationFormat":["markdown","plaintext"]}}}}}') as TJSONObject;
   try
-    Assert.IsTrue(TLspCompletion.ClientPrefersMarkdown(Params), 'markdown');
+    Assert.IsTrue(TCompletionDetails.ClientPrefersMarkdown(Params), 'markdown');
   finally
     Params.Free;
   end;
-  Assert.IsFalse(TLspCompletion.ClientPrefersMarkdown(nil));
+  Assert.IsFalse(TCompletionDetails.ClientPrefersMarkdown(nil));
   Details := TJSONObject.Create;
   try
     Details.AddPair('summary', 'Kurz');
     Details.AddPair('documentationText', 'Kurz'#10'Mehr Text');
     Details.AddPair('documentationMarkdown', '**Kurz**');
     // Klartext: ganzer Text als String.
-    Documentation := TLspCompletion.ResolveDocumentation(Details, False);
+    Documentation := TCompletionDetails.ResolveDocumentation(Details, False);
     try
       Assert.IsTrue(Documentation is TJSONString, 'Klartext als String');
       Assert.AreEqual('Kurz'#10'Mehr Text', Documentation.Value);
@@ -578,7 +602,7 @@ begin
       Documentation.Free;
     end;
     // Markdown: MarkupContent.
-    Documentation := TLspCompletion.ResolveDocumentation(Details, True);
+    Documentation := TCompletionDetails.ResolveDocumentation(Details, True);
     try
       Assert.AreEqual('markdown', (Documentation as TJSONObject).GetValue<string>('kind'));
       Assert.AreEqual('**Kurz**', (Documentation as TJSONObject).GetValue<string>('value'));
@@ -588,7 +612,7 @@ begin
   finally
     Details.Free;
   end;
-  Assert.IsNull(TLspCompletion.ResolveDocumentation(nil, False));
+  Assert.IsNull(TCompletionDetails.ResolveDocumentation(nil, False));
 end;
 
 initialization

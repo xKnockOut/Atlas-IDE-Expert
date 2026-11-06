@@ -98,19 +98,33 @@ const
 function TextOf(const AFileName: string): string;
 begin
   if SameText(AFileName, BasisFile) then
-    Result := UnitBasis
+  begin
+    Result := UnitBasis;
+  end
   else if SameText(AFileName, HelferFile) then
-    Result := UnitHelfer
+  begin
+    Result := UnitHelfer;
+  end
   else if SameText(AFileName, LagerFile) then
-    Result := UnitLager
+  begin
+    Result := UnitLager;
+  end
   else if SameText(AFileName, KasseFile) then
-    Result := UnitKasse
+  begin
+    Result := UnitKasse;
+  end
   else if SameText(AFileName, ProgramFile) then
-    Result := TextProgram
+  begin
+    Result := TextProgram;
+  end
   else if SameText(AFileName, ProjectFile) then
-    Result := TextProject
+  begin
+    Result := TextProject;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function Context: TMoveClassContext;
@@ -164,6 +178,36 @@ begin
   FIndex := nil;
 end;
 
+/// <summary>Inhalt jeder geänderten Datei nach dem Verschieben von TStock.</summary>
+procedure AssertMovedDocument(const AUri: string; const ADocument: TJSONObject);
+begin
+  if AUri = TDocumentUris.FromPath('C:\P\Stock.pas') then
+  begin
+    Assert.AreEqual('unit Stock;'#10#10'interface'#10#10'uses'#10'  Basis;'#10#10'type'#10'  TStock = class'#10 +
+      '    FItems: TItems;'#10'    function Text: string;'#10'  end;'#10#10'implementation'#10#10'uses'#10 +
+      '  Helfer;'#10#10'function TStock.Text: string;'#10'begin'#10'  Log;'#10'  Result := Fmt(1);'#10'end;'#10#10 +
+      'end.'#10, Apply('', ADocument));
+  end
+  else if AUri = TDocumentUris.FromPath(LagerFile) then
+  begin
+    Assert.AreEqual('unit Lager;'#10#10'interface'#10#10'uses'#10'  Basis;'#10#10'implementation'#10#10'uses'#10 +
+      '  Helfer;'#10#10'end.'#10, Apply(UnitLager, ADocument));
+  end
+  else if AUri = TDocumentUris.FromPath(KasseFile) then
+  begin
+    Assert.AreEqual(StringReplace(StringReplace(UnitKasse, 'uses Lager;', 'uses Lager, Stock;', []),
+      'Lager.TStock', 'Stock.TStock', []), Apply(UnitKasse, ADocument));
+  end
+  else if AUri = TDocumentUris.FromPath(ProgramFile) then
+  begin
+    Assert.Contains(Apply(TextProgram, ADocument), 'Stock in ''Stock.pas''');
+  end
+  else if AUri = TDocumentUris.FromPath(ProjectFile) then
+  begin
+    Assert.Contains(Apply(TextProject, ADocument), '<DCCReference Include="Stock.pas"/>');
+  end;
+end;
+
 procedure TLspMoveClassTests.MovesOverTheProject;
 var
   Tree: TSyntaxTree;
@@ -181,7 +225,8 @@ begin
   try
     Moved := Context;
     Moved.Index := FIndex;
-    Answer := TLspMoveClass.Execute(Resolver, Tree, LagerFile, UnitLager, TTextPosition.Create(8, 4), 'Stock', Moved);
+    Moved.UnitName := 'Stock';
+    Answer := TLspMoveClass.Execute(Resolver, Tree, LagerFile, UnitLager, TTextPosition.Create(8, 4), Moved);
     Assert.AreEqual(0, Integer((Answer.GetValue('warnings') as TJSONArray).Count), Answer.ToJSON);
     Assert.AreEqual(TDocumentUris.FromPath('C:\P\Stock.pas'), Answer.GetValue('file').Value);
     Changes := (Answer.GetValue('edit') as TJSONObject).GetValue('documentChanges') as TJSONArray;
@@ -191,31 +236,20 @@ begin
     begin
       Document := TJSONObject(Item);
       if Document.GetValue('textDocument') = nil then
+      begin
         Continue;
+      end;
       Uri := (Document.GetValue('textDocument') as TJSONObject).GetValue('uri').Value;
       Results := Results + ExtractFileName(TDocumentUris.ToPath(Uri)) + '|';
-      if Uri = TDocumentUris.FromPath('C:\P\Stock.pas') then
-        Assert.AreEqual('unit Stock;'#10#10'interface'#10#10'uses'#10'  Basis;'#10#10'type'#10'  TStock = class'#10 +
-          '    FItems: TItems;'#10'    function Text: string;'#10'  end;'#10#10'implementation'#10#10'uses'#10 +
-          '  Helfer;'#10#10'function TStock.Text: string;'#10'begin'#10'  Log;'#10'  Result := Fmt(1);'#10'end;'#10#10 +
-          'end.'#10, Apply('', Document))
-      else if Uri = TDocumentUris.FromPath(LagerFile) then
-        Assert.AreEqual('unit Lager;'#10#10'interface'#10#10'uses'#10'  Basis;'#10#10'implementation'#10#10'uses'#10 +
-          '  Helfer;'#10#10'end.'#10, Apply(UnitLager, Document))
-      else if Uri = TDocumentUris.FromPath(KasseFile) then
-        Assert.AreEqual(StringReplace(StringReplace(UnitKasse, 'uses Lager;', 'uses Lager, Stock;', []),
-          'Lager.TStock', 'Stock.TStock', []), Apply(UnitKasse, Document))
-      else if Uri = TDocumentUris.FromPath(ProgramFile) then
-        Assert.Contains(Apply(TextProgram, Document), 'Stock in ''Stock.pas''')
-      else if Uri = TDocumentUris.FromPath(ProjectFile) then
-        Assert.Contains(Apply(TextProject, Document), '<DCCReference Include="Stock.pas"/>');
+      AssertMovedDocument(Uri, Document);
     end;
     Assert.AreEqual('Stock.pas|Lager.pas|Kasse.pas|Projekt.dpr|Projekt.dproj|', Results);
     // Gibt es die Datei schon, bricht der Befehl ab.
+    Moved.UnitName := 'Kasse';
     Assert.WillRaise(
       procedure
       begin
-        TLspMoveClass.Execute(Resolver, Tree, LagerFile, UnitLager, TTextPosition.Create(8, 4), 'Kasse', Moved).Free;
+        TLspMoveClass.Execute(Resolver, Tree, LagerFile, UnitLager, TTextPosition.Create(8, 4), Moved).Free;
       end);
   finally
     Answer.Free;
@@ -235,11 +269,9 @@ begin
   Resolver := TNameResolver.Create(FIndex, nil);
   Tree := TPascalParser.Parse(UnitLager);
   try
-    Assert.AreEqual(0, Integer(Length(TLspMoveClass.Actions(False, Resolver, Tree, LagerFile, UnitLager, 'u',
-      TTextPosition.Create(8, 4)))));
-    Assert.AreEqual(0, Integer(Length(TLspMoveClass.Actions(True, Resolver, Tree, LagerFile, UnitLager, 'u',
+    Assert.AreEqual(0, Integer(Length(TLspMoveClass.Actions(Resolver, Tree, LagerFile, UnitLager, 'u',
       TTextPosition.Create(9, 4)))));
-    Actions := TLspMoveClass.Actions(True, Resolver, Tree, LagerFile, UnitLager, 'u', TTextPosition.Create(8, 4));
+    Actions := TLspMoveClass.Actions(Resolver, Tree, LagerFile, UnitLager, 'u', TTextPosition.Create(8, 4));
     try
       Assert.AreEqual(1, Integer(Length(Actions)));
       Assert.AreEqual('Klasse TStock in eigene Unit verschieben …', Actions[0].GetValue('title').Value);
@@ -247,7 +279,9 @@ begin
         ((Actions[0].GetValue('command') as TJSONObject).GetValue('arguments') as TJSONArray).ToJSON);
     finally
       for Action in Actions do
+      begin
         Action.Free;
+      end;
     end;
   finally
     Tree.Free;
@@ -257,7 +291,7 @@ begin
     'var'#10'  Zaehler: Integer;', []);
   Tree := TPascalParser.Parse(Text);
   try
-    Assert.AreEqual(0, Integer(Length(TLspMoveClass.Actions(True, Resolver, Tree, LagerFile, Text, 'u',
+    Assert.AreEqual(0, Integer(Length(TLspMoveClass.Actions(Resolver, Tree, LagerFile, Text, 'u',
       TTextPosition.Create(8, 4)))));
   finally
     Tree.Free;

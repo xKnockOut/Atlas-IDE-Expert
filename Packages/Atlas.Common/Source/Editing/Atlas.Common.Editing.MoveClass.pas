@@ -45,6 +45,24 @@ type
   TMoveClassLookup = reference to function(ATree: TSyntaxTree; const AFileName: string;
     const ANames: TArray<string>; AOffset: Integer): TMoveClassMeaning;
 
+  /// <summary>Ursprungs-Unit, aus der die Klasse wandert.</summary>
+  TMoveClassSource = record
+    FileName: string;
+    Text: string;
+    Tree: TSyntaxTree;
+    /// <summary>Typkommentar über den Rümpfen ({ TKunde }) mitnehmen (#1838); Create setzt True.</summary>
+    TypeComments: Boolean;
+    class function Create(const AFileName, AText: string; ATree: TSyntaxTree): TMoveClassSource; static;
+  end;
+
+  /// <summary>Namen eines Verschiebens: Ursprungs-Unit, neue Unit, Klasse.</summary>
+  TMoveClassNames = record
+    OriginUnit: string;
+    NewUnit: string;
+    ClassName: string;
+    class function Create(const AOriginUnit, ANewUnit, AClassName: string): TMoveClassNames; static;
+  end;
+
   TMoveClassPlan = record
     ClassName: string;
     OriginUnit: string;
@@ -57,6 +75,7 @@ type
     UsesOrigin: Boolean;
     /// <summary>Namen ohne bekannte Unit: Für sie übernimmt die neue Unit die uses der Ursprungs-Unit.</summary>
     Unresolved: TArray<string>;
+    function Names: TMoveClassNames;
   end;
 
   TMoveClass = class
@@ -68,15 +87,13 @@ type
     /// <summary>Vorgeschlagener Unit-Name: Klassenname ohne führendes T (TKunde → Kunde).</summary>
     class function DefaultUnitName(const AClassName: string): string; static;
     /// <summary>Neue Unit und Änderungen an der Ursprungs-Unit; False mit Grund, wenn nicht verschiebbar.</summary>
-    class function Plan(const AFileName, AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
-      const ANewUnit: string; const ALookup: TMoveClassLookup; out APlan: TMoveClassPlan;
-      out AReason: string): Boolean; static;
+    class function Plan(const ASource: TMoveClassSource; const APosition: TTextPosition; const ANewUnit: string;
+      const ALookup: TMoveClassLookup; out APlan: TMoveClassPlan; out AReason: string): Boolean; static;
     /// <summary>Änderungen an einer Unit, die die Klasse verwendet: qualifizierte Namen (Alt.TKunde) auf die neue
     /// Unit umstellen und, mit AAddUses, die neue Unit neben die Ursprungs-Unit ins uses. AReferences: Stellen
     /// aus der Referenzsuche; leer = jedes Vorkommen des Namens. False ohne Änderung.</summary>
-    class function UpdateUser(const AText: string; ATree: TSyntaxTree; const AOriginUnit, ANewUnit,
-      AClassName: string; const AReferences: TArray<TTextRange>; AAddUses: Boolean;
-      out AEdits: TArray<TTextEdit>): Boolean; static;
+    class function UpdateUser(const AText: string; ATree: TSyntaxTree; const ANames: TMoveClassNames;
+      const AReferences: TArray<TTextRange>; AAddUses: Boolean; out AEdits: TArray<TTextEdit>): Boolean; static;
   end;
 
 implementation
@@ -90,7 +107,38 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Editing.ChangeSignature;
+  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Editing.TypeComments,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TEditingMoveClassText = (NoClassAtThisPosition, IsNotAValidUnit, TheNewUnitWouldHave, TheUnitHasNoInterface,
+    SeveralTypesAreNamed, PartOfTheClassIs, TheClassUsesFromThe, CircularReferenceTheClassNeeds, NoRoomForTheNew,
+    TheOriginalUnitNoLonger, TheNewUnitDoesNot, FormClassesStayWithTheir);
+
+const
+  cTexts: array[TEditingMoveClassText] of TAtlasText = (
+    (De: 'keine Klasse an dieser Stelle'; En: 'no class at this position'),
+    (De: '„%s“ ist kein gültiger Unit-Name'; En: '“%s” is not a valid unit name'),
+    (De: 'die neue Unit hieße wie die Ursprungs-Unit';
+     En: 'the new unit would have the same name as the original unit'),
+    (De: 'die Unit hat keinen interface- und implementation-Teil';
+     En: 'the unit has no interface and implementation part'),
+    (De: 'mehrere Typen heißen %s'; En: 'several types are named %s'),
+    (De: 'ein Teil der Klasse steht in bedingter Übersetzung'; En: 'part of the class is in conditional compilation'),
+    (De: 'die Klasse verwendet %s aus dem implementation-Teil von %s';
+     En: 'the class uses %s from the implementation part of %s'),
+    (De: 'Kreisverweis: die Klasse braucht Typen aus dem interface von %s, das sie selbst verwendet';
+     En: 'circular reference: the class needs types from the interface of %s, which itself uses it'),
+    (De: 'kein Platz für die neue Unit im uses'; En: 'no room for the new unit in uses'),
+    (De: 'die Ursprungs-Unit parst danach nicht mehr'; En: 'the original unit no longer parses afterwards'),
+    (De: 'die neue Unit parst nicht'; En: 'the new unit does not parse'),
+    (De: 'Formularklassen bleiben bei ihrer Formulardatei'; En: 'Form classes stay with their form file'));
+
+{$SCOPEDENUMS OFF}
 
 const
   /// <summary>Namen aus System, die jede Unit ohne uses kennt; gelten auch ohne Namensauflösung als bekannt.
@@ -112,17 +160,13 @@ type
     Stop: Integer;
   end;
 
-function Fail(const AReason: string; out AOut: string): Boolean;
-begin
-  AOut := AReason;
-  Result := False;
-end;
-
 function CleanName(const AName: string): string;
 begin
   Result := AName;
   if Result.StartsWith('&') then
+  begin
     Result := Result.Substring(1);
+  end;
 end;
 
 function MakeRange(AStart, AStop: Integer): TOffsetRange;
@@ -136,8 +180,12 @@ var
   Item: TOffsetRange;
 begin
   for Item in ARanges do
+  begin
     if (AOffset >= Item.Start) and (AOffset < Item.Stop) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -147,8 +195,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to ADecl.ChildCount - 1 do
+  begin
     if ADecl[Index].Kind <> TSyntaxKind.GenericParams then
+    begin
       Exit(ADecl[Index]);
+    end;
+  end;
   Result := nil;
 end;
 
@@ -166,11 +218,17 @@ function UpperDirective(const AToken: TPascalToken): string;
 begin
   Result := UpperCase(AToken.Text);
   if Result.StartsWith('{$') then
-    Result := Result.Substring(2)
+  begin
+    Result := Result.Substring(2);
+  end
   else if Result.StartsWith('(*$') then
-    Result := Result.Substring(3)
+  begin
+    Result := Result.Substring(3);
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 /// <summary>+1 öffnet, -1 schließt, 2 verzweigt ({$ELSE}); 0 sonst.</summary>
@@ -180,48 +238,66 @@ var
 begin
   Result := 0;
   if AToken.Kind <> TPascalTokenKind.Directive then
+  begin
     Exit;
+  end;
   Text := UpperDirective(AToken);
   if StartsText('IFDEF', Text) or StartsText('IFNDEF', Text) or StartsText('IFOPT', Text) or
     StartsText('IF ', Text) or StartsText('IF(', Text) then
-    Result := 1
+  begin
+    Result := 1;
+  end
   else if StartsText('ENDIF', Text) or StartsText('IFEND', Text) then
-    Result := -1
+  begin
+    Result := -1;
+  end
   else if StartsText('ELSE', Text) then
+  begin
     Result := 2;
+  end;
+end;
+
+/// <summary>Bricht das Token an dieser Stelle den Bereich auf? Innen darf keine Bedingung offen sein und weder
+/// {$ELSE} noch {$ENDIF} eine von außen fortsetzen.</summary>
+function BreaksRange(AStep, ADepth: Integer; AInside: Boolean): Boolean;
+begin
+  Result := AInside and ((ADepth > 0) or (AStep = -1) or (AStep = 2));
+end;
+
+/// <summary>Tiefe der bedingten Übersetzung nach einem Schritt; überzählige {$ENDIF} zählen nicht.</summary>
+function NextDepth(ADepth, AStep: Integer): Integer;
+begin
+  Result := ADepth;
+  if AStep = 1 then
+  begin
+    Result := ADepth + 1;
+  end
+  else if (AStep = -1) and (ADepth > 0) then
+  begin
+    Result := ADepth - 1;
+  end;
 end;
 
 /// <summary>Steht ARange außerhalb jeder bedingten Übersetzung und sind die Direktiven darin ausgeglichen?</summary>
 function Unconditional(const ATokens: TArray<TPascalToken>; const ARange: TOffsetRange): Boolean;
 var
-  Index, Depth, Step: Integer;
-  Inside: Boolean;
+  mIndex, mDepth, mStep: Integer;
 begin
-  Depth := 0;
-  for Index := 0 to High(ATokens) do
+  mDepth := 0;
+  for mIndex := 0 to High(ATokens) do
   begin
-    if ATokens[Index].Offset >= ARange.Stop then
-      Break;
-    Inside := ATokens[Index].Offset >= ARange.Start;
-    if Inside and (Depth > 0) then
-      Exit(False);
-    Step := ConditionalStep(ATokens[Index]);
-    if Step = 1 then
-      Inc(Depth)
-    else if Step = -1 then
+    if ATokens[mIndex].Offset >= ARange.Stop then
     begin
-      Dec(Depth);
-      if Inside and (Depth < 0) then
-        Exit(False);
-      if Depth < 0 then
-        Depth := 0;
-    end
-    else if (Step = 2) and Inside and (Depth = 0) then
+      Break;
+    end;
+    mStep := ConditionalStep(ATokens[mIndex]);
+    if BreaksRange(mStep, mDepth, ATokens[mIndex].Offset >= ARange.Start) then
+    begin
       Exit(False);
-    if Inside and (Depth < 0) then
-      Exit(False);
+    end;
+    mDepth := NextDepth(mDepth, mStep);
   end;
-  Result := Depth = 0;
+  Result := mDepth = 0;
 end;
 
 /// <summary>Ist der Text zwischen AFrom und ATo nur Leerraum?</summary>
@@ -230,8 +306,12 @@ var
   Index: Integer;
 begin
   for Index := AFrom + 1 to ATo do
+  begin
     if not CharInSet(AText[Index], [' ', #9, #13, #10]) then
+    begin
       Exit(False);
+    end;
+  end;
   Result := True;
 end;
 
@@ -250,13 +330,34 @@ begin
   Result := AStart;
   Index := TRoutineBody.TokenAt(ATokens, AStart);
   if Index < 0 then
+  begin
     Exit;
+  end;
   while (Index > 0) and (ATokens[Index - 1].Kind = TPascalTokenKind.Comment) and
     (ATokens[Index - 1].EndPos.Line >= ALines.PositionAt(Result).Line - 1) and
     Blank(AText, ALines.LineStart(ATokens[Index - 1].StartPos.Line), ATokens[Index - 1].Offset) do
   begin
     Dec(Index);
     Result := ATokens[Index].Offset;
+  end;
+end;
+
+/// <summary>Typkommentar der Klasse AClassName ({ TKunde }, // TKunde, Trennlinie) über der Zeile AFirstLine, mit
+/// Leerzeilen dazwischen (#1838); Start = Stop ohne. Regionen bleiben, ihr Ende stünde sonst allein.</summary>
+function TypeHeaderRange(const ASource: TMoveClassSource; const ALines: TLineTable; AFirstLine: Integer;
+  const AClassName: string): TOffsetRange;
+var
+  mComment: TTypeComment;
+begin
+  Result := MakeRange(0, 0);
+  if not ASource.TypeComments then
+  begin
+    Exit;
+  end;
+  mComment := TTypeComments.Find(TTextLines.SplitLines(ASource.Text), AFirstLine, AFirstLine, AClassName);
+  if mComment.Found and (mComment.Style <> TTypeCommentStyle.Region) and (mComment.Last < AFirstLine) then
+  begin
+    Result := MakeRange(ALines.LineStart(mComment.First), ALines.LineContentEnd(mComment.Last));
   end;
 end;
 
@@ -271,11 +372,15 @@ begin
   Last := ALines.PositionAt(APiece.Stop).Line;
   if not Blank(AText, ALines.LineStart(First), APiece.Start) or
     not Blank(AText, APiece.Stop, ALines.LineContentEnd(Last)) then
+  begin
     Exit;
+  end;
   Result.Start := ALines.LineStart(First);
   Result.Stop := ALines.LineStart(Last + 1);
   if (Last + 1 < ALines.LineCount) and BlankLine(AText, ALines, First - 1) and BlankLine(AText, ALines, Last + 1) then
+  begin
     Result.Stop := ALines.LineStart(Last + 2);
+  end;
 end;
 
 /// <summary>Text eines Stücks ab Zeilenanfang (Einrückung bleibt), wenn davor nur Leerraum steht.</summary>
@@ -285,7 +390,9 @@ var
 begin
   Start := ALines.LineStart(ALines.PositionAt(APiece.Start).Line);
   if not Blank(AText, Start, APiece.Start) then
+  begin
     Start := APiece.Start;
+  end;
   Result := Copy(AText, Start + 1, APiece.Stop - Start);
 end;
 
@@ -294,8 +401,12 @@ var
   Item: string;
 begin
   for Item in AList do
+  begin
     if SameText(Item, AName) then
+    begin
       Exit;
+    end;
+  end;
   AList := AList + [AName];
 end;
 
@@ -304,45 +415,86 @@ var
   Item: string;
 begin
   for Item in AList do
+  begin
     if SameText(Item, AName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
+end;
+
+procedure AddName(ANames: TDictionary<string, Integer>; const AName: string; AOffset: Integer);
+begin
+  if not ANames.ContainsKey(LowerCase(Trim(AName))) then
+  begin
+    ANames.Add(LowerCase(Trim(AName)), AOffset);
+  end;
+end;
+
+/// <summary>Werte eines Aufzählungstyps; andere Typen haben keine.</summary>
+procedure AddEnumValues(ANames: TDictionary<string, Integer>; ADecl: TSyntaxNode);
+var
+  mTypeNode: TSyntaxNode;
+  mItem: Integer;
+begin
+  mTypeNode := TypeNodeOf(ADecl);
+  if (mTypeNode = nil) or (mTypeNode.Kind <> TSyntaxKind.EnumType) then
+  begin
+    Exit;
+  end;
+  for mItem := 0 to mTypeNode.ChildCount - 1 do
+  begin
+    if mTypeNode[mItem].Kind = TSyntaxKind.Identifier then
+    begin
+      AddName(ANames, mTypeNode[mItem].Name, mTypeNode[mItem].StartOffset);
+    end;
+  end;
+end;
+
+/// <summary>Namen eines type-, const- oder var-Abschnitts.</summary>
+procedure AddDeclarations(ANames: TDictionary<string, Integer>; ASection: TSyntaxNode);
+var
+  mIndex: Integer;
+  mChild: TSyntaxNode;
+  mName: string;
+begin
+  for mIndex := 0 to ASection.ChildCount - 1 do
+  begin
+    mChild := ASection[mIndex];
+    if not (mChild.Kind in [TSyntaxKind.TypeDecl, TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl]) then
+    begin
+      Continue;
+    end;
+    for mName in mChild.Name.Split([',']) do
+    begin
+      AddName(ANames, mName, mChild.StartOffset);
+    end;
+    if mChild.Kind = TSyntaxKind.TypeDecl then
+    begin
+      AddEnumValues(ANames, mChild);
+    end;
+  end;
 end;
 
 /// <summary>Namen der Deklarationen auf oberster Ebene mit Offset (Typen, Aufzählungswerte, Konstanten,
 /// Variablen, Routinen; ohne Methodenrümpfe).</summary>
 procedure CollectTopLevel(ASection: TSyntaxNode; ANames: TDictionary<string, Integer>);
 var
-  Index, Inner, Item: Integer;
-  Node, Child, TypeNode: TSyntaxNode;
-  Name: string;
+  mIndex: Integer;
+  mNode: TSyntaxNode;
 begin
-  for Index := 0 to ASection.ChildCount - 1 do
+  for mIndex := 0 to ASection.ChildCount - 1 do
   begin
-    Node := ASection[Index];
-    case Node.Kind of
+    mNode := ASection[mIndex];
+    case mNode.Kind of
       TSyntaxKind.TypeSection, TSyntaxKind.ConstSection, TSyntaxKind.VarSection:
-        for Inner := 0 to Node.ChildCount - 1 do
-        begin
-          Child := Node[Inner];
-          if not (Child.Kind in [TSyntaxKind.TypeDecl, TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl]) then
-            Continue;
-          for Name in Child.Name.Split([',']) do
-            if not ANames.ContainsKey(LowerCase(Trim(Name))) then
-              ANames.Add(LowerCase(Trim(Name)), Child.StartOffset);
-          if Child.Kind = TSyntaxKind.TypeDecl then
-          begin
-            TypeNode := TypeNodeOf(Child);
-            if (TypeNode <> nil) and (TypeNode.Kind = TSyntaxKind.EnumType) then
-              for Item := 0 to TypeNode.ChildCount - 1 do
-                if (TypeNode[Item].Kind = TSyntaxKind.Identifier) and
-                  not ANames.ContainsKey(LowerCase(TypeNode[Item].Name)) then
-                  ANames.Add(LowerCase(TypeNode[Item].Name), TypeNode[Item].StartOffset);
-          end;
-        end;
+        AddDeclarations(ANames, mNode);
       TSyntaxKind.RoutineDecl:
-        if (Pos('.', Node.Name) = 0) and not ANames.ContainsKey(LowerCase(Node.Name)) then
-          ANames.Add(LowerCase(Node.Name), Node.StartOffset);
+        if Pos('.', mNode.Name) = 0 then
+        begin
+          AddName(ANames, mNode.Name, mNode.StartOffset);
+        end;
     else
       // Übrige Werte bewusst ohne Wirkung.
     end;
@@ -368,11 +520,17 @@ begin
         TSyntaxKind.VarDecl, TSyntaxKind.ConstDecl, TSyntaxKind.Parameter, TSyntaxKind.InlineVar,
         TSyntaxKind.InlineConst, TSyntaxKind.RoutineDecl:
           for Name in AChild.Name.Split([',']) do
+          begin
             if (Trim(Name) <> '') and (Pos('.', Name) = 0) then
+            begin
               Names.AddOrSetValue(LowerCase(Trim(Name)), True);
+            end;
+          end;
         TSyntaxKind.GenericParams:
           for Index := 0 to AChild.ChildCount - 1 do
+          begin
             Names.AddOrSetValue(LowerCase(AChild[Index].Name), True);
+          end;
       else
         // Übrige Werte bewusst ohne Wirkung.
       end;
@@ -414,15 +572,21 @@ begin
         case AChild.Kind of
           TSyntaxKind.Identifier:
             if (AChild.Parent = nil) or (AChild.Parent.Kind <> TSyntaxKind.GenericParams) then
+            begin
               Need.Names := [CleanName(AChild.Name)];
+            end;
           TSyntaxKind.TypeReference:
             if AChild.Name <> '' then
+            begin
               Need.Names := AChild.Name.Split(['.']);
+            end;
         else
           // Übrige Werte bewusst ohne Wirkung.
         end;
         if Need.Names <> nil then
+        begin
           Needs.Add(Need);
+        end;
         Result := True;
       end);
     ANeeds := ANeeds + Needs.ToArray;
@@ -438,11 +602,19 @@ var
 begin
   Result := nil;
   if ASection = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to ASection.ChildCount - 1 do
+  begin
     if ASection[Index].Kind = TSyntaxKind.UsesClause then
+    begin
       for Item := 0 to ASection[Index].ChildCount - 1 do
+      begin
         AddUnique(Result, ASection[Index][Item].Name);
+      end;
+    end;
+  end;
 end;
 
 /// <summary>Schreibweise aus den uses der Ursprungs-Unit (SysUtils statt System.SysUtils), sonst AUnit.</summary>
@@ -451,8 +623,12 @@ var
   Item: string;
 begin
   for Item in AOriginUses do
+  begin
     if SameText(Item, AUnit) or EndsText('.' + Item, AUnit) then
+    begin
       Exit(Item);
+    end;
+  end;
   Result := AUnit;
 end;
 
@@ -463,17 +639,25 @@ var
 begin
   Result := nil;
   for Item in AOriginUses do
+  begin
     if Contains(AUnits, Item) then
+    begin
       Result := Result + [Item];
+    end;
+  end;
   for Item in AUnits do
+  begin
     AddUnique(Result, Item);
+  end;
 end;
 
 function UsesText(const AUnits: TArray<string>; const ALineBreak: string): string;
 begin
   Result := '';
   if AUnits = nil then
+  begin
     Exit;
+  end;
   Result := 'uses' + ALineBreak + '  ' + string.Join(',' + ALineBreak + '  ', AUnits) + ';' + ALineBreak +
     ALineBreak;
 end;
@@ -490,7 +674,9 @@ begin
   Parts := AOrigin.Split(['.']);
   Dot := TRoutineBody.PreviousToken(ATokens, AIndex);
   if (Dot < 0) or not ATokens[Dot].IsSymbol('.') then
+  begin
     Exit;
+  end;
   Name := Dot;
   for Part := High(Parts) downto 0 do
   begin
@@ -498,47 +684,974 @@ begin
     begin
       Name := TRoutineBody.PreviousToken(ATokens, Name);
       if (Name < 0) or not ATokens[Name].IsSymbol('.') then
+      begin
         Exit;
+      end;
     end;
     Name := TRoutineBody.PreviousToken(ATokens, Name);
     if (Name < 0) or (ATokens[Name].Kind <> TPascalTokenKind.Identifier) or
       not SameText(CleanName(ATokens[Name].Text), Parts[Part]) then
+    begin
       Exit;
+    end;
   end;
   // Steht davor ein weiterer Punkt, ist es ein Mitglied eines anderen Namens.
   Before := TRoutineBody.PreviousToken(ATokens, Name);
   if (Before >= 0) and ATokens[Before].IsSymbol('.') then
+  begin
     Exit;
+  end;
   AEdit := TTextEdit.Create(TTextRange.Create(ATokens[Name].StartPos, ATokens[Dot].StartPos), ANew);
   Result := True;
+end;
+
+function IsClassToken(const ATokens: TArray<TPascalToken>; AIndex: Integer; const AClassName: string): Boolean;
+begin
+  Result := (ATokens[AIndex].Kind = TPascalTokenKind.Identifier) and
+    SameText(CleanName(ATokens[AIndex].Text), AClassName);
+end;
+
+/// <summary>Letzter Teil eines Namens mit Punkten (System.Classes → Classes).</summary>
+function LastPart(const AName: string): string;
+begin
+  Result := AName.Substring(AName.LastIndexOf('.') + 1);
+end;
+
+function IsClassOrRecord(ADecl: TSyntaxNode): Boolean;
+var
+  mTypeNode: TSyntaxNode;
+begin
+  mTypeNode := TypeNodeOf(ADecl);
+  Result := (mTypeNode <> nil) and (mTypeNode.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType]);
+end;
+
+function IsForward(ADecl: TSyntaxNode): Boolean;
+var
+  mTypeNode: TSyntaxNode;
+begin
+  mTypeNode := TypeNodeOf(ADecl);
+  Result := (mTypeNode <> nil) and (mTypeNode.Kind = TSyntaxKind.ForwardType);
+end;
+
+procedure AddTypeDecls(ASection: TSyntaxNode; var AList: TArray<TSyntaxNode>);
+var
+  mItem, mInner: Integer;
+begin
+  for mItem := 0 to ASection.ChildCount - 1 do
+  begin
+    if ASection[mItem].Kind <> TSyntaxKind.TypeSection then
+    begin
+      Continue;
+    end;
+    for mInner := 0 to ASection[mItem].ChildCount - 1 do
+    begin
+      if ASection[mItem][mInner].Kind = TSyntaxKind.TypeDecl then
+      begin
+        AList := AList + [ASection[mItem][mInner]];
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Typdeklarationen aus interface und implementation in Quelltextreihenfolge.</summary>
+function TypeDecls(ARoot: TSyntaxNode): TArray<TSyntaxNode>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to ARoot.ChildCount - 1 do
+  begin
+    if IsSection(ARoot[mIndex]) then
+    begin
+      AddTypeDecls(ARoot[mIndex], Result);
+    end;
+  end;
+end;
+
+/// <summary>Bindet die Unit eine Formulardatei ein?</summary>
+function HasFormResource(const AText: string): Boolean;
+begin
+  Result := ContainsText(AText, '{$R *.dfm}') or ContainsText(AText, '{$R *.fmx}') or
+    ContainsText(AText, '{$R *.xfm}');
+end;
+
+function IsFormAncestor(const AAncestor: string): Boolean;
+var
+  mName: string;
+begin
+  mName := LastPart(AAncestor);
+  Result := MatchText(mName, ['TForm', 'TFrame', 'TDataModule']) or EndsText('Form', mName) or
+    EndsText('Frame', mName);
+end;
+
+/// <summary>Vorfahr einer Klasse wie geschrieben; '' ohne.</summary>
+function AncestorName(ATypeNode: TSyntaxNode): string;
+begin
+  Result := '';
+  if (ATypeNode.Kind = TSyntaxKind.ClassType) and (ATypeNode.ChildCount > 0) and
+    (ATypeNode[0].Kind = TSyntaxKind.TypeReference) then
+  begin
+    Result := ATypeNode[0].Name;
+  end;
+end;
+
+/// <summary>Attribute direkt vor ADecl im Typabschnitt.</summary>
+function AttributesBefore(ATypeSection, ADecl: TSyntaxNode): TArray<TSyntaxNode>;
+var
+  mIndex, mItem: Integer;
+begin
+  Result := nil;
+  mIndex := -1;
+  for mItem := 0 to ATypeSection.ChildCount - 1 do
+  begin
+    if ATypeSection[mItem] = ADecl then
+    begin
+      mIndex := mItem;
+    end;
+  end;
+  while (mIndex > 0) and (ATypeSection[mIndex - 1].Kind = TSyntaxKind.Attribute) do
+  begin
+    Dec(mIndex);
+    Result := TArray<TSyntaxNode>.Create(ATypeSection[mIndex]) + Result;
+  end;
+end;
+
+function MethodsOf(AImplementation: TSyntaxNode; const AClassName: string): TArray<TSyntaxNode>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to AImplementation.ChildCount - 1 do
+  begin
+    if IsMethodOf(AImplementation[mIndex], AClassName) then
+    begin
+      Result := Result + [AImplementation[mIndex]];
+    end;
+  end;
+end;
+
+function NeedsOf(const ANodes: TArray<TSyntaxNode>): TArray<TNeed>;
+var
+  mNode: TSyntaxNode;
+begin
+  Result := nil;
+  for mNode in ANodes do
+  begin
+    CollectNeeds(mNode, Result);
+  end;
+end;
+
+procedure AddAll(var AList: TArray<string>; const ANames: TArray<string>);
+var
+  mName: string;
+begin
+  for mName in ANames do
+  begin
+    AddUnique(AList, mName);
+  end;
+end;
+
+/// <summary>Namen aus ANames, die nicht in AExcluded stehen.</summary>
+procedure AddMissing(var AList: TArray<string>; const ANames, AExcluded: TArray<string>);
+var
+  mName: string;
+begin
+  for mName in ANames do
+  begin
+    if not Contains(AExcluded, mName) then
+    begin
+      AddUnique(AList, mName);
+    end;
+  end;
+end;
+
+/// <summary>Insertion Sort nach Beginn; stabil bei gleichem Beginn.</summary>
+procedure SortByStart(var ARanges: TArray<TOffsetRange>);
+var
+  mIndex, mItem: Integer;
+  mPiece: TOffsetRange;
+begin
+  for mIndex := 1 to High(ARanges) do
+  begin
+    mPiece := ARanges[mIndex];
+    mItem := mIndex - 1;
+    while (mItem >= 0) and (ARanges[mItem].Start > mPiece.Start) do
+    begin
+      ARanges[mItem + 1] := ARanges[mItem];
+      Dec(mItem);
+    end;
+    ARanges[mItem + 1] := mPiece;
+  end;
+end;
+
+function RemovalEdit(const ALines: TLineTable; const ARange: TOffsetRange): TTextEdit;
+begin
+  Result := TTextEdit.Create(TTextRange.Create(ALines.PositionAt(ARange.Start), ALines.PositionAt(ARange.Stop)), '');
+end;
+
+/// <summary>Löschungen aus sortierten Bereichen; überlappende fasst es zusammen.</summary>
+function MergedEdits(const ARanges: TArray<TOffsetRange>; const ALines: TLineTable): TArray<TTextEdit>;
+var
+  mPiece, mLast: TOffsetRange;
+begin
+  Result := nil;
+  mLast := MakeRange(-1, -1);
+  for mPiece in ARanges do
+  begin
+    if (mLast.Start >= 0) and (mPiece.Start <= mLast.Stop) then
+    begin
+      if mPiece.Stop > mLast.Stop then
+      begin
+        mLast.Stop := mPiece.Stop;
+      end;
+      Continue;
+    end;
+    if mLast.Start >= 0 then
+    begin
+      Result := Result + [RemovalEdit(ALines, mLast)];
+    end;
+    mLast := mPiece;
+  end;
+  if mLast.Start >= 0 then
+  begin
+    Result := Result + [RemovalEdit(ALines, mLast)];
+  end;
+end;
+
+function ParsesCleanly(const AText: string): Boolean;
+var
+  mCheck: TSyntaxTree;
+begin
+  mCheck := TSyntaxTreeCache.Parse(AText);
+  try
+    Result := Length(mCheck.Diagnostics) = 0;
+  finally
+    mCheck.Free;
+  end;
+end;
+
+function IsReferenced(const AReferences: TArray<TTextRange>; const APosition: TTextPosition): Boolean;
+var
+  mReference: TTextRange;
+begin
+  if AReferences = nil then
+  begin
+    Exit(True);
+  end;
+  for mReference in AReferences do
+  begin
+    if mReference.StartPos = APosition then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Qualifizierer der Klasse auf die neue Unit umstellen; AFirst: erste betroffene Stelle, -1 ohne.
+/// </summary>
+function QualifierEditsFor(const ATokens: TArray<TPascalToken>; const ANames: TMoveClassNames;
+  const AReferences: TArray<TTextRange>; out AFirst: Integer): TArray<TTextEdit>;
+var
+  mIndex: Integer;
+  mEdit: TTextEdit;
+begin
+  Result := nil;
+  AFirst := -1;
+  for mIndex := 0 to High(ATokens) do
+  begin
+    if not IsClassToken(ATokens, mIndex, ANames.ClassName) or
+      not IsReferenced(AReferences, ATokens[mIndex].StartPos) then
+    begin
+      Continue;
+    end;
+    if AFirst < 0 then
+    begin
+      AFirst := mIndex;
+    end;
+    if QualifierEdit(ATokens, mIndex, ANames.OriginUnit, ANames.NewUnit, mEdit) then
+    begin
+      Result := Result + [mEdit];
+    end;
+  end;
+end;
+
+/// <summary>uses-Abschnitt, der die Ursprungs-Unit einbindet; mit Namespace-Präfix des Projekts steht
+/// Firma.Lager als Lager darin.</summary>
+function OriginUsesOffset(const ATokens: TArray<TPascalToken>; const AOriginUnit: string;
+  out AOffset: Integer): Boolean;
+var
+  mClause: TUsesClauseInfo;
+begin
+  for mClause in TUsesClauses.Clauses(ATokens) do
+  begin
+    if Contains(mClause.Names, AOriginUnit) or Contains(mClause.Names, LastPart(AOriginUnit)) then
+    begin
+      AOffset := ATokens[mClause.UsesIndex].Offset;
+      Exit(True);
+    end;
+  end;
+  AOffset := -1;
+  Result := False;
+end;
+
+/// <summary>Neue Unit neben die Ursprungs-Unit ins uses; nur über die Referenzsuche sicher auch ohne sie, dann
+/// im Abschnitt der ersten Stelle.</summary>
+procedure AddUserUses(const AText: string; ATree: TSyntaxTree; const ANewUnit, AOriginUnit: string;
+  AFallback: Integer; var AEdits: TArray<TTextEdit>);
+var
+  mOffset: Integer;
+  mFound: Boolean;
+  mEdit: TTextEdit;
+begin
+  mFound := OriginUsesOffset(ATree.Tokens, AOriginUnit, mOffset);
+  if not mFound and (AFallback >= 0) then
+  begin
+    mFound := True;
+    mOffset := ATree.Tokens[AFallback].Offset;
+  end;
+  if mFound and TUsesClauses.AddUnit(ATree.Tokens, mOffset, ANewUnit, TTextLines.LineBreakOf(AText), mEdit) then
+  begin
+    AEdits := AEdits + [mEdit];
+  end;
+end;
+
+type
+  /// <summary>Arbeitsstand von TMoveClass.Plan; jeder Schritt liefert einen Grund oder ''.</summary>
+  TMovePlanning = record
+    Source: TMoveClassSource;
+    Lookup: TMoveClassLookup;
+    Lines: TLineTable;
+    LineBreak: string;
+    Decl: TSyntaxNode;
+    TypeNode: TSyntaxNode;
+    TypeSection: TSyntaxNode;
+    Section: TSyntaxNode;
+    InterfaceNode: TSyntaxNode;
+    ImplementationNode: TSyntaxNode;
+    Forwards: TArray<TSyntaxNode>;
+    Attributes: TArray<TSyntaxNode>;
+    Methods: TArray<TSyntaxNode>;
+    DeclRange: TOffsetRange;
+    /// <summary>Typkommentar über den Rümpfen (#1838); Start = Stop ohne.</summary>
+    HeaderRange: TOffsetRange;
+    Moved: TArray<TOffsetRange>;
+    TopLevel: TDictionary<string, Integer>;
+    Own: TDictionary<string, Boolean>;
+    OriginUses: TArray<string>;
+    DeclUnits: TArray<string>;
+    BodyUnits: TArray<string>;
+    DeclNeedsOrigin: Boolean;
+    BodyNeedsOrigin: Boolean;
+    UnknownInDecl: Boolean;
+    UnknownInBody: Boolean;
+    InterfaceRef: Boolean;
+    ImplementationRef: Boolean;
+    Plan: TMoveClassPlan;
+    class function Create(const ASource: TMoveClassSource; const ALookup: TMoveClassLookup): TMovePlanning; static;
+    function Start(const APosition: TTextPosition; const ANewUnit: string): string;
+    function NamesIssue: string;
+    function ForwardsIssue: string;
+    function FormIssue: string;
+    function PieceOf(ANode: TSyntaxNode): TOffsetRange;
+    procedure CollectPieces;
+    function ConditionalIssue: string;
+    procedure CollectNames;
+    function ResolveIssue: string;
+    function NeedsIssue(const ANeeds: TArray<TNeed>; AInDecl: Boolean): string;
+    function LookupMeaning(const ANeed: TNeed): TMoveClassMeaning;
+    function ResolveLocally(const ANeed: TNeed; AInDecl: Boolean; var AMeaning: TMoveClassMeaning): Boolean;
+    procedure MarkUnknown(const ANeed: TNeed; AInDecl: Boolean);
+    function IsOrigin(const AMeaning: TMoveClassMeaning): Boolean;
+    function OriginNeedIssue(const AMeaning: TMoveClassMeaning; const AName: string; AInDecl: Boolean): string;
+    function NeedIssue(const ANeed: TNeed; AInDecl: Boolean): string;
+    function IsRemainingUse(AIndex: Integer): Boolean;
+    procedure CollectReferences;
+    function CircularIssue: string;
+    function InterfaceUsesOfNew: TArray<string>;
+    function ImplementationUsesOfNew(const AInterfaceUses: TArray<string>): TArray<string>;
+    function MethodsText: string;
+    procedure BuildNewUnit;
+    function CoversTypeSection: Boolean;
+    function InsideTypeSection(const APiece: TOffsetRange): Boolean;
+    function RemovalPieces: TArray<TOffsetRange>;
+    function RemovalEdits: TArray<TTextEdit>;
+    function QualifierEdits: TArray<TTextEdit>;
+    function OriginEditsIssue: string;
+    function ParseIssue: string;
+  end;
+
+class function TMovePlanning.Create(const ASource: TMoveClassSource; const ALookup: TMoveClassLookup): TMovePlanning;
+begin
+  Result := Default(TMovePlanning);
+  Result.Source := ASource;
+  Result.Lookup := ALookup;
+end;
+
+function TMovePlanning.Start(const APosition: TTextPosition; const ANewUnit: string): string;
+begin
+  Decl := TMoveClass.ClassAt(Source.Tree, APosition);
+  if Decl = nil then
+  begin
+    Exit(cTexts[TEditingMoveClassText.NoClassAtThisPosition].Text);
+  end;
+  TypeNode := TypeNodeOf(Decl);
+  TypeSection := Decl.Parent;
+  Section := TypeSection.Parent;
+  Plan.ClassName := CleanName(Decl.Name);
+  Plan.OriginUnit := Source.Tree.Root.Name;
+  Plan.NewUnit := Trim(ANewUnit);
+  InterfaceNode := Source.Tree.Root.FindChild(TSyntaxKind.InterfaceSection);
+  ImplementationNode := Source.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
+  Lines := TLineTable.Build(Source.Text);
+  LineBreak := TTextLines.LineBreakOf(Source.Text);
+  Result := NamesIssue;
+end;
+
+function TMovePlanning.NamesIssue: string;
+begin
+  Result := '';
+  if not IsValidIdent(Plan.NewUnit, True) then
+  begin
+    Result := cTexts[TEditingMoveClassText.IsNotAValidUnit].Fmt([Plan.NewUnit]);
+  end
+  else if SameText(Plan.NewUnit, Plan.OriginUnit) then
+  begin
+    Result := cTexts[TEditingMoveClassText.TheNewUnitWouldHave].Text;
+  end
+  else if (InterfaceNode = nil) or (ImplementationNode = nil) then
+  begin
+    Result := cTexts[TEditingMoveClassText.TheUnitHasNoInterface].Text;
+  end;
+end;
+
+/// <summary>Gleichnamige Typen verhindern das Verschieben; Vorwärtsdeklarationen wandern mit.</summary>
+function TMovePlanning.ForwardsIssue: string;
+var
+  mNode: TSyntaxNode;
+begin
+  Result := '';
+  Forwards := nil;
+  for mNode in TypeDecls(Source.Tree.Root) do
+  begin
+    if (mNode = Decl) or not SameText(CleanName(mNode.Name), Plan.ClassName) then
+    begin
+      Continue;
+    end;
+    if not IsForward(mNode) then
+    begin
+      Exit(cTexts[TEditingMoveClassText.SeveralTypesAreNamed].Fmt([Plan.ClassName]));
+    end;
+    Forwards := Forwards + [mNode];
+  end;
+end;
+
+/// <summary>Formularklassen bleiben bei ihrer .dfm bzw. .fmx.</summary>
+function TMovePlanning.FormIssue: string;
+var
+  mAncestor: string;
+begin
+  Result := '';
+  mAncestor := AncestorName(TypeNode);
+  if (mAncestor <> '') and HasFormResource(Source.Text) and IsFormAncestor(mAncestor) then
+  begin
+    Result := cTexts[TEditingMoveClassText.FormClassesStayWithTheir].Text;
+  end;
+end;
+
+function TMovePlanning.PieceOf(ANode: TSyntaxNode): TOffsetRange;
+begin
+  Result := MakeRange(WithLeadingComments(Source.Text, Lines, Source.Tree.Tokens, ANode.StartOffset),
+    ANode.EndOffset);
+end;
+
+/// <summary>Verschobene Stücke: Deklaration samt Attributen und Kommentar, Vorwärtsdeklarationen, Methoden.</summary>
+procedure TMovePlanning.CollectPieces;
+var
+  mNode: TSyntaxNode;
+begin
+  Attributes := AttributesBefore(TypeSection, Decl);
+  DeclRange := MakeRange(Decl.StartOffset, Decl.EndOffset);
+  if Attributes <> nil then
+  begin
+    DeclRange.Start := Attributes[0].StartOffset;
+  end;
+  DeclRange.Start := WithLeadingComments(Source.Text, Lines, Source.Tree.Tokens, DeclRange.Start);
+  Methods := MethodsOf(ImplementationNode, Plan.ClassName);
+  Moved := [DeclRange];
+  for mNode in Forwards do
+  begin
+    Moved := Moved + [PieceOf(mNode)];
+  end;
+  for mNode in Methods do
+  begin
+    Moved := Moved + [PieceOf(mNode)];
+  end;
+  HeaderRange := MakeRange(0, 0);
+  if Methods <> nil then
+  begin
+    HeaderRange := TypeHeaderRange(Source, Lines, Lines.PositionAt(PieceOf(Methods[0]).Start).Line, Plan.ClassName);
+  end;
+  if HeaderRange.Stop > HeaderRange.Start then
+  begin
+    Moved := Moved + [HeaderRange];
+  end;
+end;
+
+function TMovePlanning.ConditionalIssue: string;
+var
+  mPiece: TOffsetRange;
+begin
+  Result := '';
+  for mPiece in Moved do
+  begin
+    if not Unconditional(Source.Tree.Tokens, mPiece) then
+    begin
+      Exit(cTexts[TEditingMoveClassText.PartOfTheClassIs].Text);
+    end;
+  end;
+end;
+
+/// <summary>Namen der Ursprungs-Unit und die eigenen Namen der Klasse.</summary>
+procedure TMovePlanning.CollectNames;
+var
+  mNode: TSyntaxNode;
+begin
+  CollectTopLevel(InterfaceNode, TopLevel);
+  CollectTopLevel(ImplementationNode, TopLevel);
+  CollectOwnNames(Decl, Own);
+  for mNode in Methods do
+  begin
+    CollectOwnNames(mNode, Own);
+  end;
+  Own.AddOrSetValue('result', True);
+  Own.AddOrSetValue('self', True);
+  OriginUses := SectionUses(InterfaceNode) + SectionUses(ImplementationNode);
+end;
+
+/// <summary>Benötigte Namen der Deklaration und der Rümpfe den uses zuordnen.</summary>
+function TMovePlanning.ResolveIssue: string;
+begin
+  TopLevel := TDictionary<string, Integer>.Create;
+  Own := TDictionary<string, Boolean>.Create;
+  try
+    CollectNames;
+    Result := NeedsIssue(NeedsOf(TArray<TSyntaxNode>.Create(Decl) + Attributes), True);
+    if Result = '' then
+    begin
+      Result := NeedsIssue(NeedsOf(Methods), False);
+    end;
+  finally
+    Own.Free;
+    TopLevel.Free;
+    Own := nil;
+    TopLevel := nil;
+  end;
+end;
+
+function TMovePlanning.NeedsIssue(const ANeeds: TArray<TNeed>; AInDecl: Boolean): string;
+var
+  mNeed: TNeed;
+begin
+  Result := '';
+  for mNeed in ANeeds do
+  begin
+    Result := NeedIssue(mNeed, AInDecl);
+    if Result <> '' then
+    begin
+      Exit;
+    end;
+  end;
+end;
+
+/// <summary>Bedeutung über die Namensauflösung; Attribute: [Weak] meint WeakAttribute.</summary>
+function TMovePlanning.LookupMeaning(const ANeed: TNeed): TMoveClassMeaning;
+begin
+  Result := Default(TMoveClassMeaning);
+  if not Assigned(Lookup) then
+  begin
+    Exit;
+  end;
+  Result := Lookup(Source.Tree, Source.FileName, ANeed.Names, ANeed.Node.StartOffset);
+  if not Result.Found and IsAttributeName(ANeed.Node) then
+  begin
+    Result := Lookup(Source.Tree, Source.FileName, TArray<string>.Create(ANeed.Names[0] + 'Attribute'),
+      ANeed.Node.StartOffset);
+  end;
+end;
+
+/// <summary>Ohne Namensauflösung: eigene Namen, dann die der Ursprungs-Unit. True mit Bedeutung in AMeaning;
+/// False, wenn der Name nichts braucht oder unbekannt bleibt.</summary>
+function TMovePlanning.ResolveLocally(const ANeed: TNeed; AInDecl: Boolean;
+  var AMeaning: TMoveClassMeaning): Boolean;
+var
+  mName: string;
+  mOffset: Integer;
+begin
+  Result := False;
+  mName := ANeed.Names[0];
+  if (Length(ANeed.Names) = 1) and (Own.ContainsKey(LowerCase(mName)) or MatchText(mName, SystemNames)) then
+  begin
+    Exit;
+  end;
+  if TopLevel.TryGetValue(LowerCase(mName), mOffset) then
+  begin
+    AMeaning.Found := True;
+    AMeaning.UnitName := Plan.OriginUnit;
+    AMeaning.FileName := Source.FileName;
+    AMeaning.Position := Lines.PositionAt(mOffset);
+    Exit(True);
+  end;
+  if not SameText(mName, Plan.OriginUnit) then
+  begin
+    MarkUnknown(ANeed, AInDecl);
+  end;
+end;
+
+procedure TMovePlanning.MarkUnknown(const ANeed: TNeed; AInDecl: Boolean);
+begin
+  AddUnique(Plan.Unresolved, string.Join('.', ANeed.Names));
+  if AInDecl then
+  begin
+    UnknownInDecl := True;
+  end
+  else
+  begin
+    UnknownInBody := True;
+  end;
+end;
+
+function TMovePlanning.IsOrigin(const AMeaning: TMoveClassMeaning): Boolean;
+begin
+  Result := SameText(AMeaning.UnitName, Plan.OriginUnit) or
+    ((AMeaning.FileName <> '') and SameText(AMeaning.FileName, Source.FileName));
+end;
+
+/// <summary>Name aus der Ursprungs-Unit: verschoben, aus deren interface oder (nicht erreichbar) aus deren
+/// implementation.</summary>
+function TMovePlanning.OriginNeedIssue(const AMeaning: TMoveClassMeaning; const AName: string;
+  AInDecl: Boolean): string;
+var
+  mOffset: Integer;
+begin
+  Result := '';
+  mOffset := Lines.OffsetAt(AMeaning.Position);
+  if InRanges(Moved, mOffset) then
+  begin
+    Exit;
+  end;
+  if mOffset >= ImplementationNode.StartOffset then
+  begin
+    Exit(cTexts[TEditingMoveClassText.TheClassUsesFromThe].Fmt([AName, Plan.OriginUnit]));
+  end;
+  if AInDecl then
+  begin
+    DeclNeedsOrigin := True;
+  end
+  else
+  begin
+    BodyNeedsOrigin := True;
+  end;
+end;
+
+function TMovePlanning.NeedIssue(const ANeed: TNeed; AInDecl: Boolean): string;
+var
+  mMeaning: TMoveClassMeaning;
+begin
+  Result := '';
+  mMeaning := LookupMeaning(ANeed);
+  if not mMeaning.Found and not ResolveLocally(ANeed, AInDecl, mMeaning) then
+  begin
+    Exit;
+  end;
+  if mMeaning.IsLocal or (mMeaning.UnitName = '') or MatchText(mMeaning.UnitName, ['System', 'SysInit']) then
+  begin
+    Exit;
+  end;
+  if IsOrigin(mMeaning) then
+  begin
+    Exit(OriginNeedIssue(mMeaning, ANeed.Names[0], AInDecl));
+  end;
+  if AInDecl then
+  begin
+    AddUnique(DeclUnits, Spelling(OriginUses, mMeaning.UnitName));
+  end
+  else
+  begin
+    AddUnique(BodyUnits, Spelling(OriginUses, mMeaning.UnitName));
+  end;
+end;
+
+/// <summary>Verwendung der Klasse, die in der Ursprungs-Unit bleibt.</summary>
+function TMovePlanning.IsRemainingUse(AIndex: Integer): Boolean;
+begin
+  Result := IsClassToken(Source.Tree.Tokens, AIndex, Plan.ClassName) and
+    not InRanges(Moved, Source.Tree.Tokens[AIndex].Offset);
+end;
+
+/// <summary>Verwendet die Ursprungs-Unit die Klasse noch, im interface bzw. im implementation?</summary>
+procedure TMovePlanning.CollectReferences;
+var
+  mIndex, mOffset: Integer;
+begin
+  InterfaceRef := False;
+  ImplementationRef := False;
+  for mIndex := Source.Tree.FirstTokenFrom(InterfaceNode.StartOffset) to High(Source.Tree.Tokens) do
+  begin
+    mOffset := Source.Tree.Tokens[mIndex].Offset;
+    if not IsRemainingUse(mIndex) or (mOffset < InterfaceNode.StartOffset) then
+    begin
+      Continue;
+    end;
+    if mOffset < ImplementationNode.StartOffset then
+    begin
+      InterfaceRef := True;
+    end
+    else
+    begin
+      ImplementationRef := True;
+    end;
+  end;
+end;
+
+function TMovePlanning.CircularIssue: string;
+begin
+  Result := '';
+  CollectReferences;
+  if DeclNeedsOrigin and InterfaceRef then
+  begin
+    Result := cTexts[TEditingMoveClassText.CircularReferenceTheClassNeeds].Fmt([Plan.OriginUnit]);
+  end;
+end;
+
+function TMovePlanning.InterfaceUsesOfNew: TArray<string>;
+begin
+  Result := DeclUnits;
+  if UnknownInDecl then
+  begin
+    AddAll(Result, SectionUses(InterfaceNode));
+    if Section = ImplementationNode then
+    begin
+      AddAll(Result, SectionUses(ImplementationNode));
+    end;
+  end;
+  Result := Ordered(OriginUses, Result);
+  if DeclNeedsOrigin then
+  begin
+    Result := Result + [Plan.OriginUnit];
+  end;
+end;
+
+function TMovePlanning.ImplementationUsesOfNew(const AInterfaceUses: TArray<string>): TArray<string>;
+begin
+  Result := nil;
+  AddMissing(Result, BodyUnits, AInterfaceUses);
+  if UnknownInBody then
+  begin
+    AddMissing(Result, OriginUses, AInterfaceUses);
+  end;
+  Result := Ordered(OriginUses, Result);
+  if BodyNeedsOrigin and not DeclNeedsOrigin then
+  begin
+    Result := Result + [Plan.OriginUnit];
+  end;
+end;
+
+function TMovePlanning.MethodsText: string;
+var
+  mNode: TSyntaxNode;
+begin
+  Result := '';
+  if HeaderRange.Stop > HeaderRange.Start then
+  begin
+    Result := PieceText(Source.Text, Lines, HeaderRange);
+  end;
+  for mNode in Methods do
+  begin
+    if Result <> '' then
+    begin
+      Result := Result + LineBreak + LineBreak;
+    end;
+    Result := Result + PieceText(Source.Text, Lines, PieceOf(mNode));
+  end;
+  if Result <> '' then
+  begin
+    Result := Result + LineBreak + LineBreak;
+  end;
+end;
+
+procedure TMovePlanning.BuildNewUnit;
+var
+  mInterfaceUses, mImplementationUses: TArray<string>;
+begin
+  mInterfaceUses := InterfaceUsesOfNew;
+  mImplementationUses := ImplementationUsesOfNew(mInterfaceUses);
+  Plan.UsesOrigin := DeclNeedsOrigin or BodyNeedsOrigin;
+  Plan.Text := 'unit ' + Plan.NewUnit + ';' + LineBreak + LineBreak + 'interface' + LineBreak + LineBreak +
+    UsesText(mInterfaceUses, LineBreak) + 'type' + LineBreak + PieceText(Source.Text, Lines, DeclRange) + LineBreak +
+    LineBreak + 'implementation' + LineBreak + LineBreak + UsesText(mImplementationUses, LineBreak) + MethodsText +
+    'end.' + LineBreak;
+end;
+
+/// <summary>Wird der Typabschnitt durch das Verschieben leer?</summary>
+function TMovePlanning.CoversTypeSection: Boolean;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to TypeSection.ChildCount - 1 do
+  begin
+    if not InRanges(Moved, TypeSection[mIndex].StartOffset) then
+    begin
+      Exit(False);
+    end;
+  end;
+  Result := True;
+end;
+
+function TMovePlanning.InsideTypeSection(const APiece: TOffsetRange): Boolean;
+begin
+  Result := (APiece.Start >= TypeSection.StartOffset) and (APiece.Stop <= TypeSection.EndOffset);
+end;
+
+/// <summary>Zu entfernende Stücke; ein Typabschnitt, der leer würde, entfällt ganz.</summary>
+function TMovePlanning.RemovalPieces: TArray<TOffsetRange>;
+var
+  mWhole: Boolean;
+  mPiece: TOffsetRange;
+begin
+  Result := nil;
+  mWhole := CoversTypeSection;
+  if mWhole then
+  begin
+    Result := [PieceOf(TypeSection)];
+  end;
+  for mPiece in Moved do
+  begin
+    if not (mWhole and InsideTypeSection(mPiece)) then
+    begin
+      Result := Result + [mPiece];
+    end;
+  end;
+end;
+
+function TMovePlanning.RemovalEdits: TArray<TTextEdit>;
+var
+  mRemovals: TArray<TOffsetRange>;
+  mIndex: Integer;
+begin
+  mRemovals := RemovalPieces;
+  for mIndex := 0 to High(mRemovals) do
+  begin
+    mRemovals[mIndex] := RemovalRange(Source.Text, Lines, mRemovals[mIndex]);
+  end;
+  SortByStart(mRemovals);
+  Result := MergedEdits(mRemovals, Lines);
+end;
+
+/// <summary>Qualifizierte Verwendungen (Alt.TKunde), die in der Ursprungs-Unit bleiben.</summary>
+function TMovePlanning.QualifierEdits: TArray<TTextEdit>;
+var
+  mIndex: Integer;
+  mEdit: TTextEdit;
+begin
+  Result := nil;
+  for mIndex := 0 to High(Source.Tree.Tokens) do
+  begin
+    if IsRemainingUse(mIndex) and QualifierEdit(Source.Tree.Tokens, mIndex, Plan.OriginUnit, Plan.NewUnit,
+      mEdit) then
+    begin
+      Result := Result + [mEdit];
+    end;
+  end;
+end;
+
+/// <summary>Änderungen der Ursprungs-Unit; sie bindet die neue Unit ein, wo sie die Klasse noch verwendet.
+/// </summary>
+function TMovePlanning.OriginEditsIssue: string;
+var
+  mEdits: TArray<TTextEdit>;
+  mEdit: TTextEdit;
+  mOffset: Integer;
+begin
+  Result := '';
+  mEdits := RemovalEdits;
+  if InterfaceRef or ImplementationRef then
+  begin
+    mOffset := ImplementationNode.StartOffset;
+    if InterfaceRef then
+    begin
+      mOffset := InterfaceNode.StartOffset;
+    end;
+    if not TUsesClauses.AddUnit(Source.Tree.Tokens, mOffset, Plan.NewUnit, LineBreak, mEdit) then
+    begin
+      Exit(cTexts[TEditingMoveClassText.NoRoomForTheNew].Text);
+    end;
+    mEdits := mEdits + [mEdit];
+  end;
+  Plan.OriginEdits := mEdits + QualifierEdits;
+end;
+
+/// <summary>Vorher fehlerfrei, nachher auch.</summary>
+function TMovePlanning.ParseIssue: string;
+begin
+  Result := '';
+  if Length(Source.Tree.Diagnostics) > 0 then
+  begin
+    Exit;
+  end;
+  if not ParsesCleanly(TChangeSignature.ApplyEdits(Source.Text, Plan.OriginEdits)) then
+  begin
+    Result := cTexts[TEditingMoveClassText.TheOriginalUnitNoLonger].Text;
+  end
+  else if not ParsesCleanly(Plan.Text) then
+  begin
+    Result := cTexts[TEditingMoveClassText.TheNewUnitDoesNot].Text;
+  end;
+end;
+
+{ TMoveClassSource }
+
+class function TMoveClassSource.Create(const AFileName, AText: string; ATree: TSyntaxTree): TMoveClassSource;
+begin
+  Result.FileName := AFileName;
+  Result.Text := AText;
+  Result.Tree := ATree;
+  Result.TypeComments := True;
+end;
+
+{ TMoveClassNames }
+
+class function TMoveClassNames.Create(const AOriginUnit, ANewUnit, AClassName: string): TMoveClassNames;
+begin
+  Result.OriginUnit := AOriginUnit;
+  Result.NewUnit := ANewUnit;
+  Result.ClassName := AClassName;
+end;
+
+{ TMoveClassPlan }
+
+function TMoveClassPlan.Names: TMoveClassNames;
+begin
+  Result := TMoveClassNames.Create(OriginUnit, NewUnit, ClassName);
 end;
 
 { TMoveClass }
 
 class function TMoveClass.ClassAt(ATree: TSyntaxTree; const APosition: TTextPosition): TSyntaxNode;
 var
-  Section, Index, Item: Integer;
-  Node, Decl, TypeNode: TSyntaxNode;
+  mDecl: TSyntaxNode;
 begin
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) or (ATree.Root.Kind <> TSyntaxKind.UnitFile) then
-    Exit;
-  for Section := 0 to ATree.Root.ChildCount - 1 do
   begin
-    Node := ATree.Root[Section];
-    if not IsSection(Node) then
-      Continue;
-    for Index := 0 to Node.ChildCount - 1 do
-      if Node[Index].Kind = TSyntaxKind.TypeSection then
-        for Item := 0 to Node[Index].ChildCount - 1 do
-        begin
-          Decl := Node[Index][Item];
-          if (Decl.Kind <> TSyntaxKind.TypeDecl) or (Decl.StartPos.Line <> APosition.Line) then
-            Continue;
-          TypeNode := TypeNodeOf(Decl);
-          if (TypeNode <> nil) and (TypeNode.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType]) then
-            Exit(Decl);
-        end;
+    Exit;
+  end;
+  for mDecl in TypeDecls(ATree.Root) do
+  begin
+    if (mDecl.StartPos.Line = APosition.Line) and IsClassOrRecord(mDecl) then
+    begin
+      Exit(mDecl);
+    end;
   end;
 end;
 
@@ -546,403 +1659,75 @@ class function TMoveClass.DefaultUnitName(const AClassName: string): string;
 begin
   Result := AClassName;
   if (Length(Result) > 1) and CharInSet(Result[1], ['T', 't']) and CharInSet(Result[2], ['A'..'Z']) then
+  begin
     Result := Result.Substring(1);
+  end;
 end;
 
-class function TMoveClass.Plan(const AFileName, AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
+class function TMoveClass.Plan(const ASource: TMoveClassSource; const APosition: TTextPosition;
   const ANewUnit: string; const ALookup: TMoveClassLookup; out APlan: TMoveClassPlan; out AReason: string): Boolean;
 var
-  Lines: TLineTable;
-  Decl, TypeNode, Section, InterfaceNode, ImplementationNode, Node, TypeSection: TSyntaxNode;
-  Index, Item, Offset, ImplementationStart, Before: Integer;
-  Methods, Forwards, Attributes: TArray<TSyntaxNode>;
-  Moved, Removals: TArray<TOffsetRange>;
-  DeclRange, Piece, Last: TOffsetRange;
-  TopLevel: TDictionary<string, Integer>;
-  Own: TDictionary<string, Boolean>;
-  DeclNeeds, BodyNeeds, Needs: TArray<TNeed>;
-  Need: TNeed;
-  Meaning: TMoveClassMeaning;
-  InDecl, DeclNeedsOrigin, BodyNeedsOrigin, UnknownInDecl, UnknownInBody, InterfaceRef, ImplementationRef,
-    WholeSection: Boolean;
-  OriginUses, InterfaceUses, ImplementationUses, DeclUnits, BodyUnits: TArray<string>;
-  LineBreak, Ancestor, Name, Body, MethodsText, Applied: string;
-  Edit: TTextEdit;
-  Edits: TArray<TTextEdit>;
-  Check: TSyntaxTree;
-  Pass: Integer;
+  mPlanning: TMovePlanning;
 begin
-  APlan := Default(TMoveClassPlan);
-  AReason := '';
-  Decl := ClassAt(ATree, APosition);
-  if Decl = nil then
-    Exit(Fail('keine Klasse an dieser Stelle', AReason));
-  TypeNode := TypeNodeOf(Decl);
-  TypeSection := Decl.Parent;
-  Section := TypeSection.Parent;
-  APlan.ClassName := CleanName(Decl.Name);
-  APlan.OriginUnit := ATree.Root.Name;
-  APlan.NewUnit := Trim(ANewUnit);
-  if not IsValidIdent(APlan.NewUnit, True) then
-    Exit(Fail(Format('„%s“ ist kein gültiger Unit-Name', [APlan.NewUnit]), AReason));
-  if SameText(APlan.NewUnit, APlan.OriginUnit) then
-    Exit(Fail('die neue Unit hieße wie die Ursprungs-Unit', AReason));
-  InterfaceNode := ATree.Root.FindChild(TSyntaxKind.InterfaceSection);
-  ImplementationNode := ATree.Root.FindChild(TSyntaxKind.ImplementationSection);
-  if (InterfaceNode = nil) or (ImplementationNode = nil) then
-    Exit(Fail('die Unit hat keinen interface- und implementation-Teil', AReason));
-  ImplementationStart := ImplementationNode.StartOffset;
-  Lines := TLineTable.Build(AText);
-  LineBreak := TTextLines.LineBreakOf(AText);
-  // Gleichnamige Typen und Vorwärtsdeklarationen.
-  Forwards := nil;
-  for Index := 0 to ATree.Root.ChildCount - 1 do
+  mPlanning := TMovePlanning.Create(ASource, ALookup);
+  AReason := mPlanning.Start(APosition, ANewUnit);
+  if AReason = '' then
   begin
-    Node := ATree.Root[Index];
-    if not IsSection(Node) then
-      Continue;
-    for Item := 0 to Node.ChildCount - 1 do
-      if Node[Item].Kind = TSyntaxKind.TypeSection then
-        for Offset := 0 to Node[Item].ChildCount - 1 do
-          if (Node[Item][Offset] <> Decl) and (Node[Item][Offset].Kind = TSyntaxKind.TypeDecl) and
-            SameText(CleanName(Node[Item][Offset].Name), APlan.ClassName) then
-          begin
-            if (TypeNodeOf(Node[Item][Offset]) <> nil) and
-              (TypeNodeOf(Node[Item][Offset]).Kind = TSyntaxKind.ForwardType) then
-              Forwards := Forwards + [Node[Item][Offset]]
-            else
-              Exit(Fail(Format('mehrere Typen heißen %s', [APlan.ClassName]), AReason));
-          end;
+    AReason := mPlanning.ForwardsIssue;
   end;
-  // Formularklassen bleiben bei ihrer .dfm bzw. .fmx.
-  if (TypeNode.Kind = TSyntaxKind.ClassType) and (TypeNode.ChildCount > 0) and
-    (TypeNode[0].Kind = TSyntaxKind.TypeReference) then
+  if AReason = '' then
   begin
-    Ancestor := TypeNode[0].Name;
-    if Pos('.', Ancestor) > 0 then
-      Ancestor := Ancestor.Substring(Ancestor.LastIndexOf('.') + 1);
-    if (ContainsText(AText, '{$R *.dfm}') or ContainsText(AText, '{$R *.fmx}') or
-      ContainsText(AText, '{$R *.xfm}')) and (MatchText(Ancestor, ['TForm', 'TFrame', 'TDataModule']) or
-      EndsText('Form', Ancestor) or EndsText('Frame', Ancestor)) then
-      Exit(Fail('Formularklassen bleiben bei ihrer Formulardatei', AReason));
+    AReason := mPlanning.FormIssue;
   end;
-  // Attribute direkt davor gehören zur Deklaration.
-  Attributes := nil;
-  Index := -1;
-  for Item := 0 to TypeSection.ChildCount - 1 do
-    if TypeSection[Item] = Decl then
-      Index := Item;
-  while (Index > 0) and (TypeSection[Index - 1].Kind = TSyntaxKind.Attribute) do
+  if AReason = '' then
   begin
-    Dec(Index);
-    Attributes := [TypeSection[Index]] + Attributes;
+    mPlanning.CollectPieces;
+    AReason := mPlanning.ConditionalIssue;
   end;
-  DeclRange := MakeRange(Decl.StartOffset, Decl.EndOffset);
-  if Attributes <> nil then
-    DeclRange.Start := Attributes[0].StartOffset;
-  DeclRange.Start := WithLeadingComments(AText, Lines, ATree.Tokens, DeclRange.Start);
-  Methods := nil;
-  for Index := 0 to ImplementationNode.ChildCount - 1 do
-    if IsMethodOf(ImplementationNode[Index], APlan.ClassName) then
-      Methods := Methods + [ImplementationNode[Index]];
-  Moved := [DeclRange];
-  for Node in Forwards do
-    Moved := Moved + [MakeRange(WithLeadingComments(AText, Lines, ATree.Tokens, Node.StartOffset), Node.EndOffset)];
-  for Node in Methods do
-    Moved := Moved + [MakeRange(WithLeadingComments(AText, Lines, ATree.Tokens, Node.StartOffset), Node.EndOffset)];
-  for Piece in Moved do
-    if not Unconditional(ATree.Tokens, Piece) then
-      Exit(Fail('ein Teil der Klasse steht in bedingter Übersetzung', AReason));
-  // Benötigte Namen.
-  DeclNeeds := nil;
-  CollectNeeds(Decl, DeclNeeds);
-  for Node in Attributes do
-    CollectNeeds(Node, DeclNeeds);
-  BodyNeeds := nil;
-  for Node in Methods do
-    CollectNeeds(Node, BodyNeeds);
-  TopLevel := TDictionary<string, Integer>.Create;
-  Own := TDictionary<string, Boolean>.Create;
-  try
-    CollectTopLevel(InterfaceNode, TopLevel);
-    CollectTopLevel(ImplementationNode, TopLevel);
-    CollectOwnNames(Decl, Own);
-    for Node in Methods do
-      CollectOwnNames(Node, Own);
-    Own.AddOrSetValue('result', True);
-    Own.AddOrSetValue('self', True);
-    OriginUses := SectionUses(InterfaceNode) + SectionUses(ImplementationNode);
-    DeclUnits := nil;
-    BodyUnits := nil;
-    DeclNeedsOrigin := False;
-    BodyNeedsOrigin := False;
-    UnknownInDecl := False;
-    UnknownInBody := False;
-    for Pass := 0 to 1 do
-    begin
-      InDecl := Pass = 0;
-      Needs := BodyNeeds;
-      if InDecl then
-        Needs := DeclNeeds;
-      for Need in Needs do
-      begin
-        Meaning := Default(TMoveClassMeaning);
-        if Assigned(ALookup) then
-          Meaning := ALookup(ATree, AFileName, Need.Names, Need.Node.StartOffset);
-        Name := Need.Names[0];
-        // Attribute: [Weak] meint WeakAttribute.
-        if not Meaning.Found and Assigned(ALookup) and IsAttributeName(Need.Node) then
-          Meaning := ALookup(ATree, AFileName, [Name + 'Attribute'], Need.Node.StartOffset);
-        if not Meaning.Found then
-        begin
-          // Ohne Namensauflösung: eigene Namen, dann die der Ursprungs-Unit.
-          if (Length(Need.Names) = 1) and (Own.ContainsKey(LowerCase(Name)) or MatchText(Name, SystemNames)) then
-            Continue;
-          if TopLevel.TryGetValue(LowerCase(Name), Offset) then
-          begin
-            Meaning.Found := True;
-            Meaning.UnitName := APlan.OriginUnit;
-            Meaning.FileName := AFileName;
-            Meaning.Position := Lines.PositionAt(Offset);
-          end
-          else if SameText(Name, APlan.OriginUnit) then
-            Continue
-          else
-          begin
-            AddUnique(APlan.Unresolved, string.Join('.', Need.Names));
-            if InDecl then
-              UnknownInDecl := True
-            else
-              UnknownInBody := True;
-            Continue;
-          end;
-        end;
-        if Meaning.IsLocal or (Meaning.UnitName = '') or MatchText(Meaning.UnitName, ['System', 'SysInit']) then
-          Continue;
-        if SameText(Meaning.UnitName, APlan.OriginUnit) or
-          ((Meaning.FileName <> '') and SameText(Meaning.FileName, AFileName)) then
-        begin
-          Offset := Lines.OffsetAt(Meaning.Position);
-          if InRanges(Moved, Offset) then
-            Continue;
-          if Offset >= ImplementationStart then
-            Exit(Fail(Format('die Klasse verwendet %s aus dem implementation-Teil von %s', [Name,
-              APlan.OriginUnit]), AReason));
-          if InDecl then
-            DeclNeedsOrigin := True
-          else
-            BodyNeedsOrigin := True;
-          Continue;
-        end;
-        if InDecl then
-          AddUnique(DeclUnits, Spelling(OriginUses, Meaning.UnitName))
-        else
-          AddUnique(BodyUnits, Spelling(OriginUses, Meaning.UnitName));
-      end;
-    end;
-  finally
-    Own.Free;
-    TopLevel.Free;
-  end;
-  // Verwendet die Ursprungs-Unit die Klasse noch?
-  InterfaceRef := False;
-  ImplementationRef := False;
-  for Index := ATree.FirstTokenFrom(InterfaceNode.StartOffset) to High(ATree.Tokens) do
-    if (ATree.Tokens[Index].Kind = TPascalTokenKind.Identifier) and
-      SameText(CleanName(ATree.Tokens[Index].Text), APlan.ClassName) and
-      not InRanges(Moved, ATree.Tokens[Index].Offset) and (ATree.Tokens[Index].Offset >= InterfaceNode.StartOffset) then
-    begin
-      if ATree.Tokens[Index].Offset < ImplementationStart then
-        InterfaceRef := True
-      else
-        ImplementationRef := True;
-    end;
-  if DeclNeedsOrigin and InterfaceRef then
-    Exit(Fail(Format('Kreisverweis: die Klasse braucht Typen aus dem interface von %s, das sie selbst verwendet',
-      [APlan.OriginUnit]), AReason));
-  // uses der neuen Unit.
-  InterfaceUses := DeclUnits;
-  if UnknownInDecl then
+  if AReason = '' then
   begin
-    for Name in SectionUses(InterfaceNode) do
-      AddUnique(InterfaceUses, Name);
-    if Section = ImplementationNode then
-      for Name in SectionUses(ImplementationNode) do
-        AddUnique(InterfaceUses, Name);
+    AReason := mPlanning.ResolveIssue;
   end;
-  InterfaceUses := Ordered(OriginUses, InterfaceUses);
-  if DeclNeedsOrigin then
-    InterfaceUses := InterfaceUses + [APlan.OriginUnit];
-  ImplementationUses := nil;
-  for Name in BodyUnits do
-    if not Contains(InterfaceUses, Name) then
-      AddUnique(ImplementationUses, Name);
-  if UnknownInBody then
-    for Name in OriginUses do
-      if not Contains(InterfaceUses, Name) then
-        AddUnique(ImplementationUses, Name);
-  ImplementationUses := Ordered(OriginUses, ImplementationUses);
-  if BodyNeedsOrigin and not DeclNeedsOrigin then
-    ImplementationUses := ImplementationUses + [APlan.OriginUnit];
-  APlan.UsesOrigin := DeclNeedsOrigin or BodyNeedsOrigin;
-  // Die neue Unit.
-  MethodsText := '';
-  for Node in Methods do
+  if AReason = '' then
   begin
-    Body := PieceText(AText, Lines, MakeRange(WithLeadingComments(AText, Lines, ATree.Tokens, Node.StartOffset),
-      Node.EndOffset));
-    if MethodsText <> '' then
-      MethodsText := MethodsText + LineBreak + LineBreak;
-    MethodsText := MethodsText + Body;
+    AReason := mPlanning.CircularIssue;
   end;
-  if MethodsText <> '' then
-    MethodsText := MethodsText + LineBreak + LineBreak;
-  APlan.Text := 'unit ' + APlan.NewUnit + ';' + LineBreak + LineBreak + 'interface' + LineBreak + LineBreak +
-    UsesText(InterfaceUses, LineBreak) + 'type' + LineBreak + PieceText(AText, Lines, DeclRange) + LineBreak +
-    LineBreak + 'implementation' + LineBreak + LineBreak + UsesText(ImplementationUses, LineBreak) + MethodsText +
-    'end.' + LineBreak;
-  // Entfernen; ein Typabschnitt, der leer würde, entfällt ganz.
-  WholeSection := True;
-  for Index := 0 to TypeSection.ChildCount - 1 do
-    if not InRanges(Moved, TypeSection[Index].StartOffset) then
-      WholeSection := False;
-  Removals := nil;
-  if WholeSection then
-    Removals := [MakeRange(WithLeadingComments(AText, Lines, ATree.Tokens, TypeSection.StartOffset),
-      TypeSection.EndOffset)];
-  for Piece in Moved do
-    if not (WholeSection and (Piece.Start >= TypeSection.StartOffset) and (Piece.Stop <= TypeSection.EndOffset)) then
-      Removals := Removals + [Piece];
-  for Index := 0 to High(Removals) do
-    Removals[Index] := RemovalRange(AText, Lines, Removals[Index]);
-  // Sortieren und Überlappungen zusammenfassen.
-  for Index := 1 to High(Removals) do
+  if AReason = '' then
   begin
-    Piece := Removals[Index];
-    Item := Index - 1;
-    while (Item >= 0) and (Removals[Item].Start > Piece.Start) do
-    begin
-      Removals[Item + 1] := Removals[Item];
-      Dec(Item);
-    end;
-    Removals[Item + 1] := Piece;
+    mPlanning.BuildNewUnit;
+    AReason := mPlanning.OriginEditsIssue;
   end;
-  Edits := nil;
-  Last := MakeRange(-1, -1);
-  for Piece in Removals do
+  if AReason = '' then
   begin
-    if (Last.Start >= 0) and (Piece.Start <= Last.Stop) then
-    begin
-      if Piece.Stop > Last.Stop then
-        Last.Stop := Piece.Stop;
-      Continue;
-    end;
-    if Last.Start >= 0 then
-      Edits := Edits + [TTextEdit.Create(TTextRange.Create(Lines.PositionAt(Last.Start), Lines.PositionAt(Last.Stop)),
-        '')];
-    Last := Piece;
+    AReason := mPlanning.ParseIssue;
   end;
-  if Last.Start >= 0 then
-    Edits := Edits + [TTextEdit.Create(TTextRange.Create(Lines.PositionAt(Last.Start), Lines.PositionAt(Last.Stop)),
-      '')];
-  // Die Ursprungs-Unit bindet die neue Unit ein, wo sie die Klasse noch verwendet.
-  if InterfaceRef or ImplementationRef then
-  begin
-    if InterfaceRef then
-      Offset := InterfaceNode.StartOffset
-    else
-      Offset := ImplementationStart;
-    if not TUsesClauses.AddUnit(ATree.Tokens, Offset, APlan.NewUnit, LineBreak, Edit) then
-      Exit(Fail('kein Platz für die neue Unit im uses', AReason));
-    Edits := Edits + [Edit];
-  end;
-  for Index := 0 to High(ATree.Tokens) do
-    if (ATree.Tokens[Index].Kind = TPascalTokenKind.Identifier) and
-      SameText(CleanName(ATree.Tokens[Index].Text), APlan.ClassName) and
-      not InRanges(Moved, ATree.Tokens[Index].Offset) and
-      QualifierEdit(ATree.Tokens, Index, APlan.OriginUnit, APlan.NewUnit, Edit) then
-      Edits := Edits + [Edit];
-  APlan.OriginEdits := Edits;
-  // Vorher fehlerfrei, nachher auch.
-  Before := Length(ATree.Diagnostics);
-  if Before = 0 then
-  begin
-    Applied := TChangeSignature.ApplyEdits(AText, Edits);
-    Check := TSyntaxTreeCache.Parse(Applied);
-    try
-      if Length(Check.Diagnostics) > 0 then
-        Exit(Fail('die Ursprungs-Unit parst danach nicht mehr', AReason));
-    finally
-      Check.Free;
-    end;
-    Check := TSyntaxTreeCache.Parse(APlan.Text);
-    try
-      if Length(Check.Diagnostics) > 0 then
-        Exit(Fail('die neue Unit parst nicht', AReason));
-    finally
-      Check.Free;
-    end;
-  end;
-  Result := True;
+  APlan := mPlanning.Plan;
+  Result := AReason = '';
 end;
 
-class function TMoveClass.UpdateUser(const AText: string; ATree: TSyntaxTree; const AOriginUnit, ANewUnit,
-  AClassName: string; const AReferences: TArray<TTextRange>; AAddUses: Boolean;
-  out AEdits: TArray<TTextEdit>): Boolean;
+class function TMoveClass.UpdateUser(const AText: string; ATree: TSyntaxTree; const ANames: TMoveClassNames;
+  const AReferences: TArray<TTextRange>; AAddUses: Boolean; out AEdits: TArray<TTextEdit>): Boolean;
 var
-  Index, First: Integer;
-  Found: Boolean;
-  Reference: TTextRange;
-  Edit: TTextEdit;
-  Clause: TUsesClauseInfo;
-  Clauses: TArray<TUsesClauseInfo>;
-  ShortName: string;
+  mFirst, mFallback: Integer;
 begin
-  AEdits := nil;
-  // Mit Namespace-Präfix des Projekts steht Firma.Lager als Lager im uses.
-  ShortName := AOriginUnit;
-  if Pos('.', ShortName) > 0 then
-    ShortName := ShortName.Substring(ShortName.LastIndexOf('.') + 1);
-  First := -1;
-  for Index := 0 to High(ATree.Tokens) do
+  AEdits := QualifierEditsFor(ATree.Tokens, ANames, AReferences, mFirst);
+  if mFirst < 0 then
   begin
-    if (ATree.Tokens[Index].Kind <> TPascalTokenKind.Identifier) or
-      not SameText(CleanName(ATree.Tokens[Index].Text), AClassName) then
-      Continue;
+    Exit(False);
+  end;
+  if AAddUses and not Contains(TUsesClauses.UsedUnits(ATree.Tokens), ANames.NewUnit) then
+  begin
+    mFallback := -1;
     if AReferences <> nil then
     begin
-      Found := False;
-      for Reference in AReferences do
-        if Reference.StartPos = ATree.Tokens[Index].StartPos then
-          Found := True;
-      if not Found then
-        Continue;
+      mFallback := mFirst;
     end;
-    if First < 0 then
-      First := Index;
-    if QualifierEdit(ATree.Tokens, Index, AOriginUnit, ANewUnit, Edit) then
-      AEdits := AEdits + [Edit];
-  end;
-  if First < 0 then
-    Exit(False);
-  if AAddUses and not Contains(TUsesClauses.UsedUnits(ATree.Tokens), ANewUnit) then
-  begin
-    Clauses := TUsesClauses.Clauses(ATree.Tokens);
-    Found := False;
-    for Clause in Clauses do
-      if not Found and (Contains(Clause.Names, AOriginUnit) or Contains(Clause.Names, ShortName)) then
-      begin
-        Found := True;
-        if TUsesClauses.AddUnit(ATree.Tokens, ATree.Tokens[Clause.UsesIndex].Offset, ANewUnit,
-          TTextLines.LineBreakOf(AText), Edit) then
-          AEdits := AEdits + [Edit];
-      end;
-    // Nur über die Referenzsuche sicher: dann im Abschnitt der ersten Stelle.
-    if not Found and (AReferences <> nil) and TUsesClauses.AddUnit(ATree.Tokens, ATree.Tokens[First].Offset,
-      ANewUnit, TTextLines.LineBreakOf(AText), Edit) then
-      AEdits := AEdits + [Edit];
+    AddUserUses(AText, ATree, ANames.NewUnit, ANames.OriginUnit, mFallback, AEdits);
   end;
   Result := AEdits <> nil;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.MoveClass', cTexts);
 
 end.

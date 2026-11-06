@@ -58,6 +58,22 @@ type
 
 implementation
 
+uses
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TCrashReserveText = (ThePreviousCaseIsStill, TimeLimitOfMsExceeded);
+
+const
+  cTexts: array[TCrashReserveText] of TAtlasText = (
+    (De: 'Der vorige Fall wird noch geschrieben'; En: 'The previous case is still being written'),
+    (De: 'Zeitlimit von %d ms beim Schreiben überschritten'; En: 'Time limit of %d ms exceeded while writing'));
+
+{$SCOPEDENUMS OFF}
+
 const
   cForever = Cardinal($FFFFFFFF);
 
@@ -78,14 +94,18 @@ begin
   begin
     FOwner.FStart.WaitFor(cForever);
     if FOwner.FStopping then
+    begin
       Exit;
+    end;
     mWork := FOwner.FWork;
     FOwner.FFailure := '';
     // Erst die Reserve abgeben, damit das Schreiben auch bei knappem Speicher Platz findet.
     FOwner.FReserve := nil;
     try
       if Assigned(mWork) then
+      begin
         mWork();
+      end;
     except
       on E: Exception do
         FOwner.FFailure := E.ClassName + ': ' + E.Message;
@@ -145,10 +165,12 @@ begin
   System.TMonitor.Enter(FLock);
   try
     if FStopping then
+    begin
       Exit(False);
+    end;
     if FFinished < FPosted then
     begin
-      AFailure := 'Der vorige Fall wird noch geschrieben';
+      AFailure := cTexts[TCrashReserveText.ThePreviousCaseIsStill].Text;
       Exit(False);
     end;
     FWork := AWork;
@@ -161,18 +183,23 @@ begin
       // Der Arbeiter zählt FFinished erst nach dem Signal hoch; sonst hielte ein sofort folgender Run den Fall
       // noch für laufend.
       while AtomicCmpExchange(FFinished, 0, 0) < FPosted do
+      begin
         TThread.Yield;
+      end;
       AFailure := FFailure;
       Result := AFailure = '';
       FWork := nil;
     end
     else
     begin
-      AFailure := Format('Zeitlimit von %d ms beim Schreiben überschritten', [TimeoutMs]);
+      AFailure := cTexts[TCrashReserveText.TimeLimitOfMsExceeded].Fmt([TimeoutMs]);
     end;
   finally
     System.TMonitor.Exit(FLock);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Diagnostics.CrashReserve', cTexts);
 
 end.

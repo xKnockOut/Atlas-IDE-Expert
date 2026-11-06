@@ -1,7 +1,7 @@
 ﻿unit Atlas.Common.Lsp.CompletionCollector;
 
 // Sammler der allgemeinen Vervollständigung (Code-Review S-01, Konzept 4.2 Schritt 5): vorher 13
-// verschachtelte Routinen in TLspCompletion.Collect mit 18 geteilten Variablen. Jeder Eintrag entsteht aus
+// verschachtelte Routinen in TCompletionLists.Collect mit 18 geteilten Variablen. Jeder Eintrag entsteht aus
 // Name, Detail, Art, Strafpunkten und dem aufgelösten Symbol; Quelle und Merkmale kommen aus dem Symbol,
 // nicht aus geteiltem Zustand. Bewertet wird nach Treffer (unscharf oder Anfang), Strafpunkten für die
 // Gruppen (eingebunden, Schlüsselwörter, Projekt-Import, Bibliotheks-Import, nicht verfügbar), dann nach
@@ -24,6 +24,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Lsp.IdeTypes,
   Atlas.Common.Lsp.CompletionRequest;
 
 const
@@ -107,19 +108,7 @@ type
     FUsedReady: Boolean;
     FAdmit: TCompletionAdmitFunc;
     function MemberFits(const AMember: TResolvedSymbol): Boolean;
-    /// <summary>Typ nach Aliasen bis zu einem eingebauten Typ oder TDateTime (TCaption → string); Aufzählungen
-    /// mit dem Präfix "enum:". Unbekannte bleiben, wie sie sind.</summary>
-    function BaseType(const AType: string): string;
-    /// <summary>Umwandlungseintrag zu AOriginal (#490) bzw. Hinweis Lossy daran; False ohne Umwandlung.</summary>
-    function Conversion(const AName: string; const ASymbol: TResolvedSymbol; var AOriginal: TScoredItem;
-      out AConverted: TScoredItem): Boolean;
-    /// <summary>Bereichsstufe (#488) für einen Eintrag aus AMember; 0 ohne Symbol oder nach einem Punkt.</summary>
-    function ScopeOf(const AMember: TResolvedSymbol; out AUnitName: string): Integer;
-    procedure MarkOwnConditions;
     function TakeStage(AStaged: Boolean): TArray<TCompletionItem>;
-    function KnownNames: TDictionary<string, Boolean>;
-    /// <summary>Wie AddFromOtherUnits; AWanted = nil heißt alle Namen, sonst nur diese (Großbuchstaben).</summary>
-    procedure AddImports(AWanted: TDictionary<string, Boolean>);
   public
     /// <summary>ARequest liefert Baum, Resolver, Index, Datei und Matching; AExpected ist der erwartete Typ
     /// (#417), '' ohne. AOnPartial bekommt die Teilergebnisse von SendStage; nil = alles in Finish.</summary>
@@ -154,6 +143,10 @@ type
     /// <summary>Nur die Symbole namens ANames aus nicht eingebundenen Units (#465: bekannte Attributklassen schon
     /// nach "[" ohne Eingabe); der Name muss zum getippten Anfang passen.</summary>
     procedure AddFromOtherUnits(const ANames: TArray<string>); overload;
+    /// <summary>Typen aus den Packages der IDE (TCompletionRequest.IdeTypes), die weder die Liste noch der Index
+    /// bringt: aus eingebundenen Units ohne Quelltext direkt, sonst mit uses-Eintrag wie Bibliotheks-Importe.
+    /// Ohne Vorfilter (SetAdmit), denn die Art des Typs ist unbekannt.</summary>
+    procedure AddIdeTypes;
     /// <summary>Gleichnamige Bezeichner aus anderen Units (#475): je Eintrag aus einer eingebundenen Unit, dessen
     /// Name weitere Units deklarieren, diese Varianten direkt dahinter; der Eintrag selbst trägt „aktiv“.
     /// Nach den Units aus uses aufrufen, vor dem Senden ihrer Stufe.</summary>
@@ -213,7 +206,16 @@ uses
   Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Lsp.FuzzyMatch,
   Atlas.Common.Lsp.CompletionSameNames,
-  Atlas.Text.Fuzzy;
+  Atlas.Text.Fuzzy,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TCompletionCollectorText = (AddToUses);
+
+const
+  cTexts: array[TCompletionCollectorText] of TAtlasText = (
+    (De: ' (uses ergänzen)'; En: ' (add to uses)'));
 
 const
   // Kürzel über Wortanfänge (#882): zwischen Anfang (TFuzzyMatch, ab etwa 3000) und Teilwort (höchstens
@@ -259,16 +261,22 @@ function TScoredItemComparer.Compare(const Left, Right: TScoredItem): Integer;
 begin
   // Höhere Punktzahl zuerst, sonst Reihenfolge der Gültigkeitsbereiche.
   if Left.Score <> Right.Score then
-    Result := Right.Score - Left.Score
+  begin
+    Result := Right.Score - Left.Score;
+  end
   else
+  begin
     Result := Left.Order - Right.Order;
+  end;
 end;
 
 function PlainType(const AType: string): string;
 begin
   Result := LowerCase(AType.Replace(' ', ''));
   if (Pos('<', Result) = 0) and (LastDelimiter('.', Result) > 0) then
+  begin
     Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
+  end;
 end;
 
 function TypeFamily(const APlain: string): TTypeFamily;
@@ -276,18 +284,30 @@ begin
   if MatchText(APlain, ['integer', 'cardinal', 'int64', 'uint64', 'byte', 'word', 'shortint', 'smallint', 'longint',
     'longword', 'nativeint', 'nativeuint', 'int8', 'int16', 'int32', 'uint8', 'uint16', 'uint32', 'fixedint',
     'fixeduint']) then
-    Result := TTypeFamily.Integer_
+  begin
+    Result := TTypeFamily.Integer_;
+  end
   else if MatchText(APlain, ['double', 'single', 'extended', 'real', 'currency', 'comp']) then
-    Result := TTypeFamily.Float
+  begin
+    Result := TTypeFamily.Float;
+  end
   else if MatchText(APlain, ['string', 'unicodestring', 'ansistring', 'widestring', 'shortstring', 'rawbytestring',
     'utf8string']) then
-    Result := TTypeFamily.String_
+  begin
+    Result := TTypeFamily.String_;
+  end
   else if MatchText(APlain, ['char', 'widechar', 'ansichar']) then
-    Result := TTypeFamily.Char_
+  begin
+    Result := TTypeFamily.Char_;
+  end
   else if MatchText(APlain, ['boolean', 'bytebool', 'wordbool', 'longbool']) then
-    Result := TTypeFamily.Boolean_
+  begin
+    Result := TTypeFamily.Boolean_;
+  end
   else
+  begin
     Result := TTypeFamily.None;
+  end;
 end;
 
 function TypeFits(const AActual, AExpected: string; out ACheckDescent: Boolean): Boolean;
@@ -296,102 +316,144 @@ var
 begin
   ACheckDescent := False;
   if (AActual = '') or (AExpected = '') then
+  begin
     Exit(False);
+  end;
   if PlainType(AActual) = PlainType(AExpected) then
+  begin
     Exit(True);
+  end;
   Actual := TypeFamily(PlainType(AActual));
   Expected := TypeFamily(PlainType(AExpected));
   if Expected <> TTypeFamily.None then
+  begin
     Exit((Actual = Expected) or (Expected = TTypeFamily.Float) and (Actual = TTypeFamily.Integer_) or
       (Expected = TTypeFamily.String_) and (Actual = TTypeFamily.Char_));
+  end;
   ACheckDescent := Actual = TTypeFamily.None;
   Result := False;
+end;
+
+/// <summary>Umwandlung von AExpression (Typ APlain, Familie AActual) nach string; '' ohne. AHelperText: Helper-Stil,
+/// '' ohne; AUnits nur, wenn nicht System.SysUtils.</summary>
+function ToStringText(const APlain: string; AActual: TTypeFamily; const AEnumType, AExpression: string;
+  out AHelperText: string; out AUnits: TArray<string>): string;
+begin
+  AHelperText := '';
+  AUnits := nil;
+  Result := '';
+  if AEnumType <> '' then
+  begin
+    Result := 'GetEnumName(TypeInfo(' + AEnumType + '), Ord(' + AExpression + '))';
+    AUnits := ['System.TypInfo'];
+  end
+  else if APlain = 'tdatetime' then
+  begin
+    Result := 'DateTimeToStr(' + AExpression + ')';
+  end
+  else if APlain = 'tdate' then
+  begin
+    Result := 'DateToStr(' + AExpression + ')';
+  end
+  else if APlain = 'ttime' then
+  begin
+    Result := 'TimeToStr(' + AExpression + ')';
+  end
+  else if AActual in [TTypeFamily.Integer_, TTypeFamily.Float] then
+  begin
+    Result := 'IntToStr(' + AExpression + ')';
+    if AActual = TTypeFamily.Float then
+    begin
+      Result := 'FloatToStr(' + AExpression + ')';
+    end;
+    AHelperText := AExpression + '.ToString';
+  end
+  else if AActual = TTypeFamily.Boolean_ then
+  begin
+    // Ohne TUseBoolStrs.True liefert der Helper "-1" und "0".
+    Result := 'BoolToStr(' + AExpression + ', True)';
+    AHelperText := AExpression + '.ToString(TUseBoolStrs.True)';
+  end;
+end;
+
+/// <summary>Umwandlung von AExpression (string) in die Zahlenfamilie AExpected (Typ APlainExpected); '' ohne.
+/// </summary>
+function FromStringText(const APlainExpected: string; AExpected: TTypeFamily; const AExpression: string;
+  out AHelperText: string): string;
+begin
+  AHelperText := '';
+  Result := '';
+  if AExpected = TTypeFamily.Float then
+  begin
+    Result := 'StrToFloat(' + AExpression + ')';
+    AHelperText := AExpression + '.ToDouble';
+  end
+  else if (AExpected = TTypeFamily.Integer_) and MatchText(APlainExpected, ['int64', 'uint64']) then
+  begin
+    Result := 'StrToInt64(' + AExpression + ')';
+    AHelperText := AExpression + '.ToInt64';
+  end
+  else if AExpected = TTypeFamily.Integer_ then
+  begin
+    Result := 'StrToInt(' + AExpression + ')';
+    AHelperText := AExpression + '.ToInteger';
+  end;
 end;
 
 function TypeConversion(const AActual, AExpected, AEnumType, AExpression: string; AHelper: Boolean;
   out AResult: TTypeConversion): Boolean;
 var
-  Actual, Expected: TTypeFamily;
-  Plain, Text, Helper: string;
+  mActual, mExpected: TTypeFamily;
+  mPlain, mText, mHelper: string;
 begin
   AResult := Default(TTypeConversion);
-  Plain := PlainType(AActual);
-  Actual := TypeFamily(Plain);
-  Expected := TypeFamily(PlainType(AExpected));
-  Text := '';
-  Helper := '';
-  if Expected = TTypeFamily.String_ then
+  mPlain := PlainType(AActual);
+  mActual := TypeFamily(mPlain);
+  mExpected := TypeFamily(PlainType(AExpected));
+  mText := '';
+  mHelper := '';
+  if mExpected = TTypeFamily.String_ then
   begin
-    if AEnumType <> '' then
-    begin
-      Text := 'GetEnumName(TypeInfo(' + AEnumType + '), Ord(' + AExpression + '))';
-      AResult.Units := ['System.TypInfo'];
-    end
-    else if Plain = 'tdatetime' then
-      Text := 'DateTimeToStr(' + AExpression + ')'
-    else if Plain = 'tdate' then
-      Text := 'DateToStr(' + AExpression + ')'
-    else if Plain = 'ttime' then
-      Text := 'TimeToStr(' + AExpression + ')'
-    else if Actual = TTypeFamily.Integer_ then
-    begin
-      Text := 'IntToStr(' + AExpression + ')';
-      Helper := AExpression + '.ToString';
-    end
-    else if Actual = TTypeFamily.Float then
-    begin
-      Text := 'FloatToStr(' + AExpression + ')';
-      Helper := AExpression + '.ToString';
-    end
-    else if Actual = TTypeFamily.Boolean_ then
-    begin
-      // Ohne TUseBoolStrs.True liefert der Helper "-1" und "0".
-      Text := 'BoolToStr(' + AExpression + ', True)';
-      Helper := AExpression + '.ToString(TUseBoolStrs.True)';
-    end;
+    mText := ToStringText(mPlain, mActual, AEnumType, AExpression, mHelper, AResult.Units);
   end
-  else if (Actual = TTypeFamily.String_) and (Expected = TTypeFamily.Integer_) then
+  else if mActual = TTypeFamily.String_ then
   begin
-    if MatchText(PlainType(AExpected), ['int64', 'uint64']) then
-    begin
-      Text := 'StrToInt64(' + AExpression + ')';
-      Helper := AExpression + '.ToInt64';
-    end
-    else
-    begin
-      Text := 'StrToInt(' + AExpression + ')';
-      Helper := AExpression + '.ToInteger';
-    end;
+    mText := FromStringText(PlainType(AExpected), mExpected, AExpression, mHelper);
   end
-  else if (Actual = TTypeFamily.String_) and (Expected = TTypeFamily.Float) then
-  begin
-    Text := 'StrToFloat(' + AExpression + ')';
-    Helper := AExpression + '.ToDouble';
-  end
-  else if (Actual = TTypeFamily.Float) and (Expected = TTypeFamily.Integer_) then
+  else if (mActual = TTypeFamily.Float) and (mExpected = TTypeFamily.Integer_) then
   begin
     // Verlustbehaftet: kein Vorschlag, nur der Hinweis.
     AResult.Lossy := True;
     Exit(True);
   end;
-  if Text = '' then
-    Exit(False);
-  if AHelper and (Helper <> '') then
-    Text := Helper;
-  AResult.Text := Text;
+  Result := mText <> '';
+  if not Result then
+  begin
+    Exit;
+  end;
+  AResult.Text := mText;
+  if AHelper and (mHelper <> '') then
+  begin
+    AResult.Text := mHelper;
+  end;
   if AResult.Units = nil then
+  begin
     AResult.Units := ['System.SysUtils'];
-  Result := True;
+  end;
 end;
 
 function MatchScore(const AName, APrefix: string; AMatching: TCompletionMatching): Integer;
 begin
   if APrefix = '' then
+  begin
     Exit(0);
+  end;
   if AMatching = TCompletionMatching.Prefix then
   begin
     if AName.StartsWith(APrefix, True) then
+    begin
       Exit(0);
+    end;
     Exit(TFuzzyMatch.NoMatch);
   end;
   Result := TFuzzyMatch.CompletionScore(AName, APrefix);
@@ -399,7 +461,9 @@ begin
   // hinter bloße Teilwörter zurück und erschienen erst mit passendem Anfang.
   if (Result <> TFuzzyMatch.NoMatch) and not AName.StartsWith(APrefix, True) and
     TTextFuzzy.MatchesWordStarts(APrefix, AName) then
+  begin
     Result := WordStartsScore - Min(Length(AName) - Length(APrefix), 99);
+  end;
 end;
 
 function PrefixFilter(const APrefix: string; AMatching: TCompletionMatching): TCandidateNameFilter;
@@ -424,7 +488,9 @@ begin
   // Name der eigenen Unit für die Bereichsstufe (#488).
   FOwnUnit := '';
   if ARequest.Tree <> nil then
+  begin
     FOwnUnit := TUsesClauses.OwnName(ARequest.Tree.Tokens);
+  end;
   FDescends := TDictionary<string, Boolean>.Create;
   FBaseTypes := TDictionary<string, string>.Create;
   FSentNames := TDictionary<string, Boolean>.Create;
@@ -447,170 +513,299 @@ var
 begin
   // Typ des Werts: Variablen, Felder, Eigenschaften, Funktionsergebnis; Aufzählungswerte über ihren Typ.
   if AMember.SymbolKind = TIndexSymbolKind.EnumMember then
-    TypeText := AMember.Container
+  begin
+    TypeText := AMember.Container;
+  end
   else if AMember.IsType then
-    Exit(False)
+  begin
+    Exit(False);
+  end
   else
+  begin
     TypeText := AMember.TypeName;
+  end;
   Result := TypeFits(TypeText, FExpected, CheckDescent);
   if Result or not CheckDescent then
+  begin
     Exit;
+  end;
   // Klassen: Nachfahr des erwarteten Typs; je Typname einmal auflösen.
   if not FDescends.TryGetValue(LowerCase(TypeText), Result) then
   begin
-    Result := FRequest.Resolver.TypeDescendsFrom(FRequest.Tree, FRequest.FileName, FContext.Offset, TypeText,
+    Result := FRequest.Resolver.Queries.TypeDescendsFrom(FRequest.Tree, FRequest.FileName, FContext.Offset, TypeText,
       FExpected);
     FDescends.Add(LowerCase(TypeText), Result);
   end;
 end;
 
-function TCompletionCollector.BaseType(const AType: string): string;
-var
-  Current: TResolvedSymbol;
-  Depth: Integer;
+/// <summary>Eingebauter Typ oder TDateTime/TDate/TTime?</summary>
+function KnownBaseType(const AText: string): Boolean;
+begin
+  Result := (TypeFamily(PlainType(AText)) <> TTypeFamily.None) or
+    MatchText(PlainType(AText), ['tdatetime', 'tdate', 'ttime']);
+end;
 
-  function Known(const AText: string): Boolean;
+/// <summary>Zieltyp eines Alias ohne das Wort type ("TCaption = type string").</summary>
+function AliasTarget(const ASymbol: TResolvedSymbol): string;
+begin
+  Result := Trim(ASymbol.TypeName);
+  if Result.StartsWith('type ', True) then
   begin
-    Result := (TypeFamily(PlainType(AText)) <> TTypeFamily.None) or
-      MatchText(PlainType(AText), ['tdatetime', 'tdate', 'ttime']);
+    Result := Trim(Copy(Result, 6, MaxInt));
   end;
+end;
 
+/// <summary>Typ nach Aliasen bis zu einem eingebauten Typ oder TDateTime (TCaption → string); Aufzählungen mit dem
+/// Präfix "enum:". Unbekannte bleiben, wie sie sind. Gemerkt in ACollector.FBaseTypes.</summary>
+function BaseTypeOf(ACollector: TCompletionCollector; const AType: string): string;
+var
+  mCurrent: TResolvedSymbol;
+  mDepth: Integer;
 begin
   Result := AType;
-  if (AType = '') or Known(AType) then
+  if (AType = '') or KnownBaseType(AType) then
+  begin
     Exit;
+  end;
   // Übliche Aliase der RTL und VCL auch ohne deren Quellen im Index.
   if MatchText(PlainType(AType), ['tcaption', 'tfilename']) then
-    Exit('string');
-  if FBaseTypes.TryGetValue(LowerCase(AType), Result) then
-    Exit;
-  Result := AType;
-  Current := FRequest.Resolver.ResolveChain(FRequest.Tree, FRequest.FileName, AType.Split(['.']), FContext.Offset);
-  Depth := 0;
-  while Current.Found and Current.IsType and (Depth < 8) do
   begin
-    if Current.SymbolKind = TIndexSymbolKind.EnumType then
+    Exit('string');
+  end;
+  if ACollector.FBaseTypes.TryGetValue(LowerCase(AType), Result) then
+  begin
+    Exit;
+  end;
+  Result := AType;
+  mCurrent := ACollector.FRequest.Resolver.ResolveChain(ACollector.FRequest.Tree, ACollector.FRequest.FileName,
+    AType.Split(['.']), ACollector.FContext.Offset);
+  mDepth := 0;
+  while mCurrent.Found and mCurrent.IsType and (mDepth < 8) do
+  begin
+    if mCurrent.SymbolKind = TIndexSymbolKind.EnumType then
     begin
       Result := 'enum:' + AType;
       Break;
     end;
-    if (Current.SymbolKind <> TIndexSymbolKind.TypeAlias) or (Current.TypeName = '') then
+    if (mCurrent.SymbolKind <> TIndexSymbolKind.TypeAlias) or (mCurrent.TypeName = '') then
+    begin
       Break;
-    // "TCaption = type string": das Wort type gehört nicht zum Namen.
-    Result := Trim(Current.TypeName);
-    if Result.StartsWith('type ', True) then
-      Result := Trim(Copy(Result, 6, MaxInt));
-    if Known(Result) then
+    end;
+    Result := AliasTarget(mCurrent);
+    if KnownBaseType(Result) then
+    begin
       Break;
-    Current := FRequest.Resolver.ResolveChain(FRequest.Tree, FRequest.FileName, Result.Split(['.']),
-      FContext.Offset);
-    Inc(Depth);
+    end;
+    mCurrent := ACollector.FRequest.Resolver.ResolveChain(ACollector.FRequest.Tree, ACollector.FRequest.FileName,
+      Result.Split(['.']), ACollector.FContext.Offset);
+    Inc(mDepth);
   end;
-  FBaseTypes.AddOrSetValue(LowerCase(AType), Result);
+  ACollector.FBaseTypes.AddOrSetValue(LowerCase(AType), Result);
 end;
 
-function TCompletionCollector.Conversion(const AName: string; const ASymbol: TResolvedSymbol;
-  var AOriginal: TScoredItem; out AConverted: TScoredItem): Boolean;
-var
-  Actual, Expected, EnumType, Expression, Shown: string;
-  Converted, Display: TTypeConversion;
-  Helper: Boolean;
-  Start: TTextPosition;
-  UnitName: string;
-  Edit: TRuleEdit;
+/// <summary>Ein Wert ohne Pflichtargumente; keine Typen und Aufzählungswerte.</summary>
+function SymbolConvertible(const ASymbol: TResolvedSymbol): Boolean;
 begin
-  Result := False;
-  AConverted := Default(TScoredItem);
-  // Nur Werte ohne Pflichtargumente; Typen, Aufzählungswerte und Importe mit eigenem uses-Eintrag nicht.
-  if (FRequest.Settings.TypeConversion = TCompletionTypeConversion.Off) or (FExpected = '') or
-    (ASymbol.Name = '') or ASymbol.IsType or (ASymbol.SymbolKind = TIndexSymbolKind.EnumMember) or
-    (ASymbol.MinArgs > 0) or (ASymbol.TypeName = '') or (AOriginal.Item.AdditionalEdits <> nil) or
-    AOriginal.Item.Unavailable or (FContext.Filter <> TCompletionFilter.Any) or (FRequest.Tree = nil) then
-    Exit;
-  Actual := BaseType(ASymbol.TypeName);
-  Expected := BaseType(FExpected);
-  EnumType := '';
-  if Actual.StartsWith('enum:') then
+  Result := (ASymbol.Name <> '') and not ASymbol.IsType and (ASymbol.SymbolKind <> TIndexSymbolKind.EnumMember) and
+    (ASymbol.MinArgs = 0) and (ASymbol.TypeName <> '');
+end;
+
+/// <summary>Umwandlungen eingeschaltet, erwarteter Typ bekannt, gewöhnliche Liste mit Baum.</summary>
+function ContextConvertible(ACollector: TCompletionCollector): Boolean;
+begin
+  Result := (ACollector.FRequest.Settings.TypeConversion <> TCompletionTypeConversion.Off) and
+    (ACollector.FExpected <> '') and (ACollector.FContext.Filter = TCompletionFilter.Any) and
+    (ACollector.FRequest.Tree <> nil);
+end;
+
+/// <summary>Eingesetzt wird die ganze Kette: "Lines.Cou" → "IntToStr(Lines.Count)"; AStart ist ihr Anfang.
+/// </summary>
+function ConversionExpression(ACollector: TCompletionCollector; const AName: string;
+  out AStart: TTextPosition): string;
+var
+  mRequest: TCompletionRequest;
+begin
+  mRequest := ACollector.FRequest;
+  if ACollector.FContext.Kind = TCompletionContextKind.Member then
   begin
-    EnumType := FRequest.Resolver.UnqualifyType(Copy(Actual, 6, MaxInt), FOwnUnit);
-    Actual := '';
-  end;
-  if Expected.StartsWith('enum:') then
-    Exit;
-  Helper := FRequest.Settings.TypeConversion = TCompletionTypeConversion.Helper;
-  // Eingesetzt wird die ganze Kette: "Lines.Cou" → "IntToStr(Lines.Count)"; gezeigt nur der Name.
-  if FContext.Kind = TCompletionContextKind.Member then
-  begin
-    Start := FContext.ChainStart;
-    Expression := Copy(FRequest.Text, FRequest.OffsetAt(Start) + 1,
-      FRequest.OffsetAt(FContext.DotPos) - FRequest.OffsetAt(Start)) + '.' + AName;
+    AStart := ACollector.FContext.ChainStart;
+    Result := Copy(mRequest.Text, mRequest.OffsetAt(AStart) + 1, mRequest.OffsetAt(ACollector.FContext.DotPos) -
+      mRequest.OffsetAt(AStart)) + '.' + AName;
   end
   else
   begin
-    Start := TTextPosition.Create(FRequest.Position.Line, FRequest.Position.Character - Length(FContext.Prefix));
-    Expression := AName;
+    AStart := TTextPosition.Create(mRequest.Position.Line, mRequest.Position.Character -
+      Length(ACollector.FContext.Prefix));
+    Result := AName;
   end;
-  if (Start.Character < 0) or not TypeConversion(Actual, Expected, EnumType, Expression, Helper, Converted) then
-    Exit;
-  if Converted.Lossy then
+end;
+
+/// <summary>uses-Einträge für AUnits an AItem, wie bei #180.</summary>
+procedure AddConversionUnits(ACollector: TCompletionCollector; const AUnits: TArray<string>;
+  var AItem: TCompletionItem);
+var
+  mUnitName: string;
+  mEdit: TRuleEdit;
+begin
+  if not ACollector.FUsedReady then
+  begin
+    ACollector.FUsed := TUsesClauses.UsedUnits(ACollector.FRequest.Tree.Tokens);
+    ACollector.FUsedReady := True;
+  end;
+  for mUnitName in AUnits do
+  begin
+    if not TUsesClauses.IsUsed(ACollector.FUsed, mUnitName, ACollector.FRequest.Resolver.Namespaces) and
+      not TUsesClauses.IsUsed(ACollector.FUsed, mUnitName, ['System']) and
+      TUsesClauses.AddUnit(ACollector.FRequest.Tree.Tokens, ACollector.FContext.Offset, mUnitName, #13#10, mEdit) then
+    begin
+      AItem.AdditionalEdits := AItem.AdditionalEdits + [mEdit];
+    end;
+  end;
+end;
+
+/// <summary>Umwandlungseintrag zu AOriginal (#490) bzw. Hinweis Lossy daran; False ohne Umwandlung.</summary>
+function ConversionOf(ACollector: TCompletionCollector; const AName: string; const ASymbol: TResolvedSymbol;
+  var AOriginal: TScoredItem; out AConverted: TScoredItem): Boolean;
+var
+  mActual, mExpected, mEnumType, mExpression: string;
+  mConverted, mDisplay: TTypeConversion;
+  mHelper: Boolean;
+  mStart: TTextPosition;
+begin
+  AConverted := Default(TScoredItem);
+  // Nur Werte ohne Pflichtargumente; Typen, Aufzählungswerte und Importe mit eigenem uses-Eintrag nicht.
+  Result := ContextConvertible(ACollector) and SymbolConvertible(ASymbol) and
+    (AOriginal.Item.AdditionalEdits = nil) and not AOriginal.Item.Unavailable;
+  mActual := '';
+  mExpected := '';
+  if Result then
+  begin
+    mActual := BaseTypeOf(ACollector, ASymbol.TypeName);
+    mExpected := BaseTypeOf(ACollector, ACollector.FExpected);
+  end;
+  if not Result or mExpected.StartsWith('enum:') then
+  begin
+    Exit(False);
+  end;
+  mEnumType := '';
+  if mActual.StartsWith('enum:') then
+  begin
+    mEnumType := ACollector.FRequest.Resolver.Queries.UnqualifyType(Copy(mActual, 6, MaxInt), ACollector.FOwnUnit);
+    mActual := '';
+  end;
+  mHelper := ACollector.FRequest.Settings.TypeConversion = TCompletionTypeConversion.Helper;
+  mExpression := ConversionExpression(ACollector, AName, mStart);
+  if (mStart.Character < 0) or not TypeConversion(mActual, mExpected, mEnumType, mExpression, mHelper,
+    mConverted) then
+  begin
+    Exit(False);
+  end;
+  if mConverted.Lossy then
   begin
     AOriginal.Item.Lossy := ASymbol.TypeName;
-    Exit;
+    Exit(False);
   end;
-  TypeConversion(Actual, Expected, EnumType, AName, Helper, Display);
-  Shown := Display.Text;
+  // Gezeigt wird nur der Name.
+  TypeConversion(mActual, mExpected, mEnumType, AName, mHelper, mDisplay);
   AConverted := AOriginal;
-  AConverted.Item.Name := Shown;
+  AConverted.Item.Name := mDisplay.Text;
   AConverted.Item.FilterText := AName;
-  AConverted.Item.Conversion := FExpected;
+  AConverted.Item.Conversion := ACollector.FExpected;
   AConverted.Item.ConvertFrom := AName;
   AConverted.Item.Overloads := nil;
   AConverted.Item.HasParameters := False;
   AConverted.Item.HasTextEdit := True;
-  AConverted.Item.TextEdit := TRuleEdit.Create(TTextRange.Create(Start, FRequest.Position), Converted.Text);
-  // Benötigte Units wie bei #180.
-  if not FUsedReady then
-  begin
-    FUsed := TUsesClauses.UsedUnits(FRequest.Tree.Tokens);
-    FUsedReady := True;
-  end;
-  for UnitName in Converted.Units do
-    if not TUsesClauses.IsUsed(FUsed, UnitName, FRequest.Resolver.Namespaces) and
-      not TUsesClauses.IsUsed(FUsed, UnitName, ['System']) and
-      TUsesClauses.AddUnit(FRequest.Tree.Tokens, FContext.Offset, UnitName, #13#10, Edit) then
-      AConverted.Item.AdditionalEdits := AConverted.Item.AdditionalEdits + [Edit];
-  Result := True;
+  AConverted.Item.TextEdit := TRuleEdit.Create(TTextRange.Create(mStart, ACollector.FRequest.Position),
+    mConverted.Text);
+  AddConversionUnits(ACollector, mConverted.Units, AConverted.Item);
 end;
 
-function TCompletionCollector.ScopeOf(const AMember: TResolvedSymbol; out AUnitName: string): Integer;
+/// <summary>Bereichsstufe (#488) für einen Eintrag aus AMember; 0 ohne Symbol oder nach einem Punkt.</summary>
+function ScopeOf(ACollector: TCompletionCollector; const AMember: TResolvedSymbol; out AUnitName: string): Integer;
 begin
   AUnitName := '';
   // Bereichsstufe nur im Gültigkeitsbereich, nicht nach einem Punkt (#488).
   Result := 0;
-  if (FContext.Kind <> TCompletionContextKind.Scope) or (AMember.Name = '') then
+  if (ACollector.FContext.Kind <> TCompletionContextKind.Scope) or (AMember.Name = '') then
+  begin
     Exit;
+  end;
   if AMember.WithOrigin <> '' then
   begin
     // Mitglied eines with-Objekts (#481), auch wenn es zur eigenen Klasse gehört (with Self do); abgeschaltet
     // ohne Angabe statt einer falschen.
-    if FRequest.Settings.WithOrigin then
+    if ACollector.FRequest.Settings.WithOrigin then
+    begin
       Result := 6;
+    end;
   end
   else if AMember.Kind = TResolvedKind.Local then
   begin
     if AMember.IsParameter then
-      Result := 2
+    begin
+      Result := 2;
+    end
     else
+    begin
       Result := 1;
+    end;
   end
   else if AMember.Container <> '' then
-    Result := 3
-  else if (FOwnUnit <> '') and SameText(AMember.UnitName, FOwnUnit) then
-    Result := 4
+  begin
+    Result := 3;
+  end
+  else if (ACollector.FOwnUnit <> '') and SameText(AMember.UnitName, ACollector.FOwnUnit) then
+  begin
+    Result := 4;
+  end
   else
   begin
     Result := 5;
     AUnitName := AMember.UnitName;
+  end;
+end;
+
+/// <summary>Merkmale und Quelle des Eintrags aus ASymbol: gebundene Typparameter, Bereich, Überladungen.</summary>
+procedure FillFromSymbol(ACollector: TCompletionCollector; const ASymbol: TResolvedSymbol;
+  var AItem: TCompletionItem);
+var
+  mBinding, mParams, mUnitName: string;
+  mRange: TTextRange;
+begin
+  // Gebundene Typparameter (#450): FItems: TObjectList<TKunde> zeigt Add(const Value: TKunde), ohne Unit davor.
+  for mBinding in ASymbol.Bindings do
+  begin
+    AItem.Bindings := AItem.Bindings + [Copy(mBinding, 1, Pos('=', mBinding)) +
+      ACollector.FRequest.Resolver.Queries.UnqualifyType(Copy(mBinding, Pos('=', mBinding) + 1, MaxInt),
+      ACollector.FOwnUnit)];
+  end;
+  // Wo die Deklaration steht, für completionItem/resolve.
+  AItem.SourceFile := ASymbol.FileName;
+  AItem.SourcePosition := ASymbol.SelectionRange.StartPos;
+  AItem.Container := ASymbol.Container;
+  AItem.Depth := ASymbol.Depth;
+  AItem.IsHelper := ASymbol.IsHelper;
+  AItem.HasParameters := ASymbol.MaxArgs > 0;
+  AItem.Condition := ASymbol.Condition;
+  AItem.VariantBranch := ASymbol.VariantBranch;
+  AItem.Scope := ScopeOf(ACollector, ASymbol, mUnitName);
+  AItem.UnitName := mUnitName;
+  AItem.Hides := ASymbol.Hides;
+  if AItem.Scope = 6 then
+  begin
+    AItem.WithOrigin := ASymbol.WithOrigin;
+    AItem.WithShadows := ASymbol.WithShadows;
+  end;
+  for mParams in ASymbol.VariantParams do
+  begin
+    if mParams <> '' then
+    begin
+      AItem.HasParameters := True;
+    end;
+  end;
+  for mRange in ASymbol.Overloads do
+  begin
+    AItem.Overloads := AItem.Overloads + [mRange.StartPos];
   end;
 end;
 
@@ -629,67 +824,48 @@ end;
 function TCompletionCollector.Add(const AName, ADetail: string; AKind, APenalty: Integer;
   const ASymbol: TResolvedSymbol; const AEdits: TArray<TRuleEdit>): Boolean;
 var
-  Scored, Converted: TScoredItem;
-  Range: TTextRange;
-  Params, UnitName, Binding: string;
+  mScored, mConverted: TScoredItem;
 begin
   // Jeder Eintrag frisch (Code-Review S-01): Nichts bleibt vom vorigen stehen, z. B. HasTextEdit und TextEdit
   // (im Plugin löschte das alles bis zum Wort).
-  Scored := Default(TScoredItem);
-  Scored.Score := MatchScore(AName, FContext.Prefix, FRequest.Matching);
-  if Scored.Score = TFuzzyMatch.NoMatch then
+  mScored := Default(TScoredItem);
+  mScored.Score := MatchScore(AName, FContext.Prefix, FRequest.Matching);
+  if mScored.Score = TFuzzyMatch.NoMatch then
+  begin
     Exit(False);
-  Dec(Scored.Score, APenalty);
-  Scored.Item.Name := AName;
+  end;
+  Dec(mScored.Score, APenalty);
+  mScored.Item.Name := AName;
   // Der Index führt Namen ohne Escape-&; reservierte Wörter und &-Namen brauchen es im Quelltext (#1137).
   if (ASymbol.Name <> '') and (TPascalLexer.SourceName(AName) <> AName) then
-    Scored.Item.InsertText := TPascalLexer.SourceName(AName);
-  Scored.Item.AdditionalEdits := AEdits;
-  // Gebundene Typparameter (#450): FItems: TObjectList<TKunde> zeigt Add(const Value: TKunde), ohne Unit davor.
-  for Binding in ASymbol.Bindings do
-    Scored.Item.Bindings := Scored.Item.Bindings + [Copy(Binding, 1, Pos('=', Binding)) +
-      FRequest.Resolver.UnqualifyType(Copy(Binding, Pos('=', Binding) + 1, MaxInt), FOwnUnit)];
-  Scored.Item.Detail := TInterfaceStubs.SubstituteWords(ADetail, Scored.Item.Bindings);
-  Scored.Item.Kind := AKind;
-  // Wo die Deklaration steht, für completionItem/resolve.
-  Scored.Item.SourceFile := ASymbol.FileName;
-  Scored.Item.SourcePosition := ASymbol.SelectionRange.StartPos;
-  Scored.Item.Container := ASymbol.Container;
-  Scored.Item.Depth := ASymbol.Depth;
-  Scored.Item.IsHelper := ASymbol.IsHelper;
-  Scored.Item.HasParameters := ASymbol.MaxArgs > 0;
-  Scored.Item.Condition := ASymbol.Condition;
-  Scored.Item.VariantBranch := ASymbol.VariantBranch;
-  Scored.Item.Scope := ScopeOf(ASymbol, UnitName);
-  Scored.Item.UnitName := UnitName;
-  Scored.Item.Hides := ASymbol.Hides;
-  if Scored.Item.Scope = 6 then
   begin
-    Scored.Item.WithOrigin := ASymbol.WithOrigin;
-    Scored.Item.WithShadows := ASymbol.WithShadows;
+    mScored.Item.InsertText := TPascalLexer.SourceName(AName);
   end;
-  for Params in ASymbol.VariantParams do
-    if Params <> '' then
-      Scored.Item.HasParameters := True;
-  for Range in ASymbol.Overloads do
-    Scored.Item.Overloads := Scored.Item.Overloads + [Range.StartPos];
+  mScored.Item.AdditionalEdits := AEdits;
+  FillFromSymbol(Self, ASymbol, mScored.Item);
+  mScored.Item.Detail := TInterfaceStubs.SubstituteWords(ADetail, mScored.Item.Bindings);
+  mScored.Item.Kind := AKind;
   // Der Editor filtert selbst nach dem getippten Wort; unscharfe Treffer bekommen es
   // als filterText, damit er sie nicht verwirft.
   if (FRequest.Matching = TCompletionMatching.Fuzzy) and not AName.StartsWith(FContext.Prefix, True) then
-    Scored.Item.FilterText := FContext.Prefix;
-  // Erwarteter Typ (#417): Atlas gruppiert nach Fits.
-  Scored.Item.Expected := FExpected;
-  Scored.Item.Fits := (FExpected <> '') and (ASymbol.Name <> '') and MemberFits(ASymbol);
-  if Scored.Item.Fits then
-    FAnyFits := True;
-  // Typkonvertierung (#490): Umwandlung direkt vor dem Original, das mit seinem Typ wählbar bleibt.
-  if not Scored.Item.Fits and Conversion(AName, ASymbol, Scored, Converted) then
   begin
-    Converted.Order := FList.Count;
-    FList.Add(Converted);
+    mScored.Item.FilterText := FContext.Prefix;
   end;
-  Scored.Order := FList.Count;
-  FList.Add(Scored);
+  // Erwarteter Typ (#417): Atlas gruppiert nach Fits.
+  mScored.Item.Expected := FExpected;
+  mScored.Item.Fits := (FExpected <> '') and (ASymbol.Name <> '') and MemberFits(ASymbol);
+  if mScored.Item.Fits then
+  begin
+    FAnyFits := True;
+  end;
+  // Typkonvertierung (#490): Umwandlung direkt vor dem Original, das mit seinem Typ wählbar bleibt.
+  if not mScored.Item.Fits and ConversionOf(Self, AName, ASymbol, mScored, mConverted) then
+  begin
+    mConverted.Order := FList.Count;
+    FList.Add(mConverted);
+  end;
+  mScored.Order := FList.Count;
+  FList.Add(mScored);
   Result := True;
 end;
 
@@ -709,439 +885,856 @@ var
   Scored: TScoredItem;
 begin
   if FList.Count = 0 then
+  begin
     Exit;
+  end;
   Scored := FList[FList.Count - 1];
   Scored.Item.Unavailable := True;
   FList[FList.Count - 1] := Scored;
 end;
 
+/// <summary>Bedingungen (AConditions) und nicht geltende Deklarationen (AMissing) der obersten Ebene von AOwn,
+/// je Name groß geschrieben.</summary>
+procedure CollectOwnConditions(const AOwn: TUnitIndex; AConditions, AMissing: TDictionary<string, string>);
+var
+  mSymbol: TIndexSymbol;
+begin
+  for mSymbol in AOwn.Symbols do
+  begin
+    if (mSymbol.Container = '') and (mSymbol.Condition <> '') then
+    begin
+      AConditions.AddOrSetValue(UpperCase(mSymbol.Name), mSymbol.Condition);
+    end;
+  end;
+  for mSymbol in AOwn.Unavailable do
+  begin
+    if mSymbol.Container = '' then
+    begin
+      AMissing.AddOrSetValue(UpperCase(mSymbol.Name), mSymbol.Condition);
+    end;
+  end;
+end;
+
+/// <summary>Bedingung für AScored aus AMissing (dann nicht verfügbar) bzw. AConditions; False ohne Treffer.
+/// </summary>
+function ApplyOwnCondition(var AScored: TScoredItem; AConditions, AMissing: TDictionary<string, string>): Boolean;
+var
+  mCondition: string;
+begin
+  Result := True;
+  if AMissing.TryGetValue(UpperCase(AScored.Item.Name), mCondition) then
+  begin
+    AScored.Item.Condition := mCondition;
+    AScored.Item.Unavailable := True;
+    // Wie die übrigen nicht verfügbaren Einträge ans Ende.
+    Dec(AScored.Score, PenaltyUnavailable);
+  end
+  else if AConditions.TryGetValue(UpperCase(AScored.Item.Name), mCondition) then
+  begin
+    AScored.Item.Condition := mCondition;
+  end
+  else
+  begin
+    Result := False;
+  end;
+end;
+
+/// <summary>Eintrag aus der Datei der Anfrage ohne Bedingung? Gleichnamige aus anderen Units bleiben unberührt.
+/// </summary>
+function IsOwnPlainEntry(ACollector: TCompletionCollector; const AItem: TCompletionItem): Boolean;
+begin
+  Result := (AItem.Condition = '') and ((AItem.SourceFile = '') or
+    SameText(AItem.SourceFile, ACollector.FRequest.FileName));
+end;
+
 /// <summary>Einträge aus der eigenen Datei: Der Baum des Editors kennt keine {$IFDEF}-Zweige.
 /// Bedingung und Verfügbarkeit kommen aus dem Index dieser Unit, der mit Präprozessor gelesen ist (#476).</summary>
-procedure TCompletionCollector.MarkOwnConditions;
+procedure MarkOwnConditions(ACollector: TCompletionCollector);
 var
-  Own: TUnitIndex;
-  Conditions: TDictionary<string, string>;
-  Missing: TDictionary<string, string>;
-  Symbol: TIndexSymbol;
-  Index: Integer;
-  Condition: string;
-  Scored: TScoredItem;
+  mOwn: TUnitIndex;
+  mConditions, mMissing: TDictionary<string, string>;
+  mIndex: Integer;
+  mScored: TScoredItem;
 begin
-  if (FRequest.Index = nil) or not FRequest.Index.FindFile(FRequest.FileName, Own) then
+  if (ACollector.FRequest.Index = nil) or
+    not ACollector.FRequest.Index.FindFile(ACollector.FRequest.FileName, mOwn) then
+  begin
     Exit;
-  Conditions := TDictionary<string, string>.Create;
-  Missing := TDictionary<string, string>.Create;
+  end;
+  mConditions := TDictionary<string, string>.Create;
+  mMissing := TDictionary<string, string>.Create;
   try
-    for Symbol in Own.Symbols do
-      if (Symbol.Container = '') and (Symbol.Condition <> '') then
-        Conditions.AddOrSetValue(UpperCase(Symbol.Name), Symbol.Condition);
-    for Symbol in Own.Unavailable do
-      if Symbol.Container = '' then
-        Missing.AddOrSetValue(UpperCase(Symbol.Name), Symbol.Condition);
-    if (Conditions.Count = 0) and (Missing.Count = 0) then
-      Exit;
-    for Index := 0 to FList.Count - 1 do
+    CollectOwnConditions(mOwn, mConditions, mMissing);
+    if (mConditions.Count = 0) and (mMissing.Count = 0) then
     begin
-      Scored := FList[Index];
-      // Nur Einträge aus dieser Datei; gleichnamige aus anderen Units bleiben unberührt.
-      if (Scored.Item.Condition <> '') or ((Scored.Item.SourceFile <> '') and
-        not SameText(Scored.Item.SourceFile, FRequest.FileName)) then
-        Continue;
-      if Missing.TryGetValue(UpperCase(Scored.Item.Name), Condition) then
+      Exit;
+    end;
+    for mIndex := 0 to ACollector.FList.Count - 1 do
+    begin
+      mScored := ACollector.FList[mIndex];
+      if IsOwnPlainEntry(ACollector, mScored.Item) and ApplyOwnCondition(mScored, mConditions, mMissing) then
       begin
-        Scored.Item.Condition := Condition;
-        Scored.Item.Unavailable := True;
-        // Wie die übrigen nicht verfügbaren Einträge ans Ende.
-        Dec(Scored.Score, PenaltyUnavailable);
-      end
-      else if Conditions.TryGetValue(UpperCase(Scored.Item.Name), Condition) then
-        Scored.Item.Condition := Condition
-      else
-        Continue;
-      FList[Index] := Scored;
+        ACollector.FList[mIndex] := mScored;
+      end;
     end;
   finally
-    Missing.Free;
-    Conditions.Free;
+    mMissing.Free;
+    mConditions.Free;
   end;
 end;
 
 /// <summary>Namen der Liste und der schon gesendeten Einträge, groß geschrieben. Der Aufrufer gibt frei.
 /// </summary>
-function TCompletionCollector.KnownNames: TDictionary<string, Boolean>;
+function KnownNames(ACollector: TCompletionCollector): TDictionary<string, Boolean>;
 var
-  Existing: TScoredItem;
-  Name: string;
+  mExisting: TScoredItem;
+  mName: string;
 begin
   Result := TDictionary<string, Boolean>.Create;
-  for Existing in FList do
-    Result.AddOrSetValue(UpperCase(Existing.Item.Name), True);
-  for Name in FSentNames.Keys do
-    Result.AddOrSetValue(Name, True);
+  for mExisting in ACollector.FList do
+  begin
+    Result.AddOrSetValue(UpperCase(mExisting.Item.Name), True);
+  end;
+  for mName in ACollector.FSentNames.Keys do
+  begin
+    Result.AddOrSetValue(mName, True);
+  end;
+end;
+
+/// <summary>Passt die Symbolart AKind zum Filter der Anfrage (an Typpositionen nur Typen)?</summary>
+function KindAllowed(ACollector: TCompletionCollector; AKind: TIndexSymbolKind): Boolean;
+begin
+  Result := (ACollector.FContext.Filter <> TCompletionFilter.Types) or (AKind in IndexTypeKinds);
+end;
+
+/// <summary>Gehört ASymbol nicht zu AddUnavailable? Mitglieder nicht geltender Zweige zeigt AddUnavailableMembers
+/// hinter "Objekt.", aus fremden Units nur das Interface.</summary>
+function SkipsUnavailable(ACollector: TCompletionCollector; const ASymbol: TIndexSymbol; AOwnUnit: Boolean;
+  AKnown: TDictionary<string, Boolean>): Boolean;
+begin
+  Result := (ASymbol.Container <> '') or not (ASymbol.InInterface or AOwnUnit) or
+    AKnown.ContainsKey(UpperCase(ASymbol.Name)) or not KindAllowed(ACollector, ASymbol.Kind);
+end;
+
+/// <summary>Die nicht geltenden Deklarationen von AUnitInfo als nicht verfügbare Einträge.</summary>
+procedure AddUnavailableOf(ACollector: TCompletionCollector; const AUnitInfo: TUnitIndex; AOwnUnit: Boolean;
+  AKnown: TDictionary<string, Boolean>);
+var
+  mSymbol: TIndexSymbol;
+  mMember: TResolvedSymbol;
+begin
+  for mSymbol in AUnitInfo.Unavailable do
+  begin
+    if SkipsUnavailable(ACollector, mSymbol, AOwnUnit, AKnown) then
+    begin
+      Continue;
+    end;
+    mMember := Default(TResolvedSymbol);
+    mMember.Name := mSymbol.Name;
+    mMember.Condition := mSymbol.Condition;
+    mMember.FileName := AUnitInfo.FileName;
+    mMember.SelectionRange.StartPos := mSymbol.SelectionRange.StartPos;
+    if ACollector.Add(mSymbol.Name, AUnitInfo.UnitName, CompletionKindOf(mSymbol.Kind), PenaltyUnavailable,
+      mMember) then
+    begin
+      ACollector.MarkLastUnavailable;
+      AKnown.AddOrSetValue(UpperCase(mSymbol.Name), True);
+    end;
+  end;
 end;
 
 procedure TCompletionCollector.AddUnavailable;
 var
-  Known: TDictionary<string, Boolean>;
-  Used: TArray<string>;
-  Own: string;
-  UnitInfo: TUnitIndex;
-  Symbol: TIndexSymbol;
-  Member: TResolvedSymbol;
+  mKnown: TDictionary<string, Boolean>;
+  mUsed: TArray<string>;
+  mOwn: string;
+  mUnitInfo: TUnitIndex;
+  mOwnUnit: Boolean;
 begin
-  Known := KnownNames;
+  mKnown := KnownNames(Self);
   try
-    Used := TUsesClauses.UsedUnits(FRequest.Tree.Tokens);
-    Own := TUsesClauses.OwnName(FRequest.Tree.Tokens);
-    for UnitInfo in FRequest.Index.UnavailableUnits do
+    mUsed := TUsesClauses.UsedUnits(FRequest.Tree.Tokens);
+    mOwn := TUsesClauses.OwnName(FRequest.Tree.Tokens);
+    for mUnitInfo in FRequest.Index.UnavailableUnits do
     begin
-      if Length(UnitInfo.Unavailable) = 0 then
-        Continue;
-      if not SameText(UnitInfo.UnitName, Own) and
-        not TUsesClauses.IsUsed(Used, UnitInfo.UnitName, FRequest.Resolver.Namespaces) then
-        Continue;
-      for Symbol in UnitInfo.Unavailable do
+      mOwnUnit := SameText(mUnitInfo.UnitName, mOwn);
+      if (Length(mUnitInfo.Unavailable) > 0) and (mOwnUnit or
+        TUsesClauses.IsUsed(mUsed, mUnitInfo.UnitName, FRequest.Resolver.Namespaces)) then
       begin
-        // Mitglieder nicht geltender Zweige zeigt AddUnavailableMembers hinter "Objekt.".
-        if (Symbol.Container <> '') or (not Symbol.InInterface and not SameText(UnitInfo.UnitName, Own)) or
-          Known.ContainsKey(UpperCase(Symbol.Name)) or
-          ((FContext.Filter = TCompletionFilter.Types) and not (Symbol.Kind in IndexTypeKinds)) then
-          Continue;
-        Member := Default(TResolvedSymbol);
-        Member.Name := Symbol.Name;
-        Member.Condition := Symbol.Condition;
-        Member.FileName := UnitInfo.FileName;
-        Member.SelectionRange.StartPos := Symbol.SelectionRange.StartPos;
-        if Add(Symbol.Name, UnitInfo.UnitName, CompletionKindOf(Symbol.Kind), PenaltyUnavailable, Member) then
-        begin
-          MarkLastUnavailable;
-          Known.AddOrSetValue(UpperCase(Symbol.Name), True);
-        end;
+        AddUnavailableOf(Self, mUnitInfo, mOwnUnit, mKnown);
       end;
     end;
   finally
-    Known.Free;
+    mKnown.Free;
   end;
 end;
 
-procedure TCompletionCollector.AddFromOtherUnits;
+type
+  /// <summary>Suche nach Symbolen nicht eingebundener Units (#180) über den Namensindex (#617).</summary>
+  TImportScan = record
+    Collector: TCompletionCollector;
+    Names: TImportNameIndex;
+    QueryMask: UInt64;
+    Used: TArray<string>;
+    Own: string;
+    // Je Unit: 0 = noch nicht geprüft, 1 = überspringen (eigene oder schon eingebunden), 2 = vorschlagen.
+    UnitState: TArray<Byte>;
+    Known: TDictionary<string, Boolean>;
+    // nil = alle Namen, sonst nur diese (Großbuchstaben).
+    Wanted: TDictionary<string, Boolean>;
+    /// <summary>Kann AEntry passen (Zeichenmaske) und gehört er zu einer Unit, die nicht eingebunden ist?
+    /// </summary>
+    function Candidate(const AEntry: TImportNameEntry): Boolean;
+    /// <summary>Soll ASymbol aus AUnitInfo erscheinen (gewünscht, neu, Art, Treffer, zugelassen)?</summary>
+    function Wants(const AUnitInfo: TUnitIndex; const ASymbol: TIndexSymbol): Boolean;
+  end;
+
+/// <summary>Passt ASymbol aus AUnitInfo zum Getippten, und lässt der Filter von SetAdmit es zu?</summary>
+function SymbolAdmitted(ACollector: TCompletionCollector; const AUnitInfo: TUnitIndex;
+  const ASymbol: TIndexSymbol): Boolean;
 begin
-  AddImports(nil);
+  Result := (MatchScore(ASymbol.Name, ACollector.FContext.Prefix, ACollector.FRequest.Matching) <>
+    TFuzzyMatch.NoMatch) and (not Assigned(ACollector.FAdmit) or
+    ACollector.FAdmit(TResolvedSymbol.FromIndex(AUnitInfo, ASymbol)));
 end;
 
-procedure TCompletionCollector.AddFromOtherUnits(const ANames: TArray<string>);
+function TImportScan.Candidate(const AEntry: TImportNameEntry): Boolean;
 var
-  Wanted: TDictionary<string, Boolean>;
-  Name: string;
+  mUnitName: string;
 begin
-  Wanted := TDictionary<string, Boolean>.Create;
-  try
-    for Name in ANames do
-      Wanted.AddOrSetValue(UpperCase(Name), True);
-    AddImports(Wanted);
-  finally
-    Wanted.Free;
+  if not TImportNameIndex.MayMatch(AEntry.Mask, QueryMask) then
+  begin
+    Exit(False);
+  end;
+  if UnitState[AEntry.UnitPos] = 0 then
+  begin
+    mUnitName := Names.Units[AEntry.UnitPos].UnitName;
+    UnitState[AEntry.UnitPos] := 2;
+    if SameText(mUnitName, Own) or TUsesClauses.IsUsed(Used, mUnitName, Collector.FRequest.Resolver.Namespaces) then
+    begin
+      UnitState[AEntry.UnitPos] := 1;
+    end;
+  end;
+  Result := UnitState[AEntry.UnitPos] = 2;
+end;
+
+function TImportScan.Wants(const AUnitInfo: TUnitIndex; const ASymbol: TIndexSymbol): Boolean;
+var
+  mName: string;
+begin
+  mName := UpperCase(ASymbol.Name);
+  Result := ((Wanted = nil) or Wanted.ContainsKey(mName)) and not Known.ContainsKey(mName) and
+    KindAllowed(Collector, ASymbol.Kind) and SymbolAdmitted(Collector, AUnitInfo, ASymbol);
+end;
+
+/// <summary>Abzug für Symbole aus AUnitInfo: eingebundenes zuerst, dann Projekt-Units, dann RTL/VCL und andere
+/// Bibliotheken.</summary>
+function ImportPenalty(const AUnitInfo: TUnitIndex): Integer;
+begin
+  Result := PenaltyProjectImport;
+  if AUnitInfo.Library_ then
+  begin
+    Result := PenaltyLibraryImport;
   end;
 end;
 
-procedure TCompletionCollector.AddImports(AWanted: TDictionary<string, Boolean>);
+/// <summary>Eintrag für ASymbol aus AUnitInfo mit dem uses-Eintrag AEdit; False, wenn er nicht passt.</summary>
+function AddImport(ACollector: TCompletionCollector; const AUnitInfo: TUnitIndex; const ASymbol: TIndexSymbol;
+  const AEdit: TRuleEdit): Boolean;
 var
-  Known: TDictionary<string, Boolean>;
-  Used: TArray<string>;
-  Own: string;
-  UnitInfo: TUnitIndex;
-  Symbol: TIndexSymbol;
-  Edit: TRuleEdit;
-  Added: Integer;
-  Names: TImportNameIndex;
-  Entry: TImportNameEntry;
-  QueryMask: UInt64;
-  // Je Unit: 0 = noch nicht geprüft, 1 = überspringen (eigene oder schon eingebunden), 2 = vorschlagen.
-  UnitState: TArray<Byte>;
-  Member: TResolvedSymbol;
-  Penalty: Integer;
+  mMember: TResolvedSymbol;
 begin
-  Known := KnownNames;
+  // Merkmale und Quelle aus dem Indexsymbol (sonst fehlten z. B. die Klammern bei ShowMessage aus
+  // Vcl.Dialogs).
+  mMember := Default(TResolvedSymbol);
+  mMember.Name := ASymbol.Name;
+  mMember.MinArgs := ASymbol.MinArgs;
+  mMember.MaxArgs := ASymbol.MaxArgs;
+  mMember.FileName := AUnitInfo.FileName;
+  mMember.SelectionRange.StartPos := ASymbol.SelectionRange.StartPos;
+  // Gleichnamige Symbole verschiedener Units bleiben alle wählbar.
+  Result := ACollector.Add(ASymbol.Name, AUnitInfo.UnitName + cTexts[TCompletionCollectorText.AddToUses].Text,
+    CompletionKindOf(ASymbol.Kind),
+    ImportPenalty(AUnitInfo), mMember, [AEdit]);
+end;
+
+/// <summary>Wie AddFromOtherUnits; AWanted = nil heißt alle Namen, sonst nur diese (Großbuchstaben).</summary>
+procedure AddImports(ACollector: TCompletionCollector; AWanted: TDictionary<string, Boolean>);
+var
+  mScan: TImportScan;
+  mEntry: TImportNameEntry;
+  mUnitInfo: TUnitIndex;
+  mSymbol: TIndexSymbol;
+  mEdit: TRuleEdit;
+  mAdded: Integer;
+begin
+  mScan := Default(TImportScan);
+  mScan.Collector := ACollector;
+  mScan.Wanted := AWanted;
+  mScan.Known := KnownNames(ACollector);
   try
-    Used := TUsesClauses.UsedUnits(FRequest.Tree.Tokens);
-    Own := TUsesClauses.OwnName(FRequest.Tree.Tokens);
-    Added := 0;
+    mScan.Used := TUsesClauses.UsedUnits(ACollector.FRequest.Tree.Tokens);
+    mScan.Own := TUsesClauses.OwnName(ACollector.FRequest.Tree.Tokens);
     // Projekt-Units vor der Bibliothek: Sonst füllen RTL/VCL die Höchstzahl, bevor eine
     // gerade getippte Klasse aus dem eigenen Projekt drankommt (#492). Der Namensindex (#617)
     // ist schon so sortiert und enthält nur importierbare Symbole; die Zeichenmaske spart den
     // unscharfen Vergleich für fast alle Namen.
-    Names := TImportNames.Current(FRequest.Index);
-    QueryMask := TImportNameIndex.MaskOf(FContext.Prefix);
-    UnitState := nil;
-    SetLength(UnitState, Length(Names.Units));
-    for Entry in Names.Entries do
+    mScan.Names := TImportNames.Current(ACollector.FRequest.Index);
+    mScan.QueryMask := TImportNameIndex.MaskOf(ACollector.FContext.Prefix);
+    SetLength(mScan.UnitState, Length(mScan.Names.Units));
+    mAdded := 0;
+    for mEntry in mScan.Names.Entries do
     begin
-      if not TImportNameIndex.MayMatch(Entry.Mask, QueryMask) then
-        Continue;
-      if UnitState[Entry.UnitPos] = 0 then
+      if not mScan.Candidate(mEntry) then
       begin
-        UnitInfo := Names.Units[Entry.UnitPos];
-        if SameText(UnitInfo.UnitName, Own) or
-          TUsesClauses.IsUsed(Used, UnitInfo.UnitName, FRequest.Resolver.Namespaces) then
-          UnitState[Entry.UnitPos] := 1
-        else
-          UnitState[Entry.UnitPos] := 2;
+        Continue;
       end;
-      if UnitState[Entry.UnitPos] = 1 then
-        Continue;
-      UnitInfo := Names.Units[Entry.UnitPos];
-      Symbol := UnitInfo.Symbols[Entry.SymbolPos];
-      if ((AWanted <> nil) and not AWanted.ContainsKey(UpperCase(Symbol.Name))) or
-        Known.ContainsKey(UpperCase(Symbol.Name)) or
-        ((FContext.Filter = TCompletionFilter.Types) and not (Symbol.Kind in IndexTypeKinds)) then
-        Continue;
-      if MatchScore(Symbol.Name, FContext.Prefix, FRequest.Matching) = TFuzzyMatch.NoMatch then
-        Continue;
-      if Assigned(FAdmit) and not FAdmit(FRequest.Resolver.SymbolFrom(UnitInfo, Symbol)) then
-        Continue;
-      // Fest #13#10 wie bisher (eigener Befund: uses-Eintrag in LF-Dateien, siehe CHANGELOG).
-      if not TUsesClauses.AddUnit(FRequest.Tree.Tokens, FContext.Offset, UnitInfo.UnitName, #13#10, Edit) then
-        Exit;
-      // Merkmale und Quelle aus dem Indexsymbol (sonst fehlten z. B. die Klammern bei ShowMessage aus
-      // Vcl.Dialogs).
-      Member := Default(TResolvedSymbol);
-      Member.Name := Symbol.Name;
-      Member.MinArgs := Symbol.MinArgs;
-      Member.MaxArgs := Symbol.MaxArgs;
-      Member.FileName := UnitInfo.FileName;
-      Member.SelectionRange.StartPos := Symbol.SelectionRange.StartPos;
-      // Eingebundenes zuerst, dann Projekt-Units, dann RTL/VCL und andere Bibliotheken.
-      if UnitInfo.Library_ then
-        Penalty := PenaltyLibraryImport
-      else
-        Penalty := PenaltyProjectImport;
-      // Gleichnamige Symbole verschiedener Units bleiben alle wählbar.
-      if Add(Symbol.Name, UnitInfo.UnitName + ' (uses ergänzen)', CompletionKindOf(Symbol.Kind), Penalty, Member,
-        [Edit]) then
+      mUnitInfo := mScan.Names.Units[mEntry.UnitPos];
+      mSymbol := mUnitInfo.Symbols[mEntry.SymbolPos];
+      if not mScan.Wants(mUnitInfo, mSymbol) then
       begin
-        Inc(Added);
-        if Added >= CompletionMaxImportItems then
+        Continue;
+      end;
+      // Fest #13#10 wie bisher (eigener Befund: uses-Eintrag in LF-Dateien, siehe CHANGELOG).
+      if not TUsesClauses.AddUnit(ACollector.FRequest.Tree.Tokens, ACollector.FContext.Offset, mUnitInfo.UnitName,
+        #13#10, mEdit) then
+      begin
+        Exit;
+      end;
+      if AddImport(ACollector, mUnitInfo, mSymbol, mEdit) then
+      begin
+        Inc(mAdded);
+        if mAdded >= CompletionMaxImportItems then
         begin
-          FImportsCapped := True;
+          ACollector.FImportsCapped := True;
           Exit;
         end;
       end;
     end;
   finally
-    Known.Free;
+    mScan.Known.Free;
   end;
 end;
 
-procedure TCompletionCollector.AddSameNameVariants;
+procedure TCompletionCollector.AddFromOtherUnits;
+begin
+  AddImports(Self, nil);
+end;
+
+procedure TCompletionCollector.AddFromOtherUnits(const ANames: TArray<string>);
+var
+  mWanted: TDictionary<string, Boolean>;
+  mName: string;
+begin
+  mWanted := TDictionary<string, Boolean>.Create;
+  try
+    for mName in ANames do
+    begin
+      mWanted.AddOrSetValue(UpperCase(mName), True);
+    end;
+    AddImports(Self, mWanted);
+  finally
+    mWanted.Free;
+  end;
+end;
+
+/// <summary>Eintrag für den IDE-Typ AType; AUsed: seine Unit steht schon im uses. False, wenn er nicht passt.
+/// </summary>
+function AddIdeType(ACollector: TCompletionCollector; const AType: TIdeTypeEntry; AUsed: Boolean): Boolean;
+var
+  mEdit: TRuleEdit;
+begin
+  if AUsed then
+  begin
+    Exit(ACollector.Add(AType.Name, AType.UnitName, KindClass, Default(TResolvedSymbol)));
+  end;
+  // Fest #13#10 wie bei AddImports.
+  Result := TUsesClauses.AddUnit(ACollector.FRequest.Tree.Tokens, ACollector.FContext.Offset, AType.UnitName,
+    #13#10, mEdit) and ACollector.Add(AType.Name, AType.UnitName + cTexts[TCompletionCollectorText.AddToUses].Text,
+    KindClass, PenaltyLibraryImport, Default(TResolvedSymbol), [mEdit]);
+end;
+
+procedure TCompletionCollector.AddIdeTypes;
+var
+  mKnown: TDictionary<string, Boolean>;
+  mType: TIdeTypeEntry;
+  mUsed: TArray<string>;
+  mOwn: string;
+  mAdded: Integer;
+begin
+  if (Length(FRequest.IdeTypes) = 0) or Assigned(FAdmit) or not KindAllowed(Self, TIndexSymbolKind.ClassType) then
+  begin
+    Exit;
+  end;
+  mKnown := KnownNames(Self);
+  try
+    mUsed := TUsesClauses.UsedUnits(FRequest.Tree.Tokens);
+    mOwn := TUsesClauses.OwnName(FRequest.Tree.Tokens);
+    mAdded := 0;
+    for mType in FRequest.IdeTypes do
+    begin
+      if mKnown.ContainsKey(UpperCase(mType.Name)) or SameText(mType.UnitName, mOwn) or
+        not AddIdeType(Self, mType, TUsesClauses.IsUsed(mUsed, mType.UnitName, FRequest.Resolver.Namespaces)) then
+      begin
+        Continue;
+      end;
+      mKnown.AddOrSetValue(UpperCase(mType.Name), True);
+      Inc(mAdded);
+      if mAdded >= CompletionMaxImportItems then
+      begin
+        FImportsCapped := True;
+        Exit;
+      end;
+    end;
+  finally
+    mKnown.Free;
+  end;
+end;
+
+const
+  /// <summary>Platz für Varianten in der Reihenfolge hinter jedem Eintrag.</summary>
+  cVariantSlots = 1000;
+
 type
-  TVariant = record
+  TSameNameVariant = record
     Active: Integer;
     UnitInfo: TUnitIndex;
     Symbol: TIndexSymbol;
   end;
-const
-  /// <summary>Platz für Varianten in der Reihenfolge hinter jedem Eintrag.</summary>
-  VariantSlots = 1000;
+
+  /// <summary>Gleichnamige Bezeichner aus anderen Units (#475) für AddSameNameVariants.</summary>
+  TSameNameScan = record
+    Collector: TCompletionCollector;
+    // Je Name groß geschrieben die Position der aktiven Variante in der Liste.
+    Active: TDictionary<string, Integer>;
+    Variants: TList<TSameNameVariant>;
+    // Je Position der aktiven Variante: Units weiterer Varianten und ausgeblendete (FMX).
+    Units, Hidden: TArray<TArray<string>>;
+    Own: string;
+    // Hinzugefügte Varianten, für ihre Reihenfolge.
+    Count: Integer;
+    /// <summary>Aktiv ist, was die Namensauflösung aus den uses brachte (letzte Unit gewinnt).</summary>
+    procedure FindActive;
+    /// <summary>Varianten der aktiven Namen aus dem Namensindex.</summary>
+    procedure Collect;
+    function Skips(const AVariant: TSameNameVariant): Boolean;
+    procedure Take(const AVariant: TSameNameVariant);
+    /// <summary>Die aktive Variante nennt alle Units, die den Namen deklarieren.</summary>
+    procedure MarkActive;
+    /// <summary>AVariant direkt hinter ihrer aktiven Variante.</summary>
+    procedure AddVariant(const AVariant: TSameNameVariant; const AUsed: TArray<string>; const ARange: TTextRange);
+    /// <summary>Die übrigen behalten ihre Reihenfolge, mit Platz für die Varianten dahinter.</summary>
+    procedure Spread;
+  end;
+
+procedure TSameNameScan.FindActive;
 var
-  Count: Integer;
-  Active: TDictionary<string, Integer>;
-  Variants: TList<TVariant>;
-  Variant: TVariant;
-  Units, Hidden: TArray<TArray<string>>;
-  Names: TImportNameIndex;
-  Entry: TImportNameEntry;
-  Used: TArray<string>;
-  Own, Key, Mode, Text: string;
-  QueryMask: UInt64;
-  Index, Position: Integer;
-  Scored: TScoredItem;
-  Member: TResolvedSymbol;
-  Edits, Moved: TArray<TRuleEdit>;
-  Edit: TRuleEdit;
-  IsUsed_, Movable: Boolean;
-  Range: TTextRange;
+  mIndex: Integer;
+  mItem: TCompletionItem;
 begin
-  Count := 0;
+  for mIndex := 0 to Collector.FList.Count - 1 do
+  begin
+    mItem := Collector.FList[mIndex].Item;
+    if (mItem.Scope = 5) and (mItem.UnitName <> '') and (mItem.Action = '') and not mItem.Unavailable and
+      (mItem.Conversion = '') then
+    begin
+      Active.AddOrSetValue(UpperCase(mItem.Name), mIndex);
+    end;
+  end;
+end;
+
+procedure TSameNameScan.Collect;
+var
+  mNames: TImportNameIndex;
+  mEntry: TImportNameEntry;
+  mQueryMask: UInt64;
+  mVariant: TSameNameVariant;
+begin
+  mNames := TImportNames.Current(Collector.FRequest.Index);
+  mQueryMask := TImportNameIndex.MaskOf(Collector.FContext.Prefix);
+  for mEntry in mNames.Entries do
+  begin
+    if not TImportNameIndex.MayMatch(mEntry.Mask, mQueryMask) then
+    begin
+      Continue;
+    end;
+    mVariant.Symbol := mNames.Units[mEntry.UnitPos].Symbols[mEntry.SymbolPos];
+    if Active.TryGetValue(UpperCase(mVariant.Symbol.Name), mVariant.Active) then
+    begin
+      mVariant.UnitInfo := mNames.Units[mEntry.UnitPos];
+      Take(mVariant);
+    end;
+  end;
+end;
+
+function TSameNameScan.Skips(const AVariant: TSameNameVariant): Boolean;
+begin
+  Result := AVariant.Symbol.Unavailable or SameText(AVariant.UnitInfo.UnitName, Own) or
+    SameText(AVariant.UnitInfo.UnitName, Collector.FList[AVariant.Active].Item.UnitName) or
+    MatchText(AVariant.UnitInfo.UnitName, Units[AVariant.Active]) or
+    not KindAllowed(Collector, AVariant.Symbol.Kind);
+end;
+
+procedure TSameNameScan.Take(const AVariant: TSameNameVariant);
+var
+  mText: string;
+begin
+  if Skips(AVariant) then
+  begin
+    Exit;
+  end;
+  if TCompletionSameNames.IsFmx(AVariant.UnitInfo.UnitName) and not Collector.FRequest.Settings.ShowFmxUnits then
+  begin
+    mText := AVariant.UnitInfo.UnitName + '.' + AVariant.Symbol.Name;
+    if not MatchText(mText, Hidden[AVariant.Active]) then
+    begin
+      Hidden[AVariant.Active] := Hidden[AVariant.Active] + [mText];
+    end;
+    Exit;
+  end;
+  Units[AVariant.Active] := Units[AVariant.Active] + [AVariant.UnitInfo.UnitName];
+  Variants.Add(AVariant);
+end;
+
+procedure TSameNameScan.MarkActive;
+var
+  mIndex: Integer;
+  mScored: TScoredItem;
+begin
+  for mIndex := 0 to Collector.FList.Count - 1 do
+  begin
+    if (Length(Units[mIndex]) > 0) or (Length(Hidden[mIndex]) > 0) then
+    begin
+      mScored := Collector.FList[mIndex];
+      mScored.Item.SameNameActive := True;
+      mScored.Item.SameNameUnits := [mScored.Item.UnitName] + Units[mIndex];
+      mScored.Item.SameNameHidden := Hidden[mIndex];
+      Collector.FList[mIndex] := mScored;
+    end;
+  end;
+end;
+
+/// <summary>Einfügeart für AVariant (aktiv aus Unit AKey) und die Änderungen dazu: uses umstellen oder ergänzen.
+/// False, wenn der uses-Eintrag nicht geht.</summary>
+function VariantEdits(ACollector: TCompletionCollector; const AVariant: TSameNameVariant; const AKey: string;
+  const AUsed: TArray<string>; out AMode: string; out AEdits: TArray<TRuleEdit>): Boolean;
+var
+  mIsUsed, mMovable: Boolean;
+  mMoved: TArray<TRuleEdit>;
+  mEdit: TRuleEdit;
+begin
+  mIsUsed := TUsesClauses.IsUsed(AUsed, AVariant.UnitInfo.UnitName, ACollector.FRequest.Resolver.Namespaces);
+  mMovable := mIsUsed and TCompletionSameNames.MoveToEnd(ACollector.FRequest.Tree.Tokens,
+    AVariant.UnitInfo.UnitName, AKey, ACollector.FRequest.Resolver.Namespaces, mMoved);
+  AMode := TCompletionSameNames.InsertMode(ACollector.FRequest.Settings.SameNameInsert, mIsUsed, mMovable);
+  AEdits := nil;
+  Result := True;
+  if AMode = TCompletionSameNames.InsertMove then
+  begin
+    AEdits := mMoved;
+  end
+  else if (AMode = TCompletionSameNames.InsertAdd) or (AMode = TCompletionSameNames.InsertPrefixAdd) then
+  begin
+    Result := TUsesClauses.AddUnit(ACollector.FRequest.Tree.Tokens, ACollector.FContext.Offset,
+      AVariant.UnitInfo.UnitName, ACollector.FRequest.LineBreak, mEdit);
+    if Result then
+    begin
+      AEdits := [mEdit];
+    end;
+  end;
+end;
+
+/// <summary>Symbol zum Eintrag von AVariant: Merkmale und Quelle aus dem Index.</summary>
+function VariantSymbol(const AVariant: TSameNameVariant): TResolvedSymbol;
+begin
+  Result := Default(TResolvedSymbol);
+  Result.Kind := TResolvedKind.Symbol;
+  Result.Name := AVariant.Symbol.Name;
+  Result.UnitName := AVariant.UnitInfo.UnitName;
+  Result.MinArgs := AVariant.Symbol.MinArgs;
+  Result.MaxArgs := AVariant.Symbol.MaxArgs;
+  Result.FileName := AVariant.UnitInfo.FileName;
+  Result.SelectionRange.StartPos := AVariant.Symbol.SelectionRange.StartPos;
+end;
+
+procedure TSameNameScan.AddVariant(const AVariant: TSameNameVariant; const AUsed: TArray<string>;
+  const ARange: TTextRange);
+var
+  mActive, mScored: TScoredItem;
+  mMode: string;
+  mEdits: TArray<TRuleEdit>;
+  mPosition: Integer;
+begin
+  mActive := Collector.FList[AVariant.Active];
+  if not VariantEdits(Collector, AVariant, mActive.Item.UnitName, AUsed, mMode, mEdits) or
+    not Collector.Add(AVariant.Symbol.Name, AVariant.UnitInfo.UnitName, CompletionKindOf(AVariant.Symbol.Kind), 0,
+    VariantSymbol(AVariant), mEdits) then
+  begin
+    Exit;
+  end;
+  // Direkt hinter der aktiven Variante: gleiche Punktzahl, Reihenfolge gleich dahinter (siehe Spread).
+  mPosition := Collector.FList.Count - 1;
+  mScored := Collector.FList[mPosition];
+  mScored.Score := mActive.Score;
+  Inc(Count);
+  mScored.Order := mActive.Order * cVariantSlots + Count;
+  mScored.Item.SameNameOf := mActive.Item.UnitName;
+  mScored.Item.SameNameInsert := mMode;
+  mScored.Item.SameNameUnits := mActive.Item.SameNameUnits;
+  mScored.Item.SameNameHidden := mActive.Item.SameNameHidden;
+  if mScored.Item.FilterText = '' then
+  begin
+    mScored.Item.FilterText := AVariant.Symbol.Name;
+  end;
+  if (mMode = TCompletionSameNames.InsertPrefix) or (mMode = TCompletionSameNames.InsertPrefixAdd) then
+  begin
+    mScored.Item.HasTextEdit := True;
+    mScored.Item.TextEdit := TRuleEdit.Create(ARange, AVariant.UnitInfo.UnitName + '.' + AVariant.Symbol.Name);
+  end;
+  // Kein uses-Eintrag im Sinne von #180: Atlas soll die Edits nicht als „+ Unit“ zeigen.
+  mScored.Item.Action := 'sameName';
+  Collector.FList[mPosition] := mScored;
+end;
+
+procedure TSameNameScan.Spread;
+var
+  mIndex: Integer;
+  mScored: TScoredItem;
+begin
+  if Count = 0 then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to Collector.FList.Count - 1 do
+  begin
+    if Collector.FList[mIndex].Item.SameNameOf = '' then
+    begin
+      mScored := Collector.FList[mIndex];
+      mScored.Order := mScored.Order * cVariantSlots;
+      Collector.FList[mIndex] := mScored;
+    end;
+  end;
+end;
+
+procedure TCompletionCollector.AddSameNameVariants;
+var
+  mScan: TSameNameScan;
+  mUsed: TArray<string>;
+  mRange: TTextRange;
+  mVariant: TSameNameVariant;
+begin
   if not FRequest.Settings.SameNameVariants or (FContext.Kind <> TCompletionContextKind.Scope) or
     (FRequest.Tree = nil) or (FRequest.Index = nil) then
+  begin
     Exit;
-  Active := TDictionary<string, Integer>.Create;
-  Variants := TList<TVariant>.Create;
+  end;
+  mScan := Default(TSameNameScan);
+  mScan.Collector := Self;
+  mScan.Active := TDictionary<string, Integer>.Create;
+  mScan.Variants := TList<TSameNameVariant>.Create;
   try
-    // Aktiv ist, was die Namensauflösung aus den uses brachte (letzte Unit gewinnt).
-    for Index := 0 to FList.Count - 1 do
-      if (FList[Index].Item.Scope = 5) and (FList[Index].Item.UnitName <> '') and (FList[Index].Item.Action = '') and
-        not FList[Index].Item.Unavailable and (FList[Index].Item.Conversion = '') then
-        Active.AddOrSetValue(UpperCase(FList[Index].Item.Name), Index);
-    if Active.Count = 0 then
+    mScan.FindActive;
+    if mScan.Active.Count = 0 then
+    begin
       Exit;
-    Own := TUsesClauses.OwnName(FRequest.Tree.Tokens);
-    Names := TImportNames.Current(FRequest.Index);
-    QueryMask := TImportNameIndex.MaskOf(FContext.Prefix);
-    SetLength(Units, FList.Count);
-    SetLength(Hidden, FList.Count);
-    for Entry in Names.Entries do
-    begin
-      if not TImportNameIndex.MayMatch(Entry.Mask, QueryMask) then
-        Continue;
-      Variant.Symbol := Names.Units[Entry.UnitPos].Symbols[Entry.SymbolPos];
-      if not Active.TryGetValue(UpperCase(Variant.Symbol.Name), Variant.Active) then
-        Continue;
-      Variant.UnitInfo := Names.Units[Entry.UnitPos];
-      if Variant.Symbol.Unavailable or SameText(Variant.UnitInfo.UnitName, Own) or
-        SameText(Variant.UnitInfo.UnitName, FList[Variant.Active].Item.UnitName) or
-        MatchText(Variant.UnitInfo.UnitName, Units[Variant.Active]) or
-        ((FContext.Filter = TCompletionFilter.Types) and not (Variant.Symbol.Kind in IndexTypeKinds)) then
-        Continue;
-      if TCompletionSameNames.IsFmx(Variant.UnitInfo.UnitName) and not FRequest.Settings.ShowFmxUnits then
-      begin
-        Text := Variant.UnitInfo.UnitName + '.' + Variant.Symbol.Name;
-        if not MatchText(Text, Hidden[Variant.Active]) then
-          Hidden[Variant.Active] := Hidden[Variant.Active] + [Text];
-        Continue;
-      end;
-      Units[Variant.Active] := Units[Variant.Active] + [Variant.UnitInfo.UnitName];
-      Variants.Add(Variant);
     end;
-    // Die aktive Variante nennt alle Units, die den Namen deklarieren.
-    for Index := 0 to FList.Count - 1 do
-      if (Length(Units[Index]) > 0) or (Length(Hidden[Index]) > 0) then
-      begin
-        Scored := FList[Index];
-        Scored.Item.SameNameActive := True;
-        Scored.Item.SameNameUnits := [Scored.Item.UnitName] + Units[Index];
-        Scored.Item.SameNameHidden := Hidden[Index];
-        FList[Index] := Scored;
-      end;
-    Used := TUsesClauses.UsedUnits(FRequest.Tree.Tokens);
-    Range := TTextRange.Create(FRequest.Position.Line, FRequest.Position.Character - Length(FContext.Prefix),
+    mScan.Own := TUsesClauses.OwnName(FRequest.Tree.Tokens);
+    SetLength(mScan.Units, FList.Count);
+    SetLength(mScan.Hidden, FList.Count);
+    mScan.Collect;
+    mScan.MarkActive;
+    mUsed := TUsesClauses.UsedUnits(FRequest.Tree.Tokens);
+    mRange := TTextRange.Create(FRequest.Position.Line, FRequest.Position.Character - Length(FContext.Prefix),
       FRequest.Position.Line, FRequest.Position.Character);
-    for Variant in Variants do
+    for mVariant in mScan.Variants do
     begin
-      Key := FList[Variant.Active].Item.UnitName;
-      IsUsed_ := TUsesClauses.IsUsed(Used, Variant.UnitInfo.UnitName, FRequest.Resolver.Namespaces);
-      Movable := IsUsed_ and TCompletionSameNames.MoveToEnd(FRequest.Tree.Tokens, Variant.UnitInfo.UnitName, Key,
-        FRequest.Resolver.Namespaces, Moved);
-      Mode := TCompletionSameNames.InsertMode(FRequest.Settings.SameNameInsert, IsUsed_, Movable);
-      Edits := nil;
-      if Mode = TCompletionSameNames.InsertMove then
-        Edits := Moved
-      else if (Mode = TCompletionSameNames.InsertAdd) or (Mode = TCompletionSameNames.InsertPrefixAdd) then
-      begin
-        if not TUsesClauses.AddUnit(FRequest.Tree.Tokens, FContext.Offset, Variant.UnitInfo.UnitName,
-          FRequest.LineBreak, Edit) then
-          Continue;
-        Edits := [Edit];
-      end;
-      Member := Default(TResolvedSymbol);
-      Member.Kind := TResolvedKind.Symbol;
-      Member.Name := Variant.Symbol.Name;
-      Member.UnitName := Variant.UnitInfo.UnitName;
-      Member.MinArgs := Variant.Symbol.MinArgs;
-      Member.MaxArgs := Variant.Symbol.MaxArgs;
-      Member.FileName := Variant.UnitInfo.FileName;
-      Member.SelectionRange.StartPos := Variant.Symbol.SelectionRange.StartPos;
-      if not Add(Variant.Symbol.Name, Variant.UnitInfo.UnitName, CompletionKindOf(Variant.Symbol.Kind), 0, Member,
-        Edits) then
-        Continue;
-      // Direkt hinter der aktiven Variante: gleiche Punktzahl, Reihenfolge gleich dahinter (siehe unten).
-      Position := FList.Count - 1;
-      Scored := FList[Position];
-      Scored.Score := FList[Variant.Active].Score;
-      Inc(Count);
-      Scored.Order := FList[Variant.Active].Order * VariantSlots + Count;
-      Scored.Item.SameNameOf := Key;
-      Scored.Item.SameNameInsert := Mode;
-      Scored.Item.SameNameUnits := FList[Variant.Active].Item.SameNameUnits;
-      Scored.Item.SameNameHidden := FList[Variant.Active].Item.SameNameHidden;
-      if Scored.Item.FilterText = '' then
-        Scored.Item.FilterText := Variant.Symbol.Name;
-      if (Mode = TCompletionSameNames.InsertPrefix) or (Mode = TCompletionSameNames.InsertPrefixAdd) then
-      begin
-        Scored.Item.HasTextEdit := True;
-        Scored.Item.TextEdit := TRuleEdit.Create(Range, Variant.UnitInfo.UnitName + '.' + Variant.Symbol.Name);
-      end;
-      // Kein uses-Eintrag im Sinne von #180: Atlas soll die Edits nicht als „+ Unit“ zeigen.
-      Scored.Item.Action := 'sameName';
-      FList[Position] := Scored;
+      mScan.AddVariant(mVariant, mUsed, mRange);
     end;
   finally
-    // Die übrigen behalten ihre Reihenfolge, mit Platz für die Varianten dahinter.
-    if Count > 0 then
-      for Index := 0 to FList.Count - 1 do
-        if FList[Index].Item.SameNameOf = '' then
-        begin
-          Scored := FList[Index];
-          Scored.Order := Scored.Order * VariantSlots;
-          FList[Index] := Scored;
-        end;
-    Variants.Free;
-    Active.Free;
+    mScan.Spread;
+    mScan.Variants.Free;
+    mScan.Active.Free;
+  end;
+end;
+
+/// <summary>Stufe des ersten Typs aus ATypes, den AHelper erweitert; -1 ohne.</summary>
+function HelperDepth(const AHelper: TIndexSymbol; const ATypes: TArray<TResolvedSymbol>): Integer;
+var
+  mPosition: Integer;
+begin
+  Result := -1;
+  for mPosition := 0 to High(ATypes) do
+  begin
+    if TResolverText.HelperTargets(AHelper.Ancestors[High(AHelper.Ancestors)], ATypes[mPosition]) then
+    begin
+      Exit(mPosition);
+    end;
+  end;
+end;
+
+/// <summary>Ist AUnitName die eigene oder schon eingebunden (System immer)?</summary>
+function HelperUnitSkipped(ACollector: TCompletionCollector; const AUnitName, AOwn: string;
+  const AUsed: TArray<string>): Boolean;
+begin
+  Result := SameText(AUnitName, AOwn) or TUsesClauses.IsUsed(AUsed, AUnitName,
+    ACollector.FRequest.Resolver.Namespaces) or TUsesClauses.IsUsed(AUsed, AUnitName, ['System']);
+end;
+
+/// <summary>Kommt AMember als öffentliches, neues und passendes Mitglied des Helpers AHelperName in Frage?
+/// </summary>
+function HelperMemberWanted(ACollector: TCompletionCollector; const AMember: TIndexSymbol;
+  const AHelperName: string; AKnown: TDictionary<string, Boolean>): Boolean;
+begin
+  Result := SameText(AMember.Container, AHelperName) and
+    (AMember.Visibility in [TIndexVisibility.Public, TIndexVisibility.Published]) and
+    not AKnown.ContainsKey(UpperCase(AMember.Name)) and ((ACollector.FContext.Prefix = '') or
+    (MatchScore(AMember.Name, ACollector.FContext.Prefix, ACollector.FRequest.Matching) <> TFuzzyMatch.NoMatch));
+end;
+
+/// <summary>Mitglieder des Helpers AHelperName aus AUnitInfo mit dem uses-Eintrag AEdit, Stufe ADepth.</summary>
+procedure AddHelperMembers(ACollector: TCompletionCollector; const AUnitInfo: TUnitIndex; const AHelperName: string;
+  ADepth: Integer; const AEdit: TRuleEdit; AKnown: TDictionary<string, Boolean>);
+var
+  mSymbol: TIndexSymbol;
+  mMember: TResolvedSymbol;
+begin
+  for mSymbol in AUnitInfo.Symbols do
+  begin
+    if not HelperMemberWanted(ACollector, mSymbol, AHelperName, AKnown) then
+    begin
+      Continue;
+    end;
+    mMember := TResolvedSymbol.FromIndex(AUnitInfo, mSymbol);
+    mMember.IsHelper := True;
+    mMember.Depth := ADepth;
+    if ACollector.Add(mSymbol.Name, AUnitInfo.UnitName + cTexts[TCompletionCollectorText.AddToUses].Text,
+      CompletionKindOf(mSymbol.Kind),
+      ImportPenalty(AUnitInfo), mMember, [AEdit]) then
+    begin
+      AKnown.AddOrSetValue(UpperCase(mSymbol.Name), True);
+    end;
   end;
 end;
 
 procedure TCompletionCollector.AddHelpersFromOtherUnits(const ATypes: TArray<TResolvedSymbol>);
 var
-  Known: TDictionary<string, Boolean>;
-  Used: TArray<string>;
-  Own: string;
-  Names: TImportNameIndex;
-  Entry: TImportNameEntry;
-  UnitInfo: TUnitIndex;
-  Helper: TIndexSymbol;
-  Edit: TRuleEdit;
-  Member: TResolvedSymbol;
-  Depth, Position, Penalty: Integer;
+  mKnown: TDictionary<string, Boolean>;
+  mUsed: TArray<string>;
+  mOwn: string;
+  mNames: TImportNameIndex;
+  mEntry: TImportNameEntry;
+  mUnitInfo: TUnitIndex;
+  mHelper: TIndexSymbol;
+  mEdit: TRuleEdit;
+  mDepth: Integer;
 begin
   if Length(ATypes) = 0 then
+  begin
     Exit;
-  Known := KnownNames;
+  end;
+  mKnown := KnownNames(Self);
   try
-    Used := TUsesClauses.UsedUnits(FRequest.Tree.Tokens);
-    Own := TUsesClauses.OwnName(FRequest.Tree.Tokens);
-    Names := TImportNames.Current(FRequest.Index);
-    for Entry in Names.Helpers do
+    mUsed := TUsesClauses.UsedUnits(FRequest.Tree.Tokens);
+    mOwn := TUsesClauses.OwnName(FRequest.Tree.Tokens);
+    mNames := TImportNames.Current(FRequest.Index);
+    for mEntry in mNames.Helpers do
     begin
-      UnitInfo := Names.Units[Entry.UnitPos];
-      if SameText(UnitInfo.UnitName, Own) or TUsesClauses.IsUsed(Used, UnitInfo.UnitName,
-        FRequest.Resolver.Namespaces) or TUsesClauses.IsUsed(Used, UnitInfo.UnitName, ['System']) then
-        Continue;
-      Helper := UnitInfo.Symbols[Entry.SymbolPos];
-      Depth := -1;
-      for Position := 0 to High(ATypes) do
-        if TNameResolver.HelperTargets(Helper.Ancestors[High(Helper.Ancestors)], ATypes[Position]) then
-        begin
-          Depth := Position;
-          Break;
-        end;
-      if Depth < 0 then
-        Continue;
-      if not TUsesClauses.AddUnit(FRequest.Tree.Tokens, FContext.Offset, UnitInfo.UnitName, #13#10, Edit) then
-        Exit;
-      if UnitInfo.Library_ then
-        Penalty := PenaltyLibraryImport
-      else
-        Penalty := PenaltyProjectImport;
-      for Position := 0 to High(UnitInfo.Symbols) do
+      mUnitInfo := mNames.Units[mEntry.UnitPos];
+      if HelperUnitSkipped(Self, mUnitInfo.UnitName, mOwn, mUsed) then
       begin
-        if not SameText(UnitInfo.Symbols[Position].Container, Helper.Name) or
-          not (UnitInfo.Symbols[Position].Visibility in [TIndexVisibility.Public, TIndexVisibility.Published]) or
-          Known.ContainsKey(UpperCase(UnitInfo.Symbols[Position].Name)) then
-          Continue;
-        if (FContext.Prefix <> '') and (MatchScore(UnitInfo.Symbols[Position].Name, FContext.Prefix,
-          FRequest.Matching) = TFuzzyMatch.NoMatch) then
-          Continue;
-        Member := FRequest.Resolver.SymbolFrom(UnitInfo, UnitInfo.Symbols[Position]);
-        Member.IsHelper := True;
-        Member.Depth := Depth;
-        if Add(UnitInfo.Symbols[Position].Name, UnitInfo.UnitName + ' (uses ergänzen)',
-          CompletionKindOf(UnitInfo.Symbols[Position].Kind), Penalty, Member, [Edit]) then
-          Known.AddOrSetValue(UpperCase(UnitInfo.Symbols[Position].Name), True);
+        Continue;
       end;
+      mHelper := mUnitInfo.Symbols[mEntry.SymbolPos];
+      mDepth := HelperDepth(mHelper, ATypes);
+      if mDepth < 0 then
+      begin
+        Continue;
+      end;
+      if not TUsesClauses.AddUnit(FRequest.Tree.Tokens, FContext.Offset, mUnitInfo.UnitName, #13#10, mEdit) then
+      begin
+        Exit;
+      end;
+      AddHelperMembers(Self, mUnitInfo, mHelper.Name, mDepth, mEdit, mKnown);
     end;
   finally
-    Known.Free;
+    mKnown.Free;
   end;
+end;
+
+/// <summary>Passende zuerst (#417): nach Fits gruppiert, sonst in der sortierten Reihenfolge.</summary>
+procedure OrderFitting(AList: TList<TScoredItem>);
+var
+  mIndex: Integer;
+  mScored: TScoredItem;
+begin
+  for mIndex := 0 to AList.Count - 1 do
+  begin
+    mScored := AList[mIndex];
+    mScored.Order := mIndex + IfThen(mScored.Item.Fits, 0, AList.Count);
+    AList[mIndex] := mScored;
+  end;
+  AList.Sort(TComparer<TScoredItem>.Construct(
+    function(const Left, Right: TScoredItem): Integer
+    begin
+      Result := Left.Order - Right.Order;
+    end));
+end;
+
+/// <summary>Passt nichts, entfällt die Gruppierung nach dem erwarteten Typ.</summary>
+procedure ClearExpected(AList: TList<TScoredItem>);
+var
+  mIndex: Integer;
+  mScored: TScoredItem;
+begin
+  for mIndex := 0 to AList.Count - 1 do
+  begin
+    mScored := AList[mIndex];
+    mScored.Item.Expected := '';
+    AList[mIndex] := mScored;
+  end;
+end;
+
+/// <summary>Kürzt AList auf ARoom Einträge. Nahe Einträge (lokal, Parameter, eigene Mitglieder ohne geerbte,
+/// eigene Unit) nie abschneiden: Bei Formularen mit Hunderten geerbten Mitgliedern verdrängten kurze geerbte
+/// Namen sonst die eigenen Methoden mit längerem Namen (Rückmeldung 15.10.2026). Die Reihenfolge bleibt.
+/// </summary>
+procedure KeepRoom(AList: TList<TScoredItem>; ARoom: Integer);
+var
+  mNear, mOthersLeft, mKept, mIndex: Integer;
+  mScored: TScoredItem;
+begin
+  mNear := 0;
+  for mIndex := 0 to AList.Count - 1 do
+  begin
+    if IsNearItem(AList[mIndex].Item) then
+    begin
+      Inc(mNear);
+    end;
+  end;
+  mOthersLeft := Max(0, ARoom - mNear);
+  mKept := 0;
+  for mIndex := 0 to AList.Count - 1 do
+  begin
+    mScored := AList[mIndex];
+    if IsNearItem(mScored.Item) then
+    begin
+      if mKept >= ARoom then
+      begin
+        Continue;
+      end;
+    end
+    else if mOthersLeft > 0 then
+    begin
+      Dec(mOthersLeft);
+    end
+    else
+    begin
+      Continue;
+    end;
+    AList[mKept] := mScored;
+    Inc(mKept);
+  end;
+  AList.Count := mKept;
 end;
 
 /// <summary>Sortiert die gesammelten Einträge, kürzt auf den Rest von MaxItems und leert die Liste.
@@ -1149,70 +1742,30 @@ end;
 /// können (Atlas gruppiert erst, wenn einer passt).</summary>
 function TCompletionCollector.TakeStage(AStaged: Boolean): TArray<TCompletionItem>;
 var
-  Room, Near, OthersLeft, Kept: Integer;
-  Index: Integer;
-  Scored: TScoredItem;
+  mRoom, mIndex: Integer;
 begin
-  MarkOwnConditions;
+  MarkOwnConditions(Self);
   FList.Sort;
-  // Passende zuerst (#417); passt nichts, entfällt die Gruppierung.
   if FAnyFits then
   begin
-    for Index := 0 to FList.Count - 1 do
-    begin
-      Scored := FList[Index];
-      Scored.Order := Index + IfThen(Scored.Item.Fits, 0, FList.Count);
-      FList[Index] := Scored;
-    end;
-    FList.Sort(TComparer<TScoredItem>.Construct(
-      function(const Left, Right: TScoredItem): Integer
-      begin
-        Result := Left.Order - Right.Order;
-      end));
+    OrderFitting(FList);
   end
   else if not AStaged then
-    for Index := 0 to FList.Count - 1 do
-    begin
-      Scored := FList[Index];
-      Scored.Item.Expected := '';
-      FList[Index] := Scored;
-    end;
-  Room := Max(0, CompletionMaxItems - FSent);
-  if FList.Count > Room then
+  begin
+    ClearExpected(FList);
+  end;
+  mRoom := Max(0, CompletionMaxItems - FSent);
+  if FList.Count > mRoom then
   begin
     FTruncated := True;
-    // Nahe Einträge (lokal, Parameter, eigene Mitglieder ohne geerbte, eigene Unit) nie abschneiden: Bei
-    // Formularen mit Hunderten geerbten Mitgliedern verdrängten kurze geerbte Namen sonst die eigenen
-    // Methoden mit längerem Namen (Rückmeldung 15.10.2026). Die Reihenfolge bleibt.
-    Near := 0;
-    for Index := 0 to FList.Count - 1 do
-      if IsNearItem(FList[Index].Item) then
-        Inc(Near);
-    OthersLeft := Max(0, Room - Near);
-    Kept := 0;
-    for Index := 0 to FList.Count - 1 do
-    begin
-      Scored := FList[Index];
-      if IsNearItem(Scored.Item) then
-      begin
-        if Kept >= Room then
-          Continue;
-      end
-      else if OthersLeft > 0 then
-        Dec(OthersLeft)
-      else
-        Continue;
-      FList[Kept] := Scored;
-      Inc(Kept);
-    end;
-    FList.Count := Kept;
+    KeepRoom(FList, mRoom);
   end;
   Result := nil;
   SetLength(Result, FList.Count);
-  for Index := 0 to FList.Count - 1 do
+  for mIndex := 0 to FList.Count - 1 do
   begin
-    Result[Index] := FList[Index].Item;
-    FSentNames.AddOrSetValue(UpperCase(FList[Index].Item.Name), True);
+    Result[mIndex] := FList[mIndex].Item;
+    FSentNames.AddOrSetValue(UpperCase(FList[mIndex].Item.Name), True);
   end;
   Inc(FSent, FList.Count);
   FList.Clear;
@@ -1223,18 +1776,26 @@ var
   Items: TArray<TCompletionItem>;
 begin
   if not Assigned(FOnPartial) or (FList.Count = 0) then
+  begin
     Exit;
+  end;
   Items := TakeStage(True);
   if Length(Items) > 0 then
+  begin
     FOnPartial(Items);
+  end;
 end;
 
 procedure TCompletionCollector.SetNameFilter(AOn: Boolean);
 begin
   if AOn and (FContext.Prefix <> '') then
-    FRequest.Resolver.NameFilter := PrefixFilter(FContext.Prefix, FRequest.Matching)
+  begin
+    FRequest.Resolver.Candidates.NameFilter := PrefixFilter(FContext.Prefix, FRequest.Matching);
+  end
   else
-    FRequest.Resolver.NameFilter := nil;
+  begin
+    FRequest.Resolver.Candidates.NameFilter := nil;
+  end;
 end;
 
 procedure TCompletionCollector.MarkUsedShadows;
@@ -1249,31 +1810,39 @@ begin
   Names := TDictionary<string, Integer>.Create;
   try
     for Index := 0 to FList.Count - 1 do
+    begin
       if ((FList[Index].Item.Scope >= 1) and (FList[Index].Item.Scope <= 4)) or (FList[Index].Item.Scope = 6) then
+      begin
         Names.AddOrSetValue(UpperCase(FList[Index].Item.Name), Index);
+      end;
+    end;
     if Names.Count = 0 then
+    begin
       Exit;
-    FRequest.Resolver.NameFilter :=
+    end;
+    FRequest.Resolver.Candidates.NameFilter :=
       function(const AName: string): Boolean
       begin
         Result := Names.ContainsKey(UpperCase(AName));
       end;
     try
-      Shadows := FRequest.Resolver.UsedScopeShadows;
+      Shadows := FRequest.Resolver.Candidates.UsedScopeShadows;
     finally
-      FRequest.Resolver.NameFilter := nil;
+      FRequest.Resolver.Candidates.NameFilter := nil;
     end;
     for Shadow in Shadows do
+    begin
       if Names.TryGetValue(UpperCase(Shadow.Name), Index) then
       begin
         Scored := FList[Index];
-        Text := TNameResolver.ShadowText(Shadow);
+        Text := Shadow.ShadowText;
         if not MatchText(Text, Scored.Item.Hides) then
         begin
           Scored.Item.Hides := Scored.Item.Hides + [Text];
           FList[Index] := Scored;
         end;
       end;
+    end;
   finally
     Names.Free;
   end;
@@ -1284,7 +1853,9 @@ var
   Word: string;
 begin
   for Word in AWords do
+  begin
     Add(Word, '', KindKeyword, PenaltyKeyword, Default(TResolvedSymbol));
+  end;
 end;
 
 procedure TCompletionCollector.AddUnavailableMembers(const AMembers: TArray<TResolvedSymbol>);
@@ -1299,18 +1870,29 @@ begin
   Known := TDictionary<string, Boolean>.Create;
   try
     for Candidate in AMembers do
+    begin
       if Candidate.Container <> '' then
+      begin
         Containers.AddOrSetValue(UpperCase(Candidate.Container), True);
+      end;
+    end;
     if Containers.Count = 0 then
+    begin
       Exit;
+    end;
     for Existing in FList do
+    begin
       Known.AddOrSetValue(UpperCase(Existing.Item.Name), True);
+    end;
     for UnitInfo in FRequest.Index.UnavailableUnits do
+    begin
       for Symbol in UnitInfo.Unavailable do
       begin
         if (Symbol.Container = '') or not Containers.ContainsKey(UpperCase(Symbol.Container)) or
           Known.ContainsKey(UpperCase(Symbol.Name)) then
+        begin
           Continue;
+        end;
         Member := Default(TResolvedSymbol);
         Member.Name := Symbol.Name;
         Member.Container := Symbol.Container;
@@ -1323,6 +1905,7 @@ begin
           Known.AddOrSetValue(UpperCase(Symbol.Name), True);
         end;
       end;
+    end;
   finally
     Known.Free;
     Containers.Free;
@@ -1342,15 +1925,25 @@ begin
   begin
     // Typposition (#31): nur Typen.
     if (FContext.Filter = TCompletionFilter.Types) and not Candidate.IsType then
+    begin
       Continue;
+    end;
     if Assigned(FAdmit) and not FAdmit(Candidate) then
+    begin
       Continue;
+    end;
     if Candidate.TypeName <> '' then
-      Add(Candidate.Name, Candidate.TypeName, CompletionKindOf(Candidate.SymbolKind), Candidate)
+    begin
+      Add(Candidate.Name, Candidate.TypeName, CompletionKindOf(Candidate.SymbolKind), Candidate);
+    end
     else if Candidate.Container <> '' then
-      Add(Candidate.Name, Candidate.Container, CompletionKindOf(Candidate.SymbolKind), Candidate)
+    begin
+      Add(Candidate.Name, Candidate.Container, CompletionKindOf(Candidate.SymbolKind), Candidate);
+    end
     else
+    begin
       Add(Candidate.Name, Candidate.UnitName, CompletionKindOf(Candidate.SymbolKind), Candidate);
+    end;
   end;
 end;
 
@@ -1360,5 +1953,8 @@ begin
   AIncomplete := FTruncated or FImportsCapped or
     ((FContext.Kind = TCompletionContextKind.Scope) and (Length(FContext.Prefix) < CompletionMinImportPrefix));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.CompletionCollector', cTexts);
 
 end.

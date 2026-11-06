@@ -77,7 +77,9 @@ begin
       MapModule := ExtractFileName(ParamStr(0));
       try
         if TFile.Exists(MapName) then
+        begin
           Map := TMapFile.Create(TFileEncoding.LoadText(MapName));
+        end;
       except
         // Eine unlesbare Map darf das Absturzprotokoll nicht verhindern.
         FreeAndNil(Map);
@@ -101,9 +103,13 @@ var
 begin
   Result := '';
   for Index := 0 to AInfo.Count - 1 do
+  begin
     Result := Result + TStackTrace.DescribeAddress(AInfo.Frames[Index]) + sLineBreak;
+  end;
   if LoadedMap <> nil then
+  begin
     Result := LoadedMap.Symbolize(Result, MapModule);
+  end;
 end;
 
 function GetExceptionStackInfo(P: PExceptionRecord): Pointer;
@@ -116,15 +122,21 @@ end;
 function GetStackInfoString(Info: Pointer): string;
 begin
   if Info = nil then
-    Result := ''
+  begin
+    Result := '';
+  end
   else
+  begin
     Result := Describe(PStackInfo(Info));
+  end;
 end;
 
 procedure CleanUpStackInfo(Info: Pointer);
 begin
   if Info <> nil then
+  begin
     Dispose(PStackInfo(Info));
+  end;
 end;
 
 { TStackTrace }
@@ -132,7 +144,9 @@ end;
 class procedure TStackTrace.Install;
 begin
   if IsInstalled then
+  begin
     Exit;
+  end;
   PreviousGetInfo := Exception.GetExceptionStackInfoProc;
   PreviousGetString := Exception.GetStackInfoStringProc;
   PreviousCleanUp := Exception.CleanUpStackInfoProc;
@@ -145,7 +159,9 @@ end;
 class procedure TStackTrace.Uninstall;
 begin
   if not IsInstalled then
+  begin
     Exit;
+  end;
   Exception.GetExceptionStackInfoProc := PreviousGetInfo;
   Exception.GetStackInfoStringProc := PreviousGetString;
   Exception.CleanUpStackInfoProc := PreviousCleanUp;
@@ -176,9 +192,13 @@ var
 begin
   if GetModuleHandleEx(ModuleFromAddress or ModuleUnchangedRefCount, PChar(AAddress), Module) and
     (GetModuleFileName(Module, FileName, Length(FileName)) > 0) then
-    Result := Format('%s+$%x', [ExtractFileName(FileName), NativeUInt(AAddress) - NativeUInt(Module)])
+  begin
+    Result := Format('%s+$%x', [ExtractFileName(FileName), NativeUInt(AAddress) - NativeUInt(Module)]);
+  end
   else
+  begin
     Result := Format('$%p', [AAddress]);
+  end;
 end;
 
 initialization

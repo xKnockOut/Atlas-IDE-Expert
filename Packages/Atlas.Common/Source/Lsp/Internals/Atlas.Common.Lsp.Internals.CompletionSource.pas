@@ -37,6 +37,7 @@ begin
   Result := False;
   ASymbol := Default(TIndexSymbol);
   for Symbol in AUnit.Symbols do
+  begin
     if (Symbol.Kind in AKinds) and (Length(Symbol.Ancestors) >= AMinAncestors) and
       (Symbol.Range.StartPos.Line < ALine) and
       ((Symbol.Range.EndPos.Line > ALine) or (AInclusiveEnd and (Symbol.Range.EndPos.Line = ALine))) and
@@ -45,14 +46,19 @@ begin
       ASymbol := Symbol;
       Result := True;
     end;
+  end;
 end;
 
 function QualifiedTypeName(const ASymbol: TIndexSymbol): string;
 begin
   if ASymbol.Container <> '' then
-    Result := ASymbol.Container + '.' + ASymbol.Name
+  begin
+    Result := ASymbol.Container + '.' + ASymbol.Name;
+  end
   else
+  begin
     Result := ASymbol.Name;
+  end;
 end;
 
 function TypeChain(AResolver: TNameResolver; const AUnit: TUnitIndex; const AType: string): TArray<string>;
@@ -63,11 +69,15 @@ begin
   Result := nil;
   Result := [AType];
   if not AResolver.ResolveTypeFrom(AUnit, AType, Current) then
+  begin
     Exit;
+  end;
   for Depth := 1 to MaxAncestorChain do
   begin
     if not AResolver.AncestorOf(Current, Ancestor) then
+    begin
       Break;
+    end;
     Result := Result + [Ancestor.Name];
     Current := Ancestor;
   end;

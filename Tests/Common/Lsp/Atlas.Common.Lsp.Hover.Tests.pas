@@ -185,17 +185,21 @@ begin
   repeat
     Index := Pos(AMarker, AText, Index + 1);
     if Index = 0 then
+    begin
       raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+    end;
     Inc(Found);
   until Found = AOccurrence;
   Line := 0;
   LineStart := 1;
   for Found := 1 to Index - 1 do
+  begin
     if AText[Found] = #10 then
     begin
       Inc(Line);
       LineStart := Found + 1;
     end;
+  end;
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
@@ -220,13 +224,12 @@ var
 begin
   Tree := TPascalParser.Parse(UnitHaupt);
   try
-    Result := TLspHover.InfoAt(FResolver, FIndex, Tree, UnitHaupt, 'C:\P\Haupt.pas',
-      PositionOf(UnitHaupt, AMarker, AOccurrence),
+    Result := TLspHover.InfoAt(THoverSource.Create(FResolver, FIndex,
       function(const AFileName: string; out AText: string): Boolean
       begin
         Result := SameText(AFileName, WerkzeugFile);
         AText := UnitWerkzeug;
-      end);
+      end), Tree, UnitHaupt, 'C:\P\Haupt.pas', PositionOf(UnitHaupt, AMarker, AOccurrence));
   finally
     Tree.Free;
   end;
@@ -520,16 +523,16 @@ begin
   Resolver := TNameResolver.Create(Index);
   Tree := TPascalParser.Parse(MainText);
   try
-    Info := TLspHover.InfoAt(Resolver, Index, Tree, MainText, 'C:\P\Haupt.pas', PositionOf(MainText, 'Summe', 1),
+    Info := TLspHover.InfoAt(THoverSource.Create(Resolver, Index,
       function(const AFileName: string; out AText: string): Boolean
       begin
         Result := SameText(AFileName, LibFile);
         AText := LibText;
-      end, '23.0');
+      end), Tree, MainText, 'C:\P\Haupt.pas', PositionOf(MainText, 'Summe', 1), '23.0');
     Assert.AreEqual(TDocWiki.BaseUri + 'Athens/en/Vcl.Werkzeug.TRechner.Summe', Info.DocWikiUrl);
     Assert.IsTrue(Pos('[DocWiki](' + Info.DocWikiUrl + ')', Info.ToMarkdown) > 0);
-    Info := TLspHover.InfoAt(Resolver, Index, Tree, MainText, 'C:\P\Haupt.pas',
-      PositionOf(MainText, 'Vcl.Werkzeug;', 1), nil, '');
+    Info := TLspHover.InfoAt(THoverSource.Create(Resolver, Index, nil), Tree, MainText, 'C:\P\Haupt.pas',
+      PositionOf(MainText, 'Vcl.Werkzeug;', 1), '');
     Assert.AreEqual(TDocWiki.BaseUri + 'Florence/en/Vcl.Werkzeug', Info.DocWikiUrl);
   finally
     Tree.Free;
@@ -600,8 +603,8 @@ var
 
   function At(const AMarker: string): THoverInfo;
   begin
-    Result := TLspHover.InfoAt(Resolver, Index, Tree, MainText, 'C:\P\Haupt.pas', PositionOf(MainText, AMarker, 1),
-      ReadText, '');
+    Result := TLspHover.InfoAt(THoverSource.Create(Resolver, Index, ReadText), Tree, MainText, 'C:\P\Haupt.pas',
+      PositionOf(MainText, AMarker, 1), '');
   end;
 
 begin

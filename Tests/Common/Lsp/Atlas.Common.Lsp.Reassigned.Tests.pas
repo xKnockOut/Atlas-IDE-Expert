@@ -114,7 +114,9 @@ begin
   try
     Arguments.Add(Uri);
     if ASettings <> '' then
+    begin
       Arguments.AddElement(TJSONObject.ParseJSONValue(ASettings));
+    end;
     Reply := TLspReassigned.Execute(FStore, FIndex, nil, nil, Arguments);
   finally
     Arguments.Free;
@@ -131,7 +133,9 @@ begin
   for Item in AReply.GetValue('symbols') as TJSONArray do
   begin
     if Result <> '' then
+    begin
       Result := Result + ' ';
+    end;
     Result := Result + (Item as TJSONObject).GetValue('name').Value;
   end;
 end;

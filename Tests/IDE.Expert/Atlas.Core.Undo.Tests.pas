@@ -129,7 +129,9 @@ end;
 procedure TMemoryTarget.Write(const AFileName: string; const AContent: TAtlasTextFileContent);
 begin
   if AFileName = FailOn then
+  begin
     raise EInOutError.Create('schreibgeschützt');
+  end;
   Files.AddOrSetValue(AFileName, AContent);
   Writes.AddOrSetValue(AFileName, WriteCount(AFileName) + 1);
 end;
@@ -157,13 +159,17 @@ var
 begin
   Result := '<fehlt>';
   if Files.TryGetValue(AFileName, Value) then
+  begin
     Result := Value.Text;
+  end;
 end;
 
 function TMemoryTarget.WriteCount(const AFileName: string): Integer;
 begin
   if not Writes.TryGetValue(AFileName, Result) then
+  begin
     Result := 0;
+  end;
 end;
 
 /// <summary>Satz für AFiles (Name, vorher, nachher) anlegen und den Stand „nachher“ ins Ziel schreiben.</summary>
@@ -262,7 +268,9 @@ end;
 procedure TAtlasUndoJournalTests.TearDown;
 begin
   if TDirectory.Exists(FFolder) then
+  begin
     TDirectory.Delete(FFolder, True);
+  end;
   FFolder := '';
 end;
 
@@ -410,12 +418,65 @@ begin
   end;
 end;
 
+/// <summary>Projektänderungen und Papierkorb des Datenträgerziels landen in den Listen.</summary>
+procedure WireDiskLists(const ADisk: TAtlasUndoDiskTarget; const AAdded, ARemoved, ARecycled: TList<string>);
+begin
+  ADisk.OnAddToProject :=
+    procedure(const AFileName, AProject: string)
+    begin
+      AAdded.Add(ExtractFileName(AFileName) + '@' + AProject);
+    end;
+  ADisk.OnRemoveFromProject :=
+    procedure(const AFileName, AProject: string)
+    begin
+      ARemoved.Add(ExtractFileName(AFileName) + '@' + AProject);
+    end;
+  ADisk.OnRecycle :=
+    procedure(AFileName: string)
+    begin
+      ARecycled.Add(ExtractFileName(AFileName));
+      TFile.Delete(AFileName);
+    end;
+end;
+
+/// <summary>Neue Dateien löschen oder behalten; eine wieder angelegte gelöschte Datei ist ein Konflikt.</summary>
+procedure AssertNewFilesModes(const AJournal: TAtlasUndoJournal; const ARecycled, ARemoved: TList<string>;
+  const ANewUnit, AOldUnit: string);
+var
+  mOptions: TAtlasUndoOptions;
+  mReport: TAtlasUndoReport;
+begin
+  // Löschen statt Papierkorb.
+  mOptions := TAtlasUndoOptions.Defaults;
+  mOptions.NewFiles := TAtlasNewFilesMode.Delete;
+  AJournal.Options := mOptions;
+  Assert.IsTrue(AJournal.Undo.Complete);
+  Assert.IsFalse(TFile.Exists(ANewUnit));
+  Assert.AreEqual(2, Integer(ARecycled.Count), 'gelöscht, nicht im Papierkorb');
+  // Behalten: aus dem Projekt ausgetragen, Datei bleibt.
+  Assert.IsTrue(AJournal.Redo.Complete);
+  mOptions.NewFiles := TAtlasNewFilesMode.Keep;
+  AJournal.Options := mOptions;
+  Assert.IsTrue(AJournal.Undo.Complete);
+  Assert.IsTrue(TFile.Exists(ANewUnit));
+  Assert.AreEqual('Neu.pas@P.dproj', ARemoved[ARemoved.Count - 1]);
+  // Behaltene Datei ist beim Wiederherstellen schon genau so da.
+  Assert.IsTrue(AJournal.Redo.Complete);
+  // Gelöschte Datei, die inzwischen wieder jemand angelegt hat: Konflikt.
+  TFile.WriteAllBytes(AOldUnit, TEncoding.UTF8.GetBytes('unit Alt; // neu geschrieben'));
+  mOptions.OnConflict := TAtlasUndoConflictMode.Abort;
+  AJournal.Options := mOptions;
+  mReport := AJournal.Undo;
+  Assert.IsTrue(mReport.Aborted);
+  Assert.AreEqual(Ord(TAtlasUndoProblemKind.Exists), Ord(mReport.Conflicts[0].Kind));
+  Assert.IsTrue(TFile.Exists(ANewUnit), 'abgebrochen: nichts geändert');
+end;
+
 procedure TAtlasUndoJournalTests.NewAndDeletedFiles;
 var
   Disk: TAtlasUndoDiskTarget;
   DiskRef: IAtlasUndoTarget;
   Journal: TAtlasUndoJournal;
-  Options: TAtlasUndoOptions;
   NewUnit, OldUnit, Dpr: string;
   Added, Removed, Recycled: TList<string>;
   OldContent: TAtlasTextFileContent;
@@ -429,22 +490,7 @@ begin
   Recycled := TList<string>.Create;
   Disk := TAtlasUndoDiskTarget.Create;
   DiskRef := Disk;
-  Disk.OnAddToProject :=
-    procedure(const AFileName, AProject: string)
-    begin
-      Added.Add(ExtractFileName(AFileName) + '@' + AProject);
-    end;
-  Disk.OnRemoveFromProject :=
-    procedure(const AFileName, AProject: string)
-    begin
-      Removed.Add(ExtractFileName(AFileName) + '@' + AProject);
-    end;
-  Disk.OnRecycle :=
-    procedure(AFileName: string)
-    begin
-      Recycled.Add(ExtractFileName(AFileName));
-      TFile.Delete(AFileName);
-    end;
+  WireDiskLists(Disk, Added, Removed, Recycled);
   Journal := TAtlasUndoJournal.Create(DiskRef);
   try
     // Aktion: neue Unit angelegt, alte gelöscht (ANSI-Umlaut bleibt), .dpr geändert.
@@ -472,30 +518,7 @@ begin
     Assert.AreEqual('unit Neu;', TEncoding.UTF8.GetString(TFile.ReadAllBytes(NewUnit)));
     Assert.IsFalse(TFile.Exists(OldUnit));
     Assert.AreEqual('Alt.pas', Recycled[1]);
-    // Löschen statt Papierkorb.
-    Options := TAtlasUndoOptions.Defaults;
-    Options.NewFiles := TAtlasNewFilesMode.Delete;
-    Journal.Options := Options;
-    Assert.IsTrue(Journal.Undo.Complete);
-    Assert.IsFalse(TFile.Exists(NewUnit));
-    Assert.AreEqual(2, Integer(Recycled.Count), 'gelöscht, nicht im Papierkorb');
-    // Behalten: aus dem Projekt ausgetragen, Datei bleibt.
-    Assert.IsTrue(Journal.Redo.Complete);
-    Options.NewFiles := TAtlasNewFilesMode.Keep;
-    Journal.Options := Options;
-    Assert.IsTrue(Journal.Undo.Complete);
-    Assert.IsTrue(TFile.Exists(NewUnit));
-    Assert.AreEqual('Neu.pas@P.dproj', Removed[Removed.Count - 1]);
-    // Behaltene Datei ist beim Wiederherstellen schon genau so da.
-    Assert.IsTrue(Journal.Redo.Complete);
-    // Gelöschte Datei, die inzwischen wieder jemand angelegt hat: Konflikt.
-    TFile.WriteAllBytes(OldUnit, TEncoding.UTF8.GetBytes('unit Alt; // neu geschrieben'));
-    Options.OnConflict := TAtlasUndoConflictMode.Abort;
-    Journal.Options := Options;
-    Report := Journal.Undo;
-    Assert.IsTrue(Report.Aborted);
-    Assert.AreEqual(Ord(TAtlasUndoProblemKind.Exists), Ord(Report.Conflicts[0].Kind));
-    Assert.IsTrue(TFile.Exists(NewUnit), 'abgebrochen: nichts geändert');
+    AssertNewFilesModes(Journal, Recycled, Removed, NewUnit, OldUnit);
   finally
     Journal.Free;
     Recycled.Free;
@@ -631,6 +654,20 @@ begin
   end;
 end;
 
+/// <summary>Nach dem Neustart: beide Sätze mit Zustand, Art, Projekt, Kodierung, Zeilenenden und Zeit.</summary>
+procedure AssertRestartedSets(const ASets: TArray<TAtlasChangeSet>);
+begin
+  Assert.AreEqual(2, Integer(Length(ASets)));
+  Assert.AreEqual('Neu', ASets[0].Action);
+  Assert.AreEqual(Ord(TAtlasChangeSetState.Undone), Ord(ASets[0].State));
+  Assert.AreEqual(Ord(TAtlasFileChangeKind.Created), Ord(ASets[0].Files[0].Kind));
+  Assert.AreEqual('P.dproj', ASets[0].Files[0].Project);
+  Assert.AreEqual(Ord(TAtlasTextEncoding.Utf16LE), Ord(ASets[0].Files[0].After.Encoding));
+  Assert.AreEqual(Ord(TAtlasTextEncoding.Ansi), Ord(ASets[0].Files[1].Before.Encoding));
+  Assert.AreEqual('a'#13#10, ASets[1].Files[0].Before.Text);
+  Assert.IsTrue(Abs(ASets[1].Time - Now) < 1 / 24, 'Zeit');
+end;
+
 procedure TAtlasUndoJournalTests.PersistsWithSizeLimit;
 var
   Target: TMemoryTarget;
@@ -663,15 +700,7 @@ begin
     Restarted.Store := StoreRef;
     Restarted.Load;
     Sets := Restarted.Sets;
-    Assert.AreEqual(2, Integer(Length(Sets)));
-    Assert.AreEqual('Neu', Sets[0].Action);
-    Assert.AreEqual(Ord(TAtlasChangeSetState.Undone), Ord(Sets[0].State));
-    Assert.AreEqual(Ord(TAtlasFileChangeKind.Created), Ord(Sets[0].Files[0].Kind));
-    Assert.AreEqual('P.dproj', Sets[0].Files[0].Project);
-    Assert.AreEqual(Ord(TAtlasTextEncoding.Utf16LE), Ord(Sets[0].Files[0].After.Encoding));
-    Assert.AreEqual(Ord(TAtlasTextEncoding.Ansi), Ord(Sets[0].Files[1].Before.Encoding));
-    Assert.AreEqual('a'#13#10, Sets[1].Files[0].Before.Text);
-    Assert.IsTrue(Abs(Sets[1].Time - Now) < 1 / 24, 'Zeit');
+    AssertRestartedSets(Sets);
     Assert.AreEqual(3, Restarted.Add('Weiter', [TAtlasFileChange.Created('X.pas', '', Content('x'))]),
       'Kennungen laufen weiter');
     // Tiefe: der älteste Satz fällt auch aus dem Speicher.

@@ -120,25 +120,33 @@ begin
   // Cursor hinter AMarker.
   Index := Pos(AMarker, AText);
   if Index = 0 then
+  begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+  end;
   Inc(Index, Length(AMarker));
   Line := 0;
   LineStart := 1;
   for Scan := 1 to Index - 1 do
+  begin
     if AText[Scan] = #10 then
     begin
       Inc(Line);
       LineStart := Scan + 1;
     end;
+  end;
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
 function ReadWerkzeug(const AFileName: string; out AText: string): Boolean;
 begin
   if SameText(AFileName, ListenFile) then
-    AText := UnitListen
+  begin
+    AText := UnitListen;
+  end
   else
+  begin
     AText := UnitWerkzeug;
+  end;
   Result := SameText(AFileName, WerkzeugFile) or SameText(AFileName, ListenFile);
 end;
 
@@ -166,8 +174,8 @@ begin
   Text := StringReplace(UnitHaupt, '  |', ACode, []);
   Tree := TPascalParser.Parse(Text);
   try
-    Result := TLspSignatureHelp.HelpAt(FResolver, FIndex, Tree, Text, HauptFile, PositionOf(Text, AMarker),
-      ReadWerkzeug);
+    Result := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, Tree, Text, HauptFile,
+      ReadWerkzeug), PositionOf(Text, AMarker));
   finally
     Tree.Free;
   end;
@@ -304,8 +312,10 @@ begin
     Assert.AreEqual(15, Integer(Length(Site.ArgumentFirst)));
     Types := '';
     for Index := 0 to High(Site.ArgumentFirst) do
+    begin
       Types := Types + TLspSignatureHelp.ArgumentType(nil, Tree, HauptFile, Site.ArgumentFirst[Index],
         Site.ArgumentLast[Index]) + '|';
+    end;
     // Ausdrücke, Aufrufe und das leere letzte Argument bleiben unbekannt.
     Assert.AreEqual('Char|string|Integer|Double|Integer|Integer|nil|[]|Boolean|Char|string|string||||', Types);
   finally
@@ -324,27 +334,27 @@ end;
 
 procedure TLspSignatureHelpTests.ArgumentFitsByFamily;
 begin
-  Assert.IsTrue(TNameResolver.ArgumentFits('Char', 'Char'));
-  Assert.IsTrue(TNameResolver.ArgumentFits('WideChar', 'Char'));
-  Assert.IsTrue(TNameResolver.ArgumentFits('string', 'Char'), 'Zeichen an string');
-  Assert.IsFalse(TNameResolver.ArgumentFits('Char', 'string'));
-  Assert.IsFalse(TNameResolver.ArgumentFits('Boolean', 'Char'));
-  Assert.IsFalse(TNameResolver.ArgumentFits('TDoppelte', 'Char'), 'Zeichen an Aufzählung');
-  Assert.IsTrue(TNameResolver.ArgumentFits('TDoppelte', 'TDoppelte'));
-  Assert.IsFalse(TNameResolver.ArgumentFits('Boolean', 'TDoppelte'));
-  Assert.IsTrue(TNameResolver.ArgumentFits('Double', 'Integer'), 'Ganzzahl an Gleitkomma');
-  Assert.IsFalse(TNameResolver.ArgumentFits('Integer', 'Double'));
-  Assert.IsTrue(TNameResolver.ArgumentFits('TStrings', 'TStringList'), 'Klasse ohne Vererbungsprüfung');
-  Assert.IsTrue(TNameResolver.ArgumentFits('TObject', 'nil'));
-  Assert.IsTrue(TNameResolver.ArgumentFits('Pointer', 'nil'));
-  Assert.IsFalse(TNameResolver.ArgumentFits('Integer', 'nil'));
-  Assert.IsTrue(TNameResolver.ArgumentFits('PChar', 'string'));
-  Assert.IsTrue(TNameResolver.ArgumentFits('Variant', 'Integer'));
-  Assert.IsTrue(TNameResolver.ArgumentFits('TListenOptionen', '[]'));
-  Assert.IsTrue(TNameResolver.ArgumentFits('array of const', '[]'));
-  Assert.IsFalse(TNameResolver.ArgumentFits('array of const', 'Integer'));
-  Assert.IsTrue(TNameResolver.ArgumentFits('Boolean', ''), 'unbekannt passt');
-  Assert.IsTrue(TNameResolver.ArgumentFits('', 'Integer'), 'untypisiert passt');
+  Assert.IsTrue(TResolverText.ArgumentFits('Char', 'Char'));
+  Assert.IsTrue(TResolverText.ArgumentFits('WideChar', 'Char'));
+  Assert.IsTrue(TResolverText.ArgumentFits('string', 'Char'), 'Zeichen an string');
+  Assert.IsFalse(TResolverText.ArgumentFits('Char', 'string'));
+  Assert.IsFalse(TResolverText.ArgumentFits('Boolean', 'Char'));
+  Assert.IsFalse(TResolverText.ArgumentFits('TDoppelte', 'Char'), 'Zeichen an Aufzählung');
+  Assert.IsTrue(TResolverText.ArgumentFits('TDoppelte', 'TDoppelte'));
+  Assert.IsFalse(TResolverText.ArgumentFits('Boolean', 'TDoppelte'));
+  Assert.IsTrue(TResolverText.ArgumentFits('Double', 'Integer'), 'Ganzzahl an Gleitkomma');
+  Assert.IsFalse(TResolverText.ArgumentFits('Integer', 'Double'));
+  Assert.IsTrue(TResolverText.ArgumentFits('TStrings', 'TStringList'), 'Klasse ohne Vererbungsprüfung');
+  Assert.IsTrue(TResolverText.ArgumentFits('TObject', 'nil'));
+  Assert.IsTrue(TResolverText.ArgumentFits('Pointer', 'nil'));
+  Assert.IsFalse(TResolverText.ArgumentFits('Integer', 'nil'));
+  Assert.IsTrue(TResolverText.ArgumentFits('PChar', 'string'));
+  Assert.IsTrue(TResolverText.ArgumentFits('Variant', 'Integer'));
+  Assert.IsTrue(TResolverText.ArgumentFits('TListenOptionen', '[]'));
+  Assert.IsTrue(TResolverText.ArgumentFits('array of const', '[]'));
+  Assert.IsFalse(TResolverText.ArgumentFits('array of const', 'Integer'));
+  Assert.IsTrue(TResolverText.ArgumentFits('Boolean', ''), 'unbekannt passt');
+  Assert.IsTrue(TResolverText.ArgumentFits('', 'Integer'), 'untypisiert passt');
 end;
 
 procedure TLspSignatureHelpTests.CharArgumentsDimDuplicatesOverload;
@@ -406,7 +416,9 @@ begin
   // Unbekannter Typ gilt als verträglich: lieber eine Variante zu viel.
   Help := HelpAt('  TListe.Create(Gibts.Nicht, ', 'TListe.Create(Gibts.Nicht, ');
   for Signature in Help.Signatures do
+  begin
     Assert.IsTrue(Signature.Fits);
+  end;
   Assert.AreEqual(2, Help.ActiveSignature);
   // Passt keine, bleibt die erste mit genug Parametern gewählt.
   Help := HelpAt('  TListe.Create(1.5, ', 'TListe.Create(1.5, ');

@@ -77,6 +77,14 @@ type
     function Occurrences(const AName: string): TArray<TTextRange>;
     /// <summary>Formularobjekt mit diesem Namen; nil ohne.</summary>
     function FindComponent(const AName: string): TDfmObject;
+    /// <summary>Nennt AName das Formular selbst oder eine eigene Komponente (auch einen eingebetteten Rahmen wie
+    /// Frame11 in Frame11.Button1)? Dann ist ein Verweis AName.X kein Verweis auf ein anderes Modul.</summary>
+    function IsOwnName(const AName: string): Boolean;
+    /// <summary>Andere Module, auf die References verweisen (DM in DataSource = DM.dsKunden), ohne das eigene
+    /// Formular und eigene Komponenten, jedes einmal.</summary>
+    function ForeignModules: TArray<string>;
+    /// <summary>ForeignModules der Formulardatei AFormText; leer ohne Text.</summary>
+    class function ForeignModulesOf(const AFormText: string): TArray<string>; static;
     /// <summary>Binär gespeichert; gelesen wird die Umwandlung in Text.</summary>
     property Binary: Boolean read FBinary;
     property Document: TDfmDocument read FDocument;
@@ -122,12 +130,18 @@ begin
     FUnit := TIndexExtractor.ExtractText(AUnitText, AUnitFile, nil);
     FHasUnit := True;
     for Symbol in FUnit.Symbols do
+    begin
       if (Symbol.Kind = TIndexSymbolKind.ClassType) and (Symbol.Container = '') and
         SameText(Symbol.Name, FormClass) and (Length(Symbol.Ancestors) > 0) then
+      begin
         FAncestor := Symbol.Ancestors[0];
+      end;
+    end;
   end;
   if FDocument.Root <> nil then
+  begin
     Collect(FDocument.Root);
+  end;
 end;
 
 destructor TFormModel.Destroy;
@@ -145,9 +159,13 @@ end;
 function TFormModel.GetFormClass: string;
 begin
   if (FDocument <> nil) and (FDocument.Root <> nil) then
-    Result := FDocument.Root.TypeName
+  begin
+    Result := FDocument.Root.TypeName;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function TFormModel.FindMember(const AName: string; AKinds: TIndexSymbolKinds; out ASymbol: TIndexSymbol): Boolean;
@@ -156,14 +174,18 @@ var
 begin
   Result := False;
   if not FHasUnit then
+  begin
     Exit;
+  end;
   for Symbol in FUnit.Symbols do
+  begin
     if (Symbol.Kind in AKinds) and SameText(Symbol.Container, FormClass) and SameText(Symbol.Name, AName) then
     begin
       ASymbol := Symbol;
       // Die Deklaration in der Klasse kommt vor dem Rumpf; sie zählt.
       Exit(True);
     end;
+  end;
 end;
 
 /// <summary>Wert der Form Modul.Komponente (zwei Bezeichner mit Punkt)?</summary>
@@ -174,13 +196,21 @@ begin
   Result := False;
   Dot := Pos('.', AValue);
   if (Dot < 2) or (Dot = Length(AValue)) or (PosEx('.', AValue, Dot + 1) > 0) then
+  begin
     Exit;
+  end;
   for Index := 1 to Length(AValue) do
+  begin
     if not CharInSet(AValue[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_', '.']) then
+    begin
       Exit;
+    end;
+  end;
   if not CharInSet(AValue[1], ['A'..'Z', 'a'..'z', '_']) or
     not CharInSet(AValue[Dot + 1], ['A'..'Z', 'a'..'z', '_']) then
+  begin
     Exit;
+  end;
   AModule := Copy(AValue, 1, Dot - 1);
   AComponent := Copy(AValue, Dot + 1, MaxInt);
   Result := True;
@@ -203,6 +233,7 @@ begin
     FComponents := FComponents + [Component];
   end;
   for Item in AObject.Properties do
+  begin
     if Item.IsEvent then
     begin
       Event := Default(TFormEvent);
@@ -217,8 +248,11 @@ begin
       Reference.Reference := Item;
       FReferences := FReferences + [Reference];
     end;
+  end;
   for Child in AObject.Children do
+  begin
     Collect(Child);
+  end;
 end;
 
 function TFormModel.FindComponent(const AName: string): TDfmObject;
@@ -226,9 +260,49 @@ var
   Component: TFormComponent;
 begin
   for Component in FComponents do
+  begin
     if SameText(Component.Obj.Name, AName) then
+    begin
       Exit(Component.Obj);
+    end;
+  end;
   Result := nil;
+end;
+
+function TFormModel.IsOwnName(const AName: string): Boolean;
+begin
+  Result := ((FDocument.Root <> nil) and SameText(FDocument.Root.Name, AName)) or (FindComponent(AName) <> nil);
+end;
+
+function TFormModel.ForeignModules: TArray<string>;
+var
+  mReference: TFormModuleReference;
+begin
+  Result := nil;
+  for mReference in FReferences do
+  begin
+    if not IsOwnName(mReference.ModuleName) and (IndexText(mReference.ModuleName, Result) < 0) then
+    begin
+      Result := Result + [mReference.ModuleName];
+    end;
+  end;
+end;
+
+class function TFormModel.ForeignModulesOf(const AFormText: string): TArray<string>;
+var
+  mModel: TFormModel;
+begin
+  Result := nil;
+  if AFormText = '' then
+  begin
+    Exit;
+  end;
+  mModel := TFormModel.Create(AFormText);
+  try
+    Result := mModel.ForeignModules;
+  finally
+    mModel.Free;
+  end;
 end;
 
 procedure SortByPosition(var ARanges: TArray<TTextRange>);
@@ -259,16 +333,28 @@ var
 begin
   Result := nil;
   if FBinary or (FDocument = nil) then
+  begin
     Exit;
+  end;
   // Auch der Name des Formulars selbst (object Form1: TForm1).
   if (FDocument.Root <> nil) and SameText(FDocument.Root.Name, AName) then
+  begin
     Result := Result + [FDocument.Root.NameRange];
+  end;
   for Component in FComponents do
+  begin
     if SameText(Component.Obj.Name, AName) then
+    begin
       Result := Result + [Component.Obj.NameRange];
+    end;
+  end;
   for Event in FEvents do
+  begin
     if SameText(Event.Event.Value, AName) then
+    begin
       Result := Result + [Event.Event.ValueRange];
+    end;
+  end;
   SortByPosition(Result);
 end;
 

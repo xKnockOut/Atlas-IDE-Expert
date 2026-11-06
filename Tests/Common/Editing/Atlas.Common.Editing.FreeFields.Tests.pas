@@ -50,6 +50,8 @@ type
     [Test]
     procedure InterfaceFieldTakesOverObject;
     [Test]
+    procedure RecordInterfaceFieldTakesOverObject;
+    [Test]
     procedure ComponentFieldAsOwner;
     [Test]
     procedure HandOverAndCastToInterface;
@@ -115,18 +117,26 @@ begin
   SetLength(Offsets, Length(Lines) + 1);
   Offsets[0] := 0;
   for Index := 0 to High(Lines) do
+  begin
     Offsets[Index + 1] := Offsets[Index] + Length(Lines[Index]) + 1;
+  end;
   SetLength(Order, Length(AEdits));
   for Index := 0 to High(Order) do
+  begin
     Order[Index] := Index;
+  end;
   for Index := 0 to High(Order) do
+  begin
     for Inner := Index + 1 to High(Order) do
+    begin
       if OffsetOf(AEdits[Order[Index]].Range.StartPos) < OffsetOf(AEdits[Order[Inner]].Range.StartPos) then
       begin
         Swap := Order[Index];
         Order[Index] := Order[Inner];
         Order[Inner] := Swap;
       end;
+    end;
+  end;
   Result := AText;
   for Index in Order do
   begin
@@ -149,8 +159,12 @@ begin
     Fields := TFreeFields.Analyze(Tree, AText, nil);
     Missing := nil;
     for Field in Fields do
+    begin
       if Field.State = TOwnedFieldState.NotFreed then
+      begin
         Missing := Missing + [Field];
+      end;
+    end;
     Assert.IsTrue(TFreeFields.Edits(Tree, AText, Missing, AStyle, Edits), AText);
   finally
     Tree.Free;
@@ -320,6 +334,43 @@ begin
   Assert.AreEqual(Ord(TOwnedFieldState.NotFreed), Ord(Fields[0].State));
 end;
 
+procedure TFreeFieldsTests.RecordInterfaceFieldTakesOverObject;
+const
+  Text =
+    'unit U;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TSystem = record'#10 +
+    '    Log: ILog;'#10 +
+    '    Name: TLog;'#10 +
+    '  end;'#10 +
+    '  TFoo = class'#10 +
+    '  private'#10 +
+    '    FSystem: TSystem;'#10 +
+    '    FLogImpl: TLog;'#10 +
+    '    FOther: TLog;'#10 +
+    '  public'#10 +
+    '    constructor Create;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'constructor TFoo.Create;'#10 +
+    'begin'#10 +
+    '  FLogImpl := TLog.Create;'#10 +
+    '  FOther := TLog.Create;'#10 +
+    '  FSystem.Log := FLogImpl;'#10 +
+    '  Self.FSystem.Name := FOther;'#10 +
+    'end;'#10 +
+    'end.';
+var
+  Fields: TArray<TOwnedField>;
+begin
+  // FSystem.Log ist ein Interface: dessen Referenzzählung gibt FLogImpl frei (#1519); FSystem.Name nicht.
+  Fields := Analyze(Text);
+  Assert.AreEqual(1, Integer(Length(Fields)));
+  Assert.AreEqual('FOther', Fields[0].Name);
+  Assert.AreEqual(Ord(TOwnedFieldState.Unclear), Ord(Fields[0].State));
+end;
+
 procedure TFreeFieldsTests.ComponentFieldAsOwner;
 const
   Text =
@@ -411,9 +462,8 @@ begin
   Assert.AreEqual(Ord(TOwnedFieldState.NotFreed), Ord(Fields[1].State));
 end;
 
-procedure TFreeFieldsTests.HandOverToOwningListIsSilent;
 const
-  Text =
+  cHandOverText =
     'unit U;'#10 +
     'interface'#10 +
     'type'#10 +
@@ -466,12 +516,14 @@ const
     '  inherited;'#10 +
     'end;'#10 +
     'end.';
+
+procedure TFreeFieldsTests.HandOverToOwningListIsSilent;
 var
   Fields: TArray<TOwnedField>;
 begin
   // TEvents hält seine Teilnehmer in einer TObjectList, FOwning besitzt seine Elemente: beide übernehmen.
   // Eine mit False erzeugte Liste und eine Klasse ohne besitzende Liste bleiben unklar.
-  Fields := Analyze(Text);
+  Fields := Analyze(cHandOverText);
   Assert.AreEqual(2, Integer(Length(Fields)));
   Assert.AreEqual('FLoosely', Fields[0].Name);
   Assert.AreEqual(Ord(TOwnedFieldState.Unclear), Ord(Fields[0].State));
@@ -625,7 +677,9 @@ begin
   Fields := Analyze(Text);
   Assert.AreEqual(4, Integer(Length(Fields)));
   for Field in Fields do
+  begin
     Assert.AreEqual(Ord(TOwnedFieldState.Unclear), Ord(Field.State), Field.Name);
+  end;
   Assert.AreEqual('wird von TFoo.TakeA zurückgegeben', Fields[0].Reason);
   Assert.AreEqual('wird von TFoo.TakeB zurückgegeben', Fields[1].Reason);
   Assert.AreEqual('wird in TFoo.Hand an AOther.Items übergeben', Fields[2].Reason);

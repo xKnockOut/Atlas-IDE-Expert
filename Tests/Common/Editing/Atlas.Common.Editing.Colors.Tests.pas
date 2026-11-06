@@ -53,7 +53,9 @@ function GreenForBtnFace(AIndex: Integer; out AColor: TRgbColor): Boolean;
 begin
   Result := AIndex = 15;
   if Result then
+  begin
     AColor := Rgb(0, 255, 0);
+  end;
 end;
 
 { TSourceColorsTests }

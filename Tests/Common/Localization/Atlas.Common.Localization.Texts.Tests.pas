@@ -145,7 +145,9 @@ var
 begin
   mProblems := nil;
   for mTable in TAtlasTextTables.Tables do
+  begin
     mProblems := mProblems + TAtlasTextTables.Problems(mTable);
+  end;
   Assert.AreEqual('', string.Join(sLineBreak, mProblems));
 end;
 

@@ -95,7 +95,9 @@ var
 begin
   AData := nil;
   if not TFile.Exists(AFileName) then
+  begin
     Exit(False);
+  end;
   try
     mStamp := TFile.GetLastWriteTime(AFileName);
     mSize := TFile.GetSize(AFileName);
@@ -142,7 +144,9 @@ begin
   TMonitor.Enter(FLock);
   try
     for mEntry in FFiles.Values do
+    begin
       Inc(Result, Length(mEntry.Data));
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -167,7 +171,9 @@ begin
     begin
       // Übersetzte Packages geteilt über alle Locatoren (Speicher, Rückmeldung 01.11.2026).
       if SameText(ExtractFileExt(AFileName), '.dcp') then
+      begin
         Exit(TPackageCompiledFiles.Read(AFileName, AData));
+      end;
       AData := nil;
       Result := TFile.Exists(AFileName);
       if Result then
@@ -191,7 +197,9 @@ function UpperByte(AByte: Byte): Byte;
 begin
   Result := AByte;
   if AByte in [Ord('a')..Ord('z')] then
+  begin
     Result := AByte - 32;
+  end;
 end;
 
 { TPackageLocator }
@@ -228,20 +236,28 @@ begin
   Result := False;
   Name := TEncoding.ASCII.GetBytes(UpperCase(AUnitName));
   if Length(Name) = 0 then
+  begin
     Exit;
+  end;
   for Start := 0 to Length(AData) - Length(Name) do
   begin
     if (Start > 0) and IsNameByte(AData[Start - 1]) then
+    begin
       Continue;
+    end;
     Matches := True;
     for Offset := 0 to High(Name) do
+    begin
       if UpperByte(AData[Start + Offset]) <> Name[Offset] then
       begin
         Matches := False;
         Break;
       end;
+    end;
     if Matches and ((Start + Length(Name) >= Length(AData)) or not IsNameByte(AData[Start + Length(Name)])) then
+    begin
       Exit(True);
+    end;
   end;
 end;
 
@@ -255,7 +271,9 @@ begin
   TMonitor.Enter(FLock);
   try
     if FCache.TryGetValue(Key, Result) then
+    begin
       Exit;
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -275,6 +293,7 @@ begin
     end;
   end;
   if not Result.Known then
+  begin
     for Folder in FFolders do
     begin
       FileName := TPath.Combine(Folder, APackage + '.dcp');
@@ -286,6 +305,7 @@ begin
         Break;
       end;
     end;
+  end;
   TMonitor.Enter(FLock);
   try
     FCache.AddOrSetValue(Key, Result);
@@ -308,14 +328,18 @@ begin
   end;
   AContains := False;
   if not Result then
+  begin
     Exit;
+  end;
   // Jede Antwort ist ein Lauf über das ganze .dcp (rtl.dcp hat mehrere MB), die Projektprüfung fragt je Unit:
   // je Paar nur einmal suchen.
   mKey := UpperCase(APackage) + '|' + UpperCase(AUnitName);
   TMonitor.Enter(FLock);
   try
     if FCompiledAnswers.TryGetValue(mKey, AContains) then
+    begin
       Exit;
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -337,21 +361,42 @@ begin
   Result := nil;
   Folder := ExtractFilePath(AFileName);
   for Entry in ASource.Contains do
+  begin
     if Entry.Path <> '' then
+    begin
       Result := Result + [ExpandFileName(TPath.Combine(Folder, Entry.Path))];
+    end;
+  end;
+end;
+
+/// <summary>Hängt die Dateien aus AItems an AFiles an, die noch nicht in ASeen stehen (ohne Rücksicht auf
+/// Groß-/Kleinschreibung, Reihenfolge bleibt).</summary>
+procedure AddNewFiles(const AItems: TArray<string>; ASeen: TDictionary<string, Boolean>; AFiles: TList<string>);
+var
+  mItem: string;
+begin
+  for mItem in AItems do
+  begin
+    if not ASeen.ContainsKey(UpperCase(mItem)) then
+    begin
+      ASeen.Add(UpperCase(mItem), True);
+      AFiles.Add(mItem);
+    end;
+  end;
 end;
 
 function TPackageLocator.RequiredFiles(const ASource: TPackageSource): TArray<string>;
 var
-  Seen, Files: TDictionary<string, Boolean>;
+  Seen, Known: TDictionary<string, Boolean>;
+  Files: TList<string>;
   Pending: TQueue<TPackageSource>;
   Current, Required: TPackageSource;
   Entry: TPackageEntry;
-  FileName, Item: string;
+  FileName: string;
 begin
-  Result := nil;
   Seen := TDictionary<string, Boolean>.Create;
-  Files := TDictionary<string, Boolean>.Create;
+  Known := TDictionary<string, Boolean>.Create;
+  Files := TList<string>.Create;
   Pending := TQueue<TPackageSource>.Create;
   try
     Seen.Add(UpperCase(ASource.Name), True);
@@ -361,23 +406,24 @@ begin
       Current := Pending.Dequeue;
       for Entry in Current.Requires do
       begin
+        // Jedes Package nur einmal, auch wenn es mehrere verlangen.
         if Seen.ContainsKey(UpperCase(Entry.Name)) then
+        begin
           Continue;
+        end;
         Seen.Add(UpperCase(Entry.Name), True);
-        if not FindSource(Entry.Name, FileName, Required) then
-          Continue;
-        for Item in ContainedFiles(FileName, Required) do
-          if not Files.ContainsKey(UpperCase(Item)) then
-          begin
-            Files.Add(UpperCase(Item), True);
-            Result := Result + [Item];
-          end;
-        Pending.Enqueue(Required);
+        if FindSource(Entry.Name, FileName, Required) then
+        begin
+          AddNewFiles(ContainedFiles(FileName, Required), Known, Files);
+          Pending.Enqueue(Required);
+        end;
       end;
     end;
+    Result := Files.ToArray;
   finally
     Pending.Free;
     Files.Free;
+    Known.Free;
     Seen.Free;
   end;
 end;
@@ -401,8 +447,12 @@ var
 begin
   Result := nil;
   if FindSource(APackage, mFileName, mSource) then
+  begin
     for mEntry in mSource.Requires do
+    begin
       Result := Result + [mEntry.Name];
+    end;
+  end;
 end;
 
 initialization

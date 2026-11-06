@@ -16,6 +16,10 @@ type
   public
     [Test]
     procedure LoadsLevelByLevel;
+    /// <summary>Mit englischer Oberfläche: lang="en", englische Beschriftung, kein Platzhalter übrig (#1458).
+    /// </summary>
+    [Test]
+    procedure HtmlFollowsLanguage;
     [Test]
     procedure RecursionBecomesBackArrow;
     [Test]
@@ -43,6 +47,7 @@ uses
   System.Generics.Collections,
   System.JSON,
   Atlas.Core.Lsp.Contract,
+  Atlas.Core.Localization.Language,
   Atlas.Core.Results.CallDiagram;
 
 function Item(const AName, AFileName: string; ALine: Integer): TAtlasHierarchyItem;
@@ -134,11 +139,13 @@ begin
     Assert.AreEqual(2, Integer(Length(Layout.Boxes)));
     Backs := 0;
     for Edge in Layout.Edges do
+    begin
       if Edge.Back then
       begin
         Inc(Backs);
         Assert.AreEqual(Layout.BoxOf(1), Edge.Source);
       end;
+    end;
     Assert.AreEqual(2, Backs);
     // Weiteres Laden unter einer Rekursion wird ignoriert.
     Diagram.SetChildren(2, [Item('X', 'C:\P\A.pas', 1)]);
@@ -162,7 +169,9 @@ begin
     Diagram.Reset(TAtlasHierarchyDirection.Incoming, [Item('Speichern', 'C:\P\A.pas', 3)]);
     Children := nil;
     for Index := 1 to 11 do
+    begin
       Children := Children + [Item('Aufrufer' + IntToStr(Index), 'C:\P\A.pas', 10 + Index)];
+    end;
     Diagram.SetChildren(0, Children);
     Assert.AreEqual(8, Integer(Length(Diagram.VisibleChildren(0, More))));
     Assert.AreEqual(3, More);
@@ -170,6 +179,7 @@ begin
     Assert.AreEqual(10, Integer(Length(Layout.Boxes)), 'Wurzel, 8 Kinder, „+ 3 …“');
     Found := False;
     for Box in Layout.Boxes do
+    begin
       if Box.Kind = TAtlasCallBoxKind.More then
       begin
         Found := True;
@@ -177,6 +187,7 @@ begin
         Assert.AreEqual(0, Box.Node);
         Assert.AreEqual(1, Box.Column);
       end;
+    end;
     Assert.IsTrue(Found);
     Diagram.ShowAll(0);
     Assert.AreEqual(12, Integer(Length(Diagram.Layout.Boxes)));
@@ -242,15 +253,21 @@ begin
     Diagram.SetChildren(0, [Over, ViaVirtual, Plain]);
     Layout := Diagram.Layout;
     for Edge in Layout.Edges do
+    begin
       if Layout.Boxes[Edge.Target].Node = 1 then
       begin
         Assert.IsTrue(Edge.Dashed);
         Assert.AreEqual(3, Edge.Implementations);
       end
       else if Layout.Boxes[Edge.Target].Node = 2 then
-        Assert.IsTrue(Edge.Dashed)
+      begin
+        Assert.IsTrue(Edge.Dashed);
+      end
       else
+      begin
         Assert.IsFalse(Edge.Dashed);
+      end;
+    end;
   finally
     Diagram.Free;
   end;
@@ -365,6 +382,29 @@ begin
   finally
     Diagram.Free;
   end;
+end;
+
+procedure TAtlasCallDiagramTests.HtmlFollowsLanguage;
+var
+  mDiagram: TAtlasCallDiagram;
+  mHtml: string;
+  mSaved: TAtlasLanguage;
+begin
+  mSaved := TAtlasTextLanguage.Current;
+  TAtlasTextLanguage.Current := TAtlasLanguage.English;
+  mDiagram := NewDiagram;
+  try
+    mDiagram.Reset(TAtlasHierarchyDirection.Outgoing, [Item('Start', 'C:\P\A.pas', 1)]);
+    mHtml := mDiagram.Html('TForm1.Start');
+  finally
+    mDiagram.Free;
+    TAtlasTextLanguage.Current := mSaved;
+  end;
+  Assert.IsTrue(Pos('<html lang="en">', mHtml) > 0, 'Sprache');
+  Assert.IsTrue(Pos('<title>Call diagram: TForm1.Start</title>', mHtml) > 0, 'Titel');
+  Assert.IsTrue(Pos('project units only', mHtml) > 0, 'Schalter');
+  Assert.AreEqual(0, Pos('{{', mHtml), 'Platzhalter');
+  Assert.AreEqual(0, Pos('nur Projekt-Units', mHtml), 'deutscher Schalter');
 end;
 
 procedure TAtlasCallDiagramTests.HtmlIsSelfContained;

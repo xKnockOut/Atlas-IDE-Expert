@@ -70,7 +70,9 @@ begin
   Result.X := 0;
   Result.Y := 0;
   if AIndex = 0 then
+  begin
     Exit;
+  end;
   // Ring r beginnt bei 1 + 3·r·(r-1) und fasst 6·r Units.
   Ring := 1;
   First := 1;
@@ -92,7 +94,9 @@ var
   Ring, First: Integer;
 begin
   if ACount <= 1 then
+  begin
     Exit(TArchitectureLayouter.Spacing * 0.75);
+  end;
   Ring := 1;
   First := 1;
   while ACount > First + 6 * Ring do
@@ -108,141 +112,223 @@ var
   Index: Integer;
 begin
   for Index := 0 to ACount - 1 do
+  begin
     if Sqr(ACircles[Index].X - X) + Sqr(ACircles[Index].Y - Y) <
       Sqr(ACircles[Index].Radius + ARadius + TArchitectureLayouter.Gap) - 1E-6 then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
-class function TArchitectureLayouter.Compute(const AOverview: TArchitectureOverview): TArchitectureLayout;
 const
-  Angles = 36;
+  /// <summary>Probierte Winkel je Nachbar beim Anlegen eines Teilsystems.</summary>
+  cAngles = 36;
+
+type
+  /// <summary>Bester bisher gefundener Platz eines Teilsystems (Distance = Abstandsquadrat zum Ziel).</summary>
+  TPlacement = record
+    X: Double;
+    Y: Double;
+    Distance: Double;
+  end;
+
+/// <summary>Kanten zwischen Teilsystemen (ungerichtet) als Anziehung: Anzahl je Paar.</summary>
+function LinksOf(const AOverview: TArchitectureOverview; ACount: Integer): TArray<TArray<Integer>>;
 var
-  Count, Index, Other, Placed, Step, Position, Pass: Integer;
-  Links: TArray<TArray<Integer>>;
-  Edge: TOverviewEdge;
-  From_, To_: Integer;
-  TargetX, TargetY, Weight, Total, Angle, X, Y, Distance, BestX, BestY, BestDistance: Double;
-  SiblingX, SiblingY: Double;
-  SiblingCount: Integer;
-  Circle: TLayoutCircle;
-  Point: TLayoutPoint;
+  mIndex, mFrom, mTo: Integer;
+  mEdge: TOverviewEdge;
 begin
-  Result := Default(TArchitectureLayout);
-  Count := Length(AOverview.Subsystems);
-  SetLength(Result.Subsystems, Count);
-  SetLength(Result.Units, Length(AOverview.Units));
-  if Count = 0 then
-    Exit;
-  // Kanten zwischen Teilsystemen (ungerichtet) als Anziehung.
-  SetLength(Links, Count);
-  for Index := 0 to Count - 1 do
-    SetLength(Links[Index], Count);
-  for Edge in AOverview.Edges do
+  SetLength(Result, ACount);
+  for mIndex := 0 to ACount - 1 do
   begin
-    From_ := AOverview.Units[Edge.Source].Subsystem;
-    To_ := AOverview.Units[Edge.Target].Subsystem;
-    if From_ <> To_ then
+    SetLength(Result[mIndex], ACount);
+  end;
+  for mEdge in AOverview.Edges do
+  begin
+    mFrom := AOverview.Units[mEdge.Source].Subsystem;
+    mTo := AOverview.Units[mEdge.Target].Subsystem;
+    if mFrom <> mTo then
     begin
-      Inc(Links[From_][To_]);
-      Inc(Links[To_][From_]);
+      Inc(Result[mFrom][mTo]);
+      Inc(Result[mTo][mFrom]);
     end;
   end;
-  for Index := 0 to Count - 1 do
-    Result.Subsystems[Index].Radius := RingRadius(Length(AOverview.Subsystems[Index].Units));
+end;
+
+/// <summary>Ziel für APlaced: Schwerpunkt der Geschwister, sonst nach Kanten gewichteter Schwerpunkt der schon
+/// gesetzten Teilsysteme (ohne Kanten der Ursprung).</summary>
+function TargetOf(const AOverview: TArchitectureOverview; const ALayout: TArchitectureLayout;
+  const ALinks: TArray<TArray<Integer>>; APlaced: Integer): TLayoutPoint;
+var
+  mOther, mSiblingCount: Integer;
+  mWeight, mTotal: Double;
+  mSibling: TLayoutPoint;
+begin
+  Result := Default(TLayoutPoint);
+  mSibling := Default(TLayoutPoint);
+  mTotal := 0;
+  mSiblingCount := 0;
+  for mOther := 0 to APlaced - 1 do
+  begin
+    mWeight := ALinks[APlaced][mOther];
+    Result.X := Result.X + mWeight * ALayout.Subsystems[mOther].X;
+    Result.Y := Result.Y + mWeight * ALayout.Subsystems[mOther].Y;
+    mTotal := mTotal + mWeight;
+    if Siblings(AOverview, APlaced, mOther) then
+    begin
+      mSibling.X := mSibling.X + ALayout.Subsystems[mOther].X;
+      mSibling.Y := mSibling.Y + ALayout.Subsystems[mOther].Y;
+      Inc(mSiblingCount);
+    end;
+  end;
+  // Geschwister ziehen stärker als Kanten: Ziel ist ihr Schwerpunkt.
+  if mSiblingCount > 0 then
+  begin
+    Result.X := mSibling.X / mSiblingCount;
+    Result.Y := mSibling.Y / mSiblingCount;
+  end
+  else if mTotal > 0 then
+  begin
+    Result.X := Result.X / mTotal;
+    Result.Y := Result.Y / mTotal;
+  end;
+end;
+
+/// <summary>Plätze rund um AOther, die keinen gesetzten Kreis überlappen; der dem Ziel nächste landet in ABest.
+/// </summary>
+procedure TryAround(const ALayout: TArchitectureLayout; APlaced, AOther: Integer; const ATarget: TLayoutPoint;
+  var ABest: TPlacement);
+var
+  mStep: Integer;
+  mAngle, mX, mY, mDistance, mRadius: Double;
+begin
+  mRadius := ALayout.Subsystems[APlaced].Radius;
+  for mStep := 0 to cAngles - 1 do
+  begin
+    mAngle := mStep / cAngles * 2 * Pi;
+    mDistance := ALayout.Subsystems[AOther].Radius + mRadius + TArchitectureLayouter.Gap;
+    mX := ALayout.Subsystems[AOther].X + Cos(mAngle) * mDistance;
+    mY := ALayout.Subsystems[AOther].Y + Sin(mAngle) * mDistance;
+    if Overlaps(ALayout.Subsystems, APlaced, mX, mY, mRadius) then
+    begin
+      Continue;
+    end;
+    mDistance := Sqr(mX - ATarget.X) + Sqr(mY - ATarget.Y);
+    // Gleichstand: der zuerst gefundene Platz (feste Reihenfolge).
+    if mDistance < ABest.Distance - 1E-6 then
+    begin
+      ABest.Distance := mDistance;
+      ABest.X := mX;
+      ABest.Y := mY;
+    end;
+  end;
+end;
+
+/// <summary>Im ersten Durchgang nur an verbundenen, verwandten und zuletzt gesetzten Teilsystemen anlegen.</summary>
+function IsNearCandidate(const AOverview: TArchitectureOverview; const ALinks: TArray<TArray<Integer>>;
+  APlaced, AOther: Integer): Boolean;
+begin
+  Result := (ALinks[APlaced][AOther] <> 0) or (AOther >= APlaced - 6) or (AOther = 0) or
+    Siblings(AOverview, APlaced, AOther);
+end;
+
+/// <summary>Teilsystem APlaced an das bestehende Bild anlegen.</summary>
+procedure Place(const AOverview: TArchitectureOverview; var ALayout: TArchitectureLayout;
+  const ALinks: TArray<TArray<Integer>>; APlaced: Integer);
+var
+  mOther, mPass: Integer;
+  mTarget: TLayoutPoint;
+  mBest: TPlacement;
+begin
+  mTarget := TargetOf(AOverview, ALayout, ALinks, APlaced);
+  mBest.Distance := MaxDouble;
+  mBest.X := 0;
+  mBest.Y := 0;
+  // Erst nur an verbundenen und zuletzt gesetzten Teilsystemen anlegen (bei vielen Teilsystemen sonst
+  // kubisch), ohne freien Platz dort an allen.
+  for mPass := 0 to 1 do
+  begin
+    for mOther := 0 to APlaced - 1 do
+    begin
+      if (mPass = 1) or IsNearCandidate(AOverview, ALinks, APlaced, mOther) then
+      begin
+        TryAround(ALayout, APlaced, mOther, mTarget, mBest);
+      end;
+    end;
+    if mBest.Distance < MaxDouble then
+    begin
+      Break;
+    end;
+  end;
+  ALayout.Subsystems[APlaced].X := mBest.X;
+  ALayout.Subsystems[APlaced].Y := mBest.Y;
+end;
+
+/// <summary>Units in Ringen um den Mittelpunkt ihres Teilsystems.</summary>
+procedure PlaceUnits(const AOverview: TArchitectureOverview; var ALayout: TArchitectureLayout);
+var
+  mIndex, mPosition: Integer;
+  mPoint: TLayoutPoint;
+begin
+  for mIndex := 0 to High(ALayout.Subsystems) do
+  begin
+    for mPosition := 0 to High(AOverview.Subsystems[mIndex].Units) do
+    begin
+      mPoint := RingPoint(mPosition);
+      mPoint.X := mPoint.X + ALayout.Subsystems[mIndex].X;
+      mPoint.Y := mPoint.Y + ALayout.Subsystems[mIndex].Y;
+      ALayout.Units[AOverview.Subsystems[mIndex].Units[mPosition]] := mPoint;
+    end;
+  end;
+end;
+
+/// <summary>Umgebendes Rechteck aller Kreise.</summary>
+procedure ComputeBounds(var ALayout: TArchitectureLayout);
+var
+  mCircle: TLayoutCircle;
+begin
+  ALayout.Left := MaxDouble;
+  ALayout.Top := MaxDouble;
+  ALayout.Right := -MaxDouble;
+  ALayout.Bottom := -MaxDouble;
+  for mCircle in ALayout.Subsystems do
+  begin
+    ALayout.Left := Min(ALayout.Left, mCircle.X - mCircle.Radius);
+    ALayout.Top := Min(ALayout.Top, mCircle.Y - mCircle.Radius);
+    ALayout.Right := Max(ALayout.Right, mCircle.X + mCircle.Radius);
+    ALayout.Bottom := Max(ALayout.Bottom, mCircle.Y + mCircle.Radius);
+  end;
+end;
+
+class function TArchitectureLayouter.Compute(const AOverview: TArchitectureOverview): TArchitectureLayout;
+var
+  mCount, mIndex: Integer;
+  mLinks: TArray<TArray<Integer>>;
+begin
+  Result := Default(TArchitectureLayout);
+  mCount := Length(AOverview.Subsystems);
+  SetLength(Result.Subsystems, mCount);
+  SetLength(Result.Units, Length(AOverview.Units));
+  if mCount = 0 then
+  begin
+    Exit;
+  end;
+  mLinks := LinksOf(AOverview, mCount);
+  for mIndex := 0 to mCount - 1 do
+  begin
+    Result.Subsystems[mIndex].Radius := RingRadius(Length(AOverview.Subsystems[mIndex].Units));
+  end;
   // Das erste (größte) Teilsystem in die Mitte, die übrigen der Reihe nach anlegen.
   Result.Subsystems[0].X := 0;
   Result.Subsystems[0].Y := 0;
-  for Placed := 1 to Count - 1 do
+  for mIndex := 1 to mCount - 1 do
   begin
-    Circle := Result.Subsystems[Placed];
-    TargetX := 0;
-    TargetY := 0;
-    Total := 0;
-    for Other := 0 to Placed - 1 do
-    begin
-      Weight := Links[Placed][Other];
-      TargetX := TargetX + Weight * Result.Subsystems[Other].X;
-      TargetY := TargetY + Weight * Result.Subsystems[Other].Y;
-      Total := Total + Weight;
-    end;
-    if Total > 0 then
-    begin
-      TargetX := TargetX / Total;
-      TargetY := TargetY / Total;
-    end;
-    // Geschwister ziehen stärker als Kanten: Ziel ist ihr Schwerpunkt.
-    SiblingX := 0;
-    SiblingY := 0;
-    SiblingCount := 0;
-    for Other := 0 to Placed - 1 do
-      if Siblings(AOverview, Placed, Other) then
-      begin
-        SiblingX := SiblingX + Result.Subsystems[Other].X;
-        SiblingY := SiblingY + Result.Subsystems[Other].Y;
-        Inc(SiblingCount);
-      end;
-    if SiblingCount > 0 then
-    begin
-      TargetX := SiblingX / SiblingCount;
-      TargetY := SiblingY / SiblingCount;
-    end;
-    BestDistance := MaxDouble;
-    BestX := 0;
-    BestY := 0;
-    // Erst nur an verbundenen und zuletzt gesetzten Teilsystemen anlegen (bei vielen Teilsystemen sonst
-    // kubisch), ohne freien Platz dort an allen.
-    for Pass := 0 to 1 do
-    begin
-      for Other := 0 to Placed - 1 do
-      begin
-        if (Pass = 0) and (Links[Placed][Other] = 0) and (Other < Placed - 6) and (Other > 0) and
-          not Siblings(AOverview, Placed, Other) then
-          Continue;
-        for Step := 0 to Angles - 1 do
-        begin
-          Angle := Step / Angles * 2 * Pi;
-          Distance := Result.Subsystems[Other].Radius + Circle.Radius + Gap;
-          X := Result.Subsystems[Other].X + Cos(Angle) * Distance;
-          Y := Result.Subsystems[Other].Y + Sin(Angle) * Distance;
-          if Overlaps(Result.Subsystems, Placed, X, Y, Circle.Radius) then
-            Continue;
-          Distance := Sqr(X - TargetX) + Sqr(Y - TargetY);
-          // Gleichstand: der zuerst gefundene Platz (feste Reihenfolge).
-          if Distance < BestDistance - 1E-6 then
-          begin
-            BestDistance := Distance;
-            BestX := X;
-            BestY := Y;
-          end;
-        end;
-      end;
-      if BestDistance < MaxDouble then
-        Break;
-    end;
-    Circle.X := BestX;
-    Circle.Y := BestY;
-    Result.Subsystems[Placed] := Circle;
+    Place(AOverview, Result, mLinks, mIndex);
   end;
-  for Index := 0 to Count - 1 do
-    for Position := 0 to High(AOverview.Subsystems[Index].Units) do
-    begin
-      Point := RingPoint(Position);
-      Point.X := Point.X + Result.Subsystems[Index].X;
-      Point.Y := Point.Y + Result.Subsystems[Index].Y;
-      Result.Units[AOverview.Subsystems[Index].Units[Position]] := Point;
-    end;
-  Result.Left := MaxDouble;
-  Result.Top := MaxDouble;
-  Result.Right := -MaxDouble;
-  Result.Bottom := -MaxDouble;
-  for Circle in Result.Subsystems do
-  begin
-    Result.Left := Min(Result.Left, Circle.X - Circle.Radius);
-    Result.Top := Min(Result.Top, Circle.Y - Circle.Radius);
-    Result.Right := Max(Result.Right, Circle.X + Circle.Radius);
-    Result.Bottom := Max(Result.Bottom, Circle.Y + Circle.Radius);
-  end;
+  PlaceUnits(AOverview, Result);
+  ComputeBounds(Result);
 end;
 
 end.

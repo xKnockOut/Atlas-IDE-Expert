@@ -25,6 +25,11 @@
 // Modifizierer); ist sie nicht eindeutig, bleibt das Paar aus. PairFixes (#100)
 // gleicht Rumpf und Deklaration in beide Richtungen an, auch die
 // Aufrufkonvention. Standardwerte bleiben nur in der Deklaration.
+//
+// Neue Rümpfe (#1834) kommen in der Reihenfolge Lebenszyklus, Zugriffsmethoden,
+// überschriebene, übrige (TClassBodies.RankOf), vorbefüllt (O1) und beim
+// ersten Rumpf eines Typs mit dem Kommentar über dem Abschnitt (K1–K4);
+// Einstellungen über TClassBodyOptions.
 
 interface
 
@@ -32,7 +37,9 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.CodeActions;
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.Editing.ClassBodies;
 
 type
   /// <summary>Methode ohne Gegenstück (#124).</summary>
@@ -106,7 +113,15 @@ type
       out AEdit: TTextEdit): Boolean; static;
     /// <summary>Aktion für fehlende Rümpfe an APosition; False, wenn nichts fehlt.</summary>
     class function MissingBodies(ATree: TSyntaxTree; const AText: string; const APosition: TTextPosition;
-      out AAction: TCodeAction): Boolean; static;
+      out AAction: TCodeAction): Boolean; overload; static;
+    /// <summary>Wie oben mit den Einstellungen der Klassenvervollständigung (#1834).</summary>
+    class function MissingBodies(ATree: TSyntaxTree; const AText: string; const APosition: TTextPosition;
+      const AOptions: TClassBodyOptions; out AAction: TCodeAction): Boolean; overload; static;
+    /// <summary>Wie oben mit classCompletion.* aus ASettings (ungesetzt: Vorgaben) und dem Formatstil AStyle.
+    /// </summary>
+    class function MissingBodies(ATree: TSyntaxTree; const AText: string; const APosition: TTextPosition;
+      const ASettings: TClassCompletionSettings; const AStyle: TFormatStyle; out AAction: TCodeAction): Boolean;
+      overload; static;
     /// <summary>Zerlegt den Kopf der Methode ASymbol; False, wenn er sich nicht lesen lässt.</summary>
     class function Shape(ATree: TSyntaxTree; const AText: string; const ASymbol: TIndexSymbol;
       out AShape: TSignatureShape): Boolean; static;
@@ -121,7 +136,11 @@ type
     /// <summary>Fügt den Rumpf ABody (ohne Zeilenumbruch am Ende) für einen Typ dieser Datei ein: hinter die
     /// letzte vorhandene Methode des Typs, sonst vor initialization, finalization bzw. "end." (#443).</summary>
     class function BodyEdit(ATree: TSyntaxTree; const AText, ATypeName, ABody: string; out AEdit: TTextEdit): Boolean;
-      static;
+      overload; static;
+    /// <summary>Wie oben; ist es der erste Rumpf des Typs, kommt der Kommentar nach AOptions davor (#1835).
+    /// </summary>
+    class function BodyEdit(ATree: TSyntaxTree; const AText, ATypeName, ABody: string;
+      const AOptions: TClassBodyOptions; out AEdit: TTextEdit): Boolean; overload; static;
   end;
 
 implementation
@@ -130,12 +149,32 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.Math,
-  System.Generics.Collections,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.RoutineSignatures,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Editing.TypeComments,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TClassCompletionText = (AlignTheImplementationOfWith, AlignTheDeclarationOfWith, CreateMethodBodyFor,
+    CreateMissingMethodBodyFor, CreateMissingMethodBodiesFor);
+
+const
+  cTexts: array[TClassCompletionText] of TAtlasText = (
+    (De: 'Implementierung von %s an die Deklaration angleichen';
+     En: 'Align the implementation of %s with the declaration'),
+    (De: 'Deklaration von %s an die Implementierung angleichen';
+     En: 'Align the declaration of %s with the implementation'),
+    (De: 'Methodenrumpf für %s.%s erzeugen'; En: 'Create method body for %s.%s'),
+    (De: 'Fehlenden Methodenrumpf für %s erzeugen'; En: 'Create missing method body for %s'),
+    (De: '%d fehlende Methodenrümpfe für %s erzeugen'; En: 'Create %d missing method bodies for %s'));
+
+{$SCOPEDENUMS OFF}
 
 const
   // Bedingte Übersetzung im Kopf einer Methode (#1324).
@@ -159,11 +198,17 @@ begin
   for Line := ARange.StartPos.Line to ARange.EndPos.Line do
   begin
     if (Line < 0) or (Line > High(ALines)) then
+    begin
       Break;
+    end;
     if Line = ARange.StartPos.Line then
-      Result := Copy(ALines[Line], ARange.StartPos.Character + 1, MaxInt)
+    begin
+      Result := Copy(ALines[Line], ARange.StartPos.Character + 1, MaxInt);
+    end
     else
+    begin
       Result := Result + ' ' + Trim(ALines[Line]);
+    end;
   end;
 end;
 
@@ -178,19 +223,29 @@ begin
   Quoted := False;
   Start := 1;
   for Index := 1 to Length(AText) do
+  begin
     if AText[Index] = '''' then
-      Quoted := not Quoted
+    begin
+      Quoted := not Quoted;
+    end
     else if Quoted then
-      Continue
+    begin
+      Continue;
+    end
     else if CharInSet(AText[Index], ['(', '[', '<']) then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if CharInSet(AText[Index], [')', ']', '>']) then
-      Dec(Depth)
+    begin
+      Dec(Depth);
+    end
     else if (Depth = 0) and (AText[Index] = ADelimiter) then
     begin
       Result := Result + [Copy(AText, Start, Index - Start)];
       Start := Index + 1;
     end;
+  end;
   Result := Result + [Copy(AText, Start, MaxInt)];
 end;
 
@@ -206,7 +261,9 @@ begin
     if ((Index = 1) or not CharInSet(Lower[Index - 1], ['a'..'z', '0'..'9', '_'])) and
       ((Index + Length(AWord) > Length(Lower)) or
       not CharInSet(Lower[Index + Length(AWord)], ['a'..'z', '0'..'9', '_'])) then
+    begin
       Exit(True);
+    end;
     Index := PosEx(AWord, Lower, Index + 1);
   end;
   Result := False;
@@ -220,36 +277,57 @@ begin
   // Der Name folgt auf procedure/function/constructor/destructor/operator.
   Index := Pos(LowerCase(' ' + AMethodName), LowerCase(ASignature));
   if Index = 0 then
+  begin
     Exit('');
+  end;
   Result := Copy(ASignature, 1, Index) + ATypeName + '.' + Copy(ASignature, Index + 1, MaxInt) + ';';
+end;
+
+/// <summary>Ist AIndex das "end" vor dem abschließenden "." der Unit (Kommentare dazwischen erlaubt)?</summary>
+function IsUnitEnd(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
+var
+  mNext: Integer;
+begin
+  Result := ATokens[AIndex].IsKeyword('end');
+  if Result then
+  begin
+    mNext := AIndex + 1;
+    while (mNext <= High(ATokens)) and
+      (ATokens[mNext].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+    begin
+      Inc(mNext);
+    end;
+    Result := (mNext <= High(ATokens)) and ATokens[mNext].IsSymbol('.');
+  end;
 end;
 
 /// <summary>Zeile vor initialization, finalization oder dem abschließenden "end."; -1 ohne implementation.</summary>
 function ImplementationEndLine(ATree: TSyntaxTree): Integer;
 var
-  Tokens: TArray<TPascalToken>;
-  Index, Next: Integer;
-  InImplementation: Boolean;
+  mTokens: TArray<TPascalToken>;
+  mIndex: Integer;
+  mInImplementation: Boolean;
 begin
   Result := -1;
-  InImplementation := False;
-  Tokens := ATree.Tokens;
-  for Index := 0 to High(Tokens) do
+  mInImplementation := False;
+  mTokens := ATree.Tokens;
+  for mIndex := 0 to High(mTokens) do
   begin
-    if Tokens[Index].Kind <> TPascalTokenKind.Keyword then
-      Continue;
-    if Tokens[Index].IsKeyword('implementation') then
-      InImplementation := True
-    else if InImplementation and (Tokens[Index].IsKeyword('initialization') or
-      Tokens[Index].IsKeyword('finalization')) then
-      Exit(Tokens[Index].StartPos.Line)
-    else if InImplementation and Tokens[Index].IsKeyword('end') then
+    if mTokens[mIndex].IsKeyword('implementation') then
     begin
-      Next := Index + 1;
-      while (Next <= High(Tokens)) and (Tokens[Next].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-        Inc(Next);
-      if (Next <= High(Tokens)) and Tokens[Next].IsSymbol('.') then
-        Result := Tokens[Index].StartPos.Line;
+      mInImplementation := True;
+    end
+    else if not mInImplementation then
+    begin
+      Continue;
+    end
+    else if mTokens[mIndex].IsKeyword('initialization') or mTokens[mIndex].IsKeyword('finalization') then
+    begin
+      Exit(mTokens[mIndex].StartPos.Line);
+    end
+    else if IsUnitEnd(mTokens, mIndex) then
+    begin
+      Result := mTokens[mIndex].StartPos.Line;
     end;
   end;
 end;
@@ -257,68 +335,126 @@ end;
 function TypeNameOf(const ASymbol: TIndexSymbol): string;
 begin
   if ASymbol.Container <> '' then
-    Result := ASymbol.Container + '.' + ASymbol.Name
+  begin
+    Result := ASymbol.Container + '.' + ASymbol.Name;
+  end
   else
+  begin
     Result := ASymbol.Name;
+  end;
+end;
+
+type
+  /// <summary>Kopf hinter dem Methodennamen bis vor das erste ";" außerhalb von Klammern.</summary>
+  TSignatureTail = record
+    Range: TTextRange;
+    /// <summary>"(const A: Integer): Boolean".</summary>
+    Text: string;
+    NameToken: Integer;
+    LastToken: Integer;
+  end;
+
+/// <summary>Spitze Klammern auf Klammerebene 0: Constraints der Typparameter enthalten ";" (&lt;TI: IInterface;
+/// TC: class&gt;, #1325). True beim ";", das den Kopf beendet.</summary>
+function AngleStep(const AToken: TPascalToken; var AAngles: Integer): Boolean;
+begin
+  Result := False;
+  if AToken.IsSymbol('<') then
+  begin
+    Inc(AAngles);
+  end
+  else if (AAngles > 0) and AToken.IsSymbol('>') then
+  begin
+    Dec(AAngles);
+  end
+  else
+  begin
+    Result := (AAngles = 0) and AToken.IsSymbol(';');
+  end;
+end;
+
+/// <summary>Zählt Klammern mit; True beim ";", das den Kopf beendet.</summary>
+function EndsTail(const AToken: TPascalToken; var ADepth, AAngles: Integer): Boolean;
+begin
+  Result := False;
+  if AToken.IsSymbol('(') or AToken.IsSymbol('[') then
+  begin
+    Inc(ADepth);
+  end
+  else if AToken.IsSymbol(')') or AToken.IsSymbol(']') then
+  begin
+    Dec(ADepth);
+  end
+  else if ADepth = 0 then
+  begin
+    Result := AngleStep(AToken, AAngles);
+  end;
+end;
+
+/// <summary>Letztes Token des Kopfes hinter dem Namen an AName (ohne Kommentare); -1 ohne.</summary>
+function TailEnd(const ATokens: TArray<TPascalToken>; AName: Integer): Integer;
+var
+  mIndex, mDepth, mAngles: Integer;
+begin
+  Result := -1;
+  mDepth := 0;
+  mAngles := 0;
+  for mIndex := AName + 1 to High(ATokens) do
+  begin
+    if ATokens[mIndex].Kind = TPascalTokenKind.Comment then
+    begin
+      Continue;
+    end;
+    if EndsTail(ATokens[mIndex], mDepth, mAngles) then
+    begin
+      Break;
+    end;
+    Result := mIndex;
+  end;
 end;
 
 /// <summary>Bereich und Text hinter dem Methodennamen bis vor das erste ";" außerhalb von Klammern,
 /// z. B. "(const A: Integer): Boolean".</summary>
 function SignatureTail(ATree: TSyntaxTree; const AText: string; const ASymbol: TIndexSymbol;
-  out ARange: TTextRange; out ATail: string; out AName, ALast: Integer): Boolean; overload;
+  out ATail: TSignatureTail): Boolean; overload;
 var
-  Tokens: TArray<TPascalToken>;
-  Index, Name, Last, Depth, StartOffset, mAngles: Integer;
+  mTokens: TArray<TPascalToken>;
+  mIndex, mStartOffset: Integer;
 begin
-  Result := False;
-  AName := -1;
-  ALast := -1;
-  Tokens := ATree.Tokens;
-  Name := -1;
-  mAngles := 0;
-  for Index := 0 to High(Tokens) do
-    if Tokens[Index].EndPos = ASymbol.SelectionRange.EndPos then
+  ATail := Default(TSignatureTail);
+  ATail.NameToken := -1;
+  ATail.LastToken := -1;
+  mTokens := ATree.Tokens;
+  for mIndex := 0 to High(mTokens) do
+  begin
+    if mTokens[mIndex].EndPos = ASymbol.SelectionRange.EndPos then
     begin
-      Name := Index;
+      ATail.NameToken := mIndex;
       Break;
     end;
-  if Name < 0 then
-    Exit;
-  Depth := 0;
-  Last := -1;
-  for Index := Name + 1 to High(Tokens) do
-  begin
-    if Tokens[Index].Kind = TPascalTokenKind.Comment then
-      Continue;
-    if Tokens[Index].IsSymbol('(') or Tokens[Index].IsSymbol('[') then
-      Inc(Depth)
-    else if Tokens[Index].IsSymbol(')') or Tokens[Index].IsSymbol(']') then
-      Dec(Depth)
-    // Constraints der Typparameter enthalten ";" (<TI: IInterface; TC: class>, #1325).
-    else if (Depth = 0) and Tokens[Index].IsSymbol('<') then
-      Inc(mAngles)
-    else if (Depth = 0) and (mAngles > 0) and Tokens[Index].IsSymbol('>') then
-      Dec(mAngles)
-    else if (Depth = 0) and (mAngles = 0) and Tokens[Index].IsSymbol(';') then
-      Break;
-    Last := Index;
   end;
-  if Last < 0 then
-    Exit;
-  StartOffset := Tokens[Name].Offset + Length(Tokens[Name].Text);
-  ARange := TTextRange.Create(Tokens[Name].EndPos, Tokens[Last].EndPos);
-  ATail := Copy(AText, StartOffset + 1, Tokens[Last].Offset + Length(Tokens[Last].Text) - StartOffset);
-  AName := Name;
-  ALast := Last;
-  Result := True;
+  if ATail.NameToken >= 0 then
+  begin
+    ATail.LastToken := TailEnd(mTokens, ATail.NameToken);
+  end;
+  Result := ATail.LastToken >= 0;
+  if Result then
+  begin
+    mStartOffset := mTokens[ATail.NameToken].Offset + Length(mTokens[ATail.NameToken].Text);
+    ATail.Range := TTextRange.Create(mTokens[ATail.NameToken].EndPos, mTokens[ATail.LastToken].EndPos);
+    ATail.Text := Copy(AText, mStartOffset + 1, mTokens[ATail.LastToken].Offset +
+      Length(mTokens[ATail.LastToken].Text) - mStartOffset);
+  end;
 end;
 
 function SignatureTail(ATree: TSyntaxTree; const AText: string; const ASymbol: TIndexSymbol;
   out ARange: TTextRange; out ATail: string): Boolean; overload;
 var
-  mName, mLast: Integer;
+  mTail: TSignatureTail;
 begin
-  Result := SignatureTail(ATree, AText, ASymbol, ARange, ATail, mName, mLast);
+  Result := SignatureTail(ATree, AText, ASymbol, mTail);
+  ARange := mTail.Range;
+  ATail := mTail.Text;
 end;
 
 /// <summary>Text der Token AFirst..ALast ohne Kommentare und Direktiven (#1324): {Do not Localize}, {%H-} oder
@@ -340,12 +476,16 @@ begin
     begin
       if (ATokens[mIndex].Kind = TPascalTokenKind.Directive) and
         MatchText(TPascalLexer.DirectiveName(ATokens[mIndex].Text), cConditionalDirectives) then
+      begin
         AConditional := True;
+      end;
       mGap := True;
       Continue;
     end;
     if (Result <> '') and (mGap or (ATokens[mIndex].Offset > mEnd)) then
+    begin
       Result := Result + ' ';
+    end;
     Result := Result + ATokens[mIndex].Text;
     mEnd := ATokens[mIndex].Offset + Length(ATokens[mIndex].Text);
     mGap := False;
@@ -360,64 +500,93 @@ begin
   Result := '';
   mDepth := 0;
   for mIndex := 1 to Length(AText) do
+  begin
     if AText[mIndex] = '[' then
-      Inc(mDepth)
+    begin
+      Inc(mDepth);
+    end
     else if AText[mIndex] = ']' then
     begin
       if mDepth > 0 then
+      begin
         Dec(mDepth);
+      end;
       Result := Result + ' ';
     end
     else if mDepth = 0 then
+    begin
       Result := Result + AText[mIndex];
+    end;
+  end;
   Result := Trim(Result);
   while Pos('  ', Result) > 0 do
+  begin
     Result := StringReplace(Result, '  ', ' ', [rfReplaceAll]);
+  end;
+end;
+
+/// <summary>+1 für "(" und "[", -1 für ")" und "]", sonst 0.</summary>
+function BracketDelta(AChar: Char): Integer;
+begin
+  Result := 0;
+  if CharInSet(AChar, ['(', '[']) then
+  begin
+    Result := 1;
+  end
+  else if CharInSet(AChar, [')', ']']) then
+  begin
+    Result := -1;
+  end;
+end;
+
+/// <summary>Ein Zeichen der Parameterliste außerhalb von Strings: zählt Klammern und schließt Gruppen ab. True,
+/// wenn die Liste an AIndex endet.</summary>
+function SplitStep(const ATail: string; AIndex: Integer; var ADepth, AStart: Integer;
+  var AGroups: TArray<string>): Boolean;
+var
+  mGroup: string;
+begin
+  ADepth := ADepth + BracketDelta(ATail[AIndex]);
+  mGroup := Trim(Copy(ATail, AStart, AIndex - AStart));
+  Result := (ADepth = 0) and (BracketDelta(ATail[AIndex]) < 0);
+  if Result and (mGroup <> '') then
+  begin
+    AGroups := AGroups + [mGroup];
+  end
+  else if (ADepth = 1) and (ATail[AIndex] = ';') then
+  begin
+    AGroups := AGroups + [mGroup];
+    AStart := AIndex + 1;
+  end;
 end;
 
 /// <summary>Zerlegt "(A: Integer = 1; const B: string): Boolean" in Parametergruppen und den Rest.</summary>
 function SplitParameters(const ATail: string; out AGroups: TArray<string>; out AAfter: string): Boolean;
 var
-  Index, Depth, Start: Integer;
-  Quoted: Boolean;
-  Tail: string;
+  mIndex, mDepth, mStart: Integer;
+  mQuoted: Boolean;
+  mTail: string;
 begin
   AGroups := nil;
-  Tail := Trim(ATail);
-  AAfter := Tail;
-  Result := (Tail <> '') and (Tail[1] = '(');
-  if not Result then
-    Exit;
-  Depth := 0;
-  Quoted := False;
-  Start := 2;
-  for Index := 1 to Length(Tail) do
+  mTail := Trim(ATail);
+  AAfter := mTail;
+  Result := (mTail <> '') and (mTail[1] = '(');
+  mDepth := 0;
+  mQuoted := False;
+  mStart := 2;
+  mIndex := 1;
+  while Result and (mIndex <= Length(mTail)) do
   begin
-    if Tail[Index] = '''' then
-      Quoted := not Quoted;
-    if Quoted then
-      Continue;
-    case Tail[Index] of
-      '(', '[':
-        Inc(Depth);
-      ')', ']':
-        begin
-          Dec(Depth);
-          if Depth = 0 then
-          begin
-            if Trim(Copy(Tail, Start, Index - Start)) <> '' then
-              AGroups := AGroups + [Trim(Copy(Tail, Start, Index - Start))];
-            AAfter := Copy(Tail, Index + 1, MaxInt);
-            Exit;
-          end;
-        end;
-      ';':
-        if Depth = 1 then
-        begin
-          AGroups := AGroups + [Trim(Copy(Tail, Start, Index - Start))];
-          Start := Index + 1;
-        end;
+    if mTail[mIndex] = '''' then
+    begin
+      mQuoted := not mQuoted;
+    end
+    else if not mQuoted and SplitStep(mTail, mIndex, mDepth, mStart, AGroups) then
+    begin
+      AAfter := Copy(mTail, mIndex + 1, MaxInt);
+      Exit;
     end;
+    Inc(mIndex);
   end;
   Result := False;
 end;
@@ -433,9 +602,13 @@ begin
   for Index := 1 to Length(AGroup) do
   begin
     if AGroup[Index] = '''' then
+    begin
       Quoted := not Quoted;
+    end;
     if Quoted then
+    begin
       Continue;
+    end;
     case AGroup[Index] of
       '(', '[', '<':
         Inc(Depth);
@@ -443,7 +616,9 @@ begin
         Dec(Depth);
       '=':
         if Depth = 0 then
+        begin
           Exit(Index);
+        end;
     end;
   end;
   Result := 0;
@@ -459,18 +634,24 @@ var
 begin
   Colon := Pos(':', AGroup);
   if Colon = 0 then
-    Names := AGroup
+  begin
+    Names := AGroup;
+  end
   else
+  begin
     Names := Copy(AGroup, 1, Colon - 1);
+  end;
   Names := LowerCase(Trim(Names));
   // Attribute wie [ref] stehen vor den Namen, auch hinter dem Modifizierer: const [ref] A (#1324).
   Names := WithoutAttributes(Names);
   for Index := 0 to High(Modifiers) do
+  begin
     if Pos(Modifiers[Index] + ' ', Names) = 1 then
     begin
       Names := Trim(Copy(Names, Length(Modifiers[Index]) + 1, MaxInt));
       Break;
     end;
+  end;
   Result := StringReplace(StringReplace(Names, ' ', '', [rfReplaceAll]), #9, '', [rfReplaceAll]);
 end;
 
@@ -482,7 +663,9 @@ begin
   for Index := 0 to High(AGroups) do
   begin
     if Index > 0 then
+    begin
       Result := Result + '; ';
+    end;
     Result := Result + AGroups[Index];
   end;
   Result := Result + ')' + AAfter;
@@ -496,12 +679,16 @@ var
   Index, Equals: Integer;
 begin
   if not SplitParameters(ATail, Groups, After) then
+  begin
     Exit(TrimLeft(ATail));
+  end;
   for Index := 0 to High(Groups) do
   begin
     Equals := DefaultPos(Groups[Index]);
     if Equals > 0 then
+    begin
       Groups[Index] := TrimRight(Copy(Groups[Index], 1, Equals - 1));
+    end;
   end;
   Result := JoinGroups(Groups, After);
 end;
@@ -515,16 +702,24 @@ var
   Index, Inner, Equals: Integer;
 begin
   if not SplitParameters(ABodyTail, Groups, After) then
+  begin
     Exit(TrimLeft(ABodyTail));
+  end;
   if SplitParameters(ADeclTail, Old, OldAfter) then
+  begin
     for Index := 0 to High(Groups) do
+    begin
       for Inner := 0 to High(Old) do
       begin
         Equals := DefaultPos(Old[Inner]);
         if (Equals > 0) and (DefaultPos(Groups[Index]) = 0) and
           (GroupNames(Groups[Index]) = GroupNames(Copy(Old[Inner], 1, Equals - 1))) then
+        begin
           Groups[Index] := Groups[Index] + ' ' + Trim(Copy(Old[Inner], Equals, MaxInt));
+        end;
       end;
+    end;
+  end;
   Result := JoinGroups(Groups, After);
 end;
 
@@ -547,7 +742,9 @@ begin
   Group := AGroup;
   Equals := DefaultPos(Group);
   if Equals > 0 then
+  begin
     Group := Copy(Group, 1, Equals - 1);
+  end;
   Colon := Pos(':', Group);
   if Colon > 0 then
   begin
@@ -569,7 +766,9 @@ begin
     Names := Trim(Copy(Names, Space + 1, MaxInt));
   end;
   while Pos('  ', TypeName) > 0 do
+  begin
     TypeName := StringReplace(TypeName, '  ', ' ', [rfReplaceAll]);
+  end;
   for Name in SplitTopLevel(Names, ',') do
   begin
     Parameter.Modifier := Modifier;
@@ -591,20 +790,32 @@ var
 begin
   Result := 0;
   if Length(ADeclaration.Parameters) = Length(ABody.Parameters) then
+  begin
     Inc(Result, 100);
+  end;
   for Index := 0 to Min(High(ADeclaration.Parameters), High(ABody.Parameters)) do
   begin
     if SameTypeName(ADeclaration.Parameters[Index].TypeName, ABody.Parameters[Index].TypeName) then
+    begin
       Inc(Result, 10);
+    end;
     if SameText(ADeclaration.Parameters[Index].Name, ABody.Parameters[Index].Name) then
+    begin
       Inc(Result, 5);
+    end;
     if ADeclaration.Parameters[Index].Modifier = ABody.Parameters[Index].Modifier then
+    begin
       Inc(Result, 1);
+    end;
   end;
   if SameTypeName(ADeclaration.ResultType, ABody.ResultType) then
+  begin
     Inc(Result, 3);
+  end;
   if ADeclaration.Kind = ABody.Kind then
+  begin
     Inc(Result, 3);
+  end;
 end;
 
 /// <summary>Aufrufkonvention aus den Direktiven hinter dem Kopf ("overload; stdcall; …"); '' ohne.</summary>
@@ -619,11 +830,17 @@ begin
     Word := LowerCase(Trim(Part));
     Space := Pos(' ', Word);
     if Space > 0 then
+    begin
       Word := Copy(Word, 1, Space - 1);
+    end;
     if MatchText(Word, Conventions) then
+    begin
       Exit(Word);
+    end;
     if not MatchText(Word, Directives) then
+    begin
       Exit;
+    end;
   end;
 end;
 
@@ -634,77 +851,122 @@ var
 begin
   Declaration := ADeclaration;
   if Declaration = '' then
+  begin
     Declaration := 'register';
+  end;
   Result := (ABody <> '') and (ABody <> Declaration);
 end;
 
 { TClassCompletion }
 
+/// <summary>Überspringt Kommentare ab AIndex.</summary>
+procedure SkipComments(const ATokens: TArray<TPascalToken>; var AIndex: Integer);
+begin
+  while (AIndex <= High(ATokens)) and (ATokens[AIndex].Kind = TPascalTokenKind.Comment) do
+  begin
+    Inc(AIndex);
+  end;
+end;
+
+/// <summary>Überspringt die Argumente einer Direktive wie message WM_PAINT oder deprecated 'Grund' bis vor ihr
+/// ";".</summary>
+procedure SkipDirectiveArguments(const ATokens: TArray<TPascalToken>; var AIndex: Integer);
+var
+  mDepth: Integer;
+begin
+  mDepth := 0;
+  while (AIndex < High(ATokens)) and not ((mDepth = 0) and ATokens[AIndex + 1].IsSymbol(';')) do
+  begin
+    if ATokens[AIndex].IsSymbol('(') then
+    begin
+      Inc(mDepth);
+    end
+    else if ATokens[AIndex].IsSymbol(')') then
+    begin
+      Dec(mDepth);
+    end;
+    Inc(AIndex);
+  end;
+end;
+
+/// <summary>Direktiven hinter dem Kopf, der an AEnd endet: "; overload; stdcall;". Merkt die Aufrufkonvention.
+/// </summary>
+procedure ReadShapeDirectives(const ATokens: TArray<TPascalToken>; const AEnd: TTextPosition;
+  var AShape: TSignatureShape);
+var
+  mIndex: Integer;
+begin
+  mIndex := 0;
+  while (mIndex <= High(ATokens)) and not (ATokens[mIndex].EndPos = AEnd) do
+  begin
+    Inc(mIndex);
+  end;
+  Inc(mIndex);
+  SkipComments(ATokens, mIndex);
+  while (mIndex <= High(ATokens)) and ATokens[mIndex].IsSymbol(';') do
+  begin
+    Inc(mIndex);
+    SkipComments(ATokens, mIndex);
+    if (mIndex > High(ATokens)) or not (MatchText(ATokens[mIndex].Text, Conventions) or
+      MatchText(ATokens[mIndex].Text, Directives)) then
+    begin
+      Break;
+    end;
+    if MatchText(ATokens[mIndex].Text, Conventions) then
+    begin
+      AShape.Convention := LowerCase(ATokens[mIndex].Text);
+      AShape.ConventionRange := TTextRange.Create(ATokens[mIndex].StartPos, ATokens[mIndex].EndPos);
+    end;
+    SkipDirectiveArguments(ATokens, mIndex);
+    Inc(mIndex);
+    SkipComments(ATokens, mIndex);
+  end;
+end;
+
+/// <summary>Art der Routine im Kopf AHeader (constructor, function …); '' ohne.</summary>
+function KindOfHeader(const AHeader: string): string;
+var
+  mWord: string;
+begin
+  for mWord in Kinds do
+  begin
+    if HasWord(AHeader, mWord) then
+    begin
+      Exit(mWord);
+    end;
+  end;
+  Result := '';
+end;
+
 class function TClassCompletion.Shape(ATree: TSyntaxTree; const AText: string; const ASymbol: TIndexSymbol;
   out AShape: TSignatureShape): Boolean;
 var
-  Tokens: TArray<TPascalToken>;
-  Range: TTextRange;
-  Tail, After, Group, Header, Rest, Word: string;
-  Groups: TArray<string>;
-  Index, Depth: Integer;
-  mName, mLast: Integer;
+  mTail: TSignatureTail;
+  mText, mAfter, mGroup, mRest: string;
+  mGroups: TArray<string>;
 begin
   AShape := Default(TSignatureShape);
-  Result := SignatureTail(ATree, AText, ASymbol, Range, Tail, mName, mLast);
+  Result := SignatureTail(ATree, AText, ASymbol, mTail);
   if not Result then
-    Exit;
-  // Verglichen wird der Kopf ohne Kommentare und Direktiven (#1324).
-  Tail := CleanTail(ATree.Tokens, mName + 1, mLast, AShape.Conditional);
-  Header := TRoutineSignatures.Head(RangeText(TTextLines.SplitLines(AText), ASymbol.Range), Rest);
-  for Word in Kinds do
-    if HasWord(Header, Word) then
-    begin
-      AShape.Kind := Word;
-      Break;
-    end;
-  if SplitParameters(Tail, Groups, After) then
-    for Group in Groups do
-      AShape.Parameters := AShape.Parameters + GroupParameters(Group);
-  After := Trim(After);
-  if StartsStr(':', After) then
-    AShape.ResultType := Trim(Copy(After, 2, MaxInt));
-  // Direktiven hinter dem Kopf: "; overload; stdcall;"
-  Tokens := ATree.Tokens;
-  Index := 0;
-  while (Index <= High(Tokens)) and not (Tokens[Index].EndPos = Range.EndPos) do
-    Inc(Index);
-  Inc(Index);
-  while Index <= High(Tokens) do
   begin
-    while (Index <= High(Tokens)) and (Tokens[Index].Kind = TPascalTokenKind.Comment) do
-      Inc(Index);
-    if (Index > High(Tokens)) or not Tokens[Index].IsSymbol(';') then
-      Break;
-    Inc(Index);
-    while (Index <= High(Tokens)) and (Tokens[Index].Kind = TPascalTokenKind.Comment) do
-      Inc(Index);
-    if Index > High(Tokens) then
-      Break;
-    if MatchText(Tokens[Index].Text, Conventions) then
-    begin
-      AShape.Convention := LowerCase(Tokens[Index].Text);
-      AShape.ConventionRange := TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].EndPos);
-    end
-    else if not MatchText(Tokens[Index].Text, Directives) then
-      Break;
-    // Argumente wie message WM_PAINT oder deprecated 'Grund' überspringen.
-    Depth := 0;
-    while (Index < High(Tokens)) and not ((Depth = 0) and Tokens[Index + 1].IsSymbol(';')) do
-    begin
-      if Tokens[Index].IsSymbol('(') then
-        Inc(Depth)
-      else if Tokens[Index].IsSymbol(')') then
-        Dec(Depth);
-      Inc(Index);
-    end;
-    Inc(Index);
+    Exit;
   end;
+  // Verglichen wird der Kopf ohne Kommentare und Direktiven (#1324).
+  mText := CleanTail(ATree.Tokens, mTail.NameToken + 1, mTail.LastToken, AShape.Conditional);
+  AShape.Kind := KindOfHeader(TRoutineSignatures.Head(RangeText(TTextLines.SplitLines(AText), ASymbol.Range), mRest));
+  if SplitParameters(mText, mGroups, mAfter) then
+  begin
+    for mGroup in mGroups do
+    begin
+      AShape.Parameters := AShape.Parameters + GroupParameters(mGroup);
+    end;
+  end;
+  mAfter := Trim(mAfter);
+  if StartsStr(':', mAfter) then
+  begin
+    AShape.ResultType := Trim(Copy(mAfter, 2, MaxInt));
+  end;
+  ReadShapeDirectives(ATree.Tokens, mTail.Range.EndPos, AShape);
 end;
 
 class function TClassCompletion.Pairs(ATree: TSyntaxTree; const AText: string): TArray<TSignaturePair>;
@@ -724,9 +986,13 @@ var
   function Score(A, B: Integer): Integer;
   begin
     if Items[A].Declared then
-      Result := Closeness(Shapes[A], Shapes[B])
+    begin
+      Result := Closeness(Shapes[A], Shapes[B]);
+    end
     else
+    begin
       Result := Closeness(Shapes[B], Shapes[A]);
+    end;
   end;
 
   /// <summary>Eindeutig nächstliegender Partner von A; -1 ohne oder bei Gleichstand.</summary>
@@ -738,7 +1004,9 @@ var
     Top := -1;
     Count := 0;
     for B := 0 to High(Items) do
+    begin
       if Candidate(A, B) then
+      begin
         if Score(A, B) > Top then
         begin
           Top := Score(A, B);
@@ -746,9 +1014,15 @@ var
           Count := 1;
         end
         else if Score(A, B) = Top then
+        begin
           Inc(Count);
+        end;
+      end;
+    end;
     if Count <> 1 then
+    begin
       Result := -1;
+    end;
   end;
 
 begin
@@ -757,14 +1031,20 @@ begin
   SetLength(Shapes, Length(Items));
   SetLength(Valid, Length(Items));
   for Index := 0 to High(Items) do
+  begin
     Valid[Index] := Shape(ATree, AText, Items[Index].Symbol, Shapes[Index]);
+  end;
   for Index := 0 to High(Items) do
   begin
     if Items[Index].Declared then
+    begin
       Continue;
+    end;
     Other := Best(Index);
     if (Other < 0) or (Best(Other) <> Index) then
+    begin
       Continue;
+    end;
     Pair.Declaration := Items[Other];
     Pair.Body := Items[Index];
     Pair.DeclarationShape := Shapes[Other];
@@ -785,30 +1065,38 @@ begin
   Result := SignatureTail(ATree, AText, APair.Declaration.Symbol, DeclRange, DeclTail) and
     SignatureTail(ATree, AText, APair.Body.Symbol, BodyRange, BodyTail);
   if not Result then
+  begin
     Exit;
+  end;
   Name := APair.Body.Symbol.Name;
   Fix := Default(TCodeAction);
   Fix.Kind := QuickFixKind;
-  Fix.Title := Format('Implementierung von %s an die Deklaration angleichen', [Name]);
+  Fix.Title := cTexts[TClassCompletionText.AlignTheImplementationOfWith].Fmt([Name]);
   Fix.Edits := [TTextEdit.Create(BodyRange, WithoutDefaults(DeclTail))];
   // Eine abweichende Konvention im Rumpf übernimmt die der Deklaration (ohne Angabe register).
   if (APair.BodyShape.Convention <> '') and (APair.BodyShape.Convention <> APair.DeclarationShape.Convention) then
   begin
     Convention := APair.DeclarationShape.Convention;
     if Convention = '' then
+    begin
       Convention := 'register';
+    end;
     Fix.Edits := Fix.Edits + [TTextEdit.Create(APair.BodyShape.ConventionRange, Convention)];
   end;
   AFixes := AFixes + [Fix];
-  Fix.Title := Format('Deklaration von %s an die Implementierung angleichen', [Name]);
+  Fix.Title := cTexts[TClassCompletionText.AlignTheDeclarationOfWith].Fmt([Name]);
   DeclTailText := WithDefaultsOf(BodyTail, DeclTail);
   Fix.Edits := nil;
   if (APair.BodyShape.Convention <> '') and (APair.BodyShape.Convention <> APair.DeclarationShape.Convention) then
   begin
     if APair.DeclarationShape.Convention <> '' then
-      Fix.Edits := [TTextEdit.Create(APair.DeclarationShape.ConventionRange, APair.BodyShape.Convention)]
+    begin
+      Fix.Edits := [TTextEdit.Create(APair.DeclarationShape.ConventionRange, APair.BodyShape.Convention)];
+    end
     else
+    begin
       DeclTailText := DeclTailText + '; ' + APair.BodyShape.Convention;
+    end;
   end;
   Fix.Edits := [TTextEdit.Create(DeclRange, DeclTailText)] + Fix.Edits;
   AFixes := AFixes + [Fix];
@@ -829,153 +1117,224 @@ type
     BodyUsed: TArray<Boolean>;
   end;
 
+type
+  /// <summary>Ordnet die Methoden der Typen einer Datei ihren Rümpfen zu.</summary>
+  TMethodMatcher = record
+    Lines: TArray<string>;
+    UnitIndex: TUnitIndex;
+    TypeRanges: TArray<TTextRange>;
+    /// <summary>Schlüssel und Aufrufkonvention je Rumpf des gerade zugeordneten Typs.</summary>
+    BodyKeys: TArray<string>;
+    BodyConventions: TArray<string>;
+    function IsGeneric(const AType: TIndexSymbol): Boolean;
+    function IsGenericOuter(const AType: TIndexSymbol; const AName: string): Boolean;
+    function TypeMask(const AType: TIndexSymbol): string;
+    function InAnyType(ALine: Integer): Boolean;
+    function FreeBody(const AMatch: TTypeMatch; const AKey: string): Integer;
+    procedure AddBody(var AMatch: TTypeMatch; const ASymbol: TIndexSymbol; const AHeader, ARest: string);
+    procedure CollectMembers(const AType: TIndexSymbol; var AMatch: TTypeMatch);
+    function BodyFor(var AMatch: TTypeMatch; ADeclaration: Integer): Integer;
+    function MatchType(const AType: TIndexSymbol): TTypeMatch;
+  end;
+
+/// <summary>Generisch ist ein Typ mit Typparametern; die kennt der Index nicht immer, dann steht "&lt;" hinter dem
+/// Namen.</summary>
+function TMethodMatcher.IsGeneric(const AType: TIndexSymbol): Boolean;
+var
+  mRest: string;
+begin
+  mRest := Copy(Lines[AType.SelectionRange.EndPos.Line], AType.SelectionRange.EndPos.Character + 1, MaxInt);
+  Result := (AType.TypeParams <> '') or TrimLeft(mRest).StartsWith('<');
+end;
+
+/// <summary>Ist der Typ AName, der AType umschließt, generisch?</summary>
+function TMethodMatcher.IsGenericOuter(const AType: TIndexSymbol; const AName: string): Boolean;
+var
+  mOuter: TIndexSymbol;
+begin
+  for mOuter in UnitIndex.Symbols do
+  begin
+    if (mOuter.Kind in TypeKinds) and SameText(TypeNameOf(mOuter), AName) and
+      ContainsLine(mOuter.Range, AType.Range.StartPos.Line) then
+    begin
+      Exit(IsGeneric(mOuter));
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Maske wie TRoutineSignatures.QualifierMask für den Typ AType: je umschließendem Typ '1' oder '0',
+/// zuletzt AType selbst ('0', generische Typen werden übergangen).</summary>
+function TMethodMatcher.TypeMask(const AType: TIndexSymbol): string;
+var
+  mParts: TArray<string>;
+  mPrefix: string;
+  mPart: Integer;
+begin
+  Result := '';
+  mParts := TypeNameOf(AType).Split(['.']);
+  mPrefix := '';
+  for mPart := 0 to High(mParts) - 1 do
+  begin
+    if mPrefix <> '' then
+    begin
+      mPrefix := mPrefix + '.';
+    end;
+    mPrefix := mPrefix + mParts[mPart];
+    if IsGenericOuter(AType, mPrefix) then
+    begin
+      Result := Result + '1';
+    end
+    else
+    begin
+      Result := Result + '0';
+    end;
+  end;
+  Result := Result + '0';
+end;
+
+/// <summary>Steht ALine in irgendeinem Typ der Datei? Dann ist es eine Deklaration, kein Rumpf, auch wenn der Typ
+/// ein gleichnamiger generischer ist (THashTable neben THashTable&lt;T&gt;, #1325).</summary>
+function TMethodMatcher.InAnyType(ALine: Integer): Boolean;
+var
+  mRange: TTextRange;
+begin
+  for mRange in TypeRanges do
+  begin
+    if ContainsLine(mRange, ALine) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function TMethodMatcher.FreeBody(const AMatch: TTypeMatch; const AKey: string): Integer;
+var
+  mCandidate: Integer;
+begin
+  for mCandidate := 0 to High(BodyKeys) do
+  begin
+    if not AMatch.BodyUsed[mCandidate] and (BodyKeys[mCandidate] = AKey) then
+    begin
+      Exit(mCandidate);
+    end;
+  end;
+  Result := -1;
+end;
+
+procedure TMethodMatcher.AddBody(var AMatch: TTypeMatch; const ASymbol: TIndexSymbol; const AHeader, ARest: string);
+begin
+  AMatch.Bodies := AMatch.Bodies + [ASymbol];
+  AMatch.BodyHeaders := AMatch.BodyHeaders + [AHeader];
+  AMatch.BodyUsed := AMatch.BodyUsed + [False];
+  BodyKeys := BodyKeys + [LowerCase(ASymbol.Name) + TRoutineSignatures.ParameterKey(AHeader) +
+    TRoutineSignatures.ResultKey(AHeader)];
+  BodyConventions := BodyConventions + [ConventionOfRest(ARest)];
+end;
+
+/// <summary>Deklarationen in AType und Rümpfe des Typs AMatch.TypeName.</summary>
+procedure TMethodMatcher.CollectMembers(const AType: TIndexSymbol; var AMatch: TTypeMatch);
+var
+  mSymbol: TIndexSymbol;
+  mMask, mHeader, mRest: string;
+begin
+  mMask := TypeMask(AType);
+  for mSymbol in UnitIndex.Symbols do
+  begin
+    if not (mSymbol.Kind in MethodKinds) or not SameText(mSymbol.Container, AMatch.TypeName) then
+    begin
+      Continue;
+    end;
+    mHeader := TRoutineSignatures.Head(RangeText(Lines, mSymbol.Range), mRest);
+    if ContainsLine(AType.Range, mSymbol.Range.StartPos.Line) then
+    begin
+      AMatch.Declarations := AMatch.Declarations + [mSymbol];
+      AMatch.DeclarationHeaders := AMatch.DeclarationHeaders + [mHeader];
+    end
+    // Deklarationen und Rümpfe eines gleichnamigen generischen Typs (TProperty<T>.Create) gehören nicht dazu;
+    // mit bedingten Direktiven im Qualifizierer ('?') zählt der Rumpf wie bisher.
+    else if not InAnyType(mSymbol.Range.StartPos.Line) and
+      MatchStr(TRoutineSignatures.QualifierMask(mHeader, mSymbol.Name), [mMask, '?']) then
+    begin
+      AddBody(AMatch, mSymbol, mHeader, mRest);
+    end;
+  end;
+end;
+
+/// <summary>Rumpf zur Deklaration ADeclaration als Index in Bodies und belegt ihn; -1 ohne, -2 übergangen
+/// (abstract, external, forward).</summary>
+function TMethodMatcher.BodyFor(var AMatch: TTypeMatch; ADeclaration: Integer): Integer;
+var
+  mSymbol: TIndexSymbol;
+  mRest, mHeader: string;
+begin
+  mSymbol := AMatch.Declarations[ADeclaration];
+  TRoutineSignatures.Head(RangeText(Lines, mSymbol.Range), mRest);
+  if HasWord(mRest, 'abstract') or HasWord(mRest, 'external') or HasWord(mRest, 'forward') then
+  begin
+    Exit(-2);
+  end;
+  mHeader := AMatch.DeclarationHeaders[ADeclaration];
+  Result := FreeBody(AMatch, LowerCase(mSymbol.Name) + TRoutineSignatures.ParameterKey(mHeader) +
+    TRoutineSignatures.ResultKey(mHeader));
+  // Ohne Parameterliste im Rumpf passt er zur ersten Deklaration gleichen Namens.
+  if Result < 0 then
+  begin
+    Result := FreeBody(AMatch, LowerCase(mSymbol.Name));
+  end;
+  // Eine andere ausdrückliche Aufrufkonvention im Rumpf passt nicht (E2037).
+  if (Result >= 0) and ConventionDiffers(BodyConventions[Result], ConventionOfRest(mRest)) then
+  begin
+    Result := -1;
+  end;
+  if Result >= 0 then
+  begin
+    AMatch.BodyUsed[Result] := True;
+  end;
+end;
+
+function TMethodMatcher.MatchType(const AType: TIndexSymbol): TTypeMatch;
+var
+  mDeclaration: Integer;
+begin
+  Result := Default(TTypeMatch);
+  Result.TypeName := TypeNameOf(AType);
+  BodyKeys := nil;
+  BodyConventions := nil;
+  CollectMembers(AType, Result);
+  SetLength(Result.BodyOf, Length(Result.Declarations));
+  for mDeclaration := 0 to High(Result.Declarations) do
+  begin
+    Result.BodyOf[mDeclaration] := BodyFor(Result, mDeclaration);
+  end;
+end;
+
 /// <summary>Deklarationen und Rümpfe je Typ der Datei, in der Reihenfolge der Typen; generische Typen fehlen.
 /// </summary>
 function MatchMethods(ATree: TSyntaxTree; const AText: string): TArray<TTypeMatch>;
 var
-  Lines: TArray<string>;
-  UnitIndex: TUnitIndex;
-  TypeSymbol, Symbol: TIndexSymbol;
-  Match: TTypeMatch;
-  BodyKeys, BodyConventions: TArray<string>;
-  Rest, Header, Key: string;
-  Declaration, Body: Integer;
-  mTypeRanges: TArray<TTextRange>;
-  mMask: string;
-
-  // Generisch ist ein Typ mit Typparametern; die kennt der Index nicht immer, dann steht "<" hinter dem Namen.
-  function IsGeneric(const AType: TIndexSymbol): Boolean;
-  var
-    mRest: string;
-  begin
-    mRest := Copy(Lines[AType.SelectionRange.EndPos.Line], AType.SelectionRange.EndPos.Character + 1, MaxInt);
-    Result := (AType.TypeParams <> '') or TrimLeft(mRest).StartsWith('<');
-  end;
-
-  // Maske wie TRoutineSignatures.QualifierMask für den Typ AType: je umschließendem Typ '1' oder '0', zuletzt
-  // AType selbst ('0', generische Typen werden übergangen).
-  function TypeMask(const AType: TIndexSymbol): string;
-  var
-    mOuter: TIndexSymbol;
-    mParts: TArray<string>;
-    mPrefix: string;
-    mPart: Integer;
-    mFound: Boolean;
-  begin
-    Result := '';
-    mParts := TypeNameOf(AType).Split(['.']);
-    mPrefix := '';
-    for mPart := 0 to High(mParts) - 1 do
-    begin
-      if mPrefix <> '' then
-        mPrefix := mPrefix + '.';
-      mPrefix := mPrefix + mParts[mPart];
-      mFound := False;
-      for mOuter in UnitIndex.Symbols do
-        if (mOuter.Kind in TypeKinds) and SameText(TypeNameOf(mOuter), mPrefix) and
-          ContainsLine(mOuter.Range, AType.Range.StartPos.Line) then
-        begin
-          mFound := IsGeneric(mOuter);
-          Break;
-        end;
-      if mFound then
-        Result := Result + '1'
-      else
-        Result := Result + '0';
-    end;
-    Result := Result + '0';
-  end;
-
-  // Steht ALine in irgendeinem Typ der Datei? Dann ist es eine Deklaration, kein Rumpf, auch wenn der Typ ein
-  // gleichnamiger generischer ist (THashTable neben THashTable<T>, #1325).
-  function InAnyType(ALine: Integer): Boolean;
-  var
-    mRange: TTextRange;
-  begin
-    for mRange in mTypeRanges do
-      if ContainsLine(mRange, ALine) then
-        Exit(True);
-    Result := False;
-  end;
-
-  function FreeBody(const AKey: string): Integer;
-  var
-    Candidate: Integer;
-  begin
-    for Candidate := 0 to High(BodyKeys) do
-      if not Match.BodyUsed[Candidate] and (BodyKeys[Candidate] = AKey) then
-        Exit(Candidate);
-    Result := -1;
-  end;
-
+  mMatcher: TMethodMatcher;
+  mType: TIndexSymbol;
 begin
   Result := nil;
-  Lines := TTextLines.SplitLines(AText);
-  UnitIndex := TIndexExtractor.Extract(ATree, '');
-  mTypeRanges := nil;
-  for TypeSymbol in UnitIndex.Symbols do
-    if TypeSymbol.Kind in TypeKinds then
-      mTypeRanges := mTypeRanges + [TypeSymbol.Range];
-  for TypeSymbol in UnitIndex.Symbols do
+  mMatcher := Default(TMethodMatcher);
+  mMatcher.Lines := TTextLines.SplitLines(AText);
+  mMatcher.UnitIndex := TIndexExtractor.Extract(ATree, '');
+  for mType in mMatcher.UnitIndex.Symbols do
   begin
-    if not (TypeSymbol.Kind in TypeKinds) then
-      Continue;
+    if mType.Kind in TypeKinds then
+    begin
+      mMatcher.TypeRanges := mMatcher.TypeRanges + [mType.Range];
+    end;
+  end;
+  for mType in mMatcher.UnitIndex.Symbols do
+  begin
     // Generische Typen brauchen die Typparameter im Kopf; die kennt der Index nicht.
-    if IsGeneric(TypeSymbol) then
-      Continue;
-    mMask := TypeMask(TypeSymbol);
-    Match := Default(TTypeMatch);
-    Match.TypeName := TypeNameOf(TypeSymbol);
-    BodyKeys := nil;
-    BodyConventions := nil;
-    for Symbol in UnitIndex.Symbols do
+    if (mType.Kind in TypeKinds) and not mMatcher.IsGeneric(mType) then
     begin
-      if not (Symbol.Kind in MethodKinds) or not SameText(Symbol.Container, Match.TypeName) then
-        Continue;
-      Header := TRoutineSignatures.Head(RangeText(Lines, Symbol.Range), Rest);
-      if ContainsLine(TypeSymbol.Range, Symbol.Range.StartPos.Line) then
-      begin
-        Match.Declarations := Match.Declarations + [Symbol];
-        Match.DeclarationHeaders := Match.DeclarationHeaders + [Header];
-      end
-      // Deklarationen und Rümpfe eines gleichnamigen generischen Typs (TProperty<T>.Create) gehören nicht dazu;
-      // mit bedingten Direktiven im Qualifizierer ('?') zählt der Rumpf wie bisher.
-      else if not InAnyType(Symbol.Range.StartPos.Line) and
-        MatchStr(TRoutineSignatures.QualifierMask(Header, Symbol.Name), [mMask, '?']) then
-      begin
-        Match.Bodies := Match.Bodies + [Symbol];
-        Match.BodyHeaders := Match.BodyHeaders + [Header];
-        Match.BodyUsed := Match.BodyUsed + [False];
-        BodyKeys := BodyKeys + [LowerCase(Symbol.Name) + TRoutineSignatures.ParameterKey(Header) +
-          TRoutineSignatures.ResultKey(Header)];
-        BodyConventions := BodyConventions + [ConventionOfRest(Rest)];
-      end;
+      Result := Result + [mMatcher.MatchType(mType)];
     end;
-    SetLength(Match.BodyOf, Length(Match.Declarations));
-    for Declaration := 0 to High(Match.Declarations) do
-    begin
-      Symbol := Match.Declarations[Declaration];
-      TRoutineSignatures.Head(RangeText(Lines, Symbol.Range), Rest);
-      if HasWord(Rest, 'abstract') or HasWord(Rest, 'external') or HasWord(Rest, 'forward') then
-      begin
-        Match.BodyOf[Declaration] := -2;
-        Continue;
-      end;
-      Header := Match.DeclarationHeaders[Declaration];
-      Key := LowerCase(Symbol.Name) + TRoutineSignatures.ParameterKey(Header) +
-        TRoutineSignatures.ResultKey(Header);
-      Body := FreeBody(Key);
-      // Ohne Parameterliste im Rumpf passt er zur ersten Deklaration gleichen Namens.
-      if Body < 0 then
-        Body := FreeBody(LowerCase(Symbol.Name));
-      // Eine andere ausdrückliche Aufrufkonvention im Rumpf passt nicht (E2037).
-      if (Body >= 0) and ConventionDiffers(BodyConventions[Body], ConventionOfRest(Rest)) then
-        Body := -1;
-      if Body >= 0 then
-        Match.BodyUsed[Body] := True;
-      Match.BodyOf[Declaration] := Body;
-    end;
-    Result := Result + [Match];
   end;
 end;
 
@@ -989,6 +1348,7 @@ begin
   for Match in MatchMethods(ATree, AText) do
   begin
     for Index := 0 to High(Match.Declarations) do
+    begin
       if Match.BodyOf[Index] = -1 then
       begin
         Item := Default(TUnmatchedMethod);
@@ -998,7 +1358,9 @@ begin
         Item.Header := Match.DeclarationHeaders[Index];
         Result := Result + [Item];
       end;
+    end;
     for Index := 0 to High(Match.Bodies) do
+    begin
       if not Match.BodyUsed[Index] then
       begin
         Item := Default(TUnmatchedMethod);
@@ -1007,6 +1369,7 @@ begin
         Item.Header := Match.BodyHeaders[Index];
         Result := Result + [Item];
       end;
+    end;
   end;
 end;
 
@@ -1019,10 +1382,13 @@ begin
   Result := nil;
   Matches := MatchMethods(ATree, AText);
   for TypeIndex := 0 to High(Matches) do
+  begin
     for Index := 0 to High(Matches[TypeIndex].Declarations) do
     begin
       if Matches[TypeIndex].BodyOf[Index] = -2 then
+      begin
         Continue;
+      end;
       Item := Default(TDeclaredMethod);
       Item.TypeName := Matches[TypeIndex].TypeName;
       Item.TypeOrder := TypeIndex;
@@ -1030,240 +1396,484 @@ begin
       Item.Declaration := Matches[TypeIndex].Declarations[Index];
       Item.HasBody := Matches[TypeIndex].BodyOf[Index] >= 0;
       if Item.HasBody then
+      begin
         Item.Body := Matches[TypeIndex].Bodies[Matches[TypeIndex].BodyOf[Index]];
+      end;
       Result := Result + [Item];
     end;
+  end;
+end;
+
+/// <summary>Typ ATypeName ("TAussen.TInnen") in AUnit; False ohne.</summary>
+function FindTypeNamed(const AUnit: TUnitIndex; const ATypeName: string; out AType: TIndexSymbol): Boolean;
+var
+  mSymbol: TIndexSymbol;
+begin
+  for mSymbol in AUnit.Symbols do
+  begin
+    if (mSymbol.Kind in TypeKinds) and SameText(TypeNameOf(mSymbol), ATypeName) then
+    begin
+      AType := mSymbol;
+      Exit(True);
+    end;
+  end;
+  AType := Default(TIndexSymbol);
+  Result := False;
+end;
+
+/// <summary>Deklariert AType schon eine Methode namens AName?</summary>
+function DeclaresMethod(const AUnit: TUnitIndex; const AType: TIndexSymbol; const ATypeName, AName: string): Boolean;
+var
+  mSymbol: TIndexSymbol;
+begin
+  for mSymbol in AUnit.Symbols do
+  begin
+    if (mSymbol.Kind in MethodKinds) and SameText(mSymbol.Container, ATypeName) and SameText(mSymbol.Name, AName) and
+      ContainsLine(AType.Range, mSymbol.Range.StartPos.Line) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Deklaration zum Rumpf AMethod: "procedure TFoo.Bar(A: Integer)" wird "procedure Bar(A: Integer);",
+/// mit overload, wenn AType den Namen schon deklariert; '' ohne Qualifizierer.</summary>
+function DeclarationOfBody(const AUnit: TUnitIndex; const AType: TIndexSymbol; const AMethod: TUnmatchedMethod): string;
+var
+  mIndex: Integer;
+begin
+  mIndex := Pos(LowerCase(AMethod.TypeName + '.'), LowerCase(AMethod.Header));
+  if mIndex = 0 then
+  begin
+    Exit('');
+  end;
+  Result := Copy(AMethod.Header, 1, mIndex - 1) + Copy(AMethod.Header, mIndex + Length(AMethod.TypeName) + 1,
+    MaxInt) + ';';
+  if DeclaresMethod(AUnit, AType, AMethod.TypeName, AMethod.Symbol.Name) and not HasWord(Result, 'overload') then
+  begin
+    Result := Result + ' overload;';
+  end;
+end;
+
+/// <summary>Einfügung in einen vorhandenen private-Abschnitt (nicht strict private) direkt im Typ.</summary>
+function PrivateSectionEdit(const ALines: TArray<string>; const AType: TIndexSymbol;
+  const ADeclaration, ALineBreak: string; out AEdit: TTextEdit): Boolean;
+var
+  mLine: Integer;
+begin
+  AEdit := Default(TTextEdit);
+  for mLine := AType.Range.StartPos.Line + 1 to AType.Range.EndPos.Line - 1 do
+  begin
+    if SameText(Trim(ALines[mLine]), 'private') then
+    begin
+      AEdit := TTextEdit.Create(TTextRange.Create(mLine, Length(ALines[mLine]), mLine, Length(ALines[mLine])),
+        ALineBreak + TTextLines.IndentOf(ALines[mLine]) + '  ' + ADeclaration);
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Neuer private-Abschnitt mit ADeclaration vor dem "end" des Typs.</summary>
+function NewSectionEdit(const ALines: TArray<string>; const AType: TIndexSymbol;
+  const ADeclaration, ALineBreak: string; out AEdit: TTextEdit): Boolean;
+var
+  mEndLine: Integer;
+  mIndent: string;
+begin
+  AEdit := Default(TTextEdit);
+  mEndLine := AType.Range.EndPos.Line;
+  Result := LowerCase(TrimLeft(ALines[mEndLine])).StartsWith('end');
+  if Result then
+  begin
+    mIndent := TTextLines.IndentOf(ALines[mEndLine]);
+    AEdit := TTextEdit.Create(TTextRange.Create(mEndLine, 0, mEndLine, 0),
+      mIndent + 'private' + ALineBreak + mIndent + '  ' + ADeclaration + ALineBreak);
+  end;
 end;
 
 class function TClassCompletion.AddDeclaration(ATree: TSyntaxTree; const AText: string;
   const AMethod: TUnmatchedMethod; out AEdit: TTextEdit): Boolean;
 var
-  Lines: TArray<string>;
-  UnitIndex: TUnitIndex;
-  Symbol, TypeSymbol: TIndexSymbol;
-  Found, Overloaded: Boolean;
-  Declaration, Trimmed, LB: string;
-  Index, Line, EndLine: Integer;
+  mLines: TArray<string>;
+  mUnit: TUnitIndex;
+  mType: TIndexSymbol;
+  mDeclaration, mLB: string;
 begin
-  Result := False;
   AEdit := Default(TTextEdit);
   if AMethod.Declared then
-    Exit;
-  Lines := TTextLines.SplitLines(AText);
-  UnitIndex := TIndexExtractor.Extract(ATree, '');
-  Found := False;
-  TypeSymbol := Default(TIndexSymbol);
-  for Symbol in UnitIndex.Symbols do
-    if (Symbol.Kind in TypeKinds) and SameText(TypeNameOf(Symbol), AMethod.TypeName) then
-    begin
-      TypeSymbol := Symbol;
-      Found := True;
-      Break;
-    end;
-  if not Found or (TypeSymbol.Range.EndPos.Line <= TypeSymbol.Range.StartPos.Line) or
-    (TypeSymbol.Range.EndPos.Line > High(Lines)) then
-    Exit;
-  // "procedure TFoo.Bar(A: Integer)" wird "procedure Bar(A: Integer);".
-  Index := Pos(LowerCase(AMethod.TypeName + '.'), LowerCase(AMethod.Header));
-  if Index = 0 then
-    Exit;
-  Declaration := Copy(AMethod.Header, 1, Index - 1) + Copy(AMethod.Header, Index + Length(AMethod.TypeName) + 1,
-    MaxInt) + ';';
-  Overloaded := False;
-  for Symbol in UnitIndex.Symbols do
-    if (Symbol.Kind in MethodKinds) and SameText(Symbol.Container, AMethod.TypeName) and
-      SameText(Symbol.Name, AMethod.Symbol.Name) and ContainsLine(TypeSymbol.Range, Symbol.Range.StartPos.Line) then
-      Overloaded := True;
-  if Overloaded and not HasWord(Declaration, 'overload') then
-    Declaration := Declaration + ' overload;';
-  LB := TTextLines.LineBreakOf(AText);
-  // Vorhandener private-Abschnitt (nicht strict private) direkt im Typ.
-  for Line := TypeSymbol.Range.StartPos.Line + 1 to TypeSymbol.Range.EndPos.Line - 1 do
   begin
-    Trimmed := LowerCase(Trim(Lines[Line]));
-    if Trimmed = 'private' then
-    begin
-      AEdit := TTextEdit.Create(TTextRange.Create(Line, Length(Lines[Line]), Line, Length(Lines[Line])),
-        LB + TTextLines.IndentOf(Lines[Line]) + '  ' + Declaration);
-      Exit(True);
-    end;
+    Exit(False);
   end;
-  // Sonst einen anlegen, vor dem "end" des Typs.
-  EndLine := TypeSymbol.Range.EndPos.Line;
-  if not LowerCase(TrimLeft(Lines[EndLine])).StartsWith('end') then
-    Exit;
-  AEdit := TTextEdit.Create(TTextRange.Create(EndLine, 0, EndLine, 0),
-    TTextLines.IndentOf(Lines[EndLine]) + 'private' + LB + TTextLines.IndentOf(Lines[EndLine]) + '  ' +
-    Declaration + LB);
-  Result := True;
+  mLines := TTextLines.SplitLines(AText);
+  mUnit := TIndexExtractor.Extract(ATree, '');
+  if not FindTypeNamed(mUnit, AMethod.TypeName, mType) or (mType.Range.EndPos.Line <= mType.Range.StartPos.Line) or
+    (mType.Range.EndPos.Line > High(mLines)) then
+  begin
+    Exit(False);
+  end;
+  mDeclaration := DeclarationOfBody(mUnit, mType, AMethod);
+  mLB := TTextLines.LineBreakOf(AText);
+  Result := (mDeclaration <> '') and (PrivateSectionEdit(mLines, mType, mDeclaration, mLB, AEdit) or
+    NewSectionEdit(mLines, mType, mDeclaration, mLB, AEdit));
 end;
 
 class function TClassCompletion.BodyEdit(ATree: TSyntaxTree; const AText, ATypeName, ABody: string;
   out AEdit: TTextEdit): Boolean;
+begin
+  Result := BodyEdit(ATree, AText, ATypeName, ABody, TClassBodyOptions.Default, AEdit);
+end;
+
+/// <summary>Zeile von "implementation"; 0 ohne.</summary>
+function ImplementationLine(ATree: TSyntaxTree): Integer;
 var
-  Lines: TArray<string>;
-  UnitIndex: TUnitIndex;
-  Symbol, TypeSymbol: TIndexSymbol;
-  LastLine, InsertLine: Integer;
-  Found: Boolean;
-  LB: string;
+  mToken: TPascalToken;
+begin
+  for mToken in ATree.Tokens do
+  begin
+    if mToken.IsKeyword('implementation') then
+    begin
+      Exit(mToken.StartPos.Line);
+    end;
+  end;
+  Result := 0;
+end;
+
+/// <summary>ABodies mit dem Kommentar zu AShape, wenn ab AFromLine (implementation) noch keiner steht (#1835).
+/// </summary>
+function WithTypeComment(const ALines: TArray<string>; AFromLine: Integer; const AShape: TTypeShape;
+  const ABodies, ALineBreak: string; const AOptions: TClassBodyOptions): string;
+begin
+  Result := ABodies;
+  if not TClassBodies.HasTypeComment(ALines, AFromLine, AShape.TypeName) then
+  begin
+    Result := TClassBodies.Wrapped(AShape, AOptions, ABodies, ALineBreak);
+  end;
+end;
+
+class function TClassCompletion.BodyEdit(ATree: TSyntaxTree; const AText, ATypeName, ABody: string;
+  const AOptions: TClassBodyOptions; out AEdit: TTextEdit): Boolean;
+var
+  mLines: TArray<string>;
+  mUnit: TUnitIndex;
+  mSymbol, mType: TIndexSymbol;
+  mLastLine, mInsertLine: Integer;
+  mLB: string;
 begin
   AEdit := Default(TTextEdit);
-  Lines := TTextLines.SplitLines(AText);
-  UnitIndex := TIndexExtractor.Extract(ATree, '');
-  Found := False;
-  TypeSymbol := Default(TIndexSymbol);
-  for Symbol in UnitIndex.Symbols do
-    if (Symbol.Kind in TypeKinds) and SameText(TypeNameOf(Symbol), ATypeName) then
+  mLines := TTextLines.SplitLines(AText);
+  mUnit := TIndexExtractor.Extract(ATree, '');
+  if not FindTypeNamed(mUnit, ATypeName, mType) then
+  begin
+    Exit(False);
+  end;
+  mLastLine := -1;
+  for mSymbol in mUnit.Symbols do
+  begin
+    if (mSymbol.Kind in MethodKinds) and SameText(mSymbol.Container, ATypeName) and
+      not ContainsLine(mType.Range, mSymbol.Range.StartPos.Line) and (mSymbol.Range.EndPos.Line > mLastLine) then
     begin
-      TypeSymbol := Symbol;
-      Found := True;
+      mLastLine := mSymbol.Range.EndPos.Line;
+    end;
+  end;
+  mLB := TTextLines.LineBreakOf(AText);
+  if mLastLine >= 0 then
+  begin
+    AEdit := TTextEdit.Create(TTextRange.Create(mLastLine, Length(mLines[mLastLine]), mLastLine,
+      Length(mLines[mLastLine])), mLB + mLB + ABody);
+    Exit(True);
+  end;
+  mInsertLine := ImplementationEndLine(ATree);
+  Result := mInsertLine >= 0;
+  if Result then
+  begin
+    AEdit := TTextEdit.Create(TTextRange.Create(mInsertLine, 0, mInsertLine, 0),
+      WithTypeComment(mLines, ImplementationLine(ATree), TTypeShape.Read(mUnit, mLines, ATypeName), ABody, mLB,
+      AOptions) + mLB + mLB);
+  end;
+end;
+
+/// <summary>Innerster Typ in Zeile ALine; False ohne.</summary>
+function InnermostType(const AUnit: TUnitIndex; ALine: Integer; out AType: TIndexSymbol): Boolean;
+var
+  mSymbol: TIndexSymbol;
+begin
+  Result := False;
+  AType := Default(TIndexSymbol);
+  for mSymbol in AUnit.Symbols do
+  begin
+    if (mSymbol.Kind in TypeKinds) and ContainsLine(mSymbol.Range, ALine) and
+      (not Result or (mSymbol.Range.StartPos.Line >= AType.Range.StartPos.Line)) then
+    begin
+      AType := mSymbol;
+      Result := True;
+    end;
+  end;
+end;
+
+type
+  /// <summary>Methoden eines Typs ohne Rumpf für MissingBodies.</summary>
+  TBodyPlan = record
+    TypeName: string;
+    Declarations: TArray<TIndexSymbol>;
+    /// <summary>Schlüssel der vorhandenen Rümpfe (Name und Parameter, klein).</summary>
+    Implemented: TArray<string>;
+    /// <summary>Letzte Zeile der vorhandenen Rümpfe; -1 ohne.</summary>
+    LastLine: Integer;
+    Missing: TArray<TIndexSymbol>;
+    /// <summary>Der Cursor steht auf der fehlenden Methode; nur sie wird erzeugt.</summary>
+    OnMethod: Boolean;
+  end;
+
+/// <summary>Deklarationen in AType und Schlüssel der vorhandenen Rümpfe.</summary>
+procedure CollectTypeMethods(const ALines: TArray<string>; const AUnit: TUnitIndex; const AType: TIndexSymbol;
+  var APlan: TBodyPlan);
+var
+  mSymbol: TIndexSymbol;
+  mRest: string;
+begin
+  APlan.LastLine := -1;
+  for mSymbol in AUnit.Symbols do
+  begin
+    if not (mSymbol.Kind in MethodKinds) or not SameText(mSymbol.Container, APlan.TypeName) then
+    begin
+      Continue;
+    end;
+    if ContainsLine(AType.Range, mSymbol.Range.StartPos.Line) then
+    begin
+      APlan.Declarations := APlan.Declarations + [mSymbol];
+    end
+    else
+    begin
+      APlan.Implemented := APlan.Implemented + [LowerCase(mSymbol.Name) + TRoutineSignatures.ParameterKey(
+        TRoutineSignatures.Head(RangeText(ALines, mSymbol.Range), mRest))];
+      APlan.LastLine := Max(APlan.LastLine, mSymbol.Range.EndPos.Line);
+    end;
+  end;
+end;
+
+/// <summary>Nimmt den Rumpf zu ASymbol aus AImplemented; False, wenn keiner da ist. Ohne Parameterliste in der
+/// Implementierung passt sie zur ersten Deklaration gleichen Namens.</summary>
+function TakeImplemented(var AImplemented: TArray<string>; const ASymbol: TIndexSymbol;
+  const AHeader: string): Boolean;
+var
+  mIndex: Integer;
+begin
+  mIndex := IndexStr(LowerCase(ASymbol.Name) + TRoutineSignatures.ParameterKey(AHeader), AImplemented);
+  if mIndex < 0 then
+  begin
+    mIndex := IndexStr(LowerCase(ASymbol.Name), AImplemented);
+  end;
+  Result := mIndex >= 0;
+  if Result then
+  begin
+    Delete(AImplemented, mIndex, 1);
+  end;
+end;
+
+/// <summary>Deklarationen ohne Rumpf (abstrakte ausgenommen); steht der Cursor (ALine) auf einer, nur sie.</summary>
+procedure FindMissing(const ALines: TArray<string>; ALine: Integer; var APlan: TBodyPlan);
+var
+  mSymbol: TIndexSymbol;
+  mHeader, mRest: string;
+begin
+  APlan.Missing := nil;
+  APlan.OnMethod := False;
+  for mSymbol in APlan.Declarations do
+  begin
+    mHeader := TRoutineSignatures.Head(RangeText(ALines, mSymbol.Range), mRest);
+    if HasWord(mRest, 'abstract') or TakeImplemented(APlan.Implemented, mSymbol, mHeader) then
+    begin
+      Continue;
+    end;
+    if ContainsLine(mSymbol.Range, ALine) then
+    begin
+      APlan.Missing := [mSymbol];
+      APlan.OnMethod := True;
       Break;
     end;
-  if not Found then
-    Exit(False);
-  LastLine := -1;
-  for Symbol in UnitIndex.Symbols do
-    if (Symbol.Kind in MethodKinds) and SameText(Symbol.Container, ATypeName) and
-      not ContainsLine(TypeSymbol.Range, Symbol.Range.StartPos.Line) and (Symbol.Range.EndPos.Line > LastLine) then
-      LastLine := Symbol.Range.EndPos.Line;
-  LB := TTextLines.LineBreakOf(AText);
-  if LastLine >= 0 then
-    AEdit := TTextEdit.Create(TTextRange.Create(LastLine, Length(Lines[LastLine]), LastLine, Length(Lines[LastLine])),
-      LB + LB + ABody)
+    APlan.Missing := APlan.Missing + [mSymbol];
+  end;
+end;
+
+/// <summary>Rümpfe der fehlenden Methoden (vorbefüllt nach AOptions), je mit Zeilenumbruch davor und dahinter.
+/// </summary>
+function BodiesText(const ALines: TArray<string>; const APlan: TBodyPlan; const AShape: TTypeShape;
+  const AOptions: TClassBodyOptions; const ALineBreak: string): string;
+var
+  mSymbol: TIndexSymbol;
+  mHeader, mRest: string;
+begin
+  Result := '';
+  for mSymbol in APlan.Missing do
+  begin
+    mHeader := QualifiedHeader(TRoutineSignatures.Head(RangeText(ALines, mSymbol.Range), mRest), mSymbol.Name,
+      APlan.TypeName);
+    if mHeader <> '' then
+    begin
+      Result := Result + ALineBreak + TClassBodies.Body(AShape, mHeader,
+        TClassBodies.DeclarationText(ALines, mSymbol.Range), mSymbol.Name, AOptions, ALineBreak) + ALineBreak;
+    end;
+  end;
+end;
+
+/// <summary>Rang der Deklaration ASymbol: Gruppe, Stelle darin, Deklarationsreihenfolge.</summary>
+function RankKey(const ALines: TArray<string>; const AShape: TTypeShape; const ASymbol: TIndexSymbol;
+  AOrder: Integer): Int64;
+var
+  mRank: TMethodRank;
+begin
+  mRank := TClassBodies.RankOf(AShape, TClassBodies.DeclarationText(ALines, ASymbol.Range), ASymbol.Name);
+  Result := (Int64(mRank.Group) * 100000 + mRank.Sub) * 100000 + AOrder;
+end;
+
+/// <summary>Fehlende Methoden nach Lebenszyklus, Zugriffsmethoden, überschriebenen, übrigen (R2, #1836).</summary>
+procedure SortMissing(const ALines: TArray<string>; const AShape: TTypeShape; var APlan: TBodyPlan);
+var
+  mKeys: TArray<Int64>;
+  mIndex, mTarget: Integer;
+  mKey: Int64;
+  mSymbol: TIndexSymbol;
+begin
+  SetLength(mKeys, Length(APlan.Missing));
+  for mIndex := 0 to High(APlan.Missing) do
+  begin
+    mKeys[mIndex] := RankKey(ALines, AShape, APlan.Missing[mIndex], mIndex);
+  end;
+  // Einfügen: die Schlüssel sind eindeutig, die Reihenfolge ist damit stabil.
+  for mIndex := 1 to High(mKeys) do
+  begin
+    mKey := mKeys[mIndex];
+    mSymbol := APlan.Missing[mIndex];
+    mTarget := mIndex - 1;
+    while (mTarget >= 0) and (mKeys[mTarget] > mKey) do
+    begin
+      mKeys[mTarget + 1] := mKeys[mTarget];
+      APlan.Missing[mTarget + 1] := APlan.Missing[mTarget];
+      Dec(mTarget);
+    end;
+    mKeys[mTarget + 1] := mKey;
+    APlan.Missing[mTarget + 1] := mSymbol;
+  end;
+end;
+
+/// <summary>Einfügung der Rümpfe ABodies hinter den letzten vorhandenen Rumpf (ALastLine), sonst vor das Ende der
+/// implementation; False ohne implementation.</summary>
+function BodiesEdit(ATree: TSyntaxTree; const ALines: TArray<string>; ALastLine: Integer;
+  const ABodies, ALineBreak: string; out AEdit: TTextEdit): Boolean;
+var
+  mInsertLine: Integer;
+begin
+  AEdit := Default(TTextEdit);
+  if ALastLine >= 0 then
+  begin
+    AEdit := TTextEdit.Create(TTextRange.Create(ALastLine, Length(ALines[ALastLine]), ALastLine,
+      Length(ALines[ALastLine])), ALineBreak + Copy(ABodies, 1, Length(ABodies) - Length(ALineBreak)));
+    Exit(True);
+  end;
+  mInsertLine := ImplementationEndLine(ATree);
+  Result := mInsertLine >= 0;
+  if Result then
+  begin
+    AEdit := TTextEdit.Create(TTextRange.Create(mInsertLine, 0, mInsertLine, 0),
+      Copy(ABodies, Length(ALineBreak) + 1, MaxInt) + ALineBreak);
+  end;
+end;
+
+function BodiesTitle(const APlan: TBodyPlan): string;
+begin
+  if APlan.OnMethod then
+  begin
+    Result := cTexts[TClassCompletionText.CreateMethodBodyFor].Fmt([APlan.TypeName, APlan.Missing[0].Name]);
+  end
+  else if Length(APlan.Missing) = 1 then
+  begin
+    Result := cTexts[TClassCompletionText.CreateMissingMethodBodyFor].Fmt([APlan.TypeName]);
+  end
   else
   begin
-    InsertLine := ImplementationEndLine(ATree);
-    if InsertLine < 0 then
-      Exit(False);
-    AEdit := TTextEdit.Create(TTextRange.Create(InsertLine, 0, InsertLine, 0), ABody + LB + LB);
+    Result := cTexts[TClassCompletionText.CreateMissingMethodBodiesFor].Fmt([Length(APlan.Missing), APlan.TypeName]);
   end;
-  Result := True;
 end;
 
 class function TClassCompletion.MissingBodies(ATree: TSyntaxTree; const AText: string;
   const APosition: TTextPosition; out AAction: TCodeAction): Boolean;
+begin
+  Result := MissingBodies(ATree, AText, APosition, TClassBodyOptions.Default, AAction);
+end;
+
+class function TClassCompletion.MissingBodies(ATree: TSyntaxTree; const AText: string;
+  const APosition: TTextPosition; const ASettings: TClassCompletionSettings; const AStyle: TFormatStyle;
+  out AAction: TCodeAction): Boolean;
+begin
+  Result := MissingBodies(ATree, AText, APosition, TClassBodyOptions.FromSettings(ASettings, AStyle), AAction);
+end;
+
+/// <summary>ABodies (je Rumpf mit Zeilenumbruch davor und dahinter) als erste Rümpfe des Typs AShape: mit dessen
+/// Kommentar, wenn ab AFromLine (implementation) noch keiner steht.</summary>
+function FirstBodiesText(const ALines: TArray<string>; AFromLine: Integer; const AShape: TTypeShape;
+  const ABodies, ALineBreak: string; const AOptions: TClassBodyOptions): string;
 var
-  Lines: TArray<string>;
-  UnitIndex: TUnitIndex;
-  Symbol, TypeSymbol: TIndexSymbol;
-  Declarations, Missing: TList<TIndexSymbol>;
-  Implemented: TList<string>;
-  Rest, Header, Key, LB, Bodies, TypeName: string;
-  Index, LastLine, InsertLine: Integer;
-  OnMethod: Boolean;
-  Found: Boolean;
+  mInner: string;
+begin
+  Result := ABodies;
+  if (ABodies = '') or (AOptions.TypeComment = TTypeCommentStyle.Off) then
+  begin
+    Exit;
+  end;
+  mInner := Copy(ABodies, Length(ALineBreak) + 1, Length(ABodies) - 2 * Length(ALineBreak));
+  Result := ALineBreak + WithTypeComment(ALines, AFromLine, AShape, mInner, ALineBreak, AOptions) + ALineBreak;
+end;
+
+class function TClassCompletion.MissingBodies(ATree: TSyntaxTree; const AText: string;
+  const APosition: TTextPosition; const AOptions: TClassBodyOptions; out AAction: TCodeAction): Boolean;
+var
+  mLines: TArray<string>;
+  mUnit: TUnitIndex;
+  mType: TIndexSymbol;
+  mPlan: TBodyPlan;
+  mShape: TTypeShape;
+  mRest, mLB, mBodies: string;
+  mEdit: TTextEdit;
 begin
   AAction := Default(TCodeAction);
-  Result := False;
-  Lines := TTextLines.SplitLines(AText);
-  UnitIndex := TIndexExtractor.Extract(ATree, '');
-  // Innerster Typ unter dem Cursor.
-  Found := False;
-  TypeSymbol := Default(TIndexSymbol);
-  for Symbol in UnitIndex.Symbols do
-    if (Symbol.Kind in TypeKinds) and ContainsLine(Symbol.Range, APosition.Line) and
-      (not Found or (Symbol.Range.StartPos.Line >= TypeSymbol.Range.StartPos.Line)) then
-    begin
-      TypeSymbol := Symbol;
-      Found := True;
-    end;
-  if not Found then
+  mLines := TTextLines.SplitLines(AText);
+  mUnit := TIndexExtractor.Extract(ATree, '');
+  // Innerster Typ unter dem Cursor; generische Typen brauchen die Typparameter im Kopf, die kennt der Index nicht.
+  Result := InnermostType(mUnit, APosition.Line, mType);
+  if Result then
+  begin
+    mRest := Copy(mLines[mType.SelectionRange.EndPos.Line], mType.SelectionRange.EndPos.Character + 1, MaxInt);
+    Result := not TrimLeft(mRest).StartsWith('<');
+  end;
+  if not Result then
+  begin
     Exit;
-  if TypeSymbol.Container <> '' then
-    TypeName := TypeSymbol.Container + '.' + TypeSymbol.Name
-  else
-    TypeName := TypeSymbol.Name;
-  // Generische Typen brauchen die Typparameter im Kopf; die kennt der Index nicht.
-  Rest := Copy(Lines[TypeSymbol.SelectionRange.EndPos.Line], TypeSymbol.SelectionRange.EndPos.Character + 1, MaxInt);
-  if TrimLeft(Rest).StartsWith('<') then
-    Exit;
-  Declarations := TList<TIndexSymbol>.Create;
-  Missing := TList<TIndexSymbol>.Create;
-  Implemented := TList<string>.Create;
-  try
-    LastLine := -1;
-    for Symbol in UnitIndex.Symbols do
-    begin
-      if not (Symbol.Kind in MethodKinds) or not SameText(Symbol.Container, TypeName) then
-        Continue;
-      if ContainsLine(TypeSymbol.Range, Symbol.Range.StartPos.Line) then
-        Declarations.Add(Symbol)
-      else
-      begin
-        Implemented.Add(LowerCase(Symbol.Name) + TRoutineSignatures.ParameterKey(TRoutineSignatures.Head(
-          RangeText(Lines, Symbol.Range), Rest)));
-        if Symbol.Range.EndPos.Line > LastLine then
-          LastLine := Symbol.Range.EndPos.Line;
-      end;
-    end;
-    OnMethod := False;
-    for Symbol in Declarations do
-    begin
-      Header := TRoutineSignatures.Head(RangeText(Lines, Symbol.Range), Rest);
-      if HasWord(Rest, 'abstract') then
-        Continue;
-      Key := LowerCase(Symbol.Name) + TRoutineSignatures.ParameterKey(Header);
-      Index := Implemented.IndexOf(Key);
-      // Ohne Parameterliste in der Implementierung passt sie zur ersten Deklaration gleichen Namens.
-      if Index < 0 then
-        Index := Implemented.IndexOf(LowerCase(Symbol.Name));
-      if Index >= 0 then
-      begin
-        Implemented.Delete(Index);
-        Continue;
-      end;
-      if ContainsLine(Symbol.Range, APosition.Line) then
-      begin
-        Missing.Clear;
-        Missing.Add(Symbol);
-        OnMethod := True;
-        Break;
-      end;
-      Missing.Add(Symbol);
-    end;
-    if Missing.Count = 0 then
-      Exit;
-    LB := TTextLines.LineBreakOf(AText);
-    Bodies := '';
-    for Symbol in Missing do
-    begin
-      Header := QualifiedHeader(TRoutineSignatures.Head(RangeText(Lines, Symbol.Range), Rest), Symbol.Name,
-        TypeName);
-      if Header = '' then
-        Continue;
-      Bodies := Bodies + LB + Header + LB + 'begin' + LB + LB + 'end;' + LB;
-    end;
-    if Bodies = '' then
-      Exit;
-    if LastLine >= 0 then
-    begin
-      InsertLine := LastLine;
-      AAction.Edits := [TTextEdit.Create(TTextRange.Create(InsertLine, Length(Lines[InsertLine]), InsertLine,
-        Length(Lines[InsertLine])), LB + Copy(Bodies, 1, Length(Bodies) - Length(LB)))];
-    end
-    else
-    begin
-      InsertLine := ImplementationEndLine(ATree);
-      if InsertLine < 0 then
-        Exit;
-      AAction.Edits := [TTextEdit.Create(TTextRange.Create(InsertLine, 0, InsertLine, 0),
-        Copy(Bodies, Length(LB) + 1, MaxInt) + LB)];
-    end;
-    if OnMethod then
-      AAction.Title := Format('Methodenrumpf für %s.%s erzeugen', [TypeName, Missing[0].Name])
-    else if Missing.Count = 1 then
-      AAction.Title := Format('Fehlenden Methodenrumpf für %s erzeugen', [TypeName])
-    else
-      AAction.Title := Format('%d fehlende Methodenrümpfe für %s erzeugen', [Missing.Count, TypeName]);
+  end;
+  mPlan := Default(TBodyPlan);
+  mPlan.TypeName := TypeNameOf(mType);
+  CollectTypeMethods(mLines, mUnit, mType, mPlan);
+  FindMissing(mLines, APosition.Line, mPlan);
+  mShape := TTypeShape.Read(mUnit, mLines, mPlan.TypeName);
+  SortMissing(mLines, mShape, mPlan);
+  mLB := TTextLines.LineBreakOf(AText);
+  mBodies := BodiesText(mLines, mPlan, mShape, AOptions, mLB);
+  if mPlan.LastLine < 0 then
+  begin
+    mBodies := FirstBodiesText(mLines, ImplementationLine(ATree), mShape, mBodies, mLB, AOptions);
+  end;
+  Result := (mBodies <> '') and BodiesEdit(ATree, mLines, mPlan.LastLine, mBodies, mLB, mEdit);
+  if Result then
+  begin
+    AAction.Edits := [mEdit];
+    AAction.Title := BodiesTitle(mPlan);
     AAction.Kind := RewriteKind;
     AAction.Tag := ClassBodiesTag;
-    Result := True;
-  finally
-    Implemented.Free;
-    Missing.Free;
-    Declarations.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.ClassCompletion', cTexts);
 
 end.

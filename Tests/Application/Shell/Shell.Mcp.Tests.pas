@@ -39,7 +39,9 @@ begin
   begin
     Result := TPath.Combine(Folder, 'docs\MCP.md');
     if FileExists(Result) then
+    begin
       Exit;
+    end;
     Folder := ExtractFileDir(Folder);
   end;
   Result := '';
@@ -58,7 +60,9 @@ begin
   Result := Copy(mText, mStart + 1, MaxInt);
   mEnd := Pos(#10'## ', Result);
   if mEnd > 0 then
+  begin
     Result := Copy(Result, 1, mEnd);
+  end;
 end;
 
 procedure TMcpShellTests.ToolsListMatchesDocumentation;
@@ -72,13 +76,19 @@ begin
   Assert.IsTrue(FileName <> '', 'docs\MCP.md nicht gefunden');
   Documented := nil;
   for Match in TRegEx.Matches(ToolSection(TFile.ReadAllText(FileName, TEncoding.UTF8)), '^\| `(\w+)` \|', [roMultiLine]) do
+  begin
     Documented := Documented + [Match.Groups[1].Value];
+  end;
   Listed := TMcpShell.ToolNames;
   Assert.IsTrue(Length(Listed) >= 11, 'zu wenige Werkzeuge registriert');
   for Name in Documented do
+  begin
     Assert.Contains(string.Join(' ', Listed), Name, 'in docs/MCP.md, aber nicht in tools/list: ' + Name);
+  end;
   for Name in Listed do
+  begin
     Assert.Contains(string.Join(' ', Documented), Name, 'in tools/list, aber nicht in docs/MCP.md: ' + Name);
+  end;
 end;
 
 procedure TMcpShellTests.ListsArchitectureTool;
@@ -88,7 +98,9 @@ var
 begin
   Found := False;
   for Name in TMcpShell.ToolNames do
+  begin
     Found := Found or (Name = 'get_architecture');
+  end;
   Assert.IsTrue(Found, 'get_architecture fehlt in tools/list');
 end;
 
@@ -100,7 +112,9 @@ begin
   // Weg zwischen Symbolen (#1117).
   Found := False;
   for Name in TMcpShell.ToolNames do
+  begin
     Found := Found or (Name = 'find_path');
+  end;
   Assert.IsTrue(Found, 'find_path fehlt in tools/list');
 end;
 
@@ -112,7 +126,9 @@ begin
   // Hotspots (#1354).
   Found := False;
   for Name in TMcpShell.ToolNames do
+  begin
     Found := Found or (Name = 'get_hotspots');
+  end;
   Assert.IsTrue(Found, 'get_hotspots fehlt in tools/list');
 end;
 

@@ -31,6 +31,8 @@ type
     [Test]
     procedure CompactsProjectUnitsWhenLibrariesAreNotEnough;
     [Test]
+    procedure KeepsProjectUsagesWhileLibrariesAreEnough;
+    [Test]
     procedure MillionLinesStayBelowBudget;
     [Test]
     procedure CacheKeepsLibraryAndCompactFlags;
@@ -71,7 +73,9 @@ begin
   Result.ImplementationUses := ['System.Classes'];
   SetLength(Result.Symbols, AInterfaceSymbols + AImplementationSymbols);
   for Index := 0 to High(Result.Symbols) do
+  begin
     Result.Symbols[Index] := MakeSymbol(AName + 'Symbol' + IntToStr(Index), Index < AInterfaceSymbols);
+  end;
 end;
 
 procedure TIndexMemoryTests.PoolReturnsSameStringForEqualValues;
@@ -227,6 +231,26 @@ begin
   Assert.IsTrue(Index.FindSymbols('VclSymbol10') = nil);
 end;
 
+procedure TIndexMemoryTests.KeepsProjectUsagesWhileLibrariesAreEnough;
+var
+  mIndex: ISymbolIndex;
+  mFound: TUnitIndex;
+  mFull: Int64;
+begin
+  // Ohne die Verwendungen der Projekt-Units liest unused-public-member jede Datei der Gruppe (Abbrüche in
+  // 2.0-stable): Reicht das Kompakthalten der Bibliotheken, bleiben sie im Speicher.
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(WithUsages(MakeUnit('Projekt', False, 5, 5)));
+  mIndex.AddUnit(MakeUnit('Vcl', True, 5, 50));
+  mFull := mIndex.MemoryBytes;
+  mIndex.SetBudget(mFull - 1);
+  Assert.IsTrue(mIndex.MemoryBytes <= mFull - 1);
+  Assert.IsTrue(mIndex.FindUnit('Vcl', mFound) and mFound.Compact);
+  Assert.IsTrue(mIndex.FindUnit('Projekt', mFound) and not mFound.Compact);
+  Assert.AreEqual(2, Integer(Length(mFound.Usages)));
+  Assert.IsTrue(mIndex.MemoryParts.UsageBytes > 0);
+end;
+
 procedure TIndexMemoryTests.MillionLinesStayBelowBudget;
 const
   // Grob 1 Mio. Zeilen: 2000 Units mit je 500 Zeilen und 60 Symbolen.
@@ -239,7 +263,9 @@ begin
   Index := TSymbolIndex.Create;
   Index.SetBudget(Budget);
   for Number := 1 to UnitCount do
+  begin
     Index.AddUnit(MakeUnit('Unit' + IntToStr(Number), Number mod 2 = 0, 15, 45));
+  end;
   Assert.AreEqual(UnitCount, Index.UnitCount);
   Assert.IsTrue(Index.MemoryBytes <= Budget, Format('%d > %d', [Index.MemoryBytes, Int64(Budget)]));
   Assert.IsTrue(Index.CompactCount > 0);

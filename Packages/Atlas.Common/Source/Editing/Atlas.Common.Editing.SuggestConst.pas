@@ -37,7 +37,20 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Semantics.Reassigned,
   Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.RoutineLocals;
+  Atlas.Common.Editing.RoutineLocals,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TSuggestConstText = (DeclareAsConstantConst);
+
+const
+  cTexts: array[TSuggestConstText] of TAtlasText = (
+    (De: 'Als Konstante deklarieren (const %s)'; En: 'Declare as constant (const %s)'));
+
+{$SCOPEDENUMS OFF}
 
 function InlineAction(ATree: TSyntaxTree; const ASymbol: TReassignedSymbol; out AAction: TCodeAction): Boolean;
 var
@@ -46,66 +59,121 @@ var
 begin
   Result := False;
   if not ASymbol.Initialized or (Pos(',', ASymbol.Decl.Name) > 0) then
+  begin
     Exit;
+  end;
   Tokens := ATree.Tokens;
   Keyword := TRoutineBody.TokenAt(Tokens, ASymbol.Decl.StartOffset);
   if (Keyword > High(Tokens)) or not Tokens[Keyword].IsKeyword('var') then
+  begin
     Exit;
+  end;
   Assign := Keyword;
   while (Assign <= High(Tokens)) and (Tokens[Assign].Offset < ASymbol.Decl.EndOffset) and
     not Tokens[Assign].IsSymbol(':=') do
+  begin
     Inc(Assign);
+  end;
   if (Assign > High(Tokens)) or (Tokens[Assign].Offset >= ASymbol.Decl.EndOffset) then
+  begin
     Exit;
+  end;
   AAction := Default(TCodeAction);
-  AAction.Title := Format('Als Konstante deklarieren (const %s)', [ASymbol.Name]);
+  AAction.Title := cTexts[TSuggestConstText.DeclareAsConstantConst].Fmt([ASymbol.Name]);
   AAction.Kind := RewriteKind;
   AAction.Edits := [TTextEdit.Create(TTextRange.Create(Tokens[Keyword].StartPos, Tokens[Keyword].EndPos), 'const'),
     TTextEdit.Create(TTextRange.Create(Tokens[Assign].StartPos, Tokens[Assign].EndPos), '=')];
   Result := True;
 end;
 
+/// <summary>Anweisung der (letzten) schreibenden Stelle von ASymbol; nil ohne.</summary>
+function WritingStatement(const ASymbol: TReassignedSymbol): TSyntaxNode;
+var
+  mOccurrence: TReassignedOccurrence;
+begin
+  Result := nil;
+  for mOccurrence in ASymbol.Occurrences do
+  begin
+    if mOccurrence.Write = TReassignedWrite.Write then
+    begin
+      Result := mOccurrence.Node.Parent;
+    end;
+  end;
+end;
+
+/// <summary>Liegen alle Stellen von ASymbol in ABody, und liest keine vor dem Ende von AStatement?</summary>
+function OccurrencesAfter(const ASymbol: TReassignedSymbol; ABody, AStatement: TSyntaxNode): Boolean;
+var
+  mOccurrence: TReassignedOccurrence;
+begin
+  Result := True;
+  for mOccurrence in ASymbol.Occurrences do
+  begin
+    if (mOccurrence.Node <> nil) and ((mOccurrence.Offset < ABody.StartOffset) or
+      (mOccurrence.Offset > ABody.EndOffset) or ((mOccurrence.Write = TReassignedWrite.None) and
+      (mOccurrence.Offset < AStatement.EndOffset))) then
+    begin
+      Exit(False);
+    end;
+  end;
+end;
+
+/// <summary>Die eine Zuweisung an ASymbol, wenn sie eine Anweisung direkt im Rumpf ist und keine Stelle davor
+/// den Namen liest; sonst nil.</summary>
+function ConstStatement(const ASymbol: TReassignedSymbol): TSyntaxNode;
+var
+  mBody: TSyntaxNode;
+begin
+  Result := nil;
+  mBody := TRoutineBody.BodyOf(ASymbol.Routine);
+  if mBody = nil then
+  begin
+    Exit;
+  end;
+  Result := WritingStatement(ASymbol);
+  if (Result <> nil) and ((Result.Kind <> TSyntaxKind.AssignStatement) or (Result.Parent <> mBody) or
+    not OccurrencesAfter(ASymbol, mBody, Result)) then
+  begin
+    Result := nil;
+  end;
+end;
+
 function SectionAction(const AText: string; ATree: TSyntaxTree; const ASymbol: TReassignedSymbol;
   out AAction: TCodeAction): Boolean;
 var
   Tokens: TArray<TPascalToken>;
-  Body, Statement: TSyntaxNode;
-  Occurrence: TReassignedOccurrence;
+  Statement: TSyntaxNode;
   Assign: Integer;
   TypeText: string;
   Edits: TArray<TTextEdit>;
 begin
   Result := False;
-  Body := TRoutineBody.BodyOf(ASymbol.Routine);
-  if Body = nil then
+  Statement := ConstStatement(ASymbol);
+  if Statement = nil then
+  begin
     Exit;
-  Statement := nil;
-  for Occurrence in ASymbol.Occurrences do
-    if Occurrence.Write = TReassignedWrite.Write then
-      Statement := Occurrence.Node.Parent;
-  // Die eine Zuweisung muss eine Anweisung direkt im Rumpf sein.
-  if (Statement = nil) or (Statement.Kind <> TSyntaxKind.AssignStatement) or (Statement.Parent <> Body) then
-    Exit;
-  for Occurrence in ASymbol.Occurrences do
-    if Occurrence.Node <> nil then
-      if (Occurrence.Offset < Body.StartOffset) or (Occurrence.Offset > Body.EndOffset) or
-        ((Occurrence.Write = TReassignedWrite.None) and (Occurrence.Offset < Statement.EndOffset)) then
-        Exit;
+  end;
   TypeText := Trim(TRoutineLocals.TypeChildText(AText, ASymbol.Decl));
   if TypeText = '' then
+  begin
     Exit;
+  end;
   Tokens := ATree.Tokens;
   Assign := TRoutineBody.TokenAt(Tokens, Statement[0].EndOffset);
   while (Assign <= High(Tokens)) and (Tokens[Assign].Offset < Statement.EndOffset) and
     not Tokens[Assign].IsSymbol(':=') do
+  begin
     Inc(Assign);
+  end;
   if (Assign > High(Tokens)) or (Tokens[Assign].Offset >= Statement.EndOffset) then
+  begin
     Exit;
+  end;
   Edits := [TTextEdit.Create(TTextRange.Create(Statement.StartPos, Tokens[Assign].EndPos),
     Format('const %s: %s =', [ASymbol.Name, TypeText]))];
   TRoutineLocals.RemoveVariables(ATree, ASymbol.Decl, [ASymbol.Name], Edits);
   AAction := Default(TCodeAction);
-  AAction.Title := Format('Als Konstante deklarieren (const %s)', [ASymbol.Name]);
+  AAction.Title := cTexts[TSuggestConstText.DeclareAsConstantConst].Fmt([ASymbol.Name]);
   AAction.Kind := RewriteKind;
   AAction.Edits := Edits;
   Result := True;
@@ -120,11 +188,20 @@ begin
   Result := False;
   if (ATree = nil) or not TReassigned.SymbolAt(TReassigned.Analyze(AText, ATree, ALookup), APosition, Symbol) or
     not Symbol.IsConstCandidate then
+  begin
     Exit;
+  end;
   if Symbol.Kind = TReassignedKind.InlineVariable then
-    Result := InlineAction(ATree, Symbol, AAction)
+  begin
+    Result := InlineAction(ATree, Symbol, AAction);
+  end
   else if Symbol.Decl.Kind = TSyntaxKind.VarDecl then
+  begin
     Result := SectionAction(AText, ATree, Symbol, AAction);
+  end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.SuggestConst', cTexts);
 
 end.

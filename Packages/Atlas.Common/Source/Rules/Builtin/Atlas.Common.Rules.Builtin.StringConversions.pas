@@ -92,8 +92,42 @@ uses
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Rules.WarnSwitches,
-  Atlas.Common.Rules.Builtin.TypeChecks,
-  Atlas.Text.Lines;
+  Atlas.Common.Rules.Builtin.TypeChecks.Types,
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TStringConversionsText = (Title, TheValue, BothCodes, Unmappable, MayLose, Implicit, ConvertExplicitly,
+    CharModified, PassingTo, ConversionLoses, ExplicitConversion, SetTruncates, UseCharInSet, AssignmentTo);
+
+const
+  cTexts: array[TStringConversionsText] of TAtlasText = (
+    (De: 'Umwandlung zwischen Unicode- und ANSI-Strings'; En: 'Conversion between Unicode and ANSI strings'),
+    (De: 'Der Wert'; En: 'The value'),
+    (De: 'W1058 und W1062'; En: 'W1058 and W1062'),
+    (De: '%s enthält Zeichen, die es in der ANSI-Codepage %d nicht gibt; die Zuweisung an %s macht daraus ''?'' (wie ' +
+      '%s).';
+     En: '%s contains characters that do not exist in the ANSI code page %d; the assignment to %s turns them into ' +
+      '''?'' (like %s).'),
+    (De: '%s ist %s; %s kann Zeichen verlieren (wie W1058).'; En: '%s is %s; %s can lose characters (like W1058).'),
+    (De: '%s ist %s; %s wandelt implizit um (wie W1057).'; En: '%s is %s; %s converts implicitly (like W1057).'),
+    (De: 'Ausdrücklich in %s umwandeln'; En: 'Convert explicitly to %s'),
+    (De: 'Zeichen von %s direkt geändert; das wird möglicherweise künftig nicht mehr unterstützt (wie W1068).';
+     En: 'Character of %s modified directly; this may not be supported in the future (like W1068).'),
+    (De: 'die Übergabe an %s (%s)'; En: 'the passing to %s (%s)'),
+    (De: '%s ist %s; die Umwandlung in %s kann Zeichen verlieren (wie W1060).';
+     En: '%s is %s; the conversion to %s can lose characters (like W1060).'),
+    (De: '%s ist %s; ausdrückliche Umwandlung in %s (wie W1059).';
+     En: '%s is %s; explicit conversion to %s (like W1059).'),
+    (De: '%s ist %s; im Mengenausdruck wird das Zeichen auf ein Byte gekürzt (wie W1050).';
+     En: '%s is %s; in the set expression the character is truncated to one byte (like W1050).'),
+    (De: 'CharInSet verwenden'; En: 'Use CharInSet'),
+    (De: 'die Zuweisung an %s'; En: 'the assignment to %s'));
+
+{$SCOPEDENUMS OFF}
 
 const
   cMaxValueText = 30;
@@ -106,7 +140,7 @@ const
 function TStringConversionRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(StringConversionRuleId, TRuleSeverity.Warning,
-    'Umwandlung zwischen Unicode- und ANSI-Strings');
+    cTexts[TStringConversionsText.Title].Text);
 end;
 
 class function TStringConversionRule.KindOf(const ATypeName: string): TStringTypeKind;
@@ -115,15 +149,25 @@ var
 begin
   mName := Trim(ATypeName);
   if StartsText('System.', mName) then
+  begin
     mName := Copy(mName, Length('System.') + 1, MaxInt);
+  end;
   if MatchText(mName, ['string', 'UnicodeString', 'WideString']) then
-    Result := TStringTypeKind.Unicode
+  begin
+    Result := TStringTypeKind.Unicode;
+  end
   else if MatchText(mName, ['AnsiString', 'RawByteString']) then
-    Result := TStringTypeKind.Ansi
+  begin
+    Result := TStringTypeKind.Ansi;
+  end
   else if SameText(mName, 'UTF8String') then
-    Result := TStringTypeKind.Utf8
+  begin
+    Result := TStringTypeKind.Utf8;
+  end
   else
+  begin
     Result := TStringTypeKind.None;
+  end;
 end;
 
 class function TStringConversionRule.ConversionCode(AFrom, ATo: TStringTypeKind; AExplicit: Boolean): string;
@@ -131,19 +175,29 @@ begin
   Result := '';
   if (AFrom = TStringTypeKind.None) or (ATo = TStringTypeKind.None) or (AFrom = ATo) or
     ((AFrom <> TStringTypeKind.Unicode) and (ATo <> TStringTypeKind.Unicode)) then
+  begin
     Exit;
+  end;
   // Nur in AnsiString bzw. RawByteString gehen Zeichen verloren; UTF-8 fasst alle.
   if ATo = TStringTypeKind.Ansi then
   begin
     if AExplicit then
-      Result := 'W1060'
+    begin
+      Result := 'W1060';
+    end
     else
+    begin
       Result := 'W1058';
+    end;
   end
   else if AExplicit then
-    Result := 'W1059'
+  begin
+    Result := 'W1059';
+  end
   else
+  begin
     Result := 'W1057';
+  end;
 end;
 
 class function TStringConversionRule.LostIn1252(AChar: Char): Boolean;
@@ -179,7 +233,9 @@ var
   begin
     Result := NodeText(ANode);
     if Length(Result) > cMaxValueText then
-      Result := 'Der Wert';
+    begin
+      Result := cTexts[TStringConversionsText.TheValue].Text;
+    end;
   end;
 
   function StateOf(const ACode: string; ANode: TSyntaxNode): TRuleWarnState;
@@ -197,9 +253,13 @@ var
   begin
     mState := StateOf(ACode, ANode);
     if mState = TRuleWarnState.AsError then
-      AReport.AddWithSeverity(TTextRange.Create(ANode.StartPos, ANode.EndPos), AMessage, TRuleSeverity.Error, AFixes)
+    begin
+      AReport.AddWithSeverity(TTextRange.Create(ANode.StartPos, ANode.EndPos), AMessage, TRuleSeverity.Error, AFixes);
+    end
     else if mState = TRuleWarnState.Enabled then
+    begin
       AReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), AMessage, AConfidence, AFixes);
+    end;
   end;
 
   /// <summary>Ist ATypeInfo ein eingebauter Typ aus System?</summary>
@@ -229,15 +289,23 @@ var
     ADisplay := '';
     mNode := Unwrapped(ANode);
     if (mNode = nil) or StringElement(mNode, mBase, mBaseType) then
+    begin
       Exit;
+    end;
     if AWritable then
-      mKinds := [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_]
+    begin
+      mKinds := [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_];
+    end
     else
+    begin
       mKinds := [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_,
         TIndexSymbolKind.Method, TIndexSymbolKind.Routine, TIndexSymbolKind.Constant];
+    end;
     if not mScope.SureType(mNode, mSymbol, mTypeInfo) or mSymbol.IsType or not (mSymbol.SymbolKind in mKinds) or
       not SystemType(mTypeInfo) then
+    begin
       Exit;
+    end;
     Result := KindOf(mTypeInfo.Name);
     ADisplay := mTypeInfo.Name;
   end;
@@ -251,7 +319,9 @@ var
     AValue := '';
     mNode := Unwrapped(ANode);
     if mNode = nil then
+    begin
       Exit(False);
+    end;
     case mNode.Kind of
       TSyntaxKind.Literal:
         Result := (StartsStr('''', mNode.Name) or StartsStr('#', mNode.Name)) and
@@ -261,7 +331,9 @@ var
           Result := (mNode.Name = '+') and (mNode.ChildCount = 2) and ConstantString(mNode[0], mLeft) and
             ConstantString(mNode[1], mRight);
           if Result then
+          begin
             AValue := mLeft + mRight;
+          end;
         end;
     else
       Result := False;
@@ -278,34 +350,52 @@ var
     mWide, mLoss: TRuleWarnState;
   begin
     if (mCodePage <> cDefaultCodePage) or not ConstantString(AValue, mText) then
+    begin
       Exit;
+    end;
     mLost := False;
     for mChar in mText do
+    begin
       if LostIn1252(mChar) then
       begin
         mLost := True;
         Break;
       end;
+    end;
     if not mLost then
+    begin
       Exit;
+    end;
     mLoss := StateOf('W1058', AValue);
     mWide := StateOf('W1062', AValue);
     if TRuleWarnSwitches.Reported(mLoss) and TRuleWarnSwitches.Reported(mWide) then
-      mCodes := 'W1058 und W1062'
+    begin
+      mCodes := cTexts[TStringConversionsText.BothCodes].Text;
+    end
     else if TRuleWarnSwitches.Reported(mWide) then
-      mCodes := 'W1062'
+    begin
+      mCodes := 'W1062';
+    end
     else if TRuleWarnSwitches.Reported(mLoss) then
-      mCodes := 'W1058'
+    begin
+      mCodes := 'W1058';
+    end
     else
+    begin
       Exit;
+    end;
     if (mLoss = TRuleWarnState.AsError) or (mWide = TRuleWarnState.AsError) then
-      AReport.AddWithSeverity(TTextRange.Create(AValue.StartPos, AValue.EndPos), Format('%s enthält Zeichen, die ' +
-        'es in der ANSI-Codepage %d nicht gibt; die Zuweisung an %s macht daraus ''?'' (wie %s).',
-        [ValueText(AValue), mCodePage, ATargetDisplay, mCodes]), TRuleSeverity.Error, nil)
+    begin
+      AReport.AddWithSeverity(TTextRange.Create(AValue.StartPos, AValue.EndPos),
+        cTexts[TStringConversionsText.Unmappable].Fmt(
+        [ValueText(AValue), mCodePage, ATargetDisplay, mCodes]), TRuleSeverity.Error, nil);
+    end
     else
-      AReport.Add(TTextRange.Create(AValue.StartPos, AValue.EndPos), Format('%s enthält Zeichen, die es in der ' +
-        'ANSI-Codepage %d nicht gibt; die Zuweisung an %s macht daraus ''?'' (wie %s).', [ValueText(AValue),
+    begin
+      AReport.Add(TTextRange.Create(AValue.StartPos, AValue.EndPos),
+        cTexts[TStringConversionsText.Unmappable].Fmt([ValueText(AValue),
         mCodePage, ATargetDisplay, mCodes]), TRuleConfidence.Medium);
+    end;
   end;
 
   /// <summary>Wert AValue an ein Ziel vom Typ ATargetDisplay der Art ATarget; AWhere beschreibt das Ziel
@@ -317,18 +407,26 @@ var
     mFix: TRuleFix;
   begin
     if ATarget = TStringTypeKind.Ansi then
+    begin
       CheckConstant(AValue, ATargetDisplay);
+    end;
     mSource := ExpressionKind(AValue, False, mSourceDisplay);
     mCode := ConversionCode(mSource, ATarget, False);
     if mCode = '' then
+    begin
       Exit;
+    end;
     if mCode = 'W1058' then
-      mMessage := Format('%s ist %s; %s kann Zeichen verlieren (wie W1058).', [ValueText(AValue), mSourceDisplay,
-        AWhere])
-    else
-      mMessage := Format('%s ist %s; %s wandelt implizit um (wie W1057).', [ValueText(AValue), mSourceDisplay,
+    begin
+      mMessage := cTexts[TStringConversionsText.MayLose].Fmt([ValueText(AValue), mSourceDisplay,
         AWhere]);
-    mFix := TRuleFix.Create(Format('Ausdrücklich in %s umwandeln', [ATargetDisplay]),
+    end
+    else
+    begin
+      mMessage := cTexts[TStringConversionsText.Implicit].Fmt([ValueText(AValue), mSourceDisplay,
+        AWhere]);
+    end;
+    mFix := TRuleFix.Create(cTexts[TStringConversionsText.ConvertExplicitly].Fmt([ATargetDisplay]),
       [TTextEdit.Create(TTextRange.Create(AValue.StartPos, AValue.EndPos), Format('%s(%s)', [ATargetDisplay,
       NodeText(AValue)]))]);
     Report(mCode, AValue, mMessage, TRuleConfidence.High, [mFix]);
@@ -341,19 +439,26 @@ var
     mBase, mBaseType: TResolvedSymbol;
   begin
     if ANode.ChildCount <> 2 then
+    begin
       Exit;
+    end;
     // S[1] := 'x' (W1068): nur Variablen und Felder vom Typ string, keine Properties mit Index.
     if StringElement(Unwrapped(ANode[0]), mBase, mBaseType) then
     begin
       if (mBase.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field]) and
         MatchText(mBaseType.Name, ['string', 'UnicodeString']) then
-        Report('W1068', ANode[0], Format('Zeichen von %s direkt geändert; das wird möglicherweise künftig nicht ' +
-          'mehr unterstützt (wie W1068).', [NodeText(Unwrapped(ANode[0])[0])]), TRuleConfidence.High, nil);
+      begin
+        Report('W1068', ANode[0], cTexts[TStringConversionsText.CharModified].Fmt([NodeText(Unwrapped(ANode[0])[0])]),
+          TRuleConfidence.High, nil);
+      end;
       Exit;
     end;
     mTarget := ExpressionKind(ANode[0], True, mTargetDisplay);
     if mTarget <> TStringTypeKind.None then
-      CheckImplicit(ANode[1], mTarget, mTargetDisplay, 'die Zuweisung an ' + NodeText(ANode[0]));
+    begin
+      CheckImplicit(ANode[1], mTarget, mTargetDisplay,
+        cTexts[TStringConversionsText.AssignmentTo].Fmt([NodeText(ANode[0])]));
+    end;
   end;
 
   procedure CheckInlineVar(ANode: TSyntaxNode);
@@ -363,52 +468,84 @@ var
     mTarget: TStringTypeKind;
   begin
     if (ANode.ChildCount <> 2) or (ANode[0].Kind <> TSyntaxKind.TypeReference) or (Pos(',', ANode.Name) > 0) then
+    begin
       Exit;
+    end;
     mTypeName := NodeText(ANode[0]);
     mTarget := KindOf(mTypeName);
     if mTarget = TStringTypeKind.None then
+    begin
       Exit;
+    end;
     // Ein eigener Typ gleichen Namens verdeckt den aus System.
     mTypeInfo := mScope.Resolver.ResolveType(AContext.Tree, mScope.FileName, ANode[0].StartPos);
     if mTypeInfo.Found and not SystemType(mTypeInfo) then
+    begin
       Exit;
-    CheckImplicit(ANode[1], mTarget, mTypeName, 'die Zuweisung an ' + ANode.Name);
+    end;
+    CheckImplicit(ANode[1], mTarget, mTypeName, cTexts[TStringConversionsText.AssignmentTo].Fmt([ANode.Name]));
+  end;
+
+  /// <summary>Ist ACall sicher der Aufruf einer Routine mit bekanntem Kopf? Liefert Symbol und Parameter.</summary>
+  function ResolvedCall(ACall: TSyntaxNode; out ASymbol: TResolvedSymbol;
+    out AParams: TArray<TSignatureParameter>): Boolean;
+  var
+    mTypeInfo: TResolvedSymbol;
+    mTypeFound: Boolean;
+  begin
+    AParams := nil;
+    Result := (ACall.ChildCount >= 2) and (ACall[0].Kind <> TSyntaxKind.InheritedExpr) and
+      mScope.Resolver.NodeType(AContext.Tree, mScope.FileName, ACall, ASymbol, mTypeInfo, mTypeFound);
+    Result := Result and not ASymbol.IsType and (ASymbol.SymbolKind in [TIndexSymbolKind.Method,
+      TIndexSymbolKind.Routine, TIndexSymbolKind.Constructor_]);
+    Result := Result and mScope.DeclarationSure(ASymbol, ACall) and RoutineParams(AContext, ASymbol, AParams);
+    // Passt die Zahl der Argumente nicht zum Kopf, ist es eine andere Routine (bzw. ein anderer Fehler).
+    if Result and (ASymbol.Signature <> '') then
+    begin
+      Result := (ACall.ChildCount - 1 >= ASymbol.MinArgs) and (ACall.ChildCount - 1 <= ASymbol.MaxArgs);
+    end;
+  end;
+
+  /// <summary>Übergabeart des Parameters in Kleinbuchstaben; mit Attribut ("[ref] var") das letzte Wort.</summary>
+  function ParamModifier(const AParam: TSignatureParameter): string;
+  begin
+    Result := LowerCase(Trim(AParam.Modifier));
+    if Pos(' ', Result) > 0 then
+    begin
+      Result := Copy(Result, LastDelimiter(' ', Result) + 1, MaxInt);
+    end;
   end;
 
   procedure CheckCall(ACall: TSyntaxNode);
   var
-    mSymbol, mTypeInfo: TResolvedSymbol;
-    mTypeFound: Boolean;
+    mSymbol: TResolvedSymbol;
     mParams: TArray<TSignatureParameter>;
     mIndex: Integer;
     mModifier: string;
     mTarget: TStringTypeKind;
   begin
-    if (ACall.ChildCount < 2) or (ACall[0].Kind = TSyntaxKind.InheritedExpr) or
-      not mScope.Resolver.NodeType(AContext.Tree, mScope.FileName, ACall, mSymbol, mTypeInfo, mTypeFound) or
-      mSymbol.IsType or not (mSymbol.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine,
-      TIndexSymbolKind.Constructor_]) or not mScope.DeclarationSure(mSymbol, ACall) or
-      not RoutineParams(AContext, mSymbol, mParams) then
+    if not ResolvedCall(ACall, mSymbol, mParams) then
+    begin
       Exit;
-    // Passt die Zahl der Argumente nicht zum Kopf, ist es eine andere Routine (bzw. ein anderer Fehler).
-    if (mSymbol.Signature <> '') and ((ACall.ChildCount - 1 < mSymbol.MinArgs) or
-      (ACall.ChildCount - 1 > mSymbol.MaxArgs)) then
-      Exit;
+    end;
     for mIndex := 1 to ACall.ChildCount - 1 do
     begin
       if mIndex > Length(mParams) then
+      begin
         Break;
+      end;
       // var und out verlangen denselben Typ (E2033), das meldet eine andere Regel.
-      mModifier := LowerCase(Trim(mParams[mIndex - 1].Modifier));
-      // Mit Attribut ("[ref] var") zählt das letzte Wort.
-      if Pos(' ', mModifier) > 0 then
-        mModifier := Copy(mModifier, LastDelimiter(' ', mModifier) + 1, MaxInt);
+      mModifier := ParamModifier(mParams[mIndex - 1]);
       if (mModifier = 'var') or (mModifier = 'out') then
+      begin
         Continue;
+      end;
       mTarget := KindOf(mParams[mIndex - 1].TypeName);
       if mTarget <> TStringTypeKind.None then
+      begin
         CheckImplicit(ACall[mIndex], mTarget, Trim(mParams[mIndex - 1].TypeName),
-          Format('die Übergabe an %s (%s)', [mSymbol.Name, mParams[mIndex - 1].Name]));
+          cTexts[TStringConversionsText.PassingTo].Fmt([mSymbol.Name, mParams[mIndex - 1].Name]));
+      end;
     end;
   end;
 
@@ -421,27 +558,41 @@ var
   begin
     Result := False;
     if ACall.ChildCount <> 2 then
+    begin
       Exit;
+    end;
     mCallee := ACall[0];
     if mCallee.Kind = TSyntaxKind.Identifier then
-      mTargetName := mCallee.Name
+    begin
+      mTargetName := mCallee.Name;
+    end
     else if (mCallee.Kind = TSyntaxKind.MemberAccess) and (mCallee.ChildCount = 1) and
       (mCallee[0].Kind = TSyntaxKind.Identifier) and SameText(mCallee[0].Name, 'System') then
-      mTargetName := mCallee.Name
+    begin
+      mTargetName := mCallee.Name;
+    end
     else
+    begin
       Exit;
+    end;
     mTarget := KindOf(mTargetName);
     if mTarget = TStringTypeKind.None then
+    begin
       Exit;
+    end;
     Result := True;
     mSource := ExpressionKind(ACall[1], False, mSourceDisplay);
     mCode := ConversionCode(mSource, mTarget, True);
     if mCode = 'W1060' then
-      Report(mCode, ACall, Format('%s ist %s; die Umwandlung in %s kann Zeichen verlieren (wie W1060).',
-        [ValueText(ACall[1]), mSourceDisplay, mTargetName]), TRuleConfidence.High, nil)
-    else if mCode = 'W1059' then
-      Report(mCode, ACall, Format('%s ist %s; ausdrückliche Umwandlung in %s (wie W1059).',
+    begin
+      Report(mCode, ACall, cTexts[TStringConversionsText.ConversionLoses].Fmt(
         [ValueText(ACall[1]), mSourceDisplay, mTargetName]), TRuleConfidence.High, nil);
+    end
+    else if mCode = 'W1059' then
+    begin
+      Report(mCode, ACall, cTexts[TStringConversionsText.ExplicitConversion].Fmt(
+        [ValueText(ACall[1]), mSourceDisplay, mTargetName]), TRuleConfidence.High, nil);
+    end;
   end;
 
   /// <summary>Mengenkonstruktor aus Zeichenliteralen bis #127 ('a', #9, 'a'..'z')?</summary>
@@ -455,14 +606,22 @@ var
     for mIndex := 0 to ASet.ChildCount - 1 do
     begin
       if not Result then
+      begin
         Exit;
+      end;
       mElement := ASet[mIndex];
       if mElement.Kind = TSyntaxKind.RangeExpr then
-        Result := mElement.ChildCount = 2
+      begin
+        Result := mElement.ChildCount = 2;
+      end
       else
+      begin
         Result := mElement.Kind = TSyntaxKind.Literal;
+      end;
       if not Result then
+      begin
         Exit;
+      end;
       for mPartIndex := 0 to mElement.ChildCount - 1 do
       begin
         mPart := mElement[mPartIndex];
@@ -470,59 +629,81 @@ var
           (Length(mValue) = 1) and (Ord(mValue[1]) <= 127);
       end;
       if mElement.Kind = TSyntaxKind.Literal then
+      begin
         Result := ConstantString(mElement, mValue) and (Length(mValue) = 1) and (Ord(mValue[1]) <= 127);
+      end;
+    end;
+  end;
+
+  /// <summary>Ist ALeft ein Zeichen vom Typ Char bzw. WideChar? ADisplay: Anzeigename des Typs.</summary>
+  function IsUnicodeChar(ALeft: TSyntaxNode; out ADisplay: string): Boolean;
+  var
+    mSymbol, mTypeInfo, mBase, mBaseType: TResolvedSymbol;
+  begin
+    ADisplay := 'Char';
+    if StringElement(ALeft, mBase, mBaseType) then
+    begin
+      // S[I]: nur Variablen, Felder und Konstanten; bei Properties wählt der Index einen Eintrag.
+      Exit((mBase.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Constant]) and
+        (KindOf(mBaseType.Name) = TStringTypeKind.Unicode));
+    end;
+    Result := mScope.SureType(ALeft, mSymbol, mTypeInfo) and not mSymbol.IsType and SystemType(mTypeInfo);
+    Result := Result and MatchText(mTypeInfo.Name, ['Char', 'WideChar']) and (mSymbol.SymbolKind in
+      [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_, TIndexSymbolKind.Method,
+      TIndexSymbolKind.Routine, TIndexSymbolKind.Constant]);
+    if Result then
+    begin
+      ADisplay := mTypeInfo.Name;
+    end;
+  end;
+
+  /// <summary>Korrektur CharInSet(…) samt System.SysUtils in den uses; nil, wenn die uses nicht passen.</summary>
+  function CharInSetEdits(ANode: TSyntaxNode): TArray<TTextEdit>;
+  var
+    mUsesEdit: TTextEdit;
+    mUsed: TArray<string>;
+  begin
+    Result := [TTextEdit.Create(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('CharInSet(%s, %s)',
+      [NodeText(ANode[0]), NodeText(ANode[1])]))];
+    mUsed := TUsesClauses.UsedUnits(mScope.Tokens);
+    if TUsesClauses.IsUsed(mUsed, 'System.SysUtils', AContext.Namespaces) or
+      TUsesClauses.IsUsed(mUsed, 'SysUtils', AContext.Namespaces) then
+    begin
+      Exit;
+    end;
+    if TUsesClauses.AddUnit(mScope.Tokens, ANode.StartOffset, 'System.SysUtils',
+      TTextLines.LineBreakOf(AContext.Text), mUsesEdit) then
+    begin
+      Result := Result + [mUsesEdit];
+    end
+    else
+    begin
+      Result := nil;
     end;
   end;
 
   /// <summary>C in ['a'..'z'] mit C: Char (W1050); Korrektur CharInSet.</summary>
   procedure CheckSetMembership(ANode: TSyntaxNode);
   var
-    mLeft: TSyntaxNode;
-    mSymbol, mTypeInfo, mBase, mBaseType: TResolvedSymbol;
-    mDisplay: string;
+    mDisplay, mMessage: string;
     mEdits: TArray<TTextEdit>;
-    mUsesEdit: TTextEdit;
-    mUsed: TArray<string>;
   begin
-    if not SameText(ANode.Name, 'in') or (ANode.ChildCount <> 2) or not AsciiCharSet(Unwrapped(ANode[1])) then
-      Exit;
-    mLeft := Unwrapped(ANode[0]);
-    if StringElement(mLeft, mBase, mBaseType) then
+    if not SameText(ANode.Name, 'in') or (ANode.ChildCount <> 2) or not AsciiCharSet(Unwrapped(ANode[1])) or
+      not IsUnicodeChar(Unwrapped(ANode[0]), mDisplay) then
     begin
-      // S[I]: nur Variablen, Felder und Konstanten; bei Properties wählt der Index einen Eintrag.
-      if not (mBase.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Constant]) or
-        (KindOf(mBaseType.Name) <> TStringTypeKind.Unicode) then
-        Exit;
-      mDisplay := 'Char';
+      Exit;
+    end;
+    mEdits := CharInSetEdits(ANode);
+    mMessage := cTexts[TStringConversionsText.SetTruncates].Fmt([ValueText(ANode[0]), mDisplay]);
+    if mEdits = nil then
+    begin
+      Report('W1050', ANode, mMessage, TRuleConfidence.High, nil);
     end
     else
     begin
-      if not mScope.SureType(mLeft, mSymbol, mTypeInfo) or mSymbol.IsType or not SystemType(mTypeInfo) or
-        not MatchText(mTypeInfo.Name, ['Char', 'WideChar']) or not (mSymbol.SymbolKind in [TIndexSymbolKind.Variable,
-        TIndexSymbolKind.Field, TIndexSymbolKind.Property_, TIndexSymbolKind.Method, TIndexSymbolKind.Routine,
-        TIndexSymbolKind.Constant]) then
-        Exit;
-      mDisplay := mTypeInfo.Name;
+      Report('W1050', ANode, mMessage, TRuleConfidence.High,
+        [TRuleFix.Create(cTexts[TStringConversionsText.UseCharInSet].Text, mEdits)]);
     end;
-    mEdits := [TTextEdit.Create(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('CharInSet(%s, %s)',
-      [NodeText(ANode[0]), NodeText(ANode[1])]))];
-    mUsed := TUsesClauses.UsedUnits(mScope.Tokens);
-    if not TUsesClauses.IsUsed(mUsed, 'System.SysUtils', AContext.Namespaces) and
-      not TUsesClauses.IsUsed(mUsed, 'SysUtils', AContext.Namespaces) then
-    begin
-      if TUsesClauses.AddUnit(mScope.Tokens, ANode.StartOffset, 'System.SysUtils',
-        TTextLines.LineBreakOf(AContext.Text), mUsesEdit) then
-        mEdits := mEdits + [mUsesEdit]
-      else
-        mEdits := nil;
-    end;
-    if mEdits = nil then
-      Report('W1050', ANode, Format('%s ist %s; im Mengenausdruck wird das Zeichen auf ein Byte gekürzt ' +
-        '(wie W1050).', [ValueText(ANode[0]), mDisplay]), TRuleConfidence.High, nil)
-    else
-      Report('W1050', ANode, Format('%s ist %s; im Mengenausdruck wird das Zeichen auf ein Byte gekürzt ' +
-        '(wie W1050).', [ValueText(ANode[0]), mDisplay]), TRuleConfidence.High,
-        [TRuleFix.Create('CharInSet verwenden', mEdits)]);
   end;
 
   procedure Visit(ARoot: TSyntaxNode);
@@ -545,14 +726,18 @@ var
             CheckInlineVar(mNode);
           TSyntaxKind.Call:
             if not CheckCast(mNode) then
+            begin
               CheckCall(mNode);
+            end;
           TSyntaxKind.BinaryExpr:
             CheckSetMembership(mNode);
         else
           // Übrige Knoten bewusst ohne Wirkung.
         end;
         for mIndex := mNode.ChildCount - 1 downto 0 do
+        begin
           mPending.Push(mNode[mIndex]);
+        end;
       end;
     finally
       mPending.Free;
@@ -566,12 +751,16 @@ var
     mText: string;
   begin
     for mToken in AContext.Tree.Tokens do
+    begin
       if mToken.Kind = TPascalTokenKind.Directive then
       begin
         mText := UpperCase(StringReplace(mToken.Text, ' ', '', [rfReplaceAll]));
         if ContainsStr(mText, '$H-') or ContainsStr(mText, ',H-') or ContainsStr(mText, '$LONGSTRINGSOFF') then
+        begin
           Exit(True);
+        end;
       end;
+    end;
     Result := False;
   end;
 
@@ -579,10 +768,14 @@ var
   mVersion: Integer;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   mVersion := TLanguageFeatures.ParseVersion(AContext.DelphiVersion);
   if ((mVersion > 0) and (mVersion < TLanguageFeatures.ParseVersion(cUnicodeVersion))) or ShortStrings then
+  begin
     Exit;
+  end;
   mCodePage := TRuleOptions.Int(AContext.Options, 'ansiCodePage', cDefaultCodePage);
   mSwitches := TRuleWarnSwitches.Create(AContext);
   mScope := TTypedScope.Create(AContext);
@@ -598,5 +791,8 @@ procedure RegisterStringConversionRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TStringConversionRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.StringConversions', cTexts);
 
 end.

@@ -63,7 +63,9 @@ begin
     procedure(AKind: TDocumentEventKind; const ADocument: ITextDocument)
     begin
       if AKind = TDocumentEventKind.Saved then
+      begin
         Inc(FSaved);
+      end;
     end);
   FSync := TLspTextDocumentSync.Create(FStore);
   FDispatcher := TJsonRpcDispatcher.Create;

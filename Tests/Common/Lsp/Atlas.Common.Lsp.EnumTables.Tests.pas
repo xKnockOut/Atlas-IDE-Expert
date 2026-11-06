@@ -94,13 +94,21 @@ function ReadFile(const AFileName: string; out AText: string): Boolean;
 begin
   Result := True;
   if SameText(AFileName, OrdersFile) then
-    AText := Orders
+  begin
+    AText := Orders;
+  end
   else if SameText(AFileName, ShopFile) then
-    AText := Shop
+  begin
+    AText := Shop;
+  end
   else if SameText(AFileName, OtherFile) then
-    AText := Other
+  begin
+    AText := Other;
+  end
   else
+  begin
     Result := False;
+  end;
 end;
 
 procedure TLspEnumTablesTests.Setup;
@@ -122,6 +130,12 @@ begin
   Result.Index := AIndex;
   Result.Files := [OrdersFile, ShopFile, OtherFile];
   Result.ReadText := ReadFile;
+end;
+
+/// <summary>Orders mit dem Baum ATree, Stelle auf TOrderState.</summary>
+function OrdersDocument(ATree: TSyntaxTree): TEnumTablesDocument;
+begin
+  Result := TEnumTablesDocument.Create(ATree, OrdersFile, Orders, TTextPosition.Create(3, 5));
 end;
 
 function ActionsAt(const AIndex: ISymbolIndex; const AText, AFileName: string; ALine,
@@ -151,7 +165,9 @@ var
   Action: TJSONObject;
 begin
   for Action in AActions do
+  begin
     Action.Free;
+  end;
 end;
 
 procedure TLspEnumTablesTests.ActionsOnType;
@@ -209,8 +225,7 @@ var
 begin
   Tree := TPascalParser.Parse(Orders);
   try
-    Answer := TLspEnumTables.Execute(Tree, OrdersFile, Orders, TTextPosition.Create(3, 5), 'COrderStateNames',
-      'afterType', Context(FIndex));
+    Answer := TLspEnumTables.Execute(OrdersDocument(Tree), 'COrderStateNames', 'afterType', Context(FIndex));
     try
       Assert.IsTrue(Pos('COrderStateNames: array[TOrderState] of string = (''New'', ''Paid'', ''Payment due'');',
         Answer.ToJSON) > 0, Answer.ToJSON);
@@ -233,7 +248,7 @@ begin
   Tree := TPascalParser.Parse(Orders);
   Resolver := TNameResolver.Create(FIndex);
   try
-    Answer := TLspEnumTables.Sync(Resolver, Tree, OrdersFile, Orders, TTextPosition.Create(3, 5), Context(FIndex));
+    Answer := TLspEnumTables.Sync(Resolver, OrdersDocument(Tree), Context(FIndex));
     try
       Json := Answer.ToJSON;
       Assert.AreEqual(2, Answer.GetValue<Integer>('files'), Json);
@@ -263,8 +278,7 @@ begin
     begin
       Tree := TPascalParser.Parse(Orders);
       try
-        TLspEnumTables.Execute(Tree, OrdersFile, Orders, TTextPosition.Create(3, 5), 'TOrderState', 'afterType',
-          Context(FIndex)).Free;
+        TLspEnumTables.Execute(OrdersDocument(Tree), 'TOrderState', 'afterType', Context(FIndex)).Free;
       finally
         Tree.Free;
       end;
@@ -276,8 +290,7 @@ begin
     begin
       Tree := TPascalParser.Parse(Orders);
       try
-        TLspEnumTables.Execute(Tree, OrdersFile, Orders, TTextPosition.Create(3, 5), 'CNames', 'irgendwo',
-          Context(FIndex)).Free;
+        TLspEnumTables.Execute(OrdersDocument(Tree), 'CNames', 'irgendwo', Context(FIndex)).Free;
       finally
         Tree.Free;
       end;

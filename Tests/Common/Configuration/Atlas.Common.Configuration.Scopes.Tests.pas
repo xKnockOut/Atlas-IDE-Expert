@@ -74,17 +74,21 @@ var
   GlobalPath, ProjectPath: string;
 begin
   for GlobalPath in GlobalSettingPaths do
+  begin
     for ProjectPath in ProjectSettingPaths do
     begin
       // rules, tasks (#900) und excludeTests (x-scope "both") stehen absichtlich in beiden Listen.
       if (GlobalPath = ProjectPath) and ((GlobalPath = 'rules') or (GlobalPath = 'tasks') or
         (GlobalPath = 'excludeTests')) then
+      begin
         Continue;
+      end;
       Assert.AreNotEqual(GlobalPath, ProjectPath);
       // Ein ganzes Objekt an einem Ort und eines seiner Glieder am anderen wäre widersprüchlich.
       Assert.IsFalse(GlobalPath.StartsWith(ProjectPath + '.'), GlobalPath);
       Assert.IsFalse(ProjectPath.StartsWith(GlobalPath + '.'), ProjectPath);
     end;
+  end;
 end;
 
 procedure TConfigurationScopesTests.GlobalRulesProjectOverridesPerRule;
@@ -298,7 +302,9 @@ var
 begin
   List := nil;
   for Text in Paths do
+  begin
     List := List + [Text];
+  end;
   // Hauptschalter: global, Vorgabe aus, vom Parser gelesen.
   Assert.IsTrue(TConfigurationScopes.ScopeOf('experimental.enabled') = TConfigurationScope.Global);
   Assert.IsFalse(TServerSettings.Default.ExperimentalEnabled);
@@ -321,7 +327,9 @@ begin
   Assert.AreEqual('{kaputt', TConfigurationScopes.WithoutExperimental('{kaputt', List));
   // Die echte Liste aus dem Schema enthält nie den Hauptschalter.
   for Text in ExperimentalSettingPaths do
+  begin
     Assert.AreNotEqual('experimental.enabled', Text);
+  end;
 end;
 
 initialization

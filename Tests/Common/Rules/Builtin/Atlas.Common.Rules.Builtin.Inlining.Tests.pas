@@ -10,6 +10,8 @@
 // Fehlalarme aus der Prüfung von Atlas und der RTL: Alias einer Deklaration
 // aus System (tkRecord in System.TypInfo, TList<T>.Add), Zyklus bei Rümpfen
 // nur mit eingebauten Typen und Intrinsics (THashFNV1a32.GetHashValue).
+// lsp-ignore an einem Aufruf, den der Index nicht kennt, bleibt ohne
+// unused-suppression (RenameFile unter Linux).
 
 interface
 
@@ -60,6 +62,8 @@ type
     procedure IndexKeepsBodyReferences;
     [Test]
     procedure RuleIsRegistered;
+    [Test]
+    procedure UnknownCallKeepsSuppression;
     /// <summary>#1220: Tausende Aufrufe einer inline-Routine, deren Unit über eine lange uses-Kette läuft, bleiben
     /// deutlich unter einer Sekunde; die Zyklussuche läuft je Unit nur einmal.</summary>
     [Test]
@@ -232,11 +236,26 @@ var
 begin
   Result := '';
   for Finding in AFindings do
+  begin
     Result := Result + Format('%d:%d %s|', [Finding.Range.StartPos.Line, Finding.Range.StartPos.Character,
       Finding.Message]);
+  end;
 end;
 
 { TInliningRulesTests }
+
+procedure TInliningRulesTests.UnknownCallKeepsSuppression;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  // RenameFile kennt der Index nicht (RTL fehlt): Die Regel kann die Zeile nicht entscheiden, ihr lsp-ignore ist
+  // keine unused-suppression. In einer Zeile mit nur bekannten Namen schon.
+  Found := Findings(Haupt('Werk.Json', '  RenameFile(''a'', ''b''); // lsp-ignore: inline-not-expanded'#10));
+  Assert.AreEqual(0, Integer(Length(Found)), Messages(Found));
+  Found := Findings(Haupt('Werk.Json', '  X := 1; // lsp-ignore: inline-not-expanded'#10));
+  Assert.AreEqual(1, Integer(Length(Found)), Messages(Found));
+  Assert.AreEqual('unused-suppression', Found[0].RuleId);
+end;
 
 procedure TInliningRulesTests.MissingUnitIsReported;
 var
@@ -548,8 +567,12 @@ begin
   UnitIndex := TIndexExtractor.ExtractText(UnitJson, 'C:\P\Werk.Json.pas', nil);
   Refs := '';
   for Symbol in UnitIndex.Symbols do
+  begin
     if Symbol.InInterface and (Symbol.InlineRefs <> nil) then
+    begin
       Refs := Refs + Symbol.QualifiedName + '=' + String.Join(',', Symbol.InlineRefs) + '|';
+    end;
+  end;
   // Lokale Namen, Result, eigene Typen und Mitglieder ohne weiteren Zugriff fehlen; Normal und Nochmal sind
   // nicht inline. Eingebaute Typen (Integer) löst erst die Regel auf.
   Assert.AreEqual('TJsonFeld.GetZahl=:TListe<Integer>|TJsonFeld.Anzahl=:Integer,:TListe<Integer>|' +
@@ -558,9 +581,13 @@ begin
   UnitIndex := TIndexExtractor.ExtractText(UnitMathe, 'C:\P\Werk.Mathe.pas', nil);
   Refs := '';
   for Symbol in UnitIndex.Symbols do
+  begin
     if Symbol.InInterface and (Symbol.InlineRefs <> nil) then
+    begin
       Refs := Refs + Symbol.QualifiedName + '=' + IntToStr(Length(Symbol.InlineRefs)) + ':' +
         String.Join(',', Symbol.InlineRefs) + '|';
+    end;
+  end;
   Assert.AreEqual('Halb=1:|', Refs);
 end;
 
@@ -571,8 +598,12 @@ var
 begin
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = InlineNotExpandedRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found);
 end;
 
@@ -602,9 +633,13 @@ begin
   for mStep := 1 to cChainLength do
   begin
     if mStep < cChainLength then
-      mNext := Format('uses Kette%d, Werk.Typen;'#10, [mStep + 1])
+    begin
+      mNext := Format('uses Kette%d, Werk.Typen;'#10, [mStep + 1]);
+    end
     else
+    begin
       mNext := 'uses Werk.Typen;'#10;
+    end;
     mIndex.AddUnit(TIndexExtractor.ExtractText(Format('unit Kette%d;'#10'interface'#10'%s' +
       'implementation'#10'end.', [mStep, mNext]), Format('C:\P\Kette%d.pas', [mStep]), nil));
   end;
@@ -614,7 +649,9 @@ begin
     begin
       mBuilder.Append(Format('procedure Lauf%d;'#10'var'#10'  X: Integer;'#10'begin'#10'  X := 0;'#10, [mStep]));
       for mCall := 1 to cCallsPerRoutine do
+      begin
         mBuilder.Append('  X := Wert(X);'#10);
+      end;
       mBuilder.Append('end;'#10);
     end;
     mBody := mBuilder.ToString;

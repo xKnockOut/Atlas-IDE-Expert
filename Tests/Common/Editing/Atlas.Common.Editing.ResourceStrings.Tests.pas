@@ -60,7 +60,9 @@ var
 begin
   Result := '';
   for Index := 0 to High(ALines) do
+  begin
     Result := Result + ALines[Index] + #10;
+  end;
 end;
 
 /// <summary>Position des "|" in AMarked; AText ohne "|".</summary>
@@ -71,13 +73,17 @@ begin
   Line := 0;
   Character := 0;
   for Index := 1 to Pos('|', AMarked) - 1 do
+  begin
     if AMarked[Index] = #10 then
     begin
       Inc(Line);
       Character := 0;
     end
     else
+    begin
       Inc(Character);
+    end;
+  end;
   AText := StringReplace(AMarked, '|', '', []);
   Result := TTextPosition.Create(Line, Character);
 end;
@@ -95,7 +101,9 @@ begin
   try
     Result := '-';
     if TResourceStrings.LiteralAt(Text, Tree.Tokens, Position, Literal) then
+    begin
       Result := Literal.Source;
+    end;
   finally
     Tree.Free;
   end;
@@ -136,8 +144,11 @@ begin
   Tree := TPascalParser.Parse(AText);
   try
     Result := '-';
-    if not TResourceStrings.Insertion(AText, Tree.Tokens, AInterface, ABefore, ADecl, #10, Edit) then
+    if not TResourceStrings.Insertion(AText, Tree.Tokens, TResourcePlace.Create(AInterface, ABefore), ADecl, #10,
+      Edit) then
+    begin
       Exit;
+    end;
     Assert.AreEqual(Edit.Range.StartPos.Line, Edit.Range.EndPos.Line);
     Lines := AText.Split([#10]);
     Line := Lines[Edit.Range.StartPos.Line];

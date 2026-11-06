@@ -27,6 +27,8 @@ type
     FBufferLen: Integer;
     FWriteLock: TCriticalSection;
     function FillBuffer: Boolean;
+    /// <summary>Nächstes Byte der Eingabe; False am Ende.</summary>
+    function NextByte(out AValue: Byte): Boolean;
     /// <summary>Nächste nicht leere Zeile ohne Zeilenende; False am Ende der Eingabe.</summary>
     function ReadLine(out ALine: TBytes): Boolean;
   public
@@ -38,6 +40,24 @@ type
   end;
 
 implementation
+
+uses
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLineTransportText = (MessageExceedsTheMaximumLength, MessageIsNotValidJSON, MessageIsNotAJSON, InputClosed);
+
+const
+  cTexts: array[TLineTransportText] of TAtlasText = (
+    (De: 'Nachricht überschreitet die Höchstlänge'; En: 'Message exceeds the maximum length'),
+    (De: 'Nachricht ist kein gültiges JSON'; En: 'Message is not valid JSON'),
+    (De: 'Nachricht ist kein JSON-Objekt'; En: 'Message is not a JSON object'),
+    (De: 'Eingabe geschlossen'; En: 'Input closed'));
+
+{$SCOPEDENUMS OFF}
 
 { TJsonRpcLineTransport }
 
@@ -69,42 +89,54 @@ begin
   Result := FBufferLen > 0;
 end;
 
+function TJsonRpcLineTransport.NextByte(out AValue: Byte): Boolean;
+begin
+  Result := (FBufferPos < FBufferLen) or FillBuffer;
+  if Result then
+  begin
+    AValue := FBuffer[FBufferPos];
+    Inc(FBufferPos);
+  end;
+end;
+
+/// <summary>AValue gehört nicht in die Zeile: CR immer, Tabulator und Leerzeichen am Anfang.</summary>
+function SkipsByte(AValue: Byte; ALineSize: Int64): Boolean;
+begin
+  Result := (AValue = 13) or ((ALineSize = 0) and (AValue in [9, 32]));
+end;
+
 function TJsonRpcLineTransport.ReadLine(out ALine: TBytes): Boolean;
 var
-  Line: TBytesStream;
-  Value: Byte;
-  Bytes: TBytes;
+  mLine: TBytesStream;
+  mValue: Byte;
+  mDone: Boolean;
 begin
-  Line := TBytesStream.Create;
+  mLine := TBytesStream.Create;
   try
-    while True do
+    mDone := False;
+    // Leere Zeilen zählen nicht; die letzte Zeile ohne LF gilt noch als Nachricht.
+    while not mDone and NextByte(mValue) do
     begin
-      if (FBufferPos >= FBufferLen) and not FillBuffer then
+      if mValue = 10 then
       begin
-        // Letzte Zeile ohne LF gilt noch als Nachricht.
-        if Line.Size = 0 then
-          Exit(False);
-        Break;
-      end;
-      Value := FBuffer[FBufferPos];
-      Inc(FBufferPos);
-      if Value = 10 then
+        mDone := mLine.Size > 0;
+      end
+      else if not SkipsByte(mValue, mLine.Size) then
       begin
-        if Line.Size > 0 then
-          Break;
-        Continue;
+        if mLine.Size >= MaxLineLength then
+        begin
+          raise EJsonRpcTransportError.Create(cTexts[TLineTransportText.MessageExceedsTheMaximumLength].Text);
+        end;
+        mLine.WriteBuffer(mValue, 1);
       end;
-      if (Value = 13) or ((Line.Size = 0) and (Value in [9, 32])) then
-        Continue;
-      if Line.Size >= MaxLineLength then
-        raise EJsonRpcTransportError.Create('Nachricht überschreitet die Höchstlänge');
-      Line.WriteBuffer(Value, 1);
     end;
-    Bytes := Line.Bytes;
-    ALine := Copy(Bytes, 0, Line.Size);
-    Result := True;
+    Result := mLine.Size > 0;
+    if Result then
+    begin
+      ALine := Copy(mLine.Bytes, 0, mLine.Size);
+    end;
   finally
-    Line.Free;
+    mLine.Free;
   end;
 end;
 
@@ -114,14 +146,18 @@ var
   Value: TJSONValue;
 begin
   if not ReadLine(Line) then
-    raise EJsonRpcTransportClosed.Create('Eingabe geschlossen');
+  begin
+    raise EJsonRpcTransportClosed.Create(cTexts[TLineTransportText.InputClosed].Text);
+  end;
   Value := TJSONObject.ParseJSONValue(Line, 0, True);
   if Value = nil then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.ParseError, 'Nachricht ist kein gültiges JSON');
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.ParseError, cTexts[TLineTransportText.MessageIsNotValidJSON].Text);
+  end;
   if not (Value is TJSONObject) then
   begin
     Value.Free;
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidRequest, 'Nachricht ist kein JSON-Objekt');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidRequest, cTexts[TLineTransportText.MessageIsNotAJSON].Text);
   end;
   Result := TJSONObject(Value);
 end;
@@ -139,5 +175,8 @@ begin
     FWriteLock.Leave;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.JsonRpc.LineTransport', cTexts);
 
 end.

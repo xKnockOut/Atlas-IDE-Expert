@@ -68,7 +68,42 @@ uses
   System.Generics.Defaults,
   System.Generics.Collections,
   Atlas.Common.Pascal.Contract,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TForwardDeclarationsText = (TheSectionBetweenTheType, TheSectionBetweenTheType2, BetweenTheTypeBlocksThere,
+    TheFirstTypeBlockDoes, NeedsWhichIsDeclaredBefore, DoesNotStartAtThe, SharesLinesWithOtherCode,
+    TheForwardDeclarationIsIn, TheForwardDeclarationSharesThe, AddForwardDeclaration, MoveForwardDeclarationUp,
+    MergeTypeBlocks, MoveDeclarationUp, RemoveForwardDeclaration);
+
+const
+  cTexts: array[TForwardDeclarationsText] of TAtlasText = (
+    (De: 'der %s-Abschnitt zwischen den type-Blöcken braucht %s';
+     En: 'the %s section between the type blocks needs %s'),
+    (De: 'der %s-Abschnitt zwischen den type-Blöcken teilt sich Zeilen mit anderem Code';
+     En: 'the %s section between the type blocks shares lines with other code'),
+    (De: 'zwischen den type-Blöcken steht mehr als const, var oder label';
+     En: 'between the type blocks there is more than const, var or label'),
+    (De: 'der erste type-Block beginnt nicht am Zeilenanfang';
+     En: 'the first type block does not start at the beginning of the line'),
+    (De: '%s braucht %s, das davor deklariert ist'; En: '%s needs %s, which is declared before it'),
+    (De: '%s beginnt nicht am Zeilenanfang'; En: '%s does not start at the beginning of the line'),
+    (De: '%s teilt sich Zeilen mit anderem Code'; En: '%s shares lines with other code'),
+    (De: 'die Forward-Deklaration steht in einem späteren type-Block';
+     En: 'the forward declaration is in a later type block'),
+    (De: 'die Forward-Deklaration teilt sich die Zeile mit anderem Code';
+     En: 'the forward declaration shares the line with other code'),
+    (De: 'Forward-Deklaration ergänzen'; En: 'Add forward declaration'),
+    (De: 'Forward-Deklaration nach oben verschieben'; En: 'Move forward declaration up'),
+    (De: 'type-Blöcke zusammenlegen'; En: 'Merge type blocks'),
+    (De: 'Deklaration nach oben verschieben'; En: 'Move declaration up'),
+    (De: 'Forward-Deklaration entfernen'; En: 'Remove forward declaration'));
+
+{$SCOPEDENUMS OFF}
 
 type
   TDecl = record
@@ -87,6 +122,7 @@ type
     FConditional: TArray<Boolean>;
     FAll: TArray<TDecl>;
     FFindings: TArray<TForwardFinding>;
+    procedure MarkLines(AFrom, ATo: Integer);
     procedure MarkConditional;
     function IsConditional(ANode: TSyntaxNode): Boolean;
     function Source(AStart, AEnd: Integer): string;
@@ -98,10 +134,18 @@ type
     function ForwardText(const ADecl: TDecl): string;
     function DropKeyword(ASection: TSyntaxNode; out AEdit: TTextEdit): Boolean;
     function BlockStart(const ADecl: TDecl): TSyntaxNode;
+    function CollectDecls(AParent: TSyntaxNode): TArray<TDecl>;
+    function IsSkippedRef(ADecl, ARef: TSyntaxNode): Boolean;
+    function DeclaredBefore(const AName: string; AOffset: Integer): Boolean;
+    procedure CheckRefs(const ADecls: TArray<TDecl>; AIndex: Integer);
     procedure Scope(AParent: TSyntaxNode);
     procedure UsedBefore(const AUser, ATarget: TDecl; ARef: TSyntaxNode);
+    function TargetRange(const AUser, ATarget: TDecl; ATargetStart: TSyntaxNode; out ARange: TTextRange): Boolean;
     procedure FixMove(var AFinding: TForwardFinding; const AUser, ATarget: TDecl);
+    function TakeMoved(const AMoved: TArray<TSyntaxNode>; var AFinding: TForwardFinding; out AText: string): Boolean;
+    procedure DropLaterKeywords(const ABlocks: TArray<TSyntaxNode>; var AFinding: TForwardFinding);
     procedure FixMerge(var AFinding: TForwardFinding; const AUser, ATarget: TDecl);
+    function RemovalRange(ANode: TSyntaxNode): TTextRange;
     procedure Unneeded(const ADecls: TArray<TDecl>; AIndex: Integer);
   public
     constructor Create(ATree: TSyntaxTree; const AText: string);
@@ -114,8 +158,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to ADecl.ChildCount - 1 do
+  begin
     if ADecl[Index].Kind <> TSyntaxKind.GenericParams then
+    begin
       Exit(ADecl[Index]);
+    end;
+  end;
   Result := nil;
 end;
 
@@ -151,34 +199,36 @@ begin
   Result := Trim(AText) = '';
 end;
 
+/// <summary>Zählt ein Typverweis unter AParent? Nicht der Typ selbst (Alias), Zeiger und Vorfahren.</summary>
+function IsCountedParent(AParent, ADecl: TSyntaxNode): Boolean;
+begin
+  Result := (AParent <> ADecl) and not (AParent.Kind in [TSyntaxKind.PointerType, TSyntaxKind.ClassType,
+    TSyntaxKind.InterfaceType, TSyntaxKind.ObjectType, TSyntaxKind.HelperType]);
+end;
+
 /// <summary>Verwendungen von Typnamen in ADecl: TypeReference ohne Vorfahren, Aliase und Zeiger.</summary>
 function RefsOf(ADecl: TSyntaxNode): TArray<TSyntaxNode>;
 var
-  Refs: TList<TSyntaxNode>;
-  Decl: TSyntaxNode;
+  mRefs: TList<TSyntaxNode>;
+  mDecl: TSyntaxNode;
 begin
   // Walk statt Rekursion: Konstantenausdrücke im Typ dürfen den Aufrufstapel nicht erschöpfen.
-  Decl := ADecl;
-  Refs := TList<TSyntaxNode>.Create;
+  mDecl := ADecl;
+  mRefs := TList<TSyntaxNode>.Create;
   try
     ADecl.Walk(
       function(ANode: TSyntaxNode): Boolean
-      var
-        Parent: TSyntaxNode;
       begin
         Result := True;
-        if ANode.Kind <> TSyntaxKind.TypeReference then
-          Exit;
-        Parent := ANode.Parent;
-        if (Parent <> Decl) and (Parent.Kind <> TSyntaxKind.PointerType) and
-          (Parent.Kind <> TSyntaxKind.ClassType) and (Parent.Kind <> TSyntaxKind.InterfaceType) and
-          (Parent.Kind <> TSyntaxKind.ObjectType) and (Parent.Kind <> TSyntaxKind.HelperType) and
+        if (ANode.Kind = TSyntaxKind.TypeReference) and IsCountedParent(ANode.Parent, mDecl) and
           (Pos('.', ANode.Name) = 0) then
-          Refs.Add(ANode);
+        begin
+          mRefs.Add(ANode);
+        end;
       end);
-    Result := Refs.ToArray;
+    Result := mRefs.ToArray;
   finally
-    Refs.Free;
+    mRefs.Free;
   end;
 end;
 
@@ -195,7 +245,9 @@ begin
       begin
         Result := True;
         if (ANode.Kind = TSyntaxKind.Identifier) or (ANode.Kind = TSyntaxKind.TypeReference) then
+        begin
           Names.Add(ANode);
+        end;
       end);
     Result := Names.ToArray;
   finally
@@ -213,7 +265,9 @@ begin
   Node := TypeNode(ADecl);
   Result := False;
   if (Node = nil) or (Node.Kind <> TSyntaxKind.TypeReference) or (Node.ChildCount > 0) then
+  begin
     Exit;
+  end;
   Dot := LastDelimiter('.', Node.Name);
   Result := (Dot > 0) and SameText(Copy(Node.Name, Dot + 1, MaxInt), ADecl.Name);
 end;
@@ -230,9 +284,13 @@ var
 begin
   Dot := Pos('.', AName);
   if Dot > 0 then
-    Result := Copy(AName, 1, Dot - 1)
+  begin
+    Result := Copy(AName, 1, Dot - 1);
+  end
   else
+  begin
     Result := AName;
+  end;
 end;
 
 function IsGenericParam(ADecl: TSyntaxNode; const AName: string): Boolean;
@@ -242,9 +300,15 @@ var
 begin
   Params := ADecl.FindChild(TSyntaxKind.GenericParams);
   if Params <> nil then
+  begin
     for Index := 0 to Params.ChildCount - 1 do
+    begin
       if SameText(Params[Index].Name, AName) then
+      begin
         Exit(True);
+      end;
+    end;
+  end;
   Result := False;
 end;
 
@@ -255,8 +319,12 @@ var
 begin
   Result := nil;
   for Index := 0 to ASection.ChildCount - 1 do
+  begin
     if ASection[Index].Kind in [TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl, TSyntaxKind.TypeDecl] then
+    begin
       Result := Result + [ASection[Index]];
+    end;
+  end;
 end;
 
 /// <summary>Namen einer Deklaration; var A, B: Integer hat zwei.</summary>
@@ -266,7 +334,9 @@ var
 begin
   Result := nil;
   for Name in ADecl.Name.Split([',']) do
+  begin
     Result := Result + [Trim(Name)];
+  end;
 end;
 
 /// <summary>Deklarierte Namen eines const-, var- oder type-Abschnitts.</summary>
@@ -276,7 +346,9 @@ var
 begin
   Result := nil;
   for Node in DeclaredNodes(ASection) do
+  begin
     Result := Result + NamesOf(Node);
+  end;
 end;
 
 function SectionWord(ASection: TSyntaxNode): string;
@@ -295,6 +367,261 @@ begin
   end;
 end;
 
+function DeclOf(ASection, ANode: TSyntaxNode): TDecl;
+begin
+  Result.Node := ANode;
+  Result.Section := ASection;
+  Result.Forward := IsForwardDecl(ANode);
+end;
+
+function IsIfStart(const AText: string): Boolean;
+begin
+  Result := StartsStr('{$IF', AText) or StartsStr('(*$IF', AText);
+end;
+
+function IsIfEnd(const AText: string): Boolean;
+begin
+  Result := StartsStr('{$ENDIF', AText) or StartsStr('{$IFEND', AText) or StartsStr('(*$ENDIF', AText) or
+    StartsStr('(*$IFEND', AText);
+end;
+
+/// <summary>Index von AChild unter AParent; -1 ohne.</summary>
+function IndexIn(AParent, AChild: TSyntaxNode): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  for mIndex := 0 to AParent.ChildCount - 1 do
+  begin
+    if AParent[mIndex] = AChild then
+    begin
+      Result := mIndex;
+    end;
+  end;
+end;
+
+/// <summary>Abschnitte hinter AFirst bis ALast: type-Blöcke und const/var/label; False bei anderem.</summary>
+function SplitBetween(AParent: TSyntaxNode; AFirst, ALast: Integer; var ABlocks, AMoved: TArray<TSyntaxNode>): Boolean;
+var
+  mIndex: Integer;
+  mChild: TSyntaxNode;
+begin
+  for mIndex := AFirst + 1 to ALast do
+  begin
+    mChild := AParent[mIndex];
+    if mChild.Kind = TSyntaxKind.TypeSection then
+    begin
+      ABlocks := ABlocks + [mChild];
+    end
+    else if mChild.Kind in [TSyntaxKind.ConstSection, TSyntaxKind.VarSection, TSyntaxKind.LabelSection] then
+    begin
+      AMoved := AMoved + [mChild];
+    end
+    else
+    begin
+      Exit(False);
+    end;
+  end;
+  Result := True;
+end;
+
+/// <summary>Erster Name aus ANames, den ARoot benutzt (erster Teil vor dem Punkt); '' ohne.</summary>
+function NeededIn(ARoot: TSyntaxNode; const ANames: TArray<string>): string;
+var
+  mNode: TSyntaxNode;
+begin
+  for mNode in NamesIn(ARoot) do
+  begin
+    if MatchText(FirstPart(mNode.Name), ANames) then
+    begin
+      Exit(FirstPart(mNode.Name));
+    end;
+  end;
+  Result := '';
+end;
+
+/// <summary>Braucht ein Abschnitt zwischen den type-Blöcken einen ihrer Typen? Dann der Grund, sonst ''.</summary>
+function MovedNeedError(const AMoved, ABlocks: TArray<TSyntaxNode>): string;
+var
+  mTypeNames: TArray<string>;
+  mChild: TSyntaxNode;
+  mNeeded: string;
+begin
+  mTypeNames := nil;
+  for mChild in ABlocks do
+  begin
+    mTypeNames := mTypeNames + DeclaredNames(mChild);
+  end;
+  for mChild in AMoved do
+  begin
+    mNeeded := NeededIn(mChild, mTypeNames);
+    if mNeeded <> '' then
+    begin
+      Exit(cTexts[TForwardDeclarationsText.TheSectionBetweenTheType].Fmt([SectionWord(mChild), mNeeded]));
+    end;
+  end;
+  Result := '';
+end;
+
+/// <summary>Namen aus ASection, deren Deklaration in AFrom..ATo-1 beginnt.</summary>
+function NamesBetween(ASection: TSyntaxNode; AFrom, ATo: Integer): TArray<string>;
+var
+  mNode: TSyntaxNode;
+begin
+  Result := nil;
+  for mNode in DeclaredNodes(ASection) do
+  begin
+    if (mNode.StartOffset >= AFrom) and (mNode.StartOffset < ATo) then
+    begin
+      Result := Result + NamesOf(mNode);
+    end;
+  end;
+end;
+
+/// <summary>In type-, const- und var-Abschnitten von AParent zwischen AFrom und ATo deklarierte Namen.</summary>
+function DeclaredBetween(AParent: TSyntaxNode; AFrom, ATo: Integer): TArray<string>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to AParent.ChildCount - 1 do
+  begin
+    if AParent[mIndex].Kind in [TSyntaxKind.TypeSection, TSyntaxKind.ConstSection, TSyntaxKind.VarSection] then
+    begin
+      Result := Result + NamesBetween(AParent[mIndex], AFrom, ATo);
+    end;
+  end;
+end;
+
+/// <summary>Erster Name aus ABetween, den ATarget außer sich selbst und seinen Typparametern braucht; '' ohne.
+/// </summary>
+function NeededName(ATarget: TSyntaxNode; const ABetween: TArray<string>): string;
+var
+  mNode: TSyntaxNode;
+begin
+  for mNode in NamesIn(ATarget) do
+  begin
+    if not SameText(mNode.Name, ATarget.Name) and not IsGenericParam(ATarget, mNode.Name) and
+      MatchText(FirstPart(mNode.Name), ABetween) then
+    begin
+      Exit(FirstPart(mNode.Name));
+    end;
+  end;
+  Result := '';
+end;
+
+/// <summary>Benutzt ANode den Typ AName (ohne Klassenreferenz)?</summary>
+function RefersTo(ANode: TSyntaxNode; const AName: string): Boolean;
+var
+  mRef: TSyntaxNode;
+begin
+  for mRef in RefsOf(ANode) do
+  begin
+    // Eine Klassenreferenz im selben Block braucht die Forward-Deklaration nicht.
+    if SameText(mRef.Name, AName) and not IsClassReference(mRef) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Vollständige Deklaration zur Forward-Deklaration ADecls[AIndex] im selben Block; -1 ohne.</summary>
+function FullIndex(const ADecls: TArray<TDecl>; AIndex: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := AIndex + 1 to High(ADecls) do
+  begin
+    if (ADecls[mIndex].Section = ADecls[AIndex].Section) and not ADecls[mIndex].Forward and
+      SameText(ADecls[mIndex].Node.Name, ADecls[AIndex].Node.Name) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
+/// <summary>Benutzt eine Deklaration des Blocks vor AFull den vorwärts deklarierten Typ?</summary>
+function UsedBeforeFull(const ADecls: TArray<TDecl>; AIndex, AFull: Integer): Boolean;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to AFull - 1 do
+  begin
+    if (mIndex <> AIndex) and (ADecls[mIndex].Section = ADecls[AIndex].Section) and
+      RefersTo(ADecls[mIndex].Node, ADecls[AIndex].Node.Name) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Erste Deklaration AName hinter AOffset; -1 ohne.</summary>
+function TargetIndex(const ADecls: TArray<TDecl>; const AName: string; AOffset: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(ADecls) do
+  begin
+    if SameText(ADecls[mIndex].Node.Name, AName) and (ADecls[mIndex].Node.StartOffset > AOffset) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
+procedure CollectTypes(ASection: TSyntaxNode; var AAll: TArray<TDecl>);
+var
+  mChild: Integer;
+begin
+  for mChild := 0 to ASection.ChildCount - 1 do
+  begin
+    if ASection[mChild].Kind = TSyntaxKind.TypeDecl then
+    begin
+      AAll := AAll + [DeclOf(ASection, ASection[mChild])];
+    end;
+  end;
+end;
+
+/// <summary>Legt die Kinder von ANode auf den Stapel und sammelt ihre Typen; True mit type-Abschnitt.</summary>
+function PushChildren(ANode: TSyntaxNode; APending: TStack<TSyntaxNode>; var AAll: TArray<TDecl>): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := False;
+  for mIndex := 0 to ANode.ChildCount - 1 do
+  begin
+    if ANode[mIndex].Kind = TSyntaxKind.TypeSection then
+    begin
+      Result := True;
+      CollectTypes(ANode[mIndex], AAll);
+    end;
+    APending.Push(ANode[mIndex]);
+  end;
+end;
+
+function CompareFindings(const ALeft, ARight: TForwardFinding): Integer;
+begin
+  Result := ALeft.Range.StartPos.Line - ARight.Range.StartPos.Line;
+  if Result = 0 then
+  begin
+    Result := ALeft.Range.StartPos.Character - ARight.Range.StartPos.Character;
+  end;
+end;
+
+/// <summary>Sortiert in Textreihenfolge.</summary>
+procedure SortFindings(var AFindings: TArray<TForwardFinding>);
+begin
+  TArray.Sort<TForwardFinding>(AFindings, TComparer<TForwardFinding>.Construct(
+    function(const ALeft, ARight: TForwardFinding): Integer
+    begin
+      Result := CompareFindings(ALeft, ARight);
+    end));
+end;
+
 { TAnalyzer }
 
 constructor TAnalyzer.Create(ATree: TSyntaxTree; const AText: string);
@@ -306,39 +633,56 @@ begin
   FTable := TLineTable.Build(AText);
 end;
 
-procedure TAnalyzer.MarkConditional;
+procedure TAnalyzer.MarkLines(AFrom, ATo: Integer);
 var
-  Token: TPascalToken;
-  Text: string;
-  Depth, Line, StartLine: Integer;
+  mLine: Integer;
 begin
-  SetLength(FConditional, Length(FLines) + 1);
-  Depth := 0;
-  StartLine := 0;
-  for Token in FTree.Tokens do
+  for mLine := AFrom to ATo do
   begin
-    if Token.Kind <> TPascalTokenKind.Directive then
-      Continue;
-    Text := UpperCase(Token.Text);
-    if StartsStr('{$IF', Text) or StartsStr('(*$IF', Text) then
+    if mLine <= High(FConditional) then
     begin
-      if Depth = 0 then
-        StartLine := Token.StartPos.Line;
-      Inc(Depth);
-    end
-    else if (Depth > 0) and (StartsStr('{$ENDIF', Text) or StartsStr('{$IFEND', Text) or
-      StartsStr('(*$ENDIF', Text) or StartsStr('(*$IFEND', Text)) then
-    begin
-      Dec(Depth);
-      if Depth = 0 then
-        for Line := StartLine to Token.EndPos.Line do
-          if Line <= High(FConditional) then
-            FConditional[Line] := True;
+      FConditional[mLine] := True;
     end;
   end;
-  if Depth > 0 then
-    for Line := StartLine to High(FConditional) do
-      FConditional[Line] := True;
+end;
+
+procedure TAnalyzer.MarkConditional;
+var
+  mToken: TPascalToken;
+  mText: string;
+  mDepth, mStartLine: Integer;
+begin
+  SetLength(FConditional, Length(FLines) + 1);
+  mDepth := 0;
+  mStartLine := 0;
+  for mToken in FTree.Tokens do
+  begin
+    if mToken.Kind <> TPascalTokenKind.Directive then
+    begin
+      Continue;
+    end;
+    mText := UpperCase(mToken.Text);
+    if IsIfStart(mText) then
+    begin
+      if mDepth = 0 then
+      begin
+        mStartLine := mToken.StartPos.Line;
+      end;
+      Inc(mDepth);
+    end
+    else if (mDepth > 0) and IsIfEnd(mText) then
+    begin
+      Dec(mDepth);
+      if mDepth = 0 then
+      begin
+        MarkLines(mStartLine, mToken.EndPos.Line);
+      end;
+    end;
+  end;
+  if mDepth > 0 then
+  begin
+    MarkLines(mStartLine, High(FConditional));
+  end;
 end;
 
 function TAnalyzer.IsConditional(ANode: TSyntaxNode): Boolean;
@@ -358,9 +702,13 @@ end;
 function TAnalyzer.LineText(ALine: Integer): string;
 begin
   if (ALine >= 0) and (ALine <= High(FLines)) then
-    Result := FLines[ALine]
+  begin
+    Result := FLines[ALine];
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function TAnalyzer.LineCount: Integer;
@@ -378,18 +726,26 @@ begin
   Result := IsBlank(Copy(First, 1, AFirst.StartPos.Character)) and
     IsBlank(Copy(Last, ALast.EndPos.Character + 1, MaxInt));
   if not Result then
+  begin
     Exit;
+  end;
   if ALast.EndPos.Line < LineCount - 1 then
-    ARange := TTextRange.Create(Pos_(AFirst.StartPos.Line, 0), Pos_(ALast.EndPos.Line + 1, 0))
+  begin
+    ARange := TTextRange.Create(Pos_(AFirst.StartPos.Line, 0), Pos_(ALast.EndPos.Line + 1, 0));
+  end
   else
+  begin
     ARange := TTextRange.Create(Pos_(AFirst.StartPos.Line, 0), Pos_(ALast.EndPos.Line, Length(Last)));
+  end;
 end;
 
 function TAnalyzer.LinesText(const ARange: TTextRange): string;
 begin
   Result := Source(FTable.OffsetAt(ARange.StartPos), FTable.OffsetAt(ARange.EndPos));
   if (Result <> '') and not EndsStr(#10, Result) and not EndsStr(#13, Result) then
+  begin
     Result := Result + FBreak;
+  end;
 end;
 
 function TAnalyzer.SectionStart(ASection: TSyntaxNode; const AText: string): TTextEdit;
@@ -405,7 +761,9 @@ begin
       TTextLines.IndentOf(LineText(First.StartPos.Line)) + AText + FBreak);
   end
   else
+  begin
     Result := TTextEdit.Create(TTextRange.Create(First.StartPos, First.StartPos), AText + ' ');
+  end;
 end;
 
 function TAnalyzer.ForwardText(const ADecl: TDecl): string;
@@ -415,20 +773,28 @@ var
 begin
   Node := TypeNode(ADecl.Node);
   if Node.Kind = TSyntaxKind.ClassType then
-    Word := 'class'
+  begin
+    Word := 'class';
+  end
   else
   begin
     // interface oder dispinterface: das Schlüsselwort steht am Anfang des Typs.
     Word := LowerCase(Source(Node.StartOffset, Node.StartOffset + Length('dispinterface')));
     if not StartsStr('dispinterface', Word) then
-      Word := 'interface'
+    begin
+      Word := 'interface';
+    end
     else
+    begin
       Word := 'dispinterface';
+    end;
   end;
   Result := ADecl.Node.Name;
   Params := ADecl.Node.FindChild(TSyntaxKind.GenericParams);
   if Params <> nil then
+  begin
     Result := Result + Source(Params.StartOffset, Params.EndOffset);
+  end;
   Result := Result + ' = ' + Word + ';';
 end;
 
@@ -441,13 +807,21 @@ begin
   Line := LineText(ASection.StartPos.Line);
   Result := ASection.ChildCount > 0;
   if not Result then
+  begin
     Exit;
+  end;
   if SameText(Trim(Line), 'type') then
-    Range := TTextRange.Create(Pos_(ASection.StartPos.Line, 0), Pos_(ASection.StartPos.Line + 1, 0))
+  begin
+    Range := TTextRange.Create(Pos_(ASection.StartPos.Line, 0), Pos_(ASection.StartPos.Line + 1, 0));
+  end
   else if ASection[0].StartPos.Line = ASection.StartPos.Line then
-    Range := TTextRange.Create(ASection.StartPos, ASection[0].StartPos)
+  begin
+    Range := TTextRange.Create(ASection.StartPos, ASection[0].StartPos);
+  end
   else
+  begin
     Range := TTextRange.Create(ASection.StartPos, Pos_(ASection.StartPos.Line, ASection.StartPos.Character + 4));
+  end;
   AEdit := TTextEdit.Create(Range, '');
 end;
 
@@ -459,7 +833,9 @@ begin
   Result := ADecl.Node;
   Index := ADecl.Section.ChildCount - 1;
   while (Index >= 0) and (ADecl.Section[Index] <> ADecl.Node) do
+  begin
     Dec(Index);
+  end;
   while (Index > 0) and (ADecl.Section[Index - 1].Kind = TSyntaxKind.Attribute) do
   begin
     Dec(Index);
@@ -467,137 +843,125 @@ begin
   end;
 end;
 
+function TAnalyzer.TakeMoved(const AMoved: TArray<TSyntaxNode>; var AFinding: TForwardFinding;
+  out AText: string): Boolean;
+var
+  mChild: TSyntaxNode;
+  mRange: TTextRange;
+begin
+  AText := '';
+  for mChild in AMoved do
+  begin
+    if not WholeLines(mChild, mChild, mRange) then
+    begin
+      AFinding.Reason := cTexts[TForwardDeclarationsText.TheSectionBetweenTheType2].Fmt([SectionWord(mChild)]);
+      Exit(False);
+    end;
+    AText := AText + LinesText(mRange);
+    AFinding.Edits := AFinding.Edits + [TTextEdit.Create(mRange, '')];
+  end;
+  Result := True;
+end;
+
+procedure TAnalyzer.DropLaterKeywords(const ABlocks: TArray<TSyntaxNode>; var AFinding: TForwardFinding);
+var
+  mLater: Integer;
+  mEdit: TTextEdit;
+begin
+  for mLater := 1 to High(ABlocks) do
+  begin
+    if DropKeyword(ABlocks[mLater], mEdit) then
+    begin
+      AFinding.Edits := AFinding.Edits + [mEdit];
+    end;
+  end;
+end;
+
 procedure TAnalyzer.FixMerge(var AFinding: TForwardFinding; const AUser, ATarget: TDecl);
 var
-  Parent, Child: TSyntaxNode;
-  First, Last, Index, Later: Integer;
-  Moved, Blocks: TArray<TSyntaxNode>;
-  TypeNames: TArray<string>;
-  Names: TArray<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Range: TTextRange;
-  Edit: TTextEdit;
-  Text: string;
+  mParent: TSyntaxNode;
+  mMoved, mBlocks: TArray<TSyntaxNode>;
+  mText: string;
+  mAt: TTextPosition;
 begin
-  Parent := AUser.Section.Parent;
-  First := -1;
-  Last := -1;
-  for Index := 0 to Parent.ChildCount - 1 do
-  begin
-    if Parent[Index] = AUser.Section then
-      First := Index;
-    if Parent[Index] = ATarget.Section then
-      Last := Index;
-  end;
-  Moved := nil;
-  Blocks := [AUser.Section];
-  for Index := First + 1 to Last do
-  begin
-    Child := Parent[Index];
-    if Child.Kind = TSyntaxKind.TypeSection then
-      Blocks := Blocks + [Child]
-    else if Child.Kind in [TSyntaxKind.ConstSection, TSyntaxKind.VarSection, TSyntaxKind.LabelSection] then
-      Moved := Moved + [Child]
-    else
-    begin
-      AFinding.Reason := 'zwischen den type-Blöcken steht mehr als const, var oder label';
-      Exit;
-    end;
-  end;
-  TypeNames := nil;
-  for Child in Blocks do
-    TypeNames := TypeNames + DeclaredNames(Child);
+  mParent := AUser.Section.Parent;
+  mMoved := nil;
+  mBlocks := TArray<TSyntaxNode>.Create(AUser.Section);
   // Was die Typen aus den Abschnitten dazwischen brauchen, steht danach weiter vorn und bleibt
   // erreichbar. Brauchen umgekehrt die Abschnitte dazwischen einen der Typen, geht es nicht.
-  for Child in Moved do
+  if not SplitBetween(mParent, IndexIn(mParent, AUser.Section), IndexIn(mParent, ATarget.Section), mBlocks,
+    mMoved) then
   begin
-    Names := NamesIn(Child);
-    for Node in Names do
-      if MatchText(FirstPart(Node.Name), TypeNames) then
-      begin
-        AFinding.Reason := Format('der %s-Abschnitt zwischen den type-Blöcken braucht %s',
-          [SectionWord(Child), FirstPart(Node.Name)]);
-        Exit;
-      end;
+    AFinding.Reason := cTexts[TForwardDeclarationsText.BetweenTheTypeBlocksThere].Text;
+  end
+  else
+  begin
+    AFinding.Reason := MovedNeedError(mMoved, mBlocks);
   end;
-  if not IsBlank(Copy(LineText(AUser.Section.StartPos.Line), 1, AUser.Section.StartPos.Character)) then
+  if (AFinding.Reason = '') and
+    not IsBlank(Copy(LineText(AUser.Section.StartPos.Line), 1, AUser.Section.StartPos.Character)) then
   begin
-    AFinding.Reason := 'der erste type-Block beginnt nicht am Zeilenanfang';
+    AFinding.Reason := cTexts[TForwardDeclarationsText.TheFirstTypeBlockDoes].Text;
+  end;
+  if (AFinding.Reason <> '') or not TakeMoved(mMoved, AFinding, mText) then
+  begin
     Exit;
   end;
-  Text := '';
-  for Child in Moved do
+  DropLaterKeywords(mBlocks, AFinding);
+  if mText <> '' then
   begin
-    if not WholeLines(Child, Child, Range) then
-    begin
-      AFinding.Reason := Format('der %s-Abschnitt zwischen den type-Blöcken teilt sich Zeilen mit anderem Code',
-        [SectionWord(Child)]);
-      Exit;
-    end;
-    Text := Text + LinesText(Range);
-    AFinding.Edits := AFinding.Edits + [TTextEdit.Create(Range, '')];
+    mAt := Pos_(AUser.Section.StartPos.Line, 0);
+    AFinding.Edits := AFinding.Edits + [TTextEdit.Create(TTextRange.Create(mAt, mAt), mText)];
   end;
-  for Later := 1 to High(Blocks) do
-    if DropKeyword(Blocks[Later], Edit) then
-      AFinding.Edits := AFinding.Edits + [Edit];
-  if Text <> '' then
-    AFinding.Edits := AFinding.Edits + [TTextEdit.Create(TTextRange.Create(Pos_(AUser.Section.StartPos.Line, 0),
-      Pos_(AUser.Section.StartPos.Line, 0)), Text)];
   AFinding.Edits := AFinding.Edits + [SectionStart(AUser.Section, ForwardText(ATarget))];
   AFinding.Fix := TForwardFix.MergeBlocks;
 end;
 
+function TAnalyzer.TargetRange(const AUser, ATarget: TDecl; ATargetStart: TSyntaxNode;
+  out ARange: TTextRange): Boolean;
+begin
+  // Besteht der Block nur aus dem Typ, entfällt er ganz.
+  if (ATarget.Section <> AUser.Section) and (ATarget.Section[0] = ATargetStart) and
+    (ATarget.Section[ATarget.Section.ChildCount - 1] = ATarget.Node) and
+    WholeLines(ATarget.Section, ATarget.Section, ARange) then
+  begin
+    Exit(True);
+  end;
+  Result := WholeLines(ATargetStart, ATarget.Node, ARange);
+end;
+
 procedure TAnalyzer.FixMove(var AFinding: TForwardFinding; const AUser, ATarget: TDecl);
 var
-  UserStart, TargetStart, Section, Node: TSyntaxNode;
-  Range: TTextRange;
-  Names: TArray<TSyntaxNode>;
-  Between: TArray<string>;
-  Index: Integer;
-  At: TTextPosition;
-  OnlyBlock: Boolean;
-  Text: string;
+  mUserStart, mTargetStart: TSyntaxNode;
+  mRange: TTextRange;
+  mNeeded, mText: string;
+  mAt: TTextPosition;
 begin
-  UserStart := BlockStart(AUser);
-  TargetStart := BlockStart(ATarget);
+  mUserStart := BlockStart(AUser);
+  mTargetStart := BlockStart(ATarget);
   // Was zwischen Verwender und Typ deklariert ist, stünde danach hinter dem Typ: neue Lücke.
-  Between := nil;
-  for Index := 0 to AUser.Section.Parent.ChildCount - 1 do
+  mNeeded := NeededName(ATarget.Node, DeclaredBetween(AUser.Section.Parent, mUserStart.StartOffset,
+    mTargetStart.StartOffset));
+  if mNeeded <> '' then
   begin
-    Section := AUser.Section.Parent[Index];
-    if not (Section.Kind in [TSyntaxKind.TypeSection, TSyntaxKind.ConstSection, TSyntaxKind.VarSection]) then
-      Continue;
-    for Node in DeclaredNodes(Section) do
-      if (Node.StartOffset >= UserStart.StartOffset) and (Node.StartOffset < TargetStart.StartOffset) then
-        Between := Between + NamesOf(Node);
+    AFinding.Reason := cTexts[TForwardDeclarationsText.NeedsWhichIsDeclaredBefore].Fmt([ATarget.Node.Name, mNeeded]);
+  end
+  else if not IsBlank(Copy(LineText(mUserStart.StartPos.Line), 1, mUserStart.StartPos.Character)) then
+  begin
+    AFinding.Reason := cTexts[TForwardDeclarationsText.DoesNotStartAtThe].Fmt([AUser.Node.Name]);
+  end
+  else if not TargetRange(AUser, ATarget, mTargetStart, mRange) then
+  begin
+    AFinding.Reason := cTexts[TForwardDeclarationsText.SharesLinesWithOtherCode].Fmt([ATarget.Node.Name]);
   end;
-  Names := NamesIn(ATarget.Node);
-  for Node in Names do
-    if not SameText(Node.Name, ATarget.Node.Name) and not IsGenericParam(ATarget.Node, Node.Name) and
-      MatchText(FirstPart(Node.Name), Between) then
-    begin
-      AFinding.Reason := Format('%s braucht %s, das davor deklariert ist', [ATarget.Node.Name, FirstPart(Node.Name)]);
-      Exit;
-    end;
-  if not IsBlank(Copy(LineText(UserStart.StartPos.Line), 1, UserStart.StartPos.Character)) then
+  if AFinding.Reason <> '' then
   begin
-    AFinding.Reason := Format('%s beginnt nicht am Zeilenanfang', [AUser.Node.Name]);
     Exit;
   end;
-  // Besteht der Block nur aus dem Typ, entfällt er ganz.
-  OnlyBlock := (ATarget.Section <> AUser.Section) and (ATarget.Section[0] = TargetStart) and
-    (ATarget.Section[ATarget.Section.ChildCount - 1] = ATarget.Node);
-  if OnlyBlock then
-    OnlyBlock := WholeLines(ATarget.Section, ATarget.Section, Range);
-  if not OnlyBlock and not WholeLines(TargetStart, ATarget.Node, Range) then
-  begin
-    AFinding.Reason := Format('%s teilt sich Zeilen mit anderem Code', [ATarget.Node.Name]);
-    Exit;
-  end;
-  Text := TTextLines.IndentOf(LineText(UserStart.StartPos.Line)) +
-    Source(TargetStart.StartOffset, ATarget.Node.EndOffset) + FBreak;
-  At := Pos_(UserStart.StartPos.Line, 0);
-  AFinding.Edits := [TTextEdit.Create(TTextRange.Create(At, At), Text), TTextEdit.Create(Range, '')];
+  mText := TTextLines.IndentOf(LineText(mUserStart.StartPos.Line)) +
+    Source(mTargetStart.StartOffset, ATarget.Node.EndOffset) + FBreak;
+  mAt := Pos_(mUserStart.StartPos.Line, 0);
+  AFinding.Edits := [TTextEdit.Create(TTextRange.Create(mAt, mAt), mText), TTextEdit.Create(mRange, '')];
   AFinding.Fix := TForwardFix.MoveDeclaration;
 end;
 
@@ -615,9 +979,13 @@ begin
   begin
     // Die Forward-Deklaration gibt es schon, nur zu weit unten.
     if ATarget.Section <> AUser.Section then
-      Finding.Reason := 'die Forward-Deklaration steht in einem späteren type-Block'
+    begin
+      Finding.Reason := cTexts[TForwardDeclarationsText.TheForwardDeclarationIsIn].Text;
+    end
     else if not WholeLines(ATarget.Node, ATarget.Node, Range) then
-      Finding.Reason := 'die Forward-Deklaration teilt sich die Zeile mit anderem Code'
+    begin
+      Finding.Reason := cTexts[TForwardDeclarationsText.TheForwardDeclarationSharesThe].Text;
+    end
     else
     begin
       Finding.Edits := [TTextEdit.Create(Range, ''),
@@ -633,177 +1001,178 @@ begin
       Finding.Fix := TForwardFix.AddForward;
     end
     else
+    begin
       FixMerge(Finding, AUser, ATarget);
+    end;
   end
   else
+  begin
     FixMove(Finding, AUser, ATarget);
+  end;
   if Finding.Fix = TForwardFix.NoFix then
+  begin
     Finding.Edits := nil;
+  end;
   FFindings := FFindings + [Finding];
+end;
+
+function TAnalyzer.RemovalRange(ANode: TSyntaxNode): TTextRange;
+var
+  mLine: string;
+  mStop: Integer;
+begin
+  if WholeLines(ANode, ANode, Result) then
+  begin
+    Exit;
+  end;
+  // Mit anderen Deklarationen in der Zeile: nur sie samt folgenden Leerzeichen.
+  mLine := LineText(ANode.EndPos.Line);
+  mStop := ANode.EndPos.Character;
+  while (mStop < Length(mLine)) and CharInSet(mLine[mStop + 1], [' ', #9]) do
+  begin
+    Inc(mStop);
+  end;
+  Result := TTextRange.Create(ANode.StartPos, Pos_(ANode.EndPos.Line, mStop));
 end;
 
 procedure TAnalyzer.Unneeded(const ADecls: TArray<TDecl>; AIndex: Integer);
 var
-  Forward_: TDecl;
-  Full, Index: Integer;
-  Ref: TSyntaxNode;
-  Finding: TForwardFinding;
-  Range: TTextRange;
-  Line: string;
-  Stop: Integer;
+  mFull: Integer;
+  mFinding: TForwardFinding;
 begin
-  Forward_ := ADecls[AIndex];
-  Full := -1;
-  for Index := AIndex + 1 to High(ADecls) do
-    if (ADecls[Index].Section = Forward_.Section) and not ADecls[Index].Forward and
-      SameText(ADecls[Index].Node.Name, Forward_.Node.Name) then
-    begin
-      Full := Index;
-      Break;
-    end;
-  // Ohne vollständige Deklaration im Block meldet der Compiler selbst (E2086).
-  if Full < 0 then
-    Exit;
-  // Benutzt vor der vollständigen Deklaration, auch schon vor der Forward-Deklaration (dann steht
-  // sie zu weit unten, das meldet type-used-before-declaration).
-  for Index := 0 to Full - 1 do
-    if (Index <> AIndex) and (ADecls[Index].Section = Forward_.Section) then
-      for Ref in RefsOf(ADecls[Index].Node) do
-        // Eine Klassenreferenz im selben Block braucht die Forward-Deklaration nicht.
-        if SameText(Ref.Name, Forward_.Node.Name) and not IsClassReference(Ref) then
-          Exit;
-  Finding := Default(TForwardFinding);
-  Finding.Issue := TForwardIssue.UnneededForward;
-  Finding.TypeName := Forward_.Node.Name;
-  Finding.Range := RangeOf(Forward_.Node);
-  if not WholeLines(Forward_.Node, Forward_.Node, Range) then
+  mFull := FullIndex(ADecls, AIndex);
+  // Ohne vollständige Deklaration im Block meldet der Compiler selbst (E2086). Benutzt vor der vollständigen
+  // Deklaration, auch schon vor der Forward-Deklaration (dann steht sie zu weit unten, das meldet
+  // type-used-before-declaration): gebraucht.
+  if (mFull < 0) or UsedBeforeFull(ADecls, AIndex, mFull) then
   begin
-    // Mit anderen Deklarationen in der Zeile: nur sie samt folgenden Leerzeichen.
-    Line := LineText(Forward_.Node.EndPos.Line);
-    Stop := Forward_.Node.EndPos.Character;
-    while (Stop < Length(Line)) and CharInSet(Line[Stop + 1], [' ', #9]) do
-      Inc(Stop);
-    Range := TTextRange.Create(Forward_.Node.StartPos, Pos_(Forward_.Node.EndPos.Line, Stop));
+    Exit;
   end;
-  Finding.Edits := [TTextEdit.Create(Range, '')];
-  Finding.Fix := TForwardFix.RemoveForward;
-  FFindings := FFindings + [Finding];
+  mFinding := Default(TForwardFinding);
+  mFinding.Issue := TForwardIssue.UnneededForward;
+  mFinding.TypeName := ADecls[AIndex].Node.Name;
+  mFinding.Range := RangeOf(ADecls[AIndex].Node);
+  mFinding.Edits := [TTextEdit.Create(RemovalRange(ADecls[AIndex].Node), '')];
+  mFinding.Fix := TForwardFix.RemoveForward;
+  FFindings := FFindings + [mFinding];
+end;
+
+function TAnalyzer.CollectDecls(AParent: TSyntaxNode): TArray<TDecl>;
+var
+  mIndex, mChild: Integer;
+  mSection: TSyntaxNode;
+begin
+  Result := nil;
+  for mIndex := 0 to AParent.ChildCount - 1 do
+  begin
+    mSection := AParent[mIndex];
+    if mSection.Kind <> TSyntaxKind.TypeSection then
+    begin
+      Continue;
+    end;
+    for mChild := 0 to mSection.ChildCount - 1 do
+    begin
+      if (mSection[mChild].Kind = TSyntaxKind.TypeDecl) and not IsConditional(mSection[mChild]) then
+      begin
+        Result := Result + [DeclOf(mSection, mSection[mChild])];
+      end;
+    end;
+  end;
+end;
+
+function TAnalyzer.IsSkippedRef(ADecl, ARef: TSyntaxNode): Boolean;
+begin
+  Result := (ARef.Name = '') or SameText(ARef.Name, ADecl.Name) or IsGenericParam(ADecl, ARef.Name) or
+    IsConditional(ARef);
+end;
+
+/// <summary>Irgendwo vor AOffset deklariert (auch im interface für das implementation)?</summary>
+function TAnalyzer.DeclaredBefore(const AName: string; AOffset: Integer): Boolean;
+var
+  mDecl: TDecl;
+begin
+  for mDecl in FAll do
+  begin
+    if SameText(mDecl.Node.Name, AName) and (mDecl.Node.StartOffset < AOffset) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+procedure TAnalyzer.CheckRefs(const ADecls: TArray<TDecl>; AIndex: Integer);
+var
+  mRef: TSyntaxNode;
+  mTarget: Integer;
+begin
+  for mRef in RefsOf(ADecls[AIndex].Node) do
+  begin
+    if IsSkippedRef(ADecls[AIndex].Node, mRef) or DeclaredBefore(mRef.Name, mRef.StartOffset) then
+    begin
+      Continue;
+    end;
+    mTarget := TargetIndex(ADecls, mRef.Name, mRef.StartOffset);
+    // class of auf eine Klasse weiter unten im selben type-Block übersetzt dcc (#1328); vor TX = UnitY.TX gilt
+    // UnitY.TX.
+    if (mTarget >= 0) and not (IsClassReference(mRef) and (ADecls[mTarget].Section = ADecls[AIndex].Section)) and
+      not IsSameNameAlias(ADecls[mTarget].Node) then
+    begin
+      UsedBefore(ADecls[AIndex], ADecls[mTarget], mRef);
+    end;
+  end;
 end;
 
 procedure TAnalyzer.Scope(AParent: TSyntaxNode);
 var
-  Decls: TArray<TDecl>;
-  Decl: TDecl;
-  Section, Ref: TSyntaxNode;
-  Index, Child, Target: Integer;
-  Name: string;
-  Before: Boolean;
+  mDecls: TArray<TDecl>;
+  mIndex: Integer;
 begin
-  Decls := nil;
-  for Index := 0 to AParent.ChildCount - 1 do
+  mDecls := CollectDecls(AParent);
+  for mIndex := 0 to High(mDecls) do
   begin
-    Section := AParent[Index];
-    if Section.Kind <> TSyntaxKind.TypeSection then
-      Continue;
-    for Child := 0 to Section.ChildCount - 1 do
-      if (Section[Child].Kind = TSyntaxKind.TypeDecl) and not IsConditional(Section[Child]) then
-      begin
-        Decl.Node := Section[Child];
-        Decl.Section := Section;
-        Decl.Forward := IsForwardDecl(Section[Child]);
-        Decls := Decls + [Decl];
-      end;
-  end;
-  for Index := 0 to High(Decls) do
-  begin
-    if Decls[Index].Forward then
-      Continue;
-    for Ref in RefsOf(Decls[Index].Node) do
+    if not mDecls[mIndex].Forward then
     begin
-      Name := Ref.Name;
-      if (Name = '') or SameText(Name, Decls[Index].Node.Name) or IsGenericParam(Decls[Index].Node, Name) or
-        IsConditional(Ref) then
-        Continue;
-      // Irgendwo davor deklariert (auch im interface für das implementation): kein Treffer.
-      Before := False;
-      for Decl in FAll do
-        if SameText(Decl.Node.Name, Name) and (Decl.Node.StartOffset < Ref.StartOffset) then
-        begin
-          Before := True;
-          Break;
-        end;
-      if Before then
-        Continue;
-      Target := -1;
-      for Child := 0 to High(Decls) do
-        if SameText(Decls[Child].Node.Name, Name) and (Decls[Child].Node.StartOffset > Ref.StartOffset) then
-        begin
-          Target := Child;
-          Break;
-        end;
-      // class of auf eine Klasse weiter unten im selben type-Block übersetzt dcc (#1328); vor TX = UnitY.TX gilt
-      // UnitY.TX.
-      if (Target >= 0) and not (IsClassReference(Ref) and (Decls[Target].Section = Decls[Index].Section)) and
-        not IsSameNameAlias(Decls[Target].Node) then
-        UsedBefore(Decls[Index], Decls[Target], Ref);
+      CheckRefs(mDecls, mIndex);
     end;
   end;
-  for Index := 0 to High(Decls) do
-    if Decls[Index].Forward then
-      Unneeded(Decls, Index);
+  for mIndex := 0 to High(mDecls) do
+  begin
+    if mDecls[mIndex].Forward then
+    begin
+      Unneeded(mDecls, mIndex);
+    end;
+  end;
 end;
 
 procedure TAnalyzer.Run;
 var
-  Scopes: TList<TSyntaxNode>;
-  Pending: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Index, Child: Integer;
-  HasTypes: Boolean;
-  Decl: TDecl;
+  mScopes: TList<TSyntaxNode>;
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
 begin
   MarkConditional;
-  Scopes := TList<TSyntaxNode>.Create;
-  Pending := TStack<TSyntaxNode>.Create;
+  mScopes := TList<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(FTree.Root);
-    while Pending.Count > 0 do
+    mPending.Push(FTree.Root);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      HasTypes := False;
-      for Index := 0 to Node.ChildCount - 1 do
+      mNode := mPending.Pop;
+      if PushChildren(mNode, mPending, FAll) then
       begin
-        if Node[Index].Kind = TSyntaxKind.TypeSection then
-        begin
-          HasTypes := True;
-          for Child := 0 to Node[Index].ChildCount - 1 do
-            if Node[Index][Child].Kind = TSyntaxKind.TypeDecl then
-            begin
-              Decl.Node := Node[Index][Child];
-              Decl.Section := Node[Index];
-              Decl.Forward := IsForwardDecl(Decl.Node);
-              FAll := FAll + [Decl];
-            end;
-        end;
-        Pending.Push(Node[Index]);
+        mScopes.Add(mNode);
       end;
-      if HasTypes then
-        Scopes.Add(Node);
     end;
-    for Node in Scopes do
-      Scope(Node);
-  finally
-    Pending.Free;
-    Scopes.Free;
-  end;
-  // Textreihenfolge.
-  TArray.Sort<TForwardFinding>(FFindings, TComparer<TForwardFinding>.Construct(
-    function(const ALeft, ARight: TForwardFinding): Integer
+    for mNode in mScopes do
     begin
-      Result := ALeft.Range.StartPos.Line - ARight.Range.StartPos.Line;
-      if Result = 0 then
-        Result := ALeft.Range.StartPos.Character - ARight.Range.StartPos.Character;
-    end));
+      Scope(mNode);
+    end;
+  finally
+    mPending.Free;
+    mScopes.Free;
+  end;
+  SortFindings(FFindings);
 end;
 
 { TForwardDeclarations }
@@ -814,7 +1183,9 @@ var
 begin
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   Analyzer := TAnalyzer.Create(ATree, AText);
   try
     Analyzer.Run;
@@ -828,18 +1199,21 @@ class function TForwardDeclarations.FixTitle(AFix: TForwardFix): string;
 begin
   case AFix of
     TForwardFix.AddForward:
-      Result := 'Forward-Deklaration ergänzen';
+      Result := cTexts[TForwardDeclarationsText.AddForwardDeclaration].Text;
     TForwardFix.MoveForward:
-      Result := 'Forward-Deklaration nach oben verschieben';
+      Result := cTexts[TForwardDeclarationsText.MoveForwardDeclarationUp].Text;
     TForwardFix.MergeBlocks:
-      Result := 'type-Blöcke zusammenlegen';
+      Result := cTexts[TForwardDeclarationsText.MergeTypeBlocks].Text;
     TForwardFix.MoveDeclaration:
-      Result := 'Deklaration nach oben verschieben';
+      Result := cTexts[TForwardDeclarationsText.MoveDeclarationUp].Text;
     TForwardFix.RemoveForward:
-      Result := 'Forward-Deklaration entfernen';
+      Result := cTexts[TForwardDeclarationsText.RemoveForwardDeclaration].Text;
   else
     Result := '';
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.ForwardDeclarations', cTexts);
 
 end.

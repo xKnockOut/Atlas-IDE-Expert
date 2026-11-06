@@ -52,7 +52,20 @@ type
 implementation
 
 uses
-  Atlas.Common.Query.Engine;
+  Atlas.Common.Query.Engine,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TQueryServiceText = (NoProjectLoaded);
+
+const
+  cTexts: array[TQueryServiceText] of TAtlasText = (
+    (De: 'Kein Projekt geladen'; En: 'No project loaded'));
+
+{$SCOPEDENUMS OFF}
 
 /// <summary>Abbruch, sobald AFirst oder ASecond ihn meldet; eigene Routine, damit die Methodenreferenz keinen
 /// Rahmen von Execute festhält.</summary>
@@ -61,7 +74,9 @@ begin
   // Result zuweisen statt Exit(ASecond): Delphi riefe die Methodenreferenz dort auf (E2010).
   Result := ASecond;
   if not Assigned(AFirst) then
+  begin
     Exit;
+  end;
   Result :=
     function: Boolean
     begin
@@ -108,7 +123,7 @@ begin
   begin
     Result := Default(TQueryResult);
     Result.Query := ARequest.Query;
-    Result.Error := 'Kein Projekt geladen';
+    Result.Error := cTexts[TQueryServiceText.NoProjectLoaded].Text;
     Exit;
   end;
   mKey := ARequest.Query + #1 + string.Join(#2, ARequest.Fields) + #1 + IntToStr(ARequest.Limit);
@@ -117,16 +132,22 @@ begin
   System.TMonitor.Enter(FLock);
   try
     if FCache.TryGetValue(mKey, mEntry) and (mEntry.Generation = mGeneration) and (mEntry.Scope = mScope) then
+    begin
       Exit(mEntry.Result);
+    end;
   finally
     System.TMonitor.Exit(FLock);
   end;
   if Assigned(ARequest.Cancelled) then
+  begin
     mSource.Cancelled := CombinedCancel(mSource.Cancelled, ARequest.Cancelled);
+  end;
   Result := TCodeQueryEngine.Run(mSource, ARequest, FCollector);
   // Abgebrochene Läufe nicht merken: Der nächste Aufruf soll rechnen.
   if Result.Failed and (Result.ErrorColumn = 0) then
+  begin
     Exit;
+  end;
   mEntry.Generation := mGeneration;
   mEntry.Scope := mScope;
   mEntry.Result := Result;
@@ -134,7 +155,9 @@ begin
   try
     Inc(FComputations);
     if (FCache.Count >= cMaxEntries) and not FCache.ContainsKey(mKey) then
+    begin
       FCache.Clear;
+    end;
     FCache.AddOrSetValue(mKey, mEntry);
   finally
     System.TMonitor.Exit(FLock);
@@ -150,5 +173,8 @@ begin
     System.TMonitor.Exit(FLock);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Query.Service', cTexts);
 
 end.

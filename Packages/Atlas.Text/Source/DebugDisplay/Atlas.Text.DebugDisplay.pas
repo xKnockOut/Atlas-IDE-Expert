@@ -119,10 +119,14 @@ var
 begin
   Index := 1;
   while (Index <= Length(Text)) and IsNameChar(Text[Index]) do
+  begin
     Inc(Index);
+  end;
   Result := Copy(Text, 1, Index - 1);
   if (Result <> '') and Result[1].IsDigit then
+  begin
     Result := '';
+  end;
 end;
 
 function TDebugDisplaySegment.NeedsCall: Boolean;
@@ -134,9 +138,13 @@ begin
   for Index := 1 to Length(Text) do
   begin
     if Text[Index] = '''' then
-      InString := not InString
+    begin
+      InString := not InString;
+    end
     else if not InString and (Text[Index] = '(') and (Index > 1) and IsNameChar(Text[Index - 1]) then
+    begin
       Exit(True);
+    end;
   end;
   Result := False;
 end;
@@ -154,114 +162,170 @@ var
 begin
   Result := nil;
   for Segment in Segments do
+  begin
     if Segment.Kind = TDebugDisplaySegmentKind.Placeholder then
+    begin
       Result := Result + [Segment];
+    end;
+  end;
+end;
+
+// Verdoppelte Klammer ("{{" bzw. "}}") bei AIndex?
+function IsDoubled(const AText: string; AIndex: Integer; AChar: Char): Boolean;
+begin
+  Result := (AText[AIndex] = AChar) and (AIndex < Length(AText)) and (AText[AIndex + 1] = AChar);
+end;
+
+// Zählt das Zeichen AText[APos] außerhalb von Zeichenketten: Klammertiefe und ersten Doppelpunkt; True bei der
+// schließenden "}" des Platzhalters.
+function IsPlaceholderClose(const AText: string; APos: Integer; var ADepth, AColon: Integer): Boolean;
+begin
+  Result := False;
+  case AText[APos] of
+    '(', '[':
+      Inc(ADepth);
+    ')', ']':
+      Dec(ADepth);
+    ':':
+      if (ADepth = 0) and (AColon = 0) then
+      begin
+        AColon := APos;
+      end;
+    '}':
+      Result := ADepth <= 0;
+  end;
+end;
+
+// Ende des Platzhalters ab AStart (hinter "{"): Stelle der passenden "}", sonst Length(AText) + 1. [], () und
+// Zeichenketten zählen mit; AColon ist der erste Doppelpunkt außerhalb von Klammern, 0 ohne.
+function PlaceholderEnd(const AText: string; AStart: Integer; out AColon: Integer): Integer;
+var
+  mDepth: Integer;
+  mInString: Boolean;
+begin
+  mDepth := 0;
+  AColon := 0;
+  mInString := False;
+  Result := AStart;
+  while Result <= Length(AText) do
+  begin
+    if AText[Result] = '''' then
+    begin
+      mInString := not mInString;
+    end
+    else if not mInString and IsPlaceholderClose(AText, Result, mDepth, AColon) then
+    begin
+      Exit;
+    end;
+    Inc(Result);
+  end;
+end;
+
+// Platzhalter AText[AStart..AStop - 1] mit Format hinter AColon (0 ohne).
+function PlaceholderSegment(const AText: string; AStart, AColon, AStop: Integer): TDebugDisplaySegment;
+var
+  mInner: string;
+begin
+  Result := Default(TDebugDisplaySegment);
+  Result.Kind := TDebugDisplaySegmentKind.Placeholder;
+  if AColon > 0 then
+  begin
+    mInner := Copy(AText, AStart, AColon - AStart);
+    Result.Format := Trim(Copy(AText, AColon + 1, AStop - AColon - 1));
+  end
+  else
+  begin
+    mInner := Copy(AText, AStart, AStop - AStart);
+  end;
+  Result.Text := Trim(mInner);
+  Result.Offset := AStart - 1 + (Length(mInner) - Length(TrimLeft(mInner)));
 end;
 
 class function TDebugDisplayTemplate.Parse(const AText: string): TDebugDisplayTemplate;
 var
-  Index, Start, Depth, Colon: Integer;
-  Literal, Inner: string;
-  Segment: TDebugDisplaySegment;
-  InString: Boolean;
+  mIndex: Integer;
+  mLiteral: string;
+  mOk: Boolean;
 
   procedure FlushLiteral;
   var
-    Item: TDebugDisplaySegment;
+    mItem: TDebugDisplaySegment;
   begin
-    if Literal = '' then
+    if mLiteral = '' then
+    begin
       Exit;
-    Item := Default(TDebugDisplaySegment);
-    Item.Kind := TDebugDisplaySegmentKind.Text;
-    Item.Text := Literal;
-    Item.Offset := -1;
-    Result.Segments := Result.Segments + [Item];
-    Literal := '';
+    end;
+    mItem := Default(TDebugDisplaySegment);
+    mItem.Kind := TDebugDisplaySegmentKind.Text;
+    mItem.Text := mLiteral;
+    mItem.Offset := -1;
+    Result.Segments := Result.Segments + [mItem];
+    mLiteral := '';
+  end;
+
+  procedure Fail(const AMessage: string; AOffset: Integer);
+  begin
+    Result.Error := AMessage;
+    Result.ErrorOffset := AOffset;
+  end;
+
+  // Platzhalter ab "{" bei mIndex; AOk = False mit Fehler.
+  procedure ReadPlaceholder(out AOk: Boolean);
+  var
+    mStart, mStop, mColon: Integer;
+    mSegment: TDebugDisplaySegment;
+  begin
+    AOk := False;
+    mStart := mIndex + 1;
+    mStop := PlaceholderEnd(AText, mStart, mColon);
+    if mStop > Length(AText) then
+    begin
+      Fail('Platzhalter ohne schließende Klammer', mStart - 2);
+      Exit;
+    end;
+    FlushLiteral;
+    mSegment := PlaceholderSegment(AText, mStart, mColon, mStop);
+    if mSegment.Text = '' then
+    begin
+      Fail('Leerer Platzhalter', mStart - 2);
+      Exit;
+    end;
+    Result.Segments := Result.Segments + [mSegment];
+    mIndex := mStop + 1;
+    AOk := True;
   end;
 
 begin
   Result := Default(TDebugDisplayTemplate);
   Result.Source := AText;
   Result.ErrorOffset := -1;
-  Literal := '';
-  Index := 1;
-  while Index <= Length(AText) do
+  mLiteral := '';
+  mIndex := 1;
+  while mIndex <= Length(AText) do
   begin
-    if (AText[Index] = '{') and (Index < Length(AText)) and (AText[Index + 1] = '{') then
+    if IsDoubled(AText, mIndex, '{') or IsDoubled(AText, mIndex, '}') then
     begin
-      Literal := Literal + '{';
-      Inc(Index, 2);
-      Continue;
-    end;
-    if (AText[Index] = '}') and (Index < Length(AText)) and (AText[Index + 1] = '}') then
+      mLiteral := mLiteral + AText[mIndex];
+      Inc(mIndex, 2);
+    end
+    else if AText[mIndex] = '}' then
     begin
-      Literal := Literal + '}';
-      Inc(Index, 2);
-      Continue;
-    end;
-    if AText[Index] = '}' then
-    begin
-      Result.Error := 'Schließende Klammer ohne öffnende';
-      Result.ErrorOffset := Index - 1;
+      Fail('Schließende Klammer ohne öffnende', mIndex - 1);
       Exit;
-    end;
-    if AText[Index] <> '{' then
+    end
+    else if AText[mIndex] <> '{' then
     begin
-      Literal := Literal + AText[Index];
-      Inc(Index);
-      Continue;
-    end;
-    // Platzhalter bis zur passenden schließenden Klammer; [], () und Zeichenketten zählen mit.
-    Start := Index + 1;
-    Depth := 0;
-    Colon := 0;
-    InString := False;
-    Inc(Index);
-    while Index <= Length(AText) do
-    begin
-      if AText[Index] = '''' then
-        InString := not InString
-      else if not InString then
-        case AText[Index] of
-          '(', '[':
-            Inc(Depth);
-          ')', ']':
-            Dec(Depth);
-          ':':
-            if (Depth = 0) and (Colon = 0) then
-              Colon := Index;
-          '}':
-            if Depth <= 0 then
-              Break;
-        end;
-      Inc(Index);
-    end;
-    if Index > Length(AText) then
-    begin
-      Result.Error := 'Platzhalter ohne schließende Klammer';
-      Result.ErrorOffset := Start - 2;
-      Exit;
-    end;
-    FlushLiteral;
-    Segment := Default(TDebugDisplaySegment);
-    Segment.Kind := TDebugDisplaySegmentKind.Placeholder;
-    if Colon > 0 then
-    begin
-      Inner := Copy(AText, Start, Colon - Start);
-      Segment.Format := Trim(Copy(AText, Colon + 1, Index - Colon - 1));
+      mLiteral := mLiteral + AText[mIndex];
+      Inc(mIndex);
     end
     else
-      Inner := Copy(AText, Start, Index - Start);
-    Segment.Text := Trim(Inner);
-    Segment.Offset := Start - 1 + (Length(Inner) - Length(TrimLeft(Inner)));
-    if Segment.Text = '' then
     begin
-      Result.Error := 'Leerer Platzhalter';
-      Result.ErrorOffset := Start - 2;
-      Exit;
+      ReadPlaceholder(mOk);
+      if not mOk then
+      begin
+        Exit;
+      end;
     end;
-    Result.Segments := Result.Segments + [Segment];
-    Inc(Index);
   end;
   FlushLiteral;
 end;
@@ -283,7 +347,9 @@ begin
   AValue := '';
   AEnd := AStart;
   if (AStart < 1) or (AStart > Length(AText)) or (AText[AStart] <> '''') then
+  begin
     Exit(False);
+  end;
   Index := AStart + 1;
   while Index <= Length(AText) do
   begin
@@ -314,15 +380,23 @@ begin
   AStart := 0;
   Index := Pos('//', ALine);
   if (Index = 0) or (Trim(Copy(ALine, 1, Index - 1)) <> '') then
+  begin
     Exit;
+  end;
   Inc(Index, 2);
   while (Index <= Length(ALine)) and (ALine[Index] = ' ') do
+  begin
     Inc(Index);
+  end;
   if not SameText(Copy(ALine, Index, Length(AKey)), AKey) then
+  begin
     Exit;
+  end;
   Inc(Index, Length(AKey));
   while (Index <= Length(ALine)) and (ALine[Index] = ' ') do
+  begin
     Inc(Index);
+  end;
   AStart := Index;
   Result := True;
 end;
@@ -335,7 +409,9 @@ begin
   ATemplate := '';
   AColumn := -1;
   if not AfterCommentKey(ALine, CommentKey, Start) then
+  begin
     Exit(False);
+  end;
   if (Start <= Length(ALine)) and (ALine[Start] = '''') then
   begin
     Result := PascalString(ALine, Start, ATemplate, Stop);
@@ -355,51 +431,77 @@ var
 begin
   ANames := nil;
   if not AfterCommentKey(ALine, ChildrenKey, Start) then
+  begin
     Exit(False);
+  end;
   ANames := SplitNames(Copy(ALine, Start, MaxInt));
   Result := Length(ANames) > 0;
 end;
 
 /// <summary>Erste Zeichenkette im Attribut AName der Zeile; AColumn 0-basiert auf ihrem ersten Zeichen.</summary>
-function AttributeString(const ALine, AName: string; out AValue: string; out AColumn: Integer): Boolean;
+// Erste Stelle ab AStart, die kein Leerzeichen ist.
+function SkipBlanks(const ALine: string; AStart: Integer): Integer;
+begin
+  Result := AStart;
+  while (Result <= Length(ALine)) and (ALine[Result] = ' ') do
+  begin
+    Inc(Result);
+  end;
+end;
+
+// Ganzes Wort ALine[AIndex..AStop - 1]: davor kein Namenszeichen (Punkt erlaubt), danach keins.
+function IsWholeName(const ALine: string; AIndex, AStop: Integer): Boolean;
+begin
+  Result := ((AIndex = 1) or not IsNameChar(ALine[AIndex - 1])) and
+    ((AStop > Length(ALine)) or not IsNameChar(ALine[AStop]));
+end;
+
+// Zeichenkette als erstes Argument hinter dem Namen, der bei AStart endet: Name ('…').
+function ArgumentString(const ALine: string; AStart: Integer; out AValue: string; out AColumn: Integer): Boolean;
 var
-  Index, Stop, Start: Integer;
-  Lower, Name: string;
+  mStart, mStop: Integer;
 begin
   Result := False;
+  mStart := SkipBlanks(ALine, AStart);
+  if (mStart > Length(ALine)) or (ALine[mStart] <> '(') then
+  begin
+    Exit;
+  end;
+  mStart := SkipBlanks(ALine, mStart + 1);
+  if TDebugDisplayText.PascalString(ALine, mStart, AValue, mStop) then
+  begin
+    AColumn := mStart;
+    Result := True;
+  end;
+end;
+
+function AttributeString(const ALine, AName: string; out AValue: string; out AColumn: Integer): Boolean;
+var
+  mIndex: Integer;
+  mLower, mName: string;
+begin
   AValue := '';
   AColumn := -1;
   if Pos('[', TrimLeft(ALine)) <> 1 then
-    Exit;
-  Lower := LowerCase(ALine);
-  // Name, Name mit Endung Attribute oder mit Unit (Atlas.Debug.Attributes.AtlasDebugDisplay).
-  for Name in TArray<string>.Create(AName + 'Attribute', AName) do
   begin
-    Index := Pos(LowerCase(Name), Lower);
-    while Index > 0 do
+    Exit(False);
+  end;
+  mLower := LowerCase(ALine);
+  // Name, Name mit Endung Attribute oder mit Unit (Atlas.Debug.Attributes.AtlasDebugDisplay).
+  for mName in TArray<string>.Create(AName + 'Attribute', AName) do
+  begin
+    mIndex := Pos(LowerCase(mName), mLower);
+    while mIndex > 0 do
     begin
-      Start := Index + Length(Name);
-      // Ganzes Wort: davor kein Namenszeichen (Punkt erlaubt), danach Leerraum oder Klammer.
-      if ((Index = 1) or not IsNameChar(ALine[Index - 1])) and
-        ((Start > Length(ALine)) or not IsNameChar(ALine[Start])) then
+      if IsWholeName(ALine, mIndex, mIndex + Length(mName)) and
+        ArgumentString(ALine, mIndex + Length(mName), AValue, AColumn) then
       begin
-        while (Start <= Length(ALine)) and (ALine[Start] = ' ') do
-          Inc(Start);
-        if (Start <= Length(ALine)) and (ALine[Start] = '(') then
-        begin
-          Inc(Start);
-          while (Start <= Length(ALine)) and (ALine[Start] = ' ') do
-            Inc(Start);
-          if TDebugDisplayText.PascalString(ALine, Start, AValue, Stop) then
-          begin
-            AColumn := Start;
-            Exit(True);
-          end;
-        end;
+        Exit(True);
       end;
-      Index := PosEx(LowerCase(Name), Lower, Index + 1);
+      mIndex := PosEx(LowerCase(mName), mLower, mIndex + 1);
     end;
   end;
+  Result := False;
 end;
 
 class function TDebugDisplayText.AttributeTemplate(const ALine: string; out ATemplate: string;
@@ -432,13 +534,21 @@ begin
   begin
     Name := Trim(Part);
     if Name = '' then
+    begin
       Continue;
+    end;
     Seen := False;
     for Known in Result do
+    begin
       if SameText(Known, Name) then
+      begin
         Seen := True;
+      end;
+    end;
     if not Seen then
+    begin
       Result := Result + [Name];
+    end;
   end;
 end;
 
@@ -501,10 +611,14 @@ begin
   ARule.TemplateColumn := -1;
   ARule.ChildrenLine := -1;
   if (ADeclLine < 0) or (ADeclLine > High(ALines)) then
+  begin
     Exit(False);
+  end;
   // Attribute in der Zeile der Deklaration: [AtlasDebugDisplay('…')] TKunde = class
   if StartsStr('[', TrimLeft(ALines[ADeclLine])) then
+  begin
     Inspect(ADeclLine, ALines[ADeclLine], True);
+  end;
   Line := ADeclLine - 1;
   while (Line >= 0) and (IsCommentLine(ALines[Line]) or IsAttributeLine(ALines[Line])) do
   begin
@@ -527,7 +641,9 @@ begin
   while (Offset < ASegment.Offset) and (Index <= Length(ALine)) do
   begin
     if Quoted and (ALine[Index] = '''') then
+    begin
       Inc(Index);
+    end;
     Inc(Index);
     Inc(Offset);
   end;

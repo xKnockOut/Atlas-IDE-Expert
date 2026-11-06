@@ -187,7 +187,9 @@ begin
   FLock.Enter;
   try
     for Item in AItems do
+    begin
       FNames.Add(Item.Name);
+    end;
   finally
     FLock.Leave;
   end;
@@ -234,7 +236,9 @@ procedure TBrokenProvider.Query(const AContext: TAtlasContext; const ASink: IAtl
 begin
   TInterlocked.Increment(Calls);
   if FHangMs = 0 then
+  begin
     raise EInvalidOpException.Create('SQL-Provider kaputt');
+  end;
   // Hängt, endet aber beim Abbruchsignal (wie jeder Thread von Atlas).
   TAtlasShutdown.Wait(FHangMs);
   ASink.Complete;
@@ -289,7 +293,9 @@ begin
   TAtlasGuard.OnWarning := nil;
   TAtlasGuard.RotatingLog.Folder := FOldFolder;
   if TDirectory.Exists(FFolder) then
+  begin
     TDirectory.Delete(FFolder, True);
+  end;
   FFolder := '';
   FOldFolder := '';
 end;
@@ -360,7 +366,9 @@ end;
 procedure JoinThread(AThread: TThread);
 begin
   if AThread = nil then
+  begin
     Exit;
+  end;
   AThread.WaitFor;
   AThread.Free;
 end;
@@ -498,7 +506,7 @@ begin
   Assert.IsTrue(Sink.WaitDone(3000));
   Assert.AreEqual('Beta', Sink.Names);
   Assert.Contains(TFile.ReadAllText(TPath.Combine(FFolder, 'atlas.log'), TEncoding.UTF8),
-    'Quelle Hängt langsam: keine Antwort innerhalb von 200 ms; zählt nicht als Fehler');
+    'Quelle Hängt langsam: text#');
   // Hängenden Arbeiter freigeben.
   TAtlasShutdown.Signal;
   TAtlasTimeLimit.StopAll;
@@ -535,7 +543,7 @@ begin
   Assert.IsFalse(TAtlasGuard.ProviderDisabled('Langsam'), 'langsam ist kein Fehler');
   Assert.AreEqual(1, Slow.Calls, 'solange der erste Aufruf läuft, kein weiterer Arbeiter');
   Text := TFile.ReadAllText(TPath.Combine(FFolder, 'atlas.log'), TEncoding.UTF8);
-  Assert.Contains(Text, 'Quelle Langsam langsam: keine Antwort innerhalb von 200 ms; zählt nicht als Fehler');
+  Assert.Contains(Text, 'Quelle Langsam langsam: text#');
   Assert.AreEqual(1, Integer(Length(Text.Trim.Split([sLineBreak]))), 'eine Zeile je Quelle und Minute');
   Assert.IsFalse(Text.Contains('Fehler in Quelle'), 'keine Fehlerzeile');
   // Hängenden Arbeiter freigeben; danach fragt die Quelle wieder.

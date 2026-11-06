@@ -39,6 +39,15 @@ type
     EndInsert: TTextPosition;
   end;
 
+  /// <summary>Ergebnis von TCaseCompletion.Complete.</summary>
+  TCaseCompletionEdits = record
+    Edits: TArray<TTextEdit>;
+    /// <summary>Anzahl der neuen Zweige.</summary>
+    Count: Integer;
+    /// <summary>Die case-Anweisung hat einen else-Teil; die Zweige stehen davor.</summary>
+    HasElse: Boolean;
+  end;
+
   TCaseCompletion = class
   public
     /// <summary>Cursor am Anfang eines Zweigs einer case-Anweisung; False sonst, auch im else-Teil.</summary>
@@ -61,8 +70,7 @@ type
     /// <summary>Zweige "&lt;Wert&gt;: ;" für die Werte aus AValues ohne Marke, in Deklarationsreihenfolge vor dem else
     /// (AHasElse) bzw. vor dem end. False, wenn nichts fehlt, eine Marke kein Wert ist oder end fehlt.</summary>
     class function Complete(const AText: string; ATree: TSyntaxTree; ACase: TSyntaxNode;
-      const AValues: TArray<string>; const APrefix: string; out AEdits: TArray<TTextEdit>; out ACount: Integer;
-      out AHasElse: Boolean): Boolean; static;
+      const AValues: TArray<string>; const APrefix: string; out AResult: TCaseCompletionEdits): Boolean; static;
   end;
 
 implementation
@@ -74,7 +82,9 @@ function Compare(const A, B: TTextPosition): Integer;
 begin
   Result := A.Line - B.Line;
   if Result = 0 then
+  begin
     Result := A.Character - B.Character;
+  end;
 end;
 
 function IsTrivia(const AToken: TPascalToken): Boolean;
@@ -86,14 +96,18 @@ function Prev(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 begin
   Result := AIndex - 1;
   while (Result >= 0) and IsTrivia(ATokens[Result]) do
+  begin
     Dec(Result);
+  end;
 end;
 
 function Next(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 begin
   Result := AIndex + 1;
   while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
+  begin
     Inc(Result);
+  end;
 end;
 
 function IsKeywordIn(const AToken: TPascalToken; const AWords: array of string): Boolean;
@@ -102,18 +116,28 @@ var
 begin
   Result := False;
   if AToken.Kind <> TPascalTokenKind.Keyword then
+  begin
     Exit;
+  end;
   for Word in AWords do
+  begin
     if AToken.IsKeyword(Word) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function CleanName(const AText: string): string;
 begin
   if (AText <> '') and (AText[1] = '&') then
-    Result := Copy(AText, 2, MaxInt)
+  begin
+    Result := Copy(AText, 2, MaxInt);
+  end
   else
+  begin
     Result := AText;
+  end;
 end;
 
 /// <summary>Breite von AIndent, Tabulator als zwei Zeichen.</summary>
@@ -123,68 +147,426 @@ var
 begin
   Result := 0;
   for Character in AIndent do
+  begin
     if Character = #9 then
-      Inc(Result, 2)
+    begin
+      Inc(Result, 2);
+    end
     else
+    begin
       Inc(Result);
+    end;
+  end;
+end;
+
+function IsOpenBracket(const AToken: TPascalToken): Boolean;
+begin
+  Result := AToken.IsSymbol('(') or AToken.IsSymbol('[');
+end;
+
+function IsCloseBracket(const AToken: TPascalToken): Boolean;
+begin
+  Result := AToken.IsSymbol(')') or AToken.IsSymbol(']');
+end;
+
+/// <summary>Beendet AToken den Ausdruck zwischen case und of: ein Schlüsselwort außer Operatoren und nil bzw.
+/// inherited oder ein ";".</summary>
+function EndsCaseExpression(const AToken: TPascalToken): Boolean;
+begin
+  Result := (AToken.Kind = TPascalTokenKind.Keyword) and not IsKeywordIn(AToken, ['not', 'and', 'or', 'xor', 'div',
+    'mod', 'shl', 'shr', 'nil', 'inherited']) or AToken.IsSymbol(';');
+end;
+
+/// <summary>"case &lt;Ausdruck&gt; of" mit dem "of" an AIndex: rückwärts bis zum case, Klammern im Ausdruck
+/// übergehen; -1 ohne.</summary>
+function CaseBeforeOf(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
+var
+  mParens: Integer;
+begin
+  Result := -1;
+  mParens := 0;
+  AIndex := Prev(ATokens, AIndex);
+  while AIndex >= 0 do
+  begin
+    if IsCloseBracket(ATokens[AIndex]) then
+    begin
+      Inc(mParens);
+    end
+    else if IsOpenBracket(ATokens[AIndex]) then
+    begin
+      Dec(mParens);
+    end
+    else if mParens = 0 then
+    begin
+      if ATokens[AIndex].IsKeyword('case') then
+      begin
+        Exit(AIndex);
+      end;
+      if EndsCaseExpression(ATokens[AIndex]) then
+      begin
+        Exit;
+      end;
+    end;
+    AIndex := Prev(ATokens, AIndex);
+  end;
+end;
+
+type
+  {$SCOPEDENUMS ON}
+  /// <summary>Schritt der Rückwärtssuche nach dem case eines Zweigs.</summary>
+  TCaseSearchStep = (Continue_, Stop, Found);
+  {$SCOPEDENUMS OFF}
+
+/// <summary>Öffnender Block (begin, try, asm, case, repeat) bei der Rückwärtssuche: schließt einen übergangenen
+/// Block oder ist auf Ebene 0 das gesuchte case bzw. das Ende der Suche.</summary>
+function OpenerStep(const AToken: TPascalToken; var ADepth: Integer): TCaseSearchStep;
+begin
+  Result := TCaseSearchStep.Stop;
+  if ADepth > 0 then
+  begin
+    Dec(ADepth);
+    Result := TCaseSearchStep.Continue_;
+  end
+  else if AToken.IsKeyword('case') then
+  begin
+    Result := TCaseSearchStep.Found;
+  end;
+end;
+
+/// <summary>Ein Token der Rückwärtssuche nach dem case eines Zweigs; zählt Blöcke und Klammern mit.</summary>
+function BranchSearchStep(const AToken: TPascalToken; var ADepth, AParens: Integer): TCaseSearchStep;
+begin
+  Result := TCaseSearchStep.Continue_;
+  if IsCloseBracket(AToken) then
+  begin
+    Inc(AParens);
+  end
+  else if IsOpenBracket(AToken) then
+  begin
+    Result := OpenerStep(AToken, AParens);
+  end
+  else if IsKeywordIn(AToken, ['end', 'until']) then
+  begin
+    Inc(ADepth);
+  end
+  else if IsKeywordIn(AToken, ['begin', 'try', 'asm', 'case', 'repeat']) then
+  begin
+    Result := OpenerStep(AToken, ADepth);
+  end
+  else if (ADepth = 0) and IsKeywordIn(AToken, ['var', 'const', 'type', 'procedure', 'function', 'constructor',
+    'destructor', 'implementation', 'uses', 'record', 'class', 'object', 'interface']) then
+  begin
+    Result := TCaseSearchStep.Stop;
+  end;
 end;
 
 /// <summary>case-Anweisung, deren Zweig an AIndex (";" bzw. "of") endet; -1 sonst.</summary>
 function EnclosingCase(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 var
-  Depth, Parens: Integer;
+  mDepth, mParens: Integer;
 begin
-  Result := -1;
   if ATokens[AIndex].IsKeyword('of') then
   begin
-    // "case <Ausdruck> of": rückwärts bis zum case, Klammern im Ausdruck übergehen.
-    Parens := 0;
-    AIndex := Prev(ATokens, AIndex);
-    while AIndex >= 0 do
-    begin
-      if ATokens[AIndex].IsSymbol(')') or ATokens[AIndex].IsSymbol(']') then
-        Inc(Parens)
-      else if ATokens[AIndex].IsSymbol('(') or ATokens[AIndex].IsSymbol('[') then
-        Dec(Parens)
-      else if (Parens = 0) and ATokens[AIndex].IsKeyword('case') then
-        Exit(AIndex)
-      else if (Parens = 0) and ((ATokens[AIndex].Kind = TPascalTokenKind.Keyword) and
-        not IsKeywordIn(ATokens[AIndex], ['not', 'and', 'or', 'xor', 'div', 'mod', 'shl', 'shr', 'nil', 'inherited'])
-        or ATokens[AIndex].IsSymbol(';')) then
-        Exit;
+    Exit(CaseBeforeOf(ATokens, AIndex));
+  end;
+  Result := -1;
+  mDepth := 0;
+  mParens := 0;
+  AIndex := Prev(ATokens, AIndex);
+  while (AIndex >= 0) and (Result < 0) do
+  begin
+    case BranchSearchStep(ATokens[AIndex], mDepth, mParens) of
+      TCaseSearchStep.Found:
+        Result := AIndex;
+      TCaseSearchStep.Stop:
+        Break;
+    else
       AIndex := Prev(ATokens, AIndex);
     end;
+  end;
+end;
+
+/// <summary>Token vor dem Cursor (mit Kommentaren) und das getippte Wort (APrefix, -1 ohne); False, wenn vor dem
+/// Cursor nichts steht.</summary>
+function CursorTokens(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition;
+  out ABefore, APrefix: Integer): Boolean;
+var
+  mIndex: Integer;
+begin
+  ABefore := -1;
+  APrefix := -1;
+  for mIndex := 0 to High(ATokens) do
+  begin
+    if Compare(ATokens[mIndex].StartPos, APosition) >= 0 then
+    begin
+      Break;
+    end;
+    ABefore := mIndex;
+  end;
+  if (ABefore >= 0) and (ATokens[ABefore].Kind = TPascalTokenKind.Identifier) and
+    (Compare(APosition, ATokens[ABefore].EndPos) <= 0) then
+  begin
+    APrefix := ABefore;
+    Dec(ABefore);
+  end;
+  Result := ABefore >= 0;
+end;
+
+/// <summary>Endet vor dem Cursor ein Zweig ("of" oder ";", Kommentar dazwischen erlaubt)? AIndex: dieses Token.</summary>
+function BranchStart(const ATokens: TArray<TPascalToken>; ABefore: Integer; out AIndex: Integer): Boolean;
+begin
+  AIndex := ABefore;
+  if IsTrivia(ATokens[AIndex]) then
+  begin
+    AIndex := Prev(ATokens, AIndex);
+  end;
+  Result := (AIndex >= 0) and (ATokens[AIndex].IsKeyword('of') or ATokens[AIndex].IsSymbol(';'));
+end;
+
+/// <summary>"of" der case-Anweisung an ACaseIndex, höchstens bis ALimit; False ohne.</summary>
+function FindOf(const ATokens: TArray<TPascalToken>; ACaseIndex, ALimit: Integer; out AOfIndex: Integer): Boolean;
+var
+  mParens: Integer;
+begin
+  AOfIndex := Next(ATokens, ACaseIndex);
+  mParens := 0;
+  while AOfIndex <= ALimit do
+  begin
+    if IsOpenBracket(ATokens[AOfIndex]) then
+    begin
+      Inc(mParens);
+    end
+    else if IsCloseBracket(ATokens[AOfIndex]) then
+    begin
+      Dec(mParens);
+    end
+    else if (mParens = 0) and ATokens[AOfIndex].IsKeyword('of') then
+    begin
+      Break;
+    end;
+    AOfIndex := Next(ATokens, AOfIndex);
+  end;
+  Result := (AOfIndex <= ALimit) and ATokens[AOfIndex].IsKeyword('of');
+end;
+
+/// <summary>Steht vor dem Token AIndex ein ":="?</summary>
+function AfterAssignment(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
+var
+  mPrev: Integer;
+begin
+  mPrev := Prev(ATokens, AIndex);
+  Result := (mPrev >= 0) and ATokens[mPrev].IsSymbol(':=');
+end;
+
+/// <summary>Beendet das Token AIndex die Zweige einer case-Anweisung ohne "end"? Anonyme Methoden (Post(procedure
+/// begin … end), X := function …) beenden den case nicht (#1109): In Klammern oder nach := steht keine
+/// Deklaration; Klammern prüft der Aufrufer.</summary>
+function EndsBranches(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
+begin
+  Result := IsKeywordIn(ATokens[AIndex], ['until', 'except', 'finally', 'procedure', 'function', 'constructor',
+    'destructor', 'implementation', 'initialization', 'finalization', 'var', 'const', 'type']) and
+    not (IsKeywordIn(ATokens[AIndex], ['procedure', 'function']) and AfterAssignment(ATokens, AIndex));
+end;
+
+/// <summary>Ist das Token AIndex das else einer case-Anweisung (nach ";" oder direkt nach ihrem "of")?</summary>
+function IsCaseElse(const ATokens: TArray<TPascalToken>; AIndex, AOfIndex: Integer): Boolean;
+var
+  mPrev: Integer;
+begin
+  mPrev := Prev(ATokens, AIndex);
+  Result := ATokens[AIndex].IsKeyword('else') and (mPrev >= 0) and
+    (ATokens[mPrev].IsSymbol(';') or (mPrev = AOfIndex));
+end;
+
+/// <summary>Steht das Token AIndex am Zeilenanfang (das Token davor endet in einer früheren Zeile)?</summary>
+function StartsLine(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
+var
+  mPrev: Integer;
+begin
+  mPrev := Prev(ATokens, AIndex);
+  Result := (mPrev >= 0) and (ATokens[mPrev].EndPos.Line < ATokens[AIndex].StartPos.Line);
+end;
+
+type
+  /// <summary>Vorwärtslauf vom "of" bis zum "end" einer case-Anweisung: sammelt die Marken und erkennt den
+  /// else-Teil.</summary>
+  TLabelScan = record
+    Tokens: TArray<TPascalToken>;
+    Text: string;
+    Position: TTextPosition;
+    /// <summary>Token vor dem Cursor und getipptes Wort (-1 ohne).</summary>
+    Before: Integer;
+    Prefix: Integer;
+    OfIndex: Integer;
+    Slot: TCaseBranchSlot;
+    Depth: Integer;
+    Parens: Integer;
+    /// <summary>Am Anfang eines Zweigs, vor dessen ":".</summary>
+    AtStart: Boolean;
+    InElse: Boolean;
+    Element: string;
+    Parts: TArray<string>;
+    FirstLabel: Integer;
+    /// <summary>Prüft das Token AIndex auf der Ebene der Zweige; AStop: Die Zweige enden hier. False, wenn der
+    /// Cursor im else-Teil steht.</summary>
+    function CheckTopLevel(AIndex: Integer; out AStop: Boolean): Boolean;
+    procedure TrackNesting(AIndex: Integer);
+    procedure AddLabelToken(AIndex: Integer);
+    procedure CollectLabel(AIndex: Integer);
+    /// <summary>Läuft die Zweige ab; False, wenn der Cursor im else-Teil steht.</summary>
+    function Run: Boolean;
+    /// <summary>Einrückung wie die vorhandenen Zweige, sonst eine Ebene tiefer als case.</summary>
+    function BranchIndent: string;
+    function EditRange: TTextRange;
+  end;
+
+function TLabelScan.CheckTopLevel(AIndex: Integer; out AStop: Boolean): Boolean;
+begin
+  Result := True;
+  AStop := False;
+  if Depth <> 0 then
+  begin
     Exit;
   end;
+  if Tokens[AIndex].IsKeyword('end') then
+  begin
+    // Links von der case-Zeile: "end" des umgebenden Blocks, das eigene fehlt.
+    Slot.HasEnd := Width(TTextLines.IndentOf(Text, Tokens[AIndex].StartPos.Line)) >= Width(Slot.CaseIndent);
+    AStop := True;
+  end
+  else if (Parens = 0) and EndsBranches(Tokens, AIndex) then
+  begin
+    AStop := True;
+  end
+  else if IsCaseElse(Tokens, AIndex, OfIndex) then
+  begin
+    InElse := True;
+    // Cursor im else-Teil: dort stehen Anweisungen, keine Zweige.
+    Result := Compare(Tokens[AIndex].StartPos, Position) >= 0;
+  end;
+end;
+
+procedure TLabelScan.TrackNesting(AIndex: Integer);
+begin
+  if IsKeywordIn(Tokens[AIndex], ['begin', 'try', 'asm', 'case', 'repeat']) then
+  begin
+    Inc(Depth);
+  end
+  else if IsKeywordIn(Tokens[AIndex], ['end', 'until']) then
+  begin
+    Dec(Depth);
+  end
+  else if IsOpenBracket(Tokens[AIndex]) then
+  begin
+    Inc(Parens);
+  end
+  else if IsCloseBracket(Tokens[AIndex]) then
+  begin
+    Dec(Parens);
+  end;
+end;
+
+/// <summary>Token einer Marke vor ihrem ":": Teile einer Liste trennt ",", das getippte Wort zählt nicht.</summary>
+procedure TLabelScan.AddLabelToken(AIndex: Integer);
+begin
+  if Tokens[AIndex].IsSymbol(':') then
+  begin
+    Slot.Labels := Slot.Labels + Parts + [Element];
+    AtStart := False;
+  end
+  else if Tokens[AIndex].IsSymbol(',') then
+  begin
+    Parts := Parts + [Element];
+    Element := '';
+  end
+  else if AIndex <> Prefix then
+  begin
+    if FirstLabel < 0 then
+    begin
+      FirstLabel := AIndex;
+    end;
+    Element := Element + CleanName(Tokens[AIndex].Text);
+  end;
+end;
+
+procedure TLabelScan.CollectLabel(AIndex: Integer);
+begin
+  if (Depth <> 0) or (Parens <> 0) or InElse then
+  begin
+    Exit;
+  end;
+  if Tokens[AIndex].IsSymbol(';') then
+  begin
+    AtStart := True;
+    Element := '';
+    Parts := nil;
+  end
+  else if AtStart then
+  begin
+    AddLabelToken(AIndex);
+  end;
+end;
+
+function TLabelScan.Run: Boolean;
+var
+  mIndex, mLastToken: Integer;
+  mStop: Boolean;
+begin
+  Result := True;
   Depth := 0;
   Parens := 0;
-  AIndex := Prev(ATokens, AIndex);
-  while AIndex >= 0 do
+  AtStart := True;
+  InElse := False;
+  Element := '';
+  Parts := nil;
+  FirstLabel := -1;
+  mLastToken := OfIndex;
+  mIndex := Next(Tokens, OfIndex);
+  while mIndex <= High(Tokens) do
   begin
-    if ATokens[AIndex].IsSymbol(')') or ATokens[AIndex].IsSymbol(']') then
-      Inc(Parens)
-    else if ATokens[AIndex].IsSymbol('(') or ATokens[AIndex].IsSymbol('[') then
+    if not CheckTopLevel(mIndex, mStop) then
     begin
-      if Parens = 0 then
-        Exit;
-      Dec(Parens);
-    end
-    else if ATokens[AIndex].IsKeyword('end') or ATokens[AIndex].IsKeyword('until') then
-      Inc(Depth)
-    else if IsKeywordIn(ATokens[AIndex], ['begin', 'try', 'asm', 'case', 'repeat']) then
+      Exit(False);
+    end;
+    if mStop then
     begin
-      if Depth = 0 then
-      begin
-        if ATokens[AIndex].IsKeyword('case') then
-          Result := AIndex;
-        Exit;
-      end;
-      Dec(Depth);
-    end
-    else if (Depth = 0) and IsKeywordIn(ATokens[AIndex], ['var', 'const', 'type', 'procedure', 'function',
-      'constructor', 'destructor', 'implementation', 'uses', 'record', 'class', 'object', 'interface']) then
-      Exit;
-    AIndex := Prev(ATokens, AIndex);
+      Break;
+    end;
+    if (mIndex <> Prefix) and (Compare(Tokens[mIndex].StartPos, Position) >= 0) then
+    begin
+      Slot.Following := True;
+    end;
+    TrackNesting(mIndex);
+    CollectLabel(mIndex);
+    mLastToken := mIndex;
+    mIndex := Next(Tokens, mIndex);
+  end;
+  Slot.EndInsert := Tokens[mLastToken].EndPos;
+  Slot.BranchIndent := BranchIndent;
+  Slot.EditRange := EditRange;
+end;
+
+function TLabelScan.BranchIndent: string;
+begin
+  if (FirstLabel >= 0) and StartsLine(Tokens, FirstLabel) then
+  begin
+    Result := TTextLines.IndentOf(Text, Tokens[FirstLabel].StartPos.Line);
+  end
+  else
+  begin
+    Result := Slot.CaseIndent + '  ';
+  end;
+end;
+
+function TLabelScan.EditRange: TTextRange;
+begin
+  if Prefix >= 0 then
+  begin
+    Result := TTextRange.Create(Tokens[Before].EndPos, Tokens[Prefix].EndPos);
+  end
+  else
+  begin
+    Result := TTextRange.Create(Tokens[Before].EndPos, Position);
   end;
 end;
 
@@ -193,148 +575,33 @@ end;
 class function TCaseCompletion.BranchSlot(const AText: string; const ATokens: TArray<TPascalToken>;
   const APosition: TTextPosition; out ASlot: TCaseBranchSlot): Boolean;
 var
-  Index, Prefix, Before, CaseIndex, OfIndex, Depth, Parens, LastToken, FirstLabel: Integer;
-  AtStart, InElse: Boolean;
-  Element: string;
-  Parts: TArray<string>;
+  mScan: TLabelScan;
+  mIndex, mCaseIndex: Integer;
 begin
   ASlot := Default(TCaseBranchSlot);
-  Result := False;
-  // Token vor dem Cursor (mit Kommentaren) und das getippte Wort.
-  Before := -1;
-  Prefix := -1;
-  for Index := 0 to High(ATokens) do
+  mScan := Default(TLabelScan);
+  mCaseIndex := -1;
+  Result := CursorTokens(ATokens, APosition, mScan.Before, mScan.Prefix) and BranchStart(ATokens, mScan.Before,
+    mIndex);
+  if Result then
   begin
-    if Compare(ATokens[Index].StartPos, APosition) >= 0 then
-      Break;
-    Before := Index;
+    mCaseIndex := EnclosingCase(ATokens, mIndex);
+    Result := (mCaseIndex >= 0) and FindOf(ATokens, mCaseIndex, mIndex, mScan.OfIndex);
   end;
-  if (Before >= 0) and (ATokens[Before].Kind = TPascalTokenKind.Identifier) and
-    (Compare(APosition, ATokens[Before].EndPos) <= 0) then
+  if not Result then
   begin
-    Prefix := Before;
-    Before := Before - 1;
+    Exit;
   end;
-  if Before < 0 then
-    Exit;
-  Index := Before;
-  if IsTrivia(ATokens[Index]) then
-    Index := Prev(ATokens, Index);
-  if (Index < 0) or not (ATokens[Index].IsKeyword('of') or ATokens[Index].IsSymbol(';')) then
-    Exit;
-  CaseIndex := EnclosingCase(ATokens, Index);
-  if CaseIndex < 0 then
-    Exit;
-  // "of" der case-Anweisung.
-  OfIndex := Next(ATokens, CaseIndex);
-  Parens := 0;
-  while OfIndex <= Index do
+  mScan.Tokens := ATokens;
+  mScan.Text := AText;
+  mScan.Position := APosition;
+  mScan.Slot.CasePos := ATokens[mCaseIndex].StartPos;
+  mScan.Slot.CaseIndent := TTextLines.IndentOf(AText, ATokens[mCaseIndex].StartPos.Line);
+  Result := mScan.Run;
+  if Result then
   begin
-    if ATokens[OfIndex].IsSymbol('(') or ATokens[OfIndex].IsSymbol('[') then
-      Inc(Parens)
-    else if ATokens[OfIndex].IsSymbol(')') or ATokens[OfIndex].IsSymbol(']') then
-      Dec(Parens)
-    else if (Parens = 0) and ATokens[OfIndex].IsKeyword('of') then
-      Break;
-    OfIndex := Next(ATokens, OfIndex);
+    ASlot := mScan.Slot;
   end;
-  if (OfIndex > Index) or not ATokens[OfIndex].IsKeyword('of') then
-    Exit;
-  ASlot.CasePos := ATokens[CaseIndex].StartPos;
-  ASlot.CaseIndent := TTextLines.IndentOf(AText, ATokens[CaseIndex].StartPos.Line);
-  // Vorwärts bis zum "end" der case-Anweisung: Marken sammeln, else-Teil erkennen.
-  Depth := 0;
-  Parens := 0;
-  AtStart := True;
-  InElse := False;
-  Element := '';
-  Parts := nil;
-  FirstLabel := -1;
-  LastToken := OfIndex;
-  Index := Next(ATokens, OfIndex);
-  while Index <= High(ATokens) do
-  begin
-    if Depth = 0 then
-    begin
-      if ATokens[Index].IsKeyword('end') then
-      begin
-        // Links von der case-Zeile: "end" des umgebenden Blocks, das eigene fehlt.
-        ASlot.HasEnd := Width(TTextLines.IndentOf(AText, ATokens[Index].StartPos.Line)) >= Width(ASlot.CaseIndent);
-        Break;
-      end;
-      // Anonyme Methoden (Post(procedure begin … end), X := function …) beenden den case nicht (#1109): In
-      // Klammern oder nach := steht keine Deklaration.
-      if (Parens = 0) and IsKeywordIn(ATokens[Index], ['until', 'except', 'finally', 'procedure', 'function',
-        'constructor', 'destructor', 'implementation', 'initialization', 'finalization', 'var', 'const', 'type']) and
-        not (IsKeywordIn(ATokens[Index], ['procedure', 'function']) and (Prev(ATokens, Index) >= 0) and
-        ATokens[Prev(ATokens, Index)].IsSymbol(':=')) then
-        Break;
-      if ATokens[Index].IsKeyword('else') and (Prev(ATokens, Index) >= 0) and
-        (ATokens[Prev(ATokens, Index)].IsSymbol(';') or (Prev(ATokens, Index) = OfIndex)) then
-      begin
-        InElse := True;
-        // Cursor im else-Teil: dort stehen Anweisungen, keine Zweige.
-        if Compare(ATokens[Index].StartPos, APosition) < 0 then
-          Exit;
-      end;
-    end;
-    if (Index <> Prefix) and (Compare(ATokens[Index].StartPos, APosition) >= 0) then
-      ASlot.Following := True;
-    if IsKeywordIn(ATokens[Index], ['begin', 'try', 'asm', 'case']) then
-      Inc(Depth)
-    else if ATokens[Index].IsKeyword('end') then
-      Dec(Depth)
-    else if ATokens[Index].IsKeyword('repeat') then
-      Inc(Depth)
-    else if ATokens[Index].IsKeyword('until') then
-      Dec(Depth)
-    else if ATokens[Index].IsSymbol('(') or ATokens[Index].IsSymbol('[') then
-      Inc(Parens)
-    else if ATokens[Index].IsSymbol(')') or ATokens[Index].IsSymbol(']') then
-      Dec(Parens);
-    if (Depth = 0) and (Parens = 0) and not InElse then
-    begin
-      if ATokens[Index].IsSymbol(';') then
-      begin
-        AtStart := True;
-        Element := '';
-        Parts := nil;
-      end
-      else if AtStart then
-      begin
-        if ATokens[Index].IsSymbol(':') then
-        begin
-          ASlot.Labels := ASlot.Labels + Parts + [Element];
-          AtStart := False;
-        end
-        else if ATokens[Index].IsSymbol(',') then
-        begin
-          Parts := Parts + [Element];
-          Element := '';
-        end
-        else if Index <> Prefix then
-        begin
-          if FirstLabel < 0 then
-            FirstLabel := Index;
-          Element := Element + CleanName(ATokens[Index].Text);
-        end;
-      end;
-    end;
-    LastToken := Index;
-    Index := Next(ATokens, Index);
-  end;
-  ASlot.EndInsert := ATokens[LastToken].EndPos;
-  // Einrückung wie die vorhandenen Zweige, sonst eine Ebene tiefer als case.
-  if (FirstLabel >= 0) and (Prev(ATokens, FirstLabel) >= 0) and
-    (ATokens[Prev(ATokens, FirstLabel)].EndPos.Line < ATokens[FirstLabel].StartPos.Line) then
-    ASlot.BranchIndent := TTextLines.IndentOf(AText, ATokens[FirstLabel].StartPos.Line)
-  else
-    ASlot.BranchIndent := ASlot.CaseIndent + '  ';
-  if Prefix >= 0 then
-    ASlot.EditRange := TTextRange.Create(ATokens[Before].EndPos, ATokens[Prefix].EndPos)
-  else
-    ASlot.EditRange := TTextRange.Create(ATokens[Before].EndPos, APosition);
-  Result := True;
 end;
 
 /// <summary>Letzter Teil eines qualifizierten Namens: TShapeKind.skLine → skLine.</summary>
@@ -351,8 +618,12 @@ class function TCaseCompletion.Missing(const AValues, ALabels: TArray<string>;
     Index: Integer;
   begin
     for Index := 0 to High(AValues) do
+    begin
       if SameText(AValues[Index], LastPart(AName)) then
+      begin
         Exit(Index);
+      end;
+    end;
     Result := -1;
   end;
 
@@ -365,24 +636,38 @@ begin
   AMissing := nil;
   SetLength(Present, Length(AValues));
   for Index := 0 to High(Present) do
+  begin
     Present[Index] := False;
+  end;
   for Element in ALabels do
   begin
     Bounds := Element.Split(['..']);
     if (Length(Bounds) < 1) or (Length(Bounds) > 2) then
+    begin
       Exit(False);
+    end;
     Low_ := IndexOfValue(Bounds[0]);
     High_ := Low_;
     if Length(Bounds) = 2 then
+    begin
       High_ := IndexOfValue(Bounds[1]);
+    end;
     if (Low_ < 0) or (High_ < 0) then
+    begin
       Exit(False);
+    end;
     for Index := Low_ to High_ do
+    begin
       Present[Index] := True;
+    end;
   end;
   for Index := 0 to High(AValues) do
+  begin
     if not Present[Index] then
+    begin
       AMissing := AMissing + [AValues[Index]];
+    end;
+  end;
   Result := True;
 end;
 
@@ -396,18 +681,24 @@ begin
   begin
     Result := Result + ALineBreak + ASlot.BranchIndent + APrefix + AMissing[Index] + ': ';
     if Index = 0 then
+    begin
       Result := Result + '$0';
+    end;
     Result := Result + ';';
   end;
   if not ASlot.HasEnd and not ASlot.Following then
+  begin
     Result := Result + ALineBreak + ASlot.CaseIndent + 'end;';
+  end;
 end;
 
 class function TCaseCompletion.EndText(const ASlot: TCaseBranchSlot; const ALineBreak: string): string;
 begin
   Result := '';
   if not ASlot.HasEnd and ASlot.Following then
+  begin
     Result := ALineBreak + ASlot.CaseIndent + 'end;';
+  end;
 end;
 
 function Contains(ANode: TSyntaxNode; const APosition: TTextPosition): Boolean;
@@ -423,19 +714,25 @@ var
 begin
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   Node := ATree.Root;
   repeat
     Descended := False;
     for Index := 0 to Node.ChildCount - 1 do
+    begin
       if Contains(Node[Index], APosition) then
       begin
         Node := Node[Index];
         if Node.Kind = TSyntaxKind.CaseStatement then
+        begin
           Result := Node;
+        end;
         Descended := True;
         Break;
       end;
+    end;
   until not Descended;
 end;
 
@@ -444,7 +741,9 @@ function TokenAt(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer
 begin
   Result := 0;
   while (Result <= High(ATokens)) and (ATokens[Result].Offset < AOffset) do
+  begin
     Inc(Result);
+  end;
 end;
 
 class function TCaseCompletion.OfPosition(ATree: TSyntaxTree; ACase: TSyntaxNode;
@@ -460,9 +759,13 @@ begin
   while (Index <= High(Tokens)) and (Tokens[Index].Offset < ACase.EndOffset) do
   begin
     if Tokens[Index].IsSymbol('(') or Tokens[Index].IsSymbol('[') then
-      Inc(Parens)
+    begin
+      Inc(Parens);
+    end
     else if Tokens[Index].IsSymbol(')') or Tokens[Index].IsSymbol(']') then
-      Dec(Parens)
+    begin
+      Dec(Parens);
+    end
     else if (Parens = 0) and Tokens[Index].IsKeyword('of') then
     begin
       APosition := Tokens[Index].EndPos;
@@ -472,70 +775,101 @@ begin
   end;
 end;
 
-class function TCaseCompletion.Complete(const AText: string; ATree: TSyntaxTree; ACase: TSyntaxNode;
-  const AValues: TArray<string>; const APrefix: string; out AEdits: TArray<TTextEdit>; out ACount: Integer;
-  out AHasElse: Boolean): Boolean;
+/// <summary>Anker der neuen Zweige: "else" der case-Anweisung ACase, sonst ihr "end"; -1 ohne.</summary>
+function CaseAnchor(const ATokens: TArray<TPascalToken>; ACase: TSyntaxNode; out AHasElse: Boolean): Integer;
 var
-  Tokens: TArray<TPascalToken>;
-  OfPos: TTextPosition;
-  Slot: TCaseBranchSlot;
-  Absent: TArray<string>;
-  ElseNode: TSyntaxNode;
-  Anchor, Before, Index: Integer;
-  LineBreak, Branches, Semicolon: string;
+  mElse: TSyntaxNode;
 begin
-  AEdits := nil;
-  ACount := 0;
-  AHasElse := False;
-  Result := False;
-  if (ACase = nil) or not OfPosition(ATree, ACase, OfPos) then
-    Exit;
-  Tokens := ATree.Tokens;
-  if not BranchSlot(AText, Tokens, OfPos, Slot) or not Slot.HasEnd or not Missing(AValues, Slot.Labels, Absent) or
-    (Absent = nil) then
-    Exit;
-  // Anker: "else" der case-Anweisung, sonst ihr "end".
-  ElseNode := ACase.FindChild(TSyntaxKind.CaseElse);
-  AHasElse := ElseNode <> nil;
+  mElse := ACase.FindChild(TSyntaxKind.CaseElse);
+  AHasElse := mElse <> nil;
   if AHasElse then
-    Anchor := TokenAt(Tokens, ElseNode.StartOffset)
+  begin
+    Result := TokenAt(ATokens, mElse.StartOffset);
+  end
   else
   begin
-    Anchor := TokenAt(Tokens, ACase.EndOffset) - 1;
-    while (Anchor >= 0) and IsTrivia(Tokens[Anchor]) do
-      Dec(Anchor);
+    Result := TokenAt(ATokens, ACase.EndOffset) - 1;
+    while (Result >= 0) and IsTrivia(ATokens[Result]) do
+    begin
+      Dec(Result);
+    end;
   end;
-  if (Anchor < 0) or (Anchor > High(Tokens)) or not (Tokens[Anchor].IsKeyword('else') or
-    Tokens[Anchor].IsKeyword('end')) then
-    Exit;
-  Before := Prev(Tokens, Anchor);
-  if Before < 0 then
-    Exit;
-  if Pos(#13#10, AText) > 0 then
-    LineBreak := #13#10
-  else
-    LineBreak := #10;
-  Semicolon := '';
-  if not (Tokens[Before].IsSymbol(';') or Tokens[Before].IsKeyword('of')) then
-    Semicolon := ';';
-  Branches := '';
-  for Index := 0 to High(Absent) do
-    Branches := Branches + LineBreak + Slot.BranchIndent + APrefix + Absent[Index] + ': ;';
-  // Vom letzten Token davor (auch einem Kommentar) bis vor den Anker: neue Zeilen, dann der Anker in der
-  // Einrückung von case. Das fehlende ";" gehört hinter den Zweig, nicht hinter seinen Kommentar.
-  if Before = Anchor - 1 then
-    AEdits := [TTextEdit.Create(TTextRange.Create(Tokens[Before].EndPos, Tokens[Anchor].StartPos),
-      Semicolon + Branches + LineBreak + Slot.CaseIndent)]
+  if (Result < 0) or (Result > High(ATokens)) or not IsKeywordIn(ATokens[Result], ['else', 'end']) then
+  begin
+    Result := -1;
+  end;
+end;
+
+/// <summary>Einfügungen vor dem Anker AAnchor: vom letzten Token davor (auch einem Kommentar) bis vor den Anker
+/// neue Zeilen ABranches, dann ATail (Zeilenumbruch und Einrückung von case). Das fehlende ";" gehört hinter den
+/// Zweig ABefore, nicht hinter seinen Kommentar.</summary>
+function AnchorEdits(const ATokens: TArray<TPascalToken>; AAnchor, ABefore: Integer;
+  const ABranches, ATail: string): TArray<TTextEdit>;
+var
+  mSemicolon: string;
+begin
+  mSemicolon := '';
+  if not (ATokens[ABefore].IsSymbol(';') or ATokens[ABefore].IsKeyword('of')) then
+  begin
+    mSemicolon := ';';
+  end;
+  if ABefore = AAnchor - 1 then
+  begin
+    Result := [TTextEdit.Create(TTextRange.Create(ATokens[ABefore].EndPos, ATokens[AAnchor].StartPos),
+      mSemicolon + ABranches + ATail)];
+  end
   else
   begin
-    AEdits := [TTextEdit.Create(TTextRange.Create(Tokens[Anchor - 1].EndPos, Tokens[Anchor].StartPos),
-      Branches + LineBreak + Slot.CaseIndent)];
-    if Semicolon <> '' then
-      AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(Tokens[Before].EndPos, Tokens[Before].EndPos),
-        Semicolon)];
+    Result := [TTextEdit.Create(TTextRange.Create(ATokens[AAnchor - 1].EndPos, ATokens[AAnchor].StartPos),
+      ABranches + ATail)];
+    if mSemicolon <> '' then
+    begin
+      Result := Result + [TTextEdit.Create(TTextRange.Create(ATokens[ABefore].EndPos, ATokens[ABefore].EndPos),
+        mSemicolon)];
+    end;
   end;
-  ACount := Length(Absent);
-  Result := True;
+end;
+
+class function TCaseCompletion.Complete(const AText: string; ATree: TSyntaxTree; ACase: TSyntaxNode;
+  const AValues: TArray<string>; const APrefix: string; out AResult: TCaseCompletionEdits): Boolean;
+var
+  mTokens: TArray<TPascalToken>;
+  mOfPos: TTextPosition;
+  mSlot: TCaseBranchSlot;
+  mAbsent: TArray<string>;
+  mAnchor, mBefore: Integer;
+  mLineBreak, mBranches, mValue: string;
+begin
+  AResult := Default(TCaseCompletionEdits);
+  Result := (ACase <> nil) and OfPosition(ATree, ACase, mOfPos);
+  if Result then
+  begin
+    mTokens := ATree.Tokens;
+    Result := BranchSlot(AText, mTokens, mOfPos, mSlot) and mSlot.HasEnd and
+      Missing(AValues, mSlot.Labels, mAbsent) and (mAbsent <> nil);
+  end;
+  mAnchor := -1;
+  mBefore := -1;
+  if Result then
+  begin
+    mAnchor := CaseAnchor(mTokens, ACase, AResult.HasElse);
+    if mAnchor >= 0 then
+    begin
+      mBefore := Prev(mTokens, mAnchor);
+    end;
+  end;
+  if mBefore < 0 then
+  begin
+    Exit(False);
+  end;
+  mLineBreak := TTextLines.LineBreakOf(AText);
+  mBranches := '';
+  for mValue in mAbsent do
+  begin
+    mBranches := mBranches + mLineBreak + mSlot.BranchIndent + APrefix + mValue + ': ;';
+  end;
+  AResult.Edits := AnchorEdits(mTokens, mAnchor, mBefore, mBranches, mLineBreak + mSlot.CaseIndent);
+  AResult.Count := Length(mAbsent);
 end;
 
 end.

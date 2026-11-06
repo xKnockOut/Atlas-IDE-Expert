@@ -81,11 +81,15 @@ var
 begin
   Result := '';
   if AResult.SelectionStart.Line = AResult.SelectionEnd.Line then
+  begin
     Exit(Copy(AResult.Lines[AResult.SelectionStart.Line], AResult.SelectionStart.Character + 1,
       AResult.SelectionEnd.Character - AResult.SelectionStart.Character));
+  end;
   Result := Copy(AResult.Lines[AResult.SelectionStart.Line], AResult.SelectionStart.Character + 1, MaxInt);
   for Line := AResult.SelectionStart.Line + 1 to AResult.SelectionEnd.Line - 1 do
+  begin
     Result := Result + '|' + AResult.Lines[Line];
+  end;
   Result := Result + '|' + Copy(AResult.Lines[AResult.SelectionEnd.Line], 1, AResult.SelectionEnd.Character);
 end;
 

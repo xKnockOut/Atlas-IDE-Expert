@@ -90,6 +90,30 @@ begin
   end;
 end;
 
+/// <summary>Trägt ANode als Routine (Name mit AOuter) oder als Abschnitt der obersten Ebene ein; liefert den
+/// Namen der Routine, die seine Kinder umschließt.</summary>
+function AddScope(ANode: TSyntaxNode; const AOuter: string; var ARoutines, ASections: TArray<TFindingScope>):
+  string;
+begin
+  Result := AOuter;
+  if (ANode.Kind = TSyntaxKind.RoutineDecl) and (ANode.Name <> '') and HasBody(ANode) then
+  begin
+    if AOuter = '' then
+    begin
+      Result := ANode.Name;
+    end
+    else
+    begin
+      Result := AOuter + '.' + ANode.Name;
+    end;
+    ARoutines := ARoutines + [Scope(Result, ANode)];
+  end
+  else if (AOuter = '') and (SectionName(ANode.Kind) <> '') then
+  begin
+    ASections := ASections + [Scope(SectionName(ANode.Kind), ANode)];
+  end;
+end;
+
 // Iterativ (Bericht M1): neben jedem Knoten liegt der Name der umschließenden Routine auf dem Stapel.
 procedure Collect(ARoot: TSyntaxNode; var ARoutines, ASections: TArray<TFindingScope>);
 var
@@ -97,7 +121,7 @@ var
   PendingOuter: TStack<string>;
   Index: Integer;
   Child: TSyntaxNode;
-  Outer, Name, Section: string;
+  Name: string;
 begin
   Pending := TStack<TSyntaxNode>.Create;
   PendingOuter := TStack<string>.Create;
@@ -110,29 +134,16 @@ begin
     while Pending.Count > 0 do
     begin
       Child := Pending.Pop;
-      Outer := PendingOuter.Pop;
-      Name := Outer;
-      if (Child.Kind = TSyntaxKind.RoutineDecl) and (Child.Name <> '') and HasBody(Child) then
-      begin
-        if Outer = '' then
-          Name := Child.Name
-        else
-          Name := Outer + '.' + Child.Name;
-        ARoutines := ARoutines + [Scope(Name, Child)];
-      end
-      else if Outer = '' then
-      begin
-        Section := SectionName(Child.Kind);
-        if Section <> '' then
-          ASections := ASections + [Scope(Section, Child)];
-      end;
+      Name := AddScope(Child, PendingOuter.Pop, ARoutines, ASections);
       // Routinen stehen nie in Anweisungen und Ausdrücken; dort nicht absteigen (#1094).
       if not (Child.Kind in [TSyntaxKind.Block .. TSyntaxKind.IfExpr]) then
+      begin
         for Index := Child.ChildCount - 1 downto 0 do
         begin
           Pending.Push(Child[Index]);
           PendingOuter.Push(Name);
         end;
+      end;
     end;
   finally
     PendingOuter.Free;
@@ -149,10 +160,14 @@ begin
   Result.FRoutines := nil;
   Result.FSections := nil;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   Section := SectionName(ATree.Root.Kind);
   if Section <> '' then
+  begin
     Result.FSections := [Scope(Section, ATree.Root)];
+  end;
   Collect(ATree.Root, Result.FRoutines, Result.FSections);
 end;
 
@@ -174,16 +189,28 @@ var
 begin
   // Die letzte passende Routine ist die innerste: innere stehen hinter ihrer äußeren.
   for Index := High(FRoutines) downto 0 do
+  begin
     if (FRoutines[Index].FirstLine <= ALine) and (ALine <= FRoutines[Index].LastLine) then
+    begin
       Exit(FRoutines[Index].Name);
+    end;
+  end;
   for Index := High(FSections) downto 0 do
+  begin
     if (FSections[Index].FirstLine <= ALine) and (ALine <= FSections[Index].LastLine) then
+    begin
       Exit(FSections[Index].Name);
+    end;
+  end;
   // Hinter dem Ende des Baums (z. B. Text nach "end."): die Datei.
   if Length(FSections) > 0 then
-    Result := FSections[0].Name
+  begin
+    Result := FSections[0].Name;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function TFindingScopes.HeaderLine(ALine: Integer): Integer;
@@ -191,8 +218,12 @@ var
   Index: Integer;
 begin
   for Index := High(FRoutines) downto 0 do
+  begin
     if (FRoutines[Index].FirstLine <= ALine) and (ALine <= FRoutines[Index].LastLine) then
+    begin
       Exit(FRoutines[Index].FirstLine);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -201,8 +232,12 @@ var
   Item: TFindingScope;
 begin
   for Item in FRoutines do
+  begin
     if SameText(Item.Name, AName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 

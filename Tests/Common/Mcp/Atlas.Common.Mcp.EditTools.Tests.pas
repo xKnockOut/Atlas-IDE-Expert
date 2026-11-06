@@ -72,6 +72,7 @@ uses
   Atlas.Common.Rules.Conventions,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Mcp.Server,
+  Atlas.Common.Mcp.Contract,
   Atlas.Common.Editing.FormatCheck,
   Atlas.Common.Mcp.EditTools;
 
@@ -113,11 +114,13 @@ var
   Range: TTextRange;
 begin
   for Token in AContext.Tree.Tokens do
+  begin
     if (Token.Kind = TPascalTokenKind.Identifier) and SameText(Token.Text, 'Alt') then
     begin
       Range := TTextRange.Create(Token.StartPos, Token.EndPos);
       AReport.Add(Range, 'Alt gefunden', [TRuleFix.Create('Alt durch Neu ersetzen', [TRuleEdit.Create(Range, 'Neu')])]);
     end;
+  end;
 end;
 
 function TNoFixRule.Descriptor: TRuleDescriptor;
@@ -130,8 +133,12 @@ var
   Token: TPascalToken;
 begin
   for Token in AContext.Tree.Tokens do
+  begin
     if (Token.Kind = TPascalTokenKind.Identifier) and SameText(Token.Text, 'Alt') then
+    begin
       AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos), 'Alt gefunden');
+    end;
+  end;
 end;
 
 constructor TMemoryFiles.Create;
@@ -154,7 +161,9 @@ end;
 procedure TMemoryFiles.Write(const AFileName, AText: string);
 begin
   if SameText(AFileName, FailOn) then
+  begin
     raise Exception.Create('gesperrt');
+  end;
   Files[AFileName] := AText;
   Inc(Writes);
 end;
@@ -183,10 +192,29 @@ begin
     TMcpFileEdit.Create('B.dfm', TTextRange.Create(1, 2, 1, 5), 'Neu')];
 end;
 
+/// <summary>Der Aufruf von AName scheitert mit einer Meldung, die AExpected enthält.</summary>
+procedure AssertToolRefused(const AServer: TMcpServer; const AName, AExpected: string);
+var
+  mParams, mCalled: TJSONObject;
+begin
+  mParams := TJSONObject.ParseJSONValue('{"name":"' + AName + '"}') as TJSONObject;
+  try
+    mCalled := AServer.CallTool(mParams);
+    try
+      Assert.IsTrue(mCalled.GetValue<Boolean>('isError'));
+      Assert.Contains(mCalled.ToJSON, AExpected);
+    finally
+      mCalled.Free;
+    end;
+  finally
+    mParams.Free;
+  end;
+end;
+
 procedure TMcpEditToolsTests.DisabledAndRestrictedToolsAreHiddenAndRefused;
 var
   Server: TMcpServer;
-  Listed, Called, Params: TJSONObject;
+  Listed: TJSONObject;
 begin
   Server := TMcpServer.Create('Atlas', '0');
   try
@@ -211,18 +239,7 @@ begin
     finally
       Listed.Free;
     end;
-    Params := TJSONObject.ParseJSONValue('{"name":"lesen"}') as TJSONObject;
-    try
-      Called := Server.CallTool(Params);
-      try
-        Assert.IsTrue(Called.GetValue<Boolean>('isError'));
-        Assert.Contains(Called.ToJSON, 'mcp.disabledTools');
-      finally
-        Called.Free;
-      end;
-    finally
-      Params.Free;
-    end;
+    AssertToolRefused(Server, 'lesen', 'mcp.disabledTools');
     Server.OnDisabledTools := nil;
     Server.Restricted := True;
     Listed := Server.ListTools;
@@ -232,18 +249,7 @@ begin
     finally
       Listed.Free;
     end;
-    Params := TJSONObject.ParseJSONValue('{"name":"schreiben"}') as TJSONObject;
-    try
-      Called := Server.CallTool(Params);
-      try
-        Assert.IsTrue(Called.GetValue<Boolean>('isError'));
-        Assert.Contains(Called.ToJSON, 'Modus aus');
-      finally
-        Called.Free;
-      end;
-    finally
-      Params.Free;
-    end;
+    AssertToolRefused(Server, 'schreiben', 'Modus aus');
   finally
     Server.Free;
   end;
@@ -468,20 +474,23 @@ begin
   Edit := Tools(Files);
   try
     Files.Files.Add('U.pas', 'unit U;'#10'interface'#10'var'#10'  Alt: Integer;'#10'implementation'#10'end.');
-    Listed := Edit.ApplyCodeAction([TRenameRule.Create], Default(TServerSettings), '', 'U.pas', 4, '', False);
+    Listed := Edit.ApplyCodeAction(TMcpRuleScope.Create([TRenameRule.Create], Default(TServerSettings), ''),
+      'U.pas', 4, '', False);
     Assert.Contains(Listed, 'Alt durch Neu ersetzen');
     Assert.AreEqual(0, Files.Writes, 'ohne title nur auflisten');
-    Edit.ApplyCodeAction([TRenameRule.Create], Default(TServerSettings), '', 'U.pas', 4, 'test-alt', False);
+    Edit.ApplyCodeAction(TMcpRuleScope.Create([TRenameRule.Create], Default(TServerSettings), ''),
+      'U.pas', 4, 'test-alt', False);
     Assert.Contains(Files.Files['U.pas'], '  Neu: Integer;');
     // Die Regelkennung wählt nie das Unterdrücken (#1109); das geht nur über seinen Titel.
     Files.Files['U.pas'] := 'unit U;'#10'interface'#10'var'#10'  Alt: Integer;'#10'implementation'#10'end.';
     Assert.WillRaise(
       procedure
       begin
-        Edit.ApplyCodeAction([TNoFixRule.Create], Default(TServerSettings), '', 'U.pas', 4, 'test-ohne', False);
+        Edit.ApplyCodeAction(TMcpRuleScope.Create([TNoFixRule.Create], Default(TServerSettings), ''),
+          'U.pas', 4, 'test-ohne', False);
       end, EMcpToolError);
     Assert.IsFalse(Pos('lsp-ignore', Files.Files['U.pas']) > 0, 'nichts unterdrückt');
-    Edit.ApplyCodeAction([TNoFixRule.Create], Default(TServerSettings), '', 'U.pas', 4,
+    Edit.ApplyCodeAction(TMcpRuleScope.Create([TNoFixRule.Create], Default(TServerSettings), ''), 'U.pas', 4,
       '"test-ohne" für diese Zeile unterdrücken', False);
     Assert.IsTrue(Pos('lsp-ignore: test-ohne', Files.Files['U.pas']) > 0, 'mit Titel unterdrückt');
   finally
@@ -556,15 +565,15 @@ begin
         Audit := Audit + AText;
       end;
     Files.Files.Add('U.pas', cAssignedFree);
-    Report := Edit.FixFindings(BuiltinRules, TServerSettings.Default, '', ['U.pas'], ['redundant-assigned-free'], '',
-      True);
+    Report := Edit.FixFindings(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, ''),
+      ['U.pas'], ['redundant-assigned-free'], '', True);
     Assert.Contains(Report, 'Vorschau: 1 Korrekturen in 1 Dateien');
     Assert.Contains(Report, '--- a/U.pas');
     Assert.Contains(Report, '-  if Assigned(AList) then');
     Assert.AreEqual(0, Files.Writes, 'Vorschau schreibt nichts');
     Assert.AreEqual('', Audit);
-    Report := Edit.FixFindings(BuiltinRules, TServerSettings.Default, '', ['U.pas'], ['redundant-assigned-free'], '',
-      False);
+    Report := Edit.FixFindings(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, ''),
+      ['U.pas'], ['redundant-assigned-free'], '', False);
     Assert.Contains(Report, '1 Korrekturen in 1 Dateien geschrieben');
     Assert.AreEqual(1, Files.Writes);
     Assert.IsFalse(Pos('Assigned', Files.Files['U.pas']) > 0, Files.Files['U.pas']);
@@ -592,7 +601,7 @@ begin
       end;
     Files.Files.Add('U.pas', cAssignedFree);
     Files.Files.Add('V.pas', StringReplace(cAssignedFree, 'unit U;', 'unit V;', []));
-    Report := Edit.FixFindings(BuiltinRules, TServerSettings.Default, '', ['U.pas', 'V.pas'],
+    Report := Edit.FixFindings(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, ''), ['U.pas', 'V.pas'],
       ['redundant-assigned-free'], '', False);
     Assert.Contains(Report, 'Nicht angefasst (ungespeicherte Änderungen im Editor): U.pas');
     Assert.AreEqual(cAssignedFree, Files.Files['U.pas']);
@@ -615,13 +624,13 @@ begin
     Assert.WillRaise(
       procedure
       begin
-        Edit.FixFindings(BuiltinRules, TServerSettings.Default, '', ['U.pas'], ['redundant-assigned-free'], 'medium',
-          True);
+        Edit.FixFindings(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, ''),
+          ['U.pas'], ['redundant-assigned-free'], 'medium', True);
       end, EMcpToolError);
     Assert.WillRaise(
       procedure
       begin
-        Edit.FixFindings(BuiltinRules, TServerSettings.Default, '', ['U.pas'], nil, '', True);
+        Edit.FixFindings(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, ''), ['U.pas'], nil, '', True);
       end, EMcpToolError);
     Assert.AreEqual(0, Files.Writes);
   finally

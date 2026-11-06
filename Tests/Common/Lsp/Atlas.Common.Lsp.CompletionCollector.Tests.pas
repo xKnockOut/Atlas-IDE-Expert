@@ -38,6 +38,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.Completion.Lists,
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
@@ -64,7 +65,9 @@ var
 begin
   Result := '';
   for Item in AItems do
+  begin
     Result := Result + ' ' + Item.Name;
+  end;
   Result := Result.Trim;
 end;
 
@@ -276,10 +279,16 @@ var
 begin
   Result := '-';
   if TypeConversion(AActual, AExpected, '', 'X', AHelper, Conversion) then
+  begin
     if Conversion.Lossy then
-      Result := 'lossy'
+    begin
+      Result := 'lossy';
+    end
     else
+    begin
       Result := Conversion.Text + ' | ' + string.Join(',', Conversion.Units);
+    end;
+  end;
 end;
 
 procedure TCompletionCollectorTests.TypeConversionPairs;
@@ -365,7 +374,7 @@ const
       Request.Settings := Settings;
       Postfix := TPostfixOptions.Default;
       Postfix.Enabled := False;
-      Result := TLspCompletion.Collect(Request, Postfix, nil).Items;
+      Result := TCompletionLists.Collect(Request, Postfix, nil).Items;
     finally
       Request.Free;
       Resolver.Free;

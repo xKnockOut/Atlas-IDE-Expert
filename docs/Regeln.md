@@ -17,7 +17,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [Performance](#gruppe-performance) | 6 |
 | [Sicherheit](#gruppe-security) | 11 |
 | [Komponenten](#gruppe-components) | 8 |
-| [Formulare und Daten](#gruppe-forms) | 14 |
+| [Formulare und Daten](#gruppe-forms) | 15 |
 | [Architektur](#gruppe-architecture) | 5 |
 | [Stil und Metriken](#gruppe-style) | 54 |
 | [Packages und Tests](#gruppe-packages) | 3 |
@@ -328,6 +328,7 @@ Erzeugt von `Tools/Update-RuleCatalog.ps1` aus dem Regelkatalog. Nicht von Hand 
 | [`form-autocreate-and-manual`](#form-autocreate-and-manual) | Formular automatisch und zusätzlich von Hand erzeugt | Bug | Warnung |
 | [`inherited-form-handler-without-inherited`](#inherited-form-handler-without-inherited) | Ereignis-Handler im geerbten Formular ohne inherited | Bug | Warnung |
 | [`self-free-in-event-handler`](#self-free-in-event-handler) | Formular gibt sich im eigenen Ereignis frei | Bug | Fehler |
+| [`dfm-reference-unit-missing`](#dfm-reference-unit-missing) | Formulardatei verweist auf ein Modul, dessen Unit nicht in den uses steht | Bug | Warnung |
 
 <a id="gruppe-architecture"></a>
 ### Architektur
@@ -945,7 +946,7 @@ FWorker.Start;
 
 **Funktionsergebnis eventuell nicht gesetzt** · Bug · Warnung · Gruppe Fehler finden
 
-Ein Pfad durch die Funktion endet, ohne Result zuzuweisen. Der Aufrufer liest dann einen undefinierten Wert.
+Ein Pfad durch die Funktion endet, ohne Result zuzuweisen. Der Aufrufer liest dann einen undefinierten Wert. Eine for-Schleife läuft sicher einmal, wenn beide Grenzen Zahlenliterale oder echte Konstanten der Unit sind (cVersuche = 3) und der Bereich nicht leer ist, wie Delphi es wertet.
 
 Mit Treffer:
 
@@ -1991,7 +1992,7 @@ unit Tools;
 
 **Text im Code statt resourcestring** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
-In einer Anweisung steht ein String mit Wörtern für Menschen. In einen resourcestring auslagern, damit er übersetzt werden kann. Standardmäßig aus, niedrige Konfidenz.
+In einer Anweisung steht ein String mit Wörtern für Menschen. In einen resourcestring auslagern, damit er übersetzt werden kann. Still bei Texten, die niemand übersetzt: Argumente von Protokoll- und Prüfaufrufen (…Log, Log…, Diagnose, Trace, Debug, Assert, OutputDebugString), Vergleichs- und Registry-Aufrufen (StartsText, Pos, ReadString …), Masken von FormatDateTime und FormatFloat, Markup (HTML ab <, JSON ab { oder "Schlüssel":, Markdown-Überschriften # und ##) und Font.Name; die Option ignoreCalls nennt weitere Routinen. Standardmäßig aus, niedrige Konfidenz.
 
 Mit Treffer:
 
@@ -2323,7 +2324,7 @@ List := TStringList.Create;
 
 **Formatierung abhängig vom Gebietsschema** · Code Smell · Hinweis · Gruppe Robustheit und Muster
 
-Format mit %f, %n, %m, %g oder %e und Funktionen wie FloatToStr, StrToFloat oder DateToStr ohne TFormatSettings-Parameter verwenden das Gebietsschema des Benutzers (Dezimaltrenner, Datumsformat). Für Dateien, Protokolle und Logs feste TFormatSettings übergeben. Format('%d', …) wird nicht gemeldet, ebenso wenig FormatDateTime und FormatFloat mit festem Bild ohne Trennzeichen (: / . ,) wie 'yyyy"-"mm"-"dd' oder 'ddddd t'.
+Format mit %f, %n, %m, %g oder %e und Funktionen wie FloatToStr, StrToFloat oder DateToStr ohne TFormatSettings-Parameter verwenden das Gebietsschema des Benutzers (Dezimaltrenner, Datumsformat). Für Dateien, Protokolle und Logs feste TFormatSettings übergeben. Format('%d', …) wird nicht gemeldet, ebenso wenig FormatDateTime und FormatFloat mit festem Bild ohne Trennzeichen (: / . ,) wie 'yyyy"-"mm"-"dd' oder 'ddddd t'. Eigene Routinen gleichen Namens bleiben still, wenn die Namensauflösung sie findet: lokale Routinen, Methoden der eigenen Klasse, Routinen der eigenen Unit und einer Unit, die in uses nach System.SysUtils steht.
 
 Mit Treffer:
 
@@ -2433,7 +2434,7 @@ on E: Exception do
 
 **String-Verkettung in einer Schleife** · Code Smell · Hinweis · Gruppe Performance
 
-Eine String-Variable wird in einer Schleife schrittweise verlängert. Delphi vergrößert Strings meist an Ort und Stelle, deshalb nur mit niedriger Konfidenz und standardmäßig aus; bei vielen Durchläufen ist TStringBuilder schneller.
+Eine String-Variable wird in einer Schleife schrittweise verlängert. Delphi vergrößert Strings meist an Ort und Stelle, deshalb nur mit niedriger Konfidenz und standardmäßig aus; bei vielen Durchläufen ist TStringBuilder schneller. Still, wenn die Variable in jedem Durchlauf vorher neu gesetzt wird, direkt im Schleifenrumpf und nicht hinter then, else oder einer case-Marke (sie wächst dann nicht über die Schleife).
 
 Mit Treffer:
 
@@ -2460,7 +2461,7 @@ end;
 
 **Teurer Aufruf in der Schleifenbedingung** · Code Smell · Hinweis · Gruppe Performance
 
-Die Bedingung von while und until wird bei jedem Durchlauf ausgewertet. Aufrufe wie Trim, Format oder FileExists und Eigenschaften wie Lines.Text werden dort jedes Mal neu berechnet; besser einmal vor der Schleife. Die Grenzen von for werden nur einmal ausgewertet und nicht gemeldet. Standardmäßig aus.
+Die Bedingung von while und until wird bei jedem Durchlauf ausgewertet. Aufrufe wie Trim, Format oder FileExists und Eigenschaften wie Lines.Text werden dort jedes Mal neu berechnet; besser einmal vor der Schleife. Die Grenzen von for werden nur einmal ausgewertet und nicht gemeldet, ebenso .Text als Feld eines Typs derselben Datei (Record-Feld) und Aufrufe, deren Argument die Schleife ändert (Zuweisung, Inc, Dec, Delete, SetLength, Include, Exclude). Standardmäßig aus.
 
 Mit Treffer:
 
@@ -2482,7 +2483,7 @@ while I < Length(Text) do
 
 **Hinzufügen in einer Schleife ohne BeginUpdate** · Code Smell · Hinweis · Gruppe Performance
 
-Items.Add, Lines.Add und ähnliche Aufrufe in einer Schleife zeichnen das Steuerelement bei jedem Aufruf neu. Die Schleife mit BeginUpdate und try … finally EndUpdate umschließen. Still bei Menüs (TMenuItem hat kein BeginUpdate) und bei for-Schleifen mit höchstens 10 Durchläufen (feste Grenzen oder ein statisches Array derselben Datei). Standardmäßig aus.
+Items.Add, Lines.Add und ähnliche Aufrufe in einer Schleife zeichnen das Steuerelement bei jedem Aufruf neu. Die Schleife mit BeginUpdate und try … finally EndUpdate umschließen. Still bei Menüs (TMenuItem hat kein BeginUpdate, auch über Felder wie FParts.Menu.Items) und bei for-Schleifen mit höchstens 10 Durchläufen (feste Grenzen oder ein statisches Array derselben Datei). Standardmäßig aus.
 
 Mit Treffer:
 
@@ -3308,7 +3309,7 @@ for I := 0 to Kunden.Count - 1 do
 
 **Liste in der eigenen Schleife verändert** · Bug · Warnung · Gruppe Fehler finden
 
-Delete, Remove, Add oder eine andere Methode aus der Option mutatingMethods wird auf der Liste aufgerufen, über die die Schleife gerade vorwärts per Index oder mit for … in läuft. Vorwärts überspringt Delete das nächste Element und läuft über das Ende, Add wird nicht mehr durchlaufen und Insert liefert dasselbe Element zweimal; mit for … in wirft die RTL eine Exception. Ein Break oder Exit direkt nach dem Aufruf beendet die Schleife und bleibt still, downto-Schleifen ebenso. Schnellkorrektur bei Indexschleifen: rückwärts mit downto; bei for … in die Elemente sammeln und die Liste nach der Schleife ändern.
+Delete, Remove, Add oder eine andere Methode aus der Option mutatingMethods wird auf der Liste aufgerufen, über die die Schleife gerade vorwärts per Index oder mit for … in läuft. Vorwärts überspringt Delete das nächste Element und läuft über das Ende, Add wird nicht mehr durchlaufen und Insert liefert dasselbe Element zweimal; mit for … in wirft die RTL eine Exception. Ein Break oder Exit ohne Bedingung nach dem Aufruf im selben Block beendet die Schleife und bleibt still (ein Break in einer inneren Schleife zählt nicht), downto-Schleifen ebenso. Schnellkorrektur bei Indexschleifen: rückwärts mit downto; bei for … in die Elemente sammeln und die Liste nach der Schleife ändern.
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -4051,7 +4052,7 @@ if SameText(Land, Standard) then
 
 **Zahl ohne Namen im Code** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
-Zahlenliterale (dezimal, $hex, Gleitkomma, mit Vorzeichen) in Anweisungen, außerhalb von const-Abschnitten, Typen, Array-Grenzen und Teilbereichen. Erlaubte Werte sind einstellbar; DFM-Koordinaten und Tests lassen sich über exclude ausnehmen. Standard aus und niedrige Konfidenz: Treffer erscheinen, wenn die Regel eingeschaltet und minConfidence low ist. Schnellkorrektur: Konstante einführen (#50) im const-Abschnitt der Routine.
+Zahlenliterale (dezimal, $hex, Gleitkomma, mit Vorzeichen) in Anweisungen, außerhalb von const-Abschnitten, Typen, Array-Grenzen und Teilbereichen. Still bei Zahlen, die für sich sprechen: DPI-Basis 96 in MulDiv, volle Bitmasken ($FF, $FFFF, $FFFFFFFF), Zeiteinheiten 24, 60, 1000 und 3600 in *, /, div und mod sowie Argumente von Aufrufen in einem Array-Literal, deren Argumente alle Zahlen sind (Punktlisten wie [P(3.5, 1.5), P(9.5, 1.5)]); SetBounds(12, 9, 360, 23) bleibt gemeldet. Erlaubte Werte sind einstellbar; DFM-Koordinaten und Tests lassen sich über exclude ausnehmen. Standard aus und niedrige Konfidenz: Treffer erscheinen, wenn die Regel eingeschaltet und minConfidence low ist. Schnellkorrektur: Konstante einführen (#50) im const-Abschnitt der Routine.
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -4208,7 +4209,7 @@ TStufe2 = class(TBasis)
 
 **Öffentliches Feld** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
-Felder im public- oder published-Abschnitt einer Klasse. Der Abschnitt ohne Sichtbarkeitswort zählt nur bei Klassen ohne Vorfahren oder mit TObject, weil der Formulardesigner dort seine Felder anlegt. Records sind ausgenommen, außer mit includeRecords; class var wird nicht gemeldet. Standard aus. Schnellkorrektur: Feld kapseln legt das Feld als FName in einen private-Abschnitt am Ende der Klasse und ergänzt im alten Abschnitt property Name read FName write FName; Zugriffe von außen bleiben gültig.
+Felder im public- oder published-Abschnitt einer Klasse. Der Abschnitt ohne Sichtbarkeitswort zählt nur bei Klassen ohne Vorfahren oder mit TObject, weil der Formulardesigner dort seine Felder anlegt. Records sind ausgenommen, außer mit includeRecords; class var und Hilfsklassen unter einem private- oder protected-type-Abschnitt werden nicht gemeldet. Standard aus. Schnellkorrektur: Feld kapseln legt das Feld als FName in einen private-Abschnitt am Ende der Klasse und ergänzt im alten Abschnitt property Name read FName write FName; Zugriffe von außen bleiben gültig.
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -4534,7 +4535,7 @@ finalization
 
 **DUnitX-Test ohne Assert** · Code Smell · Hinweis · Gruppe Packages und Tests
 
-Eine [Test]- oder [TestCase]-Methode, die keine Prüfung aufruft, weder selbst noch über ihre lokalen Routinen, Methoden derselben Klasse oder Routinen der Unit: Sie ist immer grün. Als Prüfung zählen Aufrufe nach assertPatterns (Vorgabe Assert.*, WillRaise*, Check*), System.Assert und Aufrufe an Klassen mit Assert im Namen (TRuleAssert.Reports). Tests mit [WillRaise] oder [Ignore] bleiben still. Sicherheit hoch. Korrekturen: Assert.Pass als Platzhalter einfügen oder zur Methode springen.
+Eine [Test]- oder [TestCase]-Methode, die keine Prüfung aufruft, weder selbst noch über ihre lokalen Routinen, Methoden derselben Klasse, Routinen der Unit oder freie Routinen anderer Units, die der Symbolindex kennt (AssertTextPair aus einer gemeinsamen Testunit): Sie ist immer grün. Als Prüfung zählen Aufrufe nach assertPatterns (Vorgabe Assert.*, WillRaise*, Check*), System.Assert und Aufrufe an Klassen mit Assert im Namen (TRuleAssert.Reports). Tests mit [WillRaise] oder [Ignore] bleiben still. Sicherheit hoch. Korrekturen: Assert.Pass als Platzhalter einfügen oder zur Methode springen.
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -5886,7 +5887,7 @@ end;
 
 **Windows-Handle wird nicht geschlossen** · Bug · Warnung · Gruppe Fehler finden
 
-Ein Windows-Handle in einer lokalen Variablen wird auf einem Weg zum Ende der Routine nicht mit dem passenden Gegenstück geschlossen: CreateFile, CreateEvent, CreateMutex, OpenProcess, CreateProcess (hProcess, hThread) und CreateToolhelp32Snapshot mit CloseHandle, FindFirstFile mit FindClose, RegOpenKeyEx/RegCreateKeyEx mit RegCloseKey, LoadLibrary mit FreeLibrary, GetDC mit ReleaseDC, CreatePen/CreateBrush/CreateFont/CreateBitmap mit DeleteObject, CreateCompatibleDC mit DeleteDC und weitere. Zurückgeben, Speichern in einem Feld oder einer globalen Variablen, Übergabe an eine unbekannte Routine und Verwenden in einer anonymen Methode gelten als Weitergabe. Zweige, in denen eine if-Prüfung sagt, dass das Öffnen misslang (H = 0, H = INVALID_HANDLE_VALUE, RegOpenKeyEx(...) <> ERROR_SUCCESS), und Ausnahmewege (siehe pair-without-finally) zählen nicht. Die Option pairs ergänzt eigene Paare. Konfidenz mittel. Schnellkorrektur, wenn das Handle nie geschlossen wird: die Anweisungen nach dem Öffnen in try … finally mit dem Schließen einschließen bzw. das Schließen anhängen, wenn das Öffnen die letzte Anweisung ist.
+Ein Windows-Handle in einer lokalen Variablen wird auf einem Weg zum Ende der Routine nicht mit dem passenden Gegenstück geschlossen: CreateFile, CreateEvent, CreateMutex, OpenProcess, CreateProcess (hProcess, hThread) und CreateToolhelp32Snapshot mit CloseHandle, FindFirstFile mit FindClose, RegOpenKeyEx/RegCreateKeyEx mit RegCloseKey, LoadLibrary mit FreeLibrary, GetDC mit ReleaseDC, CreatePen/CreateBrush/CreateFont/CreateBitmap mit DeleteObject, CreateCompatibleDC mit DeleteDC und weitere. Zurückgeben, Speichern in einem Feld oder einer globalen Variablen, Übergabe an eine unbekannte Routine, Speichern in einem Array ([H] in einem Ausdruck) und Verwenden in einer anonymen Methode gelten als Weitergabe. Zweige, in denen eine if-Prüfung sagt, dass das Öffnen misslang (H = 0, H = INVALID_HANDLE_VALUE, RegOpenKeyEx(...) <> ERROR_SUCCESS), und Ausnahmewege (siehe pair-without-finally) zählen nicht. Die Option pairs ergänzt eigene Paare. Konfidenz mittel. Schnellkorrektur, wenn das Handle nie geschlossen wird: die Anweisungen nach dem Öffnen in try … finally mit dem Schließen einschließen bzw. das Schließen anhängen, wenn das Öffnen die letzte Anweisung ist.
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -6335,6 +6336,8 @@ Name := GetEnumName(TypeInfo(TStatus), Ord(Status));
 **Bedingung oder Schleife ohne begin … end** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
 Der Rumpf von if … then, else, for, while oder with ist eine einzelne Anweisung ohne begin … end. Mit der Regel haben Bedingungen und Schleifen immer einen Block; eine später ergänzte zweite Anweisung landet so nicht versehentlich außerhalb. else if bleibt erlaubt (das innere if braucht keinen eigenen Block); repeat … until, case … end, try … end und asm … end sind schon Blöcke. Eine leere Anweisung (if X then ;) meldet empty-statement. Rümpfe mit {$IFDEF} meldet die Regel nicht. Solange die Regel an ist, meldet redundant-begin-end nichts. Schnellkorrekturen: begin … end um die Anweisung setzen, für die ganze Methode oder für die ganze Datei, eingerückt nach den Formatierungseinstellungen; ein ; vor else wandert in den Block (kein E2153); mit format.elsePlacement "sameLine" steht else hinter dem neuen end (end else).
+
+Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix missing-begin-end`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
 
 | Option | Typ | Vorgabe | Bedeutung |
 |---|---|---|---|
@@ -6819,9 +6822,13 @@ uses
 
 **Ungenutzte Unit im uses** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
-Aus der Unit eines uses-Eintrags wird nichts verwendet: Kein Bezeichner außerhalb der uses-Listen gleicht einem ihrer interface-Symbole (auch Mitgliedern) oder dem letzten Teil ihres Namens. Dieselbe Analyse wie die abgeblendeten uses-Einträge im Editor (#621): Units, die der Index nicht kennt, Units mit initialization- oder finalization-Abschnitt, Units aus usesKeep und Einträge in inaktiven {$IFDEF}-Zweigen bleiben. Konfidenz hoch. Sichere Korrektur: den Eintrag entfernen (mit seinem Komma; der einzige Eintrag entfernt das ganze uses), auch als Sammelkorrektur mit --fix unused-uses. Still im Editor, wo dieselben Einträge abgeblendet erscheinen, ohne Symbolindex (--no-index) und bei Syntaxfehlern.
+Aus der Unit eines uses-Eintrags wird nichts verwendet: Kein Bezeichner außerhalb der uses-Listen gleicht einem ihrer interface-Symbole (auch Mitgliedern) oder dem letzten Teil ihres Namens. Dieselbe Analyse wie die abgeblendeten uses-Einträge im Editor (#621): Units, die der Index nicht kennt, Units mit initialization- oder finalization-Abschnitt, Units aus usesKeep oder der Option keep, Units, auf die die Formulardatei verweist (globale Variable der Unit mit dem Namen des Moduls in Connection = Form1.Connection, siehe dfm-reference-unit-missing), und Einträge in inaktiven {$IFDEF}-Zweigen bleiben. Konfidenz hoch. Sichere Korrektur: den Eintrag entfernen (mit seinem Komma; der einzige Eintrag entfernt das ganze uses), auch als Sammelkorrektur mit --fix unused-uses. Still im Editor, wo dieselben Einträge abgeblendet erscheinen (das Abblenden folgt der Regel: off, exclude und lsp-ignore nehmen es mit weg), ohne Symbolindex (--no-index) und bei Syntaxfehlern.
 
 Sammelkorrektur: Die sichere Korrektur lässt sich projektweit anwenden (`--fix unused-uses`, MCP `fix_findings`, Befehl „Alle sicheren Treffer korrigieren …“).
+
+| Option | Typ | Vorgabe | Bedeutung |
+|---|---|---|---|
+| `keep` | string-list | `[]` | Units, die nie als ungenutzt gelten, zusätzlich zu usesKeep; auch für das Abblenden im Editor und „uses aufräumen“. |
 
 Mit Treffer:
 
@@ -7103,7 +7110,7 @@ end.
 
 **Member verdeckt einen Member des Vorfahren** · Bug · Warnung · Gruppe Compiler vorab
 
-Eine Property heißt wie ein Feld eines Vorfahren (wie W1009), ein Feld wie ein Feld oder eine Property eines Vorfahren oder eine nicht virtuelle Methode hat Namen und Parameter einer nicht virtuellen Methode eines Vorfahren (die beiden letzten ohne Code: Delphi 13 übersetzt sie still). Code, der über den Vorfahrtyp zugreift, sieht weiter den alten Member. Virtuelle Methoden meldet hides-virtual, lokale Namen shadowed-name. Neu veröffentlichte Properties (property Caption;), Properties mit neuem Typ über einer Property des Vorfahren, overload, reintroduce, Konstruktoren und Klassenmethoden bleiben unbeanstandet. Member, die der Nachfahre nicht sieht (private einer anderen Unit, strict private mit ignoreStrictPrivate), zählen nicht; Vorfahren kommen aus der Datei und dem Symbolindex. Korrektur für Felder und Properties: den Member in der Klassendeklaration und in den Rümpfen ihrer Methoden in dieser Unit umbenennen (aus FName wird FKundeName).
+Eine Property heißt wie ein Feld eines Vorfahren (wie W1009), ein Feld wie ein Feld oder eine Property eines Vorfahren oder eine nicht virtuelle Methode hat Namen und Parameter einer nicht virtuellen Methode eines Vorfahren (die beiden letzten ohne Code: Delphi 13 übersetzt sie still). Code, der über den Vorfahrtyp zugreift, sieht weiter den alten Member. Virtuelle Methoden meldet hides-virtual, lokale Namen shadowed-name. Neu veröffentlichte Properties (property Caption;), Properties mit neuem Typ über einer Property des Vorfahren, Methoden, die eine Methode eines Interfaces aus der eigenen Vorfahrenliste umsetzen (QueryInterface über TInterfacedObject), overload, reintroduce, Konstruktoren und Klassenmethoden bleiben unbeanstandet. Member, die der Nachfahre nicht sieht (private einer anderen Unit, strict private mit ignoreStrictPrivate), zählen nicht; Vorfahren kommen aus der Datei und dem Symbolindex. Korrektur für Felder und Properties: den Member in der Klassendeklaration und in den Rümpfen ihrer Methoden in dieser Unit umbenennen (aus FName wird FKundeName).
 
 Entspricht der Compilermeldung `W1009`.
 
@@ -7831,6 +7838,34 @@ procedure TfrmMeldung.btnOKClick(Sender: TObject);
 begin
   Release;
 end;
+```
+
+<a id="dfm-reference-unit-missing"></a>
+### dfm-reference-unit-missing
+
+**Formulardatei verweist auf ein Modul, dessen Unit nicht in den uses steht** · Bug · Warnung · Gruppe Formulare und Daten
+
+Eine Property der Formulardatei zeigt auf eine Komponente eines anderen Formulars, Rahmens oder Datenmoduls (Connection = Form1.Connection), dessen Unit aber weder im interface- noch im implementation-uses steht. Beim Öffnen des Formulars öffnet die IDE nur die Module aus den uses mit; sonst bleibt der Verweis leer und geht beim Speichern verloren. Zur Laufzeit löst die VCL den Verweis nur auf, solange ein Modul dieses Namens existiert. Das Modul ist der Name der Wurzelkomponente (Form1, nicht TForm1). Seine Unit kommt aus der .dpr des Projekts (Unit1 in 'Unit1.pas' {Form1}, Sicherheit hoch), sonst aus dem Index: globale Variable dieses Namens im interface einer Unit, die ihren Typ als Klasse deklariert (Sicherheit mittel). Still bleibt die Regel bei Verweisen auf das eigene Formular, auf eigene Komponenten (eingebettete Rahmen wie Frame11.Button1) und auf Module, deren Unit weder .dpr noch Index kennen. Gemeldet wird am Feld der Komponente, die den Verweis hält, sonst an der Formularklasse; die Zeile der Formulardatei steht als weitere Stelle dabei. Korrektur: die Unit ins implementation-uses aufnehmen, wie es die IDE anbietet.
+
+Mit Treffer:
+
+```pascal
+// Unit2.dfm: Connection = Form1.Connection
+implementation
+
+{$R *.dfm}
+```
+
+Richtig:
+
+```pascal
+// Unit2.dfm: Connection = Form1.Connection
+implementation
+
+uses
+  Unit1;
+
+{$R *.dfm}
 ```
 
 <a id="parallel-for-shared-write"></a>

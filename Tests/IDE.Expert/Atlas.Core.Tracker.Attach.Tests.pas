@@ -15,6 +15,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasAttachTests = class
   private
     FDir: string;
@@ -82,10 +83,13 @@ uses
   System.Classes,
   System.IOUtils,
   Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Attach,
   Atlas.Core.Tracker.Providers.GitHub,
-  Atlas.Core.Tracker.Providers.YouTrack;
+  Atlas.Core.Tracker.Providers.YouTrack,
+  Atlas.Core.Tracker.Files,
+  Atlas.Core.Tracker.Adapters.LocalFiles;
 
 type
   /// <summary>Transport mit festen Antworten auf POST; merkt sich Adressen, Inhaltstypen und Rümpfe.</summary>
@@ -100,8 +104,8 @@ type
     procedure Answer(const AStatus: array of Integer);
     function Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
       out AError: TAtlasCiFetchError): Boolean;
-    function Post(const AUrl, AContentType: string; const ABody: TBytes; ATimeoutMs: Integer; out AStatus: Integer;
-      out AText: string; out AError: TAtlasCiFetchError): Boolean;
+    function Post(const AUrl, AContentType: string; const ABody: TBytes; ATimeoutMs: Integer;
+      out AResponse: TAtlasCiResponse): Boolean;
   end;
 
   /// <summary>Transport nur zum Lesen (wie vor #1276).</summary>
@@ -117,7 +121,9 @@ var
 begin
   SetLength(FStatus, Length(AStatus));
   for mIndex := 0 to High(AStatus) do
+  begin
     FStatus[mIndex] := AStatus[mIndex];
+  end;
 end;
 
 function TFakeSend.Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
@@ -141,13 +147,15 @@ begin
     begin
       SetLength(Result, Length(ABody));
       for mIndex := 0 to High(ABody) do
+      begin
         Result[mIndex + 1] := Char(ABody[mIndex]);
+      end;
     end;
   end;
 end;
 
 function TFakeSend.Post(const AUrl, AContentType: string; const ABody: TBytes; ATimeoutMs: Integer;
-  out AStatus: Integer; out AText: string; out AError: TAtlasCiFetchError): Boolean;
+  out AResponse: TAtlasCiResponse): Boolean;
 var
   mIndex: Integer;
 begin
@@ -155,11 +163,13 @@ begin
   Urls := Urls + [AUrl];
   ContentTypes := ContentTypes + [AContentType];
   Bodies := Bodies + [BodyText(ABody)];
-  AStatus := 200;
+  AResponse := TAtlasCiResponse.Failed(TAtlasCiFetchError.None);
+  AResponse.Status := 200;
   if mIndex < Length(FStatus) then
-    AStatus := FStatus[mIndex];
-  AText := '{}';
-  AError := TAtlasCiFetchError.None;
+  begin
+    AResponse.Status := FStatus[mIndex];
+  end;
+  AResponse.Text := '{}';
   Result := True;
 end;
 
@@ -188,7 +198,9 @@ var
 begin
   Result := '';
   for mIndex := AFirst to ALast do
+  begin
     Result := Result + 'Zeile ' + IntToStr(mIndex) + #13#10;
+  end;
 end;
 
 { TAtlasAttachTests }
@@ -205,14 +217,18 @@ end;
 
 procedure TAtlasAttachTests.Setup;
 begin
+  TAtlasTrackerFiles.Install(TAtlasTrackerLocalFiles.Create, nil);
   FDir := TPath.Combine(TPath.GetTempPath, 'AtlasAttachTests-' + IntToStr(Random(MaxInt)));
   ForceDirectories(FDir);
 end;
 
 procedure TAtlasAttachTests.TearDown;
 begin
+  TAtlasTrackerFiles.Uninstall;
   if TDirectory.Exists(FDir) then
+  begin
     TDirectory.Delete(FDir, True);
+  end;
   FDir := '';
 end;
 
@@ -290,12 +306,16 @@ begin
   mFileName := TPath.Combine(FDir, 'app.log');
   TFile.WriteAllText(mFileName, NumberedLines(1, 100), TEncoding.ASCII);
   // Alles lesen: letzte 10 Zeilen.
-  Assert.AreEqual(NumberedLines(91, 100).TrimRight, TAtlasAttachLog.ReadTail(mFileName, 10, 0));
+  Assert.IsTrue(TAtlasAttachLog.ReadTail(mFileName, 10, 0, mText));
+  Assert.AreEqual(NumberedLines(91, 100).TrimRight, mText);
   // Nur 30 Bytes von hinten: die angeschnittene Zeile entfällt.
   mBytes := TFile.ReadAllBytes(mFileName);
-  mText := TAtlasAttachLog.ReadTail(mFileName, 0, 30);
+  Assert.IsTrue(TAtlasAttachLog.ReadTail(mFileName, 0, 30, mText));
   Assert.AreEqual('Zeile 99'#13#10'Zeile 100', mText);
   Assert.IsTrue(Length(mBytes) > 30);
+  // Fehlt die Datei: False und kein Text, keine Ausnahme.
+  Assert.IsFalse(TAtlasAttachLog.ReadTail(TPath.Combine(FDir, 'fehlt.log'), 10, 0, mText));
+  Assert.AreEqual('', mText);
 end;
 
 procedure TAtlasAttachTests.DecodeUtf8AndAnsi;

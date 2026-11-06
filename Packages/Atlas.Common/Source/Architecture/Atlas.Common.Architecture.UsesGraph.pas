@@ -115,11 +115,6 @@ type
     procedure ForgetUnresolved(ANode: Integer);
     procedure Relink(const ANames: TArray<string>);
     function NamesOf(ANode: Integer): TArray<string>;
-    function Allowed(const AEdge: TUsesEdge; ASections: TUsesSections): Boolean;
-    function ShortestCycle(AStart: Integer; const AInComponent: TArray<Boolean>; ASections: TUsesSections;
-      out ACycle: TUsesCycle): Boolean;
-    function Components(ASections: TUsesSections): TArray<TArray<Integer>>;
-    function CyclesOf(ASections: TUsesSections): TArray<TUsesCycle>;
     function RecompileMarks(ANode: Integer; out ACount: Integer): TArray<Boolean>;
   public
     constructor Create(const AOptions: TUsesGraphOptions); overload;
@@ -199,11 +194,17 @@ begin
   FileName := StringReplace(AFileName, '\', '/', [rfReplaceAll]);
   Root := StringReplace(ARoot, '\', '/', [rfReplaceAll]);
   if (Root <> '') and (Root[Length(Root)] <> '/') then
+  begin
     Root := Root + '/';
+  end;
   if (Root <> '') and StartsText(Root, FileName) then
-    Result := Copy(FileName, Length(Root) + 1, MaxInt)
+  begin
+    Result := Copy(FileName, Length(Root) + 1, MaxInt);
+  end
   else
+  begin
     Result := FileName;
+  end;
 end;
 
 function ContainsNode(const ANodes: TArray<Integer>; ANode: Integer): Boolean;
@@ -211,8 +212,12 @@ var
   Item: Integer;
 begin
   for Item in ANodes do
+  begin
     if Item = ANode then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -270,13 +275,21 @@ var
   Pattern, Relative: string;
 begin
   if AUnit.UnitName = '' then
+  begin
     Exit(False);
+  end;
   if AUnit.Library_ and not FOptions.IncludeLibrary then
+  begin
     Exit(False);
+  end;
   Relative := RelativeTo(FOptions.Root, AUnit.FileName);
   for Pattern in FOptions.Exclude do
+  begin
     if MatchesGlob(Pattern, AUnit.UnitName) or MatchesGlob(Pattern, Relative) then
+    begin
       Exit(False);
+    end;
+  end;
   Result := True;
 end;
 
@@ -285,10 +298,16 @@ var
   Namespace: string;
 begin
   if FByName.TryGetValue(LowerCase(AName), Result) then
+  begin
     Exit;
+  end;
   for Namespace in FOptions.Namespaces do
+  begin
     if FByName.TryGetValue(LowerCase(Namespace + '.' + AName), Result) then
+    begin
       Exit;
+    end;
+  end;
   Result := -1;
 end;
 
@@ -303,63 +322,79 @@ var
   Users: TList<Integer>;
 begin
   for Name in NamesOf(ANode) do
+  begin
     if FUnresolved.TryGetValue(LowerCase(Name), Users) then
     begin
       Users.Remove(ANode);
       if Users.Count = 0 then
+      begin
         FUnresolved.Remove(LowerCase(Name));
+      end;
     end;
+  end;
+end;
+
+/// <summary>ANode wartet auf eine Unit namens AName (bisher ohne Knoten).</summary>
+procedure AddWaiting(AUnresolved: TUsesWaiting; const AName: string; ANode: Integer);
+var
+  mUsers: TList<Integer>;
+begin
+  if not AUnresolved.TryGetValue(LowerCase(AName), mUsers) then
+  begin
+    mUsers := TList<Integer>.Create;
+    AUnresolved.Add(LowerCase(AName), mUsers);
+  end;
+  if not mUsers.Contains(ANode) then
+  begin
+    mUsers.Add(ANode);
+  end;
 end;
 
 procedure TUsesGraph.Link(ANode: Integer);
 var
-  Item: TUsesNode;
-  Edge: TUsesEdge;
-  Target, Order: Integer;
-  Section: TUsesSection;
-  Names: TArray<string>;
-  Users: TList<Integer>;
-  Ref: TUsesEdgeRef;
-  Target_: TUsesNode;
+  mItem, mTarget: TUsesNode;
+  mEdge: TUsesEdge;
+  mTargetIndex, mOrder: Integer;
+  mSection: TUsesSection;
+  mNames: TArray<string>;
+  mRef: TUsesEdgeRef;
 begin
-  Item := FNodes[ANode];
-  Item.Outgoing := nil;
-  for Section := Low(TUsesSection) to High(TUsesSection) do
+  mItem := FNodes[ANode];
+  mItem.Outgoing := nil;
+  for mSection := Low(TUsesSection) to High(TUsesSection) do
   begin
-    if Section = TUsesSection.Interface_ then
-      Names := FInterfaceNames[ANode]
-    else
-      Names := FImplementationNames[ANode];
-    for Order := 0 to High(Names) do
+    if mSection = TUsesSection.Interface_ then
     begin
-      Target := Resolve(Names[Order]);
-      if Target < 0 then
+      mNames := FInterfaceNames[ANode];
+    end
+    else
+    begin
+      mNames := FImplementationNames[ANode];
+    end;
+    for mOrder := 0 to High(mNames) do
+    begin
+      mTargetIndex := Resolve(mNames[mOrder]);
+      if mTargetIndex < 0 then
       begin
-        if not FUnresolved.TryGetValue(LowerCase(Names[Order]), Users) then
-        begin
-          Users := TList<Integer>.Create;
-          FUnresolved.Add(LowerCase(Names[Order]), Users);
-        end;
-        if not Users.Contains(ANode) then
-          Users.Add(ANode);
+        AddWaiting(FUnresolved, mNames[mOrder], ANode);
         Continue;
       end;
-      Edge.Source := ANode;
-      Edge.Target := Target;
-      Edge.Section := Section;
-      Edge.Order := Order;
-      Edge.Name := Names[Order];
-      Item.Outgoing := Item.Outgoing + [Edge];
+      mEdge.Source := ANode;
+      mEdge.Target := mTargetIndex;
+      mEdge.Section := mSection;
+      mEdge.Order := mOrder;
+      mEdge.Name := mNames[mOrder];
+      mItem.Outgoing := mItem.Outgoing + [mEdge];
     end;
   end;
-  FNodes[ANode] := Item;
-  for Order := 0 to High(Item.Outgoing) do
+  FNodes[ANode] := mItem;
+  for mOrder := 0 to High(mItem.Outgoing) do
   begin
-    Ref.Source := ANode;
-    Ref.Item := Order;
-    Target_ := FNodes[Item.Outgoing[Order].Target];
-    Target_.Incoming := Target_.Incoming + [Ref];
-    FNodes[Item.Outgoing[Order].Target] := Target_;
+    mRef.Source := ANode;
+    mRef.Item := mOrder;
+    mTarget := FNodes[mItem.Outgoing[mOrder].Target];
+    mTarget.Incoming := mTarget.Incoming + [mRef];
+    FNodes[mItem.Outgoing[mOrder].Target] := mTarget;
   end;
 end;
 
@@ -376,8 +411,12 @@ begin
     Target := FNodes[Edge.Target];
     Kept := nil;
     for Ref in Target.Incoming do
+    begin
       if Ref.Source <> ANode then
+      begin
         Kept := Kept + [Ref];
+      end;
+    end;
     Target.Incoming := Kept;
     FNodes[Edge.Target] := Target;
   end;
@@ -386,29 +425,43 @@ begin
   ForgetUnresolved(ANode);
 end;
 
+/// <summary>Knoten, die auf einen der Namen ANames warten, jeder einmal in der Reihenfolge des Auftretens.
+/// </summary>
+function WaitingFor(AUnresolved: TUsesWaiting; const ANames: TArray<string>): TArray<Integer>;
+var
+  mName: string;
+  mUsers: TList<Integer>;
+  mNode: Integer;
+begin
+  Result := nil;
+  for mName in ANames do
+  begin
+    if not AUnresolved.TryGetValue(LowerCase(mName), mUsers) then
+    begin
+      Continue;
+    end;
+    for mNode in mUsers do
+    begin
+      if not ContainsNode(Result, mNode) then
+      begin
+        Result := Result + [mNode];
+      end;
+    end;
+  end;
+end;
+
 procedure TUsesGraph.Relink(const ANames: TArray<string>);
 var
-  Name: string;
-  Users: TList<Integer>;
-  Waiting: TList<Integer>;
-  Node_: Integer;
+  mNode: Integer;
 begin
   // Ein neuer oder entfernter Knoten ändert die Auflösung bei allen, die seinen Namen verwenden.
-  Waiting := TList<Integer>.Create;
-  try
-    for Name in ANames do
-      if FUnresolved.TryGetValue(LowerCase(Name), Users) then
-        for Node_ in Users do
-          if not Waiting.Contains(Node_) then
-            Waiting.Add(Node_);
-    for Node_ in Waiting do
-      if FNodes[Node_].Active then
-      begin
-        Unlink(Node_);
-        Link(Node_);
-      end;
-  finally
-    Waiting.Free;
+  for mNode in WaitingFor(FUnresolved, ANames) do
+  begin
+    if FNodes[mNode].Active then
+    begin
+      Unlink(mNode);
+      Link(mNode);
+    end;
   end;
 end;
 
@@ -428,7 +481,9 @@ begin
   begin
     Item := FNodes[Index_];
     if (Item.Hash = AUnit.Hash) and (Item.Stamp = AUnit.Stamp) and SameText(Item.UnitName, AUnit.UnitName) then
+    begin
       Exit;
+    end;
     if not SameText(Item.UnitName, AUnit.UnitName) then
     begin
       // Unit umbenannt: wie Entfernen und neu Anlegen.
@@ -464,8 +519,12 @@ begin
   Key := AUnit.UnitName;
   Relink([Key]);
   for Namespace in FOptions.Namespaces do
+  begin
     if StartsText(Namespace + '.', Key) then
+    begin
       Relink([Copy(Key, Length(Namespace) + 2, MaxInt)]);
+    end;
+  end;
 end;
 
 procedure TUsesGraph.Remove(const AFileName: string);
@@ -477,30 +536,44 @@ var
   Key, Namespace: string;
 begin
   if not FByFile.TryGetValue(NormalizedPath(AFileName), Index_) then
+  begin
     Exit;
+  end;
   Unlink(Index_);
   Item := FNodes[Index_];
   // Wer die Unit verwendet, verliert die Kante; der Name gilt dort wieder als offen.
   Users := nil;
   for Ref in Item.Incoming do
+  begin
     if not ContainsNode(Users, Ref.Source) then
+    begin
       Users := Users + [Ref.Source];
+    end;
+  end;
   Item.Active := False;
   Item.Incoming := nil;
   FNodes[Index_] := Item;
   FByFile.Remove(NormalizedPath(AFileName));
   Key := LowerCase(Item.UnitName);
   if FByName.TryGetValue(Key, Name_) and (Name_ = Index_) then
+  begin
     FByName.Remove(Key);
+  end;
   for Name_ in Users do
+  begin
     if FNodes[Name_].Active then
     begin
       Unlink(Name_);
       Link(Name_);
     end;
+  end;
   for Namespace in FOptions.Namespaces do
+  begin
     if StartsText(Namespace + '.', Item.UnitName) then
+    begin
       Relink([Copy(Item.UnitName, Length(Namespace) + 2, MaxInt)]);
+    end;
+  end;
 end;
 
 function TUsesGraph.Synchronize(const AUnits: TArray<TUnitIndex>): Integer;
@@ -518,21 +591,29 @@ begin
     for Unit_ in AUnits do
     begin
       if not Accepts(Unit_) then
+      begin
         Continue;
+      end;
       Seen.AddOrSetValue(NormalizedPath(Unit_.FileName), True);
       if FByFile.TryGetValue(NormalizedPath(Unit_.FileName), Index_) then
       begin
         Item := FNodes[Index_];
         if (Item.Hash = Unit_.Hash) and (Item.Stamp = Unit_.Stamp) and SameText(Item.UnitName, Unit_.UnitName) then
+        begin
           Continue;
+        end;
       end;
       Update(Unit_);
       Inc(Result);
     end;
     Gone := nil;
     for Index_ := 0 to FNodes.Count - 1 do
+    begin
       if FNodes[Index_].Active and not Seen.ContainsKey(NormalizedPath(FNodes[Index_].FileName)) then
+      begin
         Gone := Gone + [FNodes[Index_].FileName];
+      end;
+    end;
     for FileName in Gone do
     begin
       Remove(FileName);
@@ -554,8 +635,12 @@ var
 begin
   Result := 0;
   for Index_ := 0 to FNodes.Count - 1 do
+  begin
     if FNodes[Index_].Active then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 function TUsesGraph.EdgeCount: Integer;
@@ -564,8 +649,12 @@ var
 begin
   Result := 0;
   for Index_ := 0 to FNodes.Count - 1 do
+  begin
     if FNodes[Index_].Active then
+    begin
       Inc(Result, Length(FNodes[Index_].Outgoing));
+    end;
+  end;
 end;
 
 function TUsesGraph.Node(AIndex: Integer): TUsesNode;
@@ -581,7 +670,9 @@ end;
 function TUsesGraph.IndexOfFile(const AFileName: string): Integer;
 begin
   if not FByFile.TryGetValue(NormalizedPath(AFileName), Result) then
+  begin
     Result := -1;
+  end;
 end;
 
 function TUsesGraph.SortedNodes: TArray<Integer>;
@@ -592,14 +683,20 @@ begin
   List := TList<Integer>.Create;
   try
     for Index_ := 0 to FNodes.Count - 1 do
+    begin
       if FNodes[Index_].Active then
+      begin
         List.Add(Index_);
+      end;
+    end;
     List.Sort(TComparer<Integer>.Construct(
       function(const ALeft, ARight: Integer): Integer
       begin
         Result := CompareText(FNodes[ALeft].UnitName, FNodes[ARight].UnitName);
         if Result = 0 then
+        begin
           Result := ALeft - ARight;
+        end;
       end));
     Result := List.ToArray;
   finally
@@ -615,13 +712,16 @@ begin
     begin
       Result := CompareText(AGraph.Node(ALeft).UnitName, AGraph.Node(ARight).UnitName);
       if Result = 0 then
+      begin
         Result := ALeft - ARight;
+      end;
     end));
 end;
 
-function TUsesGraph.Allowed(const AEdge: TUsesEdge; ASections: TUsesSections): Boolean;
+/// <summary>Kante gehört zu einem der Abschnitte ASections und führt zu einem aktiven Knoten.</summary>
+function EdgeAllowed(AGraph: TUsesGraph; const AEdge: TUsesEdge; ASections: TUsesSections): Boolean;
 begin
-  Result := (AEdge.Section in ASections) and FNodes[AEdge.Target].Active;
+  Result := (AEdge.Section in ASections) and AGraph.Node(AEdge.Target).Active;
 end;
 
 function TUsesGraph.DirectDependencies(ANode: Integer; ASections: TUsesSections): TArray<Integer>;
@@ -630,8 +730,12 @@ var
 begin
   Result := nil;
   for Edge in FNodes[ANode].Outgoing do
-    if Allowed(Edge, ASections) and not ContainsNode(Result, Edge.Target) then
+  begin
+    if EdgeAllowed(Self, Edge, ASections) and not ContainsNode(Result, Edge.Target) then
+    begin
       Result := Result + [Edge.Target];
+    end;
+  end;
 end;
 
 function TUsesGraph.DirectDependents(ANode: Integer; ASections: TUsesSections): TArray<Integer>;
@@ -645,7 +749,9 @@ begin
     Edge := FNodes[Ref.Source].Outgoing[Ref.Item];
     if (Edge.Section in ASections) and FNodes[Ref.Source].Active and
       not ContainsNode(Result, Ref.Source) then
+    begin
       Result := Result + [Ref.Source];
+    end;
   end;
   SortByName(Self, Result);
 end;
@@ -667,12 +773,14 @@ begin
     begin
       Current := Stack.Pop;
       for Next in DirectDependencies(Current, ASections) do
+      begin
         if not Seen[Next] then
         begin
           Seen[Next] := True;
           Found.Add(Next);
           Stack.Push(Next);
         end;
+      end;
     end;
     Result := Found.ToArray;
   finally
@@ -699,12 +807,14 @@ begin
     begin
       Current := Stack.Pop;
       for Next in DirectDependents(Current, ASections) do
+      begin
         if not Seen[Next] then
         begin
           Seen[Next] := True;
           Found.Add(Next);
           Stack.Push(Next);
         end;
+      end;
     end;
     Result := Found.ToArray;
   finally
@@ -740,7 +850,9 @@ begin
       begin
         Source := FNodes[Ref.Source];
         if not Source.Active then
+        begin
           Continue;
+        end;
         if (Ref.Source <> ANode) and not Result[Ref.Source] then
         begin
           Result[Ref.Source] := True;
@@ -767,11 +879,13 @@ begin
   SetLength(Result, Count);
   Count := 0;
   for Node_ := 0 to High(Marks) do
+  begin
     if Marks[Node_] then
     begin
       Result[Count] := Node_;
       Inc(Count);
     end;
+  end;
   SortByName(Self, Result);
 end;
 
@@ -790,11 +904,15 @@ var
 begin
   Result := nil;
   if (AFrom = ATo) or (AFrom < 0) or (ATo < 0) or not FNodes[AFrom].Active or not FNodes[ATo].Active then
+  begin
     Exit;
+  end;
   SetLength(Via, FNodes.Count);
   SetLength(ViaItem, FNodes.Count);
   for Item := 0 to High(Via) do
+  begin
     Via[Item] := -1;
+  end;
   Via[AFrom] := AFrom;
   Queue := TQueue<Integer>.Create;
   try
@@ -805,8 +923,10 @@ begin
       for Item := 0 to High(FNodes[Current].Outgoing) do
       begin
         Edge := FNodes[Current].Outgoing[Item];
-        if not Allowed(Edge, ASections) or (Via[Edge.Target] >= 0) then
+        if not EdgeAllowed(Self, Edge, ASections) or (Via[Edge.Target] >= 0) then
+        begin
           Continue;
+        end;
         Via[Edge.Target] := Current;
         ViaItem[Edge.Target] := Item;
         Queue.Enqueue(Edge.Target);
@@ -816,7 +936,9 @@ begin
     Queue.Free;
   end;
   if Via[ATo] < 0 then
+  begin
     Exit;
+  end;
   Step := ATo;
   while Step <> AFrom do
   begin
@@ -831,201 +953,321 @@ type
     Next: Integer;
   end;
 
-function TUsesGraph.Components(ASections: TUsesSections): TArray<TArray<Integer>>;
-var
-  Order, Low_: TArray<Integer>;
-  OnStack: TArray<Boolean>;
-  Stack: TStack<Integer>;
-  Frames: TStack<TTarjanFrame>;
-  Counter, Start, Member: Integer;
-  Frame, Parent: TTarjanFrame;
-  Edge: TUsesEdge;
-  Component: TArray<Integer>;
-  Advanced: Boolean;
+  /// <summary>Zyklen über die Kanten der Abschnitte ASections: stark zusammenhängende Komponenten nach Tarjan
+  /// (ohne Rekursion, tiefe Ketten sprengen sonst den Stapel, vgl. #1094), je Komponente der kürzeste Rundweg.
+  /// </summary>
+  TUsesCycleFinder = class
+  private
+    FGraph: TUsesGraph;
+    FSections: TUsesSections;
+    FOrder, FLow: TArray<Integer>;
+    FOnStack: TArray<Boolean>;
+    FCounter: Integer;
+    FStack: TStack<Integer>;
+    FFrames: TStack<TTarjanFrame>;
+    FComponents: TArray<TArray<Integer>>;
+    /// <summary>ANode betreten: Nummer vergeben, auf beide Stapel legen.</summary>
+    procedure Enter(ANode: Integer);
+    /// <summary>Nächste Kante von AFrame; True, wenn ein neuer Knoten betreten wurde.</summary>
+    function Advance(var AFrame: TTarjanFrame): Boolean;
+    /// <summary>AFrame ist fertig: ggf. Komponente abschließen, kleinste Nummer an den Elternrahmen geben.</summary>
+    procedure Finish(const AFrame: TTarjanFrame);
+    procedure Connect(AStart: Integer);
+    function Components: TArray<TArray<Integer>>;
+    function HasSelfLoop(ANode: Integer): Boolean;
+    /// <summary>Kante zählt für den Rundweg: erlaubt und innerhalb der Komponente.</summary>
+    function Follows(const AEdge: TUsesEdge; const AInComponent: TArray<Boolean>): Boolean;
+    /// <summary>Breitensuche ab AStart innerhalb der Komponente, bis eine Kante zurück zu AStart führt.
+    /// </summary>
+    function ShortestCycle(AStart: Integer; const AInComponent: TArray<Boolean>; out ACycle: TUsesCycle): Boolean;
+  public
+    constructor Create(AGraph: TUsesGraph; ASections: TUsesSections);
+    destructor Destroy; override;
+    function Cycles: TArray<TUsesCycle>;
+  end;
+
+constructor TUsesCycleFinder.Create(AGraph: TUsesGraph; ASections: TUsesSections);
 begin
-  // Tarjan ohne Rekursion (tiefe Ketten sprengen sonst den Stapel, vgl. #1094).
-  Result := nil;
-  SetLength(Order, FNodes.Count);
-  SetLength(Low_, FNodes.Count);
-  SetLength(OnStack, FNodes.Count);
-  for Start := 0 to High(Order) do
-    Order[Start] := -1;
-  Counter := 0;
-  Stack := TStack<Integer>.Create;
-  Frames := TStack<TTarjanFrame>.Create;
-  try
-    for Start in SortedNodes do
+  inherited Create;
+  FGraph := AGraph;
+  FSections := ASections;
+  FStack := TStack<Integer>.Create;
+  FFrames := TStack<TTarjanFrame>.Create;
+end;
+
+destructor TUsesCycleFinder.Destroy;
+begin
+  FFrames.Free;
+  FStack.Free;
+  inherited;
+end;
+
+procedure TUsesCycleFinder.Enter(ANode: Integer);
+var
+  mFrame: TTarjanFrame;
+begin
+  mFrame.Node := ANode;
+  mFrame.Next := 0;
+  FOrder[ANode] := FCounter;
+  FLow[ANode] := FCounter;
+  Inc(FCounter);
+  FStack.Push(ANode);
+  FOnStack[ANode] := True;
+  FFrames.Push(mFrame);
+end;
+
+function TUsesCycleFinder.Advance(var AFrame: TTarjanFrame): Boolean;
+var
+  mEdge: TUsesEdge;
+  mOutgoing: TUsesEdges;
+begin
+  mOutgoing := FGraph.Node(AFrame.Node).Outgoing;
+  while AFrame.Next <= High(mOutgoing) do
+  begin
+    mEdge := mOutgoing[AFrame.Next];
+    Inc(AFrame.Next);
+    if not EdgeAllowed(FGraph, mEdge, FSections) then
     begin
-      if Order[Start] >= 0 then
-        Continue;
-      Frame.Node := Start;
-      Frame.Next := 0;
-      Order[Start] := Counter;
-      Low_[Start] := Counter;
-      Inc(Counter);
-      Stack.Push(Start);
-      OnStack[Start] := True;
-      Frames.Push(Frame);
-      while Frames.Count > 0 do
-      begin
-        Frame := Frames.Pop;
-        Advanced := False;
-        while Frame.Next <= High(FNodes[Frame.Node].Outgoing) do
-        begin
-          Edge := FNodes[Frame.Node].Outgoing[Frame.Next];
-          Inc(Frame.Next);
-          if not Allowed(Edge, ASections) then
-            Continue;
-          if Order[Edge.Target] < 0 then
-          begin
-            Frames.Push(Frame);
-            Parent.Node := Edge.Target;
-            Parent.Next := 0;
-            Order[Edge.Target] := Counter;
-            Low_[Edge.Target] := Counter;
-            Inc(Counter);
-            Stack.Push(Edge.Target);
-            OnStack[Edge.Target] := True;
-            Frames.Push(Parent);
-            Advanced := True;
-            Break;
-          end
-          else if OnStack[Edge.Target] and (Order[Edge.Target] < Low_[Frame.Node]) then
-            Low_[Frame.Node] := Order[Edge.Target];
-        end;
-        if Advanced then
-          Continue;
-        if Low_[Frame.Node] = Order[Frame.Node] then
-        begin
-          Component := nil;
-          repeat
-            Member := Stack.Pop;
-            OnStack[Member] := False;
-            Component := Component + [Member];
-          until Member = Frame.Node;
-          SortByName(Self, Component);
-          Result := Result + [Component];
-        end;
-        if Frames.Count > 0 then
-        begin
-          Parent := Frames.Pop;
-          if Low_[Frame.Node] < Low_[Parent.Node] then
-            Low_[Parent.Node] := Low_[Frame.Node];
-          Frames.Push(Parent);
-        end;
-      end;
+      Continue;
     end;
-  finally
-    Frames.Free;
-    Stack.Free;
+    if FOrder[mEdge.Target] < 0 then
+    begin
+      FFrames.Push(AFrame);
+      Enter(mEdge.Target);
+      Exit(True);
+    end;
+    if FOnStack[mEdge.Target] and (FOrder[mEdge.Target] < FLow[AFrame.Node]) then
+    begin
+      FLow[AFrame.Node] := FOrder[mEdge.Target];
+    end;
+  end;
+  Result := False;
+end;
+
+procedure TUsesCycleFinder.Finish(const AFrame: TTarjanFrame);
+var
+  mComponent: TArray<Integer>;
+  mMember: Integer;
+  mParent: TTarjanFrame;
+begin
+  if FLow[AFrame.Node] = FOrder[AFrame.Node] then
+  begin
+    mComponent := nil;
+    repeat
+      mMember := FStack.Pop;
+      FOnStack[mMember] := False;
+      mComponent := mComponent + [mMember];
+    until mMember = AFrame.Node;
+    SortByName(FGraph, mComponent);
+    FComponents := FComponents + [mComponent];
+  end;
+  if FFrames.Count > 0 then
+  begin
+    mParent := FFrames.Pop;
+    if FLow[AFrame.Node] < FLow[mParent.Node] then
+    begin
+      FLow[mParent.Node] := FLow[AFrame.Node];
+    end;
+    FFrames.Push(mParent);
   end;
 end;
 
-function TUsesGraph.ShortestCycle(AStart: Integer; const AInComponent: TArray<Boolean>; ASections: TUsesSections;
+procedure TUsesCycleFinder.Connect(AStart: Integer);
+var
+  mFrame: TTarjanFrame;
+begin
+  Enter(AStart);
+  while FFrames.Count > 0 do
+  begin
+    mFrame := FFrames.Pop;
+    if not Advance(mFrame) then
+    begin
+      Finish(mFrame);
+    end;
+  end;
+end;
+
+function TUsesCycleFinder.Components: TArray<TArray<Integer>>;
+var
+  mStart: Integer;
+begin
+  FComponents := nil;
+  SetLength(FOrder, FGraph.NodeCount);
+  SetLength(FLow, FGraph.NodeCount);
+  SetLength(FOnStack, FGraph.NodeCount);
+  for mStart := 0 to High(FOrder) do
+  begin
+    FOrder[mStart] := -1;
+  end;
+  FCounter := 0;
+  for mStart in FGraph.SortedNodes do
+  begin
+    if FOrder[mStart] < 0 then
+    begin
+      Connect(mStart);
+    end;
+  end;
+  Result := FComponents;
+end;
+
+function TUsesCycleFinder.HasSelfLoop(ANode: Integer): Boolean;
+var
+  mEdge: TUsesEdge;
+begin
+  for mEdge in FGraph.Node(ANode).Outgoing do
+  begin
+    if EdgeAllowed(FGraph, mEdge, FSections) and (mEdge.Target = ANode) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function TUsesCycleFinder.Follows(const AEdge: TUsesEdge; const AInComponent: TArray<Boolean>): Boolean;
+begin
+  Result := EdgeAllowed(FGraph, AEdge, FSections) and AInComponent[AEdge.Target];
+end;
+
+/// <summary>Rundweg aus den Vorgängern AVia/AViaItem bis ALast und der Kante ALastItem zurück zu AStart.
+/// </summary>
+function CycleFromPath(AGraph: TUsesGraph; AStart, ALast, ALastItem: Integer;
+  const AVia, AViaItem: TArray<Integer>): TUsesCycle;
+var
+  mStep: Integer;
+  mEdge: TUsesEdge;
+begin
+  Result := Default(TUsesCycle);
+  Result.Edges := [AGraph.Node(ALast).Outgoing[ALastItem]];
+  mStep := ALast;
+  while mStep <> AStart do
+  begin
+    Result.Edges := [AGraph.Node(AVia[mStep]).Outgoing[AViaItem[mStep]]] + Result.Edges;
+    mStep := AVia[mStep];
+  end;
+  Result.InterfaceOnly := True;
+  for mEdge in Result.Edges do
+  begin
+    Result.Units := Result.Units + [mEdge.Source];
+    if mEdge.Section <> TUsesSection.Interface_ then
+    begin
+      Result.InterfaceOnly := False;
+    end;
+  end;
+end;
+
+function TUsesCycleFinder.ShortestCycle(AStart: Integer; const AInComponent: TArray<Boolean>;
   out ACycle: TUsesCycle): Boolean;
 var
-  Via, ViaItem: TArray<Integer>;
-  Queue: TQueue<Integer>;
-  Current, Item, Step, Last, LastItem: Integer;
-  Edge: TUsesEdge;
+  mVia, mViaItem: TArray<Integer>;
+  mQueue: TQueue<Integer>;
+  mCurrent, mItem, mLast, mLastItem: Integer;
+  mEdge: TUsesEdge;
 begin
-  // Breitensuche ab AStart innerhalb der Komponente, bis eine Kante zurück zu AStart führt.
   ACycle := Default(TUsesCycle);
-  SetLength(Via, FNodes.Count);
-  SetLength(ViaItem, FNodes.Count);
-  for Item := 0 to High(Via) do
-    Via[Item] := -1;
-  Via[AStart] := AStart;
-  Last := -1;
-  LastItem := -1;
-  Queue := TQueue<Integer>.Create;
+  SetLength(mVia, FGraph.NodeCount);
+  SetLength(mViaItem, FGraph.NodeCount);
+  for mItem := 0 to High(mVia) do
+  begin
+    mVia[mItem] := -1;
+  end;
+  mVia[AStart] := AStart;
+  mLast := -1;
+  mLastItem := -1;
+  mQueue := TQueue<Integer>.Create;
   try
-    Queue.Enqueue(AStart);
-    while (Queue.Count > 0) and (Last < 0) do
+    mQueue.Enqueue(AStart);
+    while (mQueue.Count > 0) and (mLast < 0) do
     begin
-      Current := Queue.Dequeue;
-      for Item := 0 to High(FNodes[Current].Outgoing) do
+      mCurrent := mQueue.Dequeue;
+      for mItem := 0 to High(FGraph.Node(mCurrent).Outgoing) do
       begin
-        Edge := FNodes[Current].Outgoing[Item];
-        if not Allowed(Edge, ASections) or not AInComponent[Edge.Target] then
-          Continue;
-        if Edge.Target = AStart then
+        mEdge := FGraph.Node(mCurrent).Outgoing[mItem];
+        if not Follows(mEdge, AInComponent) then
         begin
-          Last := Current;
-          LastItem := Item;
+          Continue;
+        end;
+        if mEdge.Target = AStart then
+        begin
+          mLast := mCurrent;
+          mLastItem := mItem;
           Break;
         end;
-        if Via[Edge.Target] >= 0 then
-          Continue;
-        Via[Edge.Target] := Current;
-        ViaItem[Edge.Target] := Item;
-        Queue.Enqueue(Edge.Target);
+        if mVia[mEdge.Target] < 0 then
+        begin
+          mVia[mEdge.Target] := mCurrent;
+          mViaItem[mEdge.Target] := mItem;
+          mQueue.Enqueue(mEdge.Target);
+        end;
       end;
     end;
   finally
-    Queue.Free;
+    mQueue.Free;
   end;
-  Result := Last >= 0;
-  if not Result then
-    Exit;
-  ACycle.Edges := [FNodes[Last].Outgoing[LastItem]];
-  Step := Last;
-  while Step <> AStart do
+  Result := mLast >= 0;
+  if Result then
   begin
-    ACycle.Edges := [FNodes[Via[Step]].Outgoing[ViaItem[Step]]] + ACycle.Edges;
-    Step := Via[Step];
-  end;
-  ACycle.InterfaceOnly := True;
-  for Edge in ACycle.Edges do
-  begin
-    ACycle.Units := ACycle.Units + [Edge.Source];
-    if Edge.Section <> TUsesSection.Interface_ then
-      ACycle.InterfaceOnly := False;
+    ACycle := CycleFromPath(FGraph, AStart, mLast, mLastItem, mVia, mViaItem);
   end;
 end;
 
-function TUsesGraph.CyclesOf(ASections: TUsesSections): TArray<TUsesCycle>;
+function TUsesCycleFinder.Cycles: TArray<TUsesCycle>;
 var
-  Component: TArray<Integer>;
-  InComponent: TArray<Boolean>;
-  Member: Integer;
-  Cycle: TUsesCycle;
-  SelfLoop: Boolean;
-  Edge: TUsesEdge;
+  mComponent: TArray<Integer>;
+  mInComponent: TArray<Boolean>;
+  mMember: Integer;
+  mCycle: TUsesCycle;
+  mGraph: TUsesGraph;
 begin
   Result := nil;
-  SetLength(InComponent, FNodes.Count);
-  for Component in Components(ASections) do
+  SetLength(mInComponent, FGraph.NodeCount);
+  for mComponent in Components do
   begin
-    SelfLoop := False;
-    if Length(Component) = 1 then
-      for Edge in FNodes[Component[0]].Outgoing do
-        if Allowed(Edge, ASections) and (Edge.Target = Component[0]) then
-          SelfLoop := True;
-    if (Length(Component) < 2) and not SelfLoop then
-      Continue;
-    for Member in Component do
-      InComponent[Member] := True;
-    if ShortestCycle(Component[0], InComponent, ASections, Cycle) then
+    if (Length(mComponent) < 2) and not HasSelfLoop(mComponent[0]) then
     begin
-      Cycle.Component := Component;
-      Result := Result + [Cycle];
+      Continue;
     end;
-    for Member in Component do
-      InComponent[Member] := False;
+    for mMember in mComponent do
+    begin
+      mInComponent[mMember] := True;
+    end;
+    if ShortestCycle(mComponent[0], mInComponent, mCycle) then
+    begin
+      mCycle.Component := mComponent;
+      Result := Result + [mCycle];
+    end;
+    for mMember in mComponent do
+    begin
+      mInComponent[mMember] := False;
+    end;
   end;
+  mGraph := FGraph;
   TArray.Sort<TUsesCycle>(Result, TComparer<TUsesCycle>.Construct(
     function(const ALeft, ARight: TUsesCycle): Integer
     begin
-      Result := CompareText(FNodes[ALeft.Units[0]].UnitName, FNodes[ARight.Units[0]].UnitName);
+      Result := CompareText(mGraph.Node(ALeft.Units[0]).UnitName, mGraph.Node(ARight.Units[0]).UnitName);
       if Result = 0 then
+      begin
         Result := ALeft.Units[0] - ARight.Units[0];
+      end;
     end));
+end;
+
+function CyclesOf(AGraph: TUsesGraph; ASections: TUsesSections): TArray<TUsesCycle>;
+var
+  mFinder: TUsesCycleFinder;
+begin
+  mFinder := TUsesCycleFinder.Create(AGraph, ASections);
+  try
+    Result := mFinder.Cycles;
+  finally
+    mFinder.Free;
+  end;
 end;
 
 function TUsesGraph.Cycles(ASections: TUsesSections): TArray<TUsesCycle>;
 begin
-  Result := CyclesOf(ASections);
+  Result := CyclesOf(Self, ASections);
 end;
 
 function TUsesGraph.AllCycles: TArray<TUsesCycle>;
@@ -1036,22 +1278,32 @@ var
   Member: Integer;
   InError: TArray<Boolean>;
 begin
-  Errors := CyclesOf(InterfaceUsesOnly);
-  Wider := CyclesOf(AllUsesSections);
+  Errors := CyclesOf(Self, InterfaceUsesOnly);
+  Wider := CyclesOf(Self, AllUsesSections);
   Result := Errors;
   SetLength(InError, FNodes.Count);
   for Error in Errors do
+  begin
     for Member in Error.Component do
+    begin
       InError[Member] := True;
+    end;
+  end;
   // Eine Komponente über alle Kanten, die nur aus Units eines interface-Zyklus besteht, zeigt nichts Neues.
   for Cycle in Wider do
   begin
     Covered := True;
     for Member in Cycle.Component do
+    begin
       if not InError[Member] then
+      begin
         Covered := False;
+      end;
+    end;
     if not Covered then
+    begin
       Result := Result + [Cycle];
+    end;
   end;
 end;
 
@@ -1067,7 +1319,9 @@ begin
   // initialisiert sind: Nachordnung einer Tiefensuche.
   Result := nil;
   if (ARoot < 0) or not FNodes[ARoot].Active then
+  begin
     Exit;
+  end;
   SetLength(Seen, FNodes.Count);
   Frames := TStack<TTarjanFrame>.Create;
   try
@@ -1084,7 +1338,9 @@ begin
         Edge := FNodes[Frame.Node].Outgoing[Frame.Next];
         Inc(Frame.Next);
         if not FNodes[Edge.Target].Active or Seen[Edge.Target] then
+        begin
           Continue;
+        end;
         Seen[Edge.Target] := True;
         Frames.Push(Frame);
         Child.Node := Edge.Target;
@@ -1094,9 +1350,13 @@ begin
         Break;
       end;
       if Advanced then
+      begin
         Continue;
+      end;
       if not AOnlyWithInitialization or FNodes[Frame.Node].HasInitialization then
+      begin
         Result := Result + [Frame.Node];
+      end;
     end;
   finally
     Frames.Free;
@@ -1109,10 +1369,14 @@ var
 begin
   Result := '';
   if AEdges = nil then
+  begin
     Exit;
+  end;
   Result := FNodes[AEdges[0].Source].UnitName;
   for Edge in AEdges do
+  begin
     Result := Result + ' → ' + FNodes[Edge.Target].UnitName;
+  end;
 end;
 
 end.

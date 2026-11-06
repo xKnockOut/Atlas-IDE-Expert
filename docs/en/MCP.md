@@ -14,6 +14,9 @@ claude mcp add delphi -- AtlasServer.exe --mcp --root C:\Projekte\App
 current directory. `--log <Datei>` writes a log; stdout belongs solely
 to the protocol.
 
+Language (#1458): the descriptions of the tools and their parameters, notes and error messages
+follow `--locale de|en`, otherwise `language` from the global `settings.json`, otherwise English.
+
 If `--root` contains exactly one `.groupproj`, the server additionally indexes all
 other projects of the group into the same index (`index.projectGroup`, on by default).
 This way it also finds units contained only in another project of the group when
@@ -96,9 +99,9 @@ The project's own prompts are in `atlas.json` under `mcp.customPrompts`. Placeho
     "customPrompts": [
       {
         "name": "check_unit",
-        "description": "Unit vor dem Review prüfen",
-        "arguments": [{ "name": "unit", "description": "Unit-Name", "required": true }],
-        "text": "Prüfe {unit}: Befunde zuerst, dann Methoden über den Grenzwerten.",
+        "description": "Check a unit before the review",
+        "arguments": [{ "name": "unit", "description": "Unit name", "required": true }],
+        "text": "Check {unit}: findings first, then methods above the thresholds.",
         "include": ["diagnostics", "metrics"]
       }
     ]
@@ -113,7 +116,7 @@ Prompts compared with the commands of the Claude Code plugin (`/atlas:bauen`): t
 | Tool | Parameters | Result |
 |---|---|---|
 | `find_symbol` | `name` | Locations with kind, type, unit, file:line; without an exact hit, substring search |
-| `get_declaration` | `name` | Source text of the declaration, also from RTL/VCL; plus the section “Begründungen:” (rationale, #1123) with `// WHY:`, `// HACK:`, `// NOTE:` … above the declaration and in the body of the implementation, per entry marker, line and text (off with `hints.rationale`) |
+| `get_declaration` | `name` | Source text of the declaration, also from RTL/VCL; plus the section “Rationales:” (“Begründungen:” with German server texts, #1123) with `// WHY:`, `// HACK:`, `// NOTE:` … above the declaration and in the body of the implementation, per entry marker, line and text (off with `hints.rationale`) |
 | `get_type_hierarchy` | `name` | Ancestors up to the root, descendants recursively |
 | `get_component_info` | `name` | Published properties with type and default (explicit, implicit, `nodefault`, `stored`), events with signature, ancestor chain, palette page from `RegisterComponents`, package from `contains` of the .dpk; without sources a note instead of an empty list |
 | `get_unit_outline` | `unit` | uses lists and symbols of a unit with line numbers |
@@ -127,7 +130,7 @@ Prompts compared with the commands of the Claude Code plugin (`/atlas:bauen`): t
 | `get_metrics` | `file` (optional), `format` (`markdown` or `json`) | Code metrics per method (#66): length in lines of code, nesting depth, cyclomatic and cognitive complexity, parameter count; report with the methods above a limit from `atlas.json` (rules `metric-*`, option `max`) or the metric data as JSON |
 | `get_todos` | `file`, `unit`, `category`, `owner`, `keyword`, `includeDone` (all optional), `format` (`markdown` or `json`) | TODO overview (#68) of all files that the project model assigns to the project: `// TODO`, `// FIXME` and the format of the IDE's To-Do List `{ TODO 1 -oPerson -cKategorie : Text }` with priority, person and category, filtered by unit, category, person or marker; completed entries (`{ DONE … }`) only with `includeDone`. More markers via the option `keywords` of the rule `todo-comment`. Markdown with counts by category and person and one table per unit, or JSON (`format` 1, lines from 1) |
 | `get_rationale` | `unit` or `name` | Rationale (#1123) of a unit (comments in the interface before the first type and all symbols with a location) or of a symbol (above the declaration and in the body of the implementation), per entry marker, line from 1 and text. Markers from `hints.rationaleMarkers` (default `NOTE`, `WHY`, `HACK`, `IMPORTANT`, `RATIONALE`); markers of the TODO overview never appear. Also works with `hints.rationale` off; can be switched off via `mcp.disabledTools` |
-| `get_architecture` | `section` (`overview`, `central`, `subsystems`, `cycles`, `crossLinks`; default `overview`), `unit` (optional), `compareWith` (optional, path relative to the project), `resolution` (optional, 0.2 to 5.0; granularity of the subsystems for this call, otherwise `architecture.grouping.resolution`, #1366) | Architecture overview (#1118) from the uses graph: subsystems (Louvain groups of tightly connected units, oversized and loose ones subdivided and marked as “Teil von …” (part of), #1364; cross-cutting foundation units in the subsystem “Fundament” with a rule, #1365) with names, central units, cycles and cross links between subsystems, each with file:line of the uses entries; with `unit` the profile of a unit, with `architecture.explainAssignment` (default on, #1368) including the block “Zuordnung” (assignment): edges per subsystem (interface, impl., weighted sum; edges to the foundation “zählt nicht” (does not count)) and, for a close assignment, how many edges are missing for a switch; with `compareWith` (saved state from `AtlasServer --architecture <Datei.json>` or “Save state …”, #1121) the sections of the comparison: new and removed cycles, cross links and uses edges between subsystems, subsystem changes, grown central units, new and removed units and which kinds from `architecture.failOn` occur. Colours and names of the subsystems are aligned to the previous state as in the window (#1367, `architecture.grouping.keepPrevious`; line “Teilsysteme an Stand vom … angeglichen”). Scope (`architecture.scope`), library units and exclusions from `atlas.json`; the same numbers as the “Atlas architecture” window and `--architecture`. Not offered with `architecture.enabled` = false |
+| `get_architecture` | `section` (`overview`, `central`, `subsystems`, `cycles`, `crossLinks`; default `overview`), `unit` (optional), `compareWith` (optional, path relative to the project), `resolution` (optional, 0.2 to 5.0; granularity of the subsystems for this call, otherwise `architecture.grouping.resolution`, #1366) | Architecture overview (#1118) from the uses graph: subsystems (Louvain groups of tightly connected units, oversized and loose ones subdivided and marked as “Teil von …” (part of), #1364; cross-cutting foundation units in the subsystem “Fundament” with a rule, #1365) with names, central units, cycles and cross links between subsystems, each with file:line of the uses entries; with `unit` the profile of a unit, with `architecture.explainAssignment` (default on, #1368) including the block “Assignment” (“Zuordnung” with German server texts): edges per subsystem (interface, impl., weighted sum; edges to the foundation “does not count”) and, for a close assignment, how many edges are missing for a switch; with `compareWith` (saved state from `AtlasServer --architecture <Datei.json>` or “Save state …”, #1121) the sections of the comparison: new and removed cycles, cross links and uses edges between subsystems, subsystem changes, grown central units, new and removed units and which kinds from `architecture.failOn` occur. Colours and names of the subsystems are aligned to the previous state as in the window (#1367, `architecture.grouping.keepPrevious`; line “Teilsysteme an Stand vom … angeglichen”). Scope (`architecture.scope`), library units and exclusions from `atlas.json`; the same numbers as the “Atlas architecture” window and `--architecture`. Not offered with `architecture.enabled` = false |
 | `query_code` | `query` (query or `@name`; empty = short help with all sets, fields and predicates), `format` (`markdown` or `json`), `limit` (default 200) | Code queries over the index (#1351): `<Menge> where <Bedingung> [order by <Feld> [asc\|desc]] [limit n]` over `units`, `classes`, `records`, `interfaces`, `methods`, `routines`, `fields`, `properties`, `forms`; fields such as `name`, `unit`, `visibility`, `methods`, `lines`, `complexity`, `cognitive`, `nesting`, `params`, `callers`, `callees`, `overrides`, `uses`, `usedBy`, `ancestor`, `components`; predicates `inherits` (transitive), `implements`, `uses`, `calls`, `has attribute`, comparisons, `like` with `*`/`?`, `and`, `or`, `not`, parentheses. Numbers as in `get_metrics` and `find_unused_code`; inferred calls (#1119) count and are marked. An error comes in German with column and suggestion. Saved queries from `queries` in `atlas.json` via `@name`. Read-only; missing with `query.enabled` off |
 | `get_hotspots` | `level` (`unit` or `method`; default `unit`), `limit` (default 20), `months` (1–60; default `hotspots.months`), `section` (`hotspots` or `coupling`; default `hotspots`), `format` (`text`, `markdown`, `json`; default `text`) | Hotspots (#1354): units or methods that were changed often in the period and are complex at the same time (score = normalised changes × normalised cognitive complexity), with changes, authors, lines, trend of complexity compared with the state three months ago and last change from Git or SVN (`vcs.provider`, renames tracked); with `section` = `coupling` the change coupling: pairs with at least `hotspots.coupling.minCommits` shared commits and a share of at least 70 %, without a uses edge between them (without .pas/.dfm pairs, without commits with more than 50 files). Without version control a note instead of data; the same numbers as the “Atlas hotspots” window and `--hotspots`. Not offered with `hotspots.enabled` = false |
 | `get_server_status` | `format` (`markdown` or `json`; default `markdown`) | Status of the Atlas server (#1356) with the same numbers as the IDE's “Atlas server” window: process, version, uptime, state (loading, ready, checking), memory per area (symbols, usages, library units, syntax trees, open documents, rest) against the budget, last check run with the 10 slowest units and rules, queue, cache hits and the slowest requests. The MCP process reads the last status of the IDE's server for the project folder from `%LOCALAPPDATA%\Atlas\Status\server-<pid>.json` (written by the server on every status query, at most 60 s old); if none is running, the status of this MCP process is returned. The first line or `source` names the source. Read-only; can be switched off via `mcp.disabledTools` |
@@ -159,16 +162,16 @@ This separates errors in the server from errors in the description or schema tha
 ### MCP Inspector
 
 ```powershell
-# Oberfläche im Browser: links Server verbinden, oben "Tools", rechts "Messages" mit jedem Aufruf roh
+# UI in the browser: connect the server on the left, "Tools" on top, "Messages" on the right with every raw call
 pwsh Tools/Start-McpInspector.ps1 -ProjectRoot Tests/Referenzprojekt
 
-# Oberfläche im Terminal (SSH, Cloud-Sitzung)
+# UI in the terminal (SSH, cloud session)
 pwsh Tools/Start-McpInspector.ps1 -Tui
 
-# Kommandozeile, ein Aufruf, Ergebnis als JSON
+# Command line, one call, result as JSON
 pwsh Tools/Start-McpInspector.ps1 -Method tools/list -Strict
 pwsh Tools/Start-McpInspector.ps1 -Method tools/call -Tool qualified_name -Arguments @{ file = 'Application/AtlasServer.dpr'; line = 1; column = 9; withParameters = $true }
-pwsh Tools/Start-McpInspector.ps1 -Method resources/read -Uri delphi://conventions -Output konventionen.json
+pwsh Tools/Start-McpInspector.ps1 -Method resources/read -Uri delphi://conventions -Output conventions.json
 pwsh Tools/Start-McpInspector.ps1 -Method prompts/get -Prompt unit_review -Arguments @{ unit = 'Shell.Mcp' }
 pwsh Tools/Start-McpInspector.ps1 -Method resources/read -Uri delphi://unit/Shell.Mcp
 ```

@@ -162,7 +162,9 @@ begin
       begin
         Result := SameText(AFileName, VclFile);
         if Result then
+        begin
           AData := TEncoding.UTF8.GetBytes(UnitVcl);
+        end;
       end;
     Result := TRuleEngine.Run([TDfmPropertyCheckRule.Create], Settings, Context);
   finally
@@ -187,7 +189,9 @@ begin
   SetLength(Offsets, Length(Lines) + 1);
   Offsets[0] := 0;
   for Index := 0 to High(Lines) do
+  begin
     Offsets[Index + 1] := Offsets[Index] + Length(Lines[Index]) + 1;
+  end;
   TArray.Sort<TRuleEdit>(AEdits, TComparer<TRuleEdit>.Construct(
     function(const ALeft, ARight: TRuleEdit): Integer
     begin
@@ -228,7 +232,9 @@ begin
       begin
         Result := SameText(AFileName, VclFile);
         if Result then
+        begin
           AData := TEncoding.UTF8.GetBytes(UnitVcl);
+        end;
       end;
     Result := TRuleEngine.Run([TDfmPropertyCheckRule.Create], Settings, Context);
   finally
@@ -374,7 +380,9 @@ var
 begin
   Result := nil;
   for Issue in AIssues do
+  begin
     Result := Result + [Issue.Message];
+  end;
 end;
 
 procedure TDfmPropertyRulesTests.UnknownClassOrPropertyInConfiguration;
@@ -399,7 +407,9 @@ begin
     begin
       Result := SameText(AFileName, VclFile);
       if Result then
+      begin
         AData := TEncoding.UTF8.GetBytes(UnitVcl);
+      end;
     end);
   Assert.AreEqual(3, Integer(Length(Issues)), string.Join(' | ', MessagesOf(Issues)));
   Assert.AreEqual('Klasse "TLabelX" ist im Index unbekannt; die Eigenschaftsregel greift nie', Issues[0].Message);

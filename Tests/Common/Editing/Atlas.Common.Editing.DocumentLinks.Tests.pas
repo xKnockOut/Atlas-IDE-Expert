@@ -57,15 +57,21 @@ var
 begin
   SetLength(List, Length(AFiles));
   for I := 0 to High(AFiles) do
+  begin
     List[I] := AFiles[I];
+  end;
   Result :=
     function(const AFileName: string): Boolean
     var
       Name: string;
     begin
       for Name in List do
+      begin
         if SameText(Name, AFileName) then
+        begin
           Exit(True);
+        end;
+      end;
       Result := False;
     end;
 end;

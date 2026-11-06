@@ -17,74 +17,118 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  System.StrUtils;
 
 { TTextEntities }
 
 class function TTextEntities.CodePointText(ACode: Integer): string;
 begin
   if (ACode <= 0) or (ACode > $10FFFF) or ((ACode >= $D800) and (ACode <= $DFFF)) then
+  begin
     Exit('');
+  end;
   if ACode <= $FFFF then
+  begin
     Exit(Char(ACode));
+  end;
   Dec(ACode, $10000);
   Result := Char($D800 + (ACode shr 10)) + Char($DC00 + (ACode and $3FF));
 end;
 
+// Zeichen zu einer Zahlenangabe ("#65", "#x41"); '' ohne gültige Zahl.
+function NumericEntity(const AName: string): string;
+var
+  mCode: Integer;
+  mDigits: string;
+begin
+  Result := '';
+  if (Length(AName) > 2) and ((AName[2] = 'x') or (AName[2] = 'X')) then
+  begin
+    mDigits := '$' + Copy(AName, 3, MaxInt);
+  end
+  else
+  begin
+    mDigits := Copy(AName, 2, MaxInt);
+  end;
+  if TryStrToInt(mDigits, mCode) then
+  begin
+    Result := TTextEntities.CodePointText(mCode);
+  end;
+end;
+
+// Text zur Entity AName (ohne & und ;); '' bei unbekannten Namen.
+function EntityText(const AName: string): string;
+begin
+  if (Length(AName) > 1) and (AName[1] = '#') then
+  begin
+    Exit(NumericEntity(AName));
+  end;
+  case IndexStr(AName, ['lt', 'gt', 'amp', 'quot', 'apos']) of
+    0:
+      Result := '<';
+    1:
+      Result := '>';
+    2:
+      Result := '&';
+    3:
+      Result := '"';
+    4:
+      Result := '''';
+  else
+    Result := '';
+  end;
+end;
+
+// Ersetzung der Entity bei AIndex (AText[AIndex] = '&'); ANext ist dann die Stelle dahinter.
+function EntityAt(const AText: string; AIndex: Integer; out ANext: Integer): string;
+var
+  mClose: Integer;
+begin
+  Result := '';
+  ANext := AIndex + 1;
+  mClose := Pos(';', AText, AIndex + 1);
+  if (mClose > 0) and (mClose - AIndex <= 10) then
+  begin
+    Result := EntityText(Copy(AText, AIndex + 1, mClose - AIndex - 1));
+    ANext := mClose + 1;
+  end;
+end;
+
 class function TTextEntities.Decode(const AText: string): string;
 var
-  Index, Close, Code: Integer;
-  Name, Replacement: string;
-  Builder: TStringBuilder;
+  mIndex, mNext: Integer;
+  mReplacement: string;
+  mBuilder: TStringBuilder;
 begin
   if Pos('&', AText) = 0 then
+  begin
     Exit(AText);
-  Builder := TStringBuilder.Create(Length(AText));
+  end;
+  mBuilder := TStringBuilder.Create(Length(AText));
   try
-    Index := 1;
-    while Index <= Length(AText) do
+    mIndex := 1;
+    while mIndex <= Length(AText) do
     begin
-      if AText[Index] = '&' then
+      mReplacement := '';
+      if AText[mIndex] = '&' then
       begin
-        Close := Pos(';', AText, Index + 1);
-        if (Close > 0) and (Close - Index <= 10) then
-        begin
-          Name := Copy(AText, Index + 1, Close - Index - 1);
-          Replacement := '';
-          if Name = 'lt' then
-            Replacement := '<'
-          else if Name = 'gt' then
-            Replacement := '>'
-          else if Name = 'amp' then
-            Replacement := '&'
-          else if Name = 'quot' then
-            Replacement := '"'
-          else if Name = 'apos' then
-            Replacement := ''''
-          else if (Length(Name) > 2) and ((Name[2] = 'x') or (Name[2] = 'X')) and (Name[1] = '#') then
-          begin
-            if TryStrToInt('$' + Copy(Name, 3, MaxInt), Code) then
-              Replacement := CodePointText(Code);
-          end
-          else if (Length(Name) > 1) and (Name[1] = '#') then
-          begin
-            if TryStrToInt(Copy(Name, 2, MaxInt), Code) then
-              Replacement := CodePointText(Code);
-          end;
-          if Replacement <> '' then
-          begin
-            Builder.Append(Replacement);
-            Index := Close + 1;
-            Continue;
-          end;
-        end;
+        mReplacement := EntityAt(AText, mIndex, mNext);
       end;
-      Builder.Append(AText[Index]);
-      Inc(Index);
+      if mReplacement <> '' then
+      begin
+        mBuilder.Append(mReplacement);
+        mIndex := mNext;
+      end
+      else
+      begin
+        mBuilder.Append(AText[mIndex]);
+        Inc(mIndex);
+      end;
     end;
-    Result := Builder.ToString;
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 

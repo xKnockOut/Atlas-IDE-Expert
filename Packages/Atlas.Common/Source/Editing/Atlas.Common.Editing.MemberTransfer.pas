@@ -139,7 +139,34 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Editing.TextChanges;
+  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TMemberTransferText = (GenericMethodsCannotBeVirtual, StaticClassMethodsCannotBe, MessageMethodsStayAsThey,
+    AlreadyOverridesAMethodOf, IsAlreadyAbstract, OnlyChangesTheVisibilityOf, TheClassIsNoLonger, TheUnitOfHasNo,
+    TheClassIsNotReadable, OnlyMethods, Needs);
+
+const
+  cTexts: array[TMemberTransferText] of TAtlasText = (
+    (De: 'generische Methoden können nicht virtuell sein'; En: 'generic methods cannot be virtual'),
+    (De: 'statische Klassenmethoden können nicht virtuell sein'; En: 'static class methods cannot be virtual'),
+    (De: 'Message-Methoden bleiben, wie sie sind'; En: 'message methods stay as they are'),
+    (De: 'überschreibt schon eine Methode des Vorfahren'; En: 'already overrides a method of the ancestor'),
+    (De: 'ist schon abstrakt'; En: 'is already abstract'),
+    (De: 'ändert nur die Sichtbarkeit eines geerbten Mitglieds';
+     En: 'only changes the visibility of an inherited member'),
+    (De: 'Die Klasse %s ist nicht mehr lesbar.'; En: 'The class %s is no longer readable.'),
+    (De: 'Die Unit von %s hat keinen implementation-Teil für die Rümpfe.';
+     En: 'The unit of %s has no implementation part for the bodies.'),
+    (De: 'Die Klasse %s ist nicht lesbar.'; En: 'The class %s is not readable.'),
+    (De: 'nur Methoden'; En: 'only methods'),
+    (De: '%s braucht %s'; En: '%s needs %s'));
+
+{$SCOPEDENUMS OFF}
 
 const
   /// <summary>Direktiven, die eine neu geschriebene Deklaration behält.</summary>
@@ -168,8 +195,12 @@ var
   Item: Integer;
 begin
   for Item in AList do
+  begin
     if Item = AValue then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -178,8 +209,12 @@ var
   Item: Integer;
 begin
   for Item in AItems do
+  begin
     if not Has(AList, Item) then
+    begin
       Exit(False);
+    end;
+  end;
   Result := True;
 end;
 
@@ -202,18 +237,33 @@ end;
 class function TMemberTransfer.AbstractBlocker(const AMember: TClassMember): string;
 begin
   if AMember.Kind <> TClassMemberKind.Method then
-    Exit('nur Methoden');
-  if AMember.IsGeneric then
-    Exit('generische Methoden können nicht virtuell sein');
-  if AMember.HasDirective('static') then
-    Exit('statische Klassenmethoden können nicht virtuell sein');
-  if AMember.HasDirective('message') then
-    Exit('Message-Methoden bleiben, wie sie sind');
-  if AMember.HasDirective('override') then
-    Exit('überschreibt schon eine Methode des Vorfahren');
-  if AMember.IsAbstract then
-    Exit('ist schon abstrakt');
-  Result := '';
+  begin
+    Result := cTexts[TMemberTransferText.OnlyMethods].Text;
+  end
+  else if AMember.IsGeneric then
+  begin
+    Result := cTexts[TMemberTransferText.GenericMethodsCannotBeVirtual].Text;
+  end
+  else if AMember.HasDirective('static') then
+  begin
+    Result := cTexts[TMemberTransferText.StaticClassMethodsCannotBe].Text;
+  end
+  else if AMember.HasDirective('message') then
+  begin
+    Result := cTexts[TMemberTransferText.MessageMethodsStayAsThey].Text;
+  end
+  else if AMember.HasDirective('override') then
+  begin
+    Result := cTexts[TMemberTransferText.AlreadyOverridesAMethodOf].Text;
+  end
+  else if AMember.IsAbstract then
+  begin
+    Result := cTexts[TMemberTransferText.IsAlreadyAbstract].Text;
+  end
+  else
+  begin
+    Result := '';
+  end;
 end;
 
 class function TMemberTransfer.Candidates(ALayout: TClassLayout): TArray<TTransferCandidate>;
@@ -228,7 +278,9 @@ begin
   begin
     Member := ALayout.Members[Index];
     if not KindOf(Member, Kind) then
+    begin
       Continue;
+    end;
     Item := Default(TTransferCandidate);
     Item.Id := Index;
     Item.Name := Member.Name;
@@ -236,13 +288,17 @@ begin
     Item.Visibility := Member.Visibility;
     Item.Enabled := True;
     if Kind = TTransferKind.Method then
-      Item.Display := ALayout.Head(Index)
+    begin
+      Item.Display := ALayout.Head(Index);
+    end
     else
+    begin
       Item.Display := ALayout.Declaration(Index);
+    end;
     if Member.IsRedeclaration then
     begin
       Item.Enabled := False;
-      Item.Reason := 'ändert nur die Sichtbarkeit eines geerbten Mitglieds';
+      Item.Reason := cTexts[TMemberTransferText.OnlyChangesTheVisibilityOf].Text;
     end
     else if Kind = TTransferKind.Method then
     begin
@@ -250,8 +306,12 @@ begin
       Item.CanAbstract := Item.Reason = '';
     end;
     for Need in ALayout.UsedBy(Index) do
+    begin
       if KindOf(ALayout.Members[Need], NeedKind) then
+      begin
         Item.Needs := Item.Needs + [Need];
+      end;
+    end;
     Result := Result + [Item];
   end;
 end;
@@ -261,8 +321,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(ACandidates) do
+  begin
     if ACandidates[Index].Id = AId then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -275,43 +339,63 @@ var
 begin
   Result := nil;
   for Id in AMoved do
+  begin
     for Need in ALayout.UsedBy(Id) do
+    begin
       if not Has(AChosen, Need) and KindOf(ALayout.Members[Need], Kind) then
       begin
-        Text := Format('%s braucht %s', [ALayout.Members[Id].Name, ALayout.Members[Need].Name]);
+        Text := cTexts[TMemberTransferText.Needs].Fmt([ALayout.Members[Id].Name, ALayout.Members[Need].Name]);
         if IndexText(Text, Result) < 0 then
+        begin
           Result := Result + [Text];
+        end;
       end;
+    end;
+  end;
+end;
+
+/// <summary>Benutzt ein Mitglied, das bleibt, das Mitglied AId? Konstruktoren und Destruktoren fragt AStaysUsed,
+/// wenn angegeben.</summary>
+function UsedByStaying(ALayout: TClassLayout; AId: Integer; const AMoved: TArray<Integer>;
+  const AStaysUsed: TStillUses): Boolean;
+var
+  mUser: Integer;
+begin
+  for mUser in ALayout.UsersOf(AId) do
+  begin
+    if TMemberTransfer.Has(AMoved, mUser) then
+    begin
+      Continue;
+    end;
+    if not Assigned(AStaysUsed) or not (ALayout.Members[mUser].Kind in [TClassMemberKind.Constructor_,
+      TClassMemberKind.Destructor_]) or AStaysUsed(mUser) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 class function TMemberTransfer.MustRaise(ALayout: TClassLayout; AId: Integer; const AMoved: TArray<Integer>;
   AAlwaysUsed, ASameUnit: Boolean; const AStaysUsed: TStillUses): Boolean;
 var
-  Member: TClassMember;
-  User: Integer;
+  mMember: TClassMember;
 begin
-  Member := ALayout.Members[AId];
-  if not (Member.Visibility in [TClassVisibility.StrictPrivate, TClassVisibility.Private_]) then
+  mMember := ALayout.Members[AId];
+  if not (mMember.Visibility in [TClassVisibility.StrictPrivate, TClassVisibility.Private_]) then
+  begin
     Exit(False);
+  end;
   // In derselben Unit sieht die Klasse private Mitglieder ihrer Vorfahren und Nachfahren ohnehin.
-  if (Member.Visibility = TClassVisibility.Private_) and ASameUnit then
+  if (mMember.Visibility = TClassVisibility.Private_) and ASameUnit then
+  begin
     Exit(False);
-  Result := AAlwaysUsed;
-  if not Result then
-    for User in ALayout.UsersOf(AId) do
-    begin
-      if Has(AMoved, User) then
-        Continue;
-      if Assigned(AStaysUsed) and (ALayout.Members[User].Kind in [TClassMemberKind.Constructor_,
-        TClassMemberKind.Destructor_]) then
-        Result := AStaysUsed(User)
-      else
-        Result := True;
-      if Result then
-        Break;
-    end;
-  if not Result and (Member.Visibility = TClassVisibility.Private_) then
-    Result := UsedOutside(ALayout, Member.Name);
+  end;
+  Result := AAlwaysUsed or UsedByStaying(ALayout, AId, AMoved, AStaysUsed);
+  if not Result and (mMember.Visibility = TClassVisibility.Private_) then
+  begin
+    Result := UsedOutside(ALayout, mMember.Name);
+  end;
 end;
 
 class function TMemberTransfer.DirectiveTexts(ALayout: TClassLayout; AHeader: TSyntaxNode): TArray<string>;
@@ -320,59 +404,86 @@ var
 begin
   Result := nil;
   for Index := 0 to AHeader.ChildCount - 1 do
+  begin
     if AHeader[Index].Kind = TSyntaxKind.Directive then
+    begin
       Result := Result + [CollapseSpace(ALayout.TextOf(AHeader[Index]))];
+    end;
+  end;
+end;
+
+/// <summary>Entfernt die Direktive ADirective samt Semikolon davor ("; reintroduce").</summary>
+function DirectiveRemoval(ALayout: TClassLayout; const ALines: TLineTable; ADirective: TSyntaxNode): TTextEdit;
+var
+  mOffset: Integer;
+begin
+  mOffset := ADirective.StartOffset;
+  while (mOffset > 0) and CharInSet(ALayout.Text[mOffset], [' ', #9, #13, #10]) do
+  begin
+    Dec(mOffset);
+  end;
+  if (mOffset > 0) and (ALayout.Text[mOffset] = ';') then
+  begin
+    Dec(mOffset);
+  end;
+  Result := TTextEdit.Create(TTextRange.Create(ALines.PositionAt(mOffset), ADirective.EndPos), '');
+end;
+
+/// <summary>override vor der ersten Hinweisdirektive (AHint) bzw. am Ende des Kopfs AHeader (AHint = nil).
+/// </summary>
+function OverrideAddition(AHeader, AHint: TSyntaxNode): TTextEdit;
+begin
+  if AHint <> nil then
+  begin
+    Result := TTextEdit.Create(TTextRange.Create(AHint.StartPos, AHint.StartPos), 'override; ');
+  end
+  else
+  begin
+    Result := TTextEdit.Create(TTextRange.Create(AHeader.EndPos, AHeader.EndPos), ' override;');
+  end;
 end;
 
 class function TMemberTransfer.OverrideEdits(ALayout: TClassLayout; AHeader: TSyntaxNode;
   AAddOverride: Boolean): TArray<TTextEdit>;
 var
-  Index, Offset: Integer;
-  Directive: TSyntaxNode;
-  Found: Boolean;
-  Lines: TLineTable;
-  HintPos: TTextPosition;
-  HasHint: Boolean;
+  mIndex: Integer;
+  mDirective, mHint: TSyntaxNode;
+  mFound: Boolean;
+  mLines: TLineTable;
 begin
   Result := nil;
-  Found := False;
-  HasHint := False;
-  HintPos := AHeader.EndPos;
-  Lines := TLineTable.Build(ALayout.Text);
-  for Index := 0 to AHeader.ChildCount - 1 do
+  mFound := False;
+  mHint := nil;
+  mLines := TLineTable.Build(ALayout.Text);
+  for mIndex := 0 to AHeader.ChildCount - 1 do
   begin
-    Directive := AHeader[Index];
-    if Directive.Kind <> TSyntaxKind.Directive then
+    mDirective := AHeader[mIndex];
+    if mDirective.Kind <> TSyntaxKind.Directive then
+    begin
       Continue;
-    if MatchText(Directive.Name, ['virtual', 'dynamic']) and not Found then
+    end;
+    if MatchText(mDirective.Name, ['virtual', 'dynamic']) and not mFound then
     begin
-      Result := Result + [TTextEdit.Create(TTextRange.Create(Directive.StartPos, Directive.EndPos), 'override')];
-      Found := True;
+      Result := Result + [TTextEdit.Create(TTextRange.Create(mDirective.StartPos, mDirective.EndPos), 'override')];
+      mFound := True;
     end
-    else if SameText(Directive.Name, 'override') then
-      Found := True
-    else if MatchText(Directive.Name, ['reintroduce', 'abstract', 'virtual', 'dynamic']) then
+    else if SameText(mDirective.Name, 'override') then
     begin
-      // "; reintroduce" samt Semikolon davor entfernen.
-      Offset := Directive.StartOffset;
-      while (Offset > 0) and CharInSet(ALayout.Text[Offset], [' ', #9, #13, #10]) do
-        Dec(Offset);
-      if (Offset > 0) and (ALayout.Text[Offset] = ';') then
-        Dec(Offset);
-      Result := Result + [TTextEdit.Create(TTextRange.Create(Lines.PositionAt(Offset), Directive.EndPos), '')];
+      mFound := True;
     end
-    else if MatchText(Directive.Name, HintDirectives) and not HasHint then
+    else if MatchText(mDirective.Name, ['reintroduce', 'abstract', 'virtual', 'dynamic']) then
     begin
-      HasHint := True;
-      HintPos := Directive.StartPos;
+      Result := Result + [DirectiveRemoval(ALayout, mLines, mDirective)];
+    end
+    else if MatchText(mDirective.Name, HintDirectives) and (mHint = nil) then
+    begin
+      mHint := mDirective;
     end;
   end;
-  if Found or not AAddOverride then
-    Exit;
-  if HasHint then
-    Result := Result + [TTextEdit.Create(TTextRange.Create(HintPos, HintPos), 'override; ')]
-  else
-    Result := Result + [TTextEdit.Create(TTextRange.Create(AHeader.EndPos, AHeader.EndPos), ' override;')];
+  if not mFound and AAddOverride then
+  begin
+    Result := Result + [OverrideAddition(AHeader, mHint)];
+  end;
 end;
 
 /// <summary>Kopf, behaltene Direktiven, AMiddle (z. B. "virtual;"), Hinweisdirektiven.</summary>
@@ -382,12 +493,20 @@ var
 begin
   Result := ALayout.Head(AIndex);
   for Directive in ALayout.Members[AIndex].Directives do
+  begin
     if MatchText(Directive, KeptDirectives) then
+    begin
       Result := Result + ' ' + Directive + ';';
+    end;
+  end;
   Result := Result + ' ' + AMiddle;
   for Directive in TMemberTransfer.DirectiveTexts(ALayout, ALayout.Members[AIndex].Node) do
+  begin
     if MatchText(Directive.Split([' '])[0], HintDirectives) then
+    begin
       Result := Result + ' ' + Directive + ';';
+    end;
+  end;
 end;
 
 class function TMemberTransfer.AbstractDeclaration(ALayout: TClassLayout; AIndex: Integer): string;
@@ -397,10 +516,16 @@ begin
   Result := ALayout.Head(AIndex);
   // reintroduce bleibt: Die Basisklasse verdeckt dann die Methode des alten Vorfahren (sonst W1010).
   if ALayout.Members[AIndex].HasDirective('reintroduce') then
+  begin
     Result := Result + ' reintroduce;';
+  end;
   for Directive in ALayout.Members[AIndex].Directives do
+  begin
     if MatchText(Directive, KeptDirectives) then
+    begin
       Result := Result + ' ' + Directive + ';';
+    end;
+  end;
   Result := Result + ' virtual; abstract;';
 end;
 
@@ -425,15 +550,21 @@ begin
   if Member.IsFieldGroup then
   begin
     for Doc in ALayout.DocLines(AIndex) do
+    begin
       Result := Result + [ALayout.MemberIndent + Doc];
+    end;
     Result := Result + [ALayout.MemberIndent + ALayout.Declaration(AIndex)];
     Exit;
   end;
   for Line := Member.FirstLine to Member.LastLine do
+  begin
     Result := Result + [ALayout.Lines[Line]];
+  end;
   // Aus einem class-var-Abschnitt: am Ziel ohne den Abschnitt, also mit class var davor.
   if (Member.Kind = TClassMemberKind.ClassVar) and not StartsText('class', TrimLeft(Result[High(Result)])) then
+  begin
     Result[High(Result)] := ALayout.MemberIndent + 'class var ' + TrimLeft(Result[High(Result)]);
+  end;
 end;
 
 class function TMemberTransfer.MemberText(ALayout: TClassLayout; AIndex: Integer): string;
@@ -444,11 +575,17 @@ begin
   for Line in MemberLines(ALayout, AIndex) do
   begin
     if Result <> '' then
+    begin
       Result := Result + #10;
+    end;
     if StartsStr(ALayout.MemberIndent, Line) then
-      Result := Result + Copy(Line, Length(ALayout.MemberIndent) + 1, MaxInt)
+    begin
+      Result := Result + Copy(Line, Length(ALayout.MemberIndent) + 1, MaxInt);
+    end
     else
+    begin
       Result := Result + TrimLeft(Line);
+    end;
   end;
 end;
 
@@ -458,34 +595,57 @@ var
 begin
   Result := '';
   for Doc in ALayout.DocLines(AIndex) do
+  begin
     Result := Result + Doc + #10;
+  end;
   Result := Result + ADeclaration;
+end;
+
+/// <summary>Steht vor dem Token AIndex (ohne Kommentare und Direktiven) ein Punkt?</summary>
+function AfterDot(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
+var
+  mPrevious: Integer;
+begin
+  mPrevious := AIndex - 1;
+  while (mPrevious >= 0) and (ATokens[mPrevious].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+  begin
+    Dec(mPrevious);
+  end;
+  Result := (mPrevious >= 0) and ATokens[mPrevious].IsSymbol('.');
+end;
+
+/// <summary>Liegt ALine in der Klassendeklaration oder im Rumpf einer ihrer Methoden?</summary>
+function InsideClass(ALayout: TClassLayout; ALine: Integer): Boolean;
+var
+  mMember: TClassMember;
+begin
+  if (ALine >= ALayout.FirstLine) and (ALine <= ALayout.EndLine) then
+  begin
+    Exit(True);
+  end;
+  for mMember in ALayout.Members do
+  begin
+    if (mMember.Body <> nil) and (ALine >= mMember.BodyFirstLine) and (ALine <= mMember.BodyLastLine) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 class function TMemberTransfer.UsedOutside(ALayout: TClassLayout; const AName: string): Boolean;
 var
-  Tokens: TArray<TPascalToken>;
-  Index, Previous, Line: Integer;
-  Member: TClassMember;
-  Inside: Boolean;
+  mTokens: TArray<TPascalToken>;
+  mIndex: Integer;
 begin
-  Tokens := ALayout.Tree.Tokens;
-  for Index := 1 to High(Tokens) do
+  mTokens := ALayout.Tree.Tokens;
+  for mIndex := 1 to High(mTokens) do
   begin
-    if (Tokens[Index].Kind <> TPascalTokenKind.Identifier) or not SameText(Tokens[Index].Text, AName) then
-      Continue;
-    Previous := Index - 1;
-    while (Previous >= 0) and (Tokens[Previous].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-      Dec(Previous);
-    if (Previous < 0) or not Tokens[Previous].IsSymbol('.') then
-      Continue;
-    Line := Tokens[Index].StartPos.Line;
-    Inside := (Line >= ALayout.FirstLine) and (Line <= ALayout.EndLine);
-    for Member in ALayout.Members do
-      if (Member.Body <> nil) and (Line >= Member.BodyFirstLine) and (Line <= Member.BodyLastLine) then
-        Inside := True;
-    if not Inside then
+    if (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(mTokens[mIndex].Text, AName) and
+      AfterDot(mTokens, mIndex) and not InsideClass(ALayout, mTokens[mIndex].StartPos.Line) then
+    begin
       Exit(True);
+    end;
   end;
   Result := False;
 end;
@@ -495,9 +655,13 @@ var
   Index: Integer;
 begin
   for Index in ALayout.Find(AOld.Name) do
+  begin
     if (ALayout.Members[Index].Kind = AOld.Kind) and
       (string.Join(',', ALayout.Members[Index].ParameterTypes) = string.Join(',', AOld.ParameterTypes)) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -522,10 +686,14 @@ var
 begin
   Result := nil;
   for Index := 0 to High(ALayout.Sections) do
+  begin
     if (ALayout.Sections[Index].HeadLine >= 0) and (ALayout.Sections[Index].Members <> nil) and
       HasAll(ALayout.Sections[Index].Members, ARemoved) then
+    begin
       Result := Result + [TTextEdit.Create(LinesRange(ALayout.Sections[Index].HeadLine,
         ALayout.Sections[Index].HeadLine), '')];
+    end;
+  end;
 end;
 
 class function TMemberTransfer.Relocate(var AText: string; const AClassName: string;
@@ -541,10 +709,14 @@ var
   Reason: string;
 begin
   if AMembers = nil then
+  begin
     Exit(True);
+  end;
   Layout := ParseLayout(AText, AClassName, Tree);
   if Layout = nil then
+  begin
     Exit(False);
+  end;
   try
     Edits := nil;
     Declarations := nil;
@@ -553,13 +725,17 @@ begin
     begin
       Index := Same(Layout, Old);
       if (Index < 0) or (Layout.Members[Index].Visibility = AVisibility) then
+      begin
         Continue;
+      end;
       Chosen := Chosen + [Index];
       Declarations := Declarations + [TTransferDeclaration.Create(MemberText(Layout, Index), AVisibility,
         Layout.Members[Index].Kind in [TClassMemberKind.Field, TClassMemberKind.ClassVar])];
     end;
     if Declarations = nil then
+    begin
       Exit(True);
+    end;
     Edits := TClassEdits.DeleteMembers(Layout, Chosen, False) + EmptiedSections(Layout, Chosen);
     AText := TTextChanges.Apply(AText, Edits);
   finally
@@ -570,85 +746,158 @@ begin
   Result := InsertInto(AText, AClassName, Declarations, nil, Reason);
 end;
 
-class function TMemberTransfer.InsertInto(var AText: string; const AClassName: string;
-  const ADeclarations: TArray<TTransferDeclaration>; const ABodies: TArray<string>; out AReason: string): Boolean;
+/// <summary>Texte der Deklarationen mit Sichtbarkeit AVisibility, getrennt nach Feldern und übrigen.</summary>
+procedure SplitDeclarations(const ADeclarations: TArray<TTransferDeclaration>; AVisibility: TClassVisibility;
+  out AFields, AOthers: TArray<string>);
 var
-  Layout: TClassLayout;
-  Tree: TSyntaxTree;
-  Visibility: TClassVisibility;
-  Fields, Others: TArray<string>;
-  Item: TTransferDeclaration;
-  Section: TClassSection;
-  Exists: Boolean;
-  Pass, Line: Integer;
+  mItem: TTransferDeclaration;
 begin
-  AReason := '';
-  Layout := ParseLayout(AText, AClassName, Tree);
-  if Layout = nil then
+  AFields := nil;
+  AOthers := nil;
+  for mItem in ADeclarations do
   begin
-    AReason := Format('Die Klasse %s ist nicht lesbar.', [AClassName]);
-    Exit(False);
-  end;
-  Layout.Free;
-  Tree.Free;
-  // Je Sichtbarkeit einzeln und neu geparst: Zwei neue Abschnitte an derselben Stelle wären sonst ungeordnet.
-  for Visibility := Low(TClassVisibility) to High(TClassVisibility) do
-  begin
-    Fields := nil;
-    Others := nil;
-    for Item in ADeclarations do
-      if (Item.Visibility = Visibility) and Item.IsField then
-        Fields := Fields + [Item.Text]
-      else if Item.Visibility = Visibility then
-        Others := Others + [Item.Text];
-    if (Fields = nil) and (Others = nil) then
-      Continue;
-    for Pass := 0 to 1 do
+    if mItem.Visibility <> AVisibility then
     begin
-      Layout := ParseLayout(AText, AClassName, Tree);
-      if Layout = nil then
-      begin
-        AReason := Format('Die Klasse %s ist nicht mehr lesbar.', [AClassName]);
-        Exit(False);
-      end;
-      try
-        Exists := False;
-        for Section in Layout.Sections do
-          if Section.Visibility = Visibility then
-            Exists := True;
-        // Ohne Abschnitt entsteht einer: Felder und Methoden zusammen (Felder vorn).
-        if not Exists then
-        begin
-          AText := TTextChanges.Apply(AText, [TClassEdits.InsertMembers(Layout, Visibility, Fields <> nil,
-            Fields + Others)]);
-          Break;
-        end;
-        if (Pass = 0) and (Fields <> nil) then
-          AText := TTextChanges.Apply(AText, [TClassEdits.InsertMembers(Layout, Visibility, True, Fields)])
-        else if (Pass = 1) and (Others <> nil) then
-          AText := TTextChanges.Apply(AText, [TClassEdits.InsertMembers(Layout, Visibility, False, Others)]);
-      finally
-        Layout.Free;
-        Tree.Free;
-      end;
+      Continue;
+    end;
+    if mItem.IsField then
+    begin
+      AFields := AFields + [mItem.Text];
+    end
+    else
+    begin
+      AOthers := AOthers + [mItem.Text];
     end;
   end;
-  if ABodies <> nil then
+end;
+
+/// <summary>Hat die Klasse einen Abschnitt mit Sichtbarkeit AVisibility?</summary>
+function HasSection(ALayout: TClassLayout; AVisibility: TClassVisibility): Boolean;
+var
+  mSection: TClassSection;
+begin
+  for mSection in ALayout.Sections do
   begin
-    Tree := TSyntaxTreeCache.Parse(AText);
+    if mSection.Visibility = AVisibility then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Im ersten Durchgang die Felder, im zweiten die übrigen.</summary>
+function PassMembers(APass: Integer; const AFields, AOthers: TArray<string>): TArray<string>;
+begin
+  if APass = 0 then
+  begin
+    Result := AFields;
+  end
+  else
+  begin
+    Result := AOthers;
+  end;
+end;
+
+/// <summary>Fügt AFields und AOthers in den Abschnitt AVisibility ein, jeweils neu geparst; ohne Abschnitt entsteht
+/// einer mit beiden (Felder vorn).</summary>
+function InsertSection(var AText: string; const AClassName: string; AVisibility: TClassVisibility;
+  const AFields, AOthers: TArray<string>; out AReason: string): Boolean;
+var
+  mLayout: TClassLayout;
+  mTree: TSyntaxTree;
+  mPass: Integer;
+  mMembers: TArray<string>;
+begin
+  AReason := '';
+  for mPass := 0 to 1 do
+  begin
+    mLayout := TMemberTransfer.ParseLayout(AText, AClassName, mTree);
+    if mLayout = nil then
+    begin
+      AReason := cTexts[TMemberTransferText.TheClassIsNoLonger].Fmt([AClassName]);
+      Exit(False);
+    end;
     try
-      Line := TClassEdits.BodiesEnd(Tree, AClassName);
-      if Line < 0 then
+      if not HasSection(mLayout, AVisibility) then
       begin
-        AReason := Format('Die Unit von %s hat keinen implementation-Teil für die Rümpfe.', [AClassName]);
-        Exit(False);
+        AText := TTextChanges.Apply(AText, [TClassEdits.InsertMembers(mLayout, AVisibility, AFields <> nil,
+          AFields + AOthers)]);
+        Break;
       end;
-      AText := TTextChanges.Apply(AText, [TClassEdits.InsertBodies(AText, Line, ABodies)]);
+      mMembers := PassMembers(mPass, AFields, AOthers);
+      if mMembers <> nil then
+      begin
+        AText := TTextChanges.Apply(AText, [TClassEdits.InsertMembers(mLayout, AVisibility, mPass = 0, mMembers)]);
+      end;
     finally
-      Tree.Free;
+      mLayout.Free;
+      mTree.Free;
     end;
   end;
   Result := True;
 end;
+
+/// <summary>Fügt die Rümpfe ABodies hinter die Methoden der Klasse ein; False ohne implementation-Teil.</summary>
+function InsertBodies(var AText: string; const AClassName: string; const ABodies: TArray<string>;
+  out AReason: string): Boolean;
+var
+  mTree: TSyntaxTree;
+  mLine: Integer;
+begin
+  AReason := '';
+  mTree := TSyntaxTreeCache.Parse(AText);
+  try
+    mLine := TClassEdits.BodiesEnd(mTree, AClassName);
+    Result := mLine >= 0;
+    if Result then
+    begin
+      AText := TTextChanges.Apply(AText, [TClassEdits.InsertBodies(AText, mLine, ABodies)]);
+    end
+    else
+    begin
+      AReason := cTexts[TMemberTransferText.TheUnitOfHasNo].Fmt([AClassName]);
+    end;
+  finally
+    mTree.Free;
+  end;
+end;
+
+class function TMemberTransfer.InsertInto(var AText: string; const AClassName: string;
+  const ADeclarations: TArray<TTransferDeclaration>; const ABodies: TArray<string>; out AReason: string): Boolean;
+var
+  mLayout: TClassLayout;
+  mTree: TSyntaxTree;
+  mVisibility: TClassVisibility;
+  mFields, mOthers: TArray<string>;
+begin
+  AReason := '';
+  mLayout := ParseLayout(AText, AClassName, mTree);
+  if mLayout = nil then
+  begin
+    AReason := cTexts[TMemberTransferText.TheClassIsNotReadable].Fmt([AClassName]);
+    Exit(False);
+  end;
+  mLayout.Free;
+  mTree.Free;
+  // Je Sichtbarkeit einzeln und neu geparst: Zwei neue Abschnitte an derselben Stelle wären sonst ungeordnet.
+  for mVisibility := Low(TClassVisibility) to High(TClassVisibility) do
+  begin
+    SplitDeclarations(ADeclarations, mVisibility, mFields, mOthers);
+    if ((mFields <> nil) or (mOthers <> nil)) and not InsertSection(AText, AClassName, mVisibility, mFields, mOthers,
+      AReason) then
+    begin
+      Exit(False);
+    end;
+  end;
+  if ABodies <> nil then
+  begin
+    Exit(InsertBodies(AText, AClassName, ABodies, AReason));
+  end;
+  Result := True;
+end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.MemberTransfer', cTexts);
 
 end.

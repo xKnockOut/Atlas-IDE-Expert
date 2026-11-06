@@ -61,7 +61,7 @@ const
 function Run(const ACommand: string; out AEdits: TArray<TRuleEdit>; const AVersion: string = ''): Boolean;
 begin
   Result := TSlashCommandRegistry.Shared.AfterEnter(Format(RoutineUnit, [ACommand]), TTextPosition.Create(10, 0),
-    nil, nil, AEdits, nil, AVersion);
+    TSlashEnvironment.Create(nil, nil, nil, AVersion, '', nil), AEdits);
 end;
 
 procedure TDatabaseCommandsTests.SqlWithTwoParams;
@@ -188,8 +188,10 @@ var
   Command: string;
 begin
   for Command in TArray<string>.Create('/sql Q select 1', '/params Q', '/loop Q', '/transaction Con') do
+  begin
     Assert.IsFalse(TSlashCommandRegistry.Shared.AfterEnter(Format(Outside, [Command]), TTextPosition.Create(4, 0),
       nil, nil, Edits), Command);
+  end;
   Assert.IsFalse(Run('/sql Q', Edits));
 end;
 

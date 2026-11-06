@@ -120,11 +120,17 @@ begin
   for Index in AOrder do
   begin
     if Names <> '' then
+    begin
       Names := Names + ',';
+    end;
     if TAtlasRanking.IsHeader(Index) then
-      Names := Names + '#'
+    begin
+      Names := Names + '#';
+    end
     else
+    begin
       Names := Names + AItems[Index].Name;
+    end;
   end;
   Selected := ASelected;
 end;
@@ -165,11 +171,17 @@ begin
   for Index in AOrder do
   begin
     if Result <> '' then
+    begin
       Result := Result + ',';
+    end;
     if TAtlasRanking.IsHeader(Index) then
-      Result := Result + '#'
+    begin
+      Result := Result + '#';
+    end
     else
+    begin
       Result := Result + AItems[Index].Name;
+    end;
   end;
 end;
 
@@ -181,7 +193,9 @@ begin
   repeat
     CheckSynchronize(5);
     if ACondition() then
+    begin
       Exit(True);
+    end;
   until TThread.GetTickCount64 - Start > 3000;
   Result := False;
 end;
@@ -349,9 +363,13 @@ begin
     begin
       // FDiscount ist gelernt, schlägt aber keinen näheren Bereich.
       if AIndex = 0 then
-        Result := 99
+      begin
+        Result := 99;
+      end
       else
+      begin
         Result := 0;
+      end;
     end;
   Assert.AreEqual('Total,ACustomer,FDiscount,TKasse,Format', Names(Items, TAtlasRanking.Order(Items, '', Options)));
   // Erwarteter Typ vor Bereich: Nur ACustomer passt.
@@ -376,9 +394,13 @@ begin
     function(AIndex: Integer): Integer
     begin
       if AIndex = 0 then
-        Result := 0
+      begin
+        Result := 0;
+      end
       else
+      begin
         Result := 99;
+      end;
     end;
   // Ohne Präfix gewinnt das Gelernte.
   Assert.AreEqual('AddObject,BeginUpdate,Add', Names(Items, TAtlasRanking.Order(Items, '', Options)));
@@ -493,6 +515,7 @@ begin
   Tags := TAtlasItemPresentation.Tags(Item);
   Found := False;
   for Tag in Tags do
+  begin
     if Tag.Id = TAtlasTagId.VariantBranch then
     begin
       Found := True;
@@ -500,11 +523,14 @@ begin
       Assert.AreEqual('0', Tag.Arg);
       Assert.IsTrue(Tag.Kind = TAtlasTagKind.Neutral);
     end;
+  end;
   Assert.IsTrue(Found);
   // Ohne Zweig keine Marke.
   Item.VariantBranch := '';
   for Tag in TAtlasItemPresentation.Tags(Item) do
+  begin
     Assert.IsFalse(Tag.Id = TAtlasTagId.VariantBranch);
+  end;
 end;
 
 procedure TAtlasRankingTests.SenderItemsGetHeaderAndTag;
@@ -531,8 +557,12 @@ begin
   Tags := TAtlasItemPresentation.Tags(Items[0]);
   Found := False;
   for Tag in Tags do
+  begin
     if Tag.Text = 'als TButton' then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found);
   // Ohne Sender keine Überschrift.
   Items[0].Sender := '';
@@ -579,8 +609,12 @@ begin
   Assert.AreEqual(1, TAtlasRanking.ChipCounts(Items, 'Cou')[TAtlasChip.All]);
   Found := False;
   for Tag in TAtlasItemPresentation.Tags(Items[0]) do
+  begin
     if Tag.Text = '→ string' then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found);
 end;
 
@@ -690,11 +724,17 @@ begin
   Assert.AreEqual(2, Order[2]);
   Found := False;
   for Tag in TAtlasItemPresentation.Tags(Items[1]) do
+  begin
     if Tag.Id = TAtlasTagId.Active then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found);
   for Tag in TAtlasItemPresentation.Tags(Items[0]) do
+  begin
     Assert.IsFalse(Tag.Id = TAtlasTagId.Active);
+  end;
   Assert.AreEqual('FMX.Graphics.TBitmap', string.Join(',', TAtlasItemPresentation.SameNameHidden(Items)));
   Details := Default(TAtlasItemDetails);
   TAtlasItemPresentation.AddSameName(Items[0], Details);
@@ -738,14 +778,22 @@ begin
   Tags := TAtlasItemPresentation.Tags(Items[2]);
   Found := False;
   for Tag in Tags do
+  begin
     if Tag.Id = TAtlasTagId.SameParams then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found);
   // Weitere Konstruktoren tragen die deklarierende Klasse.
   Found := False;
   for Tag in TAtlasItemPresentation.Tags(Items[3]) do
+  begin
     if Tag.Text = 'TWinControl' then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found);
   Assert.AreEqual('TBaseView.Zeichnen', string.Join(',', TAtlasItemPresentation.InheritedAbstract(Items)));
 end;
@@ -806,7 +854,9 @@ begin
   Assert.AreEqual('implementation', TAtlasItemPresentation.UsesDetails(Items[2]).UsesElsewhere);
   // Ohne Gruppe (Schalter aus): keine Überschriften.
   for Index := 0 to High(Items) do
+  begin
     Items[Index].UsesGroup := '';
+  end;
   Assert.IsFalse(Names(Items, TAtlasRanking.Order(Items, 'Gener', TAtlasRankOptions.Defaults)).Contains('#'));
 end;
 
@@ -824,7 +874,9 @@ begin
     Add := Member('Add', 'TStrings', 1, 1);
     Assert.AreEqual(0, Usage.Boost(Begin_));
     for Round := 1 to 3 do
+    begin
       Usage.Record_(Begin_);
+    end;
     Assert.AreEqual(75, Usage.Boost(Begin_), '3 × 15 + 30 für zuletzt');
     Assert.IsTrue(Usage.Mark(Begin_) = TAtlasUsageMark.Recent);
     Usage.Record_(Add);
@@ -889,7 +941,9 @@ begin
   try
     Controller.Usage := Usage;
     for Round := 1 to 3 do
+    begin
       Usage.Record_(Member('BeginUpdate', 'TStrings', 0, 1));
+    end;
     Controller.Start(Context(''));
     Assert.IsTrue(Wait(
       function: Boolean

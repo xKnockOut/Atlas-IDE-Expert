@@ -11,6 +11,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Designer')]
   TAtlasDesignerSearchTests = class
   public
     [Test]
@@ -26,6 +27,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Designer')]
   TAtlasDesignerGroupsTests = class
   public
     [Test]
@@ -35,6 +37,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Designer')]
   TAtlasTabOrderTests = class
   public
     [Test]
@@ -46,6 +49,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Designer')]
   TAtlasDesignerAlignTests = class
   public
     [Test]

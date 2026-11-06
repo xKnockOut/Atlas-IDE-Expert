@@ -1,0 +1,287 @@
+﻿unit Atlas.Core.Settings.Plugin.Build;
+
+// Einstellungen des IDE-Plugins, Bereich Build (build.*, tests.*, taskRunner.*) (#227, ADR 0017):
+// Felder, Vorgaben, Grenzen, Lesen und Schreiben. TAtlasPluginSettings (Atlas.Core.Settings.Plugin)
+// fasst die Bereiche zusammen und reicht die Felder als Eigenschaften durch.
+
+interface
+
+uses
+  Atlas.Core.Settings.Plugin.Store;
+
+const
+  MinCheckDelay = 500;
+  MaxCheckDelay = 10000;
+  MinCheckMax = 200;
+  MaxCheckMax = 20000;
+  /// <summary>Grenzen für tests.affectedDepth (#1353).</summary>
+  MinTestsAffectedDepth = 1;
+  MaxTestsAffectedDepth = 5;
+
+type
+  /// <summary>Plugin-Einstellungen: Compiler, Build, Tests und Aufgaben.</summary>
+  TAtlasPluginBuildSettings = record
+    /// <summary>Syntaxprüfung des Compilers nach dem Speichern (#548). Schließt CompileOnSave aus: Die
+    /// Optionsseite bietet eine Auswahl „Nach dem Speichern“ (aus, Syntaxprüfung, Kompilieren).</summary>
+    CheckOnSave: Boolean;
+    /// <summary>Der Server kompiliert nach dem Speichern im Hintergrund (compiler.onSave, #40).</summary>
+    CompileOnSave: Boolean;
+    /// <summary>Wartezeit nach dem letzten Speichern.</summary>
+    CheckOnSaveDelayMs: Integer;
+    /// <summary>Höchstdauer einer Prüfung; darüber nur noch von Hand (Strg+Alt+F9).</summary>
+    CheckOnSaveMaxMs: Integer;
+    /// <summary>Claude Code darf über das MCP-Werkzeug build_project offene Projekte in dieser IDE bauen (#261),
+    /// z. B. in der Starter Edition ohne Kommandozeilen-Compiler.</summary>
+    McpBuild: Boolean;
+    /// <summary>Beim Öffnen eines Projekts oder einer Projektgruppe einmal bauen (build.onOpen): sobald die IDE
+    /// ruhig ist, über den Compiler der IDE (mit eingeschalteter Hintergrundcompilierung der IDE ohne zu
+    /// blockieren). Aus = kein Bau beim Öffnen.</summary>
+    BuildOnOpen: Boolean;
+    /// <summary>Art des Baus beim Öffnen (build.onOpenKind): check (Syntaxprüfung), make (Compilieren) oder build
+    /// (Erzeugen).</summary>
+    BuildOnOpenKind: string;
+    /// <summary>Bei einer Projektgruppe alle Projekte (all) oder nur das aktive (active) (build.onOpenScope).
+    /// </summary>
+    BuildOnOpenScope: string;
+    /// <summary>Wartezeit nach dem Öffnen und nach der letzten Eingabe (build.onOpenDelayMs).</summary>
+    BuildOnOpenDelayMs: Integer;
+    /// <summary>Projekte, die beim Öffnen nicht gebaut werden (build.onOpenExclude), Namen ohne Endung, durch
+    /// Komma getrennt, z. B. ein in der IDE installiertes Package.</summary>
+    BuildOnOpenExclude: string;
+    /// <summary>Konfiguration für den Lauf beim Öffnen (build.onOpenConfig, #1293), z. B. Debug; '' = wie im
+    /// Projekt. Kennt ein Projekt sie nicht, gilt dort die Einstellung des Projekts.</summary>
+    BuildOnOpenConfig: string;
+    /// <summary>Zielplattform für den Lauf beim Öffnen (build.onOpenPlatform, #1293), z. B. Win64; '' = wie im
+    /// Projekt. Ist sie in einem Projekt nicht aktiviert, gilt dort die Einstellung des Projekts.</summary>
+    BuildOnOpenPlatform: string;
+    /// <summary>Befehle „Tests ausführen“ und „Fehlgeschlagene Tests erneut ausführen“ (#69, Atlas.RunTests,
+    /// Atlas.RunFailedTests); aus = Befehle, Code Lens und Lauf nach dem Build verschwinden.</summary>
+    TestRun: Boolean;
+    /// <summary>Tests nach jedem erfolgreichen Build des Testprojekts automatisch ausführen (#69, über die
+    /// Compile-Ereignisse #527).</summary>
+    TestsAfterBuild: Boolean;
+    /// <summary>Vor „Tests ausführen“ das Testprojekt bauen (make); aus = die vorhandene Test-EXE läuft.</summary>
+    TestsBuildFirst: Boolean;
+    /// <summary>Befehl „Betroffene Tests ausführen“ (#1353, Atlas.RunAffectedTests); tests.affected in settings.json,
+    /// der Server liest denselben Wert (--affected-tests, get_affected_tests).</summary>
+    TestsAffected: Boolean;
+    /// <summary>Ebenen von der Änderung bis zum Test (#1353, tests.affectedDepth), MinTestsAffectedDepth bis
+    /// MaxTestsAffectedDepth.</summary>
+    TestsAffectedDepth: Integer;
+    /// <summary>Vor jedem git commit die betroffenen Tests anbieten (#1353): Atlas legt dafür einen
+    /// pre-commit-Hook an (Atlas.Core.Tests.AffectedHook).</summary>
+    TestsAffectedBeforeCommit: Boolean;
+    /// <summary>Ein Build gilt nur ohne Warnungen und Hinweise als erfolgreich (build.zeroHints, #530); Meldungen
+    /// in der Basislinie zählen nicht. Bewertung in Atlas.Core.Build.Verdict.</summary>
+    BuildZeroHints: Boolean;
+    /// <summary>Kosten einer Änderung im interface-Teil in der Statusleiste (#554, build.showInterfaceCost):
+    /// „interface-Änderung: N Units werden neu kompiliert“, solange die Einfügemarke im interface steht. Aus = kein
+    /// Feld.</summary>
+    ShowInterfaceCost: Boolean;
+    /// <summary>Zusammenfassung nach jedem Build in der Atlas-Gruppe des Meldungsfensters (build.summary, #530).
+    /// Ein Build, den zeroHints oder warningsAsErrors scheitern lassen, wird auch ohne sie gemeldet.</summary>
+    BuildSummary: Boolean;
+    /// <summary>Codes von Warnungen und Hinweisen, die als Fehler zählen (build.warningsAsErrors, #530), z. B.
+    /// "W1035, H2164"; gespeichert in der Form von TAtlasBuildVerdicts.NormalizeCodes.</summary>
+    BuildWarningsAsErrors: string;
+    /// <summary>Fenster „Compiler-Schalter“ (#558, build.compilerSwitches, Befehl Atlas.CompilerSwitches): wirksame
+    /// Schalter R, Q, O, C, I, A, HINTS, WARNINGS, abgeschaltete Warnungen und aktive Symbole an der Cursorposition
+    /// mit Herkunft (Projektoption, Include-Datei, Direktive mit Zeile); Abweichungen von der .dproj hervorgehoben.
+    /// Aus = kein Fenster, kein Befehl, keine Anfrage.</summary>
+    BuildCompilerSwitches: Boolean;
+    /// <summary>Feld in der Statusleiste mit den Schaltern, die an der Cursorposition von der .dproj abweichen („R−
+    /// Q− HINTS OFF“; #558, build.showSwitchesInStatusBar); ohne Abweichung kein Feld. Ein Klick öffnet das Fenster
+    /// „Compiler-Schalter“.</summary>
+    BuildSwitchesInStatusBar: Boolean;
+    /// <summary>Release-Build-Wächter (#533, build.releaseGuard): vor make und build in einer Release-Konfiguration
+    /// die Projektoptionen prüfen, dazu der Befehl „Release-Build prüfen“ (Atlas.CheckRelease) mit Tipp. Aus = keine
+    /// Prüfung, Befehl und Tipp verschwinden.</summary>
+    ReleaseGuard: Boolean;
+    /// <summary>Verhalten bei Verstößen (build.gate, #529): off, warn oder block (bricht den Build ab). Gilt für die
+    /// Prüfung vor dem Kompilieren (off = keine Prüfung) und den Release-Wächter (#533, off und warn melden nur).
+    /// </summary>
+    BuildGate: string;
+    /// <summary>Projektaufgaben (#900, tasks.enabled): Aufgaben aus dem Abschnitt „tasks“ von atlas.json mit Befehlen,
+    /// Menü Atlas › Aufgaben, Tasten je Aufgabe, Statusfeld und Schnellaktion. Aus = keine Befehle, kein Menü, keine
+    /// Tasten und kein Lauf vor dem Build.</summary>
+    TasksEnabled: Boolean;
+    /// <summary>Fundstellen der Ausgabe als Befunde in Problemliste und Editor (tasks.problemsFromOutput); aus = nur
+    /// die Ausgabe im Register „Atlas-Aufgaben“.</summary>
+    TasksProblemsFromOutput: Boolean;
+    /// <summary>Aufgaben der Gruppe „check“ vor jedem Compile/Build (tasks.beforeBuild): off, warn (Build läuft,
+    /// Befunde erscheinen) oder block (Exit-Code ungleich 0 oder Fehler brechen den Build ab). „beforeBuild“ einer
+    /// Aufgabe überschreibt den Wert.</summary>
+    TasksBeforeBuild: string;
+    /// <summary>Geänderte Dateien vor dem Start einer Aufgabe speichern (tasks.saveBeforeRun).</summary>
+    TasksSaveBeforeRun: Boolean;
+    /// <summary>„Alle Prüfungen ausführen“ und der Lauf vor dem Build starten die check-Aufgaben gleichzeitig
+    /// (tasks.runChecksParallel); aus = nacheinander.</summary>
+    TasksRunChecksParallel: Boolean;
+    /// <summary>Register „Atlas-Aufgaben“ zeigt nur die erkannten Fundstellen (tasks.onlyFindings); aus = die ganze
+    /// Ausgabe. Umschaltbar über den Befehl „Aufgaben: nur Befunde / ganze Ausgabe“.</summary>
+    TasksOnlyFindings: Boolean;
+    /// <summary>Zeitlimit der Prüfung vor dem Kompilieren in ms (build.gateTimeoutMs, #529); danach läuft der
+    /// Compile ungeprüft.</summary>
+    BuildGateTimeoutMs: Integer;
+    /// <summary>Konfigurationen, die außer „Release“ als Release gelten (build.releaseConfigs), durch Komma
+    /// getrennt.</summary>
+    ReleaseConfigs: string;
+    /// <summary>Prüfungen des Release-Wächters mit an/aus und Sollwert (build.releaseChecks), Textform wie
+    /// TAtlasReleaseChecks.ToText, z. B. "debugDefine,debugInfo=off,-assertions=off,…".</summary>
+    ReleaseChecks: string;
+    /// <summary>Modul-Schalter tests.enabled (#1454): DUnitX-Tests; aus = die wirksamen Werte aller Einstellungen des Moduls sind
+    /// „aus“ (TAtlasModuleSwitches), gespeichert bleiben sie.</summary>
+    TestsEnabled: Boolean;
+    /// <summary>Modul-Schalter buildTools.enabled (#1454): Build-Werkzeuge; aus = die wirksamen Werte aller Einstellungen des Moduls sind
+    /// „aus“ (TAtlasModuleSwitches), gespeichert bleiben sie.</summary>
+    BuildToolsEnabled: Boolean;
+    /// <summary>Modul-Schalter buildPipeline.enabled (#1455): Build-Pipeline; aus = die wirksamen Werte aller
+    /// Einstellungen des Moduls sind „aus“ (TAtlasModuleSwitches), gespeichert bleiben sie.</summary>
+    BuildPipelineEnabled: Boolean;
+    /// <summary>Vorgaben.</summary>
+    class function Defaults: TAtlasPluginBuildSettings; static;
+    /// <summary>Werte in ihre Grenzen bringen.</summary>
+    procedure Normalize;
+    /// <summary>Werte über AIo lesen bzw. schreiben, jeden unter seinem Namen.</summary>
+    procedure Exchange(const AIo: TAtlasSettingsExchange);
+  end;
+
+implementation
+
+uses
+  System.Math,
+  System.SysUtils,
+  Atlas.Core.Build.Events,
+  Atlas.Core.Build.OpenBuildSettings,
+  Atlas.Core.Build.PipelineSettings,
+  Atlas.Core.Build.Verdict;
+
+/// <summary>tasks.beforeBuild: bekannter Wert klein, sonst „off“.</summary>
+function NormalizedTasksBeforeBuild(const AText: string): string;
+var
+  Name: string;
+begin
+  for Name in TasksBeforeBuildNames do
+  begin
+    if SameText(Trim(AText), Name) then
+    begin
+      Exit(Name);
+    end;
+  end;
+  Result := TasksBeforeBuildNames[0];
+end;
+
+{ TAtlasPluginBuildSettings }
+
+class function TAtlasPluginBuildSettings.Defaults: TAtlasPluginBuildSettings;
+begin
+  // Die Prüfung in der IDE zeigt deren Fortschritt; Standard ist die Prüfung des Servers mit dcc (compiler.onSave).
+  Result.CheckOnSave := False;
+  Result.CompileOnSave := False;
+  Result.CheckOnSaveDelayMs := 2000;
+  Result.CheckOnSaveMaxMs := 1500;
+  Result.McpBuild := True;
+  Result.BuildOnOpen := False;
+  Result.BuildOnOpenKind := TAtlasOpenBuildSettings.KindName(TAtlasCompileKind.Make);
+  Result.BuildOnOpenScope := TAtlasOpenBuildSettings.ScopeNames[TAtlasOpenBuildScope.All];
+  Result.BuildOnOpenDelayMs := TAtlasOpenBuildSettings.DefaultDelayMs;
+  Result.BuildOnOpenExclude := '';
+  Result.BuildOnOpenConfig := '';
+  Result.BuildOnOpenPlatform := '';
+  Result.TestRun := True;
+  Result.TestsAfterBuild := False;
+  Result.TestsBuildFirst := True;
+  Result.TestsAffected := True;
+  Result.TestsAffectedDepth := 3;
+  Result.TestsAffectedBeforeCommit := False;
+  Result.BuildZeroHints := False;
+  Result.ShowInterfaceCost := True;
+  Result.BuildSummary := True;
+  Result.BuildWarningsAsErrors := '';
+  Result.BuildCompilerSwitches := True;
+  Result.BuildSwitchesInStatusBar := False;
+  Result.ReleaseGuard := True;
+  Result.BuildGate := 'off';
+  Result.TasksEnabled := True;
+  Result.TasksProblemsFromOutput := True;
+  Result.TasksBeforeBuild := 'off';
+  Result.TasksSaveBeforeRun := True;
+  Result.TasksRunChecksParallel := False;
+  Result.TasksOnlyFindings := False;
+  Result.BuildGateTimeoutMs := TAtlasBuildPipelineSettings.GateDefaultTimeoutMs;
+  Result.ReleaseConfigs := TAtlasBuildPipelineSettings.ReleaseConfiguration;
+  Result.ReleaseChecks := TAtlasReleaseChecks.Defaults.ToText;
+  Result.TestsEnabled := True;
+  Result.BuildToolsEnabled := True;
+  Result.BuildPipelineEnabled := True;
+end;
+
+procedure TAtlasPluginBuildSettings.Normalize;
+begin
+  CheckOnSaveDelayMs := EnsureRange(CheckOnSaveDelayMs, MinCheckDelay, MaxCheckDelay);
+  CheckOnSaveMaxMs := EnsureRange(CheckOnSaveMaxMs, MinCheckMax, MaxCheckMax);
+  BuildOnOpenKind := TAtlasOpenBuildSettings.KindName(TAtlasOpenBuildSettings.KindOf(BuildOnOpenKind));
+  BuildOnOpenScope := TAtlasOpenBuildSettings.ScopeNames[TAtlasOpenBuildSettings.ScopeOf(BuildOnOpenScope)];
+  BuildOnOpenDelayMs := EnsureRange(BuildOnOpenDelayMs, TAtlasOpenBuildSettings.MinDelayMs,
+    TAtlasOpenBuildSettings.MaxDelayMs);
+  BuildOnOpenExclude := TAtlasOpenBuildSettings.NormalizedExclude(BuildOnOpenExclude);
+  BuildOnOpenConfig := Trim(BuildOnOpenConfig);
+  BuildOnOpenPlatform := Trim(BuildOnOpenPlatform);
+  // Nach dem Speichern genau eins von beiden: Die Syntaxprüfung der IDE gewinnt.
+  if CheckOnSave then
+  begin
+    CompileOnSave := False;
+  end;
+  BuildGate := TAtlasBuildPipelineSettings.GateNames[TAtlasBuildPipelineSettings.GateOf(BuildGate)];
+  TasksBeforeBuild := NormalizedTasksBeforeBuild(TasksBeforeBuild);
+  BuildGateTimeoutMs := EnsureRange(BuildGateTimeoutMs, TAtlasBuildPipelineSettings.GateMinTimeoutMs,
+    TAtlasBuildPipelineSettings.GateMaxTimeoutMs);
+  ReleaseConfigs := TAtlasBuildPipelineSettings.NormalizedConfigurations(ReleaseConfigs);
+  BuildWarningsAsErrors := TAtlasBuildVerdicts.NormalizeCodes(BuildWarningsAsErrors);
+  ReleaseChecks := TAtlasReleaseChecks.Normalized(ReleaseChecks);
+  TestsAffectedDepth := EnsureRange(TestsAffectedDepth, MinTestsAffectedDepth, MaxTestsAffectedDepth);
+end;
+
+procedure TAtlasPluginBuildSettings.Exchange(const AIo: TAtlasSettingsExchange);
+begin
+  AIo.Flag('CheckOnSave', CheckOnSave);
+  AIo.Flag('CompileOnSave', CompileOnSave);
+  AIo.Number('CheckOnSaveDelayMs', CheckOnSaveDelayMs);
+  AIo.Number('CheckOnSaveMaxMs', CheckOnSaveMaxMs);
+  AIo.Flag('McpBuild', McpBuild);
+  AIo.Flag('BuildOnOpen', BuildOnOpen);
+  AIo.Text('BuildOnOpenKind', BuildOnOpenKind);
+  AIo.Text('BuildOnOpenScope', BuildOnOpenScope);
+  AIo.Number('BuildOnOpenDelayMs', BuildOnOpenDelayMs);
+  AIo.Text('BuildOnOpenExclude', BuildOnOpenExclude);
+  AIo.Text('BuildOnOpenConfig', BuildOnOpenConfig);
+  AIo.Text('BuildOnOpenPlatform', BuildOnOpenPlatform);
+  AIo.Flag('TestRun', TestRun);
+  AIo.Flag('TestsAfterBuild', TestsAfterBuild);
+  AIo.Flag('TestsBuildFirst', TestsBuildFirst);
+  AIo.Flag('TestsAffected', TestsAffected);
+  AIo.Number('TestsAffectedDepth', TestsAffectedDepth);
+  AIo.Flag('TestsAffectedBeforeCommit', TestsAffectedBeforeCommit);
+  AIo.Flag('BuildZeroHints', BuildZeroHints);
+  AIo.Flag('ShowInterfaceCost', ShowInterfaceCost);
+  AIo.Flag('BuildSummary', BuildSummary);
+  AIo.Text('BuildWarningsAsErrors', BuildWarningsAsErrors);
+  AIo.Flag('BuildCompilerSwitches', BuildCompilerSwitches);
+  AIo.Flag('BuildSwitchesInStatusBar', BuildSwitchesInStatusBar);
+  AIo.Flag('ReleaseGuard', ReleaseGuard);
+  AIo.Text('BuildGate', BuildGate);
+  AIo.Flag('TasksEnabled', TasksEnabled);
+  AIo.Flag('TasksProblemsFromOutput', TasksProblemsFromOutput);
+  AIo.Text('TasksBeforeBuild', TasksBeforeBuild);
+  AIo.Flag('TasksSaveBeforeRun', TasksSaveBeforeRun);
+  AIo.Flag('TasksRunChecksParallel', TasksRunChecksParallel);
+  AIo.Flag('TasksOnlyFindings', TasksOnlyFindings);
+  AIo.Number('BuildGateTimeoutMs', BuildGateTimeoutMs);
+  AIo.Text('ReleaseConfigs', ReleaseConfigs);
+  AIo.Text('ReleaseChecks', ReleaseChecks);
+  AIo.Flag('TestsEnabled', TestsEnabled);
+  AIo.Flag('BuildToolsEnabled', BuildToolsEnabled);
+  AIo.Flag('BuildPipelineEnabled', BuildPipelineEnabled);
+end;
+
+end.

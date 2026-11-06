@@ -200,9 +200,13 @@ var
   Value: string;
 begin
   if FValues.TryGetValue(AName, Value) then
-    Result := StrToInt(Value)
+  begin
+    Result := StrToInt(Value);
+  end
   else
+  begin
     Result := ADefault;
+  end;
 end;
 
 procedure TMemoryStore.WriteInteger(const AName: string; AValue: Integer);
@@ -213,7 +217,9 @@ end;
 function TMemoryStore.ReadString(const AName, ADefault: string): string;
 begin
   if not FValues.TryGetValue(AName, Result) then
+  begin
     Result := ADefault;
+  end;
 end;
 
 procedure TMemoryStore.WriteString(const AName, AValue: string);
@@ -239,7 +245,9 @@ begin
   for Item in AItems do
   begin
     if Result <> '' then
+    begin
       Result := Result + ' ';
+    end;
     Result := Result + Item.Id;
   end;
 end;
@@ -250,7 +258,9 @@ var
 begin
   SetLength(Result, Length(AValues));
   for Index := 0 to High(AValues) do
+  begin
     Result[Index] := AValues[Index];
+  end;
 end;
 
 { TAtlasStatusRegistryTests }
@@ -732,11 +742,15 @@ begin
     Assert.AreEqual(2, Samples);
     // 60 weitere: nur die letzten 50 zählen.
     for Index := 1 to 10 do
+    begin
       Client.AddResponseTime(1000);
-    for Index := 1 to TLspClient.TimeSamples do
+    end;
+    for Index := 1 to TLspResponseTimes.Samples do
+    begin
       Client.AddResponseTime(4);
+    end;
     Assert.AreEqual(4.0, Client.AverageMs(Samples), 0.001);
-    Assert.AreEqual(TLspClient.TimeSamples, Samples);
+    Assert.AreEqual(TLspResponseTimes.Samples, Samples);
   finally
     Client.Free;
   end;

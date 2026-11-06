@@ -49,6 +49,24 @@ type
 
 implementation
 
+uses
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLifecycleText = (ServerIsNotInitializedYet, ServerIsAlreadyInitialized, ServerIsShuttingDown, ServerHasShutDown);
+
+const
+  cTexts: array[TLifecycleText] of TAtlasText = (
+    (De: 'Server ist noch nicht initialisiert'; En: 'Server is not initialized yet'),
+    (De: 'Server ist bereits initialisiert'; En: 'Server is already initialized'),
+    (De: 'Server wird beendet'; En: 'Server is shutting down'),
+    (De: 'Server ist beendet'; En: 'Server has shut down'));
+
+{$SCOPEDENUMS OFF}
+
 { TLspLifecycle }
 
 constructor TLspLifecycle.Create(const AServerName, AServerVersion: string;
@@ -76,23 +94,43 @@ begin
   ADispatcher.Guard := CheckState;
 end;
 
-procedure TLspLifecycle.CheckState(const AMethod: string; AIsRequest: Boolean);
+/// <summary>Fehler für AMethod im Zustand AState; '' = erlaubt. exit ist in jedem Zustand erlaubt.</summary>
+function StateError(AState: TLspServerState; const AMethod: string; out ACode: Integer): string;
 begin
-  // exit ist in jedem Zustand erlaubt.
+  Result := '';
+  ACode := TJsonRpcErrorCode.InvalidRequest;
   if AMethod = TLspLifecycleMethod.ExitNotification then
+  begin
     Exit;
-
-  case FState of
+  end;
+  case AState of
     TLspServerState.Uninitialized:
       if AMethod <> TLspLifecycleMethod.InitializeRequest then
-        raise EJsonRpcError.Create(TLspErrorCode.ServerNotInitialized, 'Server ist noch nicht initialisiert');
+      begin
+        ACode := TLspErrorCode.ServerNotInitialized;
+        Result := cTexts[TLifecycleText.ServerIsNotInitializedYet].Text;
+      end;
     TLspServerState.Running:
       if AMethod = TLspLifecycleMethod.InitializeRequest then
-        raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidRequest, 'Server ist bereits initialisiert');
+      begin
+        Result := cTexts[TLifecycleText.ServerIsAlreadyInitialized].Text;
+      end;
     TLspServerState.ShuttingDown:
-      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidRequest, 'Server wird beendet');
+      Result := cTexts[TLifecycleText.ServerIsShuttingDown].Text;
     TLspServerState.Exited:
-      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidRequest, 'Server ist beendet');
+      Result := cTexts[TLifecycleText.ServerHasShutDown].Text;
+  end;
+end;
+
+procedure TLspLifecycle.CheckState(const AMethod: string; AIsRequest: Boolean);
+var
+  mCode: Integer;
+  mMessage: string;
+begin
+  mMessage := StateError(FState, AMethod, mCode);
+  if mMessage <> '' then
+  begin
+    raise EJsonRpcError.Create(mCode, mMessage);
   end;
 end;
 
@@ -104,13 +142,19 @@ var
 begin
   FreeAndNil(FInitializeParams);
   if AParams is TJSONObject then
+  begin
     FInitializeParams := TJSONObject(AParams.Clone);
+  end;
 
   Capabilities := nil;
   if Assigned(FCapabilities) then
+  begin
     Capabilities := FCapabilities();
+  end;
   if Capabilities = nil then
+  begin
     Capabilities := TJSONObject.Create;
+  end;
 
   ServerInfo := TJSONObject.Create;
   ServerInfo.AddPair('name', FServerName);
@@ -128,7 +172,9 @@ procedure TLspLifecycle.HandleInitialized(const AParams: TJSONValue);
 begin
   // Der Client bestätigt die Initialisierung; jetzt dürfen Features den Arbeitsbereich laden.
   if Assigned(FOnInitialized) then
+  begin
     FOnInitialized();
+  end;
 end;
 
 function TLspLifecycle.HandleShutdown(const AParams: TJSONValue): TJSONValue;
@@ -142,15 +188,24 @@ procedure TLspLifecycle.HandleExit(const AParams: TJSONValue);
 begin
   FState := TLspServerState.Exited;
   if Assigned(FOnExit) then
+  begin
     FOnExit();
+  end;
 end;
 
 function TLspLifecycle.GetExitCode: Integer;
 begin
   if FShutdownReceived then
-    Result := 0
+  begin
+    Result := 0;
+  end
   else
+  begin
     Result := 1;
+  end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.Lifecycle', cTexts);
 
 end.

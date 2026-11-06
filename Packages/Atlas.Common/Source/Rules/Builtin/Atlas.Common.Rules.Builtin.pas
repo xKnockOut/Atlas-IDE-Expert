@@ -1,6 +1,8 @@
 ﻿unit Atlas.Common.Rules.Builtin;
 
-// Alle eingebauten Prüfregeln an einer Stelle, für Editor und Linter.
+// Alle eingebauten Prüfregeln an einer Stelle, für Editor und Linter. Die Anmeldung steht nach Themen in
+// Atlas.Common.Rules.Builtin.Registration.Declarations, .Statements und .Frameworks, damit keine Unit zu viele
+// Units einbindet.
 
 interface
 
@@ -14,174 +16,22 @@ implementation
 
 uses
   Atlas.Common.Rules.Registry,
-  Atlas.Common.Rules.Builtin.Unicode,
-  Atlas.Common.Rules.Builtin.Architecture,
-  Atlas.Common.Rules.Builtin.Concurrency,
-  Atlas.Common.Rules.Builtin.Flow,
-  Atlas.Common.Rules.Builtin.Unused,
-  Atlas.Common.Rules.Builtin.Declarations,
-  Atlas.Common.Rules.Builtin.Inheritance,
-  Atlas.Common.Rules.Builtin.Capture,
-  Atlas.Common.Rules.Builtin.Components,
-  Atlas.Common.Rules.Builtin.FormFields,
-  Atlas.Common.Rules.Builtin.Security,
-  Atlas.Common.Rules.Builtin.General,
-  Atlas.Common.Rules.Builtin.RtlPatterns,
-  Atlas.Common.Rules.Builtin.RtlTypePatterns,
-  Atlas.Common.Rules.Builtin.Exceptions,
-  Atlas.Common.Rules.Builtin.Style,
-  Atlas.Common.Rules.Builtin.PaletteIcons,
-  Atlas.Common.Rules.Builtin.Performance,
-  Atlas.Common.Rules.Builtin.DataBinding,
-  Atlas.Common.Rules.Builtin.DfmProperties,
-  Atlas.Common.Rules.Builtin.SlashCommands,
-  Atlas.Common.Rules.Builtin.Metrics,
-  Atlas.Common.Rules.Builtin.Todos,
-  Atlas.Common.Rules.Builtin.DebugDisplay,
-  Atlas.Common.Rules.Builtin.Recursion,
-  Atlas.Common.Rules.Builtin.Deprecated,
-  Atlas.Common.Rules.Builtin.ForwardDeclarations,
-  Atlas.Common.Rules.Builtin.FreeFields,
-  Atlas.Common.Rules.Builtin.TrivialAccessor,
-  Atlas.Common.Rules.Builtin.Packages,
-  Atlas.Common.Rules.Builtin.OpenTools,
-  Atlas.Common.Rules.Builtin.Testing,
-  Atlas.Common.Rules.Builtin.Events,
-  Atlas.Common.Rules.Builtin.Ownership,
-  Atlas.Common.Rules.Builtin.Expressions,
-  Atlas.Common.Rules.Builtin.Statements,
-  Atlas.Common.Rules.Builtin.Database,
-  Atlas.Common.Rules.Builtin.DllExports,
-  Atlas.Common.Rules.Builtin.Files,
-  Atlas.Common.Rules.Builtin.Directives,
-  Atlas.Common.Rules.Builtin.Properties,
-  Atlas.Common.Rules.Builtin.Calls,
-  Atlas.Common.Rules.Builtin.Jumps,
-  Atlas.Common.Rules.Builtin.Loops,
-  Atlas.Common.Rules.Builtin.Generics,
-  Atlas.Common.Rules.Builtin.TypeChecks,
-  Atlas.Common.Rules.Builtin.TypeKinds,
-  Atlas.Common.Rules.Builtin.TypeMismatch,
-  Atlas.Common.Rules.Builtin.Constants,
-  Atlas.Common.Rules.Builtin.Forms,
-  Atlas.Common.Rules.Builtin.SharedState,
-  Atlas.Common.Rules.Builtin.Conditions,
-  Atlas.Common.Rules.Builtin.Platform,
-  Atlas.Common.Rules.Builtin.Idioms,
-  Atlas.Common.Rules.Builtin.Inlining,
-  Atlas.Common.Rules.Builtin.CompilerHints,
-  Atlas.Common.Rules.Builtin.MethodDirectives,
-  Atlas.Common.Rules.Builtin.InvalidDeclarations,
-  Atlas.Common.Rules.Builtin.Published,
-  Atlas.Common.Rules.Builtin.Collections,
-  Atlas.Common.Rules.Builtin.Visibility,
-  Atlas.Common.Rules.Builtin.TypeDeclarations,
-  Atlas.Common.Rules.Builtin.Automation,
-  Atlas.Common.Rules.Builtin.TypedExpressions,
-  Atlas.Common.Rules.Builtin.StringConversions,
-  Atlas.Common.Rules.Builtin.TypeRestrictions,
-  Atlas.Common.Rules.Builtin.Units,
-  Atlas.Common.Rules.Builtin.PublicMembers,
-  Atlas.Common.Rules.Builtin.DeadCode,
-  Atlas.Common.Rules.Builtin.XmlDoc,
-  Atlas.Common.Rules.Builtin.Naming,
-  Atlas.Common.Rules.Builtin.Casts,
-  Atlas.Common.Rules.Builtin.UnsafeCode,
-  Atlas.Common.Rules.Builtin.StringAddress,
-  Atlas.Common.Rules.Builtin.FormatArgs,
-  Atlas.Common.Rules.Builtin.ForbiddenSymbols,
-  Atlas.Common.Rules.Builtin.MethodWithoutSelf,
-  Atlas.Common.Rules.Builtin.Assembler,
-  Atlas.Common.Rules.Builtin.Unresolved;
+  Atlas.Common.Rules.Builtin.Registration.Declarations,
+  Atlas.Common.Rules.Builtin.Registration.Statements,
+  Atlas.Common.Rules.Builtin.Registration.Frameworks;
 
 function BuiltinRules: TArray<IRule>;
 var
-  Registry: TRuleRegistry;
+  mRegistry: TRuleRegistry;
 begin
-  Registry := TRuleRegistry.Create;
+  mRegistry := TRuleRegistry.Create;
   try
-    RegisterUnicodeRules(Registry);
-    RegisterArchitectureRules(Registry);
-    RegisterConcurrencyRules(Registry);
-    RegisterFlowRules(Registry);
-    RegisterUnusedRules(Registry);
-    RegisterDeclarationRules(Registry);
-    RegisterInheritanceRules(Registry);
-    RegisterCaptureRules(Registry);
-    RegisterComponentRules(Registry);
-    RegisterFormFieldRules(Registry);
-    RegisterSecurityRules(Registry);
-    RegisterGeneralRules(Registry);
-    RegisterRtlPatternRules(Registry);
-    RegisterRtlTypePatternRules(Registry);
-    RegisterExceptionRules(Registry);
-    RegisterStyleRules(Registry);
-    RegisterUnresolvedRules(Registry);
-    RegisterPaletteIconRules(Registry);
-    RegisterPerformanceRules(Registry);
-    RegisterDataBindingRules(Registry);
-    RegisterDfmPropertyRules(Registry);
-    RegisterSlashCommandRules(Registry);
-    RegisterMetricRules(Registry);
-    RegisterTodoRules(Registry);
-    RegisterDebugDisplayRules(Registry);
-    RegisterRecursionRules(Registry);
-    RegisterDeprecatedRules(Registry);
-    RegisterForwardDeclarationRules(Registry);
-    RegisterFreeFieldRules(Registry);
-    RegisterTrivialAccessorRules(Registry);
-    RegisterPackageRules(Registry);
-    RegisterOpenToolsRules(Registry);
-    RegisterTestingRules(Registry);
-    RegisterEventRules(Registry);
-    RegisterOwnershipRules(Registry);
-    RegisterExpressionRules(Registry);
-    RegisterStatementRules(Registry);
-    RegisterDatabaseRules(Registry);
-    RegisterDllExportRules(Registry);
-    RegisterFileRules(Registry);
-    RegisterDirectiveRules(Registry);
-    RegisterPropertyRules(Registry);
-    RegisterCallRules(Registry);
-    RegisterJumpRules(Registry);
-    RegisterLoopRules(Registry);
-    RegisterGenericRules(Registry);
-    RegisterTypeCheckRules(Registry);
-    RegisterTypeKindRules(Registry);
-    RegisterTypeMismatchRules(Registry);
-    RegisterConstantRules(Registry);
-    RegisterFormRules(Registry);
-    RegisterSharedStateRules(Registry);
-    RegisterConditionRules(Registry);
-    RegisterPlatformRules(Registry);
-    RegisterIdiomRules(Registry);
-    RegisterInliningRules(Registry);
-    RegisterCompilerHintRules(Registry);
-    RegisterMethodDirectiveRules(Registry);
-    RegisterInvalidDeclarationRules(Registry);
-    RegisterPublishedRules(Registry);
-    RegisterCollectionRules(Registry);
-    RegisterVisibilityRules(Registry);
-    RegisterTypeDeclarationRules(Registry);
-    RegisterAutomationRules(Registry);
-    RegisterTypedExpressionRules(Registry);
-    RegisterStringConversionRules(Registry);
-    RegisterTypeRestrictionRules(Registry);
-    RegisterUnitRules(Registry);
-    RegisterPublicMemberRules(Registry);
-    RegisterDeadCodeRules(Registry);
-    RegisterXmlDocRules(Registry);
-    RegisterNamingRules(Registry);
-    RegisterCastRules(Registry);
-    RegisterUnsafeCodeRules(Registry);
-    RegisterStringAddressRules(Registry);
-    RegisterFormatArgsRules(Registry);
-    RegisterForbiddenSymbolRules(Registry);
-    RegisterMethodWithoutSelfRules(Registry);
-    RegisterAssemblerRules(Registry);
-    Result := Registry.Rules;
+    RegisterBuiltinDeclarationRules(mRegistry);
+    RegisterBuiltinStatementRules(mRegistry);
+    RegisterBuiltinFrameworkRules(mRegistry);
+    Result := mRegistry.Rules;
   finally
-    Registry.Free;
+    mRegistry.Free;
   end;
 end;
 

@@ -11,6 +11,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Bookmarks')]
   TAtlasTodoFilterDialogTests = class
   private
     FLanguage: TAtlasLanguage;

@@ -1,0 +1,85 @@
+﻿package Atlas.IDE.Search;
+
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'Atlas IDE Expert – Suche'}
+{$DESIGNONLY}
+{$IMPLICITBUILD OFF}
+{$LIBSUFFIX AUTO}
+
+// Modul Suche (#1456, ADR 0017): Suchen und Ersetzen in Dateien, Unit-Suche und Abfragefenster.
+// Meldet sich in der Unit-Initialisierung von Atlas.IDE.Search.Composition über die Registry
+// des Kern-Packages Atlas.IDE.Base an und lässt sich ohne Neustart der IDE laden und entladen
+// (Regeln 1 bis 4). Requiret nur das Kern-Package
+// (mit den Verträgen zwischen Modulen), kein anderes Modul (Regel 9).
+
+requires
+  rtl,
+  vcl,
+  vclwinx,
+  designide,
+  Atlas.IDE.Base;
+
+contains
+  Atlas.Core.UnitSearch.Model in 'Source\Core\UnitSearch\Atlas.Core.UnitSearch.Model.pas',
+  Atlas.Core.UnitSearch.Sections in 'Source\Core\UnitSearch\Atlas.Core.UnitSearch.Sections.pas',
+  Atlas.Core.UnitSearch.UseUnit in 'Source\Core\UnitSearch\Atlas.Core.UnitSearch.UseUnit.pas',
+  Atlas.Core.UnitSearch.State in 'Source\Core\UnitSearch\Atlas.Core.UnitSearch.State.pas',
+  Atlas.UI.UnitSearch.Data in 'Source\UI\UnitSearch\Atlas.UI.UnitSearch.Data.pas',
+  Atlas.UI.UnitSearch.Painter in 'Source\UI\UnitSearch\Atlas.UI.UnitSearch.Painter.pas',
+  Atlas.UI.UnitSearch.Window in 'Source\UI\UnitSearch\Atlas.UI.UnitSearch.Window.pas',
+  Atlas.IDE.UnitSearch.Actions in 'Source\IDE\UnitSearch\Atlas.IDE.UnitSearch.Actions.pas',
+  Atlas.IDE.UnitSearch.Commands in 'Source\IDE\UnitSearch\Atlas.IDE.UnitSearch.Commands.pas',
+  Atlas.UI.Search.Strings in 'Source\UI\Search\Atlas.UI.Search.Strings.pas',
+  Atlas.Core.Search.Matching in 'Source\Core\Search\Atlas.Core.Search.Matching.pas',
+  Atlas.Core.Search.Scopes in 'Source\Core\Search\Atlas.Core.Search.Scopes.pas',
+  Atlas.Core.Search.Results in 'Source\Core\Search\Atlas.Core.Search.Results.pas',
+  Atlas.Core.Search.Replace in 'Source\Core\Search\Atlas.Core.Search.Replace.pas',
+  Atlas.Core.Search.History in 'Source\Core\Search\Atlas.Core.Search.History.pas',
+  Atlas.Core.Search.Files in 'Source\Core\Search\Atlas.Core.Search.Files.pas',
+  Atlas.Core.Search.ReplaceList in 'Source\Core\Search\Atlas.Core.Search.ReplaceList.pas',
+  Atlas.UI.Search.Bar in 'Source\UI\Search\Atlas.UI.Search.Bar.pas',
+  Atlas.UI.Search.ReplaceFrame in 'Source\UI\Search\Atlas.UI.Search.ReplaceFrame.pas' {AtlasSearchReplaceFrame: TFrame},
+  Atlas.IDE.Search.MessageList in 'Source\IDE\Search\Atlas.IDE.Search.MessageList.pas',
+  Atlas.IDE.Search.FileSearch in 'Source\IDE\Search\Atlas.IDE.Search.FileSearch.pas',
+  Atlas.IDE.Search.ReplaceWindow in 'Source\IDE\Search\Atlas.IDE.Search.ReplaceWindow.pas',
+  Atlas.IDE.Search.Editor in 'Source\IDE\Search\Atlas.IDE.Search.Editor.pas',
+  Atlas.IDE.Search.HistoryFile in 'Source\IDE\Search\Atlas.IDE.Search.HistoryFile.pas',
+  Atlas.IDE.Search.Session in 'Source\IDE\Search\Atlas.IDE.Search.Session.pas',
+  Atlas.IDE.Search.Painter in 'Source\IDE\Search\Atlas.IDE.Search.Painter.pas',
+  Atlas.IDE.Search.Counter in 'Source\IDE\Search\Atlas.IDE.Search.Counter.pas',
+  Atlas.IDE.Search.AcrossFiles in 'Source\IDE\Search\Atlas.IDE.Search.AcrossFiles.pas',
+  Atlas.IDE.Search.Stepping in 'Source\IDE\Search\Atlas.IDE.Search.Stepping.pas',
+  Atlas.IDE.Search.Replacing in 'Source\IDE\Search\Atlas.IDE.Search.Replacing.pas',
+  Atlas.IDE.Search.Commands in 'Source\IDE\Search\Atlas.IDE.Search.Commands.pas',
+  Atlas.IDE.Search.Composition in 'Source\IDE\Search\Atlas.IDE.Search.Composition.pas',
+  Atlas.Core.Query.Model in 'Source\Core\Query\Atlas.Core.Query.Model.pas',
+  Atlas.UI.Query.Parts in 'Source\UI\Query\Atlas.UI.Query.Parts.pas',
+  Atlas.UI.Query.Frame in 'Source\UI\Query\Atlas.UI.Query.Frame.pas' {AtlasCodeQueryFrame: TFrame},
+  Atlas.IDE.Query.Window in 'Source\IDE\Query\Atlas.IDE.Query.Window.pas',
+  Atlas.IDE.Query.Service in 'Source\IDE\Query\Atlas.IDE.Query.Service.pas',
+  Atlas.UI.Search.SettingsSection in 'Source\UI\Search\Atlas.UI.Search.SettingsSection.pas';
+
+end.

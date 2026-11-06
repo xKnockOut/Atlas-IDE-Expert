@@ -90,7 +90,19 @@ implementation
 
 uses
   System.StrUtils,
-  Atlas.Common.Projects.Paths;
+  Atlas.Common.Projects.Paths,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TProjectsMissingUnitText = (ProjectFolderAndSubfolders, SearchPathsOf, Project, LibraryText);
+
+const
+  cTexts: array[TProjectsMissingUnitText] of TAtlasText = (
+    (De: 'Projektordner %s und Unterordner'; En: 'Project folder %s and subfolders'),
+    (De: 'Suchpfade von %s, %s'; En: 'Search paths of %s, %s'),
+    (De: 'Projekt %s'; En: 'Project %s'),
+    (De: 'Bibliothek %s'; En: 'Library %s'));
 
 const
   // .pas vor .dcu: Eine Quelle lässt sich auch ins Projekt aufnehmen.
@@ -103,7 +115,9 @@ var
 begin
   Index := Length(APath);
   while (Index > 0) and not CharInSet(APath[Index], ['\', '/']) do
+  begin
     Dec(Index);
+  end;
   Result := Copy(APath, Index + 1, MaxInt);
 end;
 
@@ -112,14 +126,18 @@ function WithoutSeparator(const AFolder: string): string;
 begin
   Result := AFolder;
   while (Length(Result) > 1) and CharInSet(Result[Length(Result)], ['\', '/']) do
+  begin
     Delete(Result, Length(Result), 1);
+  end;
 end;
 
 function FolderKey(const AFolder: string): string;
 begin
   Result := LowerCase(StringReplace(AFolder, '/', '\', [rfReplaceAll]));
   while (Length(Result) > 1) and (Result[Length(Result)] = '\') do
+  begin
     Delete(Result, Length(Result), 1);
+  end;
 end;
 
 class function TMissingUnitSearch.KnownPlatforms: TArray<string>;
@@ -135,17 +153,23 @@ begin
   Result := '';
   First := Pos('''', AText);
   if First = 0 then
+  begin
     Exit;
+  end;
   Last := Pos('''', AText, First + 1);
   if Last = 0 then
+  begin
     Exit;
+  end;
   Result := Trim(Copy(AText, First + 1, Last - First - 1));
   // F1026 nennt die Datei (Foo.dcu, Foo.pas): ohne Endung, ohne Ordner.
   if SameText(Trim(ACode), 'F1026') then
   begin
     Result := NameOf(Result);
     if MatchText(ExtractFileExt(Result), ['.dcu', '.pas', '.dcp', '.o']) then
+    begin
       Result := ChangeFileExt(Result, '');
+    end;
   end;
 end;
 
@@ -158,6 +182,10 @@ type
     FSearched: TArray<string>;
     function FileIn(const AFolder: string): string;
     procedure Look(const AFolder: string; APlace: TMissingUnitPlace; const ADetail: string);
+    procedure LookInProjectFolder;
+    procedure LookInGroup;
+    procedure LookInOtherTargets;
+    procedure LookInOtherLibraries;
   public
     constructor Create(const ASetup: TMissingUnitSetup);
     procedure Run;
@@ -178,16 +206,28 @@ var
 begin
   Result := '';
   if not Assigned(FSetup.ListFiles) then
+  begin
     Exit;
+  end;
   Candidates := [FSetup.UnitName];
   for Namespace in FSetup.Namespaces do
+  begin
     Candidates := Candidates + [Namespace + '.' + FSetup.UnitName];
+  end;
   Files := FSetup.ListFiles(AFolder);
   for Wanted in Extensions do
+  begin
     for Name in Candidates do
+    begin
       for FileName in Files do
+      begin
         if SameText(NameOf(FileName), Name + Wanted) then
+        begin
           Exit(FileName);
+        end;
+      end;
+    end;
+  end;
 end;
 
 procedure TSearch.Look(const AFolder: string; APlace: TMissingUnitPlace; const ADetail: string);
@@ -196,95 +236,150 @@ var
   Hit: TMissingUnitHit;
 begin
   if (AFolder = '') or (Pos('$(', AFolder) > 0) then
+  begin
     Exit;
+  end;
   Key := FolderKey(AFolder);
   if IndexStr(Key, FSeen) >= 0 then
+  begin
     Exit;
+  end;
   FSeen := FSeen + [Key];
   FileName := FileIn(AFolder);
   if FileName = '' then
+  begin
     Exit;
+  end;
   Hit.Place := APlace;
   Hit.FileName := FileName;
   Hit.Folder := TProjectPaths.DirectoryOf(FileName);
   if Hit.Folder = '' then
+  begin
     Hit.Folder := AFolder;
+  end;
   Hit.Detail := ADetail;
   FHits := FHits + [Hit];
 end;
 
+procedure TSearch.LookInProjectFolder;
+var
+  mRoot, mFolder: string;
+  mQueue: TArray<string>;
+  mDepths: TArray<Integer>;
+  mPosition: Integer;
+begin
+  mRoot := TProjectPaths.DirectoryOf(FSetup.Project.FileName);
+  if mRoot = '' then
+  begin
+    Exit;
+  end;
+  FSearched := FSearched + [cTexts[TProjectsMissingUnitText.ProjectFolderAndSubfolders].Fmt([mRoot])];
+  // Der Projektordner selbst steht immer im Suchweg des Compilers.
+  FSeen := FSeen + [FolderKey(mRoot)];
+  mQueue := [mRoot];
+  mDepths := [0];
+  mPosition := 0;
+  while mPosition < Length(mQueue) do
+  begin
+    if mDepths[mPosition] > 0 then
+    begin
+      Look(mQueue[mPosition], TMissingUnitPlace.ProjectFolder, NameOf(FSetup.Project.FileName));
+    end;
+    if (mDepths[mPosition] < TMissingUnitSearch.MaxDepth) and Assigned(FSetup.ListFolders) then
+    begin
+      for mFolder in FSetup.ListFolders(mQueue[mPosition]) do
+      begin
+        mQueue := mQueue + [mFolder];
+        mDepths := mDepths + [mDepths[mPosition] + 1];
+      end;
+    end;
+    Inc(mPosition);
+  end;
+end;
+
+procedure TSearch.LookInGroup;
+var
+  mProject: TMissingUnitProject;
+  mFolder: string;
+begin
+  for mProject in FSetup.GroupProjects do
+  begin
+    FSearched := FSearched + [cTexts[TProjectsMissingUnitText.Project].Fmt([NameOf(mProject.FileName)])];
+    Look(TProjectPaths.DirectoryOf(mProject.FileName), TMissingUnitPlace.GroupProject, NameOf(mProject.FileName));
+    for mFolder in mProject.SearchPaths do
+    begin
+      Look(mFolder, TMissingUnitPlace.GroupProject, NameOf(mProject.FileName));
+    end;
+  end;
+end;
+
+procedure TSearch.LookInOtherTargets;
+var
+  mTarget: TMissingUnitTarget;
+  mFolder: string;
+begin
+  for mTarget in FSetup.Targets do
+  begin
+    if SameText(mTarget.Config, FSetup.Project.Config) and SameText(mTarget.Platform, FSetup.Project.Platform) then
+    begin
+      Continue;
+    end;
+    FSearched := FSearched + [cTexts[TProjectsMissingUnitText.SearchPathsOf].Fmt([mTarget.Config, mTarget.Platform])];
+    for mFolder in mTarget.SearchPaths do
+    begin
+      Look(mFolder, TMissingUnitPlace.OtherTarget, mTarget.Config + ', ' + mTarget.Platform);
+    end;
+  end;
+end;
+
+procedure TSearch.LookInOtherLibraries;
+var
+  mPlatform, mFolder: string;
+begin
+  if not Assigned(FSetup.LibraryPaths) then
+  begin
+    Exit;
+  end;
+  for mPlatform in FSetup.Platforms do
+  begin
+    if SameText(mPlatform, FSetup.Project.Platform) then
+    begin
+      Continue;
+    end;
+    FSearched := FSearched + [cTexts[TProjectsMissingUnitText.LibraryText].Fmt([mPlatform])];
+    for mFolder in FSetup.LibraryPaths(mPlatform) do
+    begin
+      Look(mFolder, TMissingUnitPlace.OtherPlatformLibrary, mPlatform);
+    end;
+  end;
+end;
+
 procedure TSearch.Run;
 var
-  Root, Folder, IndexFile, Platform: string;
-  Queue: TArray<string>;
-  Depths: TArray<Integer>;
-  Position: Integer;
-  Target: TMissingUnitTarget;
-  Project: TMissingUnitProject;
-  ActiveSearch: TArray<string>;
+  mFolder, mIndexFile: string;
 begin
   // Was der Compiler schon durchsucht hat, zählt nicht als Fund.
-  ActiveSearch := FSetup.Project.SearchPaths + FSetup.ActiveLibraryPaths;
-  for Folder in ActiveSearch do
-    FSeen := FSeen + [FolderKey(Folder)];
+  for mFolder in FSetup.Project.SearchPaths + FSetup.ActiveLibraryPaths do
+  begin
+    FSeen := FSeen + [FolderKey(mFolder)];
+  end;
   // 1. Projektordner und Unterordner, Breitensuche.
-  Root := TProjectPaths.DirectoryOf(FSetup.Project.FileName);
-  if Root <> '' then
-  begin
-    FSearched := FSearched + [Format('Projektordner %s und Unterordner', [Root])];
-    // Der Projektordner selbst steht immer im Suchweg des Compilers.
-    FSeen := FSeen + [FolderKey(Root)];
-    Queue := [Root];
-    Depths := [0];
-    Position := 0;
-    while Position < Length(Queue) do
-    begin
-      if Depths[Position] > 0 then
-        Look(Queue[Position], TMissingUnitPlace.ProjectFolder, NameOf(FSetup.Project.FileName));
-      if (Depths[Position] < TMissingUnitSearch.MaxDepth) and Assigned(FSetup.ListFolders) then
-        for Folder in FSetup.ListFolders(Queue[Position]) do
-        begin
-          Queue := Queue + [Folder];
-          Depths := Depths + [Depths[Position] + 1];
-        end;
-      Inc(Position);
-    end;
-  end;
+  LookInProjectFolder;
   // 2. Andere Projekte der Gruppe: ihr Ordner und ihre Suchpfade.
-  for Project in FSetup.GroupProjects do
-  begin
-    FSearched := FSearched + [Format('Projekt %s', [NameOf(Project.FileName)])];
-    Look(TProjectPaths.DirectoryOf(Project.FileName), TMissingUnitPlace.GroupProject,
-      NameOf(Project.FileName));
-    for Folder in Project.SearchPaths do
-      Look(Folder, TMissingUnitPlace.GroupProject, NameOf(Project.FileName));
-  end;
+  LookInGroup;
   // 3. Suchpfade der anderen Konfigurationen und Plattformen.
-  for Target in FSetup.Targets do
-  begin
-    if SameText(Target.Config, FSetup.Project.Config) and SameText(Target.Platform, FSetup.Project.Platform) then
-      Continue;
-    FSearched := FSearched + [Format('Suchpfade von %s, %s', [Target.Config, Target.Platform])];
-    for Folder in Target.SearchPaths do
-      Look(Folder, TMissingUnitPlace.OtherTarget, Target.Config + ', ' + Target.Platform);
-  end;
+  LookInOtherTargets;
   // 4. Bibliothekspfade anderer Plattformen.
-  if Assigned(FSetup.LibraryPaths) then
-    for Platform in FSetup.Platforms do
-    begin
-      if SameText(Platform, FSetup.Project.Platform) then
-        Continue;
-      FSearched := FSearched + [Format('Bibliothek %s', [Platform])];
-      for Folder in FSetup.LibraryPaths(Platform) do
-        Look(Folder, TMissingUnitPlace.OtherPlatformLibrary, Platform);
-    end;
+  LookInOtherLibraries;
   // 5. Index.
   if Assigned(FSetup.IndexFile) then
   begin
     FSearched := FSearched + ['Index'];
-    IndexFile := FSetup.IndexFile(FSetup.UnitName);
-    if IndexFile <> '' then
-      Look(TProjectPaths.DirectoryOf(IndexFile), TMissingUnitPlace.Index, 'Index');
+    mIndexFile := FSetup.IndexFile(FSetup.UnitName);
+    if mIndexFile <> '' then
+    begin
+      Look(TProjectPaths.DirectoryOf(mIndexFile), TMissingUnitPlace.Index, 'Index');
+    end;
   end;
 end;
 
@@ -296,7 +391,9 @@ begin
   ASearched := nil;
   Result := nil;
   if Trim(ASetup.UnitName) = '' then
+  begin
     Exit;
+  end;
   Search := TSearch.Create(ASetup);
   try
     Search.Run;
@@ -316,19 +413,34 @@ begin
   Target := StringReplace(WithoutSeparator(AFolder), '/', '\', [rfReplaceAll]).Split(['\']);
   // Anderes Laufwerk bzw. andere Wurzel: absolut lassen.
   if (Length(Base) = 0) or (Length(Target) = 0) or not SameText(Base[0], Target[0]) then
+  begin
     Exit(StringReplace(WithoutSeparator(AFolder), '/', '\', [rfReplaceAll]));
+  end;
   Common := 0;
   while (Common < Length(Base)) and (Common < Length(Target)) and SameText(Base[Common], Target[Common]) do
+  begin
     Inc(Common);
+  end;
   Result := '';
   for Index := Common to High(Base) do
+  begin
     Result := Result + '..\';
+  end;
   for Index := Common to High(Target) do
+  begin
     Result := Result + Target[Index] + '\';
+  end;
   if Result = '' then
-    Result := '.'
+  begin
+    Result := '.';
+  end
   else
+  begin
     Delete(Result, Length(Result), 1);
+  end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Projects.MissingUnit', cTexts);
 
 end.

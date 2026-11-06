@@ -54,6 +54,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.Completion.Lists,
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
@@ -148,13 +149,17 @@ begin
   Line := 0;
   Character := 0;
   for Index := 1 to Pos('|', AMarked) - 1 do
+  begin
     if AMarked[Index] = #10 then
     begin
       Inc(Line);
       Character := 0;
     end
     else
+    begin
       Inc(Character);
+    end;
+  end;
   APosition := TTextPosition.Create(Line, Character);
   Result := StringReplace(AMarked, '|', '', []);
 end;
@@ -183,9 +188,13 @@ var
 begin
   // ACode steht im var-Abschnitt (Typ) oder im Rumpf (Code), je nachdem, ob es mit ":" beginnt.
   if ACode.StartsWith(':') then
-    Text := StringReplace(UnitHaupt, '  L: { Typ };', '  L' + ACode, [])
+  begin
+    Text := StringReplace(UnitHaupt, '  L: { Typ };', '  L' + ACode, []);
+  end
   else
+  begin
     Text := StringReplace(StringReplace(UnitHaupt, '  L: { Typ };'#10, '', []), '  { Code }', ACode, []);
+  end;
   Text := Split(Text, Position);
   Tree := TPascalParser.Parse(Text);
   Request := TCompletionRequest.Create(Text, HauptFile, Position);
@@ -200,7 +209,7 @@ begin
         AText := UnitListen;
         Result := SameText(AFileName, ListenFile);
       end;
-    Result := TLspCompletion.Collect(Request, Default(TPostfixOptions), nil);
+    Result := TCompletionLists.Collect(Request, Default(TPostfixOptions), nil);
   finally
     Request.Free;
     Tree.Free;
@@ -213,11 +222,13 @@ var
   Item: TCompletionItem;
 begin
   for Item in AItems.Items do
+  begin
     if SameText(Item.Name, AName) then
     begin
       AItem := Item;
       Exit(True);
     end;
+  end;
   AItem := Default(TCompletionItem);
   Result := False;
 end;
@@ -240,9 +251,13 @@ procedure TCompletionGenericsTests.FindsOpenAngleBracket;
     Tokens := TPascalLexer.Tokenize(Split(AMarked, Position));
     Last := -1;
     for Index := 0 to High(Tokens) do
+    begin
       if (Tokens[Index].StartPos.Line < Position.Line) or (Tokens[Index].StartPos.Line = Position.Line) and
         (Tokens[Index].EndPos.Character <= Position.Character) then
+      begin
         Last := Index;
+      end;
+    end;
     ASite := TCompletionGenerics.SiteAt(Tokens, Last);
     Result := ASite.Found;
   end;
@@ -450,12 +465,12 @@ begin
     '  Kunden.Add(|);', []), Position);
   Tree := TPascalParser.Parse(Text);
   try
-    Help := TLspSignatureHelp.HelpAt(FResolver, FIndex, Tree, Text, HauptFile, Position,
+    Help := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, Tree, Text, HauptFile,
       function(const AFileName: string; out AText: string): Boolean
       begin
         AText := UnitListen;
         Result := SameText(AFileName, ListenFile);
-      end);
+      end), Position);
   finally
     Tree.Free;
   end;

@@ -69,7 +69,21 @@ uses
   System.Generics.Collections,
   Atlas.Text.Chars,
   Atlas.Text.Lines,
-  Atlas.Common.Lsp.Positions;
+  Atlas.Common.Lsp.Positions,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TExpressionCompletionText = (FieldsTextDocumentUriPositionAnd);
+
+const
+  cTexts: array[TExpressionCompletionText] of TAtlasText = (
+    (De: 'Felder "textDocument.uri", "position" und "expression" fehlen in ';
+     En: 'Fields "textDocument.uri", "position" and "expression" missing in '));
+
+{$SCOPEDENUMS OFF}
 
 const
   // LSP CompletionItemKind.Keyword und .Snippet; InsertTextFormat.Snippet.
@@ -89,11 +103,17 @@ begin
   Trimmed := LowerCase(Trim(ALine));
   Index := 1;
   while (Index <= Length(Trimmed)) and TTextChars.IsIdentChar(Trimmed[Index]) do
+  begin
     Inc(Index);
+  end;
   Word := Copy(Trimmed, 1, Index - 1);
   for Index := Low(OpenerWords) to High(OpenerWords) do
+  begin
     if Word = OpenerWords[Index] then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -105,11 +125,17 @@ begin
   Result := True;
   Edit := nil;
   if AItem.GetValue('textEdit') is TJSONObject then
+  begin
     Edit := TJSONObject(AItem.GetValue('textEdit'));
+  end;
   if Edit <> nil then
+  begin
     Exit(Edit.TryGetValue<string>('newText', AText));
+  end;
   if AItem.TryGetValue<string>('insertText', AText) then
+  begin
     Exit;
+  end;
   Result := AItem.TryGetValue<string>('label', AText);
 end;
 
@@ -119,7 +145,9 @@ var
   Range: TTextRange;
 begin
   if not (AItem.GetValue('textEdit') is TJSONObject) then
+  begin
     Exit(True);
+  end;
   Range := TLspPositions.ReadRange(TJSONObject(AItem.GetValue('textEdit')).GetValue('range'));
   Result := Range.StartPos = AStart;
 end;
@@ -160,9 +188,13 @@ var
 begin
   Line := AScopeLine;
   if Line >= ADocument.LineCount then
+  begin
     Line := ADocument.LineCount - 1;
+  end;
   if Line < 0 then
+  begin
     Line := 0;
+  end;
   ScopeText := ADocument.LineText(Line);
   Indent := TTextLines.IndentOf(ScopeText);
   LineBreak := TTextLines.LineBreakOf(ADocument.Text);
@@ -172,9 +204,13 @@ begin
     [rfReplaceAll]) + ';' + LineBreak;
   Result.Column := Length(Indent);
   if StartsWithOpener(ScopeText) and (Line + 1 < ADocument.LineCount) then
-    Result.Line := Line + 1
+  begin
+    Result.Line := Line + 1;
+  end
   else
+  begin
     Result.Line := Line;
+  end;
   Result.Change := TTextChange.Ranged(TTextRange.Create(Result.Line, 0, Result.Line, 0), Result.Text);
 end;
 
@@ -184,12 +220,18 @@ var
 begin
   Stop := ACharacter;
   if Stop > Length(AExpression) then
+  begin
     Stop := Length(AExpression);
+  end;
   if Stop < 0 then
+  begin
     Stop := 0;
+  end;
   Start := Stop;
   while (Start > 0) and TTextChars.IsIdentChar(AExpression[Start]) do
+  begin
     Dec(Start);
+  end;
   Result := Copy(AExpression, Start + 1, Stop - Start);
 end;
 
@@ -209,28 +251,42 @@ begin
   Result.AddPair('items', Items);
   Source := nil;
   if ACompletion is TJSONObject then
-    TJSONObject(ACompletion).TryGetValue<TJSONArray>('items', Source)
+  begin
+    TJSONObject(ACompletion).TryGetValue<TJSONArray>('items', Source);
+  end
   else if ACompletion is TJSONArray then
+  begin
     Source := TJSONArray(ACompletion);
+  end;
   if Source = nil then
+  begin
     Exit;
+  end;
   for Value in Source do
   begin
     if not (Value is TJSONObject) then
+    begin
       Continue;
+    end;
     Item := TJSONObject(Value);
     if not (Usable(Item, AStart) and InsertTextOf(Item, Text)) then
+    begin
       Continue;
+    end;
     Entry := TJSONObject.Create;
     if not Item.TryGetValue<string>('label', Detail) then
+    begin
       Detail := Text;
+    end;
     Entry.AddPair('label', Detail);
     Kind := 0;
     Item.TryGetValue<Integer>('kind', Kind);
     Entry.AddPair('kind', TJSONNumber.Create(Kind));
     Detail := '';
     if Item.TryGetValue<string>('detail', Detail) then
+    begin
       Entry.AddPair('detail', Detail);
+    end;
     Entry.AddPair('insertText', Text);
     Items.AddElement(Entry);
   end;
@@ -251,9 +307,13 @@ begin
   Snapshot := ADocument.ApplyChanges([Placement.Change], ADocument.Version);
   Character := ACharacter;
   if Character > Length(AExpression) then
+  begin
     Character := Length(AExpression);
+  end;
   if Character < 0 then
+  begin
     Character := 0;
+  end;
   Prefix := PrefixAt(AExpression, Character);
   Caret := TTextPosition.Create(Placement.Line, Placement.Column + Character);
   Start := TTextPosition.Create(Placement.Line, Caret.Character - Length(Prefix));
@@ -276,13 +336,20 @@ begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue) and
     TJSONObject(AParams).TryGetValue<string>('expression', Expression)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Felder "textDocument.uri", "position" und "expression" fehlen in ' + Method);
+      cTexts[TExpressionCompletionText.FieldsTextDocumentUriPositionAnd].Text + Method);
+  end;
   if not FStore.TryGet(Uri, Document) then
+  begin
     Exit(TJSONNull.Create);
+  end;
   Character := Length(Expression);
   TJSONObject(AParams).TryGetValue<Integer>('character', Character);
   Result := Complete(Document, TLspPositions.ReadPosition(PositionValue).Line, Expression, Character, ACancellation);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.ExpressionCompletion', cTexts);
 
 end.

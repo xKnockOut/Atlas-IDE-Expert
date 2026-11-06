@@ -72,25 +72,34 @@ type
     /// <summary>#69: letzter Testlauf für die Karte Tests (#763) und „Fehlgeschlagene erneut ausführen“.</summary>
     [Test]
     procedure TestsRoundTripAndLimits;
+    /// <summary>#1455: Das Modul Tests liest die fehlgeschlagenen Tests ohne die Willkommensseite.</summary>
+    [Test]
+    procedure FailedTestsOfStoredRun;
     /// <summary>#533: Release-Wächter, letzte Prüfung und Versionen je Konfiguration und Plattform.</summary>
     [Test]
     procedure ReleaseRoundTripAndRemember;
     /// <summary>#763: letzter Abruf vom Build-Server samt Testbericht; unbekannte Felder bleiben.</summary>
     [Test]
     procedure CiRoundTripAndMatches;
+    /// <summary>Feldleser und Abschnitte ohne Datei: fehlende Abschnitte bleiben unbekannt.</summary>
+    [Test]
+    procedure FieldHelpersAndSectionsWithoutObject;
   end;
 
 implementation
 
 uses
+  System.DateUtils,
   System.SysUtils,
   System.Classes,
   System.IOUtils,
   System.JSON,
   System.Generics.Collections,
-  Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Files.DataFile,
-  Atlas.Core.Projects.Summary;
+  Atlas.Core.Projects.Summary,
+  Atlas.Core.Projects.Summary.Json,
+  Atlas.Core.Projects.Summary.Sections;
 
 const
   Project = 'C:\Projekte\Demo.dproj';
@@ -144,7 +153,9 @@ end;
 procedure TAtlasProjectSummaryTests.TearDown;
 begin
   if DirectoryExists(FFolder) then
+  begin
     TDirectory.Delete(FFolder, True);
+  end;
   // Der Leckmonitor misst den Saldo von Setup und TearDown.
   FFolder := '';
 end;
@@ -556,6 +567,34 @@ begin
   Assert.Contains(TAtlasProjectSummaries.ToJson(Read), '"jenkins":{"job":"x"}');
 end;
 
+procedure TAtlasProjectSummaryTests.FailedTestsOfStoredRun;
+const
+  TestProject = 'C:\Projekte\Demo.Tests.dproj';
+var
+  mSummary: TAtlasProjectSummary;
+  mFailure: TAtlasProjectTestFailure;
+  mNames: TArray<string>;
+begin
+  Assert.AreEqual(0, Integer(Length(TAtlasProjectSummaries.FailedTestsOf(FFolder, TestProject))), 'ohne Datei');
+  mSummary := TAtlasProjectSummary.Create(TestProject);
+  mSummary.Tests.Known := True;
+  mSummary.Tests.Project := TestProject;
+  mSummary.Tests.Failed := 1;
+  mFailure := Default(TAtlasProjectTestFailure);
+  mFailure.Test := 'Demo.Tests.TRechner.Teilt';
+  mSummary.Tests.Failures := [mFailure, mFailure];
+  Assert.IsTrue(TAtlasProjectSummaries.Save(FFolder, mSummary));
+  mNames := TAtlasProjectSummaries.FailedTestsOf(FFolder, 'c:\projekte\demo.tests.dproj');
+  Assert.AreEqual(1, Integer(Length(mNames)), 'andere Schreibweise, jeder Test einmal');
+  Assert.AreEqual('Demo.Tests.TRechner.Teilt', mNames[0]);
+  Assert.AreEqual(0, Integer(Length(TAtlasProjectSummaries.FailedTestsOf(FFolder, ''))), 'ohne Projekt');
+  // Der Lauf gehört zu einem anderen Testprojekt (Gruppe, #69): nichts.
+  mSummary.Tests.Project := 'C:\Projekte\Andere.Tests.dproj';
+  Assert.IsTrue(TAtlasProjectSummaries.Save(FFolder, mSummary));
+  Assert.AreEqual(0, Integer(Length(TAtlasProjectSummaries.FailedTestsOf(FFolder, TestProject))));
+  Assert.Contains(TAtlasProjectSummaries.DefaultFolder, TAtlasProjectSummaries.FolderName);
+end;
+
 procedure TAtlasProjectSummaryTests.ReleaseRoundTripAndRemember;
 var
   Summary, Read: TAtlasProjectSummary;
@@ -594,7 +633,9 @@ begin
   Assert.IsTrue(SameTime(At(2026, 10, 2, 8, 0, 0), Read.Release.Builds[1].At));
   // Höchstens MaxBuilds Einträge, der neueste zuerst; unbekannte Felder bleiben.
   for Index := 1 to TAtlasProjectRelease.MaxBuilds + 3 do
+  begin
     Summary.Release.Remember('Release', 'P' + IntToStr(Index), IntToStr(Index), 0);
+  end;
   Assert.AreEqual(TAtlasProjectRelease.MaxBuilds, Integer(Length(Summary.Release.Builds)));
   Assert.AreEqual('P' + IntToStr(TAtlasProjectRelease.MaxBuilds + 3), Summary.Release.Builds[0].Platform);
   Assert.IsTrue(TAtlasProjectSummaries.Parse('{"project": "C:\\P.dproj", "release": {"findings": 1, "gate": ' +
@@ -605,6 +646,28 @@ begin
   Json := TAtlasProjectSummaries.ToJson(Read);
   Assert.Contains(Json, '"gate":"block"');
   Assert.Contains(Json, '"version":"2.0.0.0","signed":true}');
+end;
+
+/// <summary>Ohne Testbericht fehlen die Zähler; fremde Felder (auch in "failures") bleiben.</summary>
+procedure AssertCiWithoutTestReport;
+var
+  mRead: TAtlasProjectSummary;
+  mJson: string;
+begin
+  // Ohne Testbericht fehlen die Zähler; fremde Felder (auch in "failures") bleiben.
+  Assert.IsTrue(TAtlasProjectSummaries.Parse('{"project": "C:\\P.dproj", "ci": {"provider": "jenkins",' +
+    ' "server": "https://ci", "job": "kasse", "number": 7, "result": "success", "error": "neu", "extra": 1,' +
+    ' "failures": [{"test": "A.B", "flaky": true}]}}', mRead));
+  Assert.IsTrue(mRead.Ci.Error = TAtlasCiFetchError.Network, 'unbekannter Fehler gilt als Netzfehler');
+  Assert.IsTrue(mRead.Ci.Build.TestsKnown);
+  mJson := TAtlasProjectSummaries.ToJson(mRead);
+  Assert.Contains(mJson, '"extra":1');
+  Assert.Contains(mJson, '{"test":"A.B","flaky":true}');
+  mRead.Ci.Build.TestsKnown := False;
+  mRead.Ci.Build.Failures := nil;
+  mJson := TAtlasProjectSummaries.ToJson(mRead);
+  Assert.DoesNotContain(mJson, '"passed"');
+  Assert.DoesNotContain(mJson, '"failures"');
 end;
 
 procedure TAtlasProjectSummaryTests.CiRoundTripAndMatches;
@@ -660,20 +723,7 @@ begin
   Assert.AreEqual(2, Read.Ci.Build.Failed);
   Assert.AreEqual(1, Integer(Length(Read.Ci.Build.Failures)));
   Assert.AreEqual('Erwartet 3 Deklarationen, gefunden 0', Read.Ci.Build.Failures[0].Message);
-  // Ohne Testbericht fehlen die Zähler; fremde Felder (auch in "failures") bleiben.
-  Assert.IsTrue(TAtlasProjectSummaries.Parse('{"project": "C:\\P.dproj", "ci": {"provider": "jenkins",' +
-    ' "server": "https://ci", "job": "kasse", "number": 7, "result": "success", "error": "neu", "extra": 1,' +
-    ' "failures": [{"test": "A.B", "flaky": true}]}}', Read));
-  Assert.IsTrue(Read.Ci.Error = TAtlasCiFetchError.Network, 'unbekannter Fehler gilt als Netzfehler');
-  Assert.IsTrue(Read.Ci.Build.TestsKnown);
-  Json := TAtlasProjectSummaries.ToJson(Read);
-  Assert.Contains(Json, '"extra":1');
-  Assert.Contains(Json, '{"test":"A.B","flaky":true}');
-  Read.Ci.Build.TestsKnown := False;
-  Read.Ci.Build.Failures := nil;
-  Json := TAtlasProjectSummaries.ToJson(Read);
-  Assert.DoesNotContain(Json, '"passed"');
-  Assert.DoesNotContain(Json, '"failures"');
+  AssertCiWithoutTestReport;
 end;
 
 procedure TAtlasProjectSummaryTests.TodosRejectInvalidAnswer;
@@ -737,6 +787,25 @@ begin
   Assert.IsTrue(Pos('"updated"', Json) = 0, Json);
 end;
 
+/// <summary>Sauber; unbekannte Felder bleiben, Zähler nie kleiner als die Funde.</summary>
+procedure AssertSetupCleanKeepsUnknown;
+var
+  mRead: TAtlasProjectSummary;
+  mJson: string;
+begin
+  // Sauber; unbekannte Felder bleiben, Zähler nie kleiner als die Funde.
+  Assert.IsTrue(TAtlasProjectSummaries.Parse('{"setup": {"dismissed": false, "x": 1, "paths": {"at": ' +
+    '"2026-10-15T09:30:00Z", "missingUnits": 0, "undefinedDefines": 0, "units": [], "defines": [], "y": 2}}}', mRead));
+  Assert.IsTrue(mRead.Setup.PathsClean);
+  mJson := TAtlasProjectSummaries.ToJson(mRead);
+  Assert.Contains(mJson, '"x":1');
+  Assert.Contains(mJson, '"y":2');
+  Assert.IsTrue(TAtlasProjectSummaries.Parse('{"setup": {"paths": {"missingUnits": 0, "units": [{"name": "A"}, ' +
+    '{"file": "ohne Namen"}]}}}', mRead));
+  Assert.AreEqual(1, mRead.Setup.MissingUnitCount);
+  Assert.AreEqual(1, Integer(mRead.Setup.MissingUnits[0].Count));
+end;
+
 procedure TAtlasProjectSummaryTests.SetupRoundTripAndLimits;
 var
   Summary, Read: TAtlasProjectSummary;
@@ -790,17 +859,7 @@ begin
   Assert.AreEqual('Src\Main.pas', Read.Setup.MissingUnits[0].FileName);
   Assert.AreEqual(3, Integer(Read.Setup.UndefinedDefines[0].Count));
   Assert.IsFalse(Read.Setup.PathsClean);
-  // Sauber; unbekannte Felder bleiben, Zähler nie kleiner als die Funde.
-  Assert.IsTrue(TAtlasProjectSummaries.Parse('{"setup": {"dismissed": false, "x": 1, "paths": {"at": ' +
-    '"2026-10-15T09:30:00Z", "missingUnits": 0, "undefinedDefines": 0, "units": [], "defines": [], "y": 2}}}', Read));
-  Assert.IsTrue(Read.Setup.PathsClean);
-  Json := TAtlasProjectSummaries.ToJson(Read);
-  Assert.Contains(Json, '"x":1');
-  Assert.Contains(Json, '"y":2');
-  Assert.IsTrue(TAtlasProjectSummaries.Parse('{"setup": {"paths": {"missingUnits": 0, "units": [{"name": "A"}, ' +
-    '{"file": "ohne Namen"}]}}}', Read));
-  Assert.AreEqual(1, Read.Setup.MissingUnitCount);
-  Assert.AreEqual(1, Integer(Read.Setup.MissingUnits[0].Count));
+  AssertSetupCleanKeepsUnknown;
 end;
 
 procedure TAtlasProjectSummaryTests.SetupKeepsUncertainFindings;
@@ -872,6 +931,19 @@ begin
   Assert.IsTrue(Summary.Hidden);
   // Gemeldete Datendateien vergessen: Das Register bliebe sonst als Leck stehen.
   TAtlasDataFile.ForgetReports;
+end;
+
+procedure TAtlasProjectSummaryTests.FieldHelpersAndSectionsWithoutObject;
+begin
+  Assert.AreEqual('', TextOf(nil, 'project'));
+  Assert.AreEqual(7, NumberOf(nil, 'errors', 7));
+  Assert.IsFalse(FlagOf(nil, 'hidden'));
+  Assert.AreEqual('2026-10-15T09:30:05Z', SummaryTimeText(SummaryTimeOf('2026-10-15 09:30:05')));
+  Assert.IsTrue(SummaryTimeOf('2026-10-15X09:30:05Z') = 0, 'Trenner');
+  Assert.IsFalse(TAtlasSummarySections.SetupOf(nil).Known);
+  Assert.IsFalse(TAtlasSummarySections.TestsOf(nil).Known);
+  Assert.IsFalse(TAtlasSummarySections.ReleaseOf(nil).Known);
+  Assert.IsFalse(TAtlasSummarySections.CiOf(nil).Known);
 end;
 
 initialization

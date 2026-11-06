@@ -12,6 +12,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Debugger')]
   TAtlasDebugUnavailableTests = class
   public
     [Test]
@@ -252,7 +253,9 @@ begin
   Assert.AreEqual(Ord(TAtlasUnavailableCause.Unknown), Ord(Explanation.Cause));
   Assert.AreEqual(Ord(High(TAtlasUnavailableCheck)) + 1, Integer(Length(Explanation.Checked)));
   for Check := Low(TAtlasUnavailableCheck) to High(TAtlasUnavailableCheck) do
+  begin
     Assert.AreEqual(Ord(Check), Ord(Explanation.Checked[Ord(Check)]), 'Reihenfolge der Prüfung');
+  end;
   Assert.AreEqual(0, Integer(Length(Explanation.Fixes)));
 end;
 

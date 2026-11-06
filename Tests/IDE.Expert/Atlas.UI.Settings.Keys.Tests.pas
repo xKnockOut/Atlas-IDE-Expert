@@ -85,9 +85,13 @@ begin
       function(AShortCut: Word): string
       begin
         if AShortCut = TAtlasKeyConflicts.PaletteDefault then
-          Result := 'IDE: Makro'
+        begin
+          Result := 'IDE: Makro';
+        end
         else
+        begin
           Result := '';
+        end;
       end;
     Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.KeysStatusLeft, ['IDE: Makro']), Page.StatusLabel(0).Caption);
     Assert.AreEqual(Ord(TAtlasKeyChoice.LeaveOther), Page.ChoiceBox(0).Choice);

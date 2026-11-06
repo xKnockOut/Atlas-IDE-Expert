@@ -81,7 +81,21 @@ uses
   Atlas.Common.Rules.Catalog.Data,
   Atlas.Common.Rules.Baseline,
   Atlas.Text.Json,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TOutputText = (FindingLine, Summary);
+
+const
+  cTexts: array[TOutputText] of TAtlasText = (
+    (De: '%s(%d,%d): %s %s [Konfidenz %s]: %s'; En: '%s(%d,%d): %s %s [confidence %s]: %s'),
+    (De: '%d Treffer in %d von %d Dateien'; En: '%d findings in %d of %d files'));
+
+{$SCOPEDENUMS OFF}
 
 class function TFindingsOutput.TryParseFormat(const AText: string; out AFormat: TFindingsFormat): Boolean;
 var
@@ -90,11 +104,17 @@ begin
   Value := LowerCase(Trim(AText));
   Result := True;
   if Value = 'text' then
-    AFormat := TFindingsFormat.Text
+  begin
+    AFormat := TFindingsFormat.Text;
+  end
   else if Value = 'json' then
-    AFormat := TFindingsFormat.Json
+  begin
+    AFormat := TFindingsFormat.Json;
+  end
   else if Value = 'sarif' then
-    AFormat := TFindingsFormat.Sarif
+  begin
+    AFormat := TFindingsFormat.Sarif;
+  end
   else
   begin
     AFormat := TFindingsFormat.Text;
@@ -140,11 +160,17 @@ begin
   Value := LowerCase(Trim(AText));
   Result := True;
   if Value = 'error' then
-    AFailOn := TFailOn.Error
+  begin
+    AFailOn := TFailOn.Error;
+  end
   else if Value = 'warning' then
-    AFailOn := TFailOn.Warning
+  begin
+    AFailOn := TFailOn.Warning;
+  end
   else if Value = 'never' then
-    AFailOn := TFailOn.Never
+  begin
+    AFailOn := TFailOn.Never;
+  end
   else
   begin
     AFailOn := TFailOn.Error;
@@ -166,11 +192,17 @@ begin
   Result := '';
   Bytes := TEncoding.UTF8.GetBytes(APath);
   for B in Bytes do
+  begin
     if (B in [Ord('A')..Ord('Z'), Ord('a')..Ord('z'), Ord('0')..Ord('9')]) or
       (B in [Ord('-'), Ord('.'), Ord('_'), Ord('~'), Ord('/'), Ord(':')]) then
-      Result := Result + Chr(B)
+    begin
+      Result := Result + Chr(B);
+    end
     else
+    begin
       Result := Result + '%' + IntToHex(B, 2);
+    end;
+  end;
 end;
 
 class function TFindingsOutput.FileUri(const AFullPath: string): string;
@@ -180,9 +212,13 @@ begin
   Path := UriPath(AFullPath);
   // UNC-Pfad \\server\freigabe wird zu file://server/freigabe.
   if Copy(Path, 1, 2) = '//' then
+  begin
     Exit('file:' + EncodeUri(Path));
+  end;
   if Copy(Path, 1, 1) <> '/' then
+  begin
     Path := '/' + Path;
+  end;
   Result := 'file://' + EncodeUri(Path);
 end;
 
@@ -193,13 +229,19 @@ begin
   Path := UriPath(AFullPath);
   Root := UriPath(ASourceRoot);
   if (Root <> '') and (Root[Length(Root)] <> '/') then
+  begin
     Root := Root + '/';
+  end;
   // Windows-Pfade unterscheiden keine Groß- und Kleinschreibung.
   ARelative := (Root <> '') and (Length(Path) > Length(Root)) and SameText(Copy(Path, 1, Length(Root)), Root);
   if ARelative then
-    Result := EncodeUri(Copy(Path, Length(Root) + 1, MaxInt))
+  begin
+    Result := EncodeUri(Copy(Path, Length(Root) + 1, MaxInt));
+  end
   else
+  begin
     Result := FileUri(AFullPath);
+  end;
 end;
 
 class function TFindingsOutput.FindGitRoot(const AStart: string; const AExists: TPathExists): string;
@@ -210,10 +252,14 @@ begin
   while Dir <> '' do
   begin
     if AExists(IncludeTrailingPathDelimiter(Dir) + '.git') then
+    begin
       Exit(Dir);
+    end;
     Parent := ExtractFileDir(Dir);
     if (Parent = Dir) or (Parent = '') then
+    begin
       Break;
+    end;
     Dir := Parent;
   end;
   Result := '';
@@ -233,19 +279,21 @@ begin
     for CheckedFile in AFiles do
     begin
       if Length(CheckedFile.Findings) > 0 then
+      begin
         Inc(FilesWithFindings);
+      end;
       for Finding in CheckedFile.Findings do
       begin
         Inc(Count);
         // Konfidenz als eigene Spalte vor der Meldung, nicht im Meldungstext (#144).
-        Builder.Append(Format('%s(%d,%d): %s %s [Konfidenz %s]: %s', [CheckedFile.Path,
+        Builder.Append(cTexts[TOutputText.FindingLine].Fmt([CheckedFile.Path,
           Finding.Range.StartPos.Line + 1, Finding.Range.StartPos.Character + 1,
           TFindingsOutput.SeverityName(Finding.Severity), Finding.RuleId, ConfidenceText(Finding.Confidence),
           Finding.Message]));
         Builder.Append(sLineBreak);
       end;
     end;
-    Builder.Append(Format('%d Treffer in %d von %d Dateien', [Count, FilesWithFindings, Length(AFiles)]));
+    Builder.Append(cTexts[TOutputText.Summary].Fmt([Count, FilesWithFindings, Length(AFiles)]));
     Builder.Append(sLineBreak);
     Result := Builder.ToString;
   finally
@@ -268,7 +316,9 @@ var
   Severity: TRuleSeverity;
 begin
   for Severity := Low(TRuleSeverity) to High(TRuleSeverity) do
+  begin
     Counts[Severity] := 0;
+  end;
   Builder := TStringBuilder.Create;
   try
     Builder.Append('{"files":[');
@@ -276,7 +326,9 @@ begin
     for CheckedFile in AFiles do
     begin
       if not FirstFile then
+      begin
         Builder.Append(',');
+      end;
       FirstFile := False;
       Builder.Append('{"path":').Append(TFindingsOutput.JsonString(UriPath(CheckedFile.Path))).Append(',"findings":[');
       FirstFinding := True;
@@ -284,7 +336,9 @@ begin
       begin
         Inc(Counts[Finding.Severity]);
         if not FirstFinding then
+        begin
           Builder.Append(',');
+        end;
         FirstFinding := False;
         Builder.Append('{"rule":').Append(TFindingsOutput.JsonString(Finding.RuleId));
         Builder.Append(',"severity":').Append(TFindingsOutput.JsonString(TFindingsOutput.SeverityName(Finding.Severity)));
@@ -319,10 +373,14 @@ begin
     Relative := ASourceRoot <> '';
   end
   else
+  begin
     Uri := TFindingsOutput.SarifUri(ACheckedFile.FullPath, ASourceRoot, Relative);
+  end;
   Result := '{"uri":' + TFindingsOutput.JsonString(Uri);
   if Relative then
+  begin
     Result := Result + ',"uriBaseId":' + TFindingsOutput.JsonString(TFindingsOutput.SourceRootId);
+  end;
 end;
 
 /// <summary>Englischer Katalogname der Regel; ohne Katalogeintrag die Meldung ohne Konfidenz-Zusatz.</summary>
@@ -331,9 +389,13 @@ var
   Entry: TRuleCatalogEntry;
 begin
   if ACatalog.TryFind(AFinding.RuleId, Entry) and (Entry.Name <> '') then
-    Result := Entry.Name
+  begin
+    Result := Entry.Name;
+  end
   else
+  begin
     Result := AFinding.Message;
+  end;
 end;
 
 function BaselineStateName(AState: TBaselineState): string;
@@ -356,7 +418,9 @@ var
   Count: Integer;
 begin
   if not ACounts.TryGetValue(AKey, Count) then
+  begin
     Count := 0;
+  end;
   Inc(Count);
   ACounts.AddOrSetValue(AKey, Count);
   Result := AKey + ':' + IntToStr(Count);
@@ -368,150 +432,233 @@ var
   Rule: TRuleDescriptor;
 begin
   for Rule in ARules do
+  begin
     if SameText(Rule.Id, ARuleId) then
+    begin
       Exit(Rule.DefaultSeverity);
+    end;
+  end;
   Result := TRuleSeverity.Hint;
 end;
 
-/// <summary>Ein Ergebnis mit Fingerabdrücken und Zustand gegenüber der Baseline.</summary>
-procedure AppendSarifMark(ABuilder: TStringBuilder; ACatalog: TRuleCatalog; const ARules: TArray<TRuleDescriptor>;
-  const ACheckedFile: TCheckedFile; const ASourceRoot: string; const AMark: TBaselineMark;
-  ALineCounts, AContextCounts: TDictionary<string, Integer>);
-var
-  Finding: TRuleFinding;
-  Severity: TRuleSeverity;
+type
+  /// <summary>Schreibt einen SARIF-Lauf: Regeln, Wurzel und Ergebnisse. Immer der englische Katalog: stabile Texte
+  /// für GitHub Code Scanning.</summary>
+  TSarifWriter = class
+  private
+    FBuilder: TStringBuilder;
+    FCatalog: TRuleCatalog;
+    FRules: TArray<TRuleDescriptor>;
+    FSourceRoot: string;
+    FFirst: Boolean;
+    FLineCounts: TDictionary<string, Integer>;
+    FContextCounts: TDictionary<string, Integer>;
+    procedure Separate;
+    procedure AppendRule(const ARule: TRuleDescriptor);
+    procedure AppendRegion(const ARange: TTextRange);
+    procedure AppendMark(const ACheckedFile: TCheckedFile; const AMark: TBaselineMark);
+    procedure AppendFinding(const ACheckedFile: TCheckedFile; const AFinding: TRuleFinding);
+    procedure AppendFile(const ACheckedFile: TCheckedFile);
+  public
+    constructor Create(const ARules: TArray<TRuleDescriptor>; const ASourceRoot: string);
+    destructor Destroy; override;
+    function Render(const AFiles: TArray<TCheckedFile>): string;
+  end;
+
+constructor TSarifWriter.Create(const ARules: TArray<TRuleDescriptor>; const ASourceRoot: string);
 begin
-  Finding := AMark.Finding;
-  // Nicht mehr gefunden: Schweregrad aus dem Aufrufer, sonst der Standard der Regel.
-  if (AMark.State = TBaselineState.Absent) and (Finding.Severity in [TRuleSeverity.Default, TRuleSeverity.Off]) then
-    Severity := DefaultSeverityOf(ARules, Finding.RuleId)
+  inherited Create;
+  FRules := ARules;
+  FSourceRoot := ASourceRoot;
+  FCatalog := TRuleCatalog.Create(RuleCatalogBaseJson);
+  FBuilder := TStringBuilder.Create;
+  FLineCounts := TDictionary<string, Integer>.Create;
+  FContextCounts := TDictionary<string, Integer>.Create;
+end;
+
+destructor TSarifWriter.Destroy;
+begin
+  FContextCounts.Free;
+  FLineCounts.Free;
+  FBuilder.Free;
+  FCatalog.Free;
+  inherited;
+end;
+
+/// <summary>Komma vor jedem Element außer dem ersten einer Liste.</summary>
+procedure TSarifWriter.Separate;
+begin
+  if not FFirst then
+  begin
+    FBuilder.Append(',');
+  end;
+  FFirst := False;
+end;
+
+procedure TSarifWriter.AppendRule(const ARule: TRuleDescriptor);
+var
+  mEntry: TRuleCatalogEntry;
+begin
+  Separate;
+  FBuilder.Append('{"id":').Append(TFindingsOutput.JsonString(ARule.Id));
+  if FCatalog.TryFind(ARule.Id, mEntry) then
+  begin
+    FBuilder.Append(',"name":').Append(TFindingsOutput.JsonString(mEntry.Name));
+    FBuilder.Append(',"shortDescription":{"text":').Append(TFindingsOutput.JsonString(mEntry.Name));
+    FBuilder.Append('},"fullDescription":{"text":').Append(TFindingsOutput.JsonString(mEntry.Description));
+    FBuilder.Append('},"properties":{"tags":[').Append(TFindingsOutput.JsonString(
+      TRuleCatalog.CategoryName(mEntry.Category)));
+    FBuilder.Append(']}');
+  end
   else
-    Severity := Finding.Severity;
-  ABuilder.Append('{"ruleId":').Append(TFindingsOutput.JsonString(Finding.RuleId));
-  ABuilder.Append(',"level":').Append(TFindingsOutput.JsonString(SarifLevel(Severity)));
-  ABuilder.Append(',"message":{"text":').Append(TFindingsOutput.JsonString(SarifMessage(ACatalog, Finding)));
-  ABuilder.Append('},"locations":[{"physicalLocation":{"artifactLocation":');
-  ABuilder.Append(SarifLocation(ACheckedFile, ASourceRoot)).Append('}');
+  begin
+    FBuilder.Append(',"shortDescription":{"text":').Append(TFindingsOutput.JsonString(ARule.Description)).Append('}');
+  end;
+  FBuilder.Append(',"helpUri":').Append(TFindingsOutput.JsonString(TRuleCatalog.HelpUri(ARule.Id)));
+  FBuilder.Append(',"defaultConfiguration":{"level":').Append(TFindingsOutput.JsonString(
+    SarifLevel(ARule.DefaultSeverity)));
+  FBuilder.Append('}}');
+end;
+
+procedure TSarifWriter.AppendRegion(const ARange: TTextRange);
+begin
+  FBuilder.Append(Format(',"region":{"startLine":%d,"startColumn":%d,"endLine":%d,"endColumn":%d}',
+    [ARange.StartPos.Line + 1, ARange.StartPos.Character + 1, ARange.EndPos.Line + 1, ARange.EndPos.Character + 1]));
+end;
+
+/// <summary>Ein Ergebnis mit Fingerabdrücken und Zustand gegenüber der Baseline.</summary>
+procedure TSarifWriter.AppendMark(const ACheckedFile: TCheckedFile; const AMark: TBaselineMark);
+var
+  mFinding: TRuleFinding;
+  mSeverity: TRuleSeverity;
+begin
+  mFinding := AMark.Finding;
+  // Nicht mehr gefunden: Schweregrad aus dem Aufrufer, sonst der Standard der Regel.
+  mSeverity := mFinding.Severity;
+  if (AMark.State = TBaselineState.Absent) and (mFinding.Severity in [TRuleSeverity.Default, TRuleSeverity.Off]) then
+  begin
+    mSeverity := DefaultSeverityOf(FRules, mFinding.RuleId);
+  end;
+  FBuilder.Append('{"ruleId":').Append(TFindingsOutput.JsonString(mFinding.RuleId));
+  FBuilder.Append(',"level":').Append(TFindingsOutput.JsonString(SarifLevel(mSeverity)));
+  FBuilder.Append(',"message":{"text":').Append(TFindingsOutput.JsonString(SarifMessage(FCatalog, mFinding)));
+  FBuilder.Append('},"locations":[{"physicalLocation":{"artifactLocation":');
+  FBuilder.Append(SarifLocation(ACheckedFile, FSourceRoot)).Append('}');
   // Nicht mehr gefunden: keine Stelle im aktuellen Text.
   if AMark.State <> TBaselineState.Absent then
-    ABuilder.Append(Format(',"region":{"startLine":%d,"startColumn":%d,"endLine":%d,"endColumn":%d}',
-      [Finding.Range.StartPos.Line + 1, Finding.Range.StartPos.Character + 1,
-      Finding.Range.EndPos.Line + 1, Finding.Range.EndPos.Character + 1]));
-  ABuilder.Append('}}]');
-  ABuilder.Append(',"partialFingerprints":{"atlasBaseline/v1":');
-  ABuilder.Append(TFindingsOutput.JsonString(Occurrence(ALineCounts, TRuleBaseline.SarifFingerprint(AMark))));
-  ABuilder.Append(',"atlasContext/v1":').Append(TFindingsOutput.JsonString(Occurrence(AContextCounts,
+  begin
+    AppendRegion(mFinding.Range);
+  end;
+  FBuilder.Append('}}]');
+  FBuilder.Append(',"partialFingerprints":{"atlasBaseline/v1":');
+  FBuilder.Append(TFindingsOutput.JsonString(Occurrence(FLineCounts, TRuleBaseline.SarifFingerprint(AMark))));
+  FBuilder.Append(',"atlasContext/v1":').Append(TFindingsOutput.JsonString(Occurrence(FContextCounts,
     AMark.Context))).Append('}');
   if AMark.State <> TBaselineState.None then
-    ABuilder.Append(',"baselineState":').Append(TFindingsOutput.JsonString(BaselineStateName(AMark.State)));
+  begin
+    FBuilder.Append(',"baselineState":').Append(TFindingsOutput.JsonString(BaselineStateName(AMark.State)));
+  end;
   if AMark.State = TBaselineState.Unchanged then
-    ABuilder.Append(',"suppressions":[{"kind":"external","justification":').Append(
+  begin
+    FBuilder.Append(',"suppressions":[{"kind":"external","justification":').Append(
       TFindingsOutput.JsonString(BaselineFileName)).Append('}]');
-  ABuilder.Append(',"properties":{"confidence":').Append(TFindingsOutput.JsonString(ConfidenceName(Finding.Confidence)));
-  ABuilder.Append(',"detail":').Append(TFindingsOutput.JsonString(Finding.Message));
+  end;
+  FBuilder.Append(',"properties":{"confidence":').Append(TFindingsOutput.JsonString(
+    ConfidenceName(mFinding.Confidence)));
+  FBuilder.Append(',"detail":').Append(TFindingsOutput.JsonString(mFinding.Message));
   if AMark.Routine <> '' then
-    ABuilder.Append(',"routine":').Append(TFindingsOutput.JsonString(AMark.Routine));
-  ABuilder.Append('}}');
+  begin
+    FBuilder.Append(',"routine":').Append(TFindingsOutput.JsonString(AMark.Routine));
+  end;
+  FBuilder.Append('}}');
+end;
+
+procedure TSarifWriter.AppendFinding(const ACheckedFile: TCheckedFile; const AFinding: TRuleFinding);
+begin
+  FBuilder.Append('{"ruleId":').Append(TFindingsOutput.JsonString(AFinding.RuleId));
+  FBuilder.Append(',"level":').Append(TFindingsOutput.JsonString(SarifLevel(AFinding.Severity)));
+  FBuilder.Append(',"message":{"text":').Append(TFindingsOutput.JsonString(SarifMessage(FCatalog, AFinding)));
+  FBuilder.Append('},"locations":[{"physicalLocation":{"artifactLocation":');
+  FBuilder.Append(SarifLocation(ACheckedFile, FSourceRoot)).Append('}');
+  AppendRegion(AFinding.Range);
+  FBuilder.Append('}}]');
+  FBuilder.Append(',"properties":{"confidence":').Append(TFindingsOutput.JsonString(
+    ConfidenceName(AFinding.Confidence)));
+  FBuilder.Append(',"detail":').Append(TFindingsOutput.JsonString(AFinding.Message));
+  FBuilder.Append('}}');
+end;
+
+/// <summary>Ergebnisse einer Datei: mit Baseline die Marken, sonst die Treffer.</summary>
+procedure TSarifWriter.AppendFile(const ACheckedFile: TCheckedFile);
+var
+  mMark: TBaselineMark;
+  mFinding: TRuleFinding;
+begin
+  // Zähler je Datei: gleiche Treffer derselben Datei unterscheidet ":n".
+  FLineCounts.Clear;
+  FContextCounts.Clear;
+  for mMark in ACheckedFile.Marks do
+  begin
+    Separate;
+    AppendMark(ACheckedFile, mMark);
+  end;
+  if Length(ACheckedFile.Marks) > 0 then
+  begin
+    Exit;
+  end;
+  for mFinding in ACheckedFile.Findings do
+  begin
+    Separate;
+    AppendFinding(ACheckedFile, mFinding);
+  end;
+end;
+
+function TSarifWriter.Render(const AFiles: TArray<TCheckedFile>): string;
+var
+  mRule: TRuleDescriptor;
+  mCheckedFile: TCheckedFile;
+  mRootUri: string;
+begin
+  FBuilder.Append('{"$schema":"https://json.schemastore.org/sarif-2.1.0.json","version":"2.1.0","runs":[{');
+  FBuilder.Append('"tool":{"driver":{"name":').Append(TFindingsOutput.JsonString(TProductVersion.Name));
+  FBuilder.Append(',"version":').Append(TFindingsOutput.JsonString(TProductVersion.Version));
+  FBuilder.Append(',"informationUri":"https://github.com/xKnockOut/Atlas-IDE-Expert","rules":[');
+  FFirst := True;
+  for mRule in FRules do
+  begin
+    AppendRule(mRule);
+  end;
+  FBuilder.Append(']}}');
+  if FSourceRoot <> '' then
+  begin
+    mRootUri := TFindingsOutput.FileUri(FSourceRoot);
+    if mRootUri[Length(mRootUri)] <> '/' then
+    begin
+      mRootUri := mRootUri + '/';
+    end;
+    FBuilder.Append(',"originalUriBaseIds":{').Append(TFindingsOutput.JsonString(TFindingsOutput.SourceRootId));
+    FBuilder.Append(':{"uri":').Append(TFindingsOutput.JsonString(mRootUri)).Append('}}');
+  end;
+  FBuilder.Append(',"results":[');
+  FFirst := True;
+  for mCheckedFile in AFiles do
+  begin
+    AppendFile(mCheckedFile);
+  end;
+  FBuilder.Append(']}]}');
+  Result := FBuilder.ToString;
 end;
 
 function RenderSarif(const AFiles: TArray<TCheckedFile>; const ARules: TArray<TRuleDescriptor>;
   const ASourceRoot: string): string;
 var
-  Mark: TBaselineMark;
-  LineCounts, ContextCounts: TDictionary<string, Integer>;
-  Builder: TStringBuilder;
-  CheckedFile: TCheckedFile;
-  Finding: TRuleFinding;
-  Rule: TRuleDescriptor;
-  Entry: TRuleCatalogEntry;
-  Catalog: TRuleCatalog;
-  First: Boolean;
-  RootUri: string;
+  mWriter: TSarifWriter;
 begin
-  // Immer der englische Katalog: stabile Texte für GitHub Code Scanning.
-  Catalog := TRuleCatalog.Create(RuleCatalogBaseJson);
-  Builder := TStringBuilder.Create;
+  mWriter := TSarifWriter.Create(ARules, ASourceRoot);
   try
-    Builder.Append('{"$schema":"https://json.schemastore.org/sarif-2.1.0.json","version":"2.1.0","runs":[{');
-    Builder.Append('"tool":{"driver":{"name":').Append(TFindingsOutput.JsonString(TProductVersion.Name));
-    Builder.Append(',"version":').Append(TFindingsOutput.JsonString(TProductVersion.Version));
-    Builder.Append(',"informationUri":"https://github.com/xKnockOut/Atlas-IDE-Expert","rules":[');
-    First := True;
-    for Rule in ARules do
-    begin
-      if not First then
-        Builder.Append(',');
-      First := False;
-      Builder.Append('{"id":').Append(TFindingsOutput.JsonString(Rule.Id));
-      if Catalog.TryFind(Rule.Id, Entry) then
-      begin
-        Builder.Append(',"name":').Append(TFindingsOutput.JsonString(Entry.Name));
-        Builder.Append(',"shortDescription":{"text":').Append(TFindingsOutput.JsonString(Entry.Name));
-        Builder.Append('},"fullDescription":{"text":').Append(TFindingsOutput.JsonString(Entry.Description));
-        Builder.Append('},"properties":{"tags":[').Append(TFindingsOutput.JsonString(TRuleCatalog.CategoryName(Entry.Category)));
-        Builder.Append(']}');
-      end
-      else
-        Builder.Append(',"shortDescription":{"text":').Append(TFindingsOutput.JsonString(Rule.Description)).Append('}');
-      Builder.Append(',"helpUri":').Append(TFindingsOutput.JsonString(TRuleCatalog.HelpUri(Rule.Id)));
-      Builder.Append(',"defaultConfiguration":{"level":').Append(TFindingsOutput.JsonString(SarifLevel(Rule.DefaultSeverity)));
-      Builder.Append('}}');
-    end;
-    Builder.Append(']}}');
-    if ASourceRoot <> '' then
-    begin
-      RootUri := TFindingsOutput.FileUri(ASourceRoot);
-      if RootUri[Length(RootUri)] <> '/' then
-        RootUri := RootUri + '/';
-      Builder.Append(',"originalUriBaseIds":{').Append(TFindingsOutput.JsonString(TFindingsOutput.SourceRootId));
-      Builder.Append(':{"uri":').Append(TFindingsOutput.JsonString(RootUri)).Append('}}');
-    end;
-    Builder.Append(',"results":[');
-    First := True;
-    for CheckedFile in AFiles do
-    begin
-      if Length(CheckedFile.Marks) > 0 then
-      begin
-        // Zähler je Datei: gleiche Treffer derselben Datei unterscheidet ":n".
-        LineCounts := TDictionary<string, Integer>.Create;
-        ContextCounts := TDictionary<string, Integer>.Create;
-        try
-          for Mark in CheckedFile.Marks do
-          begin
-            if not First then
-              Builder.Append(',');
-            First := False;
-            AppendSarifMark(Builder, Catalog, ARules, CheckedFile, ASourceRoot, Mark, LineCounts, ContextCounts);
-          end;
-        finally
-          ContextCounts.Free;
-          LineCounts.Free;
-        end;
-        Continue;
-      end;
-      for Finding in CheckedFile.Findings do
-      begin
-        if not First then
-          Builder.Append(',');
-        First := False;
-        Builder.Append('{"ruleId":').Append(TFindingsOutput.JsonString(Finding.RuleId));
-        Builder.Append(',"level":').Append(TFindingsOutput.JsonString(SarifLevel(Finding.Severity)));
-        Builder.Append(',"message":{"text":').Append(TFindingsOutput.JsonString(SarifMessage(Catalog, Finding)));
-        Builder.Append('},"locations":[{"physicalLocation":{"artifactLocation":');
-        Builder.Append(SarifLocation(CheckedFile, ASourceRoot));
-        Builder.Append(Format('},"region":{"startLine":%d,"startColumn":%d,"endLine":%d,"endColumn":%d}}}]',
-          [Finding.Range.StartPos.Line + 1, Finding.Range.StartPos.Character + 1,
-          Finding.Range.EndPos.Line + 1, Finding.Range.EndPos.Character + 1]));
-        Builder.Append(',"properties":{"confidence":').Append(TFindingsOutput.JsonString(ConfidenceName(Finding.Confidence)));
-        Builder.Append(',"detail":').Append(TFindingsOutput.JsonString(Finding.Message));
-        Builder.Append('}}');
-      end;
-    end;
-    Builder.Append(']}]}');
-    Result := Builder.ToString;
+    Result := mWriter.Render(AFiles);
   finally
-    Builder.Free;
-    Catalog.Free;
+    mWriter.Free;
   end;
 end;
 
@@ -546,13 +693,24 @@ var
 begin
   Result := ExitClean;
   if AFailOn = TFailOn.Never then
+  begin
     Exit;
+  end;
   // Treffer aus der Baseline sind hier schon ausgeblendet und zählen deshalb nie.
   for CheckedFile in AFiles do
+  begin
     for Finding in CheckedFile.Findings do
+    begin
       if (Finding.Severity = TRuleSeverity.Error) or
         ((AFailOn = TFailOn.Warning) and (Finding.Severity = TRuleSeverity.Warning)) then
+      begin
         Exit(ExitFindings);
+      end;
+    end;
+  end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Output', cTexts);
 
 end.

@@ -2,15 +2,21 @@
 
 interface
 
+// Fehlende Methodenrümpfe (#647). Typkommentar in vier Formen (#1835),
+// Lebenszyklus und Get/Set-Paare zuerst (#1836), vorbefüllte Rümpfe (#1837).
+
 uses
   DUnitX.TestFramework,
-  Atlas.Common.Editing.CodeActions;
+  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.Editing.ClassBodies;
 
 type
   [TestFixture]
   TClassCompletionTests = class
   private
     function ActionAt(const AText: string; ALine: Integer; out AAction: TCodeAction): Boolean;
+    function ActionWith(const AText: string; ALine: Integer; const AOptions: TClassBodyOptions;
+      out AAction: TCodeAction): Boolean;
     function Apply(const AText: string; const AAction: TCodeAction): string;
   public
     [Test]
@@ -29,6 +35,16 @@ type
     procedure NothingOutsideTypes;
     [Test]
     procedure IgnoresDefaultsAndGrouping;
+    [Test]
+    procedure TypeCommentStyles;
+    [Test]
+    procedure NoSecondTypeComment;
+    [Test]
+    procedure OrdersLifecycleAndAccessorsFirst;
+    [Test]
+    procedure PrefillsBodies;
+    [Test]
+    procedure EmptyBodiesWhenStubsOff;
   end;
 
 implementation
@@ -39,6 +55,7 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
+  Atlas.Common.Editing.TypeComments,
   Atlas.Common.Editing.ClassCompletion;
 
 const
@@ -117,6 +134,19 @@ begin
   end;
 end;
 
+function TClassCompletionTests.ActionWith(const AText: string; ALine: Integer; const AOptions: TClassBodyOptions;
+  out AAction: TCodeAction): Boolean;
+var
+  Tree: TSyntaxTree;
+begin
+  Tree := TPascalParser.Parse(AText);
+  try
+    Result := TClassCompletion.MissingBodies(Tree, AText, TTextPosition.Create(ALine, 6), AOptions, AAction);
+  finally
+    Tree.Free;
+  end;
+end;
+
 function TClassCompletionTests.Apply(const AText: string; const AAction: TCodeAction): string;
 var
   Lines: TArray<string>;
@@ -142,7 +172,7 @@ begin
   Assert.AreEqual(RewriteKind, Action.Kind);
   Assert.AreEqual(
     'unit U;'#10'interface'#10'type'#10'  TFoo = class'#10'    procedure Lauf(A: Integer);'#10 +
-    '    function Wert: string; virtual;'#10'  end;'#10'implementation'#10#10 +
+    '    function Wert: string; virtual;'#10'  end;'#10'implementation'#10#10'{ TFoo }'#10#10 +
     'procedure TFoo.Lauf(A: Integer);'#10'begin'#10#10'end;'#10#10'end.',
     Apply(Leer, Action));
 end;
@@ -270,6 +300,142 @@ var
 begin
   Assert.IsFalse(ActionAt(Leer, 0, Action));
   Assert.IsFalse(ActionAt(Leer, 8, Action));
+end;
+
+const
+  Fenster =
+    'unit U;'#10 +                                              // 0
+    'interface'#10 +                                            // 1
+    'type'#10 +                                                 // 2
+    '  /// <summary>Hauptfenster der Anwendung.</summary>'#10 + // 3
+    '  TFenster = class(TBasis)'#10 +                           // 4
+    '  private'#10 +
+    '    FName: string;'#10 +
+    '    FAlter: Integer;'#10 +
+    '    procedure Zeichnen;'#10 +
+    '    function GetName: string;'#10 +
+    '    procedure SetName(const AValue: string);'#10 +
+    '    function GetAlter: Integer;'#10 +
+    '  protected'#10 +
+    '    function Wert(A, B: Integer): Integer; override;'#10 +
+    '    procedure Paint; override;'#10 +
+    '  public'#10 +
+    '    constructor Create;'#10 +
+    '    destructor Destroy; override;'#10 +
+    '    property Name: string read GetName write SetName;'#10 +
+    '    property Alter: Integer read GetAlter;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    #10 +
+    'end.';
+
+function OptionsWith(AStyle: TTypeCommentStyle): TClassBodyOptions;
+begin
+  Result := TClassBodyOptions.Default;
+  Result.TypeComment := AStyle;
+end;
+
+/// <summary>Stelle von APart in AText; schlägt fehl, wenn es fehlt.</summary>
+function At(const AText, APart: string): Integer;
+begin
+  Result := Pos(APart, AText);
+  Assert.IsTrue(Result > 0, 'fehlt: ' + APart);
+end;
+
+procedure TClassCompletionTests.TypeCommentStyles;
+var
+  Action: TCodeAction;
+  Text: string;
+begin
+  Assert.IsTrue(ActionWith(Leer, 3, OptionsWith(TTypeCommentStyle.Off), Action));
+  Assert.AreEqual(0, Pos('{ TFoo }', Apply(Leer, Action)), 'aus: kein Kommentar');
+  Assert.IsTrue(ActionWith(Leer, 3, OptionsWith(TTypeCommentStyle.Line), Action));
+  Text := Apply(Leer, Action);
+  Assert.IsTrue(At(Text, '//---') < At(Text, '// TFoo'#10'//---'), 'Trennlinie darüber und darunter');
+  Assert.IsTrue(ActionWith(Fenster, 4, OptionsWith(TTypeCommentStyle.Summary), Action));
+  At(Apply(Fenster, Action), '{ TFenster: Hauptfenster der Anwendung. }');
+  Assert.IsTrue(ActionWith(Leer, 3, OptionsWith(TTypeCommentStyle.Region), Action));
+  Text := Apply(Leer, Action);
+  Assert.IsTrue(At(Text, '{$REGION ''TFoo''}') < At(Text, 'procedure TFoo.Lauf'));
+  Assert.IsTrue(At(Text, 'function TFoo.Wert') < At(Text, '{$ENDREGION}'), 'Region um alle Rümpfe');
+end;
+
+procedure TClassCompletionTests.NoSecondTypeComment;
+const
+  Halb =
+    'unit U;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TFoo = class'#10 +
+    '    procedure Lauf(A: Integer);'#10 +
+    '    function Wert: string; virtual;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    #10 +
+    '{ TFoo }'#10 +
+    #10 +
+    'procedure TFoo.Lauf(A: Integer);'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    #10 +
+    'end.';
+var
+  Action: TCodeAction;
+  Text: string;
+begin
+  Assert.IsTrue(ActionWith(Halb, 5, TClassBodyOptions.Default, Action));
+  Text := Apply(Halb, Action);
+  At(Text, 'function TFoo.Wert: string;');
+  Assert.AreEqual(0, Pos('{ TFoo }', Copy(Text, At(Text, '{ TFoo }') + 1, MaxInt)), 'kein zweiter Kommentar');
+end;
+
+procedure TClassCompletionTests.OrdersLifecycleAndAccessorsFirst;
+var
+  Action: TCodeAction;
+  Text: string;
+begin
+  Assert.IsTrue(ActionWith(Fenster, 4, TClassBodyOptions.Default, Action));
+  Text := Apply(Fenster, Action);
+  Assert.IsTrue(At(Text, 'constructor TFenster.Create') < At(Text, 'destructor TFenster.Destroy'));
+  Assert.IsTrue(At(Text, 'destructor TFenster.Destroy') < At(Text, 'function TFenster.GetName'));
+  Assert.IsTrue(At(Text, 'function TFenster.GetName') < At(Text, 'procedure TFenster.SetName'), 'Get/Set-Paar');
+  Assert.IsTrue(At(Text, 'procedure TFenster.SetName') < At(Text, 'function TFenster.GetAlter'),
+    'Eigenschaften in ihrer Reihenfolge');
+  Assert.IsTrue(At(Text, 'function TFenster.GetAlter') < At(Text, 'function TFenster.Wert'));
+  Assert.IsTrue(At(Text, 'function TFenster.Wert') < At(Text, 'procedure TFenster.Paint'), 'Überschreibungen');
+  Assert.IsTrue(At(Text, 'procedure TFenster.Paint') < At(Text, 'procedure TFenster.Zeichnen'), 'Rest zuletzt');
+end;
+
+procedure TClassCompletionTests.PrefillsBodies;
+var
+  Action: TCodeAction;
+  Text: string;
+begin
+  Assert.IsTrue(ActionWith(Fenster, 4, TClassBodyOptions.Default, Action));
+  Text := Apply(Fenster, Action);
+  At(Text, 'constructor TFenster.Create;'#10'begin'#10'  inherited Create;'#10'end;');
+  At(Text, 'destructor TFenster.Destroy;'#10'begin'#10#10'  inherited;'#10'end;');
+  At(Text, 'function TFenster.GetName: string;'#10'begin'#10'  Result := FName;'#10'end;');
+  At(Text, 'procedure TFenster.SetName(const AValue: string);'#10'begin'#10'  FName := AValue;'#10'end;');
+  At(Text, 'function TFenster.GetAlter: Integer;'#10'begin'#10'  Result := FAlter;'#10'end;');
+  At(Text, 'function TFenster.Wert(A, B: Integer): Integer;'#10'begin'#10'  Result := inherited Wert(A, B);'#10 +
+    'end;');
+  At(Text, 'procedure TFenster.Paint;'#10'begin'#10'  inherited Paint;'#10'end;');
+  At(Text, 'procedure TFenster.Zeichnen;'#10'begin'#10#10'end;');
+end;
+
+procedure TClassCompletionTests.EmptyBodiesWhenStubsOff;
+var
+  Options: TClassBodyOptions;
+  Action: TCodeAction;
+  Text: string;
+begin
+  Options := TClassBodyOptions.Default;
+  Options.BodyStubs := False;
+  Assert.IsTrue(ActionWith(Fenster, 4, Options, Action));
+  Text := Apply(Fenster, Action);
+  Assert.AreEqual(0, Pos('inherited', Text));
+  Assert.AreEqual(0, Pos('Result :=', Text));
 end;
 
 initialization

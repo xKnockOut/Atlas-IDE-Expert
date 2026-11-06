@@ -68,7 +68,9 @@ begin
     for Range in TLspSelectionRanges.RangesAt(Tree, Offset) do
     begin
       if Result <> '' then
+      begin
         Result := Result + ' ';
+      end;
       Result := Result + Format('%d:%d-%d:%d',
         [Range.StartPos.Line, Range.StartPos.Character, Range.EndPos.Line, Range.EndPos.Character]);
     end;
@@ -83,7 +85,9 @@ var
 begin
   SetLength(Result, Length(Code));
   for Index := 0 to High(Code) do
+  begin
     Result[Index] := Code[Index];
+  end;
   Result[ALine] := ANewText;
 end;
 

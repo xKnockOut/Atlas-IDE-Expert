@@ -59,7 +59,9 @@ begin
   Result.Date := EncodeDate(2026, 1, 1) + ADay;
   Result.Summary := 'Commit ' + ARevision;
   for mPath in APaths do
+  begin
     Result.Files := Result.Files + [THotspotFileChange.Make(mPath, '', THotspotChangeKind.Modified, 2, 1)];
+  end;
 end;
 
 function EntryOf(const APath: string; AChanges, AComplexity: Integer): THotspotEntry;
@@ -191,8 +193,10 @@ begin
   // Abnahme: konstruiertes Paar mit 6 gemeinsamen Commits ohne uses-Kante.
   mCommits := nil;
   for mIndex := 1 to 6 do
+  begin
     mCommits := mCommits + [CommitOf('p' + IntToStr(mIndex), 'anna', mIndex,
       TArray<string>.Create('Src/Kunde.pas', 'Src/Rechnung.pas'))];
+  end;
   mCommits := mCommits + [CommitOf('x', 'anna', 7, TArray<string>.Create('Src/Kunde.pas'))];
   mPairs := THotspotAnalyzer.Coupling(TArray<THotspotUnit>.Create(UnitOf('Src/Kunde.pas'),
     UnitOf('Src/Rechnung.pas')), mCommits, THotspotOptions.Default, NoEdges());
@@ -227,7 +231,9 @@ begin
     // C und D nur in Commits mit mehr als 50 Dateien.
     mLarge := TArray<string>.Create('C.pas', 'D.pas');
     for mFile := 1 to 50 do
+    begin
       mLarge := mLarge + ['Daten/' + IntToStr(mFile) + '.txt'];
+    end;
     mCommits := mCommits + [CommitOf('l' + IntToStr(mIndex), 'anna', mIndex, mLarge)];
   end;
   mPairs := THotspotAnalyzer.Coupling(mUnits, mCommits, THotspotOptions.Default, EdgeBetween(0, 1));
@@ -249,9 +255,13 @@ var
 begin
   mCommits := nil;
   for mIndex := 1 to 5 do
+  begin
     mCommits := mCommits + [CommitOf('p' + IntToStr(mIndex), 'anna', mIndex, TArray<string>.Create('A.pas', 'B.pas'))];
+  end;
   for mIndex := 1 to 6 do
+  begin
     mCommits := mCommits + [CommitOf('a' + IntToStr(mIndex), 'anna', 10 + mIndex, TArray<string>.Create('A.pas'))];
+  end;
   // 5 gemeinsame von (11 + 5) / 2 = 8: 62 % < 70 %.
   mPairs := THotspotAnalyzer.Coupling(TArray<THotspotUnit>.Create(UnitOf('A.pas'), UnitOf('B.pas')), mCommits,
     THotspotOptions.Default, NoEdges());
@@ -275,7 +285,9 @@ begin
   Assert.AreEqual('git', THotspots.KindName(THotspotVcsKind.Git));
   Assert.AreEqual('svn', THotspots.KindName(THotspotVcsKind.Svn));
   for mTrend := Low(THotspotTrend) to High(THotspotTrend) do
+  begin
     Assert.IsTrue(THotspots.TrendOf(THotspots.TrendKey(mTrend)) = mTrend);
+  end;
   Assert.AreEqual('method', THotspots.LevelKey(THotspotLevel.Methods));
   Assert.IsTrue(THotspots.TryLevelOf('', mLevel) and (mLevel = THotspotLevel.Units), 'Vorgabe unit');
   Assert.IsTrue(THotspots.TryLevelOf('method', mLevel) and (mLevel = THotspotLevel.Methods));

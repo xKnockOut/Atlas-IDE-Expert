@@ -79,7 +79,9 @@ begin
   SetLength(Offsets, Length(Lines) + 1);
   Offsets[0] := 0;
   for Index := 0 to High(Lines) do
+  begin
     Offsets[Index + 1] := Offsets[Index] + Length(Lines[Index]) + 1;
+  end;
   TArray.Sort<TRuleEdit>(AEdits, TComparer<TRuleEdit>.Construct(
     function(const ALeft, ARight: TRuleEdit): Integer
     begin
@@ -109,9 +111,12 @@ var
   Edits: TArray<TTextEdit>;
 begin
   AResult := '';
-  Result := TSlashCommandRegistry.Shared.Run(AText, ALine, 0, nil, nil, nil, '', '', AHost, Edits, AReason);
+  Result := TSlashCommandRegistry.Shared.Run(AText, ALine, 0, TSlashEnvironment.Create(nil, nil, nil, '', '', AHost),
+    Edits, AReason);
   if Result then
+  begin
     AResult := Apply(AText, Edits);
+  end;
 end;
 
 function ExpandWith(const AText: string; ALine: Integer; const AHost: ISlashHost): string;
@@ -127,13 +132,21 @@ begin
   Result := Default(TUsesUnitInfo);
   Result.Known := True;
   if SameText(AUnitName, 'System.SysUtils') then
-    Result.Names := ['Format']
+  begin
+    Result.Names := ['Format'];
+  end
   else if SameText(AUnitName, 'System.Classes') then
-    Result.Names := ['TStringList']
+  begin
+    Result.Names := ['TStringList'];
+  end
   else if SameText(AUnitName, 'Vcl.Forms') then
-    Result.HasInitialization := True
+  begin
+    Result.HasInitialization := True;
+  end
   else
+  begin
     Result.Known := False;
+  end;
 end;
 
 function UsesHost: TRecordingSlashHost;

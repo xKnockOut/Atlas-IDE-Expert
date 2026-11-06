@@ -94,15 +94,25 @@ const
 function TextOf(const AFileName: string): string;
 begin
   if SameText(AFileName, BasisFile) then
-    Result := UnitBasis
+  begin
+    Result := UnitBasis;
+  end
   else if SameText(AFileName, AusgabeFile) then
-    Result := UnitAusgabe
+  begin
+    Result := UnitAusgabe;
+  end
   else if SameText(AFileName, ProgramFile) then
-    Result := TextProgram
+  begin
+    Result := TextProgram;
+  end
   else if SameText(AFileName, ProjectFile) then
-    Result := TextProject
+  begin
+    Result := TextProject;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function ProjectUnit(const AName, AFileName: string): TProjectUnit;
@@ -146,7 +156,9 @@ begin
   Result.AddPair('unit', AUnit);
   Members := TJSONArray.Create;
   for Id in AMembers do
+  begin
     Members.AddElement(TJSONNumber.Create(Id));
+  end;
   Result.AddPair('members', Members);
   Result.AddPair('abstract', TJSONArray.Create);
 end;
@@ -164,10 +176,14 @@ begin
   begin
     Document := TJSONObject(Item);
     if Document.GetValue('textDocument') = nil then
+    begin
       Continue;
+    end;
     Uri := (Document.GetValue('textDocument') as TJSONObject).GetValue('uri').Value;
     if not SameText(TDocumentUris.ToPath(Uri), AFileName) then
+    begin
       Continue;
+    end;
     Edits := nil;
     for Edit in Document.GetValue('edits') as TJSONArray do
     begin
@@ -179,6 +195,14 @@ begin
   end;
 end;
 
+/// <summary>AContext mit dem Auflöser AResolver für Execute.</summary>
+function WithResolver(const AContext: TExtractSuperclassContext;
+  AResolver: TNameResolver): TExtractSuperclassContext;
+begin
+  Result := AContext;
+  Result.Resolver := AResolver;
+end;
+
 function Run(const AIndex: ISymbolIndex; const AText: string; ARequest: TJSONObject;
   const AContext: TExtractSuperclassContext): TJSONObject;
 var
@@ -188,8 +212,8 @@ begin
   Tree := TPascalParser.Parse(AText);
   Resolver := TNameResolver.Create(AIndex, nil);
   try
-    Result := TLspExtractSuperclass.Execute(Resolver, Tree, AusgabeFile, AText, TTextPosition.Create(5, 2), ARequest,
-      AContext);
+    Result := TLspExtractSuperclass.Execute(Tree, AusgabeFile, AText, TTextPosition.Create(5, 2), ARequest,
+      WithResolver(AContext, Resolver));
   finally
     Resolver.Free;
     Tree.Free;
@@ -214,7 +238,9 @@ var
   Item: TJSONObject;
 begin
   for Item in AItems do
+  begin
     Item.Free;
+  end;
 end;
 
 procedure TLspExtractSuperclassTests.OffersOnClassHeader;
@@ -351,8 +377,8 @@ begin
       Resolver := TNameResolver.Create(Index, nil);
       Body := Request('TExportBase', 'ExportBase', [1]);
       try
-        TLspExtractSuperclass.Execute(Resolver, Tree, AusgabeFile, Text, TTextPosition.Create(6, 2), Body,
-          Context(Index)).Free;
+        TLspExtractSuperclass.Execute(Tree, AusgabeFile, Text, TTextPosition.Create(6, 2), Body,
+          WithResolver(Context(Index), Resolver)).Free;
       finally
         Body.Free;
         Resolver.Free;

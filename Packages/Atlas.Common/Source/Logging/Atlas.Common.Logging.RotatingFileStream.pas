@@ -48,7 +48,20 @@ type
 implementation
 
 uses
-  System.IOUtils;
+  System.IOUtils,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TRotatingFileStreamText = (LogStreamIsWriteOnly);
+
+const
+  cTexts: array[TRotatingFileStreamText] of TAtlasText = (
+    (De: 'Logstrom ist nur zum Schreiben'; En: 'Log stream is write-only'));
+
+{$SCOPEDENUMS OFF}
 
 function OpenFile(const AFileName: string; AAppend: Boolean): TFileStream;
 begin
@@ -58,7 +71,9 @@ begin
     Result.Seek(0, soEnd);
   end
   else
+  begin
     Result := TFileStream.Create(AFileName, fmCreate or fmShareDenyWrite);
+  end;
 end;
 
 { TRotatingFileStream }
@@ -83,7 +98,9 @@ begin
   FFileName := AFileName;
   Directory := TPath.GetDirectoryName(TPath.GetFullPath(AFileName));
   if Directory <> '' then
+  begin
     ForceDirectories(Directory);
+  end;
   try
     FStream := OpenFile(FFileName, AAppend);
   except
@@ -91,14 +108,18 @@ begin
     begin
       // Belegt, z. B. von einem zweiten Server mit derselben Logdatei.
       if AFallbackTag = '' then
+      begin
         raise;
+      end;
       FFileName := FallbackName(AFileName, AFallbackTag);
       FStream := OpenFile(FFileName, AAppend);
     end;
     on EFCreateError do
     begin
       if AFallbackTag = '' then
+      begin
         raise;
+      end;
       FFileName := FallbackName(AFileName, AFallbackTag);
       FStream := OpenFile(FFileName, AAppend);
     end;
@@ -118,9 +139,11 @@ begin
   Previous := FFileName + '.1';
   FreeAndNil(FStream);
   if FileExists(Previous) then
+  begin
     System.SysUtils.DeleteFile(Previous);
+  end;
   // Klappt das Umbenennen nicht, beginnt die Datei eben von vorn.
-  RenameFile(FFileName, Previous);
+  RenameFile(FFileName, Previous); // lsp-ignore: inline-not-expanded -- Common ohne Winapi
   FStream := TFileStream.Create(FFileName, fmCreate or fmShareDenyWrite);
 end;
 
@@ -131,13 +154,15 @@ end;
 
 function TRotatingFileStream.Read(var Buffer; Count: Longint): Longint;
 begin
-  raise EStreamError.Create('Logstrom ist nur zum Schreiben');
+  raise EStreamError.Create(cTexts[TRotatingFileStreamText.LogStreamIsWriteOnly].Text);
 end;
 
 function TRotatingFileStream.Write(const Buffer; Count: Longint): Longint;
 begin
   if (FMaxBytes > 0) and (FStream.Size > 0) and (FStream.Size + Count > FMaxBytes) then
+  begin
     Rotate;
+  end;
   Result := FStream.Write(Buffer, Count);
 end;
 
@@ -145,5 +170,8 @@ function TRotatingFileStream.Seek(const Offset: Int64; Origin: TSeekOrigin): Int
 begin
   Result := FStream.Seek(Offset, Origin);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Logging.RotatingFileStream', cTexts);
 
 end.

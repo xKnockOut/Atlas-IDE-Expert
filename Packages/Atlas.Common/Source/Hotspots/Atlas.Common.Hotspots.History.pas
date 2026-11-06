@@ -95,7 +95,9 @@ begin
   mArrow := Pos(' => ', AText);
   Result := mArrow > 0;
   if not Result then
+  begin
     Exit;
+  end;
   mOpen := Pos('{', AText);
   mClose := Pos('}', AText);
   if (mOpen > 0) and (mOpen < mArrow) and (mClose > mArrow) then
@@ -120,58 +122,92 @@ end;
 function CountOf(const AText: string): Integer;
 begin
   if not TryStrToInt(AText, Result) then
+  begin
     Result := -1;
+  end;
+end;
+
+/// <summary>Kopfzeile eines git-Datensatzes (Revision, Sekunden, Autor, Betreff); False, wenn sie nicht passt.
+/// </summary>
+function TryReadGitHead(const ALine: string; out ACommit: THotspotCommit): Boolean;
+var
+  mHead: TArray<string>;
+  mSeconds: Int64;
+begin
+  ACommit := Default(THotspotCommit);
+  mHead := ALine.Split([THotspotHistory.GitField], 4);
+  Result := (Length(mHead) >= 3) and TryStrToInt64(Trim(mHead[1]), mSeconds);
+  if not Result then
+  begin
+    Exit;
+  end;
+  ACommit.Revision := Trim(mHead[0]);
+  ACommit.Date := UnixToDateTime(mSeconds, True);
+  ACommit.Author := Trim(mHead[2]);
+  if Length(mHead) > 3 then
+  begin
+    ACommit.Summary := Trim(mHead[3]);
+  end;
+end;
+
+/// <summary>Dateien aus den numstat-Zeilen ab ALines[1] ("hinzu\tweg\tpfad").</summary>
+function GitFiles(const ALines: TArray<string>): TArray<THotspotFileChange>;
+var
+  mFiles: TList<THotspotFileChange>;
+  mFields: TArray<string>;
+  mOld, mNew: string;
+  mIndex: Integer;
+begin
+  mFiles := TList<THotspotFileChange>.Create;
+  try
+    for mIndex := 1 to High(ALines) do
+    begin
+      mFields := ALines[mIndex].Split([#9], 3);
+      if Length(mFields) < 3 then
+      begin
+        Continue;
+      end;
+      if THotspotHistory.SplitRename(mFields[2], mOld, mNew) then
+      begin
+        mFiles.Add(THotspotFileChange.Make(mNew, mOld, THotspotChangeKind.Renamed, CountOf(mFields[0]),
+          CountOf(mFields[1])));
+      end
+      else
+      begin
+        mFiles.Add(THotspotFileChange.Make(mFields[2], '', THotspotChangeKind.Modified, CountOf(mFields[0]),
+          CountOf(mFields[1])));
+      end;
+    end;
+    Result := mFiles.ToArray;
+  finally
+    mFiles.Free;
+  end;
 end;
 
 class function THotspotHistory.ParseGitLog(const AText: string): TArray<THotspotCommit>;
 var
   mList: TList<THotspotCommit>;
-  mFiles: TList<THotspotFileChange>;
-  mRecord, mLine, mOld, mNew: string;
-  mLines, mHead, mFields: TArray<string>;
+  mRecord: string;
+  mLines: TArray<string>;
   mCommit: THotspotCommit;
-  mSeconds: Int64;
-  mIndex: Integer;
 begin
   mList := TList<THotspotCommit>.Create;
-  mFiles := TList<THotspotFileChange>.Create;
   try
     for mRecord in AText.Split([GitRecord]) do
     begin
       mLines := StringReplace(mRecord, #13, '', [rfReplaceAll]).Split([#10]);
-      if (Length(mLines) = 0) or (Trim(mLines[0]) = '') then
-        Continue;
-      mHead := mLines[0].Split([GitField], 4);
-      if (Length(mHead) < 3) or not TryStrToInt64(Trim(mHead[1]), mSeconds) then
-        Continue;
-      mCommit := Default(THotspotCommit);
-      mCommit.Revision := Trim(mHead[0]);
-      mCommit.Date := UnixToDateTime(mSeconds, True);
-      mCommit.Author := Trim(mHead[2]);
-      if Length(mHead) > 3 then
-        mCommit.Summary := Trim(mHead[3]);
-      mFiles.Clear;
-      for mIndex := 1 to High(mLines) do
+      if (Length(mLines) = 0) or (Trim(mLines[0]) = '') or not TryReadGitHead(mLines[0], mCommit) then
       begin
-        mLine := mLines[mIndex];
-        mFields := mLine.Split([#9], 3);
-        if Length(mFields) < 3 then
-          Continue;
-        if SplitRename(mFields[2], mOld, mNew) then
-          mFiles.Add(THotspotFileChange.Make(mNew, mOld, THotspotChangeKind.Renamed, CountOf(mFields[0]),
-            CountOf(mFields[1])))
-        else
-          mFiles.Add(THotspotFileChange.Make(mFields[2], '', THotspotChangeKind.Modified, CountOf(mFields[0]),
-            CountOf(mFields[1])));
-      end;
-      if mFiles.Count = 0 then
         Continue;
-      mCommit.Files := mFiles.ToArray;
-      mList.Add(mCommit);
+      end;
+      mCommit.Files := GitFiles(mLines);
+      if Length(mCommit.Files) > 0 then
+      begin
+        mList.Add(mCommit);
+      end;
     end;
     Result := mList.ToArray;
   finally
-    mFiles.Free;
     mList.Free;
   end;
 end;
@@ -194,51 +230,80 @@ begin
     TryEncodeDateTime(mYear, mMonth, mDay, mHour, mMinute, mSecond, 0, ADate);
 end;
 
+/// <summary>Zeichencode der Entität AName (amp, lt, gt, quot, apos, #nn, #xhh); -1 unbekannt.</summary>
+function EntityCode(const AName: string): Integer;
+begin
+  Result := -1;
+  if AName = 'amp' then
+  begin
+    Result := Ord('&');
+  end
+  else if AName = 'lt' then
+  begin
+    Result := Ord('<');
+  end
+  else if AName = 'gt' then
+  begin
+    Result := Ord('>');
+  end
+  else if AName = 'quot' then
+  begin
+    Result := Ord('"');
+  end
+  else if AName = 'apos' then
+  begin
+    Result := Ord('''');
+  end
+  else if StartsText('#x', AName) then
+  begin
+    Result := StrToIntDef('$' + Copy(AName, 3, MaxInt), -1);
+  end
+  else if StartsText('#', AName) then
+  begin
+    Result := StrToIntDef(Copy(AName, 2, MaxInt), -1);
+  end;
+end;
+
+/// <summary>Liest eine Entität ab AText[AIndex] = '&amp;' in ABuilder und setzt AIndex dahinter; False, wenn dort
+/// keine gültige steht.</summary>
+function ReadEntity(const AText: string; var AIndex: Integer; ABuilder: TStringBuilder): Boolean;
+var
+  mEnd, mCode: Integer;
+begin
+  mEnd := PosEx(';', AText, AIndex);
+  mCode := -1;
+  if mEnd > 0 then
+  begin
+    mCode := EntityCode(Copy(AText, AIndex + 1, mEnd - AIndex - 1));
+  end;
+  Result := (mCode >= 0) and (mCode <= $FFFF);
+  if Result then
+  begin
+    ABuilder.Append(Char(mCode));
+    AIndex := mEnd + 1;
+  end;
+end;
+
 /// <summary>Text eines XML-Inhalts ohne Entitäten.</summary>
 function XmlText(const AText: string): string;
 var
-  mIndex, mEnd, mCode: Integer;
-  mName: string;
+  mIndex: Integer;
   mBuilder: TStringBuilder;
 begin
   if Pos('&', AText) = 0 then
+  begin
     Exit(AText);
+  end;
   mBuilder := TStringBuilder.Create;
   try
     mIndex := 1;
     while mIndex <= Length(AText) do
     begin
-      if AText[mIndex] = '&' then
+      if (AText[mIndex] <> '&') or not ReadEntity(AText, mIndex, mBuilder) then
       begin
-        mEnd := PosEx(';', AText, mIndex);
-        if mEnd > 0 then
-        begin
-          mName := Copy(AText, mIndex + 1, mEnd - mIndex - 1);
-          mCode := -1;
-          if mName = 'amp' then
-            mCode := Ord('&')
-          else if mName = 'lt' then
-            mCode := Ord('<')
-          else if mName = 'gt' then
-            mCode := Ord('>')
-          else if mName = 'quot' then
-            mCode := Ord('"')
-          else if mName = 'apos' then
-            mCode := Ord('''')
-          else if StartsText('#x', mName) then
-            mCode := StrToIntDef('$' + Copy(mName, 3, MaxInt), -1)
-          else if StartsText('#', mName) then
-            mCode := StrToIntDef(Copy(mName, 2, MaxInt), -1);
-          if (mCode >= 0) and (mCode <= $FFFF) then
-          begin
-            mBuilder.Append(Char(mCode));
-            mIndex := mEnd + 1;
-            Continue;
-          end;
-        end;
+        mBuilder.Append(AText[mIndex]);
+        Inc(mIndex);
       end;
-      mBuilder.Append(AText[mIndex]);
-      Inc(mIndex);
     end;
     Result := mBuilder.ToString;
   finally
@@ -255,16 +320,24 @@ begin
   Result := '';
   mStart := Pos(' ' + AName + '=', ATag);
   if mStart = 0 then
+  begin
     Exit;
+  end;
   mStart := mStart + Length(AName) + 2;
   if mStart > Length(ATag) then
+  begin
     Exit;
+  end;
   mQuote := ATag[mStart];
   if (mQuote <> '"') and (mQuote <> '''') then
+  begin
     Exit;
+  end;
   mEnd := PosEx(mQuote, ATag, mStart + 1);
   if mEnd > 0 then
+  begin
     Result := XmlText(Copy(ATag, mStart + 1, mEnd - mStart - 1));
+  end;
 end;
 
 /// <summary>Inhalt des ersten Elements AName ab AFrom bis ALimit; '' ohne.</summary>
@@ -275,13 +348,19 @@ begin
   Result := '';
   mStart := PosEx('<' + AName, AXml, AFrom);
   if (mStart = 0) or (mStart > ALimit) then
+  begin
     Exit;
+  end;
   mClose := PosEx('>', AXml, mStart);
   if (mClose = 0) or (AXml[mClose - 1] = '/') then
+  begin
     Exit;
+  end;
   mEnd := PosEx('</' + AName + '>', AXml, mClose);
   if (mEnd > 0) and (mEnd <= ALimit) then
+  begin
     Result := XmlText(Copy(AXml, mClose + 1, mEnd - mClose - 1));
+  end;
 end;
 
 type
@@ -298,104 +377,182 @@ var
 begin
   mPrefix := APrefix;
   if (mPrefix <> '') and (mPrefix[Length(mPrefix)] <> '/') then
+  begin
     mPrefix := mPrefix + '/';
+  end;
   if mPrefix = '/' then
+  begin
     mPrefix := '';
+  end;
   if mPrefix = '' then
   begin
     ARelative := APath;
     if StartsStr('/', ARelative) then
+    begin
       Delete(ARelative, 1, 1);
+    end;
     Exit(ARelative <> '');
   end;
   if not StartsStr('/', mPrefix) then
+  begin
     mPrefix := '/' + mPrefix;
+  end;
   Result := StartsStr(mPrefix, APath) and (Length(APath) > Length(mPrefix));
   if Result then
-    ARelative := Copy(APath, Length(mPrefix) + 1, MaxInt)
+  begin
+    ARelative := Copy(APath, Length(mPrefix) + 1, MaxInt);
+  end
   else
+  begin
     ARelative := '';
+  end;
+end;
+
+/// <summary>Kopf eines logentry ab AEntry (Revision, Autor, erste Zeile der Nachricht, Datum); ATagEnd ist das
+/// Ende seines Starttags.</summary>
+function ReadSvnHead(const AXml: string; AEntry, AEntryEnd: Integer; out ATagEnd: Integer): THotspotCommit;
+begin
+  ATagEnd := PosEx('>', AXml, AEntry);
+  Result := Default(THotspotCommit);
+  Result.Revision := XmlAttribute(Copy(AXml, AEntry, ATagEnd - AEntry), 'revision');
+  Result.Author := Trim(XmlElement(AXml, 'author', ATagEnd, AEntryEnd));
+  Result.Summary := Trim(StringReplace(XmlElement(AXml, 'msg', ATagEnd, AEntryEnd), #13, '', [rfReplaceAll]));
+  if Pos(#10, Result.Summary) > 0 then
+  begin
+    Result.Summary := Trim(Copy(Result.Summary, 1, Pos(#10, Result.Summary) - 1));
+  end;
+  if not THotspotHistory.TryParseIsoDate(Trim(XmlElement(AXml, 'date', ATagEnd, AEntryEnd)), Result.Date) then
+  begin
+    Result.Date := 0;
+  end;
+end;
+
+/// <summary>Die path-Elemente zwischen AFrom und ALimit.</summary>
+function ReadSvnPaths(const AXml: string; AFrom, ALimit: Integer): TArray<TSvnPath>;
+var
+  mPathStart, mPathClose, mPathEnd: Integer;
+  mTag: string;
+  mItem: TSvnPath;
+begin
+  Result := nil;
+  mPathStart := PosEx('<path ', AXml, AFrom);
+  while (mPathStart > 0) and (mPathStart < ALimit) do
+  begin
+    mPathClose := PosEx('>', AXml, mPathStart);
+    mPathEnd := PosEx('</path>', AXml, mPathClose);
+    if (mPathClose = 0) or (mPathEnd = 0) or (mPathEnd > ALimit) then
+    begin
+      Break;
+    end;
+    mTag := Copy(AXml, mPathStart, mPathClose - mPathStart);
+    mItem.Action := XmlAttribute(mTag, 'action');
+    mItem.Kind := XmlAttribute(mTag, 'kind');
+    mItem.CopyFrom := XmlAttribute(mTag, 'copyfrom-path');
+    mItem.Path := Trim(XmlText(Copy(AXml, mPathClose + 1, mPathEnd - mPathClose - 1)));
+    Result := Result + [mItem];
+    mPathStart := PosEx('<path ', AXml, mPathEnd);
+  end;
+end;
+
+/// <summary>Änderung zu AItem; False für Ordner, Pfade außerhalb von APrefix und die gelöschte Quelle einer
+/// Umbenennung (sie steht beim neuen Pfad).</summary>
+function TrySvnChange(const AItem: TSvnPath; const APrefix: string; ADeleted, ACopied: TDictionary<string, Boolean>;
+  out AChange: THotspotFileChange): Boolean;
+var
+  mRelative, mOld: string;
+begin
+  AChange := Default(THotspotFileChange);
+  // Ordner zählen nicht; alte Server lassen kind weg.
+  Result := (AItem.Kind <> 'dir') and RelativeToPrefix(AItem.Path, APrefix, mRelative);
+  if not Result then
+  begin
+    Exit;
+  end;
+  if AItem.Action = 'D' then
+  begin
+    Result := not ACopied.ContainsKey(AItem.Path);
+    AChange := THotspotFileChange.Make(mRelative, '', THotspotChangeKind.Deleted, -1, -1);
+  end
+  else if (AItem.CopyFrom <> '') and ADeleted.ContainsKey(AItem.CopyFrom) and
+    RelativeToPrefix(AItem.CopyFrom, APrefix, mOld) then
+  begin
+    AChange := THotspotFileChange.Make(mRelative, mOld, THotspotChangeKind.Renamed, -1, -1);
+  end
+  else if AItem.Action = 'A' then
+  begin
+    AChange := THotspotFileChange.Make(mRelative, '', THotspotChangeKind.Added, -1, -1);
+  end
+  else
+  begin
+    AChange := THotspotFileChange.Make(mRelative, '', THotspotChangeKind.Modified, -1, -1);
+  end;
+end;
+
+/// <summary>Dateiänderungen eines logentry aus seinen path-Elementen.</summary>
+function SvnFiles(const APaths: TArray<TSvnPath>; const APrefix: string): TArray<THotspotFileChange>;
+var
+  mDeleted, mCopied: TDictionary<string, Boolean>;
+  mItem: TSvnPath;
+  mChange: THotspotFileChange;
+begin
+  Result := nil;
+  mDeleted := TDictionary<string, Boolean>.Create;
+  mCopied := TDictionary<string, Boolean>.Create;
+  try
+    for mItem in APaths do
+    begin
+      if mItem.Action = 'D' then
+      begin
+        mDeleted.AddOrSetValue(mItem.Path, True);
+      end;
+      if mItem.CopyFrom <> '' then
+      begin
+        mCopied.AddOrSetValue(mItem.CopyFrom, True);
+      end;
+    end;
+    for mItem in APaths do
+    begin
+      if TrySvnChange(mItem, APrefix, mDeleted, mCopied, mChange) then
+      begin
+        Result := Result + [mChange];
+      end;
+    end;
+  finally
+    mCopied.Free;
+    mDeleted.Free;
+  end;
+end;
+
+/// <summary>Neueste Revision zuerst, bei Gleichstand nach dem Text der Revision.</summary>
+function CompareSvnCommits(const ALeft, ARight: THotspotCommit): Integer;
+begin
+  Result := StrToIntDef(ARight.Revision, 0) - StrToIntDef(ALeft.Revision, 0);
+  if Result = 0 then
+  begin
+    Result := CompareStr(ALeft.Revision, ARight.Revision);
+  end;
 end;
 
 class function THotspotHistory.ParseSvnLog(const AXml, APrefix: string): TArray<THotspotCommit>;
 var
   mList: TList<THotspotCommit>;
-  mFiles: TList<THotspotFileChange>;
-  mPaths: TList<TSvnPath>;
-  mDeleted, mCopied: TDictionary<string, Boolean>;
-  mEntry, mEntryEnd, mTagEnd, mPathStart, mPathClose, mPathEnd: Integer;
-  mTag, mRelative, mOld: string;
+  mEntry, mEntryEnd, mTagEnd: Integer;
   mCommit: THotspotCommit;
-  mItem: TSvnPath;
 begin
   mList := TList<THotspotCommit>.Create;
-  mFiles := TList<THotspotFileChange>.Create;
-  mPaths := TList<TSvnPath>.Create;
-  mDeleted := TDictionary<string, Boolean>.Create;
-  mCopied := TDictionary<string, Boolean>.Create;
   try
     mEntry := Pos('<logentry', AXml);
     while mEntry > 0 do
     begin
       mEntryEnd := PosEx('</logentry>', AXml, mEntry);
       if mEntryEnd = 0 then
+      begin
         Break;
-      mTagEnd := PosEx('>', AXml, mEntry);
-      mTag := Copy(AXml, mEntry, mTagEnd - mEntry);
-      mCommit := Default(THotspotCommit);
-      mCommit.Revision := XmlAttribute(mTag, 'revision');
-      mCommit.Author := Trim(XmlElement(AXml, 'author', mTagEnd, mEntryEnd));
-      mCommit.Summary := Trim(StringReplace(XmlElement(AXml, 'msg', mTagEnd, mEntryEnd), #13, '', [rfReplaceAll]));
-      if Pos(#10, mCommit.Summary) > 0 then
-        mCommit.Summary := Trim(Copy(mCommit.Summary, 1, Pos(#10, mCommit.Summary) - 1));
-      if not TryParseIsoDate(Trim(XmlElement(AXml, 'date', mTagEnd, mEntryEnd)), mCommit.Date) then
-        mCommit.Date := 0;
-      mPaths.Clear;
-      mDeleted.Clear;
-      mCopied.Clear;
-      mPathStart := PosEx('<path ', AXml, mTagEnd);
-      while (mPathStart > 0) and (mPathStart < mEntryEnd) do
-      begin
-        mPathClose := PosEx('>', AXml, mPathStart);
-        mPathEnd := PosEx('</path>', AXml, mPathClose);
-        if (mPathClose = 0) or (mPathEnd = 0) or (mPathEnd > mEntryEnd) then
-          Break;
-        mTag := Copy(AXml, mPathStart, mPathClose - mPathStart);
-        mItem.Action := XmlAttribute(mTag, 'action');
-        mItem.Kind := XmlAttribute(mTag, 'kind');
-        mItem.CopyFrom := XmlAttribute(mTag, 'copyfrom-path');
-        mItem.Path := Trim(XmlText(Copy(AXml, mPathClose + 1, mPathEnd - mPathClose - 1)));
-        mPaths.Add(mItem);
-        if mItem.Action = 'D' then
-          mDeleted.AddOrSetValue(mItem.Path, True);
-        if mItem.CopyFrom <> '' then
-          mCopied.AddOrSetValue(mItem.CopyFrom, True);
-        mPathStart := PosEx('<path ', AXml, mPathEnd);
       end;
-      mFiles.Clear;
-      for mItem in mPaths do
+      mCommit := ReadSvnHead(AXml, mEntry, mEntryEnd, mTagEnd);
+      mCommit.Files := SvnFiles(ReadSvnPaths(AXml, mTagEnd, mEntryEnd), APrefix);
+      if Length(mCommit.Files) > 0 then
       begin
-        // Ordner zählen nicht; alte Server lassen kind weg.
-        if (mItem.Kind = 'dir') or not RelativeToPrefix(mItem.Path, APrefix, mRelative) then
-          Continue;
-        if mItem.Action = 'D' then
-        begin
-          // Die gelöschte Quelle einer Umbenennung steht beim neuen Pfad.
-          if not mCopied.ContainsKey(mItem.Path) then
-            mFiles.Add(THotspotFileChange.Make(mRelative, '', THotspotChangeKind.Deleted, -1, -1));
-          Continue;
-        end;
-        if (mItem.CopyFrom <> '') and mDeleted.ContainsKey(mItem.CopyFrom) and
-          RelativeToPrefix(mItem.CopyFrom, APrefix, mOld) then
-          mFiles.Add(THotspotFileChange.Make(mRelative, mOld, THotspotChangeKind.Renamed, -1, -1))
-        else if mItem.Action = 'A' then
-          mFiles.Add(THotspotFileChange.Make(mRelative, '', THotspotChangeKind.Added, -1, -1))
-        else
-          mFiles.Add(THotspotFileChange.Make(mRelative, '', THotspotChangeKind.Modified, -1, -1));
-      end;
-      if mFiles.Count > 0 then
-      begin
-        mCommit.Files := mFiles.ToArray;
         mList.Add(mCommit);
       end;
       mEntry := PosEx('<logentry', AXml, mEntryEnd);
@@ -404,31 +561,55 @@ begin
     mList.Sort(TComparer<THotspotCommit>.Construct(
       function(const ALeft, ARight: THotspotCommit): Integer
       begin
-        Result := StrToIntDef(ARight.Revision, 0) - StrToIntDef(ALeft.Revision, 0);
-        if Result = 0 then
-          Result := CompareStr(ALeft.Revision, ARight.Revision);
+        Result := CompareSvnCommits(ALeft, ARight);
       end));
     Result := mList.ToArray;
   finally
-    mCopied.Free;
-    mDeleted.Free;
-    mPaths.Free;
-    mFiles.Free;
     mList.Free;
   end;
 end;
 
-class function THotspotHistory.FollowRenames(const ACommits: TArray<THotspotCommit>): TArray<THotspotCommit>;
 const
   // Marke: ältere Änderungen unter diesem Pfad gehören zu einer früheren Datei.
-  cGone = #0;
+  cGonePath = #0;
+
+/// <summary>AFile mit dem heutigen Pfad aus ANames; merkt Umbenennungen und Neuanlagen vor. False, wenn der Pfad
+/// zu einer früheren Datei gehört.</summary>
+function TryFollowFile(ANames: TDictionary<string, string>; const AFile: THotspotFileChange;
+  out AFollowed: THotspotFileChange): Boolean;
+var
+  mCurrent: string;
+begin
+  AFollowed := Default(THotspotFileChange);
+  if not ANames.TryGetValue(LowerCase(AFile.Path), mCurrent) then
+  begin
+    mCurrent := AFile.Path;
+  end;
+  Result := mCurrent <> cGonePath;
+  if not Result then
+  begin
+    Exit;
+  end;
+  case AFile.Kind of
+    THotspotChangeKind.Renamed:
+      if AFile.OldPath <> '' then
+      begin
+        ANames.AddOrSetValue(LowerCase(AFile.OldPath), mCurrent);
+      end;
+    THotspotChangeKind.Added:
+      ANames.AddOrSetValue(LowerCase(AFile.Path), cGonePath);
+    THotspotChangeKind.Modified, THotspotChangeKind.Deleted: ;
+  end;
+  AFollowed := THotspotFileChange.Make(mCurrent, AFile.OldPath, AFile.Kind, AFile.Added, AFile.Deleted);
+end;
+
+class function THotspotHistory.FollowRenames(const ACommits: TArray<THotspotCommit>): TArray<THotspotCommit>;
 var
   mNames: TDictionary<string, string>;
   mCommit, mFollowed: THotspotCommit;
-  mFile: THotspotFileChange;
+  mFile, mChange: THotspotFileChange;
   mFiles: TList<THotspotFileChange>;
   mList: TList<THotspotCommit>;
-  mCurrent: string;
 begin
   mNames := TDictionary<string, string>.Create;
   mFiles := TList<THotspotFileChange>.Create;
@@ -439,25 +620,17 @@ begin
       mFiles.Clear;
       for mFile in mCommit.Files do
       begin
-        if not mNames.TryGetValue(LowerCase(mFile.Path), mCurrent) then
-          mCurrent := mFile.Path;
-        if mCurrent = cGone then
-          Continue;
-        case mFile.Kind of
-          THotspotChangeKind.Renamed:
-            if mFile.OldPath <> '' then
-              mNames.AddOrSetValue(LowerCase(mFile.OldPath), mCurrent);
-          THotspotChangeKind.Added:
-            mNames.AddOrSetValue(LowerCase(mFile.Path), cGone);
-          THotspotChangeKind.Modified, THotspotChangeKind.Deleted: ;
+        if TryFollowFile(mNames, mFile, mChange) then
+        begin
+          mFiles.Add(mChange);
         end;
-        mFiles.Add(THotspotFileChange.Make(mCurrent, mFile.OldPath, mFile.Kind, mFile.Added, mFile.Deleted));
       end;
-      if mFiles.Count = 0 then
-        Continue;
-      mFollowed := mCommit;
-      mFollowed.Files := mFiles.ToArray;
-      mList.Add(mFollowed);
+      if mFiles.Count > 0 then
+      begin
+        mFollowed := mCommit;
+        mFollowed.Files := mFiles.ToArray;
+        mList.Add(mFollowed);
+      end;
     end;
     Result := mList.ToArray;
   finally
@@ -474,12 +647,20 @@ begin
   AAdded := 0;
   ADeleted := 0;
   for mLine in ALines do
+  begin
     if StartsStr('+++', mLine) or StartsStr('---', mLine) then
-      Continue
+    begin
+      Continue;
+    end
     else if StartsStr('+', mLine) then
-      Inc(AAdded)
+    begin
+      Inc(AAdded);
+    end
     else if StartsStr('-', mLine) then
+    begin
       Inc(ADeleted);
+    end;
+  end;
 end;
 
 end.

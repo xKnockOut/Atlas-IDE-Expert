@@ -1,0 +1,643 @@
+﻿unit Atlas.IDE.Foundation.EditorBarHost;
+
+// Gemeinsamer Leisten-Host (#1248). Jede Leiste im Editor (Editorleiste,
+// Statusleiste, Brotkrumen, Übersichtsleiste, Minimap, Suchleiste) braucht
+// dieselbe Verwaltung; früher hatte jeder Dienst eine eigene Kopie, und jede
+// Kopie hatte denselben Fehler mindestens einmal (zuletzt: Suchleiste nach
+// dem Projektwechsel von der IDE gesperrt). Der Host übernimmt:
+// - je Editorfenster eine Leiste: Ensure legt sie für jedes Fenster an
+//   (Fenster, die später aufgehen, beim nächsten Takt) und ordnet sie über
+//   den Haken Place ein; EnsureFor nur für ein Fenster (Suchleiste auf
+//   Abruf). Schlüssel ist das Eltern-Steuerelement des Editors, nicht das
+//   Elternteil der Leiste: Die Editorleiste kann in die Brotkrumenzeile
+//   umziehen.
+// - Wächter (FreeNotification): Gibt die IDE eine Leiste mit ihrem Fenster
+//   frei, verschwindet sie aus der Liste; OnRemoved meldet das dem Dienst.
+// - Freigabe nach der Sperre durch die IDE: Beim Schließen aller Editoren
+//   (Projektwechsel) sperrt die IDE jedes Steuerelement im Editor-Panel und
+//   gibt danach nur ihre eigenen frei. Enable gibt die Leiste (VCL) und ihre
+//   Fenster (auch an der VCL vorbei mit EnableWindow gesperrte) wieder frei;
+//   Ensure ruft es, sobald ein Editor aktiv ist.
+// - Sperren protokollieren: Disabled und Enable schreiben je Host nur die
+//   erste Sperre und Freigabe als eine Zeile. Der Verursacher ist bekannt
+//   (TEditWindow.ShowView beim Tab-Wechsel und Schließen aller Editoren,
+//   2.0-stable); ein Stapel je Sperre füllte nur das Protokoll.
+// - Thema: ForEach wendet Farben (oder anderes) auf jede Leiste an.
+// - Absturzsicherung je Leiste: Anlegen, Einordnen und ForEach laufen je
+//   Leiste in einem eigenen try; ein Fehler zählt für das Feature
+//   (TAtlasGuard.Report), die übrigen Leisten laufen weiter. Guard blendet
+//   die Leisten aus, solange die Sicherung des Features ausgelöst ist, und
+//   danach wieder ein.
+// - Ansicht (#1442): ShowIn legt fest, ob eine Leiste nur im Code-Editor
+//   (Brotkrumen, Editorleiste), nur im Formular-Designer (Designer-Leiste)
+//   oder in beiden steht; Ensure blendet sie danach ein und aus
+//   (TAtlasIdeDesignerView).
+// - Abbau: Destroy (bzw. Clear) gibt alle Leisten frei; der Wächter schreibt
+//   dabei nicht mehr zurück. Danach hält Atlas keine Leiste in einem
+//   IDE-Fenster mehr (vgl. #1233).
+// Nur im Hauptthread.
+
+interface
+
+uses
+  System.SysUtils,
+  System.Classes,
+  System.Generics.Collections,
+  Vcl.Controls,
+  ToolsAPI,
+  Atlas.Core.Diagnostics.Guard;
+
+type
+{$SCOPEDENUMS ON}
+  /// <summary>Wo eine Leiste steht: im Code-Editor, im Formular-Designer oder in beiden (Vorgabe).</summary>
+  TAtlasEditorBarView = (Any, Code, Designer);
+  /// <summary>Was ein Leisten-Host schon protokolliert hat: erste Sperre, erste Freigabe.</summary>
+  TAtlasEditorBarLogged = (Disabled, Enabled);
+{$SCOPEDENUMS OFF}
+
+  TAtlasEditorBarHost = class
+  public type
+    /// <summary>Neue Leiste für das Eltern-Steuerelement des Editors; noch ohne Parent.</summary>
+    TCreateBar = reference to function(AEditorParent: TWinControl): TControl;
+    /// <summary>Leiste einordnen (Parent, Align, Reihenfolge); beim Anlegen und bei jedem Ensure.</summary>
+    TPlaceBar = reference to procedure(ABar: TControl; AEditorParent: TWinControl);
+  private type
+    TWatcher = class(TComponent)
+    private
+      FHost: TAtlasEditorBarHost;
+    protected
+      procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    end;
+  private
+    FName: string;
+    FFeature: TAtlasFeature;
+    FCreate: TCreateBar;
+    FPlace: TPlaceBar;
+    FWatcher: TWatcher;
+    FBars: TList<TControl>;
+    /// <summary>Eltern-Steuerelement des Editors je Leiste (gleicher Index wie FBars).</summary>
+    FParents: TList<TWinControl>;
+    FHidden: Boolean;
+    /// <summary>Erste Sperre bzw. Freigabe schon protokolliert; danach still.</summary>
+    FLogged: set of TAtlasEditorBarLogged;
+    FOnRemoved: TProc<TControl>;
+    FShowIn: TAtlasEditorBarView;
+    procedure Removed(ABar: TControl);
+    function CreateFor(AEditorParent: TWinControl): TControl;
+    procedure PlaceGuarded(ABar: TControl; AEditorParent: TWinControl);
+    procedure Show(AShown: Boolean);
+  public
+    /// <summary>AName steht im Protokoll („Editorleiste“); AFeature ist die Sicherung der Leisten.</summary>
+    constructor Create(const AName: string; AFeature: TAtlasFeature; const ACreate: TCreateBar;
+      const APlace: TPlaceBar);
+    destructor Destroy; override;
+    /// <summary>Editor-Steuerelement eines Editorfensters; nil, wenn es (noch) keins hat.</summary>
+    class function EditorOf(const AWindow: INTAEditWindow): TWinControl; static;
+    /// <summary>Editor-Steuerelement des Editorfensters, in dem AControl liegt; nil ohne.</summary>
+    class function EditorIn(AControl: TControl): TWinControl; static;
+    /// <summary>Editor des vordersten Editorfensters; nil ohne.</summary>
+    class function TopEditor: TWinControl; static;
+    /// <summary>Fokus an den Editor des Fensters, in dem AControl liegt (Leiste schließen, Esc).</summary>
+    class procedure FocusEditor(AControl: TControl); static;
+    /// <summary>Für jedes Editorfenster die Leiste anlegen bzw. einordnen; danach gesperrte freigeben, wenn ein
+    /// Editor aktiv ist.</summary>
+    procedure Ensure;
+    /// <summary>Leiste für ein Editorfenster anlegen bzw. einordnen; nil ohne Editor oder bei Fehler.</summary>
+    function EnsureFor(const AWindow: INTAEditWindow): TControl;
+    /// <summary>Leiste zum Eltern-Steuerelement des Editors; nil ohne.</summary>
+    function BarOf(AEditorParent: TWinControl): TControl;
+    /// <summary>Leiste des vordersten Editorfensters; nil ohne.</summary>
+    function ActiveBar: TControl;
+    /// <summary>Eltern-Steuerelement des Editors, zu dem ABar gehört; nil, wenn sie nicht von diesem Host ist.
+    /// </summary>
+    function EditorParentOf(ABar: TControl): TWinControl;
+    function Contains(ABar: TControl): Boolean;
+    function Bars: TArray<TControl>;
+    function Count: Integer;
+    /// <summary>AAction für jede Leiste, je Leiste abgesichert.</summary>
+    procedure ForEach(const AAction: TProc<TControl>);
+    /// <summary>Alle Leisten freigeben (Funktion aus, Einstellungen geändert, Abbau).</summary>
+    procedure Clear;
+    /// <summary>Von außen gesperrte Leisten (und ihre Fenster) wieder freigeben.</summary>
+    procedure Enable;
+    /// <summary>Die Leiste ABar wird gesperrt: Aufrufer protokollieren (im Moment des Sperrens rufen).</summary>
+    procedure Disabled(ABar: TObject);
+    /// <summary>False, solange die Sicherung des Features ausgelöst ist; blendet die Leisten dann einmal aus
+    /// und danach wieder ein.</summary>
+    function Guard: Boolean;
+    property Name: string read FName;
+    property Feature: TAtlasFeature read FFeature;
+    /// <summary>Sind die Leisten wegen der Sicherung ausgeblendet (seit dem letzten Guard)?</summary>
+    property Hidden: Boolean read FHidden;
+    /// <summary>Eine Leiste ist weg (von der IDE freigegeben); nicht bei Clear.</summary>
+    property OnRemoved: TProc<TControl> read FOnRemoved write FOnRemoved;
+    /// <summary>Wo die Leisten stehen (#1442); Vorgabe Any. Gilt ab dem nächsten Ensure.</summary>
+    property ShowIn: TAtlasEditorBarView read FShowIn write FShowIn;
+    /// <summary>Steht die Leiste ABar gerade sichtbar im Editorfenster (nach Ansicht und Sicherung)?</summary>
+    function Showing(ABar: TControl): Boolean;
+  end;
+
+implementation
+
+uses
+  Winapi.Windows,
+  Vcl.Forms,
+  Atlas.IDE.Foundation.DesignerView,
+  Atlas.IDE.Foundation.EditorBuffer;
+
+/// <summary>Steuerelement mit seinen Eltern bis zum Formular, für das Protokoll.</summary>
+function ControlChain(AControl: TControl): string;
+var
+  mDepth: Integer;
+begin
+  Result := '';
+  mDepth := 0;
+  while (AControl <> nil) and (mDepth < 8) do
+  begin
+    if Result <> '' then
+    begin
+      Result := Result + ' < ';
+    end;
+    Result := Result + AControl.ClassName + ' ' + AControl.Name;
+    AControl := AControl.Parent;
+    Inc(mDepth);
+  end;
+end;
+
+/// <summary>Fenster, die an der VCL vorbei gesperrt sind (EnableWindow), wieder freigeben; nur wo die VCL sie
+/// für freigegeben hält, damit eine gewollte Sperre bleibt. False, wenn keins gesperrt war.</summary>
+function EnableWindows(AControl: TWinControl): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := False;
+  if not AControl.Enabled or not AControl.HandleAllocated then
+  begin
+    Exit;
+  end;
+  if not IsWindowEnabled(AControl.Handle) then
+  begin
+    EnableWindow(AControl.Handle, True);
+    Result := True;
+  end;
+  for mIndex := 0 to AControl.ControlCount - 1 do
+  begin
+    if AControl.Controls[mIndex] is TWinControl then
+    begin
+      if EnableWindows(TWinControl(AControl.Controls[mIndex])) then
+      begin
+        Result := True;
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Soll die Leiste im Editorfenster von AEditorParent gerade zu sehen sein (Sicherung und Ansicht)?
+/// </summary>
+function BarWanted(AHost: TAtlasEditorBarHost; AEditorParent: TWinControl): Boolean;
+begin
+  Result := not AHost.FHidden;
+  if not Result then
+  begin
+    Exit;
+  end;
+  case AHost.FShowIn of
+    TAtlasEditorBarView.Code:
+      // Nicht im Designer und nicht auf der Willkommensseite (#1442).
+      Result := TAtlasIdeDesignerView.CodeShown(TAtlasEditorBarHost.EditorIn(AEditorParent)) and not TAtlasIdeDesignerView.Shown(AEditorParent);
+    TAtlasEditorBarView.Designer:
+      Result := TAtlasIdeDesignerView.Shown(AEditorParent);
+  else
+    // Any: in Code und Designer.
+  end;
+end;
+
+procedure ApplyBarView(AHost: TAtlasEditorBarHost; ABar: TControl; AEditorParent: TWinControl);
+var
+  mWanted: Boolean;
+begin
+  // Any: Die Sichtbarkeit gehört dem Dienst (Suchleiste schließt sich selbst); nur die Sicherung blendet aus.
+  if AHost.FShowIn = TAtlasEditorBarView.Any then
+  begin
+    Exit;
+  end;
+  mWanted := BarWanted(AHost, AEditorParent);
+  if ABar.Visible <> mWanted then
+  begin
+    ABar.Visible := mWanted;
+  end;
+end;
+
+{ TAtlasEditorBarHost.TWatcher }
+
+procedure TAtlasEditorBarHost.TWatcher.Notification(AComponent: TComponent; Operation: TOperation);
+begin
+  inherited Notification(AComponent, Operation);
+  if (Operation = opRemove) and (AComponent is TControl) and (FHost <> nil) then
+  begin
+    FHost.Removed(TControl(AComponent));
+  end;
+end;
+
+{ TAtlasEditorBarHost }
+
+constructor TAtlasEditorBarHost.Create(const AName: string; AFeature: TAtlasFeature; const ACreate: TCreateBar;
+  const APlace: TPlaceBar);
+begin
+  inherited Create;
+  FName := AName;
+  FFeature := AFeature;
+  FCreate := ACreate;
+  FPlace := APlace;
+  FBars := TList<TControl>.Create;
+  FParents := TList<TWinControl>.Create;
+  FWatcher := TWatcher.Create(nil);
+  FWatcher.FHost := Self;
+end;
+
+destructor TAtlasEditorBarHost.Destroy;
+begin
+  Clear;
+  FWatcher.Free;
+  FParents.Free;
+  FBars.Free;
+  // Gefangene Variablen der Dienste nicht über das Ende des Hosts halten.
+  FCreate := nil;
+  FPlace := nil;
+  FOnRemoved := nil;
+  inherited Destroy;
+end;
+
+class function TAtlasEditorBarHost.EditorOf(const AWindow: INTAEditWindow): TWinControl;
+var
+  mEditor: TComponent;
+begin
+  Result := nil;
+  if (AWindow = nil) or (AWindow.Form = nil) then
+  begin
+    Exit;
+  end;
+  mEditor := AWindow.Form.FindComponent('Editor');
+  if (mEditor is TWinControl) and (TWinControl(mEditor).Parent <> nil) then
+  begin
+    Result := TWinControl(mEditor);
+  end;
+end;
+
+class function TAtlasEditorBarHost.EditorIn(AControl: TControl): TWinControl;
+var
+  mForm: TCustomForm;
+  mEditor: TComponent;
+begin
+  Result := nil;
+  if AControl = nil then
+  begin
+    Exit;
+  end;
+  mForm := GetParentForm(AControl, False);
+  if mForm = nil then
+  begin
+    Exit;
+  end;
+  mEditor := mForm.FindComponent('Editor');
+  if mEditor is TWinControl then
+  begin
+    Result := TWinControl(mEditor);
+  end;
+end;
+
+class function TAtlasEditorBarHost.TopEditor: TWinControl;
+var
+  mServices: INTAEditorServices;
+begin
+  Result := nil;
+  if Supports(BorlandIDEServices, INTAEditorServices, mServices) then
+  begin
+    Result := EditorOf(mServices.TopEditWindow);
+  end;
+end;
+
+class procedure TAtlasEditorBarHost.FocusEditor(AControl: TControl);
+var
+  mForm: TCustomForm;
+  mEditor: TComponent;
+begin
+  if AControl = nil then
+  begin
+    Exit;
+  end;
+  mForm := GetParentForm(AControl);
+  if mForm = nil then
+  begin
+    Exit;
+  end;
+  mEditor := mForm.FindComponent('Editor');
+  if (mEditor is TWinControl) and TWinControl(mEditor).CanFocus then
+  begin
+    TWinControl(mEditor).SetFocus;
+  end;
+end;
+
+procedure TAtlasEditorBarHost.Removed(ABar: TControl);
+var
+  mIndex: Integer;
+  mRemoved: TProc<TControl>;
+begin
+  mIndex := FBars.IndexOf(ABar);
+  if mIndex < 0 then
+  begin
+    Exit;
+  end;
+  FBars.Delete(mIndex);
+  FParents.Delete(mIndex);
+  mRemoved := FOnRemoved;
+  if Assigned(mRemoved) then
+  begin
+    mRemoved(ABar);
+  end;
+end;
+
+procedure TAtlasEditorBarHost.Clear;
+var
+  mBar: TControl;
+begin
+  // Leisten selbst freigeben; der Wächter darf dabei nicht mehr zurückschreiben.
+  FWatcher.FHost := nil;
+  try
+    for mBar in FBars.ToArray do
+    begin
+      mBar.RemoveFreeNotification(FWatcher);
+      try
+        mBar.Free;
+      except
+        on E: Exception do
+          TAtlasGuard.Log(Format('%s: Leiste nicht freigegeben: %s', [FName, TAtlasGuard.MessageText(E.Message)]));
+      end;
+    end;
+  finally
+    FBars.Clear;
+    FParents.Clear;
+    FWatcher.FHost := Self;
+  end;
+end;
+
+function TAtlasEditorBarHost.BarOf(AEditorParent: TWinControl): TControl;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to FParents.Count - 1 do
+  begin
+    if FParents[mIndex] = AEditorParent then
+    begin
+      Exit(FBars[mIndex]);
+    end;
+  end;
+  Result := nil;
+end;
+
+function TAtlasEditorBarHost.EditorParentOf(ABar: TControl): TWinControl;
+var
+  mIndex: Integer;
+begin
+  mIndex := FBars.IndexOf(ABar);
+  if mIndex < 0 then
+  begin
+    Exit(nil);
+  end;
+  Result := FParents[mIndex];
+end;
+
+function TAtlasEditorBarHost.Contains(ABar: TControl): Boolean;
+begin
+  Result := (ABar <> nil) and FBars.Contains(ABar);
+end;
+
+function TAtlasEditorBarHost.ActiveBar: TControl;
+var
+  mEditor: TWinControl;
+begin
+  Result := nil;
+  mEditor := TopEditor;
+  if mEditor <> nil then
+  begin
+    Result := BarOf(mEditor.Parent);
+  end;
+end;
+
+function TAtlasEditorBarHost.Bars: TArray<TControl>;
+begin
+  Result := FBars.ToArray;
+end;
+
+function TAtlasEditorBarHost.Count: Integer;
+begin
+  Result := FBars.Count;
+end;
+
+/// <summary>Eigene Methode: Jede Leiste braucht ihre eigene Variable (FreeNotification, Fehlerfall).</summary>
+function TAtlasEditorBarHost.CreateFor(AEditorParent: TWinControl): TControl;
+var
+  mBar: TControl;
+begin
+  Result := nil;
+  mBar := nil;
+  try
+    mBar := FCreate(AEditorParent);
+    if mBar = nil then
+    begin
+      Exit;
+    end;
+    mBar.FreeNotification(FWatcher);
+    FBars.Add(mBar);
+    FParents.Add(AEditorParent);
+    FPlace(mBar, AEditorParent);
+    ApplyBarView(Self, mBar, AEditorParent);
+    Result := mBar;
+  except
+    on E: Exception do
+    begin
+      TAtlasGuard.Report(FFeature, E);
+      // Halb angelegt: wieder weg, beim nächsten Takt neu.
+      if (mBar <> nil) and FBars.Contains(mBar) then
+      begin
+        mBar.Free;
+      end
+      else if mBar <> nil then
+      begin
+        mBar.RemoveFreeNotification(FWatcher);
+        mBar.Free;
+      end;
+    end;
+  end;
+end;
+
+procedure TAtlasEditorBarHost.PlaceGuarded(ABar: TControl; AEditorParent: TWinControl);
+begin
+  try
+    FPlace(ABar, AEditorParent);
+    ApplyBarView(Self, ABar, AEditorParent);
+  except
+    on E: Exception do
+      TAtlasGuard.Report(FFeature, E);
+  end;
+end;
+
+procedure TAtlasEditorBarHost.Ensure;
+var
+  mServices: INTAEditorServices;
+  mIndex: Integer;
+  mEditor: TWinControl;
+  mBar: TControl;
+begin
+  if not Supports(BorlandIDEServices, INTAEditorServices, mServices) then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to mServices.EditWindowCount - 1 do
+  begin
+    mEditor := EditorOf(mServices.EditWindow[mIndex]);
+    if mEditor = nil then
+    begin
+      Continue;
+    end;
+    mBar := BarOf(mEditor.Parent);
+    if mBar = nil then
+    begin
+      CreateFor(mEditor.Parent);
+    end
+    else
+    begin
+      PlaceGuarded(mBar, mEditor.Parent);
+    end;
+  end;
+  // Erst mit aktivem Editor: Während die IDE ihre Editoren schließt, gilt ihre Sperre noch.
+  if TAtlasEditorBuffer.ActiveView <> nil then
+  begin
+    Enable;
+  end;
+end;
+
+function TAtlasEditorBarHost.EnsureFor(const AWindow: INTAEditWindow): TControl;
+var
+  mEditor: TWinControl;
+begin
+  Result := nil;
+  mEditor := EditorOf(AWindow);
+  if mEditor = nil then
+  begin
+    Exit;
+  end;
+  Result := BarOf(mEditor.Parent);
+  if Result = nil then
+  begin
+    Result := CreateFor(mEditor.Parent);
+  end
+  else
+  begin
+    PlaceGuarded(Result, mEditor.Parent);
+  end;
+end;
+
+procedure TAtlasEditorBarHost.ForEach(const AAction: TProc<TControl>);
+var
+  mBar: TControl;
+begin
+  for mBar in FBars.ToArray do
+    try
+      AAction(mBar);
+    except
+      on E: Exception do
+        TAtlasGuard.Report(FFeature, E);
+    end;
+end;
+
+procedure TAtlasEditorBarHost.Enable;
+var
+  mBar: TControl;
+begin
+  for mBar in FBars do
+  begin
+    if not mBar.Enabled then
+    begin
+      mBar.Enabled := True;
+      if not (TAtlasEditorBarLogged.Enabled in FLogged) then
+      begin
+        Include(FLogged, TAtlasEditorBarLogged.Enabled);
+        TAtlasGuard.Log(FName + ': wieder freigegeben, ein Editor ist aktiv (weitere Freigaben ohne Protokoll)');
+      end;
+    end;
+    if (mBar is TWinControl) and EnableWindows(TWinControl(mBar)) then
+    begin
+      TAtlasGuard.Log(FName + ': Fenster wieder freigegeben (an der VCL vorbei gesperrt)');
+    end;
+  end;
+end;
+
+procedure TAtlasEditorBarHost.Disabled(ABar: TObject);
+var
+  mChain: string;
+begin
+  // Die IDE sperrt die Leisten bei jedem Tab-Wechsel (TEditWindow.ShowView); Enable gibt sie wieder frei.
+  if TAtlasEditorBarLogged.Disabled in FLogged then
+  begin
+    Exit;
+  end;
+  Include(FLogged, TAtlasEditorBarLogged.Disabled);
+  mChain := '';
+  if ABar is TControl then
+  begin
+    mChain := ControlChain(TControl(ABar).Parent);
+  end;
+  TAtlasGuard.Log(Format('%s: gesperrt (Enabled := False), in %s; weitere Sperren ohne Protokoll',
+    [FName, mChain]));
+end;
+
+function TAtlasEditorBarHost.Showing(ABar: TControl): Boolean;
+begin
+  Result := Contains(ABar) and ABar.Visible;
+end;
+
+procedure TAtlasEditorBarHost.Show(AShown: Boolean);
+var
+  mIndex: Integer;
+begin
+  // Eingeblendet wird nur, was zur Ansicht passt (Code bzw. Designer).
+  for mIndex := 0 to FBars.Count - 1 do
+  begin
+    if AShown and (FShowIn <> TAtlasEditorBarView.Any) then
+    begin
+      ApplyBarView(Self, FBars[mIndex], FParents[mIndex]);
+    end
+    else if FBars[mIndex].Visible <> AShown then
+    begin
+      FBars[mIndex].Visible := AShown;
+    end;
+  end;
+end;
+
+function TAtlasEditorBarHost.Guard: Boolean;
+begin
+  Result := not TAtlasGuard.Disabled(FFeature);
+  if Result = not FHidden then
+  begin
+    Exit;
+  end;
+  FHidden := not Result;
+  if FHidden then
+  begin
+    TAtlasGuard.Log(FName + ': durch die Sicherung abgeschaltet');
+  end
+  else
+  begin
+    TAtlasGuard.Log(FName + ': wieder eingeschaltet');
+  end;
+  try
+    Show(Result);
+  except
+    // Läuft außerhalb von TAtlasGuard.Run (Feature abgeschaltet); nichts darf in die IDE durchschlagen.
+    on E: Exception do
+      TAtlasGuard.Log(FName + ': nicht ein- bzw. ausgeblendet: ' + TAtlasGuard.MessageText(E.Message));
+  end;
+end;
+
+end.

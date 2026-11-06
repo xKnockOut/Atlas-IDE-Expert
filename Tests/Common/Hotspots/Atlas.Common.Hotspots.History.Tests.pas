@@ -54,7 +54,9 @@ begin
   Result := THotspotHistory.GitRecord + ARevision + THotspotHistory.GitField + IntToStr(ASeconds) +
     THotspotHistory.GitField + AAuthor + THotspotHistory.GitField + ASummary + #10#10;
   for mLine in ANumstat do
+  begin
     Result := Result + mLine + #10;
+  end;
 end;
 
 function SvnFixture: string;

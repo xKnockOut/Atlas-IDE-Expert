@@ -2,7 +2,9 @@
 
 // Senke, die die letzten Logzeilen im Speicher hält (#108): Auszug für den
 // Fehlerbericht, auch ohne --log. Fester Ringpuffer, die ältesten Zeilen
-// werden verdrängt. Threadsicher.
+// werden verdrängt. Threadsicher. Die Zeilen behalten die Kennzeichen für
+// Namen, Pfade und fremden Text (TLogEntry.ToText, #1478): Wer sie
+// weitergibt, anonymisiert sie oder entfernt die Kennzeichen (TLogMarks.Plain).
 
 interface
 
@@ -49,7 +51,9 @@ begin
   inherited Create;
   FLock := TObject.Create;
   if ACapacity < 1 then
+  begin
     ACapacity := 1;
+  end;
   SetLength(FLines, ACapacity);
 end;
 
@@ -66,7 +70,9 @@ begin
     FLines[FNext] := AEntry.ToText;
     FNext := (FNext + 1) mod Length(FLines);
     if FCount < Length(FLines) then
+    begin
       Inc(FCount);
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -81,7 +87,9 @@ begin
     SetLength(Result, FCount);
     First := (FNext - FCount + Length(FLines)) mod Length(FLines);
     for Index := 0 to FCount - 1 do
+    begin
       Result[Index] := FLines[(First + Index) mod Length(FLines)];
+    end;
   finally
     TMonitor.Exit(FLock);
   end;

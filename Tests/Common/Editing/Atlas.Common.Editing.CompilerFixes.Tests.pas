@@ -66,9 +66,13 @@ begin
     begin
       Result := nil;
       if SameText(AName, 'TStringList') then
-        Result := TArray<string>.Create('Meine.Listen', 'Vcl.Klassen.Alt', 'System.Classes')
+      begin
+        Result := TArray<string>.Create('Meine.Listen', 'Vcl.Klassen.Alt', 'System.Classes');
+      end
       else if SameText(AName, 'TJSONArray') then
+      begin
         Result := TArray<string>.Create('System.JSON');
+      end;
     end;
   Result.Namespaces := TArray<string>.Create('System', 'Vcl');
 end;
@@ -88,11 +92,15 @@ begin
     begin
       ATitles := ATitles + Item.Title;
       if Item.Preferred then
+      begin
         ATitles := ATitles + ' *';
+      end;
       ATitles := ATitles + '|';
     end;
     if Length(Fixes) > 0 then
+    begin
       Result := TChangeSignature.ApplyEdits(AText, Fixes[0].Edits);
+    end;
   finally
     Tree.Free;
   end;
@@ -269,7 +277,7 @@ end;
 
 const
   GoldenBefore =
-    'unit Atlas.Common.Editing.CompilerFixesGolden; // lsp-ignore-file: unused-public-member -- Golden-Datei: Das Testprojekt übersetzt nur das Ergebnis der Aktion.' + LB +
+    'unit Atlas.Common.Editing.CompilerFixesGolden;' + LB +
     '' + LB +
     '// Golden-Datei für die Schnellkorrekturen an Compilermeldungen, Teil 2' + LB +
     '// (#549): genau das, was die Korrekturen aus dem Vorher-Text in' + LB +
@@ -315,27 +323,29 @@ const
     'function Erster(const AText: string): Integer;' + LB +            // 44
     'begin' + LB +
     '  if AText <> '''' then' + LB +
+    '  begin' + LB +
     '    Result := Ord(AText[1]);' + LB +
-    'end;' + LB +                                                       // 48: W1035
+    '  end;' + LB +
+    'end;' + LB +                                                       // 50: W1035
     '' + LB +
-    'function Doppelt(const AText: string): Integer;' + LB +           // 50
+    'function Doppelt(const AText: string): Integer;' + LB +           // 52
     'var' + LB +
     '  Wert: Integer;' + LB +
     'begin' + LB +
-    '  Wert := 0;' + LB +                                               // 54: H2077 rein
-    '  Wert := Zeilen(AText);' + LB +                                   // 55: H2077 Aufruf
+    '  Wert := 0;' + LB +                                               // 56: H2077 rein
+    '  Wert := Zeilen(AText);' + LB +                                   // 57: H2077 Aufruf
     '  Wert := 2;' + LB +
     '  Result := Wert * 2;' + LB +
     'end;' + LB +
     '' + LB +
-    'function Breit(const AText: AnsiString): string;' + LB +          // 60
+    'function Breit(const AText: AnsiString): string;' + LB +          // 62
     'begin' + LB +
-    '  Result := AText;' + LB +                                         // 62: W1057
+    '  Result := AText;' + LB +                                         // 64: W1057
     'end;' + LB +
     '' + LB +
     'function Schmal(const AText: string): AnsiString;' + LB +
     'begin' + LB +
-    '  Result := AText;' + LB +                                         // 67: W1058
+    '  Result := AText;' + LB +                                         // 69: W1058
     'end;' + LB +
     '' + LB +
     'end.' + LB;
@@ -353,9 +363,13 @@ begin
     begin
       Result := TPath.Combine(Directory, TPath.Combine('Tests', ARelative));
       if TFile.Exists(Result) then
+      begin
         Exit;
+      end;
       if ExtractFileDir(Directory) = Directory then
+      begin
         Break;
+      end;
       Directory := ExtractFileDir(Directory);
     end;
   end;
@@ -366,7 +380,7 @@ procedure TCompilerFixesTests.MatchesGoldenFile;
 const
   // Von unten nach oben, damit die Zeilen darüber gelten; die uses-Korrekturen zuletzt.
   Codes: array[0..6] of string = ('W1058', 'W1057', 'H2077', 'H2077', 'W1035', 'E2003', 'H2443');
-  Lines: array[0..6] of Integer = (66, 61, 54, 53, 47, 32, 27);
+  Lines: array[0..6] of Integer = (68, 63, 56, 55, 49, 32, 27);
   Texts: array[0..6] of string = ('x ''string'' y ''AnsiString''', 'x ''AnsiString'' y ''string''', '''Wert''',
     '''Wert''', '''Erster''', 'Undeclared identifier: ''TStringList''',
     'x ''TJSONArray.GetCount'' y ''System.Generics.Collections''');
@@ -385,7 +399,9 @@ begin
   Assert.IsTrue(FileName <> '', 'Golden-Datei nicht gefunden');
   Golden := TFile.ReadAllText(FileName, TEncoding.UTF8);
   if (Golden <> '') and (Golden[1] = #$FEFF) then
+  begin
     Delete(Golden, 1, 1);
+  end;
   Assert.AreEqual(Golden, Text);
 end;
 

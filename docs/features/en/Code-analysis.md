@@ -7,15 +7,16 @@ The server checks every unit while you type. Findings appear:
 - as squiggles,
 - in the tooltip,
 - shortened at the end of the line,
-- project-wide in the dockable window **"Atlas-Prüfung"** (Ctrl+Alt+P).
+- project-wide in the dockable window **"Atlas Findings"** (Ctrl+Alt+P).
 
 Marks move along while typing.
 
 ## Findings window, hover and options page
 
-### Window "Atlas-Prüfung"
+### Window "Atlas Findings"
 
-- Live findings of the file, project or project group
+- Live findings of the file, the current project or the project group
+- With a group open, the scope list shows every project of the group below a separator, so the window can show a project without activating it (can be switched off: `problems.window.scopeProjects`)
 - Filters per kind, category and text
 - Grouping by file, rule or category; sortable columns
 - Keys:
@@ -34,12 +35,20 @@ Marks move along while typing.
   - units that are not open come last, dimmed (or shown normally or hidden)
   - optionally the active unit also shows without findings ("No findings")
 
+### When the check runs
+
+- `problems.update` (*Tools › Options › Atlas › Rules › Check window*):
+  - live while typing, with its own delay `problems.liveDelayMs` in milliseconds (100 to 10000, default 400)
+  - on save
+  - only on request via "Check file now" (command palette, editor context menu, own shortcut Ctrl+Shift+Alt+P `keys.checkFile`, click on the check field in the Atlas status bar, e.g. "on save · project 91 %")
+- The former setting "Check while typing" is carried over
+
 ### Finding hover
 
 - Shows severity and rule
 - Action line "Alt+Enter: fix", "Suppress for this line", "Configure rule…"
 
-### Page "Prüfregeln" in the options
+### Page "Check rules" in the options
 
 - Per rule group a master switch
 - A table with severity, exclusions and options of every rule
@@ -47,7 +56,7 @@ Marks move along while typing.
 
 ## Check rules
 
-**312 check rules** in four categories: 203 bugs, 99 code smells, 5 vulnerabilities, 5 security hotspots. Among them:
+**313 check rules** in four categories: 204 bugs, 99 code smells, 5 vulnerabilities, 5 security hotspots. Among them:
 
 ### Correctness
 
@@ -438,6 +447,7 @@ Compiler errors while typing, without a build.
 - Forms created by `Application.CreateForm` and again by hand (quick fix removes the line from the `.dpr`)
 - Handlers in inherited forms that no longer call the ancestor's handler (quick fix inserts `inherited;`)
 - Forms that free themselves in their own event handler (quick fix uses `Release` or `Action := caFree`)
+- References in the form file to components of another form or data module whose unit is not in the uses clause (`Connection = Form1.Connection`; quick fix adds the unit)
 
 ### Runtime environment
 

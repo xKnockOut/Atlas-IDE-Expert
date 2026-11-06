@@ -1,0 +1,75 @@
+﻿package Atlas.IDE.Analysis;
+
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'Atlas IDE Expert – Analyse'}
+{$DESIGNONLY}
+{$IMPLICITBUILD OFF}
+{$LIBSUFFIX AUTO}
+
+// Modul Analyse (#1456, ADR 0017): Hotspots, Architektur, Unit-Beziehungen, Symbolpfad und Code Lens mit
+// Code-Metriken (#1756).
+// Meldet sich in der Unit-Initialisierung von Atlas.IDE.Analysis.Composition über die Registry
+// des Kern-Packages Atlas.IDE.Base an und lässt sich ohne Neustart der IDE laden und entladen
+// (Regeln 1 bis 4). Requiret nur das Kern-Package
+// (mit den Verträgen zwischen Modulen), kein anderes Modul (Regel 9).
+
+requires
+  rtl,
+  vcl,
+  vclwinx,
+  designide,
+  Atlas.IDE.Base;
+
+contains
+  Atlas.UI.Analysis.Strings in 'Source\UI\Analysis\Atlas.UI.Analysis.Strings.pas',
+  Atlas.Core.Architecture.Model in 'Source\Core\Architecture\Atlas.Core.Architecture.Model.pas',
+  Atlas.Core.Architecture.Commands in 'Source\Core\Architecture\Atlas.Core.Architecture.Commands.pas',
+  Atlas.Core.Architecture.MapState in 'Source\Core\Architecture\Atlas.Core.Architecture.MapState.pas',
+  Atlas.Core.Architecture.View in 'Source\Core\Architecture\Atlas.Core.Architecture.View.pas',
+  Atlas.UI.Architecture.Map in 'Source\UI\Architecture\Atlas.UI.Architecture.Map.pas',
+  Atlas.UI.Architecture.Slider in 'Source\UI\Architecture\Atlas.UI.Architecture.Slider.pas',
+  Atlas.UI.Architecture.Assignment in 'Source\UI\Architecture\Atlas.UI.Architecture.Assignment.pas',
+  Atlas.UI.Architecture.Frame in 'Source\UI\Architecture\Atlas.UI.Architecture.Frame.pas' {AtlasArchitectureFrame: TFrame},
+  Atlas.IDE.Architecture.Window in 'Source\IDE\Architecture\Atlas.IDE.Architecture.Window.pas',
+  Atlas.IDE.Architecture.Service in 'Source\IDE\Architecture\Atlas.IDE.Architecture.Service.pas',
+  Atlas.Core.Hotspots.Model in 'Source\Core\Hotspots\Atlas.Core.Hotspots.Model.pas',
+  Atlas.UI.Hotspots.Chart in 'Source\UI\Hotspots\Atlas.UI.Hotspots.Chart.pas',
+  Atlas.UI.Hotspots.Frame in 'Source\UI\Hotspots\Atlas.UI.Hotspots.Frame.pas' {AtlasHotspotsFrame: TFrame},
+  Atlas.IDE.Hotspots.Window in 'Source\IDE\Hotspots\Atlas.IDE.Hotspots.Window.pas',
+  Atlas.IDE.Hotspots.Service in 'Source\IDE\Hotspots\Atlas.IDE.Hotspots.Service.pas',
+  Atlas.Core.UnitRelations.Model in 'Source\Core\UnitRelations\Atlas.Core.UnitRelations.Model.pas',
+  Atlas.Core.UnitRelations.InterfaceCost in 'Source\Core\UnitRelations\Atlas.Core.UnitRelations.InterfaceCost.pas',
+  Atlas.UI.UnitRelations.Frame in 'Source\UI\UnitRelations\Atlas.UI.UnitRelations.Frame.pas' {AtlasUnitRelationsFrame: TFrame},
+  Atlas.IDE.UnitRelations.Window in 'Source\IDE\UnitRelations\Atlas.IDE.UnitRelations.Window.pas',
+  Atlas.IDE.UnitRelations.Service in 'Source\IDE\UnitRelations\Atlas.IDE.UnitRelations.Service.pas',
+  Atlas.UI.SymbolPath.Dialog in 'Source\UI\SymbolPath\Atlas.UI.SymbolPath.Dialog.pas',
+  Atlas.IDE.SymbolPath.Service in 'Source\IDE\SymbolPath\Atlas.IDE.SymbolPath.Service.pas',
+  Atlas.IDE.Analysis.Composition in 'Source\IDE\Analysis\Atlas.IDE.Analysis.Composition.pas',
+  Atlas.UI.Analysis.SettingsSection in 'Source\UI\Analysis\Atlas.UI.Analysis.SettingsSection.pas',
+  Atlas.Core.Analysis.MetricsLens in 'Source\Core\Analysis\Atlas.Core.Analysis.MetricsLens.pas',
+  Atlas.IDE.Analysis.MetricsLens in 'Source\IDE\Analysis\Atlas.IDE.Analysis.MetricsLens.pas';
+
+end.

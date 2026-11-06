@@ -13,6 +13,7 @@ interface
 
 uses
   Atlas.Common.Logging.Contract,
+  Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Localization.Texts;
 
@@ -20,7 +21,11 @@ type
   TShellBootstrap = class
   public
     /// <summary>Datei lesen wie der Server (Kodierung erkennen); False und '' ohne Datei.</summary>
-    class function ReadSourceText(const AFileName: string; out AText: string): Boolean; static;
+    class function ReadSourceText(const AFileName: string; out AText: string): Boolean; overload; static;
+    /// <summary>Wie oben, geöffnete Dokumente aus ADocuments haben aber Vorrang vor der Datei auf der Platte.
+    /// </summary>
+    class function ReadSourceText(const ADocuments: IDocumentStore; const AFileName: string;
+      out AText: string): Boolean; overload; static;
     /// <summary>Projekte der einzigen .groupproj in ARoot (#648); leer ohne oder mit mehreren Gruppen.</summary>
     class function GroupProjects(const ARoot: string; const ALogger: ILogger): TArray<string>; static;
     /// <summary>Projekte der Projektgruppe AGroupFile; leer, wenn sie nicht lesbar ist (Warnung im Log).</summary>
@@ -52,7 +57,9 @@ uses
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Configuration.Scopes,
   Atlas.Common.Documents.FileEncoding,
-  Atlas.Common.Projects.GroupReader;
+  Atlas.Common.Documents.Uris,
+  Atlas.Common.Projects.GroupReader,
+  Atlas.Text.LogMarks;
 
 class function TShellBootstrap.ReadSourceText(const AFileName: string; out AText: string): Boolean;
 var
@@ -60,9 +67,26 @@ var
 begin
   Result := (AFileName <> '') and FileExists(AFileName);
   if Result then
-    AText := TFileEncoding.LoadFromFile(AFileName, FileFormat)
+  begin
+    AText := TFileEncoding.LoadFromFile(AFileName, FileFormat);
+  end
   else
+  begin
     AText := '';
+  end;
+end;
+
+class function TShellBootstrap.ReadSourceText(const ADocuments: IDocumentStore; const AFileName: string;
+  out AText: string): Boolean;
+var
+  mDocument: ITextDocument;
+begin
+  if (ADocuments <> nil) and ADocuments.TryGet(TDocumentUris.FromPath(AFileName), mDocument) then
+  begin
+    AText := mDocument.Text;
+    Exit(True);
+  end;
+  Result := ReadSourceText(AFileName, AText);
 end;
 
 class function TShellBootstrap.LoadGroup(const AGroupFile: string; const ALogger: ILogger): TArray<string>;
@@ -71,12 +95,17 @@ begin
   try
     Result := TGroupProjReader.Load(AGroupFile);
     if ALogger <> nil then
-      ALogger.Info(Format('Projektgruppe %s: %d Projekte', [AGroupFile, Length(Result)]));
+    begin
+      ALogger.Info(Format('Projektgruppe %s: %d Projekte', [TLogMarks.Path(AGroupFile), Length(Result)]));
+    end;
   except
     on E: Exception do
     begin
       if ALogger <> nil then
-        ALogger.Warning(Format('Projektgruppe %s nicht lesbar: %s', [AGroupFile, E.Message]));
+      begin
+        ALogger.Warning(Format('Projektgruppe %s nicht lesbar: %s', [TLogMarks.Path(AGroupFile),
+          TLogMarks.Text(E.Message)]));
+      end;
       Result := nil;
     end;
   end;
@@ -95,7 +124,9 @@ begin
       Groups := nil;
   end;
   if Length(Groups) = 1 then
+  begin
     Result := LoadGroup(Groups[0], ALogger);
+  end;
 end;
 
 class function TShellBootstrap.GlobalSettingsFile: string;
@@ -119,7 +150,9 @@ var
 begin
   Result := '';
   if (AFileName = '') or not FileExists(AFileName) then
+  begin
     Exit;
+  end;
   try
     Result := TFileEncoding.LoadFromFile(AFileName, FileFormat);
   except
@@ -127,8 +160,10 @@ begin
     on E: Exception do
     begin
       if ALogger = nil then
+      begin
         raise;
-      ALogger.Warning('Globale Einstellungen nicht lesbar: ' + E.Message);
+      end;
+      ALogger.Warning('Globale Einstellungen nicht lesbar: ' + TLogMarks.Text(E.Message));
     end;
   end;
 end;
@@ -139,7 +174,9 @@ var
   Issues: TArray<TConfigurationIssue>;
 begin
   if not ReadSourceText(ExistingOrLegacyFile(ARoot, ConfigurationFileName, LegacyConfigurationFileName), Text) then
+  begin
     Exit(TServerSettings.Default);
+  end;
   Result := TConfigurationParser.Parse(TConfigurationScopes.Filter(Text, TConfigurationScope.Project), Issues);
 end;
 

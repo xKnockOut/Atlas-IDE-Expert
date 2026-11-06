@@ -66,7 +66,46 @@ uses
   Atlas.Common.Semantics.ExpressionTypes,
   Atlas.Common.Semantics.TypeCompatibility,
   Atlas.Common.Semantics.TypeIdentity,
-  Atlas.Common.Editing.ChangeSignature;
+  Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TTypeMismatchText = (Incompatible, MethodVsProc, ProcVsMethod, ParamList, IncStep, PtrArg, InvalidCast,
+    VarParamTypes, IsNeedsClass, OperatorBinary, OperatorUnary, Title);
+
+const
+  cTexts: array[TTypeMismatchText] of TAtlasText = (
+    (De: 'Inkompatible Typen: ''%s'' und ''%s'' (wie E2010).';
+     En: 'Incompatible types: ''%s'' and ''%s'' (like E2010).'),
+    (De: 'Inkompatible Typen: ''Methodenzeiger und reguläre Prozedur''; %s ist keine Methode eines Objekts (wie ' +
+      'E2009).';
+     En: 'Incompatible types: ''method pointer and regular procedure''; %s is not a method of an object (like E2009).'),
+    (De: 'Inkompatible Typen: ''Reguläre Prozedur und Methodenzeiger''; %s ist eine Methode, der Typ hat kein of ' +
+      'object (wie E2009).';
+     En: 'Incompatible types: ''regular procedure and method pointer''; %s is a method, the type has no of object ' +
+      '(like E2009).'),
+    (De: 'Inkompatible Typen: ''Liste der Parameter ist unterschiedlich''; %s passt nicht zum prozeduralen Typ (wie ' +
+      'E2009).';
+     En: 'Incompatible types: ''parameter lists differ''; %s does not fit the procedural type (like E2009).'),
+    (De: 'Inkompatible Typen: %s erwartet als Schrittweite eine Ganzzahl, %s ist %s (wie E2008).';
+     En: 'Incompatible types: %s expects an integer as step, %s is %s (like E2008).'),
+    (De: 'Inkompatible Typen: Ptr erwartet eine Adresse als Ganzzahl, %s ist %s (wie E2008).';
+     En: 'Incompatible types: Ptr expects an address as integer, %s is %s (like E2008).'),
+    (De: 'Ungültige Typumwandlung: %s nach %s (wie E2089).'; En: 'Invalid typecast: %s to %s (like E2089).'),
+    (De: 'Die Typen der tatsächlichen und formalen var-Parameter müssen übereinstimmen: %s und %s (wie E2033).';
+     En: 'Types of actual and formal var parameters must be identical: %s and %s (like E2033).'),
+    (De: 'Der Operator is braucht rechts eine Klasse; %s ist keine (wie E2015).';
+     En: 'The operator is needs a class on the right; %s is none (like E2015).'),
+    (De: 'Der Operator %s ist auf %s und %s nicht anwendbar (wie E2015).';
+     En: 'The operator %s is not applicable to %s and %s (like E2015).'),
+    (De: 'Der Operator %s ist auf %s nicht anwendbar (wie E2015).';
+     En: 'The operator %s is not applicable to %s (like E2015).'),
+    (De: 'Inkompatible Typen'; En: 'Incompatible types'));
+
+{$SCOPEDENUMS OFF}
 
 const
   cMaxDepth = 64;
@@ -86,6 +125,14 @@ type
     Reference: Boolean;
     Params: TArray<TSignatureParameter>;
     ResultType: string;
+  end;
+
+  /// <summary>Urteil über alle Kandidaten einer Zuweisung an einen prozeduralen Typ.</summary>
+  TProcVerdict = record
+    First: TProcMatch;
+    HasType: Boolean;
+    Formal: string;
+    Actual: string;
   end;
 
   /// <summary>Eine Prüfung einer Datei: Namensauflösung, Ausdruckstypen und gemerkte Typen je Knoten.</summary>
@@ -144,8 +191,11 @@ begin
   AClose := 0;
   mDepth := 0;
   for mIndex := AOpen to Length(AText) do
+  begin
     if AText[mIndex] = '(' then
-      Inc(mDepth)
+    begin
+      Inc(mDepth);
+    end
     else if AText[mIndex] = ')' then
     begin
       Dec(mDepth);
@@ -155,6 +205,116 @@ begin
         Exit(Copy(AText, AOpen + 1, mIndex - AOpen - 1));
       end;
     end;
+  end;
+end;
+
+const
+  // Aufrufkonventionen, die in einem Prozedurtyp direkt hinter procedure bzw. function stehen dürfen.
+  cConventions: array[0..4] of string = ('stdcall', 'cdecl', 'register', 'pascal', 'safecall');
+
+/// <summary>reference to, class und das Schlüsselwort procedure bzw. function von AText abtrennen; False ohne
+/// Schlüsselwort.</summary>
+function StripKind(var AText: string; var AShape: TProcShape): Boolean;
+begin
+  Result := True;
+  if StartsText('reference to ', AText) then
+  begin
+    AShape.Reference := True;
+    AText := Trim(Copy(AText, 14, MaxInt));
+  end;
+  if StartsText('class ', AText) then
+  begin
+    AText := Trim(Copy(AText, 7, MaxInt));
+  end;
+  if StartsText('procedure', AText) then
+  begin
+    AText := TrimLeft(Copy(AText, 10, MaxInt));
+  end
+  else if StartsText('function', AText) then
+  begin
+    AShape.IsFunction := True;
+    AText := TrimLeft(Copy(AText, 9, MaxInt));
+  end
+  else
+  begin
+    Result := False;
+  end;
+end;
+
+/// <summary>Beginnt AText mit einer Aufrufkonvention?</summary>
+function StartsWithConvention(const AText: string): Boolean;
+var
+  mConvention: string;
+begin
+  for mConvention in cConventions do
+  begin
+    if StartsText(mConvention, AText) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Index des ersten Zeichens aus AStops in AText ab 1; Length + 1 ohne.</summary>
+function StopAt(const AText: string; const AStops: TSysCharSet): Integer;
+begin
+  Result := 1;
+  while (Result <= Length(AText)) and not CharInSet(AText[Result], AStops) do
+  begin
+    Inc(Result);
+  end;
+end;
+
+/// <summary>Name überspringen (AWithName) bzw. prüfen, dass kein Name folgt; False bei einem Namen im Typ.
+/// </summary>
+function SkipName(var AText: string; AWithName: Boolean): Boolean;
+begin
+  Result := True;
+  if AWithName then
+  begin
+    // Name bis zur Klammer, zum Doppelpunkt oder zum Semikolon (TKlasse.Machen, Foo<T>).
+    AText := TrimLeft(Copy(AText, StopAt(AText, ['(', ':', ';', ' ']), MaxInt));
+  end
+  else if AText <> '' then
+  begin
+    Result := CharInSet(AText[1], ['(', ':', ';', 'o', 'O']) or StartsWithConvention(AText);
+  end;
+end;
+
+/// <summary>Parameterliste in Klammern lesen, wenn AText damit beginnt; False ohne schließende Klammer.</summary>
+function ReadParams(var AText: string; var AShape: TProcShape): Boolean;
+var
+  mRest: string;
+  mClose: Integer;
+begin
+  Result := True;
+  if not StartsStr('(', AText) then
+  begin
+    Exit;
+  end;
+  mRest := InParens(AText, 1, mClose);
+  Result := mClose > 0;
+  if Result then
+  begin
+    AShape.Params := TChangeSignature.ParseParameters(mRest);
+    AText := TrimLeft(Copy(AText, mClose + 1, MaxInt));
+  end;
+end;
+
+/// <summary>Ergebnistyp hinter dem Doppelpunkt lesen, wenn AText damit beginnt.</summary>
+procedure ReadResult(var AText: string; var AShape: TProcShape);
+var
+  mPosition: Integer;
+begin
+  if not StartsStr(':', AText) then
+  begin
+    Exit;
+  end;
+  AText := TrimLeft(Copy(AText, 2, MaxInt));
+  mPosition := StopAt(AText, [';', ' ']);
+  AShape.ResultType := Copy(AText, 1, mPosition - 1);
+  AText := TrimLeft(Copy(AText, mPosition, MaxInt));
 end;
 
 /// <summary>Kopf "procedure(A: Integer) of object", "reference to function: Boolean" bzw. einer Routine
@@ -162,63 +322,24 @@ end;
 /// </summary>
 function ParseShape(const AText: string; AWithName: Boolean; out AShape: TProcShape): Boolean;
 var
-  mText, mRest, mWord: string;
-  mPosition, mClose: Integer;
+  mText, mWord: string;
 begin
   AShape := Default(TProcShape);
-  Result := False;
   mText := Trim(AText);
-  if StartsText('reference to ', mText) then
+  Result := StripKind(mText, AShape) and SkipName(mText, AWithName) and ReadParams(mText, AShape);
+  if not Result then
   begin
-    AShape.Reference := True;
-    mText := Trim(Copy(mText, 14, MaxInt));
-  end;
-  if StartsText('class ', mText) then
-    mText := Trim(Copy(mText, 7, MaxInt));
-  if StartsText('procedure', mText) then
-    mText := Copy(mText, 10, MaxInt)
-  else if StartsText('function', mText) then
-  begin
-    AShape.IsFunction := True;
-    mText := Copy(mText, 9, MaxInt);
-  end
-  else
     Exit;
-  mText := TrimLeft(mText);
-  if AWithName then
-  begin
-    // Name bis zur Klammer, zum Doppelpunkt oder zum Semikolon (TKlasse.Machen, Foo<T>).
-    mPosition := 1;
-    while (mPosition <= Length(mText)) and not CharInSet(mText[mPosition], ['(', ':', ';', ' ']) do
-      Inc(mPosition);
-    mText := TrimLeft(Copy(mText, mPosition, MaxInt));
-  end
-  else if (mText <> '') and not CharInSet(mText[1], ['(', ':', ';', 'o', 'O']) and not StartsText('stdcall', mText) and
-    not StartsText('cdecl', mText) and not StartsText('register', mText) and not StartsText('pascal', mText) and
-    not StartsText('safecall', mText) then
-    Exit;
-  if StartsStr('(', mText) then
-  begin
-    mRest := InParens(mText, 1, mClose);
-    if mClose = 0 then
-      Exit;
-    AShape.Params := TChangeSignature.ParseParameters(mRest);
-    mText := TrimLeft(Copy(mText, mClose + 1, MaxInt));
   end;
-  if StartsStr(':', mText) then
-  begin
-    mText := TrimLeft(Copy(mText, 2, MaxInt));
-    mPosition := 1;
-    while (mPosition <= Length(mText)) and not CharInSet(mText[mPosition], [';', ' ']) do
-      Inc(mPosition);
-    AShape.ResultType := Copy(mText, 1, mPosition - 1);
-    mText := TrimLeft(Copy(mText, mPosition, MaxInt));
-  end;
+  ReadResult(mText, AShape);
   // of object und Direktiven.
   for mWord in mText.Replace(';', ' ').Split([' '], TStringSplitOptions.ExcludeEmpty) do
+  begin
     if SameText(mWord, 'object') then
+    begin
       AShape.OfObject := True;
-  Result := True;
+    end;
+  end;
 end;
 
 function NormalizedModifier(const AModifier: string): string;
@@ -229,7 +350,9 @@ begin
   mWords := LowerCase(Trim(AModifier)).Split([' '], TStringSplitOptions.ExcludeEmpty);
   Result := '';
   if Length(mWords) > 0 then
+  begin
     Result := mWords[High(mWords)];
+  end;
 end;
 
 function IsStaticArrayText(const AText: string): Boolean;
@@ -239,7 +362,9 @@ var
 begin
   mText := LowerCase(Trim(AText));
   if StartsStr('packed ', mText) then
+  begin
     mText := Trim(Copy(mText, 8, MaxInt));
+  end;
   mBracket := Pos('[', mText);
   mOf := Pos(' of ', mText);
   Result := StartsStr('array', mText) and (mBracket > 0) and (mOf > mBracket);
@@ -260,14 +385,20 @@ var
 begin
   Result := AValue.Name;
   if AValue.Category = TExpressionCategory.Nil_ then
+  begin
     Exit('Pointer');
+  end;
   if AValue.Category = TExpressionCategory.Set_ then
   begin
     mElement := TValueType.FromBuiltin(TTypeCompatibility.SetElement(AValue.Name));
     if mElement.Category = TExpressionCategory.Integer_ then
-      Result := 'Integer'
+    begin
+      Result := 'Integer';
+    end
     else if mElement.Category = TExpressionCategory.Char_ then
+    begin
       Result := 'AnsiChar';
+    end;
   end;
 end;
 
@@ -307,6 +438,168 @@ begin
   inherited;
 end;
 
+/// <summary>Rumpf hinter "=" der Alias-Deklaration ASymbol ohne Semikolon; False bei bedingter, fehlender oder
+/// kommentierter.</summary>
+function AliasBody(const ASymbol: TResolvedSymbol; out ABody: string): Boolean;
+begin
+  ABody := '';
+  Result := (ASymbol.Condition = '') and (Pos('=', ASymbol.Signature) > 0);
+  if not Result then
+  begin
+    Exit;
+  end;
+  ABody := Trim(Copy(ASymbol.Signature, Pos('=', ASymbol.Signature) + 1, MaxInt));
+  if EndsStr(';', ABody) then
+  begin
+    ABody := Trim(Copy(ABody, 1, Length(ABody) - 1));
+  end;
+  Result := Pos('{', ABody) = 0;
+end;
+
+/// <summary>Passen Art (function/procedure, Methode/Routine), Anzahl und Modifizierer der Parameter von AShape zu
+/// ATarget? Yes, wenn ja, sonst die erste Abweichung.</summary>
+function ShapeKindMatch(const ATarget: TProcShape; const ACandidate: TResolvedSymbol;
+  const AShape: TProcShape): TProcMatch;
+var
+  mParam: Integer;
+  mIsMethod: Boolean;
+begin
+  if AShape.IsFunction <> ATarget.IsFunction then
+  begin
+    Exit(TProcMatch.Unsure);
+  end;
+  mIsMethod := (ACandidate.SymbolKind = TIndexSymbolKind.Method) and not MatchText('static', ACandidate.Directives);
+  if mIsMethod <> ATarget.OfObject then
+  begin
+    Exit(TProcMatch.MethodKind);
+  end;
+  Result := TProcMatch.Parameters;
+  if Length(AShape.Params) <> Length(ATarget.Params) then
+  begin
+    Exit;
+  end;
+  for mParam := 0 to High(ATarget.Params) do
+  begin
+    if NormalizedModifier(ATarget.Params[mParam].Modifier) <> NormalizedModifier(AShape.Params[mParam].Modifier) then
+    begin
+      Exit;
+    end;
+  end;
+  Result := TProcMatch.Yes;
+end;
+
+/// <summary>Vergleicht die Parametertypen gleich langer Listen; AFormal/AActual nennen das erste abweichende Paar.
+/// </summary>
+function ParamTypesMatch(const ATarget, AShape: TProcShape; out AFormal, AActual: string): TProcMatch;
+var
+  mParam: Integer;
+  mLeft, mRight: TValueType;
+begin
+  AFormal := '';
+  AActual := '';
+  Result := TProcMatch.Yes;
+  for mParam := 0 to High(ATarget.Params) do
+  begin
+    if TTypeIdentity.Same(ATarget.Params[mParam].TypeName, AShape.Params[mParam].TypeName) then
+    begin
+      Continue;
+    end;
+    mLeft := TValueType.FromBuiltin(TTypeIdentity.Clean(ATarget.Params[mParam].TypeName));
+    mRight := TValueType.FromBuiltin(TTypeIdentity.Clean(AShape.Params[mParam].TypeName));
+    if (mLeft.Kind <> TValueKind.Builtin) or (mRight.Kind <> TValueKind.Builtin) or
+      TTypeCompatibility.PlatformDependent(mLeft.Name) or TTypeCompatibility.PlatformDependent(mRight.Name) then
+    begin
+      Exit(TProcMatch.Unsure);
+    end;
+    if AFormal = '' then
+    begin
+      AFormal := mLeft.Name;
+      AActual := mRight.Name;
+    end;
+    Result := TProcMatch.ParameterType;
+  end;
+end;
+
+/// <summary>Wie die Routine ACandidate mit dem Kopf AShape zum prozeduralen Typ ATarget passt.</summary>
+function CompareShape(const ATarget: TProcShape; const ACandidate: TResolvedSymbol; const AShape: TProcShape;
+  out AFormal, AActual: string): TProcMatch;
+begin
+  AFormal := '';
+  AActual := '';
+  Result := ShapeKindMatch(ATarget, ACandidate, AShape);
+  if Result = TProcMatch.Yes then
+  begin
+    Result := ParamTypesMatch(ATarget, AShape, AFormal, AActual);
+  end;
+  if (Result = TProcMatch.Yes) and AShape.IsFunction and
+    not TTypeIdentity.Same(AShape.ResultType, ATarget.ResultType) then
+  begin
+    Result := TProcMatch.Unsure;
+  end;
+end;
+
+/// <summary>Kopf des Kandidaten, wenn er nur als Routine (nicht als Aufruf) zugewiesen sein kann.</summary>
+function AssignableShape(const ACandidate: TResolvedSymbol; out AShape: TProcShape): Boolean;
+begin
+  Result := ParseShape(ACandidate.Signature, True, AShape);
+  // Eine Funktion ohne Pflichtparameter kann hier auch aufgerufen werden.
+  if Result and AShape.IsFunction then
+  begin
+    Result := (Length(AShape.Params) > 0) and (AShape.Params[0].DefaultValue = '');
+  end;
+end;
+
+/// <summary>True, wenn alle Kandidaten lesbar sind und keiner zu ATarget passt; AVerdict nennt die Abweichungen.
+/// </summary>
+function AllCandidatesFail(const ATarget: TProcShape; const ACandidates: TArray<TResolvedSymbol>;
+  out AVerdict: TProcVerdict): Boolean;
+var
+  mIndex: Integer;
+  mShape: TProcShape;
+  mMatch: TProcMatch;
+  mFormal, mActual: string;
+begin
+  AVerdict := Default(TProcVerdict);
+  AVerdict.First := TProcMatch.Yes;
+  Result := True;
+  for mIndex := 0 to High(ACandidates) do
+  begin
+    if not AssignableShape(ACandidates[mIndex], mShape) then
+    begin
+      Exit(False);
+    end;
+    mMatch := CompareShape(ATarget, ACandidates[mIndex], mShape, mFormal, mActual);
+    if mIndex = 0 then
+    begin
+      AVerdict.First := mMatch;
+    end;
+    Result := Result and not (mMatch in [TProcMatch.Yes, TProcMatch.Unsure]);
+    if (mMatch = TProcMatch.ParameterType) and not AVerdict.HasType then
+    begin
+      AVerdict.HasType := True;
+      AVerdict.Formal := mFormal;
+      AVerdict.Actual := mActual;
+    end;
+  end;
+end;
+
+/// <summary>Bezeichner oder Memberzugriff ohne generische Argumente.</summary>
+function IsPlainCallee(ANode: TSyntaxNode): Boolean;
+begin
+  Result := (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
+    (ANode.FindChild(TSyntaxKind.GenericArgs) = nil);
+end;
+
+/// <summary>Kandidat ohne Generik, Bindungen und Überladungen, dessen Parameter fest stehen.</summary>
+function IsFixedRoutine(const ACandidate: TResolvedSymbol): Boolean;
+begin
+  Result := (ACandidate.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine,
+    TIndexSymbolKind.Constructor_]) and not ACandidate.Builtin and (ACandidate.TypeParams = '');
+  Result := Result and (Length(ACandidate.Bindings) = 0) and (Length(ACandidate.Overloads) = 0);
+  Result := Result and (Length(ACandidate.VariantParams) <= 1) and not MatchText('overload', ACandidate.Directives);
+  Result := Result and not ContainsText(ACandidate.Signature, 'overload');
+end;
+
 function TTypeMismatchCheck.Tree: TSyntaxTree;
 begin
   Result := FContext.Tree;
@@ -316,7 +609,9 @@ function TTypeMismatchCheck.NodeText(ANode: TSyntaxNode): string;
 begin
   Result := FScope.Text(ANode);
   if Length(Result) > TExpressionTypes.MaxExpressionLength then
+  begin
     Result := Copy(Result, 1, TExpressionTypes.MaxExpressionLength - 1) + #$2026;
+  end;
 end;
 
 function TTypeMismatchCheck.DeclarationAt(const APosition: TTextPosition): TSyntaxNode;
@@ -342,12 +637,18 @@ begin
     begin
       mNode := mPending.Pop;
       if not Covers(mNode) then
+      begin
         Continue;
+      end;
       if mNode.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.Parameter, TSyntaxKind.Field, TSyntaxKind.TypeDecl,
         TSyntaxKind.ConstDecl, TSyntaxKind.InlineVar] then
+      begin
         Result := mNode;
+      end;
       for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
         mPending.Push(mNode[mIndex]);
+      end;
     end;
   finally
     mPending.Free;
@@ -361,17 +662,23 @@ var
 begin
   Result := '';
   if not SameText(ASymbol.FileName, FScope.FileName) and (ASymbol.Kind <> TResolvedKind.Local) then
+  begin
     Exit;
+  end;
   mDecl := DeclarationAt(ASymbol.SelectionRange.StartPos);
   if mDecl = nil then
+  begin
     Exit;
+  end;
   for mIndex := 0 to mDecl.ChildCount - 1 do
   begin
     mChild := mDecl[mIndex];
     if mChild.Kind in [TSyntaxKind.TypeReference, TSyntaxKind.ArrayType, TSyntaxKind.ProcedureType,
       TSyntaxKind.PointerType, TSyntaxKind.SetType, TSyntaxKind.SubrangeType, TSyntaxKind.RecordType,
       TSyntaxKind.EnumType, TSyntaxKind.FileType] then
+    begin
       Exit(FScope.Text(mChild));
+    end;
   end;
 end;
 
@@ -380,10 +687,12 @@ begin
   // Byte(X), wenn System nicht im Index steht.
   AType := Default(TResolvedSymbol);
   Result := (ACallee <> nil) and (ACallee.Kind = TSyntaxKind.Identifier) and
-    TNameResolver.IsBuiltinTypeName(ACallee.Name) and
+    TResolverText.IsBuiltinTypeName(ACallee.Name) and
     (Length(FScope.Resolver.CallCandidates(Tree, FScope.FileName, ACallee)) = 0);
   if Result then
+  begin
     AType := BuiltinSymbol(ACallee.Name);
+  end;
 end;
 
 function TTypeMismatchCheck.IsIntrinsic(ACallee: TSyntaxNode): Boolean;
@@ -392,7 +701,9 @@ var
 begin
   Result := False;
   if (ACallee = nil) or (ACallee.Kind <> TSyntaxKind.Identifier) then
+  begin
     Exit;
+  end;
   mCandidates := FScope.Resolver.CallCandidates(Tree, FScope.FileName, ACallee);
   Result := (Length(mCandidates) = 0) or mCandidates[0].Builtin or SameText(mCandidates[0].UnitName, 'System');
 end;
@@ -413,31 +724,93 @@ begin
   for mCandidate in mCandidates do
   begin
     if not TTypeIdentity.Same(mCandidate.TypeName, mCandidates[0].TypeName) then
+    begin
       Exit(False);
+    end;
     // Freie Routinen mit overload führt dcc über alle eingebundenen Units zusammen (IfThen aus System.Math und
     // System.StrUtils); die Kandidaten kommen nur aus einer Unit, der Ergebnistyp ist also offen.
     if (mCandidate.Container = '') and (MatchText('overload', mCandidate.Directives) or
       ContainsText(mCandidate.Signature, 'overload')) then
+    begin
       Exit(False);
+    end;
   end;
   Result := True;
 end;
 
 function TTypeMismatchCheck.ValueOfType(const AType: TResolvedSymbol): TValueType;
-var
-  mCurrent, mNext: TResolvedSymbol;
-  mUnit: TUnitIndex;
-  mBody: string;
-  mDepth: Integer;
+
+  /// <summary>Nächstes Glied der Alias-Kette hinter ACurrent mit dem Rumpf ABody (auch eingebaut ohne System im
+  /// Index).</summary>
+  function NextInChain(const ACurrent: TResolvedSymbol; const ABody: string; out ANext: TResolvedSymbol): Boolean;
+  var
+    mUnit: TUnitIndex;
+  begin
+    Result := FScope.Resolver.DeclaringUnit(ACurrent, mUnit) and (Pos('.', ABody) = 0) and
+      FScope.Resolver.ResolveNameFrom(mUnit, ABody, ANext) and ANext.IsType;
+    if not Result and TResolverText.IsBuiltinTypeName(ABody) then
+    begin
+      ANext := BuiltinSymbol(ABody);
+      Result := True;
+    end;
+  end;
+
+  // Kette TA = TB, TB = Single Glied für Glied: Steht ein Glied in einem bedingten Zweig (TDimension = Single bzw.
+  // Integer je nach {$IFDEF}), ist der Typ offen.
+  function AliasValue: TValueType;
+  var
+    mCurrent, mNext: TResolvedSymbol;
+    mBody: string;
+    mDepth: Integer;
+  begin
+    Result := Default(TValueType);
+    mCurrent := AType;
+    for mDepth := 0 to cMaxDepth do
+    begin
+      if not AliasBody(mCurrent, mBody) then
+      begin
+        Exit;
+      end;
+      if IsStaticArrayText(mBody) then
+      begin
+        Exit(TValueType.Create(AType.Name, TExpressionCategory.Other, TValueKind.StaticArray));
+      end;
+      // type Integer: eigener Typ, für Zuweisungen aber wie Integer.
+      if StartsText('type ', mBody) then
+      begin
+        mBody := Trim(Copy(mBody, 6, MaxInt));
+      end;
+      if not NextInChain(mCurrent, mBody, mNext) then
+      begin
+        Exit;
+      end;
+      if mNext.Builtin or (mNext.SymbolKind <> TIndexSymbolKind.TypeAlias) then
+      begin
+        Result := ValueOfType(mNext);
+        // TZahl = Integer rechnet wie Integer; der Name bleibt der des Alias.
+        if Result.Known then
+        begin
+          Result.Name := AType.Name;
+        end;
+        Break;
+      end;
+      mCurrent := mNext;
+    end;
+  end;
+
 begin
   Result := Default(TValueType);
   if (AType.Name = '') or (AType.Condition <> '') then
+  begin
     Exit;
+  end;
   if AType.Builtin then
   begin
     Result := TValueType.FromBuiltin(AType.Name);
     if Result.Kind <> TValueKind.Builtin then
+    begin
       Result := Default(TValueType);
+    end;
     Exit;
   end;
   case AType.SymbolKind of
@@ -446,42 +819,7 @@ begin
     TIndexSymbolKind.EnumType:
       Result := TValueType.Create(AType.Name, TExpressionCategory.Other, TValueKind.Enum);
     TIndexSymbolKind.TypeAlias:
-      begin
-        // Kette TA = TB, TB = Single Glied für Glied: Steht ein Glied in einem bedingten Zweig (TDimension =
-        // Single bzw. Integer je nach {$IFDEF}), ist der Typ offen.
-        mCurrent := AType;
-        for mDepth := 0 to cMaxDepth do
-        begin
-          if (mCurrent.Condition <> '') or (Pos('=', mCurrent.Signature) = 0) then
-            Exit;
-          mBody := Trim(Copy(mCurrent.Signature, Pos('=', mCurrent.Signature) + 1, MaxInt));
-          if EndsStr(';', mBody) then
-            mBody := Trim(Copy(mBody, 1, Length(mBody) - 1));
-          if Pos('{', mBody) > 0 then
-            Exit;
-          if IsStaticArrayText(mBody) then
-            Exit(TValueType.Create(AType.Name, TExpressionCategory.Other, TValueKind.StaticArray));
-          // type Integer: eigener Typ, für Zuweisungen aber wie Integer.
-          if StartsText('type ', mBody) then
-            mBody := Trim(Copy(mBody, 6, MaxInt));
-          if not FScope.Resolver.DeclaringUnit(mCurrent, mUnit) or (Pos('.', mBody) > 0) or
-            not FScope.Resolver.ResolveNameFrom(mUnit, mBody, mNext) or not mNext.IsType then
-          begin
-            if not TNameResolver.IsBuiltinTypeName(mBody) then
-              Exit;
-            mNext := BuiltinSymbol(mBody);
-          end;
-          if mNext.Builtin or (mNext.SymbolKind <> TIndexSymbolKind.TypeAlias) then
-          begin
-            Result := ValueOfType(mNext);
-            // TZahl = Integer rechnet wie Integer; der Name bleibt der des Alias.
-            if Result.Known then
-              Result.Name := AType.Name;
-            Exit;
-          end;
-          mCurrent := mNext;
-        end;
-      end;
+      Result := AliasValue;
   else
     // Records, Objekte, Helfer: offen.
   end;
@@ -495,24 +833,34 @@ var
 begin
   // AType ist schon über alle Aliase verfolgt; ob ein Glied der Kette bedingt ist, zeigt erst der deklarierte Name.
   mText := TTypeIdentity.Clean(ASymbol.TypeName);
-  if (mText <> '') and not TNameResolver.IsBuiltinTypeName(mText) then
+  if (mText <> '') and not TResolverText.IsBuiltinTypeName(mText) then
   begin
     Result := Default(TValueType);
     if ASymbol.Kind = TResolvedKind.Local then
-      mUnit := FLocal
+    begin
+      mUnit := FLocal;
+    end
     else if not FScope.Resolver.DeclaringUnit(ASymbol, mUnit) then
+    begin
       Exit;
+    end;
     // ResolveNameFrom liefert den Alias selbst, ResolveTypeFrom schon sein Ziel.
     if (Pos('.', mText) > 0) or not FScope.Resolver.ResolveNameFrom(mUnit, mText, mDeclared) or
       not mDeclared.IsType then
+    begin
       Exit;
+    end;
     Result := ValueOfType(mDeclared);
   end
   else
+  begin
     Result := ValueOfType(AType);
+  end;
   // Untypisierte Konstante 'a' ist auch ein Zeichen.
   if (ASymbol.SymbolKind = TIndexSymbolKind.Constant) and (ASymbol.TypeName = '') then
+  begin
     Result.UntypedText := True;
+  end;
 end;
 
 function TTypeMismatchCheck.TypeValueFrom(const AUnit: TUnitIndex; const ATypeText: string): TValueType;
@@ -524,13 +872,19 @@ begin
   mText := TTypeIdentity.Clean(ATypeText);
   if (mText = '') or (Pos(' ', mText) > 0) or (Pos('<', mText) > 0) or (Pos('^', mText) > 0) or
     (Pos('.', mText) > 0) then
+  begin
     Exit;
+  end;
   // Den Alias selbst (ResolveNameFrom), damit ValueOfType bedingte Glieder der Kette sieht.
   if FScope.Resolver.ResolveNameFrom(AUnit, mText, mType) and mType.IsType then
-    Result := ValueOfType(mType)
-  else if TNameResolver.IsBuiltinTypeName(mText) then
+  begin
+    Result := ValueOfType(mType);
+  end
+  else if TResolverText.IsBuiltinTypeName(mText) then
+  begin
     // Ohne System im Index.
     Result := ValueOfType(BuiltinSymbol(mText));
+  end;
 end;
 
 function TTypeMismatchCheck.DescribedValue(ANode: TSyntaxNode): TValueType;
@@ -540,124 +894,213 @@ begin
   Result := Default(TValueType);
   mInfo := FTypes.Describe(ANode);
   if not mInfo.Found then
+  begin
     Exit;
+  end;
   Result := TValueType.FromBuiltin(mInfo.TypeName);
   if Result.Kind <> TValueKind.Builtin then
+  begin
     Result := Default(TValueType);
+  end;
 end;
 
 function TTypeMismatchCheck.LeafValue(ANode: TSyntaxNode): TValueType;
+
+  /// <summary>Wert eines Aufrufs einer Typumwandlung oder eingebauten Routine; False bei anderen Aufrufen.
+  /// </summary>
+  function CallValue(out AValue: TValueType): Boolean;
+  var
+    mType: TResolvedSymbol;
+  begin
+    AValue := Default(TValueType);
+    Result := True;
+    if ANode.ChildCount = 0 then
+    begin
+      Exit;
+    end;
+    if BuiltinCast(ANode[0], mType) then
+    begin
+      if ANode.ChildCount = 2 then
+      begin
+        AValue := ValueOfType(mType);
+      end;
+    end
+    else if IsIntrinsic(ANode[0]) then
+    begin
+      if MatchText(ANode[0].Name, cTypedIntrinsics) then
+      begin
+        AValue := DescribedValue(ANode);
+      end;
+    end
+    else
+    begin
+      Result := False;
+    end;
+  end;
+
+  /// <summary>Lässt sich ACallee über die Namensauflösung bestimmen (keine generischen Mitglieder)?</summary>
+  function Resolvable(ACallee: TSyntaxNode): Boolean;
+  begin
+    Result := (ACallee.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) or
+      (ANode.Kind = TSyntaxKind.IndexAccess);
+    Result := Result and not ((ACallee.Kind = TSyntaxKind.MemberAccess) and
+      (ACallee.FindChild(TSyntaxKind.GenericArgs) <> nil));
+  end;
+
+  /// <summary>Typname als Wert: S[1] ist ein Zeichen, Byte(X) ein Byte.</summary>
+  function TypeNameValue(const ASymbol: TResolvedSymbol): TValueType;
+  begin
+    Result := Default(TValueType);
+    if ((ANode.Kind = TSyntaxKind.IndexAccess) and ASymbol.Builtin) or
+      ((ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 2)) then
+    begin
+      Result := ValueOfType(ASymbol);
+    end;
+  end;
+
+  /// <summary>Ist ASymbol sicher deklariert, nicht verdeckt, kein Konstruktor und hat als Routine einen
+  /// eindeutigen Ergebnistyp?</summary>
+  function UsableSymbol(ACallee: TSyntaxNode; const ASymbol: TResolvedSymbol; AFound: Boolean): Boolean;
+  begin
+    Result := AFound and FScope.DeclarationSure(ASymbol, ANode) and not HiddenMember(ACallee, ASymbol);
+    Result := Result and (ASymbol.SymbolKind <> TIndexSymbolKind.Constructor_);
+    if Result and (ASymbol.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) then
+    begin
+      Result := SameResultType(ACallee);
+    end;
+  end;
+
 var
   mSymbol, mType: TResolvedSymbol;
   mFound: Boolean;
   mCallee: TSyntaxNode;
 begin
-  Result := Default(TValueType);
   mCallee := ANode;
   if ANode.Kind = TSyntaxKind.Call then
   begin
-    if ANode.ChildCount = 0 then
+    if CallValue(Result) then
+    begin
       Exit;
+    end;
     mCallee := ANode[0];
-    if BuiltinCast(mCallee, mType) then
-    begin
-      if ANode.ChildCount = 2 then
-        Result := ValueOfType(mType);
-      Exit;
-    end;
-    if IsIntrinsic(mCallee) then
-    begin
-      if MatchText(mCallee.Name, cTypedIntrinsics) then
-        Result := DescribedValue(ANode);
-      Exit;
-    end;
   end;
-  if not (mCallee.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
-    (ANode.Kind <> TSyntaxKind.IndexAccess) then
-    Exit;
-  if (mCallee.Kind = TSyntaxKind.MemberAccess) and (mCallee.FindChild(TSyntaxKind.GenericArgs) <> nil) then
-    Exit;
-  if not FScope.Resolver.NodeType(Tree, FScope.FileName, ANode, mSymbol, mType, mFound) or
+  Result := Default(TValueType);
+  if not Resolvable(mCallee) or not FScope.Resolver.NodeType(Tree, FScope.FileName, ANode, mSymbol, mType, mFound) or
     (mSymbol.Kind = TResolvedKind.UnitName) then
+  begin
     Exit;
+  end;
   if mSymbol.IsType then
   begin
-    // S[1] ist ein Zeichen, Byte(X) ein Byte.
-    if (ANode.Kind = TSyntaxKind.IndexAccess) and mSymbol.Builtin then
-      Result := ValueOfType(mSymbol)
-    else if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 2) then
-      Result := ValueOfType(mSymbol);
-    Exit;
+    Result := TypeNameValue(mSymbol);
+  end
+  else if UsableSymbol(mCallee, mSymbol, mFound) then
+  begin
+    Result := ValueOfSymbol(mSymbol, mType);
   end;
-  if not mFound or not FScope.DeclarationSure(mSymbol, ANode) or HiddenMember(mCallee, mSymbol) then
-    Exit;
-  if (mSymbol.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) and not SameResultType(mCallee) then
-    Exit;
-  if mSymbol.SymbolKind = TIndexSymbolKind.Constructor_ then
-    Exit;
-  Result := ValueOfSymbol(mSymbol, mType);
 end;
 
 function TTypeMismatchCheck.ComputeValue(ANode: TSyntaxNode): TValueType;
+
+  /// <summary>Menge: nur, wenn jedes Element (bei Bereichen der Anfang) einen bekannten Wert hat.</summary>
+  function SetValue(ANode: TSyntaxNode): TValueType;
+  var
+    mIndex: Integer;
+    mElement: TSyntaxNode;
+  begin
+    Result := Default(TValueType);
+    for mIndex := 0 to ANode.ChildCount - 1 do
+    begin
+      mElement := ANode[mIndex];
+      if mElement.Kind = TSyntaxKind.RangeExpr then
+      begin
+        if mElement.ChildCount = 0 then
+        begin
+          Exit;
+        end;
+        mElement := mElement[0];
+      end;
+      if not ValueOf(mElement).Known then
+      begin
+        Exit;
+      end;
+    end;
+    Result := DescribedValue(ANode);
+  end;
+
+  function BinaryValue(ANode: TSyntaxNode): TValueType;
+  var
+    mOperator: string;
+    mLeft: TValueType;
+  begin
+    Result := Default(TValueType);
+    if ANode.ChildCount <> 2 then
+    begin
+      Exit;
+    end;
+    mOperator := LowerCase(ANode.Name);
+    mLeft := ValueOf(ANode[0]);
+    if MatchStr(mOperator, ['=', '<>', '<', '>', '<=', '>=', 'in', 'is']) then
+    begin
+      if mLeft.Known and ((mOperator = 'is') or ValueOf(ANode[1]).Known) then
+      begin
+        Result := TValueType.FromBuiltin('Boolean');
+      end;
+    end
+    else if TTypeCompatibility.OperatorFit(mOperator, mLeft, ValueOf(ANode[1])) = TOperatorFit.Fits then
+    begin
+      Result := DescribedValue(ANode);
+    end;
+  end;
+
+  function UnaryValue(ANode: TSyntaxNode): TValueType;
+  var
+    mOperand: TValueType;
+  begin
+    Result := Default(TValueType);
+    if (ANode.ChildCount <> 1) or (ANode.Name = '@') then
+    begin
+      Exit;
+    end;
+    mOperand := ValueOf(ANode[0]);
+    if mOperand.Known and not TTypeCompatibility.UnaryNotApplicable(ANode.Name, mOperand) and
+      (mOperand.Kind = TValueKind.Builtin) then
+    begin
+      Result := DescribedValue(ANode);
+    end;
+  end;
+
 var
   mNode: TSyntaxNode;
-  mOperator: string;
-  mLeft, mRight, mOperand: TValueType;
-  mIndex: Integer;
 begin
   Result := Default(TValueType);
   mNode := Unwrapped(ANode);
   if mNode = nil then
+  begin
     Exit;
+  end;
   case mNode.Kind of
     TSyntaxKind.Literal:
       Result := DescribedValue(mNode);
     TSyntaxKind.Identifier:
-      if SameText(mNode.Name, 'nil') or SameText(mNode.Name, 'True') or SameText(mNode.Name, 'False') then
-        Result := DescribedValue(mNode)
+      if MatchText(mNode.Name, ['nil', 'True', 'False']) then
+      begin
+        Result := DescribedValue(mNode);
+      end
       else
+      begin
         Result := LeafValue(mNode);
+      end;
     TSyntaxKind.MemberAccess, TSyntaxKind.Call, TSyntaxKind.IndexAccess:
       Result := LeafValue(mNode);
     TSyntaxKind.AddressOf:
       Result := TValueType.FromBuiltin('Pointer');
     TSyntaxKind.SetConstructor:
-      begin
-        for mIndex := 0 to mNode.ChildCount - 1 do
-          if mNode[mIndex].Kind = TSyntaxKind.RangeExpr then
-          begin
-            if (mNode[mIndex].ChildCount = 0) or not ValueOf(mNode[mIndex][0]).Known then
-              Exit;
-          end
-          else if not ValueOf(mNode[mIndex]).Known then
-            Exit;
-        Result := DescribedValue(mNode);
-      end;
+      Result := SetValue(mNode);
     TSyntaxKind.BinaryExpr:
-      begin
-        if mNode.ChildCount <> 2 then
-          Exit;
-        mOperator := LowerCase(mNode.Name);
-        mLeft := ValueOf(mNode[0]);
-        if MatchStr(mOperator, ['=', '<>', '<', '>', '<=', '>=', 'in', 'is']) then
-        begin
-          if mLeft.Known and ((mOperator = 'is') or ValueOf(mNode[1]).Known) then
-            Result := TValueType.FromBuiltin('Boolean');
-          Exit;
-        end;
-        mRight := ValueOf(mNode[1]);
-        if TTypeCompatibility.OperatorFit(mOperator, mLeft, mRight) = TOperatorFit.Fits then
-          Result := DescribedValue(mNode);
-      end;
+      Result := BinaryValue(mNode);
     TSyntaxKind.UnaryExpr:
-      begin
-        if (mNode.ChildCount <> 1) or (mNode.Name = '@') then
-          Exit;
-        mOperand := ValueOf(mNode[0]);
-        if mOperand.Known and not TTypeCompatibility.UnaryNotApplicable(mNode.Name, mOperand) and
-          (mOperand.Kind = TValueKind.Builtin) then
-          Result := DescribedValue(mNode);
-      end;
+      Result := UnaryValue(mNode);
   else
     // if-Ausdrücke, anonyme Methoden, Dereferenz, inherited: offen.
   end;
@@ -667,9 +1110,13 @@ function TTypeMismatchCheck.ValueOf(ANode: TSyntaxNode): TValueType;
 begin
   Result := Default(TValueType);
   if (ANode = nil) or (FDepth > cMaxDepth) then
+  begin
     Exit;
+  end;
   if FValues.TryGetValue(ANode, Result) then
+  begin
     Exit;
+  end;
   Inc(FDepth);
   try
     Result := ComputeValue(ANode);
@@ -688,43 +1135,69 @@ begin
   ASymbol := Default(TResolvedSymbol);
   AType := Default(TResolvedSymbol);
   if not (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess]) then
+  begin
     Exit;
+  end;
   if not FScope.Resolver.NodeType(Tree, FScope.FileName, ANode, ASymbol, AType, mFound) or
     (ASymbol.Kind = TResolvedKind.UnitName) or ASymbol.IsType then
+  begin
     Exit;
+  end;
   // Variablen, Felder, Properties und Parameter; Result zählt als Variable.
   if not (ASymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) then
+  begin
     Exit;
+  end;
   if not FScope.DeclarationSure(ASymbol, ANode) or HiddenMember(ANode, ASymbol) then
+  begin
     Exit;
+  end;
   if mFound then
-    Result := ValueOfSymbol(ASymbol, AType)
+  begin
+    Result := ValueOfSymbol(ASymbol, AType);
+  end
   else
   begin
     // array[0..2] of Integer ohne eigenen Typ.
     mText := DeclaredText(ASymbol);
     if IsStaticArrayText(mText) then
+    begin
       Result := TValueType.Create(mText, TExpressionCategory.Other, TValueKind.StaticArray);
+    end;
   end;
 end;
 
 function TTypeMismatchCheck.RoutineCandidates(ANode: TSyntaxNode; out ACandidates: TArray<TResolvedSymbol>): Boolean;
 var
   mCandidate: TResolvedSymbol;
+
+  function Usable(const ACandidate: TResolvedSymbol): Boolean;
+  begin
+    Result := (ACandidate.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) and
+      not ACandidate.Builtin;
+    Result := Result and (ACandidate.Signature <> '') and (ACandidate.TypeParams = '');
+    Result := Result and FScope.DeclarationSure(ACandidate, ANode) and not HiddenMember(ANode, ACandidate);
+  end;
+
 begin
   ACandidates := nil;
   Result := False;
-  if not (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) or
-    (ANode.FindChild(TSyntaxKind.GenericArgs) <> nil) then
+  if not IsPlainCallee(ANode) then
+  begin
     Exit;
+  end;
   ACandidates := FScope.Resolver.CallCandidates(Tree, FScope.FileName, ANode);
   if Length(ACandidates) = 0 then
+  begin
     Exit;
+  end;
   for mCandidate in ACandidates do
-    if not (mCandidate.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine]) or mCandidate.Builtin or
-      (mCandidate.Signature = '') or (mCandidate.TypeParams <> '') or not FScope.DeclarationSure(mCandidate, ANode) or
-      HiddenMember(ANode, mCandidate) then
+  begin
+    if not Usable(mCandidate) then
+    begin
       Exit;
+    end;
+  end;
   Result := True;
 end;
 
@@ -736,10 +1209,16 @@ var
 begin
   Result := RoutineCandidates(ANode, mCandidates);
   if not Result then
+  begin
     Exit;
+  end;
   for mCandidate in mCandidates do
+  begin
     if not ParseShape(mCandidate.Signature, True, mShape) or mShape.IsFunction then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 function TTypeMismatchCheck.ProceduralText(const ASymbol, AType: TResolvedSymbol): string;
@@ -751,166 +1230,128 @@ begin
   begin
     mBody := Trim(Copy(AType.Signature, Pos('=', AType.Signature) + 1, MaxInt));
     if StartsText('procedure', mBody) or StartsText('function', mBody) or StartsText('reference', mBody) then
+    begin
       Exit(mBody);
+    end;
     Exit;
   end;
   if AType.Name <> '' then
+  begin
     Exit;
+  end;
   mBody := ASymbol.TypeName;
   if not (StartsText('procedure', mBody) or StartsText('function', mBody) or StartsText('reference', mBody)) then
+  begin
     mBody := DeclaredText(ASymbol);
+  end;
   if StartsText('procedure', mBody) or StartsText('function', mBody) or StartsText('reference', mBody) then
+  begin
     Result := mBody;
+  end;
 end;
 
 procedure TTypeMismatchCheck.Mismatch(ANode: TSyntaxNode; const ATarget, ASource: string);
 begin
-  FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('Inkompatible Typen: ''%s'' und ''%s'' ' +
-    '(wie E2010).', [ATarget, ASource]), TRuleConfidence.High);
+  FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), cTexts[TTypeMismatchText.Incompatible].Fmt([ATarget,
+    ASource]), TRuleConfidence.High);
 end;
 
 procedure TTypeMismatchCheck.CheckAssignment(ANode: TSyntaxNode);
 var
-  mTarget, mSource: TValueType;
+  mTarget: TValueType;
   mSymbol, mType: TResolvedSymbol;
   mProcedural: string;
   mShape: TProcShape;
-  mSourceNode: TSyntaxNode;
+
+  procedure CheckValue(ASource: TSyntaxNode);
+  var
+    mSource: TValueType;
+  begin
+    // Eine Prozedur hat keinen Wert (dcc: E2010 mit "procedure, untyped pointer or untyped parameter").
+    if IsDataCategory(mTarget) and (ASource.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
+      IsProcedure(ASource) then
+    begin
+      Mismatch(ASource, mTarget.Name, cNoResultName);
+      Exit;
+    end;
+    mSource := ValueOf(ASource);
+    if TTypeCompatibility.AssignIncompatible(mTarget, mSource) then
+    begin
+      Mismatch(ASource, mTarget.Name, ShownName(mSource));
+    end;
+  end;
+
 begin
   if ANode.ChildCount <> 2 then
+  begin
     Exit;
-  mSourceNode := Unwrapped(ANode[1]);
+  end;
   mTarget := TargetValue(ANode[0], mSymbol, mType);
   if mSymbol.Name = '' then
+  begin
     Exit;
+  end;
   mProcedural := ProceduralText(mSymbol, mType);
   if mProcedural <> '' then
   begin
     if ParseShape(mProcedural, False, mShape) then
+    begin
       CheckProcedural(ANode, mShape);
-    Exit;
-  end;
-  if not mTarget.Known then
-    Exit;
-  // Eine Prozedur hat keinen Wert (dcc: E2010 mit "procedure, untyped pointer or untyped parameter").
-  if IsDataCategory(mTarget) and (mSourceNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
-    IsProcedure(mSourceNode) then
+    end;
+  end
+  else if mTarget.Known then
   begin
-    Mismatch(mSourceNode, mTarget.Name, cNoResultName);
-    Exit;
+    CheckValue(Unwrapped(ANode[1]));
   end;
-  mSource := ValueOf(mSourceNode);
-  if TTypeCompatibility.AssignIncompatible(mTarget, mSource) then
-    Mismatch(mSourceNode, mTarget.Name, ShownName(mSource));
 end;
 
 procedure TTypeMismatchCheck.CheckProcedural(ANode: TSyntaxNode; const ATarget: TProcShape);
 var
   mSource: TSyntaxNode;
   mCandidates: TArray<TResolvedSymbol>;
-  mCandidate: TResolvedSymbol;
-  mShape: TProcShape;
-  mMatch, mFirst: TProcMatch;
-  mFormal, mActual, mTypeFormal, mTypeActual: string;
-  mAllFail, mHasType: Boolean;
-  mIndex: Integer;
+  mVerdict: TProcVerdict;
 
-  function Compare(const ACandidate: TResolvedSymbol; const AShape: TProcShape; out AFormal, AActual: string): TProcMatch;
-  var
-    mParam: Integer;
-    mIsMethod: Boolean;
-    mLeft, mRight: TValueType;
+  procedure ReportSingle;
   begin
-    AFormal := '';
-    AActual := '';
-    if AShape.IsFunction <> ATarget.IsFunction then
-      Exit(TProcMatch.Unsure);
-    mIsMethod := (ACandidate.SymbolKind = TIndexSymbolKind.Method) and not MatchText('static', ACandidate.Directives);
-    if mIsMethod <> ATarget.OfObject then
-      Exit(TProcMatch.MethodKind);
-    if Length(AShape.Params) <> Length(ATarget.Params) then
-      Exit(TProcMatch.Parameters);
-    for mParam := 0 to High(ATarget.Params) do
-      if NormalizedModifier(ATarget.Params[mParam].Modifier) <> NormalizedModifier(AShape.Params[mParam].Modifier) then
-        Exit(TProcMatch.Parameters);
-    Result := TProcMatch.Yes;
-    for mParam := 0 to High(ATarget.Params) do
-    begin
-      if TTypeIdentity.Same(ATarget.Params[mParam].TypeName, AShape.Params[mParam].TypeName) then
-        Continue;
-      mLeft := TValueType.FromBuiltin(TTypeIdentity.Clean(ATarget.Params[mParam].TypeName));
-      mRight := TValueType.FromBuiltin(TTypeIdentity.Clean(AShape.Params[mParam].TypeName));
-      if (mLeft.Kind <> TValueKind.Builtin) or (mRight.Kind <> TValueKind.Builtin) or
-        TTypeCompatibility.PlatformDependent(mLeft.Name) or TTypeCompatibility.PlatformDependent(mRight.Name) then
-        Exit(TProcMatch.Unsure);
-      if AFormal = '' then
-      begin
-        AFormal := mLeft.Name;
-        AActual := mRight.Name;
-      end;
-      Result := TProcMatch.ParameterType;
+    case mVerdict.First of
+      TProcMatch.MethodKind:
+        if ATarget.OfObject then
+        begin
+          FReport.Add(TTextRange.Create(mSource.StartPos, mSource.EndPos), cTexts[TTypeMismatchText.MethodVsProc].Fmt(
+            [NodeText(mSource)]), TRuleConfidence.High);
+        end
+        else
+        begin
+          FReport.Add(TTextRange.Create(mSource.StartPos, mSource.EndPos), cTexts[TTypeMismatchText.ProcVsMethod].Fmt(
+            [NodeText(mSource)]), TRuleConfidence.High);
+        end;
+      TProcMatch.Parameters, TProcMatch.ParameterType:
+        FReport.Add(TTextRange.Create(mSource.StartPos, mSource.EndPos),
+          cTexts[TTypeMismatchText.ParamList].Fmt([NodeText(mSource)]),
+          TRuleConfidence.High);
+    else
+      // Yes und Unsure sind oben ausgeschieden.
     end;
-    if (Result = TProcMatch.Yes) and AShape.IsFunction and
-      not TTypeIdentity.Same(AShape.ResultType, ATarget.ResultType) then
-      Result := TProcMatch.Unsure;
   end;
 
 begin
   if ATarget.Reference then
-    Exit;
-  mSource := Unwrapped(ANode[1]);
-  if not RoutineCandidates(mSource, mCandidates) then
-    Exit;
-  mAllFail := True;
-  mHasType := False;
-  mFirst := TProcMatch.Yes;
-  mTypeFormal := '';
-  mTypeActual := '';
-  for mIndex := 0 to High(mCandidates) do
   begin
-    mCandidate := mCandidates[mIndex];
-    if not ParseShape(mCandidate.Signature, True, mShape) then
-      Exit;
-    // Eine Funktion ohne Pflichtparameter kann hier auch aufgerufen werden.
-    if mShape.IsFunction and ((Length(mShape.Params) = 0) or (mShape.Params[0].DefaultValue <> '')) then
-      Exit;
-    mMatch := Compare(mCandidate, mShape, mFormal, mActual);
-    if mIndex = 0 then
-      mFirst := mMatch;
-    if mMatch in [TProcMatch.Yes, TProcMatch.Unsure] then
-      mAllFail := False;
-    if (mMatch = TProcMatch.ParameterType) and not mHasType then
-    begin
-      mHasType := True;
-      mTypeFormal := mFormal;
-      mTypeActual := mActual;
-    end;
-  end;
-  if not mAllFail then
     Exit;
-  if Length(mCandidates) > 1 then
+  end;
+  mSource := Unwrapped(ANode[1]);
+  if not RoutineCandidates(mSource, mCandidates) or not AllCandidatesFail(ATarget, mCandidates, mVerdict) then
+  begin
+    Exit;
+  end;
+  if Length(mCandidates) = 1 then
+  begin
+    ReportSingle;
+  end
+  else if mVerdict.HasType then
   begin
     // Von den Überladungen passt keine: dcc nennt die Typen der ersten mit gleich vielen Parametern.
-    if mHasType then
-      Mismatch(mSource, mTypeFormal, mTypeActual);
-    Exit;
-  end;
-  case mFirst of
-    TProcMatch.MethodKind:
-      if ATarget.OfObject then
-        FReport.Add(TTextRange.Create(mSource.StartPos, mSource.EndPos), Format('Inkompatible Typen: ' +
-          '''Methodenzeiger und reguläre Prozedur''; %s ist keine Methode eines Objekts (wie E2009).',
-          [NodeText(mSource)]), TRuleConfidence.High)
-      else
-        FReport.Add(TTextRange.Create(mSource.StartPos, mSource.EndPos), Format('Inkompatible Typen: ' +
-          '''Reguläre Prozedur und Methodenzeiger''; %s ist eine Methode, der Typ hat kein of object (wie E2009).',
-          [NodeText(mSource)]), TRuleConfidence.High);
-    TProcMatch.Parameters, TProcMatch.ParameterType:
-      FReport.Add(TTextRange.Create(mSource.StartPos, mSource.EndPos), Format('Inkompatible Typen: ''Liste der ' +
-        'Parameter ist unterschiedlich''; %s passt nicht zum prozeduralen Typ (wie E2009).', [NodeText(mSource)]),
-        TRuleConfidence.High);
-  else
-    // Yes und Unsure sind oben ausgeschieden.
+    Mismatch(mSource, mVerdict.Formal, mVerdict.Actual);
   end;
 end;
 
@@ -921,17 +1362,25 @@ var
 begin
   // Parameter: [Attribute] TypeReference Standardwert.
   if ANode.ChildCount < 2 then
+  begin
     Exit;
+  end;
   mTypeNode := ANode[ANode.ChildCount - 2];
   mValueNode := ANode[ANode.ChildCount - 1];
   if (mTypeNode.Kind <> TSyntaxKind.TypeReference) or not TExpressionTypes.IsExpression(mValueNode) then
+  begin
     Exit;
+  end;
   mTarget := TypeValueFrom(FLocal, TIndexExtractor.TypeText(mTypeNode));
   if not mTarget.Known then
+  begin
     Exit;
+  end;
   mSource := ValueOf(mValueNode);
   if TTypeCompatibility.AssignIncompatible(mTarget, mSource) then
+  begin
     Mismatch(mValueNode, mTarget.Name, ShownName(mSource));
+  end;
 end;
 
 procedure TTypeMismatchCheck.CheckIntrinsic(ANode: TSyntaxNode; const AName: string);
@@ -943,16 +1392,20 @@ begin
     mValue := ValueOf(ANode[2]);
     if (mValue.Kind = TValueKind.Builtin) and (mValue.Category in [TExpressionCategory.Float,
       TExpressionCategory.Currency_, TExpressionCategory.String_]) then
-      FReport.Add(TTextRange.Create(ANode[2].StartPos, ANode[2].EndPos), Format('Inkompatible Typen: %s erwartet ' +
-        'als Schrittweite eine Ganzzahl, %s ist %s (wie E2008).', [AName, NodeText(ANode[2]), mValue.Name]),
+    begin
+      FReport.Add(TTextRange.Create(ANode[2].StartPos, ANode[2].EndPos), cTexts[TTypeMismatchText.IncStep].Fmt([AName,
+        NodeText(ANode[2]), mValue.Name]),
         TRuleConfidence.High);
+    end;
   end
   else if SameText(AName, 'Ptr') and (ANode.ChildCount = 2) then
   begin
     mValue := ValueOf(ANode[1]);
     if (mValue.Kind = TValueKind.Builtin) and (mValue.Category = TExpressionCategory.String_) then
-      FReport.Add(TTextRange.Create(ANode[1].StartPos, ANode[1].EndPos), Format('Inkompatible Typen: Ptr erwartet ' +
-        'eine Adresse als Ganzzahl, %s ist %s (wie E2008).', [NodeText(ANode[1]), mValue.Name]), TRuleConfidence.High);
+    begin
+      FReport.Add(TTextRange.Create(ANode[1].StartPos, ANode[1].EndPos),
+        cTexts[TTypeMismatchText.PtrArg].Fmt([NodeText(ANode[1]), mValue.Name]), TRuleConfidence.High);
+    end;
   end;
 end;
 
@@ -963,11 +1416,15 @@ var
   mSigned, mInvalid: Boolean;
 begin
   if (ANode.ChildCount <> 2) or not AType.Builtin then
+  begin
     Exit;
+  end;
   mTarget := TValueType.FromBuiltin(AType.Name);
   mSource := ValueOf(ANode[1]);
   if (mTarget.Kind <> TValueKind.Builtin) or (mSource.Kind <> TValueKind.Builtin) then
+  begin
     Exit;
+  end;
   TExpressionTypes.CategoryOf(mTarget.Name, mWidth, mSigned);
   // Ein langer String ist ein Zeiger: in Byte oder Word passt er auf keiner Plattform.
   mInvalid := (mTarget.Category = TExpressionCategory.Integer_) and (mWidth in [1, 2]) and
@@ -976,8 +1433,10 @@ begin
   mInvalid := mInvalid or ((mTarget.Category in [TExpressionCategory.Integer_, TExpressionCategory.Char_,
     TExpressionCategory.Boolean_]) and (mSource.Category = TExpressionCategory.Float));
   if mInvalid then
-    FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('Ungültige Typumwandlung: %s nach %s ' +
-      '(wie E2089).', [mSource.Name, mTarget.Name]), TRuleConfidence.High);
+  begin
+    FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos),
+      cTexts[TTypeMismatchText.InvalidCast].Fmt([mSource.Name, mTarget.Name]), TRuleConfidence.High);
+  end;
 end;
 
 procedure TTypeMismatchCheck.CheckVarArgument(AArgument: TSyntaxNode; const AFormal: TValueType);
@@ -989,91 +1448,116 @@ var
 begin
   mArgument := Unwrapped(AArgument);
   if not (mArgument.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
+  begin
     Exit;
+  end;
   if not FScope.Resolver.NodeType(Tree, FScope.FileName, mArgument, mSymbol, mType, mFound) or not mFound or
     not (mSymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Field]) or
     not FScope.DeclarationSure(mSymbol, mArgument) or HiddenMember(mArgument, mSymbol) then
+  begin
     Exit;
+  end;
   // const-Parameter meldet invalid-var-argument (wie E2197).
   if mSymbol.IsParameter and (mSymbol.Kind = TResolvedKind.Local) then
   begin
     mDecl := DeclarationAt(mSymbol.SelectionRange.StartPos);
     if (mDecl = nil) or (mDecl.Kind <> TSyntaxKind.Parameter) or
       (mDecl.Modifier in [TParameterModifier.ConstParam, TParameterModifier.ConstRefParam]) then
+    begin
       Exit;
+    end;
   end;
   mActual := ValueOfSymbol(mSymbol, mType);
   if TTypeCompatibility.VarParamDiffers(AFormal, mActual) then
-    FReport.Add(TTextRange.Create(mArgument.StartPos, mArgument.EndPos), Format('Die Typen der tatsächlichen und ' +
-      'formalen var-Parameter müssen übereinstimmen: %s und %s (wie E2033).', [AFormal.Name, mActual.Name]),
+  begin
+    FReport.Add(TTextRange.Create(mArgument.StartPos, mArgument.EndPos),
+      cTexts[TTypeMismatchText.VarParamTypes].Fmt([AFormal.Name, mActual.Name]),
       TRuleConfidence.High);
+  end;
 end;
 
 procedure TTypeMismatchCheck.CheckCall(ANode: TSyntaxNode);
 var
   mCallee: TSyntaxNode;
-  mCandidates: TArray<TResolvedSymbol>;
   mCandidate: TResolvedSymbol;
   mShape: TProcShape;
   mUnit: TUnitIndex;
   mIndex: Integer;
-  mParam: TSignatureParameter;
-  mFormal, mActual: TValueType;
-  mModifier: string;
+
+  // Prüft Typumwandlungen und Intrinsics selbst; True mit dem einzigen Kandidaten einer Routine.
+  function SingleRoutine(out ACandidate: TResolvedSymbol): Boolean;
+  var
+    mCandidates: TArray<TResolvedSymbol>;
+  begin
+    Result := False;
+    if BuiltinCast(mCallee, ACandidate) then
+    begin
+      CheckCast(ANode, ACandidate);
+      Exit;
+    end;
+    if IsIntrinsic(mCallee) then
+    begin
+      CheckIntrinsic(ANode, mCallee.Name);
+      Exit;
+    end;
+    mCandidates := FScope.Resolver.CallCandidates(Tree, FScope.FileName, mCallee);
+    if (Length(mCandidates) > 0) and mCandidates[0].IsType then
+    begin
+      CheckCast(ANode, mCandidates[0]);
+    end
+    else if Length(mCandidates) = 1 then
+    begin
+      ACandidate := mCandidates[0];
+      Result := IsFixedRoutine(ACandidate) and FScope.DeclarationSure(ACandidate, mCallee) and
+        not HiddenMember(mCallee, ACandidate);
+    end;
+  end;
+
+  procedure CheckArgument(AArgument: TSyntaxNode; const AParam: TSignatureParameter);
+  var
+    mFormal, mActual: TValueType;
+    mModifier: string;
+  begin
+    if (AParam.TypeName = '') or StartsText('array', Trim(AParam.TypeName)) then
+    begin
+      Exit;
+    end;
+    mFormal := TypeValueFrom(mUnit, AParam.TypeName);
+    if not mFormal.Known then
+    begin
+      Exit;
+    end;
+    mModifier := NormalizedModifier(AParam.Modifier);
+    if (mModifier = 'var') or (mModifier = 'out') then
+    begin
+      CheckVarArgument(AArgument, mFormal);
+      Exit;
+    end;
+    mActual := ValueOf(AArgument);
+    if TTypeCompatibility.AssignIncompatible(mFormal, mActual) then
+    begin
+      Mismatch(AArgument, mFormal.Name, ShownName(mActual));
+    end;
+  end;
+
 begin
   if ANode.ChildCount = 0 then
+  begin
     Exit;
+  end;
   mCallee := ANode[0];
-  if not (mCallee.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) or
-    (mCallee.FindChild(TSyntaxKind.GenericArgs) <> nil) then
-    Exit;
-  if BuiltinCast(mCallee, mCandidate) then
+  if not IsPlainCallee(mCallee) or not SingleRoutine(mCandidate) then
   begin
-    CheckCast(ANode, mCandidate);
     Exit;
   end;
-  if IsIntrinsic(mCallee) then
-  begin
-    CheckIntrinsic(ANode, mCallee.Name);
-    Exit;
-  end;
-  mCandidates := FScope.Resolver.CallCandidates(Tree, FScope.FileName, mCallee);
-  if Length(mCandidates) = 0 then
-    Exit;
-  if mCandidates[0].IsType then
-  begin
-    CheckCast(ANode, mCandidates[0]);
-    Exit;
-  end;
-  if Length(mCandidates) <> 1 then
-    Exit;
-  mCandidate := mCandidates[0];
-  if not (mCandidate.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine, TIndexSymbolKind.Constructor_]) or
-    mCandidate.Builtin or (mCandidate.TypeParams <> '') or (Length(mCandidate.Bindings) > 0) or
-    (Length(mCandidate.Overloads) > 0) or (Length(mCandidate.VariantParams) > 1) or
-    MatchText('overload', mCandidate.Directives) or ContainsText(mCandidate.Signature, 'overload') or
-    not FScope.DeclarationSure(mCandidate, mCallee) or HiddenMember(mCallee, mCandidate) then
-    Exit;
   if not ParseShape(StringReplace(mCandidate.Signature, 'constructor', 'procedure', [rfIgnoreCase]), True, mShape) or
     (ANode.ChildCount - 1 > Length(mShape.Params)) or not FScope.Resolver.DeclaringUnit(mCandidate, mUnit) then
+  begin
     Exit;
+  end;
   for mIndex := 1 to ANode.ChildCount - 1 do
   begin
-    mParam := mShape.Params[mIndex - 1];
-    if (mParam.TypeName = '') or StartsText('array', Trim(mParam.TypeName)) then
-      Continue;
-    mFormal := TypeValueFrom(mUnit, mParam.TypeName);
-    if not mFormal.Known then
-      Continue;
-    mModifier := NormalizedModifier(mParam.Modifier);
-    if (mModifier = 'var') or (mModifier = 'out') then
-      CheckVarArgument(ANode[mIndex], mFormal)
-    else
-    begin
-      mActual := ValueOf(ANode[mIndex]);
-      if TTypeCompatibility.AssignIncompatible(mFormal, mActual) then
-        Mismatch(ANode[mIndex], mFormal.Name, ShownName(mActual));
-    end;
+    CheckArgument(ANode[mIndex], mShape.Params[mIndex - 1]);
   end;
 end;
 
@@ -1082,29 +1566,47 @@ var
   mSymbol, mType: TResolvedSymbol;
   mFound: Boolean;
   mUnit: TUnitIndex;
-  mIndexSymbol: TIndexSymbol;
-  mDefaults, mIndex: Integer;
+  mIndex: Integer;
   mFormal, mActual: TValueType;
-begin
-  if (ANode.ChildCount < 2) or not FScope.Resolver.NodeType(Tree, FScope.FileName, ANode, mSymbol, mType, mFound) or
-    (mSymbol.SymbolKind <> TIndexSymbolKind.Property_) or (mSymbol.MaxArgs = 0) or
-    (Length(mSymbol.ParamTypes) < ANode.ChildCount - 1) or (Length(mSymbol.Overloads) > 0) or
-    not FScope.DeclarationSure(mSymbol, ANode) or not FScope.Resolver.DeclaringUnit(mSymbol, mUnit) then
-    Exit;
+
+  function Indexable: Boolean;
+  begin
+    Result := (ANode.ChildCount >= 2) and FScope.Resolver.NodeType(Tree, FScope.FileName, ANode, mSymbol, mType,
+      mFound);
+    Result := Result and (mSymbol.SymbolKind = TIndexSymbolKind.Property_) and (mSymbol.MaxArgs <> 0);
+    Result := Result and (Length(mSymbol.ParamTypes) >= ANode.ChildCount - 1) and (Length(mSymbol.Overloads) = 0);
+    Result := Result and FScope.DeclarationSure(mSymbol, ANode) and FScope.Resolver.DeclaringUnit(mSymbol, mUnit);
+  end;
+
   // Überladene Array-Properties (zwei default-Properties bzw. gleiche Namen) wählt dcc nach den Argumenten.
-  mDefaults := 0;
-  for mIndexSymbol in mUnit.Symbols do
-    if (mIndexSymbol.Kind = TIndexSymbolKind.Property_) and SameText(mIndexSymbol.Container, mSymbol.Container) and
-      (SameText(mIndexSymbol.Name, mSymbol.Name) or (mSymbol.IsDefault and mIndexSymbol.IsDefault)) then
-      Inc(mDefaults);
-  if mDefaults <> 1 then
+  function SameIndexers: Integer;
+  var
+    mIndexSymbol: TIndexSymbol;
+  begin
+    Result := 0;
+    for mIndexSymbol in mUnit.Symbols do
+    begin
+      if (mIndexSymbol.Kind = TIndexSymbolKind.Property_) and SameText(mIndexSymbol.Container, mSymbol.Container) and
+        (SameText(mIndexSymbol.Name, mSymbol.Name) or (mSymbol.IsDefault and mIndexSymbol.IsDefault)) then
+      begin
+        Inc(Result);
+      end;
+    end;
+  end;
+
+begin
+  if not Indexable or (SameIndexers <> 1) then
+  begin
     Exit;
+  end;
   for mIndex := 1 to ANode.ChildCount - 1 do
   begin
     mFormal := TypeValueFrom(mUnit, mSymbol.ParamTypes[mIndex - 1]);
     mActual := ValueOf(ANode[mIndex]);
     if TTypeCompatibility.AssignIncompatible(mFormal, mActual) then
+    begin
       Mismatch(ANode[mIndex], mFormal.Name, ShownName(mActual));
+    end;
   end;
 end;
 
@@ -1117,7 +1619,9 @@ var
   mRightNode: TSyntaxNode;
 begin
   if ANode.ChildCount <> 2 then
+  begin
     Exit;
+  end;
   mOperator := LowerCase(ANode.Name);
   if mOperator = 'is' then
   begin
@@ -1125,18 +1629,22 @@ begin
     mRightNode := Unwrapped(ANode[1]);
     if (mRightNode.Kind = TSyntaxKind.Identifier) and not BuiltinCast(mRightNode, mSymbol) and
       not (FScope.Resolver.NodeType(Tree, FScope.FileName, mRightNode, mSymbol, mType, mFound) and mSymbol.IsType) then
+    begin
       Exit;
+    end;
     if mSymbol.Builtin and IsDataCategory(TValueType.FromBuiltin(mSymbol.Name)) then
-      FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('Der Operator is braucht rechts eine ' +
-        'Klasse; %s ist keine (wie E2015).', [mSymbol.Name]), TRuleConfidence.High);
+    begin
+      FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos),
+        cTexts[TTypeMismatchText.IsNeedsClass].Fmt([mSymbol.Name]), TRuleConfidence.High);
+    end;
     Exit;
   end;
   mLeft := ValueOf(ANode[0]);
   mRight := ValueOf(ANode[1]);
   case TTypeCompatibility.OperatorFit(mOperator, mLeft, mRight) of
     TOperatorFit.NotApplicable:
-      FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('Der Operator %s ist auf %s und %s nicht ' +
-        'anwendbar (wie E2015).', [ANode.Name, mLeft.Name, mRight.Name]), TRuleConfidence.High);
+      FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos),
+        cTexts[TTypeMismatchText.OperatorBinary].Fmt([ANode.Name, mLeft.Name, mRight.Name]), TRuleConfidence.High);
     TOperatorFit.Incompatible:
       Mismatch(ANode, ShownName(mLeft), ShownName(mRight));
   else
@@ -1149,11 +1657,15 @@ var
   mOperand: TValueType;
 begin
   if (ANode.ChildCount <> 1) or (ANode.Name = '@') then
+  begin
     Exit;
+  end;
   mOperand := ValueOf(ANode[0]);
   if TTypeCompatibility.UnaryNotApplicable(ANode.Name, mOperand) then
-    FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos), Format('Der Operator %s ist auf %s nicht ' +
-      'anwendbar (wie E2015).', [ANode.Name, mOperand.Name]), TRuleConfidence.High);
+  begin
+    FReport.Add(TTextRange.Create(ANode.StartPos, ANode.EndPos),
+      cTexts[TTypeMismatchText.OperatorUnary].Fmt([ANode.Name, mOperand.Name]), TRuleConfidence.High);
+  end;
 end;
 
 procedure TTypeMismatchCheck.Run;
@@ -1189,7 +1701,9 @@ begin
         // Übrige Knoten nur durchlaufen.
       end;
       for mIndex := mNode.ChildCount - 1 downto 0 do
+      begin
         mPending.Push(mNode[mIndex]);
+      end;
     end;
   finally
     mPending.Free;
@@ -1200,7 +1714,7 @@ end;
 
 function TTypeMismatchRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(TypeMismatchRuleId, TRuleSeverity.Error, 'Inkompatible Typen');
+  Result := TRuleDescriptor.Create(TypeMismatchRuleId, TRuleSeverity.Error, cTexts[TTypeMismatchText.Title].Text);
 end;
 
 procedure TTypeMismatchRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1208,7 +1722,9 @@ var
   mCheck: TTypeMismatchCheck;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   mCheck := TTypeMismatchCheck.Create(AContext, AReport);
   try
     mCheck.Run;
@@ -1221,5 +1737,8 @@ procedure RegisterTypeMismatchRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TTypeMismatchRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.TypeMismatch', cTexts);
 
 end.

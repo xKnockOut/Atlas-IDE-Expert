@@ -52,10 +52,14 @@ begin
     for Range in TLspFoldingRanges.Collect(Tree) do
     begin
       if Result <> '' then
+      begin
         Result := Result + ',';
+      end;
       Result := Result + Format('%d-%d', [Range.StartLine, Range.EndLine]);
       if Range.Kind <> '' then
+      begin
         Result := Result + ':' + Range.Kind;
+      end;
     end;
   finally
     Tree.Free;

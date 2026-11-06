@@ -1,8 +1,9 @@
 ﻿unit Atlas.Core.Editor.Metrics.Tests;
 
-// Tests der Code Lens mit Code-Metriken im Plugin (#66): Antwort des Servers
-// lesen, Beschriftung mit Grenzwert, Zeile wiedererkennen; #980: Operanden,
-// lokale Variablen, Ausstiege und Vererbungstiefe neben den Membern.
+// Tests der Code-Metriken im Plugin (#66): Antwort des Servers lesen und
+// Kennungen; #980: Operanden, lokale Variablen, Ausstiege und Vererbungstiefe
+// neben den Membern. Beschriftung und Zeile wiedererkennen prüft
+// Atlas.Core.Analysis.MetricsLens.Tests (Modul Analyse, #1756).
 
 interface
 
@@ -24,9 +25,7 @@ type
     [Test]
     procedure MissingLimitsNeverExceed;
     [Test]
-    procedure CaptionMarksExceededValues;
-    [Test]
-    procedure LineMatchesMethodName;
+    procedure KeysOfTheServer;
     [Test]
     procedure ReportFileNames;
     [Test]
@@ -61,18 +60,6 @@ begin
   end;
 end;
 
-function GermanFormats: TAtlasMetricFormats;
-begin
-  Result[TAtlasMetric.MethodLength] := '%d Zeilen';
-  Result[TAtlasMetric.Nesting] := 'Tiefe %d';
-  Result[TAtlasMetric.Cyclomatic] := 'zyklomatisch %d';
-  Result[TAtlasMetric.Cognitive] := 'kognitiv %d';
-  Result[TAtlasMetric.Parameters] := '%d Parameter';
-  Result[TAtlasMetric.Operands] := 'Operanden %d';
-  Result[TAtlasMetric.Locals] := '%d lokale';
-  Result[TAtlasMetric.Exits] := '%d Ausstiege';
-end;
-
 { TAtlasEditorMetricsTests }
 
 procedure TAtlasEditorMetricsTests.ReadsServerAnswer;
@@ -97,7 +84,6 @@ end;
 procedure TAtlasEditorMetricsTests.ReadsStructure;
 var
   Metrics: TAtlasFileMetrics;
-  Formats: TAtlasStructureFormats;
 begin
   Metrics := Parse('{"structure": [{"kind": "unitLength", "name": "Main", "line": 1, "value": 2140, ' +
     '"limit": 2000}, {"kind": "usesCount", "name": "Main", "line": 3, "value": 12, "limit": 30}, ' +
@@ -110,22 +96,14 @@ begin
   Assert.AreEqual(-1, Metrics.StructureAt(8));
   Assert.AreEqual('TfrmHaupt', Metrics.Structures[2].Name);
   Assert.AreEqual(MaxInt, Metrics.Structures[2].Limit, 'ohne Grenzwert nie überschritten');
-  Formats[TAtlasStructureMetric.ClassSize] := '%d Member';
-  Formats[TAtlasStructureMetric.UnitLength] := '%d Zeilen';
-  Formats[TAtlasStructureMetric.UsesCount] := '%d Units im uses';
-  Assert.AreEqual('2140 Zeilen (> 2000)', TAtlasMetricsLens.StructureCaption(Metrics.Structures[0], Formats,
-    '%s (> %d)'));
-  Assert.AreEqual('12 Units im uses', TAtlasMetricsLens.StructureCaption(Metrics.Structures[1], Formats,
-    '%s (> %d)'));
-  Assert.AreEqual('87 Member', TAtlasMetricsLens.StructureCaption(Metrics.Structures[2], Formats, '%s (> %d)'));
-  Assert.AreEqual('usesCount', TAtlasMetricsLens.StructureKey(TAtlasStructureMetric.UsesCount));
+  Assert.AreEqual(2140, Metrics.Structures[0].Value);
+  Assert.AreEqual(2000, Metrics.Structures[0].Limit);
   Assert.AreEqual(0, Integer(Length(Parse(Answer).Structures)), 'ältere Server ohne "structure"');
 end;
 
 procedure TAtlasEditorMetricsTests.InheritanceDepthBesideMembers;
 var
   Metrics: TAtlasFileMetrics;
-  Formats: TAtlasStructureFormats;
 begin
   Metrics := Parse('{"structure": [{"kind": "classSize", "name": "TfrmHaupt", "line": 8, "value": 87, ' +
     '"limit": 40}, {"kind": "inheritanceDepth", "name": "TfrmHaupt", "line": 8, "value": 3, "limit": 5}, ' +
@@ -135,16 +113,8 @@ begin
   Assert.AreEqual(2, Integer(Length(Metrics.StructuresAt(7))), 'Member und Vererbungstiefe in einer Zeile');
   Assert.IsFalse(Metrics.Structures[1].AtLeast);
   Assert.IsTrue(Metrics.Structures[2].AtLeast);
-  Formats[TAtlasStructureMetric.ClassSize] := '%d Member';
-  Formats[TAtlasStructureMetric.UnitLength] := '%d Zeilen';
-  Formats[TAtlasStructureMetric.UsesCount] := '%d Units im uses';
-  Formats[TAtlasStructureMetric.InheritanceDepth] := 'Vererbungstiefe %d';
-  Assert.AreEqual('87 Member (> 40) · Vererbungstiefe 3', TAtlasMetricsLens.StructureCaption(Metrics.StructuresAt(7),
-    Formats, 'Vererbungstiefe mindestens %d', '%s (> %d)'));
-  Assert.AreEqual('Vererbungstiefe mindestens 6 (> 5)', TAtlasMetricsLens.StructureCaption(Metrics.StructuresAt(19),
-    Formats, 'Vererbungstiefe mindestens %d', '%s (> %d)'));
+  Assert.IsTrue(Metrics.StructuresAt(7)[1].Kind = TAtlasStructureMetric.InheritanceDepth);
   Assert.AreEqual(0, Integer(Length(Metrics.StructuresAt(0))));
-  Assert.AreEqual('inheritanceDepth', TAtlasMetricsLens.StructureKey(TAtlasStructureMetric.InheritanceDepth));
 end;
 
 procedure TAtlasEditorMetricsTests.InvalidAnswerIsOffAndEmpty;
@@ -169,38 +139,17 @@ begin
     '"values": {"length": 900, "nesting": 2}}]}');
   Assert.AreEqual(MaxInt, Metrics.Limits[TAtlasMetric.MethodLength]);
   Assert.AreEqual(1, Metrics.Limits[TAtlasMetric.Nesting]);
-  Assert.IsTrue(TAtlasMetricsLens.Exceeds(Metrics.Methods[0], Metrics.Limits));
   Metrics := Parse('{"methods": [{"name": "A", "line": 1, "values": {"length": 900}}]}');
-  Assert.IsFalse(TAtlasMetricsLens.Exceeds(Metrics.Methods[0], Metrics.Limits));
+  Assert.AreEqual(MaxInt, Metrics.Limits[TAtlasMetric.Nesting], 'ohne "limits" unbegrenzt');
 end;
 
-procedure TAtlasEditorMetricsTests.CaptionMarksExceededValues;
-var
-  Metrics: TAtlasFileMetrics;
+procedure TAtlasEditorMetricsTests.KeysOfTheServer;
 begin
-  Metrics := Parse(Answer);
-  Assert.AreEqual('7 Zeilen · Tiefe 1 · zyklomatisch 17 (> 15) · kognitiv 3 · 2 Parameter · Operanden 6 (> 5) · ' +
-    '3 lokale · 1 Ausstiege', TAtlasMetricsLens.Caption(Metrics.Methods[0], Metrics.Limits, GermanFormats,
-    '%s (> %d)'));
-  Assert.AreEqual('2 Zeilen · Tiefe 0 · zyklomatisch 0 · kognitiv 0 · 0 Parameter · Operanden 0 · 0 lokale · ' +
-    '0 Ausstiege', TAtlasMetricsLens.Caption(Metrics.Methods[1], Metrics.Limits, GermanFormats, '%s (> %d)'));
-  Assert.AreEqual('exits', TAtlasMetricsLens.Key(TAtlasMetric.Exits));
-  Assert.IsTrue(TAtlasMetricsLens.Exceeds(Metrics.Methods[0], Metrics.Limits));
-  Assert.IsFalse(TAtlasMetricsLens.Exceeds(Metrics.Methods[1], Metrics.Limits));
-  Assert.AreEqual('cognitive', TAtlasMetricsLens.Key(TAtlasMetric.Cognitive));
-  Assert.AreEqual('parameters', TAtlasMetricsLens.Key(TAtlasMetric.Parameters));
-end;
-
-procedure TAtlasEditorMetricsTests.LineMatchesMethodName;
-begin
-  Assert.IsTrue(TAtlasMetricsLens.LineMatches('procedure TFoo.Run(A: Integer);', 'TFoo.Run'));
-  Assert.IsTrue(TAtlasMetricsLens.LineMatches('function run: Boolean;', 'TFoo.Run'), 'ohne Groß/klein');
-  Assert.IsTrue(TAtlasMetricsLens.LineMatches('class procedure TFoo.TBar.Run;', 'TFoo.TBar.Run'));
-  Assert.IsFalse(TAtlasMetricsLens.LineMatches('procedure TFoo.Running;', 'TFoo.Run'), 'nur ganze Bezeichner');
-  Assert.IsFalse(TAtlasMetricsLens.LineMatches('procedure TFoo.ReRun;', 'TFoo.Run'));
-  Assert.IsTrue(TAtlasMetricsLens.LineMatches('procedure TFoo.ReRun; procedure Run;', 'Run'), 'zweiter Treffer');
-  Assert.IsFalse(TAtlasMetricsLens.LineMatches('begin', 'Run'));
-  Assert.IsFalse(TAtlasMetricsLens.LineMatches('procedure Run;', ''));
+  Assert.AreEqual('exits', TAtlasMetricKeys.Key(TAtlasMetric.Exits));
+  Assert.AreEqual('cognitive', TAtlasMetricKeys.Key(TAtlasMetric.Cognitive));
+  Assert.AreEqual('parameters', TAtlasMetricKeys.Key(TAtlasMetric.Parameters));
+  Assert.AreEqual('usesCount', TAtlasMetricKeys.StructureKey(TAtlasStructureMetric.UsesCount));
+  Assert.AreEqual('inheritanceDepth', TAtlasMetricKeys.StructureKey(TAtlasStructureMetric.InheritanceDepth));
 end;
 
 procedure TAtlasEditorMetricsTests.ReportFileNames;

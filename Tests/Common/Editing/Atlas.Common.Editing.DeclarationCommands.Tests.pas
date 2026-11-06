@@ -110,7 +110,9 @@ begin
   SetLength(Offsets, Length(Lines) + 1);
   Offsets[0] := 0;
   for Index := 0 to High(Lines) do
+  begin
     Offsets[Index + 1] := Offsets[Index] + Length(Lines[Index]) + 1;
+  end;
   // Von hinten nach vorn, damit die Positionen gültig bleiben.
   TArray.Sort<TRuleEdit>(AEdits, TComparer<TRuleEdit>.Construct(
     function(const ALeft, ARight: TRuleEdit): Integer
@@ -197,15 +199,15 @@ var
 begin
   // Delphi 10.2 (BDS 19.0): kein Inline-var; 10.3 (20.0) und unbekannt: erlaubt.
   Assert.IsFalse(TSlashCommandRegistry.Shared.AfterEnter(WithCommand('/var I := 0'), TTextPosition.Create(17, 0),
-    nil, nil, Edits, nil, '19.0'));
+    TSlashEnvironment.Create(nil, nil, nil, '19.0', '', nil), Edits));
   Problems := TSlashCommandRegistry.Shared.Problems(WithCommand('/var I := 0'), nil, nil, '19.0');
   Assert.AreEqual(1, Integer(Length(Problems)));
   Assert.IsTrue(Problems[0].Message.StartsWith('Inline-Variablen gibt es erst ab Delphi 10.3'), Problems[0].Message);
   Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(WithCommand('/var I := 0'), TTextPosition.Create(17, 0),
-    nil, nil, Edits, nil, '20.0'));
+    TSlashEnvironment.Create(nil, nil, nil, '20.0', '', nil), Edits));
   // Die lokale Variable geht in jeder Version.
   Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(WithCommand('/var I: Integer'), TTextPosition.Create(17, 0),
-    nil, nil, Edits, nil, '19.0'));
+    TSlashEnvironment.Create(nil, nil, nil, '19.0', '', nil), Edits));
 end;
 
 procedure TDeclarationCommandsTests.ConstAndPropOutsideFail;
@@ -224,7 +226,9 @@ begin
   // /const! braucht die implementation.
   Ok := Run('unit U;'#10'interface'#10'/const! Max = 10'#10#10'end.', 2, Edits);
   if Ok then
+  begin
     Assert.Fail(Apply('unit U;'#10'interface'#10'/const! Max = 10'#10#10'end.', Edits));
+  end;
   Assert.IsFalse(Run('unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'begin'#10 +
     '  /prop Name: string'#10#10'end;'#10'end.', 5, Edits));
   Problems := TSlashCommandRegistry.Shared.Problems('unit U;'#10'interface'#10'implementation'#10'procedure P;'#10 +

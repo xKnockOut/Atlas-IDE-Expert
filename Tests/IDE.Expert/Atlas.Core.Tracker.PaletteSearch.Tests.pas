@@ -14,6 +14,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasIssuePaletteSearchTests = class
   public
     /// <summary>GitHub: "#" allein, "#42", "#Text"; Kürzel mit "-" gehört den Befehlen.</summary>
@@ -66,12 +67,15 @@ uses
   System.Classes,
   System.IOUtils,
   Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Files.DataFile,
   Atlas.Core.Commands.Palette,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Providers.YouTrack,
-  Atlas.Core.Tracker.PaletteSearch;
+  Atlas.Core.Tracker.PaletteSearch,
+  Atlas.Core.Tracker.Internals.GitHubApi,
+  Atlas.Core.Tracker.YouTrackApi;
 
 type
   /// <summary>Transport mit festen Antworten je Adressanfang; merkt die Adressen.</summary>
@@ -111,14 +115,18 @@ begin
   AText := '';
   AError := FFail;
   if FFail <> TAtlasCiFetchError.None then
+  begin
     Exit(False);
+  end;
   for mIndex := 0 to High(FPrefixes) do
+  begin
     if Copy(AUrl, 1, Length(FPrefixes[mIndex])) = FPrefixes[mIndex] then
     begin
       AStatus := FStatus[mIndex];
       AText := FTexts[mIndex];
       Exit(True);
     end;
+  end;
   AStatus := 404;
   Result := True;
 end;
@@ -134,9 +142,13 @@ begin
     mFileName := TPath.Combine(mDirectory, TPath.Combine('Tests', TPath.Combine('Data',
       TPath.Combine(AFolder, AName))));
     if TFile.Exists(mFileName) then
+    begin
       Exit(TFile.ReadAllText(mFileName, TEncoding.UTF8));
+    end;
     if ExtractFileDir(mDirectory) = mDirectory then
+    begin
       Break;
+    end;
     mDirectory := ExtractFileDir(mDirectory);
   end;
   raise Exception.Create('Tests\Data\' + AFolder + '\' + AName + ' nicht gefunden');
@@ -319,14 +331,14 @@ end;
 procedure TAtlasIssuePaletteSearchTests.GitHubTextSearchUrl;
 begin
   Assert.AreEqual('https://api.github.com/search/issues?q=repo%3Abeispiel/atlas%20is%3Aissue%20Speicherleck' +
-    '&per_page=20', TAtlasGitHubTracker.TextSearchUrl(GitHubTarget, ' Speicherleck ', 20));
-  Assert.AreEqual(0, Pos('label', TAtlasGitHubTracker.TextSearchUrl(GitHubTarget, 'x', 20)),
+    '&per_page=20', TAtlasGitHubApi.TextSearchUrl(GitHubTarget, ' Speicherleck ', 20));
+  Assert.AreEqual(0, Pos('label', TAtlasGitHubApi.TextSearchUrl(GitHubTarget, 'x', 20)),
     'Abfrage der Einstellungen gilt nicht');
-  Assert.IsTrue(TAtlasGitHubTracker.TextSearchUrl(GitHubTarget, 'x', 500).EndsWith('&per_page=100'));
-  Assert.IsTrue(TAtlasGitHubTracker.TextSearchUrl(GitHubTarget, 'x', 0).EndsWith('&per_page=1'));
-  Assert.AreEqual('', TAtlasGitHubTracker.TextSearchUrl(GitHubTarget, '  ', 20));
-  Assert.AreEqual('', TAtlasGitHubTracker.TextSearchUrl(TAtlasTrackerTarget.Create('github', '', '', ''), 'x', 20));
-  Assert.IsTrue(TAtlasGitHubTracker.TextSearchUrl(TAtlasTrackerTarget.Create('github', 'https://git.firma.de',
+  Assert.IsTrue(TAtlasGitHubApi.TextSearchUrl(GitHubTarget, 'x', 500).EndsWith('&per_page=100'));
+  Assert.IsTrue(TAtlasGitHubApi.TextSearchUrl(GitHubTarget, 'x', 0).EndsWith('&per_page=1'));
+  Assert.AreEqual('', TAtlasGitHubApi.TextSearchUrl(GitHubTarget, '  ', 20));
+  Assert.AreEqual('', TAtlasGitHubApi.TextSearchUrl(TAtlasTrackerTarget.Create('github', '', '', ''), 'x', 20));
+  Assert.IsTrue(TAtlasGitHubApi.TextSearchUrl(TAtlasTrackerTarget.Create('github', 'https://git.firma.de',
     'team/kasse', ''), 'x', 20).StartsWith('https://git.firma.de/api/v3/search/issues?q=repo%3Ateam/kasse'),
     'GitHub Enterprise');
 end;
@@ -335,21 +347,21 @@ procedure TAtlasIssuePaletteSearchTests.YouTrackSearchAndLookupUrl;
 var
   mUrl: string;
 begin
-  mUrl := TAtlasYouTrackTracker.TextSearchUrl(YouTrackTarget, ' Speicher leck ', 20);
+  mUrl := TAtlasYouTrackApi.TextSearchUrl(YouTrackTarget, ' Speicher leck ', 20);
   Assert.IsTrue(mUrl.StartsWith('https://beispiel.youtrack.cloud/api/issues?query=project%3A%20ATL%20Speicher%20leck' +
     '&fields='), mUrl);
   Assert.IsTrue(mUrl.EndsWith('&$top=20'), mUrl);
   Assert.AreEqual(0, Pos('Unresolved', mUrl), 'Abfrage der Einstellungen gilt nicht');
   Assert.IsTrue(mUrl.Contains('fullName'), 'Zuständig wird mitgelesen');
-  Assert.AreEqual('', TAtlasYouTrackTracker.TextSearchUrl(YouTrackTarget, '', 20));
-  Assert.AreEqual('', TAtlasYouTrackTracker.TextSearchUrl(TAtlasTrackerTarget.Create('youtrack', '', 'ATL', ''), 'x',
+  Assert.AreEqual('', TAtlasYouTrackApi.TextSearchUrl(YouTrackTarget, '', 20));
+  Assert.AreEqual('', TAtlasYouTrackApi.TextSearchUrl(TAtlasTrackerTarget.Create('youtrack', '', 'ATL', ''), 'x',
     20), 'ohne Server');
-  mUrl := TAtlasYouTrackTracker.LookupUrl(YouTrackTarget, 'ATL-12');
+  mUrl := TAtlasYouTrackApi.LookupUrl(YouTrackTarget, 'ATL-12');
   Assert.AreEqual('https://beispiel.youtrack.cloud/api/issues/ATL-12?fields=idReadable%2CnumberInProject%2Csummary' +
     '%2CcustomFields%28name%2Cvalue%28name%2Cpresentation%2Clogin%2CfullName%29%29', mUrl,
     'dieselben Felder wie die Liste');
-  Assert.AreEqual('', TAtlasYouTrackTracker.LookupUrl(YouTrackTarget, 'ATL 1/../x'));
-  Assert.AreEqual('', TAtlasYouTrackTracker.LookupUrl(YouTrackTarget, ''));
+  Assert.AreEqual('', TAtlasYouTrackApi.LookupUrl(YouTrackTarget, 'ATL 1/../x'));
+  Assert.AreEqual('', TAtlasYouTrackApi.LookupUrl(YouTrackTarget, ''));
 end;
 
 procedure TAtlasIssuePaletteSearchTests.GitHubSearchAndLookupOverTransport;
@@ -368,14 +380,16 @@ begin
     Fixture('GitHub', 'search-issues.json'));
   mTransport.Answer('https://api.github.com/repos/beispiel/atlas/issues/753', 200,
     Fixture('GitHub', 'issue-details.json'));
-  Assert.IsTrue(mProvider.Search(GitHubTarget, mTransportRef, 'Willkommensseite', 5000, 20, mIssues, mError));
+  Assert.IsTrue(mProvider.Search(TAtlasTrackerCall.Create(GitHubTarget, mTransportRef, 5000), 'Willkommensseite', 20,
+    mIssues, mError));
   Assert.IsTrue(mError = TAtlasCiFetchError.None);
   Assert.AreEqual(1, Integer(Length(mTransport.Calls)));
-  Assert.AreEqual(TAtlasGitHubTracker.TextSearchUrl(GitHubTarget, 'Willkommensseite', 20), mTransport.Calls[0]);
+  Assert.AreEqual(TAtlasGitHubApi.TextSearchUrl(GitHubTarget, 'Willkommensseite', 20), mTransport.Calls[0]);
   Assert.AreEqual(3, Integer(Length(mIssues)), 'ohne Pull Requests');
   Assert.AreEqual('#753', mIssues[0].Key);
   Assert.AreEqual('beispiel', mIssues[0].Assignee);
-  Assert.IsTrue(mProvider.Search(GitHubTarget, mTransportRef, 'Willkommensseite', 5000, 1, mIssues, mError));
+  Assert.IsTrue(mProvider.Search(TAtlasTrackerCall.Create(GitHubTarget, mTransportRef, 5000), 'Willkommensseite', 1,
+    mIssues, mError));
   Assert.AreEqual(1, Integer(Length(mIssues)), 'höchstens AMax');
   Assert.IsTrue(mProvider.Lookup(GitHubTarget, mTransportRef, '#753', 5000, mIssue, mError));
   Assert.AreEqual('#753', mIssue.Key);
@@ -401,13 +415,14 @@ begin
   mTransport.Answer('https://beispiel.youtrack.cloud/api/issues?query=', 200, Fixture('YouTrack', 'issues.json'));
   mTransport.Answer('https://beispiel.youtrack.cloud/api/issues/ATL-12?', 200,
     Fixture('YouTrack', 'issue-lookup.json'));
-  Assert.IsTrue(mProvider.Search(YouTrackTarget, mTransportRef, 'Tracker', 5000, 20, mIssues, mError));
-  Assert.AreEqual(TAtlasYouTrackTracker.TextSearchUrl(YouTrackTarget, 'Tracker', 20), mTransport.Calls[0]);
+  Assert.IsTrue(mProvider.Search(TAtlasTrackerCall.Create(YouTrackTarget, mTransportRef, 5000), 'Tracker', 20,
+    mIssues, mError));
+  Assert.AreEqual(TAtlasYouTrackApi.TextSearchUrl(YouTrackTarget, 'Tracker', 20), mTransport.Calls[0]);
   Assert.AreEqual('ATL-123', mIssues[0].Key);
   Assert.AreEqual('In Progress', mIssues[0].State);
   Assert.AreEqual('Beispiel', mIssues[0].Assignee);
   Assert.IsTrue(mProvider.Lookup(YouTrackTarget, mTransportRef, 'ATL-12', 5000, mIssue, mError));
-  Assert.AreEqual(TAtlasYouTrackTracker.LookupUrl(YouTrackTarget, 'ATL-12'), mTransport.Calls[1]);
+  Assert.AreEqual(TAtlasYouTrackApi.LookupUrl(YouTrackTarget, 'ATL-12'), mTransport.Calls[1]);
   Assert.AreEqual('ATL-12', mIssue.Key);
   Assert.AreEqual(12, mIssue.Number);
   Assert.AreEqual('Speicherleck beim Schließen', mIssue.Title);
@@ -430,8 +445,8 @@ begin
   mTransport := TSearchTransport.Create;
   mTransportRef := mTransport;
   // Ohne Projekt bzw. ohne Transport: keine Anfrage.
-  Assert.IsFalse(mGitHub.Search(TAtlasTrackerTarget.Create('github', '', '', ''), mTransportRef, 'x', 5000, 20,
-    mIssues, mError));
+  Assert.IsFalse(mGitHub.Search(TAtlasTrackerCall.Create(TAtlasTrackerTarget.Create('github', '', '', ''),
+    mTransportRef, 5000), 'x', 20, mIssues, mError));
   Assert.IsTrue(mError = TAtlasCiFetchError.NotConfigured);
   Assert.IsFalse(mYouTrack.Lookup(YouTrackTarget, nil, 'ATL-1', 5000, mIssue, mError));
   Assert.IsTrue(mError = TAtlasCiFetchError.NotConfigured);
@@ -441,7 +456,7 @@ begin
   // Antworten des Servers.
   mTransport.Answer('https://api.github.com/search/', 401, '{"message":"Bad credentials"}');
   mTransport.Answer('https://beispiel.youtrack.cloud/api/issues/ATL-9?', 200, 'kein JSON');
-  Assert.IsFalse(mGitHub.Search(GitHubTarget, mTransportRef, 'x', 5000, 20, mIssues, mError));
+  Assert.IsFalse(mGitHub.Search(TAtlasTrackerCall.Create(GitHubTarget, mTransportRef, 5000), 'x', 20, mIssues, mError));
   Assert.IsTrue(mError = TAtlasCiFetchError.Unauthorized);
   Assert.IsFalse(mGitHub.Lookup(GitHubTarget, mTransportRef, '#99', 5000, mIssue, mError), 'unbekannte Adresse');
   Assert.IsTrue(mError = TAtlasCiFetchError.NotFound);
@@ -450,7 +465,8 @@ begin
   Assert.AreEqual('', mIssue.Key);
   // Zeitgrenze des Transports kommt unverändert an.
   mTransport.FailWith(TAtlasCiFetchError.Timeout);
-  Assert.IsFalse(mYouTrack.Search(YouTrackTarget, mTransportRef, 'x', 5000, 20, mIssues, mError));
+  Assert.IsFalse(mYouTrack.Search(TAtlasTrackerCall.Create(YouTrackTarget, mTransportRef, 5000), 'x', 20, mIssues,
+    mError));
   Assert.IsTrue(mError = TAtlasCiFetchError.Timeout);
   Assert.AreEqual(0, Integer(Length(mIssues)));
 end;
@@ -512,7 +528,9 @@ begin
     Assert.AreEqual(0, mRecent.Items(GitHubTarget)[0].PullRequest.Number);
     // Höchstens MaxRecent je Tracker, MaxStored insgesamt.
     for mIndex := 1 to TAtlasRecentIssues.MaxStored + 5 do
+    begin
       mRecent.Add(YouTrackTarget, Issue('ATL-' + IntToStr(100 + mIndex), 'Nr. ' + IntToStr(mIndex)));
+    end;
     Assert.AreEqual(TAtlasRecentIssues.MaxStored, mRecent.Count);
     mItems := mRecent.Items(YouTrackTarget);
     Assert.AreEqual(TAtlasRecentIssues.MaxRecent, Integer(Length(mItems)));

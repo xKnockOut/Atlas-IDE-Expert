@@ -38,7 +38,10 @@ uses
   Atlas.Common.Rules.Checker,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.FormatCheck,
-  Atlas.Common.Lsp.References;
+  Atlas.Common.Lsp.References,
+  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.Rules.BulkFix,
+  Atlas.Common.Mcp.Contract;
 
 type
   TMcpFileEdit = record
@@ -67,6 +70,16 @@ type
     FCheckSource: TCheckSourceFunc;
     FCheckProject: TCheckProjectFunc;
     FSettingsFor: TReferenceSettingsProvider;
+    procedure ReadAll(const ANames: TArray<string>; const AGroups: TArray<TArray<TMcpFileEdit>>;
+      out AOldTexts, ANewTexts: TArray<string>);
+    procedure EnsureWritable(const ANames, AOldTexts: TArray<string>);
+    procedure WriteAll(const ATool: string; const ANames, AOldTexts, ANewTexts: TArray<string>);
+    function RenameEdits(const AFileName: string; ALine, AColumn: Integer; const ANewName: string;
+      out AUnchanged: TArray<TReferenceLocation>): TArray<TMcpFileEdit>;
+    function ActionsAt(const AScope: TMcpRuleScope; const AFileName: string; ALine: Integer): TArray<TCodeAction>;
+    function RunFixes(const AScope: TMcpRuleScope; const AFiles: TArray<string>; const AOptions: TBulkFixOptions;
+      const AFixRules: TArray<IRule>; ADryRun: Boolean; out AUntouched: TArray<string>): TArray<TBulkFixFile>;
+    procedure WriteFixes(const AFixRules: TArray<string>; const AResults: TArray<TBulkFixFile>);
   public
     constructor Create(const AIndex: ISymbolIndex; const AReadText: TReferenceReadText;
       const AWriteText: TMcpWriteText; const AProjectFiles: TFunc<TArray<string>>;
@@ -80,12 +93,12 @@ type
     function RenameSymbol(const AFileName: string; ALine, AColumn: Integer; const ANewName: string;
       ADryRun: Boolean): string;
     /// <summary>Ohne ATitle: verfügbare Korrekturen der Zeile auflisten, nichts ändern.</summary>
-    function ApplyCodeAction(const ARules: TArray<IRule>; const ASettings: TServerSettings;
-      const ARoot, AFileName: string; ALine: Integer; const ATitle: string; ADryRun: Boolean): string;
+    function ApplyCodeAction(const AScope: TMcpRuleScope; const AFileName: string; ALine: Integer;
+      const ATitle: string; ADryRun: Boolean): string;
     /// <summary>fix_findings (#1352): sichere Korrekturen von AFixRules ("all" = alle) in AFiles; AMinConfidence ''
     /// = fix.minConfidence, sonst nur höher. Liefert Zusammenfassung und Diff.</summary>
-    function FixFindings(const ARules: TArray<IRule>; const ASettings: TServerSettings; const ARoot: string;
-      const AFiles, AFixRules: TArray<string>; const AMinConfidence: string; ADryRun: Boolean): string;
+    function FixFindings(const AScope: TMcpRuleScope; const AFiles, AFixRules: TArray<string>;
+      const AMinConfidence: string; ADryRun: Boolean): string;
     /// <summary>format_code mit Text (#1358): formatiert AText (geplanter Inhalt von AFileName) nach AStyle und
     /// liefert die Abweichungen und den formatierten Text; schreibt nichts.</summary>
     function FormatCode(const AStyle: TFormatStyle; const AFileName, AText: string;
@@ -117,16 +130,69 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.ReferenceConfidence,
-  Atlas.Common.Editing.CodeActions,
   Atlas.Common.Rules.CodeActions,
   Atlas.Common.Rules.Scopes,
   Atlas.Common.Rules.Catalog,
-  Atlas.Common.Rules.BulkFix,
   Atlas.Common.Lsp.Rename,
   Atlas.Common.Editing.TextChanges,
   Atlas.Common.Mcp.Server,
   Atlas.Text.Lines,
-  Atlas.Text.Diff;
+  Atlas.Text.Diff,
+  Atlas.Text.LogMarks,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TEditToolsText = (IsNotReadableNothingChanged, HasUnsavedChangesInThe, HasBeenChangedInThe, NoChanges,
+    PreviewDryRunChangesInFiles, ChangesWrittenInFiles, IsNotReadable, NotChangedPleaseCheckInferred,
+    ThereIsNoSymbolThat, NoFixInLineAvailable, FixesInLineApplyWith, NoFixInLine, RepeatWithDryRunFalseTo,
+    NotTouchedUnsavedChangesIn, ArgumentRulesMissingRuleIds, DeviationsFromTheFormatRules, AndMore,
+    NoteTheFormattingIsNot, SyntaxErrorInLineNot, NoDeviationFromTheFormat, NoDeviationFromTheFormat2,
+    OnlyTheLineEndingsDiffer, Line, FormattedTextPascal);
+
+const
+  cTexts: array[TEditToolsText] of TAtlasText = (
+    (De: '%s ist nicht lesbar; nichts geändert.'; En: '%s is not readable; nothing changed.'),
+    (De: '%s hat ungespeicherte Änderungen im Editor; nichts geändert. Erst in der IDE speichern.';
+     En: '%s has unsaved changes in the editor; nothing changed. Save in the IDE first.'),
+    (De: '%s wurde inzwischen geändert; nichts geändert.';
+     En: '%s has been changed in the meantime; nothing changed.'),
+    (De: 'Keine Änderungen.'; En: 'No changes.'),
+    (De: 'Vorschau (dryRun): %d Änderungen in %d Dateien, nichts geschrieben. Zum Schreiben mit dryRun=false ' +
+      'wiederholen.';
+     En: 'Preview (dryRun): %d changes in %d files, nothing written. Repeat with dryRun=false to write.'),
+    (De: '%d Änderungen in %d Dateien geschrieben.'; En: '%d changes written in %d files.'),
+    (De: '%s ist nicht lesbar'; En: '%s is not readable'),
+    (De: 'Nicht geändert, bitte prüfen (%d erschlossene Stellen):';
+     En: 'Not changed, please check (%d inferred places):'),
+    (De: 'An dieser Stelle steht kein umbenennbares Symbol.';
+     En: 'There is no symbol that can be renamed at this position.'),
+    (De: 'Keine Korrektur "%s" in Zeile %d. Verfügbar:'; En: 'No fix "%s" in line %d. Available:'),
+    (De: 'Korrekturen in Zeile %d (mit title anwenden):'; En: 'Fixes in line %d (apply with title):'),
+    (De: 'Keine Korrektur in Zeile %d.'; En: 'No fix in line %d.'),
+    (De: 'Zum Schreiben mit dryRun=false wiederholen.'; En: 'Repeat with dryRun=false to write.'),
+    (De: 'Nicht angefasst (ungespeicherte Änderungen im Editor): %s';
+     En: 'Not touched (unsaved changes in the editor): %s'),
+    (De: 'Argument "rules" fehlt: Regelkennungen oder "all"'; En: 'Argument "rules" missing: rule ids or "all"'),
+    (De: '%s: %d Abweichungen von den Formatregeln'; En: '%s: %d deviations from the format rules'),
+    (De: '- … und %d weitere'; En: '- … and %d more'),
+    (De: 'Hinweis: Die Formatierung ist nicht stabil, ein zweiter Lauf ändert erneut.';
+     En: 'Note: the formatting is not stable, a second run changes it again.'),
+    (De: '%s: Syntaxfehler in Zeile %d, nicht formatiert: %s'; En: '%s: syntax error in line %d, not formatted: %s'),
+    (De: 'Keine Abweichung von den Formatregeln; der Text bleibt, wie er ist.';
+     En: 'No deviation from the format rules; the text stays as it is.'),
+    (De: '%s: keine Abweichung von den Formatregeln.'; En: '%s: no deviation from the format rules.'),
+    (De: 'Nur die Zeilenenden weichen ab (format.endOfLine); format_code ändert sie nicht, dafür AtlasServer --check ' +
+      '<Datei> --format-write verwenden.';
+     En: 'Only the line endings differ (format.endOfLine); format_code does not change them, use AtlasServer --check ' +
+      '<file> --format-write for that.'),
+    (De: '- Zeile %d: %s'; En: '- Line %d: %s'),
+    (De: 'Formatierter Text:' + sLineBreak + '```pascal' + sLineBreak + '%s' + sLineBreak + '```';
+     En: 'Formatted text:' + sLineBreak + '```pascal' + sLineBreak + '%s' + sLineBreak + '```'));
+
+{$SCOPEDENUMS OFF}
 
 { TMcpFileEdit }
 
@@ -165,7 +231,9 @@ begin
     begin
       Result := B.Range.StartPos.Line - A.Range.StartPos.Line;
       if Result = 0 then
+      begin
         Result := B.Range.StartPos.Character - A.Range.StartPos.Character;
+      end;
     end));
   Result := AText;
   for Edit in Sorted do
@@ -188,302 +256,465 @@ begin
     Builder.AppendFormat('--- %s', [AFileName]).AppendLine;
     // Gleiche Zeilenzahl (z. B. Umbenennen): nur die geänderten Zeilen, sonst der geänderte Block.
     for Line in TTextDiff.ChangedLines(TTextLines.SplitLines(AOld), TTextLines.SplitLines(ANew)) do
+    begin
       Builder.AppendLine(Line);
+    end;
     Result := TrimRight(Builder.ToString);
   finally
     Builder.Free;
   end;
 end;
 
+/// <summary>Edits je Datei in der Reihenfolge des ersten Auftretens; ANames die Dateien dazu.</summary>
+function GroupByFile(const AEdits: TArray<TMcpFileEdit>; out ANames: TArray<string>): TArray<TArray<TMcpFileEdit>>;
+var
+  mPositions: TDictionary<string, Integer>;
+  mEdit: TMcpFileEdit;
+  mPosition: Integer;
+begin
+  Result := nil;
+  ANames := nil;
+  mPositions := TDictionary<string, Integer>.Create;
+  try
+    for mEdit in AEdits do
+    begin
+      if not mPositions.TryGetValue(AnsiLowerCase(mEdit.FileName), mPosition) then
+      begin
+        mPosition := Length(ANames);
+        mPositions.Add(AnsiLowerCase(mEdit.FileName), mPosition);
+        ANames := ANames + [mEdit.FileName];
+        SetLength(Result, mPosition + 1);
+      end;
+      Result[mPosition] := Result[mPosition] + [mEdit];
+    end;
+  finally
+    mPositions.Free;
+  end;
+end;
+
+/// <summary>Steht AName (ohne Groß-/Kleinschreibung) in ANames?</summary>
+function ContainsName(const ANames: TArray<string>; const AName: string): Boolean;
+var
+  mName: string;
+begin
+  for mName in ANames do
+  begin
+    if SameText(mName, AName) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>AFileName relativ zu ARoot, wenn sie darunter liegt; sonst unverändert.</summary>
+function RelativeTo(const ARoot, AFileName: string): string;
+begin
+  Result := AFileName;
+  if (ARoot <> '') and StartsText(IncludeTrailingPathDelimiter(ARoot), AFileName) then
+  begin
+    Result := Copy(AFileName, Length(IncludeTrailingPathDelimiter(ARoot)) + 1, MaxInt);
+  end;
+end;
+
+procedure TMcpEditTools.ReadAll(const ANames: TArray<string>; const AGroups: TArray<TArray<TMcpFileEdit>>;
+  out AOldTexts, ANewTexts: TArray<string>);
+var
+  mIndex: Integer;
+begin
+  SetLength(AOldTexts, Length(ANames));
+  SetLength(ANewTexts, Length(ANames));
+  for mIndex := 0 to High(ANames) do
+  begin
+    if not FReadText(ANames[mIndex], AOldTexts[mIndex]) then
+    begin
+      raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.IsNotReadableNothingChanged].Text, [ANames[mIndex]]);
+    end;
+    ANewTexts[mIndex] := ApplyToText(AOldTexts[mIndex], AGroups[mIndex]);
+  end;
+end;
+
+procedure TMcpEditTools.EnsureWritable(const ANames, AOldTexts: TArray<string>);
+var
+  mDirty, mCurrent: string;
+  mIndex: Integer;
+begin
+  // Keine Kollision mit ungespeicherten Änderungen im Editor.
+  if Assigned(FDirtyFiles) then
+  begin
+    for mDirty in FDirtyFiles() do
+    begin
+      if ContainsName(ANames, mDirty) then
+      begin
+        raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.HasUnsavedChangesInThe].Text, [mDirty]);
+      end;
+    end;
+  end;
+  // Seit dem Lesen geändert? Dann nichts schreiben.
+  for mIndex := 0 to High(ANames) do
+  begin
+    if not FReadText(ANames[mIndex], mCurrent) or (mCurrent <> AOldTexts[mIndex]) then
+    begin
+      raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.HasBeenChangedInThe].Text, [ANames[mIndex]]);
+    end;
+  end;
+end;
+
+procedure TMcpEditTools.WriteAll(const ATool: string; const ANames, AOldTexts, ANewTexts: TArray<string>);
+begin
+  // Alles oder nichts: Scheitert eine Datei, setzt TBulkFix die schon geschriebenen zurück.
+  try
+    TBulkFix.WriteAll(ANames, AOldTexts, ANewTexts,
+      procedure(const AFileName, AText: string)
+      begin
+        FWriteText(AFileName, AText);
+      end);
+  except
+    on E: EBulkFixWrite do
+      raise EMcpToolError.Create(E.Message);
+  end;
+  if Assigned(FAudit) then
+  begin
+    FAudit(Format('MCP %s hat geschrieben: %s', [ATool, TLogMarks.Path(string.Join(', ', ANames))]));
+  end;
+end;
+
 function TMcpEditTools.Apply(const ATool: string; const AEdits: TArray<TMcpFileEdit>; ADryRun: Boolean): string;
 var
-  Files: TDictionary<string, TArray<TMcpFileEdit>>;
-  Order: TList<string>;
-  Edit: TMcpFileEdit;
-  Key, FileName, Dirty, Current: string;
-  OldTexts, NewTexts: TArray<string>;
-  Names: TArray<string>;
-  Index: Integer;
-  Report: TStringBuilder;
+  mNames, mOldTexts, mNewTexts: TArray<string>;
+  mGroups: TArray<TArray<TMcpFileEdit>>;
+  mIndex: Integer;
+  mReport: TStringBuilder;
 begin
   if Length(AEdits) = 0 then
-    raise EMcpToolError.Create('Keine Änderungen.');
-  Files := TDictionary<string, TArray<TMcpFileEdit>>.Create;
-  Order := TList<string>.Create;
-  Report := TStringBuilder.Create;
+  begin
+    raise EMcpToolError.Create(cTexts[TEditToolsText.NoChanges].Text);
+  end;
+  mGroups := GroupByFile(AEdits, mNames);
+  ReadAll(mNames, mGroups, mOldTexts, mNewTexts);
+  mReport := TStringBuilder.Create;
   try
-    for Edit in AEdits do
-    begin
-      Key := AnsiLowerCase(Edit.FileName);
-      if not Files.ContainsKey(Key) then
-      begin
-        Files.Add(Key, nil);
-        Order.Add(Edit.FileName);
-      end;
-      Files[Key] := Files[Key] + [Edit];
-    end;
-    Names := Order.ToArray;
-    SetLength(OldTexts, Length(Names));
-    SetLength(NewTexts, Length(Names));
-    for Index := 0 to High(Names) do
-    begin
-      if not FReadText(Names[Index], OldTexts[Index]) then
-        raise EMcpToolError.CreateFmt('%s ist nicht lesbar; nichts geändert.', [Names[Index]]);
-      NewTexts[Index] := ApplyToText(OldTexts[Index], Files[AnsiLowerCase(Names[Index])]);
-    end;
     if ADryRun then
-      Report.AppendFormat('Vorschau (dryRun): %d Änderungen in %d Dateien, nichts geschrieben. ' +
-        'Zum Schreiben mit dryRun=false wiederholen.', [Length(AEdits), Length(Names)]).AppendLine
+    begin
+      mReport.AppendFormat(cTexts[TEditToolsText.PreviewDryRunChangesInFiles].Text, [Length(AEdits),
+        Length(mNames)]).AppendLine;
+    end
     else
     begin
-      // Keine Kollision mit ungespeicherten Änderungen im Editor.
-      if Assigned(FDirtyFiles) then
-        for Dirty in FDirtyFiles() do
-          for FileName in Names do
-            if SameText(Dirty, FileName) then
-              raise EMcpToolError.CreateFmt('%s hat ungespeicherte Änderungen im Editor; nichts geändert. ' +
-                'Erst in der IDE speichern.', [FileName]);
-      // Seit dem Lesen geändert? Dann nichts schreiben.
-      for Index := 0 to High(Names) do
-        if not FReadText(Names[Index], Current) or (Current <> OldTexts[Index]) then
-          raise EMcpToolError.CreateFmt('%s wurde inzwischen geändert; nichts geändert.', [Names[Index]]);
-      // Alles oder nichts: Scheitert eine Datei, setzt TBulkFix die schon geschriebenen zurück.
+      EnsureWritable(mNames, mOldTexts);
+      WriteAll(ATool, mNames, mOldTexts, mNewTexts);
+      mReport.AppendFormat(cTexts[TEditToolsText.ChangesWrittenInFiles].Text, [Length(AEdits),
+        Length(mNames)]).AppendLine;
+    end;
+    for mIndex := 0 to High(mNames) do
+    begin
+      mReport.AppendLine;
+      mReport.AppendLine(Diff(mNames[mIndex], mOldTexts[mIndex], mNewTexts[mIndex]));
+    end;
+    Result := TrimRight(mReport.ToString);
+  finally
+    mReport.Free;
+  end;
+end;
+
+function TMcpEditTools.RenameEdits(const AFileName: string; ALine, AColumn: Integer; const ANewName: string;
+  out AUnchanged: TArray<TReferenceLocation>): TArray<TMcpFileEdit>;
+var
+  mText: string;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mRenames: TArray<TRenameEdit>;
+  mRename: TRenameEdit;
+  mSettings: TReferenceSettings;
+begin
+  if not FReadText(AFileName, mText) then
+  begin
+    raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.IsNotReadable].Text, [AFileName]);
+  end;
+  mSettings := TReferenceSettings.Default;
+  if Assigned(FSettingsFor) then
+  begin
+    mSettings := FSettingsFor(TDocumentUris.FromPath(AFileName));
+  end;
+  mTree := TSyntaxTreeCache.Parse(mText);
+  try
+    mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
+    try
+      mResolver.Namespaces := FNamespaces;
       try
-        TBulkFix.WriteAll(Names, OldTexts, NewTexts,
-          procedure(const AFileName, AText: string)
-          begin
-            FWriteText(AFileName, AText);
-          end);
+        mRenames := TLspRename.Edits(mResolver, FIndex, mTree, TReferenceSearch.Create(AFileName,
+          TTextPosition.Create(ALine - 1, AColumn - 1), True, FProjectFiles(), FReadText),
+          TRenameRequest.Create(ANewName, True, mSettings, nil), AUnchanged);
       except
-        on E: EBulkFixWrite do
+        on E: EJsonRpcError do
           raise EMcpToolError.Create(E.Message);
       end;
-      if Assigned(FAudit) then
-        FAudit(Format('MCP %s hat geschrieben: %s', [ATool, string.Join(', ', Names)]));
-      Report.AppendFormat('%d Änderungen in %d Dateien geschrieben.', [Length(AEdits), Length(Names)]).AppendLine;
+    finally
+      mResolver.Free;
     end;
-    for Index := 0 to High(Names) do
-    begin
-      Report.AppendLine;
-      Report.AppendLine(Diff(Names[Index], OldTexts[Index], NewTexts[Index]));
-    end;
-    Result := TrimRight(Report.ToString);
   finally
-    Report.Free;
-    Order.Free;
-    Files.Free;
+    mTree.Free;
+  end;
+  Result := nil;
+  for mRename in mRenames do
+  begin
+    Result := Result + [TMcpFileEdit.Create(mRename.FileName, mRename.Range, mRename.NewText)];
+  end;
+end;
+
+/// <summary>Erschlossene Stellen, die rename_symbol nicht geändert hat; '' ohne.</summary>
+function UnchangedReport(const AUnchanged: TArray<TReferenceLocation>): string;
+var
+  mLocation: TReferenceLocation;
+begin
+  Result := '';
+  if Length(AUnchanged) = 0 then
+  begin
+    Exit;
+  end;
+  Result := sLineBreak + sLineBreak + cTexts[TEditToolsText.NotChangedPleaseCheckInferred].Fmt([Length(AUnchanged)]);
+  for mLocation in AUnchanged do
+  begin
+    Result := Result + sLineBreak + Format('%s:%d:%d – %s: %s', [mLocation.FileName,
+      mLocation.Range.StartPos.Line + 1, mLocation.Range.StartPos.Character + 1, mLocation.Confidence.ReasonName,
+      mLocation.Confidence.Detail]);
   end;
 end;
 
 function TMcpEditTools.RenameSymbol(const AFileName: string; ALine, AColumn: Integer; const ANewName: string;
   ADryRun: Boolean): string;
 var
-  Text: string;
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
-  Renames: TArray<TRenameEdit>;
-  Rename: TRenameEdit;
-  Edits: TArray<TMcpFileEdit>;
-  Settings: TReferenceSettings;
-  Unchanged: TArray<TReferenceLocation>;
-  Location: TReferenceLocation;
-  Lines: TStringList;
+  mEdits: TArray<TMcpFileEdit>;
+  mUnchanged: TArray<TReferenceLocation>;
 begin
-  if not FReadText(AFileName, Text) then
-    raise EMcpToolError.CreateFmt('%s ist nicht lesbar', [AFileName]);
-  if Assigned(FSettingsFor) then
-    Settings := FSettingsFor(TDocumentUris.FromPath(AFileName))
-  else
-    Settings := TReferenceSettings.Default;
-  Tree := TSyntaxTreeCache.Parse(Text);
-  try
-    Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
-    try
-      Resolver.Namespaces := FNamespaces;
-      try
-        Renames := TLspRename.Edits(Resolver, FIndex, Tree, AFileName, TTextPosition.Create(ALine - 1, AColumn - 1),
-          ANewName, FProjectFiles(), FReadText, nil, True, Settings, Unchanged);
-      except
-        on E: EJsonRpcError do
-          raise EMcpToolError.Create(E.Message);
-      end;
-    finally
-      Resolver.Free;
-    end;
-  finally
-    Tree.Free;
-  end;
-  Edits := nil;
-  for Rename in Renames do
-    Edits := Edits + [TMcpFileEdit.Create(Rename.FileName, Rename.Range, Rename.NewText)];
-  if Length(Edits) = 0 then
-    raise EMcpToolError.Create('An dieser Stelle steht kein umbenennbares Symbol.');
-  Result := Apply('rename_symbol', Edits, ADryRun);
-  if Length(Unchanged) = 0 then
-    Exit;
-  Lines := TStringList.Create;
-  try
-    Lines.Add('');
-    Lines.Add(Format('Nicht geändert, bitte prüfen (%d erschlossene Stellen):', [Length(Unchanged)]));
-    for Location in Unchanged do
-      Lines.Add(Format('%s:%d:%d – %s: %s', [Location.FileName, Location.Range.StartPos.Line + 1,
-        Location.Range.StartPos.Character + 1, Location.Confidence.ReasonName, Location.Confidence.Detail]));
-    Result := Result + sLineBreak + TrimRight(Lines.Text);
-  finally
-    Lines.Free;
-  end;
-end;
-
-function TMcpEditTools.ApplyCodeAction(const ARules: TArray<IRule>; const ASettings: TServerSettings;
-  const ARoot, AFileName: string; ALine: Integer; const ATitle: string; ADryRun: Boolean): string;
-var
-  Text, RelativePath: string;
-  Actions: TArray<TCodeAction>;
-  Action: TCodeAction;
-  Chosen: Integer;
-  Index: Integer;
-  Edit: TRuleEdit;
-  Edits: TArray<TMcpFileEdit>;
-  Lines: TStringList;
-  Scopes: TFindingScopes;
-begin
-  if not FReadText(AFileName, Text) then
-    raise EMcpToolError.CreateFmt('%s ist nicht lesbar', [AFileName]);
-  RelativePath := AFileName;
-  if (ARoot <> '') and StartsText(IncludeTrailingPathDelimiter(ARoot), AFileName) then
-    RelativePath := Copy(AFileName, Length(IncludeTrailingPathDelimiter(ARoot)) + 1, MaxInt);
-  Actions := nil;
-  for Action in TRuleCodeActions.ForRange(TFileChecker.CheckText(ARules, ASettings, RelativePath, Text,
-    TFileChecker.ProjectOf(FCheckProject, AFileName), TFileChecker.SourceOf(FCheckSource, AFileName), Scopes), Text,
-    TTextRange.Create(ALine - 1, 0, ALine - 1, MaxInt div 2)) do
-    if (Length(Action.Edits) > 0) and (Action.Command = '') then
-      Actions := Actions + [Action];
-  if Length(Actions) = 0 then
-    raise EMcpToolError.CreateFmt('Keine Korrektur in Zeile %d.', [ALine]);
-  Chosen := -1;
-  // Über die Regelkennung nur echte Korrekturen: Unterdrücken behebt nichts und braucht seinen Titel (#1109).
-  if ATitle <> '' then
-    for Index := 0 to High(Actions) do
-      if SameText(Actions[Index].Title, ATitle) or (SameText(Actions[Index].RuleId, ATitle) and
-        not MatchStr(Actions[Index].Tag, [RuleSuppressLineTag, RuleSuppressFileTag])) then
-      begin
-        Chosen := Index;
-        Break;
-      end;
-  if Chosen < 0 then
+  mEdits := RenameEdits(AFileName, ALine, AColumn, ANewName, mUnchanged);
+  if Length(mEdits) = 0 then
   begin
-    Lines := TStringList.Create;
-    try
-      if ATitle <> '' then
-        Lines.Add(Format('Keine Korrektur "%s" in Zeile %d. Verfügbar:', [ATitle, ALine]))
-      else
-        Lines.Add(Format('Korrekturen in Zeile %d (mit title anwenden):', [ALine]));
-      for Action in Actions do
-        Lines.Add(Format('- %s [%s]', [Action.Title, Action.RuleId]));
-      Result := TrimRight(Lines.Text);
-    finally
-      Lines.Free;
-    end;
-    if ATitle <> '' then
-      raise EMcpToolError.Create(Result);
-    Exit;
+    raise EMcpToolError.Create(cTexts[TEditToolsText.ThereIsNoSymbolThat].Text);
   end;
-  Edits := nil;
-  for Edit in Actions[Chosen].Edits do
-    Edits := Edits + [TMcpFileEdit.Create(AFileName, Edit.Range, Edit.NewText)];
-  Result := Format('Korrektur: %s', [Actions[Chosen].Title]) + sLineBreak + Apply('apply_code_action', Edits, ADryRun);
+  Result := Apply('rename_symbol', mEdits, ADryRun) + UnchangedReport(mUnchanged);
 end;
 
-function TMcpEditTools.FixFindings(const ARules: TArray<IRule>; const ASettings: TServerSettings; const ARoot: string;
-  const AFiles, AFixRules: TArray<string>; const AMinConfidence: string; ADryRun: Boolean): string;
+function TMcpEditTools.ActionsAt(const AScope: TMcpRuleScope; const AFileName: string;
+  ALine: Integer): TArray<TCodeAction>;
 var
-  mOptions: TBulkFixOptions;
-  mConfidence: TRuleConfidence;
-  mError, mFileName, mRelative, mText, mDirty, mCurrent: string;
-  mDirtyFiles, mUntouched, mNames: TArray<string>;
-  mFixRules: TArray<IRule>;
-  mSource: TCheckSource;
-  mResult: TBulkFixFile;
-  mResults: TArray<TBulkFixFile>;
-  mReport: TStringBuilder;
-  mSkip: Boolean;
+  mText: string;
+  mAction: TCodeAction;
+  mScopes: TFindingScopes;
 begin
-  if AFixRules = nil then
-    raise EMcpToolError.Create('Argument "rules" fehlt: Regelkennungen oder "all"');
-  if not TBulkFix.MinConfidenceOf(ASettings.FixMinConfidence, AMinConfidence, mConfidence, mError) then
-    raise EMcpToolError.Create(mError);
-  mOptions := TBulkFixOptions.Create(AFixRules, mConfidence, TRuleCatalog.Shared.Entries);
-  mFixRules := TBulkFix.RulesFor(ARules, AFixRules);
+  if not FReadText(AFileName, mText) then
+  begin
+    raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.IsNotReadable].Text, [AFileName]);
+  end;
+  Result := nil;
+  for mAction in TRuleCodeActions.ForRange(TFileChecker.CheckText(AScope.Rules, AScope.Settings,
+    RelativeTo(AScope.Root, AFileName), mText, TCheckOrigin.ForFile(FCheckProject, FCheckSource, AFileName),
+    mScopes), mText,
+    TTextRange.Create(ALine - 1, 0, ALine - 1, MaxInt div 2)) do
+  begin
+    if (Length(mAction.Edits) > 0) and (mAction.Command = '') then
+    begin
+      Result := Result + [mAction];
+    end;
+  end;
+end;
+
+/// <summary>Korrektur mit Titel oder Regelkennung ATitle; -1 ohne.</summary>
+function ChosenAction(const AActions: TArray<TCodeAction>; const ATitle: string): Integer;
+var
+  mIndex: Integer;
+begin
+  // Über die Regelkennung nur echte Korrekturen: Unterdrücken behebt nichts und braucht seinen Titel (#1109).
+  for mIndex := 0 to High(AActions) do
+  begin
+    if SameText(AActions[mIndex].Title, ATitle) or (SameText(AActions[mIndex].RuleId, ATitle) and
+      not MatchStr(AActions[mIndex].Tag, [RuleSuppressLineTag, RuleSuppressFileTag])) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
+/// <summary>Liste der Korrekturen der Zeile; mit ATitle als Hinweis, dass es diese nicht gibt.</summary>
+function ActionList(const AActions: TArray<TCodeAction>; const ATitle: string; ALine: Integer): string;
+var
+  mAction: TCodeAction;
+begin
+  if ATitle <> '' then
+  begin
+    Result := cTexts[TEditToolsText.NoFixInLineAvailable].Fmt([ATitle, ALine]);
+  end
+  else
+  begin
+    Result := cTexts[TEditToolsText.FixesInLineApplyWith].Fmt([ALine]);
+  end;
+  for mAction in AActions do
+  begin
+    Result := Result + sLineBreak + Format('- %s [%s]', [mAction.Title, mAction.RuleId]);
+  end;
+end;
+
+function TMcpEditTools.ApplyCodeAction(const AScope: TMcpRuleScope; const AFileName: string; ALine: Integer;
+  const ATitle: string; ADryRun: Boolean): string;
+var
+  mActions: TArray<TCodeAction>;
+  mChosen: Integer;
+  mEdit: TRuleEdit;
+  mEdits: TArray<TMcpFileEdit>;
+begin
+  mActions := ActionsAt(AScope, AFileName, ALine);
+  if Length(mActions) = 0 then
+  begin
+    raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.NoFixInLine].Text, [ALine]);
+  end;
+  mChosen := -1;
+  if ATitle <> '' then
+  begin
+    mChosen := ChosenAction(mActions, ATitle);
+    if mChosen < 0 then
+    begin
+      raise EMcpToolError.Create(ActionList(mActions, ATitle, ALine));
+    end;
+  end;
+  if mChosen < 0 then
+  begin
+    Exit(ActionList(mActions, '', ALine));
+  end;
+  mEdits := nil;
+  for mEdit in mActions[mChosen].Edits do
+  begin
+    mEdits := mEdits + [TMcpFileEdit.Create(AFileName, mEdit.Range, mEdit.NewText)];
+  end;
+  Result := Format('Korrektur: %s', [mActions[mChosen].Title]) + sLineBreak +
+    Apply('apply_code_action', mEdits, ADryRun);
+end;
+
+function TMcpEditTools.RunFixes(const AScope: TMcpRuleScope; const AFiles: TArray<string>;
+  const AOptions: TBulkFixOptions; const AFixRules: TArray<IRule>; ADryRun: Boolean;
+  out AUntouched: TArray<string>): TArray<TBulkFixFile>;
+var
+  mDirtyFiles: TArray<string>;
+  mFileName, mText: string;
+  mSource: TCheckSource;
+begin
   // Ungespeicherte Dateien der IDE nicht anfassen; die übrigen laufen weiter.
   mDirtyFiles := nil;
   if not ADryRun and Assigned(FDirtyFiles) then
+  begin
     mDirtyFiles := FDirtyFiles();
-  mResults := nil;
-  mUntouched := nil;
+  end;
+  Result := nil;
+  AUntouched := nil;
   for mFileName in AFiles do
   begin
-    mSkip := False;
-    for mDirty in mDirtyFiles do
-      if SameText(mDirty, mFileName) then
-        mSkip := True;
-    if mSkip then
+    if ContainsName(mDirtyFiles, mFileName) then
     begin
-      mUntouched := mUntouched + [mFileName];
-      Continue;
+      AUntouched := AUntouched + [mFileName];
+    end
+    else if FReadText(mFileName, mText) then
+    begin
+      mSource := TFileChecker.SourceOf(FCheckSource, mFileName);
+      Result := Result + [TBulkFix.Run(mFileName, mText, AOptions, TBulkFix.CheckWith(AFixRules, AScope.Settings,
+        RelativeTo(AScope.Root, mFileName), TFileChecker.ProjectOf(FCheckProject, mFileName), mSource),
+        TBulkFix.SyntaxErrorsWith(mSource))];
     end;
-    if not FReadText(mFileName, mText) then
-      Continue;
-    mRelative := mFileName;
-    if (ARoot <> '') and StartsText(IncludeTrailingPathDelimiter(ARoot), mFileName) then
-      mRelative := Copy(mFileName, Length(IncludeTrailingPathDelimiter(ARoot)) + 1, MaxInt);
-    mSource := TFileChecker.SourceOf(FCheckSource, mFileName);
-    mResult := TBulkFix.Run(mFileName, mText, mOptions, TBulkFix.CheckWith(mFixRules, ASettings, mRelative,
-      TFileChecker.ProjectOf(FCheckProject, mFileName), mSource), TBulkFix.SyntaxErrorsWith(mSource));
-    mResults := mResults + [mResult];
   end;
+end;
+
+procedure TMcpEditTools.WriteFixes(const AFixRules: TArray<string>; const AResults: TArray<TBulkFixFile>);
+var
+  mResult: TBulkFixFile;
+  mCurrent: string;
+  mNames: TArray<string>;
+begin
+  // Seit dem Lesen geändert? Dann nichts schreiben.
+  mNames := nil;
+  for mResult in AResults do
+  begin
+    if mResult.Changed and (not FReadText(mResult.FileName, mCurrent) or (mCurrent <> mResult.OldText)) then
+    begin
+      raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.HasBeenChangedInThe].Text, [mResult.FileName]);
+    end;
+    if mResult.Changed then
+    begin
+      mNames := mNames + [mResult.FileName];
+    end;
+  end;
+  try
+    TBulkFix.WriteAll(AResults,
+      procedure(const AFileName, AText: string)
+      begin
+        FWriteText(AFileName, AText);
+      end);
+  except
+    on E: EBulkFixWrite do
+      raise EMcpToolError.Create(E.Message);
+  end;
+  if Assigned(FAudit) and (mNames <> nil) then
+  begin
+    FAudit(Format('MCP fix_findings (%s) hat geschrieben: %s', [string.Join(', ', AFixRules),
+      TLogMarks.Path(string.Join(', ', mNames))]));
+  end;
+end;
+
+/// <summary>Bericht von fix_findings: Zusammenfassung, nicht angefasste Dateien und Diff je geänderter Datei.
+/// </summary>
+function FixReport(const ARoot: string; const AResults: TArray<TBulkFixFile>; const AUntouched: TArray<string>;
+  ADryRun: Boolean): string;
+var
+  mReport: TStringBuilder;
+  mFileName: string;
+  mResult: TBulkFixFile;
+begin
   mReport := TStringBuilder.Create;
   try
-    if not ADryRun then
-    begin
-      // Seit dem Lesen geändert? Dann nichts schreiben.
-      for mResult in mResults do
-        if mResult.Changed and (not FReadText(mResult.FileName, mCurrent) or (mCurrent <> mResult.OldText)) then
-          raise EMcpToolError.CreateFmt('%s wurde inzwischen geändert; nichts geändert.', [mResult.FileName]);
-      try
-        TBulkFix.WriteAll(mResults,
-          procedure(const AFileName, AText: string)
-          begin
-            FWriteText(AFileName, AText);
-          end);
-      except
-        on E: EBulkFixWrite do
-          raise EMcpToolError.Create(E.Message);
-      end;
-      mNames := nil;
-      for mResult in mResults do
-        if mResult.Changed then
-          mNames := mNames + [mResult.FileName];
-      if Assigned(FAudit) and (mNames <> nil) then
-        FAudit(Format('MCP fix_findings (%s) hat geschrieben: %s', [string.Join(', ', AFixRules),
-          string.Join(', ', mNames)]));
-    end;
-    mReport.AppendLine(TBulkFix.Summary(mResults, ADryRun, sLineBreak));
+    mReport.AppendLine(TBulkFix.Summary(AResults, ADryRun, sLineBreak));
     if ADryRun then
-      mReport.AppendLine('Zum Schreiben mit dryRun=false wiederholen.');
-    for mFileName in mUntouched do
-      mReport.AppendFormat('Nicht angefasst (ungespeicherte Änderungen im Editor): %s', [mFileName]).AppendLine;
-    for mResult in mResults do
+    begin
+      mReport.AppendLine(cTexts[TEditToolsText.RepeatWithDryRunFalseTo].Text);
+    end;
+    for mFileName in AUntouched do
+    begin
+      mReport.AppendFormat(cTexts[TEditToolsText.NotTouchedUnsavedChangesIn].Text, [mFileName]).AppendLine;
+    end;
+    for mResult in AResults do
+    begin
       if mResult.Changed then
       begin
-        mRelative := mResult.FileName;
-        if (ARoot <> '') and StartsText(IncludeTrailingPathDelimiter(ARoot), mRelative) then
-          mRelative := Copy(mRelative, Length(IncludeTrailingPathDelimiter(ARoot)) + 1, MaxInt);
-        mReport.AppendLine.Append(TBulkFix.Diff(StringReplace(mRelative, '\', '/', [rfReplaceAll]), mResult));
+        mReport.AppendLine.Append(TBulkFix.Diff(StringReplace(RelativeTo(ARoot, mResult.FileName), '\', '/',
+          [rfReplaceAll]), mResult));
       end;
+    end;
     Result := TrimRight(mReport.ToString);
   finally
     mReport.Free;
   end;
+end;
+
+function TMcpEditTools.FixFindings(const AScope: TMcpRuleScope; const AFiles, AFixRules: TArray<string>;
+  const AMinConfidence: string; ADryRun: Boolean): string;
+var
+  mConfidence: TRuleConfidence;
+  mError: string;
+  mUntouched: TArray<string>;
+  mResults: TArray<TBulkFixFile>;
+begin
+  if AFixRules = nil then
+  begin
+    raise EMcpToolError.Create(cTexts[TEditToolsText.ArgumentRulesMissingRuleIds].Text);
+  end;
+  if not TBulkFix.MinConfidenceOf(AScope.Settings.FixMinConfidence, AMinConfidence, mConfidence, mError) then
+  begin
+    raise EMcpToolError.Create(mError);
+  end;
+  mResults := RunFixes(AScope, AFiles, TBulkFixOptions.Create(AFixRules, mConfidence, TRuleCatalog.Shared.Entries),
+    TBulkFix.RulesFor(AScope.Rules, AFixRules), ADryRun, mUntouched);
+  if not ADryRun then
+  begin
+    WriteFixes(AFixRules, mResults);
+  end;
+  Result := FixReport(AScope.Root, mResults, mUntouched, ADryRun);
 end;
 
 /// <summary>Ergebnis von format_code ohne Syntaxfehler: Zahl und erste Abweichungen; '' ohne Abweichung.</summary>
@@ -496,15 +727,21 @@ var
 begin
   mLines := TStringList.Create;
   try
-    mLines.Add(Format('%s: %d Abweichungen von den Formatregeln', [ExtractFileName(AFileName),
+    mLines.Add(cTexts[TEditToolsText.DeviationsFromTheFormatRules].Fmt([ExtractFileName(AFileName),
       Length(AOutcome.Deviations)]));
     for mIndex := 0 to Min(Length(AOutcome.Deviations), cShown) - 1 do
-      mLines.Add(Format('- Zeile %d: %s', [AOutcome.Deviations[mIndex].Line + 1,
+    begin
+      mLines.Add(cTexts[TEditToolsText.Line].Fmt([AOutcome.Deviations[mIndex].Line + 1,
         AOutcome.Deviations[mIndex].Message]));
+    end;
     if Length(AOutcome.Deviations) > cShown then
-      mLines.Add(Format('- … und %d weitere', [Length(AOutcome.Deviations) - cShown]));
+    begin
+      mLines.Add(cTexts[TEditToolsText.AndMore].Fmt([Length(AOutcome.Deviations) - cShown]));
+    end;
     if not AOutcome.Stable then
-      mLines.Add('Hinweis: Die Formatierung ist nicht stabil, ein zweiter Lauf ändert erneut.');
+    begin
+      mLines.Add(cTexts[TEditToolsText.NoteTheFormattingIsNot].Text);
+    end;
     Result := TrimRight(mLines.Text);
   finally
     mLines.Free;
@@ -517,8 +754,10 @@ function FormatOrFail(const AStyle: TFormatStyle; const AFileName, AText: string
 begin
   Result := TFormatCheck.Run(AText, AStyle, AScope, ASource.Options);
   if Result.HasSyntaxError then
-    raise EMcpToolError.CreateFmt('%s: Syntaxfehler in Zeile %d, nicht formatiert: %s',
+  begin
+    raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.SyntaxErrorInLineNot].Text,
       [ExtractFileName(AFileName), Result.SyntaxError.StartPos.Line + 1, Result.SyntaxError.Message]);
+  end;
 end;
 
 function TMcpEditTools.FormatCode(const AStyle: TFormatStyle; const AFileName, AText: string;
@@ -528,9 +767,11 @@ var
 begin
   mOutcome := FormatOrFail(AStyle, AFileName, AText, AScope, TFileChecker.SourceOf(FCheckSource, AFileName));
   if not mOutcome.Changed then
-    Exit('Keine Abweichung von den Formatregeln; der Text bleibt, wie er ist.');
-  Result := DeviationReport(AFileName, mOutcome) + sLineBreak + sLineBreak + 'Formatierter Text:' + sLineBreak +
-    '```pascal' + sLineBreak + mOutcome.Formatted + sLineBreak + '```';
+  begin
+    Exit(cTexts[TEditToolsText.NoDeviationFromTheFormat].Text);
+  end;
+  Result := DeviationReport(AFileName, mOutcome) + sLineBreak + sLineBreak +
+    cTexts[TEditToolsText.FormattedTextPascal].Fmt([mOutcome.Formatted]);
 end;
 
 function TMcpEditTools.FormatCode(const AStyle: TFormatStyle; const AFileName: string;
@@ -542,18 +783,28 @@ var
   mEdits: TArray<TMcpFileEdit>;
 begin
   if not FReadText(AFileName, mText) then
-    raise EMcpToolError.CreateFmt('%s ist nicht lesbar', [AFileName]);
+  begin
+    raise EMcpToolError.CreateFmt(cTexts[TEditToolsText.IsNotReadable].Text, [AFileName]);
+  end;
   mOutcome := FormatOrFail(AStyle, AFileName, mText, AScope, TFileChecker.SourceOf(FCheckSource, AFileName));
   if not mOutcome.Changed then
-    Exit(Format('%s: keine Abweichung von den Formatregeln.', [ExtractFileName(AFileName)]));
+  begin
+    Exit(cTexts[TEditToolsText.NoDeviationFromTheFormat2].Fmt([ExtractFileName(AFileName)]));
+  end;
   mEdits := nil;
   for mEdit in TTextChanges.Diff(mText, mOutcome.Formatted) do
+  begin
     mEdits := mEdits + [TMcpFileEdit.Create(AFileName, mEdit.Range, mEdit.NewText)];
+  end;
   // Die Datei behält ihre Zeilenenden (TFileEncoding beim Schreiben); andere setzt --format-write um.
   if Length(mEdits) = 0 then
-    Exit(DeviationReport(AFileName, mOutcome) + sLineBreak + 'Nur die Zeilenenden weichen ab (format.endOfLine); ' +
-      'format_code ändert sie nicht, dafür AtlasServer --check <Datei> --format-write verwenden.');
+  begin
+    Exit(DeviationReport(AFileName, mOutcome) + sLineBreak + cTexts[TEditToolsText.OnlyTheLineEndingsDiffer].Text);
+  end;
   Result := DeviationReport(AFileName, mOutcome) + sLineBreak + sLineBreak + Apply('format_code', mEdits, ADryRun);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Mcp.EditTools', cTexts);
 
 end.

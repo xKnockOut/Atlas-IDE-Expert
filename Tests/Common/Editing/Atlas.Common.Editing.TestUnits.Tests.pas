@@ -267,9 +267,13 @@ begin
     function(const AFileName: string): string
     begin
       if AFileName = 'C:\P\Tests\Tests.dpr' then
-        Result := TestProgram
+      begin
+        Result := TestProgram;
+      end
       else
+      begin
         Result := App;
+      end;
     end);
   Assert.AreEqual('C:\P\Tests\Tests.dpr', Found);
 end;

@@ -43,6 +43,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Hotspots.Contract,
   Atlas.Common.Hotspots.Analysis,
+  Atlas.Common.Hotspots.Report,
   Atlas.Common.Hotspots.Service;
 
 type
@@ -53,6 +54,23 @@ type
     out ASettings: TServerSettings; out AVcs: IHotspotVcs; out AError: string): Boolean;
 
   TLspHotspotFormat = (Json, Markdown, Html, Text);
+
+  /// <summary>Stand einer Anfrage: Ergebnis, ob eingeschaltet, ob noch in Rechnung, Grund ohne
+  /// Versionsverwaltung und Wurzel der Arbeitskopie.</summary>
+  TLspHotspotOutcome = record
+    Result: THotspotResult;
+    Enabled: Boolean;
+    Pending: Boolean;
+    VcsError: string;
+    Root: string;
+  end;
+
+  /// <summary>Darstellung einer Anfrage: Format, Abschnitt (nur Text) und Länge der Listen.</summary>
+  TLspHotspotView = record
+    Format: TLspHotspotFormat;
+    Section: THotspotSection;
+    Limit: Integer;
+  end;
 
   TLspHotspots = class
   public const
@@ -77,8 +95,11 @@ type
       AOnce: Boolean): TProc;
     procedure StartJob(const AKey: string; const ARequest: THotspotRequest; const AVcs: IHotspotVcs;
       AOnce: Boolean);
-    function ResultFor(const AParams: TJSONObject; out AEnabled, APending: Boolean; out AVcsError, ARoot: string):
-      THotspotResult;
+    function Prepare(const AParams: TJSONObject; var AOutcome: TLspHotspotOutcome; out ARequest: THotspotRequest;
+      out AVcs: IHotspotVcs): Boolean;
+    procedure TakeOrStart(const AKey: string; const ARequest: THotspotRequest; const AVcs: IHotspotVcs;
+      ARefresh, AOnce: Boolean; var AOutcome: TLspHotspotOutcome);
+    function ResultFor(const AParams: TJSONObject): TLspHotspotOutcome;
   public
     /// <summary>AService gehört dem Aufrufer.</summary>
     constructor Create(AService: THotspotService; const ASourceFor: TLspHotspotSourceFunc);
@@ -107,11 +128,35 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   System.StrUtils,
   System.IOUtils,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Hotspots.Report;
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  THotspotsText = (LevelIsUnitOrMethod, MonthsIsAWholeNumber, NoProjectLoaded, NoVersionControlFound,
+    FormatIsJsonMarkdownHtml, SectionIsHotspotsOrCoupling, LimitIsAWholeNumber, HotspotDataIsNotValid,
+    TargetFileMissingMdHtml, HotspotsAreSwitchedOffHotspots);
+
+const
+  cTexts: array[THotspotsText] of TAtlasText = (
+    (De: '"level" ist unit oder method'; En: '"level" is unit or method'),
+    (De: '"months" ist eine ganze Zahl von 1 bis 60'; En: '"months" is a whole number from 1 to 60'),
+    (De: 'Kein Projekt geladen'; En: 'No project loaded'),
+    (De: 'Keine Versionsverwaltung gefunden'; En: 'No version control found'),
+    (De: '"format" ist json, markdown, html oder text'; En: '"format" is json, markdown, html or text'),
+    (De: '"section" ist hotspots oder coupling'; En: '"section" is hotspots or coupling'),
+    (De: '"limit" ist eine ganze Zahl ab 0'; En: '"limit" is a whole number from 0'),
+    (De: 'Hotspot-Daten sind kein gültiges JSON'; En: 'Hotspot data is not valid JSON'),
+    (De: 'Zieldatei fehlt (.md, .html oder .json)'; En: 'Target file missing (.md, .html or .json)'),
+    (De: 'Hotspots sind ausgeschaltet (hotspots.enabled)'; En: 'Hotspots are switched off (hotspots.enabled)'));
+
+{$SCOPEDENUMS OFF}
 
 function StringOf(const AObject: TJSONObject; const AName: string): string;
 var
@@ -119,10 +164,14 @@ var
 begin
   Result := '';
   if AObject = nil then
+  begin
     Exit;
+  end;
   mValue := AObject.GetValue(AName);
   if mValue is TJSONString then
+  begin
     Result := Trim(mValue.Value);
+  end;
 end;
 
 /// <summary>Ganze Zahl AName; ADefault ohne Angabe, False bei einem anderen Typ.</summary>
@@ -133,10 +182,14 @@ begin
   AValue := ADefault;
   Result := True;
   if AObject = nil then
+  begin
     Exit;
+  end;
   mValue := AObject.GetValue(AName);
   if mValue = nil then
+  begin
     Exit;
+  end;
   Result := (mValue is TJSONNumber) and TryStrToInt(mValue.Value, AValue);
 end;
 
@@ -144,9 +197,13 @@ end;
 function PathOf(const AText: string): string;
 begin
   if StartsText('file:', AText) then
-    Result := TDocumentUris.ToPath(AText)
+  begin
+    Result := TDocumentUris.ToPath(AText);
+  end
   else
+  begin
     Result := AText;
+  end;
 end;
 
 { TLspHotspots }
@@ -189,7 +246,9 @@ begin
   end;
   // Nur dieser Thread startet und gibt Arbeiter frei (unter FJobLock in StartJob); warten ohne Sperre.
   if mWorker <> nil then
+  begin
     mWorker.WaitFor;
+  end;
 end;
 
 function TLspHotspots.JobProc(const AKey: string; const ARequest: THotspotRequest; const AVcs: IHotspotVcs;
@@ -260,13 +319,21 @@ class function TLspHotspots.TryParseFormat(const AText: string; out AFormat: TLs
 begin
   Result := True;
   if (AText = '') or SameText(AText, 'json') then
-    AFormat := TLspHotspotFormat.Json
+  begin
+    AFormat := TLspHotspotFormat.Json;
+  end
   else if SameText(AText, 'markdown') then
-    AFormat := TLspHotspotFormat.Markdown
+  begin
+    AFormat := TLspHotspotFormat.Markdown;
+  end
   else if SameText(AText, 'html') then
-    AFormat := TLspHotspotFormat.Html
+  begin
+    AFormat := TLspHotspotFormat.Html;
+  end
   else if SameText(AText, 'text') then
-    AFormat := TLspHotspotFormat.Text
+  begin
+    AFormat := TLspHotspotFormat.Text;
+  end
   else
   begin
     AFormat := TLspHotspotFormat.Json;
@@ -283,13 +350,13 @@ begin
   AError := '';
   if not THotspots.TryLevelOf(StringOf(AParams, 'level'), mLevel) then
   begin
-    AError := '"level" ist unit oder method';
+    AError := cTexts[THotspotsText.LevelIsUnitOrMethod].Text;
     Exit(False);
   end;
   ARequest.Level := mLevel;
   if not IntegerOf(AParams, 'months', ARequest.Options.Months, mMonths) or (mMonths < 1) or (mMonths > 60) then
   begin
-    AError := '"months" ist eine ganze Zahl von 1 bis 60';
+    AError := cTexts[THotspotsText.MonthsIsAWholeNumber].Text;
     Exit(False);
   end;
   ARequest.Options.Months := mMonths;
@@ -300,143 +367,217 @@ class function TLspHotspots.Limited(const AResult: THotspotResult; ALimit: Integ
 begin
   Result := AResult;
   if ALimit <= 0 then
-    Exit;
-  if Length(Result.Units) > ALimit then
-    Result.Units := Copy(Result.Units, 0, ALimit);
-  if Length(Result.Methods) > ALimit then
-    Result.Methods := Copy(Result.Methods, 0, ALimit);
-  if Length(Result.Coupling) > ALimit then
-    Result.Coupling := Copy(Result.Coupling, 0, ALimit);
-end;
-
-function TLspHotspots.ResultFor(const AParams: TJSONObject; out AEnabled, APending: Boolean;
-  out AVcsError, ARoot: string): THotspotResult;
-var
-  mRequest: THotspotRequest;
-  mSettings: TServerSettings;
-  mVcs: IHotspotVcs;
-  mError, mHead, mKey: string;
-  mRefresh: TJSONValue;
-begin
-  Result := Default(THotspotResult);
-  AEnabled := False;
-  APending := False;
-  AVcsError := '';
-  ARoot := '';
-  if not (Assigned(FSourceFor) and FSourceFor(PathOf(StringOf(AParams, 'uri')), mRequest, mSettings, mVcs,
-    AVcsError)) then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Kein Projekt geladen');
-  AEnabled := mSettings.HotspotsEnabled;
-  if not AEnabled then
-    Exit;
-  if not ApplyOptions(AParams, mRequest, mError) then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, mError);
-  if mVcs = nil then
   begin
-    if AVcsError = '' then
-      AVcsError := 'Keine Versionsverwaltung gefunden';
     Exit;
   end;
-  ARoot := mVcs.Root;
-  mHead := mVcs.Head;
-  mKey := THotspots.KindName(mVcs.Kind) + #1 + mVcs.Root + #1 + mHead + #1 + mRequest.Key;
-  mRefresh := nil;
+  if Length(Result.Units) > ALimit then
+  begin
+    Result.Units := Copy(Result.Units, 0, ALimit);
+  end;
+  if Length(Result.Methods) > ALimit then
+  begin
+    Result.Methods := Copy(Result.Methods, 0, ALimit);
+  end;
+  if Length(Result.Coupling) > ALimit then
+  begin
+    Result.Coupling := Copy(Result.Coupling, 0, ALimit);
+  end;
+end;
+
+/// <summary>Wert von "refresh" in AParams; False ohne Angabe.</summary>
+function RefreshOf(const AParams: TJSONObject): Boolean;
+var
+  mValue: TJSONValue;
+begin
+  Result := False;
   if AParams <> nil then
-    mRefresh := AParams.GetValue('refresh');
+  begin
+    mValue := AParams.GetValue('refresh');
+    Result := (mValue is TJSONBool) and TJSONBool(mValue).AsBoolean;
+  end;
+end;
+
+function TLspHotspots.Prepare(const AParams: TJSONObject; var AOutcome: TLspHotspotOutcome;
+  out ARequest: THotspotRequest; out AVcs: IHotspotVcs): Boolean;
+var
+  mSettings: TServerSettings;
+  mError: string;
+begin
+  if not (Assigned(FSourceFor) and FSourceFor(PathOf(StringOf(AParams, 'uri')), ARequest, mSettings, AVcs,
+    AOutcome.VcsError)) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[THotspotsText.NoProjectLoaded].Text);
+  end;
+  AOutcome.Enabled := mSettings.HotspotsEnabled;
+  Result := False;
+  if AOutcome.Enabled then
+  begin
+    if not ApplyOptions(AParams, ARequest, mError) then
+    begin
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, mError);
+    end;
+    Result := AVcs <> nil;
+    if not Result and (AOutcome.VcsError = '') then
+    begin
+      AOutcome.VcsError := cTexts[THotspotsText.NoVersionControlFound].Text;
+    end;
+  end;
+end;
+
+procedure TLspHotspots.TakeOrStart(const AKey: string; const ARequest: THotspotRequest; const AVcs: IHotspotVcs;
+  ARefresh, AOnce: Boolean; var AOutcome: TLspHotspotOutcome);
+var
+  mError: string;
+begin
   System.TMonitor.Enter(FJobLock);
   try
-    if (mRefresh is TJSONBool) and TJSONBool(mRefresh).AsBoolean and not FRunning and (FDoneKey = mKey) then
+    if ARefresh and not FRunning and (FDoneKey = AKey) then
+    begin
       FDoneKey := '';
-    if not FRunning and (FDoneKey = mKey) then
+    end;
+    AOutcome.Pending := FRunning or (FDoneKey <> AKey);
+    if not AOutcome.Pending then
     begin
       mError := FDoneError;
-      Result := FDone;
+      AOutcome.Result := FDone;
       // Ein Fehler kommt einmal, ein Ergebnis ohne Stand gilt nur für diese Anfrage; danach wird neu gerechnet.
       if (mError <> '') or FDoneOnce then
+      begin
         FDoneKey := '';
+      end;
       if mError <> '' then
+      begin
         raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, mError);
-      Exit;
+      end;
+    end
+    else if not FRunning then
+    begin
+      StartJob(AKey, ARequest, AVcs, AOnce);
     end;
-    APending := True;
-    if not FRunning then
-      StartJob(mKey, mRequest, mVcs, mHead = '');
   finally
     System.TMonitor.Exit(FJobLock);
+  end;
+end;
+
+function TLspHotspots.ResultFor(const AParams: TJSONObject): TLspHotspotOutcome;
+var
+  mRequest: THotspotRequest;
+  mVcs: IHotspotVcs;
+  mHead, mKey: string;
+begin
+  Result := Default(TLspHotspotOutcome);
+  if Prepare(AParams, Result, mRequest, mVcs) then
+  begin
+    Result.Root := mVcs.Root;
+    mHead := mVcs.Head;
+    mKey := THotspots.KindName(mVcs.Kind) + #1 + mVcs.Root + #1 + mHead + #1 + mRequest.Key;
+    TakeOrStart(mKey, mRequest, mVcs, RefreshOf(AParams), mHead = '', Result);
+  end;
+end;
+
+/// <summary>Format, Abschnitt und Listenlänge aus AParams; Fehler der Anfrage bei ungültigen Werten.</summary>
+function ViewOf(const AParams: TJSONObject): TLspHotspotView;
+begin
+  if not TLspHotspots.TryParseFormat(StringOf(AParams, 'format'), Result.Format) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[THotspotsText.FormatIsJsonMarkdownHtml].Text);
+  end;
+  if not THotspotReport.ParseSection(StringOf(AParams, 'section'), Result.Section) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[THotspotsText.SectionIsHotspotsOrCoupling].Text);
+  end;
+  Result.Limit := 0;
+  if Result.Format = TLspHotspotFormat.Text then
+  begin
+    Result.Limit := THotspotReport.TextLimit;
+  end;
+  if not IntegerOf(AParams, 'limit', Result.Limit, Result.Limit) or (Result.Limit < 0) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[THotspotsText.LimitIsAWholeNumber].Text);
+  end;
+end;
+
+/// <summary>Fertiges Ergebnis in der gewählten Darstellung an AAnswer anhängen.</summary>
+procedure AddReport(AAnswer: TJSONObject; const AResult: THotspotResult; const AView: TLspHotspotView);
+var
+  mValue: TJSONValue;
+begin
+  case AView.Format of
+    TLspHotspotFormat.Json:
+      begin
+        mValue := TJSONObject.ParseJSONValue(THotspotReport.Json(AResult));
+        if mValue = nil then
+        begin
+          raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, cTexts[THotspotsText.HotspotDataIsNotValid].Text);
+        end;
+        AAnswer.AddPair('format', 'json');
+        AAnswer.AddPair('data', mValue);
+      end;
+    TLspHotspotFormat.Markdown:
+      begin
+        AAnswer.AddPair('format', 'markdown');
+        AAnswer.AddPair('text', THotspotReport.Markdown(AResult));
+      end;
+    TLspHotspotFormat.Html:
+      begin
+        AAnswer.AddPair('format', 'html');
+        AAnswer.AddPair('text', THotspotReport.Html(AResult));
+      end;
+    TLspHotspotFormat.Text:
+      begin
+        AAnswer.AddPair('format', 'text');
+        AAnswer.AddPair('text', THotspotReport.Text(AResult, AView.Section, AView.Limit));
+      end;
+  end;
+end;
+
+/// <summary>Felder der Antwort bei eingeschalteten Hotspots: vcs, dann Grund, pending oder Bericht.</summary>
+procedure AddEnabledAnswer(AAnswer: TJSONObject; const AOutcome: TLspHotspotOutcome; const AView: TLspHotspotView);
+begin
+  AAnswer.AddPair('vcs', TJSONBool.Create(AOutcome.VcsError = ''));
+  if AOutcome.VcsError <> '' then
+  begin
+    AAnswer.AddPair('message', AOutcome.VcsError);
+  end
+  else if AOutcome.Pending then
+  begin
+    AAnswer.AddPair('root', AOutcome.Root);
+    AAnswer.AddPair('pending', TJSONBool.Create(True));
+  end
+  else
+  begin
+    AAnswer.AddPair('root', AOutcome.Root);
+    // Der Text kürzt selbst und nennt die Gesamtzahl ("20 von 431").
+    if AView.Format = TLspHotspotFormat.Text then
+    begin
+      AddReport(AAnswer, AOutcome.Result, AView);
+    end
+    else
+    begin
+      AddReport(AAnswer, TLspHotspots.Limited(AOutcome.Result, AView.Limit), AView);
+    end;
   end;
 end;
 
 function TLspHotspots.Request(const AParams: TJSONValue): TJSONValue;
 var
   mParams, mAnswer: TJSONObject;
-  mFormat: TLspHotspotFormat;
-  mSection: THotspotSection;
-  mResult: THotspotResult;
-  mEnabled, mPending: Boolean;
-  mVcsError, mRoot: string;
-  mLimit: Integer;
-  mValue: TJSONValue;
+  mView: TLspHotspotView;
+  mOutcome: TLspHotspotOutcome;
 begin
+  mParams := nil;
   if AParams is TJSONObject then
-    mParams := TJSONObject(AParams)
-  else
-    mParams := nil;
-  if not TryParseFormat(StringOf(mParams, 'format'), mFormat) then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"format" ist json, markdown, html oder text');
-  if not THotspotReport.ParseSection(StringOf(mParams, 'section'), mSection) then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"section" ist hotspots oder coupling');
-  if mFormat = TLspHotspotFormat.Text then
-    mLimit := THotspotReport.TextLimit
-  else
-    mLimit := 0;
-  if not IntegerOf(mParams, 'limit', mLimit, mLimit) or (mLimit < 0) then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"limit" ist eine ganze Zahl ab 0');
-  mResult := ResultFor(mParams, mEnabled, mPending, mVcsError, mRoot);
+  begin
+    mParams := TJSONObject(AParams);
+  end;
+  mView := ViewOf(mParams);
+  mOutcome := ResultFor(mParams);
   mAnswer := TJSONObject.Create;
   try
-    mAnswer.AddPair('enabled', TJSONBool.Create(mEnabled));
-    if mEnabled then
+    mAnswer.AddPair('enabled', TJSONBool.Create(mOutcome.Enabled));
+    if mOutcome.Enabled then
     begin
-      mAnswer.AddPair('vcs', TJSONBool.Create(mVcsError = ''));
-      if mVcsError <> '' then
-        mAnswer.AddPair('message', mVcsError)
-      else if mPending then
-      begin
-        mAnswer.AddPair('root', mRoot);
-        mAnswer.AddPair('pending', TJSONBool.Create(True));
-      end
-      else
-      begin
-        mAnswer.AddPair('root', mRoot);
-        // Der Text kürzt selbst und nennt die Gesamtzahl ("20 von 431").
-        if mFormat <> TLspHotspotFormat.Text then
-          mResult := Limited(mResult, mLimit);
-        case mFormat of
-          TLspHotspotFormat.Json:
-            begin
-              mValue := TJSONObject.ParseJSONValue(THotspotReport.Json(mResult));
-              if mValue = nil then
-                raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, 'Hotspot-Daten sind kein gültiges JSON');
-              mAnswer.AddPair('format', 'json');
-              mAnswer.AddPair('data', mValue);
-            end;
-          TLspHotspotFormat.Markdown:
-            begin
-              mAnswer.AddPair('format', 'markdown');
-              mAnswer.AddPair('text', THotspotReport.Markdown(mResult));
-            end;
-          TLspHotspotFormat.Html:
-            begin
-              mAnswer.AddPair('format', 'html');
-              mAnswer.AddPair('text', THotspotReport.Html(mResult));
-            end;
-          TLspHotspotFormat.Text:
-            begin
-              mAnswer.AddPair('format', 'text');
-              mAnswer.AddPair('text', THotspotReport.Text(mResult, mSection, mLimit));
-            end;
-        end;
-      end;
+      AddEnabledAnswer(mAnswer, mOutcome, mView);
     end;
     Result := mAnswer;
     mAnswer := nil;
@@ -454,13 +595,19 @@ begin
   Result := TJSONObject.Create;
   try
     if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
+    begin
       Result.AddPair('uri', AArguments.Items[0].Value);
+    end;
     if (AArguments <> nil) and (AArguments.Count > AOptionsAt) and (AArguments.Items[AOptionsAt] is TJSONObject) then
     begin
       mOptions := TJSONObject(AArguments.Items[AOptionsAt]);
       for mPair in mOptions do
+      begin
         if mPair.JsonString.Value <> 'uri' then
+        begin
           Result.AddPair(mPair.JsonString.Value, TJSONValue(mPair.JsonValue.Clone));
+        end;
+      end;
     end;
   except
     Result.Free;
@@ -480,48 +627,75 @@ begin
   end;
 end;
 
+/// <summary>Zieldatei aus [uri, Datei, Optionen]; Fehler der Anfrage ohne Datei.</summary>
+function TargetOf(const AArguments: TJSONArray): string;
+begin
+  Result := '';
+  if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONString) then
+  begin
+    Result := PathOf(AArguments.Items[1].Value);
+  end;
+  if Result = '' then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[THotspotsText.TargetFileMissingMdHtml].Text);
+  end;
+end;
+
+/// <summary>Fehler der Anfrage, wenn sich kein Bericht schreiben lässt (ausgeschaltet, ohne Versionsverwaltung).</summary>
+procedure CheckSavable(const AOutcome: TLspHotspotOutcome);
+begin
+  if not AOutcome.Enabled then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidRequest,
+      cTexts[THotspotsText.HotspotsAreSwitchedOffHotspots].Text);
+  end;
+  if AOutcome.VcsError <> '' then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidRequest, AOutcome.VcsError);
+  end;
+end;
+
 function TLspHotspots.SaveReport(const AArguments: TJSONArray): TJSONValue;
 var
   mParams, mAnswer: TJSONObject;
-  mTarget, mVcsError, mRoot: string;
-  mResult: THotspotResult;
-  mEnabled, mPending: Boolean;
+  mTarget: string;
+  mOutcome: TLspHotspotOutcome;
   mLevel: THotspotLevel;
 begin
-  mTarget := '';
-  if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONString) then
-    mTarget := PathOf(AArguments.Items[1].Value);
-  if mTarget = '' then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Zieldatei fehlt (.md, .html oder .json)');
+  mTarget := TargetOf(AArguments);
   mParams := ParamsOf(AArguments, 2);
   try
     if not THotspots.TryLevelOf(StringOf(mParams, 'level'), mLevel) then
-      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"level" ist unit oder method');
+    begin
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[THotspotsText.LevelIsUnitOrMethod].Text);
+    end;
     // Dieselbe Rechnung wie das Fenster (Methodenebene enthält die Units); gezeigt wird die gewählte Ebene.
     mParams.RemovePair('level').Free;
     mParams.AddPair('level', THotspots.LevelKey(THotspotLevel.Methods));
-    mResult := ResultFor(mParams, mEnabled, mPending, mVcsError, mRoot);
+    mOutcome := ResultFor(mParams);
   finally
     mParams.Free;
   end;
-  if not mEnabled then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidRequest, 'Hotspots sind ausgeschaltet (hotspots.enabled)');
-  if mVcsError <> '' then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidRequest, mVcsError);
-  if mPending then
+  CheckSavable(mOutcome);
+  if mOutcome.Pending then
   begin
     mAnswer := TJSONObject.Create;
     mAnswer.AddPair('pending', TJSONBool.Create(True));
-    Exit(mAnswer);
+  end
+  else
+  begin
+    mOutcome.Result.Level := mLevel;
+    ForceDirectories(ExtractFileDir(mTarget));
+    // UTF-8 ohne BOM wie --hotspots; Browser und Markdown-Leser brauchen keins.
+    TFile.WriteAllBytes(mTarget, TEncoding.UTF8.GetBytes(THotspotReport.ForFile(mOutcome.Result, mTarget)));
+    mAnswer := TJSONObject.Create;
+    mAnswer.AddPair('file', mTarget);
+    mAnswer.AddPair('units', TJSONNumber.Create(Length(mOutcome.Result.Units)));
   end;
-  mResult.Level := mLevel;
-  ForceDirectories(ExtractFileDir(mTarget));
-  // UTF-8 ohne BOM wie --hotspots; Browser und Markdown-Leser brauchen keins.
-  TFile.WriteAllBytes(mTarget, TEncoding.UTF8.GetBytes(THotspotReport.ForFile(mResult, mTarget)));
-  mAnswer := TJSONObject.Create;
-  mAnswer.AddPair('file', mTarget);
-  mAnswer.AddPair('units', TJSONNumber.Create(Length(mResult.Units)));
   Result := mAnswer;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.Hotspots', cTexts);
 
 end.

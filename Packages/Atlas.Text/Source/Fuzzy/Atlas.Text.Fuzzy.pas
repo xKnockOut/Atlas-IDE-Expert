@@ -43,16 +43,24 @@ var
   Current, Previous: Char;
 begin
   if AIndex = 1 then
+  begin
     Exit(True);
+  end;
   Current := AName[AIndex];
   Previous := AName[AIndex - 1];
   if (Previous = '_') or (Previous = '.') then
+  begin
     Exit((Current <> '_') and (Current <> '.'));
+  end;
   if Current.IsUpper then
+  begin
     Exit(Previous.IsLower or Previous.IsDigit or
       ((AIndex < Length(AName)) and AName[AIndex + 1].IsLower));
+  end;
   if Current.IsDigit then
+  begin
     Exit(not Previous.IsDigit);
+  end;
   Result := Current.IsLower and Previous.IsDigit;
 end;
 
@@ -62,9 +70,13 @@ var
 begin
   PatternIndex := 1;
   for NameIndex := 1 to Length(AName) do
+  begin
     if (PatternIndex <= Length(APattern)) and IsWordStart(AName, NameIndex) and
       (UpCase(AName[NameIndex]) = UpCase(APattern[PatternIndex])) then
+    begin
       Inc(PatternIndex);
+    end;
+  end;
   Result := PatternIndex > Length(APattern);
 end;
 
@@ -75,12 +87,16 @@ var
   Previous: Boolean;
 begin
   if APattern = '' then
+  begin
     Exit(True);
+  end;
   // Reached[i]: Das Muster bis zum aktuellen Zeichen endet passend bei AName[i].
   Reached := nil;
   SetLength(Reached, Length(AName) + 1);
   for NameIndex := 1 to Length(AName) do
+  begin
     Reached[NameIndex] := IsWordStart(AName, NameIndex) and (UpCase(AName[NameIndex]) = UpCase(APattern[1]));
+  end;
   for PatternIndex := 2 to Length(APattern) do
   begin
     Next := nil;
@@ -97,8 +113,12 @@ begin
   end;
   Result := False;
   for NameIndex := 1 to Length(AName) do
+  begin
     if Reached[NameIndex] then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 class function TTextFuzzy.EditDistance(const A, B: string; ALimit: Integer): Integer;
@@ -110,11 +130,15 @@ begin
   Left := LowerCase(A);
   Right := LowerCase(B);
   if Abs(Length(Left) - Length(Right)) > ALimit then
+  begin
     Exit(ALimit + 1);
+  end;
   SetLength(Row, Length(Right) + 1);
   SetLength(Next, Length(Right) + 1);
   for J := 0 to Length(Right) do
+  begin
     Row[J] := J;
+  end;
   for I := 1 to Length(Left) do
   begin
     Next[0] := I;
@@ -125,7 +149,9 @@ begin
       Best := Min(Best, Next[J]);
     end;
     if Best > ALimit then
+    begin
       Exit(ALimit + 1);
+    end;
     Row := Copy(Next);
   end;
   Result := Row[Length(Right)];
@@ -142,7 +168,9 @@ begin
   begin
     Value := EditDistance(AName, Candidate, Best);
     if Value = 0 then
+    begin
       Exit('');
+    end;
     if Value < Best then
     begin
       Best := Value;

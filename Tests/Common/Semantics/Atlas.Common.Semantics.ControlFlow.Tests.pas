@@ -18,6 +18,12 @@ type
     [Test]
     procedure ResultMissingOnOnePath;
     [Test]
+    procedure ForWithLiteralBoundsRunsAtLeastOnce;
+    [Test]
+    procedure ForBoundsAndDirection;
+    [Test]
+    procedure ForWithConstantBoundRunsAtLeastOnce;
+    [Test]
     procedure ExitWithValueSetsResult;
     [Test]
     procedure BreakLeavesLoop;
@@ -72,7 +78,8 @@ uses
   System.SysUtils,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
-  Atlas.Common.Semantics.ControlFlow;
+  Atlas.Common.Semantics.ControlFlow,
+  Atlas.Common.Semantics.ControlFlow.Statements;
 
 type
   TFlowFixture = record
@@ -92,12 +99,16 @@ var
   Index: Integer;
 begin
   if ANode.Kind = AKind then
+  begin
     Exit(ANode);
+  end;
   for Index := 0 to ANode.ChildCount - 1 do
   begin
     Result := FindKind(ANode.Children[Index], AKind);
     if Result <> nil then
+    begin
       Exit;
+    end;
   end;
   Result := nil;
 end;
@@ -108,12 +119,16 @@ var
   Index: Integer;
 begin
   if (ANode.Kind in [TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement]) and SameText(ANode.Name, AName) then
+  begin
     Exit(ANode);
+  end;
   for Index := 0 to ANode.ChildCount - 1 do
   begin
     Result := FindStatement(ANode.Children[Index], AName);
     if Result <> nil then
+    begin
       Exit;
+    end;
   end;
   Result := nil;
 end;
@@ -132,12 +147,16 @@ var
   Index: Integer;
 begin
   if (ANode.Kind = TSyntaxKind.RoutineDecl) and SameText(ANode.Name, AName) then
+  begin
     Exit(ANode);
+  end;
   for Index := 0 to ANode.ChildCount - 1 do
   begin
     Result := FindRoutine(ANode.Children[Index], AName);
     if Result <> nil then
+    begin
       Exit;
+    end;
   end;
   Result := nil;
 end;
@@ -206,6 +225,88 @@ begin
     Assert.IsTrue(F.Graph.MayEndWithout('Result') = TFlowAnswer.Yes);
   finally
     F.Free;
+  end;
+end;
+
+/// <summary>for mit Literalen als Grenzen und nicht leerem Bereich läuft sicher einmal; leerer Bereich, downto
+/// und Variablen als Grenze lassen den Weg am Rumpf vorbei offen.</summary>
+procedure TControlFlowTests.ForWithLiteralBoundsRunsAtLeastOnce;
+
+  function MayEndWithoutResult(const ABody: string): Boolean;
+  var
+    mFixture: TFlowFixture;
+  begin
+    mFixture := Flow(ABody);
+    try
+      Result := mFixture.Graph.MayEndWithout('Result') = TFlowAnswer.Yes;
+    finally
+      mFixture.Free;
+    end;
+  end;
+
+begin
+  Assert.IsFalse(MayEndWithoutResult('  for I := 0 to 64 do'#13#10'    Result := I;'));
+  Assert.IsFalse(MayEndWithoutResult('  for I := 3 downto 1 do'#13#10'    Result := I;'));
+  Assert.IsFalse(MayEndWithoutResult('  for var J: Integer := 1 to 1 do'#13#10'    Result := J;'));
+  Assert.IsTrue(MayEndWithoutResult('  for I := 64 to 0 do'#13#10'    Result := I;'));
+  Assert.IsTrue(MayEndWithoutResult('  for I := 0 downto 64 do'#13#10'    Result := I;'));
+  Assert.IsTrue(MayEndWithoutResult('  for I := 0 to X do'#13#10'    Result := I;'));
+  Assert.IsTrue(MayEndWithoutResult('  for I := 0 to 64 do'#13#10'    if I > X then'#13#10'      Result := I;'));
+end;
+
+/// <summary>Eine echte Konstante der Unit als Grenze gilt wie ihr Wert (WithRetries
+/// im Update-Netzadapter, cAttempts = 3); typisierte, doppelt deklarierte oder verdeckte Namen
+/// nicht.</summary>
+procedure TControlFlowTests.ForWithConstantBoundRunsAtLeastOnce;
+
+  function MayEndWithoutResult(const ADeclarations, ABody: string): Boolean;
+  var
+    mFixture: TFlowFixture;
+  begin
+    mFixture := FlowWith(ADeclarations, ABody);
+    try
+      Result := mFixture.Graph.MayEndWithout('Result') = TFlowAnswer.Yes;
+    finally
+      mFixture.Free;
+    end;
+  end;
+
+const
+  cLoop = '  for I := 1 to cAttempts do'#13#10'    Result := I;';
+begin
+  Assert.IsFalse(MayEndWithoutResult('const cAttempts = 3;', cLoop));
+  Assert.IsFalse(MayEndWithoutResult('const cAttempts = $10;', '  for I := cAttempts downto 2 do'#13#10 +
+    '    Result := I;'));
+  Assert.IsTrue(MayEndWithoutResult('const cAttempts = 0;', cLoop));
+  Assert.IsTrue(MayEndWithoutResult('const cAttempts: Integer = 3;', cLoop));
+  Assert.IsTrue(MayEndWithoutResult('', cLoop));
+  Assert.IsTrue(MayEndWithoutResult('{$IF Defined(A)}const cAttempts = 3;{$ELSE}const cAttempts = 0;{$IFEND}',
+    cLoop));
+  Assert.IsTrue(MayEndWithoutResult('const cAttempts = 3;'#13#10 +
+    'procedure G(cAttempts: Integer);'#13#10'begin'#13#10'end;', cLoop));
+end;
+
+/// <summary>Grenzen aus Zahlenliteralen (auch $hex, nach dem Typ einer Inline-Variablen) und downto aus dem
+/// Parser; ohne for-Schleife keine Aussage.</summary>
+procedure TControlFlowTests.ForBoundsAndDirection;
+var
+  mFixture: TFlowFixture;
+  mFor: TSyntaxNode;
+  mFrom, mTo: Int64;
+begin
+  mFixture := Flow('  for var J: Integer := $10 downto 2 do'#13#10'    Y := J;');
+  try
+    mFor := FindKind(mFixture.Tree.Root, TSyntaxKind.ForStatement);
+    Assert.IsTrue(TFlowStatements.LiteralBounds(mFor, mFrom, mTo));
+    Assert.AreEqual(Int64(16), mFrom);
+    Assert.AreEqual(Int64(2), mTo);
+    Assert.IsTrue(mFor.Descending);
+    Assert.IsTrue(TFlowStatements.RunsAtLeastOnce(mFor));
+    Assert.IsFalse(TFlowStatements.RunsAtLeastOnce(FindKind(mFixture.Tree.Root, TSyntaxKind.RoutineDecl)));
+    Assert.IsTrue(TFlowStatements.IsStatement(TSyntaxKind.ForStatement));
+    Assert.IsFalse(TFlowStatements.IsStatement(TSyntaxKind.Literal));
+  finally
+    mFixture.Free;
   end;
 end;
 
@@ -286,8 +387,12 @@ begin
     Syntax := FindStatement(F.Tree.Root, 'Cleanup');
     OnExitPath := False;
     for Node in F.Graph.Nodes do
+    begin
       if (Node.Syntax = Syntax) and (F.Graph.IsReachable(Node) = TFlowAnswer.Yes) then
+      begin
         OnExitPath := True;
+      end;
+    end;
     Assert.IsTrue(OnExitPath, 'finally läuft');
     Assert.IsTrue(F.Graph.IsReachable(F.Graph.ExitNode) = TFlowAnswer.Yes, 'Routine endet');
     Assert.IsTrue(F.Graph.IsReachable(NodeNamed(F, 'Dead')) = TFlowAnswer.No, 'Exit springt');
@@ -626,8 +731,12 @@ var
   begin
     Result := 0;
     for Next in ANode.Successors do
+    begin
       if ANode.IsImplicitRaiseEdge(Next) then
+      begin
         Inc(Result);
+      end;
+    end;
   end;
 
 begin

@@ -3,7 +3,7 @@
 // Tests der Schnellaktionen je Projekt ohne VCL und IDE (#764):
 // Einstellung welcomePage.quickActions.items, Knöpfe und ihre Reihenfolge,
 // Sperrlogik von „Pull“ (lokale Änderungen, keine Arbeitskopie, laufende
-// Aktion), Pull mit einer Ersatz-Versionsverwaltung, Zuordnung Projekt →
+// Aktion; das Holen selbst testet Atlas.Core.Vcs.Pull.Tests), Zuordnung Projekt →
 // Testprojekt (Namensmuster, eigenes DUnitX-Programm, Projektgruppe),
 // Konfigurationen und Plattformen einer .dproj, Projekte einer .groupproj,
 // Kommandozeile der Konsole, Tasten Strg+B/Strg+T und die Bewegung mit den
@@ -19,6 +19,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeQuickActionsTests = class
   public
     [Test]
@@ -33,16 +34,9 @@ type
     procedure SvnButtonIsUpdate;
     [Test]
     procedure BusyKeepsFolderAndConsole;
+    /// <summary>#1292: Auswahl „mit/ohne Externals“ am Knopf nur unter SVN.</summary>
     [Test]
-    procedure PullChecksChangesBeforeFetching;
-    [Test]
-    procedure PullReportsUpdatedAndUpToDate;
-    [Test]
-    procedure PullFailuresAndNoWorkingCopy;
-    /// <summary>#1292: ohne Externals über IAtlasVcsSvnExternals.Update(True), sonst Pull; Auswahl am Knopf
-    /// nur unter SVN.</summary>
-    [Test]
-    procedure PullWithAndWithoutExternals;
+    procedure UpdateAsksForExternalsOnlyUnderSvn;
     [Test]
     procedure TestProjectByNamePattern;
     [Test]
@@ -76,55 +70,9 @@ implementation
 uses
   System.SysUtils,
   Atlas.Core.Projects.Summary,
-  Atlas.Core.Vcs.Contract,
   Atlas.Core.Welcome.QuickActions;
 
 type
-  /// <summary>Ersatz für Git bzw. SVN: festgelegte Ergebnisse ohne Prozess; Pull setzt die Revision weiter.
-  /// </summary>
-  TFakeVcs = class(TInterfacedObject, IAtlasVersionControl, IAtlasVcsUpdate)
-  public
-    FHead: TAtlasVcsHead;
-    FHeadOutcome: TAtlasVcsOutcome;
-    FChanges: TArray<TAtlasVcsChange>;
-    FChangesOutcome: TAtlasVcsOutcome;
-    FPullOutcome: TAtlasVcsOutcome;
-    /// <summary>Revision nach Pull; '' = unverändert.</summary>
-    FPulledRevision: string;
-    Calls: TArray<string>;
-    constructor Create;
-    function Kind: TAtlasVcsKind;
-    function WorkingCopy: TAtlasVcsWorkingCopy;
-    function Head(out AHead: TAtlasVcsHead): TAtlasVcsOutcome;
-    function Changes(out AChanges: TArray<TAtlasVcsChange>): TAtlasVcsOutcome;
-    function FileAt(const AFileName, ARevision: string; out AContent: TBytes): TAtlasVcsOutcome;
-    function Blame(const AFileName: string; out ALines: TArray<TAtlasVcsBlameLine>): TAtlasVcsOutcome;
-    function ChangeMarker: string;
-    function Pull: TAtlasVcsOutcome;
-    function Called(const AName: string): Boolean;
-  end;
-
-  /// <summary>SVN mit Externals (#1292): Update protokolliert, ob ohne Externals.</summary>
-  TFakeSvnExternals = class(TFakeVcs, IAtlasVcsSvnExternals)
-  public
-    function StatusXml(out AText: string): TAtlasVcsOutcome;
-    function Update(AIgnoreExternals: Boolean): TAtlasVcsOutcome;
-    function CommitsSince(const APath, ARevision: string; out ACount: Integer): TAtlasVcsOutcome;
-    function SetExternals(const AOwner, AText: string): TAtlasVcsOutcome;
-  end;
-
-  /// <summary>Ohne IAtlasVcsUpdate (z. B. eine fremde Umsetzung): Pull schlägt fehl.</summary>
-  TFakeVcsWithoutUpdate = class(TInterfacedObject, IAtlasVersionControl)
-  public
-    function Kind: TAtlasVcsKind;
-    function WorkingCopy: TAtlasVcsWorkingCopy;
-    function Head(out AHead: TAtlasVcsHead): TAtlasVcsOutcome;
-    function Changes(out AChanges: TArray<TAtlasVcsChange>): TAtlasVcsOutcome;
-    function FileAt(const AFileName, ARevision: string; out AContent: TBytes): TAtlasVcsOutcome;
-    function Blame(const AFileName: string; out ALines: TArray<TAtlasVcsBlameLine>): TAtlasVcsOutcome;
-    function ChangeMarker: string;
-  end;
-
   /// <summary>Dateien im Speicher für die Zuordnung Projekt → Testprojekt.</summary>
   TFakeFiles = class
   public
@@ -147,13 +95,6 @@ begin
   Result.Changed := AChanged;
 end;
 
-function Change(const APath: string; AKind: TAtlasVcsChangeKind): TAtlasVcsChange;
-begin
-  Result := Default(TAtlasVcsChange);
-  Result.Path := APath;
-  Result.Kind := AKind;
-end;
-
 function TestFor(AFiles: TFakeFiles; const AProject: string; out ACandidates: TArray<string>): string;
 begin
   Result := TAtlasWelcomeQuickActions.TestProjectFor(AProject,
@@ -165,149 +106,6 @@ begin
     begin
       Result := AFiles.Read(AName, ALines);
     end, ACandidates);
-end;
-
-{ TFakeVcs }
-
-constructor TFakeVcs.Create;
-begin
-  inherited Create;
-  FHead := TAtlasVcsHead.Empty;
-  FHead.Branch := 'main';
-  FHead.Revision := 'aaaa';
-  FHeadOutcome := TAtlasVcsOutcome.Ok;
-  FChangesOutcome := TAtlasVcsOutcome.Ok;
-  FPullOutcome := TAtlasVcsOutcome.Ok;
-end;
-
-function TFakeVcs.Kind: TAtlasVcsKind;
-begin
-  Result := TAtlasVcsKind.Git;
-end;
-
-function TFakeVcs.WorkingCopy: TAtlasVcsWorkingCopy;
-begin
-  Result.Kind := TAtlasVcsKind.Git;
-  Result.Root := 'C:\Repo';
-end;
-
-function TFakeVcs.Head(out AHead: TAtlasVcsHead): TAtlasVcsOutcome;
-begin
-  Calls := Calls + ['head'];
-  AHead := FHead;
-  Result := FHeadOutcome;
-end;
-
-function TFakeVcs.Changes(out AChanges: TArray<TAtlasVcsChange>): TAtlasVcsOutcome;
-begin
-  Calls := Calls + ['changes'];
-  AChanges := FChanges;
-  Result := FChangesOutcome;
-end;
-
-function TFakeVcs.FileAt(const AFileName, ARevision: string; out AContent: TBytes): TAtlasVcsOutcome;
-begin
-  AContent := nil;
-  Result := TAtlasVcsOutcome.Failed;
-end;
-
-function TFakeVcs.Blame(const AFileName: string; out ALines: TArray<TAtlasVcsBlameLine>): TAtlasVcsOutcome;
-begin
-  ALines := nil;
-  Result := TAtlasVcsOutcome.Failed;
-end;
-
-function TFakeVcs.ChangeMarker: string;
-begin
-  Result := FHead.Revision;
-end;
-
-function TFakeVcs.Pull: TAtlasVcsOutcome;
-begin
-  Calls := Calls + ['pull'];
-  Result := FPullOutcome;
-  if (Result = TAtlasVcsOutcome.Ok) and (FPulledRevision <> '') then
-    FHead.Revision := FPulledRevision;
-end;
-
-{ TFakeSvnExternals }
-
-function TFakeSvnExternals.StatusXml(out AText: string): TAtlasVcsOutcome;
-begin
-  AText := '';
-  Result := TAtlasVcsOutcome.Failed;
-end;
-
-function TFakeSvnExternals.Update(AIgnoreExternals: Boolean): TAtlasVcsOutcome;
-begin
-  Calls := Calls + ['update ' + BoolToStr(AIgnoreExternals, True)];
-  Result := FPullOutcome;
-  if (Result = TAtlasVcsOutcome.Ok) and (FPulledRevision <> '') then
-    FHead.Revision := FPulledRevision;
-end;
-
-function TFakeSvnExternals.CommitsSince(const APath, ARevision: string; out ACount: Integer): TAtlasVcsOutcome;
-begin
-  ACount := 0;
-  Result := TAtlasVcsOutcome.Failed;
-end;
-
-function TFakeSvnExternals.SetExternals(const AOwner, AText: string): TAtlasVcsOutcome;
-begin
-  Result := TAtlasVcsOutcome.Failed;
-end;
-
-function TFakeVcs.Called(const AName: string): Boolean;
-var
-  Call: string;
-begin
-  Result := False;
-  for Call in Calls do
-    if Call = AName then
-      Exit(True);
-end;
-
-{ TFakeVcsWithoutUpdate }
-
-function TFakeVcsWithoutUpdate.Kind: TAtlasVcsKind;
-begin
-  Result := TAtlasVcsKind.Git;
-end;
-
-function TFakeVcsWithoutUpdate.WorkingCopy: TAtlasVcsWorkingCopy;
-begin
-  Result.Kind := TAtlasVcsKind.Git;
-  Result.Root := 'C:\Repo';
-end;
-
-function TFakeVcsWithoutUpdate.Head(out AHead: TAtlasVcsHead): TAtlasVcsOutcome;
-begin
-  AHead := TAtlasVcsHead.Empty;
-  Result := TAtlasVcsOutcome.Ok;
-end;
-
-function TFakeVcsWithoutUpdate.Changes(out AChanges: TArray<TAtlasVcsChange>): TAtlasVcsOutcome;
-begin
-  AChanges := nil;
-  Result := TAtlasVcsOutcome.Ok;
-end;
-
-function TFakeVcsWithoutUpdate.FileAt(const AFileName, ARevision: string; out AContent: TBytes): TAtlasVcsOutcome;
-begin
-  AContent := nil;
-  Result := TAtlasVcsOutcome.Failed;
-end;
-
-function TFakeVcsWithoutUpdate.Blame(const AFileName: string;
-  out ALines: TArray<TAtlasVcsBlameLine>): TAtlasVcsOutcome;
-begin
-  ALines := nil;
-  Result := TAtlasVcsOutcome.Failed;
-end;
-
-function TFakeVcsWithoutUpdate.ChangeMarker: string;
-begin
-  Result := '';
 end;
 
 { TFakeFiles }
@@ -324,8 +122,12 @@ var
 begin
   Result := False;
   for Name in Names do
+  begin
     if SameText(Name, AName) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function TFakeFiles.Read(const AName: string; out ALines: TArray<string>): Boolean;
@@ -335,11 +137,13 @@ begin
   ALines := nil;
   Result := False;
   for Index := 0 to High(Names) do
+  begin
     if SameText(Names[Index], AName) then
     begin
       ALines := Texts[Index].Split([#10]);
       Exit(True);
     end;
+  end;
 end;
 
 { TAtlasWelcomeQuickActionsTests }
@@ -439,87 +243,26 @@ begin
   Buttons := TAtlasWelcomeQuickActions.Buttons(TAtlasWelcomeQuickActions.ParseItems(
     TAtlasWelcomeQuickActions.DefaultItems), Vcs(True, 'git', 0), True);
   for Button in Buttons do
+  begin
     Assert.IsTrue(((Button.Action = TAtlasQuickAction.Folder) or (Button.Action = TAtlasQuickAction.Console)) =
       Button.Enabled, TAtlasWelcomeQuickActions.Names[Button.Action]);
+  end;
   // Aktion eines anderen Projekts in der IDE: nur die Knöpfe, die die IDE brauchen, sind gesperrt.
   Buttons := TAtlasWelcomeQuickActions.Buttons(TAtlasWelcomeQuickActions.ParseItems(
     TAtlasWelcomeQuickActions.DefaultItems), Vcs(True, 'git', 0), False, True);
   for Button in Buttons do
+  begin
     Assert.IsTrue(TAtlasWelcomeQuickActions.UsesIde(Button.Action) <> Button.Enabled,
       TAtlasWelcomeQuickActions.Names[Button.Action]);
+  end;
   Assert.IsTrue(Buttons[TAtlasWelcomeQuickActions.IndexOf(Buttons, TAtlasQuickAction.Pull)].Block =
     TAtlasPullBlock.None);
 end;
 
-procedure TAtlasWelcomeQuickActionsTests.PullChecksChangesBeforeFetching;
+procedure TAtlasWelcomeQuickActionsTests.UpdateAsksForExternalsOnlyUnderSvn;
 var
-  Fake: TFakeVcs;
-  Ref: IAtlasVersionControl;
-begin
-  Fake := TFakeVcs.Create;
-  Ref := Fake;
-  Fake.FChanges := [Change('C:\Repo\a.pas', TAtlasVcsChangeKind.Modified)];
-  Assert.IsTrue(TAtlasWelcomeQuickActions.Pull(Ref) = TAtlasPullOutcome.Blocked);
-  Assert.IsFalse(Fake.Called('pull'), 'lokale Änderung: nichts holen');
-  // Unversionierte Dateien sperren nicht.
-  Fake.FChanges := [Change('C:\Repo\neu.pas', TAtlasVcsChangeKind.Untracked)];
-  Assert.IsTrue(TAtlasWelcomeQuickActions.Pull(Ref) = TAtlasPullOutcome.UpToDate);
-  Assert.IsTrue(Fake.Called('pull'));
-  Assert.IsTrue(TAtlasWelcomeQuickActions.ChangesBlockPull([Change('x', TAtlasVcsChangeKind.Untracked),
-    Change('y', TAtlasVcsChangeKind.Conflicted)]));
-  Assert.IsFalse(TAtlasWelcomeQuickActions.ChangesBlockPull(nil));
-end;
-
-procedure TAtlasWelcomeQuickActionsTests.PullReportsUpdatedAndUpToDate;
-var
-  Fake: TFakeVcs;
-  Ref: IAtlasVersionControl;
-begin
-  Fake := TFakeVcs.Create;
-  Ref := Fake;
-  Fake.FPulledRevision := 'bbbb';
-  Assert.IsTrue(TAtlasWelcomeQuickActions.Pull(Ref) = TAtlasPullOutcome.Updated);
-  Assert.AreEqual('head', Fake.Calls[0]);
-  Assert.AreEqual('changes', Fake.Calls[1]);
-  Assert.AreEqual('pull', Fake.Calls[2]);
-  Assert.AreEqual('head', Fake.Calls[3]);
-  Fake.FPulledRevision := '';
-  Assert.IsTrue(TAtlasWelcomeQuickActions.Pull(Ref) = TAtlasPullOutcome.UpToDate);
-end;
-
-procedure TAtlasWelcomeQuickActionsTests.PullWithAndWithoutExternals;
-var
-  mFake: TFakeSvnExternals;
-  mPlain: TFakeVcs;
-  mRef, mPlainRef: IAtlasVersionControl;
-  mReason: TAtlasVcsOutcome;
   mButtons: TAtlasQuickActionButtons;
 begin
-  mFake := TFakeSvnExternals.Create;
-  mRef := mFake;
-  mFake.FPulledRevision := '48300';
-  Assert.IsTrue(TAtlasWelcomeQuickActions.Pull(mRef, True, mReason) = TAtlasPullOutcome.Updated);
-  Assert.IsTrue(mReason = TAtlasVcsOutcome.Ok);
-  Assert.IsTrue(mFake.Called('update True'));
-  Assert.IsFalse(mFake.Called('pull'));
-  mFake.Calls := nil;
-  Assert.IsTrue(TAtlasWelcomeQuickActions.Pull(mRef, False, mReason) = TAtlasPullOutcome.UpToDate);
-  Assert.IsTrue(mFake.Called('pull'), 'mit Externals = Pull des Providers');
-  // Ohne lokale Änderungen weiterhin gesperrt, auch ohne Externals.
-  mFake.Calls := nil;
-  mFake.FChanges := TArray<TAtlasVcsChange>.Create(Change('C:\Repo\Packages\Basis\A.pas',
-    TAtlasVcsChangeKind.Modified));
-  Assert.IsTrue(TAtlasWelcomeQuickActions.Pull(mRef, True, mReason) = TAtlasPullOutcome.Blocked);
-  Assert.IsFalse(mFake.Called('update True'));
-  mFake.FChanges := nil;
-  mFake.FPullOutcome := TAtlasVcsOutcome.LoginNeeded;
-  Assert.IsTrue(TAtlasWelcomeQuickActions.Pull(mRef, True, mReason) = TAtlasPullOutcome.Failed);
-  Assert.IsTrue(mReason = TAtlasVcsOutcome.LoginNeeded);
-  // Git kennt keine Externals: holt wie immer.
-  mPlain := TFakeVcs.Create;
-  mPlainRef := mPlain;
-  Assert.IsTrue(TAtlasWelcomeQuickActions.Pull(mPlainRef, True, mReason) = TAtlasPullOutcome.UpToDate);
-  Assert.IsTrue(mPlain.Called('pull'));
   // Auswahl am Knopf nur für „Aktualisieren“ (SVN).
   mButtons := TAtlasWelcomeQuickActions.Buttons([TAtlasQuickAction.Pull, TAtlasQuickAction.Folder],
     Vcs(True, 'svn', 0), False);
@@ -531,41 +274,6 @@ begin
   TAtlasWelcomeQuickActions.AskExternals(mButtons);
   Assert.IsFalse(mButtons[0].AskExternals);
   mButtons := nil;
-  mFake.Calls := nil;
-  mPlain.Calls := nil;
-end;
-
-procedure TAtlasWelcomeQuickActionsTests.PullFailuresAndNoWorkingCopy;
-var
-  Fake: TFakeVcs;
-  Ref: IAtlasVersionControl;
-  Reason: TAtlasVcsOutcome;
-begin
-  Assert.IsTrue(TAtlasWelcomeQuickActions.Pull(nil) = TAtlasPullOutcome.NoWorkingCopy);
-  Fake := TFakeVcs.Create;
-  Ref := Fake;
-  Fake.FHeadOutcome := TAtlasVcsOutcome.NoWorkingCopy;
-  Assert.IsTrue(TAtlasWelcomeQuickActions.Pull(Ref) = TAtlasPullOutcome.NoWorkingCopy);
-  Fake.FHeadOutcome := TAtlasVcsOutcome.ToolMissing;
-  Assert.IsTrue(TAtlasWelcomeQuickActions.Pull(Ref) = TAtlasPullOutcome.Failed);
-  Fake.FHeadOutcome := TAtlasVcsOutcome.Ok;
-  Fake.FChangesOutcome := TAtlasVcsOutcome.TimedOut;
-  Assert.IsTrue(TAtlasWelcomeQuickActions.Pull(Ref) = TAtlasPullOutcome.Failed, 'Stand unklar: nicht holen');
-  Assert.IsFalse(Fake.Called('pull'));
-  // Grund für die Meldung: das Ergebnis des gescheiterten Aufrufs.
-  Assert.IsTrue(TAtlasWelcomeQuickActions.Pull(Ref, Reason) = TAtlasPullOutcome.Failed);
-  Assert.IsTrue(Reason = TAtlasVcsOutcome.TimedOut);
-  Fake.FChangesOutcome := TAtlasVcsOutcome.Ok;
-  Fake.FPullOutcome := TAtlasVcsOutcome.Failed;
-  Assert.IsTrue(TAtlasWelcomeQuickActions.Pull(Ref) = TAtlasPullOutcome.Failed, 'z. B. abweichender Branch');
-  Fake.FPullOutcome := TAtlasVcsOutcome.ToolMissing;
-  Assert.IsTrue(TAtlasWelcomeQuickActions.Pull(Ref, Reason) = TAtlasPullOutcome.Failed);
-  Assert.IsTrue(Reason = TAtlasVcsOutcome.ToolMissing);
-  Fake.FPullOutcome := TAtlasVcsOutcome.Ok;
-  Assert.IsTrue(TAtlasWelcomeQuickActions.Pull(Ref, Reason) = TAtlasPullOutcome.UpToDate);
-  Assert.IsTrue(Reason = TAtlasVcsOutcome.Ok);
-  Ref := TFakeVcsWithoutUpdate.Create;
-  Assert.IsTrue(TAtlasWelcomeQuickActions.Pull(Ref) = TAtlasPullOutcome.Failed);
 end;
 
 procedure TAtlasWelcomeQuickActionsTests.TestProjectByNamePattern;

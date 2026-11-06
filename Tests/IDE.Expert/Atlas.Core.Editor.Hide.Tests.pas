@@ -298,7 +298,9 @@ begin
   Assert.AreEqual('A.pas', Team.Hidden[2].FileName);
   Paths := '';
   for Issue in Team.Issues do
+  begin
     Paths := Paths + Issue.Path + '|';
+  end;
   Assert.Contains(Paths, 'hidden[2].file');
   Assert.Contains(Paths, 'hidden[3].file');
   Assert.Contains(Paths, 'hidden[4]');

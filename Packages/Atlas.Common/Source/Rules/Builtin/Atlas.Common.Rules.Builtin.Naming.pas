@@ -23,8 +23,12 @@
 // Sichtbarkeitsabschnitt eines Formulars, Frames oder Datenmoduls
 // (Komponenten), Parameter von Methoden
 // mit override oder message, von published-Methoden, von Ereignis-Handlern
-// (ein Parameter heißt Sender) und von Methoden, die eine Interface-Methode
-// erfüllen: Sie behalten die Namen ihrer Vorlage. Bleibt offen, ob eine
+// (ein Parameter heißt Sender oder der Code weist die Methode einer Property
+// OnXyz zu: FEvents.OnEditorPaintLine := PaintLine) und von Methoden, die eine
+// Interface-Methode erfüllen: Sie behalten die Namen ihrer Vorlage. In einer
+// Parameterliste mit einem Parameter, der genau wie das Präfix heißt
+// (Vergleicher function(const A, B: T)), gelten Namen aus einem Buchstaben als
+// Paar und werden nicht gemeldet. Bleibt offen, ob eine
 // Methode ein Interface erfüllt (Interface weder in der Datei noch im Index),
 // schweigt die Regel für ihre Parameter.
 //
@@ -95,15 +99,36 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.EventAssignments,
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Options,
-  Atlas.Common.Rules.Builtin.Unused;
+  Atlas.Common.Rules.Builtin.Unused.Shared,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TNamingText = (Title, MissingPrefix, RenameTo, LocalVariable, FieldKind, ParameterKind, ConstantKind);
+
+const
+  cTexts: array[TNamingText] of TAtlasText = (
+    (De: 'Name ohne das Präfix seiner Art'; En: 'Name without the prefix of its kind'),
+    (De: '%s %s ohne Präfix %s (erwartet: %s)'; En: '%s %s without prefix %s (expected: %s)'),
+    (De: 'In %s umbenennen'; En: 'Rename to %s'),
+    (De: 'Lokale Variable'; En: 'Local variable'),
+    (De: 'Feld'; En: 'Field'),
+    (De: 'Parameter'; En: 'Parameter'),
+    (De: 'Konstante'; En: 'Constant'));
+
+{$SCOPEDENUMS OFF}
 
 const
   OptionKeys: array[TRuleNamingKind] of string = ('local', 'field', 'parameter', 'constant');
-  KindTexts: array[TRuleNamingKind] of string = ('Lokale Variable', 'Feld', 'Parameter', 'Konstante');
+  KindTexts: array[TRuleNamingKind] of TNamingText = (TNamingText.LocalVariable, TNamingText.FieldKind,
+    TNamingText.ParameterKind, TNamingText.ConstantKind);
   TypeBodies = [TSyntaxKind.ClassType, TSyntaxKind.RecordType, TSyntaxKind.ObjectType, TSyntaxKind.InterfaceType,
     TSyntaxKind.HelperType];
   // Ohne Index: Komponenten stehen vor dem ersten Sichtbarkeitsabschnitt dieser Klassen.
@@ -122,10 +147,14 @@ begin
     Result := AContext.NewNames.ConstantPrefix;
   end;
   if Result <> '' then
+  begin
     Exit;
+  end;
   Result := ADefault;
   if AContext.Naming.Known[AKind] and (AContext.Naming.Prefixes[AKind] <> '') then
+  begin
     Result := AContext.Naming.Prefixes[AKind];
+  end;
 end;
 
 function IsLetter(ACh: Char): Boolean;
@@ -147,23 +176,35 @@ var
   Member: TJSONValue;
 begin
   for Kind := Low(TRuleNamingKind) to High(TRuleNamingKind) do
+  begin
     if AContext.Naming.Known[Kind] then
-      Result.Prefixes[Kind] := AContext.Naming.Prefixes[Kind]
+    begin
+      Result.Prefixes[Kind] := AContext.Naming.Prefixes[Kind];
+    end
     else
+    begin
       Result.Prefixes[Kind] := DefaultNamingPrefixes[Kind];
+    end;
+  end;
   Result.Ignore := TRuleOptions.Strings(AContext.Options, 'ignore', nil);
   if AContext.Options = '' then
+  begin
     Exit;
+  end;
   Value := TJSONObject.ParseJSONValue(AContext.Options);
   try
     if not (Value is TJSONObject) then
+    begin
       Exit;
+    end;
     for Kind := Low(TRuleNamingKind) to High(TRuleNamingKind) do
     begin
       Member := TJSONObject(Value).GetValue(OptionKeys[Kind]);
       // TJSONNumber erbt von TJSONString; auch ein leerer Text ist eine Vorgabe (Art aus).
       if (Member is TJSONString) and not (Member is TJSONNumber) then
+      begin
         Result.Prefixes[Kind] := Trim(Member.Value);
+      end;
     end;
   finally
     Value.Free;
@@ -196,10 +237,17 @@ end;
 
 function TNamingPrefixRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(RuleId, TRuleSeverity.Hint, 'Name ohne das Präfix seiner Art', True);
+  Result := TRuleDescriptor.Create(RuleId, TRuleSeverity.Hint, cTexts[TNamingText.Title].Text, True);
 end;
 
 type
+  /// <summary>Wo Parameter stehen: Kopf der Routine, Typ der Methodendeklaration, Rumpf zum Umbenennen.</summary>
+  TParameterOwner = record
+    Header: TSyntaxNode;
+    Body: TSyntaxNode;
+    Scope: TSyntaxNode;
+  end;
+
   /// <summary>Eine Prüfung: Name, Art, Deklaration und der Bereich der Korrektur.</summary>
   TNamingCheck = class
   private
@@ -212,9 +260,8 @@ type
     // Wurzel und alle RoutineDecl in Baumreihenfolge.
     FRoot: TSyntaxNode;
     FRoutineDecls: TArray<TSyntaxNode>;
-    function ShortName(const AName: string): string;
-    function BareTypeName(const AName: string): string;
-    function TokenIn(AIndex: Integer; ANode: TSyntaxNode): Boolean;
+    /// <summary>Methoden, die der Code einer Property OnXyz zuweist (TEventAssignments).</summary>
+    FEventMethods: TArray<string>;
     /// <summary>Token des Namens in [AStart, AEnd), nicht hinter einem Punkt; hinter AQualifier. (Self, Typname)
     /// doch.</summary>
     function NameTokens(AStart, AEnd: Integer; const AName: string; const AQualifiers: array of string):
@@ -222,34 +269,16 @@ type
     /// <summary>Kommt AName irgendwo hinter einem Punkt vor, dessen Qualifizierer nicht in AQualifiers steht?
     /// </summary>
     function QualifiedElsewhere(const AName: string; const AQualifiers: array of string): Boolean;
-    function FirstNameToken(ANode: TSyntaxNode; const AName: string; out AIndex: Integer): Boolean;
-    function OccursInFile(const AName: string): Boolean;
-    function InAny(AIndex: Integer; const ANodes: TArray<TSyntaxNode>): Boolean;
-    function ContainsKind(ANode: TSyntaxNode; AKind: TSyntaxKind): Boolean;
     /// <summary>Deklariert ein Knoten unter ANode außer ADeclaration den Namen (Variable, Parameter, Konstante)?
     /// </summary>
     function Redeclares(ANode, ADeclaration: TSyntaxNode; const AName: string): Boolean;
-    function DeclaresName(ANode: TSyntaxNode; const AName: string): Boolean;
     /// <summary>Deklariert der Rumpf von ARoutine (ohne Kopf) den Namen neu?</summary>
     function RedeclaresInBody(ARoutine: TSyntaxNode; const AName: string): Boolean;
     function IsInlineFor(AFor: TSyntaxNode): Boolean;
-    function EnclosingScope(ANode: TSyntaxNode): TSyntaxNode;
-    function OwnerType(ANode: TSyntaxNode): TSyntaxNode;
-    function TypeDeclOf(ABody: TSyntaxNode): TSyntaxNode;
     function IsComponentHost(ABody: TSyntaxNode): Boolean;
-    function VisibilityOf(ABody, AMember: TSyntaxNode; out AImplicit: Boolean): string;
     function MethodsOf(const ATypeName: string): TArray<TSyntaxNode>;
-    function ParameterNames(AParams: TSyntaxNode): TArray<string>;
-    function ParameterPosition(AParams, AParam: TSyntaxNode; const AName: string): Integer;
-    function HasDirective(AHeader: TSyntaxNode; const ANames: array of string): Boolean;
-    function ImplementsInterface(ABody: TSyntaxNode; const AMethod: string; out AKnown: Boolean): Boolean;
-    function IsForwardOrInterface(ARoutine: TSyntaxNode): Boolean;
     function ImplementationOf(const AQualified: string; APosition: Integer; const AName: string): TSyntaxNode;
     function DeclarationOf(ARoutine: TSyntaxNode): TSyntaxNode;
-    function EditsFor(const AIndexes: TArray<Integer>; const ANewName: string): TArray<TRuleEdit>;
-    /// <summary>Kommt AName in einem der Bereiche (Offsets von X bis vor Y) vor? Ohne Bereiche: in der Datei.
-    /// </summary>
-    function OccursIn(const AName: string; const AScopes: TArray<TPoint>): Boolean;
     procedure Report(AKind: TRuleNamingKind; ADeclaration: TSyntaxNode; const AName: string;
       const AEdits: TArray<Integer>; ACanFix: Boolean;
     const AScopes: TArray<TPoint>);
@@ -257,13 +286,492 @@ type
     procedure CheckLocal(ADecl: TSyntaxNode; const AName: string; AKind: TRuleNamingKind);
     procedure CheckInlineFor(AFor: TSyntaxNode);
     procedure CheckMember(ABody, ADecl: TSyntaxNode; const AName: string; AKind: TRuleNamingKind);
+    function IsExemptField(ABody: TSyntaxNode; const AVisibility: string; AImplicit: Boolean): Boolean;
+    function MemberEdits(ABody: TSyntaxNode; const AName, ATypeName: string; out AMethods: TArray<TSyntaxNode>;
+      out AEdits: TArray<Integer>): Boolean;
+    function IsMemberUse(AIndex: Integer; const ATypeName: string; const AMethods: TArray<TSyntaxNode>): Boolean;
     procedure CheckUnitConstant(ADecl: TSyntaxNode);
+    function IsEventMethod(AParams: TSyntaxNode): Boolean;
     procedure CheckParameters(AParams: TSyntaxNode);
+    function ParameterOwner(AParams: TSyntaxNode; out AOwner: TParameterOwner): Boolean;
+    function HeaderOwner(AHeader: TSyntaxNode; var AOwner: TParameterOwner): Boolean;
+    procedure CheckParameter(AParams, AParam: TSyntaxNode; const AName: string; const AOwner: TParameterOwner);
+    function DeclaredParameterEdits(AParams, AParam: TSyntaxNode; const AName: string; const AOwner: TParameterOwner;
+      var AEdits: TArray<Integer>; var AScopes: TArray<TPoint>): Boolean;
     procedure Visit(ANode: TSyntaxNode);
+    procedure CheckLocals(ADecl: TSyntaxNode);
+    procedure CheckFields(ABody, ADecl: TSyntaxNode);
+    procedure VisitVarDecl(ANode: TSyntaxNode);
+    procedure VisitConstDecl(ANode: TSyntaxNode);
   public
     constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
     procedure Run;
   end;
+
+function ShortName(const AName: string): string;
+begin
+  Result := Copy(AName, LastDelimiter('.', AName) + 1, MaxInt);
+end;
+
+function BareTypeName(const AName: string): string;
+begin
+  Result := AName;
+  if Pos('<', Result) > 0 then
+  begin
+    Result := Copy(Result, 1, Pos('<', Result) - 1);
+  end;
+  Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
+end;
+
+function ContainsKind(ANode: TSyntaxNode; AKind: TSyntaxKind): Boolean;
+var
+  Kind: TSyntaxKind;
+begin
+  Kind := AKind;
+  Result := ANode.Search(
+    function(AVisited: TSyntaxNode): TSyntaxSearchStep
+    begin
+      if AVisited.Kind = Kind then
+      begin
+        Exit(TSyntaxSearchStep.Found);
+      end;
+      Result := TSyntaxSearchStep.Descend;
+    end) <> nil;
+end;
+
+function DeclaresName(ANode: TSyntaxNode; const AName: string): Boolean;
+var
+  Name: string;
+begin
+  Result := False;
+  if ANode.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.InlineConst, TSyntaxKind.ConstDecl,
+    TSyntaxKind.Parameter, TSyntaxKind.Field] then
+  begin
+    for Name in SplitString(ANode.Name, ',') do
+    begin
+      if SameText(Trim(Name), AName) then
+      begin
+        Exit(True);
+      end;
+    end;
+  end;
+  // for var I (Inline-Schleifenvariable): Der Name steht am for.
+  if (ANode.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement]) and SameText(ANode.Name, AName) then
+  begin
+    Result := True;
+  end;
+end;
+
+function EnclosingScope(ANode: TSyntaxNode): TSyntaxNode;
+begin
+  Result := ANode.Parent;
+  while (Result <> nil) and not (Result.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) do
+  begin
+    Result := Result.Parent;
+  end;
+end;
+
+function OwnerType(ANode: TSyntaxNode): TSyntaxNode;
+begin
+  Result := ANode.Parent;
+  while (Result <> nil) and not (Result.Kind in TypeBodies) do
+  begin
+    if Result.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod, TSyntaxKind.TypeDecl] then
+    begin
+      Exit(nil);
+    end;
+    Result := Result.Parent;
+  end;
+end;
+
+function TypeDeclOf(ABody: TSyntaxNode): TSyntaxNode;
+begin
+  Result := ABody.Parent;
+  while (Result <> nil) and (Result.Kind <> TSyntaxKind.TypeDecl) do
+  begin
+    Result := Result.Parent;
+  end;
+end;
+
+function VisibilityOf(ABody, AMember: TSyntaxNode; out AImplicit: Boolean): string;
+var
+  Index: Integer;
+  Member: TSyntaxNode;
+begin
+  // Mitglied direkt im Typ oder in einem class var-Abschnitt bzw. varianten Teil darunter.
+  Member := AMember;
+  while (Member.Parent <> nil) and (Member.Parent <> ABody) do
+  begin
+    Member := Member.Parent;
+  end;
+  Result := '';
+  AImplicit := True;
+  for Index := 0 to ABody.ChildCount - 1 do
+  begin
+    if ABody[Index] = Member then
+    begin
+      Break;
+    end;
+    if ABody[Index].Kind = TSyntaxKind.Visibility then
+    begin
+      Result := LowerCase(ABody[Index].Name);
+      AImplicit := False;
+    end;
+  end;
+end;
+
+function ParameterNames(AParams: TSyntaxNode): TArray<string>;
+var
+  Index: Integer;
+  Name: string;
+begin
+  Result := nil;
+  for Index := 0 to AParams.ChildCount - 1 do
+  begin
+    if AParams[Index].Kind = TSyntaxKind.Parameter then
+    begin
+      for Name in SplitString(AParams[Index].Name, ',') do
+      begin
+        if Trim(Name) <> '' then
+        begin
+          Result := Result + [Trim(Name)];
+        end;
+      end;
+    end;
+  end;
+end;
+
+function ParameterPosition(AParams, AParam: TSyntaxNode; const AName: string): Integer;
+var
+  mIndex: Integer;
+  mName: string;
+begin
+  Result := 0;
+  for mIndex := 0 to AParams.ChildCount - 1 do
+  begin
+    if AParams[mIndex].Kind <> TSyntaxKind.Parameter then
+    begin
+      Continue;
+    end;
+    for mName in SplitString(AParams[mIndex].Name, ',') do
+    begin
+      if (AParams[mIndex] = AParam) and SameText(Trim(mName), AName) then
+      begin
+        Exit;
+      end;
+      if Trim(mName) <> '' then
+      begin
+        Inc(Result);
+      end;
+    end;
+  end;
+  Result := -1;
+end;
+
+function HasDirective(AHeader: TSyntaxNode; const ANames: array of string): Boolean;
+var
+  Index: Integer;
+begin
+  for Index := 0 to AHeader.ChildCount - 1 do
+  begin
+    if (AHeader[Index].Kind = TSyntaxKind.Directive) and MatchText(AHeader[Index].Name, ANames) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function IsForwardOrInterface(ARoutine: TSyntaxNode): Boolean;
+begin
+  Result := ARoutine.FindChild(TSyntaxKind.Block) = nil;
+end;
+
+/// <summary>Interfaces der Vorfahrenliste: ab dem zweiten Eintrag alle, der erste, wenn er wie eines heißt.</summary>
+function InterfaceNames(ABody: TSyntaxNode): TArray<string>;
+var
+  mIndex, mCount: Integer;
+  mName: string;
+begin
+  Result := nil;
+  mCount := 0;
+  for mIndex := 0 to ABody.ChildCount - 1 do
+  begin
+    if ABody[mIndex].Kind <> TSyntaxKind.TypeReference then
+    begin
+      Continue;
+    end;
+    mName := BareTypeName(ABody[mIndex].Name);
+    if (mCount > 0) or (Length(mName) > 1) and (mName[1] = 'I') and IsUpperOrDigit(mName[2]) then
+    begin
+      Result := Result + [mName];
+    end;
+    Inc(mCount);
+  end;
+end;
+
+function FindInterfaceDecl(ARoot: TSyntaxNode; const AName: string): TSyntaxNode;
+var
+  mName: string;
+begin
+  mName := AName;
+  Result := ARoot.Search(
+    function(AVisited: TSyntaxNode): TSyntaxSearchStep
+    begin
+      Result := TSyntaxSearchStep.Descend;
+      if (AVisited.Kind = TSyntaxKind.TypeDecl) and SameText(AVisited.Name, mName) and
+        (AVisited.FindChild(TSyntaxKind.InterfaceType) <> nil) then
+      begin
+        Result := TSyntaxSearchStep.Found;
+      end;
+    end);
+end;
+
+/// <summary>Heißt ARoutine AMethod und gehört (mit ATypeName) zu diesem Typ bzw. (ohne) zu keinem?</summary>
+function IsRoutineNamed(ARoutine: TSyntaxNode; const ATypeName, AMethod: string): Boolean;
+begin
+  if ATypeName = '' then
+  begin
+    Exit(SameText(ARoutine.Name, AMethod));
+  end;
+  Result := (Pos('.', ARoutine.Name) > 0) and SameText(ShortName(ARoutine.Name), AMethod) and
+    SameText(BareTypeName(Copy(ARoutine.Name, 1, LastDelimiter('.', ARoutine.Name) - 1)), ATypeName);
+end;
+
+/// <summary>Überladungen: derselbe Parametername an derselben Stelle.</summary>
+function HasParameterAt(ARoutine: TSyntaxNode; APosition: Integer; const AName: string): Boolean;
+var
+  mHeader, mParams: TSyntaxNode;
+  mNames: TArray<string>;
+begin
+  Result := False;
+  mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+  mParams := nil;
+  if mHeader <> nil then
+  begin
+    mParams := mHeader.FindChild(TSyntaxKind.Parameters);
+  end;
+  if mParams <> nil then
+  begin
+    mNames := ParameterNames(mParams);
+    Result := (APosition < Length(mNames)) and SameText(mNames[APosition], AName);
+  end;
+end;
+
+/// <summary>Interface in dieser Unit: hat es AMethod? Seine Vorfahren kommen nach APending.</summary>
+function LocalInterfaceHas(ARoot: TSyntaxNode; const AName, AMethod: string; APending: TList<string>;
+  out AResolved: Boolean): Boolean;
+var
+  mFound, mMembers: TSyntaxNode;
+  mIndex: Integer;
+begin
+  Result := False;
+  mFound := FindInterfaceDecl(ARoot, AName);
+  AResolved := mFound <> nil;
+  if mFound = nil then
+  begin
+    Exit;
+  end;
+  mMembers := mFound.FindChild(TSyntaxKind.InterfaceType);
+  for mIndex := 0 to mMembers.ChildCount - 1 do
+  begin
+    if (mMembers[mIndex].Kind = TSyntaxKind.RoutineHeader) and SameText(mMembers[mIndex].Name, AMethod) then
+    begin
+      Exit(True);
+    end;
+    if mMembers[mIndex].Kind = TSyntaxKind.TypeReference then
+    begin
+      APending.Add(BareTypeName(mMembers[mIndex].Name));
+    end;
+  end;
+end;
+
+function IndexMemberOf(const AIndex: ISymbolIndex; const AContainer, AMethod: string): Boolean;
+var
+  mMember: TSymbolLocation;
+begin
+  for mMember in AIndex.FindSymbols(AMethod) do
+  begin
+    if SameText(mMember.Symbol.Container, AContainer) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Interface aus dem Index: hat es AMethod? Seine Vorfahren kommen nach APending.</summary>
+function IndexInterfaceHas(const AIndex: ISymbolIndex; const AName, AMethod: string; APending: TList<string>;
+  out AResolved: Boolean): Boolean;
+var
+  mLocation: TSymbolLocation;
+  mIndex: Integer;
+begin
+  Result := False;
+  AResolved := False;
+  if AIndex = nil then
+  begin
+    Exit;
+  end;
+  for mLocation in AIndex.FindSymbols(AName) do
+  begin
+    if mLocation.Symbol.Kind <> TIndexSymbolKind.InterfaceType then
+    begin
+      Continue;
+    end;
+    AResolved := True;
+    if IndexMemberOf(AIndex, AName, AMethod) then
+    begin
+      Exit(True);
+    end;
+    for mIndex := 0 to High(mLocation.Symbol.Ancestors) do
+    begin
+      APending.Add(BareTypeName(mLocation.Symbol.Ancestors[mIndex]));
+    end;
+  end;
+end;
+
+function ImplementsInterface(ARoot: TSyntaxNode; const AIndex: ISymbolIndex; ABody: TSyntaxNode;
+  const AMethod: string; out AKnown: Boolean): Boolean;
+var
+  mPending: TList<string>;
+  mSeen: TList<string>;
+  mName: string;
+  mResolved: Boolean;
+begin
+  Result := False;
+  AKnown := True;
+  if ABody.Kind <> TSyntaxKind.ClassType then
+  begin
+    Exit;
+  end;
+  mPending := TList<string>.Create;
+  mSeen := TList<string>.Create;
+  try
+    mPending.AddRange(InterfaceNames(ABody));
+    // Auch die Vorfahren der Interfaces (IFoo = interface(IBar)).
+    while mPending.Count > 0 do
+    begin
+      mName := mPending[mPending.Count - 1];
+      mPending.Delete(mPending.Count - 1);
+      if mSeen.IndexOf(LowerCase(mName)) >= 0 then
+      begin
+        Continue;
+      end;
+      mSeen.Add(LowerCase(mName));
+      if LocalInterfaceHas(ARoot, mName, AMethod, mPending, mResolved) or
+        not mResolved and IndexInterfaceHas(AIndex, mName, AMethod, mPending, mResolved) then
+      begin
+        Exit(True);
+      end;
+      // IInterface und IUnknown haben nur _AddRef, _Release und QueryInterface.
+      if not mResolved and not MatchText(mName, ['IInterface', 'IUnknown', 'IDispatch']) then
+      begin
+        AKnown := False;
+      end;
+    end;
+  finally
+    mSeen.Free;
+    mPending.Free;
+  end;
+end;
+
+function TokenIn(const ATokens: TArray<TPascalToken>; AIndex: Integer; ANode: TSyntaxNode): Boolean;
+begin
+  Result := (ATokens[AIndex].Offset >= ANode.StartOffset) and (ATokens[AIndex].Offset < ANode.EndOffset);
+end;
+
+function InAny(const ATokens: TArray<TPascalToken>; AIndex: Integer; const ANodes: TArray<TSyntaxNode>): Boolean;
+var
+  Node: TSyntaxNode;
+begin
+  for Node in ANodes do
+  begin
+    if TokenIn(ATokens, AIndex, Node) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function OccursInFile(const ATokens: TArray<TPascalToken>; const AName: string): Boolean;
+var
+  Token: TPascalToken;
+begin
+  for Token in ATokens do
+  begin
+    if (Token.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and SameText(Token.Text, AName) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function OccursIn(const ATokens: TArray<TPascalToken>; const AName: string;
+  const AScopes: TArray<TPoint>): Boolean;
+var
+  Scope: TPoint;
+  mIndex: Integer;
+begin
+  if AScopes = nil then
+  begin
+    Exit(OccursInFile(ATokens, AName));
+  end;
+  // Je Bereich binär zum ersten Token statt jedes Mal die ganze Datei (#1323).
+  for Scope in AScopes do
+  begin
+    mIndex := TRoutineBody.TokenAt(ATokens, Scope.X);
+    while (mIndex <= High(ATokens)) and (ATokens[mIndex].Offset < Scope.Y) do
+    begin
+      if (ATokens[mIndex].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
+        SameText(ATokens[mIndex].Text, AName) then
+      begin
+        Exit(True);
+      end;
+      Inc(mIndex);
+    end;
+  end;
+  Result := False;
+end;
+
+function EditsFor(const ATokens: TArray<TPascalToken>; const AIndexes: TArray<Integer>;
+  const ANewName: string): TArray<TRuleEdit>;
+var
+  Index: Integer;
+begin
+  Result := nil;
+  for Index in AIndexes do
+  begin
+    Result := Result + [TRuleEdit.Create(TTextRange.Create(ATokens[Index].StartPos, ATokens[Index].EndPos),
+      ANewName)];
+  end;
+end;
+
+function FirstNameToken(const ATokens: TArray<TPascalToken>; ANode: TSyntaxNode; const AName: string;
+  out AIndex: Integer): Boolean;
+var
+  Index: Integer;
+begin
+  for Index := TSyntaxTree.FirstTokenOf(ATokens, ANode.StartOffset) to High(ATokens) do
+  begin
+    if ATokens[Index].Offset >= ANode.EndOffset then
+    begin
+      Break;
+    end;
+    if (ATokens[Index].Offset >= ANode.StartOffset) and
+      (ATokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
+      SameText(ATokens[Index].Text, AName) then
+    begin
+      AIndex := Index;
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+{ TNamingCheck }
 
 constructor TNamingCheck.Create(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
@@ -275,24 +783,7 @@ begin
   FTokens := TRuleDerived.CodeTokens(FCache, AContext);
   FIndex := AContext.Index;
   FRoot := AContext.Tree.Root;
-end;
-
-function TNamingCheck.ShortName(const AName: string): string;
-begin
-  Result := Copy(AName, LastDelimiter('.', AName) + 1, MaxInt);
-end;
-
-function TNamingCheck.BareTypeName(const AName: string): string;
-begin
-  Result := AName;
-  if Pos('<', Result) > 0 then
-    Result := Copy(Result, 1, Pos('<', Result) - 1);
-  Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
-end;
-
-function TNamingCheck.TokenIn(AIndex: Integer; ANode: TSyntaxNode): Boolean;
-begin
-  Result := (FTokens[AIndex].Offset >= ANode.StartOffset) and (FTokens[AIndex].Offset < ANode.EndOffset);
+  FEventMethods := TEventAssignments.Names(AContext.Tree.Tokens);
 end;
 
 function TNamingCheck.NameTokens(AStart, AEnd: Integer; const AName: string; const AQualifiers: array of string):
@@ -304,15 +795,21 @@ begin
   for Index := TSyntaxTree.FirstTokenOf(FTokens, AStart) to High(FTokens) do
   begin
     if FTokens[Index].Offset >= AEnd then
+    begin
       Break;
+    end;
     if (FTokens[Index].Offset < AStart) or
       not (FTokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) or
       not SameText(FTokens[Index].Text, AName) then
+    begin
       Continue;
+    end;
     // Obj.Name ist ein anderes Symbol; Self.Name und TTyp.Name nur bei Mitgliedern.
     if (Index > 0) and FTokens[Index - 1].IsSymbol('.') and
       not ((Index > 1) and MatchText(FTokens[Index - 2].Text, AQualifiers)) then
+    begin
       Continue;
+    end;
     Result := Result + [Index];
   end;
 end;
@@ -322,101 +819,15 @@ var
   Index: Integer;
 begin
   for Index := 2 to High(FTokens) do
+  begin
     if (FTokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
       SameText(FTokens[Index].Text, AName) and FTokens[Index - 1].IsSymbol('.') and
       not MatchText(FTokens[Index - 2].Text, AQualifiers) then
-      Exit(True);
-  Result := False;
-end;
-
-function TNamingCheck.FirstNameToken(ANode: TSyntaxNode; const AName: string; out AIndex: Integer): Boolean;
-var
-  Index: Integer;
-begin
-  for Index := TSyntaxTree.FirstTokenOf(FTokens, ANode.StartOffset) to High(FTokens) do
-  begin
-    if FTokens[Index].Offset >= ANode.EndOffset then
-      Break;
-    if (FTokens[Index].Offset >= ANode.StartOffset) and
-      (FTokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
-      SameText(FTokens[Index].Text, AName) then
     begin
-      AIndex := Index;
       Exit(True);
     end;
   end;
   Result := False;
-end;
-
-function TNamingCheck.InAny(AIndex: Integer; const ANodes: TArray<TSyntaxNode>): Boolean;
-var
-  Node: TSyntaxNode;
-begin
-  for Node in ANodes do
-    if TokenIn(AIndex, Node) then
-      Exit(True);
-  Result := False;
-end;
-
-function TNamingCheck.OccursInFile(const AName: string): Boolean;
-var
-  Token: TPascalToken;
-begin
-  for Token in FTokens do
-    if (Token.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and SameText(Token.Text, AName) then
-      Exit(True);
-  Result := False;
-end;
-
-function TNamingCheck.OccursIn(const AName: string; const AScopes: TArray<TPoint>): Boolean;
-var
-  Scope: TPoint;
-  mIndex: Integer;
-begin
-  if AScopes = nil then
-    Exit(OccursInFile(AName));
-  // Je Bereich binär zum ersten Token statt jedes Mal die ganze Datei (#1323).
-  for Scope in AScopes do
-  begin
-    mIndex := TRoutineBody.TokenAt(FTokens, Scope.X);
-    while (mIndex <= High(FTokens)) and (FTokens[mIndex].Offset < Scope.Y) do
-    begin
-      if (FTokens[mIndex].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
-        SameText(FTokens[mIndex].Text, AName) then
-        Exit(True);
-      Inc(mIndex);
-    end;
-  end;
-  Result := False;
-end;
-
-function TNamingCheck.ContainsKind(ANode: TSyntaxNode; AKind: TSyntaxKind): Boolean;
-var
-  Kind: TSyntaxKind;
-begin
-  Kind := AKind;
-  Result := ANode.Search(
-    function(AVisited: TSyntaxNode): TSyntaxSearchStep
-    begin
-      if AVisited.Kind = Kind then
-        Exit(TSyntaxSearchStep.Found);
-      Result := TSyntaxSearchStep.Descend;
-    end) <> nil;
-end;
-
-function TNamingCheck.DeclaresName(ANode: TSyntaxNode; const AName: string): Boolean;
-var
-  Name: string;
-begin
-  Result := False;
-  if ANode.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.InlineConst, TSyntaxKind.ConstDecl,
-    TSyntaxKind.Parameter, TSyntaxKind.Field] then
-    for Name in SplitString(ANode.Name, ',') do
-      if SameText(Trim(Name), AName) then
-        Exit(True);
-  // for var I (Inline-Schleifenvariable): Der Name steht am for.
-  if (ANode.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement]) and SameText(ANode.Name, AName) then
-    Result := True;
 end;
 
 function TNamingCheck.Redeclares(ANode, ADeclaration: TSyntaxNode; const AName: string): Boolean;
@@ -433,10 +844,12 @@ begin
     begin
       Result := TSyntaxSearchStep.Descend;
       // Eine for-Schleife über die vorhandene Variable deklariert nichts.
-      if (AVisited <> Declaration) and Self_.DeclaresName(AVisited, Name) and
+      if (AVisited <> Declaration) and DeclaresName(AVisited, Name) and
         not ((AVisited.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement]) and
         not Self_.IsInlineFor(AVisited)) then
+      begin
         Result := TSyntaxSearchStep.Found;
+      end;
     end) <> nil;
 end;
 
@@ -445,34 +858,13 @@ var
   Index: Integer;
 begin
   for Index := 0 to ARoutine.ChildCount - 1 do
-    if (ARoutine[Index].Kind <> TSyntaxKind.RoutineHeader) and Redeclares(ARoutine[Index], nil, AName) then
-      Exit(True);
-  Result := False;
-end;
-
-function TNamingCheck.EnclosingScope(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode.Parent;
-  while (Result <> nil) and not (Result.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) do
-    Result := Result.Parent;
-end;
-
-function TNamingCheck.OwnerType(ANode: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ANode.Parent;
-  while (Result <> nil) and not (Result.Kind in TypeBodies) do
   begin
-    if Result.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod, TSyntaxKind.TypeDecl] then
-      Exit(nil);
-    Result := Result.Parent;
+    if (ARoutine[Index].Kind <> TSyntaxKind.RoutineHeader) and Redeclares(ARoutine[Index], nil, AName) then
+    begin
+      Exit(True);
+    end;
   end;
-end;
-
-function TNamingCheck.TypeDeclOf(ABody: TSyntaxNode): TSyntaxNode;
-begin
-  Result := ABody.Parent;
-  while (Result <> nil) and (Result.Kind <> TSyntaxKind.TypeDecl) do
-    Result := Result.Parent;
+  Result := False;
 end;
 
 function TNamingCheck.IsComponentHost(ABody: TSyntaxNode): Boolean;
@@ -481,39 +873,24 @@ var
   Host: string;
 begin
   if FContext.FormText <> '' then
+  begin
     Exit(True);
+  end;
   for Index := 0 to ABody.ChildCount - 1 do
+  begin
     if ABody[Index].Kind = TSyntaxKind.TypeReference then
     begin
       for Host in ComponentHosts do
+      begin
         if EndsText(Host, BareTypeName(ABody[Index].Name)) then
+        begin
           Exit(True);
+        end;
+      end;
       Break;
-    end;
-  Result := False;
-end;
-
-function TNamingCheck.VisibilityOf(ABody, AMember: TSyntaxNode; out AImplicit: Boolean): string;
-var
-  Index: Integer;
-  Member: TSyntaxNode;
-begin
-  // Mitglied direkt im Typ oder in einem class var-Abschnitt bzw. varianten Teil darunter.
-  Member := AMember;
-  while (Member.Parent <> nil) and (Member.Parent <> ABody) do
-    Member := Member.Parent;
-  Result := '';
-  AImplicit := True;
-  for Index := 0 to ABody.ChildCount - 1 do
-  begin
-    if ABody[Index] = Member then
-      Break;
-    if ABody[Index].Kind = TSyntaxKind.Visibility then
-    begin
-      Result := LowerCase(ABody[Index].Name);
-      AImplicit := False;
     end;
   end;
+  Result := False;
 end;
 
 function TNamingCheck.MethodsOf(const ATypeName: string): TArray<TSyntaxNode>;
@@ -523,134 +900,16 @@ var
 begin
   Result := nil;
   for Routine in FRoutineDecls do
+  begin
     if Pos('.', Routine.Name) > 0 then
     begin
       Owner := Copy(Routine.Name, 1, LastDelimiter('.', Routine.Name) - 1);
       if SameText(BareTypeName(Owner), ATypeName) then
+      begin
         Result := Result + [Routine];
-    end;
-end;
-
-function TNamingCheck.ParameterNames(AParams: TSyntaxNode): TArray<string>;
-var
-  Index: Integer;
-  Name: string;
-begin
-  Result := nil;
-  for Index := 0 to AParams.ChildCount - 1 do
-    if AParams[Index].Kind = TSyntaxKind.Parameter then
-      for Name in SplitString(AParams[Index].Name, ',') do
-        if Trim(Name) <> '' then
-          Result := Result + [Trim(Name)];
-end;
-
-function TNamingCheck.ParameterPosition(AParams, AParam: TSyntaxNode; const AName: string): Integer;
-var
-  Index: Integer;
-  Name: string;
-begin
-  Result := 0;
-  for Index := 0 to AParams.ChildCount - 1 do
-    if AParams[Index].Kind = TSyntaxKind.Parameter then
-      for Name in SplitString(AParams[Index].Name, ',') do
-        if Trim(Name) <> '' then
-        begin
-          if (AParams[Index] = AParam) and SameText(Trim(Name), AName) then
-            Exit;
-          Inc(Result);
-        end;
-  Result := -1;
-end;
-
-function TNamingCheck.HasDirective(AHeader: TSyntaxNode; const ANames: array of string): Boolean;
-var
-  Index: Integer;
-begin
-  for Index := 0 to AHeader.ChildCount - 1 do
-    if (AHeader[Index].Kind = TSyntaxKind.Directive) and MatchText(AHeader[Index].Name, ANames) then
-      Exit(True);
-  Result := False;
-end;
-
-function TNamingCheck.ImplementsInterface(ABody: TSyntaxNode; const AMethod: string; out AKnown: Boolean): Boolean;
-var
-  Index, Count: Integer;
-  Pending: TList<string>;
-  Seen: TList<string>;
-  InterfaceName: string;
-  Found, Members: TSyntaxNode;
-  Location, Member: TSymbolLocation;
-  Resolved: Boolean;
-begin
-  Result := False;
-  AKnown := True;
-  if ABody.Kind <> TSyntaxKind.ClassType then
-    Exit;
-  Pending := TList<string>.Create;
-  Seen := TList<string>.Create;
-  try
-    // Ab dem zweiten Eintrag der Liste stehen Interfaces; der erste ist eines, wenn er wie eines heißt.
-    Count := 0;
-    for Index := 0 to ABody.ChildCount - 1 do
-      if ABody[Index].Kind = TSyntaxKind.TypeReference then
-      begin
-        InterfaceName := BareTypeName(ABody[Index].Name);
-        if (Count > 0) or ((Length(InterfaceName) > 1) and (InterfaceName[1] = 'I') and
-          IsUpperOrDigit(InterfaceName[2])) then
-          Pending.Add(InterfaceName);
-        Inc(Count);
       end;
-    // Auch die Vorfahren der Interfaces (IFoo = interface(IBar)).
-    while Pending.Count > 0 do
-    begin
-      InterfaceName := Pending[Pending.Count - 1];
-      Pending.Delete(Pending.Count - 1);
-      if Seen.IndexOf(LowerCase(InterfaceName)) >= 0 then
-        Continue;
-      Seen.Add(LowerCase(InterfaceName));
-      Resolved := False;
-      Found := FRoot.Search(
-        function(AVisited: TSyntaxNode): TSyntaxSearchStep
-        begin
-          Result := TSyntaxSearchStep.Descend;
-          if (AVisited.Kind = TSyntaxKind.TypeDecl) and SameText(AVisited.Name, InterfaceName) and
-            (AVisited.FindChild(TSyntaxKind.InterfaceType) <> nil) then
-            Result := TSyntaxSearchStep.Found;
-        end);
-      if Found <> nil then
-      begin
-        Resolved := True;
-        Members := Found.FindChild(TSyntaxKind.InterfaceType);
-        for Index := 0 to Members.ChildCount - 1 do
-          if (Members[Index].Kind = TSyntaxKind.RoutineHeader) and SameText(Members[Index].Name, AMethod) then
-            Exit(True)
-          else if Members[Index].Kind = TSyntaxKind.TypeReference then
-            Pending.Add(BareTypeName(Members[Index].Name));
-      end
-      else if FIndex <> nil then
-        for Location in FIndex.FindSymbols(InterfaceName) do
-          if Location.Symbol.Kind = TIndexSymbolKind.InterfaceType then
-          begin
-            Resolved := True;
-            for Member in FIndex.FindSymbols(AMethod) do
-              if SameText(Member.Symbol.Container, InterfaceName) then
-                Exit(True);
-            for Index := 0 to High(Location.Symbol.Ancestors) do
-              Pending.Add(BareTypeName(Location.Symbol.Ancestors[Index]));
-          end;
-      // IInterface und IUnknown haben nur _AddRef, _Release und QueryInterface.
-      if not Resolved and not MatchText(InterfaceName, ['IInterface', 'IUnknown', 'IDispatch']) then
-        AKnown := False;
     end;
-  finally
-    Seen.Free;
-    Pending.Free;
   end;
-end;
-
-function TNamingCheck.IsForwardOrInterface(ARoutine: TSyntaxNode): Boolean;
-begin
-  Result := ARoutine.FindChild(TSyntaxKind.Block) = nil;
 end;
 
 function TNamingCheck.DeclarationOf(ARoutine: TSyntaxNode): TSyntaxNode;
@@ -659,60 +918,38 @@ var
 begin
   // Routine mit Rumpf ohne Punkt: Deklaration im interface-Abschnitt oder forward davor.
   for Routine in FRoutineDecls do
+  begin
     if (Routine <> ARoutine) and IsForwardOrInterface(Routine) and SameText(Routine.Name, ARoutine.Name) and
       (EnclosingScope(Routine) = EnclosingScope(ARoutine)) then
+    begin
       Exit(Routine);
+    end;
+  end;
   Result := nil;
 end;
 
 function TNamingCheck.ImplementationOf(const AQualified: string; APosition: Integer; const AName: string):
   TSyntaxNode;
 var
-  Routine, Header, Params: TSyntaxNode;
-  Names: TArray<string>;
-  TypeName, Method: string;
+  mRoutine: TSyntaxNode;
+  mTypeName, mMethod: string;
 begin
-  TypeName := '';
-  Method := AQualified;
+  mTypeName := '';
+  mMethod := AQualified;
   if Pos('.', AQualified) > 0 then
   begin
-    TypeName := BareTypeName(Copy(AQualified, 1, LastDelimiter('.', AQualified) - 1));
-    Method := ShortName(AQualified);
+    mTypeName := BareTypeName(Copy(AQualified, 1, LastDelimiter('.', AQualified) - 1));
+    mMethod := ShortName(AQualified);
   end;
-  for Routine in FRoutineDecls do
+  for mRoutine in FRoutineDecls do
   begin
-    if IsForwardOrInterface(Routine) then
-      Continue;
-    if TypeName <> '' then
+    if not IsForwardOrInterface(mRoutine) and IsRoutineNamed(mRoutine, mTypeName, mMethod) and
+      HasParameterAt(mRoutine, APosition, AName) then
     begin
-      if (Pos('.', Routine.Name) = 0) or not SameText(ShortName(Routine.Name), Method) or
-        not SameText(BareTypeName(Copy(Routine.Name, 1, LastDelimiter('.', Routine.Name) - 1)), TypeName) then
-        Continue;
-    end
-    else if not SameText(Routine.Name, Method) then
-      Continue;
-    Header := Routine.FindChild(TSyntaxKind.RoutineHeader);
-    if Header = nil then
-      Continue;
-    Params := Header.FindChild(TSyntaxKind.Parameters);
-    if Params = nil then
-      Continue;
-    Names := ParameterNames(Params);
-    // Überladungen: derselbe Name an derselben Stelle.
-    if (APosition < Length(Names)) and SameText(Names[APosition], AName) then
-      Exit(Routine);
+      Exit(mRoutine);
+    end;
   end;
   Result := nil;
-end;
-
-function TNamingCheck.EditsFor(const AIndexes: TArray<Integer>; const ANewName: string): TArray<TRuleEdit>;
-var
-  Index: Integer;
-begin
-  Result := nil;
-  for Index in AIndexes do
-    Result := Result + [TRuleEdit.Create(TTextRange.Create(FTokens[Index].StartPos, FTokens[Index].EndPos),
-      ANewName)];
 end;
 
 function TNamingCheck.Wanted(AKind: TRuleNamingKind; const AName: string): Boolean;
@@ -722,9 +959,15 @@ begin
   Result := (FConvention.Prefixes[AKind] <> '') and (AName <> '') and not MatchText(AName, ['Self', 'Result']) and
     not TNamingConvention.Follows(AName, FConvention.Prefixes[AKind]);
   if Result then
+  begin
     for Pattern in FConvention.Ignore do
+    begin
       if MatchesWildcard(AName, Pattern) then
+      begin
         Exit(False);
+      end;
+    end;
+  end;
 end;
 
 procedure TNamingCheck.Report(AKind: TRuleNamingKind; ADeclaration: TSyntaxNode; const AName: string;
@@ -735,15 +978,19 @@ var
   At: Integer;
   Fixes: TArray<TRuleFix>;
 begin
-  if not FirstNameToken(ADeclaration, AName, At) then
+  if not FirstNameToken(FTokens, ADeclaration, AName, At) then
+  begin
     Exit;
+  end;
   NewName := TNamingConvention.Expected(AName, FConvention.Prefixes[AKind]);
-  Message := Format('%s %s ohne Präfix %s (erwartet: %s)', [KindTexts[AKind], AName, FConvention.Prefixes[AKind],
+  Message := cTexts[TNamingText.MissingPrefix].Fmt([cTexts[KindTexts[AKind]].Text, AName, FConvention.Prefixes[AKind],
     NewName]);
   Fixes := nil;
   // Nur wo umbenannt wird, kann der neue Name kollidieren (ABuf als Parameter einer anderen Methode stört nicht).
-  if ACanFix and (Length(AEdits) > 0) and not OccursIn(NewName, AScopes) then
-    Fixes := [TRuleFix.Create(Format('In %s umbenennen', [NewName]), EditsFor(AEdits, NewName))];
+  if ACanFix and (Length(AEdits) > 0) and not OccursIn(FTokens, NewName, AScopes) then
+  begin
+    Fixes := [TRuleFix.Create(cTexts[TNamingText.RenameTo].Fmt([NewName]), EditsFor(FTokens, AEdits, NewName))];
+  end;
   FReport.Add(TTextRange.Create(FTokens[At].StartPos, FTokens[At].EndPos), Message, TRuleConfidence.High, Fixes);
 end;
 
@@ -754,10 +1001,14 @@ var
   CanFix: Boolean;
 begin
   if not Wanted(AKind, AName) then
+  begin
     Exit;
+  end;
   Scope := EnclosingScope(ADecl);
   if Scope = nil then
+  begin
     Exit;
+  end;
   // Inline-Deklarationen gelten ab der Deklaration bis zum Ende ihres Blocks.
   if ADecl.Kind in [TSyntaxKind.InlineVar, TSyntaxKind.InlineConst] then
   begin
@@ -789,63 +1040,109 @@ var
   Scope: TSyntaxNode;
 begin
   if (Length(AFor.Name) = 1) or not IsInlineFor(AFor) or not Wanted(TRuleNamingKind.Local, AFor.Name) then
+  begin
     Exit;
+  end;
   Scope := EnclosingScope(AFor);
   CanFix := (Scope <> nil) and not ContainsKind(AFor, TSyntaxKind.WithStatement) and
     not Redeclares(AFor, AFor, AFor.Name);
   if Scope = nil then
+  begin
     Scope := AFor;
+  end;
   Report(TRuleNamingKind.Local, AFor, AFor.Name, NameTokens(AFor.StartOffset, AFor.EndOffset, AFor.Name, []),
     CanFix, [Point(Scope.StartOffset, Scope.EndOffset)]);
 end;
 
 procedure TNamingCheck.CheckMember(ABody, ADecl: TSyntaxNode; const AName: string; AKind: TRuleNamingKind);
 var
-  Visibility, TypeName: string;
-  Implicit, CanFix: Boolean;
-  TypeDecl, Method: TSyntaxNode;
-  Methods: TArray<TSyntaxNode>;
-  Edits: TArray<Integer>;
-  Index: Integer;
-  Scopes: TArray<TPoint>;
+  mVisibility: string;
+  mImplicit, mCanFix: Boolean;
+  mTypeDecl, mMethod: TSyntaxNode;
+  mMethods: TArray<TSyntaxNode>;
+  mEdits: TArray<Integer>;
+  mScopes: TArray<TPoint>;
 begin
-  Methods := nil;
-  Visibility := VisibilityOf(ABody, ADecl, Implicit);
-  // Öffentliche Felder (auch die eines Records ohne Abschnitt) tragen kein F; Komponenten vor dem ersten Abschnitt:
-  // Ihre Namen stehen in der Formulardatei.
-  if (AKind = TRuleNamingKind.Field) and ((Visibility = 'public') or (Visibility = 'published') or
-    (Implicit and (ABody.Kind = TSyntaxKind.RecordType)) or
-    (Implicit and (ABody.Kind = TSyntaxKind.ClassType) and IsComponentHost(ABody))) then
-    Exit;
-  if not Wanted(AKind, AName) then
-    Exit;
-  TypeDecl := TypeDeclOf(ABody);
-  CanFix := (TypeDecl <> nil) and (ABody.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType,
-    TSyntaxKind.ObjectType]) and ((Visibility = 'private') or (Visibility = 'strict private'));
-  Edits := nil;
-  if CanFix then
+  mMethods := nil;
+  mVisibility := VisibilityOf(ABody, ADecl, mImplicit);
+  if (AKind = TRuleNamingKind.Field) and IsExemptField(ABody, mVisibility, mImplicit) or not Wanted(AKind, AName) then
   begin
-    TypeName := BareTypeName(TypeDecl.Name);
-    // Obj.Name eines anderen Objekts derselben Klasse ließe sich nicht sicher zuordnen.
-    CanFix := not QualifiedElsewhere(AName, ['Self', TypeName]);
-    Edits := NameTokens(ABody.StartOffset, ABody.EndOffset, AName, ['Self', TypeName]);
-    Methods := MethodsOf(TypeName);
-    for Method in Methods do
-      if ContainsKind(Method, TSyntaxKind.WithStatement) or RedeclaresInBody(Method, AName) then
-        CanFix := False;
-    // Ab dem Ende der Klasse: Methoden (unqualifiziert, Self.Name) und TTyp.Name überall.
-    for Index := TSyntaxTree.FirstTokenOf(FTokens, ABody.EndOffset) to High(FTokens) do
-      if (FTokens[Index].Offset >= ABody.EndOffset) and SameText(FTokens[Index].Text, AName) and
-        (FTokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
-        ((FTokens[Index - 1].IsSymbol('.') and MatchText(FTokens[Index - 2].Text, ['Self', TypeName])) or
-        (not FTokens[Index - 1].IsSymbol('.') and InAny(Index, Methods))) then
-        Edits := Edits + [Index];
+    Exit;
+  end;
+  mTypeDecl := TypeDeclOf(ABody);
+  mCanFix := (mTypeDecl <> nil) and (ABody.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType,
+    TSyntaxKind.ObjectType]) and ((mVisibility = 'private') or (mVisibility = 'strict private'));
+  mEdits := nil;
+  if mCanFix then
+  begin
+    mCanFix := MemberEdits(ABody, AName, BareTypeName(mTypeDecl.Name), mMethods, mEdits);
   end;
   // Kollisionen in der Klasse und ihren Methoden; ein gleichnamiges Feld einer anderen Klasse stört nicht.
-  Scopes := [Point(ABody.StartOffset, ABody.EndOffset)];
-  for Method in Methods do
-    Scopes := Scopes + [Point(Method.StartOffset, Method.EndOffset)];
-  Report(AKind, ADecl, AName, Edits, CanFix, Scopes);
+  mScopes := [Point(ABody.StartOffset, ABody.EndOffset)];
+  for mMethod in mMethods do
+  begin
+    mScopes := mScopes + [Point(mMethod.StartOffset, mMethod.EndOffset)];
+  end;
+  Report(AKind, ADecl, AName, mEdits, mCanFix, mScopes);
+end;
+
+/// <summary>Öffentliche Felder (auch die eines Records ohne Abschnitt) tragen kein F; Komponenten vor dem ersten
+/// Abschnitt: Ihre Namen stehen in der Formulardatei.</summary>
+function TNamingCheck.IsExemptField(ABody: TSyntaxNode; const AVisibility: string; AImplicit: Boolean): Boolean;
+begin
+  if AImplicit then
+  begin
+    Result := (ABody.Kind = TSyntaxKind.RecordType) or (ABody.Kind = TSyntaxKind.ClassType) and IsComponentHost(ABody);
+  end
+  else
+  begin
+    Result := (AVisibility = 'public') or (AVisibility = 'published');
+  end;
+end;
+
+/// <summary>Stellen zum Umbenennen eines privaten Mitglieds: in der Klasse, in ihren Methoden (unqualifiziert,
+/// Self.Name) und TTyp.Name überall; False, wenn das Umbenennen nicht sicher ist.</summary>
+function TNamingCheck.MemberEdits(ABody: TSyntaxNode; const AName, ATypeName: string;
+  out AMethods: TArray<TSyntaxNode>; out AEdits: TArray<Integer>): Boolean;
+var
+  mMethod: TSyntaxNode;
+  mIndex: Integer;
+begin
+  // Obj.Name eines anderen Objekts derselben Klasse ließe sich nicht sicher zuordnen.
+  Result := not QualifiedElsewhere(AName, ['Self', ATypeName]);
+  AEdits := NameTokens(ABody.StartOffset, ABody.EndOffset, AName, ['Self', ATypeName]);
+  AMethods := MethodsOf(ATypeName);
+  for mMethod in AMethods do
+  begin
+    if ContainsKind(mMethod, TSyntaxKind.WithStatement) or RedeclaresInBody(mMethod, AName) then
+    begin
+      Result := False;
+    end;
+  end;
+  // Ab dem Ende der Klasse: Methoden (unqualifiziert, Self.Name) und TTyp.Name überall.
+  for mIndex := TSyntaxTree.FirstTokenOf(FTokens, ABody.EndOffset) to High(FTokens) do
+  begin
+    if (FTokens[mIndex].Offset >= ABody.EndOffset) and SameText(FTokens[mIndex].Text, AName) and
+      (FTokens[mIndex].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
+      IsMemberUse(mIndex, ATypeName, AMethods) then
+    begin
+      AEdits := AEdits + [mIndex];
+    end;
+  end;
+end;
+
+/// <summary>Token AIndex ist Self.Name bzw. TTyp.Name oder unqualifiziert in einer der Methoden.</summary>
+function TNamingCheck.IsMemberUse(AIndex: Integer; const ATypeName: string;
+  const AMethods: TArray<TSyntaxNode>): Boolean;
+begin
+  if FTokens[AIndex - 1].IsSymbol('.') then
+  begin
+    Result := MatchText(FTokens[AIndex - 2].Text, ['Self', ATypeName]);
+  end
+  else
+  begin
+    Result := InAny(FTokens, AIndex, AMethods);
+  end;
 end;
 
 procedure TNamingCheck.CheckUnitConstant(ADecl: TSyntaxNode);
@@ -854,11 +1151,15 @@ var
   CanFix: Boolean;
 begin
   if not Wanted(TRuleNamingKind.Constant, ADecl.Name) then
+  begin
     Exit;
+  end;
   Section := ADecl.Parent;
   while (Section <> nil) and not (Section.Kind in [TSyntaxKind.InterfaceSection,
     TSyntaxKind.ImplementationSection]) do
+  begin
     Section := Section.Parent;
+  end;
   // Im interface-Abschnitt sehen andere Units die Konstante; dort keine Korrektur. Verdeckt eine Routine den
   // Namen, wäre das Umbenennen aller Vorkommen falsch.
   CanFix := ((Section = nil) or (Section.Kind = TSyntaxKind.ImplementationSection)) and
@@ -867,159 +1168,258 @@ begin
     []), CanFix, nil);
 end;
 
-procedure TNamingCheck.CheckParameters(AParams: TSyntaxNode);
+/// <summary>Gehören die Parameter AParams zu einer Methode, die der Code einem Ereignis zuweist?</summary>
+function TNamingCheck.IsEventMethod(AParams: TSyntaxNode): Boolean;
 var
-  Owner, Header, Body, Scope, Routine, Implementation_: TSyntaxNode;
-  Names: TArray<string>;
-  Index, Position: Integer;
-  Name, Method, Visibility: string;
-  Implicit, Known, CanFix: Boolean;
-  Edits: TArray<Integer>;
-  Param: TSyntaxNode;
-  Scopes: TArray<TPoint>;
+  mName: string;
 begin
-  Names := ParameterNames(AParams);
-  // Ereignis-Handler: Die Namen gibt der Ereignistyp vor (FormClose(Sender; var Action)).
-  for Name in Names do
-    if SameText(Name, 'Sender') then
-      Exit;
-  Owner := AParams.Parent;
-  if Owner = nil then
-    Exit;
-  Header := nil;
-  Body := nil;
-  Scope := nil;
-  case Owner.Kind of
-    TSyntaxKind.RoutineHeader:
-      begin
-        Header := Owner;
-        if (Owner.Parent <> nil) and (Owner.Parent.Kind in TypeBodies) then
-        begin
-          // Methode in der Typdeklaration.
-          Body := Owner.Parent;
-          if HasDirective(Header, ['override', 'message']) then
-            Exit;
-          Visibility := VisibilityOf(Body, Header, Implicit);
-          if Visibility = 'published' then
-            Exit;
-          if ImplementsInterface(Body, Header.Name, Known) or not Known then
-            Exit;
-        end
-        else if (Owner.Parent <> nil) and (Owner.Parent.Kind = TSyntaxKind.RoutineDecl) then
-        begin
-          Routine := Owner.Parent;
-          // Implementierung einer Methode oder einer anderswo deklarierten Routine: dort gemeldet.
-          if not IsForwardOrInterface(Routine) and ((Pos('.', Routine.Name) > 0) or (DeclarationOf(Routine) <> nil))
-            then
-            Exit;
-          if not IsForwardOrInterface(Routine) then
-            Scope := Routine;
-        end
-        else
-          Exit;
-      end;
-    TSyntaxKind.AnonymousMethod:
-      Scope := Owner;
-    TSyntaxKind.ProcedureType:
-      ;
-  else
+  Result := False;
+  if (AParams.Parent = nil) or not (AParams.Parent.Kind in [TSyntaxKind.RoutineHeader, TSyntaxKind.RoutineDecl]) or
+    (FEventMethods = nil) then
+  begin
     Exit;
   end;
-  for Index := 0 to AParams.ChildCount - 1 do
+  mName := AParams.Parent.Name;
+  mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
+  Result := MatchText(mName, FEventMethods);
+end;
+
+procedure TNamingCheck.CheckParameters(AParams: TSyntaxNode);
+var
+  mOwner: TParameterOwner;
+  mIndex: Integer;
+  mName: string;
+  mPair: Boolean;
+begin
+  // Ereignis-Handler: Die Namen gibt der Ereignistyp vor (FormClose(Sender; var Action)).
+  if (MatchText('Sender', ParameterNames(AParams))) or not ParameterOwner(AParams, mOwner) or
+    IsEventMethod(AParams) then
   begin
-    Param := AParams[Index];
-    if Param.Kind <> TSyntaxKind.Parameter then
-      Continue;
-    for Name in SplitString(Param.Name, ',') do
+    Exit;
+  end;
+  mPair := MatchText(FConvention.Prefixes[TRuleNamingKind.Parameter], ParameterNames(AParams));
+  for mIndex := 0 to AParams.ChildCount - 1 do
+  begin
+    if AParams[mIndex].Kind <> TSyntaxKind.Parameter then
     begin
-      if not Wanted(TRuleNamingKind.Parameter, Trim(Name)) then
-        Continue;
-      Edits := NameTokens(Param.StartOffset, Param.EndOffset, Trim(Name), []);
-      CanFix := True;
-      // Kollisionen in der Parameterliste und dort, wo umbenannt wird (Rumpf bzw. Implementierung).
-      Scopes := [Point(AParams.StartOffset, AParams.EndOffset)];
-      if Scope <> nil then
-      begin
-        // Rumpf der Routine bzw. der anonymen Methode (ohne die Parameterliste selbst).
-        CanFix := not ContainsKind(Scope, TSyntaxKind.WithStatement) and not Redeclares(Scope, Param, Trim(Name));
-        Edits := Edits + NameTokens(AParams.EndOffset, Scope.EndOffset, Trim(Name), []);
-        Scopes := Scopes + [Point(Scope.StartOffset, Scope.EndOffset)];
-      end
-      else if Header <> nil then
-      begin
-        // Deklaration: die Implementierung mit demselben Parameter an derselben Stelle umbenennen.
-        Position := ParameterPosition(AParams, Param, Trim(Name));
-        Method := Header.Name;
-        if Body <> nil then
-          Method := BareTypeName(TypeDeclOf(Body).Name) + '.' + Header.Name;
-        Implementation_ := ImplementationOf(Method, Position, Trim(Name));
-        if Implementation_ <> nil then
-        begin
-          CanFix := not ContainsKind(Implementation_, TSyntaxKind.WithStatement) and
-            not RedeclaresInBody(Implementation_, Trim(Name));
-          Edits := Edits + NameTokens(Implementation_.StartOffset, Implementation_.EndOffset, Trim(Name), []);
-          Scopes := Scopes + [Point(Implementation_.StartOffset, Implementation_.EndOffset)];
-        end;
-      end;
-      Report(TRuleNamingKind.Parameter, Param, Trim(Name), Edits, CanFix, Scopes);
+      Continue;
     end;
+    for mName in SplitString(AParams[mIndex].Name, ',') do
+    begin
+      if Wanted(TRuleNamingKind.Parameter, Trim(mName)) and not (mPair and (Length(Trim(mName)) = 1)) then
+      begin
+        CheckParameter(AParams, AParams[mIndex], Trim(mName), mOwner);
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Wo die Parameter stehen: Kopf, Typ (Methode in der Typdeklaration) und Rumpf zum Umbenennen;
+/// False, wenn die Namen nicht hier geprüft werden (override, message, published, Interface-Methode,
+/// Implementierung einer anderswo deklarierten Routine).</summary>
+function TNamingCheck.ParameterOwner(AParams: TSyntaxNode; out AOwner: TParameterOwner): Boolean;
+var
+  mOwner: TSyntaxNode;
+begin
+  AOwner.Header := nil;
+  AOwner.Body := nil;
+  AOwner.Scope := nil;
+  mOwner := AParams.Parent;
+  if mOwner = nil then
+  begin
+    Exit(False);
+  end;
+  case mOwner.Kind of
+    TSyntaxKind.RoutineHeader:
+      begin
+        AOwner.Header := mOwner;
+        Result := HeaderOwner(mOwner, AOwner);
+      end;
+    TSyntaxKind.AnonymousMethod:
+      begin
+        AOwner.Scope := mOwner;
+        Result := True;
+      end;
+    TSyntaxKind.ProcedureType:
+      Result := True;
+  else
+    Result := False;
+  end;
+end;
+
+function TNamingCheck.HeaderOwner(AHeader: TSyntaxNode; var AOwner: TParameterOwner): Boolean;
+var
+  mKnown, mImplicit: Boolean;
+  mRoutine: TSyntaxNode;
+begin
+  if (AHeader.Parent <> nil) and (AHeader.Parent.Kind in TypeBodies) then
+  begin
+    // Methode in der Typdeklaration.
+    AOwner.Body := AHeader.Parent;
+    Result := not HasDirective(AHeader, ['override', 'message']) and
+      (VisibilityOf(AOwner.Body, AHeader, mImplicit) <> 'published') and
+      not ImplementsInterface(FRoot, FIndex, AOwner.Body, AHeader.Name, mKnown) and mKnown;
+  end
+  else if (AHeader.Parent <> nil) and (AHeader.Parent.Kind = TSyntaxKind.RoutineDecl) then
+  begin
+    mRoutine := AHeader.Parent;
+    // Implementierung einer Methode oder einer anderswo deklarierten Routine: dort gemeldet.
+    if IsForwardOrInterface(mRoutine) then
+    begin
+      Exit(True);
+    end;
+    AOwner.Scope := mRoutine;
+    Result := (Pos('.', mRoutine.Name) = 0) and (DeclarationOf(mRoutine) = nil);
+  end
+  else
+  begin
+    Result := False;
+  end;
+end;
+
+procedure TNamingCheck.CheckParameter(AParams, AParam: TSyntaxNode; const AName: string;
+  const AOwner: TParameterOwner);
+var
+  mEdits: TArray<Integer>;
+  mCanFix: Boolean;
+  mScopes: TArray<TPoint>;
+begin
+  mEdits := NameTokens(AParam.StartOffset, AParam.EndOffset, AName, []);
+  mCanFix := True;
+  // Kollisionen in der Parameterliste und dort, wo umbenannt wird (Rumpf bzw. Implementierung).
+  mScopes := [Point(AParams.StartOffset, AParams.EndOffset)];
+  if AOwner.Scope <> nil then
+  begin
+    // Rumpf der Routine bzw. der anonymen Methode (ohne die Parameterliste selbst).
+    mCanFix := not ContainsKind(AOwner.Scope, TSyntaxKind.WithStatement) and
+      not Redeclares(AOwner.Scope, AParam, AName);
+    mEdits := mEdits + NameTokens(AParams.EndOffset, AOwner.Scope.EndOffset, AName, []);
+    mScopes := mScopes + [Point(AOwner.Scope.StartOffset, AOwner.Scope.EndOffset)];
+  end
+  else if AOwner.Header <> nil then
+  begin
+    mCanFix := DeclaredParameterEdits(AParams, AParam, AName, AOwner, mEdits, mScopes);
+  end;
+  Report(TRuleNamingKind.Parameter, AParam, AName, mEdits, mCanFix, mScopes);
+end;
+
+/// <summary>Deklaration: die Implementierung mit demselben Parameter an derselben Stelle mit umbenennen.</summary>
+function TNamingCheck.DeclaredParameterEdits(AParams, AParam: TSyntaxNode; const AName: string;
+  const AOwner: TParameterOwner; var AEdits: TArray<Integer>; var AScopes: TArray<TPoint>): Boolean;
+var
+  mMethod: string;
+  mImplementation: TSyntaxNode;
+begin
+  Result := True;
+  mMethod := AOwner.Header.Name;
+  if AOwner.Body <> nil then
+  begin
+    mMethod := BareTypeName(TypeDeclOf(AOwner.Body).Name) + '.' + AOwner.Header.Name;
+  end;
+  mImplementation := ImplementationOf(mMethod, ParameterPosition(AParams, AParam, AName), AName);
+  if mImplementation <> nil then
+  begin
+    Result := not ContainsKind(mImplementation, TSyntaxKind.WithStatement) and
+      not RedeclaresInBody(mImplementation, AName);
+    AEdits := AEdits + NameTokens(mImplementation.StartOffset, mImplementation.EndOffset, AName, []);
+    AScopes := AScopes + [Point(mImplementation.StartOffset, mImplementation.EndOffset)];
   end;
 end;
 
 procedure TNamingCheck.Visit(ANode: TSyntaxNode);
 var
-  Name: string;
-  Section, Body: TSyntaxNode;
+  mBody: TSyntaxNode;
 begin
   case ANode.Kind of
     TSyntaxKind.VarDecl:
-      begin
-        Section := ANode.Parent;
-        if (Section = nil) or (Section.Parent = nil) then
-          Exit;
-        if Section.Parent.Kind = TSyntaxKind.RoutineDecl then
-        begin
-          for Name in SplitString(ANode.Name, ',') do
-            // Schleifenzähler aus einem Buchstaben.
-            if Length(Trim(Name)) > 1 then
-              CheckLocal(ANode, Trim(Name), TRuleNamingKind.Local);
-        end
-        else if Section.Parent.Kind in TypeBodies then
-          for Name in SplitString(ANode.Name, ',') do
-            CheckMember(Section.Parent, ANode, Trim(Name), TRuleNamingKind.Field);
-      end;
+      VisitVarDecl(ANode);
     TSyntaxKind.InlineVar:
-      for Name in SplitString(ANode.Name, ',') do
-        if Length(Trim(Name)) > 1 then
-          CheckLocal(ANode, Trim(Name), TRuleNamingKind.Local);
+      CheckLocals(ANode);
     TSyntaxKind.InlineConst:
       CheckLocal(ANode, Trim(ANode.Name), TRuleNamingKind.Constant);
     TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement:
       CheckInlineFor(ANode);
     TSyntaxKind.Field:
       begin
-        Body := OwnerType(ANode);
-        if Body <> nil then
-          for Name in SplitString(ANode.Name, ',') do
-            CheckMember(Body, ANode, Trim(Name), TRuleNamingKind.Field);
+        mBody := OwnerType(ANode);
+        if mBody <> nil then
+        begin
+          CheckFields(mBody, ANode);
+        end;
       end;
     TSyntaxKind.ConstDecl:
-      begin
-        Section := ANode.Parent;
-        if (Section = nil) or (Section.Kind <> TSyntaxKind.ConstSection) or (Section.Name <> 'const') or
-          (Section.Parent = nil) then
-          Exit;
-        if Section.Parent.Kind = TSyntaxKind.RoutineDecl then
-          CheckLocal(ANode, ANode.Name, TRuleNamingKind.Constant)
-        else if Section.Parent.Kind in TypeBodies then
-          CheckMember(Section.Parent, ANode, ANode.Name, TRuleNamingKind.Constant)
-        else
-          CheckUnitConstant(ANode);
-      end;
+      VisitConstDecl(ANode);
     TSyntaxKind.Parameters:
       CheckParameters(ANode);
   else
     // Übrige Werte bewusst ohne Wirkung.
+  end;
+end;
+
+/// <summary>Lokale Variablen einer Deklaration; Schleifenzähler aus einem Buchstaben bleiben.</summary>
+procedure TNamingCheck.CheckLocals(ADecl: TSyntaxNode);
+var
+  mName: string;
+begin
+  for mName in SplitString(ADecl.Name, ',') do
+  begin
+    if Length(Trim(mName)) > 1 then
+    begin
+      CheckLocal(ADecl, Trim(mName), TRuleNamingKind.Local);
+    end;
+  end;
+end;
+
+procedure TNamingCheck.CheckFields(ABody, ADecl: TSyntaxNode);
+var
+  mName: string;
+begin
+  for mName in SplitString(ADecl.Name, ',') do
+  begin
+    CheckMember(ABody, ADecl, Trim(mName), TRuleNamingKind.Field);
+  end;
+end;
+
+procedure TNamingCheck.VisitVarDecl(ANode: TSyntaxNode);
+var
+  mSection: TSyntaxNode;
+begin
+  mSection := ANode.Parent;
+  if (mSection = nil) or (mSection.Parent = nil) then
+  begin
+    Exit;
+  end;
+  if mSection.Parent.Kind = TSyntaxKind.RoutineDecl then
+  begin
+    CheckLocals(ANode);
+  end
+  else if mSection.Parent.Kind in TypeBodies then
+  begin
+    CheckFields(mSection.Parent, ANode);
+  end;
+end;
+
+procedure TNamingCheck.VisitConstDecl(ANode: TSyntaxNode);
+var
+  mSection: TSyntaxNode;
+begin
+  mSection := ANode.Parent;
+  if (mSection = nil) or (mSection.Kind <> TSyntaxKind.ConstSection) or (mSection.Name <> 'const') or
+    (mSection.Parent = nil) then
+  begin
+    Exit;
+  end;
+  if mSection.Parent.Kind = TSyntaxKind.RoutineDecl then
+  begin
+    CheckLocal(ANode, ANode.Name, TRuleNamingKind.Constant);
+  end
+  else if mSection.Parent.Kind in TypeBodies then
+  begin
+    CheckMember(mSection.Parent, ANode, ANode.Name, TRuleNamingKind.Constant);
+  end
+  else
+  begin
+    CheckUnitConstant(ANode);
   end;
 end;
 
@@ -1034,7 +1434,9 @@ begin
       function(ANode: TSyntaxNode): Boolean
       begin
         if ANode.Kind = TSyntaxKind.RoutineDecl then
+        begin
           Found.Add(ANode);
+        end;
         Result := True;
       end);
     FRoutineDecls := Found.ToArray;
@@ -1055,7 +1457,9 @@ var
   Check: TNamingCheck;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Check := TNamingCheck.Create(AContext, AReport);
   try
     Check.Run;
@@ -1068,5 +1472,8 @@ procedure RegisterNamingRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TNamingPrefixRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Naming', cTexts);
 
 end.

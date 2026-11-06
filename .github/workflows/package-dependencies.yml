@@ -16,6 +16,9 @@ jobs:
       - name: Package-Abhängigkeiten prüfen
         shell: pwsh
         run: ./Tools/Check-PackageDependencies.ps1
+      - name: "Modulgrenzen: Selbsttest mit absichtlichen Verstößen (#1455)"
+        shell: pwsh
+        run: ./Tools/Test-PackageDependencies.ps1
       - name: Keine Ausgaben auf stdout
         shell: pwsh
         run: ./Tools/Check-ConsoleOutput.ps1
@@ -65,7 +68,10 @@ jobs:
         shell: pwsh
         run: ./Tools/Build-Docs.ps1 -OutDir "$env:RUNNER_TEMP/Doku"
       - name: Benchmark-Hilfsfunktionen testen
-        run: node --test Tools/Benchmark/lib.test.mjs
+        run: node --test Tools/Benchmark/lib.test.mjs Tools/Benchmark/ready-lib.test.mjs
+      - name: Release-Paket und Versionsdatei (#1519), Selbsttest
+        shell: pwsh
+        run: ./Tools/Test-ReleasePackage.ps1
       - name: Versionen von Server und Claude-Code-Plugin gleich
         shell: pwsh
         run: ./Tools/Check-Version.ps1

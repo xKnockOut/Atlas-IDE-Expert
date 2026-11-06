@@ -88,69 +88,109 @@ begin
   inherited;
 end;
 
+/// <summary>Ergebnis der Anfrage: Anzahl bei ok, Grund bei leer und Fehler.</summary>
+procedure AppendOutcome(ABuilder: TStringBuilder; const ARequest: TDiagnosticRequest);
+begin
+  ABuilder.Append(' ').Append(DiagnosticOutcomeCodes[ARequest.Outcome]);
+  case ARequest.Outcome of
+    TDiagnosticOutcome.Ok:
+      ABuilder.Append(':').Append(ARequest.Count);
+    TDiagnosticOutcome.Empty, TDiagnosticOutcome.Error:
+      if ARequest.Reason = '' then
+      begin
+        ABuilder.Append(':unspecified');
+      end
+      else
+      begin
+        ABuilder.Append(':').Append(ARequest.Reason);
+      end;
+  else
+    // Übrige Werte bewusst ohne Wirkung.
+  end;
+end;
+
+/// <summary>Dokument und Stelle der Anfrage.</summary>
+procedure AppendLocation(ABuilder: TStringBuilder; const ARequest: TDiagnosticRequest);
+begin
+  if ARequest.Document <> '' then
+  begin
+    ABuilder.Append(' ').Append(ARequest.Document).Append(' v').Append(ARequest.Version).Append(' len ')
+      .Append(ARequest.Length_).Append(' crc ').Append(ARequest.Checksum);
+  end;
+  if ARequest.Line >= 0 then
+  begin
+    ABuilder.Append(' line ').Append(ARequest.Line);
+    if ARequest.LineCount > 0 then
+    begin
+      ABuilder.Append(' of ').Append(ARequest.LineCount);
+    end;
+    ABuilder.Append(' col ').Append(ARequest.Column);
+  end;
+end;
+
+/// <summary>Stand des Index und Auflösung.</summary>
+procedure AppendIndex(ABuilder: TStringBuilder; const ARequest: TDiagnosticRequest);
+begin
+  if ARequest.IndexUnits > 0 then
+  begin
+    ABuilder.Append(' index units ').Append(ARequest.IndexUnits).Append(' lib ').Append(ARequest.IndexLibrary);
+    if ARequest.IndexLoading >= 0 then
+    begin
+      ABuilder.Append(' loading ').Append(ARequest.IndexLoading).Append(' %');
+    end;
+  end;
+  if ARequest.Resolve <> '' then
+  begin
+    ABuilder.Append(' resolve ').Append(ARequest.Resolve);
+  end;
+end;
+
 class function TDiagnosticLog.FormatRequest(const ARequest: TDiagnosticRequest): string;
 var
-  Builder: TStringBuilder;
-  Note: string;
+  mBuilder: TStringBuilder;
+  mNote: string;
 begin
-  Builder := TStringBuilder.Create(256);
+  mBuilder := TStringBuilder.Create(256);
   try
-    Builder.Append(TimeText(ARequest.Time)).Append(' ').Append(ARequest.Method);
-    Builder.Append(' ').Append(ARequest.ElapsedMs).Append(' ms');
+    mBuilder.Append(TimeText(ARequest.Time)).Append(' ').Append(ARequest.Method);
+    mBuilder.Append(' ').Append(ARequest.ElapsedMs).Append(' ms');
     if ARequest.QueueMs > 0 then
-      Builder.Append(' queue ').Append(ARequest.QueueMs).Append(' ms');
-    Builder.Append(' ').Append(DiagnosticOutcomeCodes[ARequest.Outcome]);
-    case ARequest.Outcome of
-      TDiagnosticOutcome.Ok:
-        Builder.Append(':').Append(ARequest.Count);
-      TDiagnosticOutcome.Empty, TDiagnosticOutcome.Error:
-        if ARequest.Reason = '' then
-          Builder.Append(':unspecified')
-        else
-          Builder.Append(':').Append(ARequest.Reason);
-    else
-      // Übrige Werte bewusst ohne Wirkung.
-    end;
-    if ARequest.Document <> '' then
-      Builder.Append(' ').Append(ARequest.Document).Append(' v').Append(ARequest.Version).Append(' len ')
-        .Append(ARequest.Length_).Append(' crc ').Append(ARequest.Checksum);
-    if ARequest.Line >= 0 then
     begin
-      Builder.Append(' line ').Append(ARequest.Line);
-      if ARequest.LineCount > 0 then
-        Builder.Append(' of ').Append(ARequest.LineCount);
-      Builder.Append(' col ').Append(ARequest.Column);
+      mBuilder.Append(' queue ').Append(ARequest.QueueMs).Append(' ms');
     end;
-    for Note in ARequest.Notes do
-      Builder.Append(' ').Append(Note);
-    if ARequest.IndexUnits > 0 then
+    AppendOutcome(mBuilder, ARequest);
+    AppendLocation(mBuilder, ARequest);
+    for mNote in ARequest.Notes do
     begin
-      Builder.Append(' index units ').Append(ARequest.IndexUnits).Append(' lib ').Append(ARequest.IndexLibrary);
-      if ARequest.IndexLoading >= 0 then
-        Builder.Append(' loading ').Append(ARequest.IndexLoading).Append(' %');
+      mBuilder.Append(' ').Append(mNote);
     end;
-    if ARequest.Resolve <> '' then
-      Builder.Append(' resolve ').Append(ARequest.Resolve);
-    Result := Builder.ToString;
+    AppendIndex(mBuilder, ARequest);
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
 procedure TDiagnosticLog.Emit(const ALine: string);
 begin
   if not FFilter.Accept(ALine) then
+  begin
     Exit;
+  end;
   TMonitor.Enter(FLock);
   try
     if not FConfigured then
     begin
       if FPending.Count < PendingLimit then
+      begin
         FPending.Add(ALine);
+      end;
       Exit;
     end;
     if FEnabled then
+    begin
       FWriter.WriteLine(ALine);
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -159,7 +199,9 @@ end;
 procedure TDiagnosticLog.LogRequest(const ARequest: TDiagnosticRequest);
 begin
   if FConfigured and not FEnabled then
+  begin
     Exit;
+  end;
   Emit(FormatRequest(ARequest));
 end;
 
@@ -190,11 +232,15 @@ begin
   Line := Format('%s run end reason %s exit %d mem %s threads %d dropped %d', [TimeText(Now),
     DiagnosticEndReasonCodes[AReason], AExitCode, MegaBytes(AProcess.MemoryBytes), AProcess.Threads, Dropped]);
   if AException <> '' then
+  begin
     Line := Line + ' exception ' + AException;
+  end;
   Emit(Line);
   // Jeder Rahmen eine eigene Zeile: Verwirft der Filter einen, bleiben die übrigen.
   for Frame in AStack.Split([#13#10, #10], TStringSplitOptions.ExcludeEmpty) do
+  begin
     Emit('  at ' + TDiagnosticFilter.StackFrame(Frame));
+  end;
 end;
 
 procedure TDiagnosticLog.LogEvent(const AText: string);
@@ -213,8 +259,12 @@ begin
     begin
       FConfigured := True;
       if FEnabled then
+      begin
         for Line in FPending do
+        begin
           FWriter.WriteLine(Line);
+        end;
+      end;
       FPending.Clear;
     end;
   finally
@@ -227,7 +277,9 @@ begin
   TMonitor.Enter(FLock);
   try
     if not FConfigured then
+    begin
       Configure(FEnabled);
+    end;
   finally
     TMonitor.Exit(FLock);
   end;

@@ -124,7 +124,9 @@ begin
   while (Line < APosition.Line) and (Index <= Length(AText)) do
   begin
     if AText[Index] = #10 then
+    begin
       Inc(Line);
+    end;
     Inc(Index);
   end;
   Result := Index + APosition.Character;
@@ -625,8 +627,12 @@ begin
     begin
       Result := False;
       for mIndex := 0 to High(ANames) do
+      begin
         if SameText(ANames[mIndex], AName) then
+        begin
           Result := True;
+        end;
+      end;
     end;
   Result.ReadFile :=
     function(const AName: string; out AData: TBytes): Boolean
@@ -635,11 +641,13 @@ begin
     begin
       Result := False;
       for mIndex := 0 to High(ANames) do
+      begin
         if SameText(ANames[mIndex], AName) then
         begin
           AData := TEncoding.UTF8.GetBytes(ATexts[mIndex]);
           Result := True;
         end;
+      end;
     end;
 end;
 

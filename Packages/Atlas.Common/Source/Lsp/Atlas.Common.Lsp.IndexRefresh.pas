@@ -93,7 +93,9 @@ var
   Apply: TIndexTextApply;
 begin
   if not Applies(AFileName) or not Assigned(FApply) then
+  begin
     Exit;
+  end;
   Apply := FApply;
   FDebouncer.Schedule(AnsiUpperCase(AFileName),
     procedure
@@ -141,11 +143,17 @@ begin
   for Reference in TUsesClauses.References(TPascalLexer.Tokenize(AText)) do
   begin
     if Result <> '' then
+    begin
       Result := Result + '|';
+    end;
     if Reference.InInterface then
-      Result := Result + 'I:'
+    begin
+      Result := Result + 'I:';
+    end
     else
+    begin
       Result := Result + 'M:';
+    end;
     Result := Result + UpperCase(Reference.Name);
   end;
 end;

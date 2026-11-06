@@ -64,20 +64,30 @@ begin
       ASource.Root := 'C:\P';
       ASource.Title := 'Demo';
       if AProject then
+      begin
         ASource.Files := [MainFile, HelperFile, 'C:\P\Main.dfm'];
+      end;
       Result := True;
     end,
     function(const AFileName: string; out AText: string): Boolean
     begin
       Result := True;
       if SameText(AFileName, MainFile) then
-        AText := MainText
+      begin
+        AText := MainText;
+      end
       else if SameText(AFileName, HelperFile) then
-        AText := HelperText
+      begin
+        AText := HelperText;
+      end
       else if SameText(AFileName, ForeignFile) then
-        AText := 'unit Fremd;'#10'// TODO fremd'#10'end.'
+      begin
+        AText := 'unit Fremd;'#10'// TODO fremd'#10'end.';
+      end
       else
+      begin
         Result := False;
+      end;
     end);
 end;
 
@@ -89,19 +99,31 @@ begin
   Args := TJSONArray.Create;
   try
     if AFileName = '' then
-      Args.AddElement(TJSONNull.Create)
+    begin
+      Args.AddElement(TJSONNull.Create);
+    end
     else
+    begin
       Args.Add(TDocumentUris.FromPath(AFileName));
+    end;
     if (AMode <> '') or (AFilter <> '') then
+    begin
       Args.Add(AMode);
+    end;
     if AFilter <> '' then
+    begin
       Args.AddElement(TJSONObject.ParseJSONValue(AFilter));
+    end;
     Answer := ATodos.Execute(Args);
     try
       if Answer is TJSONString then
-        Result := Answer.Value
+      begin
+        Result := Answer.Value;
+      end
       else
+      begin
         Result := Answer.ToJSON;
+      end;
     finally
       Answer.Free;
     end;

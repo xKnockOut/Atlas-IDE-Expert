@@ -136,19 +136,33 @@ const
 function TextOf(const AFileName: string): string;
 begin
   if SameText(AFileName, ShapesFile) then
-    Result := UnitShapes
+  begin
+    Result := UnitShapes;
+  end
   else if SameText(AFileName, CircleFile) then
-    Result := UnitCircle
+  begin
+    Result := UnitCircle;
+  end
   else if SameText(AFileName, UseFile) then
-    Result := UnitUse
+  begin
+    Result := UnitUse;
+  end
   else if SameText(AFileName, HelpersFile) then
-    Result := UnitHelpers
+  begin
+    Result := UnitHelpers;
+  end
   else if SameText(AFileName, MainFile) then
-    Result := UnitMain
+  begin
+    Result := UnitMain;
+  end
   else if SameText(AFileName, MainForm) then
-    Result := FormMain
+  begin
+    Result := FormMain;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function Context(const AIndex: ISymbolIndex): TSafeDeleteContext;
@@ -174,12 +188,18 @@ begin
         begin
           Result := Default(TUsesUnitInfo);
           if not AIndex.FindUnit(AUnitName, UnitIndex) then
+          begin
             Exit;
+          end;
           Result.Known := True;
           Result.HasInitialization := UnitIndex.HasInitialization;
           for Symbol in UnitIndex.Symbols do
+          begin
             if Symbol.InInterface then
+            begin
               Result.Names := Result.Names + [Symbol.Name];
+            end;
+          end;
         end;
     end;
 end;
@@ -206,12 +226,16 @@ begin
     if Document.GetValue('kind') <> nil then
     begin
       if SameText(TDocumentUris.ToPath(Document.GetValue('uri').Value), AFileName) then
+      begin
         Result := '<geloescht>';
+      end;
       Continue;
     end;
     Uri := (Document.GetValue('textDocument') as TJSONObject).GetValue('uri').Value;
     if not SameText(TDocumentUris.ToPath(Uri), AFileName) then
+    begin
       Continue;
+    end;
     Edits := nil;
     for Edit in Document.GetValue('edits') as TJSONArray do
     begin
@@ -244,12 +268,15 @@ function Execute(const AIndex: ISymbolIndex; const AFileName: string; ALine, ACh
 var
   Tree: TSyntaxTree;
   Resolver: TNameResolver;
+  WithChoices: TSafeDeleteContext;
 begin
+  WithChoices := Context(AIndex);
+  WithChoices.Choices := AChoices;
   Tree := TPascalParser.Parse(TextOf(AFileName));
   Resolver := TNameResolver.Create(AIndex, nil);
   try
     Result := TLspSafeDelete.Execute(Resolver, Tree, AFileName, TextOf(AFileName),
-      TTextPosition.Create(ALine, ACharacter), AChoices, Context(AIndex));
+      TTextPosition.Create(ALine, ACharacter), WithChoices);
   finally
     Resolver.Free;
     Tree.Free;
@@ -262,11 +289,17 @@ var
 begin
   Result := '';
   for Item in AAnswer.GetValue(AName) as TJSONArray do
+  begin
     if Item is TJSONObject then
+    begin
       Result := Result + ExtractFileName(TJSONObject(Item).GetValue('file').Value) + ':' +
-        TJSONObject(Item).GetValue('line').Value + ':' + TJSONObject(Item).GetValue('kind').Value + '|'
+        TJSONObject(Item).GetValue('line').Value + ':' + TJSONObject(Item).GetValue('kind').Value + '|';
+    end
     else
+    begin
       Result := Result + Item.Value + '|';
+    end;
+  end;
 end;
 
 procedure TLspSafeDeleteTests.Setup;
@@ -297,7 +330,9 @@ begin
     Assert.IsTrue(ContainsText(Actions[0].GetValue('title').Value, 'Unused'));
     Assert.AreEqual(TLspSafeDelete.ClientCommand, (Actions[0].GetValue('command') as TJSONObject).GetValue('command').Value);
     for Action in Actions do
+    begin
       Action.Free;
+    end;
     Assert.AreEqual(0, Integer(Length(TLspSafeDelete.Actions(False, Tree, UnitShapes, 'file:///C:/P/Shapes.pas',
       TTextPosition.Create(9, 15)))), 'abgeschaltet');
     Assert.AreEqual(0, Integer(Length(TLspSafeDelete.Actions(True, Tree, UnitShapes, 'file:///C:/P/Shapes.pas',

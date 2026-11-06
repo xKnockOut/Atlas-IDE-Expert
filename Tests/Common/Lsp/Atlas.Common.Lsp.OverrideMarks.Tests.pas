@@ -130,11 +130,15 @@ begin
   begin
     Result := Result + IntToStr(Mark.Line);
     for Target in Mark.Overrides do
+    begin
       Result := Result + Format(' ↑%s@%s:%d', [Target.Name, ExtractFileName(Target.FileName),
         Target.Range.StartPos.Line]);
+    end;
     for Target in Mark.Overridden do
+    begin
       Result := Result + Format(' ↓%s@%s:%d', [Target.Name, ExtractFileName(Target.FileName),
         Target.Range.StartPos.Line]);
+    end;
     Result := Result + '|';
   end;
 end;
@@ -180,7 +184,9 @@ begin
   Tree := TPascalParser.Parse(UnitHaupt);
   try
     for Mark in TLspOverrideMarks.Marks(FResolver, FIndex, Tree, HauptFile) do
+    begin
       Assert.IsTrue((Mark.Line <> 6) and (Mark.Line <> 12), 'Lies ohne Marke: ' + IntToStr(Mark.Line));
+    end;
   finally
     Tree.Free;
   end;

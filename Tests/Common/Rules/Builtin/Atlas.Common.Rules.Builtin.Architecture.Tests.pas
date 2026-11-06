@@ -125,7 +125,9 @@ var
   Finding: TRuleFinding;
 begin
   for Finding in TRuleAssert.Findings(TForbiddenUsesRule.Create, Source, Config, 'Source/App.Common.Model.pas') do
+  begin
     Assert.AreEqual(0, Pos('Winapi.Windows', Finding.Message));
+  end;
 end;
 
 procedure TForbiddenUsesRuleTests.MatchesLayerByPath;
@@ -169,7 +171,9 @@ var
 begin
   SetLength(Result, Length(Prefixes));
   for Index := 0 to High(Prefixes) do
+  begin
     Result[Index] := Prefixes[Index];
+  end;
 end;
 
 function Classify(const AName: string): TArchitectureUnit;
@@ -230,9 +234,13 @@ begin
     Result := TPath.Combine(Directory, TPath.Combine('Tests', TPath.Combine('Data',
       TPath.Combine('Architecture', 'role-imports.json'))));
     if TFile.Exists(Result) then
+    begin
       Exit;
+    end;
     if ExtractFileDir(Directory) = Directory then
+    begin
       Break;
+    end;
     Directory := ExtractFileDir(Directory);
   end;
   Result := '';
@@ -244,7 +252,9 @@ var
 begin
   Result := nil;
   for Item in AObject.GetValue<TJSONArray>(AName) do
+  begin
     Result := Result + [Item.Value];
+  end;
 end;
 
 procedure TArchitectureMatrixTests.MatrixCasesFromFile;

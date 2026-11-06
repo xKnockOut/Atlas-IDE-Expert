@@ -26,53 +26,80 @@ uses
   System.Generics.Collections,
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Projects.Paths,
-  Atlas.Common.Projects.Internals.Xml;
+  Atlas.Common.Projects.Internals.Xml,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TGroupReaderText = (RootElementProjectExpected);
+
+const
+  cTexts: array[TGroupReaderText] of TAtlasText = (
+    (De: '%s: Wurzelelement <Project> erwartet'; En: '%s: root element <Project> expected'));
+
+{$SCOPEDENUMS OFF}
+
+/// <summary>Projekte (.dproj) aus einer ItemGroup, relativ zu ADirectory aufgelöst und je Datei einmal.</summary>
+procedure AddProjects(AGroup: TXmlElement; const ADirectory: string; AFound: TList<string>;
+  ASeen: TDictionary<string, Boolean>);
+var
+  mIndex: Integer;
+  mItem: TXmlElement;
+  mInclude, mFileName: string;
+begin
+  for mIndex := 0 to AGroup.ChildCount - 1 do
+  begin
+    mItem := AGroup[mIndex];
+    mInclude := Trim(mItem.Attribute('Include'));
+    if (mItem.Name <> 'Projects') or not SameText(TProjectPaths.Extension(mInclude), '.dproj') then
+    begin
+      Continue;
+    end;
+    mFileName := TProjectPaths.Combine(ADirectory, mInclude);
+    if not ASeen.ContainsKey(AnsiUpperCase(mFileName)) then
+    begin
+      ASeen.Add(AnsiUpperCase(mFileName), True);
+      AFound.Add(mFileName);
+    end;
+  end;
+end;
 
 class function TGroupProjReader.Read(const AFileName, AText: string): TArray<string>;
 var
-  Root, Group, Item: TXmlElement;
-  GroupIndex, ItemIndex: Integer;
-  Directory, Include, FileName: string;
-  Found: TList<string>;
-  Seen: TDictionary<string, Boolean>;
+  mRoot: TXmlElement;
+  mIndex: Integer;
+  mDirectory: string;
+  mFound: TList<string>;
+  mSeen: TDictionary<string, Boolean>;
 begin
   try
-    Root := TXmlReader.Parse(AText);
+    mRoot := TXmlReader.Parse(AText);
   except
     on E: EXmlError do
       raise EProjectError.CreateFmt('%s: %s', [AFileName, E.Message]);
   end;
-  Directory := TProjectPaths.DirectoryOf(AFileName);
-  Found := TList<string>.Create;
-  Seen := TDictionary<string, Boolean>.Create;
+  mDirectory := TProjectPaths.DirectoryOf(AFileName);
+  mFound := TList<string>.Create;
+  mSeen := TDictionary<string, Boolean>.Create;
   try
-    if Root.Name <> 'Project' then
-      raise EProjectError.CreateFmt('%s: Wurzelelement <Project> erwartet', [AFileName]);
-    for GroupIndex := 0 to Root.ChildCount - 1 do
+    if mRoot.Name <> 'Project' then
     begin
-      Group := Root[GroupIndex];
-      if Group.Name <> 'ItemGroup' then
-        Continue;
-      for ItemIndex := 0 to Group.ChildCount - 1 do
+      raise EProjectError.CreateFmt(cTexts[TGroupReaderText.RootElementProjectExpected].Text, [AFileName]);
+    end;
+    for mIndex := 0 to mRoot.ChildCount - 1 do
+    begin
+      if mRoot[mIndex].Name = 'ItemGroup' then
       begin
-        Item := Group[ItemIndex];
-        if Item.Name <> 'Projects' then
-          Continue;
-        Include := Trim(Item.Attribute('Include'));
-        if not SameText(TProjectPaths.Extension(Include), '.dproj') then
-          Continue;
-        FileName := TProjectPaths.Combine(Directory, Include);
-        if Seen.ContainsKey(AnsiUpperCase(FileName)) then
-          Continue;
-        Seen.Add(AnsiUpperCase(FileName), True);
-        Found.Add(FileName);
+        AddProjects(mRoot[mIndex], mDirectory, mFound, mSeen);
       end;
     end;
-    Result := Found.ToArray;
+    Result := mFound.ToArray;
   finally
-    Seen.Free;
-    Found.Free;
-    Root.Free;
+    mSeen.Free;
+    mFound.Free;
+    mRoot.Free;
   end;
 end;
 
@@ -82,5 +109,8 @@ var
 begin
   Result := Read(AFileName, TFileEncoding.LoadFromFile(AFileName, FileFormat));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Projects.GroupReader', cTexts);
 
 end.

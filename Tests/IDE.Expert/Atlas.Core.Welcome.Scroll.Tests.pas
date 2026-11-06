@@ -11,6 +11,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeScrollTests = class
   public
     [Test]
@@ -80,7 +81,9 @@ begin
   mSum := 0;
   // Touchpad: zwölf Schritte zu 10 ergeben zusammen ein Raster.
   for mIndex := 1 to 12 do
+  begin
     Inc(mSum, TAtlasWelcomeScroll.WheelPixels(mRest, -10, 3, 20, 500));
+  end;
   Assert.AreEqual(60, mSum);
   Assert.AreEqual(0, mRest);
   // Ein Rest der alten Richtung zählt nach einem Richtungswechsel nicht mit.

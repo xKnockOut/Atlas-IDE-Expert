@@ -97,19 +97,27 @@ type
     NamePosition: TTextPosition;
   end;
 
+  /// <summary>Was Introduce einführt: Alias Name für den Ausdruck, der an Position beginnt, mit Reichweite Scope.
+  /// </summary>
+  TTypeAliasRequest = record
+    Position: TTextPosition;
+    Name: string;
+    Scope: TTypeAliasScope;
+    Lookup: TTypeAliasLookup;
+    class function Create(const APosition: TTextPosition; const AName: string; AScope: TTypeAliasScope;
+      const ALookup: TTypeAliasLookup): TTypeAliasRequest; static;
+  end;
+
   TTypeAlias = class
-  public const
-    IntroduceTitle = 'Typ-Alias einführen (%s)';
-    HereTitle = 'Typ-Alias einführen, nur diese Stelle (%s)';
-    UnitTitle = 'Typ-Alias einführen, in der Unit (%s)';
-    ProjectTitle = 'Typ-Alias einführen, im Projekt (%s)';
-    InlineTitle = 'Alias auflösen (%s)';
-    /// <summary>Grund bei offenen generischen Parametern (%s: die Parameter).</summary>
-    OpenParamsReason = 'Kein Typ-Alias: Der Ausdruck nutzt den generischen Parameter %s, und Delphi kennt keine ' +
-      'generischen Aliase. Möglich wäre eine Ableitung TName<T> = class(TBasis<T>), die Atlas nicht selbst anlegt.';
-    CompatibilityNote = 'Atlas schreibt X = Y: zuweisungsverträglich mit dem Ausdruck. X = type Y wäre ein ' +
-      'eigener, nicht verträglicher Typ.';
   public
+    class function IntroduceTitle: string; static;
+    class function HereTitle: string; static;
+    class function UnitTitle: string; static;
+    class function ProjectTitle: string; static;
+    class function InlineTitle: string; static;
+    /// <summary>Grund bei offenen generischen Parametern (%s: die Parameter).</summary>
+    class function OpenParamsReason: string; static;
+    class function CompatibilityNote: string; static;
     /// <summary>Typausdrücke an APosition, für die ein Alias lohnt: der äußere zuerst, dann der innerste, wenn
     /// er ein anderer ist. Leer ohne Treffer.</summary>
     class function Targets(const AText: string; ATree: TSyntaxTree; const AFileName: string;
@@ -118,11 +126,10 @@ type
     /// übrigen Teile ohne Groß-/Kleinschreibung und Kommentare.</summary>
     class function KeyOf(ATree: TSyntaxTree; const AFileName: string; ANode: TSyntaxNode;
       const ALookup: TTypeAliasLookup): string; static;
-    /// <summary>Alias AName für den Ausdruck, der an APosition beginnt (aus Targets), in ADeclaring; im Projekt
-    /// auch gleiche Ausdrücke in AOthers. False mit Grund, wenn es nicht geht.</summary>
+    /// <summary>Alias ARequest.Name für den Ausdruck, der an ARequest.Position beginnt (aus Targets), in
+    /// ADeclaring; im Projekt auch gleiche Ausdrücke in AOthers. False mit Grund, wenn es nicht geht.</summary>
     class function Introduce(const ADeclaring: TTypeAliasSource; const AOthers: TArray<TTypeAliasSource>;
-      const APosition: TTextPosition; const AName: string; AScope: TTypeAliasScope;
-      const ALookup: TTypeAliasLookup; out AResult: TTypeAliasResult; out AReason: string): Boolean; static;
+      const ARequest: TTypeAliasRequest; out AResult: TTypeAliasResult; out AReason: string): Boolean; static;
     /// <summary>Alias X = Y, dessen Name in der Deklaration APosition enthält.</summary>
     class function InlineTarget(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
       out ATarget: TInlineAliasTarget; out AReason: string): Boolean; static;
@@ -147,7 +154,108 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Editing.UsesClause;
+  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TEditingTypeAliasText = (AfterTheChangeNoLonger, IsNotAValidIdentifier, UsesTypesFromTheImplementation,
+    TheUnitHasNoInterface, TheNameIsAlreadyTaken, IsNotDeclaredYetBefore, GetsAForwardDeclarationBefore,
+    EqualExpressionsRemainNotUsed, IsInTheImplementationPart, ThereIsNoTypeAlias, IsGeneric, IsNotAnAlias,
+    TypeIsADistinctType, NoTree, UsesForCannotBeAdded, UsesKeepParameterResultProperty, NoUseOfCanBe,
+    IsNotUsedAnywhere, IsReplacedByPlacesIn, TheAliasIsRemoved, InPlacesInFiles, Line, ImplementationPart,
+    InterfacePart, IntroduceTypeAlias, IntroduceTypeAliasThisPlace, IntroduceTypeAliasInThe, IntroduceTypeAliasInThe2,
+    ResolveAlias, NoTypeAliasTheExpression, AtlasWritesXYAssignment, ThereIsNoTypeExpression);
+
+const
+  cTexts: array[TEditingTypeAliasText] of TAtlasText = (
+    (De: 'Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s)';
+     En: 'After the change %s no longer parses without errors (line %d: %s)'),
+    (De: '"%s" ist kein gültiger Bezeichner'; En: '"%s" is not a valid identifier'),
+    (De: '%s nutzt Typen aus dem implementation-Teil; ersetzt wird nur in dieser Unit';
+     En: '%s uses types from the implementation part; it is replaced only in this unit'),
+    (De: 'Die Unit hat keinen interface-Teil'; En: 'The unit has no interface part'),
+    (De: 'Der Name %s ist schon vergeben'; En: 'The name %s is already taken'),
+    (De: '%s ist vor der ersten Verwendung von %s noch nicht deklariert';
+     En: '%s is not declared yet before the first use of %s'),
+    (De: '%s bekommt eine Vorwärtsdeklaration vor dem Alias'; En: '%s gets a forward declaration before the alias'),
+    (De: '%s: %d gleiche Ausdrücke bleiben (%s nicht eingebunden oder %s dort vergeben)';
+     En: '%s: %d equal expressions remain (%s not used or %s taken there)'),
+    (De: '%s steht im implementation-Teil; andere Units sehen ihn nicht';
+     En: '%s is in the implementation part; other units do not see it'),
+    (De: 'Hier steht kein Typ-Alias'; En: 'There is no type alias here'),
+    (De: '%s ist generisch'; En: '%s is generic'),
+    (De: '%s ist kein Alias'; En: '%s is not an alias'),
+    (De: '%s = type … ist ein eigener Typ; Auflösen würde die Bedeutung ändern';
+     En: '%s = type … is a distinct type; resolving it would change the meaning'),
+    (De: 'kein Baum'; En: 'no tree'),
+    (De: '%s: uses für %s lässt sich nicht ergänzen'; En: '%s: uses for %s cannot be added'),
+    (De: '%d Verwendungen behalten %s (Parameter, Ergebnis, Property, Typargument, Ausdruck oder eine Unit, die den ' +
+      'Typ nicht sieht); der Alias bleibt';
+     En: '%d uses keep %s (parameter, result, property, type argument, expression or a unit that does not see the ' +
+      'type); the alias stays'),
+    (De: 'Keine Verwendung von %s lässt sich ersetzen'; En: 'No use of %s can be replaced'),
+    (De: '%s wird nirgends verwendet'; En: '%s is not used anywhere'),
+    (De: '%s wird durch %s ersetzt, %d Stellen in %d Dateien'; En: '%s is replaced by %s, %d places in %d files'),
+    (De: '; der Alias entfällt.'; En: '; the alias is removed.'),
+    (De: '%s = %s; im %s, %d Stellen in %d Dateien.'; En: '%s = %s; in %s, %d places in %d files.'),
+    (De: '%s, Zeile %d'; En: '%s, line %d'),
+    (De: 'implementation-Teil'; En: 'implementation part'),
+    (De: 'interface-Teil'; En: 'interface part'),
+    (De: 'Typ-Alias einführen (%s)'; En: 'Introduce type alias (%s)'),
+    (De: 'Typ-Alias einführen, nur diese Stelle (%s)'; En: 'Introduce type alias, this place only (%s)'),
+    (De: 'Typ-Alias einführen, in der Unit (%s)'; En: 'Introduce type alias, in the unit (%s)'),
+    (De: 'Typ-Alias einführen, im Projekt (%s)'; En: 'Introduce type alias, in the project (%s)'),
+    (De: 'Alias auflösen (%s)'; En: 'Resolve alias (%s)'),
+    (De: 'Kein Typ-Alias: Der Ausdruck nutzt den generischen Parameter %s, und Delphi kennt keine generischen ' +
+      'Aliase. Möglich wäre eine Ableitung TName<T> = class(TBasis<T>), die Atlas nicht selbst anlegt.';
+     En: 'No type alias: the expression uses the generic parameter %s, and Delphi has no generic aliases. A ' +
+      'descendant TName<T> = class(TBase<T>) would be possible, which Atlas does not create itself.'),
+    (De: 'Atlas schreibt X = Y: zuweisungsverträglich mit dem Ausdruck. X = type Y wäre ein eigener, nicht ' +
+      'verträglicher Typ.';
+     En: 'Atlas writes X = Y: assignment compatible with the expression. X = type Y would be a distinct, ' +
+      'incompatible type.'),
+    (De: 'Hier steht kein Typausdruck, für den ein Alias lohnt';
+     En: 'There is no type expression here that is worth an alias'));
+
+{$SCOPEDENUMS OFF}
+
+class function TTypeAlias.IntroduceTitle: string;
+begin
+  Result := cTexts[TEditingTypeAliasText.IntroduceTypeAlias].Text;
+end;
+
+class function TTypeAlias.HereTitle: string;
+begin
+  Result := cTexts[TEditingTypeAliasText.IntroduceTypeAliasThisPlace].Text;
+end;
+
+class function TTypeAlias.UnitTitle: string;
+begin
+  Result := cTexts[TEditingTypeAliasText.IntroduceTypeAliasInThe].Text;
+end;
+
+class function TTypeAlias.ProjectTitle: string;
+begin
+  Result := cTexts[TEditingTypeAliasText.IntroduceTypeAliasInThe2].Text;
+end;
+
+class function TTypeAlias.InlineTitle: string;
+begin
+  Result := cTexts[TEditingTypeAliasText.ResolveAlias].Text;
+end;
+
+class function TTypeAlias.OpenParamsReason: string;
+begin
+  Result := cTexts[TEditingTypeAliasText.NoTypeAliasTheExpression].Text;
+end;
+
+class function TTypeAlias.CompatibilityNote: string;
+begin
+  Result := cTexts[TEditingTypeAliasText.AtlasWritesXYAssignment].Text;
+end;
 
 const
   TypeKinds = [TSyntaxKind.TypeReference, TSyntaxKind.ArrayType, TSyntaxKind.SetType, TSyntaxKind.ProcedureType,
@@ -167,21 +275,25 @@ end;
 
 function Where(const AFileName: string; ALine: Integer): string;
 begin
-  Result := Format('%s, Zeile %d', [ExtractFileName(AFileName), ALine + 1]);
+  Result := cTexts[TEditingTypeAliasText.Line].Fmt([ExtractFileName(AFileName), ALine + 1]);
 end;
 
 function LastPart(const AName: string): string;
 begin
   Result := AName;
   if Pos('.', Result) > 0 then
+  begin
     Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
+  end;
 end;
 
 function Capitalized(const AName: string): string;
 begin
   Result := AName;
   if Result <> '' then
+  begin
     Result := UpperCase(Result[1]) + Copy(Result, 2, MaxInt);
+  end;
 end;
 
 function IsUpper(AChar: Char): Boolean;
@@ -194,7 +306,9 @@ function Bare(const AName: string): string;
 begin
   Result := LastPart(Trim(AName));
   if (Length(Result) >= 2) and CharInSet(Result[1], ['T', 'F', 'L', 'A', 'G', 'I']) and IsUpper(Result[2]) then
+  begin
     Result := Copy(Result, 2, MaxInt);
+  end;
   Result := Capitalized(Result);
 end;
 
@@ -213,12 +327,14 @@ begin
   repeat
     Found := False;
     for Index := 0 to Result.ChildCount - 1 do
+    begin
       if (AOffset >= Result[Index].StartOffset) and (AOffset < Result[Index].EndOffset) then
       begin
         Result := Result[Index];
         Found := True;
         Break;
       end;
+    end;
   until not Found;
 end;
 
@@ -261,8 +377,12 @@ var
 begin
   Result := -1;
   for Index := 0 to AParent.ChildCount - 1 do
+  begin
     if AParent[Index] = AChild then
+    begin
       Exit(Index);
+    end;
+  end;
 end;
 
 /// <summary>Darf ANode ein Alias werden? Nicht als ganze Typdeklaration (das ist schon einer) und nicht als offenes
@@ -275,7 +395,9 @@ begin
   Result := (Parent <> nil) and (Parent.Kind <> TSyntaxKind.TypeDecl) and
     not ((ANode.Kind = TSyntaxKind.ArrayType) and (Parent.Kind = TSyntaxKind.Parameter));
   if Result and not IsTypeNode(Parent) and (Parent.Kind <> TSyntaxKind.GenericArgs) then
+  begin
     Result := Parent.Kind in DeclarationContexts;
+  end;
 end;
 
 /// <summary>Generische Parameter der umgebenden Typen und Routinen von ANode.</summary>
@@ -290,13 +412,21 @@ begin
   begin
     Params := nil;
     if Current.Kind in [TSyntaxKind.TypeDecl, TSyntaxKind.RoutineHeader] then
+    begin
       Params := Current.FindChild(TSyntaxKind.GenericParams);
+    end;
     if (Params = nil) and (Current.Kind = TSyntaxKind.RoutineDecl) and
       (Current.FindChild(TSyntaxKind.RoutineHeader) <> nil) then
+    begin
       Params := Current.FindChild(TSyntaxKind.RoutineHeader).FindChild(TSyntaxKind.GenericParams);
+    end;
     if Params <> nil then
+    begin
       for Index := 0 to Params.ChildCount - 1 do
+      begin
         Result := Result + [Params[Index].Name];
+      end;
+    end;
     Current := Current.Parent;
   end;
 end;
@@ -309,21 +439,31 @@ var
 begin
   Result := '';
   if AParams = nil then
+  begin
     Exit;
+  end;
   Used := nil;
   ANode.Walk(
     function(AChild: TSyntaxNode): Boolean
     begin
       if (AChild.Kind = TSyntaxKind.TypeReference) and (Pos('.', AChild.Name) = 0) and
         (IndexText(AChild.Name, AParams) >= 0) and (IndexText(AChild.Name, Used) < 0) then
+      begin
         Used := Used + [AChild.Name];
+      end;
       Result := True;
     end);
   for Name in Used do
+  begin
     if Result = '' then
-      Result := Name
+    begin
+      Result := Name;
+    end
     else
+    begin
       Result := Result + ', ' + Name;
+    end;
+  end;
 end;
 
 /// <summary>Innerster benannter Typ: letztes Typargument bzw. Element, sonst der Name selbst.</summary>
@@ -338,13 +478,19 @@ begin
       begin
         Args := ANode.FindChild(TSyntaxKind.GenericArgs);
         if (Args <> nil) and (Args.ChildCount > 0) then
+        begin
           Exit(ElementName(Args[Args.ChildCount - 1]));
+        end;
         Result := Bare(ANode.Name);
       end;
     TSyntaxKind.ArrayType, TSyntaxKind.SetType:
       for Index := ANode.ChildCount - 1 downto 0 do
+      begin
         if IsTypeNode(ANode[Index]) and (ANode[Index].Kind <> TSyntaxKind.SubrangeType) then
+        begin
           Exit(ElementName(ANode[Index]));
+        end;
+      end;
   else
     // Übrige Arten: nichts zu tun.
   end;
@@ -360,7 +506,9 @@ begin
     Inc(Result);
     Index := ANode.ChildCount - 1;
     if Index < 0 then
+    begin
       Break;
+    end;
     ANode := ANode[Index];
   end;
 end;
@@ -373,63 +521,109 @@ begin
   Result := '';
   Owner := ANode.Parent;
   if (Owner = nil) or not (Owner.Kind in DeclarationContexts) then
+  begin
     Exit;
+  end;
   Result := Trim(Owner.Name);
   if Pos(',', Result) > 0 then
+  begin
     Result := Trim(Copy(Result, 1, Pos(',', Result) - 1));
+  end;
   Result := Bare(Result);
   // Kurze Namen (A, I, LX) sagen nichts über den Typ.
   if Length(Result) < 3 then
+  begin
     Result := '';
+  end;
+end;
+
+/// <summary>Name für einen prozeduralen Typ: TBaseFunc bzw. TBaseProc, ohne Base TCallback….</summary>
+function ProcedureTypeName(const ABase: string; ANode: TSyntaxNode): string;
+var
+  mBase: string;
+begin
+  mBase := ABase;
+  if mBase = '' then
+  begin
+    mBase := 'Callback';
+  end;
+  if ANode.FindChild(TSyntaxKind.TypeReference) <> nil then
+  begin
+    Result := 'T' + mBase + 'Func';
+  end
+  else
+  begin
+    Result := 'T' + mBase + 'Proc';
+  end;
+  if EndsText('FuncFunc', Result) or EndsText('ProcProc', Result) then
+  begin
+    Result := Copy(Result, 1, Length(Result) - 4);
+  end;
+end;
+
+/// <summary>Name für einen generischen Typ: aus Element und Kontext bzw. eigenem Namen.</summary>
+function ReferenceTypeName(const ABase, AElement: string; ANode: TSyntaxNode): string;
+begin
+  if ABase = '' then
+  begin
+    Result := 'T' + AElement + Bare(ANode.Name);
+  end
+  else if ContainsText(ABase, AElement) then
+  begin
+    Result := 'T' + ABase;
+  end
+  else
+  begin
+    Result := 'T' + AElement + ABase;
+  end;
+end;
+
+/// <summary>Name für ein Array: aus dem Kontext, sonst Element mit Array, Matrix oder ArraynD.</summary>
+function ArrayTypeName(const ABase, AElement: string; ANode: TSyntaxNode): string;
+var
+  mDepth: Integer;
+begin
+  if ABase <> '' then
+  begin
+    Exit('T' + ABase);
+  end;
+  mDepth := ArrayDepth(ANode);
+  if mDepth = 2 then
+  begin
+    Result := 'T' + AElement + 'Matrix';
+  end
+  else if mDepth > 2 then
+  begin
+    Result := Format('T%sArray%dD', [AElement, mDepth]);
+  end
+  else
+  begin
+    Result := 'T' + AElement + 'Array';
+  end;
 end;
 
 function Suggest(ANode: TSyntaxNode): string;
 var
-  Base, Element, Own: string;
-  Depth: Integer;
+  mBase, mElement: string;
 begin
-  Base := ContextName(ANode);
-  Element := ElementName(ANode);
+  mBase := ContextName(ANode);
+  mElement := ElementName(ANode);
   case ANode.Kind of
     TSyntaxKind.ProcedureType:
-      begin
-        if Base = '' then
-          Base := 'Callback';
-        if ANode.FindChild(TSyntaxKind.TypeReference) <> nil then
-          Result := 'T' + Base + 'Func'
-        else
-          Result := 'T' + Base + 'Proc';
-        if EndsText('FuncFunc', Result) or EndsText('ProcProc', Result) then
-          Result := Copy(Result, 1, Length(Result) - 4);
-      end;
+      Result := ProcedureTypeName(mBase, ANode);
     TSyntaxKind.TypeReference:
-      begin
-        Own := Bare(ANode.Name);
-        if Base = '' then
-          Result := 'T' + Element + Own
-        else if ContainsText(Base, Element) then
-          Result := 'T' + Base
-        else
-          Result := 'T' + Element + Base;
-      end;
+      Result := ReferenceTypeName(mBase, mElement, ANode);
     TSyntaxKind.ArrayType:
-      if Base <> '' then
-        Result := 'T' + Base
-      else
-      begin
-        Depth := ArrayDepth(ANode);
-        if Depth = 2 then
-          Result := 'T' + Element + 'Matrix'
-        else if Depth > 2 then
-          Result := Format('T%sArray%dD', [Element, Depth])
-        else
-          Result := 'T' + Element + 'Array';
-      end;
+      Result := ArrayTypeName(mBase, mElement, ANode);
   else
-    if Base <> '' then
-      Result := 'T' + Base
+    if mBase <> '' then
+    begin
+      Result := 'T' + mBase;
+    end
     else
-      Result := 'T' + Element + 'Set';
+    begin
+      Result := 'T' + mElement + 'Set';
+    end;
   end;
 end;
 
@@ -440,8 +634,12 @@ begin
   Result := (AName <> '') and CharInSet(AName[1], ['A'..'Z', 'a'..'z', '_']) and
     not TPascalLexer.IsReservedWord(AName);
   for Index := 2 to Length(AName) do
+  begin
     if not CharInSet(AName[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_']) then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 /// <summary>Abschnitt (interface, implementation) bzw. Wurzel, in dem ANode steht.</summary>
@@ -450,7 +648,9 @@ begin
   Result := ANode;
   while (Result.Parent <> nil) and not (Result.Kind in [TSyntaxKind.InterfaceSection,
     TSyntaxKind.ImplementationSection]) do
+  begin
     Result := Result.Parent;
+  end;
 end;
 
 /// <summary>Deklaration direkt unter dem Abschnitt, die ANode enthält.</summary>
@@ -459,7 +659,9 @@ begin
   Result := ANode;
   while (Result.Parent <> nil) and (Result.Parent.Parent <> nil) and
     not (Result.Parent.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection]) do
+  begin
     Result := Result.Parent;
+  end;
 end;
 
 function InInterface(ANode: TSyntaxNode): Boolean;
@@ -488,7 +690,9 @@ begin
           if (ANode.Kind in [TSyntaxKind.TypeDecl, TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl,
             TSyntaxKind.RoutineDecl, TSyntaxKind.Field, TSyntaxKind.PropertyDecl]) and
             SameText(LastPart(ANode.Name), AName) then
+          begin
             Taken := True;
+          end;
           Result := not Taken;
         end);
       Result := Taken;
@@ -535,11 +739,17 @@ class function TTypeAlias.ScopeOf(const AName: string; out AScope: TTypeAliasSco
 begin
   Result := True;
   if SameText(AName, 'here') then
-    AScope := TTypeAliasScope.Here
+  begin
+    AScope := TTypeAliasScope.Here;
+  end
   else if SameText(AName, 'unit') then
-    AScope := TTypeAliasScope.InUnit
+  begin
+    AScope := TTypeAliasScope.InUnit;
+  end
   else if SameText(AName, 'project') then
-    AScope := TTypeAliasScope.Project
+  begin
+    AScope := TTypeAliasScope.Project;
+  end
   else
   begin
     AScope := TTypeAliasScope.InUnit;
@@ -547,69 +757,134 @@ begin
   end;
 end;
 
-class function TTypeAlias.KeyOf(ATree: TSyntaxTree; const AFileName: string; ANode: TSyntaxNode;
+{ TTypeAliasRequest }
+
+class function TTypeAliasRequest.Create(const APosition: TTextPosition; const AName: string;
+  AScope: TTypeAliasScope; const ALookup: TTypeAliasLookup): TTypeAliasRequest;
+begin
+  Result.Position := APosition;
+  Result.Name := AName;
+  Result.Scope := AScope;
+  Result.Lookup := ALookup;
+end;
+
+/// <summary>Schlüssel eines Typnamens mit seinen Typargumenten.</summary>
+function ReferenceKey(ATree: TSyntaxTree; const AFileName: string; ANode: TSyntaxNode;
   const ALookup: TTypeAliasLookup): string;
 var
-  Args, Child: TSyntaxNode;
-  Index: Integer;
-  Name: string;
-  Inner: TArray<TSyntaxNode>;
-  Token: TPascalToken;
+  mArgs: TSyntaxNode;
   mIndex: Integer;
-  Skip: Integer;
-  Parts: TArray<string>;
+  mName: string;
+  mParts: TArray<string>;
 begin
-  if ANode.Kind = TSyntaxKind.TypeReference then
+  mName := '';
+  if Assigned(ALookup.Key) then
   begin
-    Name := '';
-    if Assigned(ALookup.Key) then
-      Name := ALookup.Key(ATree, AFileName, ANode);
-    if Name = '' then
-      Name := LastPart(ANode.Name);
-    Result := LowerCase(Name);
-    Args := ANode.FindChild(TSyntaxKind.GenericArgs);
-    if Args <> nil then
-    begin
-      Parts := nil;
-      for Index := 0 to Args.ChildCount - 1 do
-        Parts := Parts + [KeyOf(ATree, AFileName, Args[Index], ALookup)];
-      Result := Result + '<' + string.Join(',', Parts) + '>';
-    end;
-    Exit;
+    mName := ALookup.Key(ATree, AFileName, ANode);
   end;
-  // Übrige Ausdrücke: Text ohne Kommentare, Typnamen darin über ihren Schlüssel.
-  Inner := nil;
+  if mName = '' then
+  begin
+    mName := LastPart(ANode.Name);
+  end;
+  Result := LowerCase(mName);
+  mArgs := ANode.FindChild(TSyntaxKind.GenericArgs);
+  if mArgs <> nil then
+  begin
+    mParts := nil;
+    for mIndex := 0 to mArgs.ChildCount - 1 do
+    begin
+      mParts := mParts + [TTypeAlias.KeyOf(ATree, AFileName, mArgs[mIndex], ALookup)];
+    end;
+    Result := Result + '<' + string.Join(',', mParts) + '>';
+  end;
+end;
+
+/// <summary>Äußerste Typnamen unter ANode (ohne ANode selbst).</summary>
+function InnerReferences(ANode: TSyntaxNode): TArray<TSyntaxNode>;
+var
+  mInner: TArray<TSyntaxNode>;
+begin
+  mInner := nil;
   ANode.Walk(
     function(AChild: TSyntaxNode): Boolean
     begin
       Result := True;
       if (AChild <> ANode) and (AChild.Kind = TSyntaxKind.TypeReference) then
       begin
-        Inner := Inner + [AChild];
+        mInner := mInner + [AChild];
         Result := False;
       end;
     end);
-  Parts := nil;
-  Skip := -1;
+  Result := mInner;
+end;
+
+/// <summary>Letzter Knoten aus ANodes, der AOffset enthält; nil ohne.</summary>
+function NodeCovering(const ANodes: TArray<TSyntaxNode>; AOffset: Integer): TSyntaxNode;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to High(ANodes) do
+  begin
+    if (AOffset >= ANodes[mIndex].StartOffset) and (AOffset < ANodes[mIndex].EndOffset) then
+    begin
+      Result := ANodes[mIndex];
+    end;
+  end;
+end;
+
+/// <summary>Zählt AToken zum Schlüssel von ANode: in ANode, hinter ASkip und kein Kommentar?</summary>
+function InKeyRange(const AToken: TPascalToken; ANode: TSyntaxNode; ASkip: Integer): Boolean;
+begin
+  Result := (AToken.Offset >= ANode.StartOffset) and (AToken.Offset < ANode.EndOffset) and
+    (AToken.Offset >= ASkip) and (AToken.Kind <> TPascalTokenKind.Comment);
+end;
+
+/// <summary>Schlüssel übriger Ausdrücke: Text ohne Kommentare, Typnamen darin über ihren Schlüssel.</summary>
+function ExpressionKey(ATree: TSyntaxTree; const AFileName: string; ANode: TSyntaxNode;
+  const ALookup: TTypeAliasLookup): string;
+var
+  mInner: TArray<TSyntaxNode>;
+  mParts: TArray<string>;
+  mIndex, mSkip: Integer;
+  mToken: TPascalToken;
+  mChild: TSyntaxNode;
+begin
+  mInner := InnerReferences(ANode);
+  mParts := nil;
+  mSkip := -1;
   for mIndex := ATree.FirstTokenFrom(ANode.StartOffset) to High(ATree.Tokens) do
   begin
-    Token := ATree.Tokens[mIndex];
-    if (Token.Offset < ANode.StartOffset) or (Token.Offset >= ANode.EndOffset) or (Token.Offset < Skip) or
-      (Token.Kind = TPascalTokenKind.Comment) then
-      Continue;
-    Child := nil;
-    for Index := 0 to High(Inner) do
-      if (Token.Offset >= Inner[Index].StartOffset) and (Token.Offset < Inner[Index].EndOffset) then
-        Child := Inner[Index];
-    if Child <> nil then
+    mToken := ATree.Tokens[mIndex];
+    if not InKeyRange(mToken, ANode, mSkip) then
     begin
-      Parts := Parts + [KeyOf(ATree, AFileName, Child, ALookup)];
-      Skip := Child.EndOffset;
+      Continue;
+    end;
+    mChild := NodeCovering(mInner, mToken.Offset);
+    if mChild <> nil then
+    begin
+      mParts := mParts + [TTypeAlias.KeyOf(ATree, AFileName, mChild, ALookup)];
+      mSkip := mChild.EndOffset;
     end
     else
-      Parts := Parts + [LowerCase(Token.Text)];
+    begin
+      mParts := mParts + [LowerCase(mToken.Text)];
+    end;
   end;
-  Result := string.Join(' ', Parts);
+  Result := string.Join(' ', mParts);
+end;
+
+class function TTypeAlias.KeyOf(ATree: TSyntaxTree; const AFileName: string; ANode: TSyntaxNode;
+  const ALookup: TTypeAliasLookup): string;
+begin
+  if ANode.Kind = TSyntaxKind.TypeReference then
+  begin
+    Result := ReferenceKey(ATree, AFileName, ANode, ALookup);
+  end
+  else
+  begin
+    Result := ExpressionKey(ATree, AFileName, ANode, ALookup);
+  end;
 end;
 
 /// <summary>Freier Name ab ABase: ABase, ABase2, ABase3 …</summary>
@@ -648,7 +923,9 @@ var
 begin
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   Lines := TLineTable.Build(AText);
   Node := NodeAt(ATree.Root, Lines.OffsetAt(APosition));
   Outer := nil;
@@ -658,16 +935,22 @@ begin
     if (Node.Kind in TypeKinds) and Worth(Node) and Allowed(Node) then
     begin
       if Inner = nil then
+      begin
         Inner := Node;
+      end;
       Outer := Node;
     end;
     Node := Node.Parent;
   end;
   if Outer = nil then
+  begin
     Exit;
+  end;
   Result := [MakeTarget(AText, ATree, AFileName, Outer, ALookup)];
   if Inner <> Outer then
+  begin
     Result := Result + [MakeTarget(AText, ATree, AFileName, Inner, ALookup)];
+  end;
 end;
 
 type
@@ -695,7 +978,9 @@ begin
       if (ANode.Kind <> AKind) or not Allowed(ANode) or
         (UsedParams(ANode, GenericParamsAround(ANode)) <> '') or
         (TTypeAlias.KeyOf(ATree, AFileName, ANode, ALookup) <> AKey) then
+      begin
         Exit;
+      end;
       Site.Node := ANode;
       Site.Start := ANode.StartOffset;
       Site.Stop := ANode.EndOffset;
@@ -718,7 +1003,9 @@ begin
       ALines.LineStart(Line - 1)));
     if not (StartsStr('//', Content) or StartsStr('{', Content) and not StartsStr('{$', Content) or
       StartsStr('(*', Content)) then
+    begin
       Break;
+    end;
     Dec(Line);
   end;
   Result := ALines.LineStart(Line);
@@ -743,10 +1030,14 @@ begin
         if ANode.FindChild(TSyntaxKind.ForwardType) <> nil then
         begin
           if ForwardEnd < 0 then
+          begin
             ForwardEnd := ANode.EndOffset;
+          end;
         end
         else if Found = nil then
+        begin
           Found := ANode;
+        end;
       end;
     end);
   AForwardEnd := ForwardEnd;
@@ -763,7 +1054,9 @@ begin
     function(AChild: TSyntaxNode): Boolean
     begin
       if AChild.Kind = TSyntaxKind.TypeReference then
+      begin
         Names := Names + [AChild];
+      end;
       Result := True;
     end);
   Result := Names;
@@ -783,12 +1076,16 @@ begin
   begin
     if (Reference.List <> TUsesListKind.UsesList) or not (SameText(Reference.Name, AUnitName) or
       EndsText('.' + AUnitName, Reference.Name)) then
+    begin
       Continue;
+    end;
     Before := (Implementation_ = nil) or (Reference.Range.StartPos.Line < Implementation_.StartPos.Line) or
       (Reference.Range.StartPos.Line = Implementation_.StartPos.Line) and
       (Reference.Range.StartPos.Character < Implementation_.StartPos.Character);
     if InImplementation or Before then
+    begin
       Exit(True);
+    end;
   end;
 end;
 
@@ -811,13 +1108,17 @@ begin
   for Change in AChanges do
   begin
     if Change.Edits = nil then
+    begin
       Continue;
+    end;
     Tree := TSyntaxTreeCache.Parse(TChangeSignature.ApplyEdits(Change.Text, Change.Edits));
     try
       if Length(Tree.Diagnostics) > Length(Change.Tree.Diagnostics) then
-        Exit(Fail(Format('Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s)',
-          [ExtractFileName(Change.FileName), Tree.Diagnostics[0].StartPos.Line + 1, Tree.Diagnostics[0].Message]),
+      begin
+        Exit(Fail(cTexts[TEditingTypeAliasText.AfterTheChangeNoLonger].Fmt([ExtractFileName(Change.FileName),
+          Tree.Diagnostics[0].StartPos.Line + 1, Tree.Diagnostics[0].Message]),
           AReason));
+      end;
     finally
       Tree.Free;
     end;
@@ -833,270 +1134,579 @@ begin
   Result := TTextEdit.Create(TTextRange.Create(ALines.PositionAt(AStart), ALines.PositionAt(AStop)), AText);
 end;
 
-class function TTypeAlias.Introduce(const ADeclaring: TTypeAliasSource; const AOthers: TArray<TTypeAliasSource>;
-  const APosition: TTextPosition; const AName: string; AScope: TTypeAliasScope; const ALookup: TTypeAliasLookup;
-  out AResult: TTypeAliasResult; out AReason: string): Boolean;
-var
-  Lines, OtherLines: TLineTable;
-  Candidates: TArray<TTypeAliasTarget>;
-  Target: TTypeAliasTarget;
-  Node, First, Top, Section, Previous, Local, NameNode: TSyntaxNode;
-  Sites, OtherSites: TArray<TAliasSite>;
-  Site: TAliasSite;
-  Key, LineBreak, Indent, Declaration, UnitName, Forwards, ForwardKind, Visible: string;
-  Insert, ForwardEnd, Index, Skipped: Integer;
-  ExportNeeded, AllInInterface: Boolean;
-  Change: TFileChange;
-  Changes: TArray<TFileChange>;
-  Other: TTypeAliasSource;
-  PreviewLines: TArray<string>;
-  FileCount: Integer;
+/// <summary>Änderung an der Datei ASource, noch ohne Edits.</summary>
+function FileChange(const ASource: TTypeAliasSource): TFileChange;
 begin
-  Result := False;
-  AResult := Default(TTypeAliasResult);
-  AReason := '';
-  if not IsIdentifier(AName) then
-    Exit(Fail(Format('"%s" ist kein gültiger Bezeichner', [AName]), AReason));
-  Lines := TLineTable.Build(ADeclaring.Text);
-  Candidates := Targets(ADeclaring.Text, ADeclaring.Tree, ADeclaring.FileName, APosition, ALookup);
-  if Candidates = nil then
-    Exit(Fail('Hier steht kein Typausdruck, für den ein Alias lohnt', AReason));
-  Target := Candidates[0];
-  for Index := 1 to High(Candidates) do
-    if Candidates[Index].StartOffset = Lines.OffsetAt(APosition) then
-      Target := Candidates[Index];
-  if Target.OpenParams <> '' then
-    Exit(Fail(Format(OpenParamsReason, [Target.OpenParams]), AReason));
-  Node := NodeAt(ADeclaring.Tree.Root, Target.StartOffset);
-  while (Node <> nil) and not ((Node.Kind = Target.Kind) and (Node.StartOffset = Target.StartOffset) and
-    (Node.EndOffset = Target.EndOffset)) do
-    Node := Node.Parent;
-  if Node = nil then
-    Exit(Fail('Hier steht kein Typausdruck, für den ein Alias lohnt', AReason));
-  Key := KeyOf(ADeclaring.Tree, ADeclaring.FileName, Node, ALookup);
-  // Stellen der Unit.
-  if AScope = TTypeAliasScope.Here then
+  Result := Default(TFileChange);
+  Result.FileName := ASource.FileName;
+  Result.Text := ASource.Text;
+  Result.Tree := ASource.Tree;
+end;
+
+/// <summary>Knoten in ATree, der genau den Ausdruck ATarget umfasst; nil ohne.</summary>
+function TargetNode(ATree: TSyntaxTree; const ATarget: TTypeAliasTarget): TSyntaxNode;
+begin
+  Result := NodeAt(ATree.Root, ATarget.StartOffset);
+  while (Result <> nil) and not ((Result.Kind = ATarget.Kind) and (Result.StartOffset = ATarget.StartOffset) and
+    (Result.EndOffset = ATarget.EndOffset)) do
   begin
-    Site.Node := Node;
-    Site.Start := Node.StartOffset;
-    Site.Stop := Node.EndOffset;
-    Sites := [Site];
+    Result := Result.Parent;
+  end;
+end;
+
+/// <summary>Stehen alle in der Unit deklarierten Typen, die ANode nennt, im interface-Teil?</summary>
+function NamesInInterface(ATree: TSyntaxTree; ANode: TSyntaxNode): Boolean;
+var
+  mNameNode, mLocal: TSyntaxNode;
+  mForwardEnd: Integer;
+begin
+  Result := True;
+  for mNameNode in NamesIn(ANode) do
+  begin
+    mLocal := LocalType(ATree, LastPart(mNameNode.Name), mForwardEnd);
+    if (mLocal <> nil) and not InInterface(mLocal) then
+    begin
+      Result := False;
+    end;
+  end;
+end;
+
+
+type
+  /// <summary>Arbeitsstand von TTypeAlias.Introduce: Ausdruck Node mit Schlüssel Key, seine Stellen Sites (First die
+  /// erste), Einfügestelle Insert mit Declaration, die Änderungen und das Ergebnis Outcome.</summary>
+  TIntroduction = record
+    Declaring: TTypeAliasSource;
+    Others: TArray<TTypeAliasSource>;
+    Name: string;
+    Scope: TTypeAliasScope;
+    Lookup: TTypeAliasLookup;
+    Lines: TLineTable;
+    LineBreak: string;
+    Target: TTypeAliasTarget;
+    Node: TSyntaxNode;
+    Key: string;
+    Sites: TArray<TAliasSite>;
+    First: TSyntaxNode;
+    ExportNeeded: Boolean;
+    Top: TSyntaxNode;
+    Insert: Integer;
+    Indent: string;
+    Declaration: string;
+    Changes: TArray<TFileChange>;
+    PreviewLines: TArray<string>;
+    Outcome: TTypeAliasResult;
+    class function Create(const ADeclaring: TTypeAliasSource; const AOthers: TArray<TTypeAliasSource>;
+      const ARequest: TTypeAliasRequest): TIntroduction; static;
+    function TargetIssue(const APosition: TTextPosition): string;
+    procedure CollectSites;
+    procedure DecideExport;
+    function AliasLine: string;
+    procedure AppendTo(ASection: TSyntaxNode);
+    function PlaceInInterface: string;
+    procedure PlaceInTypeSection;
+    procedure PlaceBefore(ASection: TSyntaxNode);
+    function PlacementIssue: string;
+    function ForwardKindOf(ALocal: TSyntaxNode): string;
+    function ForwardsIssue(out AForwards: string): string;
+    procedure AddOwnChange(const AForwards: string);
+    function SiteBlocked(const AOther: TTypeAliasSource; const AUnitName: string; AStart: Integer): Boolean;
+    procedure AddOtherChange(const AOther: TTypeAliasSource; const AUnitName: string);
+    procedure AddOtherChanges;
+    function PreviewText(const AResult: TTypeAliasResult): string;
+  end;
+
+class function TIntroduction.Create(const ADeclaring: TTypeAliasSource; const AOthers: TArray<TTypeAliasSource>;
+  const ARequest: TTypeAliasRequest): TIntroduction;
+begin
+  Result := Default(TIntroduction);
+  Result.Declaring := ADeclaring;
+  Result.Others := AOthers;
+  Result.Name := ARequest.Name;
+  Result.Scope := ARequest.Scope;
+  Result.Lookup := ARequest.Lookup;
+  Result.Lines := TLineTable.Build(ADeclaring.Text);
+  Result.LineBreak := TTextLines.LineBreakOf(ADeclaring.Text);
+  Result.Indent := '  ';
+end;
+
+/// <summary>Sucht den Ausdruck an APosition (innerer, wenn er dort beginnt) und seinen Schlüssel; Grund, wenn es
+/// keinen gibt oder der Name ungültig ist, sonst ''.</summary>
+function TIntroduction.TargetIssue(const APosition: TTextPosition): string;
+var
+  mCandidates: TArray<TTypeAliasTarget>;
+  mIndex: Integer;
+begin
+  if not IsIdentifier(Name) then
+  begin
+    Exit(cTexts[TEditingTypeAliasText.IsNotAValidIdentifier].Fmt([Name]));
+  end;
+  mCandidates := TTypeAlias.Targets(Declaring.Text, Declaring.Tree, Declaring.FileName, APosition, Lookup);
+  if mCandidates = nil then
+  begin
+    Exit(cTexts[TEditingTypeAliasText.ThereIsNoTypeExpression].Text);
+  end;
+  Target := mCandidates[0];
+  for mIndex := 1 to High(mCandidates) do
+  begin
+    if mCandidates[mIndex].StartOffset = Lines.OffsetAt(APosition) then
+    begin
+      Target := mCandidates[mIndex];
+    end;
+  end;
+  Result := '';
+  Node := TargetNode(Declaring.Tree, Target);
+  if Target.OpenParams <> '' then
+  begin
+    Result := Format(TTypeAlias.OpenParamsReason, [Target.OpenParams]);
+  end
+  else if Node = nil then
+  begin
+    Result := cTexts[TEditingTypeAliasText.ThereIsNoTypeExpression].Text;
   end
   else
-    Sites := SitesIn(ADeclaring.Tree, ADeclaring.FileName, Key, Node.Kind, ALookup);
+  begin
+    Key := TTypeAlias.KeyOf(Declaring.Tree, Declaring.FileName, Node, Lookup);
+  end;
+end;
+
+/// <summary>Stellen der Unit: nur der Ausdruck selbst oder alle gleichen; First ist die erste.</summary>
+procedure TIntroduction.CollectSites;
+var
+  mSite: TAliasSite;
+begin
+  if Scope = TTypeAliasScope.Here then
+  begin
+    mSite.Node := Node;
+    mSite.Start := Node.StartOffset;
+    mSite.Stop := Node.EndOffset;
+    Sites := [mSite];
+  end
+  else
+  begin
+    Sites := SitesIn(Declaring.Tree, Declaring.FileName, Key, Node.Kind, Lookup);
+  end;
   First := Node;
-  for Site in Sites do
-    if Site.Start < First.StartOffset then
-      First := Site.Node;
-  // Im Projekt steht der Alias im interface-Teil, sonst sehen ihn andere Units nicht.
-  ExportNeeded := (AScope = TTypeAliasScope.Project) and (AOthers <> nil) and not InInterface(First);
-  AllInInterface := True;
-  for NameNode in NamesIn(Node) do
-    if (LocalType(ADeclaring.Tree, LastPart(NameNode.Name), ForwardEnd) <> nil) and
-      not InInterface(LocalType(ADeclaring.Tree, LastPart(NameNode.Name), ForwardEnd)) then
-      AllInInterface := False;
-  if ExportNeeded and not AllInInterface then
+  for mSite in Sites do
+  begin
+    if mSite.Start < First.StartOffset then
+    begin
+      First := mSite.Node;
+    end;
+  end;
+end;
+
+/// <summary>Im Projekt steht der Alias im interface-Teil, sonst sehen ihn andere Units nicht; mit Typen aus dem
+/// implementation-Teil geht das nicht, dann nur in der Unit.</summary>
+procedure TIntroduction.DecideExport;
+begin
+  ExportNeeded := (Scope = TTypeAliasScope.Project) and (Others <> nil) and not InInterface(First);
+  if ExportNeeded and not NamesInInterface(Declaring.Tree, Node) then
   begin
     ExportNeeded := False;
-    AScope := TTypeAliasScope.InUnit;
-    AResult.Warnings := AResult.Warnings + [Format('%s nutzt Typen aus dem implementation-Teil; ersetzt wird nur ' +
-      'in dieser Unit', [Target.TypeText])];
+    Scope := TTypeAliasScope.InUnit;
+    Outcome.Warnings := Outcome.Warnings + [cTexts[TEditingTypeAliasText.UsesTypesFromTheImplementation].Fmt([
+      Target.TypeText])];
   end;
-  if Assigned(ALookup.NameTaken) and ALookup.NameTaken(ADeclaring.Tree, ADeclaring.FileName, AName,
-    First.StartOffset) then
-    Exit(Fail(Format('Der Name %s ist schon vergeben', [AName]), AReason));
-  // Einfügestelle: vor der Typdeklaration mit der ersten Verwendung, sonst ein neuer type-Abschnitt.
-  LineBreak := TTextLines.LineBreakOf(ADeclaring.Text);
-  Section := SectionOf(First);
-  if ExportNeeded then
+end;
+
+function TIntroduction.AliasLine: string;
+begin
+  Result := Indent + Name + ' = ' + Target.TypeText + ';' + LineBreak;
+end;
+
+/// <summary>Einfügen hinter der letzten Deklaration des type-Abschnitts ASection, eingerückt wie sie.</summary>
+procedure TIntroduction.AppendTo(ASection: TSyntaxNode);
+var
+  mLast: TSyntaxNode;
+begin
+  mLast := ASection[ASection.ChildCount - 1];
+  Insert := Lines.LineStart(Lines.PositionAt(mLast.EndOffset).Line + 1);
+  Indent := TTextLines.IndentOf(Declaring.Text, Lines.PositionAt(mLast.StartOffset).Line);
+  Declaration := AliasLine;
+end;
+
+/// <summary>Ans Ende des interface-Teils: in den letzten type-Abschnitt oder als neuer Abschnitt.</summary>
+function TIntroduction.PlaceInInterface: string;
+var
+  mSection: TSyntaxNode;
+begin
+  mSection := Declaring.Tree.Root.FindChild(TSyntaxKind.InterfaceSection);
+  if mSection = nil then
   begin
-    Section := ADeclaring.Tree.Root.FindChild(TSyntaxKind.InterfaceSection);
-    if Section = nil then
-      Exit(Fail('Die Unit hat keinen interface-Teil', AReason));
-    Top := nil;
-    if Section.ChildCount > 0 then
-      Top := Section[Section.ChildCount - 1];
-  end
-  else
-    Top := TopLevelOf(First);
-  Forwards := '';
-  Indent := '  ';
-  if ExportNeeded then
-  begin
-    // Ans Ende des interface-Teils: in den letzten type-Abschnitt oder als neuer Abschnitt.
-    if (Top <> nil) and (Top.Kind = TSyntaxKind.TypeSection) and (Top.ChildCount > 0) then
-    begin
-      Insert := Lines.LineStart(Lines.PositionAt(Top[Top.ChildCount - 1].EndOffset).Line + 1);
-      Indent := TTextLines.IndentOf(ADeclaring.Text,
-        Lines.PositionAt(Top[Top.ChildCount - 1].StartOffset).Line);
-      Declaration := Indent + AName + ' = ' + Target.TypeText + ';' + LineBreak;
-    end
-    else
-    begin
-      Insert := Lines.LineStart(Lines.PositionAt(Section.EndOffset).Line);
-      if (Top <> nil) then
-        Insert := Lines.LineStart(Lines.PositionAt(Top.EndOffset).Line + 1);
-      Declaration := LineBreak + 'type' + LineBreak + Indent + AName + ' = ' + Target.TypeText + ';' + LineBreak;
-    end;
-  end
-  else if Top.Kind = TSyntaxKind.TypeSection then
-  begin
-    // Die Typdeklaration des Abschnitts, in der die erste Verwendung steht.
-    for Index := 0 to Top.ChildCount - 1 do
-      if (First.StartOffset >= Top[Index].StartOffset) and (First.StartOffset < Top[Index].EndOffset) then
-      begin
-        Top := Top[Index];
-        Break;
-      end;
-    Insert := LineAbove(Lines, ADeclaring.Text, Top.StartOffset);
-    Indent := TTextLines.IndentOf(ADeclaring.Text, Lines.PositionAt(Top.StartOffset).Line);
-    Declaration := Indent + AName + ' = ' + Target.TypeText + ';' + LineBreak;
-  end
-  else
-  begin
-    Previous := nil;
-    Index := ChildIndex(Section, Top);
-    if Index > 0 then
-      Previous := Section[Index - 1];
-    if (Previous <> nil) and (Previous.Kind = TSyntaxKind.TypeSection) and (Previous.ChildCount > 0) then
-    begin
-      Insert := Lines.LineStart(Lines.PositionAt(Previous[Previous.ChildCount - 1].EndOffset).Line + 1);
-      Indent := TTextLines.IndentOf(ADeclaring.Text,
-        Lines.PositionAt(Previous[Previous.ChildCount - 1].StartOffset).Line);
-      Declaration := Indent + AName + ' = ' + Target.TypeText + ';' + LineBreak;
-    end
-    else
-    begin
-      Insert := LineAbove(Lines, ADeclaring.Text, Top.StartOffset);
-      Declaration := 'type' + LineBreak + Indent + AName + ' = ' + Target.TypeText + ';' + LineBreak + LineBreak;
-    end;
+    Exit(cTexts[TEditingTypeAliasText.TheUnitHasNoInterface].Text);
   end;
-  // Typen der Unit, die der Ausdruck nennt, müssen vor dem Alias stehen; die eigene Klasse geht per
-  // Vorwärtsdeklaration.
-  for NameNode in NamesIn(Node) do
+  Result := '';
+  Top := nil;
+  if mSection.ChildCount > 0 then
   begin
-    Local := LocalType(ADeclaring.Tree, LastPart(NameNode.Name), ForwardEnd);
-    if (Local = nil) or (Local.EndOffset <= Insert) or (ForwardEnd >= 0) and (ForwardEnd <= Insert) then
-      Continue;
-    if (Local.StartOffset <= First.StartOffset) and (First.StartOffset < Local.EndOffset) and
-      (Top <> nil) and (Local = Top) and (Local.FindChild(TSyntaxKind.ClassType) <> nil) then
-      ForwardKind := 'class'
-    else if (Local.StartOffset <= First.StartOffset) and (First.StartOffset < Local.EndOffset) and
-      (Top <> nil) and (Local = Top) and (Local.FindChild(TSyntaxKind.InterfaceType) <> nil) then
-      ForwardKind := 'interface'
-    else
-      Exit(Fail(Format('%s ist vor der ersten Verwendung von %s noch nicht deklariert', [Local.Name,
-        Target.TypeText]), AReason));
-    if not ContainsText(Forwards, ' ' + Local.Name + ' = ') then
-      Forwards := Forwards + Indent + Local.Name + ' = ' + ForwardKind + ';' + LineBreak;
-    AResult.Warnings := AResult.Warnings + [Format('%s bekommt eine Vorwärtsdeklaration vor dem Alias',
-      [Local.Name])];
+    Top := mSection[mSection.ChildCount - 1];
   end;
-  Change := Default(TFileChange);
-  Change.FileName := ADeclaring.FileName;
-  Change.Text := ADeclaring.Text;
-  Change.Tree := ADeclaring.Tree;
-  if Forwards <> '' then
-    Declaration := Forwards + Declaration;
-  Change.Edits := [Edit(Lines, Insert, Insert, Declaration)];
-  PreviewLines := nil;
-  for Site in Sites do
+  if (Top <> nil) and (Top.Kind = TSyntaxKind.TypeSection) and (Top.ChildCount > 0) then
   begin
-    Change.Edits := Change.Edits + [Edit(Lines, Site.Start, Site.Stop, AName)];
-    PreviewLines := PreviewLines + [Where(ADeclaring.FileName, Lines.PositionAt(Site.Start).Line)];
-  end;
-  AResult.Places := Length(Sites);
-  Changes := [Change];
-  // Andere Units des Projekts: nur, wenn sie die Unit einbinden und den Namen nicht selbst vergeben.
-  if (AScope = TTypeAliasScope.Project) and (InInterface(First) or ExportNeeded) then
-  begin
-    UnitName := TUsesClauses.OwnName(ADeclaring.Tree.Tokens);
-    for Other in AOthers do
-    begin
-      if SameText(Other.FileName, ADeclaring.FileName) or (Other.Tree = nil) then
-        Continue;
-      OtherSites := SitesIn(Other.Tree, Other.FileName, Key, Node.Kind, ALookup);
-      if OtherSites = nil then
-        Continue;
-      Change := Default(TFileChange);
-      Change.FileName := Other.FileName;
-      Change.Text := Other.Text;
-      Change.Tree := Other.Tree;
-      OtherLines := TLineTable.Build(Other.Text);
-      Skipped := 0;
-      for Site in OtherSites do
-      begin
-        if not SeesUnit(Other.Tree, UnitName, Site.Start) or Assigned(ALookup.NameTaken) and
-          ALookup.NameTaken(Other.Tree, Other.FileName, AName, Site.Start) then
-        begin
-          Inc(Skipped);
-          Continue;
-        end;
-        Change.Edits := Change.Edits + [Edit(OtherLines, Site.Start, Site.Stop, AName)];
-        PreviewLines := PreviewLines + [Where(Other.FileName, OtherLines.PositionAt(Site.Start).Line)];
-        Inc(AResult.Places);
-      end;
-      if Skipped > 0 then
-        AResult.Warnings := AResult.Warnings + [Format('%s: %d gleiche Ausdrücke bleiben (%s nicht eingebunden ' +
-          'oder %s dort vergeben)', [ExtractFileName(Other.FileName), Skipped, UnitName, AName])];
-      if Change.Edits <> nil then
-        Changes := Changes + [Change];
-    end;
-  end
-  else if (AScope = TTypeAliasScope.Project) and (AOthers <> nil) then
-    AResult.Warnings := AResult.Warnings + [Format('%s steht im implementation-Teil; andere Units sehen ihn nicht',
-      [AName])];
-  if not Finish(Changes, AResult, AReason) then
+    AppendTo(Top);
     Exit;
-  FileCount := Length(AResult.Files);
-  Visible := 'implementation-Teil';
+  end;
+  Insert := Lines.LineStart(Lines.PositionAt(mSection.EndOffset).Line);
+  if Top <> nil then
+  begin
+    Insert := Lines.LineStart(Lines.PositionAt(Top.EndOffset).Line + 1);
+  end;
+  Declaration := LineBreak + 'type' + LineBreak + AliasLine;
+end;
+
+/// <summary>Vor die Typdeklaration des Abschnitts Top, in der die erste Verwendung steht.</summary>
+procedure TIntroduction.PlaceInTypeSection;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to Top.ChildCount - 1 do
+  begin
+    if (First.StartOffset >= Top[mIndex].StartOffset) and (First.StartOffset < Top[mIndex].EndOffset) then
+    begin
+      Top := Top[mIndex];
+      Break;
+    end;
+  end;
+  Insert := LineAbove(Lines, Declaring.Text, Top.StartOffset);
+  Indent := TTextLines.IndentOf(Declaring.Text, Lines.PositionAt(Top.StartOffset).Line);
+  Declaration := AliasLine;
+end;
+
+/// <summary>Vor die Deklaration Top in ASection: ans Ende eines type-Abschnitts direkt davor, sonst als neuer.
+/// </summary>
+procedure TIntroduction.PlaceBefore(ASection: TSyntaxNode);
+var
+  mPrevious: TSyntaxNode;
+  mIndex: Integer;
+begin
+  mPrevious := nil;
+  mIndex := ChildIndex(ASection, Top);
+  if mIndex > 0 then
+  begin
+    mPrevious := ASection[mIndex - 1];
+  end;
+  if (mPrevious <> nil) and (mPrevious.Kind = TSyntaxKind.TypeSection) and (mPrevious.ChildCount > 0) then
+  begin
+    AppendTo(mPrevious);
+  end
+  else
+  begin
+    Insert := LineAbove(Lines, Declaring.Text, Top.StartOffset);
+    Declaration := 'type' + LineBreak + AliasLine + LineBreak;
+  end;
+end;
+
+/// <summary>Einfügestelle: vor der Typdeklaration mit der ersten Verwendung, sonst ein neuer type-Abschnitt; im
+/// Projekt am Ende des interface-Teils. Grund, wenn der Name vergeben ist oder der interface-Teil fehlt.</summary>
+function TIntroduction.PlacementIssue: string;
+begin
+  if Assigned(Lookup.NameTaken) and Lookup.NameTaken(Declaring.Tree, Declaring.FileName, Name, First.StartOffset) then
+  begin
+    Exit(cTexts[TEditingTypeAliasText.TheNameIsAlreadyTaken].Fmt([Name]));
+  end;
+  Result := '';
+  if ExportNeeded then
+  begin
+    Result := PlaceInInterface;
+    Exit;
+  end;
+  Top := TopLevelOf(First);
+  if Top.Kind = TSyntaxKind.TypeSection then
+  begin
+    PlaceInTypeSection;
+  end
+  else
+  begin
+    PlaceBefore(SectionOf(First));
+  end;
+end;
+
+/// <summary>Art der Vorwärtsdeklaration für den Typ ALocal der Unit, der die erste Verwendung enthält: class bzw.
+/// interface; '' wenn keine geht.</summary>
+function TIntroduction.ForwardKindOf(ALocal: TSyntaxNode): string;
+begin
+  Result := '';
+  if not ((ALocal.StartOffset <= First.StartOffset) and (First.StartOffset < ALocal.EndOffset) and (Top <> nil) and
+    (ALocal = Top)) then
+  begin
+    Exit;
+  end;
+  if ALocal.FindChild(TSyntaxKind.ClassType) <> nil then
+  begin
+    Result := 'class';
+  end
+  else if ALocal.FindChild(TSyntaxKind.InterfaceType) <> nil then
+  begin
+    Result := 'interface';
+  end;
+end;
+
+/// <summary>Typen der Unit, die der Ausdruck nennt, müssen vor dem Alias stehen; die eigene Klasse geht per
+/// Vorwärtsdeklaration (AForwards). Grund, wenn ein Typ erst danach deklariert ist.</summary>
+function TIntroduction.ForwardsIssue(out AForwards: string): string;
+var
+  mNameNode, mLocal: TSyntaxNode;
+  mForwardEnd: Integer;
+  mKind: string;
+begin
+  AForwards := '';
+  Result := '';
+  for mNameNode in NamesIn(Node) do
+  begin
+    mLocal := LocalType(Declaring.Tree, LastPart(mNameNode.Name), mForwardEnd);
+    if (mLocal = nil) or (mLocal.EndOffset <= Insert) or (mForwardEnd >= 0) and (mForwardEnd <= Insert) then
+    begin
+      Continue;
+    end;
+    mKind := ForwardKindOf(mLocal);
+    if mKind = '' then
+    begin
+      Exit(cTexts[TEditingTypeAliasText.IsNotDeclaredYetBefore].Fmt([mLocal.Name, Target.TypeText]));
+    end;
+    if not ContainsText(AForwards, ' ' + mLocal.Name + ' = ') then
+    begin
+      AForwards := AForwards + Indent + mLocal.Name + ' = ' + mKind + ';' + LineBreak;
+    end;
+    Outcome.Warnings := Outcome.Warnings + [cTexts[TEditingTypeAliasText.GetsAForwardDeclarationBefore].Fmt([
+      mLocal.Name])];
+  end;
+end;
+
+/// <summary>Deklaration (mit AForwards davor) und die Stellen der eigenen Unit.</summary>
+procedure TIntroduction.AddOwnChange(const AForwards: string);
+var
+  mChange: TFileChange;
+  mSite: TAliasSite;
+begin
+  mChange := FileChange(Declaring);
+  if AForwards <> '' then
+  begin
+    Declaration := AForwards + Declaration;
+  end;
+  mChange.Edits := [Edit(Lines, Insert, Insert, Declaration)];
+  PreviewLines := nil;
+  for mSite in Sites do
+  begin
+    mChange.Edits := mChange.Edits + [Edit(Lines, mSite.Start, mSite.Stop, Name)];
+    PreviewLines := PreviewLines + [Where(Declaring.FileName, Lines.PositionAt(mSite.Start).Line)];
+  end;
+  Outcome.Places := Length(Sites);
+  Changes := [mChange];
+end;
+
+/// <summary>Bleibt die Stelle AStart in AOther, weil AOther die Unit AUnitName nicht einbindet oder den Namen selbst
+/// vergibt?</summary>
+function TIntroduction.SiteBlocked(const AOther: TTypeAliasSource; const AUnitName: string; AStart: Integer): Boolean;
+begin
+  Result := not SeesUnit(AOther.Tree, AUnitName, AStart) or Assigned(Lookup.NameTaken) and
+    Lookup.NameTaken(AOther.Tree, AOther.FileName, Name, AStart);
+end;
+
+/// <summary>Gleiche Ausdrücke in der Unit AOther, die AUnitName einbindet.</summary>
+procedure TIntroduction.AddOtherChange(const AOther: TTypeAliasSource; const AUnitName: string);
+var
+  mSites: TArray<TAliasSite>;
+  mSite: TAliasSite;
+  mChange: TFileChange;
+  mLines: TLineTable;
+  mSkipped: Integer;
+begin
+  mSites := SitesIn(AOther.Tree, AOther.FileName, Key, Node.Kind, Lookup);
+  if mSites = nil then
+  begin
+    Exit;
+  end;
+  mChange := FileChange(AOther);
+  mLines := TLineTable.Build(AOther.Text);
+  mSkipped := 0;
+  for mSite in mSites do
+  begin
+    if SiteBlocked(AOther, AUnitName, mSite.Start) then
+    begin
+      Inc(mSkipped);
+      Continue;
+    end;
+    mChange.Edits := mChange.Edits + [Edit(mLines, mSite.Start, mSite.Stop, Name)];
+    PreviewLines := PreviewLines + [Where(AOther.FileName, mLines.PositionAt(mSite.Start).Line)];
+    Inc(Outcome.Places);
+  end;
+  if mSkipped > 0 then
+  begin
+    Outcome.Warnings := Outcome.Warnings + [cTexts[TEditingTypeAliasText.EqualExpressionsRemainNotUsed].Fmt([
+      ExtractFileName(AOther.FileName), mSkipped, AUnitName, Name])];
+  end;
+  if mChange.Edits <> nil then
+  begin
+    Changes := Changes + [mChange];
+  end;
+end;
+
+/// <summary>Andere Units des Projekts: nur, wenn sie die Unit einbinden und den Namen nicht selbst vergeben.
+/// </summary>
+procedure TIntroduction.AddOtherChanges;
+var
+  mOther: TTypeAliasSource;
+  mUnitName: string;
+begin
+  if (Scope = TTypeAliasScope.Project) and (InInterface(First) or ExportNeeded) then
+  begin
+    mUnitName := TUsesClauses.OwnName(Declaring.Tree.Tokens);
+    for mOther in Others do
+    begin
+      if not SameText(mOther.FileName, Declaring.FileName) and (mOther.Tree <> nil) then
+      begin
+        AddOtherChange(mOther, mUnitName);
+      end;
+    end;
+  end
+  else if (Scope = TTypeAliasScope.Project) and (Others <> nil) then
+  begin
+    Outcome.Warnings := Outcome.Warnings + [cTexts[TEditingTypeAliasText.IsInTheImplementationPart].Fmt([Name])];
+  end;
+end;
+
+function TIntroduction.PreviewText(const AResult: TTypeAliasResult): string;
+var
+  mVisible: string;
+begin
+  mVisible := cTexts[TEditingTypeAliasText.ImplementationPart].Text;
   if InInterface(First) or ExportNeeded then
-    Visible := 'interface-Teil';
-  AResult.Preview := Format('%s = %s; im %s, %d Stellen in %d Dateien.', [AName, Target.TypeText, Visible,
-    AResult.Places, FileCount]) + sLineBreak + CompatibilityNote;
+  begin
+    mVisible := cTexts[TEditingTypeAliasText.InterfacePart].Text;
+  end;
+  Result := cTexts[TEditingTypeAliasText.InPlacesInFiles].Fmt([Name, Target.TypeText, mVisible, AResult.Places,
+    Length(AResult.Files)]) + sLineBreak + TTypeAlias.CompatibilityNote;
   if PreviewLines <> nil then
-    AResult.Preview := AResult.Preview + sLineBreak + string.Join(sLineBreak, PreviewLines);
-  Result := True;
+  begin
+    Result := Result + sLineBreak + string.Join(sLineBreak, PreviewLines);
+  end;
+end;
+
+class function TTypeAlias.Introduce(const ADeclaring: TTypeAliasSource; const AOthers: TArray<TTypeAliasSource>;
+  const ARequest: TTypeAliasRequest; out AResult: TTypeAliasResult; out AReason: string): Boolean;
+var
+  mIntroduction: TIntroduction;
+  mForwards: string;
+begin
+  Result := False;
+  mIntroduction := TIntroduction.Create(ADeclaring, AOthers, ARequest);
+  AReason := mIntroduction.TargetIssue(ARequest.Position);
+  if AReason = '' then
+  begin
+    mIntroduction.CollectSites;
+    mIntroduction.DecideExport;
+    AReason := mIntroduction.PlacementIssue;
+  end;
+  if AReason = '' then
+  begin
+    AReason := mIntroduction.ForwardsIssue(mForwards);
+  end;
+  AResult := mIntroduction.Outcome;
+  if AReason <> '' then
+  begin
+    Exit;
+  end;
+  mIntroduction.AddOwnChange(mForwards);
+  mIntroduction.AddOtherChanges;
+  AResult := mIntroduction.Outcome;
+  if Finish(mIntroduction.Changes, AResult, AReason) then
+  begin
+    AResult.Preview := mIntroduction.PreviewText(AResult);
+    Result := True;
+  end;
+end;
+
+/// <summary>Typdeklaration um AOffset; nil ohne.</summary>
+function AliasDecl(ATree: TSyntaxTree; AOffset: Integer): TSyntaxNode;
+begin
+  Result := NodeAt(ATree.Root, AOffset);
+  while (Result <> nil) and (Result.Kind <> TSyntaxKind.TypeDecl) do
+  begin
+    Result := Result.Parent;
+  end;
+end;
+
+/// <summary>Letzter Typausdruck unter der Typdeklaration ADecl; nil ohne.</summary>
+function AliasExpression(ADecl: TSyntaxNode): TSyntaxNode;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to ADecl.ChildCount - 1 do
+  begin
+    if ADecl[mIndex].Kind in TypeKinds then
+    begin
+      Result := ADecl[mIndex];
+    end;
+  end;
+end;
+
+/// <summary>X = type Y: steht "type" zwischen Name und Ausdruck?</summary>
+function IsDistinctType(ATree: TSyntaxTree; ADecl, AExpression: TSyntaxNode): Boolean;
+var
+  mIndex: Integer;
+begin
+  for mIndex := ATree.FirstTokenFrom(ADecl.StartOffset + 1) to High(ATree.Tokens) do
+  begin
+    if (ATree.Tokens[mIndex].Offset > ADecl.StartOffset) and (ATree.Tokens[mIndex].Offset < AExpression.StartOffset)
+      and ATree.Tokens[mIndex].IsKeyword('type') then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Grund, warum ADecl an AOffset kein auflösbarer Alias X = Y ist; '' wenn er es ist.</summary>
+function AliasIssue(ATree: TSyntaxTree; ADecl: TSyntaxNode; AOffset: Integer): string;
+var
+  mExpression: TSyntaxNode;
+begin
+  if (ADecl = nil) or (AOffset >= ADecl.StartOffset + Length(ADecl.Name)) then
+  begin
+    Exit(cTexts[TEditingTypeAliasText.ThereIsNoTypeAlias].Text);
+  end;
+  if ADecl.FindChild(TSyntaxKind.GenericParams) <> nil then
+  begin
+    Exit(cTexts[TEditingTypeAliasText.IsGeneric].Fmt([ADecl.Name]));
+  end;
+  mExpression := AliasExpression(ADecl);
+  Result := '';
+  if (mExpression = nil) or (ADecl.ChildCount <> 1) then
+  begin
+    Result := cTexts[TEditingTypeAliasText.IsNotAnAlias].Fmt([ADecl.Name]);
+  end
+  // X = type Y: eigener Typ.
+  else if IsDistinctType(ATree, ADecl, mExpression) then
+  begin
+    Result := cTexts[TEditingTypeAliasText.TypeIsADistinctType].Fmt([ADecl.Name]);
+  end;
 end;
 
 class function TTypeAlias.InlineTarget(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
   out ATarget: TInlineAliasTarget; out AReason: string): Boolean;
 var
-  Lines: TLineTable;
-  Node, Expression: TSyntaxNode;
-  Index, Offset: Integer;
-  mIndex: Integer;
+  mDecl, mExpression: TSyntaxNode;
+  mOffset: Integer;
 begin
   ATarget := Default(TInlineAliasTarget);
-  AReason := '';
   if (ATree = nil) or (ATree.Root = nil) then
-    Exit(Fail('kein Baum', AReason));
-  Lines := TLineTable.Build(AText);
-  Offset := Lines.OffsetAt(APosition);
-  Node := NodeAt(ATree.Root, Offset);
-  while (Node <> nil) and (Node.Kind <> TSyntaxKind.TypeDecl) do
-    Node := Node.Parent;
-  if (Node = nil) or (Offset >= Node.StartOffset + Length(Node.Name)) then
-    Exit(Fail('Hier steht kein Typ-Alias', AReason));
-  if Node.FindChild(TSyntaxKind.GenericParams) <> nil then
-    Exit(Fail(Format('%s ist generisch', [Node.Name]), AReason));
-  Expression := nil;
-  for Index := 0 to Node.ChildCount - 1 do
-    if Node[Index].Kind in TypeKinds then
-      Expression := Node[Index];
-  if (Expression = nil) or (Node.ChildCount <> 1) then
-    Exit(Fail(Format('%s ist kein Alias', [Node.Name]), AReason));
-  // X = type Y: eigener Typ.
-  for mIndex := ATree.FirstTokenFrom(Node.StartOffset + 1) to High(ATree.Tokens) do
-    if (ATree.Tokens[mIndex].Offset > Node.StartOffset) and (ATree.Tokens[mIndex].Offset < Expression.StartOffset) and
-      ATree.Tokens[mIndex].IsKeyword('type') then
-      Exit(Fail(Format('%s = type … ist ein eigener Typ; Auflösen würde die Bedeutung ändern', [Node.Name]),
-        AReason));
-  ATarget.Name := Node.Name;
-  ATarget.TypeText := NodeText(AText, Expression);
-  ATarget.Kind := Expression.Kind;
-  ATarget.NamePosition := Node.StartPos;
-  Result := True;
+  begin
+    Exit(Fail(cTexts[TEditingTypeAliasText.NoTree].Text, AReason));
+  end;
+  mOffset := TLineTable.Build(AText).OffsetAt(APosition);
+  mDecl := AliasDecl(ATree, mOffset);
+  AReason := AliasIssue(ATree, mDecl, mOffset);
+  Result := AReason = '';
+  if Result then
+  begin
+    mExpression := AliasExpression(mDecl);
+    ATarget.Name := mDecl.Name;
+    ATarget.TypeText := NodeText(AText, mExpression);
+    ATarget.Kind := mExpression.Kind;
+    ATarget.NamePosition := mDecl.StartPos;
+  end;
 end;
 
 /// <summary>Der Knoten, den eine Verwendung an AOffset ersetzt: TypeReference, Bezeichner oder qualifizierter
@@ -1107,169 +1717,317 @@ begin
   ATypePosition := False;
   while (Result <> nil) and not (Result.Kind in [TSyntaxKind.TypeReference, TSyntaxKind.Identifier,
     TSyntaxKind.MemberAccess]) do
+  begin
     Result := Result.Parent;
+  end;
   if Result = nil then
+  begin
     Exit;
+  end;
   ATypePosition := Result.Kind = TSyntaxKind.TypeReference;
   // Unit.X als Ausdruck liefert NodeAt als MemberAccess selbst, X.Create dagegen den Bezeichner X darin.
+end;
+
+type
+  /// <summary>Arbeitsstand von TTypeAlias.InlineAlias: Deklaration Decl des Alias Target, Units seiner Typen, ob
+  /// andere Units sie sehen (Hidden), behaltene Verwendungen Kept, Änderungen und Ergebnis Outcome.</summary>
+  TInlining = record
+    Declaring: TTypeAliasSource;
+    Lookup: TTypeAliasLookup;
+    Target: TInlineAliasTarget;
+    Lines: TLineTable;
+    Decl: TSyntaxNode;
+    Named: Boolean;
+    Hidden: Boolean;
+    Units: TArray<string>;
+    Kept: Integer;
+    Changes: TArray<TFileChange>;
+    PreviewLines: TArray<string>;
+    Outcome: TTypeAliasResult;
+    class function Create(const ADeclaring: TTypeAliasSource; const ALookup: TTypeAliasLookup;
+      const ATarget: TInlineAliasTarget): TInlining; static;
+    procedure CollectUnits;
+    function IsDeclarationName(AOffset: Integer): Boolean;
+    function Replaceable(AUse: TSyntaxNode; ATypePosition: Boolean): Boolean;
+    function ReplaceUses(const ASource: TTypeAliasSource; AOwn: Boolean; var AChange: TFileChange): Integer;
+    function UsesIssue(const ASource: TTypeAliasSource; AFirstSite: Integer; var AChange: TFileChange): string;
+    function SourceIssue(const ASource: TTypeAliasSource): string;
+    function OwnChangeIndex: Integer;
+    procedure RemoveAlias;
+    function ChangesIssue(const AOthers: TArray<TTypeAliasSource>): string;
+    function PreviewText(const AResult: TTypeAliasResult): string;
+  end;
+
+class function TInlining.Create(const ADeclaring: TTypeAliasSource; const ALookup: TTypeAliasLookup;
+  const ATarget: TInlineAliasTarget): TInlining;
+begin
+  Result := Default(TInlining);
+  Result.Declaring := ADeclaring;
+  Result.Lookup := ALookup;
+  Result.Target := ATarget;
+  Result.Lines := TLineTable.Build(ADeclaring.Text);
+  Result.Decl := AliasDecl(ADeclaring.Tree, Result.Lines.OffsetAt(ATarget.NamePosition));
+  Result.Named := Result.Decl[0].Kind = TSyntaxKind.TypeReference;
+  Result.CollectUnits;
+end;
+
+/// <summary>Units der Typen im Ausdruck, für andere Units; Typen aus dem implementation-Teil sehen sie nicht.
+/// </summary>
+procedure TInlining.CollectUnits;
+var
+  mNameNode: TSyntaxNode;
+  mUnitName: string;
+  mImplementation: Boolean;
+begin
+  Units := nil;
+  Hidden := not InInterface(Decl);
+  for mNameNode in NamesIn(Decl[0]) do
+  begin
+    mUnitName := '';
+    mImplementation := False;
+    if Assigned(Lookup.UnitOf) then
+    begin
+      mUnitName := Lookup.UnitOf(Declaring.Tree, Declaring.FileName, mNameNode, mImplementation);
+    end;
+    Hidden := Hidden or mImplementation;
+    if (mUnitName <> '') and (IndexText(mUnitName, Units) < 0) then
+    begin
+      Units := Units + [mUnitName];
+    end;
+  end;
+end;
+
+/// <summary>Steht AOffset im Namen der Alias-Deklaration selbst?</summary>
+function TInlining.IsDeclarationName(AOffset: Integer): Boolean;
+begin
+  Result := (AOffset >= Decl.StartOffset) and (AOffset < Decl.StartOffset + Length(Decl.Name));
+end;
+
+/// <summary>Lässt sich die Verwendung AUse ersetzen? Ohne Typnamen nimmt Delphi den Ausdruck nur in Deklarationen von
+/// Feldern, Variablen, Konstanten und Typen an, nicht in Parametern, Ergebnissen, Properties, Typargumenten und
+/// Ausdrücken.</summary>
+function TInlining.Replaceable(AUse: TSyntaxNode; ATypePosition: Boolean): Boolean;
+begin
+  Result := (AUse <> nil) and (Named or ATypePosition and (AUse.Parent <> nil) and
+    (AUse.Parent.Kind in AnonymousContexts));
+end;
+
+/// <summary>Ersetzt die Verwendungen in ASource (AOwn: die Datei des Alias) durch den Ausdruck; Anfang der ersten
+/// Stelle (im interface-Teil bevorzugt), -1 ohne.</summary>
+function TInlining.ReplaceUses(const ASource: TTypeAliasSource; AOwn: Boolean; var AChange: TFileChange): Integer;
+var
+  mLines: TLineTable;
+  mOffset, mStart, mStop: Integer;
+  mUse: TSyntaxNode;
+  mTypePosition: Boolean;
+begin
+  Result := -1;
+  mLines := TLineTable.Build(ASource.Text);
+  for mOffset in ASource.Offsets do
+  begin
+    if AOwn and IsDeclarationName(mOffset) then
+    begin
+      Continue;
+    end;
+    mUse := UseNode(ASource.Tree, mOffset, mTypePosition);
+    if not Replaceable(mUse, mTypePosition) then
+    begin
+      Inc(Kept);
+      Continue;
+    end;
+    mStart := mUse.StartOffset;
+    mStop := mUse.EndOffset;
+    if mUse.Kind = TSyntaxKind.TypeReference then
+    begin
+      mStop := mUse.StartOffset + Length(mUse.Name);
+    end;
+    AChange.Edits := AChange.Edits + [Edit(mLines, mStart, mStop, Target.TypeText)];
+    PreviewLines := PreviewLines + [Where(ASource.FileName, mLines.PositionAt(mStart).Line)];
+    Inc(Outcome.Places);
+    if (Result < 0) or InInterface(mUse) and not InInterface(NodeAt(ASource.Tree.Root, Result)) then
+    begin
+      Result := mStart;
+    end;
+  end;
+end;
+
+/// <summary>Fehlende uses für die Typen des Ausdrucks in ASource, vor AFirstSite; Grund, wenn eine sich nicht
+/// ergänzen lässt.</summary>
+function TInlining.UsesIssue(const ASource: TTypeAliasSource; AFirstSite: Integer; var AChange: TFileChange): string;
+var
+  mUnitName, mLineBreak: string;
+  mUsesEdit: TTextEdit;
+begin
+  Result := '';
+  mLineBreak := TTextLines.LineBreakOf(ASource.Text);
+  for mUnitName in Units do
+  begin
+    if SameText(mUnitName, TUsesClauses.OwnName(ASource.Tree.Tokens)) or
+      TUsesClauses.IsUsed(TUsesClauses.UsedUnits(ASource.Tree.Tokens), mUnitName, nil) then
+    begin
+      Continue;
+    end;
+    if not TUsesClauses.AddUnit(ASource.Tree.Tokens, AFirstSite, mUnitName, mLineBreak, mUsesEdit) then
+    begin
+      Exit(cTexts[TEditingTypeAliasText.UsesForCannotBeAdded].Fmt([ExtractFileName(ASource.FileName), mUnitName]));
+    end;
+    AChange.Edits := AChange.Edits + [mUsesEdit];
+  end;
+end;
+
+/// <summary>Änderungen an ASource; andere Units behalten alle Verwendungen, wenn sie die Typen nicht sehen.</summary>
+function TInlining.SourceIssue(const ASource: TTypeAliasSource): string;
+var
+  mOwn: Boolean;
+  mChange: TFileChange;
+  mFirstSite: Integer;
+begin
+  Result := '';
+  mOwn := SameText(ASource.FileName, Declaring.FileName);
+  if (ASource.Tree = nil) or (ASource.Offsets = nil) then
+  begin
+    Exit;
+  end;
+  if not mOwn and Hidden then
+  begin
+    Inc(Kept, Length(ASource.Offsets));
+    Exit;
+  end;
+  mChange := FileChange(ASource);
+  mFirstSite := ReplaceUses(ASource, mOwn, mChange);
+  if not mOwn and (mFirstSite >= 0) then
+  begin
+    Result := UsesIssue(ASource, mFirstSite, mChange);
+  end;
+  if (Result = '') and (mChange.Edits <> nil) then
+  begin
+    Changes := Changes + [mChange];
+  end;
+end;
+
+/// <summary>Index der Änderung an der Datei des Alias; legt sie an, wenn es sie noch nicht gibt.</summary>
+function TInlining.OwnChangeIndex: Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  for mIndex := 0 to High(Changes) do
+  begin
+    if SameText(Changes[mIndex].FileName, Declaring.FileName) then
+    begin
+      Result := mIndex;
+    end;
+  end;
+  if Result < 0 then
+  begin
+    Changes := Changes + [FileChange(Declaring)];
+    Result := High(Changes);
+  end;
+end;
+
+/// <summary>Entfernt den Alias, mit seinem type-Abschnitt, wenn er der einzige war.</summary>
+procedure TInlining.RemoveAlias;
+var
+  mSection: TSyntaxNode;
+  mStart, mStop, mIndex: Integer;
+begin
+  mSection := Decl.Parent;
+  if (mSection <> nil) and (mSection.Kind = TSyntaxKind.TypeSection) and (mSection.ChildCount = 1) then
+  begin
+    mStart := Lines.LineStart(mSection.StartPos.Line);
+    mStop := Lines.LineStart(mSection.EndPos.Line + 1);
+  end
+  else
+  begin
+    mStart := Lines.LineStart(Decl.StartPos.Line);
+    mStop := Lines.LineStart(Decl.EndPos.Line + 1);
+  end;
+  if Decl.EndPos.Line + 1 >= Lines.LineCount then
+  begin
+    mStop := Length(Declaring.Text);
+  end;
+  mIndex := OwnChangeIndex;
+  Changes[mIndex].Edits := Changes[mIndex].Edits + [Edit(Lines, mStart, mStop, '')];
+end;
+
+/// <summary>Ersetzt in ADeclaring und AOthers; ohne verbliebene Verwendung fällt der Alias weg. Grund, wenn uses
+/// fehlen oder keine Verwendung ersetzbar ist.</summary>
+function TInlining.ChangesIssue(const AOthers: TArray<TTypeAliasSource>): string;
+var
+  mSources: TArray<TTypeAliasSource>;
+  mSource: TTypeAliasSource;
+begin
+  mSources := TArray<TTypeAliasSource>.Create(Declaring) + AOthers;
+  for mSource in mSources do
+  begin
+    Result := SourceIssue(mSource);
+    if Result <> '' then
+    begin
+      Exit;
+    end;
+  end;
+  if Kept = 0 then
+  begin
+    RemoveAlias;
+  end
+  else
+  begin
+    Outcome.Warnings := Outcome.Warnings + [cTexts[TEditingTypeAliasText.UsesKeepParameterResultProperty].Fmt([Kept,
+      Target.Name])];
+  end;
+  Result := '';
+  if (Outcome.Places = 0) and (Kept > 0) then
+  begin
+    Result := cTexts[TEditingTypeAliasText.NoUseOfCanBe].Fmt([Target.Name]);
+  end
+  else if Outcome.Places = 0 then
+  begin
+    Outcome.Warnings := Outcome.Warnings + [cTexts[TEditingTypeAliasText.IsNotUsedAnywhere].Fmt([Target.Name])];
+  end;
+end;
+
+function TInlining.PreviewText(const AResult: TTypeAliasResult): string;
+begin
+  Result := cTexts[TEditingTypeAliasText.IsReplacedByPlacesIn].Fmt([Target.Name, Target.TypeText,
+    AResult.Places, Length(AResult.Files)]);
+  if Kept = 0 then
+  begin
+    Result := Result + cTexts[TEditingTypeAliasText.TheAliasIsRemoved].Text;
+  end
+  else
+  begin
+    Result := Result + '.';
+  end;
+  if PreviewLines <> nil then
+  begin
+    Result := Result + sLineBreak + string.Join(sLineBreak, PreviewLines);
+  end;
 end;
 
 class function TTypeAlias.InlineAlias(const ADeclaring: TTypeAliasSource; const AOthers: TArray<TTypeAliasSource>;
   const APosition: TTextPosition; const ALookup: TTypeAliasLookup; out AResult: TTypeAliasResult;
   out AReason: string): Boolean;
 var
-  Target: TInlineAliasTarget;
-  Lines, FileLines: TLineTable;
-  Decl, Expression, Use, Section: TSyntaxNode;
-  Sources: TArray<TTypeAliasSource>;
-  Source: TTypeAliasSource;
-  Offset, Kept, FirstSite, Start, Stop, Index: Integer;
-  TypePosition, Named, Hidden, Own, Implementation_: Boolean;
-  Change: TFileChange;
-  Changes: TArray<TFileChange>;
-  PreviewLines, Units: TArray<string>;
-  UnitName, LineBreak: string;
-  NameNode: TSyntaxNode;
-  UsesEdit: TTextEdit;
+  mTarget: TInlineAliasTarget;
+  mInlining: TInlining;
 begin
   Result := False;
   AResult := Default(TTypeAliasResult);
-  if not InlineTarget(ADeclaring.Text, ADeclaring.Tree, APosition, Target, AReason) then
+  if not InlineTarget(ADeclaring.Text, ADeclaring.Tree, APosition, mTarget, AReason) then
+  begin
     Exit;
-  Lines := TLineTable.Build(ADeclaring.Text);
-  Decl := NodeAt(ADeclaring.Tree.Root, Lines.OffsetAt(Target.NamePosition));
-  while (Decl <> nil) and (Decl.Kind <> TSyntaxKind.TypeDecl) do
-    Decl := Decl.Parent;
-  Expression := Decl[0];
-  Named := Expression.Kind = TSyntaxKind.TypeReference;
-  // Units der Typen im Ausdruck, für andere Units; Typen aus dem implementation-Teil sehen sie nicht.
-  Units := nil;
-  Hidden := not InInterface(Decl);
-  for NameNode in NamesIn(Expression) do
-  begin
-    UnitName := '';
-    Implementation_ := False;
-    if Assigned(ALookup.UnitOf) then
-      UnitName := ALookup.UnitOf(ADeclaring.Tree, ADeclaring.FileName, NameNode, Implementation_);
-    if Implementation_ then
-      Hidden := True;
-    if (UnitName <> '') and (IndexText(UnitName, Units) < 0) then
-      Units := Units + [UnitName];
   end;
-  Sources := TArray<TTypeAliasSource>.Create(ADeclaring) + AOthers;
-  Changes := nil;
-  PreviewLines := nil;
-  Kept := 0;
-  for Source in Sources do
+  mInlining := TInlining.Create(ADeclaring, ALookup, mTarget);
+  AReason := mInlining.ChangesIssue(AOthers);
+  AResult := mInlining.Outcome;
+  if (AReason = '') and Finish(mInlining.Changes, AResult, AReason) then
   begin
-    Own := SameText(Source.FileName, ADeclaring.FileName);
-    if (Source.Tree = nil) or (Source.Offsets = nil) then
-      Continue;
-    if not Own and Hidden then
-    begin
-      Inc(Kept, Length(Source.Offsets));
-      Continue;
-    end;
-    Change := Default(TFileChange);
-    Change.FileName := Source.FileName;
-    Change.Text := Source.Text;
-    Change.Tree := Source.Tree;
-    FileLines := TLineTable.Build(Source.Text);
-    FirstSite := -1;
-    for Offset in Source.Offsets do
-    begin
-      if Own and (Offset >= Decl.StartOffset) and (Offset < Decl.StartOffset + Length(Decl.Name)) then
-        Continue;
-      Use := UseNode(Source.Tree, Offset, TypePosition);
-      if Use = nil then
-      begin
-        Inc(Kept);
-        Continue;
-      end;
-      // Ohne Typnamen nimmt Delphi den Ausdruck nur in Deklarationen von Feldern, Variablen, Konstanten und
-      // Typen an, nicht in Parametern, Ergebnissen, Properties, Typargumenten und Ausdrücken.
-      if not Named and not (TypePosition and (Use.Parent <> nil) and (Use.Parent.Kind in AnonymousContexts)) then
-      begin
-        Inc(Kept);
-        Continue;
-      end;
-      Start := Use.StartOffset;
-      Stop := Use.EndOffset;
-      if Use.Kind = TSyntaxKind.TypeReference then
-        Stop := Use.StartOffset + Length(Use.Name);
-      Change.Edits := Change.Edits + [Edit(FileLines, Start, Stop, Target.TypeText)];
-      PreviewLines := PreviewLines + [Where(Source.FileName, FileLines.PositionAt(Start).Line)];
-      Inc(AResult.Places);
-      if (FirstSite < 0) or InInterface(Use) and not InInterface(NodeAt(Source.Tree.Root, FirstSite)) then
-        FirstSite := Start;
-    end;
-    // Fehlende uses für die Typen des Ausdrucks.
-    if not Own and (FirstSite >= 0) then
-    begin
-      LineBreak := TTextLines.LineBreakOf(Source.Text);
-      for UnitName in Units do
-        if not SameText(UnitName, TUsesClauses.OwnName(Source.Tree.Tokens)) and
-          not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(Source.Tree.Tokens), UnitName, nil) then
-        begin
-          if not TUsesClauses.AddUnit(Source.Tree.Tokens, FirstSite, UnitName, LineBreak, UsesEdit) then
-            Exit(Fail(Format('%s: uses für %s lässt sich nicht ergänzen', [ExtractFileName(Source.FileName),
-              UnitName]), AReason));
-          Change.Edits := Change.Edits + [UsesEdit];
-        end;
-    end;
-    if Change.Edits <> nil then
-      Changes := Changes + [Change];
+    AResult.Preview := mInlining.PreviewText(AResult);
+    Result := True;
   end;
-  // Ohne verbliebene Verwendung fällt der Alias weg, mit seinem type-Abschnitt, wenn er der einzige war.
-  if Kept = 0 then
-  begin
-    Section := Decl.Parent;
-    if (Section <> nil) and (Section.Kind = TSyntaxKind.TypeSection) and (Section.ChildCount = 1) then
-    begin
-      Start := Lines.LineStart(Section.StartPos.Line);
-      Stop := Lines.LineStart(Section.EndPos.Line + 1);
-    end
-    else
-    begin
-      Start := Lines.LineStart(Decl.StartPos.Line);
-      Stop := Lines.LineStart(Decl.EndPos.Line + 1);
-    end;
-    if Decl.EndPos.Line + 1 >= Lines.LineCount then
-      Stop := Length(ADeclaring.Text);
-    Index := -1;
-    for Offset := 0 to High(Changes) do
-      if SameText(Changes[Offset].FileName, ADeclaring.FileName) then
-        Index := Offset;
-    if Index < 0 then
-    begin
-      Change := Default(TFileChange);
-      Change.FileName := ADeclaring.FileName;
-      Change.Text := ADeclaring.Text;
-      Change.Tree := ADeclaring.Tree;
-      Changes := Changes + [Change];
-      Index := High(Changes);
-    end;
-    Changes[Index].Edits := Changes[Index].Edits + [Edit(Lines, Start, Stop, '')];
-  end
-  else
-    AResult.Warnings := AResult.Warnings + [Format('%d Verwendungen behalten %s (Parameter, Ergebnis, Property, ' +
-      'Typargument, Ausdruck oder eine Unit, die den Typ nicht sieht); der Alias bleibt', [Kept, Target.Name])];
-  if AResult.Places = 0 then
-    if Kept = 0 then
-      AResult.Warnings := AResult.Warnings + [Format('%s wird nirgends verwendet', [Target.Name])]
-    else
-      Exit(Fail(Format('Keine Verwendung von %s lässt sich ersetzen', [Target.Name]), AReason));
-  if not Finish(Changes, AResult, AReason) then
-    Exit;
-  AResult.Preview := Format('%s wird durch %s ersetzt, %d Stellen in %d Dateien', [Target.Name, Target.TypeText,
-    AResult.Places, Length(AResult.Files)]);
-  if Kept = 0 then
-    AResult.Preview := AResult.Preview + '; der Alias entfällt.'
-  else
-    AResult.Preview := AResult.Preview + '.';
-  if PreviewLines <> nil then
-    AResult.Preview := AResult.Preview + sLineBreak + string.Join(sLineBreak, PreviewLines);
-  Result := True;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.TypeAlias', cTexts);
 
 end.

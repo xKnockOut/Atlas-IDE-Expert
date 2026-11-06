@@ -95,7 +95,9 @@ function PreviousIndex(const ATokens: TArray<TPascalToken>; AIndex: Integer): In
 begin
   Result := AIndex - 1;
   while (Result >= 0) and IsTrivia(ATokens[Result]) do
+  begin
     Dec(Result);
+  end;
 end;
 
 /// <summary>Name ohne Typargumente und ohne Unit davor: "Generics.IComparer&lt;T&gt;" → "IComparer".</summary>
@@ -103,144 +105,248 @@ function PlainName(const AName: string): string;
 begin
   Result := Trim(AName);
   if Pos('<', Result) > 0 then
+  begin
     Result := Copy(Result, 1, Pos('<', Result) - 1);
+  end;
   Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
+end;
+
+/// <summary>Kann AToken in einer Typargumentliste stehen: Namen, Punkte und string?</summary>
+function IsTypeArgPart(const AToken: TPascalToken): Boolean;
+begin
+  Result := (AToken.Kind = TPascalTokenKind.Identifier) or AToken.IsSymbol('.') or AToken.IsKeyword('string');
+end;
+
+/// <summary>Stelle für das offene "&lt;" bei AOpen nach ACommas Kommas; gefunden nur hinter einem Namen.</summary>
+function SiteOf(const ATokens: TArray<TPascalToken>; AOpen, ACommas: Integer): TGenericArgSite;
+var
+  mBefore: Integer;
+begin
+  Result := Default(TGenericArgSite);
+  mBefore := PreviousIndex(ATokens, AOpen);
+  if (mBefore >= 0) and (ATokens[mBefore].Kind = TPascalTokenKind.Identifier) then
+  begin
+    Result.Found := True;
+    Result.OwnerPosition := ATokens[mBefore].StartPos;
+    Result.Parameter := ACommas;
+  end;
 end;
 
 { TCompletionGenerics }
 
 class function TCompletionGenerics.SiteAt(const ATokens: TArray<TPascalToken>; ALast: Integer): TGenericArgSite;
 var
-  Index, Depth, Commas, Before: Integer;
-  Token: TPascalToken;
+  mIndex, mDepth, mCommas: Integer;
 begin
   Result := Default(TGenericArgSite);
-  Depth := 0;
-  Commas := 0;
-  Index := ALast;
-  if (Index >= 0) and IsTrivia(ATokens[Index]) then
-    Index := PreviousIndex(ATokens, Index);
-  while Index >= 0 do
+  mDepth := 0;
+  mCommas := 0;
+  mIndex := ALast;
+  if (mIndex >= 0) and IsTrivia(ATokens[mIndex]) then
   begin
-    Token := ATokens[Index];
-    if Token.IsSymbol('>') then
-      Inc(Depth)
-    else if Token.IsSymbol('<') then
+    mIndex := PreviousIndex(ATokens, mIndex);
+  end;
+  while mIndex >= 0 do
+  begin
+    if ATokens[mIndex].IsSymbol('>') then
     begin
-      if Depth = 0 then
+      Inc(mDepth);
+    end
+    else if ATokens[mIndex].IsSymbol('<') then
+    begin
+      if mDepth = 0 then
       begin
-        Before := PreviousIndex(ATokens, Index);
-        if (Before >= 0) and (ATokens[Before].Kind = TPascalTokenKind.Identifier) then
-        begin
-          Result.Found := True;
-          Result.OwnerPosition := ATokens[Before].StartPos;
-          Result.Parameter := Commas;
-        end;
-        Exit;
+        Exit(SiteOf(ATokens, mIndex, mCommas));
       end;
-      Dec(Depth);
+      Dec(mDepth);
     end
-    else if Token.IsSymbol(',') then
+    else if ATokens[mIndex].IsSymbol(',') then
     begin
-      if Depth = 0 then
-        Inc(Commas);
+      Inc(mCommas, IfThen(mDepth = 0, 1, 0));
     end
-    // Nur, was in einer Typargumentliste stehen kann: Namen, Punkte und string.
-    else if not ((Token.Kind = TPascalTokenKind.Identifier) or Token.IsSymbol('.') or Token.IsKeyword('string')) then
+    else if not IsTypeArgPart(ATokens[mIndex]) then
+    begin
       Exit;
-    Index := PreviousIndex(ATokens, Index);
+    end;
+    mIndex := PreviousIndex(ATokens, mIndex);
+  end;
+end;
+
+/// <summary>Kopf ab dem Namen bis zur schließenden spitzen Klammer, auch über mehrere Zeilen.</summary>
+function HeaderFrom(const ALines: TArray<string>; ALine, ACharacter: Integer): string;
+var
+  mLine: Integer;
+begin
+  Result := '';
+  for mLine := ALine to Min(High(ALines), ALine + 20) do
+  begin
+    if mLine = ALine then
+    begin
+      Result := Result + Copy(ALines[mLine], ACharacter + 1, MaxInt);
+    end
+    else
+    begin
+      Result := Result + ' ' + ALines[mLine];
+    end;
+    if Pos('>', Result) > 0 then
+    begin
+      Break;
+    end;
+  end;
+end;
+
+/// <summary>Stelle des "&lt;" direkt hinter dem Namen; 0, wenn vorher etwas anderes steht oder es fehlt.</summary>
+function AngleOpen(const AText: string): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 1 to Length(AText) do
+  begin
+    if AText[mIndex] = '<' then
+    begin
+      Exit(mIndex);
+    end;
+    if not CharInSet(AText[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '_', '.', ' ', #9]) then
+    begin
+      Break;
+    end;
+  end;
+  Result := 0;
+end;
+
+/// <summary>Stelle der schließenden spitzen Klammer zu AOpen; 0 ohne.</summary>
+function AngleClose(const AText: string; AOpen: Integer): Integer;
+var
+  mIndex, mDepth: Integer;
+begin
+  mDepth := 0;
+  for mIndex := AOpen to Length(AText) do
+  begin
+    if AText[mIndex] = '<' then
+    begin
+      Inc(mDepth);
+    end
+    else if AText[mIndex] = '>' then
+    begin
+      Dec(mDepth);
+      if mDepth = 0 then
+      begin
+        Exit(mIndex);
+      end;
+    end;
+  end;
+  Result := 0;
+end;
+
+/// <summary>Constraints "class, constructor" als Liste ohne leere Einträge.</summary>
+function ConstraintList(const AText: string): TArray<string>;
+var
+  mConstraint: string;
+begin
+  Result := nil;
+  for mConstraint in AText.Split([',']) do
+  begin
+    if Trim(mConstraint) <> '' then
+    begin
+      Result := Result + [Trim(mConstraint)];
+    end;
+  end;
+end;
+
+/// <summary>Die Typparameter einer Gruppe "K, V: class, constructor" an AParams anhängen.</summary>
+procedure AddParamGroup(const AGroup: string; var AParams: TArray<TGenericParam>);
+var
+  mColon: Integer;
+  mNames, mName: string;
+  mConstraints: TArray<string>;
+  mParam: TGenericParam;
+begin
+  mColon := Pos(':', AGroup);
+  mNames := AGroup;
+  mConstraints := nil;
+  if mColon > 0 then
+  begin
+    mNames := Copy(AGroup, 1, mColon - 1);
+    mConstraints := ConstraintList(Copy(AGroup, mColon + 1, MaxInt));
+  end;
+  for mName in mNames.Split([',']) do
+  begin
+    if Trim(mName) <> '' then
+    begin
+      mParam := Default(TGenericParam);
+      mParam.Name := Trim(mName);
+      mParam.Constraints := mConstraints;
+      AParams := AParams + [mParam];
+    end;
   end;
 end;
 
 class function TCompletionGenerics.Params(const ALines: TArray<string>; ALine,
   ACharacter: Integer): TArray<TGenericParam>;
 var
-  Text, Inner, Group, NamesText, Name: string;
-  Line, Index, Depth, Open, Close, ColonAt: Integer;
-  Param: TGenericParam;
-  Constraint: string;
+  mText, mInner, mGroup: string;
+  mOpen, mClose: Integer;
 begin
   Result := nil;
-  // Kopf ab dem Namen bis zur schließenden spitzen Klammer, auch über mehrere Zeilen.
-  Text := '';
-  for Line := ALine to Min(High(ALines), ALine + 20) do
+  mText := HeaderFrom(ALines, ALine, ACharacter);
+  mOpen := AngleOpen(mText);
+  if mOpen = 0 then
   begin
-    if Line = ALine then
-      Text := Text + Copy(ALines[Line], ACharacter + 1, MaxInt)
-    else
-      Text := Text + ' ' + ALines[Line];
-    if Pos('>', Text) > 0 then
-      Break;
+    Exit;
   end;
-  Open := 0;
-  for Index := 1 to Length(Text) do
-    if Text[Index] = '<' then
-    begin
-      Open := Index;
-      Break;
-    end
-    else if not CharInSet(Text[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_', '.', ' ', #9]) then
-      Exit;
-  if Open = 0 then
-    Exit;
-  Depth := 0;
-  Close := 0;
-  for Index := Open to Length(Text) do
-    if Text[Index] = '<' then
-      Inc(Depth)
-    else if Text[Index] = '>' then
-    begin
-      Dec(Depth);
-      if Depth = 0 then
-      begin
-        Close := Index;
-        Break;
-      end;
-    end;
-  if Close = 0 then
-    Exit;
-  Inner := Copy(Text, Open + 1, Close - Open - 1);
-  // Gruppen durch ";", darin "K, V: class, constructor".
-  for Group in Inner.Split([';']) do
+  mClose := AngleClose(mText, mOpen);
+  if mClose = 0 then
   begin
-    ColonAt := Pos(':', Group);
-    if ColonAt > 0 then
-      NamesText := Copy(Group, 1, ColonAt - 1)
-    else
-      NamesText := Group;
-    for Name in NamesText.Split([',']) do
-    begin
-      if Trim(Name) = '' then
-        Continue;
-      Param := Default(TGenericParam);
-      Param.Name := Trim(Name);
-      if ColonAt > 0 then
-        for Constraint in Copy(Group, ColonAt + 1, MaxInt).Split([',']) do
-          if Trim(Constraint) <> '' then
-            Param.Constraints := Param.Constraints + [Trim(Constraint)];
-      Result := Result + [Param];
-    end;
+    Exit;
+  end;
+  mInner := Copy(mText, mOpen + 1, mClose - mOpen - 1);
+  // Gruppen durch ";", darin "K, V: class, constructor".
+  for mGroup in mInner.Split([';']) do
+  begin
+    AddParamGroup(mGroup, Result);
   end;
 end;
 
-class function TCompletionGenerics.HintCode(const AConstraints: TArray<string>; AInterface: Boolean): string;
+/// <summary>Erklärung nach class bzw. record, in der Reihenfolge der Constraints; '' ohne.</summary>
+function KindHint(const AConstraints: TArray<string>): string;
 var
-  Constraint: string;
+  mConstraint: string;
 begin
-  Result := '';
-  for Constraint in AConstraints do
-    if SameText(Constraint, 'constructor') then
-      Exit('constructible');
-  for Constraint in AConstraints do
-    if SameText(Constraint, 'class') then
-      Exit('classes')
-    else if SameText(Constraint, 'record') then
-      Exit('values');
-  for Constraint in AConstraints do
+  for mConstraint in AConstraints do
   begin
-    if AInterface then
-      Exit('implements:' + Constraint);
-    Exit('descends:' + Constraint);
+    if SameText(mConstraint, 'class') then
+    begin
+      Exit('classes');
+    end;
+    if SameText(mConstraint, 'record') then
+    begin
+      Exit('values');
+    end;
+  end;
+  Result := '';
+end;
+
+class function TCompletionGenerics.HintCode(const AConstraints: TArray<string>; AInterface: Boolean): string;
+begin
+  if MatchText('constructor', AConstraints) then
+  begin
+    Result := 'constructible';
+  end
+  else
+  begin
+    Result := KindHint(AConstraints);
+  end;
+  if (Result <> '') or (Length(AConstraints) = 0) then
+  begin
+    Exit;
+  end;
+  if AInterface then
+  begin
+    Result := 'implements:' + AConstraints[0];
+  end
+  else
+  begin
+    Result := 'descends:' + AConstraints[0];
   end;
 end;
 
@@ -251,15 +357,25 @@ var
 begin
   Result := True;
   for Constraint in AConstraints do
+  begin
     if SameText(Constraint, 'class') then
-      Result := Result and (AKind = TTypeArgKind.Class_)
+    begin
+      Result := Result and (AKind = TTypeArgKind.Class_);
+    end
     else if SameText(Constraint, 'record') then
-      Result := Result and (AKind in [TTypeArgKind.Record_, TTypeArgKind.Enum, TTypeArgKind.Basic])
+    begin
+      Result := Result and (AKind in [TTypeArgKind.Record_, TTypeArgKind.Enum, TTypeArgKind.Basic]);
+    end
     else if SameText(Constraint, 'constructor') then
-      Result := Result and (AKind = TTypeArgKind.Class_) and AConstructible()
+    begin
+      Result := Result and (AKind = TTypeArgKind.Class_) and AConstructible();
+    end
     else
+    begin
       // Typ-Constraint: Klassen, Interfaces (und Records bei Interfaces nicht) prüft die Namensauflösung.
       Result := Result and (AKind in [TTypeArgKind.Class_, TTypeArgKind.Interface_]) and ASatisfiesType(Constraint);
+    end;
+  end;
 end;
 
 function KindOfSymbol(const ASymbol: TResolvedSymbol): TTypeArgKind;
@@ -297,40 +413,72 @@ begin
   end;
 end;
 
+/// <summary>Führt die Kette des Interfaces AListed über seine Vorfahren zu AName?</summary>
+function InterfaceChainHas(AResolver: TNameResolver; AListed: TResolvedSymbol; const AName: string): Boolean;
+var
+  mNext: TResolvedSymbol;
+  mInner: Integer;
+begin
+  for mInner := 0 to MaxAncestorDepth do
+  begin
+    if SameText(PlainName(AListed.Name), PlainName(AName)) then
+    begin
+      Exit(True);
+    end;
+    if not AResolver.AncestorOf(AListed, mNext) then
+    begin
+      Break;
+    end;
+    AListed := mNext;
+  end;
+  Result := False;
+end;
+
+/// <summary>Heißt der Vorfahr bzw. das Interface AAncestor von ACurrent AName, oder stammt es als Interface davon
+/// ab (IFooEx = interface(IFoo))?</summary>
+function AncestorSatisfies(AResolver: TNameResolver; const ACurrent: TResolvedSymbol;
+  const AAncestor, AName: string): Boolean;
+var
+  mFromUnit: TUnitIndex;
+  mListed: TResolvedSymbol;
+begin
+  Result := SameText(PlainName(AAncestor), PlainName(AName));
+  if not Result and AResolver.DeclaringUnit(ACurrent, mFromUnit) and
+    AResolver.ResolveTypeFrom(mFromUnit, AAncestor, mListed) and
+    (mListed.SymbolKind = TIndexSymbolKind.InterfaceType) then
+  begin
+    Result := InterfaceChainHas(AResolver, mListed, AName);
+  end;
+end;
+
 /// <summary>AType oder ein Vorfahr heißt AName oder listet es als Interface (auch über Vorfahren des Interfaces).
 /// </summary>
 function SatisfiesType(AResolver: TNameResolver; const AType: TResolvedSymbol; const AName: string): Boolean;
 var
-  Current, Next, Listed: TResolvedSymbol;
-  FromUnit: TUnitIndex;
-  Depth, Inner: Integer;
-  Ancestor: string;
+  mCurrent, mNext: TResolvedSymbol;
+  mDepth: Integer;
+  mAncestor: string;
 begin
   Result := False;
-  Current := AType;
-  for Depth := 0 to MaxAncestorDepth do
+  mCurrent := AType;
+  for mDepth := 0 to MaxAncestorDepth do
   begin
-    if SameText(PlainName(Current.Name), PlainName(AName)) then
-      Exit(True);
-    for Ancestor in Current.Ancestors do
+    if SameText(PlainName(mCurrent.Name), PlainName(AName)) then
     begin
-      if SameText(PlainName(Ancestor), PlainName(AName)) then
-        Exit(True);
-      // Interface, das von AName abstammt (IFooEx = interface(IFoo)).
-      if AResolver.DeclaringUnit(Current, FromUnit) and AResolver.ResolveTypeFrom(FromUnit, Ancestor, Listed) and
-        (Listed.SymbolKind = TIndexSymbolKind.InterfaceType) then
-        for Inner := 0 to MaxAncestorDepth do
-        begin
-          if SameText(PlainName(Listed.Name), PlainName(AName)) then
-            Exit(True);
-          if not AResolver.AncestorOf(Listed, Next) then
-            Break;
-          Listed := Next;
-        end;
+      Exit(True);
     end;
-    if not AResolver.AncestorOf(Current, Next) then
+    for mAncestor in mCurrent.Ancestors do
+    begin
+      if AncestorSatisfies(AResolver, mCurrent, mAncestor, AName) then
+      begin
+        Exit(True);
+      end;
+    end;
+    if not AResolver.AncestorOf(mCurrent, mNext) then
+    begin
       Exit;
-    Current := Next;
+    end;
+    mCurrent := mNext;
   end;
 end;
 
@@ -342,11 +490,17 @@ var
   Params: string;
 begin
   if not AResolver.DeclaredMember(AType, 'Create', Ctor) or (Ctor.MinArgs = 0) then
+  begin
     Exit(True);
+  end;
   Result := False;
   for Params in Ctor.VariantParams do
+  begin
     if Params = '' then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 class function TCompletionGenerics.ItemSymbol(ARequest: TCompletionRequest; AUnits: TDictionary<string, TUnitIndex>;
@@ -358,163 +512,244 @@ begin
   Result := False;
   ASymbol := Default(TResolvedSymbol);
   if AItem.SourceFile = '' then
+  begin
     Exit;
+  end;
   if not AUnits.TryGetValue(UpperCase(AItem.SourceFile), UnitInfo) then
   begin
     // Die eigene Unit aus dem Baum, sie steht vielleicht noch nicht (aktuell) im Index.
     if SameText(AItem.SourceFile, ARequest.FileName) and (ARequest.Tree <> nil) then
-      UnitInfo := ARequest.UnitIndex
+    begin
+      UnitInfo := ARequest.UnitIndex;
+    end
     else if (ARequest.Index = nil) or not TIndexFiles.UnitOf(ARequest.Index, AItem.SourceFile, UnitInfo) then
+    begin
       UnitInfo := Default(TUnitIndex);
+    end;
     AUnits.Add(UpperCase(AItem.SourceFile), UnitInfo);
   end;
   for Symbol in UnitInfo.Symbols do
+  begin
     if (Symbol.SelectionRange.StartPos.Line = AItem.SourcePosition.Line) and
       (Symbol.SelectionRange.StartPos.Character = AItem.SourcePosition.Character) and
       SameText(Symbol.Name, AItem.Name) then
     begin
-      ASymbol := ARequest.Resolver.SymbolFrom(UnitInfo, Symbol);
+      ASymbol := TResolvedSymbol.FromIndex(UnitInfo, Symbol);
       Exit(True);
     end;
+  end;
+end;
+
+/// <summary>Erfüllt ASymbol der Art AKind die Constraints, mit der Namensauflösung AResolver?</summary>
+function ConstraintsAllow(AResolver: TNameResolver; AKind: TTypeArgKind; const AConstraints: TArray<string>;
+  const ASymbol: TResolvedSymbol): Boolean;
+var
+  mSymbol: TResolvedSymbol;
+  mLookup: TNameResolver;
+begin
+  // Eigene Kopien: anonyme Methoden fangen keine Parameter der umgebenden Routine.
+  mSymbol := ASymbol;
+  mLookup := AResolver;
+  Result := TCompletionGenerics.Allowed(AKind, AConstraints,
+    function(AName: string): Boolean
+    begin
+      Result := SatisfiesType(mLookup, mSymbol, AName);
+    end,
+    function: Boolean
+    begin
+      Result := Constructible(mLookup, mSymbol);
+    end);
+end;
+
+type
+  /// <summary>Filter und Beschriftung der Einträge für einen Typparameter (TCompletionGenerics.Apply).</summary>
+  TGenericFilter = record
+    Request: TCompletionRequest;
+    Prefix: string;
+    Param: TGenericParam;
+    Code: string;
+    Names: TDictionary<string, Boolean>;
+    HiddenKinds: TList<string>;
+    Kept: TList<TCompletionItem>;
+    /// <summary>Erfüllt ein Typ der Art AKind die Constraints? Sonst merkt sich HiddenKinds die Art.</summary>
+    function Admit(AKind: TTypeArgKind; const ASymbol: TResolvedSymbol): Boolean;
+    /// <summary>AItem mit Typparameter, Constraint und Erklärung übernehmen.</summary>
+    procedure Keep(const AItem: TCompletionItem);
+    procedure AddItem(const AItem: TCompletionItem; AUnits: TDictionary<string, TUnitIndex>);
+    procedure AddBasic(const AName: string);
+  end;
+
+function TGenericFilter.Admit(AKind: TTypeArgKind; const ASymbol: TResolvedSymbol): Boolean;
+begin
+  Result := ConstraintsAllow(Request.Resolver, AKind, Param.Constraints, ASymbol);
+  if not Result and (KindCode(AKind) <> '') and not HiddenKinds.Contains(KindCode(AKind)) then
+  begin
+    HiddenKinds.Add(KindCode(AKind));
+  end;
+end;
+
+procedure TGenericFilter.Keep(const AItem: TCompletionItem);
+var
+  mItem: TCompletionItem;
+begin
+  mItem := AItem;
+  mItem.TypeParam := Param.Name;
+  mItem.Constraint := string.Join(', ', Param.Constraints);
+  mItem.ConstraintHint := Code;
+  Kept.Add(mItem);
+  Names.AddOrSetValue(UpperCase(AItem.Name), True);
+end;
+
+/// <summary>Art des Eintrags AItem aus dem Index, über Datei und Namensposition; Grundtypen ohne Quelle.</summary>
+function ItemKind(ARequest: TCompletionRequest; AUnits: TDictionary<string, TUnitIndex>;
+  const AItem: TCompletionItem; out AResolved: TResolvedSymbol): TTypeArgKind;
+begin
+  if TCompletionGenerics.ItemSymbol(ARequest, AUnits, AItem, AResolved) then
+  begin
+    Result := KindOfSymbol(AResolved);
+  end
+  else if MatchText(AItem.Name, TCompletionGenerics.ValueTypes) then
+  begin
+    Result := TTypeArgKind.Basic;
+  end
+  else
+  begin
+    Result := TTypeArgKind.Unknown;
+  end;
+end;
+
+procedure TGenericFilter.AddItem(const AItem: TCompletionItem; AUnits: TDictionary<string, TUnitIndex>);
+var
+  mResolved: TResolvedSymbol;
+  mKind: TTypeArgKind;
+begin
+  mKind := ItemKind(Request, AUnits, AItem, mResolved);
+  // Unbekannte Art (Alias, Typparameter): nur ohne Constraint.
+  if mKind = TTypeArgKind.Unknown then
+  begin
+    if Length(Param.Constraints) = 0 then
+    begin
+      Keep(AItem);
+    end;
+  end
+  else if Admit(mKind, mResolved) then
+  begin
+    Keep(AItem);
+  end;
+end;
+
+procedure TGenericFilter.AddBasic(const AName: string);
+var
+  mBasic: TCompletionItem;
+begin
+  if Names.ContainsKey(UpperCase(AName)) or (MatchScore(AName, Prefix, Request.Matching) = TFuzzyMatch.NoMatch) or
+    not Admit(TTypeArgKind.Basic, Default(TResolvedSymbol)) then
+  begin
+    Exit;
+  end;
+  mBasic := Default(TCompletionItem);
+  mBasic.Name := AName;
+  mBasic.Detail := 'System';
+  mBasic.Kind := KindStruct;
+  Keep(mBasic);
+end;
+
+/// <summary>Typparameter von AOwner aus dem Quelltext; nicht lesbar die Namen aus dem Index, ohne Constraints.
+/// </summary>
+function ParamsOf(ARequest: TCompletionRequest; const AOwner: TResolvedSymbol): TArray<TGenericParam>;
+var
+  mText, mName: string;
+  mParam: TGenericParam;
+begin
+  Result := nil;
+  if SameText(AOwner.FileName, ARequest.FileName) then
+  begin
+    Result := TCompletionGenerics.Params(ARequest.Lines, AOwner.SelectionRange.StartPos.Line,
+      AOwner.SelectionRange.StartPos.Character);
+  end
+  else if Assigned(ARequest.ReadText) and ARequest.ReadText(AOwner.FileName, mText) then
+  begin
+    // Ein #13 am Zeilenende stört Params nicht.
+    Result := TCompletionGenerics.Params(mText.Split([#10]), AOwner.SelectionRange.StartPos.Line,
+      AOwner.SelectionRange.StartPos.Character);
+  end;
+  if Length(Result) = 0 then
+  begin
+    for mName in AOwner.TypeParams.Split([',']) do
+    begin
+      mParam := Default(TGenericParam);
+      mParam.Name := Trim(mName);
+      Result := Result + [mParam];
+    end;
+  end;
+end;
+
+/// <summary>Ist der Typ-Constraint von AParam ein Interface („implementieren“, sonst „abgeleitet“)?</summary>
+function IsInterfaceConstraint(AResolver: TNameResolver; const AOwner: TResolvedSymbol;
+  const AParam: TGenericParam): Boolean;
+var
+  mUnitInfo: TUnitIndex;
+  mConstraintType: TResolvedSymbol;
+begin
+  Result := (Length(AParam.Constraints) > 0) and AResolver.DeclaringUnit(AOwner, mUnitInfo) and
+    AResolver.ResolveTypeFrom(mUnitInfo, AParam.Constraints[High(AParam.Constraints)], mConstraintType) and
+    (mConstraintType.SymbolKind = TIndexSymbolKind.InterfaceType);
 end;
 
 class function TCompletionGenerics.Apply(ARequest: TCompletionRequest; const AContext: TCompletionContext;
   const AOwner: TResolvedSymbol; const AItems: TArray<TCompletionItem>): TArray<TCompletionItem>;
 var
-  Text, Code, Hidden, Name: string;
-  Lines: TArray<string>;
-  Params: TArray<TGenericParam>;
-  Param: TGenericParam;
-  Item, Current: TCompletionItem;
-  Units: TDictionary<string, TUnitIndex>;
-  Names: TDictionary<string, Boolean>;
-  HiddenKinds: TList<string>;
-  UnitInfo: TUnitIndex;
-  Resolved, ConstraintType: TResolvedSymbol;
-  Kind: TTypeArgKind;
-  Found, IsInterface: Boolean;
-  Kept: TList<TCompletionItem>;
-  Resolver: TNameResolver;
-  Index: Integer;
-
-  function Admit(AKind: TTypeArgKind; const ASymbol: TResolvedSymbol): Boolean;
-  var
-    Symbol: TResolvedSymbol;
-    Lookup: TNameResolver;
-  begin
-    // Eigene Kopien: anonyme Methoden fangen keine Variablen der umgebenden Routine aus einer lokalen.
-    Symbol := ASymbol;
-    Lookup := Resolver;
-    Result := Allowed(AKind, Param.Constraints,
-      function(AName: string): Boolean
-      begin
-        Result := SatisfiesType(Lookup, Symbol, AName);
-      end,
-      function: Boolean
-      begin
-        Result := Constructible(Lookup, Symbol);
-      end);
-    if not Result and (KindCode(AKind) <> '') and not HiddenKinds.Contains(KindCode(AKind)) then
-      HiddenKinds.Add(KindCode(AKind));
-  end;
-
-  procedure Label_(var AItem: TCompletionItem);
-  begin
-    AItem.TypeParam := Param.Name;
-    AItem.Constraint := string.Join(', ', Param.Constraints);
-    AItem.ConstraintHint := Code;
-  end;
-
-  procedure AddBasic(const AName: string);
-  var
-    Basic: TCompletionItem;
-  begin
-    if Names.ContainsKey(UpperCase(AName)) or
-      (MatchScore(AName, AContext.Prefix, ARequest.Matching) = TFuzzyMatch.NoMatch) then
-      Exit;
-    if not Admit(TTypeArgKind.Basic, Default(TResolvedSymbol)) then
-      Exit;
-    Basic := Default(TCompletionItem);
-    Basic.Name := AName;
-    Basic.Detail := 'System';
-    Basic.Kind := KindStruct;
-    Label_(Basic);
-    Kept.Add(Basic);
-    Names.AddOrSetValue(UpperCase(AName), True);
-  end;
-
+  mParams: TArray<TGenericParam>;
+  mFilter: TGenericFilter;
+  mUnits: TDictionary<string, TUnitIndex>;
+  mItem: TCompletionItem;
+  mName, mHidden: string;
+  mIndex: Integer;
 begin
   Result := AItems;
-  Resolver := ARequest.Resolver;
-  Params := nil;
-  if SameText(AOwner.FileName, ARequest.FileName) then
-    Params := TCompletionGenerics.Params(ARequest.Lines, AOwner.SelectionRange.StartPos.Line,
-      AOwner.SelectionRange.StartPos.Character)
-  else if Assigned(ARequest.ReadText) and ARequest.ReadText(AOwner.FileName, Text) then
+  mParams := ParamsOf(ARequest, AOwner);
+  if (AContext.GenericParam < 0) or (AContext.GenericParam > High(mParams)) then
   begin
-    // Ein #13 am Zeilenende stört Params nicht.
-    Lines := Text.Split([#10]);
-    Params := TCompletionGenerics.Params(Lines, AOwner.SelectionRange.StartPos.Line,
-      AOwner.SelectionRange.StartPos.Character);
-  end;
-  // Quelle nicht lesbar: die Namen aus dem Index, ohne Constraints.
-  if Length(Params) = 0 then
-    for Name in AOwner.TypeParams.Split([',']) do
-    begin
-      Param := Default(TGenericParam);
-      Param.Name := Trim(Name);
-      Params := Params + [Param];
-    end;
-  if (AContext.GenericParam < 0) or (AContext.GenericParam > High(Params)) then
     Exit;
-  Param := Params[AContext.GenericParam];
-  // Ein Typ-Constraint, der ein Interface ist, heißt „implementieren“, sonst „abgeleitet“.
-  IsInterface := False;
-  if Length(Param.Constraints) > 0 then
-    IsInterface := Resolver.DeclaringUnit(AOwner, UnitInfo) and
-      Resolver.ResolveTypeFrom(UnitInfo, Param.Constraints[High(Param.Constraints)], ConstraintType) and
-      (ConstraintType.SymbolKind = TIndexSymbolKind.InterfaceType);
-  Code := HintCode(Param.Constraints, IsInterface);
-  Units := TDictionary<string, TUnitIndex>.Create;
-  Names := TDictionary<string, Boolean>.Create;
-  HiddenKinds := TList<string>.Create;
-  Kept := TList<TCompletionItem>.Create;
+  end;
+  mFilter := Default(TGenericFilter);
+  mFilter.Request := ARequest;
+  mFilter.Prefix := AContext.Prefix;
+  mFilter.Param := mParams[AContext.GenericParam];
+  mFilter.Code := HintCode(mFilter.Param.Constraints,
+    IsInterfaceConstraint(ARequest.Resolver, AOwner, mFilter.Param));
+  mUnits := TDictionary<string, TUnitIndex>.Create;
+  mFilter.Names := TDictionary<string, Boolean>.Create;
+  mFilter.HiddenKinds := TList<string>.Create;
+  mFilter.Kept := TList<TCompletionItem>.Create;
   try
-    for Item in AItems do
+    for mItem in AItems do
     begin
-      // Art aus dem Index, über Datei und Namensposition des Eintrags.
-      Found := ItemSymbol(ARequest, Units, Item, Resolved);
-      if Found then
-        Kind := KindOfSymbol(Resolved)
-      else if MatchText(Item.Name, ValueTypes) then
-        Kind := TTypeArgKind.Basic
-      else
-        Kind := TTypeArgKind.Unknown;
-      // Unbekannte Art (Alias, Typparameter): nur ohne Constraint.
-      if (Kind = TTypeArgKind.Unknown) and (Length(Param.Constraints) > 0) then
-        Continue;
-      if (Kind <> TTypeArgKind.Unknown) and not Admit(Kind, Resolved) then
-        Continue;
-      Current := Item;
-      Label_(Current);
-      Kept.Add(Current);
-      Names.AddOrSetValue(UpperCase(Item.Name), True);
+      mFilter.AddItem(mItem, mUnits);
     end;
-    for Name in ValueTypes do
-      AddBasic(Name);
-    if Length(Param.Constraints) = 0 then
-      for Name in OtherBasicTypes do
-        AddBasic(Name);
-    Hidden := string.Join(',', HiddenKinds.ToArray);
-    Result := Kept.ToArray;
+    for mName in ValueTypes do
+    begin
+      mFilter.AddBasic(mName);
+    end;
+    if Length(mFilter.Param.Constraints) = 0 then
+    begin
+      for mName in OtherBasicTypes do
+      begin
+        mFilter.AddBasic(mName);
+      end;
+    end;
+    mHidden := string.Join(',', mFilter.HiddenKinds.ToArray);
+    Result := mFilter.Kept.ToArray;
     // Ausgeblendete Arten an jedem Eintrag; das Plugin liest sie am ersten.
-    for Index := 0 to High(Result) do
-      Result[Index].HiddenKinds := Hidden;
+    for mIndex := 0 to High(Result) do
+    begin
+      Result[mIndex].HiddenKinds := mHidden;
+    end;
   finally
-    Kept.Free;
-    HiddenKinds.Free;
-    Names.Free;
-    Units.Free;
+    mFilter.Kept.Free;
+    mFilter.HiddenKinds.Free;
+    mFilter.Names.Free;
+    mUnits.Free;
   end;
 end;
 

@@ -137,7 +137,9 @@ end;
 procedure TAtlasReportDialogTests.TearDown;
 begin
   if TDirectory.Exists(FFolder) then
+  begin
     TDirectory.Delete(FFolder, True);
+  end;
   // Der Leckmonitor misst den Saldo von Setup und TearDown.
   FFolder := '';
 end;
@@ -166,19 +168,19 @@ begin
       Assert.AreNotEqual(TAtlasStrings.Text(TAtlasTextId.ReportEmpty), Dialog.SummaryLabel.Caption);
       // Ohne Logs: nur Info und Einstellungen.
       Dialog.Check(TAtlasPackagePart.Logs).Checked := False;
-      Dialog.Refresh;
+      Dialog.Reload;
       Assert.AreEqual(2, Integer(Dialog.List.Items.Count));
       Assert.AreEqual(TAtlasDiagnosticPackage.SettingsFileName, Dialog.List.Items[1].Caption);
       // Mit den letzten Diagnosedaten.
       Dialog.Check(TAtlasPackagePart.LastData).Checked := True;
-      Dialog.Refresh;
+      Dialog.Reload;
       Assert.AreEqual(3, Integer(Dialog.List.Items.Count));
       Assert.AreEqual(TAtlasDiagnosticPackage.LastDataFileName, Dialog.List.Items[2].Caption);
       // Nichts gewählt: nichts anzulegen.
       Dialog.Check(TAtlasPackagePart.Versions).Checked := False;
       Dialog.Check(TAtlasPackagePart.Settings).Checked := False;
       Dialog.Check(TAtlasPackagePart.LastData).Checked := False;
-      Dialog.Refresh;
+      Dialog.Reload;
       Assert.AreEqual(0, Integer(Dialog.List.Items.Count));
       Assert.IsFalse(Dialog.ZipButton.Enabled);
       Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.ReportEmpty), Dialog.SummaryLabel.Caption);
@@ -208,7 +210,7 @@ begin
       Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.ReportPartLastDataMissing),
         Dialog.Check(TAtlasPackagePart.LastData).Caption);
       Dialog.Check(TAtlasPackagePart.LastData).Checked := True;
-      Dialog.Refresh;
+      Dialog.Reload;
       Assert.IsFalse(TAtlasPackagePart.LastData in Dialog.Parts, 'ausgegraut zählt nicht');
       Assert.AreEqual(4, Integer(Length(Dialog.Files)));
     finally
@@ -279,7 +281,7 @@ begin
       Assert.IsTrue(FileExists(First));
       // Neue Auswahl: Die angelegte ZIP passt nicht mehr.
       Dialog.Check(TAtlasPackagePart.Settings).Checked := False;
-      Dialog.Refresh;
+      Dialog.Reload;
       Assert.AreEqual('', Dialog.ZipFile);
     finally
       Dialog.Free;
@@ -319,7 +321,7 @@ begin
       Log.Actions);
     try
       Dialog.Check(TAtlasPackagePart.Versions).Checked := False;
-      Dialog.Refresh;
+      Dialog.Reload;
       Dialog.OpenIssue;
       Assert.AreEqual(2, Integer(Length(Log.Opened)));
       Assert.AreEqual(TAtlasPluginSettings.DefaultHelpReportUrl, Log.Opened[1]);

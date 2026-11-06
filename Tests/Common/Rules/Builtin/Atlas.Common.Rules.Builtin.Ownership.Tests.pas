@@ -109,6 +109,9 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Rules.Builtin.Ownership,
+  Atlas.Common.Rules.Builtin.Ownership.RawMemory,
+  Atlas.Common.Rules.Builtin.Ownership.StringListObjects,
+  Atlas.Common.Rules.Builtin.Ownership.ComponentInterface,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Tests.RuleAssert;
 
@@ -147,7 +150,9 @@ var
   begin
     Position := 0;
     for Line := 1 to APosition.Line do
+    begin
       Position := Pos(#10, AText, Position + 1);
+    end;
     Result := Position + APosition.Character;
   end;
 

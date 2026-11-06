@@ -139,11 +139,17 @@ begin
     begin
       Result := True;
       if SameText(AFileName, BaseFile) then
-        AText := UnitBase
+      begin
+        AText := UnitBase;
+      end
       else if SameText(AFileName, MainFile) then
-        AText := UnitMain
+      begin
+        AText := UnitMain;
+      end
       else
+      begin
         Result := False;
+      end;
     end;
 end;
 

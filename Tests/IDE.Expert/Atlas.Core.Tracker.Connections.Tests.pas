@@ -12,6 +12,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerConnectionsTests = class
   public
     /// <summary>Abnahme: zwei Verbindungen (YouTrack selbst gehostet, GitHub) hin und zurück.</summary>
@@ -45,6 +46,7 @@ uses
   System.SysUtils,
   System.IOUtils,
   Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Providers.GitHub,
@@ -95,9 +97,13 @@ begin
     mFileName := TPath.Combine(mDirectory, TPath.Combine('Tests', TPath.Combine('Data',
       TPath.Combine(AFolder, AName))));
     if TFile.Exists(mFileName) then
+    begin
       Exit(TFile.ReadAllText(mFileName, TEncoding.UTF8));
+    end;
     if ExtractFileDir(mDirectory) = mDirectory then
+    begin
       Break;
+    end;
     mDirectory := ExtractFileDir(mDirectory);
   end;
   raise Exception.Create('Tests\Data\' + AFolder + '\' + AName + ' nicht gefunden');

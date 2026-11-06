@@ -52,6 +52,8 @@ type
     [Test]
     procedure ContnrsRemovedFromOtherClause;
     [Test]
+    procedure ContnrsKeptInClauseWithDirectives;
+    [Test]
     procedure SafeOnlyWithKnownTypes;
     [Test]
     procedure RejectsSort;
@@ -106,6 +108,7 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Editing.GenericLists.Kinds,
   Atlas.Common.Editing.GenericLists;
 
 const
@@ -132,14 +135,22 @@ var
   Name: string;
 begin
   if ANode.Kind in [TSyntaxKind.Field, TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.Parameter] then
+  begin
     for Name in ANode.Name.Split([',']) do
+    begin
       if SameText(Trim(Name), AName) then
+      begin
         Exit(ANode);
+      end;
+    end;
+  end;
   for Index := 0 to ANode.ChildCount - 1 do
   begin
     Result := FindDeclaration(ANode[Index], AName);
     if Result <> nil then
+    begin
       Exit;
+    end;
   end;
   Result := nil;
 end;
@@ -161,7 +172,9 @@ begin
     Index := TSymbolIndex.Create;
     Index.AddUnit(TIndexExtractor.ExtractText(ASource, MainFile, nil));
     for Other in AOthers do
+    begin
       Index.AddUnit(TIndexExtractor.ExtractText(Other.Text, Other.FileName, nil));
+    end;
   end;
   Tree := TSyntaxTreeCache.Parse(ASource);
   Resolver := TNameResolver.Create(Index);
@@ -173,12 +186,16 @@ begin
       if Result.Converted then
       begin
         for Other in AOthers do
+        begin
           Conversion.AddFile(Other.Text, Other.FileName);
+        end;
         Result.Converted := Conversion.Finish(Result.Plan);
       end;
       Result.Reason := Conversion.Reason;
       if Result.Converted then
+      begin
         Result.Text := TChangeSignature.ApplyEdits(ASource, Result.Plan.Edits);
+      end;
     finally
       Conversion.Free;
     end;
@@ -468,6 +485,21 @@ begin
     '  TPosition(Liste[0]).Free;'#10'end;'#10'end.', 'Liste');
   Assert.IsTrue(Outcome.Converted, Outcome.Reason);
   AssertContains(Outcome.Text, 'interface'#10'uses Classes;'#10);
+  AssertContains(Outcome.Text, 'implementation'#10'uses SysUtils, System.Generics.Collections;'#10);
+end;
+
+procedure TGenericListsTests.ContnrsKeptInClauseWithDirectives;
+var
+  Outcome: TOutcome;
+begin
+  // Contnrs steht in einer Liste mit Direktive: Sie bleibt unverändert und bekommt auch kein
+  // System.Generics.Collections, das schon in das uses des implementation-Abschnitts kommt.
+  Outcome := Convert(TLegacyListKind.ObjectList, 'unit Haupt;'#10'interface'#10 +
+    'uses Classes{$IFDEF X}, Foo{$ENDIF}, Contnrs;'#10'implementation'#10'uses SysUtils;'#10'type'#10 +
+    '  TPosition = class'#10'  end;'#10'procedure Lauf;'#10'var'#10'  Liste: TObjectList;'#10'begin'#10 +
+    '  Liste := TObjectList.Create;'#10'  TPosition(Liste[0]).Free;'#10'end;'#10'end.', 'Liste');
+  Assert.IsTrue(Outcome.Converted, Outcome.Reason);
+  AssertContains(Outcome.Text, 'interface'#10'uses Classes{$IFDEF X}, Foo{$ENDIF}, Contnrs;'#10);
   AssertContains(Outcome.Text, 'implementation'#10'uses SysUtils, System.Generics.Collections;'#10);
 end;
 

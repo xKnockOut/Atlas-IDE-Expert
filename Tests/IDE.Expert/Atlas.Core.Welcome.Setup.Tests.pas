@@ -12,6 +12,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeSetupTests = class
   public
     [Test]
@@ -185,8 +186,10 @@ begin
   Check.Unreadable := 1;
   Check.MissingUnits := [PathFinding('Xml.Helpers', 'C:\Projekte\XmlInspector\Src\Main.pas', 12, 3)];
   for Index := 1 to TAtlasProjectSetup.MaxFindings + 4 do
+  begin
     Check.UndefinedDefines := Check.UndefinedDefines + [PathFinding('SYM' + IntToStr(Index),
       'D:\Fremd\Lib.pas', Index, 1)];
+  end;
   Stamp := EncodeDate(2026, 10, 16);
   Setup := TAtlasWelcomeSetup.Checked(Previous, 'C:\Projekte\XmlInspector\XmlInspector.dproj', Check, Stamp);
   Assert.IsTrue(Setup.Dismissed, '„nicht mehr fragen“ bleibt');

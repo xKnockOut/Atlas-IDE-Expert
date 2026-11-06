@@ -49,6 +49,7 @@ type
 implementation
 
 uses
+  System.Math,
   System.Generics.Collections;
 
 type
@@ -70,15 +71,51 @@ type
 const
   Epsilon = 1E-12;
 
+/// <summary>AWeight zum Gewicht des Nachbarn ATo in AMap addieren.</summary>
+procedure AddWeight(AMap: TDictionary<Integer, Double>; ATo: Integer; AWeight: Double);
+var
+  mWeight: Double;
+begin
+  if not AMap.TryGetValue(ATo, mWeight) then
+  begin
+    mWeight := 0;
+  end;
+  AMap.AddOrSetValue(ATo, mWeight + AWeight);
+end;
+
+/// <summary>Kante liegt im Knotenbereich und hat ein positives Gewicht.</summary>
+function IsValidEdge(const AEdge: TLouvainEdge; ANodeCount: Integer): Boolean;
+begin
+  Result := (AEdge.Weight > 0) and (Min(AEdge.A, AEdge.B) >= 0) and (Max(AEdge.A, AEdge.B) < ANodeCount);
+end;
+
+/// <summary>Nachbarliste und Grad von ANode aus AMap (Nachbarn sortiert, damit die Reihenfolge nicht vom Hash
+/// abhängt).</summary>
+procedure FillNode(var AGraph: TLevelGraph; ANode: Integer; AMap: TDictionary<Integer, Double>);
+var
+  mKeys: TArray<Integer>;
+  mKey: Integer;
+  mNeighbor: TNeighbor;
+begin
+  mKeys := AMap.Keys.ToArray;
+  TArray.Sort<Integer>(mKeys);
+  for mKey in mKeys do
+  begin
+    mNeighbor.Node := mKey;
+    mNeighbor.Weight := AMap[mKey];
+    AGraph.Neighbors[ANode] := AGraph.Neighbors[ANode] + [mNeighbor];
+    AGraph.Degree[ANode] := AGraph.Degree[ANode] + mNeighbor.Weight;
+  end;
+  // Eine Schleife zählt im Grad doppelt (beide Enden).
+  AGraph.Degree[ANode] := AGraph.Degree[ANode] + 2 * AGraph.SelfWeight[ANode];
+  AGraph.Total := AGraph.Total + AGraph.Degree[ANode];
+end;
+
 function BuildGraph(ANodeCount: Integer; const AEdges: TArray<TLouvainEdge>): TLevelGraph;
 var
-  Maps: TArray<TDictionary<Integer, Double>>;
-  Edge: TLouvainEdge;
-  Node: Integer;
-  Neighbor: TNeighbor;
-  Keys: TArray<Integer>;
-  Key: Integer;
-  Weight: Double;
+  mMaps: TArray<TDictionary<Integer, Double>>;
+  mEdge: TLouvainEdge;
+  mNode: Integer;
 begin
   // Result kann auf den Graphen der vorigen Stufe zeigen (Rückgabe per Referenz): erst leeren.
   Result := Default(TLevelGraph);
@@ -86,118 +123,182 @@ begin
   SetLength(Result.SelfWeight, ANodeCount);
   SetLength(Result.Degree, ANodeCount);
   Result.Total := 0;
-  SetLength(Maps, ANodeCount);
-  for Node := 0 to ANodeCount - 1 do
-    Maps[Node] := TDictionary<Integer, Double>.Create;
+  SetLength(mMaps, ANodeCount);
+  for mNode := 0 to ANodeCount - 1 do
+  begin
+    mMaps[mNode] := TDictionary<Integer, Double>.Create;
+  end;
   try
-    for Edge in AEdges do
+    for mEdge in AEdges do
     begin
-      if (Edge.Weight <= 0) or (Edge.A < 0) or (Edge.B < 0) or (Edge.A >= ANodeCount) or (Edge.B >= ANodeCount) then
-        Continue;
-      if Edge.A = Edge.B then
+      if not IsValidEdge(mEdge, ANodeCount) then
       begin
-        Result.SelfWeight[Edge.A] := Result.SelfWeight[Edge.A] + Edge.Weight;
         Continue;
       end;
-      if not Maps[Edge.A].TryGetValue(Edge.B, Weight) then
-        Weight := 0;
-      Maps[Edge.A].AddOrSetValue(Edge.B, Weight + Edge.Weight);
-      if not Maps[Edge.B].TryGetValue(Edge.A, Weight) then
-        Weight := 0;
-      Maps[Edge.B].AddOrSetValue(Edge.A, Weight + Edge.Weight);
+      if mEdge.A = mEdge.B then
+      begin
+        Result.SelfWeight[mEdge.A] := Result.SelfWeight[mEdge.A] + mEdge.Weight;
+        Continue;
+      end;
+      AddWeight(mMaps[mEdge.A], mEdge.B, mEdge.Weight);
+      AddWeight(mMaps[mEdge.B], mEdge.A, mEdge.Weight);
     end;
-    for Node := 0 to ANodeCount - 1 do
+    for mNode := 0 to ANodeCount - 1 do
     begin
-      // Nachbarn sortiert, damit die Reihenfolge nicht vom Hash abhängt.
-      Keys := Maps[Node].Keys.ToArray;
-      TArray.Sort<Integer>(Keys);
-      for Key in Keys do
-      begin
-        Neighbor.Node := Key;
-        Neighbor.Weight := Maps[Node][Key];
-        Result.Neighbors[Node] := Result.Neighbors[Node] + [Neighbor];
-        Result.Degree[Node] := Result.Degree[Node] + Neighbor.Weight;
-      end;
-      // Eine Schleife zählt im Grad doppelt (beide Enden).
-      Result.Degree[Node] := Result.Degree[Node] + 2 * Result.SelfWeight[Node];
-      Result.Total := Result.Total + Result.Degree[Node];
+      FillNode(Result, mNode, mMaps[mNode]);
     end;
   finally
-    for Node := 0 to ANodeCount - 1 do
-      Maps[Node].Free;
+    for mNode := 0 to ANodeCount - 1 do
+    begin
+      mMaps[mNode].Free;
+    end;
   end;
+end;
+
+type
+  /// <summary>Stufe 1 der Louvain-Methode: Knoten wandern in die Nachbargruppe mit dem größten Gewinn.</summary>
+  TNodeMover = class
+  private
+    FGraph: TLevelGraph;
+    FResolution: Double;
+    FTot: TArray<Double>;
+    FLinks: TDictionary<Integer, Double>;
+    FCandidates: TArray<Integer>;
+    /// <summary>Gewicht zu jeder Nachbargruppe von ANode in FLinks, die Gruppen sortiert in FCandidates.</summary>
+    procedure CollectLinks(ANode: Integer; const ACommunity: TArray<Integer>);
+    function LinkWeight(ACommunity: Integer): Double;
+    /// <summary>Beste Gruppe für ANode, der aus ACurrent herausgenommen ist (die eigene mit ihrem Gewinn).</summary>
+    function BestCommunity(ANode, ACurrent: Integer): Integer;
+    /// <summary>ANode in die beste Gruppe verschieben; True, wenn er die Gruppe gewechselt hat.</summary>
+    function MoveNode(ANode: Integer; var ACommunity: TArray<Integer>): Boolean;
+  public
+    constructor Create(const AGraph: TLevelGraph; AResolution: Double; const ACommunity: TArray<Integer>);
+    destructor Destroy; override;
+    function Run(var ACommunity: TArray<Integer>): Boolean;
+  end;
+
+constructor TNodeMover.Create(const AGraph: TLevelGraph; AResolution: Double; const ACommunity: TArray<Integer>);
+var
+  mNode: Integer;
+begin
+  inherited Create;
+  FGraph := AGraph;
+  FResolution := AResolution;
+  SetLength(FTot, Length(AGraph.Neighbors));
+  for mNode := 0 to High(AGraph.Neighbors) do
+  begin
+    FTot[ACommunity[mNode]] := FTot[ACommunity[mNode]] + AGraph.Degree[mNode];
+  end;
+  FLinks := TDictionary<Integer, Double>.Create;
+end;
+
+destructor TNodeMover.Destroy;
+begin
+  FLinks.Free;
+  inherited;
+end;
+
+procedure TNodeMover.CollectLinks(ANode: Integer; const ACommunity: TArray<Integer>);
+var
+  mNeighbor: TNeighbor;
+  mCandidate: Integer;
+begin
+  FLinks.Clear;
+  FCandidates := nil;
+  for mNeighbor in FGraph.Neighbors[ANode] do
+  begin
+    mCandidate := ACommunity[mNeighbor.Node];
+    if not FLinks.ContainsKey(mCandidate) then
+    begin
+      FCandidates := FCandidates + [mCandidate];
+    end;
+    FLinks.AddOrSetValue(mCandidate, LinkWeight(mCandidate) + mNeighbor.Weight);
+  end;
+  TArray.Sort<Integer>(FCandidates);
+end;
+
+function TNodeMover.LinkWeight(ACommunity: Integer): Double;
+begin
+  if not FLinks.TryGetValue(ACommunity, Result) then
+  begin
+    Result := 0;
+  end;
+end;
+
+function TNodeMover.BestCommunity(ANode, ACurrent: Integer): Integer;
+var
+  mCandidate: Integer;
+  mKi, mBestGain, mGain: Double;
+begin
+  mKi := FGraph.Degree[ANode];
+  Result := ACurrent;
+  mBestGain := LinkWeight(ACurrent) - FResolution * FTot[ACurrent] * mKi / FGraph.Total;
+  for mCandidate in FCandidates do
+  begin
+    if mCandidate = ACurrent then
+    begin
+      Continue;
+    end;
+    mGain := FLinks[mCandidate] - FResolution * FTot[mCandidate] * mKi / FGraph.Total;
+    if mGain > mBestGain + Epsilon then
+    begin
+      mBestGain := mGain;
+      Result := mCandidate;
+    end;
+  end;
+end;
+
+function TNodeMover.MoveNode(ANode: Integer; var ACommunity: TArray<Integer>): Boolean;
+var
+  mCurrent, mBest: Integer;
+begin
+  mCurrent := ACommunity[ANode];
+  CollectLinks(ANode, ACommunity);
+  // Knoten herausnehmen, dann die beste Gruppe suchen.
+  FTot[mCurrent] := FTot[mCurrent] - FGraph.Degree[ANode];
+  mBest := BestCommunity(ANode, mCurrent);
+  FTot[mBest] := FTot[mBest] + FGraph.Degree[ANode];
+  Result := mBest <> mCurrent;
+  if Result then
+  begin
+    ACommunity[ANode] := mBest;
+  end;
+end;
+
+function TNodeMover.Run(var ACommunity: TArray<Integer>): Boolean;
+var
+  mNode: Integer;
+  mMoved: Boolean;
+begin
+  Result := False;
+  repeat
+    mMoved := False;
+    for mNode := 0 to High(FGraph.Neighbors) do
+    begin
+      if MoveNode(mNode, ACommunity) then
+      begin
+        mMoved := True;
+        Result := True;
+      end;
+    end;
+  until not mMoved;
 end;
 
 /// <summary>Stufe 1 auf AGraph mit Auflösung AResolution: Gruppe je Knoten; True, wenn sich etwas bewegt hat.
 /// </summary>
 function MoveNodes(const AGraph: TLevelGraph; AResolution: Double; var ACommunity: TArray<Integer>): Boolean;
 var
-  Count, Node, Best, Current, Candidate, Index: Integer;
-  Tot: TArray<Double>;
-  Links: TDictionary<Integer, Double>;
-  Neighbor: TNeighbor;
-  Weight, BestGain, Gain, Ki, TwoM: Double;
-  Moved: Boolean;
-  Candidates: TArray<Integer>;
+  mMover: TNodeMover;
 begin
-  Result := False;
-  Count := Length(AGraph.Neighbors);
-  TwoM := AGraph.Total;
-  if TwoM <= 0 then
-    Exit;
-  SetLength(Tot, Count);
-  for Node := 0 to Count - 1 do
-    Tot[ACommunity[Node]] := Tot[ACommunity[Node]] + AGraph.Degree[Node];
-  Links := TDictionary<Integer, Double>.Create;
+  if AGraph.Total <= 0 then
+  begin
+    Exit(False);
+  end;
+  mMover := TNodeMover.Create(AGraph, AResolution, ACommunity);
   try
-    repeat
-      Moved := False;
-      for Node := 0 to Count - 1 do
-      begin
-        Current := ACommunity[Node];
-        Ki := AGraph.Degree[Node];
-        Links.Clear;
-        Candidates := nil;
-        for Neighbor in AGraph.Neighbors[Node] do
-        begin
-          Candidate := ACommunity[Neighbor.Node];
-          if not Links.TryGetValue(Candidate, Weight) then
-          begin
-            Weight := 0;
-            Candidates := Candidates + [Candidate];
-          end;
-          Links.AddOrSetValue(Candidate, Weight + Neighbor.Weight);
-        end;
-        // Knoten herausnehmen, dann die beste Gruppe suchen (die eigene steht dabei mit ihrem Gewinn).
-        Tot[Current] := Tot[Current] - Ki;
-        if not Links.TryGetValue(Current, Weight) then
-          Weight := 0;
-        Best := Current;
-        BestGain := Weight - AResolution * Tot[Current] * Ki / TwoM;
-        TArray.Sort<Integer>(Candidates);
-        for Index := 0 to High(Candidates) do
-        begin
-          Candidate := Candidates[Index];
-          if Candidate = Current then
-            Continue;
-          Gain := Links[Candidate] - AResolution * Tot[Candidate] * Ki / TwoM;
-          if Gain > BestGain + Epsilon then
-          begin
-            BestGain := Gain;
-            Best := Candidate;
-          end;
-        end;
-        Tot[Best] := Tot[Best] + Ki;
-        if Best <> Current then
-        begin
-          ACommunity[Node] := Best;
-          Moved := True;
-          Result := True;
-        end;
-      end;
-    until not Moved;
+    Result := mMover.Run(ACommunity);
   finally
-    Links.Free;
+    mMover.Free;
   end;
 end;
 
@@ -247,7 +348,9 @@ begin
       begin
         // Jede ungerichtete Kante steht zweimal in den Listen; nur einmal übernehmen.
         if Neighbor.Node < Node then
+        begin
           Continue;
+        end;
         Edge.A := ACommunity[Node];
         Edge.B := ACommunity[Neighbor.Node];
         Edge.Weight := Neighbor.Weight;
@@ -277,7 +380,9 @@ var
 begin
   SetLength(Result, ANodeCount);
   for Node := 0 to ANodeCount - 1 do
+  begin
     Result[Node] := Node;
+  end;
   Edges := AEdges;
   Count := ANodeCount;
   while Count > 0 do
@@ -285,16 +390,24 @@ begin
     Graph := BuildGraph(Count, Edges);
     SetLength(Level, Count);
     for Node := 0 to Count - 1 do
+    begin
       Level[Node] := Node;
+    end;
     if not MoveNodes(Graph, AResolution, Level) then
+    begin
       Break;
+    end;
     Merged := Renumber(Level);
     // Zuordnung der ursprünglichen Knoten nachführen.
     for Node := 0 to ANodeCount - 1 do
+    begin
       Result[Node] := Level[Result[Node]];
+    end;
     // Keine Gruppe verschmolzen: weitere Stufen ändern nichts mehr.
     if Merged >= Count then
+    begin
       Break;
+    end;
     Edges := Aggregate(Graph, Level);
     Count := Merged;
   end;
@@ -319,11 +432,17 @@ begin
   Result := 0;
   Graph := BuildGraph(ANodeCount, AEdges);
   if Graph.Total <= 0 then
+  begin
     Exit;
+  end;
   Count := 0;
   for Community in ACommunities do
+  begin
     if Community + 1 > Count then
+    begin
       Count := Community + 1;
+    end;
+  end;
   SetLength(Inside, Count);
   SetLength(Tot, Count);
   for Node := 0 to ANodeCount - 1 do
@@ -331,11 +450,17 @@ begin
     Tot[ACommunities[Node]] := Tot[ACommunities[Node]] + Graph.Degree[Node];
     Inside[ACommunities[Node]] := Inside[ACommunities[Node]] + 2 * Graph.SelfWeight[Node];
     for Neighbor in Graph.Neighbors[Node] do
+    begin
       if ACommunities[Neighbor.Node] = ACommunities[Node] then
+      begin
         Inside[ACommunities[Node]] := Inside[ACommunities[Node]] + Neighbor.Weight;
+      end;
+    end;
   end;
   for Community := 0 to Count - 1 do
+  begin
     Result := Result + Inside[Community] / Graph.Total - AResolution * Sqr(Tot[Community] / Graph.Total);
+  end;
 end;
 
 end.

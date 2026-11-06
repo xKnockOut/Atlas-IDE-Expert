@@ -9,7 +9,10 @@
 // Compiler-Attribute, andere Bibliothek, unbekanntes Attribut, Fassaden-Unit,
 // E1074 nach {$WARN UNKNOWN_CUSTOM_ATTRIBUTE ERROR} (#1379);
 // unresolved-type (#1031): Beispiel mit Korrektur, Deklarationsarten, kein Typ
-// (E2005), Zeigerziel (E2564), stille Fälle, Abschalten.
+// (E2005), Zeigerziel (E2564), stille Fälle, Abschalten;
+// Typen der IDE (atlas/ideTypes): still, wenn die Unit im uses steht (auch über
+// Namespace und Unit-Präfix), sonst Vorschlag der Unit; unresolved-identifier
+// still für TFoo.Create.
 
 interface
 
@@ -82,6 +85,15 @@ type
     procedure SilentCases;
     [Test]
     procedure TypeOffGroupAndExclude;
+    /// <summary>Die IDE kennt den Typ in einer Unit aus uses, deren Quelltext ihn nicht (mehr) deklariert.
+    /// </summary>
+    [Test]
+    procedure IdeTypeInUsedUnitIsSilent;
+    /// <summary>Die IDE kennt den Typ in einer Unit, die nicht im uses steht: Vorschlag samt Korrektur.</summary>
+    [Test]
+    procedure IdeTypeSuggestsUnit;
+    [Test]
+    procedure IdeTypeSilencesUnresolvedIdentifier;
   end;
 
 implementation
@@ -89,6 +101,7 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
+  System.JSON,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
@@ -97,9 +110,11 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Rules.Contract,
+  Atlas.Common.Rules.Registry,
   Atlas.Common.Projects.Paths,
   Atlas.Common.Projects.UnitLookup,
   Atlas.Common.Rules.Builtin.Unresolved,
+  Atlas.Common.Lsp.IdeTypes,
   Atlas.Tests.RuleAssert;
 
 const
@@ -124,7 +139,9 @@ var
 begin
   Result := nil;
   for Name in LibraryNames do
+  begin
     Result := Result + [Name];
+  end;
 end;
 
 /// <summary>Unit-Suche über die Dateien AFiles mit Projekt C:\P\App.dproj (Suchpfad C:\P\Src).</summary>
@@ -145,8 +162,12 @@ begin
     begin
       Result := nil;
       for FileName in AFiles do
+      begin
         if SameText(TProjectPaths.DirectoryOf(FileName), AFolder) then
+        begin
           Result := Result + [FileName];
+        end;
+      end;
     end;
   Setup.ListFolders :=
     function(AFolder: string): TArray<string>
@@ -158,7 +179,9 @@ begin
       begin
         Folder := TProjectPaths.DirectoryOf(FileName);
         if SameText(TProjectPaths.DirectoryOf(Folder), AFolder) and (IndexText(Folder, Result) < 0) then
+        begin
           Result := Result + [Folder];
+        end;
       end;
     end;
   Setup.FileExists :=
@@ -370,7 +393,9 @@ begin
     begin
       Result := nil;
       if SameText(AFolder, 'C:\BDS\lib') then
+      begin
         Result := ['C:\BDS\lib\System.dcu'];
+      end;
     end;
   Setup.IndexKnows :=
     function(AName: string): Boolean
@@ -450,9 +475,11 @@ function AttributeIndex(AWithSystem: Boolean): ISymbolIndex;
 begin
   Result := TSymbolIndex.Create;
   if AWithSystem then
+  begin
     Result.AddUnit(TIndexExtractor.ExtractText('unit System;'#10'interface'#10'type'#10'  TObject = class'#10 +
       '  end;'#10'  TCustomAttribute = class(TObject)'#10'  end;'#10'  WeakAttribute = class(TCustomAttribute)'#10 +
       '  end;'#10'implementation'#10'end.', 'C:\BDS\source\System.pas', nil));
+  end;
   Result.AddUnit(TIndexExtractor.ExtractText('unit System.SysUtils;'#10'interface'#10'implementation'#10'end.',
     'C:\BDS\source\System.SysUtils.pas', nil));
   Result.AddUnit(TIndexExtractor.ExtractText('unit DUnitX.Attributes;'#10'interface'#10'type'#10 +
@@ -747,6 +774,100 @@ begin
   Assert.AreEqual(0, Integer(Length(TypeFindings(Text, '{"rules": {"unresolved-type": "off"}}'))));
   Assert.AreEqual(0, Integer(Length(TypeFindings(Text, '{"rules": {"group:compiler": "off"}}'))));
   Assert.AreEqual(0, Integer(Length(TypeFindings(Text, '{"rules": {"unresolved-type": {"exclude": ["Src/*.pas"]}}}'))));
+end;
+
+/// <summary>TypeIndex samt einer Unit Vendor.Grid, deren Quelltext TVendorGrid nicht deklariert (alte Fassung).
+/// </summary>
+function VendorIndex: ISymbolIndex;
+begin
+  Result := TypeIndex;
+  Result.AddUnit(TIndexExtractor.ExtractText('unit Vendor.Grid;'#10'interface'#10'type'#10 +
+    '  TVendorAlt = class'#10'  end;'#10'implementation'#10'end.', 'C:\Vendor\Vendor.Grid.pas', nil));
+end;
+
+/// <summary>Katalog der IDE: TVendorGrid in Vendor.Grid.</summary>
+function VendorTypes: IRuleIdeTypes;
+var
+  mCatalog: TIdeTypeCatalog;
+  mValue: TJSONValue;
+begin
+  mCatalog := TIdeTypeCatalog.Create;
+  Result := mCatalog;
+  mValue := TJSONObject.ParseJSONValue('{"units":[{"unit":"Vendor.Grid","types":[{"name":"TVendorGrid",' +
+    '"parent":"Vcl.Controls.TCustomControl"}]}]}');
+  try
+    mCatalog.Replace(mValue);
+  finally
+    mValue.Free;
+  end;
+end;
+
+/// <summary>Die Regel unresolved-identifier aus der Registrierung der Unit.</summary>
+function IdentifierRule: IRule;
+var
+  mRegistry: TRuleRegistry;
+begin
+  mRegistry := TRuleRegistry.Create;
+  try
+    RegisterUnresolvedRules(mRegistry);
+    mRegistry.Find('unresolved-identifier', Result);
+  finally
+    mRegistry.Free;
+  end;
+end;
+
+function IdeFindings(ARule: IRule; const ASource: string; const ATypes: IRuleIdeTypes;
+  const ANamespaces: TArray<string>): TArray<TRuleFinding>;
+var
+  mContext: TRuleContext;
+begin
+  mContext := Default(TRuleContext);
+  mContext.Text := ASource;
+  mContext.Index := VendorIndex;
+  mContext.IdeTypes := ATypes;
+  mContext.Namespaces := ANamespaces;
+  Result := TRuleAssert.ContextFindings(ARule, mContext, '');
+end;
+
+procedure TUnresolvedTypeTests.IdeTypeInUsedUnitIsSilent;
+var
+  mSource: string;
+begin
+  mSource := KundenUnit('System.SysUtils, Vendor.Grid', '  TAnsicht = class'#10'    FGitter: TVendorGrid;'#10 +
+    '  end;'#10);
+  // Ohne die IDE meldet die Regel den Typ, den der Quelltext von Vendor.Grid nicht kennt.
+  Assert.AreEqual(1, Integer(Length(IdeFindings(TUnresolvedTypeRule.Create, mSource, nil, nil))));
+  Assert.AreEqual(0, Integer(Length(IdeFindings(TUnresolvedTypeRule.Create, mSource, VendorTypes, nil))));
+  // Über den Namespace des Projekts (uses Grid) und mit Unit-Präfix.
+  Assert.AreEqual(0, Integer(Length(IdeFindings(TUnresolvedTypeRule.Create, StringReplace(mSource, 'Vendor.Grid',
+    'Grid', []), VendorTypes, TArray<string>.Create('Vendor')))));
+  Assert.AreEqual(0, Integer(Length(IdeFindings(TUnresolvedTypeRule.Create, StringReplace(mSource, 'TVendorGrid;',
+    'Vendor.Grid.TVendorGrid;', []), VendorTypes, nil))));
+end;
+
+procedure TUnresolvedTypeTests.IdeTypeSuggestsUnit;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  mFound := IdeFindings(TUnresolvedTypeRule.Create, KundenUnit('System.SysUtils', '  TAnsicht = class'#10 +
+    '    FGitter: TVendorGrid;'#10'  end;'#10), VendorTypes, nil);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.AreEqual('Typ TVendorGrid ist nicht deklariert; Vendor.Grid fehlt in uses (wie E2003).', mFound[0].Message);
+  Assert.AreEqual(1, Integer(Length(mFound[0].Fixes)));
+  Assert.AreEqual('uses Vendor.Grid ergänzen', mFound[0].Fixes[0].Title);
+  mFound := nil;
+end;
+
+procedure TUnresolvedTypeTests.IdeTypeSilencesUnresolvedIdentifier;
+var
+  mSource: string;
+  mRule: IRule;
+begin
+  mSource := 'unit Kunden;'#10'interface'#10'uses'#10'  System.SysUtils, Vendor.Grid;'#10'implementation'#10 +
+    'procedure Zeige;'#10'begin'#10'  TVendorGrid.Create(nil);'#10'end;'#10'end.';
+  mRule := IdentifierRule;
+  Assert.AreEqual(1, Integer(Length(IdeFindings(mRule, mSource, nil, nil))));
+  Assert.AreEqual(0, Integer(Length(IdeFindings(mRule, mSource, VendorTypes, nil))));
 end;
 
 initialization

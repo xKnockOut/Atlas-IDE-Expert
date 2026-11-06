@@ -13,6 +13,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerQueriesTests = class
   public
     [Test]
@@ -46,7 +47,7 @@ uses
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Queries,
-  Atlas.Core.Welcome.Issues;
+  Atlas.Core.Tracker.MyIssues;
 
 const
   cDefaultName = 'Mir zugewiesen';
@@ -64,7 +65,9 @@ var
 begin
   Result := '';
   for mQuery in AQueries do
+  begin
     Result := Result + mQuery.Name + ';';
+  end;
 end;
 
 { TAtlasTrackerQueriesTests }
@@ -191,14 +194,14 @@ begin
   mState.SetCount('Sprint', 3);
   mState.SetCount('Standard', 12);
   mState.SetCount('sprint', 4);
-  Assert.IsTrue(TAtlasWelcomeIssues.FromJson(TAtlasWelcomeIssues.ToJson(mState), mLoaded));
+  Assert.IsTrue(TAtlasMyIssues.FromJson(TAtlasMyIssues.ToJson(mState), mLoaded));
   Assert.AreEqual('Sprint', mLoaded.Selected);
   Assert.AreEqual(4, mLoaded.CountOf('SPRINT'), 'je Name einmal, ohne Groß-/Kleinschreibung');
   Assert.AreEqual(12, mLoaded.CountOf('Standard'));
   Assert.AreEqual(-1, mLoaded.CountOf('Neu'));
   mQueries := TAtlasTrackerQueries.Read('[{"name": "Standard", "query": "a"}, {"name": "Neu", "query": "b"}, ' +
     '{"name": "Sprint", "query": "c"}]');
-  mCounts := TAtlasWelcomeIssues.QueryCounts(mLoaded, mQueries);
+  mCounts := TAtlasMyIssues.QueryCounts(mLoaded, mQueries);
   Assert.AreEqual(3, Integer(Length(mCounts)));
   Assert.AreEqual(12, mCounts[0]);
   Assert.AreEqual(-1, mCounts[1]);

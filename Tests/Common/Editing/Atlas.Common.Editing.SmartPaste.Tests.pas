@@ -69,17 +69,29 @@ begin
     begin
       Result := nil;
       if SameText(AName, 'TJSONObject') then
-        Result := ['System.JSON']
+      begin
+        Result := ['System.JSON'];
+      end
       else if SameText(AName, 'TKunde') then
-        Result := ['Kunden']
+      begin
+        Result := ['Kunden'];
+      end
       else if SameText(AName, 'TList') then
-        Result := ['System.Classes', 'System.Generics.Collections']
+      begin
+        Result := ['System.Classes', 'System.Generics.Collections'];
+      end
       else if SameText(AName, 'TDataSet') then
-        Result := ['Data.DB']
+      begin
+        Result := ['Data.DB'];
+      end
       else if SameText(AName, 'Format') then
-        Result := ['System.SysUtils']
+      begin
+        Result := ['System.SysUtils'];
+      end
       else if SameText(AName, 'TFoo') then
+      begin
         Result := ['Fremd'];
+      end;
     end;
 end;
 
@@ -91,7 +103,9 @@ begin
     begin
       Result := nil;
       if SameText(AUnitName, 'Kunden') then
+      begin
         Result := ['System.Classes', 'Ziel'];
+      end;
     end;
 end;
 
@@ -103,15 +117,22 @@ end;
 function Added(const AText: string; const APosition: TTextPosition; const AUnits: TArray<string>;
   out AMoved: string): string;
 var
-  Edits: TArray<TTextEdit>;
-  Units, Moved: TArray<string>;
+  Target: TSmartPasteTarget;
+  Uses_: TSmartPasteUses;
 begin
   AMoved := '';
-  if not TSmartPaste.UsesEdits(TPascalLexer.Tokenize(AText), APosition, AUnits, InterfaceUses(), ['System'], #10,
-    Edits, Units, Moved) then
+  Target := Default(TSmartPasteTarget);
+  Target.Tokens := TPascalLexer.Tokenize(AText);
+  Target.Position := APosition;
+  Target.InterfaceUses := InterfaceUses();
+  Target.Namespaces := ['System'];
+  Target.LineBreak := #10;
+  if not TSmartPaste.UsesEdits(Target, AUnits, Uses_) then
+  begin
     Exit('-');
-  AMoved := string.Join('|', Moved);
-  Result := TChangeSignature.ApplyEdits(AText, Edits);
+  end;
+  AMoved := string.Join('|', Uses_.ToImplementation);
+  Result := TChangeSignature.ApplyEdits(AText, Uses_.Edits);
 end;
 
 procedure TSmartPasteTests.FindsMissingNamesInRange;
@@ -126,7 +147,9 @@ begin
     Names := TSmartPaste.Missing(TPascalLexer.Tokenize(Target), Tree, Range(6, 11), Declaring(), ['System']);
     Text := '';
     for Item in Names do
+    begin
       Text := Text + Item.Name + '=' + string.Join(',', Item.Units) + ';';
+    end;
     // TFoo deklariert die Datei selbst, TEnumerator steht nach einem Punkt, string ist kein Treffer.
     Assert.AreEqual('TJSONObject=System.JSON;TKunde=Kunden;TList=System.Classes,System.Generics.Collections;', Text);
     Assert.AreEqual('System.JSON|Kunden', string.Join('|', TSmartPaste.Certain(Names)), 'mehrdeutig nicht');

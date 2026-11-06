@@ -132,15 +132,23 @@ var
 begin
   Result := nil;
   if ANode = nil then
+  begin
     Exit;
+  end;
   if ANode.Kind = TSyntaxKind.Block then
   begin
     for Index := 0 to ANode.ChildCount - 1 do
+    begin
       if TRoutineBody.IsStatement(ANode[Index]) and (ANode[Index].Kind <> TSyntaxKind.EmptyStatement) then
+      begin
         Result := Result + [ANode[Index]];
+      end;
+    end;
   end
   else if TRoutineBody.IsStatement(ANode) and (ANode.Kind <> TSyntaxKind.EmptyStatement) then
+  begin
     Result := [ANode];
+  end;
 end;
 
 function IsTrivia(const AToken: TPascalToken): Boolean;
@@ -155,8 +163,12 @@ var
 begin
   Result := 0;
   for Index := 1 to AOffset do
+  begin
     if AText[Index] = #10 then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 class procedure TStatementText.Span(ATree: TSyntaxTree; AStatement: TSyntaxNode; ALast: Boolean; out AStart,
@@ -175,7 +187,9 @@ begin
   begin
     if (Previous >= 0) and Tokens[Previous].IsSymbol(';') and
       (Tokens[Index].StartPos.Line = Tokens[Previous].EndPos.Line) then
+    begin
       Break;
+    end;
     AStart := Tokens[Index].Offset;
     Dec(Index);
   end;
@@ -183,7 +197,9 @@ begin
   AEnd := AStatement.EndOffset;
   Index := TRoutineBody.TokenAt(Tokens, AStatement.EndOffset);
   if (Index <= High(Tokens)) and Tokens[Index].IsSymbol(';') and (Tokens[Index].Offset = AStatement.EndOffset) then
+  begin
     Inc(Index);
+  end;
   EndLine := AStatement.EndPos.Line;
   while (Index <= High(Tokens)) and IsTrivia(Tokens[Index]) and (ALast or (Tokens[Index].StartPos.Line = EndLine)) do
   begin
@@ -215,19 +231,25 @@ begin
       if Tokens[Index].StartPos.Line = EndLine then
       begin
         if Trailing <> '' then
+        begin
           Trailing := Trailing + ' ';
+        end;
         Trailing := Trailing + Tokens[Index].Text;
       end
       else
+      begin
         // Kommentare in eigenen Zeilen: eigene Zeile, auch hinter dem Semikolon (Finish).
         Trailing := Trailing + ALineBreak + AIndent + Tokens[Index].Text;
+      end;
     end;
     Inc(Index);
   end;
   // Die Kommentare stehen hinter dem Semikolon bzw. else, das der Aufrufer anhängt (Finish); bis dahin hinter
   // der Marke #0.
   if Trailing <> '' then
+  begin
     Result := Result + #0 + Trailing;
+  end;
 end;
 
 class function TStatementText.Uncovered(ATree: TSyntaxTree; AStart, AEnd: Integer;
@@ -246,10 +268,16 @@ begin
     begin
       Covered := False;
       for Span_ in ASpans do
+      begin
         if (Tokens[Index].Offset >= Span_.StartOffset) and (Tokens[Index].Offset < Span_.EndOffset) then
+        begin
           Covered := True;
+        end;
+      end;
       if not Covered then
+      begin
         Exit(True);
+      end;
     end;
     Inc(Index);
   end;
@@ -268,12 +296,18 @@ var
 begin
   Marker := Pos(#0, AStatement);
   if Marker = 0 then
+  begin
     Exit(AStatement + ASuffix);
+  end;
   Rest := Copy(AStatement, Marker + 1, MaxInt);
   if (Rest <> '') and CharInSet(Rest[1], [#10, #13]) then
-    Result := Copy(AStatement, 1, Marker - 1) + ASuffix + Rest
+  begin
+    Result := Copy(AStatement, 1, Marker - 1) + ASuffix + Rest;
+  end
   else
+  begin
     Result := Copy(AStatement, 1, Marker - 1) + ASuffix + ' ' + Rest;
+  end;
 end;
 
 class function TStatementText.List(const AText: string; ATree: TSyntaxTree; const AStatements: TArray<TSyntaxNode>;
@@ -285,7 +319,9 @@ begin
   for Index := 0 to High(AStatements) do
   begin
     if Index > 0 then
+    begin
       Result := Result + ALineBreak;
+    end;
     Result := Result + Finish(Text(AText, ATree, AStatements[Index], Index = High(AStatements), AIndent,
       ALineBreak), ';');
   end;
@@ -299,9 +335,13 @@ begin
   if AStatements = nil then
   begin
     if AEmptyBlock then
-      Result := ALayout.LineBreak + ALayout.Indent + 'begin' + ALayout.LineBreak + ALayout.Indent + 'end'
+    begin
+      Result := ALayout.LineBreak + ALayout.Indent + 'begin' + ALayout.LineBreak + ALayout.Indent + 'end';
+    end
     else
+    begin
       Result := '';
+    end;
     Exit;
   end;
   if Length(AStatements) = 1 then
@@ -325,7 +365,9 @@ begin
   while (Index <= High(Tokens)) and (Tokens[Index].Offset < AEnd) do
   begin
     if Tokens[Index].Kind = TPascalTokenKind.Comment then
+    begin
       Exit(True);
+    end;
     Inc(Index);
   end;
   Result := False;
@@ -342,7 +384,9 @@ begin
   begin
     Items := Statements(Branch_);
     for Index := 0 to High(Items) do
+    begin
       Result := Result + [SpanOf(ATree, Items[Index], Index = High(Items))];
+    end;
   end;
 end;
 
@@ -353,11 +397,15 @@ var
 begin
   Items := Statements(ABranch);
   if ABeforeElse and (Length(Items) = 1) and (Items[0].Kind = TSyntaxKind.IfStatement) then
+  begin
     Result := ALayout.LineBreak + ALayout.Indent + 'begin' + ALayout.LineBreak +
       List(AText, ATree, Items, ALayout.Indent + ALayout.IndentUnit, ALayout.LineBreak) +
-      ALayout.LineBreak + ALayout.Indent + 'end'
+      ALayout.LineBreak + ALayout.Indent + 'end';
+  end
   else
+  begin
     Result := Branch(AText, ATree, Items, ALayout, True);
+  end;
 end;
 
 class function TStatementText.ReplacementEnd(ATree: TSyntaxTree; ANode: TSyntaxNode;
@@ -371,8 +419,12 @@ begin
   ASuffix := '';
   Stop := ANode.EndOffset;
   for Span_ in ASpans do
+  begin
     if Span_.EndOffset > Stop then
+    begin
       Stop := Span_.EndOffset;
+    end;
+  end;
   Tokens := ATree.Tokens;
   Index := TRoutineBody.TokenAt(Tokens, ANode.EndOffset);
   // Das Semikolon gehört zur Ersetzung: Ein Kommentar hinter der letzten Anweisung (// …) stünde sonst vor ihm
@@ -386,7 +438,9 @@ begin
   while (Index <= High(Tokens)) and (Tokens[Index].Offset < Stop) do
   begin
     if Tokens[Index].IsSymbol(';') then
+    begin
       ASuffix := ';';
+    end;
     Result := Tokens[Index].EndPos;
     Inc(Index);
   end;
@@ -404,9 +458,19 @@ var
   Index: Integer;
 begin
   for Index := 0 to AParent.ChildCount - 1 do
+  begin
     if AParent[Index] = AChild then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
+end;
+
+/// <summary>Liegt A vor B (oder auf B)?</summary>
+function NotAfter(const A, B: TTextPosition): Boolean;
+begin
+  Result := (A.Line < B.Line) or ((A.Line = B.Line) and (A.Character <= B.Character));
 end;
 
 class function TStatementText.HeadAt(ATree: TSyntaxTree; const APosition: TTextPosition;
@@ -416,7 +480,9 @@ var
 begin
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   Found := nil;
   ATree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
@@ -427,10 +493,10 @@ begin
       if (ANode.Kind = AKind) and (ANode.ChildCount >= 2) then
       begin
         HeadEnd := ANode[1].StartPos;
-        if ((ANode.StartPos.Line < APosition.Line) or ((ANode.StartPos.Line = APosition.Line) and
-          (ANode.StartPos.Character <= APosition.Character))) and ((APosition.Line < HeadEnd.Line) or
-          ((APosition.Line = HeadEnd.Line) and (APosition.Character <= HeadEnd.Character))) then
+        if NotAfter(ANode.StartPos, APosition) and NotAfter(APosition, HeadEnd) then
+        begin
           Found := ANode;
+        end;
       end;
     end);
   Result := Found;

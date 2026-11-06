@@ -101,7 +101,40 @@ uses
   Atlas.Common.Rules.Profiles,
   Atlas.Common.Editing.UsesClause,
   Atlas.Text.Chars,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TFilesText = (Folder, ConcatTitle, UseCombine, Returns, ComesFrom, NoBackslashLiteral, NoBackslash, PathTitle,
+    FixedPath, UserPath, NetworkPath, CompareTitle, CaseInsensitive, UseSameFileName);
+
+const
+  cTexts: array[TFilesText] of TAtlasText = (
+    (De: 'Ordner'; En: 'Folder'),
+    (De: 'Pfad ohne Trennzeichen zusammengesetzt'; En: 'Path assembled without delimiter'),
+    (De: 'TPath.Combine verwenden'; En: 'Use TPath.Combine'),
+    (De: '%s liefert'; En: '%s returns'),
+    (De: '%s kommt aus %s und hat'; En: '%s comes from %s and has'),
+    (De: '%s keinen abschließenden Backslash; das Ergebnis ist …\%s%s.';
+     En: '%s no trailing backslash; the result is …\%s%s.'),
+    (De: '%s keinen abschließenden Backslash; %s wird ohne Trennzeichen angehängt.';
+     En: '%s no trailing backslash; %s is appended without delimiter.'),
+    (De: 'Fester Dateipfad im Code'; En: 'Fixed file path in code'),
+    (De: 'Fester Dateipfad; auf anderen Rechnern fehlt er womöglich.';
+     En: 'Fixed file path; it may be missing on other computers.'),
+    (De: 'Fester Benutzerpfad; auf anderen Rechnern gibt es ihn nicht.';
+     En: 'Fixed user path; it does not exist on other computers.'),
+    (De: 'Fester Netzwerkpfad; auf anderen Rechnern und ohne Netzwerk fehlt er womöglich.';
+     En: 'Fixed network path; it may be missing on other computers and without a network.'),
+    (De: 'Dateinamen mit = verglichen'; En: 'File names compared with ='),
+    (De: 'Dateinamen unterscheiden unter Windows nicht nach Groß-/Kleinschreibung; SameFileName vergleicht richtig.';
+     En: 'File names on Windows do not distinguish upper and lower case; SameFileName compares correctly.'),
+    (De: 'SameFileName verwenden'; En: 'Use SameFileName'));
+
+{$SCOPEDENUMS OFF}
 
 const
   // System.SysUtils: Ordner ohne abschließendes Trennzeichen.
@@ -150,9 +183,13 @@ begin
     end;
     Result := '';
     if Node.Kind = TSyntaxKind.Identifier then
+    begin
       Result := Node.Name;
+    end;
     while (Chain.Count > 0) and (Result <> '') do
+    begin
       Result := Result + '.' + Chain.Pop.Name;
+    end;
   finally
     Chain.Free;
   end;
@@ -166,18 +203,28 @@ begin
   AQualifier := '';
   Callee := ANode;
   while (Callee <> nil) and (Callee.Kind = TSyntaxKind.ParenExpr) and (Callee.ChildCount = 1) do
+  begin
     Callee := Callee[0];
+  end;
   if (Callee <> nil) and (Callee.Kind = TSyntaxKind.Call) and (Callee.ChildCount > 0) then
+  begin
     Callee := Callee[0];
+  end;
   if Callee = nil then
+  begin
     Exit(False);
+  end;
   if Callee.Kind = TSyntaxKind.Identifier then
-    AName := Callee.Name
+  begin
+    AName := Callee.Name;
+  end
   else if (Callee.Kind = TSyntaxKind.MemberAccess) and (Callee.ChildCount = 1) then
   begin
     AQualifier := DottedText(Callee[0]);
     if AQualifier = '' then
+    begin
       Exit(False);
+    end;
     AName := Callee.Name;
   end;
   Result := AName <> '';
@@ -194,20 +241,30 @@ var
 begin
   Result := '';
   if not CalleeName(ANode, Name, Qualifier) then
+  begin
     Exit;
+  end;
   if ((Qualifier = '') or QualifierIs(Qualifier, 'SysUtils')) and MatchText(Name, SysUtilsDirectories) then
-    Result := Name
-  else if QualifierIs(Qualifier, 'TPath') and MatchText(Name, PathDirectories) then
-    Result := Name
-  else if QualifierIs(Qualifier, 'TDirectory') and MatchText(Name, DirectoryDirectories) then
+  begin
     Result := Name;
+  end
+  else if QualifierIs(Qualifier, 'TPath') and MatchText(Name, PathDirectories) then
+  begin
+    Result := Name;
+  end
+  else if QualifierIs(Qualifier, 'TDirectory') and MatchText(Name, DirectoryDirectories) then
+  begin
+    Result := Name;
+  end;
 end;
 
 function Unwrapped(ANode: TSyntaxNode): TSyntaxNode;
 begin
   Result := ANode;
   while (Result.Kind = TSyntaxKind.ParenExpr) and (Result.ChildCount = 1) do
+  begin
     Result := Result[0];
+  end;
 end;
 
 function IsPlus(ANode: TSyntaxNode): Boolean;
@@ -220,7 +277,9 @@ function LastTerm(ANode: TSyntaxNode): TSyntaxNode;
 begin
   Result := Unwrapped(ANode);
   while IsPlus(Result) do
+  begin
     Result := Unwrapped(Result[1]);
+  end;
 end;
 
 /// <summary>Erster Summand von ANode (bei A + B + C der Teil A).</summary>
@@ -228,14 +287,18 @@ function FirstTerm(ANode: TSyntaxNode): TSyntaxNode;
 begin
   Result := Unwrapped(ANode);
   while IsPlus(Result) do
+  begin
     Result := Unwrapped(Result[0]);
+  end;
 end;
 
 function EnclosingRoutine(ANode: TSyntaxNode): TSyntaxNode;
 begin
   Result := ANode.Parent;
   while (Result <> nil) and (Result.Kind <> TSyntaxKind.RoutineDecl) do
+  begin
     Result := Result.Parent;
+  end;
 end;
 
 /// <summary>Ist AName eine lokale Variable von ARoutine (var-Abschnitt oder Inline-Variable)?</summary>
@@ -249,11 +312,60 @@ begin
     begin
       if ((ANode.Kind = TSyntaxKind.VarDecl) and MatchText(AName, SplitString(StringReplace(ANode.Name, ' ', '',
         [rfReplaceAll]), ','))) or ((ANode.Kind = TSyntaxKind.InlineVar) and SameText(ANode.Name, AName)) then
+      begin
         Found := True;
+      end;
       // Verschachtelte Routinen haben eigene Variablen.
       Result := not Found and ((ANode = ARoutine) or (ANode.Kind <> TSyntaxKind.RoutineDecl));
     end);
   Result := Found;
+end;
+
+/// <summary>Wert, den ANode der Variablen AName gibt (Zuweisung oder Inline-Variable mit Wert); nil ohne.
+/// </summary>
+function AssignedValue(ANode: TSyntaxNode; const AName: string): TSyntaxNode;
+begin
+  Result := nil;
+  if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount = 2) and
+    (ANode[0].Kind = TSyntaxKind.Identifier) and SameText(ANode[0].Name, AName) then
+  begin
+    Result := ANode[1];
+  end
+  else if (ANode.Kind = TSyntaxKind.InlineVar) and SameText(ANode.Name, AName) and (ANode.ChildCount > 0) and
+    (ANode[ANode.ChildCount - 1].Kind <> TSyntaxKind.TypeReference) then
+  begin
+    Result := ANode[ANode.ChildCount - 1];
+  end;
+end;
+
+/// <summary>Ist ANode der Aufruf einer Prozedur außerhalb von ReadingCalls (als Anweisung)?</summary>
+function IsWritingCall(ANode: TSyntaxNode): Boolean;
+var
+  mCallee, mQualifier: string;
+begin
+  Result := (ANode.Kind = TSyntaxKind.Call) and (ANode.Parent <> nil) and
+    (ANode.Parent.Kind = TSyntaxKind.CallStatement) and CalleeName(ANode, mCallee, mQualifier) and
+    not MatchText(mCallee, ReadingCalls);
+end;
+
+/// <summary>Geht die Variable AName an den Aufruf ANode einer Prozedur außerhalb von ReadingCalls (vielleicht
+/// ein var-Parameter)?</summary>
+function PassedToProcedure(ANode: TSyntaxNode; const AName: string): Boolean;
+var
+  mIndex: Integer;
+begin
+  if not IsWritingCall(ANode) then
+  begin
+    Exit(False);
+  end;
+  for mIndex := 1 to ANode.ChildCount - 1 do
+  begin
+    if (ANode[mIndex].Kind = TSyntaxKind.Identifier) and SameText(ANode[mIndex].Name, AName) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
 end;
 
 /// <summary>Quelle aller Werte der lokalen Variablen AName in ARoutine; '' wenn eine Zuweisung keinen Ordner
@@ -261,48 +373,42 @@ end;
 /// ein var-Parameter).</summary>
 function VariableSource(ARoutine: TSyntaxNode; const AName: string): string;
 var
-  Source: string;
-  Mixed: Boolean;
+  mSource: string;
+  mMixed: Boolean;
 begin
-  Source := '';
-  Mixed := False;
+  mSource := '';
+  mMixed := False;
   ARoutine.Walk(
     function(ANode: TSyntaxNode): Boolean
     var
-      Value: TSyntaxNode;
-      Index: Integer;
-      Found, Callee, Qualifier: string;
+      mValue: TSyntaxNode;
+      mFound: string;
     begin
-      Result := not Mixed;
-      if Mixed then
-        Exit;
-      if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount = 2) and
-        (ANode[0].Kind = TSyntaxKind.Identifier) and SameText(ANode[0].Name, AName) then
-        Value := ANode[1]
-      else if (ANode.Kind = TSyntaxKind.InlineVar) and SameText(ANode.Name, AName) and (ANode.ChildCount > 0) and
-        (ANode[ANode.ChildCount - 1].Kind <> TSyntaxKind.TypeReference) then
-        Value := ANode[ANode.ChildCount - 1]
-      else if (ANode.Kind = TSyntaxKind.Call) and (ANode.Parent <> nil) and
-        (ANode.Parent.Kind = TSyntaxKind.CallStatement) and CalleeName(ANode, Callee, Qualifier) and
-        not MatchText(Callee, ReadingCalls) then
+      Result := not mMixed;
+      if mMixed then
       begin
-        for Index := 1 to ANode.ChildCount - 1 do
-          if (ANode[Index].Kind = TSyntaxKind.Identifier) and SameText(ANode[Index].Name, AName) then
-            Mixed := True;
         Exit;
+      end;
+      mValue := AssignedValue(ANode, AName);
+      if mValue <> nil then
+      begin
+        mFound := TPathConcatWithoutDelimiterRule.DirectorySource(mValue);
+        mMixed := (mFound = '') or ((mSource <> '') and not SameText(mFound, mSource));
+        mSource := mFound;
       end
       else
-        Exit;
-      Found := TPathConcatWithoutDelimiterRule.DirectorySource(Value);
-      if (Found = '') or ((Source <> '') and not SameText(Found, Source)) then
-        Mixed := True
-      else
-        Source := Found;
+      begin
+        mMixed := PassedToProcedure(ANode, AName);
+      end;
     end);
-  if Mixed then
-    Result := ''
+  if mMixed then
+  begin
+    Result := '';
+  end
   else
-    Result := Source;
+  begin
+    Result := mSource;
+  end;
 end;
 
 /// <summary>Ist ANode ein Datei- oder Ordnername (Literal, das mit einem Buchstaben, einer Ziffer oder _ beginnt,
@@ -317,16 +423,24 @@ begin
   if ANode.Kind = TSyntaxKind.Literal then
   begin
     if not StartsStr('''', ANode.Name) or not TStringLiterals.PlainText(ANode.Name, AText) or (AText = '') then
+    begin
       Exit;
+    end;
     AIsLiteral := True;
     Result := TTextChars.IsIdentChar(AText[1]);
     Exit;
   end;
   if not CalleeName(ANode, Name, Qualifier) or MatchText(Name, NotNames) then
+  begin
     Exit;
+  end;
   for Part in NotNameParts do
+  begin
     if ContainsText(Name, Part) then
+    begin
       Exit;
+    end;
+  end;
   Result := not EndsText('Ext', Name);
 end;
 
@@ -338,10 +452,12 @@ begin
   while Index < High(TypicalFolders) do
   begin
     if SameText(TypicalFolders[Index], ASource) then
+    begin
       Exit(TypicalFolders[Index + 1]);
+    end;
     Inc(Index, 2);
   end;
-  Result := 'Ordner';
+  Result := cTexts[TFilesText.Folder].Text;
 end;
 
 { TPathConcatWithoutDelimiterRule }
@@ -349,7 +465,7 @@ end;
 function TPathConcatWithoutDelimiterRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(PathConcatWithoutDelimiterRuleId, TRuleSeverity.Warning,
-    'Pfad ohne Trennzeichen zusammengesetzt');
+    cTexts[TFilesText.ConcatTitle].Text);
 end;
 
 procedure TPathConcatWithoutDelimiterRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -367,13 +483,17 @@ var
     Result := nil;
     // Nur wenn der Ausdruck genau Ordner + Name ist; bei Präfix + Ordner + Name wäre umzustellen.
     if (Unwrapped(APlus[0]) <> ALeft) or (Unwrapped(APlus[1]) <> ARight) then
+    begin
       Exit;
+    end;
     Edits := [TRuleEdit.Create(TTextRange.Create(APlus.StartPos, APlus.EndPos),
       Format('TPath.Combine(%s, %s)', [SourceText(Text, APlus[0]), SourceText(Text, APlus[1])]))];
     if not TUsesClauses.IsUsed(Used, 'System.IOUtils', AContext.Namespaces) and
       TUsesClauses.AddUnit(AContext.Tree.Tokens, APlus.StartOffset, 'System.IOUtils', LineBreak, UsesEdit) then
+    begin
       Edits := Edits + [UsesEdit];
-    Result := [TRuleFix.Create('TPath.Combine verwenden', Edits)];
+    end;
+    Result := [TRuleFix.Create(cTexts[TFilesText.UseCombine].Text, Edits)];
   end;
 
   procedure CheckPlus(APlus: TSyntaxNode);
@@ -386,32 +506,40 @@ var
     Left := LastTerm(APlus[0]);
     Right := FirstTerm(APlus[1]);
     if not IsNamePart(Right, IsLiteral, Plain) then
+    begin
       Exit;
+    end;
     Source := DirectorySource(Left);
     if Source <> '' then
-      Subject := Format('%s liefert', [Source])
+    begin
+      Subject := cTexts[TFilesText.Returns].Fmt([Source]);
+    end
     else
     begin
       if Left.Kind <> TSyntaxKind.Identifier then
+      begin
         Exit;
+      end;
       Routine := EnclosingRoutine(Left);
       if (Routine = nil) or not IsLocal(Routine, Left.Name) then
+      begin
         Exit;
+      end;
       Source := VariableSource(Routine, Left.Name);
       if Source = '' then
+      begin
         Exit;
-      Subject := Format('%s kommt aus %s und hat', [Left.Name, Source]);
+      end;
+      Subject := cTexts[TFilesText.ComesFrom].Fmt([Left.Name, Source]);
     end;
     if IsLiteral then
     begin
-      Message := Format('%s keinen abschließenden Backslash; das Ergebnis ist …\%s%s.',
-        [Subject, TypicalFolder(Source), Plain]);
+      Message := cTexts[TFilesText.NoBackslashLiteral].Fmt([Subject, TypicalFolder(Source), Plain]);
       Confidence := TRuleConfidence.High;
     end
     else
     begin
-      Message := Format('%s keinen abschließenden Backslash; %s wird ohne Trennzeichen angehängt.',
-        [Subject, SourceText(Text, Right)]);
+      Message := cTexts[TFilesText.NoBackslash].Fmt([Subject, SourceText(Text, Right)]);
       Confidence := TRuleConfidence.Medium;
     end;
     AReport.Add(TTextRange.Create(Left.StartPos, Right.EndPos), Message, Confidence, Fixes(APlus, Left, Right));
@@ -419,7 +547,9 @@ var
 
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Text := AContext.Text;
   LineBreak := TTextLines.LineBreakOf(Text);
   Used := TUsesClauses.UsedUnits(AContext.Tree.Tokens);
@@ -428,11 +558,15 @@ begin
     function(ANode: TSyntaxNode): Boolean
     begin
       if IsPlus(ANode) then
+      begin
         Pluses := Pluses + [ANode];
+      end;
       Result := True;
     end);
   for Plus in Pluses do
+  begin
     CheckPlus(Plus);
+  end;
 end;
 
 { THardcodedPathRule }
@@ -442,7 +576,7 @@ const
 
 function THardcodedPathRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(HardcodedPathRuleId, TRuleSeverity.Hint, 'Fester Dateipfad im Code');
+  Result := TRuleDescriptor.Create(HardcodedPathRuleId, TRuleSeverity.Hint, cTexts[TFilesText.PathTitle].Text);
 end;
 
 function IsSlash(C: Char): Boolean;
@@ -450,34 +584,63 @@ begin
   Result := (C = '\') or (C = '/');
 end;
 
-class function THardcodedPathRule.PathKind(const APath: string): THardcodedPathKind;
+/// <summary>C:\Ordner…: erster Ordner entscheidet über Benutzerpfade.</summary>
+function DriveKind(const APath: string): THardcodedPathKind;
 var
-  Index: Integer;
-  Folder: string;
+  mIndex: Integer;
+  mFolder: string;
+begin
+  mIndex := 4;
+  while (mIndex <= Length(APath)) and not IsSlash(APath[mIndex]) do
+  begin
+    Inc(mIndex);
+  end;
+  mFolder := Copy(APath, 4, mIndex - 4);
+  if MatchText(mFolder, UserFolders) and (mIndex < Length(APath)) then
+  begin
+    Result := THardcodedPathKind.UserFolder;
+  end
+  else
+  begin
+    Result := THardcodedPathKind.Drive;
+  end;
+end;
+
+/// <summary>\\server\freigabe; \\?\ und \\.\ sind Präfixe bzw. Geräte.</summary>
+function NetworkKind(const APath: string): THardcodedPathKind;
+var
+  mIndex: Integer;
 begin
   Result := THardcodedPathKind.None;
-  if (Length(APath) > 3) and CharInSet(APath[1], ['A'..'Z', 'a'..'z']) and (APath[2] = ':') and IsSlash(APath[3]) and
-    not IsSlash(APath[4]) then
+  mIndex := 3;
+  while (mIndex <= Length(APath)) and not IsSlash(APath[mIndex]) and (APath[mIndex] > ' ') do
   begin
-    // Laufwerkswurzel 'C:\' allein bleibt still (Länge 3); erster Ordner entscheidet über Benutzerpfade.
-    Index := 4;
-    while (Index <= Length(APath)) and not IsSlash(APath[Index]) do
-      Inc(Index);
-    Folder := Copy(APath, 4, Index - 4);
-    if MatchText(Folder, UserFolders) and (Index < Length(APath)) then
-      Result := THardcodedPathKind.UserFolder
-    else
-      Result := THardcodedPathKind.Drive;
+    Inc(mIndex);
+  end;
+  if (mIndex < Length(APath)) and IsSlash(APath[mIndex]) then
+  begin
+    Result := THardcodedPathKind.Network;
+  end;
+end;
+
+/// <summary>Beginnt APath mit Laufwerk und Ordner (C:\x)? Die Laufwerkswurzel 'C:\' allein bleibt still.
+/// </summary>
+function IsDrivePath(const APath: string): Boolean;
+begin
+  Result := (Length(APath) > 3) and CharInSet(APath[1], ['A'..'Z', 'a'..'z']) and (APath[2] = ':');
+  Result := Result and IsSlash(APath[3]) and not IsSlash(APath[4]);
+end;
+
+class function THardcodedPathRule.PathKind(const APath: string): THardcodedPathKind;
+begin
+  Result := THardcodedPathKind.None;
+  if IsDrivePath(APath) then
+  begin
+    Result := DriveKind(APath);
   end
-  else if (Length(APath) > 3) and (APath[1] = '\') and (APath[2] = '\') and
-    TTextChars.IsIdentChar(APath[3]) then
+  else if (Length(APath) > 3) and (APath[1] = '\') and (APath[2] = '\') and TTextChars.IsIdentChar(APath[3]) then
   begin
-    // \\server\freigabe; \\?\ und \\.\ sind Präfixe bzw. Geräte.
-    Index := 3;
-    while (Index <= Length(APath)) and not IsSlash(APath[Index]) and (APath[Index] > ' ') do
-      Inc(Index);
-    if (Index < Length(APath)) and IsSlash(APath[Index]) then
-      Result := THardcodedPathKind.Network;
+    Result := NetworkKind(APath);
   end;
 end;
 
@@ -486,8 +649,12 @@ var
   Item: string;
 begin
   for Item in AAllowed do
+  begin
     if SameText(Item, AUnitName) or (EndsStr('*', Item) and StartsText(Copy(Item, 1, Length(Item) - 1), AUnitName)) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -499,23 +666,31 @@ var
 begin
   Tokens := TRuleDerived.CodeTokens(TRuleDerived.Open(AContext), AContext);
   if TRuleProfiles.IsTestUnit(Tokens) then
+  begin
     Exit;
+  end;
   UnitName := TUsesClauses.OwnName(Tokens);
   if UnitName = '' then
+  begin
     UnitName := AContext.UnitName;
+  end;
   if THardcodedPathRule.UnitAllowed(UnitName, TRuleOptions.Strings(AContext.Options, 'allowUnits', nil)) then
+  begin
     Exit;
+  end;
   for Token in Tokens do
   begin
     if (Token.Kind <> TPascalTokenKind.StringLiteral) or not TStringLiterals.PlainText(Token.Text, Plain) then
+    begin
       Continue;
+    end;
     case PathKind(Plain) of
       THardcodedPathKind.Drive:
-        Message := 'Fester Dateipfad; auf anderen Rechnern fehlt er womöglich.';
+        Message := cTexts[TFilesText.FixedPath].Text;
       THardcodedPathKind.UserFolder:
-        Message := 'Fester Benutzerpfad; auf anderen Rechnern gibt es ihn nicht.';
+        Message := cTexts[TFilesText.UserPath].Text;
       THardcodedPathKind.Network:
-        Message := 'Fester Netzwerkpfad; auf anderen Rechnern und ohne Netzwerk fehlt er womöglich.';
+        Message := cTexts[TFilesText.NetworkPath].Text;
     else
       Continue;
     end;
@@ -536,7 +711,7 @@ const
 
 function TFilenameCompareCaseRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(FilenameCompareCaseRuleId, TRuleSeverity.Hint, 'Dateinamen mit = verglichen');
+  Result := TRuleDescriptor.Create(FilenameCompareCaseRuleId, TRuleSeverity.Hint, cTexts[TFilesText.CompareTitle].Text);
 end;
 
 class function TFilenameCompareCaseRule.IsFileNameExpression(ANode: TSyntaxNode): Boolean;
@@ -547,14 +722,22 @@ begin
   Node := Unwrapped(ANode);
   Result := False;
   if not CalleeName(Node, Name, Qualifier) then
+  begin
     Exit;
+  end;
   if ((Qualifier = '') or QualifierIs(Qualifier, 'SysUtils')) and MatchText(Name, SysUtilsFileNames) then
+  begin
     Exit(True);
+  end;
   if QualifierIs(Qualifier, 'TPath') and MatchText(Name, PathFileNames) then
+  begin
     Exit(True);
+  end;
   // Eigenschaften und Variablen: X.FileName, AFileName, Application.ExeName (kein Aufruf mit Argumenten)
   if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount > 1) then
+  begin
     Exit;
+  end;
   Result := EndsText('FileName', Name) or SameText(Name, 'ExeName');
 end;
 
@@ -570,10 +753,16 @@ begin
   if Node.Kind = TSyntaxKind.Literal then
   begin
     if not StartsStr('''', Node.Name) or not TStringLiterals.PlainText(Node.Name, Plain) then
+    begin
       Exit(False);
+    end;
     for C in Plain do
+    begin
       if UpperCase(C) <> LowerCase(C) then
+      begin
         Exit(True);
+      end;
+    end;
     Exit(False);
   end;
   Result := not ((Node.Kind = TSyntaxKind.Identifier) and SameText(Node.Name, 'nil'));
@@ -590,11 +779,17 @@ function DerivedFromOther(const AText: string; ALeft, ARight: TSyntaxNode): Bool
   begin
     Result := False;
     if ACall.Kind <> TSyntaxKind.Call then
+    begin
       Exit;
+    end;
     Other := SourceText(AText, AOther);
     for Index := 1 to ACall.ChildCount - 1 do
+    begin
       if SameText(SourceText(AText, Unwrapped(ACall[Index])), Other) then
+      begin
         Exit(True);
+      end;
+    end;
   end;
 
 begin
@@ -623,6 +818,17 @@ begin
   end;
 end;
 
+/// <summary>Ist ANode ein Vergleich ohne Groß-/Kleinschreibung mit zwei Argumenten (SameText, CompareText …
+/// ohne oder mit SysUtils davor)?</summary>
+function IsIgnoreCaseCompare(ANode: TSyntaxNode): Boolean;
+var
+  mName, mQualifier: string;
+begin
+  Result := (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 3) and CalleeName(ANode, mName, mQualifier);
+  Result := Result and ((mQualifier = '') or QualifierIs(mQualifier, 'SysUtils')) and
+    MatchText(mName, IgnoreCaseCompares);
+end;
+
 class function TFilenameCompareCaseRule.ComparedIgnoringCase(const AText: string; ACompare: TSyntaxNode): Boolean;
 var
   Scope: TSyntaxNode;
@@ -631,18 +837,18 @@ var
 begin
   Scope := ACompare;
   while (Scope.Parent <> nil) and SameStatement(Scope.Parent) do
+  begin
     Scope := Scope.Parent;
+  end;
   Left := SourceText(AText, Unwrapped(ACompare[0]));
   Right := SourceText(AText, Unwrapped(ACompare[1]));
   Found := False;
   Scope.Walk(
     function(ANode: TSyntaxNode): Boolean
     var
-      Name, Qualifier, First, Second: string;
+      First, Second: string;
     begin
-      if not Found and (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount = 3) and
-        CalleeName(ANode, Name, Qualifier) and ((Qualifier = '') or QualifierIs(Qualifier, 'SysUtils')) and
-        MatchText(Name, IgnoreCaseCompares) then
+      if not Found and IsIgnoreCaseCompare(ANode) then
       begin
         First := SourceText(AText, Unwrapped(ANode[1]));
         Second := SourceText(AText, Unwrapped(ANode[2]));
@@ -654,46 +860,74 @@ begin
   Result := Found;
 end;
 
+/// <summary>Vergleicht ANode (= oder &lt;&gt;) einen Dateinamen genau nach Groß-/Kleinschreibung, obwohl beide
+/// Seiten sie haben können und die Anweisung nicht auch ohne vergleicht?</summary>
+function IsCaseSensitiveCompare(const AText: string; ANode: TSyntaxNode): Boolean;
+begin
+  Result := (ANode.Kind = TSyntaxKind.BinaryExpr) and MatchStr(ANode.Name, ['=', '<>']) and (ANode.ChildCount = 2);
+  Result := Result and (TFilenameCompareCaseRule.IsFileNameExpression(ANode[0]) or
+    TFilenameCompareCaseRule.IsFileNameExpression(ANode[1])) and HasCase(ANode[0]) and HasCase(ANode[1]);
+  Result := Result and not DerivedFromOther(AText, ANode[0], ANode[1]) and
+    not TFilenameCompareCaseRule.ComparedIgnoringCase(AText, ANode);
+end;
+
+/// <summary>Korrektur: SameFileName statt des Vergleichs ACompare, System.SysUtils bei Bedarf in uses.</summary>
+function SameFileNameEdits(const AContext: TRuleContext; ACompare: TSyntaxNode;
+  const AUsed: TArray<string>): TArray<TRuleEdit>;
+var
+  mUsesEdit: TRuleEdit;
+  mNewText: string;
+begin
+  mNewText := Format('SameFileName(%s, %s)', [SourceText(AContext.Text, ACompare[0]),
+    SourceText(AContext.Text, ACompare[1])]);
+  if ACompare.Name = '<>' then
+  begin
+    mNewText := 'not ' + mNewText;
+  end;
+  Result := [TRuleEdit.Create(TTextRange.Create(ACompare.StartPos, ACompare.EndPos), mNewText)];
+  if not TUsesClauses.IsUsed(AUsed, 'System.SysUtils', AContext.Namespaces) and
+    TUsesClauses.AddUnit(AContext.Tree.Tokens, ACompare.StartOffset, 'System.SysUtils',
+    TTextLines.LineBreakOf(AContext.Text), mUsesEdit) then
+  begin
+    Result := Result + [mUsesEdit];
+  end;
+end;
+
 procedure TFilenameCompareCaseRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Compares: TArray<TSyntaxNode>;
-  Compare: TSyntaxNode;
-  Used: TArray<string>;
-  Edits: TArray<TRuleEdit>;
-  UsesEdit: TRuleEdit;
-  NewText: string;
+  mCompares: TArray<TSyntaxNode>;
+  mCompare: TSyntaxNode;
+  mUsed: TArray<string>;
+  mText: string;
 begin
   // Testdoubles vergleichen mit Namen, die der Test selbst vergibt; dort ist der genaue Vergleich gewollt.
   if (AContext.Tree = nil) or TRuleProfiles.IsTestUnit(AContext.Tree.Tokens) then
+  begin
     Exit;
-  Compares := nil;
+  end;
+  mCompares := nil;
+  mText := AContext.Text;
   AContext.Tree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
-      if (ANode.Kind = TSyntaxKind.BinaryExpr) and ((ANode.Name = '=') or (ANode.Name = '<>')) and
-        (ANode.ChildCount = 2) and (IsFileNameExpression(ANode[0]) or IsFileNameExpression(ANode[1])) and
-        HasCase(ANode[0]) and HasCase(ANode[1]) and not DerivedFromOther(AContext.Text, ANode[0], ANode[1]) and
-        not ComparedIgnoringCase(AContext.Text, ANode) then
-        Compares := Compares + [ANode];
+      if IsCaseSensitiveCompare(mText, ANode) then
+      begin
+        mCompares := mCompares + [ANode];
+      end;
       Result := True;
     end);
-  if Compares = nil then
-    Exit;
-  Used := TUsesClauses.UsedUnits(AContext.Tree.Tokens);
-  for Compare in Compares do
+  if mCompares = nil then
   begin
-    NewText := Format('SameFileName(%s, %s)', [SourceText(AContext.Text, Compare[0]),
-      SourceText(AContext.Text, Compare[1])]);
-    if Compare.Name = '<>' then
-      NewText := 'not ' + NewText;
-    Edits := [TRuleEdit.Create(TTextRange.Create(Compare.StartPos, Compare.EndPos), NewText)];
-    if not TUsesClauses.IsUsed(Used, 'System.SysUtils', AContext.Namespaces) and
-      TUsesClauses.AddUnit(AContext.Tree.Tokens, Compare.StartOffset, 'System.SysUtils',
-      TTextLines.LineBreakOf(AContext.Text), UsesEdit) then
-      Edits := Edits + [UsesEdit];
-    AReport.Add(TTextRange.Create(Compare.StartPos, Compare.EndPos),
-      'Dateinamen unterscheiden unter Windows nicht nach Groß-/Kleinschreibung; SameFileName vergleicht richtig.',
-      TRuleConfidence.Medium, [TRuleFix.Create('SameFileName verwenden', Edits)]);
+    Exit;
+  end;
+  mUsed := TUsesClauses.UsedUnits(AContext.Tree.Tokens);
+  for mCompare in mCompares do
+  begin
+    AReport.Add(TTextRange.Create(mCompare.StartPos, mCompare.EndPos),
+      cTexts[TFilesText.CaseInsensitive].Text,
+      TRuleConfidence.Medium, [TRuleFix.Create(cTexts[TFilesText.UseSameFileName].Text, SameFileNameEdits(AContext,
+        mCompare,
+      mUsed))]);
   end;
 end;
 
@@ -703,5 +937,8 @@ begin
   ARegistry.Register(THardcodedPathRule.Create);
   ARegistry.Register(TFilenameCompareCaseRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Files', cTexts);
 
 end.

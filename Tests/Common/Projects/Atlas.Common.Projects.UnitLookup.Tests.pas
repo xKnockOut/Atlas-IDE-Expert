@@ -69,8 +69,12 @@ begin
     begin
       Result := nil;
       for FileName in AFiles do
+      begin
         if SameText(TProjectPaths.DirectoryOf(FileName), AFolder) then
+        begin
           Result := Result + [FileName];
+        end;
+      end;
     end;
   Result.ListFolders :=
     function(AFolder: string): TArray<string>
@@ -83,9 +87,13 @@ begin
         Folder := TProjectPaths.DirectoryOf(FileName);
         while (Folder <> '') and not SameText(TProjectPaths.DirectoryOf(Folder), AFolder) and
           (Length(Folder) > Length(AFolder)) do
+        begin
           Folder := TProjectPaths.DirectoryOf(Folder);
+        end;
         if SameText(TProjectPaths.DirectoryOf(Folder), AFolder) and (IndexText(Folder, Result) < 0) then
+        begin
           Result := Result + [Folder];
+        end;
       end;
     end;
   Result.FileExists :=
@@ -105,7 +113,9 @@ var
 begin
   Result := nil;
   for Name in LibraryNames do
+  begin
     Result := Result + [Name];
+  end;
 end;
 
 // Ohne const: Aufrufer übergeben TUnitLookup.Create(...) direkt; nur so zählt Delphi die Referenz und gibt das
@@ -285,9 +295,13 @@ begin
     function(const APackage, AUnitName: string): TRulePackageAnswer
     begin
       if SameText(APackage, 'Fremd') then
+      begin
         Exit(TRulePackageAnswer.Unknown);
+      end;
       if SameText(AUnitName, 'Komp.Knopf') then
+      begin
         Exit(TRulePackageAnswer.Yes);
+      end;
       Result := TRulePackageAnswer.No;
     end;
   Lookup := TUnitLookup.Create(Data);
@@ -308,9 +322,13 @@ begin
     function(const APackage, AUnitName: string): TRulePackageAnswer
     begin
       if SameText(APackage, 'Atlas.Text') and SameText(AUnitName, 'Atlas.Text.MapFile') then
+      begin
         Exit(TRulePackageAnswer.Yes);
+      end;
       if SameText(APackage, 'Fremd') then
+      begin
         Exit(TRulePackageAnswer.Unknown);
+      end;
       Result := TRulePackageAnswer.No;
     end;
   Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(Answer(TUnitLookup.Create(Data), 'Atlas.Text.MapFile')),
@@ -320,9 +338,13 @@ begin
     begin
       Result := nil;
       if SameText(APackage, 'Atlas.Common') then
+      begin
         Result := TArray<string>.Create('rtl', 'Atlas.Text');
+      end;
       if SameText(APackage, 'Atlas.Text') then
+      begin
         Result := TArray<string>.Create('rtl', 'Atlas.Common');
+      end;
     end;
   Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(Answer(TUnitLookup.Create(Data), 'Atlas.Text.MapFile')));
   Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(Answer(TUnitLookup.Create(Data), 'Atlas.Text.Fehlt')),
@@ -333,7 +355,9 @@ begin
     begin
       Result := nil;
       if SameText(APackage, 'Atlas.Common') then
+      begin
         Result := TArray<string>.Create('Fremd');
+      end;
     end;
   Assert.AreEqual(Ord(TRuleUnitAnswer.Unknown), Ord(Answer(TUnitLookup.Create(Data), 'Atlas.Text.Fehlt')));
 end;
@@ -382,6 +406,7 @@ var
   Lookup: IRuleUnitLookup;
   Known: TArray<string>;
   FileName, Text: string;
+  Group: TUnitLookupGroupOutput;
 begin
   Data := Setup(LibraryFiles + ['C:\P\Src\Rechnung.Druck.pas']);
   Data.PackageExists :=
@@ -401,6 +426,13 @@ begin
   Assert.IsTrue(IndexText('Vcl.Forms', Known) >= 0);
   Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(Lookup.FindPackage('rtl')));
   Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(Lookup.FindPackage('Fehlend')));
+  // Package derselben Projektgruppe: gilt als vorhanden, auch ohne .dcp und ohne Ausgabeordner.
+  Group := Default(TUnitLookupGroupOutput);
+  Group.ProjectName := 'Atlas.Text';
+  Data.GroupOutputs := [Group];
+  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord((TUnitLookup.Create(Data) as IRuleUnitLookup).FindPackage(
+    'atlas.text')));
+  Data.GroupOutputs := nil;
   Assert.IsTrue(Lookup.ReadProject(FileName, Text));
   Assert.AreEqual('C:\P\App.dproj', FileName);
   Assert.AreEqual('<Project/>', Text);

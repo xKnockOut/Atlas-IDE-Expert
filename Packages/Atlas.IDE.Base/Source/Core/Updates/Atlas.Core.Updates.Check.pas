@@ -1,0 +1,323 @@
+﻿unit Atlas.Core.Updates.Check;
+
+// Prüfung auf neue Versionen (#495), ohne Netzwerk und ohne IDE:
+// - Nur mit updates.check (Vorgabe aus, Zustimmung beim ersten Start) und
+//   höchstens einmal täglich; auch eine gescheiterte Abfrage zählt.
+// - Abgefragt wird die Versionsdatei des Kanals (updates.channel, #1519:
+//   atlas-version.json bzw. atlas-version-beta.json, {"version": "1.2.0",
+//   "changes": "https://…", …}); übertragen werden nur Atlas-Version und
+//   IDE-Version als Parameter der Adresse, keine Projektdaten.
+// - Versionen nach SemVer 2.0 (TUpdateVersions, dieselben Regeln wie
+//   AtlasUpdate.exe). Neuer ist eine Version nur, wenn sie größer ist als
+//   die installierte.
+// - Der Zustand (gefragt, letzte Prüfung, zuletzt gefundene neuere Version)
+//   liegt in einer eigenen Datei, nicht in den Einstellungen, damit die
+//   tägliche Prüfung keine Einstellungsstände (#722) erzeugt. Die gefundene
+//   Version hält die Zeile „Version“ des Statusfelds und der Zustandskachel
+//   (#754) bis zur nächsten Prüfung bzw. bis sie installiert ist.
+// Heruntergeladen und installiert wird hier nichts; das macht AtlasUpdate.exe
+// (#1519, Atlas.Core.Updates.Install).
+
+interface
+
+uses
+  System.SysUtils,
+  Atlas.Text.Updates,
+  Atlas.Core.Updates.Contract;
+
+type
+  TAtlasRelease = record
+    Version: string;
+    /// <summary>https-Adresse der Änderungen dieser Version.</summary>
+    ChangesUrl: string;
+  end;
+
+  TAtlasUpdateState = record
+    /// <summary>Beim ersten Start gefragt (Ja oder Nein).</summary>
+    Asked: Boolean;
+    /// <summary>Letzte Abfrage (Ortszeit); 0 = nie.</summary>
+    LastCheck: TDateTime;
+    /// <summary>Zuletzt gefundene neuere Version und Adresse ihrer Änderungen (#754); '' = keine.</summary>
+    Available: string;
+    ChangesUrl: string;
+    function ToJson: string;
+    class function FromJson(const AJson: string): TAtlasUpdateState; static;
+  end;
+
+{$SCOPEDENUMS ON}
+  TAtlasUpdateOutcome = (Disabled, NotDue, Failed, Current, NewVersion);
+{$SCOPEDENUMS OFF}
+
+  /// <summary>Was eine Prüfung abfragt (#1519): Versionsdatei des Kanals, installierte Atlas- und IDE-Version.
+  /// </summary>
+  TAtlasUpdateQuery = record
+    Url: string;
+    Installed: string;
+    IdeVersion: string;
+  end;
+
+  TAtlasUpdateResult = record
+    Outcome: TAtlasUpdateOutcome;
+    Release: TAtlasRelease;
+    /// <summary>Bei Failed: warum, ohne Adresse.</summary>
+    Error: string;
+  end;
+
+  TAtlasUpdates = class
+  public const
+    VersionUrl = TUpdateChannels.StableUrl;
+    ReleasesUrl = TUpdateChannels.ReleasesUrl;
+    TimeoutMs = 10000;
+  public
+    /// <summary>SemVer-Vergleich: negativ, 0 oder positiv; ungültige Versionen sind kleiner als gültige.</summary>
+    class function Compare(const A, B: string): Integer; static;
+    class function IsValidVersion(const AVersion: string): Boolean; static;
+    /// <summary>Versionsdatei lesen; False ohne gültige Version. Fehlt "changes" oder ist es keine
+    /// https-Adresse, gilt die Release-Seite der Version.</summary>
+    class function TryParse(const AJson: string; out ARelease: TAtlasRelease): Boolean; static;
+    /// <summary>Fällig, wenn noch nie, seit mindestens einem Tag nicht geprüft oder die Uhr
+    /// zurückgestellt wurde.</summary>
+    class function IsDue(ALastCheck, ANow: TDateTime): Boolean; static;
+    /// <summary>Adresse mit genau zwei Parametern: atlas und ide.</summary>
+    class function RequestUrl(const ABase, AAtlasVersion, AIdeVersion: string): string; static;
+    /// <summary>Ergebnis einer Prüfung im Zustand merken (#754): neue Version setzt Available und ChangesUrl,
+    /// „aktuell“ löscht sie; ein Fehlschlag oder keine Abfrage ändert nichts.</summary>
+    class procedure Remember(var AState: TAtlasUpdateState; const AResult: TAtlasUpdateResult); static;
+    /// <summary>Gemerkte Version, die neuer ist als AInstalled; False ohne (dann ist ARelease leer). Nach der
+    /// Installation des Updates gilt sie nicht mehr.</summary>
+    class function Pending(const AState: TAtlasUpdateState; const AInstalled: string;
+      out ARelease: TAtlasRelease): Boolean; static;
+    /// <summary>Eine Prüfung der Versionsdatei unter AQuery.Url (Kanal, #1519); setzt AState.LastCheck, wenn
+    /// abgefragt wurde.</summary>
+    class function Run(const ASource: IAtlasVersionSource; const AQuery: TAtlasUpdateQuery;
+      var AState: TAtlasUpdateState; AEnabled: Boolean; ANow: TDateTime): TAtlasUpdateResult; static;
+    /// <summary>%LOCALAPPDATA%\Atlas\updates.json.</summary>
+    class function StateFile: string; static;
+    /// <summary>Compiler-Version der IDE, für die das Plugin gebaut ist, z. B. „37.0“ (Delphi 13).</summary>
+    class function IdeVersion: string; static;
+  end;
+
+implementation
+
+uses
+  System.JSON,
+  System.DateUtils,
+  System.NetEncoding,
+  System.IOUtils;
+
+{ TAtlasUpdateState }
+
+function TAtlasUpdateState.ToJson: string;
+var
+  Root: TJSONObject;
+begin
+  Root := TJSONObject.Create;
+  try
+    Root.AddPair('asked', TJSONBool.Create(Asked));
+    if LastCheck > 0 then
+    begin
+      Root.AddPair('lastCheck', TJSONString.Create(DateToISO8601(LastCheck, False)));
+    end;
+    if Available <> '' then
+    begin
+      Root.AddPair('available', TJSONString.Create(Available));
+      Root.AddPair('changes', TJSONString.Create(ChangesUrl));
+    end;
+    Result := Root.ToJSON;
+  finally
+    Root.Free;
+  end;
+end;
+
+class function TAtlasUpdateState.FromJson(const AJson: string): TAtlasUpdateState;
+var
+  Value: TJSONValue;
+  Root: TJSONObject;
+  Text: string;
+  Found: Boolean;
+begin
+  Result := Default(TAtlasUpdateState);
+  try
+    Value := TJSONObject.ParseJSONValue(AJson);
+  except
+    on Exception do
+      Value := nil;
+  end;
+  try
+    if not (Value is TJSONObject) then
+    begin
+      Exit;
+    end;
+    Root := TJSONObject(Value);
+    Root.TryGetValue<Boolean>('asked', Result.Asked);
+    // Ergebnis der Abfragen erst in eine Variable: so lesen es auch andere Compiler (Tests unter FPC).
+    Found := Root.TryGetValue<string>('lastCheck', Text);
+    if Found and not TryISO8601ToDate(Text, Result.LastCheck, False) then
+    begin
+      Result.LastCheck := 0;
+    end;
+    // Nur eine gültige Version (#754); ohne https-Adresse gilt die Release-Seite der Version.
+    Found := Root.TryGetValue<string>('available', Text);
+    if Found and TAtlasUpdates.IsValidVersion(Text) then
+    begin
+      Result.Available := Text;
+      Found := Root.TryGetValue<string>('changes', Result.ChangesUrl);
+      if not Found or not Result.ChangesUrl.StartsWith('https://', True) or
+        (Result.ChangesUrl.IndexOfAny([' ', #9, #10, #13]) >= 0) then
+      begin
+        Result.ChangesUrl := TAtlasUpdates.ReleasesUrl + '/tag/v' + Text;
+      end;
+    end;
+  finally
+    Value.Free;
+  end;
+end;
+
+{ TAtlasUpdates }
+
+class function TAtlasUpdates.IsValidVersion(const AVersion: string): Boolean;
+begin
+  Result := TUpdateVersions.IsValidVersion(AVersion);
+end;
+
+class function TAtlasUpdates.Compare(const A, B: string): Integer;
+begin
+  Result := TUpdateVersions.Compare(A, B);
+end;
+
+class function TAtlasUpdates.TryParse(const AJson: string; out ARelease: TAtlasRelease): Boolean;
+var
+  Value: TJSONValue;
+  Found: Boolean;
+begin
+  ARelease := Default(TAtlasRelease);
+  try
+    Value := TJSONObject.ParseJSONValue(AJson);
+  except
+    on Exception do
+      Value := nil;
+  end;
+  try
+    // Ergebnis der Abfragen erst in eine Variable: so lesen es auch andere Compiler (Tests unter FPC).
+    Result := Value is TJSONObject;
+    if Result then
+    begin
+      Found := TJSONObject(Value).TryGetValue<string>('version', ARelease.Version);
+      Result := Found and IsValidVersion(ARelease.Version);
+    end;
+    if not Result then
+    begin
+      ARelease := Default(TAtlasRelease);
+      Exit;
+    end;
+    // Nur https-Adressen landen in der Meldungsansicht.
+    Found := TJSONObject(Value).TryGetValue<string>('changes', ARelease.ChangesUrl);
+    if not Found or
+      not ARelease.ChangesUrl.StartsWith('https://', True) or (ARelease.ChangesUrl.IndexOfAny([' ', #9, #10, #13]) >= 0)
+    then
+    begin
+      ARelease.ChangesUrl := ReleasesUrl + '/tag/v' + ARelease.Version;
+    end;
+  finally
+    Value.Free;
+  end;
+end;
+
+class function TAtlasUpdates.IsDue(ALastCheck, ANow: TDateTime): Boolean;
+begin
+  Result := (ALastCheck <= 0) or (ANow - ALastCheck >= 1) or (ALastCheck > ANow);
+end;
+
+class function TAtlasUpdates.RequestUrl(const ABase, AAtlasVersion, AIdeVersion: string): string;
+begin
+  Result := ABase + '?atlas=' + TNetEncoding.URL.Encode(AAtlasVersion) + '&ide=' +
+    TNetEncoding.URL.Encode(AIdeVersion);
+end;
+
+class procedure TAtlasUpdates.Remember(var AState: TAtlasUpdateState; const AResult: TAtlasUpdateResult);
+begin
+  case AResult.Outcome of
+    TAtlasUpdateOutcome.NewVersion:
+      begin
+        AState.Available := AResult.Release.Version;
+        AState.ChangesUrl := AResult.Release.ChangesUrl;
+      end;
+    TAtlasUpdateOutcome.Current:
+      begin
+        AState.Available := '';
+        AState.ChangesUrl := '';
+      end;
+    TAtlasUpdateOutcome.Disabled: ;
+    TAtlasUpdateOutcome.NotDue: ;
+    TAtlasUpdateOutcome.Failed: ;
+  end;
+end;
+
+class function TAtlasUpdates.Pending(const AState: TAtlasUpdateState; const AInstalled: string;
+  out ARelease: TAtlasRelease): Boolean;
+begin
+  ARelease := Default(TAtlasRelease);
+  Result := (AState.Available <> '') and (Compare(AState.Available, AInstalled) > 0);
+  if not Result then
+  begin
+    Exit;
+  end;
+  ARelease.Version := AState.Available;
+  ARelease.ChangesUrl := AState.ChangesUrl;
+  if not ARelease.ChangesUrl.StartsWith('https://', True) or (ARelease.ChangesUrl.IndexOfAny([' ', #9, #10, #13]) >= 0)
+  then
+  begin
+    ARelease.ChangesUrl := ReleasesUrl + '/tag/v' + AState.Available;
+  end;
+end;
+
+class function TAtlasUpdates.Run(const ASource: IAtlasVersionSource; const AQuery: TAtlasUpdateQuery;
+  var AState: TAtlasUpdateState; AEnabled: Boolean; ANow: TDateTime): TAtlasUpdateResult;
+var
+  Text: string;
+begin
+  Result := Default(TAtlasUpdateResult);
+  if not AEnabled then
+  begin
+    Result.Outcome := TAtlasUpdateOutcome.Disabled;
+    Exit;
+  end;
+  if not IsDue(AState.LastCheck, ANow) then
+  begin
+    Result.Outcome := TAtlasUpdateOutcome.NotDue;
+    Exit;
+  end;
+  // Auch ein Fehlschlag zählt: höchstens eine Abfrage am Tag.
+  AState.LastCheck := ANow;
+  if not ASource.Fetch(RequestUrl(AQuery.Url, AQuery.Installed, AQuery.IdeVersion), TimeoutMs, Text, Result.Error) then
+  begin
+    Result.Outcome := TAtlasUpdateOutcome.Failed;
+    Exit;
+  end;
+  if not TryParse(Text, Result.Release) then
+  begin
+    Result.Outcome := TAtlasUpdateOutcome.Failed;
+    Result.Error := 'Versionsdatei ungültig';
+    Exit;
+  end;
+  if Compare(Result.Release.Version, AQuery.Installed) > 0 then
+  begin
+    Result.Outcome := TAtlasUpdateOutcome.NewVersion;
+  end
+  else
+  begin
+    Result.Outcome := TAtlasUpdateOutcome.Current;
+  end;
+end;
+
+class function TAtlasUpdates.IdeVersion: string;
+begin
+  Result := FormatFloat('0.0', CompilerVersion, TFormatSettings.Invariant);
+end;
+
+class function TAtlasUpdates.StateFile: string;
+begin
+  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), 'updates.json');
+end;
+
+end.

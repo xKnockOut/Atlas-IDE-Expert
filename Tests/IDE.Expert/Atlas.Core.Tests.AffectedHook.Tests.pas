@@ -9,6 +9,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tests')]
   TAtlasAffectedHookTests = class
   private
     FDir: string;
@@ -32,12 +33,25 @@ uses
   System.IOUtils,
   Atlas.Core.Tests.AffectedHook;
 
+/// <summary>Texte wie aus der UI, mit „'“ und „%“ für das Quoting.</summary>
+function Texts: TAtlasAffectedHookTexts;
+begin
+  Result := Default(TAtlasAffectedHookTexts);
+  Result.Purpose := 'Zweck';
+  Result.Removal := 'Entfernen' + #10 + 'zweite Zeile';
+  Result.ExitCodes := 'Codes';
+  Result.NoTerminal := 'Ohne Terminal';
+  Result.AskRun := 'Run? [y/N] ';
+  Result.AskCommit := 'It''s 100% failed? [y/N] ';
+end;
+
 function Config: TAtlasAffectedHookConfig;
 begin
   Result := Default(TAtlasAffectedHookConfig);
   Result.ServerPath := 'C:\Atlas\AtlasServer.exe';
   Result.Project := 'C:\Repo\Tests\Tests.dproj';
   Result.Executable := 'C:\Repo\Tests\Win64\Debug\Tests.exe';
+  Result.Texts := Texts;
 end;
 
 procedure TAtlasAffectedHookTests.Setup;
@@ -49,7 +63,9 @@ end;
 procedure TAtlasAffectedHookTests.TearDown;
 begin
   if TDirectory.Exists(FDir) then
+  begin
     TDirectory.Delete(FDir, True);
+  end;
   FDir := '';
 end;
 
@@ -57,8 +73,13 @@ procedure TAtlasAffectedHookTests.ScriptAsksServerAndOnlyBlocksOnRequest;
 var
   mScript: string;
 begin
-  mScript := TAtlasAffectedHook.Script;
-  Assert.IsTrue(mScript.StartsWith('#!/bin/sh' + #10 + TAtlasAffectedHook.Marker + #10));
+  mScript := TAtlasAffectedHook.Script(Texts);
+  Assert.IsTrue(mScript.StartsWith('#!/bin/sh' + #10 + TAtlasAffectedHook.Marker + #10 + '# Zweck' + #10 +
+    '# Entfernen zweite Zeile' + #10));
+  // Texte der UI (#1458): Fragen sicher für sh gequotet.
+  Assert.IsTrue(Pos('printf ''Run? [y/N] '' > /dev/tty', mScript) > 0);
+  Assert.IsTrue(Pos('printf ''It''\''''s 100%% failed? [y/N] '' > /dev/tty', mScript) > 0);
+  Assert.IsTrue(Pos('case "$answer" in j|J|y|Y)', mScript) > 0, 'j und y in beiden Sprachen');
   Assert.AreEqual(0, Pos(#13, mScript), 'sh verträgt kein CR');
   Assert.IsTrue(Pos('--affected-tests HEAD --include-uncommitted --format dunitx', mScript) > 0);
   // Ohne Terminal nur die Liste; der Commit scheitert nur nach Fehlschlag und „nein“.

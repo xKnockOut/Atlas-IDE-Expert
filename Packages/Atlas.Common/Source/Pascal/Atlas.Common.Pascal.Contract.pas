@@ -8,6 +8,8 @@
 // sie nicht gleich wieder meldet (NewConstant → cNewConstant). Welche Präfixe
 // gelten, entscheidet die Regel (IRuleNewNames, TRuleEngine.NewNames); hier
 // liegen Wertetyp und Namensbildung, damit Rules und Editing sie teilen.
+// Dazu Wert und Teilwerte einer $IF-Bedingung (#847), die Präprozessor und
+// Ausdrucksauswerter (Pascal.Preprocessor.Expressions) teilen.
 
 interface
 
@@ -54,6 +56,24 @@ type
     /// <summary>Für Symbol: z. B. IsSymbol(':='). Die Ersatzklammern (. und .) gelten als [ und ] (#862).
     /// </summary>
     function IsSymbol(const ASymbol: string): Boolean;
+  end;
+
+  /// <summary>Beantwortet Declared(X); True = deklariert, False = nicht gefunden (gilt als unbekannt).</summary>
+  TDeclaredFunc = reference to function(const AName: string): Boolean;
+
+  /// <summary>Wert einer Bedingung (#847). Unknown: ein Wert ist dem Server nicht bekannt; der Zweig gilt als
+  /// aktiv, ein {$ELSE} dazu ebenfalls.</summary>
+  TConditionValue = (No, Yes, Unknown);
+
+  /// <summary>Teilwert einer Bedingung für den Hover (#847).</summary>
+  TConditionPart = record
+    /// <summary>Teilausdruck, z. B. "SizeOf(Pointer)", "RTLVersion111" oder bei $IFOPT "R+".</summary>
+    Text: string;
+    /// <summary>Wert als Text: "8", "wahr", "falsch", "unbekannt".</summary>
+    Value: string;
+    /// <summary>Herkunft, z. B. "Zielplattform Win64", "Delphi 13", "Index", "DCC_RangeChecking" oder
+    /// "{$R-} in Zeile 4"; '' ohne.</summary>
+    Origin: string;
   end;
 
   /// <summary>Präfixe neuer Namen je Art (lokale Variable, Feld, Parameter, Konstante); leer = ohne.</summary>
@@ -127,26 +147,38 @@ end;
 class function TPascalNamePrefixes.Follows(const AName, APrefix: string): Boolean;
 begin
   if APrefix = '' then
+  begin
     Exit(True);
+  end;
   if (Length(AName) <= Length(APrefix)) or not StartsStr(APrefix, AName) then
+  begin
     Exit(False);
+  end;
   Result := not IsLetter(APrefix[Length(APrefix)]) or IsUpperOrDigit(AName[Length(APrefix) + 1]);
 end;
 
 class function TPascalNamePrefixes.Expected(const AName, APrefix: string): string;
 begin
   if (APrefix <> '') and IsLetter(APrefix[Length(APrefix)]) and (AName <> '') then
-    Result := APrefix + AnsiUpperCase(AName[1]) + Copy(AName, 2, MaxInt)
+  begin
+    Result := APrefix + AnsiUpperCase(AName[1]) + Copy(AName, 2, MaxInt);
+  end
   else
+  begin
     Result := APrefix + AName;
+  end;
 end;
 
 class function TPascalNamePrefixes.WithPrefix(const AName, APrefix: string): string;
 begin
   if Follows(AName, APrefix) then
-    Result := AName
+  begin
+    Result := AName;
+  end
   else
+  begin
     Result := Expected(AName, APrefix);
+  end;
 end;
 
 function TPascalNamePrefixes.Local(const AName: string): string;

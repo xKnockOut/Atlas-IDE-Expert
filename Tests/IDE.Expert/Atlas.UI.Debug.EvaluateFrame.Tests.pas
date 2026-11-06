@@ -1,11 +1,11 @@
 ﻿unit Atlas.UI.Debug.EvaluateFrame.Tests;
 
-// Fenster „Auswerten“ (#784), Oberfläche: Text im Baum je Zustand (gekürzt,
-// einzeilig, grau der alte Wert bis zum neuen), Ansichten unten (Text mit
-// sichtbaren Steuerzeichen, Zeilen aus „.Text“, JSON, Hex, Hinweis bei
-// unpassender Ansicht), Baum mit Platzhalter zum Aufklappen und Kindern aus
+// Fenster „Auswerten“ (#784), Oberfläche (Text im Baum: EvaluateTree.Tests):
+// Ansichten unten (Text mit sichtbaren Steuerzeichen, Zeilen aus „.Text“,
+// JSON, Hex, Hinweis bei unpassender Ansicht), Baum mit Platzhalter zum Aufklappen und Kindern aus
 // Teilen, Enter/Strg+Enter im Eingabefeld, Entf auf einem Feld entfernt die
-// ganze Zeile, Knopf „Festheften“ bzw. „Lösen“.
+// ganze Zeile, Knopf „Festheften“ bzw. „Lösen“, Tastenhilfe passt ihre Höhe der
+// Breite an (kein leerer Streifen unten, Baum wächst mit), Reihenfolge der Knöpfe.
 
 interface
 
@@ -15,6 +15,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Debugger')]
   TAtlasDebugEvaluateFrameTests = class
   private
     FLanguage: TAtlasLanguage;
@@ -27,8 +28,6 @@ type
     [TearDown]
     procedure TearDown;
     [Test]
-    procedure NodeTexts;
-    [Test]
     procedure DetailViews;
     [Test]
     procedure TreeWithPlaceholderAndParts;
@@ -38,6 +37,10 @@ type
     procedure DeleteRemovesWholeRow;
     [Test]
     procedure PinCaption;
+    [Test]
+    procedure KeysFollowWidth;
+    [Test]
+    procedure ButtonOrder;
   end;
 
 implementation
@@ -46,6 +49,7 @@ uses
   System.SysUtils,
   System.Classes,
   Winapi.Windows,
+  Vcl.Controls,
   Vcl.Forms,
   Atlas.Core.Debug.Evaluate,
   Atlas.UI.Debug.EvaluateFrame;
@@ -71,33 +75,6 @@ end;
 procedure TAtlasDebugEvaluateFrameTests.TearDown;
 begin
   TAtlasStrings.Language := FLanguage;
-end;
-
-procedure TAtlasDebugEvaluateFrameTests.NodeTexts;
-var
-  List: TAtlasEvalList;
-  Node: TAtlasEvalNode;
-begin
-  List := TAtlasEvalList.Create;
-  try
-    Node := List.Add(' Summe ');
-    Assert.AreEqual('Summe = wird ausgewertet …', TAtlasDebugEvaluateFrame.NodeText(Node));
-    List.SetResult(Node, True, '42');
-    Assert.AreEqual('Summe = 42', TAtlasDebugEvaluateFrame.NodeText(Node));
-    List.BeginStop;
-    Assert.AreEqual('Summe = 42', TAtlasDebugEvaluateFrame.NodeText(Node), 'alter Wert bis zum neuen');
-    List.SetResult(Node, False, 'Undeclared identifier');
-    Assert.AreEqual('Summe = Undeclared identifier', TAtlasDebugEvaluateFrame.NodeText(Node));
-    List.Unavailable;
-    Assert.AreEqual('Summe = ‹Programm nicht angehalten›', TAtlasDebugEvaluateFrame.NodeText(Node));
-    List.BeginStop;
-    List.SetResult(Node, True, '''a''#13#10''b''' + StringOfChar('x', 300));
-    Assert.IsFalse(TAtlasDebugEvaluateFrame.NodeText(Node).Contains(#13), 'einzeilig');
-    Assert.AreEqual(Integer(Length('Summe = ') + TAtlasDebugEvaluateFrame.MaxTreeValue + 1),
-      Integer(Length(TAtlasDebugEvaluateFrame.NodeText(Node))), 'gekürzt mit …');
-  finally
-    List.Free;
-  end;
 end;
 
 procedure TAtlasDebugEvaluateFrameTests.DetailViews;
@@ -148,7 +125,7 @@ begin
     Frame := TAtlasDebugEvaluateFrame.Create(Host);
     Frame.Parent := Host;
     Frame.HandleNeeded;
-    Frame.OnExpand :=
+    Frame.Hooks.Expand :=
       procedure(ANode: TAtlasEvalNode)
       begin
         Expanded := ANode.Key;
@@ -157,19 +134,19 @@ begin
     List.SetResult(Node, True, '(FName: ''Meier''; FCount: 3)');
     List.SetResult(List.Add('Zahl'), True, '7');
     Frame.SetList(List);
-    Assert.AreEqual(3, Integer(Frame.Tree.Items.Count), 'Self, Platzhalter, Zahl');
-    Assert.AreEqual('Self = (FName: ''Meier''; FCount: 3)', Frame.Tree.Items[0].Text);
-    Frame.Tree.Items[0].Expand(False);
+    Assert.AreEqual(3, Integer(Frame.Parts.Tree.Items.Count), 'Self, Platzhalter, Zahl');
+    Assert.AreEqual('Self = (FName: ''Meier''; FCount: 3)', Frame.Parts.Tree.Items[0].Text);
+    Frame.Parts.Tree.Items[0].Expand(False);
     Assert.AreEqual('Self', Expanded, 'Felder holt die IDE-Schicht');
     Assert.IsTrue(Node.Expanded);
     List.SetParts(Node);
     Frame.Refresh;
-    Assert.AreEqual(4, Integer(Frame.Tree.Items.Count));
-    Assert.AreEqual('FName = ''Meier''', Frame.Tree.Items[1].Text);
-    Assert.IsTrue(Frame.Tree.Items[0].Expanded);
-    Frame.Tree.Items[1].Selected := True;
-    Assert.AreEqual('Meier', Frame.Detail.Text);
-    Assert.IsFalse(Frame.ModifyButton.Enabled, 'Teil ohne Ausdruck');
+    Assert.AreEqual(4, Integer(Frame.Parts.Tree.Items.Count));
+    Assert.AreEqual('FName = ''Meier''', Frame.Parts.Tree.Items[1].Text);
+    Assert.IsTrue(Frame.Parts.Tree.Items[0].Expanded);
+    Frame.Parts.Tree.Items[1].Selected := True;
+    Assert.AreEqual('Meier', Frame.Parts.Detail.Text);
+    Assert.IsFalse(Frame.Parts.ModifyButton.Enabled, 'Teil ohne Ausdruck');
     Frame.SetList(nil);
   finally
     Host.Free;
@@ -192,28 +169,28 @@ begin
     Frame := TAtlasDebugEvaluateFrame.Create(Host);
     Frame.Parent := Host;
     Frame.HandleNeeded;
-    Frame.OnAdd :=
+    Frame.Hooks.Add :=
       procedure(AExpression: string)
       begin
         Added := AExpression;
       end;
-    Frame.OnPinExpression :=
+    Frame.Hooks.PinExpression :=
       procedure(AExpression: string)
       begin
         Pinned := AExpression;
       end;
-    Frame.Input.Text := ' Kunde.Name ';
+    Frame.Parts.Input.Text := ' Kunde.Name ';
     Key := VK_RETURN;
-    Frame.Input.OnKeyDown(Frame.Input, Key, []);
+    Frame.Parts.Input.OnKeyDown(Frame.Parts.Input, Key, []);
     Assert.AreEqual('Kunde.Name', Added);
-    Assert.AreEqual('', Frame.Input.Text, 'Feld leer für den nächsten');
-    Frame.Input.Text := 'Liste.Count';
+    Assert.AreEqual('', Frame.Parts.Input.Text, 'Feld leer für den nächsten');
+    Frame.Parts.Input.Text := 'Liste.Count';
     Key := VK_RETURN;
-    Frame.Input.OnKeyDown(Frame.Input, Key, [ssCtrl]);
+    Frame.Parts.Input.OnKeyDown(Frame.Parts.Input, Key, [ssCtrl]);
     Assert.AreEqual('Liste.Count', Pinned);
     Added := '';
     Key := VK_RETURN;
-    Frame.Input.OnKeyDown(Frame.Input, Key, []);
+    Frame.Parts.Input.OnKeyDown(Frame.Parts.Input, Key, []);
     Assert.AreEqual('', Added, 'leer fügt nichts an');
   finally
     Host.Free;
@@ -238,7 +215,7 @@ begin
     Frame := TAtlasDebugEvaluateFrame.Create(Host);
     Frame.Parent := Host;
     Frame.HandleNeeded;
-    Frame.OnDelete :=
+    Frame.Hooks.Delete :=
       procedure(ANode: TAtlasEvalNode)
       begin
         Deleted := ANode.Key;
@@ -248,9 +225,9 @@ begin
     Node.Expanded := True;
     List.SetParts(Node);
     Frame.SetList(List);
-    Frame.Tree.Items[2].Selected := True;
+    Frame.Parts.Tree.Items[2].Selected := True;
     Key := VK_DELETE;
-    Frame.Tree.OnKeyDown(Frame.Tree, Key, []);
+    Frame.Parts.Tree.OnKeyDown(Frame.Parts.Tree, Key, []);
     Assert.AreEqual('P', Deleted);
     Frame.SetList(nil);
   finally
@@ -275,14 +252,77 @@ begin
     List.Add('A').Pinned := True;
     List.Add('B');
     Frame.SetList(List);
-    Frame.Tree.Items[0].Selected := True;
-    Assert.AreEqual('Lösen', Frame.PinButton.Caption);
-    Frame.Tree.Items[1].Selected := True;
-    Assert.AreEqual('Festheften', Frame.PinButton.Caption);
+    Frame.Parts.Tree.Items[0].Selected := True;
+    Assert.AreEqual('Lösen', Frame.Parts.PinButton.Caption);
+    Frame.Parts.Tree.Items[1].Selected := True;
+    Assert.AreEqual('Festheften', Frame.Parts.PinButton.Caption);
     Frame.SetList(nil);
   finally
     Host.Free;
     List.Free;
+  end;
+end;
+
+procedure TAtlasDebugEvaluateFrameTests.KeysFollowWidth;
+var
+  mHost: TForm;
+  mFrame: TAtlasDebugEvaluateFrame;
+  mWide, mTree: Integer;
+begin
+  mHost := TForm.CreateNew(nil);
+  try
+    mHost.ClientWidth := 900;
+    mHost.ClientHeight := 600;
+    mFrame := TAtlasDebugEvaluateFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.Align := alClient;
+    mFrame.HandleNeeded;
+    mWide := mFrame.Parts.Keys.Height;
+    Assert.IsTrue(mWide > 0, 'Tastenhilfe sichtbar');
+    mHost.ClientWidth := 200;
+    Assert.IsTrue(mFrame.Parts.Keys.Height > mWide, 'schmal: mehr Zeilen');
+    mHost.ClientWidth := 900;
+    Assert.AreEqual(mWide, mFrame.Parts.Keys.Height, 'wieder breit: wieder eine Zeile, kein leerer Streifen');
+    // Höher: Der Baum bekommt den ganzen Zuwachs.
+    mTree := mFrame.Parts.Tree.Height;
+    mHost.ClientHeight := 800;
+    Assert.AreEqual(mTree + 200, mFrame.Parts.Tree.Height, 'Baum wächst mit');
+    Assert.AreEqual(mHost.ClientHeight, mFrame.Parts.Keys.Top + mFrame.Parts.Keys.Height +
+      mFrame.Parts.Keys.Margins.Bottom, 'Tastenhilfe schließt unten ab');
+  finally
+    mHost.Free;
+  end;
+end;
+
+procedure TAtlasDebugEvaluateFrameTests.ButtonOrder;
+var
+  mHost: TForm;
+  mFrame: TAtlasDebugEvaluateFrame;
+  mKind: TAtlasEvalView;
+begin
+  mHost := TForm.CreateNew(nil);
+  try
+    mHost.ClientWidth := 900;
+    mFrame := TAtlasDebugEvaluateFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.Align := alClient;
+    mFrame.HandleNeeded;
+    // Ein unsichtbares Fenster legt die Leiste nicht an, dann richtet sie sich nicht neu aus.
+    mFrame.Parts.Bar.HandleNeeded;
+    mFrame.Parts.Bar.Realign;
+    // Links Text, Zeilen, JSON, Hex; rechts Ändern, Festheften, IDE-Dialog (IDE-Dialog ganz rechts).
+    for mKind := Low(TAtlasEvalView) to Pred(High(TAtlasEvalView)) do
+    begin
+      Assert.IsTrue(mFrame.Parts.ViewButtons[mKind].Left < mFrame.Parts.ViewButtons[Succ(mKind)].Left,
+        'Ansichten in Reihenfolge');
+    end;
+    Assert.IsTrue(mFrame.Parts.ViewButtons[TAtlasEvalView.Text].Left < mFrame.Parts.ModifyButton.Left, 'Ansichten links von Ändern');
+    Assert.IsTrue(mFrame.Parts.ModifyButton.Left < mFrame.Parts.PinButton.Left, 'Ändern vor Festheften');
+    Assert.IsTrue(mFrame.Parts.PinButton.Left < mFrame.Parts.IdeDialogButton.Left, 'Festheften vor IDE-Dialog');
+    Assert.IsTrue(mFrame.Parts.IdeDialogButton.Left + mFrame.Parts.IdeDialogButton.Width <=
+      mFrame.Parts.Bar.ClientWidth, 'innerhalb der Leiste');
+  finally
+    mHost.Free;
   end;
 end;
 

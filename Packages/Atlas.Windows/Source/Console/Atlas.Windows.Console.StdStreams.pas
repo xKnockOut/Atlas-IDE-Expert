@@ -45,7 +45,9 @@ var
 begin
   Handle := GetStdHandle(AStdHandle);
   if (Handle = 0) or (Handle = INVALID_HANDLE_VALUE) then
+  begin
     raise EStreamError.CreateFmt('Kein gültiges Handle für %s', [AName]);
+  end;
   Result := THandleStream.Create(Handle);
 end;
 
@@ -72,9 +74,13 @@ var
 begin
   ErrorHandle := GetStdHandle(STD_ERROR_HANDLE);
   if (ErrorHandle = 0) or (ErrorHandle = INVALID_HANDLE_VALUE) then
+  begin
     Exit;
+  end;
   if TTextRec(Output).Mode = fmOutput then
+  begin
     Flush(Output);
+  end;
   TTextRec(Output).Handle := ErrorHandle;
 end;
 
@@ -85,7 +91,9 @@ begin
   Result := CreateOutput;
   ErrorHandle := GetStdHandle(STD_ERROR_HANDLE);
   if (ErrorHandle <> 0) and (ErrorHandle <> INVALID_HANDLE_VALUE) then
+  begin
     SetStdHandle(STD_OUTPUT_HANDLE, ErrorHandle);
+  end;
   RedirectTextOutputToStdErr;
   // "Runtime error ..." nicht auf die Konsole schreiben. NoErrMsg ist als
   // plattformspezifisch markiert; dieses Package ist ohnehin nur für Windows.

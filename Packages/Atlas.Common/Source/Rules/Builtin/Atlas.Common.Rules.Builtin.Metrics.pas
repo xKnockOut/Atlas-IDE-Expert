@@ -112,7 +112,63 @@ uses
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Inheritance,
-  Atlas.Common.Rules.Engine;
+  Atlas.Common.Rules.Engine,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TMetricsText = (MethodLength, Nesting, Cyclomatic, Cognitive, Parameters, Operands, Locals, Exits, MoveClassHint,
+    Members, UnitLines, UsesCount, Depth, DepthAtLeast, MembersTitle, UnitLinesTitle, UsesTitle, DepthTitle,
+    MethodLengthTitle, NestingTitle, CyclomaticTitle, CognitiveTitle, ParametersTitle, OperandsTitle, LocalsTitle,
+    ExitsTitle);
+
+const
+  cTexts: array[TMetricsText] of TAtlasText = (
+    (De: 'Methode %s hat %d Codezeilen (Grenzwert %d); in kleinere Methoden aufteilen';
+     En: 'Method %s has %d code lines (limit %d); split it into smaller methods'),
+    (De: 'Methode %s ist %d Ebenen tief verschachtelt (Grenzwert %d); früh verlassen oder Teile auslagern';
+     En: 'Method %s is nested %d levels deep (limit %d); exit early or extract parts'),
+    (De: 'Methode %s hat zyklomatische Komplexität %d (Grenzwert %d)';
+     En: 'Method %s has cyclomatic complexity %d (limit %d)'),
+    (De: 'Methode %s hat kognitive Komplexität %d (Grenzwert %d)';
+     En: 'Method %s has cognitive complexity %d (limit %d)'),
+    (De: 'Methode %s hat %d Parameter (Grenzwert %d); zusammengehörige Werte bündeln';
+     En: 'Method %s has %d parameters (limit %d); bundle values that belong together'),
+    (De: 'Bedingung mit %d Operanden (Grenze %d).'; En: 'Condition with %d operands (limit %d).'),
+    (De: 'Methode %s hat %d lokale Variablen (Grenze %d); Teile in eigene Methoden auslagern';
+     En: 'Method %s has %d local variables (limit %d); move parts into separate methods'),
+    (De: 'Methode %s hat %d Ausstiege mit Exit oder raise (Grenze %d); Ablauf vereinfachen';
+     En: 'Method %s has %d exits with Exit or raise (limit %d); simplify the flow'),
+    (De: '; Klassen lassen sich mit „Klasse in eigene Unit verschieben“ auslagern.';
+     En: '; classes can be moved out with “Move class to own unit”.'),
+    (De: '%s hat %d Member (Grenze %d).'; En: '%s has %d members (limit %d).'),
+    (De: 'Unit %s hat %d Zeilen (Grenze %d)'; En: 'Unit %s has %d lines (limit %d)'),
+    (De: 'Unit %s hat %d Units im uses (Grenze %d)'; En: 'Unit %s has %d units in uses (limit %d)'),
+    (De: '%s hat Vererbungstiefe %d ohne RTL und VCL (Grenze %d).';
+     En: '%s has inheritance depth %d without RTL and VCL (limit %d).'),
+    (De: '%s hat Vererbungstiefe mindestens %d ohne RTL und VCL (Grenze %d).';
+     En: '%s has inheritance depth of at least %d without RTL and VCL (limit %d).'),
+    (De: 'Klasse mit mehr Membern als der Grenzwert'; En: 'Class with more members than the limit'),
+    (De: 'Unit länger als der Grenzwert'; En: 'Unit longer than the limit'),
+    (De: 'Mehr Units im uses als der Grenzwert'; En: 'More units in uses than the limit'),
+    (De: 'Klasse mit mehr eigenen Vorfahren (ohne RTL und VCL) als der Grenzwert';
+     En: 'Class with more own ancestors (without RTL and VCL) than the limit'),
+    (De: 'Methode länger als der Grenzwert (Codezeilen ohne Leerzeilen und Kommentare)';
+     En: 'Method longer than the limit (code lines without blank lines and comments)'),
+    (De: 'Methode tiefer verschachtelt als der Grenzwert'; En: 'Method nested deeper than the limit'),
+    (De: 'Zyklomatische Komplexität einer Methode über dem Grenzwert';
+     En: 'Cyclomatic complexity of a method above the limit'),
+    (De: 'Kognitive Komplexität einer Methode über dem Grenzwert';
+     En: 'Cognitive complexity of a method above the limit'),
+    (De: 'Methode mit mehr Parametern als der Grenzwert'; En: 'Method with more parameters than the limit'),
+    (De: 'Bedingung mit mehr and/or/xor-Operanden als der Grenzwert';
+     En: 'Condition with more and/or/xor operands than the limit'),
+    (De: 'Methode mit mehr lokalen Variablen als der Grenzwert'; En: 'Method with more local variables than the limit'),
+    (De: 'Methode mit mehr Exit und raise als der Grenzwert'; En: 'Method with more Exit and raise than the limit'));
+
+{$SCOPEDENUMS OFF}
 
 { TMetricRules }
 
@@ -159,14 +215,20 @@ var
 begin
   Result := ADefault;
   if AOptions = '' then
+  begin
     Exit;
+  end;
   Value := TJSONObject.ParseJSONValue(AOptions);
   try
     if not (Value is TJSONObject) then
+    begin
       Exit;
+    end;
     Limit := TJSONObject(Value).GetValue(MetricLimitOption);
     if (Limit is TJSONNumber) and TryStrToInt(Limit.Value, Number) and (Number >= 1) then
+    begin
       Result := Number;
+    end;
   finally
     Value.Free;
   end;
@@ -179,52 +241,49 @@ var
 begin
   Result := TMetricLimits.Default;
   for Kind := Low(TMetricKind) to High(TMetricKind) do
+  begin
     Result.Values[Kind] := LimitFromOptions(TRuleEngine.RuleOptions(RuleId(Kind), ASettings), Result.Values[Kind]);
+  end;
   for Structure := Low(TStructureKind) to High(TStructureKind) do
+  begin
     Result.Structure[Structure] := LimitFromOptions(TRuleEngine.RuleOptions(RuleId(Structure), ASettings),
       Result.Structure[Structure]);
+  end;
 end;
 
 class function TMetricRules.Message(AKind: TMetricKind; const AName: string; AValue, ALimit: Integer): string;
 begin
   case AKind of
     TMetricKind.MethodLength:
-      Result := Format('Methode %s hat %d Codezeilen (Grenzwert %d); in kleinere Methoden aufteilen',
-        [AName, AValue, ALimit]);
+      Result := cTexts[TMetricsText.MethodLength].Fmt([AName, AValue, ALimit]);
     TMetricKind.NestingDepth:
-      Result := Format('Methode %s ist %d Ebenen tief verschachtelt (Grenzwert %d); ' +
-        'früh verlassen oder Teile auslagern', [AName, AValue, ALimit]);
+      Result := cTexts[TMetricsText.Nesting].Fmt([AName, AValue, ALimit]);
     TMetricKind.Cyclomatic:
-      Result := Format('Methode %s hat zyklomatische Komplexität %d (Grenzwert %d)', [AName, AValue, ALimit]);
+      Result := cTexts[TMetricsText.Cyclomatic].Fmt([AName, AValue, ALimit]);
     TMetricKind.Cognitive:
-      Result := Format('Methode %s hat kognitive Komplexität %d (Grenzwert %d)', [AName, AValue, ALimit]);
+      Result := cTexts[TMetricsText.Cognitive].Fmt([AName, AValue, ALimit]);
     TMetricKind.ParameterCount:
-      Result := Format('Methode %s hat %d Parameter (Grenzwert %d); zusammengehörige Werte bündeln',
-        [AName, AValue, ALimit]);
+      Result := cTexts[TMetricsText.Parameters].Fmt([AName, AValue, ALimit]);
     TMetricKind.BooleanOperands:
-      Result := Format('Bedingung mit %d Operanden (Grenze %d).', [AValue, ALimit]);
+      Result := cTexts[TMetricsText.Operands].Fmt([AValue, ALimit]);
     TMetricKind.LocalCount:
-      Result := Format('Methode %s hat %d lokale Variablen (Grenze %d); Teile in eigene Methoden auslagern',
-        [AName, AValue, ALimit]);
+      Result := cTexts[TMetricsText.Locals].Fmt([AName, AValue, ALimit]);
   else
-    Result := Format('Methode %s hat %d Ausstiege mit Exit oder raise (Grenze %d); Ablauf vereinfachen',
-      [AName, AValue, ALimit]);
+    Result := cTexts[TMetricsText.Exits].Fmt([AName, AValue, ALimit]);
   end;
 end;
 
 class function TMetricRules.Message(AKind: TStructureKind; const AName: string; AValue, ALimit: Integer): string;
-const
-  MoveHint = '; Klassen lassen sich mit „Klasse in eigene Unit verschieben“ auslagern.';
 begin
   case AKind of
     TStructureKind.ClassSize:
-      Result := Format('%s hat %d Member (Grenze %d).', [AName, AValue, ALimit]);
+      Result := cTexts[TMetricsText.Members].Fmt([AName, AValue, ALimit]);
     TStructureKind.UnitLength:
-      Result := Format('Unit %s hat %d Zeilen (Grenze %d)', [AName, AValue, ALimit]) + MoveHint;
+      Result := cTexts[TMetricsText.UnitLines].Fmt([AName, AValue, ALimit]) + cTexts[TMetricsText.MoveClassHint].Text;
     TStructureKind.UsesCount:
-      Result := Format('Unit %s hat %d Units im uses (Grenze %d)', [AName, AValue, ALimit]) + MoveHint;
+      Result := cTexts[TMetricsText.UsesCount].Fmt([AName, AValue, ALimit]) + cTexts[TMetricsText.MoveClassHint].Text;
   else
-    Result := Format('%s hat Vererbungstiefe %d ohne RTL und VCL (Grenze %d).', [AName, AValue, ALimit]);
+    Result := cTexts[TMetricsText.Depth].Fmt([AName, AValue, ALimit]);
   end;
 end;
 
@@ -232,9 +291,36 @@ class function TMetricRules.Message(AKind: TStructureKind; const AName: string; 
   AAtLeast: Boolean): string;
 begin
   if AAtLeast and (AKind = TStructureKind.InheritanceDepth) then
-    Result := Format('%s hat Vererbungstiefe mindestens %d ohne RTL und VCL (Grenze %d).', [AName, AValue, ALimit])
+  begin
+    Result := cTexts[TMetricsText.DepthAtLeast].Fmt([AName, AValue, ALimit]);
+  end
   else
+  begin
     Result := Message(AKind, AName, AValue, ALimit);
+  end;
+end;
+
+/// <summary>Vorfahren der Klasse ohne Bibliotheksklassen und TObject; AReachedLibrary, wenn eine
+/// Bibliotheksklasse darunter war.</summary>
+function CountAncestors(const AIndex: ISymbolIndex; const AAncestry: TAncestry; const AName: string;
+  out AComplete, AReachedLibrary: Boolean): Integer;
+var
+  mLocation: TSymbolLocation;
+  mObjectMissing: Boolean;
+begin
+  Result := 0;
+  AReachedLibrary := False;
+  for mLocation in AAncestry.Ancestors(AName, AComplete, mObjectMissing) do
+  begin
+    if (mLocation.UnitName <> '') and TLibraryUnits.IsLibrary(AIndex, mLocation.UnitName) then
+    begin
+      AReachedLibrary := True;
+    end
+    else if not SameText(mLocation.Symbol.Name, 'TObject') then
+    begin
+      Inc(Result);
+    end;
+  end;
 end;
 
 class function TMetricRules.InheritanceDepths(ATree: TSyntaxTree; const AIndex: ISymbolIndex;
@@ -243,13 +329,15 @@ var
   Ancestry: TAncestry;
   Item, Depth: TStructureMetrics;
   Location: TSymbolLocation;
-  Complete, ObjectMissing, ReachedLibrary: Boolean;
+  Complete, ReachedLibrary: Boolean;
   Count, Index: Integer;
   Seen: TDictionary<string, Integer>;
 begin
   Result := nil;
   if (ATree = nil) or TLibraryUnits.IsLibrary(AIndex, ALocal.UnitName) then
+  begin
     Exit;
+  end;
   Ancestry := TAncestry.Create(AIndex, ALocal);
   Seen := TDictionary<string, Integer>.Create;
   try
@@ -257,16 +345,14 @@ begin
     begin
       // Nur Klassen der obersten Ebene; object-Typen und verschachtelte Klassen kennt TAncestry nicht.
       if (Item.Kind <> TStructureKind.ClassSize) or not Ancestry.FindClass(Item.Name, Location) then
+      begin
         Continue;
-      Count := 0;
-      ReachedLibrary := False;
-      for Location in Ancestry.Ancestors(Item.Name, Complete, ObjectMissing) do
-        if (Location.UnitName <> '') and TLibraryUnits.IsLibrary(AIndex, Location.UnitName) then
-          ReachedLibrary := True
-        else if not SameText(Location.Symbol.Name, 'TObject') then
-          Inc(Count);
+      end;
+      Count := CountAncestors(AIndex, Ancestry, Item.Name, Complete, ReachedLibrary);
       if Count = 0 then
+      begin
         Continue;
+      end;
       Depth := Item;
       Depth.Kind := TStructureKind.InheritanceDepth;
       Depth.Value := Count;
@@ -274,7 +360,9 @@ begin
       Depth.AtLeast := not Complete and not ReachedLibrary;
       // Vorwärtsdeklaration und Deklaration: die spätere zählt.
       if Seen.TryGetValue(UpperCase(Item.Name), Index) then
-        Result[Index] := Depth
+      begin
+        Result[Index] := Depth;
+      end
       else
       begin
         Seen.Add(UpperCase(Item.Name), Length(Result));
@@ -299,14 +387,14 @@ function TStructureMetricRule.Descriptor: TRuleDescriptor;
 begin
   case FKind of
     TStructureKind.ClassSize:
-      Result := TRuleDescriptor.Create(ClassSizeRuleId, TRuleSeverity.Hint, 'Klasse mit mehr Membern als der Grenzwert');
+      Result := TRuleDescriptor.Create(ClassSizeRuleId, TRuleSeverity.Hint, cTexts[TMetricsText.MembersTitle].Text);
     TStructureKind.UnitLength:
-      Result := TRuleDescriptor.Create(UnitLengthRuleId, TRuleSeverity.Hint, 'Unit länger als der Grenzwert');
+      Result := TRuleDescriptor.Create(UnitLengthRuleId, TRuleSeverity.Hint, cTexts[TMetricsText.UnitLinesTitle].Text);
     TStructureKind.UsesCount:
-      Result := TRuleDescriptor.Create(UsesCountRuleId, TRuleSeverity.Hint, 'Mehr Units im uses als der Grenzwert');
+      Result := TRuleDescriptor.Create(UsesCountRuleId, TRuleSeverity.Hint, cTexts[TMetricsText.UsesTitle].Text);
   else
     Result := TRuleDescriptor.Create(InheritanceDepthRuleId, TRuleSeverity.Hint,
-      'Klasse mit mehr eigenen Vorfahren (ohne RTL und VCL) als der Grenzwert');
+      cTexts[TMetricsText.DepthTitle].Text);
   end;
 end;
 
@@ -317,16 +405,26 @@ var
   Items: TArray<TStructureMetrics>;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Limit := TMetricRules.LimitFromOptions(AContext.Options, TMetricLimits.Default.Structure[FKind]);
   if FKind = TStructureKind.InheritanceDepth then
+  begin
     Items := TMetricRules.InheritanceDepths(AContext.Tree, AContext.Index,
-      TRuleDerived.UnitIndex(TRuleDerived.Open(AContext), AContext))
+      TRuleDerived.UnitIndex(TRuleDerived.Open(AContext), AContext));
+  end
   else
+  begin
     Items := TMetricsCalculator.Structure(AContext.Tree);
+  end;
   for Item in Items do
+  begin
     if (Item.Kind = FKind) and (Item.Value > Limit) then
+    begin
       AReport.Add(Item.NameRange, TMetricRules.Message(FKind, Item.Name, Item.Value, Limit, Item.AtLeast));
+    end;
+  end;
 end;
 
 { TMetricRule }
@@ -342,28 +440,28 @@ begin
   case FKind of
     TMetricKind.MethodLength:
       Result := TRuleDescriptor.Create(MethodLengthRuleId, TRuleSeverity.Hint,
-        'Methode länger als der Grenzwert (Codezeilen ohne Leerzeilen und Kommentare)');
+        cTexts[TMetricsText.MethodLengthTitle].Text);
     TMetricKind.NestingDepth:
       Result := TRuleDescriptor.Create(NestingDepthRuleId, TRuleSeverity.Hint,
-        'Methode tiefer verschachtelt als der Grenzwert');
+        cTexts[TMetricsText.NestingTitle].Text);
     TMetricKind.Cyclomatic:
       Result := TRuleDescriptor.Create(CyclomaticComplexityRuleId, TRuleSeverity.Hint,
-        'Zyklomatische Komplexität einer Methode über dem Grenzwert');
+        cTexts[TMetricsText.CyclomaticTitle].Text);
     TMetricKind.Cognitive:
       Result := TRuleDescriptor.Create(CognitiveComplexityRuleId, TRuleSeverity.Hint,
-        'Kognitive Komplexität einer Methode über dem Grenzwert');
+        cTexts[TMetricsText.CognitiveTitle].Text);
     TMetricKind.ParameterCount:
       Result := TRuleDescriptor.Create(ParameterCountRuleId, TRuleSeverity.Hint,
-        'Methode mit mehr Parametern als der Grenzwert');
+        cTexts[TMetricsText.ParametersTitle].Text);
     TMetricKind.BooleanOperands:
       Result := TRuleDescriptor.Create(BooleanOperandsRuleId, TRuleSeverity.Hint,
-        'Bedingung mit mehr and/or/xor-Operanden als der Grenzwert');
+        cTexts[TMetricsText.OperandsTitle].Text);
     TMetricKind.LocalCount:
       Result := TRuleDescriptor.Create(LocalCountRuleId, TRuleSeverity.Hint,
-        'Methode mit mehr lokalen Variablen als der Grenzwert');
+        cTexts[TMetricsText.LocalsTitle].Text);
   else
     Result := TRuleDescriptor.Create(ExitPointsRuleId, TRuleSeverity.Hint,
-      'Methode mit mehr Exit und raise als der Grenzwert');
+      cTexts[TMetricsText.ExitsTitle].Text);
   end;
 end;
 
@@ -378,14 +476,18 @@ begin
   Options := TExtractOptions.Default;
   Options.Style := AContext.Formatting;
   for Condition in TMetricsCalculator.Conditions(AContext.Tree) do
+  begin
     if Condition.Operands > ALimit then
     begin
       Fixes := nil;
       if TExtractRefactoring.ExtractCondition(AContext.Text, AContext.Tree, Condition.Range, Options, Action) then
+      begin
         Fixes := [TRuleFix.Create(Action.Title, Action.Edits)];
+      end;
       AReport.Add(Condition.Range, TMetricRules.Message(TMetricKind.BooleanOperands, '', Condition.Operands, ALimit),
         Fixes);
     end;
+  end;
 end;
 
 procedure TMetricRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -394,7 +496,9 @@ var
   Routine: TRoutineMetrics;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Limit := TMetricRules.LimitFromOptions(AContext.Options, TMetricLimits.Default.Values[FKind]);
   if FKind = TMetricKind.BooleanOperands then
   begin
@@ -402,8 +506,12 @@ begin
     Exit;
   end;
   for Routine in TMetricsCalculator.Routines(AContext.Tree) do
+  begin
     if Routine.Values[FKind] > Limit then
+    begin
       AReport.Add(Routine.NameRange, TMetricRules.Message(FKind, Routine.Name, Routine.Values[FKind], Limit));
+    end;
+  end;
 end;
 
 procedure RegisterMetricRules(const ARegistry: TRuleRegistry);
@@ -412,9 +520,16 @@ var
   Structure: TStructureKind;
 begin
   for Kind := Low(TMetricKind) to High(TMetricKind) do
+  begin
     ARegistry.Register(TMetricRule.Create(Kind));
+  end;
   for Structure := Low(TStructureKind) to High(TStructureKind) do
+  begin
     ARegistry.Register(TStructureMetricRule.Create(Structure));
+  end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Metrics', cTexts);
 
 end.

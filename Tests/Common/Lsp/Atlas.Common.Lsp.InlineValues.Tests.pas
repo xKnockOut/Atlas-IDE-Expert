@@ -19,6 +19,11 @@ type
     /// <summary>Gefundene Werte als „Zeile:Name“ mit Leerzeichen getrennt.</summary>
     function ValuesFor(AFirstLine, ALastLine, AStoppedLine: Integer): string;
   public
+    /// <summary>Erste Benutzung des Handler-Wegs ungemessen vorwegnehmen: Die globalen Sperren der Namespaces
+    /// (TLspNamespaces) und des Baum-Caches legen ihre TMonitor- bzw. Tabellendaten beim ersten Zugriff an und
+    /// behalten sie bis Programmende (72 Byte unter Win64 in HandlerWritesInlineValues).</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -96,6 +101,16 @@ const
 
 { TLspInlineValuesTests }
 
+procedure TLspInlineValuesTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    HandlerWritesInlineValues;
+  finally
+    TearDown;
+  end;
+end;
+
 procedure TLspInlineValuesTests.Setup;
 begin
   FIndex := TSymbolIndex.Create;
@@ -120,7 +135,9 @@ begin
       AStoppedLine) do
     begin
       if Result <> '' then
+      begin
         Result := Result + ' ';
+      end;
       Result := Result + Format('%d:%s', [Value.Range.StartPos.Line, Value.Name]);
     end;
   finally
@@ -185,7 +202,9 @@ begin
   Resolver := TNameResolver.Create(FIndex);
   try
     for Value in TLspInlineValues.Collect(Resolver, Tree, FileName, TTextRange.Create(26, 0, 27, 0), 31) do
+    begin
       Types := Types + Value.Name + ':' + Value.TypeName + ' ';
+    end;
   finally
     Resolver.Free;
     Tree.Free;

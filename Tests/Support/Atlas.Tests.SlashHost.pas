@@ -10,7 +10,6 @@ uses
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Projects.Contract,
-  Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.Contract;
 
 type
@@ -62,11 +61,13 @@ var
 begin
   AValue := '';
   for Pair in APairs do
+  begin
     if SameText(Copy(Pair, 1, Pos('=', Pair) - 1), AName) then
     begin
       AValue := Copy(Pair, Pos('=', Pair) + 1, MaxInt);
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 

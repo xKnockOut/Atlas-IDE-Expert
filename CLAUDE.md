@@ -11,6 +11,17 @@
 - Neue Einstellung: Schema `schemas/atlas.schema.json` (mit `x-page`, `x-control`, `x-issue`), Parser, Test; dann `pwsh Tools/Update-ConfigDoc.ps1` ausführen. Es erzeugt Konfiguration.md, Einstellungen.md und die Schema-Unit des Plugins und prüft den Parser.
 - Im IDE-Plugin nur über `TAtlasMainThread` in den Hauptthread einreihen, nie `TThread.Queue(nil, …)`/`ForceQueue(nil, …)` (sonst laufen Einträge nach dem Entladen in fremdem Speicher). `pwsh Tools/Check-MainThreadQueue.ps1` prüft das; Ausnahme je Zeile mit `// mainthread-ok` oder `// lsp-ignore: forbidden-symbol` (dieselben Verbote stehen als Regel `forbidden-symbol` in `atlas.json`).
 - Andockbare Fenster nur über `TAtlasIdeDockWindow`, Leisten im Editorfenster nur über `TAtlasEditorBarHost` (Steuerelemente mit Vorfahr `TAtlasEditorBar`), den Editor neu zeichnen nur über `TAtlasIdeEditorRefresh` (`InvalidateTopEditor` legt ohne Editorfenster eins an, #1233). `pwsh Tools/Check-WindowHosts.ps1` prüft das.
+- Module und Verträge ab 2.0 (ADR 0017, Begründung in `docs/Architektur.md`, „Module und Verträge des Plugins“):
+  1. Registry und Verträge von `Atlas.IDE.Base` bestehen ab der Unit-Initialisierung; das `Register` eines Moduls meldet nur an, gestartet wird über die Feature-Tabelle von Base.
+  2. Module dürfen jederzeit kommen und gehen; wer Beiträge anderer zeigt, hört auf die Änderungsmeldung der Registry.
+  3. Nach dem Abmelden erreicht nichts mehr das Modul (Serverantwort, `TAtlasMainThread`, Timer, Ereignis).
+  4. Alles, was ein Modul anmeldet, läuft über seinen `IAtlasModuleScope` und wird beim Abmelden rückwärts gelöst.
+  5. Base stoppt in seiner Finalisierung zuerst alle Module.
+  6. Über Package-Grenzen nur Interfaces mit GUID, Records, Arrays, Methodenreferenzen; kein `is TList<…>`, kein `ClassName`-Vergleich. Alle Verträge liegen in Base, die zwischen Modulen unter `Source/Contracts` (`Atlas.IDE.Contracts.*`, kein eigenes Package); benannt nach der Fähigkeit.
+  7. Ein Modul prüft zuerst die Vertragsversion von Base (`GetProcAddress`) und meldet sich bei Abweichung nicht an.
+  8. Nie `HInstance`/`GetModuleName(HInstance)` für „ist das Atlas?“ oder Datenordner; die Registry bzw. Funktionen von Base fragen.
+  9. Base kennt keine Modulnamen; ein Modul ist, was sich anmeldet. Kein Modul requiret ein anderes, Module requiren nur Base, Base requiret kein Modul.
+  Neues Modul nach dem Muster in `docs/Architektur.md` („Muster eines Moduls“): eine Unit `Atlas.IDE.<Modul>.Composition`, Beiträge über `GScope.Provide`, Serverbefehle über `TAtlasIdeHost` (nie Manager oder Wurzel direkt), Zuordnung jeder Unit in `docs/adr/0017-unit-zuordnung.md`. Texte nur des Moduls in `Atlas.UI.<Modul>.Strings`; Testklassen eines Moduls mit `[Category('<Package>')]` (prüft `Check-TestCoverage`).
 
 ## Mit Delphi bauen vor dem Merge
 

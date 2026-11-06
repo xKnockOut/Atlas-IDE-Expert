@@ -43,7 +43,9 @@ begin
     function(const AFileName: string): string
     begin
       if not Stamps.TryGetValue(LowerCase(AFileName), Result) then
+      begin
         Result := '';
+      end;
     end);
 end;
 

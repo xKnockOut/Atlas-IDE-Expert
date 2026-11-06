@@ -124,7 +124,9 @@ begin
   for Crumb in ACrumbs do
   begin
     if Result <> '' then
+    begin
       Result := Result + ' › ';
+    end;
     Result := Result + Crumb.Text;
   end;
 end;
@@ -137,7 +139,9 @@ begin
   for Item in AItems do
   begin
     if Result <> '' then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + TAtlasBreadcrumbs.ShortName(ANodes[Item].Name);
   end;
 end;
@@ -147,8 +151,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(ANodes) do
+  begin
     if ANodes[Index].Name = AName then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -330,7 +338,9 @@ begin
   for Item in TAtlasBreadcrumbs.Routines(List) do
   begin
     if Names <> '' then
+    begin
       Names := Names + ',';
+    end;
     Names := Names + TAtlasBreadcrumbs.QualifiedName(List, Item);
   end;
   Assert.AreEqual('TfrmKunde.btnSpeichernClick,TfrmKunde.SpeichereAdresse,TfrmKunde.SpaltenBreite,' +

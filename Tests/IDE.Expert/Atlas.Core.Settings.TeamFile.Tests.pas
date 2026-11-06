@@ -50,6 +50,9 @@ type
     procedure MergeKeepsTeamFirst;
     [Test]
     procedure SkeletonIsValidWithoutIssues;
+    /// <summary>Gerüst mit englischer Oberfläche: englische Kommentare, gleiche gültige Datei (#1458).</summary>
+    [Test]
+    procedure SkeletonIsValidInEnglish;
     [Test]
     procedure SnippetFolderIsResolved;
     [Test]
@@ -61,7 +64,8 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Core.Localization.Language;
 
 const
   FileName = 'C:\Repo\App\.atlas';
@@ -74,15 +78,21 @@ var
 begin
   SetLength(Paths, Length(APaths));
   for Index := 0 to High(APaths) do
+  begin
     Paths[Index] := APaths[Index];
+  end;
   Result :=
     function(const APath: string): Boolean
     var
       Item: string;
     begin
       for Item in Paths do
+      begin
         if SameText(Item, APath) then
+        begin
           Exit(True);
+        end;
+      end;
       Result := False;
     end;
 end;
@@ -98,8 +108,12 @@ var
   Issue: TAtlasTeamIssue;
 begin
   for Issue in ATeam.Issues do
+  begin
     if (Issue.Kind = AKind) and (Issue.Path = APath) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -391,6 +405,24 @@ begin
   Assert.AreEqual(0, Integer(Length(Team.Issues)));
   Assert.IsFalse(Team.HasValues, 'Beispiele stehen nur als Kommentar');
   Assert.Contains(TAtlasTeamFile.Skeleton, '"version": 1');
+end;
+
+procedure TAtlasTeamFileTests.SkeletonIsValidInEnglish;
+var
+  mSkeleton: string;
+  mSaved: TAtlasLanguage;
+begin
+  mSaved := TAtlasTextLanguage.Current;
+  TAtlasTextLanguage.Current := TAtlasLanguage.English;
+  try
+    mSkeleton := TAtlasTeamFile.Skeleton;
+  finally
+    TAtlasTextLanguage.Current := mSaved;
+  end;
+  Assert.IsTrue(Parsed(mSkeleton).Valid);
+  Assert.AreEqual(0, Integer(Length(Parsed(mSkeleton).Issues)));
+  Assert.IsTrue(Pos('Atlas project settings for the whole team', mSkeleton) > 0);
+  Assert.AreEqual(0, Pos('Projekteinstellungen', mSkeleton));
 end;
 
 procedure TAtlasTeamFileTests.SnippetFolderIsResolved;

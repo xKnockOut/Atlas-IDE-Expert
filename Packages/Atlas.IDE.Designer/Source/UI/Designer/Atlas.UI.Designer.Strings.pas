@@ -1,0 +1,165 @@
+﻿unit Atlas.UI.Designer.Strings;
+
+// Oberflächentexte des Moduls Formulardesigner auf Deutsch und Englisch (ADR 0017, #1455). Die Sprache
+// bestimmt Base (`TAtlasStrings.Language`); jeder Aufruf liest sie neu, ein Sprachwechsel braucht
+// daher keine eigene Meldung. Kerntexte bleiben in `Atlas.UI.Strings`.
+
+interface
+
+{$SCOPEDENUMS ON}
+
+type
+  TAtlasDesignerTextId = (
+    DesignerBarNonVisualHint, DesignerBarNonVisualMissing, DesignerBarParentHint, DesignerBarTabOrderHint,
+    DesignerBarTabOrderClickHint, DesignerBarAlignHint, DesignerBarNoSelection, DesignerBarNoParent,
+    DesignerBarAlignNeeds, DesignerBarTabOrderSet, DesignerAlignLefts, DesignerAlignRights, DesignerAlignTops,
+    DesignerAlignBottoms, DesignerAlignCentersH, DesignerAlignCentersV, DesignerAlignCenterInParentH,
+    DesignerAlignCenterInParentV, DesignerAlignSameWidth, DesignerAlignSameHeight, DesignerAlignSpaceH,
+    DesignerAlignSpaceV, DesignerSearchTitle, DesignerSearchPrompt, DesignerSearchKindAll,
+    DesignerSearchKindControls, DesignerSearchKindNonVisual, DesignerSearchKindContainers, DesignerSearchIn,
+    DesignerSearchFieldName, DesignerSearchFieldCaption, DesignerSearchFieldClass, DesignerSearchGroupHierarchy,
+    DesignerSearchGroupClass, DesignerSearchGroupFlat, DesignerSearchSelect, DesignerSearchEvent,
+    DesignerSearchCopy, DesignerSearchCount, DesignerSearchKeys, DesignerSearchKeysPopup, DesignerSearchPosition,
+    DesignerSearchProperties, DesignerSearchEvents, DesignerSearchNoEvents, DesignerSearchNonVisual,
+    DesignerSearchNoForm,
+    SettingsEditorDesignerBar, SettingsDesignerSearchKey, SettingsDesignerSearchStyle,
+    SettingsDesignerSearchWindow, SettingsDesignerSearchPopup, SettingsDesignerTabOrderClick,
+    SettingsDesignerAlign);
+
+  TAtlasDesignerStrings = class
+  public
+    class function Text(AId: TAtlasDesignerTextId): string; static;
+    /// <summary>Text mit Platzhaltern wie Format.</summary>
+    class function Fmt(AId: TAtlasDesignerTextId; const AArgs: array of const): string; static;
+  end;
+
+implementation
+
+uses
+  System.SysUtils,
+  Atlas.UI.Strings;
+
+const
+  Texts: array[TAtlasLanguage, TAtlasDesignerTextId] of string = (
+    ('Nichtvisuelle Komponenten ein- und ausblenden (Strg+H der IDE)',
+     'Die IDE bietet hier kein Ein- und Ausblenden der Nichtvisuellen an.',
+     'Elternelement auswählen',
+     'Tab-Reihenfolge anzeigen',
+     'Tab-Reihenfolge anzeigen; ein Klick auf die Nummern vergibt sie neu (experimentell)',
+     'Ausrichten: %s (Pfeil: alle Befehle; experimentell)',
+     'Im Designer ist nichts ausgewählt.',
+     'Die Auswahl hat kein Elternelement im Formular.',
+     'Dafür braucht es mehr gewählte Steuerelemente mit demselben Elternelement.',
+     '%s: TabOrder %d',
+     'Linke Kanten',
+     'Rechte Kanten',
+     'Obere Kanten',
+     'Untere Kanten',
+     'Mitten waagrecht',
+     'Mitten senkrecht',
+     'Im Elternelement waagrecht zentrieren',
+     'Im Elternelement senkrecht zentrieren',
+     'Gleiche Breite',
+     'Gleiche Höhe',
+     'Abstände waagrecht verteilen',
+     'Abstände senkrecht verteilen',
+     'Komponenten suchen',
+     'Name, Caption oder Klasse …',
+     'Alle',
+     'Steuerelemente',
+     'Nichtvisuelle',
+     'Container',
+     'Suche in:',
+     'Name',
+     'Caption',
+     'Klasse',
+     'Hierarchie',
+     'Klasse',
+     'Flach',
+     'Im Designer auswählen',
+     'Zum Ereignis',
+     'Name kopieren',
+     '%d von %d',
+     '↑↓ wählen · Enter auswählen · Strg+Enter zum Ereignis · Strg+C Name kopieren · F4 Vorschau · Esc schließen',
+     '↑↓ wählen · Enter auswählen · Esc schließen',
+     'Lage',
+     'Eigenschaften',
+     'Ereignisse',
+     'keine',
+     'nichtvisuell',
+     'Kein Formular im Designer.',
+     'Designer-Leiste im Formular-Designer (Komponenten suchen, Nichtvisuelle, Elternelement, Tab-Reihenfolge)',
+     'Taste für „Komponenten suchen“ (nur im Designer):',
+     'Fenster „Komponenten suchen“:',
+     'Groß mit Filtern und Vorschau',
+     'Klein wie Strg+P',
+     'Tab-Reihenfolge per Klick auf die Nummern neu vergeben',
+     'Knopf „Ausrichten“ mit Menü'),
+    ('Show or hide non-visual components (Ctrl+H of the IDE)',
+     'The IDE offers no showing and hiding of non-visual components here.',
+     'Select parent',
+     'Show tab order',
+     'Show tab order; clicking the numbers renumbers it (experimental)',
+     'Align: %s (arrow: all commands; experimental)',
+     'Nothing is selected in the designer.',
+     'The selection has no parent in the form.',
+     'This needs more selected controls with the same parent.',
+     '%s: TabOrder %d',
+     'Left edges',
+     'Right edges',
+     'Top edges',
+     'Bottom edges',
+     'Horizontal centers',
+     'Vertical centers',
+     'Center horizontally in parent',
+     'Center vertically in parent',
+     'Same width',
+     'Same height',
+     'Space evenly horizontally',
+     'Space evenly vertically',
+     'Find components',
+     'Name, caption or class …',
+     'All',
+     'Controls',
+     'Non-visual',
+     'Containers',
+     'Search in:',
+     'Name',
+     'Caption',
+     'Class',
+     'Hierarchy',
+     'Class',
+     'Flat',
+     'Select in designer',
+     'Go to event',
+     'Copy name',
+     '%d of %d',
+     '↑↓ move · Enter select · Ctrl+Enter go to event · Ctrl+C copy name · F4 preview · Esc close',
+     '↑↓ move · Enter select · Esc close',
+     'Position',
+     'Properties',
+     'Events',
+     'none',
+     'non-visual',
+     'No form in the designer.',
+     'Designer bar in the form designer (find components, non-visual, parent, tab order)',
+     'Key for “Find components” (designer only):',
+     '“Find components” window:',
+     'Large with filters and preview',
+     'Small like Ctrl+P',
+     'Renumber the tab order by clicking the numbers',
+     '“Align” button with menu'));
+
+{ TAtlasDesignerStrings }
+
+class function TAtlasDesignerStrings.Text(AId: TAtlasDesignerTextId): string;
+begin
+  Result := Texts[TAtlasStrings.Language, AId];
+end;
+
+class function TAtlasDesignerStrings.Fmt(AId: TAtlasDesignerTextId; const AArgs: array of const): string;
+begin
+  Result := Format(Texts[TAtlasStrings.Language, AId], AArgs);
+end;
+
+end.

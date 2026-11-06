@@ -363,7 +363,7 @@
       "category": "bug",
       "severity": "warning",
       "group": "find-bugs",
-      "description": "A path through the function ends without assigning Result. The caller then reads an undefined value.",
+      "description": "A path through the function ends without assigning Result. The caller then reads an undefined value. A for loop runs at least once when both bounds are number literals or true constants of the unit (cAttempts = 3) and the range is not empty, as Delphi evaluates it.",
       "bad": "function Find: Integer;\nbegin\n  if Ok then\n    Result := 1;\nend;",
       "good": "function Find: Integer;\nbegin\n  Result := 0;\n  if Ok then\n    Result := 1;\nend;"
     },
@@ -847,7 +847,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "style",
-      "description": "A string literal with words for people stands in a statement. Move it to a resourcestring so it can be translated. Off by default, low confidence.",
+      "description": "A string literal with words for people stands in a statement. Move it to a resourcestring so it can be translated. Silent for texts nobody translates: arguments of logging and check calls (…Log, Log…, Diagnose, Trace, Debug, Assert, OutputDebugString), comparison and registry calls (StartsText, Pos, ReadString …), masks of FormatDateTime and FormatFloat, markup (HTML from <, JSON from { or \"key\":, Markdown headings # and ##) and Font.Name; option ignoreCalls names further routines. Off by default, low confidence.",
       "bad": "ShowMessage('File not found');",
       "good": "resourcestring\n  SFileNotFound = 'File not found';\n...\nShowMessage(SFileNotFound);"
     },
@@ -1028,7 +1028,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "robustness",
-      "description": "Format with %f, %n, %m, %g or %e and functions like FloatToStr, StrToFloat or DateToStr without a TFormatSettings parameter use the user's locale (decimal separator, date format). For files, protocols and logs pass fixed TFormatSettings. Format('%d', …) is not reported, nor are FormatDateTime and FormatFloat with a fixed picture without separators (: / . ,), such as 'yyyy\"-\"mm\"-\"dd' or 'ddddd t'.",
+      "description": "Format with %f, %n, %m, %g or %e and functions like FloatToStr, StrToFloat or DateToStr without a TFormatSettings parameter use the user's locale (decimal separator, date format). For files, protocols and logs pass fixed TFormatSettings. Format('%d', …) is not reported, nor are FormatDateTime and FormatFloat with a fixed picture without separators (: / . ,), such as 'yyyy\"-\"mm\"-\"dd' or 'ddddd t'. Own routines of the same name stay silent when name resolution finds them: local routines, methods of the own class, routines of the own unit and of a unit that comes after System.SysUtils in uses.",
       "bad": "Line := Format('%.2f', [Amount]);",
       "good": "Line := Format('%.2f', [Amount], TFormatSettings.Invariant);"
     },
@@ -1086,7 +1086,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "performance",
-      "description": "A string variable is extended step by step inside a loop. Delphi usually grows strings in place, so this is reported only with low confidence and is off by default; for many iterations TStringBuilder is faster.",
+      "description": "A string variable is extended step by step inside a loop. Delphi usually grows strings in place, so this is reported only with low confidence and is off by default; for many iterations TStringBuilder is faster. Silent when the variable is assigned anew earlier in every iteration, directly in the loop body and not behind then, else or a case label (it does not grow across the loop).",
       "bad": "for I := 1 to 10000 do\n  S := S + IntToStr(I);",
       "good": "Builder := TStringBuilder.Create;\ntry\n  for I := 1 to 10000 do\n    Builder.Append(I);\n  S := Builder.ToString;\nfinally\n  Builder.Free;\nend;"
     },
@@ -1096,7 +1096,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "performance",
-      "description": "The condition of while and until is evaluated on every iteration. Calls like Trim, Format or FileExists and properties like Lines.Text there are recomputed each time; compute them once before the loop. Bounds of for loops are evaluated only once and are not reported. Off by default.",
+      "description": "The condition of while and until is evaluated on every iteration. Calls like Trim, Format or FileExists and properties like Lines.Text there are recomputed each time; compute them once before the loop. Bounds of for loops are evaluated only once and are not reported, nor is .Text when it is a field of a type in the same file (record field), nor calls whose argument the loop changes (assignment, Inc, Dec, Delete, SetLength, Include, Exclude). Off by default.",
       "bad": "while I < Length(Trim(Memo.Lines.Text)) do\n  Inc(I);",
       "good": "Text := Trim(Memo.Lines.Text);\nwhile I < Length(Text) do\n  Inc(I);"
     },
@@ -1106,7 +1106,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "performance",
-      "description": "Items.Add, Lines.Add and similar calls in a loop repaint the control on every call. Wrap the loop in BeginUpdate and try … finally EndUpdate. Silent for menus (TMenuItem has no BeginUpdate) and for for loops with at most 10 iterations (fixed bounds or a static array of the same file). Off by default.",
+      "description": "Items.Add, Lines.Add and similar calls in a loop repaint the control on every call. Wrap the loop in BeginUpdate and try … finally EndUpdate. Silent for menus (TMenuItem has no BeginUpdate, also through fields such as FParts.Menu.Items) and for for loops with at most 10 iterations (fixed bounds or a static array of the same file). Off by default.",
       "bad": "for I := 1 to 1000 do\n  ListBox1.Items.Add(IntToStr(I));",
       "good": "ListBox1.Items.BeginUpdate;\ntry\n  for I := 1 to 1000 do\n    ListBox1.Items.Add(IntToStr(I));\nfinally\n  ListBox1.Items.EndUpdate;\nend;"
     },
@@ -1578,7 +1578,7 @@
       "category": "bug",
       "severity": "warning",
       "group": "find-bugs",
-      "description": "Delete, Remove, Add or another method from the option mutatingMethods is called on the list that the loop is walking forwards by index or with for … in. Forwards, Delete skips the next element and runs past the end, Add is not visited and Insert visits the same element twice; with for … in the RTL raises an exception. A Break or Exit directly after the call ends the loop and stays silent, downto loops too. Quick fix for index loops: rewrite as downto; for for … in collect the elements and change the list after the loop.",
+      "description": "Delete, Remove, Add or another method from the option mutatingMethods is called on the list that the loop is walking forwards by index or with for … in. Forwards, Delete skips the next element and runs past the end, Add is not visited and Insert visits the same element twice; with for … in the RTL raises an exception. A Break or Exit without a condition after the call in the same block ends the loop and stays silent (a Break in an inner loop does not count), downto loops too. Quick fix for index loops: rewrite as downto; for for … in collect the elements and change the list after the loop.",
       "bad": "for I := 0 to Liste.Count - 1 do\n  if Liste[I].Erledigt then\n    Liste.Delete(I);",
       "good": "for I := Liste.Count - 1 downto 0 do\n  if Liste[I].Erledigt then\n    Liste.Delete(I);",
       "options": [
@@ -1832,7 +1832,7 @@
       "category": "bug",
       "severity": "warning",
       "group": "find-bugs",
-      "description": "A case over an enumerated type without else does not cover all values; a value added later silently falls through. The message names the missing values. The type of the selector (variable, parameter, field or chain A.B) comes from name resolution, the values from the index or the unit itself; aliases are followed. Ranges (bsNeu..bsBezahlt) and lists count as present. Selectors with calls, integer and unknown types stay silent. With option requireElse a case with else is reported as well. High confidence. Quick fix \"Fehlende Werte ergänzen (n)\" adds empty branches in declaration order before else or end, with type prefix when the labels use one ({$SCOPEDENUMS ON}).",
+      "description": "A case over an enumerated type without else does not cover all values; a value added later silently falls through. The message names the missing values. The type of the selector (variable, parameter, field or chain A.B) comes from name resolution, the values from the index or the unit itself; aliases are followed. Ranges (bsNeu..bsBezahlt) and lists count as present. Selectors with calls, integer and unknown types stay silent. With option requireElse a case with else is reported as well. High confidence. Quick fix \"Add missing values (n)\" adds empty branches in declaration order before else or end, with type prefix when the labels use one ({$SCOPEDENUMS ON}).",
       "bad": "case Bestellung.Status of\n  bsNeu: Anlegen;\n  bsBezahlt: Versenden;\nend;",
       "good": "case Bestellung.Status of\n  bsNeu: Anlegen;\n  bsBezahlt: Versenden;\n  bsStorniert: ;\n  bsZurueck: ;\nend;",
       "options": [
@@ -2020,7 +2020,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "style",
-      "description": "Number literals (decimal, $hex, floating point, with sign) in statements, outside const sections, types, array bounds and subranges. Allowed values are configurable; DFM coordinates and tests can be excluded through exclude. Off by default and low confidence: it shows up once the rule is switched on and minConfidence is low. Quick fix: Introduce constant (#50) in the const section of the routine.",
+      "description": "Number literals (decimal, $hex, floating point, with sign) in statements, outside const sections, types, array bounds and subranges. Numbers that speak for themselves stay silent: the DPI base 96 in MulDiv, full bit masks ($FF, $FFFF, $FFFFFFFF), time units 24, 60, 1000 and 3600 in *, /, div and mod, and arguments of calls in an array literal whose arguments are all numbers (point lists such as [P(3.5, 1.5), P(9.5, 1.5)]); SetBounds(12, 9, 360, 23) is still reported. Allowed values are configurable; DFM coordinates and tests can be excluded through exclude. Off by default and low confidence: it shows up once the rule is switched on and minConfidence is low. Quick fix: Introduce constant (#50) in the const section of the routine.",
       "bad": "if Tage > 42 then\n  Mahnen;",
       "good": "const\n  Mahnfrist = 42;\n...\nif Tage > Mahnfrist then\n  Mahnen;",
       "options": [
@@ -2150,7 +2150,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "style",
-      "description": "Fields in the public or published section of a class. The section without a visibility keyword only counts for classes without an ancestor or with TObject, because the form designer puts its fields there. Records are excluded unless includeRecords is set; class var is not reported. Off by default. Quick fix: Encapsulate field moves the field as FName into a private section at the end of the class and adds property Name read FName write FName in the old section; accesses from outside stay valid.",
+      "description": "Fields in the public or published section of a class. The section without a visibility keyword only counts for classes without an ancestor or with TObject, because the form designer puts its fields there. Records are excluded unless includeRecords is set; class var and helper classes declared under a private or protected type section are not reported. Off by default. Quick fix: Encapsulate field moves the field as FName into a private section at the end of the class and adds property Name read FName write FName in the old section; accesses from outside stay valid.",
       "bad": "TKunde = class\npublic\n  Name: string;\nend;",
       "good": "TKunde = class\nprivate\n  FName: string;\npublic\n  property Name: string read FName write FName;\nend;",
       "options": [
@@ -2357,7 +2357,7 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "packages",
-      "description": "A [Test] or [TestCase] method that calls no check, neither itself nor through its local routines, methods of the same class or routines of the unit: it is always green. Calls matching assertPatterns (default Assert.*, WillRaise*, Check*), System.Assert and calls on classes with Assert in their name (TRuleAssert.Reports) count as checks. Tests with [WillRaise] or [Ignore] stay silent. High confidence. Quick fixes: insert Assert.Pass as a placeholder, or jump to the method.",
+      "description": "A [Test] or [TestCase] method that calls no check, neither itself nor through its local routines, methods of the same class, routines of the unit or free routines of other units known to the symbol index (AssertTextPair from a shared test unit): it is always green. Calls matching assertPatterns (default Assert.*, WillRaise*, Check*), System.Assert and calls on classes with Assert in their name (TRuleAssert.Reports) count as checks. Tests with [WillRaise] or [Ignore] stay silent. High confidence. Quick fixes: insert Assert.Pass as a placeholder, or jump to the method.",
       "bad": "[Test]\nprocedure TImportTests.LeereDateiWirdGelesen;\nbegin\n  FImport.Laden('leer.csv');\nend;",
       "good": "[Test]\nprocedure TImportTests.LeereDateiWirdGelesen;\nbegin\n  FImport.Laden('leer.csv');\n  Assert.AreEqual(0, FImport.Anzahl);\nend;",
       "options": [
@@ -3431,7 +3431,8 @@
           "default": false,
           "description": "Allow a single statement on the same line as the condition or loop header."
         }
-      ]
+      ],
+      "safeFix": true
     },
     {
       "id": "inherited-constructor-after-try",
@@ -3774,9 +3775,17 @@
       "category": "code-smell",
       "severity": "hint",
       "group": "style",
-      "description": "Nothing from the unit of a uses entry is used: no identifier outside the uses clauses matches one of its interface symbols (including members) or the last part of its name. Same analysis as the dimmed uses entries in the editor (#621): units the index does not know, units with an initialization or finalization section, units from usesKeep and entries in inactive {$IFDEF} branches stay. High confidence. Safe quick fix: remove the entry (with its comma; the only entry removes the whole uses clause), also for bulk fixing with --fix unused-uses. Silent in the editor, where the same entries are dimmed, without a symbol index (--no-index) and with syntax errors.",
+      "description": "Nothing from the unit of a uses entry is used: no identifier outside the uses clauses matches one of its interface symbols (including members) or the last part of its name. Same analysis as the dimmed uses entries in the editor (#621): units the index does not know, units with an initialization or finalization section, units from usesKeep or the keep option, units the form file refers to (a global variable of the unit named like the module in Connection = Form1.Connection, see dfm-reference-unit-missing) and entries in inactive {$IFDEF} branches stay. High confidence. Safe quick fix: remove the entry (with its comma; the only entry removes the whole uses clause), also for bulk fixing with --fix unused-uses. Silent in the editor, where the same entries are dimmed (the dimming follows the rule: off, exclude and lsp-ignore remove it as well), without a symbol index (--no-index) and with syntax errors.",
       "bad": "unit Bericht;\n\ninterface\n\nuses\n  System.SysUtils,\n  System.Classes;  // nothing from System.Classes is used\n\nfunction Titel(const AName: string): string;",
       "good": "unit Bericht;\n\ninterface\n\nuses\n  System.SysUtils;\n\nfunction Titel(const AName: string): string;",
+      "options": [
+        {
+          "name": "keep",
+          "type": "string-list",
+          "default": [],
+          "description": "Units that never count as unused, in addition to usesKeep; also for the dimming in the editor and Clean up uses."
+        }
+      ],
       "safeFix": true
     },
     {
@@ -3958,7 +3967,7 @@
       "category": "bug",
       "severity": "warning",
       "group": "compiler",
-      "description": "A property has the name of a field of an ancestor (like W1009), a field has the name of a field or property of an ancestor, or a non-virtual method has the name and parameters of a non-virtual method of an ancestor (the last two without a code: Delphi 13 compiles them silently). Code that accesses the object through the ancestor type still sees the old member. Virtual methods are reported by hides-virtual, local names by shadowed-name. Republished properties (property Caption;), properties with a new type over an ancestor property, overload, reintroduce, constructors and class methods are not reported. Members the descendant cannot see (private in another unit, strict private with ignoreStrictPrivate) are skipped; ancestors come from the file and the symbol index. Quick fix for fields and properties: rename the member in the class declaration and the bodies of its methods in this unit (FName becomes FKundeName).",
+      "description": "A property has the name of a field of an ancestor (like W1009), a field has the name of a field or property of an ancestor, or a non-virtual method has the name and parameters of a non-virtual method of an ancestor (the last two without a code: Delphi 13 compiles them silently). Code that accesses the object through the ancestor type still sees the old member. Virtual methods are reported by hides-virtual, local names by shadowed-name. Republished properties (property Caption;), properties with a new type over an ancestor property, overload, reintroduce, constructors, class methods and methods implementing a method of an interface in the class's own ancestor list (QueryInterface over TInterfacedObject) are not reported. Members the descendant cannot see (private in another unit, strict private with ignoreStrictPrivate) are skipped; ancestors come from the file and the symbol index. Quick fix for fields and properties: rename the member in the class declaration and the bodies of its methods in this unit (FName becomes FKundeName).",
       "bad": "TBasis = class\n  FName: string;\nend;\nTKunde = class(TBasis)\n  FName: string;\nend;",
       "good": "TBasis = class\n  FName: string;\nend;\nTKunde = class(TBasis)\n  FKundeName: string;\nend;",
       "compilerCodes": [
@@ -4351,6 +4360,16 @@
       "description": "Free, Destroy, DisposeOf or FreeAndNil on Self, or on the global variable of the form's own class, as a statement in an event handler of the form or one of its controls. After the handler returns, the VCL still accesses the object: access violation. Correct is Release, or Action := caFree in OnClose. Event handlers are the methods named in the form file and methods with a Sender: TObject parameter; a form is the root class of the form file with ClientWidth or ClientHeight, or a class derived directly from TForm or TCustomForm (frames and data modules have no Release). Statements in anonymous methods and with blocks do not count. Silent without the form file. High confidence. Quick fix: replace Free with Release; in OnClose (var Action: TCloseAction) with Action := caFree.",
       "bad": "procedure TfrmMeldung.btnOKClick(Sender: TObject);\nbegin\n  Free;\nend;",
       "good": "procedure TfrmMeldung.btnOKClick(Sender: TObject);\nbegin\n  Release;\nend;"
+    },
+    {
+      "id": "dfm-reference-unit-missing",
+      "name": "Form file refers to a module whose unit is not in the uses clause",
+      "category": "bug",
+      "severity": "warning",
+      "group": "forms",
+      "description": "A property in the form file points to a component of another form, frame or data module (Connection = Form1.Connection), but the unit of that module is neither in the interface nor in the implementation uses clause. When the form is opened, the IDE only opens the modules from the uses clause along with it; otherwise the reference stays empty and is lost when the form is saved. At run time the VCL only resolves the reference while a module of that name exists. The module is the name of the root component (Form1, not TForm1). Its unit comes from the .dpr of the project (Unit1 in 'Unit1.pas' {Form1}, high confidence) or else from the index: a global variable of that name in the interface of a unit that declares its type as a class (medium confidence). Silent for references to the own form, to own components (embedded frames such as Frame11.Button1) and to modules whose unit is known neither from the .dpr nor from the index. Reported at the field of the component that holds the reference, otherwise at the form class; the line in the form file is shown as a related location. Quick fix: add the unit to the implementation uses clause, as the IDE offers.",
+      "bad": "// Unit2.dfm: Connection = Form1.Connection\nimplementation\n\n{$R *.dfm}",
+      "good": "// Unit2.dfm: Connection = Form1.Connection\nimplementation\n\nuses\n  Unit1;\n\n{$R *.dfm}"
     },
     {
       "id": "parallel-for-shared-write",

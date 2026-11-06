@@ -223,6 +223,35 @@ begin
   Result := AOverview.Subsystems[AOverview.Units[AOverview.IndexOf(AUnit)].Subsystem];
 end;
 
+/// <summary>Baseline vor dem letzten Stand; keepPrevious aus und ohne PreviousFile keine Datei.</summary>
+procedure AssertBaselineBeforeLastState(AService: TArchitectureService; var ARequest: TArchitectureRequest; const AFolder, APrevious: string);
+var
+  mOverview: TArchitectureOverview;
+  mBaseline: TArchitectureSnapshot;
+begin
+  // Baseline vor dem letzten Stand: der Stand ohne Index.B4 (Index.B* hieß dort „Index 2“).
+  mBaseline := TArchitectureSnapshots.FromOverview(AlignmentOverview(False));
+  TArchitectureSnapshots.Save(TPath.Combine(AFolder, 'stand.json'), mBaseline);
+  ARequest.Root := AFolder;
+  ARequest.Baseline := 'stand.json';
+  mOverview := AService.Overview(ARequest);
+  Assert.AreEqual(TArchitectureAnalyzer.AlignedBaseline, mOverview.AlignedSource);
+  Assert.AreEqual('Index 2', SubsystemOf(mOverview, 'Index.B1').Name);
+  // keepPrevious aus: wie ohne Angleichung, keine Datei.
+  TFile.Delete(APrevious);
+  ARequest.KeepPrevious := False;
+  mOverview := AService.Overview(ARequest);
+  Assert.IsFalse(mOverview.IsAligned);
+  Assert.AreEqual('Index', SubsystemOf(mOverview, 'Index.B1').Name);
+  Assert.IsFalse(FileExists(APrevious));
+  // Ohne PreviousFile (AtlasServer --architecture): nur an die Baseline, keine Datei.
+  ARequest.KeepPrevious := True;
+  ARequest.PreviousFile := '';
+  mOverview := AService.Overview(ARequest);
+  Assert.AreEqual(TArchitectureAnalyzer.AlignedBaseline, mOverview.AlignedSource);
+  Assert.IsFalse(FileExists(APrevious));
+end;
+
 procedure TArchitectureServiceTests.KeepsPreviousState;
 var
   mIndex: ISymbolIndex;
@@ -231,13 +260,14 @@ var
   mOverview: TArchitectureOverview;
   mFolder, mPrevious: string;
   mItem: TUnitIndex;
-  mBaseline: TArchitectureSnapshot;
 begin
   mFolder := TPath.Combine(TPath.GetTempPath, 'AtlasAngleichung' + IntToStr(Random(1000000)));
   mPrevious := TPath.Combine(TPath.Combine(mFolder, 'Cache'), 'architecture-last.json');
   mIndex := TSymbolIndex.Create;
   for mItem in AlignmentSample(False) do
+  begin
     mIndex.AddUnit(mItem);
+  end;
   mService := NewService(mIndex);
   try
     mRequest := Default(TArchitectureRequest);
@@ -266,31 +296,13 @@ begin
     mOverview := mService.Overview(mRequest);
     Assert.AreEqual(3, mService.Computations, 'danach wieder aus dem Zwischenspeicher');
     Assert.AreEqual('Index', SubsystemOf(mOverview, 'Index.B1').Name);
-    // Baseline vor dem letzten Stand: der Stand ohne Index.B4 (Index.B* hieß dort „Index 2“).
-    mBaseline := TArchitectureSnapshots.FromOverview(AlignmentOverview(False));
-    TArchitectureSnapshots.Save(TPath.Combine(mFolder, 'stand.json'), mBaseline);
-    mRequest.Root := mFolder;
-    mRequest.Baseline := 'stand.json';
-    mOverview := mService.Overview(mRequest);
-    Assert.AreEqual(TArchitectureAnalyzer.AlignedBaseline, mOverview.AlignedSource);
-    Assert.AreEqual('Index 2', SubsystemOf(mOverview, 'Index.B1').Name);
-    // keepPrevious aus: wie ohne Angleichung, keine Datei.
-    TFile.Delete(mPrevious);
-    mRequest.KeepPrevious := False;
-    mOverview := mService.Overview(mRequest);
-    Assert.IsFalse(mOverview.IsAligned);
-    Assert.AreEqual('Index', SubsystemOf(mOverview, 'Index.B1').Name);
-    Assert.IsFalse(FileExists(mPrevious));
-    // Ohne PreviousFile (AtlasServer --architecture): nur an die Baseline, keine Datei.
-    mRequest.KeepPrevious := True;
-    mRequest.PreviousFile := '';
-    mOverview := mService.Overview(mRequest);
-    Assert.AreEqual(TArchitectureAnalyzer.AlignedBaseline, mOverview.AlignedSource);
-    Assert.IsFalse(FileExists(mPrevious));
+    AssertBaselineBeforeLastState(mService, mRequest, mFolder, mPrevious);
   finally
     mService.Free;
     if TDirectory.Exists(mFolder) then
+    begin
       TDirectory.Delete(mFolder, True);
+    end;
   end;
 end;
 

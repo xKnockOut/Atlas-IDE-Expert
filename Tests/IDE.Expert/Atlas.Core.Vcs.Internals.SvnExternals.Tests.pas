@@ -49,9 +49,13 @@ begin
     mFileName := TPath.Combine(mDirectory, TPath.Combine('Tests', TPath.Combine('Data',
       TPath.Combine(AFolder, AName))));
     if TFile.Exists(mFileName) then
+    begin
       Exit(TFile.ReadAllText(mFileName, TEncoding.UTF8));
+    end;
     if ExtractFileDir(mDirectory) = mDirectory then
+    begin
       Break;
+    end;
     mDirectory := ExtractFileDir(mDirectory);
   end;
   raise Exception.Create('Tests\Data\' + AFolder + '\' + AName + ' nicht gefunden');
@@ -72,8 +76,12 @@ var
   mItem: TAtlasVcsSvnExternal;
 begin
   for mItem in AItems do
+  begin
     if mItem.Folder = AFolder then
+    begin
       Exit(mItem);
+    end;
+  end;
   raise Exception.Create('External ' + AFolder + ' fehlt');
 end;
 
@@ -175,8 +183,12 @@ begin
   mAfter := mText.Split([#10]);
   Assert.AreEqual(Integer(Length(mBefore)), Integer(Length(mAfter)));
   for mIndex := 0 to High(mBefore) do
+  begin
     if mIndex <> 1 then
+    begin
       Assert.AreEqual(mBefore[mIndex], mAfter[mIndex], 'Zeile ' + IntToStr(mIndex) + ' unverändert');
+    end;
+  end;
   Assert.AreEqual(mLine, mAfter[1]);
   // Anführungszeichen bleiben, wie sie dastehen.
   Assert.AreEqual('-r 7 "^/Packages/Mein Paket/trunk" "Packages/Mein Paket"',

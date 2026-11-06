@@ -88,12 +88,12 @@ type
     /// <summary>Klasse auf der Kopfzeile ALine; nil ohne.</summary>
     class function ClassAt(ATree: TSyntaxTree; ALine: Integer): TSyntaxNode; static;
     /// <summary>Kandidaten und Vorschlag; False mit Grund ohne Klasse oder ohne Kandidaten.</summary>
-    class function Prepare(ATree: TSyntaxTree; const AText: string; ALine: Integer; const ASuffix: string;
-      const ANameInUse: TNameInUse; out AInfo: TSuperclassInfo; out AReason: string): Boolean; static;
+    class function Prepare(const ASource: TClassSource; const ASuffix: string; const ANameInUse: TNameInUse;
+      out AInfo: TSuperclassInfo; out AReason: string): Boolean; static;
     /// <summary>Neuer Text der Unit für ARequest; False mit Grund (Name, Auswahl, Abhängigkeiten).</summary>
-    class function Plan(ATree: TSyntaxTree; const AText: string; ALine: Integer;
-      const ARequest: TSuperclassRequest; const AIsInterface: TIsInterfaceType; const ANameInUse: TNameInUse;
-      out APlan: TSuperclassPlan; out AReason: string): Boolean; static;
+    class function Plan(const ASource: TClassSource; const ARequest: TSuperclassRequest;
+      const AIsInterface: TIsInterfaceType; const ANameInUse: TNameInUse; out APlan: TSuperclassPlan;
+      out AReason: string): Boolean; static;
   end;
 
 implementation
@@ -103,7 +103,43 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Editing.TextChanges;
+  Atlas.Common.Editing.TextChanges,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TEditingExtractSuperclassText = (ThereIsNoClassAt, HasNoFieldsMethodsOr, ConstructorsAndDestructorsStayStatements,
+    IsNotAValidIdentifier, TheBaseClassMustNot, TheNameIsAlreadyTaken, MemberIsNotACandidate, CannotMove,
+    PleaseSelectAtLeastOne, CannotBecomeAbstract, PleaseTakeItAlongOr, BecomesBecauseStillUsesIt,
+    TheUnitHasNoImplementation, TheClassIsNoLonger);
+
+const
+  cTexts: array[TEditingExtractSuperclassText] of TAtlasText = (
+    (De: 'An dieser Stelle steht keine Klasse.'; En: 'There is no class at this position.'),
+    (De: '%s hat keine Felder, Methoden oder Properties für eine Basisklasse.';
+     En: '%s has no fields, methods or properties for a base class.'),
+    (De: 'Konstruktoren und Destruktoren bleiben; Anweisungen direkt bei inherited, die nur verschobene Felder ' +
+      'setzen bzw. freigeben, wandern in einen eigenen der Basisklasse.';
+     En: 'Constructors and destructors stay; statements right at inherited that only set or free moved fields go ' +
+      'into an own one of the base class.'),
+    (De: '"%s" ist kein gültiger Bezeichner.'; En: '"%s" is not a valid identifier.'),
+    (De: 'Die Basisklasse darf nicht wie die Klasse heißen.';
+     En: 'The base class must not have the same name as the class.'),
+    (De: 'Der Name %s ist schon vergeben.'; En: 'The name %s is already taken.'),
+    (De: 'Mitglied %d ist kein Kandidat.'; En: 'Member %d is not a candidate.'),
+    (De: '%s kann nicht wandern: %s.'; En: '%s cannot move: %s.'),
+    (De: 'Bitte mindestens ein Mitglied wählen.'; En: 'Please select at least one member.'),
+    (De: '%s kann nicht abstrakt werden: %s.'; En: '%s cannot become abstract: %s.'),
+    (De: '. Bitte mitnehmen oder abstrakt deklarieren.'; En: '. Please take it along or declare it abstract.'),
+    (De: '%s wird %s, weil %s es weiter benutzt.'; En: '%s becomes %s because %s still uses it.'),
+    (De: 'Die Unit hat keinen implementation-Teil für die Rümpfe der Basisklasse.';
+     En: 'The unit has no implementation part for the bodies of the base class.'),
+    (De: 'Die Klasse ist nach dem Umbau nicht mehr lesbar.';
+     En: 'The class is no longer readable after the change.'));
+
+{$SCOPEDENUMS OFF}
 
 type
   /// <summary>Aufteilung eines Konstruktors bzw. Destruktors.</summary>
@@ -117,6 +153,13 @@ type
     Remaining: TArray<string>;
   end;
 
+  /// <summary>Namen für die Prüfung einer Anweisung: lokale, wandernde und bleibende.</summary>
+  TSplitNames = record
+    Locals: TArray<string>;
+    Allowed: TArray<string>;
+    Own: TArray<string>;
+  end;
+
 function Fail(const AReason: string; out AOut: string): Boolean;
 begin
   AOut := AReason;
@@ -128,8 +171,12 @@ var
   Item: string;
 begin
   for Item in AList do
+  begin
     if SameText(Item, AValue) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -137,7 +184,9 @@ function StripT(const AName: string): string;
 begin
   Result := AName;
   if (Length(Result) > 1) and CharInSet(Result[1], ['T', 't']) and CharInSet(Result[2], ['A'..'Z']) then
+  begin
     Result := Copy(Result, 2, MaxInt);
+  end;
 end;
 
 /// <summary>Wortteile eines Namens in CamelCase (PdfExport → Pdf, Export; HTMLView → HTML, View).</summary>
@@ -148,6 +197,7 @@ begin
   Result := nil;
   Start := 1;
   for Index := 2 to Length(AName) do
+  begin
     if CharInSet(AName[Index], ['A'..'Z']) and (CharInSet(AName[Index - 1], ['a'..'z', '0'..'9']) or
       ((Index < Length(AName)) and CharInSet(AName[Index + 1], ['a'..'z']) and
       CharInSet(AName[Index - 1], ['A'..'Z']))) then
@@ -155,8 +205,11 @@ begin
       Result := Result + [Copy(AName, Start, Index - Start)];
       Start := Index;
     end;
+  end;
   if Start <= Length(AName) then
+  begin
     Result := Result + [Copy(AName, Start, MaxInt)];
+  end;
 end;
 
 /// <summary>Namen, die ANode benutzt: Bezeichner und Self.X.</summary>
@@ -165,14 +218,22 @@ var
   Index: Integer;
 begin
   if ANode = nil then
+  begin
     Exit;
+  end;
   if ANode.Kind = TSyntaxKind.Identifier then
-    ANames := ANames + [ANode.Name]
+  begin
+    ANames := ANames + [ANode.Name];
+  end
   else if (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount > 0) and
     (ANode[0].Kind = TSyntaxKind.Identifier) and SameText(ANode[0].Name, 'Self') then
+  begin
     ANames := ANames + [ANode.Name];
+  end;
   for Index := 0 to ANode.ChildCount - 1 do
+  begin
     CollectNames(ANode[Index], ANames);
+  end;
 end;
 
 function NamesOf(ANode: TSyntaxNode): TArray<string>;
@@ -186,28 +247,53 @@ var
   Index: Integer;
 begin
   if ANode.Kind = TSyntaxKind.InheritedExpr then
+  begin
     Exit(True);
+  end;
   // Nur der Aufruf selbst, nicht Argumente.
   if ANode.Kind in [TSyntaxKind.CallStatement, TSyntaxKind.Call] then
+  begin
     for Index := 0 to ANode.ChildCount - 1 do
+    begin
       if HasInherited(ANode[Index]) then
+      begin
         Exit(True);
+      end;
+    end;
+  end;
   Result := False;
+end;
+
+procedure AddDeclaredNames(ASection: TSyntaxNode; var ANames: TArray<string>);
+var
+  mItem: Integer;
+  mName: string;
+begin
+  for mItem := 0 to ASection.ChildCount - 1 do
+  begin
+    for mName in ASection[mItem].Name.Split([',']) do
+    begin
+      if Trim(mName) <> '' then
+      begin
+        ANames := ANames + [Trim(mName)];
+      end;
+    end;
+  end;
 end;
 
 /// <summary>Lokale Variablen und Konstanten einer Routine.</summary>
 function LocalNames(ABody: TSyntaxNode): TArray<string>;
 var
-  Index, Item: Integer;
-  Name: string;
+  mIndex: Integer;
 begin
   Result := nil;
-  for Index := 0 to ABody.ChildCount - 1 do
-    if ABody[Index].Kind in [TSyntaxKind.VarSection, TSyntaxKind.ConstSection] then
-      for Item := 0 to ABody[Index].ChildCount - 1 do
-        for Name in ABody[Index][Item].Name.Split([',']) do
-          if Trim(Name) <> '' then
-            Result := Result + [Trim(Name)];
+  for mIndex := 0 to ABody.ChildCount - 1 do
+  begin
+    if ABody[mIndex].Kind in [TSyntaxKind.VarSection, TSyntaxKind.ConstSection] then
+    begin
+      AddDeclaredNames(ABody[mIndex], Result);
+    end;
+  end;
 end;
 
 /// <summary>Steht die Anweisung allein auf ihren Zeilen (davor nur Leerraum, dahinter höchstens ";")?</summary>
@@ -225,7 +311,117 @@ function BlockOf(ABody: TSyntaxNode): TSyntaxNode;
 begin
   Result := nil;
   if ABody <> nil then
+  begin
     Result := ABody.FindChild(TSyntaxKind.Block);
+  end;
+end;
+
+/// <summary>Index der Anweisung mit inherited; -1 ohne.</summary>
+function InheritedIndex(ABlock: TSyntaxNode): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to ABlock.ChildCount - 1 do
+  begin
+    if HasInherited(ABlock[mIndex]) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
+/// <summary>Benutzt die Anweisung ein wanderndes Mitglied und weder lokale Variablen noch bleibende Mitglieder?
+/// </summary>
+function CanMove(const ANames: TArray<string>; const ACheck: TSplitNames): Boolean;
+var
+  mName: string;
+begin
+  Result := False;
+  for mName in ANames do
+  begin
+    if ContainsText(ACheck.Locals, mName) then
+    begin
+      Exit(False);
+    end;
+    if ContainsText(ACheck.Allowed, mName) then
+    begin
+      Result := True;
+    end
+    else if ContainsText(ACheck.Own, mName) then
+    begin
+      Exit(False);
+    end;
+  end;
+end;
+
+/// <summary>Konstruktor: zusammenhängend direkt hinter inherited; Destruktor: direkt davor (Reihenfolge bleibt).
+/// </summary>
+function ScanStart(AKind: TClassMemberKind; AInherit, ACount: Integer; out AStep: Integer): Integer;
+begin
+  if AKind = TClassMemberKind.Constructor_ then
+  begin
+    AStep := 1;
+    Exit(AInherit + 1);
+  end;
+  AStep := -1;
+  if AInherit < 0 then
+  begin
+    Result := ACount - 1;
+  end
+  else
+  begin
+    Result := AInherit - 1;
+  end;
+end;
+
+/// <summary>Anweisungen ab AStart in Richtung AStep, die wandern können, in der Reihenfolge des Rumpfs.</summary>
+function MovedStatements(ALayout: TClassLayout; ABlock: TSyntaxNode; AStart, AStep: Integer;
+  const ACheck: TSplitNames): TArray<TSyntaxNode>;
+var
+  mIndex: Integer;
+  mStatement: TSyntaxNode;
+begin
+  Result := nil;
+  mIndex := AStart;
+  while (mIndex >= 0) and (mIndex < ABlock.ChildCount) do
+  begin
+    mStatement := ABlock[mIndex];
+    if not (WholeLines(ALayout, mStatement) and CanMove(NamesOf(mStatement), ACheck)) then
+    begin
+      Break;
+    end;
+    if AStep > 0 then
+    begin
+      Result := Result + [mStatement];
+    end
+    else
+    begin
+      Result := TArray<TSyntaxNode>.Create(mStatement) + Result;
+    end;
+    Inc(mIndex, AStep);
+  end;
+end;
+
+function IsWithin(ANode: TSyntaxNode; const AMoved: TArray<TSyntaxNode>): Boolean;
+begin
+  Result := (AMoved <> nil) and (ANode.StartOffset >= AMoved[0].StartOffset) and
+    (ANode.EndOffset <= AMoved[High(AMoved)].EndOffset);
+end;
+
+/// <summary>Namen, die die bleibenden Anweisungen benutzen.</summary>
+function RemainingNames(ABlock: TSyntaxNode; const AMoved: TArray<TSyntaxNode>): TArray<string>;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to ABlock.ChildCount - 1 do
+  begin
+    if not IsWithin(ABlock[mIndex], AMoved) then
+    begin
+      Result := Result + NamesOf(ABlock[mIndex]);
+    end;
+  end;
 end;
 
 /// <summary>Anweisungen von AMember (Konstruktor oder Destruktor), die in die Basisklasse wandern können.
@@ -233,73 +429,31 @@ end;
 function SplitOf(ALayout: TClassLayout; AMember: Integer; const AAllowed, AOwn: TArray<string>;
   out ASplit: TStatementSplit): Boolean;
 var
-  Member: TClassMember;
-  Block: TSyntaxNode;
-  Locals, Names: TArray<string>;
-  Index, Inherit, Step: Integer;
-  Statement: TSyntaxNode;
-  Name: string;
-  UsesMoved, Blocked: Boolean;
+  mMember: TClassMember;
+  mBlock: TSyntaxNode;
+  mCheck: TSplitNames;
+  mInherit, mStart, mStep: Integer;
 begin
   ASplit := Default(TStatementSplit);
   ASplit.Member := AMember;
-  Member := ALayout.Members[AMember];
-  Block := BlockOf(Member.Body);
-  if Block = nil then
-    Exit(False);
+  mMember := ALayout.Members[AMember];
+  mBlock := BlockOf(mMember.Body);
   // Der Destruktor der Basisklasse läuft nur über override.
-  if (Member.Kind = TClassMemberKind.Destructor_) and not Member.HasDirective('override') then
+  if (mBlock = nil) or (mMember.Kind = TClassMemberKind.Destructor_) and not mMember.HasDirective('override') then
+  begin
     Exit(False);
-  Locals := LocalNames(Member.Body);
-  Inherit := -1;
-  for Index := 0 to Block.ChildCount - 1 do
-    if HasInherited(Block[Index]) then
-    begin
-      Inherit := Index;
-      Break;
-    end;
-  if Inherit >= 0 then
-    ASplit.Inherited_ := Block[Inherit];
-  // Konstruktor: zusammenhängend direkt hinter inherited; Destruktor: direkt davor (Reihenfolge bleibt).
-  if Member.Kind = TClassMemberKind.Constructor_ then
-  begin
-    Index := Inherit + 1;
-    Step := 1;
-  end
-  else
-  begin
-    Index := Inherit - 1;
-    if Inherit < 0 then
-      Index := Block.ChildCount - 1;
-    Step := -1;
   end;
-  while (Index >= 0) and (Index < Block.ChildCount) do
+  mCheck.Locals := LocalNames(mMember.Body);
+  mCheck.Allowed := AAllowed;
+  mCheck.Own := AOwn;
+  mInherit := InheritedIndex(mBlock);
+  if mInherit >= 0 then
   begin
-    Statement := Block[Index];
-    if not WholeLines(ALayout, Statement) then
-      Break;
-    Names := NamesOf(Statement);
-    UsesMoved := False;
-    Blocked := False;
-    for Name in Names do
-      if ContainsText(Locals, Name) then
-        Blocked := True
-      else if ContainsText(AAllowed, Name) then
-        UsesMoved := True
-      else if ContainsText(AOwn, Name) then
-        Blocked := True;
-    if Blocked or not UsesMoved then
-      Break;
-    if Step > 0 then
-      ASplit.Moved := ASplit.Moved + [Statement]
-    else
-      ASplit.Moved := [Statement] + ASplit.Moved;
-    Inc(Index, Step);
+    ASplit.Inherited_ := mBlock[mInherit];
   end;
-  for Index := 0 to Block.ChildCount - 1 do
-    if not ((ASplit.Moved <> nil) and (Block[Index].StartOffset >= ASplit.Moved[0].StartOffset) and
-      (Block[Index].EndOffset <= ASplit.Moved[High(ASplit.Moved)].EndOffset)) then
-      ASplit.Remaining := ASplit.Remaining + NamesOf(Block[Index]);
+  mStart := ScanStart(mMember.Kind, mInherit, mBlock.ChildCount, mStep);
+  ASplit.Moved := MovedStatements(ALayout, mBlock, mStart, mStep, mCheck);
+  ASplit.Remaining := RemainingNames(mBlock, ASplit.Moved);
   Result := ASplit.Moved <> nil;
 end;
 
@@ -322,7 +476,9 @@ var
 begin
   Result := ALayout.Head(AIndex);
   for Directive in TMemberTransfer.DirectiveTexts(ALayout, ALayout.Members[AIndex].Node) do
+  begin
     Result := Result + ' ' + Directive + ';';
+  end;
 end;
 
 /// <summary>Typparameter ohne Einschränkungen ("&lt;T: class; U&gt;" → "&lt;T, U&gt;"); '' ohne.</summary>
@@ -332,16 +488,22 @@ var
   Names: TArray<string>;
 begin
   if AParams = '' then
+  begin
     Exit('');
+  end;
   Inner := Copy(AParams, 2, Length(AParams) - 2);
   Names := nil;
   for Part in Inner.Split([',', ';']) do
   begin
     Name := Trim(Part);
     if Pos(':', Name) > 0 then
+    begin
       Name := Trim(Copy(Name, 1, Pos(':', Name) - 1));
+    end;
     if IsIdentifier(Name) then
+    begin
       Names := Names + [Name];
+    end;
   end;
   Result := '<' + string.Join(', ', Names) + '>';
 end;
@@ -357,13 +519,19 @@ begin
   Header := Body.FindChild(TSyntaxKind.RoutineHeader);
   Text := Copy(ALayout.Text, Body.StartOffset + 1, Header.EndOffset - Body.StartOffset);
   if not Text.EndsWith(';') then
+  begin
     Text := Text + ';';
+  end;
   // Der erste Klassenname vor dem Punkt.
   Position := Pos(LowerCase(ALayout.Name) + '.', LowerCase(Text));
   if Position = 0 then
+  begin
     Position := Pos(LowerCase(ALayout.Name) + '<', LowerCase(Text));
+  end;
   if Position > 0 then
+  begin
     Text := Copy(Text, 1, Position - 1) + ABaseName + Copy(Text, Position + Length(ALayout.Name), MaxInt);
+  end;
   Result := Text;
 end;
 
@@ -378,8 +546,12 @@ begin
     begin
       Result := True;
       for Split in ASplits do
+      begin
         if Split.Member = AUser then
+        begin
           Result := ContainsText(Split.Remaining, AName);
+        end;
+      end;
     end;
 end;
 
@@ -393,11 +565,17 @@ begin
   Rest := StripT(AClassName);
   Parts := Words(Rest);
   if Length(Parts) > 1 then
+  begin
     Rest := string.Join('', Copy(Parts, 1, MaxInt));
+  end;
   if SameText(ASuffix, 'Custom') then
-    Result := 'TCustom' + Rest
+  begin
+    Result := 'TCustom' + Rest;
+  end
   else
+  begin
     Result := 'T' + Rest + ASuffix;
+  end;
 end;
 
 class function TExtractSuperclass.ClassAt(ATree: TSyntaxTree; ALine: Integer): TSyntaxNode;
@@ -405,326 +583,781 @@ begin
   Result := TClassLayout.DeclAt(ATree, ALine, False);
 end;
 
-class function TExtractSuperclass.Prepare(ATree: TSyntaxTree; const AText: string; ALine: Integer;
-  const ASuffix: string; const ANameInUse: TNameInUse; out AInfo: TSuperclassInfo; out AReason: string): Boolean;
+/// <summary>Bisheriger Vorfahr ohne TObject; '' ohne.</summary>
+function AncestorName(ALayout: TClassLayout): string;
+begin
+  Result := '';
+  if (ALayout.Ancestors <> nil) and not SameText(ALayout.Ancestors[0], 'TObject') then
+  begin
+    Result := ALayout.Ancestors[0];
+  end;
+end;
+
+function HasSplitMember(ALayout: TClassLayout): Boolean;
 var
-  Decl: TSyntaxNode;
-  Layout: TClassLayout;
-  Counter: Integer;
-  Member: TClassMember;
-  Name, Suffix: string;
-  HasSplit: Boolean;
+  mMember: TClassMember;
+begin
+  for mMember in ALayout.Members do
+  begin
+    if mMember.Kind in [TClassMemberKind.Constructor_, TClassMemberKind.Destructor_] then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Name mit dem ganzen Klassennamen (TPdfExportBase bzw. TCustomPdfExport).</summary>
+function FullName(const AClassName, ASuffix: string): string;
+begin
+  if SameText(ASuffix, 'Custom') then
+  begin
+    Result := 'TCustom' + StripT(AClassName);
+  end
+  else
+  begin
+    Result := 'T' + StripT(AClassName) + ASuffix;
+  end;
+end;
+
+/// <summary>Erste freie Zahl ab 2 für AName (höchstens 100).</summary>
+function FreeNumber(const AName: string; const ANameInUse: TNameInUse): Integer;
+begin
+  Result := 2;
+  while ANameInUse(AName + IntToStr(Result)) and (Result < 100) do
+  begin
+    Inc(Result);
+  end;
+end;
+
+/// <summary>Vorschlag, der noch frei ist: kurz, dann mit dem ganzen Namen, dann mit Zahl.</summary>
+function FreeName(const AClassName, ASuffix: string; const ANameInUse: TNameInUse): string;
+begin
+  Result := TExtractSuperclass.SuggestName(AClassName, ASuffix);
+  if not (Assigned(ANameInUse) and ANameInUse(Result)) then
+  begin
+    Exit;
+  end;
+  Result := FullName(AClassName, ASuffix);
+  if ANameInUse(Result) then
+  begin
+    Result := Result + IntToStr(FreeNumber(Result, ANameInUse));
+  end;
+end;
+
+class function TExtractSuperclass.Prepare(const ASource: TClassSource; const ASuffix: string;
+  const ANameInUse: TNameInUse; out AInfo: TSuperclassInfo; out AReason: string): Boolean;
+var
+  mDecl: TSyntaxNode;
+  mLayout: TClassLayout;
+  mSuffix: string;
 begin
   AInfo := Default(TSuperclassInfo);
   AReason := '';
-  Decl := ClassAt(ATree, ALine);
-  if Decl = nil then
-    Exit(Fail('An dieser Stelle steht keine Klasse.', AReason));
-  Layout := TClassLayout.Read(ATree, AText, Decl);
+  mDecl := ClassAt(ASource.Tree, ASource.Line);
+  if mDecl = nil then
+  begin
+    Exit(Fail(cTexts[TEditingExtractSuperclassText.ThereIsNoClassAt].Text, AReason));
+  end;
+  mLayout := TClassLayout.Read(ASource.Tree, ASource.Text, mDecl);
   try
-    AInfo.ClassName := Layout.Name;
-    if (Layout.Ancestors <> nil) and not SameText(Layout.Ancestors[0], 'TObject') then
-      AInfo.Ancestor := Layout.Ancestors[0];
-    HasSplit := False;
-    for Member in Layout.Members do
-      if Member.Kind in [TClassMemberKind.Constructor_, TClassMemberKind.Destructor_] then
-        HasSplit := True;
-    AInfo.Candidates := TMemberTransfer.Candidates(Layout);
+    AInfo.ClassName := mLayout.Name;
+    AInfo.Ancestor := AncestorName(mLayout);
+    AInfo.Candidates := TMemberTransfer.Candidates(mLayout);
     if AInfo.Candidates = nil then
-      Exit(Fail(Format('%s hat keine Felder, Methoden oder Properties für eine Basisklasse.', [Layout.Name]),
-        AReason));
-    Suffix := ASuffix;
-    if Suffix = '' then
-      Suffix := 'Base';
-    Name := SuggestName(Layout.Name, Suffix);
-    if Assigned(ANameInUse) and ANameInUse(Name) then
     begin
-      // Mit dem ganzen Namen (TPdfExportBase), dann mit Zahl.
-      if SameText(Suffix, 'Custom') then
-        Name := 'TCustom' + StripT(Layout.Name)
-      else
-        Name := 'T' + StripT(Layout.Name) + Suffix;
-      if ANameInUse(Name) then
-      begin
-        Counter := 2;
-        while ANameInUse(Name + IntToStr(Counter)) and (Counter < 100) do
-          Inc(Counter);
-        Name := Name + IntToStr(Counter);
-      end;
-    end;
-    AInfo.SuggestedName := Name;
-    if HasSplit then
-      AInfo.Notes := AInfo.Notes + ['Konstruktoren und Destruktoren bleiben; Anweisungen direkt bei inherited, die ' +
-        'nur verschobene Felder setzen bzw. freigeben, wandern in einen eigenen der Basisklasse.'];
-  finally
-    Layout.Free;
-  end;
-  Result := True;
-end;
-
-class function TExtractSuperclass.Plan(ATree: TSyntaxTree; const AText: string; ALine: Integer;
-  const ARequest: TSuperclassRequest; const AIsInterface: TIsInterfaceType; const ANameInUse: TNameInUse;
-  out APlan: TSuperclassPlan; out AReason: string): Boolean;
-var
-  Layout, Next: TClassLayout;
-  Tree: TSyntaxTree;
-  Info: TSuperclassInfo;
-  Candidate: TTransferCandidate;
-  Id, Index, Line, FirstBody: Integer;
-  Member: TClassMember;
-  Olds: TArray<TClassMember>;
-  Moved, Abstracts, Chosen, Relocate: TArray<Integer>;
-  Missing, AllowedNames, OwnNames, BaseLines, Bodies, Ancestors: TArray<string>;
-  Visibilities: array[TClassVisibility] of TArray<string>;
-  FinalVisibility: array of TClassVisibility;
-  Splits: TArray<TStatementSplit>;
-  Split: TStatementSplit;
-  Edits: TArray<TTextEdit>;
-  Visibility: TClassVisibility;
-  ForwardNeeded: Boolean;
-  LineBreak, Indent, Text, Header, Body, Name, Ancestor, BaseText, Statement: string;
-  HeaderOffset: Integer;
-begin
-  APlan := Default(TSuperclassPlan);
-  AReason := '';
-  if not Prepare(ATree, AText, ALine, 'Base', nil, Info, AReason) then
-    Exit(False);
-  Name := Trim(ARequest.Name);
-  if not IsIdentifier(Name) then
-    Exit(Fail(Format('"%s" ist kein gültiger Bezeichner.', [Name]), AReason));
-  if SameText(Name, Info.ClassName) then
-    Exit(Fail('Die Basisklasse darf nicht wie die Klasse heißen.', AReason));
-  if Assigned(ANameInUse) and ANameInUse(Name) then
-    Exit(Fail(Format('Der Name %s ist schon vergeben.', [Name]), AReason));
-  if ARequest.Members = nil then
-    Exit(Fail('Bitte mindestens ein Mitglied wählen.', AReason));
-  Chosen := nil;
-  for Id in ARequest.Members do
-  begin
-    Index := TMemberTransfer.IndexOf(Info.Candidates, Id);
-    if Index < 0 then
-      Exit(Fail(Format('Mitglied %d ist kein Kandidat.', [Id]), AReason));
-    if not Info.Candidates[Index].Enabled then
-      Exit(Fail(Format('%s kann nicht wandern: %s.', [Info.Candidates[Index].Name, Info.Candidates[Index].Reason]),
-        AReason));
-    if not TMemberTransfer.Has(Chosen, Id) then
-      Chosen := Chosen + [Id];
-  end;
-  Moved := nil;
-  Abstracts := nil;
-  for Candidate in Info.Candidates do
-  begin
-    if not TMemberTransfer.Has(Chosen, Candidate.Id) then
-      Continue;
-    if TMemberTransfer.Has(ARequest.Abstract, Candidate.Id) then
-    begin
-      if not Candidate.CanAbstract then
-        Exit(Fail(Format('%s kann nicht abstrakt werden: %s.', [Candidate.Name, Candidate.Reason]), AReason));
-      Abstracts := Abstracts + [Candidate.Id];
+      AReason := cTexts[TEditingExtractSuperclassText.HasNoFieldsMethodsOr].Fmt([mLayout.Name]);
     end
     else
-      Moved := Moved + [Candidate.Id];
-  end;
-  Layout := TClassLayout.Read(ATree, AText, ClassAt(ATree, ALine));
-  try
-    // Was wandert, darf nur benutzen, was mitwandert (abstrakt zählt).
-    Missing := TMemberTransfer.MissingNeeds(Layout, Moved, Chosen);
-    if Missing <> nil then
-      Exit(Fail(string.Join('; ', Missing) + '. Bitte mitnehmen oder abstrakt deklarieren.', AReason));
-    LineBreak := Layout.LineBreak;
-    APlan.ClassName := Layout.Name;
-    APlan.BaseName := Name;
-    // Namen der Mitglieder: was oben steht (auch abstrakt) und was unten bleibt.
-    AllowedNames := nil;
-    OwnNames := nil;
-    for Index := 0 to High(Layout.Members) do
-      if TMemberTransfer.Has(Chosen, Index) then
-        AllowedNames := AllowedNames + [Layout.Members[Index].Name]
-      else if Layout.Members[Index].Kind <> TClassMemberKind.Other then
-        OwnNames := OwnNames + [Layout.Members[Index].Name];
-    // Konstruktoren und Destruktoren aufteilen.
-    Splits := nil;
-    for Index := 0 to High(Layout.Members) do
-      if (Layout.Members[Index].Kind in [TClassMemberKind.Constructor_, TClassMemberKind.Destructor_]) and
-        not Layout.Members[Index].IsClassMember and SplitOf(Layout, Index, AllowedNames, OwnNames, Split) then
-        Splits := Splits + [Split];
-    // Sichtbarkeit oben.
-    FinalVisibility := nil;
-    SetLength(FinalVisibility, Length(Layout.Members));
-    for Index := 0 to High(Layout.Members) do
-      FinalVisibility[Index] := Layout.Members[Index].Visibility;
-    Relocate := nil;
-    for Id in Chosen do
     begin
-      Member := Layout.Members[Id];
-      if not TMemberTransfer.MustRaise(Layout, Id, Moved, TMemberTransfer.Has(Abstracts, Id), ARequest.SameUnit,
-        StaysUsed(Splits, Member.Name)) then
-        Continue;
-      FinalVisibility[Id] := ARequest.RaiseVisibility;
-      APlan.Raised := APlan.Raised + [Member.Name];
-      APlan.Warnings := APlan.Warnings + [Format('%s wird %s, weil %s es weiter benutzt.', [Member.Name,
-        TClassEdits.VisibilityName(ARequest.RaiseVisibility), Layout.Name])];
-      // Die Überschreibung unten braucht dieselbe Sichtbarkeit (sonst H2269).
-      if TMemberTransfer.Has(Abstracts, Id) then
-        Relocate := Relocate + [Id];
-    end;
-    // Deklarationen oben, je Abschnitt Felder vor Methoden und Properties.
-    for Visibility := Low(TClassVisibility) to High(TClassVisibility) do
-      Visibilities[Visibility] := nil;
-    for Index := 0 to High(Layout.Members) do
-      if TMemberTransfer.Has(Moved, Index) and (Layout.Members[Index].Kind in [TClassMemberKind.Field,
-        TClassMemberKind.ClassVar]) then
-        Visibilities[FinalVisibility[Index]] := Visibilities[FinalVisibility[Index]] + TMemberTransfer.MemberLines(Layout, Index);
-    for Split in Splits do
-      Visibilities[Layout.Members[Split.Member].Visibility] := Visibilities[Layout.Members[Split.Member].Visibility] +
-        [Layout.MemberIndent + SplitDeclaration(Layout, Split.Member)];
-    for Index := 0 to High(Layout.Members) do
-      if TMemberTransfer.Has(Abstracts, Index) then
-        Visibilities[FinalVisibility[Index]] := Visibilities[FinalVisibility[Index]] +
-          [Layout.MemberIndent + TMemberTransfer.AbstractDeclaration(Layout, Index)]
-      else if TMemberTransfer.Has(Moved, Index) and not (Layout.Members[Index].Kind in [TClassMemberKind.Field,
-        TClassMemberKind.ClassVar]) then
-        Visibilities[FinalVisibility[Index]] := Visibilities[FinalVisibility[Index]] + TMemberTransfer.MemberLines(Layout, Index);
-    Indent := Layout.Indent;
-    Ancestor := '';
-    if (Layout.Ancestors <> nil) and not SameText(Layout.Ancestors[0], 'TObject') then
-    begin
-      Ancestor := Layout.Ancestors[0];
-      if Assigned(AIsInterface) and AIsInterface(Ancestor) then
-        Ancestor := ''
-      else if not Assigned(AIsInterface) and (Length(Ancestor) > 1) and (Ancestor[1] = 'I') and
-        CharInSet(Ancestor[2], ['A'..'Z']) then
-        Ancestor := '';
-    end;
-    BaseLines := nil;
-    Header := Indent + Name + Layout.GenericParams + ' = class';
-    if Ancestor <> '' then
-      Header := Header + '(' + Ancestor + ')';
-    BaseLines := BaseLines + [Header];
-    for Visibility := Low(TClassVisibility) to High(TClassVisibility) do
-      if Visibilities[Visibility] <> nil then
-        BaseLines := BaseLines + [Indent + TClassEdits.VisibilityName(Visibility)] + Visibilities[Visibility];
-    BaseLines := BaseLines + [Indent + 'end;'];
-    // In derselben Unit trennt eine Leerzeile die Klassen; für eine neue Unit wandert die Basisklasse gleich
-    // weiter, ohne eine Leerzeile zurückzulassen.
-    BaseText := string.Join(LineBreak, BaseLines) + LineBreak;
-    if ARequest.SameUnit then
-      BaseText := BaseText + LineBreak;
-    // Braucht oben jemand die Klasse selbst, steht vorher eine Vorwärtsdeklaration.
-    ForwardNeeded := False;
-    HeaderOffset := 0;
-    for Text in BaseLines do
-      for Statement in TArray<string>(Text.Split([' ', '(', ')', ':', ';', ',', '<', '>', '[', ']', '.'])) do
-        if SameText(Statement, Layout.Name) then
-          ForwardNeeded := True;
-    if ForwardNeeded then
-    begin
-      ATree.Root.Walk(
-        function(ANode: TSyntaxNode): Boolean
-        begin
-          Result := True;
-          if (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(ANode.Name, Layout.Name) and
-            (ANode.StartPos.Line < Layout.HeaderLine) then
-            ForwardNeeded := False;
-        end);
-      if ForwardNeeded then
+      mSuffix := ASuffix;
+      if mSuffix = '' then
       begin
-        BaseText := Indent + Layout.Name + Layout.GenericParams + ' = class;' + LineBreak + LineBreak + BaseText;
-        HeaderOffset := 2;
+        mSuffix := 'Base';
       end;
-    end;
-    // Rümpfe oben.
-    Bodies := nil;
-    for Split in Splits do
-    begin
-      Member := Layout.Members[Split.Member];
-      Body := BodyHeader(Layout, Split.Member, Name) + LineBreak +
-        TTextLines.IndentOf(Layout.Lines[BlockOf(Member.Body).StartPos.Line]) + 'begin' + LineBreak;
-      if (Member.Kind = TClassMemberKind.Constructor_) and (Split.Inherited_ <> nil) then
-        Body := Body + StatementLines(Layout, Split.Inherited_, Split.Inherited_);
-      Body := Body + StatementLines(Layout, Split.Moved[0], Split.Moved[High(Split.Moved)]);
-      if (Member.Kind = TClassMemberKind.Destructor_) and (Split.Inherited_ <> nil) then
-        Body := Body + StatementLines(Layout, Split.Inherited_, Split.Inherited_);
-      Body := Body + TTextLines.IndentOf(Layout.Lines[BlockOf(Member.Body).StartPos.Line]) + 'end;';
-      Bodies := Bodies + [Body];
-      APlan.Split := APlan.Split + [Member.Name];
-    end;
-    for Index := 0 to High(Layout.Members) do
-      if TMemberTransfer.Has(Moved, Index) and (Layout.Members[Index].Body <> nil) then
-        Bodies := Bodies + [TClassEdits.BodyText(Layout, Index, Name)];
-    for Index := 0 to High(Layout.Members) do
-      if TMemberTransfer.Has(Moved, Index) then
-        APlan.Moved := APlan.Moved + [Layout.Members[Index].Name]
-      else if TMemberTransfer.Has(Abstracts, Index) then
-        APlan.Abstracts := APlan.Abstracts + [Layout.Members[Index].Name];
-    // Schritt 1: Klasse ändern; Abschnitte, deren Mitglieder alle wandern, fallen weg.
-    Edits := TClassEdits.DeleteMembers(Layout, Moved, True) + TMemberTransfer.EmptiedSections(Layout, Moved);
-    for Id in Abstracts do
-      Edits := Edits + TMemberTransfer.OverrideEdits(Layout, Layout.Members[Id].Node, True);
-    for Split in Splits do
-    begin
-      Member := Layout.Members[Split.Member];
-      // Oben steht er wie bisher; unten überschreibt er ihn (virtual) bzw. verdeckt ihn ohne reintroduce.
-      if Member.HasDirective('virtual') or Member.HasDirective('dynamic') or Member.HasDirective('reintroduce') then
-        Edits := Edits + TMemberTransfer.OverrideEdits(Layout, Member.Node, False);
-      Statement := '';
-      if (Split.Inherited_ = nil) or (Member.Kind = TClassMemberKind.Destructor_) then
+      AInfo.SuggestedName := FreeName(mLayout.Name, mSuffix, ANameInUse);
+      if HasSplitMember(mLayout) then
       begin
-        // Ohne inherited ruft die Klasse den neuen Konstruktor bzw. Destruktor an der Stelle auf.
-        if Split.Inherited_ = nil then
-          Statement := TTextLines.IndentOf(Layout.Lines[Split.Moved[0].StartPos.Line]) + 'inherited;' + LineBreak;
-      end
-      else if not SameText(Trim(StatementLines(Layout, Split.Inherited_, Split.Inherited_)), 'inherited;') then
-        Edits := Edits + [TTextEdit.Create(LinesRange(Split.Inherited_.StartPos.Line, Split.Inherited_.EndPos.Line),
-          TTextLines.IndentOf(Layout.Lines[Split.Inherited_.StartPos.Line]) + 'inherited;' + LineBreak)];
-      Edits := Edits + [TTextEdit.Create(LinesRange(Split.Moved[0].StartPos.Line,
-        Split.Moved[High(Split.Moved)].EndPos.Line), Statement)];
-    end;
-    Ancestors := [Name + GenericArgs(Layout.GenericParams)];
-    for Index := 0 to High(Layout.Ancestors) do
-      if (Index > 0) or (Ancestor = '') and not SameText(Layout.Ancestors[0], 'TObject') then
-        Ancestors := Ancestors + [Layout.Ancestors[Index]];
-    Edits := Edits + [TClassEdits.SetAncestors(Layout, Ancestors)];
-    Text := TTextChanges.Apply(AText, Edits);
-    // Schritt 2: gehobene abstrakte Methoden unten in den Abschnitt der neuen Sichtbarkeit.
-    Olds := nil;
-    for Id in Relocate do
-      Olds := Olds + [Layout.Members[Id]];
-    if not TMemberTransfer.Relocate(Text, Layout.Name, Olds, ARequest.RaiseVisibility) then
-      Exit(Fail('Die Klasse ist nach dem Umbau nicht mehr lesbar.', AReason));
-    // Schritt 3: Basisklasse über die Klasse, ihre Rümpfe vor die der Klasse.
-    Next := TMemberTransfer.ParseLayout(Text, Layout.Name, Tree);
-    if Next = nil then
-      Exit(Fail('Die Klasse ist nach dem Umbau nicht mehr lesbar.', AReason));
-    try
-      Edits := [TClassEdits.InsertBeforeLine(Next.FirstLine, BaseText)];
-      APlan.BaseLine := Next.FirstLine + HeaderOffset;
-      if Bodies <> nil then
-      begin
-        FirstBody := -1;
-        for Member in Next.Members do
-          if (Member.Body <> nil) and ((FirstBody < 0) or (Member.BodyFirstLine < FirstBody)) then
-            FirstBody := Member.BodyFirstLine;
-        if FirstBody >= 0 then
-          Edits := Edits + [TClassEdits.InsertBeforeLine(FirstBody, string.Join(LineBreak + LineBreak, Bodies) +
-            LineBreak + LineBreak)]
-        else
-        begin
-          Line := TClassEdits.BodiesEnd(Tree, Layout.Name);
-          if Line < 0 then
-            Exit(Fail('Die Unit hat keinen implementation-Teil für die Rümpfe der Basisklasse.', AReason));
-          Edits := Edits + [TClassEdits.InsertBodies(Text, Line, Bodies)];
-        end;
+        AInfo.Notes := AInfo.Notes +
+          [cTexts[TEditingExtractSuperclassText.ConstructorsAndDestructorsStayStatements].Text];
       end;
-      APlan.Text := TTextChanges.Apply(Text, Edits);
-    finally
-      Next.Free;
-      Tree.Free;
     end;
   finally
-    Layout.Free;
+    mLayout.Free;
   end;
-  Result := True;
+  Result := AReason = '';
 end;
+
+
+type
+  /// <summary>Gewählte Mitglieder: alle, die verschobenen und die abstrakten.</summary>
+  TSuperclassChoice = record
+    Chosen: TArray<Integer>;
+    Moved: TArray<Integer>;
+    Abstracts: TArray<Integer>;
+  end;
+
+  TVisibilityLines = array[TClassVisibility] of TArray<string>;
+
+  /// <summary>Baut aus Klasse und Auswahl den neuen Text der Unit samt Basisklasse.</summary>
+  TSuperclassBuilder = class
+  strict private
+    FLayout: TClassLayout;
+    FRequest: TSuperclassRequest;
+    FChoice: TSuperclassChoice;
+    FName: string;
+    FLineBreak: string;
+    FSplits: TArray<TStatementSplit>;
+    FFinal: TArray<TClassVisibility>;
+    FRelocate: TArray<Integer>;
+    FAncestor: string;
+    FHeaderOffset: Integer;
+    procedure CollectSplits;
+    procedure RaiseMember(AId: Integer; var APlan: TSuperclassPlan);
+    procedure RaiseVisibilities(var APlan: TSuperclassPlan);
+    function IsFieldMember(AIndex: Integer): Boolean;
+    function DeclarationLines: TVisibilityLines;
+    function BaseLines: TArray<string>;
+    function BaseText(ATree: TSyntaxTree): string;
+    function SplitBody(const ASplit: TStatementSplit): string;
+    function Bodies(var APlan: TSuperclassPlan): TArray<string>;
+    procedure FillNames(var APlan: TSuperclassPlan);
+    function SplitEdits(const ASplit: TStatementSplit): TArray<TTextEdit>;
+    function AncestorEdit: TTextEdit;
+    function ClassEdits: TArray<TTextEdit>;
+    function Relocated(var AText: string): Boolean;
+    function AddBodies(ANext: TClassLayout; ATree: TSyntaxTree; const AText: string; const ABodies: TArray<string>;
+      var AEdits: TArray<TTextEdit>): string;
+    function Insert(const AText, ABaseText: string; const ABodies: TArray<string>; var APlan: TSuperclassPlan): string;
+  public
+    constructor Create(ALayout: TClassLayout; const ARequest: TSuperclassRequest; const AChoice: TSuperclassChoice);
+    function Build(const ASource: TClassSource; const AIsInterface: TIsInterfaceType; var APlan: TSuperclassPlan;
+      out AReason: string): Boolean;
+  end;
+
+function NameError(const AClassName, AName: string; const ANameInUse: TNameInUse): string;
+begin
+  Result := '';
+  if not IsIdentifier(AName) then
+  begin
+    Result := cTexts[TEditingExtractSuperclassText.IsNotAValidIdentifier].Fmt([AName]);
+  end
+  else if SameText(AName, AClassName) then
+  begin
+    Result := cTexts[TEditingExtractSuperclassText.TheBaseClassMustNot].Text;
+  end
+  else if Assigned(ANameInUse) and ANameInUse(AName) then
+  begin
+    Result := cTexts[TEditingExtractSuperclassText.TheNameIsAlreadyTaken].Fmt([AName]);
+  end;
+end;
+
+function CandidateError(const ACandidates: TArray<TTransferCandidate>; AId: Integer): string;
+var
+  mIndex: Integer;
+begin
+  Result := '';
+  mIndex := TMemberTransfer.IndexOf(ACandidates, AId);
+  if mIndex < 0 then
+  begin
+    Result := cTexts[TEditingExtractSuperclassText.MemberIsNotACandidate].Fmt([AId]);
+  end
+  else if not ACandidates[mIndex].Enabled then
+  begin
+    Result := cTexts[TEditingExtractSuperclassText.CannotMove].Fmt([ACandidates[mIndex].Name,
+      ACandidates[mIndex].Reason]);
+  end;
+end;
+
+function ChosenError(const ACandidates: TArray<TTransferCandidate>; const AMembers: TArray<Integer>;
+  out AChosen: TArray<Integer>): string;
+var
+  mId: Integer;
+begin
+  AChosen := nil;
+  if AMembers = nil then
+  begin
+    Exit(cTexts[TEditingExtractSuperclassText.PleaseSelectAtLeastOne].Text);
+  end;
+  for mId in AMembers do
+  begin
+    Result := CandidateError(ACandidates, mId);
+    if Result <> '' then
+    begin
+      Exit;
+    end;
+    if not TMemberTransfer.Has(AChosen, mId) then
+    begin
+      AChosen := AChosen + [mId];
+    end;
+  end;
+  Result := '';
+end;
+
+/// <summary>Teilt die Auswahl in verschobene und abstrakte Mitglieder; Fehler, wenn eines nicht abstrakt werden
+/// kann.</summary>
+function PartitionError(const ACandidates: TArray<TTransferCandidate>; const AAbstract: TArray<Integer>;
+  var AChoice: TSuperclassChoice): string;
+var
+  mCandidate: TTransferCandidate;
+begin
+  AChoice.Moved := nil;
+  AChoice.Abstracts := nil;
+  for mCandidate in ACandidates do
+  begin
+    if not TMemberTransfer.Has(AChoice.Chosen, mCandidate.Id) then
+    begin
+      Continue;
+    end;
+    if not TMemberTransfer.Has(AAbstract, mCandidate.Id) then
+    begin
+      AChoice.Moved := AChoice.Moved + [mCandidate.Id];
+    end
+    else if mCandidate.CanAbstract then
+    begin
+      AChoice.Abstracts := AChoice.Abstracts + [mCandidate.Id];
+    end
+    else
+    begin
+      Exit(cTexts[TEditingExtractSuperclassText.CannotBecomeAbstract].Fmt([mCandidate.Name, mCandidate.Reason]));
+    end;
+  end;
+  Result := '';
+end;
+
+function RequestError(const AInfo: TSuperclassInfo; const ARequest: TSuperclassRequest; const ANameInUse: TNameInUse;
+  out AChoice: TSuperclassChoice): string;
+begin
+  AChoice := Default(TSuperclassChoice);
+  Result := NameError(AInfo.ClassName, Trim(ARequest.Name), ANameInUse);
+  if Result = '' then
+  begin
+    Result := ChosenError(AInfo.Candidates, ARequest.Members, AChoice.Chosen);
+  end;
+  if Result = '' then
+  begin
+    Result := PartitionError(AInfo.Candidates, ARequest.Abstract, AChoice);
+  end;
+end;
+
+/// <summary>Was wandert, darf nur benutzen, was mitwandert (abstrakt zählt); '' wenn alles da ist.</summary>
+function MissingError(ALayout: TClassLayout; const AChoice: TSuperclassChoice): string;
+var
+  mMissing: TArray<string>;
+begin
+  Result := '';
+  mMissing := TMemberTransfer.MissingNeeds(ALayout, AChoice.Moved, AChoice.Chosen);
+  if mMissing <> nil then
+  begin
+    Result := string.Join('; ', mMissing) + cTexts[TEditingExtractSuperclassText.PleaseTakeItAlongOr].Text;
+  end;
+end;
+
+function IsSplitCandidate(const AMember: TClassMember): Boolean;
+begin
+  Result := (AMember.Kind in [TClassMemberKind.Constructor_, TClassMemberKind.Destructor_]) and
+    not AMember.IsClassMember;
+end;
+
+/// <summary>Ist AName ein Interface? Ohne Prüfung nach der Namensregel IXxx.</summary>
+function IsInterfaceName(const AName: string; const AIsInterface: TIsInterfaceType): Boolean;
+begin
+  if Assigned(AIsInterface) then
+  begin
+    Exit(AIsInterface(AName));
+  end;
+  Result := (Length(AName) > 1) and (AName[1] = 'I') and CharInSet(AName[2], ['A'..'Z']);
+end;
+
+/// <summary>Vorfahr der Basisklasse: der bisherige ohne Interfaces und ohne TObject.</summary>
+function BaseAncestor(ALayout: TClassLayout; const AIsInterface: TIsInterfaceType): string;
+begin
+  Result := AncestorName(ALayout);
+  if (Result <> '') and IsInterfaceName(Result, AIsInterface) then
+  begin
+    Result := '';
+  end;
+end;
+
+/// <summary>Kommt AName in den Zeilen als Wort vor?</summary>
+function MentionsName(const ALines: TArray<string>; const AName: string): Boolean;
+var
+  mLine, mWord: string;
+begin
+  for mLine in ALines do
+  begin
+    for mWord in TArray<string>(mLine.Split([' ', '(', ')', ':', ';', ',', '<', '>', '[', ']', '.'])) do
+    begin
+      if SameText(mWord, AName) then
+      begin
+        Exit(True);
+      end;
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Steht vor der Klasse schon eine Vorwärtsdeklaration?</summary>
+function DeclaredBefore(ATree: TSyntaxTree; ALayout: TClassLayout): Boolean;
+var
+  mFound: Boolean;
+  mName: string;
+  mLine: Integer;
+begin
+  mFound := False;
+  mName := ALayout.Name;
+  mLine := ALayout.HeaderLine;
+  ATree.Root.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      Result := True;
+      if (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(ANode.Name, mName) and (ANode.StartPos.Line < mLine) then
+      begin
+        mFound := True;
+      end;
+    end);
+  Result := mFound;
+end;
+
+function IsOverridable(const AMember: TClassMember): Boolean;
+begin
+  Result := AMember.HasDirective('virtual') or AMember.HasDirective('dynamic') or
+    AMember.HasDirective('reintroduce');
+end;
+
+/// <summary>Kleinste Rumpfzeile der Klasse; -1 ohne Rümpfe.</summary>
+function FirstBodyLine(ALayout: TClassLayout): Integer;
+var
+  mMember: TClassMember;
+begin
+  Result := -1;
+  for mMember in ALayout.Members do
+  begin
+    if (mMember.Body <> nil) and ((Result < 0) or (mMember.BodyFirstLine < Result)) then
+    begin
+      Result := mMember.BodyFirstLine;
+    end;
+  end;
+end;
+
+{ TSuperclassBuilder }
+
+constructor TSuperclassBuilder.Create(ALayout: TClassLayout; const ARequest: TSuperclassRequest;
+  const AChoice: TSuperclassChoice);
+begin
+  inherited Create;
+  FLayout := ALayout;
+  FRequest := ARequest;
+  FChoice := AChoice;
+  FName := Trim(ARequest.Name);
+  FLineBreak := ALayout.LineBreak;
+end;
+
+procedure TSuperclassBuilder.CollectSplits;
+var
+  mAllowed, mOwn: TArray<string>;
+  mIndex: Integer;
+  mSplit: TStatementSplit;
+begin
+  // Namen der Mitglieder: was oben steht (auch abstrakt) und was unten bleibt.
+  mAllowed := nil;
+  mOwn := nil;
+  for mIndex := 0 to High(FLayout.Members) do
+  begin
+    if TMemberTransfer.Has(FChoice.Chosen, mIndex) then
+    begin
+      mAllowed := mAllowed + [FLayout.Members[mIndex].Name];
+    end
+    else if FLayout.Members[mIndex].Kind <> TClassMemberKind.Other then
+    begin
+      mOwn := mOwn + [FLayout.Members[mIndex].Name];
+    end;
+  end;
+  FSplits := nil;
+  for mIndex := 0 to High(FLayout.Members) do
+  begin
+    if IsSplitCandidate(FLayout.Members[mIndex]) and SplitOf(FLayout, mIndex, mAllowed, mOwn, mSplit) then
+    begin
+      FSplits := FSplits + [mSplit];
+    end;
+  end;
+end;
+
+procedure TSuperclassBuilder.RaiseMember(AId: Integer; var APlan: TSuperclassPlan);
+var
+  mName: string;
+begin
+  mName := FLayout.Members[AId].Name;
+  FFinal[AId] := FRequest.RaiseVisibility;
+  APlan.Raised := APlan.Raised + [mName];
+  APlan.Warnings := APlan.Warnings + [cTexts[TEditingExtractSuperclassText.BecomesBecauseStillUsesIt].Fmt([mName,
+    TClassEdits.VisibilityName(FRequest.RaiseVisibility), FLayout.Name])];
+  // Die Überschreibung unten braucht dieselbe Sichtbarkeit (sonst H2269).
+  if TMemberTransfer.Has(FChoice.Abstracts, AId) then
+  begin
+    FRelocate := FRelocate + [AId];
+  end;
+end;
+
+procedure TSuperclassBuilder.RaiseVisibilities(var APlan: TSuperclassPlan);
+var
+  mIndex, mId: Integer;
+begin
+  SetLength(FFinal, Length(FLayout.Members));
+  for mIndex := 0 to High(FLayout.Members) do
+  begin
+    FFinal[mIndex] := FLayout.Members[mIndex].Visibility;
+  end;
+  FRelocate := nil;
+  for mId in FChoice.Chosen do
+  begin
+    if TMemberTransfer.MustRaise(FLayout, mId, FChoice.Moved, TMemberTransfer.Has(FChoice.Abstracts, mId),
+      FRequest.SameUnit, StaysUsed(FSplits, FLayout.Members[mId].Name)) then
+    begin
+      RaiseMember(mId, APlan);
+    end;
+  end;
+end;
+
+function TSuperclassBuilder.IsFieldMember(AIndex: Integer): Boolean;
+begin
+  Result := FLayout.Members[AIndex].Kind in [TClassMemberKind.Field, TClassMemberKind.ClassVar];
+end;
+
+function TSuperclassBuilder.DeclarationLines: TVisibilityLines;
+var
+  mVisibility: TClassVisibility;
+  mIndex: Integer;
+  mSplit: TStatementSplit;
+begin
+  // Je Abschnitt Felder vor Methoden und Properties.
+  for mVisibility := Low(TClassVisibility) to High(TClassVisibility) do
+  begin
+    Result[mVisibility] := nil;
+  end;
+  for mIndex := 0 to High(FLayout.Members) do
+  begin
+    if TMemberTransfer.Has(FChoice.Moved, mIndex) and IsFieldMember(mIndex) then
+    begin
+      Result[FFinal[mIndex]] := Result[FFinal[mIndex]] + TMemberTransfer.MemberLines(FLayout, mIndex);
+    end;
+  end;
+  for mSplit in FSplits do
+  begin
+    mVisibility := FLayout.Members[mSplit.Member].Visibility;
+    Result[mVisibility] := Result[mVisibility] + [FLayout.MemberIndent + SplitDeclaration(FLayout, mSplit.Member)];
+  end;
+  for mIndex := 0 to High(FLayout.Members) do
+  begin
+    if TMemberTransfer.Has(FChoice.Abstracts, mIndex) then
+    begin
+      Result[FFinal[mIndex]] := Result[FFinal[mIndex]] +
+        [FLayout.MemberIndent + TMemberTransfer.AbstractDeclaration(FLayout, mIndex)];
+    end
+    else if TMemberTransfer.Has(FChoice.Moved, mIndex) and not IsFieldMember(mIndex) then
+    begin
+      Result[FFinal[mIndex]] := Result[FFinal[mIndex]] + TMemberTransfer.MemberLines(FLayout, mIndex);
+    end;
+  end;
+end;
+
+function TSuperclassBuilder.BaseLines: TArray<string>;
+var
+  mHeader: string;
+  mLines: TVisibilityLines;
+  mVisibility: TClassVisibility;
+begin
+  mLines := DeclarationLines;
+  mHeader := FLayout.Indent + FName + FLayout.GenericParams + ' = class';
+  if FAncestor <> '' then
+  begin
+    mHeader := mHeader + '(' + FAncestor + ')';
+  end;
+  Result := TArray<string>.Create(mHeader);
+  for mVisibility := Low(TClassVisibility) to High(TClassVisibility) do
+  begin
+    if mLines[mVisibility] <> nil then
+    begin
+      Result := Result + [FLayout.Indent + TClassEdits.VisibilityName(mVisibility)] + mLines[mVisibility];
+    end;
+  end;
+  Result := Result + [FLayout.Indent + 'end;'];
+end;
+
+function TSuperclassBuilder.BaseText(ATree: TSyntaxTree): string;
+var
+  mLines: TArray<string>;
+begin
+  mLines := BaseLines;
+  // In derselben Unit trennt eine Leerzeile die Klassen; für eine neue Unit wandert die Basisklasse gleich
+  // weiter, ohne eine Leerzeile zurückzulassen.
+  Result := string.Join(FLineBreak, mLines) + FLineBreak;
+  if FRequest.SameUnit then
+  begin
+    Result := Result + FLineBreak;
+  end;
+  // Braucht oben jemand die Klasse selbst, steht vorher eine Vorwärtsdeklaration.
+  FHeaderOffset := 0;
+  if MentionsName(mLines, FLayout.Name) and not DeclaredBefore(ATree, FLayout) then
+  begin
+    Result := FLayout.Indent + FLayout.Name + FLayout.GenericParams + ' = class;' + FLineBreak + FLineBreak + Result;
+    FHeaderOffset := 2;
+  end;
+end;
+
+function TSuperclassBuilder.SplitBody(const ASplit: TStatementSplit): string;
+var
+  mMember: TClassMember;
+  mIndent: string;
+begin
+  mMember := FLayout.Members[ASplit.Member];
+  mIndent := TTextLines.IndentOf(FLayout.Lines[BlockOf(mMember.Body).StartPos.Line]);
+  Result := BodyHeader(FLayout, ASplit.Member, FName) + FLineBreak + mIndent + 'begin' + FLineBreak;
+  if (mMember.Kind = TClassMemberKind.Constructor_) and (ASplit.Inherited_ <> nil) then
+  begin
+    Result := Result + StatementLines(FLayout, ASplit.Inherited_, ASplit.Inherited_);
+  end;
+  Result := Result + StatementLines(FLayout, ASplit.Moved[0], ASplit.Moved[High(ASplit.Moved)]);
+  if (mMember.Kind = TClassMemberKind.Destructor_) and (ASplit.Inherited_ <> nil) then
+  begin
+    Result := Result + StatementLines(FLayout, ASplit.Inherited_, ASplit.Inherited_);
+  end;
+  Result := Result + mIndent + 'end;';
+end;
+
+function TSuperclassBuilder.Bodies(var APlan: TSuperclassPlan): TArray<string>;
+var
+  mSplit: TStatementSplit;
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mSplit in FSplits do
+  begin
+    Result := Result + [SplitBody(mSplit)];
+    APlan.Split := APlan.Split + [FLayout.Members[mSplit.Member].Name];
+  end;
+  for mIndex := 0 to High(FLayout.Members) do
+  begin
+    if TMemberTransfer.Has(FChoice.Moved, mIndex) and (FLayout.Members[mIndex].Body <> nil) then
+    begin
+      Result := Result + [TClassEdits.BodyText(FLayout, mIndex, FName)];
+    end;
+  end;
+end;
+
+procedure TSuperclassBuilder.FillNames(var APlan: TSuperclassPlan);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(FLayout.Members) do
+  begin
+    if TMemberTransfer.Has(FChoice.Moved, mIndex) then
+    begin
+      APlan.Moved := APlan.Moved + [FLayout.Members[mIndex].Name];
+    end
+    else if TMemberTransfer.Has(FChoice.Abstracts, mIndex) then
+    begin
+      APlan.Abstracts := APlan.Abstracts + [FLayout.Members[mIndex].Name];
+    end;
+  end;
+end;
+
+function TSuperclassBuilder.SplitEdits(const ASplit: TStatementSplit): TArray<TTextEdit>;
+var
+  mMember: TClassMember;
+  mStatement: string;
+begin
+  Result := nil;
+  mMember := FLayout.Members[ASplit.Member];
+  // Oben steht er wie bisher; unten überschreibt er ihn (virtual) bzw. verdeckt ihn ohne reintroduce.
+  if IsOverridable(mMember) then
+  begin
+    Result := TMemberTransfer.OverrideEdits(FLayout, mMember.Node, False);
+  end;
+  mStatement := '';
+  if ASplit.Inherited_ = nil then
+  begin
+    // Ohne inherited ruft die Klasse den neuen Konstruktor bzw. Destruktor an der Stelle auf.
+    mStatement := TTextLines.IndentOf(FLayout.Lines[ASplit.Moved[0].StartPos.Line]) + 'inherited;' + FLineBreak;
+  end
+  else if (mMember.Kind <> TClassMemberKind.Destructor_) and
+    not SameText(Trim(StatementLines(FLayout, ASplit.Inherited_, ASplit.Inherited_)), 'inherited;') then
+  begin
+    Result := Result + [TTextEdit.Create(LinesRange(ASplit.Inherited_.StartPos.Line, ASplit.Inherited_.EndPos.Line),
+      TTextLines.IndentOf(FLayout.Lines[ASplit.Inherited_.StartPos.Line]) + 'inherited;' + FLineBreak)];
+  end;
+  Result := Result + [TTextEdit.Create(LinesRange(ASplit.Moved[0].StartPos.Line,
+    ASplit.Moved[High(ASplit.Moved)].EndPos.Line), mStatement)];
+end;
+
+function TSuperclassBuilder.AncestorEdit: TTextEdit;
+var
+  mAncestors: TArray<string>;
+  mIndex: Integer;
+begin
+  mAncestors := TArray<string>.Create(FName + GenericArgs(FLayout.GenericParams));
+  for mIndex := 0 to High(FLayout.Ancestors) do
+  begin
+    if (mIndex > 0) or (FAncestor = '') and not SameText(FLayout.Ancestors[0], 'TObject') then
+    begin
+      mAncestors := mAncestors + [FLayout.Ancestors[mIndex]];
+    end;
+  end;
+  Result := TClassEdits.SetAncestors(FLayout, mAncestors);
+end;
+
+function TSuperclassBuilder.ClassEdits: TArray<TTextEdit>;
+var
+  mId: Integer;
+  mSplit: TStatementSplit;
+begin
+  // Abschnitte, deren Mitglieder alle wandern, fallen weg.
+  Result := TClassEdits.DeleteMembers(FLayout, FChoice.Moved, True) +
+    TMemberTransfer.EmptiedSections(FLayout, FChoice.Moved);
+  for mId in FChoice.Abstracts do
+  begin
+    Result := Result + TMemberTransfer.OverrideEdits(FLayout, FLayout.Members[mId].Node, True);
+  end;
+  for mSplit in FSplits do
+  begin
+    Result := Result + SplitEdits(mSplit);
+  end;
+  Result := Result + [AncestorEdit];
+end;
+
+function TSuperclassBuilder.Relocated(var AText: string): Boolean;
+var
+  mOlds: TArray<TClassMember>;
+  mId: Integer;
+begin
+  mOlds := nil;
+  for mId in FRelocate do
+  begin
+    mOlds := mOlds + [FLayout.Members[mId]];
+  end;
+  Result := TMemberTransfer.Relocate(AText, FLayout.Name, mOlds, FRequest.RaiseVisibility);
+end;
+
+function TSuperclassBuilder.AddBodies(ANext: TClassLayout; ATree: TSyntaxTree; const AText: string;
+  const ABodies: TArray<string>; var AEdits: TArray<TTextEdit>): string;
+var
+  mFirst, mLine: Integer;
+begin
+  Result := '';
+  mFirst := FirstBodyLine(ANext);
+  if mFirst >= 0 then
+  begin
+    AEdits := AEdits + [TClassEdits.InsertBeforeLine(mFirst, string.Join(FLineBreak + FLineBreak, ABodies) +
+      FLineBreak + FLineBreak)];
+    Exit;
+  end;
+  mLine := TClassEdits.BodiesEnd(ATree, FLayout.Name);
+  if mLine < 0 then
+  begin
+    Result := cTexts[TEditingExtractSuperclassText.TheUnitHasNoImplementation].Text;
+  end
+  else
+  begin
+    AEdits := AEdits + [TClassEdits.InsertBodies(AText, mLine, ABodies)];
+  end;
+end;
+
+function TSuperclassBuilder.Insert(const AText, ABaseText: string; const ABodies: TArray<string>;
+  var APlan: TSuperclassPlan): string;
+var
+  mNext: TClassLayout;
+  mTree: TSyntaxTree;
+  mEdits: TArray<TTextEdit>;
+begin
+  mNext := TMemberTransfer.ParseLayout(AText, FLayout.Name, mTree);
+  if mNext = nil then
+  begin
+    Exit(cTexts[TEditingExtractSuperclassText.TheClassIsNoLonger].Text);
+  end;
+  try
+    mEdits := [TClassEdits.InsertBeforeLine(mNext.FirstLine, ABaseText)];
+    APlan.BaseLine := mNext.FirstLine + FHeaderOffset;
+    Result := '';
+    if ABodies <> nil then
+    begin
+      Result := AddBodies(mNext, mTree, AText, ABodies, mEdits);
+    end;
+    if Result = '' then
+    begin
+      APlan.Text := TTextChanges.Apply(AText, mEdits);
+    end;
+  finally
+    mNext.Free;
+    mTree.Free;
+  end;
+end;
+
+function TSuperclassBuilder.Build(const ASource: TClassSource; const AIsInterface: TIsInterfaceType;
+  var APlan: TSuperclassPlan; out AReason: string): Boolean;
+var
+  mText, mBase: string;
+  mBodies: TArray<string>;
+begin
+  APlan.ClassName := FLayout.Name;
+  APlan.BaseName := FName;
+  CollectSplits;
+  RaiseVisibilities(APlan);
+  FAncestor := BaseAncestor(FLayout, AIsInterface);
+  mBase := BaseText(ASource.Tree);
+  mBodies := Bodies(APlan);
+  FillNames(APlan);
+  // Schritt 1: Klasse ändern; Schritt 2: gehobene abstrakte Methoden unten in den Abschnitt der neuen
+  // Sichtbarkeit; Schritt 3: Basisklasse über die Klasse, ihre Rümpfe vor die der Klasse.
+  mText := TTextChanges.Apply(ASource.Text, ClassEdits);
+  if Relocated(mText) then
+  begin
+    AReason := Insert(mText, mBase, mBodies, APlan);
+  end
+  else
+  begin
+    AReason := cTexts[TEditingExtractSuperclassText.TheClassIsNoLonger].Text;
+  end;
+  Result := AReason = '';
+end;
+
+class function TExtractSuperclass.Plan(const ASource: TClassSource; const ARequest: TSuperclassRequest;
+  const AIsInterface: TIsInterfaceType; const ANameInUse: TNameInUse; out APlan: TSuperclassPlan;
+  out AReason: string): Boolean;
+var
+  mInfo: TSuperclassInfo;
+  mChoice: TSuperclassChoice;
+  mLayout: TClassLayout;
+  mBuilder: TSuperclassBuilder;
+begin
+  APlan := Default(TSuperclassPlan);
+  if not Prepare(ASource, 'Base', nil, mInfo, AReason) then
+  begin
+    Exit(False);
+  end;
+  AReason := RequestError(mInfo, ARequest, ANameInUse, mChoice);
+  if AReason <> '' then
+  begin
+    Exit(False);
+  end;
+  mLayout := TClassLayout.Read(ASource.Tree, ASource.Text, ClassAt(ASource.Tree, ASource.Line));
+  try
+    AReason := MissingError(mLayout, mChoice);
+    Result := AReason = '';
+    if Result then
+    begin
+      mBuilder := TSuperclassBuilder.Create(mLayout, ARequest, mChoice);
+      try
+        Result := mBuilder.Build(ASource, AIsInterface, APlan, AReason);
+      finally
+        mBuilder.Free;
+      end;
+    end;
+  finally
+    mLayout.Free;
+  end;
+end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.ExtractSuperclass', cTexts);
 
 end.

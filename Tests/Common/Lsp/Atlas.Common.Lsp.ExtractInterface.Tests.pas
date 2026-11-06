@@ -96,17 +96,29 @@ const
 function TextOf(const AFileName: string): string;
 begin
   if SameText(AFileName, BasisFile) then
-    Result := UnitBasis
+  begin
+    Result := UnitBasis;
+  end
   else if SameText(AFileName, KundenFile) then
-    Result := UnitKunden
+  begin
+    Result := UnitKunden;
+  end
   else if SameText(AFileName, ZielFile) then
-    Result := UnitZiel
+  begin
+    Result := UnitZiel;
+  end
   else if SameText(AFileName, ProgramFile) then
-    Result := TextProgram
+  begin
+    Result := TextProgram;
+  end
   else if SameText(AFileName, ProjectFile) then
-    Result := TextProject
+  begin
+    Result := TextProject;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function ProjectUnit(const AName, AFileName: string): TProjectUnit;
@@ -148,7 +160,9 @@ begin
   Result.AddPair('unit', AUnit);
   Members := TJSONArray.Create;
   for Id in AMembers do
+  begin
     Members.AddElement(TJSONNumber.Create(Id));
+  end;
   Result.AddPair('members', Members);
 end;
 
@@ -165,10 +179,14 @@ begin
   begin
     Document := TJSONObject(Item);
     if Document.GetValue('textDocument') = nil then
+    begin
       Continue;
+    end;
     Uri := (Document.GetValue('textDocument') as TJSONObject).GetValue('uri').Value;
     if not SameText(TDocumentUris.ToPath(Uri), AFileName) then
+    begin
       Continue;
+    end;
     Edits := nil;
     for Edit in Document.GetValue('edits') as TJSONArray do
     begin
@@ -185,12 +203,14 @@ function Run(const AIndex: ISymbolIndex; const AText: string; ARequest: TJSONObj
 var
   Tree: TSyntaxTree;
   Resolver: TNameResolver;
+  mContext: TExtractInterfaceContext;
 begin
   Tree := TPascalParser.Parse(AText);
   Resolver := TNameResolver.Create(AIndex, nil);
   try
-    Result := TLspExtractInterface.Execute(Resolver, Tree, KundenFile, AText, TTextPosition.Create(5, 4), ARequest,
-      AContext);
+    mContext := AContext;
+    mContext.Resolver := Resolver;
+    Result := TLspExtractInterface.Execute(Tree, KundenFile, AText, TTextPosition.Create(5, 4), ARequest, mContext);
   finally
     Resolver.Free;
     Tree.Free;
@@ -216,7 +236,9 @@ var
   Item: TJSONObject;
 begin
   for Item in AItems do
+  begin
     Item.Free;
+  end;
 end;
 
 procedure TLspExtractInterfaceTests.OffersOnClassHeader;

@@ -26,6 +26,8 @@ type
     [Test]
     procedure ListKnowsRoutinesTypesAndOverloads;
     [Test]
+    procedure EnglishTextsFollowLanguage;
+    [Test]
     procedure NameAtSkipsMembersAfterDot;
     [Test]
     procedure CompletionOffersIntrinsicsWithoutUses;
@@ -44,6 +46,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.Completion.Lists,
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
@@ -54,7 +57,8 @@ uses
   Atlas.Common.Semantics.SystemIntrinsics,
   Atlas.Common.Lsp.Completion,
   Atlas.Common.Lsp.SignatureHelp,
-  Atlas.Common.Lsp.Hover;
+  Atlas.Common.Lsp.Hover,
+  Atlas.Common.Localization.Texts;
 
 const
   HauptFile = 'C:\P\Haupt.pas';
@@ -83,16 +87,20 @@ begin
   // Cursor hinter AMarker.
   Index := Pos(AMarker, AText);
   if Index = 0 then
+  begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+  end;
   Inc(Index, Length(AMarker));
   Line := 0;
   LineStart := 1;
   for Scan := 1 to Index - 1 do
+  begin
     if AText[Scan] = #10 then
     begin
       Inc(Line);
       LineStart := Scan + 1;
     end;
+  end;
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
@@ -107,8 +115,12 @@ var
 begin
   Result := 0;
   for Item in AItems.Items do
+  begin
     if SameText(Item.Name, AName) then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 function NoText(const AFileName: string; out AText: string): Boolean;
@@ -139,11 +151,30 @@ begin
   Text := WithCode(ACode);
   Tree := TPascalParser.Parse(Text);
   try
-    Result := TLspCompletion.Collect(FResolver, FIndex, Tree, HauptFile, PositionOf(Text, AMarker),
+    Result := TCompletionLists.Collect(FResolver, FIndex, Tree, HauptFile, PositionOf(Text, AMarker),
       TCompletionMatching.Prefix);
   finally
     Tree.Free;
   end;
+end;
+
+procedure TSystemIntrinsicsTests.EnglishTextsFollowLanguage;
+var
+  mFound: TArray<TSystemIntrinsic>;
+begin
+  // #1458: Beschreibung und Platzhalter im Kopf folgen der Sprache, die Köpfe sonst nicht.
+  TAtlasLocale.Use(TTextLanguage.English);
+  try
+    mFound := TSystemIntrinsics.Find('Abs');
+    Assert.AreEqual('Absolute value of a number.', mFound[0].Documentation);
+    Assert.AreEqual('function Abs(X): <type of X>;', mFound[0].Declaration);
+    Assert.AreEqual('Integer, 32 bits signed.', TSystemIntrinsics.Find('Integer')[0].Documentation);
+  finally
+    TAtlasLocale.Use(TTextLanguage.German);
+  end;
+  mFound := TSystemIntrinsics.Find('Abs');
+  Assert.AreEqual('Betrag einer Zahl.', mFound[0].Documentation);
+  Assert.AreEqual('function Abs(X): <Typ von X>;', mFound[0].Declaration);
 end;
 
 procedure TSystemIntrinsicsTests.ListKnowsRoutinesTypesAndOverloads;
@@ -237,8 +268,12 @@ begin
   Items := ItemsAt('  Leng', '  Leng');
   Assert.AreEqual(1, CountNamed(Items, 'Length'));
   for Item in Items.Items do
+  begin
     if SameText(Item.Name, 'Length') then
+    begin
       Assert.AreEqual('C:\Lib\System.pas', Item.SourceFile);
+    end;
+  end;
 end;
 
 procedure TSystemIntrinsicsTests.OwnDeclarationHidesIntrinsic;
@@ -257,15 +292,19 @@ begin
     'function Assigned(P: Pointer): Boolean;'#10'begin'#10'end;'#10'procedure TFoo.Bar;', []);
   Tree := TPascalParser.Parse(Text);
   try
-    Items := TLspCompletion.Collect(FResolver, FIndex, Tree, HauptFile, PositionOf(Text, '  Assi'),
+    Items := TCompletionLists.Collect(FResolver, FIndex, Tree, HauptFile, PositionOf(Text, '  Assi'),
       TCompletionMatching.Prefix);
   finally
     Tree.Free;
   end;
   Assert.AreEqual(1, CountNamed(Items, 'Assigned'));
   for Item in Items.Items do
+  begin
     if SameText(Item.Name, 'Assigned') then
+    begin
       Assert.AreEqual(HauptFile, Item.SourceFile);
+    end;
+  end;
 end;
 
 procedure TSystemIntrinsicsTests.SignatureHelpForIntrinsics;
@@ -277,7 +316,8 @@ begin
   Text := WithCode('  SetLength(Liste, ');
   Tree := TPascalParser.Parse(Text);
   try
-    Help := TLspSignatureHelp.HelpAt(FResolver, FIndex, Tree, Text, HauptFile, PositionOf(Text, 'Liste, '), NoText);
+    Help := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, Tree, Text, HauptFile, NoText),
+      PositionOf(Text, 'Liste, '));
     Assert.IsTrue(Help.Found);
     Assert.AreEqual(1, Integer(Length(Help.Signatures)));
     Assert.AreEqual('procedure SetLength(var S; NewLength: NativeInt)', Help.Signatures[0].Text);
@@ -289,7 +329,8 @@ begin
   Text := WithCode('  Inc(Liste[0], ');
   Tree := TPascalParser.Parse(Text);
   try
-    Help := TLspSignatureHelp.HelpAt(FResolver, FIndex, Tree, Text, HauptFile, PositionOf(Text, '[0], '), NoText);
+    Help := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, Tree, Text, HauptFile, NoText),
+      PositionOf(Text, '[0], '));
     Assert.AreEqual(2, Integer(Length(Help.Signatures)));
     // Die erste Überladung hat nur einen Parameter.
     Assert.AreEqual(1, Help.ActiveSignature);
@@ -300,7 +341,8 @@ begin
   Text := WithCode('  Liste.Length(');
   Tree := TPascalParser.Parse(Text);
   try
-    Help := TLspSignatureHelp.HelpAt(FResolver, FIndex, Tree, Text, HauptFile, PositionOf(Text, 'Length('), NoText);
+    Help := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, Tree, Text, HauptFile, NoText),
+      PositionOf(Text, 'Length('));
     Assert.IsFalse(Help.Found);
   finally
     Tree.Free;
@@ -316,7 +358,8 @@ begin
   Text := WithCode('  if Assigned(Self) then Exit;');
   Tree := TPascalParser.Parse(Text);
   try
-    Info := TLspHover.InfoAt(FResolver, FIndex, Tree, Text, HauptFile, PositionOf(Text, 'if Assi'), NoText);
+    Info := TLspHover.InfoAt(THoverSource.Create(FResolver, FIndex, NoText), Tree, Text, HauptFile,
+      PositionOf(Text, 'if Assi'));
     Assert.AreEqual('function Assigned(const P): Boolean;', Info.Declaration);
     Assert.AreEqual('System', Info.UnitName);
     Assert.AreNotEqual('', Info.Documentation);
@@ -326,7 +369,8 @@ begin
   Text := StringReplace(WithCode('  '), 'TArray<Integer>', 'Int64', []);
   Tree := TPascalParser.Parse(Text);
   try
-    Info := TLspHover.InfoAt(FResolver, FIndex, Tree, Text, HauptFile, PositionOf(Text, 'Liste: Int'), NoText);
+    Info := TLspHover.InfoAt(THoverSource.Create(FResolver, FIndex, NoText), Tree, Text, HauptFile,
+      PositionOf(Text, 'Liste: Int'));
     Assert.IsTrue(Info.Declaration.StartsWith('type Int64'), Info.Declaration);
   finally
     Tree.Free;

@@ -12,8 +12,12 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Build')]
   TAtlasTaskMatchersTests = class
   public
+    /// <summary>Einmal-Belegungen vorwegnehmen; sie gehören nicht in die Leckmessung.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure PwshFindsLinesOfTheCheckScripts;
     [Test]
@@ -44,6 +48,11 @@ uses
 function Matcher(AKind: TAtlasTaskMatcherKind): TAtlasTaskLineMatcher;
 begin
   Result := TAtlasTaskLineMatcher.Create(TAtlasTaskMatcher.Create(AKind));
+end;
+
+procedure TAtlasTaskMatchersTests.WarmUpFirstUse;
+begin
+  CustomMatcherErrorsAndGroupNumbers;
 end;
 
 procedure TAtlasTaskMatchersTests.PwshFindsLinesOfTheCheckScripts;

@@ -66,7 +66,9 @@ begin
   for mDeviation in ADeviations do
   begin
     if Result <> '' then
+    begin
       Result := Result + ' | ';
+    end;
     Result := Result + Format('%d %s: %s', [mDeviation.Line + 1, TFormatCheck.KindName(mDeviation.Kind),
       mDeviation.Message]);
   end;
@@ -251,9 +253,13 @@ begin
   begin
     Result := TPath.Combine(mDirectory, TPath.Combine('Tests', 'Referenzprojekt'));
     if TDirectory.Exists(Result) then
+    begin
       Exit;
+    end;
     if ExtractFileDir(mDirectory) = mDirectory then
+    begin
       Break;
+    end;
     mDirectory := ExtractFileDir(mDirectory);
   end;
   Result := '';
@@ -295,7 +301,9 @@ begin
     begin
       mOnce := TFormatCheck.FormatText(mText, mStyle, TFormatScope.All);
       if TFormatCheck.FormatText(mOnce, mStyle, TFormatScope.All) <> mOnce then
+      begin
         mUnstable := mUnstable + ' ' + ExtractFileName(mFileName);
+      end;
     end;
   end;
   Assert.IsTrue(mCount > 0, 'keine Units im Referenzprojekt');

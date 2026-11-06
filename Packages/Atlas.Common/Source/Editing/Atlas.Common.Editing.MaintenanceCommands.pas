@@ -19,11 +19,10 @@ interface
 uses
   Atlas.Common.Editing.Contract;
 
-const
-  /// <summary>Hinweis, wenn /cleanuses keinen Index hat.</summary>
-  CleanUsesNoIndexHint = '/cleanuses braucht den Index des Projekts';
-  /// <summary>Hinweis, wenn /ignore eine Regel nennt, die in der Zeile darunter nichts meldet.</summary>
-  IgnoreNoHitHint = 'Regel %s meldet in der Zeile darunter nichts';
+/// <summary>Hinweis, wenn /cleanuses keinen Index hat.</summary>
+function CleanUsesNoIndexHint: string;
+/// <summary>Hinweis, wenn /ignore eine Regel nennt, die in der Zeile darunter nichts meldet.</summary>
+function IgnoreNoHitHint: string;
 
 /// <summary>Trägt die Pflegebefehle über ARegister ein.</summary>
 procedure RegisterMaintenanceCommands(const ARegister: TSlashRegister);
@@ -42,7 +41,47 @@ uses
   Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.GitUser,
   Atlas.Common.Editing.ClassCommands,
-  Atlas.Common.Editing.CommandSource;
+  Atlas.Common.Editing.CommandSource,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TMaintenanceCommandsText = (ExpectedIsIgnoreRuleReason, BelowIgnoreThereIsNo, ExpectedIsTodoText,
+    DocOnlyAppliesAboveA, LogOnlyAppliesInThe, SuppressARuleForThe, TODOCommentForTheIDE, TodoCheckErrorCase,
+    XMLDocSkeletonForThe, LogLineWithUnitAnd, SortUsesLists, StrikeUnusedUsesOrderStays, CleanusesNeedsTheIndexOf,
+    RuleReportsNothingInThe);
+
+const
+  cTexts: array[TMaintenanceCommandsText] of TAtlasText = (
+    (De: 'Erwartet wird /ignore regel [Begründung]'; En: 'Expected is /ignore rule [reason]'),
+    (De: 'Unter /ignore steht keine Zeile, die unterdrückt werden kann';
+     En: 'Below /ignore there is no line that can be suppressed'),
+    (De: 'Erwartet wird /todo Text'; En: 'Expected is /todo Text'),
+    (De: '/doc gilt nur über einer Routine'; En: '/doc only applies above a routine'),
+    (De: '/log gilt nur im Rumpf einer Routine'; En: '/log only applies in the body of a routine'),
+    (De: 'Prüfregel für die Zeile darunter unterdrücken'; En: 'Suppress a rule for the line below'),
+    (De: 'TODO-Kommentar für die IDE-TODO-Liste'; En: 'TODO comment for the IDE to-do list'),
+    (De: '/todo Fehlerfall prüfen'; En: '/todo Check error case'),
+    (De: 'XML-Doc-Gerüst für die Routine darunter'; En: 'XML doc skeleton for the routine below'),
+    (De: 'Protokollzeile mit Unit- und Routinennamen'; En: 'Log line with unit and routine name'),
+    (De: 'uses-Listen sortieren'; En: 'Sort uses lists'),
+    (De: 'Ungenutzte uses streichen, Reihenfolge bleibt'; En: 'Strike unused uses, order stays'),
+    (De: '/cleanuses braucht den Index des Projekts'; En: '/cleanuses needs the index of the project'),
+    (De: 'Regel %s meldet in der Zeile darunter nichts'; En: 'Rule %s reports nothing in the line below'));
+
+{$SCOPEDENUMS OFF}
+
+function CleanUsesNoIndexHint: string;
+begin
+  Result := cTexts[TMaintenanceCommandsText.CleanusesNeedsTheIndexOf].Text;
+end;
+
+function IgnoreNoHitHint: string;
+begin
+  Result := cTexts[TMaintenanceCommandsText.RuleReportsNothingInThe].Text;
+end;
 
 { /sortuses }
 
@@ -54,9 +93,13 @@ begin
   Result := nil;
   if (AContext.Host = nil) or
     SameText(AContext.Host.Setting(AContext.Uri, TSlashSettings.SortUsesRemoveUnused), 'false') then
+  begin
     Exit;
+  end;
   if AContext.Host.UsesContext(AContext.Uri, Uses_) and Assigned(Uses_.Info) then
+  begin
     Result := TUsesActions.UnusedUnits(ATokens, Uses_.Info, Uses_.Keep);
+  end;
 end;
 
 function ExecuteSortUses(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
@@ -78,7 +121,9 @@ begin
     Options.Sort := True;
     Options.Drop := UnusedUnitsOf(AContext, Tokens);
     if not TUsesClauses.Rewrite(Tokens, Text, Options, Source.LineBreak, Edits) then
+    begin
       Edits := nil;
+    end;
     AEdits := Edits + [Source.RemoveCommand];
     Result := True;
   finally
@@ -98,7 +143,9 @@ var
 begin
   AEdits := nil;
   if (AContext.Host = nil) or not AContext.Host.UsesContext(AContext.Uri, Uses_) or not Assigned(Uses_.Info) then
+  begin
     Exit(Fail(CleanUsesNoIndexHint, AReason));
+  end;
   Source := TCommandSource.Create(AContext);
   try
     Text := Source.Text;
@@ -106,7 +153,9 @@ begin
     // Nur streichen, nicht sortieren: Die gewählte Reihenfolge bleibt.
     if not TUsesActions.RemoveUnits(Tokens, Text, TUsesActions.UnusedUnits(Tokens, Uses_.Info, Uses_.Keep),
       Source.LineBreak, Edits) then
+    begin
       Edits := nil;
+    end;
     AEdits := Edits + [Source.RemoveCommand];
     Result := True;
   finally
@@ -122,8 +171,12 @@ var
 begin
   Result := AId <> '';
   for Index := 1 to Length(AId) do
+  begin
     if not CharInSet(AId[Index], ['a'..'z', 'A'..'Z', '0'..'9', '-', '_', '*']) then
+    begin
       Exit(False);
+    end;
+  end;
 end;
 
 function ExecuteIgnore(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
@@ -136,22 +189,32 @@ begin
   AEdits := nil;
   Space := Pos(' ', AContext.Arguments);
   if Space = 0 then
+  begin
     Space := Length(AContext.Arguments) + 1;
+  end;
   Id := LowerCase(Copy(AContext.Arguments, 1, Space - 1));
   Reason := Trim(Copy(AContext.Arguments, Space + 1, MaxInt));
   if not IsRuleId(Id) then
-    Exit(Fail('Erwartet wird /ignore regel [Begründung]', AReason));
+  begin
+    Exit(Fail(cTexts[TMaintenanceCommandsText.ExpectedIsIgnoreRuleReason].Text, AReason));
+  end;
   Source := TCommandSource.Create(AContext);
   try
     if (Source.Line >= High(Source.Lines)) or (Trim(Source.Lines[Source.Line + 1]) = '') then
-      Exit(Fail('Unter /ignore steht keine Zeile, die unterdrückt werden kann', AReason));
+    begin
+      Exit(Fail(cTexts[TMaintenanceCommandsText.BelowIgnoreThereIsNo].Text, AReason));
+    end;
     // Nur Regeln, die dort treffen; Muster mit * prüfen wir nicht.
     if (AContext.Host <> nil) and (Pos('*', Id) = 0) and
       AContext.Host.RuleIdsAt(AContext.Uri, Source.Text, Source.Line + 1, Ids) and not MatchText(Id, Ids) then
+    begin
       Exit(Fail(Format(IgnoreNoHitHint, [Id]), AReason));
+    end;
     Comment := '// lsp-ignore: ' + Id;
     if Reason <> '' then
+    begin
       Comment := Comment + ' -- ' + Reason;
+    end;
     AEdits := [Source.ReplaceWithIndentedLines([Comment])];
     Result := True;
   finally
@@ -170,19 +233,27 @@ begin
   Host := AContext.Host;
   Result := Trim(Host.Setting(AContext.Uri, TSlashSettings.TodoOwner));
   if Result <> '' then
+  begin
     Exit;
+  end;
   Folder := '';
   if AContext.Uri <> '' then
+  begin
     Folder := ExtractFileDir(TDocumentUris.ToPath(AContext.Uri));
+  end;
   Result := TGitUser.NameFor(Folder, TGitUser.HomeFolder,
     function(const AFileName: string; out AText: string): Boolean
     begin
       Result := Host.ReadFile(AFileName, AText);
     end);
   if Result = '' then
+  begin
     Result := GetEnvironmentVariable('USERNAME');
+  end;
   if Result = '' then
+  begin
     Result := GetEnvironmentVariable('USER');
+  end;
 end;
 
 /// <summary>Zerlegt führende -oName und -cKat; AText ist der Rest. -o ohne Namen nimmt den Standardnamen,
@@ -200,10 +271,14 @@ begin
   begin
     Space := Pos(' ', Rest);
     if Space = 0 then
+    begin
       Space := Length(Rest) + 1;
+    end;
     Word := Copy(Rest, 3, Space - 3);
     if CharInSet(Rest[2], ['o', 'O']) then
-      AOwner := Word
+    begin
+      AOwner := Word;
+    end
     else
     begin
       ACategory := Word;
@@ -223,20 +298,30 @@ begin
   AEdits := nil;
   SplitTodo(AContext.Arguments, Owner, Category, Text, HasCategory);
   if Text = '' then
-    Exit(Fail('Erwartet wird /todo Text', AReason));
+  begin
+    Exit(Fail(cTexts[TMaintenanceCommandsText.ExpectedIsTodoText].Text, AReason));
+  end;
   // Ohne Host (Prüfung stehen gebliebener Zeilen) nur die Angaben aus der Zeile.
   if AContext.Host <> nil then
   begin
     if Owner = '' then
+    begin
       Owner := DefaultOwner(AContext);
+    end;
     if not HasCategory then
+    begin
       Category := Trim(AContext.Host.Setting(AContext.Uri, TSlashSettings.TodoCategory));
+    end;
   end;
   Comment := '// TODO';
   if Owner <> '' then
+  begin
     Comment := Comment + ' -o' + Owner;
+  end;
   if Category <> '' then
+  begin
     Comment := Comment + ' -c' + Category;
+  end;
   Comment := Comment + ' : ' + Text;
   Source := TCommandSource.Create(AContext);
   try
@@ -255,46 +340,72 @@ var
 begin
   Line := LowerCase(Trim(ALine));
   if StartsStr('class ', Line) then
+  begin
     Line := Trim(Copy(Line, 7, MaxInt));
+  end;
   Result := StartsStr('procedure ', Line) or StartsStr('function ', Line) or StartsStr('constructor ', Line) or
     StartsStr('destructor ', Line) or StartsStr('operator ', Line);
+end;
+
+/// <summary>Signatur des Routinenkopfs ab Zeile AFirst; der Kopf kann über mehrere Zeilen gehen.</summary>
+function RoutineSignatureFrom(const ALines: TArray<string>; const AFirst: Integer): string;
+var
+  mDeclaration: string;
+  mIndex: Integer;
+begin
+  mDeclaration := '';
+  for mIndex := AFirst to High(ALines) do
+  begin
+    mDeclaration := mDeclaration + ' ' + ALines[mIndex];
+    if Pos(';', ALines[mIndex]) > 0 then
+    begin
+      Result := RoutineSignature(mDeclaration);
+      if (Pos('(', Result) = 0) or (Pos(')', Result) > 0) then
+      begin
+        Exit;
+      end;
+    end;
+  end;
+  Result := RoutineSignature(mDeclaration);
+end;
+
+/// <summary>XML-Dokumentation mit summary, je Parameter param und bei Funktionen returns.</summary>
+function DocCommentLines(const ASignature: string): TArray<string>;
+var
+  mName: string;
+begin
+  Result := ['/// <summary></summary>'];
+  for mName in ParameterNames(ASignature).Split([', ']) do
+  begin
+    if mName <> '' then
+    begin
+      Result := Result + [Format('/// <param name="%s"></param>', [mName])];
+    end;
+  end;
+  if StartsText('function ', ASignature) or StartsText('class function ', ASignature) then
+  begin
+    Result := Result + ['/// <returns></returns>'];
+  end;
 end;
 
 function ExecuteDoc(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
   Source: TCommandSource;
-  Next, Index: Integer;
-  Declaration, Signature, Name: string;
-  Lines: TArray<string>;
+  Next: Integer;
 begin
   AEdits := nil;
   Source := TCommandSource.Create(AContext);
   try
     Next := Source.Line + 1;
     while (Next <= High(Source.Lines)) and (Trim(Source.Lines[Next]) = '') do
-      Inc(Next);
-    if (Next > High(Source.Lines)) or not IsRoutineStart(Source.Lines[Next]) then
-      Exit(Fail('/doc gilt nur über einer Routine', AReason));
-    // Kopf kann über mehrere Zeilen gehen.
-    Declaration := '';
-    for Index := Next to High(Source.Lines) do
     begin
-      Declaration := Declaration + ' ' + Source.Lines[Index];
-      if Pos(';', Source.Lines[Index]) > 0 then
-      begin
-        Signature := RoutineSignature(Declaration);
-        if (Pos('(', Signature) = 0) or (Pos(')', Signature) > 0) then
-          Break;
-      end;
+      Inc(Next);
     end;
-    Signature := RoutineSignature(Declaration);
-    Lines := ['/// <summary></summary>'];
-    for Name in ParameterNames(Signature).Split([', ']) do
-      if Name <> '' then
-        Lines := Lines + [Format('/// <param name="%s"></param>', [Name])];
-    if StartsText('function ', Signature) or StartsText('class function ', Signature) then
-      Lines := Lines + ['/// <returns></returns>'];
-    AEdits := [Source.ReplaceWithIndentedLines(Lines)];
+    if (Next > High(Source.Lines)) or not IsRoutineStart(Source.Lines[Next]) then
+    begin
+      Exit(Fail(cTexts[TMaintenanceCommandsText.DocOnlyAppliesAboveA].Text, AReason));
+    end;
+    AEdits := [Source.ReplaceWithIndentedLines(DocCommentLines(RoutineSignatureFrom(Source.Lines, Next)))];
     Result := True;
   finally
     Source.Free;
@@ -314,12 +425,18 @@ begin
   try
     Routine := Source.RoutineAt;
     if Routine = nil then
-      Exit(Fail('/log gilt nur im Rumpf einer Routine', AReason));
+    begin
+      Exit(Fail(cTexts[TMaintenanceCommandsText.LogOnlyAppliesInThe].Text, AReason));
+    end;
     Name := Routine.Name;
     if Source.Tree.Root.Name <> '' then
+    begin
       Name := Source.Tree.Root.Name + '.' + Name;
+    end;
     if AContext.Arguments <> '' then
+    begin
       Name := Name + ': ' + AContext.Arguments;
+    end;
     AEdits := [Source.ReplaceWithIndentedLines([LogStatement(AContext, QuotedStr(Name))])];
     Result := True;
   finally
@@ -337,15 +454,19 @@ end;
 
 procedure RegisterMaintenanceCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('sortuses', 'uses-Listen sortieren', '/sortuses', ExecuteSortUses));
-  ARegister(Command('cleanuses', 'Ungenutzte uses streichen, Reihenfolge bleibt', '/cleanuses',
+  ARegister(Command('sortuses', cTexts[TMaintenanceCommandsText.SortUsesLists].Text, '/sortuses', ExecuteSortUses));
+  ARegister(Command('cleanuses', cTexts[TMaintenanceCommandsText.StrikeUnusedUsesOrderStays].Text, '/cleanuses',
     ExecuteCleanUses));
-  ARegister(Command('ignore', 'Prüfregel für die Zeile darunter unterdrücken',
+  ARegister(Command('ignore', cTexts[TMaintenanceCommandsText.SuppressARuleForThe].Text,
     '/ignore unused-local Absicht', ExecuteIgnore));
-  ARegister(Command('todo', 'TODO-Kommentar für die IDE-TODO-Liste', '/todo Fehlerfall prüfen',
+  ARegister(Command('todo', cTexts[TMaintenanceCommandsText.TODOCommentForTheIDE].Text,
+    cTexts[TMaintenanceCommandsText.TodoCheckErrorCase].Text,
     ExecuteTodo));
-  ARegister(Command('doc', 'XML-Doc-Gerüst für die Routine darunter', '/doc', ExecuteDoc));
-  ARegister(Command('log', 'Protokollzeile mit Unit- und Routinennamen', '/log', ExecuteLog));
+  ARegister(Command('doc', cTexts[TMaintenanceCommandsText.XMLDocSkeletonForThe].Text, '/doc', ExecuteDoc));
+  ARegister(Command('log', cTexts[TMaintenanceCommandsText.LogLineWithUnitAnd].Text, '/log', ExecuteLog));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.MaintenanceCommands', cTexts);
 
 end.

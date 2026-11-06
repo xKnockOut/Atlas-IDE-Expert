@@ -121,18 +121,28 @@ function ReadSource(const AFileName: string; out AText: string): Boolean;
 begin
   Result := True;
   if SameText(AFileName, BasisFile) then
-    AText := UnitBasis
+  begin
+    AText := UnitBasis;
+  end
   else if SameText(AFileName, KnopfFile) then
-    AText := UnitKnopf
+  begin
+    AText := UnitKnopf;
+  end
   else
+  begin
     Result := False;
+  end;
 end;
 
 function Find(const AMembers: TArray<TPublishedMember>; const AName: string): Integer;
 begin
   for Result := 0 to High(AMembers) do
+  begin
     if SameText(AMembers[Result].Name, AName) then
+    begin
       Exit;
+    end;
+  end;
   Result := -1;
 end;
 
@@ -321,8 +331,12 @@ procedure TPublishedMembersTests.WritesJsonForTooltip;
     Value: TJSONValue;
   begin
     for Value in AJson.GetValue<TJSONArray>('members') do
+    begin
       if TJSONObject(Value).GetValue<string>('name') = AName then
+      begin
         Exit(TJSONObject(Value));
+      end;
+    end;
     Result := nil;
   end;
 

@@ -82,11 +82,28 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
+  System.Math,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Semantics.Reassigned,
   Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.RoutineLocals;
+  Atlas.Common.Editing.RoutineLocals,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TVarBlockText = (CleanUpVarBlock, ConvertToInlineVariableVar, MoveToVarBlock, Unused);
+
+const
+  cTexts: array[TVarBlockText] of TAtlasText = (
+    (De: 'var-Block aufräumen'; En: 'Clean up var block'),
+    (De: 'In Inline-Variable umwandeln (var %s)'; En: 'Convert to inline variable (var %s)'),
+    (De: 'In var-Block verschieben (%s)'; En: 'Move to var block (%s)'),
+    (De: ' (ungenutzt: %s)'; En: ' (unused: %s)'));
+
+{$SCOPEDENUMS OFF}
 
 const
   LoopKinds = [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
@@ -152,7 +169,9 @@ function CleanName(const AText: string): string;
 begin
   Result := AText;
   if StartsStr('&', Result) then
+  begin
     Result := Copy(Result, 2, MaxInt);
+  end;
 end;
 
 /// <summary>Innerste Routine (benannt oder anonym), in der ANode steht.</summary>
@@ -160,7 +179,9 @@ function OwnerRoutine(ANode: TSyntaxNode): TSyntaxNode;
 begin
   Result := ANode.Parent;
   while (Result <> nil) and not (Result.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) do
+  begin
     Result := Result.Parent;
+  end;
 end;
 
 /// <summary>Liegt ANode unterhalb von ABody in einer Schleife?</summary>
@@ -173,7 +194,9 @@ begin
   while (Node <> nil) and (Node <> ABody) do
   begin
     if Node.Kind in LoopKinds then
+    begin
       Exit(True);
+    end;
     Node := Node.Parent;
   end;
 end;
@@ -194,14 +217,22 @@ begin
     begin
       Text := ATokens[mIndex].Text;
       if StartsStr('{$', Text) then
-        Text := Copy(Text, 3, MaxInt)
+      begin
+        Text := Copy(Text, 3, MaxInt);
+      end
       else
+      begin
         Text := Copy(Text, 4, MaxInt);
+      end;
       Stop := 1;
       while (Stop <= Length(Text)) and CharInSet(Text[Stop], ['A'..'Z', 'a'..'z']) do
+      begin
         Inc(Stop);
+      end;
       if MatchText(Copy(Text, 1, Stop - 1), ConditionalWords) then
+      begin
         Exit(True);
+      end;
     end;
     Inc(mIndex);
   end;
@@ -219,7 +250,9 @@ begin
   begin
     if (ATokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword, TPascalTokenKind.Symbol]) and
       SameText(ATokens[Index].Text, AWord) then
+    begin
       Exit(Index);
+    end;
     Inc(Index);
   end;
 end;
@@ -240,45 +273,54 @@ begin
     begin
       Previous := TRoutineBody.PreviousToken(ATokens, Index);
       if (Previous < 0) or not ATokens[Previous].IsSymbol('.') then
+      begin
         Exit(ATokens[Index].Offset);
+      end;
     end;
     Inc(Index);
   end;
 end;
 
+/// <summary>Markiert in AFlags die Zeilen des Tokens AToken, soweit es sie gibt.</summary>
+procedure MarkLines(var AFlags: TArray<Boolean>; const AToken: TPascalToken);
+var
+  mLine: Integer;
+begin
+  for mLine := AToken.StartPos.Line to Min(AToken.EndPos.Line, High(AFlags)) do
+  begin
+    AFlags[mLine] := True;
+  end;
+end;
+
 function LineInfoOf(const AText: string; const ATokens: TArray<TPascalToken>): TLineInfo;
 var
-  Token: TPascalToken;
-  Line: Integer;
-  CodeBefore: Boolean;
-  LastCodeLine: Integer;
+  mToken: TPascalToken;
+  mLastCodeLine: Integer;
 begin
   Result.Lines := TTextLines.SplitLines(AText);
   SetLength(Result.Code, Length(Result.Lines));
   SetLength(Result.Comment, Length(Result.Lines));
   SetLength(Result.CommentStarts, Length(Result.Lines));
-  LastCodeLine := -1;
-  for Token in ATokens do
+  mLastCodeLine := -1;
+  for mToken in ATokens do
   begin
-    if Token.Text = '' then
+    if mToken.Text = '' then
+    begin
       Continue;
-    if Token.Kind = TPascalTokenKind.Comment then
-    begin
-      CodeBefore := LastCodeLine = Token.StartPos.Line;
-      if not CodeBefore and (Token.StartPos.Line <= High(Result.Lines)) and
-        not Result.Comment[Token.StartPos.Line] then
-        Result.CommentStarts[Token.StartPos.Line] := True;
-      for Line := Token.StartPos.Line to Token.EndPos.Line do
-        if Line <= High(Result.Lines) then
-          Result.Comment[Line] := True;
-    end
-    else
-    begin
-      for Line := Token.StartPos.Line to Token.EndPos.Line do
-        if Line <= High(Result.Lines) then
-          Result.Code[Line] := True;
-      LastCodeLine := Token.EndPos.Line;
     end;
+    if mToken.Kind <> TPascalTokenKind.Comment then
+    begin
+      MarkLines(Result.Code, mToken);
+      mLastCodeLine := mToken.EndPos.Line;
+      Continue;
+    end;
+    // Ein Kommentar beginnt die Zeile, wenn davor auf ihr kein Code und kein anderer Kommentar steht.
+    if (mLastCodeLine <> mToken.StartPos.Line) and (mToken.StartPos.Line <= High(Result.Lines)) and
+      not Result.Comment[mToken.StartPos.Line] then
+    begin
+      Result.CommentStarts[mToken.StartPos.Line] := True;
+    end;
+    MarkLines(Result.Comment, mToken);
   end;
 end;
 
@@ -293,14 +335,20 @@ begin
   while (Line > AAfter) and (Line >= 0) and not AInfo.Code[Line] do
   begin
     if AInfo.Comment[Line] then
-      Result := Line
+    begin
+      Result := Line;
+    end
     else if AStrict then
+    begin
       Break;
+    end;
     Dec(Line);
   end;
   // Nicht mitten in einem Kommentar beginnen, der zu Code darüber gehört.
   while (Result < ALine) and not AInfo.CommentStarts[Result] do
+  begin
     Inc(Result);
+  end;
 end;
 
 /// <summary>Kommentarzeilen AFirst..ALast - 1 ohne Leerzeilen außerhalb von Kommentaren, ohne die Einrückung der
@@ -312,17 +360,25 @@ var
 begin
   Result := nil;
   if AFirst >= ALast then
+  begin
     Exit;
+  end;
   Indent := TTextLines.IndentOf(AInfo.Lines[AFirst]);
   for Line := AFirst to ALast - 1 do
   begin
     if not AInfo.Comment[Line] then
+    begin
       Continue;
+    end;
     Text := TrimRight(AInfo.Lines[Line]);
     if StartsStr(Indent, Text) then
-      Text := Copy(Text, Length(Indent) + 1, MaxInt)
+    begin
+      Text := Copy(Text, Length(Indent) + 1, MaxInt);
+    end
     else
+    begin
       Text := TrimLeft(Text);
+    end;
     Result := Result + [Text];
   end;
 end;
@@ -339,14 +395,20 @@ begin
   First := AIndex + 1;
   if (First > High(ATokens)) or (ATokens[First].Kind <> TPascalTokenKind.Comment) or
     (ATokens[First].StartPos.Line <> ATokens[AIndex].EndPos.Line) then
+  begin
     Exit;
+  end;
   Last := First;
   while (Last < High(ATokens)) and (ATokens[Last + 1].Kind = TPascalTokenKind.Comment) and
     (ATokens[Last + 1].StartPos.Line = ATokens[Last].EndPos.Line) do
+  begin
     Inc(Last);
+  end;
   if (Last < High(ATokens)) and (ATokens[Last + 1].Text <> '') and
     (ATokens[Last + 1].StartPos.Line = ATokens[Last].EndPos.Line) then
+  begin
     Exit;
+  end;
   AEnd := ATokens[Last].EndPos;
   Result := Copy(AText, ATokens[First].Offset + 1, ATokens[Last].Offset + Length(ATokens[Last].Text) -
     ATokens[First].Offset);
@@ -357,7 +419,9 @@ function LastTokenOf(const ATokens: TArray<TPascalToken>; ANode: TSyntaxNode): I
 begin
   Result := TRoutineBody.TokenAt(ATokens, ANode.EndOffset) - 1;
   while (Result > 0) and (ATokens[Result].Kind = TPascalTokenKind.Comment) do
+  begin
     Dec(Result);
+  end;
 end;
 
 /// <summary>Code-Token in [AFrom, ATo) auf den Zeilen AFirstLine..ALastLine außerhalb von [ASkipFrom, ASkipTo)?
@@ -369,9 +433,14 @@ var
 begin
   Result := False;
   for Token in ATokens do
-    if (Token.Kind <> TPascalTokenKind.Comment) and (Token.Text <> '') and (Token.StartPos.Line >= AFirstLine) and
-      (Token.StartPos.Line <= ALastLine) and ((Token.Offset < ASkipFrom) or (Token.Offset >= ASkipTo)) then
+  begin
+    if (Token.Kind <> TPascalTokenKind.Comment) and (Token.Text <> '') and
+      InRange(Token.StartPos.Line, AFirstLine, ALastLine) and
+      ((Token.Offset < ASkipFrom) or (Token.Offset >= ASkipTo)) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 { In Inline-Variable umwandeln }
@@ -387,7 +456,9 @@ begin
   First := TRoutineBody.TokenAt(ATokens, AExpression.StartOffset);
   Last := LastTokenOf(ATokens, AExpression);
   if (First > High(ATokens)) or (Last < First) then
+  begin
     Exit;
+  end;
   Text := ATokens[First].Text;
   if First = Last then
     case ATokens[First].Kind of
@@ -409,7 +480,9 @@ begin
       Result := (Next <= Last) and SameText(ATokens[Next].Text, 'Create') and
         ((Next = Last) or ATokens[TRoutineBody.NextToken(ATokens, Next)].IsSymbol('('));
       if Result and (Next < Last) then
+      begin
         Result := ATokens[Last].IsSymbol(')');
+      end;
     end;
   end;
 end;
@@ -419,7 +492,9 @@ function ChildIndex(ANode: TSyntaxNode): Integer;
 begin
   Result := ANode.Parent.ChildCount - 1;
   while (Result >= 0) and (ANode.Parent[Result] <> ANode) do
+  begin
     Dec(Result);
+  end;
 end;
 
 /// <summary>Anweisung, vor der die Inline-Variable steht: die äußerste Anweisung um AFirst in der innersten
@@ -444,235 +519,476 @@ begin
         Inc(Index);
       end;
       if ALast < ListEnd.EndOffset then
+      begin
         Exit(Node);
+      end;
     end;
     Node := Node.Parent;
+  end;
+end;
+
+/// <summary>Steht hinter dem Token AIndex auf derselben Zeile noch ein Token?</summary>
+function CodeFollows(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
+begin
+  Result := (AIndex < High(ATokens)) and (ATokens[AIndex + 1].Text <> '') and
+    (ATokens[AIndex + 1].StartPos.Line = ATokens[AIndex].EndPos.Line);
+end;
+
+type
+  /// <summary>Arbeitsstand von „In Inline-Variable umwandeln“: die Variable Symbol aus dem Abschnitt Section der
+  /// Routine Routine, ihre erste Verwendung First, die Anweisung Statement, vor die sie wandert, und was mit ihr
+  /// wandert (Lead über, Trailing hinter der Deklaration).</summary>
+  TInlineMove = record
+    Text: string;
+    Tree: TSyntaxTree;
+    Tokens: TArray<TPascalToken>;
+    Symbol: TReassignedSymbol;
+    Routine: TSyntaxNode;
+    Section: TSyntaxNode;
+    Body: TSyntaxNode;
+    First: TSyntaxNode;
+    Statement: TSyntaxNode;
+    LastUse: Integer;
+    TypeText: string;
+    LineBreak: string;
+    Indent: string;
+    Lead: string;
+    Trailing: string;
+    DeclLine: Integer;
+    CommentLine: Integer;
+    /// <summary>Aus X := E wird var X: T := E.</summary>
+    Initialized: Boolean;
+    /// <summary>Lokale Variable im var-Abschnitt einer benannten Routine mit übertragbarem Typ?</summary>
+    function IsCandidate: Boolean;
+    /// <summary>Bedingte Übersetzung, absolute, Startwert, goto oder Typ ohne Text; setzt sonst TypeText.</summary>
+    function IsUnsupported: Boolean;
+    /// <summary>Erste und letzte Verwendung im Rumpf; False bei Capture oder ohne Verwendung.</summary>
+    function FindUses: Boolean;
+    /// <summary>Ist Statement X := E mit X als erster Verwendung?</summary>
+    function AssignsFirst: Boolean;
+    /// <summary>Kommt die Variable in Statement außer als First vor?</summary>
+    function ReadsInStatement: Boolean;
+    /// <summary>Anweisung und Art der Deklaration; False, wenn keine passt.</summary>
+    function FindAnchor: Boolean;
+    /// <summary>Kommentare, die mit einem Eintrag wandern, der allein auf seinen Zeilen steht.</summary>
+    procedure CollectComments(const AInfo: TLineInfo);
+    /// <summary>Letztes Token der Anweisung samt ";".</summary>
+    function StatementEnd: Integer;
+    function InitializedEdits: TArray<TTextEdit>;
+    function DeclarationEdits: TArray<TTextEdit>;
+    function Edits: TArray<TTextEdit>;
+  end;
+
+function TInlineMove.IsCandidate: Boolean;
+begin
+  Routine := Symbol.Routine;
+  Result := (Symbol.Kind = TReassignedKind.Local) and (Symbol.Decl <> nil) and
+    (Symbol.Decl.Kind = TSyntaxKind.VarDecl) and (Routine <> nil) and (Routine.Kind = TSyntaxKind.RoutineDecl);
+  if not Result then
+  begin
+    Exit;
+  end;
+  Section := Symbol.Decl.Parent;
+  Body := TRoutineBody.BodyOf(Routine);
+  Result := (Section <> nil) and (Section.Parent = Routine) and (Body <> nil) and (Symbol.Decl.ChildCount > 0) and
+    (Symbol.Decl[0].Kind in InlineTypeKinds);
+  // Zwei Namen eines Typs ohne Namen sind ein Typ; getrennt wären es zwei.
+  Result := Result and ((Pos(',', Symbol.Decl.Name) = 0) or (Symbol.Decl[0].Kind = TSyntaxKind.TypeReference));
+end;
+
+function TInlineMove.IsUnsupported: Boolean;
+begin
+  Result := HasConditional(Tokens, Routine.StartOffset, Routine.EndOffset) or
+    (FindToken(Tokens, Section.StartOffset, Section.EndOffset, 'absolute') >= 0) or
+    (FindToken(Tokens, Symbol.Decl.StartOffset, Symbol.Decl.EndOffset, '=') >= 0) or
+    TRoutineLocals.HasKind(Body, TSyntaxKind.GotoStatement);
+  if not Result then
+  begin
+    TypeText := Trim(TRoutineLocals.TypeChildText(Text, Symbol.Decl));
+    Result := TypeText = '';
+  end;
+end;
+
+function TInlineMove.FindUses: Boolean;
+var
+  mOccurrence: TReassignedOccurrence;
+begin
+  First := nil;
+  LastUse := -1;
+  for mOccurrence in Symbol.Occurrences do
+  begin
+    if mOccurrence.Node = nil then
+    begin
+      Continue;
+    end;
+    // Capture: Eine anonyme Methode oder verschachtelte Routine sähe die Inline-Variable anders.
+    if (OwnerRoutine(mOccurrence.Node) <> Routine) or not TRoutineBody.Within(mOccurrence.Node, Body) then
+    begin
+      Exit(False);
+    end;
+    if First = nil then
+    begin
+      First := mOccurrence.Node;
+    end;
+    LastUse := mOccurrence.Offset;
+  end;
+  Result := First <> nil;
+end;
+
+function TInlineMove.AssignsFirst: Boolean;
+begin
+  Result := (Statement.Kind = TSyntaxKind.AssignStatement) and (Statement.ChildCount >= 2) and
+    (Statement[0] = First) and (First.Kind = TSyntaxKind.Identifier);
+end;
+
+function TInlineMove.ReadsInStatement: Boolean;
+var
+  mOccurrence: TReassignedOccurrence;
+begin
+  for mOccurrence in Symbol.Occurrences do
+  begin
+    if (mOccurrence.Node <> nil) and (mOccurrence.Node <> First) and
+      (mOccurrence.Offset >= Statement.StartOffset) and (mOccurrence.Offset < Statement.EndOffset) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function TInlineMove.FindAnchor: Boolean;
+begin
+  Result := FindUses;
+  if Result then
+  begin
+    Statement := AnchorStatement(First, Body, LastUse);
+    Result := Statement <> nil;
+  end;
+  if Result then
+  begin
+    // var X: T := E, wenn die Anweisung X := E ist und E X nicht liest.
+    Initialized := AssignsFirst and not ReadsInStatement;
+    Result := Initialized or not InLoop(Statement, Body);
+  end;
+end;
+
+procedure TInlineMove.CollectComments(const AInfo: TLineInfo);
+var
+  mTrailingEnd: TTextPosition;
+  mComment: string;
+begin
+  LineBreak := TTextLines.LineBreakOf(Text);
+  Indent := TTextLines.IndentOf(Text, Statement.StartPos.Line);
+  DeclLine := Symbol.Decl.StartPos.Line;
+  CommentLine := DeclLine;
+  Lead := '';
+  Trailing := '';
+  // Kommentare wandern nur mit einem Eintrag, der allein auf seinen Zeilen steht.
+  if (Pos(',', Symbol.Decl.Name) > 0) or CodeOnLines(Tokens, DeclLine, Symbol.Decl.EndPos.Line,
+    Symbol.Decl.StartOffset, Symbol.Decl.EndOffset) then
+  begin
+    Exit;
+  end;
+  Trailing := TrailingComment(Text, Tokens, LastTokenOf(Tokens, Symbol.Decl), mTrailingEnd);
+  CommentLine := CommentStart(AInfo, DeclLine, Section.StartPos.Line, True);
+  for mComment in CommentLines(AInfo, CommentLine, DeclLine) do
+  begin
+    Lead := Lead + mComment + LineBreak + Indent;
+  end;
+end;
+
+function TInlineMove.StatementEnd: Integer;
+begin
+  Result := LastTokenOf(Tokens, Statement);
+  if (Result < High(Tokens)) and Tokens[Result + 1].IsSymbol(';') then
+  begin
+    Inc(Result);
+  end;
+end;
+
+function TInlineMove.InitializedEdits: TArray<TTextEdit>;
+var
+  mEnd: Integer;
+  mLead, mTrailing: string;
+begin
+  mLead := Lead;
+  mTrailing := Trailing;
+  mEnd := StatementEnd;
+  // Steht hinter der Anweisung (und ihrem ";") noch etwas auf der Zeile, kommt der mitwandernde Kommentar darüber.
+  if (mTrailing <> '') and CodeFollows(Tokens, mEnd) then
+  begin
+    mLead := mLead + mTrailing + LineBreak + Indent;
+    mTrailing := '';
+  end;
+  Result := TArray<TTextEdit>.Create(TTextEdit.Create(TTextRange.Create(Statement.StartPos, Statement.StartPos),
+    mLead + 'var '));
+  if not ObviousType(Tokens, Statement[1], TypeText) then
+  begin
+    Result := Result + [TTextEdit.Create(TTextRange.Create(First.EndPos, First.EndPos), ': ' + TypeText)];
+  end;
+  if mTrailing <> '' then
+  begin
+    Result := Result + [TTextEdit.Create(TTextRange.Create(Tokens[mEnd].EndPos, Tokens[mEnd].EndPos),
+      ' ' + mTrailing)];
+  end;
+end;
+
+function TInlineMove.DeclarationEdits: TArray<TTextEdit>;
+var
+  mDeclaration: string;
+begin
+  mDeclaration := Format('var %s: %s;', [Symbol.Name, TypeText]);
+  if Trailing <> '' then
+  begin
+    mDeclaration := mDeclaration + ' ' + Trailing;
+  end;
+  Result := TArray<TTextEdit>.Create(TTextEdit.Create(TTextRange.Create(Statement.StartPos, Statement.StartPos),
+    Lead + mDeclaration + LineBreak + Indent));
+end;
+
+function TInlineMove.Edits: TArray<TTextEdit>;
+begin
+  if Initialized then
+  begin
+    Result := InitializedEdits;
+  end
+  else
+  begin
+    Result := DeclarationEdits;
+  end;
+  TRoutineLocals.RemoveVariables(Tree, Symbol.Decl, [Symbol.Name], Result);
+  // Kommentarzeilen darüber, sofern das Entfernen sie nicht schon umfasst.
+  if (CommentLine < DeclLine) and (Result[High(Result)].Range.StartPos.Line > CommentLine) then
+  begin
+    Result := Result + [TTextEdit.Create(TTextRange.Create(CommentLine, 0, DeclLine, 0), '')];
   end;
 end;
 
 function InlineAction(const AText: string; ATree: TSyntaxTree; const AInfo: TLineInfo;
   const ASymbol: TReassignedSymbol; out AAction: TCodeAction): Boolean;
 var
-  Tokens: TArray<TPascalToken>;
-  Routine, Section, Body, First, Statement: TSyntaxNode;
-  Occurrence: TReassignedOccurrence;
-  LastUse, Index, DeclLine, CommentLine, SemicolonIndex, StatementEnd: Integer;
-  TypeText, LineBreak, Indent, Lead, Trailing, Declaration: string;
-  Comments: TArray<string>;
-  Initialized, MoveComments: Boolean;
-  TrailingEnd: TTextPosition;
-  Edits: TArray<TTextEdit>;
+  mMove: TInlineMove;
 begin
-  Result := False;
-  Routine := ASymbol.Routine;
-  if (ASymbol.Kind <> TReassignedKind.Local) or (ASymbol.Decl = nil) or
-    (ASymbol.Decl.Kind <> TSyntaxKind.VarDecl) or (Routine = nil) or (Routine.Kind <> TSyntaxKind.RoutineDecl) then
-    Exit;
-  Section := ASymbol.Decl.Parent;
-  Body := TRoutineBody.BodyOf(Routine);
-  if (Section = nil) or (Section.Parent <> Routine) or (Body = nil) or (ASymbol.Decl.ChildCount = 0) or
-    not (ASymbol.Decl[0].Kind in InlineTypeKinds) then
-    Exit;
-  // Zwei Namen eines Typs ohne Namen sind ein Typ; getrennt wären es zwei.
-  if (Pos(',', ASymbol.Decl.Name) > 0) and (ASymbol.Decl[0].Kind <> TSyntaxKind.TypeReference) then
-    Exit;
-  Tokens := ATree.Tokens;
-  if HasConditional(Tokens, Routine.StartOffset, Routine.EndOffset) or
-    (FindToken(Tokens, Section.StartOffset, Section.EndOffset, 'absolute') >= 0) or
-    (FindToken(Tokens, ASymbol.Decl.StartOffset, ASymbol.Decl.EndOffset, '=') >= 0) or
-    TRoutineLocals.HasKind(Body, TSyntaxKind.GotoStatement) then
-    Exit;
-  TypeText := Trim(TRoutineLocals.TypeChildText(AText, ASymbol.Decl));
-  if TypeText = '' then
-    Exit;
-  First := nil;
-  LastUse := -1;
-  for Occurrence in ASymbol.Occurrences do
-    if Occurrence.Node <> nil then
-    begin
-      // Capture: Eine anonyme Methode oder verschachtelte Routine sähe die Inline-Variable anders.
-      if (OwnerRoutine(Occurrence.Node) <> Routine) or not TRoutineBody.Within(Occurrence.Node, Body) then
-        Exit;
-      if First = nil then
-        First := Occurrence.Node;
-      LastUse := Occurrence.Offset;
-    end;
-  if First = nil then
-    Exit;
-  Statement := AnchorStatement(First, Body, LastUse);
-  if Statement = nil then
-    Exit;
-  // var X: T := E, wenn die Anweisung X := E ist und E X nicht liest.
-  Initialized := (Statement.Kind = TSyntaxKind.AssignStatement) and (Statement.ChildCount >= 2) and
-    (Statement[0] = First) and (First.Kind = TSyntaxKind.Identifier);
-  if Initialized then
-    for Occurrence in ASymbol.Occurrences do
-      if (Occurrence.Node <> nil) and (Occurrence.Node <> First) and (Occurrence.Offset >= Statement.StartOffset) and
-        (Occurrence.Offset < Statement.EndOffset) then
-        Initialized := False;
-  if not Initialized and InLoop(Statement, Body) then
-    Exit;
-  LineBreak := TTextLines.LineBreakOf(AText);
-  Indent := TTextLines.IndentOf(AText, Statement.StartPos.Line);
-  // Kommentare wandern nur mit einem Eintrag, der allein auf seinen Zeilen steht.
-  DeclLine := ASymbol.Decl.StartPos.Line;
-  SemicolonIndex := LastTokenOf(Tokens, ASymbol.Decl);
-  Trailing := TrailingComment(AText, Tokens, SemicolonIndex, TrailingEnd);
-  MoveComments := (Pos(',', ASymbol.Decl.Name) = 0) and not CodeOnLines(Tokens, DeclLine,
-    ASymbol.Decl.EndPos.Line, ASymbol.Decl.StartOffset, ASymbol.Decl.EndOffset);
-  CommentLine := DeclLine;
-  Comments := nil;
-  if MoveComments then
+  mMove := Default(TInlineMove);
+  mMove.Text := AText;
+  mMove.Tree := ATree;
+  mMove.Tokens := ATree.Tokens;
+  mMove.Symbol := ASymbol;
+  Result := mMove.IsCandidate and not mMove.IsUnsupported and mMove.FindAnchor;
+  if Result then
   begin
-    CommentLine := CommentStart(AInfo, DeclLine, Section.StartPos.Line, True);
-    Comments := CommentLines(AInfo, CommentLine, DeclLine);
-  end
-  else
-    Trailing := '';
-  Lead := '';
-  for Index := 0 to High(Comments) do
-    Lead := Lead + Comments[Index] + LineBreak + Indent;
-  Edits := nil;
-  if Initialized then
-  begin
-    Declaration := 'var ';
-    // Steht hinter der Anweisung (und ihrem ";") noch etwas auf der Zeile, kommt der mitwandernde Kommentar
-    // darüber.
-    StatementEnd := LastTokenOf(Tokens, Statement);
-    if (StatementEnd < High(Tokens)) and Tokens[StatementEnd + 1].IsSymbol(';') then
-      Inc(StatementEnd);
-    if (Trailing <> '') and (StatementEnd < High(Tokens)) and (Tokens[StatementEnd + 1].Text <> '') and
-      (Tokens[StatementEnd + 1].StartPos.Line = Tokens[StatementEnd].EndPos.Line) then
-    begin
-      Lead := Lead + Trailing + LineBreak + Indent;
-      Trailing := '';
-    end;
-    Edits := Edits + [TTextEdit.Create(TTextRange.Create(Statement.StartPos, Statement.StartPos),
-      Lead + Declaration)];
-    if not ObviousType(Tokens, Statement[1], TypeText) then
-      Edits := Edits + [TTextEdit.Create(TTextRange.Create(First.EndPos, First.EndPos), ': ' + TypeText)];
-    if Trailing <> '' then
-      Edits := Edits + [TTextEdit.Create(TTextRange.Create(Tokens[StatementEnd].EndPos, Tokens[StatementEnd].EndPos),
-        ' ' + Trailing)];
-  end
-  else
-  begin
-    Declaration := Format('var %s: %s;', [ASymbol.Name, TypeText]);
-    if Trailing <> '' then
-      Declaration := Declaration + ' ' + Trailing;
-    Edits := Edits + [TTextEdit.Create(TTextRange.Create(Statement.StartPos, Statement.StartPos),
-      Lead + Declaration + LineBreak + Indent)];
+    mMove.CollectComments(AInfo);
+    AAction := Default(TCodeAction);
+    AAction.Title := cTexts[TVarBlockText.ConvertToInlineVariableVar].Fmt([ASymbol.Name]);
+    AAction.Kind := RewriteKind;
+    AAction.Edits := mMove.Edits;
   end;
-  TRoutineLocals.RemoveVariables(ATree, ASymbol.Decl, [ASymbol.Name], Edits);
-  // Kommentarzeilen darüber, sofern das Entfernen sie nicht schon umfasst.
-  if (CommentLine < DeclLine) and (Edits[High(Edits)].Range.StartPos.Line > CommentLine) then
-    Edits := Edits + [TTextEdit.Create(TTextRange.Create(CommentLine, 0, DeclLine, 0), '')];
-  AAction := Default(TCodeAction);
-  AAction.Title := Format('In Inline-Variable umwandeln (var %s)', [ASymbol.Name]);
-  AAction.Kind := RewriteKind;
-  AAction.Edits := Edits;
-  Result := True;
 end;
 
 { In var-Block verschieben }
 
+type
+  /// <summary>Arbeitsstand von „In var-Block verschieben“: die Inline-Variable Symbol (Deklaration Decl ab dem
+  /// Token Keyword, Name NameToken, ":=" Assign oder -1) der Routine Routine mit Typ TypeText; Extra macht den
+  /// Typ sichtbar (uses).</summary>
+  TSectionMove = record
+    Text: string;
+    Tree: TSyntaxTree;
+    Tokens: TArray<TPascalToken>;
+    Symbol: TReassignedSymbol;
+    Routine: TSyntaxNode;
+    Body: TSyntaxNode;
+    Decl: TSyntaxNode;
+    Keyword: Integer;
+    NameToken: Integer;
+    Assign: Integer;
+    TypeText: string;
+    Extra: TArray<TTextEdit>;
+    /// <summary>Einzelne Inline-Variable einer benannten Routine ohne bedingte Übersetzung?</summary>
+    function IsCandidate: Boolean;
+    /// <summary>Ende des Gültigkeitsbereichs; -1, wenn ein anderer lokaler Name gleich ist.</summary>
+    function ScopeEnd: Integer;
+    /// <summary>Verwendet eine verschachtelte Routine oder anonyme Methode die Variable?</summary>
+    function IsCaptured: Boolean;
+    /// <summary>Ändert das Verschieben die Bedeutung nicht?</summary>
+    function IsSafe: Boolean;
+    /// <summary>Typ aus der Deklaration oder über AOptions.Types; False ohne.</summary>
+    function ResolveType(const AOptions: TVarBlockOptions): Boolean;
+    /// <summary>Edits für var X: T; ohne Startwert; AAdd nimmt Kommentare der Zeile mit.</summary>
+    function DeclarationRemoval(const AInfo: TLineInfo; ASemicolon: Integer; const AEntry: string;
+      var AAdd: TTextEdit): TArray<TTextEdit>;
+    function BuildEdits(const AInfo: TLineInfo; const AStyle: TFormatStyle; out AEdits: TArray<TTextEdit>): Boolean;
+  end;
+
+function TSectionMove.IsCandidate: Boolean;
+begin
+  Routine := Symbol.Routine;
+  Decl := Symbol.Decl;
+  Result := (Symbol.Kind = TReassignedKind.InlineVariable) and (Decl <> nil) and
+    (Decl.Kind = TSyntaxKind.InlineVar) and (Pos(',', Decl.Name) = 0);
+  Result := Result and (Routine <> nil) and (Routine.Kind = TSyntaxKind.RoutineDecl);
+  if not Result then
+  begin
+    Exit;
+  end;
+  Body := TRoutineBody.BodyOf(Routine);
+  Result := (Body <> nil) and not HasConditional(Tokens, Routine.StartOffset, Routine.EndOffset);
+  if Result then
+  begin
+    Keyword := TRoutineBody.TokenAt(Tokens, Decl.StartOffset);
+    Result := (Keyword <= High(Tokens)) and Tokens[Keyword].IsKeyword('var');
+  end;
+  if Result then
+  begin
+    NameToken := TRoutineBody.NextToken(Tokens, Keyword);
+  end;
+end;
+
+function TSectionMove.ScopeEnd: Integer;
+var
+  mLocal: TRoutineLocal;
+begin
+  Result := -1;
+  for mLocal in TRoutineLocals.Collect(Text, Tree, Routine) do
+  begin
+    if not SameText(mLocal.Name, Symbol.Name) then
+    begin
+      Continue;
+    end;
+    if mLocal.Decl <> Decl then
+    begin
+      Exit(-1);
+    end;
+    Result := mLocal.ScopeEnd;
+  end;
+end;
+
+function TSectionMove.IsCaptured: Boolean;
+var
+  mOccurrence: TReassignedOccurrence;
+begin
+  for mOccurrence in Symbol.Occurrences do
+  begin
+    if (mOccurrence.Node <> nil) and (OwnerRoutine(mOccurrence.Node) <> Routine) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function TSectionMove.IsSafe: Boolean;
+var
+  mScopeEnd: Integer;
+begin
+  // Gültigkeitsbereich der Inline-Variablen; kein anderer lokaler Name gleich. Meint derselbe Bezeichner sonst
+  // in der Routine etwas anderes (Feld, globale Variable), sähe er danach die Variable.
+  mScopeEnd := ScopeEnd;
+  Result := (mScopeEnd >= 0) and (WordOffset(Tokens, Symbol.Name, Routine.StartOffset, Routine.EndOffset,
+    Decl.StartOffset, mScopeEnd + 1) < 0) and not IsCaptured;
+  if Result then
+  begin
+    Assign := FindToken(Tokens, Decl.StartOffset, Decl.EndOffset, ':=');
+    // Ohne Startwert beginnt jeder Schleifendurchlauf mit einer neuen Variablen.
+    Result := (Assign >= 0) or not InLoop(Decl, Body);
+  end;
+end;
+
+function TSectionMove.ResolveType(const AOptions: TVarBlockOptions): Boolean;
+begin
+  Extra := nil;
+  TypeText := Trim(TRoutineLocals.TypeChildText(Text, Decl));
+  Result := TypeText <> '';
+  if not Result then
+  begin
+    Result := Assigned(AOptions.Types) and AOptions.Types(Decl, TypeText, Extra) and (Trim(TypeText) <> '');
+  end;
+  TypeText := Trim(TypeText);
+end;
+
+function TSectionMove.DeclarationRemoval(const AInfo: TLineInfo; ASemicolon: Integer; const AEntry: string;
+  var AAdd: TTextEdit): TArray<TTextEdit>;
+var
+  mTrailing, mPrefix, mIndent, mMoved, mComment, mLineBreak: string;
+  mCommentLine: Integer;
+  mTrailingEnd: TTextPosition;
+begin
+  if CodeOnLines(Tokens, Decl.StartPos.Line, Tokens[ASemicolon].EndPos.Line, Decl.StartOffset,
+    Tokens[ASemicolon].Offset + 1) then
+  begin
+    Exit(TArray<TTextEdit>.Create(TTextEdit.Create(TTextRange.Create(Decl.StartPos, Tokens[ASemicolon].EndPos), '')));
+  end;
+  // Allein auf der Zeile: Zeile weg, Kommentare darüber und dahinter wandern in den Abschnitt.
+  mLineBreak := TTextLines.LineBreakOf(Text);
+  mTrailing := TrailingComment(Text, Tokens, ASemicolon, mTrailingEnd);
+  mCommentLine := CommentStart(AInfo, Decl.StartPos.Line, -1, True);
+  Result := TArray<TTextEdit>.Create(TTextEdit.Create(TTextRange.Create(mCommentLine, 0,
+    Tokens[ASemicolon].EndPos.Line + 1, 0), ''));
+  mPrefix := Copy(AAdd.NewText, 1, Pos(AEntry, AAdd.NewText) - 1);
+  mIndent := Copy(mPrefix, LastDelimiter(#10, mPrefix) + 1, MaxInt);
+  mMoved := '';
+  for mComment in CommentLines(AInfo, mCommentLine, Decl.StartPos.Line) do
+  begin
+    mMoved := mMoved + mComment + mLineBreak + mIndent;
+  end;
+  mMoved := mMoved + AEntry;
+  if mTrailing <> '' then
+  begin
+    mMoved := mMoved + ' ' + mTrailing;
+  end;
+  AAdd.NewText := StringReplace(AAdd.NewText, AEntry, mMoved, []);
+end;
+
+function TSectionMove.BuildEdits(const AInfo: TLineInfo; const AStyle: TFormatStyle;
+  out AEdits: TArray<TTextEdit>): Boolean;
+var
+  mName, mEntry: string;
+  mAdd: TTextEdit;
+  mSemicolon: Integer;
+begin
+  AEdits := nil;
+  mName := CleanName(Tokens[NameToken].Text);
+  mEntry := Format('%s: %s;', [mName, TypeText]);
+  mAdd := TRoutineBody.AddVariable(Text, Routine, mName, TypeText, AStyle);
+  Result := True;
+  if Assign >= 0 then
+  begin
+    // var X: T := E  ->  X := E
+    AEdits := TArray<TTextEdit>.Create(TTextEdit.Create(TTextRange.Create(Tokens[Keyword].StartPos,
+      Tokens[Assign].StartPos), Tokens[NameToken].Text + ' '));
+  end
+  else
+  begin
+    mSemicolon := TRoutineBody.NextToken(Tokens, LastTokenOf(Tokens, Decl));
+    Result := (mSemicolon <= High(Tokens)) and Tokens[mSemicolon].IsSymbol(';');
+    if Result then
+    begin
+      AEdits := DeclarationRemoval(AInfo, mSemicolon, mEntry, mAdd);
+    end;
+  end;
+  AEdits := TArray<TTextEdit>.Create(mAdd) + AEdits + Extra;
+end;
+
 function SectionAction(const AText: string; ATree: TSyntaxTree; const AInfo: TLineInfo;
   const ASymbol: TReassignedSymbol; const AOptions: TVarBlockOptions; out AAction: TCodeAction): Boolean;
 var
-  Tokens: TArray<TPascalToken>;
-  Routine, Body, Decl: TSyntaxNode;
-  Locals: TArray<TRoutineLocal>;
-  Local: TRoutineLocal;
-  Occurrence: TReassignedOccurrence;
-  ScopeEnd, Keyword, NameToken, Assign, Semicolon, CommentLine, Index: Integer;
-  TypeText, Entry, Prefix, EntryIndent, LineBreak, Trailing, Moved: string;
-  Extra, Edits: TArray<TTextEdit>;
-  Comments: TArray<string>;
-  Add: TTextEdit;
-  TrailingEnd: TTextPosition;
+  mMove: TSectionMove;
+  mEdits: TArray<TTextEdit>;
 begin
-  Result := False;
-  Routine := ASymbol.Routine;
-  Decl := ASymbol.Decl;
-  if (ASymbol.Kind <> TReassignedKind.InlineVariable) or (Decl = nil) or (Decl.Kind <> TSyntaxKind.InlineVar) or
-    (Pos(',', Decl.Name) > 0) or (Routine = nil) or (Routine.Kind <> TSyntaxKind.RoutineDecl) then
-    Exit;
-  Body := TRoutineBody.BodyOf(Routine);
-  Tokens := ATree.Tokens;
-  if (Body = nil) or HasConditional(Tokens, Routine.StartOffset, Routine.EndOffset) then
-    Exit;
-  Keyword := TRoutineBody.TokenAt(Tokens, Decl.StartOffset);
-  if (Keyword > High(Tokens)) or not Tokens[Keyword].IsKeyword('var') then
-    Exit;
-  NameToken := TRoutineBody.NextToken(Tokens, Keyword);
-  // Gültigkeitsbereich der Inline-Variablen; kein anderer lokaler Name gleich.
-  ScopeEnd := -1;
-  Locals := TRoutineLocals.Collect(AText, ATree, Routine);
-  for Local in Locals do
-    if SameText(Local.Name, ASymbol.Name) then
-      if Local.Decl = Decl then
-        ScopeEnd := Local.ScopeEnd
-      else
-        Exit;
-  if ScopeEnd < 0 then
-    Exit;
-  // Meint derselbe Bezeichner sonst in der Routine etwas anderes (Feld, globale Variable), sähe er danach die
-  // Variable.
-  if WordOffset(Tokens, ASymbol.Name, Routine.StartOffset, Routine.EndOffset, Decl.StartOffset, ScopeEnd + 1) >= 0 then
-    Exit;
-  for Occurrence in ASymbol.Occurrences do
-    if (Occurrence.Node <> nil) and (OwnerRoutine(Occurrence.Node) <> Routine) then
-      Exit;
-  Assign := FindToken(Tokens, Decl.StartOffset, Decl.EndOffset, ':=');
-  // Ohne Startwert beginnt jeder Schleifendurchlauf mit einer neuen Variablen.
-  if (Assign < 0) and InLoop(Decl, Body) then
-    Exit;
-  Extra := nil;
-  TypeText := Trim(TRoutineLocals.TypeChildText(AText, Decl));
-  if TypeText = '' then
-    if not Assigned(AOptions.Types) or not AOptions.Types(Decl, TypeText, Extra) or (Trim(TypeText) = '') then
-      Exit;
-  TypeText := Trim(TypeText);
-  LineBreak := TTextLines.LineBreakOf(AText);
-  Entry := Format('%s: %s;', [CleanName(Tokens[NameToken].Text), TypeText]);
-  Add := TRoutineBody.AddVariable(AText, Routine, CleanName(Tokens[NameToken].Text), TypeText, AOptions.Style);
-  Edits := nil;
-  if Assign >= 0 then
-    // var X: T := E  ->  X := E
-    Edits := Edits + [TTextEdit.Create(TTextRange.Create(Tokens[Keyword].StartPos, Tokens[Assign].StartPos),
-      Tokens[NameToken].Text + ' ')]
-  else
+  mMove := Default(TSectionMove);
+  mMove.Text := AText;
+  mMove.Tree := ATree;
+  mMove.Tokens := ATree.Tokens;
+  mMove.Symbol := ASymbol;
+  Result := mMove.IsCandidate and mMove.IsSafe and mMove.ResolveType(AOptions) and
+    mMove.BuildEdits(AInfo, AOptions.Style, mEdits);
+  if Result then
   begin
-    Semicolon := TRoutineBody.NextToken(Tokens, LastTokenOf(Tokens, Decl));
-    if (Semicolon > High(Tokens)) or not Tokens[Semicolon].IsSymbol(';') then
-      Exit;
-    if CodeOnLines(Tokens, Decl.StartPos.Line, Tokens[Semicolon].EndPos.Line, Decl.StartOffset,
-      Tokens[Semicolon].Offset + 1) then
-      Edits := Edits + [TTextEdit.Create(TTextRange.Create(Decl.StartPos, Tokens[Semicolon].EndPos), '')]
-    else
-    begin
-      // Allein auf der Zeile: Zeile weg, Kommentare darüber und dahinter wandern in den Abschnitt.
-      Trailing := TrailingComment(AText, Tokens, Semicolon, TrailingEnd);
-      CommentLine := CommentStart(AInfo, Decl.StartPos.Line, -1, True);
-      Comments := CommentLines(AInfo, CommentLine, Decl.StartPos.Line);
-      Edits := Edits + [TTextEdit.Create(TTextRange.Create(CommentLine, 0, Tokens[Semicolon].EndPos.Line + 1, 0),
-        '')];
-      Prefix := Copy(Add.NewText, 1, Pos(Entry, Add.NewText) - 1);
-      EntryIndent := Copy(Prefix, LastDelimiter(#10, Prefix) + 1, MaxInt);
-      Moved := '';
-      for Index := 0 to High(Comments) do
-        Moved := Moved + Comments[Index] + LineBreak + EntryIndent;
-      Moved := Moved + Entry;
-      if Trailing <> '' then
-        Moved := Moved + ' ' + Trailing;
-      Add.NewText := StringReplace(Add.NewText, Entry, Moved, []);
-    end;
+    AAction := Default(TCodeAction);
+    AAction.Title := cTexts[TVarBlockText.MoveToVarBlock].Fmt([ASymbol.Name]);
+    AAction.Kind := RewriteKind;
+    AAction.Edits := mEdits;
   end;
-  AAction := Default(TCodeAction);
-  AAction.Title := Format('In var-Block verschieben (%s)', [ASymbol.Name]);
-  AAction.Kind := RewriteKind;
-  AAction.Edits := TArray<TTextEdit>.Create(Add) + Edits + Extra;
-  Result := True;
 end;
 
 { var-Block aufräumen }
@@ -684,8 +1000,12 @@ var
 begin
   Result := '';
   for Character in LowerCase(ATypeText) do
+  begin
     if not CharInSet(Character, [' ', #9, #10, #13]) then
+    begin
       Result := Result + Character;
+    end;
+  end;
 end;
 
 /// <summary>Kommt AItem vor ACandidate? Stabil über Order.</summary>
@@ -696,16 +1016,70 @@ begin
   case ASort of
     TVarBlockSort.Usage:
       if AItem.FirstUse <> ACandidate.FirstUse then
+      begin
         Exit(AItem.FirstUse < ACandidate.FirstUse);
+      end;
     TVarBlockSort.Alpha:
       begin
         Compared := CompareText(AItem.Names[0], ACandidate.Names[0]);
         if Compared <> 0 then
+        begin
           Exit(Compared < 0);
+        end;
       end;
     TVarBlockSort.None: ;
   end;
   Result := AItem.Order < ACandidate.Order;
+end;
+
+/// <summary>Bedingte Übersetzung, absolute oder Startwerte im Abschnitt: Neuschreiben ginge nicht verlustfrei.
+/// </summary>
+function SectionUnsupported(const ATokens: TArray<TPascalToken>; ASection: TSyntaxNode): Boolean;
+begin
+  Result := (ASection.ChildCount = 0) or HasConditional(ATokens, ASection.StartOffset, ASection.EndOffset) or
+    (FindToken(ATokens, ASection.StartOffset, ASection.EndOffset, 'absolute') >= 0) or
+    (FindToken(ATokens, ASection.StartOffset, ASection.EndOffset, '=') >= 0);
+end;
+
+/// <summary>Variablendeklaration ohne Kommentar oder Direktive darin oder davor auf derselben Zeile; ALast ist
+/// ihr letztes Token.</summary>
+function PlainDecl(const ATokens: TArray<TPascalToken>; ADecl: TSyntaxNode; out ALast: Integer): Boolean;
+var
+  mFirst, mToken: Integer;
+begin
+  ALast := -1;
+  if (ADecl.Kind <> TSyntaxKind.VarDecl) or (ADecl.ChildCount = 0) then
+  begin
+    Exit(False);
+  end;
+  mFirst := TRoutineBody.TokenAt(ATokens, ADecl.StartOffset);
+  ALast := LastTokenOf(ATokens, ADecl);
+  for mToken := mFirst to ALast do
+  begin
+    if ATokens[mToken].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+    begin
+      Exit(False);
+    end;
+  end;
+  // Kommentar vor dem Eintrag auf derselben Zeile
+  Result := not ((mFirst > 0) and (ATokens[mFirst - 1].Kind = TPascalTokenKind.Comment) and
+    (ATokens[mFirst - 1].EndPos.Line = ADecl.StartPos.Line));
+end;
+
+/// <summary>Eintrag zur Deklaration ADecl, noch ohne Kommentare.</summary>
+function EntryOf(const AText: string; ADecl: TSyntaxNode): TVarEntry;
+var
+  mName: string;
+begin
+  Result := Default(TVarEntry);
+  Result.Decl := ADecl;
+  for mName in ADecl.Name.Split([',']) do
+  begin
+    Result.Names := Result.Names + [Trim(mName)];
+  end;
+  Result.TypeText := Trim(TRoutineLocals.TypeChildText(AText, ADecl));
+  Result.Named := ADecl[0].Kind = TSyntaxKind.TypeReference;
+  Result.FirstLine := ADecl.StartPos.Line;
 end;
 
 /// <summary>Einträge des Abschnitts samt Kommentaren; False, wenn der Abschnitt etwas enthält, das beim
@@ -714,235 +1088,372 @@ end;
 function SectionEntries(const AText: string; const ATokens: TArray<TPascalToken>; const AInfo: TLineInfo;
   ASection: TSyntaxNode; out AEntries: TArray<TVarEntry>): Boolean;
 var
-  Index, Token, First, Last, After: Integer;
-  Decl: TSyntaxNode;
-  Entry: TVarEntry;
-  Name: string;
+  mIndex, mLast, mAfter: Integer;
+  mDecl: TSyntaxNode;
+  mEntry: TVarEntry;
 begin
-  Result := False;
   AEntries := nil;
-  if (ASection.ChildCount = 0) or HasConditional(ATokens, ASection.StartOffset, ASection.EndOffset) or
-    (FindToken(ATokens, ASection.StartOffset, ASection.EndOffset, 'absolute') >= 0) or
-    (FindToken(ATokens, ASection.StartOffset, ASection.EndOffset, '=') >= 0) then
-    Exit;
-  After := ASection.StartPos.Line;
-  for Index := 0 to ASection.ChildCount - 1 do
+  if SectionUnsupported(ATokens, ASection) then
   begin
-    Decl := ASection[Index];
-    if (Decl.Kind <> TSyntaxKind.VarDecl) or (Decl.ChildCount = 0) then
-      Exit;
-    First := TRoutineBody.TokenAt(ATokens, Decl.StartOffset);
-    Last := LastTokenOf(ATokens, Decl);
-    for Token := First to Last do
-      if ATokens[Token].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
-        Exit;
-    // Kommentar vor dem Eintrag auf derselben Zeile
-    if (First > 0) and (ATokens[First - 1].Kind = TPascalTokenKind.Comment) and
-      (ATokens[First - 1].EndPos.Line = Decl.StartPos.Line) then
-      Exit;
-    Entry := Default(TVarEntry);
-    Entry.Decl := Decl;
-    for Name in Decl.Name.Split([',']) do
-      Entry.Names := Entry.Names + [Trim(Name)];
-    Entry.TypeText := Trim(TRoutineLocals.TypeChildText(AText, Decl));
-    if Entry.TypeText = '' then
-      Exit;
-    Entry.Named := Decl[0].Kind = TSyntaxKind.TypeReference;
-    Entry.FirstLine := Decl.StartPos.Line;
-    if (Decl.StartPos.Line > After) or (Index = 0) then
+    Exit(False);
+  end;
+  mAfter := ASection.StartPos.Line;
+  for mIndex := 0 to ASection.ChildCount - 1 do
+  begin
+    mDecl := ASection[mIndex];
+    if not PlainDecl(ATokens, mDecl, mLast) then
     begin
-      Entry.FirstLine := CommentStart(AInfo, Decl.StartPos.Line, After, False);
-      Entry.Comments := CommentLines(AInfo, Entry.FirstLine, Decl.StartPos.Line);
+      Exit(False);
     end;
-    Entry.Trailing := TrailingComment(AText, ATokens, Last, Entry.EndPos);
-    Entry.EndLine := Entry.EndPos.Line;
-    After := Entry.EndLine;
-    AEntries := AEntries + [Entry];
+    mEntry := EntryOf(AText, mDecl);
+    if mEntry.TypeText = '' then
+    begin
+      Exit(False);
+    end;
+    if (mDecl.StartPos.Line > mAfter) or (mIndex = 0) then
+    begin
+      mEntry.FirstLine := CommentStart(AInfo, mDecl.StartPos.Line, mAfter, False);
+      mEntry.Comments := CommentLines(AInfo, mEntry.FirstLine, mDecl.StartPos.Line);
+    end;
+    mEntry.Trailing := TrailingComment(AText, ATokens, mLast, mEntry.EndPos);
+    mEntry.EndLine := mEntry.EndPos.Line;
+    mAfter := mEntry.EndLine;
+    AEntries := AEntries + [mEntry];
   end;
   Result := True;
 end;
 
-function CleanupAction(const AText: string; ATree: TSyntaxTree; const AInfo: TLineInfo;
-  const ASymbols: TArray<TReassignedSymbol>; ASection: TSyntaxNode; const AOptions: TVarBlockOptions;
-  out AAction: TCodeAction): Boolean;
-var
-  Tokens: TArray<TPascalToken>;
-  Routine: TSyntaxNode;
-  Entries: TArray<TVarEntry>;
-  Entry: TVarEntry;
-  Items, Sorted, Merged: TArray<TVarItem>;
-  Item: TVarItem;
-  Symbol: TReassignedSymbol;
-  Occurrence: TReassignedOccurrence;
-  Kept: TArray<string>;
-  Name, LineBreak, Indent, Line, NewText, OldText, Removed: string;
-  Index, Inner, FirstUse, WordUse, Order, StartOffset, EndOffset: Integer;
-  Lines: TArray<string>;
-  RangeStart, RangeEnd: TTextPosition;
-  Inserted, AtLineStart: Boolean;
+/// <summary>Benannter Typ ohne Kommentare: darf zusammengefasst und getrennt werden.</summary>
+function IsPlainEntry(const AEntry: TVarEntry): Boolean;
 begin
-  Result := False;
-  Routine := ASection.Parent;
-  Tokens := ATree.Tokens;
-  if not SectionEntries(AText, Tokens, AInfo, ASection, Entries) then
-    Exit;
-  // Einträge in Zeilen; ungenutzte Namen fallen weg.
-  Items := nil;
-  Removed := '';
-  Order := 0;
-  for Entry in Entries do
+  Result := AEntry.Named and (AEntry.Comments = nil) and (AEntry.Trailing = '');
+end;
+
+function IsPlainItem(const AItem: TVarItem): Boolean;
+begin
+  Result := AItem.Named and (AItem.Comments = nil) and (AItem.Trailing = '');
+end;
+
+/// <summary>Dürfen die Zeilen AFirst und ASecond eine werden (I, J: Integer)?</summary>
+function CanMerge(const AFirst, ASecond: TVarItem): Boolean;
+begin
+  Result := IsPlainItem(AFirst) and IsPlainItem(ASecond) and (TypeKey(AFirst.TypeText) = TypeKey(ASecond.TypeText));
+end;
+
+/// <summary>AItems stabil sortiert (Einfügen).</summary>
+function SortedItems(const AItems: TArray<TVarItem>; ASort: TVarBlockSort): TArray<TVarItem>;
+var
+  mItem: TVarItem;
+  mIndex: Integer;
+  mInserted: Boolean;
+begin
+  Result := nil;
+  for mItem in AItems do
   begin
-    Kept := nil;
-    FirstUse := MaxInt;
-    for Name in Entry.Names do
+    mInserted := False;
+    for mIndex := 0 to High(Result) do
     begin
-      WordUse := MaxInt;
-      for Symbol in ASymbols do
-        if (Symbol.Decl = Entry.Decl) and SameText(Symbol.Name, Name) then
-          for Occurrence in Symbol.Occurrences do
-            if (Occurrence.Node <> nil) and (Occurrence.Offset < WordUse) then
-              WordUse := Occurrence.Offset;
-      // Absicherung, falls die Analyse eine Verwendung nicht sieht (asm, with): Jeder gleichnamige
-      // Bezeichner in der Routine zählt als Verwendung.
-      if WordUse = MaxInt then
+      if Before(mItem, Result[mIndex], ASort) then
       begin
-        WordUse := WordOffset(Tokens, Name, Routine.StartOffset, Routine.EndOffset, ASection.StartOffset,
-          ASection.EndOffset);
-        if WordUse < 0 then
-        begin
-          if Removed <> '' then
-            Removed := Removed + ', ';
-          Removed := Removed + Name;
-          Continue;
-        end;
-      end;
-      if WordUse < FirstUse then
-        FirstUse := WordUse;
-      if Entry.Named and (Entry.Comments = nil) and (Entry.Trailing = '') then
-      begin
-        // Ohne Kommentar: jeder Name eine eigene Zeile, zusammengefasst wird danach.
-        Item := Default(TVarItem);
-        Item.Names := [Name];
-        Item.TypeText := Entry.TypeText;
-        Item.Named := True;
-        Item.FirstUse := WordUse;
-        Item.Order := Order;
-        Inc(Order);
-        Items := Items + [Item];
-      end
-      else
-        Kept := Kept + [Name];
-    end;
-    if Kept <> nil then
-    begin
-      Item := Default(TVarItem);
-      Item.Names := Kept;
-      Item.TypeText := Entry.TypeText;
-      Item.Comments := Entry.Comments;
-      Item.Trailing := Entry.Trailing;
-      Item.FirstUse := FirstUse;
-      Item.Order := Order;
-      Inc(Order);
-      Items := Items + [Item];
-    end;
-  end;
-  // Stabil sortieren (Einfügen).
-  Sorted := nil;
-  for Item in Items do
-  begin
-    Inserted := False;
-    for Index := 0 to High(Sorted) do
-      if Before(Item, Sorted[Index], AOptions.Sort) then
-      begin
-        Insert(Item, Sorted, Index);
-        Inserted := True;
+        Insert(mItem, Result, mIndex);
+        mInserted := True;
         Break;
       end;
-    if not Inserted then
-      Sorted := Sorted + [Item];
-  end;
-  Merged := nil;
-  for Item in Sorted do
-  begin
-    Index := High(Merged);
-    if AOptions.Merge and (Index >= 0) and Item.Named and Merged[Index].Named and (Item.Comments = nil) and
-      (Item.Trailing = '') and (Merged[Index].Comments = nil) and (Merged[Index].Trailing = '') and
-      (TypeKey(Item.TypeText) = TypeKey(Merged[Index].TypeText)) then
-      Merged[Index].Names := Merged[Index].Names + Item.Names
-    else
-      Merged := Merged + [Item];
-  end;
-  LineBreak := TTextLines.LineBreakOf(AText);
-  StartOffset := Entries[0].Decl.StartOffset;
-  EndOffset := Entries[High(Entries)].Decl.EndOffset;
-  AtLineStart := not CodeOnLines(Tokens, Entries[0].Decl.StartPos.Line, Entries[0].Decl.StartPos.Line, StartOffset,
-    MaxInt);
-  if Merged = nil then
-  begin
-    // Alles ungenutzt: der ganze Abschnitt samt "var", wenn er eigene Zeilen hat.
-    if CodeOnLines(Tokens, ASection.StartPos.Line, ASection.StartPos.Line, ASection.StartOffset, MaxInt) or
-      CodeOnLines(Tokens, Entries[High(Entries)].EndLine, Entries[High(Entries)].EndLine, 0, EndOffset) then
-      Exit;
-    RangeStart := TTextPosition.Create(ASection.StartPos.Line, 0);
-    RangeEnd := TTextPosition.Create(Entries[High(Entries)].EndLine + 1, 0);
-    NewText := '';
-  end
-  else
-  begin
-    if AtLineStart then
+    end;
+    if not mInserted then
     begin
-      Indent := TTextLines.IndentOf(AText, Entries[0].Decl.StartPos.Line);
-      RangeStart := TTextPosition.Create(Entries[0].FirstLine, 0);
+      Result := Result + [mItem];
+    end;
+  end;
+end;
+
+/// <summary>Aufeinanderfolgende Zeilen gleichen Typs zusammengefasst, wenn AMerge.</summary>
+function MergedItems(const AItems: TArray<TVarItem>; AMerge: Boolean): TArray<TVarItem>;
+var
+  mItem: TVarItem;
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mItem in AItems do
+  begin
+    mIndex := High(Result);
+    if AMerge and (mIndex >= 0) and CanMerge(Result[mIndex], mItem) then
+    begin
+      Result[mIndex].Names := Result[mIndex].Names + mItem.Names;
     end
     else
     begin
-      Indent := TTextLines.IndentOf(AText, ASection.StartPos.Line) + TRoutineBody.IndentUnit(AOptions.Style);
-      RangeStart := Entries[0].Decl.StartPos;
-    end;
-    RangeEnd := Entries[High(Entries)].EndPos;
-    Lines := nil;
-    for Item in Merged do
-    begin
-      for Line in Item.Comments do
-        Lines := Lines + [Line];
-      Line := Format('%s: %s;', [string.Join(', ', Item.Names), Item.TypeText]);
-      if Item.Trailing <> '' then
-        Line := Line + ' ' + Item.Trailing;
-      Lines := Lines + [Line];
-    end;
-    NewText := '';
-    for Index := 0 to High(Lines) do
-    begin
-      if Index > 0 then
-        NewText := NewText + LineBreak;
-      if (Index > 0) or AtLineStart then
-        NewText := NewText + Indent;
-      NewText := NewText + Lines[Index];
+      Result := Result + [mItem];
     end;
   end;
-  // Unverändert: keine Aktion.
-  OldText := '';
-  for Inner := RangeStart.Line to RangeEnd.Line do
-    if Inner <= High(AInfo.Lines) then
+end;
+
+/// <summary>Zeilen des aufgeräumten Abschnitts ohne Einrückung, Kommentare über ihrem Eintrag.</summary>
+function ItemLines(const AItems: TArray<TVarItem>): TArray<string>;
+var
+  mItem: TVarItem;
+  mLine: string;
+begin
+  Result := nil;
+  for mItem in AItems do
+  begin
+    Result := Result + mItem.Comments;
+    mLine := Format('%s: %s;', [string.Join(', ', mItem.Names), mItem.TypeText]);
+    if mItem.Trailing <> '' then
     begin
-      Line := AInfo.Lines[Inner];
-      if Inner = RangeEnd.Line then
-        Line := Copy(Line, 1, RangeEnd.Character);
-      if Inner = RangeStart.Line then
-        Line := Copy(Line, RangeStart.Character + 1, MaxInt);
-      if Inner > RangeStart.Line then
-        OldText := OldText + LineBreak;
-      OldText := OldText + Line;
+      mLine := mLine + ' ' + mItem.Trailing;
     end;
-  if OldText = NewText then
-    Exit;
-  AAction := Default(TCodeAction);
-  AAction.Title := 'var-Block aufräumen';
+    Result := Result + [mLine];
+  end;
+end;
+
+type
+  /// <summary>Arbeitsstand von „var-Block aufräumen“ im Abschnitt Section der Routine Routine: Einträge Entries,
+  /// daraus die Zeilen Items, die Namen ungenutzter Variablen Removed und der Bereich RangeStart..RangeEnd, den
+  /// das Edit ersetzt.</summary>
+  TCleanup = record
+    Text: string;
+    LineBreak: string;
+    Tokens: TArray<TPascalToken>;
+    Info: TLineInfo;
+    Routine: TSyntaxNode;
+    Section: TSyntaxNode;
+    Symbols: TArray<TReassignedSymbol>;
+    Entries: TArray<TVarEntry>;
+    Items: TArray<TVarItem>;
+    Removed: string;
+    RangeStart: TTextPosition;
+    RangeEnd: TTextPosition;
+    class function Create(const AText: string; ATree: TSyntaxTree; const AInfo: TLineInfo;
+      const ASymbols: TArray<TReassignedSymbol>; ASection: TSyntaxNode): TCleanup; static;
+    /// <summary>Offset der ersten Verwendung des Namens AName aus AEntry; -1 ungenutzt.</summary>
+    function FirstUseOf(const AEntry: TVarEntry; const AName: string): Integer;
+    procedure AddRemoved(const AName: string);
+    procedure AddItem(const ANames: TArray<string>; const AEntry: TVarEntry; AFirstUse: Integer);
+    /// <summary>Einträge in Zeilen; ungenutzte Namen fallen weg.</summary>
+    procedure CollectItems;
+    /// <summary>Alles ungenutzt: der ganze Abschnitt samt "var", wenn er eigene Zeilen hat.</summary>
+    function RemovalRange: Boolean;
+    /// <summary>Neuer Text der Einträge AItems; setzt den Bereich.</summary>
+    function RewriteText(const AItems: TArray<TVarItem>; const AStyle: TFormatStyle): string;
+    /// <summary>Bisheriger Text im Bereich.</summary>
+    function OldText: string;
+    function Action(const AOptions: TVarBlockOptions; out AAction: TCodeAction): Boolean;
+  end;
+
+class function TCleanup.Create(const AText: string; ATree: TSyntaxTree; const AInfo: TLineInfo;
+  const ASymbols: TArray<TReassignedSymbol>; ASection: TSyntaxNode): TCleanup;
+begin
+  Result := Default(TCleanup);
+  Result.Text := AText;
+  Result.LineBreak := TTextLines.LineBreakOf(AText);
+  Result.Tokens := ATree.Tokens;
+  Result.Info := AInfo;
+  Result.Routine := ASection.Parent;
+  Result.Section := ASection;
+  Result.Symbols := ASymbols;
+end;
+
+function TCleanup.FirstUseOf(const AEntry: TVarEntry; const AName: string): Integer;
+var
+  mSymbol: TReassignedSymbol;
+  mOccurrence: TReassignedOccurrence;
+begin
+  Result := MaxInt;
+  for mSymbol in Symbols do
+  begin
+    if (mSymbol.Decl <> AEntry.Decl) or not SameText(mSymbol.Name, AName) then
+    begin
+      Continue;
+    end;
+    for mOccurrence in mSymbol.Occurrences do
+    begin
+      if (mOccurrence.Node <> nil) and (mOccurrence.Offset < Result) then
+      begin
+        Result := mOccurrence.Offset;
+      end;
+    end;
+  end;
+  // Absicherung, falls die Analyse eine Verwendung nicht sieht (asm, with): Jeder gleichnamige Bezeichner in der
+  // Routine zählt als Verwendung.
+  if Result = MaxInt then
+  begin
+    Result := WordOffset(Tokens, AName, Routine.StartOffset, Routine.EndOffset, Section.StartOffset,
+      Section.EndOffset);
+  end;
+end;
+
+procedure TCleanup.AddRemoved(const AName: string);
+begin
   if Removed <> '' then
-    AAction.Title := AAction.Title + Format(' (ungenutzt: %s)', [Removed]);
+  begin
+    Removed := Removed + ', ';
+  end;
+  Removed := Removed + AName;
+end;
+
+procedure TCleanup.AddItem(const ANames: TArray<string>; const AEntry: TVarEntry; AFirstUse: Integer);
+var
+  mItem: TVarItem;
+begin
+  mItem := Default(TVarItem);
+  mItem.Names := ANames;
+  mItem.TypeText := AEntry.TypeText;
+  mItem.Named := IsPlainEntry(AEntry);
+  mItem.Comments := AEntry.Comments;
+  mItem.Trailing := AEntry.Trailing;
+  mItem.FirstUse := AFirstUse;
+  mItem.Order := Length(Items);
+  Items := Items + [mItem];
+end;
+
+procedure TCleanup.CollectItems;
+var
+  mEntry: TVarEntry;
+  mName: string;
+  mKept: TArray<string>;
+  mFirstUse, mWordUse: Integer;
+begin
+  Items := nil;
+  Removed := '';
+  for mEntry in Entries do
+  begin
+    mKept := nil;
+    mFirstUse := MaxInt;
+    for mName in mEntry.Names do
+    begin
+      mWordUse := FirstUseOf(mEntry, mName);
+      if mWordUse < 0 then
+      begin
+        AddRemoved(mName);
+        Continue;
+      end;
+      mFirstUse := Min(mFirstUse, mWordUse);
+      if IsPlainEntry(mEntry) then
+      begin
+        // Ohne Kommentar: jeder Name eine eigene Zeile, zusammengefasst wird danach.
+        AddItem(TArray<string>.Create(mName), mEntry, mWordUse);
+      end
+      else
+      begin
+        mKept := mKept + [mName];
+      end;
+    end;
+    if mKept <> nil then
+    begin
+      AddItem(mKept, mEntry, mFirstUse);
+    end;
+  end;
+end;
+
+function TCleanup.RemovalRange: Boolean;
+var
+  mLast: TVarEntry;
+begin
+  mLast := Entries[High(Entries)];
+  Result := not CodeOnLines(Tokens, Section.StartPos.Line, Section.StartPos.Line, Section.StartOffset, MaxInt) and
+    not CodeOnLines(Tokens, mLast.EndLine, mLast.EndLine, 0, mLast.Decl.EndOffset);
+  RangeStart := TTextPosition.Create(Section.StartPos.Line, 0);
+  RangeEnd := TTextPosition.Create(mLast.EndLine + 1, 0);
+end;
+
+function TCleanup.RewriteText(const AItems: TArray<TVarItem>; const AStyle: TFormatStyle): string;
+var
+  mAtLineStart: Boolean;
+  mIndent: string;
+  mLines: TArray<string>;
+  mIndex: Integer;
+  mFirst: TSyntaxNode;
+begin
+  mFirst := Entries[0].Decl;
+  mAtLineStart := not CodeOnLines(Tokens, mFirst.StartPos.Line, mFirst.StartPos.Line, mFirst.StartOffset, MaxInt);
+  if mAtLineStart then
+  begin
+    mIndent := TTextLines.IndentOf(Text, mFirst.StartPos.Line);
+    RangeStart := TTextPosition.Create(Entries[0].FirstLine, 0);
+  end
+  else
+  begin
+    mIndent := TTextLines.IndentOf(Text, Section.StartPos.Line) + TRoutineBody.IndentUnit(AStyle);
+    RangeStart := mFirst.StartPos;
+  end;
+  RangeEnd := Entries[High(Entries)].EndPos;
+  mLines := ItemLines(AItems);
+  Result := '';
+  for mIndex := 0 to High(mLines) do
+  begin
+    if mIndex > 0 then
+    begin
+      Result := Result + LineBreak;
+    end;
+    if (mIndex > 0) or mAtLineStart then
+    begin
+      Result := Result + mIndent;
+    end;
+    Result := Result + mLines[mIndex];
+  end;
+end;
+
+function TCleanup.OldText: string;
+var
+  mLine: Integer;
+  mText: string;
+begin
+  Result := '';
+  for mLine := RangeStart.Line to Min(RangeEnd.Line, High(Info.Lines)) do
+  begin
+    mText := Info.Lines[mLine];
+    if mLine = RangeEnd.Line then
+    begin
+      mText := Copy(mText, 1, RangeEnd.Character);
+    end;
+    if mLine = RangeStart.Line then
+    begin
+      mText := Copy(mText, RangeStart.Character + 1, MaxInt);
+    end;
+    if mLine > RangeStart.Line then
+    begin
+      Result := Result + LineBreak;
+    end;
+    Result := Result + mText;
+  end;
+end;
+
+function TCleanup.Action(const AOptions: TVarBlockOptions; out AAction: TCodeAction): Boolean;
+var
+  mItems: TArray<TVarItem>;
+  mNewText: string;
+begin
+  Result := SectionEntries(Text, Tokens, Info, Section, Entries);
+  if not Result then
+  begin
+    Exit;
+  end;
+  CollectItems;
+  mItems := MergedItems(SortedItems(Items, AOptions.Sort), AOptions.Merge);
+  mNewText := '';
+  if mItems = nil then
+  begin
+    Result := RemovalRange;
+  end
+  else
+  begin
+    mNewText := RewriteText(mItems, AOptions.Style);
+  end;
+  // Unverändert: keine Aktion.
+  Result := Result and (OldText <> mNewText);
+  if not Result then
+  begin
+    Exit;
+  end;
+  AAction := Default(TCodeAction);
+  AAction.Title := cTexts[TVarBlockText.CleanUpVarBlock].Text;
+  if Removed <> '' then
+  begin
+    AAction.Title := AAction.Title + cTexts[TVarBlockText.Unused].Fmt([Removed]);
+  end;
   AAction.Kind := RewriteKind;
-  AAction.Edits := [TTextEdit.Create(TTextRange.Create(RangeStart, RangeEnd), NewText)];
-  Result := True;
+  AAction.Edits := TArray<TTextEdit>.Create(TTextEdit.Create(TTextRange.Create(RangeStart, RangeEnd), mNewText));
 end;
 
 { TVarBlock }
@@ -952,8 +1463,12 @@ var
   Sort: TVarBlockSort;
 begin
   for Sort := Low(TVarBlockSort) to High(TVarBlockSort) do
+  begin
     if SameText(SortNames[Sort], AName) then
+    begin
       Exit(Sort);
+    end;
+  end;
   Result := TVarBlockSort.Usage;
 end;
 
@@ -969,10 +1484,14 @@ begin
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
       if (Offset < ANode.StartOffset) or (Offset > ANode.EndOffset) then
+      begin
         Exit(TSyntaxSearchStep.Skip);
+      end;
       if (ANode.Kind = TSyntaxKind.VarSection) and (ANode.Parent <> nil) and
         (ANode.Parent.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) then
+      begin
         Exit(TSyntaxSearchStep.Found);
+      end;
       Result := TSyntaxSearchStep.Descend;
     end);
   Result := Found;
@@ -985,10 +1504,14 @@ var
 begin
   Result := -1;
   if (APosition.Line < 0) or (APosition.Line > High(AInfo.Lines)) then
+  begin
     Exit;
+  end;
   Result := 0;
   for Line := 0 to APosition.Line - 1 do
+  begin
     Result := Result + Length(AInfo.Lines[Line]) + Length(ALineBreak);
+  end;
   Result := Result + APosition.Character;
 end;
 
@@ -1001,25 +1524,44 @@ var
   Section: TSyntaxNode;
   Action: TCodeAction;
   Offset: Integer;
+  Cleanup: TCleanup;
 begin
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   Info := LineInfoOf(AText, ATree.Tokens);
   Symbols := TReassigned.Analyze(AText, ATree, AOptions.Lookup);
   if TReassigned.SymbolAt(Symbols, APosition, Symbol) then
   begin
     if AOptions.InlineVariables and InlineAction(AText, ATree, Info, Symbol, Action) then
+    begin
       Result := Result + [Action];
+    end;
     if SectionAction(AText, ATree, Info, Symbol, AOptions, Action) then
+    begin
       Result := Result + [Action];
+    end;
   end;
   Offset := OffsetOf(Info, APosition, TTextLines.LineBreakOf(AText));
   if Offset < 0 then
+  begin
     Exit;
+  end;
   Section := SectionAt(ATree, Offset);
-  if (Section <> nil) and CleanupAction(AText, ATree, Info, Symbols, Section, AOptions, Action) then
+  if Section = nil then
+  begin
+    Exit;
+  end;
+  Cleanup := TCleanup.Create(AText, ATree, Info, Symbols, Section);
+  if Cleanup.Action(AOptions, Action) then
+  begin
     Result := Result + [Action];
+  end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.VarBlock', cTexts);
 
 end.

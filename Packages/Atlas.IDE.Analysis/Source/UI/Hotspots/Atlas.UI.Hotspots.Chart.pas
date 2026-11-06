@@ -1,0 +1,321 @@
+﻿unit Atlas.UI.Hotspots.Chart;
+
+// Blasendiagramm des Fensters „Atlas-Hotspots“ (#1354), reine VCL: x =
+// Änderungen im Zeitraum, y = kognitive Komplexität, Größe nach Zeilen, Farbe
+// nach Wert (grün → rot wie im HTML-Bericht). Lage und Treffer rechnet
+// TAtlasHotspotChart im Kern (getestet). Der Mauszeiger über einer Blase
+// zeigt Name und Zahlen als Hinweis, Klick wählt die Zeile (OnSelect),
+// Doppelklick oder Enter springt (OnOpen), Rechtsklick wählt und öffnet das
+// Kontextmenü (PopupMenu des Frames). Farben der Fläche aus dem IDE-Thema.
+
+interface
+
+uses
+  System.SysUtils,
+  System.Classes,
+  System.Types,
+  Vcl.Controls,
+  Vcl.Graphics,
+  Atlas.Core.Style.Palette,
+  Atlas.Core.Hotspots.Model;
+
+type
+  TAtlasHotspotChartView = class(TCustomControl)
+  private
+    FEntries: TArray<TAtlasHotspotEntry>;
+    FShown: TArray<Integer>;
+    FBubbles: TArray<TAtlasHotspotBubble>;
+    FSelected: Integer;
+    FHover: Integer;
+    FEmptyText: string;
+    FOnSelect: TProc<Integer>;
+    FOnOpen: TProc<Integer>;
+    function Scale: Double;
+    procedure Relayout;
+    procedure SelectAt(X, Y: Integer);
+    /// <summary>Achsen mit Teilstrichen und Beschriftung.</summary>
+    procedure PaintAxes(const AColors: TAtlasColors);
+    /// <summary>Blasen: größte zuerst, damit kleine sichtbar bleiben; gewählte und überfahrene mit Rahmen.</summary>
+    procedure PaintBubbles(const AColors: TAtlasColors);
+    /// <summary>Name der gewählten Blase daneben.</summary>
+    procedure PaintSelectedCaption(const AColors: TAtlasColors);
+  protected
+    procedure Paint; override;
+    procedure Resize; override;
+    procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+    procedure DblClick; override;
+    procedure KeyDown(var Key: Word; Shift: TShiftState); override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    /// <summary>Zeilen AEntries, gezeigt werden die Nummern AShown (Reihenfolge der Rangliste).</summary>
+    procedure SetEntries(const AEntries: TArray<TAtlasHotspotEntry>; const AShown: TArray<Integer>);
+    /// <summary>Zeile wählen (-1 = keine), ohne OnSelect.</summary>
+    procedure SelectEntry(AEntry: Integer);
+    /// <summary>Hinweis der Blase (Name und Zahlen).</summary>
+    function BubbleText(AEntry: Integer): string;
+    property Bubbles: TArray<TAtlasHotspotBubble> read FBubbles;
+    property Selected: Integer read FSelected;
+    /// <summary>Text mitten in der Fläche, solange keine Blase da ist.</summary>
+    property EmptyText: string read FEmptyText write FEmptyText;
+    property OnSelect: TProc<Integer> read FOnSelect write FOnSelect;
+    property OnOpen: TProc<Integer> read FOnOpen write FOnOpen;
+    property PopupMenu;
+  end;
+
+implementation
+
+uses
+  Winapi.Windows,
+  System.Math,
+  Vcl.Forms,
+  Vcl.Themes,
+  Atlas.Core.Style.Color,
+  Atlas.UI.Analysis.Strings;
+
+const
+  /// <summary>Teilstriche je Achse.</summary>
+  cTicks = 4;
+
+function ToColor(AColor: TAtlasColor): TColor;
+begin
+  Result := TColor(AColor);
+end;
+
+{ TAtlasHotspotChartView }
+
+constructor TAtlasHotspotChartView.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  ControlStyle := ControlStyle + [csOpaque];
+  DoubleBuffered := True;
+  TabStop := True;
+  ShowHint := True;
+  FSelected := -1;
+  FHover := -1;
+  Width := 400;
+  Height := 220;
+end;
+
+function TAtlasHotspotChartView.Scale: Double;
+begin
+  Result := CurrentPPI / 96;
+end;
+
+procedure TAtlasHotspotChartView.Relayout;
+begin
+  FBubbles := TAtlasHotspotChart.Layout(FEntries, FShown, ClientWidth, ClientHeight, Scale);
+end;
+
+procedure TAtlasHotspotChartView.SetEntries(const AEntries: TArray<TAtlasHotspotEntry>;
+  const AShown: TArray<Integer>);
+begin
+  FEntries := AEntries;
+  FShown := AShown;
+  FHover := -1;
+  if (FSelected < 0) or (FSelected > High(FEntries)) then
+  begin
+    FSelected := -1;
+  end;
+  Hint := '';
+  Relayout;
+  Invalidate;
+end;
+
+procedure TAtlasHotspotChartView.SelectEntry(AEntry: Integer);
+begin
+  if (AEntry < 0) or (AEntry > High(FEntries)) then
+  begin
+    AEntry := -1;
+  end;
+  if AEntry = FSelected then
+  begin
+    Exit;
+  end;
+  FSelected := AEntry;
+  Invalidate;
+end;
+
+function TAtlasHotspotChartView.BubbleText(AEntry: Integer): string;
+var
+  mEntry: TAtlasHotspotEntry;
+begin
+  Result := '';
+  if (AEntry < 0) or (AEntry > High(FEntries)) then
+  begin
+    Exit;
+  end;
+  mEntry := FEntries[AEntry];
+  Result := TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.HotspotsBubbleHint,
+    [mEntry.Caption, mEntry.Changes, mEntry.Complexity,
+    mEntry.Lines, FormatFloat('0.00', mEntry.Score, FormatSettings)]);
+end;
+
+procedure TAtlasHotspotChartView.Resize;
+begin
+  inherited Resize;
+  Relayout;
+  Invalidate;
+end;
+
+procedure TAtlasHotspotChartView.PaintAxes(const AColors: TAtlasColors);
+var
+  mLeft, mBottom, mTop, mRight, mTick, mX, mY, mMaxChanges, mMaxComplexity: Integer;
+  mCaption: string;
+  mSize: TSize;
+begin
+  mLeft := Round(TAtlasHotspotChart.MarginLeft * Scale);
+  mBottom := ClientHeight - Round(TAtlasHotspotChart.MarginBottom * Scale);
+  mTop := Round(TAtlasHotspotChart.MarginTop * Scale);
+  mRight := ClientWidth - Round(TAtlasHotspotChart.MarginRight * Scale);
+  TAtlasHotspotChart.Extent(FEntries, FShown, mMaxChanges, mMaxComplexity);
+  Canvas.Pen.Style := psSolid;
+  Canvas.Pen.Width := 1;
+  Canvas.Pen.Color := ToColor(AColors.Line);
+  Canvas.MoveTo(mLeft, mTop);
+  Canvas.LineTo(mLeft, mBottom);
+  Canvas.LineTo(mRight, mBottom);
+  Canvas.Brush.Style := bsClear;
+  for mTick := 0 to cTicks do
+  begin
+    mX := mLeft + (mRight - mLeft) * mTick div cTicks;
+    mCaption := IntToStr(Round(mMaxChanges * mTick / cTicks));
+    mSize := Canvas.TextExtent(mCaption);
+    Canvas.TextOut(mX - mSize.cx div 2, mBottom + Round(2 * Scale), mCaption);
+    mY := mBottom - (mBottom - mTop) * mTick div cTicks;
+    mCaption := IntToStr(Round(mMaxComplexity * mTick / cTicks));
+    mSize := Canvas.TextExtent(mCaption);
+    Canvas.TextOut(mLeft - mSize.cx - Round(4 * Scale), mY - mSize.cy div 2, mCaption);
+  end;
+  mCaption := TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColChanges);
+  mSize := Canvas.TextExtent(mCaption);
+  Canvas.TextOut(mRight - mSize.cx, mBottom - mSize.cy - Round(2 * Scale), mCaption);
+  Canvas.TextOut(mLeft + Round(4 * Scale), mTop,
+    TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.HotspotsColComplexity));
+end;
+
+procedure TAtlasHotspotChartView.PaintBubbles(const AColors: TAtlasColors);
+var
+  mBubble: TAtlasHotspotBubble;
+begin
+  Canvas.Brush.Style := bsSolid;
+  for mBubble in FBubbles do
+  begin
+    Canvas.Brush.Color := ToColor(TAtlasColorMath.Mix(TAtlasColor(TAtlasHotspotChart.ScoreColor(
+      FEntries[mBubble.Entry].Score)), AColors.Surface, 0.75));
+    if (mBubble.Entry = FSelected) or (mBubble.Entry = FHover) then
+    begin
+      Canvas.Pen.Color := ToColor(AColors.Accent);
+      Canvas.Pen.Width := Round(2 * Scale);
+    end
+    else
+    begin
+      Canvas.Pen.Color := ToColor(AColors.Surface);
+      Canvas.Pen.Width := 1;
+    end;
+    Canvas.Ellipse(mBubble.X - mBubble.Radius, mBubble.Y - mBubble.Radius, mBubble.X + mBubble.Radius + 1,
+      mBubble.Y + mBubble.Radius + 1);
+  end;
+  Canvas.Pen.Width := 1;
+end;
+
+procedure TAtlasHotspotChartView.PaintSelectedCaption(const AColors: TAtlasColors);
+var
+  mBubble: TAtlasHotspotBubble;
+begin
+  for mBubble in FBubbles do
+  begin
+    if mBubble.Entry = FSelected then
+    begin
+      Canvas.Brush.Style := bsClear;
+      Canvas.Font.Color := ToColor(AColors.Text);
+      Canvas.TextOut(mBubble.X + mBubble.Radius + Round(3 * Scale), mBubble.Y - Canvas.TextHeight('Ag') div 2,
+        FEntries[mBubble.Entry].Caption);
+    end;
+  end;
+end;
+
+procedure TAtlasHotspotChartView.Paint;
+var
+  mColors: TAtlasColors;
+  mSize: TSize;
+begin
+  mColors := TAtlasColors.ForBackground(TAtlasColor(ColorToRGB(StyleServices(Self).GetSystemColor(clWindow))));
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := ToColor(mColors.Surface);
+  Canvas.FillRect(ClientRect);
+  Canvas.Font.Assign(Font);
+  Canvas.Font.Color := ToColor(mColors.Muted);
+  if Length(FBubbles) = 0 then
+  begin
+    mSize := Canvas.TextExtent(FEmptyText);
+    Canvas.TextOut((ClientWidth - mSize.cx) div 2, (ClientHeight - mSize.cy) div 2, FEmptyText);
+    Exit;
+  end;
+  PaintAxes(mColors);
+  PaintBubbles(mColors);
+  PaintSelectedCaption(mColors);
+end;
+
+procedure TAtlasHotspotChartView.SelectAt(X, Y: Integer);
+var
+  mHit: Integer;
+begin
+  mHit := TAtlasHotspotChart.HitTest(FBubbles, X, Y);
+  SelectEntry(mHit);
+  if Assigned(FOnSelect) then
+  begin
+    FOnSelect(mHit);
+  end;
+end;
+
+procedure TAtlasHotspotChartView.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  inherited MouseDown(Button, Shift, X, Y);
+  if CanFocus and Showing then
+  begin
+    SetFocus;
+  end;
+  // Rechtsklick wählt die Blase, bevor das Kontextmenü aufgeht.
+  if Button in [mbLeft, mbRight] then
+  begin
+    SelectAt(X, Y);
+  end;
+end;
+
+procedure TAtlasHotspotChartView.MouseMove(Shift: TShiftState; X, Y: Integer);
+var
+  mHit: Integer;
+begin
+  inherited MouseMove(Shift, X, Y);
+  mHit := TAtlasHotspotChart.HitTest(FBubbles, X, Y);
+  if mHit = FHover then
+  begin
+    Exit;
+  end;
+  FHover := mHit;
+  Hint := BubbleText(mHit);
+  Application.CancelHint;
+  Invalidate;
+end;
+
+procedure TAtlasHotspotChartView.DblClick;
+begin
+  inherited DblClick;
+  if (FSelected >= 0) and Assigned(FOnOpen) then
+  begin
+    FOnOpen(FSelected);
+  end;
+end;
+
+procedure TAtlasHotspotChartView.KeyDown(var Key: Word; Shift: TShiftState);
+begin
+  inherited KeyDown(Key, Shift);
+  if (Key = VK_RETURN) and (FSelected >= 0) and Assigned(FOnOpen) then
+  begin
+    FOnOpen(FSelected);
+    Key := 0;
+  end;
+end;
+
+end.

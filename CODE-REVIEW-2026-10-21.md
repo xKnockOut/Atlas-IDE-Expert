@@ -530,7 +530,7 @@ FCompletion.NamingFor :=
 **Konfidenz:** hoch.
 
 #### T-02 · Neue Hintergrunddienste lassen hängende Threads beim Entladen mit `FreeOnTerminate` weiterlaufen · Schweregrad: Mittel · Aufwand: S
-**Fundstelle:** `IDE/Welcome/Atlas.IDE.Welcome.Issues.pas`, Zeile 276–289 (`ReleaseThread`); `IDE/Welcome/Atlas.IDE.Welcome.TestResults.pas`, Zeile 244–257; `IDE/Welcome/Atlas.IDE.Welcome.Setup.pas`, Zeile 286–297 (`Stop`); `Core/Vcs/Atlas.Core.Vcs.Worker.pas`, Zeile 160–180 (`Stop`). Soll-Muster: `Core/Diagnostics/Atlas.Core.Diagnostics.ThreadList.pas`, Zeile 3–10 (#886).
+**Fundstelle:** `IDE/Tracker/Atlas.IDE.Tracker.MyIssues.pas`, Zeile 276–289 (`ReleaseThread`); `IDE/Tracker/Atlas.IDE.Tracker.TestResults.pas`, Zeile 244–257; `IDE/Welcome/Atlas.IDE.Welcome.Setup.pas`, Zeile 286–297 (`Stop`); `Core/Vcs/Atlas.Core.Vcs.Worker.pas`, Zeile 160–180 (`Stop`). Soll-Muster: `Core/Diagnostics/Atlas.Core.Diagnostics.ThreadList.pas`, Zeile 3–10 (#886).
 **Beobachtung:**
 ```pascal
 if AWait and not FThread.Finished then
@@ -639,7 +639,7 @@ TAtlasIdeSettings.OnChanged := procedure begin
 Die Aufteilung in `Wire*`-Methoden und die Trennung Planen/Ausführen sind erledigt; das Wachstum der beiden Wurzeln ist als A-15 zusammengefasst.
 
 #### S-08 · „Meine Issues“ schreibt den Präfix in jedes aktive Formular, dessen Klasse oder Name „Commit“ enthält · Schweregrad: Niedrig · Aufwand: S
-**Fundstelle:** `IDE/Welcome/Atlas.IDE.Welcome.Issues.pas`, Zeile 68 (`WatchMs = 700`), 933–943 (`WatchTick`), 946–966 (`FindMessageMemo`), 968–996 (`FillCommitDialog`).
+**Fundstelle:** `IDE/Tracker/Atlas.IDE.Tracker.MyIssues.pas`, Zeile 68 (`WatchMs = 700`), 933–943 (`WatchTick`), 946–966 (`FindMessageMemo`), 968–996 (`FillCommitDialog`).
 **Beobachtung:**
 ```pascal
 Form := Screen.ActiveForm;

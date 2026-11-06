@@ -161,12 +161,16 @@ var
   Index: Integer;
 begin
   if ANode.Kind = AKind then
+  begin
     Exit(ANode);
+  end;
   for Index := 0 to ANode.ChildCount - 1 do
   begin
     Result := FirstOfKind(ANode[Index], AKind);
     if Result <> nil then
+    begin
       Exit;
+    end;
   end;
   Result := nil;
 end;
@@ -395,8 +399,12 @@ begin
   Assert.AreEqual('', Actions[1].Command);
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = UseAfterFreeRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found, UseAfterFreeRuleId);
 end;
 
@@ -517,8 +525,12 @@ begin
   TRuleAssert.Silent(TDerefBeforeNilCheckRule.Create, Text);
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = DerefBeforeNilCheckRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found, DerefBeforeNilCheckRuleId);
 end;
 
@@ -657,8 +669,12 @@ begin
     'procedure TStapel<T>.Leeren;'#10'begin'#10'  FElemente.Free;'#10'end;'#10'end.'))));
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = FieldFreeWithoutNilRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found, FieldFreeWithoutNilRuleId);
 end;
 
@@ -843,8 +859,12 @@ begin
     'Neu/U.pas'))));
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = DestructorNotNilSafeRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found, DestructorNotNilSafeRuleId);
 end;
 
@@ -1047,8 +1067,12 @@ begin
   TRuleAssert.Silent(THandleLeakRule.Create, Text);
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = HandleLeakRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found, HandleLeakRuleId);
 end;
 
@@ -1116,6 +1140,9 @@ begin
     '  FStrom := THandleStream.Create(H);'));
   TRuleAssert.Silent(THandleLeakRule.Create, Datei('  H: THandle;'#10,
     '  H := CreateEvent(nil, True, False, nil);'#10'  Liste.Add(H);'));
+  // Im Array gespeichert (Handles := Handles + [H]): Weitergabe.
+  TRuleAssert.Silent(THandleLeakRule.Create, Datei('  H: THandle;'#10'  Handles: TArray<THandle>;'#10,
+    '  H := FindFirstChangeNotification(''c:\'', False, 0);'#10'  Handles := Handles + [H];'));
   TRuleAssert.Silent(THandleLeakRule.Create, Datei('  H: THandle;'#10,
     '  H := CreateEvent(nil, True, False, nil);'#10'  TThread.CreateAnonymousThread(procedure'#10 +
     '    begin'#10'      CloseHandle(H);'#10'    end).Start;'));
@@ -1255,7 +1282,9 @@ var
   mBody: string;
 begin
   for mBody in cBodies do
+  begin
     Assert.AreEqual(0, Integer(Length(NoreturnFindings(Abbruch(mBody)))), mBody);
+  end;
   // Ohne noreturn meldet die Regel nichts.
   Assert.AreEqual(0, Integer(Length(NoreturnFindings(Abbruch('').Replace(' noreturn;', '')))));
   // asm: Der Graph ist unvollständig.

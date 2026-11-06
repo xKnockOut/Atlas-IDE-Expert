@@ -44,6 +44,10 @@ type
     procedure RewritesCalls;
     [Test]
     procedure PluralNames;
+    /// <summary>At liest nur die Klasse, die die Zeile enthält: Treffer in der zweiten Klasse, nichts außerhalb.
+    /// </summary>
+    [Test]
+    procedure AtFindsOnlyClassAtLine;
   end;
 
 implementation
@@ -351,8 +355,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(ATree.Tokens) do
+  begin
     if (ATree.Tokens[Index].StartPos.Line >= ALine) and SameText(ATree.Tokens[Index].Text, AName) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -464,6 +472,40 @@ begin
   Assert.AreEqual('Keys', TPropertyFromAccessors.Plural('Key'));
   Assert.AreEqual('Boxes', TPropertyFromAccessors.Plural('Box'));
   Assert.AreEqual('Matches', TPropertyFromAccessors.Plural('Match'));
+end;
+
+procedure TPropertyFromAccessorsTests.AtFindsOnlyClassAtLine;
+var
+  Source: string;
+  Tree: TSyntaxTree;
+  Whole: Boolean;
+  Found: TArray<TAccessorProperty>;
+begin
+  Source := UnitText(
+    '  TA = class'#10 +                          // 3
+    '  public'#10 +                              // 4
+    '    function GetName: string;'#10 +         // 5
+    '  end;'#10 +                                // 6
+    '  TB = class'#10 +                          // 7
+    '  public'#10 +                              // 8
+    '    function GetTitle: string;'#10 +        // 9
+    '  end;'#10,                                 // 10
+    'function TA.GetName: string; begin Result := ''''; end;'#10 +
+    'function TB.GetTitle: string; begin Result := ''''; end;'#10);
+  Tree := TPascalParser.Parse(Source);
+  try
+    Found := TPropertyFromAccessors.At(Tree, Source, 9, TPropertyFromAccessorsOptions.Default, Whole);
+    Assert.AreEqual(1, Integer(Length(Found)));
+    Assert.AreEqual('Title', Found[0].Name);
+    Found := TPropertyFromAccessors.At(Tree, Source, 7, TPropertyFromAccessorsOptions.Default, Whole);
+    Assert.AreEqual(1, Integer(Length(Found)));
+    Assert.IsTrue(Whole);
+    Assert.AreEqual('TB', Found[0].ClassName);
+    Assert.AreEqual(0, Integer(Length(TPropertyFromAccessors.At(Tree, Source, 12,
+      TPropertyFromAccessorsOptions.Default, Whole))));
+  finally
+    Tree.Free;
+  end;
 end;
 
 initialization

@@ -10,6 +10,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Search')]
   TAtlasSearchTests = class
   public
     [Test]
@@ -76,7 +77,9 @@ begin
   for Hit in AHits do
   begin
     if Result <> '' then
+    begin
       Result := Result + ' ';
+    end;
     Result := Result + Format('%d:%d+%d', [Hit.Line, Hit.Character, Hit.Length]);
   end;
 end;
@@ -95,8 +98,12 @@ var
   Entry: TAtlasKeyEntry;
 begin
   for Entry in AEntries do
+  begin
     if Entry.Func = AFunc then
+    begin
       Exit(Entry);
+    end;
+  end;
   Result := Default(TAtlasKeyEntry);
   Assert.Fail('Eintrag fehlt');
 end;
@@ -303,7 +310,9 @@ begin
   Lines := ['x'];
   SetLength(Hits, TAtlasSearchResults.MaxEntries + 5);
   for Index := 0 to High(Hits) do
+  begin
     Hits[Index] := TAtlasSearchHit.Create(0, 0, 1);
+  end;
   Assert.AreEqual(TAtlasSearchResults.MaxEntries, Integer(Length(TAtlasSearchResults.Entries(Lines, Hits, 2))));
 end;
 
@@ -413,8 +422,12 @@ begin
   // Zurück in die Einstellungen.
   // Eintrag gezielt suchen: seit FormatCode (#43) ist SearchMethod nicht mehr der letzte.
   for I := 0 to High(Entries) do
+  begin
     if Entries[I].Func = TAtlasKeyFunction.SearchMethod then
+    begin
       Entries[I].Key := $C046;
+    end;
+  end;
   TAtlasKeyEntry.ToSettings(Entries, Settings);
   Assert.AreEqual($C046, Settings.SearchMethodKey);
 end;
@@ -448,7 +461,9 @@ var
 begin
   SetLength(Lines, 20000);
   for Index := 0 to High(Lines) do
+  begin
     Lines[Index] := '  Ergebnis := Wert + Eintrag;';
+  end;
   Watch := TStopwatch.StartNew;
   Hits := TAtlasTextSearch.FindAll(Lines, 'e', TAtlasSearchOptions.Create(False, False, False),
     TAtlasSearchArea.Whole(Lines));

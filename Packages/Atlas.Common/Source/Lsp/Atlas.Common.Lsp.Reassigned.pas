@@ -54,7 +54,21 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Semantics.ResolvedSignatures;
+  Atlas.Common.Semantics.ResolvedSignatures,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TReassignedText = (TheURIIsExpected, DocumentIsNotOpen);
+
+const
+  cTexts: array[TReassignedText] of TAtlasText = (
+    (De: 'Erwartet wird die URI'; En: 'The URI is expected'),
+    (De: 'Dokument ist nicht geöffnet: '; En: 'Document is not open: '));
+
+{$SCOPEDENUMS OFF}
 
 { TLspReassigned }
 
@@ -63,9 +77,13 @@ class function TLspReassigned.Analyze(AResolver: TNameResolver; ATree: TSyntaxTr
 begin
   Result := nil;
   if ATree = nil then
+  begin
     Exit;
+  end;
   if AResolver = nil then
+  begin
     Exit(TReassigned.Analyze(AText, ATree, TResolvedSignatures.Lookup(nil, ATree, AFileName)));
+  end;
   AResolver.PinTree(ATree, AFileName);
   try
     Result := TReassigned.Analyze(AText, ATree, TResolvedSignatures.Lookup(AResolver, ATree, AFileName));
@@ -96,7 +114,9 @@ begin
     Lines := TJSONArray.Create;
     Item.AddPair('writeLines', Lines);
     for Line in Symbol.WriteLines do
+    begin
       Lines.Add(Line);
+    end;
     Uses_ := TJSONArray.Create;
     Item.AddPair('uses', Uses_);
     for Occurrence in Symbol.Occurrences do
@@ -120,15 +140,23 @@ var
 begin
   Result := TReassigned.DefaultTargets;
   if (AArguments = nil) or (AArguments.Count < 2) or not (AArguments.Items[1] is TJSONObject) then
+  begin
     Exit;
+  end;
   Settings := TJSONObject(AArguments.Items[1]);
   Value := Settings.GetValue('targets');
   if not (Value is TJSONArray) then
+  begin
     Exit;
+  end;
   Names := nil;
   for Item in TJSONArray(Value) do
+  begin
     if Item is TJSONString then
+    begin
       Names := Names + [Item.Value];
+    end;
+  end;
   Result := TReassigned.TargetsOf(Names);
 end;
 
@@ -143,10 +171,14 @@ var
   Symbols: TArray<TReassignedSymbol>;
 begin
   if (AArguments = nil) or (AArguments.Count < 1) or not (AArguments.Items[0] is TJSONString) then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Erwartet wird die URI');
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TReassignedText.TheURIIsExpected].Text);
+  end;
   Uri := AArguments.Items[0].Value;
   if not AStore.TryGet(Uri, Document) then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Dokument ist nicht geöffnet: ' + Uri);
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TReassignedText.DocumentIsNotOpen].Text + Uri);
+  end;
   Targets := ReadTargets(AArguments);
   Symbols := nil;
   if Targets <> [] then
@@ -167,5 +199,8 @@ begin
   end;
   Result := Json(Symbols);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.Reassigned', cTexts);
 
 end.

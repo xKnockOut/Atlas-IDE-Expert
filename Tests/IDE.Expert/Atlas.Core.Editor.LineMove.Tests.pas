@@ -94,8 +94,10 @@ var
   Move: TAtlasLineMove;
 begin
   Result := '-';
-  if TAtlasLineMover.Compute(AText, AFirst, ALast, AMethodLine, AKind, 2, Move) then
+  if TAtlasLineMover.Compute(AText, TAtlasLineSelection.Create(AFirst, ALast, AMethodLine), AKind, 2, Move) then
+  begin
     Result := Joined(TAtlasLineMover.Apply(AText.Split([#10]), Move));
+  end;
 end;
 
 { TAtlasLineMoveTests }
@@ -183,8 +185,8 @@ const
 var
   Move: TAtlasLineMove;
 begin
-  Assert.IsTrue(TAtlasLineMover.Compute(Moved(Text, 1, 3, -1, TAtlasLineMoveKind.MoveDown), 2, 4, -1,
-    TAtlasLineMoveKind.MoveDown, 2, Move));
+  Assert.IsTrue(TAtlasLineMover.Compute(Moved(Text, 1, 3, -1, TAtlasLineMoveKind.MoveDown),
+    TAtlasLineSelection.Create(2, 4, -1), TAtlasLineMoveKind.MoveDown, 2, Move));
   Assert.AreEqual(
     'begin'#10 +
     '  with X do'#10 +
@@ -227,13 +229,15 @@ begin
   // Auch an der letzten Zeile; Methodenköpfe werden nur als Zeilen dupliziert.
   Assert.AreEqual('a'#10'b'#10'b', Moved('a'#10'b', 1, 1, 1, TAtlasLineMoveKind.DuplicateDown));
   // Der Cursor wandert mit der Kopie.
-  Assert.IsTrue(TAtlasLineMover.Compute('a'#10'b'#10'c', 1, 2, -1, TAtlasLineMoveKind.DuplicateDown, 2, Move));
+  Assert.IsTrue(TAtlasLineMover.Compute('a'#10'b'#10'c', TAtlasLineSelection.Create(1, 2, -1),
+    TAtlasLineMoveKind.DuplicateDown, 2, Move));
   Line := 2;
   Character := 1;
   TAtlasLineMover.MapPosition(Move, Line, Character);
   Assert.AreEqual(4, Line);
   Assert.AreEqual(1, Character);
-  Assert.IsTrue(TAtlasLineMover.Compute('a'#10'b'#10'c', 1, 2, -1, TAtlasLineMoveKind.DuplicateUp, 2, Move));
+  Assert.IsTrue(TAtlasLineMover.Compute('a'#10'b'#10'c', TAtlasLineSelection.Create(1, 2, -1),
+    TAtlasLineMoveKind.DuplicateUp, 2, Move));
   Line := 1;
   TAtlasLineMover.MapPosition(Move, Line, Character);
   Assert.AreEqual(1, Line);
@@ -244,7 +248,8 @@ var
   Move: TAtlasLineMove;
   Line, Character: Integer;
 begin
-  Assert.IsTrue(TAtlasLineMover.Compute(Loop, 5, 5, 5, TAtlasLineMoveKind.MoveUp, 2, Move));
+  Assert.IsTrue(TAtlasLineMover.Compute(Loop, TAtlasLineSelection.Create(5, 5, 5), TAtlasLineMoveKind.MoveUp, 2,
+    Move));
   Line := 5;
   Character := 6;
   TAtlasLineMover.MapPosition(Move, Line, Character);
@@ -263,7 +268,8 @@ var
   Move: TAtlasLineMove;
 begin
   // Cursor auf dem Kopf von A, ohne Markierung: A samt Kommentar wandert hinter B samt Kommentaren.
-  Assert.IsTrue(TAtlasLineMover.Compute(Methods, 5, 5, 5, TAtlasLineMoveKind.MoveDown, 2, Move));
+  Assert.IsTrue(TAtlasLineMover.Compute(Methods, TAtlasLineSelection.Create(5, 5, 5),
+    TAtlasLineMoveKind.MoveDown, 2, Move));
   Assert.IsTrue(Move.Method);
   Assert.AreEqual(
     'implementation'#10 +
@@ -297,12 +303,14 @@ procedure TAtlasLineMoveTests.MovesMethodUp;
 var
   Move: TAtlasLineMove;
 begin
-  Assert.IsTrue(TAtlasLineMover.Compute(Methods, 13, 13, 13, TAtlasLineMoveKind.MoveUp, 2, Move));
+  Assert.IsTrue(TAtlasLineMover.Compute(Methods, TAtlasLineSelection.Create(13, 13, 13),
+    TAtlasLineMoveKind.MoveUp, 2, Move));
   Assert.AreEqual(Moved(Methods, 5, 5, 5, TAtlasLineMoveKind.MoveDown),
     Joined(TAtlasLineMover.Apply(Methods.Split([#10]), Move)));
   Assert.AreEqual(4, Move.FirstLine);
   Assert.AreEqual(-6, Move.LineShift);
-  Assert.IsFalse(TAtlasLineMover.Compute(Methods, 5, 5, 5, TAtlasLineMoveKind.MoveUp, 2, Move), 'vor A keine Methode');
+  Assert.IsFalse(TAtlasLineMover.Compute(Methods, TAtlasLineSelection.Create(5, 5, 5),
+    TAtlasLineMoveKind.MoveUp, 2, Move), 'vor A keine Methode');
   Assert.IsTrue(Move.Method, 'Grund für die Meldung');
 end;
 
@@ -342,10 +350,12 @@ procedure TAtlasLineMoveTests.CursorInBodyMovesLineOnly;
 var
   Move: TAtlasLineMove;
 begin
-  Assert.IsTrue(TAtlasLineMover.Compute(Methods, 7, 7, 7, TAtlasLineMoveKind.MoveDown, 2, Move));
+  Assert.IsTrue(TAtlasLineMover.Compute(Methods, TAtlasLineSelection.Create(7, 7, 7),
+    TAtlasLineMoveKind.MoveDown, 2, Move));
   Assert.IsFalse(Move.Method);
   Assert.AreEqual(2, Move.OldCount);
-  Assert.IsFalse(TAtlasLineMover.Compute('a', 0, 0, 0, TAtlasLineMoveKind.MoveDown, 2, Move));
+  Assert.IsFalse(TAtlasLineMover.Compute('a', TAtlasLineSelection.Create(0, 0, 0),
+    TAtlasLineMoveKind.MoveDown, 2, Move));
   Assert.IsFalse(Move.Method);
 end;
 

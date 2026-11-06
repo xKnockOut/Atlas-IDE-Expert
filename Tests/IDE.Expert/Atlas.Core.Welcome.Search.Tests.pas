@@ -18,6 +18,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeIndexFilesTests = class
   public
     [Test]
@@ -45,6 +46,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeSearchTests = class
   public
     [Test]
@@ -101,9 +103,13 @@ procedure PutVar(var ABytes: TBytes; AValue: UInt64);
 begin
   repeat
     if AValue >= $80 then
-      ABytes := ABytes + [Byte((AValue and $7F) or $80)]
+    begin
+      ABytes := ABytes + [Byte((AValue and $7F) or $80)];
+    end
     else
+    begin
       ABytes := ABytes + [Byte(AValue)];
+    end;
     AValue := AValue shr 7;
   until AValue = 0;
 end;
@@ -114,7 +120,65 @@ var
 begin
   Result := 2166136261;
   for Index := AFrom to High(AData) do
+  begin
     Result := Cardinal(UInt64(Result xor AData[Index]) * 16777619);
+  end;
+end;
+
+/// <summary>Nummer von AValue in der Stringtabelle; neue Werte werden angehängt.</summary>
+function StringIndex(const AStrings: TList<string>; const AValue: string): Integer;
+begin
+  Result := AStrings.IndexOf(AValue);
+  if Result < 0 then
+  begin
+    Result := AStrings.Add(AValue);
+  end;
+end;
+
+/// <summary>Ein Unit-Satz des Index-Caches mit allen Abschnitten der aktuellen Fassung.</summary>
+procedure PutUnitRecord(var ABody: TBytes; const AStrings: TList<string>; const ASpec: TUnitSpec);
+var
+  mIndex: Integer;
+begin
+  PutVar(ABody, StringIndex(AStrings, ASpec.Name));
+  PutVar(ABody, StringIndex(AStrings, ASpec.FileName));
+  PutVar(ABody, 2 * 638000000000000000); // Zeitstempel (ZigZag)
+  PutVar(ABody, StringIndex(AStrings, 'HASH-' + ASpec.Name));
+  if ASpec.Library_ then
+  begin
+    PutVar(ABody, 1 or 8);
+  end
+  else
+  begin
+    PutVar(ABody, 8);
+  end;
+  PutVar(ABody, 2); // uses (interface)
+  PutVar(ABody, StringIndex(AStrings, 'System.SysUtils'));
+  PutVar(ABody, StringIndex(AStrings, 'System.Classes'));
+  PutVar(ABody, 0); // uses (implementation)
+  PutVar(ABody, 1); // Include-Dateien
+  PutVar(ABody, StringIndex(AStrings, 'Atlas.inc'));
+  PutVar(ABody, 1); // Include-Zeitstempel
+  PutVar(ABody, 3); // -2 als ZigZag
+  for mIndex := 1 to 6 do
+  begin
+    PutVar(ABody, mIndex);
+  end; // Präfix-Zählung (#452)
+  PutVar(ABody, 1); // Hinweise im Unit-Kopf (#1018)
+  PutVar(ABody, StringIndex(AStrings, 'deprecated'));
+  PutVar(ABody, StringIndex(AStrings, 'Nutze Neu')); // Grund
+  PutVar(ABody, 1); // Begründungen der Unit (#1123)
+  PutVar(ABody, StringIndex(AStrings, 'W|3|Weil'));
+  PutVar(ABody, 2); // Symbolzahl
+  PutVar(ABody, 1); // nicht verfügbar
+  PutVar(ABody, 200); // Blocklänge über ein Byte hinaus
+  for mIndex := 1 to 200 do
+  begin
+    ABody := ABody + [Byte(mIndex)];
+  end;
+  PutVar(ABody, 1); // Verwendungen
+  PutVar(ABody, 3);
+  ABody := ABody + [$FF, $80, $01];
 end;
 
 /// <summary>Cache im Format von Atlas.Common.Index.Cache (Version AVersion).</summary>
@@ -126,14 +190,6 @@ var
   Value: string;
   Index, ChecksumAt: Integer;
   Sum: Cardinal;
-
-  function IndexOf(const AValue: string): Integer;
-  begin
-    Result := Strings.IndexOf(AValue);
-    if Result < 0 then
-      Result := Strings.Add(AValue);
-  end;
-
 begin
   Strings := TList<string>.Create;
   try
@@ -142,37 +198,7 @@ begin
     PutVar(Body, Length(AUnits));
     for Spec_ in AUnits do
     begin
-      PutVar(Body, IndexOf(Spec_.Name));
-      PutVar(Body, IndexOf(Spec_.FileName));
-      PutVar(Body, 2 * 638000000000000000); // Zeitstempel (ZigZag)
-      PutVar(Body, IndexOf('HASH-' + Spec_.Name));
-      if Spec_.Library_ then
-        PutVar(Body, 1 or 8)
-      else
-        PutVar(Body, 8);
-      PutVar(Body, 2); // uses (interface)
-      PutVar(Body, IndexOf('System.SysUtils'));
-      PutVar(Body, IndexOf('System.Classes'));
-      PutVar(Body, 0); // uses (implementation)
-      PutVar(Body, 1); // Include-Dateien
-      PutVar(Body, IndexOf('Atlas.inc'));
-      PutVar(Body, 1); // Include-Zeitstempel
-      PutVar(Body, 3); // -2 als ZigZag
-      for Index := 1 to 6 do
-        PutVar(Body, Index); // Präfix-Zählung (#452)
-      PutVar(Body, 1); // Hinweise im Unit-Kopf (#1018)
-      PutVar(Body, IndexOf('deprecated'));
-      PutVar(Body, IndexOf('Nutze Neu')); // Grund
-      PutVar(Body, 1); // Begründungen der Unit (#1123)
-      PutVar(Body, IndexOf('W|3|Weil'));
-      PutVar(Body, 2); // Symbolzahl
-      PutVar(Body, 1); // nicht verfügbar
-      PutVar(Body, 200); // Blocklänge über ein Byte hinaus
-      for Index := 1 to 200 do
-        Body := Body + [Byte(Index)];
-      PutVar(Body, 1); // Verwendungen
-      PutVar(Body, 3);
-      Body := Body + [$FF, $80, $01];
+      PutUnitRecord(Body, Strings, Spec_);
     end;
     Result := TEncoding.ASCII.GetBytes('ATLASIDX');
     PutVar(Result, AVersion);
@@ -188,7 +214,9 @@ begin
     Result := Result + Body;
     Sum := Checksum(Result, ChecksumAt + 4);
     for Index := 0 to 3 do
+    begin
       Result[ChecksumAt + Index] := Byte(Sum shr (8 * Index));
+    end;
   finally
     Strings.Free;
   end;
@@ -234,11 +262,17 @@ begin
     try
       repeat
         if (Search.Name = '.') or (Search.Name = '..') then
+        begin
           Continue;
+        end;
         if (Search.Attr and faDirectory) <> 0 then
-          RemoveTree(Path + Search.Name)
+        begin
+          RemoveTree(Path + Search.Name);
+        end
         else
+        begin
           DeleteFile(Path + Search.Name);
+        end;
       until FindNext(Search) <> 0;
     finally
       FindClose(Search);
@@ -341,7 +375,9 @@ begin
   Cut := Copy(Data, 0, Length(Data) - 50);
   Sum := Checksum(Cut, 13);
   for Index := 0 to 3 do
+  begin
     Cut[9 + Index] := Byte(Sum shr (8 * Index));
+  end;
   Assert.AreEqual(0, Integer(Length(TAtlasWelcomeIndexFiles.Read(Cut, Reason))));
   Assert.AreEqual('Inhalt beschädigt', Reason);
 end;
@@ -445,11 +481,13 @@ var
   Entry: TAtlasWelcomeSearchResult;
 begin
   for Entry in AResults do
+  begin
     if Entry.Group = AGroup then
     begin
       AResult := Entry;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -510,9 +548,13 @@ var
 begin
   Hits := nil;
   for Index := 1 to 7 do
+  begin
     Hits := Hits + [FileHit(Format('Unit%d.pas', [Index]), 'P')];
+  end;
   for Index := 1 to 2 do
+  begin
     Hits := Hits + [CommandHit(Format('Unit-Befehl %d', [Index]), 'Atlas.U' + IntToStr(Index))];
+  end;
   Results := TAtlasWelcomeSearch.Search('unit', Hits, '');
   Assert.AreEqual(2, Integer(Length(Results)));
   Assert.AreEqual(4, Integer(Length(Results[0].Hits)));
@@ -593,7 +635,9 @@ var
 begin
   Hits := [CommandHit('Unit-Befehl', 'Atlas.U')];
   for Index := 1 to 6 do
+  begin
     Hits := Hits + [FileHit(Format('Unit%d.pas', [Index]), 'P')];
+  end;
   Rows := TAtlasWelcomeSearch.Rows(TAtlasWelcomeSearch.Search('unit', Hits, 'Hinweis'));
   // Dateien: Kopf, 4 Treffer, „2 weitere“; Symbole: Kopf, Hinweis; Befehle: Kopf, Treffer.
   Assert.AreEqual(10, Integer(Length(Rows)));

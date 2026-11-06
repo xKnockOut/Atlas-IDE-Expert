@@ -25,6 +25,8 @@ type
     [Test]
     procedure FreeOnOtherThreadIsNoLeak;
     [Test]
+    procedure FreeBetweenSetupAndTestIsNoLeak;
+    [Test]
     procedure ReportNamesThreads;
     [Test]
     // Ausnahme mit Grund: Misst das Wachstum selbst über viele Runden; die Aufwärmrunde füllt gewollte Caches
@@ -102,7 +104,9 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(FSlots) do
+  begin
     FSlots[Index].Free;
+  end;
   inherited;
 end;
 
@@ -112,7 +116,9 @@ var
 begin
   Slot := TInterlocked.Increment(FCount) - 1;
   if Slot <= High(FSlots) then
+  begin
     FSlots[Slot] := TStringBuilder.Create(256);
+  end;
 end;
 
 type
@@ -133,53 +139,44 @@ type
     property Debounced: Integer read FDebounced;
   end;
 
-function CreateSoakDispatcher(ALeak: TWorkerLeak; ASoak: TSoak): TJsonRpcDispatcher;
-var
-  Dispatcher: TJsonRpcDispatcher;
+/// <summary>Anfragen, die bis zum Abbruch oder zum Zeitlimit des Watchdogs laufen (höchstens 10 s).</summary>
+procedure RegisterSoakWaiters(const ADispatcher: TJsonRpcDispatcher);
 begin
-  Dispatcher := TJsonRpcDispatcher.Create;
-  Dispatcher.RegisterRequest('echo',
-    function(const AParams: TJSONValue): TJSONValue
-    begin
-      Result := TJSONValue(AParams.Clone);
-    end);
-  Dispatcher.RegisterConcurrentRequest('parallel',
-    function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
-    begin
-      if Assigned(ALeak) then
-        ALeak.Leak;
-      Result := TJSONString.Create('aus dem Worker');
-    end);
   // Läuft, bis $/cancelRequest eintrifft (höchstens 10 s).
-  Dispatcher.RegisterConcurrentRequest('slow',
+  ADispatcher.RegisterConcurrentRequest('slow',
     function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
     var
       Watch: TStopwatch;
     begin
       Watch := TStopwatch.StartNew;
       while not ACancellation.IsCancellationRequested and (Watch.ElapsedMilliseconds < 10000) do
+      begin
         TThread.Sleep(1);
+      end;
       ACancellation.ThrowIfCancellationRequested;
       Result := TJSONString.Create('nicht abgebrochen');
     end);
   // Läuft, bis das Zeitlimit des Watchdogs sie abbricht (höchstens 10 s).
-  Dispatcher.RegisterConcurrentRequest('stuck',
+  ADispatcher.RegisterConcurrentRequest('stuck',
     function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
     var
       Watch: TStopwatch;
     begin
       Watch := TStopwatch.StartNew;
       while not ACancellation.IsCancellationRequested and (Watch.ElapsedMilliseconds < 10000) do
+      begin
         TThread.Sleep(1);
+      end;
       ACancellation.ThrowIfCancellationRequested;
       Result := TJSONString.Create('kein Zeitlimit');
     end);
-  Dispatcher.RegisterNotification('note',
-    procedure(const AParams: TJSONValue)
-    begin
-    end);
+end;
+
+/// <summary>Entprellte Änderungen wie didChange und das Warten auf alle Worker.</summary>
+procedure RegisterSoakChangeAndAwait(const ADispatcher: TJsonRpcDispatcher; const ASoak: TSoak);
+begin
   // Wie didChange: je Schlüssel nur die letzte Änderung, ausgewertet im Thread des Debouncers.
-  Dispatcher.RegisterNotification('change',
+  ADispatcher.RegisterNotification('change',
     procedure(const AParams: TJSONValue)
     var
       Text: string;
@@ -196,11 +193,38 @@ begin
         end);
     end);
   // Wartet in der Nachrichtenschleife, bis alle Worker fertig sind.
-  Dispatcher.RegisterRequest('await',
+  ADispatcher.RegisterRequest('await',
     function(const AParams: TJSONValue): TJSONValue
     begin
-      Result := TJSONBool.Create(Dispatcher.PendingRequests.WaitForWork(10000));
+      Result := TJSONBool.Create(ADispatcher.PendingRequests.WaitForWork(10000));
     end);
+end;
+
+function CreateSoakDispatcher(ALeak: TWorkerLeak; ASoak: TSoak): TJsonRpcDispatcher;
+var
+  Dispatcher: TJsonRpcDispatcher;
+begin
+  Dispatcher := TJsonRpcDispatcher.Create;
+  Dispatcher.RegisterRequest('echo',
+    function(const AParams: TJSONValue): TJSONValue
+    begin
+      Result := TJSONValue(AParams.Clone);
+    end);
+  Dispatcher.RegisterConcurrentRequest('parallel',
+    function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
+    begin
+      if Assigned(ALeak) then
+      begin
+        ALeak.Leak;
+      end;
+      Result := TJSONString.Create('aus dem Worker');
+    end);
+  RegisterSoakWaiters(Dispatcher);
+  Dispatcher.RegisterNotification('note',
+    procedure(const AParams: TJSONValue)
+    begin
+    end);
+  RegisterSoakChangeAndAwait(Dispatcher, ASoak);
   Result := Dispatcher;
 end;
 
@@ -318,7 +342,9 @@ begin
       Soak.WaitIdle;
       Result := Min(Result, AllocatedBytes - Before);
       if Result <= AllowedGrowth then
+      begin
         Break;
+      end;
     end;
     // Jede "stuck"-Anfrage lief ins Zeitlimit, jede Änderungsrunde lief durch den Debouncer.
     Assert.IsTrue(Soak.Timeouts >= (SoakRounds + 2) * SoakGroups, Format('nur %d Zeitlimits', [Soak.Timeouts]));
@@ -397,6 +423,32 @@ begin
   Assert.AreEqual(Int64(0), Monitor.TestMemoryAllocated);
 end;
 
+procedure TLeakMonitorTests.FreeBetweenSetupAndTestIsNoLeak;
+var
+  Monitor: TLeakMonitor;
+  Block: Pointer;
+begin
+  Monitor := TLeakMonitor.Create;
+  try
+    Monitor.PreSetup;
+    GetMem(Block, 4096);
+    try
+      Monitor.PostSetUp;
+    finally
+      // Wie die Startdaten eines Threads: im Setup belegt, vor PreTest frei.
+      FreeMem(Block);
+    end;
+    Monitor.PreTest;
+    Monitor.PostTest;
+    Monitor.PreTearDown;
+    Monitor.PostTearDown;
+    Assert.IsTrue(Monitor.SetUpMemoryAllocated + Monitor.TestMemoryAllocated + Monitor.TearDownMemoryAllocated <= 0,
+      Monitor.GetReport);
+  finally
+    Monitor.Free;
+  end;
+end;
+
 procedure TLeakMonitorTests.ReportNamesThreads;
 var
   Monitor: IMemoryLeakMonitor;
@@ -442,9 +494,13 @@ begin
     begin
       Value := TJSONObject.ParseJSONValue(TFile.ReadAllText(FileName, TEncoding.UTF8));
       if Value is TJSONObject then
-        Recordings.Add(TJSONObject(Value))
+      begin
+        Recordings.Add(TJSONObject(Value));
+      end
       else
+      begin
         Value.Free;
+      end;
     end;
     Assert.IsTrue(Recordings.Count > 0, 'Keine Aufzeichnungen gefunden');
 
@@ -452,7 +508,9 @@ begin
     ReplayAll;
     Before := AllocatedBytes;
     for Pass := 1 to ReplayRounds do
+    begin
       ReplayAll;
+    end;
     Assert.IsTrue(AllocatedBytes - Before <= AllowedGrowth,
       Format('Speicher nach %d Durchläufen um %d Bytes gewachsen',
         [ReplayRounds, AllocatedBytes - Before]));

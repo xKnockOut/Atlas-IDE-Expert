@@ -14,6 +14,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerSprintTests = class
   public
     /// <summary>Montag bis Freitag, Arbeitstage laut Board, ohne Arbeitstag im Zeitraum alle Tage.</summary>
@@ -65,7 +66,9 @@ uses
   Atlas.Core.Tracker.Board,
   Atlas.Core.Tracker.Sprint,
   Atlas.Core.Tracker.Providers.YouTrack,
-  Atlas.Core.Tracker.Providers.GitHub;
+  Atlas.Core.Tracker.Providers.GitHub,
+  Atlas.Core.Tracker.GitHubBoards,
+  Atlas.Core.Tracker.YouTrackBoards;
 
 const
   cDelta = 0.001;
@@ -81,9 +84,13 @@ begin
     mFileName := TPath.Combine(mDirectory, TPath.Combine('Tests', TPath.Combine('Data',
       TPath.Combine(AFolder, AName))));
     if TFile.Exists(mFileName) then
+    begin
       Exit(TFile.ReadAllText(mFileName, TEncoding.UTF8));
+    end;
     if ExtractFileDir(mDirectory) = mDirectory then
+    begin
       Break;
+    end;
     mDirectory := ExtractFileDir(mDirectory);
   end;
   raise Exception.Create('Tests\Data\' + AFolder + '\' + AName + ' nicht gefunden');
@@ -106,7 +113,9 @@ begin
   Result.Title := 'Titel ' + AKey;
   Result.State := AState;
   if ALogin <> '' then
+  begin
     Result.Logins := TArray<string>.Create(ALogin);
+  end;
   Result.ResolvedAt := AResolved;
   Result.Points := APoints;
   Result.HasPoints := AHasPoints;
@@ -149,7 +158,9 @@ begin
   Result.Total := ADays;
   SetLength(Result.Done, ADays + 1);
   for mDay := 0 to ADays do
+  begin
     Result.Done[mDay] := mDay;
+  end;
 end;
 
 { TAtlasTrackerSprintTests }
@@ -267,7 +278,9 @@ begin
   // Schätzfeld da, aber keine Karte geschätzt: ebenfalls Anzahl.
   mSnapshot := Sample;
   for mIndex := 0 to High(mSnapshot.Cards) do
+  begin
     mSnapshot.Cards[mIndex].HasPoints := False;
+  end;
   Assert.IsFalse(TAtlasTrackerSprint.UsesPoints(mSnapshot));
   Assert.AreEqual(Double(5), TAtlasTrackerSprint.Summarize(mSnapshot, TAtlasSprintCalendar.WorkWeek,
     Friday).Total, cDelta);
