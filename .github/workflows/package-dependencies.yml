@@ -69,6 +69,9 @@ jobs:
         run: ./Tools/Build-Docs.ps1 -OutDir "$env:RUNNER_TEMP/Doku"
       - name: Benchmark-Hilfsfunktionen testen
         run: node --test Tools/Benchmark/lib.test.mjs Tools/Benchmark/ready-lib.test.mjs
+      - name: Release-Paket und Versionsdatei (#1519), Selbsttest
+        shell: pwsh
+        run: ./Tools/Test-ReleasePackage.ps1
       - name: Versionen von Server und Claude-Code-Plugin gleich
         shell: pwsh
         run: ./Tools/Check-Version.ps1
