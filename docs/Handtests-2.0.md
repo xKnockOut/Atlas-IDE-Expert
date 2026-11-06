@@ -1155,4 +1155,5 @@ Für die Behebung der Atlas-Befunde (Metriken) wurden viele Units zerlegt, ohne 
 | RL2 | Release-Notizen auf der Release-Seite lesen | Deutsch und Englisch aus `docs/Release-Notizen/2.0.0-beta.1.md`, ohne whatsnew-Markierungen |  |
 | RL3 | ZIP auf einem Rechner ohne Atlas entpacken, `AtlasUpdate.exe install` | Wie UX18; Karte „Neu in Atlas“ zeigt sieben Karten für 2.0.0-beta.1, bei englischer IDE englisch |  |
 | RL4 | Installation mit 1.2.0: Update-Prüfung | Bietet die Beta nicht an (Vorabversion zählt nicht als „latest“) |  |
+| RL5 | Ohne Delphi-Runner: nach dem Release-Workflow RP1–RP4 aus `docs/Atlas-Testfaelle.md` (#1849), `Tools/Publish-ReleasePackage.ps1 -Version 2.0.0-beta.1` | Release hat das ZIP, `atlas-version.json` und `atlas-version-beta.json` nennen `packages.37.0` |  |
 

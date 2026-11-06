@@ -19,6 +19,8 @@ name: Release
 # 5. Ersetzt die Versionsdatei des Kanals für Vorabversionen
 #    (atlas-version-beta.json im festen Vorab-Release „update-channel“, #1519):
 #    „latest“ übergeht Vorabversionen, dieser Kanal enthält jede Version.
+#    Ohne Delphi-Runner fehlt das Paket; Tools/Publish-ReleasePackage.ps1 hängt
+#    danach ein lokal gebautes an und ersetzt beide Versionsdateien.
 #    AtlasUpdate.exe gehört ins ZIP; ist sie signiert, verlangt sie für jede
 #    EXE, BPL und DLL eines Updates dieselbe gültige Signatur.
 
@@ -134,44 +136,9 @@ jobs:
           }
       - name: Installationspaket packen (#495)
         shell: pwsh
-        run: |
-          # Aufbau wie der Zielordner (ADR 0016): Das Plugin findet Server und Daten eine Ebene über der BPL.
-          $dist = Join-Path $env:RUNNER_TEMP 'atlas-ide-expert'
-          Remove-Item $dist -Recurse -Force -ErrorAction SilentlyContinue
-          New-Item -ItemType Directory -Force "$dist\Win32", "$dist\Win64" | Out-Null
-          # AtlasUpdate.exe (#1519): Erstinstallation („install“) und Updates aus dem Plugin.
-          Copy-Item 'Output\Win64\Release\Bin\AtlasServer.exe', 'Output\Win64\Release\Bin\AtlasUpdate.exe', 'LICENSE', 'EULA.txt',
-            'THIRD-PARTY-NOTICES.md' $dist
-          # Karte „Neu in Atlas“ (#756): whatsnew.json aus den markierten Einträgen des Changelogs, dazu die Beispiele.
-          ./Tools/Update-WhatsNew.ps1 -OutFile "$dist\whatsnew.json"
-          Copy-Item 'Setup\Beispiele' "$dist\Beispiele" -Recurse
-          # Karte „Atlas entdecken“ und Tastenkürzel-Tipps (#757): Tippquelle und Bilder; vorher prüfen.
-          ./Tools/Check-Tips.ps1
-          Copy-Item 'Setup\tips.json' $dist
-          Copy-Item 'Setup\Tipps' "$dist\Tipps" -Recurse
-          # „Atlas-Doku“ der Willkommensseite (#766): Nutzer-Doku als HTML im Ordner Doku.
-          ./Tools/Build-Docs.ps1 -OutDir "$dist\Doku"
-          # „Projekt für Atlas einrichten“ (#759): Vorlagen für atlas.json im Ordner Vorlagen.
-          Copy-Item 'Setup\Vorlagen' "$dist\Vorlagen" -Recurse
-          # Eingebaute Einstellungsprofile (#723), dieselben Dateien wie im Plugin (ProfileData).
-          Copy-Item 'Setup\Profile' "$dist\Profile" -Recurse
-          # Kern und Modul-Packages (#1456) liegen gemeinsam im Ordner der Plattform.
-          Copy-Item 'Output\Win32\Release\Bpl\Atlas.IDE.*.bpl' "$dist\Win32"
-          Copy-Item 'Output\Win64\Release\Bpl\Atlas.IDE.*.bpl' "$dist\Win64"
-          # Map-Dateien für Stacktraces mit Unit und Zeile: AtlasServer.map neben die EXE, die Map jedes Plugin-Package
-          # unter dem Namen seiner BPL daneben (der Linker schreibt sie ohne die Versionsendung von LIBSUFFIX AUTO).
-          # Alle Projekte bauen mit DCC_MapFile=3; fehlt eine Map, stimmt der Build nicht.
-          Copy-Item 'Output\Win64\Release\Bin\AtlasServer.map' $dist
-          foreach ($platform in 'Win32', 'Win64') {
-            foreach ($bpl in Get-ChildItem "$dist\$platform\*.bpl") {
-              $map = "Output\$platform\Release\Bpl\$($bpl.BaseName -replace '\d+$', '').map"
-              if (-not (Test-Path $map)) { throw "Map-Datei von $($bpl.Name) ($platform) fehlt" }
-              Copy-Item $map ([IO.Path]::ChangeExtension($bpl.FullName, '.map'))
-            }
-          }
-          if (-not (Get-ChildItem "$dist\Win32\*.bpl")) { throw 'Win32-BPL fehlt' }
-          # Neben die EXE, damit das Artefakt flach bleibt (gemeinsamer Ordner aller Dateien).
-          Compress-Archive -Path "$dist\*" -DestinationPath 'Output\Win64\Release\Bin\atlas-ide-expert-${{ needs.version.outputs.version }}.zip' -Force
+        # Dasselbe Skript nimmt man ohne Delphi-Runner lokal (Publish-ReleasePackage.ps1): Aufbau wie der Zielordner
+        # (ADR 0016), Server und Daten oben, Kern und Modul-Packages je Plattform mit Map-Datei darunter.
+        run: ./Tools/New-ReleasePackage.ps1 -Version '${{ needs.version.outputs.version }}'
       - uses: actions/upload-artifact@v4
         with:
           name: server
@@ -207,22 +174,18 @@ jobs:
           # Für IDEs ohne fertiges Paket (Delphi 12): AtlasUpdate baut das Plugin daraus. Ohne Präfix, wie der Repo-Stamm.
           git archive --format=zip -o "atlas-ide-expert-source-$VERSION.zip" HEAD
       - name: Versionsdateien für Update-Prüfung und Update-Installer (#495, #1519)
+        shell: pwsh
+        # Das Plugin liest die stabile über releases/latest/download/atlas-version.json, die mit Vorabversionen über
+        # releases/download/update-channel/atlas-version-beta.json. Inhalt: Version, Link zu den Änderungen, Paket
+        # je CompilerVersion (37.0 = Delphi 13) und Quelltext, je mit SHA-256. Ohne Delphi-Runner fehlt das Paket;
+        # Publish-ReleasePackage.ps1 hängt dann ein lokal gebautes an und schreibt beide Dateien neu.
         run: |
-          # Das Plugin liest die stabile über releases/latest/download/atlas-version.json, die mit Vorabversionen über
-          # releases/download/update-channel/atlas-version-beta.json. Inhalt: Version, Link zu den Änderungen, Paket
-          # je CompilerVersion (37.0 = Delphi 13) und Quelltext, je mit SHA-256.
-          base="${{ github.server_url }}/${{ github.repository }}/releases/download/${{ github.ref_name }}"
-          changes="${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.ref_name }}"
-          source_sha=$(sha256sum "atlas-ide-expert-source-$VERSION.zip" | cut -d' ' -f1)
-          packages=''
-          if [ -f "server/atlas-ide-expert-$VERSION.zip" ]; then
-            package_sha=$(sha256sum "server/atlas-ide-expert-$VERSION.zip" | cut -d' ' -f1)
-            packages=$(printf ', "packages": {"37.0": {"url": "%s", "sha256": "%s"}}' "$base/atlas-ide-expert-$VERSION.zip" "$package_sha")
-          fi
-          printf '{"version": "%s", "changes": "%s"%s, "source": {"url": "%s", "sha256": "%s"}}\n' "$VERSION" "$changes" \
-            "$packages" "$base/atlas-ide-expert-source-$VERSION.zip" "$source_sha" > atlas-version.json
-          cp atlas-version.json atlas-version-beta.json
-          cat atlas-version.json
+          $package = "server/atlas-ide-expert-$env:VERSION.zip"
+          if (-not (Test-Path $package)) { $package = '' }
+          ./Tools/New-VersionFile.ps1 -Version $env:VERSION -Repository '${{ github.repository }}' `
+            -ServerUrl '${{ github.server_url }}' -SourceZip "atlas-ide-expert-source-$env:VERSION.zip" `
+            -PackageZip $package -OutFile atlas-version.json
+          Copy-Item atlas-version.json atlas-version-beta.json
       - name: Release-Notizen
         shell: pwsh
         # Kurze Fassung aus docs/Release-Notizen/<Version>.md, sonst der Abschnitt aus CHANGELOG.md.
