@@ -10,6 +10,9 @@ const
   AtlasQuickBookmarkScopes: array[0..1] of string = ('project', 'file');
   /// <summary>Werte von editor.methodPlacement (#660).</summary>
   AtlasMethodPlacements: array[0..2] of string = ('declaration', 'alphabetical', 'off');
+  /// <summary>Werte von editor.regionFolds (#1814) in der Reihenfolge der Auswahl auf der Optionsseite und von
+  /// TAtlasRegionFoldMode (Atlas.Core.Editor.RegionFolds).</summary>
+  AtlasRegionFoldModes: array[0..3] of string = ('keep', 'collapse', 'expand', 'off');
   /// <summary>Höchstlänge der Texte unter issues.* (#765).</summary>
   MaxIssuesText = 200;
   /// <summary>Werte von tasks.beforeBuild (#900) wie TAtlasTasks.BeforeBuildNames, in der Reihenfolge der Auswahl

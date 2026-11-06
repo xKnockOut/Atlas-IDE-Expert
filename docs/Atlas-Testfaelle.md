@@ -9661,6 +9661,25 @@ Nur im eigenen Profil testen (`bds -r <Name>`, Kopie des Standardprofils mit Bas
 | KPM10 | Oberfläche auf Englisch, KPM2 wiederholen | „Atlas modules missing from the IDE“, „The modules Debugger, Search are no longer listed under "Known Packages" …“, Knopf „Register again“ |
 | KPM11 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasKnownPackagesTests` grün |
 
+## Regionen beim Öffnen auf- oder zuklappen (#1814)
+
+Vorbereitung: Plugin mit diesem Stand gebaut. Unit `Regionen.pas` mit drei Regionen auf oberster Ebene (`{$REGION 'Ereignisse'}`, `{$REGION 'Laden'}`, `{$REGION 'Getter'}`), in „Laden“ eine innere Region `{$REGION 'Intern'}`, eine Region innerhalb eines Methodenrumpfs und eine mit `(*$REGION 'Alt'*)`. Datei vor jedem Test schließen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| RF1 | Optionen › Atlas › Editor: „Regionen beim Öffnen:“ steht auf „unverändert lassen“; `Regionen.pas` öffnen | Faltung wie ohne Atlas (alles offen); im Menü Atlas › Navigation stehen „Alle Regionen zuklappen“ und „Alle Regionen aufklappen“ |
+| RF2 | Einstellung „alle zuklappen“, `Regionen.pas` öffnen | Nach kurzer Pause sind alle Regionen zugeklappt, auch die innere „Intern“, die im Methodenrumpf und `(*$REGION*)`; andere Blöcke (Klassen, Methoden) bleiben offen; Schreibmarke und Ausschnitt wie vorher (**Abnahme**) |
+| RF3 | Wie RF2, aber die Datei war vorher mit der Schreibmarke in „Laden“ gespeichert (Desktop merkt sich die Stelle), IDE neu starten | „Laden“ (und eine Region um sie) bleibt offen, die übrigen sind zu; die Marke steht an der gemerkten Stelle |
+| RF4 | Wie RF2, danach „Laden“ von Hand aufklappen, auf einen anderen Reiter und zurück wechseln | „Laden“ bleibt offen: Atlas klappt nur beim ersten Anzeigen nach dem Öffnen |
+| RF5 | Mehrere Dateien mit Regionen im Desktop, Einstellung „alle zuklappen“, IDE neu starten, nacheinander alle Reiter anklicken | Jede Datei ist beim ersten Anklicken zugeklappt |
+| RF6 | Einstellung „alle aufklappen“; Regionen in einer Datei von Hand zuklappen, Datei schließen und wieder öffnen | Alle Regionen offen |
+| RF7 | Schreibmarke in „Intern“, Menü Atlas › Navigation › „Alle Regionen zuklappen“, danach „Alle Regionen aufklappen“; dasselbe über das Kontextmenü (Atlas › Navigation) und die Befehlspalette | Zu: alle Regionen zu, die Marke steht auf der Kopfzeile von „Laden“. Auf: alle offen. Keine anderen Blöcke verändert (**Abnahme**) |
+| RF8 | Einstellung „aus (auch keine Befehle)“ | Menü, Kontextmenü und Palette zeigen die Befehle nicht; beim Öffnen ändert Atlas nichts |
+| RF9 | Oberfläche auf Englisch | „Regions when a file opens:“ mit „leave unchanged“, „collapse all“, „expand all“, „off (no commands either)“; Befehle „Collapse all regions“, „Expand all regions“ |
+| RF10 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasRegionFoldsTests`, `TAtlasRegionFoldsTextsTests`, `TAtlasEditingSettingsTests.RegionFoldsOptions` grün |
+
+Trifft „nächsten Block zuklappen“ an der Kopfzeile einer Region einen anderen Block als die Region (RF2), bitte melden: Dann braucht Atlas einen anderen Weg.
+
 ## Leckmeldungen der Tests (Offene Punkte Cloud, Punkt 4)
 
 | Nr. | Schritte | Erwartet |
