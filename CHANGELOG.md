@@ -6,6 +6,10 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
+## [2.0.0] - 2026-11-06
+
+Erste stabile Fassung von 2.0; die Änderungen stehen in den Abschnitten der Vorabversionen.
+
 ## [2.0.0-beta.3] - 2026-11-06
 
 ### Behoben
