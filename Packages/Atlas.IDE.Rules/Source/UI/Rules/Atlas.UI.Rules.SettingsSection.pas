@@ -94,6 +94,7 @@ implementation
 uses
   System.UITypes,
   Vcl.Dialogs,
+  Vcl.Graphics,
   Atlas.UI.Rules.Strings;
 
 const
