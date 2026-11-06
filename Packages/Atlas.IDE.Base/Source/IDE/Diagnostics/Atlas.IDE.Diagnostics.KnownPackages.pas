@@ -89,6 +89,7 @@ uses
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Localization.Language,
+  Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Projects.PathCheck,
   Atlas.Core.Notifications.Contract,
@@ -130,7 +131,7 @@ end;
 
 function EnvironmentValue(const AName: string): string;
 begin
-  Result := GetEnvironmentVariable(AName);
+  Result := System.SysUtils.GetEnvironmentVariable(AName);
 end;
 
 /// <summary>Wertname mit aufgelösten Makros ($(BDSCOMMONDIR) setzt die IDE in ihre Umgebung); mit unbekanntem
