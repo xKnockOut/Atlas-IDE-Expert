@@ -11,7 +11,8 @@ Der Server prüft jede Unit beim Tippen.
 
 ### Fenster „Atlas-Prüfung“
 
-- Befunde der Datei, des Projekts oder der Projektgruppe live
+- Befunde der Datei, des aktuellen Projekts oder der Projektgruppe live
+- Bei offener Gruppe stehen in der Bereichsliste unter einem Trennstrich alle Projekte der Gruppe; so zeigt das Fenster ein Projekt, ohne es zu aktivieren (abschaltbar: `problems.window.scopeProjects`)
 - Filter je Art, Kategorie und Text
 - Gruppierung nach Datei, Regel oder Kategorie, sortierbare Spalten
 

@@ -278,6 +278,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Problems.Contract` | `Core/Problems/Atlas.Core.Problems.Contract.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.Explanation` | `Core/Problems/Atlas.Core.Problems.Explanation.pas` | Ordner `Core/Problems`: Katalogtext für „Regel erklären“ (#1755) |
 | `Atlas.Core.Problems.Findings` | `Core/Problems/Atlas.Core.Problems.Findings.pas` | Ordner `Core/Problems` |
+| `Atlas.Core.Problems.ScopeProjects` | `Core/Problems/Atlas.Core.Problems.ScopeProjects.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.FindingsCache` | `Core/Problems/Atlas.Core.Problems.FindingsCache.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.InlineHints` | `Core/Problems/Atlas.Core.Problems.InlineHints.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.Refresh` | `Core/Problems/Atlas.Core.Problems.Refresh.pas` | Ordner `Core/Problems` |
@@ -592,6 +593,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Problems.MessageList` | `IDE/Problems/Atlas.IDE.Problems.MessageList.pas` | Ordner `IDE/Problems` |
 | `Atlas.IDE.Problems.Painter` | `IDE/Problems/Atlas.IDE.Problems.Painter.pas` | Ordner `IDE/Problems` |
 | `Atlas.IDE.Problems.RuleActions` | `IDE/Problems/Atlas.IDE.Problems.RuleActions.pas` | Ordner `IDE/Problems`: fragt das Modul Prüfregeln nach `IAtlasRuleActions` (#1755) |
+| `Atlas.IDE.Problems.Files` | `IDE/Problems/Atlas.IDE.Problems.Files.pas` | Ordner `IDE/Problems` |
 | `Atlas.IDE.Problems.Service` | `IDE/Problems/Atlas.IDE.Problems.Service.pas` | Ordner `IDE/Problems` |
 | `Atlas.IDE.Problems.Window` | `IDE/Problems/Atlas.IDE.Problems.Window.pas` | Ordner `IDE/Problems` |
 | `Atlas.IDE.Projects.Context` | `IDE/Projects/Atlas.IDE.Projects.Context.pas` | Ordner `IDE/Projects` |
@@ -675,6 +677,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Popup.Window` | `UI/Popup/Atlas.UI.Popup.Window.pas` | Ordner `UI/Popup` |
 | `Atlas.UI.Problems.Explain` | `UI/Problems/Atlas.UI.Problems.Explain.pas` | „Regel erklären“ in „Atlas-Prüfung“ (Base), #1455 |
 | `Atlas.UI.Problems.Frame` | `UI/Problems/Atlas.UI.Problems.Frame.pas` | Ordner `UI/Problems` |
+| `Atlas.UI.Problems.ScopeBox` | `UI/Problems/Atlas.UI.Problems.ScopeBox.pas` | Ordner `UI/Problems` |
 | `Atlas.UI.Problems.KindIcon` | `UI/Problems/Atlas.UI.Problems.KindIcon.pas` | Ordner `UI/Problems` |
 | `Atlas.UI.Results.CallDiagram` | `UI/Results/Atlas.UI.Results.CallDiagram.pas` | Ordner `UI/Results` |
 | `Atlas.UI.Results.Changes` | `UI/Results/Atlas.UI.Results.Changes.pas` | Ordner `UI/Results`; Teil des Ergebnisfensters |

@@ -62,7 +62,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 ### [Code-Analyse](docs/features/de/Code-Analyse.md)
 - **313 Prüfregeln** schon beim Tippen: 204 Fehler, 99 Code-Smells, 10 Sicherheitsregeln
 - **„Compiler vorab“:** Fehler und Warnungen von dcc vor dem Build, mit Schnellkorrekturen; Units sucht Atlas wie dcc, samt Namespaces und Unit-Aliasen (`WinTypes`, `WinProcs`)
-- **Fenster „Atlas-Prüfung“** für Datei, Projekt oder Gruppe, mit Sammelkorrekturen
+- **Fenster „Atlas-Prüfung“** für Datei, Projekt oder Gruppe, mit Sammelkorrekturen; bei offener Gruppe bietet die Bereichsliste auch jedes Projekt der Gruppe einzeln an
 - **Profile, Konfidenz, Baseline und Unterdrückungen** für gewachsene Projekte
 - **Typen aus installierten Packages:** Die IDE meldet Atlas die Typen ihrer Packages (auch ohne .pas). „Typ ist nicht deklariert“ schweigt für sie, die Schnellkorrektur schlägt ihre Unit vor, die Vervollständigung bietet sie mit `uses`-Eintrag an
 - **Mitglieder der Typen aus installierten Packages:** Für Units ohne Quelltext fragt Atlas die IDE nach den Mitgliedern, die sie über die RTTI kennt (Properties, Methoden mit Parametertypen, Felder, Interfaces, Aufzählungswerte). Hover, Vervollständigung nach `.`, Parameterhilfe und Aufzählungswerte für Parameter funktionieren dann auch für diese Typen, ohne „Gehe zu Deklaration“.

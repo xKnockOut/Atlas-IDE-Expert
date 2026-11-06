@@ -1101,6 +1101,7 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Bookmarks\Source\UI\Todos\Atlas.UI.Todos.Dialog.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Bookmarks\Source\UI\Bookmarks\Atlas.UI.Bookmarks.Frame.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Problems\Atlas.UI.Problems.Frame.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Problems\Atlas.UI.Problems.ScopeBox.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\UI\Problems\Atlas.UI.Problems.Explain.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.Explanation.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Problems.Explanation.Tests.pas"/>
@@ -1530,6 +1531,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Settings\Atlas.Core.Settings.ProblemsUpdate.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Settings.ProblemsUpdate.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Problems.Findings.Tests.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Problems\Atlas.Core.Problems.ScopeProjects.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Problems.ScopeProjects.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Problems.BulkFix.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.Recursion.Tests.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Editor.GutterColumn.Tests.pas"/>
