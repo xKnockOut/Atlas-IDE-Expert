@@ -57,7 +57,12 @@ if (-not $OutFile) {
     $OutFile = Join-Path $Bin "atlas-ide-expert-$Version.zip"
 }
 
+# Check-Version und Check-Tips enden bei einem Fehler mit exit 1; das bricht nur das gerufene Skript ab.
+$global:LASTEXITCODE = 0
 & (Join-Path $PSScriptRoot 'Check-Version.ps1') -Expected $Version -Root $Root | Out-Null
+if ($global:LASTEXITCODE -ne 0) {
+    throw "Version im Quelltext ist nicht $Version (Check-Version.ps1)"
+}
 
 # Kern und jedes Modul-Package (#1456): Ordner Packages\Atlas.IDE.* mit gleichnamigem .dpk.
 $Packages = @(Get-ChildItem (Join-Path $Root 'Packages') -Directory -Filter 'Atlas.IDE.*' |
@@ -116,7 +121,11 @@ try {
     & (Join-Path $PSScriptRoot 'Update-WhatsNew.ps1') -Root $Root -OutFile (Join-Path $Dist 'whatsnew.json') | Out-Null
     Copy-Item (Join $Root, 'Setup', 'Beispiele') (Join-Path $Dist 'Beispiele') -Recurse
     # Karte „Atlas entdecken“ und Tastenkürzel-Tipps (#757): Tippquelle und Bilder; vorher prüfen.
+    $global:LASTEXITCODE = 0
     & (Join-Path $PSScriptRoot 'Check-Tips.ps1') -Root $Root | Out-Null
+    if ($global:LASTEXITCODE -ne 0) {
+        throw 'Tipps unvollständig (Check-Tips.ps1)'
+    }
     Copy-Item (Join $Root, 'Setup', 'tips.json') $Dist
     Copy-Item (Join $Root, 'Setup', 'Tipps') (Join-Path $Dist 'Tipps') -Recurse
     # „Atlas-Doku“ der Willkommensseite (#766): Nutzer-Doku als HTML im Ordner Doku.
