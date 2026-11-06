@@ -2555,6 +2555,27 @@
       "x-page": "Prüfregeln",
       "x-issue": "#909"
     },
+    "ProblemsWindowScopeProjects": {
+      "type": "boolean",
+      "default": true,
+      "description": "Bereichsliste des Fensters mit den einzelnen Projekten der offenen Gruppe unter einem Trennstrich (nur bei mehr als einem Projekt); aus = nur aktuelle Datei, aktuelles Projekt und Projektgruppe.",
+      "x-key": "problems.window.scopeProjects",
+      "x-area": "rules",
+      "x-page": "Prüfregeln",
+      "x-control": "Kontrollkästchen „Einzelne Projekte der Gruppe in der Bereichsliste des Fensters“",
+      "x-issue": "#1843"
+    },
+    "ProblemsWindowScopeProject": {
+      "type": "string",
+      "default": "",
+      "description": "Im Fenster gewähltes Einzelprojekt (Name der Projektdatei ohne Endung) beim Bereich „project“; leer = das aktive Projekt. Fehlt das Projekt in der offenen Gruppe, gilt das aktive.",
+      "x-key": "problems.window.scopeProject",
+      "x-area": "rules",
+      "x-page": "Prüfregeln",
+      "x-parent": "problems.window.scopeProjects",
+      "x-control": "Einzelprojekt in der Bereichsliste des Fensters",
+      "x-issue": "#1843"
+    },
     "ProblemsWindowGroupBy": {
       "type": "string",
       "enum": [
