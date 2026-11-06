@@ -35,6 +35,9 @@ type
     procedure IndexOptionsGoToGlobalFile;
     [Test]
     procedure XmlDocOptionsGoToGlobalFile;
+    /// <summary>#1841: hover.membersMaxLines mit Vorgabe 15 und Grenzen 0..100.</summary>
+    [Test]
+    procedure HoverMembersMaxLinesRoundTrip;
     [Test]
     procedure AcceptOptionsRoundTrip;
     [Test]
@@ -563,6 +566,27 @@ begin
   Store.WriteInteger('XmlDocMaxLines', -3);
   Loaded.Load(Store);
   Assert.AreEqual(0, Loaded.XmlDocMaxLines);
+end;
+procedure TAtlasPluginSettingsTests.HoverMembersMaxLinesRoundTrip;
+var
+  Store: IAtlasSettingsStore;
+  Settings, Loaded: TAtlasPluginSettings;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual(15, Settings.HoverMembersMaxLines);
+  Store := TMemoryStore.Create;
+  Settings.HoverMembersMaxLines := 8;
+  Settings.Save(Store);
+  Assert.AreEqual(8, Store.ReadInteger('HoverMembersMaxLines', 0));
+  Loaded := Default(TAtlasPluginSettings);
+  Loaded.Load(Store);
+  Assert.AreEqual(8, Loaded.HoverMembersMaxLines);
+  Store.WriteInteger('HoverMembersMaxLines', 500);
+  Loaded.Load(Store);
+  Assert.AreEqual(TAtlasPluginSettings.MaxHoverMembersLines, Loaded.HoverMembersMaxLines);
+  Store.WriteInteger('HoverMembersMaxLines', -1);
+  Loaded.Load(Store);
+  Assert.AreEqual(0, Loaded.HoverMembersMaxLines);
 end;
 procedure TAtlasPluginSettingsTests.AcceptOptionsRoundTrip;
 var
