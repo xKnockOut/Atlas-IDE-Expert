@@ -95,8 +95,9 @@ type
     GitGutter: Boolean;
     /// <summary>Zeilenhistorie am Ende der Cursorzeile (#507, editor.gitBlame).</summary>
     GitBlame: Boolean;
-    /// <summary>Methodenrümpfe in Deklarationsreihenfolge (#660, editor.methodPlacement): off, declaration oder
-    /// alphabetical; off schaltet Verschieben und Befehl ab.</summary>
+    /// <summary>Reihenfolge der Methodenrümpfe (#660, editor.methodPlacement): grouped (Lebenszyklus, Get/Set-Paare,
+    /// Überschreibungen, Rest; #1834), declaration oder alphabetical; off schaltet Verschieben und Befehl ab.
+    /// </summary>
     MethodPlacement: string;
     /// <summary>Regionen beim Öffnen (#1814, editor.regionFolds): keep, collapse, expand oder off; off schaltet auch
     /// die Befehle „Alle Regionen zu-/aufklappen“ ab.</summary>
@@ -539,7 +540,7 @@ begin
   Result.InlineDiagnostics := 'errors';
   Result.GitGutter := True;
   Result.GitBlame := False;
-  Result.MethodPlacement := 'declaration';
+  Result.MethodPlacement := 'grouped';
   Result.RegionFolds := 'keep';
   Result.ContinueComments := True;
   Result.ContinueCommentsLineComments := True;

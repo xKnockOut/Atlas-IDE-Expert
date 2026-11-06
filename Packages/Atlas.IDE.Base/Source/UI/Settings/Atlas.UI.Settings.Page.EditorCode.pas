@@ -101,7 +101,8 @@ begin
   BindKey('ExpressionTypeKey', AddKey(TAtlasStrings.Text(TAtlasTextId.ExpressionTypeCommand)));
   // Methodenrümpfe in Deklarationsreihenfolge (#660): wie die Deklaration, alphabetisch oder aus.
   FMethodPlacement := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsMethodPlacement),
-    [TAtlasStrings.Text(TAtlasTextId.SettingsMethodPlacementDeclaration),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsMethodPlacementGrouped),
+    TAtlasStrings.Text(TAtlasTextId.SettingsMethodPlacementDeclaration),
     TAtlasStrings.Text(TAtlasTextId.SettingsMethodPlacementAlphabetical),
     TAtlasStrings.Text(TAtlasTextId.SettingsMethodPlacementOff)]);
   // Regionen beim Öffnen (#1814).

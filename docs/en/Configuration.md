@@ -54,6 +54,7 @@ The language of findings, light bulb, hover and settings follows the IDE (#1458)
 | `inlayHints` | global (settings.json) | object | – |  | Inlay hints in the editor. |
 | `codeLens` | global (settings.json) | object | – |  | Code lens in the editor. |
 | `smartIndent` | global (settings.json) | object | – |  | Indentation while typing (#1827): after Enter Atlas computes where the cursor belongs, with the same block logic as format.reindent. Atlas never inserts end; (the IDE's block completion does that); only whitespace changes, and for a string the quote and +. Width of one level and tabs follow format or .editorconfig. |
+| `classCompletion` | global (settings.json) | object | – |  | Class completion (#1834): comment above a class section in the implementation part, order and content of new method bodies from the action "Create missing method bodies", /impl and method ordering (editor.methodPlacement in the plugin). |
 | `references` | global (settings.json) | object | – |  | Accuracy of usages, call hierarchy and rename: besides the certain (uniquely resolved) places, inferred ones appear with a reason, for example calls via an interface or in an inactive {$IFDEF} branch. Rename only changes certain places and lists the inferred ones. |
 | `navigation` | global (settings.json) | object | – |  | Navigation through the code: path between two symbols or units via calls, fields, interfaces, inheritance and uses (plugin command "Path between symbols…", MCP tool find_path) and impact analysis: what is affected if I change a symbol? Callers, references, overrides, interface implementations and form bindings by level, plus the affected tests (plugin command "Show impact", MCP tool get_impact). |
 | `hints` | global (settings.json) | object | – |  | Display of XMLDoc comments (///) and rationales (// WHY: …, #1123) in the hover tooltip and in the detail panel of the completion of the IDE plugin. The server always prepares the documentation completely; the values only control the display. Without a value the values from Tools › Options › Third Party › Atlas apply. |
@@ -328,6 +329,14 @@ The language of findings, light bulb, hover and settings follows the IDE (#1458)
 | `smartIndent.outdentClosers` | global (settings.json) | boolean | `true` |  | If the line before Enter starts with end, until, finally, except or else, Atlas moves it to the column of its counterpart (begin, repeat, try, if). |
 | `smartIndent.splitStrings` | global (settings.json) | boolean | `true` |  | Enter inside a string closes it with ' + and reopens it on the new line instead of leaving an unterminated string (E2052). Not in multiline strings ('''). |
 | `smartIndent.splitStringsIndent` | global (settings.json) | string | `"indent"` | `"indent"`, `"align"` | Continuation line of a split string: indent = one level deeper than the statement; align = under the first argument of the open parenthesis, without parenthesis under the first value after :=. |
+
+## classCompletion
+
+| Key | Place | Type | Default | Values | Meaning |
+|---|---|---|---|---|---|
+| `classCompletion.typeComment` | global (settings.json) | string | `"brace"` | `"brace"`, `"line"`, `"summary"`, `"region"`, `"off"` | Comment above the first body of a class: brace = { TFoo } like the IDE, line = separator line with // TFoo, summary = { TFoo: first sentence of the XML doc }, region = {$REGION 'TFoo'} … {$ENDREGION} around all bodies, off = none. An existing comment is recognized and not duplicated; when ordering it moves with the class. |
+| `classCompletion.lifecycleFirst` | global (settings.json) | boolean | `true` |  | Constructors and destructor (also class constructor/destructor, AfterConstruction, BeforeDestruction) come before the other bodies of their class also with editor.methodPlacement = declaration or alphabetical and in new bodies. With grouped they always come first. |
+| `classCompletion.bodyStubs` | global (settings.json) | boolean | `true` |  | Prefill new bodies: override with inherited (functions with Result := inherited …), destructor with inherited at the end, getter Result := FName and setter FName := AValue when a field FName of the same type exists. false = empty bodies. |
 
 ## references
 
