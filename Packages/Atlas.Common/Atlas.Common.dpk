@@ -285,6 +285,8 @@ contains
   Atlas.Common.Lsp.ExpressionType in 'Source\Lsp\Atlas.Common.Lsp.ExpressionType.pas',
   Atlas.Common.Lsp.MethodOrder in 'Source\Lsp\Atlas.Common.Lsp.MethodOrder.pas',
   Atlas.Common.Editing.MethodOrder in 'Source\Editing\Atlas.Common.Editing.MethodOrder.pas',
+  Atlas.Common.Editing.TypeComments in 'Source\Editing\Atlas.Common.Editing.TypeComments.pas',
+  Atlas.Common.Editing.ClassBodies in 'Source\Editing\Atlas.Common.Editing.ClassBodies.pas',
   Atlas.Common.Lsp.OverrideMarks in 'Source\Lsp\Atlas.Common.Lsp.OverrideMarks.pas',
   Atlas.Common.Lsp.Baseline in 'Source\Lsp\Atlas.Common.Lsp.Baseline.pas',
   Atlas.Common.Lsp.BulkFix in 'Source\Lsp\Atlas.Common.Lsp.BulkFix.pas',

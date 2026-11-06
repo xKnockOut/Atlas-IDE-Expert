@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Lsp.Rename.Tests;
 
-// Tests für das Umbenennen im Projekt (#30).
+// Tests für das Umbenennen im Projekt (#30); Typkommentare wandern mit (#1838).
 
 interface
 
@@ -52,6 +52,10 @@ type
     procedure RejectsFieldThatWouldBeHiddenByLocal;
     [Test]
     procedure AllowsRenameWithoutShadowing;
+    [Test]
+    procedure RenamesTypeComments;
+    [Test]
+    procedure KeepsTypeCommentsWhenOff;
   end;
 
 implementation
@@ -540,6 +544,108 @@ begin
   Assert.AreEqual('', KundeError('Anzahl := Wert', 'Zaehler'));
 end;
 
+const
+  KopfFile = 'C:\P\Kopf.pas';
+
+  UnitKopf =
+    'unit Kopf;'#10 +                                // 0
+    'interface'#10 +                                 // 1
+    'type'#10 +                                      // 2
+    '  TKunde = class'#10 +                          // 3
+    '    procedure Lauf;'#10 +                       // 4
+    '    procedure Halt;'#10 +                       // 5
+    '  end;'#10 +                                    // 6
+    'implementation'#10 +                            // 7
+    #10 +                                            // 8
+    '{ TKunde }'#10 +                                // 9
+    #10 +                                            // 10
+    'procedure TKunde.Lauf;'#10 +                    // 11
+    'begin'#10 +                                     // 12
+    'end;'#10 +                                      // 13
+    #10 +                                            // 14
+    '// TKunde ist hier gemeint.'#10 +               // 15
+    '(* TKunde *)'#10 +                              // 16
+    'procedure TKunde.Halt;'#10 +                    // 17
+    'begin'#10 +                                     // 18
+    'end;'#10 +                                      // 19
+    #10 +                                            // 20
+    '// TKunde'#10 +                                 // 21
+    'procedure Frei;'#10 +                           // 22
+    'begin'#10 +                                     // 23
+    'end;'#10 +                                      // 24
+    'end.';
+
+function KopfEdits(ATypeComments: Boolean): TArray<TRenameEdit>;
+var
+  Index: ISymbolIndex;
+  Resolver: TNameResolver;
+  Tree: TSyntaxTree;
+  Request: TRenameRequest;
+begin
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(TIndexExtractor.ExtractText(UnitKopf, KopfFile, nil));
+  Resolver := TNameResolver.Create(Index);
+  Tree := TPascalParser.Parse(UnitKopf);
+  try
+    Request := TRenameRequest.Create('TCustomer');
+    Request.TypeComments := ATypeComments;
+    Result := TLspRename.Edits(Resolver, Index, Tree, TReferenceSearch.Create(KopfFile,
+      PositionOf(UnitKopf, 'TKunde = class'), True, [KopfFile],
+      function(const AFileName: string; out AText: string): Boolean
+      begin
+        Result := SameText(AFileName, KopfFile);
+        if Result then
+        begin
+          AText := UnitKopf;
+        end;
+      end), Request);
+  finally
+    Tree.Free;
+    Resolver.Free;
+  end;
+end;
+
+function EditOnLine(const AEdits: TArray<TRenameEdit>; ALine: Integer; out AEdit: TRenameEdit): Boolean;
+var
+  Edit: TRenameEdit;
+begin
+  for Edit in AEdits do
+  begin
+    if Edit.Range.StartPos.Line = ALine then
+    begin
+      AEdit := Edit;
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+procedure TLspRenameTests.RenamesTypeComments;
+var
+  Found: TArray<TRenameEdit>;
+  Edit: TRenameEdit;
+begin
+  Found := KopfEdits(True);
+  Assert.IsTrue(EditOnLine(Found, 9, Edit), '{ TKunde } über den Rümpfen');
+  Assert.AreEqual(2, Edit.Range.StartPos.Character);
+  Assert.AreEqual(8, Edit.Range.EndPos.Character);
+  Assert.AreEqual('TCustomer', Edit.NewText);
+  Assert.IsTrue(EditOnLine(Found, 16, Edit), '(* TKunde *) direkt über dem Rumpf');
+  Assert.AreEqual(3, Edit.Range.StartPos.Character);
+  Assert.IsFalse(EditOnLine(Found, 15, Edit), 'Kommentar mit anderem Text bleibt');
+  Assert.IsFalse(EditOnLine(Found, 21, Edit), 'über einer freien Routine bleibt');
+  Assert.IsTrue(EditOnLine(Found, 11, Edit), 'Rumpf wie bisher');
+end;
+
+procedure TLspRenameTests.KeepsTypeCommentsWhenOff;
+var
+  Found: TArray<TRenameEdit>;
+  Edit: TRenameEdit;
+begin
+  Found := KopfEdits(False);
+  Assert.IsFalse(EditOnLine(Found, 9, Edit), 'classCompletion.typeComment = off: Kommentar bleibt');
+  Assert.IsTrue(EditOnLine(Found, 11, Edit));
+end;
 
 initialization
   TDUnitX.RegisterTestFixture(TLspRenameTests);

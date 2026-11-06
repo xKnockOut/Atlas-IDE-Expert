@@ -3,7 +3,7 @@
 // textDocument/codeAction (#42): Korrekturen und Unterdrückungen zu
 // Regeltreffern, try/finally um Create-Zuweisungen und fehlende
 // Methodenrümpfe. Die Logik liegt in Atlas.Common.Editing.CodeActions und
-// Atlas.Common.Editing.ClassCompletion; hier nur Protokoll und Regelaufruf.
+// Atlas.Common.Editing.ClassCompletion (über TClassActions.MissingBodies); hier nur Protokoll und Regelaufruf.
 //
 // Für editor.codeActionsOnSave (#182) gibt es source.organizeImports (uses
 // aufräumen, sortieren über "sortUses") und source.fixAll (alle als sicher
@@ -131,7 +131,6 @@ uses
   Atlas.Common.Rules.Prompt,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Editing.ClassCompletion,
   Atlas.Common.Editing.DocComments,
   Atlas.Common.Editing.MemberOrder,
   Atlas.Common.Documents.Uris,
@@ -354,6 +353,7 @@ type
     procedure Add(const AActions: TArray<TCodeAction>); overload;
     procedure AddRuleActions(const ARefactoring: TRefactoringSettings; const AStyle: TFormatStyle);
     procedure AddClassActions(const AStyle: TFormatStyle);
+    function ClassContext(const AStyle: TFormatStyle): TClassActionContext;
     function RuleOffersFreeField: Boolean;
     procedure AddFreeFieldActions(const ARefactoring: TRefactoringSettings);
     procedure AddPromptActions;
@@ -524,21 +524,23 @@ begin
   end;
 end;
 
-procedure TCodeActionBuilder.AddClassActions(const AStyle: TFormatStyle);
-var
-  mContext: TClassActionContext;
+function TCodeActionBuilder.ClassContext(const AStyle: TFormatStyle): TClassActionContext;
 begin
   if Assigned(FOwner.FClassActionContextFor) then
   begin
-    mContext := FOwner.FClassActionContextFor(FUri);
+    Result := FOwner.FClassActionContextFor(FUri);
   end
   else
   begin
-    mContext := TClassActionContext.Default;
-    mContext.Uri := FUri;
+    Result := TClassActionContext.Default;
+    Result.Uri := FUri;
   end;
-  mContext.Style := AStyle;
-  Add(TClassActions.Actions(FText, FTree, FRange.StartPos.Line, mContext));
+  Result.Style := AStyle;
+end;
+
+procedure TCodeActionBuilder.AddClassActions(const AStyle: TFormatStyle);
+begin
+  Add(TClassActions.Actions(FText, FTree, FRange.StartPos.Line, ClassContext(AStyle)));
 end;
 
 function TCodeActionBuilder.RuleOffersFreeField: Boolean;
@@ -702,7 +704,9 @@ begin
   FCancellation := ACancellation;
   ACancellation.ThrowIfCancellationRequested;
   CollectFindings;
-  mHasCompletion := FWantsEditing and TClassCompletion.MissingBodies(FTree, FText, FRange.StartPos, mCompletion);
+  // Fehlende Rümpfe mit classCompletion.* (#1834) über den Host der Klassen-Aktionen.
+  mHasCompletion := FWantsEditing and TClassActions.MissingBodies(FText, FTree, FRange.StartPos,
+    ClassContext(Style), mCompletion);
   mUsesActions := UsesActions;
   ACancellation.ThrowIfCancellationRequested;
   // Erst jetzt anlegen: Ein Abbruch oben soll kein Objekt zurücklassen.
