@@ -45,7 +45,7 @@ function New-Builds([string] $Output) {
         New-Item -ItemType Directory -Force $Bpl | Out-Null
         foreach ($Name in $Packages) {
             Set-Content -LiteralPath (Join-Path $Bpl "${Name}370.bpl") -Value "$Name $Platform"
-            Set-Content -LiteralPath (Join-Path $Bpl "$Name.map") -Value "$Name map"
+            Set-Content -LiteralPath (Join-Path $Bpl "${Name}370.map") -Value "$Name map"
         }
     }
 }
@@ -129,7 +129,7 @@ Expect-Failure 'Updater fehlt' 'AtlasUpdate\.exe' { param($O) Remove-Item (Join-
 Expect-Failure 'Win64-BPL fehlt' "Win64-BPL von $([regex]::Escape($Last))" {
     param($O) Remove-Item (Join-Path $O "Win64/Release/Bpl/${Last}370.bpl")
 }
-Expect-Failure 'Map fehlt' "$([regex]::Escape($Last))\.map" { param($O) Remove-Item (Join-Path $O "Win32/Release/Bpl/$Last.map") }
+Expect-Failure 'Map fehlt' "$([regex]::Escape($Last))370.map" { param($O) Remove-Item (Join-Path $O "Win32/Release/Bpl/${Last}370.map") }
 if (Test-Path (Join-Path $Root '.git')) {
     Expect-Failure 'Veralteter Build' 'Älter als der letzte Commit' {
         param($O) (Get-Item (Join-Path $O 'Win64/Release/Bin/AtlasServer.exe')).LastWriteTimeUtc = [datetime]'2000-01-01'
