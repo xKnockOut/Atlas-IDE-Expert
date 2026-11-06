@@ -66,20 +66,20 @@ end;
 
 procedure TRuleRegistry.Register(ARule: IRule);
 var
-  Id: string;
-  Existing: IRule;
+  mId: string;
+  mExisting: IRule;
 begin
-  Id := ARule.Descriptor.Id;
-  if Id = '' then
+  mId := ARule.Descriptor.Id;
+  if mId = '' then
   begin
     raise ERuleRegistry.Create(cTexts[TRegistryText.NoId].Text);
   end;
-  if Find(Id, Existing) then
+  if Find(mId, mExisting) then
   begin
-    raise ERuleRegistry.CreateFmt(cTexts[TRegistryText.Duplicate].Text, [Id]);
+    raise ERuleRegistry.CreateFmt(cTexts[TRegistryText.Duplicate].Text, [mId]);
   end;
   FRules.Add(ARule);
-  FById.Add(UpperCase(Id), ARule);
+  FById.Add(UpperCase(mId), ARule);
 end;
 
 function TRuleRegistry.Find(const AId: string; out ARule: IRule): Boolean;

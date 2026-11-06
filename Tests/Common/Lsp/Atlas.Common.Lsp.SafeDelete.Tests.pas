@@ -328,7 +328,7 @@ begin
     Actions := TLspSafeDelete.Actions(True, Tree, UnitShapes, 'file:///C:/P/Shapes.pas', TTextPosition.Create(9, 15));
     Assert.AreEqual(1, Integer(Length(Actions)));
     Assert.IsTrue(ContainsText(Actions[0].GetValue('title').Value, 'Unused'));
-    Assert.AreEqual(TLspSafeDelete.ClientCommand, (Actions[0].GetValue('command') as TJSONObject).GetValue('command').Value);
+    Assert.AreEqual(TLspSafeDelete.cClientCommand, (Actions[0].GetValue('command') as TJSONObject).GetValue('command').Value);
     for Action in Actions do
     begin
       Action.Free;

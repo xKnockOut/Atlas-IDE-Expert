@@ -63,7 +63,7 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  DUnitXTestWithoutAssertRuleId = 'dunitx-test-without-assert';
+  cDUnitXTestWithoutAssertRuleId = 'dunitx-test-without-assert';
 
 type
   /// <summary>Prüft die freie Routine AName einer anderen Unit etwas? False, wenn sie unbekannt ist.</summary>
@@ -385,33 +385,33 @@ end;
 
 function TDUnitXTestWithoutAssertRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(DUnitXTestWithoutAssertRuleId, TRuleSeverity.Hint, cTexts[TTestingText.Title].Text);
+  Result := TRuleDescriptor.Create(cDUnitXTestWithoutAssertRuleId, TRuleSeverity.Hint, cTexts[TTestingText.Title].Text);
 end;
 
 class function TDUnitXTestWithoutAssertRule.IsAssertion(const AChain: string;
   const APatterns: TArray<string>): Boolean;
 var
-  Pattern: string;
-  Parts: TArray<string>;
-  Index: Integer;
+  mPattern: string;
+  mParts: TArray<string>;
+  mIndex: Integer;
 begin
   // System.Assert(Bedingung) löst EAssertionFailed aus und lässt den Test scheitern.
   if SameText(AChain, 'Assert') or SameText(AChain, 'System.Assert') then
   begin
     Exit(True);
   end;
-  for Pattern in APatterns do
+  for mPattern in APatterns do
   begin
-    if MatchesGlob(Pattern, AChain) then
+    if MatchesGlob(mPattern, AChain) then
     begin
       Exit(True);
     end;
   end;
   // Eigene Prüfklassen: TRuleAssert.Reports, TJsonAssert.Equal.
-  Parts := AChain.Split(['.']);
-  for Index := 0 to High(Parts) - 1 do
+  mParts := AChain.Split(['.']);
+  for mIndex := 0 to High(mParts) - 1 do
   begin
-    if ContainsText(Parts[Index], 'Assert') then
+    if ContainsText(mParts[mIndex], 'Assert') then
     begin
       Exit(True);
     end;

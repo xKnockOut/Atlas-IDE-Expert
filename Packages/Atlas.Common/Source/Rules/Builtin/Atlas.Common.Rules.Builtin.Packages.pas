@@ -17,7 +17,7 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  ImplicitPackageImportRuleId = 'implicit-package-import';
+  cImplicitPackageImportRuleId = 'implicit-package-import';
 
 type
   TImplicitPackageImportRule = class(TInterfacedObject, IRule)
@@ -247,7 +247,7 @@ end;
 
 function TImplicitPackageImportRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(ImplicitPackageImportRuleId, TRuleSeverity.Warning,
+  Result := TRuleDescriptor.Create(cImplicitPackageImportRuleId, TRuleSeverity.Warning,
     cTexts[TPackagesText.Title].Text);
 end;
 

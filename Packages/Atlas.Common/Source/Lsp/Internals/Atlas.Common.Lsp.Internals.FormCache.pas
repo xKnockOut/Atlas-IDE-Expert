@@ -43,7 +43,7 @@ type
   /// <summary>Zuletzt benutzte Auszüge je Formulardatei; threadsicher.</summary>
   TFormSnapshotCache = class
   public const
-    MaxEntries = 16;
+    cMaxEntries = 16;
   private type
     TEntry = record
       Stamp: string;
@@ -78,21 +78,21 @@ uses
 /// sind keine Felder des Formulars.</summary>
 procedure CollectComponents(AObject: TDfmObject; AList: TList<TFormSnapshotComponent>);
 var
-  Child: TDfmObject;
-  Component: TFormSnapshotComponent;
+  mChild: TDfmObject;
+  mComponent: TFormSnapshotComponent;
 begin
-  for Child in AObject.Children do
+  for mChild in AObject.Children do
   begin
-    if (Child.Kind = TDfmObjectKind.Item) or (Child.Name = '') or (Child.TypeName = '') then
+    if (mChild.Kind = TDfmObjectKind.Item) or (mChild.Name = '') or (mChild.TypeName = '') then
     begin
       Continue;
     end;
-    Component.Name := Child.Name;
-    Component.TypeName := Child.TypeName;
-    AList.Add(Component);
-    if Child.Kind <> TDfmObjectKind.Inline_ then
+    mComponent.Name := mChild.Name;
+    mComponent.TypeName := mChild.TypeName;
+    AList.Add(mComponent);
+    if mChild.Kind <> TDfmObjectKind.Inline_ then
     begin
-      CollectComponents(Child, AList);
+      CollectComponents(mChild, AList);
     end;
   end;
 end;
@@ -100,27 +100,27 @@ end;
 /// <summary>Ereigniszuweisungen von AObject und allen Objekten darunter, auch in Frames.</summary>
 procedure CollectHandlers(AObject: TDfmObject; var AObjectIndex: Integer; AList: TList<TFormSnapshotHandler>);
 var
-  Child: TDfmObject;
-  Prop: TDfmProperty;
-  Handler: TFormSnapshotHandler;
-  Own: Integer;
+  mChild: TDfmObject;
+  mProp: TDfmProperty;
+  mHandler: TFormSnapshotHandler;
+  mOwn: Integer;
 begin
-  Own := AObjectIndex;
+  mOwn := AObjectIndex;
   Inc(AObjectIndex);
-  for Prop in AObject.Properties do
+  for mProp in AObject.Properties do
   begin
-    if Prop.IsEvent then
+    if mProp.IsEvent then
     begin
-      Handler.ObjectIndex := Own;
-      Handler.ObjectName := AObject.Name;
-      Handler.TypeName := AObject.TypeName;
-      Handler.MethodName := Prop.Value;
-      AList.Add(Handler);
+      mHandler.ObjectIndex := mOwn;
+      mHandler.ObjectName := AObject.Name;
+      mHandler.TypeName := AObject.TypeName;
+      mHandler.MethodName := mProp.Value;
+      AList.Add(mHandler);
     end;
   end;
-  for Child in AObject.Children do
+  for mChild in AObject.Children do
   begin
-    CollectHandlers(Child, AObjectIndex, AList);
+    CollectHandlers(mChild, AObjectIndex, AList);
   end;
 end;
 
@@ -144,30 +144,30 @@ end;
 
 procedure TFormSnapshotCache.Touch(const AKey: string);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := FOrder.IndexOf(AKey);
-  if Index >= 0 then
+  mIndex := FOrder.IndexOf(AKey);
+  if mIndex >= 0 then
   begin
-    FOrder.Delete(Index);
+    FOrder.Delete(mIndex);
   end;
   FOrder.Add(AKey);
 end;
 
 function TFormSnapshotCache.TryGet(const AFormFile, AStamp: string; out ASnapshot: TFormSnapshot): Boolean;
 var
-  Key: string;
-  Entry: TEntry;
+  mKey: string;
+  mEntry: TEntry;
 begin
   ASnapshot := Default(TFormSnapshot);
-  Key := AnsiUpperCase(AFormFile);
+  mKey := AnsiUpperCase(AFormFile);
   TMonitor.Enter(FLock);
   try
-    Result := FEntries.TryGetValue(Key, Entry) and (Entry.Stamp = AStamp);
+    Result := FEntries.TryGetValue(mKey, mEntry) and (mEntry.Stamp = AStamp);
     if Result then
     begin
-      ASnapshot := Entry.Snapshot;
-      Touch(Key);
+      ASnapshot := mEntry.Snapshot;
+      Touch(mKey);
     end;
   finally
     TMonitor.Exit(FLock);
@@ -176,17 +176,17 @@ end;
 
 procedure TFormSnapshotCache.Put(const AFormFile, AStamp: string; const ASnapshot: TFormSnapshot);
 var
-  Key: string;
-  Entry: TEntry;
+  mKey: string;
+  mEntry: TEntry;
 begin
-  Key := AnsiUpperCase(AFormFile);
-  Entry.Stamp := AStamp;
-  Entry.Snapshot := ASnapshot;
+  mKey := AnsiUpperCase(AFormFile);
+  mEntry.Stamp := AStamp;
+  mEntry.Snapshot := ASnapshot;
   TMonitor.Enter(FLock);
   try
-    FEntries.AddOrSetValue(Key, Entry);
-    Touch(Key);
-    while FOrder.Count > MaxEntries do
+    FEntries.AddOrSetValue(mKey, mEntry);
+    Touch(mKey);
+    while FOrder.Count > cMaxEntries do
     begin
       FEntries.Remove(FOrder[0]);
       FOrder.Delete(0);
@@ -208,9 +208,9 @@ end;
 
 class function TFormSnapshotCache.FromDocument(const AFormFile: string; ADocument: TDfmDocument): TFormSnapshot;
 var
-  Components: TList<TFormSnapshotComponent>;
-  Handlers: TList<TFormSnapshotHandler>;
-  ObjectIndex: Integer;
+  mComponents: TList<TFormSnapshotComponent>;
+  mHandlers: TList<TFormSnapshotHandler>;
+  mObjectIndex: Integer;
 begin
   Result := Default(TFormSnapshot);
   Result.FormFile := AFormFile;
@@ -220,17 +220,17 @@ begin
   end;
   Result.RootName := ADocument.Root.Name;
   Result.RootType := ADocument.Root.TypeName;
-  Components := TList<TFormSnapshotComponent>.Create;
-  Handlers := TList<TFormSnapshotHandler>.Create;
+  mComponents := TList<TFormSnapshotComponent>.Create;
+  mHandlers := TList<TFormSnapshotHandler>.Create;
   try
-    CollectComponents(ADocument.Root, Components);
-    ObjectIndex := 0;
-    CollectHandlers(ADocument.Root, ObjectIndex, Handlers);
-    Result.Components := Components.ToArray;
-    Result.Handlers := Handlers.ToArray;
+    CollectComponents(ADocument.Root, mComponents);
+    mObjectIndex := 0;
+    CollectHandlers(ADocument.Root, mObjectIndex, mHandlers);
+    Result.Components := mComponents.ToArray;
+    Result.Handlers := mHandlers.ToArray;
   finally
-    Handlers.Free;
-    Components.Free;
+    mHandlers.Free;
+    mComponents.Free;
   end;
 end;
 

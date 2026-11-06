@@ -198,8 +198,8 @@ begin
     Assert.AreEqual('In class-Methode umwandeln, Aufrufe über TKunde', Actions[1].GetValue<string>('title'));
     Assert.AreEqual(TMethodWithoutSelf.RoutineTitle, Actions[2].GetValue<string>('title'));
     Assert.AreEqual('In Record-Helper für string verschieben', Actions[3].GetValue<string>('title'));
-    Assert.AreEqual(TLspMethodWithoutSelf.Kind, Actions[0].GetValue<string>('kind'));
-    Assert.AreEqual(TLspMethodWithoutSelf.ClientCommand, Actions[2].GetValue<string>('command.command'));
+    Assert.AreEqual(TLspMethodWithoutSelf.cKind, Actions[0].GetValue<string>('kind'));
+    Assert.AreEqual(TLspMethodWithoutSelf.cClientCommand, Actions[2].GetValue<string>('command.command'));
     Arguments := Actions[2].GetValue<TJSONArray>('command.arguments');
     Assert.AreEqual(3, Arguments.Count);
     Assert.AreEqual(TDocumentUris.FromPath(KundenFile), Arguments.Items[0].Value);

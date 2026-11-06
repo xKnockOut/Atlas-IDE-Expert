@@ -169,7 +169,7 @@ var
 begin
   Assert.IsTrue(ActionAt(Leer, 4, Action));
   Assert.AreEqual('Methodenrumpf für TFoo.Lauf erzeugen', Action.Title);
-  Assert.AreEqual(RewriteKind, Action.Kind);
+  Assert.AreEqual(cRewriteKind, Action.Kind);
   Assert.AreEqual(
     'unit U;'#10'interface'#10'type'#10'  TFoo = class'#10'    procedure Lauf(A: Integer);'#10 +
     '    function Wert: string; virtual;'#10'  end;'#10'implementation'#10#10'{ TFoo }'#10#10 +
@@ -186,7 +186,7 @@ begin
   Assert.IsTrue(ActionAt(Leer, 3, Action));
   Assert.AreEqual('2 fehlende Methodenrümpfe für TFoo erzeugen', Action.Title);
   // Kennung für „Anweisung vervollständigen“ im Plugin (#697).
-  Assert.AreEqual(ClassBodiesTag, Action.Tag);
+  Assert.AreEqual(cClassBodiesTag, Action.Tag);
   Text := Apply(Leer, Action);
   Assert.Contains(Text, 'procedure TFoo.Lauf(A: Integer);'#10'begin'#10#10'end;'#10#10 +
     'function TFoo.Wert: string;'#10'begin'#10#10'end;'#10#10'end.');

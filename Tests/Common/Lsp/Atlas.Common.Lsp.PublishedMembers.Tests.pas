@@ -234,7 +234,7 @@ var
 begin
   // TNotifyEvent steht nicht im Index: die bekannte Signatur; geerbt von TBasis (#113).
   Assert.IsTrue(TPublishedMembers.EventTail(FIndex, ReadSource, 'TKnopf', 'OnChange', Tail));
-  Assert.AreEqual(TPublishedMembers.NotifyTail, Tail);
+  Assert.AreEqual(TPublishedMembers.cNotifyTail, Tail);
   // Ereignistyp im Index: seine Parameter.
   Assert.IsTrue(TPublishedMembers.EventTail(FIndex, ReadSource, 'TKnopf', 'OnKlick', Tail));
   Assert.AreEqual('(Sender: TObject; X: Integer)', Tail);

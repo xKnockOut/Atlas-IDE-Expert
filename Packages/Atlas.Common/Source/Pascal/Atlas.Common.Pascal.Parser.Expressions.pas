@@ -101,19 +101,20 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  RelationalOperators: array[0..5] of string = ('=', '<>', '<', '>', '<=', '>=');
-  AdditiveSymbols: array[0..1] of string = ('+', '-');
-  MultiplicativeSymbols: array[0..1] of string = ('*', '/');
+  cRelationalOperators: array[0..5] of string = ('=', '<>', '<', '>', '<=', '>=');
+  cAdditiveSymbols: array[0..1] of string = ('+', '-');
+  cMultiplicativeSymbols: array[0..1] of string = ('*', '/');
 
   /// <summary>Assoziative Operatoren, deren lange Folgen ausgeglichen gebaut werden.</summary>
-  AssociativeOperators: array[0..3] of string = ('+', 'and', 'or', 'xor');
+  cAssociativeOperators: array[0..3] of string = ('+', 'and', 'or', 'xor');
   /// <summary>Ab so vielen rechten Operanden desselben assoziativen Operators wird die Folge ausgeglichen
   /// statt linkslastig gebaut; kürzere Folgen bleiben linkslastig.</summary>
-  BalancedRunFrom = 32;
+  cBalancedRunFrom = 32;
 
 { TExpressionParser }
 
-function TExpressionParser.Binary(const AOperator: string; ALeft, ARight: TSyntaxNode; AStartIndex: Integer): TSyntaxNode;
+function TExpressionParser.Binary(const AOperator: string; ALeft, ARight: TSyntaxNode;
+  AStartIndex: Integer): TSyntaxNode;
 begin
   Result := StartNode(TSyntaxKind.BinaryExpr);
   Result.Name := AOperator;
@@ -125,48 +126,48 @@ end;
 function TExpressionParser.BinaryUpTo(const AOperator: string; ALeft, ARight: TSyntaxNode; AStartIndex,
   AEndIndex: Integer): TSyntaxNode;
 var
-  First, Last: TPascalToken;
+  mFirst, mLast: TPascalToken;
 begin
   Result := StartNode(TSyntaxKind.BinaryExpr);
   Result.Name := AOperator;
   Result.Add(ALeft);
   Result.Add(ARight);
   // Wie FinishNode an der Stelle, als der Parser hinter dem letzten Operanden stand.
-  First := FTokens[AStartIndex];
-  Last := FTokens[AEndIndex - 1];
-  Result.SetRange(First.StartPos, Last.EndPos, First.Offset, Last.Offset + Length(Last.Text));
+  mFirst := FTokens[AStartIndex];
+  mLast := FTokens[AEndIndex - 1];
+  Result.SetRange(mFirst.StartPos, mLast.EndPos, mFirst.Offset, mLast.Offset + Length(mLast.Text));
 end;
 
 function TExpressionParser.BalancedRun(const ARun: TOperatorRun; ALow, AHigh: Integer): TSyntaxNode;
 var
-  Middle: Integer;
+  mMiddle: Integer;
 begin
   if ALow = AHigh then
   begin
     Exit(ARun.Operands[ALow].Node);
   end;
   // Rekursionstiefe log2(Anzahl), auch bei Zehntausenden Operanden flach.
-  Middle := (ALow + AHigh) div 2;
-  Result := BinaryUpTo(ARun.Operator, BalancedRun(ARun, ALow, Middle), BalancedRun(ARun, Middle + 1, AHigh),
+  mMiddle := (ALow + AHigh) div 2;
+  Result := BinaryUpTo(ARun.Operator, BalancedRun(ARun, ALow, mMiddle), BalancedRun(ARun, mMiddle + 1, AHigh),
     ARun.Operands[ALow].StartIndex, ARun.Operands[AHigh].EndIndex);
 end;
 
 function TExpressionParser.FlushRun(ALeft: TSyntaxNode; AStartIndex: Integer; var ARun: TOperatorRun): TSyntaxNode;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := ALeft;
   if ARun.Count = 0 then
   begin
     Exit;
   end;
-  if ARun.Count < BalancedRunFrom then
+  if ARun.Count < cBalancedRunFrom then
   begin
     // Kurze Folge: linkslastig wie bisher, mit denselben Bereichen wie Binary.
-    for Index := 0 to ARun.Count - 1 do
+    for mIndex := 0 to ARun.Count - 1 do
     begin
-      Result := BinaryUpTo(ARun.Operator, Result, ARun.Operands[Index].Node, AStartIndex,
-        ARun.Operands[Index].EndIndex);
+      Result := BinaryUpTo(ARun.Operator, Result, ARun.Operands[mIndex].Node, AStartIndex,
+        ARun.Operands[mIndex].EndIndex);
     end;
   end
   else
@@ -185,7 +186,7 @@ end;
 function TExpressionParser.ChainOperand(ALeft: TSyntaxNode; const AOperator: string; ARight: TSyntaxNode;
   AStartIndex, AOperandStart: Integer; var ARun: TOperatorRun): TSyntaxNode;
 var
-  Operand: TChainOperand;
+  mOperand: TChainOperand;
 begin
   Result := ALeft;
   if (ARun.Count > 0) and (ARun.Operator <> AOperator) then
@@ -193,46 +194,46 @@ begin
     Result := FlushRun(Result, AStartIndex, ARun);
   end;
   // Nicht assoziativ (a - b - c) oder leerer Operand (fehlender Ausdruck): sofort anhängen wie bisher.
-  if not InWords(AOperator, AssociativeOperators) or (FIndex <= AOperandStart) then
+  if not InWords(AOperator, cAssociativeOperators) or (FIndex <= AOperandStart) then
   begin
     Result := FlushRun(Result, AStartIndex, ARun);
     Exit(Binary(AOperator, Result, ARight, AStartIndex));
   end;
-  Operand.Node := ARight;
-  Operand.StartIndex := AOperandStart;
-  Operand.EndIndex := FIndex;
+  mOperand.Node := ARight;
+  mOperand.StartIndex := AOperandStart;
+  mOperand.EndIndex := FIndex;
   ARun.Operator := AOperator;
   if ARun.Count = Length(ARun.Operands) then
   begin
     SetLength(ARun.Operands, 2 * ARun.Count + 8);
   end;
-  ARun.Operands[ARun.Count] := Operand;
+  ARun.Operands[ARun.Count] := mOperand;
   Inc(ARun.Count);
 end;
 
 function TExpressionParser.ParseExpression(AParent: TSyntaxNode): TSyntaxNode;
 var
-  Start: Integer;
-  Op: string;
+  mStart: Integer;
+  mOp: string;
 begin
   // Vergleich: = <> < > <= >= in is, ab Delphi 13 auch "is not" und "not in" (#109)
-  Start := NodeStart;
+  mStart := NodeStart;
   Result := ParseSimpleExpression;
   while AtRelationalOperator do
   begin
-    Op := LowerCase(Current.Text);
+    mOp := LowerCase(Current.Text);
     Advance;
-    if (Op = 'is') and IsKw('not') then
+    if (mOp = 'is') and IsKw('not') then
     begin
-      Op := 'is not';
+      mOp := 'is not';
       Advance;
     end
-    else if Op = 'not' then
+    else if mOp = 'not' then
     begin
-      Op := 'not in';
+      mOp := 'not in';
       Advance;
     end;
-    Result := Binary(Op, Result, ParseSimpleExpression, Start);
+    Result := Binary(mOp, Result, ParseSimpleExpression, mStart);
   end;
   if AParent <> nil then
   begin
@@ -246,49 +247,49 @@ begin
   begin
     Exit(True);
   end;
-  Result := not AtEnd and (Current.Kind = TPascalTokenKind.Symbol) and InWords(Current.Text, RelationalOperators);
+  Result := not AtEnd and (Current.Kind = TPascalTokenKind.Symbol) and InWords(Current.Text, cRelationalOperators);
 end;
 
 function TExpressionParser.ParseSimpleExpression: TSyntaxNode;
 var
-  Start, OperandStart: Integer;
-  Op: string;
-  Run: TOperatorRun;
+  mStart, mOperandStart: Integer;
+  mOp: string;
+  mRun: TOperatorRun;
 begin
   // + - or xor
-  Start := NodeStart;
+  mStart := NodeStart;
   Result := ParseTerm;
-  Run := Default(TOperatorRun);
-  while (not AtEnd and (Current.Kind = TPascalTokenKind.Symbol) and InWords(Current.Text, AdditiveSymbols)) or
+  mRun := Default(TOperatorRun);
+  while (not AtEnd and (Current.Kind = TPascalTokenKind.Symbol) and InWords(Current.Text, cAdditiveSymbols)) or
     IsKw(['or', 'xor']) do
   begin
-    Op := LowerCase(Current.Text);
+    mOp := LowerCase(Current.Text);
     Advance;
-    OperandStart := NodeStart;
-    Result := ChainOperand(Result, Op, ParseTerm, Start, OperandStart, Run);
+    mOperandStart := NodeStart;
+    Result := ChainOperand(Result, mOp, ParseTerm, mStart, mOperandStart, mRun);
   end;
-  Result := FlushRun(Result, Start, Run);
+  Result := FlushRun(Result, mStart, mRun);
 end;
 
 function TExpressionParser.ParseTerm: TSyntaxNode;
 var
-  Start, OperandStart: Integer;
-  Op: string;
-  Run: TOperatorRun;
+  mStart, mOperandStart: Integer;
+  mOp: string;
+  mRun: TOperatorRun;
 begin
   // * / div mod and shl shr as
-  Start := NodeStart;
+  mStart := NodeStart;
   Result := ParseFactor;
-  Run := Default(TOperatorRun);
-  while (not AtEnd and (Current.Kind = TPascalTokenKind.Symbol) and InWords(Current.Text, MultiplicativeSymbols)) or
+  mRun := Default(TOperatorRun);
+  while (not AtEnd and (Current.Kind = TPascalTokenKind.Symbol) and InWords(Current.Text, cMultiplicativeSymbols)) or
     IsKw(['div', 'mod', 'and', 'shl', 'shr', 'as']) do
   begin
-    Op := LowerCase(Current.Text);
+    mOp := LowerCase(Current.Text);
     Advance;
-    OperandStart := NodeStart;
-    Result := ChainOperand(Result, Op, ParseFactor, Start, OperandStart, Run);
+    mOperandStart := NodeStart;
+    Result := ChainOperand(Result, mOp, ParseFactor, mStart, mOperandStart, mRun);
   end;
-  Result := FlushRun(Result, Start, Run);
+  Result := FlushRun(Result, mStart, mRun);
 end;
 
 function TExpressionParser.ParseFactor: TSyntaxNode;
@@ -306,23 +307,23 @@ end;
 
 function TExpressionParser.ParseFactorBody: TSyntaxNode;
 var
-  Start: Integer;
+  mStart: Integer;
 begin
-  Start := NodeStart;
+  mStart := NodeStart;
   if IsKw('not') or IsSym('-') or IsSym('+') then
   begin
     Result := StartNode(TSyntaxKind.UnaryExpr);
     Result.Name := LowerCase(Current.Text);
     Advance;
     Result.Add(ParseFactor);
-    FinishNode(Result, Start);
+    FinishNode(Result, mStart);
   end
   else if IsSym('@') then
   begin
     Result := StartNode(TSyntaxKind.AddressOf);
     Advance;
     Result.Add(ParseFactor);
-    FinishNode(Result, Start);
+    FinishNode(Result, mStart);
   end
   else if IsKw('if') then
   begin
@@ -334,7 +335,7 @@ begin
     ParseExpression(Result);
     ExpectKw('else');
     ParseExpression(Result);
-    FinishNode(Result, Start);
+    FinishNode(Result, mStart);
   end
   else
   begin
@@ -344,21 +345,21 @@ end;
 
 function TExpressionParser.ParseStringLiteral: TSyntaxNode;
 var
-  Start: Integer;
-  Text: string;
+  mStart: Integer;
+  mText: string;
 begin
-  Start := NodeStart;
-  Text := '';
+  mStart := NodeStart;
+  mText := '';
   while not AtEnd do
   begin
     if Current.Kind in [TPascalTokenKind.StringLiteral, TPascalTokenKind.CharLiteral] then
     begin
-      Text := Text + Current.Text;
+      mText := mText + Current.Text;
       Advance;
     end
     else if IsControlChar then
     begin
-      Text := Text + '#' + IntToStr(Ord(UpCase(PeekToken(1).Text[1])) xor $40);
+      mText := mText + '#' + IntToStr(Ord(UpCase(PeekToken(1).Text[1])) xor $40);
       Advance;
       Advance;
     end
@@ -368,8 +369,8 @@ begin
     end;
   end;
   Result := StartNode(TSyntaxKind.Literal);
-  Result.Name := Text;
-  FinishNode(Result, Start);
+  Result.Name := mText;
+  FinishNode(Result, mStart);
 end;
 
 function TExpressionParser.LooksLikeGenericArgs: Boolean;
@@ -379,58 +380,58 @@ end;
 
 function TExpressionParser.LooksLikeGenericArgs(AInType: Boolean): Boolean;
 var
-  Delta: Integer;
-  Depth: Integer;
-  Token: TPascalToken;
+  mDelta: Integer;
+  mDepth: Integer;
+  mToken: TPascalToken;
 begin
   // Steht auf "<". Generische Argumente bestehen nur aus Bezeichnern, Punkten,
   // Kommas, string und verschachtelten <>; danach folgt kein Operand.
-  Delta := 0;
-  Depth := 0;
+  mDelta := 0;
+  mDepth := 0;
   repeat
-    Token := PeekToken(Delta);
-    if Token.IsSymbol('<') then
+    mToken := PeekToken(mDelta);
+    if mToken.IsSymbol('<') then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if Token.IsSymbol('>') then
+    else if mToken.IsSymbol('>') then
     begin
-      Dec(Depth);
+      Dec(mDepth);
     end
-    else if AInType and (Depth = 1) and Token.IsSymbol('>=') then
+    else if AInType and (mDepth = 1) and mToken.IsSymbol('>=') then
     begin
       // Baz: IBaz<string>=nil: das = gehört zum Vorgabewert (#1142).
       Exit(True);
     end
-    else if not ((Token.Kind = TPascalTokenKind.Identifier) or Token.IsSymbol('.') or Token.IsSymbol(',') or
-      Token.IsKeyword('string')) then
+    else if not ((mToken.Kind = TPascalTokenKind.Identifier) or mToken.IsSymbol('.') or mToken.IsSymbol(',') or
+      mToken.IsKeyword('string')) then
     begin
       Exit(False);
     end;
-    Inc(Delta);
-  until (Depth = 0) or (FIndex + Delta >= Length(FTokens));
-  if Depth <> 0 then
+    Inc(mDelta);
+  until (mDepth = 0) or (FIndex + mDelta >= Length(FTokens));
+  if mDepth <> 0 then
   begin
     Exit(False);
   end;
-  Token := PeekToken(Delta);
-  Result := AInType and (Token.Kind = TPascalTokenKind.Identifier);
-  Result := Result or not (Token.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Number,
+  mToken := PeekToken(mDelta);
+  Result := AInType and (mToken.Kind = TPascalTokenKind.Identifier);
+  Result := Result or not (mToken.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Number,
     TPascalTokenKind.StringLiteral, TPascalTokenKind.CharLiteral]);
 end;
 
 procedure TExpressionParser.ParseGenericArgs(AParent: TSyntaxNode);
 var
-  Start: Integer;
-  Node: TSyntaxNode;
+  mStart: Integer;
+  mNode: TSyntaxNode;
 begin
-  Start := NodeStart;
-  Node := StartNode(TSyntaxKind.GenericArgs);
-  AParent.Add(Node);
+  mStart := NodeStart;
+  mNode := StartNode(TSyntaxKind.GenericArgs);
+  AParent.Add(mNode);
   Advance; // <
   while not AtEnd and not IsSym('>') do
   begin
-    ParseTypeReference(Node);
+    ParseTypeReference(mNode);
     if not AcceptSym(',') then
     begin
       Break;
@@ -441,7 +442,7 @@ begin
     SplitGreaterEqual;
   end;
   ExpectSym('>');
-  FinishNode(Node, Start);
+  FinishNode(mNode, mStart);
 end;
 
 procedure TExpressionParser.ParseArguments(AParent: TSyntaxNode; const ACloser: string);

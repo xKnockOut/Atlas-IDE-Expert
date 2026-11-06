@@ -171,8 +171,8 @@ begin
     Foo := FindSymbol(Symbols, ['U', 'interface', 'TFoo']);
     Assert.IsNotNull(Foo);
     Assert.AreEqual('class', Foo.GetValue<string>('detail'));
-    Assert.AreEqual(TLspSymbolKind.Constructor_, FindSymbol(Symbols, ['U', 'interface', 'TFoo', 'Create']).GetValue<Integer>('kind'));
-    Assert.AreEqual(TLspSymbolKind.Property_, FindSymbol(Symbols, ['U', 'interface', 'TFoo', 'Value']).GetValue<Integer>('kind'));
+    Assert.AreEqual(TLspSymbolKind.cConstructor_, FindSymbol(Symbols, ['U', 'interface', 'TFoo', 'Create']).GetValue<Integer>('kind'));
+    Assert.AreEqual(TLspSymbolKind.cProperty_, FindSymbol(Symbols, ['U', 'interface', 'TFoo', 'Value']).GetValue<Integer>('kind'));
   finally
     Symbols.Free;
   end;

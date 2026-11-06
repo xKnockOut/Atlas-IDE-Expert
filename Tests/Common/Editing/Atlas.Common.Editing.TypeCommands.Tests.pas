@@ -259,7 +259,7 @@ var
 begin
   Host := TRecordingSlashHost.Create;
   Keep := Host;
-  Host.Settings := [TSlashSettings.EnumHelper + '=false'];
+  Host.Settings := [TSlashSettings.cEnumHelper + '=false'];
   Text := Format(EnumUnit, ['/helper TFarbe']);
   Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Text, TTextPosition.Create(5, 0),
     TSlashEnvironment.Create(nil, nil, nil, '', 'file:///U.pas', Keep), Edits));
@@ -317,7 +317,7 @@ var
 begin
   Host := TRecordingSlashHost.Create;
   Keep := Host;
-  Host.Settings := [TSlashSettings.SetHelper + '=false'];
+  Host.Settings := [TSlashSettings.cSetHelper + '=false'];
   Text := Format(SetUnit, ['/helper TFarben']);
   Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Text, TTextPosition.Create(6, 0),
     TSlashEnvironment.Create(nil, nil, nil, '', 'file:///U.pas', Keep), Edits));

@@ -20,7 +20,7 @@ type
 
   TLspDocumentLinks = class
   public const
-    Method = 'textDocument/documentLink';
+    cMethod = 'textDocument/documentLink';
   private
     FStore: IDocumentStore;
     FSearchPaths: TSearchPathsProvider;
@@ -89,7 +89,7 @@ end;
 
 procedure TLspDocumentLinks.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterConcurrentRequest(Method, HandleLinks);
+  ADispatcher.RegisterConcurrentRequest(cMethod, HandleLinks);
 end;
 
 class function TLspDocumentLinks.Capability: TJSONObject;
@@ -116,33 +116,33 @@ end;
 function TLspDocumentLinks.HandleLinks(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
-  Uri: string;
-  Document: ITextDocument;
-  SearchPaths: TArray<string>;
-  Link: TDocumentLink;
-  Links: TArray<TDocumentLink>;
+  mUri: string;
+  mDocument: ITextDocument;
+  mSearchPaths: TArray<string>;
+  mLink: TDocumentLink;
+  mLinks: TArray<TDocumentLink>;
 begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri)) then
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      cTexts[TDocumentLinksText.FieldTextDocumentUriMissingIn].Text + Method);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TDocumentLinksText.FieldTextDocumentUriMissingIn].Text + cMethod);
   end;
-  if not FStore.TryGet(Uri, Document) then
+  if not FStore.TryGet(mUri, mDocument) then
   begin
     Exit(TJSONNull.Create);
   end;
-  SearchPaths := nil;
+  mSearchPaths := nil;
   if Assigned(FSearchPaths) then
   begin
-    SearchPaths := FSearchPaths(Uri);
+    mSearchPaths := FSearchPaths(mUri);
   end;
-  Links := TDocumentLinks.Find(Document.Text, TDocumentUris.ToPath(Uri), SearchPaths, FFileExists);
+  mLinks := TDocumentLinks.Find(mDocument.Text, TDocumentUris.ToPath(mUri), mSearchPaths, FFileExists);
   ACancellation.ThrowIfCancellationRequested;
   // Ergebnis erst nach der Suche anlegen, damit ein Abbruch nichts verliert.
   Result := TJSONArray.Create;
-  for Link in Links do
+  for mLink in mLinks do
   begin
-    TJSONArray(Result).AddElement(LinkToJson(Link));
+    TJSONArray(Result).AddElement(LinkToJson(mLink));
   end;
 end;
 

@@ -110,7 +110,7 @@ type
 
   TExtractInterface = class
   public const
-    Kind = 'refactor.extract';
+    cKind = 'refactor.extract';
   public
     /// <summary>I + Klassenname ohne führendes T (TKunde → IKunde).</summary>
     class function DefaultName(const AClassName: string): string; static;
@@ -189,10 +189,10 @@ const
 
 const
   /// <summary>Klassen der RTL, die IInterface implementieren.</summary>
-  InterfacedRoots: array[0..6] of string = ('TInterfacedObject', 'TAggregatedObject', 'TContainedObject',
+  cInterfacedRoots: array[0..6] of string = ('TInterfacedObject', 'TAggregatedObject', 'TContainedObject',
     'TComponent', 'TInterfacedPersistent', 'TInterfaceList', 'TAutoIntfObject');
   /// <summary>Direktiven, die ins Interface mitkommen.</summary>
-  KeptDirectives: array[0..5] of string = ('overload', 'stdcall', 'safecall', 'cdecl', 'register', 'pascal');
+  cKeptDirectives: array[0..5] of string = ('overload', 'stdcall', 'safecall', 'cdecl', 'register', 'pascal');
 
 function StripT(const AName: string): string;
 begin
@@ -248,7 +248,7 @@ var
 begin
   Result := True;
   AParent := '';
-  if MatchText(AName, InterfacedRoots) then
+  if MatchText(AName, cInterfacedRoots) then
   begin
     ASupport := TInterfaceSupport.Yes;
   end
@@ -395,7 +395,7 @@ end;
 function AncestorNote(ALayout: TClassLayout; const ALookup: TClassAncestorsLookup; out ANewAncestors: TArray<string>;
   const AInterfaceName: string): string;
 var
-  First: string;
+  mFirst: string;
 begin
   Result := '';
   ANewAncestors := Copy(ALayout.Ancestors);
@@ -415,12 +415,12 @@ begin
   end;
   if Length(ANewAncestors) = 1 then
   begin
-    First := ANewAncestors[0];
-    case TExtractInterface.Supports(First, ALookup) of
+    mFirst := ANewAncestors[0];
+    case TExtractInterface.Supports(mFirst, ALookup) of
       TInterfaceSupport.No:
-        Result := cTexts[TEditingExtractInterfaceText.DoesNotImplementIInterfaceLacks].Fmt([First, ALayout.Name]);
+        Result := cTexts[TEditingExtractInterfaceText.DoesNotImplementIInterfaceLacks].Fmt([mFirst, ALayout.Name]);
       TInterfaceSupport.Unknown:
-        Result := cTexts[TEditingExtractInterfaceText.WhetherImplementsIInterfaceIsNot].Fmt([First, ALayout.Name]);
+        Result := cTexts[TEditingExtractInterfaceText.WhetherImplementsIInterfaceIsNot].Fmt([mFirst, ALayout.Name]);
     end;
   end;
   ANewAncestors := ANewAncestors + [AInterfaceName];
@@ -476,11 +476,11 @@ end;
 /// <summary>Erste Bezeichner aller Typverweise unter ANode.</summary>
 procedure CollectTypeNames(ANode: TSyntaxNode; var ANames: TArray<string>);
 var
-  Found: TArray<string>;
-  Name: string;
+  mFound: TArray<string>;
+  mName: string;
 begin
   // Var-Parameter lassen sich nicht einfangen: erst sammeln, dann anhängen.
-  Found := nil;
+  mFound := nil;
   ANode.Walk(
     function(AChild: TSyntaxNode): Boolean
     var
@@ -498,28 +498,28 @@ begin
       end;
       if (Part <> '') and IsIdentifier(Part) then
       begin
-        Found := Found + [Part];
+        mFound := mFound + [Part];
       end;
     end);
-  for Name in Found do
+  for mName in mFound do
   begin
-    if IndexText(Name, ANames) < 0 then
+    if IndexText(mName, ANames) < 0 then
     begin
-      ANames := ANames + [Name];
+      ANames := ANames + [mName];
     end;
   end;
 end;
 
 function MethodDeclaration(ALayout: TClassLayout; AIndex: Integer): string;
 var
-  Directive: string;
+  mDirective: string;
 begin
   Result := ALayout.Head(AIndex);
-  for Directive in ALayout.Members[AIndex].Directives do
+  for mDirective in ALayout.Members[AIndex].Directives do
   begin
-    if MatchText(Directive, KeptDirectives) then
+    if MatchText(mDirective, cKeptDirectives) then
     begin
-      Result := Result + ' ' + Directive + ';';
+      Result := Result + ' ' + mDirective + ';';
     end;
   end;
 end;
@@ -554,13 +554,13 @@ end;
 /// <summary>Ist AName eine Methode der Klasse (Zugriffsmethode statt Feld)?</summary>
 function MethodIndex(ALayout: TClassLayout; const AName: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index in ALayout.Find(AName) do
+  for mIndex in ALayout.Find(AName) do
   begin
-    if ALayout.Members[Index].IsMethod then
+    if ALayout.Members[mIndex].IsMethod then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -568,14 +568,14 @@ end;
 
 function UniqueMemberName(ALayout: TClassLayout; const ABase: string; const ATaken: TArray<string>): string;
 var
-  Counter: Integer;
+  mCounter: Integer;
 begin
   Result := ABase;
-  Counter := 1;
+  mCounter := 1;
   while (ALayout.Find(Result) <> nil) or (IndexText(Result, ATaken) >= 0) do
   begin
-    Inc(Counter);
-    Result := ABase + IntToStr(Counter);
+    Inc(mCounter);
+    Result := ABase + IntToStr(mCounter);
   end;
 end;
 
@@ -955,42 +955,42 @@ end;
 class function TExtractInterface.InsertIntoUnit(ATree: TSyntaxTree; const AText, ADeclaration: string;
   out AEdit: TTextEdit): Boolean;
 var
-  Implementation_, Interface_: TSyntaxNode;
-  Index, Line: Integer;
-  LineBreak, Text, Part: string;
+  mImplementation_, mInterface_: TSyntaxNode;
+  mIndex, mLine: Integer;
+  mLineBreak, mText, mPart: string;
 begin
-  Implementation_ := nil;
-  Interface_ := nil;
-  for Index := 0 to ATree.Root.ChildCount - 1 do
+  mImplementation_ := nil;
+  mInterface_ := nil;
+  for mIndex := 0 to ATree.Root.ChildCount - 1 do
   begin
-    if ATree.Root[Index].Kind = TSyntaxKind.ImplementationSection then
+    if ATree.Root[mIndex].Kind = TSyntaxKind.ImplementationSection then
     begin
-      Implementation_ := ATree.Root[Index];
+      mImplementation_ := ATree.Root[mIndex];
     end
-    else if ATree.Root[Index].Kind = TSyntaxKind.InterfaceSection then
+    else if ATree.Root[mIndex].Kind = TSyntaxKind.InterfaceSection then
     begin
-      Interface_ := ATree.Root[Index];
+      mInterface_ := ATree.Root[mIndex];
     end;
   end;
-  if (Interface_ = nil) or (Implementation_ = nil) then
+  if (mInterface_ = nil) or (mImplementation_ = nil) then
   begin
     Exit(False);
   end;
-  LineBreak := TTextLines.LineBreakOf(AText);
-  Text := 'type' + LineBreak;
-  for Part in ADeclaration.Split([#10]) do
+  mLineBreak := TTextLines.LineBreakOf(AText);
+  mText := 'type' + mLineBreak;
+  for mPart in ADeclaration.Split([#10]) do
   begin
-    Text := Text + '  ' + Part + LineBreak;
+    mText := mText + '  ' + mPart + mLineBreak;
   end;
-  Line := Implementation_.StartPos.Line;
-  AEdit := TClassEdits.InsertBeforeLine(Line, Text + LineBreak);
+  mLine := mImplementation_.StartPos.Line;
+  AEdit := TClassEdits.InsertBeforeLine(mLine, mText + mLineBreak);
   Result := True;
 end;
 
 class function TExtractInterface.NewUnitText(const AUnitName, ADeclaration: string; const AUses: TArray<string>;
   const ALineBreak: string): string;
 var
-  Part: string;
+  mPart: string;
 begin
   Result := 'unit ' + AUnitName + ';' + ALineBreak + ALineBreak + 'interface' + ALineBreak + ALineBreak;
   if AUses <> nil then
@@ -999,9 +999,9 @@ begin
       ALineBreak;
   end;
   Result := Result + 'type' + ALineBreak;
-  for Part in ADeclaration.Split([#10]) do
+  for mPart in ADeclaration.Split([#10]) do
   begin
-    Result := Result + '  ' + Part + ALineBreak;
+    Result := Result + '  ' + mPart + ALineBreak;
   end;
   Result := Result + ALineBreak + 'implementation' + ALineBreak + ALineBreak + 'end.' + ALineBreak;
 end;

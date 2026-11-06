@@ -316,7 +316,7 @@ begin
   mResult := TBulkFix.Run('U.pas', 'abcd', Options(TRuleConfidence.High), FixedCheck(
     TArray<TRuleFinding>.Create(Finding(0, 0, 2, 'ab', TRuleConfidence.High, True),
     Finding(0, 1, 3, 'bc', TRuleConfidence.High, True))), NoErrors());
-  Assert.AreEqual(TBulkFix.MaxPasses, mResult.Passes);
+  Assert.AreEqual(TBulkFix.cMaxPasses, mResult.Passes);
   Assert.AreEqual(1, mResult.Skipped[TBulkFixSkip.Conflict]);
   Assert.IsFalse(mResult.Changed);
 end;

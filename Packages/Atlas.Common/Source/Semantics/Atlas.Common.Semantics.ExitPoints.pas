@@ -111,7 +111,7 @@ type
   TExitPoints = class
   public const
     /// <summary>RTL-Routinen, die immer auslösen bzw. das Programm beenden.</summary>
-    RaisingRoutines: array[0..3] of string = ('RaiseLastOSError', 'RaiseLastWin32Error', 'OutOfMemoryError',
+    cRaisingRoutines: array[0..3] of string = ('RaiseLastOSError', 'RaiseLastWin32Error', 'OutOfMemoryError',
       'Abort');
   public
     /// <summary>Stellen zur Abfrage an APosition; Query None, wenn dort nichts Passendes steht.</summary>
@@ -148,8 +148,8 @@ type
   TSyntaxKindSet = set of TSyntaxKind;
 
 const
-  RoutineKinds = [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod];
-  LoopKinds = [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
+  cRoutineKinds = [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod];
+  cLoopKinds = [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
     TSyntaxKind.RepeatStatement];
 
 { TExitPoint }
@@ -169,12 +169,12 @@ end;
 
 function TExitPointSet.ExitCount: Integer;
 var
-  Point: TExitPoint;
+  mPoint: TExitPoint;
 begin
   Result := 0;
-  for Point in Points do
+  for mPoint in Points do
   begin
-    if Point.IsExit then
+    if mPoint.IsExit then
     begin
       Inc(Result);
     end;
@@ -183,12 +183,12 @@ end;
 
 function TExitPointSet.ResultMissing: Boolean;
 var
-  Point: TExitPoint;
+  mPoint: TExitPoint;
 begin
   Result := False;
-  for Point in Points do
+  for mPoint in Points do
   begin
-    if Point.ResultMissing then
+    if mPoint.ResultMissing then
     begin
       Exit(True);
     end;
@@ -219,24 +219,24 @@ end;
 /// <summary>Token, das an AOffset beginnt; -1 ohne.</summary>
 function TokenAtOffset(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
 var
-  Low, High, Middle: Integer;
+  mLow, mHigh, mMiddle: Integer;
 begin
-  Low := 0;
-  High := Length(ATokens) - 1;
-  while Low <= High do
+  mLow := 0;
+  mHigh := Length(ATokens) - 1;
+  while mLow <= mHigh do
   begin
-    Middle := (Low + High) div 2;
-    if ATokens[Middle].Offset < AOffset then
+    mMiddle := (mLow + mHigh) div 2;
+    if ATokens[mMiddle].Offset < AOffset then
     begin
-      Low := Middle + 1;
+      mLow := mMiddle + 1;
     end
-    else if ATokens[Middle].Offset > AOffset then
+    else if ATokens[mMiddle].Offset > AOffset then
     begin
-      High := Middle - 1;
+      mHigh := mMiddle - 1;
     end
     else
     begin
-      Exit(Middle);
+      Exit(mMiddle);
     end;
   end;
   Result := -1;
@@ -245,21 +245,21 @@ end;
 /// <summary>Bezeichner oder Schlüsselwort, auf dem APosition steht (auch direkt dahinter); -1 ohne.</summary>
 function WordAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
 var
-  Index: Integer;
-  Token: TPascalToken;
+  mIndex: Integer;
+  mToken: TPascalToken;
 begin
-  for Index := 0 to High(ATokens) do
+  for mIndex := 0 to High(ATokens) do
   begin
-    Token := ATokens[Index];
-    if (Token.StartPos.Line > APosition.Line) or
-      ((Token.StartPos.Line = APosition.Line) and (Token.StartPos.Character > APosition.Character)) then
+    mToken := ATokens[mIndex];
+    if (mToken.StartPos.Line > APosition.Line) or
+      ((mToken.StartPos.Line = APosition.Line) and (mToken.StartPos.Character > APosition.Character)) then
     begin
       Break;
     end;
-    if (Token.EndPos.Line = APosition.Line) and (APosition.Character <= Token.EndPos.Character) and
-      (Token.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) then
+    if (mToken.EndPos.Line = APosition.Line) and (APosition.Character <= mToken.EndPos.Character) and
+      (mToken.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -269,18 +269,18 @@ end;
 function LastKeyword(const ATokens: TArray<TPascalToken>; AStartOffset, AEndOffset: Integer;
   const AWord: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := -1;
-  for Index := 0 to High(ATokens) do
+  for mIndex := 0 to High(ATokens) do
   begin
-    if ATokens[Index].Offset >= AEndOffset then
+    if ATokens[mIndex].Offset >= AEndOffset then
     begin
       Break;
     end;
-    if (ATokens[Index].Offset >= AStartOffset) and ATokens[Index].IsKeyword(AWord) then
+    if (ATokens[mIndex].Offset >= AStartOffset) and ATokens[mIndex].IsKeyword(AWord) then
     begin
-      Result := Index;
+      Result := mIndex;
     end;
   end;
 end;
@@ -289,36 +289,36 @@ end;
 /// außen (ein Break in einer anonymen Methode gehört nicht zur Schleife außen).</summary>
 function Innermost(ARoot: TSyntaxNode; AOffset: Integer; const AKinds, ABoundaries: TSyntaxKindSet): TSyntaxNode;
 var
-  Node, Child: TSyntaxNode;
-  Index: Integer;
+  mNode, mChild: TSyntaxNode;
+  mIndex: Integer;
 begin
   // Von der Wurzel abwärts dem Kind folgen, das AOffset enthält; der letzte Treffer ist der innerste.
   Result := nil;
-  Node := ARoot;
-  while Node <> nil do
+  mNode := ARoot;
+  while mNode <> nil do
   begin
-    Child := nil;
-    for Index := 0 to Node.ChildCount - 1 do
+    mChild := nil;
+    for mIndex := 0 to mNode.ChildCount - 1 do
     begin
-      if (AOffset >= Node[Index].StartOffset) and (AOffset < Node[Index].EndOffset) then
+      if (AOffset >= mNode[mIndex].StartOffset) and (AOffset < mNode[mIndex].EndOffset) then
       begin
-        Child := Node[Index];
+        mChild := mNode[mIndex];
         Break;
       end;
     end;
-    if Child = nil then
+    if mChild = nil then
     begin
       Break;
     end;
-    if Child.Kind in AKinds then
+    if mChild.Kind in AKinds then
     begin
-      Result := Child;
+      Result := mChild;
     end
-    else if Child.Kind in ABoundaries then
+    else if mChild.Kind in ABoundaries then
     begin
       Result := nil;
     end;
-    Node := Child;
+    mNode := mChild;
   end;
 end;
 
@@ -334,36 +334,36 @@ end;
 /// <summary>Knoten unter ARoot ohne verschachtelte Routinen und anonyme Methoden, in Baumreihenfolge.</summary>
 function OwnNodes(ARoot: TSyntaxNode; const AKinds: TSyntaxKindSet): TArray<TSyntaxNode>;
 var
-  List: TList<TSyntaxNode>;
-  Kinds: TSyntaxKindSet;
-  Root: TSyntaxNode;
+  mList: TList<TSyntaxNode>;
+  mKinds: TSyntaxKindSet;
+  mRoot: TSyntaxNode;
 begin
-  List := TList<TSyntaxNode>.Create;
+  mList := TList<TSyntaxNode>.Create;
   try
-    Kinds := AKinds;
-    Root := ARoot;
+    mKinds := AKinds;
+    mRoot := ARoot;
     ARoot.Walk(
       function(ANode: TSyntaxNode): Boolean
       begin
-        if (ANode <> Root) and (ANode.Kind in RoutineKinds) then
+        if (ANode <> mRoot) and (ANode.Kind in cRoutineKinds) then
         begin
           Exit(False);
         end;
-        if ANode.Kind in Kinds then
+        if ANode.Kind in mKinds then
         begin
-          List.Add(ANode);
+          mList.Add(ANode);
         end;
         Result := True;
       end);
-    Result := List.ToArray;
+    Result := mList.ToArray;
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 
 function IsFunctionRoutine(ARoutine: TSyntaxNode): Boolean;
 var
-  Header: TSyntaxNode;
+  mHeader: TSyntaxNode;
 begin
   Result := False;
   if ARoutine = nil then
@@ -372,13 +372,13 @@ begin
   end;
   if ARoutine.Kind = TSyntaxKind.AnonymousMethod then
   begin
-    Header := ARoutine;
+    mHeader := ARoutine;
   end
   else
   begin
-    Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+    mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
   end;
-  Result := (Header <> nil) and (Header.FindChild(TSyntaxKind.TypeReference) <> nil);
+  Result := (mHeader <> nil) and (mHeader.FindChild(TSyntaxKind.TypeReference) <> nil);
 end;
 
 class function TExitPoints.PlainCallee(ACallee: TSyntaxNode): string;
@@ -441,16 +441,16 @@ end;
 /// <summary>Bereich des Namens am Ende des Aufrufziels (Foo bzw. Bar in Obj.Bar).</summary>
 function CalleeNameRange(const ATokens: TArray<TPascalToken>; ACallee: TSyntaxNode): TTextRange;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := TTextRange.Create(ACallee.StartPos, ACallee.EndPos);
-  for Index := High(ATokens) downto 0 do
+  for mIndex := High(ATokens) downto 0 do
   begin
-    if ATokens[Index].Offset < ACallee.EndOffset then
+    if ATokens[mIndex].Offset < ACallee.EndOffset then
     begin
-      if ATokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword] then
+      if ATokens[mIndex].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword] then
       begin
-        Result := TokenRange(ATokens[Index]);
+        Result := TokenRange(ATokens[mIndex]);
       end;
       Break;
     end;
@@ -480,25 +480,25 @@ end;
 /// Schlüssel).</summary>
 function Sorted(const APoints: TArray<TExitPoint>): TArray<TExitPoint>;
 var
-  Items: TArray<TExitPoint>;
-  Point: TExitPoint;
-  Count: Integer;
+  mItems: TArray<TExitPoint>;
+  mPoint: TExitPoint;
+  mCount: Integer;
 begin
-  Items := Copy(APoints);
-  TArray.Sort<TExitPoint>(Items, TComparer<TExitPoint>.Construct(ComparePoints));
+  mItems := Copy(APoints);
+  TArray.Sort<TExitPoint>(mItems, TComparer<TExitPoint>.Construct(ComparePoints));
   Result := nil;
-  SetLength(Result, Length(Items));
-  Count := 0;
-  for Point in Items do
+  SetLength(Result, Length(mItems));
+  mCount := 0;
+  for mPoint in mItems do
   begin
-    if (Count > 0) and (Result[Count - 1].Range.StartPos = Point.Range.StartPos) then
+    if (mCount > 0) and (Result[mCount - 1].Range.StartPos = mPoint.Range.StartPos) then
     begin
       Continue;
     end;
-    Result[Count] := Point;
-    Inc(Count);
+    Result[mCount] := mPoint;
+    Inc(mCount);
   end;
-  SetLength(Result, Count);
+  SetLength(Result, mCount);
 end;
 
 function MakePoint(AKind: TExitPointKind; const ARange: TTextRange; const ADetail: string): TExitPoint;
@@ -524,54 +524,54 @@ type
 
 constructor TRaisingRoutines.Create(ATree: TSyntaxTree);
 var
-  Routines: TList<TSyntaxNode>;
-  Routine, Body: TSyntaxNode;
-  Graph: TControlFlowGraph;
-  Name: string;
+  mRoutines: TList<TSyntaxNode>;
+  mRoutine, mBody: TSyntaxNode;
+  mGraph: TControlFlowGraph;
+  mName: string;
 begin
   inherited Create;
   FNames := TDictionary<string, Boolean>.Create;
-  for Name in TExitPoints.RaisingRoutines do
+  for mName in TExitPoints.cRaisingRoutines do
   begin
-    FNames.AddOrSetValue(UpperCase(Name), True);
+    FNames.AddOrSetValue(UpperCase(mName), True);
   end;
   if ATree = nil then
   begin
     Exit;
   end;
-  Routines := TList<TSyntaxNode>.Create;
+  mRoutines := TList<TSyntaxNode>.Create;
   try
     ATree.Root.Walk(
       function(ANode: TSyntaxNode): Boolean
       begin
         if (ANode.Kind = TSyntaxKind.RoutineDecl) and (ANode.FindChild(TSyntaxKind.Block) <> nil) then
         begin
-          Routines.Add(ANode);
+          mRoutines.Add(ANode);
         end;
         // Anonyme Methoden haben keinen Namen; was in ihnen steht, zählt nicht.
         Result := ANode.Kind <> TSyntaxKind.AnonymousMethod;
       end);
-    for Routine in Routines do
+    for mRoutine in mRoutines do
     begin
-      Body := BodyOf(Routine);
+      mBody := BodyOf(mRoutine);
       // Vorfilter: Ohne raise und Abort im eigenen Rumpf kann die Routine nicht immer auslösen.
-      if Length(OwnNodes(Body, [TSyntaxKind.RaiseStatement])) = 0 then
+      if Length(OwnNodes(mBody, [TSyntaxKind.RaiseStatement])) = 0 then
       begin
         Continue;
       end;
-      Graph := TControlFlowGraph.Build(Routine);
+      mGraph := TControlFlowGraph.Build(mRoutine);
       try
-        if Graph.Complete and (Graph.IsReachable(Graph.ExitNode) = TFlowAnswer.No) and
-          (Graph.IsReachable(Graph.RaiseExit) = TFlowAnswer.Yes) then
+        if mGraph.Complete and (mGraph.IsReachable(mGraph.ExitNode) = TFlowAnswer.No) and
+          (mGraph.IsReachable(mGraph.RaiseExit) = TFlowAnswer.Yes) then
         begin
-          FNames.AddOrSetValue(UpperCase(ShortName(Routine.Name)), True);
+          FNames.AddOrSetValue(UpperCase(ShortName(mRoutine.Name)), True);
         end;
       finally
-        Graph.Free;
+        mGraph.Free;
       end;
     end;
   finally
-    Routines.Free;
+    mRoutines.Free;
   end;
 end;
 
@@ -593,51 +593,51 @@ end;
 function FallsThrough(AGraph: TControlFlowGraph; ARaising: TRaisingRoutines;
   out AEnds: TArray<TFlowNode>): Boolean;
 var
-  Seen: TArray<Boolean>;
-  Stack: TStack<TFlowNode>;
-  Node, Next: TFlowNode;
-  Ends: TDictionary<TFlowNode, Boolean>;
+  mSeen: TArray<Boolean>;
+  mStack: TStack<TFlowNode>;
+  mNode, mNext: TFlowNode;
+  mEnds: TDictionary<TFlowNode, Boolean>;
 begin
   AEnds := nil;
   if not AGraph.Complete then
   begin
     Exit(True);
   end;
-  Ends := TDictionary<TFlowNode, Boolean>.Create;
-  Stack := TStack<TFlowNode>.Create;
+  mEnds := TDictionary<TFlowNode, Boolean>.Create;
+  mStack := TStack<TFlowNode>.Create;
   try
-    for Node in AGraph.FallThrough do
+    for mNode in AGraph.FallThrough do
     begin
-      Ends.AddOrSetValue(Node, True);
+      mEnds.AddOrSetValue(mNode, True);
     end;
-    SetLength(Seen, AGraph.Nodes.Count);
-    Stack.Push(AGraph.Entry);
-    Seen[AGraph.Entry.Index] := True;
-    while Stack.Count > 0 do
+    SetLength(mSeen, AGraph.Nodes.Count);
+    mStack.Push(AGraph.Entry);
+    mSeen[AGraph.Entry.Index] := True;
+    while mStack.Count > 0 do
     begin
-      Node := Stack.Pop;
+      mNode := mStack.Pop;
       // RunError beendet das Programm wie Halt (das ControlFlow schon ans Ende führt).
-      if (Node.Syntax <> nil) and (Node.Syntax.Kind = TSyntaxKind.CallStatement) and
-        (ARaising.Contains(StatementWord(Node.Syntax)) or SameText(StatementWord(Node.Syntax), 'RunError')) then
+      if (mNode.Syntax <> nil) and (mNode.Syntax.Kind = TSyntaxKind.CallStatement) and
+        (ARaising.Contains(StatementWord(mNode.Syntax)) or SameText(StatementWord(mNode.Syntax), 'RunError')) then
       begin
         Continue;
       end;
-      if Ends.ContainsKey(Node) then
+      if mEnds.ContainsKey(mNode) then
       begin
-        AEnds := AEnds + [Node];
+        AEnds := AEnds + [mNode];
       end;
-      for Next in Node.Successors do
+      for mNext in mNode.Successors do
       begin
-        if not Seen[Next.Index] then
+        if not mSeen[mNext.Index] then
         begin
-          Seen[Next.Index] := True;
-          Stack.Push(Next);
+          mSeen[mNext.Index] := True;
+          mStack.Push(mNext);
         end;
       end;
     end;
   finally
-    Stack.Free;
-    Ends.Free;
+    mStack.Free;
+    mEnds.Free;
   end;
   Result := Length(AEnds) > 0;
 end;
@@ -648,14 +648,14 @@ function MissingAt(AGraph: TControlFlowGraph; ANode: TFlowNode; const AName: str
 
   function Missing(const AVariable: string): Boolean;
   var
-    Reaching: TReachingDefinitions;
+    mReaching: TReachingDefinitions;
   begin
     if AAfter and (SameText(ANode.Defines, AVariable) or ANode.TouchesName(AVariable)) then
     begin
       Exit(False);
     end;
-    Reaching := AGraph.ReachingDefinitions(ANode, AVariable);
-    Result := Reaching.FromEntry;
+    mReaching := AGraph.ReachingDefinitions(ANode, AVariable);
+    Result := mReaching.FromEntry;
   end;
 
 begin
@@ -870,17 +870,17 @@ end;
 
 function ResultAssignments(ARoutine: TSyntaxNode): TArray<TExitPoint>;
 var
-  Node: TSyntaxNode;
-  Name: string;
+  mNode: TSyntaxNode;
+  mName: string;
 begin
   Result := nil;
-  Name := ShortName(ARoutine.Name);
-  for Node in OwnNodes(BodyOf(ARoutine), [TSyntaxKind.AssignStatement]) do
+  mName := ShortName(ARoutine.Name);
+  for mNode in OwnNodes(BodyOf(ARoutine), [TSyntaxKind.AssignStatement]) do
   begin
-    if IsResultTarget(Node, Name) then
+    if IsResultTarget(mNode, mName) then
     begin
       Result := Result + [MakePoint(TExitPointKind.ResultAssign,
-        TTextRange.Create(Node[0].StartPos, Node[0].EndPos), '')];
+        TTextRange.Create(mNode[0].StartPos, mNode[0].EndPos), '')];
     end;
   end;
 end;
@@ -889,35 +889,35 @@ end;
 
 function HandlerClass(AHandler: TSyntaxNode): string;
 var
-  TypeNode: TSyntaxNode;
+  mTypeNode: TSyntaxNode;
 begin
   Result := '';
-  TypeNode := AHandler.FindChild(TSyntaxKind.TypeReference);
-  if TypeNode <> nil then
+  mTypeNode := AHandler.FindChild(TSyntaxKind.TypeReference);
+  if mTypeNode <> nil then
   begin
-    Result := TypeNode.Name;
+    Result := mTypeNode.Name;
   end;
 end;
 
 /// <summary>Klasse eines raise-Ausdrucks: EFoo.Create(…) bzw. EFoo.CreateFmt(…) → EFoo; '' sonst.</summary>
 function RaisedClass(ARaise: TSyntaxNode): string;
 var
-  Node: TSyntaxNode;
+  mNode: TSyntaxNode;
 begin
   Result := '';
   if ARaise.ChildCount = 0 then
   begin
     Exit;
   end;
-  Node := ARaise[0];
-  if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount > 0) then
+  mNode := ARaise[0];
+  if (mNode.Kind = TSyntaxKind.Call) and (mNode.ChildCount > 0) then
   begin
-    Node := Node[0];
+    mNode := mNode[0];
   end;
-  if (Node.Kind = TSyntaxKind.MemberAccess) and (Node.ChildCount = 1) and
-    (Node[0].Kind = TSyntaxKind.Identifier) and StartsText('Create', Node.Name) then
+  if (mNode.Kind = TSyntaxKind.MemberAccess) and (mNode.ChildCount = 1) and
+    (mNode[0].Kind = TSyntaxKind.Identifier) and StartsText('Create', mNode.Name) then
   begin
-    Result := Node[0].Name;
+    Result := mNode[0].Name;
   end;
 end;
 
@@ -1052,18 +1052,18 @@ end;
 /// <summary>Break und Continue, die ALoop verlassen bzw. fortsetzen (nicht die innerer Schleifen).</summary>
 function LoopJumps(ALoop: TSyntaxNode): TArray<TSyntaxNode>;
 var
-  List: TList<TSyntaxNode>;
-  Loop: TSyntaxNode;
+  mList: TList<TSyntaxNode>;
+  mLoop: TSyntaxNode;
 begin
-  List := TList<TSyntaxNode>.Create;
+  mList := TList<TSyntaxNode>.Create;
   try
-    Loop := ALoop;
+    mLoop := ALoop;
     ALoop.Walk(
       function(ANode: TSyntaxNode): Boolean
       var
         Word: string;
       begin
-        if (ANode <> Loop) and (ANode.Kind in RoutineKinds + LoopKinds) then
+        if (ANode <> mLoop) and (ANode.Kind in cRoutineKinds + cLoopKinds) then
         begin
           Exit(False);
         end;
@@ -1075,60 +1075,60 @@ begin
         Word := StatementWord(ANode);
         if SameText(Word, 'Break') or SameText(Word, 'Continue') then
         begin
-          List.Add(ANode);
+          mList.Add(ANode);
         end;
       end);
-    Result := List.ToArray;
+    Result := mList.ToArray;
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 
 function LoopPoints(ATree: TSyntaxTree; ALoop: TSyntaxNode): TArray<TExitPoint>;
 var
-  Tokens: TArray<TPascalToken>;
-  Index: Integer;
-  Body: TSyntaxNode;
+  mTokens: TArray<TPascalToken>;
+  mIndex: Integer;
+  mBody: TSyntaxNode;
 begin
   Result := nil;
-  Tokens := ATree.Tokens;
-  Index := TokenAtOffset(Tokens, ALoop.StartOffset);
-  if Index >= 0 then
+  mTokens := ATree.Tokens;
+  mIndex := TokenAtOffset(mTokens, ALoop.StartOffset);
+  if mIndex >= 0 then
   begin
-    Result := Result + [MakePoint(TExitPointKind.LoopPart, TokenRange(Tokens[Index]), '')];
+    Result := Result + [MakePoint(TExitPointKind.LoopPart, TokenRange(mTokens[mIndex]), '')];
   end;
   if ALoop.Kind = TSyntaxKind.RepeatStatement then
   begin
-    Index := LastKeyword(Tokens, ALoop.StartOffset, ALoop.EndOffset, 'until');
-    if Index >= 0 then
+    mIndex := LastKeyword(mTokens, ALoop.StartOffset, ALoop.EndOffset, 'until');
+    if mIndex >= 0 then
     begin
-      Result := Result + [MakePoint(TExitPointKind.LoopPart, TokenRange(Tokens[Index]), '')];
+      Result := Result + [MakePoint(TExitPointKind.LoopPart, TokenRange(mTokens[mIndex]), '')];
     end;
   end
   else if ALoop.ChildCount > 0 then
   begin
-    Body := ALoop[ALoop.ChildCount - 1];
-    Index := LastKeyword(Tokens, ALoop.StartOffset, Body.StartOffset, 'do');
-    if Index >= 0 then
+    mBody := ALoop[ALoop.ChildCount - 1];
+    mIndex := LastKeyword(mTokens, ALoop.StartOffset, mBody.StartOffset, 'do');
+    if mIndex >= 0 then
     begin
-      Result := Result + [MakePoint(TExitPointKind.LoopPart, TokenRange(Tokens[Index]), '')];
+      Result := Result + [MakePoint(TExitPointKind.LoopPart, TokenRange(mTokens[mIndex]), '')];
     end;
-    if Body.Kind = TSyntaxKind.Block then
+    if mBody.Kind = TSyntaxKind.Block then
     begin
-      Index := LastKeyword(Tokens, Body.StartOffset, Body.EndOffset, 'end');
-      if Index >= 0 then
+      mIndex := LastKeyword(mTokens, mBody.StartOffset, mBody.EndOffset, 'end');
+      if mIndex >= 0 then
       begin
-        Result := Result + [MakePoint(TExitPointKind.LoopPart, TokenRange(Tokens[Index]), '')];
+        Result := Result + [MakePoint(TExitPointKind.LoopPart, TokenRange(mTokens[mIndex]), '')];
       end;
     end;
   end;
   // Break und Continue dieser Schleife, nicht die einer inneren.
-  for Body in LoopJumps(ALoop) do
+  for mBody in LoopJumps(ALoop) do
   begin
-    Index := TokenAtOffset(Tokens, Body.StartOffset);
-    if Index >= 0 then
+    mIndex := TokenAtOffset(mTokens, mBody.StartOffset);
+    if mIndex >= 0 then
     begin
-      Result := Result + [MakePoint(TExitPointKind.LoopJump, TokenRange(Tokens[Index]), '')];
+      Result := Result + [MakePoint(TExitPointKind.LoopJump, TokenRange(mTokens[mIndex]), '')];
     end;
   end;
 end;
@@ -1138,16 +1138,16 @@ end;
 class function TExitPoints.RoutineExits(ATree: TSyntaxTree; ARoutine: TSyntaxNode;
   const AOptions: TExitPointOptions): TExitPointSet;
 var
-  Raising: TRaisingRoutines;
+  mRaising: TRaisingRoutines;
 begin
-  Raising := TRaisingRoutines.Create(ATree);
+  mRaising := TRaisingRoutines.Create(ATree);
   try
-    if ExitPointsOf(ATree, ARoutine, AOptions, Raising, Result) then
+    if ExitPointsOf(ATree, ARoutine, AOptions, mRaising, Result) then
     begin
       Result.Query := TExitPointQuery.Routine;
     end;
   finally
-    Raising.Free;
+    mRaising.Free;
   end;
 end;
 
@@ -1160,18 +1160,18 @@ end;
 /// <summary>RoutineDecl mit Rumpf, in deren Kopf AOffset liegt; nil sonst.</summary>
 function RoutineOfHeader(ARoot: TSyntaxNode; AOffset: Integer): TSyntaxNode;
 var
-  Routine, Header: TSyntaxNode;
+  mRoutine, mHeader: TSyntaxNode;
 begin
   Result := nil;
-  Routine := Innermost(ARoot, AOffset, [TSyntaxKind.RoutineDecl], []);
-  if (Routine = nil) or (BodyOf(Routine) = nil) then
+  mRoutine := Innermost(ARoot, AOffset, [TSyntaxKind.RoutineDecl], []);
+  if (mRoutine = nil) or (BodyOf(mRoutine) = nil) then
   begin
     Exit;
   end;
-  Header := Routine.FindChild(TSyntaxKind.RoutineHeader);
-  if (Header <> nil) and (AOffset >= Header.StartOffset) and (AOffset < Header.EndOffset) then
+  mHeader := mRoutine.FindChild(TSyntaxKind.RoutineHeader);
+  if (mHeader <> nil) and (AOffset >= mHeader.StartOffset) and (AOffset < mHeader.EndOffset) then
   begin
-    Result := Routine;
+    Result := mRoutine;
   end;
 end;
 
@@ -1200,7 +1200,7 @@ begin
   begin
     Exit;
   end;
-  mLoop := Innermost(AQuery.Tree.Root, AQuery.Token.Offset, LoopKinds, RoutineKinds);
+  mLoop := Innermost(AQuery.Tree.Root, AQuery.Token.Offset, cLoopKinds, cRoutineKinds);
   if (mLoop <> nil) and AQuery.Options.Loops then
   begin
     ASet.Query := TExitPointQuery.Loop;
@@ -1217,7 +1217,7 @@ begin
   Result := nil;
   if AQuery.Token.Kind = TPascalTokenKind.Identifier then
   begin
-    Result := Innermost(AQuery.Tree.Root, AQuery.Token.Offset, [TSyntaxKind.ExceptionHandler], RoutineKinds);
+    Result := Innermost(AQuery.Tree.Root, AQuery.Token.Offset, [TSyntaxKind.ExceptionHandler], cRoutineKinds);
   end;
   if Result = nil then
   begin
@@ -1262,7 +1262,7 @@ begin
   mExceptPart := nil;
   if AQuery.Token.IsKeyword('except') then
   begin
-    mExceptPart := Innermost(AQuery.Tree.Root, AQuery.Token.Offset, [TSyntaxKind.ExceptBlock], RoutineKinds);
+    mExceptPart := Innermost(AQuery.Tree.Root, AQuery.Token.Offset, [TSyntaxKind.ExceptBlock], cRoutineKinds);
   end
   else
   begin
@@ -1321,7 +1321,7 @@ begin
   begin
     Exit;
   end;
-  mStatement := Innermost(AQuery.Tree.Root, AQuery.Token.Offset, [TSyntaxKind.AssignStatement], RoutineKinds);
+  mStatement := Innermost(AQuery.Tree.Root, AQuery.Token.Offset, [TSyntaxKind.AssignStatement], cRoutineKinds);
   Result := SameText(AQuery.Word, 'Result') or ((mStatement <> nil) and (mStatement.ChildCount > 0) and
     (mStatement[0].StartOffset = AQuery.Token.Offset) and IsResultTarget(mStatement, ShortName(ARoutine.Name)));
   if Result and ExitPointsOf(AQuery.Tree, ARoutine, AQuery.Options, AQuery.Raising, ASet) then
@@ -1348,7 +1348,7 @@ var
   mStatement: TSyntaxNode;
 begin
   mStatement := Innermost(AQuery.Tree.Root, AQuery.Token.Offset, [TSyntaxKind.CallStatement,
-    TSyntaxKind.RaiseStatement], RoutineKinds);
+    TSyntaxKind.RaiseStatement], cRoutineKinds);
   if (mStatement <> nil) and (mStatement.StartOffset = AQuery.Token.Offset) and
     IsExitStatement(AQuery, mStatement) then
   begin
@@ -1389,7 +1389,7 @@ begin
   mQuery.Options := AOptions;
   mQuery.Exceptions := AExceptions;
   mQuery.IsA := AIsA;
-  mRoutine := Innermost(ATree.Root, mQuery.Token.Offset, RoutineKinds, []);
+  mRoutine := Innermost(ATree.Root, mQuery.Token.Offset, cRoutineKinds, []);
   mQuery.Raising := TRaisingRoutines.Create(ATree);
   try
     if not LoopQuery(mQuery, Result) and not ExceptQuery(mQuery, Result) and not HeaderQuery(mQuery, Result) and

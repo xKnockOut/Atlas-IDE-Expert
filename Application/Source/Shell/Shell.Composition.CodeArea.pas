@@ -407,7 +407,7 @@ begin
       Result.SortUses := mWorkspace.Configuration.Settings.SortUses;
       Result.SortUsesByNamespace := mWorkspace.Configuration.Settings.SortUsesByNamespace;
       // usesKeep und die Option keep von unused-uses (#1135): Regel, Abblenden und „uses aufräumen“ gleich.
-      Result.UsesKeep := TUnusedUsesRule.Keep(TRuleEngine.RuleOptions(UnusedUsesRuleId,
+      Result.UsesKeep := TUnusedUsesRule.Keep(TRuleEngine.RuleOptions(cUnusedUsesRuleId,
         mWorkspace.Configuration.Settings), mWorkspace.Configuration.Settings.UsesKeep);
       Result.Namespaces := mWorkspace.State.Namespaces;
       Result.IncludePaths := mWorkspace.State.IncludePaths;

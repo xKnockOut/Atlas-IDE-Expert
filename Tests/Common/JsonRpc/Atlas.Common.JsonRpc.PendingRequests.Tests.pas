@@ -229,7 +229,7 @@ begin
     on E: EJsonRpcRequestCancelled do
       Code := E.Code;
   end;
-  Assert.AreEqual(TJsonRpcErrorCode.RequestCancelled, Code);
+  Assert.AreEqual(TJsonRpcErrorCode.cRequestCancelled, Code);
 end;
 
 procedure TJsonRpcPendingRequestsTests.WaitForWorkWaitsUntilWorkEnds;
@@ -267,7 +267,7 @@ begin
     on E: EJsonRpcError do
       Code := E.Code;
   end;
-  Assert.AreEqual(TJsonRpcErrorCode.ContentModified, Code);
+  Assert.AreEqual(TJsonRpcErrorCode.cContentModified, Code);
 end;
 
 procedure TJsonRpcPendingRequestsTests.ChangeOfOtherDocumentKeepsRequest;
@@ -351,7 +351,7 @@ begin
     on E: EJsonRpcContentModified do
       mCode := E.Code;
   end;
-  Assert.AreEqual(TJsonRpcErrorCode.ContentModified, mCode);
+  Assert.AreEqual(TJsonRpcErrorCode.cContentModified, mCode);
 end;
 
 procedure TJsonRpcPendingRequestsTests.PastTimeoutIgnoresOnlyExpiry;

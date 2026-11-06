@@ -171,12 +171,12 @@ end;
 
 procedure TShellAnalysis.RegisterReportCommands(ACommands: TLspCommands);
 begin
-  ACommands.Register(TLspMetrics.Command,
+  ACommands.Register(TLspMetrics.cCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FMetrics.Execute(AArguments);
     end);
-  ACommands.Register(TLspTodos.Command,
+  ACommands.Register(TLspTodos.cCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FTodos.Execute(AArguments);

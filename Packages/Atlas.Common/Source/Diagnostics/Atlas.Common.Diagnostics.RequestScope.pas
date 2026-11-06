@@ -76,7 +76,7 @@ implementation
 
 type
   TScope = class
-    Notes: TRequestNotes;
+    FNotes: TRequestNotes;
   end;
 
 threadvar
@@ -90,24 +90,24 @@ begin
   begin
     CurrentScope := TScope.Create;
   end;
-  CurrentScope.Notes := Default(TRequestNotes);
-  CurrentScope.Notes.Count := -1;
+  CurrentScope.FNotes := Default(TRequestNotes);
+  CurrentScope.FNotes.Count := -1;
 end;
 
 class function TRequestDiagnostics.Close: TRequestNotes;
 var
-  Scope: TScope;
+  mScope: TScope;
 begin
-  Scope := CurrentScope;
+  mScope := CurrentScope;
   CurrentScope := nil;
-  if Scope = nil then
+  if mScope = nil then
   begin
     Result := Default(TRequestNotes);
     Result.Count := -1;
     Exit;
   end;
-  Result := Scope.Notes;
-  Scope.Free;
+  Result := mScope.FNotes;
+  mScope.Free;
 end;
 
 class function TRequestDiagnostics.IsOpen: Boolean;
@@ -119,45 +119,45 @@ class procedure TRequestDiagnostics.Reason(const ACode: string);
 begin
   if CurrentScope <> nil then
   begin
-    CurrentScope.Notes.Reason := ACode;
+    CurrentScope.FNotes.Reason := ACode;
   end;
 end;
 
 class procedure TRequestDiagnostics.DefaultReason(const ACode: string);
 begin
-  if (CurrentScope <> nil) and (CurrentScope.Notes.Reason = '') then
+  if (CurrentScope <> nil) and (CurrentScope.FNotes.Reason = '') then
   begin
-    CurrentScope.Notes.Reason := ACode;
+    CurrentScope.FNotes.Reason := ACode;
   end;
 end;
 
 class procedure TRequestDiagnostics.ResolveFailed(const AStep: string);
 begin
-  if (CurrentScope <> nil) and (CurrentScope.Notes.Resolve = '') then
+  if (CurrentScope <> nil) and (CurrentScope.FNotes.Resolve = '') then
   begin
-    CurrentScope.Notes.Resolve := AStep;
+    CurrentScope.FNotes.Resolve := AStep;
   end;
 end;
 
 class procedure TRequestDiagnostics.Note(const AKey, AValue: string);
 var
-  Index: Integer;
-  Entry: string;
+  mIndex: Integer;
+  mEntry: string;
 begin
   if CurrentScope = nil then
   begin
     Exit;
   end;
-  Entry := AKey + '=' + AValue;
-  for Index := 0 to High(CurrentScope.Notes.Notes) do
+  mEntry := AKey + '=' + AValue;
+  for mIndex := 0 to High(CurrentScope.FNotes.Notes) do
   begin
-    if CurrentScope.Notes.Notes[Index].StartsWith(AKey + '=') then
+    if CurrentScope.FNotes.Notes[mIndex].StartsWith(AKey + '=') then
     begin
-      CurrentScope.Notes.Notes[Index] := Entry;
+      CurrentScope.FNotes.Notes[mIndex] := mEntry;
       Exit;
     end;
   end;
-  CurrentScope.Notes.Notes := CurrentScope.Notes.Notes + [Entry];
+  CurrentScope.FNotes.Notes := CurrentScope.FNotes.Notes + [mEntry];
 end;
 
 class procedure TRequestDiagnostics.Note(const AKey: string; AValue: Integer);
@@ -188,48 +188,48 @@ class procedure TRequestDiagnostics.ResultCount(ACount: Integer);
 begin
   if CurrentScope <> nil then
   begin
-    CurrentScope.Notes.Count := ACount;
+    CurrentScope.FNotes.Count := ACount;
   end;
 end;
 
 class procedure TRequestDiagnostics.Increment(const AKey: string);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if CurrentScope = nil then
   begin
     Exit;
   end;
-  for Index := 0 to High(CurrentScope.Notes.Notes) do
+  for mIndex := 0 to High(CurrentScope.FNotes.Notes) do
   begin
-    if CurrentScope.Notes.Notes[Index].StartsWith(AKey + '=') then
+    if CurrentScope.FNotes.Notes[mIndex].StartsWith(AKey + '=') then
     begin
-      CurrentScope.Notes.Notes[Index] := AKey + '=' +
-        IntToStr(StrToIntDef(Copy(CurrentScope.Notes.Notes[Index], Length(AKey) + 2, MaxInt), 0) + 1);
+      CurrentScope.FNotes.Notes[mIndex] := AKey + '=' +
+        IntToStr(StrToIntDef(Copy(CurrentScope.FNotes.Notes[mIndex], Length(AKey) + 2, MaxInt), 0) + 1);
       Exit;
     end;
   end;
-  CurrentScope.Notes.Notes := CurrentScope.Notes.Notes + [AKey + '=1'];
+  CurrentScope.FNotes.Notes := CurrentScope.FNotes.Notes + [AKey + '=1'];
 end;
 
 class procedure TRequestDiagnostics.Slowest(const AKey, ALabel: string; AMs: Integer);
 var
-  Entry: string;
-  Known: Integer;
+  mEntry: string;
+  mKnown: Integer;
 begin
   if CurrentScope = nil then
   begin
     Exit;
   end;
-  Known := -1;
-  for Entry in CurrentScope.Notes.Notes do
+  mKnown := -1;
+  for mEntry in CurrentScope.FNotes.Notes do
   begin
-    if Entry.StartsWith(AKey + 'Ms=') then
+    if mEntry.StartsWith(AKey + 'Ms=') then
     begin
-      Known := StrToIntDef(Copy(Entry, Length(AKey) + 4, MaxInt), -1);
+      mKnown := StrToIntDef(Copy(mEntry, Length(AKey) + 4, MaxInt), -1);
     end;
   end;
-  if AMs <= Known then
+  if AMs <= mKnown then
   begin
     Exit;
   end;
@@ -241,7 +241,7 @@ class procedure TRequestDiagnostics.Subject(const ALabel: string);
 begin
   if CurrentScope <> nil then
   begin
-    CurrentScope.Notes.Subject := ALabel;
+    CurrentScope.FNotes.Subject := ALabel;
   end;
 end;
 
@@ -249,13 +249,13 @@ class procedure TRequestDiagnostics.CurrentRule(const ARuleId: string);
 begin
   if CurrentScope <> nil then
   begin
-    CurrentScope.Notes.Rule := ARuleId;
+    CurrentScope.FNotes.Rule := ARuleId;
   end;
 end;
 
 function CurrentSubject: string;
 begin
-  Result := CurrentScope.Notes.Subject;
+  Result := CurrentScope.FNotes.Subject;
   if Result = '' then
   begin
     Result := '-';
@@ -284,7 +284,7 @@ begin
   Note('failUnit', CurrentSubject);
   Note('failUnitClass', AErrorClass);
   // Die Regel ist mit der Unit erledigt; sonst nennte ein späterer Fehler die falsche.
-  CurrentScope.Notes.Rule := '';
+  CurrentScope.FNotes.Rule := '';
 end;
 
 class procedure TRequestDiagnostics.TreeTooDeep(ADepth: Integer);

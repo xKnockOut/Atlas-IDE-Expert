@@ -93,10 +93,10 @@ type
   TCompilerSwitches = record
   public const
     /// <summary>Gezeigte Schalter in Reihenfolge.</summary>
-    Letters = 'RQOCIADL';
-    AlignProperty = 'DCC_Alignment';
-    HintsProperty = 'DCC_Hints';
-    WarningsProperty = 'DCC_Warnings';
+    cLetters = 'RQOCIADL';
+    cAlignProperty = 'DCC_Alignment';
+    cHintsProperty = 'DCC_Hints';
+    cWarningsProperty = 'DCC_Warnings';
   public
     /// <summary>Stand an APosition der Hauptdatei von AProcessed.</summary>
     class function At(const AProcessed: TPreprocessorResult; const APosition: TTextPosition;
@@ -122,7 +122,7 @@ type
   end;
 
 const
-  MinusSign = #$2212;
+  cMinusSign = #$2212;
 
 { TSwitchOrigin }
 
@@ -167,16 +167,16 @@ end;
 
 function TReplay.Copy: TReplay;
 var
-  Pair: TPair<string, TSwitchEntry>;
+  mPair: TPair<string, TSwitchEntry>;
 begin
   Result := TReplay.Create;
-  for Pair in Switches do
+  for mPair in Switches do
   begin
-    Result.Switches.Add(Pair.Key, Pair.Value);
+    Result.Switches.Add(mPair.Key, mPair.Value);
   end;
-  for Pair in Warns do
+  for mPair in Warns do
   begin
-    Result.Warns.Add(Pair.Key, Pair.Value);
+    Result.Warns.Add(mPair.Key, mPair.Value);
   end;
 end;
 
@@ -188,13 +188,13 @@ end;
 function PropertyValue(const AProperties: TArray<TPair<string, string>>; const AName: string;
   out AValue: string): Boolean;
 var
-  Pair: TPair<string, string>;
+  mPair: TPair<string, string>;
 begin
-  for Pair in AProperties do
+  for mPair in AProperties do
   begin
-    if SameText(Pair.Key, AName) then
+    if SameText(mPair.Key, AName) then
     begin
-      AValue := LowerCase(Trim(Pair.Value));
+      AValue := LowerCase(Trim(mPair.Value));
       Exit(True);
     end;
   end;
@@ -221,20 +221,20 @@ end;
 /// <summary>"1", "2", "4", "8", "16" für AText; '' bei anderen Werten.</summary>
 function AlignValue(const AText: string): string;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := LowerCase(Trim(AText));
-  if (Text = 'on') or (Text = '+') or (Text = 'true') then
+  mText := LowerCase(Trim(AText));
+  if (mText = 'on') or (mText = '+') or (mText = 'true') then
   begin
     Result := '8';
   end
-  else if (Text = 'off') or (Text = '-') or (Text = 'false') then
+  else if (mText = 'off') or (mText = '-') or (mText = 'false') then
   begin
     Result := '1';
   end
-  else if (Text = '1') or (Text = '2') or (Text = '4') or (Text = '8') or (Text = '16') then
+  else if (mText = '1') or (mText = '2') or (mText = '4') or (mText = '8') or (mText = '16') then
   begin
-    Result := Text;
+    Result := mText;
   end
   else
   begin
@@ -250,10 +250,10 @@ begin
   Result := Default(TSwitchEntry);
   Result.Value := '8';
   Result.Origin := TSwitchOrigin.Make(TSwitchOriginKind.Default, '');
-  if PropertyValue(AInput.Properties, TCompilerSwitches.AlignProperty, mValue) and (AlignValue(mValue) <> '') then
+  if PropertyValue(AInput.Properties, TCompilerSwitches.cAlignProperty, mValue) and (AlignValue(mValue) <> '') then
   begin
     Result.Value := AlignValue(mValue);
-    Result.Origin := TSwitchOrigin.Make(TSwitchOriginKind.Project, TCompilerSwitches.AlignProperty);
+    Result.Origin := TSwitchOrigin.Make(TSwitchOriginKind.Project, TCompilerSwitches.cAlignProperty);
   end;
 end;
 
@@ -313,10 +313,10 @@ begin
   Result := Default(TSwitchEntry);
   Result.Name := AName;
   Result.Value := 'ON';
-  mProp := TCompilerSwitches.WarningsProperty;
+  mProp := TCompilerSwitches.cWarningsProperty;
   if AName = 'HINTS' then
   begin
-    mProp := TCompilerSwitches.HintsProperty;
+    mProp := TCompilerSwitches.cHintsProperty;
   end;
   Result.Origin := TSwitchOrigin.Make(TSwitchOriginKind.Default, '');
   if PropertyValue(AInput.Properties, mProp, mValue) and ((mValue = 'true') or (mValue = 'false')) then
@@ -359,30 +359,30 @@ end;
 /// <summary>Projektstand der Schalter (ohne lokale Direktiven).</summary>
 procedure ProjectSwitches(const AInput: TCompilerSwitchInput; AReplay: TReplay);
 var
-  Letter: Char;
-  Entry: string;
-  Switch: TSwitchEntry;
-  Index: Integer;
+  mLetter: Char;
+  mEntry: string;
+  mSwitch: TSwitchEntry;
+  mIndex: Integer;
 begin
-  for Index := 1 to Length(TCompilerSwitches.Letters) do
+  for mIndex := 1 to Length(TCompilerSwitches.cLetters) do
   begin
-    Letter := TCompilerSwitches.Letters[Index];
-    if Letter = 'A' then
+    mLetter := TCompilerSwitches.cLetters[mIndex];
+    if mLetter = 'A' then
     begin
-      Switch := AlignSwitch(AInput);
+      mSwitch := AlignSwitch(AInput);
     end
     else
     begin
-      Switch := FlagSwitch(AInput, Letter);
+      mSwitch := FlagSwitch(AInput, mLetter);
     end;
-    Switch.Name := Letter;
-    Switch.LongName := LongNameOf(Letter);
-    Switch.ProjectValue := Switch.Value;
-    AReplay.Switches.AddOrSetValue(Letter, Switch);
+    mSwitch.Name := mLetter;
+    mSwitch.LongName := LongNameOf(mLetter);
+    mSwitch.ProjectValue := mSwitch.Value;
+    AReplay.Switches.AddOrSetValue(mLetter, mSwitch);
   end;
-  for Entry in TArray<string>.Create('HINTS', 'WARNINGS') do
+  for mEntry in TArray<string>.Create('HINTS', 'WARNINGS') do
   begin
-    AReplay.Switches.AddOrSetValue(Entry, MessageSwitch(AInput, Entry));
+    AReplay.Switches.AddOrSetValue(mEntry, MessageSwitch(AInput, mEntry));
   end;
   AddProjectWarns(AInput, AReplay);
 end;
@@ -397,46 +397,46 @@ end;
 
 procedure SetSwitch(AReplay: TReplay; const AName, AValue: string; const AOrigin: TSwitchOrigin);
 var
-  Switch: TSwitchEntry;
+  mSwitch: TSwitchEntry;
 begin
-  if not AReplay.Switches.TryGetValue(AName, Switch) then
+  if not AReplay.Switches.TryGetValue(AName, mSwitch) then
   begin
     Exit;
   end;
-  Switch.Value := AValue;
-  Switch.Origin := AOrigin;
-  AReplay.Switches[AName] := Switch;
+  mSwitch.Value := AValue;
+  mSwitch.Origin := AOrigin;
+  AReplay.Switches[AName] := mSwitch;
 end;
 
 procedure SetWarn(AReplay: TReplay; AProject: TReplay; const AName, AState: string; const AOrigin: TSwitchOrigin);
 var
-  Switch, Known: TSwitchEntry;
-  Name: string;
+  mSwitch, mKnown: TSwitchEntry;
+  mName: string;
 begin
-  Name := UpperCase(AName);
-  if not AProject.Warns.TryGetValue(Name, Known) then
+  mName := UpperCase(AName);
+  if not AProject.Warns.TryGetValue(mName, mKnown) then
   begin
-    Known := Default(TSwitchEntry);
-    Known.Name := Name;
-    Known.ProjectValue := 'ON';
+    mKnown := Default(TSwitchEntry);
+    mKnown.Name := mName;
+    mKnown.ProjectValue := 'ON';
   end;
-  Switch := Known;
+  mSwitch := mKnown;
   if AState = 'DEFAULT' then
   begin
     // Zurück zum Stand des Projekts.
-    if AProject.Warns.ContainsKey(Name) then
+    if AProject.Warns.ContainsKey(mName) then
     begin
-      AReplay.Warns.AddOrSetValue(Name, Known);
+      AReplay.Warns.AddOrSetValue(mName, mKnown);
     end
     else
     begin
-      AReplay.Warns.Remove(Name);
+      AReplay.Warns.Remove(mName);
     end;
     Exit;
   end;
-  Switch.Value := AState;
-  Switch.Origin := AOrigin;
-  AReplay.Warns.AddOrSetValue(Name, Switch);
+  mSwitch.Value := AState;
+  mSwitch.Origin := AOrigin;
+  AReplay.Warns.AddOrSetValue(mName, mSwitch);
 end;
 
 /// <summary>{$WARN Name ON|OFF|ERROR|DEFAULT}.</summary>
@@ -541,25 +541,25 @@ end;
 /// <summary>Wirkung der Direktive ABody auf AReplay; andere Direktiven ändern nichts.</summary>
 procedure Apply(AReplay, AProject: TReplay; const ABody: string; const AOrigin: TSwitchOrigin);
 var
-  Name, Argument: string;
-  Letter: Char;
+  mName, mArgument: string;
+  mLetter: Char;
 begin
-  Split(ABody, Name, Argument);
-  if (Name = 'HINTS') or (Name = 'WARNINGS') then
+  Split(ABody, mName, mArgument);
+  if (mName = 'HINTS') or (mName = 'WARNINGS') then
   begin
-    ApplyMessages(AReplay, Name, Argument, AOrigin);
+    ApplyMessages(AReplay, mName, mArgument, AOrigin);
   end
-  else if Name = 'WARN' then
+  else if mName = 'WARN' then
   begin
-    ApplyWarn(AReplay, AProject, Argument, AOrigin);
+    ApplyWarn(AReplay, AProject, mArgument, AOrigin);
   end
-  else if Name = 'ALIGN' then
+  else if mName = 'ALIGN' then
   begin
-    ApplyAlign(AReplay, Argument, AOrigin);
+    ApplyAlign(AReplay, mArgument, AOrigin);
   end
-  else if TPascalPreprocessor.LongSwitchLetter(Name, Letter) then
+  else if TPascalPreprocessor.LongSwitchLetter(mName, mLetter) then
   begin
-    ApplyLong(AReplay, Letter, Argument, AOrigin);
+    ApplyLong(AReplay, mLetter, mArgument, AOrigin);
   end
   else
   begin
@@ -569,24 +569,24 @@ end;
 
 function SortedEntries(const AValues: TEnumerable<TSwitchEntry>): TSwitchEntries;
 var
-  Entry: TSwitchEntry;
-  List: TList<TSwitchEntry>;
+  mEntry: TSwitchEntry;
+  mList: TList<TSwitchEntry>;
 begin
-  List := TList<TSwitchEntry>.Create;
+  mList := TList<TSwitchEntry>.Create;
   try
-    for Entry in AValues do
+    for mEntry in AValues do
     begin
-      List.Add(Entry);
+      mList.Add(mEntry);
     end;
     // Namen sind eindeutig: die Sortierung ist eindeutig.
-    List.Sort(TComparer<TSwitchEntry>.Construct(
+    mList.Sort(TComparer<TSwitchEntry>.Construct(
       function(const ALeft, ARight: TSwitchEntry): Integer
       begin
         Result := CompareText(ALeft.Name, ARight.Name);
       end));
-    Result := List.ToArray;
+    Result := mList.ToArray;
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 
@@ -724,26 +724,26 @@ end;
 class function TCompilerSwitches.At(const AProcessed: TPreprocessorResult; const APosition: TTextPosition;
   const AInput: TCompilerSwitchInput): TCompilerSwitchState;
 var
-  Project, Replay: TReplay;
-  Index: Integer;
+  mProject, mReplay: TReplay;
+  mIndex: Integer;
 begin
   Result := Default(TCompilerSwitchState);
-  Project := TReplay.Create;
-  Replay := nil;
+  mProject := TReplay.Create;
+  mReplay := nil;
   try
-    ProjectSwitches(AInput, Project);
-    Replay := ReplayAt(AProcessed, APosition, Project);
-    for Index := 1 to Length(Letters) do
+    ProjectSwitches(AInput, mProject);
+    mReplay := ReplayAt(AProcessed, APosition, mProject);
+    for mIndex := 1 to Length(cLetters) do
     begin
-      Result.Switches := Result.Switches + [Replay.Switches[Letters[Index]]];
+      Result.Switches := Result.Switches + [mReplay.Switches[cLetters[mIndex]]];
     end;
-    Result.Hints := Replay.Switches['HINTS'];
-    Result.Warnings := Replay.Switches['WARNINGS'];
-    Result.Warns := ChangedWarns(Replay);
+    Result.Hints := mReplay.Switches['HINTS'];
+    Result.Warnings := mReplay.Switches['WARNINGS'];
+    Result.Warns := ChangedWarns(mReplay);
     Result.Defines := DefinesAt(AProcessed, APosition, AInput);
   finally
-    Replay.Free;
-    Project.Free;
+    mReplay.Free;
+    mProject.Free;
   end;
 end;
 
@@ -758,7 +758,7 @@ begin
   end
   else if AEntry.Value = '-' then
   begin
-    Result := AEntry.Name + MinusSign;
+    Result := AEntry.Name + cMinusSign;
   end
   else
   begin
@@ -790,32 +790,32 @@ end;
 
 function TCompilerSwitchState.Summary: string;
 var
-  Entry: TSwitchEntry;
-  Parts: TArray<string>;
-  Warn: string;
+  mEntry: TSwitchEntry;
+  mParts: TArray<string>;
+  mWarn: string;
 begin
-  Parts := nil;
-  for Entry in Switches do
+  mParts := nil;
+  for mEntry in Switches do
   begin
-    if Entry.Deviates then
+    if mEntry.Deviates then
     begin
-      Parts := Parts + [SwitchSummary(Entry)];
+      mParts := mParts + [SwitchSummary(mEntry)];
     end;
   end;
   if Hints.Deviates then
   begin
-    Parts := Parts + ['HINTS ' + Hints.Value];
+    mParts := mParts + ['HINTS ' + Hints.Value];
   end;
   if Warnings.Deviates then
   begin
-    Parts := Parts + ['WARNINGS ' + Warnings.Value];
+    mParts := mParts + ['WARNINGS ' + Warnings.Value];
   end;
-  Warn := WarnsSummary(Warns);
-  if Warn <> '' then
+  mWarn := WarnsSummary(Warns);
+  if mWarn <> '' then
   begin
-    Parts := Parts + [Warn];
+    mParts := mParts + [mWarn];
   end;
-  Result := String.Join(' ', Parts);
+  Result := String.Join(' ', mParts);
 end;
 
 end.

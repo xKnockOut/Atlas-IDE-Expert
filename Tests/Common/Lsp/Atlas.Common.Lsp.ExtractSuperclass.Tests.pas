@@ -255,7 +255,7 @@ begin
     try
       Assert.AreEqual(1, Integer(Length(Actions)));
       Assert.AreEqual('Basisklasse aus TPdfExport herauslösen …', Actions[0].GetValue('title').Value);
-      Assert.AreEqual(TLspExtractSuperclass.ClientCommand,
+      Assert.AreEqual(TLspExtractSuperclass.cClientCommand,
         (Actions[0].GetValue('command') as TJSONObject).GetValue('command').Value);
     finally
       FreeAll(Actions);

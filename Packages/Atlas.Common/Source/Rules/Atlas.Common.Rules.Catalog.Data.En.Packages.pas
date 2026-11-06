@@ -6,7 +6,7 @@
 interface
 
 const
-  CatalogLinesEnPackages: array[0..58] of string = (
+  cCatalogLinesEnPackages: array[0..58] of string = (
     '{',
     '      "id": "implicit-package-import",',
     '      "name": "Implicit package import",',

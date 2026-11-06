@@ -89,7 +89,7 @@ begin
   FWatchedFiles := TLspWatchedFiles.Create(FServices.Transport);
   FWatchedFiles.OnChanged := Handle;
   FUsesChanges := TLspUsesChanges.Create;
-  FIndexRefresh := TLspIndexRefresh.Create(TLspIndexRefresh.DefaultDelayMs, ApplyTypedText);
+  FIndexRefresh := TLspIndexRefresh.Create(TLspIndexRefresh.cDefaultDelayMs, ApplyTypedText);
   FIndexRefresh.OnError := RefreshFailed;
 end;
 

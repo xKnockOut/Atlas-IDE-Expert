@@ -197,11 +197,11 @@ begin
     finally
       mCapability.Free;
     end;
-    for mName in TArray<string>.Create(StatusCommand, ProcessesCommand, TLspSettingsCommands.CheckCommand,
-      TLspSettingsCommands.CatalogCommand, TShellServerCommands.CompileCommand,
-      TShellServerCommands.RebuildIndexCommand, ClearIndexCommand, TShellCrashCases.RetryCommand,
-      TLspPullDiagnostics.RecheckCommand, TShellServerCommands.SelectBuildCommand,
-      TShellServerCommands.SelectProjectCommand, TLspFormFiles.ConvertCommand) do
+    for mName in TArray<string>.Create(cStatusCommand, cProcessesCommand, TLspSettingsCommands.cCheckCommand,
+      TLspSettingsCommands.cCatalogCommand, TShellServerCommands.CompileCommand,
+      TShellServerCommands.RebuildIndexCommand, cClearIndexCommand, TShellCrashCases.RetryCommand,
+      TLspPullDiagnostics.cRecheckCommand, TShellServerCommands.SelectBuildCommand,
+      TShellServerCommands.SelectProjectCommand, TLspFormFiles.cConvertCommand) do
     begin
       Assert.IsTrue(Pos('"' + mName + '"', mText) > 0, mName);
     end;
@@ -245,7 +245,7 @@ begin
   Execute(TShellServerCommands.RebuildIndexCommand, TJSONArray.Create).Free;
   Assert.AreEqual(1, Integer(Length(FLog)));
   Assert.AreEqual('Index wird für 0 Ordner neu aufgebaut', FLog[0]);
-  mAnswer := Execute(ProcessesCommand, TJSONArray.Create);
+  mAnswer := Execute(cProcessesCommand, TJSONArray.Create);
   try
     Assert.IsNotNull(mAnswer);
   finally
@@ -268,7 +268,7 @@ begin
     mAnswer.Free;
   end;
   Assert.AreEqual('file:///tmp/A.pas', FRetried);
-  Execute(TLspPullDiagnostics.RecheckCommand, TJSONArray.Create).Free;
+  Execute(TLspPullDiagnostics.cRecheckCommand, TJSONArray.Create).Free;
   Assert.AreEqual(1, FRechecks);
   Assert.AreEqual('Alle Dateien werden neu geprüft', FLog[0]);
 end;

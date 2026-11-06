@@ -15,7 +15,7 @@ uses
 
 const
   /// <summary>Bezeichner, die wie Literale nie ihren Wert ändern.</summary>
-  ConstantNames: array[0..2] of string = ('True', 'False', 'MaxInt');
+  cConstantNames: array[0..2] of string = ('True', 'False', 'MaxInt');
 
 type
   TInlineSyntax = class
@@ -81,9 +81,9 @@ uses
   Atlas.Common.Pascal.PureRoutines;
 
 const
-  LoopKinds = [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
+  cLoopKinds = [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
     TSyntaxKind.RepeatStatement];
-  CompoundKinds = [TSyntaxKind.BinaryExpr, TSyntaxKind.UnaryExpr, TSyntaxKind.IfExpr, TSyntaxKind.RangeExpr];
+  cCompoundKinds = [TSyntaxKind.BinaryExpr, TSyntaxKind.UnaryExpr, TSyntaxKind.IfExpr, TSyntaxKind.RangeExpr];
 
 class function TInlineSyntax.TokenContaining(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
 var
@@ -228,7 +228,7 @@ var
 begin
   Result := False;
   mParent := ATarget.Parent;
-  if not (AExpression.Kind in CompoundKinds) or (mParent = nil) then
+  if not (AExpression.Kind in cCompoundKinds) or (mParent = nil) then
   begin
     Exit;
   end;
@@ -396,7 +396,7 @@ begin
   mNode := ANode.Parent;
   while (mNode <> nil) and (mNode <> ABody) do
   begin
-    if (mNode.Kind in LoopKinds) and not TRoutineBody.Within(AOther, mNode) then
+    if (mNode.Kind in cLoopKinds) and not TRoutineBody.Within(AOther, mNode) then
     begin
       Exit(True);
     end;

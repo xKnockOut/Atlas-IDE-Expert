@@ -56,7 +56,7 @@ type
 implementation
 
 const
-  LevelNames: array[TLogLevel] of string = ('DEBUG', 'INFO', 'WARNING', 'ERROR');
+  cLevelNames: array[TLogLevel] of string = ('DEBUG', 'INFO', 'WARNING', 'ERROR');
 
 { TLogEntry }
 
@@ -70,7 +70,7 @@ end;
 function TLogEntry.ToText: string;
 begin
   Result := FormatDateTime('yyyy"-"mm"-"dd hh":"nn":"ss"."zzz', FTimestamp) +
-    ' [' + LevelNames[FLevel] + '] ' + FText;
+    ' [' + cLevelNames[FLevel] + '] ' + FText;
 end;
 
 end.

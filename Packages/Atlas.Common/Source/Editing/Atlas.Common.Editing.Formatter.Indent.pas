@@ -31,7 +31,7 @@ type
   TBlockIndenter = class
   public const
     /// <summary>Zeile bleibt, wie sie ist.</summary>
-    Keep = -1;
+    cKeep = -1;
   public
     /// <summary>Zielspalte je Zeile (Keep = unverändert). AColumns: vorhandene Einrückung je Zeile in Spalten;
     /// AIndentSize: Breite einer Ebene.</summary>
@@ -164,7 +164,7 @@ type
   TIndentLines = record
     /// <summary>Vorhandene Einrückung.</summary>
     Original: TArray<Integer>;
-    /// <summary>Zielspalte oder TBlockIndenter.Keep.</summary>
+    /// <summary>Zielspalte oder TBlockIndenter.cKeep.</summary>
     Target: TArray<Integer>;
     /// <summary>Zielspalte, sonst die vorhandene.</summary>
     Resolved: TArray<Integer>;
@@ -269,11 +269,11 @@ type
   end;
 
 const
-  SectionWords: array[0..8] of string = ('uses', 'type', 'const', 'var', 'resourcestring', 'threadvar', 'label',
+  cSectionWords: array[0..8] of string = ('uses', 'type', 'const', 'var', 'resourcestring', 'threadvar', 'label',
     'exports', 'contains');
-  VisibilityWords: array[0..5] of string = ('private', 'protected', 'public', 'published', 'automated', 'strict');
-  RoutineWords: array[0..4] of string = ('procedure', 'function', 'constructor', 'destructor', 'operator');
-  DirectiveWords: array[0..26] of string = ('static', 'overload', 'virtual', 'abstract', 'override',
+  cVisibilityWords: array[0..5] of string = ('private', 'protected', 'public', 'published', 'automated', 'strict');
+  cRoutineWords: array[0..4] of string = ('procedure', 'function', 'constructor', 'destructor', 'operator');
+  cDirectiveWords: array[0..26] of string = ('static', 'overload', 'virtual', 'abstract', 'override',
     'reintroduce', 'inline', 'stdcall', 'cdecl', 'register', 'safecall', 'pascal', 'dynamic', 'message',
     'deprecated', 'platform', 'experimental', 'final', 'assembler', 'varargs', 'external', 'forward', 'export',
     'dispid', 'default', 'delayed', 'winapi');
@@ -562,7 +562,7 @@ begin
   SetLength(StatementOf, Length(AColumns));
   for mLine := 0 to High(AColumns) do
   begin
-    Target[mLine] := TBlockIndenter.Keep;
+    Target[mLine] := TBlockIndenter.cKeep;
     Resolved[mLine] := AColumns[mLine];
     FirstToken[mLine] := -1;
     StatementOf[mLine] := -1;
@@ -1113,7 +1113,7 @@ end;
 
 function TIndenter.IsSectionWord(const AWord: string): Boolean;
 begin
-  Result := MatchStr(AWord, SectionWords) or ((AWord = 'requires') and (FState.DeclKind = TFrameKind.Top));
+  Result := MatchStr(AWord, cSectionWords) or ((AWord = 'requires') and (FState.DeclKind = TFrameKind.Top));
 end;
 
 /// <summary>Abschnitte stehen in der Unit, einer Routine oder einem Klassenrumpf; in Anweisungen sind var und const
@@ -1169,7 +1169,7 @@ end;
 
 function TIndenter.Visibility(const AWord: string): Boolean;
 begin
-  Result := MatchStr(AWord, VisibilityWords) and FState.AtStart and (FState.DeclKind = TFrameKind.ClassBody);
+  Result := MatchStr(AWord, cVisibilityWords) and FState.AtStart and (FState.DeclKind = TFrameKind.ClassBody);
   if Result then
   begin
     FState.PopSections;
@@ -1234,7 +1234,7 @@ end;
 function TIndenter.RoutineWord(const AWord: string): Boolean;
 begin
   Result := False;
-  if not MatchStr(AWord, RoutineWords) or ((AWord = 'operator') and not FState.ClassPrefix) then
+  if not MatchStr(AWord, cRoutineWords) or ((AWord = 'operator') and not FState.ClassPrefix) then
   begin
     Exit;
   end;
@@ -1262,7 +1262,7 @@ begin
     Exit;
   end;
   mNext := FTokens.WordOf(FTokens.NextSignificant(FIndex));
-  mRoutine := MatchStr(mNext, RoutineWords);
+  mRoutine := MatchStr(mNext, cRoutineWords);
   if not mRoutine and not MatchStr(mNext, ['var', 'property', 'threadvar']) then
   begin
     Exit;
@@ -1281,7 +1281,7 @@ end;
 /// <summary>Direktiven setzen den Kopf fort: Abstand zu dessen erster Zeile.</summary>
 function TIndenter.HeaderDirective(const AWord: string): Boolean;
 begin
-  Result := FState.AtStart and FState.AfterHeader and MatchStr(AWord, DirectiveWords) and not FState.InStatements;
+  Result := FState.AtStart and FState.AfterHeader and MatchStr(AWord, cDirectiveWords) and not FState.InStatements;
   if not Result then
   begin
     Exit;

@@ -14,70 +14,70 @@ type
   /// <summary>Zusätzliche Fehlercodes des Language Server Protocol.</summary>
   TLspErrorCode = record
   public const
-    ServerNotInitialized = -32002;
-    UnknownErrorCode = -32001;
-    RequestFailed = -32803;
-    ServerCancelled = -32802;
-    ContentModified = -32801;
-    RequestCancelled = -32800;
+    cServerNotInitialized = -32002;
+    cUnknownErrorCode = -32001;
+    cRequestFailed = -32803;
+    cServerCancelled = -32802;
+    cContentModified = -32801;
+    cRequestCancelled = -32800;
   end;
 
   /// <summary>Werte für die Capability textDocumentSync.</summary>
   TLspTextDocumentSyncKind = record
   public const
-    None = 0;
-    Full = 1;
-    Incremental = 2;
+    cNone = 0;
+    cFull = 1;
+    cIncremental = 2;
   end;
 
   /// <summary>Methodennamen des Lebenszyklus.</summary>
   TLspLifecycleMethod = record
   public const
-    InitializeRequest = 'initialize';
-    InitializedNotification = 'initialized';
-    ShutdownRequest = 'shutdown';
-    ExitNotification = 'exit';
+    cInitializeRequest = 'initialize';
+    cInitializedNotification = 'initialized';
+    cShutdownRequest = 'shutdown';
+    cExitNotification = 'exit';
   end;
 
   /// <summary>Methodennamen der Dokumentsynchronisation.</summary>
   TLspTextDocumentMethod = record
   public const
-    DidOpen = 'textDocument/didOpen';
-    DidChange = 'textDocument/didChange';
-    DidSave = 'textDocument/didSave';
-    DidClose = 'textDocument/didClose';
-    PublishDiagnostics = 'textDocument/publishDiagnostics';
+    cDidOpen = 'textDocument/didOpen';
+    cDidChange = 'textDocument/didChange';
+    cDidSave = 'textDocument/didSave';
+    cDidClose = 'textDocument/didClose';
+    cPublishDiagnostics = 'textDocument/publishDiagnostics';
   end;
 
   /// <summary>Werte für DiagnosticSeverity.</summary>
   TLspDiagnosticSeverity = record
   public const
-    Error = 1;
-    Warning = 2;
-    Information = 3;
-    Hint = 4;
+    cError = 1;
+    cWarning = 2;
+    cInformation = 3;
+    cHint = 4;
   end;
 
   /// <summary>Werte für SymbolKind des LSP (Auswahl).</summary>
   TLspSymbolKind = record
   public const
-    Module = 2;
-    Namespace = 3;
-    Class_ = 5;
-    Method = 6;
-    Property_ = 7;
-    Field = 8;
-    Constructor_ = 9;
-    Enum = 10;
-    Interface_ = 11;
-    Function_ = 12;
-    Variable = 13;
-    Constant = 14;
-    Object_ = 19;
-    EnumMember = 22;
-    Struct = 23;
-    Event = 24;
-    TypeParameter = 26;
+    cModule = 2;
+    cNamespace = 3;
+    cClass_ = 5;
+    cMethod = 6;
+    cProperty_ = 7;
+    cField = 8;
+    cConstructor_ = 9;
+    cEnum = 10;
+    cInterface_ = 11;
+    cFunction_ = 12;
+    cVariable = 13;
+    cConstant = 14;
+    cObject_ = 19;
+    cEnumMember = 22;
+    cStruct = 23;
+    cEvent = 24;
+    cTypeParameter = 26;
   end;
 
   /// <summary>Zustand des Servers im Lebenszyklus.</summary>

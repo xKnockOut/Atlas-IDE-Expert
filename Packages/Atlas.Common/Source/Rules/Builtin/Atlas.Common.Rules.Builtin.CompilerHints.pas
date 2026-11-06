@@ -29,7 +29,7 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  CompilerHintsRuleId = 'compiler-hints';
+  cCompilerHintsRuleId = 'compiler-hints';
 
 type
   TCompilerHintsRule = class(TInterfacedObject, IRule)
@@ -544,7 +544,7 @@ end;
 
 function TCompilerHintsRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(CompilerHintsRuleId, TRuleSeverity.Hint,
+  Result := TRuleDescriptor.Create(cCompilerHintsRuleId, TRuleSeverity.Hint,
     cTexts[TCompilerHintsText.Title].Text);
 end;
 

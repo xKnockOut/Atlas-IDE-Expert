@@ -64,10 +64,10 @@ type
 
   TLspStepFilter = class
   public const
-    Command = 'atlas.server.stepFilter';
-    CountsCommand = 'atlas.server.stepFilterCounts';
+    cCommand = 'atlas.server.stepFilter';
+    cCountsCommand = 'atlas.server.stepFilterCounts';
     /// <summary>Höchstens so viele Dateien zählt CountsCommand.</summary>
-    MaxFiles = 5000;
+    cMaxFiles = 5000;
   private
     class function Keyword(AHeader: TSyntaxNode; const AText: string): string; static;
     class function Statements(ABlock: TSyntaxNode): TArray<TSyntaxNode>; static;

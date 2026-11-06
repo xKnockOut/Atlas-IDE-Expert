@@ -6,7 +6,7 @@
 interface
 
 const
-  CatalogLinesEnCompilerSyntax: array[0..624] of string = (
+  cCatalogLinesEnCompilerSyntax: array[0..624] of string = (
     '{',
     '      "id": "syntax",',
     '      "name": "Syntax error",',

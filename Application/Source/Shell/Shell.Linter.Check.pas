@@ -326,7 +326,7 @@ begin
   TLinterBaseline.ReportOrphans(mUpdate);
   TLinterOutput.SaveUtf8(FBaselinePath, mUpdate.Json);
   TLinterBaseline.ReportUpdate(mUpdate, FBaselinePath);
-  Result := TFindingsOutput.ExitClean;
+  Result := TFindingsOutput.cExitClean;
 end;
 
 function TLinterCheck.Render: string;
@@ -375,7 +375,7 @@ var
 begin
   if not Prepare then
   begin
-    Exit(TFindingsOutput.ExitFailure);
+    Exit(TFindingsOutput.cExitFailure);
   end;
   // Metriken und TODOs brauchen keinen Index.
   if not (FOptions.NoIndex or FOptions.Metrics or FOptions.Todos) then
@@ -400,7 +400,7 @@ begin
   mOutput := Render;
   FinishTimings(mWatch.ElapsedMilliseconds);
   TLinterOutput.Write(FOptions, mOutput);
-  Result := TFindingsOutput.ExitClean;
+  Result := TFindingsOutput.cExitClean;
   if not (FOptions.SuppressionStats or FOptions.Metrics or FOptions.Todos) then
   begin
     Result := TFindingsOutput.ExitCode(FFiles, FOptions.FailOn);
@@ -415,7 +415,7 @@ begin
   TLinterOutput.Warnings(AOptions);
   if not TLinterSettings.Validate(AOptions) or not TLinterTarget.ResolveCheck(AOptions, mTarget) then
   begin
-    Exit(TFindingsOutput.ExitFailure);
+    Exit(TFindingsOutput.cExitFailure);
   end;
   try
     mCheck := TLinterCheck.Create(AOptions, mTarget.ConfigRoot);
@@ -428,7 +428,7 @@ begin
     on E: Exception do
     begin
       TLinterOutput.Error(Format('%s: %s', [E.ClassName, E.Message]));
-      Result := TFindingsOutput.ExitFailure;
+      Result := TFindingsOutput.cExitFailure;
     end;
   end;
 end;

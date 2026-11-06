@@ -68,12 +68,12 @@ type
 
   TLspHierarchies = class
   public const
-    PrepareTypeMethod = 'textDocument/prepareTypeHierarchy';
-    SupertypesMethod = 'typeHierarchy/supertypes';
-    SubtypesMethod = 'typeHierarchy/subtypes';
-    PrepareCallMethod = 'textDocument/prepareCallHierarchy';
-    IncomingMethod = 'callHierarchy/incomingCalls';
-    OutgoingMethod = 'callHierarchy/outgoingCalls';
+    cPrepareTypeMethod = 'textDocument/prepareTypeHierarchy';
+    cSupertypesMethod = 'typeHierarchy/supertypes';
+    cSubtypesMethod = 'typeHierarchy/subtypes';
+    cPrepareCallMethod = 'textDocument/prepareCallHierarchy';
+    cIncomingMethod = 'callHierarchy/incomingCalls';
+    cOutgoingMethod = 'callHierarchy/outgoingCalls';
   private
     FStore: IDocumentStore;
     FIndex: ISymbolIndex;
@@ -187,10 +187,11 @@ type
   TIndexSymbolKinds = set of TIndexSymbolKind;
 
 const
-  HierarchyTypeKinds: TIndexSymbolKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+  cHierarchyTypeKinds: TIndexSymbolKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType,
+    TIndexSymbolKind.RecordType,
     TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType];
-  RoutineKinds: TIndexSymbolKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
-  MaxCalls = 1000;
+  cRoutineKinds: TIndexSymbolKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
+  cMaxCalls = 1000;
 
 function ComparePositions(const A, B: TTextPosition): Integer;
 begin
@@ -216,12 +217,12 @@ end;
 
 function WithoutGenerics(const AName: string): string;
 var
-  Bracket: Integer;
+  mBracket: Integer;
 begin
-  Bracket := Pos('<', AName);
-  if Bracket > 0 then
+  mBracket := Pos('<', AName);
+  if mBracket > 0 then
   begin
-    Result := Copy(AName, 1, Bracket - 1);
+    Result := Copy(AName, 1, mBracket - 1);
   end
   else
   begin
@@ -261,30 +262,30 @@ end;
 function FindItemSymbol(const AItem: THierarchyItem; const AReadText: TReferenceReadText;
   out AUnit: TUnitIndex; out ASymbol: TIndexSymbol): Boolean;
 var
-  Text: string;
-  Symbol: TIndexSymbol;
+  mText: string;
+  mSymbol: TIndexSymbol;
 begin
   Result := False;
-  if not (Assigned(AReadText) and AReadText(AItem.FileName, Text)) then
+  if not (Assigned(AReadText) and AReadText(AItem.FileName, mText)) then
   begin
     Exit;
   end;
-  AUnit := TIndexExtractor.ExtractText(Text, AItem.FileName, nil);
-  for Symbol in AUnit.Symbols do
+  AUnit := TIndexExtractor.ExtractText(mText, AItem.FileName, nil);
+  for mSymbol in AUnit.Symbols do
   begin
-    if SameText(Symbol.Name, AItem.Name) and SameText(Symbol.Container, AItem.Container) and
-      (Symbol.SelectionRange.StartPos = AItem.SelectionRange.StartPos) then
+    if SameText(mSymbol.Name, AItem.Name) and SameText(mSymbol.Container, AItem.Container) and
+      (mSymbol.SelectionRange.StartPos = AItem.SelectionRange.StartPos) then
     begin
-      ASymbol := Symbol;
+      ASymbol := mSymbol;
       Exit(True);
     end;
   end;
   // Datei inzwischen geändert: erstes gleichnamiges Symbol.
-  for Symbol in AUnit.Symbols do
+  for mSymbol in AUnit.Symbols do
   begin
-    if SameText(Symbol.Name, AItem.Name) and SameText(Symbol.Container, AItem.Container) then
+    if SameText(mSymbol.Name, AItem.Name) and SameText(mSymbol.Container, AItem.Container) then
     begin
-      ASymbol := Symbol;
+      ASymbol := mSymbol;
       Exit(True);
     end;
   end;
@@ -293,39 +294,39 @@ end;
 /// <summary>Innerste Routine mit Rumpf, die APosition enthält; nil außerhalb von Routinen.</summary>
 function EnclosingRoutine(ANode: TSyntaxNode; const APosition: TTextPosition): TSyntaxNode;
 var
-  Pending: TStack<TSyntaxPostOrderEntry>;
-  Entry: TSyntaxPostOrderEntry;
-  Index: Integer;
+  mPending: TStack<TSyntaxPostOrderEntry>;
+  mEntry: TSyntaxPostOrderEntry;
+  mIndex: Integer;
 begin
   // Eigener Stapel statt Rekursion (Bericht M1): Der Weg zur Position kann durch tiefe Ausdrücke führen.
   // Wie früher zuerst die Kinder eines Knotens, dann der Knoten selbst; Geschwister in ihrer Reihenfolge.
   Result := nil;
-  Pending := TStack<TSyntaxPostOrderEntry>.Create;
+  mPending := TStack<TSyntaxPostOrderEntry>.Create;
   try
-    Pending.Push(TSyntaxPostOrderEntry.Create(ANode, False));
-    while Pending.Count > 0 do
+    mPending.Push(TSyntaxPostOrderEntry.Create(ANode, False));
+    while mPending.Count > 0 do
     begin
-      Entry := Pending.Pop;
-      if Entry.Done then
+      mEntry := mPending.Pop;
+      if mEntry.Done then
       begin
-        if (Entry.Node <> ANode) and (Entry.Node.Kind = TSyntaxKind.RoutineDecl) and
-          (Entry.Node.FindChild(TSyntaxKind.Block) <> nil) then
+        if (mEntry.Node <> ANode) and (mEntry.Node.Kind = TSyntaxKind.RoutineDecl) and
+          (mEntry.Node.FindChild(TSyntaxKind.Block) <> nil) then
         begin
-          Exit(Entry.Node);
+          Exit(mEntry.Node);
         end;
         Continue;
       end;
-      Pending.Push(TSyntaxPostOrderEntry.Create(Entry.Node, True));
-      for Index := Entry.Node.ChildCount - 1 downto 0 do
+      mPending.Push(TSyntaxPostOrderEntry.Create(mEntry.Node, True));
+      for mIndex := mEntry.Node.ChildCount - 1 downto 0 do
       begin
-        if RangeContains(NodeRange(Entry.Node[Index]), APosition) then
+        if RangeContains(NodeRange(mEntry.Node[mIndex]), APosition) then
         begin
-          Pending.Push(TSyntaxPostOrderEntry.Create(Entry.Node[Index], False));
+          mPending.Push(TSyntaxPostOrderEntry.Create(mEntry.Node[mIndex], False));
         end;
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
@@ -502,7 +503,7 @@ end;
 
 function TCallCollector.CanAdd: Boolean;
 begin
-  Result := FCalls.Count < MaxCalls;
+  Result := FCalls.Count < cMaxCalls;
 end;
 
 procedure TCallCollector.Add(const AKey: string; const ACall: THierarchyCall);
@@ -582,16 +583,16 @@ end;
 function DeclarationAt(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition;
   AKinds: TIndexSymbolKinds; out AItem: THierarchyItem): Boolean;
 var
-  OwnUnit: TUnitIndex;
-  Symbol: TIndexSymbol;
+  mOwnUnit: TUnitIndex;
+  mSymbol: TIndexSymbol;
 begin
-  OwnUnit := TIndexExtractor.Extract(ATree, AFileName);
-  for Symbol in OwnUnit.Symbols do
+  mOwnUnit := TIndexExtractor.Extract(ATree, AFileName);
+  for mSymbol in mOwnUnit.Symbols do
   begin
-    if (Symbol.Kind in AKinds) and (ComparePositions(Symbol.SelectionRange.StartPos, APosition) <= 0) and
-      (ComparePositions(APosition, Symbol.SelectionRange.EndPos) <= 0) then
+    if (mSymbol.Kind in AKinds) and (ComparePositions(mSymbol.SelectionRange.StartPos, APosition) <= 0) and
+      (ComparePositions(APosition, mSymbol.SelectionRange.EndPos) <= 0) then
     begin
-      AItem := FromIndex(OwnUnit.UnitName, AFileName, Symbol);
+      AItem := FromIndex(mOwnUnit.UnitName, AFileName, mSymbol);
       Exit(True);
     end;
   end;
@@ -660,114 +661,115 @@ end;
 
 procedure TLspHierarchies.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterConcurrentRequest(PrepareTypeMethod, HandlePrepareType);
-  ADispatcher.RegisterConcurrentRequest(SupertypesMethod, HandleSupertypes);
-  ADispatcher.RegisterConcurrentRequest(SubtypesMethod, HandleSubtypes);
-  ADispatcher.RegisterConcurrentRequest(PrepareCallMethod, HandlePrepareCall);
-  ADispatcher.RegisterConcurrentRequest(IncomingMethod, HandleIncoming);
-  ADispatcher.RegisterConcurrentRequest(OutgoingMethod, HandleOutgoing);
+  ADispatcher.RegisterConcurrentRequest(cPrepareTypeMethod, HandlePrepareType);
+  ADispatcher.RegisterConcurrentRequest(cSupertypesMethod, HandleSupertypes);
+  ADispatcher.RegisterConcurrentRequest(cSubtypesMethod, HandleSubtypes);
+  ADispatcher.RegisterConcurrentRequest(cPrepareCallMethod, HandlePrepareCall);
+  ADispatcher.RegisterConcurrentRequest(cIncomingMethod, HandleIncoming);
+  ADispatcher.RegisterConcurrentRequest(cOutgoingMethod, HandleOutgoing);
 end;
 
 class function TLspHierarchies.TypeItemAt(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   const APosition: TTextPosition; out AItem: THierarchyItem): Boolean;
 var
-  Resolved: TResolvedSymbol;
+  mResolved: TResolvedSymbol;
 begin
-  Resolved := AResolver.ResolveType(ATree, AFileName, APosition);
-  Result := Resolved.Found and (Resolved.SymbolKind in HierarchyTypeKinds);
+  mResolved := AResolver.ResolveType(ATree, AFileName, APosition);
+  Result := mResolved.Found and (mResolved.SymbolKind in cHierarchyTypeKinds);
   if Result then
   begin
-    AItem := FromResolved(Resolved);
+    AItem := FromResolved(mResolved);
   end
   else
   begin
-    Result := DeclarationAt(ATree, AFileName, APosition, HierarchyTypeKinds, AItem);
+    Result := DeclarationAt(ATree, AFileName, APosition, cHierarchyTypeKinds, AItem);
   end;
 end;
 
 class function TLspHierarchies.Supertypes(AResolver: TNameResolver; const AItem: THierarchyItem;
   const AReadText: TReferenceReadText): TArray<THierarchyItem>;
 var
-  OwnerUnit: TUnitIndex;
-  Symbol: TIndexSymbol;
-  Names: TArray<string>;
-  Name: string;
-  Resolved: TResolvedSymbol;
+  mOwnerUnit: TUnitIndex;
+  mSymbol: TIndexSymbol;
+  mNames: TArray<string>;
+  mName: string;
+  mResolved: TResolvedSymbol;
 begin
   Result := nil;
-  if not FindItemSymbol(AItem, AReadText, OwnerUnit, Symbol) then
+  if not FindItemSymbol(AItem, AReadText, mOwnerUnit, mSymbol) then
   begin
     Exit;
   end;
-  Names := Symbol.Ancestors;
-  if Length(Names) = 0 then
+  mNames := mSymbol.Ancestors;
+  if Length(mNames) = 0 then
   begin
-    if (Symbol.Kind = TIndexSymbolKind.ClassType) and not SameText(Symbol.Name, 'TObject') then
+    if (mSymbol.Kind = TIndexSymbolKind.ClassType) and not SameText(mSymbol.Name, 'TObject') then
     begin
-      Names := ['TObject'];
+      mNames := ['TObject'];
     end
-    else if (Symbol.Kind = TIndexSymbolKind.InterfaceType) and not SameText(Symbol.Name, 'IInterface') then
+    else if (mSymbol.Kind = TIndexSymbolKind.InterfaceType) and not SameText(mSymbol.Name, 'IInterface') then
     begin
-      Names := ['IInterface'];
+      mNames := ['IInterface'];
     end;
   end;
-  for Name in Names do
+  for mName in mNames do
   begin
-    if AResolver.ResolveTypeFrom(OwnerUnit, WithoutGenerics(Name), Resolved) and
-      (Resolved.SymbolKind in HierarchyTypeKinds) then
+    if AResolver.ResolveTypeFrom(mOwnerUnit, WithoutGenerics(mName), mResolved) and
+      (mResolved.SymbolKind in cHierarchyTypeKinds) then
     begin
-      Result := Result + [FromResolved(Resolved)];
+      Result := Result + [FromResolved(mResolved)];
     end;
   end;
 end;
 
-class function TLspHierarchies.Subtypes(const AIndex: ISymbolIndex; const AItem: THierarchyItem): TArray<THierarchyItem>;
+class function TLspHierarchies.Subtypes(const AIndex: ISymbolIndex;
+  const AItem: THierarchyItem): TArray<THierarchyItem>;
 var
-  Locations: TArray<TSymbolLocation>;
-  Index, Count: Integer;
+  mLocations: TArray<TSymbolLocation>;
+  mIndex, mCount: Integer;
 begin
   // Einmal anlegen statt je Nachfahr anhängen (Code-Review P-08): bei TObject bzw. TComponent viele Hundert.
-  Locations := AIndex.Descendants(AItem.Name);
-  SetLength(Result, Length(Locations));
-  Count := 0;
-  for Index := 0 to High(Locations) do
+  mLocations := AIndex.Descendants(AItem.Name);
+  SetLength(Result, Length(mLocations));
+  mCount := 0;
+  for mIndex := 0 to High(mLocations) do
   begin
-    if Locations[Index].Symbol.Kind in HierarchyTypeKinds then
+    if mLocations[mIndex].Symbol.Kind in cHierarchyTypeKinds then
     begin
-      Result[Count] := FromIndex(Locations[Index].UnitName, Locations[Index].FileName, Locations[Index].Symbol);
-      Inc(Count);
+      Result[mCount] := FromIndex(mLocations[mIndex].UnitName, mLocations[mIndex].FileName, mLocations[mIndex].Symbol);
+      Inc(mCount);
     end;
   end;
-  SetLength(Result, Count);
+  SetLength(Result, mCount);
 end;
 
 class function TLspHierarchies.CallItemAt(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   const APosition: TTextPosition; out AItem: THierarchyItem): Boolean;
 var
-  Resolved: TResolvedSymbol;
+  mResolved: TResolvedSymbol;
 begin
-  Resolved := AResolver.Resolve(ATree, AFileName, APosition);
-  Result := (Resolved.Kind in [TResolvedKind.Symbol, TResolvedKind.Local]) and (Resolved.SymbolKind in RoutineKinds);
+  mResolved := AResolver.Resolve(ATree, AFileName, APosition);
+  Result := (mResolved.Kind in [TResolvedKind.Symbol, TResolvedKind.Local]) and (mResolved.SymbolKind in cRoutineKinds);
   if Result then
   begin
-    AItem := FromResolved(Resolved);
+    AItem := FromResolved(mResolved);
   end
   else
   begin
-    Result := DeclarationAt(ATree, AFileName, APosition, RoutineKinds, AItem);
+    Result := DeclarationAt(ATree, AFileName, APosition, cRoutineKinds, AItem);
   end;
 end;
 
 class function TLspHierarchies.SymbolItemAt(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   const APosition: TTextPosition; out AItem: THierarchyItem): Boolean;
 var
-  Resolved: TResolvedSymbol;
+  mResolved: TResolvedSymbol;
 begin
-  Resolved := AResolver.Resolve(ATree, AFileName, APosition);
-  Result := Resolved.Kind in [TResolvedKind.Symbol, TResolvedKind.Local];
+  mResolved := AResolver.Resolve(ATree, AFileName, APosition);
+  Result := mResolved.Kind in [TResolvedKind.Symbol, TResolvedKind.Local];
   if Result then
   begin
-    AItem := FromResolved(Resolved);
+    AItem := FromResolved(mResolved);
   end
   else
   begin
@@ -778,21 +780,21 @@ end;
 class function TLspHierarchies.CallerAt(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition;
   out AItem: THierarchyItem): Boolean;
 var
-  Routine, Header: TSyntaxNode;
+  mRoutine, mHeader: TSyntaxNode;
 begin
   Result := False;
-  Routine := EnclosingRoutine(ATree.Root, APosition);
-  if Routine = nil then
+  mRoutine := EnclosingRoutine(ATree.Root, APosition);
+  if mRoutine = nil then
   begin
     Exit;
   end;
   // Der Kopf der Implementierung (procedure TFoo.Bar) ist kein Aufruf.
-  Header := Routine.FindChild(TSyntaxKind.RoutineHeader);
-  if (Header <> nil) and RangeContains(NodeRange(Header), APosition) then
+  mHeader := mRoutine.FindChild(TSyntaxKind.RoutineHeader);
+  if (mHeader <> nil) and RangeContains(NodeRange(mHeader), APosition) then
   begin
     Exit;
   end;
-  AItem := RoutineItem(ATree, Routine, AFileName);
+  AItem := RoutineItem(ATree, mRoutine, AFileName);
   Result := True;
 end;
 
@@ -816,11 +818,12 @@ end;
 
 class function TLspHierarchies.IsRoutine(const AItem: THierarchyItem): Boolean;
 begin
-  Result := AItem.SymbolKind in RoutineKinds;
+  Result := AItem.SymbolKind in cRoutineKinds;
 end;
 
 class function TLspHierarchies.IncomingCalls(AResolver: TNameResolver; const AIndex: ISymbolIndex;
-  const AItem: THierarchyItem; const AFiles: TArray<string>; const AReadText: TReferenceReadText): TArray<THierarchyCall>;
+  const AItem: THierarchyItem; const AFiles: TArray<string>;
+    const AReadText: TReferenceReadText): TArray<THierarchyCall>;
 begin
   Result := IncomingCalls(AResolver, AIndex, AItem, AFiles, AReadText, nil);
 end;
@@ -881,7 +884,7 @@ begin
   Result := TReferenceReason.None;
   AImplementations := 0;
   if (AIndex = nil) or (AResolved.Kind <> TResolvedKind.Symbol) or (AResolved.Container = '') or
-    not (AResolved.SymbolKind in RoutineKinds) then
+    not (AResolved.SymbolKind in cRoutineKinds) then
   begin
     Exit;
   end;
@@ -912,7 +915,8 @@ var
 begin
   CheckCancelled(ASource.Cancellation);
   mResolved := ASource.Resolver.Resolve(ATree, AFileName, AToken.StartPos);
-  if not (mResolved.Kind in [TResolvedKind.Symbol, TResolvedKind.Local]) or not (mResolved.SymbolKind in RoutineKinds) then
+  if not (mResolved.Kind in [TResolvedKind.Symbol, TResolvedKind.Local]) or
+    not (mResolved.SymbolKind in cRoutineKinds) then
   begin
     Exit;
   end;
@@ -981,65 +985,65 @@ end;
 
 class function TLspHierarchies.ItemToJson(const AItem: THierarchyItem): TJSONObject;
 var
-  Data: TJSONObject;
-  Detail: string;
+  mData: TJSONObject;
+  mDetail: string;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('name', AItem.Name);
   Result.AddPair('kind', TJSONNumber.Create(AItem.LspKind));
-  Detail := AItem.Container;
+  mDetail := AItem.Container;
   if AItem.UnitName <> '' then
   begin
-    if Detail <> '' then
+    if mDetail <> '' then
     begin
-      Detail := Detail + ' · ' + AItem.UnitName;
+      mDetail := mDetail + ' · ' + AItem.UnitName;
     end
     else
     begin
-      Detail := AItem.UnitName;
+      mDetail := AItem.UnitName;
     end;
   end;
-  if Detail <> '' then
+  if mDetail <> '' then
   begin
-    Result.AddPair('detail', Detail);
+    Result.AddPair('detail', mDetail);
   end;
   Result.AddPair('uri', TDocumentUris.FromPath(AItem.FileName));
   Result.AddPair('range', TLspPositions.RangeToJson(AItem.Range));
   Result.AddPair('selectionRange', TLspPositions.RangeToJson(AItem.SelectionRange));
-  Data := TJSONObject.Create;
-  Data.AddPair('container', AItem.Container);
-  Data.AddPair('symbolKind', TJSONNumber.Create(Ord(AItem.SymbolKind)));
-  Result.AddPair('data', Data);
+  mData := TJSONObject.Create;
+  mData.AddPair('container', AItem.Container);
+  mData.AddPair('symbolKind', TJSONNumber.Create(Ord(AItem.SymbolKind)));
+  Result.AddPair('data', mData);
 end;
 
 class function TLspHierarchies.ItemFromJson(const AValue: TJSONValue; out AItem: THierarchyItem): Boolean;
 var
-  Item: TJSONObject;
-  Uri: string;
-  RangeValue, SelectionValue: TJSONValue;
-  Kind: Integer;
+  mItem: TJSONObject;
+  mUri: string;
+  mRangeValue, mSelectionValue: TJSONValue;
+  mKind: Integer;
 begin
   AItem := Default(THierarchyItem);
   Result := (AValue is TJSONObject) and TJSONObject(AValue).TryGetValue<string>('name', AItem.Name) and
-    TJSONObject(AValue).TryGetValue<string>('uri', Uri) and
-    TJSONObject(AValue).TryGetValue<TJSONValue>('range', RangeValue) and
-    TJSONObject(AValue).TryGetValue<TJSONValue>('selectionRange', SelectionValue);
+    TJSONObject(AValue).TryGetValue<string>('uri', mUri) and
+    TJSONObject(AValue).TryGetValue<TJSONValue>('range', mRangeValue) and
+    TJSONObject(AValue).TryGetValue<TJSONValue>('selectionRange', mSelectionValue);
   if not Result then
   begin
     Exit;
   end;
-  Item := TJSONObject(AValue);
-  AItem.FileName := TDocumentUris.ToPath(Uri);
-  AItem.Range := TLspPositions.ReadRange(RangeValue);
-  AItem.SelectionRange := TLspPositions.ReadRange(SelectionValue);
-  if not Item.TryGetValue<string>('data.container', AItem.Container) then
+  mItem := TJSONObject(AValue);
+  AItem.FileName := TDocumentUris.ToPath(mUri);
+  AItem.Range := TLspPositions.ReadRange(mRangeValue);
+  AItem.SelectionRange := TLspPositions.ReadRange(mSelectionValue);
+  if not mItem.TryGetValue<string>('data.container', AItem.Container) then
   begin
     AItem.Container := '';
   end;
-  if Item.TryGetValue<Integer>('data.symbolKind', Kind) and (Kind >= Ord(Low(TIndexSymbolKind))) and
-    (Kind <= Ord(High(TIndexSymbolKind))) then
+  if mItem.TryGetValue<Integer>('data.symbolKind', mKind) and (mKind >= Ord(Low(TIndexSymbolKind))) and
+    (mKind <= Ord(High(TIndexSymbolKind))) then
   begin
-    AItem.SymbolKind := TIndexSymbolKind(Kind);
+    AItem.SymbolKind := TIndexSymbolKind(mKind);
   end
   else
   begin
@@ -1049,55 +1053,55 @@ end;
 
 class function TLspHierarchies.CallsToJson(const ACalls: TArray<THierarchyCall>; const AKey: string): TJSONArray;
 var
-  Call: THierarchyCall;
-  Entry, Dispatch: TJSONObject;
-  Ranges: TJSONArray;
-  Range: TTextRange;
+  mCall: THierarchyCall;
+  mEntry, mDispatch: TJSONObject;
+  mRanges: TJSONArray;
+  mRange: TTextRange;
 begin
   Result := TJSONArray.Create;
-  for Call in ACalls do
+  for mCall in ACalls do
   begin
-    Entry := TJSONObject.Create;
-    Result.AddElement(Entry);
-    Entry.AddPair(AKey, ItemToJson(Call.Item));
-    Ranges := TJSONArray.Create;
-    Entry.AddPair('fromRanges', Ranges);
-    for Range in Call.Ranges do
+    mEntry := TJSONObject.Create;
+    Result.AddElement(mEntry);
+    mEntry.AddPair(AKey, ItemToJson(mCall.Item));
+    mRanges := TJSONArray.Create;
+    mEntry.AddPair('fromRanges', mRanges);
+    for mRange in mCall.Ranges do
     begin
-      Ranges.AddElement(TLspPositions.RangeToJson(Range));
+      mRanges.AddElement(TLspPositions.RangeToJson(mRange));
     end;
     // Erweiterung (#1119); Editoren ohne Kenntnis übergehen das Feld.
-    Entry.AddPair('atlasConfidence', Call.Confidence.ToJson);
+    mEntry.AddPair('atlasConfidence', mCall.Confidence.ToJson);
     // Erweiterung (#1122): Aufruf über Interface bzw. virtuelle Methode mit der Zahl der Umsetzungen.
-    if Call.Dispatch <> TReferenceReason.None then
+    if mCall.Dispatch <> TReferenceReason.None then
     begin
-      Dispatch := TJSONObject.Create;
-      Dispatch.AddPair('kind', TReferenceConfidence.NameOfReason(Call.Dispatch));
-      Dispatch.AddPair('implementations', TJSONNumber.Create(Call.Implementations));
-      Entry.AddPair('atlasDispatch', Dispatch);
+      mDispatch := TJSONObject.Create;
+      mDispatch.AddPair('kind', TReferenceConfidence.NameOfReason(mCall.Dispatch));
+      mDispatch.AddPair('implementations', TJSONNumber.Create(mCall.Implementations));
+      mEntry.AddPair('atlasDispatch', mDispatch);
     end;
   end;
 end;
 
 function ItemsToJson(const AItems: TArray<THierarchyItem>): TJSONArray;
 var
-  Item: THierarchyItem;
+  mItem: THierarchyItem;
 begin
   Result := TJSONArray.Create;
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    Result.AddElement(TLspHierarchies.ItemToJson(Item));
+    Result.AddElement(TLspHierarchies.ItemToJson(mItem));
   end;
 end;
 
 function ReadItem(const AParams: TJSONValue): THierarchyItem;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<TJSONValue>('item', Value) and
-    TLspHierarchies.ItemFromJson(Value, Result)) then
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<TJSONValue>('item', mValue) and
+    TLspHierarchies.ItemFromJson(mValue, Result)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[THierarchiesText.FieldItemMissingOrIncomplete].Text);
   end;
 end;
@@ -1112,49 +1116,51 @@ end;
 function TLspHierarchies.Prepare(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken;
   ACall: Boolean): TJSONValue;
 var
-  Cancellation: IPascalCancellation;
-  Uri: string;
-  PositionValue: TJSONValue;
-  Document: ITextDocument;
-  Tree: TSyntaxTree;
-  Shared: ISharedSyntaxTree;
-  Resolver: TNameResolver;
-  Item: THierarchyItem;
-  Found: Boolean;
+  mCancellation: IPascalCancellation;
+  mUri: string;
+  mPositionValue: TJSONValue;
+  mDocument: ITextDocument;
+  mTree: TSyntaxTree;
+  mShared: ISharedSyntaxTree;
+  mResolver: TNameResolver;
+  mItem: THierarchyItem;
+  mFound: Boolean;
 begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
-    TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
+    TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPositionValue)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[THierarchiesText.FieldsTextDocumentUriAndPosition].Text);
   end;
-  if not FStore.TryGet(Uri, Document) then
+  if not FStore.TryGet(mUri, mDocument) then
   begin
     Exit(TJSONNull.Create);
   end;
-  Cancellation := TRequestCancellation.Create(ACancellation);
-  Shared := TSyntaxTreeCache.Get(Document, Cancellation);
-  Tree := Shared.Tree;
+  mCancellation := TRequestCancellation.Create(ACancellation);
+  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
+  mTree := mShared.Tree;
   ACancellation.ThrowIfCancellationRequested;
-  Resolver := NewResolver(FIndex, FEnsureUnit, Namespaces);
+  mResolver := NewResolver(FIndex, FEnsureUnit, Namespaces);
   try
     if ACall then
     begin
-      Found := CallItemAt(Resolver, Tree, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue), Item);
+      mFound := CallItemAt(mResolver, mTree, TDocumentUris.ToPath(mUri), TLspPositions.ReadPosition(mPositionValue),
+        mItem);
     end
     else
     begin
-      Found := TypeItemAt(Resolver, Tree, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue), Item);
+      mFound := TypeItemAt(mResolver, mTree, TDocumentUris.ToPath(mUri), TLspPositions.ReadPosition(mPositionValue),
+        mItem);
     end;
   finally
-    Resolver.Free;
+    mResolver.Free;
   end;
-  if not Found then
+  if not mFound then
   begin
     Exit(TJSONNull.Create);
   end;
   Result := TJSONArray.Create;
-  TJSONArray(Result).AddElement(ItemToJson(Item));
+  TJSONArray(Result).AddElement(ItemToJson(mItem));
 end;
 
 function TLspHierarchies.HandlePrepareType(const AParams: TJSONValue;
@@ -1172,13 +1178,13 @@ end;
 function TLspHierarchies.HandleSupertypes(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
-  Resolver: TNameResolver;
+  mResolver: TNameResolver;
 begin
-  Resolver := NewResolver(FIndex, FEnsureUnit, Namespaces);
+  mResolver := NewResolver(FIndex, FEnsureUnit, Namespaces);
   try
-    Result := ItemsToJson(Supertypes(Resolver, ReadItem(AParams), FReadText));
+    Result := ItemsToJson(Supertypes(mResolver, ReadItem(AParams), FReadText));
   finally
-    Resolver.Free;
+    mResolver.Free;
   end;
 end;
 
@@ -1191,47 +1197,47 @@ end;
 function TLspHierarchies.HandleIncoming(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
-  Resolver: TNameResolver;
-  Files: TArray<string>;
-  Item: THierarchyItem;
-  Settings: TReferenceSettings;
+  mResolver: TNameResolver;
+  mFiles: TArray<string>;
+  mItem: THierarchyItem;
+  mSettings: TReferenceSettings;
 begin
   if Assigned(FFiles) then
   begin
-    Files := FFiles();
+    mFiles := FFiles();
   end
   else
   begin
-    Files := nil;
+    mFiles := nil;
   end;
-  Item := ReadItem(AParams);
+  mItem := ReadItem(AParams);
   if Assigned(FSettingsFor) then
   begin
-    Settings := FSettingsFor(TDocumentUris.FromPath(Item.FileName));
+    mSettings := FSettingsFor(TDocumentUris.FromPath(mItem.FileName));
   end
   else
   begin
-    Settings := TReferenceSettings.Default;
+    mSettings := TReferenceSettings.Default;
   end;
-  Resolver := NewResolver(FIndex, FEnsureUnit, Namespaces);
+  mResolver := NewResolver(FIndex, FEnsureUnit, Namespaces);
   try
-    Result := CallsToJson(IncomingCalls(THierarchyCallSource.Create(Resolver, FIndex, FReadText, ACancellation), Item,
-      Files, Settings), 'from');
+    Result := CallsToJson(IncomingCalls(THierarchyCallSource.Create(mResolver, FIndex, FReadText, ACancellation), mItem,
+      mFiles, mSettings), 'from');
   finally
-    Resolver.Free;
+    mResolver.Free;
   end;
 end;
 
 function TLspHierarchies.HandleOutgoing(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
-  Resolver: TNameResolver;
+  mResolver: TNameResolver;
 begin
-  Resolver := NewResolver(FIndex, FEnsureUnit, Namespaces);
+  mResolver := NewResolver(FIndex, FEnsureUnit, Namespaces);
   try
-    Result := CallsToJson(OutgoingCalls(Resolver, FIndex, ReadItem(AParams), FReadText, ACancellation), 'to');
+    Result := CallsToJson(OutgoingCalls(mResolver, FIndex, ReadItem(AParams), FReadText, ACancellation), 'to');
   finally
-    Resolver.Free;
+    mResolver.Free;
   end;
 end;
 

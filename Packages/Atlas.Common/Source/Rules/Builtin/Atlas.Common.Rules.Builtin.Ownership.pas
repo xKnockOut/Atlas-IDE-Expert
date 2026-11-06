@@ -126,11 +126,11 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  OwnedItemFreedRuleId = 'owned-item-freed';
-  CreateWithoutAssignmentRuleId = 'create-without-assignment';
-  SelfAsInterfaceInConstructorRuleId = 'self-as-interface-in-constructor';
-  RemoveMethods: array[0..4] of string = ('Delete', 'Remove', 'RemoveItem', 'Clear', 'DeleteRange');
-  ExtractMethods: array[0..3] of string = ('Extract', 'ExtractAt', 'ExtractItem', 'ExtractPair');
+  cOwnedItemFreedRuleId = 'owned-item-freed';
+  cCreateWithoutAssignmentRuleId = 'create-without-assignment';
+  cSelfAsInterfaceInConstructorRuleId = 'self-as-interface-in-constructor';
+  cRemoveMethods: array[0..4] of string = ('Delete', 'Remove', 'RemoveItem', 'Clear', 'DeleteRange');
+  cExtractMethods: array[0..3] of string = ('Extract', 'ExtractAt', 'ExtractItem', 'ExtractPair');
 
 type
   /// <summary>Eine besitzende Liste der Unit.</summary>
@@ -956,7 +956,7 @@ var
   mAfter: Integer;
   mIndex: string;
 begin
-  if IsSym(APosition + 1, '.') and (IndexText(Token(APosition + 2).Text, ExtractMethods) >= 0) then
+  if IsSym(APosition + 1, '.') and (IndexText(Token(APosition + 2).Text, cExtractMethods) >= 0) then
   begin
     ARemoval.Extracted := True;
   end
@@ -964,7 +964,7 @@ begin
   begin
     // Das erste Entfernen ist schon gemerkt.
   end
-  else if IsSym(APosition + 1, '.') and (IndexText(Token(APosition + 2).Text, RemoveMethods) >= 0) then
+  else if IsSym(APosition + 1, '.') and (IndexText(Token(APosition + 2).Text, cRemoveMethods) >= 0) then
   begin
     ARemoval.Text := Token(APosition + 2).Text;
     ARemoval.Position := APosition + 2;
@@ -1749,7 +1749,7 @@ end;
 
 function TOwnedItemFreedRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(OwnedItemFreedRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cOwnedItemFreedRuleId, TRuleSeverity.Error,
     cTexts[TOwnershipText.OwnedFreedTitle].Text);
 end;
 
@@ -1788,7 +1788,7 @@ end;
 
 function TCreateWithoutAssignmentRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(CreateWithoutAssignmentRuleId, TRuleSeverity.Warning,
+  Result := TRuleDescriptor.Create(cCreateWithoutAssignmentRuleId, TRuleSeverity.Warning,
     cTexts[TOwnershipText.LostTitle].Text);
 end;
 
@@ -1835,21 +1835,21 @@ end;
 
 function TSelfAsInterfaceInConstructorRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(SelfAsInterfaceInConstructorRuleId, TRuleSeverity.Warning,
+  Result := TRuleDescriptor.Create(cSelfAsInterfaceInConstructorRuleId, TRuleSeverity.Warning,
     cTexts[TOwnershipText.SelfInterfaceTitle].Text);
 end;
 
 class function TSelfAsInterfaceInConstructorRule.IsInterfaceType(const AType: string): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
-  Name := Trim(AType);
-  if Pos('<', Name) > 0 then
+  mName := Trim(AType);
+  if Pos('<', mName) > 0 then
   begin
-    Name := Copy(Name, 1, Pos('<', Name) - 1);
+    mName := Copy(mName, 1, Pos('<', mName) - 1);
   end;
-  Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
-  Result := (Length(Name) >= 2) and (Name[1] = 'I') and CharInSet(Name[2], ['A'..'Z']);
+  mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
+  Result := (Length(mName) >= 2) and (mName[1] = 'I') and CharInSet(mName[2], ['A'..'Z']);
 end;
 
 procedure TSelfAsInterfaceInConstructorRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);

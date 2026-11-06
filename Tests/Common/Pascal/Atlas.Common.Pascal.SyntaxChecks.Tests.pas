@@ -544,7 +544,7 @@ begin
   Findings := TFileChecker.SyntaxFindings(Diagnostics(InProgram(['  if A then B := 1;', '  else B := 2;'])),
     Default(TServerSettings));
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(SyntaxRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cSyntaxRuleId, Findings[0].RuleId);
   Assert.IsTrue(Findings[0].Severity = TRuleSeverity.Error);
   Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
   Assert.AreEqual(''';'' entfernen', Findings[0].Fixes[0].Title);
@@ -558,7 +558,7 @@ var
 begin
   Settings := Default(TServerSettings);
   Rule := Default(TRuleSetting);
-  Rule.Id := SyntaxRuleId;
+  Rule.Id := cSyntaxRuleId;
   Rule.Severity := TRuleSeverity.Off;
   Settings.Rules := [Rule];
   Assert.AreEqual(0, Integer(Length(TFileChecker.SyntaxFindings(Diagnostics(InProgram(['  B := 1 2;'])),

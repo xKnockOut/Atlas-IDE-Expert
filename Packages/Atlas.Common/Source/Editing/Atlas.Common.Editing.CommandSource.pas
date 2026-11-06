@@ -134,7 +134,7 @@ const
 
 constructor TCommandSource.Create(const AContext: TSlashContext);
 var
-  Blanked: string;
+  mBlanked: string;
 begin
   inherited Create;
   Line := AContext.Line;
@@ -143,8 +143,8 @@ begin
   FLines := AContext.Text.Split([FLineBreak]);
   FCommandIndent := Indent(Line);
   FLines[Line] := StringOfChar(' ', Length(FLines[Line]));
-  Blanked := string.Join(FLineBreak, FLines);
-  FTree := TSyntaxTreeCache.Parse(Blanked);
+  mBlanked := string.Join(FLineBreak, FLines);
+  FTree := TSyntaxTreeCache.Parse(mBlanked);
 end;
 
 destructor TCommandSource.Destroy;
@@ -179,28 +179,28 @@ end;
 
 function TCommandSource.ReplaceWithIndentedLines(const ALines: array of string): TTextEdit;
 var
-  Index: Integer;
-  Text: string;
+  mIndex: Integer;
+  mText: string;
 begin
-  Text := '';
-  for Index := 0 to High(ALines) do
+  mText := '';
+  for mIndex := 0 to High(ALines) do
   begin
-    Text := Text + Indent(Line) + ALines[Index] + FLineBreak;
+    mText := mText + Indent(Line) + ALines[mIndex] + FLineBreak;
   end;
-  Result := TTextEdit.Create(TTextRange.Create(Line, 0, Line + 1, 0), Text);
+  Result := TTextEdit.Create(TTextRange.Create(Line, 0, Line + 1, 0), mText);
 end;
 
 function TCommandSource.ReplaceWithLines(const ALines: array of string): TTextEdit;
 var
-  Index: Integer;
-  Text: string;
+  mIndex: Integer;
+  mText: string;
 begin
-  Text := '';
-  for Index := 0 to High(ALines) do
+  mText := '';
+  for mIndex := 0 to High(ALines) do
   begin
-    Text := Text + ALines[Index] + FLineBreak;
+    mText := mText + ALines[mIndex] + FLineBreak;
   end;
-  Result := TTextEdit.Create(TTextRange.Create(Line, 0, Line + 1, 0), Text);
+  Result := TTextEdit.Create(TTextRange.Create(Line, 0, Line + 1, 0), mText);
 end;
 
 function TCommandSource.AfterLine(ALine: Integer; const ANewText: string): TTextEdit;
@@ -277,38 +277,39 @@ end;
 
 function TCommandSource.ClassAt(out AClass: TIndexSymbol): Boolean;
 var
-  Symbol: TIndexSymbol;
-  Routine: TSyntaxNode;
-  TypeName: string;
-  Dot: Integer;
+  mSymbol: TIndexSymbol;
+  mRoutine: TSyntaxNode;
+  mTypeName: string;
+  mDot: Integer;
 begin
   // Deklaration der Klasse um die Zeile.
-  for Symbol in UnitIndex.Symbols do
+  for mSymbol in UnitIndex.Symbols do
   begin
-    if (Symbol.Kind = TIndexSymbolKind.ClassType) and (Symbol.Range.StartPos.Line < Line) and
-      (Symbol.Range.EndPos.Line > Line) then
+    if (mSymbol.Kind = TIndexSymbolKind.ClassType) and (mSymbol.Range.StartPos.Line < Line) and
+      (mSymbol.Range.EndPos.Line > Line) then
     begin
-      AClass := Symbol;
+      AClass := mSymbol;
       Exit(True);
     end;
   end;
   // Methode TFoo.Bar: Klasse TFoo in derselben Datei.
-  Routine := RoutineAt;
-  if Routine = nil then
+  mRoutine := RoutineAt;
+  if mRoutine = nil then
   begin
     Exit(False);
   end;
-  Dot := LastDelimiter('.', Routine.Name);
-  if Dot = 0 then
+  mDot := LastDelimiter('.', mRoutine.Name);
+  if mDot = 0 then
   begin
     Exit(False);
   end;
-  TypeName := Copy(Routine.Name, 1, Dot - 1);
-  for Symbol in UnitIndex.Symbols do
+  mTypeName := Copy(mRoutine.Name, 1, mDot - 1);
+  for mSymbol in UnitIndex.Symbols do
   begin
-    if (Symbol.Kind = TIndexSymbolKind.ClassType) and SameText(Symbol.Name, TypeName) and (Symbol.Container = '') then
+    if (mSymbol.Kind = TIndexSymbolKind.ClassType) and SameText(mSymbol.Name, mTypeName) and
+      (mSymbol.Container = '') then
     begin
-      AClass := Symbol;
+      AClass := mSymbol;
       Exit(True);
     end;
   end;
@@ -317,13 +318,13 @@ end;
 
 function TCommandSource.PrivateLine(const AClass: TIndexSymbol): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := AClass.Range.StartPos.Line + 1 to AClass.Range.EndPos.Line - 1 do
+  for mIndex := AClass.Range.StartPos.Line + 1 to AClass.Range.EndPos.Line - 1 do
   begin
-    if SameText(Trim(FLines[Index]), 'private') then
+    if SameText(Trim(FLines[mIndex]), 'private') then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -380,61 +381,61 @@ end;
 
 function TCommandSource.ImplementationStart: Integer;
 var
-  Section, UsesNode: TSyntaxNode;
+  mSection, mUsesNode: TSyntaxNode;
 begin
   Result := -1;
   if FTree.Root = nil then
   begin
     Exit;
   end;
-  Section := FTree.Root.FindChild(TSyntaxKind.ImplementationSection);
-  if Section = nil then
+  mSection := FTree.Root.FindChild(TSyntaxKind.ImplementationSection);
+  if mSection = nil then
   begin
     Exit;
   end;
   // Der fehlertolerante Parser legt den Abschnitt auch ohne das Schlüsselwort an (#294).
-  if (Section.StartPos.Line > High(FLines)) or not StartsText('implementation', TrimLeft(FLines[Section.StartPos.Line]))
+  if (mSection.StartPos.Line > High(FLines)) or not StartsText('implementation', TrimLeft(FLines[mSection.StartPos.Line]))
   then
   begin
     Exit;
   end;
-  Result := Section.StartPos.Line;
-  UsesNode := Section.FindChild(TSyntaxKind.UsesClause);
-  if UsesNode <> nil then
+  Result := mSection.StartPos.Line;
+  mUsesNode := mSection.FindChild(TSyntaxKind.UsesClause);
+  if mUsesNode <> nil then
   begin
-    Result := UsesNode.EndPos.Line;
+    Result := mUsesNode.EndPos.Line;
   end;
 end;
 
 function TCommandSource.LastMethodEnd(const AClassName: string): Integer;
 var
-  Section: TSyntaxNode;
-  Index: Integer;
+  mSection: TSyntaxNode;
+  mIndex: Integer;
 begin
   Result := -1;
-  Section := FTree.Root.FindChild(TSyntaxKind.ImplementationSection);
-  if Section = nil then
+  mSection := FTree.Root.FindChild(TSyntaxKind.ImplementationSection);
+  if mSection = nil then
   begin
     Exit;
   end;
-  for Index := 0 to Section.ChildCount - 1 do
+  for mIndex := 0 to mSection.ChildCount - 1 do
   begin
-    if (Section[Index].Kind = TSyntaxKind.RoutineDecl) and StartsText(AClassName + '.', Section[Index].Name) and
-      (Section[Index].FindChild(TSyntaxKind.Block) <> nil) then
+    if (mSection[mIndex].Kind = TSyntaxKind.RoutineDecl) and StartsText(AClassName + '.', mSection[mIndex].Name) and
+      (mSection[mIndex].FindChild(TSyntaxKind.Block) <> nil) then
     begin
-      Result := Section[Index].EndPos.Line;
+      Result := mSection[mIndex].EndPos.Line;
     end;
   end;
 end;
 
 function TCommandSource.AddBody(const AClassName, ABody: string): TTextEdit;
 var
-  EndLine: Integer;
+  mEndLine: Integer;
 begin
-  EndLine := LastMethodEnd(AClassName);
-  if EndLine >= 0 then
+  mEndLine := LastMethodEnd(AClassName);
+  if mEndLine >= 0 then
   begin
-    Result := AfterLine(EndLine, FLineBreak + ABody);
+    Result := AfterLine(mEndLine, FLineBreak + ABody);
   end
   else
   begin
@@ -449,27 +450,27 @@ end;
 
 function TCommandSource.Offset(ALine: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := 0;
-  for Index := 0 to ALine - 1 do
+  for mIndex := 0 to ALine - 1 do
   begin
-    Inc(Result, Length(FLines[Index]) + Length(FLineBreak));
+    Inc(Result, Length(FLines[mIndex]) + Length(FLineBreak));
   end;
 end;
 
 function SplitDeclaration(const AArguments: string; ASeparator: Char; out AName, AValue: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := Pos(ASeparator, AArguments);
-  AName := Trim(Copy(AArguments, 1, Index - 1));
-  AValue := Trim(Copy(AArguments, Index + 1, MaxInt));
+  mIndex := Pos(ASeparator, AArguments);
+  AName := Trim(Copy(AArguments, 1, mIndex - 1));
+  AValue := Trim(Copy(AArguments, mIndex + 1, MaxInt));
   if AValue.EndsWith(';') then
   begin
     AValue := Trim(Copy(AValue, 1, Length(AValue) - 1));
   end;
-  Result := (Index > 1) and IsValidIdent(AName) and (AValue <> '');
+  Result := (mIndex > 1) and IsValidIdent(AName) and (AValue <> '');
 end;
 
 function Fail(const AReason: string; out AReasonOut: string): Boolean;
@@ -480,24 +481,24 @@ end;
 
 function LogStatement(const AContext: TSlashContext; const AExpression: string): string;
 var
-  Call: string;
+  mCall: string;
 begin
-  Call := '';
+  mCall := '';
   if AContext.Host <> nil then
   begin
-    Call := Trim(AContext.Host.Setting(AContext.Uri, TSlashSettings.LogCall));
+    mCall := Trim(AContext.Host.Setting(AContext.Uri, TSlashSettings.cLogCall));
   end;
-  if Call = '' then
+  if mCall = '' then
   begin
     Exit(Format('OutputDebugString(PChar(%s));', [AExpression]));
   end;
-  if Pos('{text}', Call) > 0 then
+  if Pos('{text}', mCall) > 0 then
   begin
-    Result := StringReplace(Call, '{text}', AExpression, [rfReplaceAll]);
+    Result := StringReplace(mCall, '{text}', AExpression, [rfReplaceAll]);
   end
   else
   begin
-    Result := Call + '(' + AExpression + ')';
+    Result := mCall + '(' + AExpression + ')';
   end;
   if not EndsStr(';', Result) then
   begin
@@ -507,33 +508,33 @@ end;
 
 function BlockEndOfTokens(ASource: TCommandSource; ALine: Integer): Integer;
 var
-  Tokens: TArray<TPascalToken>;
-  Index, Depth: Integer;
+  mTokens: TArray<TPascalToken>;
+  mIndex, mDepth: Integer;
 begin
-  Tokens := ASource.Tree.Tokens;
-  Depth := 0;
-  for Index := 0 to High(Tokens) do
+  mTokens := ASource.Tree.Tokens;
+  mDepth := 0;
+  for mIndex := 0 to High(mTokens) do
   begin
-    if (Tokens[Index].StartPos.Line <= ALine) or (Tokens[Index].Kind <> TPascalTokenKind.Keyword) then
+    if (mTokens[mIndex].StartPos.Line <= ALine) or (mTokens[mIndex].Kind <> TPascalTokenKind.Keyword) then
     begin
       Continue;
     end;
-    if Tokens[Index].IsKeyword('begin') or Tokens[Index].IsKeyword('try') or Tokens[Index].IsKeyword('case') or
-      Tokens[Index].IsKeyword('repeat') or Tokens[Index].IsKeyword('asm') then
+    if mTokens[mIndex].IsKeyword('begin') or mTokens[mIndex].IsKeyword('try') or mTokens[mIndex].IsKeyword('case') or
+      mTokens[mIndex].IsKeyword('repeat') or mTokens[mIndex].IsKeyword('asm') then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if Tokens[Index].IsKeyword('end') or Tokens[Index].IsKeyword('until') then
+    else if mTokens[mIndex].IsKeyword('end') or mTokens[mIndex].IsKeyword('until') then
     begin
-      if Depth = 0 then
+      if mDepth = 0 then
       begin
-        Exit(Tokens[Index].StartPos.Line);
+        Exit(mTokens[mIndex].StartPos.Line);
       end;
-      Dec(Depth);
+      Dec(mDepth);
     end
-    else if (Depth = 0) and (Tokens[Index].IsKeyword('finally') or Tokens[Index].IsKeyword('except')) then
+    else if (mDepth = 0) and (mTokens[mIndex].IsKeyword('finally') or mTokens[mIndex].IsKeyword('except')) then
     begin
-      Exit(Tokens[Index].StartPos.Line);
+      Exit(mTokens[mIndex].StartPos.Line);
     end;
   end;
   Result := -1;
@@ -654,27 +655,27 @@ end;
 function AddLocal(ASource: TCommandSource; ARoutine: TSyntaxNode; AKind: TSyntaxKind; const AKeyword,
   ADeclaration: string): TTextEdit;
 var
-  Index: Integer;
-  Section: TSyntaxNode;
-  Indent: string;
+  mIndex: Integer;
+  mSection: TSyntaxNode;
+  mIndent: string;
 begin
-  Indent := ASource.Indent(ARoutine.StartPos.Line);
-  Section := nil;
-  for Index := 0 to ARoutine.ChildCount - 1 do
+  mIndent := ASource.Indent(ARoutine.StartPos.Line);
+  mSection := nil;
+  for mIndex := 0 to ARoutine.ChildCount - 1 do
   begin
-    if ARoutine[Index].Kind = AKind then
+    if ARoutine[mIndex].Kind = AKind then
     begin
-      Section := ARoutine[Index];
+      mSection := ARoutine[mIndex];
     end;
   end;
-  if Section <> nil then
+  if mSection <> nil then
   begin
-    Result := ASource.AfterLine(Section.EndPos.Line, Indent + '  ' + ADeclaration);
+    Result := ASource.AfterLine(mSection.EndPos.Line, mIndent + '  ' + ADeclaration);
   end
   else
   begin
     Result := ASource.BeforeLine(ARoutine.FindChild(TSyntaxKind.Block).StartPos.Line,
-      Indent + AKeyword + ASource.LineBreak + Indent + '  ' + ADeclaration);
+      mIndent + AKeyword + ASource.LineBreak + mIndent + '  ' + ADeclaration);
   end;
 end;
 
@@ -682,39 +683,39 @@ end;
 procedure AddUses(ASource: TCommandSource; const AContext: TSlashContext; ALine: Integer;
   const AUnits: array of string; var AEdits: TArray<TTextEdit>);
 var
-  Used: TArray<string>;
-  Index: Integer;
-  Combined, Edit: TTextEdit;
-  Found: Boolean;
+  mUsed: TArray<string>;
+  mIndex: Integer;
+  mCombined, mEdit: TTextEdit;
+  mFound: Boolean;
 begin
-  Used := TUsesClauses.UsedUnits(ASource.Tree.Tokens);
-  Combined := Default(TTextEdit);
-  Found := False;
-  for Index := 0 to High(AUnits) do
+  mUsed := TUsesClauses.UsedUnits(ASource.Tree.Tokens);
+  mCombined := Default(TTextEdit);
+  mFound := False;
+  for mIndex := 0 to High(AUnits) do
   begin
-    if (AUnits[Index] <> '') and not TUsesClauses.IsUsed(Used, AUnits[Index], AContext.Namespaces) and
-      TUsesClauses.AddUnit(ASource.Tree.Tokens, ASource.Offset(ALine), AUnits[Index], ASource.LineBreak, Edit) then
+    if (AUnits[mIndex] <> '') and not TUsesClauses.IsUsed(mUsed, AUnits[mIndex], AContext.Namespaces) and
+      TUsesClauses.AddUnit(ASource.Tree.Tokens, ASource.Offset(ALine), AUnits[mIndex], ASource.LineBreak, mEdit) then
     begin
       // Alle Units landen an derselben Stelle: Texte zu einem Edit zusammenfassen.
-      if not Found then
+      if not mFound then
       begin
-        Combined := Edit;
+        mCombined := mEdit;
       end
-      else if StartsStr(',', Edit.NewText) then
+      else if StartsStr(',', mEdit.NewText) then
       begin
-        Combined.NewText := Combined.NewText + Edit.NewText;
+        mCombined.NewText := mCombined.NewText + mEdit.NewText;
       end
       else
       begin
         // Neue uses-Klausel: "uses X;" wird "uses X, Y;".
-        Combined.NewText := Copy(Combined.NewText, 1, Length(Combined.NewText) - 1) + ', ' + AUnits[Index] + ';';
+        mCombined.NewText := Copy(mCombined.NewText, 1, Length(mCombined.NewText) - 1) + ', ' + AUnits[mIndex] + ';';
       end;
-      Found := True;
+      mFound := True;
     end;
   end;
-  if Found then
+  if mFound then
   begin
-    AEdits := AEdits + [Combined];
+    AEdits := AEdits + [mCombined];
   end;
 end;
 

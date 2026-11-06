@@ -47,8 +47,8 @@ begin
     finally
       mCapability.Free;
     end;
-    Assert.IsTrue(Pos('"' + TLspMetrics.Command + '"', mText) > 0, TLspMetrics.Command);
-    Assert.IsTrue(Pos('"' + TLspTodos.Command + '"', mText) > 0, TLspTodos.Command);
+    Assert.IsTrue(Pos('"' + TLspMetrics.cCommand + '"', mText) > 0, TLspMetrics.cCommand);
+    Assert.IsTrue(Pos('"' + TLspTodos.cCommand + '"', mText) > 0, TLspTodos.cCommand);
   finally
     mCommands.Free;
     mAnalysis.Free;

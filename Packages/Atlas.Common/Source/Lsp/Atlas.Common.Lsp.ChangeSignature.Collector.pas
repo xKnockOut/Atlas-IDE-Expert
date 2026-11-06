@@ -20,7 +20,7 @@ uses
   Atlas.Common.Lsp.References;
 
 const
-  SignatureRoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
+  cSignatureRoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
 
 type
   {$SCOPEDENUMS ON}
@@ -100,7 +100,8 @@ type
       out AFile: string; out AFound: TIndexSymbol): Boolean;
     function NextAncestor(const ATypeName: string): string;
     function TypeSymbol(const ATypeName: string; out ALocation: TSymbolLocation): Boolean;
-    function AddMember(AKind: TMemberKind; const AFileName: string; const ADecl: TIndexSymbol; AIsRoot: Boolean): Boolean;
+    function AddMember(AKind: TMemberKind; const AFileName: string; const ADecl: TIndexSymbol;
+      AIsRoot: Boolean): Boolean;
     function ReadableSource(const AFileName: string; const ADecl: TIndexSymbol): TSourceFile;
     function OverriddenRoot(const ADecl: TIndexSymbol; var AFile: string): TIndexSymbol;
     procedure AddRoot(const AFile: string; const ARoot: TIndexSymbol);
@@ -166,13 +167,14 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  ClassKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+  cClassKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
     TIndexSymbolKind.HelperType];
-  MaxDepth = 32;
-  MaxMembers = 500;
+  cMaxDepth = 32;
+  cMaxMembers = 500;
 
 type
-  /// <summary>Geht von der Wurzel aus über Nachfahren, implementierende Klassen und implementierte Interfaces.</summary>
+  /// <summary>Geht von der Wurzel aus über Nachfahren, implementierende Klassen und implementierte
+  /// Interfaces.</summary>
   THierarchyWalk = class
   private
     FOwner: TSignatureCollector;
@@ -213,7 +215,7 @@ end;
 
 function SignatureError(const AMessage: string): EJsonRpcError;
 begin
-  Result := EJsonRpcError.Create(TLspErrorCode.RequestFailed, AMessage);
+  Result := EJsonRpcError.Create(TLspErrorCode.cRequestFailed, AMessage);
 end;
 
 function Within(const APosition: TTextPosition; const ARange: TTextRange): Boolean;
@@ -248,7 +250,8 @@ begin
   Result := False;
 end;
 
-/// <summary>Gehört der Kopf AHeader als Rumpf zur Deklaration ADecl (gleiche Parameter bzw. Rumpf ohne Liste)?</summary>
+/// <summary>Gehört der Kopf AHeader als Rumpf zur Deklaration ADecl (gleiche Parameter bzw. Rumpf ohne
+/// Liste)?</summary>
 function IsBodyOf(const AHeader, ADecl: TSignatureHeader): Boolean;
 begin
   Result := SameParamTypes(AHeader.ParamTypes, ADecl.ParamTypes) or
@@ -264,7 +267,7 @@ var
 begin
   for mSymbol in AUnit.Symbols do
   begin
-    if not ((mSymbol.Kind in SignatureRoutineKinds) and SameText(mSymbol.Container, ADecl.Container) and
+    if not ((mSymbol.Kind in cSignatureRoutineKinds) and SameText(mSymbol.Container, ADecl.Container) and
       SameText(mSymbol.Name, ADecl.Name) and (mSymbol.SelectionRange.StartPos <> ADecl.SelectionRange.StartPos)) then
     begin
       Continue;
@@ -285,7 +288,8 @@ begin
   end;
 end;
 
-/// <summary>Liest Kopf und Rumpf des Mitglieds ADecl aus AUnit; EJsonRpcError, wenn der Kopf nicht lesbar ist.</summary>
+/// <summary>Liest Kopf und Rumpf des Mitglieds ADecl aus AUnit; EJsonRpcError, wenn der Kopf nicht lesbar
+/// ist.</summary>
 function ReadMember(AUnit: TSourceFile; AKind: TMemberKind; const ADecl: TIndexSymbol; AIsRoot: Boolean): TMember;
 var
   mLast: Integer;
@@ -519,7 +523,7 @@ var
 begin
   for mLocation in FOwner.FSource.Index.Descendants(AOwner.Name) do
   begin
-    if not (mLocation.Symbol.Kind in ClassKinds + [TIndexSymbolKind.InterfaceType]) or
+    if not (mLocation.Symbol.Kind in cClassKinds + [TIndexSymbolKind.InterfaceType]) or
       not Visit(mLocation.Symbol.QualifiedName) then
     begin
       Continue;
@@ -539,7 +543,7 @@ var
   mOwner: TSymbolLocation;
   mIsInterface: Boolean;
 begin
-  if (ACurrent.Value >= MaxDepth) or not FOwner.TypeSymbol(ACurrent.Key, mOwner) then
+  if (ACurrent.Value >= cMaxDepth) or not FOwner.TypeSymbol(ACurrent.Key, mOwner) then
   begin
     Exit;
   end;
@@ -622,7 +626,7 @@ begin
   AFile := '';
   APosition := Default(TTextPosition);
   mResolved := FSource.Resolver.Resolve(FSource.Tree, FSource.FileName, FSource.Position);
-  if (mResolved.Kind = TResolvedKind.Symbol) and (mResolved.SymbolKind in SignatureRoutineKinds) then
+  if (mResolved.Kind = TResolvedKind.Symbol) and (mResolved.SymbolKind in cSignatureRoutineKinds) then
   begin
     AFile := mResolved.FileName;
     APosition := mResolved.SelectionRange.StartPos;
@@ -637,7 +641,7 @@ begin
   end;
   for mSymbol in mCurrent.Symbols do
   begin
-    if (mSymbol.Kind in SignatureRoutineKinds) and Within(FSource.Position, mSymbol.SelectionRange) then
+    if (mSymbol.Kind in cSignatureRoutineKinds) and Within(FSource.Position, mSymbol.SelectionRange) then
     begin
       AFile := FSource.FileName;
       APosition := mSymbol.SelectionRange.StartPos;
@@ -660,13 +664,13 @@ begin
   end;
   for mSymbol in mCurrent.Symbols do
   begin
-    if (mSymbol.Kind in SignatureRoutineKinds) and (mSymbol.SelectionRange.StartPos = APosition) then
+    if (mSymbol.Kind in cSignatureRoutineKinds) and (mSymbol.SelectionRange.StartPos = APosition) then
     begin
       // Vom Rumpf zur Deklaration: die erste Fundstelle mit denselben Parametern.
       ADecl := mSymbol;
       for mCandidate in mCurrent.Symbols do
       begin
-        if (mCandidate.Kind in SignatureRoutineKinds) and SameText(mCandidate.Container, mSymbol.Container) and
+        if (mCandidate.Kind in cSignatureRoutineKinds) and SameText(mCandidate.Container, mSymbol.Container) and
           SameText(mCandidate.Name, mSymbol.Name) and (SameParamTypes(mCandidate.ParamTypes, mSymbol.ParamTypes) or
           (Length(mSymbol.ParamTypes) = 0)) then
         begin
@@ -691,7 +695,7 @@ begin
   end;
   for mLocation in FSource.Index.FindSymbols(mName) do
   begin
-    if (mLocation.Symbol.Kind in ClassKinds + [TIndexSymbolKind.InterfaceType]) and
+    if (mLocation.Symbol.Kind in cClassKinds + [TIndexSymbolKind.InterfaceType]) and
       (SameText(mLocation.Symbol.QualifiedName, ATypeName) or SameText(mLocation.Symbol.Name, ATypeName)) then
     begin
       ALocation := mLocation;
@@ -732,7 +736,7 @@ begin
   end;
   for mSymbol in mUnit.Symbols do
   begin
-    if (mSymbol.Kind in SignatureRoutineKinds) and SameText(mSymbol.Container, mLocation.Symbol.QualifiedName) and
+    if (mSymbol.Kind in cSignatureRoutineKinds) and SameText(mSymbol.Container, mLocation.Symbol.QualifiedName) and
       SameText(mSymbol.Name, AName) and SameParamTypes(mSymbol.ParamTypes, AParamTypes) then
     begin
       ADecl := mSymbol;
@@ -751,7 +755,7 @@ begin
   AFound := Default(TIndexSymbol);
   mClimb := AStart;
   mDepth := 0;
-  while (mClimb <> '') and (mDepth < MaxDepth) do
+  while (mClimb <> '') and (mDepth < cMaxDepth) do
   begin
     if DeclaredIn(mClimb, ADecl.Name, AParamTypes, AFile, AFound) then
     begin
@@ -789,7 +793,7 @@ begin
     Exit(True);
   end;
   FSeen.Add(mKey, True);
-  Result := Length(Members) < MaxMembers;
+  Result := Length(Members) < cMaxMembers;
   if Result then
   begin
     Members := Members + [ReadMember(ReadableSource(AFileName, ADecl), AKind, ADecl, AIsRoot)];
@@ -927,7 +931,7 @@ begin
   Result := '';
   mClimb := AClassName;
   mDepth := 0;
-  while (mClimb <> '') and (mDepth < MaxDepth) and TypeSymbol(mClimb, mOwner) do
+  while (mClimb <> '') and (mDepth < cMaxDepth) and TypeSymbol(mClimb, mOwner) do
   begin
     Inc(mDepth);
     Result := PropertyType(SymbolsOf(mOwner), mOwner.Symbol.QualifiedName, AProperty);

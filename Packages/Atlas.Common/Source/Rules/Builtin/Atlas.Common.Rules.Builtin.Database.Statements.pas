@@ -45,18 +45,18 @@ uses
   Atlas.Text.Chars;
 
 const
-  ClauseWords: array[0..16] of string = ('WHERE', 'SET', 'FROM', 'RETURNING', 'OUTPUT', 'USING', 'JOIN', 'INNER',
+  cClauseWords: array[0..16] of string = ('WHERE', 'SET', 'FROM', 'RETURNING', 'OUTPUT', 'USING', 'JOIN', 'INNER',
     'LEFT', 'RIGHT', 'FULL', 'CROSS', 'LIMIT', 'ROWS', 'ORDER', 'OPTION', 'AS');
   // Schränken die Zeilen ein, auch ohne WHERE.
-  RestrictWords: array[0..5] of string = ('WHERE', 'JOIN', 'LIMIT', 'ROWS', 'TOP', 'FETCH');
+  cRestrictWords: array[0..5] of string = ('WHERE', 'JOIN', 'LIMIT', 'ROWS', 'TOP', 'FETCH');
   // Davor steht ein unbekannter Teil an der Stelle eines Werts, nicht einer Klausel.
-  ValueWords: array[0..10] of string = ('AND', 'OR', 'NOT', 'LIKE', 'IN', 'IS', 'THEN', 'ELSE', 'WHEN', 'VALUES',
+  cValueWords: array[0..10] of string = ('AND', 'OR', 'NOT', 'LIKE', 'IN', 'IS', 'THEN', 'ELSE', 'WHEN', 'VALUES',
     'BETWEEN');
-  ValueSymbols = '=<>,(+-*/|%';
+  cValueSymbols = '=<>,(+-*/|%';
   // Stehen zwischen SELECT und der Spaltenliste.
-  SelectModifiers: array[0..3] of string = ('DISTINCT', 'ALL', 'UNIQUE', 'DISTINCTROW');
+  cSelectModifiers: array[0..3] of string = ('DISTINCT', 'ALL', 'UNIQUE', 'DISTINCTROW');
   // Nehmen eine Zahl, einen Parameter oder einen Ausdruck in Klammern mit (TOP 10, FIRST 5 SKIP 10).
-  SelectLimits: array[0..2] of string = ('TOP', 'FIRST', 'SKIP');
+  cSelectLimits: array[0..2] of string = ('TOP', 'FIRST', 'SKIP');
 
 type
 {$SCOPEDENUMS ON}
@@ -216,17 +216,17 @@ end;
 function IsTableName(const AToken: TSqlToken): Boolean;
 begin
   Result := (AToken.Kind = TSqlTokenKind.Quoted) or
-    ((AToken.Kind = TSqlTokenKind.Word) and not MatchText(AToken.Text, ClauseWords));
+    ((AToken.Kind = TSqlTokenKind.Word) and not MatchText(AToken.Text, cClauseWords));
 end;
 
 /// <summary>Steht der unbekannte Teil ATokens[AIndex] an der Stelle eines Werts (nach =, Komma, AND …)?</summary>
 function IsValueHole(const ATokens: TArray<TSqlToken>; AIndex: Integer): Boolean;
 var
-  Previous: TSqlToken;
+  mPrevious: TSqlToken;
 begin
-  Previous := ATokens[AIndex - 1];
-  Result := ((Previous.Kind = TSqlTokenKind.Symbol) and (Pos(Previous.Text, ValueSymbols) > 0)) or
-    ((Previous.Kind = TSqlTokenKind.Word) and MatchText(Previous.Text, ValueWords));
+  mPrevious := ATokens[AIndex - 1];
+  Result := ((mPrevious.Kind = TSqlTokenKind.Symbol) and (Pos(mPrevious.Text, cValueSymbols) > 0)) or
+    ((mPrevious.Kind = TSqlTokenKind.Word) and MatchText(mPrevious.Text, cValueWords));
 end;
 
 /// <summary>Hinter DELETE: TOP schließt aus, FROM wird übersprungen (ohne FROM in Großschreibung kein SQL).</summary>
@@ -320,7 +320,7 @@ function WriteBodyFollows(const ATokens: TArray<TSqlToken>; AIndex, ALast: Integ
 begin
   if AIsDelete then
   begin
-    Result := (AIndex > ALast) or IsWordIn(ATokens, AIndex, ALast, ClauseWords);
+    Result := (AIndex > ALast) or IsWordIn(ATokens, AIndex, ALast, cClauseWords);
   end
   else
   begin
@@ -332,7 +332,7 @@ end;
 /// unbekannter Teil an der Stelle einer Klausel?</summary>
 function MayRestrict(const ATokens: TArray<TSqlToken>; AScan, ALast, ALevel: Integer): Boolean;
 begin
-  Result := (ATokens[AScan].Depth = ALevel) and IsWordIn(ATokens, AScan, ALast, RestrictWords) or
+  Result := (ATokens[AScan].Depth = ALevel) and IsWordIn(ATokens, AScan, ALast, cRestrictWords) or
     (ATokens[AScan].Kind = TSqlTokenKind.Hole) and not IsValueHole(ATokens, AScan);
 end;
 
@@ -363,26 +363,26 @@ end;
 
 function SqlWrites(const ASql: string; AStrictCase: Boolean): TArray<TSqlWrite>;
 var
-  Tokens: TArray<TSqlToken>;
-  First, Last: Integer;
-  Write: TSqlWrite;
+  mTokens: TArray<TSqlToken>;
+  mFirst, mLast: Integer;
+  mWrite: TSqlWrite;
 begin
   Result := nil;
-  Tokens := SqlTokens(ASql);
-  First := 0;
-  while First <= High(Tokens) do
+  mTokens := SqlTokens(ASql);
+  mFirst := 0;
+  while mFirst <= High(mTokens) do
   begin
-    Last := First;
-    while (Last <= High(Tokens)) and not ((Tokens[Last].Kind = TSqlTokenKind.Symbol) and
-      (Tokens[Last].Text = ';') and (Tokens[Last].Depth = Tokens[First].Depth)) do
+    mLast := mFirst;
+    while (mLast <= High(mTokens)) and not ((mTokens[mLast].Kind = TSqlTokenKind.Symbol) and
+      (mTokens[mLast].Text = ';') and (mTokens[mLast].Depth = mTokens[mFirst].Depth)) do
     begin
-      Inc(Last);
+      Inc(mLast);
     end;
-    if StatementWrite(Tokens, First, Last - 1, AStrictCase, Write) then
+    if StatementWrite(mTokens, mFirst, mLast - 1, AStrictCase, mWrite) then
     begin
-      Result := Result + [Write];
+      Result := Result + [mWrite];
     end;
-    First := Last + 1;
+    mFirst := mLast + 1;
   end;
 end;
 
@@ -419,11 +419,11 @@ begin
   Result := AScan;
   while Result <= High(ATokens) do
   begin
-    if IsWordIn(ATokens, Result, High(ATokens), SelectModifiers) then
+    if IsWordIn(ATokens, Result, High(ATokens), cSelectModifiers) then
     begin
       Inc(Result);
     end
-    else if IsWordIn(ATokens, Result, High(ATokens), SelectLimits) and (Result < High(ATokens)) then
+    else if IsWordIn(ATokens, Result, High(ATokens), cSelectLimits) and (Result < High(ATokens)) then
     begin
       Result := SkipSelectLimit(ATokens, Result, ALevel);
     end

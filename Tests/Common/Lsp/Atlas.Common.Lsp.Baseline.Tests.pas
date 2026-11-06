@@ -242,8 +242,8 @@ begin
   try
     Answer := Run(Command);
     try
-      Assert.AreEqual(TLspBaseline.Format, NumberAt(Answer, 'format'));
-      Assert.AreEqual(FullPath(BaselineFileName), TextAt(Answer, 'file'));
+      Assert.AreEqual(TLspBaseline.cFormat, NumberAt(Answer, 'format'));
+      Assert.AreEqual(FullPath(cBaselineFileName), TextAt(Answer, 'file'));
       Assert.AreEqual('none', TextAt(Answer, 'previous'));
       Assert.AreEqual(2, NumberAt(Answer, 'total'));
       Assert.AreEqual(2, NumberAt(Answer, 'files'));
@@ -257,8 +257,8 @@ begin
   finally
     Command.Free;
   end;
-  Assert.AreEqual(FullPath(BaselineFileName), Written);
-  Baseline := TRuleBaseline.FromJson(Disk[FullPath(BaselineFileName)]);
+  Assert.AreEqual(FullPath(cBaselineFileName), Written);
+  Baseline := TRuleBaseline.FromJson(Disk[FullPath(cBaselineFileName)]);
   Assert.AreEqual(2, Integer(Baseline.Count));
   Assert.AreEqual(0, Baseline.LegacyCount);
 end;
@@ -334,7 +334,7 @@ begin
   Reset;
   CheckFile(FullPath('A.pas'), Check);
   // Alte Datei unter dem früheren Namen und ohne Routine.
-  Disk.Add(FullPath(LegacyBaselineFileName), '{"version": 1, "findings": [{"path": "A.pas", "rule": "a", ' +
+  Disk.Add(FullPath(cLegacyBaselineFileName), '{"version": 1, "findings": [{"path": "A.pas", "rule": "a", ' +
     '"fingerprint": "' + TRuleBaseline.Fingerprint(UnitA, Check.Findings[0]) + '", "count": 1}]}');
   Command := MakeCommand([FullPath('A.pas')]);
   try
@@ -343,14 +343,14 @@ begin
       Assert.AreEqual('valid', TextAt(Answer, 'previous'));
       Assert.AreEqual(1, NumberAt(Answer, 'unchanged'));
       Assert.AreEqual(1, NumberAt(Answer, 'completed'));
-      Assert.AreEqual(FullPath(BaselineFileName), TextAt(Answer, 'file'));
+      Assert.AreEqual(FullPath(cBaselineFileName), TextAt(Answer, 'file'));
     finally
       Answer.Free;
     end;
   finally
     Command.Free;
   end;
-  Assert.IsTrue(Pos('"routine": "TFoo.Bar"', Disk[FullPath(BaselineFileName)]) > 0);
+  Assert.IsTrue(Pos('"routine": "TFoo.Bar"', Disk[FullPath(cBaselineFileName)]) > 0);
 end;
 
 procedure TLspBaselineTests.RefusesWithoutProjectFiles;
@@ -359,7 +359,7 @@ var
   Raised: Boolean;
 begin
   Reset;
-  Disk.Add(FullPath(BaselineFileName), '{"version": 1, "findings": []}');
+  Disk.Add(FullPath(cBaselineFileName), '{"version": 1, "findings": []}');
   Command := MakeCommand(nil);
   try
     Raised := False;
@@ -374,7 +374,7 @@ begin
     Command.Free;
   end;
   Assert.AreEqual('', Written);
-  Assert.AreEqual('{"version": 1, "findings": []}', Disk[FullPath(BaselineFileName)]);
+  Assert.AreEqual('{"version": 1, "findings": []}', Disk[FullPath(cBaselineFileName)]);
 end;
 
 procedure TLspBaselineTests.RefusesWithoutWorkspace;
@@ -414,13 +414,13 @@ var
   Answer: TJSONObject;
 begin
   Reset;
-  Disk.Add(FullPath(BaselineFileName), '{"version": 7}');
+  Disk.Add(FullPath(cBaselineFileName), '{"version": 7}');
   Command := MakeCommand([FullPath('A.pas')]);
   try
     Answer := Run(Command);
     try
       Assert.AreEqual('invalid', TextAt(Answer, 'previous'));
-      Assert.AreEqual(FullPath(BaselineFileName) + '.defekt', TextAt(Answer, 'setAside'));
+      Assert.AreEqual(FullPath(cBaselineFileName) + '.defekt', TextAt(Answer, 'setAside'));
       Assert.AreEqual(1, NumberAt(Answer, 'added'));
     finally
       Answer.Free;
@@ -428,8 +428,8 @@ begin
   finally
     Command.Free;
   end;
-  Assert.AreEqual('{"version": 7}', Disk[FullPath(BaselineFileName) + '.defekt'], 'alter Inhalt bleibt erhalten');
-  Assert.AreEqual(1, Integer(TRuleBaseline.FromJson(Disk[FullPath(BaselineFileName)]).Count));
+  Assert.AreEqual('{"version": 7}', Disk[FullPath(cBaselineFileName) + '.defekt'], 'alter Inhalt bleibt erhalten');
+  Assert.AreEqual(1, Integer(TRuleBaseline.FromJson(Disk[FullPath(cBaselineFileName)]).Count));
 end;
 
 procedure TLspBaselineTests.InvalidPreviousBaselineIsReplacedWhenSetAsideFails;
@@ -439,7 +439,7 @@ var
 begin
   Reset;
   Locked := True;
-  Disk.Add(FullPath(BaselineFileName), '{"version": 7}');
+  Disk.Add(FullPath(cBaselineFileName), '{"version": 7}');
   Command := MakeCommand([FullPath('A.pas')]);
   try
     Answer := Run(Command);
@@ -452,8 +452,8 @@ begin
   finally
     Command.Free;
   end;
-  Assert.IsFalse(Disk.ContainsKey(FullPath(BaselineFileName) + '.defekt'));
-  Assert.AreEqual(1, Integer(TRuleBaseline.FromJson(Disk[FullPath(BaselineFileName)]).Count));
+  Assert.IsFalse(Disk.ContainsKey(FullPath(cBaselineFileName) + '.defekt'));
+  Assert.AreEqual(1, Integer(TRuleBaseline.FromJson(Disk[FullPath(cBaselineFileName)]).Count));
 end;
 
 procedure TLspBaselineTests.UnreadableFileIsSkipped;

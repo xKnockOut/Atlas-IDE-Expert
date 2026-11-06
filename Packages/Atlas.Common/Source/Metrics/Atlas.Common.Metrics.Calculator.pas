@@ -70,13 +70,13 @@ uses
   Atlas.Common.Editing.RoutineLocals;
 
 const
-  ExpressionKinds = [TSyntaxKind.Identifier, TSyntaxKind.Literal, TSyntaxKind.MemberAccess, TSyntaxKind.Call,
+  cExpressionKinds = [TSyntaxKind.Identifier, TSyntaxKind.Literal, TSyntaxKind.MemberAccess, TSyntaxKind.Call,
     TSyntaxKind.IndexAccess, TSyntaxKind.Dereference, TSyntaxKind.AddressOf, TSyntaxKind.GenericArgs,
     TSyntaxKind.SetConstructor, TSyntaxKind.BinaryExpr, TSyntaxKind.UnaryExpr, TSyntaxKind.ParenExpr,
     TSyntaxKind.InheritedExpr, TSyntaxKind.RangeExpr, TSyntaxKind.IfExpr];
-  LoopKinds = [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
+  cLoopKinds = [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
     TSyntaxKind.RepeatStatement];
-  TypeBodyKinds = [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType,
+  cTypeBodyKinds = [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType,
     TSyntaxKind.InterfaceType, TSyntaxKind.HelperType];
 
 type
@@ -120,37 +120,37 @@ end;
 /// <summary>Index des ersten Tokens mit Offset ab AOffset.</summary>
 function FirstTokenAt(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
 var
-  Left, Right, Middle: Integer;
+  mLeft, mRight, mMiddle: Integer;
 begin
-  Left := 0;
-  Right := Length(ATokens);
-  while Left < Right do
+  mLeft := 0;
+  mRight := Length(ATokens);
+  while mLeft < mRight do
   begin
-    Middle := (Left + Right) div 2;
-    if ATokens[Middle].Offset < AOffset then
+    mMiddle := (mLeft + mRight) div 2;
+    if ATokens[mMiddle].Offset < AOffset then
     begin
-      Left := Middle + 1;
+      mLeft := mMiddle + 1;
     end
     else
     begin
-      Right := Middle;
+      mRight := mMiddle;
     end;
   end;
-  Result := Left;
+  Result := mLeft;
 end;
 
 /// <summary>Steht vor ANode (ohne Kommentare und Direktiven) das Schlüsselwort else?</summary>
 function AfterElse(const ATokens: TArray<TPascalToken>; ANode: TSyntaxNode): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := FirstTokenAt(ATokens, ANode.StartOffset) - 1;
-  while (Index >= 0) and ((ATokens[Index].Kind = TPascalTokenKind.Comment) or
-    (ATokens[Index].Kind = TPascalTokenKind.Directive)) do
+  mIndex := FirstTokenAt(ATokens, ANode.StartOffset) - 1;
+  while (mIndex >= 0) and ((ATokens[mIndex].Kind = TPascalTokenKind.Comment) or
+    (ATokens[mIndex].Kind = TPascalTokenKind.Directive)) do
   begin
-    Dec(Index);
+    Dec(mIndex);
   end;
-  Result := (Index >= 0) and ATokens[Index].IsKeyword('else');
+  Result := (mIndex >= 0) and ATokens[mIndex].IsKeyword('else');
 end;
 
 /// <summary>else-Zweig eines if; nil ohne.</summary>
@@ -175,19 +175,19 @@ end;
 /// <summary>Setzt ANode (and/or) eine Folge desselben Operators fort? Klammern zählen nicht.</summary>
 function ContinuesSequence(ANode: TSyntaxNode): Boolean;
 var
-  Parent: TSyntaxNode;
+  mParent: TSyntaxNode;
 begin
-  Parent := ANode.Parent;
-  while (Parent <> nil) and (Parent.Kind = TSyntaxKind.ParenExpr) do
+  mParent := ANode.Parent;
+  while (mParent <> nil) and (mParent.Kind = TSyntaxKind.ParenExpr) do
   begin
-    Parent := Parent.Parent;
+    mParent := mParent.Parent;
   end;
-  Result := (Parent <> nil) and (Parent.Kind = TSyntaxKind.BinaryExpr) and SameText(Parent.Name, ANode.Name);
+  Result := (mParent <> nil) and (mParent.Kind = TSyntaxKind.BinaryExpr) and SameText(mParent.Name, ANode.Name);
 end;
 
 function NameCount(const ANames: string): Integer;
 var
-  Position: Integer;
+  mPosition: Integer;
 begin
   Result := 0;
   if Trim(ANames) = '' then
@@ -195,9 +195,9 @@ begin
     Exit;
   end;
   Result := 1;
-  for Position := 1 to Length(ANames) do
+  for mPosition := 1 to Length(ANames) do
   begin
-    if ANames[Position] = ',' then
+    if ANames[mPosition] = ',' then
     begin
       Inc(Result);
     end;
@@ -207,35 +207,35 @@ end;
 /// <summary>Exit bzw. Exit(Wert) als Anweisung.</summary>
 function IsExitCall(ANode: TSyntaxNode): Boolean;
 var
-  Target: TSyntaxNode;
+  mTarget: TSyntaxNode;
 begin
   Result := False;
   if (ANode.Kind <> TSyntaxKind.CallStatement) or (ANode.ChildCount = 0) then
   begin
     Exit;
   end;
-  Target := ANode[0];
-  if (Target.Kind = TSyntaxKind.Call) and (Target.ChildCount > 0) then
+  mTarget := ANode[0];
+  if (mTarget.Kind = TSyntaxKind.Call) and (mTarget.ChildCount > 0) then
   begin
-    Target := Target[0];
+    mTarget := mTarget[0];
   end;
-  Result := (Target.Kind = TSyntaxKind.Identifier) and SameText(Target.Name, 'Exit');
+  Result := (mTarget.Kind = TSyntaxKind.Identifier) and SameText(mTarget.Name, 'Exit');
 end;
 
 function BodyOf(ARoutine: TSyntaxNode): TSyntaxNode;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
   if ARoutine = nil then
   begin
     Exit;
   end;
-  for Index := ARoutine.ChildCount - 1 downto 0 do
+  for mIndex := ARoutine.ChildCount - 1 downto 0 do
   begin
-    if ARoutine[Index].Kind = TSyntaxKind.Block then
+    if ARoutine[mIndex].Kind = TSyntaxKind.Block then
     begin
-      Exit(ARoutine[Index]);
+      Exit(ARoutine[mIndex]);
     end;
   end;
 end;
@@ -306,7 +306,7 @@ procedure TFlowAnalyzer.PushCondition(AChild: TSyntaxNode; ADepth, ALevel: Integ
 var
   mCount: Integer;
 begin
-  if AChild.Kind in ExpressionKinds then
+  if AChild.Kind in cExpressionKinds then
   begin
     mCount := TMetricsCalculator.Operands(AChild);
     if mCount > FFlow.Operands then
@@ -478,7 +478,7 @@ function IsLoopCondition(ANode: TSyntaxNode; AIndex: Integer): Boolean;
 begin
   Result := ((ANode.Kind = TSyntaxKind.WhileStatement) and (AIndex = 0)) or
     ((ANode.Kind = TSyntaxKind.RepeatStatement) and (AIndex = ANode.ChildCount - 1) and
-    (ANode[AIndex].Kind in ExpressionKinds));
+    (ANode[AIndex].Kind in cExpressionKinds));
 end;
 
 procedure TFlowAnalyzer.VisitLoop(const AItem: TVisit);
@@ -548,7 +548,7 @@ var
   mInner: Boolean;
 begin
   CountSimple(AItem);
-  mInner := AItem.Condition and (AItem.Node.Kind in ExpressionKinds);
+  mInner := AItem.Condition and (AItem.Node.Kind in cExpressionKinds);
   for mIndex := 0 to AItem.Node.ChildCount - 1 do
   begin
     Push(AItem.Node[mIndex], AItem.Depth, AItem.Level, mInner);
@@ -575,7 +575,7 @@ begin
     TSyntaxKind.AnonymousMethod:
       VisitAnonymous(AItem);
   else
-    if AItem.Node.Kind in LoopKinds then
+    if AItem.Node.Kind in cLoopKinds then
     begin
       VisitLoop(AItem);
     end
@@ -628,20 +628,20 @@ end;
 /// <summary>Namen im var-Abschnitt von ARoutine (nicht in lokalen Routinen).</summary>
 function DeclaredLocals(ARoutine: TSyntaxNode): Integer;
 var
-  Index, Inner: Integer;
-  Section: TSyntaxNode;
+  mIndex, mInner: Integer;
+  mSection: TSyntaxNode;
 begin
   Result := 0;
-  for Index := 0 to ARoutine.ChildCount - 1 do
+  for mIndex := 0 to ARoutine.ChildCount - 1 do
   begin
-    Section := ARoutine[Index];
-    if Section.Kind = TSyntaxKind.VarSection then
+    mSection := ARoutine[mIndex];
+    if mSection.Kind = TSyntaxKind.VarSection then
     begin
-      for Inner := 0 to Section.ChildCount - 1 do
+      for mInner := 0 to mSection.ChildCount - 1 do
       begin
-        if Section[Inner].Kind = TSyntaxKind.VarDecl then
+        if mSection[mInner].Kind = TSyntaxKind.VarDecl then
         begin
-          Inc(Result, NameCount(Section[Inner].Name));
+          Inc(Result, NameCount(mSection[mInner].Name));
         end;
       end;
     end;
@@ -685,7 +685,7 @@ begin
         // Lokale Routinen stehen als Kinder darin.
         PushLocalRoutines(mStack, mNode);
       end
-      else if not (mNode.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock] + ExpressionKinds) then
+      else if not (mNode.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock] + cExpressionKinds) then
       begin
         for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
@@ -701,65 +701,66 @@ end;
 /// <summary>Qualifizierter Name der Typen um ANode, z. B. "TFoo.TInner"; '' außerhalb von Typen.</summary>
 function OwnerName(ANode: TSyntaxNode): string;
 var
-  Parent: TSyntaxNode;
+  mParent: TSyntaxNode;
 begin
   Result := '';
-  Parent := ANode.Parent;
-  while Parent <> nil do
+  mParent := ANode.Parent;
+  while mParent <> nil do
   begin
-    if (Parent.Kind = TSyntaxKind.TypeDecl) and (Result = '') then
+    if (mParent.Kind = TSyntaxKind.TypeDecl) and (Result = '') then
     begin
-      Result := Parent.Name;
+      Result := mParent.Name;
     end
-    else if Parent.Kind = TSyntaxKind.TypeDecl then
+    else if mParent.Kind = TSyntaxKind.TypeDecl then
     begin
-      Result := Parent.Name + '.' + Result;
+      Result := mParent.Name + '.' + Result;
     end;
-    Parent := Parent.Parent;
+    mParent := mParent.Parent;
   end;
 end;
 
 /// <summary>Parameterzahl der Deklarationen in Typen: Großbuchstaben-Name → Zahl, -1 bei Überladungen.</summary>
 function Declarations(ATree: TSyntaxTree): TDictionary<string, Integer>;
 var
-  Stack: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Index, Count: Integer;
-  Key: string;
+  mStack: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex, mCount: Integer;
+  mKey: string;
 begin
   Result := TDictionary<string, Integer>.Create;
-  Stack := TStack<TSyntaxNode>.Create;
+  mStack := TStack<TSyntaxNode>.Create;
   try
-    Stack.Push(ATree.Root);
-    while Stack.Count > 0 do
+    mStack.Push(ATree.Root);
+    while mStack.Count > 0 do
     begin
-      Node := Stack.Pop;
-      if (Node.Kind = TSyntaxKind.RoutineHeader) and (Node.Parent <> nil) and (Node.Parent.Kind in TypeBodyKinds) then
+      mNode := mStack.Pop;
+      if (mNode.Kind = TSyntaxKind.RoutineHeader) and (mNode.Parent <> nil) and
+        (mNode.Parent.Kind in cTypeBodyKinds) then
       begin
-        Key := UpperCase(OwnerName(Node) + '.' + Node.Name);
-        Count := TMetricsCalculator.ParameterCount(Node);
-        if Result.ContainsKey(Key) then
+        mKey := UpperCase(OwnerName(mNode) + '.' + mNode.Name);
+        mCount := TMetricsCalculator.ParameterCount(mNode);
+        if Result.ContainsKey(mKey) then
         begin
-          Result[Key] := -1;
+          Result[mKey] := -1;
         end
         else
         begin
-          Result.Add(Key, Count);
+          Result.Add(mKey, mCount);
         end;
         Continue;
       end;
       // Rümpfe enthalten keine Typdeklarationen mit Methoden, die hier fehlen würden.
-      if Node.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock] then
+      if mNode.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock] then
       begin
         Continue;
       end;
-      for Index := 0 to Node.ChildCount - 1 do
+      for mIndex := 0 to mNode.ChildCount - 1 do
       begin
-        Stack.Push(Node[Index]);
+        mStack.Push(mNode[mIndex]);
       end;
     end;
   finally
-    Stack.Free;
+    mStack.Free;
   end;
 end;
 
@@ -851,36 +852,36 @@ end;
 
 class function TMetricsCalculator.ParameterCount(AHeader: TSyntaxNode): Integer;
 var
-  Parameters, Parameter: TSyntaxNode;
-  Index, Position: Integer;
-  Names: string;
+  mParameters, mParameter: TSyntaxNode;
+  mIndex, mPosition: Integer;
+  mNames: string;
 begin
   Result := 0;
   if AHeader = nil then
   begin
     Exit;
   end;
-  Parameters := AHeader.FindChild(TSyntaxKind.Parameters);
-  if Parameters = nil then
+  mParameters := AHeader.FindChild(TSyntaxKind.Parameters);
+  if mParameters = nil then
   begin
     Exit;
   end;
-  for Index := 0 to Parameters.ChildCount - 1 do
+  for mIndex := 0 to mParameters.ChildCount - 1 do
   begin
-    Parameter := Parameters[Index];
-    if Parameter.Kind <> TSyntaxKind.Parameter then
+    mParameter := mParameters[mIndex];
+    if mParameter.Kind <> TSyntaxKind.Parameter then
     begin
       Continue;
     end;
-    Names := Trim(Parameter.Name);
-    if Names = '' then
+    mNames := Trim(mParameter.Name);
+    if mNames = '' then
     begin
       Continue;
     end;
     Inc(Result);
-    for Position := 1 to Length(Names) do
+    for mPosition := 1 to Length(mNames) do
     begin
-      if Names[Position] = ',' then
+      if mNames[mPosition] = ',' then
       begin
         Inc(Result);
       end;
@@ -1057,27 +1058,27 @@ end;
 
 class function TMetricsCalculator.Operands(AExpression: TSyntaxNode): Integer;
 var
-  Stack: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
+  mStack: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
 begin
   // Iterativ: lange Ketten ergeben tiefe Bäume.
   Result := 0;
-  Stack := TStack<TSyntaxNode>.Create;
+  mStack := TStack<TSyntaxNode>.Create;
   try
-    Stack.Push(AExpression);
-    while Stack.Count > 0 do
+    mStack.Push(AExpression);
+    while mStack.Count > 0 do
     begin
-      Node := Stack.Pop;
-      if (Node.Kind = TSyntaxKind.BinaryExpr) and (Node.ChildCount = 2) and (SameText(Node.Name, 'and') or
-        SameText(Node.Name, 'or') or SameText(Node.Name, 'xor')) then
+      mNode := mStack.Pop;
+      if (mNode.Kind = TSyntaxKind.BinaryExpr) and (mNode.ChildCount = 2) and (SameText(mNode.Name, 'and') or
+        SameText(mNode.Name, 'or') or SameText(mNode.Name, 'xor')) then
       begin
-        Stack.Push(Node[1]);
-        Stack.Push(Node[0]);
+        mStack.Push(mNode[1]);
+        mStack.Push(mNode[0]);
       end
-      else if ((Node.Kind = TSyntaxKind.ParenExpr) or ((Node.Kind = TSyntaxKind.UnaryExpr) and
-        SameText(Node.Name, 'not'))) and (Node.ChildCount = 1) then
+      else if ((mNode.Kind = TSyntaxKind.ParenExpr) or ((mNode.Kind = TSyntaxKind.UnaryExpr) and
+        SameText(mNode.Name, 'not'))) and (mNode.ChildCount = 1) then
       begin
-        Stack.Push(Node[0]);
+        mStack.Push(mNode[0]);
       end
       else
       begin
@@ -1085,71 +1086,71 @@ begin
       end;
     end;
   finally
-    Stack.Free;
+    mStack.Free;
   end;
 end;
 
 class function TMetricsCalculator.Conditions(ATree: TSyntaxTree): TArray<TConditionMetrics>;
 var
-  Routine, Node: TSyntaxNode;
-  Found: TList<TSyntaxNode>;
-  Item: TConditionMetrics;
+  mRoutine, mNode: TSyntaxNode;
+  mFound: TList<TSyntaxNode>;
+  mItem: TConditionMetrics;
 begin
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) then
   begin
     Exit;
   end;
-  Found := TList<TSyntaxNode>.Create;
+  mFound := TList<TSyntaxNode>.Create;
   try
-    for Routine in FindRoutines(ATree) do
+    for mRoutine in FindRoutines(ATree) do
     begin
-      AnalyzeWith(ATree, Routine, Found);
+      AnalyzeWith(ATree, mRoutine, mFound);
     end;
-    Found.Sort(TComparer<TSyntaxNode>.Construct(
+    mFound.Sort(TComparer<TSyntaxNode>.Construct(
       function(const A, B: TSyntaxNode): Integer
       begin
         Result := A.StartOffset - B.StartOffset;
       end));
-    for Node in Found do
+    for mNode in mFound do
     begin
-      Item.Range := TTextRange.Create(Node.StartPos, Node.EndPos);
-      Item.StartOffset := Node.StartOffset;
-      Item.EndOffset := Node.EndOffset;
-      Item.Operands := Operands(Node);
-      Result := Result + [Item];
+      mItem.Range := TTextRange.Create(mNode.StartPos, mNode.EndPos);
+      mItem.StartOffset := mNode.StartOffset;
+      mItem.EndOffset := mNode.EndOffset;
+      mItem.Operands := Operands(mNode);
+      Result := Result + [mItem];
     end;
   finally
-    Found.Free;
+    mFound.Free;
   end;
 end;
 
 class function TMetricsCalculator.MemberCount(AClass: TSyntaxNode): Integer;
 var
-  Index, Inner: Integer;
-  Child: TSyntaxNode;
+  mIndex, mInner: Integer;
+  mChild: TSyntaxNode;
 begin
   Result := 0;
-  for Index := 0 to AClass.ChildCount - 1 do
+  for mIndex := 0 to AClass.ChildCount - 1 do
   begin
-    Child := AClass[Index];
-    case Child.Kind of
+    mChild := AClass[mIndex];
+    case mChild.Kind of
       TSyntaxKind.Field:
-        Inc(Result, NameCount(Child.Name));
+        Inc(Result, NameCount(mChild.Name));
       TSyntaxKind.RoutineHeader:
         Inc(Result);
       // property Align; hebt nur die Sichtbarkeit an und ist kein neues Member.
       TSyntaxKind.PropertyDecl:
-        if Child.FindChild(TSyntaxKind.TypeReference) <> nil then
+        if mChild.FindChild(TSyntaxKind.TypeReference) <> nil then
         begin
           Inc(Result);
         end;
       TSyntaxKind.VarSection:
-        for Inner := 0 to Child.ChildCount - 1 do
+        for mInner := 0 to mChild.ChildCount - 1 do
         begin
-          if Child[Inner].Kind in [TSyntaxKind.VarDecl, TSyntaxKind.Field] then
+          if mChild[mInner].Kind in [TSyntaxKind.VarDecl, TSyntaxKind.Field] then
           begin
-            Inc(Result, NameCount(Child[Inner].Name));
+            Inc(Result, NameCount(mChild[mInner].Name));
           end;
         end;
     else
@@ -1249,7 +1250,7 @@ begin
         end;
         Inc(Result.UsesTotal, UsedUnitCount(mNode));
       end
-      else if not (mNode.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock] + ExpressionKinds) then
+      else if not (mNode.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock] + cExpressionKinds) then
       begin
         if (mNode.Kind = TSyntaxKind.TypeDecl) and ClassSizeOf(ATree.Tokens, mNode, mItem) then
         begin
@@ -1316,26 +1317,26 @@ end;
 
 class function TMetricsCalculator.StructureForText(const AText: string): TArray<TStructureMetrics>;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TSyntaxTreeCache.Parse(AText);
+  mTree := TSyntaxTreeCache.Parse(AText);
   try
-    Result := Structure(Tree);
+    Result := Structure(mTree);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 class function TMetricsCalculator.ForText(const AText: string): TArray<TRoutineMetrics>;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
   // Über den Cache: TSyntaxTreeCacheTests.NoParserCallsOutsideCache verlangt das für alle Parser-Aufrufe.
-  Tree := TSyntaxTreeCache.Parse(AText);
+  mTree := TSyntaxTreeCache.Parse(AText);
   try
-    Result := Routines(Tree);
+    Result := Routines(mTree);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 

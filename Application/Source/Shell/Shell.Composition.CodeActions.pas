@@ -101,9 +101,9 @@ begin
       begin
         mAction := Default(TCodeAction);
         mAction.Title := 'Formular in Text umwandeln';
-        mAction.Kind := QuickFixKind;
+        mAction.Kind := cQuickFixKind;
         mAction.IsPreferred := True;
-        mAction.Command := TLspFormFiles.ConvertCommand;
+        mAction.Command := TLspFormFiles.cConvertCommand;
         mAction.CommandArguments := [AUri];
         Result := [mAction];
       end;

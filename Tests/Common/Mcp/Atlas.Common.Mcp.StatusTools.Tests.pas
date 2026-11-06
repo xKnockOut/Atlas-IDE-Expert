@@ -45,7 +45,7 @@ begin
   Result.Units := 7;
   Result.ProcessId := 77;
   Result.Version := '1.2.0';
-  Result.State := TServerStatus.StateReady;
+  Result.State := TServerStatus.cStateReady;
 end;
 
 procedure TMcpStatusToolsTests.Setup;
@@ -58,7 +58,7 @@ begin
   mStatus.Units := 1234;
   mStatus.ProcessId := 4711;
   mStatus.Version := '1.2.0';
-  mStatus.State := TServerStatus.StateChecking;
+  mStatus.State := TServerStatus.cStateChecking;
   mJson := mStatus.ToJson;
   try
     TServerStatusFile.Write(FRoot, 4711, [TPath.Combine(FRoot, 'App')], mJson, cNow);

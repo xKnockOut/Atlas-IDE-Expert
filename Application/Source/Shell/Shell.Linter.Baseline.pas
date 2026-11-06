@@ -82,11 +82,11 @@ begin
   end;
   if AOptions.UpdateBaseline then
   begin
-    Result := TPath.Combine(AConfigRoot, BaselineFileName);
+    Result := TPath.Combine(AConfigRoot, cBaselineFileName);
   end
   else
   begin
-    Result := ExistingOrLegacyFile(AConfigRoot, BaselineFileName, LegacyBaselineFileName);
+    Result := ExistingOrLegacyFile(AConfigRoot, cBaselineFileName, cLegacyBaselineFileName);
   end;
 end;
 

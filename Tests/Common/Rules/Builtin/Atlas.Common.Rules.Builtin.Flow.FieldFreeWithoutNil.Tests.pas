@@ -46,7 +46,7 @@ begin
   mFindings := TRuleAssert.Findings(TFieldFreeWithoutNilRule.Create, ClassUnit(
     'procedure TLader.Leeren;'#10'begin'#10'  FDaten.Free;'#10'end;'#10));
   Assert.AreEqual(1, Integer(Length(mFindings)));
-  Assert.AreEqual(FieldFreeWithoutNilRuleId, mFindings[0].RuleId);
+  Assert.AreEqual(cFieldFreeWithoutNilRuleId, mFindings[0].RuleId);
   Assert.AreEqual('FreeAndNil(FDaten)', mFindings[0].Fixes[0].Edits[0].NewText);
 end;
 

@@ -144,15 +144,15 @@ begin
   TDirectory.CreateDirectory(Path('Repo\.git'));
   TDirectory.CreateDirectory(Path('Repo\A\B'));
   // Ohne Datei bleibt der Name im Ordner des Ziels.
-  Assert.AreEqual(TPath.Combine(Path('Repo\A\B'), ConfigurationFileName),
+  Assert.AreEqual(TPath.Combine(Path('Repo\A\B'), cConfigurationFileName),
     TLinterSettings.ConfigFileOf(Path('Repo\A\B')));
-  WriteFile('Repo\' + ConfigurationFileName, '{}');
-  Assert.AreEqual(IncludeTrailingPathDelimiter(Path('Repo')) + ConfigurationFileName,
+  WriteFile('Repo\' + cConfigurationFileName, '{}');
+  Assert.AreEqual(IncludeTrailingPathDelimiter(Path('Repo')) + cConfigurationFileName,
     TLinterSettings.ConfigFileOf(Path('Repo\A\B')));
   // Über dem Stamm des Repositorys wird nicht gesucht.
-  WriteFile(ConfigurationFileName, '{}');
+  WriteFile(cConfigurationFileName, '{}');
   TDirectory.CreateDirectory(Path('Repo\A\.git'));
-  Assert.AreEqual(TPath.Combine(Path('Repo\A\B'), ConfigurationFileName),
+  Assert.AreEqual(TPath.Combine(Path('Repo\A\B'), cConfigurationFileName),
     TLinterSettings.ConfigFileOf(Path('Repo\A\B')));
 end;
 
@@ -219,7 +219,7 @@ var
   mOptions: TCommandLineOptions;
 begin
   mOptions := TCommandLineOptions.Parse(['--check', FFolder, '--update-baseline']);
-  Assert.AreEqual(TPath.Combine(FFolder, BaselineFileName), TLinterBaseline.PathOf(mOptions, FFolder));
+  Assert.AreEqual(TPath.Combine(FFolder, cBaselineFileName), TLinterBaseline.PathOf(mOptions, FFolder));
   Assert.IsTrue(TLinterBaseline.Load(mOptions, Path('Fehlt.json'), mBaseline), 'Neuschreiben ohne alte Datei');
   Assert.IsNull(mBaseline);
   mOptions := TCommandLineOptions.Parse(['--check', FFolder, '--baseline', Path('Fehlt.json')]);

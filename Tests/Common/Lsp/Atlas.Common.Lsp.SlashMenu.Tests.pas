@@ -422,7 +422,7 @@ begin
       end;
       Args := TJSONArray(Position.Clone);
       try
-        Args.Add(TLspSlashMenu.ImplementName);
+        Args.Add(TLspSlashMenu.cImplementName);
         Answer := FMenu.ExecuteChoices(Args);
         try
           Assert.AreEqual(1, Integer(TJSONArray(Answer).Count));

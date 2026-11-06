@@ -436,7 +436,7 @@ begin
   Result.ProcessId := 4711;
   Result.Version := '1.2.0';
   Result.UptimeMs := 65000;
-  Result.State := TServerStatus.StateChecking;
+  Result.State := TServerStatus.cStateChecking;
   Result.Memory.Symbols := 10 * 1024 * 1024;
   Result.Memory.Usages := 20 * 1024 * 1024;
   Result.Memory.LibraryUnits := 30 * 1024 * 1024;

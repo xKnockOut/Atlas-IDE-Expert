@@ -43,7 +43,8 @@ type
   public
     constructor Create(const AReader: TUsesTextReader; const ADefines: TUsesDefinesFunc);
     destructor Destroy; override;
-    /// <summary>Einträge aus den uses-Listen (ohne requires/contains) von AText, inaktive Zweige ausgeblendet.</summary>
+    /// <summary>Einträge aus den uses-Listen (ohne requires/contains) von AText, inaktive Zweige
+    /// ausgeblendet.</summary>
     class function UsesReferences(const AText: string; const ADefines: TArray<string>): TArray<TUsesReference>; static;
     /// <summary>Fundstelle der Kante; False, wenn die Datei fehlt oder der Eintrag nicht (mehr) dort steht.</summary>
     function Locate(AGraph: TUsesGraph; const AEdge: TUsesEdge; out ALocation: TUsesLocation): Boolean;
@@ -73,72 +74,72 @@ end;
 
 class function TUsesLocator.UsesReferences(const AText: string; const ADefines: TArray<string>): TArray<TUsesReference>;
 var
-  Reference: TUsesReference;
+  mReference: TUsesReference;
 begin
   Result := nil;
-  for Reference in TUsesClauses.References(TPascalLexer.Tokenize(TIndexExtractor.BlankInactive(AText, ADefines))) do
+  for mReference in TUsesClauses.References(TPascalLexer.Tokenize(TIndexExtractor.BlankInactive(AText, ADefines))) do
   begin
-    if Reference.List = TUsesListKind.UsesList then
+    if mReference.List = TUsesListKind.UsesList then
     begin
-      Result := Result + [Reference];
+      Result := Result + [mReference];
     end;
   end;
 end;
 
 function TUsesLocator.ReferencesOf(const ANode: TUsesNode): TArray<TUsesReference>;
 var
-  Key, Text: string;
-  Defines: TArray<string>;
+  mKey, mText: string;
+  mDefines: TArray<string>;
 begin
-  Key := LowerCase(ANode.FileName) + '|' + ANode.Hash;
-  if FCache.TryGetValue(Key, Result) then
+  mKey := LowerCase(ANode.FileName) + '|' + ANode.Hash;
+  if FCache.TryGetValue(mKey, Result) then
   begin
     Exit;
   end;
   Result := nil;
-  if Assigned(FReader) and FReader(ANode.FileName, Text) then
+  if Assigned(FReader) and FReader(ANode.FileName, mText) then
   begin
-    Defines := nil;
+    mDefines := nil;
     if Assigned(FDefines) then
     begin
-      Defines := FDefines(ANode.FileName);
+      mDefines := FDefines(ANode.FileName);
     end;
-    Result := UsesReferences(Text, Defines);
+    Result := UsesReferences(mText, mDefines);
   end;
-  FCache.AddOrSetValue(Key, Result);
+  FCache.AddOrSetValue(mKey, Result);
 end;
 
 function TUsesLocator.Locate(AGraph: TUsesGraph; const AEdge: TUsesEdge; out ALocation: TUsesLocation): Boolean;
 var
-  Node: TUsesNode;
-  Reference: TUsesReference;
-  InInterface: Boolean;
-  Order: Integer;
+  mNode: TUsesNode;
+  mReference: TUsesReference;
+  mInInterface: Boolean;
+  mOrder: Integer;
 begin
   ALocation := Default(TUsesLocation);
-  Node := AGraph.Node(AEdge.Source);
-  ALocation.FileName := Node.FileName;
-  InInterface := AEdge.Section = TUsesSection.Interface_;
+  mNode := AGraph.Node(AEdge.Source);
+  ALocation.FileName := mNode.FileName;
+  mInInterface := AEdge.Section = TUsesSection.Interface_;
   // Zuerst derselbe Name im selben Abschnitt an derselben Stelle der Liste, sonst der erste mit dem Namen.
-  Order := 0;
-  for Reference in ReferencesOf(Node) do
+  mOrder := 0;
+  for mReference in ReferencesOf(mNode) do
   begin
-    if Reference.InInterface <> InInterface then
+    if mReference.InInterface <> mInInterface then
     begin
       Continue;
     end;
-    if SameText(Reference.Name, AEdge.Name) and (Order = AEdge.Order) then
+    if SameText(mReference.Name, AEdge.Name) and (mOrder = AEdge.Order) then
     begin
-      ALocation.Range := Reference.Range;
+      ALocation.Range := mReference.Range;
       Exit(True);
     end;
-    Inc(Order);
+    Inc(mOrder);
   end;
-  for Reference in ReferencesOf(Node) do
+  for mReference in ReferencesOf(mNode) do
   begin
-    if (Reference.InInterface = InInterface) and SameText(Reference.Name, AEdge.Name) then
+    if (mReference.InInterface = mInInterface) and SameText(mReference.Name, AEdge.Name) then
     begin
-      ALocation.Range := Reference.Range;
+      ALocation.Range := mReference.Range;
       Exit(True);
     end;
   end;

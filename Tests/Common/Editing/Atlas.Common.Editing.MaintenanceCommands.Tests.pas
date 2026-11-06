@@ -208,7 +208,7 @@ begin
     'implementation'#10'procedure P;'#10'begin'#10'  Format('''', []);'#10'end;'#10'end.';
   Host := UsesHost;
   Keep := Host;
-  Host.Settings := [TSlashSettings.SortUsesRemoveUnused + '=false'];
+  Host.Settings := [TSlashSettings.cSortUsesRemoveUnused + '=false'];
   Assert.AreEqual(Expected, ExpandWith(UnusedText, 5, Keep));
   // usesKeep hält die Unit ebenfalls.
   Host.Settings := nil;
@@ -295,7 +295,7 @@ var
 begin
   Host := TRecordingSlashHost.Create;
   Keep := Host;
-  Host.Settings := [TSlashSettings.TodoOwner + '=Marco', TSlashSettings.TodoCategory + '=Review'];
+  Host.Settings := [TSlashSettings.cTodoOwner + '=Marco', TSlashSettings.cTodoCategory + '=Review'];
   Assert.AreEqual(Format(Routine, ['// TODO -oMarco -cReview : Fehlerfall prüfen']),
     ExpandWith(Format(Routine, ['/todo Fehlerfall prüfen']), 5, Keep));
 end;
@@ -307,7 +307,7 @@ var
 begin
   Host := TRecordingSlashHost.Create;
   Keep := Host;
-  Host.Settings := [TSlashSettings.TodoOwner + '=Marco', TSlashSettings.TodoCategory + '=Review'];
+  Host.Settings := [TSlashSettings.cTodoOwner + '=Marco', TSlashSettings.cTodoCategory + '=Review'];
   Assert.AreEqual(Format(Routine, ['// TODO -oEva -cTest : Fehlerfall prüfen']),
     ExpandWith(Format(Routine, ['/todo -oEva -cTest Fehlerfall prüfen']), 5, Keep));
   // -c ohne Kategorie lässt sie weg, -o ohne Namen nimmt den Standardnamen.

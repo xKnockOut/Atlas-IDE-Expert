@@ -913,7 +913,7 @@ begin
   // (Diagnoselog 15.10.2026). Weder vorher noch danach darf ein alter Stand auftauchen.
   Index := TSymbolIndex.Create;
   Index.AddUnit(MakeUnit('B', 'C:\B.pas', ['TFoo'], 'TBase'));
-  for Round := 1 to 3 * TSymbolIndex.RebuildDeadRefs do
+  for Round := 1 to 3 * TSymbolIndex.cRebuildDeadRefs do
   begin
     if Odd(Round) then
     begin

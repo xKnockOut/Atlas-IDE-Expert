@@ -181,8 +181,8 @@ function ReadXmlDocExpand(AReader: TConfigurationReader; AValue: TJsonNode; var 
 var
   mIndex: Integer;
 begin
-  Result := AReader.ExpectChoice(AValue, 'xmlDocExpand', [THintSettings.ExpandCollapsed, THintSettings.ExpandLast,
-    THintSettings.ExpandExpanded], cTexts[TEditorOptionsText.XmlDocExpandMustBeCollapsedLast].Text, mIndex);
+  Result := AReader.ExpectChoice(AValue, 'xmlDocExpand', [THintSettings.cExpandCollapsed, THintSettings.cExpandLast,
+    THintSettings.cExpandExpanded], cTexts[TEditorOptionsText.XmlDocExpandMustBeCollapsedLast].Text, mIndex);
   if Result then
   begin
     AHints.XmlDocExpand := AValue.Value;
@@ -208,19 +208,19 @@ begin
   end;
   if mFull then
   begin
-    AHints.XmlDocExpand := THintSettings.ExpandExpanded;
+    AHints.XmlDocExpand := THintSettings.cExpandExpanded;
   end
   else
   begin
-    AHints.XmlDocExpand := THintSettings.ExpandCollapsed;
+    AHints.XmlDocExpand := THintSettings.cExpandCollapsed;
   end;
 end;
 
 procedure ReadXmlDocMaxLines(AReader: TConfigurationReader; AValue: TJsonNode; const AKey: string;
   var ASettings: TServerSettings);
 begin
-  AReader.ExpectInteger(AValue, 0, THintSettings.MaxXmlDocLines,
-    cTexts[TEditorOptionsText.XmlDocMaxLinesMustBeAWhole].Fmt([THintSettings.MaxXmlDocLines]),
+  AReader.ExpectInteger(AValue, 0, THintSettings.cMaxXmlDocLines,
+    cTexts[TEditorOptionsText.XmlDocMaxLinesMustBeAWhole].Fmt([THintSettings.cMaxXmlDocLines]),
     ASettings.Hints.XmlDocMaxLines);
 end;
 

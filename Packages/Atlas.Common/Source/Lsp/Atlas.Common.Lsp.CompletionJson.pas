@@ -248,23 +248,23 @@ end;
 // Alle Felder zuweisen (#491): Zeilen für die Liste mit Kontrollkästchen.
 procedure WriteAssignments(const AItem: TCompletionItem; AData: TJSONObject);
 var
-  Lines: TJSONArray;
-  Line: TJSONObject;
-  Assignment: TCompletionAssignment;
+  mLines: TJSONArray;
+  mLine: TJSONObject;
+  mAssignment: TCompletionAssignment;
 begin
   if Length(AItem.Assignments) = 0 then
   begin
     Exit;
   end;
-  Lines := TJSONArray.Create;
-  AData.AddPair('assign', Lines);
-  for Assignment in AItem.Assignments do
+  mLines := TJSONArray.Create;
+  AData.AddPair('assign', mLines);
+  for mAssignment in AItem.Assignments do
   begin
-    Line := TJSONObject.Create;
-    Line.AddPair('name', Assignment.Name);
-    Line.AddPair('detail', Assignment.Detail);
-    Line.AddPair('text', Assignment.Text);
-    Lines.AddElement(Line);
+    mLine := TJSONObject.Create;
+    mLine.AddPair('name', mAssignment.Name);
+    mLine.AddPair('detail', mAssignment.Detail);
+    mLine.AddPair('text', mAssignment.Text);
+    mLines.AddElement(mLine);
   end;
 end;
 
@@ -315,8 +315,8 @@ end;
 /// <summary>Mitglied eines with-Objekts (#481): Ausdruck und verdeckte Namen.</summary>
 procedure WriteWith(const AItem: TCompletionItem; AData: TJSONObject);
 var
-  Shadows: TJSONArray;
-  Text: string;
+  mShadows: TJSONArray;
+  mText: string;
 begin
   if AItem.WithOrigin = '' then
   begin
@@ -327,46 +327,46 @@ begin
   begin
     Exit;
   end;
-  Shadows := TJSONArray.Create;
-  AData.AddPair('withShadows', Shadows);
-  for Text in AItem.WithShadows do
+  mShadows := TJSONArray.Create;
+  AData.AddPair('withShadows', mShadows);
+  for mText in AItem.WithShadows do
   begin
-    Shadows.Add(Text);
+    mShadows.Add(mText);
   end;
 end;
 
 procedure WriteHides(const AItem: TCompletionItem; AData: TJSONObject);
 var
-  Hides: TJSONArray;
-  Text: string;
+  mHides: TJSONArray;
+  mText: string;
 begin
   if Length(AItem.Hides) = 0 then
   begin
     Exit;
   end;
-  Hides := TJSONArray.Create;
-  AData.AddPair('hides', Hides);
-  for Text in AItem.Hides do
+  mHides := TJSONArray.Create;
+  AData.AddPair('hides', mHides);
+  for mText in AItem.Hides do
   begin
-    Hides.Add(Text);
+    mHides.Add(mText);
   end;
 end;
 
 procedure WriteOverloads(const AItem: TCompletionItem; AData: TJSONObject);
 var
-  Overloads: TJSONArray;
-  Position: TTextPosition;
+  mOverloads: TJSONArray;
+  mPosition: TTextPosition;
 begin
   if Length(AItem.Overloads) = 0 then
   begin
     Exit;
   end;
-  Overloads := TJSONArray.Create;
-  AData.AddPair('overloads', Overloads);
-  for Position in AItem.Overloads do
+  mOverloads := TJSONArray.Create;
+  AData.AddPair('overloads', mOverloads);
+  for mPosition in AItem.Overloads do
   begin
-    Overloads.AddElement(TJSONObject.Create.AddPair('line', TJSONNumber.Create(Position.Line))
-      .AddPair('character', TJSONNumber.Create(Position.Character)));
+    mOverloads.AddElement(TJSONObject.Create.AddPair('line', TJSONNumber.Create(mPosition.Line))
+      .AddPair('character', TJSONNumber.Create(mPosition.Character)));
   end;
 end;
 
@@ -395,25 +395,25 @@ end;
 /// <summary>Gebundene Typparameter (#450) für completionItem/resolve.</summary>
 procedure WriteBindings(const AItem: TCompletionItem; AData: TJSONObject);
 var
-  Bindings: TJSONArray;
-  Text: string;
+  mBindings: TJSONArray;
+  mText: string;
 begin
   if Length(AItem.Bindings) = 0 then
   begin
     Exit;
   end;
-  Bindings := TJSONArray.Create;
-  AData.AddPair('bindings', Bindings);
-  for Text in AItem.Bindings do
+  mBindings := TJSONArray.Create;
+  AData.AddPair('bindings', mBindings);
+  for mText in AItem.Bindings do
   begin
-    Bindings.Add(Text);
+    mBindings.Add(mText);
   end;
 end;
 
 procedure WriteUses(const AItem: TCompletionItem; AData: TJSONObject);
 var
-  List: TJSONArray;
-  Text: string;
+  mList: TJSONArray;
+  mText: string;
 begin
   if AItem.UsesGroup = '' then
   begin
@@ -429,28 +429,28 @@ begin
   begin
     AData.AddPair('usesCycle', AItem.UsesCycle);
   end;
-  List := TJSONArray.Create;
-  AData.AddPair('usesTypes', List);
-  for Text in AItem.UsesTypes do
+  mList := TJSONArray.Create;
+  AData.AddPair('usesTypes', mList);
+  for mText in AItem.UsesTypes do
   begin
-    List.Add(Text);
+    mList.Add(mText);
   end;
   AData.AddPair('usesTypeCount', TJSONNumber.Create(AItem.UsesTypeCount));
   if Length(AItem.UsesHidden) > 0 then
   begin
-    List := TJSONArray.Create;
-    AData.AddPair('usesHidden', List);
-    for Text in AItem.UsesHidden do
+    mList := TJSONArray.Create;
+    AData.AddPair('usesHidden', mList);
+    for mText in AItem.UsesHidden do
     begin
-      List.Add(Text);
+      mList.Add(mText);
     end;
   end;
 end;
 
 procedure WriteInherited(const AItem: TCompletionItem; AData: TJSONObject);
 var
-  List: TJSONArray;
-  Text: string;
+  mList: TJSONArray;
+  mText: string;
 begin
   if AItem.InheritedMatch <> '' then
   begin
@@ -458,19 +458,19 @@ begin
   end;
   if Length(AItem.InheritedAbstract) > 0 then
   begin
-    List := TJSONArray.Create;
-    AData.AddPair('inheritedAbstract', List);
-    for Text in AItem.InheritedAbstract do
+    mList := TJSONArray.Create;
+    AData.AddPair('inheritedAbstract', mList);
+    for mText in AItem.InheritedAbstract do
     begin
-      List.Add(Text);
+      mList.Add(mText);
     end;
   end;
 end;
 
 procedure WriteSameName(const AItem: TCompletionItem; AData: TJSONObject);
 var
-  List: TJSONArray;
-  Text: string;
+  mList: TJSONArray;
+  mText: string;
 begin
   if Length(AItem.SameNameUnits) = 0 then
   begin
@@ -485,19 +485,19 @@ begin
     AData.AddPair('sameNameOf', AItem.SameNameOf);
     AData.AddPair('sameNameInsert', AItem.SameNameInsert);
   end;
-  List := TJSONArray.Create;
-  AData.AddPair('sameNameUnits', List);
-  for Text in AItem.SameNameUnits do
+  mList := TJSONArray.Create;
+  AData.AddPair('sameNameUnits', mList);
+  for mText in AItem.SameNameUnits do
   begin
-    List.Add(Text);
+    mList.Add(mText);
   end;
   if Length(AItem.SameNameHidden) > 0 then
   begin
-    List := TJSONArray.Create;
-    AData.AddPair('sameNameHidden', List);
-    for Text in AItem.SameNameHidden do
+    mList := TJSONArray.Create;
+    AData.AddPair('sameNameHidden', mList);
+    for mText in AItem.SameNameHidden do
     begin
-      List.Add(Text);
+      mList.Add(mText);
     end;
   end;
 end;
@@ -523,9 +523,10 @@ end;
 const
   /// <summary>Reihenfolge der Felder unter data; das Plugin liest nach Namen, die Golden-Tests nach Text.
   /// </summary>
-  DataWriters: array[0..37] of TItemDataWriter = (WriteSource, WriteExpected, WriteAction, WriteContainer,
+  cDataWriters: array[0..37] of TItemDataWriter = (WriteSource, WriteExpected, WriteAction, WriteContainer,
     WriteDepth, WriteHelper, WriteParameters, WriteCondition, WriteVariant, WriteUnavailable, WriteScope, WriteOrdinal,
-    WriteSetOf, WriteLinked, WritePinned, WriteCount, WriteUnknown, WriteBatch, WriteHint, WriteForm, WriteByType, WriteSender,
+    WriteSetOf, WriteLinked, WritePinned, WriteCount, WriteUnknown, WriteBatch, WriteHint, WriteForm, WriteByType,
+      WriteSender,
     WriteConversion, WriteAssignments, WriteDataSet, WriteGuard, WriteUnit, WriteHides, WriteOverloads, WriteTypeArg,
     WriteBindings, WriteUses, WriteInherited, WriteSameName, WriteAttribute,
     WriteMethodRef, WriteWith, WriteException);
@@ -602,7 +603,7 @@ begin
     Exit;
   end;
   mData := TJSONObject.Create;
-  for mWriter in DataWriters do
+  for mWriter in cDataWriters do
   begin
     mWriter(AItem, mData);
   end;
@@ -644,12 +645,12 @@ end;
 
 function CompletionItemsToJson(const AItems: TArray<TCompletionItem>; AFirstSort: Integer): TJSONArray;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := TJSONArray.Create;
-  for Index := 0 to High(AItems) do
+  for mIndex := 0 to High(AItems) do
   begin
-    Result.AddElement(ItemToJson(AItems[Index], AFirstSort + Index));
+    Result.AddElement(ItemToJson(AItems[mIndex], AFirstSort + mIndex));
   end;
 end;
 

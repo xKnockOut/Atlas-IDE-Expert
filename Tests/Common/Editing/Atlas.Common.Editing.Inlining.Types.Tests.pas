@@ -65,7 +65,7 @@ begin
   mOptions := TInlineOptions.Default;
   Assert.IsTrue(mOptions.InlineVar);
   Assert.IsFalse(Assigned(mOptions.Lookup));
-  Assert.AreEqual('Result', InlineResultSuffix);
+  Assert.AreEqual('Result', cInlineResultSuffix);
 end;
 
 initialization

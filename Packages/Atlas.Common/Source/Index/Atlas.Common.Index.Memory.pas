@@ -61,16 +61,16 @@ end;
 
 function ArrayBytes(const AValues: TArray<string>): Int64;
 var
-  Value: string;
+  mValue: string;
 begin
   Result := 0;
   if Length(AValues) > 0 then
   begin
     Result := 16 + Length(AValues) * SizeOf(Pointer);
   end;
-  for Value in AValues do
+  for mValue in AValues do
   begin
-    Inc(Result, StringBytes(Value));
+    Inc(Result, StringBytes(mValue));
   end;
 end;
 
@@ -103,45 +103,45 @@ end;
 
 procedure TStringPool.InternUnit(var AUnit: TUnitIndex);
 var
-  Index, Inner: Integer;
+  mIndex, mInner: Integer;
 begin
   AUnit.UnitName := Intern(AUnit.UnitName);
-  for Index := 0 to High(AUnit.InterfaceUses) do
+  for mIndex := 0 to High(AUnit.InterfaceUses) do
   begin
-    AUnit.InterfaceUses[Index] := Intern(AUnit.InterfaceUses[Index]);
+    AUnit.InterfaceUses[mIndex] := Intern(AUnit.InterfaceUses[mIndex]);
   end;
-  for Index := 0 to High(AUnit.ImplementationUses) do
+  for mIndex := 0 to High(AUnit.ImplementationUses) do
   begin
-    AUnit.ImplementationUses[Index] := Intern(AUnit.ImplementationUses[Index]);
+    AUnit.ImplementationUses[mIndex] := Intern(AUnit.ImplementationUses[mIndex]);
   end;
-  for Index := 0 to High(AUnit.Symbols) do
+  for mIndex := 0 to High(AUnit.Symbols) do
   begin
     // Die Vorfahren-Arrays teilt sich der Eintrag noch mit dem Aufrufer.
-    AUnit.Symbols[Index].Ancestors := Copy(AUnit.Symbols[Index].Ancestors);
-    AUnit.Symbols[Index].Name := Intern(AUnit.Symbols[Index].Name);
-    AUnit.Symbols[Index].Container := Intern(AUnit.Symbols[Index].Container);
-    AUnit.Symbols[Index].TypeName := Intern(AUnit.Symbols[Index].TypeName);
-    AUnit.Symbols[Index].TypeArgs := Intern(AUnit.Symbols[Index].TypeArgs);
-    AUnit.Symbols[Index].AncestorArgs := Copy(AUnit.Symbols[Index].AncestorArgs);
-    for Inner := 0 to High(AUnit.Symbols[Index].AncestorArgs) do
+    AUnit.Symbols[mIndex].Ancestors := Copy(AUnit.Symbols[mIndex].Ancestors);
+    AUnit.Symbols[mIndex].Name := Intern(AUnit.Symbols[mIndex].Name);
+    AUnit.Symbols[mIndex].Container := Intern(AUnit.Symbols[mIndex].Container);
+    AUnit.Symbols[mIndex].TypeName := Intern(AUnit.Symbols[mIndex].TypeName);
+    AUnit.Symbols[mIndex].TypeArgs := Intern(AUnit.Symbols[mIndex].TypeArgs);
+    AUnit.Symbols[mIndex].AncestorArgs := Copy(AUnit.Symbols[mIndex].AncestorArgs);
+    for mInner := 0 to High(AUnit.Symbols[mIndex].AncestorArgs) do
     begin
-      AUnit.Symbols[Index].AncestorArgs[Inner] := Intern(AUnit.Symbols[Index].AncestorArgs[Inner]);
+      AUnit.Symbols[mIndex].AncestorArgs[mInner] := Intern(AUnit.Symbols[mIndex].AncestorArgs[mInner]);
     end;
-    AUnit.Symbols[Index].TypeParams := Intern(AUnit.Symbols[Index].TypeParams);
-    AUnit.Symbols[Index].FileName := Intern(AUnit.Symbols[Index].FileName);
-    AUnit.Symbols[Index].Directives := Copy(AUnit.Symbols[Index].Directives);
-    for Inner := 0 to High(AUnit.Symbols[Index].Directives) do
+    AUnit.Symbols[mIndex].TypeParams := Intern(AUnit.Symbols[mIndex].TypeParams);
+    AUnit.Symbols[mIndex].FileName := Intern(AUnit.Symbols[mIndex].FileName);
+    AUnit.Symbols[mIndex].Directives := Copy(AUnit.Symbols[mIndex].Directives);
+    for mInner := 0 to High(AUnit.Symbols[mIndex].Directives) do
     begin
-      AUnit.Symbols[Index].Directives[Inner] := Intern(AUnit.Symbols[Index].Directives[Inner]);
+      AUnit.Symbols[mIndex].Directives[mInner] := Intern(AUnit.Symbols[mIndex].Directives[mInner]);
     end;
-    AUnit.Symbols[Index].ParamTypes := Copy(AUnit.Symbols[Index].ParamTypes);
-    for Inner := 0 to High(AUnit.Symbols[Index].ParamTypes) do
+    AUnit.Symbols[mIndex].ParamTypes := Copy(AUnit.Symbols[mIndex].ParamTypes);
+    for mInner := 0 to High(AUnit.Symbols[mIndex].ParamTypes) do
     begin
-      AUnit.Symbols[Index].ParamTypes[Inner] := Intern(AUnit.Symbols[Index].ParamTypes[Inner]);
+      AUnit.Symbols[mIndex].ParamTypes[mInner] := Intern(AUnit.Symbols[mIndex].ParamTypes[mInner]);
     end;
-    for Inner := 0 to High(AUnit.Symbols[Index].Ancestors) do
+    for mInner := 0 to High(AUnit.Symbols[mIndex].Ancestors) do
     begin
-      AUnit.Symbols[Index].Ancestors[Inner] := Intern(AUnit.Symbols[Index].Ancestors[Inner]);
+      AUnit.Symbols[mIndex].Ancestors[mInner] := Intern(AUnit.Symbols[mIndex].Ancestors[mInner]);
     end;
   end;
 end;
@@ -155,7 +155,7 @@ end;
 
 class function TIndexMemory.UnitBytes(const AUnit: TUnitIndex): Int64;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
   Result := SizeOf(TUnitIndex) + StringBytes(AUnit.UnitName) + StringBytes(AUnit.FileName) +
     StringBytes(AUnit.Hash) + ArrayBytes(AUnit.InterfaceUses) + ArrayBytes(AUnit.ImplementationUses) +
@@ -164,28 +164,28 @@ begin
   begin
     Inc(Result, 16);
   end;
-  for Symbol in AUnit.Symbols do
+  for mSymbol in AUnit.Symbols do
   begin
-    Inc(Result, SizeOf(TIndexSymbol) + StringBytes(Symbol.Name) + StringBytes(Symbol.Container) +
-      StringBytes(Symbol.TypeName) + ArrayBytes(Symbol.Ancestors) + StringBytes(Symbol.Signature) +
-      StringBytes(Symbol.Summary) + ArrayBytes(Symbol.Directives) + StringBytes(Symbol.DeprecatedText) +
-      ArrayBytes(Symbol.InlineRefs) + ArrayBytes(Symbol.Resolutions) + ArrayBytes(Symbol.Rationale));
+    Inc(Result, SizeOf(TIndexSymbol) + StringBytes(mSymbol.Name) + StringBytes(mSymbol.Container) +
+      StringBytes(mSymbol.TypeName) + ArrayBytes(mSymbol.Ancestors) + StringBytes(mSymbol.Signature) +
+      StringBytes(mSymbol.Summary) + ArrayBytes(mSymbol.Directives) + StringBytes(mSymbol.DeprecatedText) +
+      ArrayBytes(mSymbol.InlineRefs) + ArrayBytes(mSymbol.Resolutions) + ArrayBytes(mSymbol.Rationale));
   end;
   Inc(Result, UsageBytes(AUnit));
 end;
 
 class function TIndexMemory.UsageBytes(const AUnit: TUnitIndex): Int64;
 var
-  Usage: TIndexUsage;
+  mUsage: TIndexUsage;
 begin
   Result := 0;
   if Length(AUnit.Usages) > 0 then
   begin
     Result := 16;
   end;
-  for Usage in AUnit.Usages do
+  for mUsage in AUnit.Usages do
   begin
-    Inc(Result, SizeOf(TIndexUsage) + StringBytes(Usage.Name) + 16 + Length(Usage.Positions) * SizeOf(TTextPosition));
+    Inc(Result, SizeOf(TIndexUsage) + StringBytes(mUsage.Name) + 16 + Length(mUsage.Positions) * SizeOf(TTextPosition));
   end;
 end;
 
@@ -202,24 +202,24 @@ end;
 
 class function TIndexMemory.Compacted(const AUnit: TUnitIndex): TUnitIndex;
 var
-  Kept: TArray<TIndexSymbol>;
-  Count: Integer;
-  Symbol: TIndexSymbol;
+  mKept: TArray<TIndexSymbol>;
+  mCount: Integer;
+  mSymbol: TIndexSymbol;
 begin
   Result := AUnit;
   Result.Compact := True;
-  SetLength(Kept, Length(AUnit.Symbols));
-  Count := 0;
-  for Symbol in AUnit.Symbols do
+  SetLength(mKept, Length(AUnit.Symbols));
+  mCount := 0;
+  for mSymbol in AUnit.Symbols do
   begin
-    if Symbol.InInterface then
+    if mSymbol.InInterface then
     begin
-      Kept[Count] := Symbol;
-      Inc(Count);
+      mKept[mCount] := mSymbol;
+      Inc(mCount);
     end;
   end;
-  SetLength(Kept, Count);
-  Result.Symbols := Kept;
+  SetLength(mKept, mCount);
+  Result.Symbols := mKept;
 end;
 
 end.

@@ -38,7 +38,7 @@ type
 
   TRoutineLocals = class
   public const
-    TypeKinds = [TSyntaxKind.TypeReference, TSyntaxKind.ArrayType, TSyntaxKind.SetType, TSyntaxKind.PointerType,
+    cTypeKinds = [TSyntaxKind.TypeReference, TSyntaxKind.ArrayType, TSyntaxKind.SetType, TSyntaxKind.PointerType,
       TSyntaxKind.ProcedureType, TSyntaxKind.FileType, TSyntaxKind.SubrangeType, TSyntaxKind.EnumType,
       TSyntaxKind.RecordType, TSyntaxKind.ClassOfType];
   public
@@ -73,18 +73,18 @@ uses
 
 class procedure TRoutineLocals.CollectKind(ANode: TSyntaxNode; AKind: TSyntaxKind; AList: TList<TSyntaxNode>);
 var
-  Kind: TSyntaxKind;
-  List: TList<TSyntaxNode>;
+  mKind: TSyntaxKind;
+  mList: TList<TSyntaxNode>;
 begin
-  Kind := AKind;
-  List := AList;
+  mKind := AKind;
+  mList := AList;
   // Walk statt Rekursion (Bericht M1).
   ANode.Walk(
     function(AChild: TSyntaxNode): Boolean
     begin
-      if AChild.Kind = Kind then
+      if AChild.Kind = mKind then
       begin
-        List.Add(AChild);
+        mList.Add(AChild);
       end;
       Result := True;
     end);
@@ -92,15 +92,15 @@ end;
 
 class function TRoutineLocals.HasKind(ANode: TSyntaxNode; AKind: TSyntaxKind): Boolean;
 var
-  Kind: TSyntaxKind;
+  mKind: TSyntaxKind;
 begin
-  Kind := AKind;
+  mKind := AKind;
   // Search statt Rekursion (Bericht M1).
   Result := ANode.Search(
     function(AChild: TSyntaxNode): TSyntaxSearchStep
     begin
       Result := TSyntaxSearchStep.Descend;
-      if AChild.Kind = Kind then
+      if AChild.Kind = mKind then
       begin
         Result := TSyntaxSearchStep.Found;
       end;
@@ -109,16 +109,16 @@ end;
 
 class function TRoutineLocals.IsInlineFor(const ATokens: TArray<TPascalToken>; AFor: TSyntaxNode): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := TRoutineBody.NextToken(ATokens, TRoutineBody.TokenAt(ATokens, AFor.StartOffset));
-  Result := (Index <= High(ATokens)) and ATokens[Index].IsKeyword('var');
+  mIndex := TRoutineBody.NextToken(ATokens, TRoutineBody.TokenAt(ATokens, AFor.StartOffset));
+  Result := (mIndex <= High(ATokens)) and ATokens[mIndex].IsKeyword('var');
 end;
 
 class function TRoutineLocals.TypeChildText(const AText: string; ANode: TSyntaxNode): string;
 begin
   Result := '';
-  if (ANode.ChildCount > 0) and (ANode[0].Kind in TRoutineLocals.TypeKinds) then
+  if (ANode.ChildCount > 0) and (ANode[0].Kind in TRoutineLocals.cTypeKinds) then
   begin
     Result := TRoutineBody.TextOf(AText, ANode[0]);
   end;

@@ -253,7 +253,7 @@ begin
     try
       Assert.AreEqual(1, Integer(Length(Actions)));
       Assert.AreEqual('Interface aus TCustomer herauslösen …', Actions[0].GetValue('title').Value);
-      Assert.AreEqual(TLspExtractInterface.ClientCommand,
+      Assert.AreEqual(TLspExtractInterface.cClientCommand,
         (Actions[0].GetValue('command') as TJSONObject).GetValue('command').Value);
     finally
       FreeAll(Actions);

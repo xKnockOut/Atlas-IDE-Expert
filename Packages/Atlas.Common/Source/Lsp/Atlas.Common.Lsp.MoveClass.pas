@@ -48,8 +48,8 @@ type
 
   TLspMoveClass = class
   public const
-    ClientCommand = 'atlas.moveClass';
-    ApplyCommand = 'atlas.server.moveClass';
+    cClientCommand = 'atlas.moveClass';
+    cApplyCommand = 'atlas.server.moveClass';
   public
     /// <summary>Namensauflösung für den Kern über AResolver.</summary>
     class function Lookup(AResolver: TNameResolver): TMoveClassLookup; static;
@@ -99,7 +99,7 @@ const
 
 function Failed(const AMessage: string): EJsonRpcError;
 begin
-  Result := EJsonRpcError.Create(TLspErrorCode.RequestFailed, cTexts[TLspMoveClassText.MoveClass].Text + AMessage);
+  Result := EJsonRpcError.Create(TLspErrorCode.cRequestFailed, cTexts[TLspMoveClassText.MoveClass].Text + AMessage);
 end;
 
 function IsSource(const AFileName: string): Boolean;
@@ -139,49 +139,49 @@ end;
 class function TLspMoveClass.Actions(AResolver: TNameResolver; ATree: TSyntaxTree;
   const AFileName, AText, AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
 var
-  Decl: TSyntaxNode;
-  Plan: TMoveClassPlan;
-  Reason, Title, Name: string;
-  Arguments: TJSONArray;
-  Command, Action: TJSONObject;
+  mDecl: TSyntaxNode;
+  mPlan: TMoveClassPlan;
+  mReason, mTitle, mName: string;
+  mArguments: TJSONArray;
+  mCommand, mAction: TJSONObject;
 begin
   Result := nil;
-  Decl := TMoveClass.ClassAt(ATree, APosition);
-  if Decl = nil then
+  mDecl := TMoveClass.ClassAt(ATree, APosition);
+  if mDecl = nil then
   begin
     Exit;
   end;
-  Name := TMoveClass.DefaultUnitName(Decl.Name);
+  mName := TMoveClass.DefaultUnitName(mDecl.Name);
   AResolver.PinTree(ATree, AFileName);
   try
-    if not TMoveClass.Plan(TMoveClassSource.Create(AFileName, AText, ATree), APosition, Name, Lookup(AResolver), Plan,
-      Reason) then
+    if not TMoveClass.Plan(TMoveClassSource.Create(AFileName, AText, ATree), APosition, mName, Lookup(AResolver), mPlan,
+      mReason) then
     begin
       Exit;
     end;
   finally
     AResolver.UnpinTree;
   end;
-  Title := cTexts[TLspMoveClassText.MoveClassIntoItsOwn].Fmt([Plan.ClassName]);
-  Arguments := TJSONArray.Create;
-  Arguments.Add(AUri);
-  Arguments.AddElement(TLspPositions.PositionToJson(APosition));
-  Arguments.Add(Name);
-  Command := TJSONObject.Create;
-  Command.AddPair('title', Title);
-  Command.AddPair('command', ClientCommand);
-  Command.AddPair('arguments', Arguments);
-  Action := TJSONObject.Create;
-  Action.AddPair('title', Title);
-  Action.AddPair('kind', TMoveClass.Kind);
-  Action.AddPair('command', Command);
-  Result := [Action];
+  mTitle := cTexts[TLspMoveClassText.MoveClassIntoItsOwn].Fmt([mPlan.ClassName]);
+  mArguments := TJSONArray.Create;
+  mArguments.Add(AUri);
+  mArguments.AddElement(TLspPositions.PositionToJson(APosition));
+  mArguments.Add(mName);
+  mCommand := TJSONObject.Create;
+  mCommand.AddPair('title', mTitle);
+  mCommand.AddPair('command', cClientCommand);
+  mCommand.AddPair('arguments', mArguments);
+  mAction := TJSONObject.Create;
+  mAction.AddPair('title', mTitle);
+  mAction.AddPair('kind', TMoveClass.cKind);
+  mAction.AddPair('command', mCommand);
+  Result := [mAction];
 end;
 
 /// <summary>EJsonRpcError, wenn es die Datei ANewFile oder die Unit im Projekt schon gibt.</summary>
 procedure CheckNewUnit(const AContext: TMoveClassContext; const APlan: TMoveClassPlan; const ANewFile: string);
 var
-  Item: TProjectUnit;
+  mItem: TProjectUnit;
 begin
   if Assigned(AContext.Exists) and AContext.Exists(ANewFile) then
   begin
@@ -191,9 +191,9 @@ begin
   begin
     Exit;
   end;
-  for Item in AContext.Project.Units do
+  for mItem in AContext.Project.Units do
   begin
-    if SameText(Item.Name, APlan.NewUnit) then
+    if SameText(mItem.Name, APlan.NewUnit) then
     begin
       raise Failed(cTexts[TLspMoveClassText.IsAlreadyInTheProject].Fmt([APlan.NewUnit]));
     end;
@@ -203,15 +203,15 @@ end;
 /// <summary>Quelldateien mit Verweisen außer AFileName, jede einmal.</summary>
 function UserFiles(const AReferences: TArray<TReferenceLocation>; const AFileName: string): TArray<string>;
 var
-  Location: TReferenceLocation;
+  mLocation: TReferenceLocation;
 begin
   Result := nil;
-  for Location in AReferences do
+  for mLocation in AReferences do
   begin
-    if not SameText(Location.FileName, AFileName) and IsSource(Location.FileName) and
-      (IndexText(Location.FileName, Result) < 0) then
+    if not SameText(mLocation.FileName, AFileName) and IsSource(mLocation.FileName) and
+      (IndexText(mLocation.FileName, Result) < 0) then
     begin
-      Result := Result + [Location.FileName];
+      Result := Result + [mLocation.FileName];
     end;
   end;
 end;
@@ -219,14 +219,14 @@ end;
 /// <summary>Verweise in der Datei AUser.</summary>
 function RangesOf(const AReferences: TArray<TReferenceLocation>; const AUser: string): TArray<TTextRange>;
 var
-  Location: TReferenceLocation;
+  mLocation: TReferenceLocation;
 begin
   Result := nil;
-  for Location in AReferences do
+  for mLocation in AReferences do
   begin
-    if SameText(Location.FileName, AUser) then
+    if SameText(mLocation.FileName, AUser) then
     begin
-      Result := Result + [Location.Range];
+      Result := Result + [mLocation.Range];
     end;
   end;
 end;
@@ -235,30 +235,30 @@ end;
 procedure AddUserEdits(AChanges: TWorkspaceChanges; const AContext: TMoveClassContext; const APlan: TMoveClassPlan;
   const AReferences: TArray<TReferenceLocation>; const AFileName: string);
 var
-  MainSource, User, Text: string;
-  Tree: TSyntaxTree;
-  Edits: TArray<TTextEdit>;
+  mMainSource, mUser, mText: string;
+  mTree: TSyntaxTree;
+  mEdits: TArray<TTextEdit>;
 begin
-  MainSource := '';
+  mMainSource := '';
   if AContext.HasProject then
   begin
-    MainSource := AContext.Project.MainSource;
+    mMainSource := AContext.Project.MainSource;
   end;
-  for User in UserFiles(AReferences, AFileName) do
+  for mUser in UserFiles(AReferences, AFileName) do
   begin
-    if not (Assigned(AContext.ReadText) and AContext.ReadText(User, Text)) then
+    if not (Assigned(AContext.ReadText) and AContext.ReadText(mUser, mText)) then
     begin
       Continue;
     end;
-    Tree := TSyntaxTreeCache.Parse(Text);
+    mTree := TSyntaxTreeCache.Parse(mText);
     try
-      if TMoveClass.UpdateUser(Text, Tree, APlan.Names, RangesOf(AReferences, User),
-        not SameText(User, MainSource), Edits) then
+      if TMoveClass.UpdateUser(mText, mTree, APlan.Names, RangesOf(AReferences, mUser),
+        not SameText(mUser, mMainSource), mEdits) then
       begin
-        AChanges.Add(User, Edits);
+        AChanges.Add(mUser, mEdits);
       end;
     finally
-      Tree.Free;
+      mTree.Free;
     end;
   end;
 end;
@@ -266,15 +266,15 @@ end;
 class function TLspMoveClass.Execute(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName, AText: string;
   const APosition: TTextPosition; const AContext: TMoveClassContext): TJSONObject;
 var
-  Plan: TMoveClassPlan;
+  mPlan: TMoveClassPlan;
   mSource: TMoveClassSource;
-  Reason, NewFile: string;
-  Decl: TSyntaxNode;
-  Changes: TWorkspaceChanges;
-  References: TArray<TReferenceLocation>;
+  mReason, mNewFile: string;
+  mDecl: TSyntaxNode;
+  mChanges: TWorkspaceChanges;
+  mReferences: TArray<TReferenceLocation>;
 begin
-  Decl := TMoveClass.ClassAt(ATree, APosition);
-  if Decl = nil then
+  mDecl := TMoveClass.ClassAt(ATree, APosition);
+  if mDecl = nil then
   begin
     raise Failed(cTexts[TLspMoveClassText.ThereIsNoClassAt].Text);
   end;
@@ -282,36 +282,36 @@ begin
   mSource.TypeComments := AContext.TypeComments;
   AResolver.PinTree(ATree, AFileName);
   try
-    if not TMoveClass.Plan(mSource, APosition, AContext.UnitName, Lookup(AResolver), Plan, Reason) then
+    if not TMoveClass.Plan(mSource, APosition, AContext.UnitName, Lookup(AResolver), mPlan, mReason) then
     begin
-      raise Failed(Reason);
+      raise Failed(mReason);
     end;
-    NewFile := TProjectPaths.Combine(TProjectPaths.DirectoryOf(AFileName), Plan.NewUnit + '.pas');
-    CheckNewUnit(AContext, Plan, NewFile);
+    mNewFile := TProjectPaths.Combine(TProjectPaths.DirectoryOf(AFileName), mPlan.NewUnit + '.pas');
+    CheckNewUnit(AContext, mPlan, mNewFile);
     // Verwendende Units über die Referenzsuche (#29).
-    References := TLspReferences.Find(AResolver, AContext.Index, ATree, TReferenceSearch.Create(AFileName,
-      Decl.StartPos, False, AContext.Files, AContext.ReadText));
+    mReferences := TLspReferences.Find(AResolver, AContext.Index, ATree, TReferenceSearch.Create(AFileName,
+      mDecl.StartPos, False, AContext.Files, AContext.ReadText));
   finally
     AResolver.UnpinTree;
   end;
-  Changes := TWorkspaceChanges.Create;
+  mChanges := TWorkspaceChanges.Create;
   try
     // documentChanges: erst die neue Datei, dann die Änderungen je Datei.
-    Changes.CreateFile(NewFile, Plan.Text);
-    Changes.Add(AFileName, Plan.OriginEdits);
-    AddUserEdits(Changes, AContext, Plan, References, AFileName);
+    mChanges.CreateFile(mNewFile, mPlan.Text);
+    mChanges.Add(AFileName, mPlan.OriginEdits);
+    AddUserEdits(mChanges, AContext, mPlan, mReferences, AFileName);
     // Projekt: uses bzw. contains der .dpr/.dpk und DCCReference der .dproj, jeweils mit relativem Pfad.
-    Changes.RegisterUnit(AContext.HasProject, AContext.Project, AContext.ReadText, NewFile, Plan.NewUnit);
-    if Plan.Unresolved <> nil then
+    mChanges.RegisterUnit(AContext.HasProject, AContext.Project, AContext.ReadText, mNewFile, mPlan.NewUnit);
+    if mPlan.Unresolved <> nil then
     begin
-      Changes.Warn(cTexts[TLspMoveClassText.UnknownOriginOfTheNew].Fmt([string.Join(', ', Plan.Unresolved)]));
+      mChanges.Warn(cTexts[TLspMoveClassText.UnknownOriginOfTheNew].Fmt([string.Join(', ', mPlan.Unresolved)]));
     end;
     Result := TJSONObject.Create;
-    Result.AddPair('edit', Changes.ToJson);
-    Result.AddPair('file', TDocumentUris.FromPath(NewFile));
-    Result.AddPair('warnings', Changes.WarningsJson);
+    Result.AddPair('edit', mChanges.ToJson);
+    Result.AddPair('file', TDocumentUris.FromPath(mNewFile));
+    Result.AddPair('warnings', mChanges.WarningsJson);
   finally
-    Changes.Free;
+    mChanges.Free;
   end;
 end;
 

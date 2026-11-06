@@ -216,7 +216,7 @@ begin
   end;
   if TNameSuggestions.UsesPrefix(mCount) then
   begin
-    Result := NamingPrefixes[AKind];
+    Result := cNamingPrefixes[AKind];
   end;
 end;
 
@@ -256,10 +256,10 @@ begin
   begin
     mItem := Default(TCompletionItem);
     mItem.Name := mName;
-    mItem.Kind := KindVariable;
+    mItem.Kind := cKindVariable;
     if mSite.Kind = TNamingKind.Field then
     begin
-      mItem.Kind := KindField;
+      mItem.Kind := cKindField;
     end;
     mItem.Detail := mSite.TypeText;
     mItem.Fits := True;

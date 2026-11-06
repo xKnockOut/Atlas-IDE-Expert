@@ -55,41 +55,41 @@ end;
 
 function TCompilerResults.Replace(const AMessages: TArray<TCompilerMessage>): TArray<string>;
 var
-  Item: TCompilerMessage;
-  Key: string;
-  Files: TDictionary<string, string>;
-  Existing: TArray<TCompilerMessage>;
+  mItem: TCompilerMessage;
+  mKey: string;
+  mFiles: TDictionary<string, string>;
+  mExisting: TArray<TCompilerMessage>;
 begin
-  Files := TDictionary<string, string>.Create;
+  mFiles := TDictionary<string, string>.Create;
   TMonitor.Enter(FLock);
   try
-    for Key in FByFile.Keys do
+    for mKey in FByFile.Keys do
     begin
-      Files.AddOrSetValue(Key, FByFile[Key][0].FileName);
+      mFiles.AddOrSetValue(mKey, FByFile[mKey][0].FileName);
     end;
     FByFile.Clear;
     FGeneral := nil;
-    for Item in AMessages do
+    for mItem in AMessages do
     begin
-      if Item.FileName = '' then
+      if mItem.FileName = '' then
       begin
-        FGeneral := FGeneral + [Item];
+        FGeneral := FGeneral + [mItem];
       end
       else
       begin
-        Key := KeyOf(Item.FileName);
-        if not FByFile.TryGetValue(Key, Existing) then
+        mKey := KeyOf(mItem.FileName);
+        if not FByFile.TryGetValue(mKey, mExisting) then
         begin
-          Existing := nil;
+          mExisting := nil;
         end;
-        FByFile.AddOrSetValue(Key, Existing + [Item]);
-        Files.AddOrSetValue(Key, Item.FileName);
+        FByFile.AddOrSetValue(mKey, mExisting + [mItem]);
+        mFiles.AddOrSetValue(mKey, mItem.FileName);
       end;
     end;
-    Result := Files.Values.ToArray;
+    Result := mFiles.Values.ToArray;
   finally
     TMonitor.Exit(FLock);
-    Files.Free;
+    mFiles.Free;
   end;
 end;
 

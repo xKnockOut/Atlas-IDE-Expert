@@ -170,28 +170,28 @@ end;
 
 procedure TShellOverviews.RegisterReportCommands(ACommands: TLspCommands);
 begin
-  ACommands.Register(TLspArchitecture.Command,
+  ACommands.Register(TLspArchitecture.cCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FArchitecture.Execute(AArguments);
     end);
-  ACommands.Register(TLspArchitecture.SaveCommand,
+  ACommands.Register(TLspArchitecture.cSaveCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FArchitecture.SaveReport(AArguments);
     end);
-  ACommands.Register(TLspQuery.Command,
+  ACommands.Register(TLspQuery.cCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FQuery.Execute(AArguments);
     end);
   // Hotspots (#1354): nebenläufig; gerechnet wird im Hintergrund, die Antwort kommt sofort (sonst "pending").
-  ACommands.RegisterConcurrent(TLspHotspots.Command,
+  ACommands.RegisterConcurrent(TLspHotspots.cCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FHotspots.Execute(AArguments);
     end);
-  ACommands.RegisterConcurrent(TLspHotspots.SaveCommand,
+  ACommands.RegisterConcurrent(TLspHotspots.cSaveCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FHotspots.SaveReport(AArguments);
@@ -200,47 +200,47 @@ end;
 
 procedure TShellOverviews.RegisterUnitCommands(ACommands: TLspCommands);
 begin
-  ACommands.Register(TLspUnitRelations.Command,
+  ACommands.Register(TLspUnitRelations.cCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FUnitRelations.Execute(AArguments);
     end);
-  ACommands.Register(TLspUnitRelations.MoveCommand,
+  ACommands.Register(TLspUnitRelations.cMoveCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FUnitRelations.Move(AArguments);
     end);
-  ACommands.Register(TLspUnitRelations.RemoveCommand,
+  ACommands.Register(TLspUnitRelations.cRemoveCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FUnitRelations.Remove(AArguments);
     end);
-  ACommands.Register(TLspUnitRelations.CostCommand,
+  ACommands.Register(TLspUnitRelations.cCostCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FUnitRelations.Cost(AArguments);
     end);
-  ACommands.Register(TLspUnitRelations.UseUnitCommand,
+  ACommands.Register(TLspUnitRelations.cUseUnitCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FUnitRelations.UseUnitInfo(AArguments);
     end);
-  ACommands.Register(TLspSymbolPath.Command,
+  ACommands.Register(TLspSymbolPath.cCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FSymbolPath.Execute(AArguments);
     end);
-  ACommands.Register(TLspDebugDisplay.Command,
+  ACommands.Register(TLspDebugDisplay.cCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FDebugDisplay.Execute(AArguments);
     end);
-  ACommands.Register(TLspEventHandlers.Command,
+  ACommands.Register(TLspEventHandlers.cCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FEventHandlers.Execute(AArguments);
     end);
-  ACommands.Register(TLspRecursion.Command,
+  ACommands.Register(TLspRecursion.cCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FRecursion.Execute(AArguments);

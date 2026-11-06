@@ -135,14 +135,14 @@ type
 
 function ContainsKind(ANode: TSyntaxNode; AKind: TSyntaxKind): Boolean;
 var
-  Kind: TSyntaxKind;
+  mKind: TSyntaxKind;
 begin
-  Kind := AKind;
+  mKind := AKind;
   // Iterativ (Bericht M1).
   Result := ANode.Search(
     function(AVisited: TSyntaxNode): TSyntaxSearchStep
     begin
-      if AVisited.Kind = Kind then
+      if AVisited.Kind = mKind then
       begin
         Exit(TSyntaxSearchStep.Found);
       end;
@@ -153,16 +153,16 @@ end;
 /// <summary>Namen, die in ANode verwendet werden (klein geschrieben): Bezeichner und Schleifenvariablen.</summary>
 procedure CollectUses(ANode: TSyntaxNode; ASet: TNameSet);
 var
-  Names: TNameSet;
+  mNames: TNameSet;
 begin
-  Names := ASet;
+  mNames := ASet;
   // Iterativ (Bericht M1): Der Lauf geht auch durch lange Ausdrucksketten.
   ANode.Walk(
     function(AVisited: TSyntaxNode): Boolean
     begin
       if AVisited.Kind in [TSyntaxKind.Identifier, TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement] then
       begin
-        Names.AddOrSetValue(LowerCase(AVisited.Name), True);
+        mNames.AddOrSetValue(LowerCase(AVisited.Name), True);
       end;
       Result := True;
     end);
@@ -172,7 +172,7 @@ end;
 function HasConditionals(const AContext: TRuleContext; ARoutine: TSyntaxNode): Boolean;
 var
   mIndex: Integer;
-  Text: string;
+  mText: string;
 begin
   // Ab der Routine statt ab Dateianfang und ohne Kopie je Token (#1323).
   for mIndex := AContext.Tree.FirstTokenFrom(ARoutine.StartOffset) to High(AContext.Tree.Tokens) do
@@ -185,9 +185,9 @@ begin
     begin
       Continue;
     end;
-    Text := UpperCase(AContext.Tree.Tokens[mIndex].Text);
-    if StartsStr('{$IF', Text) or StartsStr('(*$IF', Text) or StartsStr('{$ELSE', Text) or
-      StartsStr('(*$ELSE', Text) then
+    mText := UpperCase(AContext.Tree.Tokens[mIndex].Text);
+    if StartsStr('{$IF', mText) or StartsStr('(*$IF', mText) or StartsStr('{$ELSE', mText) or
+      StartsStr('(*$ELSE', mText) then
     begin
       Exit(True);
     end;
@@ -198,26 +198,26 @@ end;
 /// <summary>Kommt AName als ganzes Wort im Text zwischen den Offsets vor (Kommentare eingeschlossen)?</summary>
 function OccursInText(const AText, AName: string; AStart, AEnd: Integer): Boolean;
 var
-  Text, Name: string;
-  Position: Integer;
+  mText, mName: string;
+  mPosition: Integer;
 
   function IsWordChar(AIndex: Integer): Boolean;
   begin
-    Result := (AIndex >= 1) and (AIndex <= Length(Text)) and
-      (CharInSet(Text[AIndex], ['a'..'z', '0'..'9', '_']) or (Ord(Text[AIndex]) > 127));
+    Result := (AIndex >= 1) and (AIndex <= Length(mText)) and
+      (CharInSet(mText[AIndex], ['a'..'z', '0'..'9', '_']) or (Ord(mText[AIndex]) > 127));
   end;
 
 begin
-  Text := LowerCase(Copy(AText, 1, AEnd));
-  Name := LowerCase(AName);
-  Position := PosEx(Name, Text, AStart + 1);
-  while Position > 0 do
+  mText := LowerCase(Copy(AText, 1, AEnd));
+  mName := LowerCase(AName);
+  mPosition := PosEx(mName, mText, AStart + 1);
+  while mPosition > 0 do
   begin
-    if not IsWordChar(Position - 1) and not IsWordChar(Position + Length(Name)) then
+    if not IsWordChar(mPosition - 1) and not IsWordChar(mPosition + Length(mName)) then
     begin
       Exit(True);
     end;
-    Position := PosEx(Name, Text, Position + 1);
+    mPosition := PosEx(mName, mText, mPosition + 1);
   end;
   Result := False;
 end;
@@ -225,26 +225,26 @@ end;
 /// <summary>"absolute AName" in einem var-Abschnitt der Routine.</summary>
 function UsedByAbsolute(const AContext: TRuleContext; ARoutine: TSyntaxNode; const AName: string): Boolean;
 var
-  Index, Position: Integer;
-  Section: TSyntaxNode;
-  Text: string;
+  mIndex, mPosition: Integer;
+  mSection: TSyntaxNode;
+  mText: string;
 begin
-  for Index := 0 to ARoutine.ChildCount - 1 do
+  for mIndex := 0 to ARoutine.ChildCount - 1 do
   begin
-    Section := ARoutine[Index];
-    if Section.Kind <> TSyntaxKind.VarSection then
+    mSection := ARoutine[mIndex];
+    if mSection.Kind <> TSyntaxKind.VarSection then
     begin
       Continue;
     end;
-    Text := LowerCase(Copy(AContext.Text, Section.StartOffset + 1, Section.EndOffset - Section.StartOffset));
-    Position := Pos('absolute', Text);
-    while Position > 0 do
+    mText := LowerCase(Copy(AContext.Text, mSection.StartOffset + 1, mSection.EndOffset - mSection.StartOffset));
+    mPosition := Pos('absolute', mText);
+    while mPosition > 0 do
     begin
-      if StartsStr(LowerCase(AName), TrimLeft(Copy(Text, Position + 8, MaxInt))) then
+      if StartsStr(LowerCase(AName), TrimLeft(Copy(mText, mPosition + 8, MaxInt))) then
       begin
         Exit(True);
       end;
-      Position := PosEx('absolute', Text, Position + 8);
+      mPosition := PosEx('absolute', mText, mPosition + 8);
     end;
   end;
   Result := False;
@@ -593,7 +593,7 @@ end;
 /// <summary>Wird ANode als Wert verwendet (Zuweisung, Argument, @) statt aufgerufen?</summary>
 function IsValueUse(ANode: TSyntaxNode): Boolean;
 var
-  Parent: TSyntaxNode;
+  mParent: TSyntaxNode;
 begin
   // Self.Handler: die ganze Kette zählt.
   while (ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.MemberAccess) and
@@ -601,18 +601,18 @@ begin
   begin
     ANode := ANode.Parent;
   end;
-  Parent := ANode.Parent;
-  if Parent = nil then
+  mParent := ANode.Parent;
+  if mParent = nil then
   begin
     Exit(False);
   end;
-  case Parent.Kind of
+  case mParent.Kind of
     TSyntaxKind.AddressOf:
       Result := True;
     TSyntaxKind.AssignStatement:
-      Result := Parent[0] <> ANode;
+      Result := mParent[0] <> ANode;
     TSyntaxKind.Call:
-      Result := Parent[0] <> ANode;
+      Result := mParent[0] <> ANode;
     // Tabellen: array[…] of TFix = (A, B), Record-Konstante (Name: 'x'; Lauf: A), [A, B], X: TFix = A (#1451).
     // Eine Routine mit Parametern ohne Klammern ist dort kein Aufruf.
     TSyntaxKind.ParenExpr, TSyntaxKind.SetConstructor, TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl,
@@ -757,23 +757,24 @@ begin
   Result := TRuleDescriptor.Create('unused-assignment', TRuleSeverity.Hint, cTexts[TUnusedText.AssignedTitle].Text);
 end;
 
-/// <summary>Kommt AName in lokalen Routinen oder anonymen Methoden unter ANode vor (ANode selbst zählt nicht)?</summary>
+/// <summary>Kommt AName in lokalen Routinen oder anonymen Methoden unter ANode vor (ANode selbst zählt
+/// nicht)?</summary>
 function UsedInNested(ANode: TSyntaxNode; const AName: string): Boolean;
 var
-  Root: TSyntaxNode;
-  Name: string;
+  mRoot: TSyntaxNode;
+  mName: string;
 begin
-  Root := ANode;
-  Name := AName;
+  mRoot := ANode;
+  mName := AName;
   // Iterativ (Bericht M1).
   Result := ANode.Search(
     function(AVisited: TSyntaxNode): TSyntaxSearchStep
     begin
-      if (AVisited = Root) or not (AVisited.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) then
+      if (AVisited = mRoot) or not (AVisited.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) then
       begin
         Exit(TSyntaxSearchStep.Descend);
       end;
-      if MentionsName(AVisited, Name) then
+      if MentionsName(AVisited, mName) then
       begin
         Exit(TSyntaxSearchStep.Found);
       end;
@@ -783,39 +784,40 @@ end;
 
 /// <summary>Hat die var-Deklaration ADecl einen Interface-Typ (IFoo nach Delphi-Brauch)? Zuweisungen an solche
 /// Variablen wirken über den Referenzzähler: Activity := TAtlasActivity.Scope(…) hält einen Bereich bis zum Ende
-/// der Routine, Writer := nil gibt den Schreiber vorzeitig frei. Wie Delphis H2077 schweigt die Regel dort (#1109).</summary>
+/// der Routine, Writer := nil gibt den Schreiber vorzeitig frei. Wie Delphis H2077 schweigt die Regel dort
+/// (#1109).</summary>
 function IsInterfaceTyped(ADecl: TSyntaxNode): Boolean;
 var
-  TypeNode: TSyntaxNode;
-  TypeName: string;
+  mTypeNode: TSyntaxNode;
+  mTypeName: string;
 begin
-  TypeNode := ADecl.FindChild(TSyntaxKind.TypeReference);
-  if TypeNode = nil then
+  mTypeNode := ADecl.FindChild(TSyntaxKind.TypeReference);
+  if mTypeNode = nil then
   begin
     Exit(False);
   end;
-  TypeName := TypeNode.Name;
-  if LastDelimiter('.', TypeName) > 0 then
+  mTypeName := mTypeNode.Name;
+  if LastDelimiter('.', mTypeName) > 0 then
   begin
-    TypeName := Copy(TypeName, LastDelimiter('.', TypeName) + 1, MaxInt);
+    mTypeName := Copy(mTypeName, LastDelimiter('.', mTypeName) + 1, MaxInt);
   end;
-  Result := (Length(TypeName) > 1) and (TypeName[1] = 'I') and CharInSet(TypeName[2], ['A'..'Z']);
+  Result := (Length(mTypeName) > 1) and (mTypeName[1] = 'I') and CharInSet(mTypeName[2], ['A'..'Z']);
 end;
 
 /// <summary>Leert die Zuweisung AWrite ihr Ziel (X := nil, X := '', X := Default(T), X := T.Empty)?</summary>
 function ClearsValue(const AText: string; AWrite: TSyntaxNode): Boolean;
 var
-  Value: string;
+  mValue: string;
 begin
   if (AWrite.Kind <> TSyntaxKind.AssignStatement) or (AWrite.ChildCount < 2) then
   begin
     Exit(False);
   end;
-  Value := Copy(AText, AWrite[1].StartOffset + 1, AWrite[1].EndOffset - AWrite[1].StartOffset);
-  Value := StringReplace(StringReplace(StringReplace(StringReplace(Value, ' ', '', [rfReplaceAll]), #9, '',
+  mValue := Copy(AText, AWrite[1].StartOffset + 1, AWrite[1].EndOffset - AWrite[1].StartOffset);
+  mValue := StringReplace(StringReplace(StringReplace(StringReplace(mValue, ' ', '', [rfReplaceAll]), #9, '',
     [rfReplaceAll]), #13, '', [rfReplaceAll]), #10, '', [rfReplaceAll]);
-  Result := SameText(Value, 'nil') or (Value = '''''') or (StartsText('Default(', Value) and EndsText(')', Value)) or
-    EndsText('.Empty', Value) or EndsText('.Empty()', Value);
+  Result := SameText(mValue, 'nil') or (mValue = '''''') or (StartsText('Default(', mValue) and EndsText(')', mValue)) or
+    EndsText('.Empty', mValue) or EndsText('.Empty()', mValue);
 end;
 
 /// <summary>Ordnet ANode als Schreib- oder Lesezugriff auf ATarget ein.</summary>

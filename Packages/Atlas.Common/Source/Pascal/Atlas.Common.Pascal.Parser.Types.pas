@@ -147,30 +147,30 @@ end;
 
 function TTypeParser.ParseTypeReferenceBody(AParent: TSyntaxNode): TSyntaxNode;
 var
-  Start: Integer;
-  Name: string;
+  mStart: Integer;
+  mName: string;
 begin
   // Name, Unit.Name, TList<Integer>, string, string[20], file, array of const
-  Start := NodeStart;
+  mStart := NodeStart;
   Result := StartNode(TSyntaxKind.TypeReference);
   AParent.Add(Result);
-  Name := ParseTypeName(Result);
-  if SameWord(Name, 'string') and IsSym('[') then
+  mName := ParseTypeName(Result);
+  if SameWord(mName, 'string') and IsSym('[') then
   begin
     // ShortString-Länge: string[20]
     Advance;
     ParseExpression(Result);
     ExpectSym(']');
   end
-  else if SameWord(Name, 'AnsiString') and IsSym('(') then
+  else if SameWord(mName, 'AnsiString') and IsSym('(') then
   begin
     // Codepage: type AnsiString(CP_WINANSI) bzw. AnsiString(1200) (#1140).
     Advance;
     ParseExpression(Result);
     ExpectSym(')');
   end;
-  Result.Name := Name;
-  FinishNode(Result, Start);
+  Result.Name := mName;
+  FinishNode(Result, mStart);
 end;
 
 function TTypeParser.ParseType(AParent: TSyntaxNode): TSyntaxNode;
@@ -494,12 +494,12 @@ begin
   // Aufrufkonventionen mit oder ohne Semikolon davor: procedure stdcall; procedure; cdecl
   while True do
   begin
-    if IsIdent and InWords(Current.Text, CallingConventions) then
+    if IsIdent and InWords(Current.Text, cCallingConventions) then
     begin
       Advance;
     end
     else if IsSym(';') and (PeekToken(1).Kind = TPascalTokenKind.Identifier) and
-      InWords(PeekToken(1).Text, CallingConventions) then
+      InWords(PeekToken(1).Text, cCallingConventions) then
     begin
       Advance;
     end
@@ -569,7 +569,7 @@ end;
 function TTypeParser.ParseMember(AParent: TSyntaxNode): Boolean;
 begin
   Result := True;
-  if IsIdent and InWords(Current.Text, VisibilityWords) and not PeekIsSym(1, ':') and not PeekIsSym(1, ',') then
+  if IsIdent and InWords(Current.Text, cVisibilityWords) and not PeekIsSym(1, ':') and not PeekIsSym(1, ',') then
   begin
     ParseVisibility(AParent);
   end
@@ -693,48 +693,48 @@ end;
 
 procedure TTypeParser.ParseFieldDecl(AParent: TSyntaxNode; AInVariant: Boolean);
 var
-  Start: Integer;
-  Node: TSyntaxNode;
-  Names: string;
+  mStart: Integer;
+  mNode: TSyntaxNode;
+  mNames: string;
 begin
-  Start := NodeStart;
-  Node := StartNode(TSyntaxKind.Field);
-  AParent.Add(Node);
-  Names := ExpectIdent;
+  mStart := NodeStart;
+  mNode := StartNode(TSyntaxKind.Field);
+  AParent.Add(mNode);
+  mNames := ExpectIdent;
   while AcceptSym(',') do
   begin
-    Names := Names + ',' + ExpectIdent;
+    mNames := mNames + ',' + ExpectIdent;
   end;
-  Node.Name := Names;
+  mNode.Name := mNames;
   ExpectSym(':');
-  ParseType(Node);
+  ParseType(mNode);
   ParseHints;
   // Das letzte Feld darf vor end bzw. vor der ")" eines varianten Zweigs ohne Semikolon stehen (#849).
   if not IsKw('end') and (not AInVariant or not IsSym(')')) then
   begin
     ExpectSym(';');
   end;
-  FinishNode(Node, Start);
+  FinishNode(mNode, mStart);
 end;
 
 procedure TTypeParser.ParseProperty(AParent: TSyntaxNode);
 var
-  Start, DirectiveStart: Integer;
-  Node, Directive: TSyntaxNode;
+  mStart, mDirectiveStart: Integer;
+  mNode, mDirective: TSyntaxNode;
 begin
   // property Name[Index: Integer]: Typ read GetX write SetX default 0; default;
-  Start := NodeStart;
-  Node := StartNode(TSyntaxKind.PropertyDecl);
-  AParent.Add(Node);
+  mStart := NodeStart;
+  mNode := StartNode(TSyntaxKind.PropertyDecl);
+  AParent.Add(mNode);
   Advance; // property
-  Node.Name := ExpectIdent;
+  mNode.Name := ExpectIdent;
   if IsSym('[') then
   begin
-    ParseParameters(Node);
+    ParseParameters(mNode);
   end;
   if AcceptSym(':') then
   begin
-    ParseTypeReference(Node);
+    ParseTypeReference(mNode);
   end;
   // Spezifizierer (read, write, index, default, stored, implements ...) bis ;
   while not AtEnd and not IsSym(';') and not IsKw('end') do
@@ -751,40 +751,40 @@ begin
   begin
     // property … ; defualt; – an dieser Stelle steht nur default, ein anderes Wort ist ein Tippfehler
     // (#1068, Regel directive-typo).
-    DirectiveStart := NodeStart;
-    Directive := StartNode(TSyntaxKind.Directive);
-    Directive.Name := LowerCase(Current.Text);
-    Node.Add(Directive);
+    mDirectiveStart := NodeStart;
+    mDirective := StartNode(TSyntaxKind.Directive);
+    mDirective.Name := LowerCase(Current.Text);
+    mNode.Add(mDirective);
     Advance;
-    FinishNode(Directive, DirectiveStart);
+    FinishNode(mDirective, mDirectiveStart);
     Advance;
   end;
-  FinishNode(Node, Start);
+  FinishNode(mNode, mStart);
 end;
 
 procedure TTypeParser.ParseVariantPart(AParent: TSyntaxNode);
 var
-  Start: Integer;
-  Node: TSyntaxNode;
+  mStart: Integer;
+  mNode: TSyntaxNode;
 begin
   // case [Tag:] Typ of Marken: (Felder); … (#846). Endet vor dem end des Records bzw. vor der ")" des
   // umschließenden Zweigs. VariantPart: Selektorfeld (Field) oder Selektortyp (TypeReference), dann je
   // Zweig ein CaseItem mit den Marken als Name und den Feldern (auch einem weiteren VariantPart).
-  Start := NodeStart;
-  Node := StartNode(TSyntaxKind.VariantPart);
-  AParent.Add(Node);
+  mStart := NodeStart;
+  mNode := StartNode(TSyntaxKind.VariantPart);
+  AParent.Add(mNode);
   if not EnterNesting then
   begin
-    Node.Add(TooDeep);
-    FinishNode(Node, Start);
+    mNode.Add(TooDeep);
+    FinishNode(mNode, mStart);
     Exit;
   end;
   try
-    ParseVariantBody(Node);
+    ParseVariantBody(mNode);
   finally
     Dec(FDepth);
   end;
-  FinishNode(Node, Start);
+  FinishNode(mNode, mStart);
 end;
 
 procedure TTypeParser.ParseVariantBody(ANode: TSyntaxNode);
@@ -873,11 +873,11 @@ end;
 
 procedure TTypeParser.ParseVariantFields(AParent: TSyntaxNode);
 var
-  Before: Integer;
+  mBefore: Integer;
 begin
   while not AtEnd and not IsSym(')') and not IsKw('end') do
   begin
-    Before := FIndex;
+    mBefore := FIndex;
     if IsKw('case') then
     begin
       ParseVariantPart(AParent);
@@ -896,7 +896,7 @@ begin
       DiagnoseUnexpected(cTexts[TTypesText.FieldName].Text);
     end;
     AcceptSym(';');
-    if FIndex = Before then
+    if FIndex = mBefore then
     begin
       Advance;
     end;

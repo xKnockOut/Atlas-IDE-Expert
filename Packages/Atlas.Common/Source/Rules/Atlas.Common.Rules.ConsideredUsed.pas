@@ -123,20 +123,20 @@ const
     (De: 'Mitglied eines Interfaces'; En: 'member of an interface'),
     (De: 'Mitglied eines Helfers'; En: 'member of a helper'));
 
-  KeptDirectives: array[0..5] of string = ('message', 'virtual', 'dynamic', 'abstract', 'override', 'reintroduce');
-  EnumeratorNames: array[0..2] of string = ('GetEnumerator', 'MoveNext', 'Current');
-  AccessorWords: array[0..4] of string = ('read', 'write', 'stored', 'add', 'remove');
-  MaxChainDepth = 64;
+  cKeptDirectives: array[0..5] of string = ('message', 'virtual', 'dynamic', 'abstract', 'override', 'reintroduce');
+  cEnumeratorNames: array[0..2] of string = ('GetEnumerator', 'MoveNext', 'Current');
+  cAccessorWords: array[0..4] of string = ('read', 'write', 'stored', 'add', 'remove');
+  cMaxChainDepth = 64;
 
 function ShortName(const AName: string): string;
 var
-  Position: Integer;
+  mPosition: Integer;
 begin
   Result := AName;
-  Position := Pos('<', Result);
-  if Position > 0 then
+  mPosition := Pos('<', Result);
+  if mPosition > 0 then
   begin
-    Result := Copy(Result, 1, Position - 1);
+    Result := Copy(Result, 1, mPosition - 1);
   end;
   Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
 end;
@@ -168,44 +168,44 @@ end;
 
 class function TConsideredUsed.Matches(const APattern, AName: string): Boolean;
 var
-  Pattern, Name: string;
-  P, N, StarP, StarN: Integer;
+  mPattern, mName: string;
+  P, N, mStarP, mStarN: Integer;
 begin
-  Pattern := UpperCase(APattern);
-  Name := UpperCase(AName);
+  mPattern := UpperCase(APattern);
+  mName := UpperCase(AName);
   P := 1;
   N := 1;
-  StarP := 0;
-  StarN := 0;
-  while N <= Length(Name) do
+  mStarP := 0;
+  mStarN := 0;
+  while N <= Length(mName) do
   begin
-    if (P <= Length(Pattern)) and ((Pattern[P] = '?') or (Pattern[P] = Name[N])) then
+    if (P <= Length(mPattern)) and ((mPattern[P] = '?') or (mPattern[P] = mName[N])) then
     begin
       Inc(P);
       Inc(N);
     end
-    else if (P <= Length(Pattern)) and (Pattern[P] = '*') then
+    else if (P <= Length(mPattern)) and (mPattern[P] = '*') then
     begin
-      StarP := P;
-      StarN := N;
+      mStarP := P;
+      mStarN := N;
       Inc(P);
     end
-    else if StarP > 0 then
+    else if mStarP > 0 then
     begin
-      P := StarP + 1;
-      Inc(StarN);
-      N := StarN;
+      P := mStarP + 1;
+      Inc(mStarN);
+      N := mStarN;
     end
     else
     begin
       Exit(False);
     end;
   end;
-  while (P <= Length(Pattern)) and (Pattern[P] = '*') do
+  while (P <= Length(mPattern)) and (mPattern[P] = '*') do
   begin
     Inc(P);
   end;
-  Result := P > Length(Pattern);
+  Result := P > Length(mPattern);
 end;
 
 class function TConsideredUsed.Explain(AReason: TConsideredUsedReason): string;
@@ -225,24 +225,24 @@ end;
 class function TConsideredUsed.TokenIndexAt(const ATokens: TArray<TPascalToken>;
   const APosition: TTextPosition): Integer;
 var
-  Low, High_, Middle: Integer;
+  mLow, mHigh_, mMiddle: Integer;
 begin
-  Low := 0;
-  High_ := Length(ATokens);
-  while Low < High_ do
+  mLow := 0;
+  mHigh_ := Length(ATokens);
+  while mLow < mHigh_ do
   begin
-    Middle := (Low + High_) div 2;
-    if (ATokens[Middle].StartPos.Line < APosition.Line) or ((ATokens[Middle].StartPos.Line = APosition.Line) and
-      (ATokens[Middle].StartPos.Character < APosition.Character)) then
+    mMiddle := (mLow + mHigh_) div 2;
+    if (ATokens[mMiddle].StartPos.Line < APosition.Line) or ((ATokens[mMiddle].StartPos.Line = APosition.Line) and
+      (ATokens[mMiddle].StartPos.Character < APosition.Character)) then
     begin
-      Low := Middle + 1;
+      mLow := mMiddle + 1;
     end
     else
     begin
-      High_ := Middle;
+      mHigh_ := mMiddle;
     end;
   end;
-  Result := Low;
+  Result := mLow;
   if Result > High(ATokens) then
   begin
     Result := -1;
@@ -307,14 +307,14 @@ end;
 
 function TConsideredUsed.Owner(const AContainer: string; out AOwner: TIndexSymbol): Boolean;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
-  for Symbol in FUnit.Symbols do
+  for mSymbol in FUnit.Symbols do
   begin
-    if (Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
-      TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType]) and SameText(Symbol.QualifiedName, AContainer) then
+    if (mSymbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+      TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType]) and SameText(mSymbol.QualifiedName, AContainer) then
     begin
-      AOwner := Symbol;
+      AOwner := mSymbol;
       Exit(True);
     end;
   end;
@@ -324,29 +324,29 @@ end;
 
 function TConsideredUsed.FindType(const AName: string; out AType: TIndexSymbol): Boolean;
 var
-  Short: string;
-  Symbol: TIndexSymbol;
-  Location: TSymbolLocation;
+  mShort: string;
+  mSymbol: TIndexSymbol;
+  mLocation: TSymbolLocation;
 begin
-  Short := ShortName(AName);
+  mShort := ShortName(AName);
   // Zuerst die eigene Unit, dann der Index.
-  for Symbol in FUnit.Symbols do
+  for mSymbol in FUnit.Symbols do
   begin
-    if (Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.InterfaceType,
-      TIndexSymbolKind.RecordType]) and SameText(Symbol.Name, Short) then
+    if (mSymbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.InterfaceType,
+      TIndexSymbolKind.RecordType]) and SameText(mSymbol.Name, mShort) then
     begin
-      AType := Symbol;
+      AType := mSymbol;
       Exit(True);
     end;
   end;
   if FIndex <> nil then
   begin
-    for Location in FIndex.FindSymbols(Short) do
+    for mLocation in FIndex.FindSymbols(mShort) do
     begin
-      if Location.Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType,
+      if mLocation.Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType,
         TIndexSymbolKind.InterfaceType, TIndexSymbolKind.RecordType] then
       begin
-        AType := Location.Symbol;
+        AType := mLocation.Symbol;
         Exit(True);
       end;
     end;
@@ -357,71 +357,71 @@ end;
 
 function TConsideredUsed.Chain(const AOwner: TIndexSymbol; out AChain: TArray<TIndexSymbol>): Boolean;
 var
-  Key, Ancestor: string;
-  Pending: TList<TIndexSymbol>;
-  Seen: TDictionary<string, Boolean>;
-  Current, Found: TIndexSymbol;
-  Collected: TArray<TIndexSymbol>;
-  Known: Boolean;
+  mKey, mAncestor: string;
+  mPending: TList<TIndexSymbol>;
+  mSeen: TDictionary<string, Boolean>;
+  mCurrent, mFound: TIndexSymbol;
+  mCollected: TArray<TIndexSymbol>;
+  mKnown: Boolean;
 begin
-  Key := LowerCase(AOwner.QualifiedName);
-  if FUnknownChains.ContainsKey(Key) then
+  mKey := LowerCase(AOwner.QualifiedName);
+  if FUnknownChains.ContainsKey(mKey) then
   begin
     AChain := nil;
     Exit(False);
   end;
-  if FChains.TryGetValue(Key, AChain) then
+  if FChains.TryGetValue(mKey, AChain) then
   begin
     Exit(True);
   end;
-  Collected := nil;
-  Known := True;
-  Pending := TList<TIndexSymbol>.Create;
-  Seen := TDictionary<string, Boolean>.Create;
+  mCollected := nil;
+  mKnown := True;
+  mPending := TList<TIndexSymbol>.Create;
+  mSeen := TDictionary<string, Boolean>.Create;
   try
-    Pending.Add(AOwner);
-    while (Pending.Count > 0) and (Length(Collected) < MaxChainDepth) do
+    mPending.Add(AOwner);
+    while (mPending.Count > 0) and (Length(mCollected) < cMaxChainDepth) do
     begin
-      Current := Pending[0];
-      Pending.Delete(0);
-      for Ancestor in Current.Ancestors do
+      mCurrent := mPending[0];
+      mPending.Delete(0);
+      for mAncestor in mCurrent.Ancestors do
       begin
-        if Seen.ContainsKey(LowerCase(ShortName(Ancestor))) then
+        if mSeen.ContainsKey(LowerCase(ShortName(mAncestor))) then
         begin
           Continue;
         end;
-        Seen.Add(LowerCase(ShortName(Ancestor)), True);
-        if not FindType(Ancestor, Found) then
+        mSeen.Add(LowerCase(ShortName(mAncestor)), True);
+        if not FindType(mAncestor, mFound) then
         begin
-          Known := False;
+          mKnown := False;
           Continue;
         end;
-        Collected := Collected + [Found];
-        Pending.Add(Found);
+        mCollected := mCollected + [mFound];
+        mPending.Add(mFound);
       end;
     end;
   finally
-    Pending.Free;
-    Seen.Free;
+    mPending.Free;
+    mSeen.Free;
   end;
-  if not Known then
+  if not mKnown then
   begin
-    FUnknownChains.AddOrSetValue(Key, True);
+    FUnknownChains.AddOrSetValue(mKey, True);
     AChain := nil;
     Exit(False);
   end;
-  FChains.AddOrSetValue(Key, Collected);
-  AChain := Collected;
+  FChains.AddOrSetValue(mKey, mCollected);
+  AChain := mCollected;
   Result := True;
 end;
 
 function TConsideredUsed.ChainHas(const AChain: TArray<TIndexSymbol>; const ATypeName: string): Boolean;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
-  for Symbol in AChain do
+  for mSymbol in AChain do
   begin
-    if SameText(Symbol.Name, ATypeName) then
+    if SameText(mSymbol.Name, ATypeName) then
     begin
       Exit(True);
     end;
@@ -502,19 +502,19 @@ end;
 
 function TConsideredUsed.IsAccessor(const ASymbol: TIndexSymbol): Boolean;
 var
-  Symbol: TIndexSymbol;
-  Words: TArray<string>;
-  Index: Integer;
+  mSymbol: TIndexSymbol;
+  mWords: TArray<string>;
+  mIndex: Integer;
 begin
-  for Symbol in FUnit.Symbols do
+  for mSymbol in FUnit.Symbols do
   begin
-    if (Symbol.Kind = TIndexSymbolKind.Property_) and SameText(Symbol.Container, ASymbol.Container) then
+    if (mSymbol.Kind = TIndexSymbolKind.Property_) and SameText(mSymbol.Container, ASymbol.Container) then
     begin
-      Words := Symbol.Signature.Replace(';', ' ').Replace(':', ' ').Split([' '],
+      mWords := mSymbol.Signature.Replace(';', ' ').Replace(':', ' ').Split([' '],
         TStringSplitOptions.ExcludeEmpty);
-      for Index := 0 to High(Words) - 1 do
+      for mIndex := 0 to High(mWords) - 1 do
       begin
-        if (IndexText(Words[Index], AccessorWords) >= 0) and SameText(Words[Index + 1], ASymbol.Name) then
+        if (IndexText(mWords[mIndex], cAccessorWords) >= 0) and SameText(mWords[mIndex + 1], ASymbol.Name) then
         begin
           Exit(True);
         end;
@@ -526,24 +526,24 @@ end;
 
 procedure TConsideredUsed.CollectExports;
 var
-  Index: Integer;
-  InExports: Boolean;
+  mIndex: Integer;
+  mInExports: Boolean;
 begin
-  InExports := False;
-  for Index := 0 to High(FTokens) do
+  mInExports := False;
+  for mIndex := 0 to High(FTokens) do
   begin
-    if FTokens[Index].IsKeyword('exports') then
+    if FTokens[mIndex].IsKeyword('exports') then
     begin
-      InExports := True;
+      mInExports := True;
     end
-    else if InExports and FTokens[Index].IsSymbol(';') then
+    else if mInExports and FTokens[mIndex].IsSymbol(';') then
     begin
-      InExports := False;
+      mInExports := False;
     end
-    else if InExports and (FTokens[Index].Kind = TPascalTokenKind.Identifier) and (Index > 0) and
-      (FTokens[Index - 1].IsKeyword('exports') or FTokens[Index - 1].IsSymbol(',')) then
+    else if mInExports and (FTokens[mIndex].Kind = TPascalTokenKind.Identifier) and (mIndex > 0) and
+      (FTokens[mIndex - 1].IsKeyword('exports') or FTokens[mIndex - 1].IsSymbol(',')) then
     begin
-      FExported.AddOrSetValue(LowerCase(FTokens[Index].Text), True);
+      FExported.AddOrSetValue(LowerCase(FTokens[mIndex].Text), True);
     end;
   end;
 end;
@@ -552,7 +552,7 @@ function HasKeptDirective(const ASymbol: TIndexSymbol): Boolean;
 var
   mDirective: string;
 begin
-  for mDirective in KeptDirectives do
+  for mDirective in cKeptDirectives do
   begin
     if ASymbol.HasDirective(mDirective) then
     begin
@@ -586,7 +586,7 @@ begin
   begin
     Result := TConsideredUsedReason.Operator;
   end
-  else if (ASymbol.Container <> '') and (IndexText(ASymbol.Name, EnumeratorNames) >= 0) then
+  else if (ASymbol.Container <> '') and (IndexText(ASymbol.Name, cEnumeratorNames) >= 0) then
   begin
     Result := TConsideredUsedReason.Enumerator;
   end

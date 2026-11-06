@@ -289,9 +289,9 @@ type
   TSharedCacheReads = class
   private type
     TShared = class
-      Stamp: Int64;
-      Entries: TArray<TIndexCacheEntry>;
-      Users: Integer;
+      FStamp: Int64;
+      FEntries: TArray<TIndexCacheEntry>;
+      FUsers: Integer;
     end;
   private
     class var FLock: TObject;
@@ -317,7 +317,8 @@ type
     FFileName: string;
     FStamp: Int64;
   public
-    /// <summary>Holt die Einträge von AFileName; AHold hält sie. '' = kein gemeinsamer Cache: leer, AHold nil.</summary>
+    /// <summary>Holt die Einträge von AFileName; AHold hält sie. '' = kein gemeinsamer Cache: leer, AHold
+    /// nil.</summary>
     class function Acquire(const AFileSystem: IIndexFileSystem; const AFileName: string;
       const ARead: TFunc<TArray<TIndexCacheEntry>>; out AHold: IInterface): TArray<TIndexCacheEntry>; static;
     destructor Destroy; override;
@@ -358,36 +359,36 @@ end;
 class function TSharedCacheWrites.Written(const AFileSystem: IIndexFileSystem;
   const AFileName: string): TDictionary<string, string>;
 var
-  Entry: TWritten;
-  Stamp: Int64;
+  mEntry: TWritten;
+  mStamp: Int64;
 begin
   Result := nil;
-  if not FFiles.TryGetValue(SharedCacheKey(AFileSystem, AFileName), Entry) then
+  if not FFiles.TryGetValue(SharedCacheKey(AFileSystem, AFileName), mEntry) then
   begin
     Exit;
   end;
-  if AFileSystem.FileStamp(AFileName, Stamp) and (Stamp = Entry.Stamp) then
+  if AFileSystem.FileStamp(AFileName, mStamp) and (mStamp = mEntry.Stamp) then
   begin
-    Result := Entry.Units;
+    Result := mEntry.Units;
   end;
 end;
 
 class procedure TSharedCacheWrites.Remember(const AFileSystem: IIndexFileSystem; const AFileName: string;
   AUnits: TDictionary<string, string>);
 var
-  Entry: TWritten;
-  Stamp: Int64;
+  mEntry: TWritten;
+  mStamp: Int64;
 begin
-  if not AFileSystem.FileStamp(AFileName, Stamp) then
+  if not AFileSystem.FileStamp(AFileName, mStamp) then
   begin
     AUnits.Free;
     FFiles.Remove(SharedCacheKey(AFileSystem, AFileName));
     Exit;
   end;
-  Entry := TWritten.Create;
-  Entry.Stamp := Stamp;
-  Entry.Units := AUnits;
-  FFiles.AddOrSetValue(SharedCacheKey(AFileSystem, AFileName), Entry);
+  mEntry := TWritten.Create;
+  mEntry.Stamp := mStamp;
+  mEntry.Units := AUnits;
+  FFiles.AddOrSetValue(SharedCacheKey(AFileSystem, AFileName), mEntry);
 end;
 
 class procedure TSharedCacheWrites.Forget(const AFileSystem: IIndexFileSystem; const AFileName: string);
@@ -455,28 +456,28 @@ end;
 class function TSharedCacheReads.Acquire(const AFileSystem: IIndexFileSystem; const AFileName: string;
   out AStamp: Int64; const ARead: TFunc<TArray<TIndexCacheEntry>>): TArray<TIndexCacheEntry>;
 var
-  Key: string;
-  Shared: TShared;
+  mKey: string;
+  mShared: TShared;
 begin
   if not AFileSystem.FileStamp(AFileName, AStamp) then
   begin
     AStamp := -1;
   end;
-  Key := KeyOf(AFileSystem, AFileName);
+  mKey := KeyOf(AFileSystem, AFileName);
   // Unter der Sperre lesen: Ein zweiter Dienst wartet lieber, als dieselbe Datei ein zweites Mal zu laden.
   TMonitor.Enter(FLock);
   try
-    if FFiles.TryGetValue(Key, Shared) and (Shared.Stamp = AStamp) then
+    if FFiles.TryGetValue(mKey, mShared) and (mShared.FStamp = AStamp) then
     begin
-      Inc(Shared.Users);
-      Exit(Shared.Entries);
+      Inc(mShared.FUsers);
+      Exit(mShared.FEntries);
     end;
-    Shared := TShared.Create;
-    Shared.Stamp := AStamp;
-    Shared.Entries := ARead();
-    Shared.Users := 1;
-    FFiles.AddOrSetValue(Key, Shared);
-    Result := Shared.Entries;
+    mShared := TShared.Create;
+    mShared.FStamp := AStamp;
+    mShared.FEntries := ARead();
+    mShared.FUsers := 1;
+    FFiles.AddOrSetValue(mKey, mShared);
+    Result := mShared.FEntries;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -485,30 +486,30 @@ end;
 class procedure TSharedCacheReads.Release(const AFileSystem: IIndexFileSystem; const AFileName: string;
   AStamp: Int64);
 var
-  Key: string;
-  Shared: TShared;
-  Unused: Boolean;
+  mKey: string;
+  mShared: TShared;
+  mUnused: Boolean;
 begin
-  Key := KeyOf(AFileSystem, AFileName);
-  Unused := False;
+  mKey := KeyOf(AFileSystem, AFileName);
+  mUnused := False;
   TMonitor.Enter(FLock);
   try
     // Anderer Stand: Der Eintrag wurde schon ersetzt; die eigene Kopie hält der Aufrufer selbst.
-    if not FFiles.TryGetValue(Key, Shared) or (Shared.Stamp <> AStamp) then
+    if not FFiles.TryGetValue(mKey, mShared) or (mShared.FStamp <> AStamp) then
     begin
       Exit;
     end;
-    Dec(Shared.Users);
-    if Shared.Users <= 0 then
+    Dec(mShared.FUsers);
+    if mShared.FUsers <= 0 then
     begin
-      FFiles.Remove(Key);
-      Unused := True;
+      FFiles.Remove(mKey);
+      mUnused := True;
     end;
   finally
     TMonitor.Exit(FLock);
   end;
   // Außerhalb der Lese-Sperre: Forget wartet auf ein laufendes Schreiben.
-  if Unused then
+  if mUnused then
   begin
     TSharedCacheWrites.Forget(AFileSystem, AFileName);
   end;
@@ -617,10 +618,10 @@ end;
 function ContainsUnit(const AEntries: TArray<TIndexCacheEntry>; AByFile: TDictionary<string, Integer>;
   const AUnit: TUnitIndex): Boolean;
 var
-  Position: Integer;
+  mPosition: Integer;
 begin
-  Result := AByFile.TryGetValue(AnsiUpperCase(AUnit.FileName), Position) and
-    (AEntries[Position].Header.Stamp = AUnit.Stamp) and (AEntries[Position].Header.Hash = AUnit.Hash);
+  Result := AByFile.TryGetValue(AnsiUpperCase(AUnit.FileName), mPosition) and
+    (AEntries[mPosition].Header.Stamp = AUnit.Stamp) and (AEntries[mPosition].Header.Hash = AUnit.Hash);
 end;
 
 function InSharedCache(const ARequest: TIndexRequest; const AFileName: string): Boolean;
@@ -632,26 +633,26 @@ end;
 /// <summary>Fehlt eine Unit aus AUnits in AEntries oder steht sie dort mit anderem Stand?</summary>
 function MissingIn(const AEntries: TArray<TIndexCacheEntry>; AUnits: TList<TUnitIndex>): Boolean;
 var
-  ByFile: TDictionary<string, Integer>;
-  Position: Integer;
-  UnitIndex: TUnitIndex;
+  mByFile: TDictionary<string, Integer>;
+  mPosition: Integer;
+  mUnitIndex: TUnitIndex;
 begin
   Result := False;
-  ByFile := TDictionary<string, Integer>.Create;
+  mByFile := TDictionary<string, Integer>.Create;
   try
-    for Position := 0 to High(AEntries) do
+    for mPosition := 0 to High(AEntries) do
     begin
-      ByFile.AddOrSetValue(AnsiUpperCase(AEntries[Position].Header.FileName), Position);
+      mByFile.AddOrSetValue(AnsiUpperCase(AEntries[mPosition].Header.FileName), mPosition);
     end;
-    for UnitIndex in AUnits do
+    for mUnitIndex in AUnits do
     begin
-      if not ContainsUnit(AEntries, ByFile, UnitIndex) then
+      if not ContainsUnit(AEntries, mByFile, mUnitIndex) then
       begin
         Exit(True);
       end;
     end;
   finally
-    ByFile.Free;
+    mByFile.Free;
   end;
 end;
 
@@ -659,13 +660,13 @@ end;
 /// </summary>
 function AllWritten(AWritten: TDictionary<string, string>; AUnits: TList<TUnitIndex>): Boolean;
 var
-  UnitIndex: TUnitIndex;
-  State: string;
+  mUnitIndex: TUnitIndex;
+  mState: string;
 begin
-  for UnitIndex in AUnits do
+  for mUnitIndex in AUnits do
   begin
-    if not AWritten.TryGetValue(AnsiUpperCase(UnitIndex.FileName), State) or
-      (State <> TSharedCacheWrites.StateOf(UnitIndex)) then
+    if not AWritten.TryGetValue(AnsiUpperCase(mUnitIndex.FileName), mState) or
+      (mState <> TSharedCacheWrites.StateOf(mUnitIndex)) then
     begin
       Exit(False);
     end;
@@ -677,26 +678,26 @@ end;
 /// gemeinsamen Cache bleiben erhalten.</summary>
 procedure AddOthers(const AEntries: TArray<TIndexCacheEntry>; AUnits: TList<TUnitIndex>);
 var
-  Current: TDictionary<string, Boolean>;
-  Entry: TIndexCacheEntry;
-  UnitIndex: TUnitIndex;
+  mCurrent: TDictionary<string, Boolean>;
+  mEntry: TIndexCacheEntry;
+  mUnitIndex: TUnitIndex;
 begin
-  Current := TDictionary<string, Boolean>.Create;
+  mCurrent := TDictionary<string, Boolean>.Create;
   try
-    for UnitIndex in AUnits do
+    for mUnitIndex in AUnits do
     begin
-      Current.AddOrSetValue(AnsiUpperCase(UnitIndex.FileName), True);
+      mCurrent.AddOrSetValue(AnsiUpperCase(mUnitIndex.FileName), True);
     end;
-    for Entry in AEntries do
+    for mEntry in AEntries do
     begin
-      if not Current.ContainsKey(AnsiUpperCase(Entry.Header.FileName)) and
-        TIndexCache.Expand(Entry, UnitIndex) then
+      if not mCurrent.ContainsKey(AnsiUpperCase(mEntry.Header.FileName)) and
+        TIndexCache.Expand(mEntry, mUnitIndex) then
       begin
-        AUnits.Add(UnitIndex);
+        AUnits.Add(mUnitIndex);
       end;
     end;
   finally
-    Current.Free;
+    mCurrent.Free;
   end;
 end;
 
@@ -822,8 +823,8 @@ end;
 const
   /// <summary>So lange wartet ein Aufbau höchstens darauf, den Bibliotheks-Cache schreiben zu dürfen; ein
   /// anderer Schreiber braucht für Lesen, Ergänzen und Schreiben wenige Sekunden.</summary>
-  LibraryLockWaitMs = 30000;
-  LockPollMs = 100;
+  cLibraryLockWaitMs = 30000;
+  cLockPollMs = 100;
 
 function TIndexCacheWriter.LockForWrite(const AFileName: string): IInterface;
 var
@@ -831,9 +832,9 @@ var
 begin
   mWatch := TStopwatch.StartNew;
   Result := FFileSystem.TryLockWrite(AFileName);
-  while (Result = nil) and not FCancelled() and (mWatch.ElapsedMilliseconds < LibraryLockWaitMs) do
+  while (Result = nil) and not FCancelled() and (mWatch.ElapsedMilliseconds < cLibraryLockWaitMs) do
   begin
-    TThread.Sleep(LockPollMs);
+    TThread.Sleep(cLockPollMs);
     Result := FFileSystem.TryLockWrite(AFileName);
   end;
 end;
@@ -1092,23 +1093,23 @@ end;
 
 procedure TIndexService.WaitForOtherWriter(const ARequest: TIndexRequest; const ACancelled: TFunc<Boolean>);
 var
-  Watch: TStopwatch;
-  Before, Stamp: Int64;
+  mWatch: TStopwatch;
+  mBefore, mStamp: Int64;
 begin
   if (ARequest.CacheFile = '') or not ARequest.ReadOnlyCache or not Assigned(ARequest.CacheBusy) then
   begin
     Exit;
   end;
-  if not FFileSystem.FileStamp(ARequest.CacheFile, Before) then
+  if not FFileSystem.FileStamp(ARequest.CacheFile, mBefore) then
   begin
-    Before := 0;
+    mBefore := 0;
   end;
-  Watch := TStopwatch.StartNew;
+  mWatch := TStopwatch.StartNew;
   // Bis die andere Instanz einen neuen Stand geschrieben oder die Sperre freigegeben hat,
   // nie länger als CacheWaitMs.
-  while not ACancelled() and (Watch.ElapsedMilliseconds < ARequest.CacheWaitMs) and ARequest.CacheBusy() do
+  while not ACancelled() and (mWatch.ElapsedMilliseconds < ARequest.CacheWaitMs) and ARequest.CacheBusy() do
   begin
-    if FFileSystem.FileStamp(ARequest.CacheFile, Stamp) and (Stamp <> Before) then
+    if FFileSystem.FileStamp(ARequest.CacheFile, mStamp) and (mStamp <> mBefore) then
     begin
       Exit;
     end;
@@ -1118,16 +1119,16 @@ end;
 
 procedure TIndexService.Start(const ARequest: TIndexRequest);
 var
-  Previous: TThread;
+  mPrevious: TThread;
 begin
   // Nicht warten (#874): Der neue Thread wartet auf den abgebrochenen und gibt ihn frei.
-  Previous := FThread;
+  mPrevious := FThread;
   FThread := nil;
-  if Previous <> nil then
+  if mPrevious <> nil then
   begin
-    TIndexThread(Previous).Cancel;
+    TIndexThread(mPrevious).Cancel;
   end;
-  FThread := TIndexThread.Create(Self, ARequest, Previous);
+  FThread := TIndexThread.Create(Self, ARequest, mPrevious);
 end;
 
 procedure TIndexService.Stop;
@@ -1179,12 +1180,12 @@ end;
 
 procedure TIndexService.ReplaceBuilder(ABuilder: TIndexBuilder);
 var
-  Old: TIndexBuilder;
+  mOld: TIndexBuilder;
 begin
   TMonitor.Enter(FLock);
   try
     // Neue Anfragen sehen sofort den neuen Builder; der alte wird frei, sobald niemand ihn nutzt.
-    Old := FBuilder;
+    mOld := FBuilder;
     FBuilder := nil;
     while FUsers > 0 do
     begin
@@ -1194,21 +1195,21 @@ begin
   finally
     TMonitor.Exit(FLock);
   end;
-  Old.Free;
+  mOld.Free;
 end;
 
 function TIndexService.EnsureUnit(const AUnitName: string): Boolean;
 var
-  Builder: TIndexBuilder;
-  Existing: TUnitIndex;
+  mBuilder: TIndexBuilder;
+  mExisting: TUnitIndex;
 begin
-  Builder := AcquireBuilder;
-  if Builder = nil then
+  mBuilder := AcquireBuilder;
+  if mBuilder = nil then
   begin
-    Exit(FIndex.FindUnit(AUnitName, Existing));
+    Exit(FIndex.FindUnit(AUnitName, mExisting));
   end;
   try
-    Result := Builder.EnsureUnit(AUnitName);
+    Result := mBuilder.EnsureUnit(AUnitName);
   finally
     ReleaseBuilder;
   end;
@@ -1216,17 +1217,17 @@ end;
 
 function TIndexService.ApplyText(const AFileName, AText: string): Boolean;
 var
-  Builder: TIndexBuilder;
+  mBuilder: TIndexBuilder;
 begin
-  Builder := AcquireBuilder;
-  if Builder = nil then
+  mBuilder := AcquireBuilder;
+  if mBuilder = nil then
   begin
     Exit(False);
   end;
   try
     TMonitor.Enter(FApplyLock);
     try
-      Result := Builder.ApplyText(AFileName, AText);
+      Result := mBuilder.ApplyText(AFileName, AText);
     finally
       TMonitor.Exit(FApplyLock);
     end;
@@ -1237,44 +1238,44 @@ end;
 
 function TIndexService.UsagesOf(const AFileName: string; out AUsages: TArray<TIndexUsage>): Boolean;
 var
-  Existing: TUnitIndex;
-  CacheFile: string;
-  Entry: TIndexCacheEntry;
-  Builder: TIndexBuilder;
+  mExisting: TUnitIndex;
+  mCacheFile: string;
+  mEntry: TIndexCacheEntry;
+  mBuilder: TIndexBuilder;
 begin
   AUsages := nil;
-  if not FIndex.FindFile(AFileName, Existing) or not Existing.UsagesIndexed then
+  if not FIndex.FindFile(AFileName, mExisting) or not mExisting.UsagesIndexed then
   begin
     Exit(False);
   end;
-  if not Existing.UsagesOffloaded then
+  if not mExisting.UsagesOffloaded then
   begin
-    AUsages := Existing.Usages;
+    AUsages := mExisting.Usages;
     Exit(True);
   end;
   // Ausgelagert: aus dem Cache, wenn er denselben Stand der Unit hat.
   TMonitor.Enter(FLock);
   try
-    CacheFile := FCacheFile;
+    mCacheFile := FCacheFile;
   finally
     TMonitor.Exit(FLock);
   end;
-  for Entry in ReadCacheFile(FFileSystem, CacheFile, FCacheEvents.Rejected) do
+  for mEntry in ReadCacheFile(FFileSystem, mCacheFile, FCacheEvents.Rejected) do
   begin
-    if SameText(Entry.Header.FileName, AFileName) and (Entry.Header.Hash = Existing.Hash) and
-      Entry.Header.UsagesIndexed then
+    if SameText(mEntry.Header.FileName, AFileName) and (mEntry.Header.Hash = mExisting.Hash) and
+      mEntry.Header.UsagesIndexed then
     begin
-      Exit(TIndexCache.ExpandUsages(Entry, AUsages));
+      Exit(TIndexCache.ExpandUsages(mEntry, AUsages));
     end;
   end;
   // Noch nicht geschrieben (neu eingelesen): aus der Datei.
-  Builder := AcquireBuilder;
-  if Builder = nil then
+  mBuilder := AcquireBuilder;
+  if mBuilder = nil then
   begin
     Exit(False);
   end;
   try
-    Result := Builder.ReadUsages(AFileName, AUsages);
+    Result := mBuilder.ReadUsages(AFileName, AUsages);
   finally
     ReleaseBuilder;
   end;
@@ -1282,17 +1283,17 @@ end;
 
 function TIndexService.ApplyChanges(const AChanges: TArray<TFileChange>): Integer;
 var
-  Builder: TIndexBuilder;
+  mBuilder: TIndexBuilder;
 begin
-  Builder := AcquireBuilder;
-  if Builder = nil then
+  mBuilder := AcquireBuilder;
+  if mBuilder = nil then
   begin
     Exit(0);
   end;
   try
     TMonitor.Enter(FApplyLock);
     try
-      Result := Builder.ApplyChanges(AChanges);
+      Result := mBuilder.ApplyChanges(AChanges);
     finally
       TMonitor.Exit(FApplyLock);
     end;

@@ -216,7 +216,7 @@ begin
   mArguments := TJSONArray.Create;
   try
     mReports.RegisterCommands(mCommands);
-    mAnswer := mCommands.Execute(TBugReport.Command, mArguments);
+    mAnswer := mCommands.Execute(TBugReport.cCommand, mArguments);
     try
       Assert.IsTrue(mAnswer is TJSONObject);
       mText := TJSONObject(mAnswer).GetValue<string>('text', '');
@@ -228,7 +228,7 @@ begin
     mCommands.Free;
     mReports.Free;
   end;
-  Assert.IsTrue(Pos(TProductVersion.Version, mText) > 0);
+  Assert.IsTrue(Pos(TProductVersion.cVersion, mText) > 0);
   Assert.AreEqual('Fehlerbericht erstellt', FLog[High(FLog)]);
 end;
 

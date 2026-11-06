@@ -38,22 +38,22 @@ end;
 function RuleCatalogDeJson: string;
 begin
   Result := '{' + #10 + '  "rules": [' + #10 +
-    Joined(CatalogLinesDeFindBugs) + ',' + #10 +
-    Joined(CatalogLinesDeExceptions) + ',' + #10 +
-    Joined(CatalogLinesDeThreads) + ',' + #10 +
-    Joined(CatalogLinesDeDatabase) + ',' + #10 +
-    Joined(CatalogLinesDeCompilerSyntax) + ',' + #10 +
-    Joined(CatalogLinesDeCompilerNames) + ',' + #10 +
-    Joined(CatalogLinesDeCompilerTypes) + ',' + #10 +
-    Joined(CatalogLinesDeRobustness) + ',' + #10 +
-    Joined(CatalogLinesDePerformance) + ',' + #10 +
-    Joined(CatalogLinesDeSecurity) + ',' + #10 +
-    Joined(CatalogLinesDeComponents) + ',' + #10 +
-    Joined(CatalogLinesDeForms) + ',' + #10 +
-    Joined(CatalogLinesDeArchitecture) + ',' + #10 +
-    Joined(CatalogLinesDeStyle) + ',' + #10 +
-    Joined(CatalogLinesDePackages) + ',' + #10 +
-    Joined(CatalogLinesDeInternal) +
+    Joined(cCatalogLinesDeFindBugs) + ',' + #10 +
+    Joined(cCatalogLinesDeExceptions) + ',' + #10 +
+    Joined(cCatalogLinesDeThreads) + ',' + #10 +
+    Joined(cCatalogLinesDeDatabase) + ',' + #10 +
+    Joined(cCatalogLinesDeCompilerSyntax) + ',' + #10 +
+    Joined(cCatalogLinesDeCompilerNames) + ',' + #10 +
+    Joined(cCatalogLinesDeCompilerTypes) + ',' + #10 +
+    Joined(cCatalogLinesDeRobustness) + ',' + #10 +
+    Joined(cCatalogLinesDePerformance) + ',' + #10 +
+    Joined(cCatalogLinesDeSecurity) + ',' + #10 +
+    Joined(cCatalogLinesDeComponents) + ',' + #10 +
+    Joined(cCatalogLinesDeForms) + ',' + #10 +
+    Joined(cCatalogLinesDeArchitecture) + ',' + #10 +
+    Joined(cCatalogLinesDeStyle) + ',' + #10 +
+    Joined(cCatalogLinesDePackages) + ',' + #10 +
+    Joined(cCatalogLinesDeInternal) +
     '  ]' + #10 + '}' + #10;
 end;
 

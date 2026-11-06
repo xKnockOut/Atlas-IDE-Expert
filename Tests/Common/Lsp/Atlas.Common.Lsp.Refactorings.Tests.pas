@@ -318,7 +318,7 @@ begin
         // case vervollständigen trägt die Kennung für das Plugin (#697).
         if ATitle.StartsWith('case ') then
         begin
-          Assert.AreEqual(CaseCompleteTag, Action.Tag);
+          Assert.AreEqual(cCaseCompleteTag, Action.Tag);
         end;
         Exit(TChangeSignature.ApplyEdits(AText, Action.Edits));
       end;

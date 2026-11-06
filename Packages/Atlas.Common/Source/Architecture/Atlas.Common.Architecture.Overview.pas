@@ -64,22 +64,22 @@ type
   /// <summary>Einstellungen der Gruppierung in Teilsysteme (architecture.grouping).</summary>
   TArchitectureGrouping = record
   public const
-    MinResolution = 0.2;
-    MaxResolution = 5.0;
-    DefaultMaxShare = 0.25;
-    MaxMaxShare = 0.9;
-    DefaultMinCohesion = 0.3;
+    cMinResolution = 0.2;
+    cMaxResolution = 5.0;
+    cDefaultMaxShare = 0.25;
+    cMaxMaxShare = 0.9;
+    cDefaultMinCohesion = 0.3;
     /// <summary>Nachteilen nach Größe erst ab so vielen Units (#1364).</summary>
-    SplitMinUnits = 10;
+    cSplitMinUnits = 10;
     /// <summary>Nachteilen nach Zusammenhalt erst ab so vielen Units.</summary>
-    LooseMinUnits = 30;
+    cLooseMinUnits = 30;
     /// <summary>Höchstens so viele Stufen Nachteilung.</summary>
-    SplitDepth = 2;
+    cSplitDepth = 2;
     /// <summary>Übergreifendes Fundament (#1365): Abhängige in mindestens so vielen Teilsystemen …</summary>
-    FoundationMinSpread = 3;
+    cFoundationMinSpread = 3;
     /// <summary>… oder höchstens dieser Anteil der Abhängigen (in Prozent, ganzzahlig verglichen) im eigenen
     /// Teilsystem.</summary>
-    FoundationMaxOwnPercent = 60;
+    cFoundationMaxOwnPercent = 60;
   public
     /// <summary>Auflösung γ des Louvain-Verfahrens (#1366): größer = mehr und kleinere Teilsysteme.</summary>
     Resolution: Double;
@@ -148,7 +148,8 @@ type
     OuterEdges: Integer;
     /// <summary>Anteil der Kanten der Units, die im Teilsystem bleiben (0..1).</summary>
     Cohesion: Double;
-    /// <summary>Sammelgruppe der Units ohne uses-Beziehung im Umfang (Name TArchitectureAnalyzer.IsolatedName).</summary>
+    /// <summary>Sammelgruppe der Units ohne uses-Beziehung im Umfang (Name
+    /// TArchitectureAnalyzer.cIsolatedName).</summary>
     Isolated: Boolean;
     /// <summary>Name des ursprünglichen Teilsystems, wenn dieses nachgeteilt wurde (#1364); '' sonst.</summary>
     Parent: string;
@@ -290,18 +291,18 @@ type
 
   TArchitectureAnalyzer = class
   public const
-    InterfaceWeight = 2;
-    ImplementationWeight = 1;
+    cInterfaceWeight = 2;
+    cImplementationWeight = 1;
     /// <summary>Höchstens so viele Kanten zwischen zwei Teilsystemen gelten als selten.</summary>
-    RareLimit = 2;
-    IsolatedName = 'Ohne uses-Beziehung';
-    FoundationName = 'Fundament';
+    cRareLimit = 2;
+    cIsolatedName = 'Ohne uses-Beziehung';
+    cFoundationName = 'Fundament';
     /// <summary>Knapp zugeordnet (#1368), wenn das stärkste andere Teilsystem mindestens so viel Prozent der Summe
     /// des eigenen erreicht.</summary>
-    ClosePercent = 75;
+    cClosePercent = 75;
     /// <summary>Herkunft der Angleichung (#1367): architecture.baseline bzw. der zuletzt berechnete Stand.</summary>
-    AlignedBaseline = 'baseline';
-    AlignedLast = 'last';
+    cAlignedBaseline = 'baseline';
+    cAlignedLast = 'last';
   public
     /// <summary>Regel, nach der Units ins Teilsystem „Fundament“ kommen (Bericht, Fenster, get_architecture).
     /// </summary>
@@ -367,11 +368,11 @@ end;
 
 function ContainsInt(AValue: Integer; const AValues: TArray<Integer>): Boolean;
 var
-  Value: Integer;
+  mValue: Integer;
 begin
-  for Value in AValues do
+  for mValue in AValues do
   begin
-    if Value = AValue then
+    if mValue = AValue then
     begin
       Exit(True);
     end;
@@ -435,11 +436,11 @@ function EdgeWeight(const AEdge: TOverviewEdge): Integer;
 begin
   if AEdge.Section = TUsesSection.Interface_ then
   begin
-    Result := TArchitectureAnalyzer.InterfaceWeight;
+    Result := TArchitectureAnalyzer.cInterfaceWeight;
   end
   else
   begin
-    Result := TArchitectureAnalyzer.ImplementationWeight;
+    Result := TArchitectureAnalyzer.cImplementationWeight;
   end;
 end;
 
@@ -558,8 +559,8 @@ end;
 class function TArchitectureGrouping.Default: TArchitectureGrouping;
 begin
   Result.Resolution := 1;
-  Result.MaxShare := DefaultMaxShare;
-  Result.MinCohesion := DefaultMinCohesion;
+  Result.MaxShare := cDefaultMaxShare;
+  Result.MinCohesion := cDefaultMinCohesion;
   Result.Foundations := TArchitectureFoundations.Separate;
 end;
 
@@ -570,23 +571,23 @@ begin
   begin
     Result.Resolution := 1;
   end;
-  Result.Resolution := EnsureRange(Result.Resolution, MinResolution, MaxResolution);
+  Result.Resolution := EnsureRange(Result.Resolution, cMinResolution, cMaxResolution);
   if IsNan(Result.MaxShare) then
   begin
-    Result.MaxShare := DefaultMaxShare;
+    Result.MaxShare := cDefaultMaxShare;
   end;
-  Result.MaxShare := EnsureRange(Result.MaxShare, 0, MaxMaxShare);
+  Result.MaxShare := EnsureRange(Result.MaxShare, 0, cMaxMaxShare);
   if IsNan(Result.MinCohesion) then
   begin
-    Result.MinCohesion := DefaultMinCohesion;
+    Result.MinCohesion := cDefaultMinCohesion;
   end;
   Result.MinCohesion := EnsureRange(Result.MinCohesion, 0, 1);
 end;
 
 function TArchitectureGrouping.NeedsSplit(ASize, ATotal: Integer; ACohesion: Double): Boolean;
 begin
-  Result := ((MaxShare > 0) and (ASize >= SplitMinUnits) and (ASize > MaxShare * ATotal)) or
-    ((MinCohesion > 0) and (ASize >= LooseMinUnits) and (ACohesion < MinCohesion));
+  Result := ((MaxShare > 0) and (ASize >= cSplitMinUnits) and (ASize > MaxShare * ATotal)) or
+    ((MinCohesion > 0) and (ASize >= cLooseMinUnits) and (ACohesion < MinCohesion));
 end;
 
 function TArchitectureGrouping.Key: string;
@@ -649,7 +650,7 @@ end;
 
 class function TArchitectureGrouping.ValidResolution(AValue: Double): Boolean;
 begin
-  Result := not IsNan(AValue) and (AValue >= MinResolution - 1E-9) and (AValue <= MaxResolution + 1E-9);
+  Result := not IsNan(AValue) and (AValue >= cMinResolution - 1E-9) and (AValue <= cMaxResolution + 1E-9);
 end;
 
 class function TArchitectureGrouping.SameResolution(ALeft, ARight: Double): Boolean;
@@ -661,13 +662,13 @@ end;
 
 function TArchitectureOverview.IndexOf(const AName: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(Units) do
+  for mIndex := 0 to High(Units) do
   begin
-    if SameText(Units[Index].Name, AName) then
+    if SameText(Units[mIndex].Name, AName) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -680,21 +681,21 @@ end;
 
 function TArchitectureOverview.RelativePath(const AFileName: string): string;
 var
-  RootPath, FileName: string;
+  mRootPath, mFileName: string;
 begin
-  FileName := StringReplace(AFileName, '\', '/', [rfReplaceAll]);
-  RootPath := StringReplace(Root, '\', '/', [rfReplaceAll]);
-  if (RootPath <> '') and (RootPath[Length(RootPath)] <> '/') then
+  mFileName := StringReplace(AFileName, '\', '/', [rfReplaceAll]);
+  mRootPath := StringReplace(Root, '\', '/', [rfReplaceAll]);
+  if (mRootPath <> '') and (mRootPath[Length(mRootPath)] <> '/') then
   begin
-    RootPath := RootPath + '/';
+    mRootPath := mRootPath + '/';
   end;
-  if (RootPath <> '') and StartsText(RootPath, FileName) then
+  if (mRootPath <> '') and StartsText(mRootPath, mFileName) then
   begin
-    Result := Copy(FileName, Length(RootPath) + 1, MaxInt);
+    Result := Copy(mFileName, Length(mRootPath) + 1, MaxInt);
   end
   else
   begin
-    Result := FileName;
+    Result := mFileName;
   end;
 end;
 
@@ -843,14 +844,14 @@ end;
 
 class function TArchitectureAnalyzer.NamespaceParts(const AUnitName: string): TArray<string>;
 var
-  Parts: TArray<string>;
+  mParts: TArray<string>;
 begin
-  Parts := AUnitName.Split(['.']);
-  if Length(Parts) <= 1 then
+  mParts := AUnitName.Split(['.']);
+  if Length(mParts) <= 1 then
   begin
     Exit(nil);
   end;
-  Result := Copy(Parts, 0, Length(Parts) - 1);
+  Result := Copy(mParts, 0, Length(mParts) - 1);
 end;
 
 type
@@ -919,90 +920,90 @@ end;
 
 procedure TAnalysis.CollectUnits;
 var
-  Sorted: TArray<Integer>;
-  Index: Integer;
-  Node: TUsesNode;
-  Item: TOverviewUnit;
+  mSorted: TArray<Integer>;
+  mIndex: Integer;
+  mNode: TUsesNode;
+  mItem: TOverviewUnit;
 begin
-  Sorted := FGraph.SortedNodes;
+  mSorted := FGraph.SortedNodes;
   SetLength(FUnitOf, FGraph.NodeCount);
-  for Index := 0 to High(FUnitOf) do
+  for mIndex := 0 to High(FUnitOf) do
   begin
-    FUnitOf[Index] := -1;
+    FUnitOf[mIndex] := -1;
   end;
-  SetLength(FResult.Units, Length(Sorted));
-  for Index := 0 to High(Sorted) do
+  SetLength(FResult.Units, Length(mSorted));
+  for mIndex := 0 to High(mSorted) do
   begin
-    Node := FGraph.Node(Sorted[Index]);
-    Item := Default(TOverviewUnit);
-    Item.Name := Node.UnitName;
-    Item.FileName := Node.FileName;
-    Item.Library_ := Node.Library_;
-    Item.Node := Sorted[Index];
-    Item.Subsystem := -1;
-    FResult.Units[Index] := Item;
-    FUnitOf[Sorted[Index]] := Index;
+    mNode := FGraph.Node(mSorted[mIndex]);
+    mItem := Default(TOverviewUnit);
+    mItem.Name := mNode.UnitName;
+    mItem.FileName := mNode.FileName;
+    mItem.Library_ := mNode.Library_;
+    mItem.Node := mSorted[mIndex];
+    mItem.Subsystem := -1;
+    FResult.Units[mIndex] := mItem;
+    FUnitOf[mSorted[mIndex]] := mIndex;
   end;
 end;
 
 procedure TAnalysis.CollectEdges;
 var
-  Edges: TList<TOverviewEdge>;
-  Index: Integer;
-  GraphEdge: TUsesEdge;
-  Edge: TOverviewEdge;
+  mEdges: TList<TOverviewEdge>;
+  mIndex: Integer;
+  mGraphEdge: TUsesEdge;
+  mEdge: TOverviewEdge;
 begin
-  Edges := TList<TOverviewEdge>.Create;
+  mEdges := TList<TOverviewEdge>.Create;
   try
-    for Index := 0 to High(FResult.Units) do
+    for mIndex := 0 to High(FResult.Units) do
     begin
-      for GraphEdge in FGraph.Node(FResult.Units[Index].Node).Outgoing do
+      for mGraphEdge in FGraph.Node(FResult.Units[mIndex].Node).Outgoing do
       begin
-        if FUnitOf[GraphEdge.Target] < 0 then
+        if FUnitOf[mGraphEdge.Target] < 0 then
         begin
           Continue;
         end;
-        Edge := Default(TOverviewEdge);
-        Edge.Source := Index;
-        Edge.Target := FUnitOf[GraphEdge.Target];
-        Edge.Section := GraphEdge.Section;
-        Edges.Add(Edge);
+        mEdge := Default(TOverviewEdge);
+        mEdge.Source := mIndex;
+        mEdge.Target := FUnitOf[mGraphEdge.Target];
+        mEdge.Section := mGraphEdge.Section;
+        mEdges.Add(mEdge);
       end;
     end;
-    FResult.Edges := Edges.ToArray;
+    FResult.Edges := mEdges.ToArray;
   finally
-    Edges.Free;
+    mEdges.Free;
   end;
 end;
 
 procedure TAnalysis.Measure;
 var
-  Index, Count: Integer;
-  Item: TOverviewUnit;
-  Ratio: Double;
+  mIndex, mCount: Integer;
+  mItem: TOverviewUnit;
+  mRatio: Double;
 begin
-  for Index := 0 to High(FResult.Units) do
+  for mIndex := 0 to High(FResult.Units) do
   begin
-    Item := FResult.Units[Index];
-    Item.Direct := Length(FGraph.DirectDependents(Item.Node, AllUsesSections));
-    Item.Uses_ := Length(FGraph.DirectDependencies(Item.Node, AllUsesSections));
-    Item.Total := FGraph.RecompileCount(Item.Node);
+    mItem := FResult.Units[mIndex];
+    mItem.Direct := Length(FGraph.DirectDependents(mItem.Node, cAllUsesSections));
+    mItem.Uses_ := Length(FGraph.DirectDependencies(mItem.Node, cAllUsesSections));
+    mItem.Total := FGraph.RecompileCount(mItem.Node);
     // Fundament: wird viel verwendet, verwendet selbst wenig. Drehscheibe: viel in beide Richtungen.
-    Item.Role := TOverviewUnitRole.None;
-    Count := Item.Direct + Item.Uses_;
-    if (Item.Direct >= 3) and (Count > 0) then
+    mItem.Role := TOverviewUnitRole.None;
+    mCount := mItem.Direct + mItem.Uses_;
+    if (mItem.Direct >= 3) and (mCount > 0) then
     begin
-      Ratio := Item.Uses_ / Count;
-      if Ratio <= 0.25 then
+      mRatio := mItem.Uses_ / mCount;
+      if mRatio <= 0.25 then
       begin
-        Item.Role := TOverviewUnitRole.Foundation;
+        mItem.Role := TOverviewUnitRole.Foundation;
       end
-      else if Item.Uses_ >= 3 then
+      else if mItem.Uses_ >= 3 then
       begin
-        Item.Role := TOverviewUnitRole.Hub;
+        mItem.Role := TOverviewUnitRole.Hub;
       end;
     end;
-    FResult.Units[Index] := Item;
+    FResult.Units[mIndex] := mItem;
   end;
   FResult.Central := AllIndices(Length(FResult.Units));
   SortByCentrality(FResult.Units, FResult.Central);
@@ -1096,45 +1097,46 @@ end;
 class function TArchitectureAnalyzer.SplitGroups(const AGroups: TArray<TArray<Integer>>; ASkip, ADepth: Integer;
   const ASplit: TArchitectureSplitFunc; out AFamilies: TArray<Integer>): TArray<TArray<Integer>>;
 var
-  Groups: TList<TArray<Integer>>;
-  Levels, Families: TList<Integer>;
-  Index, Part: Integer;
-  Parts: TArray<TArray<Integer>>;
+  mGroups: TList<TArray<Integer>>;
+  mLevels, mFamilies: TList<Integer>;
+  mIndex, mPart: Integer;
+  mParts: TArray<TArray<Integer>>;
 begin
-  Groups := TList<TArray<Integer>>.Create;
-  Levels := TList<Integer>.Create;
-  Families := TList<Integer>.Create;
+  mGroups := TList<TArray<Integer>>.Create;
+  mLevels := TList<Integer>.Create;
+  mFamilies := TList<Integer>.Create;
   try
-    for Index := 0 to High(AGroups) do
+    for mIndex := 0 to High(AGroups) do
     begin
-      Groups.Add(AGroups[Index]);
-      Levels.Add(0);
-      Families.Add(Index);
+      mGroups.Add(AGroups[mIndex]);
+      mLevels.Add(0);
+      mFamilies.Add(mIndex);
     end;
-    Index := 0;
-    while Index < Groups.Count do
+    mIndex := 0;
+    while mIndex < mGroups.Count do
     begin
-      if (Index <> ASkip) and (Levels[Index] < ADepth) and ASplit(Groups[Index], Parts) and (Length(Parts) > 1) then
+      if (mIndex <> ASkip) and (mLevels[mIndex] < ADepth) and ASplit(mGroups[mIndex], mParts) and
+        (Length(mParts) > 1) then
       begin
-        Groups[Index] := Parts[0];
-        Levels[Index] := Levels[Index] + 1;
-        for Part := 1 to High(Parts) do
+        mGroups[mIndex] := mParts[0];
+        mLevels[mIndex] := mLevels[mIndex] + 1;
+        for mPart := 1 to High(mParts) do
         begin
-          Groups.Add(Parts[Part]);
-          Levels.Add(Levels[Index]);
-          Families.Add(Families[Index]);
+          mGroups.Add(mParts[mPart]);
+          mLevels.Add(mLevels[mIndex]);
+          mFamilies.Add(mFamilies[mIndex]);
         end;
         // Das erste Teil gleich noch einmal prüfen (nächste Stufe); die übrigen kommen der Reihe nach.
         Continue;
       end;
-      Inc(Index);
+      Inc(mIndex);
     end;
-    Result := Groups.ToArray;
-    AFamilies := Families.ToArray;
+    Result := mGroups.ToArray;
+    AFamilies := mFamilies.ToArray;
   finally
-    Families.Free;
-    Levels.Free;
-    Groups.Free;
+    mFamilies.Free;
+    mLevels.Free;
+    mGroups.Free;
   end;
 end;
 
@@ -1152,8 +1154,8 @@ begin
   end;
   mSettings.Resolution := FGrouping.Resolution;
   mSettings.Separate := FGrouping.Foundations = TArchitectureFoundations.Separate;
-  mSettings.MinSpread := TArchitectureGrouping.FoundationMinSpread;
-  mSettings.MaxOwnPercent := TArchitectureGrouping.FoundationMaxOwnPercent;
+  mSettings.MinSpread := TArchitectureGrouping.cFoundationMinSpread;
+  mSettings.MaxOwnPercent := TArchitectureGrouping.cFoundationMaxOwnPercent;
   mSeparation := TFoundationSeparation.Create(Length(FResult.Units), AEdges, mSettings);
   try
     mSeparation.Run(mRoles, ACommunities, FInFoundation);
@@ -1197,13 +1199,13 @@ begin
   mSettings.CohesionMinUnits := MaxInt;
   if FGrouping.MinCohesion > 0 then
   begin
-    mSettings.CohesionMinUnits := TArchitectureGrouping.LooseMinUnits;
+    mSettings.CohesionMinUnits := TArchitectureGrouping.cLooseMinUnits;
   end;
   mSettings.Decision := SplitDecision(FGrouping, Length(FResult.Units));
   // Units nach Nummer (= nach Name): dieselbe Startreihenfolge wie im ersten Lauf.
   mSplitter := TSubsystemSplitter.Create(Length(FResult.Units), AEdges, FInFoundation, mSettings);
   try
-    mGroups := TArchitectureAnalyzer.SplitGroups(GroupsOf(ACommunities), AIsolated, TArchitectureGrouping.SplitDepth,
+    mGroups := TArchitectureAnalyzer.SplitGroups(GroupsOf(ACommunities), AIsolated, TArchitectureGrouping.cSplitDepth,
       SplitFuncOf(mSplitter), FFamily);
   finally
     mSplitter.Free;
@@ -1305,11 +1307,11 @@ begin
   mKey := '';
   if FResult.Subsystems[AIndex].Isolated then
   begin
-    FResult.Subsystems[AIndex].Name := TArchitectureAnalyzer.IsolatedName;
+    FResult.Subsystems[AIndex].Name := TArchitectureAnalyzer.cIsolatedName;
   end
   else if FResult.Subsystems[AIndex].Foundation then
   begin
-    FResult.Subsystems[AIndex].Name := TArchitectureAnalyzer.FoundationName;
+    FResult.Subsystems[AIndex].Name := TArchitectureAnalyzer.cFoundationName;
   end
   else if IsSplitPart(FFamily, AIndex) then
   begin
@@ -1406,7 +1408,7 @@ begin
   mRivalSum := Result.RivalSum;
   // Ganzzahlig verglichen: 6 von 8 sind genau 75 %.
   Result.Close := (Result.Own >= 0) and Result.Rows[Result.Own].Counts and (Result.Rival >= 0) and (mOwnSum > 0) and
-    (mRivalSum * 100 >= mOwnSum * ClosePercent);
+    (mRivalSum * 100 >= mOwnSum * cClosePercent);
   if Result.Close then
   begin
     Result.Missing := Max(0, mOwnSum - mRivalSum + 1);
@@ -1463,8 +1465,8 @@ begin
     mRow.Subsystem := mSubsystem;
     mRow.Interfaces := AInterfaces[mSubsystem];
     mRow.Implementations := AImplementations[mSubsystem];
-    mRow.Sum := mRow.Interfaces * TArchitectureAnalyzer.InterfaceWeight +
-      mRow.Implementations * TArchitectureAnalyzer.ImplementationWeight;
+    mRow.Sum := mRow.Interfaces * TArchitectureAnalyzer.cInterfaceWeight +
+      mRow.Implementations * TArchitectureAnalyzer.cImplementationWeight;
     // Kanten zum Fundament zählen bei der Zuordnung nicht (#1365); im Fundament selbst zählen sie.
     mRow.Counts := not AOverview.Subsystems[mSubsystem].Foundation or AOverview.Subsystems[AOwn].Foundation;
     Result := Result + [mRow];
@@ -1649,34 +1651,34 @@ end;
 
 procedure TAnalysis.CollectCycles;
 var
-  Cycle: TUsesCycle;
-  Item: TOverviewCycle;
-  GraphEdge: TUsesEdge;
-  Edge: TOverviewEdge;
-  Node: Integer;
+  mCycle: TUsesCycle;
+  mItem: TOverviewCycle;
+  mGraphEdge: TUsesEdge;
+  mEdge: TOverviewEdge;
+  mNode: Integer;
 begin
-  for Cycle in FGraph.AllCycles do
+  for mCycle in FGraph.AllCycles do
   begin
-    Item := Default(TOverviewCycle);
-    Item.InterfaceOnly := Cycle.InterfaceOnly;
-    for Node in Cycle.Units do
+    mItem := Default(TOverviewCycle);
+    mItem.InterfaceOnly := mCycle.InterfaceOnly;
+    for mNode in mCycle.Units do
     begin
-      Item.Units := Item.Units + [FUnitOf[Node]];
+      mItem.Units := mItem.Units + [FUnitOf[mNode]];
     end;
-    for Node in Cycle.Component do
+    for mNode in mCycle.Component do
     begin
-      Item.Component := Item.Component + [FUnitOf[Node]];
+      mItem.Component := mItem.Component + [FUnitOf[mNode]];
     end;
-    for GraphEdge in Cycle.Edges do
+    for mGraphEdge in mCycle.Edges do
     begin
-      Edge := Default(TOverviewEdge);
-      Edge.Source := FUnitOf[GraphEdge.Source];
-      Edge.Target := FUnitOf[GraphEdge.Target];
-      Edge.Section := GraphEdge.Section;
-      Locate(Edge, GraphEdge);
-      Item.Edges := Item.Edges + [Edge];
+      mEdge := Default(TOverviewEdge);
+      mEdge.Source := FUnitOf[mGraphEdge.Source];
+      mEdge.Target := FUnitOf[mGraphEdge.Target];
+      mEdge.Section := mGraphEdge.Section;
+      Locate(mEdge, mGraphEdge);
+      mItem.Edges := mItem.Edges + [mEdge];
     end;
-    FResult.Cycles := FResult.Cycles + [Item];
+    FResult.Cycles := FResult.Cycles + [mItem];
   end;
 end;
 
@@ -1706,7 +1708,7 @@ end;
 function CrossReason(AForward, ABackward: Integer; out AReason: TOverviewCrossReason): Boolean;
 begin
   Result := True;
-  if AForward + ABackward <= TArchitectureAnalyzer.RareLimit then
+  if AForward + ABackward <= TArchitectureAnalyzer.cRareLimit then
   begin
     AReason := TOverviewCrossReason.Rare;
   end
@@ -1774,18 +1776,18 @@ end;
 
 procedure TAnalysis.SortSubsystems;
 var
-  Order, Map, Family: TArray<Integer>;
-  Sorted: TArray<TOverviewSubsystem>;
-  Index: Integer;
+  mOrder, mMap, mFamily: TArray<Integer>;
+  mSorted: TArray<TOverviewSubsystem>;
+  mIndex: Integer;
 begin
   // Das Fundament (#1365) zuerst (Mitte der Karte), dann die größten, bei Gleichstand nach dem Namen der zentralen
   // Unit (Namen entstehen erst danach); die Sammelgruppe ohne uses-Beziehung zuletzt.
-  SetLength(Order, Length(FResult.Subsystems));
-  for Index := 0 to High(Order) do
+  SetLength(mOrder, Length(FResult.Subsystems));
+  for mIndex := 0 to High(mOrder) do
   begin
-    Order[Index] := Index;
+    mOrder[mIndex] := mIndex;
   end;
-  TArray.Sort<Integer>(Order, TComparer<Integer>.Construct(
+  TArray.Sort<Integer>(mOrder, TComparer<Integer>.Construct(
     function(const ALeft, ARight: Integer): Integer
     begin
       Result := Ord(FResult.Subsystems[ARight].Foundation) - Ord(FResult.Subsystems[ALeft].Foundation);
@@ -1807,76 +1809,76 @@ begin
         Result := ALeft - ARight;
       end;
     end));
-  SetLength(Sorted, Length(Order));
-  SetLength(Map, Length(Order));
-  for Index := 0 to High(Order) do
+  SetLength(mSorted, Length(mOrder));
+  SetLength(mMap, Length(mOrder));
+  for mIndex := 0 to High(mOrder) do
   begin
-    Sorted[Index] := FResult.Subsystems[Order[Index]];
-    Map[Order[Index]] := Index;
+    mSorted[mIndex] := FResult.Subsystems[mOrder[mIndex]];
+    mMap[mOrder[mIndex]] := mIndex;
   end;
-  FResult.Subsystems := Sorted;
-  for Index := 0 to High(FResult.Units) do
+  FResult.Subsystems := mSorted;
+  for mIndex := 0 to High(FResult.Units) do
   begin
-    FResult.Units[Index].Subsystem := Map[FResult.Units[Index].Subsystem];
+    FResult.Units[mIndex].Subsystem := mMap[FResult.Units[mIndex].Subsystem];
   end;
-  SetLength(Family, Length(FFamily));
-  for Index := 0 to High(FFamily) do
+  SetLength(mFamily, Length(FFamily));
+  for mIndex := 0 to High(FFamily) do
   begin
-    Family[Map[Index]] := Map[FFamily[Index]];
+    mFamily[mMap[mIndex]] := mMap[FFamily[mIndex]];
   end;
-  FFamily := Family;
+  FFamily := mFamily;
   if FFoundation >= 0 then
   begin
-    FFoundation := Map[FFoundation];
+    FFoundation := mMap[FFoundation];
   end;
 end;
 
 procedure TAnalysis.AssignColors;
 var
-  Slots, Ranks: TDictionary<Integer, Integer>;
-  Index, Slot, Rank: Integer;
+  mSlots, mRanks: TDictionary<Integer, Integer>;
+  mIndex, mSlot, mRank: Integer;
 begin
   // Eine Farbe je Familie in der Reihenfolge der Teilsysteme (ohne Nachteilung: Farbe = Nummer wie vor #1364);
   // die Teile abwechselnd heller und dunkler: 0, +1, -1, +2, …
-  Slots := TDictionary<Integer, Integer>.Create;
-  Ranks := TDictionary<Integer, Integer>.Create;
+  mSlots := TDictionary<Integer, Integer>.Create;
+  mRanks := TDictionary<Integer, Integer>.Create;
   try
-    for Index := 0 to High(FResult.Subsystems) do
+    for mIndex := 0 to High(FResult.Subsystems) do
     begin
       // Das Fundament (#1365) bekommt die neutrale Farbe und verbraucht keine.
-      if FResult.Subsystems[Index].Foundation then
+      if FResult.Subsystems[mIndex].Foundation then
       begin
-        FResult.Subsystems[Index].ColorSlot := -1;
-        FResult.Subsystems[Index].Shade := 0;
+        FResult.Subsystems[mIndex].ColorSlot := -1;
+        FResult.Subsystems[mIndex].Shade := 0;
         Continue;
       end;
-      if not Slots.TryGetValue(FFamily[Index], Slot) then
+      if not mSlots.TryGetValue(FFamily[mIndex], mSlot) then
       begin
-        Slot := Slots.Count;
-        Slots.Add(FFamily[Index], Slot);
+        mSlot := mSlots.Count;
+        mSlots.Add(FFamily[mIndex], mSlot);
       end;
-      if not Ranks.TryGetValue(FFamily[Index], Rank) then
+      if not mRanks.TryGetValue(FFamily[mIndex], mRank) then
       begin
-        Rank := 0;
+        mRank := 0;
       end;
-      Ranks.AddOrSetValue(FFamily[Index], Rank + 1);
-      FResult.Subsystems[Index].ColorSlot := Slot;
-      if Rank = 0 then
+      mRanks.AddOrSetValue(FFamily[mIndex], mRank + 1);
+      FResult.Subsystems[mIndex].ColorSlot := mSlot;
+      if mRank = 0 then
       begin
-        FResult.Subsystems[Index].Shade := 0;
+        FResult.Subsystems[mIndex].Shade := 0;
       end
-      else if Odd(Rank) then
+      else if Odd(mRank) then
       begin
-        FResult.Subsystems[Index].Shade := (Rank + 1) div 2;
+        FResult.Subsystems[mIndex].Shade := (mRank + 1) div 2;
       end
       else
       begin
-        FResult.Subsystems[Index].Shade := -(Rank div 2);
+        FResult.Subsystems[mIndex].Shade := -(mRank div 2);
       end;
     end;
   finally
-    Ranks.Free;
-    Slots.Free;
+    mRanks.Free;
+    mSlots.Free;
   end;
 end;
 
@@ -1912,21 +1914,21 @@ end;
 class function TArchitectureAnalyzer.Analyze(AGraph: TUsesGraph; ALocator: TUsesLocator; ACentralCount: Integer;
   const AGrouping: TArchitectureGrouping): TArchitectureOverview;
 var
-  Analysis: TAnalysis;
-  Started: TDateTime;
+  mAnalysis: TAnalysis;
+  mStarted: TDateTime;
 begin
-  Started := Now;
-  Analysis := TAnalysis.Create(AGraph, ALocator, AGrouping);
+  mStarted := Now;
+  mAnalysis := TAnalysis.Create(AGraph, ALocator, AGrouping);
   try
-    Result := Analysis.Run(EnsureRange(ACentralCount, 1, MaxInt));
+    Result := mAnalysis.Run(EnsureRange(ACentralCount, 1, MaxInt));
   finally
-    Analysis.Free;
+    mAnalysis.Free;
   end;
   Result.Root := AGraph.Options.Root;
   Result.IncludeLibrary := AGraph.Options.IncludeLibrary;
   Result.Excludes := AGraph.Options.Exclude;
   Result.Created := Now;
-  Result.DurationMs := MilliSecondsBetween(Result.Created, Started);
+  Result.DurationMs := MilliSecondsBetween(Result.Created, mStarted);
 end;
 
 initialization

@@ -103,7 +103,7 @@ begin
     on E: EJsonRpcError do
       Code := E.Code;
   end;
-  Assert.AreEqual(TJsonRpcErrorCode.ParseError, Code);
+  Assert.AreEqual(TJsonRpcErrorCode.cParseError, Code);
   Assert.AreEqual(5, ReadId(Transport), 'nach dem Fehler geht es mit der nächsten Zeile weiter');
 end;
 

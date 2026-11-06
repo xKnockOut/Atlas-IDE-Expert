@@ -38,9 +38,9 @@ type
   TCrashSkips = class
   public const
     /// <summary>Ab so vielen Abstürzen derselben Kombination wird übersprungen.</summary>
-    Threshold = 2;
+    cThreshold = 2;
     /// <summary>Höchstens so viele Einträge; ältere fallen weg.</summary>
-    MaxEntries = 200;
+    cMaxEntries = 200;
   private
     FLock: TObject;
     FEntries: TList<TCrashSkipEntry>;
@@ -86,7 +86,7 @@ uses
 
 function TCrashSkipEntry.Skipping: Boolean;
 begin
-  Result := Crashes >= TCrashSkips.Threshold;
+  Result := Crashes >= TCrashSkips.cThreshold;
 end;
 
 { TCrashSkips }
@@ -173,11 +173,11 @@ begin
     mEntry.ExceptionClass := AExceptionClass;
     // Zuletzt abgestürzt steht hinten; vorne fällt bei Überlauf das Älteste weg.
     FEntries.Add(mEntry);
-    while FEntries.Count > MaxEntries do
+    while FEntries.Count > cMaxEntries do
     begin
       FEntries.Delete(0);
     end;
-    Result := mEntry.Crashes = Threshold;
+    Result := mEntry.Crashes = cThreshold;
   finally
     System.TMonitor.Exit(FLock);
   end;
@@ -396,7 +396,7 @@ begin
           FEntries.Add(mEntry);
         end;
       end;
-      while FEntries.Count > MaxEntries do
+      while FEntries.Count > cMaxEntries do
       begin
         FEntries.Delete(0);
       end;

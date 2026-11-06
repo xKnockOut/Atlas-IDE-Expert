@@ -81,7 +81,7 @@ type
   end;
 
 const
-  NamedColors: array[0..21] of TNamedColor = (
+  cNamedColors: array[0..21] of TNamedColor = (
     (Name: 'clBlack'; Value: $000000), (Name: 'clMaroon'; Value: $800000),
     (Name: 'clGreen'; Value: $008000), (Name: 'clOlive'; Value: $808000),
     (Name: 'clNavy'; Value: $000080), (Name: 'clPurple'; Value: $800080),
@@ -95,7 +95,7 @@ const
     // Gleiche Werte wie clGray/clSilver; NameOf liefert den ersten Treffer.
     (Name: 'clDkGray'; Value: $808080), (Name: 'clLtGray'; Value: $C0C0C0));
 
-  SystemColors: array[0..29] of TSystemColor = (
+  cSystemColors: array[0..29] of TSystemColor = (
     (Name: 'clScrollBar'; Index: 0; DefaultValue: $C8C8C8),
     (Name: 'clBackground'; Index: 1; DefaultValue: $000000),
     (Name: 'clActiveCaption'; Index: 2; DefaultValue: $99B4D1),
@@ -166,7 +166,8 @@ end;
 function SignificantIndex(const ATokens: TArray<TPascalToken>; AFrom: Integer): Integer;
 begin
   Result := AFrom;
-  while (Result <= High(ATokens)) and (ATokens[Result].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+  while (Result <= High(ATokens)) and (ATokens[Result].Kind in [TPascalTokenKind.Comment,
+    TPascalTokenKind.Directive]) do
   begin
     Inc(Result);
   end;
@@ -174,21 +175,21 @@ end;
 
 function TryByte(const AToken: TPascalToken; out AValue: Byte): Boolean;
 var
-  Value: Integer;
+  mValue: Integer;
 begin
-  Result := (AToken.Kind = TPascalTokenKind.Number) and TryStrToInt(AToken.Text, Value) and
-    (Value >= 0) and (Value <= 255);
+  Result := (AToken.Kind = TPascalTokenKind.Number) and TryStrToInt(AToken.Text, mValue) and
+    (mValue >= 0) and (mValue <= 255);
   if Result then
   begin
-    AValue := Value;
+    AValue := mValue;
   end;
 end;
 
 function TryRgbCall(const ATokens: TArray<TPascalToken>; AIndex: Integer; out AColor: TRgbColor;
   out ALast: Integer): Boolean;
 var
-  Parts: array[0..2] of Byte;
-  I, Part: Integer;
+  mParts: array[0..2] of Byte;
+  I, mPart: Integer;
 begin
   // RGB ( n , n , n )
   Result := False;
@@ -197,10 +198,10 @@ begin
   begin
     Exit;
   end;
-  for Part := 0 to 2 do
+  for mPart := 0 to 2 do
   begin
     I := SignificantIndex(ATokens, I + 1);
-    if (I > High(ATokens)) or not TryByte(ATokens[I], Parts[Part]) then
+    if (I > High(ATokens)) or not TryByte(ATokens[I], mParts[mPart]) then
     begin
       Exit;
     end;
@@ -209,38 +210,38 @@ begin
     begin
       Exit;
     end;
-    if (Part < 2) and (ATokens[I].Text <> ',') or (Part = 2) and (ATokens[I].Text <> ')') then
+    if (mPart < 2) and (ATokens[I].Text <> ',') or (mPart = 2) and (ATokens[I].Text <> ')') then
     begin
       Exit;
     end;
   end;
-  AColor := TRgbColor.Create(Parts[0], Parts[1], Parts[2]);
+  AColor := TRgbColor.Create(mParts[0], mParts[1], mParts[2]);
   ALast := I;
   Result := True;
 end;
 
 function TryHex(const AText: string; out AColor: TRgbColor): Boolean;
 var
-  Value: Int64;
+  mValue: Int64;
 begin
   // Nur $00BBGGRR: acht Stellen mit 00 vorn. Kürzere Hexzahlen sind meist Masken oder Codes.
   Result := (Length(AText) = 9) and (AText[1] = '$') and (Copy(AText, 2, 2) = '00') and
-    TryStrToInt64(AText, Value);
+    TryStrToInt64(AText, mValue);
   if Result then
   begin
-    AColor := TRgbColor.FromTColor(Cardinal(Value));
+    AColor := TRgbColor.FromTColor(Cardinal(mValue));
   end;
 end;
 
 function TryNamed(const AName: string; out AColor: TRgbColor): Boolean;
 var
-  Named: TNamedColor;
+  mNamed: TNamedColor;
 begin
-  for Named in NamedColors do
+  for mNamed in cNamedColors do
   begin
-    if SameText(Named.Name, AName) then
+    if SameText(mNamed.Name, AName) then
     begin
-      AColor := FromRgbValue(Named.Value);
+      AColor := FromRgbValue(mNamed.Value);
       Exit(True);
     end;
   end;
@@ -249,15 +250,15 @@ end;
 
 function TrySystem(const AName: string; const AProvider: TSystemColorProvider; out AColor: TRgbColor): Boolean;
 var
-  Entry: TSystemColor;
+  mEntry: TSystemColor;
 begin
-  for Entry in SystemColors do
+  for mEntry in cSystemColors do
   begin
-    if SameText(Entry.Name, AName) then
+    if SameText(mEntry.Name, AName) then
     begin
-      if not (Assigned(AProvider) and AProvider(Entry.Index, AColor)) then
+      if not (Assigned(AProvider) and AProvider(mEntry.Index, AColor)) then
       begin
-        AColor := FromRgbValue(Entry.DefaultValue);
+        AColor := FromRgbValue(mEntry.DefaultValue);
       end;
       Exit(True);
     end;
@@ -272,49 +273,50 @@ end;
 
 class function TSourceColors.Find(const AText: string; const ASystemColors: TSystemColorProvider): TArray<TColorMatch>;
 var
-  Tokens: TArray<TPascalToken>;
-  I, Last: Integer;
-  Match: TColorMatch;
-  Found: Boolean;
+  mTokens: TArray<TPascalToken>;
+  I, mLast: Integer;
+  mMatch: TColorMatch;
+  mFound: Boolean;
 begin
   Result := nil;
-  Tokens := TPascalLexer.Tokenize(AText);
+  mTokens := TPascalLexer.Tokenize(AText);
   I := 0;
-  while I <= High(Tokens) do
+  while I <= High(mTokens) do
   begin
-    Found := False;
-    Last := I;
-    case Tokens[I].Kind of
+    mFound := False;
+    mLast := I;
+    case mTokens[I].Kind of
       TPascalTokenKind.Number:
-        if TryHex(Tokens[I].Text, Match.Color) then
+        if TryHex(mTokens[I].Text, mMatch.Color) then
         begin
-          Match.Format := TColorFormat.Hex;
-          Found := True;
+          mMatch.Format := TColorFormat.Hex;
+          mFound := True;
         end;
       TPascalTokenKind.Identifier:
-        if SameText(Tokens[I].Text, 'RGB') and TryRgbCall(Tokens, I, Match.Color, Last) then
+        if SameText(mTokens[I].Text, 'RGB') and TryRgbCall(mTokens, I, mMatch.Color, mLast) then
         begin
-          Match.Format := TColorFormat.Rgb;
-          Found := True;
+          mMatch.Format := TColorFormat.Rgb;
+          mFound := True;
         end
-        else if TryNamed(Tokens[I].Text, Match.Color) then
+        else if TryNamed(mTokens[I].Text, mMatch.Color) then
         begin
-          Match.Format := TColorFormat.Named;
-          Found := True;
+          mMatch.Format := TColorFormat.Named;
+          mFound := True;
         end
-        else if TrySystem(Tokens[I].Text, ASystemColors, Match.Color) then
+        else if TrySystem(mTokens[I].Text, ASystemColors, mMatch.Color) then
         begin
-          Match.Format := TColorFormat.SystemColor;
-          Found := True;
+          mMatch.Format := TColorFormat.SystemColor;
+          mFound := True;
         end;
     end;
-    if Found then
+    if mFound then
     begin
-      Match.Range := TTextRange.Create(Tokens[I].StartPos, Tokens[Last].EndPos);
-      Match.Text := Copy(AText, Tokens[I].Offset + 1, Tokens[Last].Offset + Length(Tokens[Last].Text) - Tokens[I].Offset);
-      Result := Result + [Match];
+      mMatch.Range := TTextRange.Create(mTokens[I].StartPos, mTokens[mLast].EndPos);
+      mMatch.Text := Copy(AText, mTokens[I].Offset + 1, mTokens[mLast].Offset + Length(mTokens[mLast].Text) -
+        mTokens[I].Offset);
+      Result := Result + [mMatch];
     end;
-    I := Last + 1;
+    I := mLast + 1;
   end;
 end;
 
@@ -325,13 +327,13 @@ end;
 
 class function TSourceColors.NameOf(const AColor: TRgbColor): string;
 var
-  Named: TNamedColor;
+  mNamed: TNamedColor;
 begin
-  for Named in NamedColors do
+  for mNamed in cNamedColors do
   begin
-    if FromRgbValue(Named.Value) = AColor then
+    if FromRgbValue(mNamed.Value) = AColor then
     begin
-      Exit(Named.Name);
+      Exit(mNamed.Name);
     end;
   end;
   Result := '';
@@ -341,40 +343,40 @@ class function TSourceColors.Presentations(const AColor: TRgbColor; AFormat: TCo
 
   procedure Add(const AText: string; AKind: TColorFormat);
   var
-    Presentation: TColorPresentation;
+    mPresentation: TColorPresentation;
   begin
-    Presentation.Text := AText;
-    Presentation.Format := AKind;
-    Result := Result + [Presentation];
+    mPresentation.Text := AText;
+    mPresentation.Format := AKind;
+    Result := Result + [mPresentation];
   end;
 
 var
-  Name, Hex, Rgb: string;
+  mName, mHex, mRgb: string;
 begin
   Result := nil;
-  Name := NameOf(AColor);
-  Hex := HexText(AColor);
-  Rgb := Format('RGB(%d, %d, %d)', [AColor.R, AColor.G, AColor.B]);
+  mName := NameOf(AColor);
+  mHex := HexText(AColor);
+  mRgb := Format('RGB(%d, %d, %d)', [AColor.R, AColor.G, AColor.B]);
   // Ausgangsformat zuerst; eine benannte Farbe ohne passenden Namen wird zu Hex.
   case AFormat of
     TColorFormat.Rgb:
-      Add(Rgb, TColorFormat.Rgb);
+      Add(mRgb, TColorFormat.Rgb);
     TColorFormat.Named:
-      if Name <> '' then
+      if mName <> '' then
       begin
-        Add(Name, TColorFormat.Named);
+        Add(mName, TColorFormat.Named);
       end;
     TColorFormat.Hex: ;
     TColorFormat.SystemColor: ;
   end;
-  Add(Hex, TColorFormat.Hex);
+  Add(mHex, TColorFormat.Hex);
   if (AFormat <> TColorFormat.Rgb) then
   begin
-    Add(Rgb, TColorFormat.Rgb);
+    Add(mRgb, TColorFormat.Rgb);
   end;
-  if (Name <> '') and (AFormat <> TColorFormat.Named) then
+  if (mName <> '') and (AFormat <> TColorFormat.Named) then
   begin
-    Add(Name, TColorFormat.Named);
+    Add(mName, TColorFormat.Named);
   end;
 end;
 

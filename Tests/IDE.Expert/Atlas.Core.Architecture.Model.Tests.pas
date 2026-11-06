@@ -221,7 +221,7 @@ var
   mOverview: TArchitectureOverview;
 begin
   mOverview := ArchitectureOverviewOf(ArchitectureSampleUnits);
-  mOverview.Subsystems[0].Name := TArchitectureAnalyzer.FoundationName;
+  mOverview.Subsystems[0].Name := TArchitectureAnalyzer.cFoundationName;
   mOverview.Subsystems[0].Foundation := True;
   mOverview.Subsystems[0].ColorSlot := -1;
   Result := AnswerOf(mOverview, '');
@@ -843,7 +843,7 @@ var
 begin
   mOverview := AlignmentOverview(True);
   TArchitectureAlignment.Align(mOverview, TArchitectureSnapshots.FromOverview(AlignmentOverview(False)),
-    TArchitectureAnalyzer.AlignedBaseline, EncodeDate(2026, 10, 29) + EncodeTime(14, 23, 0, 0));
+    TArchitectureAnalyzer.cAlignedBaseline, EncodeDate(2026, 10, 29) + EncodeTime(14, 23, 0, 0));
   Result := AnswerOf(mOverview, '');
 end;
 

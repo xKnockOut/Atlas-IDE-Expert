@@ -32,7 +32,8 @@ uses
   Atlas.Common.Editing.AccessorCreation;
 
 type
-  /// <summary>Umgebung der Klassen-Aktionen: Index für Vorfahren und Interfaces aus anderen Units, Formatstil.</summary>
+  /// <summary>Umgebung der Klassen-Aktionen: Index für Vorfahren und Interfaces aus anderen Units,
+  /// Formatstil.</summary>
   TClassActionContext = record
     Index: ISymbolIndex;
     Namespaces: TArray<string>;
@@ -46,7 +47,7 @@ type
 
   TClassActions = class
   public const
-    MaxOverrides = 20;
+    cMaxOverrides = 20;
   public
     /// <summary>Alle Klassen-Aktionen für Zeile ALine; leer außerhalb einer Klassendeklaration.</summary>
     class function Actions(const AText: string; ATree: TSyntaxTree; ALine: Integer;
@@ -115,9 +116,9 @@ end;
 /// <summary>Typdeklaration einer Klasse, deren Kopfzeile bis vor "end" ALine enthält; nil sonst.</summary>
 function ClassDeclAt(ATree: TSyntaxTree; ALine: Integer): TSyntaxNode;
 var
-  Found: TSyntaxNode;
+  mFound: TSyntaxNode;
 begin
-  Found := nil;
+  mFound := nil;
   if (ATree <> nil) and (ATree.Root <> nil) then
   begin
     ATree.Root.Walk(
@@ -130,34 +131,34 @@ begin
         if (ANode.Kind = TSyntaxKind.TypeDecl) and (ANode.FindChild(TSyntaxKind.ClassType) <> nil) and
           (ANode.EndPos.Line > ALine) then
         begin
-          Found := ANode;
+          mFound := ANode;
         end;
         Result := True;
       end);
   end;
-  Result := Found;
+  Result := mFound;
 end;
 
 /// <summary>AText mit der Befehlszeile ACommand hinter Zeile ALine.</summary>
 function PhantomText(const AText: string; ALine: Integer; const ACommand: string): string;
 var
-  Lines: TArray<string>;
-  LB: string;
-  Index: Integer;
+  mLines: TArray<string>;
+  mLB: string;
+  mIndex: Integer;
 begin
-  Lines := TTextLines.SplitLines(AText);
-  LB := TTextLines.LineBreakOf(AText);
+  mLines := TTextLines.SplitLines(AText);
+  mLB := TTextLines.LineBreakOf(AText);
   Result := '';
-  for Index := 0 to High(Lines) do
+  for mIndex := 0 to High(mLines) do
   begin
-    if Index > 0 then
+    if mIndex > 0 then
     begin
-      Result := Result + LB;
+      Result := Result + mLB;
     end;
-    Result := Result + Lines[Index];
-    if Index = ALine then
+    Result := Result + mLines[mIndex];
+    if mIndex = ALine then
     begin
-      Result := Result + LB + TTextLines.IndentOf(Lines[Index]) + '  ' + ACommand;
+      Result := Result + mLB + TTextLines.IndentOf(mLines[mIndex]) + '  ' + ACommand;
     end;
   end;
 end;
@@ -183,45 +184,45 @@ end;
 function RunPhantom(const AText: string; ALine: Integer; const ACommand: string; const AContext: TClassActionContext;
   out AEdits: TArray<TTextEdit>): Boolean;
 var
-  Phantom, Reason: string;
-  Edits: TArray<TTextEdit>;
-  Edit: TTextEdit;
-  Line: Integer;
+  mPhantom, mReason: string;
+  mEdits: TArray<TTextEdit>;
+  mEdit: TTextEdit;
+  mLine: Integer;
 begin
   AEdits := nil;
-  Phantom := PhantomText(AText, ALine, ACommand);
-  Line := ALine + 1;
-  Result := TSlashCommandRegistry.Shared.Run(Phantom, Line, 0, TSlashEnvironment.Create(AContext.Namespaces, nil,
-    AContext.Index, AContext.DelphiVersion, AContext.Uri, AContext.Host).WithStyle(AContext.Style), Edits, Reason);
+  mPhantom := PhantomText(AText, ALine, ACommand);
+  mLine := ALine + 1;
+  Result := TSlashCommandRegistry.Shared.Run(mPhantom, mLine, 0, TSlashEnvironment.Create(AContext.Namespaces, nil,
+    AContext.Index, AContext.DelphiVersion, AContext.Uri, AContext.Host).WithStyle(AContext.Style), mEdits, mReason);
   if not Result then
   begin
     Exit;
   end;
-  for Edit in Edits do
+  for mEdit in mEdits do
   begin
     // Das Entfernen der Befehlszeile entfällt: Im echten Text gibt es sie nicht.
-    if (Edit.NewText = '') and (Edit.Range.StartPos.Line = Line) and (Edit.Range.StartPos.Character = 0) and
-      (Edit.Range.EndPos.Line = Line + 1) and (Edit.Range.EndPos.Character = 0) then
+    if (mEdit.NewText = '') and (mEdit.Range.StartPos.Line = mLine) and (mEdit.Range.StartPos.Character = 0) and
+      (mEdit.Range.EndPos.Line = mLine + 1) and (mEdit.Range.EndPos.Character = 0) then
     begin
       Continue;
     end;
-    AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(MapBack(Edit.Range.StartPos, Line),
-      MapBack(Edit.Range.EndPos, Line)), Edit.NewText)];
+    AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(MapBack(mEdit.Range.StartPos, mLine),
+      MapBack(mEdit.Range.EndPos, mLine)), mEdit.NewText)];
   end;
   Result := AEdits <> nil;
 end;
 
 function SlashContext(const AText: string; ALine: Integer; const AContext: TClassActionContext): TSlashContext;
 var
-  Lines: TArray<string>;
+  mLines: TArray<string>;
 begin
-  Lines := TTextLines.SplitLines(AText);
+  mLines := TTextLines.SplitLines(AText);
   Result := System.Default(TSlashContext);
   Result.Text := AText;
   Result.Line := ALine;
-  if (ALine >= 0) and (ALine <= High(Lines)) then
+  if (ALine >= 0) and (ALine <= High(mLines)) then
   begin
-    Result.LineText := Lines[ALine];
+    Result.LineText := mLines[ALine];
   end;
   Result.Namespaces := AContext.Namespaces;
   Result.Index := AContext.Index;
@@ -233,11 +234,11 @@ end;
 
 function HasMember(const AUnit: TUnitIndex; const AClassName, AName: string): Boolean;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
-  for Symbol in AUnit.Symbols do
+  for mSymbol in AUnit.Symbols do
   begin
-    if SameText(Symbol.Container, AClassName) and SameText(Symbol.Name, AName) then
+    if SameText(mSymbol.Container, AClassName) and SameText(mSymbol.Name, AName) then
     begin
       Exit(True);
     end;
@@ -377,7 +378,7 @@ begin
     mSource.Free;
   end;
   AAction.Title := cTexts[TClassActionsText.CreateGetterSetterAndField].Fmt([mProperty.Name]);
-  AAction.Kind := RewriteKind;
+  AAction.Kind := cRewriteKind;
   AAction.Edits := TSlashCommandRegistry.Reindent(AText, mEdits, AContext.Style);
   Result := True;
 end;
@@ -390,7 +391,7 @@ begin
   if Result then
   begin
     AAction.Title := cTexts[TClassActionsText.ImplementMethodsOf].Fmt([AInterface]);
-    AAction.Kind := RewriteKind;
+    AAction.Kind := cRewriteKind;
   end;
 end;
 
@@ -402,81 +403,81 @@ begin
   if Result then
   begin
     AAction.Title := cTexts[TClassActionsText.Override].Fmt([AName]);
-    AAction.Kind := RewriteKind;
+    AAction.Kind := cRewriteKind;
   end;
 end;
 
 class function TClassActions.CreateAccessor(const AText: string; ALine: Integer; const APlan: TAccessorPlan;
   const AContext: TClassActionContext; out AAction: TCodeAction): Boolean;
 var
-  Source: TCommandSource;
-  ClassSymbol: TIndexSymbol;
-  Edits: TArray<TTextEdit>;
-  WithField: Boolean;
+  mSource: TCommandSource;
+  mClassSymbol: TIndexSymbol;
+  mEdits: TArray<TTextEdit>;
+  mWithField: Boolean;
 begin
   AAction := Default(TCodeAction);
   // Die Property-Zeile gilt als Befehlszeile wie in der Vervollständigung; sie bleibt unverändert.
-  Source := TCommandSource.Create(SlashContext(AText, ALine, AContext));
+  mSource := TCommandSource.Create(SlashContext(AText, ALine, AContext));
   try
-    Result := Source.ClassAt(ClassSymbol) and TAccessorCreation.Edits(Source, AContext.Index, ClassSymbol, APlan,
-      Edits, WithField);
+    Result := mSource.ClassAt(mClassSymbol) and TAccessorCreation.Edits(mSource, AContext.Index, mClassSymbol, APlan,
+      mEdits, mWithField);
   finally
-    Source.Free;
+    mSource.Free;
   end;
   if not Result then
   begin
     Exit;
   end;
   AAction.Title := cTexts[TClassActionsText.Create].Fmt([APlan.Name]);
-  AAction.Kind := RewriteKind;
-  AAction.Edits := TSlashCommandRegistry.Reindent(AText, Edits, AContext.Style);
+  AAction.Kind := cRewriteKind;
+  AAction.Edits := TSlashCommandRegistry.Reindent(AText, mEdits, AContext.Style);
 end;
 
 class function TClassActions.OverrideCandidates(const AText: string; ALine: Integer;
   const AContext: TClassActionContext): TArray<string>;
 var
-  Phantom: string;
+  mPhantom: string;
 begin
-  Phantom := PhantomText(AText, ALine, '/override');
-  Result := Atlas.Common.Editing.ClassCommands.OverrideCandidates(SlashContext(Phantom, ALine + 1, AContext));
+  mPhantom := PhantomText(AText, ALine, '/override');
+  Result := Atlas.Common.Editing.ClassCommands.OverrideCandidates(SlashContext(mPhantom, ALine + 1, AContext));
 end;
 
 class function TClassActions.Actions(const AText: string; ATree: TSyntaxTree; ALine: Integer;
   const AContext: TClassActionContext): TArray<TCodeAction>;
 var
-  Decl: TSyntaxNode;
-  Action: TCodeAction;
-  Name: string;
-  Count: Integer;
+  mDecl: TSyntaxNode;
+  mAction: TCodeAction;
+  mName: string;
+  mCount: Integer;
 begin
   Result := nil;
-  Decl := ClassDeclAt(ATree, ALine);
-  if Decl = nil then
+  mDecl := ClassDeclAt(ATree, ALine);
+  if mDecl = nil then
   begin
     Exit;
   end;
-  if PropertyAccessors(AText, ALine, AContext, Action) then
+  if PropertyAccessors(AText, ALine, AContext, mAction) then
   begin
-    Result := Result + [Action];
+    Result := Result + [mAction];
   end;
-  for Name in TInterfaceStubs.HeaderAncestors(TTextLines.SplitLines(AText), Decl.StartPos.Line) do
+  for mName in TInterfaceStubs.HeaderAncestors(TTextLines.SplitLines(AText), mDecl.StartPos.Line) do
   begin
-    if TRegEx.IsMatch(Name, '^I[A-Z]') and ImplementInterface(AText, ALine, Name, AContext, Action) then
+    if TRegEx.IsMatch(mName, '^I[A-Z]') and ImplementInterface(AText, ALine, mName, AContext, mAction) then
     begin
-      Result := Result + [Action];
+      Result := Result + [mAction];
     end;
   end;
-  Count := 0;
-  for Name in OverrideCandidates(AText, ALine, AContext) do
+  mCount := 0;
+  for mName in OverrideCandidates(AText, ALine, AContext) do
   begin
-    if Count >= MaxOverrides then
+    if mCount >= cMaxOverrides then
     begin
       Break;
     end;
-    if OverrideMethod(AText, ALine, Name, AContext, Action) then
+    if OverrideMethod(AText, ALine, mName, AContext, mAction) then
     begin
-      Result := Result + [Action];
-      Inc(Count);
+      Result := Result + [mAction];
+      Inc(mCount);
     end;
   end;
 end;

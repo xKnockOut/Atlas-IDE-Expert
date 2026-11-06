@@ -34,7 +34,7 @@ uses
   Atlas.Common.Rules.Contract;
 
 const
-  OperatorDeclarationInvalidRuleId = 'operator-declaration-invalid';
+  cOperatorDeclarationInvalidRuleId = 'operator-declaration-invalid';
 
 type
   TOperatorDeclarationInvalidRule = class(TInterfacedObject, IRule)
@@ -101,35 +101,35 @@ type
 {$SCOPEDENUMS OFF}
 
 const
-  UnaryOperators: array[0..6] of string = ('Negative', 'Positive', 'Inc', 'Dec', 'LogicalNot', 'Trunc', 'Round');
-  ConversionOperators: array[0..1] of string = ('Implicit', 'Explicit');
-  ComparisonOperators: array[0..5] of string = ('Equal', 'NotEqual', 'GreaterThan', 'GreaterThanOrEqual',
+  cUnaryOperators: array[0..6] of string = ('Negative', 'Positive', 'Inc', 'Dec', 'LogicalNot', 'Trunc', 'Round');
+  cConversionOperators: array[0..1] of string = ('Implicit', 'Explicit');
+  cComparisonOperators: array[0..5] of string = ('Equal', 'NotEqual', 'GreaterThan', 'GreaterThanOrEqual',
     'LessThan', 'LessThanOrEqual');
-  BinaryOperators: array[0..14] of string = ('In', 'Add', 'Subtract', 'Multiply', 'Divide', 'IntDivide', 'Modulus',
+  cBinaryOperators: array[0..14] of string = ('In', 'Add', 'Subtract', 'Multiply', 'Divide', 'IntDivide', 'Modulus',
     'LeftShift', 'RightShift', 'LogicalAnd', 'LogicalOr', 'LogicalXor', 'BitwiseAnd', 'BitwiseOr', 'BitwiseXor');
-  ManagedOperators: array[0..1] of string = ('Initialize', 'Finalize');
+  cManagedOperators: array[0..1] of string = ('Initialize', 'Finalize');
   // Namen, die Delphi womöglich kennt; ohne Prüfung.
-  ToleratedOperators: array[0..2] of string = ('True', 'False', 'OnesComplement');
+  cToleratedOperators: array[0..2] of string = ('True', 'False', 'OnesComplement');
 
 function OperatorShape(const AName: string): TOperatorShape;
 begin
-  if MatchText(AName, UnaryOperators) then
+  if MatchText(AName, cUnaryOperators) then
   begin
     Result := TOperatorShape.Unary;
   end
-  else if MatchText(AName, ConversionOperators) then
+  else if MatchText(AName, cConversionOperators) then
   begin
     Result := TOperatorShape.Conversion;
   end
-  else if MatchText(AName, ComparisonOperators) then
+  else if MatchText(AName, cComparisonOperators) then
   begin
     Result := TOperatorShape.Comparison;
   end
-  else if MatchText(AName, BinaryOperators) then
+  else if MatchText(AName, cBinaryOperators) then
   begin
     Result := TOperatorShape.Binary;
   end
-  else if MatchText(AName, ManagedOperators) then
+  else if MatchText(AName, cManagedOperators) then
   begin
     Result := TOperatorShape.Managed;
   end
@@ -137,7 +137,7 @@ begin
   begin
     Result := TOperatorShape.Assign;
   end
-  else if MatchText(AName, ToleratedOperators) then
+  else if MatchText(AName, cToleratedOperators) then
   begin
     Result := TOperatorShape.Tolerated;
   end
@@ -149,28 +149,28 @@ end;
 
 function KnownOperators: TArray<string>;
 var
-  Name: string;
+  mName: string;
 begin
   Result := nil;
-  for Name in UnaryOperators do
+  for mName in cUnaryOperators do
   begin
-    Result := Result + [Name];
+    Result := Result + [mName];
   end;
-  for Name in ConversionOperators do
+  for mName in cConversionOperators do
   begin
-    Result := Result + [Name];
+    Result := Result + [mName];
   end;
-  for Name in ComparisonOperators do
+  for mName in cComparisonOperators do
   begin
-    Result := Result + [Name];
+    Result := Result + [mName];
   end;
-  for Name in BinaryOperators do
+  for mName in cBinaryOperators do
   begin
-    Result := Result + [Name];
+    Result := Result + [mName];
   end;
-  for Name in ManagedOperators do
+  for mName in cManagedOperators do
   begin
-    Result := Result + [Name];
+    Result := Result + [mName];
   end;
   Result := Result + ['Assign'];
 end;
@@ -240,28 +240,28 @@ end;
 
 function TOperatorDeclarationInvalidRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(OperatorDeclarationInvalidRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cOperatorDeclarationInvalidRuleId, TRuleSeverity.Error,
     cTexts[TTypeRestrictionsOperatorsText.Title].Text);
 end;
 
 procedure TOperatorDeclarationInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TArray<TPascalToken>;
-  Types: TFileTypes;
-  Headers: TList<TSyntaxNode>;
-  Header: TSyntaxNode;
+  mTokens: TArray<TPascalToken>;
+  mTypes: TFileTypes;
+  mHeaders: TList<TSyntaxNode>;
+  mHeader: TSyntaxNode;
 
   /// <summary>Edits für Deklaration und gleiche Rümpfe; AEdit liefert je Kopf die Änderung.</summary>
   function BothHeads(const AOwn: string; const AHead: TRoutineHead;
     const AEdit: TFunc<TRoutineHead, TArray<TRuleEdit>>): TArray<TRuleEdit>;
   var
-    Body: TRoutineHead;
+    mBody: TRoutineHead;
   begin
     Result := AEdit(AHead);
-    for Body in ImplementationHeads(AContext.Text, Tokens, AContext.Tree.Root, AOwn + '.' +
+    for mBody in ImplementationHeads(AContext.Text, mTokens, AContext.Tree.Root, AOwn + '.' +
       Copy(AHead.Header.Name, LastDelimiter('.', AHead.Header.Name) + 1, MaxInt), AHead) do
     begin
-      Result := Result + AEdit(Body);
+      Result := Result + AEdit(mBody);
     end;
   end;
 
@@ -273,10 +273,10 @@ var
         Index: Integer;
       begin
         Result := nil;
-        Index := NameToken(Tokens, AOne.Header);
+        Index := NameToken(mTokens, AOne.Header);
         if Index >= 0 then
         begin
-          Result := [TRuleEdit.Create(TokenRange(Tokens[Index]), ANew)];
+          Result := [TRuleEdit.Create(TokenRange(mTokens[Index]), ANew)];
         end;
       end));
   end;
@@ -309,27 +309,27 @@ var
           Exit;
         end;
         Param := AOne.Parameters[0];
-        Index := TRoutineBody.TokenAt(Tokens, Param.StartOffset);
+        Index := TRoutineBody.TokenAt(mTokens, Param.StartOffset);
         Depth := 0;
-        while (Index < Length(Tokens)) and (Tokens[Index].Offset < Param.EndOffset) do
+        while (Index < Length(mTokens)) and (mTokens[Index].Offset < Param.EndOffset) do
         begin
-          if Tokens[Index].IsSymbol('[') then
+          if mTokens[Index].IsSymbol('[') then
           begin
             Inc(Depth);
           end
-          else if Tokens[Index].IsSymbol(']') then
+          else if mTokens[Index].IsSymbol(']') then
           begin
             Dec(Depth);
           end
-          else if (Depth = 0) and (Tokens[Index].IsKeyword('const') or SameText(Tokens[Index].Text, 'out') or
-            SameText(Tokens[Index].Text, 'constref')) then
+          else if (Depth = 0) and (mTokens[Index].IsKeyword('const') or SameText(mTokens[Index].Text, 'out') or
+            SameText(mTokens[Index].Text, 'constref')) then
           begin
-            Result := [TRuleEdit.Create(TokenRange(Tokens[Index]), 'var')];
+            Result := [TRuleEdit.Create(TokenRange(mTokens[Index]), 'var')];
             Exit;
           end
-          else if (Depth = 0) and (Tokens[Index].Kind = TPascalTokenKind.Identifier) then
+          else if (Depth = 0) and (mTokens[Index].Kind = TPascalTokenKind.Identifier) then
           begin
-            Result := [TRuleEdit.Create(TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].StartPos), 'var ')];
+            Result := [TRuleEdit.Create(TTextRange.Create(mTokens[Index].StartPos, mTokens[Index].StartPos), 'var ')];
             Exit;
           end;
           Inc(Index);
@@ -353,10 +353,10 @@ var
           Result := [TRuleEdit.Create(NodeRange(Parameters), ATemplate)];
           Exit;
         end;
-        Index := NameToken(Tokens, AOne.Header);
+        Index := NameToken(mTokens, AOne.Header);
         if Index >= 0 then
         begin
-          Result := [TRuleEdit.Create(TTextRange.Create(Tokens[Index].EndPos, Tokens[Index].EndPos), ATemplate)];
+          Result := [TRuleEdit.Create(TTextRange.Create(mTokens[Index].EndPos, mTokens[Index].EndPos), ATemplate)];
         end;
       end));
   end;
@@ -372,13 +372,13 @@ var
     mBody: TRoutineHead;
     mName: Integer;
   begin
-    for mBody in ImplementationHeads(AContext.Text, Tokens, AContext.Tree.Root, AOwn + '.' + AHead.Header.Name,
+    for mBody in ImplementationHeads(AContext.Text, mTokens, AContext.Tree.Root, AOwn + '.' + AHead.Header.Name,
       AHead) do
     begin
-      mName := NameToken(Tokens, mBody.Header);
+      mName := NameToken(mTokens, mBody.Header);
       if mName >= 0 then
       begin
-        Report(TokenRange(Tokens[mName]), cTexts[TTypeRestrictionsOperatorsText.NoDeclaration].Fmt([AOwn,
+        Report(TokenRange(mTokens[mName]), cTexts[TTypeRestrictionsOperatorsText.NoDeclaration].Fmt([AOwn,
           AHead.Header.Name]), nil);
       end;
     end;
@@ -391,17 +391,17 @@ var
     mIndex: Integer;
   begin
     ASite := Default(TOperatorSite);
-    ASite.Head := TRoutineHead.Read(Tokens, AHeader);
+    ASite.Head := TRoutineHead.Read(mTokens, AHeader);
     ASite.Own := ContainerName(AHeader);
     ASite.Name := AHeader.Name;
-    mIndex := NameToken(Tokens, AHeader);
+    mIndex := NameToken(mTokens, AHeader);
     Result := ASite.Head.IsClass and (ASite.Head.Keyword = 'operator');
     Result := Result and (ASite.Own <> '') and (ASite.Name <> '') and (mIndex >= 0) and IsValidIdent(ASite.Name);
     if Result then
     begin
-      ASite.Range := TokenRange(Tokens[mIndex]);
+      ASite.Range := TokenRange(mTokens[mIndex]);
       ASite.Shape := OperatorShape(ASite.Name);
-      ASite.OwnNames := Types.SameNames(ASite.Own);
+      ASite.OwnNames := mTypes.SameNames(ASite.Own);
       ASite.ParamTypes := ParameterTypeNames(ASite.Head);
     end;
   end;
@@ -458,12 +458,12 @@ var
     for mOther in ASite.ParamTypes do
     begin
       mHasOwn := mHasOwn or MatchText(BareTypeName(mOther), ASite.OwnNames);
-      mCertain := mCertain and Types.CertainlyOther(mOther, ASite.OwnNames);
+      mCertain := mCertain and mTypes.CertainlyOther(mOther, ASite.OwnNames);
     end;
     if (ASite.Shape = TOperatorShape.Conversion) and (ASite.Head.ResultType <> nil) then
     begin
       mHasOwn := mHasOwn or MatchText(BareTypeName(ASite.Head.ResultType.Name), ASite.OwnNames);
-      mCertain := mCertain and Types.CertainlyOther(ASite.Head.ResultType.Name, ASite.OwnNames);
+      mCertain := mCertain and mTypes.CertainlyOther(ASite.Head.ResultType.Name, ASite.OwnNames);
     end;
     Result := not mHasOwn and mCertain and (ASite.Shape <> TOperatorShape.Managed);
     if not Result then
@@ -494,8 +494,8 @@ var
     mResult := ASite.Head.ResultType.Name;
     mFirst := ASite.ParamTypes[0];
     Result := not SameText(BareTypeName(mResult), BareTypeName(mFirst));
-    Result := Result and Types.CertainlyOther(mResult, Types.SameNames(mFirst)) and
-      Types.CertainlyOther(mFirst, Types.SameNames(mResult));
+    Result := Result and mTypes.CertainlyOther(mResult, mTypes.SameNames(mFirst)) and
+      mTypes.CertainlyOther(mFirst, mTypes.SameNames(mResult));
   end;
 
   /// <summary>Inc und Dec liefern den Typ des Parameters (E2519); True nach einer Meldung.</summary>
@@ -556,9 +556,9 @@ begin
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
-  Types := TFileTypes.Collect(AContext.Tree.Root);
-  Headers := TList<TSyntaxNode>.Create;
+  mTokens := AContext.Tree.Tokens;
+  mTypes := TFileTypes.Collect(AContext.Tree.Root);
+  mHeaders := TList<TSyntaxNode>.Create;
   try
     AContext.Tree.Root.Walk(
       function(ANode: TSyntaxNode): Boolean
@@ -568,15 +568,15 @@ begin
         if (ANode.Kind = TSyntaxKind.RoutineHeader) and (ANode.Parent <> nil) and
           (ANode.Parent.Kind in [TSyntaxKind.RecordType, TSyntaxKind.ClassType]) then
         begin
-          Headers.Add(ANode);
+          mHeaders.Add(ANode);
         end;
       end);
-    for Header in Headers do
+    for mHeader in mHeaders do
     begin
-      CheckOperator(Header);
+      CheckOperator(mHeader);
     end;
   finally
-    Headers.Free;
+    mHeaders.Free;
   end;
 end;
 

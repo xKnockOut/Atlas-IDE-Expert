@@ -139,60 +139,60 @@ end;
 
 function TConditionValues.FirstToken(AOffset: Integer): Integer;
 var
-  Lo, Hi, Middle: Integer;
+  mLo, mHi, mMiddle: Integer;
 begin
-  Lo := 0;
-  Hi := Length(FTree.Tokens);
-  while Lo < Hi do
+  mLo := 0;
+  mHi := Length(FTree.Tokens);
+  while mLo < mHi do
   begin
-    Middle := (Lo + Hi) div 2;
-    if FTree.Tokens[Middle].Offset < AOffset then
+    mMiddle := (mLo + mHi) div 2;
+    if FTree.Tokens[mMiddle].Offset < AOffset then
     begin
-      Lo := Middle + 1;
+      mLo := mMiddle + 1;
     end
     else
     begin
-      Hi := Middle;
+      mHi := mMiddle;
     end;
   end;
-  Result := Lo;
+  Result := mLo;
 end;
 
 function TConditionValues.HasDirective(ANode: TSyntaxNode): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := FirstToken(ANode.StartOffset);
-  while (Index <= High(FTree.Tokens)) and (FTree.Tokens[Index].Offset < ANode.EndOffset) do
+  mIndex := FirstToken(ANode.StartOffset);
+  while (mIndex <= High(FTree.Tokens)) and (FTree.Tokens[mIndex].Offset < ANode.EndOffset) do
   begin
-    if FTree.Tokens[Index].Kind = TPascalTokenKind.Directive then
+    if FTree.Tokens[mIndex].Kind = TPascalTokenKind.Directive then
     begin
       Exit(True);
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
   Result := False;
 end;
 
 function TConditionValues.Conditional(ANode: TSyntaxNode): Boolean;
 var
-  First, Last, Index: Integer;
+  mFirst, mLast, mIndex: Integer;
 begin
   // Vom Schlüsselwort vor der Bedingung (if, while, until) bis zu dem dahinter (then, do, ;).
-  First := FirstToken(ANode.StartOffset) - 1;
-  while (First > 0) and (FTree.Tokens[First].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+  mFirst := FirstToken(ANode.StartOffset) - 1;
+  while (mFirst > 0) and (FTree.Tokens[mFirst].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
   begin
-    Dec(First);
+    Dec(mFirst);
   end;
-  Last := FirstToken(ANode.EndOffset);
-  while (Last < High(FTree.Tokens)) and
-    (FTree.Tokens[Last].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+  mLast := FirstToken(ANode.EndOffset);
+  while (mLast < High(FTree.Tokens)) and
+    (FTree.Tokens[mLast].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
   begin
-    Inc(Last);
+    Inc(mLast);
   end;
-  for Index := First + 1 to Last - 1 do
+  for mIndex := mFirst + 1 to mLast - 1 do
   begin
-    if FTree.Tokens[Index].Kind = TPascalTokenKind.Directive then
+    if FTree.Tokens[mIndex].Kind = TPascalTokenKind.Directive then
     begin
       Exit(True);
     end;
@@ -202,92 +202,92 @@ end;
 
 function TConditionValues.IsPlainConstant(ANode: TSyntaxNode): Boolean;
 var
-  Index, Values: Integer;
+  mIndex, mValues: Integer;
 begin
   // Name = Wert; ohne Typ (sonst typisierte Konstante), ohne Direktive, außerhalb von {$IF…}.
-  Values := 0;
-  for Index := 0 to ANode.ChildCount - 1 do
+  mValues := 0;
+  for mIndex := 0 to ANode.ChildCount - 1 do
   begin
-    if ANode[Index].Kind <> TSyntaxKind.Directive then
+    if ANode[mIndex].Kind <> TSyntaxKind.Directive then
     begin
-      Inc(Values);
+      Inc(mValues);
     end;
   end;
-  Result := (Values = 1) and not HasDirective(ANode) and
+  Result := (mValues = 1) and not HasDirective(ANode) and
     (TConditionalBranches.PathAt(FPaths, FirstToken(ANode.StartOffset)) = '');
 end;
 
 procedure TConditionValues.CollectConstants(ANode: TSyntaxNode);
 var
-  Index: Integer;
-  Node: TSyntaxNode;
-  Pending: TStack<TSyntaxNode>;
+  mIndex: Integer;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
 begin
   // Iterativ (Bericht M1).
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    for Index := ANode.ChildCount - 1 downto 0 do
+    for mIndex := ANode.ChildCount - 1 downto 0 do
     begin
-      Pending.Push(ANode[Index]);
+      mPending.Push(ANode[mIndex]);
     end;
-    while Pending.Count > 0 do
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      if (Node.Kind = TSyntaxKind.ConstDecl) and IsPlainConstant(Node) and not MatchText(Node.Name, FSwitches) then
+      mNode := mPending.Pop;
+      if (mNode.Kind = TSyntaxKind.ConstDecl) and IsPlainConstant(mNode) and not MatchText(mNode.Name, FSwitches) then
       begin
-        FConstants.AddOrSetValue(LowerCase(Node.Name), True);
+        FConstants.AddOrSetValue(LowerCase(mNode.Name), True);
       end;
-      for Index := Node.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(Node[Index]);
+        mPending.Push(mNode[mIndex]);
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
 function TConditionValues.FindConstant(ANode: TSyntaxNode; const AName: string;
   const APosition: TTextPosition): TSyntaxNode;
 var
-  Index: Integer;
-  Child: TSyntaxNode;
-  Pending: TStack<TSyntaxNode>;
+  mIndex: Integer;
+  mChild: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
 begin
   // ConstDecl mit dem Namen, die APosition enthält. Iterativ (Bericht M1).
   Result := nil;
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    for Index := ANode.ChildCount - 1 downto 0 do
+    for mIndex := ANode.ChildCount - 1 downto 0 do
     begin
-      Pending.Push(ANode[Index]);
+      mPending.Push(ANode[mIndex]);
     end;
-    while Pending.Count > 0 do
+    while mPending.Count > 0 do
     begin
-      Child := Pending.Pop;
-      if (Child.StartPos.Line > APosition.Line) or ((Child.EndPos.Line < APosition.Line)) then
+      mChild := mPending.Pop;
+      if (mChild.StartPos.Line > APosition.Line) or ((mChild.EndPos.Line < APosition.Line)) then
       begin
         Continue;
       end;
-      if (Child.Kind = TSyntaxKind.ConstDecl) and SameText(Child.Name, AName) then
+      if (mChild.Kind = TSyntaxKind.ConstDecl) and SameText(mChild.Name, AName) then
       begin
-        Exit(Child);
+        Exit(mChild);
       end;
-      for Index := Child.ChildCount - 1 downto 0 do
+      for mIndex := mChild.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(Child[Index]);
+        mPending.Push(mChild[mIndex]);
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
 function TConditionValues.NameValue(ANode: TSyntaxNode): TConstantValue;
 var
-  Resolved: TResolvedSymbol;
-  Declaration: TSyntaxNode;
-  Index: Integer;
+  mResolved: TResolvedSymbol;
+  mDeclaration: TSyntaxNode;
+  mIndex: Integer;
 begin
   Result := TConstantValue.Unknown;
   if SameText(ANode.Name, 'True') or SameText(ANode.Name, 'False') then
@@ -298,25 +298,25 @@ begin
   begin
     Exit;
   end;
-  Resolved := FResolver.ResolveChain(FTree, FFileName, [ANode.Name], ANode.StartOffset);
-  if not Resolved.Found or (Resolved.SymbolKind <> TIndexSymbolKind.Constant) or
-    not ((Resolved.Kind = TResolvedKind.Local) or (Resolved.FileName = '') or
-    SameText(Resolved.FileName, FFileName)) then
+  mResolved := FResolver.ResolveChain(FTree, FFileName, [ANode.Name], ANode.StartOffset);
+  if not mResolved.Found or (mResolved.SymbolKind <> TIndexSymbolKind.Constant) or
+    not ((mResolved.Kind = TResolvedKind.Local) or (mResolved.FileName = '') or
+    SameText(mResolved.FileName, FFileName)) then
   begin
     Exit;
   end;
-  Declaration := FindConstant(FTree.Root, ANode.Name, Resolved.Range.StartPos);
-  if (Declaration = nil) or not IsPlainConstant(Declaration) then
+  mDeclaration := FindConstant(FTree.Root, ANode.Name, mResolved.Range.StartPos);
+  if (mDeclaration = nil) or not IsPlainConstant(mDeclaration) then
   begin
     Exit;
   end;
   Inc(FDepth);
   try
-    for Index := Declaration.ChildCount - 1 downto 0 do
+    for mIndex := mDeclaration.ChildCount - 1 downto 0 do
     begin
-      if Declaration[Index].Kind <> TSyntaxKind.Directive then
+      if mDeclaration[mIndex].Kind <> TSyntaxKind.Directive then
       begin
-        Result := Evaluate(Declaration[Index]);
+        Result := Evaluate(mDeclaration[mIndex]);
         Break;
       end;
     end;

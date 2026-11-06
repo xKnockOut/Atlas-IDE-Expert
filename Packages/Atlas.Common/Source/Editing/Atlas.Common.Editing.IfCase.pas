@@ -58,7 +58,7 @@ type
   TIfCase = class
   public const
     /// <summary>So viele Bedingungen braucht eine Kette mindestens.</summary>
-    MinConditions = 2;
+    cMinConditions = 2;
   public
     class function ToCaseTitle: string; static;
     class function ToIfTitle: string; static;
@@ -180,79 +180,80 @@ end;
 
 function TChainReader.IsConstantLabel(ANode: TSyntaxNode): Boolean;
 var
-  Node: TSyntaxNode;
-  Value: Int64;
+  mNode: TSyntaxNode;
+  mValue: Int64;
 begin
-  Node := TExpressionText.Strip(ANode);
-  case Node.Kind of
+  mNode := TExpressionText.Strip(ANode);
+  case mNode.Kind of
     TSyntaxKind.Literal:
       // Zahlen und Zeichen; Strings mit mehr als einem Zeichen und Gleitkomma sind keine case-Marken.
-      Result := TOrdinalConstants.Evaluate(TExpressionText.Source(FText, Node), nil, Value);
+      Result := TOrdinalConstants.Evaluate(TExpressionText.Source(FText, mNode), nil, mValue);
     TSyntaxKind.Identifier, TSyntaxKind.MemberAccess:
-      Result := TExpressionText.IsBooleanLiteral(Node) or (Assigned(FLookup.IsConstant) and
-        FLookup.IsConstant(Node));
+      Result := TExpressionText.IsBooleanLiteral(mNode) or (Assigned(FLookup.IsConstant) and
+        FLookup.IsConstant(mNode));
   else
     // Konstantenausdrücke wie Ord('A') + 1.
-    Result := TOrdinalConstants.Evaluate(TExpressionText.Source(FText, Node), nil, Value);
+    Result := TOrdinalConstants.Evaluate(TExpressionText.Source(FText, mNode), nil, mValue);
   end;
 end;
 
 function TChainReader.Bound(ANode: TSyntaxNode; out AValue: TSyntaxNode; out ALower: Boolean): Boolean;
 var
-  Node: TSyntaxNode;
-  Op: string;
+  mNode: TSyntaxNode;
+  mOp: string;
 begin
   // X >= a (untere Grenze), X <= b (obere), auch gespiegelt: a <= X, b >= X.
   Result := False;
   AValue := nil;
   ALower := False;
-  Node := TExpressionText.Strip(ANode);
-  if (Node.Kind <> TSyntaxKind.BinaryExpr) or (Node.ChildCount <> 2) then
+  mNode := TExpressionText.Strip(ANode);
+  if (mNode.Kind <> TSyntaxKind.BinaryExpr) or (mNode.ChildCount <> 2) then
   begin
     Exit;
   end;
-  Op := Node.Name;
-  if not MatchStr(Op, ['>=', '<=']) then
+  mOp := mNode.Name;
+  if not MatchStr(mOp, ['>=', '<=']) then
   begin
     Exit;
   end;
-  if IsConstantLabel(Node[1]) and MatchSelector(Node[0]) then
+  if IsConstantLabel(mNode[1]) and MatchSelector(mNode[0]) then
   begin
-    AValue := TExpressionText.Strip(Node[1]);
-    ALower := Op = '>=';
+    AValue := TExpressionText.Strip(mNode[1]);
+    ALower := mOp = '>=';
     Result := True;
   end
-  else if IsConstantLabel(Node[0]) and MatchSelector(Node[1]) then
+  else if IsConstantLabel(mNode[0]) and MatchSelector(mNode[1]) then
   begin
-    AValue := TExpressionText.Strip(Node[0]);
-    ALower := Op = '<=';
+    AValue := TExpressionText.Strip(mNode[0]);
+    ALower := mOp = '<=';
     Result := True;
   end;
 end;
 
 function TChainReader.ReadRange(ANode: TSyntaxNode; var ALabels: TArray<TCaseLabel>): Boolean;
 var
-  First, Second: TSyntaxNode;
-  FirstLower, SecondLower: Boolean;
-  Item: TCaseLabel;
+  mFirst, mSecond: TSyntaxNode;
+  mFirstLower, mSecondLower: Boolean;
+  mItem: TCaseLabel;
 begin
-  Result := (ANode.ChildCount = 2) and Bound(ANode[0], First, FirstLower) and Bound(ANode[1], Second, SecondLower) and
-    (FirstLower <> SecondLower);
+  Result := (ANode.ChildCount = 2) and Bound(ANode[0], mFirst, mFirstLower) and
+    Bound(ANode[1], mSecond, mSecondLower) and
+    (mFirstLower <> mSecondLower);
   if not Result then
   begin
     Exit;
   end;
-  if FirstLower then
+  if mFirstLower then
   begin
-    Item.Low := First;
-    Item.High := Second;
+    mItem.Low := mFirst;
+    mItem.High := mSecond;
   end
   else
   begin
-    Item.Low := Second;
-    Item.High := First;
+    mItem.Low := mSecond;
+    mItem.High := mFirst;
   end;
-  ALabels := ALabels + [Item];
+  ALabels := ALabels + [mItem];
 end;
 
 function TChainReader.ReadEqual(ANode: TSyntaxNode; var ALabels: TArray<TCaseLabel>): Boolean;
@@ -342,43 +343,43 @@ end;
 
 function TChainReader.Read(AHead: TSyntaxNode): Boolean;
 var
-  Node: TSyntaxNode;
-  Link: TChainLink;
+  mNode: TSyntaxNode;
+  mLink: TChainLink;
 begin
   Result := False;
   Links := nil;
   ElseBranch := nil;
   FSelector := nil;
-  Node := AHead;
+  mNode := AHead;
   while True do
   begin
-    if (Node.ChildCount < 2) then
+    if (mNode.ChildCount < 2) then
     begin
       Exit;
     end;
-    Link.Condition := Node[0];
-    Link.Branch := Node[1];
-    Link.Labels := nil;
-    if not ReadLabels(Link.Condition, Link.Labels) then
+    mLink.Condition := mNode[0];
+    mLink.Branch := mNode[1];
+    mLink.Labels := nil;
+    if not ReadLabels(mLink.Condition, mLink.Labels) then
     begin
       Exit;
     end;
-    Links := Links + [Link];
-    if Node.ChildCount < 3 then
+    Links := Links + [mLink];
+    if mNode.ChildCount < 3 then
     begin
       Break;
     end;
-    if Node[2].Kind = TSyntaxKind.IfStatement then
+    if mNode[2].Kind = TSyntaxKind.IfStatement then
     begin
-      Node := Node[2];
+      mNode := mNode[2];
     end
     else
     begin
-      ElseBranch := Node[2];
+      ElseBranch := mNode[2];
       Break;
     end;
   end;
-  Result := (Length(Links) >= TIfCase.MinConditions) and (FSelector <> nil);
+  Result := (Length(Links) >= TIfCase.cMinConditions) and (FSelector <> nil);
 end;
 
 type
@@ -392,7 +393,7 @@ type
 
 function LabelKey(const AText: string; ATree: TSyntaxTree; const ALabel: TCaseLabel): TLabelKey;
 var
-  LowValue, HighValue: Int64;
+  mLowValue, mHighValue: Int64;
 begin
   Result := Default(TLabelKey);
   Result.Text := TExpressionText.Normalized(ATree, ALabel.Low);
@@ -400,15 +401,15 @@ begin
   begin
     Result.Text := Result.Text + ' .. ' + TExpressionText.Normalized(ATree, ALabel.High);
   end;
-  if TOrdinalConstants.Evaluate(TExpressionText.Source(AText, ALabel.Low), nil, LowValue) then
+  if TOrdinalConstants.Evaluate(TExpressionText.Source(AText, ALabel.Low), nil, mLowValue) then
   begin
-    HighValue := LowValue;
+    mHighValue := mLowValue;
     if (ALabel.High = nil) or TOrdinalConstants.Evaluate(TExpressionText.Source(AText, ALabel.High), nil,
-      HighValue) then
+      mHighValue) then
     begin
       Result.Known := True;
-      Result.Low := LowValue;
-      Result.High := HighValue;
+      Result.Low := mLowValue;
+      Result.High := mHighValue;
     end;
   end;
 end;
@@ -475,7 +476,7 @@ end;
 
 function SelectorUsable(ANode: TSyntaxNode; const ALookup: TIfCaseLookup; out AKind: TCaseSelectorKind): Boolean;
 var
-  Callable: Boolean;
+  mCallable: Boolean;
 begin
   AKind := TCaseSelectorKind.Unknown;
   Result := False;
@@ -483,28 +484,28 @@ begin
   begin
     Exit;
   end;
-  Callable := False;
-  AKind := ALookup.SelectorKind(ANode, Callable);
-  Result := not Callable and (AKind in [TCaseSelectorKind.Whole, TCaseSelectorKind.Character,
+  mCallable := False;
+  AKind := ALookup.SelectorKind(ANode, mCallable);
+  Result := not mCallable and (AKind in [TCaseSelectorKind.Whole, TCaseSelectorKind.Character,
     TCaseSelectorKind.SetElement]);
 end;
 
 /// <summary>Bereiche der Zweige einer if-Kette.</summary>
 function ChainSpans(ATree: TSyntaxTree; const ALinks: TArray<TChainLink>; AElse: TSyntaxNode): TArray<TStatementSpan>;
 var
-  Branches: TArray<TSyntaxNode>;
-  Link: TChainLink;
+  mBranches: TArray<TSyntaxNode>;
+  mLink: TChainLink;
 begin
-  Branches := nil;
-  for Link in ALinks do
+  mBranches := nil;
+  for mLink in ALinks do
   begin
-    Branches := Branches + [Link.Branch];
+    mBranches := mBranches + [mLink.Branch];
   end;
   if AElse <> nil then
   begin
-    Branches := Branches + [AElse];
+    mBranches := mBranches + [AElse];
   end;
-  Result := TStatementText.Spans(ATree, Branches);
+  Result := TStatementText.Spans(ATree, mBranches);
 end;
 
 /// <summary>Kommentar in einer Bedingung oder zwischen den Schlüsselwörtern der Kette, der beim Umschreiben
@@ -574,9 +575,9 @@ end;
 class function TIfCaseLookup.FromResolver(AResolver: TNameResolver; ATree: TSyntaxTree;
   const AFileName: string): TIfCaseLookup;
 var
-  FileName: string;
+  mFileName: string;
 begin
-  FileName := AFileName;
+  mFileName := AFileName;
   Result.SelectorKind :=
     function(ANode: TSyntaxNode; out ACallable: Boolean): TCaseSelectorKind
     var
@@ -586,7 +587,7 @@ begin
       Result := TCaseSelectorKind.Unknown;
       ACallable := False;
       if not (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess,
-        TSyntaxKind.Call]) or not AResolver.NodeType(ATree, FileName, ANode, Symbol, TypeInfo, TypeFound) then
+        TSyntaxKind.Call]) or not AResolver.NodeType(ATree, mFileName, ANode, Symbol, TypeInfo, TypeFound) then
       begin
         Exit;
       end;
@@ -604,7 +605,7 @@ begin
       Symbol, TypeInfo: TResolvedSymbol;
       TypeFound: Boolean;
     begin
-      Result := AResolver.NodeType(ATree, FileName, ANode, Symbol, TypeInfo, TypeFound) and
+      Result := AResolver.NodeType(ATree, mFileName, ANode, Symbol, TypeInfo, TypeFound) and
         ((Symbol.SymbolKind = TIndexSymbolKind.EnumMember) or ((Symbol.SymbolKind = TIndexSymbolKind.Constant) and
         (Symbol.TypeName = ''))) and not Symbol.IsParameter;
     end;
@@ -620,24 +621,24 @@ end;
 class function TIfCase.ConvertibleConditions(const AText: string; ATree: TSyntaxTree; AIf: TSyntaxNode;
   const ALookup: TIfCaseLookup): Integer;
 var
-  Reader: TChainReader;
-  Kind: TCaseSelectorKind;
+  mReader: TChainReader;
+  mKind: TCaseSelectorKind;
 begin
   Result := 0;
   if not IsChainHead(AIf) then
   begin
     Exit;
   end;
-  Reader := TChainReader.Create(AText, ATree, ALookup);
+  mReader := TChainReader.Create(AText, ATree, ALookup);
   try
-    if Reader.Read(AIf) and SelectorUsable(Reader.Selector, ALookup, Kind) and
-      not HasConflicts(AText, ATree, Reader.Links) and
-      not ChainComments(ATree, AIf, Reader.Links, Reader.ElseBranch) then
+    if mReader.Read(AIf) and SelectorUsable(mReader.Selector, ALookup, mKind) and
+      not HasConflicts(AText, ATree, mReader.Links) and
+      not ChainComments(ATree, AIf, mReader.Links, mReader.ElseBranch) then
     begin
-      Result := Length(Reader.Links);
+      Result := Length(mReader.Links);
     end;
   finally
-    Reader.Free;
+    mReader.Free;
   end;
 end;
 
@@ -801,7 +802,7 @@ begin
     mItems := mItems + [TExpressionText.Source(AText, mLabel)];
   end;
   Result := TExpressionText.Combine('in', ASelector, TExpressionPart.Create('[' + string.Join(', ', mItems) + ']',
-    PrecedenceOperand)).Text;
+    cPrecedenceOperand)).Text;
 end;
 
 /// <summary>Vergleich mit einer Marke: X = a bzw. (X >= a) and (X &lt;= b).</summary>
@@ -844,14 +845,14 @@ end;
 /// <summary>Marken eines case-Zweigs (alle Kinder außer der Anweisung).</summary>
 function ItemLabels(AItem: TSyntaxNode): TArray<TSyntaxNode>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
-  for Index := 0 to AItem.ChildCount - 1 do
+  for mIndex := 0 to AItem.ChildCount - 1 do
   begin
-    if not TRoutineBody.IsStatement(AItem[Index]) then
+    if not TRoutineBody.IsStatement(AItem[mIndex]) then
     begin
-      Result := Result + [AItem[Index]];
+      Result := Result + [AItem[mIndex]];
     end;
   end;
 end;

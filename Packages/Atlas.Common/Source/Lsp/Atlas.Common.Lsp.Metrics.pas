@@ -45,7 +45,7 @@ type
 
   TLspMetrics = class
   public const
-    Command = 'atlas.server.metrics';
+    cCommand = 'atlas.server.metrics';
   private
     FCollector: TMetricsCollector;
     FSourceFor: TLspMetricsSourceFunc;
@@ -142,112 +142,112 @@ end;
 
 class function TLspMetrics.IsProject(const AFileName: string): Boolean;
 var
-  Extension: string;
+  mExtension: string;
 begin
-  Extension := LowerCase(ExtractFileExt(AFileName));
-  Result := (AFileName = '') or (Extension = '') or (Extension = '.dproj') or (Extension = '.dpr') or
-    (Extension = '.dpk') or (Extension = '.groupproj');
+  mExtension := LowerCase(ExtractFileExt(AFileName));
+  Result := (AFileName = '') or (mExtension = '') or (mExtension = '.dproj') or (mExtension = '.dpr') or
+    (mExtension = '.dpk') or (mExtension = '.groupproj');
 end;
 
 function TLspMetrics.FileJson(const AFileName: string; const ASource: TLspMetricsSource): string;
 var
-  Text, Methods, Structure: string;
-  Limits: TMetricLimits;
-  FileItem: TFileMetrics;
-  Tree: TSyntaxTree;
-  Items: TArray<TStructureMetrics>;
+  mText, mMethods, mStructure: string;
+  mLimits: TMetricLimits;
+  mFileItem: TFileMetrics;
+  mTree: TSyntaxTree;
+  mItems: TArray<TStructureMetrics>;
 begin
-  Structure := '[]';
-  Limits := TMetricRules.Limits(ASource.Settings);
-  if Assigned(FReadText) and FReadText(AFileName, Text) then
+  mStructure := '[]';
+  mLimits := TMetricRules.Limits(ASource.Settings);
+  if Assigned(FReadText) and FReadText(AFileName, mText) then
   begin
-    FileItem := TFileMetrics.Create(TMetricsCollector.RelativePath(ASource.Root, AFileName),
-      FCollector.FileRoutines(AFileName, Text));
+    mFileItem := TFileMetrics.Create(TMetricsCollector.RelativePath(ASource.Root, AFileName),
+      FCollector.FileRoutines(AFileName, mText));
     // Aufbau (#939): Member je Klasse, Zeilen und Units im uses für die Metrik-Linse des Plugins; mit Index auch
     // die Vererbungstiefe (#980).
-    Tree := TSyntaxTreeCache.Parse(Text);
+    mTree := TSyntaxTreeCache.Parse(mText);
     try
-      Items := TMetricsCalculator.Structure(Tree);
+      mItems := TMetricsCalculator.Structure(mTree);
       if FIndex <> nil then
       begin
-        Items := Items + TMetricRules.InheritanceDepths(Tree, FIndex, TIndexExtractor.Extract(Tree, AFileName));
+        mItems := mItems + TMetricRules.InheritanceDepths(mTree, FIndex, TIndexExtractor.Extract(mTree, AFileName));
       end;
     finally
-      Tree.Free;
+      mTree.Free;
     end;
-    Structure := TMetricsReport.StructureJson(Items, Limits);
+    mStructure := TMetricsReport.StructureJson(mItems, mLimits);
   end
   else
   begin
-    FileItem := TFileMetrics.Create(TMetricsCollector.RelativePath(ASource.Root, AFileName), nil);
+    mFileItem := TFileMetrics.Create(TMetricsCollector.RelativePath(ASource.Root, AFileName), nil);
   end;
   // {"file": …, "methods": […]} um "enabled" und "limits" ergänzt.
-  Methods := TMetricsReport.FileJson(FileItem, Limits);
+  mMethods := TMetricsReport.FileJson(mFileItem, mLimits);
   Result := '{"enabled": ' + LowerCase(BoolToStr(ASource.Settings.Metrics and ASource.Settings.CodeLens.Metrics, True)) + ', "limits": ' +
-    TMetricsReport.LimitsJson(Limits) + ', "structure": ' + Structure + ', ' + Copy(Methods, 2, MaxInt);
+    TMetricsReport.LimitsJson(mLimits) + ', "structure": ' + mStructure + ', ' + Copy(mMethods, 2, MaxInt);
 end;
 
 function TLspMetrics.ProjectJson(const ASource: TLspMetricsSource; AMode: TLspMetricsMode): string;
 var
-  Files: TArray<TFileMetrics>;
-  Limits: TMetricLimits;
+  mFiles: TArray<TFileMetrics>;
+  mLimits: TMetricLimits;
 begin
-  Limits := TMetricRules.Limits(ASource.Settings);
-  Files := FCollector.Collect(ASource.Files, ASource.Root, FReadText);
+  mLimits := TMetricRules.Limits(ASource.Settings);
+  mFiles := FCollector.Collect(ASource.Files, ASource.Root, FReadText);
   case AMode of
     TLspMetricsMode.Json:
-      Result := TMetricsReport.Json(Files, Limits);
+      Result := TMetricsReport.Json(mFiles, mLimits);
     TLspMetricsMode.Markdown:
-      Result := TMetricsReport.JsonString(TMetricsReport.Markdown(Files, Limits, ASource.Title));
+      Result := TMetricsReport.JsonString(TMetricsReport.Markdown(mFiles, mLimits, ASource.Title));
   else
-    Result := '{"format": ' + IntToStr(TMetricsReport.Format) + ', "limits": ' + TMetricsReport.LimitsJson(Limits) +
-      ', "summary": ' + TMetricsReport.SummaryJson(TMetricsReport.Summarize(Files, Limits)) + '}';
+    Result := '{"format": ' + IntToStr(TMetricsReport.cFormat) + ', "limits": ' + TMetricsReport.LimitsJson(mLimits) +
+      ', "summary": ' + TMetricsReport.SummaryJson(TMetricsReport.Summarize(mFiles, mLimits)) + '}';
   end;
 end;
 
 function TLspMetrics.Execute(const AArguments: TJSONArray): TJSONValue;
 var
-  FileName, ModeText: string;
-  Mode: TLspMetricsMode;
-  Source: TLspMetricsSource;
-  Text: string;
+  mFileName, mModeText: string;
+  mMode: TLspMetricsMode;
+  mSource: TLspMetricsSource;
+  mText: string;
 begin
-  FileName := '';
-  ModeText := '';
+  mFileName := '';
+  mModeText := '';
   if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
   begin
-    FileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
+    mFileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
   end;
   if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONString) then
   begin
-    ModeText := AArguments.Items[1].Value;
+    mModeText := AArguments.Items[1].Value;
   end;
-  if not TryParseMode(ModeText, Mode) then
+  if not TryParseMode(mModeText, mMode) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      cTexts[TMetricsText.UnknownModeAllowedFileSummary].Fmt([ModeText]));
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TMetricsText.UnknownModeAllowedFileSummary].Fmt([mModeText]));
   end;
-  if (Mode = TLspMetricsMode.FileValues) and IsProject(FileName) then
+  if (mMode = TLspMetricsMode.FileValues) and IsProject(mFileName) then
   begin
-    Mode := TLspMetricsMode.Summary;
+    mMode := TLspMetricsMode.Summary;
   end;
-  if not (Assigned(FSourceFor) and FSourceFor(FileName, Mode <> TLspMetricsMode.FileValues, Source)) then
+  if not (Assigned(FSourceFor) and FSourceFor(mFileName, mMode <> TLspMetricsMode.FileValues, mSource)) then
   begin
-    Source := Default(TLspMetricsSource);
-    Source.Settings := TServerSettings.Default;
+    mSource := Default(TLspMetricsSource);
+    mSource.Settings := TServerSettings.Default;
   end;
-  if Mode = TLspMetricsMode.FileValues then
+  if mMode = TLspMetricsMode.FileValues then
   begin
-    Text := FileJson(FileName, Source);
+    mText := FileJson(mFileName, mSource);
   end
   else
   begin
-    Text := ProjectJson(Source, Mode);
+    mText := ProjectJson(mSource, mMode);
   end;
-  Result := TJSONObject.ParseJSONValue(Text);
+  Result := TJSONObject.ParseJSONValue(mText);
   if Result = nil then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, cTexts[TMetricsText.MetricsDataIsNotValid].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInternalError, cTexts[TMetricsText.MetricsDataIsNotValid].Text);
   end;
 end;
 

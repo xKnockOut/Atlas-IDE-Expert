@@ -17,40 +17,40 @@ uses
 const
   // Bekannte VCL-Basisklassen; erreicht die Vorfahrenkette eine davon, gilt die Klasse
   // als Komponente, auch wenn RTL und VCL nicht im Index stehen.
-  ComponentBases: array[0..21] of string = ('TComponent', 'TControl', 'TWinControl', 'TCustomControl',
+  cComponentBases: array[0..21] of string = ('TComponent', 'TControl', 'TWinControl', 'TCustomControl',
     'TGraphicControl', 'TCustomPanel', 'TPanel', 'TCustomForm', 'TForm', 'TCustomFrame', 'TFrame',
     'TDataModule', 'TScrollingWinControl', 'TCustomListBox', 'TCustomEdit', 'TCustomComboBox',
     'TButtonControl', 'TCustomLabel', 'TImage', 'TDataSource', 'TDataSet', 'TCustomImageList');
   // Methoden, die im Nachfahren inherited aufrufen müssen.
-  InheritedMethods: array[0..6] of string = ('Loaded', 'CreateParams', 'CreateWnd', 'Notification',
+  cInheritedMethods: array[0..6] of string = ('Loaded', 'CreateParams', 'CreateWnd', 'Notification',
     'SetParent', 'Destroy', 'Paint');
   // Vorfahren, deren Paint leer ist oder die gar kein Paint haben: TCustomControl.Paint und TGraphicControl.Paint
   // tun nichts, ein Paint ohne inherited ist dort das übliche Muster.
-  EmptyPaintBases: array[0..9] of string = ('TCustomControl', 'TGraphicControl', 'TWinControl', 'TControl',
+  cEmptyPaintBases: array[0..9] of string = ('TCustomControl', 'TGraphicControl', 'TWinControl', 'TControl',
     'TComponent', 'TPersistent', 'TObject', 'TScrollingWinControl', 'TCustomFrame', 'TFrame');
   // VCL-Vorfahren, deren Paint selbst zeichnet (Rahmen, Hintergrund, Text, Bild).
-  DrawingPaintBases: array[0..17] of string = ('TCustomPanel', 'TPanel', 'TCustomGridPanel', 'TGridPanel',
+  cDrawingPaintBases: array[0..17] of string = ('TCustomPanel', 'TPanel', 'TCustomGridPanel', 'TGridPanel',
     'TCustomFlowPanel', 'TFlowPanel', 'TImage', 'TShape', 'TBevel', 'TCustomLabel', 'TLabel', 'TSpeedButton',
     'TSplitter', 'TCustomGrid', 'TCustomDrawGrid', 'TDrawGrid', 'TStringGrid', 'TCustomStaticText');
   // VCL-Vorfahren, deren Paint zur Laufzeit nur OnPaint auslöst (im Designer dazu Raster bzw. Strichrahmen).
   // Ohne inherited fehlt dort nur OnPaint; das zählt erst, wenn die Unit OnPaint benutzt oder ein DFM hat.
-  OnPaintPaintBases: array[0..2] of string = ('TCustomForm', 'TForm', 'TPaintBox');
+  cOnPaintPaintBases: array[0..2] of string = ('TCustomForm', 'TForm', 'TPaintBox');
   // RTL- und VCL-Klassen mit eigenem Konstruktor, auch wenn sie nicht im Index stehen (#919).
-  ConstructorBases: array[0..13] of string = ('TThread', 'TStrings', 'TStringList', 'TList', 'TObjectList',
+  cConstructorBases: array[0..13] of string = ('TThread', 'TStrings', 'TStringList', 'TList', 'TObjectList',
     'TDictionary', 'TObjectDictionary', 'TQueue', 'TStack', 'TStream', 'TFileStream', 'TMemoryStream',
     'TStringStream', 'TInterfacedPersistent');
   // Konstruktoren der VCL-Vorfahren, die ein Konstruktor ohne inherited aufrufen darf: CreateNew legt ein Formular
   // ohne DFM an und ruft selbst inherited Create (#1109).
-  AncestorConstructors: array[0..2] of string = ('CreateNew', 'CreateParented', 'CreateParentedControl');
+  cAncestorConstructors: array[0..2] of string = ('CreateNew', 'CreateParented', 'CreateParentedControl');
   // Methoden, in denen Pixelwerte und Farben geprüft werden.
-  PaintMethods: array[0..1] of string = ('Paint', 'Resize');
+  cPaintMethods: array[0..1] of string = ('Paint', 'Resize');
   // Aufrufe, deren Argumente schon skaliert werden.
-  ScaleCalls: array[0..5] of string = ('ScaleValue', 'MulDiv', 'ScaleX', 'ScaleY', 'ScaleRect', 'ScaleSize');
+  cScaleCalls: array[0..5] of string = ('ScaleValue', 'MulDiv', 'ScaleX', 'ScaleY', 'ScaleRect', 'ScaleSize');
   // Aufrufe, die ein Neuzeichnen veranlassen.
-  RepaintCalls: array[0..6] of string = ('Invalidate', 'Repaint', 'Refresh', 'Update', 'Changed', 'Change',
+  cRepaintCalls: array[0..6] of string = ('Invalidate', 'Repaint', 'Refresh', 'Update', 'Changed', 'Change',
     'InvalidateRect');
   // Zuweisungen an diese Eigenschaften sind keine Pixelwerte.
-  NonPixelTargets: array[0..6] of string = ('Size', 'Color', 'Tag', 'Style', 'Mode', 'Charset', 'Orientation');
+  cNonPixelTargets: array[0..6] of string = ('Size', 'Color', 'Tag', 'Style', 'Mode', 'Charset', 'Orientation');
 
 type
   /// <summary>Eine Klasse der Datei.</summary>
@@ -157,11 +157,11 @@ uses
 
 function IsIn(const AText: string; const AWords: array of string): Boolean;
 var
-  Word: string;
+  mWord: string;
 begin
-  for Word in AWords do
+  for mWord in AWords do
   begin
-    if SameText(AText, Word) then
+    if SameText(AText, mWord) then
     begin
       Exit(True);
     end;
@@ -235,23 +235,23 @@ end;
 
 function TComponentModel.IsComponent(const AClassName: string): Boolean;
 var
-  Name: string;
-  Depth: Integer;
+  mName: string;
+  mDepth: Integer;
 begin
-  Name := AClassName;
-  Depth := 0;
-  while (Name <> '') and (Depth < 64) do
+  mName := AClassName;
+  mDepth := 0;
+  while (mName <> '') and (mDepth < 64) do
   begin
-    if IsIn(Name, ComponentBases) then
+    if IsIn(mName, cComponentBases) then
     begin
       Exit(True);
     end;
-    if SameText(Name, 'TObject') then
+    if SameText(mName, 'TObject') then
     begin
       Break;
     end;
-    Name := FAncestry.ParentOf(Name);
-    Inc(Depth);
+    mName := FAncestry.ParentOf(mName);
+    Inc(mDepth);
   end;
   Result := False;
 end;
@@ -284,10 +284,10 @@ begin
   mName := FAncestry.ParentOf(AClassName);
   mDepth := 0;
   // Bekannte VCL-Klassen zuerst: Steht die VCL im Index, deklariert auch TCustomControl ein (leeres) Paint.
-  while (mName <> '') and (mDepth < 64) and not Result and not IsIn(mName, EmptyPaintBases) do
+  while (mName <> '') and (mDepth < 64) and not Result and not IsIn(mName, cEmptyPaintBases) do
   begin
-    AOnPaintOnly := IsIn(mName, OnPaintPaintBases);
-    Result := IsIn(mName, DrawingPaintBases) or AOnPaintOnly or DeclaresPaint(mName);
+    AOnPaintOnly := IsIn(mName, cOnPaintPaintBases);
+    Result := IsIn(mName, cDrawingPaintBases) or AOnPaintOnly or DeclaresPaint(mName);
     if Result then
     begin
       AAncestor := mName;
@@ -317,13 +317,13 @@ end;
 
 function TComponentModel.FindMethod(const AClassName, AMethodName: string; out AMethod: TMethodImpl): Boolean;
 var
-  Method: TMethodImpl;
+  mMethod: TMethodImpl;
 begin
-  for Method in FMethods do
+  for mMethod in FMethods do
   begin
-    if SameText(Method.ClassName, AClassName) and SameText(Method.MethodName, AMethodName) then
+    if SameText(mMethod.ClassName, AClassName) and SameText(mMethod.MethodName, AMethodName) then
     begin
-      AMethod := Method;
+      AMethod := mMethod;
       Exit(True);
     end;
   end;
@@ -332,19 +332,19 @@ end;
 
 function TComponentModel.DeclaredWith(const AClass: TClassInfo; const AMethodName, ADirective: string): Boolean;
 var
-  Index, Inner: Integer;
-  Header: TSyntaxNode;
+  mIndex, mInner: Integer;
+  mHeader: TSyntaxNode;
 begin
-  for Index := 0 to AClass.Body.ChildCount - 1 do
+  for mIndex := 0 to AClass.Body.ChildCount - 1 do
   begin
-    Header := AClass.Body[Index];
-    if (Header.Kind <> TSyntaxKind.RoutineHeader) or not SameText(Header.Name, AMethodName) then
+    mHeader := AClass.Body[mIndex];
+    if (mHeader.Kind <> TSyntaxKind.RoutineHeader) or not SameText(mHeader.Name, AMethodName) then
     begin
       Continue;
     end;
-    for Inner := 0 to Header.ChildCount - 1 do
+    for mInner := 0 to mHeader.ChildCount - 1 do
     begin
-      if (Header[Inner].Kind = TSyntaxKind.Directive) and SameText(Header[Inner].Name, ADirective) then
+      if (mHeader[mInner].Kind = TSyntaxKind.Directive) and SameText(mHeader[mInner].Name, ADirective) then
       begin
         Exit(True);
       end;
@@ -455,21 +455,21 @@ end;
 
 function TComponentModel.HasToken(ANode: TSyntaxNode; const AWords: array of string): Boolean;
 var
-  Token: TPascalToken;
+  mToken: TPascalToken;
   mIndex: Integer;
 begin
   for mIndex := FContext.Tree.FirstTokenFrom(ANode.StartOffset) to High(FContext.Tree.Tokens) do
   begin
-    Token := FContext.Tree.Tokens[mIndex];
-    if Token.Offset < ANode.StartOffset then
+    mToken := FContext.Tree.Tokens[mIndex];
+    if mToken.Offset < ANode.StartOffset then
     begin
       Continue;
     end;
-    if Token.Offset >= ANode.EndOffset then
+    if mToken.Offset >= ANode.EndOffset then
     begin
       Break;
     end;
-    if (Token.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and IsIn(Token.Text, AWords) then
+    if (mToken.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and IsIn(mToken.Text, AWords) then
     begin
       Exit(True);
     end;
@@ -508,31 +508,31 @@ end;
 
 function TComponentModel.NameToken(const AMethod: TMethodImpl; out AToken: TPascalToken): Boolean;
 var
-  Header: TSyntaxNode;
-  Token: TPascalToken;
+  mHeader: TSyntaxNode;
+  mToken: TPascalToken;
   mIndex: Integer;
 begin
-  Header := AMethod.Decl.FindChild(TSyntaxKind.RoutineHeader);
+  mHeader := AMethod.Decl.FindChild(TSyntaxKind.RoutineHeader);
   Result := False;
-  if Header = nil then
+  if mHeader = nil then
   begin
     Exit;
   end;
   // Der letzte passende Bezeichner im Kopf vor der Parameterliste.
-  for mIndex := FContext.Tree.FirstTokenFrom(Header.StartOffset) to High(FContext.Tree.Tokens) do
+  for mIndex := FContext.Tree.FirstTokenFrom(mHeader.StartOffset) to High(FContext.Tree.Tokens) do
   begin
-    Token := FContext.Tree.Tokens[mIndex];
-    if Token.Offset < Header.StartOffset then
+    mToken := FContext.Tree.Tokens[mIndex];
+    if mToken.Offset < mHeader.StartOffset then
     begin
       Continue;
     end;
-    if (Token.Offset >= Header.EndOffset) or Token.IsSymbol('(') or Token.IsSymbol(';') or Token.IsSymbol(':') then
+    if (mToken.Offset >= mHeader.EndOffset) or mToken.IsSymbol('(') or mToken.IsSymbol(';') or mToken.IsSymbol(':') then
     begin
       Break;
     end;
-    if (Token.Kind = TPascalTokenKind.Identifier) and SameText(Token.Text, AMethod.MethodName) then
+    if (mToken.Kind = TPascalTokenKind.Identifier) and SameText(mToken.Text, AMethod.MethodName) then
     begin
-      AToken := Token;
+      AToken := mToken;
       Result := True;
     end;
   end;
@@ -540,8 +540,8 @@ end;
 
 function TComponentModel.InsertAfterBegin(ABlock: TSyntaxNode; const AText: string; out AEdit: TRuleEdit): Boolean;
 var
-  Token: TPascalToken;
-  Indent, mIndex: Integer;
+  mToken: TPascalToken;
+  mIndent, mIndex: Integer;
 begin
   Result := False;
   // Höchstens das Token am Blockanfang kommt in Frage: binär dorthin statt ab Dateianfang (#1342).
@@ -550,19 +550,19 @@ begin
   begin
     Exit;
   end;
-  Token := FContext.Tree.Tokens[mIndex];
-  if (Token.Offset = ABlock.StartOffset) and Token.IsKeyword('begin') then
+  mToken := FContext.Tree.Tokens[mIndex];
+  if (mToken.Offset = ABlock.StartOffset) and mToken.IsKeyword('begin') then
   begin
     if ABlock.ChildCount > 0 then
     begin
-      Indent := ABlock[0].StartPos.Character;
+      mIndent := ABlock[0].StartPos.Character;
     end
     else
     begin
-      Indent := Token.StartPos.Character + 2;
+      mIndent := mToken.StartPos.Character + 2;
     end;
-    AEdit := TRuleEdit.Create(TTextRange.Create(Token.EndPos, Token.EndPos),
-      FLineBreak + StringOfChar(' ', Indent) + AText);
+    AEdit := TRuleEdit.Create(TTextRange.Create(mToken.EndPos, mToken.EndPos),
+      FLineBreak + StringOfChar(' ', mIndent) + AText);
     Result := True;
   end;
 end;
@@ -630,8 +630,8 @@ end;
 function PrepareModel(const ACache: IRuleDerivedCache; const AContext: TRuleContext;
   out AModel: TComponentModel): Boolean;
 var
-  Context: TRuleContext;
-  Local: TUnitIndex;
+  mContext: TRuleContext;
+  mLocal: TUnitIndex;
 begin
   AModel := nil;
   Result := AContext.Tree <> nil;
@@ -640,12 +640,12 @@ begin
     Exit;
   end;
   // const-Parameter dürfen anonyme Methoden nicht erfassen (E2555): lokale Kopien.
-  Context := AContext;
-  Local := TRuleDerived.UnitIndex(ACache, AContext);
+  mContext := AContext;
+  mLocal := TRuleDerived.UnitIndex(ACache, AContext);
   AModel := TRuleDerived.Get<TComponentModel>(ACache, 'components.model',
     function: TComponentModel
     begin
-      Result := TComponentModel.Create(Context, Local);
+      Result := TComponentModel.Create(mContext, mLocal);
     end);
 end;
 
@@ -664,19 +664,19 @@ end;
 
 function OwnFields(const AClass: TClassInfo): TArray<string>;
 var
-  Index: Integer;
-  Name: string;
+  mIndex: Integer;
+  mName: string;
 begin
   Result := nil;
-  for Index := 0 to AClass.Body.ChildCount - 1 do
+  for mIndex := 0 to AClass.Body.ChildCount - 1 do
   begin
-    if AClass.Body[Index].Kind = TSyntaxKind.Field then
+    if AClass.Body[mIndex].Kind = TSyntaxKind.Field then
     begin
-      for Name in AClass.Body[Index].Name.Split([',']) do
+      for mName in AClass.Body[mIndex].Name.Split([',']) do
       begin
-        if Trim(Name) <> '' then
+        if Trim(mName) <> '' then
         begin
-          Result := Result + [Trim(Name)];
+          Result := Result + [Trim(mName)];
         end;
       end;
     end;

@@ -161,7 +161,7 @@ begin
   Assert.AreEqual('5:14 published schaltet für TOhneRtti RTTI ein ($M+), weil weder die Klasse noch ein Vorfahr ' +
     'mit RTTI übersetzt wird (wie W1055). Von TPersistent ableiten oder {$M+} vor die Deklaration setzen, wenn ' +
     'das gewollt ist.|', Messages(mFound));
-  Assert.AreEqual(CompilerHintsRuleId, mFound[0].RuleId);
+  Assert.AreEqual(cCompilerHintsRuleId, mFound[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(mFound[0].Severity));
   // Ausdrücklich TObject als Vorfahr und ein Feld (Cm.E2217) melden ebenso.
   Assert.AreEqual(1, Integer(Length(Findings(Klasse('  TKlasse = class(TObject)',
@@ -290,7 +290,7 @@ begin
   mFound := False;
   for mRule in BuiltinRules do
   begin
-    if mRule.Descriptor.Id = CompilerHintsRuleId then
+    if mRule.Descriptor.Id = cCompilerHintsRuleId then
     begin
       mFound := True;
     end;

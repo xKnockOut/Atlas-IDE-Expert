@@ -221,7 +221,7 @@ begin
   try
     Tokens := TLspSemanticTokens.Collect(FResolver, FIndex, Tree, 'C:\P\R.pas', Default(TTextRange), False);
     TLspSemanticTokens.MarkReassigned(Tokens, TReassigned.Filter(TLspReassigned.Analyze(FResolver, Tree,
-      'C:\P\R.pas', Source), TReassigned.DefaultTargets));
+      'C:\P\R.pas', Source), TReassigned.cDefaultTargets));
   finally
     Tree.Free;
   end;

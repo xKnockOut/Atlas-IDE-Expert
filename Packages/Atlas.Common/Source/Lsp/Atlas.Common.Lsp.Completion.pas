@@ -83,15 +83,15 @@ type
 
   TLspCompletion = class
   public const
-    Method = 'textDocument/completion';
-    ResolveMethod = 'completionItem/resolve';
+    cMethod = 'textDocument/completion';
+    cResolveMethod = 'completionItem/resolve';
     /// <summary>Eigene Postfix-Vorlagen vom Plugin (#188).</summary>
-    PostfixTemplatesMethod = 'atlas/postfixTemplates';
-    MaxItems = CompletionMaxItems;
+    cPostfixTemplatesMethod = 'atlas/postfixTemplates';
+    cMaxItems = cCompletionMaxItems;
     /// <summary>Höchstzahl der Vorschläge aus nicht eingebundenen Units.</summary>
-    MaxImportItems = CompletionMaxImportItems;
+    cMaxImportItems = cCompletionMaxImportItems;
     /// <summary>So viele Zeichen muss der Name haben, bevor nicht eingebundene Units mitsuchen.</summary>
-    MinImportPrefix = CompletionMinImportPrefix;
+    cMinImportPrefix = cCompletionMinImportPrefix;
   private
     FStore: IDocumentStore;
     FIndex: ISymbolIndex;
@@ -273,9 +273,9 @@ end;
 
 procedure TLspCompletion.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterConcurrentRequest(Method, Handle);
-  ADispatcher.RegisterConcurrentRequest(ResolveMethod, HandleResolve);
-  ADispatcher.RegisterNotification(PostfixTemplatesMethod, HandlePostfixTemplates);
+  ADispatcher.RegisterConcurrentRequest(cMethod, Handle);
+  ADispatcher.RegisterConcurrentRequest(cResolveMethod, HandleResolve);
+  ADispatcher.RegisterNotification(cPostfixTemplatesMethod, HandlePostfixTemplates);
 end;
 
 procedure TLspCompletion.HandlePostfixTemplates(const AParams: TJSONValue);
@@ -326,7 +326,7 @@ begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPosition)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TCompletionText.MissingPosition].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TCompletionText.MissingPosition].Text);
   end;
   if not FStore.TryGet(mUri, mDocument) then
   begin
@@ -469,8 +469,8 @@ var
 begin
   if not (AParams is TJSONObject) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TCompletionText.MissingItem].Text +
-      ResolveMethod);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TCompletionText.MissingItem].Text +
+      cResolveMethod);
   end;
   // Antwort ist der Eintrag selbst, ergänzt um Details; ohne data unverändert.
   mItem := TJSONObject(AParams.Clone);

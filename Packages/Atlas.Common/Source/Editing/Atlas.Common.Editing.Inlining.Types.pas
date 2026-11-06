@@ -15,9 +15,9 @@ uses
 
 const
   /// <summary>Art der Einbetten-Aktionen (LSP).</summary>
-  InlineKind = 'refactor.inline';
+  cInlineKind = 'refactor.inline';
   /// <summary>Endung der Variablen, die das Ergebnis einer eingebetteten Funktion trägt.</summary>
-  InlineResultSuffix = 'Result';
+  cInlineResultSuffix = 'Result';
 
 type
 {$SCOPEDENUMS ON}

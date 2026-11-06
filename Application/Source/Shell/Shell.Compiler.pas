@@ -149,7 +149,7 @@ end;
 class function TShellCompilerEditions.DefaultFile: string;
 begin
   Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'),
-    TCompilerEditionCache.FileName);
+    TCompilerEditionCache.cFileName);
 end;
 
 class function TShellCompilerEditions.StampOf(const AFileName: string): string;

@@ -183,7 +183,7 @@ begin
       TMcpIdeEdit.Make(AFileName, Expected, AText),
       procedure
       begin
-        Sleep(TMcpIdeEdits.PollMs);
+        Sleep(TMcpIdeEdits.cPollMs);
       end,
       function: Int64
       begin
@@ -232,7 +232,7 @@ begin
     Pid), Request,
     procedure
     begin
-      Sleep(TMcpIdeBuilds.PollMs);
+      Sleep(TMcpIdeBuilds.cPollMs);
     end,
     function: Int64
     begin

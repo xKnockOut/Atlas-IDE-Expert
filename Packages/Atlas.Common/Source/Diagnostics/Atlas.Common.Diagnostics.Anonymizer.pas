@@ -121,32 +121,32 @@ uses
   Atlas.Text.Chars;
 
 const
-  IdPrefixes: array[TDiagnosticIdKind] of string = ('proj', 'doc', 'unit');
-  ForbiddenExtensions: array[0..6] of string = ('.pas', '.dpr', '.dpk', '.dproj', '.inc', '.dfm', '.groupproj');
+  cIdPrefixes: array[TDiagnosticIdKind] of string = ('proj', 'doc', 'unit');
+  cForbiddenExtensions: array[0..6] of string = ('.pas', '.dpr', '.dpk', '.dproj', '.inc', '.dfm', '.groupproj');
 
 { TDiagnosticIds }
 
 constructor TDiagnosticIds.Create;
 var
-  Kind: TDiagnosticIdKind;
+  mKind: TDiagnosticIdKind;
 begin
   inherited Create;
   FLock := TObject.Create;
-  for Kind := Low(TDiagnosticIdKind) to High(TDiagnosticIdKind) do
+  for mKind := Low(TDiagnosticIdKind) to High(TDiagnosticIdKind) do
   begin
-    FIds[Kind] := TDictionary<string, Integer>.Create;
-    FNames[Kind] := TList<string>.Create;
+    FIds[mKind] := TDictionary<string, Integer>.Create;
+    FNames[mKind] := TList<string>.Create;
   end;
 end;
 
 destructor TDiagnosticIds.Destroy;
 var
-  Kind: TDiagnosticIdKind;
+  mKind: TDiagnosticIdKind;
 begin
-  for Kind := Low(TDiagnosticIdKind) to High(TDiagnosticIdKind) do
+  for mKind := Low(TDiagnosticIdKind) to High(TDiagnosticIdKind) do
   begin
-    FNames[Kind].Free;
-    FIds[Kind].Free;
+    FNames[mKind].Free;
+    FIds[mKind].Free;
   end;
   FLock.Free;
   inherited;
@@ -159,40 +159,40 @@ end;
 
 function TDiagnosticIds.IdOf(AKind: TDiagnosticIdKind; const AName: string): string;
 var
-  Key: string;
-  Number: Integer;
+  mKey: string;
+  mNumber: Integer;
 begin
-  Key := NormalizedPath(AName);
+  mKey := NormalizedPath(AName);
   TMonitor.Enter(FLock);
   try
-    if not FIds[AKind].TryGetValue(Key, Number) then
+    if not FIds[AKind].TryGetValue(mKey, mNumber) then
     begin
       FNames[AKind].Add(AName);
-      Number := FNames[AKind].Count;
-      FIds[AKind].Add(Key, Number);
+      mNumber := FNames[AKind].Count;
+      FIds[AKind].Add(mKey, mNumber);
     end;
   finally
     TMonitor.Exit(FLock);
   end;
-  Result := IdPrefixes[AKind] + '#' + IntToStr(Number);
+  Result := cIdPrefixes[AKind] + '#' + IntToStr(mNumber);
 end;
 
 procedure TDiagnosticIds.SetLibraryRoots(const ARoots: TArray<string>);
 var
-  Roots: TArray<string>;
-  Root: string;
+  mRoots: TArray<string>;
+  mRoot: string;
 begin
-  Roots := nil;
-  for Root in ARoots do
+  mRoots := nil;
+  for mRoot in ARoots do
   begin
-    if Trim(Root) <> '' then
+    if Trim(mRoot) <> '' then
     begin
-      Roots := Roots + [IncludeTrailingPathDelimiter(NormalizedPath(Trim(Root))).Replace('/', '\')];
+      mRoots := mRoots + [IncludeTrailingPathDelimiter(NormalizedPath(Trim(mRoot))).Replace('/', '\')];
     end;
   end;
   TMonitor.Enter(FLock);
   try
-    FLibraryRoots := Roots;
+    FLibraryRoots := mRoots;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -200,19 +200,19 @@ end;
 
 function TDiagnosticIds.IsLibraryFile(const AFileName: string): Boolean;
 var
-  Roots: TArray<string>;
-  Root, Name: string;
+  mRoots: TArray<string>;
+  mRoot, mName: string;
 begin
   TMonitor.Enter(FLock);
   try
-    Roots := FLibraryRoots;
+    mRoots := FLibraryRoots;
   finally
     TMonitor.Exit(FLock);
   end;
-  Name := NormalizedPath(AFileName);
-  for Root in Roots do
+  mName := NormalizedPath(AFileName);
+  for mRoot in mRoots do
   begin
-    if Name.StartsWith(Root) then
+    if mName.StartsWith(mRoot) then
     begin
       Exit(True);
     end;
@@ -234,17 +234,17 @@ end;
 
 function TDiagnosticIds.MapLines: TArray<string>;
 var
-  Kind: TDiagnosticIdKind;
-  Index: Integer;
+  mKind: TDiagnosticIdKind;
+  mIndex: Integer;
 begin
   Result := nil;
   TMonitor.Enter(FLock);
   try
-    for Kind := Low(TDiagnosticIdKind) to High(TDiagnosticIdKind) do
+    for mKind := Low(TDiagnosticIdKind) to High(TDiagnosticIdKind) do
     begin
-      for Index := 0 to FNames[Kind].Count - 1 do
+      for mIndex := 0 to FNames[mKind].Count - 1 do
       begin
-        Result := Result + [IdPrefixes[Kind] + '#' + IntToStr(Index + 1) + #9 + FNames[Kind][Index]];
+        Result := Result + [cIdPrefixes[mKind] + '#' + IntToStr(mIndex + 1) + #9 + FNames[mKind][mIndex]];
       end;
     end;
   finally
@@ -256,29 +256,29 @@ end;
 
 constructor TDiagnosticFilter.Create(const AForbidden: TArray<string>);
 var
-  Value: string;
+  mValue: string;
 begin
   inherited Create;
   FForbidden := nil;
-  for Value in AForbidden do
+  for mValue in AForbidden do
   begin
-    if Length(Trim(Value)) >= 3 then
+    if Length(Trim(mValue)) >= 3 then
     begin
-      FForbidden := FForbidden + [AnsiLowerCase(Trim(Value))];
+      FForbidden := FForbidden + [AnsiLowerCase(Trim(mValue))];
     end;
   end;
 end;
 
 function TDiagnosticFilter.Clean(const ALine: string): string;
 var
-  Token: string;
+  mToken: string;
 begin
   Result := ALine;
-  for Token in FAllowed do
+  for mToken in FAllowed do
   begin
-    if Token <> '' then
+    if mToken <> '' then
     begin
-      Result := Result.Replace(Token, ' ', [rfReplaceAll]);
+      Result := Result.Replace(mToken, ' ', [rfReplaceAll]);
     end;
   end;
 end;
@@ -291,13 +291,13 @@ end;
 /// <summary>Einzelner Buchstabe als ganzes Wort vor einem Doppelpunkt, z. B. "C:".</summary>
 function HasDriveLetter(const ALine: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 1 to Length(ALine) - 1 do
+  for mIndex := 1 to Length(ALine) - 1 do
   begin
     // Bewusst ASCII: Ein Umlaut davor hebt die Erkennung nicht auf, im Zweifel gilt die Zeile als Pfad.
-    if (ALine[Index + 1] = ':') and IsLetter(ALine[Index]) and
-      ((Index = 1) or not TTextChars.IsAsciiIdentChar(ALine[Index - 1])) then
+    if (ALine[mIndex + 1] = ':') and IsLetter(ALine[mIndex]) and
+      ((mIndex = 1) or not TTextChars.IsAsciiIdentChar(ALine[mIndex - 1])) then
     begin
       Exit(True);
     end;
@@ -307,16 +307,16 @@ end;
 
 function TDiagnosticFilter.Accept(const ALine: string): Boolean;
 var
-  Line, Lower, Value: string;
+  mLine, mLower, mValue: string;
 begin
-  Line := Clean(ALine);
-  Lower := AnsiLowerCase(Line);
-  Result := (Pos('\', Line) = 0) and (Pos('/', Line) = 0) and (Pos('@', Line) = 0) and not HasDriveLetter(Line);
+  mLine := Clean(ALine);
+  mLower := AnsiLowerCase(mLine);
+  Result := (Pos('\', mLine) = 0) and (Pos('/', mLine) = 0) and (Pos('@', mLine) = 0) and not HasDriveLetter(mLine);
   if Result then
   begin
-    for Value in ForbiddenExtensions do
+    for mValue in cForbiddenExtensions do
     begin
-      if Pos(Value, Lower) > 0 then
+      if Pos(mValue, mLower) > 0 then
       begin
         Result := False;
         Break;
@@ -325,9 +325,9 @@ begin
   end;
   if Result then
   begin
-    for Value in FForbidden do
+    for mValue in FForbidden do
     begin
-      if Pos(Value, Lower) > 0 then
+      if Pos(mValue, mLower) > 0 then
       begin
         Result := False;
         Break;
@@ -348,41 +348,41 @@ end;
 { TLogAnonymizer }
 
 const
-  QuotedPattern = '"[^"\r\n]*"|''[^''\r\n]*''|„[^“”\r\n]*[“”]';
-  PathPattern = 'file:[^\s"''<>]+|(?:\b[A-Za-z]:|\\\\)[\\/][^\s"''<>|,;()\[\]]*';
+  cQuotedPattern = '"[^"\r\n]*"|''[^''\r\n]*''|„[^“”\r\n]*[“”]';
+  cPathPattern = 'file:[^\s"''<>]+|(?:\b[A-Za-z]:|\\\\)[\\/][^\s"''<>|,;()\[\]]*';
   // Rest eines Pfads mit Leerzeichen: jedes Wort mit "\".
-  BackslashPattern = '[^\s"''<>]*\\[^\s"''<>]*';
-  WordPattern = '[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*';
+  cBackslashPattern = '[^\s"''<>]*\\[^\s"''<>]*';
+  cWordPattern = '[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*';
   // Bleibt stehen: Zahlen, Zeiten, Größen.
-  NumberPattern = '^[0-9.,:%+\s-]*$';
+  cNumberPattern = '^[0-9.,:%+\s-]*$';
   // LSP-Methoden wie textDocument/hover oder $/progress.
-  MethodPattern = '^\$?[A-Za-z]*(/[A-Za-z$]+)+$';
-  ExtensionPattern = '^\.[a-z0-9]{1,8}$';
-  DrivePattern = '^[A-Za-z]:[\\/]';
+  cMethodPattern = '^\$?[A-Za-z]*(/[A-Za-z$]+)+$';
+  cExtensionPattern = '^\.[a-z0-9]{1,8}$';
+  cDrivePattern = '^[A-Za-z]:[\\/]';
 
 type
   TMatchMap = reference to function(const AMatch: string): string;
 
 function ReplaceMatches(const AText: string; const ARegEx: TRegEx; const AMap: TMatchMap): string;
 var
-  Match: TMatch;
-  Last: Integer;
-  Builder: TStringBuilder;
+  mMatch: TMatch;
+  mLast: Integer;
+  mBuilder: TStringBuilder;
 begin
   // TStringBuilder statt Result := Result + … (Code-Review P-11): lange Zeilen mit vielen Treffern.
-  Builder := TStringBuilder.Create(Length(AText));
+  mBuilder := TStringBuilder.Create(Length(AText));
   try
-    Last := 1;
-    for Match in ARegEx.Matches(AText) do
+    mLast := 1;
+    for mMatch in ARegEx.Matches(AText) do
     begin
-      Builder.Append(Copy(AText, Last, Match.Index - Last));
-      Builder.Append(AMap(Match.Value));
-      Last := Match.Index + Match.Length;
+      mBuilder.Append(Copy(AText, mLast, mMatch.Index - mLast));
+      mBuilder.Append(AMap(mMatch.Value));
+      mLast := mMatch.Index + mMatch.Length;
     end;
-    Builder.Append(Copy(AText, Last, MaxInt));
-    Result := Builder.ToString;
+    mBuilder.Append(Copy(AText, mLast, MaxInt));
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
@@ -393,7 +393,7 @@ end;
 
 constructor TLogAnonymizer.Create(const AIdentity: TArray<string>);
 var
-  Value: string;
+  mValue: string;
 begin
   inherited Create;
   FLock := TObject.Create;
@@ -402,20 +402,20 @@ begin
   FNames := TDictionary<string, Integer>.Create;
   FValues := TDictionary<string, Integer>.Create;
   // roNotEmpty wie bei den Klassenmethoden von TRegEx, die vorher benutzt wurden.
-  FQuoted := TRegEx.Create(QuotedPattern, [roNotEmpty, roCompiled]);
-  FPath := TRegEx.Create(PathPattern, [roNotEmpty, roCompiled]);
-  FBackslash := TRegEx.Create(BackslashPattern, [roNotEmpty, roCompiled]);
-  FWord := TRegEx.Create(WordPattern, [roNotEmpty, roCompiled]);
-  FNumber := TRegEx.Create(NumberPattern, [roNotEmpty, roCompiled]);
-  FMethod := TRegEx.Create(MethodPattern, [roNotEmpty, roCompiled]);
-  FExtension := TRegEx.Create(ExtensionPattern, [roNotEmpty, roCompiled]);
-  FDrive := TRegEx.Create(DrivePattern, [roNotEmpty, roCompiled]);
+  FQuoted := TRegEx.Create(cQuotedPattern, [roNotEmpty, roCompiled]);
+  FPath := TRegEx.Create(cPathPattern, [roNotEmpty, roCompiled]);
+  FBackslash := TRegEx.Create(cBackslashPattern, [roNotEmpty, roCompiled]);
+  FWord := TRegEx.Create(cWordPattern, [roNotEmpty, roCompiled]);
+  FNumber := TRegEx.Create(cNumberPattern, [roNotEmpty, roCompiled]);
+  FMethod := TRegEx.Create(cMethodPattern, [roNotEmpty, roCompiled]);
+  FExtension := TRegEx.Create(cExtensionPattern, [roNotEmpty, roCompiled]);
+  FDrive := TRegEx.Create(cDrivePattern, [roNotEmpty, roCompiled]);
   FIdentity := nil;
-  for Value in AIdentity do
+  for mValue in AIdentity do
   begin
-    if Length(Trim(Value)) >= 3 then
+    if Length(Trim(mValue)) >= 3 then
     begin
-      FIdentity := FIdentity + [Trim(Value)];
+      FIdentity := FIdentity + [Trim(mValue)];
     end;
   end;
 end;
@@ -432,26 +432,26 @@ end;
 
 procedure TLogAnonymizer.AddNameLocked(const AName: string);
 var
-  Key: string;
+  mKey: string;
 begin
-  Key := AnsiLowerCase(Trim(AName));
+  mKey := AnsiLowerCase(Trim(AName));
   // Kurze Namen wie "A" oder "UI" kämen sonst in jedem Satz vor.
-  if (Length(Key) < 3) or FNames.ContainsKey(Key) then
+  if (Length(mKey) < 3) or FNames.ContainsKey(mKey) then
   begin
     Exit;
   end;
-  FNames.Add(Key, FNames.Count + 1);
+  FNames.Add(mKey, FNames.Count + 1);
 end;
 
 procedure TLogAnonymizer.AddNames(const ANames: TArray<string>);
 var
-  Name: string;
+  mName: string;
 begin
   TMonitor.Enter(FLock);
   try
-    for Name in ANames do
+    for mName in ANames do
     begin
-      AddNameLocked(Name);
+      AddNameLocked(mName);
     end;
   finally
     TMonitor.Exit(FLock);
@@ -474,11 +474,11 @@ end;
 
 function TLogAnonymizer.NameLabel(const AName: string): string;
 var
-  Number: Integer;
+  mNumber: Integer;
 begin
-  if FNames.TryGetValue(AnsiLowerCase(AName), Number) then
+  if FNames.TryGetValue(AnsiLowerCase(AName), mNumber) then
   begin
-    Result := 'name#' + IntToStr(Number);
+    Result := 'name#' + IntToStr(mNumber);
   end
   else
   begin
@@ -488,37 +488,37 @@ end;
 
 function TLogAnonymizer.PathLabel(const APath: string): string;
 var
-  Path, Key, Extension: string;
-  Number: Integer;
+  mPath, mKey, mExtension: string;
+  mNumber: Integer;
 begin
-  Path := APath;
-  if StartsText('file:', Path) then
+  mPath := APath;
+  if StartsText('file:', mPath) then
   begin
-    Path := TNetEncoding.URL.Decode(Copy(Path, 6, MaxInt));
-    while StartsStr('/', Path) do
+    mPath := TNetEncoding.URL.Decode(Copy(mPath, 6, MaxInt));
+    while StartsStr('/', mPath) do
     begin
-      Delete(Path, 1, 1);
+      Delete(mPath, 1, 1);
     end;
-    Path := Path.Replace('/', '\');
+    mPath := mPath.Replace('/', '\');
   end;
-  if FIds.IsLibraryFile(Path) then
+  if FIds.IsLibraryFile(mPath) then
   begin
-    Exit(ExtractFileName(Path));
+    Exit(ExtractFileName(mPath));
   end;
   // Der Dateiname ist oft ein Unit- oder Projektname: auch im übrigen Text verbergen.
-  AddNameLocked(ChangeFileExt(ExtractFileName(Path), ''));
-  Key := AnsiUpperCase(Path.Replace('/', '\'));
-  if not FPaths.TryGetValue(Key, Number) then
+  AddNameLocked(ChangeFileExt(ExtractFileName(mPath), ''));
+  mKey := AnsiUpperCase(mPath.Replace('/', '\'));
+  if not FPaths.TryGetValue(mKey, mNumber) then
   begin
-    Number := FPaths.Count + 1;
-    FPaths.Add(Key, Number);
+    mNumber := FPaths.Count + 1;
+    FPaths.Add(mKey, mNumber);
   end;
-  Extension := AnsiLowerCase(ExtractFileExt(Path));
-  if not FExtension.IsMatch(Extension) then
+  mExtension := AnsiLowerCase(ExtractFileExt(mPath));
+  if not FExtension.IsMatch(mExtension) then
   begin
-    Extension := '';
+    mExtension := '';
   end;
-  Result := 'datei#' + IntToStr(Number) + Extension;
+  Result := 'datei#' + IntToStr(mNumber) + mExtension;
 end;
 
 function TLogAnonymizer.ValueLabel(const AValue: string): string;
@@ -579,45 +579,45 @@ end;
 
 function TLogAnonymizer.WordLabel(const AWord: string): string;
 var
-  Parts: TArray<string>;
-  Count, Index, First: Integer;
-  Part: string;
+  mParts: TArray<string>;
+  mCount, mIndex, mFirst: Integer;
+  mPart: string;
 begin
-  Parts := AWord.Split(['.']);
+  mParts := AWord.Split(['.']);
   // Längster bekannter Anfang: "Firma.Kunden.TKunde" mit der Unit "Firma.Kunden" wird "name#3.TKunde".
   Result := '';
-  First := 0;
-  for Count := Length(Parts) downto 1 do
+  mFirst := 0;
+  for mCount := Length(mParts) downto 1 do
   begin
-    Result := NameLabel(string.Join('.', Copy(Parts, 0, Count)));
+    Result := NameLabel(string.Join('.', Copy(mParts, 0, mCount)));
     if Result <> '' then
     begin
-      First := Count;
+      mFirst := mCount;
       Break;
     end;
   end;
   // Die übrigen Teile einzeln, z. B. der Projektname "Kunden".
-  for Index := First to High(Parts) do
+  for mIndex := mFirst to High(mParts) do
   begin
-    Part := NameLabel(Parts[Index]);
-    if Part = '' then
+    mPart := NameLabel(mParts[mIndex]);
+    if mPart = '' then
     begin
-      Part := Parts[Index];
+      mPart := mParts[mIndex];
     end;
     if Result = '' then
     begin
-      Result := Part;
+      Result := mPart;
     end
     else
     begin
-      Result := Result + '.' + Part;
+      Result := Result + '.' + mPart;
     end;
   end;
 end;
 
 function TLogAnonymizer.Anonymize(const AText: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   TMonitor.Enter(FLock);
   try
@@ -626,9 +626,9 @@ begin
       begin
         Result := MarkLabel(AKind, AValue);
       end);
-    for Index := 0 to High(FIdentity) do
+    for mIndex := 0 to High(FIdentity) do
     begin
-      Result := StringReplace(Result, FIdentity[Index], 'benutzer#' + IntToStr(Index + 1),
+      Result := StringReplace(Result, FIdentity[mIndex], 'benutzer#' + IntToStr(mIndex + 1),
         [rfReplaceAll, rfIgnoreCase]);
     end;
     Result := ReplaceMatches(Result, FQuoted,

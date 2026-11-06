@@ -1102,7 +1102,7 @@ end;
 /// Routinen mit Deklaration im interface und Rumpf im implementation; '' = jedes Symbol zählt.</summary>
 function ElementKey(AEntity: TQueryEntity; const ASymbol: TIndexSymbol): string;
 begin
-  if AEntity in TQueryCatalog.TypeEntities then
+  if AEntity in TQueryCatalog.cTypeEntities then
   begin
     Result := UpperCase(ASymbol.QualifiedName);
   end
@@ -1131,7 +1131,7 @@ var
   mSlot: Integer;
 begin
   Result := (AKey <> '') and ASeen.TryGetValue(AKey, mSlot);
-  if Result and (AEntity in TQueryCatalog.TypeEntities) then
+  if Result and (AEntity in TQueryCatalog.cTypeEntities) then
   begin
     AList[mSlot].SymbolIndex := AIndex;
   end
@@ -1147,7 +1147,7 @@ var
   mIndex: Integer;
   mSymbol: TIndexSymbol;
 begin
-  if AEntity in TQueryCatalog.MemberEntities then
+  if AEntity in TQueryCatalog.cMemberEntities then
   begin
     LoadCounts(AUnit);
   end;
@@ -1155,7 +1155,7 @@ begin
   begin
     mSymbol := AUnit.Data.Symbols[mIndex];
     if TakesSymbol(AEntity, AUnit, mSymbol) and
-      (not (AEntity in TQueryCatalog.MemberEntities) or AUnit.Declared[mIndex]) and
+      (not (AEntity in TQueryCatalog.cMemberEntities) or AUnit.Declared[mIndex]) and
       not IsSeenElement(AEntity, ElementKey(AEntity, mSymbol), mIndex, AList, ASeen) then
     begin
       AList.Add(NewElement(AUnit, mIndex));
@@ -1724,7 +1724,7 @@ var
   mField: TQueryFieldInfo;
 begin
   Result := ['name'];
-  if AAst.Entity in TQueryCatalog.MemberEntities then
+  if AAst.Entity in TQueryCatalog.cMemberEntities then
   begin
     Result := Result + ['class'];
   end;

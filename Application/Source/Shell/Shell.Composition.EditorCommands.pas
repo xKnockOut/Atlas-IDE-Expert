@@ -95,25 +95,25 @@ end;
 procedure TShellEditorCommands.RegisterMarkCommands(ACommands: TLspCommands);
 begin
   // Austrittspunkte am Cursor für die Hervorhebung im Plugin (#698).
-  ACommands.Register(TLspExitPoints.Command, RunExitPoints);
+  ACommands.Register(TLspExitPoints.cCommand, RunExitPoints);
   // Neu zugewiesene Variablen für die Unterstreichung im Plugin (#712).
-  ACommands.Register(TLspReassigned.Command, RunReassigned);
+  ACommands.Register(TLspReassigned.cCommand, RunReassigned);
   // Typ des markierten Ausdrucks für das Tastenkürzel im Plugin (#689).
-  ACommands.Register(TLspExpressionType.Command, RunExpressionType);
+  ACommands.Register(TLspExpressionType.cCommand, RunExpressionType);
   // Methodenrümpfe in Deklarationsreihenfolge für Befehl und Einfügen im Plugin (#660).
-  ACommands.Register(TLspMethodOrder.Command, RunMethodOrder);
+  ACommands.Register(TLspMethodOrder.cCommand, RunMethodOrder);
   // Überschreibungen für die Atlas-Spalte der Zeilenleiste (#768).
-  ACommands.Register(TLspOverrideMarks.Command, RunOverrideMarks);
+  ACommands.Register(TLspOverrideMarks.cCommand, RunOverrideMarks);
 end;
 
 procedure TShellEditorCommands.RegisterTextCommands(ACommands: TLspCommands);
 begin
-  ACommands.Register(TQualifiedNames.Command, RunQualifiedNames);
-  ACommands.Register(TEnumValueCommands.Command, RunEnumValue);
-  ACommands.Register(TResourceStringCommands.AddCommand, RunAddResourceString);
-  ACommands.Register(TStringLiteralCommands.PlainTextCommand, RunPlainText);
-  ACommands.Register(TStringLiteralCommands.ToLiteralCommand, RunToLiteral);
-  ACommands.Register(TLspSmartIndent.Command, RunSmartIndent);
+  ACommands.Register(TQualifiedNames.cCommand, RunQualifiedNames);
+  ACommands.Register(TEnumValueCommands.cCommand, RunEnumValue);
+  ACommands.Register(TResourceStringCommands.cAddCommand, RunAddResourceString);
+  ACommands.Register(TStringLiteralCommands.cPlainTextCommand, RunPlainText);
+  ACommands.Register(TStringLiteralCommands.cToLiteralCommand, RunToLiteral);
+  ACommands.Register(TLspSmartIndent.cCommand, RunSmartIndent);
 end;
 
 function TShellEditorCommands.RunExitPoints(const AArguments: TJSONArray): TJSONValue;
@@ -187,7 +187,7 @@ begin
     Result := TLspSmartIndent.Execute(FServices.Documents, FServices.SmartIndentFor, AArguments);
   except
     on E: EArgumentException do
-      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, E.Message);
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, E.Message);
   end;
 end;
 

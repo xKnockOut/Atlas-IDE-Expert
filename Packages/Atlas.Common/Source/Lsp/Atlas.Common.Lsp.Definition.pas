@@ -51,9 +51,9 @@ type
 
   TLspDefinition = class
   public const
-    DefinitionMethod = 'textDocument/definition';
-    DeclarationMethod = 'textDocument/declaration';
-    TypeDefinitionMethod = 'textDocument/typeDefinition';
+    cDefinitionMethod = 'textDocument/definition';
+    cDeclarationMethod = 'textDocument/declaration';
+    cTypeDefinitionMethod = 'textDocument/typeDefinition';
   private
     FStore: IDocumentStore;
     FIndex: ISymbolIndex;
@@ -65,7 +65,8 @@ type
       AKind: TDefinitionRequestKind): TJSONValue;
     function HandleDefinition(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function HandleDeclaration(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
-    function HandleTypeDefinition(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+    function HandleTypeDefinition(const AParams: TJSONValue;
+      const ACancellation: IJsonRpcCancellationToken): TJSONValue;
   private
     /// <summary>Unter TLspNamespaces gelesen und ersetzt (Code-Review A-03): Die Komposition setzt sie
     /// beim Laden eines Projekts, Anfragen lesen sie in Worker-Threads.</summary>
@@ -80,7 +81,8 @@ type
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
     /// <summary>Sprungziele für den Bezeichner an APosition; leer, wenn er nicht auflösbar ist.</summary>
     class function Targets(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-      const AFileName: string; const APosition: TTextPosition; ADeclaration: Boolean): TArray<TDefinitionTarget>; static;
+      const AFileName: string; const APosition: TTextPosition; ADeclaration: Boolean): TArray<TDefinitionTarget>;
+        static;
     /// <summary>Wie Targets, für ein schon aufgelöstes Symbol (etwa einen Kandidaten aus ResolveAll, #1119).
     /// </summary>
     class function TargetsOf(AResolver: TNameResolver; const AIndex: ISymbolIndex; const AQuery: TDefinitionQuery;
@@ -123,7 +125,7 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  RoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
+  cRoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
 
 function Within(const APosition: TTextPosition; const ARange: TTextRange): Boolean;
 begin
@@ -137,16 +139,16 @@ end;
 /// <summary>Gleiche Parametertypen (Groß-/Kleinschreibung egal): dieselbe Variante einer Überladung.</summary>
 function SameParams(const A, B: TArray<string>): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := Length(A) = Length(B);
   if not Result then
   begin
     Exit;
   end;
-  for Index := 0 to High(A) do
+  for mIndex := 0 to High(A) do
   begin
-    if not SameText(A[Index], B[Index]) then
+    if not SameText(A[mIndex], B[mIndex]) then
     begin
       Exit(False);
     end;
@@ -199,9 +201,9 @@ end;
 
 procedure TLspDefinition.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterConcurrentRequest(DefinitionMethod, HandleDefinition);
-  ADispatcher.RegisterConcurrentRequest(DeclarationMethod, HandleDeclaration);
-  ADispatcher.RegisterConcurrentRequest(TypeDefinitionMethod, HandleTypeDefinition);
+  ADispatcher.RegisterConcurrentRequest(cDefinitionMethod, HandleDefinition);
+  ADispatcher.RegisterConcurrentRequest(cDeclarationMethod, HandleDeclaration);
+  ADispatcher.RegisterConcurrentRequest(cTypeDefinitionMethod, HandleTypeDefinition);
 end;
 
 class function TLspDefinition.Targets(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
@@ -247,7 +249,7 @@ var
 begin
   for mSymbol in AHere.Symbols do
   begin
-    if (mSymbol.Kind in RoutineKinds) and SameText(mSymbol.Name, AResolved.Name) and
+    if (mSymbol.Kind in cRoutineKinds) and SameText(mSymbol.Name, AResolved.Name) and
       Within(APosition, mSymbol.SelectionRange) then
     begin
       Exit(mSymbol.ParamTypes);
@@ -269,7 +271,7 @@ begin
   AVariant := nil;
   for mSymbol in AOwner.Symbols do
   begin
-    if (mSymbol.Kind in RoutineKinds) and SameText(mSymbol.Container, AResolved.Container) and
+    if (mSymbol.Kind in cRoutineKinds) and SameText(mSymbol.Container, AResolved.Container) and
       SameText(mSymbol.Name, AResolved.Name) then
     begin
       mSame := mSame + [mSymbol];
@@ -347,7 +349,7 @@ begin
     TResolvedKind.Local:
       Result := [Target(AQuery.FileName, mResolved.Range, mResolved.SelectionRange)];
   else
-    if mResolved.SymbolKind in RoutineKinds then
+    if mResolved.SymbolKind in cRoutineKinds then
     begin
       Result := RoutineTargets(AResolver, AIndex, AQuery, mResolved);
     end
@@ -361,12 +363,12 @@ end;
 class function TLspDefinition.TypeTargets(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   const APosition: TTextPosition): TArray<TDefinitionTarget>;
 var
-  TypeInfo: TResolvedSymbol;
+  mTypeInfo: TResolvedSymbol;
 begin
-  TypeInfo := AResolver.ResolveType(ATree, AFileName, APosition);
-  if TypeInfo.Kind = TResolvedKind.Symbol then
+  mTypeInfo := AResolver.ResolveType(ATree, AFileName, APosition);
+  if mTypeInfo.Kind = TResolvedKind.Symbol then
   begin
-    Result := [Target(TypeInfo.FileName, TypeInfo.Range, TypeInfo.SelectionRange)];
+    Result := [Target(mTypeInfo.FileName, mTypeInfo.Range, mTypeInfo.SelectionRange)];
   end
   else
   begin
@@ -376,85 +378,85 @@ end;
 
 class function TLspDefinition.ToJson(const ATargets: TArray<TDefinitionTarget>): TJSONArray;
 var
-  Item: TDefinitionTarget;
-  Location: TJSONObject;
+  mItem: TDefinitionTarget;
+  mLocation: TJSONObject;
 begin
   Result := TJSONArray.Create;
-  for Item in ATargets do
+  for mItem in ATargets do
   begin
-    Location := TJSONObject.Create;
-    Location.AddPair('uri', TDocumentUris.FromPath(Item.FileName));
-    Location.AddPair('range', TLspPositions.RangeToJson(Item.SelectionRange));
-    Result.AddElement(Location);
+    mLocation := TJSONObject.Create;
+    mLocation.AddPair('uri', TDocumentUris.FromPath(mItem.FileName));
+    mLocation.AddPair('range', TLspPositions.RangeToJson(mItem.SelectionRange));
+    Result.AddElement(mLocation);
   end;
 end;
 
 function TLspDefinition.Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken;
   AKind: TDefinitionRequestKind): TJSONValue;
 var
-  Cancellation: IPascalCancellation;
-  Uri: string;
-  PositionValue: TJSONValue;
-  Document: ITextDocument;
-  Tree: TSyntaxTree;
-  Shared: ISharedSyntaxTree;
-  Resolver: TNameResolver;
+  mCancellation: IPascalCancellation;
+  mUri: string;
+  mPositionValue: TJSONValue;
+  mDocument: ITextDocument;
+  mTree: TSyntaxTree;
+  mShared: ISharedSyntaxTree;
+  mResolver: TNameResolver;
 begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
-    TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
+    TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPositionValue)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TDefinitionText.FieldsTextDocumentUriAndPosition].Text);
   end;
-  if not FStore.TryGet(Uri, Document) then
+  if not FStore.TryGet(mUri, mDocument) then
   begin
     Exit(TJSONNull.Create);
   end;
-  if TDfmParser.IsFormFile(Uri) then
+  if TDfmParser.IsFormFile(mUri) then
   begin
-    Exit(FormTargets(Document.Text, Uri, TLspPositions.ReadPosition(PositionValue)));
+    Exit(FormTargets(mDocument.Text, mUri, TLspPositions.ReadPosition(mPositionValue)));
   end;
   // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
-  Cancellation := TRequestCancellation.Create(ACancellation);
-  Shared := TSyntaxTreeCache.Get(Document, Cancellation);
-  Tree := Shared.Tree;
+  mCancellation := TRequestCancellation.Create(ACancellation);
+  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
+  mTree := mShared.Tree;
   ACancellation.ThrowIfCancellationRequested;
   // Je Anfrage ein eigener Resolver: er hält Zustand pro Aufruf.
-  Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
+  mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
-    Resolver.Namespaces := Namespaces;
+    mResolver.Namespaces := Namespaces;
     if AKind = TDefinitionRequestKind.TypeDefinition then
     begin
-      Result := ToJson(TypeTargets(Resolver, Tree, TDocumentUris.ToPath(Uri),
-        TLspPositions.ReadPosition(PositionValue)));
+      Result := ToJson(TypeTargets(mResolver, mTree, TDocumentUris.ToPath(mUri),
+        TLspPositions.ReadPosition(mPositionValue)));
     end
     else
     begin
-      Result := ToJson(Targets(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri),
-        TLspPositions.ReadPosition(PositionValue), AKind = TDefinitionRequestKind.Declaration));
+      Result := ToJson(Targets(mResolver, FIndex, mTree, TDocumentUris.ToPath(mUri),
+        TLspPositions.ReadPosition(mPositionValue), AKind = TDefinitionRequestKind.Declaration));
     end;
   finally
-    Resolver.Free;
+    mResolver.Free;
   end;
 end;
 
 function TLspDefinition.FormTargets(const AText, AUri: string; const APosition: TTextPosition): TJSONValue;
 var
-  Found: TArray<TDfmTarget>;
-  Targets: TArray<TDefinitionTarget>;
-  Index: Integer;
+  mFound: TArray<TDfmTarget>;
+  mTargets: TArray<TDefinitionTarget>;
+  mIndex: Integer;
 begin
   if not Assigned(FReadText) then
   begin
     Exit(TJSONNull.Create);
   end;
-  Found := TDfmNavigation.Targets(AText, TDocumentUris.ToPath(AUri), APosition, FReadText);
-  SetLength(Targets, Length(Found));
-  for Index := 0 to High(Found) do
+  mFound := TDfmNavigation.Targets(AText, TDocumentUris.ToPath(AUri), APosition, FReadText);
+  SetLength(mTargets, Length(mFound));
+  for mIndex := 0 to High(mFound) do
   begin
-    Targets[Index] := Target(Found[Index].FileName, Found[Index].Range, Found[Index].SelectionRange);
+    mTargets[mIndex] := Target(mFound[mIndex].FileName, mFound[mIndex].Range, mFound[mIndex].SelectionRange);
   end;
-  Result := ToJson(Targets);
+  Result := ToJson(mTargets);
 end;
 
 function TLspDefinition.HandleDefinition(const AParams: TJSONValue;

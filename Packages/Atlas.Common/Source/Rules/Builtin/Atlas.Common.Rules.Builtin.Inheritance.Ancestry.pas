@@ -140,7 +140,7 @@ type
 
 const
   // Virtuelle Instanzmethoden von TObject, falls System nicht im Index steht.
-  ObjectVirtualNames: array[0..9] of string = ('AfterConstruction', 'BeforeDestruction', 'Dispatch',
+  cObjectVirtualNames: array[0..9] of string = ('AfterConstruction', 'BeforeDestruction', 'Dispatch',
     'DefaultHandler', 'FreeInstance', 'Destroy', 'SafeCallException', 'ToString', 'Equals', 'GetHashCode');
 
 /// <summary>Typname ohne Unit-Präfix und Typargumente.</summary>
@@ -228,15 +228,15 @@ end;
 
 function SameSignature(const A, B: TIndexSymbol): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := (A.MaxArgs = B.MaxArgs) and (Length(A.ParamTypes) = Length(B.ParamTypes)) and
     SameText(A.TypeName, B.TypeName);
   if Result then
   begin
-    for Index := 0 to High(A.ParamTypes) do
+    for mIndex := 0 to High(A.ParamTypes) do
     begin
-      if not SameText(BareName(A.ParamTypes[Index]), BareName(B.ParamTypes[Index])) then
+      if not SameText(BareName(A.ParamTypes[mIndex]), BareName(B.ParamTypes[mIndex])) then
       begin
         Exit(False);
       end;
@@ -246,26 +246,26 @@ end;
 
 const
   // Gleiche Typen unter anderem Namen: Name=Grundname.
-  TypeSynonyms: array[0..17] of string = ('longint=integer', 'int32=integer', 'longword=cardinal',
+  cTypeSynonyms: array[0..17] of string = ('longint=integer', 'int32=integer', 'longword=cardinal',
     'uint32=cardinal', 'dword=cardinal', 'unicodestring=string', 'widechar=char', 'pwidechar=pchar',
     'intptr=nativeint', 'uintptr=nativeuint', 'int16=smallint', 'int8=shortint', 'uint8=byte', 'uint16=word',
     'real=double', 'tobject=tobject', 'system.tobject=tobject', 'hresult=hresult');
   // Eingebaute Typen, die sicher kein Alias eines anderen sind.
-  BuiltinTypes: array[0..25] of string = ('integer', 'cardinal', 'int64', 'uint64', 'string', 'ansistring',
+  cBuiltinTypes: array[0..25] of string = ('integer', 'cardinal', 'int64', 'uint64', 'string', 'ansistring',
     'shortstring', 'widestring', 'char', 'ansichar', 'boolean', 'double', 'single', 'extended', 'currency', 'byte',
     'word', 'smallint', 'shortint', 'pointer', 'variant', 'tobject', 'nativeint', 'nativeuint', 'pchar',
     'tdatetime');
 
 function CanonicalType(const AName: string): string;
 var
-  Pair: string;
+  mPair: string;
 begin
   Result := LowerCase(BareName(AName));
-  for Pair in TypeSynonyms do
+  for mPair in cTypeSynonyms do
   begin
-    if StartsStr(Result + '=', Pair) then
+    if StartsStr(Result + '=', mPair) then
     begin
-      Exit(Copy(Pair, Length(Result) + 2, MaxInt));
+      Exit(Copy(mPair, Length(Result) + 2, MaxInt));
     end;
   end;
 end;
@@ -514,16 +514,16 @@ end;
 
 function TAncestry.FindTypeOf(const AName: string; AArity: Integer; out AType: TSymbolLocation): Boolean;
 var
-  Index: Integer;
-  Location: TSymbolLocation;
+  mIndex: Integer;
+  mLocation: TSymbolLocation;
 begin
   // Über den Index: for-in kopierte jedes Symbol der Datei, auch die vielen, die nicht passen.
-  for Index := 0 to High(FLocal.Symbols) do
+  for mIndex := 0 to High(FLocal.Symbols) do
   begin
-    if IsClassNamed(FLocal.Symbols[Index], AName, AArity) then
+    if IsClassNamed(FLocal.Symbols[mIndex], AName, AArity) then
     begin
       AType := Default(TSymbolLocation);
-      AType.Symbol := FLocal.Symbols[Index];
+      AType.Symbol := FLocal.Symbols[mIndex];
       Exit(True);
     end;
   end;
@@ -532,19 +532,19 @@ begin
   begin
     Exit;
   end;
-  for Location in FIndex.FindSymbols(AName) do
+  for mLocation in FIndex.FindSymbols(AName) do
   begin
-    if not IsClassNamed(Location.Symbol, AName, AArity) or not Reachable(Location) then
+    if not IsClassNamed(mLocation.Symbol, AName, AArity) or not Reachable(mLocation) then
     begin
       Continue;
     end;
     if not Result then
     begin
-      AType := Location;
+      AType := mLocation;
       Result := True;
     end
     // Mehrere gleichnamige Klassen mit verschiedenen Vorfahren: keine Aussage.
-    else if OtherAncestors(Location.Symbol, AType.Symbol) then
+    else if OtherAncestors(mLocation.Symbol, AType.Symbol) then
     begin
       Exit(False);
     end;
@@ -553,14 +553,14 @@ end;
 
 function TAncestry.Methods(const AType: TSymbolLocation): TArray<TIndexSymbol>;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
   Result := nil;
-  for Symbol in Members(AType) do
+  for mSymbol in Members(AType) do
   begin
-    if Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_] then
+    if mSymbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_] then
     begin
-      Result := Result + [Symbol];
+      Result := Result + [mSymbol];
     end;
   end;
 end;
@@ -573,29 +573,29 @@ end;
 
 function TAncestry.FindAnyType(const AName: string; out AType: TSymbolLocation): Boolean;
 const
-  Kinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+  cKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
     TIndexSymbolKind.InterfaceType, TIndexSymbolKind.EnumType, TIndexSymbolKind.TypeAlias];
 var
-  Index: Integer;
-  Location: TSymbolLocation;
+  mIndex: Integer;
+  mLocation: TSymbolLocation;
 begin
-  for Index := 0 to High(FLocal.Symbols) do
+  for mIndex := 0 to High(FLocal.Symbols) do
   begin
-    if (FLocal.Symbols[Index].Kind in Kinds) and (FLocal.Symbols[Index].Container = '') and
-      SameText(FLocal.Symbols[Index].Name, AName) then
+    if (FLocal.Symbols[mIndex].Kind in cKinds) and (FLocal.Symbols[mIndex].Container = '') and
+      SameText(FLocal.Symbols[mIndex].Name, AName) then
     begin
       AType := Default(TSymbolLocation);
-      AType.Symbol := FLocal.Symbols[Index];
+      AType.Symbol := FLocal.Symbols[mIndex];
       Exit(True);
     end;
   end;
   if FIndex <> nil then
   begin
-    for Location in FIndex.FindSymbols(AName) do
+    for mLocation in FIndex.FindSymbols(AName) do
     begin
-      if (Location.Symbol.Kind in Kinds) and (Location.Symbol.Container = '') and Reachable(Location) then
+      if (mLocation.Symbol.Kind in cKinds) and (mLocation.Symbol.Container = '') and Reachable(mLocation) then
       begin
-        AType := Location;
+        AType := mLocation;
         Exit(True);
       end;
     end;
@@ -605,14 +605,14 @@ end;
 
 function TAncestry.FindNestedType(const AOwner, AName: string; out AType: TSymbolLocation): Boolean;
 const
-  Kinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+  cKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
     TIndexSymbolKind.InterfaceType, TIndexSymbolKind.EnumType, TIndexSymbolKind.TypeAlias];
 var
   mIndex: Integer;
 begin
   for mIndex := 0 to High(FLocal.Symbols) do
   begin
-    if (FLocal.Symbols[mIndex].Kind in Kinds) and SameText(FLocal.Symbols[mIndex].Name, AName) and
+    if (FLocal.Symbols[mIndex].Kind in cKinds) and SameText(FLocal.Symbols[mIndex].Name, AName) and
       (AOwner <> '') and SameText(FLocal.Symbols[mIndex].Container, AOwner) then
     begin
       AType := Default(TSymbolLocation);
@@ -636,7 +636,7 @@ end;
 
 function TAncestry.KnownType(const AName: string): Boolean;
 begin
-  Result := MatchText(CanonicalType(AName), BuiltinTypes) or IsDeclaredType(BareName(AName));
+  Result := MatchText(CanonicalType(AName), cBuiltinTypes) or IsDeclaredType(BareName(AName));
 end;
 
 function TAncestry.OpenAbstractMethods(const AType: TSymbolLocation; out AOwners: TArray<string>):
@@ -673,14 +673,14 @@ end;
 
 function TAncestry.MethodsOf(const AType: TSymbolLocation; const AName: string): TArray<TIndexSymbol>;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
   Result := nil;
-  for Symbol in Methods(AType) do
+  for mSymbol in Methods(AType) do
   begin
-    if SameText(Symbol.Name, AName) then
+    if SameText(mSymbol.Name, AName) then
     begin
-      Result := Result + [Symbol];
+      Result := Result + [mSymbol];
     end;
   end;
 end;
@@ -724,29 +724,29 @@ end;
 function TAncestry.Ancestors(const AType: TSymbolLocation; out AComplete,
   AObjectMissing: Boolean): TArray<TSymbolLocation>;
 var
-  Name: string;
-  Current, Location: TSymbolLocation;
-  Depth: Integer;
+  mName: string;
+  mCurrent, mLocation: TSymbolLocation;
+  mDepth: Integer;
 begin
   Result := nil;
   AComplete := False;
   AObjectMissing := False;
-  Current := AType;
-  for Depth := 0 to 63 do
+  mCurrent := AType;
+  for mDepth := 0 to 63 do
   begin
-    if not ParentLocation(Current, Name, Location) then
+    if not ParentLocation(mCurrent, mName, mLocation) then
     begin
-      AObjectMissing := SameText(Name, 'TObject');
+      AObjectMissing := SameText(mName, 'TObject');
       AComplete := AObjectMissing;
       Exit;
     end;
-    Result := Result + [Location];
-    if SameText(Name, 'TObject') then
+    Result := Result + [mLocation];
+    if SameText(mName, 'TObject') then
     begin
       AComplete := True;
       Exit;
     end;
-    Current := Location;
+    mCurrent := mLocation;
   end;
 end;
 
@@ -774,25 +774,25 @@ end;
 
 function TAncestry.IsDeclaredType(const AName: string): Boolean;
 const
-  Kinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+  cKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
     TIndexSymbolKind.InterfaceType, TIndexSymbolKind.EnumType];
 var
-  Index: Integer;
-  Location: TSymbolLocation;
+  mIndex: Integer;
+  mLocation: TSymbolLocation;
 begin
-  for Index := 0 to High(FLocal.Symbols) do
+  for mIndex := 0 to High(FLocal.Symbols) do
   begin
-    if (FLocal.Symbols[Index].Kind in Kinds) and (FLocal.Symbols[Index].Container = '') and
-      SameText(FLocal.Symbols[Index].Name, AName) then
+    if (FLocal.Symbols[mIndex].Kind in cKinds) and (FLocal.Symbols[mIndex].Container = '') and
+      SameText(FLocal.Symbols[mIndex].Name, AName) then
     begin
       Exit(True);
     end;
   end;
   if FIndex <> nil then
   begin
-    for Location in FIndex.FindSymbols(AName) do
+    for mLocation in FIndex.FindSymbols(AName) do
     begin
-      if (Location.Symbol.Kind in Kinds) and (Location.Symbol.Container = '') and Reachable(Location) then
+      if (mLocation.Symbol.Kind in cKinds) and (mLocation.Symbol.Container = '') and Reachable(mLocation) then
       begin
         Exit(True);
       end;
@@ -803,21 +803,21 @@ end;
 
 function TAncestry.IsTypeAlias(const AName: string): Boolean;
 var
-  Index: Integer;
-  Location: TSymbolLocation;
+  mIndex: Integer;
+  mLocation: TSymbolLocation;
 begin
-  for Index := 0 to High(FLocal.Symbols) do
+  for mIndex := 0 to High(FLocal.Symbols) do
   begin
-    if (FLocal.Symbols[Index].Kind = TIndexSymbolKind.TypeAlias) and SameText(FLocal.Symbols[Index].Name, AName) then
+    if (FLocal.Symbols[mIndex].Kind = TIndexSymbolKind.TypeAlias) and SameText(FLocal.Symbols[mIndex].Name, AName) then
     begin
       Exit(True);
     end;
   end;
   if FIndex <> nil then
   begin
-    for Location in FIndex.FindSymbols(AName) do
+    for mLocation in FIndex.FindSymbols(AName) do
     begin
-      if (Location.Symbol.Kind = TIndexSymbolKind.TypeAlias) and Reachable(Location) then
+      if (mLocation.Symbol.Kind = TIndexSymbolKind.TypeAlias) and Reachable(mLocation) then
       begin
         Exit(True);
       end;
@@ -828,20 +828,20 @@ end;
 
 function TAncestry.HasConstructor(const ATypeName: string): Boolean;
 var
-  Location: TSymbolLocation;
-  Members: TArray<TIndexSymbol>;
-  Index: Integer;
+  mLocation: TSymbolLocation;
+  mMembers: TArray<TIndexSymbol>;
+  mIndex: Integer;
 begin
   Result := False;
-  if not FindType(ATypeName, Location) then
+  if not FindType(ATypeName, mLocation) then
   begin
     Exit;
   end;
-  Members := MemberList(Location);
-  for Index := 0 to High(Members) do
+  mMembers := MemberList(mLocation);
+  for mIndex := 0 to High(mMembers) do
   begin
     // Der Index führt Destruktoren ebenfalls als Constructor_.
-    if (Members[Index].Kind = TIndexSymbolKind.Constructor_) and not SameText(Members[Index].Name, 'Destroy') then
+    if (mMembers[mIndex].Kind = TIndexSymbolKind.Constructor_) and not SameText(mMembers[mIndex].Name, 'Destroy') then
     begin
       Exit(True);
     end;
@@ -850,41 +850,41 @@ end;
 
 function TAncestry.ParentOf(const ATypeName: string): string;
 var
-  Location: TSymbolLocation;
+  mLocation: TSymbolLocation;
 begin
-  if not FindType(ATypeName, Location) then
+  if not FindType(ATypeName, mLocation) then
   begin
     Exit('');
   end;
-  if Length(Location.Symbol.Ancestors) = 0 then
+  if Length(mLocation.Symbol.Ancestors) = 0 then
   begin
     Result := 'TObject';
   end
   else
   begin
-    Result := BareName(Location.Symbol.Ancestors[0]);
+    Result := BareName(mLocation.Symbol.Ancestors[0]);
   end;
 end;
 
 function TAncestry.DescendsFrom(const ATypeName, AAncestor: string): Boolean;
 var
-  Name: string;
-  Depth: Integer;
+  mName: string;
+  mDepth: Integer;
 begin
-  Name := ParentOf(ATypeName);
-  Depth := 0;
-  while (Name <> '') and (Depth < 64) do
+  mName := ParentOf(ATypeName);
+  mDepth := 0;
+  while (mName <> '') and (mDepth < 64) do
   begin
-    if SameText(Name, AAncestor) then
+    if SameText(mName, AAncestor) then
     begin
       Exit(True);
     end;
-    if SameText(Name, 'TObject') then
+    if SameText(mName, 'TObject') then
     begin
       Break;
     end;
-    Name := ParentOf(Name);
-    Inc(Depth);
+    mName := ParentOf(mName);
+    Inc(mDepth);
   end;
   Result := False;
 end;
@@ -932,34 +932,34 @@ end;
 
 function TAncestry.InheritedVirtual(const AMethod: TMethodDecl): TInherited;
 var
-  Own, Location: TSymbolLocation;
-  Candidate: TIndexSymbol;
-  Any, mComplete, mObjectMissing: Boolean;
+  mOwn, mLocation: TSymbolLocation;
+  mCandidate: TIndexSymbol;
+  mAny, mComplete, mObjectMissing: Boolean;
 begin
   Result := Default(TInherited);
   // Die Klasse, in deren Rumpf die Methode steht, nicht nur ihr Name (#1326).
-  if not OwnerOf(AMethod.Symbol, Own) and not FindType(AMethod.ClassName, Own) then
+  if not OwnerOf(AMethod.Symbol, mOwn) and not FindType(AMethod.ClassName, mOwn) then
   begin
     Exit;
   end;
-  for Location in Ancestors(Own, mComplete, mObjectMissing) do
+  for mLocation in Ancestors(mOwn, mComplete, mObjectMissing) do
   begin
-    Any := False;
-    for Candidate in MethodsOf(Location, AMethod.Symbol.Name) do
+    mAny := False;
+    for mCandidate in MethodsOf(mLocation, AMethod.Symbol.Name) do
     begin
       // Private Methoden fremder Units sieht der Nachfahre nicht.
-      if HiddenFromDescendant(Location, Candidate) then
+      if HiddenFromDescendant(mLocation, mCandidate) then
       begin
         Continue;
       end;
-      Any := True;
-      if Candidate.IsVirtual then
+      mAny := True;
+      if mCandidate.IsVirtual then
       begin
-        TakeVirtual(Result, Location, Candidate, AMethod.Symbol);
+        TakeVirtual(Result, mLocation, mCandidate, AMethod.Symbol);
       end;
     end;
     // Die nächste Stufe mit gleichnamiger Methode entscheidet.
-    if Any then
+    if mAny then
     begin
       Exit;
     end;
@@ -970,13 +970,13 @@ end;
 
 function TokenAt(const AContext: TRuleContext; AOffset: Integer; out AToken: TPascalToken): Boolean;
 var
-  Token: TPascalToken;
+  mToken: TPascalToken;
 begin
-  for Token in AContext.Tree.Tokens do
+  for mToken in AContext.Tree.Tokens do
   begin
-    if Token.Offset = AOffset then
+    if mToken.Offset = AOffset then
     begin
-      AToken := Token;
+      AToken := mToken;
       Exit(True);
     end;
   end;
@@ -986,18 +986,18 @@ end;
 /// <summary>Position hinter dem letzten Token vor AEndOffset.</summary>
 function EndPosition(const AContext: TRuleContext; AEndOffset: Integer; out APosition: TTextPosition): Boolean;
 var
-  Token: TPascalToken;
+  mToken: TPascalToken;
 begin
   Result := False;
-  for Token in AContext.Tree.Tokens do
+  for mToken in AContext.Tree.Tokens do
   begin
-    if Token.Offset >= AEndOffset then
+    if mToken.Offset >= AEndOffset then
     begin
       Break;
     end;
-    if Token.Offset + Length(Token.Text) = AEndOffset then
+    if mToken.Offset + Length(mToken.Text) = AEndOffset then
     begin
-      APosition := Token.EndPos;
+      APosition := mToken.EndPos;
       Result := True;
     end;
   end;
@@ -1007,13 +1007,13 @@ end;
 function AppendDirective(const AContext: TRuleContext; const AMethod: TMethodDecl; const ADirective: string;
   out AFix: TRuleFix): Boolean;
 var
-  Position: TTextPosition;
+  mPosition: TTextPosition;
 begin
-  Result := EndPosition(AContext, AMethod.Header.EndOffset, Position);
+  Result := EndPosition(AContext, AMethod.Header.EndOffset, mPosition);
   if Result then
   begin
     AFix := TRuleFix.Create(cTexts[TInheritanceAncestryText.AddName].Fmt([ADirective]),
-      [TRuleEdit.Create(TTextRange.Create(Position, Position), ' ' + ADirective + ';')]);
+      [TRuleEdit.Create(TTextRange.Create(mPosition, mPosition), ' ' + ADirective + ';')]);
   end;
 end;
 
@@ -1155,14 +1155,14 @@ end;
 /// <summary>Direktiven des Methodenkopfs AHeader, klein geschrieben.</summary>
 function DirectivesOf(AHeader: TSyntaxNode): TArray<string>;
 var
-  Inner: Integer;
+  mInner: Integer;
 begin
   Result := nil;
-  for Inner := 0 to AHeader.ChildCount - 1 do
+  for mInner := 0 to AHeader.ChildCount - 1 do
   begin
-    if AHeader[Inner].Kind = TSyntaxKind.Directive then
+    if AHeader[mInner].Kind = TSyntaxKind.Directive then
     begin
-      Result := Result + [LowerCase(AHeader[Inner].Name)];
+      Result := Result + [LowerCase(AHeader[mInner].Name)];
     end;
   end;
 end;
@@ -1170,14 +1170,14 @@ end;
 /// <summary>Methode AHeader der Klasse ATypeDecl mit Schlüsselwort und Direktiven, noch ohne Symbol.</summary>
 function NewMethod(const AContext: TRuleContext; ATypeDecl, AHeader: TSyntaxNode): TMethodDecl;
 var
-  Token: TPascalToken;
+  mToken: TPascalToken;
 begin
   Result := Default(TMethodDecl);
   Result.ClassName := ATypeDecl.Name;
   Result.Header := AHeader;
-  if TokenAt(AContext, AHeader.StartOffset, Token) then
+  if TokenAt(AContext, AHeader.StartOffset, mToken) then
   begin
-    Result.Keyword := LowerCase(Token.Text);
+    Result.Keyword := LowerCase(mToken.Text);
   end;
   Result.Directives := DirectivesOf(AHeader);
 end;
@@ -1194,80 +1194,80 @@ function ClassMethods(const AContext: TRuleContext; AAncestry: TAncestry): TArra
 const
   // Nur hier stehen Klassendeklarationen. Anweisungen und Ausdrücke bleiben außen vor: Ihre Bäume
   // können sehr tief sein (lange Verkettungen in erzeugten Units), und jede Ebene kostete Stapel.
-  Containers = [TSyntaxKind.UnitFile, TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile, TSyntaxKind.PackageFile,
+  cContainers = [TSyntaxKind.UnitFile, TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile, TSyntaxKind.PackageFile,
     TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection, TSyntaxKind.TypeSection, TSyntaxKind.TypeDecl,
     TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType, TSyntaxKind.HelperType,
     TSyntaxKind.RoutineDecl];
 var
-  Methods: TList<TMethodDecl>;
+  mMethods: TList<TMethodDecl>;
 
   // Eigene Routine für die großen Records (TIndexSymbol, TMethodDecl, TPascalToken): Sie liegen nur
   // einmal auf dem Stapel, nicht in jeder Ebene von Visit.
   procedure AddMethods(ATypeDecl: TSyntaxNode);
   var
-    Index: Integer;
-    Body, Header: TSyntaxNode;
-    Method: TMethodDecl;
+    mIndex: Integer;
+    mBody, mHeader: TSyntaxNode;
+    mMethod: TMethodDecl;
   begin
-    Body := ATypeDecl.FindChild(TSyntaxKind.ClassType);
-    if Body = nil then
+    mBody := ATypeDecl.FindChild(TSyntaxKind.ClassType);
+    if mBody = nil then
     begin
       Exit;
     end;
-    for Index := 0 to Body.ChildCount - 1 do
+    for mIndex := 0 to mBody.ChildCount - 1 do
     begin
-      Header := Body[Index];
-      if Header.Kind <> TSyntaxKind.RoutineHeader then
+      mHeader := mBody[mIndex];
+      if mHeader.Kind <> TSyntaxKind.RoutineHeader then
       begin
         Continue;
       end;
-      Method := NewMethod(AContext, ATypeDecl, Header);
+      mMethod := NewMethod(AContext, ATypeDecl, mHeader);
       // class procedure/static: keine virtuellen Instanzmethoden.
-      if (Method.Keyword <> 'class') and not Method.Has('static') and not Method.Has('message') and
-        MethodSymbol(AAncestry, ATypeDecl.Name, Header, Method.Symbol) then
+      if (mMethod.Keyword <> 'class') and not mMethod.Has('static') and not mMethod.Has('message') and
+        MethodSymbol(AAncestry, ATypeDecl.Name, mHeader, mMethod.Symbol) then
       begin
-        Methods.Add(Method);
+        mMethods.Add(mMethod);
       end;
     end;
   end;
 
   procedure Visit(ARoot: TSyntaxNode);
   var
-    Index: Integer;
-    Node: TSyntaxNode;
-    Pending: TStack<TSyntaxNode>;
+    mIndex: Integer;
+    mNode: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
   begin
     // Iterativ (Bericht M1).
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ARoot);
-      while Pending.Count > 0 do
+      mPending.Push(ARoot);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if Node.Kind = TSyntaxKind.TypeDecl then
+        mNode := mPending.Pop;
+        if mNode.Kind = TSyntaxKind.TypeDecl then
         begin
-          AddMethods(Node);
+          AddMethods(mNode);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          if Node[Index].Kind in Containers then
+          if mNode[mIndex].Kind in cContainers then
           begin
-            Pending.Push(Node[Index]);
+            mPending.Push(mNode[mIndex]);
           end;
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
 begin
-  Methods := TList<TMethodDecl>.Create;
+  mMethods := TList<TMethodDecl>.Create;
   try
     Visit(AContext.Tree.Root);
-    Result := Methods.ToArray;
+    Result := mMethods.ToArray;
   finally
-    Methods.Free;
+    mMethods.Free;
   end;
 end;
 
@@ -1293,8 +1293,8 @@ end;
 /// AAncestry gehört dem Aufrufer.</summary>
 function Prepare(const AContext: TRuleContext; out AAncestry: TAncestry; out AMethods: TArray<TMethodDecl>): Boolean;
 var
-  Method: TMethodDecl;
-  Cache: IRuleDerivedCache;
+  mMethod: TMethodDecl;
+  mCache: IRuleDerivedCache;
 begin
   AAncestry := nil;
   AMethods := nil;
@@ -1303,13 +1303,13 @@ begin
     Exit(False);
   end;
   // Den Index der Datei teilt der Lauf mit den anderen Regeln (Review P-03).
-  Cache := TRuleDerived.Open(AContext);
-  AAncestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(Cache, AContext));
-  for Method in ClassMethods(AContext, AAncestry) do
+  mCache := TRuleDerived.Open(AContext);
+  AAncestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(mCache, AContext));
+  for mMethod in ClassMethods(AContext, AAncestry) do
   begin
-    if not Settled(Method) then
+    if not Settled(mMethod) then
     begin
-      AMethods := AMethods + [Method];
+      AMethods := AMethods + [mMethod];
     end;
   end;
   Result := True;
@@ -1329,16 +1329,16 @@ end;
 function VisibleMember(const AMembers: TArray<TIndexSymbol>; const ANamed: TArray<Integer>; ADepth: Integer;
   ALocal: Boolean): Integer;
 var
-  Index: Integer;
-  Member: TIndexSymbol;
+  mIndex: Integer;
+  mMember: TIndexSymbol;
 begin
-  for Index in ANamed do
+  for mIndex in ANamed do
   begin
-    Member := AMembers[Index];
-    if (ADepth = 0) or (ALocal and (Member.Visibility <> TIndexVisibility.StrictPrivate)) or
-      not (Member.Visibility in [TIndexVisibility.Private, TIndexVisibility.StrictPrivate]) then
+    mMember := AMembers[mIndex];
+    if (ADepth = 0) or (ALocal and (mMember.Visibility <> TIndexVisibility.StrictPrivate)) or
+      not (mMember.Visibility in [TIndexVisibility.Private, TIndexVisibility.StrictPrivate]) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -1347,40 +1347,40 @@ end;
 function TAncestry.FindMember(const ATypeName, AName: string; out AMember: TIndexSymbol; out AUnresolved,
   AUnitName: string): Boolean;
 var
-  Name: string;
-  Location: TSymbolLocation;
-  Members: TArray<TIndexSymbol>;
-  Index, Depth: Integer;
+  mName: string;
+  mLocation: TSymbolLocation;
+  mMembers: TArray<TIndexSymbol>;
+  mIndex, mDepth: Integer;
 begin
   AMember := Default(TIndexSymbol);
   AUnresolved := '';
   AUnitName := '';
-  Name := ATypeName;
-  Depth := 0;
-  while (Name <> '') and (Depth < 64) do
+  mName := ATypeName;
+  mDepth := 0;
+  while (mName <> '') and (mDepth < 64) do
   begin
-    if not FindType(Name, Location) then
+    if not FindType(mName, mLocation) then
     begin
-      AUnresolved := Name;
+      AUnresolved := mName;
       Exit(False);
     end;
-    Members := MemberList(Location);
-    Index := VisibleMember(Members, FieldsNamed(Location, AName), Depth, Location.FileName = '');
-    if Index >= 0 then
+    mMembers := MemberList(mLocation);
+    mIndex := VisibleMember(mMembers, FieldsNamed(mLocation, AName), mDepth, mLocation.FileName = '');
+    if mIndex >= 0 then
     begin
-      AMember := Members[Index];
-      if Location.FileName <> '' then
+      AMember := mMembers[mIndex];
+      if mLocation.FileName <> '' then
       begin
-        AUnitName := Location.UnitName;
+        AUnitName := mLocation.UnitName;
       end;
       Exit(True);
     end;
-    if Length(Location.Symbol.Ancestors) = 0 then
+    if Length(mLocation.Symbol.Ancestors) = 0 then
     begin
       Break;
     end;
-    Name := BareName(Location.Symbol.Ancestors[0]);
-    Inc(Depth);
+    mName := BareName(mLocation.Symbol.Ancestors[0]);
+    Inc(mDepth);
   end;
   Result := False;
 end;

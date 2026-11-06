@@ -11,7 +11,7 @@ function ArchitectureMapHtml: string;
 implementation
 
 const
-  Lines: array[0..605] of string = (
+  cLines: array[0..605] of string = (
     '<!doctype html>',
     '<html lang="de">',
     '<head>',
@@ -633,12 +633,12 @@ const
 
 function ArchitectureMapHtml: string;
 var
-  Line: string;
+  mLine: string;
 begin
   Result := '';
-  for Line in Lines do
+  for mLine in cLines do
   begin
-    Result := Result + Line + #10;
+    Result := Result + mLine + #10;
   end;
 end;
 

@@ -6,7 +6,7 @@
 interface
 
 const
-  CatalogLinesDeFindBugs: array[0..534] of string = (
+  cCatalogLinesDeFindBugs: array[0..534] of string = (
     '{',
     '      "id": "result-not-set",',
     '      "name": "Funktionsergebnis eventuell nicht gesetzt",',

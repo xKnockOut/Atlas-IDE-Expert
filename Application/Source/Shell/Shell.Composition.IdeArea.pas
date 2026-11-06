@@ -116,7 +116,7 @@ var
   mName: string;
 begin
   Result := TFormatRoutines.Defaults;
-  for mName in TRuleOptions.Strings(TRuleEngine.RuleOptions(FormatArgsRuleId, FCore.Settings.SettingsFor(AUri)),
+  for mName in TRuleOptions.Strings(TRuleEngine.RuleOptions(cFormatArgsRuleId, FCore.Settings.SettingsFor(AUri)),
     'formatMethods', nil) do
   begin
     if Trim(mName) <> '' then

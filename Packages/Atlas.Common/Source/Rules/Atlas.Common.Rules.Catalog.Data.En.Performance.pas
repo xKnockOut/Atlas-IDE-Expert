@@ -6,7 +6,7 @@
 interface
 
 const
-  CatalogLinesEnPerformance: array[0..73] of string = (
+  cCatalogLinesEnPerformance: array[0..73] of string = (
     '{',
     '      "id": "string-concat-in-loop",',
     '      "name": "String concatenation in a loop",',

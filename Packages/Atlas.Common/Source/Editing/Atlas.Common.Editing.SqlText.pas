@@ -53,14 +53,14 @@ end;
 /// <summary>Tokens ohne Kommentare.</summary>
 function CodeTokens(const AText: string): TTokens;
 var
-  Token: TPascalToken;
+  mToken: TPascalToken;
 begin
   Result := nil;
-  for Token in TPascalLexer.Tokenize(AText) do
+  for mToken in TPascalLexer.Tokenize(AText) do
   begin
-    if Token.Kind <> TPascalTokenKind.Comment then
+    if mToken.Kind <> TPascalTokenKind.Comment then
     begin
-      Result := Result + [Token];
+      Result := Result + [mToken];
     end;
   end;
 end;
@@ -68,37 +68,37 @@ end;
 /// <summary>Stehen ab AIndex die Tokens von AName (mit Punkten)? AIndex zeigt danach hinter den Namen.</summary>
 function MatchName(const ATokens: TTokens; var AIndex: Integer; const AName: string): Boolean;
 var
-  Rest, Part: string;
-  Index, Dot: Integer;
+  mRest, mPart: string;
+  mIndex, mDot: Integer;
 begin
-  Index := AIndex;
-  Rest := AName + '.';
-  Dot := Pos('.', Rest);
-  while Dot > 0 do
+  mIndex := AIndex;
+  mRest := AName + '.';
+  mDot := Pos('.', mRest);
+  while mDot > 0 do
   begin
-    Part := Copy(Rest, 1, Dot - 1);
-    Delete(Rest, 1, Dot);
-    if (Index > High(ATokens)) or not SameText(ATokens[Index].Text, Part) then
+    mPart := Copy(mRest, 1, mDot - 1);
+    Delete(mRest, 1, mDot);
+    if (mIndex > High(ATokens)) or not SameText(ATokens[mIndex].Text, mPart) then
     begin
       Exit(False);
     end;
-    Inc(Index);
-    if Rest <> '' then
+    Inc(mIndex);
+    if mRest <> '' then
     begin
-      if (Index > High(ATokens)) or (ATokens[Index].Text <> '.') then
+      if (mIndex > High(ATokens)) or (ATokens[mIndex].Text <> '.') then
       begin
         Exit(False);
       end;
-      Inc(Index);
+      Inc(mIndex);
     end;
-    Dot := Pos('.', Rest);
+    mDot := Pos('.', mRest);
   end;
   // Kein Teil eines längeren Namens wie DM.Q oder Q2.
   if (AIndex > 0) and (ATokens[AIndex - 1].Text = '.') then
   begin
     Exit(False);
   end;
-  AIndex := Index;
+  AIndex := mIndex;
   Result := True;
 end;
 
@@ -115,23 +115,23 @@ end;
 /// <summary>Text der Tokens ab AIndex bis vor ein Token AStop auf Klammerebene 0.</summary>
 function ExpressionUntil(const ATokens: TTokens; var AIndex: Integer; const AStop: string): string;
 var
-  Depth: Integer;
+  mDepth: Integer;
 begin
   Result := '';
-  Depth := 0;
+  mDepth := 0;
   while AIndex <= High(ATokens) do
   begin
-    if (Depth = 0) and (ATokens[AIndex].Text = AStop) then
+    if (mDepth = 0) and (ATokens[AIndex].Text = AStop) then
     begin
       Exit;
     end;
     if ATokens[AIndex].Text = '(' then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
     else if ATokens[AIndex].Text = ')' then
     begin
-      Dec(Depth);
+      Dec(mDepth);
     end;
     Result := Result + ' ' + ATokens[AIndex].Text;
     Inc(AIndex);
@@ -373,15 +373,15 @@ end;
 
 function FindObject(AObject: TDfmObject; const AName: string): TDfmObject;
 var
-  Child: TDfmObject;
+  mChild: TDfmObject;
 begin
   if SameText(AObject.Name, AName) then
   begin
     Exit(AObject);
   end;
-  for Child in AObject.Children do
+  for mChild in AObject.Children do
   begin
-    Result := FindObject(Child, AName);
+    Result := FindObject(mChild, AName);
     if Result <> nil then
     begin
       Exit;
@@ -392,73 +392,73 @@ end;
 
 class function TSqlText.FormValue(const AValue: string; out AText: string): Boolean;
 var
-  Value, Line, Plain, Rest: string;
-  Continued: Boolean;
-  Separator: Integer;
+  mValue, mLine, mPlain, mRest: string;
+  mContinued: Boolean;
+  mSeparator: Integer;
 begin
   AText := '';
-  Value := Trim(AValue);
-  if StartsStr('(', Value) and EndsStr(')', Value) then
+  mValue := Trim(AValue);
+  if StartsStr('(', mValue) and EndsStr(')', mValue) then
   begin
-    Value := Copy(Value, 2, Length(Value) - 2);
+    mValue := Copy(mValue, 2, Length(mValue) - 2);
   end;
-  Continued := True;
-  Rest := StringReplace(Value, #13#10, #10, [rfReplaceAll]) + #10;
-  Separator := Pos(#10, Rest);
-  while Separator > 0 do
+  mContinued := True;
+  mRest := StringReplace(mValue, #13#10, #10, [rfReplaceAll]) + #10;
+  mSeparator := Pos(#10, mRest);
+  while mSeparator > 0 do
   begin
-    Line := Trim(Copy(Rest, 1, Separator - 1));
-    Delete(Rest, 1, Separator);
-    Separator := Pos(#10, Rest);
-    if Line = '' then
+    mLine := Trim(Copy(mRest, 1, mSeparator - 1));
+    Delete(mRest, 1, mSeparator);
+    mSeparator := Pos(#10, mRest);
+    if mLine = '' then
     begin
       Continue;
     end;
-    if not TStringLiterals.PlainText(Line, Plain) then
+    if not TStringLiterals.PlainText(mLine, mPlain) then
     begin
       AText := '';
       Exit(False);
     end;
-    if not Continued then
+    if not mContinued then
     begin
       AText := AText + #13#10;
     end;
-    AText := AText + Plain;
+    AText := AText + mPlain;
     // Lange DFM-Zeilen setzen sich mit "+" in der nächsten fort.
-    Continued := EndsStr('+', Line);
+    mContinued := EndsStr('+', mLine);
   end;
   Result := True;
 end;
 
 class function TSqlText.FromForm(const AFormText, AName: string): string;
 var
-  Document: TDfmDocument;
-  Found: TDfmObject;
-  Prop: TDfmProperty;
+  mDocument: TDfmDocument;
+  mFound: TDfmObject;
+  mProp: TDfmProperty;
 begin
   Result := '';
   // Name ohne Datenmodul-Präfix: DM.Q steht in der DFM als Q.
-  Document := TDfmParser.Parse(AFormText);
+  mDocument := TDfmParser.Parse(AFormText);
   try
-    if Document.Root = nil then
+    if mDocument.Root = nil then
     begin
       Exit;
     end;
-    Found := FindObject(Document.Root, Copy(AName, LastDelimiter('.', AName) + 1, MaxInt));
-    if Found = nil then
+    mFound := FindObject(mDocument.Root, Copy(AName, LastDelimiter('.', AName) + 1, MaxInt));
+    if mFound = nil then
     begin
       Exit;
     end;
-    for Prop in Found.Properties do
+    for mProp in mFound.Properties do
     begin
-      if SameText(Prop.Name, 'SQL.Strings') or SameText(Prop.Name, 'CommandText') then
+      if SameText(mProp.Name, 'SQL.Strings') or SameText(mProp.Name, 'CommandText') then
       begin
-        FormValue(Prop.Value, Result);
+        FormValue(mProp.Value, Result);
         Exit;
       end;
     end;
   finally
-    Document.Free;
+    mDocument.Free;
   end;
 end;
 
@@ -472,41 +472,41 @@ end;
 
 class function TSqlText.AssignedParams(const AText, AName: string): TArray<string>;
 var
-  Tokens: TTokens;
-  Index, Cursor: Integer;
-  Name: string;
+  mTokens: TTokens;
+  mIndex, mCursor: Integer;
+  mName: string;
 begin
   Result := nil;
-  Tokens := CodeTokens(AText);
-  for Index := 0 to High(Tokens) do
+  mTokens := CodeTokens(AText);
+  for mIndex := 0 to High(mTokens) do
   begin
-    Cursor := Index;
-    if not (MatchName(Tokens, Cursor, AName) and Take(Tokens, Cursor, '.')) then
+    mCursor := mIndex;
+    if not (MatchName(mTokens, mCursor, AName) and Take(mTokens, mCursor, '.')) then
     begin
       Continue;
     end;
-    if (Take(Tokens, Cursor, 'Params') or Take(Tokens, Cursor, 'Parameters')) and not Take(Tokens, Cursor, '.') then
+    if (Take(mTokens, mCursor, 'Params') or Take(mTokens, mCursor, 'Parameters')) and not Take(mTokens, mCursor, '.') then
     begin
       Continue;
     end;
-    if Take(Tokens, Cursor, 'ParamByName') and Take(Tokens, Cursor, '(') and LiteralAt(Tokens, Cursor, Name) and
-      not Contains(Result, Name) then
+    if Take(mTokens, mCursor, 'ParamByName') and Take(mTokens, mCursor, '(') and LiteralAt(mTokens, mCursor, mName) and
+      not Contains(Result, mName) then
     begin
-      Result := Result + [Name];
+      Result := Result + [mName];
     end;
   end;
 end;
 
 class function TSqlText.Missing(const AItems, AOf: TArray<string>): TArray<string>;
 var
-  Item: string;
+  mItem: string;
 begin
   Result := nil;
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    if not Contains(AOf, Item) then
+    if not Contains(AOf, mItem) then
     begin
-      Result := Result + [Item];
+      Result := Result + [mItem];
     end;
   end;
 end;

@@ -58,8 +58,8 @@ type
   /// <summary>Zwischenspeicher der Erkennung je BDS-Wurzel und Version; nicht threadsicher.</summary>
   TCompilerEditionCache = class
   public const
-    FormatVersion = 1;
-    FileName = 'compiler-editions.json';
+    cFormatVersion = 1;
+    cFileName = 'compiler-editions.json';
   private
     FEntries: TList<TCompilerEditionEntry>;
     function IndexOf(const ARoot, AVersion: string): Integer;
@@ -102,33 +102,33 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  EditionTexts: array[TCompilerEdition] of string = ('unknown', 'commandLine', 'noCommandLine', 'missing');
+  cEditionTexts: array[TCompilerEdition] of string = ('unknown', 'commandLine', 'noCommandLine', 'missing');
 
 { TCompilerEditions }
 
 class function TCompilerEditions.IsLicenseLine(const ALine: string): Boolean;
 var
-  Text: string;
-  CommandLine, Refused: Boolean;
+  mText: string;
+  mCommandLine, mRefused: Boolean;
 begin
-  Text := LowerCase(ALine);
+  mText := LowerCase(ALine);
   // Bekannt (Community/Starter, englisch): "This version of the product does not support command line compiling."
   // Deutsch sinngemäß: "Diese Version des Produkts unterstützt keine Kompilierung über die Befehlszeile."
-  CommandLine := (Pos('command line', Text) > 0) or (Pos('command-line', Text) > 0) or
-    (Pos('commandline', Text) > 0) or (Pos('befehlszeile', Text) > 0) or (Pos('kommandozeile', Text) > 0);
-  Refused := (Pos('not support', Text) > 0) or (Pos('not supported', Text) > 0) or
-    (Pos('nicht unterstützt', Text) > 0) or (Pos('unterstützt keine', Text) > 0) or
-    (Pos('unterstützt nicht', Text) > 0) or ((Pos('unterstützt', Text) > 0) and (Pos('nicht', Text) > 0));
-  Result := CommandLine and Refused;
+  mCommandLine := (Pos('command line', mText) > 0) or (Pos('command-line', mText) > 0) or
+    (Pos('commandline', mText) > 0) or (Pos('befehlszeile', mText) > 0) or (Pos('kommandozeile', mText) > 0);
+  mRefused := (Pos('not support', mText) > 0) or (Pos('not supported', mText) > 0) or
+    (Pos('nicht unterstützt', mText) > 0) or (Pos('unterstützt keine', mText) > 0) or
+    (Pos('unterstützt nicht', mText) > 0) or ((Pos('unterstützt', mText) > 0) and (Pos('nicht', mText) > 0));
+  Result := mCommandLine and mRefused;
 end;
 
 class function TCompilerEditions.HasLicenseText(const AOutput: TArray<string>): Boolean;
 var
-  Line: string;
+  mLine: string;
 begin
-  for Line in AOutput do
+  for mLine in AOutput do
   begin
-    if IsLicenseLine(Line) then
+    if IsLicenseLine(mLine) then
     begin
       Exit(True);
     end;
@@ -138,7 +138,7 @@ end;
 
 class function TCompilerEditions.Detect(AExists: Boolean; const AOutput: TArray<string>): TCompilerEdition;
 var
-  Line: string;
+  mLine: string;
 begin
   if not AExists then
   begin
@@ -149,9 +149,9 @@ begin
     Exit(TCompilerEdition.NoCommandLine);
   end;
   // Ein nutzbarer Compiler nennt sich ohne Argumente mit Kopfzeile und Aufrufhilfe.
-  for Line in AOutput do
+  for mLine in AOutput do
   begin
-    if Trim(Line) <> '' then
+    if Trim(mLine) <> '' then
     begin
       Exit(TCompilerEdition.CommandLine);
     end;
@@ -162,18 +162,18 @@ end;
 
 class function TCompilerEditions.ToText(AEdition: TCompilerEdition): string;
 begin
-  Result := EditionTexts[AEdition];
+  Result := cEditionTexts[AEdition];
 end;
 
 class function TCompilerEditions.FromText(const AText: string): TCompilerEdition;
 var
-  Edition: TCompilerEdition;
+  mEdition: TCompilerEdition;
 begin
-  for Edition := Low(TCompilerEdition) to High(TCompilerEdition) do
+  for mEdition := Low(TCompilerEdition) to High(TCompilerEdition) do
   begin
-    if SameText(EditionTexts[Edition], AText) then
+    if SameText(cEditionTexts[mEdition], AText) then
     begin
-      Exit(Edition);
+      Exit(mEdition);
     end;
   end;
   Result := TCompilerEdition.Unknown;
@@ -214,12 +214,12 @@ end;
 
 function TCompilerEditionCache.IndexOf(const ARoot, AVersion: string): Integer;
 var
-  Root: string;
+  mRoot: string;
 begin
-  Root := TProjectPaths.Normalize(ARoot);
+  mRoot := TProjectPaths.Normalize(ARoot);
   for Result := 0 to FEntries.Count - 1 do
   begin
-    if SameText(TProjectPaths.Normalize(FEntries[Result].Root), Root) and (FEntries[Result].Version = AVersion) then
+    if SameText(TProjectPaths.Normalize(FEntries[Result].Root), mRoot) and (FEntries[Result].Version = AVersion) then
     begin
       Exit;
     end;
@@ -229,24 +229,24 @@ end;
 
 function TCompilerEditionCache.Find(const ARoot, AVersion, AStamp: string): TCompilerEdition;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := IndexOf(ARoot, AVersion);
-  if (Index < 0) or (FEntries[Index].Stamp <> AStamp) then
+  mIndex := IndexOf(ARoot, AVersion);
+  if (mIndex < 0) or (FEntries[mIndex].Stamp <> AStamp) then
   begin
     Exit(TCompilerEdition.Unknown);
   end;
-  Result := FEntries[Index].Edition;
+  Result := FEntries[mIndex].Edition;
 end;
 
 procedure TCompilerEditionCache.Store(const AEntry: TCompilerEditionEntry);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := IndexOf(AEntry.Root, AEntry.Version);
-  if Index >= 0 then
+  mIndex := IndexOf(AEntry.Root, AEntry.Version);
+  if mIndex >= 0 then
   begin
-    FEntries[Index] := AEntry;
+    FEntries[mIndex] := AEntry;
   end
   else
   begin
@@ -256,62 +256,62 @@ end;
 
 procedure TCompilerEditionCache.Load(const AText: string);
 var
-  Value, Item: TJSONValue;
-  Items: TJSONArray;
-  Entry: TCompilerEditionEntry;
+  mValue, mItem: TJSONValue;
+  mItems: TJSONArray;
+  mEntry: TCompilerEditionEntry;
 begin
   FEntries.Clear;
-  Value := TJSONObject.ParseJSONValue(AText);
+  mValue := TJSONObject.ParseJSONValue(AText);
   try
-    if not (Value is TJSONObject) or not TJSONObject(Value).TryGetValue<TJSONArray>('entries', Items) then
+    if not (mValue is TJSONObject) or not TJSONObject(mValue).TryGetValue<TJSONArray>('entries', mItems) then
     begin
       Exit;
     end;
-    for Item in Items do
+    for mItem in mItems do
     begin
-      if Item is TJSONObject then
+      if mItem is TJSONObject then
       begin
-        Entry := Default(TCompilerEditionEntry);
-        Entry.Root := TJSONObject(Item).GetValue<string>('root', '');
-        Entry.Version := TJSONObject(Item).GetValue<string>('version', '');
-        Entry.Edition := TCompilerEditions.FromText(TJSONObject(Item).GetValue<string>('edition', ''));
-        Entry.Stamp := TJSONObject(Item).GetValue<string>('stamp', '');
-        Entry.Checked := TJSONObject(Item).GetValue<string>('checked', '');
-        if (Entry.Root <> '') and (Entry.Edition <> TCompilerEdition.Unknown) then
+        mEntry := Default(TCompilerEditionEntry);
+        mEntry.Root := TJSONObject(mItem).GetValue<string>('root', '');
+        mEntry.Version := TJSONObject(mItem).GetValue<string>('version', '');
+        mEntry.Edition := TCompilerEditions.FromText(TJSONObject(mItem).GetValue<string>('edition', ''));
+        mEntry.Stamp := TJSONObject(mItem).GetValue<string>('stamp', '');
+        mEntry.Checked := TJSONObject(mItem).GetValue<string>('checked', '');
+        if (mEntry.Root <> '') and (mEntry.Edition <> TCompilerEdition.Unknown) then
         begin
-          Store(Entry);
+          Store(mEntry);
         end;
       end;
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 function TCompilerEditionCache.ToJson: string;
 var
-  Root, Item: TJSONObject;
-  Items: TJSONArray;
-  Entry: TCompilerEditionEntry;
+  mRoot, mItem: TJSONObject;
+  mItems: TJSONArray;
+  mEntry: TCompilerEditionEntry;
 begin
-  Root := TJSONObject.Create;
+  mRoot := TJSONObject.Create;
   try
-    Root.AddPair('format', TJSONNumber.Create(FormatVersion));
-    Items := TJSONArray.Create;
-    Root.AddPair('entries', Items);
-    for Entry in FEntries do
+    mRoot.AddPair('format', TJSONNumber.Create(cFormatVersion));
+    mItems := TJSONArray.Create;
+    mRoot.AddPair('entries', mItems);
+    for mEntry in FEntries do
     begin
-      Item := TJSONObject.Create;
-      Item.AddPair('root', Entry.Root);
-      Item.AddPair('version', Entry.Version);
-      Item.AddPair('edition', TCompilerEditions.ToText(Entry.Edition));
-      Item.AddPair('stamp', Entry.Stamp);
-      Item.AddPair('checked', Entry.Checked);
-      Items.AddElement(Item);
+      mItem := TJSONObject.Create;
+      mItem.AddPair('root', mEntry.Root);
+      mItem.AddPair('version', mEntry.Version);
+      mItem.AddPair('edition', TCompilerEditions.ToText(mEntry.Edition));
+      mItem.AddPair('stamp', mEntry.Stamp);
+      mItem.AddPair('checked', mEntry.Checked);
+      mItems.AddElement(mItem);
     end;
-    Result := Root.ToJSON;
+    Result := mRoot.ToJSON;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 

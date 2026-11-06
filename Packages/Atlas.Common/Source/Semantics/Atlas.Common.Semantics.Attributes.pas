@@ -68,18 +68,18 @@ end;
 /// <summary>Name einer Bezeichner- bzw. Punktkette; '' bei anderen Ausdrücken.</summary>
 function DottedName(ANode: TSyntaxNode): string;
 var
-  Suffix: string;
+  mSuffix: string;
 begin
   // Iterativ (Bericht M1): von rechts nach links an der Kette entlang.
-  Suffix := '';
+  mSuffix := '';
   while (ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.ChildCount = 1) do
   begin
-    Suffix := '.' + ANode.Name + Suffix;
+    mSuffix := '.' + ANode.Name + mSuffix;
     ANode := ANode[0];
   end;
   if ANode.Kind = TSyntaxKind.Identifier then
   begin
-    Result := ANode.Name + Suffix;
+    Result := ANode.Name + mSuffix;
   end
   else
   begin
@@ -89,71 +89,71 @@ end;
 
 function FindAttribute(ANode: TSyntaxNode; const APosition: TTextPosition): TSyntaxNode;
 var
-  Pending: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Index: Integer;
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
 begin
   // Iterativ mit eigenem Stapel (Bericht M1), Reihenfolge wie die frühere Rekursion.
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ANode);
-    while Pending.Count > 0 do
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      if Node.Kind = TSyntaxKind.Attribute then
+      mNode := mPending.Pop;
+      if mNode.Kind = TSyntaxKind.Attribute then
       begin
-        Exit(Node);
+        Exit(mNode);
       end;
-      for Index := Node.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        if Contains(Node[Index], APosition) then
+        if Contains(mNode[mIndex], APosition) then
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
   Result := nil;
 end;
 
 class function TAttributes.At(ATree: TSyntaxTree; const APosition: TTextPosition; out AUse: TAttributeUse): Boolean;
 var
-  Attribute, Item, NameNode: TSyntaxNode;
-  Index: Integer;
+  mAttribute, mItem, mNameNode: TSyntaxNode;
+  mIndex: Integer;
 begin
   AUse := Default(TAttributeUse);
   if (ATree = nil) or (ATree.Root = nil) then
   begin
     Exit(False);
   end;
-  Attribute := FindAttribute(ATree.Root, APosition);
-  if Attribute = nil then
+  mAttribute := FindAttribute(ATree.Root, APosition);
+  if mAttribute = nil then
   begin
     Exit(False);
   end;
-  for Index := 0 to Attribute.ChildCount - 1 do
+  for mIndex := 0 to mAttribute.ChildCount - 1 do
   begin
-    Item := Attribute[Index];
-    NameNode := Item;
-    if (Item.Kind = TSyntaxKind.Call) and (Item.ChildCount > 0) then
+    mItem := mAttribute[mIndex];
+    mNameNode := mItem;
+    if (mItem.Kind = TSyntaxKind.Call) and (mItem.ChildCount > 0) then
     begin
-      NameNode := Item[0];
+      mNameNode := mItem[0];
     end;
-    if not Contains(NameNode, APosition) then
+    if not Contains(mNameNode, APosition) then
     begin
       Continue;
     end;
-    AUse.Name := DottedName(NameNode);
+    AUse.Name := DottedName(mNameNode);
     if AUse.Name = '' then
     begin
       Exit(False);
     end;
-    AUse.NameRange := TTextRange.Create(NameNode.StartPos, NameNode.EndPos);
-    if Item <> NameNode then
+    AUse.NameRange := TTextRange.Create(mNameNode.StartPos, mNameNode.EndPos);
+    if mItem <> mNameNode then
     begin
-      AUse.ArgCount := Item.ChildCount - 1;
+      AUse.ArgCount := mItem.ChildCount - 1;
     end;
     Exit(True);
   end;
@@ -162,40 +162,40 @@ end;
 
 class function TAttributes.Names(AAttribute: TSyntaxNode): TArray<string>;
 var
-  Index, Dot: Integer;
-  Item: TSyntaxNode;
-  Name: string;
+  mIndex, mDot: Integer;
+  mItem: TSyntaxNode;
+  mName: string;
 begin
   Result := nil;
   if (AAttribute = nil) or (AAttribute.Kind <> TSyntaxKind.Attribute) then
   begin
     Exit;
   end;
-  for Index := 0 to AAttribute.ChildCount - 1 do
+  for mIndex := 0 to AAttribute.ChildCount - 1 do
   begin
-    Item := AAttribute[Index];
-    if (Item.Kind = TSyntaxKind.Call) and (Item.ChildCount > 0) then
+    mItem := AAttribute[mIndex];
+    if (mItem.Kind = TSyntaxKind.Call) and (mItem.ChildCount > 0) then
     begin
-      Item := Item[0];
+      mItem := mItem[0];
     end;
-    Name := DottedName(Item);
-    if Name = '' then
+    mName := DottedName(mItem);
+    if mName = '' then
     begin
       Continue;
     end;
-    Dot := LastDelimiter('.', Name);
-    Name := Copy(Name, Dot + 1, MaxInt);
-    if EndsText('Attribute', Name) and (Length(Name) > Length('Attribute')) then
+    mDot := LastDelimiter('.', mName);
+    mName := Copy(mName, mDot + 1, MaxInt);
+    if EndsText('Attribute', mName) and (Length(mName) > Length('Attribute')) then
     begin
-      Name := Copy(Name, 1, Length(Name) - Length('Attribute'));
+      mName := Copy(mName, 1, Length(mName) - Length('Attribute'));
     end;
-    Result := Result + [Name];
+    Result := Result + [mName];
   end;
 end;
 
 const
   /// <summary>Tiefe für Ketten wie [A] [B] [C] am Zeilenanfang.</summary>
-  MaxChainedBrackets = 16;
+  cMaxChainedBrackets = 16;
 
 function IsTrivia(const AToken: TPascalToken): Boolean;
 begin
@@ -214,20 +214,20 @@ end;
 /// <summary>Öffnende Klammer zu der schließenden an AClose ("(" zu ")", "[" zu "]"); -1 ohne.</summary>
 function OpeningOf(const ATokens: TArray<TPascalToken>; AClose: Integer): Integer;
 var
-  Depth: Integer;
+  mDepth: Integer;
 begin
-  Depth := 0;
+  mDepth := 0;
   Result := AClose;
   while Result >= 0 do
   begin
     if ATokens[Result].IsSymbol(')') or ATokens[Result].IsSymbol(']') then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
     else if ATokens[Result].IsSymbol('(') or ATokens[Result].IsSymbol('[') then
     begin
-      Dec(Depth);
-      if Depth = 0 then
+      Dec(mDepth);
+      if mDepth = 0 then
       begin
         Exit;
       end;
@@ -240,25 +240,25 @@ end;
 /// "reference to procedure(")?</summary>
 function OpensParameters(const ATokens: TArray<TPascalToken>; AOpen: Integer): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := PreviousIndex(ATokens, AOpen);
-  while (Index >= 0) and ((ATokens[Index].Kind = TPascalTokenKind.Identifier) or ATokens[Index].IsSymbol('.')) do
+  mIndex := PreviousIndex(ATokens, AOpen);
+  while (mIndex >= 0) and ((ATokens[mIndex].Kind = TPascalTokenKind.Identifier) or ATokens[mIndex].IsSymbol('.')) do
   begin
-    Index := PreviousIndex(ATokens, Index);
+    mIndex := PreviousIndex(ATokens, mIndex);
   end;
-  Result := (Index >= 0) and (ATokens[Index].IsKeyword('procedure') or ATokens[Index].IsKeyword('function') or
-    ATokens[Index].IsKeyword('constructor') or ATokens[Index].IsKeyword('destructor') or
-    ATokens[Index].IsKeyword('property'));
+  Result := (mIndex >= 0) and (ATokens[mIndex].IsKeyword('procedure') or ATokens[mIndex].IsKeyword('function') or
+    ATokens[mIndex].IsKeyword('constructor') or ATokens[mIndex].IsKeyword('destructor') or
+    ATokens[mIndex].IsKeyword('property'));
 end;
 
 /// <summary>Steht vor der "(" an AOpen class, record oder object (Vorfahrenliste)?</summary>
 function OpensAncestors(const ATokens: TArray<TPascalToken>; AOpen: Integer): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := PreviousIndex(ATokens, AOpen);
-  Result := (Index >= 0) and (ATokens[Index].IsKeyword('class') or ATokens[Index].IsKeyword('object'));
+  mIndex := PreviousIndex(ATokens, AOpen);
+  Result := (mIndex >= 0) and (ATokens[mIndex].IsKeyword('class') or ATokens[mIndex].IsKeyword('object'));
 end;
 
 function IsVisibility(const AToken: TPascalToken): Boolean;
@@ -345,7 +345,7 @@ var
   mPrev: Integer;
 begin
   Result := False;
-  if (AOpen < 0) or (AOpen > High(ATokens)) or not ATokens[AOpen].IsSymbol('[') or (ADepth > MaxChainedBrackets) then
+  if (AOpen < 0) or (AOpen > High(ATokens)) or not ATokens[AOpen].IsSymbol('[') or (ADepth > cMaxChainedBrackets) then
   begin
     Exit;
   end;
@@ -369,7 +369,8 @@ begin
   Result := OpensAt(ATokens, AOpen, 0);
 end;
 
-/// <summary>Ein Schritt der Suche nach der offenen "[": True beendet die Suche, AOpen sagt, ob AToken sie ist.</summary>
+/// <summary>Ein Schritt der Suche nach der offenen "[": True beendet die Suche, AOpen sagt, ob AToken sie
+/// ist.</summary>
 function BracketScanStops(const AToken: TPascalToken; var ADepth: Integer; out AOpen: Boolean): Boolean;
 begin
   AOpen := False;
@@ -390,7 +391,8 @@ begin
   end;
 end;
 
-/// <summary>Offene "[" vor ALast; -1, wenn vorher eine offene "(" (in den Argumenten) oder ein Satzende steht.</summary>
+/// <summary>Offene "[" vor ALast; -1, wenn vorher eine offene "(" (in den Argumenten) oder ein Satzende
+/// steht.</summary>
 function OpenBracketBefore(const ATokens: TArray<TPascalToken>; ALast: Integer): Integer;
 var
   mDepth: Integer;

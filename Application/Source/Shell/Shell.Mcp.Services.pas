@@ -322,7 +322,7 @@ begin
   // Anmeldung am Index-Cache für „Prozesse am Projekt“ (#62); der MCP-Modus läuft für Claude Code.
   mIdentity := Default(TIndexProcessInfo);
   mIdentity.Pid := TShellPlatform.CurrentProcessId;
-  mIdentity.Kind := TIndexProcessInfo.KindMcp;
+  mIdentity.Kind := TIndexProcessInfo.cKindMcp;
   mIdentity.Client := 'Claude Code';
   Result.Group.ProcessIdentity := mIdentity;
   Result.Tools := NewIndexTools(Result.Index, Result.Group.Main, ARoot);

@@ -54,9 +54,9 @@ const
 
 function Overlaps(const A, B: TTextRange): Boolean;
 
-  function Before(const X, Y: TTextPosition): Boolean;
+  function Before(const AX, AY: TTextPosition): Boolean;
   begin
-    Result := (X.Line < Y.Line) or ((X.Line = Y.Line) and (X.Character <= Y.Character));
+    Result := (AX.Line < AY.Line) or ((AX.Line = AY.Line) and (AX.Character <= AY.Character));
   end;
 
 begin
@@ -66,13 +66,13 @@ end;
 
 function FileEditsIndex(const AAction: TCodeAction; const AFileName: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(AAction.FileEdits) do
+  for mIndex := 0 to High(AAction.FileEdits) do
   begin
-    if SameText(AAction.FileEdits[Index].FileName, AFileName) then
+    if SameText(AAction.FileEdits[mIndex].FileName, AFileName) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -80,24 +80,24 @@ end;
 
 procedure AddFileEdits(var AAction: TCodeAction; const AFileName: string; const AEdits: TArray<TTextEdit>);
 var
-  Index: Integer;
-  Entry: TFileTextEdits;
+  mIndex: Integer;
+  mEntry: TFileTextEdits;
 begin
   if AFileName = '' then
   begin
     AAction.Edits := AAction.Edits + AEdits;
     Exit;
   end;
-  Index := FileEditsIndex(AAction, AFileName);
-  if Index < 0 then
+  mIndex := FileEditsIndex(AAction, AFileName);
+  if mIndex < 0 then
   begin
-    Entry.FileName := AFileName;
-    Entry.Edits := AEdits;
-    AAction.FileEdits := AAction.FileEdits + [Entry];
+    mEntry.FileName := AFileName;
+    mEntry.Edits := AEdits;
+    AAction.FileEdits := AAction.FileEdits + [mEntry];
   end
   else
   begin
-    AAction.FileEdits[Index].Edits := AAction.FileEdits[Index].Edits + AEdits;
+    AAction.FileEdits[mIndex].Edits := AAction.FileEdits[mIndex].Edits + AEdits;
   end;
 end;
 
@@ -105,12 +105,12 @@ end;
 /// weiterer Dateien (#1105).</summary>
 procedure AddFixEdits(var AAction: TCodeAction; const AFix: TRuleFix);
 var
-  Other: TRuleFileEdits;
+  mOther: TRuleFileEdits;
 begin
   AddFileEdits(AAction, AFix.FileName, AFix.Edits);
-  for Other in AFix.OtherFiles do
+  for mOther in AFix.OtherFiles do
   begin
-    AddFileEdits(AAction, Other.FileName, Other.Edits);
+    AddFileEdits(AAction, mOther.FileName, mOther.Edits);
   end;
 end;
 
@@ -120,16 +120,16 @@ function FixAction(const AFinding: TRuleFinding; const AFix: TRuleFix; AFirst: B
 begin
   Result := Default(TCodeAction);
   Result.Title := AFix.Title;
-  Result.Kind := QuickFixKind;
+  Result.Kind := cQuickFixKind;
   AddFixEdits(Result, AFix);
   // Sprung zu einer anderen Stelle der Datei (#915), z. B. zur Freigabe; mit Parameter-Hint (#1007).
   if AFix.HasJump and AFix.OpensSignature then
   begin
-    Result.Command := ShowSignatureHelpCommand;
+    Result.Command := cShowSignatureHelpCommand;
   end
   else if AFix.HasJump then
   begin
-    Result.Command := GoToPositionCommand;
+    Result.Command := cGoToPositionCommand;
   end;
   if AFix.HasJump then
   begin
@@ -138,7 +138,7 @@ begin
   // „Graph zeigen“ an einem Unit-Zyklus (#896): der Client öffnet die Unit-Beziehungen.
   if AFix.ShowsUnitRelations then
   begin
-    Result.Command := ShowUnitRelationsCommand;
+    Result.Command := cShowUnitRelationsCommand;
   end;
   Result.IsPreferred := AFirst and not AFix.Alternative;
   Result.RuleId := AFinding.RuleId;
@@ -146,7 +146,7 @@ begin
   // Fenster „Atlas-Prüfung“ und Befund-Hover suchen die Schnellkorrektur über das Tag (#909).
   if Result.IsPreferred then
   begin
-    Result.Tag := RuleFixTag;
+    Result.Tag := cRuleFixTag;
   end;
 end;
 
@@ -164,15 +164,15 @@ begin
   end;
   mAction := Default(TCodeAction);
   mAction.Title := cTexts[TCodeActionsText.SuppressLine].Fmt([AFinding.RuleId]);
-  mAction.Kind := QuickFixKind;
+  mAction.Kind := cQuickFixKind;
   mAction.Edits := [TCodeActions.SuppressLine(AText, AFinding.Range.StartPos.Line, AFinding.RuleId)];
   mAction.RuleId := AFinding.RuleId;
   mAction.DiagnosticRange := AFinding.Range;
-  mAction.Tag := RuleSuppressLineTag;
+  mAction.Tag := cRuleSuppressLineTag;
   Result := Result + [mAction];
   mAction.Title := cTexts[TCodeActionsText.SuppressFile].Fmt([AFinding.RuleId]);
   mAction.Edits := [TCodeActions.SuppressFile(AText, AFinding.RuleId)];
-  mAction.Tag := RuleSuppressFileTag;
+  mAction.Tag := cRuleSuppressFileTag;
   Result := Result + [mAction];
 end;
 
@@ -258,7 +258,7 @@ var
 begin
   AAction := Default(TCodeAction);
   AAction.Title := cTexts[TCodeActionsText.ApplyAllSafe].Text;
-  AAction.Kind := FixAllKind;
+  AAction.Kind := cFixAllKind;
   for mFinding in AFindings do
   begin
     // Eine Korrektur ganz oder gar nicht; die übersprungene kommt beim nächsten Lauf.
@@ -273,24 +273,24 @@ end;
 class function TRuleCodeActions.ForRange(const AFindings: TArray<TRuleFinding>; const AText: string;
   const ARange: TTextRange): TArray<TCodeAction>;
 var
-  Action: TCodeAction;
+  mAction: TCodeAction;
 begin
   Result := ForFindings(AFindings, AText, ARange);
-  if TCodeActions.TryFinally(AText, ARange.StartPos.Line, Action) then
+  if TCodeActions.TryFinally(AText, ARange.StartPos.Line, mAction) then
   begin
-    Result := Result + [Action];
+    Result := Result + [mAction];
   end;
 end;
 
 class function TRuleCodeActions.ForRange(const AFindings: TArray<TRuleFinding>; const AText: string;
   ATree: TSyntaxTree; const ARange: TTextRange; const AStyle: TFormatStyle): TArray<TCodeAction>;
 var
-  Action: TCodeAction;
+  mAction: TCodeAction;
 begin
   Result := ForFindings(AFindings, AText, ARange);
-  if TCodeActions.TryFinally(AText, ATree, ARange, AStyle, Action) then
+  if TCodeActions.TryFinally(AText, ATree, ARange, AStyle, mAction) then
   begin
-    Result := Result + [Action];
+    Result := Result + [mAction];
   end;
 end;
 

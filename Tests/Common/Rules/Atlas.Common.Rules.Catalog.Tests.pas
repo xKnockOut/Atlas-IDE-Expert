@@ -195,7 +195,7 @@ begin
       Assert.AreEqual(Ord(Rule.Descriptor.DefaultSeverity), Ord(Entry.DefaultSeverity), Rule.Descriptor.Id);
     end;
     Assert.IsTrue(Catalog.TryFind(TFileChecker.SyntaxDescriptor.Id, Entry));
-    Assert.IsTrue(Catalog.TryFind(UnusedSuppressionRuleId, Entry));
+    Assert.IsTrue(Catalog.TryFind(cUnusedSuppressionRuleId, Entry));
   finally
     Catalog.Free;
   end;

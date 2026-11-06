@@ -117,7 +117,7 @@ type
 
 const
   /// <summary>Höchste Verschachtelungstiefe; schützt vor Stapelüberlauf bei kaputtem Code.</summary>
-  MaxNesting = 256;
+  cMaxNesting = 256;
 
 function SameWord(const A, B: string): Boolean; inline;
 function InWords(const AText: string; const AWords: array of string): Boolean;
@@ -173,11 +173,11 @@ end;
 
 function InWords(const AText: string; const AWords: array of string): Boolean;
 var
-  Word: string;
+  mWord: string;
 begin
-  for Word in AWords do
+  for mWord in AWords do
   begin
-    if SameText(AText, Word) then
+    if SameText(AText, mWord) then
     begin
       Exit(True);
     end;
@@ -192,11 +192,11 @@ end;
 
 function InRanges(const APos: TTextPosition; const ARanges: TArray<TTextRange>): Boolean;
 var
-  Range: TTextRange;
+  mRange: TTextRange;
 begin
-  for Range in ARanges do
+  for mRange in ARanges do
   begin
-    if not Before(APos, Range.StartPos) and Before(APos, Range.EndPos) then
+    if not Before(APos, mRange.StartPos) and Before(APos, mRange.EndPos) then
     begin
       Exit(True);
     end;
@@ -206,9 +206,9 @@ end;
 
 function IncludeAsValue(const APrevious: TPascalToken): Boolean;
 const
-  ValueStarts: array[0..8] of string = ('=', ':=', '(', ',', '[', '+', '-', '*', '/');
+  cValueStarts: array[0..8] of string = ('=', ':=', '(', ',', '[', '+', '-', '*', '/');
 begin
-  Result := (APrevious.Kind = TPascalTokenKind.Symbol) and InWords(APrevious.Text, ValueStarts);
+  Result := (APrevious.Kind = TPascalTokenKind.Symbol) and InWords(APrevious.Text, cValueStarts);
 end;
 
 /// <summary>Gehört AToken in die Token des Parsers? Nicht in übersprungenen Bereichen, ohne Kommentare und
@@ -251,7 +251,7 @@ end;
 constructor TParserCursor.Create(const AText: string; const ACancellation: IPascalCancellation;
   const ASkip: TArray<TTextRange>);
 var
-  Token: TPascalToken;
+  mToken: TPascalToken;
   mSignificant: TList<TPascalToken>;
 begin
   inherited Create;
@@ -261,11 +261,11 @@ begin
   FAllTokens := TPascalLexer.Tokenize(AText);
   mSignificant := TList<TPascalToken>.Create;
   try
-    for Token in FAllTokens do
+    for mToken in FAllTokens do
     begin
-      if KeepToken(Token, ASkip, mSignificant) then
+      if KeepToken(mToken, ASkip, mSignificant) then
       begin
-        mSignificant.Add(Token);
+        mSignificant.Add(mToken);
       end;
     end;
     FTokens := mSignificant.ToArray;
@@ -392,62 +392,62 @@ end;
 
 procedure TParserCursor.FinishNode(ANode: TSyntaxNode; AStartIndex: Integer);
 var
-  First: TPascalToken;
-  Last: TPascalToken;
+  mFirst: TPascalToken;
+  mLast: TPascalToken;
 begin
   if FIndex > AStartIndex then
   begin
-    First := FTokens[AStartIndex];
-    Last := FTokens[FIndex - 1];
-    ANode.SetRange(First.StartPos, Last.EndPos, First.Offset, Last.Offset + Length(Last.Text));
+    mFirst := FTokens[AStartIndex];
+    mLast := FTokens[FIndex - 1];
+    ANode.SetRange(mFirst.StartPos, mLast.EndPos, mFirst.Offset, mLast.Offset + Length(mLast.Text));
   end
   else
   begin
     // Leerer Knoten, z. B. bei fehlendem Ausdruck: Position des nächsten Tokens.
-    First := Current;
-    ANode.SetRange(First.StartPos, First.StartPos, First.Offset, First.Offset);
+    mFirst := Current;
+    ANode.SetRange(mFirst.StartPos, mFirst.StartPos, mFirst.Offset, mFirst.Offset);
   end;
 end;
 
 function TParserCursor.Leaf(AKind: TSyntaxKind; const AName: string): TSyntaxNode;
 var
-  Start: Integer;
+  mStart: Integer;
 begin
-  Start := NodeStart;
+  mStart := NodeStart;
   Result := StartNode(AKind);
   Result.Name := AName;
   Advance;
-  FinishNode(Result, Start);
+  FinishNode(Result, mStart);
 end;
 
 function TParserCursor.IsControlChar: Boolean;
 var
-  Next: TPascalToken;
+  mNext: TPascalToken;
 begin
   Result := IsSym('^');
   if not Result then
   begin
     Exit;
   end;
-  Next := PeekToken(1);
+  mNext := PeekToken(1);
   // Ohne Leerraum dahinter; als Typ (^TFoo) kommt der Parser nicht hierher, P^ ist nachgestellt.
-  Result := (Next.Offset = Current.Offset + 1) and (Length(Next.Text) = 1) and
-    (Next.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Symbol, TPascalTokenKind.Unknown]);
+  Result := (mNext.Offset = Current.Offset + 1) and (Length(mNext.Text) = 1) and
+    (mNext.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Symbol, TPascalTokenKind.Unknown]);
 end;
 
 procedure TParserCursor.SplitGreaterEqual;
 var
-  Equal: TPascalToken;
+  mEqual: TPascalToken;
 begin
   // Der Lexer liest in IBaz<string>=nil ">=" als ein Token; hinter generischen Argumenten sind es ">" und "="
   // (#1142).
-  Equal := FTokens[FIndex];
+  mEqual := FTokens[FIndex];
   FTokens[FIndex].Text := '>';
-  FTokens[FIndex].EndPos := TTextPosition.Create(Equal.StartPos.Line, Equal.StartPos.Character + 1);
-  Equal.Text := '=';
-  Inc(Equal.Offset);
-  Equal.StartPos := FTokens[FIndex].EndPos;
-  Insert(Equal, FTokens, FIndex + 1);
+  FTokens[FIndex].EndPos := TTextPosition.Create(mEqual.StartPos.Line, mEqual.StartPos.Character + 1);
+  mEqual.Text := '=';
+  Inc(mEqual.Offset);
+  mEqual.StartPos := FTokens[FIndex].EndPos;
+  Insert(mEqual, FTokens, FIndex + 1);
 end;
 
 { TParserBase }
@@ -612,30 +612,30 @@ end;
 
 procedure TParserBase.DiagnoseMissingSemicolon(AStatement: Boolean);
 var
-  Previous: TPascalToken;
-  Code: string;
+  mPrevious: TPascalToken;
+  mCode: string;
 begin
   // Folgefehler: An dieser Stelle wurde schon etwas gemeldet.
   if (FDiagnostics.Count > 0) and (FDiagnostics.Last.StartPos = Current.StartPos) then
   begin
     Exit;
   end;
-  Previous := PeekToken(-1);
+  mPrevious := PeekToken(-1);
   // Am Zeilenende dort melden, wo es fehlt, nicht erst in der nächsten Zeile.
-  Code := 'E2029';
+  mCode := 'E2029';
   if AStatement then
   begin
-    Code := 'E2066';
+    mCode := 'E2066';
   end;
-  if (FIndex > 0) and (AtEnd or (Current.StartPos.Line > Previous.EndPos.Line)) then
+  if (FIndex > 0) and (AtEnd or (Current.StartPos.Line > mPrevious.EndPos.Line)) then
   begin
-    DiagnoseCode(Code, cTexts[TCursorText.Missing].Text, Previous.EndPos, Previous.EndPos,
-      TParserFix.Create(cTexts[TCursorText.Add].Text, Previous.EndPos, Previous.EndPos, ';', False));
+    DiagnoseCode(mCode, cTexts[TCursorText.Missing].Text, mPrevious.EndPos, mPrevious.EndPos,
+      TParserFix.Create(cTexts[TCursorText.Add].Text, mPrevious.EndPos, mPrevious.EndPos, ';', False));
   end
   else if AStatement then
   begin
     // B := 1 2; – es fehlt ein Operator oder das Semikolon.
-    DiagnoseCode(Code, cTexts[TCursorText.OperatorOrMissing].Text, Current.StartPos, Current.EndPos);
+    DiagnoseCode(mCode, cTexts[TCursorText.OperatorOrMissing].Text, Current.StartPos, Current.EndPos);
   end
   else
   begin
@@ -664,13 +664,13 @@ end;
 
 procedure TParserBase.DiagnoseAt(const AMessage: string; const AStartPos, AEndPos: TTextPosition);
 var
-  Diagnostic: TSyntaxDiagnostic;
+  mDiagnostic: TSyntaxDiagnostic;
 begin
-  Diagnostic := Default(TSyntaxDiagnostic);
-  Diagnostic.Message := AMessage;
-  Diagnostic.StartPos := AStartPos;
-  Diagnostic.EndPos := AEndPos;
-  AddDiagnostic(Diagnostic);
+  mDiagnostic := Default(TSyntaxDiagnostic);
+  mDiagnostic.Message := AMessage;
+  mDiagnostic.StartPos := AStartPos;
+  mDiagnostic.EndPos := AEndPos;
+  AddDiagnostic(mDiagnostic);
 end;
 
 procedure TParserBase.AddDiagnostic(const ADiagnostic: TSyntaxDiagnostic);
@@ -691,17 +691,17 @@ end;
 procedure TParserBase.DiagnoseCode(const ACode, AMessage: string; const AStartPos, AEndPos: TTextPosition;
   const AFix: TParserFix);
 var
-  Diagnostic: TSyntaxDiagnostic;
+  mDiagnostic: TSyntaxDiagnostic;
 begin
-  Diagnostic := Default(TSyntaxDiagnostic);
-  Diagnostic.Message := AMessage + cTexts[TCursorText.Like].Fmt([ACode]);
-  Diagnostic.StartPos := AStartPos;
-  Diagnostic.EndPos := AEndPos;
-  Diagnostic.Code := ACode;
-  Diagnostic.FixTitle := AFix.Title;
-  Diagnostic.FixEdits := AFix.Edits;
-  Diagnostic.FixSafe := AFix.Safe;
-  AddDiagnostic(Diagnostic);
+  mDiagnostic := Default(TSyntaxDiagnostic);
+  mDiagnostic.Message := AMessage + cTexts[TCursorText.Like].Fmt([ACode]);
+  mDiagnostic.StartPos := AStartPos;
+  mDiagnostic.EndPos := AEndPos;
+  mDiagnostic.Code := ACode;
+  mDiagnostic.FixTitle := AFix.Title;
+  mDiagnostic.FixEdits := AFix.Edits;
+  mDiagnostic.FixSafe := AFix.Safe;
+  AddDiagnostic(mDiagnostic);
 end;
 
 procedure TParserBase.DiagnoseUnexpected(const AExpected: string);
@@ -711,17 +711,17 @@ end;
 
 procedure TParserBase.DiagnoseUnexpected(const ACode, AExpected: string);
 var
-  Expected: string;
+  mExpected: string;
 begin
   // Wie der Compiler: '%s' erwartet, aber '%s' gefunden.
-  Expected := StringReplace(AExpected, '"', '''', [rfReplaceAll]);
+  mExpected := StringReplace(AExpected, '"', '''', [rfReplaceAll]);
   if AtEnd then
   begin
-    DiagnoseCode(ACode, Expected + cTexts[TCursorText.ExpectedButEndOfFile].Text, Current.StartPos, Current.EndPos);
+    DiagnoseCode(ACode, mExpected + cTexts[TCursorText.ExpectedButEndOfFile].Text, Current.StartPos, Current.EndPos);
   end
   else
   begin
-    DiagnoseCode(ACode, cTexts[TCursorText.ExpectedButFound].Fmt([Expected, Current.Text]), Current.StartPos,
+    DiagnoseCode(ACode, cTexts[TCursorText.ExpectedButFound].Fmt([mExpected, Current.Text]), Current.StartPos,
       Current.EndPos);
   end;
 end;
@@ -741,16 +741,16 @@ end;
 
 procedure TParserBase.SkipError(AParent: TSyntaxNode; ARecovery: TRecovery);
 var
-  Start: Integer;
-  Node: TSyntaxNode;
+  mStart: Integer;
+  mNode: TSyntaxNode;
 begin
   // Mindestens ein Token überspringen, damit der Aufrufer weiterkommt.
   if AtEnd then
   begin
     Exit;
   end;
-  Start := NodeStart;
-  Node := StartNode(TSyntaxKind.Error);
+  mStart := NodeStart;
+  mNode := StartNode(TSyntaxKind.Error);
   case ARecovery of
     TRecovery.Declarations:
       DiagnoseUnexpected('Deklaration');
@@ -762,8 +762,8 @@ begin
   repeat
     Advance;
   until AtEnd or IsRecoveryPoint(ARecovery);
-  FinishNode(Node, Start);
-  AParent.Add(Node);
+  FinishNode(mNode, mStart);
+  AParent.Add(mNode);
 end;
 
 function TParserBase.ParseQualifiedName: string;
@@ -807,7 +807,7 @@ end;
 
 function TParserBase.EnterNesting: Boolean;
 begin
-  Result := FDepth < MaxNesting;
+  Result := FDepth < cMaxNesting;
   if Result then
   begin
     Inc(FDepth);
@@ -816,14 +816,14 @@ end;
 
 function TParserBase.TooDeep: TSyntaxNode;
 var
-  Start: Integer;
+  mStart: Integer;
 begin
   // Schutz vor Stapelüberlauf: Der Rest der Datei wird nicht mehr ausgewertet.
-  Diagnose(cTexts[TCursorText.NestedTooDeeplyMoreThan].Fmt([MaxNesting]));
-  Start := NodeStart;
+  Diagnose(cTexts[TCursorText.NestedTooDeeplyMoreThan].Fmt([cMaxNesting]));
+  mStart := NodeStart;
   Result := StartNode(TSyntaxKind.Error);
   FIndex := Length(FTokens);
-  FinishNode(Result, Start);
+  FinishNode(Result, mStart);
 end;
 
 initialization

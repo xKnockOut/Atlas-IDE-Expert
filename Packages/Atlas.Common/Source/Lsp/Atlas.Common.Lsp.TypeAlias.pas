@@ -44,13 +44,13 @@ type
 
   TLspTypeAlias = class
   public const
-    ClientCommand = 'atlas.typeAlias';
-    ApplyCommand = 'atlas.server.typeAlias';
-    InlineClientCommand = 'atlas.inlineTypeAlias';
-    InlineApplyCommand = 'atlas.server.inlineTypeAlias';
-    IntroduceKind = 'refactor.extract';
-    InlineKind = 'refactor.inline';
-    AnnotationId = 'typeAlias';
+    cClientCommand = 'atlas.typeAlias';
+    cApplyCommand = 'atlas.server.typeAlias';
+    cInlineClientCommand = 'atlas.inlineTypeAlias';
+    cInlineApplyCommand = 'atlas.server.inlineTypeAlias';
+    cIntroduceKind = 'refactor.extract';
+    cInlineKind = 'refactor.inline';
+    cAnnotationId = 'typeAlias';
   public
     /// <summary>Schlüssel, vergebene Namen und Units über AResolver; der Baum dient als Rückfall.</summary>
     class function Lookup(AResolver: TNameResolver): TTypeAliasLookup; static;
@@ -100,11 +100,11 @@ const
 
 const
   /// <summary>Längere Ausdrücke kürzt der Titel der Aktion.</summary>
-  TitleLength = 40;
+  cTitleLength = 40;
 
 function Fail(const AMessage: string): EJsonRpcError;
 begin
-  Result := EJsonRpcError.Create(TLspErrorCode.RequestFailed, AMessage);
+  Result := EJsonRpcError.Create(TLspErrorCode.cRequestFailed, AMessage);
 end;
 
 function NameParts(ANode: TSyntaxNode): TArray<string>;
@@ -190,15 +190,15 @@ end;
 function Shortened(const AText: string): string;
 begin
   Result := StringReplace(StringReplace(AText, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]);
-  if Length(Result) > TitleLength then
+  if Length(Result) > cTitleLength then
   begin
-    Result := Copy(Result, 1, TitleLength - 1) + '…';
+    Result := Copy(Result, 1, cTitleLength - 1) + '…';
   end;
 end;
 
 function NewAction(const ATitle, AKind: string; AArguments: TJSONArray; const ACommand: string): TJSONObject;
 var
-  Command: TJSONObject;
+  mCommand: TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('title', ATitle);
@@ -207,25 +207,25 @@ begin
   begin
     Exit;
   end;
-  Command := TJSONObject.Create;
-  Command.AddPair('title', ATitle);
-  Command.AddPair('command', ACommand);
-  Command.AddPair('arguments', AArguments);
-  Result.AddPair('command', Command);
+  mCommand := TJSONObject.Create;
+  mCommand.AddPair('title', ATitle);
+  mCommand.AddPair('command', ACommand);
+  mCommand.AddPair('arguments', AArguments);
+  Result.AddPair('command', mCommand);
 end;
 
 function IntroduceAction(const ATitle, AUri: string; const ATarget: TTypeAliasTarget;
   AScope: TTypeAliasScope): TJSONObject;
 var
-  Arguments: TJSONArray;
+  mArguments: TJSONArray;
 begin
-  Arguments := TJSONArray.Create;
-  Arguments.Add(AUri);
-  Arguments.AddElement(TLspPositions.PositionToJson(ATarget.Range.StartPos));
-  Arguments.Add(ATarget.Suggestion);
-  Arguments.Add(TTypeAlias.ScopeName(AScope));
-  Result := NewAction(Format(ATitle, [Shortened(ATarget.TypeText)]), TLspTypeAlias.IntroduceKind, Arguments,
-    TLspTypeAlias.ClientCommand);
+  mArguments := TJSONArray.Create;
+  mArguments.Add(AUri);
+  mArguments.AddElement(TLspPositions.PositionToJson(ATarget.Range.StartPos));
+  mArguments.Add(ATarget.Suggestion);
+  mArguments.Add(TTypeAlias.ScopeName(AScope));
+  Result := NewAction(Format(ATitle, [Shortened(ATarget.TypeText)]), TLspTypeAlias.cIntroduceKind, mArguments,
+    TLspTypeAlias.cClientCommand);
 end;
 
 function ScopeTitle(AScope: TTypeAliasScope): string;
@@ -243,103 +243,103 @@ end;
 class function TLspTypeAlias.Actions(ATree: TSyntaxTree; const AText, AUri: string; const APosition: TTextPosition;
   ADefaultScope: TTypeAliasScope; const ALookup: TTypeAliasLookup): TArray<TJSONObject>;
 var
-  Targets: TArray<TTypeAliasTarget>;
-  Index: Integer;
-  Scope: TTypeAliasScope;
-  Action: TJSONObject;
-  Inline_: TInlineAliasTarget;
-  Reason: string;
-  Arguments: TJSONArray;
+  mTargets: TArray<TTypeAliasTarget>;
+  mIndex: Integer;
+  mScope: TTypeAliasScope;
+  mAction: TJSONObject;
+  mInline_: TInlineAliasTarget;
+  mReason: string;
+  mArguments: TJSONArray;
 begin
   Result := nil;
-  Targets := TTypeAlias.Targets(AText, ATree, TDocumentUris.ToPath(AUri), APosition, ALookup);
-  for Index := 0 to High(Targets) do
+  mTargets := TTypeAlias.Targets(AText, ATree, TDocumentUris.ToPath(AUri), APosition, ALookup);
+  for mIndex := 0 to High(mTargets) do
   begin
-    if Targets[Index].OpenParams <> '' then
+    if mTargets[mIndex].OpenParams <> '' then
     begin
-      Action := NewAction(Format(TTypeAlias.IntroduceTitle, [Shortened(Targets[Index].TypeText)]), IntroduceKind,
+      mAction := NewAction(Format(TTypeAlias.IntroduceTitle, [Shortened(mTargets[mIndex].TypeText)]), cIntroduceKind,
         nil, '');
-      Action.AddPair('disabled', TJSONObject.Create(TJSONPair.Create('reason',
-        Format(TTypeAlias.OpenParamsReason, [Targets[Index].OpenParams]))));
-      Result := Result + [Action];
+      mAction.AddPair('disabled', TJSONObject.Create(TJSONPair.Create('reason',
+        Format(TTypeAlias.OpenParamsReason, [mTargets[mIndex].OpenParams]))));
+      Result := Result + [mAction];
       Continue;
     end;
-    Result := Result + [IntroduceAction(TTypeAlias.IntroduceTitle, AUri, Targets[Index], ADefaultScope)];
+    Result := Result + [IntroduceAction(TTypeAlias.IntroduceTitle, AUri, mTargets[mIndex], ADefaultScope)];
     // Die übrigen Reichweiten nur für den äußeren Ausdruck, sonst wird die Liste lang.
-    if Index = 0 then
+    if mIndex = 0 then
     begin
-      for Scope := Low(TTypeAliasScope) to High(TTypeAliasScope) do
+      for mScope := Low(TTypeAliasScope) to High(TTypeAliasScope) do
       begin
-        if Scope <> ADefaultScope then
+        if mScope <> ADefaultScope then
         begin
-          Result := Result + [IntroduceAction(ScopeTitle(Scope), AUri, Targets[Index], Scope)];
+          Result := Result + [IntroduceAction(ScopeTitle(mScope), AUri, mTargets[mIndex], mScope)];
         end;
       end;
     end;
   end;
-  if TTypeAlias.InlineTarget(AText, ATree, APosition, Inline_, Reason) then
+  if TTypeAlias.InlineTarget(AText, ATree, APosition, mInline_, mReason) then
   begin
-    Arguments := TJSONArray.Create;
-    Arguments.Add(AUri);
-    Arguments.AddElement(TLspPositions.PositionToJson(Inline_.NamePosition));
-    Result := Result + [NewAction(Format(TTypeAlias.InlineTitle, [Inline_.Name]), InlineKind, Arguments,
-      InlineClientCommand)];
+    mArguments := TJSONArray.Create;
+    mArguments.Add(AUri);
+    mArguments.AddElement(TLspPositions.PositionToJson(mInline_.NamePosition));
+    Result := Result + [NewAction(Format(TTypeAlias.InlineTitle, [mInline_.Name]), cInlineKind, mArguments,
+      cInlineClientCommand)];
   end;
 end;
 
 function EditsJson(const AUri: string; const AEdits: TArray<TTextEdit>): TJSONObject;
 var
-  Document, Item: TJSONObject;
-  Items: TJSONArray;
-  Edit: TTextEdit;
+  mDocument, mItem: TJSONObject;
+  mItems: TJSONArray;
+  mEdit: TTextEdit;
 begin
-  Document := TJSONObject.Create;
-  Document.AddPair('uri', AUri);
-  Document.AddPair('version', TJSONNull.Create);
-  Items := TJSONArray.Create;
-  for Edit in AEdits do
+  mDocument := TJSONObject.Create;
+  mDocument.AddPair('uri', AUri);
+  mDocument.AddPair('version', TJSONNull.Create);
+  mItems := TJSONArray.Create;
+  for mEdit in AEdits do
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
-    Item.AddPair('newText', Edit.NewText);
-    Item.AddPair('annotationId', TLspTypeAlias.AnnotationId);
-    Items.AddElement(Item);
+    mItem := TJSONObject.Create;
+    mItem.AddPair('range', TLspPositions.RangeToJson(mEdit.Range));
+    mItem.AddPair('newText', mEdit.NewText);
+    mItem.AddPair('annotationId', TLspTypeAlias.cAnnotationId);
+    mItems.AddElement(mItem);
   end;
   Result := TJSONObject.Create;
-  Result.AddPair('textDocument', Document);
-  Result.AddPair('edits', Items);
+  Result.AddPair('textDocument', mDocument);
+  Result.AddPair('edits', mItems);
 end;
 
 function AnswerJson(const AResult: TTypeAliasResult; const ALabel: string): TJSONObject;
 var
-  Item: TTypeAliasFileEdits;
-  Changes, Warnings: TJSONArray;
-  Edit, Annotation, Annotations: TJSONObject;
-  Warning: string;
+  mItem: TTypeAliasFileEdits;
+  mChanges, mWarnings: TJSONArray;
+  mEdit, mAnnotation, mAnnotations: TJSONObject;
+  mWarning: string;
 begin
-  Changes := TJSONArray.Create;
-  for Item in AResult.Files do
+  mChanges := TJSONArray.Create;
+  for mItem in AResult.Files do
   begin
-    Changes.AddElement(EditsJson(TDocumentUris.FromPath(Item.FileName), Item.Edits));
+    mChanges.AddElement(EditsJson(TDocumentUris.FromPath(mItem.FileName), mItem.Edits));
   end;
-  Annotation := TJSONObject.Create;
-  Annotation.AddPair('label', ALabel);
-  Annotation.AddPair('needsConfirmation', TJSONBool.Create(True));
-  Annotation.AddPair('description', cTexts[TLspTypeAliasText.PlacesInFiles].Fmt([AResult.Places,
+  mAnnotation := TJSONObject.Create;
+  mAnnotation.AddPair('label', ALabel);
+  mAnnotation.AddPair('needsConfirmation', TJSONBool.Create(True));
+  mAnnotation.AddPair('description', cTexts[TLspTypeAliasText.PlacesInFiles].Fmt([AResult.Places,
     Length(AResult.Files)]));
-  Annotations := TJSONObject.Create;
-  Annotations.AddPair(TLspTypeAlias.AnnotationId, Annotation);
-  Edit := TJSONObject.Create;
-  Edit.AddPair('documentChanges', Changes);
-  Edit.AddPair('changeAnnotations', Annotations);
-  Warnings := TJSONArray.Create;
-  for Warning in AResult.Warnings do
+  mAnnotations := TJSONObject.Create;
+  mAnnotations.AddPair(TLspTypeAlias.cAnnotationId, mAnnotation);
+  mEdit := TJSONObject.Create;
+  mEdit.AddPair('documentChanges', mChanges);
+  mEdit.AddPair('changeAnnotations', mAnnotations);
+  mWarnings := TJSONArray.Create;
+  for mWarning in AResult.Warnings do
   begin
-    Warnings.Add(Warning);
+    mWarnings.Add(mWarning);
   end;
   Result := TJSONObject.Create;
-  Result.AddPair('edit', Edit);
-  Result.AddPair('warnings', Warnings);
+  Result.AddPair('edit', mEdit);
+  Result.AddPair('warnings', mWarnings);
   Result.AddPair('places', TJSONNumber.Create(AResult.Places));
   Result.AddPair('files', TJSONNumber.Create(Length(AResult.Files)));
   Result.AddPair('preview', AResult.Preview);
@@ -362,12 +362,12 @@ end;
 
 function SourcesOf(const AFiles: TArray<TAliasFile>): TArray<TTypeAliasSource>;
 var
-  AliasFile: TAliasFile;
+  mAliasFile: TAliasFile;
 begin
   Result := nil;
-  for AliasFile in AFiles do
+  for mAliasFile in AFiles do
   begin
-    Result := Result + [AliasFile.Source];
+    Result := Result + [mAliasFile.Source];
   end;
 end;
 
@@ -380,32 +380,32 @@ end;
 
 function ReadFile(const AFileName: string; const AContext: TTypeAliasContext): TAliasFile;
 var
-  Text: string;
+  mText: string;
 begin
-  if not Assigned(AContext.ReadText) or not AContext.ReadText(AFileName, Text) then
+  if not Assigned(AContext.ReadText) or not AContext.ReadText(AFileName, mText) then
   begin
     raise Fail(cTexts[TLspTypeAliasText.CannotBeRead].Fmt([ExtractFileName(AFileName)]));
   end;
-  Result := FileOf(AFileName, Text);
+  Result := FileOf(AFileName, mText);
 end;
 
 procedure PinAll(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   const AFiles: TArray<TAliasFile>);
 var
-  AliasFile: TAliasFile;
+  mAliasFile: TAliasFile;
 begin
   AResolver.PinTree(ATree, AFileName);
-  for AliasFile in AFiles do
+  for mAliasFile in AFiles do
   begin
-    AResolver.PinTree(AliasFile.Source.Tree, AliasFile.Source.FileName);
+    AResolver.PinTree(mAliasFile.Source.Tree, mAliasFile.Source.FileName);
   end;
 end;
 
 procedure UnpinAll(AResolver: TNameResolver; const AFiles: TArray<TAliasFile>);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to Length(AFiles) do
+  for mIndex := 0 to Length(AFiles) do
   begin
     AResolver.UnpinTree;
   end;
@@ -413,11 +413,11 @@ end;
 
 procedure FreeAll(const AFiles: TArray<TAliasFile>);
 var
-  AliasFile: TAliasFile;
+  mAliasFile: TAliasFile;
 begin
-  for AliasFile in AFiles do
+  for mAliasFile in AFiles do
   begin
-    AliasFile.Free;
+    mAliasFile.Free;
   end;
 end;
 
@@ -459,7 +459,7 @@ var
 begin
   if not TTypeAlias.ScopeOf(AContext.Scope, mScope) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TLspTypeAliasText.UnknownScope].Fmt([
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TLspTypeAliasText.UnknownScope].Fmt([
       AContext.Scope]));
   end;
   mFiles := nil;

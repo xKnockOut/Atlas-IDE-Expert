@@ -185,7 +185,7 @@ begin
   Assert.AreEqual(1, Actions[0].Edits[0].Range.EndPos.Line);
   Actions := LiteralActions('  S := ''a'' + sLineBreak + ''b'';', TTextRange.Create(0, 9, 0, 9));
   Assert.AreEqual(1, Integer(Length(Actions)));
-  Assert.AreEqual(CopyTextCommand, Actions[0].Command);
+  Assert.AreEqual(cCopyTextCommand, Actions[0].Command);
   Assert.AreEqual('a'#13#10'b', Actions[0].CommandArguments[0]);
   // Ohne Markierung und ohne Literal keine Aktion.
   Assert.AreEqual(0, Integer(Length(LiteralActions('  Save;', TTextRange.Create(0, 2, 0, 2)))));

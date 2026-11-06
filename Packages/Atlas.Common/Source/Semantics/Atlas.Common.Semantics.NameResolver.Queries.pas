@@ -347,7 +347,8 @@ begin
     // Eigener Typ aus dem aktuellen Stand der Datei: jede Sichtbarkeit.
     for mSymbol in AFromUnit.Symbols do
     begin
-      if SameText(mSymbol.Container, ATypeName) and (mSymbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Method]) then
+      if SameText(mSymbol.Container, ATypeName) and
+        (mSymbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Method]) then
       begin
         AddUnseen(mSeen, mList, TResolvedSymbol.FromIndex(AFromUnit, mSymbol));
       end;

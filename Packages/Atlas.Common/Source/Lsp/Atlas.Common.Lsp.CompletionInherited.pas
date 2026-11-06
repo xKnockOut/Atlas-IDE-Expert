@@ -62,7 +62,7 @@ type
 
   TCompletionInherited = class
   public const
-    MatchNames: array[TInheritedMatch] of string = ('same', 'overload', 'other');
+    cMatchNames: array[TInheritedMatch] of string = ('same', 'overload', 'other');
   public
     /// <summary>Aufrufe für ACurrent aus den Vorfahrmethoden AMethods (nächster Vorfahr zuerst), sortiert:
     /// gleiche Parameter, Überladungen, übrige Konstruktoren bzw. Destruktoren. AAbstract: ausgelassene
@@ -86,48 +86,48 @@ uses
 
 function SplitTopLevel(const AText: string; ADelimiter: Char): TArray<string>;
 var
-  Index, Depth, Start: Integer;
+  mIndex, mDepth, mStart: Integer;
 begin
   Result := nil;
-  Depth := 0;
-  Start := 1;
-  for Index := 1 to Length(AText) do
+  mDepth := 0;
+  mStart := 1;
+  for mIndex := 1 to Length(AText) do
   begin
-    if CharInSet(AText[Index], ['(', '[', '<']) then
+    if CharInSet(AText[mIndex], ['(', '[', '<']) then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if CharInSet(AText[Index], [')', ']', '>']) then
+    else if CharInSet(AText[mIndex], [')', ']', '>']) then
     begin
-      Dec(Depth);
+      Dec(mDepth);
     end
-    else if (AText[Index] = ADelimiter) and (Depth <= 0) then
+    else if (AText[mIndex] = ADelimiter) and (mDepth <= 0) then
     begin
-      Result := Result + [Copy(AText, Start, Index - Start)];
-      Start := Index + 1;
+      Result := Result + [Copy(AText, mStart, mIndex - mStart)];
+      mStart := mIndex + 1;
     end;
   end;
-  Result := Result + [Copy(AText, Start, MaxInt)];
+  Result := Result + [Copy(AText, mStart, MaxInt)];
 end;
 
 /// <summary>Stelle der schließenden Klammer zur öffnenden bei AOpen; 0 ohne.</summary>
 function MatchingParen(const AText: string; AOpen: Integer): Integer;
 var
-  Index, Depth: Integer;
+  mIndex, mDepth: Integer;
 begin
-  Depth := 0;
-  for Index := AOpen to Length(AText) do
+  mDepth := 0;
+  for mIndex := AOpen to Length(AText) do
   begin
-    if AText[Index] = '(' then
+    if AText[mIndex] = '(' then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if AText[Index] = ')' then
+    else if AText[mIndex] = ')' then
     begin
-      Dec(Depth);
-      if Depth = 0 then
+      Dec(mDepth);
+      if mDepth = 0 then
       begin
-        Exit(Index);
+        Exit(mIndex);
       end;
     end;
   end;
@@ -136,14 +136,14 @@ end;
 
 function StripModifier(const AText: string): string;
 var
-  Modifier: string;
+  mModifier: string;
 begin
   Result := Trim(AText);
-  for Modifier in ['constref ', 'const ', 'var ', 'out '] do
+  for mModifier in ['constref ', 'const ', 'var ', 'out '] do
   begin
-    if StartsText(Modifier, Result) then
+    if StartsText(mModifier, Result) then
     begin
-      Exit(Trim(Copy(Result, Length(Modifier) + 1, MaxInt)));
+      Exit(Trim(Copy(Result, Length(mModifier) + 1, MaxInt)));
     end;
   end;
 end;
@@ -305,16 +305,16 @@ end;
 
 function TInheritedHeader.SameParams(const AOther: TInheritedHeader): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := Length(Params) = Length(AOther.Params);
   if not Result then
   begin
     Exit;
   end;
-  for Index := 0 to High(Params) do
+  for mIndex := 0 to High(Params) do
   begin
-    if not SameText(Params[Index].TypeName, AOther.Params[Index].TypeName) then
+    if not SameText(Params[mIndex].TypeName, AOther.Params[mIndex].TypeName) then
     begin
       Exit(False);
     end;
@@ -405,12 +405,12 @@ end;
 
 function KeyOf(const AHeader: TInheritedHeader): string;
 var
-  Param: TInheritedParam;
+  mParam: TInheritedParam;
 begin
   Result := UpperCase(AHeader.Name) + '(';
-  for Param in AHeader.Params do
+  for mParam in AHeader.Params do
   begin
-    Result := Result + UpperCase(Param.TypeName) + ';';
+    Result := Result + UpperCase(mParam.TypeName) + ';';
   end;
 end;
 
@@ -508,29 +508,29 @@ end;
 class function TCompletionInherited.NeedsResult(const ACurrent: TInheritedHeader;
   const ALineBefore: string): Boolean;
 var
-  Line: string;
-  Index: Integer;
+  mLine: string;
+  mIndex: Integer;
 begin
   Result := False;
   if ACurrent.Kind <> 'function' then
   begin
     Exit;
   end;
-  Line := TrimLeft(ALineBefore);
-  if not StartsText('inherited', Line) then
+  mLine := TrimLeft(ALineBefore);
+  if not StartsText('inherited', mLine) then
   begin
     Exit;
   end;
   // Hinter inherited nur Leerzeichen und der angefangene Name.
-  Line := Copy(Line, Length('inherited') + 1, MaxInt);
-  if (Line = '') or not CharInSet(Line[1], [' ', #9]) then
+  mLine := Copy(mLine, Length('inherited') + 1, MaxInt);
+  if (mLine = '') or not CharInSet(mLine[1], [' ', #9]) then
   begin
     Exit;
   end;
-  Line := TrimLeft(Line);
-  for Index := 1 to Length(Line) do
+  mLine := TrimLeft(mLine);
+  for mIndex := 1 to Length(mLine) do
   begin
-    if not CharInSet(Line[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_']) then
+    if not CharInSet(mLine[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '_']) then
     begin
       Exit;
     end;
@@ -540,23 +540,23 @@ end;
 
 class function TCompletionInherited.HeaderText(const AText: string; AStart: Integer): string;
 var
-  Index, Depth: Integer;
+  mIndex, mDepth: Integer;
 begin
-  Depth := 0;
+  mDepth := 0;
   Result := Copy(AText, AStart, MaxInt);
-  for Index := AStart to Length(AText) do
+  for mIndex := AStart to Length(AText) do
   begin
-    if AText[Index] = '(' then
+    if AText[mIndex] = '(' then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if AText[Index] = ')' then
+    else if AText[mIndex] = ')' then
     begin
-      Dec(Depth);
+      Dec(mDepth);
     end
-    else if (AText[Index] = ';') and (Depth <= 0) then
+    else if (AText[mIndex] = ';') and (mDepth <= 0) then
     begin
-      Result := Copy(AText, AStart, Index - AStart);
+      Result := Copy(AText, AStart, mIndex - AStart);
       Break;
     end;
   end;

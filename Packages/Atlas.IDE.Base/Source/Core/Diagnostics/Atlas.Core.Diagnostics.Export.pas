@@ -48,7 +48,7 @@ uses
   System.Generics.Collections;
 
 const
-  // Wie TDiagnosticLogFolder.FilePattern im Server; die Map-Dateien heißen diag-map-*.txt.
+  // Wie TDiagnosticLogFolder.cFilePattern im Server; die Map-Dateien heißen diag-map-*.txt.
   LogPattern = 'diag-*.log';
 
 function ReadShared(const AFileName: string): TBytes;

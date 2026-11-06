@@ -104,7 +104,7 @@ begin
     finally
       mCapability.Free;
     end;
-    Assert.IsTrue(Pos('"' + TLspTestUnits.Command + '"', mText) > 0);
+    Assert.IsTrue(Pos('"' + TLspTestUnits.cCommand + '"', mText) > 0);
     Assert.AreEqual(0, Integer(Length(mTestUnits.Actions('file:///tmp/A.pas', 0))));
   finally
     mCommands.Free;

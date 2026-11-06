@@ -21,7 +21,7 @@ type
 
   TRecentLogSink = class(TInterfacedObject, ILogSink, IRecentLogLines)
   public const
-    DefaultCapacity = 200;
+    cDefaultCapacity = 200;
   private
     FLock: TObject;
     FLines: TArray<string>;
@@ -43,7 +43,7 @@ implementation
 
 constructor TRecentLogSink.Create;
 begin
-  Create(DefaultCapacity);
+  Create(cDefaultCapacity);
 end;
 
 constructor TRecentLogSink.Create(ACapacity: Integer);
@@ -80,15 +80,15 @@ end;
 
 function TRecentLogSink.Lines: TArray<string>;
 var
-  Index, First: Integer;
+  mIndex, mFirst: Integer;
 begin
   TMonitor.Enter(FLock);
   try
     SetLength(Result, FCount);
-    First := (FNext - FCount + Length(FLines)) mod Length(FLines);
-    for Index := 0 to FCount - 1 do
+    mFirst := (FNext - FCount + Length(FLines)) mod Length(FLines);
+    for mIndex := 0 to FCount - 1 do
     begin
-      Result[Index] := FLines[(First + Index) mod Length(FLines)];
+      Result[mIndex] := FLines[(mFirst + mIndex) mod Length(FLines)];
     end;
   finally
     TMonitor.Exit(FLock);

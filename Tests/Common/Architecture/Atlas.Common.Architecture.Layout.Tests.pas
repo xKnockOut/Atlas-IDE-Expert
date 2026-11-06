@@ -81,7 +81,7 @@ begin
     Center := Layout.Units[Data.Subsystems[Index].Central];
     Assert.AreEqual(Layout.Subsystems[Index].X, Center.X, 1E-6);
     Assert.AreEqual(Layout.Subsystems[Index].Y, Center.Y, 1E-6);
-    Assert.IsTrue(Layout.Subsystems[Index].Radius > TArchitectureLayouter.Spacing);
+    Assert.IsTrue(Layout.Subsystems[Index].Radius > TArchitectureLayouter.cSpacing);
   end;
 end;
 
@@ -117,7 +117,7 @@ begin
   mLayout := TArchitectureLayouter.Compute(mData);
   mDistance := Sqrt(Sqr(mLayout.Subsystems[3].X - mLayout.Subsystems[0].X) +
     Sqr(mLayout.Subsystems[3].Y - mLayout.Subsystems[0].Y));
-  Assert.AreEqual(mLayout.Subsystems[0].Radius + mLayout.Subsystems[3].Radius + TArchitectureLayouter.Gap, mDistance,
+  Assert.AreEqual(mLayout.Subsystems[0].Radius + mLayout.Subsystems[3].Radius + TArchitectureLayouter.cGap, mDistance,
     1E-3);
 end;
 

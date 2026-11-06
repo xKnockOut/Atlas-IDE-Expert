@@ -671,7 +671,7 @@ begin
       PositionOf(UnitHaupt, 'Teile(6'));
     Assert.AreEqual(1, Integer(Length(Actions)));
     try
-      Assert.AreEqual(TLspChangeSignature.ClientCommand, Actions[0].GetValue<string>('command.command'));
+      Assert.AreEqual(TLspChangeSignature.cClientCommand, Actions[0].GetValue<string>('command.command'));
     finally
       for Action in Actions do
       begin

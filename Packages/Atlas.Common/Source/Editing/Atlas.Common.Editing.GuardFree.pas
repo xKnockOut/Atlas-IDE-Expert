@@ -166,35 +166,35 @@ end;
 /// <summary>Typ hinter dem Doppelpunkt einer Deklaration "A, B: T = …;"; '' ohne.</summary>
 function TypeOfDecl(const AText: string; ANode: TSyntaxNode): string;
 var
-  Source: string;
-  Colon, Stop: Integer;
+  mSource: string;
+  mColon, mStop: Integer;
 begin
-  Source := Copy(AText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
-  Colon := Pos(':', Source);
-  if (Colon = 0) or (Copy(Source, Colon, 2) = ':=') then
+  mSource := Copy(AText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
+  mColon := Pos(':', mSource);
+  if (mColon = 0) or (Copy(mSource, mColon, 2) = ':=') then
   begin
     Exit('');
   end;
-  Result := Copy(Source, Colon + 1, MaxInt);
-  Stop := Pos(':=', Result);
-  if Stop = 0 then
+  Result := Copy(mSource, mColon + 1, MaxInt);
+  mStop := Pos(':=', Result);
+  if mStop = 0 then
   begin
-    Stop := Pos('=', Result);
+    mStop := Pos('=', Result);
   end;
-  if Stop > 0 then
+  if mStop > 0 then
   begin
-    Result := Copy(Result, 1, Stop - 1);
+    Result := Copy(Result, 1, mStop - 1);
   end;
   Result := Trim(StringReplace(Result, ';', '', [rfReplaceAll]));
 end;
 
 function HasName(const ANames, AName: string): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
-  for Name in SplitString(ANames, ',') do
+  for mName in SplitString(ANames, ',') do
   begin
-    if SameText(Trim(Name), AName) then
+    if SameText(Trim(mName), AName) then
     begin
       Exit(True);
     end;
@@ -225,7 +225,8 @@ begin
   end;
 end;
 
-/// <summary>Deklarierter Typ der lokalen Variable AName in ARoutine vor ALine; False, wenn sie nicht lokal ist.</summary>
+/// <summary>Deklarierter Typ der lokalen Variable AName in ARoutine vor ALine; False, wenn sie nicht lokal
+/// ist.</summary>
 function LocalType(ANode: TSyntaxNode; const AText, AName: string; ALine: Integer; out AType: string): Boolean;
 var
   mRoot: TSyntaxNode;
@@ -277,7 +278,7 @@ end;
 /// <summary>Erstes Argument auf oberster Ebene aus "(A, B(C, D))"; '' ohne.</summary>
 function FirstArgument(const AArgs: string): string;
 var
-  Index, Depth: Integer;
+  mIndex, mDepth: Integer;
 begin
   Result := Trim(AArgs);
   if not StartsStr('(', Result) then
@@ -285,17 +286,17 @@ begin
     Exit('');
   end;
   Result := Copy(Result, 2, Length(Result) - 2);
-  Depth := 0;
-  for Index := 1 to Length(Result) do
-    case Result[Index] of
+  mDepth := 0;
+  for mIndex := 1 to Length(Result) do
+    case Result[mIndex] of
       '(', '[':
-        Inc(Depth);
+        Inc(mDepth);
       ')', ']':
-        Dec(Depth);
+        Dec(mDepth);
       ',':
-        if Depth = 0 then
+        if mDepth = 0 then
         begin
-          Exit(Trim(Copy(Result, 1, Index - 1)));
+          Exit(Trim(Copy(Result, 1, mIndex - 1)));
         end;
     end;
   Result := Trim(Result);
@@ -304,11 +305,11 @@ end;
 /// <summary>Steht die Anweisung in Zeile ALine direkt im Rumpf von ABlock (nicht in if, with usw.)?</summary>
 function TopLevel(ABlock: TSyntaxNode; ALine: Integer): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to ABlock.ChildCount - 1 do
+  for mIndex := 0 to ABlock.ChildCount - 1 do
   begin
-    if ABlock[Index].StartPos.Line = ALine then
+    if ABlock[mIndex].StartPos.Line = ALine then
     begin
       Exit(True);
     end;
@@ -516,7 +517,7 @@ end;
 class function TGuardFree.LocalVariableType(ATree: TSyntaxTree; const AText, AName: string; ALine: Integer;
   out AType: string): Boolean;
 var
-  Routine: TSyntaxNode;
+  mRoutine: TSyntaxNode;
 begin
   AType := '';
   Result := False;
@@ -524,10 +525,10 @@ begin
   begin
     Exit;
   end;
-  Routine := RoutineAt(ATree.Root, ALine);
-  if Routine <> nil then
+  mRoutine := RoutineAt(ATree.Root, ALine);
+  if mRoutine <> nil then
   begin
-    Result := LocalType(Routine, AText, AName, ALine - 1, AType);
+    Result := LocalType(mRoutine, AText, AName, ALine - 1, AType);
   end;
 end;
 

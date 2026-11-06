@@ -142,9 +142,9 @@ begin
     Lines := TEncoding.UTF8.GetString(Trace.Bytes, 0, Integer(Trace.Size)).Split([sLineBreak],
       TStringSplitOptions.ExcludeEmpty);
     Assert.AreEqual<NativeInt>(2, Length(Lines));
-    Assert.Contains(Lines[0], TJsonRpcTracingTransport.IncomingMarker + ' {');
+    Assert.Contains(Lines[0], TJsonRpcTracingTransport.cIncomingMarker + ' {');
     Assert.Contains(Lines[0], '"initialize"');
-    Assert.Contains(Lines[1], TJsonRpcTracingTransport.OutgoingMarker + ' {');
+    Assert.Contains(Lines[1], TJsonRpcTracingTransport.cOutgoingMarker + ' {');
 
     // Die Nachricht muss trotzdem beim Client ankommen.
     Written := TJsonRpcTestSupport.ReadMessages(Output);
@@ -245,7 +245,7 @@ begin
     end;
     mLines := mTracing.RecentLines(5, Now);
     Assert.AreEqual(2, Integer(Length(mLines)));
-    Assert.IsTrue(mLines[0].Contains(TJsonRpcTracingTransport.IncomingMarker + ' {'), mLines[0]);
+    Assert.IsTrue(mLines[0].Contains(TJsonRpcTracingTransport.cIncomingMarker + ' {'), mLines[0]);
     Assert.IsTrue(mLines[0].Contains('"initialize"'), mLines[0]);
     Assert.IsFalse(mLines[1].EndsWith(sLineBreak), 'ohne Zeilenende');
     // Älter als die Frage: nichts.

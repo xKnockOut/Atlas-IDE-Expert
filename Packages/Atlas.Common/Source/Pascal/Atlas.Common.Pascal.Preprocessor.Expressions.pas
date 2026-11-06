@@ -151,7 +151,7 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  BooleanValue: array[Boolean] of Double = (0, 1);
+  cBooleanValue: array[Boolean] of Double = (0, 1);
 
 function BoolText(const AValue: TEvalValue): string;
 begin
@@ -464,12 +464,12 @@ end;
 
 procedure TExpressionEvaluator.AddPart(const AText, AValue, AOrigin: string);
 var
-  Part: TConditionPart;
+  mPart: TConditionPart;
 begin
-  Part.Text := AText;
-  Part.Value := AValue;
-  Part.Origin := AOrigin;
-  FParts.Add(Part);
+  mPart.Text := AText;
+  mPart.Value := AValue;
+  mPart.Origin := AOrigin;
+  FParts.Add(mPart);
 end;
 
 function TExpressionEvaluator.AtEnd: Boolean;
@@ -543,22 +543,22 @@ end;
 
 function TExpressionEvaluator.Evaluate(const AExpression: string): TConditionValue;
 var
-  Significant: TList<TPascalToken>;
-  Token: TPascalToken;
-  Value: TEvalValue;
+  mSignificant: TList<TPascalToken>;
+  mToken: TPascalToken;
+  mValue: TEvalValue;
 begin
-  Significant := TList<TPascalToken>.Create;
+  mSignificant := TList<TPascalToken>.Create;
   try
-    for Token in TPascalLexer.Tokenize(AExpression) do
+    for mToken in TPascalLexer.Tokenize(AExpression) do
     begin
-      if Token.Kind <> TPascalTokenKind.Comment then
+      if mToken.Kind <> TPascalTokenKind.Comment then
       begin
-        Significant.Add(Token);
+        mSignificant.Add(mToken);
       end;
     end;
-    FTokens := Significant.ToArray;
+    FTokens := mSignificant.ToArray;
   finally
-    Significant.Free;
+    mSignificant.Free;
   end;
   FIndex := 0;
   FParts.Clear;
@@ -566,16 +566,16 @@ begin
   begin
     raise EPreprocessorExpression.Create(cTexts[TExpressionsText.ExpressionMissing].Text);
   end;
-  Value := ParseOr;
+  mValue := ParseOr;
   if not AtEnd then
   begin
     raise EPreprocessorExpression.CreateFmt(cTexts[TExpressionsText.Unexpected].Text, [Peek.Text]);
   end;
-  if not Value.Known then
+  if not mValue.Known then
   begin
     Result := TConditionValue.Unknown;
   end
-  else if Value.Number <> 0 then
+  else if mValue.Number <> 0 then
   begin
     Result := TConditionValue.Yes;
   end
@@ -587,20 +587,20 @@ end;
 
 function TExpressionEvaluator.ParseOr: TEvalValue;
 var
-  Right: TEvalValue;
-  IsXor: Boolean;
+  mRight: TEvalValue;
+  mIsXor: Boolean;
 begin
   Result := ParseAnd;
   while IsWord('or') or IsWord('xor') do
   begin
-    IsXor := IsWord('xor');
+    mIsXor := IsWord('xor');
     Inc(FIndex);
-    Right := ParseAnd;
-    if IsXor then
+    mRight := ParseAnd;
+    if mIsXor then
     begin
-      if Result.Known and Right.Known then
+      if Result.Known and mRight.Known then
       begin
-        Result := TEvalValue.Make(BooleanValue[(Result.Number <> 0) xor (Right.Number <> 0)]);
+        Result := TEvalValue.Make(cBooleanValue[(Result.Number <> 0) xor (mRight.Number <> 0)]);
       end
       else
       begin
@@ -608,11 +608,11 @@ begin
       end;
     end
     // Ein sicher wahrer Teil macht or wahr, auch neben einem unbekannten.
-    else if Result.IsTrue or Right.IsTrue then
+    else if Result.IsTrue or mRight.IsTrue then
     begin
       Result := TEvalValue.Make(1);
     end
-    else if Result.Known and Right.Known then
+    else if Result.Known and mRight.Known then
     begin
       Result := TEvalValue.Make(0);
     end
@@ -625,18 +625,18 @@ end;
 
 function TExpressionEvaluator.ParseAnd: TEvalValue;
 var
-  Right: TEvalValue;
+  mRight: TEvalValue;
 begin
   Result := ParseComparison;
   while IsWord('and') do
   begin
     Inc(FIndex);
-    Right := ParseComparison;
-    if Result.IsFalse or Right.IsFalse then
+    mRight := ParseComparison;
+    if Result.IsFalse or mRight.IsFalse then
     begin
       Result := TEvalValue.Make(0);
     end
-    else if Result.Known and Right.Known then
+    else if Result.Known and mRight.Known then
     begin
       Result := TEvalValue.Make(1);
     end
@@ -665,7 +665,7 @@ begin
   mRight := ParseAdditive;
   if Result.Known and mRight.Known then
   begin
-    Result := TEvalValue.Make(BooleanValue[Compare(mOperator, Result.Number, mRight.Number)]);
+    Result := TEvalValue.Make(cBooleanValue[Compare(mOperator, Result.Number, mRight.Number)]);
   end
   else
   begin
@@ -675,58 +675,58 @@ end;
 
 function TExpressionEvaluator.ParseAdditive: TEvalValue;
 var
-  Plus: Boolean;
-  Right: TEvalValue;
+  mPlus: Boolean;
+  mRight: TEvalValue;
 begin
   Result := ParseMultiplicative;
   while not AtEnd and (Peek.IsSymbol('+') or Peek.IsSymbol('-')) do
   begin
-    Plus := Next.Text = '+';
-    Right := ParseMultiplicative;
-    if not Result.Known or not Right.Known then
+    mPlus := Next.Text = '+';
+    mRight := ParseMultiplicative;
+    if not Result.Known or not mRight.Known then
     begin
       Result := TEvalValue.Unknown;
     end
-    else if Plus then
+    else if mPlus then
     begin
-      Result := TEvalValue.Make(Result.Number + Right.Number);
+      Result := TEvalValue.Make(Result.Number + mRight.Number);
     end
     else
     begin
-      Result := TEvalValue.Make(Result.Number - Right.Number);
+      Result := TEvalValue.Make(Result.Number - mRight.Number);
     end;
   end;
 end;
 
 function TExpressionEvaluator.ParseMultiplicative: TEvalValue;
 var
-  Op: string;
-  Right: TEvalValue;
+  mOp: string;
+  mRight: TEvalValue;
 begin
   Result := ParseUnary;
   while not AtEnd and (Peek.IsSymbol('*') or IsWord('div') or IsWord('mod')) do
   begin
-    Op := LowerCase(Next.Text);
-    Right := ParseUnary;
-    if (Op <> '*') and Right.IsFalse then
+    mOp := LowerCase(Next.Text);
+    mRight := ParseUnary;
+    if (mOp <> '*') and mRight.IsFalse then
     begin
       raise EPreprocessorExpression.Create(cTexts[TExpressionsText.DivisionByZero].Text);
     end;
-    if not Result.Known or not Right.Known then
+    if not Result.Known or not mRight.Known then
     begin
       Result := TEvalValue.Unknown;
     end
-    else if Op = '*' then
+    else if mOp = '*' then
     begin
-      Result := TEvalValue.Make(Result.Number * Right.Number);
+      Result := TEvalValue.Make(Result.Number * mRight.Number);
     end
-    else if Op = 'div' then
+    else if mOp = 'div' then
     begin
-      Result := TEvalValue.Make(Trunc(Result.Number) div Trunc(Right.Number));
+      Result := TEvalValue.Make(Trunc(Result.Number) div Trunc(mRight.Number));
     end
     else
     begin
-      Result := TEvalValue.Make(Trunc(Result.Number) mod Trunc(Right.Number));
+      Result := TEvalValue.Make(Trunc(Result.Number) mod Trunc(mRight.Number));
     end;
   end;
 end;
@@ -739,7 +739,7 @@ begin
     Result := ParseUnary;
     if Result.Known then
     begin
-      Result := TEvalValue.Make(BooleanValue[Result.Number = 0]);
+      Result := TEvalValue.Make(cBooleanValue[Result.Number = 0]);
     end;
   end
   else if not AtEnd and Peek.IsSymbol('-') then
@@ -790,7 +790,7 @@ begin
     AOrigin := FSettings.ProductName;
     if mConstant.Known then
     begin
-      Result := TEvalValue.Make(BooleanValue[mConstant.Number <> 0]);
+      Result := TEvalValue.Make(cBooleanValue[mConstant.Number <> 0]);
     end;
   end
   else if SettingsConstant(AName, mConstant) then
@@ -807,24 +807,24 @@ end;
 
 function TExpressionEvaluator.VersionConstant(const AName: string; out AValue: TEvalValue): Boolean;
 var
-  Number, Major, Minor: Integer;
+  mNumber, mMajor, mMinor: Integer;
 begin
   // RTLVersion111 (Delphi 11.1) … RTLVersion123: True ab dieser Version. Für die laufende Hauptversion gilt das
   // jüngste Update als installiert.
   AValue := TEvalValue.Unknown;
   Result := (Length(AName) = Length('RTLVersion') + 3) and
     SameText(Copy(AName, 1, Length('RTLVersion')), 'RTLVersion') and
-    TryStrToInt(Copy(AName, Length('RTLVersion') + 1, 3), Number);
+    TryStrToInt(Copy(AName, Length('RTLVersion') + 1, 3), mNumber);
   if not Result then
   begin
     Exit;
   end;
-  Major := Number div 10;
-  Minor := Number mod 10;
-  Result := (Major >= 11) and (Minor <> 0);
+  mMajor := mNumber div 10;
+  mMinor := mNumber mod 10;
+  Result := (mMajor >= 11) and (mMinor <> 0);
   if Result and (FSettings.CompilerVersion > 0) then
   begin
-    AValue := TEvalValue.Make(BooleanValue[FSettings.CompilerVersion >= Major + 24]);
+    AValue := TEvalValue.Make(cBooleanValue[FSettings.CompilerVersion >= mMajor + 24]);
   end;
 end;
 
@@ -884,18 +884,18 @@ end;
 
 function TExpressionEvaluator.ParseFunction(const AName: string; out AValue: TEvalValue): Boolean;
 var
-  Argument, Origin: string;
+  mArgument, mOrigin: string;
 begin
   Result := True;
   if SameText(AName, 'Defined') then
   begin
-    AValue := TEvalValue.Make(BooleanValue[FDefines.ContainsKey(UpperCase(ReadArgument))]);
+    AValue := TEvalValue.Make(cBooleanValue[FDefines.ContainsKey(UpperCase(ReadArgument))]);
   end
   else if SameText(AName, 'Declared') then
   begin
-    Argument := ReadArgument;
-    AValue := Declared(Argument, Origin);
-    AddPart('Declared(' + Argument + ')', BoolText(AValue), Origin);
+    mArgument := ReadArgument;
+    AValue := Declared(mArgument, mOrigin);
+    AddPart('Declared(' + mArgument + ')', BoolText(AValue), mOrigin);
   end
   else if SameText(AName, 'SizeOf') then
   begin
@@ -967,28 +967,28 @@ end;
 
 function TExpressionEvaluator.ParsePrimary: TEvalValue;
 var
-  Token: TPascalToken;
-  Number: Double;
+  mToken: TPascalToken;
+  mNumber: Double;
 begin
-  Token := Peek;
-  if Token.IsSymbol('(') then
+  mToken := Peek;
+  if mToken.IsSymbol('(') then
   begin
     Inc(FIndex);
     Result := ParseOr;
     Expect(')');
   end
-  else if Token.Kind = TPascalTokenKind.Number then
+  else if mToken.Kind = TPascalTokenKind.Number then
   begin
     Inc(FIndex);
-    if not TryStrToFloat(Token.Text, Number, TFormatSettings.Invariant) then
+    if not TryStrToFloat(mToken.Text, mNumber, TFormatSettings.Invariant) then
     begin
-      Number := StrToIntDef(Token.Text, 0);
+      mNumber := StrToIntDef(mToken.Text, 0);
     end;
-    Result := TEvalValue.Make(Number);
+    Result := TEvalValue.Make(mNumber);
   end
   else if IsWord('True') or IsWord('False') then
   begin
-    Result := TEvalValue.Make(BooleanValue[IsWord('True')]);
+    Result := TEvalValue.Make(cBooleanValue[IsWord('True')]);
     Inc(FIndex);
   end
   else

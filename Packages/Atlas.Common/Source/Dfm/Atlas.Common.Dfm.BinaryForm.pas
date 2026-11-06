@@ -19,7 +19,7 @@ type
   TDfmBinary = class
   public const
     /// <summary>Zeichen je Stringstück, wie LineLength in System.Classes.</summary>
-    LineLength = 64;
+    cLineLength = 64;
   public
     /// <summary>Beginnt mit TPF0 oder dem Ressourcen-Kopf FF 0A 00?</summary>
     class function IsBinary(const ABytes: TBytes): Boolean; static;
@@ -61,36 +61,36 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  vaNull = 0;
-  vaList = 1;
-  vaInt8 = 2;
-  vaInt16 = 3;
-  vaInt32 = 4;
-  vaExtended = 5;
-  vaString = 6;
-  vaIdent = 7;
-  vaFalse = 8;
-  vaTrue = 9;
-  vaBinary = 10;
-  vaSet = 11;
-  vaLString = 12;
-  vaNil = 13;
-  vaCollection = 14;
-  vaSingle = 15;
-  vaCurrency = 16;
-  vaDate = 17;
-  vaWString = 18;
-  vaInt64 = 19;
-  vaUTF8String = 20;
-  vaDouble = 21;
+  cVaNull = 0;
+  cVaList = 1;
+  cVaInt8 = 2;
+  cVaInt16 = 3;
+  cVaInt32 = 4;
+  cVaExtended = 5;
+  cVaString = 6;
+  cVaIdent = 7;
+  cVaFalse = 8;
+  cVaTrue = 9;
+  cVaBinary = 10;
+  cVaSet = 11;
+  cVaLString = 12;
+  cVaNil = 13;
+  cVaCollection = 14;
+  cVaSingle = 15;
+  cVaCurrency = 16;
+  cVaDate = 17;
+  cVaWString = 18;
+  cVaInt64 = 19;
+  cVaUTF8String = 20;
+  cVaDouble = 21;
 
-  ffInherited = 1;
-  ffChildPos = 2;
-  ffInline = 4;
+  cFfInherited = 1;
+  cFfChildPos = 2;
+  cFfInline = 4;
 
-  CrLf = #13#10;
+  cCrLf = #13#10;
 
-  Cp1252High: array[$80..$9F] of Word = (
+  cCp1252High: array[$80..$9F] of Word = (
     $20AC, $0081, $201A, $0192, $201E, $2026, $2020, $2021,
     $02C6, $2030, $0160, $2039, $0152, $008D, $017D, $008F,
     $0090, $2018, $2019, $201C, $201D, $2022, $2013, $2014,
@@ -142,11 +142,11 @@ type
 
 function FloatText(AValue: Double): string;
 var
-  Settings: TFormatSettings;
+  mSettings: TFormatSettings;
 begin
-  Settings := TFormatSettings.Create;
-  Settings.DecimalSeparator := '.';
-  Result := FloatToStr(AValue, Settings);
+  mSettings := TFormatSettings.Create;
+  mSettings.DecimalSeparator := '.';
+  Result := FloatToStr(AValue, mSettings);
 end;
 
 { TConverter }
@@ -196,72 +196,72 @@ end;
 
 function TConverter.ReadInt16: SmallInt;
 var
-  Bytes: TBytes;
+  mBytes: TBytes;
 begin
-  Bytes := ReadBytes(2);
-  Result := SmallInt(Bytes[0] or (Bytes[1] shl 8));
+  mBytes := ReadBytes(2);
+  Result := SmallInt(mBytes[0] or (mBytes[1] shl 8));
 end;
 
 function TConverter.ReadInt32: Integer;
 var
-  Bytes: TBytes;
+  mBytes: TBytes;
 begin
-  Bytes := ReadBytes(4);
-  Result := Integer(Cardinal(Bytes[0]) or (Cardinal(Bytes[1]) shl 8) or (Cardinal(Bytes[2]) shl 16) or
-    (Cardinal(Bytes[3]) shl 24));
+  mBytes := ReadBytes(4);
+  Result := Integer(Cardinal(mBytes[0]) or (Cardinal(mBytes[1]) shl 8) or (Cardinal(mBytes[2]) shl 16) or
+    (Cardinal(mBytes[3]) shl 24));
 end;
 
 function TConverter.ReadInt64: Int64;
 var
-  Low, High: Cardinal;
+  mLow, mHigh: Cardinal;
 begin
-  Low := Cardinal(ReadInt32);
-  High := Cardinal(ReadInt32);
-  Result := Int64(UInt64(Low) or (UInt64(High) shl 32));
+  mLow := Cardinal(ReadInt32);
+  mHigh := Cardinal(ReadInt32);
+  Result := Int64(UInt64(mLow) or (UInt64(mHigh) shl 32));
 end;
 
 function TConverter.ReadDouble: Double;
 var
-  Bits: Int64;
+  mBits: Int64;
 begin
-  Bits := ReadInt64;
-  Move(Bits, Result, SizeOf(Result));
+  mBits := ReadInt64;
+  Move(mBits, Result, SizeOf(Result));
 end;
 
 function TConverter.ReadSingle: Single;
 var
-  Bits: Integer;
+  mBits: Integer;
 begin
-  Bits := ReadInt32;
-  Move(Bits, Result, SizeOf(Result));
+  mBits := ReadInt32;
+  Move(mBits, Result, SizeOf(Result));
 end;
 
 function TConverter.ReadExtended: Double;
 var
-  Mantissa: UInt64;
-  Exponent: Integer;
-  Negative: Boolean;
-  Bytes: TBytes;
-  Index: Integer;
+  mMantissa: UInt64;
+  mExponent: Integer;
+  mNegative: Boolean;
+  mBytes: TBytes;
+  mIndex: Integer;
 begin
   // 80-Bit-Extended: 64 Bit Mantisse mit explizitem Eins-Bit, 15 Bit Exponent, Vorzeichen.
-  Bytes := ReadBytes(10);
-  Mantissa := 0;
-  for Index := 7 downto 0 do
+  mBytes := ReadBytes(10);
+  mMantissa := 0;
+  for mIndex := 7 downto 0 do
   begin
-    Mantissa := (Mantissa shl 8) or Bytes[Index];
+    mMantissa := (mMantissa shl 8) or mBytes[mIndex];
   end;
-  Exponent := (Bytes[8] or (Bytes[9] shl 8)) and $7FFF;
-  Negative := (Bytes[9] and $80) <> 0;
-  if (Mantissa = 0) and (Exponent = 0) then
+  mExponent := (mBytes[8] or (mBytes[9] shl 8)) and $7FFF;
+  mNegative := (mBytes[9] and $80) <> 0;
+  if (mMantissa = 0) and (mExponent = 0) then
   begin
     Result := 0;
   end
   else
   begin
-    Result := Ldexp(Mantissa, Exponent - 16383 - 63);
+    Result := Ldexp(mMantissa, mExponent - 16383 - 63);
   end;
-  if Negative then
+  if mNegative then
   begin
     Result := -Result;
   end;
@@ -269,19 +269,19 @@ end;
 
 function TConverter.ReadStr: string;
 var
-  Count: Integer;
+  mCount: Integer;
 begin
-  Count := ReadByte;
-  Result := TEncoding.UTF8.GetString(ReadBytes(Count));
+  mCount := ReadByte;
+  Result := TEncoding.UTF8.GetString(ReadBytes(mCount));
 end;
 
 function TConverter.ReadInteger: Int64;
 begin
   case ReadByte of
-    vaInt8: Result := ShortInt(ReadByte);
-    vaInt16: Result := ReadInt16;
-    vaInt32: Result := ReadInt32;
-    vaInt64: Result := ReadInt64;
+    cVaInt8: Result := ShortInt(ReadByte);
+    cVaInt16: Result := ReadInt16;
+    cVaInt32: Result := ReadInt32;
+    cVaInt64: Result := ReadInt64;
   else
     raise EBinaryForm.Create(cTexts[TBinaryFormText.IntegerExpected].Text);
   end;
@@ -289,12 +289,12 @@ end;
 
 function TConverter.EndOfList: Boolean;
 begin
-  Result := NextByte = vaNull;
+  Result := NextByte = cVaNull;
 end;
 
 procedure TConverter.ReadListEnd;
 begin
-  if ReadByte <> vaNull then
+  if ReadByte <> cVaNull then
   begin
     raise EBinaryForm.Create(cTexts[TBinaryFormText.EndOfListExpected].Text);
   end;
@@ -312,7 +312,7 @@ end;
 
 procedure TConverter.NewLine;
 begin
-  Emit(CrLf);
+  Emit(cCrLf);
   WriteIndent;
 end;
 
@@ -329,7 +329,7 @@ begin
   repeat
     Inc(Result);
   until (Result > Length(AText)) or not IsPlainChar(AText[Result]) or
-    (Result - ALineStart >= TDfmBinary.LineLength);
+    (Result - ALineStart >= TDfmBinary.cLineLength);
 end;
 
 procedure TConverter.WriteString(const AText: string);
@@ -344,7 +344,7 @@ begin
   mIndex := 1;
   Inc(FNesting);
   try
-    if Length(AText) > TDfmBinary.LineLength then
+    if Length(AText) > TDfmBinary.cLineLength then
     begin
       NewLine;
     end;
@@ -361,7 +361,7 @@ begin
         Emit('#' + IntToStr(Ord(AText[mIndex])));
         Inc(mIndex);
       end;
-      if (mIndex - mLineStart >= TDfmBinary.LineLength) and (mIndex <= Length(AText)) then
+      if (mIndex - mLineStart >= TDfmBinary.cLineLength) and (mIndex <= Length(AText)) then
       begin
         Emit(' +');
         NewLine;
@@ -390,7 +390,7 @@ end;
 
 procedure TConverter.ConvertBinary;
 const
-  HexDigits = '0123456789ABCDEF';
+  cHexDigits = '0123456789ABCDEF';
 var
   mCount, mIndex, mChunk: Integer;
   mBytes: TBytes;
@@ -409,7 +409,7 @@ begin
     mLine := '';
     while mChunk > 0 do
     begin
-      mLine := mLine + HexDigits[mBytes[mIndex] shr 4 + 1] + HexDigits[mBytes[mIndex] and $F + 1];
+      mLine := mLine + cHexDigits[mBytes[mIndex] shr 4 + 1] + cHexDigits[mBytes[mIndex] and $F + 1];
       Inc(mIndex);
       Dec(mChunk);
     end;
@@ -445,14 +445,14 @@ procedure TConverter.ConvertCollectionItem;
 begin
   NewLine;
   Emit('item');
-  if NextByte in [vaInt8, vaInt16, vaInt32] then
+  if NextByte in [cVaInt8, cVaInt16, cVaInt32] then
   begin
     Emit(' [');
     ConvertValue;
     Emit(']');
   end;
-  Emit(CrLf);
-  if ReadByte <> vaList then
+  Emit(cCrLf);
+  if ReadByte <> cVaList then
   begin
     raise EBinaryForm.Create(cTexts[TBinaryFormText.CollectionItemExpected].Text);
   end;
@@ -485,11 +485,11 @@ function TConverter.ReadText(AKind: Byte): string;
 begin
   ReadByte;
   case AKind of
-    vaLString:
+    cVaLString:
       Result := TEncoding.ANSI.GetString(ReadBytes(ReadInt32));
-    vaWString:
+    cVaWString:
       Result := TEncoding.Unicode.GetString(ReadBytes(ReadInt32 * 2));
-    vaUTF8String:
+    cVaUTF8String:
       Result := TEncoding.UTF8.GetString(ReadBytes(ReadInt32));
   else
     Result := ReadStr;
@@ -498,31 +498,31 @@ end;
 
 function TConverter.ScalarText(AKind: Byte): string;
 begin
-  if AKind in [vaInt8, vaInt16, vaInt32, vaInt64] then
+  if AKind in [cVaInt8, cVaInt16, cVaInt32, cVaInt64] then
   begin
     Exit(IntToStr(ReadInteger));
   end;
   ReadByte;
   case AKind of
-    vaExtended:
+    cVaExtended:
       Result := FloatText(ReadExtended);
-    vaDouble:
+    cVaDouble:
       Result := FloatText(ReadDouble);
-    vaSingle:
+    cVaSingle:
       Result := FloatText(ReadSingle) + 's';
-    vaCurrency:
+    cVaCurrency:
       Result := FloatText(ReadInt64 / 10000) + 'c';
-    vaDate:
+    cVaDate:
       Result := FloatText(ReadDouble) + 'd';
-    vaIdent:
+    cVaIdent:
       Result := ReadStr;
-    vaFalse:
+    cVaFalse:
       Result := 'False';
-    vaTrue:
+    cVaTrue:
       Result := 'True';
-    vaNil:
+    cVaNil:
       Result := 'nil';
-    vaNull:
+    cVaNull:
       Result := 'Null';
   else
     raise EBinaryForm.CreateFmt(cTexts[TBinaryFormText.UnknownValueType].Text, [AKind]);
@@ -535,15 +535,15 @@ var
 begin
   mKind := NextByte;
   case mKind of
-    vaList:
+    cVaList:
       ConvertList;
-    vaBinary:
+    cVaBinary:
       ConvertBinary;
-    vaSet:
+    cVaSet:
       ConvertSet;
-    vaCollection:
+    cVaCollection:
       ConvertCollection;
-    vaString, vaLString, vaWString, vaUTF8String:
+    cVaString, cVaLString, cVaWString, cVaUTF8String:
       WriteString(ReadText(mKind));
   else
     Emit(ScalarText(mKind));
@@ -555,33 +555,33 @@ begin
   WriteIndent;
   Emit(ReadStr + ' = ');
   ConvertValue;
-  Emit(CrLf);
+  Emit(cCrLf);
 end;
 
 procedure TConverter.ConvertObject;
 var
-  Flags: Byte;
-  Position: Int64;
-  ClassName, ObjectName: string;
+  mFlags: Byte;
+  mPosition: Int64;
+  mClassName, mObjectName: string;
 begin
-  Flags := 0;
-  Position := 0;
+  mFlags := 0;
+  mPosition := 0;
   if (NextByte and $F0) = $F0 then
   begin
-    Flags := ReadByte and $0F;
-    if (Flags and ffChildPos) <> 0 then
+    mFlags := ReadByte and $0F;
+    if (mFlags and cFfChildPos) <> 0 then
     begin
-      Position := ReadInteger;
+      mPosition := ReadInteger;
     end;
   end;
-  ClassName := ReadStr;
-  ObjectName := ReadStr;
+  mClassName := ReadStr;
+  mObjectName := ReadStr;
   WriteIndent;
-  if (Flags and ffInherited) <> 0 then
+  if (mFlags and cFfInherited) <> 0 then
   begin
     Emit('inherited ');
   end
-  else if (Flags and ffInline) <> 0 then
+  else if (mFlags and cFfInline) <> 0 then
   begin
     Emit('inline ');
   end
@@ -589,16 +589,16 @@ begin
   begin
     Emit('object ');
   end;
-  if ObjectName <> '' then
+  if mObjectName <> '' then
   begin
-    Emit(ObjectName + ': ');
+    Emit(mObjectName + ': ');
   end;
-  Emit(ClassName);
-  if (Flags and ffChildPos) <> 0 then
+  Emit(mClassName);
+  if (mFlags and cFfChildPos) <> 0 then
   begin
-    Emit(' [' + IntToStr(Position) + ']');
+    Emit(' [' + IntToStr(mPosition) + ']');
   end;
-  Emit(CrLf);
+  Emit(cCrLf);
   Inc(FNesting);
   while not EndOfList do
   begin
@@ -612,7 +612,7 @@ begin
   ReadListEnd;
   Dec(FNesting);
   WriteIndent;
-  Emit('end' + CrLf);
+  Emit('end' + cCrLf);
 end;
 
 function TConverter.Run: string;
@@ -636,36 +636,36 @@ end;
 
 class function TDfmBinary.ToText(const ABytes: TBytes; out AText: string): Boolean;
 var
-  Start: Integer;
-  Converter: TConverter;
+  mStart: Integer;
+  mConverter: TConverter;
 begin
   AText := '';
   if not IsBinary(ABytes) then
   begin
     Exit(False);
   end;
-  Start := 0;
+  mStart := 0;
   if ABytes[0] = $FF then
   begin
     // Ressourcen-Kopf: FF 0A 00, Name mit Null-Ende, 2 Byte Flags, 4 Byte Größe.
-    Start := 3;
-    while (Start < Length(ABytes)) and (ABytes[Start] <> 0) do
+    mStart := 3;
+    while (mStart < Length(ABytes)) and (ABytes[mStart] <> 0) do
     begin
-      Inc(Start);
+      Inc(mStart);
     end;
-    Inc(Start, 1 + 2 + 4);
+    Inc(mStart, 1 + 2 + 4);
   end;
-  Converter := TConverter.Create(ABytes, Start);
+  mConverter := TConverter.Create(ABytes, mStart);
   try
     try
-      AText := Converter.Run;
+      AText := mConverter.Run;
       Result := True;
     except
       on EBinaryForm do
         Result := False;
     end;
   finally
-    Converter.Free;
+    mConverter.Free;
   end;
 end;
 
@@ -680,7 +680,7 @@ begin
   end;
   for mHigh := $80 to $9F do
   begin
-    if Cp1252High[mHigh] = ACode then
+    if cCp1252High[mHigh] = ACode then
     begin
       Exit(mHigh);
     end;
@@ -707,57 +707,57 @@ end;
 
 class function TDfmBinary.UnderVersionControl(const AFileName: string): Boolean;
 var
-  Folder, Parent: string;
+  mFolder, mParent: string;
 begin
-  Folder := ExtractFileDir(ExpandFileName(AFileName));
-  while Folder <> '' do
+  mFolder := ExtractFileDir(ExpandFileName(AFileName));
+  while mFolder <> '' do
   begin
-    if DirectoryExists(TPath.Combine(Folder, '.git')) or FileExists(TPath.Combine(Folder, '.git')) or
-      DirectoryExists(TPath.Combine(Folder, '.svn')) or DirectoryExists(TPath.Combine(Folder, '.hg')) then
+    if DirectoryExists(TPath.Combine(mFolder, '.git')) or FileExists(TPath.Combine(mFolder, '.git')) or
+      DirectoryExists(TPath.Combine(mFolder, '.svn')) or DirectoryExists(TPath.Combine(mFolder, '.hg')) then
     begin
       Exit(True);
     end;
-    Parent := ExtractFileDir(Folder);
-    if Parent = Folder then
+    mParent := ExtractFileDir(mFolder);
+    if mParent = mFolder then
     begin
       Break;
     end;
-    Folder := Parent;
+    mFolder := mParent;
   end;
   Result := False;
 end;
 
 class function TDfmBinary.ConvertFile(const AFileName: string; out ABackup: string): Boolean;
 var
-  Bytes: TBytes;
-  Text: string;
+  mBytes: TBytes;
+  mText: string;
 begin
   ABackup := '';
   if not FileExists(AFileName) then
   begin
     Exit(False);
   end;
-  Bytes := TFile.ReadAllBytes(AFileName);
-  if not ToText(Bytes, Text) then
+  mBytes := TFile.ReadAllBytes(AFileName);
+  if not ToText(mBytes, mText) then
   begin
     Exit(False);
   end;
   if not UnderVersionControl(AFileName) then
   begin
     ABackup := AFileName + '.bak';
-    TFile.WriteAllBytes(ABackup, Bytes);
+    TFile.WriteAllBytes(ABackup, mBytes);
   end;
   // Strings stehen mit #nnn im Text; UTF-8 ohne BOM betrifft nur Bezeichner außerhalb von ASCII.
-  TFile.WriteAllBytes(AFileName, TEncoding.UTF8.GetBytes(Text));
+  TFile.WriteAllBytes(AFileName, TEncoding.UTF8.GetBytes(mText));
   Result := True;
 end;
 
 class function TDfmBinary.FromDecodedText(const AText: string; out AFormText: string): Boolean;
 var
-  Bytes: TBytes;
+  mBytes: TBytes;
 begin
   // Erst als Windows-1252 (ungültiges UTF-8), dann als UTF-8 zurückwandeln.
-  Result := Cp1252Bytes(AText, Bytes) and ToText(Bytes, AFormText);
+  Result := Cp1252Bytes(AText, mBytes) and ToText(mBytes, AFormText);
   if not Result then
   begin
     Result := ToText(TEncoding.UTF8.GetBytes(AText), AFormText);

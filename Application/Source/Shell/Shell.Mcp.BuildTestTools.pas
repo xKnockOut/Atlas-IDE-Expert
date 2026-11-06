@@ -273,16 +273,16 @@ begin
   Result.WorkingDir := ExtractFileDir(Result.Executable);
 end;
 
-/// <summary>Zeitlimit aus timeoutSeconds, begrenzt auf TMcpTestTools.MaxTimeoutSeconds.</summary>
+/// <summary>Zeitlimit aus timeoutSeconds, begrenzt auf TMcpTestTools.cMaxTimeoutSeconds.</summary>
 function TestTimeoutOf(const AArguments: TJSONObject): Integer;
 begin
   if (AArguments = nil) or not AArguments.TryGetValue<Integer>('timeoutSeconds', Result) or (Result <= 0) then
   begin
-    Result := TMcpTestTools.DefaultTimeoutSeconds;
+    Result := TMcpTestTools.cDefaultTimeoutSeconds;
   end;
-  if Result > TMcpTestTools.MaxTimeoutSeconds then
+  if Result > TMcpTestTools.cMaxTimeoutSeconds then
   begin
-    Result := TMcpTestTools.MaxTimeoutSeconds;
+    Result := TMcpTestTools.cMaxTimeoutSeconds;
   end;
 end;
 

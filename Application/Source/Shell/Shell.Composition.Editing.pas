@@ -129,17 +129,17 @@ end;
 
 procedure TShellEditing.RegisterCommands(ACommands: TLspCommands);
 begin
-  ACommands.Register(TLspSlashMenu.MenuCommand,
+  ACommands.Register(TLspSlashMenu.cMenuCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FSlashMenu.ExecuteMenu(AArguments);
     end);
-  ACommands.Register(TLspSlashMenu.ChoicesCommand,
+  ACommands.Register(TLspSlashMenu.cChoicesCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FSlashMenu.ExecuteChoices(AArguments);
     end);
-  ACommands.Register(TLspSlashMenu.RunCommand,
+  ACommands.Register(TLspSlashMenu.cRunCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FSlashMenu.ExecuteRun(AArguments);

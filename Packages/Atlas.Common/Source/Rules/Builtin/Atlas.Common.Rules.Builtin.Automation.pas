@@ -29,7 +29,7 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  AutomationInvalidRuleId = 'automation-invalid';
+  cAutomationInvalidRuleId = 'automation-invalid';
 
 type
   TAutomationInvalidRule = class(TInterfacedObject, IRule)
@@ -873,7 +873,7 @@ end;
 
 function TAutomationInvalidRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(AutomationInvalidRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cAutomationInvalidRuleId, TRuleSeverity.Error,
     cTexts[TAutomationText.Title].Text);
 end;
 

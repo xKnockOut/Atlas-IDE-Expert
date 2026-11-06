@@ -160,62 +160,62 @@ end;
 // Iterativ (Bericht M1).
 function TBindingModel.FindAnchor(ANode: TSyntaxNode; const AName: string): Boolean;
 var
-  Pending: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Index: Integer;
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
 begin
   Result := False;
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ANode);
-    while Pending.Count > 0 do
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      if (Node.Kind = TSyntaxKind.TypeDecl) and SameText(Node.Name, AName) then
+      mNode := mPending.Pop;
+      if (mNode.Kind = TSyntaxKind.TypeDecl) and SameText(mNode.Name, AName) then
       begin
-        FAnchor := TTextRange.Create(Node.StartPos.Line, Node.StartPos.Character, Node.StartPos.Line,
-          Node.StartPos.Character + Length(AName));
+        FAnchor := TTextRange.Create(mNode.StartPos.Line, mNode.StartPos.Character, mNode.StartPos.Line,
+          mNode.StartPos.Character + Length(AName));
         Exit(True);
       end;
-      for Index := Node.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        if Node.Children[Index].Kind in [TSyntaxKind.UnitFile, TSyntaxKind.ProgramFile,
+        if mNode.Children[mIndex].Kind in [TSyntaxKind.UnitFile, TSyntaxKind.ProgramFile,
           TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection, TSyntaxKind.TypeSection,
           TSyntaxKind.TypeDecl] then
         begin
-          Pending.Push(Node.Children[Index]);
+          mPending.Push(mNode.Children[mIndex]);
         end;
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
 procedure TBindingModel.Collect(AObject, AParent: TDfmObject);
 var
-  Child: TDfmObject;
+  mChild: TDfmObject;
 begin
   FObjects.Add(AObject);
   if AParent <> nil then
   begin
     FParents.Add(AObject, AParent);
   end;
-  for Child in AObject.Children do
+  for mChild in AObject.Children do
   begin
-    Collect(Child, AObject);
+    Collect(mChild, AObject);
   end;
 end;
 
 function TBindingModel.Value(AObject: TDfmObject; const AName: string): string;
 var
-  Item: TDfmProperty;
+  mItem: TDfmProperty;
 begin
-  for Item in AObject.Properties do
+  for mItem in AObject.Properties do
   begin
-    if SameText(Item.Name, AName) then
+    if SameText(mItem.Name, AName) then
     begin
-      Exit(Trim(Item.Value));
+      Exit(Trim(mItem.Value));
     end;
   end;
   Result := '';
@@ -223,17 +223,17 @@ end;
 
 function TBindingModel.Find(const AName: string): TDfmObject;
 var
-  Obj: TDfmObject;
+  mObj: TDfmObject;
 begin
   if (AName = '') or (Pos('.', AName) > 0) then
   begin
     Exit(nil);
   end;
-  for Obj in FObjects do
+  for mObj in FObjects do
   begin
-    if SameText(Obj.Name, AName) then
+    if SameText(mObj.Name, AName) then
     begin
-      Exit(Obj);
+      Exit(mObj);
     end;
   end;
   Result := nil;
@@ -249,14 +249,14 @@ end;
 
 function TBindingModel.DataSetOf(const ADataSource: string): TDfmObject;
 var
-  Source: TDfmObject;
+  mSource: TDfmObject;
 begin
-  Source := Find(ADataSource);
-  if Source = nil then
+  mSource := Find(ADataSource);
+  if mSource = nil then
   begin
     Exit(nil);
   end;
-  Result := Find(Value(Source, 'DataSet'));
+  Result := Find(Value(mSource, 'DataSet'));
 end;
 
 /// <summary>Persistentes Feld: Objekt eines Datasets mit FieldName, Klasse T…Field.</summary>
@@ -277,13 +277,13 @@ end;
 /// <summary>Persistentes Feld AFieldName des Datasets ADataSet; nil ohne.</summary>
 function FieldOf(AModel: TBindingModel; ADataSet: TDfmObject; const AFieldName: string): TDfmObject;
 var
-  Child: TDfmObject;
+  mChild: TDfmObject;
 begin
-  for Child in ADataSet.Children do
+  for mChild in ADataSet.Children do
   begin
-    if IsPersistentField(AModel, Child) and SameText(Unquote(AModel.Value(Child, 'FieldName')), AFieldName) then
+    if IsPersistentField(AModel, mChild) and SameText(Unquote(AModel.Value(mChild, 'FieldName')), AFieldName) then
     begin
-      Exit(Child);
+      Exit(mChild);
     end;
   end;
   Result := nil;
@@ -310,21 +310,21 @@ end;
 /// <summary>Weg von AStart über die Verknüpfungen zurück zu AStart ("A → B → A"); '' ohne Kreis.</summary>
 function CirclePath(AModel: TBindingModel; AStart: TDfmObject): string;
 var
-  Current: TDfmObject;
-  Steps: Integer;
+  mCurrent: TDfmObject;
+  mSteps: Integer;
 begin
-  Current := AStart;
+  mCurrent := AStart;
   Result := AStart.Name;
-  Steps := 0;
+  mSteps := 0;
   repeat
-    Current := LinkedDataSet(AModel, Current);
-    if Current <> nil then
+    mCurrent := LinkedDataSet(AModel, mCurrent);
+    if mCurrent <> nil then
     begin
-      Result := Result + ' → ' + Current.Name;
-      Inc(Steps);
+      Result := Result + ' → ' + mCurrent.Name;
+      Inc(mSteps);
     end;
-  until (Current = nil) or (Current = AStart) or (Steps > AModel.Objects.Count);
-  if (Current <> AStart) or (Steps = 0) then
+  until (mCurrent = nil) or (mCurrent = AStart) or (mSteps > AModel.Objects.Count);
+  if (mCurrent <> AStart) or (mSteps = 0) then
   begin
     Result := '';
   end;
@@ -340,39 +340,39 @@ end;
 
 procedure TDfmCircularDataSourceRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Model: TBindingModel;
-  Start, Current: TDfmObject;
-  Path: string;
-  Reported: TList<TDfmObject>;
+  mModel: TBindingModel;
+  mStart, mCurrent: TDfmObject;
+  mPath: string;
+  mReported: TList<TDfmObject>;
 begin
-  Model := TBindingModel.Create(AContext);
-  Reported := TList<TDfmObject>.Create;
+  mModel := TBindingModel.Create(AContext);
+  mReported := TList<TDfmObject>.Create;
   try
-    if not Model.Valid then
+    if not mModel.Valid then
     begin
       Exit;
     end;
-    for Start in Model.Objects do
+    for mStart in mModel.Objects do
     begin
-      if not StartsLink(Model, Start) or Reported.Contains(Start) then
+      if not StartsLink(mModel, mStart) or mReported.Contains(mStart) then
       begin
         Continue;
       end;
-      Path := CirclePath(Model, Start);
-      if Path <> '' then
+      mPath := CirclePath(mModel, mStart);
+      if mPath <> '' then
       begin
         // Einmal je Kreis: alle Mitglieder gelten als gemeldet.
-        Current := Start;
+        mCurrent := mStart;
         repeat
-          Reported.Add(Current);
-          Current := LinkedDataSet(Model, Current);
-        until (Current = nil) or (Current = Start);
-        AReport.Add(Model.Anchor, cTexts[TDataBindingText.Cycle].Text + Path);
+          mReported.Add(mCurrent);
+          mCurrent := LinkedDataSet(mModel, mCurrent);
+        until (mCurrent = nil) or (mCurrent = mStart);
+        AReport.Add(mModel.Anchor, cTexts[TDataBindingText.Cycle].Text + mPath);
       end;
     end;
   finally
-    Reported.Free;
-    Model.Free;
+    mReported.Free;
+    mModel.Free;
   end;
 end;
 
@@ -386,25 +386,25 @@ end;
 
 procedure TDfmMasterWithoutFieldsRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Model: TBindingModel;
-  Obj: TDfmObject;
+  mModel: TBindingModel;
+  mObj: TDfmObject;
 begin
-  Model := TBindingModel.Create(AContext);
+  mModel := TBindingModel.Create(AContext);
   try
-    if not Model.Valid then
+    if not mModel.Valid then
     begin
       Exit;
     end;
-    for Obj in Model.Objects do
+    for mObj in mModel.Objects do
     begin
-      if (Model.Value(Obj, 'MasterSource') <> '') and (Model.Value(Obj, 'MasterFields') = '') then
+      if (mModel.Value(mObj, 'MasterSource') <> '') and (mModel.Value(mObj, 'MasterFields') = '') then
       begin
-        AReport.Add(Model.Anchor, cTexts[TDataBindingText.NoMasterFields].Fmt([Obj.Name, Model.Value(Obj,
+        AReport.Add(mModel.Anchor, cTexts[TDataBindingText.NoMasterFields].Fmt([mObj.Name, mModel.Value(mObj,
           'MasterSource')]));
       end;
     end;
   finally
-    Model.Free;
+    mModel.Free;
   end;
 end;
 
@@ -442,51 +442,51 @@ end;
 /// <summary>Meldet das Pflichtfeld AField von ADataSet, wenn kein sichtbares Control es zeigt.</summary>
 procedure CheckRequiredField(AModel: TBindingModel; ADataSet, AField: TDfmObject; const AReport: IRuleReport);
 var
-  Control: TDfmObject;
-  FieldName: string;
-  Bound, Shown: Boolean;
+  mControl: TDfmObject;
+  mFieldName: string;
+  mBound, mShown: Boolean;
 begin
-  FieldName := Unquote(AModel.Value(AField, 'FieldName'));
-  Bound := False;
-  Shown := False;
-  for Control in AModel.Objects do
+  mFieldName := Unquote(AModel.Value(AField, 'FieldName'));
+  mBound := False;
+  mShown := False;
+  for mControl in AModel.Objects do
   begin
-    if ShowsField(AModel, Control, ADataSet, FieldName) then
+    if ShowsField(AModel, mControl, ADataSet, mFieldName) then
     begin
-      Bound := True;
-      Shown := Shown or IsVisible(AModel, Control);
+      mBound := True;
+      mShown := mShown or IsVisible(AModel, mControl);
     end;
   end;
-  if not Shown then
+  if not mShown then
   begin
-    AReport.Add(AModel.Anchor, cTexts[TDataBindingText.RequiredField].Fmt([ADataSet.Name, FieldName,
-      IfThen(Bound, cTexts[TDataBindingText.OnlyInvisible].Text, cTexts[TDataBindingText.NoControl].Text)]));
+    AReport.Add(AModel.Anchor, cTexts[TDataBindingText.RequiredField].Fmt([ADataSet.Name, mFieldName,
+      IfThen(mBound, cTexts[TDataBindingText.OnlyInvisible].Text, cTexts[TDataBindingText.NoControl].Text)]));
   end;
 end;
 
 procedure TDfmRequiredFieldWithoutControlRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Model: TBindingModel;
-  DataSet, Field: TDfmObject;
+  mModel: TBindingModel;
+  mDataSet, mField: TDfmObject;
 begin
-  Model := TBindingModel.Create(AContext);
+  mModel := TBindingModel.Create(AContext);
   try
-    if not Model.Valid then
+    if not mModel.Valid then
     begin
       Exit;
     end;
-    for DataSet in Model.Objects do
+    for mDataSet in mModel.Objects do
     begin
-      for Field in DataSet.Children do
+      for mField in mDataSet.Children do
       begin
-        if IsPersistentField(Model, Field) and SameText(Model.Value(Field, 'Required'), 'True') then
+        if IsPersistentField(mModel, mField) and SameText(mModel.Value(mField, 'Required'), 'True') then
         begin
-          CheckRequiredField(Model, DataSet, Field, AReport);
+          CheckRequiredField(mModel, mDataSet, mField, AReport);
         end;
       end;
     end;
   finally
-    Model.Free;
+    mModel.Free;
   end;
 end;
 
@@ -501,7 +501,7 @@ end;
 /// <summary>Passt das Control AControlClass zum Feld AFieldClass? True, wenn unbekannt.</summary>
 function Compatible(const AControlClass, AFieldClass: string): Boolean;
 const
-  BlobFields: array[0..3] of string = ('TBlobField', 'TGraphicField', 'TMemoField', 'TWideMemoField');
+  cBlobFields: array[0..3] of string = ('TBlobField', 'TGraphicField', 'TMemoField', 'TWideMemoField');
 begin
   if SameText(AControlClass, 'TDBCheckBox') then
   begin
@@ -515,44 +515,44 @@ begin
   end;
   if SameText(AControlClass, 'TDBEdit') or SameText(AControlClass, 'TDBText') then
   begin
-    Exit(not SameText(AFieldClass, 'TBooleanField') and not MatchText(AFieldClass, BlobFields));
+    Exit(not SameText(AFieldClass, 'TBooleanField') and not MatchText(AFieldClass, cBlobFields));
   end;
   Result := True;
 end;
 
 procedure TDfmControlFieldTypeMismatchRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Model: TBindingModel;
-  Control, DataSet, Field: TDfmObject;
-  FieldName: string;
+  mModel: TBindingModel;
+  mControl, mDataSet, mField: TDfmObject;
+  mFieldName: string;
 begin
-  Model := TBindingModel.Create(AContext);
+  mModel := TBindingModel.Create(AContext);
   try
-    if not Model.Valid then
+    if not mModel.Valid then
     begin
       Exit;
     end;
-    for Control in Model.Objects do
+    for mControl in mModel.Objects do
     begin
-      FieldName := Unquote(Model.Value(Control, 'DataField'));
-      if FieldName = '' then
+      mFieldName := Unquote(mModel.Value(mControl, 'DataField'));
+      if mFieldName = '' then
       begin
         Continue;
       end;
-      DataSet := Model.DataSetOf(Model.Value(Control, 'DataSource'));
-      if DataSet = nil then
+      mDataSet := mModel.DataSetOf(mModel.Value(mControl, 'DataSource'));
+      if mDataSet = nil then
       begin
         Continue;
       end;
-      Field := FieldOf(Model, DataSet, FieldName);
-      if (Field <> nil) and not Compatible(Control.TypeName, Field.TypeName) then
+      mField := FieldOf(mModel, mDataSet, mFieldName);
+      if (mField <> nil) and not Compatible(mControl.TypeName, mField.TypeName) then
       begin
-        AReport.Add(Model.Anchor, cTexts[TDataBindingText.ShowsField].Fmt([Control.Name, Control.TypeName,
-          FieldName, Field.TypeName]));
+        AReport.Add(mModel.Anchor, cTexts[TDataBindingText.ShowsField].Fmt([mControl.Name, mControl.TypeName,
+          mFieldName, mField.TypeName]));
       end;
     end;
   finally
-    Model.Free;
+    mModel.Free;
   end;
 end;
 
@@ -566,44 +566,44 @@ end;
 
 procedure TDfmDuplicateBindingRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Model: TBindingModel;
-  Control: TDfmObject;
-  Key: string;
-  Seen: TDictionary<string, TDfmObject>;
-  First: TDfmObject;
+  mModel: TBindingModel;
+  mControl: TDfmObject;
+  mKey: string;
+  mSeen: TDictionary<string, TDfmObject>;
+  mFirst: TDfmObject;
 begin
-  Model := TBindingModel.Create(AContext);
-  Seen := TDictionary<string, TDfmObject>.Create;
+  mModel := TBindingModel.Create(AContext);
+  mSeen := TDictionary<string, TDfmObject>.Create;
   try
-    if not Model.Valid then
+    if not mModel.Valid then
     begin
       Exit;
     end;
-    for Control in Model.Objects do
+    for mControl in mModel.Objects do
     begin
-      if (Model.Value(Control, 'DataSource') = '') or (Model.Value(Control, 'DataField') = '') then
+      if (mModel.Value(mControl, 'DataSource') = '') or (mModel.Value(mControl, 'DataField') = '') then
       begin
         Continue;
       end;
       // Anzeige-Controls dürfen dasselbe Feld zusätzlich zeigen.
-      if SameText(Control.TypeName, 'TDBText') or SameText(Control.TypeName, 'TDBImage') then
+      if SameText(mControl.TypeName, 'TDBText') or SameText(mControl.TypeName, 'TDBImage') then
       begin
         Continue;
       end;
-      Key := LowerCase(Model.Value(Control, 'DataSource') + '|' + Unquote(Model.Value(Control, 'DataField')));
-      if Seen.TryGetValue(Key, First) then
+      mKey := LowerCase(mModel.Value(mControl, 'DataSource') + '|' + Unquote(mModel.Value(mControl, 'DataField')));
+      if mSeen.TryGetValue(mKey, mFirst) then
       begin
-        AReport.Add(Model.Anchor, cTexts[TDataBindingText.BothBound].Fmt([First.Name, Control.Name,
-          Model.Value(Control, 'DataSource'), Unquote(Model.Value(Control, 'DataField'))]));
+        AReport.Add(mModel.Anchor, cTexts[TDataBindingText.BothBound].Fmt([mFirst.Name, mControl.Name,
+          mModel.Value(mControl, 'DataSource'), Unquote(mModel.Value(mControl, 'DataField'))]));
       end
       else
       begin
-        Seen.Add(Key, Control);
+        mSeen.Add(mKey, mControl);
       end;
     end;
   finally
-    Seen.Free;
-    Model.Free;
+    mSeen.Free;
+    mModel.Free;
   end;
 end;
 
@@ -616,35 +616,35 @@ begin
 end;
 
 const
-  FormBases: array[0..3] of string = ('TForm', 'TCustomForm', 'TFrame', 'TCustomFrame');
+  cFormBases: array[0..3] of string = ('TForm', 'TCustomForm', 'TFrame', 'TCustomFrame');
 
 /// <summary>Erreicht die Vorfahrenkette von AClassName im Index eine Formularklasse?</summary>
 function IsFormClass(const AIndex: ISymbolIndex; const AClassName: string): Boolean;
 var
-  Name: string;
-  Location: TSymbolLocation;
-  Found: Boolean;
-  Depth: Integer;
+  mName: string;
+  mLocation: TSymbolLocation;
+  mFound: Boolean;
+  mDepth: Integer;
 begin
-  Name := AClassName;
-  for Depth := 0 to 16 do
+  mName := AClassName;
+  for mDepth := 0 to 16 do
   begin
-    if MatchText(Name, FormBases) then
+    if MatchText(mName, cFormBases) then
     begin
-      Exit(Depth > 0);
+      Exit(mDepth > 0);
     end;
-    Found := False;
-    for Location in AIndex.FindSymbols(Name) do
+    mFound := False;
+    for mLocation in AIndex.FindSymbols(mName) do
     begin
-      if (Location.Symbol.Kind = TIndexSymbolKind.ClassType) and (Location.Symbol.Container = '') and
-        (Length(Location.Symbol.Ancestors) > 0) then
+      if (mLocation.Symbol.Kind = TIndexSymbolKind.ClassType) and (mLocation.Symbol.Container = '') and
+        (Length(mLocation.Symbol.Ancestors) > 0) then
       begin
-        Name := Location.Symbol.Ancestors[0];
-        Found := True;
+        mName := mLocation.Symbol.Ancestors[0];
+        mFound := True;
         Break;
       end;
     end;
-    if not Found then
+    if not mFound then
     begin
       Exit(False);
     end;
@@ -655,14 +655,14 @@ end;
 /// <summary>Token ohne Kommentare und Direktiven.</summary>
 function CodeTokens(const ATokens: TArray<TPascalToken>): TArray<TPascalToken>;
 var
-  Token: TPascalToken;
+  mToken: TPascalToken;
 begin
   Result := nil;
-  for Token in ATokens do
+  for mToken in ATokens do
   begin
-    if not (Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+    if not (mToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
     begin
-      Result := Result + [Token];
+      Result := Result + [mToken];
     end;
   end;
 end;
@@ -678,15 +678,15 @@ end;
 /// <summary>Formularklasse der globalen Variablen AName aus einer anderen Unit; '' ohne.</summary>
 function ForeignFormClass(const AContext: TRuleContext; const AName: string): string;
 var
-  Location: TSymbolLocation;
+  mLocation: TSymbolLocation;
 begin
   Result := '';
-  for Location in AContext.Index.FindSymbols(AName) do
+  for mLocation in AContext.Index.FindSymbols(AName) do
   begin
-    if (Location.Symbol.Kind = TIndexSymbolKind.Variable) and (Location.Symbol.Container = '') and
-      not SameText(Location.UnitName, AContext.UnitName) then
+    if (mLocation.Symbol.Kind = TIndexSymbolKind.Variable) and (mLocation.Symbol.Container = '') and
+      not SameText(mLocation.UnitName, AContext.UnitName) then
     begin
-      Result := Location.Symbol.TypeName;
+      Result := mLocation.Symbol.TypeName;
       Break;
     end;
   end;
@@ -699,40 +699,40 @@ end;
 /// <summary>Ist AName ein Feld der Klasse AFormClass?</summary>
 function IsFormField(const AContext: TRuleContext; const AName, AFormClass: string): Boolean;
 var
-  Member: TSymbolLocation;
+  mMember: TSymbolLocation;
 begin
   Result := False;
-  for Member in AContext.Index.FindSymbols(AName) do
+  for mMember in AContext.Index.FindSymbols(AName) do
   begin
-    Result := Result or (Member.Symbol.Kind = TIndexSymbolKind.Field) and
-      SameText(Member.Symbol.Container, AFormClass);
+    Result := Result or (mMember.Symbol.Kind = TIndexSymbolKind.Field) and
+      SameText(mMember.Symbol.Container, AFormClass);
   end;
 end;
 
 procedure TForeignFormControlAccessRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Code: TArray<TPascalToken>;
-  Index: Integer;
-  FormClass: string;
+  mCode: TArray<TPascalToken>;
+  mIndex: Integer;
+  mFormClass: string;
 begin
   if (AContext.Index = nil) or (AContext.Tree = nil) then
   begin
     Exit;
   end;
-  Code := CodeTokens(AContext.Tree.Tokens);
-  for Index := 0 to High(Code) - 3 do
+  mCode := CodeTokens(AContext.Tree.Tokens);
+  for mIndex := 0 to High(mCode) - 3 do
   begin
     // Form2.Edit1.…: globale Formularvariable, Punkt, Feld, Punkt.
-    if not IsQualifiedAccess(Code, Index) then
+    if not IsQualifiedAccess(mCode, mIndex) then
     begin
       Continue;
     end;
-    FormClass := ForeignFormClass(AContext, Code[Index].Text);
-    if (FormClass <> '') and IsFormField(AContext, Code[Index + 2].Text, FormClass) then
+    mFormClass := ForeignFormClass(AContext, mCode[mIndex].Text);
+    if (mFormClass <> '') and IsFormField(AContext, mCode[mIndex + 2].Text, mFormClass) then
     begin
-      AReport.Add(TTextRange.Create(Code[Index].StartPos, Code[Index + 2].EndPos),
+      AReport.Add(TTextRange.Create(mCode[mIndex].StartPos, mCode[mIndex + 2].EndPos),
         cTexts[TDataBindingText.ForeignAccess].Fmt(
-        [Code[Index].Text, Code[Index + 2].Text, FormClass]), TRuleConfidence.Medium);
+        [mCode[mIndex].Text, mCode[mIndex + 2].Text, mFormClass]), TRuleConfidence.Medium);
     end;
   end;
 end;

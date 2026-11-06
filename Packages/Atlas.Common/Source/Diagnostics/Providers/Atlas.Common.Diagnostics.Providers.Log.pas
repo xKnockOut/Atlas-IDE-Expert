@@ -24,7 +24,7 @@ uses
 type
   TDiagnosticLog = class(TInterfacedObject, IDiagnosticLog)
   public const
-    PendingLimit = 200;
+    cPendingLimit = 200;
   private
     FWriter: IDiagnosticWriter;
     FFilter: TDiagnosticFilter;
@@ -91,7 +91,7 @@ end;
 /// <summary>Ergebnis der Anfrage: Anzahl bei ok, Grund bei leer und Fehler.</summary>
 procedure AppendOutcome(ABuilder: TStringBuilder; const ARequest: TDiagnosticRequest);
 begin
-  ABuilder.Append(' ').Append(DiagnosticOutcomeCodes[ARequest.Outcome]);
+  ABuilder.Append(' ').Append(cDiagnosticOutcomeCodes[ARequest.Outcome]);
   case ARequest.Outcome of
     TDiagnosticOutcome.Ok:
       ABuilder.Append(':').Append(ARequest.Count);
@@ -181,7 +181,7 @@ begin
   try
     if not FConfigured then
     begin
-      if FPending.Count < PendingLimit then
+      if FPending.Count < cPendingLimit then
       begin
         FPending.Add(ALine);
       end;
@@ -226,20 +226,20 @@ end;
 procedure TDiagnosticLog.LogEnd(AReason: TDiagnosticEndReason; AExitCode: Integer; const AProcess: TDiagnosticProcess;
   const AException, AStack: string);
 var
-  Line: string;
-  Frame: string;
+  mLine: string;
+  mFrame: string;
 begin
-  Line := Format('%s run end reason %s exit %d mem %s threads %d dropped %d', [TimeText(Now),
-    DiagnosticEndReasonCodes[AReason], AExitCode, MegaBytes(AProcess.MemoryBytes), AProcess.Threads, Dropped]);
+  mLine := Format('%s run end reason %s exit %d mem %s threads %d dropped %d', [TimeText(Now),
+    cDiagnosticEndReasonCodes[AReason], AExitCode, MegaBytes(AProcess.MemoryBytes), AProcess.Threads, Dropped]);
   if AException <> '' then
   begin
-    Line := Line + ' exception ' + AException;
+    mLine := mLine + ' exception ' + AException;
   end;
-  Emit(Line);
+  Emit(mLine);
   // Jeder Rahmen eine eigene Zeile: Verwirft der Filter einen, bleiben die übrigen.
-  for Frame in AStack.Split([#13#10, #10], TStringSplitOptions.ExcludeEmpty) do
+  for mFrame in AStack.Split([#13#10, #10], TStringSplitOptions.ExcludeEmpty) do
   begin
-    Emit('  at ' + TDiagnosticFilter.StackFrame(Frame));
+    Emit('  at ' + TDiagnosticFilter.StackFrame(mFrame));
   end;
 end;
 
@@ -250,7 +250,7 @@ end;
 
 procedure TDiagnosticLog.Configure(AEnabled: Boolean);
 var
-  Line: string;
+  mLine: string;
 begin
   TMonitor.Enter(FLock);
   try
@@ -260,9 +260,9 @@ begin
       FConfigured := True;
       if FEnabled then
       begin
-        for Line in FPending do
+        for mLine in FPending do
         begin
-          FWriter.WriteLine(Line);
+          FWriter.WriteLine(mLine);
         end;
       end;
       FPending.Clear;

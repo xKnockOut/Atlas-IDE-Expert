@@ -76,23 +76,23 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  OtaNotifierNotRemovedRuleId = 'ota-notifier-not-removed';
+  cOtaNotifierNotRemovedRuleId = 'ota-notifier-not-removed';
   /// <summary>Token, nach denen eine Anweisung beginnt.</summary>
-  StatementStarts: array[0..8] of string = (';', 'begin', 'then', 'do', 'else', 'try', 'finally', 'except',
+  cStatementStarts: array[0..8] of string = (';', 'begin', 'then', 'do', 'else', 'try', 'finally', 'except',
     'repeat');
 
 { TOtaNotifierNotRemovedRule }
 
 function TOtaNotifierNotRemovedRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(OtaNotifierNotRemovedRuleId, TRuleSeverity.Warning,
+  Result := TRuleDescriptor.Create(cOtaNotifierNotRemovedRuleId, TRuleSeverity.Warning,
     cTexts[TOpenToolsText.Title].Text);
 end;
 
 class function TOtaNotifierNotRemovedRule.Pairs(const AOptions: string): TArray<TRegisterPair>;
 var
-  Value, List, Item: TJSONValue;
-  Pair: TRegisterPair;
+  mValue, mList, mItem: TJSONValue;
+  mPair: TRegisterPair;
 begin
   SetLength(Result, 2);
   Result[0].Open := 'AddNotifier';
@@ -103,31 +103,31 @@ begin
   begin
     Exit;
   end;
-  Value := TJSONObject.ParseJSONValue(AOptions);
+  mValue := TJSONObject.ParseJSONValue(AOptions);
   try
-    if not (Value is TJSONObject) then
+    if not (mValue is TJSONObject) then
     begin
       Exit;
     end;
-    List := TJSONObject(Value).GetValue('registerPairs');
-    if not (List is TJSONArray) then
+    mList := TJSONObject(mValue).GetValue('registerPairs');
+    if not (mList is TJSONArray) then
     begin
       Exit;
     end;
     Result := nil;
-    for Item in TJSONArray(List) do
+    for mItem in TJSONArray(mList) do
     begin
-      if (Item is TJSONObject) and TJSONObject(Item).TryGetValue<string>('open', Pair.Open) and
-        TJSONObject(Item).TryGetValue<string>('close', Pair.Close) and (Trim(Pair.Open) <> '') and
-        (Trim(Pair.Close) <> '') then
+      if (mItem is TJSONObject) and TJSONObject(mItem).TryGetValue<string>('open', mPair.Open) and
+        TJSONObject(mItem).TryGetValue<string>('close', mPair.Close) and (Trim(mPair.Open) <> '') and
+        (Trim(mPair.Close) <> '') then
       begin
-        Pair.Open := Trim(Pair.Open);
-        Pair.Close := Trim(Pair.Close);
-        Result := Result + [Pair];
+        mPair.Open := Trim(mPair.Open);
+        mPair.Close := Trim(mPair.Close);
+        Result := Result + [mPair];
       end;
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
@@ -225,30 +225,30 @@ end;
 // Gegenstück der Klammer bei APosition; -1 ohne.
 function TOtaNotifierScan.Matching(APosition: Integer): Integer;
 var
-  Depth, Step: Integer;
+  mDepth, mStep: Integer;
 begin
-  Step := 1;
+  mStep := 1;
   if Token(APosition).IsSymbol(')') or Token(APosition).IsSymbol(']') then
   begin
-    Step := -1;
+    mStep := -1;
   end;
-  Depth := 0;
+  mDepth := 0;
   Result := APosition;
   while (Result >= 0) and (Result <= High(FCode)) do
   begin
     if Token(Result).IsSymbol('(') or Token(Result).IsSymbol('[') then
     begin
-      Inc(Depth, Step);
+      Inc(mDepth, mStep);
     end
     else if Token(Result).IsSymbol(')') or Token(Result).IsSymbol(']') then
     begin
-      Dec(Depth, Step);
+      Dec(mDepth, mStep);
     end;
-    if Depth = 0 then
+    if mDepth = 0 then
     begin
       Exit;
     end;
-    Inc(Result, Step);
+    Inc(Result, mStep);
   end;
   Result := -1;
 end;
@@ -256,29 +256,29 @@ end;
 // Anfang des Ausdrucks vor dem Punkt bei ADot: Namen, Punkte, Aufrufe und Klammern.
 function TOtaNotifierScan.ReceiverStart(ADot: Integer): Integer;
 var
-  Position: Integer;
+  mPosition: Integer;
 begin
   Result := ADot;
-  Position := ADot - 1;
-  while Position >= 0 do
+  mPosition := ADot - 1;
+  while mPosition >= 0 do
   begin
-    if Token(Position).IsSymbol(')') or Token(Position).IsSymbol(']') then
+    if Token(mPosition).IsSymbol(')') or Token(mPosition).IsSymbol(']') then
     begin
-      Position := Matching(Position);
-      if Position < 0 then
+      mPosition := Matching(mPosition);
+      if mPosition < 0 then
       begin
         Exit(-1);
       end;
-      Result := Position;
-      Dec(Position);
+      Result := mPosition;
+      Dec(mPosition);
     end
-    else if IsWord(Position) then
+    else if IsWord(mPosition) then
     begin
-      Result := Position;
-      Dec(Position);
-      if (Position >= 0) and Token(Position).IsSymbol('.') then
+      Result := mPosition;
+      Dec(mPosition);
+      if (mPosition >= 0) and Token(mPosition).IsSymbol('.') then
       begin
-        Dec(Position);
+        Dec(mPosition);
       end
       else
       begin
@@ -379,86 +379,86 @@ end;
 // AOffset; jede gefundene Routine ersetzt das Ergebnis, und die Suche geht nur in ihr weiter.
 function TOtaNotifierScan.RoutineAt(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode;
 var
-  Pending: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Index: Integer;
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
 begin
   Result := nil;
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ANode);
-    while Pending.Count > 0 do
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      if (AOffset < Node.StartOffset) or (AOffset >= Node.EndOffset) then
+      mNode := mPending.Pop;
+      if (AOffset < mNode.StartOffset) or (AOffset >= mNode.EndOffset) then
       begin
         Continue;
       end;
-      if Node.Kind = TSyntaxKind.RoutineDecl then
+      if mNode.Kind = TSyntaxKind.RoutineDecl then
       begin
-        Result := Node;
-        Pending.Clear;
+        Result := mNode;
+        mPending.Clear;
       end;
-      for Index := Node.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(Node[Index]);
+        mPending.Push(mNode[mIndex]);
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
 // Äußerste Routine um AOffset; nil außerhalb. Iterativ (Bericht M1).
 function TOtaNotifierScan.OuterRoutineAt(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode;
 var
-  Pending: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Index: Integer;
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
 begin
   Result := nil;
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ANode);
-    while Pending.Count > 0 do
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      if (AOffset < Node.StartOffset) or (AOffset >= Node.EndOffset) then
+      mNode := mPending.Pop;
+      if (AOffset < mNode.StartOffset) or (AOffset >= mNode.EndOffset) then
       begin
         Continue;
       end;
-      if Node.Kind = TSyntaxKind.RoutineDecl then
+      if mNode.Kind = TSyntaxKind.RoutineDecl then
       begin
-        Exit(Node);
+        Exit(mNode);
       end;
-      for Index := Node.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(Node[Index]);
+        mPending.Push(mNode[mIndex]);
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
 // Edits nach Position, wie der Editor sie anwendet.
 function TOtaNotifierScan.Sorted(const AEdits: TArray<TTextEdit>): TArray<TTextEdit>;
 var
-  Index, Other: Integer;
-  Swap: TTextEdit;
+  mIndex, mOther: Integer;
+  mSwap: TTextEdit;
 begin
   Result := Copy(AEdits);
-  for Index := 0 to High(Result) - 1 do
+  for mIndex := 0 to High(Result) - 1 do
   begin
-    for Other := Index + 1 to High(Result) do
+    for mOther := mIndex + 1 to High(Result) do
     begin
-      if (Result[Other].Range.StartPos.Line < Result[Index].Range.StartPos.Line) or
-        ((Result[Other].Range.StartPos.Line = Result[Index].Range.StartPos.Line) and
-        (Result[Other].Range.StartPos.Character < Result[Index].Range.StartPos.Character)) then
+      if (Result[mOther].Range.StartPos.Line < Result[mIndex].Range.StartPos.Line) or
+        ((Result[mOther].Range.StartPos.Line = Result[mIndex].Range.StartPos.Line) and
+        (Result[mOther].Range.StartPos.Character < Result[mIndex].Range.StartPos.Character)) then
       begin
-        Swap := Result[Index];
-        Result[Index] := Result[Other];
-        Result[Other] := Swap;
+        mSwap := Result[mIndex];
+        Result[mIndex] := Result[mOther];
+        Result[mOther] := mSwap;
       end;
     end;
   end;
@@ -467,52 +467,52 @@ end;
 // Iterativ (Bericht M1).
 function TOtaNotifierScan.FindClassDecl(ANode: TSyntaxNode; const AName: string): TSyntaxNode;
 var
-  Pending: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Index: Integer;
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
 begin
   Result := nil;
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ANode);
-    while Pending.Count > 0 do
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      if (Node.Kind = TSyntaxKind.TypeDecl) and SameText(Node.Name, AName) and
-        (Node.FindChild(TSyntaxKind.ClassType) <> nil) then
+      mNode := mPending.Pop;
+      if (mNode.Kind = TSyntaxKind.TypeDecl) and SameText(mNode.Name, AName) and
+        (mNode.FindChild(TSyntaxKind.ClassType) <> nil) then
       begin
-        Exit(Node);
+        Exit(mNode);
       end;
-      if Node.Kind in [TSyntaxKind.Block, TSyntaxKind.RoutineDecl] then
+      if mNode.Kind in [TSyntaxKind.Block, TSyntaxKind.RoutineDecl] then
       begin
         Continue;
       end;
-      for Index := Node.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(Node[Index]);
+        mPending.Push(mNode[mIndex]);
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
 // Ist AName in ARoutine vor deren Rumpf deklariert (Parameter, lokale Variable)?
 function TOtaNotifierScan.IsLocal(ARoutine: TSyntaxNode; const AName: string): Boolean;
 var
-  Block: TSyntaxNode;
-  Position: Integer;
+  mBlock: TSyntaxNode;
+  mPosition: Integer;
 begin
   Result := False;
-  Block := ARoutine.FindChild(TSyntaxKind.Block);
-  if Block = nil then
+  mBlock := ARoutine.FindChild(TSyntaxKind.Block);
+  if mBlock = nil then
   begin
     Exit;
   end;
-  for Position := 0 to High(FCode) do
+  for mPosition := 0 to High(FCode) do
   begin
-    if (Token(Position).Offset >= ARoutine.StartOffset) and (Token(Position).Offset < Block.StartOffset) and
-      IsWord(Position) and SameText(Token(Position).Text, AName) then
+    if (Token(mPosition).Offset >= ARoutine.StartOffset) and (Token(mPosition).Offset < mBlock.StartOffset) and
+      IsWord(mPosition) and SameText(Token(mPosition).Text, AName) then
     begin
       Exit(True);
     end;
@@ -522,11 +522,11 @@ end;
 // Kommt AName als Bezeichner in der Unit vor?
 function TOtaNotifierScan.Used(const AName: string): Boolean;
 var
-  Position: Integer;
+  mPosition: Integer;
 begin
-  for Position := 0 to High(FCode) do
+  for mPosition := 0 to High(FCode) do
   begin
-    if IsWord(Position) and SameText(Token(Position).Text, AName) then
+    if IsWord(mPosition) and SameText(Token(mPosition).Text, AName) then
     begin
       Exit(True);
     end;
@@ -537,14 +537,14 @@ end;
 // Erster Bezeichner von AFirst..ALast ohne Self; '' ohne.
 function TOtaNotifierScan.FirstName(AFirst, ALast: Integer): string;
 var
-  Position: Integer;
+  mPosition: Integer;
 begin
   Result := '';
-  for Position := AFirst to ALast do
+  for mPosition := AFirst to ALast do
   begin
-    if IsWord(Position) and not SameText(Token(Position).Text, 'Self') then
+    if IsWord(mPosition) and not SameText(Token(mPosition).Text, 'Self') then
     begin
-      Exit(Token(Position).Text);
+      Exit(Token(mPosition).Text);
     end;
   end;
 end;
@@ -552,32 +552,32 @@ end;
 // "FName: Integer;" in den ersten private-Abschnitt, sonst als neuer Abschnitt vor das "end" der Klasse.
 function TOtaNotifierScan.FieldEdit(ADecl: TSyntaxNode; const AField: string; out AEdit: TTextEdit): Boolean;
 var
-  ClassNode, Child: TSyntaxNode;
-  Index, Line: Integer;
-  Indent: string;
+  mClassNode, mChild: TSyntaxNode;
+  mIndex, mLine: Integer;
+  mIndent: string;
 begin
   Result := False;
-  ClassNode := ADecl.FindChild(TSyntaxKind.ClassType);
-  for Index := 0 to ClassNode.ChildCount - 1 do
+  mClassNode := ADecl.FindChild(TSyntaxKind.ClassType);
+  for mIndex := 0 to mClassNode.ChildCount - 1 do
   begin
-    Child := ClassNode[Index];
-    if (Child.Kind = TSyntaxKind.Visibility) and SameText(Child.Name, 'private') and
-      (Child.StartPos.Line <= High(FLines)) then
+    mChild := mClassNode[mIndex];
+    if (mChild.Kind = TSyntaxKind.Visibility) and SameText(mChild.Name, 'private') and
+      (mChild.StartPos.Line <= High(FLines)) then
     begin
-      Line := Child.EndPos.Line;
-      Indent := TTextLines.IndentOf(FLines[Child.StartPos.Line]) + '  ';
-      AEdit := TTextEdit.Create(TTextRange.Create(TTextPosition.Create(Line, Length(FLines[Line])),
-        TTextPosition.Create(Line, Length(FLines[Line]))), FLineBreak + Indent + AField + ': Integer;');
+      mLine := mChild.EndPos.Line;
+      mIndent := TTextLines.IndentOf(FLines[mChild.StartPos.Line]) + '  ';
+      AEdit := TTextEdit.Create(TTextRange.Create(TTextPosition.Create(mLine, Length(FLines[mLine])),
+        TTextPosition.Create(mLine, Length(FLines[mLine]))), FLineBreak + mIndent + AField + ': Integer;');
       Exit(True);
     end;
   end;
-  Line := ClassNode.EndPos.Line;
-  if (Line > High(FLines)) or (Trim(Copy(FLines[Line], 1, ClassNode.EndPos.Character - 3)) <> '') then
+  mLine := mClassNode.EndPos.Line;
+  if (mLine > High(FLines)) or (Trim(Copy(FLines[mLine], 1, mClassNode.EndPos.Character - 3)) <> '') then
   begin
     Exit;
   end;
-  Indent := TTextLines.IndentOf(FLines[Line]);
-  AEdit := TTextEdit.Create(TTextRange.Create(Line, 0, Line, 0), Indent + 'private' + FLineBreak + Indent + '  ' +
+  mIndent := TTextLines.IndentOf(FLines[mLine]);
+  AEdit := TTextEdit.Create(TTextRange.Create(mLine, 0, mLine, 0), mIndent + 'private' + FLineBreak + mIndent + '  ' +
     AField + ': Integer;' + FLineBreak);
   Result := True;
 end;
@@ -586,40 +586,40 @@ end;
 // initialization kommt ein leerer Abschnitt davor (finalization verlangt ihn).
 function TOtaNotifierScan.FinalizationEdit(const AStatement: string; out AEdit: TTextEdit): Boolean;
 var
-  Position, Line: Integer;
-  Head: string;
+  mPosition, mLine: Integer;
+  mHead: string;
 begin
   Result := False;
-  Head := 'initialization' + FLineBreak + FLineBreak;
-  for Position := 0 to High(FCode) do
+  mHead := 'initialization' + FLineBreak + FLineBreak;
+  for mPosition := 0 to High(FCode) do
   begin
-    if Token(Position).IsKeyword('initialization') then
+    if Token(mPosition).IsKeyword('initialization') then
     begin
-      Head := '';
+      mHead := '';
     end;
   end;
-  for Position := 0 to High(FCode) do
+  for mPosition := 0 to High(FCode) do
   begin
-    if Token(Position).IsKeyword('finalization') then
+    if Token(mPosition).IsKeyword('finalization') then
     begin
-      Line := Token(Position).EndPos.Line;
-      AEdit := TTextEdit.Create(TTextRange.Create(TTextPosition.Create(Line, Length(FLines[Line])),
-        TTextPosition.Create(Line, Length(FLines[Line]))), FLineBreak + AStatement);
+      mLine := Token(mPosition).EndPos.Line;
+      AEdit := TTextEdit.Create(TTextRange.Create(TTextPosition.Create(mLine, Length(FLines[mLine])),
+        TTextPosition.Create(mLine, Length(FLines[mLine]))), FLineBreak + AStatement);
       Exit(True);
     end;
   end;
   // "end." am Ende der Unit, allein in seiner Zeile.
-  Position := High(FCode);
-  if (Position < 1) or not Token(Position).IsSymbol('.') or not Token(Position - 1).IsKeyword('end') then
+  mPosition := High(FCode);
+  if (mPosition < 1) or not Token(mPosition).IsSymbol('.') or not Token(mPosition - 1).IsKeyword('end') then
   begin
     Exit;
   end;
-  Line := Token(Position - 1).StartPos.Line;
-  if Trim(Copy(FLines[Line], 1, Token(Position - 1).StartPos.Character)) <> '' then
+  mLine := Token(mPosition - 1).StartPos.Line;
+  if Trim(Copy(FLines[mLine], 1, Token(mPosition - 1).StartPos.Character)) <> '' then
   begin
     Exit;
   end;
-  AEdit := TTextEdit.Create(TTextRange.Create(Line, 0, Line, 0), Head + 'finalization' + FLineBreak + AStatement +
+  AEdit := TTextEdit.Create(TTextRange.Create(mLine, 0, mLine, 0), mHead + 'finalization' + FLineBreak + AStatement +
     FLineBreak + FLineBreak);
   Result := True;
 end;
@@ -790,7 +790,7 @@ begin
     Exit;
   end;
   mBefore := mCall.Start - 1;
-  if (mBefore < 0) or MatchText(Token(mBefore).Text, StatementStarts) then
+  if (mBefore < 0) or MatchText(Token(mBefore).Text, cStatementStarts) then
   begin
     ReportUnsaved(mCall);
   end

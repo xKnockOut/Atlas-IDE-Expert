@@ -265,7 +265,7 @@ begin
   Assert.AreEqual('8:9 Inline-Funktion TJsonFeld.Anzahl wird nicht eingebettet: Werk.Listen fehlt in uses ' +
     '(wie H2443).|9:7 Inline-Funktion Doppelt wird nicht eingebettet: Werk.Mathe fehlt in uses (wie H2443).|',
     Messages(Found));
-  Assert.AreEqual(InlineNotExpandedRuleId, Found[0].RuleId);
+  Assert.AreEqual(cInlineNotExpandedRuleId, Found[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Found[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Found[0].Confidence));
 end;
@@ -599,7 +599,7 @@ begin
   Found := False;
   for Rule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = InlineNotExpandedRuleId then
+    if Rule.Descriptor.Id = cInlineNotExpandedRuleId then
     begin
       Found := True;
     end;

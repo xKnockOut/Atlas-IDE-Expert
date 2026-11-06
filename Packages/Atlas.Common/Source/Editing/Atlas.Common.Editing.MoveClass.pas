@@ -80,7 +80,7 @@ type
 
   TMoveClass = class
   public const
-    Kind = 'refactor.move';
+    cKind = 'refactor.move';
   public
     /// <summary>Klassen- oder Record-Deklaration, auf deren erster Zeile APosition steht; nil ohne.</summary>
     class function ClassAt(ATree: TSyntaxTree; const APosition: TTextPosition): TSyntaxNode; static;
@@ -143,7 +143,7 @@ const
 const
   /// <summary>Namen aus System, die jede Unit ohne uses kennt; gelten auch ohne Namensauflösung als bekannt.
   /// </summary>
-  SystemNames: array[0..93] of string = ('string', 'Integer', 'Cardinal', 'ShortInt', 'SmallInt', 'LongInt',
+  cSystemNames: array[0..93] of string = ('string', 'Integer', 'Cardinal', 'ShortInt', 'SmallInt', 'LongInt',
     'Int64', 'Byte', 'Word', 'LongWord', 'UInt64', 'NativeInt', 'NativeUInt', 'Boolean', 'ByteBool', 'WordBool',
     'LongBool', 'Char', 'AnsiChar', 'WideChar', 'Single', 'Double', 'Extended', 'Real', 'Currency', 'Comp',
     'Pointer', 'PChar', 'AnsiString', 'WideString', 'UnicodeString', 'ShortString', 'RawByteString', 'UTF8String',
@@ -177,11 +177,11 @@ end;
 
 function InRanges(const ARanges: TArray<TOffsetRange>; AOffset: Integer): Boolean;
 var
-  Item: TOffsetRange;
+  mItem: TOffsetRange;
 begin
-  for Item in ARanges do
+  for mItem in ARanges do
   begin
-    if (AOffset >= Item.Start) and (AOffset < Item.Stop) then
+    if (AOffset >= mItem.Start) and (AOffset < mItem.Stop) then
     begin
       Exit(True);
     end;
@@ -192,13 +192,13 @@ end;
 /// <summary>Typknoten einer Typdeklaration (ohne GenericParams); nil ohne.</summary>
 function TypeNodeOf(ADecl: TSyntaxNode): TSyntaxNode;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to ADecl.ChildCount - 1 do
+  for mIndex := 0 to ADecl.ChildCount - 1 do
   begin
-    if ADecl[Index].Kind <> TSyntaxKind.GenericParams then
+    if ADecl[mIndex].Kind <> TSyntaxKind.GenericParams then
     begin
-      Exit(ADecl[Index]);
+      Exit(ADecl[mIndex]);
     end;
   end;
   Result := nil;
@@ -234,24 +234,24 @@ end;
 /// <summary>+1 öffnet, -1 schließt, 2 verzweigt ({$ELSE}); 0 sonst.</summary>
 function ConditionalStep(const AToken: TPascalToken): Integer;
 var
-  Text: string;
+  mText: string;
 begin
   Result := 0;
   if AToken.Kind <> TPascalTokenKind.Directive then
   begin
     Exit;
   end;
-  Text := UpperDirective(AToken);
-  if StartsText('IFDEF', Text) or StartsText('IFNDEF', Text) or StartsText('IFOPT', Text) or
-    StartsText('IF ', Text) or StartsText('IF(', Text) then
+  mText := UpperDirective(AToken);
+  if StartsText('IFDEF', mText) or StartsText('IFNDEF', mText) or StartsText('IFOPT', mText) or
+    StartsText('IF ', mText) or StartsText('IF(', mText) then
   begin
     Result := 1;
   end
-  else if StartsText('ENDIF', Text) or StartsText('IFEND', Text) then
+  else if StartsText('ENDIF', mText) or StartsText('IFEND', mText) then
   begin
     Result := -1;
   end
-  else if StartsText('ELSE', Text) then
+  else if StartsText('ELSE', mText) then
   begin
     Result := 2;
   end;
@@ -303,11 +303,11 @@ end;
 /// <summary>Ist der Text zwischen AFrom und ATo nur Leerraum?</summary>
 function Blank(const AText: string; AFrom, ATo: Integer): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := AFrom + 1 to ATo do
+  for mIndex := AFrom + 1 to ATo do
   begin
-    if not CharInSet(AText[Index], [' ', #9, #13, #10]) then
+    if not CharInSet(AText[mIndex], [' ', #9, #13, #10]) then
     begin
       Exit(False);
     end;
@@ -325,20 +325,20 @@ end;
 function WithLeadingComments(const AText: string; const ALines: TLineTable; const ATokens: TArray<TPascalToken>;
   AStart: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := AStart;
-  Index := TRoutineBody.TokenAt(ATokens, AStart);
-  if Index < 0 then
+  mIndex := TRoutineBody.TokenAt(ATokens, AStart);
+  if mIndex < 0 then
   begin
     Exit;
   end;
-  while (Index > 0) and (ATokens[Index - 1].Kind = TPascalTokenKind.Comment) and
-    (ATokens[Index - 1].EndPos.Line >= ALines.PositionAt(Result).Line - 1) and
-    Blank(AText, ALines.LineStart(ATokens[Index - 1].StartPos.Line), ATokens[Index - 1].Offset) do
+  while (mIndex > 0) and (ATokens[mIndex - 1].Kind = TPascalTokenKind.Comment) and
+    (ATokens[mIndex - 1].EndPos.Line >= ALines.PositionAt(Result).Line - 1) and
+    Blank(AText, ALines.LineStart(ATokens[mIndex - 1].StartPos.Line), ATokens[mIndex - 1].Offset) do
   begin
-    Dec(Index);
-    Result := ATokens[Index].Offset;
+    Dec(mIndex);
+    Result := ATokens[mIndex].Offset;
   end;
 end;
 
@@ -365,44 +365,45 @@ end;
 /// dahinter, wenn davor auch eine steht.</summary>
 function RemovalRange(const AText: string; const ALines: TLineTable; const APiece: TOffsetRange): TOffsetRange;
 var
-  First, Last: Integer;
+  mFirst, mLast: Integer;
 begin
   Result := APiece;
-  First := ALines.PositionAt(APiece.Start).Line;
-  Last := ALines.PositionAt(APiece.Stop).Line;
-  if not Blank(AText, ALines.LineStart(First), APiece.Start) or
-    not Blank(AText, APiece.Stop, ALines.LineContentEnd(Last)) then
+  mFirst := ALines.PositionAt(APiece.Start).Line;
+  mLast := ALines.PositionAt(APiece.Stop).Line;
+  if not Blank(AText, ALines.LineStart(mFirst), APiece.Start) or
+    not Blank(AText, APiece.Stop, ALines.LineContentEnd(mLast)) then
   begin
     Exit;
   end;
-  Result.Start := ALines.LineStart(First);
-  Result.Stop := ALines.LineStart(Last + 1);
-  if (Last + 1 < ALines.LineCount) and BlankLine(AText, ALines, First - 1) and BlankLine(AText, ALines, Last + 1) then
+  Result.Start := ALines.LineStart(mFirst);
+  Result.Stop := ALines.LineStart(mLast + 1);
+  if (mLast + 1 < ALines.LineCount) and BlankLine(AText, ALines, mFirst - 1) and
+    BlankLine(AText, ALines, mLast + 1) then
   begin
-    Result.Stop := ALines.LineStart(Last + 2);
+    Result.Stop := ALines.LineStart(mLast + 2);
   end;
 end;
 
 /// <summary>Text eines Stücks ab Zeilenanfang (Einrückung bleibt), wenn davor nur Leerraum steht.</summary>
 function PieceText(const AText: string; const ALines: TLineTable; const APiece: TOffsetRange): string;
 var
-  Start: Integer;
+  mStart: Integer;
 begin
-  Start := ALines.LineStart(ALines.PositionAt(APiece.Start).Line);
-  if not Blank(AText, Start, APiece.Start) then
+  mStart := ALines.LineStart(ALines.PositionAt(APiece.Start).Line);
+  if not Blank(AText, mStart, APiece.Start) then
   begin
-    Start := APiece.Start;
+    mStart := APiece.Start;
   end;
-  Result := Copy(AText, Start + 1, APiece.Stop - Start);
+  Result := Copy(AText, mStart + 1, APiece.Stop - mStart);
 end;
 
 procedure AddUnique(var AList: TArray<string>; const AName: string);
 var
-  Item: string;
+  mItem: string;
 begin
-  for Item in AList do
+  for mItem in AList do
   begin
-    if SameText(Item, AName) then
+    if SameText(mItem, AName) then
     begin
       Exit;
     end;
@@ -412,11 +413,11 @@ end;
 
 function Contains(const AList: TArray<string>; const AName: string): Boolean;
 var
-  Item: string;
+  mItem: string;
 begin
-  for Item in AList do
+  for mItem in AList do
   begin
-    if SameText(Item, AName) then
+    if SameText(mItem, AName) then
     begin
       Exit(True);
     end;
@@ -505,9 +506,9 @@ end;
 /// und Konstanten der Methoden samt Result und Self.</summary>
 procedure CollectOwnNames(ANode: TSyntaxNode; ANames: TDictionary<string, Boolean>);
 var
-  Names: TDictionary<string, Boolean>;
+  mNames: TDictionary<string, Boolean>;
 begin
-  Names := ANames;
+  mNames := ANames;
   // Walk statt Rekursion (Bericht M1). Laufvariablen „for var I“ stehen als InlineVar im for.
   ANode.Walk(
     function(AChild: TSyntaxNode): Boolean
@@ -523,13 +524,13 @@ begin
           begin
             if (Trim(Name) <> '') and (Pos('.', Name) = 0) then
             begin
-              Names.AddOrSetValue(LowerCase(Trim(Name)), True);
+              mNames.AddOrSetValue(LowerCase(Trim(Name)), True);
             end;
           end;
         TSyntaxKind.GenericParams:
           for Index := 0 to AChild.ChildCount - 1 do
           begin
-            Names.AddOrSetValue(LowerCase(AChild[Index].Name), True);
+            mNames.AddOrSetValue(LowerCase(AChild[Index].Name), True);
           end;
       else
         // Übrige Werte bewusst ohne Wirkung.
@@ -541,12 +542,12 @@ end;
 /// <summary>Name eines Attributs: [Weak] bzw. [Fixture('x')].</summary>
 function IsAttributeName(ANode: TSyntaxNode): Boolean;
 var
-  Parent: TSyntaxNode;
+  mParent: TSyntaxNode;
 begin
-  Parent := ANode.Parent;
-  Result := (ANode.Kind = TSyntaxKind.Identifier) and (Parent <> nil) and
-    ((Parent.Kind = TSyntaxKind.Attribute) or ((Parent.Kind = TSyntaxKind.Call) and (Parent[0] = ANode) and
-    (Parent.Parent <> nil) and (Parent.Parent.Kind = TSyntaxKind.Attribute)));
+  mParent := ANode.Parent;
+  Result := (ANode.Kind = TSyntaxKind.Identifier) and (mParent <> nil) and
+    ((mParent.Kind = TSyntaxKind.Attribute) or ((mParent.Kind = TSyntaxKind.Call) and (mParent[0] = ANode) and
+    (mParent.Parent <> nil) and (mParent.Parent.Kind = TSyntaxKind.Attribute)));
 end;
 
 type
@@ -557,10 +558,10 @@ type
 
 procedure CollectNeeds(ANode: TSyntaxNode; var ANeeds: TArray<TNeed>);
 var
-  Needs: TList<TNeed>;
+  mNeeds: TList<TNeed>;
 begin
   // Walk statt Rekursion (Bericht M1).
-  Needs := TList<TNeed>.Create;
+  mNeeds := TList<TNeed>.Create;
   try
     ANode.Walk(
       function(AChild: TSyntaxNode): Boolean
@@ -585,33 +586,33 @@ begin
         end;
         if Need.Names <> nil then
         begin
-          Needs.Add(Need);
+          mNeeds.Add(Need);
         end;
         Result := True;
       end);
-    ANeeds := ANeeds + Needs.ToArray;
+    ANeeds := ANeeds + mNeeds.ToArray;
   finally
-    Needs.Free;
+    mNeeds.Free;
   end;
 end;
 
 /// <summary>Namen aller uses-Einträge eines Abschnitts.</summary>
 function SectionUses(ASection: TSyntaxNode): TArray<string>;
 var
-  Index, Item: Integer;
+  mIndex, mItem: Integer;
 begin
   Result := nil;
   if ASection = nil then
   begin
     Exit;
   end;
-  for Index := 0 to ASection.ChildCount - 1 do
+  for mIndex := 0 to ASection.ChildCount - 1 do
   begin
-    if ASection[Index].Kind = TSyntaxKind.UsesClause then
+    if ASection[mIndex].Kind = TSyntaxKind.UsesClause then
     begin
-      for Item := 0 to ASection[Index].ChildCount - 1 do
+      for mItem := 0 to ASection[mIndex].ChildCount - 1 do
       begin
-        AddUnique(Result, ASection[Index][Item].Name);
+        AddUnique(Result, ASection[mIndex][mItem].Name);
       end;
     end;
   end;
@@ -620,13 +621,13 @@ end;
 /// <summary>Schreibweise aus den uses der Ursprungs-Unit (SysUtils statt System.SysUtils), sonst AUnit.</summary>
 function Spelling(const AOriginUses: TArray<string>; const AUnit: string): string;
 var
-  Item: string;
+  mItem: string;
 begin
-  for Item in AOriginUses do
+  for mItem in AOriginUses do
   begin
-    if SameText(Item, AUnit) or EndsText('.' + Item, AUnit) then
+    if SameText(mItem, AUnit) or EndsText('.' + mItem, AUnit) then
     begin
-      Exit(Item);
+      Exit(mItem);
     end;
   end;
   Result := AUnit;
@@ -635,19 +636,19 @@ end;
 /// <summary>Reihenfolge wie in den uses der Ursprungs-Unit, fremde Units dahinter.</summary>
 function Ordered(const AOriginUses, AUnits: TArray<string>): TArray<string>;
 var
-  Item: string;
+  mItem: string;
 begin
   Result := nil;
-  for Item in AOriginUses do
+  for mItem in AOriginUses do
   begin
-    if Contains(AUnits, Item) then
+    if Contains(AUnits, mItem) then
     begin
-      Result := Result + [Item];
+      Result := Result + [mItem];
     end;
   end;
-  for Item in AUnits do
+  for mItem in AUnits do
   begin
-    AddUnique(Result, Item);
+    AddUnique(Result, mItem);
   end;
 end;
 
@@ -667,41 +668,41 @@ end;
 function QualifierEdit(const ATokens: TArray<TPascalToken>; AIndex: Integer; const AOrigin, ANew: string;
   out AEdit: TTextEdit): Boolean;
 var
-  Parts: TArray<string>;
-  Dot, Name, Part, Before: Integer;
+  mParts: TArray<string>;
+  mDot, mName, mPart, mBefore: Integer;
 begin
   Result := False;
-  Parts := AOrigin.Split(['.']);
-  Dot := TRoutineBody.PreviousToken(ATokens, AIndex);
-  if (Dot < 0) or not ATokens[Dot].IsSymbol('.') then
+  mParts := AOrigin.Split(['.']);
+  mDot := TRoutineBody.PreviousToken(ATokens, AIndex);
+  if (mDot < 0) or not ATokens[mDot].IsSymbol('.') then
   begin
     Exit;
   end;
-  Name := Dot;
-  for Part := High(Parts) downto 0 do
+  mName := mDot;
+  for mPart := High(mParts) downto 0 do
   begin
-    if Part < High(Parts) then
+    if mPart < High(mParts) then
     begin
-      Name := TRoutineBody.PreviousToken(ATokens, Name);
-      if (Name < 0) or not ATokens[Name].IsSymbol('.') then
+      mName := TRoutineBody.PreviousToken(ATokens, mName);
+      if (mName < 0) or not ATokens[mName].IsSymbol('.') then
       begin
         Exit;
       end;
     end;
-    Name := TRoutineBody.PreviousToken(ATokens, Name);
-    if (Name < 0) or (ATokens[Name].Kind <> TPascalTokenKind.Identifier) or
-      not SameText(CleanName(ATokens[Name].Text), Parts[Part]) then
+    mName := TRoutineBody.PreviousToken(ATokens, mName);
+    if (mName < 0) or (ATokens[mName].Kind <> TPascalTokenKind.Identifier) or
+      not SameText(CleanName(ATokens[mName].Text), mParts[mPart]) then
     begin
       Exit;
     end;
   end;
   // Steht davor ein weiterer Punkt, ist es ein Mitglied eines anderen Namens.
-  Before := TRoutineBody.PreviousToken(ATokens, Name);
-  if (Before >= 0) and ATokens[Before].IsSymbol('.') then
+  mBefore := TRoutineBody.PreviousToken(ATokens, mName);
+  if (mBefore >= 0) and ATokens[mBefore].IsSymbol('.') then
   begin
     Exit;
   end;
-  AEdit := TTextEdit.Create(TTextRange.Create(ATokens[Name].StartPos, ATokens[Dot].StartPos), ANew);
+  AEdit := TTextEdit.Create(TTextRange.Create(ATokens[mName].StartPos, ATokens[mDot].StartPos), ANew);
   Result := True;
 end;
 
@@ -1290,7 +1291,7 @@ var
 begin
   Result := False;
   mName := ANeed.Names[0];
-  if (Length(ANeed.Names) = 1) and (Own.ContainsKey(LowerCase(mName)) or MatchText(mName, SystemNames)) then
+  if (Length(ANeed.Names) = 1) and (Own.ContainsKey(LowerCase(mName)) or MatchText(mName, cSystemNames)) then
   begin
     Exit;
   end;

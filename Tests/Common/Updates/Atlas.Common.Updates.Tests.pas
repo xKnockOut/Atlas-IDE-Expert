@@ -85,7 +85,7 @@ function Target: TUpdatePackageTarget;
 begin
   Result := Default(TUpdatePackageTarget);
   Result.RegistryKey := cKey;
-  Result.Platform := TUpdateIdes.Win32;
+  Result.Platform := TUpdateIdes.cWin32;
   Result.PackageDir := cDir;
   Result.Suffix := '370';
 end;

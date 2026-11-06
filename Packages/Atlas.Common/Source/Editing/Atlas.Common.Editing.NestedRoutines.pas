@@ -229,10 +229,10 @@ end;
 class function TNestedRoutineLookup.FromResolver(AResolver: TNameResolver; ATree: TSyntaxTree;
   const AFileName: string): TNestedRoutineLookup;
 var
-  FileName: string;
+  mFileName: string;
 begin
   Result := FromTree(ATree);
-  FileName := AFileName;
+  mFileName := AFileName;
   Result.ConstType :=
     function(const ATypeName: string; AOffset: Integer): Boolean
     var
@@ -244,7 +244,7 @@ begin
       begin
         Base := Copy(Base, 1, Pos('<', Base) - 1);
       end;
-      Resolved := AResolver.ResolveChain(ATree, FileName, Trim(Base).Split(['.']), AOffset);
+      Resolved := AResolver.ResolveChain(ATree, mFileName, Trim(Base).Split(['.']), AOffset);
       Result := Resolved.Found and Resolved.IsType and (Resolved.SymbolKind in [TIndexSymbolKind.RecordType,
         TIndexSymbolKind.ObjectType, TIndexSymbolKind.InterfaceType]);
     end;
@@ -344,11 +344,11 @@ end;
 /// <summary>Kommt ein Bezeichner AName unter AIdentifiers vor?</summary>
 function UsesName(const AIdentifiers: TArray<TSyntaxNode>; const AName: string): Boolean;
 var
-  Node: TSyntaxNode;
+  mNode: TSyntaxNode;
 begin
-  for Node in AIdentifiers do
+  for mNode in AIdentifiers do
   begin
-    if SameText(Node.Name, AName) then
+    if SameText(mNode.Name, AName) then
     begin
       Exit(True);
     end;
@@ -360,12 +360,12 @@ end;
 function WritesName(ACache: TLocalsCache; const AIdentifiers: TArray<TSyntaxNode>; ARoutine: TSyntaxNode;
   const AName: string; const AFlow: TFlowSignatureLookup): Boolean;
 var
-  Node: TSyntaxNode;
+  mNode: TSyntaxNode;
 begin
-  for Node in AIdentifiers do
+  for mNode in AIdentifiers do
   begin
-    if SameText(Node.Name, AName) and not TRoutineParts.Shadowed(ACache, Node, ARoutine, AName, False) and
-      (TRoutineLocals.AccessOf(Node, AFlow) <> TLocalAccess.Read) then
+    if SameText(mNode.Name, AName) and not TRoutineParts.Shadowed(ACache, mNode, ARoutine, AName, False) and
+      (TRoutineLocals.AccessOf(mNode, AFlow) <> TLocalAccess.Read) then
     begin
       Exit(True);
     end;
@@ -1009,7 +1009,7 @@ begin
     Exit(False);
   end;
   AAction.Title := mWork.Title;
-  AAction.Kind := RewriteKind;
+  AAction.Kind := cRewriteKind;
   if mWork.InNested then
   begin
     // Hinweis statt Aktion: Die mittlere Routine müsste erst selbst heraus.
@@ -1623,7 +1623,7 @@ begin
     Exit(cTexts[TNestedRoutinesText.BeginOfTheCallerIs].Text);
   end;
   AAction.Title := Title;
-  AAction.Kind := RewriteKind;
+  AAction.Kind := cRewriteKind;
   AAction.Edits := RemovalEdits + [InsertEdit(mMoved, mBeginLine)] + CallEdits;
   AAction.Preview := cTexts[TNestedRoutinesText.NewLocalRoutineIn].Fmt([Caller.Name,
     TRoutineParts.HeadText(Request.Text, Header, Short, mKept, False)]) + LineBreak +

@@ -108,7 +108,7 @@ begin
   end;
   mIdentity := Default(TIndexProcessInfo);
   mIdentity.Pid := TShellPlatform.CurrentProcessId;
-  mIdentity.Kind := TIndexProcessInfo.KindCheck;
+  mIdentity.Kind := TIndexProcessInfo.cKindCheck;
   mIdentity.Client := 'atlas --check';
   AGroup.ProcessIdentity := mIdentity;
 end;

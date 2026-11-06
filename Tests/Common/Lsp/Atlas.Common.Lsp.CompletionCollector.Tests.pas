@@ -87,9 +87,9 @@ begin
     Import.MaxArgs := 1;
     Import.FileName := 'C:\Lib\Dialogs.pas';
     Import.SelectionRange.StartPos := TTextPosition.Create(7, 2);
-    Assert.IsTrue(Collector.Add('ShowMessage', 'Dialogs (uses ergänzen)', KindFunction, PenaltyLibraryImport, Import,
+    Assert.IsTrue(Collector.Add('ShowMessage', 'Dialogs (uses ergänzen)', cKindFunction, cPenaltyLibraryImport, Import,
       [TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(2, 0), TTextPosition.Create(2, 0)), 'Dialogs, ')]));
-    Assert.IsTrue(Collector.Add('begin', '', KindKeyword, PenaltyKeyword, Default(TResolvedSymbol)));
+    Assert.IsTrue(Collector.Add('begin', '', cKindKeyword, cPenaltyKeyword, Default(TResolvedSymbol)));
     Items := Collector.Finish(Incomplete);
     Assert.AreEqual('begin ShowMessage', Joined(Items));
     // Das Schlüsselwort erbt nichts vom Import davor.
@@ -118,11 +118,11 @@ begin
   Request.Matching := TCompletionMatching.Prefix;
   Collector := TCompletionCollector.Create(Request, ScopeContext('We'), '', nil);
   try
-    Collector.Add('WertU', '', KindVariable, PenaltyUnavailable, Default(TResolvedSymbol));
-    Collector.Add('WertB', '', KindVariable, PenaltyLibraryImport, Default(TResolvedSymbol));
-    Collector.Add('WertP', '', KindVariable, PenaltyProjectImport, Default(TResolvedSymbol));
-    Collector.Add('WertK', '', KindKeyword, PenaltyKeyword, Default(TResolvedSymbol));
-    Collector.Add('WertE', '', KindVariable, Default(TResolvedSymbol));
+    Collector.Add('WertU', '', cKindVariable, cPenaltyUnavailable, Default(TResolvedSymbol));
+    Collector.Add('WertB', '', cKindVariable, cPenaltyLibraryImport, Default(TResolvedSymbol));
+    Collector.Add('WertP', '', cKindVariable, cPenaltyProjectImport, Default(TResolvedSymbol));
+    Collector.Add('WertK', '', cKindKeyword, cPenaltyKeyword, Default(TResolvedSymbol));
+    Collector.Add('WertE', '', cKindVariable, Default(TResolvedSymbol));
     Assert.AreEqual('WertE WertK WertP WertB WertU', Joined(Collector.Finish(Incomplete)));
   finally
     Collector.Free;
@@ -140,9 +140,9 @@ begin
   Request := TCompletionRequest.Create('', '', TTextPosition.Create(0, 0));
   Collector := TCompletionCollector.Create(Request, ScopeContext('zae'), '', nil);
   try
-    Assert.IsFalse(Collector.Add('Rechne', '', KindFunction, Default(TResolvedSymbol)));
+    Assert.IsFalse(Collector.Add('Rechne', '', cKindFunction, Default(TResolvedSymbol)));
     // Unscharf: Teilwort trifft, filterText ist das Getippte.
-    Assert.IsTrue(Collector.Add('Zaehler', '', KindField, Default(TResolvedSymbol)));
+    Assert.IsTrue(Collector.Add('Zaehler', '', cKindField, Default(TResolvedSymbol)));
     Items := Collector.Finish(Incomplete);
     Assert.AreEqual('Zaehler', Joined(Items));
     Assert.AreEqual('', Items[0].FilterText, 'Anfang passt ohne Rücksicht auf Groß/klein');
@@ -167,14 +167,14 @@ begin
       Sent := Sent + AItems;
     end);
   try
-    Collector.Add('Lokal', '', KindVariable, Default(TResolvedSymbol));
-    Collector.Add('Feld', '', KindField, Default(TResolvedSymbol));
+    Collector.Add('Lokal', '', cKindVariable, Default(TResolvedSymbol));
+    Collector.Add('Feld', '', cKindField, Default(TResolvedSymbol));
     Collector.SendStage;
     Assert.AreEqual('Lokal Feld', Joined(Sent));
     // Leere Stufe: nichts gesendet.
     Collector.SendStage;
     Assert.AreEqual(2, Integer(Length(Sent)));
-    Collector.Add('Global', '', KindVariable, Default(TResolvedSymbol));
+    Collector.Add('Global', '', cKindVariable, Default(TResolvedSymbol));
     Assert.AreEqual('Global', Joined(Collector.Finish(Incomplete)));
   finally
     Collector.Free;
@@ -250,7 +250,7 @@ begin
   try
     Collector := TCompletionCollector.Create(Request, ScopeContext(''), '', nil);
     try
-      Collector.Add('Rechne', 'Werkzeug', KindFunction, Symbol);
+      Collector.Add('Rechne', 'Werkzeug', cKindFunction, Symbol);
       Items := Collector.Finish(Incomplete);
       Assert.AreEqual(5, Items[0].Scope);
       Assert.AreEqual('Werkzeug', Items[0].UnitName);
@@ -261,7 +261,7 @@ begin
     Context.Kind := TCompletionContextKind.Member;
     Collector := TCompletionCollector.Create(Request, Context, '', nil);
     try
-      Collector.Add('Rechne', 'Werkzeug', KindFunction, Symbol);
+      Collector.Add('Rechne', 'Werkzeug', cKindFunction, Symbol);
       Items := Collector.Finish(Incomplete);
       Assert.AreEqual(0, Items[0].Scope);
       Assert.AreEqual('', Items[0].UnitName);

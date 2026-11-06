@@ -130,7 +130,7 @@ var
   mUnits: TArray<string>;
 begin
   Result := nil;
-  for mName in TCompletionExceptions.CommonNames do
+  for mName in TCompletionExceptions.cCommonNames do
   begin
     Result := Result + [mName];
   end;
@@ -167,7 +167,7 @@ begin
   Result := Default(TCompletionItem);
   Result.Name := ASnippet.Name;
   Result.Detail := ASnippet.Description;
-  Result.Kind := KindSnippet;
+  Result.Kind := cKindSnippet;
   Result.FilterText := ASnippet.Prefix;
   Result.HasTextEdit := True;
   Result.Snippet := ASnippetSupport;
@@ -268,7 +268,7 @@ begin
   end;
   for mUnit in FRequest.Index.Units do
   begin
-    FCollector.Add(mUnit.UnitName, mUnit.FileName, KindModule, Default(TResolvedSymbol));
+    FCollector.Add(mUnit.UnitName, mUnit.FileName, cKindModule, Default(TResolvedSymbol));
   end;
 end;
 
@@ -338,7 +338,7 @@ procedure TListBuilder.AddImports;
 begin
   // Danach die nicht eingebundenen Units.
   FCollector.SendStage;
-  if Length(FContext.Prefix) >= CompletionMinImportPrefix then
+  if Length(FContext.Prefix) >= cCompletionMinImportPrefix then
   begin
     FCollector.AddFromOtherUnits;
     // Typen aus den Packages der IDE, die der Index nicht kennt (Units ohne Quelltext).
@@ -512,8 +512,8 @@ begin
   mSlash.Namespaces := ANamespaces;
   for mSnippet in TContextSnippets.At(mSlash, ARequest.Position.Character) do
   begin
-    if (MatchScore(mSnippet.Prefix, mWord, ARequest.Matching) <> TFuzzyMatch.NoMatch) or
-      (MatchScore(mSnippet.Name, mWord, ARequest.Matching) <> TFuzzyMatch.NoMatch) then
+    if (MatchScore(mSnippet.Prefix, mWord, ARequest.Matching) <> TFuzzyMatch.cNoMatch) or
+      (MatchScore(mSnippet.Name, mWord, ARequest.Matching) <> TFuzzyMatch.cNoMatch) then
     begin
       Result := Result + [SnippetItem(ARequest, mSnippet, mStart, ASnippetSupport)];
     end;

@@ -81,15 +81,15 @@ end;
 
 function TDocumentStore.KeyOf(const AUri: string): string;
 var
-  Found: Boolean;
+  mFound: Boolean;
 begin
   FLock.Enter;
   try
-    Found := FKeys.TryGetValue(AUri, Result);
+    mFound := FKeys.TryGetValue(AUri, Result);
   finally
     FLock.Leave;
   end;
-  if Found then
+  if mFound then
   begin
     Exit;
   end;
@@ -113,32 +113,32 @@ end;
 
 procedure TDocumentStore.Notify(AKind: TDocumentEventKind; const ADocument: ITextDocument);
 var
-  Listeners: TArray<TDocumentListener>;
-  Listener: TDocumentListener;
+  mListeners: TArray<TDocumentListener>;
+  mListener: TDocumentListener;
 begin
   FLock.Enter;
   try
-    Listeners := FListeners.ToArray;
+    mListeners := FListeners.ToArray;
   finally
     FLock.Leave;
   end;
-  for Listener in Listeners do
+  for mListener in mListeners do
   begin
-    Listener(AKind, ADocument);
+    mListener(AKind, ADocument);
   end;
 end;
 
 function TDocumentStore.Take(const AUri: string; out ADocument: ITextDocument): Boolean;
 var
-  Key: string;
+  mKey: string;
 begin
-  Key := KeyOf(AUri);
+  mKey := KeyOf(AUri);
   FLock.Enter;
   try
-    Result := FDocuments.TryGetValue(Key, ADocument);
+    Result := FDocuments.TryGetValue(mKey, ADocument);
     if Result then
     begin
-      FDocuments.Remove(Key);
+      FDocuments.Remove(mKey);
       FKeys.Remove(AUri);
     end;
   finally
@@ -149,13 +149,13 @@ end;
 function TDocumentStore.Open(const AUri, ALanguageId: string; AVersion: Integer;
   const AText: string): ITextDocument;
 var
-  Key: string;
+  mKey: string;
 begin
-  Key := KeyOf(AUri);
+  mKey := KeyOf(AUri);
   Result := TTextDocument.Create(AUri, ALanguageId, AVersion, AText);
   FLock.Enter;
   try
-    FDocuments.AddOrSetValue(Key, Result);
+    FDocuments.AddOrSetValue(mKey, Result);
   finally
     FLock.Leave;
   end;
@@ -165,18 +165,18 @@ end;
 function TDocumentStore.Change(const AUri: string; AVersion: Integer;
   const AChanges: TArray<TTextChange>): ITextDocument;
 var
-  Current: ITextDocument;
-  Key: string;
+  mCurrent: ITextDocument;
+  mKey: string;
 begin
-  if not TryGet(AUri, Current) then
+  if not TryGet(AUri, mCurrent) then
   begin
     raise EDocumentError.CreateFmt(cTexts[TDocumentStoreText.DocumentIsNotOpen].Text, [AUri]);
   end;
-  Key := KeyOf(AUri);
-  Result := Current.ApplyChanges(AChanges, AVersion);
+  mKey := KeyOf(AUri);
+  Result := mCurrent.ApplyChanges(AChanges, AVersion);
   FLock.Enter;
   try
-    FDocuments.AddOrSetValue(Key, Result);
+    FDocuments.AddOrSetValue(mKey, Result);
   finally
     FLock.Leave;
   end;
@@ -185,32 +185,32 @@ end;
 
 procedure TDocumentStore.Save(const AUri: string);
 var
-  Document: ITextDocument;
+  mDocument: ITextDocument;
 begin
-  if TryGet(AUri, Document) then
+  if TryGet(AUri, mDocument) then
   begin
-    Notify(TDocumentEventKind.Saved, Document);
+    Notify(TDocumentEventKind.Saved, mDocument);
   end;
 end;
 
 procedure TDocumentStore.Close(const AUri: string);
 var
-  Document: ITextDocument;
+  mDocument: ITextDocument;
 begin
-  if Take(AUri, Document) then
+  if Take(AUri, mDocument) then
   begin
-    Notify(TDocumentEventKind.Closed, Document);
+    Notify(TDocumentEventKind.Closed, mDocument);
   end;
 end;
 
 function TDocumentStore.TryGet(const AUri: string; out ADocument: ITextDocument): Boolean;
 var
-  Key: string;
+  mKey: string;
 begin
-  Key := KeyOf(AUri);
+  mKey := KeyOf(AUri);
   FLock.Enter;
   try
-    Result := FDocuments.TryGetValue(Key, ADocument);
+    Result := FDocuments.TryGetValue(mKey, ADocument);
   finally
     FLock.Leave;
   end;

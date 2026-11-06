@@ -39,24 +39,25 @@ type
   TIndexCacheDirectory = class
   public const
     /// <summary>Caches bis Format 11 direkt in der Wurzel.</summary>
-    LegacyPattern = 'index-*.json';
-    CachePattern = '*.atlasidx';
-    IndexFolder = 'Index';
-    LibraryFolder = 'Bibliothek';
+    cLegacyPattern = 'index-*.json';
+    cCachePattern = '*.atlasidx';
+    cIndexFolder = 'Index';
+    cLibraryFolder = 'Bibliothek';
     /// <summary>Gemeinsame Caches der Suchpfad-Units (Speicher, Rückmeldung 01.11.2026).</summary>
-    SearchFolder = 'Suchpfade';
+    cSearchFolder = 'Suchpfade';
     /// <summary>Ordnername ohne bekannte Delphi-Version.</summary>
-    NoVersion = 'ohne-Delphi';
-    LockExtension = '.lock';
+    cNoVersion = 'ohne-Delphi';
+    cLockExtension = '.lock';
     /// <summary>Herkunft eines Projekt-Caches (Projektdatei oder Arbeitsordner), neben der Cache-Datei.</summary>
-    OriginFileName = 'projekt.txt';
-    BuildPattern = 'build-*.json';
-    /// <summary>Zuletzt berechnete Architekturstände (#1367): &lt;Wurzel&gt;\Architektur\&lt;Hash&gt;\architecture-last.json.
+    cOriginFileName = 'projekt.txt';
+    cBuildPattern = 'build-*.json';
+    /// <summary>Zuletzt berechnete Architekturstände (#1367):
+    /// &lt;Wurzel&gt;\Architektur\&lt;Hash&gt;\architecture-last.json.
     /// </summary>
-    ArchitectureFolder = 'Architektur';
-    ArchitectureFileName = 'architecture-last.json';
+    cArchitectureFolder = 'Architektur';
+    cArchitectureFileName = 'architecture-last.json';
     /// <summary>Marke der letzten Benutzung neben jedem Cache.</summary>
-    UseMarkerFileName = 'benutzt.stamp';
+    cUseMarkerFileName = 'benutzt.stamp';
   public
     /// <summary>Name der Cache-Datei mit der Formatversion (index-29.atlasidx), damit Server verschiedener
     /// Versionen sich die Caches nicht gegenseitig überschreiben.</summary>
@@ -97,7 +98,8 @@ type
     /// <summary>Löscht verwaiste Caches (Herkunft gelöscht) und Build-Dateien gelöschter Projekte; AKeep
     /// (eigene Caches) und gesperrte bleiben. Liefert die Anzahl.</summary>
     class function RemoveOrphans(const ARoot: string; const AKeep: TArray<string>): Integer; static;
-    /// <summary>Schreibt die Herkunft (Projektdatei, sonst Arbeitsordner) neben ACacheFile, wenn sie sich ändert.</summary>
+    /// <summary>Schreibt die Herkunft (Projektdatei, sonst Arbeitsordner) neben ACacheFile, wenn sie sich
+    /// ändert.</summary>
     class procedure WriteOrigin(const ACacheFile, AOrigin: string); static;
     /// <summary>Löscht Caches, die vor mehr als AMaxAgeDays Tagen zuletzt benutzt wurden (0 = keine); AKeep
     /// und gesperrte bleiben. Liefert die Anzahl.</summary>
@@ -135,7 +137,7 @@ uses
 
 class function TIndexCacheDirectory.CacheFileName: string;
 begin
-  Result := Format('index-%d.atlasidx', [TIndexCache.FormatVersion]);
+  Result := Format('index-%d.atlasidx', [TIndexCache.cFormatVersion]);
 end;
 
 class function TIndexCacheDirectory.DefaultRoot: string;
@@ -147,47 +149,47 @@ end;
 {$IFOPT Q+}{$DEFINE ATLAS_HASH_UEBERLAUF}{$Q-}{$ENDIF}
 class function TIndexCacheDirectory.KeyHash(const AKey: string): string;
 var
-  Key: string;
-  Hash: UInt64;
-  Index: Integer;
+  mKey: string;
+  mHash: UInt64;
+  mIndex: Integer;
 begin
   // FNV-1a mit 64 Bit über die UTF-16-Zeichen; GetHashCode ist nur 32 Bit und nicht über
   // Versionen hinweg zugesichert.
-  Key := AnsiUpperCase(AKey);
-  Hash := UInt64($CBF29CE484222325);
-  for Index := 1 to Length(Key) do
+  mKey := AnsiUpperCase(AKey);
+  mHash := UInt64($CBF29CE484222325);
+  for mIndex := 1 to Length(mKey) do
   begin
-    Hash := Hash xor Ord(Key[Index]);
-    Hash := Hash * UInt64($100000001B3);
+    mHash := mHash xor Ord(mKey[mIndex]);
+    mHash := mHash * UInt64($100000001B3);
   end;
-  Result := IntToHex(Int64(Hash), 16);
+  Result := IntToHex(Int64(mHash), 16);
 end;
 {$IFDEF ATLAS_HASH_UEBERLAUF}{$Q+}{$UNDEF ATLAS_HASH_UEBERLAUF}{$ENDIF}
 
 function SafeFolderName(const AValue: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := Trim(AValue);
-  for Index := 1 to Length(Result) do
+  for mIndex := 1 to Length(Result) do
   begin
-    if not CharInSet(Result[Index], ['0'..'9', 'A'..'Z', 'a'..'z', '.', '-', '_']) then
+    if not CharInSet(Result[mIndex], ['0'..'9', 'A'..'Z', 'a'..'z', '.', '-', '_']) then
     begin
-      Result[Index] := '_';
+      Result[mIndex] := '_';
     end;
   end;
 end;
 
 class function TIndexCacheDirectory.VersionFolder(const ARoot, AIdeVersion: string): string;
 var
-  Name: string;
+  mName: string;
 begin
-  Name := SafeFolderName(AIdeVersion);
-  if Name = '' then
+  mName := SafeFolderName(AIdeVersion);
+  if mName = '' then
   begin
-    Name := NoVersion;
+    mName := cNoVersion;
   end;
-  Result := TPath.Combine(TPath.Combine(ARoot, IndexFolder), Name);
+  Result := TPath.Combine(TPath.Combine(ARoot, cIndexFolder), mName);
 end;
 
 class function TIndexCacheDirectory.FileFor(const ARoot, AIdeVersion, ASignature: string): string;
@@ -197,28 +199,28 @@ end;
 
 class function TIndexCacheDirectory.LibraryFileFor(const ARoot, AIdeVersion, ASignature: string): string;
 begin
-  Result := TPath.Combine(TPath.Combine(TPath.Combine(VersionFolder(ARoot, AIdeVersion), LibraryFolder),
+  Result := TPath.Combine(TPath.Combine(TPath.Combine(VersionFolder(ARoot, AIdeVersion), cLibraryFolder),
     KeyHash(ASignature)), CacheFileName);
 end;
 
 class function TIndexCacheDirectory.SearchFileFor(const ARoot, AIdeVersion, ASignature: string): string;
 begin
-  Result := TPath.Combine(TPath.Combine(TPath.Combine(VersionFolder(ARoot, AIdeVersion), SearchFolder),
+  Result := TPath.Combine(TPath.Combine(TPath.Combine(VersionFolder(ARoot, AIdeVersion), cSearchFolder),
     KeyHash(ASignature)), CacheFileName);
 end;
 
 class function TIndexCacheDirectory.BuildFileFor(const ARoot, AWorkspace: string): string;
 var
-  Key: string;
+  mKey: string;
 begin
-  Key := AnsiUpperCase(ExcludeTrailingPathDelimiter(AWorkspace.Replace('/', '\')));
-  Result := TPath.Combine(ARoot, Format('build-%.8x.json', [Cardinal(Key.GetHashCode)]));
+  mKey := AnsiUpperCase(ExcludeTrailingPathDelimiter(AWorkspace.Replace('/', '\')));
+  Result := TPath.Combine(ARoot, Format('build-%.8x.json', [Cardinal(mKey.GetHashCode)]));
 end;
 
 class function TIndexCacheDirectory.ArchitectureFileFor(const ARoot, AScopeKey: string): string;
 begin
-  Result := TPath.Combine(TPath.Combine(TPath.Combine(ARoot, ArchitectureFolder), KeyHash(AScopeKey)),
-    ArchitectureFileName);
+  Result := TPath.Combine(TPath.Combine(TPath.Combine(ARoot, cArchitectureFolder), KeyHash(AScopeKey)),
+    cArchitectureFileName);
 end;
 
 type
@@ -306,7 +308,7 @@ end;
 
 constructor TIndexCacheLockStream.Create(const ACacheFile: string);
 begin
-  inherited Create(ACacheFile + TIndexCacheDirectory.LockExtension, fmCreate or fmShareExclusive);
+  inherited Create(ACacheFile + TIndexCacheDirectory.cLockExtension, fmCreate or fmShareExclusive);
   // Erst nach dem Öffnen anmelden: Scheitert es, gehört die Sperre einem anderen.
   FKey := TIndexCacheHeldLocks.KeyOf(ACacheFile);
   TIndexCacheHeldLocks.Add(FKey);
@@ -341,9 +343,9 @@ end;
 
 class function TIndexCacheDirectory.IsLocked(const ACacheFile: string): Boolean;
 var
-  Lock: TStream;
+  mLock: TStream;
 begin
-  if not FileExists(ACacheFile + LockExtension) then
+  if not FileExists(ACacheFile + cLockExtension) then
   begin
     Exit(False);
   end;
@@ -351,67 +353,67 @@ begin
   begin
     Exit(True);
   end;
-  Lock := TryLock(ACacheFile);
-  Result := Lock = nil;
-  Lock.Free;
+  mLock := TryLock(ACacheFile);
+  Result := mLock = nil;
+  mLock.Free;
 end;
 
 function CacheFiles(const ARoot: string): TArray<string>;
 var
-  Folder: string;
+  mFolder: string;
 begin
   Result := nil;
   if not TDirectory.Exists(ARoot) then
   begin
     Exit;
   end;
-  Result := TDirectory.GetFiles(ARoot, TIndexCacheDirectory.LegacyPattern);
-  Folder := TPath.Combine(ARoot, TIndexCacheDirectory.IndexFolder);
-  if TDirectory.Exists(Folder) then
+  Result := TDirectory.GetFiles(ARoot, TIndexCacheDirectory.cLegacyPattern);
+  mFolder := TPath.Combine(ARoot, TIndexCacheDirectory.cIndexFolder);
+  if TDirectory.Exists(mFolder) then
   begin
-    Result := Result + TDirectory.GetFiles(Folder, TIndexCacheDirectory.CachePattern, TSearchOption.soAllDirectories);
+    Result := Result + TDirectory.GetFiles(mFolder, TIndexCacheDirectory.cCachePattern, TSearchOption.soAllDirectories);
   end;
 end;
 
 function ListCaches(const ARoot: string): TArray<TCacheFileInfo>;
 var
-  FileName: string;
-  Info: TCacheFileInfo;
+  mFileName: string;
+  mInfo: TCacheFileInfo;
 begin
   Result := nil;
-  for FileName in CacheFiles(ARoot) do
+  for mFileName in CacheFiles(ARoot) do
   begin
-    Info.FileName := FileName;
-    Info.Size := TFile.GetSize(FileName);
-    Info.LastWrite := TIndexCacheDirectory.LastUse(FileName);
-    Info.Locked := TIndexCacheDirectory.IsLocked(FileName);
-    Result := Result + [Info];
+    mInfo.FileName := mFileName;
+    mInfo.Size := TFile.GetSize(mFileName);
+    mInfo.LastWrite := TIndexCacheDirectory.LastUse(mFileName);
+    mInfo.Locked := TIndexCacheDirectory.IsLocked(mFileName);
+    Result := Result + [mInfo];
   end;
 end;
 
 function RemoveCache(const AFileName: string): Boolean;
 var
-  Folder: string;
+  mFolder: string;
 begin
   Result := System.SysUtils.DeleteFile(AFileName);
   if not Result then
   begin
     Exit;
   end;
-  System.SysUtils.DeleteFile(AFileName + TIndexCacheDirectory.LockExtension);
+  System.SysUtils.DeleteFile(AFileName + TIndexCacheDirectory.cLockExtension);
   // Leeren Projektordner mitnehmen; der Versionsordner bleibt. Herkunft und Marke gehören auch einem Cache
   // anderen Formats im selben Ordner und bleiben, solange einer da ist.
-  Folder := ExtractFileDir(AFileName);
-  if Length(TDirectory.GetFiles(Folder, TIndexCacheDirectory.CachePattern)) > 0 then
+  mFolder := ExtractFileDir(AFileName);
+  if Length(TDirectory.GetFiles(mFolder, TIndexCacheDirectory.cCachePattern)) > 0 then
   begin
     Exit;
   end;
-  System.SysUtils.DeleteFile(TPath.Combine(Folder, TIndexCacheDirectory.OriginFileName));
-  System.SysUtils.DeleteFile(TPath.Combine(Folder, TIndexCacheDirectory.UseMarkerFileName));
+  System.SysUtils.DeleteFile(TPath.Combine(mFolder, TIndexCacheDirectory.cOriginFileName));
+  System.SysUtils.DeleteFile(TPath.Combine(mFolder, TIndexCacheDirectory.cUseMarkerFileName));
   try
-    if TDirectory.Exists(Folder) and TDirectory.IsEmpty(Folder) then
+    if TDirectory.Exists(mFolder) and TDirectory.IsEmpty(mFolder) then
     begin
-      TDirectory.Delete(Folder);
+      TDirectory.Delete(mFolder);
     end;
   except
     on Exception do
@@ -427,12 +429,12 @@ end;
 class function TIndexCacheDirectory.Cleanup(const ARoot: string; AMaxBytes: Int64;
   const AKeep: TArray<string>): Integer;
 var
-  FileName: string;
+  mFileName: string;
 begin
   Result := 0;
-  for FileName in TIndexCacheHousekeeping.SelectForRemoval(ListCaches(ARoot), AMaxBytes, AKeep) do
+  for mFileName in TIndexCacheHousekeeping.SelectForRemoval(ListCaches(ARoot), AMaxBytes, AKeep) do
   begin
-    if RemoveCache(FileName) then
+    if RemoveCache(mFileName) then
     begin
       Inc(Result);
     end;
@@ -451,21 +453,22 @@ begin
   // Gemeinsame Caches ohne Projekt als Herkunft: <Version>\Bibliothek\<Hash>\index-<Format>.atlasidx und
   // <Version>\Suchpfade\<Hash>\… (mehrere Projekte teilen sie).
   mFolder := ExtractFileName(ExtractFileDir(ExtractFileDir(AFileName)));
-  Result := SameText(mFolder, TIndexCacheDirectory.LibraryFolder) or SameText(mFolder, TIndexCacheDirectory.SearchFolder);
+  Result := SameText(mFolder, TIndexCacheDirectory.cLibraryFolder) or
+    SameText(mFolder, TIndexCacheDirectory.cSearchFolder);
 end;
 
 /// <summary>Projekt-Units eines Caches ohne projekt.txt (Caches vor dieser Änderung).</summary>
 function ProjectUnitsOf(const ACacheFile: string): TArray<string>;
 var
-  Entry: TIndexCacheEntry;
+  mEntry: TIndexCacheEntry;
 begin
   Result := nil;
   try
-    for Entry in TIndexCache.ReadEntries(TFile.ReadAllBytes(ACacheFile)) do
+    for mEntry in TIndexCache.ReadEntries(TFile.ReadAllBytes(ACacheFile)) do
     begin
-      if not Entry.Header.Library_ and (Entry.Header.FileName <> '') then
+      if not mEntry.Header.Library_ and (mEntry.Header.FileName <> '') then
       begin
-        Result := Result + [Entry.Header.FileName];
+        Result := Result + [mEntry.Header.FileName];
       end;
     end;
   except
@@ -477,26 +480,26 @@ end;
 
 function OriginsOf(const ACacheFile: string): TArray<string>;
 var
-  Origin: string;
+  mOrigin: string;
 begin
   Result := nil;
   if IsLibraryCache(ACacheFile) then
   begin
     Exit;
   end;
-  Origin := TIndexCacheDirectory.ReadOrigin(ACacheFile);
-  if Origin <> '' then
+  mOrigin := TIndexCacheDirectory.ReadOrigin(ACacheFile);
+  if mOrigin <> '' then
   begin
-    Result := [Origin];
+    Result := [mOrigin];
     Exit;
   end;
   Result := ProjectUnitsOf(ACacheFile);
-  for Origin in Result do
+  for mOrigin in Result do
   begin
-    if FileExists(Origin) then
+    if FileExists(mOrigin) then
     begin
       // Nachtragen, damit der Cache beim nächsten Mal nicht wieder gelesen wird.
-      TIndexCacheDirectory.WriteOrigin(ACacheFile, Origin);
+      TIndexCacheDirectory.WriteOrigin(ACacheFile, mOrigin);
       Break;
     end;
   end;
@@ -505,18 +508,18 @@ end;
 /// <summary>Projekt einer Build-Datei (#556); '' = unbekannt.</summary>
 function BuildProjectOf(const AFileName: string): string;
 var
-  Root: TJSONValue;
+  mRoot: TJSONValue;
 begin
   Result := '';
   try
-    Root := TJSONObject.ParseJSONValue(TFile.ReadAllText(AFileName, TEncoding.UTF8));
+    mRoot := TJSONObject.ParseJSONValue(TFile.ReadAllText(AFileName, TEncoding.UTF8));
     try
-      if Root is TJSONObject then
+      if mRoot is TJSONObject then
       begin
-        Result := TJSONObject(Root).GetValue<string>('project', '');
+        Result := TJSONObject(mRoot).GetValue<string>('project', '');
       end;
     finally
-      Root.Free;
+      mRoot.Free;
     end;
   except
     on Exception do
@@ -526,7 +529,7 @@ end;
 
 class procedure TIndexCacheDirectory.TouchUse(const ACacheFile: string);
 var
-  Marker: string;
+  mMarker: string;
 begin
   // Ohne Cache-Datei (kein Bibliotheks- oder Suchpfad-Cache) gibt es nichts zu vermerken; sonst entstünde die
   // Marke im aktuellen Ordner.
@@ -534,16 +537,16 @@ begin
   begin
     Exit;
   end;
-  Marker := TPath.Combine(ExtractFileDir(ACacheFile), UseMarkerFileName);
+  mMarker := TPath.Combine(ExtractFileDir(ACacheFile), cUseMarkerFileName);
   try
-    ForceDirectories(ExtractFileDir(Marker));
-    if FileExists(Marker) then
+    ForceDirectories(ExtractFileDir(mMarker));
+    if FileExists(mMarker) then
     begin
-      TFile.SetLastWriteTime(Marker, Now);
+      TFile.SetLastWriteTime(mMarker, Now);
     end
     else
     begin
-      TFile.WriteAllText(Marker, '');
+      TFile.WriteAllText(mMarker, '');
     end;
   except
     // Ohne Marke zählt die Zeit des Caches; schlimmstenfalls wird er früher neu aufgebaut.
@@ -554,8 +557,8 @@ end;
 
 class function TIndexCacheDirectory.LastUse(const ACacheFile: string): TDateTime;
 var
-  Marker: string;
-  Used: TDateTime;
+  mMarker: string;
+  mUsed: TDateTime;
 begin
   Result := 0;
   try
@@ -563,13 +566,13 @@ begin
     begin
       Result := TFile.GetLastWriteTime(ACacheFile);
     end;
-    Marker := TPath.Combine(ExtractFileDir(ACacheFile), UseMarkerFileName);
-    if FileExists(Marker) then
+    mMarker := TPath.Combine(ExtractFileDir(ACacheFile), cUseMarkerFileName);
+    if FileExists(mMarker) then
     begin
-      Used := TFile.GetLastWriteTime(Marker);
-      if Used > Result then
+      mUsed := TFile.GetLastWriteTime(mMarker);
+      if mUsed > Result then
       begin
-        Result := Used;
+        Result := mUsed;
       end;
     end;
   except
@@ -581,16 +584,16 @@ end;
 class function TIndexCacheDirectory.RemoveUnused(const ARoot: string; AMaxAgeDays: Integer;
   const AKeep: TArray<string>): Integer;
 var
-  FileName: string;
+  mFileName: string;
 begin
   Result := 0;
   if AMaxAgeDays <= 0 then
   begin
     Exit;
   end;
-  for FileName in TIndexCacheHousekeeping.SelectUnused(ListCaches(ARoot), AKeep, Now, AMaxAgeDays) do
+  for mFileName in TIndexCacheHousekeeping.SelectUnused(ListCaches(ARoot), AKeep, Now, AMaxAgeDays) do
   begin
-    if RemoveCache(FileName) then
+    if RemoveCache(mFileName) then
     begin
       Inc(Result);
     end;
@@ -599,14 +602,14 @@ end;
 
 class function TIndexCacheDirectory.ReadOrigin(const ACacheFile: string): string;
 var
-  FileName: string;
+  mFileName: string;
 begin
   Result := '';
-  FileName := TPath.Combine(ExtractFileDir(ACacheFile), OriginFileName);
+  mFileName := TPath.Combine(ExtractFileDir(ACacheFile), cOriginFileName);
   try
-    if FileExists(FileName) then
+    if FileExists(mFileName) then
     begin
-      Result := Trim(TFile.ReadAllText(FileName, TEncoding.UTF8));
+      Result := Trim(TFile.ReadAllText(mFileName, TEncoding.UTF8));
     end;
   except
     on Exception do
@@ -622,7 +625,7 @@ begin
   end;
   try
     ForceDirectories(ExtractFileDir(ACacheFile));
-    TFile.WriteAllText(TPath.Combine(ExtractFileDir(ACacheFile), OriginFileName), AOrigin, TEncoding.UTF8);
+    TFile.WriteAllText(TPath.Combine(ExtractFileDir(ACacheFile), cOriginFileName), AOrigin, TEncoding.UTF8);
   except
     // Ohne Herkunft bleibt der Cache nur beim Aufräumen nach Größe.
     on Exception do
@@ -632,15 +635,15 @@ end;
 
 class function TIndexCacheDirectory.OriginExists(const APath: string): Boolean;
 var
-  Drive: string;
+  mDrive: string;
 begin
   if FileExists(APath) or DirectoryExists(APath) then
   begin
     Exit(True);
   end;
   // Fehlt das Laufwerk oder die Freigabe (USB-Platte, Netz), ist das Projekt nicht gelöscht, nur nicht da.
-  Drive := ExtractFileDrive(APath);
-  Result := (Drive <> '') and not DirectoryExists(IncludeTrailingPathDelimiter(Drive));
+  mDrive := ExtractFileDrive(APath);
+  Result := (mDrive <> '') and not DirectoryExists(IncludeTrailingPathDelimiter(mDrive));
 end;
 
 /// <summary>Löscht die Build-Stände (build-*.json) in ARoot, deren Projekt es nicht mehr gibt; Anzahl.</summary>
@@ -653,7 +656,7 @@ begin
   begin
     Exit;
   end;
-  for mFileName in TDirectory.GetFiles(ARoot, TIndexCacheDirectory.BuildPattern) do
+  for mFileName in TDirectory.GetFiles(ARoot, TIndexCacheDirectory.cBuildPattern) do
   begin
     mProject := BuildProjectOf(mFileName);
     if (mProject <> '') and not TIndexCacheDirectory.OriginExists(mProject) and
@@ -666,60 +669,60 @@ end;
 
 class function TIndexCacheDirectory.RemoveOrphans(const ARoot: string; const AKeep: TArray<string>): Integer;
 var
-  FileName: string;
-  Infos: TList<TCacheFileInfo>;
-  Info: TCacheFileInfo;
-  Exists: TFunc<string, Boolean>;
+  mFileName: string;
+  mInfos: TList<TCacheFileInfo>;
+  mInfo: TCacheFileInfo;
+  mExists: TFunc<string, Boolean>;
 begin
   Result := 0;
-  Infos := TList<TCacheFileInfo>.Create;
+  mInfos := TList<TCacheFileInfo>.Create;
   try
-    for FileName in CacheFiles(ARoot) do
+    for mFileName in CacheFiles(ARoot) do
     begin
-      Info := Default(TCacheFileInfo);
-      Info.FileName := FileName;
-      Info.Locked := IsLocked(FileName);
-      if IsLegacyCache(ARoot, FileName) then
+      mInfo := Default(TCacheFileInfo);
+      mInfo.FileName := mFileName;
+      mInfo.Locked := IsLocked(mFileName);
+      if IsLegacyCache(ARoot, mFileName) then
       begin
         // Format bis 11: liest keine Version mehr.
-        if not Info.Locked and (IndexText(FileName, AKeep) < 0) and RemoveCache(FileName) then
+        if not mInfo.Locked and (IndexText(mFileName, AKeep) < 0) and RemoveCache(mFileName) then
         begin
           Inc(Result);
         end;
         Continue;
       end;
-      if not Info.Locked then
+      if not mInfo.Locked then
       begin
-        Info.Origins := OriginsOf(FileName);
+        mInfo.Origins := OriginsOf(mFileName);
       end;
-      Infos.Add(Info);
+      mInfos.Add(mInfo);
     end;
-    Exists :=
+    mExists :=
       function(APath: string): Boolean
       begin
         Result := TIndexCacheDirectory.OriginExists(APath);
       end;
-    for FileName in TIndexCacheHousekeeping.SelectOrphans(Infos.ToArray, AKeep, Exists) do
+    for mFileName in TIndexCacheHousekeeping.SelectOrphans(mInfos.ToArray, AKeep, mExists) do
     begin
-      if RemoveCache(FileName) then
+      if RemoveCache(mFileName) then
       begin
         Inc(Result);
       end;
     end;
   finally
-    Infos.Free;
+    mInfos.Free;
   end;
   Inc(Result, RemoveOrphanBuilds(ARoot));
 end;
 
 class function TIndexCacheDirectory.Clear(const ARoot: string): Integer;
 var
-  Info: TCacheFileInfo;
+  mInfo: TCacheFileInfo;
 begin
   Result := 0;
-  for Info in ListCaches(ARoot) do
+  for mInfo in ListCaches(ARoot) do
   begin
-    if not Info.Locked and RemoveCache(Info.FileName) then
+    if not mInfo.Locked and RemoveCache(mInfo.FileName) then
     begin
       Inc(Result);
     end;
@@ -728,12 +731,12 @@ end;
 
 class function TIndexCacheDirectory.Remove(const AFiles: TArray<string>): Integer;
 var
-  FileName: string;
+  mFileName: string;
 begin
   Result := 0;
-  for FileName in AFiles do
+  for mFileName in AFiles do
   begin
-    if (FileName <> '') and FileExists(FileName) and not IsLocked(FileName) and RemoveCache(FileName) then
+    if (mFileName <> '') and FileExists(mFileName) and not IsLocked(mFileName) and RemoveCache(mFileName) then
     begin
       Inc(Result);
     end;
@@ -747,14 +750,14 @@ end;
 
 class function TIndexCacheDirectory.SizeOf(const AFiles: TArray<string>): Int64;
 var
-  FileName: string;
+  mFileName: string;
 begin
   Result := 0;
-  for FileName in AFiles do
+  for mFileName in AFiles do
   begin
-    if (FileName <> '') and FileExists(FileName) then
+    if (mFileName <> '') and FileExists(mFileName) then
     begin
-      Inc(Result, TFile.GetSize(FileName));
+      Inc(Result, TFile.GetSize(mFileName));
     end;
   end;
 end;

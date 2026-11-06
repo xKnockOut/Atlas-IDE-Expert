@@ -116,7 +116,7 @@ type
   end;
 
 const
-  RuleDocumentationBaseUri = 'https://github.com/xKnockOut/Atlas-IDE-Expert/blob/main/docs/Regeln.md#';
+  cRuleDocumentationBaseUri = 'https://github.com/xKnockOut/Atlas-IDE-Expert/blob/main/docs/Regeln.md#';
 
 implementation
 
@@ -170,10 +170,10 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  CategoryNames: array[TRuleCategory] of string = ('bug', 'vulnerability', 'code-smell', 'security-hotspot');
-  GroupNames: array[TRuleGroup] of string = ('find-bugs', 'exceptions', 'threads', 'database', 'compiler',
+  cCategoryNames: array[TRuleCategory] of string = ('bug', 'vulnerability', 'code-smell', 'security-hotspot');
+  cGroupNames: array[TRuleGroup] of string = ('find-bugs', 'exceptions', 'threads', 'database', 'compiler',
     'robustness', 'performance', 'security', 'components', 'forms', 'architecture', 'style', 'packages', 'internal');
-  OptionKinds: array[0..6] of string = ('integer', 'boolean', 'string', 'string-list', 'number-list', 'object-list',
+  cOptionKinds: array[0..6] of string = ('integer', 'boolean', 'string', 'string-list', 'number-list', 'object-list',
     'json');
 
 var
@@ -206,12 +206,12 @@ end;
 
 function StringOf(AObject: TJSONObject; const AName: string): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := AObject.GetValue(AName);
-  if Value is TJSONString then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONString then
   begin
-    Result := TJSONString(Value).Value;
+    Result := TJSONString(mValue).Value;
   end
   else
   begin
@@ -249,7 +249,7 @@ var
   mKind: string;
 begin
   Result := False;
-  for mKind in OptionKinds do
+  for mKind in cOptionKinds do
   begin
     if mKind = AKind then
     begin
@@ -314,15 +314,15 @@ end;
 
 function IsCompilerCode(const ACode: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   // X wie X1008 (#1040): Meldungen, die dcc als Warnung ausgibt.
   Result := (Length(ACode) = 5) and CharInSet(ACode[1], ['E', 'F', 'W', 'H', 'X']);
   if Result then
   begin
-    for Index := 2 to 5 do
+    for mIndex := 2 to 5 do
     begin
-      if not CharInSet(ACode[Index], ['0'..'9']) then
+      if not CharInSet(ACode[mIndex], ['0'..'9']) then
       begin
         Exit(False);
       end;
@@ -332,66 +332,66 @@ end;
 
 function CompilerCodesOf(AItem: TJSONObject; const AId: string): TArray<string>;
 var
-  Value, Item: TJSONValue;
+  mValue, mItem: TJSONValue;
 begin
   Result := nil;
-  Value := AItem.GetValue('compilerCodes');
-  if Value = nil then
+  mValue := AItem.GetValue('compilerCodes');
+  if mValue = nil then
   begin
     Exit;
   end;
-  if not (Value is TJSONArray) then
+  if not (mValue is TJSONArray) then
   begin
     raise ERuleCatalog.CreateFmt(cTexts[TCatalogText.BadCompilerCodes].Text, [AId]);
   end;
-  for Item in TJSONArray(Value) do
+  for mItem in TJSONArray(mValue) do
   begin
-    if not (Item is TJSONString) or not IsCompilerCode(TJSONString(Item).Value) then
+    if not (mItem is TJSONString) or not IsCompilerCode(TJSONString(mItem).Value) then
     begin
       raise ERuleCatalog.CreateFmt(cTexts[TCatalogText.BadCompilerCode].Text, [AId]);
     end;
-    Result := Result + [TJSONString(Item).Value];
+    Result := Result + [TJSONString(mItem).Value];
   end;
 end;
 
 function OverriddenByOf(AItem: TJSONObject; const AId: string): TArray<string>;
 var
-  Value, Item: TJSONValue;
+  mValue, mItem: TJSONValue;
 begin
   Result := nil;
-  Value := AItem.GetValue('overriddenBy');
-  if Value = nil then
+  mValue := AItem.GetValue('overriddenBy');
+  if mValue = nil then
   begin
     Exit;
   end;
-  if not (Value is TJSONArray) then
+  if not (mValue is TJSONArray) then
   begin
     raise ERuleCatalog.CreateFmt(cTexts[TCatalogText.BadOverriddenBy].Text, [AId]);
   end;
-  for Item in TJSONArray(Value) do
+  for mItem in TJSONArray(mValue) do
   begin
-    if not (Item is TJSONString) or (Item is TJSONNumber) or (TJSONString(Item).Value = '') then
+    if not (mItem is TJSONString) or (mItem is TJSONNumber) or (TJSONString(mItem).Value = '') then
     begin
       raise ERuleCatalog.CreateFmt(cTexts[TCatalogText.BadCounterRule].Text, [AId]);
     end;
-    Result := Result + [TJSONString(Item).Value];
+    Result := Result + [TJSONString(mItem).Value];
   end;
 end;
 
 function RulesOf(ARoot: TJSONValue): TJSONArray;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   if not (ARoot is TJSONObject) then
   begin
     raise ERuleCatalog.Create(cTexts[TCatalogText.ObjectExpected].Text);
   end;
-  Value := TJSONObject(ARoot).GetValue('rules');
-  if not (Value is TJSONArray) then
+  mValue := TJSONObject(ARoot).GetValue('rules');
+  if not (mValue is TJSONArray) then
   begin
     raise ERuleCatalog.Create(cTexts[TCatalogText.RulesMissing].Text);
   end;
-  Result := TJSONArray(Value);
+  Result := TJSONArray(mValue);
 end;
 
 /// <summary>Kategorie, Schweregrad und Gruppe (ohne "group" die der Kategorie) eines Eintrags.</summary>
@@ -599,13 +599,13 @@ end;
 
 function TRuleCatalog.TryFind(const AId: string; out AEntry: TRuleCatalogEntry): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := IndexOf(AId);
-  Result := Index >= 0;
+  mIndex := IndexOf(AId);
+  Result := mIndex >= 0;
   if Result then
   begin
-    AEntry := FEntries[Index];
+    AEntry := FEntries[mIndex];
   end
   else
   begin
@@ -620,7 +620,7 @@ end;
 
 class function TRuleCatalog.HelpUri(const AId: string): string;
 begin
-  Result := RuleDocumentationBaseUri + LowerCase(AId);
+  Result := cRuleDocumentationBaseUri + LowerCase(AId);
 end;
 
 class function TRuleCatalog.Explanation(const AEntry: TRuleCatalogEntry; const ALineBreak: string): string;
@@ -657,18 +657,18 @@ end;
 
 class function TRuleCatalog.CategoryName(ACategory: TRuleCategory): string;
 begin
-  Result := CategoryNames[ACategory];
+  Result := cCategoryNames[ACategory];
 end;
 
 class function TRuleCatalog.TryParseCategory(const AText: string; out ACategory: TRuleCategory): Boolean;
 var
-  Category: TRuleCategory;
+  mCategory: TRuleCategory;
 begin
-  for Category := Low(TRuleCategory) to High(TRuleCategory) do
+  for mCategory := Low(TRuleCategory) to High(TRuleCategory) do
   begin
-    if SameText(AText, CategoryNames[Category]) then
+    if SameText(AText, cCategoryNames[mCategory]) then
     begin
-      ACategory := Category;
+      ACategory := mCategory;
       Exit(True);
     end;
   end;
@@ -678,23 +678,23 @@ end;
 
 class function TRuleCatalog.GroupName(AGroup: TRuleGroup): string;
 begin
-  Result := GroupNames[AGroup];
+  Result := cGroupNames[AGroup];
 end;
 
 class function TRuleCatalog.GroupKey(AGroup: TRuleGroup): string;
 begin
-  Result := 'group:' + GroupNames[AGroup];
+  Result := 'group:' + cGroupNames[AGroup];
 end;
 
 class function TRuleCatalog.TryParseGroup(const AText: string; out AGroup: TRuleGroup): Boolean;
 var
-  Group: TRuleGroup;
+  mGroup: TRuleGroup;
 begin
-  for Group := Low(TRuleGroup) to High(TRuleGroup) do
+  for mGroup := Low(TRuleGroup) to High(TRuleGroup) do
   begin
-    if SameText(AText, GroupNames[Group]) then
+    if SameText(AText, cGroupNames[mGroup]) then
     begin
-      AGroup := Group;
+      AGroup := mGroup;
       Exit(True);
     end;
   end;

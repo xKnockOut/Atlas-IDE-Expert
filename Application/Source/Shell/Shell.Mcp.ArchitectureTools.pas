@@ -163,7 +163,7 @@ begin
   begin
     mFailOn := TArchitectureComparer.DefaultFailOn;
   end;
-  Result := TArchitectureComparer.Text(mComparison, mFailOn, TArchitectureReport.TextLimit);
+  Result := TArchitectureComparer.Text(mComparison, mFailOn, TArchitectureReport.cTextLimit);
 end;
 
 /// <summary>Text der Architekturübersicht für get_architecture über AArchitecture; in eigener Routine, damit die
@@ -192,7 +192,7 @@ begin
       end
       else
       begin
-        Result := TArchitectureReport.Text(mOverview, ASection, TArchitectureReport.TextLimit);
+        Result := TArchitectureReport.Text(mOverview, ASection, TArchitectureReport.cTextLimit);
       end;
     end;
 end;

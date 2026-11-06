@@ -18,8 +18,8 @@ uses
 type
   TLspColors = class
   public const
-    ColorMethod = 'textDocument/documentColor';
-    PresentationMethod = 'textDocument/colorPresentation';
+    cColorMethod = 'textDocument/documentColor';
+    cPresentationMethod = 'textDocument/colorPresentation';
   private
     FStore: IDocumentStore;
     FSystemColors: TSystemColorProvider;
@@ -72,8 +72,8 @@ end;
 
 procedure TLspColors.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterConcurrentRequest(ColorMethod, HandleColors);
-  ADispatcher.RegisterConcurrentRequest(PresentationMethod, HandlePresentation);
+  ADispatcher.RegisterConcurrentRequest(cColorMethod, HandleColors);
+  ADispatcher.RegisterConcurrentRequest(cPresentationMethod, HandlePresentation);
 end;
 
 class function TLspColors.ColorToJson(const AColor: TRgbColor): TJSONObject;
@@ -92,90 +92,90 @@ end;
 
 class function TLspColors.TryReadColor(AValue: TJSONValue; out AColor: TRgbColor): Boolean;
 var
-  Red, Green, Blue: Double;
+  mRed, mGreen, mBlue: Double;
 begin
-  Result := (AValue is TJSONObject) and TJSONObject(AValue).TryGetValue<Double>('red', Red) and
-    TJSONObject(AValue).TryGetValue<Double>('green', Green) and TJSONObject(AValue).TryGetValue<Double>('blue', Blue);
+  Result := (AValue is TJSONObject) and TJSONObject(AValue).TryGetValue<Double>('red', mRed) and
+    TJSONObject(AValue).TryGetValue<Double>('green', mGreen) and TJSONObject(AValue).TryGetValue<Double>('blue', mBlue);
   if Result then
   begin
-    AColor := TRgbColor.Create(Channel(Red), Channel(Green), Channel(Blue));
+    AColor := TRgbColor.Create(Channel(mRed), Channel(mGreen), Channel(mBlue));
   end;
 end;
 
 function TLspColors.HandleColors(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
-  Uri: string;
-  Document: ITextDocument;
-  Matches: TArray<TColorMatch>;
-  Match: TColorMatch;
-  Item: TJSONObject;
+  mUri: string;
+  mDocument: ITextDocument;
+  mMatches: TArray<TColorMatch>;
+  mMatch: TColorMatch;
+  mItem: TJSONObject;
 begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri)) then
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      cTexts[TColorsText.FieldTextDocumentUriMissingIn].Text + ColorMethod);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TColorsText.FieldTextDocumentUriMissingIn].Text + cColorMethod);
   end;
-  if not FStore.TryGet(Uri, Document) then
+  if not FStore.TryGet(mUri, mDocument) then
   begin
     Exit(TJSONArray.Create);
   end;
-  Matches := TSourceColors.Find(Document.Text, FSystemColors);
+  mMatches := TSourceColors.Find(mDocument.Text, FSystemColors);
   ACancellation.ThrowIfCancellationRequested;
   Result := TJSONArray.Create;
-  for Match in Matches do
+  for mMatch in mMatches do
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('range', TLspPositions.RangeToJson(Match.Range));
-    Item.AddPair('color', ColorToJson(Match.Color));
-    TJSONArray(Result).AddElement(Item);
+    mItem := TJSONObject.Create;
+    mItem.AddPair('range', TLspPositions.RangeToJson(mMatch.Range));
+    mItem.AddPair('color', ColorToJson(mMatch.Color));
+    TJSONArray(Result).AddElement(mItem);
   end;
 end;
 
 function TLspColors.HandlePresentation(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
-  Uri: string;
-  Document: ITextDocument;
-  ColorValue, RangeValue: TJSONValue;
-  Color: TRgbColor;
-  Range: TTextRange;
-  SourceFormat: TColorFormat;
-  Match: TColorMatch;
-  Presentation: TColorPresentation;
-  Item, Edit: TJSONObject;
+  mUri: string;
+  mDocument: ITextDocument;
+  mColorValue, mRangeValue: TJSONValue;
+  mColor: TRgbColor;
+  mRange: TTextRange;
+  mSourceFormat: TColorFormat;
+  mMatch: TColorMatch;
+  mPresentation: TColorPresentation;
+  mItem, mEdit: TJSONObject;
 begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
-    TJSONObject(AParams).TryGetValue<TJSONValue>('color', ColorValue) and
-    TJSONObject(AParams).TryGetValue<TJSONValue>('range', RangeValue) and TryReadColor(ColorValue, Color)) then
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
+    TJSONObject(AParams).TryGetValue<TJSONValue>('color', mColorValue) and
+    TJSONObject(AParams).TryGetValue<TJSONValue>('range', mRangeValue) and TryReadColor(mColorValue, mColor)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      cTexts[TColorsText.FieldsTextDocumentUriColorAnd].Text + PresentationMethod);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TColorsText.FieldsTextDocumentUriColorAnd].Text + cPresentationMethod);
   end;
-  Range := TLspPositions.ReadRange(RangeValue);
+  mRange := TLspPositions.ReadRange(mRangeValue);
   // Ohne Fundstelle an dieser Stelle gilt Hex als Ausgangsformat.
-  SourceFormat := TColorFormat.Hex;
-  if FStore.TryGet(Uri, Document) then
+  mSourceFormat := TColorFormat.Hex;
+  if FStore.TryGet(mUri, mDocument) then
   begin
-    for Match in TSourceColors.Find(Document.Text, FSystemColors) do
+    for mMatch in TSourceColors.Find(mDocument.Text, FSystemColors) do
     begin
-      if (Match.Range.StartPos = Range.StartPos) and (Match.Range.EndPos = Range.EndPos) then
+      if (mMatch.Range.StartPos = mRange.StartPos) and (mMatch.Range.EndPos = mRange.EndPos) then
       begin
-        SourceFormat := Match.Format;
+        mSourceFormat := mMatch.Format;
       end;
     end;
   end;
   ACancellation.ThrowIfCancellationRequested;
   Result := TJSONArray.Create;
-  for Presentation in TSourceColors.Presentations(Color, SourceFormat) do
+  for mPresentation in TSourceColors.Presentations(mColor, mSourceFormat) do
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('label', Presentation.Text);
-    Edit := TJSONObject.Create;
-    Edit.AddPair('range', TLspPositions.RangeToJson(Range));
-    Edit.AddPair('newText', Presentation.Text);
-    Item.AddPair('textEdit', Edit);
-    TJSONArray(Result).AddElement(Item);
+    mItem := TJSONObject.Create;
+    mItem.AddPair('label', mPresentation.Text);
+    mEdit := TJSONObject.Create;
+    mEdit.AddPair('range', TLspPositions.RangeToJson(mRange));
+    mEdit.AddPair('newText', mPresentation.Text);
+    mItem.AddPair('textEdit', mEdit);
+    TJSONArray(Result).AddElement(mItem);
   end;
 end;
 

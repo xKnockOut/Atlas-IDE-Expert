@@ -18,7 +18,7 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  DllExportUnsafeRuleId = 'dll-export-unsafe';
+  cDllExportUnsafeRuleId = 'dll-export-unsafe';
 
 type
   TDllExportUnsafeRule = class(TInterfacedObject, IRule)
@@ -71,17 +71,17 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  CallingConventions: array[0..4] of string = ('stdcall', 'cdecl', 'safecall', 'winapi', 'pascal');
+  cCallingConventions: array[0..4] of string = ('stdcall', 'cdecl', 'safecall', 'winapi', 'pascal');
   /// <summary>Strings mit Referenzzählung im Speicher des Delphi-Speichermanagers; WideString (BSTR) und
   /// ShortString sind sicher.</summary>
-  ManagedStrings: array[0..4] of string = ('string', 'UnicodeString', 'AnsiString', 'UTF8String', 'RawByteString');
+  cManagedStrings: array[0..4] of string = ('string', 'UnicodeString', 'AnsiString', 'UTF8String', 'RawByteString');
   /// <summary>Dynamische Arrays aus System und System.Types.</summary>
-  DynamicArrays: array[0..1] of string = ('TBytes', 'TArray');
+  cDynamicArrays: array[0..1] of string = ('TBytes', 'TArray');
   /// <summary>Häufige RTL-Klassen; ohne Index wären sie unbekannt.</summary>
-  KnownClasses: array[0..19] of string = ('TObject', 'TPersistent', 'TComponent', 'TStrings', 'TStringList',
+  cKnownClasses: array[0..19] of string = ('TObject', 'TPersistent', 'TComponent', 'TStrings', 'TStringList',
     'TStream', 'TMemoryStream', 'TFileStream', 'TStringStream', 'TBytesStream', 'TList', 'TObjectList',
     'TDictionary', 'TObjectDictionary', 'TQueue', 'TStack', 'TCollection', 'TThread', 'TJSONObject', 'TJSONArray');
-  ShareMemUnits: array[0..1] of string = ('ShareMem', 'SimpleShareMem');
+  cShareMemUnits: array[0..1] of string = ('ShareMem', 'SimpleShareMem');
 
 type
   {$SCOPEDENUMS ON}
@@ -104,14 +104,14 @@ end;
 /// <summary>Kleinbuchstaben ohne Leerraum: Parameterlisten vergleichen.</summary>
 function Normalized(const AText: string): string;
 var
-  Ch: Char;
+  mCh: Char;
 begin
   Result := '';
-  for Ch in LowerCase(AText) do
+  for mCh in LowerCase(AText) do
   begin
-    if not CharInSet(Ch, [' ', #9, #10, #13]) then
+    if not CharInSet(mCh, [' ', #9, #10, #13]) then
     begin
-      Result := Result + Ch;
+      Result := Result + mCh;
     end;
   end;
 end;
@@ -224,9 +224,9 @@ end;
 /// </summary>
 function RoutineHeaders(ATree: TSyntaxTree; const AName: string): TArray<TSyntaxNode>;
 var
-  Found: TArray<TSyntaxNode>;
+  mFound: TArray<TSyntaxNode>;
 begin
-  Found := nil;
+  mFound := nil;
   ATree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     var
@@ -246,40 +246,40 @@ begin
       end;
       if (Header <> nil) and SameText(Header.Name, AName) then
       begin
-        Found := Found + [Header];
+        mFound := mFound + [Header];
       end;
     end);
-  Result := Found;
+  Result := mFound;
 end;
 
 function ParameterText(const AText: string; AHeader: TSyntaxNode): string;
 var
-  Parameters: TSyntaxNode;
+  mParameters: TSyntaxNode;
 begin
   Result := '';
-  Parameters := AHeader.FindChild(TSyntaxKind.Parameters);
-  if Parameters <> nil then
+  mParameters := AHeader.FindChild(TSyntaxKind.Parameters);
+  if mParameters <> nil then
   begin
-    Result := Normalized(NodeText(AText, Parameters));
+    Result := Normalized(NodeText(AText, mParameters));
   end;
 end;
 
 /// <summary>Typdeklaration ATypeName in der Datei; nil ohne.</summary>
 function FileTypeDecl(ATree: TSyntaxTree; const ATypeName: string): TSyntaxNode;
 var
-  Found: TSyntaxNode;
+  mFound: TSyntaxNode;
 begin
-  Found := nil;
+  mFound := nil;
   ATree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
-      Result := Found = nil;
+      Result := mFound = nil;
       if Result and (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(ANode.Name, ATypeName) then
       begin
-        Found := ANode;
+        mFound := ANode;
       end;
     end);
-  Result := Found;
+  Result := mFound;
 end;
 
 /// <summary>Hat die Interface-Deklaration AInterface eine GUID ['{…}'] oder ist sie ein dispinterface?</summary>
@@ -310,11 +310,11 @@ end;
 function SystemKind(const AName: string): TExportTypeKind;
 begin
   Result := TExportTypeKind.Safe;
-  if MatchText(AName, ManagedStrings) then
+  if MatchText(AName, cManagedStrings) then
   begin
     Result := TExportTypeKind.ManagedString;
   end
-  else if MatchText(AName, DynamicArrays) or EndsText('DynArray', AName) then
+  else if MatchText(AName, cDynamicArrays) or EndsText('DynArray', AName) then
   begin
     Result := TExportTypeKind.DynamicArray;
   end;
@@ -373,7 +373,7 @@ function IsExternalClass(const AContext: TRuleContext; const AName: string): Boo
 var
   mLocation: TSymbolLocation;
 begin
-  Result := MatchText(AName, KnownClasses);
+  Result := MatchText(AName, cKnownClasses);
   if Result or (AContext.Index = nil) then
   begin
     Exit;
@@ -413,15 +413,15 @@ end;
 
 function UsesShareMem(ATree: TSyntaxTree): Boolean;
 var
-  Found: Boolean;
+  mFound: Boolean;
 begin
-  Found := False;
+  mFound := False;
   ATree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     var
       Name: string;
     begin
-      Result := not Found;
+      Result := not mFound;
       if ANode.Kind <> TSyntaxKind.UsedUnit then
       begin
         Exit;
@@ -431,12 +431,12 @@ begin
       begin
         Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
       end;
-      if MatchText(Name, ShareMemUnits) then
+      if MatchText(Name, cShareMemUnits) then
       begin
-        Found := True;
+        mFound := True;
       end;
     end);
-  Result := Found;
+  Result := mFound;
 end;
 
 /// <summary>"string", "TStringList (Objekt)" usw. für die Meldung.</summary>
@@ -457,22 +457,22 @@ end;
 
 function Joined(const AParts: TArray<string>): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := 0 to High(AParts) do
+  for mIndex := 0 to High(AParts) do
   begin
-    if Index = 0 then
+    if mIndex = 0 then
     begin
-      Result := AParts[Index];
+      Result := AParts[mIndex];
     end
-    else if Index = High(AParts) then
+    else if mIndex = High(AParts) then
     begin
-      Result := Result + cTexts[TDllExportsText.AndWord].Text + AParts[Index];
+      Result := Result + cTexts[TDllExportsText.AndWord].Text + AParts[mIndex];
     end
     else
     begin
-      Result := Result + ', ' + AParts[Index];
+      Result := Result + ', ' + AParts[mIndex];
     end;
   end;
 end;
@@ -481,7 +481,7 @@ end;
 
 function TDllExportUnsafeRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(DllExportUnsafeRuleId, TRuleSeverity.Warning,
+  Result := TRuleDescriptor.Create(cDllExportUnsafeRuleId, TRuleSeverity.Warning,
     cTexts[TDllExportsText.Title].Text);
 end;
 
@@ -543,7 +543,7 @@ begin
   begin
     for mIndex := 0 to mHeader.ChildCount - 1 do
     begin
-      if (mHeader[mIndex].Kind = TSyntaxKind.Directive) and MatchText(mHeader[mIndex].Name, CallingConventions) then
+      if (mHeader[mIndex].Kind = TSyntaxKind.Directive) and MatchText(mHeader[mIndex].Name, cCallingConventions) then
       begin
         Exit(True);
       end;

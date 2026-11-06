@@ -35,8 +35,8 @@ uses
 type
   TLspEventHandlers = class
   public const
-    Command = 'atlas.server.eventHandlers';
-    MaxDepth = 32;
+    cCommand = 'atlas.server.eventHandlers';
+    cMaxDepth = 32;
   private
     FSourceFor: TLspMetricsSourceFunc;
     FReadText: TMetricsReadText;
@@ -72,8 +72,8 @@ uses
   Atlas.Common.Documents.Uris;
 
 const
-  OriginNames: array[TEventHandlerOrigin] of string = ('form', 'code');
-  ClassKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType];
+  cOriginNames: array[TEventHandlerOrigin] of string = ('form', 'code');
+  cClassKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType];
 
 { TLspEventHandlers }
 
@@ -93,8 +93,8 @@ end;
 
 function TLspEventHandlers.BodiesOf(const AFileName: string): TDictionary<string, TEventHandlerBody>;
 var
-  Text: string;
-  Tree: TSyntaxTree;
+  mText: string;
+  mTree: TSyntaxTree;
 begin
   if FBodies.TryGetValue(LowerCase(AFileName), Result) then
   begin
@@ -102,24 +102,24 @@ begin
   end;
   Result := TDictionary<string, TEventHandlerBody>.Create;
   FBodies.Add(LowerCase(AFileName), Result);
-  if not (Assigned(FReadText) and FReadText(AFileName, Text)) then
+  if not (Assigned(FReadText) and FReadText(AFileName, mText)) then
   begin
     Exit;
   end;
-  Tree := TSyntaxTreeCache.Parse(Text, nil);
+  mTree := TSyntaxTreeCache.Parse(mText, nil);
   try
-    TEventHandlers.Bodies(Tree, Result);
+    TEventHandlers.Bodies(mTree, Result);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function TLspEventHandlers.ResolveInAncestors(var AHandler: TEventHandler): Boolean;
 var
-  ClassName, FileName, Container: string;
-  Depth: Integer;
-  Location: TSymbolLocation;
-  Next: string;
+  mClassName, mFileName, mContainer: string;
+  mDepth: Integer;
+  mLocation: TSymbolLocation;
+  mNext: string;
 begin
   Result := False;
   if FIndex = nil then
@@ -127,32 +127,32 @@ begin
     Exit;
   end;
   // Die Klasse selbst (Rumpf in einer anderen Unit, etwa per Include) und ihre Vorfahren.
-  ClassName := AHandler.Container;
-  Depth := 0;
-  while (ClassName <> '') and (Depth < MaxDepth) do
+  mClassName := AHandler.Container;
+  mDepth := 0;
+  while (mClassName <> '') and (mDepth < cMaxDepth) do
   begin
-    Next := '';
-    for Location in FIndex.FindSymbols(ClassName) do
+    mNext := '';
+    for mLocation in FIndex.FindSymbols(mClassName) do
     begin
-      if not (Location.Symbol.Kind in ClassKinds) then
+      if not (mLocation.Symbol.Kind in cClassKinds) then
       begin
         Continue;
       end;
-      FileName := Location.FileName;
-      Container := AHandler.Container;
-      AHandler.Container := ClassName;
-      if TEventHandlers.Resolve(AHandler, FileName, BodiesOf(FileName)) then
+      mFileName := mLocation.FileName;
+      mContainer := AHandler.Container;
+      AHandler.Container := mClassName;
+      if TEventHandlers.Resolve(AHandler, mFileName, BodiesOf(mFileName)) then
       begin
         Exit(True);
       end;
-      AHandler.Container := Container;
-      if (Next = '') and (Length(Location.Symbol.Ancestors) > 0) then
+      AHandler.Container := mContainer;
+      if (mNext = '') and (Length(mLocation.Symbol.Ancestors) > 0) then
       begin
-        Next := Location.Symbol.Ancestors[0];
+        mNext := mLocation.Symbol.Ancestors[0];
       end;
     end;
-    ClassName := Next;
-    Inc(Depth);
+    mClassName := mNext;
+    Inc(mDepth);
   end;
 end;
 
@@ -237,61 +237,61 @@ end;
 
 class function TLspEventHandlers.ToJson(const AHandlers: TArray<TEventHandler>; AUnresolved: Integer): string;
 var
-  Root, Item: TJSONObject;
-  List: TJSONArray;
-  Handler: TEventHandler;
+  mRoot, mItem: TJSONObject;
+  mList: TJSONArray;
+  mHandler: TEventHandler;
 begin
-  Root := TJSONObject.Create;
+  mRoot := TJSONObject.Create;
   try
-    Root.AddPair('format', TJSONNumber.Create(1));
-    List := TJSONArray.Create;
-    Root.AddPair('handlers', List);
-    for Handler in AHandlers do
+    mRoot.AddPair('format', TJSONNumber.Create(1));
+    mList := TJSONArray.Create;
+    mRoot.AddPair('handlers', mList);
+    for mHandler in AHandlers do
     begin
-      Item := TJSONObject.Create;
-      List.AddElement(Item);
-      Item.AddPair('form', Handler.FormClass);
-      Item.AddPair('component', Handler.Component);
-      Item.AddPair('componentClass', Handler.ComponentClass);
-      Item.AddPair('event', Handler.Event);
-      Item.AddPair('handler', Handler.Handler);
-      Item.AddPair('container', Handler.Container);
-      Item.AddPair('origin', OriginNames[Handler.Origin]);
-      Item.AddPair('file', Handler.FileName);
-      Item.AddPair('line', TJSONNumber.Create(Handler.Line));
-      Item.AddPair('bodyLine', TJSONNumber.Create(Handler.BodyLine));
-      Item.AddPair('source', Handler.SourceFile);
-      Item.AddPair('sourceLine', TJSONNumber.Create(Handler.SourceLine));
-      if Handler.Interval >= 0 then
+      mItem := TJSONObject.Create;
+      mList.AddElement(mItem);
+      mItem.AddPair('form', mHandler.FormClass);
+      mItem.AddPair('component', mHandler.Component);
+      mItem.AddPair('componentClass', mHandler.ComponentClass);
+      mItem.AddPair('event', mHandler.Event);
+      mItem.AddPair('handler', mHandler.Handler);
+      mItem.AddPair('container', mHandler.Container);
+      mItem.AddPair('origin', cOriginNames[mHandler.Origin]);
+      mItem.AddPair('file', mHandler.FileName);
+      mItem.AddPair('line', TJSONNumber.Create(mHandler.Line));
+      mItem.AddPair('bodyLine', TJSONNumber.Create(mHandler.BodyLine));
+      mItem.AddPair('source', mHandler.SourceFile);
+      mItem.AddPair('sourceLine', TJSONNumber.Create(mHandler.SourceLine));
+      if mHandler.Interval >= 0 then
       begin
-        Item.AddPair('interval', TJSONNumber.Create(Handler.Interval));
+        mItem.AddPair('interval', TJSONNumber.Create(mHandler.Interval));
       end;
     end;
-    Root.AddPair('unresolved', TJSONNumber.Create(AUnresolved));
-    Result := Root.ToJSON;
+    mRoot.AddPair('unresolved', TJSONNumber.Create(AUnresolved));
+    Result := mRoot.ToJSON;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 function TLspEventHandlers.Execute(const AArguments: TJSONArray): TJSONValue;
 var
-  FileName: string;
-  Source: TLspMetricsSource;
-  Handlers: TArray<TEventHandler>;
-  Unresolved: Integer;
+  mFileName: string;
+  mSource: TLspMetricsSource;
+  mHandlers: TArray<TEventHandler>;
+  mUnresolved: Integer;
 begin
-  FileName := '';
+  mFileName := '';
   if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
   begin
-    FileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
+    mFileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
   end;
-  if not (Assigned(FSourceFor) and FSourceFor(FileName, True, Source)) then
+  if not (Assigned(FSourceFor) and FSourceFor(mFileName, True, mSource)) then
   begin
-    Source := Default(TLspMetricsSource);
+    mSource := Default(TLspMetricsSource);
   end;
-  Handlers := Collect(Source.Files, Unresolved);
-  Result := TJSONObject.ParseJSONValue(ToJson(Handlers, Unresolved));
+  mHandlers := Collect(mSource.Files, mUnresolved);
+  Result := TJSONObject.ParseJSONValue(ToJson(mHandlers, mUnresolved));
 end;
 
 end.

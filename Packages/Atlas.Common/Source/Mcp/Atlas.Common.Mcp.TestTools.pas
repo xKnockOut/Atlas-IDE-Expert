@@ -51,10 +51,10 @@ type
   TMcpTestTools = class
   public const
     /// <summary>Vorgabe des Zeitlimits eines Laufs in Sekunden.</summary>
-    DefaultTimeoutSeconds = 600;
-    MaxTimeoutSeconds = 3600;
+    cDefaultTimeoutSeconds = 600;
+    cMaxTimeoutSeconds = 3600;
     /// <summary>Höchstens so viele fehlgeschlagene Tests im Bericht; der Rest wird gezählt.</summary>
-    MaxFailures = 100;
+    cMaxFailures = 100;
   public
     /// <summary>Plattform des Laufs. False mit Grund, wenn ARequested nicht aktiviert ist. AEnabled leer = alte
     /// Projektdatei ohne Angabe: dann gilt ARequested bzw. AFileDefault.</summary>
@@ -237,14 +237,14 @@ end;
 
 class function TMcpTestTools.PropertyOf(const AInfo: TProjectInfo; const AName: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   // Die letzte Zuweisung gilt (wie in MSBuild).
-  for Index := High(AInfo.Properties) downto 0 do
+  for mIndex := High(AInfo.Properties) downto 0 do
   begin
-    if SameText(AInfo.Properties[Index].Key, AName) then
+    if SameText(AInfo.Properties[mIndex].Key, AName) then
     begin
-      Exit(AInfo.Properties[Index].Value);
+      Exit(AInfo.Properties[mIndex].Value);
     end;
   end;
   Result := '';
@@ -252,53 +252,53 @@ end;
 
 class function TMcpTestTools.ExecutableOf(const AInfo: TProjectInfo): string;
 var
-  Directory, Output, Name: string;
+  mDirectory, mOutput, mName: string;
 begin
-  Directory := TProjectPaths.DirectoryOf(AInfo.FileName);
-  Output := PropertyOf(AInfo, 'DCC_ExeOutput');
-  if Output <> '' then
+  mDirectory := TProjectPaths.DirectoryOf(AInfo.FileName);
+  mOutput := PropertyOf(AInfo, 'DCC_ExeOutput');
+  if mOutput <> '' then
   begin
-    Directory := TProjectPaths.Combine(Directory, Output);
+    mDirectory := TProjectPaths.Combine(mDirectory, mOutput);
   end;
   if AInfo.MainSource <> '' then
   begin
-    Name := TProjectPaths.BaseName(AInfo.MainSource);
+    mName := TProjectPaths.BaseName(AInfo.MainSource);
   end
   else
   begin
-    Name := TProjectPaths.BaseName(AInfo.FileName);
+    mName := TProjectPaths.BaseName(AInfo.FileName);
   end;
-  Result := TProjectPaths.Combine(Directory, Name + '.exe');
+  Result := TProjectPaths.Combine(mDirectory, mName + '.exe');
 end;
 
 class function TMcpTestTools.TestsOf(const AArguments: TJSONObject): TArray<string>;
 var
-  Value, Item: TJSONValue;
-  Part: string;
+  mValue, mItem: TJSONValue;
+  mPart: string;
 begin
   Result := nil;
   if AArguments = nil then
   begin
     Exit;
   end;
-  Value := AArguments.GetValue('tests');
-  if Value is TJSONArray then
+  mValue := AArguments.GetValue('tests');
+  if mValue is TJSONArray then
   begin
-    for Item in TJSONArray(Value) do
+    for mItem in TJSONArray(mValue) do
     begin
-      if Trim(Item.Value) <> '' then
+      if Trim(mItem.Value) <> '' then
       begin
-        Result := Result + [Trim(Item.Value)];
+        Result := Result + [Trim(mItem.Value)];
       end;
     end;
   end
-  else if (Value <> nil) and not (Value is TJSONNull) then
+  else if (mValue <> nil) and not (mValue is TJSONNull) then
   begin
-    for Part in Value.Value.Split([',']) do
+    for mPart in mValue.Value.Split([',']) do
     begin
-      if Trim(Part) <> '' then
+      if Trim(mPart) <> '' then
       begin
-        Result := Result + [Trim(Part)];
+        Result := Result + [Trim(mPart)];
       end;
     end;
   end;
@@ -307,8 +307,8 @@ end;
 class function TMcpTestTools.Locate(const ACase: TTestCaseResult; const AUnits: TArray<TProjectUnit>;
   const AProjectDir: string; const AReadLines: TMcpReadLines; out AFileName: string; out ALine: Integer): Boolean;
 var
-  ProjectUnit: TProjectUnit;
-  Lines: TArray<string>;
+  mProjectUnit: TProjectUnit;
+  mLines: TArray<string>;
 begin
   AFileName := '';
   ALine := 0;
@@ -316,11 +316,11 @@ begin
   begin
     Exit(False);
   end;
-  for ProjectUnit in AUnits do
+  for mProjectUnit in AUnits do
   begin
-    if SameText(ProjectUnit.Name, ACase.UnitName) then
+    if SameText(mProjectUnit.Name, ACase.UnitName) then
     begin
-      AFileName := ProjectUnit.FileName;
+      AFileName := mProjectUnit.FileName;
       Break;
     end;
   end;
@@ -328,21 +328,21 @@ begin
   begin
     AFileName := TProjectPaths.Combine(AProjectDir, ACase.UnitName + '.pas');
   end;
-  if (AFileName = '') or not AReadLines(AFileName, Lines) then
+  if (AFileName = '') or not AReadLines(AFileName, mLines) then
   begin
     AFileName := '';
     Exit(False);
   end;
   // Ohne Fundstelle in der Datei: nur die Datei (ALine = 0).
-  ALine := TDUnitXSource.Scan(Lines).LineOf(ACase.Fixture, ACase.Method) + 1;
+  ALine := TDUnitXSource.Scan(mLines).LineOf(ACase.Fixture, ACase.Method) + 1;
   Result := True;
 end;
 
 function OutcomeText(AOutcome: TTestOutcome): string;
 const
-  Texts: array[TTestOutcome] of string = ('passed', 'failed', 'error', 'skipped');
+  cTexts: array[TTestOutcome] of string = ('passed', 'failed', 'error', 'skipped');
 begin
-  Result := Texts[AOutcome];
+  Result := cTexts[AOutcome];
 end;
 
 class function TMcpTestProcess.Make(AExitCode: Integer; const AOutput: TArray<string>): TMcpTestProcess;
@@ -457,13 +457,13 @@ begin
     mItems := TJSONArray.Create;
     mRoot.AddPair('failures', mItems);
     mFailures := ARun.Failures;
-    for mIndex := 0 to Min(Length(mFailures), MaxFailures) - 1 do
+    for mIndex := 0 to Min(Length(mFailures), cMaxFailures) - 1 do
     begin
       mItems.AddElement(FailureJson(mFailures[mIndex], ATarget, AUnits, AReadLines));
     end;
-    if Length(mFailures) > MaxFailures then
+    if Length(mFailures) > cMaxFailures then
     begin
-      mRoot.AddPair('omittedFailures', TJSONNumber.Create(Length(mFailures) - MaxFailures));
+      mRoot.AddPair('omittedFailures', TJSONNumber.Create(Length(mFailures) - cMaxFailures));
     end;
     Result := mRoot.Format(2);
   finally

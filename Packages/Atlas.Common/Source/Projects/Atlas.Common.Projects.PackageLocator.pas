@@ -229,32 +229,32 @@ end;
 
 class function TPackageLocator.CompiledContains(const AData: TBytes; const AUnitName: string): Boolean;
 var
-  Name: TBytes;
-  Start, Offset: Integer;
-  Matches: Boolean;
+  mName: TBytes;
+  mStart, mOffset: Integer;
+  mMatches: Boolean;
 begin
   Result := False;
-  Name := TEncoding.ASCII.GetBytes(UpperCase(AUnitName));
-  if Length(Name) = 0 then
+  mName := TEncoding.ASCII.GetBytes(UpperCase(AUnitName));
+  if Length(mName) = 0 then
   begin
     Exit;
   end;
-  for Start := 0 to Length(AData) - Length(Name) do
+  for mStart := 0 to Length(AData) - Length(mName) do
   begin
-    if (Start > 0) and IsNameByte(AData[Start - 1]) then
+    if (mStart > 0) and IsNameByte(AData[mStart - 1]) then
     begin
       Continue;
     end;
-    Matches := True;
-    for Offset := 0 to High(Name) do
+    mMatches := True;
+    for mOffset := 0 to High(mName) do
     begin
-      if UpperByte(AData[Start + Offset]) <> Name[Offset] then
+      if UpperByte(AData[mStart + mOffset]) <> mName[mOffset] then
       begin
-        Matches := False;
+        mMatches := False;
         Break;
       end;
     end;
-    if Matches and ((Start + Length(Name) >= Length(AData)) or not IsNameByte(AData[Start + Length(Name)])) then
+    if mMatches and ((mStart + Length(mName) >= Length(AData)) or not IsNameByte(AData[mStart + Length(mName)])) then
     begin
       Exit(True);
     end;
@@ -263,14 +263,14 @@ end;
 
 function TPackageLocator.Find(const APackage: string): TFound;
 var
-  Key, Folder, FileName: string;
-  Data: TBytes;
-  FileFormat: TFileFormat;
+  mKey, mFolder, mFileName: string;
+  mData: TBytes;
+  mFileFormat: TFileFormat;
 begin
-  Key := UpperCase(APackage);
+  mKey := UpperCase(APackage);
   TMonitor.Enter(FLock);
   try
-    if FCache.TryGetValue(Key, Result) then
+    if FCache.TryGetValue(mKey, Result) then
     begin
       Exit;
     end;
@@ -278,37 +278,37 @@ begin
     TMonitor.Exit(FLock);
   end;
   Result := Default(TFound);
-  for Folder in FFolders do
+  for mFolder in FFolders do
   begin
-    FileName := TPath.Combine(Folder, APackage + '.dpk');
-    if FReadFile(FileName, Data) then
+    mFileName := TPath.Combine(mFolder, APackage + '.dpk');
+    if FReadFile(mFileName, mData) then
     begin
-      Result.Source := TPackageReader.Read(TFileEncoding.Decode(Data, FileFormat));
+      Result.Source := TPackageReader.Read(TFileEncoding.Decode(mData, mFileFormat));
       if Result.Source.IsPackage then
       begin
         Result.Known := True;
-        Result.FileName := FileName;
+        Result.FileName := mFileName;
         Break;
       end;
     end;
   end;
   if not Result.Known then
   begin
-    for Folder in FFolders do
+    for mFolder in FFolders do
     begin
-      FileName := TPath.Combine(Folder, APackage + '.dcp');
-      if FReadFile(FileName, Data) then
+      mFileName := TPath.Combine(mFolder, APackage + '.dcp');
+      if FReadFile(mFileName, mData) then
       begin
         Result.Known := True;
-        Result.FileName := FileName;
-        Result.Compiled := Data;
+        Result.FileName := mFileName;
+        Result.Compiled := mData;
         Break;
       end;
     end;
   end;
   TMonitor.Enter(FLock);
   try
-    FCache.AddOrSetValue(Key, Result);
+    FCache.AddOrSetValue(mKey, Result);
   finally
     TMonitor.Exit(FLock);
   end;
@@ -316,14 +316,14 @@ end;
 
 function TPackageLocator.Provides(const APackage, AUnitName: string; out AContains: Boolean): Boolean;
 var
-  Found: TFound;
+  mFound: TFound;
   mKey: string;
 begin
-  Found := Find(APackage);
-  Result := Found.Known;
-  if Found.Source.IsPackage then
+  mFound := Find(APackage);
+  Result := mFound.Known;
+  if mFound.Source.IsPackage then
   begin
-    AContains := Found.Source.ContainsIndex(AUnitName) >= 0;
+    AContains := mFound.Source.ContainsIndex(AUnitName) >= 0;
     Exit;
   end;
   AContains := False;
@@ -343,7 +343,7 @@ begin
   finally
     TMonitor.Exit(FLock);
   end;
-  AContains := CompiledContains(Found.Compiled, AUnitName);
+  AContains := CompiledContains(mFound.Compiled, AUnitName);
   TMonitor.Enter(FLock);
   try
     FCompiledAnswers.AddOrSetValue(mKey, AContains);
@@ -355,16 +355,16 @@ end;
 class function TPackageLocator.ContainedFiles(const AFileName: string;
   const ASource: TPackageSource): TArray<string>;
 var
-  Entry: TPackageEntry;
-  Folder: string;
+  mEntry: TPackageEntry;
+  mFolder: string;
 begin
   Result := nil;
-  Folder := ExtractFilePath(AFileName);
-  for Entry in ASource.Contains do
+  mFolder := ExtractFilePath(AFileName);
+  for mEntry in ASource.Contains do
   begin
-    if Entry.Path <> '' then
+    if mEntry.Path <> '' then
     begin
-      Result := Result + [ExpandFileName(TPath.Combine(Folder, Entry.Path))];
+      Result := Result + [ExpandFileName(TPath.Combine(mFolder, mEntry.Path))];
     end;
   end;
 end;
@@ -387,56 +387,56 @@ end;
 
 function TPackageLocator.RequiredFiles(const ASource: TPackageSource): TArray<string>;
 var
-  Seen, Known: TDictionary<string, Boolean>;
-  Files: TList<string>;
-  Pending: TQueue<TPackageSource>;
-  Current, Required: TPackageSource;
-  Entry: TPackageEntry;
-  FileName: string;
+  mSeen, mKnown: TDictionary<string, Boolean>;
+  mFiles: TList<string>;
+  mPending: TQueue<TPackageSource>;
+  mCurrent, mRequired: TPackageSource;
+  mEntry: TPackageEntry;
+  mFileName: string;
 begin
-  Seen := TDictionary<string, Boolean>.Create;
-  Known := TDictionary<string, Boolean>.Create;
-  Files := TList<string>.Create;
-  Pending := TQueue<TPackageSource>.Create;
+  mSeen := TDictionary<string, Boolean>.Create;
+  mKnown := TDictionary<string, Boolean>.Create;
+  mFiles := TList<string>.Create;
+  mPending := TQueue<TPackageSource>.Create;
   try
-    Seen.Add(UpperCase(ASource.Name), True);
-    Pending.Enqueue(ASource);
-    while Pending.Count > 0 do
+    mSeen.Add(UpperCase(ASource.Name), True);
+    mPending.Enqueue(ASource);
+    while mPending.Count > 0 do
     begin
-      Current := Pending.Dequeue;
-      for Entry in Current.Requires do
+      mCurrent := mPending.Dequeue;
+      for mEntry in mCurrent.Requires do
       begin
         // Jedes Package nur einmal, auch wenn es mehrere verlangen.
-        if Seen.ContainsKey(UpperCase(Entry.Name)) then
+        if mSeen.ContainsKey(UpperCase(mEntry.Name)) then
         begin
           Continue;
         end;
-        Seen.Add(UpperCase(Entry.Name), True);
-        if FindSource(Entry.Name, FileName, Required) then
+        mSeen.Add(UpperCase(mEntry.Name), True);
+        if FindSource(mEntry.Name, mFileName, mRequired) then
         begin
-          AddNewFiles(ContainedFiles(FileName, Required), Known, Files);
-          Pending.Enqueue(Required);
+          AddNewFiles(ContainedFiles(mFileName, mRequired), mKnown, mFiles);
+          mPending.Enqueue(mRequired);
         end;
       end;
     end;
-    Result := Files.ToArray;
+    Result := mFiles.ToArray;
   finally
-    Pending.Free;
-    Files.Free;
-    Known.Free;
-    Seen.Free;
+    mPending.Free;
+    mFiles.Free;
+    mKnown.Free;
+    mSeen.Free;
   end;
 end;
 
 function TPackageLocator.FindSource(const APackage: string; out AFileName: string;
   out ASource: TPackageSource): Boolean;
 var
-  Found: TFound;
+  mFound: TFound;
 begin
-  Found := Find(APackage);
-  Result := Found.Known and Found.Source.IsPackage;
-  AFileName := Found.FileName;
-  ASource := Found.Source;
+  mFound := Find(APackage);
+  Result := mFound.Known and mFound.Source.IsPackage;
+  AFileName := mFound.FileName;
+  ASource := mFound.Source;
 end;
 
 function TPackageLocator.Requires(const APackage: string): TArray<string>;

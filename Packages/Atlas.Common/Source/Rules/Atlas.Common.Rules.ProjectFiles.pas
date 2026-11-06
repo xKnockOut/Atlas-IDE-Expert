@@ -221,19 +221,19 @@ end;
 
 function TRuleProjectFiles.UsesPath(const AFromUnit, AToFile: string; AInterfaceOnly: Boolean): TArray<TRuleUsesStep>;
 var
-  Steps: TArray<TRuleUsesStep>;
-  FromUnit, ToFile: string;
-  InterfaceOnly: Boolean;
+  mSteps: TArray<TRuleUsesStep>;
+  mFromUnit, mToFile: string;
+  mInterfaceOnly: Boolean;
 begin
   Result := nil;
   if UsesGraph = nil then
   begin
     Exit;
   end;
-  Steps := nil;
-  FromUnit := AFromUnit;
-  ToFile := AToFile;
-  InterfaceOnly := AInterfaceOnly;
+  mSteps := nil;
+  mFromUnit := AFromUnit;
+  mToFile := AToFile;
+  mInterfaceOnly := AInterfaceOnly;
   UsesGraph.Read(
     procedure(const AGraph: TUsesGraph)
     var
@@ -241,32 +241,32 @@ begin
       Edge: TUsesEdge;
       Step: TRuleUsesStep;
     begin
-      if InterfaceOnly then
+      if mInterfaceOnly then
       begin
-        Sections := InterfaceUsesOnly;
+        Sections := cInterfaceUsesOnly;
       end
       else
       begin
-        Sections := AllUsesSections;
+        Sections := cAllUsesSections;
       end;
-      for Edge in AGraph.Path(AGraph.IndexOf(FromUnit), AGraph.IndexOfFile(ToFile), Sections) do
+      for Edge in AGraph.Path(AGraph.IndexOf(mFromUnit), AGraph.IndexOfFile(mToFile), Sections) do
       begin
         Step.UnitName := AGraph.Node(Edge.Target).UnitName;
         Step.FileName := AGraph.Node(Edge.Target).FileName;
         Step.InInterface := Edge.Section = TUsesSection.Interface_;
         Step.SourceFileName := AGraph.Node(Edge.Source).FileName;
         Step.UsesName := Edge.Name;
-        Steps := Steps + [Step];
+        mSteps := mSteps + [Step];
       end;
     end);
-  Result := Steps;
+  Result := mSteps;
 end;
 
 function TRuleProjectFiles.UsedBy(const AFileName: string; out AUsers: TArray<TRuleUsesStep>): Boolean;
 var
-  Users: TArray<TRuleUsesStep>;
-  Known: Boolean;
-  FileName: string;
+  mUsers: TArray<TRuleUsesStep>;
+  mKnown: Boolean;
+  mFileName: string;
 begin
   AUsers := nil;
   Result := False;
@@ -274,9 +274,9 @@ begin
   begin
     Exit;
   end;
-  Users := nil;
-  Known := False;
-  FileName := AFileName;
+  mUsers := nil;
+  mKnown := False;
+  mFileName := AFileName;
   UsesGraph.Read(
     procedure(const AGraph: TUsesGraph)
     var
@@ -285,12 +285,12 @@ begin
       Source: TUsesNode;
       Step: TRuleUsesStep;
     begin
-      Node := AGraph.IndexOfFile(FileName);
+      Node := AGraph.IndexOfFile(mFileName);
       if Node < 0 then
       begin
         Exit;
       end;
-      Known := True;
+      mKnown := True;
       for Ref in AGraph.Node(Node).Incoming do
       begin
         Source := AGraph.Node(Ref.Source);
@@ -303,41 +303,41 @@ begin
         Step.InInterface := Source.Outgoing[Ref.Item].Section = TUsesSection.Interface_;
         Step.SourceFileName := Source.FileName;
         Step.UsesName := Source.Outgoing[Ref.Item].Name;
-        Users := Users + [Step];
+        mUsers := mUsers + [Step];
       end;
     end);
-  AUsers := Users;
-  Result := Known;
+  AUsers := mUsers;
+  Result := mKnown;
 end;
 
 class function TRuleProjectFiles.ProjectOf(const AProjectFile, AMainSource: string; const ASources: TArray<string>;
   const AReadText: TRuleProjectReadText): TRuleProject;
 var
-  Text, Source: string;
+  mText, mSource: string;
 begin
   Result := Default(TRuleProject);
   Result.FileName := AProjectFile;
   Result.Sources := ASources;
-  if Assigned(AReadText) and AReadText(AMainSource, Text) then
+  if Assigned(AReadText) and AReadText(AMainSource, mText) then
   begin
-    Result.Kind := KindOfSource(AMainSource, Text);
-    Result.IsTest := IsTestSource(Text);
+    Result.Kind := KindOfSource(AMainSource, mText);
+    Result.IsTest := IsTestSource(mText);
   end
   else if SameText(ExtractFileExt(AMainSource), '.dpk') then
   begin
     Result.Kind := TRuleProjectKind.Package;
   end;
-  for Source in ASources do
+  for mSource in ASources do
   begin
-    if SameText(ExtractFileExt(Source), '.pas') then
+    if SameText(ExtractFileExt(mSource), '.pas') then
     begin
-      if FileExists(ChangeFileExt(Source, '.dfm')) then
+      if FileExists(ChangeFileExt(mSource, '.dfm')) then
       begin
-        Result.Forms := Result.Forms + [ChangeFileExt(Source, '.dfm')];
+        Result.Forms := Result.Forms + [ChangeFileExt(mSource, '.dfm')];
       end
-      else if FileExists(ChangeFileExt(Source, '.fmx')) then
+      else if FileExists(ChangeFileExt(mSource, '.fmx')) then
       begin
-        Result.Forms := Result.Forms + [ChangeFileExt(Source, '.fmx')];
+        Result.Forms := Result.Forms + [ChangeFileExt(mSource, '.fmx')];
       end;
     end;
   end;
@@ -358,35 +358,35 @@ end;
 
 function TRuleProjectFiles.ProjectsOf(const AFileName: string; AWholeGroup: Boolean): TArray<TRuleProject>;
 var
-  Project: TRuleProject;
-  Source: string;
-  Member: Boolean;
-  Others: TArray<TRuleProject>;
+  mProject: TRuleProject;
+  mSource: string;
+  mMember: Boolean;
+  mOthers: TArray<TRuleProject>;
 begin
   Result := nil;
-  Others := nil;
-  for Project in FProjects do
+  mOthers := nil;
+  for mProject in FProjects do
   begin
-    Member := False;
-    for Source in Project.Sources do
+    mMember := False;
+    for mSource in mProject.Sources do
     begin
-      if SameText(Source, AFileName) then
+      if SameText(mSource, AFileName) then
       begin
-        Member := True;
+        mMember := True;
       end;
     end;
-    if Member then
+    if mMember then
     begin
-      Result := Result + [Project];
+      Result := Result + [mProject];
     end
     else
     begin
-      Others := Others + [Project];
+      mOthers := mOthers + [mProject];
     end;
   end;
   if AWholeGroup and (Result <> nil) then
   begin
-    Result := Result + Others;
+    Result := Result + mOthers;
   end;
 end;
 
@@ -398,13 +398,13 @@ end;
 
 function TRuleProjectFiles.NameIn(const AFileName, AName: string): TRuleNameAnswer;
 var
-  Indexed: TUnitIndex;
-  HasUnit: Boolean;
+  mIndexed: TUnitIndex;
+  mHasUnit: Boolean;
 begin
-  HasUnit := (FIndex <> nil) and FIndex.FindFile(AFileName, Indexed);
-  if HasUnit then
+  mHasUnit := (FIndex <> nil) and FIndex.FindFile(AFileName, mIndexed);
+  if mHasUnit then
     // Deklarationen zählen nicht als Verwendung; der Name kann trotzdem als Deklaration in der Datei stehen.
-    case TIndexUsages.Lookup(Indexed, AName) of
+    case TIndexUsages.Lookup(mIndexed, AName) of
       TIndexUsageAnswer.Present:
         Exit(TRuleNameAnswer.Present);
       TIndexUsageAnswer.Absent:
@@ -412,9 +412,9 @@ begin
     end;
   // Ohne Verwendungen (ausgelagert, aus): Bezeichner der Datei, je Datei einmal gelesen.
   Result := FFileNames.Lookup(AFileName, AName, FReadText);
-  if HasUnit and (Result = TRuleNameAnswer.Absent) then
+  if mHasUnit and (Result = TRuleNameAnswer.Absent) then
   begin
-    Result := NameInIncludes(Indexed.Includes, AName);
+    Result := NameInIncludes(mIndexed.Includes, AName);
   end;
 end;
 
@@ -435,29 +435,29 @@ end;
 
 class function TRuleProjectFiles.KindOfSource(const AFileName, AText: string): TRuleProjectKind;
 var
-  Tree: TSyntaxTree;
-  Token: TPascalToken;
+  mTree: TSyntaxTree;
+  mToken: TPascalToken;
 begin
   if SameText(ExtractFileExt(AFileName), '.dpk') then
   begin
     Exit(TRuleProjectKind.Package);
   end;
   Result := TRuleProjectKind.Unknown;
-  Tree := TSyntaxTreeCache.Parse(AText);
+  mTree := TSyntaxTreeCache.Parse(AText);
   try
-    for Token in Tree.Tokens do
+    for mToken in mTree.Tokens do
     begin
-      if Token.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword] then
+      if mToken.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword] then
       begin
-        if SameText(Token.Text, 'program') then
+        if SameText(mToken.Text, 'program') then
         begin
           Result := TRuleProjectKind.Application;
         end
-        else if SameText(Token.Text, 'library') then
+        else if SameText(mToken.Text, 'library') then
         begin
           Result := TRuleProjectKind.Library_;
         end
-        else if SameText(Token.Text, 'package') then
+        else if SameText(mToken.Text, 'package') then
         begin
           Result := TRuleProjectKind.Package;
         end;
@@ -465,19 +465,19 @@ begin
       end;
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 class function TRuleProjectFiles.IsTestSource(const AText: string): Boolean;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TSyntaxTreeCache.Parse(AText);
+  mTree := TSyntaxTreeCache.Parse(AText);
   try
-    Result := TRuleProfiles.IsTestUnit(Tree.Tokens);
+    Result := TRuleProfiles.IsTestUnit(mTree.Tokens);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 

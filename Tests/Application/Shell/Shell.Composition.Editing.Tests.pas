@@ -53,9 +53,9 @@ begin
     finally
       mCapability.Free;
     end;
-    Assert.IsTrue(Pos('"' + TLspSlashMenu.MenuCommand + '"', mText) > 0, TLspSlashMenu.MenuCommand);
-    Assert.IsTrue(Pos('"' + TLspSlashMenu.ChoicesCommand + '"', mText) > 0, TLspSlashMenu.ChoicesCommand);
-    Assert.IsTrue(Pos('"' + TLspSlashMenu.RunCommand + '"', mText) > 0, TLspSlashMenu.RunCommand);
+    Assert.IsTrue(Pos('"' + TLspSlashMenu.cMenuCommand + '"', mText) > 0, TLspSlashMenu.cMenuCommand);
+    Assert.IsTrue(Pos('"' + TLspSlashMenu.cChoicesCommand + '"', mText) > 0, TLspSlashMenu.cChoicesCommand);
+    Assert.IsTrue(Pos('"' + TLspSlashMenu.cRunCommand + '"', mText) > 0, TLspSlashMenu.cRunCommand);
   finally
     mCommands.Free;
     mEditing.Free;
