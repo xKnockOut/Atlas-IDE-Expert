@@ -56,6 +56,10 @@ type
     [Test]
     procedure IsModuleHandleOnlyForRegistered;
     [Test]
+    procedure UnregisterDropsQueuedEntriesOfModule;
+    [Test]
+    procedure HooksGetModuleHandle;
+    [Test]
     procedure ShutDownUnregistersAllInReverse;
     [Test]
     procedure RegistrationSurvivesRegistry;
@@ -67,6 +71,9 @@ implementation
 
 uses
   System.SysUtils,
+  System.Classes,
+  Atlas.Core.Diagnostics.Guard,
+  Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Modules.Registry,
   Atlas.Core.Settings.Contract,
@@ -753,6 +760,111 @@ begin
     mRegistry.UnregisterModule('atlas.a');
     Assert.IsFalse(mRegistry.IsModuleHandle(4711));
   finally
+    mLog.Free;
+  end;
+end;
+
+/// <summary>Setzt ARan; eigene Routine, damit der Code sicher im Testprogramm liegt.</summary>
+function Marker(var ARan: Boolean): TThreadProcedure;
+var
+  mRan: PBoolean;
+begin
+  mRan := @ARan;
+  Result :=
+    procedure
+    begin
+      mRan^ := True;
+    end;
+end;
+
+/// <summary>Haken der Registry an TAtlasMainThread wie in der Komposition.</summary>
+procedure ConnectMainThread;
+begin
+  TAtlasModuleRegistry.OnModuleClosing :=
+    procedure(AHandle: NativeUInt)
+    begin
+      TAtlasMainThread.CloseModule(AHandle);
+    end;
+  TAtlasModuleRegistry.OnModuleOpened :=
+    procedure(AHandle: NativeUInt)
+    begin
+      TAtlasMainThread.OpenModule(AHandle);
+    end;
+end;
+
+procedure TModuleRegistryTests.UnregisterDropsQueuedEntriesOfModule;
+var
+  mLog: TLog;
+  mRegistry: IAtlasModuleRegistry;
+  mRan: Boolean;
+  mProc: TThreadProcedure;
+  mModule: NativeUInt;
+begin
+  mRan := False;
+  mProc := Marker(mRan);
+  // Das Testprogramm spielt das Package des Moduls: Info.Handle = Modul des eingereihten Codes.
+  mModule := TAtlasMainThread.ModuleOf(mProc);
+  // Wie die Komposition in ihrer Initialisierung.
+  ConnectMainThread;
+  mLog := TLog.Create;
+  try
+    mRegistry := TAtlasModuleRegistry.Create;
+    mRegistry.RegisterModule(TFakeModule.Create(mLog, 'atlas.a', 'A', '2.0.0', mModule) as IAtlasModule);
+    TAtlasMainThread.ForceQueue(TAtlasFeature.Completion, mProc);
+    mRegistry.UnregisterModule('atlas.a');
+    CheckSynchronize;
+    Assert.IsFalse(mRan, 'Eintrag des abgemeldeten Moduls läuft nicht nach seinem Entladen');
+    mRegistry.RegisterModule(TFakeModule.Create(mLog, 'atlas.a', 'A', '2.0.0', mModule) as IAtlasModule);
+    TAtlasMainThread.ForceQueue(TAtlasFeature.Completion, mProc);
+    CheckSynchronize;
+    Assert.IsTrue(mRan, 'nach erneutem Anmelden wieder angenommen');
+    mRegistry.UnregisterModule('atlas.a');
+  finally
+    TAtlasModuleRegistry.OnModuleClosing := nil;
+    TAtlasModuleRegistry.OnModuleOpened := nil;
+    TAtlasMainThread.OpenModule(mModule);
+    mRegistry := nil;
+    mProc := nil;
+    mLog.Free;
+  end;
+end;
+
+/// <summary>Schreibt bei jedem Aufruf „APrefix:Handle“ in ALog.</summary>
+function HandleRecorder(ALog: TLog; const APrefix: string): TProc<NativeUInt>;
+var
+  mLog: TLog;
+  mPrefix: string;
+begin
+  mLog := ALog;
+  mPrefix := APrefix;
+  Result :=
+    procedure(AHandle: NativeUInt)
+    begin
+      mLog.Add(mPrefix + ':' + UIntToStr(AHandle));
+    end;
+end;
+
+procedure TModuleRegistryTests.HooksGetModuleHandle;
+var
+  mLog: TLog;
+  mHooks: TLog;
+  mRegistry: IAtlasModuleRegistry;
+begin
+  mLog := TLog.Create;
+  mHooks := TLog.Create;
+  try
+    TAtlasModuleRegistry.OnModuleOpened := HandleRecorder(mHooks, 'open');
+    TAtlasModuleRegistry.OnModuleClosing := HandleRecorder(mHooks, 'close');
+    mRegistry := TAtlasModuleRegistry.Create;
+    mRegistry.RegisterModule(TFakeModule.Create(mLog, 'atlas.a', 'A', '2.0.0', 4711) as IAtlasModule);
+    mRegistry.UnregisterModule('atlas.a');
+    mRegistry.UnregisterModule('atlas.a');
+    Assert.AreEqual('open:4711 close:4711', mHooks.Text, 'je einmal, das zweite Abmelden trifft kein Modul');
+  finally
+    TAtlasModuleRegistry.OnModuleOpened := nil;
+    TAtlasModuleRegistry.OnModuleClosing := nil;
+    mRegistry := nil;
+    mHooks.Free;
     mLog.Free;
   end;
 end;
