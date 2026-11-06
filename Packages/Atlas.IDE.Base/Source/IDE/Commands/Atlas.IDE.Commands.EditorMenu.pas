@@ -22,6 +22,8 @@ type
     /// <summary>Untermenü Navigation: Implementierungen, Typdefinition, Methodenwechsel, Abschnitte, Testunit.
     /// </summary>
     class procedure AddNavigation(AMenu: TAtlasIdeContextMenu); static;
+    /// <summary>Alle Regionen zu- bzw. aufklappen (#1814, in Navigation).</summary>
+    class procedure AddRegions(AMenu: TAtlasIdeContextMenu); static;
     /// <summary>Abschnittssprünge und Testunit (in Navigation).</summary>
     class procedure AddSections(AMenu: TAtlasIdeContextMenu); static;
     /// <summary>Untermenü Bearbeiten: Auswahl, Formatieren, Methodenreihenfolge.</summary>
@@ -52,6 +54,8 @@ uses
   Atlas.IDE.Editor.Hide,
   Atlas.IDE.Problems.Service,
   Atlas.IDE.Editor.MethodPlacement,
+  Atlas.IDE.Editor.RegionFolds,
+  Atlas.UI.Editor.RegionFolds,
   Atlas.IDE.EditorToolbar.Service,
   Atlas.IDE.Commands.EditorActions,
   Atlas.Core.Localization.Language;
@@ -72,6 +76,12 @@ const
 function UiText(AId: TEditorMenuText): string;
 begin
   Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
+
+/// <summary>Regionen zu-/aufklappen (#1814) sichtbar, solange editor.regionFolds nicht off ist.</summary>
+function RegionFoldsVisible: Boolean;
+begin
+  Result := TAtlasIdeRegionFolds.Enabled;
 end;
 
 const
@@ -195,8 +205,25 @@ begin
     begin
       TAtlasEditorActionCommands.ToggleMethod;
     end);
+  AddRegions(AMenu);
   AddSections(AMenu);
   AMenu.EndGroup;
+end;
+
+class procedure TAtlasEditorMenu.AddRegions(AMenu: TAtlasIdeContextMenu);
+begin
+  AMenu.AddWhen(TAtlasFeature.RegionFolds, 'Atlas.CollapseRegions',
+    TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.CollapseCommand), nil,
+    procedure
+    begin
+      TAtlasIdeRegionFolds.CollapseAll;
+    end, RegionFoldsVisible);
+  AMenu.AddWhen(TAtlasFeature.RegionFolds, 'Atlas.ExpandRegions',
+    TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.ExpandCommand), nil,
+    procedure
+    begin
+      TAtlasIdeRegionFolds.ExpandAll;
+    end, RegionFoldsVisible);
 end;
 
 class procedure TAtlasEditorMenu.AddSections(AMenu: TAtlasIdeContextMenu);

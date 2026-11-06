@@ -42,6 +42,9 @@ type
     /// Laden.</summary>
     [Test]
     procedure MethodPlacementOptions;
+    /// <summary>Regionen beim Öffnen (#1814): Vorgabe keep, Werte normalisiert, off gespeichert.</summary>
+    [Test]
+    procedure RegionFoldsOptions;
     [Test]
     procedure SafeDeleteOptions;
     /// <summary>Markierung beim Tippen umschließen (#672): Vorgaben, Speichern und Laden.</summary>
@@ -394,6 +397,26 @@ begin
   Loaded := TAtlasPluginSettings.Defaults;
   Loaded.Load(Store);
   Assert.AreEqual('off', Loaded.MethodPlacement, 'abschaltbar');
+end;
+procedure TAtlasEditingSettingsTests.RegionFoldsOptions;
+var
+  Settings, Loaded: TAtlasPluginSettings;
+  Store: IAtlasSettingsStore;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual('keep', Settings.RegionFolds);
+  Settings.RegionFolds := 'Collapse';
+  Settings.Normalize;
+  Assert.AreEqual('collapse', Settings.RegionFolds);
+  Settings.RegionFolds := 'irgendwie';
+  Settings.Normalize;
+  Assert.AreEqual('keep', Settings.RegionFolds, 'Unbekanntes wird zur Vorgabe');
+  Settings.RegionFolds := 'off';
+  Store := TMemoryStore.Create;
+  Settings.Save(Store);
+  Loaded := TAtlasPluginSettings.Defaults;
+  Loaded.Load(Store);
+  Assert.AreEqual('off', Loaded.RegionFolds, 'abschaltbar');
 end;
 procedure TAtlasEditingSettingsTests.UnwrapOptions;
 var

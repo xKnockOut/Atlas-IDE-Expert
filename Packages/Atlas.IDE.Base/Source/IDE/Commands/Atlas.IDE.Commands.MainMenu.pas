@@ -96,6 +96,8 @@ type
     FFormatItem: TMenuItem;
     /// <summary>„implementation wie Klasse ordnen“ (#660), nur mit editor.methodPlacement.</summary>
     FMethodOrderItem: TMenuItem;
+    /// <summary>„Alle Regionen zu-/aufklappen“ (#1814), nur mit editor.regionFolds nicht off.</summary>
+    FRegionItems: TArray<TMenuItem>;
     /// <summary>„Gliederung …“ (#537), sichtbar nach outline.enabled.</summary>
     FOutlineItem: TMenuItem;
     /// <summary>„Atlas-Prüfung“ (#909) im Atlas-Menü und unter Ansicht › Atlas.</summary>
@@ -114,6 +116,8 @@ type
     function AddItem(const ACaption: string; ATag: Integer; AOnClick: TNotifyEvent): TMenuItem; overload;
     /// <summary>Untermenü im Atlas-Menü; folgende AddItem landen darin.</summary>
     function AddGroup(AText: TAtlasTextId): TMenuItem;
+    /// <summary>„Alle Regionen zu-/aufklappen“ (#1814) nach editor.regionFolds ein- oder ausblenden.</summary>
+    procedure UpdateRegionItems;
   public
     /// <summary>„Symbol umbenennen…“ (#397).</summary>
     property OnRename: TProc read FOnRename write FOnRename;
@@ -193,6 +197,8 @@ uses
   Atlas.IDE.Outline.Service,
   Atlas.IDE.Problems.Service,
   Atlas.IDE.Editor.MethodPlacement,
+  Atlas.IDE.Editor.RegionFolds,
+  Atlas.UI.Editor.RegionFolds,
   Atlas.IDE.Commands.KeyMap,
   Atlas.IDE.Commands.ShortcutTips,
   Atlas.IDE.Commands.MenuActions,
@@ -247,6 +253,17 @@ begin
   end;
 end;
 
+procedure TAtlasMainMenuItems.UpdateRegionItems;
+var
+  mItem: TMenuItem;
+begin
+  // Regionen zu-/aufklappen (#1814) nach editor.regionFolds.
+  for mItem in FRegionItems do
+  begin
+    mItem.Visible := TAtlasIdeRegionFolds.Enabled;
+  end;
+end;
+
 procedure TAtlasMainMenuItems.UpdateKeyMap;
 var
   Item: TMenuItem;
@@ -285,6 +302,7 @@ begin
   begin
     FMethodOrderItem.Visible := TAtlasIdeMethodPlacement.Enabled;
   end;
+  UpdateRegionItems;
   // Gliederung (#537) nach outline.enabled.
   if FOutlineItem <> nil then
   begin
@@ -409,6 +427,10 @@ begin
   AddItem(TAtlasTextId.EditorExpand, 1, EditorClick);
   AddItem(TAtlasTextId.EditorShrink, 2, EditorClick);
   FOutlineItem := AddItem(TAtlasTextId.OutlineCommand, 0, OutlineClick);
+  // Regionen zu-/aufklappen (#1814).
+  FRegionItems := TArray<TMenuItem>.Create(
+    AddItem(TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.CollapseCommand), 13, EditorClick),
+    AddItem(TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.ExpandCommand), 14, EditorClick));
 end;
 
 procedure TAtlasMainMenu.AddSearchGroups;
