@@ -9698,3 +9698,14 @@ Trifft „nächsten Block zuklappen“ an der Kopfzeile einer Region einen ander
 | UAL4 | Unit mit `uses WinTypes;`, aus der nichts verwendet wird | `unused-uses` blendet `WinTypes` ab; mit `TRect` im Code bleibt es normal |
 | UAL5 | In den Projektoptionen unter „Unit-Aliase“ `Alt=System.SysUtils` eintragen, speichern, Projekt neu laden, `uses Alt;` und `IntToStr(1)` schreiben | Kein `uses-unit-not-found`, `IntToStr` löst sich auf; ohne den Eintrag meldet Atlas wie dcc F2613 |
 | UAL6 | `uses DbiTypes;` in einem Projekt ohne BDE | Atlas meldet `uses-unit-not-found` wie dcc (Ziel-Unit BDE fehlt) |
+
+## Sprache der Serverbefunde ohne `language` (#1458, #446)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SPB1 | `"language"` aus `%APPDATA%\Atlas\settings.json` entfernen, IDE auf Deutsch starten | In `atlas.log` die Zeile „Sprache der Oberfläche: de (…)“ mit Quelle (Ressourcen, Registry Locales, Windows oder Vorgabe) und „initialize mit locale de“; Befunde im Editor und im Fenster „Atlas-Prüfung“ deutsch (**Abnahme**) |
+| SPB2 | Wie SPB1, IDE mit BDSSetLang auf Englisch umstellen, neu starten | Zeile „Sprache der Oberfläche: en (…)“, „initialize mit locale en“; Atlas-Menü und Befunde englisch |
+| SPB3 | Wie SPB1, falls die Zeile „en“ zeigt, obwohl die IDE deutsch ist: Zeile und den Wert unter `HKCU\Software\Embarcadero\Locales` für bds.exe melden | Ursache der Fehlerkennung nachvollziehbar |
+| SPB4 | Tools › Optionen › Atlas › Server: „Index-Cache löschen“ in deutscher IDE ohne `language` | Antwort des Werkzeugs deutsch (Aufruf mit `--locale de`) |
+| SPB5 | `"language": "en"` in settings.json, deutsche IDE | Befunde englisch, Oberfläche des Plugins bleibt deutsch |
+| SPB6 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasIdeLanguageTests` und `TAtlasTextLanguageTests` grün |

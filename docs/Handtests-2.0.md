@@ -26,7 +26,7 @@ Diese Tests zuerst, in dieser Reihenfolge. Die ersten klären eine Ursache, die 
 | 3 | HE3, HE4 | Hauptthread-Einträge (Teil 5, PR #1811 offen) | Absturz in `MainThread` Zeile 129 beim Entladen eines Moduls; erst nach dem Merge von #1811 testbar |
 | 4 | RF2 | Regionen beim Öffnen (Teil 5) | Trifft „nächsten Block zuklappen“ an der Kopfzeile wirklich die Region? Sonst braucht #1814 einen anderen Weg |
 | 5 | AS21, AS22 | Sitzungsmarke der Bau-IDE (Teil 5) | Bau-IDEs (`cc.ps1`) dürfen nicht als Absturz zählen; `cc.ps1` muss `ATLAS_NO_SESSION_MARKER` setzen |
-| 6 | SL1, SL3 | Sprache der Serverbefunde (Teil 5, PR #1810 offen) | Englische Befunde in deutscher IDE: zeigt, welche Quelle die Sprache falsch erkennt |
+| 6 | SL1, SL3 | Sprache der Serverbefunde (Teil 5) | Englische Befunde in deutscher IDE: zeigt, welche Quelle die Sprache falsch erkennt |
 | 7 | FPR7 | Fehlalarme von vier Prüfregeln (Teil 5) | Klärt, ob in `RotatingFileStream` die RTL im Index fehlte oder `inline-not-expanded` RenameFile trotz Index nicht meldet |
 | 8 | IT2, IT3 | Typen aus IDE-Packages (Teil 5) | Kern von #1816: keine Fehlmeldung bei Typen aus installierten Packages, aber weiter bei fehlendem uses |
 | 9 | EK4 | Kontextmenü Atlas (Teil 5) | Kürzel nach dem ersten Öffnen des Menüs genau einmal (kein doppeltes Formatieren) |
@@ -468,16 +468,14 @@ Vorbereitung: ein Fremd-Package mit eigenen Komponententypen ist in der IDE inst
 
 ### Sprache der Serverbefunde ohne `language` (#1458, #446)
 
-**PR #1810 noch nicht gemerged**: erst testen, wenn er in Pilot ist.
-
 | Nr. | Schritte | Erwartet | Ergebnis |
 |---|---|---|---|
-| SL1 | `"language"` aus `%APPDATA%\Atlas\settings.json` entfernen, IDE auf Deutsch starten | In `atlas.log` die Zeile „Sprache der Oberfläche: de (…)“ mit Quelle (Ressourcen, Registry Locales, Windows oder Vorgabe) und „initialize mit locale de“; Befunde im Editor und im Fenster „Atlas-Prüfung“ deutsch (**Abnahme**) |  |
-| SL2 | Wie SL1, IDE mit BDSSetLang auf Englisch umstellen, neu starten | Zeile „Sprache der Oberfläche: en (…)“, „initialize mit locale en“; Atlas-Menü und Befunde englisch |  |
-| SL3 | Wie SL1, falls die Zeile „en“ zeigt, obwohl die IDE deutsch ist: Zeile und den Wert unter `HKCU\Software\Embarcadero\Locales` für bds.exe melden | Ursache der Fehlerkennung nachvollziehbar |  |
-| SL4 | Tools › Optionen › Atlas › Server: „Index-Cache löschen“ in deutscher IDE ohne `language` | Antwort des Werkzeugs deutsch (Aufruf mit `--locale de`) |  |
-| SL5 | `"language": "en"` in settings.json, deutsche IDE | Befunde englisch, Oberfläche des Plugins bleibt deutsch |  |
-| SL6 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasIdeLanguageTests` und `TAtlasTextLanguageTests` grün |  |
+| SPB1 | `"language"` aus `%APPDATA%\Atlas\settings.json` entfernen, IDE auf Deutsch starten | In `atlas.log` die Zeile „Sprache der Oberfläche: de (…)“ mit Quelle (Ressourcen, Registry Locales, Windows oder Vorgabe) und „initialize mit locale de“; Befunde im Editor und im Fenster „Atlas-Prüfung“ deutsch (**Abnahme**) |  |
+| SPB2 | Wie SPB1, IDE mit BDSSetLang auf Englisch umstellen, neu starten | Zeile „Sprache der Oberfläche: en (…)“, „initialize mit locale en“; Atlas-Menü und Befunde englisch |  |
+| SPB3 | Wie SPB1, falls die Zeile „en“ zeigt, obwohl die IDE deutsch ist: Zeile und den Wert unter `HKCU\Software\Embarcadero\Locales` für bds.exe melden | Ursache der Fehlerkennung nachvollziehbar |  |
+| SPB4 | Tools › Optionen › Atlas › Server: „Index-Cache löschen“ in deutscher IDE ohne `language` | Antwort des Werkzeugs deutsch (Aufruf mit `--locale de`) |  |
+| SPB5 | `"language": "en"` in settings.json, deutsche IDE | Befunde englisch, Oberfläche des Plugins bleibt deutsch |  |
+| SPB6 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasIdeLanguageTests` und `TAtlasTextLanguageTests` grün |  |
 
 ### Kontextmenü Atlas im Editor: Untermenüs und Tastenkürzel (05.11.2026)
 

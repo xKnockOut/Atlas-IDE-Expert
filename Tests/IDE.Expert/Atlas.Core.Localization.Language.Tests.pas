@@ -23,6 +23,30 @@ type
     /// <summary>Feste Namen aus Core folgen der Sprache: Kodierung, Zeilenende, Neuladen, Funktion, Doku.</summary>
     [Test]
     procedure CoreNamesFollowLanguage;
+    /// <summary>Code liefert die Kennung für initialize.locale und --locale.</summary>
+    [Test]
+    procedure CodeFollowsLanguage;
+  end;
+
+  /// <summary>Erkennung der Sprache der IDE (#446, #1458): ohne "language" in settings.json bestimmt sie auch die
+  /// Sprache der Serverbefunde.</summary>
+  [TestFixture]
+  TAtlasIdeLanguageTests = class
+  public
+    /// <summary>Die geladenen Ressourcen der IDE entscheiden vor Registry und Windows.</summary>
+    [Test]
+    procedure ResourcesDecideFirst;
+    /// <summary>Ohne Ressourcen-DLL entscheidet der Eintrag unter Locales, auch in anderer Schreibweise.</summary>
+    [Test]
+    procedure RegistryCodesInAnyForm;
+    /// <summary>Ohne Ressourcen und Eintrag: Windows auf Deutsch → Deutsch, sonst Englisch.</summary>
+    [Test]
+    procedure WindowsThenFallback;
+    /// <summary>Andere Sprachen der IDE (Französisch, Japanisch) gelten als Englisch.</summary>
+    [Test]
+    procedure OtherLanguagesAreEnglish;
+    [Test]
+    procedure DescribeNamesSourceAndValue;
   end;
 
 implementation
@@ -102,7 +126,82 @@ begin
   end;
 end;
 
+procedure TAtlasTextLanguageTests.CodeFollowsLanguage;
+var
+  mSaved: TAtlasLanguage;
+begin
+  mSaved := TAtlasTextLanguage.Current;
+  try
+    TAtlasTextLanguage.Current := TAtlasLanguage.English;
+    Assert.AreEqual('en', TAtlasTextLanguage.Code);
+    TAtlasTextLanguage.Current := TAtlasLanguage.German;
+    Assert.AreEqual('de', TAtlasTextLanguage.Code);
+  finally
+    TAtlasTextLanguage.Current := mSaved;
+  end;
+end;
+
+{ TAtlasIdeLanguageTests }
+
+procedure TAtlasIdeLanguageTests.ResourcesDecideFirst;
+var
+  mResult: TAtlasIdeLanguage;
+begin
+  mResult := TAtlasIdeLanguage.Decide(TArray<string>.Create('DE'), 'EN', False);
+  Assert.IsTrue(mResult.Language = TAtlasLanguage.German);
+  Assert.IsTrue(mResult.Source = TAtlasIdeLanguageSource.Resources);
+  Assert.AreEqual('DE', mResult.Value);
+  mResult := TAtlasIdeLanguage.Decide(TArray<string>.Create('', 'en'), 'DE', True);
+  Assert.IsTrue(mResult.Language = TAtlasLanguage.English);
+  Assert.IsTrue(mResult.Source = TAtlasIdeLanguageSource.Resources);
+end;
+
+procedure TAtlasIdeLanguageTests.RegistryCodesInAnyForm;
+var
+  mCode: string;
+  mResult: TAtlasIdeLanguage;
+begin
+  for mCode in TArray<string>.Create('DE', 'de', ' DE ', 'DEU', 'de-DE', 'de_AT') do
+  begin
+    mResult := TAtlasIdeLanguage.Decide(nil, mCode, False);
+    Assert.IsTrue(mResult.Language = TAtlasLanguage.German, mCode);
+    Assert.IsTrue(mResult.Source = TAtlasIdeLanguageSource.Registry, mCode);
+  end;
+  mResult := TAtlasIdeLanguage.Decide(nil, 'EN', True);
+  Assert.IsTrue(mResult.Language = TAtlasLanguage.English);
+  Assert.IsTrue(mResult.Source = TAtlasIdeLanguageSource.Registry);
+end;
+
+procedure TAtlasIdeLanguageTests.WindowsThenFallback;
+var
+  mResult: TAtlasIdeLanguage;
+begin
+  mResult := TAtlasIdeLanguage.Decide(nil, '', True);
+  Assert.IsTrue(mResult.Language = TAtlasLanguage.German);
+  Assert.IsTrue(mResult.Source = TAtlasIdeLanguageSource.Windows);
+  mResult := TAtlasIdeLanguage.Decide(nil, ' ', False);
+  Assert.IsTrue(mResult.Language = TAtlasLanguage.English);
+  Assert.IsTrue(mResult.Source = TAtlasIdeLanguageSource.Fallback);
+  Assert.AreEqual('', mResult.Value);
+end;
+
+procedure TAtlasIdeLanguageTests.OtherLanguagesAreEnglish;
+begin
+  Assert.IsTrue(TAtlasIdeLanguage.Decide(TArray<string>.Create('FR'), '', True).Language =
+    TAtlasLanguage.English);
+  Assert.IsTrue(TAtlasIdeLanguage.Decide(nil, 'JA', True).Language = TAtlasLanguage.English);
+end;
+
+procedure TAtlasIdeLanguageTests.DescribeNamesSourceAndValue;
+begin
+  Assert.AreEqual('de (Ressourcen: DE)', TAtlasIdeLanguage.Decide(TArray<string>.Create('DE'), '', False).Describe);
+  Assert.AreEqual('en (Registry Locales: EN)', TAtlasIdeLanguage.Decide(nil, 'EN', True).Describe);
+  Assert.AreEqual('de (Windows)', TAtlasIdeLanguage.Decide(nil, '', True).Describe);
+  Assert.AreEqual('en (Vorgabe)', TAtlasIdeLanguage.Decide(nil, '', False).Describe);
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TAtlasTextLanguageTests);
+  TDUnitX.RegisterTestFixture(TAtlasIdeLanguageTests);
 
 end.
