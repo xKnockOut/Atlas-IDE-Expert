@@ -80,6 +80,8 @@ begin
   BindCheck('HoverTooltip', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHover)));
   // Aktionszeile unter Befunden im Hover (#909).
   BindCheck('HoverProblemActions', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHoverProblemActions)));
+  // Rollbereich der published-Mitglieder (#1841).
+  BindText('HoverMembersMaxLines', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsHoverMembersMaxLines)));
   // XMLDoc in Tooltip und Detailpanel (#654, #770): zu- oder aufgeklappt beim Öffnen; gespeichert in
   // settings.json (hints.*, #227).
   FXmlDocExpand := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsXmlDocExpand),
