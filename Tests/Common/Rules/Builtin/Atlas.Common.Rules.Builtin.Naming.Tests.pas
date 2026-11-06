@@ -36,6 +36,10 @@ type
     procedure Exceptions;
     [Test]
     procedure InterfaceImplementationsKeepNames;
+    /// <summary>Im Code einem Ereignis zugewiesene Methoden (FEvents.OnEditorPaintLine := PaintLine) und Paare aus
+    /// einem Buchstaben (function(const A, B: T)) behalten ihre Namen.</summary>
+    [Test]
+    procedure EventMethodsAndLetterPairsKeepNames;
     [Test]
     procedure NoFixWhenUnsafe;
     /// <summary>Der neue Name zählt nur dort, wo umbenannt wird: ABuf als Parameter einer anderen Routine sperrt
@@ -335,6 +339,25 @@ begin
   Assert.AreEqual('Parameter Datei ohne Präfix A (erwartet: ADatei)|Parameter Text ohne Präfix A (erwartet: AText)|' +
     'Parameter Wert ohne Präfix A (erwartet: AWert)|', Messages(Found));
   Assert.AreEqual(12, Found[2].Range.StartPos.Line);
+end;
+
+procedure TNamingRulesTests.EventMethodsAndLetterPairsKeepNames;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  Found := Findings(UnitOf('type'#10'  TMarken = class'#10'  private'#10'    FEvents: TEvents;'#10 +
+    '    procedure PaintLine(const Rect: TRect; var AllowDefaultPainting: Boolean);'#10 +
+    '    procedure AppMessage(var Msg: TMsg; var Handled: Boolean);'#10 +
+    '    procedure Eigen(Wert: Integer);'#10'    procedure Start;'#10'  end;'#10,
+    'procedure TMarken.PaintLine(const Rect: TRect; var AllowDefaultPainting: Boolean);'#10'begin'#10'end;'#10 +
+    'procedure TMarken.AppMessage(var Msg: TMsg; var Handled: Boolean);'#10'begin'#10'end;'#10 +
+    'procedure TMarken.Eigen(Wert: Integer);'#10'begin'#10'end;'#10 +
+    'procedure TMarken.Start;'#10'begin'#10'  FEvents.OnEditorPaintLine := PaintLine;'#10 +
+    '  Application.OnMessage := Self.AppMessage;'#10'end;'#10 +
+    'function Abstand(const A, B: Integer): Integer;'#10'begin'#10'  Result := B - A;'#10'end;'#10 +
+    'function Mitte(X, Y: Integer): Integer;'#10'begin'#10'  Result := (X + Y) div 2;'#10'end;'#10));
+  Assert.AreEqual('Parameter Wert ohne Präfix A (erwartet: AWert)|Parameter X ohne Präfix A (erwartet: AX)|' +
+    'Parameter Y ohne Präfix A (erwartet: AY)|', Messages(Found));
 end;
 
 procedure TNamingRulesTests.NoFixWhenUnsafe;

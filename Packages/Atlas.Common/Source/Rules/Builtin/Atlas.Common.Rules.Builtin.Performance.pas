@@ -386,6 +386,100 @@ begin
     ((AIndex = 0) or not ATokens[PreviousCode(ATokens, AIndex)].IsSymbol('.'));
 end;
 
+/// <summary>Erstes Token des Rumpfs der innersten Schleife um AIndex; -1 außerhalb jeder Schleife.</summary>
+function InnermostBodyFirst(const ALoops: TArray<TLoop>; AIndex: Integer): Integer;
+var
+  mLoop: TLoop;
+begin
+  Result := -1;
+  for mLoop in ALoops do
+  begin
+    if (AIndex >= mLoop.BodyFirst) and (AIndex <= mLoop.BodyLast) and (mLoop.BodyFirst > Result) then
+    begin
+      Result := mLoop.BodyFirst;
+    end;
+  end;
+end;
+
+/// <summary>Blocktiefe vor dem Rumpf ab AFirst: repeat … until steht schon auf der ersten Ebene (1), ein
+/// begin … end erreicht sie erst mit seinem begin (0).</summary>
+function BodyStartDepth(const ATokens: TTokens; AFirst: Integer): Integer;
+var
+  mBefore: Integer;
+begin
+  Result := 0;
+  mBefore := PreviousCode(ATokens, AFirst);
+  if (mBefore >= 0) and ATokens[mBefore].IsKeyword('repeat') then
+  begin
+    Result := 1;
+  end;
+end;
+
+/// <summary>Blocktiefe nach dem Token AToken: begin, try, case, asm, repeat öffnen, end und until schließen.</summary>
+procedure StepDepth(const AToken: TPascalToken; var ADepth: Integer);
+begin
+  if OpensBlock(AToken) then
+  begin
+    Inc(ADepth);
+  end
+  else if AToken.IsKeyword('end') or AToken.IsKeyword('until') then
+  begin
+    Dec(ADepth);
+  end;
+end;
+
+/// <summary>Beginnt an AIndex eine Anweisung (davor ;, begin oder repeat), nicht hinter then, else oder
+/// einer case-Marke?</summary>
+function StartsStatement(const ATokens: TTokens; AIndex: Integer): Boolean;
+var
+  mBefore: Integer;
+begin
+  mBefore := PreviousCode(ATokens, AIndex);
+  Result := (mBefore >= 0) and (ATokens[mBefore].IsSymbol(';') or ATokens[mBefore].IsKeyword('begin') or
+    ATokens[mBefore].IsKeyword('repeat'));
+end;
+
+/// <summary>Steht an AIndex AName := …, ohne AName vorn rechts (ein Neusetzen, kein Anhängen)?</summary>
+function IsResetOf(const ATokens: TTokens; AIndex: Integer; const AName: string): Boolean;
+var
+  mNext: Integer;
+begin
+  Result := False;
+  if not SameText(ATokens[AIndex].Text, AName) or not StartsDesignator(ATokens, AIndex) then
+  begin
+    Exit;
+  end;
+  mNext := NextCode(ATokens, AIndex + 1);
+  Result := (mNext < High(ATokens)) and ATokens[mNext].IsSymbol(':=') and
+    not SameText(ATokens[NextCode(ATokens, mNext + 1)].Text, AName);
+end;
+
+/// <summary>Wird AName im Rumpf der innersten Schleife um AIndex vor AIndex neu gesetzt (AName := … ohne AName
+/// vorn)? Dann wächst der String nur innerhalb eines Durchlaufs (mText := Zeile; mText := mText + ', '). Zählt
+/// nur eine Zuweisung, die in jedem Durchlauf läuft: direkt im begin … end des Rumpfs, nicht hinter then, else
+/// oder einer case-Marke und nicht in einem inneren Block.</summary>
+function ResetInLoop(const ATokens: TTokens; const ALoops: TArray<TLoop>; AIndex: Integer;
+  const AName: string): Boolean;
+var
+  mFirst, mIndex, mDepth: Integer;
+begin
+  Result := False;
+  mFirst := InnermostBodyFirst(ALoops, AIndex);
+  if mFirst < 0 then
+  begin
+    Exit;
+  end;
+  mDepth := BodyStartDepth(ATokens, mFirst);
+  for mIndex := mFirst to AIndex - 1 do
+  begin
+    StepDepth(ATokens[mIndex], mDepth);
+    if (mDepth = 1) and StartsStatement(ATokens, mIndex) and IsResetOf(ATokens, mIndex, AName) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
 /// <summary>Punktkette ab AIndex (A.B.C) als Text in Kleinbuchstaben; ALast = letztes Token.</summary>
 function Chain(const ATokens: TTokens; AIndex: Integer; out ALast: Integer): string;
 var
@@ -448,7 +542,7 @@ begin
       end;
       TypeName := Types.DeclaredType(Tokens[Index].Text, Tokens[Index].StartPos);
       if not MatchText(TypeName, ['string', 'UnicodeString', 'AnsiString', 'WideString', 'UTF8String',
-        'RawByteString']) then
+        'RawByteString']) or ResetInLoop(Tokens, Found, Index, Tokens[Index].Text) then
       begin
         Continue;
       end;
@@ -463,7 +557,11 @@ end;
 
 { TLoopInvariantCallRule }
 
-/// <summary>Wird der Bezeichner AName im Rumpf von ALoop zugewiesen oder mit Inc/Dec geändert?</summary>
+const
+  /// <summary>Routinen, die ihr erstes Argument ändern (Delete(Result, 1, 2) in while Copy(Result, …)).</summary>
+  VarParamRoutines: array[0..5] of string = ('Inc', 'Dec', 'Delete', 'SetLength', 'Include', 'Exclude');
+
+/// <summary>Wird der Bezeichner AName im Rumpf von ALoop zugewiesen oder über VarParamRoutines geändert?</summary>
 function ChangedInLoop(const ATokens: TTokens; const ALoop: TLoop; const AName: string): Boolean;
 var
   mIndex, mNext, mPrevious: Integer;
@@ -479,7 +577,7 @@ begin
       end;
       mPrevious := PreviousCode(ATokens, mIndex);
       if (mPrevious > 0) and ATokens[mPrevious].IsSymbol('(') and
-        MatchText(ATokens[PreviousCode(ATokens, mPrevious)].Text, ['Inc', 'Dec']) then
+        MatchText(ATokens[PreviousCode(ATokens, mPrevious)].Text, VarParamRoutines) then
       begin
         Exit(True);
       end;
@@ -535,40 +633,95 @@ begin
     cTexts[TPerformanceText.ConditionTitle].Text, True);
 end;
 
+/// <summary>Punktkette vor dem Punkt ADot (ASpan in ASpan.Text, FParts.Scanner in FParts.Scanner.Text); '' wenn
+/// davor kein einfacher Bezeichner steht (Aufruf, Index).</summary>
+function ReceiverBefore(const ATokens: TTokens; ADot: Integer): string;
+var
+  mIndex: Integer;
+begin
+  Result := '';
+  mIndex := PreviousCode(ATokens, ADot);
+  while (mIndex >= 0) and (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) do
+  begin
+    if Result <> '' then
+    begin
+      Result := '.' + Result;
+    end;
+    Result := ATokens[mIndex].Text + Result;
+    mIndex := PreviousCode(ATokens, mIndex);
+    if (mIndex < 0) or not ATokens[mIndex].IsSymbol('.') then
+    begin
+      Exit;
+    end;
+    mIndex := PreviousCode(ATokens, mIndex);
+  end;
+  Result := '';
+end;
+
+/// <summary>Ist .AName hinter dem Punkt ADot ein Feld eines Typs dieser Datei (Record TAtlasDocSpan.Text)? Ein
+/// Feld zu lesen baut keinen String auf.</summary>
+function IsDeclaredField(const ATypes: TDeclaredTypes; const ATokens: TTokens; ADot: Integer;
+  const AName: string): Boolean;
+var
+  mReceiver, mType: string;
+begin
+  mReceiver := ReceiverBefore(ATokens, ADot);
+  Result := (mReceiver <> '') and
+    ATypes.FieldType(ATypes.ChainType(mReceiver, ATokens[ADot].StartPos), AName, mType);
+end;
+
+/// <summary>Meldet den Bezeichner an AIndex in der Bedingung von ALoop, wenn er eine teure Eigenschaft (kein Feld
+/// eines Typs dieser Datei) oder ein teurer Aufruf mit unveränderten Argumenten ist.</summary>
+procedure CheckConditionToken(const ATypes: TDeclaredTypes; const ATokens: TTokens; const ALoop: TLoop;
+  AIndex: Integer; const AReport: IRuleReport);
+var
+  mName: string;
+  mPrevious: Integer;
+begin
+  mName := ATokens[AIndex].Text;
+  mPrevious := PreviousCode(ATokens, AIndex);
+  if MatchText(mName, ExpensiveProperties) and (mPrevious >= 0) and ATokens[mPrevious].IsSymbol('.') then
+  begin
+    if not IsDeclaredField(ATypes, ATokens, mPrevious, mName) then
+    begin
+      AReport.Add(RangeOf(ATokens, AIndex, AIndex), cTexts[TPerformanceText.ConditionString].Fmt([mName]),
+        TRuleConfidence.Medium);
+    end;
+  end
+  else if MatchText(mName, ExpensiveCalls) and StartsDesignator(ATokens, AIndex) and
+    not ArgumentsChange(ATokens, ALoop, AIndex) then
+  begin
+    AReport.Add(RangeOf(ATokens, AIndex, AIndex), cTexts[TPerformanceText.ConditionCall].Fmt([mName]),
+      TRuleConfidence.Medium);
+  end;
+end;
+
 procedure TLoopInvariantCallRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Tokens: TTokens;
   Loop: TLoop;
-  Index, Previous: Integer;
-  Name: string;
+  Index: Integer;
+  Types: TDeclaredTypes;
 begin
   if AContext.Tree = nil then
   begin
     Exit;
   end;
   Tokens := AContext.Tree.Tokens;
-  for Loop in Loops(Tokens) do
-  begin
-    for Index := Loop.CondFirst to Loop.CondLast do
+  Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+  try
+    for Loop in Loops(Tokens) do
     begin
-      if Tokens[Index].Kind <> TPascalTokenKind.Identifier then
+      for Index := Loop.CondFirst to Loop.CondLast do
       begin
-        Continue;
-      end;
-      Name := Tokens[Index].Text;
-      Previous := PreviousCode(Tokens, Index);
-      if MatchText(Name, ExpensiveProperties) and (Previous >= 0) and Tokens[Previous].IsSymbol('.') then
-      begin
-        AReport.Add(RangeOf(Tokens, Index, Index), cTexts[TPerformanceText.ConditionString].Fmt([Name]),
-          TRuleConfidence.Medium);
-      end
-      else if MatchText(Name, ExpensiveCalls) and StartsDesignator(Tokens, Index) and
-        not ArgumentsChange(Tokens, Loop, Index) then
-      begin
-        AReport.Add(RangeOf(Tokens, Index, Index), cTexts[TPerformanceText.ConditionCall].Fmt([Name]),
-          TRuleConfidence.Medium);
+        if Tokens[Index].Kind = TPascalTokenKind.Identifier then
+        begin
+          CheckConditionToken(Types, Tokens, Loop, Index, AReport);
+        end;
       end;
     end;
+  finally
+    Types.Free;
   end;
 end;
 
@@ -858,17 +1011,10 @@ begin
     MatchText(mMethod, ['add', 'addobject', 'append', 'insert', 'addchild', 'addchildobject', 'addpair']);
 end;
 
-/// <summary>Menu.Items ist ein TMenuItem ohne BeginUpdate.</summary>
+/// <summary>Menu.Items ist ein TMenuItem ohne BeginUpdate; auch über Felder (FParts.Menu.Items).</summary>
 function IsMenuItems(const ATypes: TDeclaredTypes; const AReceiver: string; const APosition: TTextPosition): Boolean;
-var
-  mOwner: string;
 begin
-  mOwner := OwnerOf(AReceiver);
-  if StartsText('self.', mOwner) then
-  begin
-    mOwner := Copy(mOwner, Length('self.') + 1, MaxInt);
-  end;
-  Result := (Pos('.', mOwner) = 0) and MatchText(ATypes.DeclaredType(mOwner, APosition), MenuTypes);
+  Result := MatchText(ATypes.ChainType(OwnerOf(AReceiver), APosition), MenuTypes);
 end;
 
 /// <summary>Steht für den Empfänger schon BeginUpdate in der Datei bzw. ist er schon gemeldet?</summary>

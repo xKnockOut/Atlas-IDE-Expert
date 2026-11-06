@@ -13,7 +13,8 @@ const
     '      "category": "bug",',
     '      "severity": "warning",',
     '      "group": "find-bugs",',
-    '      "description": "A path through the function ends without assigning Result. The caller then reads an undefined value.",',
+    '      "description": "A path through the function ends without assigning Result. The caller then reads an undefined value. A for loop runs at least once when both bounds are number literals or true co' +
+    'nstants of the unit (cAttempts = 3) and the range is not empty, as Delphi evaluates it.",',
     '      "bad": "function Find: Integer;\nbegin\n  if Ok then\n    Result := 1;\nend;",',
     '      "good": "function Find: Integer;\nbegin\n  Result := 0;\n  if Ok then\n    Result := 1;\nend;"',
     '    },',

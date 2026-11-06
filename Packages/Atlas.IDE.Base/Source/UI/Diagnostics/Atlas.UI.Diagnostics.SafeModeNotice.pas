@@ -214,9 +214,14 @@ begin
   FParts.Details.ScrollBars := ssBoth;
   FParts.Details.WordWrap := False;
   FParts.Details.Font.Name := 'Consolas';
-  for mLine in ADetails do
-  begin
-    FParts.Details.Lines.Add(mLine);
+  FParts.Details.Lines.BeginUpdate;
+  try
+    for mLine in ADetails do
+    begin
+      FParts.Details.Lines.Add(mLine);
+    end;
+  finally
+    FParts.Details.Lines.EndUpdate;
   end;
 
   FParts.ExportButton := AddButton(mPanel, TAtlasStrings.Text(TAtlasTextId.DiagExportMenu), ExportClick);

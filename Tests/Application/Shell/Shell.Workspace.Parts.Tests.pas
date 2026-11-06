@@ -68,6 +68,7 @@ uses
   Atlas.Common.Projects.Contract,
   Atlas.Common.Projects.DprojReader,
   Atlas.Common.Projects.MissingUnit,
+  Atlas.Common.Projects.UnitLookup,
   Atlas.Common.Lsp.IdeProject,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.Processes,
@@ -362,10 +363,18 @@ end;
 procedure TShellWorkspacePartsTests.GroupOutputsSkipOwnAndUnreadable;
 var
   mLogger: ILogger;
+  mOutputs: TArray<TUnitLookupGroupOutput>;
 begin
   mLogger := TLogger.Create;
   Assert.AreEqual(0, Integer(Length(TShellPackageLookups.GroupOutputsFor('Eigen.dproj', ['Eigen.dproj',
     TPath.Combine(FFolder, 'Fehlt.dproj')], Default(TDprojOptions), mLogger))));
+  // Package der Gruppe ohne Ausgabeordner: zählt mit seinem Namen für requires.
+  TFile.WriteAllText(TPath.Combine(FFolder, 'Atlas.Text.dproj'), '<Project/>', TEncoding.UTF8);
+  mOutputs := TShellPackageLookups.GroupOutputsFor('Eigen.dproj', [TPath.Combine(FFolder, 'Atlas.Text.dproj')],
+    Default(TDprojOptions), mLogger);
+  Assert.AreEqual(1, Integer(Length(mOutputs)));
+  Assert.AreEqual('Atlas.Text', mOutputs[0].ProjectName);
+  Assert.AreEqual('', mOutputs[0].DcuFolder);
 end;
 
 procedure TShellWorkspacePartsTests.LoaderFindsProjectFile;

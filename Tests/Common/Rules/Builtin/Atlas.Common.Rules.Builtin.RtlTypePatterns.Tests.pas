@@ -20,6 +20,8 @@ type
     [Test]
     procedure DeclaredTypesByScope;
     [Test]
+    procedure DeclaredTypesThroughFields;
+    [Test]
     procedure Int32MulOverflow;
     [Test]
     procedure SizeOfPointer;
@@ -178,6 +180,34 @@ begin
     Assert.AreEqual('', Types.DeclaredType('Unbekannt', At));
     // Vor der Inline-Deklaration ist C nicht bekannt.
     Assert.AreEqual('', Types.DeclaredType('C', TTextPosition.Create(14, 0)));
+  finally
+    Types.Free;
+    Tree.Free;
+  end;
+end;
+
+procedure TRtlTypePatternRulesTests.DeclaredTypesThroughFields;
+const
+  Source = 'unit U;'#10'interface'#10'type'#10'  TTeile = record'#10'    Menu: TPopupMenu;'#10'  end;'#10 +
+    '  TFoo = class'#10'    FTeile: TTeile;'#10'    procedure Run;'#10'  end;'#10'implementation'#10 +
+    'procedure TFoo.Run;'#10'begin'#10'  FTeile.Menu.Items.Clear;'#10'end;'#10'end.';
+var
+  Tree: TSyntaxTree;
+  Types: TDeclaredTypes;
+  At: TTextPosition;
+  Member: string;
+begin
+  Tree := TPascalParser.Parse(Source);
+  Types := TDeclaredTypes.Create(Tree, Source);
+  try
+    At := TTextPosition.Create(13, 4);
+    Assert.IsTrue(Types.FieldType('TTeile', 'menu', Member));
+    Assert.AreEqual('TPopupMenu', Member);
+    Assert.IsFalse(Types.FieldType('TTeile', 'Fehlt', Member));
+    Assert.AreEqual('TPopupMenu', Types.ChainType('FTeile.Menu', At));
+    Assert.AreEqual('TPopupMenu', Types.ChainType('Self.FTeile.Menu', At));
+    Assert.AreEqual('TTeile', Types.ChainType('FTeile', At));
+    Assert.AreEqual('', Types.ChainType('FTeile.Menu.Items', At), 'TPopupMenu ist nicht in der Datei deklariert');
   finally
     Types.Free;
     Tree.Free;

@@ -202,9 +202,14 @@ begin
   Result.Top := ATop;
   Result.Height := AOwner.ScaleValue(64);
   Result.Caption := ACaption;
-  for mItem in AItems do
-  begin
-    Result.Items.Add(mItem);
+  Result.Items.BeginUpdate;
+  try
+    for mItem in AItems do
+    begin
+      Result.Items.Add(mItem);
+    end;
+  finally
+    Result.Items.EndUpdate;
   end;
 end;
 

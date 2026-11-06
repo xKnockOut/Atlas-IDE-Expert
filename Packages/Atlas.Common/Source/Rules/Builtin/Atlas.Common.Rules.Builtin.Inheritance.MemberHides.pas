@@ -2,7 +2,9 @@
 
 // Regel member-hides-ancestor aus Atlas.Common.Rules.Builtin.Inheritance (#1003): Property heißt wie ein Feld des
 // Vorfahren (W1009), Feld wie ein Feld oder eine Property, nicht virtuelle Methode wie eine gleich aufgebaute nicht
-// virtuelle des Vorfahren; strict private des Vorfahren nur mit ignoreStrictPrivate = false.
+// virtuelle des Vorfahren; strict private des Vorfahren nur mit ignoreStrictPrivate = false. Methoden, die eine
+// Methode eines Interfaces aus der eigenen Vorfahrenliste umsetzen (QueryInterface über TInterfacedObject), gelten
+// nicht: Über das Interface ruft Delphi die neue Methode, das Verdecken ist dort der übliche Weg.
 
 interface
 
@@ -70,6 +72,7 @@ type
     function IsRenameToken(AIndex: Integer; const AClass, AOwn: TIndexSymbol;
       const ABodies: TArray<TSyntaxNode>): Boolean;
     function RenameFix(const AClass, AOwn: TIndexSymbol): TArray<TRuleFix>;
+    function ImplementsInterface(const AClass, AOwn: TIndexSymbol): Boolean;
     function HiddenAt(const AOwn: TIndexSymbol; const ALocation: TSymbolLocation;
       out AHidden: TIndexSymbol): TLevelResult;
     procedure ReportHidden(const AClass, AOwn: TIndexSymbol; const ALocation: TSymbolLocation;
@@ -308,6 +311,40 @@ begin
   end;
 end;
 
+/// <summary>Setzt die Methode AOwn eine Methode eines Interfaces aus der Vorfahrenliste von AClass um? Die
+/// Methoden von IInterface (QueryInterface, _AddRef, _Release) gehören zu jedem Interface, auch wenn der Index
+/// System nicht kennt.</summary>
+function TMemberHidesCheck.ImplementsInterface(const AClass, AOwn: TIndexSymbol): Boolean;
+var
+  mIndex: Integer;
+  mType: TSymbolLocation;
+  mMember: TIndexSymbol;
+begin
+  Result := False;
+  if (AOwn.Kind <> TIndexSymbolKind.Method) or (Length(AClass.Ancestors) < 2) then
+  begin
+    Exit;
+  end;
+  if IndexText(AOwn.Name, ['QueryInterface', '_AddRef', '_Release']) >= 0 then
+  begin
+    Exit(True);
+  end;
+  for mIndex := 1 to High(AClass.Ancestors) do
+  begin
+    if not FAncestry.FindAnyType(AClass.Ancestors[mIndex], mType) then
+    begin
+      Continue;
+    end;
+    for mMember in FAncestry.Members(mType) do
+    begin
+      if SameText(mMember.Name, AOwn.Name) then
+      begin
+        Exit(True);
+      end;
+    end;
+  end;
+end;
+
 /// <summary>Der von AOwn verdeckte Member auf der Stufe ALocation.</summary>
 function TMemberHidesCheck.HiddenAt(const AOwn: TIndexSymbol; const ALocation: TSymbolLocation;
   out AHidden: TIndexSymbol): TLevelResult;
@@ -399,7 +436,7 @@ begin
   Location.Symbol := AClass;
   for Member in FAncestry.Members(Location) do
   begin
-    if IsHidingCandidate(Member) then
+    if IsHidingCandidate(Member) and not ImplementsInterface(AClass, Member) then
     begin
       CheckMember(AClass, Member, Chain);
     end;
