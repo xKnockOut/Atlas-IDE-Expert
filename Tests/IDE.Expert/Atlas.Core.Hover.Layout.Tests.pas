@@ -13,6 +13,7 @@ uses
   System.Types,
   Atlas.Core.Hover.Contract,
   Atlas.Core.Hover.History,
+  Atlas.Core.Hover.Items,
   Atlas.Core.Hover.Layout,
   Atlas.Core.Hover.Texts;
 
@@ -1150,9 +1151,9 @@ begin
   Result.Colors := TAtlasColors.Light;
   Result.Texts.PublishedSummary := 'published: %d Properties · %d Ereignisse';
   Result.Texts.PublishedProperties := 'Properties';
-  Result.MembersMaxLines := AMaxLines;
-  Result.MembersLimit := ALimit;
-  Result.MembersScroll := AScroll;
+  Result.Members.MaxLines := AMaxLines;
+  Result.Members.Limit := ALimit;
+  Result.Members.Scroll := AScroll;
 end;
 
 /// <summary>Obere Kante des Bausteins mit Text AText; -1 ohne.</summary>
@@ -1176,32 +1177,32 @@ var
 begin
   // Ohne Grenze: kein Rollbereich, alles sichtbar.
   mFull := BuildLayout(ManyMembersInput(0, 0, 0));
-  Assert.IsFalse(mFull.MembersScrollable);
-  Assert.AreEqual(-1, mFull.ClipFrom);
-  Assert.AreEqual(mFull.MembersContent, mFull.MembersView.Height);
+  Assert.IsFalse(mFull.Members.Scrollable);
+  Assert.AreEqual(-1, mFull.Members.ClipFrom);
+  Assert.AreEqual(mFull.Members.Content, mFull.Members.View.Height);
   // Fünf Zeilen zu je 16 + 3 Pixeln.
   mLayout := BuildLayout(ManyMembersInput(5, 0, 0));
-  Assert.IsTrue(mLayout.MembersScrollable);
-  Assert.AreEqual(95, mLayout.MembersView.Height);
-  Assert.AreEqual(19, mLayout.MembersRow);
-  Assert.AreEqual(mFull.MembersContent, mLayout.MembersContent);
-  Assert.AreEqual(mFull.Height - mFull.MembersContent + 95, mLayout.Height);
-  Assert.IsTrue((mLayout.ClipFrom >= 0) and (mLayout.ClipTill > mLayout.ClipFrom));
+  Assert.IsTrue(mLayout.Members.Scrollable);
+  Assert.AreEqual(95, mLayout.Members.View.Height);
+  Assert.AreEqual(19, mLayout.Members.Row);
+  Assert.AreEqual(mFull.Members.Content, mLayout.Members.Content);
+  Assert.AreEqual(mFull.Height - mFull.Members.Content + 95, mLayout.Height);
+  Assert.IsTrue((mLayout.Members.ClipFrom >= 0) and (mLayout.Members.ClipTill > mLayout.Members.ClipFrom));
   // Daumen nach dem beschnittenen Bereich am rechten Rand.
-  Assert.AreEqual(Ord(TAtlasHoverItemKind.RoundFill), Ord(mLayout.Items[mLayout.ClipTill].Kind));
-  Assert.AreEqual(453, mLayout.Items[mLayout.ClipTill].Rect.Left);
-  Assert.AreEqual(mLayout.MembersView.Top, mLayout.Items[mLayout.ClipTill].Rect.Top);
+  Assert.AreEqual(Ord(TAtlasHoverItemKind.RoundFill), Ord(mLayout.Items[mLayout.Members.ClipTill].Kind));
+  Assert.AreEqual(453, mLayout.Items[mLayout.Members.ClipTill].Rect.Left);
+  Assert.AreEqual(mLayout.Members.View.Top, mLayout.Items[mLayout.Members.ClipTill].Rect.Top);
   // Bildschirm enger als die Zeilen: die kleinere Grenze, mindestens drei Zeilen.
-  Assert.AreEqual(60, BuildLayout(ManyMembersInput(5, 60, 0)).MembersView.Height);
-  Assert.AreEqual(57, BuildLayout(ManyMembersInput(5, 20, 0)).MembersView.Height);
-  Assert.AreEqual(57, BuildLayout(ManyMembersInput(0, 20, 0)).MembersView.Height);
+  Assert.AreEqual(60, BuildLayout(ManyMembersInput(5, 60, 0)).Members.View.Height);
+  Assert.AreEqual(57, BuildLayout(ManyMembersInput(5, 20, 0)).Members.View.Height);
+  Assert.AreEqual(57, BuildLayout(ManyMembersInput(0, 20, 0)).Members.View.Height);
   // Versatz verschiebt die Zeilen, zu großer Versatz wird begrenzt.
   mLayout := BuildLayout(ManyMembersInput(5, 0, 38));
-  Assert.AreEqual(38, mLayout.MembersScroll);
+  Assert.AreEqual(38, mLayout.Members.Scroll);
   Assert.AreEqual(ItemTop(mFull, 'P5') - 38, ItemTop(mLayout, 'P5'));
   mLayout := BuildLayout(ManyMembersInput(5, 0, 100000));
-  Assert.AreEqual(mLayout.MembersMaxScroll, mLayout.MembersScroll);
-  Assert.AreEqual(mLayout.MembersView.Bottom, mLayout.Items[mLayout.ClipTill].Rect.Bottom);
+  Assert.AreEqual(mLayout.Members.MaxScroll, mLayout.Members.Scroll);
+  Assert.AreEqual(mLayout.Members.View.Bottom, mLayout.Items[mLayout.Members.ClipTill].Rect.Bottom);
 end;
 
 procedure THoverLayoutTests.ScrolledMembersDropHiddenHits;
@@ -1216,9 +1217,9 @@ begin
   Assert.AreEqual('01', PublishedCodes(mLayout));
   for mHit in mLayout.Hits do
   begin
-    if (mHit.Kind = TAtlasHoverHitKind.Published) and (mHit.Rect.Top >= mLayout.MembersView.Top) then
+    if (mHit.Kind = TAtlasHoverHitKind.Published) and (mHit.Rect.Top >= mLayout.Members.View.Top) then
     begin
-      Assert.IsTrue(mHit.Rect.Bottom <= mLayout.MembersView.Bottom);
+      Assert.IsTrue(mHit.Rect.Bottom <= mLayout.Members.View.Bottom);
     end;
   end;
 end;
