@@ -4,6 +4,7 @@
 - Beim Öffnen: IDE-Notifier merkt `ofnFileOpened` (Pascal-Dateien), `EditorViewActivated` startet einen 400-ms-Zeitgeber, dann wird die aktive Ansicht geklappt, wenn ihre Datei noch aussteht. Spätere Reiterwechsel lassen die Faltung.
 - Texte in eigener Tabelle `Atlas.UI.Editor.RegionFolds` (Atlas.UI.Strings über der Unitlänge). Feature `TAtlasFeature.RegionFolds` („Regionen falten“).
 - Geprüft (Cloud): FPC trunk `TAtlasRegionFoldsTests` 10/10, `TAtlasRegionFoldsTextsTests`, `TAtlasEditingSettingsTests` (27/27 zusammen); `AtlasServer --check` mit allen `metric-*` an: 0 Befunde in den geänderten Units; alle Prüfskripte mit pwsh grün. IDE-Unit nicht übersetzt (ToolsAPI). Offen: Delphi-Build und Handtests RF1–RF10, vor allem ob `ElideNearestBlock` an der Kopfzeile die Region trifft (RF2) und die Pause nach dem Öffnen reicht.
+
 ## Unit-Aliase im uses: WinTypes und WinProcs ohne Fehlalarm (06.11.2026, Branch `claude/project-thread-fcrksz` auf `Pilot-2.0.0-beta.1`)
 - Anlass Marco: Atlas meldete `uses-unit-not-found` für `uses WinTypes, WinProcs`, dcc nicht. Ursache: Atlas kannte keine Unit-Aliase (Projektoptionen „Unit-Aliase“, `DCC_UnitAlias`, dcc `-A`). Delphi gibt `WinTypes`/`WinProcs` → `Winapi.Windows` und `DbiTypes`/`DbiProcs`/`DbiErrs` → `BDE` vor, auch ohne Eintrag in der `.dproj`.
 - Neu: `Atlas.Common.Projects.UnitAliases` (`TUnitAliases`: `Defaults`, `Parse`, `Merge`, `OfProject`, `Target`). Aliase der `.dproj` gehen bei gleichem Namen vor; Einträge mit `$(…)` (etwa `$(DCC_UnitAlias)`) fallen weg.
