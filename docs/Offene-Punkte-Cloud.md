@@ -1,4 +1,4 @@
-# Offene Punkte für die Cloud
+﻿# Offene Punkte für die Cloud
 
 Stand 05.11.2026, Branch `Pilot-2.0.0-beta.1`. Reihenfolge nach Priorität. Die Delphi-IDE steht in der Cloud
 nicht zur Verfügung: Änderungen sind dort nicht übersetzt. Sie brauchen danach einen Bau und Testlauf am Rechner.
@@ -19,6 +19,8 @@ beim Start der Bau-IDE; die neue Variable gehört dorthin und muss am Rechner er
 `Atlas.Core.Diagnostics.SafeMode.pas`.
 
 **Fertig:** Test, dass eine Sitzung mit der Variable weder Marke schreibt noch den Zähler erhöht.
+
+**Stand:** Umgesetzt (`TAtlasSessionBook`, Variable `ATLAS_NO_SESSION_MARKER`, Test `SessionWithoutMarkerLeavesNoTrace`, Handtests AS21–AS24). Am Rechner offen: Delphi-Build und Variable in `cc.ps1` setzen.
 
 ## 2. Verlorene Known Packages
 
@@ -50,6 +52,19 @@ ergänzt (`WarmUpSettingsPage`, `TRuleFindingsMemoTests.WarmUp`).
 
 **Aufgabe:** Je Fall klären, ob Erstbenutzung oder echtes Leck. Erstbenutzung per `[SetupFixture]` vorwegnehmen,
 echte Lecks beheben. Keine Leckmeldung pauschal ignorieren.
+
+**Ergebnis (Branch `claude/project-thread-83cxch`):** Kein echtes Leck im Produktcode; je Fall die Ursache:
+
+| Test | Byte | Ursache | Behebung |
+|---|---|---|---|
+| `EnglishTextsWithoutGerman` | 23136 | Erstbenutzung: Befehlsliste `TSlashCommandRegistry.Shared` gibt es seit #1458 Gruppe B je Sprache; die englische entsteht beim ersten englischen Lauf (Regel `slash-command`) | Leckmonitor wärmt beide Sprachen vor |
+| `TimingNamesExecutedCommand` | 5016 | Erstbenutzung: gemeinsamer Rekorder `TAtlasPluginTimings.Shared` (lebt bis zum Entladen) | `[SetupFixture]` in `TLspClientTests` |
+| `FailingProviderTripsOnlyItself`, `GuardErrorLineHidesMessage`, `ExceptionCountsForFeature`, `FetchErrorsCountPerProvider`, `ShowsAndReenablesTrippedFeatures` | 208, 208, 192, 168, 88 | Kein Leck, gewolltes Wachstum: Das anonyme Protokoll (#1478) nummeriert jeden neuen Namen und Text und behält die Nummern bis Programmende (höchstens 4096). Der Test, der einen Wert zuerst schreibt, bekam ihn angerechnet | `TAtlasLogRedactor.Forget`; der Leckmonitor vergisst die Nummern des gemeinsamen Protokolls nach jedem Test vor der letzten Messung |
+| `SecondLockFails` | 176 | Erstbenutzung der Liste eigener Sperren (#1479: TMonitor und Tabelle). Die Aufwärmung dafür gab es, sie lief aber nie: Die Fixture hatte zwei `[SetupFixture]`, DUnitX führt nur eine aus | Beide zu einer zusammengelegt |
+| `HandlerWritesInlineValues` | 72 | Erstbenutzung, sehr wahrscheinlich die TMonitor-Daten einer globalen Sperre (72 Byte unter Win64; `TLspNamespaces` bzw. Baum-Cache) | `[SetupFixture]` läuft den Handler einmal |
+| `ServicesStartWithoutLoading` | 72 | Erstbenutzung, gleiche Größe; die Sperre ließ sich ohne Delphi nicht genau zuordnen | `[SetupFixture]` legt die Dienste einmal an. Meldet der Test danach weiter, ist es ein echtes Leck |
+
+Nachweis am Rechner: voller Testlauf ohne Leckmeldung (Handtests LK1–LK3 in `docs/Atlas-Testfaelle.md`).
 
 ## 5. Sprache ohne `language`-Eintrag
 

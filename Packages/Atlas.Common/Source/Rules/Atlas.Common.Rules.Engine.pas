@@ -15,7 +15,9 @@
 // Unterdrückungskommentare, die nichts unterdrücken, meldet die Engine als
 // Hinweis "unused-suppression" mit Korrektur zum Entfernen (#147); nur wenn
 // alle genannten Regeln gelaufen sind, damit Kommentare für abgeschaltete
-// oder unbekannte Regeln nicht stören.
+// oder unbekannte Regeln nicht stören, und nur, wenn jede genannte Regel mit
+// IRuleLineCertainty die Zeile entscheiden konnte (sonst fehlt ihr Wissen,
+// etwa der Index der RTL).
 //
 // Eine Kennung im Unterdrückungskommentar, die weder im Regelkatalog noch
 // unter den übergebenen Regeln steht, meldet die Engine als Hinweis
@@ -188,6 +190,13 @@ type
       const AFixes: TArray<TRuleFix>; const ARelated: TArray<TRuleRelated>);
   end;
 
+  /// <summary>Gelaufene Regel mit IRuleLineCertainty und dem Kontext ihres Laufs.</summary>
+  TUncertainRule = record
+    Certainty: IRuleLineCertainty;
+    Id: string;
+    Context: TRuleContext;
+  end;
+
   /// <summary>Regel mit IRuleAfterFindings, die nach allen Regeln mit den rohen Treffern läuft (#297).</summary>
   TDeferredRule = record
     Rule: IRuleAfterFindings;
@@ -211,6 +220,7 @@ type
     FKept: TList<TRuleFinding>;
     FRanIds: TList<string>;
     FDeferred: TList<TDeferredRule>;
+    FUncertain: TList<TUncertainRule>;
     FSuppressions: TSuppressions;
     function RuleContext(const ARuleId: string): TRuleContext;
     function Runs(const ADescriptor: TRuleDescriptor; out ASeverity: TRuleSeverity): Boolean;
@@ -225,6 +235,8 @@ type
     procedure RunDeferred(const ADeferred: TDeferredRule);
     procedure KeepUnsuppressed;
     function AllRan(const AEntry: TSuppressionEntry): Boolean;
+    function AllDecided(const AEntry: TSuppressionEntry): Boolean;
+    procedure NoteUncertain(const ARule: IRule; const ARuleId: string; const AContext: TRuleContext);
     procedure KeepUnusedSuppressions;
     function KnownRuleIds: TArray<string>;
     procedure KeepUnknownRuleIds;
@@ -715,6 +727,7 @@ begin
   FKept := TList<TRuleFinding>.Create;
   FRanIds := TList<string>.Create;
   FDeferred := TList<TDeferredRule>.Create;
+  FUncertain := TList<TUncertainRule>.Create;
   // Ein Ableitungscache für alle Regeln des Laufs (Review P-03); ein vom Aufrufer
   // gesetzter Cache gehört dem Aufrufer und bleibt gefüllt.
   FShared := AContext;
@@ -747,6 +760,7 @@ begin
   begin
     FOwnUnits.Clear;
   end;
+  FUncertain.Free;
   FDeferred.Free;
   FRanIds.Free;
   FSuppressions.Free;
@@ -922,6 +936,7 @@ begin
     RuleTimed(mDescriptor.Id, mWatch);
     FRanIds.Add(LowerCase(mDescriptor.Id));
     Defer(ARule, mDescriptor.Id, mSeverity, mContext);
+    NoteUncertain(ARule, mDescriptor.Id, mContext);
   end;
 end;
 
@@ -983,6 +998,35 @@ begin
   end;
 end;
 
+procedure TRuleRun.NoteUncertain(const ARule: IRule; const ARuleId: string; const AContext: TRuleContext);
+var
+  mUncertain: TUncertainRule;
+begin
+  if Supports(ARule, IRuleLineCertainty, mUncertain.Certainty) then
+  begin
+    mUncertain.Id := LowerCase(ARuleId);
+    mUncertain.Context := AContext;
+    FUncertain.Add(mUncertain);
+  end;
+end;
+
+/// <summary>Konnte jede genannte Regel mit IRuleLineCertainty die Zeile von AEntry entscheiden? Gefragt wird
+/// erst hier, also nur bei Kommentaren ohne Wirkung.</summary>
+function TRuleRun.AllDecided(const AEntry: TSuppressionEntry): Boolean;
+var
+  mUncertain: TUncertainRule;
+begin
+  for mUncertain in FUncertain do
+  begin
+    if ((IndexStr(mUncertain.Id, AEntry.Ids) >= 0) or (IndexStr('*', AEntry.Ids) >= 0)) and
+      not mUncertain.Certainty.Decides(mUncertain.Context, AEntry.TargetLine) then
+    begin
+      Exit(False);
+    end;
+  end;
+  Result := True;
+end;
+
 /// <summary>Hinweis unused-suppression für AEntry mit Korrektur zum Entfernen (#147).</summary>
 function UnusedSuppressionFinding(const AEntry: TSuppressionEntry; ASeverity: TRuleSeverity): TRuleFinding;
 var
@@ -1018,7 +1062,7 @@ begin
   end;
   for mEntry in FSuppressions.UnusedEntries do
   begin
-    if AllRan(mEntry) then
+    if AllRan(mEntry) and AllDecided(mEntry) then
     begin
       FKept.Add(UnusedSuppressionFinding(mEntry, mSeverity));
     end;

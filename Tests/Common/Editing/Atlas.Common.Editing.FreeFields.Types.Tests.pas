@@ -1,8 +1,9 @@
 ﻿unit Atlas.Common.Editing.FreeFields.Types.Tests;
 
 // Tests für die Typauflösung von „Felder im Destruktor freigeben“: Art eines
-// Typs, Aliase, Vorfahrenkette, Komponenten, Feldtypen einer Klasse und Typ
-// eines Felds von Record oder Klasse.
+// Typs, Aliase (auch aus anderen Units über den Index), Vorfahrenkette,
+// Komponenten, Feldtypen einer Klasse und Typ eines Felds von Record oder
+// Klasse.
 
 interface
 
@@ -17,6 +18,8 @@ type
     procedure GuessesKindsFromFile;
     [Test]
     procedure FollowsAliasesAndFallbacks;
+    [Test]
+    procedure FollowsAliasesOfOtherUnits;
     [Test]
     procedure ChainEndsAtComponent;
     [Test]
@@ -33,6 +36,9 @@ implementation
 
 uses
   System.SysUtils,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Index.Extractor,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.FreeFields.Types;
@@ -78,6 +84,37 @@ begin
   Assert.IsTrue(Guess('TStopwatch') = tgRecord);
   Assert.IsTrue(Guess('IUnknownThing') = tgInterface);
   Assert.IsTrue(Guess('TUnknown') = tgUnknown);
+end;
+
+procedure TFreeFieldTypesTests.FollowsAliasesOfOtherUnits;
+const
+  cLage = 'unit Werk.Lage;'#10'interface'#10'type'#10'  TLage = record'#10'    Zeile: Integer;'#10'  end;'#10 +
+    'implementation'#10'end.';
+  cKurz = 'unit Werk.Kurz;'#10'interface'#10'uses Werk.Lage;'#10'type'#10'  TPos = Werk.Lage.TLage;'#10 +
+    '  TLage = Werk.Lage.TLage;'#10'  TFremd = Fremd.TFremd;'#10'implementation'#10'end.';
+  cHier = 'unit Hier;'#10'interface'#10'uses Werk.Kurz;'#10'type'#10'  TOrt = Werk.Kurz.TPos;'#10 +
+    'implementation'#10'end.';
+var
+  mIndex: ISymbolIndex;
+  mTree: TSyntaxTree;
+  mTypes: TFreeFieldTypes;
+begin
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cLage, 'C:\P\Werk.Lage.pas', nil));
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cKurz, 'C:\P\Werk.Kurz.pas', nil));
+  mTree := TPascalParser.Parse(cHier);
+  mTypes := TFreeFieldTypes.Create(mTree, cHier, mIndex);
+  try
+    // Alias anderen Namens in einer anderen Unit, gleichen Namens dort und Alias der Datei auf einen davon.
+    Assert.IsTrue(mTypes.TypeGuess('TPos') = tgRecord);
+    Assert.IsTrue(mTypes.TypeGuess('TLage') = tgRecord);
+    Assert.IsTrue(mTypes.TypeGuess('TOrt') = tgRecord);
+    // Ziel unbekannt: bleibt unbekannt.
+    Assert.IsTrue(mTypes.TypeGuess('TFremd') = tgUnknown);
+  finally
+    mTypes.Free;
+    mTree.Free;
+  end;
 end;
 
 procedure TFreeFieldTypesTests.ChainEndsAtComponent;

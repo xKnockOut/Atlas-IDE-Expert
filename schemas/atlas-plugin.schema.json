@@ -5219,6 +5219,26 @@
       "x-captionEn": "Order method bodies",
       "x-issue": "#660"
     },
+    "RegionFolds": {
+      "description": "Regionen ({$REGION} … {$ENDREGION}) beim Öffnen einer Pascal-Datei (#1814): keep lässt die Faltung, wie die IDE sie zeigt, collapse klappt alle Regionen zu, expand alle auf. Die Region mit der Schreibmarke bleibt beim Zuklappen offen. Die Befehle „Alle Regionen zuklappen“ und „Alle Regionen aufklappen“ (Menü Atlas, Kontextmenü, Befehlspalette) gibt es außer bei off immer.",
+      "type": "string",
+      "enum": [
+        "keep",
+        "collapse",
+        "expand",
+        "off"
+      ],
+      "default": "keep",
+      "x-key": "editor.regionFolds",
+      "x-area": "editor",
+      "x-feature": "RegionFolds",
+      "x-page": "Editor",
+      "x-offValue": "off",
+      "x-control": "Auswahl",
+      "x-caption": "Regionen beim Öffnen",
+      "x-captionEn": "Regions when a file opens",
+      "x-issue": "#1814"
+    },
     "NextChangeKey": {
       "description": "Tastenkürzel „Nächste Änderung“: springt reihum zum nächsten Block mit Änderungsmarke (0 = keins).",
       "type": "integer",

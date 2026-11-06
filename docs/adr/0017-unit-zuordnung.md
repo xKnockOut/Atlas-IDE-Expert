@@ -175,6 +175,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Editor.LinkedEditing` | `Core/Editor/Atlas.Core.Editor.LinkedEditing.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.Match` | `Core/Editor/Atlas.Core.Editor.Match.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.MethodPlacement` | `Core/Editor/Atlas.Core.Editor.MethodPlacement.pas` | Ordner `Core/Editor` |
+| `Atlas.Core.Editor.RegionFolds` | `Core/Editor/Atlas.Core.Editor.RegionFolds.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.MethodToggle` | `Core/Editor/Atlas.Core.Editor.MethodToggle.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.LensAsk` | `Core/Editor/Atlas.Core.Editor.LensAsk.pas` | Ordner `Core/Editor`; ausstehende Frage einer Code Lens im Hintergrund, Antwort nur für die jüngste Frage |
 | `Atlas.Core.Editor.Metrics` | `Core/Editor/Atlas.Core.Editor.Metrics.pas` | Ordner `Core/Editor`; Antwort von `atlas.server.metrics` für Statusleiste, Metrikbericht und Metrik-Lens (#1756) |
@@ -240,6 +241,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Lsp.DataFlow` | `Core/Lsp/Atlas.Core.Lsp.DataFlow.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Lsp.Progress` | `Core/Lsp/Atlas.Core.Lsp.Progress.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Lsp.Session.Json` | `Core/Lsp/Atlas.Core.Lsp.Session.Json.pas` | Ordner `Core/Lsp` |
+| `Atlas.Core.Lsp.IdeTypes` | `Core/Lsp/Atlas.Core.Lsp.IdeTypes.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Lsp.Session.Base` | `Core/Lsp/Atlas.Core.Lsp.Session.Base.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Lsp.Session.Requests` | `Core/Lsp/Atlas.Core.Lsp.Session.Requests.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Lsp.Session` | `Core/Lsp/Atlas.Core.Lsp.Session.pas` | Ordner `Core/Lsp` |
@@ -257,6 +259,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Modules.Contributions` | `Core/Modules/Atlas.Core.Modules.Contributions.pas` | Beiträge der Module einsammeln, #1455 |
 | `Atlas.Core.Modules.FeatureParts` | `Core/Modules/Atlas.Core.Modules.FeatureParts.pas` | Teile eines Moduls für die Feature-Tabelle, #1455 |
 | `Atlas.Core.Modules.Handshake` | `Core/Modules/Atlas.Core.Modules.Handshake.pas` | Vertragsversion von Base (Regel 7), #1455 |
+| `Atlas.Core.Modules.KnownPackages` | `Core/Modules/Atlas.Core.Modules.KnownPackages.pas` | Module unter „Known Packages“ prüfen (Meldung 05.11.2026) |
 | `Atlas.Core.Modules.Registration` | `Core/Modules/Atlas.Core.Modules.Registration.pas` | Ordner `Core/Modules`, #1455 |
 | `Atlas.Core.Modules.Registry` | `Core/Modules/Atlas.Core.Modules.Registry.pas` | Registry der Module (Regel 1), #1455 |
 | `Atlas.Core.Modules.Watch` | `Core/Modules/Atlas.Core.Modules.Watch.pas` | Liste bereitgestellter Objekte, folgt der Registry, #1455 |
@@ -438,6 +441,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.CodeInsight.Manager.Handlers` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Manager.Handlers.pas` | Ordner `IDE/CodeInsight` |
 | `Atlas.IDE.CodeInsight.Manager.Paths` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Manager.Paths.pas` | Ordner `IDE/CodeInsight` |
 | `Atlas.IDE.CodeInsight.Manager.Queries` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Manager.Queries.pas` | Ordner `IDE/CodeInsight` |
+| `Atlas.IDE.CodeInsight.IdeTypes` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.IdeTypes.pas` | Ordner `IDE/CodeInsight` |
 | `Atlas.IDE.CodeInsight.Manager.Session` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Manager.Session.pas` | Ordner `IDE/CodeInsight` |
 | `Atlas.IDE.CodeInsight.Manager.State` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Manager.State.pas` | Ordner `IDE/CodeInsight` |
 | `Atlas.IDE.Commands.KeyList` | `IDE/Commands/Atlas.IDE.Commands.KeyList.pas` | Ordner `IDE/Commands` |
@@ -479,6 +483,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Diagnostics.Timing` | `IDE/Diagnostics/Atlas.IDE.Diagnostics.Timing.pas` | Ordner `IDE/Diagnostics` |
 | `Atlas.IDE.Diagnostics.TimingWindow` | `IDE/Diagnostics/Atlas.IDE.Diagnostics.TimingWindow.pas` | Ordner `IDE/Diagnostics` |
 | `Atlas.IDE.Diagnostics.Watchdog` | `IDE/Diagnostics/Atlas.IDE.Diagnostics.Watchdog.pas` | Ordner `IDE/Diagnostics` |
+| `Atlas.IDE.Diagnostics.KnownPackages` | `IDE/Diagnostics/Atlas.IDE.Diagnostics.KnownPackages.pas` | Ordner `IDE/Diagnostics` |
 | `Atlas.IDE.Editor.AnonymousMethod` | `IDE/Editor/Atlas.IDE.Editor.AnonymousMethod.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.BlockComment` | `IDE/Editor/Atlas.IDE.Editor.BlockComment.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.ChangeSignature` | `IDE/Editor/Atlas.IDE.Editor.ChangeSignature.pas` | Ordner `IDE/Editor` |
@@ -504,6 +509,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Editor.LinkedEditingQuery` | `IDE/Editor/Atlas.IDE.Editor.LinkedEditingQuery.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.MethodKind` | `IDE/Editor/Atlas.IDE.Editor.MethodKind.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.MethodPlacement` | `IDE/Editor/Atlas.IDE.Editor.MethodPlacement.pas` | Ordner `IDE/Editor` |
+| `Atlas.IDE.Editor.RegionFolds` | `IDE/Editor/Atlas.IDE.Editor.RegionFolds.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.MetricsSource` | `IDE/Editor/Atlas.IDE.Editor.MetricsSource.pas` | Ordner `IDE/Editor`; Abruf der Metriken für Statusleiste und Metrik-Lens (#1756) |
 | `Atlas.IDE.Editor.Lens` | `IDE/Editor/Atlas.IDE.Editor.Lens.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.Minimap` | `IDE/Editor/Atlas.IDE.Editor.Minimap.pas` | Ordner `IDE/Editor` |
@@ -640,6 +646,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Editor.ExpressionType` | `UI/Editor/Atlas.UI.Editor.ExpressionType.pas` | Ordner `UI/Editor` |
 | `Atlas.UI.Editor.ExtractMembers` | `UI/Editor/Atlas.UI.Editor.ExtractMembers.pas` | Ordner `UI/Editor` |
 | `Atlas.UI.Editor.Hide` | `UI/Editor/Atlas.UI.Editor.Hide.pas` | Ordner `UI/Editor` |
+| `Atlas.UI.Editor.RegionFolds` | `UI/Editor/Atlas.UI.Editor.RegionFolds.pas` | Ordner `UI/Editor` |
 | `Atlas.UI.Editor.Minimap` | `UI/Editor/Atlas.UI.Editor.Minimap.pas` | Ordner `UI/Editor` |
 | `Atlas.UI.Editor.MinimapLayers` | `UI/Editor/Atlas.UI.Editor.MinimapLayers.pas` | Ordner `UI/Editor` |
 | `Atlas.UI.Editor.OverviewRuler` | `UI/Editor/Atlas.UI.Editor.OverviewRuler.pas` | Ordner `UI/Editor` |

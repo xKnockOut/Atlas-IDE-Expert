@@ -27,6 +27,9 @@ type
     procedure IdentityAndPathsWithoutMarksAreReplaced;
     [Test]
     procedure LabelsStopGrowingAtLimit;
+    /// <summary>Forget leert die Tabelle: Nummern beginnen wieder bei 1, auch nach erreichter Grenze.</summary>
+    [Test]
+    procedure ForgetStartsNumberingAgain;
     /// <summary>Wächter: Eine Zeile mit Markernamen kommt ohne diese Namen in die Datei.</summary>
     [Test]
     procedure RotatingLogWritesNoMarkerNames;
@@ -122,6 +125,25 @@ begin
     Assert.IsFalse(mText.Contains('MarkerOrdner'), mText);
     Assert.IsTrue(mText.Contains('<benutzer>'), mText);
     Assert.IsTrue(mText.Contains('ab hier'), mText);
+  finally
+    mRedactor.Free;
+  end;
+end;
+
+procedure TAtlasLogRedactorTests.ForgetStartsNumberingAgain;
+var
+  mRedactor: TAtlasLogRedactor;
+  mIndex: Integer;
+begin
+  mRedactor := TAtlasLogRedactor.Create(nil);
+  try
+    for mIndex := 1 to TAtlasLogRedactor.MaxLabels do
+    begin
+      mRedactor.Redact(TLogMarks.Name('N' + IntToStr(mIndex)));
+    end;
+    mRedactor.Forget;
+    Assert.AreEqual('name#1', mRedactor.Redact(TLogMarks.Name('Lager')));
+    Assert.AreEqual('name#2', mRedactor.Redact(TLogMarks.Name('N1')), 'auch frühere Werte bekommen neue Nummern');
   finally
     mRedactor.Free;
   end;
