@@ -507,6 +507,8 @@ uses
   Atlas.Core.Hover.Contract in '..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.Contract.pas',
   Atlas.Core.Hover.Declaration in '..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.Declaration.pas',
   Atlas.Core.Hover.History in '..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.History.pas',
+  Atlas.Core.Hover.Items in '..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.Items.pas',
+  Atlas.Core.Hover.Items.Tests in 'IDE.Expert\Atlas.Core.Hover.Items.Tests.pas',
   Atlas.Core.Hover.Layout in '..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.Layout.pas',
   Atlas.Core.Hover.Texts in '..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.Texts.pas',
   Atlas.Core.Hover.Layout.Tests in 'IDE.Expert\Atlas.Core.Hover.Layout.Tests.pas',
