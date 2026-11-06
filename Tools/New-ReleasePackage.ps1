@@ -83,13 +83,13 @@ foreach ($Platform in 'Win32', 'Win64') {
     $BplDir = Join $Output, $Platform, 'Release', 'Bpl'
     $Bpls[$Platform] = [System.Collections.Generic.List[IO.FileInfo]]::new()
     foreach ($Name in $Packages) {
-        # Mit LIBSUFFIX AUTO heißt die BPL z. B. Atlas.IDE.Base370.bpl, die Map ohne Endung Atlas.IDE.Base.map.
+        # Mit LIBSUFFIX AUTO heißen BPL und Map z. B. Atlas.IDE.Base370.bpl und Atlas.IDE.Base370.map.
         $Bpl = Get-ChildItem $BplDir -Filter "$Name*.bpl" -ErrorAction SilentlyContinue |
             Where-Object { $_.BaseName -match ('^' + [regex]::Escape($Name) + '\d*$') } | Select-Object -First 1
         if (-not $Bpl) {
             throw "$Platform-BPL von $Name fehlt in $BplDir"
         }
-        Assert-File (Join-Path $BplDir "$Name.map")
+        Assert-File ([IO.Path]::ChangeExtension($Bpl.FullName, '.map'))
         $Bpls[$Platform].Add($Bpl)
         $Built.Add($Bpl)
     }
@@ -141,7 +141,7 @@ try {
         foreach ($Bpl in $Bpls[$Platform]) {
             $Target = Join-Path (Join-Path $Dist $Platform) $Bpl.Name
             Copy-Item -LiteralPath $Bpl.FullName $Target
-            $Map = Join-Path $BplDir "$($Bpl.BaseName -replace '\d+$', '').map"
+            $Map = [IO.Path]::ChangeExtension($Bpl.FullName, '.map')
             Copy-Item -LiteralPath $Map ([IO.Path]::ChangeExtension($Target, '.map'))
         }
     }
