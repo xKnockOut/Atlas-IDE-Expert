@@ -12,7 +12,11 @@ Server und Claude-Code-Plugin tragen dieselbe [SemVer](https://semver.org/lang/d
 
 Mit Delphi-Runner baut der Workflow außerdem das Plugin (Win32 und Win64) und hängt `atlas-ide-expert-<Version>.zip` an (Aufbau in [Installation.md](Installation.md#rad-studio-release-paket); einen Installer gibt es seit 1.2.0 nicht mehr, [ADR 0016](adr/0016-kein-installer.md)). Dazu kommt immer `atlas-version.json` (`{"version": "…", "changes": "<Link zum Release>"}`): Die Update-Prüfung des Plugins liest sie über `releases/latest/download/atlas-version.json`. GitHub zählt Vorabversionen dabei nicht als „latest“; Versionen `0.x` melden sich also nicht als Update.
 
-Ohne Delphi-Runner (`DELPHI_RUNNER` nicht `true`) enthält das Release nur die Changelog-Notizen; die EXE lässt sich dann von Hand anhängen.
+Ohne Delphi-Runner (`DELPHI_RUNNER` nicht `true`) enthält das Release nur die Notizen, den Quelltext-ZIP und eine Versionsdatei ohne Paket. Das Plugin meldet die Version dann, der Update-Installer bricht aber mit „kein Paket für diese IDE“ ab (#1849). So kommt das Paket nachträglich dazu:
+
+1. Mit Delphi 13 aus dem getaggten Stand die Release-Builds erzeugen: `Atlas.Text`, `Atlas.Common`, `Atlas.Windows`, `AtlasServer`, `AtlasUpdate` und alle Plugin-Packages für Win64, die Plugin-Packages zusätzlich für Win32, jeweils Konfiguration Release.
+2. Nachdem der Release-Workflow zum Tag gelaufen ist: `pwsh Tools/Publish-ReleasePackage.ps1 -Version 2.0.0-beta.1` (mit `-WhatIf` zuerst ansehen). Das Skript packt `atlas-ide-expert-<Version>.zip` mit `Tools/New-ReleasePackage.ps1` (derselbe Aufbau wie auf dem Runner) und lädt es mit `AtlasServer.exe`/`.map` ins Release. Danach schreibt es `atlas-version.json` mit Paket und Quelltext (SHA-256) neu, ebenso `atlas-version-beta.json` im Kanal `update-channel`, wenn der Kanal auf diese Version zeigt. Es braucht die GitHub-CLI `gh` mit Schreibrecht.
+3. Das Paket bricht ab, wenn eine EXE, BPL oder Map fehlt, die Version im Quelltext nicht passt oder ein Build älter als der letzte Commit ist. Unsigniert prüft der Update-Installer nur die SHA-256.
 
 ## Bilder der Tipps
 
