@@ -112,6 +112,18 @@ type
     class function Default: TSmartIndentSettings; static;
   end;
 
+  /// <summary>Klassenvervollständigung ("classCompletion", #1834).</summary>
+  TClassCompletionSettings = record
+    /// <summary>Kommentar über dem Klassenabschnitt (#1835): brace, line, summary, region oder off.</summary>
+    TypeComment: string;
+    /// <summary>Neue Rümpfe vorbefüllen: inherited, Getter und Setter mit Feld (#1837).</summary>
+    BodyStubs: Boolean;
+    /// <summary>Konstruktoren und Destruktoren beim Ordnen zuerst, auch bei declaration und alphabetical
+    /// (#1836).</summary>
+    LifecycleFirst: Boolean;
+    class function Default: TClassCompletionSettings; static;
+  end;
+
   /// <summary>Treffersicherheit der Verwendungen ("references", #1119).</summary>
   TReferenceSettings = record
     /// <summary>Erschlossene Treffer zeigen (über ein Interface, eine überschriebene Methode, nicht eindeutige
@@ -665,6 +677,7 @@ type
     InlayHints: TInlayHintSettings;
     CodeLens: TCodeLensSettings;
     SmartIndent: TSmartIndentSettings;
+    ClassCompletion: TClassCompletionSettings;
     References: TReferenceSettings;
     Navigation: TNavigationSettings;
     Hints: THintSettings;
@@ -1145,6 +1158,15 @@ begin
   Result.SplitStringsIndent := 'indent';
 end;
 
+{ TClassCompletionSettings }
+
+class function TClassCompletionSettings.Default: TClassCompletionSettings;
+begin
+  Result.TypeComment := 'brace';
+  Result.BodyStubs := True;
+  Result.LifecycleFirst := True;
+end;
+
 { TStringLiteralSettings }
 
 class function TStringLiteralSettings.Default: TStringLiteralSettings;
@@ -1387,6 +1409,7 @@ begin
   ASettings.InlayHints := TInlayHintSettings.Default;
   ASettings.CodeLens := TCodeLensSettings.Default;
   ASettings.SmartIndent := TSmartIndentSettings.Default;
+  ASettings.ClassCompletion := TClassCompletionSettings.Default;
   ASettings.References := TReferenceSettings.Default;
   ASettings.Navigation := TNavigationSettings.Default;
   ASettings.Hints := THintSettings.Default;

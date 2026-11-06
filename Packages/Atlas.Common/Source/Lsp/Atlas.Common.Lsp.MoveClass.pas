@@ -42,6 +42,8 @@ type
     Exists: TMoveClassExists;
     /// <summary>Name der neuen Unit.</summary>
     UnitName: string;
+    /// <summary>Typkommentar { TKunde } mitnehmen (#1838); aus mit classCompletion.typeComment = off.</summary>
+    TypeComments: Boolean;
   end;
 
   TLspMoveClass = class
@@ -265,6 +267,7 @@ class function TLspMoveClass.Execute(AResolver: TNameResolver; ATree: TSyntaxTre
   const APosition: TTextPosition; const AContext: TMoveClassContext): TJSONObject;
 var
   Plan: TMoveClassPlan;
+  mSource: TMoveClassSource;
   Reason, NewFile: string;
   Decl: TSyntaxNode;
   Changes: TWorkspaceChanges;
@@ -275,10 +278,11 @@ begin
   begin
     raise Failed(cTexts[TLspMoveClassText.ThereIsNoClassAt].Text);
   end;
+  mSource := TMoveClassSource.Create(AFileName, AText, ATree);
+  mSource.TypeComments := AContext.TypeComments;
   AResolver.PinTree(ATree, AFileName);
   try
-    if not TMoveClass.Plan(TMoveClassSource.Create(AFileName, AText, ATree), APosition, AContext.UnitName,
-      Lookup(AResolver), Plan, Reason) then
+    if not TMoveClass.Plan(mSource, APosition, AContext.UnitName, Lookup(AResolver), Plan, Reason) then
     begin
       raise Failed(Reason);
     end;

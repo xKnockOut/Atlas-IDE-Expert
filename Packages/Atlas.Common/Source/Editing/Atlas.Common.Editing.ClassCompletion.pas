@@ -25,6 +25,11 @@
 // Modifizierer); ist sie nicht eindeutig, bleibt das Paar aus. PairFixes (#100)
 // gleicht Rumpf und Deklaration in beide Richtungen an, auch die
 // Aufrufkonvention. Standardwerte bleiben nur in der Deklaration.
+//
+// Neue Rümpfe (#1834) kommen in der Reihenfolge Lebenszyklus, Zugriffsmethoden,
+// überschriebene, übrige (TClassBodies.RankOf), vorbefüllt (O1) und beim
+// ersten Rumpf eines Typs mit dem Kommentar über dem Abschnitt (K1–K4);
+// Einstellungen über TClassBodyOptions.
 
 interface
 
@@ -32,7 +37,9 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
-  Atlas.Common.Editing.CodeActions;
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.Editing.ClassBodies;
 
 type
   /// <summary>Methode ohne Gegenstück (#124).</summary>
@@ -106,7 +113,15 @@ type
       out AEdit: TTextEdit): Boolean; static;
     /// <summary>Aktion für fehlende Rümpfe an APosition; False, wenn nichts fehlt.</summary>
     class function MissingBodies(ATree: TSyntaxTree; const AText: string; const APosition: TTextPosition;
-      out AAction: TCodeAction): Boolean; static;
+      out AAction: TCodeAction): Boolean; overload; static;
+    /// <summary>Wie oben mit den Einstellungen der Klassenvervollständigung (#1834).</summary>
+    class function MissingBodies(ATree: TSyntaxTree; const AText: string; const APosition: TTextPosition;
+      const AOptions: TClassBodyOptions; out AAction: TCodeAction): Boolean; overload; static;
+    /// <summary>Wie oben mit classCompletion.* aus ASettings (ungesetzt: Vorgaben) und dem Formatstil AStyle.
+    /// </summary>
+    class function MissingBodies(ATree: TSyntaxTree; const AText: string; const APosition: TTextPosition;
+      const ASettings: TClassCompletionSettings; const AStyle: TFormatStyle; out AAction: TCodeAction): Boolean;
+      overload; static;
     /// <summary>Zerlegt den Kopf der Methode ASymbol; False, wenn er sich nicht lesen lässt.</summary>
     class function Shape(ATree: TSyntaxTree; const AText: string; const ASymbol: TIndexSymbol;
       out AShape: TSignatureShape): Boolean; static;
@@ -121,7 +136,11 @@ type
     /// <summary>Fügt den Rumpf ABody (ohne Zeilenumbruch am Ende) für einen Typ dieser Datei ein: hinter die
     /// letzte vorhandene Methode des Typs, sonst vor initialization, finalization bzw. "end." (#443).</summary>
     class function BodyEdit(ATree: TSyntaxTree; const AText, ATypeName, ABody: string; out AEdit: TTextEdit): Boolean;
-      static;
+      overload; static;
+    /// <summary>Wie oben; ist es der erste Rumpf des Typs, kommt der Kommentar nach AOptions davor (#1835).
+    /// </summary>
+    class function BodyEdit(ATree: TSyntaxTree; const AText, ATypeName, ABody: string;
+      const AOptions: TClassBodyOptions; out AEdit: TTextEdit): Boolean; overload; static;
   end;
 
 implementation
@@ -135,6 +154,7 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.RoutineSignatures,
   Atlas.Text.Lines,
+  Atlas.Common.Editing.TypeComments,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -1501,6 +1521,39 @@ end;
 
 class function TClassCompletion.BodyEdit(ATree: TSyntaxTree; const AText, ATypeName, ABody: string;
   out AEdit: TTextEdit): Boolean;
+begin
+  Result := BodyEdit(ATree, AText, ATypeName, ABody, TClassBodyOptions.Default, AEdit);
+end;
+
+/// <summary>Zeile von "implementation"; 0 ohne.</summary>
+function ImplementationLine(ATree: TSyntaxTree): Integer;
+var
+  mToken: TPascalToken;
+begin
+  for mToken in ATree.Tokens do
+  begin
+    if mToken.IsKeyword('implementation') then
+    begin
+      Exit(mToken.StartPos.Line);
+    end;
+  end;
+  Result := 0;
+end;
+
+/// <summary>ABodies mit dem Kommentar zu AShape, wenn ab AFromLine (implementation) noch keiner steht (#1835).
+/// </summary>
+function WithTypeComment(const ALines: TArray<string>; AFromLine: Integer; const AShape: TTypeShape;
+  const ABodies, ALineBreak: string; const AOptions: TClassBodyOptions): string;
+begin
+  Result := ABodies;
+  if not TClassBodies.HasTypeComment(ALines, AFromLine, AShape.TypeName) then
+  begin
+    Result := TClassBodies.Wrapped(AShape, AOptions, ABodies, ALineBreak);
+  end;
+end;
+
+class function TClassCompletion.BodyEdit(ATree: TSyntaxTree; const AText, ATypeName, ABody: string;
+  const AOptions: TClassBodyOptions; out AEdit: TTextEdit): Boolean;
 var
   mLines: TArray<string>;
   mUnit: TUnitIndex;
@@ -1535,7 +1588,9 @@ begin
   Result := mInsertLine >= 0;
   if Result then
   begin
-    AEdit := TTextEdit.Create(TTextRange.Create(mInsertLine, 0, mInsertLine, 0), ABody + mLB + mLB);
+    AEdit := TTextEdit.Create(TTextRange.Create(mInsertLine, 0, mInsertLine, 0),
+      WithTypeComment(mLines, ImplementationLine(ATree), TTypeShape.Read(mUnit, mLines, ATypeName), ABody, mLB,
+      AOptions) + mLB + mLB);
   end;
 end;
 
@@ -1642,8 +1697,10 @@ begin
   end;
 end;
 
-/// <summary>Leere Rümpfe der fehlenden Methoden, je mit Zeilenumbruch davor und dahinter.</summary>
-function BodiesText(const ALines: TArray<string>; const APlan: TBodyPlan; const ALineBreak: string): string;
+/// <summary>Rümpfe der fehlenden Methoden (vorbefüllt nach AOptions), je mit Zeilenumbruch davor und dahinter.
+/// </summary>
+function BodiesText(const ALines: TArray<string>; const APlan: TBodyPlan; const AShape: TTypeShape;
+  const AOptions: TClassBodyOptions; const ALineBreak: string): string;
 var
   mSymbol: TIndexSymbol;
   mHeader, mRest: string;
@@ -1655,8 +1712,49 @@ begin
       APlan.TypeName);
     if mHeader <> '' then
     begin
-      Result := Result + ALineBreak + mHeader + ALineBreak + 'begin' + ALineBreak + ALineBreak + 'end;' + ALineBreak;
+      Result := Result + ALineBreak + TClassBodies.Body(AShape, mHeader,
+        TClassBodies.DeclarationText(ALines, mSymbol.Range), mSymbol.Name, AOptions, ALineBreak) + ALineBreak;
     end;
+  end;
+end;
+
+/// <summary>Rang der Deklaration ASymbol: Gruppe, Stelle darin, Deklarationsreihenfolge.</summary>
+function RankKey(const ALines: TArray<string>; const AShape: TTypeShape; const ASymbol: TIndexSymbol;
+  AOrder: Integer): Int64;
+var
+  mRank: TMethodRank;
+begin
+  mRank := TClassBodies.RankOf(AShape, TClassBodies.DeclarationText(ALines, ASymbol.Range), ASymbol.Name);
+  Result := (Int64(mRank.Group) * 100000 + mRank.Sub) * 100000 + AOrder;
+end;
+
+/// <summary>Fehlende Methoden nach Lebenszyklus, Zugriffsmethoden, überschriebenen, übrigen (R2, #1836).</summary>
+procedure SortMissing(const ALines: TArray<string>; const AShape: TTypeShape; var APlan: TBodyPlan);
+var
+  mKeys: TArray<Int64>;
+  mIndex, mTarget: Integer;
+  mKey: Int64;
+  mSymbol: TIndexSymbol;
+begin
+  SetLength(mKeys, Length(APlan.Missing));
+  for mIndex := 0 to High(APlan.Missing) do
+  begin
+    mKeys[mIndex] := RankKey(ALines, AShape, APlan.Missing[mIndex], mIndex);
+  end;
+  // Einfügen: die Schlüssel sind eindeutig, die Reihenfolge ist damit stabil.
+  for mIndex := 1 to High(mKeys) do
+  begin
+    mKey := mKeys[mIndex];
+    mSymbol := APlan.Missing[mIndex];
+    mTarget := mIndex - 1;
+    while (mTarget >= 0) and (mKeys[mTarget] > mKey) do
+    begin
+      mKeys[mTarget + 1] := mKeys[mTarget];
+      APlan.Missing[mTarget + 1] := APlan.Missing[mTarget];
+      Dec(mTarget);
+    end;
+    mKeys[mTarget + 1] := mKey;
+    APlan.Missing[mTarget + 1] := mSymbol;
   end;
 end;
 
@@ -1701,11 +1799,41 @@ end;
 
 class function TClassCompletion.MissingBodies(ATree: TSyntaxTree; const AText: string;
   const APosition: TTextPosition; out AAction: TCodeAction): Boolean;
+begin
+  Result := MissingBodies(ATree, AText, APosition, TClassBodyOptions.Default, AAction);
+end;
+
+class function TClassCompletion.MissingBodies(ATree: TSyntaxTree; const AText: string;
+  const APosition: TTextPosition; const ASettings: TClassCompletionSettings; const AStyle: TFormatStyle;
+  out AAction: TCodeAction): Boolean;
+begin
+  Result := MissingBodies(ATree, AText, APosition, TClassBodyOptions.FromSettings(ASettings, AStyle), AAction);
+end;
+
+/// <summary>ABodies (je Rumpf mit Zeilenumbruch davor und dahinter) als erste Rümpfe des Typs AShape: mit dessen
+/// Kommentar, wenn ab AFromLine (implementation) noch keiner steht.</summary>
+function FirstBodiesText(const ALines: TArray<string>; AFromLine: Integer; const AShape: TTypeShape;
+  const ABodies, ALineBreak: string; const AOptions: TClassBodyOptions): string;
+var
+  mInner: string;
+begin
+  Result := ABodies;
+  if (ABodies = '') or (AOptions.TypeComment = TTypeCommentStyle.Off) then
+  begin
+    Exit;
+  end;
+  mInner := Copy(ABodies, Length(ALineBreak) + 1, Length(ABodies) - 2 * Length(ALineBreak));
+  Result := ALineBreak + WithTypeComment(ALines, AFromLine, AShape, mInner, ALineBreak, AOptions) + ALineBreak;
+end;
+
+class function TClassCompletion.MissingBodies(ATree: TSyntaxTree; const AText: string;
+  const APosition: TTextPosition; const AOptions: TClassBodyOptions; out AAction: TCodeAction): Boolean;
 var
   mLines: TArray<string>;
   mUnit: TUnitIndex;
   mType: TIndexSymbol;
   mPlan: TBodyPlan;
+  mShape: TTypeShape;
   mRest, mLB, mBodies: string;
   mEdit: TTextEdit;
 begin
@@ -1727,8 +1855,14 @@ begin
   mPlan.TypeName := TypeNameOf(mType);
   CollectTypeMethods(mLines, mUnit, mType, mPlan);
   FindMissing(mLines, APosition.Line, mPlan);
+  mShape := TTypeShape.Read(mUnit, mLines, mPlan.TypeName);
+  SortMissing(mLines, mShape, mPlan);
   mLB := TTextLines.LineBreakOf(AText);
-  mBodies := BodiesText(mLines, mPlan, mLB);
+  mBodies := BodiesText(mLines, mPlan, mShape, AOptions, mLB);
+  if mPlan.LastLine < 0 then
+  begin
+    mBodies := FirstBodiesText(mLines, ImplementationLine(ATree), mShape, mBodies, mLB, AOptions);
+  end;
   Result := (mBodies <> '') and BodiesEdit(ATree, mLines, mPlan.LastLine, mBodies, mLB, mEdit);
   if Result then
   begin

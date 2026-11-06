@@ -41,6 +41,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Vorlagen:** Code-, Postfix- und klassenbezogene Vorlagen, eigene Snippets, Schrägstrich-Befehle wie `/uses` und `/extract`
 - **Generieren-Menü** (Alt+Einfg) und Bearbeitungshilfen: umschließen, Zeilen verschieben, Kommentare umschalten, var-Blöcke aufräumen
 - **Formatierer** (Strg+Umschalt+Alt+L), auch ohne IDE
+- **Klassenvervollständigung:** `{ TKunde }` über den Rümpfen (oder Trennlinie, Doku-Satz, Region), Konstruktor und Destruktor zuerst, dann Get/Set-Paare; neue Rümpfe mit `inherited` und `Result := FName` vorbefüllt
 - **Einrückung beim Tippen:** Nach Enter steht die Schreibmarke an der richtigen Stelle der Blockstruktur, `end`, `until`, `finally` und `else` rücken auf ihr Gegenstück, ein String wird beim Umbruch mit `' +` getrennt
 
 ### [Verstehen](docs/features/de/Verstehen.md)

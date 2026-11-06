@@ -93,9 +93,14 @@ Code completion in its own popup:
 | Remove the surrounding construct, with preview | #657, Ctrl+Shift+Del |
 | Atlas column in the gutter | #768 |
 
-- Keep method bodies in declaration order (#660):
+- Order method bodies (#660, #1836; `editor.methodPlacement`):
+  - default "grouped, constructors first": constructors and destructor, then get/set pairs in property order, then overrides, then the rest as declared; also "like the declaration" and "alphabetically", where `classCompletion.lifecycleFirst` also puts constructors first
   - new bodies from class completion move to their place in one undo step
-  - "Order implementation like class" with preview
+  - "Order implementation like class" with preview; the comment above a class section and a `{$REGION 'TCustomer'}` move along
+- Class completion (#1834, `classCompletion.*`):
+  - comment above a class section (#1835, `typeComment`): `{ TCustomer }` like the IDE (default), separator line with `// TCustomer`, `{ TCustomer: first sentence of the doc }`, a region around all bodies, or none; an existing one is not duplicated
+  - prefilled new bodies (#1837, `bodyStubs`): `inherited` for `override`, at the end of the destructor, getter `Result := FName` and setter `FName := AValue`
+  - Rename and "Move class" take the `{ TCustomer }` comment along (#1838)
 - Maintain var blocks (#644):
   - convert a variable to an inline variable at its first assignment and back
   - tidy the var section (remove unused, sort by first use or name, merge equal types)

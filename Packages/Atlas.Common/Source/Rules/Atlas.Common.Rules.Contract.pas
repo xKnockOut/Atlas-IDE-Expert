@@ -349,6 +349,9 @@ type
     /// <summary>Formatierung aus den Einstellungen (format, #938): Tabbreite und Einrückung für Regeln, die
     /// Spalten zählen oder umbrechen; setzt TRuleEngine.Run. IndentSize 0 = nicht gesetzt.</summary>
     Formatting: TFormatStyle;
+    /// <summary>Klassenvervollständigung (classCompletion, #1834) für die Korrektur fehlender Rümpfe; setzt
+    /// TRuleEngine.Run. TypeComment '' = nicht gesetzt, es gelten die Vorgaben.</summary>
+    ClassCompletion: TClassCompletionSettings;
     /// <summary>Projekte der Gruppe für projektweite Regeln (#1102); nil = unbekannt, diese Regeln schweigen.
     /// </summary>
     ProjectFiles: IRuleProjectFiles;

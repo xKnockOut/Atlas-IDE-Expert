@@ -2,7 +2,8 @@
 
 // Tests für „Klasse in eigene Unit verschieben“ (#103 Teil B): neue Unit samt
 // uses aus den benötigten Namen, Änderungen an der Ursprungs-Unit und an
-// verwendenden Units, Ablehnungsgründe. Vorher und Nachher müssen parsen.
+// verwendenden Units, Ablehnungsgründe, Typkommentar (#1838). Vorher und
+// Nachher müssen parsen.
 
 interface
 
@@ -31,6 +32,8 @@ type
     procedure RejectsOtherCases;
     [Test]
     procedure UpdatesUsingUnits;
+    [Test]
+    procedure MovesTypeComment;
   end;
 
 implementation
@@ -189,6 +192,23 @@ begin
   Assert.AreEqual(Join(['unit Lager;', '', 'interface', '', 'uses', '  System.SysUtils, System.Classes;', '',
     'type', '  TBase = class', '  end;', '', 'implementation', '', 'uses', '  Stock;', '', 'procedure Run;',
     'begin', '  TStock.Create.Free;', 'end;', '', 'end.']), Origin);
+end;
+
+procedure TMoveClassTests.MovesTypeComment;
+var
+  NewText, Origin: string;
+begin
+  Assert.IsTrue(Relocate(Join(['unit Lager;', '', 'interface', '', 'type', '  TBase = class', '    procedure Go;',
+    '  end;', '', '  TStock = class', '    function Count: Integer;', '  end;', '', 'implementation', '',
+    '{ TBase }', '', 'procedure TBase.Go;', 'begin', 'end;', '', '{ TStock }', '', 'function TStock.Count: Integer;',
+    'begin', '  Result := 0;', 'end;', '', 'end.']), 'TStock = class', NewText, Origin));
+  Assert.AreEqual(Join(['unit Stock;', '', 'interface', '', 'type', '  TStock = class',
+    '    function Count: Integer;', '  end;', '', 'implementation', '', '{ TStock }', '',
+    'function TStock.Count: Integer;', 'begin', '  Result := 0;', 'end;', '', 'end.']), NewText,
+    'Kommentar steht in der neuen Unit vor den Rümpfen (#1838)');
+  Assert.AreEqual(Join(['unit Lager;', '', 'interface', '', 'type', '  TBase = class', '    procedure Go;',
+    '  end;', '', 'implementation', '', '{ TBase }', '', 'procedure TBase.Go;', 'begin', 'end;', '', 'end.']),
+    Origin, 'kein { TStock } bleibt zurück');
 end;
 
 procedure TMoveClassTests.UsesOriginInterface;
