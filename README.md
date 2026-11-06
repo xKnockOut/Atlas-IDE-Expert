@@ -41,6 +41,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Templates:** code, postfix and class-aware templates, your own snippets, slash commands like `/uses` and `/extract`
 - **Generate menu** (Alt+Ins) and editing helpers: surround, move lines, toggle comments, tidy `var` blocks
 - **Formatter** (Ctrl+Shift+Alt+L), also without the IDE
+- **Class completion:** `{ TCustomer }` above the bodies (or a separator line, doc sentence, region), constructors and destructor first, then get/set pairs; new bodies prefilled with `inherited` and `Result := FName`
 - **Indentation while typing:** after Enter the caret lands where the block structure puts it, `end`, `until`, `finally` and `else` move to their counterpart, and a string is split with `' +` when you break the line
 
 ### [Understanding](docs/features/en/Understanding.md)

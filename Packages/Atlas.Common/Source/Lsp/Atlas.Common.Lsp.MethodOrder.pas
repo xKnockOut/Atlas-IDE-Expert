@@ -2,7 +2,7 @@
 
 // Befehl atlas.server.methodOrder (#660): Methodenrümpfe im
 // implementation-Teil in Deklarationsreihenfolge.
-// Argumente: [uri, {mode: "declaration"|"alphabetical"|"off",
+// Argumente: [uri, {mode: "grouped"|"declaration"|"alphabetical"|"off",
 //                   scope: "all"|"new", before: "…"}]
 //   - scope "all" ordnet alle Rümpfe der Unit (Befehl im Plugin),
 //   - scope "new" setzt nur die gegenüber "before" neuen Rümpfe an ihre
@@ -17,6 +17,8 @@
 // bleibenden), "size" die Zahl der Zeilen bis zum end; "delta" zählt Rümpfe
 // (negativ = nach oben); "fixed" mit "reason" region, ifdef oder line
 // markiert Rümpfe, die stehen bleiben.
+// Lebenszyklus zuerst und Form des Typkommentars (classCompletion.*, #1834)
+// liefert die Komposition je Datei.
 
 interface
 
@@ -26,6 +28,9 @@ uses
   Atlas.Common.Editing.MethodOrder;
 
 type
+  /// <summary>Einstellungen zum Ordnen je Datei (#1834); die Ordnung selbst kommt aus "mode".</summary>
+  TMethodOrderOptionsFunc = reference to function(const AUri: string): TMethodOrderOptions;
+
   TLspMethodOrder = class
   public const
     Command = 'atlas.server.methodOrder';
@@ -33,7 +38,12 @@ type
     /// <summary>Antwort für AResult (siehe Kopf der Unit); der Aufrufer übernimmt das Objekt.</summary>
     class function Json(const AResult: TMethodOrderResult): TJSONObject; static;
     /// <summary>Führt den Befehl aus; der Aufrufer übernimmt das Ergebnis.</summary>
-    class function Execute(const AStore: IDocumentStore; const AArguments: TJSONArray): TJSONValue; static;
+    class function Execute(const AStore: IDocumentStore; const AArguments: TJSONArray): TJSONValue; overload;
+      static;
+    /// <summary>Wie oben mit den Einstellungen AOptionsFor der Datei; nil = ohne Vorziehen und neuen Kommentar.
+    /// </summary>
+    class function Execute(const AStore: IDocumentStore; const AOptionsFor: TMethodOrderOptionsFunc;
+      const AArguments: TJSONArray): TJSONValue; overload; static;
   end;
 
 implementation
@@ -95,57 +105,84 @@ begin
   end;
 end;
 
-class function TLspMethodOrder.Execute(const AStore: IDocumentStore; const AArguments: TJSONArray): TJSONValue;
+type
+  /// <summary>Argumente hinter der URI.</summary>
+  TMethodOrderArguments = record
+    Mode, Scope, Before: string;
+    class function Read(const AArguments: TJSONArray): TMethodOrderArguments; static;
+  end;
+
+class function TMethodOrderArguments.Read(const AArguments: TJSONArray): TMethodOrderArguments;
 var
-  Uri, Mode, Scope, Before: string;
-  Placement: TMethodPlacement;
-  Options: TJSONObject;
-  Document: ITextDocument;
-  Shared: ISharedSyntaxTree;
-  Answer: TMethodOrderResult;
+  mOptions: TJSONObject;
+begin
+  Result.Mode := '';
+  Result.Scope := 'all';
+  Result.Before := '';
+  if (AArguments.Count > 1) and (AArguments.Items[1] is TJSONObject) then
+  begin
+    mOptions := TJSONObject(AArguments.Items[1]);
+    if not mOptions.TryGetValue<string>('mode', Result.Mode) then
+    begin
+      Result.Mode := '';
+    end;
+    if not mOptions.TryGetValue<string>('scope', Result.Scope) then
+    begin
+      Result.Scope := 'all';
+    end;
+    if not mOptions.TryGetValue<string>('before', Result.Before) then
+    begin
+      Result.Before := '';
+    end;
+  end;
+end;
+
+class function TLspMethodOrder.Execute(const AStore: IDocumentStore; const AArguments: TJSONArray): TJSONValue;
+begin
+  Result := Execute(AStore, nil, AArguments);
+end;
+
+class function TLspMethodOrder.Execute(const AStore: IDocumentStore; const AOptionsFor: TMethodOrderOptionsFunc;
+  const AArguments: TJSONArray): TJSONValue;
+var
+  mUri: string;
+  mArguments: TMethodOrderArguments;
+  mOptions: TMethodOrderOptions;
+  mDocument: ITextDocument;
+  mShared: ISharedSyntaxTree;
+  mAnswer: TMethodOrderResult;
 begin
   if (AArguments = nil) or (AArguments.Count < 1) or not (AArguments.Items[0] is TJSONString) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TMethodOrderText.TheURIIsExpected].Text);
   end;
-  Uri := AArguments.Items[0].Value;
-  if not AStore.TryGet(Uri, Document) then
+  mUri := AArguments.Items[0].Value;
+  if not AStore.TryGet(mUri, mDocument) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TMethodOrderText.DocumentIsNotOpen].Text + Uri);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TMethodOrderText.DocumentIsNotOpen].Text + mUri);
   end;
-  Placement := TMethodPlacement.Declaration;
-  Scope := 'all';
-  Before := '';
-  if (AArguments.Count > 1) and (AArguments.Items[1] is TJSONObject) then
+  mArguments := TMethodOrderArguments.Read(AArguments);
+  mOptions := TMethodOrderOptions.Create(TMethodOrder.PlacementOf(mArguments.Mode));
+  if Assigned(AOptionsFor) then
   begin
-    Options := TJSONObject(AArguments.Items[1]);
-    if Options.TryGetValue<string>('mode', Mode) then
-    begin
-      Placement := TMethodOrder.PlacementOf(Mode);
-    end;
-    if not Options.TryGetValue<string>('scope', Scope) then
-    begin
-      Scope := 'all';
-    end;
-    if not Options.TryGetValue<string>('before', Before) then
-    begin
-      Before := '';
-    end;
+    mOptions := AOptionsFor(mUri);
+    mOptions.Placement := TMethodOrder.PlacementOf(mArguments.Mode);
   end;
-  Answer := Default(TMethodOrderResult);
-  if Placement <> TMethodPlacement.Off then
+  mAnswer := Default(TMethodOrderResult);
+  if mOptions.Placement <> TMethodPlacement.Off then
   begin
-    Shared := TSyntaxTreeCache.Get(Document);
-    if SameText(Scope, 'new') then
+    mShared := TSyntaxTreeCache.Get(mDocument);
+    if SameText(mArguments.Scope, 'new') then
     begin
-      Answer := TMethodOrder.PlaceNew(Shared.Tree, Document.Text, Before, Placement);
+      mAnswer := TMethodOrder.PlaceNew(mShared.Tree, mDocument.Text, mArguments.Before, mOptions);
     end
     else
     begin
-      Answer := TMethodOrder.Arrange(Shared.Tree, Document.Text, Placement);
+      mAnswer := TMethodOrder.Arrange(mShared.Tree, mDocument.Text, mOptions);
     end;
   end;
-  Result := Json(Answer);
+  Result := Json(mAnswer);
 end;
 
 initialization

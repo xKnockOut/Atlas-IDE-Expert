@@ -46,6 +46,8 @@ type
     HighlightSettingsFor: THighlightSettingsProvider;
     CompilerSwitchContextFor: TCompilerSwitchContextFunc;
     ReferenceSettingsFor: TReferenceSettingsProvider;
+    /// <summary>Typkommentare beim Umbenennen anpassen (#1838).</summary>
+    RenameTypeCommentsFor: TRenameTypeCommentsFunc;
   end;
 
   /// <summary>Navigation mit ihren Anfragen.</summary>
@@ -117,6 +119,7 @@ begin
   FReferences.SettingsFor := FServices.ReferenceSettingsFor;
   FRename := TLspRename.Create(FServices.Documents, FServices.Index, ReadText, ProjectFiles, FServices.EnsureUnit);
   FRename.SettingsFor := FServices.ReferenceSettingsFor;
+  FRename.TypeCommentsFor := FServices.RenameTypeCommentsFor;
 end;
 
 procedure TShellNavigation.CreateEditorViews;

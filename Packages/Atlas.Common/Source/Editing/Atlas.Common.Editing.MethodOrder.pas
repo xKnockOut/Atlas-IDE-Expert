@@ -24,17 +24,28 @@
 //
 // Beide liefern eine Textänderung über den betroffenen Zeilenbereich und je
 // Rumpf die Verschiebung in Rümpfen (negativ = nach oben).
+//
+// Grouped (#1836) ordnet je Typ: Lebenszyklus (class constructor, class
+// destructor, constructor, destructor, AfterConstruction, BeforeDestruction),
+// Getter und Setter als Paar in Reihenfolge der Properties, überschriebene,
+// übrige; LifecycleFirst zieht den Lebenszyklus auch bei Declaration und
+// Alphabetical vor. Der Kommentar über dem Abschnitt eines Typs ({ TKunde },
+// Trennlinie, {$REGION 'TKunde'} … {$ENDREGION}, #1835) gehört zum Typ und
+// steht danach vor seinem ersten Rumpf; eine solche Region hält ihre Rümpfe
+// nicht fest. PlaceNew legt für einen Typ, dessen Rümpfe alle neu sind, den
+// Kommentar in der eingestellten Form an bzw. bringt den der IDE in diese.
 
 interface
 
 uses
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Pascal.SyntaxTree;
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Editing.TypeComments;
 
 type
   {$SCOPEDENUMS ON}
   /// <summary>Ordnung der Rümpfe; Off schaltet Verschieben und Befehl ab (editor.methodPlacement).</summary>
-  TMethodPlacement = (Off, Declaration, Alphabetical);
+  TMethodPlacement = (Off, Declaration, Alphabetical, Grouped);
 
   /// <summary>Warum ein Rumpf stehen bleibt.</summary>
   TMethodStayReason = (None, Region, Conditional, SharedLine);
@@ -56,6 +67,19 @@ type
     Reason: TMethodStayReason;
   end;
 
+  /// <summary>Was das Ordnen außer der Ordnung braucht (#1834).</summary>
+  TMethodOrderOptions = record
+    Placement: TMethodPlacement;
+    /// <summary>Lebenszyklus auch bei Declaration und Alphabetical zuerst.</summary>
+    LifecycleFirst: Boolean;
+    /// <summary>Form des Kommentars, den PlaceNew für Typen mit nur neuen Rümpfen anlegt; Off = keinen.</summary>
+    TypeComment: TTypeCommentStyle;
+    /// <summary>Breite der Trennlinie; 0 = Vorgabe.</summary>
+    LineLength: Integer;
+    /// <summary>Nur APlacement, ohne Vorziehen und ohne neuen Kommentar.</summary>
+    class function Create(APlacement: TMethodPlacement): TMethodOrderOptions; static;
+  end;
+
   TMethodOrderResult = record
     Edits: TArray<TTextEdit>;
     /// <summary>Verschobene Rümpfe in der neuen Reihenfolge, danach die stehen bleibenden.</summary>
@@ -66,14 +90,18 @@ type
   public
     /// <summary>Ordnet alle Rümpfe der Unit; ohne Edits, wenn alles passt oder APlacement Off ist.</summary>
     class function Arrange(ATree: TSyntaxTree; const AText: string;
-      APlacement: TMethodPlacement): TMethodOrderResult; static;
+      APlacement: TMethodPlacement): TMethodOrderResult; overload; static;
+    class function Arrange(ATree: TSyntaxTree; const AText: string;
+      const AOptions: TMethodOrderOptions): TMethodOrderResult; overload; static;
     /// <summary>Setzt die gegenüber ABefore neuen Rümpfe an ihre Stelle; ohne Edits, wenn keiner neu ist oder
     /// alle schon passen.</summary>
     class function PlaceNew(ATree: TSyntaxTree; const AText, ABefore: string;
-      APlacement: TMethodPlacement): TMethodOrderResult; static;
-    /// <summary>off, declaration, alphabetical.</summary>
+      APlacement: TMethodPlacement): TMethodOrderResult; overload; static;
+    class function PlaceNew(ATree: TSyntaxTree; const AText, ABefore: string;
+      const AOptions: TMethodOrderOptions): TMethodOrderResult; overload; static;
+    /// <summary>off, declaration, alphabetical, grouped.</summary>
     class function PlacementName(APlacement: TMethodPlacement): string; static;
-    /// <summary>Unbekannt oder leer: Declaration.</summary>
+    /// <summary>Unbekannt: Declaration; leer: Grouped (Vorgabe seit #1836).</summary>
     class function PlacementOf(const AName: string): TMethodPlacement; static;
     /// <summary>'', region, ifdef, line.</summary>
     class function ReasonName(AReason: TMethodStayReason): string; static;
@@ -85,15 +113,21 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.Generics.Collections,
+  System.Math,
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.Extractor,
+  Atlas.Common.Editing.ClassBodies,
   Atlas.Common.Editing.ClassCompletion;
 
 type
   TBlock = record
     TypeName, Name: string;
     TypeOrder, DeclarationOrder: Integer;
+    /// <summary>Rang aus TClassBodies.RankOf (#1836).</summary>
+    Group, Sub: Integer;
     /// <summary>Erste Zeile (mit Kommentaren darüber), Kopfzeile, letzte Zeile.</summary>
     First, Header, Last: Integer;
     Fixed, New: Boolean;
@@ -113,7 +147,27 @@ const
   RoutineWords: array[0..5] of string = ('procedure ', 'function ', 'constructor ', 'destructor ', 'operator ',
     'class ');
 
-function Before(const A, B: TBlock; APlacement: TMethodPlacement): Boolean;
+/// <summary>Entscheidet der Rang (#1836) zwischen A und B desselben Typs? AResult: A kommt zuerst.</summary>
+function RankDecides(const A, B: TBlock; const ARule: TMethodOrderOptions; out AResult: Boolean): Boolean;
+var
+  mLifeA, mLifeB: Boolean;
+begin
+  AResult := False;
+  mLifeA := A.Group = TClassBodies.GroupLifecycle;
+  mLifeB := B.Group = TClassBodies.GroupLifecycle;
+  if ARule.Placement = TMethodPlacement.Grouped then
+  begin
+    Result := (A.Group <> B.Group) or (A.Sub <> B.Sub);
+    AResult := (A.Group < B.Group) or ((A.Group = B.Group) and (A.Sub < B.Sub));
+  end
+  else
+  begin
+    Result := ARule.LifecycleFirst and ((mLifeA <> mLifeB) or (mLifeA and (A.Sub <> B.Sub)));
+    AResult := (mLifeA and not mLifeB) or (mLifeA and mLifeB and (A.Sub < B.Sub));
+  end;
+end;
+
+function Before(const A, B: TBlock; const ARule: TMethodOrderOptions): Boolean;
 var
   Compared: Integer;
 begin
@@ -121,7 +175,11 @@ begin
   begin
     Exit(A.TypeOrder < B.TypeOrder);
   end;
-  if APlacement = TMethodPlacement.Alphabetical then
+  if RankDecides(A, B, ARule, Result) then
+  begin
+    Exit;
+  end;
+  if ARule.Placement = TMethodPlacement.Alphabetical then
   begin
     Compared := CompareText(A.Name, B.Name);
     if Compared <> 0 then
@@ -138,7 +196,7 @@ begin
 end;
 
 /// <summary>Stabil nach Ordnung (Einfügen; die Zahl der Rümpfe bleibt klein).</summary>
-function Sorted(const ABlocks: TBlocks; APlacement: TMethodPlacement): TBlocks;
+function Sorted(const ABlocks: TBlocks; const APlacement: TMethodOrderOptions): TBlocks;
 var
   Index, Target: Integer;
   Item: TBlock;
@@ -212,8 +270,9 @@ type
   TLineMarks = record
     Code, Comment: TArray<Boolean>;
     CondAt, RegionAt: TArray<Integer>;
-    /// <summary>Liest die Merkmale der ALineCount Zeilen aus den Tokens von ATree.</summary>
-    procedure Build(ATree: TSyntaxTree; ALineCount: Integer);
+    /// <summary>Liest die Merkmale der ALineCount Zeilen aus den Tokens von ATree; Direktiven in Zeilen mit
+    /// AIgnore (Regionen als Typkommentar, #1835) zählen nicht.</summary>
+    procedure Build(ATree: TSyntaxTree; ALineCount: Integer; const AIgnore: TArray<Boolean>);
     /// <summary>Markiert die Zeilen von AToken als Code bzw. Kommentar.</summary>
     procedure MarkLines(const AToken: TPascalToken);
     /// <summary>Region bzw. Conditional, wenn AFirst..ALast in einer Klammer liegt, eine nur zur Hälfte enthält
@@ -259,7 +318,7 @@ begin
   end;
 end;
 
-procedure TLineMarks.Build(ATree: TSyntaxTree; ALineCount: Integer);
+procedure TLineMarks.Build(ATree: TSyntaxTree; ALineCount: Integer; const AIgnore: TArray<Boolean>);
 var
   mCondDelta, mRegionDelta: TArray<Integer>;
   mToken: TPascalToken;
@@ -276,7 +335,8 @@ begin
       Continue;
     end;
     MarkLines(mToken);
-    if mToken.Kind = TPascalTokenKind.Directive then
+    if (mToken.Kind = TPascalTokenKind.Directive) and
+      ((mToken.StartPos.Line > High(AIgnore)) or not AIgnore[mToken.StartPos.Line]) then
     begin
       CountDirective(TPascalLexer.DirectiveName(mToken.Text), mToken.StartPos.Line, mCondDelta, mRegionDelta);
     end;
@@ -326,9 +386,12 @@ begin
 end;
 
 /// <summary>Rumpf der Methode AMethod mit Kommentaren direkt darüber; markiert, ob er stehen bleiben muss.</summary>
-function BlockOf(const AMethod: TDeclaredMethod; const ALines: TArray<string>; const AMarks: TLineMarks): TBlock;
+function BlockOf(const AMethod: TDeclaredMethod; const ALines: TArray<string>; const AMarks: TLineMarks;
+  const ARank: TMethodRank): TBlock;
 begin
   Result := Default(TBlock);
+  Result.Group := ARank.Group;
+  Result.Sub := ARank.Sub;
   Result.TypeName := AMethod.TypeName;
   Result.Name := AMethod.Declaration.Name;
   Result.TypeOrder := AMethod.TypeOrder;
@@ -377,30 +440,410 @@ begin
   end;
 end;
 
-/// <summary>Die Rümpfe deklarierter Methoden mit ihrem Bereich; markiert, was stehen bleiben muss.</summary>
-function CollectBlocks(ATree: TSyntaxTree; const AText: string; const ALines: TArray<string>): TBlocks;
+/// <summary>Rang der Methode AMethod (#1836); die Form ihres Typs liest AShapes einmal je Typ.</summary>
+function RankOfMethod(const AMethod: TDeclaredMethod; const AUnit: TUnitIndex; const ALines: TArray<string>;
+  AShapes: TDictionary<string, TTypeShape>): TMethodRank;
+var
+  mShape: TTypeShape;
+begin
+  if not AShapes.TryGetValue(LowerCase(AMethod.TypeName), mShape) then
+  begin
+    mShape := TTypeShape.Read(AUnit, ALines, AMethod.TypeName);
+    AShapes.Add(LowerCase(AMethod.TypeName), mShape);
+  end;
+  Result := TClassBodies.RankOf(mShape, TClassBodies.DeclarationText(ALines, AMethod.Declaration.Range),
+    AMethod.Declaration.Name);
+end;
+
+/// <summary>Die Rümpfe deklarierter Methoden mit ihrem Bereich und Rang; markiert, was stehen bleiben muss.
+/// Direktiven in Zeilen mit AIgnore halten nichts fest.</summary>
+function CollectBlocks(ATree: TSyntaxTree; const AText: string; const ALines: TArray<string>;
+  const AIgnore: TArray<Boolean>): TBlocks;
 var
   mMarks: TLineMarks;
   mMethod: TDeclaredMethod;
+  mUnit: TUnitIndex;
+  mShapes: TDictionary<string, TTypeShape>;
 begin
   Result := nil;
   mMarks := Default(TLineMarks);
-  mMarks.Build(ATree, Length(ALines));
-  for mMethod in TClassCompletion.DeclaredMethods(ATree, AText) do
-  begin
-    if mMethod.HasBody and (mMethod.Body.Range.EndPos.Line <= High(ALines)) then
+  mMarks.Build(ATree, Length(ALines), AIgnore);
+  mUnit := TIndexExtractor.Extract(ATree, '');
+  mShapes := TDictionary<string, TTypeShape>.Create;
+  try
+    for mMethod in TClassCompletion.DeclaredMethods(ATree, AText) do
     begin
-      Result := Result + [BlockOf(mMethod, ALines, mMarks)];
+      if mMethod.HasBody and (mMethod.Body.Range.EndPos.Line <= High(ALines)) then
+      begin
+        Result := Result + [BlockOf(mMethod, ALines, mMarks, RankOfMethod(mMethod, mUnit, ALines, mShapes))];
+      end;
     end;
+  finally
+    mShapes.Free;
   end;
   Result := ByLine(Result);
   FixSharedLines(Result);
 end;
 
-function BlockLines(const ALines: TArray<string>; const ABlock: TBlock): TArray<string>;
+type
+  /// <summary>Kommentar über dem Abschnitt eines Typs beim Ordnen (#1835).</summary>
+  THeader = record
+    TypeName: string;
+    /// <summary>Fundstelle im alten Text; ohne bei einem neu angelegten.</summary>
+    Comment: TTypeComment;
+    /// <summary>Leerzeile hinter dem Kopf bzw. vor {$ENDREGION} im alten Text (fällt mit weg).</summary>
+    OldGapAfter, OldGapBefore: Boolean;
+    /// <summary>Kopfzeilen, wie sie wieder eingesetzt werden, und {$ENDREGION} ('' ohne).</summary>
+    Lines: TArray<string>;
+    EndLine: string;
+    GapAfter, GapBefore: Boolean;
+  end;
+
+  THeaders = TArray<THeader>;
+
+  /// <summary>Neuer Text mit der alten Zeile je Zeile (-1 = eingefügt).</summary>
+  TOrderText = record
+    Lines: TArray<string>;
+    Origins: TArray<Integer>;
+    procedure Add(const ALine: string; AOrigin: Integer);
+    procedure AddBlock(const ALines: TArray<string>; const ABlock: TBlock);
+    /// <summary>Stelle der alten Zeile AOrigin; -1 ohne.</summary>
+    function IndexOf(AOrigin: Integer): Integer;
+    procedure Insert(AIndex: Integer; const ALines: TArray<string>);
+  end;
+
+  /// <summary>Einfügung eines Kommentarteils an einer Stelle des neuen Texts.</summary>
+  THeaderInsert = record
+    Index: Integer;
+    /// <summary>Ende einer Region: kommt bei gleicher Stelle vor den Kopf des nächsten Typs.</summary>
+    RegionEnd: Boolean;
+    Lines: TArray<string>;
+  end;
+
+procedure TOrderText.Add(const ALine: string; AOrigin: Integer);
 begin
-  Result := Copy(ALines, ABlock.First, ABlock.Last - ABlock.First + 1);
+  Lines := Lines + [ALine];
+  Origins := Origins + [AOrigin];
 end;
+
+procedure TOrderText.AddBlock(const ALines: TArray<string>; const ABlock: TBlock);
+var
+  mLine: Integer;
+begin
+  for mLine := ABlock.First to ABlock.Last do
+  begin
+    Add(ALines[mLine], mLine);
+  end;
+end;
+
+function TOrderText.IndexOf(AOrigin: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(Origins) do
+  begin
+    if Origins[mIndex] = AOrigin then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
+procedure TOrderText.Insert(AIndex: Integer; const ALines: TArray<string>);
+var
+  mOrigins: TArray<Integer>;
+  mIndex: Integer;
+begin
+  SetLength(mOrigins, Length(ALines));
+  for mIndex := 0 to High(mOrigins) do
+  begin
+    mOrigins[mIndex] := -1;
+  end;
+  Lines := Copy(Lines, 0, AIndex) + ALines + Copy(Lines, AIndex, MaxInt);
+  Origins := Copy(Origins, 0, AIndex) + mOrigins + Copy(Origins, AIndex, MaxInt);
+end;
+
+function IsBlank(const ALines: TArray<string>; ALine: Integer): Boolean;
+begin
+  Result := (ALine >= 0) and (ALine <= High(ALines)) and (Trim(ALines[ALine]) = '');
+end;
+
+/// <summary>Erster (nach Zeilen) und letzter Rumpf des Typs ATypeName in ABlocks; False ohne.</summary>
+function TypeRange(const ABlocks: TBlocks; const ATypeName: string; out AFirst, ALast: Integer): Boolean;
+var
+  mIndex: Integer;
+begin
+  AFirst := -1;
+  ALast := -1;
+  for mIndex := 0 to High(ABlocks) do
+  begin
+    if not SameText(ABlocks[mIndex].TypeName, ATypeName) then
+    begin
+      Continue;
+    end;
+    if (AFirst < 0) or (ABlocks[mIndex].First < ABlocks[AFirst].First) then
+    begin
+      AFirst := mIndex;
+    end;
+    if (ALast < 0) or (ABlocks[mIndex].Last > ABlocks[ALast].Last) then
+    begin
+      ALast := mIndex;
+    end;
+  end;
+  Result := AFirst >= 0;
+end;
+
+/// <summary>Liegen in der Region AComment nur Rümpfe von ATypeName?</summary>
+function RegionOnlyOf(const ABlocks: TBlocks; const AComment: TTypeComment; const ATypeName: string): Boolean;
+var
+  mBlock: TBlock;
+begin
+  for mBlock in ABlocks do
+  begin
+    if (mBlock.Header > AComment.First) and (mBlock.Header < AComment.RegionEnd) and
+      not SameText(mBlock.TypeName, ATypeName) then
+    begin
+      Exit(False);
+    end;
+  end;
+  Result := True;
+end;
+
+/// <summary>Kommentar über dem ersten Rumpf ABlocks[AFirst]: getrennt durch Leerzeilen oder als oberster Teil der
+/// Kommentare, die am Rumpf hängen (dann beginnt der Rumpf danach).</summary>
+function CommentAbove(const ALines: TArray<string>; var ABlocks: TBlocks; AFirst, ALast: Integer;
+  const ATypeName: string): TTypeComment;
+var
+  mLine: Integer;
+begin
+  Result := TTypeComments.Find(ALines, ABlocks[AFirst].First, ABlocks[ALast].Last, ATypeName);
+  mLine := ABlocks[AFirst].First + 1;
+  while not Result.Found and (mLine <= ABlocks[AFirst].Header) do
+  begin
+    Result := TTypeComments.Find(ALines, mLine, ABlocks[ALast].Last, ATypeName);
+    if Result.Found and ((Result.Last <> mLine - 1) or (Result.First < ABlocks[AFirst].First)) then
+    begin
+      Result := TTypeComment.None;
+    end;
+    Inc(mLine);
+  end;
+  if Result.Found and (Result.Last >= ABlocks[AFirst].First) then
+  begin
+    ABlocks[AFirst].First := Result.Last + 1;
+  end;
+end;
+
+function HeaderOf(const ALines: TArray<string>; const ATypeName: string; const AComment: TTypeComment): THeader;
+begin
+  Result := Default(THeader);
+  Result.TypeName := ATypeName;
+  Result.Comment := AComment;
+  Result.Lines := Copy(ALines, AComment.First, AComment.Last - AComment.First + 1);
+  Result.OldGapAfter := IsBlank(ALines, AComment.Last + 1);
+  Result.GapAfter := Result.OldGapAfter;
+  if AComment.Style = TTypeCommentStyle.Region then
+  begin
+    Result.EndLine := ALines[AComment.RegionEnd];
+    Result.OldGapBefore := IsBlank(ALines, AComment.RegionEnd - 1);
+    Result.GapBefore := Result.OldGapBefore;
+  end;
+end;
+
+/// <summary>Kommentare über den Abschnitten der Typen in ABlocks; setzt den Anfang eines Rumpfs hinter einen
+/// Kommentar, der an ihm hängt.</summary>
+function DetectHeaders(const ALines: TArray<string>; var ABlocks: TBlocks): THeaders;
+var
+  mDone: TDictionary<string, Boolean>;
+  mBlock: TBlock;
+  mFirst, mLast: Integer;
+  mComment: TTypeComment;
+begin
+  Result := nil;
+  mDone := TDictionary<string, Boolean>.Create;
+  try
+    for mBlock in Copy(ABlocks) do
+    begin
+      if mDone.ContainsKey(LowerCase(mBlock.TypeName)) then
+      begin
+        Continue;
+      end;
+      mDone.Add(LowerCase(mBlock.TypeName), True);
+      TypeRange(ABlocks, mBlock.TypeName, mFirst, mLast);
+      mComment := CommentAbove(ALines, ABlocks, mFirst, mLast, mBlock.TypeName);
+      if mComment.Found and ((mComment.Style <> TTypeCommentStyle.Region) or
+        RegionOnlyOf(ABlocks, mComment, mBlock.TypeName)) then
+      begin
+        Result := Result + [HeaderOf(ALines, mBlock.TypeName, mComment)];
+      end;
+    end;
+  finally
+    mDone.Free;
+  end;
+end;
+
+/// <summary>Zeilen der Regionen, die Typkommentare sind; nil ohne.</summary>
+function IgnoreOf(const AHeaders: THeaders; ALineCount: Integer): TArray<Boolean>;
+var
+  mHeader: THeader;
+begin
+  Result := nil;
+  for mHeader in AHeaders do
+  begin
+    if mHeader.Comment.Style = TTypeCommentStyle.Region then
+    begin
+      SetLength(Result, ALineCount);
+      Result[mHeader.Comment.First] := True;
+      Result[mHeader.Comment.RegionEnd] := True;
+    end;
+  end;
+end;
+
+/// <summary>Zeilen der alten Kommentare (mit ihrer Leerzeile), die beim Neuaufbau wegfallen.</summary>
+function SkipOf(const AHeaders: THeaders; ALineCount: Integer): TArray<Boolean>;
+var
+  mHeader: THeader;
+  mLine: Integer;
+begin
+  SetLength(Result, ALineCount);
+  for mHeader in AHeaders do
+  begin
+    if not mHeader.Comment.Found then
+    begin
+      Continue;
+    end;
+    for mLine := mHeader.Comment.First to mHeader.Comment.Last do
+    begin
+      Result[mLine] := True;
+    end;
+    Result[mHeader.Comment.Last + 1] := Result[mHeader.Comment.Last + 1] or mHeader.OldGapAfter;
+    if mHeader.Comment.RegionEnd >= 0 then
+    begin
+      Result[mHeader.Comment.RegionEnd] := True;
+      Result[mHeader.Comment.RegionEnd - 1] := Result[mHeader.Comment.RegionEnd - 1] or mHeader.OldGapBefore;
+    end;
+  end;
+end;
+
+/// <summary>Stelle des ersten (AFirst) bzw. hinter dem letzten Rumpf von ATypeName im neuen Text; -1 ohne.</summary>
+function TypeEdge(const AText: TOrderText; const ABlocks: TBlocks; const ATypeName: string; AFirst: Boolean): Integer;
+var
+  mBlock: TBlock;
+  mIndex: Integer;
+begin
+  Result := -1;
+  for mBlock in ABlocks do
+  begin
+    if not SameText(mBlock.TypeName, ATypeName) then
+    begin
+      Continue;
+    end;
+    if AFirst then
+    begin
+      mIndex := AText.IndexOf(mBlock.First);
+      if (mIndex >= 0) and ((Result < 0) or (mIndex < Result)) then
+      begin
+        Result := mIndex;
+      end;
+    end
+    else
+    begin
+      Result := Max(Result, AText.IndexOf(mBlock.Last) + 1);
+    end;
+  end;
+end;
+
+function InsertOf(AIndex: Integer; ARegionEnd: Boolean; const ALines: TArray<string>): THeaderInsert;
+begin
+  Result.Index := AIndex;
+  Result.RegionEnd := ARegionEnd;
+  Result.Lines := ALines;
+end;
+
+/// <summary>Einfügungen der Kommentare AHeaders vor den ersten bzw. hinter den letzten Rumpf ihres Typs.</summary>
+function HeaderInserts(const AText: TOrderText; const AHeaders: THeaders; const ABlocks: TBlocks):
+  TArray<THeaderInsert>;
+var
+  mHeader: THeader;
+  mIndex: Integer;
+  mLines: TArray<string>;
+begin
+  Result := nil;
+  for mHeader in AHeaders do
+  begin
+    mIndex := TypeEdge(AText, ABlocks, mHeader.TypeName, True);
+    if (mIndex < 0) or (mHeader.Lines = nil) then
+    begin
+      Continue;
+    end;
+    mLines := mHeader.Lines;
+    if mHeader.GapAfter then
+    begin
+      mLines := mLines + [''];
+    end;
+    Result := Result + [InsertOf(mIndex, False, mLines)];
+    if mHeader.EndLine <> '' then
+    begin
+      mLines := TArray<string>.Create(mHeader.EndLine);
+      if mHeader.GapBefore then
+      begin
+        mLines := TArray<string>.Create('', mHeader.EndLine);
+      end;
+      Result := Result + [InsertOf(TypeEdge(AText, ABlocks, mHeader.TypeName, False), True, mLines)];
+    end;
+  end;
+end;
+
+/// <summary>Soll AInsert vor AOther eingesetzt werden? Von hinten nach vorn; bei gleicher Stelle das Ende einer
+/// Region zuletzt, damit es vor dem Kopf des nächsten Typs steht.</summary>
+function InsertsEarlier(const AInsert, AOther: THeaderInsert): Boolean;
+begin
+  Result := (AInsert.Index > AOther.Index) or ((AInsert.Index = AOther.Index) and not AInsert.RegionEnd and
+    AOther.RegionEnd);
+end;
+
+/// <summary>Setzt die Kommentare AHeaders vor den jeweils ersten Rumpf ihres Typs in AText.</summary>
+procedure ApplyHeaders(var AText: TOrderText; const AHeaders: THeaders; const ABlocks: TBlocks);
+var
+  mInserts: TArray<THeaderInsert>;
+  mIndex, mTarget: Integer;
+  mItem: THeaderInsert;
+begin
+  mInserts := HeaderInserts(AText, AHeaders, ABlocks);
+  for mIndex := 1 to High(mInserts) do
+  begin
+    mItem := mInserts[mIndex];
+    mTarget := mIndex - 1;
+    while (mTarget >= 0) and InsertsEarlier(mItem, mInserts[mTarget]) do
+    begin
+      mInserts[mTarget + 1] := mInserts[mTarget];
+      Dec(mTarget);
+    end;
+    mInserts[mTarget + 1] := mItem;
+  end;
+  for mItem in mInserts do
+  begin
+    AText.Insert(mItem.Index, mItem.Lines);
+  end;
+end;
+
+/// <summary>Rümpfe mit Rang und Kommentaren der Typen; Regionen, die Typkommentare sind, halten nichts fest.
+/// </summary>
+function PreparedBlocks(ATree: TSyntaxTree; const AText: string; const ALines: TArray<string>;
+  out AHeaders: THeaders): TBlocks;
+var
+  mIgnore: TArray<Boolean>;
+begin
+  Result := CollectBlocks(ATree, AText, ALines, nil);
+  AHeaders := DetectHeaders(ALines, Result);
+  mIgnore := IgnoreOf(AHeaders, Length(ALines));
+  if mIgnore <> nil then
+  begin
+    Result := CollectBlocks(ATree, AText, ALines, mIgnore);
+    AHeaders := DetectHeaders(ALines, Result);
+  end;
+end;
+
 
 /// <summary>Eine Änderung vom alten zum neuen Zeilenstand über den Bereich, in dem sie sich unterscheiden.
 /// </summary>
@@ -455,6 +898,16 @@ begin
   Result.Reason := ABlock.Reason;
 end;
 
+{ TMethodOrderOptions }
+
+class function TMethodOrderOptions.Create(APlacement: TMethodPlacement): TMethodOrderOptions;
+begin
+  Result.Placement := APlacement;
+  Result.LifecycleFirst := False;
+  Result.TypeComment := TTypeCommentStyle.Off;
+  Result.LineLength := 0;
+end;
+
 { TMethodOrder }
 
 class function TMethodOrder.PlacementName(APlacement: TMethodPlacement): string;
@@ -464,6 +917,8 @@ begin
       Result := 'off';
     TMethodPlacement.Alphabetical:
       Result := 'alphabetical';
+    TMethodPlacement.Grouped:
+      Result := 'grouped';
   else
     Result := 'declaration';
   end;
@@ -478,6 +933,10 @@ begin
   else if SameText(AName, 'alphabetical') then
   begin
     Result := TMethodPlacement.Alphabetical;
+  end
+  else if (AName = '') or SameText(AName, 'grouped') then
+  begin
+    Result := TMethodPlacement.Grouped;
   end
   else
   begin
@@ -514,37 +973,40 @@ begin
   end;
 end;
 
-/// <summary>Zeilen, in denen jeder Platz ASlots[I] den Rumpf ATarget[I] bekommt; ATargetLines: dessen neue
-/// Kopfzeile.</summary>
-function Rearranged(const ALines: TArray<string>; const ASlots, ATarget: TBlocks;
-  out ATargetLines: TArray<Integer>): TArray<string>;
+/// <summary>Neuer Text: jeder Platz ASlots[I] bekommt den Rumpf ATarget[I], die Kommentare der Typen stehen vor
+/// ihrem ersten Rumpf.</summary>
+function Rearranged(const ALines: TArray<string>; const ABlocks, ASlots, ATarget: TBlocks;
+  const AHeaders: THeaders): TOrderText;
 var
+  mSkip: TArray<Boolean>;
   mLine, mSlot: Integer;
 begin
-  Result := nil;
-  SetLength(ATargetLines, Length(ATarget));
+  Result := Default(TOrderText);
+  mSkip := SkipOf(AHeaders, Length(ALines));
   mLine := 0;
   mSlot := 0;
   while mLine < Length(ALines) do
   begin
     if (mSlot < Length(ASlots)) and (mLine = ASlots[mSlot].First) then
     begin
-      ATargetLines[mSlot] := Length(Result) + ATarget[mSlot].Header - ATarget[mSlot].First;
-      Result := Result + BlockLines(ALines, ATarget[mSlot]);
+      Result.AddBlock(ALines, ATarget[mSlot]);
       mLine := ASlots[mSlot].Last + 1;
       Inc(mSlot);
     end
     else
     begin
-      Result := Result + [ALines[mLine]];
+      if not mSkip[mLine] then
+      begin
+        Result.Add(ALines[mLine], mLine);
+      end;
       Inc(mLine);
     end;
   end;
+  ApplyHeaders(Result, AHeaders, ABlocks);
 end;
 
 /// <summary>Verschobene Rümpfe in der neuen Reihenfolge, danach die stehen bleibenden aus ABlocks.</summary>
-function ArrangeMoves(const ABlocks, ASlots, ATarget: TBlocks; const ATargetLines: TArray<Integer>):
-  TArray<TMethodMove>;
+function ArrangeMoves(const ABlocks, ASlots, ATarget: TBlocks; const AText: TOrderText): TArray<TMethodMove>;
 var
   mIndex, mFrom: Integer;
   mBlock: TBlock;
@@ -555,7 +1017,7 @@ begin
     mFrom := IndexOfBlock(ASlots, ATarget[mIndex]);
     if mFrom <> mIndex then
     begin
-      Result := Result + [MoveOf(ATarget[mIndex], mIndex - mFrom, ATargetLines[mIndex])];
+      Result := Result + [MoveOf(ATarget[mIndex], mIndex - mFrom, AText.IndexOf(ATarget[mIndex].Header))];
     end;
   end;
   for mBlock in ABlocks do
@@ -567,37 +1029,54 @@ begin
   end;
 end;
 
-class function TMethodOrder.Arrange(ATree: TSyntaxTree; const AText: string;
-  APlacement: TMethodPlacement): TMethodOrderResult;
+/// <summary>Ordnet die verschiebbaren Rümpfe aus ABlocks nach AOptions; die Kommentare AHeaders gehen mit.</summary>
+function ArrangeBlocks(const ALines: TArray<string>; const ABlocks: TBlocks; const AHeaders: THeaders;
+  const AOptions: TMethodOrderOptions; const ALineBreak: string): TMethodOrderResult;
 var
-  mLines, mNewLines: TArray<string>;
-  mBlocks, mSlots, mTarget: TBlocks;
-  mTargetLines: TArray<Integer>;
+  mSlots, mTarget: TBlocks;
+  mText: TOrderText;
   mEdit: TTextEdit;
 begin
   Result := Default(TMethodOrderResult);
-  if (ATree = nil) or (APlacement = TMethodPlacement.Off) then
+  mSlots := MovableOf(ABlocks);
+  mTarget := Sorted(mSlots, AOptions);
+  // Jeder Platz bekommt den Rumpf, der in der Ordnung an seiner Stelle steht.
+  mText := Rearranged(ALines, ABlocks, mSlots, mTarget, AHeaders);
+  if LinesEdit(ALines, mText.Lines, ALineBreak, mEdit) then
+  begin
+    Result.Edits := [mEdit];
+    Result.Moves := ArrangeMoves(ABlocks, mSlots, mTarget, mText);
+  end;
+end;
+
+class function TMethodOrder.Arrange(ATree: TSyntaxTree; const AText: string;
+  APlacement: TMethodPlacement): TMethodOrderResult;
+begin
+  Result := Arrange(ATree, AText, TMethodOrderOptions.Create(APlacement));
+end;
+
+class function TMethodOrder.Arrange(ATree: TSyntaxTree; const AText: string;
+  const AOptions: TMethodOrderOptions): TMethodOrderResult;
+var
+  mLines: TArray<string>;
+  mBlocks: TBlocks;
+  mHeaders: THeaders;
+begin
+  Result := Default(TMethodOrderResult);
+  if (ATree = nil) or (AOptions.Placement = TMethodPlacement.Off) then
   begin
     Exit;
   end;
   mLines := TTextLines.SplitLines(AText);
-  mBlocks := CollectBlocks(ATree, AText, mLines);
-  mSlots := MovableOf(mBlocks);
-  mTarget := Sorted(mSlots, APlacement);
-  // Jeder Platz bekommt den Rumpf, der in der Ordnung an seiner Stelle steht.
-  mNewLines := Rearranged(mLines, mSlots, mTarget, mTargetLines);
-  if LinesEdit(mLines, mNewLines, TTextLines.LineBreakOf(AText), mEdit) then
-  begin
-    Result.Edits := [mEdit];
-    Result.Moves := ArrangeMoves(mBlocks, mSlots, mTarget, mTargetLines);
-  end;
+  mBlocks := PreparedBlocks(ATree, AText, mLines, mHeaders);
+  Result := ArrangeBlocks(mLines, mBlocks, mHeaders, AOptions, TTextLines.LineBreakOf(AText));
 end;
 
 type
   /// <summary>Setzt neue Rümpfe an ihre Stelle (PlaceNew).</summary>
   TNewPlacement = record
     Lines: TArray<string>;
-    Placement: TMethodPlacement;
+    Placement: TMethodOrderOptions;
     /// <summary>Vorhandene und neue verschiebbare Rümpfe; News nach Ordnung.</summary>
     Existing, News: TBlocks;
     /// <summary>Alle verschiebbaren Rümpfe nach Zeilen.</summary>
@@ -626,9 +1105,9 @@ type
     function InPlace(AIndex: Integer; const AGroup: TBlocks): Boolean;
     /// <summary>Gruppen je Ziel; eine Gruppe, die schon direkt am Ziel steht, bleibt.</summary>
     procedure KeepGroupsInPlace;
-    /// <summary>Neuer Text: verschobene Rümpfe samt folgender Leerzeilen heraus, am Ziel mit Leerzeile hinein.
-    /// </summary>
-    function NewLines: TArray<string>;
+    /// <summary>Neuer Text: verschobene Rümpfe samt folgender Leerzeilen heraus, am Ziel mit Leerzeile hinein;
+    /// die Kommentare AHeaders der Typen in ABlocks vor ihren ersten Rumpf.</summary>
+    function NewText(const AHeaders: THeaders; const ABlocks: TBlocks): TOrderText;
     /// <summary>Verschobene neue Rümpfe mit Ziel ABlock davor bzw. dahinter (AAfter).</summary>
     function AnchoredAt(const ABlock: TBlock; AAfter: Boolean): TBlocks;
     /// <summary>Reihenfolge danach: die übrigen Rümpfe, die verschobenen an ihrem Ziel.</summary>
@@ -854,43 +1333,51 @@ begin
   end;
 end;
 
-function TNewPlacement.NewLines: TArray<string>;
+function TNewPlacement.NewText(const AHeaders: THeaders; const ABlocks: TBlocks): TOrderText;
 var
   mRemoved: TArray<Boolean>;
-  mInsertBefore, mInsertAfter: TArray<TArray<string>>;
+  mInsertBefore, mInsertAfter: TArray<TBlocks>;
   mIndex, mLine: Integer;
   mBlock: TBlock;
 begin
-  SetLength(mRemoved, Length(Lines));
+  mRemoved := SkipOf(AHeaders, Length(Lines));
   SetLength(mInsertBefore, Length(Lines));
   SetLength(mInsertAfter, Length(Lines));
   for mIndex := 0 to High(News) do
   begin
-    if not Moved[mIndex] then
+    if Moved[mIndex] then
     begin
-      Continue;
-    end;
-    MarkRemoved(Lines, News[mIndex], mRemoved);
-    mBlock := Existing[Anchors[mIndex].Block];
-    if Anchors[mIndex].After then
-    begin
-      mInsertAfter[mBlock.Last] := mInsertAfter[mBlock.Last] + [''] + BlockLines(Lines, News[mIndex]);
-    end
-    else
-    begin
-      mInsertBefore[mBlock.First] := mInsertBefore[mBlock.First] + BlockLines(Lines, News[mIndex]) + [''];
+      MarkRemoved(Lines, News[mIndex], mRemoved);
+      mBlock := Existing[Anchors[mIndex].Block];
+      if Anchors[mIndex].After then
+      begin
+        mInsertAfter[mBlock.Last] := mInsertAfter[mBlock.Last] + [News[mIndex]];
+      end
+      else
+      begin
+        mInsertBefore[mBlock.First] := mInsertBefore[mBlock.First] + [News[mIndex]];
+      end;
     end;
   end;
-  Result := nil;
+  Result := Default(TOrderText);
   for mLine := 0 to High(Lines) do
   begin
-    Result := Result + mInsertBefore[mLine];
+    for mBlock in mInsertBefore[mLine] do
+    begin
+      Result.AddBlock(Lines, mBlock);
+      Result.Add('', -1);
+    end;
     if not mRemoved[mLine] then
     begin
-      Result := Result + [Lines[mLine]];
+      Result.Add(Lines[mLine], mLine);
     end;
-    Result := Result + mInsertAfter[mLine];
+    for mBlock in mInsertAfter[mLine] do
+    begin
+      Result.Add('', -1);
+      Result.AddBlock(Lines, mBlock);
+    end;
   end;
+  ApplyHeaders(Result, AHeaders, ABlocks);
 end;
 
 function TNewPlacement.AnchoredAt(const ABlock: TBlock; AAfter: Boolean): TBlocks;
@@ -947,33 +1434,127 @@ begin
   end;
 end;
 
+/// <summary>Sind alle Rümpfe von ATypeName in ABlocks neu (ANews)?</summary>
+function AllNew(const ABlocks, ANews: TBlocks; const ATypeName: string): Boolean;
+var
+  mBlock: TBlock;
+begin
+  for mBlock in ABlocks do
+  begin
+    if SameText(mBlock.TypeName, ATypeName) and (IndexOfBlock(ANews, mBlock) < 0) then
+    begin
+      Exit(False);
+    end;
+  end;
+  Result := True;
+end;
+
+function IndexOfHeader(const AHeaders: THeaders; const ATypeName: string): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(AHeaders) do
+  begin
+    if SameText(AHeaders[mIndex].TypeName, ATypeName) then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
+/// <summary>Setzt die Zeilen von AHeader auf die Form AOptions.TypeComment.</summary>
+procedure Restyle(var AHeader: THeader; const AOptions: TMethodOrderOptions; const ASummary: string);
+begin
+  AHeader.Lines := TTypeComments.Header(AOptions.TypeComment, AHeader.TypeName, ASummary, AOptions.LineLength);
+  AHeader.EndLine := '';
+  AHeader.GapAfter := AOptions.TypeComment <> TTypeCommentStyle.Region;
+  AHeader.GapBefore := False;
+  if AOptions.TypeComment = TTypeCommentStyle.Region then
+  begin
+    AHeader.EndLine := TTypeComments.RegionEndText;
+  end;
+end;
+
+/// <summary>Typen, deren Rümpfe alle neu sind (Strg+Umschalt+C, Atlas-Aktion): Kommentar in der eingestellten
+/// Form anlegen bzw. den vorhandenen (etwa { TKunde } der IDE) in diese bringen.</summary>
+procedure FreshHeaders(ATree: TSyntaxTree; const ALines: TArray<string>; const ABlocks, ANews: TBlocks;
+  const AOptions: TMethodOrderOptions; var AHeaders: THeaders);
+var
+  mBlock: TBlock;
+  mIndex: Integer;
+  mHeader: THeader;
+  mUnit: TUnitIndex;
+begin
+  if AOptions.TypeComment = TTypeCommentStyle.Off then
+  begin
+    Exit;
+  end;
+  mUnit := TIndexExtractor.Extract(ATree, '');
+  for mBlock in ANews do
+  begin
+    mIndex := IndexOfHeader(AHeaders, mBlock.TypeName);
+    if not AllNew(ABlocks, ANews, mBlock.TypeName) or
+      ((mIndex >= 0) and (AHeaders[mIndex].Comment.Style = AOptions.TypeComment)) then
+    begin
+      Continue;
+    end;
+    if mIndex < 0 then
+    begin
+      mHeader := Default(THeader);
+      mHeader.TypeName := mBlock.TypeName;
+      mHeader.Comment := TTypeComment.None;
+      AHeaders := AHeaders + [mHeader];
+      mIndex := High(AHeaders);
+    end;
+    Restyle(AHeaders[mIndex], AOptions, TTypeShape.Read(mUnit, ALines, mBlock.TypeName).Summary);
+    // Je Typ nur einmal.
+    AHeaders[mIndex].Comment.Style := AOptions.TypeComment;
+  end;
+end;
+
 class function TMethodOrder.PlaceNew(ATree: TSyntaxTree; const AText, ABefore: string;
   APlacement: TMethodPlacement): TMethodOrderResult;
+begin
+  Result := PlaceNew(ATree, AText, ABefore, TMethodOrderOptions.Create(APlacement));
+end;
+
+class function TMethodOrder.PlaceNew(ATree: TSyntaxTree; const AText, ABefore: string;
+  const AOptions: TMethodOrderOptions): TMethodOrderResult;
 var
   mPlacement: TNewPlacement;
-  mNewLines: TArray<string>;
+  mBlocks: TBlocks;
+  mHeaders: THeaders;
+  mText: TOrderText;
   mEdit: TTextEdit;
 begin
   Result := Default(TMethodOrderResult);
-  if (ATree = nil) or (APlacement = TMethodPlacement.Off) then
+  if (ATree = nil) or (AOptions.Placement = TMethodPlacement.Off) then
   begin
     Exit;
   end;
   mPlacement := Default(TNewPlacement);
-  mPlacement.Placement := APlacement;
+  mPlacement.Placement := AOptions;
   mPlacement.Lines := TTextLines.SplitLines(AText);
-  mPlacement.Split(CollectBlocks(ATree, AText, mPlacement.Lines), ABefore);
-  if (mPlacement.News = nil) or (mPlacement.Existing = nil) then
+  mBlocks := PreparedBlocks(ATree, AText, mPlacement.Lines, mHeaders);
+  mPlacement.Split(mBlocks, ABefore);
+  if mPlacement.News = nil then
   begin
     Exit;
   end;
+  FreshHeaders(ATree, mPlacement.Lines, mBlocks, mPlacement.News, AOptions, mHeaders);
+  // Nur neue Rümpfe (erste Klasse der Unit): sie untereinander ordnen.
+  if mPlacement.Existing = nil then
+  begin
+    Exit(ArrangeBlocks(mPlacement.Lines, mBlocks, mHeaders, AOptions, TTextLines.LineBreakOf(AText)));
+  end;
   mPlacement.Anchor;
   mPlacement.KeepGroupsInPlace;
-  mNewLines := mPlacement.NewLines;
-  if LinesEdit(mPlacement.Lines, mNewLines, TTextLines.LineBreakOf(AText), mEdit) then
+  mText := mPlacement.NewText(mHeaders, mBlocks);
+  if LinesEdit(mPlacement.Lines, mText.Lines, TTextLines.LineBreakOf(AText), mEdit) then
   begin
     Result.Edits := [mEdit];
-    Result.Moves := mPlacement.Moves(mNewLines);
+    Result.Moves := mPlacement.Moves(mText.Lines);
   end;
 end;
 
