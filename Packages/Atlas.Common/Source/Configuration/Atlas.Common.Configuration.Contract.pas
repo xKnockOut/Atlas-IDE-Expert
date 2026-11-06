@@ -97,6 +97,21 @@ type
     class function Default: TCodeLensSettings; static;
   end;
 
+  /// <summary>Einrückung beim Tippen ("smartIndent", #1827).</summary>
+  TSmartIndentSettings = record
+    /// <summary>Hauptschalter; aus wirkt keiner der Teile.</summary>
+    Enabled: Boolean;
+    /// <summary>Neue Zeile nach Enter nach der Blockstruktur einrücken (#1828).</summary>
+    AfterEnter: Boolean;
+    /// <summary>end, until, finally, except und else in der Zeile davor zurückrücken (#1829).</summary>
+    OutdentClosers: Boolean;
+    /// <summary>String beim Umbruch schließen und mit + verbinden (#1831).</summary>
+    SplitStrings: Boolean;
+    /// <summary>Einrückung der Fortsetzung: "indent" (eine Ebene) oder "align" (ausgerichtet).</summary>
+    SplitStringsIndent: string;
+    class function Default: TSmartIndentSettings; static;
+  end;
+
   /// <summary>Treffersicherheit der Verwendungen ("references", #1119).</summary>
   TReferenceSettings = record
     /// <summary>Erschlossene Treffer zeigen (über ein Interface, eine überschriebene Methode, nicht eindeutige
@@ -649,6 +664,7 @@ type
     Formatting: TFormatStyle;
     InlayHints: TInlayHintSettings;
     CodeLens: TCodeLensSettings;
+    SmartIndent: TSmartIndentSettings;
     References: TReferenceSettings;
     Navigation: TNavigationSettings;
     Hints: THintSettings;
@@ -1118,6 +1134,17 @@ begin
   Result.Metrics := True;
 end;
 
+{ TSmartIndentSettings }
+
+class function TSmartIndentSettings.Default: TSmartIndentSettings;
+begin
+  Result.Enabled := True;
+  Result.AfterEnter := True;
+  Result.OutdentClosers := True;
+  Result.SplitStrings := True;
+  Result.SplitStringsIndent := 'indent';
+end;
+
 { TStringLiteralSettings }
 
 class function TStringLiteralSettings.Default: TStringLiteralSettings;
@@ -1359,6 +1386,7 @@ begin
   ASettings.Formatting := TFormatStyle.Default;
   ASettings.InlayHints := TInlayHintSettings.Default;
   ASettings.CodeLens := TCodeLensSettings.Default;
+  ASettings.SmartIndent := TSmartIndentSettings.Default;
   ASettings.References := TReferenceSettings.Default;
   ASettings.Navigation := TNavigationSettings.Default;
   ASettings.Hints := THintSettings.Default;

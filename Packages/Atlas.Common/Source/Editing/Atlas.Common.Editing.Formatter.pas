@@ -70,24 +70,8 @@ type
 
 /// <summary>Breite des führenden Leerraums in Spalten (Tab bis zur nächsten Ebene).</summary>
 function LeadingColumns(const ALine: string; AIndentSize: Integer; out ALength: Integer): Integer;
-var
-  Index: Integer;
 begin
-  Index := 1;
-  Result := 0;
-  while (Index <= Length(ALine)) and CharInSet(ALine[Index], [' ', #9]) do
-  begin
-    if ALine[Index] = #9 then
-    begin
-      Result := (Result div AIndentSize + 1) * AIndentSize;
-    end
-    else
-    begin
-      Inc(Result);
-    end;
-    Inc(Index);
-  end;
-  ALength := Index - 1;
+  Result := TBlockIndenter.LeadingColumns(ALine, AIndentSize, ALength);
 end;
 
 /// <summary>Führenden Leerraum nach Spalten umrechnen (AColumn &lt; 0: vorhandene Breite), Rest unverändert.</summary>
@@ -106,15 +90,7 @@ begin
   begin
     Columns := AColumn;
   end;
-  if ASettings.UseTabs then
-  begin
-    Result := StringOfChar(#9, Columns div ASettings.IndentSize) + StringOfChar(' ', Columns mod ASettings.IndentSize);
-  end
-  else
-  begin
-    Result := StringOfChar(' ', Columns);
-  end;
-  Result := Result + Copy(ALine, Index, MaxInt);
+  Result := TBlockIndenter.IndentText(Columns, ASettings.IndentSize, ASettings.UseTabs) + Copy(ALine, Index, MaxInt);
 end;
 
 procedure AddGap(AEdits: TList<TGapEdit>; AStart, AEnd: Integer; const AText: string);

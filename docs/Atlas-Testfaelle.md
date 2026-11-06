@@ -9722,3 +9722,27 @@ Trifft „nächsten Block zuklappen“ an der Kopfzeile einer Region einen ander
 | SPB4 | Tools › Optionen › Atlas › Server: „Index-Cache löschen“ in deutscher IDE ohne `language` | Antwort des Werkzeugs deutsch (Aufruf mit `--locale de`) |
 | SPB5 | `"language": "en"` in settings.json, deutsche IDE | Befunde englisch, Oberfläche des Plugins bleibt deutsch |
 | SPB6 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasIdeLanguageTests` und `TAtlasTextLanguageTests` grün |
+
+## Einrückung beim Tippen (#1827, #1828, #1829, #1831, #1832)
+
+Vorbereitung: Plugin und AtlasServer mit diesem Stand gebaut, Blockeinrückung der IDE 2 (Tools › Optionen › Editor › Sprache › Delphi › Blockeinrückung), keine `.editorconfig`, `smartIndent` in den Einstellungen unverändert. Neue Unit `Einrueckung.pas` mit einer leeren Methode `procedure TForm1.Test;` / `begin` / `end;`. Nach jedem Enter kurz warten (die Antwort kommt im Hintergrund).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ET1 | Schreibmarke hinter `begin`, Enter | Marke in Spalte 3 (eine Ebene tiefer), wie bisher; nichts springt (**Abnahme**) |
+| ET2 | `if A then` tippen, Enter | Marke zwei Ebenen tief (Spalte 5) |
+| ET3 | Wie ET2, `B;` tippen, Enter | Marke zurück auf Spalte 3 (unter `if`), nicht unter `B;` (**Abnahme**) |
+| ET4 | `case A of` / Enter / `1:` Enter | Nach `case A of` Spalte 5, nach `1:` Spalte 7 |
+| ET5 | `Foo(A,` tippen, Enter | Marke unter `A` (ausgerichtet an der offenen Klammer) |
+| ET6 | `X := A +` tippen, Enter | Marke eine Ebene tiefer als `X` (Fortsetzung) |
+| ET7 | Im Block `if A then begin` / `  B;` die Zeile `    end` absichtlich zu weit eingerückt tippen, Enter | `end` springt unter `if`, die neue Zeile ebenfalls (**Abnahme**) |
+| ET8 | `try` / `B;` / `finally` (zu weit eingerückt), Enter | `finally` steht unter `try`, die neue Zeile eine Ebene tiefer |
+| ET9 | Nach ET7 einmal Strg+Z | Nur die Einrückung ist zurückgenommen, der Zeilenumbruch bleibt |
+| ET10 | `S := 'Hallo Welt';` tippen, Schreibmarke zwischen `Hallo ` und `Welt`, Enter | Zeile 1: `S := 'Hallo ' +`, neue Zeile eine Ebene tiefer `'Welt';`, Marke hinter dem Anführungszeichen; übersetzt ohne E2052 (**Abnahme**) |
+| ET11 | `smartIndent.splitStringsIndent` auf `align`, ET10 wiederholen; dann in `ShowMessage('Hallo Welt');` | Neue Zeile beginnt unter `'Hallo` (dem ersten Wert hinter `:=`) bzw. unter dem ersten Argument hinter `(` |
+| ET12 | Datei mit 4 Leerzeichen je Ebene (Stil sagt 2), hinter `if A then` Enter | Marke 4 Spalten tiefer als `if` (Atlas folgt der Datei) |
+| ET13 | In `{ Kommentar` Enter; über `//`-Kommentar Enter (Kommentar fortsetzen an); unter einer Zeile `/uses` Enter | Kommentar: Atlas rückt nicht ein; `//` wird wie bisher fortgesetzt; Schnellbefehl wie bisher |
+| ET14 | Schnell tippen: Enter und sofort weiterschreiben | Nichts springt nachträglich; die Antwort verfällt |
+| ET15 | Atlas-Einstellungen (settings.json), Seite *Eingabehilfen*, Abschnitt `smartIndent`: `enabled` aus; dann nur `outdentClosers` aus; dann nur `splitStrings` aus; dann nur `afterEnter` aus | `enabled` aus: IDE wie ohne Atlas. `outdentClosers` aus: `end` bleibt stehen. `splitStrings` aus: ET10 lässt einen offenen String (wie ohne Atlas). `afterEnter` aus: nur noch Schlusswörter und Strings. Seite und Beschreibungen auch auf Englisch („Typing aids“) |
+| ET16 | `editor.smartPaste` = `indent`, nach `if A then B;` am Zeilenanfang einen zweizeiligen Block einfügen (Strg+V); dann ohne laufenden Server | Mit Server: erste Zeile unter `if`, die zweite behält ihren Abstand; ein eigener Rückgängig-Schritt. Ohne Server: Heuristik wie bisher (Ebene der Zeile darüber) |
+| ET17 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TSmartIndentTests`, `TLspSmartIndentTests`, `TAtlasSmartIndentTests`, `TAtlasSmartPasteTests.ReindentUsesServerColumn`, `TBlockIndenterTests.ReportsLineInfo`, `TConfigurationParserTests.ReadsSmartIndent` grün |

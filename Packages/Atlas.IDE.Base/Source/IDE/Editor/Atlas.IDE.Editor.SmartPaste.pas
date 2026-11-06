@@ -11,6 +11,8 @@
 //   Klick im Editor, damit eigene Änderungen kein zweites Mal zählen.
 // - Einrücken (indent, both): ein eigener Schreiber, also ein eigener
 //   Rückgängig-Schritt; der Cursor bleibt am Ende des Blocks.
+//   Die Spalte der ersten Zeile kommt vom Server (Blockstruktur wie nach
+//   Enter, #1832, kurz im Hauptthread); ohne Antwort gilt die Heuristik.
 // - uses ergänzen (uses, both): Der Server (atlas.server.pasteUses) nennt
 //   fehlende Units und mehrdeutige Bezeichner. Gibt es welche, zeigt Atlas
 //   das Fenster an der Einfügestelle: Enter übernimmt, Esc verwirft, ↑/↓ und
@@ -123,7 +125,8 @@ uses
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
   Atlas.IDE.Foundation.EditorStyle,
-  Atlas.IDE.Editor.WorkspaceEdit;
+  Atlas.IDE.Editor.WorkspaceEdit,
+  Atlas.IDE.Editor.SmartIndent;
 
 function IsEditorWindow(AWnd: HWND): Boolean;
 var
@@ -467,15 +470,28 @@ begin
   AView.Paint;
 end;
 
+/// <summary>Spalte der ersten eingefügten Zeile AStartLine (0-basiert) nach der Blockstruktur vom Server (#1832);
+/// NoColumn, wenn vor der Einfügestelle Code steht oder der Server sie nicht bestimmt.</summary>
+function ServerColumn(const AView: IOTAEditView; AStartLine: Integer; const APrefix: string): Integer;
+begin
+  if (Trim(APrefix) <> '') or not TAtlasIdeSmartIndent.ColumnAt(AView.Buffer, TAtlasEditorBuffer.Text(AView.Buffer),
+    AStartLine, Result) then
+  begin
+    Result := TAtlasSmartPaste.NoColumn;
+  end;
+end;
+
 procedure TAtlasIdeSmartPaste.Indent(const AView: IOTAEditView; AStartLine: Integer; var AStartCharacter,
   AEndCharacter: Integer);
 var
   mEdits: TArray<TAtlasIndentEdit>;
   mEdit: TAtlasIndentEdit;
+  mPrefix: string;
 begin
-  if not TAtlasSmartPaste.Reindent(Copy(TAtlasEditorBuffer.LineText(AView, AStartLine + 1), 1, AStartCharacter),
-    LineAbove(AView, AStartLine), FClipLines, TAtlasEditorBuffer.TabWidth(AView.Buffer),
-    TAtlasEditorBuffer.BlockIndent(AView.Buffer), mEdits) then
+  mPrefix := Copy(TAtlasEditorBuffer.LineText(AView, AStartLine + 1), 1, AStartCharacter);
+  if not TAtlasSmartPaste.Reindent(mPrefix, LineAbove(AView, AStartLine), FClipLines,
+    TAtlasEditorBuffer.TabWidth(AView.Buffer), TAtlasEditorBuffer.BlockIndent(AView.Buffer),
+    ServerColumn(AView, AStartLine, mPrefix), mEdits) then
   begin
     Exit;
   end;

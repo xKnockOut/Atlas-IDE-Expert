@@ -9,7 +9,7 @@ interface
 
 const
   /// <summary>Schlüssel für alle Projekte (settings.json).</summary>
-  GlobalSettingPaths: array[0..68] of string = (
+  GlobalSettingPaths: array[0..69] of string = (
     'delphiVersion',
     'language',
     'rules',
@@ -66,6 +66,7 @@ const
     'highlight',
     'inlayHints',
     'codeLens',
+    'smartIndent',
     'references',
     'navigation',
     'hints',
