@@ -385,7 +385,7 @@ Threads und Reihenfolge:
 - Unerwartete Ausnahmen eines Handlers (nicht `EJsonRpcError`) meldet der Dispatcher über `OnRequestFailed`; die Komposition protokolliert Methode, gekürzte Parameter und Stacktrace. Bei einem Absturz nennt das Log die zuletzt verarbeitete Nachricht.
 - Endet die Verbindung (`exit`, Eingabe geschlossen), bricht `Run` offene Anfragen ab und wartet höchstens `WorkTimeout` auf laufende.
 
-Features, die Dateien auswerten, lesen Momentaufnahmen aus `IDocumentStore` (`TServerComposition.Documents`) und abonnieren dessen Ereignisse, um nur die geänderte Datei neu zu verarbeiten. Eine Momentaufnahme ändert sich nie und darf auch in nebenläufigen Anfragen gelesen werden.
+Features, die Dateien auswerten, lesen Momentaufnahmen aus `IDocumentStore` (`TServerComposition.Documents`) und abonnieren dessen Ereignisse, um nur die geänderte Datei neu zu verarbeiten. Eine Momentaufnahme ändert sich nie und darf auch in nebenläufigen Anfragen gelesen werden. Befehle über `workspace/executeCommand` laufen der Reihe nach in der Nachrichtenschleife, solange sie mit `TLspCommands.Register` angemeldet sind; ein langer Befehl hält dann alle folgenden Anfragen auf. Lesende, threadsichere Befehle meldet die Komposition deshalb mit `RegisterConcurrent` an (Diagnose 06.11.2026); in Reihe bleiben Befehle, die Dateien schreiben, Einstellungen neu laden oder einen Bau anstoßen.
 
 Neue LSP-Methoden registrieren ihre Handler in `Shell.Composition` am Dispatcher und tragen ihre Capability in `BuildCapabilities` ein.
 

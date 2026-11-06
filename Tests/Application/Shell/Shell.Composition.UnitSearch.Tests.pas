@@ -25,6 +25,10 @@ type
     /// <summary>Units suchen, Vorschau und uses ergänzen sind angemeldet.</summary>
     [Test]
     procedure RegistersAllCommands;
+    /// <summary>Lesende Befehle laufen nebenläufig, schreibende in der Reihenfolge der Nachrichten (Diagnose
+    /// 06.11.2026).</summary>
+    [Test]
+    procedure ReadingCommandsRunConcurrently;
     /// <summary>Die Liste der Units fragt die Arbeitsbereiche unter deren Sperre ab und antwortet mit JSON.</summary>
     [Test]
     procedure UnitsVisitWorkspaces;
@@ -124,6 +128,30 @@ begin
     mSearch.Free;
   end;
   Assert.AreEqual(1, FVisits);
+end;
+
+procedure TShellUnitSearchTests.ReadingCommandsRunConcurrently;
+var
+  mSearch: TShellUnitSearch;
+  mCommands: TLspCommands;
+  mName: string;
+begin
+  mSearch := TShellUnitSearch.Create(NewServices);
+  mCommands := TLspCommands.Create;
+  try
+    mSearch.RegisterCommands(mCommands);
+    for mName in TArray<string>.Create(TUnitSearch.UnitsCommand, TUnitSearch.PreviewCommand) do
+    begin
+      Assert.IsTrue(mCommands.IsConcurrentCommand(mName), mName);
+    end;
+    for mName in TArray<string>.Create(TUnitSearch.AddUsesCommand) do
+    begin
+      Assert.IsFalse(mCommands.IsConcurrentCommand(mName), mName);
+    end;
+  finally
+    mCommands.Free;
+    mSearch.Free;
+  end;
 end;
 
 initialization

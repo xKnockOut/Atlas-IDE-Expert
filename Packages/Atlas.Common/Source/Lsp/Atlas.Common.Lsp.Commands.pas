@@ -36,6 +36,8 @@ type
     procedure RegisterConcurrent(const ACommand: string; const AHandler: TLspCommandHandler);
     /// <summary>Läuft AParams (Parameter von executeCommand) nebenläufig? False bei unbekanntem Befehl.</summary>
     function IsConcurrent(const AParams: TJSONValue): Boolean;
+    /// <summary>Ist ACommand mit RegisterConcurrent angemeldet?</summary>
+    function IsConcurrentCommand(const ACommand: string): Boolean;
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
     /// <summary>executeCommandProvider mit allen Befehlen. Der Aufrufer übernimmt das Objekt.</summary>
     function Capability: TJSONObject;
@@ -98,7 +100,12 @@ var
   Command: string;
 begin
   Result := (AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('command', Command) and
-    FConcurrent.ContainsKey(Command);
+    IsConcurrentCommand(Command);
+end;
+
+function TLspCommands.IsConcurrentCommand(const ACommand: string): Boolean;
+begin
+  Result := FConcurrent.ContainsKey(ACommand);
 end;
 
 procedure TLspCommands.Attach(ADispatcher: TJsonRpcDispatcher);

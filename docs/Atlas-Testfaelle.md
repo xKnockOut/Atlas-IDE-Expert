@@ -9761,6 +9761,9 @@ Vorbereitung: Plugin mit diesem Stand gebaut, Diagnosemodus an (Plugin-Zeiten an
 | HB6 | Einen Atlas-Dialog (z. B. Issue anlegen, Atlas-Einstellungen) 20 s offen lassen, dann schließen; Reiter *Hauptthread* ansehen | Die Funktion zeigt keine 20 s Maximum, die Belegung steigt nicht; Aufrufe im Dialog stehen für sich (**Abnahme**) |
 | HB7 | Einen Befehl auslösen, der noch auf den Server wartet (z. B. Units suchen öffnen), dann *Langsame Aufrufe* ansehen | In der Spalte *Aktion* steht die Anfrage, z. B. `workspace/executeCommand atlas.server.units` |
 | HB8 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasEditorCommandsTests.SlashAnswerOnlyForUnchangedText`, `TAtlasPluginTimingsTests.ModalDialogIsNotOwnTime` grün |
+| HB9 | Großes Projekt öffnen, Diagnosemodus an; in einer Unit tippen und mit der Maus über Bezeichner fahren, während der Index läuft; danach Reiter *Server* | Hover, Vervollständigung, `textDocument/diagnostic` ohne Zeitüberschreitungen; die Wartezeit beim Plugin liegt nahe an der Zeit im Server (**Abnahme**) |
+| HB10 | Zwischen Unit und Testunit mehrmals wechseln (Lens „→ Testunit“), gleichzeitig tippen | Kein Stau: Hover und Hervorhebung kommen sofort, auch wenn die Testunit-Antwort dauert |
+| HB11 | `Atlas.Tests` bauen und ausführen | `ReadingCommandsRunConcurrently` in `TShellOverviewsTests`, `TShellAnalysisTests`, `TShellTestUnitsTests`, `TShellUnitSearchTests`, `TShellEditorCommandsTests` grün |
 
 ## Prüffenster: einzelne Projekte der Gruppe (#1843)
 
