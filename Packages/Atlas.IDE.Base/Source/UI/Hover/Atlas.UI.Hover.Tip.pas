@@ -17,6 +17,9 @@
 //     Mausrad; Deklaration und Aktionsleiste bleiben stehen. Verweise (cref)
 //     zeigen den Typ im Tooltip, mit Strg zur Deklaration; Links öffnen den
 //     Browser. Text lässt sich markieren, Strg+C kopiert dann die Markierung.
+//   - published-Mitglieder großer Komponenten (#110): Die Tabellen scrollen mit dem
+//     Mausrad, wenn sie höher sind als hover.membersMaxLines Zeilen bzw. als der Platz
+//     auf dem Bildschirm; Zusammenfassung, Schalter und Aktionsleiste bleiben stehen.
 //   - Vererbung bzw. Zieltyp auf Randfläche: Glieder als Kästchen, das
 //     angezeigte in Akzentfarbe; mehr als fünf als erste vier, „…“, letztes.
 //   - Aktionsleiste auf Randfläche am unteren Rand: Gehe zu, Verwendungen,
@@ -75,12 +78,23 @@ type
     FHideCompilerCode: Boolean;
     /// <summary>Über dem Wort gezeigt: Beim Auf- und Zuklappen bleibt der untere Rand.</summary>
     FAbove: Boolean;
+    /// <summary>Rollbereich der published-Mitglieder: Zeilen aus hover.membersMaxLines, Grenze aus dem Platz auf
+    /// dem Bildschirm (0 = keine) und Versatz.</summary>
+    FMembersMaxLines: Integer;
+    FMembersLimit: Integer;
+    FMembersScroll: Integer;
     /// <summary>Setzt die Doku für die Fensterbreite AWidth (volle Höhe).</summary>
     procedure PrepareDoc(AWidth: Integer);
     /// <summary>Höhe für AWidth mit höchstens AAvailable Pixeln: begrenzt die Doku (scrollt dann).</summary>
     function FitHeight(AWidth, AAvailable: Integer): Integer;
     procedure SetProblemActions(AValue: Boolean);
     procedure SetHideCompilerCode(AValue: Boolean);
+    procedure SetMembersMaxLines(AValue: Integer);
+    /// <summary>Begrenzt den Rollbereich der Mitglieder, wenn der Inhalt ANatural Pixel hoch ist und AAvailable
+    /// zur Verfügung stehen.</summary>
+    procedure FitMembers(AWidth, ANatural, AAvailable: Integer);
+    /// <summary>Zeichnet die Bausteine; die des Rollbereichs beschnitten.</summary>
+    procedure PaintItems;
     function LayoutKey(AWidth: Integer): string;
     /// <summary>Setzt FLayout für die Fensterbreite AWidth mit der jetzigen Doku-Höhe.</summary>
     procedure BuildLayout(AWidth: Integer);
@@ -112,6 +126,8 @@ type
     function HasSelection: Boolean;
     /// <summary>Scrollt die Doku um ASteps Rasterstufen des Mausrads (negativ nach oben).</summary>
     function ScrollDoc(ASteps: Integer): Boolean;
+    /// <summary>Scrollt die published-Mitglieder um ASteps Rasterstufen des Mausrads (je drei Zeilen).</summary>
+    function ScrollMembers(ASteps: Integer): Boolean;
     /// <summary>Zeigt AView unter AWord (Bildschirmrechteck des Bezeichners).</summary>
     procedure ShowContent(const AView: TAtlasHoverView; const AWord: TRect);
     /// <summary>Tauscht den Inhalt; Position bleibt, Breite und Höhe wachsen höchstens.</summary>
@@ -121,6 +137,9 @@ type
     property ProblemActions: Boolean read FProblemActions write SetProblemActions;
     /// <summary>problems.showCompilerCode aus (#1024).</summary>
     property HideCompilerCode: Boolean read FHideCompilerCode write SetHideCompilerCode;
+    /// <summary>hover.membersMaxLines: Zeilen der Mitgliedertabellen ohne Scrollen, 0 = bis zur Bildschirmhöhe.
+    /// </summary>
+    property MembersMaxLines: Integer read FMembersMaxLines write SetMembersMaxLines;
   end;
 
   /// <summary>Tooltip mit Maus, Tastatur im Befund-Hover und Ereignissen.</summary>
@@ -148,6 +167,9 @@ type
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     function DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean; override;
+    /// <summary>Mausrad um ASteps Stufen: über den Mitgliedern diese, sonst die Doku, ohne Doku die Mitglieder.
+    /// </summary>
+    procedure Wheel(ASteps: Integer; const AClientPos: TPoint);
   public
     /// <summary>Tastatur im Befund-Hover (#909): Tab bzw. Umschalt+Tab markiert die nächste bzw. vorige Aktion
     /// unter einem Problem; False ohne Aktionen.</summary>
@@ -466,12 +488,25 @@ begin
   Invalidate;
 end;
 
+procedure TAtlasHoverTipView.FitMembers(AWidth, ANatural, AAvailable: Integer);
+begin
+  if (ANatural <= AAvailable) or (FLayout.MembersView.Height = 0) then
+  begin
+    Exit;
+  end;
+  // Mitglieder zuerst: Sie sind aufgeklappt, um gelesen zu werden; die Doku teilt sich den Rest.
+  FMembersLimit := Max(1, FLayout.MembersView.Height - (ANatural - AAvailable));
+  BuildLayout(AWidth);
+end;
+
 function TAtlasHoverTipView.FitHeight(AWidth, AAvailable: Integer): Integer;
 var
   Natural: Integer;
 begin
   FDoc.FitHeight(FView.Display.MaxLines, 0);
+  FMembersLimit := 0;
   BuildLayout(AWidth);
+  FitMembers(AWidth, FLayout.Height, AAvailable);
   Natural := FLayout.Height;
   if (Natural > AAvailable) and not FDoc.IsEmpty then
   begin
@@ -561,10 +596,28 @@ begin
   end;
 end;
 
+function TAtlasHoverTipView.ScrollMembers(ASteps: Integer): Boolean;
+var
+  mScroll: Integer;
+begin
+  mScroll := EnsureRange(FLayout.MembersScroll + ASteps * 3 * FLayout.MembersRow, 0, FLayout.MembersMaxScroll);
+  Result := mScroll <> FLayout.MembersScroll;
+  if Result then
+  begin
+    FMembersScroll := mScroll;
+    // Sofort neu setzen: Klickflächen unter der Maus gelten schon vor dem nächsten Paint.
+    BuildLayout(ClientWidth);
+    FLayout.Anchor(ClientHeight);
+    Invalidate;
+  end;
+end;
+
 function TAtlasHoverTipView.LayoutKey(AWidth: Integer): string;
 begin
-  Result := Format('%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d', [AWidth, FDoc.Height, Ord(FDoc.IsEmpty),
-    Ord(FDoc.HasSelection), Ord(FProblemActions), Ord(FHideCompilerCode), PPI, Font.Height, UIFont.Height, Integer(Colors.Surface), Integer(Colors.Text), Integer(Colors.Accent)]);
+  Result := Format('%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d|%d', [AWidth, FDoc.Height, Ord(FDoc.IsEmpty),
+    Ord(FDoc.HasSelection), Ord(FProblemActions), Ord(FHideCompilerCode), PPI, Font.Height, UIFont.Height,
+    Integer(Colors.Surface), Integer(Colors.Text), Integer(Colors.Accent), FMembersMaxLines, FMembersLimit,
+    FMembersScroll]);
 end;
 
 procedure TAtlasHoverTipView.BuildLayout(AWidth: Integer);
@@ -583,7 +636,12 @@ begin
   Input.HasSelection := FDoc.HasSelection;
   Input.ProblemActions := FProblemActions;
   Input.HideCompilerCode := FHideCompilerCode;
+  Input.MembersMaxLines := FMembersMaxLines;
+  Input.MembersLimit := FMembersLimit;
+  Input.MembersScroll := FMembersScroll;
   FLayout := TAtlasHoverLayout.Build(Input, TTipMeasure.Create(Self));
+  // Nach Umschalten oder Kürzen kann der Versatz zu groß sein; der Satz hat ihn begrenzt.
+  FMembersScroll := FLayout.MembersScroll;
   FLayoutKey := LayoutKey(AWidth);
 end;
 
@@ -721,6 +779,7 @@ begin
   FView := AView;
   FDeclaration := TAtlasStyledText.Create(AView.Data.Declaration);
   FHot := -1;
+  FMembersScroll := 0;
   mWidth := PreferredWidth;
   PrepareDoc(mWidth);
   Area := WorkAreaAt(AWord.TopLeft);
@@ -760,6 +819,7 @@ begin
   FView := AView;
   FDeclaration := TAtlasStyledText.Create(AView.Data.Declaration);
   FHot := -1;
+  FMembersScroll := 0;
   mWidth := Max(BoundsRect.Width, PreferredWidth);
   PrepareDoc(mWidth);
   Area := WorkAreaAt(BoundsRect.TopLeft);
@@ -814,17 +874,32 @@ begin
   end;
 end;
 
-function TAtlasHoverTip.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
+procedure TAtlasHoverTip.Wheel(ASteps: Integer; const AClientPos: TPoint);
 begin
-  // Nur die Doku scrollt; Deklaration und Aktionsleiste bleiben stehen.
+  if FLayout.MembersScrollable and FLayout.MembersView.Contains(AClientPos) then
+  begin
+    ScrollMembers(ASteps);
+  end
+  else if not ScrollDoc(ASteps) and FLayout.MembersScrollable then
+  begin
+    ScrollMembers(ASteps);
+  end;
+end;
+
+function TAtlasHoverTip.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
+var
+  mPos: TPoint;
+begin
+  // Nur Doku und Mitglieder scrollen; Deklaration und Aktionsleiste bleiben stehen.
   Result := True;
+  mPos := ScreenToClient(MousePos);
   if WheelDelta > 0 then
   begin
-    ScrollDoc(-Max(1, WheelDelta div WHEEL_DELTA));
+    Wheel(-Max(1, WheelDelta div WHEEL_DELTA), mPos);
   end
   else if WheelDelta < 0 then
   begin
-    ScrollDoc(Max(1, -WheelDelta div WHEEL_DELTA));
+    Wheel(Max(1, -WheelDelta div WHEEL_DELTA), mPos);
   end;
 end;
 
@@ -926,6 +1001,17 @@ begin
   Invalidate;
 end;
 
+procedure TAtlasHoverTipView.SetMembersMaxLines(AValue: Integer);
+begin
+  if FMembersMaxLines = AValue then
+  begin
+    Exit;
+  end;
+  FMembersMaxLines := AValue;
+  FLayoutKey := '';
+  Invalidate;
+end;
+
 function TAtlasHoverTip.FireProblemAction(AHit: Integer): Boolean;
 var
   ProblemIndex, Item: Integer;
@@ -985,8 +1071,6 @@ begin
 end;
 
 procedure TAtlasHoverTipView.Paint;
-var
-  Index: Integer;
 begin
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ToColor(Colors.Surface);
@@ -998,12 +1082,34 @@ begin
   end;
   // Letzte Randfläche am unteren Fensterrand.
   FLayout.Anchor(ClientHeight);
-  for Index := 0 to High(FLayout.Items) do
-  begin
-    PaintItem(FLayout.Items[Index]);
-  end;
+  PaintItems;
   Canvas.Brush.Style := bsSolid;
   PaintBorder;
+end;
+
+procedure TAtlasHoverTipView.PaintItems;
+var
+  mIndex: Integer;
+  mView: TRect;
+begin
+  mView := FLayout.MembersView;
+  for mIndex := 0 to High(FLayout.Items) do
+  begin
+    // Rollbereich der Mitglieder: beschneiden über die Clip-Region, die gewählten Objekte bleiben.
+    if mIndex = FLayout.ClipFrom then
+    begin
+      IntersectClipRect(Canvas.Handle, mView.Left, mView.Top, mView.Right, mView.Bottom);
+    end;
+    if (mIndex = FLayout.ClipTill) and (FLayout.ClipFrom >= 0) then
+    begin
+      SelectClipRgn(Canvas.Handle, 0);
+    end;
+    PaintItem(FLayout.Items[mIndex]);
+  end;
+  if FLayout.ClipTill > High(FLayout.Items) then
+  begin
+    SelectClipRgn(Canvas.Handle, 0);
+  end;
 end;
 
 end.

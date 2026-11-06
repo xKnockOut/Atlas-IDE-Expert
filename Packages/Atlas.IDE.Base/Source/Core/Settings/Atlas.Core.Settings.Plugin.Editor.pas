@@ -11,6 +11,8 @@ uses
 
 const
   MaxXmlDocLines = 50;
+  /// <summary>Grenze für hover.membersMaxLines (#1841).</summary>
+  MaxHoverMembersLines = 100;
   MinPeekLines = 5;
   MaxPeekLines = 60;
   /// <summary>Grenzen für navigation.impactDepth (#1120).</summary>
@@ -172,6 +174,9 @@ type
     /// <summary>Aktionszeile im Befund-Hover (#909): Schnellkorrektur, für diese Zeile unterdrücken, Regel einstellen.
     /// </summary>
     HoverProblemActions: Boolean;
+    /// <summary>Zeilen der published-Mitglieder im Hover ohne Scrollen (#1841, hover.membersMaxLines);
+    /// 0 = bis zur Bildschirmhöhe.</summary>
+    HoverMembersMaxLines: Integer;
     /// <summary>Zähler „Fehler/Warnungen/Hinweise“ in der Statusleiste (#509); Klick öffnet die Liste.</summary>
     ProblemsStatusCounter: Boolean;
     /// <summary>Code Lens „Testunit“ bzw. „Unit“ hinter der Zeile unit … (#189, codeLens.testUnit);
@@ -621,6 +626,7 @@ begin
   Result.Notes := True;
   Result.Problems := True;
   Result.HoverProblemActions := True;
+  Result.HoverMembersMaxLines := 15;
   Result.ProblemsStatusCounter := True;
   Result.CodeLensTestUnit := True;
   Result.CodeLensMetrics := True;
@@ -647,6 +653,7 @@ end;
 procedure TAtlasPluginEditorInsightSettings.Normalize;
 begin
   XmlDocMaxLines := EnsureRange(XmlDocMaxLines, 0, MaxXmlDocLines);
+  HoverMembersMaxLines := EnsureRange(HoverMembersMaxLines, 0, MaxHoverMembersLines);
   XmlDocExpand := Choice(XmlDocExpand, ['last', 'collapsed', 'expanded']);
   UndoMultiFileDepth := EnsureRange(UndoMultiFileDepth, MinUndoDepth, MaxUndoDepth);
   UndoMultiFileMaxSizeMb := EnsureRange(UndoMultiFileMaxSizeMb, MinUndoMaxSizeMb, MaxUndoMaxSizeMb);
@@ -682,6 +689,7 @@ begin
   AIo.Flag('Notes', Notes);
   AIo.Flag('Problems', Problems);
   AIo.Flag('HoverProblemActions', HoverProblemActions);
+  AIo.Number('HoverMembersMaxLines', HoverMembersMaxLines);
   AIo.Flag('ProblemsStatusCounter', ProblemsStatusCounter);
   AIo.Flag('CodeLensTestUnit', CodeLensTestUnit);
   AIo.Flag('CodeLensMetrics', CodeLensMetrics);
