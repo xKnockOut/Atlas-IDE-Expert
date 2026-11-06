@@ -54,6 +54,11 @@ type
     procedure RefreshContexts;
     /// <summary>Typen der geladenen Packages an die Sitzung (atlas/ideTypes, Hauptthread).</summary>
     procedure SendIdeTypes;
+    /// <summary>Lese-Thread: Mitglieder der Typen in AUnits (atlas/ideMembersWanted) im Hauptthread über die RTTI
+    /// sammeln und an ASession schicken (atlas/ideMembers), solange sie die Sitzung ist.</summary>
+    procedure QueueIdeMembers(ASession: TLspSession; const AUnits: TArray<string>);
+    /// <summary>Hauptthread: Mitglieder der Typen in AUnits an die Sitzung.</summary>
+    procedure SendIdeMembers(const AUnits: TArray<string>);
     /// <summary>Beobachtet die Ordner dieser Projekte (#395).</summary>
     procedure WatchProjects(const AProjects: TArray<string>);
     /// <summary>Gesammelte Änderungen außerhalb der IDE an den Server (Hauptthread, #395).</summary>
@@ -108,7 +113,9 @@ uses
   Atlas.IDE.CodeInsight.Manager.Paths,
   Atlas.IDE.CodeInsight.Manager.Handlers,
   Atlas.IDE.CodeInsight.IdeTypes,
+  Atlas.IDE.CodeInsight.IdeMembers,
   Atlas.Core.Lsp.IdeTypes,
+  Atlas.Core.Lsp.IdeMembers,
   System.Diagnostics,
   Atlas.Core.Localization.Language;
 
@@ -572,6 +579,48 @@ begin
     on E: Exception do
     begin
       Diagnose('IDE-Typen: ' + E.Message);
+    end;
+  end;
+end;
+
+procedure TAtlasCodeInsightSession.QueueIdeMembers(ASession: TLspSession; const AUnits: TArray<string>);
+var
+  mManager: TAtlasCodeInsightSession;
+  mUnits: TArray<string>;
+begin
+  if Length(AUnits) = 0 then
+  begin
+    Exit;
+  end;
+  mManager := Self;
+  mUnits := AUnits;
+  // Open Tools API und RTTI der Packages nur im Hauptthread.
+  TAtlasMainThread.Queue(TAtlasFeature.Server,
+    procedure
+    begin
+      if ManagerLive(mManager) and (mManager.FSession = ASession) then
+      begin
+        mManager.SendIdeMembers(mUnits);
+      end;
+    end);
+end;
+
+procedure TAtlasCodeInsightSession.SendIdeMembers(const AUnits: TArray<string>);
+var
+  mWatch: TStopwatch;
+  mDetails: TArray<TAtlasIdeTypeDetail>;
+  mFailed: Integer;
+begin
+  try
+    mWatch := TStopwatch.StartNew;
+    mDetails := TAtlasIdeMemberCollector.Details(AUnits, mFailed);
+    FSession.Notify(TAtlasIdeMembers.Method, TAtlasIdeMembers.ToJson(mDetails));
+    Diagnose(Format('IDE-Mitglieder: %d Units, %d Typen, %d ms, RTTI unlesbar: %d', [Length(AUnits),
+      Length(mDetails), mWatch.ElapsedMilliseconds, mFailed]));
+  except
+    on E: Exception do
+    begin
+      Diagnose('IDE-Mitglieder: ' + E.Message);
     end;
   end;
 end;

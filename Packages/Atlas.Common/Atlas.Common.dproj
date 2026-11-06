@@ -625,6 +625,9 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeBuild.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeProject.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeTypes.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeUnits.Source.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeUnits.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeIndex.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.BuildTools.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Paths.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Freshness.pas"/>

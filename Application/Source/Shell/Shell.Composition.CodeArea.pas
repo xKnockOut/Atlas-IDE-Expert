@@ -40,6 +40,9 @@ type
     Dispatcher: TJsonRpcDispatcher;
     Documents: IDocumentStore;
     Index: ISymbolIndex;
+    /// <summary>Gemeinsamer Index samt Ersatz-Units der IDE für Hover, Vervollständigung und Parameterhilfe.
+    /// </summary>
+    EditorIndex: ISymbolIndex;
     /// <summary>Editor: Host der Schnellbefehle und „Interface implementieren“ im Erzeugen-Menü.</summary>
     Editing: TShellEditing;
     RuleIdsFor: TSlashRuleIdsFunc;
@@ -198,6 +201,7 @@ begin
   Result := Default(TShellNavigationServices);
   Result.Documents := FServices.Documents;
   Result.Index := FServices.Index;
+  Result.EditorIndex := FServices.EditorIndex;
   Result.ReadText := ReadText;
   Result.ProjectFiles := ProjectFiles;
   Result.EnsureUnit := mCore.Folders.EnsureUnitFunc();
@@ -278,7 +282,8 @@ begin
   mCore := FCore;
   Result := Default(TShellCompletionServices);
   Result.Documents := FServices.Documents;
-  Result.Index := FServices.Index;
+  // Mit den Ersatz-Units der IDE: Mitglieder von Typen aus Packages ohne Quelltext.
+  Result.Index := FServices.EditorIndex;
   Result.EnsureUnit := mCore.Folders.EnsureUnitFunc();
   Result.ReadText := ReadText;
   Result.CompletionSettingsFor :=

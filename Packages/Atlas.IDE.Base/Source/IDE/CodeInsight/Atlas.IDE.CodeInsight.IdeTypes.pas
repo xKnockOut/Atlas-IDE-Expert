@@ -16,13 +16,13 @@ uses
 type
   TAtlasIdeTypeCollector = class
   private
-    /// <summary>Ordner, deren Packages nicht zählen: Installation und Atlas.</summary>
-    class function SkippedFolders: TArray<string>; static;
     /// <summary>Typen der Packages an ATypes anhängen; Ergebnis: Zahl der Packages, deren RTTI nicht lesbar war.
     /// </summary>
     class function AddPackages(const ASkipped: TArray<string>; ATypes: TList<TAtlasIdeType>): Integer; static;
     class procedure AddPalette(const ASkipped: TArray<string>; ATypes: TList<TAtlasIdeType>); static;
   public
+    /// <summary>Ordner, deren Packages nicht zählen: Installation und Atlas.</summary>
+    class function SkippedFolders: TArray<string>; static;
     /// <summary>Typen der geladenen Packages außerhalb der Installation; nur im Hauptthread. AFailed: Packages,
     /// deren RTTI nicht lesbar war (sie fehlen im Ergebnis).</summary>
     class function Collect(out AFailed: Integer): TArray<TAtlasIdeType>; static;
