@@ -9842,3 +9842,19 @@ Vorbereitung: Plugin mit diesem Stand gebaut, `hover.membersMaxLines` unverände
 | HMS6 | Optionen › Atlas › Editor: „Mitglieder im Hover: höchstens Zeilen ohne Scrollen“ auf 5, dann auf 0 | 5: Tabelle fünf Zeilen hoch. 0: so hoch wie der Bildschirm zulässt, darunter kein Daumen |
 | HMS7 | IDE auf Englisch | Text der Option „Members in the hover: max. lines before scrolling (0 = screen)“ |
 | HMS8 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `THoverLayoutTests.PublishedMembersScroll`, `ScrolledMembersDropHiddenHits`, `TAtlasPluginSettingsTests.HoverMembersMaxLinesRoundTrip` grün |
+
+## Fehlalarme der Stilregeln aus Marcos Lauf (06.11.2026)
+
+Vorbereitung: Plugin und Server mit diesem Stand gebaut. In der `atlas.json` von Atlas `"minConfidence": "low"` und die Regeln `naming-prefix`, `magic-number`, `hardcoded-string`, `public-field`, `method-without-self`, `string-concat-in-loop`, `loop-invariant-call`, `missing-begin-update` auf `"info"`; dann im Fenster „Atlas-Prüfung“ die Projektgruppe Atlas prüfen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| RFP1 | Befunde mit der Liste vom 06.11. vergleichen (`hardcoded-string`) | Keine Meldung mehr für `TAtlasGuard.Log(…)`, `Diagnose(…)`, `Assert(…)`, `FormatDateTime`-Masken, `'<tr …>'`, `'## …'`, `Font.Name := 'Segoe UI'`; Texte wie `'nur https'` bleiben (**Abnahme**) |
+| RFP2 | `magic-number` bei `EnsureRange(…, 0, $FFFF)`, `MulDiv(…, 96)`, Vektor-Icons `[P(3.5, 1.5), …]` | Still; `SetBounds(12, 9, 360, 23)` im Tastenkürzel-Fenster bleibt gemeldet |
+| RFP3 | `naming-prefix` in Vergleichern `function(const A, B: …)` und in Handlern, die der Code zuweist (`FEvents.OnEditorPaintLine := PaintLine`) | Still für `A`, `B` und die Parameter der Handler |
+| RFP4 | `public-field` in `Atlas.Core.Problems.Store` (`protected type TEntry`) | Still; Felder öffentlicher Klassen bleiben gemeldet |
+| RFP5 | `method-without-self`: `TAtlasKeyMapForm.FormClose`, `TStopTicker.Tick` (`OnTimer := TStopTicker(FTicker).Tick`) | Still |
+| RFP6 | `uses-unit-not-found` in `Atlas.Common.dpk` (`requires Atlas.Text`) ohne gebaute `Atlas.Text.dcp` | Still, weil Atlas.Text in derselben Projektgruppe steht |
+| RFP7 | Atlas.Windows.Console.StdStreams öffnen | Kein „NoErrMsg ist nicht deklariert“ (Index neu aufgebaut, Version 32) |
+| RFP8 | Atlas.Common.Lsp.PullDiagnostics Zeile mit `raise FErrorClass.Create` | Weder `class-reference-nonvirtual-constructor` noch `unused-suppression` |
+| RFP9 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; neue Tests in Style, Performance, Naming, General, MemberHides, ClassReferences, ControlFlow, EventAssignments, UnitLookup grün |

@@ -195,6 +195,8 @@ begin
           AText := Waiter.Text;
         end;
       end;
+    erError, erBusy:
+      ; // Nichts auszuwerten: Result bleibt False.
   end;
 end;
 

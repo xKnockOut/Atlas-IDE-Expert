@@ -24,6 +24,8 @@ type
     [Test]
     procedure FormEventIsSilent;
     [Test]
+    procedure EventAssignedInCodeIsSilent;
+    [Test]
     procedure InterfaceMethodsAreSilent;
   end;
 
@@ -113,6 +115,25 @@ begin
     'object Rechner: TRechner'#10'  OnClick = Doppelt'#10'end', Enabled))));
   Assert.AreEqual(1, Integer(Length(TRuleAssert.FormFindings(Rule, Source,
     'object Rechner: TRechner'#10'end', Enabled))));
+end;
+
+/// <summary>Im Code einem Ereignis zugewiesen (OnClose := FormClose in Atlas.UI.Commands.KeyMap,
+/// Later.OnTimer := Later_.Tick in Atlas.IDE.Foundation.Symbol): kein Treffer; eine gewöhnliche Zuweisung des
+/// Ergebnisses meldet weiter.</summary>
+procedure TMethodWithoutSelfRuleTests.EventAssignedInCodeIsSilent;
+const
+  cHead = 'unit Rechner;'#10'interface'#10'type'#10'  TRechner = class'#10'  public'#10 +
+    '    OnTick: TNotifyEvent;'#10'    procedure Tick(Sender: TObject);'#10'    procedure Start;'#10 +
+    '    function Zahl: Integer;'#10'  end;'#10'implementation'#10 +
+    'procedure TRechner.Tick(Sender: TObject);'#10'begin'#10'end;'#10 +
+    'function TRechner.Zahl: Integer;'#10'begin'#10'  Result := 2;'#10'end;'#10;
+var
+  mFound: TArray<TRuleFinding>;
+begin
+  mFound := TRuleAssert.Findings(Rule, cHead + 'procedure TRechner.Start;'#10'var'#10'  mWert: Integer;'#10 +
+    'begin'#10'  OnTick := Self.Tick;'#10'  mWert := Zahl;'#10'end;'#10'end.', Enabled);
+  Assert.AreEqual(1, Integer(Length(mFound)));
+  Assert.IsTrue(Pos('TRechner.Zahl', mFound[0].Message) > 0, mFound[0].Message);
 end;
 
 procedure TMethodWithoutSelfRuleTests.InterfaceMethodsAreSilent;

@@ -34,6 +34,7 @@ procedure RegisterMethodWithoutSelfRules(const ARegistry: TRuleRegistry);
 implementation
 
 uses
+  System.StrUtils,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Documents.Contract,
@@ -42,6 +43,8 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Editing.MethodWithoutSelf,
   Atlas.Common.Editing.MethodWithoutSelf.Lookup,
+  Atlas.Common.Editing.PromoteVariable,
+  Atlas.Common.Pascal.EventAssignments,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -155,6 +158,20 @@ begin
   end;
 end;
 
+/// <summary>Ist AName ein Ereignis der Formulardatei AFormText oder wird es in ATree einem Ereignis zugewiesen?
+/// </summary>
+function EventCheck(const AFormText: string; ATree: TSyntaxTree): TPromoteInFormFunc;
+var
+  mAssigned: TArray<string>;
+begin
+  mAssigned := TEventAssignments.Names(ATree.Tokens);
+  Result :=
+    function(const AName: string): Boolean
+    begin
+      Result := MentionsWord(AFormText, AName) or (IndexText(AName, mAssigned) >= 0);
+    end;
+end;
+
 procedure TMethodWithoutSelfRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Resolver: TNameResolver;
@@ -176,12 +193,8 @@ begin
   Resolver.PinTree(AContext.Tree, FileName);
   try
     Lookup := TMethodLookup.FromResolver(Resolver, AContext.Tree, FileName);
-    // Ereignisse der Formulardatei brauchen eine Methode des Objekts.
-    Lookup.InForm :=
-      function(const AName: string): Boolean
-      begin
-        Result := MentionsWord(FormText, AName);
-      end;
+    // Ereignisse der Formulardatei und im Code zugewiesene Ereignisse brauchen eine Methode des Objekts.
+    Lookup.InForm := EventCheck(FormText, AContext.Tree);
     for Target in TMethodWithoutSelf.Candidates(AContext.Text, AContext.Tree, Lookup) do
     begin
       Fixes := ClassMethodFixes(AContext, FileName, Target, Lookup);

@@ -2,7 +2,8 @@
 
 // Was der Kontrollfluss (Semantics.ControlFlow) an den Knoten einer Anweisung abliest: ob ein Knoten eine
 // Anweisung ist, ob eine Schleife eine konstante Bedingung hat (while True, until False, #1109) und ob eine
-// for-Schleife sicher einmal läuft (for I := 0 to 64), wie Delphi es für W1035 wertet.
+// for-Schleife sicher einmal läuft (for I := 0 to 64, auch for I := 1 to cVersuche mit cVersuche = 3 in
+// derselben Unit), wie Delphi es für W1035 wertet.
 
 interface
 
@@ -17,10 +18,15 @@ type
     /// <summary>Ist die Bedingung der Schleife S die Konstante AValue (while True, until False; auch in
     /// Klammern)? Dann verlässt nur Break, Exit oder raise die Schleife (#1109).</summary>
     class function ConstantCondition(S: TSyntaxNode; const AValue: string): Boolean; static;
-    /// <summary>Grenzen der for-Schleife AFor als ganze Zahlen, wenn beide Zahlenliterale sind (auch $, %, &amp;).
-    /// </summary>
+    /// <summary>Grenzen der for-Schleife AFor als ganze Zahlen, wenn beide Zahlenliterale (auch $, %, &amp;) oder
+    /// Namen echter Konstanten der Unit mit einem Zahlenliteral als Wert sind (siehe ConstantBound).</summary>
     class function LiteralBounds(AFor: TSyntaxNode; out AFrom, ATo: Int64): Boolean; static;
-    /// <summary>Läuft die for-Schleife AFor sicher mindestens einmal? Nur bei Zahlenliteralen als Grenzen;
+    /// <summary>Wert der Grenze ABound: Zahlenliteral oder Name einer Konstanten ohne Typ (cVersuche = 3), die
+    /// im Baum genau einmal deklariert ist und deren Name sonst nirgends deklariert wird (Variable, Parameter,
+    /// Feld, Routine, Typ, Inline-Variable). Delphi kennt solche Werte beim Übersetzen und warnt dann nicht.
+    /// </summary>
+    class function ConstantBound(ABound: TSyntaxNode; out AValue: Int64): Boolean; static;
+    /// <summary>Läuft die for-Schleife AFor sicher mindestens einmal? Nur bei bekannten Grenzen (LiteralBounds);
     /// to braucht AFrom &lt;= ATo, downto AFrom &gt;= ATo. False für andere Knoten.</summary>
     class function RunsAtLeastOnce(AFor: TSyntaxNode): Boolean; static;
   end;
@@ -81,7 +87,7 @@ begin
     mChild := AFor.Children[mIndex];
     if mChild.Kind <> TSyntaxKind.TypeReference then
     begin
-      Result := (mChild.Kind = TSyntaxKind.Literal) and TOrdinalConstants.TryNumber(mChild.Name, mBounds[mFound]);
+      Result := ConstantBound(mChild, mBounds[mFound]);
       Inc(mFound);
     end;
     Inc(mIndex);
@@ -94,6 +100,83 @@ begin
     AFrom := mBounds[0];
     ATo := mBounds[1];
   end;
+end;
+
+/// <summary>Oberster Knoten über ANode.</summary>
+function RootOf(ANode: TSyntaxNode): TSyntaxNode;
+begin
+  Result := ANode;
+  while Result.Parent <> nil do
+  begin
+    Result := Result.Parent;
+  end;
+end;
+
+/// <summary>Deklariert ANode den Namen AName (auch in Listen "A,B" von Variablen und Parametern)?</summary>
+function DeclaresName(ANode: TSyntaxNode; const AName: string): Boolean;
+var
+  mName: string;
+begin
+  Result := False;
+  if not (ANode.Kind in [TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl, TSyntaxKind.Parameter, TSyntaxKind.Field,
+    TSyntaxKind.TypeDecl, TSyntaxKind.RoutineDecl, TSyntaxKind.RoutineHeader, TSyntaxKind.PropertyDecl,
+    TSyntaxKind.InlineVar, TSyntaxKind.InlineConst, TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement]) then
+  begin
+    Exit;
+  end;
+  for mName in ANode.Name.Split([',']) do
+  begin
+    if SameText(Trim(mName), AName) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+/// <summary>Die einzige Deklaration von AName im Baum unter ARoot, wenn sie eine Konstante ist; sonst nil.
+/// </summary>
+function SoleConstant(ARoot: TSyntaxNode; const AName: string): TSyntaxNode;
+var
+  mFound: TSyntaxNode;
+  mCount: Integer;
+begin
+  mFound := nil;
+  mCount := 0;
+  ARoot.Walk(
+    function(ANode: TSyntaxNode): Boolean
+    begin
+      if DeclaresName(ANode, AName) then
+      begin
+        Inc(mCount);
+        mFound := ANode;
+      end;
+      Result := mCount < 2;
+    end);
+  Result := nil;
+  if (mCount = 1) and (mFound.Kind = TSyntaxKind.ConstDecl) then
+  begin
+    Result := mFound;
+  end;
+end;
+
+class function TFlowStatements.ConstantBound(ABound: TSyntaxNode; out AValue: Int64): Boolean;
+var
+  mDeclaration: TSyntaxNode;
+begin
+  AValue := 0;
+  if ABound.Kind = TSyntaxKind.Literal then
+  begin
+    Exit(TOrdinalConstants.TryNumber(ABound.Name, AValue));
+  end;
+  if ABound.Kind <> TSyntaxKind.Identifier then
+  begin
+    Exit(False);
+  end;
+  mDeclaration := SoleConstant(RootOf(ABound), ABound.Name);
+  // Nur "Name = Zahl": Typisierte Konstanten (Name: Integer = 3) sind für Delphi Variablen.
+  Result := (mDeclaration <> nil) and (mDeclaration.ChildCount = 1) and
+    (mDeclaration.Children[0].Kind = TSyntaxKind.Literal) and
+    TOrdinalConstants.TryNumber(mDeclaration.Children[0].Name, AValue);
 end;
 
 class function TFlowStatements.RunsAtLeastOnce(AFor: TSyntaxNode): Boolean;

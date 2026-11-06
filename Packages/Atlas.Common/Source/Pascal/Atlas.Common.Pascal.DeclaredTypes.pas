@@ -55,6 +55,12 @@ type
     /// <summary>Typ von AName an APosition als Quelltext, z. B. 'Integer' oder 'TArray&lt;Byte&gt;';
     /// '' wenn in der Datei nicht deklariert.</summary>
     function DeclaredType(const AName: string; const APosition: TTextPosition): string;
+    /// <summary>Typ des Felds AMember im Typ ATypeName (Klasse, Record oder Objekt aus dieser Datei, auch
+    /// verschachtelt; Unit-Präfix zählt nicht); False, wenn der Typ hier kein solches Feld hat.</summary>
+    function FieldType(const ATypeName, AMember: string; out AType: string): Boolean;
+    /// <summary>Typ der Kette AChain an APosition ("FParts.Menu", "Self.FList"): erstes Glied über
+    /// DeclaredType, die weiteren als Felder (FieldType); '' sobald ein Glied unbekannt ist.</summary>
+    function ChainType(const AChain: string; const APosition: TTextPosition): string;
     /// <summary>Ganzzahltyp mit höchstens 32 Bit?</summary>
     class function IsInt32(const AType: string): Boolean; static;
     /// <summary>Int64 oder UInt64?</summary>
@@ -376,6 +382,51 @@ begin
   if not FUnitScope.TryGetValue(Key, Result) then
   begin
     Result := '';
+  end;
+end;
+
+function TDeclaredTypes.FieldType(const ATypeName, AMember: string; out AType: string): Boolean;
+var
+  mScope: TScope;
+  mName: string;
+begin
+  AType := '';
+  mName := Copy(ATypeName, LastDelimiter('.', ATypeName) + 1, MaxInt);
+  Result := (mName <> '') and FClassScopes.TryGetValue(LowerCase(mName), mScope) and
+    mScope.TryGetValue(LowerCase(AMember), AType);
+end;
+
+function TDeclaredTypes.ChainType(const AChain: string; const APosition: TTextPosition): string;
+var
+  mParts: TArray<string>;
+  mFirst, mIndex: Integer;
+  mMemberType: string;
+begin
+  Result := '';
+  mParts := AChain.Split(['.']);
+  if (Length(mParts) = 0) or (Trim(mParts[0]) = '') then
+  begin
+    Exit;
+  end;
+  mFirst := 0;
+  if SameText(Trim(mParts[0]), 'Self') then
+  begin
+    // Self.FFeld: Felder der Klasse der Methode an APosition, wie ein Name ohne Self.
+    mFirst := 1;
+    if Length(mParts) < 2 then
+    begin
+      Exit;
+    end;
+  end;
+  Result := DeclaredType(Trim(mParts[mFirst]), APosition);
+  for mIndex := mFirst + 1 to High(mParts) do
+  begin
+    // Eigene Variable für das Ergebnis: out leert sie vor dem Lesen des Typnamens.
+    if (Result = '') or not FieldType(Result, Trim(mParts[mIndex]), mMemberType) then
+    begin
+      Exit('');
+    end;
+    Result := mMemberType;
   end;
 end;
 

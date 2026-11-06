@@ -240,12 +240,14 @@ begin
       Exit(False);
     end;
   end;
+  AOutput.ProjectName := ChangeFileExt(ExtractFileName(AFile), '');
   AOutput.DcuFolder := TUnitLookup.DcuOutputOf(mProject);
   for mUnit in mProject.Units do
   begin
     AOutput.Units := AOutput.Units + [mUnit.Name];
   end;
-  Result := AOutput.DcuFolder <> '';
+  // Auch ohne Ausgabeordner: Der Name zählt für requires (TUnitLookup.FindPackage).
+  Result := True;
 end;
 
 /// <summary>requires der .dpk: deren Units findet der Compiler über die .dcp. Nicht lesbar: '?', dann bleibt die

@@ -221,9 +221,14 @@ begin
   FParts.RunTests.Enabled := Length(FImpact.Tests) > 0;
   if FParts.Depth.Items.Count = 0 then
   begin
-    for mDepth := 1 to cMaxDepth do
-    begin
-      FParts.Depth.Items.Add(IntToStr(mDepth));
+    FParts.Depth.Items.BeginUpdate;
+    try
+      for mDepth := 1 to cMaxDepth do
+      begin
+        FParts.Depth.Items.Add(IntToStr(mDepth));
+      end;
+    finally
+      FParts.Depth.Items.EndUpdate;
     end;
   end;
   FParts.Depth.OnChange := nil;

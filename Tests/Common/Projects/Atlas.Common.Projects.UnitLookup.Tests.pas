@@ -406,6 +406,7 @@ var
   Lookup: IRuleUnitLookup;
   Known: TArray<string>;
   FileName, Text: string;
+  Group: TUnitLookupGroupOutput;
 begin
   Data := Setup(LibraryFiles + ['C:\P\Src\Rechnung.Druck.pas']);
   Data.PackageExists :=
@@ -425,6 +426,13 @@ begin
   Assert.IsTrue(IndexText('Vcl.Forms', Known) >= 0);
   Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord(Lookup.FindPackage('rtl')));
   Assert.AreEqual(Ord(TRuleUnitAnswer.Missing), Ord(Lookup.FindPackage('Fehlend')));
+  // Package derselben Projektgruppe: gilt als vorhanden, auch ohne .dcp und ohne Ausgabeordner.
+  Group := Default(TUnitLookupGroupOutput);
+  Group.ProjectName := 'Atlas.Text';
+  Data.GroupOutputs := [Group];
+  Assert.AreEqual(Ord(TRuleUnitAnswer.Found), Ord((TUnitLookup.Create(Data) as IRuleUnitLookup).FindPackage(
+    'atlas.text')));
+  Data.GroupOutputs := nil;
   Assert.IsTrue(Lookup.ReadProject(FileName, Text));
   Assert.AreEqual('C:\P\App.dproj', FileName);
   Assert.AreEqual('<Project/>', Text);

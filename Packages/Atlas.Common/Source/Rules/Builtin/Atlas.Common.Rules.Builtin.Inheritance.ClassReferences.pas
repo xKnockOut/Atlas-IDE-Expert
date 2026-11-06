@@ -2,7 +2,9 @@
 
 // Regel class-reference-nonvirtual-constructor aus Atlas.Common.Rules.Builtin.Inheritance (#1032): Create über
 // eine Klassenreferenz (class of TBasis), deren Konstruktor nicht virtuell ist (E2391); es läuft immer der
-// Konstruktor der Basisklasse.
+// Konstruktor der Basisklasse. Kennt der Index die Klassenreferenz oder ihre Klasse nicht (RTL unter Linux:
+// ExceptClass, Exception), kann die Regel die Zeile nicht entscheiden (IRuleLineCertainty): Ein lsp-ignore dort
+// gilt dann nicht als unused-suppression.
 
 interface
 
@@ -10,10 +12,11 @@ uses
   Atlas.Common.Rules.Contract;
 
 type
-  TClassReferenceNonvirtualConstructorRule = class(TInterfacedObject, IRule)
+  TClassReferenceNonvirtualConstructorRule = class(TInterfacedObject, IRule, IRuleLineCertainty)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    function Decides(const AContext: TRuleContext; ALine: Integer): Boolean;
     /// <summary>Zieltyp aus "TPluginKlasse = class of TPlugin"; '' ohne class of.</summary>
     class function ClassRefTarget(const ASignature: string): string; static;
   end;
@@ -82,10 +85,14 @@ type
       out AMatching: TIndexSymbol): Integer;
     procedure CheckCall(AAccess: TSyntaxNode);
     function CollectCalls: TArray<TSyntaxNode>;
+    function Decided(AAccess: TSyntaxNode): Boolean;
+    procedure Prepare;
   public
     constructor Create(const AContext: TRuleContext; const AReport: IRuleReport);
     destructor Destroy; override;
     procedure Run;
+    /// <summary>Konnte die Regel jeden Aufruf X.Create in Zeile ALine (ab 0) entscheiden?</summary>
+    function DecidesLine(ALine: Integer): Boolean;
   end;
 
 /// <summary>Zahl der Argumente, wenn AAccess aufgerufen wird ("Klasse.Create(A, B)"), sonst 0.</summary>
@@ -162,6 +169,22 @@ begin
   Check := TClassRefCheck.Create(AContext, AReport);
   try
     Check.Run;
+  finally
+    Check.Free;
+  end;
+end;
+
+function TClassReferenceNonvirtualConstructorRule.Decides(const AContext: TRuleContext; ALine: Integer): Boolean;
+var
+  Check: TClassRefCheck;
+begin
+  if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
+    Exit(True);
+  end;
+  Check := TClassRefCheck.Create(AContext, nil);
+  try
+    Result := Check.DecidesLine(ALine);
   finally
     Check.Free;
   end;
@@ -437,6 +460,78 @@ begin
   Result := Calls;
 end;
 
+/// <summary>Weiß der Index genug über AAccess? Unbekannt sind ein Empfänger ohne Typ und eine Klassenreferenz, deren
+/// Klasse oder Konstruktor der Index nicht kennt.</summary>
+function TClassRefCheck.Decided(AAccess: TSyntaxNode): Boolean;
+var
+  Symbol, RefType, Base, Member: TResolvedSymbol;
+  TypeFound: Boolean;
+  Target: string;
+  TypeUnit: TUnitIndex;
+begin
+  if not FResolver.NodeType(FContext.Tree, FFileName, AAccess[0], Symbol, RefType, TypeFound) or not TypeFound or
+    not Symbol.Found then
+  begin
+    Exit(False);
+  end;
+  if Symbol.IsType or RefType.Builtin or (RefType.SymbolKind <> TIndexSymbolKind.ClassType) then
+  begin
+    Exit(True);
+  end;
+  Target := TClassReferenceNonvirtualConstructorRule.ClassRefTarget(RefType.Signature);
+  if Target = '' then
+  begin
+    Exit(True);
+  end;
+  Result := UnitFor(RefType.FileName, TypeUnit) and FResolver.ResolveTypeFrom(TypeUnit, Target, Base) and
+    FResolver.FindMember(Base, AAccess.Name, Member);
+end;
+
+procedure TClassRefCheck.Prepare;
+begin
+  FCache := TRuleDerived.Open(FContext);
+  FTokens := FContext.Tree.Tokens;
+  FPaths := TConditionalBranches.Paths(FTokens);
+  FFileName := ResolverFileName(FContext);
+  FAncestry := TAncestry.Create(FContext.Index, TRuleDerived.UnitIndex(FCache, FContext));
+  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
+  FResolver := TRuleDerived.Resolver(FCache, FContext);
+end;
+
+function TClassRefCheck.DecidesLine(ALine: Integer): Boolean;
+var
+  Node: TSyntaxNode;
+  Calls: TArray<TSyntaxNode>;
+begin
+  Result := True;
+  Calls := nil;
+  for Node in CollectCalls do
+  begin
+    if (ALine < 0) or ((Node.StartPos.Line <= ALine) and (Node.EndPos.Line >= ALine)) then
+    begin
+      Calls := Calls + [Node];
+    end;
+  end;
+  if Calls = nil then
+  begin
+    Exit;
+  end;
+  Prepare;
+  FResolver.PinTree(FContext.Tree, FFileName);
+  try
+    FLocal := FResolver.ExtractedUnit(FContext.Tree, FFileName);
+    for Node in Calls do
+    begin
+      if not Decided(Node) then
+      begin
+        Exit(False);
+      end;
+    end;
+  finally
+    FResolver.UnpinTree;
+  end;
+end;
+
 procedure TClassRefCheck.Run;
 var
   Calls: TArray<TSyntaxNode>;
@@ -447,13 +542,7 @@ begin
   begin
     Exit;
   end;
-  FCache := TRuleDerived.Open(FContext);
-  FTokens := FContext.Tree.Tokens;
-  FPaths := TConditionalBranches.Paths(FTokens);
-  FFileName := ResolverFileName(FContext);
-  FAncestry := TAncestry.Create(FContext.Index, TRuleDerived.UnitIndex(FCache, FContext));
-  // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
-  FResolver := TRuleDerived.Resolver(FCache, FContext);
+  Prepare;
   FResolver.PinTree(FContext.Tree, FFileName);
   try
     FLocal := FResolver.ExtractedUnit(FContext.Tree, FFileName);
