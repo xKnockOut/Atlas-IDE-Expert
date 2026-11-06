@@ -97,6 +97,7 @@ uses
   Atlas.Common.Index.Adapters.CacheDirectory,
   Atlas.Common.Index.Processes,
   Atlas.Common.Index.ProjectFiles,
+  Atlas.Common.Projects.UnitAliases,
   Atlas.Common.Diagnostics.ShutdownLeaks,
   Shell.Workspace.Listings,
   Shell.Workspace.Packages,
@@ -331,6 +332,8 @@ begin
   mSource.LibraryPaths := ALoaded.CompilerLibraryPaths;
   mSource.Packages := TPackageLocatorHold.Create(Result);
   mSource.Index := FParts.Index;
+  // Unit-Aliase der .dproj (DCC_UnitAlias) für Namensauflösung und Vorschläge; die Vorgaben kennt der Index.
+  FParts.Index.AddUnitAliases(TUnitAliases.OfProject(ALoaded.Project));
   if Assigned(FParts.Setup.OnGroupProjects) then
   begin
     mSource.GroupOutputsOf := TShellPackageLookups.GroupOutputsOf(FParts.Setup.OnGroupProjects,
