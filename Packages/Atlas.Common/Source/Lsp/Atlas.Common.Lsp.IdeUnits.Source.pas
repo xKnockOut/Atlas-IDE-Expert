@@ -33,14 +33,12 @@ type
 
 implementation
 
+uses
+  Atlas.Text.Chars;
+
 const
   cIndent = '  ';
   cMemberIndent = '    ';
-
-function IsIdentChar(AChar: Char; AFirst: Boolean): Boolean;
-begin
-  Result := CharInSet(AChar, ['A'..'Z', 'a'..'z', '_']) or (not AFirst and CharInSet(AChar, ['0'..'9']));
-end;
 
 /// <summary>Präfix einer Unit merken, außer der eigenen und System.</summary>
 procedure AddUse(const APrefix, AUnit: string; AUses: TList<string>);
@@ -65,8 +63,8 @@ end;
 function ChainEnd(const AText: string; AStart: Integer): Integer;
 begin
   Result := AStart;
-  while (Result <= Length(AText)) and (IsIdentChar(AText[Result], False) or
-    ((AText[Result] = '.') and (Result < Length(AText)) and IsIdentChar(AText[Result + 1], True))) do
+  while (Result <= Length(AText)) and (TTextChars.IsIdentChar(AText[Result]) or
+    ((AText[Result] = '.') and (Result < Length(AText)) and TTextChars.IsIdentStart(AText[Result + 1]))) do
   begin
     Inc(Result);
   end;
@@ -81,7 +79,7 @@ begin
   mPos := 1;
   while mPos <= Length(ATypeText) do
   begin
-    if not IsIdentChar(ATypeText[mPos], True) then
+    if not TTextChars.IsIdentStart(ATypeText[mPos]) then
     begin
       Result := Result + ATypeText[mPos];
       Inc(mPos);
