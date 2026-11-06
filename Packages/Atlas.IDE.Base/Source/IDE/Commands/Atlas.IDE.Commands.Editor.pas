@@ -310,6 +310,9 @@ begin
   end;
   FNotifierIndex := -1;
   FNotifier := nil;
+  // Wartet eine laufende Anfrage ab und verwirft ihre Antwort.
+  FreeAndNil(FSlashRequest);
+  FreeAndNil(FTestUnitRequest);
   FreeAndNil(FContextMenu);
   FSessionOf := nil;
   FMessage := nil;

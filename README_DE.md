@@ -1,4 +1,4 @@
-# Atlas IDE Expert
+﻿# Atlas IDE Expert
 
 [![Spenden mit PayPal](https://img.shields.io/badge/Spenden-PayPal-00457C?logo=paypal)](https://www.paypal.com/paypalme/xKnockOut288)
 
@@ -188,6 +188,8 @@ Alle sind Designtime-Packages für Win32 (klassische IDE) und Win64 (64-Bit-IDE 
 | `Atlas.IDE.Welcome` | Willkommensseite und „Atlas-Start“ | `welcomePage.enabled` |
 
 `TAtlasMainThread` führt die Einträge je Modul: Meldet sich ein Modul ab oder wird sein Package entladen, verfallen seine noch wartenden Einträge in den Hauptthread, statt danach in nicht mehr geladenem Code zu laufen.
+
+Beim Tippen und Klicken wartet der Hauptthread nicht auf den Server: Schnellbefehle mit „/“, ///-Gerüste und „Zur Testunit wechseln“ (auch über die Code Lens) fragen im Hintergrund. Das Diagnose-Fenster zählt offene modale Dialoge nicht als Belegung und nennt bei einem langsamen Aufruf die Serveranfrage, auf die der Hauptthread wartete.
 
 Wie sich ein Modul anmeldet, welche Verträge es nutzt und die Regeln für Laden und Entladen: [docs/Architektur.md](docs/Architektur.md) (Abschnitt „Module und Verträge des Plugins“) und [ADR 0017](docs/adr/0017-funktions-packages.md); zu welchem Package jede Unit gehört, steht in [docs/adr/0017-unit-zuordnung.md](docs/adr/0017-unit-zuordnung.md). Details zu Rollen, Benennung und Importregeln: [docs/Architektur.md](docs/Architektur.md).
 
