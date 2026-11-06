@@ -9762,6 +9762,25 @@ Vorbereitung: Plugin mit diesem Stand gebaut, Diagnosemodus an (Plugin-Zeiten an
 | HB7 | Einen Befehl auslösen, der noch auf den Server wartet (z. B. Units suchen öffnen), dann *Langsame Aufrufe* ansehen | In der Spalte *Aktion* steht die Anfrage, z. B. `workspace/executeCommand atlas.server.units` |
 | HB8 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasEditorCommandsTests.SlashAnswerOnlyForUnchangedText`, `TAtlasPluginTimingsTests.ModalDialogIsNotOwnTime` grün |
 
+## Prüffenster: einzelne Projekte der Gruppe (#1843)
+
+Vorbereitung: Plugin mit diesem Stand gebaut, Fenster „Atlas-Prüfung“ (Strg+Alt+P), Projektgruppe mit mindestens drei Projekten, deren Units Befunde haben.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PEP1 | Projektgruppe mit drei Projekten (z. B. `Atlas.groupproj`) öffnen, Fenster „Atlas-Prüfung“ zeigen, Bereichsliste aufklappen | „Aktuelle Datei“, „Aktuelles Projekt“, „Projektgruppe“, darunter ein Trennstrich (Linie, kein Text) und die drei Projekte in der Reihenfolge des Projektmanagers; das aktive mit „(aktiv)“. Die Klappliste ist breit genug für den längsten Namen; Zeilen nicht abgeschnitten, auch bei 150 % Skalierung (**Abnahme**) |
+| PEP2 | Auf den Trennstrich klicken; mit ↑/↓ über ihn hinweg gehen | Die vorige Wahl bleibt bzw. die Liste springt nicht auf eine leere Wahl; die Befunde ändern sich nicht |
+| PEP3 | Ein nicht aktives Projekt wählen | Nur Befunde aus Units dieses Projekts; Statuszeile „a von b Units geprüft“ zählt dieses Projekt; das aktive Projekt im Projektmanager bleibt unverändert (**Abnahme**) |
+| PEP4 | Nach PEP3 im Projektmanager ein anderes Projekt aktivieren | Das gewählte Projekt bleibt im Fenster; nur die Markierung „(aktiv)“ wandert |
+| PEP5 | Nach PEP3 die IDE schließen und neu starten, Gruppe öffnen, Fenster zeigen | Das Projekt aus PEP3 ist wieder gewählt (`problems.window.scopeProject`) |
+| PEP6 | Nach PEP3 das gewählte Projekt aus der Gruppe entfernen (oder eine andere Gruppe öffnen) | Die Liste zeigt „Aktuelles Projekt“, die Befunde des aktiven Projekts; nach Neustart ebenso |
+| PEP7 | „Projektgruppe“ wählen; eine Unit öffnen, die zu keinem Projekt der Gruppe gehört (z. B. aus der RTL oder einem fremden Ordner), mit Befunden | Ihre Befunde stehen nicht in der Liste (vorher ja); Befunde aller Units der Gruppe stehen da, Units in mehreren Projekten nur einmal |
+| PEP8 | Nur ein einzelnes Projekt ohne Gruppe öffnen bzw. eine Gruppe mit nur einem Projekt | Kein Trennstrich, nur die drei festen Einträge |
+| PEP9 | Optionen › Atlas › Prüfregeln › Prüffenster: „Einzelne Projekte der Gruppe in der Bereichsliste des Fensters“ ausschalten | Liste nur mit den drei festen Einträgen; war ein Einzelprojekt gewählt, gilt „Aktuelles Projekt“. Wieder an: Projekte erscheinen sofort |
+| PEP10 | Oberfläche auf Englisch; danach `Atlas.Tests` bauen und ausführen | „Current file“, „Current project“, „Project group“, Projekte mit „(active)“, Kontrollkästchen „Individual projects of the group in the window's scope list“. Tests: 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasScopeProjectsTests`, `TAtlasProblemsFrameTests.ScopeListOffersGroupProjects`, `TAtlasPluginSettingsTests.ProblemsWindowOptions`, `TAtlasSettingsPageTests.RulesAreaWindowSettings` grün |
+
+Wer das Dropdown nach einem Andocken oder Themenwechsel mit leeren oder doppelten Einträgen sieht (PEP1), bitte melden.
+
 ## Klassenvervollständigung: Typkommentar, Reihenfolge, Vorbefüllung (#1834, #1835, #1836, #1837, #1838)
 
 Vorbereitung: Plugin und AtlasServer mit diesem Stand gebaut, Einstellungen unverändert (`classCompletion.typeComment` = `brace`, `lifecycleFirst` und `bodyStubs` an, `editor.methodPlacement` = `grouped`). Neue Unit `Fenster.pas`:

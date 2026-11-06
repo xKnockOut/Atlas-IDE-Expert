@@ -63,7 +63,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 ### [Code analysis](docs/features/en/Code-analysis.md)
 - **313 check rules** while you type: 204 bugs, 99 code smells, 10 security rules
 - **"Compiler ahead":** dcc errors and warnings before you build, with quick fixes; Atlas finds units like dcc, including namespaces and unit aliases (`WinTypes`, `WinProcs`)
-- **Window "Atlas Findings"** for file, project or group, with bulk fixes
+- **Window "Atlas Findings"** for file, project or group, with bulk fixes; with a group open, the scope list also offers each project of the group
 - **Profiles, confidence, baseline and suppressions** for legacy projects
 - **Types from installed packages:** the IDE tells Atlas the types of its packages (even without .pas). "Type is not declared" stays silent for them, the quick fix suggests their unit, completion offers them with a `uses` entry
 - **Members of types from installed packages:** for units without source, Atlas asks the IDE for the members it knows via RTTI (properties, methods with parameter types, fields, interfaces, enum values). Hover, member completion after `.`, parameter hints and enum values for parameters then work for these types too, without "go to declaration".

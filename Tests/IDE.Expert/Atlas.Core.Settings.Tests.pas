@@ -1087,6 +1087,8 @@ procedure SetProblemsWindowOptions(var ASettings: TAtlasPluginSettings);
 begin
   ASettings.ProblemsWindow := False;
   ASettings.ProblemsWindowScope := 'file';
+  ASettings.ProblemsWindowScopeProjects := False;
+  ASettings.ProblemsWindowScopeProject := 'Atlas.IDE.Base';
   ASettings.ProblemsWindowGroupBy := 'category';
   ASettings.ProblemsWindowColumns := 'kind:70,-rule';
   ASettings.ProblemsWindowCompiler := True;
@@ -1105,6 +1107,8 @@ procedure AssertProblemsWindowLoaded(const ALoaded: TAtlasPluginSettings);
 begin
   Assert.IsFalse(ALoaded.ProblemsWindow);
   Assert.AreEqual('file', ALoaded.ProblemsWindowScope);
+  Assert.IsFalse(ALoaded.ProblemsWindowScopeProjects);
+  Assert.AreEqual('Atlas.IDE.Base', ALoaded.ProblemsWindowScopeProject);
   Assert.AreEqual('category', ALoaded.ProblemsWindowGroupBy);
   Assert.AreEqual('kind:70,-rule', ALoaded.ProblemsWindowColumns);
   Assert.IsTrue(ALoaded.ProblemsWindowCompiler);
@@ -1185,6 +1189,8 @@ begin
   Settings := TAtlasPluginSettings.Defaults;
   Assert.IsTrue(Settings.ProblemsWindow);
   Assert.AreEqual('group', Settings.ProblemsWindowScope);
+  Assert.IsTrue(Settings.ProblemsWindowScopeProjects, 'Einzelprojekte (#1843) an');
+  Assert.AreEqual('', Settings.ProblemsWindowScopeProject, 'aktives Projekt');
   Assert.AreEqual('file', Settings.ProblemsWindowGroupBy);
   Assert.AreEqual('', Settings.ProblemsWindowColumns);
   Assert.IsFalse(Settings.ProblemsWindowCompiler);
@@ -1203,10 +1209,12 @@ begin
   Settings.Normalize;
   Assert.AreEqual('merge', Settings.ProblemsCompilerMerge, 'Unbekanntes = Vorgabe');
   Settings.ProblemsWindowScope := 'PROJECT';
+  Settings.ProblemsWindowScopeProject := '  Atlas.Tests ';
   Settings.ProblemsWindowGroupBy := 'unsinn';
   Settings.ProblemsWindowKey := -1;
   Settings.Normalize;
   Assert.AreEqual('project', Settings.ProblemsWindowScope);
+  Assert.AreEqual('Atlas.Tests', Settings.ProblemsWindowScopeProject);
   Assert.AreEqual('file', Settings.ProblemsWindowGroupBy, 'Unbekanntes = Vorgabe');
   Assert.AreEqual(0, Settings.ProblemsWindowKey);
   SetProblemsWindowOptions(Settings);
