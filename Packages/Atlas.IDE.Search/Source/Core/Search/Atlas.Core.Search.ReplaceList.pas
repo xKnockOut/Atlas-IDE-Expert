@@ -5,7 +5,7 @@
 // - Jeder Treffer hat ein Häkchen (Vorgabe an), jede Datei eines für alle
 //   ihre Treffer: Es ist gesetzt, solange alle Treffer der Datei angehakt sind.
 // - Rows: Zeilen für die Liste, je Datei eine Kopfzeile, darunter die Treffer
-//   mit „Zeile: Text“ und bei Regex der Vorschau „vorher → nachher“.
+//   mit „Zeile: Text“ und der Vorschau „vorher → nachher“.
 // - Plan: Textänderungen für alle angehakten Treffer als WorkspaceEdit.
 //   Schreibgeschützte Dateien (AIsReadOnly) und Dateien, deren Text sich seit
 //   der Suche geändert hat (ACurrentText), fallen heraus und werden genannt:
@@ -37,7 +37,7 @@ type
     Line: Integer;
     /// <summary>Kopfzeile: Dateiname; Treffer: Zeilentext.</summary>
     Text: string;
-    /// <summary>„vorher → nachher“ bei Regex, sonst ''.</summary>
+    /// <summary>„vorher → nachher“; ohne Regex ist „nachher“ der Ersatz selbst.</summary>
     Preview: string;
   end;
 
@@ -210,10 +210,7 @@ begin
       Row.FileName := Item.FileName;
       Row.Line := Item.Hits[HitIndex].Line + 1;
       Row.Text := TAtlasTextSearch.HitText(Item.Lines, Item.Hits[HitIndex]);
-      if FQuery.Options.Regex then
-      begin
-        Row.Preview := TAtlasSearchReplace.Preview(Item.Lines, Item.Hits[HitIndex], FQuery, FReplace).Caption;
-      end;
+      Row.Preview := TAtlasSearchReplace.Preview(Item.Lines, Item.Hits[HitIndex], FQuery, FReplace).Caption;
       Result := Result + [Row];
     end;
   end;
