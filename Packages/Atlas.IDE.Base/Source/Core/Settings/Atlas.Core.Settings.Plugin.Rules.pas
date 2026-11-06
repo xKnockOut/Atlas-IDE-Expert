@@ -17,6 +17,11 @@ type
     ProblemsWindow: Boolean;
     /// <summary>Bereich des Fensters: 'file', 'project', 'group' (Vorgabe).</summary>
     ProblemsWindowScope: string;
+    /// <summary>Einzelne Projekte der Gruppe in der Bereichsliste des Fensters (#1843).</summary>
+    ProblemsWindowScopeProjects: Boolean;
+    /// <summary>Gewähltes Einzelprojekt (Name ohne Endung) bei Bereich 'project' (#1843); '' = aktives Projekt.
+    /// </summary>
+    ProblemsWindowScopeProject: string;
     /// <summary>Gruppierung: 'none', 'file' (Vorgabe), 'rule', 'category'.</summary>
     ProblemsWindowGroupBy: string;
     /// <summary>Spalten mit Reihenfolge, Breite und Sichtbarkeit ("kind:70,-rule,…", TAtlasFindings.ParseColumns); '' =
@@ -66,6 +71,7 @@ type
 implementation
 
 uses
+  System.SysUtils,
   Atlas.Core.Settings.ProblemsUpdate;
 
 { TAtlasPluginRulesSettings }
@@ -74,6 +80,8 @@ class function TAtlasPluginRulesSettings.Defaults: TAtlasPluginRulesSettings;
 begin
   Result.ProblemsWindow := True;
   Result.ProblemsWindowScope := 'group';
+  Result.ProblemsWindowScopeProjects := True;
+  Result.ProblemsWindowScopeProject := '';
   Result.ProblemsWindowGroupBy := 'file';
   Result.ProblemsWindowColumns := '';
   Result.ProblemsWindowCompiler := False;
@@ -93,6 +101,7 @@ end;
 procedure TAtlasPluginRulesSettings.Normalize;
 begin
   ProblemsWindowScope := Choice(ProblemsWindowScope, ['group', 'file', 'project']);
+  ProblemsWindowScopeProject := Trim(ProblemsWindowScopeProject);
   ProblemsWindowGroupBy := Choice(ProblemsWindowGroupBy, ['file', 'none', 'rule', 'category']);
   ProblemsWindowClosedUnits := Choice(ProblemsWindowClosedUnits, ['dimmed', 'normal', 'hidden']);
   ProblemsCompilerMerge := Choice(ProblemsCompilerMerge, ['merge', 'both']);
@@ -104,6 +113,8 @@ procedure TAtlasPluginRulesSettings.Exchange(const AIo: TAtlasSettingsExchange);
 begin
   AIo.Flag('ProblemsWindow', ProblemsWindow);
   AIo.Text('ProblemsWindowScope', ProblemsWindowScope);
+  AIo.Flag('ProblemsWindowScopeProjects', ProblemsWindowScopeProjects);
+  AIo.Text('ProblemsWindowScopeProject', ProblemsWindowScopeProject);
   AIo.Text('ProblemsWindowGroupBy', ProblemsWindowGroupBy);
   AIo.Text('ProblemsWindowColumns', ProblemsWindowColumns);
   AIo.Flag('ProblemsWindowCompiler', ProblemsWindowCompiler);

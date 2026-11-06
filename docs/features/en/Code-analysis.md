@@ -15,7 +15,8 @@ Marks move along while typing.
 
 ### Window "Atlas Findings"
 
-- Live findings of the file, project or project group
+- Live findings of the file, the current project or the project group
+- With a group open, the scope list shows every project of the group below a separator, so the window can show a project without activating it (can be switched off: `problems.window.scopeProjects`)
 - Filters per kind, category and text
 - Grouping by file, rule or category; sortable columns
 - Keys:

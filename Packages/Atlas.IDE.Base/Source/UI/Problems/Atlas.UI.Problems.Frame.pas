@@ -1,7 +1,8 @@
 ﻿unit Atlas.UI.Problems.Frame;
 
 // Inhalt des Fensters „Atlas-Prüfung“ (#909), reine VCL. Oben die
-// Werkzeugleiste: Bereich (aktuelle Datei, Projekt, Projektgruppe), je Art ein
+// Werkzeugleiste: Bereich (aktuelle Datei, aktuelles Projekt, Projektgruppe,
+// bei offener Gruppe darunter die einzelnen Projekte, #1843), je Art ein
 // Umschalter mit Anzahl, Kategorie, Gruppierung, Textfilter und rechts die
 // Anzeige „Live“ bzw. „Angehalten“. Darunter die Liste (virtuell, ohne
 // Flackern) mit den Spalten aus TAtlasFindingColumn: Icon (rotes Kreuz,
@@ -50,7 +51,9 @@ uses
   Vcl.ImgList,
   Vcl.Forms,
   Atlas.Core.Problems.Findings,
-  Atlas.Core.Settings.ProblemsUpdate;
+  Atlas.Core.Problems.ScopeProjects,
+  Atlas.Core.Settings.ProblemsUpdate,
+  Atlas.UI.Problems.ScopeBox;
 
 type
   TAtlasFindingEvent = reference to procedure(const AFinding: TAtlasFinding);
@@ -104,6 +107,8 @@ type
     FView: TAtlasFindingsView;
     FBar: TPanel;
     FScope: TComboBox;
+    /// <summary>Einträge und Wahl der Bereichsliste samt Einzelprojekten (#1843).</summary>
+    FScopeBox: TAtlasProblemsScopeBox;
     FKinds: array[TAtlasFindingKind] of TSpeedButton;
     FCategory: TComboBox;
     FGrouping: TComboBox;
@@ -117,7 +122,6 @@ type
     FMenu: TPopupMenu;
     FNewTimer: TTimer;
     /// <summary>Einträge der Auswahllisten; gefüllt erst mit Fenster (CreateWnd).</summary>
-    FScopeTexts: TArray<string>;
     FCategoryTexts: TArray<string>;
     FGroupingTexts: TArray<string>;
     function AddMenuItem(AParent: TMenuItem; const ACaption: string; AClick: TNotifyEvent): TMenuItem;
@@ -193,6 +197,8 @@ type
     /// <summary>Spalten für problems.window.columns.</summary>
     function ColumnsText: string;
     function Scope: TAtlasFindingScope;
+    /// <summary>Einzelprojekt bei Bereich „Projekt“ (#1843); '' = aktives Projekt.</summary>
+    function ScopeProject: string;
     function Grouping: TAtlasFindingGrouping;
     /// <summary>Compilercodes zeigen (problems.showCompilerCode, #1024; Vorgabe an).</summary>
     property ShowCompilerCode: Boolean read FShowCompilerCode write SetShowCompilerCode;
@@ -274,6 +280,12 @@ type
     /// Compilermeldungen.</summary>
     procedure ApplySettings(AScope: TAtlasFindingScope; AGrouping: TAtlasFindingGrouping; const AColumns: string;
       ACompiler: Boolean);
+    /// <summary>Einzelprojekte in der Bereichsliste (#1843): problems.window.scopeProjects und das gespeicherte
+    /// Projekt (problems.window.scopeProject; gilt nur bei Bereich „Projekt“).</summary>
+    procedure ApplyScopeSettings(AShowProjects: Boolean; const AProject: string);
+    /// <summary>Projekte der offenen Gruppe (#1843). Fehlt das gewählte Einzelprojekt, gilt das aktive Projekt und
+    /// OnLayout speichert das.</summary>
+    procedure SetScopeProjects(const AProjects: TArray<TAtlasScopeProject>);
     /// <summary>Offene Units zuerst (#1108): problems.window.openFirst, .closedUnits, .showCleanActive.</summary>
     procedure ApplyTierSettings(AOpenFirst: Boolean; AClosedUnits: TAtlasClosedUnits; AShowCleanActive: Boolean);
     /// <summary>Aktive und geöffnete Dateien (#1108); AActiveChecked: der Server hat die aktive Datei geliefert.
@@ -315,6 +327,9 @@ uses
 const
   /// <summary>Vorgabebreiten bei 96 dpi.</summary>
   DefaultWidths: array[TAtlasFindingColumn] of Integer = (24, 70, 110, 320, 260, 130, 150, 130);
+  /// <summary>Breite der Bereichsliste bei 96 dpi; die Klappliste wird so breit wie der längste Eintrag (#1843).
+  /// </summary>
+  cScopeWidth = 130;
   /// <summary>Hervorhebung neuer Einträge.</summary>
   NewMs = 1500;
   IconSize = 16;
@@ -363,10 +378,11 @@ begin
   FBar.Height := MulDiv(28, CurrentPPI, 96);
   FBar.ParentBackground := True;
 
-  FScopeTexts := [TAtlasStrings.Text(TAtlasTextId.ProblemsScopeFile),
-    TAtlasStrings.Text(TAtlasTextId.ProblemsScopeProject), TAtlasStrings.Text(TAtlasTextId.ProblemsScopeGroup)];
-  FScope := AddCombo(110);
+  FScope := AddCombo(cScopeWidth);
   FScope.OnChange := ScopeChange;
+  FScopeBox := TAtlasProblemsScopeBox.Create(Self, FScope, TArray<string>.Create(
+    TAtlasStrings.Text(TAtlasTextId.ProblemsScopeFile), TAtlasStrings.Text(TAtlasTextId.ProblemsScopeProject),
+    TAtlasStrings.Text(TAtlasTextId.ProblemsScopeGroup)));
   mLeft := FScope.Left + FScope.Width + MulDiv(6, CurrentPPI, 96);
   for Kind := Low(TAtlasFindingKind) to High(TAtlasFindingKind) do
   begin
@@ -511,6 +527,7 @@ end;
 destructor TAtlasProblemsFrame.Destroy;
 begin
   FreeAndNil(FView);
+  FreeAndNil(FScopeBox);
   inherited Destroy;
 end;
 
@@ -527,7 +544,7 @@ begin
   end;
   FUpdating := True;
   try
-    FillCombo(FScope, FScopeTexts, Ord(FView.Filter.Scope));
+    FScopeBox.Fill;
     FillCombo(FCategory, FCategoryTexts, Category);
     FillCombo(FGrouping, FGroupingTexts, Ord(FView.Grouping));
   finally
@@ -849,10 +866,7 @@ var
 begin
   FUpdating := True;
   try
-    if FScope.Items.Count > Ord(AScope) then
-    begin
-      FScope.ItemIndex := Ord(AScope);
-    end;
+    FScopeBox.Select(TAtlasScopeChoice.Create(AScope, FScopeBox.Choice.Project));
     if FGrouping.Items.Count > Ord(AGrouping) then
     begin
       FGrouping.ItemIndex := Ord(AGrouping);
@@ -868,6 +882,33 @@ begin
   FColumns := TAtlasFindings.ParseColumns(AColumns);
   BuildColumns;
   Refill;
+end;
+
+procedure TAtlasProblemsFrame.ApplyScopeSettings(AShowProjects: Boolean; const AProject: string);
+begin
+  FUpdating := True;
+  try
+    FScopeBox.SetShowProjects(AShowProjects);
+    FScopeBox.Select(TAtlasScopeChoice.Create(FScopeBox.Choice.Scope, AProject));
+  finally
+    FUpdating := False;
+  end;
+end;
+
+procedure TAtlasProblemsFrame.SetScopeProjects(const AProjects: TArray<TAtlasScopeProject>);
+var
+  mFellBack: Boolean;
+begin
+  FUpdating := True;
+  try
+    mFellBack := FScopeBox.SetProjects(AProjects);
+  finally
+    FUpdating := False;
+  end;
+  if mFellBack and Assigned(FOnLayout) then
+  begin
+    FOnLayout();
+  end;
 end;
 
 procedure TAtlasProblemsFrame.ApplyTierSettings(AOpenFirst: Boolean; AClosedUnits: TAtlasClosedUnits;
@@ -933,6 +974,11 @@ end;
 function TAtlasProblemsFrameList.Scope: TAtlasFindingScope;
 begin
   Result := FView.Filter.Scope;
+end;
+
+function TAtlasProblemsFrameList.ScopeProject: string;
+begin
+  Result := FScopeBox.Choice.Project;
 end;
 
 function TAtlasProblemsFrameList.Grouping: TAtlasFindingGrouping;
@@ -1585,12 +1631,12 @@ procedure TAtlasProblemsFrame.ScopeChange(Sender: TObject);
 var
   Filter: TAtlasFindingFilter;
 begin
-  if FUpdating or (FScope.ItemIndex < 0) then
+  if FUpdating or not FScopeBox.Pick then
   begin
     Exit;
   end;
   Filter := FilterFromControls;
-  Filter.Scope := TAtlasFindingScope(FScope.ItemIndex);
+  Filter.Scope := FScopeBox.Choice.Scope;
   FView.Filter := Filter;
   if Assigned(FOnScope) then
   begin

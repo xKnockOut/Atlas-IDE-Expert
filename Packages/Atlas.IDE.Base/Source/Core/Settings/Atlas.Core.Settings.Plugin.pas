@@ -298,6 +298,10 @@ type
     property ProblemsMessageList: Boolean read FRules.ProblemsMessageList write FRules.ProblemsMessageList;
     property ProblemsWindow: Boolean read FRules.ProblemsWindow write FRules.ProblemsWindow;
     property ProblemsWindowScope: string read FRules.ProblemsWindowScope write FRules.ProblemsWindowScope;
+    property ProblemsWindowScopeProjects: Boolean read FRules.ProblemsWindowScopeProjects
+      write FRules.ProblemsWindowScopeProjects;
+    property ProblemsWindowScopeProject: string read FRules.ProblemsWindowScopeProject
+      write FRules.ProblemsWindowScopeProject;
     property ProblemsWindowGroupBy: string read FRules.ProblemsWindowGroupBy write FRules.ProblemsWindowGroupBy;
     property ProblemsWindowColumns: string read FRules.ProblemsWindowColumns write FRules.ProblemsWindowColumns;
     property ProblemsWindowCompiler: Boolean read FRules.ProblemsWindowCompiler write FRules.ProblemsWindowCompiler;
