@@ -490,7 +490,8 @@ var
   mError: string;
 begin
   if (Length(AEdits) = 0) or (AView = nil) or (AView.Buffer = nil) or (AView <> TAtlasEditorBuffer.ActiveView) or
-    not TAtlasSlashTrigger.StillValid(AFileName, AText, AView.Buffer.FileName, TAtlasEditorBuffer.Text(AView.Buffer)) then
+    not TAtlasSlashTrigger.StillValid(AFileName, AText, AView.Buffer.FileName,
+    TAtlasEditorBuffer.Text(AView.Buffer)) then
   begin
     Exit;
   end;

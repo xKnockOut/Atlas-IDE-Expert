@@ -163,6 +163,22 @@ type
     property Depth: Integer read FDepth;
   end;
 
+  /// <summary>Offene modale Dialoge im Hauptthread; gezählt wird nur der äußerste.</summary>
+  TAtlasModalWatch = record
+  private
+    FDepth: Integer;
+    FStart: Int64;
+    FFrame: Integer;
+    FChildUs: Int64;
+  public
+    /// <summary>Ein Dialog öffnet sich bei ANowUs, während AStack läuft.</summary>
+    procedure Opened(const AStack: TAtlasCallStack; ANowUs: Int64);
+    /// <summary>Ein Dialog schließt sich bei ANowUs: Steht noch derselbe Aufruf oben, zählt die Dialogzeit
+    /// nicht als seine eigene.</summary>
+    procedure Closed(var AStack: TAtlasCallStack; ANowUs: Int64);
+    procedure Reset;
+  end;
+
   /// <summary>Rekorder der Plugin-Zeiten; eine gemeinsame Instanz über TAtlasPluginTimings.Shared.</summary>
   TAtlasPluginRecorder = class(TAtlasGuardTiming)
   public const
@@ -187,11 +203,7 @@ type
     FThresholdMs: Integer;
     FPaused: Boolean;
     FVersion: Integer;
-    /// <summary>Offene modale Dialoge; gezählt wird nur der äußerste (nur Hauptthread).</summary>
-    FModalDepth: Integer;
-    FModalStart: Int64;
-    FModalFrame: Integer;
-    FModalChildUs: Int64;
+    FModal: TAtlasModalWatch;
     procedure AddSlow(AFeature: TAtlasFeature; const AActivity: string; AMs: Double);
     procedure RecordCall(AFeature: TAtlasFeature; const AFrame: TAtlasCallFrame; AOwnUs, AStop: Int64;
       AOuter: Boolean);
@@ -271,6 +283,7 @@ uses
 
 const
   cUsPerSecond = 1000000;
+  cUsPerMs = 1000;
 
 { TAtlasCallStat }
 
@@ -455,6 +468,38 @@ begin
   end;
 end;
 
+{ TAtlasModalWatch }
+
+procedure TAtlasModalWatch.Opened(const AStack: TAtlasCallStack; ANowUs: Int64);
+begin
+  Inc(FDepth);
+  if FDepth = 1 then
+  begin
+    FStart := ANowUs;
+    FFrame := AStack.Depth;
+    FChildUs := AStack.TopChildUs;
+  end;
+end;
+
+procedure TAtlasModalWatch.Closed(var AStack: TAtlasCallStack; ANowUs: Int64);
+begin
+  if FDepth = 0 then
+  begin
+    Exit;
+  end;
+  Dec(FDepth);
+  // Nur, wenn noch derselbe Aufruf oben steht, der den Dialog geöffnet hat.
+  if (FDepth = 0) and (FFrame > 0) and (AStack.Depth = FFrame) then
+  begin
+    AStack.Waited(FChildUs, ANowUs - FStart);
+  end;
+end;
+
+procedure TAtlasModalWatch.Reset;
+begin
+  FDepth := 0;
+end;
+
 { TAtlasPluginRecorder }
 
 function StopwatchMicros: Int64;
@@ -549,7 +594,7 @@ var
   mMs: Double;
   mSlow: Boolean;
 begin
-  mMs := AOwnUs / 1000;
+  mMs := AOwnUs / cUsPerMs;
   FLock.Enter;
   try
     mSlow := mMs >= FThresholdMs;
@@ -586,30 +631,17 @@ end;
 
 procedure TAtlasPluginRecorder.ModalBegin;
 begin
-  if not FIsMainThread() then
+  if FIsMainThread() then
   begin
-    Exit;
-  end;
-  Inc(FModalDepth);
-  if FModalDepth = 1 then
-  begin
-    FModalStart := FClock();
-    FModalFrame := FStack.Depth;
-    FModalChildUs := FStack.TopChildUs;
+    FModal.Opened(FStack, FClock());
   end;
 end;
 
 procedure TAtlasPluginRecorder.ModalEnd;
 begin
-  if not FIsMainThread() or (FModalDepth = 0) then
+  if FIsMainThread() then
   begin
-    Exit;
-  end;
-  Dec(FModalDepth);
-  // Nur, wenn noch derselbe Aufruf oben steht, der den Dialog geöffnet hat.
-  if (FModalDepth = 0) and (FModalFrame > 0) and (FStack.Depth = FModalFrame) then
-  begin
-    FStack.Waited(FModalChildUs, FClock() - FModalStart);
+    FModal.Closed(FStack, FClock());
   end;
 end;
 
@@ -741,7 +773,7 @@ begin
     FSources.Clear;
     FHangs.Clear;
     FBusy.Reset(FClock());
-    FModalDepth := 0;
+    FModal.Reset;
     FSince := FNow();
     Inc(FVersion);
   finally
@@ -868,7 +900,7 @@ begin
   if FEnabled and (AStarted <> 0) then
   begin
     mShared := Shared;
-    mShared.SourceDone(AName, Max(Int64(0), mShared.Stamp - AStarted) / 1000);
+    mShared.SourceDone(AName, Max(Int64(0), mShared.Stamp - AStarted) / cUsPerMs);
   end;
 end;
 
@@ -883,7 +915,7 @@ begin
     // Hat der Hauptthread gewartet, steht die Anfrage als Aktion beim langsamen Aufruf.
     if mShared.OnMainThread then
     begin
-      mShared.ActivityDone(AMethod, mShared.Stamp - Round(AMs * 1000));
+      mShared.ActivityDone(AMethod, mShared.Stamp - Round(AMs * cUsPerMs));
     end;
   end;
 end;

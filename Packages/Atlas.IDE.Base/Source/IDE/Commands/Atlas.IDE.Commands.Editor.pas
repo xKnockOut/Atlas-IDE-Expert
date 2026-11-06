@@ -11,8 +11,8 @@
 //   beim Umbenennen und übernimmt erst nach Bestätigung. Gesperrte Aktionen
 //   (disabled) stehen als Hinweis am Ende und nennen beim Wählen den Grund.
 //   Befehle: atlas.copyText legt das erste Argument in die Zwischenablage,
-//   atlas.openFile öffnet die Datei der URI im ersten Argument (Testunit, #274/#189), atlas.goToPosition setzt den Cursor im
-//   oberen Editor auf Zeile und Zeichen aus den Argumenten (Sprung zur
+//   atlas.openFile öffnet die Datei der URI im ersten Argument (Testunit, #274/#189),
+//   atlas.goToPosition setzt den Cursor im oberen Editor auf Zeile und Zeichen aus den Argumenten (Sprung zur
 //   Freigabe, #915), atlas.showSignatureHelp setzt ihn ebenso und öffnet
 //   den Parameter-Hint (OnSignatureHelp, setzt die Composition; #1007),
 //   atlas.showUnitRelations zeigt die Unit-Beziehungen der Unit im Editor
@@ -212,13 +212,13 @@ end;
 
 procedure TEditorNotifier.EditorViewModified(const EditWindow: INTAEditWindow; const EditView: IOTAEditView);
 var
-  View: IOTAEditView;
+  mView: IOTAEditView;
 begin
-  View := EditView;
+  mView := EditView;
   TAtlasGuard.Run(TAtlasFeature.SlashCommands,
     procedure
     begin
-      TAtlasIdeEditorCommands.EditorModified(View);
+      TAtlasIdeEditorCommands.EditorModified(mView);
     end);
   // Zeilenumbruch für Kommentar und Muster fortsetzen (#696, #671), unabhängig von den Schrägstrich-Befehlen;
   // ein sichtbarer Mustervorschlag verschwindet mit jeder Änderung.
@@ -226,19 +226,19 @@ begin
     procedure
     begin
       TAtlasIdePatternContinuation.EditorModified;
-      TAtlasEnterWatch.EditorModified(View);
+      TAtlasEnterWatch.EditorModified(mView);
     end);
   // Mehrfachmarken (#589): fremde Änderungen an allen Marken nachziehen.
   TAtlasGuard.Run(TAtlasFeature.MultiCursor,
     procedure
     begin
-      TAtlasIdeMultiCursor.EditorModified(View);
+      TAtlasIdeMultiCursor.EditorModified(mView);
     end);
   // Bezeichner live mitziehen (#658): Änderungen der IDE am Namen nachziehen, sonst die Antwort verwerfen.
   TAtlasGuard.Run(TAtlasFeature.LinkedEditing,
     procedure
     begin
-      TAtlasIdeLinkedEditing.EditorModified(View);
+      TAtlasIdeLinkedEditing.EditorModified(mView);
     end);
   // Einfügen mit uses-Ergänzung (#515): nach einem Einfügen sehen, ein offenes Fenster schließen.
   TAtlasGuard.Run(TAtlasFeature.SmartPaste,
