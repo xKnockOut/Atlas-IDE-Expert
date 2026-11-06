@@ -56,7 +56,7 @@ end;
 
 class function TAtlasSlashTrigger.Detect(const APrevious, ABefore: string): TAtlasSlashKind;
 var
-  Previous: string;
+  mPrevious: string;
 begin
   Result := TAtlasSlashKind.None;
   if TrimLeft(ABefore) = '///' then
@@ -67,8 +67,8 @@ begin
   begin
     Exit;
   end;
-  Previous := TrimLeft(APrevious);
-  if (Length(Previous) >= 2) and (Previous[1] = '/') and IsLetter(Previous[2]) then
+  mPrevious := TrimLeft(APrevious);
+  if (Length(mPrevious) >= 2) and (mPrevious[1] = '/') and IsLetter(mPrevious[2]) then
   begin
     Result := TAtlasSlashKind.Command;
   end;
@@ -95,37 +95,40 @@ begin
 end;
 
 class function TAtlasSlashTrigger.DocCommentExpansion(const AText: string): TAtlasSnippetExpansion;
+const
+  // Ende einer leeren Beschreibung: ">" und der Anfang des schließenden Tags.
+  cDescriptionEnd = '></';
 var
-  Index, Number, Stop: Integer;
-  Field: TAtlasSnippetStop;
+  mIndex, mNumber, mStop: Integer;
+  mField: TAtlasSnippetStop;
 begin
   Result := Default(TAtlasSnippetExpansion);
   Result.Text := AText;
-  Number := 0;
-  Index := Pos('></', AText);
-  while Index > 0 do
+  mNumber := 0;
+  mIndex := Pos(cDescriptionEnd, AText);
+  while mIndex > 0 do
   begin
-    Inc(Number);
-    Field.Number := Number;
+    Inc(mNumber);
+    mField.Number := mNumber;
     // 0-basiert: das "<" hinter dem ">".
-    Field.Start := Index;
-    Field.Length := 0;
-    Result.Stops := Result.Stops + [Field];
-    Index := Pos('></', AText, Index + 3);
+    mField.Start := mIndex;
+    mField.Length := 0;
+    Result.Stops := Result.Stops + [mField];
+    mIndex := Pos(cDescriptionEnd, AText, mIndex + Length(cDescriptionEnd));
   end;
-  if Number = 0 then
+  if mNumber = 0 then
   begin
     Exit;
   end;
-  Stop := Length(AText);
-  while (Stop > 0) and CharInSet(AText[Stop], [#13, #10]) do
+  mStop := Length(AText);
+  while (mStop > 0) and CharInSet(AText[mStop], [#13, #10]) do
   begin
-    Dec(Stop);
+    Dec(mStop);
   end;
-  Field.Number := 0;
-  Field.Start := Stop;
-  Field.Length := 0;
-  Result.Stops := Result.Stops + [Field];
+  mField.Number := 0;
+  mField.Start := mStop;
+  mField.Length := 0;
+  Result.Stops := Result.Stops + [mField];
 end;
 
 end.
