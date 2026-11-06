@@ -119,6 +119,7 @@
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Contract.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Session.Json.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Session.Base.pas"/>
+        <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.IdeTypes.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Session.Requests.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.Session.pas"/>
         <DCCReference Include="Source\Core\Lsp\Atlas.Core.Lsp.TextChanges.pas"/>
@@ -253,6 +254,7 @@
         <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Manager.State.pas"/>
         <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Manager.Handlers.pas"/>
         <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Manager.Session.pas"/>
+        <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.IdeTypes.pas"/>
         <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Manager.Commands.pas"/>
         <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Manager.Crashes.pas"/>
         <DCCReference Include="Source\IDE\CodeInsight\Atlas.IDE.CodeInsight.Manager.Queries.pas"/>

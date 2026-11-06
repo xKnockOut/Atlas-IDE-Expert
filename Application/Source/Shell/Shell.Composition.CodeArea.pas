@@ -45,6 +45,8 @@ type
     RuleIdsFor: TSlashRuleIdsFunc;
     MessagesFor: TShellCompilerMessagesFunc;
     IdeProjectFor: TShellCodeIdeProjectFunc;
+    /// <summary>Typen aus den Packages der IDE (atlas/ideTypes) für die Vervollständigung.</summary>
+    IdeTypesFor: TShellCompletionIdeTypesFunc;
     VisitWorkspaces: TShellVisitWorkspacesProc;
     Notify: TCompletionNotifyProc;
     Log: TCompletionLogProc;
@@ -298,6 +300,7 @@ begin
   Result.SlashCommandsFor := mCore.FileOptions.SlashCommands();
   Result.RuleIdsFor := FServices.RuleIdsFor;
   Result.NamingFor := NamingPrefixFor;
+  Result.IdeTypesFor := FServices.IdeTypesFor;
   Result.HintsFor :=
     function(const AUri: string): THintSettings
     begin

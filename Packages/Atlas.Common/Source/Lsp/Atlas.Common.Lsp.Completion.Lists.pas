@@ -341,6 +341,8 @@ begin
   if Length(FContext.Prefix) >= CompletionMinImportPrefix then
   begin
     FCollector.AddFromOtherUnits;
+    // Typen aus den Packages der IDE, die der Index nicht kennt (Units ohne Quelltext).
+    FCollector.AddIdeTypes;
   end
   else if FContext.Attribute then
   begin
