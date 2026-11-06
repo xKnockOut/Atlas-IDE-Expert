@@ -10,6 +10,11 @@
 //   sie mit UseStorage setzt.
 // - Abmelden stoppt ein aktives Modul und löst seinen Scope rückwärts; ein
 //   Fehler hält den Abbau nicht an (wie TAtlasFeatureTable.StopAll, #886).
+//   Zuerst ruft es OnModuleClosing mit Info.Handle (die Komposition verbindet
+//   es mit TAtlasMainThread.CloseModule: wartende Einträge des Moduls liefen
+//   sonst nach dem Entladen seines Packages in nicht mehr geladenem Code),
+//   Anmelden ruft OnModuleOpened. Als Haken, damit Core.Modules nicht von
+//   Core.Diagnostics abhängt (Feature-Zyklus A-09).
 // - Objekte nach Interface-GUID (Provide/FindAll); die Registry versteht
 //   nicht, was dahinter steckt.
 // - Änderungsmeldung außerhalb der Sperre; ein gelöster Hörer wird auch
@@ -103,6 +108,12 @@ type
     /// <summary>Alle Module rückwärts abmelden und keine neuen mehr annehmen (Finalisierung von Base, Regel 5).
     /// Ergebnis wie UnregisterModule, über alle Module.</summary>
     function ShutDown: TArray<string>;
+  public class var
+    /// <summary>Vor dem Stopp eines abmeldenden Moduls, mit dessen Info.Handle (auch 0); vor jedem Anmelden
+    /// von Modulen gesetzt (Initialisierung der Komposition).</summary>
+    OnModuleClosing: TProc<NativeUInt>;
+    /// <summary>Nach dem Anmelden eines Moduls, mit dessen Info.Handle (auch 0).</summary>
+    OnModuleOpened: TProc<NativeUInt>;
   end;
 
 /// <summary>Die Registry von Base; nil nach dem Abbau in der Finalisierung (Regel 5).</summary>
@@ -587,6 +598,10 @@ begin
     FLock.Release;
   end;
   Result := mEntry.ScopeRef;
+  if Assigned(OnModuleOpened) then
+  begin
+    OnModuleOpened(mEntry.Info.Handle);
+  end;
   RaiseFailures(NotifyModule(rcModuleAdded, mEntry.Info.Id));
 end;
 
@@ -607,6 +622,11 @@ begin
     FModules.Delete(mIndex);
   finally
     FLock.Release;
+  end;
+  // Was jetzt noch für das Modul wartet oder eingereiht wird, liefe nach dem Entladen seines Packages.
+  if Assigned(OnModuleClosing) then
+  begin
+    OnModuleClosing(mEntry.Info.Handle);
   end;
   // Erst stoppen, dann die Anmeldungen lösen: Stop darf noch auf eigene Anmeldungen zugreifen.
   try
