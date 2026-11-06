@@ -8,8 +8,8 @@
 // dem Knopf folgt: Die VCL richtet alTop vor alRight aus, neben zwei
 // Beschriftungen mit alTop blieben dem Knopf sonst nur wenige Pixel. Darunter die
 // Liste aus TAtlasReplaceList.Rows: je Datei eine Kopfzeile, darunter ihre
-// Treffer mit Zeile, Zeilentext und bei Regex der Vorschau „vorher →
-// nachher“. Die erste Spalte ist das Häkchen (☑/☐): Klick darauf oder
+// Treffer mit Zeile, Zeilentext und der Vorschau „vorher → nachher“
+// (ohne Regex ist „nachher“ der Ersatz selbst). Die erste Spalte ist das Häkchen (☑/☐): Klick darauf oder
 // Leertaste schaltet um, das Häkchen einer Datei gilt für alle ihre Treffer.
 // Doppelklick bzw. Enter auf einem Treffer meldet OnOpen (Sprung in den
 // Editor). Die Liste ist virtuell (OwnerData) und braucht kein Fenster zum

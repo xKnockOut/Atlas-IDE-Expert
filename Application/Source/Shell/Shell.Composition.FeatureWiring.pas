@@ -107,6 +107,7 @@ begin
   mServices.Dispatcher := AParts.Protocol.Dispatcher;
   mServices.Documents := AParts.Documents;
   mServices.Index := AParts.Index;
+  mServices.EditorIndex := AParts.IndexArea.EditorIndex;
   mServices.Editing := AParts.EditingArea.Editing;
   mServices.RuleIdsFor :=
     function(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean
@@ -156,6 +157,7 @@ begin
   mServices.Dispatcher := AParts.Protocol.Dispatcher;
   mServices.Documents := AParts.Documents;
   mServices.Index := AParts.Index;
+  mServices.EditorIndex := AParts.IndexArea.EditorIndex;
   // Closure: Die Teilwurzel IDE entsteht erst nach der Analyse.
   mServices.FormatRoutinesFor :=
     function(const AUri: string): TArray<TFormatRoutine>
@@ -203,6 +205,8 @@ begin
     begin
       Result := AParts.Compile;
     end;
+  mServices.IdeUnits := AParts.IndexArea.IdeUnits;
+  mServices.Index := AParts.Index;
   AParts.IdeArea := TShellIdeArea.Create(AParts.Core, mServices);
 end;
 

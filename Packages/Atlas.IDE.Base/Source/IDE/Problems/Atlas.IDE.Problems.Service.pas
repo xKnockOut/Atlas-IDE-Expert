@@ -4,9 +4,11 @@
 // Speicher wie Wellenlinien und Hover (TAtlasProblemsController.Current);
 // es gibt keine zweite Prüfung. Ein Zeitgeber (250 ms) baut die Liste nur
 // neu, wenn sich Speicher, Bereich oder obere Datei geändert haben, und nur
-// bei sichtbarem Fenster. Bereich „Projekt“ = Dateien des aktiven Projekts,
-// „Projektgruppe“ = alle Dateien im Speicher (workspace/diagnostic liefert
-// die ungeöffneten Units im Hintergrund), „aktuelle Datei“ = oberer Editor.
+// bei sichtbarem Fenster. Bereich „Projekt“ = Dateien des aktiven bzw. des
+// gewählten Einzelprojekts (#1843), „Projektgruppe“ = Dateien aller Projekte
+// der Gruppe (TAtlasIdeProblemFiles; workspace/diagnostic liefert die
+// ungeöffneten Units im Hintergrund), „aktuelle Datei“ = oberer Editor. Der
+// Takt gibt dem Frame die Projekte der Gruppe für die Bereichsliste.
 // Zeilentext ungeöffneter Dateien kommt von der Platte und bleibt je Datei
 // und Änderungszeit im Speicher.
 // Statuszeile: Anzahl Befunde und Dateien, letzte Prüfung (Datei, Dauer,
@@ -28,8 +30,9 @@
 // nichts. Statuszeile dann „n Befunde · a offene Units (b) · c nicht geöffnete
 // Units (d)“ bzw. „… ausgeblendet“. Schnellkorrektur und Unterdrücken öffnen
 // eine nicht geöffnete Unit zuerst.
-// Bereich, Gruppierung, Spalten und „Offene zuerst“ landen in den
-// Einstellungen (problems.window.scope/groupBy/columns/openFirst). Mit
+// Bereich, Einzelprojekt, Gruppierung, Spalten und „Offene zuerst“ landen in
+// den Einstellungen (problems.window.scope/scopeProject/groupBy/columns/
+// openFirst). Mit
 // problems.window aus gibt es weder Menüeintrag noch Fenster. Nur im
 // Hauptthread verwenden.
 
@@ -100,13 +103,10 @@ implementation
 uses
   System.Classes,
   System.Math,
-  System.IOUtils,
-  System.DateUtils,
   System.Generics.Collections,
   Vcl.ExtCtrls,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
-  Atlas.Core.Files.TextFile,
   Atlas.Core.Problems.Explanation,
   Atlas.Core.Problems.Store,
   Atlas.Core.Settings.Plugin,
@@ -119,6 +119,7 @@ uses
   Atlas.IDE.Problems.Controller,
   Atlas.IDE.Problems.RuleActions,
   Atlas.IDE.Problems.Window,
+  Atlas.IDE.Problems.Files,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Settings.Project,
@@ -203,44 +204,6 @@ begin
   end;
 end;
 
-function ProjectFiles: TArray<string>;
-var
-  Modules: IOTAModuleServices;
-  Project: IOTAProject;
-  Index: Integer;
-  Info: IOTAModuleInfo;
-  Main: string;
-  Mains: array[0..1] of string;
-begin
-  Result := nil;
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
-  begin
-    Exit;
-  end;
-  Project := Modules.GetActiveProject;
-  if Project = nil then
-  begin
-    Exit;
-  end;
-  Mains[0] := ChangeFileExt(Project.FileName, '.dpr');
-  Mains[1] := ChangeFileExt(Project.FileName, '.dpk');
-  for Main in Mains do
-  begin
-    if TFile.Exists(Main) then
-    begin
-      Result := Result + [Main];
-    end;
-  end;
-  for Index := 0 to Project.GetModuleCount - 1 do
-  begin
-    Info := Project.GetModule(Index);
-    if (Info <> nil) and SameText(ExtractFileExt(Info.FileName), '.pas') then
-    begin
-      Result := Result + [Info.FileName];
-    end;
-  end;
-end;
-
 /// <summary>Alle in der IDE geöffneten Module (#1108), auch Projektdateien und Includes.</summary>
 function OpenFiles: TArray<string>;
 var
@@ -268,22 +231,6 @@ begin
   TAtlasFindings.TryParseClosedUnits(AText, Result);
 end;
 
-/// <summary>Zeilen einer ungeöffneten Datei von der Platte; nur für Dateien mit neuem Stand im Speicher.</summary>
-function DiskLines(const AFileName: string): TArray<string>;
-begin
-  Result := nil;
-  try
-    if TFile.Exists(AFileName) then
-    begin
-      Result := TAtlasTextFile.Load(AFileName).Text.Split([#13#10, #10]);
-    end;
-  except
-    // Gesperrt, gelöscht oder binär: Die Spalte „Zeile“ bleibt leer, das Fenster läuft weiter.
-    on Exception do
-      Result := nil;
-  end;
-end;
-
 function ScopeOf(const AText: string): TAtlasFindingScope;
 begin
   TAtlasFindings.TryParseScope(AText, Result);
@@ -305,10 +252,16 @@ begin
   end;
   Next := TAtlasIdeSettings.Stored;
   Next.ProblemsWindowScope := TAtlasFindings.ScopeNames[AFrame.Scope];
+  // Das Einzelprojekt (#1843) bleibt gemerkt, solange ein anderer Bereich gilt.
+  if AFrame.Scope = TAtlasFindingScope.Project then
+  begin
+    Next.ProblemsWindowScopeProject := AFrame.ScopeProject;
+  end;
   Next.ProblemsWindowGroupBy := TAtlasFindings.GroupingNames[AFrame.Grouping];
   Next.ProblemsWindowColumns := AFrame.ColumnsText;
   Next.ProblemsWindowOpenFirst := AFrame.OpenFirst;
   if (Next.ProblemsWindowScope = TAtlasIdeSettings.Stored.ProblemsWindowScope) and
+    (Next.ProblemsWindowScopeProject = TAtlasIdeSettings.Stored.ProblemsWindowScopeProject) and
     (Next.ProblemsWindowGroupBy = TAtlasIdeSettings.Stored.ProblemsWindowGroupBy) and
     (Next.ProblemsWindowColumns = TAtlasIdeSettings.Stored.ProblemsWindowColumns) and
     (Next.ProblemsWindowOpenFirst = TAtlasIdeSettings.Stored.ProblemsWindowOpenFirst) then
@@ -332,16 +285,25 @@ type
   end;
 
 function GatherInputs(AFrame: TAtlasProblemsFrame; AStore: TAtlasProblemStore): TRefreshInputs;
+var
+  mFilesKey: string;
 begin
   Result := Default(TRefreshInputs);
   Result.Current := TopFile(Result.Line);
+  // Projekte der Gruppe für die Bereichsliste (#1843); fehlt das gewählte Einzelprojekt, gilt danach das aktive.
+  AFrame.SetScopeProjects(TAtlasIdeProblemFiles.Projects);
   if AFrame.Scope <> TAtlasFindingScope.CurrentFile then
   begin
-    Result.Project := ProjectFiles;
+    Result.Project := TAtlasIdeProblemFiles.FilesOf(AFrame.ScopeProject);
   end;
   if AFrame.Scope = TAtlasFindingScope.Project then
   begin
     Result.Files := Result.Project;
+  end;
+  mFilesKey := string.Join(';', Result.Files);
+  if AFrame.Scope = TAtlasFindingScope.Group then
+  begin
+    Result.Files := TAtlasIdeProblemFiles.GroupFiles(mFilesKey);
   end;
   // Offene Units zuerst (#1108): geöffnete Module gehören zu den Eingaben; die Modulliste ist billig.
   if AFrame.OpenFirst then
@@ -351,7 +313,7 @@ begin
   // Zeigt der Editor das Formular, gilt die Unit: Hat der Server die .pas schon geliefert?
   Result.Checked := (AStore <> nil) and (Result.Current <> '') and (AStore.Contains(Result.Current) or
     AStore.Contains(ChangeFileExt(Result.Current, '.pas')));
-  Result.Key := Ord(AFrame.Scope).ToString + '|' + Result.Current + '|' + string.Join(';', Result.Files) + '|' +
+  Result.Key := Ord(AFrame.Scope).ToString + '|' + Result.Current + '|' + mFilesKey + '|' +
     string.Join(';', Result.Opened) + '|' + BoolToStr(Result.Checked, True);
 end;
 
@@ -383,7 +345,7 @@ begin
   mReadLines :=
     function(AFileName: string): TArray<string>
     begin
-      Result := DiskLines(AFileName);
+      Result := TAtlasIdeProblemFiles.DiskLines(AFileName);
     end;
   // Neue Version des Speichers heißt oft nur: eine andere Datei hat neue Befunde. Liste und Ansicht
   // nur neu aufbauen, wenn sich an den gezeigten Dateien etwas geändert hat.
@@ -566,6 +528,7 @@ begin
   AFrame.ShowCompilerCode := Settings.ProblemsShowCompilerCode;
   AFrame.ApplySettings(ScopeOf(Settings.ProblemsWindowScope), GroupingOf(Settings.ProblemsWindowGroupBy),
     Settings.ProblemsWindowColumns, Settings.ProblemsWindowCompiler);
+  AFrame.ApplyScopeSettings(Settings.ProblemsWindowScopeProjects, Settings.ProblemsWindowScopeProject);
   AFrame.ApplyTierSettings(Settings.ProblemsWindowOpenFirst, ClosedUnitsOf(Settings.ProblemsWindowClosedUnits),
     Settings.ProblemsWindowShowCleanActive);
 end;
@@ -776,7 +739,7 @@ begin
   end;
   if (ProgressAt = 0) or (TThread.GetTickCount64 - ProgressAt >= RefreshMs) then
   begin
-    ProgressFiles := ProjectFiles;
+    ProgressFiles := TAtlasIdeProblemFiles.ActiveFiles;
     ProgressAt := TThread.GetTickCount64;
   end;
   ATotal := Length(ProgressFiles);
@@ -823,6 +786,7 @@ begin
   FreeAndNil(State);
   ProgressFiles := nil;
   ProgressAt := 0;
+  TAtlasIdeProblemFiles.Release;
 end;
 
 class procedure TAtlasIdeProblems.ApplySettings;
@@ -841,6 +805,7 @@ begin
     Frame.ShowCompilerCode := Settings.ProblemsShowCompilerCode;
     Frame.ApplySettings(ScopeOf(Settings.ProblemsWindowScope), GroupingOf(Settings.ProblemsWindowGroupBy),
       Settings.ProblemsWindowColumns, Settings.ProblemsWindowCompiler);
+    Frame.ApplyScopeSettings(Settings.ProblemsWindowScopeProjects, Settings.ProblemsWindowScopeProject);
     Frame.ApplyTierSettings(Settings.ProblemsWindowOpenFirst, ClosedUnitsOf(Settings.ProblemsWindowClosedUnits),
       Settings.ProblemsWindowShowCleanActive);
     Refresh(True);

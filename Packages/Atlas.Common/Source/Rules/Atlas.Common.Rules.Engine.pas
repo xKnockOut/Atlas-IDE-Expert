@@ -823,6 +823,7 @@ begin
   Result.NoAccessorEqualityCheck := not FSettings.Refactoring.InlineAccessorEqualityCheck;
   Result.AccessorsProtected := FSettings.Completion.AccessorSection = TCompletionAccessorSection.Protected;
   Result.Formatting := FSettings.Formatting;
+  Result.ClassCompletion := FSettings.ClassCompletion;
   Result.KeepAttributes := FSettings.DeadCodeKeepAttributes;
   Result.KeepPatterns := FSettings.DeadCodeKeepPatterns;
   Result.NoUsesCycleLive := not FSettings.DiagnosticsUsesCycleLive;

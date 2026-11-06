@@ -1146,6 +1146,7 @@ begin
   Assert.AreEqual('both', ASettings.ProblemsCompilerMerge);
   Assert.IsFalse(ASettings.ProblemsShowCompilerCode);
   Assert.AreEqual('file', ASettings.ProblemsWindowScope);
+  Assert.IsFalse(ASettings.ProblemsWindowScopeProjects, 'Einzelprojekte (#1843) gespeichert');
   Assert.AreEqual('rule', ASettings.ProblemsWindowGroupBy);
   Assert.IsTrue(ASettings.ProblemsWindowCompiler);
   Assert.AreEqual('save', ASettings.ProblemsUpdate, 'Aktualisierung gespeichert');
@@ -1183,6 +1184,8 @@ begin
     Page.Part<TAtlasSettingsRulesPart>.ProblemsLiveDelayEdit.Text := '800';
     Assert.IsFalse(CheckOf(Page, 'HoverProblemActions').Checked, 'Hover-Aktionen geladen');
     Page.Part<TAtlasSettingsRulesPart>.ProblemsWindowScopeChoice.Choice := 0;
+    Assert.IsTrue(CheckOf(Page, 'ProblemsWindowScopeProjects').Checked, 'Einzelprojekte (#1843) geladen');
+    CheckOf(Page, 'ProblemsWindowScopeProjects').Checked := False;
     CheckOf(Page, 'ProblemsWindowCompiler').Checked := True;
     // Gruppe „Compiler vorab“ (#1024): eigener Knoten mit den Plugin-Einstellungen der Gruppe.
     Assert.AreEqual(0, Page.Part<TAtlasSettingsRulesPart>.ProblemsCompilerMergeChoice.Choice);

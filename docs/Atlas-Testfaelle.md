@@ -3271,6 +3271,7 @@ Vorbereitung: Projektgruppe mit zwei Projekten; in Projekt A die Units `Kunden.p
 | ER18 | `search.multiFile` aus | Bereiche nur Methode, Unit, Auswahl; offenes Fenster „Atlas-Suche: Ersetzen“ verschwindet |
 | ER19 | Wie ER11, Fenster „Atlas-Suche: Ersetzen“ angedockt und frei schwebend, bei 100 % und 150 % Skalierung | Unter der fetten Kopfzeile eine Zeile mit Hinweis links und Knopf „Ausgewählte ersetzen“ rechts in voller Höhe, Beschriftung lesbar; der Knopf bleibt beim Verkleinern des Fensters sichtbar |
 | ER20 | Wie ER12, danach den Knopf ansehen | Hinweis „n Ersetzungen in m Dateien“ links neben dem Knopf, Knopf sichtbar (ausgegraut, bis die neue Suche Treffer hat), Kopfzeile „Keine Suche über Dateien.“ bzw. die neuen Treffer |
+| ER21 | Wie ER11, aber ohne `.*`: Suchen `free`, Ersetzen `Destroy`, „Auswählen …“ | Spalte „Vorher → nachher“ in jeder Trefferzeile gefüllt, z. B. „Free → Destroy“ (gefundener Text in seiner Schreibweise); mit `.*` wie bisher mit eingesetzten Gruppen |
 
 ## Projektaufgaben aus atlas.json (#900)
 
@@ -9628,6 +9629,18 @@ Vorbereitung: Win32-Plugin mit den Modulen Build-Werkzeuge, Build-Pipeline und T
 | BN3 | Helles Design, wie BN1 | Kräftige Füllung mit dunklem Rand; „!“ auf Gelb dunkel, „×“ auf Rot weiß; Info-Einträge blau |
 | BN4 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasNotificationsWindowTests` grün |
 
+## Einträge in den Hauptthread verfallen mit ihrem Modul (05.11.2026)
+
+Anlass: Zugriffsverletzung 06:31:15 in `Atlas.Core.Diagnostics.MainThread` (Zeile 129, `Proc()` in `Guarded`), aus einem Eintrag eines Moduls, das entladen wurde, während der Eintrag wartete. Geprüft wird mit einem eigenen Registry-Profil (`bds -r <Name>`).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| HE1 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasMainThreadTests` (u. a. `CloseModuleDropsWaitingAndLaterEntries`, `ModuleUnloadedDropsButStaysOpen`, `CloseModuleDropsEntriesOfWorker`, `StopEmptiesPendingList`) und `TModuleRegistryTests.UnregisterDropsQueuedEntriesOfModule` grün, keine Leckmeldung |
+| HE2 | Win32- und Win64-Plugin bauen | 0/0/0; insbesondere keine Meldung zu `AddModuleUnloadProc(AtlasMainThreadModuleUnload)` und `FindHInstance` in `Atlas.Core.Diagnostics.MainThread` |
+| HE3 | IDE mit allen Modulen, Projekt öffnen, Willkommensseite und Atlas-Issue offen; in *Komponente › Packages installieren* das Package `Atlas.IDE.Tracker` abwählen (entladen), dann `Atlas.IDE.Welcome` | Kein Absturz, auch nicht in den Sekunden danach; im `atlas.log` gegebenenfalls „Atlas: dropped N queued main thread entries of module $…“ |
+| HE4 | Wie HE3, während eine Prüfung oder ein Tracker-Abruf läuft (viele Einträge unterwegs) | Kein Absturz; IDE bleibt bedienbar |
+| HE5 | Nach HE3 die Packages wieder anhaken (laden) | Module melden sich an und arbeiten normal (Willkommensseite aktualisiert sich, Tracker-Vorschau lädt) |
+| HE6 | IDE mehrmals normal beenden, auch mit laufender Prüfung | Kein Absturz beim Beenden; „Atlas entladen“ im Protokoll ohne Fehler im Schritt MainThread |
 ## Fehlalarme von vier Prüfregeln (method-without-self, handle-leak, field-not-freed, unused-suppression)
 
 Vorbereitung: Plugin und Server mit diesem Stand gebaut; Testprojekt mit eigener `atlas.json`, darin `"rules": {"method-without-self": "hint"}`. Fenster „Atlas-Prüfung“ offen.
@@ -9698,3 +9711,149 @@ Trifft „nächsten Block zuklappen“ an der Kopfzeile einer Region einen ander
 | UAL4 | Unit mit `uses WinTypes;`, aus der nichts verwendet wird | `unused-uses` blendet `WinTypes` ab; mit `TRect` im Code bleibt es normal |
 | UAL5 | In den Projektoptionen unter „Unit-Aliase“ `Alt=System.SysUtils` eintragen, speichern, Projekt neu laden, `uses Alt;` und `IntToStr(1)` schreiben | Kein `uses-unit-not-found`, `IntToStr` löst sich auf; ohne den Eintrag meldet Atlas wie dcc F2613 |
 | UAL6 | `uses DbiTypes;` in einem Projekt ohne BDE | Atlas meldet `uses-unit-not-found` wie dcc (Ziel-Unit BDE fehlt) |
+
+## Sprache der Serverbefunde ohne `language` (#1458, #446)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| SPB1 | `"language"` aus `%APPDATA%\Atlas\settings.json` entfernen, IDE auf Deutsch starten | In `atlas.log` die Zeile „Sprache der Oberfläche: de (…)“ mit Quelle (Ressourcen, Registry Locales, Windows oder Vorgabe) und „initialize mit locale de“; Befunde im Editor und im Fenster „Atlas-Prüfung“ deutsch (**Abnahme**) |
+| SPB2 | Wie SPB1, IDE mit BDSSetLang auf Englisch umstellen, neu starten | Zeile „Sprache der Oberfläche: en (…)“, „initialize mit locale en“; Atlas-Menü und Befunde englisch |
+| SPB3 | Wie SPB1, falls die Zeile „en“ zeigt, obwohl die IDE deutsch ist: Zeile und den Wert unter `HKCU\Software\Embarcadero\Locales` für bds.exe melden | Ursache der Fehlerkennung nachvollziehbar |
+| SPB4 | Tools › Optionen › Atlas › Server: „Index-Cache löschen“ in deutscher IDE ohne `language` | Antwort des Werkzeugs deutsch (Aufruf mit `--locale de`) |
+| SPB5 | `"language": "en"` in settings.json, deutsche IDE | Befunde englisch, Oberfläche des Plugins bleibt deutsch |
+| SPB6 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasIdeLanguageTests` und `TAtlasTextLanguageTests` grün |
+
+## Einrückung beim Tippen (#1827, #1828, #1829, #1831, #1832)
+
+Vorbereitung: Plugin und AtlasServer mit diesem Stand gebaut, Blockeinrückung der IDE 2 (Tools › Optionen › Editor › Sprache › Delphi › Blockeinrückung), keine `.editorconfig`, `smartIndent` in den Einstellungen unverändert. Neue Unit `Einrueckung.pas` mit einer leeren Methode `procedure TForm1.Test;` / `begin` / `end;`. Nach jedem Enter kurz warten (die Antwort kommt im Hintergrund).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ET1 | Schreibmarke hinter `begin`, Enter | Marke in Spalte 3 (eine Ebene tiefer), wie bisher; nichts springt (**Abnahme**) |
+| ET2 | `if A then` tippen, Enter | Marke zwei Ebenen tief (Spalte 5) |
+| ET3 | Wie ET2, `B;` tippen, Enter | Marke zurück auf Spalte 3 (unter `if`), nicht unter `B;` (**Abnahme**) |
+| ET4 | `case A of` / Enter / `1:` Enter | Nach `case A of` Spalte 5, nach `1:` Spalte 7 |
+| ET5 | `Foo(A,` tippen, Enter | Marke unter `A` (ausgerichtet an der offenen Klammer) |
+| ET6 | `X := A +` tippen, Enter | Marke eine Ebene tiefer als `X` (Fortsetzung) |
+| ET7 | Im Block `if A then begin` / `  B;` die Zeile `    end` absichtlich zu weit eingerückt tippen, Enter | `end` springt unter `if`, die neue Zeile ebenfalls (**Abnahme**) |
+| ET8 | `try` / `B;` / `finally` (zu weit eingerückt), Enter | `finally` steht unter `try`, die neue Zeile eine Ebene tiefer |
+| ET9 | Nach ET7 einmal Strg+Z | Nur die Einrückung ist zurückgenommen, der Zeilenumbruch bleibt |
+| ET10 | `S := 'Hallo Welt';` tippen, Schreibmarke zwischen `Hallo ` und `Welt`, Enter | Zeile 1: `S := 'Hallo ' +`, neue Zeile eine Ebene tiefer `'Welt';`, Marke hinter dem Anführungszeichen; übersetzt ohne E2052 (**Abnahme**) |
+| ET11 | `smartIndent.splitStringsIndent` auf `align`, ET10 wiederholen; dann in `ShowMessage('Hallo Welt');` | Neue Zeile beginnt unter `'Hallo` (dem ersten Wert hinter `:=`) bzw. unter dem ersten Argument hinter `(` |
+| ET12 | Datei mit 4 Leerzeichen je Ebene (Stil sagt 2), hinter `if A then` Enter | Marke 4 Spalten tiefer als `if` (Atlas folgt der Datei) |
+| ET13 | In `{ Kommentar` Enter; über `//`-Kommentar Enter (Kommentar fortsetzen an); unter einer Zeile `/uses` Enter | Kommentar: Atlas rückt nicht ein; `//` wird wie bisher fortgesetzt; Schnellbefehl wie bisher |
+| ET14 | Schnell tippen: Enter und sofort weiterschreiben | Nichts springt nachträglich; die Antwort verfällt |
+| ET15 | Atlas-Einstellungen (settings.json), Seite *Eingabehilfen*, Abschnitt `smartIndent`: `enabled` aus; dann nur `outdentClosers` aus; dann nur `splitStrings` aus; dann nur `afterEnter` aus | `enabled` aus: IDE wie ohne Atlas. `outdentClosers` aus: `end` bleibt stehen. `splitStrings` aus: ET10 lässt einen offenen String (wie ohne Atlas). `afterEnter` aus: nur noch Schlusswörter und Strings. Seite und Beschreibungen auch auf Englisch („Typing aids“) |
+| ET16 | `editor.smartPaste` = `indent`, nach `if A then B;` am Zeilenanfang einen zweizeiligen Block einfügen (Strg+V); dann ohne laufenden Server | Mit Server: erste Zeile unter `if`, die zweite behält ihren Abstand; ein eigener Rückgängig-Schritt. Ohne Server: Heuristik wie bisher (Ebene der Zeile darüber) |
+| ET17 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TSmartIndentTests`, `TLspSmartIndentTests`, `TAtlasSmartIndentTests`, `TAtlasSmartPasteTests.ReindentUsesServerColumn`, `TBlockIndenterTests.ReportsLineInfo`, `TConfigurationParserTests.ReadsSmartIndent` grün |
+
+## Hänger aus der Diagnose vom 06.11.2026 (Hauptthread)
+
+Vorbereitung: Plugin mit diesem Stand gebaut, Diagnosemodus an (Plugin-Zeiten an, Schwelle 16 ms), Server läuft und ist beschäftigt (z. B. direkt nach dem Öffnen einer großen Projektgruppe, während „Index …“ läuft).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| HB1 | In einer Unit `/try` tippen, Enter | Gerüst erscheint wie bisher; die IDE friert dabei nicht ein (kein Hänger im Reiter *Hänger*), Reiter *Server*: `textDocument/onTypeFormatting` mit „Hauptthread gewartet“ 0 (**Abnahme**) |
+| HB2 | Über einer Methodendeklaration `///` tippen | ///-Gerüst mit Platzhaltern wie bisher, Tab springt weiter |
+| HB3 | `/try`, Enter und sofort weitertippen | Nichts wird nachträglich eingesetzt; der getippte Text bleibt unverändert |
+| HB4 | Code Lens „→ Testunit …“ über `unit …;` anklicken | Testunit öffnet sich; die IDE bleibt bedienbar, bis sie offen ist; `atlas.server.testUnit` mit „Hauptthread gewartet“ 0 (**Abnahme**) |
+| HB5 | Zur Testunit wechseln, wenn es noch keine gibt (Befehl oder Lens) | Testunit wird angelegt, ins Testprojekt eingetragen und geöffnet, wie bisher |
+| HB6 | Einen Atlas-Dialog (z. B. Issue anlegen, Atlas-Einstellungen) 20 s offen lassen, dann schließen; Reiter *Hauptthread* ansehen | Die Funktion zeigt keine 20 s Maximum, die Belegung steigt nicht; Aufrufe im Dialog stehen für sich (**Abnahme**) |
+| HB7 | Einen Befehl auslösen, der noch auf den Server wartet (z. B. Units suchen öffnen), dann *Langsame Aufrufe* ansehen | In der Spalte *Aktion* steht die Anfrage, z. B. `workspace/executeCommand atlas.server.units` |
+| HB8 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasEditorCommandsTests.SlashAnswerOnlyForUnchangedText`, `TAtlasPluginTimingsTests.ModalDialogIsNotOwnTime` grün |
+
+## Prüffenster: einzelne Projekte der Gruppe (#1843)
+
+Vorbereitung: Plugin mit diesem Stand gebaut, Fenster „Atlas-Prüfung“ (Strg+Alt+P), Projektgruppe mit mindestens drei Projekten, deren Units Befunde haben.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| PEP1 | Projektgruppe mit drei Projekten (z. B. `Atlas.groupproj`) öffnen, Fenster „Atlas-Prüfung“ zeigen, Bereichsliste aufklappen | „Aktuelle Datei“, „Aktuelles Projekt“, „Projektgruppe“, darunter ein Trennstrich (Linie, kein Text) und die drei Projekte in der Reihenfolge des Projektmanagers; das aktive mit „(aktiv)“. Die Klappliste ist breit genug für den längsten Namen; Zeilen nicht abgeschnitten, auch bei 150 % Skalierung (**Abnahme**) |
+| PEP2 | Auf den Trennstrich klicken; mit ↑/↓ über ihn hinweg gehen | Die vorige Wahl bleibt bzw. die Liste springt nicht auf eine leere Wahl; die Befunde ändern sich nicht |
+| PEP3 | Ein nicht aktives Projekt wählen | Nur Befunde aus Units dieses Projekts; Statuszeile „a von b Units geprüft“ zählt dieses Projekt; das aktive Projekt im Projektmanager bleibt unverändert (**Abnahme**) |
+| PEP4 | Nach PEP3 im Projektmanager ein anderes Projekt aktivieren | Das gewählte Projekt bleibt im Fenster; nur die Markierung „(aktiv)“ wandert |
+| PEP5 | Nach PEP3 die IDE schließen und neu starten, Gruppe öffnen, Fenster zeigen | Das Projekt aus PEP3 ist wieder gewählt (`problems.window.scopeProject`) |
+| PEP6 | Nach PEP3 das gewählte Projekt aus der Gruppe entfernen (oder eine andere Gruppe öffnen) | Die Liste zeigt „Aktuelles Projekt“, die Befunde des aktiven Projekts; nach Neustart ebenso |
+| PEP7 | „Projektgruppe“ wählen; eine Unit öffnen, die zu keinem Projekt der Gruppe gehört (z. B. aus der RTL oder einem fremden Ordner), mit Befunden | Ihre Befunde stehen nicht in der Liste (vorher ja); Befunde aller Units der Gruppe stehen da, Units in mehreren Projekten nur einmal |
+| PEP8 | Nur ein einzelnes Projekt ohne Gruppe öffnen bzw. eine Gruppe mit nur einem Projekt | Kein Trennstrich, nur die drei festen Einträge |
+| PEP9 | Optionen › Atlas › Prüfregeln › Prüffenster: „Einzelne Projekte der Gruppe in der Bereichsliste des Fensters“ ausschalten | Liste nur mit den drei festen Einträgen; war ein Einzelprojekt gewählt, gilt „Aktuelles Projekt“. Wieder an: Projekte erscheinen sofort |
+| PEP10 | Oberfläche auf Englisch; danach `Atlas.Tests` bauen und ausführen | „Current file“, „Current project“, „Project group“, Projekte mit „(active)“, Kontrollkästchen „Individual projects of the group in the window's scope list“. Tests: 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasScopeProjectsTests`, `TAtlasProblemsFrameTests.ScopeListOffersGroupProjects`, `TAtlasPluginSettingsTests.ProblemsWindowOptions`, `TAtlasSettingsPageTests.RulesAreaWindowSettings` grün |
+
+Wer das Dropdown nach einem Andocken oder Themenwechsel mit leeren oder doppelten Einträgen sieht (PEP1), bitte melden.
+
+## Klassenvervollständigung: Typkommentar, Reihenfolge, Vorbefüllung (#1834, #1835, #1836, #1837, #1838)
+
+Vorbereitung: Plugin und AtlasServer mit diesem Stand gebaut, Einstellungen unverändert (`classCompletion.typeComment` = `brace`, `lifecycleFirst` und `bodyStubs` an, `editor.methodPlacement` = `grouped`). Neue Unit `Fenster.pas`:
+
+```pascal
+unit Fenster;
+
+interface
+
+uses
+  System.Classes;
+
+type
+  /// <summary>Hauptfenster der Anwendung.</summary>
+  TFenster = class(TComponent)
+  private
+    FName: string;
+    procedure Zeichnen;
+    function GetName: string;
+    procedure SetName(const AValue: string);
+  protected
+    procedure Loaded; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    property Name: string read GetName write SetName;
+  end;
+
+implementation
+
+end.
+```
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| KK1 | Schreibmarke auf `TFenster = class`, Glühbirne › „6 fehlende Methodenrümpfe für TFenster erzeugen“ | Über den Rümpfen steht `{ TFenster }` mit einer Leerzeile danach (**Abnahme**) |
+| KK2 | Rückgängig, IDE-Klassenvervollständigung Strg+Umschalt+C | Die IDE legt `{ TFenster }` an; Atlas legt keinen zweiten Kommentar an |
+| KK3 | `classCompletion.typeComment` auf `line`, KK1 wiederholen | Drei Zeilen `//----…` / `// TFenster` / `//----…`, Breite nach `format.maxLineLength` bzw. 80 |
+| KK4 | `typeComment` auf `summary`, KK1 wiederholen | `{ TFenster: Hauptfenster der Anwendung. }`; ohne `<summary>` über der Klasse wie `brace` |
+| KK5 | `typeComment` auf `region`, KK1 wiederholen | `{$REGION 'TFenster'}` vor dem ersten und `{$ENDREGION}` hinter dem letzten Rumpf; die Region lässt sich falten |
+| KK6 | `typeComment` auf `off`, KK1 wiederholen | Kein Kommentar, Rümpfe wie bisher (**Abnahme**) |
+| KK7 | Zweite Klasse `TLeiste` unter `TFenster` deklarieren, ihre Rümpfe mit Kommentar oben in die implementation verschieben, „implementation wie Klasse ordnen“ | `{ TLeiste }` wandert mit den Rümpfen von TLeiste hinter TFenster; Vorschau zeigt die Bewegungen |
+| KK8 | Wie KK7 mit `region` | Region samt Inhalt wandert mit; Rümpfe in der Region bleiben nicht mehr stehen |
+| KK9 | Einstellungsseite Eingabehilfen, Abschnitt `classCompletion` auf Deutsch und Englisch | Auswahl brace/line/summary/region/off und zwei Schalter mit Beschreibung; englisch „Class completion …“ |
+| MRG1 | KK1 | Reihenfolge Create, Destroy, GetName, SetName, Loaded, Zeichnen (**Abnahme**) |
+| MRG2 | Rümpfe von Hand in Deklarationsreihenfolge bringen, „implementation wie Klasse ordnen“ | Vorschau verschiebt Create und Destroy nach oben, GetName/SetName dahinter; Ordnen ein Rückgängig-Schritt |
+| MRG3 | Optionen › Atlas › Editor: „Methodenrümpfe ordnen“ zeigt „gruppiert, Konstruktor zuerst“ als Vorgabe; auf „wie die Deklaration“ stellen, MRG2 | Create und Destroy stehen trotzdem oben (`lifecycleFirst`), danach Zeichnen, GetName, SetName, Loaded |
+| MRG4 | `classCompletion.lifecycleFirst` aus, MRG3 | Streng wie deklariert: Zeichnen, GetName, SetName, Loaded, Create, Destroy |
+| MRG5 | Neue Methode `procedure Laden;` unter `public` ergänzen, Strg+Umschalt+C | Rumpf landet hinter Zeichnen (Gruppe „übrige“), nicht vor Create |
+| MRG6 | Englische IDE: Optionsseite | „grouped, constructors first“ in der Auswahl |
+| RV1 | KK1, Rümpfe ansehen | `Create`: `inherited Create(AOwner);`, `Destroy`: Leerzeile, dann `inherited;`, `GetName`: `Result := FName;`, `SetName`: `FName := AValue;`, `Loaded`: `inherited Loaded;`, `Zeichnen` leer (**Abnahme**) |
+| RV2 | Feld `FName` in `FText` umbenennen, Rümpfe löschen, KK1 | Getter und Setter leer (kein Feld F<Name>) |
+| RV3 | `function Wert(A, B: Integer): Integer; override;` ergänzen, Rumpf erzeugen | `Result := inherited Wert(A, B);` |
+| RV4 | Klasse ohne Vorfahren (`class`), `constructor Create;` | Rumpf leer (kein `inherited` bei TObject) |
+| RV5 | `classCompletion.bodyStubs` aus, KK1 | Alle Rümpfe leer wie bisher |
+| RV6 | Unit übersetzen nach RV1 | Übersetzt ohne Fehler und Warnungen |
+| KU1 | Nach KK1 `TFenster` umbenennen (Umbenennen-Dialog) in `TMainWindow` | Vorschau nennt die Zeile `{ TFenster }  →  { TMainWindow }`; danach steht `{ TMainWindow }` über den Rümpfen (**Abnahme**) |
+| KU2 | Kommentar `// TFenster ist hier gemeint` über einer freien Routine, KU1 | Dieser Kommentar bleibt unverändert |
+| KU3 | „Klasse in eigene Unit verschieben“ auf `TFenster` | Neue Unit enthält `{ TFenster }` vor den Rümpfen; in der alten Unit bleibt kein `{ TFenster }` zurück |
+| KU4 | `classCompletion.typeComment` auf `off`, KU1 und KU3 | Kommentar bleibt wie bisher stehen (Umbenennen ändert ihn nicht, Verschieben lässt ihn zurück) |
+| KK10 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TTypeCommentsTests`, `TClassBodiesTests`, `TClassCompletionTests`, `TMethodOrderTests`, `TMoveClassTests.MovesTypeComment`, `TLspRenameTests.RenamesTypeComments`, `TConfigurationParserTests.ReadsClassCompletion`, `TAtlasEditingSettingsTests.MethodPlacementOptions` grün |
+
+## Published-Mitglieder im Hover scrollen (#1841)
+
+Vorbereitung: Plugin mit diesem Stand gebaut, `hover.membersMaxLines` unverändert (15). Eine Unit mit `uses Vcl.Forms, Vcl.StdCtrls;` und `var F: TForm; B: TButton;`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| HMS1 | Maus über `TForm`, im Hover bei PROPERTIES „+ n weitere Properties“ klicken | Der Hinweis bleibt im Bildschirm; die Tabelle zeigt 15 Zeilen, rechts ein schmaler Daumen; Zusammenfassung, Schalter und Aktionsleiste stehen fest (**Abnahme**) |
+| HMS2 | Wie HMS1, Mausrad über der Tabelle nach unten bis zum Ende | Je Stufe drei Zeilen; am Ende stehen EREIGNISSE und ihre letzte Zeile, der Daumen unten; nichts ragt über die Linie darüber oder in die Aktionsleiste (**Abnahme**) |
+| HMS3 | Bei HMS2 „+ n weitere Ereignisse“ bzw. den Titel EREIGNISSE ▾ anklicken, wenn sichtbar | Klick wirkt; der Bereich bleibt an seiner Stelle bzw. springt höchstens an das neue Ende |
+| HMS4 | Mausrad über der XMLDoc eines Typs mit langer Doku und vielen Mitgliedern | Die Doku scrollt, die Mitglieder nicht; über den Mitgliedern scrollen nur diese |
+| HMS5 | Hover nahe am unteren Bildschirmrand, Mitglieder aufklappen | Der Hinweis wächst nach oben und bleibt ganz sichtbar; der Rollbereich ist höchstens so hoch wie der Platz |
+| HMS6 | Optionen › Atlas › Editor: „Mitglieder im Hover: höchstens Zeilen ohne Scrollen“ auf 5, dann auf 0 | 5: Tabelle fünf Zeilen hoch. 0: so hoch wie der Bildschirm zulässt, darunter kein Daumen |
+| HMS7 | IDE auf Englisch | Text der Option „Members in the hover: max. lines before scrolling (0 = screen)“ |
+| HMS8 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `THoverLayoutTests.PublishedMembersScroll`, `ScrolledMembersDropHiddenHits`, `TAtlasPluginSettingsTests.HoverMembersMaxLinesRoundTrip` grün |

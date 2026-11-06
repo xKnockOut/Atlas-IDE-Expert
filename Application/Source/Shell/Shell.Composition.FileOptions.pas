@@ -2,14 +2,17 @@
 
 // Internals-Rolle Shell: Vorgaben je Datei für Editor, Vervollständigung, Code-Aktionen und Refactorings. Delphi-
 // Version (#47) und Sprachstand (#1126), Schnellbefehle (#293), Doku-Kommentare (#88), Formatstil mit
-// .editorconfig (#43) und Präfixe neuer Namen der Namensregel.
+// .editorconfig (#43), Einrückung beim Tippen (#1827) und Präfixe neuer Namen der Namensregel.
 
 interface
 
 uses
+  System.JSON,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Editing.Contract,
+  Atlas.Common.Editing.SmartIndent,
+  Atlas.Common.Editing.MethodOrder,
   Shell.Composition.Workspaces,
   Shell.Composition.Settings;
 
@@ -19,6 +22,8 @@ type
   private
     FWorkspaces: TShellWorkspaceRegistry;
     FSettings: TShellSettings;
+    /// <summary>Formatstil mit den Editor-Optionen AEditorOptions (nil = keine) und .editorconfig.</summary>
+    function ResolvedFormatStyleWith(const AUri: string; const AEditorOptions: TJSONValue): TFormatStyle;
   public
     constructor Create(AWorkspaces: TShellWorkspaceRegistry; ASettings: TShellSettings);
     /// <summary>Tatsächlich gewählte Installation (#47), sonst die konfigurierte Version; '' ohne Arbeitsbereich.
@@ -39,6 +44,13 @@ type
     /// <summary>Formatstil mit .editorconfig, ohne Editor-Optionen (#43); für Schnellbefehle und try/finally.
     /// </summary>
     function ResolvedFormatStyleFor(const AUri: string): TFormatStyle;
+    /// <summary>Einrückung beim Tippen (#1827): "smartIndent" mit dem Formatstil samt Editor-Optionen; False, wenn
+    /// sie für die Datei aus ist.</summary>
+    function SmartIndentFor(const AUri: string; const AEditorOptions: TJSONValue;
+      out AOptions: TSmartIndentOptions): Boolean;
+    /// <summary>Methoden ordnen (#1834): Lebenszyklus zuerst und Form des Typkommentars aus "classCompletion",
+    /// Zeilenlänge aus dem Formatstil; die Ordnung selbst setzt der Befehl.</summary>
+    function MethodOrderFor(const AUri: string): TMethodOrderOptions;
     /// <summary>Präfixe neuer Namen für Refactorings: die der Namensregel, wenn sie für die Datei läuft (dieselbe
     /// Entscheidung wie in der Prüfung, TRuleEngine.NewNames).</summary>
     function NewNamesFor(const AUri: string): TPascalNamePrefixes;
@@ -55,6 +67,8 @@ uses
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Lsp.Formatting,
+  Atlas.Common.Lsp.SmartIndent,
+  Atlas.Common.Editing.TypeComments,
   Shell.Workspace;
 
 constructor TShellFileOptions.Create(AWorkspaces: TShellWorkspaceRegistry; ASettings: TShellSettings);
@@ -120,7 +134,30 @@ end;
 
 function TShellFileOptions.ResolvedFormatStyleFor(const AUri: string): TFormatStyle;
 begin
-  Result := TLspFormatting.Resolve(nil, TDocumentUris.ToPath(AUri), FormatStyleFor(AUri),
+  Result := ResolvedFormatStyleWith(AUri, nil);
+end;
+
+function TShellFileOptions.SmartIndentFor(const AUri: string; const AEditorOptions: TJSONValue;
+  out AOptions: TSmartIndentOptions): Boolean;
+begin
+  Result := TLspSmartIndent.OptionsFrom(FSettings.SettingsFor(AUri).SmartIndent,
+    ResolvedFormatStyleWith(AUri, AEditorOptions), AOptions);
+end;
+
+function TShellFileOptions.MethodOrderFor(const AUri: string): TMethodOrderOptions;
+var
+  mSettings: TClassCompletionSettings;
+begin
+  mSettings := FSettings.SettingsFor(AUri).ClassCompletion;
+  Result := TMethodOrderOptions.Create(TMethodPlacement.Grouped);
+  Result.LifecycleFirst := mSettings.LifecycleFirst;
+  Result.TypeComment := TTypeComments.StyleOf(mSettings.TypeComment);
+  Result.LineLength := FormatStyleFor(AUri).MaxLineLength;
+end;
+
+function TShellFileOptions.ResolvedFormatStyleWith(const AUri: string; const AEditorOptions: TJSONValue): TFormatStyle;
+begin
+  Result := TLspFormatting.Resolve(AEditorOptions, TDocumentUris.ToPath(AUri), FormatStyleFor(AUri),
     function(const AFileName: string; out AText: string): Boolean
     begin
       Result := FileExists(AFileName);

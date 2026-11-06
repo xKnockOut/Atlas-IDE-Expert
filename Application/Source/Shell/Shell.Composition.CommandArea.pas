@@ -86,6 +86,8 @@ uses
   System.JSON,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Editing.SmartIndent,
+  Atlas.Common.Editing.MethodOrder,
   Atlas.Common.Index.Scheduler,
   Shell.Composition.DfmPropertyRules;
 
@@ -244,6 +246,16 @@ begin
     function(const AUri: string; out AMultiline: Boolean): TStringLiteralSettings
     begin
       Result := mCore.Settings.StringLiteral(AUri, AMultiline);
+    end;
+  Result.SmartIndentFor :=
+    function(const AUri: string; const AEditorOptions: TJSONValue; out AOptions: TSmartIndentOptions): Boolean
+    begin
+      Result := mCore.FileOptions.SmartIndentFor(AUri, AEditorOptions, AOptions);
+    end;
+  Result.MethodOrderFor :=
+    function(const AUri: string): TMethodOrderOptions
+    begin
+      Result := mCore.FileOptions.MethodOrderFor(AUri);
     end;
 end;
 

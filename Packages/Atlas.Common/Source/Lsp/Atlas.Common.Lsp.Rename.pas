@@ -11,6 +11,8 @@
 // Geändert werden nur sichere Stellen (#1119) und solche in inaktiven Zweigen,
 // die eindeutig auf das Symbol auflösen. Die übrigen erschlossenen Stellen
 // nennt die Antwort im Feld atlasUnchanged, damit der Editor sie zum Prüfen zeigt.
+// Beim Umbenennen eines Typs wandert der Typkommentar über seinen Rümpfen
+// ({ TKunde }, // TKunde, {$REGION 'TKunde'}) mit (#1838).
 
 interface
 
@@ -51,11 +53,17 @@ type
     RenameHandlers: Boolean;
     /// <summary>Welche erschlossenen Stellen mit geändert werden (#1119).</summary>
     Settings: TReferenceSettings;
-    /// <summary>ANewName mit Handlern, ohne Abbruch, nur sichere Stellen.</summary>
+    /// <summary>Typkommentare über den Rümpfen mit umbenennen (#1838; aus mit classCompletion.typeComment = off).
+    /// </summary>
+    TypeComments: Boolean;
+    /// <summary>ANewName mit Handlern und Typkommentaren, ohne Abbruch, nur sichere Stellen.</summary>
     class function Create(const ANewName: string): TRenameRequest; overload; static;
     class function Create(const ANewName: string; ARenameHandlers: Boolean; const ASettings: TReferenceSettings;
       const ACancellation: IJsonRpcCancellationToken): TRenameRequest; overload; static;
   end;
+
+  /// <summary>Typkommentare beim Umbenennen anpassen (#1838) je Datei.</summary>
+  TRenameTypeCommentsFunc = reference to function(const AUri: string): Boolean;
 
   TLspRename = class
   public const
@@ -70,6 +78,7 @@ type
     FNamespaces: TArray<string>;
     FRenameHandlers: Boolean;
     FSettingsFor: TReferenceSettingsProvider;
+    FTypeCommentsFor: TRenameTypeCommentsFunc;
     function ProjectFiles: TArray<string>;
     function HandlePrepare(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function HandleRename(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
@@ -116,6 +125,8 @@ type
     property SettingsFor: TReferenceSettingsProvider read FSettingsFor write FSettingsFor;
     /// <summary>Handler wie Button1Click beim Umbenennen von Button1 anpassen (Standard True).</summary>
     property RenameHandlers: Boolean read FRenameHandlers write FRenameHandlers;
+    /// <summary>Typkommentare mit umbenennen (#1838); nicht gesetzt: ja.</summary>
+    property TypeCommentsFor: TRenameTypeCommentsFunc read FTypeCommentsFor write FTypeCommentsFor;
   end;
 
 implementation
@@ -137,6 +148,8 @@ uses
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Dfm.ComponentRename,
+  Atlas.Common.Editing.TypeComments,
+  Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -691,6 +704,31 @@ begin
   end;
 end;
 
+/// <summary>Ersetzungen des Typnamens in den Typkommentaren über den Rümpfen des umbenannten Typs (#1838); ohne
+/// solche Kommentare (auch bei Nicht-Typen) keine.</summary>
+function TypeCommentEdits(const AScope: TRenameScope; const AChecked: TRenameCheck): TArray<TRenameEdit>;
+var
+  mText: string;
+  mSpot: TTypeNameSpot;
+  mEdit: TRenameEdit;
+begin
+  Result := nil;
+  if not AScope.Request.TypeComments or not SameText(ExtractFileExt(AChecked.DeclarationFile), '.pas') or
+    not Assigned(AScope.Search.ReadText) or
+    not AScope.Search.ReadText(AChecked.DeclarationFile, mText) then
+  begin
+    Exit;
+  end;
+  for mSpot in TTypeComments.NameSpots(TTextLines.SplitLines(mText), AChecked.Name) do
+  begin
+    mEdit.FileName := AChecked.DeclarationFile;
+    mEdit.Range := TTextRange.Create(mSpot.Line, mSpot.Character, mSpot.Line,
+      mSpot.Character + Length(AChecked.Name));
+    mEdit.NewText := AScope.Request.NewName;
+    Result := Result + [mEdit];
+  end;
+end;
+
 /// <summary>EJsonRpcError, wenn eine Ersetzung ein binär gespeichertes Formular trifft (#121).</summary>
 procedure CheckTextForms(const AEdits: TArray<TRenameEdit>);
 var
@@ -721,6 +759,7 @@ begin
   Result.RenameHandlers := ARenameHandlers;
   Result.Settings := ASettings;
   Result.Cancellation := ACancellation;
+  Result.TypeComments := True;
 end;
 
 class function TLspRename.Edits(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
@@ -770,7 +809,7 @@ begin
   begin
     raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, mReason);
   end;
-  Result := LocationEdits(mLocations, ARequest.NewName);
+  Result := LocationEdits(mLocations, ARequest.NewName) + TypeCommentEdits(mScope, mChecked);
   if ARequest.RenameHandlers and Assigned(ASearch.ReadText) then
   begin
     Result := Result + HandlerEdits(mScope, mChecked);
@@ -905,6 +944,7 @@ var
   mResolver: TNameResolver;
   mFound: TArray<TRenameEdit>;
   mUnchanged: TArray<TReferenceLocation>;
+  mRequest: TRenameRequest;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPosition) and
@@ -923,9 +963,10 @@ begin
   mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
     mResolver.Namespaces := Namespaces;
+    mRequest := TRenameRequest.Create(Trim(mNewName), FRenameHandlers, SettingsOf(mUri), ACancellation);
+    mRequest.TypeComments := not Assigned(FTypeCommentsFor) or FTypeCommentsFor(mUri);
     mFound := Edits(mResolver, FIndex, mShared.Tree, TReferenceSearch.Create(TDocumentUris.ToPath(mUri),
-      TLspPositions.ReadPosition(mPosition), True, ProjectFiles, FReadText), TRenameRequest.Create(Trim(mNewName),
-      FRenameHandlers, SettingsOf(mUri), ACancellation), mUnchanged);
+      TLspPositions.ReadPosition(mPosition), True, ProjectFiles, FReadText), mRequest, mUnchanged);
   finally
     mResolver.Free;
   end;

@@ -384,13 +384,16 @@ var
   Store: IAtlasSettingsStore;
 begin
   Settings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual('grouped', Settings.MethodPlacement, 'Vorgabe gruppiert (#1834)');
+  Settings.MethodPlacement := 'Declaration';
+  Settings.Normalize;
   Assert.AreEqual('declaration', Settings.MethodPlacement);
   Settings.MethodPlacement := 'Alphabetical';
   Settings.Normalize;
   Assert.AreEqual('alphabetical', Settings.MethodPlacement);
   Settings.MethodPlacement := 'irgendwie';
   Settings.Normalize;
-  Assert.AreEqual('declaration', Settings.MethodPlacement, 'Unbekanntes wird zur Vorgabe');
+  Assert.AreEqual('grouped', Settings.MethodPlacement, 'Unbekanntes wird zur Vorgabe');
   Settings.MethodPlacement := 'off';
   Store := TMemoryStore.Create;
   Settings.Save(Store);

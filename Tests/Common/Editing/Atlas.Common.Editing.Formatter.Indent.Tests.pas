@@ -40,6 +40,10 @@ type
     procedure KeepsTokens;
     [Test]
     procedure IsSwitchable;
+    [Test]
+    procedure ReportsLineInfo;
+    [Test]
+    procedure MeasuresAndBuildsIndent;
   end;
 
 implementation
@@ -379,6 +383,37 @@ begin
   begin
     Assert.AreEqual(Before[Index].Text, After[Index].Text);
   end;
+end;
+
+procedure TBlockIndenterTests.ReportsLineInfo;
+var
+  mInfo: TArray<TIndentLineInfo>;
+begin
+  // Zeilen: 0 begin, 1 X := A +, 2 B;, 3 Y := 1;, 4 end;
+  mInfo := TBlockIndenter.Lines(TPascalLexer.Tokenize('begin' + LF + 'X := A +' + LF + 'B;' + LF + 'Y := 1;' + LF +
+    'end;'), [0, 0, 0, 0, 0], 2);
+  Assert.AreEqual(5, Integer(Length(mInfo)));
+  Assert.IsTrue(mInfo[1].Placed);
+  Assert.AreEqual(2, mInfo[1].Column);
+  Assert.IsFalse(mInfo[1].Continued);
+  Assert.IsTrue(mInfo[2].Continued, 'Fortsetzung');
+  Assert.AreEqual(1, mInfo[2].StatementLine);
+  Assert.IsFalse(mInfo[3].Continued);
+  Assert.AreEqual(2, mInfo[3].Column);
+  Assert.AreEqual(0, mInfo[4].Column);
+end;
+
+procedure TBlockIndenterTests.MeasuresAndBuildsIndent;
+var
+  mLength: Integer;
+begin
+  Assert.AreEqual(6, TBlockIndenter.LeadingColumns(#9'  X', 4, mLength));
+  Assert.AreEqual(3, mLength);
+  Assert.AreEqual(0, TBlockIndenter.LeadingColumns('X', 2, mLength));
+  Assert.AreEqual(0, mLength);
+  Assert.AreEqual('      ', TBlockIndenter.IndentText(6, 4, False));
+  Assert.AreEqual(#9'  ', TBlockIndenter.IndentText(6, 4, True));
+  Assert.AreEqual('', TBlockIndenter.IndentText(-2, 2, True));
 end;
 
 procedure TBlockIndenterTests.IsSwitchable;

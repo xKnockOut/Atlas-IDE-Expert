@@ -4,6 +4,12 @@
 // TAtlasIdeEditorCommands (Atlas.IDE.Commands.Editor, Beschreibung dort):
 // qualifizierter Name (#128), Formatieren (#43), Unit ⇄ Testunit (#189) und die
 // Schnellbefehle mit „/“ samt ///-Gerüsten (#293, #88).
+// Die Schnellbefehle fragen im Hintergrund (TAtlasBackgroundRequest): Die
+// Diagnose vom 06.11.2026 zeigte Hänger bis 3 s, solange der Hauptthread auf
+// onTypeFormatting wartete. Die Antwort gilt nur für den unveränderten Text
+// (TAtlasSlashTrigger.StillValid); wurde weitergetippt, verfällt sie.
+// Ebenso Unit ⇄ Testunit: Ein Klick auf die Code Lens hielt die IDE 9 s an,
+// solange atlas.server.testUnit lief; jetzt öffnet die Antwort das Ziel.
 
 interface
 
@@ -11,20 +17,31 @@ uses
   Atlas.Core.Lsp.WorkspaceEdits,
   ToolsAPI,
   Atlas.Core.Lsp.TextChanges,
+  Atlas.Core.Lsp.BackgroundRequest,
   Atlas.Core.Editor.SlashTrigger,
+  Atlas.Core.Editor.TestUnit,
   Atlas.IDE.Commands.EditorSelection;
 
 type
   /// <summary>Editorbefehle mit Anfrage an den Server.</summary>
   TAtlasEditorServerCommands = class(TAtlasEditorSelectionCommands)
+  protected class var
+    /// <summary>Anfrage der Schnellbefehle; gibt TAtlasIdeEditorCommands.Uninstall frei.</summary>
+    FSlashRequest: TAtlasBackgroundRequest;
+    /// <summary>Anfrage von „Zur Testunit wechseln“; gibt TAtlasIdeEditorCommands.Uninstall frei.</summary>
+    FTestUnitRequest: TAtlasBackgroundRequest;
   protected
     /// <summary>Qualifizierter Name am Cursor (#128); False mit Meldung ohne Server oder Editor, True mit
     /// AName = '' ohne Symbol.</summary>
     class function FetchQualifiedName(AWithParameters: Boolean; out AName: string): Boolean; static;
+    /// <summary>Fragt den Server im Hintergrund nach den Änderungen für den Schnellbefehl AKind an der
+    /// Schreibmarke; läuft noch eine Anfrage, darf die nächste Änderung erneut auslösen.</summary>
     class procedure RunSlash(const AView: IOTAEditView; AKind: TAtlasSlashKind); static;
-    /// <summary>Änderungen des Servers für den Schnellbefehl AKind an der Schreibmarke; False ohne.</summary>
-    class function SlashEdits(const AView: IOTAEditView; AKind: TAtlasSlashKind; out AText: string;
-      out AEdits: TArray<TLspTextEdit>): Boolean; static;
+    /// <summary>Antwort AEdits für AFileName mit Text AText; nur, wenn der Text der Ansicht unverändert ist.</summary>
+    class procedure SlashAnswered(const AView: IOTAEditView; AKind: TAtlasSlashKind; const AFileName, AText: string;
+      const AEdits: TArray<TLspTextEdit>); static;
+    /// <summary>Antwort von atlas.server.testUnit: Gegenstück öffnen bzw. anlegen und öffnen.</summary>
+    class procedure TestUnitAnswered(const AInfo: TAtlasTestUnitInfo; const AEdit: TLspWorkspaceEdit); static;
     /// <summary>///-Gerüst: Platzhalter-Modus bzw. Cursor in die Zusammenfassung.</summary>
     class procedure PlaceDocComment(const AView: IOTAEditView; const ABefore: string;
       const AEdit: TLspTextEdit); static;
@@ -53,7 +70,6 @@ uses
   Atlas.Core.Lsp.Client,
   Atlas.Core.Lsp.Session,
   Atlas.Core.Completion.Snippets,
-  Atlas.Core.Editor.TestUnit,
   Atlas.Core.Editor.FormatLog,
   Atlas.Core.Editor.WorkspacePlan,
   Atlas.UI.Strings,
@@ -250,51 +266,84 @@ var
   mFileName, mArguments: string;
   mLines: TArray<string>;
   mSelection: TLspRange;
-  mAnswer: TJSONValue;
+  mRunning: TLspSession;
   mInfo: TAtlasTestUnitInfo;
   mEdit: TLspWorkspaceEdit;
-  mOutcome: TAtlasWorkspaceEditResult;
 begin
   if not Current(mView, mFileName, mLines, mSelection) then
   begin
     Exit;
   end;
+  mRunning := Session;
+  if mRunning = nil then
+  begin
+    Exit;
+  end;
+  if FTestUnitRequest = nil then
+  begin
+    FTestUnitRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.EditorCommands);
+  end;
+  // Ein zweiter Klick, solange die erste Antwort aussteht, öffnet nichts doppelt.
+  if FTestUnitRequest.Busy then
+  begin
+    Exit;
+  end;
   mArguments := TestUnitArguments(mFileName, mSelection.StartPos.Line);
-  try
-    mAnswer := Session.RunCommand(cTestUnitCommand, mArguments, CommandTimeoutMs);
-  except
-    on E: ELspClientError do
+  mInfo := Default(TAtlasTestUnitInfo);
+  mEdit := Default(TLspWorkspaceEdit);
+  FTestUnitRequest.Start(
+    procedure
+    var
+      mAnswer: TJSONValue;
     begin
-      Say(TAtlasStrings.Fmt(TAtlasTextId.EditorFailed, [E.Message]));
-      Exit;
-    end;
-  end;
-  try
-    ReadTestUnit(mAnswer, mInfo, mEdit);
-  finally
-    mAnswer.Free;
-  end;
-  if mInfo.CounterpartFile <> '' then
+      mAnswer := mRunning.RunCommand(cTestUnitCommand, mArguments, CommandTimeoutMs);
+      try
+        ReadTestUnit(mAnswer, mInfo, mEdit);
+      finally
+        mAnswer.Free;
+      end;
+    end,
+    procedure(AOk: Boolean; const AError: string)
+    begin
+      if not AOk then
+      begin
+        Say(TAtlasStrings.Fmt(TAtlasTextId.EditorFailed, [AError]));
+        Exit;
+      end;
+      TAtlasGuard.Run(TAtlasFeature.EditorCommands,
+        procedure
+        begin
+          TestUnitAnswered(mInfo, mEdit);
+        end);
+    end);
+end;
+
+class procedure TAtlasEditorServerCommands.TestUnitAnswered(const AInfo: TAtlasTestUnitInfo;
+  const AEdit: TLspWorkspaceEdit);
+var
+  mOutcome: TAtlasWorkspaceEditResult;
+begin
+  if AInfo.CounterpartFile <> '' then
   begin
-    TAtlasIdeNavigation.GoToLocation(mInfo.CounterpartFile, 0, 0);
+    TAtlasIdeNavigation.GoToLocation(AInfo.CounterpartFile, 0, 0);
   end
-  else if not mInfo.CanCreate or mEdit.IsEmpty then
+  else if not AInfo.CanCreate or AEdit.IsEmpty then
   begin
-    Say(TAtlasStrings.Fmt(TAtlasTextId.TestUnitNone, [mInfo.Reason]));
+    Say(TAtlasStrings.Fmt(TAtlasTextId.TestUnitNone, [AInfo.Reason]));
   end
   else
   begin
     // Anlegen und ins Testprojekt eintragen (#274), dann öffnen.
-    mOutcome := TAtlasIdeWorkspaceEdit.Apply(mEdit,
+    mOutcome := TAtlasIdeWorkspaceEdit.Apply(AEdit,
       TAtlasUnopenedPolicies.FromSetting(TAtlasIdeSettings.Current.OpenForEdits),
-      TAtlasStrings.Fmt(TAtlasTextId.TestUnitLensCreate, [mInfo.Counterpart]));
+      TAtlasStrings.Fmt(TAtlasTextId.TestUnitLensCreate, [AInfo.Counterpart]));
     if mOutcome.Error <> '' then
     begin
       Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [mOutcome.Error]));
     end
     else
     begin
-      TAtlasIdeNavigation.GoToLocation(mInfo.NewFile, 0, 0);
+      TAtlasIdeNavigation.GoToLocation(AInfo.NewFile, 0, 0);
     end;
   end;
 end;
@@ -345,26 +394,37 @@ begin
     end);
 end;
 
-class function TAtlasEditorServerCommands.SlashEdits(const AView: IOTAEditView; AKind: TAtlasSlashKind;
-  out AText: string; out AEdits: TArray<TLspTextEdit>): Boolean;
+class procedure TAtlasEditorServerCommands.RunSlash(const AView: IOTAEditView; AKind: TAtlasSlashKind);
 var
   mRunning: TLspSession;
-  mFileName: string;
+  mFileName, mText, mTrigger: string;
   mLines: TArray<string>;
   mLine, mCharacter: Integer;
+  mOptions: TLspFormatOptions;
+  mView: IOTAEditView;
+  mKind: TAtlasSlashKind;
+  mEdits: TArray<TLspTextEdit>;
 begin
-  Result := False;
-  AText := '';
-  AEdits := nil;
   mRunning := Session;
   if (mRunning = nil) or (AView.Buffer = nil) then
   begin
     Exit;
   end;
+  if FSlashRequest = nil then
+  begin
+    FSlashRequest := TAtlasBackgroundRequest.Create(TAtlasFeature.SlashCommands);
+  end;
+  if FSlashRequest.Busy then
+  begin
+    // Nicht verschluckt: Die nächste Änderung an dieser Stelle fragt erneut.
+    FLastSlash := '';
+    Exit;
+  end;
   mFileName := AView.Buffer.FileName;
-  AText := TAtlasEditorBuffer.Text(AView.Buffer);
-  mRunning.Sync(mFileName, AText);
-  mLines := AText.Split([#13#10, #10]);
+  mText := TAtlasEditorBuffer.Text(AView.Buffer);
+  // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
+  mRunning.Sync(mFileName, mText);
+  mLines := mText.Split([#13#10, #10]);
   mLine := AView.CursorPos.Line - 1;
   if (mLine < 0) or (mLine >= Length(mLines)) then
   begin
@@ -372,18 +432,30 @@ begin
   end;
   mCharacter := TLspSession.ColumnToIndex(mLines[mLine], AView.CursorPos.Col,
     TAtlasEditorBuffer.TabWidth(AView.Buffer));
-  try
-    AEdits := mRunning.OnTypeFormatting(mFileName, mLine, mCharacter, TAtlasSlashTrigger.TriggerChar(AKind),
-      TLspFormatOptions.Create(TAtlasEditorBuffer.BlockIndent(AView.Buffer), True), cSlashTimeoutMs);
-  except
-    on E: ELspClientError do
+  mTrigger := TAtlasSlashTrigger.TriggerChar(AKind);
+  mOptions := TLspFormatOptions.Create(TAtlasEditorBuffer.BlockIndent(AView.Buffer), True);
+  mView := AView;
+  mKind := AKind;
+  mEdits := nil;
+  FSlashRequest.Start(
+    procedure
     begin
-      // Beim Tippen keine Meldung; nur ins Protokoll.
-      TAtlasGuard.Log('Schnellbefehl: ' + TAtlasGuard.MessageText(E.Message));
-      Exit;
-    end;
-  end;
-  Result := Length(AEdits) > 0;
+      mEdits := mRunning.OnTypeFormatting(mFileName, mLine, mCharacter, mTrigger, mOptions, cSlashTimeoutMs);
+    end,
+    procedure(AOk: Boolean; const AError: string)
+    begin
+      if not AOk then
+      begin
+        // Beim Tippen keine Meldung; nur ins Protokoll.
+        TAtlasGuard.Log('Schnellbefehl: ' + TAtlasGuard.MessageText(AError));
+        Exit;
+      end;
+      TAtlasGuard.Run(TAtlasFeature.SlashCommands,
+        procedure
+        begin
+          SlashAnswered(mView, mKind, mFileName, mText, mEdits);
+        end);
+    end);
 end;
 
 class procedure TAtlasEditorServerCommands.PlaceDocComment(const AView: IOTAEditView; const ABefore: string;
@@ -412,23 +484,25 @@ begin
   AView.Paint;
 end;
 
-class procedure TAtlasEditorServerCommands.RunSlash(const AView: IOTAEditView; AKind: TAtlasSlashKind);
+class procedure TAtlasEditorServerCommands.SlashAnswered(const AView: IOTAEditView; AKind: TAtlasSlashKind;
+  const AFileName, AText: string; const AEdits: TArray<TLspTextEdit>);
 var
-  mText, mError: string;
-  mEdits: TArray<TLspTextEdit>;
+  mError: string;
 begin
-  if not SlashEdits(AView, AKind, mText, mEdits) then
+  if (Length(AEdits) = 0) or (AView = nil) or (AView.Buffer = nil) or (AView <> TAtlasEditorBuffer.ActiveView) or
+    not TAtlasSlashTrigger.StillValid(AFileName, AText, AView.Buffer.FileName,
+    TAtlasEditorBuffer.Text(AView.Buffer)) then
   begin
     Exit;
   end;
-  mError := ApplyFileEdits(AView.Buffer.FileName, mEdits, TAtlasStrings.Text(TAtlasTextId.UndoActionSlash));
+  mError := ApplyFileEdits(AFileName, AEdits, TAtlasStrings.Text(TAtlasTextId.UndoActionSlash));
   if mError <> '' then
   begin
     Say(TAtlasStrings.Fmt(TAtlasTextId.EditFailed, [mError]));
   end
   else if AKind = TAtlasSlashKind.DocComment then
   begin
-    PlaceDocComment(AView, mText, mEdits[0]);
+    PlaceDocComment(AView, AText, AEdits[0]);
   end;
 end;
 

@@ -35,6 +35,9 @@ type
     procedure IndexOptionsGoToGlobalFile;
     [Test]
     procedure XmlDocOptionsGoToGlobalFile;
+    /// <summary>#1841: hover.membersMaxLines mit Vorgabe 15 und Grenzen 0..100.</summary>
+    [Test]
+    procedure HoverMembersMaxLinesRoundTrip;
     [Test]
     procedure AcceptOptionsRoundTrip;
     [Test]
@@ -564,6 +567,27 @@ begin
   Loaded.Load(Store);
   Assert.AreEqual(0, Loaded.XmlDocMaxLines);
 end;
+procedure TAtlasPluginSettingsTests.HoverMembersMaxLinesRoundTrip;
+var
+  Store: IAtlasSettingsStore;
+  Settings, Loaded: TAtlasPluginSettings;
+begin
+  Settings := TAtlasPluginSettings.Defaults;
+  Assert.AreEqual(15, Settings.HoverMembersMaxLines);
+  Store := TMemoryStore.Create;
+  Settings.HoverMembersMaxLines := 8;
+  Settings.Save(Store);
+  Assert.AreEqual(8, Store.ReadInteger('HoverMembersMaxLines', 0));
+  Loaded := Default(TAtlasPluginSettings);
+  Loaded.Load(Store);
+  Assert.AreEqual(8, Loaded.HoverMembersMaxLines);
+  Store.WriteInteger('HoverMembersMaxLines', 500);
+  Loaded.Load(Store);
+  Assert.AreEqual(TAtlasPluginSettings.MaxHoverMembersLines, Loaded.HoverMembersMaxLines);
+  Store.WriteInteger('HoverMembersMaxLines', -1);
+  Loaded.Load(Store);
+  Assert.AreEqual(0, Loaded.HoverMembersMaxLines);
+end;
 procedure TAtlasPluginSettingsTests.AcceptOptionsRoundTrip;
 var
   Store: IAtlasSettingsStore;
@@ -1063,6 +1087,8 @@ procedure SetProblemsWindowOptions(var ASettings: TAtlasPluginSettings);
 begin
   ASettings.ProblemsWindow := False;
   ASettings.ProblemsWindowScope := 'file';
+  ASettings.ProblemsWindowScopeProjects := False;
+  ASettings.ProblemsWindowScopeProject := 'Atlas.IDE.Base';
   ASettings.ProblemsWindowGroupBy := 'category';
   ASettings.ProblemsWindowColumns := 'kind:70,-rule';
   ASettings.ProblemsWindowCompiler := True;
@@ -1081,6 +1107,8 @@ procedure AssertProblemsWindowLoaded(const ALoaded: TAtlasPluginSettings);
 begin
   Assert.IsFalse(ALoaded.ProblemsWindow);
   Assert.AreEqual('file', ALoaded.ProblemsWindowScope);
+  Assert.IsFalse(ALoaded.ProblemsWindowScopeProjects);
+  Assert.AreEqual('Atlas.IDE.Base', ALoaded.ProblemsWindowScopeProject);
   Assert.AreEqual('category', ALoaded.ProblemsWindowGroupBy);
   Assert.AreEqual('kind:70,-rule', ALoaded.ProblemsWindowColumns);
   Assert.IsTrue(ALoaded.ProblemsWindowCompiler);
@@ -1161,6 +1189,8 @@ begin
   Settings := TAtlasPluginSettings.Defaults;
   Assert.IsTrue(Settings.ProblemsWindow);
   Assert.AreEqual('group', Settings.ProblemsWindowScope);
+  Assert.IsTrue(Settings.ProblemsWindowScopeProjects, 'Einzelprojekte (#1843) an');
+  Assert.AreEqual('', Settings.ProblemsWindowScopeProject, 'aktives Projekt');
   Assert.AreEqual('file', Settings.ProblemsWindowGroupBy);
   Assert.AreEqual('', Settings.ProblemsWindowColumns);
   Assert.IsFalse(Settings.ProblemsWindowCompiler);
@@ -1179,10 +1209,12 @@ begin
   Settings.Normalize;
   Assert.AreEqual('merge', Settings.ProblemsCompilerMerge, 'Unbekanntes = Vorgabe');
   Settings.ProblemsWindowScope := 'PROJECT';
+  Settings.ProblemsWindowScopeProject := '  Atlas.Tests ';
   Settings.ProblemsWindowGroupBy := 'unsinn';
   Settings.ProblemsWindowKey := -1;
   Settings.Normalize;
   Assert.AreEqual('project', Settings.ProblemsWindowScope);
+  Assert.AreEqual('Atlas.Tests', Settings.ProblemsWindowScopeProject);
   Assert.AreEqual('file', Settings.ProblemsWindowGroupBy, 'Unbekanntes = Vorgabe');
   Assert.AreEqual(0, Settings.ProblemsWindowKey);
   SetProblemsWindowOptions(Settings);

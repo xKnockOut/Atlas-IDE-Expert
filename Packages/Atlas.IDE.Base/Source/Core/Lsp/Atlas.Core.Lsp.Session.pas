@@ -68,7 +68,7 @@ type
   TLspApplyEditReply = Atlas.Core.Lsp.Session.Json.TLspApplyEditReply;
   TLspApplyEditProc = Atlas.Core.Lsp.Session.Json.TLspApplyEditProc;
   TLspShowMessageProc = Atlas.Core.Lsp.Session.Json.TLspShowMessageProc;
-  TLspCrashNotificationProc = Atlas.Core.Lsp.Session.Json.TLspCrashNotificationProc;
+  TLspAtlasNotificationProc = Atlas.Core.Lsp.Session.Json.TLspAtlasNotificationProc;
   TLspFormatOptions = Atlas.Core.Lsp.Session.Json.TLspFormatOptions;
   TLspInitializeOptions = Atlas.Core.Lsp.Session.Base.TLspInitializeOptions;
 

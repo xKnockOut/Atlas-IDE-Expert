@@ -12,6 +12,9 @@
 // abgeschaltet, keine Deklaration darunter). Damit Atlas nicht bei jedem
 // weiteren Zeichen erneut fragt, merkt sich die IDE-Schicht den Schlüssel
 // des letzten Auslösers.
+// Die Anfrage läuft im Hintergrund (Diagnose 06.11.2026: bis zu 3 s Hänger
+// beim Tippen); die Antwort gilt nur, solange Datei und Text unverändert sind
+// (StillValid), denn die Änderungen des Servers zählen auf diesen Stand.
 // Das eingesetzte Gerüst füllt der Platzhalter-Modus (#51): je Beschreibung
 // (zwischen ">" und "</") ein leerer Platzhalter, Tab springt weiter, am Ende
 // steht der Cursor hinter dem letzten Tag.
@@ -36,6 +39,8 @@ type
     /// <summary>Schlüssel gegen wiederholtes Auslösen an derselben Stelle.</summary>
     class function Key(const AFileName: string; ALine: Integer; AKind: TAtlasSlashKind;
       const APrevious: string): string; static;
+    /// <summary>Gilt die Antwort für AAskedFile mit Text AAskedText noch für den Stand ANowFile, ANowText?</summary>
+    class function StillValid(const AAskedFile, AAskedText, ANowFile, ANowText: string): Boolean; static;
     /// <summary>Platzhalter für ein eingesetztes ///-Gerüst AText: je leerer Beschreibung zwischen "&gt;" und
     /// "&lt;/" einer, die Endposition hinter dem letzten Tag (ohne abschließenden Zeilenumbruch). Ohne
     /// Beschreibung keine Platzhalter.</summary>
@@ -51,7 +56,7 @@ end;
 
 class function TAtlasSlashTrigger.Detect(const APrevious, ABefore: string): TAtlasSlashKind;
 var
-  Previous: string;
+  mPrevious: string;
 begin
   Result := TAtlasSlashKind.None;
   if TrimLeft(ABefore) = '///' then
@@ -62,8 +67,8 @@ begin
   begin
     Exit;
   end;
-  Previous := TrimLeft(APrevious);
-  if (Length(Previous) >= 2) and (Previous[1] = '/') and IsLetter(Previous[2]) then
+  mPrevious := TrimLeft(APrevious);
+  if (Length(mPrevious) >= 2) and (mPrevious[1] = '/') and IsLetter(mPrevious[2]) then
   begin
     Result := TAtlasSlashKind.Command;
   end;
@@ -84,38 +89,46 @@ begin
   Result := Format('%s|%d|%d|%s', [AnsiUpperCase(AFileName), ALine, Ord(AKind), Trim(APrevious)]);
 end;
 
+class function TAtlasSlashTrigger.StillValid(const AAskedFile, AAskedText, ANowFile, ANowText: string): Boolean;
+begin
+  Result := SameText(AAskedFile, ANowFile) and (AAskedText = ANowText);
+end;
+
 class function TAtlasSlashTrigger.DocCommentExpansion(const AText: string): TAtlasSnippetExpansion;
+const
+  // Ende einer leeren Beschreibung: ">" und der Anfang des schließenden Tags.
+  cDescriptionEnd = '></';
 var
-  Index, Number, Stop: Integer;
-  Field: TAtlasSnippetStop;
+  mIndex, mNumber, mStop: Integer;
+  mField: TAtlasSnippetStop;
 begin
   Result := Default(TAtlasSnippetExpansion);
   Result.Text := AText;
-  Number := 0;
-  Index := Pos('></', AText);
-  while Index > 0 do
+  mNumber := 0;
+  mIndex := Pos(cDescriptionEnd, AText);
+  while mIndex > 0 do
   begin
-    Inc(Number);
-    Field.Number := Number;
+    Inc(mNumber);
+    mField.Number := mNumber;
     // 0-basiert: das "<" hinter dem ">".
-    Field.Start := Index;
-    Field.Length := 0;
-    Result.Stops := Result.Stops + [Field];
-    Index := Pos('></', AText, Index + 3);
+    mField.Start := mIndex;
+    mField.Length := 0;
+    Result.Stops := Result.Stops + [mField];
+    mIndex := Pos(cDescriptionEnd, AText, mIndex + Length(cDescriptionEnd));
   end;
-  if Number = 0 then
+  if mNumber = 0 then
   begin
     Exit;
   end;
-  Stop := Length(AText);
-  while (Stop > 0) and CharInSet(AText[Stop], [#13, #10]) do
+  mStop := Length(AText);
+  while (mStop > 0) and CharInSet(AText[mStop], [#13, #10]) do
   begin
-    Dec(Stop);
+    Dec(mStop);
   end;
-  Field.Number := 0;
-  Field.Start := Stop;
-  Field.Length := 0;
-  Result.Stops := Result.Stops + [Field];
+  mField.Number := 0;
+  mField.Start := mStop;
+  mField.Length := 0;
+  Result.Stops := Result.Stops + [mField];
 end;
 
 end.

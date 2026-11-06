@@ -47,6 +47,10 @@ type
     procedure ReadsInlayHints;
     [Test]
     procedure ReadsCodeLens;
+    [Test]
+    procedure ReadsSmartIndent;
+    [Test]
+    procedure ReadsClassCompletion;
     /// <summary>"references" (#1119): erschlossene Treffer an, Textfunde aus.</summary>
     [Test]
     procedure ReadsReferences;
@@ -541,6 +545,51 @@ begin
   // Die Datei ersetzt den Block aus dem Editor.
   Settings := TConfigurationParser.ParseLayered('{"codeLens": {"metrics": false}}', '{"codeLens": {}}', Issues);
   Assert.IsTrue(Settings.CodeLens.Metrics);
+end;
+procedure TConfigurationParserTests.ReadsSmartIndent;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{}', Issues);
+  Assert.IsTrue(Settings.SmartIndent.Enabled, 'Einrückung beim Tippen standardmäßig an (#1827)');
+  Assert.IsTrue(Settings.SmartIndent.AfterEnter);
+  Assert.IsTrue(Settings.SmartIndent.OutdentClosers);
+  Assert.IsTrue(Settings.SmartIndent.SplitStrings);
+  Assert.AreEqual('indent', Settings.SmartIndent.SplitStringsIndent);
+  Settings := Parse('{"smartIndent": {"enabled": false, "afterEnter": false, "outdentClosers": false, ' +
+    '"splitStrings": false, "splitStringsIndent": "align"}}', Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.IsFalse(Settings.SmartIndent.Enabled);
+  Assert.IsFalse(Settings.SmartIndent.AfterEnter);
+  Assert.IsFalse(Settings.SmartIndent.OutdentClosers);
+  Assert.IsFalse(Settings.SmartIndent.SplitStrings);
+  Assert.AreEqual('align', Settings.SmartIndent.SplitStringsIndent);
+  Settings := Parse('{"smartIndent": {"splitStringsIndent": "rechts", "x": true}}', Issues);
+  Assert.AreEqual('indent', Settings.SmartIndent.SplitStringsIndent);
+  Assert.AreEqual(2, Integer(Length(Issues)));
+  Assert.IsTrue(Issues[0].IsError);
+  Assert.IsFalse(Issues[1].IsError);
+end;
+procedure TConfigurationParserTests.ReadsClassCompletion;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{}', Issues);
+  Assert.AreEqual('brace', Settings.ClassCompletion.TypeComment, '{ TFoo } wie die IDE (#1835)');
+  Assert.IsTrue(Settings.ClassCompletion.LifecycleFirst, '#1836');
+  Assert.IsTrue(Settings.ClassCompletion.BodyStubs, '#1837');
+  Settings := Parse('{"classCompletion": {"typeComment": "region", "lifecycleFirst": false, "bodyStubs": false}}',
+    Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual('region', Settings.ClassCompletion.TypeComment);
+  Assert.IsFalse(Settings.ClassCompletion.LifecycleFirst);
+  Assert.IsFalse(Settings.ClassCompletion.BodyStubs);
+  Settings := Parse('{"classCompletion": {"typeComment": "kasten"}}', Issues);
+  Assert.AreEqual('brace', Settings.ClassCompletion.TypeComment, 'Unbekanntes bleibt bei der Vorgabe');
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.IsTrue(Issues[0].IsError);
 end;
 procedure TConfigurationParserTests.ReadsReferences;
 var

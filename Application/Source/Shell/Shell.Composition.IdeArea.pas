@@ -9,6 +9,8 @@ uses
   Atlas.Common.Logging.Contract,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.JsonRpc.Dispatcher,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Lsp.IdeUnits,
   Atlas.Common.Projects.Selection,
   Atlas.Common.Pascal.FormatRoutines,
   Shell.Composition.Compile,
@@ -30,6 +32,9 @@ type
     Dispatcher: TJsonRpcDispatcher;
     Diagnostics: TShellIdeDiagnosticsFunc;
     Compile: TShellIdeCompileFunc;
+    /// <summary>Ersatz-Units der IDE und gemeinsamer Index (Teilwurzel Index).</summary>
+    IdeUnits: TIdeUnits;
+    Index: ISymbolIndex;
   end;
 
   /// <summary>Hält Nachrichten aus der IDE, Dateiänderungen und die Projektwahl.</summary>
@@ -68,6 +73,8 @@ implementation
 uses
   System.SysUtils,
   System.IOUtils,
+  System.JSON,
+  Atlas.Common.JsonRpc.Messages,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Lsp.WorkspaceCheck,
   Atlas.Common.Index.Adapters.CacheDirectory,
@@ -170,6 +177,23 @@ begin
   Result.Affected := Affected;
 end;
 
+/// <summary>Schickt Benachrichtigungen über ATransport an die IDE.</summary>
+function NotifierOf(const ATransport: IJsonRpcTransport): TShellIdeNotifyProc;
+begin
+  Result :=
+    procedure(const AMethod: string; AParams: TJSONObject)
+    var
+      mMessage: TJSONObject;
+    begin
+      mMessage := TJsonRpcMessages.Notification(AMethod, AParams);
+      try
+        ATransport.WriteMessage(mMessage);
+      finally
+        mMessage.Free;
+      end;
+    end;
+end;
+
 function TShellIdeArea.IdeServices: TShellIdeServices;
 var
   mServices: TShellIdeAreaServices;
@@ -191,6 +215,9 @@ begin
     end;
   Result.NamingChanged := RefreshLater;
   Result.TypesChanged := RefreshLater;
+  Result.IdeUnits := FServices.IdeUnits;
+  Result.Index := FServices.Index;
+  Result.Notify := NotifierOf(FServices.Transport);
 end;
 
 end.

@@ -622,7 +622,7 @@ type
     // Methodenrümpfe in Deklarationsreihenfolge (#660): Befehl, Vorschau, Meldungen, Optionsseite.
     MethodOrderCommand, MethodOrderTitle, MethodOrderHint, MethodOrderApply, MethodOrderNothing, MethodOrderOff,
     MethodOrderDone, MethodOrderFailed, MethodOrderUp, MethodOrderDown, MethodOrderStays, MethodOrderRegion,
-    MethodOrderConditional, MethodOrderSharedLine, SettingsMethodPlacement, SettingsMethodPlacementDeclaration,
+    MethodOrderConditional, MethodOrderSharedLine, SettingsMethodPlacement, SettingsMethodPlacementGrouped, SettingsMethodPlacementDeclaration,
     SettingsMethodPlacementAlphabetical, SettingsMethodPlacementOff,
     // Dialog „Mitglieder herauslösen“ und „Interface herauslösen“ (#664).
     ExtractMembersName, ExtractMembersUnit, ExtractMembersOwnUnit, ExtractMembersColMember, ExtractMembersColKind, ExtractMembersColVisibility,
@@ -762,7 +762,9 @@ type
     ProblemsCheckFileCommand, StatusBarManual, StatusBarLiveManualHint, StatusBarCheckFileClick,
     // Lokale Routinen abheben (#1788).
     SettingsNestedRoutines, SettingsNestedRoutinesOuter, SettingsNestedRoutinesDeeper, SettingsNestedRoutinesColor,
-    SettingsNestedRoutineBand, SettingsNestedRoutineColorLight, SettingsNestedRoutineColorDark);
+    SettingsNestedRoutineBand, SettingsNestedRoutineColorLight, SettingsNestedRoutineColorDark,
+    // Rollbereich der published-Mitglieder im Hover (#1841).
+    SettingsHoverMembersMaxLines);
 
   TAtlasStrings = class
   private
@@ -1841,7 +1843,7 @@ const
      'Atlas',
      'Prüfung',
      'Aktuelle Datei',
-     'Projekt',
+     'Aktuelles Projekt',
      'Projektgruppe',
      'Error',
      'Warnung',
@@ -2211,7 +2213,8 @@ const
      'Die Methoden stehen schon in der Reihenfolge der Klasse.',
      'Methodenreihenfolge ist abgeschaltet (editor.methodPlacement = off).', '%d Methoden verschoben.',
      'Methoden ordnen fehlgeschlagen: %s', '↑ %d', '↓ %d', 'bleibt: %s', 'in einer Region', 'in einem {$IFDEF}',
-     'teilt eine Zeile mit anderem Code', 'Methodenrümpfe ordnen', 'wie die Deklaration', 'alphabetisch', 'aus',
+     'teilt eine Zeile mit anderem Code', 'Methodenrümpfe ordnen',
+     'gruppiert, Konstruktor zuerst', 'wie die Deklaration', 'alphabetisch', 'aus',
      'Name:',
      'Ziel-Unit:',
      '%s (diese Unit)',
@@ -2638,7 +2641,8 @@ const
      'in eigener Farbe, Blocklinie gestrichelt',
      'Zeilen lokaler Routinen hinterlegen',
      'Lokale Routinen im hellen Thema',
-     'Lokale Routinen im dunklen Thema'),
+     'Lokale Routinen im dunklen Thema',
+     'Mitglieder im Hover: höchstens Zeilen ohne Scrollen (0 = Bildschirm)'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -3635,7 +3639,7 @@ const
      'Atlas',
      'Findings',
      'Current file',
-     'Project',
+     'Current project',
      'Project group',
      'Error',
      'Warning',
@@ -4003,7 +4007,8 @@ const
      'The methods are already in class order.',
      'Method order is switched off (editor.methodPlacement = off).', '%d methods moved.',
      'Ordering methods failed: %s', '↑ %d', '↓ %d', 'stays: %s', 'inside a region', 'inside an {$IFDEF}',
-     'shares a line with other code', 'Order method bodies', 'like the declaration', 'alphabetically', 'off',
+     'shares a line with other code', 'Order method bodies',
+     'grouped, constructors first', 'like the declaration', 'alphabetically', 'off',
      'Name:',
      'Target unit:',
      '%s (this unit)',
@@ -4430,7 +4435,8 @@ const
      'in their own colour, dashed guide',
      'Shade the lines of local routines',
      'Local routines in the light theme',
-     'Local routines in the dark theme'));
+     'Local routines in the dark theme',
+     'Members in the hover: max. lines before scrolling (0 = screen)'));
 
 { TAtlasStrings }
 

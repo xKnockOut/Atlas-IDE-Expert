@@ -97,6 +97,33 @@ type
     class function Default: TCodeLensSettings; static;
   end;
 
+  /// <summary>Einrückung beim Tippen ("smartIndent", #1827).</summary>
+  TSmartIndentSettings = record
+    /// <summary>Hauptschalter; aus wirkt keiner der Teile.</summary>
+    Enabled: Boolean;
+    /// <summary>Neue Zeile nach Enter nach der Blockstruktur einrücken (#1828).</summary>
+    AfterEnter: Boolean;
+    /// <summary>end, until, finally, except und else in der Zeile davor zurückrücken (#1829).</summary>
+    OutdentClosers: Boolean;
+    /// <summary>String beim Umbruch schließen und mit + verbinden (#1831).</summary>
+    SplitStrings: Boolean;
+    /// <summary>Einrückung der Fortsetzung: "indent" (eine Ebene) oder "align" (ausgerichtet).</summary>
+    SplitStringsIndent: string;
+    class function Default: TSmartIndentSettings; static;
+  end;
+
+  /// <summary>Klassenvervollständigung ("classCompletion", #1834).</summary>
+  TClassCompletionSettings = record
+    /// <summary>Kommentar über dem Klassenabschnitt (#1835): brace, line, summary, region oder off.</summary>
+    TypeComment: string;
+    /// <summary>Neue Rümpfe vorbefüllen: inherited, Getter und Setter mit Feld (#1837).</summary>
+    BodyStubs: Boolean;
+    /// <summary>Konstruktoren und Destruktoren beim Ordnen zuerst, auch bei declaration und alphabetical
+    /// (#1836).</summary>
+    LifecycleFirst: Boolean;
+    class function Default: TClassCompletionSettings; static;
+  end;
+
   /// <summary>Treffersicherheit der Verwendungen ("references", #1119).</summary>
   TReferenceSettings = record
     /// <summary>Erschlossene Treffer zeigen (über ein Interface, eine überschriebene Methode, nicht eindeutige
@@ -649,6 +676,8 @@ type
     Formatting: TFormatStyle;
     InlayHints: TInlayHintSettings;
     CodeLens: TCodeLensSettings;
+    SmartIndent: TSmartIndentSettings;
+    ClassCompletion: TClassCompletionSettings;
     References: TReferenceSettings;
     Navigation: TNavigationSettings;
     Hints: THintSettings;
@@ -1118,6 +1147,26 @@ begin
   Result.Metrics := True;
 end;
 
+{ TSmartIndentSettings }
+
+class function TSmartIndentSettings.Default: TSmartIndentSettings;
+begin
+  Result.Enabled := True;
+  Result.AfterEnter := True;
+  Result.OutdentClosers := True;
+  Result.SplitStrings := True;
+  Result.SplitStringsIndent := 'indent';
+end;
+
+{ TClassCompletionSettings }
+
+class function TClassCompletionSettings.Default: TClassCompletionSettings;
+begin
+  Result.TypeComment := 'brace';
+  Result.BodyStubs := True;
+  Result.LifecycleFirst := True;
+end;
+
 { TStringLiteralSettings }
 
 class function TStringLiteralSettings.Default: TStringLiteralSettings;
@@ -1359,6 +1408,8 @@ begin
   ASettings.Formatting := TFormatStyle.Default;
   ASettings.InlayHints := TInlayHintSettings.Default;
   ASettings.CodeLens := TCodeLensSettings.Default;
+  ASettings.SmartIndent := TSmartIndentSettings.Default;
+  ASettings.ClassCompletion := TClassCompletionSettings.Default;
   ASettings.References := TReferenceSettings.Default;
   ASettings.Navigation := TNavigationSettings.Default;
   ASettings.Hints := THintSettings.Default;
