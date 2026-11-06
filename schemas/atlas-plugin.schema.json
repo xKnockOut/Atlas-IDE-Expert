@@ -5201,14 +5201,15 @@
       "x-issue": "#689"
     },
     "MethodPlacement": {
-      "description": "Reihenfolge der Methodenrümpfe im implementation-Teil (#660): declaration ordnet sie wie die Deklarationen in der Klasse, alphabetical je Klasse nach dem Namen. Neue Rümpfe aus der Klassenvervollständigung der IDE (Strg+Umschalt+C) oder aus Atlas-Aktionen wandern an ihre Stelle, im selben Rückgängig-Schritt; der Befehl „implementation wie Klasse ordnen“ ordnet die ganze Unit nach einer Vorschau. Freie Routinen, Regionen und Rümpfe in {$IFDEF}-Zweigen bleiben stehen. off schaltet Verschieben und Befehl ab.",
+      "description": "Reihenfolge der Methodenrümpfe im implementation-Teil (#660): grouped (Vorgabe, #1834) ordnet je Klasse Konstruktoren und Destruktor zuerst, dann Get/Set-Paare in der Reihenfolge der Eigenschaften, dann Überschreibungen, dann den Rest wie deklariert; declaration ordnet sie wie die Deklarationen in der Klasse, alphabetical je Klasse nach dem Namen. Ob Konstruktoren und Destruktor auch bei declaration und alphabetical vorn stehen, steuert classCompletion.lifecycleFirst in atlas.json. Neue Rümpfe aus der Klassenvervollständigung der IDE (Strg+Umschalt+C) oder aus Atlas-Aktionen wandern an ihre Stelle, im selben Rückgängig-Schritt; der Befehl „implementation wie Klasse ordnen“ ordnet die ganze Unit nach einer Vorschau. Freie Routinen, Regionen und Rümpfe in {$IFDEF}-Zweigen bleiben stehen. off schaltet Verschieben und Befehl ab.",
       "type": "string",
       "enum": [
+        "grouped",
         "declaration",
         "alphabetical",
         "off"
       ],
-      "default": "declaration",
+      "default": "grouped",
       "x-key": "editor.methodPlacement",
       "x-area": "editor",
       "x-feature": "MethodPlacement",
@@ -5217,7 +5218,7 @@
       "x-control": "Auswahl",
       "x-caption": "Methodenrümpfe ordnen",
       "x-captionEn": "Order method bodies",
-      "x-issue": "#660"
+      "x-issue": "#660, #1834"
     },
     "RegionFolds": {
       "description": "Regionen ({$REGION} … {$ENDREGION}) beim Öffnen einer Pascal-Datei (#1814): keep lässt die Faltung, wie die IDE sie zeigt, collapse klappt alle Regionen zu, expand alle auf. Die Region mit der Schreibmarke bleibt beim Zuklappen offen. Die Befehle „Alle Regionen zuklappen“ und „Alle Regionen aufklappen“ (Menü Atlas, Kontextmenü, Befehlspalette) gibt es außer bei off immer.",

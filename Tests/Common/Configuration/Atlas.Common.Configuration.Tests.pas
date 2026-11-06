@@ -49,6 +49,8 @@ type
     procedure ReadsCodeLens;
     [Test]
     procedure ReadsSmartIndent;
+    [Test]
+    procedure ReadsClassCompletion;
     /// <summary>"references" (#1119): erschlossene Treffer an, Textfunde aus.</summary>
     [Test]
     procedure ReadsReferences;
@@ -568,6 +570,26 @@ begin
   Assert.AreEqual(2, Integer(Length(Issues)));
   Assert.IsTrue(Issues[0].IsError);
   Assert.IsFalse(Issues[1].IsError);
+end;
+procedure TConfigurationParserTests.ReadsClassCompletion;
+var
+  Settings: TServerSettings;
+  Issues: TArray<TConfigurationIssue>;
+begin
+  Settings := Parse('{}', Issues);
+  Assert.AreEqual('brace', Settings.ClassCompletion.TypeComment, '{ TFoo } wie die IDE (#1835)');
+  Assert.IsTrue(Settings.ClassCompletion.LifecycleFirst, '#1836');
+  Assert.IsTrue(Settings.ClassCompletion.BodyStubs, '#1837');
+  Settings := Parse('{"classCompletion": {"typeComment": "region", "lifecycleFirst": false, "bodyStubs": false}}',
+    Issues);
+  Assert.AreEqual(0, Integer(Length(Issues)));
+  Assert.AreEqual('region', Settings.ClassCompletion.TypeComment);
+  Assert.IsFalse(Settings.ClassCompletion.LifecycleFirst);
+  Assert.IsFalse(Settings.ClassCompletion.BodyStubs);
+  Settings := Parse('{"classCompletion": {"typeComment": "kasten"}}', Issues);
+  Assert.AreEqual('brace', Settings.ClassCompletion.TypeComment, 'Unbekanntes bleibt bei der Vorgabe');
+  Assert.AreEqual(1, Integer(Length(Issues)));
+  Assert.IsTrue(Issues[0].IsError);
 end;
 procedure TConfigurationParserTests.ReadsReferences;
 var

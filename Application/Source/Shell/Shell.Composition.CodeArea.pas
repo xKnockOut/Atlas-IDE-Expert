@@ -228,6 +228,11 @@ begin
     begin
       Result := mCore.Settings.References(AUri);
     end;
+  Result.RenameTypeCommentsFor :=
+    function(const AUri: string): Boolean
+    begin
+      Result := not SameText(mCore.Settings.SettingsFor(AUri).ClassCompletion.TypeComment, 'off');
+    end;
 end;
 
 function TShellCodeArea.RefactoringServices: TShellRefactoringServices;
@@ -252,6 +257,11 @@ begin
     function(const AUri: string): TFormatStyle
     begin
       Result := mCore.FileOptions.ResolvedFormatStyleFor(AUri);
+    end;
+  Result.TypeCommentFor :=
+    function(const AUri: string): string
+    begin
+      Result := mCore.Settings.SettingsFor(AUri).ClassCompletion.TypeComment;
     end;
   Result.LanguageLevelFor :=
     function(const AUri: string): string

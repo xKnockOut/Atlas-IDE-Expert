@@ -117,6 +117,24 @@ begin
   end;
 end;
 
+/// <summary>Einstellung AName aus classCompletion (#1834) als Text; leer, wenn es sie nicht gibt.</summary>
+function ClassCompletionValue(const ASettings: TClassCompletionSettings; const AName: string): string;
+begin
+  Result := '';
+  if AName = TSlashSettings.TypeComment then
+  begin
+    Result := ASettings.TypeComment;
+  end
+  else if AName = TSlashSettings.BodyStubs then
+  begin
+    Result := LowerCase(BoolToStr(ASettings.BodyStubs, True));
+  end
+  else if AName = TSlashSettings.LifecycleFirst then
+  begin
+    Result := LowerCase(BoolToStr(ASettings.LifecycleFirst, True));
+  end;
+end;
+
 /// <summary>Einstellung AName der Schnellbefehle als Text; leer, wenn es sie nicht gibt.</summary>
 function SlashSettingValue(const ASettings: TServerSettings; const AName: string): string;
 begin
@@ -152,6 +170,10 @@ begin
   else if AName = TSlashSettings.InterfaceSection then
   begin
     Result := InterfaceSectionText(ASettings.Completion.InterfaceSection);
+  end
+  else
+  begin
+    Result := ClassCompletionValue(ASettings.ClassCompletion, AName);
   end;
 end;
 

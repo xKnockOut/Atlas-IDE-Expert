@@ -622,7 +622,7 @@ type
     // Methodenrümpfe in Deklarationsreihenfolge (#660): Befehl, Vorschau, Meldungen, Optionsseite.
     MethodOrderCommand, MethodOrderTitle, MethodOrderHint, MethodOrderApply, MethodOrderNothing, MethodOrderOff,
     MethodOrderDone, MethodOrderFailed, MethodOrderUp, MethodOrderDown, MethodOrderStays, MethodOrderRegion,
-    MethodOrderConditional, MethodOrderSharedLine, SettingsMethodPlacement, SettingsMethodPlacementDeclaration,
+    MethodOrderConditional, MethodOrderSharedLine, SettingsMethodPlacement, SettingsMethodPlacementGrouped, SettingsMethodPlacementDeclaration,
     SettingsMethodPlacementAlphabetical, SettingsMethodPlacementOff,
     // Dialog „Mitglieder herauslösen“ und „Interface herauslösen“ (#664).
     ExtractMembersName, ExtractMembersUnit, ExtractMembersOwnUnit, ExtractMembersColMember, ExtractMembersColKind, ExtractMembersColVisibility,
@@ -2211,7 +2211,8 @@ const
      'Die Methoden stehen schon in der Reihenfolge der Klasse.',
      'Methodenreihenfolge ist abgeschaltet (editor.methodPlacement = off).', '%d Methoden verschoben.',
      'Methoden ordnen fehlgeschlagen: %s', '↑ %d', '↓ %d', 'bleibt: %s', 'in einer Region', 'in einem {$IFDEF}',
-     'teilt eine Zeile mit anderem Code', 'Methodenrümpfe ordnen', 'wie die Deklaration', 'alphabetisch', 'aus',
+     'teilt eine Zeile mit anderem Code', 'Methodenrümpfe ordnen',
+     'gruppiert, Konstruktor zuerst', 'wie die Deklaration', 'alphabetisch', 'aus',
      'Name:',
      'Ziel-Unit:',
      '%s (diese Unit)',
@@ -4003,7 +4004,8 @@ const
      'The methods are already in class order.',
      'Method order is switched off (editor.methodPlacement = off).', '%d methods moved.',
      'Ordering methods failed: %s', '↑ %d', '↓ %d', 'stays: %s', 'inside a region', 'inside an {$IFDEF}',
-     'shares a line with other code', 'Order method bodies', 'like the declaration', 'alphabetically', 'off',
+     'shares a line with other code', 'Order method bodies',
+     'grouped, constructors first', 'like the declaration', 'alphabetically', 'off',
      'Name:',
      'Target unit:',
      '%s (this unit)',
