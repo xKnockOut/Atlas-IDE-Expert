@@ -59,7 +59,7 @@ type
     FSentContexts: TDictionary<string, string>;
     FOnApplyEdit: TLspApplyEditProc;
     FOnShowMessage: TLspShowMessageProc;
-    FOnCrashNotification: TLspCrashNotificationProc;
+    FOnAtlasNotification: TLspAtlasNotificationProc;
     FInitializeOptions: TLspInitializeOptions;
     FServerVersion: string;
     procedure SyncLocked(const AFileName, AText: string);
@@ -96,8 +96,9 @@ type
     property OnApplyEdit: TLspApplyEditProc read FOnApplyEdit write FOnApplyEdit;
     /// <summary>Vor Initialize setzen (#121): Meldungen des Servers für den Benutzer.</summary>
     property OnShowMessage: TLspShowMessageProc read FOnShowMessage write FOnShowMessage;
-    /// <summary>Vor Initialize setzen (#1355): Absturzfälle und Überspringen des Servers.</summary>
-    property OnCrashNotification: TLspCrashNotificationProc read FOnCrashNotification write FOnCrashNotification;
+    /// <summary>Vor Initialize setzen: Benachrichtigungen atlas/… des Servers (Absturzfälle #1355, IDE-Mitglieder).
+    /// </summary>
+    property OnAtlasNotification: TLspAtlasNotificationProc read FOnAtlasNotification write FOnAtlasNotification;
     /// <summary>Einstellungen und Sprache für initialize (#652, #1458), vor Initialize setzen.</summary>
     property InitializeOptions: TLspInitializeOptions read FInitializeOptions write FInitializeOptions;
     /// <summary>Schickt AText, falls neu oder geändert.</summary>
@@ -191,7 +192,7 @@ end;
 /// <summary>Empfänger der Servernachrichten im Lese-Thread; fängt nur Zähler und Callbacks ein, nie die
 /// Sitzung, denn der Lese-Thread kann sie überleben.</summary>
 function ServerMessageHandler(const ARefresh: ILspSignal; const AProgress: ILspProgress;
-  const AShowMessage: TLspShowMessageProc; const ACrash: TLspCrashNotificationProc): TLspServerMessageProc;
+  const AShowMessage: TLspShowMessageProc; const AAtlas: TLspAtlasNotificationProc): TLspServerMessageProc;
 begin
   Result :=
     procedure(const AMethod: string; const AParams: TJSONValue)
@@ -212,9 +213,9 @@ begin
       begin
         AShowMessage(MessageType, Text);
       end
-      else if ((AMethod = 'atlas/crashCase') or (AMethod = 'atlas/crashSkip')) and Assigned(ACrash) then
+      else if AMethod.StartsWith('atlas/') and Assigned(AAtlas) then
       begin
-        ACrash(AMethod, AParams);
+        AAtlas(AMethod, AParams);
       end;
     end;
 end;
@@ -269,7 +270,7 @@ end;
 
 procedure TLspSessionBase.AttachClientHandlers;
 begin
-  FClient.OnServerMessage := ServerMessageHandler(FRefresh, FProgress, FOnShowMessage, FOnCrashNotification);
+  FClient.OnServerMessage := ServerMessageHandler(FRefresh, FProgress, FOnShowMessage, FOnAtlasNotification);
   if Assigned(FOnApplyEdit) then
   begin
     FClient.OnServerRequest := ApplyEditRequestHandler(FOnApplyEdit, FClient);
