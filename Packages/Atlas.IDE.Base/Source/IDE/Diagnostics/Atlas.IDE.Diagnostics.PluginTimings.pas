@@ -55,6 +55,10 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Settings;
 
+const
+  // Protokollzeile (nicht übersetzt, wie das übrige Protokoll).
+  cLogTimingsOn = 'Diagnosemodus: Plugin-Zeiten werden gemessen';
+
 procedure Fill(AFrame: TAtlasDiagnosticsFrame);
 begin
   AFrame.SetSnapshot(TAtlasPluginTimings.Shared.Snapshot, TAtlasTimeLimit.BusyCount);
@@ -103,7 +107,7 @@ begin
   if mWanted and not TAtlasPluginTimings.Enabled then
   begin
     TAtlasPluginTimings.Shared.Reset;
-    TAtlasGuard.Log('Diagnosemodus: Plugin-Zeiten werden gemessen');
+    TAtlasGuard.Log(cLogTimingsOn);
   end;
   TAtlasPluginTimings.Shared.ThresholdMs := mSettings.DiagnosticSlowMs;
   TAtlasPluginTimings.Enabled := mWanted;
