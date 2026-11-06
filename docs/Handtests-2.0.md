@@ -23,7 +23,7 @@ Diese Tests zuerst, in dieser Reihenfolge. Die ersten klären eine Ursache, die 
 |------|----|-----------|--------------|
 | 1 | KPM4 | Known Packages (Teil 5) | Klärt, ob die IDE beim Beenden ihre alte Liste zurückschreibt (Ursache (b) vom 05.11.) |
 | 2 | KPM8 | Known Packages (Teil 5) | Klärt, ob das Übersetzen von Base bei installierten Modulen die Module austrägt (Ursache (a)); entscheidet, ob `cc.ps1` ein eigenes Profil braucht |
-| 3 | HE3, HE4 | Hauptthread-Einträge (Teil 5, PR #1811 offen) | Absturz in `MainThread` Zeile 129 beim Entladen eines Moduls; erst nach dem Merge von #1811 testbar |
+| 3 | HE3, HE4 | Hauptthread-Einträge (Teil 5) | Absturz in `MainThread` Zeile 129 beim Entladen eines Moduls (#1811) |
 | 4 | RF2 | Regionen beim Öffnen (Teil 5) | Trifft „nächsten Block zuklappen“ an der Kopfzeile wirklich die Region? Sonst braucht #1814 einen anderen Weg |
 | 5 | AS21, AS22 | Sitzungsmarke der Bau-IDE (Teil 5) | Bau-IDEs (`cc.ps1`) dürfen nicht als Absturz zählen; `cc.ps1` muss `ATLAS_NO_SESSION_MARKER` setzen |
 | 6 | SL1, SL3 | Sprache der Serverbefunde (Teil 5) | Englische Befunde in deutscher IDE: zeigt, welche Quelle die Sprache falsch erkennt |
@@ -382,8 +382,6 @@ Nur im eigenen Profil testen (`bds -r <Name>`, Kopie des Standardprofils mit Bas
 
 ### Einträge in den Hauptthread verfallen mit ihrem Modul (05.11.2026)
 
-**PR #1811 noch nicht gemerged**: erst testen, wenn er in Pilot ist.
-
 Anlass: Zugriffsverletzung 06:31:15 in `Atlas.Core.Diagnostics.MainThread` (Zeile 129, `Proc()` in `Guarded`), aus einem Eintrag eines Moduls, das entladen wurde, während der Eintrag wartete. Geprüft wird mit einem eigenen Registry-Profil (`bds -r <Name>`).
 
 | Nr. | Schritte | Erwartet | Ergebnis |
@@ -394,7 +392,6 @@ Anlass: Zugriffsverletzung 06:31:15 in `Atlas.Core.Diagnostics.MainThread` (Zeil
 | HE4 | Wie HE3, während eine Prüfung oder ein Tracker-Abruf läuft (viele Einträge unterwegs) | Kein Absturz; IDE bleibt bedienbar |  |
 | HE5 | Nach HE3 die Packages wieder anhaken (laden) | Module melden sich an und arbeiten normal (Willkommensseite aktualisiert sich, Tracker-Vorschau lädt) |  |
 | HE6 | IDE mehrmals normal beenden, auch mit laufender Prüfung | Kein Absturz beim Beenden; „Atlas entladen“ im Protokoll ohne Fehler im Schritt MainThread |  |
-
 ### Sitzungsmarke der Bau-IDEs: Abgesicherter Start (#722, PR #1808)
 
 Ergänzt den Abschnitt „Abgesicherter Start (#722)“ in `docs/Atlas-Testfaelle.md` (AS1–AS20 sind Teil von 1.x).
