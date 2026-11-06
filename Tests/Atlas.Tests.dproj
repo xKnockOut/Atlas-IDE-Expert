@@ -356,6 +356,7 @@
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.ForbiddenSymbols.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.MethodWithoutSelf.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Unresolved.Tests.pas"/>
+        <DCCReference Include="Common\Projects\Atlas.Common.Projects.UnitAliases.Tests.pas"/>
         <DCCReference Include="Common\Projects\Atlas.Common.Projects.UnitLookup.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.Tests.pas"/>
         <DCCReference Include="Common\Rules\Builtin\Atlas.Common.Rules.Builtin.OpenTools.Tests.pas"/>
