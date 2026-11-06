@@ -109,6 +109,10 @@ uses
   Atlas.IDE.Editor.RegionFolds,
   Atlas.IDE.Commands.EditorMenu;
 
+const
+  // Protokollzeile (nicht übersetzt, wie das übrige Protokoll).
+  cLogModuleViewFailed = 'Ansichtswechsel im Modul: ';
+
 type
   TEditorNotifier = class(TNotifierObject, INTAEditServicesNotifier)
   public
@@ -192,7 +196,7 @@ begin
   // Module (#1455), z. B. „Gezielt hineinspringen“: Listen gehören zur bisherigen Ansicht.
   for mFailure in TAtlasModuleContributions.EditorViewActivated(AtlasModuleRegistry) do
   begin
-    TAtlasGuard.Log('Ansichtswechsel im Modul: ' + mFailure);
+    TAtlasGuard.Log(cLogModuleViewFailed + mFailure);
   end;
   // Typ des Ausdrucks (#689): Der Tooltip gilt nur in seiner Ansicht.
   TAtlasGuard.Run(TAtlasFeature.ExpressionType,
