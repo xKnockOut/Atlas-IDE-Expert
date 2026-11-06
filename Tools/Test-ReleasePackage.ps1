@@ -50,13 +50,13 @@ function New-Builds([string] $Output) {
     }
 }
 
-function Expect-Failure([string] $Case, [string] $Pattern, [scriptblock] $Break) {
+function Expect-Failure([string] $Case, [string] $Pattern, [scriptblock] $Break, [string] $PackVersion = $Version) {
     $Output = Join-Path ([IO.Path]::GetTempPath()) ('atlas-package-' + [Guid]::NewGuid().ToString('N'))
     try {
         New-Builds $Output
         & $Break $Output
         try {
-            & $Pack -Version $Version -Root $Root -Output $Output -OutFile (Join-Path $Output 'p.zip') -NoDocs 6>$null
+            & $Pack -Version $PackVersion -Root $Root -Output $Output -OutFile (Join-Path $Output 'p.zip') -NoDocs 6>$null
             $Failures.Add("${Case}: kein Abbruch")
         } catch {
             if ($_.Exception.Message -notmatch $Pattern) {
@@ -135,14 +135,12 @@ if (Test-Path (Join-Path $Root '.git')) {
         param($O) (Get-Item (Join-Path $O 'Win64/Release/Bin/AtlasServer.exe')).LastWriteTimeUtc = [datetime]'2000-01-01'
     }
 }
-try {
-    & $Pack -Version '0.0.1' -Root $Root -Output ([IO.Path]::GetTempPath()) -NoDocs 6>$null 2>$null
-    $Failures.Add('Falsche Version: kein Abbruch')
-} catch {
-}
+Expect-Failure 'Falsche Version' 'Version im Quelltext ist nicht' { param($O) } '0.0.1'
 
 if ($Failures.Count -gt 0) {
     $Failures | ForEach-Object { Write-Host "FEHLER: $_" }
     exit 1
 }
-Write-Host "Release-Paket und Versionsdatei in Ordnung ($($Packages.Count) Packages, Version $Version)."
+Write-Host "Release-Paket und Versionsdatei in Ordnung ($($Packages.Count) Packages)."
+# Gerufene Prüfskripte hinterlassen in den Fehlerfällen $LASTEXITCODE 1; der Selbsttest selbst ist bestanden.
+exit 0
