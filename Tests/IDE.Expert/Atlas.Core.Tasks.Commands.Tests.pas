@@ -11,6 +11,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Build')]
   TAtlasTaskCommandsTests = class
   public
     [Test]
@@ -47,8 +48,12 @@ begin
       Item: string;
     begin
       for Item in AFiles do
+      begin
         if SameText(Native(Item), Native(AFileName)) then
+        begin
           Exit(True);
+        end;
+      end;
       Result := False;
     end;
 end;

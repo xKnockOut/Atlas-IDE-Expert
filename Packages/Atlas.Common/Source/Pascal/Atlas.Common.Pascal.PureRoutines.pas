@@ -37,7 +37,9 @@ var
 begin
   SetLength(Result, Length(PureNames));
   for Index := 0 to High(PureNames) do
+  begin
     Result[Index] := PureNames[Index];
+  end;
 end;
 
 class function TPureRoutines.IsPure(const AName: string): Boolean;

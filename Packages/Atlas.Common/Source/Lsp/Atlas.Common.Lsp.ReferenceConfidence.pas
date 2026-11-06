@@ -93,14 +93,25 @@ type
     FDescendants: TDictionary<string, TArray<TSymbolLocation>>;
     function Descendants(const ATypeName: string): TArray<TSymbolLocation>;
     function ContainerIsInterface(const AContainer: string): Boolean;
+    /// <summary>Ist AResolved dasselbe Mitglied wie das Symbol, aber in einem anderen Typ?</summary>
+    function SameMemberElsewhere(const AResolved: TResolvedSymbol): Boolean;
+    /// <summary>Stammt die Klasse des Symbols von AContainer ab bzw. setzt sie ihn um? AClasses: Klassen unter den
+    /// Nachfahren.</summary>
+    function DescendsFrom(const AContainer: string; out AClasses: Integer): Boolean;
+    function InterfaceConfidence(const AResolved: TResolvedSymbol; AClasses: Integer): TReferenceConfidence;
+    function VirtualConfidence(const AResolved: TResolvedSymbol): TReferenceConfidence;
     function InheritedCall(const AResolved: TResolvedSymbol; out AConfidence: TReferenceConfidence): Boolean;
+    procedure Init(AResolver: TNameResolver; const AIndex: ISymbolIndex; const AWanted: TDefinitionTarget;
+      const AName: string; const ASettings: TReferenceSettings);
     function Ambiguous(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition;
       AMatched: Boolean; out AConfidence: TReferenceConfidence): Boolean;
   public
-    /// <summary>AName ohne &amp;; ASymbol ist die Deklaration hinter AWanted (AHasSymbol False, wenn sie im Index
-    /// fehlt: dann keine Gründe interface und virtual).</summary>
+    /// <summary>AName ohne &amp;; ASymbol ist die Deklaration hinter AWanted.</summary>
     constructor Create(AResolver: TNameResolver; const AIndex: ISymbolIndex; const AWanted: TDefinitionTarget;
-      const ASymbol: TIndexSymbol; AHasSymbol: Boolean; const AName: string; const ASettings: TReferenceSettings);
+      const ASymbol: TIndexSymbol; const AName: string; const ASettings: TReferenceSettings); overload;
+    /// <summary>Wie oben ohne Deklaration (fehlt im Index): dann keine Gründe interface und virtual.</summary>
+    constructor Create(AResolver: TNameResolver; const AIndex: ISymbolIndex; const AWanted: TDefinitionTarget;
+      const AName: string; const ASettings: TReferenceSettings); overload;
     destructor Destroy; override;
     /// <summary>Einstufung des Bezeichners ATokenIndex, dessen Name schon passt (auch als Attributname). False:
     /// kein Treffer. AInactive: inaktive Bereiche der Datei (leer ohne references.inferred).</summary>
@@ -119,6 +130,7 @@ type
     class function RegionAt(const AInactive: TArray<TLspInactiveRegion>; const APosition: TTextPosition;
       out ACondition: string): Boolean; static;
     property Settings: TReferenceSettings read FSettings;
+    property Resolver: TNameResolver read FResolver;
   end;
 
 implementation
@@ -126,7 +138,35 @@ implementation
 uses
   Atlas.Common.Index.Files,
   Atlas.Common.Pascal.Preprocessor,
-  Atlas.Common.Lsp.Implementations;
+  Atlas.Common.Lsp.Implementations,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TReferenceConfidenceText = (InAnInactiveBranchOf, InAnInactiveBranchCondition, CallViaIsTheOnly, CallViaIsOneOf,
+    CallOfOverridesIt, OverloadNotUniqueCandidatesThis, OverloadNotUniqueCandidatesAmong, SameNameTypeCannotBe,
+    NameInTheStringLiteral);
+
+const
+  cTexts: array[TReferenceConfidenceText] of TAtlasText = (
+    (De: 'In einem inaktiven Zweig der bedingten Übersetzung';
+     En: 'In an inactive branch of conditional compilation'),
+    (De: 'In einem inaktiven Zweig: Bedingung %s nicht erfüllt'; En: 'In an inactive branch: condition %s not met'),
+    (De: 'Aufruf über %s.%s; %s ist die einzige Umsetzung'; En: 'Call via %s.%s; %s is the only implementation'),
+    (De: 'Aufruf über %s.%s; %s ist eine von %d Umsetzungen'; En: 'Call via %s.%s; %s is one of %d implementations'),
+    (De: 'Aufruf von %s.%s; %s.%s überschreibt sie'; En: 'Call of %s.%s; %s.%s overrides it'),
+    (De: 'Überladung nicht eindeutig: %d Kandidaten, gewählt wurde dieses Symbol';
+     En: 'Overload not unique: %d candidates, this symbol was chosen'),
+    (De: 'Überladung nicht eindeutig: %d Kandidaten, darunter dieses Symbol';
+     En: 'Overload not unique: %d candidates, among them this symbol'),
+    (De: 'Gleicher Name, Typ nicht bestimmbar (with oder Ausdruck mit unbekanntem Typ)';
+     En: 'Same name, type cannot be determined (with or expression of unknown type)'),
+    (De: 'Name im String-Literal %s (etwa für RTTI oder MethodAddress)';
+     En: 'Name in the string literal %s (e.g. for RTTI or MethodAddress)'));
+
+{$SCOPEDENUMS OFF}
 
 const
   /// <summary>Mitglieder, die über ein Interface oder eine überschriebene Methode erreicht werden.</summary>
@@ -138,9 +178,13 @@ const
 function CleanName(const AText: string): string;
 begin
   if (AText <> '') and (AText[1] = '&') then
-    Result := Copy(AText, 2, MaxInt)
+  begin
+    Result := Copy(AText, 2, MaxInt);
+  end
   else
+  begin
     Result := AText;
+  end;
 end;
 
 function SameTarget(const A, B: TDefinitionTarget): Boolean;
@@ -153,7 +197,9 @@ function PreviousToken(const ATokens: TArray<TPascalToken>; AIndex: Integer): In
 begin
   Result := AIndex - 1;
   while (Result >= 0) and (ATokens[Result].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+  begin
     Dec(Result);
+  end;
 end;
 
 /// <summary>Name im Kopf einer Routine: procedure Name, procedure TTyp.Name, constructor TA.TB.Create.</summary>
@@ -164,7 +210,9 @@ begin
   Index := PreviousToken(ATokens, AIndex);
   while (Index > 0) and (ATokens[Index].Kind = TPascalTokenKind.Symbol) and (ATokens[Index].Text = '.') and
     (ATokens[PreviousToken(ATokens, Index)].Kind = TPascalTokenKind.Identifier) do
+  begin
     Index := PreviousToken(ATokens, PreviousToken(ATokens, Index));
+  end;
   Result := (Index >= 0) and (ATokens[Index].Kind = TPascalTokenKind.Keyword) and
     (SameText(ATokens[Index].Text, 'procedure') or SameText(ATokens[Index].Text, 'function') or
     SameText(ATokens[Index].Text, 'constructor') or SameText(ATokens[Index].Text, 'destructor') or
@@ -218,9 +266,13 @@ end;
 function TReferenceConfidence.LevelName: string;
 begin
   if IsSure then
-    Result := 'sure'
+  begin
+    Result := 'sure';
+  end
   else
+  begin
     Result := 'inferred';
+  end;
 end;
 
 function TReferenceConfidence.ReasonName: string;
@@ -246,25 +298,42 @@ end;
 
 { TReferenceClassifier }
 
-constructor TReferenceClassifier.Create(AResolver: TNameResolver; const AIndex: ISymbolIndex;
-  const AWanted: TDefinitionTarget; const ASymbol: TIndexSymbol; AHasSymbol: Boolean; const AName: string;
-  const ASettings: TReferenceSettings);
-var
-  Directive: string;
+procedure TReferenceClassifier.Init(AResolver: TNameResolver; const AIndex: ISymbolIndex;
+  const AWanted: TDefinitionTarget; const AName: string; const ASettings: TReferenceSettings);
 begin
-  inherited Create;
   FResolver := AResolver;
   FIndex := AIndex;
   FWanted := AWanted;
-  FSymbol := ASymbol;
-  FHasSymbol := AHasSymbol;
-  FOverloaded := False;
-  if AHasSymbol then
-    for Directive in ASymbol.Directives do
-      FOverloaded := FOverloaded or SameText(Directive, 'overload');
   FName := AName;
   FSettings := ASettings;
   FDescendants := TDictionary<string, TArray<TSymbolLocation>>.Create;
+end;
+
+constructor TReferenceClassifier.Create(AResolver: TNameResolver; const AIndex: ISymbolIndex;
+  const AWanted: TDefinitionTarget; const ASymbol: TIndexSymbol; const AName: string;
+  const ASettings: TReferenceSettings);
+var
+  mDirective: string;
+begin
+  inherited Create;
+  Init(AResolver, AIndex, AWanted, AName, ASettings);
+  FSymbol := ASymbol;
+  FHasSymbol := True;
+  FOverloaded := False;
+  for mDirective in ASymbol.Directives do
+  begin
+    FOverloaded := FOverloaded or SameText(mDirective, 'overload');
+  end;
+end;
+
+constructor TReferenceClassifier.Create(AResolver: TNameResolver; const AIndex: ISymbolIndex;
+  const AWanted: TDefinitionTarget; const AName: string; const ASettings: TReferenceSettings);
+begin
+  inherited Create;
+  Init(AResolver, AIndex, AWanted, AName, ASettings);
+  FSymbol := Default(TIndexSymbol);
+  FHasSymbol := False;
+  FOverloaded := False;
 end;
 
 destructor TReferenceClassifier.Destroy;
@@ -281,15 +350,21 @@ var
 begin
   ASymbol := Default(TIndexSymbol);
   if SameText(AWanted.FileName, AFileName) then
-    OwnerUnit := AResolver.ExtractedUnit(ATree, AFileName)
+  begin
+    OwnerUnit := AResolver.ExtractedUnit(ATree, AFileName);
+  end
   else if not TIndexFiles.UnitOf(AIndex, AWanted.FileName, OwnerUnit) then
+  begin
     Exit(False);
+  end;
   for Symbol in OwnerUnit.Symbols do
+  begin
     if Symbol.SelectionRange.StartPos = AWanted.SelectionRange.StartPos then
     begin
       ASymbol := Symbol;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -300,7 +375,9 @@ var
 begin
   Result := nil;
   if not TPascalPreprocessor.HasConditionals(AText) then
+  begin
     Exit;
+  end;
   // Dieselben Optionen wie der Baum des Editors, damit „inaktiv“ hier dasselbe heißt wie beim Abblenden.
   Result := TLspInactiveRegions.Regions(TPascalPreprocessor.Process(AText,
     TPascalPreprocessor.EditorOptions(ADefines)), False, Issues);
@@ -313,26 +390,34 @@ var
 begin
   ACondition := '';
   for Region in AInactive do
+  begin
     if not Before(APosition, Region.Range.StartPos) and Before(APosition, Region.Range.EndPos) then
     begin
       ACondition := Region.Condition;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
 function InactiveDetail(const ACondition: string): string;
 begin
   if ACondition = '' then
-    Result := 'In einem inaktiven Zweig der bedingten Übersetzung'
+  begin
+    Result := cTexts[TReferenceConfidenceText.InAnInactiveBranchOf].Text;
+  end
   else
-    Result := Format('In einem inaktiven Zweig: Bedingung %s nicht erfüllt', [ACondition]);
+  begin
+    Result := cTexts[TReferenceConfidenceText.InAnInactiveBranchCondition].Fmt([ACondition]);
+  end;
 end;
 
 function TReferenceClassifier.Descendants(const ATypeName: string): TArray<TSymbolLocation>;
 begin
   if FDescendants.TryGetValue(UpperCase(ATypeName), Result) then
+  begin
     Exit;
+  end;
   Result := TLspImplementations.AllDescendantsOf(FIndex, ATypeName);
   FDescendants.Add(UpperCase(ATypeName), Result);
 end;
@@ -342,55 +427,88 @@ begin
   Result := TLspImplementations.IsInterfaceType(FIndex, AContainer);
 end;
 
+function TReferenceClassifier.SameMemberElsewhere(const AResolved: TResolvedSymbol): Boolean;
+begin
+  Result := FHasSymbol and (FSymbol.Kind in MemberKinds) and (FSymbol.Container <> '');
+  if Result then
+  begin
+    Result := (AResolved.Kind = TResolvedKind.Symbol) and (AResolved.SymbolKind = FSymbol.Kind) and
+      SameText(AResolved.Name, FSymbol.Name) and (AResolved.Container <> '') and
+      not SameText(AResolved.Container, FSymbol.Container);
+  end;
+end;
+
+function TReferenceClassifier.DescendsFrom(const AContainer: string; out AClasses: Integer): Boolean;
+var
+  mLocation: TSymbolLocation;
+begin
+  Result := False;
+  AClasses := 0;
+  for mLocation in Descendants(AContainer) do
+  begin
+    if mLocation.Symbol.Kind in ClassKinds then
+    begin
+      Inc(AClasses);
+    end;
+    if SameText(mLocation.Symbol.QualifiedName, FSymbol.Container) or
+      SameText(mLocation.Symbol.Name, ShortName(FSymbol.Container)) then
+    begin
+      Result := True;
+    end;
+  end;
+end;
+
+function TReferenceClassifier.InterfaceConfidence(const AResolved: TResolvedSymbol;
+  AClasses: Integer): TReferenceConfidence;
+begin
+  if AClasses <= 1 then
+  begin
+    Result := TReferenceConfidence.Inferred(TReferenceReason.Interface_,
+      cTexts[TReferenceConfidenceText.CallViaIsTheOnly].Fmt([AResolved.Container, AResolved.Name,
+      FSymbol.Container]), False);
+  end
+  else
+  begin
+    Result := TReferenceConfidence.Inferred(TReferenceReason.Interface_,
+      cTexts[TReferenceConfidenceText.CallViaIsOneOf].Fmt([AResolved.Container, AResolved.Name,
+      FSymbol.Container, AClasses]), False);
+  end;
+  Result.Implementations := AClasses;
+end;
+
+function TReferenceClassifier.VirtualConfidence(const AResolved: TResolvedSymbol): TReferenceConfidence;
+begin
+  Result := TReferenceConfidence.Inferred(TReferenceReason.Virtual,
+    cTexts[TReferenceConfidenceText.CallOfOverridesIt].Fmt([AResolved.Container, AResolved.Name, FSymbol.Container,
+    FSymbol.Name]), False);
+  Result.Implementations := TLspImplementations.ImplementationCount(FIndex, AResolved.Container, AResolved.Name,
+    False);
+end;
+
 function TReferenceClassifier.InheritedCall(const AResolved: TResolvedSymbol;
   out AConfidence: TReferenceConfidence): Boolean;
 var
-  Location: TSymbolLocation;
-  Found: Boolean;
-  Classes: Integer;
+  mClasses: Integer;
 begin
-  Result := False;
-  if not FHasSymbol or not (FSymbol.Kind in MemberKinds) or (FSymbol.Container = '') then
-    Exit;
-  if (AResolved.Kind <> TResolvedKind.Symbol) or (AResolved.SymbolKind <> FSymbol.Kind) or
-    not SameText(AResolved.Name, FSymbol.Name) or (AResolved.Container = '') or
-    SameText(AResolved.Container, FSymbol.Container) then
-    Exit;
   // Die Klasse des Symbols muss vom Typ des aufgerufenen Mitglieds abstammen bzw. ihn umsetzen.
-  Found := False;
-  Classes := 0;
-  for Location in Descendants(AResolved.Container) do
+  Result := SameMemberElsewhere(AResolved) and DescendsFrom(AResolved.Container, mClasses);
+  if not Result then
   begin
-    if Location.Symbol.Kind in ClassKinds then
-      Inc(Classes);
-    if SameText(Location.Symbol.QualifiedName, FSymbol.Container) or
-      SameText(Location.Symbol.Name, ShortName(FSymbol.Container)) then
-      Found := True;
-  end;
-  if not Found then
     Exit;
+  end;
   if ContainerIsInterface(AResolved.Container) then
   begin
-    if Classes <= 1 then
-      AConfidence := TReferenceConfidence.Inferred(TReferenceReason.Interface_,
-        Format('Aufruf über %s.%s; %s ist die einzige Umsetzung', [AResolved.Container, AResolved.Name,
-        FSymbol.Container]), False)
-    else
-      AConfidence := TReferenceConfidence.Inferred(TReferenceReason.Interface_,
-        Format('Aufruf über %s.%s; %s ist eine von %d Umsetzungen', [AResolved.Container, AResolved.Name,
-        FSymbol.Container, Classes]), False);
-    AConfidence.Implementations := Classes;
-    Exit(True);
+    AConfidence := InterfaceConfidence(AResolved, mClasses);
+  end
+  else if AResolved.IsVirtual then
+  begin
+    AConfidence := VirtualConfidence(AResolved);
+  end
+  else
+  begin
+    // Statische Methoden gleichen Namens verdecken nur; erreicht wird das Symbol nur über virtual.
+    Result := False;
   end;
-  // Statische Methoden gleichen Namens verdecken nur; erreicht wird das Symbol nur über virtual.
-  if not AResolved.IsVirtual then
-    Exit;
-  AConfidence := TReferenceConfidence.Inferred(TReferenceReason.Virtual,
-    Format('Aufruf von %s.%s; %s.%s überschreibt sie', [AResolved.Container, AResolved.Name, FSymbol.Container,
-    FSymbol.Name]), False);
-  AConfidence.Implementations := TLspImplementations.ImplementationCount(FIndex, AResolved.Container, AResolved.Name,
-    False);
-  Result := True;
 end;
 
 function TReferenceClassifier.Ambiguous(ATree: TSyntaxTree; const AFileName: string;
@@ -403,20 +521,23 @@ begin
   Result := False;
   All := FResolver.ResolveAll(ATree, AFileName, APosition);
   if Length(All) < 2 then
+  begin
     Exit;
+  end;
   if AMatched then
   begin
     AConfidence := TReferenceConfidence.Inferred(TReferenceReason.Ambiguous,
-      Format('Überladung nicht eindeutig: %d Kandidaten, gewählt wurde dieses Symbol', [Length(All)]), True);
+      cTexts[TReferenceConfidenceText.OverloadNotUniqueCandidatesThis].Fmt([Length(All)]), True);
     Exit(True);
   end;
   for Candidate in All do
   begin
-    Targets := TLspDefinition.TargetsOf(FResolver, FIndex, ATree, AFileName, APosition, Candidate, True);
+    Targets := TLspDefinition.TargetsOf(FResolver, FIndex, TDefinitionQuery.Create(ATree, AFileName, APosition, True),
+      Candidate);
     if (Length(Targets) > 0) and SameTarget(Targets[0], FWanted) then
     begin
       AConfidence := TReferenceConfidence.Inferred(TReferenceReason.Ambiguous,
-        Format('Überladung nicht eindeutig: %d Kandidaten, darunter dieses Symbol', [Length(All)]), False);
+        cTexts[TReferenceConfidenceText.OverloadNotUniqueCandidatesAmong].Fmt([Length(All)]), False);
       Exit(True);
     end;
   end;
@@ -434,22 +555,29 @@ begin
   Position := ATree.Tokens[ATokenIndex].StartPos;
   Inactive := FSettings.Inferred and RegionAt(AInactive, Position, Condition);
   Resolved := FResolver.Resolve(ATree, AFileName, Position);
-  Targets := TLspDefinition.TargetsOf(FResolver, FIndex, ATree, AFileName, Position, Resolved, True);
+  Targets := TLspDefinition.TargetsOf(FResolver, FIndex, TDefinitionQuery.Create(ATree, AFileName, Position, True),
+    Resolved);
   if (Length(Targets) > 0) and SameTarget(Targets[0], FWanted) then
   begin
     if Inactive then
-      AConfidence := TReferenceConfidence.Inferred(TReferenceReason.InactiveBranch, InactiveDetail(Condition), True)
+    begin
+      AConfidence := TReferenceConfidence.Inferred(TReferenceReason.InactiveBranch, InactiveDetail(Condition), True);
+    end
     // ResolveAll nur bei Aufrufen von Überladungen: Sonst gibt es keinen zweiten Kandidaten.
     else if not (FSettings.Inferred and FOverloaded and not InRoutineHeader(ATree.Tokens, ATokenIndex) and
       Ambiguous(ATree, AFileName, Position, True, AConfidence)) then
+    begin
       AConfidence := TReferenceConfidence.Sure;
+    end;
     Exit(True);
   end;
   // Erschlossen nur bei genau dem Namen, nicht bei der anderen Schreibweise eines Attributs; Köpfe anderer
   // Routinen gleichen Namens deklarieren nur.
   if not FSettings.Inferred or not SameText(CleanName(ATree.Tokens[ATokenIndex].Text), FName) or
     InRoutineHeader(ATree.Tokens, ATokenIndex) then
+  begin
     Exit(False);
+  end;
   if Inactive then
   begin
     AConfidence := TReferenceConfidence.Inferred(TReferenceReason.InactiveBranch, InactiveDetail(Condition), False);
@@ -458,7 +586,7 @@ begin
   if Length(Targets) = 0 then
   begin
     AConfidence := TReferenceConfidence.Inferred(TReferenceReason.Unresolved,
-      'Gleicher Name, Typ nicht bestimmbar (with oder Ausdruck mit unbekanntem Typ)', False);
+      cTexts[TReferenceConfidenceText.SameNameTypeCannotBe].Text, False);
     Exit(True);
   end;
   Result := Ambiguous(ATree, AFileName, Position, False, AConfidence) or InheritedCall(Resolved, AConfidence);
@@ -469,8 +597,13 @@ begin
   Result := FSettings.Inferred and FSettings.TextMatches and (AToken.Kind = TPascalTokenKind.StringLiteral) and
     SameText(AToken.Text, '''' + FName + '''');
   if Result then
+  begin
     AConfidence := TReferenceConfidence.Inferred(TReferenceReason.Text,
-      Format('Name im String-Literal %s (etwa für RTTI oder MethodAddress)', [AToken.Text]), False);
+      cTexts[TReferenceConfidenceText.NameInTheStringLiteral].Fmt([AToken.Text]), False);
+  end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.ReferenceConfidence', cTexts);
 
 end.

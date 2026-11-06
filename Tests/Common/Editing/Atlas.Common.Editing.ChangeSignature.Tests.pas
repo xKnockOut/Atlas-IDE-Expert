@@ -56,12 +56,16 @@ var
 begin
   Count := 0;
   for Index := 0 to High(ATokens) do
+  begin
     if ATokens[Index].Text = AText then
     begin
       Inc(Count);
       if Count = AOccurrence then
+      begin
         Exit(Index);
+      end;
     end;
+  end;
   Result := -1;
 end;
 
@@ -72,10 +76,15 @@ var
   Edit: TTextEdit;
 begin
   Tokens := TPascalLexer.Tokenize(AText);
-  if TChangeSignature.CallEdit(AText, Tokens, TokenOf(Tokens, AName, AOccurrence), AOld, AChanges, nil, Edit) then
-    Result := TChangeSignature.ApplyEdits(AText, [Edit])
+  if TChangeSignature.CallEdit(AText, Tokens, TokenOf(Tokens, AName, AOccurrence),
+    TCallChange.Create(AOld, AChanges, nil), Edit) then
+  begin
+    Result := TChangeSignature.ApplyEdits(AText, [Edit]);
+  end
   else
+  begin
     Result := AText;
+  end;
 end;
 
 procedure TChangeSignatureTests.ParsesParameters;

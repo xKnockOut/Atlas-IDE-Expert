@@ -36,6 +36,8 @@ type
     FReadText: TTypeInfoReadText;
     FKnown: TDictionary<string, Boolean>;
     function Resolve(const AClassName: string; ADepth: Integer): Boolean;
+    /// <summary>{$M+} bei der Deklaration AFound, sonst beim Vorfahren.</summary>
+    function ResolveDeclared(const AFound: TSymbolLocation; ADepth: Integer): Boolean;
   public
     /// <summary>AIndex und AReadText dürfen nil sein; dann gelten nur die bekannten Klassen.</summary>
     constructor Create(const AIndex: ISymbolIndex; const AReadText: TTypeInfoReadText);
@@ -103,8 +105,12 @@ var
 begin
   Name := ShortName(AClassName);
   for Known in KnownClasses do
+  begin
     if Name = Known then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -116,24 +122,35 @@ begin
   AOn := False;
   Body := Trim(ADirective);
   if Body.StartsWith('{$') and Body.EndsWith('}') then
-    Body := Copy(Body, 3, Length(Body) - 3)
+  begin
+    Body := Copy(Body, 3, Length(Body) - 3);
+  end
   else if Body.StartsWith('(*$') and Body.EndsWith('*)') then
-    Body := Copy(Body, 4, Length(Body) - 5)
+  begin
+    Body := Copy(Body, 4, Length(Body) - 5);
+  end
   else
+  begin
     Exit(False);
+  end;
   Upper := UpperCase(Trim(Body));
   if Upper.StartsWith('TYPEINFO') then
   begin
     Upper := Trim(Copy(Upper, 9, MaxInt));
     if Upper = 'ON' then
-      AOn := True
+    begin
+      AOn := True;
+    end
     else if Upper <> 'OFF' then
+    begin
       Exit(False);
+    end;
     Exit(True);
   end;
   // Schalterliste: {$M+} oder {$R-,M+,H+}; der letzte M-Schalter gilt.
   Found := False;
   for Part in Upper.Split([',']) do
+  begin
     if Trim(Part) = 'M+' then
     begin
       AOn := True;
@@ -144,6 +161,7 @@ begin
       AOn := False;
       Found := True;
     end;
+  end;
   Result := Found;
 end;
 
@@ -159,9 +177,13 @@ begin
   for Token in ATokens do
   begin
     if not Before(Token.StartPos, APosition) then
+    begin
       Break;
+    end;
     if Token.Kind <> TPascalTokenKind.Directive then
+    begin
       Continue;
+    end;
     if ReadSwitch(Token.Text, Value) then
     begin
       Result := Value;
@@ -170,7 +192,9 @@ begin
     // {$PUSHOPT}/{$POPOPT} (#847).
     Name := UpperCase(StringReplace(Token.Text, ' ', '', [rfReplaceAll]));
     if (Name = '{$PUSHOPT}') or (Name = '(*$PUSHOPT*)') then
-      Saved := Saved + [Result]
+    begin
+      Saved := Saved + [Result];
+    end
     else if ((Name = '{$POPOPT}') or (Name = '(*$POPOPT*)')) and (Saved <> nil) then
     begin
       Result := Saved[High(Saved)];
@@ -187,7 +211,9 @@ var
 begin
   // Ohne bedingte Direktive sind alle Token aktiv.
   if (Pos('{$IF', UpperCase(AText)) = 0) and (Pos('(*$IF', UpperCase(AText)) = 0) then
+  begin
     Exit(TPascalLexer.Tokenize(AText));
+  end;
   Options := TPreprocessorOptions.Default;
   Options.Defines := TPascalPreprocessor.PredefinedSymbols(Platform_, CompilerVersion_);
   Options.CompilerVersion := CompilerVersion_;
@@ -196,8 +222,12 @@ begin
   // Nur Token der Datei selbst, nicht aus Include-Dateien.
   Result := nil;
   for Index := 0 to High(Processed.Tokens) do
+  begin
     if (Index > High(Processed.FileIndexes)) or (Processed.FileIndexes[Index] = 0) then
+    begin
       Result := Result + [Processed.Tokens[Index]];
+    end;
+  end;
 end;
 
 class function TTypeInfoClasses.SwitchAt(const AText: string; const APosition: TTextPosition): Boolean;
@@ -205,44 +235,66 @@ begin
   Result := SwitchAt(ActiveTokens(AText), APosition);
 end;
 
-function TTypeInfoClasses.Resolve(const AClassName: string; ADepth: Integer): Boolean;
+/// <summary>Klasse AKey auf oberster Ebene aus AIndex; False ohne.</summary>
+function FindClass(const AIndex: ISymbolIndex; const AKey: string; out AFound: TSymbolLocation): Boolean;
 var
-  Key, Text, FileName: string;
-  Location, Found: TSymbolLocation;
-  HasFound: Boolean;
+  mLocation: TSymbolLocation;
 begin
-  Key := ShortName(AClassName);
-  if (Key = '') or (Key = 'tobject') or (ADepth > MaxDepth) then
-    Exit(False);
-  if FKnown.TryGetValue(Key, Result) then
-    Exit;
-  // Gegen Zyklen (A = class(B), B = class(A)): vorläufig nein.
-  FKnown.AddOrSetValue(Key, False);
-  Result := KnownTypeInfoClass(Key);
-  if not Result and (FIndex <> nil) then
+  for mLocation in AIndex.FindSymbols(AKey) do
   begin
-    HasFound := False;
-    for Location in FIndex.FindSymbols(Key) do
-      if (Location.Symbol.Kind = TIndexSymbolKind.ClassType) and (Location.Symbol.Container = '') then
-      begin
-        Found := Location;
-        HasFound := True;
-        Break;
-      end;
-    if HasFound then
+    if (mLocation.Symbol.Kind = TIndexSymbolKind.ClassType) and (mLocation.Symbol.Container = '') then
     begin
-      // {$M+} bei der Deklaration, sonst beim Vorfahren.
-      // Aus einer Include-Datei (#500) deren Datei, sonst die der Unit.
-      FileName := Found.FileName;
-      if Found.Symbol.FileName <> '' then
-        FileName := Found.Symbol.FileName;
-      if Assigned(FReadText) and FReadText(FileName, Text) then
-        Result := SwitchAt(Text, Found.Symbol.Range.StartPos);
-      if not Result and (Length(Found.Symbol.Ancestors) > 0) then
-        Result := Resolve(Found.Symbol.Ancestors[0], ADepth + 1);
+      AFound := mLocation;
+      Exit(True);
     end;
   end;
-  FKnown.AddOrSetValue(Key, Result);
+  AFound := Default(TSymbolLocation);
+  Result := False;
+end;
+
+function TTypeInfoClasses.ResolveDeclared(const AFound: TSymbolLocation; ADepth: Integer): Boolean;
+var
+  mText, mFileName: string;
+begin
+  Result := False;
+  // Aus einer Include-Datei (#500) deren Datei, sonst die der Unit.
+  mFileName := AFound.FileName;
+  if AFound.Symbol.FileName <> '' then
+  begin
+    mFileName := AFound.Symbol.FileName;
+  end;
+  if Assigned(FReadText) and FReadText(mFileName, mText) then
+  begin
+    Result := SwitchAt(mText, AFound.Symbol.Range.StartPos);
+  end;
+  if not Result and (Length(AFound.Symbol.Ancestors) > 0) then
+  begin
+    Result := Resolve(AFound.Symbol.Ancestors[0], ADepth + 1);
+  end;
+end;
+
+function TTypeInfoClasses.Resolve(const AClassName: string; ADepth: Integer): Boolean;
+var
+  mKey: string;
+  mFound: TSymbolLocation;
+begin
+  mKey := ShortName(AClassName);
+  if (mKey = '') or (mKey = 'tobject') or (ADepth > MaxDepth) then
+  begin
+    Exit(False);
+  end;
+  if FKnown.TryGetValue(mKey, Result) then
+  begin
+    Exit;
+  end;
+  // Gegen Zyklen (A = class(B), B = class(A)): vorläufig nein.
+  FKnown.AddOrSetValue(mKey, False);
+  Result := KnownTypeInfoClass(mKey);
+  if not Result and (FIndex <> nil) and FindClass(FIndex, mKey, mFound) then
+  begin
+    Result := ResolveDeclared(mFound, ADepth);
+  end;
+  FKnown.AddOrSetValue(mKey, Result);
 end;
 
 function TTypeInfoClasses.HasTypeInfo(const AClassName: string): Boolean;

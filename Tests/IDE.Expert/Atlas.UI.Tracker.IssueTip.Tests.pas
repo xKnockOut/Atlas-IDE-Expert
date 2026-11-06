@@ -10,10 +10,11 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,  Atlas.UI.Tracker.Strings;
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasIssueTipTests = class
   private
     FLanguage: TAtlasLanguage;
@@ -51,7 +52,7 @@ implementation
 
 uses
   System.SysUtils,
-  Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.UI.Tracker.IssueTip;
 
@@ -81,11 +82,9 @@ end;
 
 procedure TAtlasIssueTipTests.FoundShowsTitleStateAssigneeAndAge;
 var
-  mTitle, mText: string;
+  mText: string;
 begin
-  TAtlasIssueTip.Compose('ATL-123', TAtlasIssueTipState.Found, Sample, TAtlasCiFetchError.None, cNow, True, mTitle,
-    mText);
-  Assert.AreEqual('ATL-123', mTitle);
+  mText := TAtlasIssueTip.Compose('ATL-123', TAtlasIssueTipState.Found, Sample, TAtlasCiFetchError.None, cNow, True);
   Assert.AreEqual('Sperre prüfen' + #10 + 'Zustand: Open · Zuständig: Marco · aktualisiert vor 3 Std.' + #10#10 +
     'Strg+Klick: Vorschau · Strg+Umschalt+Klick: Browser', mText);
 end;
@@ -93,59 +92,54 @@ end;
 procedure TAtlasIssueTipTests.FoundWithoutFieldsShowsOnlyTitle;
 var
   mDetails: TAtlasTrackerDetails;
-  mTitle, mText: string;
+  mText: string;
 begin
   mDetails := TAtlasTrackerDetails.Empty;
   mDetails.Key := '#42';
   mDetails.Title := 'Absturz beim Speichern';
-  TAtlasIssueTip.Compose('#42', TAtlasIssueTipState.Found, mDetails, TAtlasCiFetchError.None, cNow, True, mTitle,
-    mText);
-  Assert.AreEqual('#42', mTitle);
+  mText := TAtlasIssueTip.Compose('#42', TAtlasIssueTipState.Found, mDetails, TAtlasCiFetchError.None, cNow, True);
   Assert.AreEqual('Absturz beim Speichern' + #10#10 + 'Strg+Klick: Vorschau · Strg+Umschalt+Klick: Browser', mText);
 end;
 
 procedure TAtlasIssueTipTests.LoadingUntilAnswer;
 var
-  mTitle, mText: string;
+  mText: string;
 begin
-  TAtlasIssueTip.Compose('ATL-1', TAtlasIssueTipState.Loading, TAtlasTrackerDetails.Empty, TAtlasCiFetchError.None,
-    cNow, True, mTitle, mText);
-  Assert.AreEqual('ATL-1', mTitle);
-  Assert.IsTrue(mText.StartsWith(TAtlasStrings.Text(TAtlasTextId.IssuePreviewLoading) + #10#10));
+  mText := TAtlasIssueTip.Compose('ATL-1', TAtlasIssueTipState.Loading, TAtlasTrackerDetails.Empty,
+    TAtlasCiFetchError.None, cNow, True);
+  Assert.IsTrue(mText.StartsWith(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewLoading) + #10#10));
 end;
 
 procedure TAtlasIssueTipTests.NotFoundNamesKey;
 var
-  mTitle, mText: string;
+  mText: string;
 begin
-  TAtlasIssueTip.Compose('ATL-9', TAtlasIssueTipState.NotFound, TAtlasTrackerDetails.Empty,
-    TAtlasCiFetchError.NotFound, cNow, True, mTitle, mText);
+  mText := TAtlasIssueTip.Compose('ATL-9', TAtlasIssueTipState.NotFound, TAtlasTrackerDetails.Empty,
+    TAtlasCiFetchError.NotFound, cNow, True);
   Assert.IsTrue(mText.StartsWith('Issue ATL-9 nicht gefunden.' + #10#10), mText);
 end;
 
 procedure TAtlasIssueTipTests.FailedShowsReason;
 var
-  mTitle, mText: string;
+  mText: string;
 begin
-  TAtlasIssueTip.Compose('ATL-9', TAtlasIssueTipState.Failed, TAtlasTrackerDetails.Empty,
-    TAtlasCiFetchError.Unauthorized, cNow, True, mTitle, mText);
+  mText := TAtlasIssueTip.Compose('ATL-9', TAtlasIssueTipState.Failed, TAtlasTrackerDetails.Empty,
+    TAtlasCiFetchError.Unauthorized, cNow, True);
   Assert.IsTrue(mText.StartsWith(TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorToken)), mText);
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorNetwork),
     TAtlasIssueTip.ErrorText(TAtlasCiFetchError.Network, 'ATL-9'));
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.IssuePreviewErrorConfig),
+  Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.IssuePreviewErrorConfig),
     TAtlasIssueTip.ErrorText(TAtlasCiFetchError.UnknownProvider, 'ATL-9'));
 end;
 
 procedure TAtlasIssueTipTests.FooterFollowsPreviewSetting;
 var
-  mTitle, mText: string;
+  mText: string;
 begin
-  TAtlasIssueTip.Compose('ATL-1', TAtlasIssueTipState.Found, Sample, TAtlasCiFetchError.None, cNow, False, mTitle,
-    mText);
+  mText := TAtlasIssueTip.Compose('ATL-1', TAtlasIssueTipState.Found, Sample, TAtlasCiFetchError.None, cNow, False);
   Assert.IsTrue(mText.EndsWith(#10#10 + 'Strg+Klick: im Browser öffnen'), mText);
   TAtlasStrings.Language := TAtlasLanguage.English;
-  TAtlasIssueTip.Compose('ATL-1', TAtlasIssueTipState.Found, Sample, TAtlasCiFetchError.None, cNow, True, mTitle,
-    mText);
+  mText := TAtlasIssueTip.Compose('ATL-1', TAtlasIssueTipState.Found, Sample, TAtlasCiFetchError.None, cNow, True);
   Assert.IsTrue(mText.EndsWith(#10#10 + 'Ctrl+click: preview · Ctrl+Shift+click: browser'), mText);
 end;
 

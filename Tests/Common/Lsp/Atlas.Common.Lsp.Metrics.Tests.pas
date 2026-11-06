@@ -61,20 +61,30 @@ begin
       ASource.Root := 'C:\P';
       ASource.Title := 'Demo';
       if AProject then
+      begin
         ASource.Files := [MainFile, HelperFile, 'C:\P\Main.dfm'];
+      end;
       Result := True;
     end,
     function(const AFileName: string; out AText: string): Boolean
     begin
       Result := True;
       if SameText(AFileName, MainFile) then
-        AText := MainText
+      begin
+        AText := MainText;
+      end
       else if SameText(AFileName, HelperFile) then
-        AText := HelperText
+      begin
+        AText := HelperText;
+      end
       else if SameText(AFileName, ClassFile) then
-        AText := ClassText
+      begin
+        AText := ClassText;
+      end
       else
+      begin
         Result := False;
+      end;
     end);
 end;
 
@@ -82,11 +92,17 @@ function Arguments(const AFileName, AMode: string): TJSONArray;
 begin
   Result := TJSONArray.Create;
   if AFileName = '' then
-    Result.AddElement(TJSONNull.Create)
+  begin
+    Result.AddElement(TJSONNull.Create);
+  end
   else
+  begin
     Result.Add(TDocumentUris.FromPath(AFileName));
+  end;
   if AMode <> '' then
+  begin
     Result.Add(AMode);
+  end;
 end;
 
 function Run(AMetrics: TLspMetrics; const AFileName, AMode: string): string;
@@ -99,9 +115,13 @@ begin
     Answer := AMetrics.Execute(Args);
     try
       if Answer is TJSONString then
-        Result := Answer.Value
+      begin
+        Result := Answer.Value;
+      end
       else
+      begin
         Result := Answer.ToJSON;
+      end;
     finally
       Answer.Free;
     end;

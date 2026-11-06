@@ -67,7 +67,7 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Pascal.XmlDoc,
-  Atlas.Common.Lsp.Completion;
+  Atlas.Common.Lsp.Completion.Details;
 
 const
   ListeFile = 'C:\P\Liste.pas';
@@ -159,7 +159,9 @@ begin
   for Run in ARuns do
   begin
     if Result <> '' then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + TXmlDoc.RunKindName(Run.Kind);
   end;
 end;
@@ -218,10 +220,14 @@ begin
     ' <seealso href="https://example.org">Web</seealso>');
   Names := '';
   for Kind := Low(TXmlDocSectionKind) to High(TXmlDocSectionKind) do
+  begin
     Assert.IsTrue(Doc.IndexOf(Kind) >= 0, 'Abschnitt fehlt: ' + TXmlDoc.SectionName(Kind));
+  end;
   // Nach Art sortiert, nicht nach Kommentarreihenfolge.
   for Kind := Low(TXmlDocSectionKind) to High(TXmlDocSectionKind) do
+  begin
     Names := Names + TXmlDoc.SectionName(Doc.Sections[Ord(Kind)].Kind) + ' ';
+  end;
   Assert.AreEqual('summary param typeparam returns value exception remarks example seealso ', Names);
   Assert.AreEqual('T', Doc.Sections[Doc.IndexOf(TXmlDocSectionKind.TypeParam)].Name);
   Assert.AreEqual('EFoo', Doc.Sections[Doc.IndexOf(TXmlDocSectionKind.Exception)].Name);
@@ -380,7 +386,9 @@ var
 begin
   Lines := ['/// <summary>'];
   for Index := 1 to 40 do
+  begin
     Lines := Lines + ['/// Zeile ' + IntToStr(Index) + '<br/>'];
+  end;
   Lines := Lines + ['/// </summary>', 'procedure P;'];
   Doc := TXmlDoc.Parse(TXmlDoc.CommentAbove(Lines, High(Lines)));
   Assert.AreEqual(40, Integer(Length(Doc.Summary.Split([#10]))));
@@ -395,7 +403,7 @@ var
   Runs: TJSONArray;
 begin
   // Namensposition von "Add" in Zeile 9.
-  Details := TLspCompletion.Details(Index, ListeFile, UnitListe, At(9, 13));
+  Details := TCompletionDetails.Details(Index, ListeFile, UnitListe, At(9, 13));
   try
     Assert.AreEqual('function Add(const S: string): Integer; virtual;', Details.GetValue<string>('declaration'));
     Assert.AreEqual('Liste', Details.GetValue<string>('unit'));
@@ -423,7 +431,7 @@ procedure TCompletionDetailsTests.ReportsDeprecatedTextAndDirectives;
 var
   Details: TJSONObject;
 begin
-  Details := TLspCompletion.Details(Index, ListeFile, UnitListe, At(11, 14));
+  Details := TCompletionDetails.Details(Index, ListeFile, UnitListe, At(11, 14));
   try
     Assert.AreEqual('protected', Details.GetValue<string>('visibility'));
     Assert.AreEqual('Stattdessen Neu verwenden', Details.GetValue<string>('deprecated'));
@@ -438,7 +446,7 @@ procedure TCompletionDetailsTests.LocalVariableWithoutIndexEntry;
 var
   Details: TJSONObject;
 begin
-  Details := TLspCompletion.Details(Index, ListeFile, UnitListe, At(16, 2));
+  Details := TCompletionDetails.Details(Index, ListeFile, UnitListe, At(16, 2));
   try
     Assert.AreEqual('Anzahl: Integer;', Details.GetValue<string>('declaration'));
     Assert.IsNull(Details.GetValue('container'));

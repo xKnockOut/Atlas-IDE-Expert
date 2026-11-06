@@ -12,6 +12,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Bookmarks')]
   TAtlasNoteStoreTests = class
   private
     FFolder: string;
@@ -112,7 +113,9 @@ end;
 procedure TAtlasNoteStoreTests.TearDown;
 begin
   if DirectoryExists(FFolder) then
+  begin
     TDirectory.Delete(FFolder, True);
+  end;
   // Der Leckmonitor misst den Saldo von Setup und TearDown.
   FFolder := '';
 end;
@@ -202,7 +205,9 @@ begin
   Assert.AreEqual('verwaist', Groups[2].Notes[0].Text);
   Total := 0;
   for Index := 0 to High(Groups) do
+  begin
     Inc(Total, Length(Groups[Index].Notes));
+  end;
   Assert.AreEqual(Book.Count, Total, 'alle Notizen des Projekts');
 end;
 
@@ -369,10 +374,14 @@ begin
     TAtlasNotes.FileFor(FFolder, Project));
   Base := GetEnvironmentVariable('LOCALAPPDATA');
   if Base = '' then
-    Assert.AreEqual('', TAtlasNotes.DefaultFolder)
+  begin
+    Assert.AreEqual('', TAtlasNotes.DefaultFolder);
+  end
   else
+  begin
     Assert.AreEqual(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(Base) + 'Atlas') + 'Notes',
       TAtlasNotes.DefaultFolder);
+  end;
 end;
 
 procedure TAtlasNoteStoreTests.SameFileIgnoresCaseAndSlashes;

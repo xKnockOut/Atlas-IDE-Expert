@@ -13,6 +13,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasCommentEditorTests = class
   public
     /// <summary>"@an" am Ende und mitten im Satz; Start und Länge wie SelStart eines Memos.</summary>
@@ -46,9 +47,12 @@ type
     /// <summary>JSON hin und zurück, leere Einträge fallen weg, ungültiges JSON ergibt die Vorgaben.</summary>
     [Test]
     procedure SnippetsJson;
-    /// <summary>Vorgabe der Einstellung issues.commentSnippets = TAtlasCommentSnippets.Defaults.</summary>
+    /// <summary>Vorgabe der Einstellung issues.commentSnippets = deutsche TAtlasCommentSnippets.Defaults.</summary>
     [Test]
     procedure SnippetDefaultsMatchSetting;
+    /// <summary>Unveränderte Vorgaben folgen der Sprache der Oberfläche, eigene Bausteine bleiben (#1458).</summary>
+    [Test]
+    procedure SnippetDefaultsFollowLanguage;
     /// <summary>Je Tracker, Issue und Feld; nur Leerraum löscht; neueste zuerst, höchstens MaxDrafts.</summary>
     [Test]
     procedure DraftsPutGetDelete;
@@ -73,13 +77,18 @@ uses
   System.IOUtils,
   System.DateUtils,
   Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Files.DataFile,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.PaletteSearch,
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Providers.YouTrack,
-  Atlas.Core.Tracker.CommentEditor;
+  Atlas.Core.Tracker.CommentEditor,
+  Atlas.Core.Tracker.Internals.GitHubApi,
+  Atlas.Core.Tracker.GitHubParse,
+  Atlas.Core.Tracker.YouTrackApi,
+  Atlas.Core.Tracker.YouTrackParse;
 
 type
   /// <summary>Transport mit einer festen Antwort; merkt die Adressen.</summary>
@@ -144,7 +153,9 @@ begin
   for mUser in AUsers do
   begin
     if Result <> '' then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + mUser.Login;
   end;
 end;
@@ -346,9 +357,9 @@ begin
   Assert.IsTrue(TAtlasCommentSnippets.Parse(TAtlasCommentSnippets.ToJson(mSnippets), mSnippets));
   Assert.AreEqual(2, Integer(Length(mSnippets)), 'hin und zurück');
   Assert.AreEqual('Zeile 1'#10'Zeile 2', mSnippets[1].Text);
-  Assert.AreEqual(0, Integer(Length(TAtlasCommentSnippets.Read('[]'))), 'leere Liste bleibt leer');
-  Assert.AreEqual(Integer(Length(TAtlasCommentSnippets.Defaults)),
-    Integer(Length(TAtlasCommentSnippets.Read('kein JSON'))), 'ungültig: Vorgaben');
+  Assert.AreEqual(0, Integer(Length(TAtlasCommentSnippets.Read('[]', False))), 'leere Liste bleibt leer');
+  Assert.AreEqual(Integer(Length(TAtlasCommentSnippets.Defaults(False))),
+    Integer(Length(TAtlasCommentSnippets.Read('kein JSON', False))), 'ungültig: Vorgaben');
   Assert.IsFalse(TAtlasCommentSnippets.Parse('{"name":"A"}', mSnippets), 'keine Liste');
   mSnippets := nil;
 end;
@@ -359,7 +370,7 @@ var
   mIndex: Integer;
 begin
   Assert.IsTrue(TAtlasCommentSnippets.Parse(TAtlasPluginSettings.DefaultIssuesCommentSnippets, mSetting));
-  mDefaults := TAtlasCommentSnippets.Defaults;
+  mDefaults := TAtlasCommentSnippets.Defaults(False);
   Assert.AreEqual(Integer(Length(mDefaults)), Integer(Length(mSetting)));
   for mIndex := 0 to High(mDefaults) do
   begin
@@ -369,6 +380,27 @@ begin
   Assert.AreEqual('Behoben in {commit}', mDefaults[1].Name);
   mSetting := nil;
   mDefaults := nil;
+end;
+
+procedure TAtlasCommentEditorTests.SnippetDefaultsFollowLanguage;
+var
+  mRead: TArray<TAtlasCommentSnippet>;
+begin
+  mRead := TAtlasCommentSnippets.Read(TAtlasPluginSettings.DefaultIssuesCommentSnippets, True);
+  Assert.AreEqual(2, Integer(Length(mRead)));
+  Assert.AreEqual('Please check with the current build', mRead[0].Name, 'deutsche Vorgabe in englischer IDE');
+  Assert.AreEqual('Fixed in {commit}.', mRead[1].Text);
+  mRead := TAtlasCommentSnippets.Read(TAtlasCommentSnippets.DefaultJson(True), False);
+  Assert.AreEqual('Bitte mit aktuellem Build prüfen', mRead[0].Name, 'englische Vorgabe in deutscher IDE');
+  mRead := TAtlasCommentSnippets.Read(TAtlasCommentSnippets.DefaultJson(True), True);
+  Assert.AreEqual('Please check with the current build', mRead[0].Name, 'englisch bleibt englisch');
+  mRead := TAtlasCommentSnippets.Read('[{"name":"Bitte mit aktuellem Build prüfen","text":"Eigener Text"}]', True);
+  Assert.AreEqual(1, Integer(Length(mRead)), 'geändert: bleibt, wie es ist');
+  Assert.AreEqual('Eigener Text', mRead[0].Text);
+  Assert.AreEqual(Integer(Length(TAtlasCommentSnippets.Defaults(True))),
+    Integer(Length(TAtlasCommentSnippets.Read('kein JSON', True))), 'ungültig: englische Vorgaben');
+  Assert.AreEqual('Fixed in {commit}', TAtlasCommentSnippets.Read('kein JSON', True)[1].Name);
+  mRead := nil;
 end;
 
 procedure TAtlasCommentEditorTests.DraftsPutGetDelete;
@@ -400,7 +432,9 @@ begin
     Assert.AreEqual(1, mDrafts.Count);
     mDrafts.Clear;
     for mIndex := 1 to TAtlasCommentDrafts.MaxDrafts + 5 do
+    begin
       mDrafts.Put('t', 'ATL-' + IntToStr(mIndex), TAtlasCommentDrafts.FieldPreview, 'x', mIndex);
+    end;
     Assert.AreEqual(TAtlasCommentDrafts.MaxDrafts, mDrafts.Count, 'höchstens MaxDrafts');
     Assert.IsFalse(mDrafts.Get('t', 'ATL-1', TAtlasCommentDrafts.FieldPreview, mText, mSaved), 'älteste weg');
     Assert.IsTrue(mDrafts.Get('t', 'ATL-105', TAtlasCommentDrafts.FieldPreview, mText, mSaved), 'neueste bleibt');
@@ -436,7 +470,9 @@ begin
     Assert.AreEqual(0, mRead.Count);
   finally
     if TFile.Exists(mFile) then
+    begin
       TFile.Delete(mFile);
+    end;
     mRead.Free;
     mDrafts.Free;
   end;
@@ -472,21 +508,21 @@ var
   mPeople: IAtlasTrackerPeople;
   mError: TAtlasCiFetchError;
 begin
-  mUrl := TAtlasYouTrackTracker.UsersUrl(YouTrackTarget, 'an na', 8);
+  mUrl := TAtlasYouTrackApi.UsersUrl(YouTrackTarget, 'an na', 8);
   Assert.AreEqual('https://yt.firma.de/api/users?query=an%20na&fields=login%2CfullName%2Cbanned&$top=16', mUrl);
-  Assert.AreEqual('', TAtlasYouTrackTracker.UsersUrl(TAtlasTrackerTarget.Create('youtrack', '', 'ATL', ''), 'a', 8),
+  Assert.AreEqual('', TAtlasYouTrackApi.UsersUrl(TAtlasTrackerTarget.Create('youtrack', '', 'ATL', ''), 'a', 8),
     'ohne Server');
-  Assert.IsTrue(TAtlasYouTrackTracker.ParseUserList('[{"login":"anna","fullName":"Anna Berger"},' +
+  Assert.IsTrue(TAtlasYouTrackParse.ParseUserList('[{"login":"anna","fullName":"Anna Berger"},' +
     '{"login":"alt","fullName":"Alter Account","banned":true},{"fullName":"ohne Login"},' +
     '{"login":"mail","fullName":"Max Mail"}]', mUsers));
   Assert.AreEqual('anna,mail', Logins(mUsers), 'gesperrte und ohne Login fallen weg');
   Assert.AreEqual('Anna Berger', mUsers[0].Name);
-  Assert.IsFalse(TAtlasYouTrackTracker.ParseUserList('{"login":"anna"}', mUsers), 'keine Liste');
+  Assert.IsFalse(TAtlasYouTrackParse.ParseUserList('{"login":"anna"}', mUsers), 'keine Liste');
   mTransport := TUsersTransport.Create(200, '[{"login":"mail","fullName":"Max Mail"},' +
     '{"login":"anna","fullName":"Anna Berger"}]');
   mTransportRef := mTransport;
   Assert.IsTrue(Supports(TAtlasYouTrackTracker.Create as IAtlasTrackerProvider, IAtlasTrackerPeople, mPeople));
-  Assert.IsTrue(mPeople.Users(YouTrackTarget, mTransportRef, 'an', 1000, 8, mUsers, mError));
+  Assert.IsTrue(mPeople.Users(TAtlasTrackerCall.Create(YouTrackTarget, mTransportRef, 1000), 'an', 8, mUsers, mError));
   // YouTrack findet "mail" etwa über die E-Mail-Adresse: bleibt, aber hinter dem Treffer im Namen.
   Assert.AreEqual('anna,mail', Logins(mUsers));
   Assert.AreEqual(1, Integer(Length(mTransport.Calls)));
@@ -501,15 +537,15 @@ var
   mPeople: IAtlasTrackerPeople;
   mError: TAtlasCiFetchError;
 begin
-  Assert.IsTrue(TAtlasGitHubTracker.AssigneesUrl(GitHubTarget).StartsWith('https://api.github.com/repos/'));
-  Assert.IsTrue(TAtlasGitHubTracker.AssigneesUrl(GitHubTarget).EndsWith('/assignees?per_page=100'));
-  Assert.IsTrue(TAtlasGitHubTracker.ParseUsers('[{"login":"octocat"},{"login":"anna-b"},{"id":3}]', mUsers));
+  Assert.IsTrue(TAtlasGitHubApi.AssigneesUrl(GitHubTarget).StartsWith('https://api.github.com/repos/'));
+  Assert.IsTrue(TAtlasGitHubApi.AssigneesUrl(GitHubTarget).EndsWith('/assignees?per_page=100'));
+  Assert.IsTrue(TAtlasGitHubParse.ParseUsers('[{"login":"octocat"},{"login":"anna-b"},{"id":3}]', mUsers));
   Assert.AreEqual('octocat,anna-b', Logins(mUsers));
   Assert.AreEqual('', mUsers[0].Name, 'GitHub liefert hier keinen Namen');
   mTransport := TUsersTransport.Create(200, '[{"login":"octocat"},{"login":"anna-b"},{"login":"banana"}]');
   mTransportRef := mTransport;
   Assert.IsTrue(Supports(TAtlasGitHubTracker.Create as IAtlasTrackerProvider, IAtlasTrackerPeople, mPeople));
-  Assert.IsTrue(mPeople.Users(GitHubTarget, mTransportRef, 'an', 1000, 8, mUsers, mError));
+  Assert.IsTrue(mPeople.Users(TAtlasTrackerCall.Create(GitHubTarget, mTransportRef, 1000), 'an', 8, mUsers, mError));
   Assert.AreEqual('anna-b,banana', Logins(mUsers), 'nur passende, Anfang zuerst');
   Assert.IsTrue(mTransport.Calls[0].EndsWith('/assignees?per_page=100'));
   mUsers := nil;

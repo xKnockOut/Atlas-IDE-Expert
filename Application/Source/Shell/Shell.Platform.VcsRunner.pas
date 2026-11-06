@@ -23,6 +23,8 @@ type
     FAllowMainThread: Boolean;
     FCancelled: TFunc<Boolean>;
     function IsCancelled: Boolean;
+    /// <summary>Ok, wenn der Lauf beginnen darf; sonst warum nicht.</summary>
+    function StartOutcome(const AExecutable: string): TAtlasVcsOutcome;
   public
     /// <summary>AAllowMainThread: Hauptthread erlauben (Kommandozeile). ACancelled: zusätzlicher Abbruch; nil =
     /// keiner.</summary>
@@ -53,19 +55,89 @@ begin
   begin
     Available := AStream.NumBytesAvailable;
     if Available <= 0 then
+    begin
       Exit;
+    end;
     if Available > SizeOf(Chunk) then
+    begin
       Available := SizeOf(Chunk);
+    end;
     BytesRead := AStream.Read(Chunk, Available);
     if BytesRead <= 0 then
+    begin
       Exit;
+    end;
     if ACount < ALimit then
     begin
       if ACount + BytesRead > Length(ABuffer) then
+      begin
         SetLength(ABuffer, (ACount + BytesRead) * 2);
+      end;
       Move(Chunk[0], ABuffer[ACount], BytesRead);
       Inc(ACount, BytesRead);
     end;
+  end;
+end;
+
+type
+  /// <summary>Gelesene Ausgabe eines Laufs: stdout bis MaxOutputBytes + 1, stderr bis MaxErrorBytes.</summary>
+  TCapturedOutput = record
+    Output: TBytes;
+    Errors: TBytes;
+    OutputCount: Integer;
+    ErrorCount: Integer;
+    procedure DrainFrom(AChild: TProcess);
+  end;
+
+procedure TCapturedOutput.DrainFrom(AChild: TProcess);
+begin
+  Drain(AChild.Output, Output, OutputCount, TLinuxVcsRunner.MaxOutputBytes + 1);
+  Drain(AChild.Stderr, Errors, ErrorCount, MaxErrorBytes);
+end;
+
+/// <summary>Programm, Argumente, Ordner und eine eigene Umgebung ohne Rückfrage nach Zugangsdaten.</summary>
+procedure Configure(AChild: TProcess; const AExecutable: string; const AArguments: TArray<string>;
+  const AWorkingDir: string);
+var
+  mArgument: string;
+  mVariables: TArray<string>;
+  mIndex: Integer;
+begin
+  AChild.Executable := AExecutable;
+  for mArgument in AArguments do
+  begin
+    AChild.Parameters.Add(mArgument);
+  end;
+  if AWorkingDir <> '' then
+  begin
+    AChild.CurrentDirectory := AWorkingDir;
+  end;
+  mVariables := nil;
+  for mIndex := 1 to GetEnvironmentVariableCount do
+  begin
+    mVariables := mVariables + [GetEnvironmentString(mIndex)];
+  end;
+  for mArgument in TAtlasVcsServerAccess.NoPromptEnvironment(mVariables) do
+  begin
+    AChild.Environment.Add(mArgument);
+  end;
+  AChild.Options := [poUsePipes, poNoConsole];
+end;
+
+function ResultOf(AChild: TProcess; AOutcome: TAtlasVcsOutcome; const ACaptured: TCapturedOutput): TAtlasVcsRunResult;
+begin
+  if (AOutcome = TAtlasVcsOutcome.Ok) and (ACaptured.OutputCount > TLinuxVcsRunner.MaxOutputBytes) then
+  begin
+    AOutcome := TAtlasVcsOutcome.Failed;
+  end;
+  Result := TAtlasVcsRunResult.Make(AOutcome, AChild.ExitCode, nil);
+  if AOutcome = TAtlasVcsOutcome.Ok then
+  begin
+    Result.Output := Copy(ACaptured.Output, 0, ACaptured.OutputCount);
+  end;
+  if ACaptured.ErrorCount > 0 then
+  begin
+    Result.ErrorText := Trim(TEncoding.UTF8.GetString(ACaptured.Errors, 0, ACaptured.ErrorCount));
   end;
 end;
 
@@ -82,83 +154,87 @@ function TLinuxVcsRunner.IsCancelled: Boolean;
 begin
   Result := not TThread.CurrentThread.ExternalThread and TThread.CheckTerminated;
   if not Result and Assigned(FCancelled) then
+  begin
     Result := FCancelled();
+  end;
+end;
+
+function TLinuxVcsRunner.StartOutcome(const AExecutable: string): TAtlasVcsOutcome;
+begin
+  Result := TAtlasVcsOutcome.Ok;
+  if not FAllowMainThread and (TThread.CurrentThread.ThreadID = MainThreadID) then
+  begin
+    Result := TAtlasVcsOutcome.MainThread;
+  end
+  else if (AExecutable = '') or not FileExists(AExecutable) then
+  begin
+    Result := TAtlasVcsOutcome.ToolMissing;
+  end
+  else if IsCancelled then
+  begin
+    Result := TAtlasVcsOutcome.Cancelled;
+  end;
+end;
+
+/// <summary>Liest bis zum Ende des Prozesses; beendet ihn bei Abbruch und Zeitablauf.</summary>
+function Watch(ARunner: TLinuxVcsRunner; AChild: TProcess; ATimeoutMs: Cardinal;
+  var ACaptured: TCapturedOutput): TAtlasVcsOutcome;
+var
+  mDeadline: UInt64;
+begin
+  mDeadline := TThread.GetTickCount64 + ATimeoutMs;
+  Result := TAtlasVcsOutcome.Ok;
+  while AChild.Running do
+  begin
+    ACaptured.DrainFrom(AChild);
+    if ARunner.IsCancelled then
+    begin
+      Result := TAtlasVcsOutcome.Cancelled;
+    end
+    else if TThread.GetTickCount64 >= mDeadline then
+    begin
+      Result := TAtlasVcsOutcome.TimedOut;
+    end;
+    if Result <> TAtlasVcsOutcome.Ok then
+    begin
+      AChild.Terminate(1);
+      Break;
+    end;
+    Sleep(SliceMs);
+  end;
+  // Rest nach dem Ende.
+  ACaptured.DrainFrom(AChild);
+  AChild.WaitOnExit;
 end;
 
 function TLinuxVcsRunner.Run(const AExecutable: string; const AArguments: TArray<string>;
   const AWorkingDir: string; ATimeoutMs: Cardinal): TAtlasVcsRunResult;
 var
-  Child: TProcess;
-  Argument: string;
-  Output, Errors: TBytes;
-  OutputCount, ErrorCount: Integer;
-  Deadline: UInt64;
-  Outcome: TAtlasVcsOutcome;
-  Variables: TArray<string>;
-  Index: Integer;
+  mChild: TProcess;
+  mCaptured: TCapturedOutput;
+  mOutcome: TAtlasVcsOutcome;
 begin
-  if not FAllowMainThread and (TThread.CurrentThread.ThreadID = MainThreadID) then
-    Exit(TAtlasVcsRunResult.Make(TAtlasVcsOutcome.MainThread, -1, nil));
-  if (AExecutable = '') or not FileExists(AExecutable) then
-    Exit(TAtlasVcsRunResult.Make(TAtlasVcsOutcome.ToolMissing, -1, nil));
-  if IsCancelled then
-    Exit(TAtlasVcsRunResult.Make(TAtlasVcsOutcome.Cancelled, -1, nil));
-  Child := TProcess.Create(nil);
+  mOutcome := StartOutcome(AExecutable);
+  if mOutcome <> TAtlasVcsOutcome.Ok then
+  begin
+    Exit(TAtlasVcsRunResult.Make(mOutcome, -1, nil));
+  end;
+  mChild := TProcess.Create(nil);
   try
-    Child.Executable := AExecutable;
-    for Argument in AArguments do
-      Child.Parameters.Add(Argument);
-    if AWorkingDir <> '' then
-      Child.CurrentDirectory := AWorkingDir;
-    // Eigene Umgebung ohne Rückfrage nach Zugangsdaten.
-    Variables := nil;
-    for Index := 1 to GetEnvironmentVariableCount do
-      Variables := Variables + [GetEnvironmentString(Index)];
-    for Argument in TAtlasVcsServerAccess.NoPromptEnvironment(Variables) do
-      Child.Environment.Add(Argument);
-    Child.Options := [poUsePipes, poNoConsole];
+    Configure(mChild, AExecutable, AArguments, AWorkingDir);
     try
-      Child.Execute;
+      mChild.Execute;
     except
       on EProcess do
         // Programm verschwunden oder nicht ausführbar: wie nicht installiert.
         Exit(TAtlasVcsRunResult.Make(TAtlasVcsOutcome.ToolMissing, -1, nil));
     end;
-    Child.CloseInput;
-    Output := nil;
-    Errors := nil;
-    OutputCount := 0;
-    ErrorCount := 0;
-    Deadline := TThread.GetTickCount64 + ATimeoutMs;
-    Outcome := TAtlasVcsOutcome.Ok;
-    while Child.Running do
-    begin
-      Drain(Child.Output, Output, OutputCount, MaxOutputBytes + 1);
-      Drain(Child.Stderr, Errors, ErrorCount, MaxErrorBytes);
-      if IsCancelled then
-        Outcome := TAtlasVcsOutcome.Cancelled
-      else if TThread.GetTickCount64 >= Deadline then
-        Outcome := TAtlasVcsOutcome.TimedOut;
-      if Outcome <> TAtlasVcsOutcome.Ok then
-      begin
-        Child.Terminate(1);
-        Break;
-      end;
-      Sleep(SliceMs);
-    end;
-    // Rest nach dem Ende.
-    Drain(Child.Output, Output, OutputCount, MaxOutputBytes + 1);
-    Drain(Child.Stderr, Errors, ErrorCount, MaxErrorBytes);
-    Child.WaitOnExit;
-    if (Outcome = TAtlasVcsOutcome.Ok) and (OutputCount > MaxOutputBytes) then
-      Outcome := TAtlasVcsOutcome.Failed;
-    Result := TAtlasVcsRunResult.Make(Outcome, Child.ExitCode, nil);
-    if Outcome = TAtlasVcsOutcome.Ok then
-      Result.Output := Copy(Output, 0, OutputCount);
-    if ErrorCount > 0 then
-      Result.ErrorText := Trim(TEncoding.UTF8.GetString(Errors, 0, ErrorCount));
+    mChild.CloseInput;
+    mCaptured := Default(TCapturedOutput);
+    mOutcome := Watch(Self, mChild, ATimeoutMs, mCaptured);
+    Result := ResultOf(mChild, mOutcome, mCaptured);
   finally
-    Child.Free;
+    mChild.Free;
   end;
 end;
 

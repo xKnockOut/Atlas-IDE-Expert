@@ -79,7 +79,9 @@ function ReadSource(const AFileName: string; out AText: string): Boolean;
 begin
   Result := SameText(AFileName, BaseFile);
   if Result then
+  begin
     AText := BaseCode;
+  end;
 end;
 
 procedure TTypeInfoClassesTests.Setup;
@@ -201,13 +203,17 @@ begin
   begin
     Entry := Item as TJSONObject;
     if (Entry.GetValue<string>('name', '') = AName) and (Entry.GetValue('atlas') is TJSONObject) then
+    begin
       Exit(TJSONObject(Entry.GetValue('atlas')).GetValue<string>('visibility', ''));
+    end;
     Children := Entry.GetValue('children');
     if Children is TJSONArray then
     begin
       Result := VisibilityOf(TJSONArray(Children), AName);
       if Result <> '' then
+      begin
         Exit;
+      end;
     end;
   end;
 end;

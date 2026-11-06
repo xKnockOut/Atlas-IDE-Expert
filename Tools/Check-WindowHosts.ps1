@@ -20,7 +20,7 @@
       offenes Editorfenster ein neues an, beim Beenden der IDE mit Absturz
       nach dem Entladen fremder Experten (#1233).
 
-    Geprüft werden alle Quelltexte unter Packages/Atlas.IDE.Expert/Source/.
+    Geprüft werden alle Quelltexte unter Packages/Atlas.IDE.*/Source/.
     Kommentare werden übergangen.
 
     Exit-Code 0: keine Verstöße, 1: mindestens ein Verstoß.
@@ -36,7 +36,10 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$SourceDir = 'Packages/Atlas.IDE.Expert/Source'
+# Alle Plugin-Packages (Base und Module, #1456): Packages/Atlas.IDE.*/Source.
+$SourceDirs = @(Get-ChildItem -Path (Join-Path $Root 'Packages') -Directory -Filter 'Atlas.IDE.*' |
+    Where-Object { Test-Path (Join-Path $_.FullName 'Source') } |
+    ForEach-Object { "Packages/$($_.Name)/Source" })
 $DockUnit = 'Atlas.IDE.Foundation.DockWindow.pas'
 $BarUnit = 'Atlas.IDE.Foundation.EditorBarHost.pas'
 $RefreshUnit = 'Atlas.IDE.Foundation.EditorRefresh.pas'
@@ -66,9 +69,9 @@ $Rules = @(
 )
 
 $violations = @()
-$path = Join-Path $Root $SourceDir
+$files = $SourceDirs | ForEach-Object { Get-ChildItem -Path (Join-Path $Root $_) -Recurse -File -Include '*.pas' }
 
-foreach ($file in Get-ChildItem -Path $path -Recurse -File -Include '*.pas') {
+foreach ($file in $files) {
     $relative = [IO.Path]::GetRelativePath($Root, $file.FullName)
     $text = Remove-PascalComments ([IO.File]::ReadAllText($file.FullName))
 

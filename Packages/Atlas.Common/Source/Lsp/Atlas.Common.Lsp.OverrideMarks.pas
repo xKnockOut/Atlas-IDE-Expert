@@ -95,46 +95,205 @@ begin
   Result := AIndex.FindFile(AFileName, AUnit);
 end;
 
+function IsRoutineOf(const ASymbol: TIndexSymbol; const AContainer, AName: string): Boolean;
+begin
+  Result := (ASymbol.Kind in RoutineKinds) and SameText(ASymbol.Container, AContainer) and
+    SameText(ASymbol.Name, AName);
+end;
+
+/// <summary>Rumpf (bzw. ohne Rumpf die Deklaration) der Methode AContainer.AName in AOwner, wenn sie override
+/// trägt.</summary>
+function OverridingBody(const AOwner: TUnitIndex; const AContainer, AName: string; out ABody: TIndexSymbol): Boolean;
+var
+  Symbol: TIndexSymbol;
+begin
+  Result := False;
+  ABody := Default(TIndexSymbol);
+  for Symbol in AOwner.Symbols do
+  begin
+    if IsRoutineOf(Symbol, AContainer, AName) then
+    begin
+      // Die erste Fundstelle ist die Deklaration, die letzte bei mehreren der Rumpf.
+      ABody := Symbol;
+      Result := Result or Symbol.HasDirective('override');
+    end;
+  end;
+end;
+
 /// <summary>Überschreibende Methoden AName in allen Nachfahren von ATypeName.</summary>
 function OverridingIn(const AIndex: ISymbolIndex; const ACurrent: TUnitIndex; const ATypeName,
   AName: string): TArray<TOverrideMarkTarget>;
 var
   Location: TSymbolLocation;
   Owner: TUnitIndex;
-  Symbol, Declaration, Body: TIndexSymbol;
-  Found, Overrides: Boolean;
-  Count: Integer;
+  Body: TIndexSymbol;
 begin
   Result := nil;
   for Location in TLspImplementations.AllDescendantsOf(AIndex, ATypeName) do
   begin
     if Length(Result) >= TLspOverrideMarks.MaxTargets then
+    begin
       Break;
-    if not UnitOf(AIndex, ACurrent, Location.FileName, Owner) then
-      Continue;
-    Found := False;
-    Overrides := False;
-    Count := 0;
-    Declaration := Default(TIndexSymbol);
-    Body := Default(TIndexSymbol);
-    for Symbol in Owner.Symbols do
-      if (Symbol.Kind in RoutineKinds) and SameText(Symbol.Container, Location.Symbol.QualifiedName) and
-        SameText(Symbol.Name, AName) then
+    end;
+    if UnitOf(AIndex, ACurrent, Location.FileName, Owner) and
+      OverridingBody(Owner, Location.Symbol.QualifiedName, AName, Body) then
+    begin
+      Result := Result + [MarkTarget(Location.Symbol.Name + '.' + AName, Owner.FileName, Body.SelectionRange)];
+    end;
+  end;
+end;
+
+type
+  /// <summary>Marken einer Datei: je Zeile die überschriebenen und überschreibenden Methoden.</summary>
+  TMarkScan = class
+  private
+    FResolver: TNameResolver;
+    FIndex: ISymbolIndex;
+    FCurrent: TUnitIndex;
+    FTypes: TDictionary<string, TIndexSymbol>;
+    FDone: TDictionary<string, Boolean>;
+    FLines: TDictionary<Integer, TOverrideMark>;
+    procedure Directives(const ASymbol: TIndexSymbol; out AOverride, AVirtual: Boolean);
+    procedure AddLines(const ASymbol: TIndexSymbol; const AOverrides, AOverridden: TArray<TOverrideMarkTarget>);
+    procedure AddSymbol(const ASymbol: TIndexSymbol);
+  public
+    constructor Create(AResolver: TNameResolver; const AIndex: ISymbolIndex; const ACurrent: TUnitIndex);
+    destructor Destroy; override;
+    procedure Run;
+    function Sorted: TArray<TOverrideMark>;
+  end;
+
+constructor TMarkScan.Create(AResolver: TNameResolver; const AIndex: ISymbolIndex; const ACurrent: TUnitIndex);
+var
+  mSymbol: TIndexSymbol;
+begin
+  inherited Create;
+  FResolver := AResolver;
+  FIndex := AIndex;
+  FCurrent := ACurrent;
+  FTypes := TDictionary<string, TIndexSymbol>.Create;
+  FDone := TDictionary<string, Boolean>.Create;
+  FLines := TDictionary<Integer, TOverrideMark>.Create;
+  for mSymbol in FCurrent.Symbols do
+  begin
+    if mSymbol.Kind in TypeKinds then
+    begin
+      FTypes.AddOrSetValue(UpperCase(mSymbol.QualifiedName), mSymbol);
+    end;
+  end;
+end;
+
+destructor TMarkScan.Destroy;
+begin
+  FLines.Free;
+  FDone.Free;
+  FTypes.Free;
+  inherited;
+end;
+
+procedure TMarkScan.Directives(const ASymbol: TIndexSymbol; out AOverride, AVirtual: Boolean);
+var
+  mOther: TIndexSymbol;
+begin
+  AOverride := False;
+  AVirtual := False;
+  for mOther in FCurrent.Symbols do
+  begin
+    if IsRoutineOf(mOther, ASymbol.Container, ASymbol.Name) then
+    begin
+      AOverride := AOverride or mOther.HasDirective('override');
+      AVirtual := AVirtual or mOther.IsVirtual;
+    end;
+  end;
+end;
+
+procedure TMarkScan.AddLines(const ASymbol: TIndexSymbol; const AOverrides, AOverridden: TArray<TOverrideMarkTarget>);
+var
+  mOther: TIndexSymbol;
+  mMark: TOverrideMark;
+  mLine: Integer;
+begin
+  for mOther in FCurrent.Symbols do
+  begin
+    if IsRoutineOf(mOther, ASymbol.Container, ASymbol.Name) then
+    begin
+      mLine := mOther.SelectionRange.StartPos.Line;
+      if not FLines.TryGetValue(mLine, mMark) then
       begin
-        // Die erste Fundstelle ist die Deklaration, die letzte bei mehreren der Rumpf.
-        if not Found then
-          Declaration := Symbol;
-        Found := True;
-        Body := Symbol;
-        Inc(Count);
-        if Symbol.HasDirective('override') then
-          Overrides := True;
+        mMark := Default(TOverrideMark);
+        mMark.Line := mLine;
       end;
-    if not Overrides then
-      Continue;
-    if Count < 2 then
-      Body := Declaration;
-    Result := Result + [MarkTarget(Location.Symbol.Name + '.' + AName, Owner.FileName, Body.SelectionRange)];
+      mMark.Overrides := mMark.Overrides + AOverrides;
+      mMark.Overridden := mMark.Overridden + AOverridden;
+      FLines.AddOrSetValue(mLine, mMark);
+    end;
+  end;
+end;
+
+procedure TMarkScan.AddSymbol(const ASymbol: TIndexSymbol);
+var
+  mTypeSymbol: TIndexSymbol;
+  mKey: string;
+  mAncestor: TCodeLensOverride;
+  mOverrides, mOverridden: TArray<TOverrideMarkTarget>;
+  mHasOverride, mHasVirtual: Boolean;
+begin
+  if not (ASymbol.Kind in RoutineKinds) or (ASymbol.Container = '') or
+    not FTypes.TryGetValue(UpperCase(ASymbol.Container), mTypeSymbol) then
+  begin
+    Exit;
+  end;
+  // Deklaration und Rumpf (und Überladungen) gehören zusammen: einmal je Typ und Name.
+  mKey := UpperCase(ASymbol.Container + '.' + ASymbol.Name);
+  if FDone.ContainsKey(mKey) then
+  begin
+    Exit;
+  end;
+  FDone.Add(mKey, True);
+  Directives(ASymbol, mHasOverride, mHasVirtual);
+  mOverrides := nil;
+  if mHasOverride and TLspCodeLens.OverriddenAncestor(FResolver, FIndex, FCurrent, mTypeSymbol, ASymbol.Name,
+    mAncestor) then
+  begin
+    mOverrides := [MarkTarget(mAncestor.Owner + '.' + ASymbol.Name, mAncestor.Target.FileName,
+      mAncestor.Target.Range)];
+  end;
+  mOverridden := nil;
+  if mHasVirtual and (mTypeSymbol.Kind <> TIndexSymbolKind.RecordType) then
+  begin
+    mOverridden := OverridingIn(FIndex, FCurrent, mTypeSymbol.QualifiedName, ASymbol.Name);
+  end;
+  if (mOverrides <> nil) or (mOverridden <> nil) then
+  begin
+    AddLines(ASymbol, mOverrides, mOverridden);
+  end;
+end;
+
+procedure TMarkScan.Run;
+var
+  mSymbol: TIndexSymbol;
+begin
+  for mSymbol in FCurrent.Symbols do
+  begin
+    AddSymbol(mSymbol);
+  end;
+end;
+
+function TMarkScan.Sorted: TArray<TOverrideMark>;
+var
+  mSorted: TList<TOverrideMark>;
+begin
+  mSorted := TList<TOverrideMark>.Create(TComparer<TOverrideMark>.Construct(
+    function(const ALeft, ARight: TOverrideMark): Integer
+    begin
+      Result := ALeft.Line - ARight.Line;
+    end));
+  try
+    mSorted.AddRange(FLines.Values);
+    mSorted.Sort;
+    Result := mSorted.ToArray;
+  finally
+    mSorted.Free;
   end;
 end;
 
@@ -143,91 +302,19 @@ end;
 class function TLspOverrideMarks.Marks(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
   const AFileName: string): TArray<TOverrideMark>;
 var
-  Current: TUnitIndex;
-  Symbol, TypeSymbol, Other: TIndexSymbol;
-  Types: TDictionary<string, TIndexSymbol>;
-  Done: TDictionary<string, Boolean>;
-  Lines: TDictionary<Integer, TOverrideMark>;
-  Mark: TOverrideMark;
-  Key, Owner: string;
-  Ancestor: TCodeLensLocation;
-  Overrides, Overridden: TArray<TOverrideMarkTarget>;
-  HasOverride, HasVirtual: Boolean;
-  Line: Integer;
-  Sorted: TList<TOverrideMark>;
+  mScan: TMarkScan;
 begin
   Result := nil;
   if ATree = nil then
+  begin
     Exit;
-  Current := TIndexExtractor.Extract(ATree, AFileName);
-  Types := TDictionary<string, TIndexSymbol>.Create;
-  Done := TDictionary<string, Boolean>.Create;
-  Lines := TDictionary<Integer, TOverrideMark>.Create;
+  end;
+  mScan := TMarkScan.Create(AResolver, AIndex, TIndexExtractor.Extract(ATree, AFileName));
   try
-    for Symbol in Current.Symbols do
-      if Symbol.Kind in TypeKinds then
-        Types.AddOrSetValue(UpperCase(Symbol.QualifiedName), Symbol);
-    for Symbol in Current.Symbols do
-    begin
-      if not (Symbol.Kind in RoutineKinds) or (Symbol.Container = '') or
-        not Types.TryGetValue(UpperCase(Symbol.Container), TypeSymbol) then
-        Continue;
-      // Deklaration und Rumpf (und Überladungen) gehören zusammen: einmal je Typ und Name.
-      Key := UpperCase(Symbol.Container + '.' + Symbol.Name);
-      if Done.ContainsKey(Key) then
-        Continue;
-      Done.Add(Key, True);
-      HasOverride := False;
-      HasVirtual := False;
-      for Other in Current.Symbols do
-        if (Other.Kind in RoutineKinds) and SameText(Other.Container, Symbol.Container) and
-          SameText(Other.Name, Symbol.Name) then
-        begin
-          if Other.HasDirective('override') then
-            HasOverride := True;
-          if Other.IsVirtual then
-            HasVirtual := True;
-        end;
-      Overrides := nil;
-      if HasOverride and TLspCodeLens.OverriddenAncestor(AResolver, AIndex, Current, TypeSymbol, Symbol.Name, Owner,
-        Ancestor) then
-        Overrides := [MarkTarget(Owner + '.' + Symbol.Name, Ancestor.FileName, Ancestor.Range)];
-      Overridden := nil;
-      if HasVirtual and (TypeSymbol.Kind <> TIndexSymbolKind.RecordType) then
-        Overridden := OverridingIn(AIndex, Current, TypeSymbol.QualifiedName, Symbol.Name);
-      if (Length(Overrides) = 0) and (Length(Overridden) = 0) then
-        Continue;
-      for Other in Current.Symbols do
-        if (Other.Kind in RoutineKinds) and SameText(Other.Container, Symbol.Container) and
-          SameText(Other.Name, Symbol.Name) then
-        begin
-          Line := Other.SelectionRange.StartPos.Line;
-          if not Lines.TryGetValue(Line, Mark) then
-          begin
-            Mark := Default(TOverrideMark);
-            Mark.Line := Line;
-          end;
-          Mark.Overrides := Mark.Overrides + Overrides;
-          Mark.Overridden := Mark.Overridden + Overridden;
-          Lines.AddOrSetValue(Line, Mark);
-        end;
-    end;
-    Sorted := TList<TOverrideMark>.Create(TComparer<TOverrideMark>.Construct(
-      function(const ALeft, ARight: TOverrideMark): Integer
-      begin
-        Result := ALeft.Line - ARight.Line;
-      end));
-    try
-      Sorted.AddRange(Lines.Values);
-      Sorted.Sort;
-      Result := Sorted.ToArray;
-    finally
-      Sorted.Free;
-    end;
+    mScan.Run;
+    Result := mScan.Sorted;
   finally
-    Lines.Free;
-    Done.Free;
-    Types.Free;
+    mScan.Free;
   end;
 end;
 
@@ -276,10 +363,14 @@ var
   Resolver: TNameResolver;
 begin
   if (AArguments = nil) or (AArguments.Count < 1) or not (AArguments.Items[0] is TJSONString) then
+  begin
     Exit(Json(nil));
+  end;
   Uri := AArguments.Items[0].Value;
   if not AStore.TryGet(Uri, Document) then
+  begin
     Exit(Json(nil));
+  end;
   Shared := TSyntaxTreeCache.Get(Document);
   Resolver := TNameResolver.Create(AIndex, AEnsureUnit);
   try

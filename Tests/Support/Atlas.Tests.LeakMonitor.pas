@@ -22,9 +22,21 @@
 //   kurz, bis Threads des Tests ihre letzten Freigaben erledigt haben (z. B.
 //   der Lese-Thread einer JSON-RPC-Verbindung nach ReaderDone oder ein
 //   Task nach dem Signal).
+// - Lücke nach dem Setup: Die RTL belegt die Startdaten eines Threads (BeginThread, 24 Byte unter Win64) im
+//   Aufrufer, frei gibt sie der neue Thread beim Anlaufen. Fällt das zwischen PostSetUp und PreTest, zählt
+//   PreTest die Freigabe zum Setup; Belegungen in der Lücke gehören DUnitX und zählen nicht.
 // - Ein negativer Saldo (andere Threads geben älteren Speicher frei) ist nie
 //   ein Leck des Tests und wird als 0 gemeldet.
+// - Anonymes Protokoll (#1478): Das gemeinsame atlas.log (TAtlasGuard.RotatingLog) nummeriert jeden neuen Namen,
+//   Pfad und Text und behält die Nummern bis Programmende (höchstens MaxLabels). Jeder Wert zählte so als Leck
+//   des Tests, der ihn zuerst schreibt (z. B. FailingProviderTripsOnlyItself, GuardErrorLineHidesMessage).
+//   PostTearDown vergisst die Nummern vor der letzten Messung; jeder Test beginnt mit leerer Tabelle.
 // Bleibt ein Leck, hängt der Bericht Thread-Anzahl und Wartezeit an.
+//
+// Der Monitor ist der einzige Haken vor jedem Setup und setzt deshalb auch den gemeinsamen Ausgangszustand:
+// Jeder Test beginnt mit deutschen Texten (TAtlasLocale, #1458). Die Sprache gilt prozessweit, und Tests, die
+// Einstellungen anwenden (TShellSettings.SetLoose wählt ohne language Englisch), ließen sonst nachfolgende Tests
+// je nach Reihenfolge englisch prüfen.
 
 interface
 
@@ -36,6 +48,8 @@ type
   private
     FSetUpBefore: Int64;
     FSetUpAllocated: Int64;
+    /// <summary>Stand am Ende des Setups; 0 = keins gemessen.</summary>
+    FSetUpEnd: Int64;
     FTestBefore: Int64;
     FTestAllocated: Int64;
     FTearDownBefore: Int64;
@@ -90,11 +104,13 @@ uses
   System.Generics.Collections,
   DUnitX.ServiceLocator,
   Atlas.Common.Editing.SlashCommands,
+  Atlas.Common.Localization.Texts,
   Atlas.Common.Rules.Catalog,
   Atlas.Core.Files.DataFile,
   Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Transfer,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.TimeLimit;
 
 const
@@ -116,8 +132,10 @@ begin
   {$WARN SYMBOL_PLATFORM DEFAULT}
   Result := Int64(State.TotalAllocatedMediumBlockSize) + Int64(State.TotalAllocatedLargeBlockSize);
   for I := Low(State.SmallBlockTypeStates) to High(State.SmallBlockTypeStates) do
+  begin
     Inc(Result, Int64(State.SmallBlockTypeStates[I].AllocatedBlockCount) *
       State.SmallBlockTypeStates[I].UseableBlockSize);
+  end;
 end;
 
 function ProcessThreadCount: Integer;
@@ -129,7 +147,9 @@ begin
   Result := 0;
   Snapshot := CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
   if Snapshot = INVALID_HANDLE_VALUE then
+  begin
     Exit;
+  end;
   try
     ProcessId := GetCurrentProcessId;
     FillChar(Entry, SizeOf(Entry), 0);
@@ -137,7 +157,9 @@ begin
     if Thread32First(Snapshot, Entry) then
       repeat
         if Entry.th32OwnerProcessID = ProcessId then
+        begin
           Inc(Result);
+        end;
         Entry.dwSize := SizeOf(Entry);
       until not Thread32Next(Snapshot, Entry);
   finally
@@ -202,13 +224,19 @@ begin
   try
     SetLength(Waiters, 4 * TThread.ProcessorCount);
     if Length(Waiters) < MinPrewarmWaiters then
+    begin
       SetLength(Waiters, MinPrewarmWaiters);
+    end;
     for Index := 0 to High(Waiters) do
+    begin
       Waiters[Index] := StartWaiter(Gate);
+    end;
     // Inc steht unter der Sperre vor Wait; wer gezählt ist, wartet also schon.
     Deadline := TThread.GetTickCount64 + 5000;
     while (Gate.Waiting < Length(Waiters)) and (TThread.GetTickCount64 < Deadline) do
+    begin
       TThread.Sleep(1);
+    end;
     TMonitor.Enter(Gate);
     try
       TMonitor.PulseAll(Gate);
@@ -245,10 +273,12 @@ begin
     State := TAtlasSettingsState.Create(TAtlasPluginSettings.Defaults, '');
     // Gemeinsamer Speicher mit allen Standardwerten (DefaultValues): entsteht beim ersten DefaultJson.
     for Index := 0 to Catalog.Count - 1 do
+    begin
       TAtlasSettingsTransfer.DefaultJson(Catalog, Index);
+    end;
     Exported := TAtlasSettingsTransfer.ExportSettings(Catalog, State, TAtlasExportOptions.ForBackup, Environment);
     TAtlasSettingsTransfer.Apply(Catalog, State, TAtlasSettingsTransfer.Preview(Catalog, State,
-      TAtlasSettingsTransfer.ParseFile(Exported.Text), imMerge, nil, Environment, '', ''));
+      TAtlasSettingsTransfer.ParseFile(Exported.Text), TAtlasImportOptions.Create(imMerge, nil, Environment)));
   finally
     Catalog.Free;
   end;
@@ -328,6 +358,24 @@ begin
   end;
 end;
 
+/// <summary>Gemeinsame Befehlsliste je Sprache (#1458): entsteht beim ersten Zugriff in der jeweiligen Sprache und
+/// bleibt; sonst trifft das je nach Reihenfolge einen anderen Test als Leck (die englische etwa
+/// EnglishTextsWithoutGerman über die Regel slash-command, rund 23 KB).</summary>
+procedure PrewarmSlashCommands;
+var
+  mLanguage: TTextLanguage;
+begin
+  try
+    for mLanguage := Low(TTextLanguage) to High(TTextLanguage) do
+    begin
+      TAtlasLocale.Use(mLanguage);
+      TSlashCommandRegistry.Shared;
+    end;
+  finally
+    TAtlasLocale.Use(TTextLanguage.German);
+  end;
+end;
+
 procedure PrewarmRuntime;
 var
   Task: ITask;
@@ -335,9 +383,7 @@ var
   Json: TJSONValue;
 begin
   PrewarmWaitObjects;
-  // Gemeinsame Befehlsliste: entsteht beim ersten Zugriff und bleibt; sonst trifft das je nach
-  // Reihenfolge (paralleler Lauf) einen anderen Test als Leck.
-  TSlashCommandRegistry.Shared;
+  PrewarmSlashCommands;
   // Ebenso der gemeinsame Regelkatalog mit Gruppen und Optionen (#909).
   TRuleCatalog.Shared;
   // Legt den Standard-Thread-Pool und seinen Überwachungs-Thread an (bleiben bis Programmende).
@@ -349,15 +395,21 @@ begin
   // Hauptthread: TExternalThread für TThread.CurrentThread (bleibt bis Programmende).
   Current := TThread.CurrentThread;
   if Current = nil then
+  begin
     raise EInvalidOperation.Create('Kein aktueller Thread');
+  end;
   // Lokale Zeitzone (ISO-8601-Zeitstempel) und JSON-Pfade legen beim ersten Gebrauch Daten an,
   // die bis Programmende bleiben.
   if DateToISO8601(Now, False) = '' then
+  begin
     raise EInvalidOperation.Create('Keine Zeitzone');
+  end;
   Json := TJSONObject.ParseJSONValue('{"a":{"b":true}}');
   try
     if not Json.GetValue<Boolean>('a.b') then
+    begin
       raise EInvalidOperation.Create('JSON-Pfad');
+    end;
   finally
     Json.Free;
   end;
@@ -367,7 +419,9 @@ begin
   // Dateien ohne BOM liest TFile.ReadAllText mit TEncoding.Default (Singleton beim ersten Gebrauch, z. B. im
   // Korpustest des Parsers über die RTL-Quellen).
   if TEncoding.Default.GetString(TEncoding.Default.GetBytes('a')) <> 'a' then
+  begin
     raise EInvalidOperation.Create('Kodierung');
+  end;
 end;
 
 procedure RegisterLeakMonitor;
@@ -388,7 +442,9 @@ end;
 procedure TLeakMonitor.Start;
 begin
   if FStarted then
+  begin
     Exit;
+  end;
   FStarted := True;
   FThreadsAtStart := ProcessThreadCount;
   FThreadsAtEnd := FThreadsAtStart;
@@ -403,9 +459,13 @@ function TLeakMonitor.Reported(AValue: Int64): Int64;
 begin
   // Mehr freigegeben als belegt: Freigaben anderer Threads, kein Leck.
   if RawTotal <= 0 then
-    Result := 0
+  begin
+    Result := 0;
+  end
   else
+  begin
     Result := AValue;
+  end;
 end;
 
 procedure TLeakMonitor.Settle(ABefore: Int64; var AAllocated: Int64; AOthers: Int64);
@@ -423,7 +483,9 @@ begin
     TThread.Sleep(SettleStepMs);
     AAllocated := AllocatedBytes - ABefore;
     if AAllocated = Last then
-      Inc(Stable)
+    begin
+      Inc(Stable);
+    end
     else
     begin
       Stable := 0;
@@ -431,7 +493,9 @@ begin
     end;
     // Ruhig und keine zusätzlichen Threads mehr: weiteres Warten bringt nichts.
     if (Stable >= StableSamples) and (ProcessThreadCount <= FThreadsAtStart) then
+    begin
       Break;
+    end;
   end;
   Inc(FWaitedMs, TThread.GetTickCount64 - Started);
   FThreadsAtEnd := ProcessThreadCount;
@@ -439,18 +503,31 @@ end;
 
 procedure TLeakMonitor.PreSetup;
 begin
+  TAtlasLocale.Use(TTextLanguage.German);
   Start;
   FSetUpBefore := AllocatedBytes;
 end;
 
 procedure TLeakMonitor.PostSetUp;
 begin
-  FSetUpAllocated := AllocatedBytes - FSetUpBefore;
+  FSetUpEnd := AllocatedBytes;
+  FSetUpAllocated := FSetUpEnd - FSetUpBefore;
 end;
 
 procedure TLeakMonitor.PreTest;
+var
+  Gap: Int64;
 begin
   Start;
+  if FSetUpEnd <> 0 then
+  begin
+    Gap := AllocatedBytes - FSetUpEnd;
+    FSetUpEnd := 0;
+    if Gap < 0 then
+    begin
+      Inc(FSetUpAllocated, Gap);
+    end;
+  end;
   // Arbeiter früherer Tests vor der Messung beenden, damit ihre Freigabe in PostTest kein Leck verdeckt.
   TAtlasTimeLimit.StopAll(1000);
   FTestBefore := AllocatedBytes;
@@ -464,9 +541,13 @@ begin
   FTestAllocated := AllocatedBytes - FTestBefore;
   // Nur der Test selbst: Was das Setup belegt, gibt meist erst das TearDown frei.
   if FTestAllocated > 0 then
-    Settle(FTestBefore, FTestAllocated, 0)
+  begin
+    Settle(FTestBefore, FTestAllocated, 0);
+  end
   else
+  begin
     FThreadsAtEnd := ProcessThreadCount;
+  end;
 end;
 
 procedure TLeakMonitor.PreTearDown;
@@ -476,9 +557,13 @@ end;
 
 procedure TLeakMonitor.PostTearDown;
 begin
+  // Nummern des anonymen Protokolls gehören keinem Test (siehe Kopf); vor der Messung vergessen.
+  TAtlasGuard.RotatingLog.Redactor.Forget;
   FTearDownAllocated := AllocatedBytes - FTearDownBefore;
   if RawTotal > 0 then
+  begin
     Settle(FTearDownBefore, FTearDownAllocated, FSetUpAllocated + FTestAllocated);
+  end;
 end;
 
 function TLeakMonitor.SetUpMemoryAllocated: Int64;

@@ -24,13 +24,12 @@ uses
 
 type
   TConditions = class
-  public const
-    InvertTitle = 'Bedingung umkehren';
-    EarlyExitTitle = 'Frühen Ausstieg einführen (Exit)';
-    EarlyContinueTitle = 'Frühen Ausstieg einführen (Continue)';
-    MergeTitle = 'Verschachtelte if zusammenfassen';
-    DoubleNegationTitle = 'Doppelte Verneinung entfernen';
   public
+    class function InvertTitle: string; static;
+    class function EarlyExitTitle: string; static;
+    class function EarlyContinueTitle: string; static;
+    class function MergeTitle: string; static;
+    class function DoubleNegationTitle: string; static;
     /// <summary>„Bedingung umkehren“ für das if, dessen Kopf APosition enthält (nur mit else).</summary>
     class function Invert(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
       const ALayout: TStatementLayout; out ARewrite: TStatementRewrite): Boolean; static;
@@ -55,7 +54,50 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.ExpressionText,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TConditionsText = (InvertCondition, IntroduceEarlyExitExit, IntroduceEarlyExitContinue, MergeNestedIf,
+    RemoveDoubleNegation);
+
+const
+  cTexts: array[TConditionsText] of TAtlasText = (
+    (De: 'Bedingung umkehren'; En: 'Invert condition'),
+    (De: 'Frühen Ausstieg einführen (Exit)'; En: 'Introduce early exit (Exit)'),
+    (De: 'Frühen Ausstieg einführen (Continue)'; En: 'Introduce early exit (Continue)'),
+    (De: 'Verschachtelte if zusammenfassen'; En: 'Merge nested if'),
+    (De: 'Doppelte Verneinung entfernen'; En: 'Remove double negation'));
+
+{$SCOPEDENUMS OFF}
+
+class function TConditions.InvertTitle: string;
+begin
+  Result := cTexts[TConditionsText.InvertCondition].Text;
+end;
+
+class function TConditions.EarlyExitTitle: string;
+begin
+  Result := cTexts[TConditionsText.IntroduceEarlyExitExit].Text;
+end;
+
+class function TConditions.EarlyContinueTitle: string;
+begin
+  Result := cTexts[TConditionsText.IntroduceEarlyExitContinue].Text;
+end;
+
+class function TConditions.MergeTitle: string;
+begin
+  Result := cTexts[TConditionsText.MergeNestedIf].Text;
+end;
+
+class function TConditions.DoubleNegationTitle: string;
+begin
+  Result := cTexts[TConditionsText.RemoveDoubleNegation].Text;
+end;
 
 function LayoutAt(const AText: string; ANode: TSyntaxNode; const ALayout: TStatementLayout): TStatementLayout;
 begin
@@ -81,8 +123,12 @@ var
 begin
   Result := nil;
   for Index := ALast downto 0 do
+  begin
     if TRoutineBody.IsStatement(ANode[Index]) and (ANode[Index].Kind <> TSyntaxKind.EmptyStatement) then
+    begin
       Exit(ANode[Index]);
+    end;
+  end;
 end;
 
 function HasInlineDeclaration(const AStatements: TArray<TSyntaxNode>): Boolean;
@@ -90,8 +136,12 @@ var
   Statement: TSyntaxNode;
 begin
   for Statement in AStatements do
+  begin
     if Statement.Kind in [TSyntaxKind.InlineVar, TSyntaxKind.InlineConst] then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -111,112 +161,207 @@ begin
   ARewrite := Default(TStatementRewrite);
   Node := TStatementText.HeadAt(ATree, APosition, TSyntaxKind.IfStatement);
   if (Node = nil) or not HasElse(Node) then
+  begin
     Exit;
+  end;
   EmptyThen := TStatementText.Statements(Node[1]) = nil;
   // Ohne else stünde das neue if vor dem else eines äußeren if und bekäme es (if Q then if A then else B else Z).
   Parent := Node.Parent;
   if EmptyThen and (Parent <> nil) and (Parent.Kind = TSyntaxKind.IfStatement) and HasElse(Parent) and
     (Parent[1] = Node) then
+  begin
     Exit;
+  end;
   Spans := TStatementText.Spans(ATree, [Node[1], Node[2]]);
   if TStatementText.Uncovered(ATree, Node.StartOffset, Node.EndOffset, Spans) then
+  begin
     Exit;
+  end;
   Layout := LayoutAt(AText, Node, ALayout);
   EndPos := TStatementText.ReplacementEnd(ATree, Node, Spans, Suffix);
   Code := 'if ' + TExpressionText.Negate(AText, Node[0]).Text + ' then';
   if EmptyThen then
-    Code := Code + TStatementText.Finish(TStatementText.GuardedBranch(AText, ATree, Node[2], Layout, False), Suffix)
+  begin
+    Code := Code + TStatementText.Finish(TStatementText.GuardedBranch(AText, ATree, Node[2], Layout, False), Suffix);
+  end
   else
+  begin
     Code := Code + TStatementText.Finish(TStatementText.GuardedBranch(AText, ATree, Node[2], Layout, True), '') +
       Layout.LineBreak + Layout.Indent + 'else' +
       TStatementText.Finish(TStatementText.GuardedBranch(AText, ATree, Node[1], Layout, False), Suffix);
+  end;
   ARewrite := TStatementRewrite.Create(InvertTitle, TTextEdit.Create(TTextRange.Create(Node.StartPos, EndPos), Code));
   Result := True;
+end;
+
+/// <summary>if ohne else mit Anweisungen im then-Zweig und ohne Inline-Variablen darin.</summary>
+function CanExitEarly(ANode: TSyntaxNode): Boolean;
+var
+  mStatements: TArray<TSyntaxNode>;
+begin
+  Result := (ANode <> nil) and not HasElse(ANode);
+  if Result then
+  begin
+    mStatements := TStatementText.Statements(ANode[1]);
+    Result := (mStatements <> nil) and not HasInlineDeclaration(mStatements);
+  end;
+end;
+
+/// <summary>Ausstieg für das if ANode als letzte Anweisung des Blocks ABlock: Exit im Rumpf einer Routine,
+/// Continue im Rumpf einer Schleife; '' sonst.</summary>
+function BlockExitKeyword(ANode, ABlock: TSyntaxNode): string;
+var
+  mSiblings: TArray<TSyntaxNode>;
+  mOwner: TSyntaxNode;
+begin
+  Result := '';
+  mSiblings := TStatementText.Statements(ABlock);
+  if (mSiblings = nil) or (mSiblings[High(mSiblings)] <> ANode) then
+  begin
+    Exit;
+  end;
+  mOwner := ABlock.Parent;
+  if (mOwner <> nil) and (mOwner.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) then
+  begin
+    Result := 'Exit';
+  end
+  else if IsLoop(mOwner) and (mOwner[mOwner.ChildCount - 1] = ABlock) then
+  begin
+    Result := 'Continue';
+  end;
+end;
+
+/// <summary>Wo steht das if? Als letzte Anweisung des Rumpfs einer Routine, eines Schleifenrumpfs (begin … end
+/// oder repeat … until) oder direkt als Rumpf einer Schleife (AWrap). Liefert Exit, Continue oder ''.</summary>
+function ExitKeyword(ANode: TSyntaxNode; out AWrap: Boolean): string;
+var
+  mParent: TSyntaxNode;
+begin
+  AWrap := False;
+  Result := '';
+  mParent := ANode.Parent;
+  if mParent = nil then
+  begin
+    Exit;
+  end;
+  if mParent.Kind = TSyntaxKind.Block then
+  begin
+    Result := BlockExitKeyword(ANode, mParent);
+  end
+  else if mParent.Kind = TSyntaxKind.RepeatStatement then
+  begin
+    if (mParent.ChildCount >= 2) and (LastStatement(mParent, mParent.ChildCount - 2) = ANode) then
+    begin
+      Result := 'Continue';
+    end;
+  end
+  else if IsLoop(mParent) and (mParent[mParent.ChildCount - 1] = ANode) then
+  begin
+    Result := 'Continue';
+    AWrap := True;
+  end;
+end;
+
+type
+  /// <summary>Ersetzung für „Frühen Ausstieg einführen“: Wächter und Rest des Endes als Eingabe, Anfang und Text
+  /// als Ergebnis.</summary>
+  TEarlyExitCode = record
+    /// <summary>"if not … then Exit;"</summary>
+    Guard: string;
+    /// <summary>Was hinter dem if bleibt (Semikolon), aus TStatementText.ReplacementEnd.</summary>
+    Suffix: string;
+    StartOffset: Integer;
+    StartPos: TTextPosition;
+    Code: string;
+    function Wrapped(const AText: string; ATree: TSyntaxTree; ANode: TSyntaxNode;
+      const ALayout: TStatementLayout): Boolean;
+    procedure Plain(const AText: string; ATree: TSyntaxTree; ANode: TSyntaxNode; const ALayout: TStatementLayout);
+  end;
+
+/// <summary>Der Schleifenrumpf wird zum Block: die Ersetzung beginnt hinter do. False ohne do davor.</summary>
+function TEarlyExitCode.Wrapped(const AText: string; ATree: TSyntaxTree; ANode: TSyntaxNode;
+  const ALayout: TStatementLayout): Boolean;
+var
+  mTokens: TArray<TPascalToken>;
+  mDoToken: Integer;
+  mLayout, mInner: TStatementLayout;
+  mLB: string;
+begin
+  mTokens := ATree.Tokens;
+  mDoToken := TRoutineBody.PreviousToken(mTokens, TRoutineBody.TokenAt(mTokens, ANode.StartOffset));
+  Result := (mDoToken >= 0) and SameText(mTokens[mDoToken].Text, 'do');
+  if not Result then
+  begin
+    Exit;
+  end;
+  StartOffset := mTokens[mDoToken].Offset + Length(mTokens[mDoToken].Text);
+  StartPos := mTokens[mDoToken].EndPos;
+  mLayout := LayoutAt(AText, ANode.Parent, ALayout);
+  mInner := mLayout.Deeper;
+  mLB := mLayout.LineBreak;
+  Code := mLB + mLayout.Indent + 'begin' + mLB + mInner.Indent + Guard + mLB +
+    TStatementText.List(AText, ATree, TStatementText.Statements(ANode[1]), mInner.Indent, mLB) + mLB +
+    mLayout.Indent + 'end' + Suffix;
+end;
+
+procedure TEarlyExitCode.Plain(const AText: string; ATree: TSyntaxTree; ANode: TSyntaxNode;
+  const ALayout: TStatementLayout);
+var
+  mLayout: TStatementLayout;
+begin
+  StartOffset := ANode.StartOffset;
+  StartPos := ANode.StartPos;
+  mLayout := LayoutAt(AText, ANode, ALayout);
+  Code := Guard + mLayout.LineBreak + TStatementText.List(AText, ATree, TStatementText.Statements(ANode[1]),
+    mLayout.Indent, mLayout.LineBreak);
 end;
 
 class function TConditions.EarlyExit(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
   const ALayout: TStatementLayout; out ARewrite: TStatementRewrite): Boolean;
 var
-  Node, Parent, Owner: TSyntaxNode;
-  Statements, Siblings: TArray<TSyntaxNode>;
-  Spans: TArray<TStatementSpan>;
-  Layout, Inner: TStatementLayout;
-  Tokens: TArray<TPascalToken>;
-  Keyword, Title, Suffix, Code, Guard: string;
-  StartPos, EndPos: TTextPosition;
-  StartOffset, DoToken: Integer;
-  Wrap: Boolean;
+  mNode: TSyntaxNode;
+  mKeyword, mTitle: string;
+  mWrap: Boolean;
+  mSpans: TArray<TStatementSpan>;
+  mEndPos: TTextPosition;
+  mCode: TEarlyExitCode;
 begin
   Result := False;
   ARewrite := Default(TStatementRewrite);
-  Node := TStatementText.HeadAt(ATree, APosition, TSyntaxKind.IfStatement);
-  if (Node = nil) or HasElse(Node) then
-    Exit;
-  Statements := TStatementText.Statements(Node[1]);
-  if (Statements = nil) or HasInlineDeclaration(Statements) then
-    Exit;
-  // Wo steht das if? Als letzte Anweisung des Rumpfs einer Routine, eines Schleifenrumpfs (begin … end oder
-  // repeat … until) oder direkt als Rumpf einer Schleife.
-  Parent := Node.Parent;
-  Keyword := '';
-  Wrap := False;
-  if Parent = nil then
-    Exit;
-  if Parent.Kind = TSyntaxKind.Block then
+  mNode := TStatementText.HeadAt(ATree, APosition, TSyntaxKind.IfStatement);
+  if not CanExitEarly(mNode) then
   begin
-    Siblings := TStatementText.Statements(Parent);
-    if (Siblings = nil) or (Siblings[High(Siblings)] <> Node) then
-      Exit;
-    Owner := Parent.Parent;
-    if (Owner <> nil) and (Owner.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) then
-      Keyword := 'Exit'
-    else if IsLoop(Owner) and (Owner[Owner.ChildCount - 1] = Parent) then
-      Keyword := 'Continue';
-  end
-  else if Parent.Kind = TSyntaxKind.RepeatStatement then
-  begin
-    if (Parent.ChildCount >= 2) and (LastStatement(Parent, Parent.ChildCount - 2) = Node) then
-      Keyword := 'Continue';
-  end
-  else if IsLoop(Parent) and (Parent[Parent.ChildCount - 1] = Node) then
-  begin
-    Keyword := 'Continue';
-    Wrap := True;
+    Exit;
   end;
-  if Keyword = '' then
-    Exit;
-  Title := EarlyExitTitle;
-  if Keyword = 'Continue' then
-    Title := EarlyContinueTitle;
-  Guard := 'if ' + TExpressionText.Negate(AText, Node[0]).Text + ' then ' + Keyword + ';';
-  Spans := TStatementText.Spans(ATree, [Node[1]]);
-  EndPos := TStatementText.ReplacementEnd(ATree, Node, Spans, Suffix);
-  if Wrap then
+  mKeyword := ExitKeyword(mNode, mWrap);
+  if mKeyword = '' then
   begin
-    // Der Schleifenrumpf wird zum Block: die Ersetzung beginnt hinter do.
-    Tokens := ATree.Tokens;
-    DoToken := TRoutineBody.PreviousToken(Tokens, TRoutineBody.TokenAt(Tokens, Node.StartOffset));
-    if (DoToken < 0) or not SameText(Tokens[DoToken].Text, 'do') then
-      Exit;
-    StartOffset := Tokens[DoToken].Offset + Length(Tokens[DoToken].Text);
-    StartPos := Tokens[DoToken].EndPos;
-    Layout := LayoutAt(AText, Parent, ALayout);
-    Inner := Layout.Deeper;
-    Code := Layout.LineBreak + Layout.Indent + 'begin' + Layout.LineBreak + Inner.Indent + Guard + Layout.LineBreak +
-      TStatementText.List(AText, ATree, Statements, Inner.Indent, Layout.LineBreak) + Layout.LineBreak +
-      Layout.Indent + 'end' + Suffix;
+    Exit;
+  end;
+  mCode := Default(TEarlyExitCode);
+  mCode.Guard := 'if ' + TExpressionText.Negate(AText, mNode[0]).Text + ' then ' + mKeyword + ';';
+  mSpans := TStatementText.Spans(ATree, [mNode[1]]);
+  mEndPos := TStatementText.ReplacementEnd(ATree, mNode, mSpans, mCode.Suffix);
+  Result := True;
+  if mWrap then
+  begin
+    Result := mCode.Wrapped(AText, ATree, mNode, ALayout);
   end
   else
   begin
-    StartOffset := Node.StartOffset;
-    StartPos := Node.StartPos;
-    Layout := LayoutAt(AText, Node, ALayout);
-    Code := Guard + Layout.LineBreak + TStatementText.List(AText, ATree, Statements, Layout.Indent, Layout.LineBreak);
+    mCode.Plain(AText, ATree, mNode, ALayout);
   end;
-  if TStatementText.Uncovered(ATree, StartOffset, Node.EndOffset, Spans) then
-    Exit;
-  ARewrite := TStatementRewrite.Create(Title, TTextEdit.Create(TTextRange.Create(StartPos, EndPos), Code));
-  Result := True;
+  Result := Result and not TStatementText.Uncovered(ATree, mCode.StartOffset, mNode.EndOffset, mSpans);
+  if Result then
+  begin
+    mTitle := EarlyExitTitle;
+    if mKeyword = 'Continue' then
+    begin
+      mTitle := EarlyContinueTitle;
+    end;
+    ARewrite := TStatementRewrite.Create(mTitle, TTextEdit.Create(TTextRange.Create(mCode.StartPos, mEndPos),
+      mCode.Code));
+  end;
 end;
 
 /// <summary>Das einzige innere if ohne else im then-Zweig von AIf (selbst ohne else); nil ohne.</summary>
@@ -226,11 +371,15 @@ var
 begin
   Result := nil;
   if (AIf = nil) or (AIf.Kind <> TSyntaxKind.IfStatement) or HasElse(AIf) or (AIf.ChildCount < 2) then
+  begin
     Exit;
+  end;
   Statements := TStatementText.Statements(AIf[1]);
   if (Length(Statements) = 1) and (Statements[0].Kind = TSyntaxKind.IfStatement) and not HasElse(Statements[0]) and
     (Statements[0].ChildCount = 2) then
+  begin
     Result := Statements[0];
+  end;
 end;
 
 class function TConditions.MergeNested(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
@@ -247,17 +396,23 @@ begin
   ARewrite := Default(TStatementRewrite);
   Node := TStatementText.HeadAt(ATree, APosition, TSyntaxKind.IfStatement);
   if Node = nil then
+  begin
     Exit;
+  end;
   Outer := nil;
   Inner := SoleInnerIf(Node);
   if Inner <> nil then
-    Outer := Node
+  begin
+    Outer := Node;
+  end
   else
   begin
     // Auf dem inneren if: das äußere ist der Elternknoten bzw. der um den Block begin … end.
     Parent := Node.Parent;
     if (Parent <> nil) and (Parent.Kind = TSyntaxKind.Block) then
+    begin
       Parent := Parent.Parent;
+    end;
     if SoleInnerIf(Parent) = Node then
     begin
       Outer := Parent;
@@ -265,13 +420,19 @@ begin
     end;
   end;
   if Outer = nil then
+  begin
     Exit;
+  end;
   Statements := TStatementText.Statements(Inner[1]);
   if Statements = nil then
+  begin
     Exit;
+  end;
   Spans := TStatementText.Spans(ATree, [Inner[1]]);
   if TStatementText.Uncovered(ATree, Outer.StartOffset, Outer.EndOffset, Spans) then
+  begin
     Exit;
+  end;
   Layout := LayoutAt(AText, Outer, ALayout);
   EndPos := TStatementText.ReplacementEnd(ATree, Outer, Spans, Suffix);
   Code := 'if ' + TExpressionText.Combine('and', TExpressionText.Part(AText, Outer[0]),
@@ -288,7 +449,9 @@ var
 begin
   Result := False;
   if (ANode.Kind <> TSyntaxKind.UnaryExpr) or not SameText(ANode.Name, 'not') or (ANode.ChildCount <> 1) then
+  begin
     Exit;
+  end;
   Operand := TExpressionText.Strip(ANode[0]);
   case Operand.Kind of
     TSyntaxKind.UnaryExpr:
@@ -309,20 +472,28 @@ begin
   Result := False;
   ARewrite := Default(TStatementRewrite);
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   Position := APosition;
   // Das äußerste passende not: Search findet den Elternknoten vor seinen Kindern.
   Found := ATree.Root.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
       if not TStatementText.Encloses(ANode, Position) then
+      begin
         Exit(TSyntaxSearchStep.Skip);
+      end;
       Result := TSyntaxSearchStep.Descend;
       if IsDoubleNegation(ANode) then
+      begin
         Result := TSyntaxSearchStep.Found;
+      end;
     end);
   if (Found = nil) or TStatementText.HasComment(ATree, Found.StartOffset, Found.EndOffset) then
+  begin
     Exit;
+  end;
   ARewrite := TStatementRewrite.Create(DoubleNegationTitle, TTextEdit.Create(TTextRange.Create(Found.StartPos,
     Found.EndPos), TExpressionText.Simplify(AText, Found).AtLeast(TExpressionText.ContextPrecedence(Found))));
   Result := True;
@@ -335,15 +506,28 @@ var
 begin
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   if Invert(AText, ATree, APosition, ALayout, Rewrite) then
+  begin
     Result := Result + [Rewrite];
+  end;
   if EarlyExit(AText, ATree, APosition, ALayout, Rewrite) then
+  begin
     Result := Result + [Rewrite];
+  end;
   if MergeNested(AText, ATree, APosition, ALayout, Rewrite) then
+  begin
     Result := Result + [Rewrite];
+  end;
   if RemoveDoubleNegation(AText, ATree, APosition, Rewrite) then
+  begin
     Result := Result + [Rewrite];
+  end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.Conditions', cTexts);
 
 end.

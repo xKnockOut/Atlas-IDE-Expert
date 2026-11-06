@@ -45,7 +45,9 @@ var
 begin
   SetLength(Lines, 60);
   for Index := 0 to High(Lines) do
+  begin
     Lines[Index] := Format('  X%d := ''{''; // Zeile', [Index]);
+  end;
   Lines[10] := 'procedure TBar.Add(A: Integer);';
   SetLength(Result, ACount);
   for Index := 0 to ACount - 1 do
@@ -104,7 +106,9 @@ begin
       Assert.AreEqual(15, Window.View.PageRows);
       // Ohne Liste gehört jeder Klick in den Ausschnitt.
       for Y := 0 to Window.ClientHeight - 1 do
+      begin
         Assert.AreEqual(-1, Window.EntryAt(Point(10, Y)));
+      end;
     finally
       Window.Dismiss;
     end;
@@ -127,11 +131,13 @@ begin
     try
       Found := -1;
       for Y := 0 to Window.ClientHeight - 1 do
+      begin
         if Window.EntryAt(Point(10, Y)) = 2 then
         begin
           Found := Y;
           Break;
         end;
+      end;
       Assert.IsTrue(Found > 0, 'Liste links mit drei Einträgen');
       Assert.AreEqual(-1, Window.EntryAt(Point(Window.ClientWidth - 10, Found)), 'rechts der Ausschnitt');
       Window.View.Select(2);

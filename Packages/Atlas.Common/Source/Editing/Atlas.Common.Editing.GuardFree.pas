@@ -91,45 +91,75 @@ begin
   Result := (ANode.StartPos.Line <= ALine) and (ANode.EndPos.Line >= ALine);
 end;
 
+/// <summary>Ist AChild eine Routine, deren begin…end Zeile ALine umschließt?</summary>
+function IsRoutineAround(AChild: TSyntaxNode; ALine: Integer): Boolean;
+var
+  mBlock: TSyntaxNode;
+begin
+  if not Covers(AChild, ALine) or (AChild.Kind <> TSyntaxKind.RoutineDecl) then
+  begin
+    Exit(False);
+  end;
+  mBlock := AChild.FindChild(TSyntaxKind.Block);
+  Result := (mBlock <> nil) and (mBlock.StartPos.Line < ALine) and (mBlock.EndPos.Line > ALine);
+end;
+
+/// <summary>Letzte passende Routine unter den Kindern von ANode; nil ohne.</summary>
+function RoutineAmong(ANode: TSyntaxNode; ALine: Integer): TSyntaxNode;
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  for mIndex := 0 to ANode.ChildCount - 1 do
+  begin
+    if IsRoutineAround(ANode[mIndex], ALine) then
+    begin
+      Result := ANode[mIndex];
+    end;
+  end;
+end;
+
+/// <summary>Legt ANode als erledigt und darüber seine Kinder um Zeile ALine auf den Stapel.</summary>
+procedure PushCovering(APending: TStack<TSyntaxPostOrderEntry>; ANode: TSyntaxNode; ALine: Integer);
+var
+  mIndex: Integer;
+begin
+  APending.Push(TSyntaxPostOrderEntry.Create(ANode, True));
+  for mIndex := ANode.ChildCount - 1 downto 0 do
+  begin
+    if Covers(ANode[mIndex], ALine) then
+    begin
+      APending.Push(TSyntaxPostOrderEntry.Create(ANode[mIndex], False));
+    end;
+  end;
+end;
+
 /// <summary>Innerste Routine mit Rumpf, deren begin…end Zeile ALine enthält; nil sonst.</summary>
 function RoutineAt(ANode: TSyntaxNode; ALine: Integer): TSyntaxNode;
 var
-  Pending: TStack<TSyntaxPostOrderEntry>;
-  Entry: TSyntaxPostOrderEntry;
-  Index: Integer;
-  Child, Block: TSyntaxNode;
+  mPending: TStack<TSyntaxPostOrderEntry>;
+  mEntry: TSyntaxPostOrderEntry;
 begin
   // Eigener Stapel statt Rekursion (Bericht M1). Die innerste Routine gewinnt: Ein Knoten wird erst geprüft,
   // wenn unter seinen Kindern keine passende Routine liegt; dann gilt die letzte passende unter ihnen.
   Result := nil;
-  Pending := TStack<TSyntaxPostOrderEntry>.Create;
+  mPending := TStack<TSyntaxPostOrderEntry>.Create;
   try
-    Pending.Push(TSyntaxPostOrderEntry.Create(ANode, False));
-    while Pending.Count > 0 do
+    mPending.Push(TSyntaxPostOrderEntry.Create(ANode, False));
+    while (Result = nil) and (mPending.Count > 0) do
     begin
-      Entry := Pending.Pop;
-      if not Entry.Done then
+      mEntry := mPending.Pop;
+      if mEntry.Done then
       begin
-        Pending.Push(TSyntaxPostOrderEntry.Create(Entry.Node, True));
-        for Index := Entry.Node.ChildCount - 1 downto 0 do
-          if Covers(Entry.Node[Index], ALine) then
-            Pending.Push(TSyntaxPostOrderEntry.Create(Entry.Node[Index], False));
-        Continue;
-      end;
-      for Index := 0 to Entry.Node.ChildCount - 1 do
+        Result := RoutineAmong(mEntry.Node, ALine);
+      end
+      else
       begin
-        Child := Entry.Node[Index];
-        if not Covers(Child, ALine) or (Child.Kind <> TSyntaxKind.RoutineDecl) then
-          Continue;
-        Block := Child.FindChild(TSyntaxKind.Block);
-        if (Block <> nil) and (Block.StartPos.Line < ALine) and (Block.EndPos.Line > ALine) then
-          Result := Child;
+        PushCovering(mPending, mEntry.Node, ALine);
       end;
-      if Result <> nil then
-        Exit;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
@@ -142,13 +172,19 @@ begin
   Source := Copy(AText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
   Colon := Pos(':', Source);
   if (Colon = 0) or (Copy(Source, Colon, 2) = ':=') then
+  begin
     Exit('');
+  end;
   Result := Copy(Source, Colon + 1, MaxInt);
   Stop := Pos(':=', Result);
   if Stop = 0 then
+  begin
     Stop := Pos('=', Result);
+  end;
   if Stop > 0 then
+  begin
     Result := Copy(Result, 1, Stop - 1);
+  end;
   Result := Trim(StringReplace(Result, ';', '', [rfReplaceAll]));
 end;
 
@@ -157,61 +193,85 @@ var
   Name: string;
 begin
   for Name in SplitString(ANames, ',') do
+  begin
     if SameText(Trim(Name), AName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
+end;
+
+/// <summary>Merkt den Typ, wenn ADecl AName deklariert.</summary>
+procedure NoteDecl(ADecl: TSyntaxNode; const AText, AName: string; var AFound: string; var AAny: Boolean);
+begin
+  if HasName(ADecl.Name, AName) then
+  begin
+    AFound := TypeOfDecl(AText, ADecl);
+    AAny := True;
+  end;
+end;
+
+procedure NoteSection(ASection: TSyntaxNode; const AText, AName: string; var AFound: string; var AAny: Boolean);
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to ASection.ChildCount - 1 do
+  begin
+    if ASection[mIndex].Kind = TSyntaxKind.VarDecl then
+    begin
+      NoteDecl(ASection[mIndex], AText, AName, AFound, AAny);
+    end;
+  end;
 end;
 
 /// <summary>Deklarierter Typ der lokalen Variable AName in ARoutine vor ALine; False, wenn sie nicht lokal ist.</summary>
 function LocalType(ANode: TSyntaxNode; const AText, AName: string; ALine: Integer; out AType: string): Boolean;
 var
-  Root: TSyntaxNode;
-  Text, Name, Found: string;
-  Line: Integer;
-  Any: Boolean;
+  mRoot: TSyntaxNode;
+  mText, mName, mFound: string;
+  mLine: Integer;
+  mAny: Boolean;
 begin
-  Root := ANode;
-  Text := AText;
-  Name := AName;
-  Line := ALine;
-  Found := '';
-  Any := False;
+  mRoot := ANode;
+  mText := AText;
+  mName := AName;
+  mLine := ALine;
+  mFound := '';
+  mAny := False;
   // Walk statt Rekursion (Bericht M1); die letzte Deklaration vor ALine gilt. Die Kinder stehen in
   // Quelltextreihenfolge, ein Knoten hinter ALine schließt also auch seine übrigen Geschwister aus.
   ANode.Walk(
     function(AChild: TSyntaxNode): Boolean
-    var
-      Inner: Integer;
     begin
-      if AChild = Root then
-        Exit(True);
-      if AChild.StartPos.Line > Line then
-        Exit(False);
       Result := False;
-      case AChild.Kind of
-        TSyntaxKind.VarSection:
-          for Inner := 0 to AChild.ChildCount - 1 do
-            if (AChild[Inner].Kind = TSyntaxKind.VarDecl) and HasName(AChild[Inner].Name, Name) then
-            begin
-              Found := TypeOfDecl(Text, AChild[Inner]);
-              Any := True;
-            end;
-        TSyntaxKind.InlineVar:
-          if HasName(AChild.Name, Name) then
-          begin
-            Found := TypeOfDecl(Text, AChild);
-            Any := True;
-          end;
-        // Verschachtelte Routinen haben eigene Variablen.
-        TSyntaxKind.RoutineDecl:
-          ;
-      else
+      if AChild = mRoot then
+      begin
         Result := True;
+      end
+      else if AChild.StartPos.Line > mLine then
+      begin
+        Result := False;
+      end
+      else if AChild.Kind = TSyntaxKind.VarSection then
+      begin
+        NoteSection(AChild, mText, mName, mFound, mAny);
+      end
+      else if AChild.Kind = TSyntaxKind.InlineVar then
+      begin
+        NoteDecl(AChild, mText, mName, mFound, mAny);
+      end
+      else
+      begin
+        // Verschachtelte Routinen haben eigene Variablen.
+        Result := AChild.Kind <> TSyntaxKind.RoutineDecl;
       end;
     end);
-  Result := Any;
-  if Any then
-    AType := Found;
+  Result := mAny;
+  if mAny then
+  begin
+    AType := mFound;
+  end;
 end;
 
 /// <summary>Erstes Argument auf oberster Ebene aus "(A, B(C, D))"; '' ohne.</summary>
@@ -221,7 +281,9 @@ var
 begin
   Result := Trim(AArgs);
   if not StartsStr('(', Result) then
+  begin
     Exit('');
+  end;
   Result := Copy(Result, 2, Length(Result) - 2);
   Depth := 0;
   for Index := 1 to Length(Result) do
@@ -232,7 +294,9 @@ begin
         Dec(Depth);
       ',':
         if Depth = 0 then
+        begin
           Exit(Trim(Copy(Result, 1, Index - 1)));
+        end;
     end;
   Result := Trim(Result);
 end;
@@ -243,109 +307,210 @@ var
   Index: Integer;
 begin
   for Index := 0 to ABlock.ChildCount - 1 do
+  begin
     if ABlock[Index].StartPos.Line = ALine then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
+end;
+
+type
+  /// <summary>Prüfung einer Zeile für das Angebot.</summary>
+  TGuardCheck = record
+    Lines: TArray<string>;
+    Text: string;
+    Line: Integer;
+    Match: TMatch;
+    function Matches: Boolean;
+    function StatementEnd: Integer;
+    function IsLocalObject(ARoutine: TSyntaxNode): Boolean;
+    function IsFreeable(const AKindOf: TGuardTypeKindFunc; const ATypeName: string): Boolean;
+    function IsGuarded(AAddSemicolon: Boolean): Boolean;
+    function KeepsObject(ABlock: TSyntaxNode): Boolean;
+    function HasContent(AFirst, ALast: Integer): Boolean;
+    procedure Fill(ABlock: TSyntaxNode; var AOffer: TGuardOffer);
+    function Offers(ARoutine: TSyntaxNode; const AKindOf: TGuardTypeKindFunc; var AOffer: TGuardOffer): Boolean;
+  end;
+
+function KindOf(const AKindOf: TGuardTypeKindFunc; const ATypeName: string): TGuardTypeKind;
+begin
+  Result := TGuardTypeKind.Unknown;
+  if Assigned(AKindOf) then
+  begin
+    Result := AKindOf(ATypeName);
+  end;
+end;
+
+/// <summary>Beginnt die nächste Zeile mit Inhalt mit try oder setzt sie (ohne ";") den Ausdruck fort?</summary>
+function StartsGuard(const ANext: string; AAddSemicolon: Boolean): Boolean;
+begin
+  Result := TRegEx.IsMatch(ANext, '^try\b', [roIgnoreCase]) or AAddSemicolon and TRegEx.IsMatch(ANext,
+    '^([.(\[^+\-*/=<>,:]|(and|or|xor|div|mod|shl|shr|as|is|in|not)\b)', [roIgnoreCase]);
+end;
+
+{ TGuardCheck }
+
+function TGuardCheck.Matches: Boolean;
+var
+  mName: string;
+begin
+  // Einrückung, "var ", Name, ": Typ", Klasse, Konstruktor, Argumente, ";". Leere Alternativen halten jede Gruppe
+  // belegt. Erst mit ";"; ohne dürfen die Argumente
+  // außerhalb von Strings kein ";" und kein "/" enthalten, sonst zählte ein Kommentar mit.
+  Match := TRegEx.Match(Lines[Line], '^(\s*)(var\s+|)(\w+)\s*(:[^:=]+|):=\s*([A-Za-z_][\w.]*)(<[^;()]*>|)\s*\.\s*' +
+    '(Create\w*)\s*(\(.*\)|)\s*(;)\s*(//.*|)$', [roIgnoreCase]);
+  if not Match.Success then
+  begin
+    Match := TRegEx.Match(Lines[Line], '^(\s*)(var\s+|)(\w+)\s*(:[^:=]+|):=\s*([A-Za-z_][\w.]*)(<[^;()]*>|)\s*' +
+      '\.\s*(Create\w*)\s*(\((?:[^;/'']|''[^'']*'')*\)|)\s*()(//.*|)$', [roIgnoreCase]);
+  end;
+  Result := Match.Success;
+  if Result then
+  begin
+    mName := Match.Groups[3].Value;
+    Result := not (SameText(mName, 'Result') or SameText(mName, 'Self'));
+  end;
+end;
+
+function TGuardCheck.StatementEnd: Integer;
+begin
+  if Match.Groups[8].Value <> '' then
+  begin
+    Result := Match.Groups[8].Index + Match.Groups[8].Length - 1;
+  end
+  else
+  begin
+    Result := Match.Groups[7].Index + Match.Groups[7].Length - 1;
+  end;
+end;
+
+function TGuardCheck.IsLocalObject(ARoutine: TSyntaxNode): Boolean;
+var
+  mDeclaredType: string;
+begin
+  // Lokal: Inline-Variable in dieser Zeile, sonst var-Abschnitt oder frühere Inline-Variable der Routine.
+  Result := True;
+  if Match.Groups[2].Value <> '' then
+  begin
+    mDeclaredType := Trim(Copy(Match.Groups[4].Value, 2, MaxInt));
+  end
+  else
+  begin
+    Result := LocalType(ARoutine, Text, Match.Groups[3].Value, Line - 1, mDeclaredType);
+  end;
+  Result := Result and not TRegEx.IsMatch(mDeclaredType, '^I[A-Z]');
+end;
+
+function TGuardCheck.IsFreeable(const AKindOf: TGuardTypeKindFunc; const ATypeName: string): Boolean;
+const
+  cOwners: array[0..3] of string = ('Self', 'Application', 'Owner', 'AOwner');
+var
+  mKind: TGuardTypeKind;
+  mArgument: string;
+begin
+  mKind := KindOf(AKindOf, ATypeName);
+  // Owner übernimmt die Freigabe.
+  mArgument := FirstArgument(Match.Groups[8].Value);
+  Result := (mKind <> TGuardTypeKind.Other) and not MatchText(mArgument, cOwners) and
+    not ((mKind = TGuardTypeKind.Component) and (mArgument <> '') and not SameText(mArgument, 'nil'));
+end;
+
+function TGuardCheck.IsGuarded(AAddSemicolon: Boolean): Boolean;
+var
+  mIndex: Integer;
+  mNext: string;
+begin
+  // Schon geschützt: Die nächste Zeile mit Inhalt beginnt mit try. Ohne ";" darf sie den Ausdruck nicht fortsetzen.
+  for mIndex := Line + 1 to High(Lines) do
+  begin
+    mNext := Trim(Lines[mIndex]);
+    if mNext <> '' then
+    begin
+      Exit(StartsGuard(mNext, AAddSemicolon));
+    end;
+  end;
+  Result := False;
+end;
+
+function TGuardCheck.KeepsObject(ABlock: TSyntaxNode): Boolean;
+var
+  mRest, mEscaped: string;
+  mIndex: Integer;
+begin
+  // Rest der Routine: freigegeben, zurückgegeben, zugewiesen oder an eine Liste übergeben?
+  mRest := '';
+  for mIndex := Line + 1 to Min(ABlock.EndPos.Line, High(Lines)) do
+  begin
+    mRest := mRest + Lines[mIndex] + #10;
+  end;
+  mEscaped := TRegEx.Escape(Match.Groups[3].Value);
+  Result := TRegEx.IsMatch(mRest, '\b' + mEscaped + '\s*\.\s*(Free|DisposeOf|Destroy)\b', [roIgnoreCase]) or
+    TRegEx.IsMatch(mRest, '\bFreeAndNil\s*\(\s*' + mEscaped + '\s*\)', [roIgnoreCase]) or
+    TRegEx.IsMatch(mRest, ':=\s*' + mEscaped + '\s*[;)]', [roIgnoreCase]) or
+    TRegEx.IsMatch(mRest, '\.\s*(Add|Insert|Push|Enqueue|AddObject|AddPair|AddOrSetValue)\s*\(([^;]*[^\w.])?' +
+      mEscaped + '\s*[,)]', [roIgnoreCase]);
+end;
+
+function TGuardCheck.HasContent(AFirst, ALast: Integer): Boolean;
+var
+  mIndex: Integer;
+begin
+  for mIndex := AFirst to ALast do
+  begin
+    if Trim(Lines[mIndex]) <> '' then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+procedure TGuardCheck.Fill(ABlock: TSyntaxNode; var AOffer: TGuardOffer);
+begin
+  AOffer.Variable := Match.Groups[3].Value;
+  AOffer.Line := Line;
+  AOffer.Indent := Match.Groups[1].Value;
+  AOffer.EndLine := ABlock.EndPos.Line;
+  AOffer.CanEnclose := TopLevel(ABlock, Line) and (AOffer.EndLine <= High(Lines)) and
+    TRegEx.IsMatch(Lines[AOffer.EndLine], '^\s*end\b', [roIgnoreCase]) and HasContent(Line + 1, AOffer.EndLine - 1);
+end;
+
+function TGuardCheck.Offers(ARoutine: TSyntaxNode; const AKindOf: TGuardTypeKindFunc;
+  var AOffer: TGuardOffer): Boolean;
+var
+  mBlock: TSyntaxNode;
+begin
+  mBlock := ARoutine.FindChild(TSyntaxKind.Block);
+  AOffer.AddSemicolon := Match.Groups[9].Value = '';
+  AOffer.StatementEnd := StatementEnd;
+  AOffer.TypeName := Match.Groups[5].Value;
+  Result := IsLocalObject(ARoutine) and IsFreeable(AKindOf, AOffer.TypeName) and
+    not IsGuarded(AOffer.AddSemicolon) and not KeepsObject(mBlock);
+  if Result then
+  begin
+    Fill(mBlock, AOffer);
+  end;
 end;
 
 class function TGuardFree.Check(ATree: TSyntaxTree; const AText: string; ALine: Integer;
   const AKindOf: TGuardTypeKindFunc; out AOffer: TGuardOffer): Boolean;
-const
-  Owners: array[0..3] of string = ('Self', 'Application', 'Owner', 'AOwner');
 var
-  Lines: TArray<string>;
-  Match: TMatch;
-  Routine, Block: TSyntaxNode;
-  Name, DeclaredType, Argument, Rest, Escaped, Next: string;
-  Kind: TGuardTypeKind;
-  Index: Integer;
+  mCheck: TGuardCheck;
+  mRoutine: TSyntaxNode;
 begin
   AOffer := Default(TGuardOffer);
   AOffer.BlankLine := -1;
-  Result := False;
-  Lines := TTextLines.SplitLines(AText);
-  if (ATree = nil) or (ATree.Root = nil) or (ALine < 0) or (ALine > High(Lines)) then
-    Exit;
-  // Einrückung, "var ", Name, ": Typ", Klasse, Konstruktor, Argumente, ";". Leere Alternativen halten jede Gruppe
-  // belegt. Erst mit ";"; ohne dürfen die Argumente
-  // außerhalb von Strings kein ";" und kein "/" enthalten, sonst zählte ein Kommentar mit.
-  Match := TRegEx.Match(Lines[ALine], '^(\s*)(var\s+|)(\w+)\s*(:[^:=]+|):=\s*([A-Za-z_][\w.]*)(<[^;()]*>|)\s*\.\s*' +
-    '(Create\w*)\s*(\(.*\)|)\s*(;)\s*(//.*|)$', [roIgnoreCase]);
-  if not Match.Success then
-    Match := TRegEx.Match(Lines[ALine], '^(\s*)(var\s+|)(\w+)\s*(:[^:=]+|):=\s*([A-Za-z_][\w.]*)(<[^;()]*>|)\s*' +
-      '\.\s*(Create\w*)\s*(\((?:[^;/'']|''[^'']*'')*\)|)\s*()(//.*|)$', [roIgnoreCase]);
-  if not Match.Success then
-    Exit;
-  AOffer.AddSemicolon := Match.Groups[9].Value = '';
-  if Match.Groups[8].Value <> '' then
-    AOffer.StatementEnd := Match.Groups[8].Index + Match.Groups[8].Length - 1
-  else
-    AOffer.StatementEnd := Match.Groups[7].Index + Match.Groups[7].Length - 1;
-  Name := Match.Groups[3].Value;
-  if SameText(Name, 'Result') or SameText(Name, 'Self') then
-    Exit;
-  Routine := RoutineAt(ATree.Root, ALine);
-  if Routine = nil then
-    Exit;
-  Block := Routine.FindChild(TSyntaxKind.Block);
-  // Lokal: Inline-Variable in dieser Zeile, sonst var-Abschnitt oder frühere Inline-Variable der Routine.
-  if Match.Groups[2].Value <> '' then
-    DeclaredType := Trim(Copy(Match.Groups[4].Value, 2, MaxInt))
-  else if not LocalType(Routine, AText, Name, ALine - 1, DeclaredType) then
-    Exit;
-  if TRegEx.IsMatch(DeclaredType, '^I[A-Z]') then
-    Exit;
-  AOffer.TypeName := Match.Groups[5].Value;
-  if Assigned(AKindOf) then
-    Kind := AKindOf(AOffer.TypeName)
-  else
-    Kind := TGuardTypeKind.Unknown;
-  if Kind = TGuardTypeKind.Other then
-    Exit;
-  // Owner übernimmt die Freigabe.
-  Argument := FirstArgument(Match.Groups[8].Value);
-  if MatchText(Argument, Owners) then
-    Exit;
-  if (Kind = TGuardTypeKind.Component) and (Argument <> '') and not SameText(Argument, 'nil') then
-    Exit;
-  // Schon geschützt: Die nächste Zeile mit Inhalt beginnt mit try. Ohne ";" darf sie den Ausdruck nicht fortsetzen.
-  for Index := ALine + 1 to High(Lines) do
+  mCheck.Lines := TTextLines.SplitLines(AText);
+  mCheck.Text := AText;
+  mCheck.Line := ALine;
+  if (ATree = nil) or (ATree.Root = nil) or (ALine < 0) or (ALine > High(mCheck.Lines)) or not mCheck.Matches then
   begin
-    Next := Trim(Lines[Index]);
-    if Next = '' then
-      Continue;
-    if TRegEx.IsMatch(Next, '^try\b', [roIgnoreCase]) then
-      Exit;
-    if AOffer.AddSemicolon and TRegEx.IsMatch(Next,
-      '^([.(\[^+\-*/=<>,:]|(and|or|xor|div|mod|shl|shr|as|is|in|not)\b)', [roIgnoreCase]) then
-      Exit;
-    Break;
+    Exit(False);
   end;
-  // Rest der Routine: freigegeben, zurückgegeben, zugewiesen oder an eine Liste übergeben?
-  Rest := '';
-  for Index := ALine + 1 to Min(Block.EndPos.Line, High(Lines)) do
-    Rest := Rest + Lines[Index] + #10;
-  Escaped := TRegEx.Escape(Name);
-  if TRegEx.IsMatch(Rest, '\b' + Escaped + '\s*\.\s*(Free|DisposeOf|Destroy)\b', [roIgnoreCase]) or
-    TRegEx.IsMatch(Rest, '\bFreeAndNil\s*\(\s*' + Escaped + '\s*\)', [roIgnoreCase]) or
-    TRegEx.IsMatch(Rest, ':=\s*' + Escaped + '\s*[;)]', [roIgnoreCase]) or
-    TRegEx.IsMatch(Rest, '\.\s*(Add|Insert|Push|Enqueue|AddObject|AddPair|AddOrSetValue)\s*\(([^;]*[^\w.])?' +
-      Escaped + '\s*[,)]', [roIgnoreCase]) then
-    Exit;
-  AOffer.Variable := Name;
-  AOffer.Line := ALine;
-  AOffer.Indent := Match.Groups[1].Value;
-  AOffer.EndLine := Block.EndPos.Line;
-  AOffer.CanEnclose := TopLevel(Block, ALine) and (AOffer.EndLine <= High(Lines)) and
-    TRegEx.IsMatch(Lines[AOffer.EndLine], '^\s*end\b', [roIgnoreCase]);
-  if AOffer.CanEnclose then
-  begin
-    AOffer.CanEnclose := False;
-    for Index := ALine + 1 to AOffer.EndLine - 1 do
-      if Trim(Lines[Index]) <> '' then
-        AOffer.CanEnclose := True;
-  end;
-  Result := True;
+  mRoutine := RoutineAt(ATree.Root, ALine);
+  Result := (mRoutine <> nil) and mCheck.Offers(mRoutine, AKindOf, AOffer);
 end;
 
 class function TGuardFree.LocalVariableType(ATree: TSyntaxTree; const AText, AName: string; ALine: Integer;
@@ -356,65 +521,111 @@ begin
   AType := '';
   Result := False;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   Routine := RoutineAt(ATree.Root, ALine);
   if Routine <> nil then
+  begin
     Result := LocalType(Routine, AText, AName, ALine - 1, AType);
+  end;
+end;
+
+function ReleaseText(const AOffer: TGuardOffer; AStyle: TCompletionFreeStyle): string;
+begin
+  if AStyle = TCompletionFreeStyle.FreeAndNil then
+  begin
+    Result := 'FreeAndNil(' + AOffer.Variable + ');';
+  end
+  else
+  begin
+    Result := AOffer.Variable + '.Free;';
+  end;
+end;
+
+/// <summary>Bereich für eine neue Zeile im try; die leere Zeile vom Enter wird mit ersetzt.</summary>
+function NewLineRange(const ALines: TArray<string>; const AOffer: TGuardOffer; AStart: Integer): TTextRange;
+begin
+  if (AOffer.BlankLine > AOffer.Line) and (AOffer.BlankLine <= High(ALines)) then
+  begin
+    Result := TTextRange.Create(AOffer.Line, AStart, AOffer.BlankLine, Length(ALines[AOffer.BlankLine]));
+  end
+  else
+  begin
+    Result := TTextRange.Create(AOffer.Line, AStart, AOffer.Line, Length(ALines[AOffer.Line]));
+  end;
+end;
+
+/// <summary>Letzte Zeile mit Inhalt in AFrom+1..ATo; AFrom ohne.</summary>
+function LastContentLine(const ALines: TArray<string>; AFrom, ATo: Integer): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := AFrom;
+  for mIndex := AFrom + 1 to ATo do
+  begin
+    if Trim(ALines[mIndex]) <> '' then
+    begin
+      Result := mIndex;
+    end;
+  end;
+end;
+
+function BodyLine(const ALine: string; AIsLast: Boolean): string;
+begin
+  Result := '';
+  if Trim(ALine) <> '' then
+  begin
+    Result := '  ' + ALine;
+  end;
+  if AIsLast then
+  begin
+    Result := Result + '$0';
+  end;
+end;
+
+/// <summary>Zeilen bis zum Routinenende um zwei Zeichen eingerückt, Cursor hinter der letzten.</summary>
+function EnclosedBody(const ALines: TArray<string>; const ALineBreak: string; const AOffer: TGuardOffer): string;
+var
+  mIndex, mLast: Integer;
+begin
+  mLast := LastContentLine(ALines, AOffer.Line, AOffer.EndLine - 1);
+  Result := '';
+  for mIndex := AOffer.Line + 1 to AOffer.EndLine - 1 do
+  begin
+    if mIndex <> AOffer.BlankLine then
+    begin
+      Result := Result + BodyLine(ALines[mIndex], mIndex = mLast) + ALineBreak;
+    end;
+  end;
 end;
 
 class function TGuardFree.Edit(const AText: string; const AOffer: TGuardOffer; AScope: TGuardScope;
   AStyle: TCompletionFreeStyle): TTextEdit;
 var
-  Lines: TArray<string>;
-  LB, Indent, Release, Body, Head: string;
-  Index, Last, Start, StopLine, StopCharacter: Integer;
+  mLines: TArray<string>;
+  mLineBreak, mHead, mTail: string;
+  mStart: Integer;
 begin
-  Lines := TTextLines.SplitLines(AText);
-  LB := TTextLines.LineBreakOf(AText);
-  Indent := AOffer.Indent;
-  if AStyle = TCompletionFreeStyle.FreeAndNil then
-    Release := 'FreeAndNil(' + AOffer.Variable + ');'
-  else
-    Release := AOffer.Variable + '.Free;';
+  mLines := TTextLines.SplitLines(AText);
+  mLineBreak := TTextLines.LineBreakOf(AText);
   // Fehlt das ";", beginnt die Änderung hinter der Anweisung und behält einen Kommentar dahinter.
-  Start := Length(Lines[AOffer.Line]);
-  Head := '';
+  mStart := Length(mLines[AOffer.Line]);
+  mHead := '';
   if AOffer.AddSemicolon then
   begin
-    Start := AOffer.StatementEnd;
-    Head := ';' + Copy(Lines[AOffer.Line], Start + 1, MaxInt);
+    mStart := AOffer.StatementEnd;
+    mHead := ';' + Copy(mLines[AOffer.Line], mStart + 1, MaxInt);
   end;
+  mHead := mHead + mLineBreak + AOffer.Indent + 'try' + mLineBreak;
+  mTail := AOffer.Indent + 'finally' + mLineBreak + AOffer.Indent + '  ' + ReleaseText(AOffer, AStyle) + mLineBreak +
+    AOffer.Indent + 'end;';
   if AScope = TGuardScope.NewLine then
   begin
-    // Die leere Zeile vom Enter ersetzen.
-    StopLine := AOffer.Line;
-    StopCharacter := Length(Lines[AOffer.Line]);
-    if (AOffer.BlankLine > AOffer.Line) and (AOffer.BlankLine <= High(Lines)) then
-    begin
-      StopLine := AOffer.BlankLine;
-      StopCharacter := Length(Lines[AOffer.BlankLine]);
-    end;
-    Exit(TTextEdit.Create(TTextRange.Create(AOffer.Line, Start, StopLine, StopCharacter), Head + LB + Indent +
-      'try' + LB + Indent + '  $0' + LB + Indent + 'finally' + LB + Indent + '  ' + Release + LB + Indent + 'end;'));
+    Exit(TTextEdit.Create(NewLineRange(mLines, AOffer, mStart), mHead + AOffer.Indent + '  $0' + mLineBreak + mTail));
   end;
-  // Bis zum Routinenende: die Zeilen dazwischen um zwei Zeichen einrücken, Cursor hinter die letzte.
-  Last := AOffer.Line;
-  for Index := AOffer.Line + 1 to AOffer.EndLine - 1 do
-    if Trim(Lines[Index]) <> '' then
-      Last := Index;
-  Body := '';
-  for Index := AOffer.Line + 1 to AOffer.EndLine - 1 do
-  begin
-    if Index = AOffer.BlankLine then
-      Continue;
-    if Trim(Lines[Index]) <> '' then
-      Body := Body + '  ' + Lines[Index];
-    if Index = Last then
-      Body := Body + '$0';
-    Body := Body + LB;
-  end;
-  Result := TTextEdit.Create(TTextRange.Create(AOffer.Line, Start, AOffer.EndLine, 0),
-    Head + LB + Indent + 'try' + LB + Body + Indent + 'finally' + LB + Indent + '  ' + Release + LB + Indent + 'end;' + LB);
+  Result := TTextEdit.Create(TTextRange.Create(AOffer.Line, mStart, AOffer.EndLine, 0),
+    mHead + EnclosedBody(mLines, mLineBreak, AOffer) + mTail + mLineBreak);
 end;
 
 end.

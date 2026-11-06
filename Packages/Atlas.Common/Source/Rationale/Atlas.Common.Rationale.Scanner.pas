@@ -75,15 +75,21 @@ begin
   Result := '';
   mPending := False;
   for mIndex := 1 to Length(AText) do
+  begin
     if IsSpace(AText[mIndex]) then
-      mPending := Result <> ''
+    begin
+      mPending := Result <> '';
+    end
     else
     begin
       if mPending then
+      begin
         Result := Result + ' ';
+      end;
       mPending := False;
       Result := Result + AText[mIndex];
     end;
+  end;
 end;
 
 function IsLineComment(const AToken: TPascalToken): Boolean;
@@ -107,11 +113,24 @@ begin
   begin
     mMiddle := (mLow + mHigh) div 2;
     if ATokens[mMiddle].Offset < AOffset then
-      mLow := mMiddle + 1
+    begin
+      mLow := mMiddle + 1;
+    end
     else
+    begin
       mHigh := mMiddle;
+    end;
   end;
   Result := mLow;
+end;
+
+/// <summary>AToken (Index AIndex, Inhalt ABody) setzt den Eintrag fort, der mit Token ALastIndex in Zeile ALastLine
+/// endet: Zeilenkommentar direkt darunter, mit zwei Leerzeichen oder Tabulator eingerückt.</summary>
+function ContinuesEntry(const AToken: TPascalToken; AIndex, ALastIndex, ALastLine: Integer;
+  const ABody: string): Boolean;
+begin
+  Result := IsLineComment(AToken) and (AIndex = ALastIndex + 1) and (AToken.StartPos.Line = ALastLine + 1) and
+    ((Copy(ABody, 1, 2) = '  ') or (Copy(ABody, 1, 1) = #9));
 end;
 
 /// <summary>Einträge aus den Kommentar-Token AIndices (aufsteigend): Kommentare mit Marke beginnen einen
@@ -130,9 +149,13 @@ var
     begin
       mEntry.Text := Collapse(mEntry.Text);
       if Length(mEntry.Text) > TRationale.MaxText then
+      begin
         mEntry.Text := Copy(mEntry.Text, 1, TRationale.MaxText - 1) + '…';
+      end;
       if mEntry.Text <> '' then
+      begin
         Result := Result + [mEntry];
+      end;
     end;
     mOpen := False;
   end;
@@ -152,8 +175,7 @@ begin
       Continue;
     end;
     mBody := TRationaleScanner.CommentBody(mToken.Text);
-    if mOpen and mContinues and IsLineComment(mToken) and (AIndices[mPosition] = mLastIndex + 1) and
-      (mToken.StartPos.Line = mLastLine + 1) and ((Copy(mBody, 1, 2) = '  ') or (Copy(mBody, 1, 1) = #9)) then
+    if mOpen and mContinues and ContinuesEntry(mToken, AIndices[mPosition], mLastIndex, mLastLine, mBody) then
     begin
       mEntry.Text := mEntry.Text + ' ' + mBody;
       mLastIndex := AIndices[mPosition];
@@ -173,8 +195,45 @@ begin
   Flush;
 end;
 
-{ TRationaleScanner }
+/// <summary>Anfang des Attributs, das mit "]" an AIndex endet: Index des passenden "[", 0 ohne.</summary>
+function AttributeStart(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
+var
+  mDepth: Integer;
+begin
+  Result := AIndex;
+  mDepth := 0;
+  while Result >= 0 do
+  begin
+    if ATokens[Result].IsSymbol(']') then
+    begin
+      Inc(mDepth);
+    end
+    else if ATokens[Result].IsSymbol('[') then
+    begin
+      Dec(mDepth);
+    end;
+    if mDepth = 0 then
+    begin
+      Exit;
+    end;
+    Dec(Result);
+  end;
+  Result := 0;
+end;
 
+/// <summary>Das Token AIndex ist ein Kommentar über ABoundary: höchstens eine Leerzeile dazwischen und nicht
+/// hinter Code in derselben Zeile (der gehört zum Code).</summary>
+function BelongsAbove(const ATokens: TArray<TPascalToken>; AIndex, ABoundary: Integer): Boolean;
+begin
+  Result := (ATokens[AIndex].Kind = TPascalTokenKind.Comment) and (ABoundary - ATokens[AIndex].EndPos.Line <= 2);
+  if Result and (AIndex > 0) then
+  begin
+    Result := (ATokens[AIndex - 1].Kind = TPascalTokenKind.Comment) or
+      (ATokens[AIndex - 1].EndPos.Line <> ATokens[AIndex].StartPos.Line);
+  end;
+end;
+
+{ TRationaleScanner }
 class function TRationaleScanner.CommentBody(const AComment: string): string;
 var
   mFirst, mLast: Integer;
@@ -182,18 +241,24 @@ begin
   mFirst := 1;
   mLast := Length(AComment);
   if Copy(AComment, 1, 2) = '//' then
-    mFirst := 3
+  begin
+    mFirst := 3;
+  end
   else if Copy(AComment, 1, 2) = '(*' then
   begin
     mFirst := 3;
     if (mLast >= 4) and (Copy(AComment, mLast - 1, 2) = '*)') then
+    begin
       Dec(mLast, 2);
+    end;
   end
   else if Copy(AComment, 1, 1) = '{' then
   begin
     mFirst := 2;
     if (mLast >= 2) and (AComment[mLast] = '}') then
+    begin
       Dec(mLast);
+    end;
   end;
   Result := Copy(AComment, mFirst, mLast - mFirst + 1);
 end;
@@ -208,22 +273,36 @@ begin
   AText := '';
   mPosition := 1;
   while (mPosition <= Length(ABody)) and IsSpace(ABody[mPosition]) do
+  begin
     Inc(mPosition);
+  end;
   mStart := mPosition;
   while (mPosition <= Length(ABody)) and IsLetter(ABody[mPosition]) do
+  begin
     Inc(mPosition);
+  end;
   mWord := Copy(ABody, mStart, mPosition - mStart);
   if (Length(mWord) < 2) or (Length(mWord) > cMaxMarkerLength) then
+  begin
     Exit;
+  end;
   mAfter := mPosition;
   while (mAfter <= Length(ABody)) and (ABody[mAfter] = ' ') do
+  begin
     Inc(mAfter);
+  end;
   if (mAfter <= Length(ABody)) and (ABody[mAfter] = ':') then
-    AText := Copy(ABody, mAfter + 1, MaxInt)
+  begin
+    AText := Copy(ABody, mAfter + 1, MaxInt);
+  end
   else if (mWord = UpperCase(mWord)) and ((mPosition > Length(ABody)) or IsSpace(ABody[mPosition])) then
-    AText := Copy(ABody, mPosition, MaxInt)
+  begin
+    AText := Copy(ABody, mPosition, MaxInt);
+  end
   else
+  begin
     Exit;
+  end;
   AMarker := UpperCase(mWord);
   AText := Trim(AText);
   Result := True;
@@ -240,7 +319,9 @@ begin
   while (mIndex < Length(ATokens)) and (ATokens[mIndex].Offset < ATo) do
   begin
     if ATokens[mIndex].Kind = TPascalTokenKind.Comment then
+    begin
       mIndices := mIndices + [mIndex];
+    end;
     Inc(mIndex);
   end;
   Result := FromComments(ATokens, mIndices);
@@ -248,38 +329,26 @@ end;
 
 class function TRationaleScanner.Above(const ATokens: TArray<TPascalToken>; AOffset: Integer): TArray<TRationaleEntry>;
 var
-  mIndex, mBoundary, mDepth: Integer;
+  mIndex, mBoundary: Integer;
   mIndices: TArray<Integer>;
 begin
   Result := nil;
   mIndex := TokenIndexAt(ATokens, AOffset);
   if mIndex >= Length(ATokens) then
+  begin
     Exit;
+  end;
   mBoundary := ATokens[mIndex].StartPos.Line;
   Dec(mIndex);
   // Attribute zwischen Kommentar und Deklaration überspringen.
   while (mIndex >= 0) and ATokens[mIndex].IsSymbol(']') do
   begin
-    mDepth := 0;
-    repeat
-      if ATokens[mIndex].IsSymbol(']') then
-        Inc(mDepth)
-      else if ATokens[mIndex].IsSymbol('[') then
-        Dec(mDepth);
-      Dec(mIndex);
-    until (mIndex < 0) or (mDepth = 0);
-    if mIndex >= -1 then
-      mBoundary := ATokens[mIndex + 1].StartPos.Line;
+    mIndex := AttributeStart(ATokens, mIndex) - 1;
+    mBoundary := ATokens[mIndex + 1].StartPos.Line;
   end;
   mIndices := nil;
-  while (mIndex >= 0) and (ATokens[mIndex].Kind = TPascalTokenKind.Comment) do
+  while (mIndex >= 0) and BelongsAbove(ATokens, mIndex, mBoundary) do
   begin
-    // Höchstens eine Leerzeile; ein Kommentar hinter Code gehört zum Code.
-    if mBoundary - ATokens[mIndex].EndPos.Line > 2 then
-      Break;
-    if (mIndex > 0) and (ATokens[mIndex - 1].Kind <> TPascalTokenKind.Comment) and
-      (ATokens[mIndex - 1].EndPos.Line = ATokens[mIndex].StartPos.Line) then
-      Break;
     mIndices := [mIndex] + mIndices;
     mBoundary := ATokens[mIndex].StartPos.Line;
     Dec(mIndex);
@@ -296,9 +365,13 @@ begin
   begin
     mHeader := ANode.FindChild(TSyntaxKind.RoutineHeader);
     if mHeader <> nil then
-      Result := Result + InRange(ATokens, mHeader.EndOffset, ANode.EndOffset)
+    begin
+      Result := Result + InRange(ATokens, mHeader.EndOffset, ANode.EndOffset);
+    end
     else
+    begin
       Result := Result + InRange(ATokens, ANode.StartOffset + 1, ANode.EndOffset);
+    end;
   end;
 end;
 
@@ -306,7 +379,9 @@ class function TRationaleScanner.ForUnit(ATree: TSyntaxTree): TArray<TRationaleE
 begin
   Result := nil;
   if ATree <> nil then
+  begin
     Result := ForUnit(ATree.Tokens, ATree.Root);
+  end;
 end;
 
 class function TRationaleScanner.ForUnit(const ATokens: TArray<TPascalToken>;
@@ -323,7 +398,9 @@ var
     mOwn: TRationaleEntry;
   begin
     for mOwn in Above(ATokens, ANode.StartOffset) do
+    begin
       mTaken := mTaken + [mOwn.Line];
+    end;
   end;
 
   function IsTaken(ALine: Integer): Boolean;
@@ -331,18 +408,26 @@ var
     mLine: Integer;
   begin
     for mLine in mTaken do
+    begin
       if mLine = ALine then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
 begin
   Result := nil;
   if (ARoot = nil) or (ARoot.Kind <> TSyntaxKind.UnitFile) then
+  begin
     Exit;
+  end;
   mInterface := ARoot.FindChild(TSyntaxKind.InterfaceSection);
   if mInterface = nil then
+  begin
     Exit;
+  end;
   mLimit := mInterface.EndOffset;
   mTaken := nil;
   for mIndex := 0 to mInterface.ChildCount - 1 do
@@ -354,18 +439,26 @@ begin
       Break;
     end;
     if mChild.Kind in [TSyntaxKind.ConstSection, TSyntaxKind.VarSection] then
+    begin
       for mInner := 0 to mChild.ChildCount - 1 do
       begin
         mDecl := mChild[mInner];
         Take(mDecl);
-      end
+      end;
+    end
     else if mChild.Kind = TSyntaxKind.RoutineDecl then
+    begin
       Take(mChild);
+    end;
   end;
   mAll := InRange(ATokens, 0, mLimit);
   for mEntry in mAll do
+  begin
     if not IsTaken(mEntry.Line) then
+    begin
       Result := Result + [mEntry];
+    end;
+  end;
 end;
 
 end.

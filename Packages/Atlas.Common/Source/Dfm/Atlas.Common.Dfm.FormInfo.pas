@@ -32,10 +32,33 @@ type
 implementation
 
 uses
+  System.Math,
   System.StrUtils,
   System.Classes,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Dfm.Parser;
+  Atlas.Common.Dfm.Parser,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TFormInfoText = (BinaryDataBytes, NoFormFound, ErrorLine, WithoutName, InLineL, More, ImageBytes, InheritedText,
+    Events);
+
+const
+  cTexts: array[TFormInfoText] of TAtlasText = (
+    (De: 'Binärdaten, %d Bytes'; En: 'Binary data, %d bytes'),
+    (De: 'Kein Formular gefunden.'; En: 'No form found.'),
+    (De: 'Fehler Zeile %d: %s'; En: 'Error line %d: %s'),
+    (De: '(ohne Namen)'; En: '(without name)'),
+    (De: '**In %s** ([Zeile %d](%s#L%d))'; En: '**In %s** ([line %d](%s#L%d))'),
+    (De: ' … %d weitere'; En: ' … %d more'),
+    (De: 'Bild, %d Bytes'; En: 'Image, %d bytes'),
+    (De: ' (geerbt)'; En: ' (inherited)'),
+    (De: '    Ereignisse: '; En: '    Events: '));
+
+{$SCOPEDENUMS OFF}
 
 function CountHexBytes(const AValue: string): Integer;
 var
@@ -43,8 +66,12 @@ var
 begin
   Result := 0;
   for Index := 1 to Length(AValue) do
+  begin
     if CharInSet(AValue[Index], ['0'..'9', 'A'..'F', 'a'..'f']) then
+    begin
       Inc(Result);
+    end;
+  end;
   Result := Result div 2;
 end;
 
@@ -54,45 +81,62 @@ begin
     EndsText('Icon.Data', AName);
 end;
 
+/// <summary>Liste "( … )": je Zeile ein Eintrag; nach TFormInfo.MaxListLines gekürzt.</summary>
+function ListText(const AValue: string): string;
+var
+  mLine: string;
+  mItems: TArray<string>;
+  mIndex: Integer;
+begin
+  mItems := nil;
+  for mLine in SplitString(Copy(AValue, 2, Length(AValue) - 2), #10) do
+  begin
+    if Trim(mLine) <> '' then
+    begin
+      mItems := mItems + [Trim(mLine)];
+    end;
+  end;
+  Result := '(';
+  for mIndex := 0 to Min(Length(mItems), TFormInfo.MaxListLines) - 1 do
+  begin
+    if mIndex > 0 then
+    begin
+      Result := Result + ' ';
+    end;
+    Result := Result + mItems[mIndex];
+  end;
+  if Length(mItems) > TFormInfo.MaxListLines then
+  begin
+    Result := Result + cTexts[TFormInfoText.More].Fmt([Length(mItems) - TFormInfo.MaxListLines]);
+  end;
+  Result := Result + ')';
+end;
+
 class function TFormInfo.ValueText(const AProperty: TDfmProperty): string;
 var
-  Value, Line: string;
-  Items: TArray<string>;
-  Index, Count: Integer;
+  mValue: string;
 begin
-  Value := Trim(AProperty.Value);
-  if StartsStr('{', Value) then
+  mValue := Trim(AProperty.Value);
+  if StartsStr('{', mValue) and IsPicture(AProperty.Name) then
   begin
-    if IsPicture(AProperty.Name) then
-      Exit(Format('Bild, %d Bytes', [CountHexBytes(Value)]))
-    else
-      Exit(Format('Binärdaten, %d Bytes', [CountHexBytes(Value)]));
-  end;
-  if StartsStr('(', Value) then
+    Result := cTexts[TFormInfoText.ImageBytes].Fmt([CountHexBytes(mValue)]);
+  end
+  else if StartsStr('{', mValue) then
   begin
-    // Liste: je Zeile ein Eintrag; nach MaxListLines gekürzt.
-    Items := nil;
-    for Line in SplitString(Copy(Value, 2, Length(Value) - 2), #10) do
-      if Trim(Line) <> '' then
-        Items := Items + [Trim(Line)];
-    Result := '(';
-    Count := Length(Items);
-    for Index := 0 to Count - 1 do
+    Result := cTexts[TFormInfoText.BinaryDataBytes].Fmt([CountHexBytes(mValue)]);
+  end
+  else if StartsStr('(', mValue) then
+  begin
+    Result := ListText(mValue);
+  end
+  else
+  begin
+    Result := Trim(StringReplace(StringReplace(mValue, #13, '', [rfReplaceAll]), #10, ' ', [rfReplaceAll]));
+    if Length(Result) > MaxValueLength then
     begin
-      if Index = MaxListLines then
-      begin
-        Result := Result + Format(' … %d weitere', [Count - MaxListLines]);
-        Break;
-      end;
-      if Index > 0 then
-        Result := Result + ' ';
-      Result := Result + Items[Index];
+      Result := Copy(Result, 1, MaxValueLength - 3) + '...';
     end;
-    Exit(Result + ')');
   end;
-  Result := Trim(StringReplace(StringReplace(Value, #13, '', [rfReplaceAll]), #10, ' ', [rfReplaceAll]));
-  if Length(Result) > MaxValueLength then
-    Result := Copy(Result, 1, MaxValueLength - 3) + '...';
 end;
 
 procedure AddObject(ALines: TStrings; AObject: TDfmObject; ADepth: Integer);
@@ -103,20 +147,36 @@ var
 begin
   Indent := StringOfChar(' ', ADepth * 2);
   if AObject.Kind = TDfmObjectKind.Item then
-    ALines.Add(Indent + '- item')
+  begin
+    ALines.Add(Indent + '- item');
+  end
   else
-    ALines.Add(Format('%s- %s: %s%s', [Indent, IfThen(AObject.Name <> '', AObject.Name, '(ohne Namen)'),
-      AObject.TypeName, IfThen(AObject.Kind = TDfmObjectKind.Inherited_, ' (geerbt)', '')]));
+  begin
+    ALines.Add(Format('%s- %s: %s%s', [Indent, IfThen(AObject.Name <> '', AObject.Name,
+      cTexts[TFormInfoText.WithoutName].Text),
+      AObject.TypeName, IfThen(AObject.Kind = TDfmObjectKind.Inherited_, cTexts[TFormInfoText.InheritedText].Text,
+        '')]));
+  end;
   Events := '';
   for Prop in AObject.Properties do
+  begin
     if Prop.IsEvent then
-      Events := Events + IfThen(Events <> '', ', ', '') + Prop.Name + ' → ' + Prop.Value
+    begin
+      Events := Events + IfThen(Events <> '', ', ', '') + Prop.Name + ' → ' + Prop.Value;
+    end
     else
+    begin
       ALines.Add(Format('%s    %s = %s', [Indent, Prop.Name, TFormInfo.ValueText(Prop)]));
+    end;
+  end;
   if Events <> '' then
-    ALines.Add(Indent + '    Ereignisse: ' + Events);
+  begin
+    ALines.Add(Indent + cTexts[TFormInfoText.Events].Text + Events);
+  end;
   for Child in AObject.Children do
+  begin
     AddObject(ALines, Child, ADepth + 1);
+  end;
 end;
 
 class function TFormInfo.Describe(const AFormText: string): string;
@@ -129,11 +189,17 @@ begin
   Lines := TStringList.Create;
   try
     if Document.Root = nil then
-      Lines.Add('Kein Formular gefunden.')
+    begin
+      Lines.Add(cTexts[TFormInfoText.NoFormFound].Text);
+    end
     else
+    begin
       AddObject(Lines, Document.Root, 0);
+    end;
     for Error in Document.Errors do
-      Lines.Add(Format('Fehler Zeile %d: %s', [Error.Position.Line + 1, Error.Message]));
+    begin
+      Lines.Add(cTexts[TFormInfoText.ErrorLine].Fmt([Error.Position.Line + 1, Error.Message]));
+    end;
     Result := TrimRight(Lines.Text);
   finally
     Lines.Free;
@@ -146,25 +212,35 @@ class function TFormInfo.ComponentMarkdown(AObject: TDfmObject; const AFormFile:
 var
   Prop: TDfmProperty;
 begin
-  Result := Format('**In %s** ([Zeile %d](%s#L%d))', [ExtractFileName(AFormFile), AObject.Range.StartPos.Line + 1,
+  Result := cTexts[TFormInfoText.InLineL].Fmt([ExtractFileName(AFormFile), AObject.Range.StartPos.Line + 1,
     TDocumentUris.FromPath(AFormFile), AObject.Range.StartPos.Line + 1]);
   for Prop in AObject.Properties do
+  begin
     if Prop.IsEvent then
-      Result := Result + #10 + Format('- %s → `%s`', [Prop.Name, Prop.Value])
+    begin
+      Result := Result + #10 + Format('- %s → `%s`', [Prop.Name, Prop.Value]);
+    end
     else
+    begin
       Result := Result + #10 + Format('- %s = `%s`', [Prop.Name, ValueText(Prop)]);
+    end;
+  end;
 end;
 function SearchByName(AObject: TDfmObject; const AName: string): TDfmObject;
 var
   Child: TDfmObject;
 begin
   if SameText(AObject.Name, AName) then
+  begin
     Exit(AObject);
+  end;
   for Child in AObject.Children do
   begin
     Result := SearchByName(Child, AName);
     if Result <> nil then
+    begin
       Exit;
+    end;
   end;
   Result := nil;
 end;
@@ -173,8 +249,13 @@ class function TFormInfo.FindComponent(ADocument: TDfmDocument; const AFormClass
 begin
   Result := nil;
   if (ADocument = nil) or (ADocument.Root = nil) or not SameText(ADocument.Root.TypeName, AFormClass) then
+  begin
     Exit;
+  end;
   Result := SearchByName(ADocument.Root, AName);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Dfm.FormInfo', cTexts);
 
 end.

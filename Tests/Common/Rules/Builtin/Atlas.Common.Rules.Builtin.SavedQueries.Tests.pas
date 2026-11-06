@@ -14,6 +14,9 @@ type
   [TestFixture]
   TSavedQueryRuleTests = class
   public
+    /// <summary>Einmal-Belegungen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure ReportsHitsOfCheckedFileOnly;
     [Test]
@@ -63,7 +66,9 @@ end;
 function TextOf(const AFileName: string): string;
 begin
   if not QueryTestSource.ReadText(AFileName, Result) then
+  begin
     Result := '';
+  end;
 end;
 
 function Check(const ASettings: TServerSettings; const AText: string; const AQueries: ICodeQueries;
@@ -101,11 +106,20 @@ var
 begin
   Result := nil;
   for mFinding in AFindings do
+  begin
     if mFinding.RuleId.StartsWith(TSavedQueryRule.cPrefix) then
+    begin
       Result := Result + [mFinding];
+    end;
+  end;
 end;
 
 { TSavedQueryRuleTests }
+
+procedure TSavedQueryRuleTests.WarmUpFirstUse;
+begin
+  ReportsHitsOfCheckedFileOnly;
+end;
 
 procedure TSavedQueryRuleTests.ReportsHitsOfCheckedFileOnly;
 var

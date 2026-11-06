@@ -59,7 +59,22 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Metrics.Report,
   Atlas.Common.Todos.Report,
-  Atlas.Common.Rules.Builtin.Todos;
+  Atlas.Common.Rules.Builtin.Todos,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TTodosText = (TODODataIsNotValid, UnknownModeAllowedSummaryJson);
+
+const
+  cTexts: array[TTodosText] of TAtlasText = (
+    (De: 'TODO-Daten sind kein gültiges JSON'; En: 'TODO data is not valid JSON'),
+    (De: 'Unbekannter Modus "%s"; erlaubt: summary, json, markdown';
+     En: 'Unknown mode "%s"; allowed: summary, json, markdown'));
+
+{$SCOPEDENUMS OFF}
 
 { TLspTodos }
 
@@ -76,16 +91,26 @@ begin
   if AText = '' then
   begin
     if AProject then
-      AMode := TLspTodosMode.Summary
+    begin
+      AMode := TLspTodosMode.Summary;
+    end
     else
+    begin
       AMode := TLspTodosMode.Json;
+    end;
   end
   else if SameText(AText, 'summary') then
-    AMode := TLspTodosMode.Summary
+  begin
+    AMode := TLspTodosMode.Summary;
+  end
   else if SameText(AText, 'json') then
-    AMode := TLspTodosMode.Json
+  begin
+    AMode := TLspTodosMode.Json;
+  end
   else if SameText(AText, 'markdown') then
-    AMode := TLspTodosMode.Markdown
+  begin
+    AMode := TLspTodosMode.Markdown;
+  end
   else
   begin
     AMode := TLspTodosMode.Summary;
@@ -104,15 +129,21 @@ var
   begin
     Value := Item.GetValue(AName);
     if Value is TJSONString then
-      Result := Trim(Value.Value)
+    begin
+      Result := Trim(Value.Value);
+    end
     else
+    begin
       Result := '';
+    end;
   end;
 
 begin
   Result := TTodoFilter.Default;
   if not (AValue is TJSONObject) then
+  begin
     Exit;
+  end;
   Item := TJSONObject(AValue);
   Result.Category := Text('category');
   Result.Owner := Text('owner');
@@ -150,15 +181,23 @@ begin
   ModeText := '';
   Filter := TTodoFilter.Default;
   if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
+  begin
     FileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
+  end;
   if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONString) then
+  begin
     ModeText := AArguments.Items[1].Value;
+  end;
   if (AArguments <> nil) and (AArguments.Count > 2) then
+  begin
     Filter := FilterOf(AArguments.Items[2]);
+  end;
   Project := TLspMetrics.IsProject(FileName);
   if not TryParseMode(ModeText, Project, Mode) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      Format('Unbekannter Modus "%s"; erlaubt: summary, json, markdown', [ModeText]));
+      cTexts[TTodosText.UnknownModeAllowedSummaryJson].Fmt([ModeText]));
+  end;
   if not (Assigned(FSourceFor) and FSourceFor(FileName, Project, Source)) then
   begin
     Source := Default(TLspMetricsSource);
@@ -166,11 +205,18 @@ begin
   end;
   // Eine Quelltextdatei: nur sie, mit den Einstellungen ihres Arbeitsbereichs.
   if not Project then
+  begin
     Source.Files := [FileName];
+  end;
   Text := Answer(Source, Mode, Filter);
   Result := TJSONObject.ParseJSONValue(Text);
   if Result = nil then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, 'TODO-Daten sind kein gültiges JSON');
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, cTexts[TTodosText.TODODataIsNotValid].Text);
+  end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.Todos', cTexts);
 
 end.

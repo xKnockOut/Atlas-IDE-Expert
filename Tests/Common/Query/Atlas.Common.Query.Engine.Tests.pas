@@ -15,6 +15,9 @@ type
   [TestFixture]
   TQueryEngineTests = class
   public
+    /// <summary>Einmal-Belegungen vorwegnehmen; sie gehören nicht in die Leckmessung.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure InheritsTransitivelyAndAsWritten;
     [Test]
@@ -259,11 +262,15 @@ var
 begin
   Result := '';
   if AResult.Failed then
+  begin
     Exit('Fehler: ' + AResult.Error);
+  end;
   for mRow in AResult.Rows do
   begin
     if Result <> '' then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + mRow.QualifiedName;
   end;
 end;
@@ -279,6 +286,11 @@ begin
 end;
 
 { TQueryEngineTests }
+
+procedure TQueryEngineTests.WarmUpFirstUse;
+begin
+  FormsCountComponents;
+end;
 
 procedure TQueryEngineTests.InheritsTransitivelyAndAsWritten;
 begin
@@ -318,8 +330,12 @@ var
 begin
   mExpected := 0;
   for mRoutine in TMetricsCalculator.ForText(cKunden) do
+  begin
     if (mRoutine.Name = 'TKunde.Rechne') and (mRoutine.Values[TMetricKind.ParameterCount] = 2) then
+    begin
       mExpected := mRoutine.Values[TMetricKind.Cyclomatic];
+    end;
+  end;
   Assert.IsTrue(mExpected > 3);
   mResult := Query('methods where complexity > 3 and params > 0');
   Assert.AreEqual('TKunde.Rechne', RowNames(mResult));
@@ -512,7 +528,9 @@ begin
     mText := Format('unit U%d; interface uses Vcl.Forms; type TForm%d = class(TForm)', [mUnit, mUnit]);
     // Jede zehnte Klasse hat mehr als 40 Methoden.
     for mMethod := 1 to 20 + (mUnit mod 10) * 3 do
+    begin
       mText := mText + Format(' procedure M%d;', [mMethod]);
+    end;
     mText := mText + ' end; implementation end.';
     mSource.Index.AddUnit(TIndexExtractor.ExtractText(mText, Format('C:\P\U%d.pas', [mUnit]), nil));
   end;

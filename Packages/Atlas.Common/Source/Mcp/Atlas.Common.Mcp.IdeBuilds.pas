@@ -15,7 +15,7 @@
 // Auftrag nicht innerhalb von TakeMs an, zieht der MCP-Server ihn zurück.
 // Welche IDE welche Projekte offen hat, steht unter "projects" und
 // "activeProject" in editor-dirty-<pid>.json (TAtlasDirtyExport im Plugin).
-// Gegenstück im Plugin: Atlas.Core.Build.Inbox und Atlas.IDE.Build.Inbox.
+// Gegenstück im Plugin: Atlas.Core.BuildPipeline.Inbox und Atlas.IDE.BuildPipeline.Inbox.
 
 interface
 
@@ -42,6 +42,17 @@ type
   end;
 
   TMcpIdeBuildOutcome = (Done, NotTaken, Refused, TimedOut);
+
+  /// <summary>Warten auf das Plugin: AWait schläft kurz, Clock liefert Millisekunden, dazu die Fristen bis zur
+  /// Übernahme und für den Build.</summary>
+  TMcpIdeBuildWaiting = record
+    Wait: TProc;
+    Clock: TFunc<Int64>;
+    TakeMs: Int64;
+    BuildMs: Int64;
+    class function Make(const AWait: TProc; const AClock: TFunc<Int64>; ATakeMs, ABuildMs: Int64):
+      TMcpIdeBuildWaiting; static;
+  end;
 
   TMcpIdeBuilds = class
   public const
@@ -74,9 +85,8 @@ type
     class function Send(const AInbox: string; const ARequest: TMcpIdeBuildRequest; const AWait: TProc;
       const AClock: TFunc<Int64>; out ABuildText, AReason: string): TMcpIdeBuildOutcome; overload; static;
     /// <summary>Wie oben mit eigenen Fristen (Tests).</summary>
-    class function Send(const AInbox: string; const ARequest: TMcpIdeBuildRequest; const AWait: TProc;
-      const AClock: TFunc<Int64>; ATakeMs, ABuildMs: Int64; out ABuildText, AReason: string): TMcpIdeBuildOutcome;
-      overload; static;
+    class function Send(const AInbox: string; const ARequest: TMcpIdeBuildRequest;
+      const AWaiting: TMcpIdeBuildWaiting; out ABuildText, AReason: string): TMcpIdeBuildOutcome; overload; static;
   end;
 
 implementation
@@ -85,7 +95,33 @@ uses
   System.Generics.Collections,
   System.IOUtils,
   System.JSON,
-  Atlas.Common.Projects.Paths;
+  Atlas.Common.Projects.Paths,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TIdeBuildsText = (NoRADStudioIDEWith, NoRunningIDEWithThe, NoRunningIDEWithThe2, TheIDEDeliveredNoResult,
+    TheIDEDidNotAccept, TheIDEAcceptedTheBuild, AnswerOfTheIDENot);
+
+const
+  cTexts: array[TIdeBuildsText] of TAtlasText = (
+    (De: 'Keine RAD-Studio-IDE mit Atlas-Plugin läuft. Ohne Kommandozeilen-Compiler baut Atlas über die IDE: das ' +
+      'Projekt dort öffnen und erneut aufrufen.';
+     En: 'No RAD Studio IDE with the Atlas plugin is running. Without a command-line compiler Atlas builds via the ' +
+      'IDE: open the project there and call again.'),
+    (De: 'Keine laufende IDE mit Atlas-Plugin hat ein Projekt unter dem Arbeitsordner als aktives Projekt. Projekt ' +
+      'in der IDE öffnen oder "project" angeben.';
+     En: 'No running IDE with the Atlas plugin has a project below the working folder as active project. Open the ' +
+      'project in the IDE or give "project".'),
+    (De: 'Keine laufende IDE mit Atlas-Plugin hat das Projekt %s offen. Projekt in der IDE öffnen und erneut ' +
+      'aufrufen.';
+     En: 'No running IDE with the Atlas plugin has the project %s open. Open the project in the IDE and call again.'),
+    (De: 'Die IDE hat kein Ergebnis geliefert.'; En: 'The IDE delivered no result.'),
+    (De: 'Die IDE hat den Build nicht angenommen (Plugin beschäftigt, abgeschaltet oder zu alt).';
+     En: 'The IDE did not accept the build (plugin busy, switched off or too old).'),
+    (De: 'Die IDE hat den Build angenommen, aber nicht rechtzeitig gemeldet.';
+     En: 'The IDE accepted the build but did not report in time.'),
+    (De: 'Antwort der IDE nicht lesbar.'; En: 'Answer of the IDE not readable.'));
 
 class function TMcpIdeBuilds.InboxOf(const ABase: string; APid: Cardinal): string;
 begin
@@ -109,14 +145,22 @@ begin
   try
     Result := (Value is TJSONObject) and TJSONObject(Value).TryGetValue<Int64>('pid', Pid) and (Pid > 0);
     if not Result then
+    begin
       Exit;
+    end;
     Root := TJSONObject(Value);
     AEntry.Pid := Cardinal(Pid);
     AEntry.ActiveProject := Root.GetValue<string>('activeProject', '');
     if Root.TryGetValue<TJSONArray>('projects', Items) then
+    begin
       for Item in Items do
+      begin
         if Item is TJSONString then
+        begin
           AEntry.Projects := AEntry.Projects + [TJSONString(Item).Value];
+        end;
+      end;
+    end;
   finally
     Value.Free;
   end;
@@ -128,7 +172,9 @@ var
 begin
   Name := Copy(AProjectFile, Length(TProjectPaths.DirectoryOf(AProjectFile)) + 1, MaxInt);
   if (Name <> '') and CharInSet(Name[1], ['\', '/']) then
+  begin
     Delete(Name, 1, 1);
+  end;
   Result := SameText(TProjectPaths.Normalize(AProjectFile), TProjectPaths.Normalize(AWanted)) or
     SameText(Name, AWanted) or SameText(TProjectPaths.BaseName(AProjectFile), AWanted) or
     SameText(TProjectPaths.BaseName(AProjectFile), TProjectPaths.BaseName(AWanted));
@@ -139,56 +185,67 @@ var
   Root: string;
 begin
   if ARoot = '' then
+  begin
     Exit(True);
+  end;
   Root := TProjectPaths.Normalize(ARoot);
   Result := SameText(Copy(TProjectPaths.Normalize(AFileName), 1, Length(Root) + 1), Root + '\') or
     SameText(Copy(TProjectPaths.Normalize(AFileName), 1, Length(Root) + 1), Root + '/');
 end;
 
+/// <summary>Projekt aus AEntry, das zu AProject passt ('' = aktives Projekt unter ARoot); '' ohne Treffer.</summary>
+function ProjectOf(const AEntry: TMcpIdeEntry; const ARoot, AProject: string): string;
+var
+  mProject: string;
+begin
+  Result := '';
+  if AProject = '' then
+  begin
+    if (AEntry.ActiveProject <> '') and Inside(ARoot, AEntry.ActiveProject) then
+    begin
+      Result := AEntry.ActiveProject;
+    end;
+    Exit;
+  end;
+  for mProject in AEntry.Projects + [AEntry.ActiveProject] do
+  begin
+    if (mProject <> '') and Matches(mProject, AProject) and
+      (TProjectPaths.IsAbsolute(AProject) or Inside(ARoot, mProject)) then
+    begin
+      Exit(mProject);
+    end;
+  end;
+end;
+
 class function TMcpIdeBuilds.Pick(const AEntries: TArray<TMcpIdeEntry>; const ARoot, AProject: string;
   out APid: Cardinal; out AProjectFile, AReason: string): Boolean;
 var
-  Entry: TMcpIdeEntry;
-  Project: string;
-  Candidates: TArray<string>;
+  mEntry: TMcpIdeEntry;
 begin
   APid := 0;
   AProjectFile := '';
   AReason := '';
+  for mEntry in AEntries do
+  begin
+    AProjectFile := ProjectOf(mEntry, ARoot, AProject);
+    if AProjectFile <> '' then
+    begin
+      APid := mEntry.Pid;
+      Exit(True);
+    end;
+  end;
   if Length(AEntries) = 0 then
   begin
-    AReason := 'Keine RAD-Studio-IDE mit Atlas-Plugin läuft. Ohne Kommandozeilen-Compiler baut Atlas über die ' +
-      'IDE: das Projekt dort öffnen und erneut aufrufen.';
-    Exit(False);
-  end;
-  for Entry in AEntries do
+    AReason := cTexts[TIdeBuildsText.NoRADStudioIDEWith].Text;
+  end
+  else if AProject = '' then
   begin
-    if AProject = '' then
-    begin
-      if (Entry.ActiveProject <> '') and Inside(ARoot, Entry.ActiveProject) then
-      begin
-        APid := Entry.Pid;
-        AProjectFile := Entry.ActiveProject;
-        Exit(True);
-      end;
-      Continue;
-    end;
-    Candidates := Entry.Projects + [Entry.ActiveProject];
-    for Project in Candidates do
-      if (Project <> '') and Matches(Project, AProject) and
-        (TProjectPaths.IsAbsolute(AProject) or Inside(ARoot, Project)) then
-      begin
-        APid := Entry.Pid;
-        AProjectFile := Project;
-        Exit(True);
-      end;
-  end;
-  if AProject = '' then
-    AReason := 'Keine laufende IDE mit Atlas-Plugin hat ein Projekt unter dem Arbeitsordner als aktives Projekt. ' +
-      'Projekt in der IDE öffnen oder "project" angeben.'
+    AReason := cTexts[TIdeBuildsText.NoRunningIDEWithThe].Text;
+  end
   else
-    AReason := Format('Keine laufende IDE mit Atlas-Plugin hat das Projekt %s offen. Projekt in der IDE öffnen ' +
-      'und erneut aufrufen.', [AProject]);
+  begin
+    AReason := cTexts[TIdeBuildsText.NoRunningIDEWithThe2].Fmt([AProject]);
+  end;
   Result := False;
 end;
 
@@ -220,18 +277,24 @@ begin
   try
     Result := Value is TJSONObject;
     if not Result then
+    begin
       Exit;
+    end;
     AOk := TJSONObject(Value).GetValue<Boolean>('ok', False);
     AReason := TJSONObject(Value).GetValue<string>('reason', '');
     Build := TJSONObject(Value).GetValue('build');
     if Build is TJSONObject then
+    begin
       ABuildText := Build.ToJSON;
+    end;
     // Ohne Ergebnis gilt der Auftrag als abgelehnt.
     if AOk and (ABuildText = '') then
     begin
       AOk := False;
       if AReason = '' then
-        AReason := 'Die IDE hat kein Ergebnis geliefert.';
+      begin
+        AReason := cTexts[TIdeBuildsText.TheIDEDeliveredNoResult].Text;
+      end;
     end;
   finally
     Value.Free;
@@ -242,21 +305,32 @@ procedure DeleteQuietly(const AFileName: string);
 begin
   try
     if FileExists(AFileName) then
+    begin
       TFile.Delete(AFileName);
+    end;
   except
     on Exception do
       ;
   end;
 end;
 
-class function TMcpIdeBuilds.Send(const AInbox: string; const ARequest: TMcpIdeBuildRequest; const AWait: TProc;
-  const AClock: TFunc<Int64>; out ABuildText, AReason: string): TMcpIdeBuildOutcome;
+class function TMcpIdeBuildWaiting.Make(const AWait: TProc; const AClock: TFunc<Int64>; ATakeMs,
+  ABuildMs: Int64): TMcpIdeBuildWaiting;
 begin
-  Result := Send(AInbox, ARequest, AWait, AClock, TakeMs, BuildMs, ABuildText, AReason);
+  Result.Wait := AWait;
+  Result.Clock := AClock;
+  Result.TakeMs := ATakeMs;
+  Result.BuildMs := ABuildMs;
 end;
 
 class function TMcpIdeBuilds.Send(const AInbox: string; const ARequest: TMcpIdeBuildRequest; const AWait: TProc;
-  const AClock: TFunc<Int64>; ATakeMs, ABuildMs: Int64; out ABuildText, AReason: string): TMcpIdeBuildOutcome;
+  const AClock: TFunc<Int64>; out ABuildText, AReason: string): TMcpIdeBuildOutcome;
+begin
+  Result := Send(AInbox, ARequest, TMcpIdeBuildWaiting.Make(AWait, AClock, TakeMs, BuildMs), ABuildText, AReason);
+end;
+
+class function TMcpIdeBuilds.Send(const AInbox: string; const ARequest: TMcpIdeBuildRequest;
+  const AWaiting: TMcpIdeBuildWaiting; out ABuildText, AReason: string): TMcpIdeBuildOutcome;
 var
   Id, Request, Answer, Text: string;
   Started: Int64;
@@ -270,21 +344,25 @@ begin
   ForceDirectories(AInbox);
   TFile.WriteAllText(Request + '.tmp', RequestText(ARequest), TEncoding.UTF8);
   TFile.Move(Request + '.tmp', Request);
-  Started := AClock();
+  Started := AWaiting.Clock();
   // Warten, bis das Plugin den Auftrag übernimmt (die .json verschwindet) oder schon antwortet.
-  while (AClock() - Started < ATakeMs) and FileExists(Request) and not FileExists(Answer) do
-    AWait();
+  while (AWaiting.Clock() - Started < AWaiting.TakeMs) and FileExists(Request) and not FileExists(Answer) do
+  begin
+    AWaiting.Wait();
+  end;
   if FileExists(Request) and not FileExists(Answer) and DeleteFile(Request) then
   begin
-    AReason := 'Die IDE hat den Build nicht angenommen (Plugin beschäftigt, abgeschaltet oder zu alt).';
+    AReason := cTexts[TIdeBuildsText.TheIDEDidNotAccept].Text;
     Exit(TMcpIdeBuildOutcome.NotTaken);
   end;
-  Started := AClock();
-  while (AClock() - Started < ABuildMs) and not FileExists(Answer) do
-    AWait();
+  Started := AWaiting.Clock();
+  while (AWaiting.Clock() - Started < AWaiting.BuildMs) and not FileExists(Answer) do
+  begin
+    AWaiting.Wait();
+  end;
   if not FileExists(Answer) then
   begin
-    AReason := 'Die IDE hat den Build angenommen, aber nicht rechtzeitig gemeldet.';
+    AReason := cTexts[TIdeBuildsText.TheIDEAcceptedTheBuild].Text;
     Exit(TMcpIdeBuildOutcome.TimedOut);
   end;
   try
@@ -296,13 +374,20 @@ begin
   DeleteQuietly(Answer);
   if not ParseAnswer(Text, Ok, ABuildText, AReason) then
   begin
-    AReason := 'Antwort der IDE nicht lesbar.';
+    AReason := cTexts[TIdeBuildsText.AnswerOfTheIDENot].Text;
     Exit(TMcpIdeBuildOutcome.Refused);
   end;
   if Ok then
-    Result := TMcpIdeBuildOutcome.Done
+  begin
+    Result := TMcpIdeBuildOutcome.Done;
+  end
   else
+  begin
     Result := TMcpIdeBuildOutcome.Refused;
+  end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Mcp.IdeBuilds', cTexts);
 
 end.

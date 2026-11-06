@@ -30,90 +30,147 @@ uses
   System.Generics.Collections,
   System.Generics.Defaults,
   Atlas.Common.Rules.Engine,
-  Atlas.Common.Rules.Output;
+  Atlas.Common.Rules.Output,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TConventionsText = (Heading, Intro, Profile, FormatStyle, FormatDefault, Naming, NoNamingRule, ActiveRules);
+
+const
+  cTexts: array[TConventionsText] of TAtlasText = (
+    (De: '# Konventionen des Projekts'; En: '# Project conventions'),
+    (De: 'Atlas prüft Code nach diesen Regeln. Vor dem Schreiben beachten, danach mit `check_code` prüfen.';
+     En: 'Atlas checks code against these rules. Follow them before writing, then check with `check_code`.'),
+    (De: '- Regelprofil: `%s`'; En: '- Rule profile: `%s`'),
+    (De: '- Formatstil (`format` in atlas.json): `%s`'; En: '- Format style (`format` in atlas.json): `%s`'),
+    (De: '- Formatstil: Vorgaben bzw. `.editorconfig`'; En: '- Format style: defaults or `.editorconfig`'),
+    (De: '## Benennung'; En: '## Naming'),
+    (De: '- Keine aktive Benennungsregel.'; En: '- No active naming rule.'),
+    (De: '## Aktive Regeln (%d)'; En: '## Active rules (%d)'));
+
+{$SCOPEDENUMS OFF}
 
 class function TRuleConventions.IsNamingRule(const ARuleId: string): Boolean;
 begin
   Result := (Pos('name', LowerCase(ARuleId)) > 0) or (Pos('naming', LowerCase(ARuleId)) > 0);
 end;
 
-class function TRuleConventions.Markdown(const ARules: TArray<IRule>; const ASettings: TServerSettings;
-  const ACatalog: TRuleCatalog): string;
 type
-  TActive = record
+  /// <summary>Aktive Regel für den Bericht: Kennung, Schwere und Name aus dem Katalog.</summary>
+  TConventionRule = record
     Id: string;
     Severity: string;
     Text: string;
   end;
+
+/// <summary>Die aktiven Regeln aus ARules nach Kennung sortiert; experimentelle nur, wenn atlas.json sie
+/// einschaltet.</summary>
+function ActiveRules(const ARules: TArray<IRule>; const ASettings: TServerSettings;
+  const ACatalog: TRuleCatalog): TArray<TConventionRule>;
 var
-  Builder: TStringBuilder;
-  Rule: IRule;
-  Severity: TRuleSeverity;
-  Enabled: Boolean;
-  Entry: TRuleCatalogEntry;
-  Active: TList<TActive>;
-  Item: TActive;
-  Profile: string;
-  Naming: Boolean;
+  mRule: IRule;
+  mSeverity: TRuleSeverity;
+  mEnabled: Boolean;
+  mEntry: TRuleCatalogEntry;
+  mItem: TConventionRule;
 begin
-  Active := TList<TActive>.Create;
-  Builder := TStringBuilder.Create;
-  try
-    for Rule in ARules do
+  Result := nil;
+  for mRule in ARules do
+  begin
+    mSeverity := TRuleEngine.EffectiveSeverity(mRule.Descriptor, ASettings, '', mEnabled);
+    if (mSeverity <> TRuleSeverity.Off) and (mEnabled or not mRule.Descriptor.Experimental) then
     begin
-      Severity := TRuleEngine.EffectiveSeverity(Rule.Descriptor, ASettings, '', Enabled);
-      // Experimentelle Regeln laufen nur, wenn atlas.json sie einschaltet.
-      if (Severity = TRuleSeverity.Off) or (Rule.Descriptor.Experimental and not Enabled) then
-        Continue;
-      Item.Id := Rule.Descriptor.Id;
-      Item.Severity := TFindingsOutput.SeverityName(Severity);
-      Item.Text := Rule.Descriptor.Description;
-      if (ACatalog <> nil) and ACatalog.TryFind(Item.Id, Entry) then
+      mItem.Id := mRule.Descriptor.Id;
+      mItem.Severity := TFindingsOutput.SeverityName(mSeverity);
+      mItem.Text := mRule.Descriptor.Description;
+      if (ACatalog <> nil) and ACatalog.TryFind(mItem.Id, mEntry) and (mEntry.Name <> '') then
       begin
-        if Entry.Name <> '' then
-          Item.Text := Entry.Name;
+        mItem.Text := mEntry.Name;
       end;
-      Active.Add(Item);
+      Result := Result + [mItem];
     end;
-    Active.Sort(TComparer<TActive>.Construct(
-      function(const A, B: TActive): Integer
-      begin
-        Result := CompareText(A.Id, B.Id);
-      end));
-    Profile := ASettings.Profile;
-    if Profile = '' then
-      Profile := 'standard';
-    Builder.AppendLine('# Konventionen des Projekts');
-    Builder.AppendLine;
-    Builder.AppendLine('Atlas prüft Code nach diesen Regeln. Vor dem Schreiben beachten, danach mit `check_code` prüfen.');
-    Builder.AppendLine;
-    Builder.AppendFormat('- Regelprofil: `%s`', [Profile]).AppendLine;
-    if ASettings.Format <> '' then
-      Builder.AppendFormat('- Formatstil (`format` in atlas.json): `%s`', [ASettings.Format]).AppendLine
-    else
-      Builder.AppendLine('- Formatstil: Vorgaben bzw. `.editorconfig`');
-    Builder.AppendLine;
-    Builder.AppendLine('## Benennung');
-    Builder.AppendLine;
-    Naming := False;
-    for Item in Active do
-      if IsNamingRule(Item.Id) then
-      begin
-        Builder.AppendFormat('- `%s` (%s): %s', [Item.Id, Item.Severity, Item.Text]).AppendLine;
-        Naming := True;
-      end;
-    if not Naming then
-      Builder.AppendLine('- Keine aktive Benennungsregel.');
-    Builder.AppendLine;
-    Builder.AppendFormat('## Aktive Regeln (%d)', [Active.Count]).AppendLine;
-    Builder.AppendLine;
-    for Item in Active do
-      Builder.AppendFormat('- `%s` (%s): %s', [Item.Id, Item.Severity, Item.Text]).AppendLine;
-    Result := TrimRight(Builder.ToString);
-  finally
-    Builder.Free;
-    Active.Free;
+  end;
+  TArray.Sort<TConventionRule>(Result, TComparer<TConventionRule>.Construct(
+    function(const A, B: TConventionRule): Integer
+    begin
+      Result := CompareText(A.Id, B.Id);
+    end));
+end;
+
+procedure AppendHeader(ABuilder: TStringBuilder; const ASettings: TServerSettings);
+var
+  mProfile: string;
+begin
+  mProfile := ASettings.Profile;
+  if mProfile = '' then
+  begin
+    mProfile := 'standard';
+  end;
+  ABuilder.AppendLine(cTexts[TConventionsText.Heading].Text);
+  ABuilder.AppendLine;
+  ABuilder.AppendLine(cTexts[TConventionsText.Intro].Text);
+  ABuilder.AppendLine;
+  ABuilder.AppendFormat(cTexts[TConventionsText.Profile].Text, [mProfile]).AppendLine;
+  if ASettings.Format <> '' then
+  begin
+    ABuilder.AppendFormat(cTexts[TConventionsText.FormatStyle].Text, [ASettings.Format]).AppendLine;
+  end
+  else
+  begin
+    ABuilder.AppendLine(cTexts[TConventionsText.FormatDefault].Text);
   end;
 end;
+
+procedure AppendRule(ABuilder: TStringBuilder; const AItem: TConventionRule);
+begin
+  ABuilder.AppendFormat('- `%s` (%s): %s', [AItem.Id, AItem.Severity, AItem.Text]).AppendLine;
+end;
+
+class function TRuleConventions.Markdown(const ARules: TArray<IRule>; const ASettings: TServerSettings;
+  const ACatalog: TRuleCatalog): string;
+var
+  mBuilder: TStringBuilder;
+  mActive: TArray<TConventionRule>;
+  mItem: TConventionRule;
+  mNaming: Boolean;
+begin
+  mActive := ActiveRules(ARules, ASettings, ACatalog);
+  mBuilder := TStringBuilder.Create;
+  try
+    AppendHeader(mBuilder, ASettings);
+    mBuilder.AppendLine;
+    mBuilder.AppendLine(cTexts[TConventionsText.Naming].Text);
+    mBuilder.AppendLine;
+    mNaming := False;
+    for mItem in mActive do
+    begin
+      if IsNamingRule(mItem.Id) then
+      begin
+        AppendRule(mBuilder, mItem);
+        mNaming := True;
+      end;
+    end;
+    if not mNaming then
+    begin
+      mBuilder.AppendLine(cTexts[TConventionsText.NoNamingRule].Text);
+    end;
+    mBuilder.AppendLine;
+    mBuilder.AppendFormat(cTexts[TConventionsText.ActiveRules].Text, [Length(mActive)]).AppendLine;
+    mBuilder.AppendLine;
+    for mItem in mActive do
+    begin
+      AppendRule(mBuilder, mItem);
+    end;
+    Result := TrimRight(mBuilder.ToString);
+  finally
+    mBuilder.Free;
+  end;
+end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Conventions', cTexts);
 
 end.

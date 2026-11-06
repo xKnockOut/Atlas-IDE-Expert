@@ -27,6 +27,8 @@ type
     [Test]
     procedure ReadSourceText_Missing_ReturnsFalse;
     [Test]
+    procedure ReadSourceText_OpenDocumentFirst;
+    [Test]
     procedure GroupProjects_NoGroup_Empty;
     [Test]
     procedure GroupProjects_Groupproj_ListsProjects;
@@ -58,6 +60,9 @@ uses
   Atlas.Common.Logging.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Localization.Texts,
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Documents.Uris,
+  Atlas.Common.Documents.Providers.DocumentStore,
   Shell.Bootstrap;
 
 type
@@ -144,7 +149,9 @@ end;
 procedure TShellBootstrapTests.TearDown;
 begin
   if TDirectory.Exists(FFolder) then
+  begin
     TDirectory.Delete(FFolder, True);
+  end;
   // Der Leckmonitor misst den Saldo von Setup und TearDown.
   FFolder := '';
 end;
@@ -171,6 +178,25 @@ begin
   Assert.IsFalse(TShellBootstrap.ReadSourceText(TPath.Combine(FFolder, 'Fehlt.pas'), Text));
   Assert.AreEqual('', Text);
   Assert.IsFalse(TShellBootstrap.ReadSourceText('', Text));
+end;
+
+procedure TShellBootstrapTests.ReadSourceText_OpenDocumentFirst;
+var
+  mDocuments: IDocumentStore;
+  mFileName, mText: string;
+begin
+  mFileName := TPath.Combine(FFolder, 'Unit2.dfm');
+  TFile.WriteAllText(mFileName, 'Platte', TEncoding.UTF8);
+  mDocuments := TDocumentStore.Create;
+  // Ohne offenes Dokument die Datei, mit offenem Dokument dessen Stand (Designer, #402).
+  Assert.IsTrue(TShellBootstrap.ReadSourceText(mDocuments, mFileName, mText));
+  Assert.AreEqual('Platte', mText);
+  mDocuments.Open(TDocumentUris.FromPath(mFileName), 'dfm', 1, 'Designer');
+  Assert.IsTrue(TShellBootstrap.ReadSourceText(mDocuments, mFileName, mText));
+  Assert.AreEqual('Designer', mText);
+  Assert.IsTrue(TShellBootstrap.ReadSourceText(nil, mFileName, mText));
+  Assert.AreEqual('Platte', mText);
+  Assert.IsFalse(TShellBootstrap.ReadSourceText(mDocuments, TPath.Combine(FFolder, 'Fehlt.dfm'), mText));
 end;
 
 procedure TShellBootstrapTests.GroupProjects_NoGroup_Empty;

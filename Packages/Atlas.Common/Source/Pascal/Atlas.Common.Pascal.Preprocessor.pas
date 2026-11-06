@@ -10,7 +10,8 @@
 // - $IF-Ausdrücke: Defined, Declared, CompilerVersion, RTLVersion, die
 //   booleschen Versionskonstanten RTLVersion111 … aus der Compilerversion,
 //   SizeOf/High/Low der Grundtypen aus der Zielplattform, Ord, Zahlen,
-//   Konstanten aus den Optionen, Vergleiche, and/or/xor/not, Klammern.
+//   Konstanten aus den Optionen, Vergleiche, and/or/xor/not, Klammern. Der
+//   Auswerter steht in Atlas.Common.Pascal.Preprocessor.Expressions.
 // - Unbekannte Werte (#847): Konstanten aus dem Code, Declared ohne Treffer,
 //   unbekannte Typen ergeben „unbekannt“. Ein solcher Zweig gilt als aktiv,
 //   ein {$ELSE} dazu ebenfalls; einen Befund gibt es dafür nicht.
@@ -44,24 +45,6 @@ type
   /// <summary>Sucht eine Include-Datei; AFromFile ist die einbindende Datei ('' = Hauptdatei).</summary>
   TIncludeResolver = reference to function(const AName, AFromFile: string;
     out AFileName, AText: string): Boolean;
-
-  /// <summary>Beantwortet Declared(X); True = deklariert, False = nicht gefunden (gilt als unbekannt).</summary>
-  TDeclaredFunc = reference to function(const AName: string): Boolean;
-
-  /// <summary>Wert einer Bedingung (#847). Unknown: ein Wert ist dem Server nicht bekannt; der Zweig gilt als
-  /// aktiv, ein {$ELSE} dazu ebenfalls.</summary>
-  TConditionValue = (No, Yes, Unknown);
-
-  /// <summary>Teilwert einer Bedingung für den Hover (#847).</summary>
-  TConditionPart = record
-    /// <summary>Teilausdruck, z. B. "SizeOf(Pointer)", "RTLVersion111" oder bei $IFOPT "R+".</summary>
-    Text: string;
-    /// <summary>Wert als Text: "8", "wahr", "falsch", "unbekannt".</summary>
-    Value: string;
-    /// <summary>Herkunft, z. B. "Zielplattform Win64", "Delphi 13", "Index", "DCC_RangeChecking" oder
-    /// "{$R-} in Zeile 4"; '' ohne.</summary>
-    Origin: string;
-  end;
 
   /// <summary>Ausgewertete $IF-, $ELSEIF- oder $IFOPT-Direktive (#847).</summary>
   TConditionCheck = record
@@ -221,21 +204,39 @@ uses
   System.StrUtils,
   System.SyncObjs,
   Atlas.Text.Defines,
-  Atlas.Common.Pascal.Lexer;
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Pascal.Preprocessor.Expressions,
+  Atlas.Common.Localization.Texts;
 
 type
-  EPreprocessorExpression = class(Exception);
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TPreprocessorText = (InvalidIFExpression, InvalidIFOPTSwitch, IncludeFileMissing, IncludeFileNotFound,
+    IncludeFileIncludesItself, AndText, AfterELSE, ENDIFMissing, InLineText, InLineText2, IncludeFilesNestedTooDeeply,
+    Unknown, CompilerDefault);
 
-  /// <summary>Wert im Auswerter: Zahl oder unbekannt (#847).</summary>
-  TEvalValue = record
-    Known: Boolean;
-    Number: Double;
-    class function Make(ANumber: Double): TEvalValue; static;
-    class function Unknown: TEvalValue; static;
-    function IsTrue: Boolean;
-    function IsFalse: Boolean;
-  end;
+const
+  cTexts: array[TPreprocessorText] of TAtlasText = (
+    (De: 'Ungültiger $IF-Ausdruck: '; En: 'Invalid $IF expression: '),
+    (De: 'Ungültiger $IFOPT-Schalter: '; En: 'Invalid $IFOPT switch: '),
+    (De: 'Include-Datei fehlt'; En: 'Include file missing'),
+    (De: 'Include-Datei "%s" nicht gefunden'; En: 'Include file "%s" not found'),
+    (De: 'Include-Datei "%s" bindet sich selbst ein'; En: 'Include file "%s" includes itself'),
+    (De: ' und '; En: ' and '),
+    (De: '$%s nach $ELSE'; En: '$%s after $ELSE'),
+    (De: '$ENDIF fehlt'; En: '$ENDIF missing'),
+    (De: '{$%s} in Zeile %d'; En: '{$%s} in line %d'),
+    (De: '{$%s} in %s, Zeile %d'; En: '{$%s} in %s, line %d'),
+    (De: 'Include-Dateien zu tief verschachtelt'; En: 'Include files nested too deeply'),
+    (De: 'unbekannt'; En: 'unknown'),
+    (De: '(Vorgabe des Compilers)'; En: '(compiler default)'));
 
+/// <summary>Herkunft eines Schalters ohne Eintrag in der .dproj.</summary>
+function DefaultSuffix: string;
+begin
+  Result := cTexts[TPreprocessorText.CompilerDefault].Text;
+end;
+
+type
   /// <summary>Stand eines Schalters für $IFOPT; fehlt ein Buchstabe, ist er unbekannt.</summary>
   TSwitchState = record
     On_: Boolean;
@@ -255,46 +256,6 @@ type
     IfText: string;
     Text: string;
     Start: TTextPosition;
-  end;
-
-  /// <summary>Rekursiv absteigender Auswerter für $IF-Ausdrücke.</summary>
-  TExpressionEvaluator = class
-  private
-    FTokens: TArray<TPascalToken>;
-    FIndex: Integer;
-    FOptions: TPreprocessorOptions;
-    FDefines: TDictionary<string, Boolean>;
-    FParts: TList<TConditionPart>;
-    FPointerSize: Integer;
-    FPlatform: string;
-    function Peek: TPascalToken;
-    function AtEnd: Boolean;
-    function Next: TPascalToken;
-    procedure Expect(const ASymbol: string);
-    function IsWord(const AWord: string): Boolean;
-    function ParseOr: TEvalValue;
-    function ParseAnd: TEvalValue;
-    function ParseComparison: TEvalValue;
-    function ParseAdditive: TEvalValue;
-    function ParseMultiplicative: TEvalValue;
-    function ParseUnary: TEvalValue;
-    function ParsePrimary: TEvalValue;
-    function ParseFunction(const AName: string; out AValue: TEvalValue): Boolean;
-    function ReadName: string;
-    procedure AddPart(const AText, AValue, AOrigin: string);
-    function BoolText(const AValue: TEvalValue): string;
-    function NumberText(const AValue: TEvalValue): string;
-    /// <summary>"Delphi 13" für die Herkunft von CompilerVersion und RTLVersion111 …; '' ohne Version.</summary>
-    function ProductOrigin: string;
-    function Declared(const AName: string; out AOrigin: string): TEvalValue;
-    function VersionConstant(const AName: string; out AValue: TEvalValue): Boolean;
-    function TypeSize(const AType: string; out AOrigin: string): Integer;
-    function TypeRange(const AType: string; out ALow, AHigh: Double; out AOrigin: string): Boolean;
-  public
-    constructor Create(const AOptions: TPreprocessorOptions; ADefines: TDictionary<string, Boolean>);
-    destructor Destroy; override;
-    function Evaluate(const AExpression: string): TConditionValue;
-    function Parts: TArray<TConditionPart>;
   end;
 
   TPreprocessorRun = class
@@ -329,16 +290,52 @@ type
     function ApplySwitches(const ABody: string; AFileIndex: Integer; const AToken: TPascalToken): Boolean;
     procedure AddCheck(AFileIndex: Integer; const AToken: TPascalToken; const ADirective, AExpression: string;
       AValue: TConditionValue; const AParts: TArray<TConditionPart>);
+    /// <summary>Symbol oder Schaltereintrag ("$R+", "$R-*") aus den Optionen.</summary>
+    procedure AddProjectDefine(const ADefine: string);
   public
     constructor Create(const AOptions: TPreprocessorOptions);
     destructor Destroy; override;
     function Run(const AText: string): TPreprocessorResult;
   end;
 
-const
-  BooleanValue: array[Boolean] of Double = (0, 1);
-  /// <summary>Herkunft eines Schalters ohne Eintrag in der .dproj.</summary>
-  DefaultSuffix = '(Vorgabe des Compilers)';
+  /// <summary>Bedingte Zweige und Direktiven einer Datei (Hauptdatei oder Include-Datei) für
+  /// TPreprocessorRun.ProcessText; Ergebnisse landen im Lauf.</summary>
+  TPreprocessorFileScan = class
+  private
+    FRun: TPreprocessorRun;
+    FFileIndex: Integer;
+    FDepth: Integer;
+    FStack: TStack<TBranchState>;
+    /// <summary>Öffnende $IF-Direktiven, für "$ENDIF fehlt".</summary>
+    FOpening: TStack<TPascalToken>;
+    FActive: Boolean;
+    FInactiveStart: TTextPosition;
+    procedure AddToken(const AToken: TPascalToken);
+    /// <summary>Inaktiver Bereich von FInactiveStart bis AEnd.</summary>
+    procedure AddInactive(const AEnd: TTextPosition);
+    /// <summary>Laufenden Zweig bis vor AToken als bedingten Bereich festhalten (nur unter geltendem
+    /// Elternzweig).</summary>
+    procedure CloseBranch(const AState: TBranchState; const AToken: TPascalToken);
+    /// <summary>Bedingung des innersten geltenden Zweigs, für verschachtelte $IFs.</summary>
+    function OuterText: string;
+    /// <summary>Bedingung eines $IFDEF, $IFNDEF oder $IF als Text; '' bei $IFOPT.</summary>
+    function IfText(const AName, AArgument: string): string;
+    function IfCondition(const AName, AArgument: string; const AToken: TPascalToken): TConditionValue;
+    procedure OpenIf(const AName, AArgument: string; const AToken: TPascalToken);
+    /// <summary>Bedingung des $ELSE-Zweigs als Text.</summary>
+    function ElseText(const AState: TBranchState): string;
+    /// <summary>$ELSE oder $ELSEIF.</summary>
+    procedure NextBranch(const AName, AArgument: string; const AToken: TPascalToken);
+    procedure EndIf(const AName: string; const AToken: TPascalToken);
+    /// <summary>$DEFINE, $UNDEF, $I und Schalter in einem aktiven Zweig.</summary>
+    procedure ActiveDirective(const AName, AArgument: string; const AToken: TPascalToken);
+    procedure SwitchDirective(const AName: string; const AToken: TPascalToken);
+    procedure Directive(const AToken: TPascalToken);
+  public
+    constructor Create(ARun: TPreprocessorRun; AFileIndex, ADepth: Integer);
+    destructor Destroy; override;
+    procedure Scan(const AText: string);
+  end;
 
 type
   /// <summary>Schalter mit langem Namen ({$RANGECHECKS ON}) und Eigenschaft der .dproj.</summary>
@@ -383,7 +380,9 @@ begin
   Text := Trim(AText);
   Result := (Length(Text) = 2) and CharInSet(UpCase(Text[1]), ['A'..'Z']) and CharInSet(Text[2], ['+', '-']);
   if not Result then
+  begin
     Exit;
+  end;
   ALetter := UpCase(Text[1]);
   AOn := Text[2] = '+';
 end;
@@ -394,15 +393,21 @@ var
 begin
   Result := TSwitchTable.Create;
   for Letter in ASource.Keys do
+  begin
     Result.Add(Letter, ASource[Letter]);
+  end;
 end;
 
 function ConditionOf(AValue: Boolean): TConditionValue;
 begin
   if AValue then
-    Result := TConditionValue.Yes
+  begin
+    Result := TConditionValue.Yes;
+  end
   else
+  begin
     Result := TConditionValue.No;
+  end;
 end;
 
 function CurrentDeclaredProvider: TDeclaredFunc;
@@ -415,28 +420,25 @@ begin
   end;
 end;
 
-{ TEvalValue }
-
-class function TEvalValue.Make(ANumber: Double): TEvalValue;
+/// <summary>Einstellungen des $IF-Auswerters aus den Optionen und den Symbolen ADefines (Schlüssel in
+/// Großbuchstaben); Declared ohne Options.Declared fragt den Provider (SetDeclaredProvider).</summary>
+function ExpressionSettings(const AOptions: TPreprocessorOptions;
+  ADefines: TDictionary<string, Boolean>): TExpressionSettings;
 begin
-  Result.Known := True;
-  Result.Number := ANumber;
-end;
-
-class function TEvalValue.Unknown: TEvalValue;
-begin
-  Result.Known := False;
-  Result.Number := 0;
-end;
-
-function TEvalValue.IsTrue: Boolean;
-begin
-  Result := Known and (Number <> 0);
-end;
-
-function TEvalValue.IsFalse: Boolean;
-begin
-  Result := Known and (Number = 0);
+  Result.CompilerVersion := AOptions.CompilerVersion;
+  Result.RTLVersion := AOptions.RTLVersion;
+  Result.Constants := AOptions.Constants;
+  Result.Declared := AOptions.Declared;
+  if not Assigned(Result.Declared) then
+  begin
+    Result.Declared := CurrentDeclaredProvider();
+  end;
+  Result.ProductName := '';
+  if AOptions.CompilerVersion > 0 then
+  begin
+    Result.ProductName := TPascalPreprocessor.ProductName(AOptions.CompilerVersion);
+  end;
+  Result.Platform := TPascalPreprocessor.PlatformOf(ADefines.Keys.ToArray);
 end;
 
 function DirectiveBody(const AText: string): string;
@@ -446,13 +448,17 @@ begin
   begin
     Result := Copy(AText, 3, MaxInt);
     if (Result <> '') and (Result[Length(Result)] = '}') then
+    begin
       Delete(Result, Length(Result), 1);
+    end;
   end
   else
   begin
     Result := Copy(AText, 4, MaxInt);
     if (Length(Result) >= 2) and (Copy(Result, Length(Result) - 1, 2) = '*)') then
+    begin
       Delete(Result, Length(Result) - 1, 2);
+    end;
   end;
   Result := Trim(Result);
 end;
@@ -463,7 +469,9 @@ var
 begin
   I := 1;
   while (I <= Length(ABody)) and CharInSet(ABody[I], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+  begin
     Inc(I);
+  end;
   AName := UpperCase(Copy(ABody, 1, I - 1));
   AArgument := Trim(Copy(ABody, I, MaxInt));
 end;
@@ -474,7 +482,9 @@ var
 begin
   I := 1;
   while (I <= Length(AArgument)) and CharInSet(AArgument[I], ['A'..'Z', 'a'..'z', '0'..'9', '_', '.']) do
+  begin
     Inc(I);
+  end;
   Result := Copy(AArgument, 1, I - 1);
 end;
 
@@ -487,15 +497,21 @@ begin
   begin
     Stop := Pos('''', Copy(Result, 2, MaxInt));
     if Stop > 0 then
-      Result := Copy(Result, 2, Stop - 1)
+    begin
+      Result := Copy(Result, 2, Stop - 1);
+    end
     else
+    begin
       Result := Copy(Result, 2, MaxInt);
+    end;
   end
   else
   begin
     Stop := Pos(' ', Result);
     if Stop > 0 then
+    begin
       Result := Copy(Result, 1, Stop - 1);
+    end;
   end;
 end;
 
@@ -521,618 +537,64 @@ begin
   Result.MaxIncludeDepth := 16;
 end;
 
-{ TExpressionEvaluator }
-
-constructor TExpressionEvaluator.Create(const AOptions: TPreprocessorOptions; ADefines: TDictionary<string, Boolean>);
-begin
-  inherited Create;
-  FOptions := AOptions;
-  FDefines := ADefines;
-  FParts := TList<TConditionPart>.Create;
-  // Zeigergröße und Plattform aus den vordefinierten Symbolen (SizeOf, High, Low).
-  if FDefines.ContainsKey('CPU64BITS') or FDefines.ContainsKey('WIN64') then
-    FPointerSize := 8
-  else if FDefines.ContainsKey('CPU32BITS') or FDefines.ContainsKey('WIN32') then
-    FPointerSize := 4
-  else
-    FPointerSize := 0;
-  FPlatform := TPascalPreprocessor.PlatformOf(FDefines.Keys.ToArray);
-end;
-
-destructor TExpressionEvaluator.Destroy;
-begin
-  FParts.Free;
-  inherited Destroy;
-end;
-
-function TExpressionEvaluator.Parts: TArray<TConditionPart>;
-begin
-  Result := FParts.ToArray;
-end;
-
-procedure TExpressionEvaluator.AddPart(const AText, AValue, AOrigin: string);
-var
-  Part: TConditionPart;
-begin
-  Part.Text := AText;
-  Part.Value := AValue;
-  Part.Origin := AOrigin;
-  FParts.Add(Part);
-end;
-
-function TExpressionEvaluator.BoolText(const AValue: TEvalValue): string;
-begin
-  if not AValue.Known then
-    Result := 'unbekannt'
-  else if AValue.Number <> 0 then
-    Result := 'wahr'
-  else
-    Result := 'falsch';
-end;
-
-function TExpressionEvaluator.ProductOrigin: string;
-begin
-  Result := '';
-  if FOptions.CompilerVersion > 0 then
-    Result := TPascalPreprocessor.ProductName(FOptions.CompilerVersion);
-end;
-
-function TExpressionEvaluator.NumberText(const AValue: TEvalValue): string;
-begin
-  if AValue.Known then
-    Result := FloatToStr(AValue.Number, TFormatSettings.Invariant)
-  else
-    Result := 'unbekannt';
-end;
-
-function TExpressionEvaluator.AtEnd: Boolean;
-begin
-  Result := FIndex >= Length(FTokens);
-end;
-
-function TExpressionEvaluator.Peek: TPascalToken;
-begin
-  if AtEnd then
-  begin
-    Result := Default(TPascalToken);
-    Result.Kind := TPascalTokenKind.Unknown;
-  end
-  else
-    Result := FTokens[FIndex];
-end;
-
-function TExpressionEvaluator.Next: TPascalToken;
-begin
-  if AtEnd then
-    raise EPreprocessorExpression.Create('Ausdruck endet unerwartet');
-  Result := FTokens[FIndex];
-  Inc(FIndex);
-end;
-
-procedure TExpressionEvaluator.Expect(const ASymbol: string);
-begin
-  if AtEnd or not Peek.IsSymbol(ASymbol) then
-    raise EPreprocessorExpression.CreateFmt('"%s" erwartet', [ASymbol]);
-  Inc(FIndex);
-end;
-
-function TExpressionEvaluator.IsWord(const AWord: string): Boolean;
-begin
-  Result := not AtEnd and (Peek.Kind in [TPascalTokenKind.Keyword, TPascalTokenKind.Identifier]) and
-    SameText(Peek.Text, AWord);
-end;
-
-function TExpressionEvaluator.ReadName: string;
-begin
-  if AtEnd or not (Peek.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) then
-    raise EPreprocessorExpression.Create('Name erwartet');
-  Result := Next.Text;
-  // Qualifizierte Namen wie System.SysUtils
-  while not AtEnd and Peek.IsSymbol('.') do
-  begin
-    Inc(FIndex);
-    if AtEnd or not (Peek.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) then
-      raise EPreprocessorExpression.Create('Name erwartet');
-    Result := Result + '.' + Next.Text;
-  end;
-end;
-
-function TExpressionEvaluator.Evaluate(const AExpression: string): TConditionValue;
-var
-  Significant: TList<TPascalToken>;
-  Token: TPascalToken;
-  Value: TEvalValue;
-begin
-  Significant := TList<TPascalToken>.Create;
-  try
-    for Token in TPascalLexer.Tokenize(AExpression) do
-      if Token.Kind <> TPascalTokenKind.Comment then
-        Significant.Add(Token);
-    FTokens := Significant.ToArray;
-  finally
-    Significant.Free;
-  end;
-  FIndex := 0;
-  FParts.Clear;
-  if AtEnd then
-    raise EPreprocessorExpression.Create('Ausdruck fehlt');
-  Value := ParseOr;
-  if not AtEnd then
-    raise EPreprocessorExpression.CreateFmt('Unerwartet: "%s"', [Peek.Text]);
-  if not Value.Known then
-    Result := TConditionValue.Unknown
-  else if Value.Number <> 0 then
-    Result := TConditionValue.Yes
-  else
-    Result := TConditionValue.No;
-end;
-
-function TExpressionEvaluator.ParseOr: TEvalValue;
-var
-  Right: TEvalValue;
-  IsXor: Boolean;
-begin
-  Result := ParseAnd;
-  while IsWord('or') or IsWord('xor') do
-  begin
-    IsXor := IsWord('xor');
-    Inc(FIndex);
-    Right := ParseAnd;
-    if IsXor then
-    begin
-      if Result.Known and Right.Known then
-        Result := TEvalValue.Make(BooleanValue[(Result.Number <> 0) xor (Right.Number <> 0)])
-      else
-        Result := TEvalValue.Unknown;
-    end
-    // Ein sicher wahrer Teil macht or wahr, auch neben einem unbekannten.
-    else if Result.IsTrue or Right.IsTrue then
-      Result := TEvalValue.Make(1)
-    else if Result.Known and Right.Known then
-      Result := TEvalValue.Make(0)
-    else
-      Result := TEvalValue.Unknown;
-  end;
-end;
-
-function TExpressionEvaluator.ParseAnd: TEvalValue;
-var
-  Right: TEvalValue;
-begin
-  Result := ParseComparison;
-  while IsWord('and') do
-  begin
-    Inc(FIndex);
-    Right := ParseComparison;
-    if Result.IsFalse or Right.IsFalse then
-      Result := TEvalValue.Make(0)
-    else if Result.Known and Right.Known then
-      Result := TEvalValue.Make(1)
-    else
-      Result := TEvalValue.Unknown;
-  end;
-end;
-
-function TExpressionEvaluator.ParseComparison: TEvalValue;
-var
-  Op: string;
-  Right: TEvalValue;
-  Value: Boolean;
-begin
-  Result := ParseAdditive;
-  if not AtEnd and (Peek.Kind = TPascalTokenKind.Symbol) then
-  begin
-    Op := Peek.Text;
-    if (Op = '=') or (Op = '<>') or (Op = '<') or (Op = '>') or (Op = '<=') or (Op = '>=') then
-    begin
-      Inc(FIndex);
-      Right := ParseAdditive;
-      if not Result.Known or not Right.Known then
-        Exit(TEvalValue.Unknown);
-      if Op = '=' then
-        Value := Result.Number = Right.Number
-      else if Op = '<>' then
-        Value := Result.Number <> Right.Number
-      else if Op = '<' then
-        Value := Result.Number < Right.Number
-      else if Op = '>' then
-        Value := Result.Number > Right.Number
-      else if Op = '<=' then
-        Value := Result.Number <= Right.Number
-      else
-        Value := Result.Number >= Right.Number;
-      Result := TEvalValue.Make(BooleanValue[Value]);
-    end;
-  end;
-end;
-
-function TExpressionEvaluator.ParseAdditive: TEvalValue;
-var
-  Plus: Boolean;
-  Right: TEvalValue;
-begin
-  Result := ParseMultiplicative;
-  while not AtEnd and (Peek.IsSymbol('+') or Peek.IsSymbol('-')) do
-  begin
-    Plus := Next.Text = '+';
-    Right := ParseMultiplicative;
-    if not Result.Known or not Right.Known then
-      Result := TEvalValue.Unknown
-    else if Plus then
-      Result := TEvalValue.Make(Result.Number + Right.Number)
-    else
-      Result := TEvalValue.Make(Result.Number - Right.Number);
-  end;
-end;
-
-function TExpressionEvaluator.ParseMultiplicative: TEvalValue;
-var
-  Op: string;
-  Right: TEvalValue;
-begin
-  Result := ParseUnary;
-  while not AtEnd and (Peek.IsSymbol('*') or IsWord('div') or IsWord('mod')) do
-  begin
-    Op := LowerCase(Next.Text);
-    Right := ParseUnary;
-    if (Op <> '*') and Right.IsFalse then
-      raise EPreprocessorExpression.Create('Division durch null');
-    if not Result.Known or not Right.Known then
-      Result := TEvalValue.Unknown
-    else if Op = '*' then
-      Result := TEvalValue.Make(Result.Number * Right.Number)
-    else if Op = 'div' then
-      Result := TEvalValue.Make(Trunc(Result.Number) div Trunc(Right.Number))
-    else
-      Result := TEvalValue.Make(Trunc(Result.Number) mod Trunc(Right.Number));
-  end;
-end;
-
-function TExpressionEvaluator.ParseUnary: TEvalValue;
-begin
-  if IsWord('not') then
-  begin
-    Inc(FIndex);
-    Result := ParseUnary;
-    if Result.Known then
-      Result := TEvalValue.Make(BooleanValue[Result.Number = 0]);
-  end
-  else if not AtEnd and Peek.IsSymbol('-') then
-  begin
-    Inc(FIndex);
-    Result := ParseUnary;
-    if Result.Known then
-      Result := TEvalValue.Make(-Result.Number);
-  end
-  else
-    Result := ParsePrimary;
-end;
-
-function TExpressionEvaluator.Declared(const AName: string; out AOrigin: string): TEvalValue;
-var
-  Pair: TPair<string, Double>;
-  Provider: TDeclaredFunc;
-  Constant: TEvalValue;
-begin
-  AOrigin := '';
-  // Was der Präprozessor selbst kennt: System-Konstanten und die Konstanten aus den Optionen.
-  if SameText(AName, 'CompilerVersion') or SameText(AName, 'RTLVersion') then
-  begin
-    AOrigin := 'System';
-    Exit(TEvalValue.Make(1));
-  end;
-  if VersionConstant(AName, Constant) then
-  begin
-    AOrigin := ProductOrigin;
-    if Constant.Known then
-      Result := TEvalValue.Make(BooleanValue[Constant.Number <> 0])
-    else
-      Result := TEvalValue.Unknown;
-    Exit;
-  end;
-  for Pair in FOptions.Constants do
-    if SameText(Pair.Key, AName) then
-      Exit(TEvalValue.Make(1));
-  // Sonst der Index; ohne Treffer bleibt es unbekannt (die Unit kann noch fehlen).
-  Provider := FOptions.Declared;
-  if not Assigned(Provider) then
-    Provider := CurrentDeclaredProvider();
-  if Assigned(Provider) and Provider(AName) then
-  begin
-    AOrigin := 'Index';
-    Exit(TEvalValue.Make(1));
-  end;
-  Result := TEvalValue.Unknown;
-end;
-
-function TExpressionEvaluator.VersionConstant(const AName: string; out AValue: TEvalValue): Boolean;
-var
-  Digits: string;
-  Number, Major, Minor: Integer;
-  Version: Double;
-begin
-  // RTLVersion111 (Delphi 11.1) … RTLVersion123: True ab dieser Version. Für die laufende Hauptversion gilt das
-  // jüngste Update als installiert.
-  Result := False;
-  AValue := TEvalValue.Unknown;
-  if (Length(AName) <> Length('RTLVersion') + 3) or
-    not SameText(Copy(AName, 1, Length('RTLVersion')), 'RTLVersion') then
-    Exit;
-  Digits := Copy(AName, Length('RTLVersion') + 1, 3);
-  if not TryStrToInt(Digits, Number) then
-    Exit;
-  Major := Number div 10;
-  Minor := Number mod 10;
-  if (Major < 11) or (Minor = 0) then
-    Exit;
-  Result := True;
-  if FOptions.CompilerVersion <= 0 then
-    Exit;
-  Version := Major + 24;
-  AValue := TEvalValue.Make(BooleanValue[FOptions.CompilerVersion >= Version]);
-end;
-
-function TExpressionEvaluator.TypeSize(const AType: string; out AOrigin: string): Integer;
-var
-  Name: string;
-begin
-  // 0 = unbekannt. Größen, die von der Plattform abhängen, nennen sie als Herkunft.
-  Name := UpperCase(AType);
-  AOrigin := '';
-  if MatchStr(Name, ['BYTE', 'SHORTINT', 'ANSICHAR', 'BOOLEAN', 'BYTEBOOL', 'INT8', 'UINT8']) then
-    Exit(1);
-  if MatchStr(Name, ['WORD', 'SMALLINT', 'CHAR', 'WIDECHAR', 'WORDBOOL', 'INT16', 'UINT16']) then
-    Exit(2);
-  if MatchStr(Name, ['INTEGER', 'CARDINAL', 'SINGLE', 'LONGBOOL', 'INT32', 'UINT32', 'FIXEDINT', 'FIXEDUINT']) then
-    Exit(4);
-  if MatchStr(Name, ['INT64', 'UINT64', 'DOUBLE', 'CURRENCY', 'COMP', 'TDATETIME', 'REAL']) then
-    Exit(8);
-  Result := 0;
-  if FPlatform <> '' then
-    AOrigin := 'Zielplattform ' + FPlatform;
-  if MatchStr(Name, ['POINTER', 'NATIVEINT', 'NATIVEUINT', 'INTPTR', 'UINTPTR', 'PCHAR', 'PANSICHAR', 'PWIDECHAR',
-    'STRING', 'UNICODESTRING', 'ANSISTRING', 'RAWBYTESTRING', 'UTF8STRING', 'WIDESTRING', 'TOBJECT', 'TCLASS',
-    'IINTERFACE', 'IUNKNOWN', 'THANDLE', 'HWND', 'WPARAM', 'LPARAM', 'LRESULT']) then
-    Exit(FPointerSize);
-  if MatchStr(Name, ['LONGINT', 'LONGWORD']) then
-  begin
-    // 64-Bit-POSIX: 8, sonst 4.
-    if (FPointerSize = 8) and not FDefines.ContainsKey('MSWINDOWS') then
-      Exit(8);
-    if FPointerSize > 0 then
-      Exit(4);
-    Exit(0);
-  end;
-  if Name = 'EXTENDED' then
-  begin
-    if FDefines.ContainsKey('MSWINDOWS') and (FPointerSize = 4) then
-      Exit(10);
-    if FDefines.ContainsKey('MSWINDOWS') or FDefines.ContainsKey('CPUARM') then
-      Exit(8);
-    if FDefines.ContainsKey('CPUX64') then
-      Exit(16);
-    Exit(0);
-  end;
-  if Name = 'VARIANT' then
-  begin
-    if FPointerSize = 8 then
-      Exit(24);
-    if FPointerSize = 4 then
-      Exit(16);
-  end;
-  AOrigin := '';
-end;
-
-function TExpressionEvaluator.TypeRange(const AType: string; out ALow, AHigh: Double; out AOrigin: string): Boolean;
-var
-  Name: string;
-  Size: Integer;
-  Signed: Boolean;
-begin
-  Name := UpperCase(AType);
-  AOrigin := '';
-  Result := True;
-  if MatchStr(Name, ['BOOLEAN', 'BYTEBOOL', 'WORDBOOL', 'LONGBOOL']) then
-  begin
-    ALow := 0;
-    AHigh := 1;
-    Exit;
-  end;
-  if MatchStr(Name, ['CHAR', 'WIDECHAR']) then
-  begin
-    ALow := 0;
-    AHigh := 65535;
-    Exit;
-  end;
-  if Name = 'ANSICHAR' then
-  begin
-    ALow := 0;
-    AHigh := 255;
-    Exit;
-  end;
-  Signed := MatchStr(Name, ['SHORTINT', 'SMALLINT', 'INTEGER', 'INT8', 'INT16', 'INT32', 'INT64', 'FIXEDINT',
-    'NATIVEINT', 'INTPTR', 'LONGINT']);
-  if not Signed and not MatchStr(Name, ['BYTE', 'WORD', 'CARDINAL', 'UINT8', 'UINT16', 'UINT32', 'UINT64',
-    'FIXEDUINT', 'NATIVEUINT', 'UINTPTR', 'LONGWORD']) then
-    Exit(False);
-  Size := TypeSize(Name, AOrigin);
-  if Size = 0 then
-    Exit(False);
-  if Signed then
-  begin
-    AHigh := Power(2, Size * 8 - 1) - 1;
-    ALow := -AHigh - 1;
-  end
-  else
-  begin
-    ALow := 0;
-    AHigh := Power(2, Size * 8) - 1;
-  end;
-end;
-
-function TExpressionEvaluator.ParseFunction(const AName: string; out AValue: TEvalValue): Boolean;
-var
-  Argument, Origin: string;
-  Size: Integer;
-  LowValue, HighValue: Double;
-  Token: TPascalToken;
-begin
-  Result := True;
-  if SameText(AName, 'Defined') then
-  begin
-    Expect('(');
-    Argument := ReadName;
-    Expect(')');
-    AValue := TEvalValue.Make(BooleanValue[FDefines.ContainsKey(UpperCase(Argument))]);
-  end
-  else if SameText(AName, 'Declared') then
-  begin
-    Expect('(');
-    Argument := ReadName;
-    Expect(')');
-    AValue := Declared(Argument, Origin);
-    AddPart('Declared(' + Argument + ')', BoolText(AValue), Origin);
-  end
-  else if SameText(AName, 'SizeOf') then
-  begin
-    Expect('(');
-    Argument := ReadName;
-    Expect(')');
-    Size := TypeSize(Argument, Origin);
-    if Size > 0 then
-      AValue := TEvalValue.Make(Size)
-    else
-      AValue := TEvalValue.Unknown;
-    AddPart('SizeOf(' + Argument + ')', NumberText(AValue), Origin);
-  end
-  else if SameText(AName, 'High') or SameText(AName, 'Low') then
-  begin
-    Expect('(');
-    Argument := ReadName;
-    Expect(')');
-    if not TypeRange(Argument, LowValue, HighValue, Origin) then
-      AValue := TEvalValue.Unknown
-    else if SameText(AName, 'High') then
-      AValue := TEvalValue.Make(HighValue)
-    else
-      AValue := TEvalValue.Make(LowValue);
-    AddPart(AName + '(' + Argument + ')', NumberText(AValue), Origin);
-  end
-  else if SameText(AName, 'Ord') then
-  begin
-    Expect('(');
-    Token := Peek;
-    if (Token.Kind = TPascalTokenKind.StringLiteral) and (Length(Token.Text) = 3) then
-    begin
-      Inc(FIndex);
-      AValue := TEvalValue.Make(Ord(Token.Text[2]));
-    end
-    else
-      AValue := ParseOr;
-    Expect(')');
-  end
-  else
-    Result := False;
-end;
-
-function TExpressionEvaluator.ParsePrimary: TEvalValue;
-var
-  Token: TPascalToken;
-  Name: string;
-  Pair: TPair<string, Double>;
-  Number: Double;
-begin
-  Token := Peek;
-  if Token.IsSymbol('(') then
-  begin
-    Inc(FIndex);
-    Result := ParseOr;
-    Expect(')');
-    Exit;
-  end;
-  if Token.Kind = TPascalTokenKind.Number then
-  begin
-    Inc(FIndex);
-    if not TryStrToFloat(Token.Text, Number, TFormatSettings.Invariant) then
-      Number := StrToIntDef(Token.Text, 0);
-    Exit(TEvalValue.Make(Number));
-  end;
-  if IsWord('True') then
-  begin
-    Inc(FIndex);
-    Exit(TEvalValue.Make(1));
-  end;
-  if IsWord('False') then
-  begin
-    Inc(FIndex);
-    Exit(TEvalValue.Make(0));
-  end;
-  Name := ReadName;
-  if not AtEnd and Peek.IsSymbol('(') and ParseFunction(Name, Result) then
-    Exit;
-  if SameText(Name, 'CompilerVersion') or SameText(Name, 'RTLVersion') then
-  begin
-    if SameText(Name, 'CompilerVersion') and (FOptions.CompilerVersion > 0) then
-      Result := TEvalValue.Make(FOptions.CompilerVersion)
-    else if SameText(Name, 'RTLVersion') and (FOptions.RTLVersion > 0) then
-      Result := TEvalValue.Make(FOptions.RTLVersion)
-    else
-      Result := TEvalValue.Unknown;
-    AddPart(Name, NumberText(Result), ProductOrigin);
-    Exit;
-  end;
-  if VersionConstant(Name, Result) then
-  begin
-    AddPart(Name, BoolText(Result), ProductOrigin);
-    Exit;
-  end;
-  for Pair in FOptions.Constants do
-    if SameText(Pair.Key, Name) then
-      Exit(TEvalValue.Make(Pair.Value));
-  // Konstante aus dem Code oder einer anderen Unit: Der Wert ist hier nicht bekannt.
-  if not AtEnd and Peek.IsSymbol('(') then
-    raise EPreprocessorExpression.CreateFmt('Unbekannte Funktion "%s"', [Name]);
-  Result := TEvalValue.Unknown;
-  AddPart(Name, 'unbekannt', 'Konstante aus dem Code');
-end;
-
 { TPreprocessorRun }
+
+procedure TPreprocessorRun.AddProjectDefine(const ADefine: string);
+var
+  mEntry: string;
+  mIsDefault: Boolean;
+  mLetter: Char;
+  mSwitch: TSwitchState;
+begin
+  if not TPascalPreprocessor.IsSwitchEntry(ADefine) then
+  begin
+    if Trim(ADefine) <> '' then
+    begin
+      FDefines.AddOrSetValue(UpperCase(Trim(ADefine)), True);
+    end;
+    Exit;
+  end;
+  // "$R+" aus der .dproj, "$R-*" Vorgabe des Compilers ohne Eintrag dort (#847).
+  mEntry := Copy(Trim(ADefine), 2, MaxInt);
+  mIsDefault := EndsStr('*', mEntry);
+  if mIsDefault then
+  begin
+    mEntry := Copy(mEntry, 1, Length(mEntry) - 1);
+  end;
+  if not ParseSwitch(mEntry, mLetter, mSwitch.On_) then
+  begin
+    Exit;
+  end;
+  mSwitch.Origin := TPascalPreprocessor.SwitchProperty(mLetter);
+  if mIsDefault then
+  begin
+    mSwitch.Origin := mSwitch.Origin + ' ' + DefaultSuffix;
+  end;
+  FSwitches.AddOrSetValue(mLetter, mSwitch);
+end;
 
 constructor TPreprocessorRun.Create(const AOptions: TPreprocessorOptions);
 var
-  Define, Entry: string;
-  IsDefault: Boolean;
-  Letter: Char;
-  Switch: TSwitchState;
+  Define: string;
 begin
   inherited Create;
   FOptions := AOptions;
   // Ohne ausdrückliche Angabe folgen CompilerVersion und RTLVersion dem VERnnn der Defines,
   // damit {$IF CompilerVersion >= 36} zu den Projektsymbolen passt.
   if FOptions.CompilerVersion = 0 then
+  begin
     FOptions.CompilerVersion := TPascalPreprocessor.CompilerVersionFromDefines(AOptions.Defines);
+  end;
   if FOptions.RTLVersion = 0 then
+  begin
     FOptions.RTLVersion := FOptions.CompilerVersion;
+  end;
   FDefines := TDictionary<string, Boolean>.Create;
   FSwitches := TSwitchTable.Create;
   for Define in AOptions.Defines do
-    if TPascalPreprocessor.IsSwitchEntry(Define) then
-    begin
-      // "$R+" aus der .dproj, "$R-*" Vorgabe des Compilers ohne Eintrag dort (#847).
-      Entry := Copy(Trim(Define), 2, MaxInt);
-      IsDefault := EndsStr('*', Entry);
-      if IsDefault then
-        Entry := Copy(Entry, 1, Length(Entry) - 1);
-      if ParseSwitch(Entry, Letter, Switch.On_) then
-      begin
-        Switch.Origin := TPascalPreprocessor.SwitchProperty(Letter);
-        if IsDefault then
-          Switch.Origin := Switch.Origin + ' ' + DefaultSuffix;
-        FSwitches.AddOrSetValue(Letter, Switch);
-      end;
-    end
-    else if Trim(Define) <> '' then
-      FDefines.AddOrSetValue(UpperCase(Trim(Define)), True);
+  begin
+    AddProjectDefine(Define);
+  end;
   FSwitchStack := TObjectStack<TSwitchTable>.Create;
   FChecks := TList<TConditionCheck>.Create;
   FTokens := TList<TPascalToken>.Create;
@@ -1170,13 +632,19 @@ var
   Site: TDefineSite;
 begin
   if AName = '' then
+  begin
     Exit;
+  end;
   Site.FileIndex := AFileIndex;
   Site.Range := TTextRange.Create(AToken.StartPos, AToken.EndPos);
   if AFileIndex = 0 then
-    Site.RootPos := AToken.StartPos
+  begin
+    Site.RootPos := AToken.StartPos;
+  end
   else
+  begin
     Site.RootPos := FRootRange.StartPos;
+  end;
   Site.Name := AName;
   Site.Undefine := AUndefine;
   FDefineSites.Add(Site);
@@ -1189,9 +657,13 @@ begin
   Site.FileIndex := AFileIndex;
   Site.Range := TTextRange.Create(AToken.StartPos, AToken.EndPos);
   if AFileIndex = 0 then
-    Site.RootPos := AToken.StartPos
+  begin
+    Site.RootPos := AToken.StartPos;
+  end
   else
+  begin
     Site.RootPos := FRootRange.StartPos;
+  end;
   Site.Body := Trim(DirectiveBody(AToken.Text));
   FDirectiveSites.Add(Site);
 end;
@@ -1210,9 +682,13 @@ begin
   Issue.FileIndex := AFileIndex;
   Issue.Range := TTextRange.Create(AToken.StartPos, AToken.EndPos);
   if AFileIndex = 0 then
-    Issue.RootRange := Issue.Range
+  begin
+    Issue.RootRange := Issue.Range;
+  end
   else
+  begin
     Issue.RootRange := FRootRange;
+  end;
   Issue.Message := AMessage;
   FIssues.Add(Issue);
 end;
@@ -1236,7 +712,7 @@ function TPreprocessorRun.EvaluateCondition(const AExpression, ADirective: strin
 var
   Evaluator: TExpressionEvaluator;
 begin
-  Evaluator := TExpressionEvaluator.Create(FOptions, FDefines);
+  Evaluator := TExpressionEvaluator.Create(ExpressionSettings(FOptions, FDefines), FDefines);
   try
     try
       Result := Evaluator.Evaluate(AExpression);
@@ -1244,7 +720,7 @@ begin
     except
       on E: EPreprocessorExpression do
       begin
-        AddIssue(AFileIndex, AToken, 'Ungültiger $IF-Ausdruck: ' + E.Message);
+        AddIssue(AFileIndex, AToken, cTexts[TPreprocessorText.InvalidIFExpression].Text + E.Message);
         Result := TConditionValue.No;
       end;
     end;
@@ -1267,23 +743,27 @@ begin
   if not ParseSwitch(FirstWord(AArgument) + Copy(Trim(AArgument), Length(FirstWord(AArgument)) + 1, 1), Letter,
     Wanted) then
   begin
-    AddIssue(AFileIndex, AToken, 'Ungültiger $IFOPT-Schalter: ' + Trim(AArgument));
+    AddIssue(AFileIndex, AToken, cTexts[TPreprocessorText.InvalidIFOPTSwitch].Text + Trim(AArgument));
     Exit(TConditionValue.No);
   end;
   Part.Text := Letter + Copy('-+', Ord(Wanted) + 1, 1);
   if FSwitches.TryGetValue(Letter, Switch) then
   begin
     if Switch.On_ = Wanted then
-      Result := TConditionValue.Yes
+    begin
+      Result := TConditionValue.Yes;
+    end
     else
+    begin
       Result := TConditionValue.No;
+    end;
     Part.Value := Letter + Copy('-+', Ord(Switch.On_) + 1, 1);
     Part.Origin := Switch.Origin;
   end
   else
   begin
     Result := TConditionValue.Unknown;
-    Part.Value := 'unbekannt';
+    Part.Value := cTexts[TPreprocessorText.Unknown].Text;
   end;
   AddCheck(AFileIndex, AToken, 'IFOPT', Trim(AArgument), Result, [Part]);
 end;
@@ -1306,27 +786,36 @@ begin
   States := nil;
   SplitDirective(ABody, Name, Argument);
   for SwitchName in SwitchNames do
+  begin
     if (Name = SwitchName.Long) and (SameText(Argument, 'ON') or SameText(Argument, 'OFF')) then
     begin
       Letters := [SwitchName.Letter];
       States := [SameText(Argument, 'ON')];
     end;
+  end;
   if Letters = nil then
   begin
     Parts := ABody.Split([',']);
     for Part in Parts do
     begin
       if not ParseSwitch(Part, Letter, On_) then
+      begin
         Exit(False);
+      end;
       Letters := Letters + [Letter];
       States := States + [On_];
     end;
   end;
   Result := Length(Letters) > 0;
   if AFileIndex = 0 then
-    Origin := Format('{$%s} in Zeile %d', [ABody, AToken.StartPos.Line + 1])
+  begin
+    Origin := cTexts[TPreprocessorText.InLineText].Fmt([ABody, AToken.StartPos.Line + 1]);
+  end
   else
-    Origin := Format('{$%s} in %s, Zeile %d', [ABody, ExtractFileName(FFiles[AFileIndex]), AToken.StartPos.Line + 1]);
+  begin
+    Origin := cTexts[TPreprocessorText.InLineText2].Fmt([ABody, ExtractFileName(FFiles[AFileIndex]),
+      AToken.StartPos.Line + 1]);
+  end;
   for Index := 0 to High(Letters) do
   begin
     Switch.On_ := States[Index];
@@ -1341,31 +830,36 @@ var
   Index: Integer;
 begin
   if AFileIndex = 0 then
+  begin
     FRootRange := TTextRange.Create(AToken.StartPos, AToken.EndPos);
+  end;
   if AName = '' then
   begin
-    AddIssue(AFileIndex, AToken, 'Include-Datei fehlt');
+    AddIssue(AFileIndex, AToken, cTexts[TPreprocessorText.IncludeFileMissing].Text);
     Exit;
   end;
   if not Assigned(FOptions.ResolveInclude) or
     not FOptions.ResolveInclude(AName, FFiles[AFileIndex], FileName, Text) then
   begin
-    AddIssue(AFileIndex, AToken, Format('Include-Datei "%s" nicht gefunden', [AName]),
+    AddIssue(AFileIndex, AToken, cTexts[TPreprocessorText.IncludeFileNotFound].Fmt([AName]),
       TPreprocessorIssueKind.IncludeMissing);
     Exit;
   end;
   if ADepth >= FOptions.MaxIncludeDepth then
   begin
-    AddIssue(AFileIndex, AToken, 'Include-Dateien zu tief verschachtelt', TPreprocessorIssueKind.IncludeCycle);
+    AddIssue(AFileIndex, AToken, cTexts[TPreprocessorText.IncludeFilesNestedTooDeeply].Text,
+      TPreprocessorIssueKind.IncludeCycle);
     Exit;
   end;
   for Existing in FIncludeStack do
+  begin
     if SameText(Existing, FileName) then
     begin
-      AddIssue(AFileIndex, AToken, Format('Include-Datei "%s" bindet sich selbst ein', [AName]),
+      AddIssue(AFileIndex, AToken, cTexts[TPreprocessorText.IncludeFileIncludesItself].Fmt([AName]),
         TPreprocessorIssueKind.IncludeCycle);
       Exit;
     end;
+  end;
   Index := FFiles.Add(FileName);
   FIncludeStack.Add(FileName);
   try
@@ -1377,219 +871,341 @@ end;
 
 procedure TPreprocessorRun.ProcessText(const AText: string; AFileIndex, ADepth: Integer);
 var
-  Stack: TStack<TBranchState>;
-  Opening: TStack<TPascalToken>;
-  Token: TPascalToken;
-  Name, Argument: string;
-  State: TBranchState;
-  Active, WasActive: Boolean;
-  Condition: TConditionValue;
-  Saved: TSwitchTable;
-  InactiveStart, LastEnd: TTextPosition;
-  Range: TInactiveRange;
-
-  /// <summary>Laufenden Zweig bis vor AToken als bedingten Bereich festhalten (nur unter geltendem Elternzweig).</summary>
-  procedure CloseBranch(const AState: TBranchState; const AToken: TPascalToken);
-  var
-    Conditional: TConditionalRange;
-  begin
-    if not AState.ParentActive or (AState.Text = '') then
-      Exit;
-    Conditional.FileIndex := AFileIndex;
-    Conditional.Range := TTextRange.Create(AState.Start, AToken.StartPos);
-    if AState.Outer = '' then
-      Conditional.Condition := AState.Text
-    else
-      Conditional.Condition := AState.Outer + ' und ' + AState.Text;
-    Conditional.Active := AState.Active;
-    FConditionals.Add(Conditional);
+  mScan: TPreprocessorFileScan;
+begin
+  mScan := TPreprocessorFileScan.Create(Self, AFileIndex, ADepth);
+  try
+    mScan.Scan(AText);
+  finally
+    mScan.Free;
   end;
+end;
 
-  /// <summary>Bedingung des innersten geltenden Zweigs, für verschachtelte $IFs.</summary>
-  function OuterText: string;
-  var
-    Top: TBranchState;
+{ TPreprocessorFileScan }
+
+constructor TPreprocessorFileScan.Create(ARun: TPreprocessorRun; AFileIndex, ADepth: Integer);
+begin
+  inherited Create;
+  FRun := ARun;
+  FFileIndex := AFileIndex;
+  FDepth := ADepth;
+  FStack := TStack<TBranchState>.Create;
+  FOpening := TStack<TPascalToken>.Create;
+end;
+
+destructor TPreprocessorFileScan.Destroy;
+begin
+  FOpening.Free;
+  FStack.Free;
+  inherited Destroy;
+end;
+
+procedure TPreprocessorFileScan.AddToken(const AToken: TPascalToken);
+begin
+  FRun.FTokens.Add(AToken);
+  FRun.FFileIndexes.Add(FFileIndex);
+end;
+
+procedure TPreprocessorFileScan.AddInactive(const AEnd: TTextPosition);
+var
+  mRange: TInactiveRange;
+begin
+  mRange.FileIndex := FFileIndex;
+  mRange.Range := TTextRange.Create(FInactiveStart, AEnd);
+  FRun.FInactive.Add(mRange);
+end;
+
+procedure TPreprocessorFileScan.CloseBranch(const AState: TBranchState; const AToken: TPascalToken);
+var
+  mConditional: TConditionalRange;
+begin
+  if not AState.ParentActive or (AState.Text = '') then
+  begin
+    Exit;
+  end;
+  mConditional.FileIndex := FFileIndex;
+  mConditional.Range := TTextRange.Create(AState.Start, AToken.StartPos);
+  if AState.Outer = '' then
+  begin
+    mConditional.Condition := AState.Text;
+  end
+  else
+  begin
+    mConditional.Condition := AState.Outer + cTexts[TPreprocessorText.AndText].Text + AState.Text;
+  end;
+  mConditional.Active := AState.Active;
+  FRun.FConditionals.Add(mConditional);
+end;
+
+function TPreprocessorFileScan.OuterText: string;
+var
+  mTop: TBranchState;
+begin
+  Result := '';
+  if FStack.Count = 0 then
+  begin
+    Exit;
+  end;
+  mTop := FStack.Peek;
+  if mTop.Outer = '' then
+  begin
+    Result := mTop.Text;
+  end
+  else if mTop.Text = '' then
+  begin
+    Result := mTop.Outer;
+  end
+  else
+  begin
+    Result := mTop.Outer + cTexts[TPreprocessorText.AndText].Text + mTop.Text;
+  end;
+end;
+
+function TPreprocessorFileScan.IfText(const AName, AArgument: string): string;
+begin
+  if AName = 'IFDEF' then
+  begin
+    Result := UpperCase(FirstWord(AArgument));
+  end
+  else if AName = 'IFNDEF' then
+  begin
+    Result := 'not ' + UpperCase(FirstWord(AArgument));
+  end
+  else if AName = 'IF' then
+  begin
+    Result := Trim(AArgument);
+  end
+  else
   begin
     Result := '';
-    if Stack.Count = 0 then
-      Exit;
-    Top := Stack.Peek;
-    if Top.Outer = '' then
-      Result := Top.Text
-    else if Top.Text = '' then
-      Result := Top.Outer
-    else
-      Result := Top.Outer + ' und ' + Top.Text;
   end;
+end;
 
+function TPreprocessorFileScan.IfCondition(const AName, AArgument: string;
+  const AToken: TPascalToken): TConditionValue;
 begin
-  Stack := TStack<TBranchState>.Create;
-  Opening := TStack<TPascalToken>.Create;
-  try
-    Active := True;
-    InactiveStart := TTextPosition.Create(0, 0);
-    LastEnd := InactiveStart;
-    for Token in TPascalLexer.Tokenize(AText) do
+  if AName = 'IFDEF' then
+  begin
+    Result := ConditionOf(FRun.FDefines.ContainsKey(UpperCase(FirstWord(AArgument))));
+  end
+  else if AName = 'IFNDEF' then
+  begin
+    Result := ConditionOf(not FRun.FDefines.ContainsKey(UpperCase(FirstWord(AArgument))));
+  end
+  else if AName = 'IF' then
+  begin
+    Result := FRun.EvaluateCondition(AArgument, AName, FFileIndex, AToken);
+  end
+  else
+  begin
+    Result := FRun.EvaluateSwitch(AArgument, FFileIndex, AToken);
+  end;
+end;
+
+procedure TPreprocessorFileScan.OpenIf(const AName, AArgument: string; const AToken: TPascalToken);
+var
+  mState: TBranchState;
+  mCondition: TConditionValue;
+begin
+  mState.ParentActive := FActive;
+  mState.InElse := False;
+  mState.Outer := OuterText;
+  mState.IfText := IfText(AName, AArgument);
+  mState.Text := mState.IfText;
+  mState.Start := AToken.EndPos;
+  mCondition := TConditionValue.No;
+  if FActive then
+  begin
+    mCondition := IfCondition(AName, AArgument, AToken);
+  end;
+  // Unbekannt gilt als aktiv, ohne den Zweig zu „nehmen“: ein {$ELSE} gilt dann auch (#847).
+  mState.Active := FActive and (mCondition <> TConditionValue.No);
+  mState.Taken := FActive and (mCondition = TConditionValue.Yes);
+  FStack.Push(mState);
+  FOpening.Push(AToken);
+  FActive := mState.Active;
+end;
+
+function TPreprocessorFileScan.ElseText(const AState: TBranchState): string;
+begin
+  if AState.IfText = '' then
+  begin
+    Result := '';
+  end
+  else if AState.IfText.StartsWith('not ') then
+  begin
+    Result := Copy(AState.IfText, 5, MaxInt);
+  end
+  else
+  begin
+    Result := 'not ' + AState.IfText;
+  end;
+end;
+
+procedure TPreprocessorFileScan.NextBranch(const AName, AArgument: string; const AToken: TPascalToken);
+var
+  mState: TBranchState;
+  mCondition: TConditionValue;
+begin
+  if FStack.Count = 0 then
+  begin
+    FRun.AddIssue(FFileIndex, AToken, Format('$%s ohne $IF', [AName]));
+    Exit;
+  end;
+  mState := FStack.Pop;
+  if mState.InElse then
+  begin
+    FRun.AddIssue(FFileIndex, AToken, cTexts[TPreprocessorText.AfterELSE].Fmt([AName]));
+  end;
+  CloseBranch(mState, AToken);
+  mState.Start := AToken.EndPos;
+  if AName = 'ELSE' then
+  begin
+    mState.Text := ElseText(mState);
+    mState.Active := mState.ParentActive and not mState.Taken;
+    mState.InElse := True;
+  end
+  else
+  begin
+    mState.Text := Trim(AArgument);
+    mState.Active := False;
+    if mState.ParentActive and not mState.Taken then
     begin
-      LastEnd := Token.EndPos;
-      if Token.Kind <> TPascalTokenKind.Directive then
-      begin
-        if Active then
-        begin
-          FTokens.Add(Token);
-          FFileIndexes.Add(AFileIndex);
-        end;
-        Continue;
-      end;
-
-      SplitDirective(DirectiveBody(Token.Text), Name, Argument);
-      WasActive := Active;
-
-      if (Name = 'IFDEF') or (Name = 'IFNDEF') or (Name = 'IF') or (Name = 'IFOPT') then
-      begin
-        State.ParentActive := Active;
-        State.InElse := False;
-        State.Outer := OuterText;
-        if Name = 'IFDEF' then
-          State.IfText := UpperCase(FirstWord(Argument))
-        else if Name = 'IFNDEF' then
-          State.IfText := 'not ' + UpperCase(FirstWord(Argument))
-        else if Name = 'IF' then
-          State.IfText := Trim(Argument)
-        else
-          State.IfText := '';
-        State.Text := State.IfText;
-        State.Start := Token.EndPos;
-        if not Active then
-          Condition := TConditionValue.No
-        else if Name = 'IFDEF' then
-          Condition := ConditionOf(FDefines.ContainsKey(UpperCase(FirstWord(Argument))))
-        else if Name = 'IFNDEF' then
-          Condition := ConditionOf(not FDefines.ContainsKey(UpperCase(FirstWord(Argument))))
-        else if Name = 'IF' then
-          Condition := EvaluateCondition(Argument, Name, AFileIndex, Token)
-        else
-          Condition := EvaluateSwitch(Argument, AFileIndex, Token);
-        // Unbekannt gilt als aktiv, ohne den Zweig zu „nehmen“: ein {$ELSE} gilt dann auch (#847).
-        State.Active := Active and (Condition <> TConditionValue.No);
-        State.Taken := Active and (Condition = TConditionValue.Yes);
-        Stack.Push(State);
-        Opening.Push(Token);
-        Active := State.Active;
-      end
-      else if (Name = 'ELSEIF') or (Name = 'ELSE') then
-      begin
-        if Stack.Count = 0 then
-        begin
-          AddIssue(AFileIndex, Token, Format('$%s ohne $IF', [Name]));
-          Continue;
-        end;
-        State := Stack.Pop;
-        if State.InElse then
-          AddIssue(AFileIndex, Token, Format('$%s nach $ELSE', [Name]));
-        CloseBranch(State, Token);
-        State.Start := Token.EndPos;
-        if Name = 'ELSE' then
-        begin
-          if State.IfText = '' then
-            State.Text := ''
-          else if State.IfText.StartsWith('not ') then
-            State.Text := Copy(State.IfText, 5, MaxInt)
-          else
-            State.Text := 'not ' + State.IfText;
-        end
-        else
-          State.Text := Trim(Argument);
-        if Name = 'ELSE' then
-        begin
-          State.Active := State.ParentActive and not State.Taken;
-          State.InElse := True;
-        end
-        else if State.ParentActive and not State.Taken then
-        begin
-          Condition := EvaluateCondition(Argument, Name, AFileIndex, Token);
-          State.Active := Condition <> TConditionValue.No;
-          State.Taken := Condition = TConditionValue.Yes;
-        end
-        else
-          State.Active := False;
-        Stack.Push(State);
-        Active := State.Active;
-      end
-      else if (Name = 'ENDIF') or (Name = 'IFEND') then
-      begin
-        if Stack.Count = 0 then
-        begin
-          AddIssue(AFileIndex, Token, Format('$%s ohne $IF', [Name]));
-          Continue;
-        end;
-        State := Stack.Pop;
-        CloseBranch(State, Token);
-        Active := State.ParentActive;
-        Opening.Pop;
-      end
-      else if not Active then
-        Continue
-      else if Name = 'DEFINE' then
-      begin
-        FDefines.AddOrSetValue(UpperCase(FirstWord(Argument)), True);
-        AddDefineSite(AFileIndex, Token, UpperCase(FirstWord(Argument)), False);
-      end
-      else if Name = 'UNDEF' then
-      begin
-        FDefines.Remove(UpperCase(FirstWord(Argument)));
-        AddDefineSite(AFileIndex, Token, UpperCase(FirstWord(Argument)), True);
-      end
-      else if ((Name = 'I') and not IsSwitch(Argument)) or (Name = 'INCLUDE') then
-        Include(IncludeName(Argument), AFileIndex, ADepth, Token)
-      else
-      begin
-        // Schalterstände für $IFOPT (#847); {$PUSHOPT}/{$POPOPT} sichern bzw. stellen sie wieder her.
-        if Name = 'PUSHOPT' then
-        begin
-          Saved := CopySwitches(FSwitches);
-          FSwitchStack.Push(Saved);
-        end
-        else if Name = 'POPOPT' then
-        begin
-          if FSwitchStack.Count = 0 then
-            AddIssue(AFileIndex, Token, '$POPOPT ohne $PUSHOPT')
-          else
-          begin
-            FSwitches.Free;
-            FSwitches := FSwitchStack.Extract;
-          end;
-        end
-        else
-          ApplySwitches(DirectiveBody(Token.Text), AFileIndex, Token);
-        // Für die Compiler-Schalter an einer Stelle (#558).
-        AddDirectiveSite(AFileIndex, Token);
-        // Andere Direktiven bleiben für spätere Auswertungen erhalten.
-        FTokens.Add(Token);
-        FFileIndexes.Add(AFileIndex);
-      end;
-
-      if WasActive and not Active then
-        InactiveStart := Token.EndPos
-      else if not WasActive and Active then
-      begin
-        Range.FileIndex := AFileIndex;
-        Range.Range := TTextRange.Create(InactiveStart, Token.StartPos);
-        FInactive.Add(Range);
-      end;
+      mCondition := FRun.EvaluateCondition(AArgument, AName, FFileIndex, AToken);
+      mState.Active := mCondition <> TConditionValue.No;
+      mState.Taken := mCondition = TConditionValue.Yes;
     end;
+  end;
+  FStack.Push(mState);
+  FActive := mState.Active;
+end;
 
-    while Opening.Count > 0 do
-      AddIssue(AFileIndex, Opening.Pop, '$ENDIF fehlt');
-    if not Active then
+procedure TPreprocessorFileScan.EndIf(const AName: string; const AToken: TPascalToken);
+var
+  mState: TBranchState;
+begin
+  if FStack.Count = 0 then
+  begin
+    FRun.AddIssue(FFileIndex, AToken, Format('$%s ohne $IF', [AName]));
+    Exit;
+  end;
+  mState := FStack.Pop;
+  CloseBranch(mState, AToken);
+  FActive := mState.ParentActive;
+  FOpening.Pop;
+end;
+
+procedure TPreprocessorFileScan.SwitchDirective(const AName: string; const AToken: TPascalToken);
+begin
+  // Schalterstände für $IFOPT (#847); {$PUSHOPT}/{$POPOPT} sichern bzw. stellen sie wieder her.
+  if AName = 'PUSHOPT' then
+  begin
+    FRun.FSwitchStack.Push(CopySwitches(FRun.FSwitches));
+  end
+  else if (AName = 'POPOPT') and (FRun.FSwitchStack.Count = 0) then
+  begin
+    FRun.AddIssue(FFileIndex, AToken, '$POPOPT ohne $PUSHOPT');
+  end
+  else if AName = 'POPOPT' then
+  begin
+    FRun.FSwitches.Free;
+    FRun.FSwitches := FRun.FSwitchStack.Extract;
+  end
+  else
+  begin
+    FRun.ApplySwitches(DirectiveBody(AToken.Text), FFileIndex, AToken);
+  end;
+  // Für die Compiler-Schalter an einer Stelle (#558).
+  FRun.AddDirectiveSite(FFileIndex, AToken);
+  // Andere Direktiven bleiben für spätere Auswertungen erhalten.
+  AddToken(AToken);
+end;
+
+procedure TPreprocessorFileScan.ActiveDirective(const AName, AArgument: string; const AToken: TPascalToken);
+var
+  mSymbol: string;
+begin
+  mSymbol := UpperCase(FirstWord(AArgument));
+  if AName = 'DEFINE' then
+  begin
+    FRun.FDefines.AddOrSetValue(mSymbol, True);
+    FRun.AddDefineSite(FFileIndex, AToken, mSymbol, False);
+  end
+  else if AName = 'UNDEF' then
+  begin
+    FRun.FDefines.Remove(mSymbol);
+    FRun.AddDefineSite(FFileIndex, AToken, mSymbol, True);
+  end
+  else if ((AName = 'I') and not IsSwitch(AArgument)) or (AName = 'INCLUDE') then
+  begin
+    FRun.Include(IncludeName(AArgument), FFileIndex, FDepth, AToken);
+  end
+  else
+  begin
+    SwitchDirective(AName, AToken);
+  end;
+end;
+
+procedure TPreprocessorFileScan.Directive(const AToken: TPascalToken);
+var
+  mName, mArgument: string;
+  mWasActive: Boolean;
+begin
+  SplitDirective(DirectiveBody(AToken.Text), mName, mArgument);
+  mWasActive := FActive;
+  if MatchStr(mName, ['IFDEF', 'IFNDEF', 'IF', 'IFOPT']) then
+  begin
+    OpenIf(mName, mArgument, AToken);
+  end
+  else if (mName = 'ELSEIF') or (mName = 'ELSE') then
+  begin
+    NextBranch(mName, mArgument, AToken);
+  end
+  else if (mName = 'ENDIF') or (mName = 'IFEND') then
+  begin
+    EndIf(mName, AToken);
+  end
+  else if FActive then
+  begin
+    ActiveDirective(mName, mArgument, AToken);
+  end;
+  if mWasActive and not FActive then
+  begin
+    FInactiveStart := AToken.EndPos;
+  end
+  else if not mWasActive and FActive then
+  begin
+    AddInactive(AToken.StartPos);
+  end;
+end;
+
+procedure TPreprocessorFileScan.Scan(const AText: string);
+var
+  mToken: TPascalToken;
+  mLastEnd: TTextPosition;
+begin
+  FActive := True;
+  FInactiveStart := TTextPosition.Create(0, 0);
+  mLastEnd := FInactiveStart;
+  for mToken in TPascalLexer.Tokenize(AText) do
+  begin
+    mLastEnd := mToken.EndPos;
+    if mToken.Kind = TPascalTokenKind.Directive then
     begin
-      Range.FileIndex := AFileIndex;
-      Range.Range := TTextRange.Create(InactiveStart, LastEnd);
-      FInactive.Add(Range);
+      Directive(mToken);
+    end
+    else if FActive then
+    begin
+      AddToken(mToken);
     end;
-  finally
-    Opening.Free;
-    Stack.Free;
+  end;
+  while FOpening.Count > 0 do
+  begin
+    FRun.AddIssue(FFileIndex, FOpening.Pop, cTexts[TPreprocessorText.ENDIFMissing].Text);
+  end;
+  if not FActive then
+  begin
+    AddInactive(mLastEnd);
   end;
 end;
 
@@ -1613,7 +1229,9 @@ begin
   Defines := TList<string>.Create;
   try
     for Key in FDefines.Keys do
+    begin
       Defines.Add(Key);
+    end;
     Defines.Sort;
     Result.Defines := Defines.ToArray;
   finally
@@ -1642,7 +1260,9 @@ var
 begin
   Result := Explain(AExpression, AOptions, ADefines, Parts, AError) <> TConditionValue.No;
   if AError <> '' then
+  begin
     Result := False;
+  end;
 end;
 
 class function TPascalPreprocessor.Explain(const AExpression: string; const AOptions: TPreprocessorOptions;
@@ -1657,9 +1277,13 @@ begin
   Defines := TDictionary<string, Boolean>.Create;
   try
     for Define in ADefines do
+    begin
       if not IsSwitchEntry(Define) then
+      begin
         Defines.AddOrSetValue(UpperCase(Define), True);
-    Evaluator := TExpressionEvaluator.Create(AOptions, Defines);
+      end;
+    end;
+    Evaluator := TExpressionEvaluator.Create(ExpressionSettings(AOptions, Defines), Defines);
     try
       try
         Result := Evaluator.Evaluate(AExpression);
@@ -1679,32 +1303,65 @@ begin
   end;
 end;
 
+/// <summary>"+" bzw. "-" zum Wert einer Schaltereigenschaft der .dproj (true/false; DCC_DebugInformation auch
+/// 0 = keine, 1 = begrenzt, 2 = voll); '' bei anderen Werten.</summary>
+function PropertySign(const AValue: string): string;
+var
+  mValue: string;
+begin
+  mValue := LowerCase(Trim(AValue));
+  if MatchStr(mValue, ['true', '1', '2']) then
+  begin
+    Result := '+';
+  end
+  else if MatchStr(mValue, ['false', '0']) then
+  begin
+    Result := '-';
+  end
+  else
+  begin
+    Result := '';
+  end;
+end;
+
+/// <summary>Eintrag "$R+" für den Schalter ASwitch aus AProperties; ohne Eintrag die Vorgabe des Compilers,
+/// markiert mit "*".</summary>
+function ProjectSwitchEntry(const ASwitch: TSwitchName; const AProperties: TArray<TPair<string, string>>): string;
+var
+  mPair: TPair<string, string>;
+  mSign: string;
+begin
+  Result := '';
+  for mPair in AProperties do
+  begin
+    mSign := '';
+    if SameText(mPair.Key, ASwitch.Prop) then
+    begin
+      mSign := PropertySign(mPair.Value);
+    end;
+    if mSign <> '' then
+    begin
+      Result := '$' + ASwitch.Letter + mSign;
+    end;
+  end;
+  if Result = '' then
+  begin
+    Result := '$' + ASwitch.Letter + ASwitch.Default + '*';
+  end;
+end;
+
 class function TPascalPreprocessor.ProjectSwitches(const AProperties: TArray<TPair<string, string>>): TArray<string>;
 var
   SwitchName: TSwitchName;
-  Pair: TPair<string, string>;
-  Value, Entry: string;
 begin
   Result := nil;
   for SwitchName in SwitchNames do
+  begin
     if SwitchName.Prop <> '' then
     begin
-      Entry := '';
-      for Pair in AProperties do
-        if SameText(Pair.Key, SwitchName.Prop) then
-        begin
-          // true/false; DCC_DebugInformation auch 0 (keine), 1 (begrenzt), 2 (voll).
-          Value := LowerCase(Trim(Pair.Value));
-          if (Value = 'true') or (Value = '1') or (Value = '2') then
-            Entry := '$' + SwitchName.Letter + '+'
-          else if (Value = 'false') or (Value = '0') then
-            Entry := '$' + SwitchName.Letter + '-';
-        end;
-      // Ohne Eintrag gilt die Vorgabe des Compilers, markiert mit "*".
-      if Entry = '' then
-        Entry := '$' + SwitchName.Letter + SwitchName.Default + '*';
-      Result := Result + [Entry];
+      Result := Result + [ProjectSwitchEntry(SwitchName, AProperties)];
     end;
+  end;
 end;
 
 class function TPascalPreprocessor.IsSwitchEntry(const ADefine: string): Boolean;
@@ -1720,8 +1377,12 @@ var
   SwitchName: TSwitchName;
 begin
   for SwitchName in SwitchNames do
+  begin
     if SwitchName.Letter = UpCase(ALetter) then
+    begin
       Exit(SwitchName.Prop);
+    end;
+  end;
   Result := '';
 end;
 
@@ -1730,11 +1391,13 @@ var
   SwitchName: TSwitchName;
 begin
   for SwitchName in SwitchNames do
+  begin
     if SameText(SwitchName.Long, Trim(AName)) then
     begin
       ALetter := SwitchName.Letter;
       Exit(True);
     end;
+  end;
   ALetter := #0;
   Result := False;
 end;
@@ -1744,8 +1407,12 @@ var
   SwitchName: TSwitchName;
 begin
   for SwitchName in SwitchNames do
+  begin
     if (SwitchName.Letter = UpCase(ALetter)) and (SwitchName.Default <> '') then
+    begin
       Exit(SwitchName.Default[1]);
+    end;
+  end;
   Result := #0;
 end;
 
@@ -1763,9 +1430,13 @@ class function TPascalPreprocessor.ProductName(ACompilerVersion: Double): string
 begin
   // Ab Delphi 11 (CompilerVersion 35) zählt die Hauptversion mit; davor nur die Zahl.
   if ACompilerVersion >= 35 then
-    Result := Format('Delphi %d', [Trunc(ACompilerVersion) - 24])
+  begin
+    Result := Format('Delphi %d', [Trunc(ACompilerVersion) - 24]);
+  end
   else
+  begin
     Result := 'CompilerVersion ' + FloatToStr(ACompilerVersion, TFormatSettings.Invariant);
+  end;
 end;
 
 class function TPascalPreprocessor.CompilerVersionOfBds(ABdsVersion: Double): Double;
@@ -1784,7 +1455,9 @@ begin
     Digits := Trim(Define);
     if (Length(Digits) > 3) and SameText(Copy(Digits, 1, 3), 'VER') and
       TryStrToInt(Copy(Digits, 4, MaxInt), Number) and (Number > 0) then
+    begin
       Exit(Number / 10);
+    end;
   end;
   Result := 0;
 end;
@@ -1822,8 +1495,12 @@ var
 begin
   Result := nil;
   for Inactive in AResult.InactiveRanges do
+  begin
     if Inactive.FileIndex = 0 then
+    begin
       Result := Result + [Inactive.Range];
+    end;
+  end;
 end;
 
 class function TPascalPreprocessor.MainConditionals(const AResult: TPreprocessorResult): TArray<TConditionalRange>;
@@ -1832,8 +1509,12 @@ var
 begin
   Result := nil;
   for Conditional in AResult.Conditionals do
+  begin
     if Conditional.FileIndex = 0 then
+    begin
       Result := Result + [Conditional];
+    end;
+  end;
 end;
 
 class function TPascalPreprocessor.IncludeFileOf(const ADirective: string; out AName: string): Boolean;
@@ -1844,43 +1525,79 @@ begin
   Result := False;
   Text := ADirective;
   if Text.StartsWith('{$') and Text.EndsWith('}') then
-    Text := Copy(Text, 3, Length(Text) - 3)
+  begin
+    Text := Copy(Text, 3, Length(Text) - 3);
+  end
   else if Text.StartsWith('(*$') and Text.EndsWith('*)') then
-    Text := Copy(Text, 4, Length(Text) - 5)
+  begin
+    Text := Copy(Text, 4, Length(Text) - 5);
+  end
   else
+  begin
     Exit;
+  end;
   Index := 1;
   while (Index <= Length(Text)) and CharInSet(Text[Index], ['A'..'Z', 'a'..'z']) do
+  begin
     Inc(Index);
+  end;
   Word := UpperCase(Copy(Text, 1, Index - 1));
   if (Word <> 'I') and (Word <> 'INCLUDE') then
+  begin
     Exit;
+  end;
   AName := Trim(Copy(Text, Index, MaxInt));
   Result := (AName <> '') and not CharInSet(AName[1], ['+', '-']);
 end;
 
+/// <summary>Die Zeichen ab AStart in AText lauten AUpper (Großbuchstaben, ASCII), ohne Rücksicht auf die
+/// Schreibung.</summary>
+function UpperAt(const AText: string; AStart: Integer; const AUpper: string): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := AStart + Length(AUpper) - 1 <= Length(AText);
+  mIndex := 1;
+  while Result and (mIndex <= Length(AUpper)) do
+  begin
+    Result := UpCase(AText[AStart + mIndex - 1]) = AUpper[mIndex];
+    Inc(mIndex);
+  end;
+end;
+
 class function TPascalPreprocessor.HasConditionals(const AText: string): Boolean;
 var
-  Upper: string;
+  mStart: Integer;
 begin
-  Upper := UpperCase(AText);
-  Result := (Pos('{$IF', Upper) > 0) or (Pos('(*$IF', Upper) > 0);
+  // Je '$' statt den ganzen Text in Großbuchstaben zu kopieren: Der Baum-Cache fragt das bei jedem Zugriff,
+  // jeder Anbieter einer Code-Aktion einmal (#1761).
+  mStart := Pos('$', AText);
+  while mStart > 0 do
+  begin
+    if (mStart > 1) and UpperAt(AText, mStart + 1, 'IF') and ((AText[mStart - 1] = '{') or
+      ((mStart > 2) and (AText[mStart - 1] = '*') and (AText[mStart - 2] = '('))) then
+    begin
+      Exit(True);
+    end;
+    mStart := Pos('$', AText, mStart + 1);
+  end;
+  Result := False;
 end;
 
 class function TPascalPreprocessor.HasIncludes(const AText: string): Boolean;
 var
-  Upper: string;
-  Start, Next: Integer;
+  mStart, mNext: Integer;
 begin
-  Upper := UpperCase(AText);
-  Start := Pos('$I', Upper);
-  while Start > 0 do
+  mStart := Pos('$', AText);
+  while mStart > 0 do
   begin
-    Next := Start + 2;
-    if (Start > 1) and CharInSet(Upper[Start - 1], ['{', '*']) and (Next <= Length(Upper)) and
-      (CharInSet(Upper[Next], [' ', #9, '''']) or (Copy(Upper, Next, 6) = 'NCLUDE')) then
+    mNext := mStart + 2;
+    if (mStart > 1) and CharInSet(AText[mStart - 1], ['{', '*']) and UpperAt(AText, mStart + 1, 'I') and
+      (mNext <= Length(AText)) and (CharInSet(AText[mNext], [' ', #9, '''']) or UpperAt(AText, mNext, 'NCLUDE')) then
+    begin
       Exit(True);
-    Start := Pos('$I', Upper, Next);
+    end;
+    mStart := Pos('$', AText, mStart + 1);
   end;
   Result := False;
 end;
@@ -1892,30 +1609,52 @@ class function TPascalPreprocessor.PlatformOf(const ADefines: TArray<string>): s
     mDefine: string;
   begin
     for mDefine in ADefines do
+    begin
       if SameText(Trim(mDefine), AName) then
+      begin
         Exit(True);
+      end;
+    end;
     Result := False;
   end;
 
 begin
   if Has('WIN64') then
-    Result := 'Win64'
+  begin
+    Result := 'Win64';
+  end
   else if Has('WIN32') then
-    Result := 'Win32'
+  begin
+    Result := 'Win32';
+  end
   else if Has('LINUX64') then
-    Result := 'Linux64'
+  begin
+    Result := 'Linux64';
+  end
   else if Has('MACOS64') and Has('CPUARM64') then
-    Result := 'OSXARM64'
+  begin
+    Result := 'OSXARM64';
+  end
   else if Has('MACOS64') and not Has('IOS') then
-    Result := 'OSX64'
+  begin
+    Result := 'OSX64';
+  end
   else if Has('IOS64') then
-    Result := 'iOSDevice64'
+  begin
+    Result := 'iOSDevice64';
+  end
   else if Has('ANDROID64') then
-    Result := 'Android64'
+  begin
+    Result := 'Android64';
+  end
   else if Has('ANDROID') then
-    Result := 'Android'
+  begin
+    Result := 'Android';
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 class function TPascalPreprocessor.PredefinedSymbols(const APlatform: string; ACompilerVersion: Double): TArray<string>;
@@ -1925,6 +1664,7 @@ begin
 end;
 
 initialization
+  TAtlasTextTables.Add('Atlas.Common.Pascal.Preprocessor', cTexts);
   ProviderLock := TCriticalSection.Create;
 
 finalization

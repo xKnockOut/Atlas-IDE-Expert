@@ -26,14 +26,14 @@ Zurück zum [README](../../../README_DE.md)
 ### Marken und Hervorhebungen
 
 - **Typmarken** hinter `var X := …` ohne Typangabe
-- **Code-Metriken** als Marke:
+- **Code-Metriken** als Marke (Modul Analyse, `analysis.enabled`):
   - hinter jedem Methodenkopf (Länge, Tiefe, zyklomatische und kognitive Komplexität, Parameter, Operanden der größten Bedingung, lokale Variablen, Ausstiege)
   - hinter jeder Klasse (Member, Vererbungstiefe ohne RTL und VCL)
   - hinter dem Unit-Namen (Zeilen) und dem ersten `uses` (Units)
 - **Rekursion im Rand**
 - **inaktive `{$IFDEF}`-Zweige** abgeschwächt mit Grund im Tooltip
-- **ungenutzte uses** abgeblendet
-- **Klammer- und Blockpaare** farbig nach Tiefe, mit eigenen Blocklinien
+- **ungenutzte uses** abgeblendet (Regel `unused-uses`: auch in `--check`, `get_diagnostics` und der Baseline; `off`, `exclude`, `lsp-ignore` und die Option `keep` gelten auch fürs Abblenden)
+- **Klammer- und Blockpaare** farbig nach Tiefe, mit eigenen Blocklinien; lokale Routinen wahlweise eine Stufe tiefer, in eigener Farbe mit gestrichelter Linie oder wie die äußere Routine, auf Wunsch schwach hinterlegt (`highlight.nestedRoutines`, `highlight.nestedRoutineBand`)
 
 ## Architekturübersicht
 

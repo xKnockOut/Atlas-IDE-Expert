@@ -53,7 +53,9 @@ var
   mGeneration: Int64;
 begin
   if AIndex = nil then
+  begin
     Exit(ACompute());
+  end;
   mGeneration := AIndex.Generation;
   TMonitor.Enter(FLock);
   try
@@ -63,7 +65,9 @@ begin
       FGeneration := mGeneration;
     end
     else if FValues.TryGetValue(AKey, Result) then
+    begin
       Exit;
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -73,7 +77,9 @@ begin
   try
     // Hat sich der Index inzwischen geändert, gehört die Antwort zum alten Stand.
     if AIndex.Generation = FGeneration then
+    begin
       FValues.AddOrSetValue(AKey, Result);
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -83,9 +89,13 @@ class function TIndexNameFacts.Get(const AFacts: IIndexNameFacts; const AIndex: 
   const ACompute: TFunc<Integer>): Integer;
 begin
   if AFacts = nil then
-    Result := ACompute()
+  begin
+    Result := ACompute();
+  end
   else
+  begin
     Result := AFacts.Lookup(AIndex, AKey, ACompute);
+  end;
 end;
 
 end.

@@ -84,11 +84,17 @@ begin
   for Row in ARows do
   begin
     if Result <> '' then
+    begin
       Result := Result + ' ';
+    end;
     if Row.IsHeader then
-      Result := Result + '#' + TAtlasGenerateOptions.GroupName(Row.Group)
+    begin
+      Result := Result + '#' + TAtlasGenerateOptions.GroupName(Row.Group);
+    end
     else
+    begin
       Result := Result + IntToStr(Row.Digit) + ':' + AEntries[Row.Entry].Name;
+    end;
   end;
 end;
 
@@ -118,7 +124,9 @@ var
 begin
   Entries := nil;
   for Index := 1 to 12 do
+  begin
     Entries := Entries + [Slash('c' + IntToStr(Index), 'Befehl ' + IntToStr(Index))];
+  end;
   Rows := TAtlasGenerateMenu.Rows(Entries, TAtlasGenerateOptions.Default, nil, '');
   Assert.AreEqual(13, Integer(Length(Rows)));
   Assert.AreEqual(9, Rows[9].Digit);
@@ -286,7 +294,9 @@ begin
     Recent.Chosen('snippet:tryf');
     Assert.AreEqual('snippet:tryf'#13#10'slash:ctor', Recent.ToText);
     for Index := 1 to 30 do
+    begin
       Recent.Chosen('slash:c' + IntToStr(Index));
+    end;
     Assert.AreEqual(TAtlasGenerateRecent.MaxCount, Integer(Length(Recent.Ids)));
     Recent.Clear;
     Assert.AreEqual('', Recent.ToText);

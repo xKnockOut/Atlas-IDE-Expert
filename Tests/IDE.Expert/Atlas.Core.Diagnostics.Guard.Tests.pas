@@ -128,16 +128,22 @@ begin
   FOldFolder := TAtlasGuard.RotatingLog.Folder;
   TAtlasGuard.RotatingLog.Folder := FFolder;
   TAtlasGuard.Fuse.ResetAll;
+  // Diese Tests prüfen Inhalte der Zeilen; anonym schreibt das Protokoll sie als text#N (#1478, eigene Tests in
+  // Atlas.Core.Diagnostics.LogRedaction.Tests).
+  TAtlasGuard.SetLogNames(True);
 end;
 
 procedure TAtlasGuardTests.TearDown;
 begin
   TAtlasGuard.Fuse.ResetAll;
+  TAtlasGuard.SetLogNames(False);
   TAtlasGuard.OnWarning := nil;
   TAtlasGuard.StackOf := nil;
   TAtlasGuard.RotatingLog.Folder := FOldFolder;
   if TDirectory.Exists(FFolder) then
+  begin
     TDirectory.Delete(FFolder, True);
+  end;
   FFolder := '';
   FOldFolder := '';
 end;
@@ -219,7 +225,9 @@ begin
       Warning := AText;
     end;
   for Index := 1 to 3 do
+  begin
     TAtlasGuard.Run(TAtlasFeature.Problems, RaiserAt(Index));
+  end;
   Assert.IsTrue(TAtlasGuard.Disabled(TAtlasFeature.Problems));
   Assert.Contains(Warning, 'Probleme');
   Calls := 0;
@@ -245,7 +253,9 @@ var
 begin
   Assert.AreEqual('Brotkrumenleiste', TAtlasGuard.FeatureName(TAtlasFeature.Breadcrumbs));
   for Index := 1 to 3 do
+  begin
     TAtlasGuard.Run(TAtlasFeature.EditorCommands, RaiserAt(Index));
+  end;
   Assert.IsTrue(TAtlasGuard.Disabled(TAtlasFeature.EditorCommands));
   Assert.IsFalse(TAtlasGuard.Disabled(TAtlasFeature.Breadcrumbs), 'Editorbefehle reißen die Leiste nicht mit');
   Calls := 0;
@@ -256,7 +266,9 @@ begin
     end);
   Assert.AreEqual(1, Calls);
   for Index := 1 to 3 do
+  begin
     TAtlasGuard.Run(TAtlasFeature.Breadcrumbs, RaiserAt(Index));
+  end;
   Assert.IsTrue(TAtlasGuard.Disabled(TAtlasFeature.Breadcrumbs));
   TAtlasGuard.EnableAll;
   Assert.IsFalse(TAtlasGuard.Disabled(TAtlasFeature.Breadcrumbs), 'Abgeschaltete Funktionen einschalten');
@@ -270,7 +282,9 @@ begin
   Log := TAtlasRotatingLog.Create(FFolder, 200, 3);
   try
     for Index := 1 to 40 do
+    begin
       Log.Add(StringOfChar('x', 40));
+    end;
     Assert.IsTrue(TFile.Exists(TPath.Combine(FFolder, 'atlas.1.log')));
     Assert.IsTrue(TFile.Exists(TPath.Combine(FFolder, 'atlas.2.log')));
     Assert.IsFalse(TFile.Exists(TPath.Combine(FFolder, 'atlas.3.log')), 'höchstens 3 Dateien');
@@ -306,7 +320,9 @@ begin
     TFile.WriteAllText(TPath.Combine(FFolder, 'atlas.1.log'), 'alt');
     TDirectory.CreateDirectory(TPath.Combine(FFolder, 'atlas.2.log'));
     for Index := 1 to 10 do
+    begin
       Log.Add('Zeile ' + IntToStr(Index));
+    end;
     Text := TFile.ReadAllText(Log.FileName, TEncoding.UTF8);
     Assert.Contains(Text, 'Zeile 10', 'trotz gescheitertem Rotieren angehängt');
     Assert.AreEqual(1, Occurrences(Text, 'Protokoll: Rotieren gescheitert'), 'Grund nur einmal');
@@ -380,7 +396,9 @@ begin
       Warning := AText;
     end;
   for Index := 1 to 2 do
+  begin
     TAtlasGuard.ReportProvider('SQL', 'kaputt');
+  end;
   Assert.IsFalse(TAtlasGuard.ProviderDisabled('SQL'));
   Assert.AreEqual('', Warning, 'noch keine Warnung');
   TAtlasGuard.ReportProvider('SQL', 'kaputt');
@@ -459,7 +477,9 @@ begin
     function(E: Exception): string
     begin
       if E <> nil then
+      begin
         raise EInvalidOpException.Create('Map kaputt');
+      end;
       Result := '';
     end;
   TAtlasGuard.Run(TAtlasFeature.Hover,
@@ -519,11 +539,13 @@ var
   Text: string;
 begin
   for Index := 1 to 30 do
+  begin
     TAtlasGuard.Run(TAtlasFeature.StickyScroll,
       procedure
       begin
         raise EInvalidOpException.Create('beim Zeichnen');
       end);
+  end;
   Assert.IsFalse(TAtlasGuard.Disabled(TAtlasFeature.StickyScroll), 'ein Zeichendurchlauf ist ein Fehler');
   Text := TFile.ReadAllText(TPath.Combine(FFolder, 'atlas.log'), TEncoding.UTF8);
   Assert.AreEqual(1, Integer(Length(Text.Trim.Split([sLineBreak]))), 'Wiederholungen nicht einzeln im Protokoll');
@@ -547,7 +569,9 @@ begin
     end;
   try
     for Index := 1 to 3 do
+    begin
       TAtlasGuard.Run(TAtlasFeature.Outline, RaiserAt(Index));
+    end;
     Assert.AreEqual(1, Calls, 'einmal beim Auslösen');
     Assert.IsTrue(Tripped = TAtlasFeature.Outline);
     Assert.AreEqual('Fehler 3', Message);
@@ -595,6 +619,8 @@ begin
   Assert.AreEqual('Neu zugewiesene Variablen', TAtlasGuard.FeatureName(TAtlasFeature.Reassigned));
   Assert.AreEqual('Typ des Ausdrucks', TAtlasGuard.FeatureName(TAtlasFeature.ExpressionType));
   Assert.AreEqual('Methodenreihenfolge', TAtlasGuard.FeatureName(TAtlasFeature.MethodPlacement));
+  Assert.AreEqual('Regionen falten', TAtlasGuard.FeatureName(TAtlasFeature.RegionFolds));
+  Assert.AreEqual('Einrückung beim Tippen', TAtlasGuard.FeatureName(TAtlasFeature.SmartIndent));
   Assert.AreEqual('Issue-Kennungen', TAtlasGuard.FeatureName(TAtlasFeature.IssueLinks));
   Assert.AreEqual('Issues in der Zeilenhistorie', TAtlasGuard.FeatureName(TAtlasFeature.BlameIssues));
   Assert.AreEqual('Code-Abfragen', TAtlasGuard.FeatureName(TAtlasFeature.Query));

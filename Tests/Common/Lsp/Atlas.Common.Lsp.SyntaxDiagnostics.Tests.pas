@@ -88,6 +88,10 @@ type
     /// Syntaxfehlern.</summary>
     [Test]
     procedure ReportsUnusedUsesUnlessSyntaxErrors;
+    /// <summary>#1135: Das Abblenden folgt der Regel unused-uses: aus mit "off", "exclude" und lsp-ignore; ein
+    /// lsp-ignore für die im Editor schweigende Regel ist kein unused-suppression.</summary>
+    [Test]
+    procedure UnusedUsesFollowRule;
   end;
 
 implementation
@@ -107,11 +111,13 @@ uses
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
+  Atlas.Common.Rules.Builtin.DeadCode,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Editing.UsesActions,
   Atlas.Common.Editing.Contract,
-  Atlas.Common.Lsp.SyntaxDiagnostics;
+  Atlas.Common.Lsp.SyntaxDiagnostics,
+  Atlas.Common.Lsp.DiagnosticItems;
 
 function CompilerMessage(ALine, AColumn: Integer; ASeverity: TCompilerSeverity): TCompilerMessage;
 begin
@@ -179,7 +185,9 @@ begin
   while Count < ACount do
   begin
     if Watch.ElapsedMilliseconds >= ATimeoutMs then
+    begin
       Exit(False);
+    end;
     FWritten.WaitFor(ATimeoutMs - Cardinal(Watch.ElapsedMilliseconds));
   end;
   Result := True;
@@ -328,7 +336,9 @@ begin
         TInterlocked.Increment(Calls);
       end;
     for Index := 1 to 5 do
+    begin
       Diagnostics.RefreshLater;
+    end;
     Assert.AreEqual(0, TInterlocked.CompareExchange(Calls, 0, 0), 'erst nach der Pause');
     Sleep(TLspSyntaxDiagnostics.RefreshDelayMs + 500);
     Assert.AreEqual(1, TInterlocked.CompareExchange(Calls, 0, 0));
@@ -393,9 +403,13 @@ begin
   Result := Default(TRuleCheckContext);
   Result.Rules := BuiltinRules;
   if AConfigJson = '' then
-    Result.Settings := TServerSettings.Default
+  begin
+    Result.Settings := TServerSettings.Default;
+  end
   else
+  begin
     Result.Settings := TConfigurationParser.Parse(AConfigJson, Issues);
+  end;
   Result.RelativePath := 'A.pas';
 end;
 
@@ -462,7 +476,7 @@ begin
   Finding.Message := 'Meldung';
   Finding.Severity := TRuleSeverity.Information;
   Finding.Confidence := TRuleConfidence.Medium;
-  Item := TLspSyntaxDiagnostics.FindingToJson(Finding);
+  Item := TLspDiagnosticItems.FindingToJson(Finding);
   try
     Assert.AreEqual(3, Item.GetValue<Integer>('severity'));
     // Konfidenz als eigenes Feld, nicht im Meldungstext (#144).
@@ -489,7 +503,7 @@ begin
   Related.Range := TTextRange.Create(3, 2, 3, 3);
   Related.Message := 'C';
   Finding.Related := [Related];
-  Item := TLspSyntaxDiagnostics.FindingToJson(Finding);
+  Item := TLspDiagnosticItems.FindingToJson(Finding);
   try
     Items := Item.GetValue('relatedInformation') as TJSONArray;
     Assert.AreEqual(1, Items.Count);
@@ -502,7 +516,7 @@ begin
   end;
   // Ohne weitere Stellen kein Feld.
   Finding.Related := nil;
-  Item := TLspSyntaxDiagnostics.FindingToJson(Finding);
+  Item := TLspDiagnosticItems.FindingToJson(Finding);
   try
     Assert.IsNull(Item.FindValue('relatedInformation'));
   finally
@@ -521,7 +535,7 @@ begin
   Finding.Message := 'Leerer except-Block';
   Finding.Severity := TRuleSeverity.Warning;
   Finding.Fixes := [TRuleFix.Create('Ausnahme protokollieren', nil)];
-  Item := TLspSyntaxDiagnostics.FindingToJson(Finding);
+  Item := TLspDiagnosticItems.FindingToJson(Finding);
   try
     Assert.AreEqual('exceptions', Item.GetValue<string>('data.group'));
     Assert.AreEqual('code-smell', Item.GetValue<string>('data.category'));
@@ -534,7 +548,7 @@ begin
   // Gruppe „Compiler vorab“ (#1024): Codes für den Abgleich mit dcc im Plugin.
   Finding.RuleId := 'argument-count-mismatch';
   Finding.Fixes := nil;
-  Item := TLspSyntaxDiagnostics.FindingToJson(Finding);
+  Item := TLspDiagnosticItems.FindingToJson(Finding);
   try
     Assert.AreEqual('compiler', Item.GetValue<string>('data.group'));
     Assert.AreEqual('["E2034","E2035"]', (Item.GetValue('data') as TJSONObject).GetValue('compilerCodes').ToJSON);
@@ -545,7 +559,7 @@ begin
   end;
   // Zusatz für den Befund-Hover (#1102).
   Finding.Details := 'Durchsucht: 3 Dateien der Projektgruppe';
-  Item := TLspSyntaxDiagnostics.FindingToJson(Finding);
+  Item := TLspDiagnosticItems.FindingToJson(Finding);
   try
     Assert.AreEqual('Durchsucht: 3 Dateien der Projektgruppe', Item.GetValue<string>('data.details'));
   finally
@@ -567,7 +581,7 @@ begin
   First.Alternative := True;
   Second := TRuleFix.Create('Bevorzugt', nil);
   Finding.Fixes := [Second, First];
-  Item := TLspSyntaxDiagnostics.FindingToJson(Finding);
+  Item := TLspDiagnosticItems.FindingToJson(Finding);
   try
     Data := Item.GetValue('data') as TJSONObject;
     Assert.IsNull(Data.FindValue('group'));
@@ -578,7 +592,7 @@ begin
   end;
   // Steht eine Alternative vorn, gibt es wie bei den Code-Aktionen keine bevorzugte Korrektur.
   Finding.Fixes := [First, Second];
-  Item := TLspSyntaxDiagnostics.FindingToJson(Finding);
+  Item := TLspDiagnosticItems.FindingToJson(Finding);
   try
     Data := Item.GetValue('data') as TJSONObject;
     Assert.IsNull(Data.FindValue('fix'));
@@ -670,10 +684,10 @@ var
   Params: TJSONObject;
   Item: TJSONValue;
 begin
-  Assert.AreEqual(TLspSyntaxDiagnostics.InactiveMessage, TLspSyntaxDiagnostics.InactiveMessageOf('', 'Win32', 'Debug'));
-  Assert.AreEqual('Inaktiv: Bedingung DEBUG nicht erfüllt', TLspSyntaxDiagnostics.InactiveMessageOf('DEBUG', '', ''));
+  Assert.AreEqual(TLspDiagnosticItems.InactiveMessage, TLspDiagnosticItems.InactiveMessageOf('', 'Win32', 'Debug'));
+  Assert.AreEqual('Inaktiv: Bedingung DEBUG nicht erfüllt', TLspDiagnosticItems.InactiveMessageOf('DEBUG', '', ''));
   Assert.AreEqual('Inaktiv: Bedingung DEBUG nicht erfüllt (Zielplattform Win64 · ?)',
-    TLspSyntaxDiagnostics.InactiveMessageOf('DEBUG', 'Win64', ''));
+    TLspDiagnosticItems.InactiveMessageOf('DEBUG', 'Win64', ''));
   Providers := Default(TSyntaxDiagnosticsProviders);
   Providers.Defines :=
     function(const AUri: string; out ADefines: TArray<string>): Boolean
@@ -746,7 +760,9 @@ begin
     try
       Messages := '';
       for Item in Params.GetValue<TJSONArray>('diagnostics') do
+      begin
         Messages := Messages + Item.GetValue<string>('message') + '|';
+      end;
       // Kein Syntaxfehler: Der {$IFNDEF FOO}-Zweig ist abgeblendet, fehlt.inc ein Hinweis.
       Assert.AreEqual('Inaktiv: Bedingung not FOO nicht erfüllt|Include-Datei "fehlt.inc" nicht gefunden|',
         Messages);
@@ -894,6 +910,92 @@ begin
   finally
     Diagnostics.Free;
   end;
+end;
+
+/// <summary>uses-Kontext, in dem jede Unit bekannt ist und nur TStringGrid anbietet.</summary>
+function GridUses: TUsesContextProvider;
+begin
+  Result :=
+    function(const AUri: string; out AContext: TUsesContext): Boolean
+    begin
+      AContext := Default(TUsesContext);
+      AContext.Info :=
+        function(const AUnitName: string): TUsesUnitInfo
+        begin
+          Result := Default(TUsesUnitInfo);
+          Result.Known := True;
+          Result.Names := ['TStringGrid'];
+        end;
+      Result := True;
+    end;
+end;
+
+/// <summary>Regelkontext des Editors für A.pas mit den Einstellungen AConfig und der Regel unused-uses.</summary>
+function EditorRules(const AConfig: string): TRuleContextProvider;
+begin
+  Result :=
+    function(const AUri: string; out AContext: TRuleCheckContext): Boolean
+    var
+      mIssues: TArray<TConfigurationIssue>;
+    begin
+      AContext := Default(TRuleCheckContext);
+      AContext.Rules := TArray<IRule>.Create(TUnusedUsesRule.Create);
+      AContext.Settings := TConfigurationParser.Parse(AConfig, mIssues);
+      AContext.RelativePath := 'A.pas';
+      AContext.FileName := 'C:\Projekt\A.pas';
+      AContext.Live := True;
+      Result := True;
+    end;
+end;
+
+/// <summary>Meldungen der Diagnosen zu ACode mit den Einstellungen AConfig, durch | getrennt, mit Regelkennung.
+/// </summary>
+function UsesDiagnostics(const AStore: IDocumentStore; const ATransport: IJsonRpcTransport;
+  const ACode, AConfig: string): string;
+var
+  mProviders: TSyntaxDiagnosticsProviders;
+  mDiagnostics: TLspSyntaxDiagnostics;
+  mParams: TJSONObject;
+  mItem: TJSONValue;
+begin
+  Result := '';
+  mProviders := Default(TSyntaxDiagnosticsProviders);
+  mProviders.UsesContext := GridUses();
+  mProviders.Rules := EditorRules(AConfig);
+  mDiagnostics := TLspSyntaxDiagnostics.Create(AStore, ATransport, mProviders, 0);
+  try
+    mParams := mDiagnostics.Compute(AStore.Open(Uri, 'objectpascal', 1, ACode));
+    try
+      for mItem in mParams.GetValue('diagnostics') as TJSONArray do
+      begin
+        Result := Result + mItem.GetValue<string>('message') + '|';
+        if TJSONObject(mItem).GetValue('code') <> nil then
+        begin
+          Result := Result + mItem.GetValue<string>('code') + '|';
+        end;
+      end;
+    finally
+      mParams.Free;
+    end;
+    AStore.Close(Uri);
+  finally
+    mDiagnostics.Free;
+  end;
+end;
+
+procedure TLspSyntaxDiagnosticsTests.UnusedUsesFollowRule;
+const
+  Code = 'unit A;'#10'interface'#10'uses'#10'  Vcl.Grids;'#10'implementation'#10'end.';
+  Ignored = 'unit A;'#10'interface'#10'uses'#10'  // lsp-ignore: unused-uses'#10'  Vcl.Grids;'#10 +
+    'implementation'#10'end.';
+begin
+  Assert.AreEqual('Aus Vcl.Grids wird nichts verwendet|', UsesDiagnostics(FStore, FTransport, Code, '{}'));
+  Assert.AreEqual('', UsesDiagnostics(FStore, FTransport, Code, '{"rules": {"unused-uses": "off"}}'));
+  Assert.AreEqual('', UsesDiagnostics(FStore, FTransport, Code, '{"rules": {"group:style": "off"}}'));
+  Assert.AreEqual('', UsesDiagnostics(FStore, FTransport, Code,
+    '{"rules": {"unused-uses": {"severity": "hint", "exclude": ["A"]}}}'));
+  Assert.AreEqual('', UsesDiagnostics(FStore, FTransport, Code, '{"exclude": ["A.pas"]}'));
+  Assert.AreEqual('', UsesDiagnostics(FStore, FTransport, Ignored, '{}'));
 end;
 
 initialization

@@ -12,6 +12,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Debugger')]
   TAtlasDebugExceptionBannerTests = class
   public
     [Test]
@@ -47,7 +48,7 @@ end;
 function SampleException: TAtlasDebugException;
 begin
   Result := TAtlasDebugException.Create(EncodeDate(2026, 10, 23), 'EConvertError', '''x'' ist kein gültiger Wert',
-    4711, '', 'C:\BDS\source\rtl\sys\System.SysUtils.pas', 9012, 'System.SysUtils.StrToFloat');
+    4711, '').At('C:\BDS\source\rtl\sys\System.SysUtils.pas', 9012, 'System.SysUtils.StrToFloat');
   Result.Count := 3;
   Result.Frames := TArray<TAtlasDebugFrame>.Create(
     Frame(':7714C3E2 KERNELBASE.RaiseException + 0x62', '', 0, False),
@@ -140,7 +141,7 @@ var
   Exception: TAtlasDebugException;
   Info: TAtlasDebugBannerInfo;
 begin
-  Exception := TAtlasDebugException.Create(Now, 'EAccessViolation', '', 1, 'Worker', '', 0, '');
+  Exception := TAtlasDebugException.Create(Now, 'EAccessViolation', '', 1, 'Worker');
   Exception.Frames := TArray<TAtlasDebugFrame>.Create(Frame(':0040A1B2 Demo.Worker', '', 0, False));
   Info := TAtlasDebugBannerRules.Info(Exception, True, 'C:\P.dproj', 'Hauptthread', True);
   Assert.AreEqual(-1, Info.FrameIndex);

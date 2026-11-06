@@ -17,6 +17,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeUnsavedTests = class
   public
     [Test]
@@ -183,11 +184,13 @@ begin
   Calls := Calls + ['outgoing ' + ABranch + ' ' + AUpstream];
   ACommits := nil;
   for Index := 0 to High(FOutgoingBranch) do
+  begin
     if (FOutgoingBranch[Index] = ABranch) and (FOutgoingUpstream[Index] = AUpstream) then
     begin
       ACommits := Copy(FOutgoing[Index], 0, AMax);
       Break;
     end;
+  end;
   Result := TAtlasVcsOutcome.Ok;
 end;
 
@@ -332,11 +335,17 @@ begin
     begin
       Result := True;
       if SameText(ExtractFileName(AFileName), 'A.pas') then
-        AUtc := HoursAgo(48)
+      begin
+        AUtc := HoursAgo(48);
+      end
       else if SameText(ExtractFileName(AFileName), 'Weg.pas') then
-        Result := False
+      begin
+        Result := False;
+      end
       else
+      begin
         AUtc := HoursAgo(3);
+      end;
     end;
 end;
 
@@ -368,7 +377,9 @@ function Item(AKind: TAtlasUnsavedKind; ACount: Integer; AHoursAgo: Double): TAt
 begin
   Result := TAtlasUnsavedItem.Create(AKind, ACount);
   if AHoursAgo >= 0 then
+  begin
     Result.Since := HoursAgo(AHoursAgo);
+  end;
 end;
 
 { TAtlasWelcomeUnsavedTests }
@@ -514,6 +525,7 @@ var
   mState, mRead: TAtlasUnsavedState;
   mFound: TAtlasUnsavedItem;
   mSummary: TAtlasProjectSummary;
+  mQuery: TAtlasUnsavedQuery;
 begin
   mFake := TFakeSvnStatus.Create;
   mVcs := mFake;
@@ -526,7 +538,9 @@ begin
     Change(VcsFullPath(Root, 'Packages/Drucken/A.pas'), TAtlasVcsChangeKind.Modified),
     Change(VcsFullPath(Root, 'Packages/Drucken/B.pas'), TAtlasVcsChangeKind.Untracked),
     Change(VcsFullPath(Root, 'Packages/Drucken/K.pas'), TAtlasVcsChangeKind.Conflicted)];
-  Assert.IsTrue(TAtlasWelcomeUnsaved.Probe(mVcs, '', NowUtc, nil, nil, True, mState));
+  mQuery := TAtlasUnsavedQuery.Create('', NowUtc, nil, nil);
+  mQuery.WorkingCopies := True;
+  Assert.IsTrue(TAtlasWelcomeUnsaved.Probe(mVcs, mQuery, mState));
   Assert.IsTrue(mState.Find(TAtlasUnsavedKind.Changes, mFound));
   Assert.AreEqual(3, Integer(mFound.Count), 'Summe aller Arbeitskopien');
   Assert.AreEqual(2, Integer(Length(mFound.Places)));
@@ -548,7 +562,8 @@ begin
   Assert.AreEqual(2, mFound.Places[1].Count);
   // Abgeschaltet (vcs.externals.show aus): keine weitere Abfrage, keine Anteile.
   mFake.Calls := nil;
-  Assert.IsTrue(TAtlasWelcomeUnsaved.Probe(mVcs, '', NowUtc, nil, nil, False, mState));
+  mQuery.WorkingCopies := False;
+  Assert.IsTrue(TAtlasWelcomeUnsaved.Probe(mVcs, mQuery, mState));
   Assert.IsTrue(mState.Find(TAtlasUnsavedKind.Changes, mFound));
   Assert.AreEqual(0, Integer(Length(mFound.Places)));
   Assert.IsFalse(string.Join(',', mFake.Calls).Contains('status'));
@@ -773,13 +788,69 @@ begin
   AssertNear(EncodeDate(2026, 10, 16), TAtlasWelcomeUnsaved.Tomorrow(EncodeDate(2026, 10, 15)), 1E-9, '');
 end;
 
+/// <summary>Der gelesene Abschnitt trägt alle Einträge.</summary>
+procedure AssertUnsavedRead(const AParsed: TAtlasProjectSummary);
+var
+  mRead: TAtlasUnsavedState;
+  mFound: TAtlasUnsavedItem;
+begin
+  Assert.IsTrue(TAtlasWelcomeUnsaved.Read(AParsed, mRead));
+  Assert.IsTrue(mRead.Known);
+  Assert.AreEqual('git', mRead.Kind);
+  Assert.AreEqual(Root, mRead.Root);
+  Assert.AreEqual('main', mRead.Branch);
+  AssertNear(NowUtc, mRead.At, 1E-6, '');
+  Assert.AreEqual(3, Integer(Length(mRead.Items)));
+  Assert.IsTrue(mRead.Find(TAtlasUnsavedKind.Changes, mFound));
+  Assert.AreEqual(4, Integer(mFound.Count));
+  Assert.AreEqual(2, mFound.Modified);
+  Assert.AreEqual(1, mFound.Added);
+  Assert.AreEqual(1, mFound.Deleted);
+  AssertNear(HoursAgo(48), mFound.Since, 1 / (24 * 3600), '');
+  Assert.IsTrue(mRead.Find(TAtlasUnsavedKind.NoUpstream, mFound));
+  Assert.AreEqual(2, mFound.Commits);
+  Assert.AreEqual('feature/x', mFound.Branches[0]);
+  Assert.IsTrue(mRead.Find(TAtlasUnsavedKind.Stashes, mFound));
+  Assert.AreEqual('WIP „Hover“', mFound.Name);
+  Assert.AreEqual('abc', mFound.Ref);
+  Assert.IsTrue(mRead.IgnoredUntil(TAtlasUnsavedKind.Stashes) > NowUtc);
+end;
+
+/// <summary>Zweimal schreiben, neue Zusammenfassung und unbekannte Arten.</summary>
+procedure AssertUnsavedRewrite(const AParsed: TAtlasProjectSummary; const AState: TAtlasUnsavedState);
+var
+  mSummary: TAtlasProjectSummary;
+  mParsed: TAtlasProjectSummary;
+  mState: TAtlasUnsavedState;
+  mRead: TAtlasUnsavedState;
+begin
+  mParsed := AParsed;
+  mState := AState;
+  // Zweimal schreiben ersetzt den Abschnitt.
+  mState.Items := nil;
+  TAtlasWelcomeUnsaved.Write(mParsed, mState);
+  Assert.IsTrue(TAtlasWelcomeUnsaved.Read(mParsed, mRead));
+  Assert.AreEqual(0, Integer(Length(mRead.Items)));
+  // Neue Zusammenfassung ohne Datei.
+  mSummary := TAtlasProjectSummary.Create('C:\Neu\Neu.dproj');
+  Assert.IsFalse(TAtlasWelcomeUnsaved.Read(mSummary, mRead));
+  TAtlasWelcomeUnsaved.Write(mSummary, GitState(Root, nil));
+  Assert.IsTrue(TAtlasProjectSummaries.Parse(TAtlasProjectSummaries.ToJson(mSummary), mParsed));
+  Assert.AreEqual('C:\Neu\Neu.dproj', mParsed.Project);
+  Assert.IsTrue(TAtlasWelcomeUnsaved.Read(mParsed, mRead));
+  // Unbekannte Arten einer späteren Fassung werden übergangen.
+  Assert.IsTrue(TAtlasWelcomeUnsaved.FromJson('{"kind":"git","items":[{"kind":"neu","count":1},' +
+    '{"kind":"stashes","count":2}]}', mRead));
+  Assert.AreEqual(1, Integer(Length(mRead.Items)));
+  Assert.IsFalse(TAtlasWelcomeUnsaved.FromJson('kein json', mRead));
+end;
+
 procedure TAtlasWelcomeUnsavedTests.SectionRoundTripKeepsSummary;
 var
   Summary, Parsed: TAtlasProjectSummary;
-  State, Read_: TAtlasUnsavedState;
+  State: TAtlasUnsavedState;
   Lonely: TAtlasUnsavedItem;
   Changes: TAtlasUnsavedItem;
-  Found: TAtlasUnsavedItem;
   Json: string;
 begin
   Assert.IsTrue(TAtlasProjectSummaries.Parse('{"format":1,"project":"C:\\Repo\\Demo.dproj","hidden":true,' +
@@ -801,43 +872,8 @@ begin
   Assert.IsTrue(TAtlasProjectSummaries.Parse(Json, Parsed));
   Assert.IsTrue(Parsed.Hidden, 'bekannte Felder bleiben');
   Assert.AreEqual('main', Parsed.Vcs.Branch);
-  Assert.IsTrue(TAtlasWelcomeUnsaved.Read(Parsed, Read_));
-  Assert.IsTrue(Read_.Known);
-  Assert.AreEqual('git', Read_.Kind);
-  Assert.AreEqual(Root, Read_.Root);
-  Assert.AreEqual('main', Read_.Branch);
-  AssertNear(NowUtc, Read_.At, 1E-6, '');
-  Assert.AreEqual(3, Integer(Length(Read_.Items)));
-  Assert.IsTrue(Read_.Find(TAtlasUnsavedKind.Changes, Found));
-  Assert.AreEqual(4, Integer(Found.Count));
-  Assert.AreEqual(2, Found.Modified);
-  Assert.AreEqual(1, Found.Added);
-  Assert.AreEqual(1, Found.Deleted);
-  AssertNear(HoursAgo(48), Found.Since, 1 / (24 * 3600), '');
-  Assert.IsTrue(Read_.Find(TAtlasUnsavedKind.NoUpstream, Found));
-  Assert.AreEqual(2, Found.Commits);
-  Assert.AreEqual('feature/x', Found.Branches[0]);
-  Assert.IsTrue(Read_.Find(TAtlasUnsavedKind.Stashes, Found));
-  Assert.AreEqual('WIP „Hover“', Found.Name);
-  Assert.AreEqual('abc', Found.Ref);
-  Assert.IsTrue(Read_.IgnoredUntil(TAtlasUnsavedKind.Stashes) > NowUtc);
-  // Zweimal schreiben ersetzt den Abschnitt.
-  State.Items := nil;
-  TAtlasWelcomeUnsaved.Write(Parsed, State);
-  Assert.IsTrue(TAtlasWelcomeUnsaved.Read(Parsed, Read_));
-  Assert.AreEqual(0, Integer(Length(Read_.Items)));
-  // Neue Zusammenfassung ohne Datei.
-  Summary := TAtlasProjectSummary.Create('C:\Neu\Neu.dproj');
-  Assert.IsFalse(TAtlasWelcomeUnsaved.Read(Summary, Read_));
-  TAtlasWelcomeUnsaved.Write(Summary, GitState(Root, nil));
-  Assert.IsTrue(TAtlasProjectSummaries.Parse(TAtlasProjectSummaries.ToJson(Summary), Parsed));
-  Assert.AreEqual('C:\Neu\Neu.dproj', Parsed.Project);
-  Assert.IsTrue(TAtlasWelcomeUnsaved.Read(Parsed, Read_));
-  // Unbekannte Arten einer späteren Fassung werden übergangen.
-  Assert.IsTrue(TAtlasWelcomeUnsaved.FromJson('{"kind":"git","items":[{"kind":"neu","count":1},' +
-    '{"kind":"stashes","count":2}]}', Read_));
-  Assert.AreEqual(1, Integer(Length(Read_.Items)));
-  Assert.IsFalse(TAtlasWelcomeUnsaved.FromJson('kein json', Read_));
+  AssertUnsavedRead(Parsed);
+  AssertUnsavedRewrite(Parsed, State);
 end;
 
 procedure TAtlasWelcomeUnsavedTests.PushPlansForCommitsAndBranchesWithoutUpstream;
@@ -858,7 +894,9 @@ begin
   Fake.AddOutgoing('main', 'origin/main', [Commit('c3', 1), Commit('c2', 2), Commit('c1', 3)]);
   Many := nil;
   for Index := 1 to TAtlasWelcomeUnsaved.PushListMax + 5 do
+  begin
     Many := Many + [Commit('x' + IntToStr(Index), Index)];
+  end;
   Fake.AddOutgoing('feature/x', '', Many);
   Pending := Item(TAtlasUnsavedKind.Commits, 3, 3);
   Pending.Branches := ['main', 'dev'];

@@ -142,9 +142,13 @@ var
 begin
   Notes := TRequestDiagnostics.Close;
   if AError <> nil then
-    Events := Events + ['error ' + AMethod + ' ' + AError.ClassName]
+  begin
+    Events := Events + ['error ' + AMethod + ' ' + AError.ClassName];
+  end
   else
+  begin
     Events := Events + ['done ' + AMethod + ' ' + Notes.Reason];
+  end;
 end;
 
 /// <summary>Über eine Interface-Variable, nicht TMemoryWriter.Create direkt an den const-Parameter.</summary>
@@ -584,7 +588,9 @@ begin
       function(const AParams: TJSONValue): TJSONValue
       begin
         if AParams = nil then
+        begin
           raise EConvertError.Create('Kunde');
+        end;
         Result := TJSONNull.Create;
       end);
     Message := TJSONObject.ParseJSONValue('{"jsonrpc": "2.0", "id": 1, "method": "test/empty"}') as TJSONObject;
@@ -662,7 +668,9 @@ begin
   Anonymizer := NewAnonymizer;
   Watch := TStopwatch.StartNew;
   for Index := 1 to Lines do
+  begin
     Assert.AreEqual(AnonymizedLine, Anonymizer.Anonymize(AnonymizeLine));
+  end;
   Watch.Stop;
   Assert.IsTrue(Watch.ElapsedMilliseconds < Lines, Format('%d ms für %d Zeilen', [Watch.ElapsedMilliseconds, Lines]));
   // Ein langer Text mit vielen Treffern (TStringBuilder statt Anhängen) bleibt vollständig.
@@ -681,7 +689,9 @@ begin
       for Index := 1 to ACount do
         try
           if AAnonymizer.Anonymize(AnonymizeLine) <> AnonymizedLine then
+          begin
             TInterlocked.Increment(AFailures^);
+          end;
         except
           TInterlocked.Increment(AFailures^);
         end;
@@ -702,15 +712,23 @@ begin
   Anonymizer := NewAnonymizer;
   Failures := 0;
   for Number := 0 to ThreadCount - 1 do
+  begin
     Threads[Number] := AnonymizeThread(Anonymizer, PerThread, @Failures);
+  end;
   try
     for Number := 0 to ThreadCount - 1 do
+    begin
       Threads[Number].Start;
+    end;
     for Number := 0 to ThreadCount - 1 do
+    begin
       Threads[Number].WaitFor;
+    end;
   finally
     for Number := 0 to ThreadCount - 1 do
+    begin
       Threads[Number].Free;
+    end;
   end;
   Assert.AreEqual(0, Failures);
   Assert.AreEqual(AnonymizedLine, Anonymizer.Anonymize(AnonymizeLine));

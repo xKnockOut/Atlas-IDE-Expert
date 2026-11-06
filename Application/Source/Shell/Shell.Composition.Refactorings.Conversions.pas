@@ -1,0 +1,351 @@
+﻿unit Shell.Composition.Refactorings.Conversions;
+
+// Internals-Rolle Shell: Umwandlungen: Boolean umkehren, lokale Variable und Feld umwandeln, anonyme Methode und
+// Methode umwandeln, Methode ohne Self umwandeln.
+
+interface
+
+uses
+  System.Generics.Collections,
+  System.JSON,
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Lsp.Commands,
+  Shell.Composition.Refactorings.Services;
+
+type
+  TShellConversionRefactorings = class(TShellRefactoringPart)
+  private
+    function InvertBooleanActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    function InvertBoolean(const AArguments: TJSONArray): TJSONValue;
+    function PromoteVariableActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    function PromoteVariable(const AArguments: TJSONArray): TJSONValue;
+    function AnonymousMethodActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    function AnonymousMethod(const AArguments: TJSONArray): TJSONValue;
+    function MethodKindActions(const AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
+    function MethodKind(const AArguments: TJSONArray): TJSONValue;
+  public
+    procedure Register(ACommands: TLspCommands); override;
+    function Actions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>; override;
+  end;
+
+
+implementation
+
+uses
+  System.SysUtils,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Documents.Uris,
+  Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Lsp.Positions,
+  Atlas.Common.Lsp.InvertBoolean,
+  Atlas.Common.Lsp.PromoteVariable,
+  Atlas.Common.Lsp.AnonymousMethods,
+  Atlas.Common.Lsp.MethodWithoutSelf,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TConversionRefactoringText = (InvertBoolean, PromoteVariable, AnonymousMethod, MethodKind);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TConversionRefactoringText] of TAtlasText = (
+    (De: 'Boolean umkehren'; En: 'Invert Boolean'),
+    (De: 'Lokale Variable und Feld umwandeln'; En: 'Convert local variable and field'),
+    (De: 'Anonyme Methode und Methode umwandeln'; En: 'Convert anonymous method and method'),
+    (De: 'Methode ohne Self umwandeln'; En: 'Convert method without Self'));
+
+function InvertBooleanContextOf(const ASettings: TRefactoringSettings): TInvertBooleanContext;
+begin
+  Result := Default(TInvertBooleanContext);
+  Result.Antonyms := ASettings.InvertBooleanAntonyms;
+  Result.Prefix := ASettings.InvertBooleanFallbackPrefix;
+  Result.IncludeDfm := ASettings.InvertBooleanIncludeDfm;
+end;
+
+procedure TShellConversionRefactorings.Register(ACommands: TLspCommands);
+begin
+  ACommands.Register(TLspInvertBoolean.ApplyCommand, InvertBoolean);
+  ACommands.Register(TLspPromoteVariable.ApplyCommand, PromoteVariable);
+  ACommands.Register(TLspAnonymousMethods.ApplyCommand, AnonymousMethod);
+  ACommands.Register(TLspMethodWithoutSelf.ApplyCommand, MethodKind);
+end;
+
+function TShellConversionRefactorings.Actions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
+begin
+  Result := InvertBooleanActions(AUri, ARange.StartPos);
+  Result := Result + PromoteVariableActions(AUri, ARange.StartPos);
+  Result := Result + AnonymousMethodActions(AUri, ARange.StartPos);
+  Result := Result + MethodKindActions(AUri, ARange.StartPos);
+end;
+
+function TShellConversionRefactorings.InvertBooleanActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  mSettings: TRefactoringSettings;
+  mDocument: ITextDocument;
+  mResolver: TNameResolver;
+  mContext: TInvertBooleanContext;
+begin
+  Result := nil;
+  mSettings := Settings(AUri);
+  if not TryOpen(AUri, mSettings.InvertBoolean, mDocument) then
+  begin
+    Exit;
+  end;
+  mContext := InvertBooleanContextOf(mSettings);
+  mContext.Index := Index;
+  mContext.Files := ProjectFiles;
+  mResolver := NewResolver;
+  try
+    Result := TLspInvertBoolean.Actions(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
+      TDocumentUris.ToPath(AUri), AUri, APosition, mContext);
+  finally
+    mResolver.Free;
+  end;
+end;
+
+function TShellConversionRefactorings.InvertBoolean(const AArguments: TJSONArray): TJSONValue;
+var
+  mUri: string;
+  mSettings: TRefactoringSettings;
+  mDocument: ITextDocument;
+  mResolver: TNameResolver;
+  mContext: TInvertBooleanContext;
+  mAnswer: TJSONObject;
+begin
+  // Argumente: URI, Position, neuer Name.
+  Require(AArguments, ['uri', 'position', 'name']);
+  mUri := AArguments.Items[0].Value;
+  mSettings := Settings(mUri);
+  mDocument := Open(mUri, mSettings.InvertBoolean, Disabled(cTexts[TConversionRefactoringText.InvertBoolean].Text,
+    'refactoring.invertBoolean'));
+  mContext := InvertBooleanContextOf(mSettings);
+  mContext.Index := Index;
+  mContext.Files := ProjectFiles;
+  mContext.ReadText := Reader;
+  mContext.NewName := Trim(AArguments.Items[2].Value);
+  mResolver := NewResolver;
+  try
+    mAnswer := TLspInvertBoolean.Execute(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
+      TDocumentUris.ToPath(mUri), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]), mContext);
+  finally
+    mResolver.Free;
+  end;
+  Log(Format('Boolean umkehren: %d Stellen in %d Dateien, %d Warnungen', [Number(mAnswer, 'places'),
+    Number(mAnswer, 'files'), Count(mAnswer, 'warnings')]));
+  Result := mAnswer;
+end;
+
+function TShellConversionRefactorings.PromoteVariableActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  mDocument: ITextDocument;
+  mShared: ISharedSyntaxTree;
+  mResolver: TNameResolver;
+  mFileName: string;
+begin
+  Result := nil;
+  if not TryOpen(AUri, Settings(AUri).PromoteVariable, mDocument) then
+  begin
+    Exit;
+  end;
+  mShared := TSyntaxTreeCache.Get(mDocument, nil);
+  mFileName := TDocumentUris.ToPath(AUri);
+  mResolver := NewResolver;
+  try
+    mResolver.PinTree(mShared.Tree, mFileName);
+    try
+      Result := TLspPromoteVariable.Actions(mShared.Tree, mDocument.Text, AUri, APosition,
+        TLspPromoteVariable.Lookup(mResolver, mShared.Tree, mFileName, Reader));
+    finally
+      mResolver.UnpinTree;
+    end;
+  finally
+    mResolver.Free;
+  end;
+end;
+
+function TShellConversionRefactorings.PromoteVariable(const AArguments: TJSONArray): TJSONValue;
+var
+  mUri, mFileName: string;
+  mDocument: ITextDocument;
+  mShared: ISharedSyntaxTree;
+  mResolver: TNameResolver;
+  mAnswer: TJSONObject;
+  mContext: TPromoteVariableContext;
+begin
+  // Argumente: URI, Position, Name.
+  Require(AArguments, ['uri', 'position', 'name']);
+  mUri := AArguments.Items[0].Value;
+  mDocument := Open(mUri, Settings(mUri).PromoteVariable,
+    Disabled(cTexts[TConversionRefactoringText.PromoteVariable].Text, 'refactoring.promoteVariable'));
+  mShared := TSyntaxTreeCache.Get(mDocument, nil);
+  mFileName := TDocumentUris.ToPath(mUri);
+  mResolver := NewResolver;
+  try
+    mResolver.PinTree(mShared.Tree, mFileName);
+    try
+      mContext.Lookup := TLspPromoteVariable.Lookup(mResolver, mShared.Tree, mFileName, Reader);
+      mContext.Style := FormatStyle(mUri);
+      mContext.NewName := Trim(AArguments.Items[2].Value);
+      mAnswer := TLspPromoteVariable.Execute(mShared.Tree, mDocument.Text, mUri,
+        TLspPositions.ReadPosition(AArguments.Items[1]), mContext);
+    finally
+      mResolver.UnpinTree;
+    end;
+  finally
+    mResolver.Free;
+  end;
+  Log(Format('Variable/Feld umwandeln: %d Stellen, %d Warnungen', [Number(mAnswer, 'places'),
+    Count(mAnswer, 'warnings')]));
+  Result := mAnswer;
+end;
+
+function TShellConversionRefactorings.AnonymousMethodActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  mDocument: ITextDocument;
+  mShared: ISharedSyntaxTree;
+  mResolver: TNameResolver;
+  mSettings: TRefactoringSettings;
+  mFileName: string;
+  mRequest: TAnonymousMethodRequest;
+begin
+  Result := nil;
+  mSettings := Settings(AUri);
+  if not TryOpen(AUri, mSettings.AnonymousMethod, mDocument) then
+  begin
+    Exit;
+  end;
+  mShared := TSyntaxTreeCache.Get(mDocument, nil);
+  mFileName := TDocumentUris.ToPath(AUri);
+  mResolver := NewResolver;
+  try
+    mResolver.PinTree(mShared.Tree, mFileName);
+    try
+      mRequest.Tree := mShared.Tree;
+      mRequest.Text := mDocument.Text;
+      mRequest.Uri := AUri;
+      mRequest.Position := APosition;
+      mRequest.Lookup := TLspAnonymousMethods.Lookup(mResolver, mShared.Tree, mFileName, Reader);
+      mRequest.Capture := TLspAnonymousMethods.CaptureOf(mSettings.AnonymousMethodDeferredCapture);
+      mRequest.Style := FormatStyle(AUri);
+      Result := TLspAnonymousMethods.Actions(mRequest);
+    finally
+      mResolver.UnpinTree;
+    end;
+  finally
+    mResolver.Free;
+  end;
+end;
+
+function TShellConversionRefactorings.AnonymousMethod(const AArguments: TJSONArray): TJSONValue;
+var
+  mUri, mFileName: string;
+  mDocument: ITextDocument;
+  mShared: ISharedSyntaxTree;
+  mResolver: TNameResolver;
+  mAnswer: TJSONObject;
+  mSettings: TRefactoringSettings;
+  mRequest: TAnonymousMethodRequest;
+begin
+  // Argumente: URI, Position, Name.
+  Require(AArguments, ['uri', 'position', 'name']);
+  mUri := AArguments.Items[0].Value;
+  mSettings := Settings(mUri);
+  mDocument := Open(mUri, mSettings.AnonymousMethod,
+    Disabled(cTexts[TConversionRefactoringText.AnonymousMethod].Text, 'refactoring.anonymousMethod'));
+  mShared := TSyntaxTreeCache.Get(mDocument, nil);
+  mFileName := TDocumentUris.ToPath(mUri);
+  mResolver := NewResolver;
+  try
+    mResolver.PinTree(mShared.Tree, mFileName);
+    try
+      mRequest.Tree := mShared.Tree;
+      mRequest.Text := mDocument.Text;
+      mRequest.Uri := mUri;
+      mRequest.Position := TLspPositions.ReadPosition(AArguments.Items[1]);
+      mRequest.Lookup := TLspAnonymousMethods.Lookup(mResolver, mShared.Tree, mFileName, Reader);
+      mRequest.Capture := TLspAnonymousMethods.CaptureOf(mSettings.AnonymousMethodDeferredCapture);
+      mRequest.Style := FormatStyle(mUri);
+      mAnswer := TLspAnonymousMethods.Execute(mRequest, Trim(AArguments.Items[2].Value));
+    finally
+      mResolver.UnpinTree;
+    end;
+  finally
+    mResolver.Free;
+  end;
+  Log(Format('Anonyme Methode umwandeln: %d Änderungen, %d Warnungen', [Number(mAnswer, 'places'),
+    Count(mAnswer, 'warnings')]));
+  Result := mAnswer;
+end;
+
+function TShellConversionRefactorings.MethodKindActions(const AUri: string;
+  const APosition: TTextPosition): TArray<TJSONObject>;
+var
+  mDocument: ITextDocument;
+  mShared: ISharedSyntaxTree;
+  mResolver: TNameResolver;
+  mFileName: string;
+begin
+  Result := nil;
+  if not TryOpen(AUri, Settings(AUri).MethodKind, mDocument) then
+  begin
+    Exit;
+  end;
+  mShared := TSyntaxTreeCache.Get(mDocument, nil);
+  mFileName := TDocumentUris.ToPath(AUri);
+  mResolver := NewResolver;
+  try
+    mResolver.PinTree(mShared.Tree, mFileName);
+    try
+      Result := TLspMethodWithoutSelf.Actions(mShared.Tree, mDocument.Text, AUri, APosition,
+        TLspMethodWithoutSelf.Lookup(mResolver, mShared.Tree, mFileName, Reader));
+    finally
+      mResolver.UnpinTree;
+    end;
+  finally
+    mResolver.Free;
+  end;
+end;
+
+function TShellConversionRefactorings.MethodKind(const AArguments: TJSONArray): TJSONValue;
+var
+  mUri: string;
+  mDocument: ITextDocument;
+  mResolver: TNameResolver;
+  mAnswer: TJSONObject;
+  mSettings: TRefactoringSettings;
+  mContext: TMethodKindContext;
+begin
+  // Argumente: URI, Position, Umwandlung.
+  Require(AArguments, ['uri', 'position', 'conversion']);
+  mUri := AArguments.Items[0].Value;
+  mSettings := Settings(mUri);
+  mDocument := Open(mUri, mSettings.MethodKind,
+    Disabled(cTexts[TConversionRefactoringText.MethodKind].Text, 'refactoring.methodKind'));
+  mContext := Default(TMethodKindContext);
+  mContext.Index := Index;
+  mContext.Files := ProjectFiles;
+  mContext.ReadText := Reader;
+  mContext.WithStatic := mSettings.MethodKindStatic;
+  mContext.Conversion := Trim(AArguments.Items[2].Value);
+  mContext.Style := FormatStyle(mUri);
+  mResolver := NewResolver;
+  try
+    mAnswer := TLspMethodWithoutSelf.Execute(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree,
+      TDocumentUris.ToPath(mUri), mDocument.Text, TLspPositions.ReadPosition(AArguments.Items[1]), mContext);
+  finally
+    mResolver.Free;
+  end;
+  Log(Format('Methode ohne Self umwandeln: %d Änderungen, %d Aufrufe, %d Warnungen', [Number(mAnswer, 'places'),
+    Number(mAnswer, 'calls'), Count(mAnswer, 'warnings')]));
+  Result := mAnswer;
+end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Composition.Refactorings.Conversions', cTexts);
+
+end.

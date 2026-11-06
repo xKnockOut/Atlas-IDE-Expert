@@ -67,14 +67,18 @@ var
   Offsets: TArray<Integer>;
   Index, Start, Stop: Integer;
 begin
-  if not TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(ALine + 1, 0), nil, nil, Edits, nil,
-    AVersion) then
+  if not TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(ALine + 1, 0),
+    TSlashEnvironment.Create(nil, nil, nil, AVersion, '', nil), Edits) then
+  begin
     Exit('');
+  end;
   Lines := AText.Split([#10]);
   SetLength(Offsets, Length(Lines) + 1);
   Offsets[0] := 0;
   for Index := 0 to High(Lines) do
+  begin
     Offsets[Index + 1] := Offsets[Index] + Length(Lines[Index]) + 1;
+  end;
   TArray.Sort<TRuleEdit>(Edits, TComparer<TRuleEdit>.Construct(
     function(const ALeft, ARight: TRuleEdit): Integer
     begin
@@ -207,8 +211,8 @@ var
 begin
   Host := TRecordingSlashHost.Create;
   Keep := Host;
-  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(FormUnit, TTextPosition.Create(16, 0), nil, nil, Edits, nil,
-    '', 'file:///U.pas', Keep));
+  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(FormUnit, TTextPosition.Create(16, 0),
+    TSlashEnvironment.Create(nil, nil, nil, '', 'file:///U.pas', Keep), Edits));
   Assert.AreEqual(1, Integer(Length(Host.Notes)));
   // Zeile 18 (1-basiert) wandert in TThread.Queue; Summe wird nach dem Block gelesen (#143).
   Assert.Contains(Host.Notes[0], 'Zeile 18 fasst VCL-Objekte an');
@@ -216,7 +220,7 @@ begin
   // Ohne VCL-Zeilen und ohne spätere Lesezugriffe gibt es keinen Hinweis.
   Host.Notes := nil;
   Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Format(Routine, ['/task', '  Rechne;']),
-    TTextPosition.Create(9, 0), nil, nil, Edits, nil, '', 'file:///U.pas', Keep));
+    TTextPosition.Create(9, 0), TSlashEnvironment.Create(nil, nil, nil, '', 'file:///U.pas', Keep), Edits));
   Assert.AreEqual(0, Integer(Length(Host.Notes)));
 end;
 
@@ -282,8 +286,8 @@ begin
   Host := TRecordingSlashHost.Create;
   Keep := Host;
   Text := Format(Routine, ['/future Wert: Integer', '  Text := Berechne;']);
-  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Text, TTextPosition.Create(9, 0), nil, nil, Edits, nil,
-    '19.0', 'file:///U.pas', Keep));
+  Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Text, TTextPosition.Create(9, 0),
+    TSlashEnvironment.Create(nil, nil, nil, '19.0', 'file:///U.pas', Keep), Edits));
   Assert.IsTrue(Host.HasCursor);
   // Die leere Zeile hinter dem Future, an der Wert.Value gebraucht wird; mit var-Zeile davor (ohne Inline).
   Lines := Expand(Text, 8, '19.0').Split([#10]);

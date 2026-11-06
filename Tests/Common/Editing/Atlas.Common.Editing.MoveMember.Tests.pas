@@ -118,7 +118,9 @@ begin
   Layout := TMemberTransfer.ParseLayout(AText, AClass, Tree);
   try
     for Name in ANames do
+    begin
       Result := Result + [Layout.Find(Name)[0]];
+    end;
   finally
     Layout.Free;
     Tree.Free;
@@ -135,10 +137,14 @@ begin
   Result := '';
   Layout := TMemberTransfer.ParseLayout(AText, AClass, Tree);
   if Layout = nil then
+  begin
     Exit('?');
+  end;
   try
     for Line := Layout.HeaderLine to Layout.EndLine do
+    begin
       Result := Result + Trim(Layout.Lines[Line]) + '|';
+    end;
   finally
     Layout.Free;
     Tree.Free;
@@ -188,7 +194,9 @@ begin
   Request.RaiseVisibility := TClassVisibility.Protected_;
   Targets := nil;
   for Name in ATargets do
+  begin
     Targets := Targets + [TMemberClassRef.Create(FileU, Name)];
+  end;
   Result := TMoveMember.PushDown(FFiles, TMemberClassRef.Create(FileU, 'TBase'), Targets, Request, APlan,
     FReason);
   FText := FFiles.Text(FileU);

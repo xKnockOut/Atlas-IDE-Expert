@@ -65,50 +65,102 @@ type
   /// <summary>Eine Stufe des Aufbaus ist fertig; APartial ist der Stand bis dahin.</summary>
   TIndexStageDone = reference to procedure(const APartial: TIndexBuildResult);
 
+  /// <summary>Defines je Datei (#647): Dateien unter LibraryRoots (Delphi-Installation) mit LibraryDefines, alle
+  /// anderen mit denen des Projekts.</summary>
+  TIndexFileDefines = record
+    Project: TArray<string>;
+    LibraryDefines: TArray<string>;
+    LibraryRoots: TArray<string>;
+    function DefinesOf(const AFileName: string): TArray<string>;
+    /// <summary>Schlüssel der Defines für AFileName (TUnitIndex.DefinesKey).</summary>
+    function KeyOf(const AFileName: string): string;
+    /// <summary>Liegt AFileName unter einem der Ordner aus ARoots?</summary>
+    class function IsUnder(const AFileName: string; const ARoots: TArray<string>): Boolean; static;
+  end;
+
+  /// <summary>Threadsichere Menge von Schlüsseln (Großschreibung) für den Builder: nicht gefundene Units und
+  /// Dateien, die gerade ein Thread liest (#1236).</summary>
+  TIndexKeySet = class
+  private
+    FKeys: TDictionary<string, Boolean>;
+    FLock: TObject;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    function Contains(const AKey: string): Boolean;
+    procedure Add(const AKey: string);
+    /// <summary>Entfernt AKey und weckt alle, die in Claim darauf warten.</summary>
+    procedure Remove(const AKey: string);
+    procedure Clear;
+    /// <summary>Wartet, bis AKey frei ist, und trägt ihn ein. False (nicht eingetragen), wenn gewartet wurde und
+    /// AAlreadyDone danach gilt: Dann hat ein anderer Thread die Arbeit schon erledigt.</summary>
+    function Claim(const AKey: string; const AAlreadyDone: TFunc<Boolean>): Boolean;
+  end;
+
+  /// <summary>Threadsicherer Vergleichsstand aus dem Cache: EnsureUnit liest ihn aus Anfrage-Threads,
+  /// ReleaseCache leert ihn.</summary>
+  TIndexCacheEntries = class
+  private
+    FEntries: TDictionary<string, TIndexCacheEntry>;
+    FLock: TObject;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure Add(const AFileName: string; const AEntry: TIndexCacheEntry);
+    function TryGet(const AFileName: string; out AEntry: TIndexCacheEntry): Boolean;
+    procedure Clear;
+    function Count: Integer;
+  end;
+
+  /// <summary>Was alle Stufen eines Aufbaus teilen: Fortschritt, Abbruch, Reihenfolge mehrerer Aufbauten,
+  /// Gesamtzahl der Dateien für die Prozentangabe.</summary>
+  TIndexStageRun = record
+    Progress: TIndexProgressEvent;
+    Cancelled: TIndexCancelled;
+    Turn: IIndexTurn;
+    Total: Integer;
+  end;
+
   TIndexBuilder = class
   private
     FIndex: ISymbolIndex;
     FFileSystem: IIndexFileSystem;
-    FDefines: TArray<string>;
     FResolveUnit: TUnitFileResolver;
-    FCached: TDictionary<string, TIndexCacheEntry>;
-    // EnsureUnit liest FCached aus Anfrage-Threads, ReleaseCache leert es.
-    FCacheLock: TObject;
+    FCache: TIndexCacheEntries;
     // Von EnsureUnit aus Anfrage-Threads genutzt.
-    FFailedUnits: TDictionary<string, Boolean>;
-    FFailedLock: TObject;
-    // Dateien, die gerade ein Thread liest (Großschreibung); Wartende schlafen an FFlightLock.
-    FInFlight: TDictionary<string, Boolean>;
-    FFlightLock: TObject;
+    FFailedUnits: TIndexKeySet;
+    // Dateien, die gerade ein Thread liest.
+    FInFlight: TIndexKeySet;
     FIncludePaths: TArray<string>;
-    FLibraryDefines: TArray<string>;
+    FDefines: TIndexFileDefines;
     FUsages: Boolean;
-    FLibraryRoots: TArray<string>;
+    FOnProjectDone: TIndexStageDone;
     function WantsUsages(ALibrary: Boolean): Boolean;
     /// <summary>Taugt der Cache-Eintrag? AMiss nennt bei False den Grund.</summary>
     function CacheFits(const AEntry: TIndexCacheEntry; ALibrary: Boolean; out AMiss: TIndexCacheMiss): Boolean;
     function FromCache(const AEntry: TIndexCacheEntry; ALibrary: Boolean; out AUnit: TUnitIndex): Boolean;
     function IncludeResolver: TIncludeResolver;
-    /// <summary>Symbole für AFileName: Dateien der Installation mit LibraryDefines, alle anderen mit
-    /// denen des Projekts.</summary>
-    function DefinesFor(const AFileName: string): TArray<string>;
-    /// <summary>Schlüssel der Defines für AFileName (TUnitIndex.DefinesKey).</summary>
-    function DefinesKeyFor(const AFileName: string): string;
     /// <summary>Steht AFileName mit Stand AStamp schon passend im Index, z. B. von einem anderen Projekt der
     /// Gruppe mit denselben Defines? Dann nicht noch einmal übernehmen.</summary>
     function AlreadyIndexed(const AFileName: string; AStamp: Int64; ALibrary: Boolean): Boolean;
-    function IncludeStampsOf(const AIncludes: TArray<string>): TArray<Int64>;
-    function IncludesUnchanged(const ACached: TUnitIndex): Boolean;
     /// <summary>Indiziert AFileName; liest ein anderer Thread die Datei gerade, wartet es auf ihn und übernimmt sein
     /// Ergebnis (#1236).</summary>
     function IndexFile(const AFileName: string; ALibrary: Boolean; var AResult: TIndexBuildResult): Boolean;
     function IndexFileNow(const AFileName: string; ALibrary: Boolean; var AResult: TIndexBuildResult): Boolean;
-    procedure IndexReferenced(var AResult: TIndexBuildResult; const AProgress: TIndexProgressEvent;
-      const ACancelled: TIndexCancelled);
-    function IsCancelled(const ACancelled: TIndexCancelled): Boolean;
-    /// <summary>Alle Units aus AFiles, die noch nicht im Index stehen (#648); False bei Abbruch.</summary>
-    function IndexAll(const AFiles: TArray<string>; ALibrary: Boolean; const ALabel: string; ADone, ATotal: Integer;
-      var AResult: TIndexBuildResult; const AProgress: TIndexProgressEvent; const ACancelled: TIndexCancelled): Boolean;
+    /// <summary>Liest AText neu ein und übernimmt die Unit in den Index (Parsed).</summary>
+    procedure ParseFile(const AFileName, AText, AHash: string; AStamp: Int64; ALibrary: Boolean;
+      var AResult: TIndexBuildResult);
+    procedure IndexReferenced(var AResult: TIndexBuildResult; const ARun: TIndexStageRun);
+    /// <summary>Holt die über uses genannte Unit AName in den Index, falls nötig; AUses sind die uses, denen der
+    /// Aufbau weiter folgt. False, wenn es nichts zu folgen gibt.</summary>
+    function NextReferenced(const AName: string; var AResult: TIndexBuildResult;
+      const AProgress: TIndexProgressEvent; out AUses: TArray<string>): Boolean;
+    /// <summary>Eine Stufe (#648): AFiles einlesen, in der Projektstufe auch über uses erreichbare Units. Wartet über
+    /// ARun.Turn auf ihre Reihe; False bei Abbruch (dann ist AResult.Cancelled gesetzt).</summary>
+    function RunStage(AStage: TIndexStage; const AFiles: TArray<string>; const ALabel: string; ADone: Integer;
+      var AResult: TIndexBuildResult; const ARun: TIndexStageRun): Boolean;
+    /// <summary>Eine Dateiänderung übernehmen; liefert die Zahl geänderter Units.</summary>
+    function ApplyChange(const AChange: TFileChange; var AIgnored: TIndexBuildResult): Integer;
   public
     constructor Create(const AIndex: ISymbolIndex; const AFileSystem: IIndexFileSystem;
       const ADefines: TArray<string>; const AResolveUnit: TUnitFileResolver);
@@ -126,11 +178,7 @@ type
       const ACancelled: TIndexCancelled): TIndexBuildResult; overload;
     /// <summary>Aufbau in Stufen (#648): AFiles samt über uses erreichbarer Units, dann ASearchFiles (Projekt),
     /// dann ALibraryFiles (Bibliothek). ATurn ordnet die Stufen mehrerer Aufbauten; nil = ohne Warten.
-    /// AProjectDone läuft nach der Projektstufe (Projektdateien und über uses erreichbare Units).</summary>
-    function Build(const AFiles, ASearchFiles, ALibraryFiles: TArray<string>; const AProgress: TIndexProgressEvent;
-      const ACancelled: TIndexCancelled; const ATurn: IIndexTurn;
-      const AProjectDone: TIndexStageDone): TIndexBuildResult; overload;
-    /// <summary>Wie oben mit AProjectDone = nil.</summary>
+    /// Nach der Projektstufe läuft OnProjectDone.</summary>
     function Build(const AFiles, ASearchFiles, ALibraryFiles: TArray<string>; const AProgress: TIndexProgressEvent;
       const ACancelled: TIndexCancelled; const ATurn: IIndexTurn): TIndexBuildResult; overload;
     /// <summary>Indiziert die Unit, falls noch nicht vorhanden. False, wenn sie nicht gefunden wird.</summary>
@@ -149,18 +197,297 @@ type
     /// <summary>Ordner der Delphi-Installation (BDS-Ordner) samt Unterordnern.
     /// Deren Units kommen als fertige DCUs; die Defines des Projekts wirken nicht auf sie. Leer = alle
     /// Dateien mit den Defines des Projekts.</summary>
-    property LibraryRoots: TArray<string> read FLibraryRoots write FLibraryRoots;
+    property LibraryRoots: TArray<string> read FDefines.LibraryRoots write FDefines.LibraryRoots;
     /// <summary>Symbole für Dateien unter LibraryRoots: nur die des Compilers (Plattform, Version).</summary>
-    property LibraryDefines: TArray<string> read FLibraryDefines write FLibraryDefines;
-    /// <summary>Liegt AFileName unter einem der Ordner aus ARoots?</summary>
-    class function IsUnder(const AFileName: string; const ARoots: TArray<string>): Boolean; static;
+    property LibraryDefines: TArray<string> read FDefines.LibraryDefines write FDefines.LibraryDefines;
+    /// <summary>Läuft nach der Projektstufe (Projektdateien und über uses erreichbare Units) mit dem Stand bis
+    /// dahin, z. B. um den Projekt-Cache früh zu schreiben (#647).</summary>
+    property OnProjectDone: TIndexStageDone read FOnProjectDone write FOnProjectDone;
   end;
 
 implementation
 
 uses
   Atlas.Common.Pascal.IncludeFiles,
-  Atlas.Common.Index.Extractor;
+  Atlas.Common.Index.Extractor,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TBuilderText = (SymbolIndex, SearchPaths, LibraryText, UnitsSymbols);
+
+const
+  cTexts: array[TBuilderText] of TAtlasText = (
+    (De: 'Symbolindex'; En: 'Symbol index'),
+    (De: 'Suchpfade: '; En: 'Search paths: '),
+    (De: 'Bibliothek: '; En: 'Library: '),
+    (De: '%d Units, %d Symbole'; En: '%d units, %d symbols'));
+
+{$SCOPEDENUMS OFF}
+
+function IsCancelled(const ACancelled: TIndexCancelled): Boolean;
+begin
+  Result := Assigned(ACancelled) and ACancelled();
+end;
+
+/// <summary>Zeitstempel der Include-Dateien beim Einlesen, parallel zu AIncludes; -1 = fehlt.</summary>
+function IncludeStampsOf(const AFileSystem: IIndexFileSystem; const AIncludes: TArray<string>): TArray<Int64>;
+var
+  mIndex: Integer;
+begin
+  SetLength(Result, Length(AIncludes));
+  for mIndex := 0 to High(AIncludes) do
+  begin
+    if not AFileSystem.FileStamp(AIncludes[mIndex], Result[mIndex]) then
+    begin
+      Result[mIndex] := -1;
+    end;
+  end;
+end;
+
+/// <summary>Haben alle Include-Dateien von ACached noch den Zeitstempel vom Einlesen (#617)?</summary>
+function IncludesUnchanged(const AFileSystem: IIndexFileSystem; const ACached: TUnitIndex): Boolean;
+var
+  mIndex: Integer;
+  mStamp: Int64;
+begin
+  // Ältere Einträge ohne Zeitstempel gelten als geändert.
+  Result := Length(ACached.IncludeStamps) = Length(ACached.Includes);
+  mIndex := 0;
+  while Result and (mIndex < Length(ACached.Includes)) do
+  begin
+    Result := AFileSystem.FileStamp(ACached.Includes[mIndex], mStamp) and (ACached.IncludeStamps[mIndex] >= 0) and
+      (mStamp = ACached.IncludeStamps[mIndex]);
+    Inc(mIndex);
+  end;
+end;
+
+procedure EnqueueAll(APending: TQueue<string>; const ANames: TArray<string>);
+var
+  mName: string;
+begin
+  for mName in ANames do
+  begin
+    APending.Enqueue(mName);
+  end;
+end;
+
+/// <summary>Units in AIndex gelten als gesehen; ihre uses (interface und implementation) warten in APending.</summary>
+procedure SeedReferenced(const AIndex: ISymbolIndex; APending: TQueue<string>; ASeen: TDictionary<string, Boolean>);
+var
+  mUnit: TUnitIndex;
+begin
+  for mUnit in AIndex.Units do
+  begin
+    ASeen.AddOrSetValue(UpperCase(mUnit.UnitName), True);
+    EnqueueAll(APending, mUnit.InterfaceUses);
+    EnqueueAll(APending, mUnit.ImplementationUses);
+  end;
+end;
+
+/// <summary>Units in AIndex, die AFileName per $I einbinden.</summary>
+function DependentsOf(const AIndex: ISymbolIndex; const AFileName: string): TArray<TUnitIndex>;
+var
+  mList: TList<TUnitIndex>;
+  mUnit: TUnitIndex;
+  mInclude: string;
+begin
+  mList := TList<TUnitIndex>.Create;
+  try
+    for mUnit in AIndex.Units do
+    begin
+      for mInclude in mUnit.Includes do
+      begin
+        if SameText(mInclude, AFileName) then
+        begin
+          mList.Add(mUnit);
+          Break;
+        end;
+      end;
+    end;
+    Result := mList.ToArray;
+  finally
+    mList.Free;
+  end;
+end;
+
+{ TIndexFileDefines }
+
+class function TIndexFileDefines.IsUnder(const AFileName: string; const ARoots: TArray<string>): Boolean;
+var
+  mRoot: string;
+begin
+  // Windows-Pfade auch unter anderen Systemen (Tests): beide Trenner gelten.
+  Result := False;
+  for mRoot in ARoots do
+  begin
+    if (mRoot <> '') and AFileName.StartsWith(mRoot, True) and (CharInSet(mRoot[Length(mRoot)], ['\', '/']) or
+      ((Length(AFileName) > Length(mRoot)) and CharInSet(AFileName[Length(mRoot) + 1], ['\', '/']))) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+function TIndexFileDefines.DefinesOf(const AFileName: string): TArray<string>;
+begin
+  // RTL, VCL und FMX einmal je Compiler und Plattform statt je Projekt-Defines (#647).
+  if IsUnder(AFileName, LibraryRoots) then
+  begin
+    Result := LibraryDefines;
+  end
+  else
+  begin
+    Result := Project;
+  end;
+end;
+
+function TIndexFileDefines.KeyOf(const AFileName: string): string;
+begin
+  Result := AnsiUpperCase(String.Join(';', DefinesOf(AFileName)));
+end;
+
+{ TIndexKeySet }
+
+constructor TIndexKeySet.Create;
+begin
+  inherited Create;
+  FKeys := TDictionary<string, Boolean>.Create;
+  FLock := TObject.Create;
+end;
+
+destructor TIndexKeySet.Destroy;
+begin
+  FLock.Free;
+  FKeys.Free;
+  inherited;
+end;
+
+function TIndexKeySet.Contains(const AKey: string): Boolean;
+begin
+  TMonitor.Enter(FLock);
+  try
+    Result := FKeys.ContainsKey(AnsiUpperCase(AKey));
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+procedure TIndexKeySet.Add(const AKey: string);
+begin
+  TMonitor.Enter(FLock);
+  try
+    FKeys.AddOrSetValue(AnsiUpperCase(AKey), True);
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+procedure TIndexKeySet.Remove(const AKey: string);
+begin
+  TMonitor.Enter(FLock);
+  try
+    FKeys.Remove(AnsiUpperCase(AKey));
+    TMonitor.PulseAll(FLock);
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+procedure TIndexKeySet.Clear;
+begin
+  TMonitor.Enter(FLock);
+  try
+    FKeys.Clear;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+function TIndexKeySet.Claim(const AKey: string; const AAlreadyDone: TFunc<Boolean>): Boolean;
+const
+  cWaitSliceMs = 50;
+var
+  mKey: string;
+  mWaited: Boolean;
+begin
+  mKey := AnsiUpperCase(AKey);
+  mWaited := False;
+  TMonitor.Enter(FLock);
+  try
+    while FKeys.ContainsKey(mKey) do
+    begin
+      mWaited := True;
+      TMonitor.Wait(FLock, cWaitSliceMs);
+    end;
+    Result := not (mWaited and AAlreadyDone());
+    if Result then
+    begin
+      FKeys.Add(mKey, True);
+    end;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+{ TIndexCacheEntries }
+
+constructor TIndexCacheEntries.Create;
+begin
+  inherited Create;
+  FEntries := TDictionary<string, TIndexCacheEntry>.Create;
+  FLock := TObject.Create;
+end;
+
+destructor TIndexCacheEntries.Destroy;
+begin
+  FLock.Free;
+  FEntries.Free;
+  inherited;
+end;
+
+procedure TIndexCacheEntries.Add(const AFileName: string; const AEntry: TIndexCacheEntry);
+begin
+  TMonitor.Enter(FLock);
+  try
+    FEntries.AddOrSetValue(AnsiUpperCase(AFileName), AEntry);
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+function TIndexCacheEntries.TryGet(const AFileName: string; out AEntry: TIndexCacheEntry): Boolean;
+begin
+  TMonitor.Enter(FLock);
+  try
+    Result := FEntries.TryGetValue(AnsiUpperCase(AFileName), AEntry);
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+procedure TIndexCacheEntries.Clear;
+begin
+  TMonitor.Enter(FLock);
+  try
+    FEntries.Clear;
+    FEntries.TrimExcess;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
+
+function TIndexCacheEntries.Count: Integer;
+begin
+  TMonitor.Enter(FLock);
+  try
+    Result := FEntries.Count;
+  finally
+    TMonitor.Exit(FLock);
+  end;
+end;
 
 { TIndexBuilder }
 
@@ -170,44 +497,11 @@ begin
   inherited Create;
   FIndex := AIndex;
   FFileSystem := AFileSystem;
-  FDefines := ADefines;
+  FDefines.Project := ADefines;
   FResolveUnit := AResolveUnit;
-  FCached := TDictionary<string, TIndexCacheEntry>.Create;
-  FCacheLock := TObject.Create;
-  FFailedUnits := TDictionary<string, Boolean>.Create;
-  FFailedLock := TObject.Create;
-  FInFlight := TDictionary<string, Boolean>.Create;
-  FFlightLock := TObject.Create;
-end;
-
-class function TIndexBuilder.IsUnder(const AFileName: string; const ARoots: TArray<string>): Boolean;
-var
-  Root: string;
-begin
-  // Windows-Pfade auch unter anderen Systemen (Tests): beide Trenner gelten.
-  for Root in ARoots do
-    if (Root <> '') and AFileName.StartsWith(Root, True) then
-    begin
-      if CharInSet(Root[Length(Root)], ['\', '/']) then
-        Exit(True);
-      if (Length(AFileName) > Length(Root)) and CharInSet(AFileName[Length(Root) + 1], ['\', '/']) then
-        Exit(True);
-    end;
-  Result := False;
-end;
-
-function TIndexBuilder.DefinesFor(const AFileName: string): TArray<string>;
-begin
-  // RTL, VCL und FMX einmal je Compiler und Plattform statt je Projekt-Defines (#647).
-  if IsUnder(AFileName, FLibraryRoots) then
-    Result := FLibraryDefines
-  else
-    Result := FDefines;
-end;
-
-function TIndexBuilder.DefinesKeyFor(const AFileName: string): string;
-begin
-  Result := AnsiUpperCase(String.Join(';', DefinesFor(AFileName)));
+  FCache := TIndexCacheEntries.Create;
+  FFailedUnits := TIndexKeySet.Create;
+  FInFlight := TIndexKeySet.Create;
 end;
 
 function TIndexBuilder.AlreadyIndexed(const AFileName: string; AStamp: Int64; ALibrary: Boolean): Boolean;
@@ -218,20 +512,17 @@ begin
   // geparst) und ersetzte die des vorigen; die Namenslisten des Index behielten die ersetzten Einträge, bis es
   // mehr tote als lebende gab (Speicher, Rückmeldung 01.11.2026). Bedingungen wie bei CacheFits.
   Result := FIndex.FindFile(AFileName, mExisting) and (mExisting.Stamp = AStamp) and
-    (mExisting.DefinesKey <> '') and (mExisting.DefinesKey = DefinesKeyFor(AFileName)) and
-    (mExisting.Library_ = ALibrary) and IncludesUnchanged(mExisting) and
+    (mExisting.DefinesKey <> '') and (mExisting.DefinesKey = FDefines.KeyOf(AFileName)) and
+    (mExisting.Library_ = ALibrary) and IncludesUnchanged(FFileSystem, mExisting) and
     (mExisting.UsagesIndexed or not WantsUsages(ALibrary)) and
     (not mExisting.Compact or (ALibrary and (FIndex.Budget > 0)));
 end;
 
 destructor TIndexBuilder.Destroy;
 begin
-  FFlightLock.Free;
   FInFlight.Free;
-  FFailedLock.Free;
   FFailedUnits.Free;
-  FCacheLock.Free;
-  FCached.Free;
+  FCache.Free;
   inherited;
 end;
 
@@ -239,13 +530,10 @@ procedure TIndexBuilder.UseCache(const AUnits: TArray<TUnitIndex>);
 var
   UnitIndex: TUnitIndex;
 begin
-  TMonitor.Enter(FCacheLock);
-  try
-    // Ob ein kompakter Eintrag taugt, entscheidet CacheFits beim Einlesen.
-    for UnitIndex in AUnits do
-      FCached.AddOrSetValue(AnsiUpperCase(UnitIndex.FileName), TIndexCacheEntry.FromUnit(UnitIndex));
-  finally
-    TMonitor.Exit(FCacheLock);
+  // Ob ein kompakter Eintrag taugt, entscheidet CacheFits beim Einlesen.
+  for UnitIndex in AUnits do
+  begin
+    FCache.Add(UnitIndex.FileName, TIndexCacheEntry.FromUnit(UnitIndex));
   end;
 end;
 
@@ -253,39 +541,20 @@ procedure TIndexBuilder.UseCache(const AEntries: TArray<TIndexCacheEntry>);
 var
   Entry: TIndexCacheEntry;
 begin
-  TMonitor.Enter(FCacheLock);
-  try
-    for Entry in AEntries do
-      FCached.AddOrSetValue(AnsiUpperCase(Entry.Header.FileName), Entry);
-  finally
-    TMonitor.Exit(FCacheLock);
+  for Entry in AEntries do
+  begin
+    FCache.Add(Entry.Header.FileName, Entry);
   end;
 end;
 
 procedure TIndexBuilder.ReleaseCache;
 begin
-  TMonitor.Enter(FCacheLock);
-  try
-    FCached.Clear;
-    FCached.TrimExcess;
-  finally
-    TMonitor.Exit(FCacheLock);
-  end;
+  FCache.Clear;
 end;
 
 function TIndexBuilder.CachedCount: Integer;
 begin
-  TMonitor.Enter(FCacheLock);
-  try
-    Result := FCached.Count;
-  finally
-    TMonitor.Exit(FCacheLock);
-  end;
-end;
-
-function TIndexBuilder.IsCancelled(const ACancelled: TIndexCancelled): Boolean;
-begin
-  Result := Assigned(ACancelled) and ACancelled();
+  Result := FCache.Count;
 end;
 
 function TIndexBuilder.IncludeResolver: TIncludeResolver;
@@ -306,36 +575,6 @@ begin
     end);
 end;
 
-function TIndexBuilder.IncludeStampsOf(const AIncludes: TArray<string>): TArray<Int64>;
-var
-  Index: Integer;
-begin
-  SetLength(Result, Length(AIncludes));
-  for Index := 0 to High(AIncludes) do
-    if not FFileSystem.FileStamp(AIncludes[Index], Result[Index]) then
-      Result[Index] := -1;
-end;
-
-function TIndexBuilder.IncludesUnchanged(const ACached: TUnitIndex): Boolean;
-var
-  Index: Integer;
-  Stamp: Int64;
-begin
-  if Length(ACached.Includes) = 0 then
-    Exit(True);
-  // Ältere Einträge ohne Zeitstempel gelten als geändert.
-  if Length(ACached.IncludeStamps) <> Length(ACached.Includes) then
-    Exit(False);
-  for Index := 0 to High(ACached.Includes) do
-  begin
-    if not FFileSystem.FileStamp(ACached.Includes[Index], Stamp) then
-      Exit(False);
-    if (ACached.IncludeStamps[Index] < 0) or (Stamp <> ACached.IncludeStamps[Index]) then
-      Exit(False);
-  end;
-  Result := True;
-end;
-
 function TIndexBuilder.WantsUsages(ALibrary: Boolean): Boolean;
 begin
   Result := FUsages and not ALibrary;
@@ -347,7 +586,7 @@ begin
   AMiss := TIndexCacheMiss.NoEntry;
   // Mit Includes kann sich das Ergebnis ändern, ohne dass die Unit sich ändert; ohne erfasste
   // Verwendungen taugt der Eintrag nicht, sobald sie gebraucht werden.
-  Result := IncludesUnchanged(AEntry.Header);
+  Result := IncludesUnchanged(FFileSystem, AEntry.Header);
   if not Result then
   begin
     AMiss := TIndexCacheMiss.Includes;
@@ -363,9 +602,13 @@ begin
   // das, solange ein Budget gilt: der Index würde sie ohnehin wieder kompakt halten. Sonst liefen
   // bei knappem Budget alle Bibliotheken bei jedem Start durch den Parser (Diagnoselog 15.10.2026).
   if AEntry.Header.Compact then
+  begin
     Result := ALibrary and (FIndex.Budget > 0);
+  end;
   if not Result then
+  begin
     AMiss := TIndexCacheMiss.Compact;
+  end;
 end;
 
 function TIndexBuilder.FromCache(const AEntry: TIndexCacheEntry; ALibrary: Boolean; out AUnit: TUnitIndex): Boolean;
@@ -386,44 +629,35 @@ begin
   AUsages := nil;
   Result := FFileSystem.ReadText(AFileName, Text);
   if Result then
-    AUsages := TIndexExtractor.ExtractText(Text, AFileName, DefinesFor(AFileName), IncludeResolver(), True).Usages;
+  begin
+    AUsages := TIndexExtractor.ExtractText(Text, AFileName, FDefines.DefinesOf(AFileName), IncludeResolver(),
+      True).Usages;
+  end;
 end;
 
 function TIndexBuilder.IndexFile(const AFileName: string; ALibrary: Boolean;
   var AResult: TIndexBuildResult): Boolean;
-const
-  cWaitSliceMs = 50;
 var
-  mKey: string;
-  mWaited: Boolean;
-  mExisting: TUnitIndex;
+  mIndex: ISymbolIndex;
+  mFileName: string;
 begin
-  mKey := AnsiUpperCase(AFileName);
-  mWaited := False;
-  TMonitor.Enter(FFlightLock);
-  try
-    while FInFlight.ContainsKey(mKey) do
+  mIndex := FIndex;
+  mFileName := AFileName;
+  // Ein anderer Thread hat die Datei eben gelesen: sein Ergebnis gilt, kein zweites Parsen.
+  if not FInFlight.Claim(AFileName,
+    function: Boolean
+    var
+      mExisting: TUnitIndex;
     begin
-      mWaited := True;
-      TMonitor.Wait(FFlightLock, cWaitSliceMs);
-    end;
-    // Ein anderer Thread hat die Datei eben gelesen: sein Ergebnis gilt, kein zweites Parsen.
-    if mWaited and FIndex.FindFile(AFileName, mExisting) then
-      Exit(True);
-    FInFlight.Add(mKey, True);
-  finally
-    TMonitor.Exit(FFlightLock);
+      Result := mIndex.FindFile(mFileName, mExisting);
+    end) then
+  begin
+    Exit(True);
   end;
   try
     Result := IndexFileNow(AFileName, ALibrary, AResult);
   finally
-    TMonitor.Enter(FFlightLock);
-    try
-      FInFlight.Remove(mKey);
-      TMonitor.PulseAll(FFlightLock);
-    finally
-      TMonitor.Exit(FFlightLock);
-    end;
+    FInFlight.Remove(AFileName);
   end;
 end;
 
@@ -433,9 +667,8 @@ var
   Stamp: Int64;
   Text, Hash: string;
   Entry: TIndexCacheEntry;
-  Cached, UnitIndex: TUnitIndex;
-  HasCache: Boolean;
-  Watch: TStopwatch;
+  Cached: TUnitIndex;
+  HasCache, Taken: Boolean;
   Miss: TIndexCacheMiss;
 begin
   if not FFileSystem.FileStamp(AFileName, Stamp) then
@@ -448,119 +681,127 @@ begin
     Inc(AResult.FromCache);
     Exit(True);
   end;
-  TMonitor.Enter(FCacheLock);
-  try
-    HasCache := FCached.TryGetValue(AnsiUpperCase(AFileName), Entry);
-  finally
-    TMonitor.Exit(FCacheLock);
-  end;
   Miss := TIndexCacheMiss.NoEntry;
-  if HasCache and not CacheFits(Entry, ALibrary, Miss) then
-    HasCache := False;
+  HasCache := FCache.TryGet(AFileName, Entry) and CacheFits(Entry, ALibrary, Miss);
   // Zeitstempel oder Inhalt passen: erst jetzt die Symbole dekodieren; ein beschädigter Block
   // zählt wie ein fehlender Cache-Eintrag.
-  if HasCache and (Entry.Header.Stamp = Stamp) and FromCache(Entry, ALibrary, Cached) then
+  Taken := HasCache and (Entry.Header.Stamp = Stamp) and FromCache(Entry, ALibrary, Cached);
+  if not Taken then
   begin
+    if not FFileSystem.ReadText(AFileName, Text) then
+    begin
+      Inc(AResult.Missing);
+      Exit(False);
+    end;
+    Hash := TIndexCache.HashOf(Text);
+    if HasCache and (Entry.Header.Hash = Hash) then
+    begin
+      Taken := FromCache(Entry, ALibrary, Cached);
+      Miss := TIndexCacheMiss.Damaged;
+    end
+    else if HasCache then
+    begin
+      Miss := TIndexCacheMiss.Changed;
+    end;
+  end;
+  if Taken then
+  begin
+    Cached.Stamp := Stamp;
     Cached.Library_ := ALibrary;
-    Cached.DefinesKey := DefinesKeyFor(AFileName);
+    Cached.DefinesKey := FDefines.KeyOf(AFileName);
     FIndex.AddUnit(Cached);
     Inc(AResult.FromCache);
     Exit(True);
   end;
-  if not FFileSystem.ReadText(AFileName, Text) then
-  begin
-    Inc(AResult.Missing);
-    Exit(False);
-  end;
-  Hash := TIndexCache.HashOf(Text);
-  if HasCache and (Entry.Header.Hash = Hash) then
-  begin
-    if FromCache(Entry, ALibrary, Cached) then
-    begin
-      Cached.Stamp := Stamp;
-      Cached.Library_ := ALibrary;
-      Cached.DefinesKey := DefinesKeyFor(AFileName);
-      FIndex.AddUnit(Cached);
-      Inc(AResult.FromCache);
-      Exit(True);
-    end;
-    Miss := TIndexCacheMiss.Damaged;
-  end
-  else if HasCache then
-    Miss := TIndexCacheMiss.Changed;
-  Watch := TStopwatch.StartNew;
-  UnitIndex := TIndexExtractor.ExtractText(Text, AFileName, DefinesFor(AFileName), IncludeResolver(),
-    WantsUsages(ALibrary));
-  Inc(AResult.ParseMs, Watch.ElapsedMilliseconds);
-  UnitIndex.Stamp := Stamp;
-  UnitIndex.Hash := Hash;
-  UnitIndex.IncludeStamps := IncludeStampsOf(UnitIndex.Includes);
-  UnitIndex.Library_ := ALibrary;
-  UnitIndex.DefinesKey := DefinesKeyFor(AFileName);
-  FIndex.AddUnit(UnitIndex);
-  Inc(AResult.Parsed);
+  ParseFile(AFileName, Text, Hash, Stamp, ALibrary, AResult);
   Inc(AResult.Misses[Miss]);
   Result := True;
 end;
 
-procedure TIndexBuilder.IndexReferenced(var AResult: TIndexBuildResult; const AProgress: TIndexProgressEvent;
-  const ACancelled: TIndexCancelled);
+procedure TIndexBuilder.ParseFile(const AFileName, AText, AHash: string; AStamp: Int64; ALibrary: Boolean;
+  var AResult: TIndexBuildResult);
+var
+  mWatch: TStopwatch;
+  mUnit: TUnitIndex;
+begin
+  mWatch := TStopwatch.StartNew;
+  mUnit := TIndexExtractor.ExtractText(AText, AFileName, FDefines.DefinesOf(AFileName), IncludeResolver(),
+    WantsUsages(ALibrary));
+  Inc(AResult.ParseMs, mWatch.ElapsedMilliseconds);
+  mUnit.Stamp := AStamp;
+  mUnit.Hash := AHash;
+  mUnit.IncludeStamps := IncludeStampsOf(FFileSystem, mUnit.Includes);
+  mUnit.Library_ := ALibrary;
+  mUnit.DefinesKey := FDefines.KeyOf(AFileName);
+  FIndex.AddUnit(mUnit);
+  Inc(AResult.Parsed);
+end;
+
+function TIndexBuilder.NextReferenced(const AName: string; var AResult: TIndexBuildResult;
+  const AProgress: TIndexProgressEvent; out AUses: TArray<string>): Boolean;
+var
+  mExisting: TUnitIndex;
+  mFileName: string;
+  mStamp: Int64;
+  mWatch: TStopwatch;
+begin
+  AUses := nil;
+  if FIndex.FindUnit(AName, mExisting) then
+  begin
+    Exit(False);
+  end;
+  mWatch := TStopwatch.StartNew;
+  mFileName := FResolveUnit(AName);
+  Inc(AResult.ResolveMs, mWatch.ElapsedMilliseconds);
+  if mFileName = '' then
+  begin
+    Exit(False);
+  end;
+  // Unter anderem Namen schon im Index, z. B. "Forms" als Vcl.Forms aus einem anderen Projekt
+  // der Gruppe: nicht neu einlesen. Sonst las jedes Projekt dieselben Units erneut (#647).
+  if not (FIndex.FindFile(mFileName, mExisting) and FFileSystem.FileStamp(mFileName, mStamp) and
+    (mStamp = mExisting.Stamp)) then
+  begin
+    if Assigned(AProgress) then
+    begin
+      AProgress(TIndexProgressKind.Report, AName, -1);
+    end;
+    if not (IndexFile(mFileName, True, AResult) and FIndex.FindFile(mFileName, mExisting)) then
+    begin
+      Exit(False);
+    end;
+  end;
+  // Nur das interface ist von außen sichtbar; dessen uses reichen.
+  AUses := mExisting.InterfaceUses;
+  Result := True;
+end;
+
+procedure TIndexBuilder.IndexReferenced(var AResult: TIndexBuildResult; const ARun: TIndexStageRun);
 var
   Pending: TQueue<string>;
   Seen: TDictionary<string, Boolean>;
-  UnitIndex: TUnitIndex;
-  Name, UsedName, FileName: string;
-  Existing: TUnitIndex;
-  Stamp: Int64;
-  Watch: TStopwatch;
+  Name: string;
+  Uses_: TArray<string>;
 begin
   if not Assigned(FResolveUnit) then
+  begin
     Exit;
+  end;
   Pending := TQueue<string>.Create;
   Seen := TDictionary<string, Boolean>.Create;
   try
-    for UnitIndex in FIndex.Units do
+    SeedReferenced(FIndex, Pending, Seen);
+    while (Pending.Count > 0) and not AResult.Cancelled do
     begin
-      Seen.AddOrSetValue(UpperCase(UnitIndex.UnitName), True);
-      for Name in UnitIndex.InterfaceUses do
-        Pending.Enqueue(Name);
-      for Name in UnitIndex.ImplementationUses do
-        Pending.Enqueue(Name);
-    end;
-    while Pending.Count > 0 do
-    begin
-      if IsCancelled(ACancelled) then
-      begin
-        AResult.Cancelled := True;
-        Exit;
-      end;
+      AResult.Cancelled := IsCancelled(ARun.Cancelled);
       Name := Pending.Dequeue;
-      if Seen.ContainsKey(UpperCase(Name)) then
-        Continue;
-      Seen.Add(UpperCase(Name), True);
-      if FIndex.FindUnit(Name, Existing) then
-        Continue;
-      Watch := TStopwatch.StartNew;
-      FileName := FResolveUnit(Name);
-      Inc(AResult.ResolveMs, Watch.ElapsedMilliseconds);
-      if FileName = '' then
-        Continue;
-      // Unter anderem Namen schon im Index, z. B. "Forms" als Vcl.Forms aus einem anderen Projekt
-      // der Gruppe: nicht neu einlesen. Sonst las jedes Projekt dieselben Units erneut (#647).
-      if FIndex.FindFile(FileName, Existing) and FFileSystem.FileStamp(FileName, Stamp) and
-        (Stamp = Existing.Stamp) then
+      if not AResult.Cancelled and not Seen.ContainsKey(UpperCase(Name)) then
       begin
-        for UsedName in Existing.InterfaceUses do
-          Pending.Enqueue(UsedName);
-        Continue;
-      end;
-      if Assigned(AProgress) then
-        AProgress(TIndexProgressKind.Report, Name, -1);
-      if IndexFile(FileName, True, AResult) and FIndex.FindFile(FileName, UnitIndex) then
-      begin
-        // Nur das interface ist von außen sichtbar; dessen uses reichen.
-        for UsedName in UnitIndex.InterfaceUses do
-          Pending.Enqueue(UsedName);
+        Seen.Add(UpperCase(Name), True);
+        if NextReferenced(Name, AResult, ARun.Progress, Uses_) then
+        begin
+          EnqueueAll(Pending, Uses_);
+        end;
       end;
     end;
   finally
@@ -575,119 +816,93 @@ begin
   Result := Build(AFiles, nil, nil, AProgress, ACancelled, nil);
 end;
 
-function TIndexBuilder.IndexAll(const AFiles: TArray<string>; ALibrary: Boolean; const ALabel: string;
-  ADone, ATotal: Integer; var AResult: TIndexBuildResult; const AProgress: TIndexProgressEvent;
-  const ACancelled: TIndexCancelled): Boolean;
+function TIndexBuilder.RunStage(AStage: TIndexStage; const AFiles: TArray<string>; const ALabel: string;
+  ADone: Integer; var AResult: TIndexBuildResult; const ARun: TIndexStageRun): Boolean;
 var
-  Index: Integer;
-  Existing: TUnitIndex;
+  mIndex: Integer;
+  mExisting: TUnitIndex;
+  mProject: Boolean;
 begin
-  for Index := 0 to High(AFiles) do
+  mProject := AStage = TIndexStage.Project;
+  // Ohne Dateien wartet nur die Projektstufe auf ihre Reihe: Sie folgt auch ohne Projektdateien den uses.
+  if not mProject and (Length(AFiles) = 0) then
   begin
-    if IsCancelled(ACancelled) then
-      Exit(False);
-    // Schon da (anderes Projekt der Gruppe, über uses erreicht): nicht noch einmal lesen.
-    if FIndex.FindFile(AFiles[Index], Existing) then
-      Continue;
-    if Assigned(AProgress) then
-      AProgress(TIndexProgressKind.Report, ALabel + ExtractFileName(AFiles[Index]),
-        ((ADone + Index) * 100) div ATotal);
-    IndexFile(AFiles[Index], ALibrary, AResult);
+    Exit(True);
   end;
-  Result := True;
+  AResult.Cancelled := (ARun.Turn <> nil) and not ARun.Turn.Enter(AStage, ARun.Cancelled);
+  if AResult.Cancelled then
+  begin
+    Exit(False);
+  end;
+  try
+    mIndex := 0;
+    while (mIndex < Length(AFiles)) and not AResult.Cancelled do
+    begin
+      AResult.Cancelled := IsCancelled(ARun.Cancelled);
+      // Schon da (anderes Projekt der Gruppe, über uses erreicht): Suchpfade und Bibliothek nicht noch einmal
+      // lesen. Projektdateien prüft IndexFile selbst (gleiche Defines, AlreadyIndexed).
+      if not AResult.Cancelled and (mProject or not FIndex.FindFile(AFiles[mIndex], mExisting)) then
+      begin
+        if Assigned(ARun.Progress) then
+        begin
+          ARun.Progress(TIndexProgressKind.Report, ALabel + AFiles[mIndex], ((ADone + mIndex) * 100) div ARun.Total);
+        end;
+        IndexFile(AFiles[mIndex], AStage = TIndexStage.Library_, AResult);
+      end;
+      Inc(mIndex);
+    end;
+    if mProject and not AResult.Cancelled then
+    begin
+      IndexReferenced(AResult, ARun);
+    end;
+  finally
+    if ARun.Turn <> nil then
+    begin
+      ARun.Turn.Leave;
+    end;
+  end;
+  Result := not AResult.Cancelled;
 end;
 
 function TIndexBuilder.Build(const AFiles, ASearchFiles, ALibraryFiles: TArray<string>;
   const AProgress: TIndexProgressEvent; const ACancelled: TIndexCancelled; const ATurn: IIndexTurn): TIndexBuildResult;
-begin
-  Result := Build(AFiles, ASearchFiles, ALibraryFiles, AProgress, ACancelled, ATurn, nil);
-end;
-
-function TIndexBuilder.Build(const AFiles, ASearchFiles, ALibraryFiles: TArray<string>;
-  const AProgress: TIndexProgressEvent; const ACancelled: TIndexCancelled; const ATurn: IIndexTurn;
-  const AProjectDone: TIndexStageDone): TIndexBuildResult;
 var
-  Index, Total: Integer;
-
-  function Enter(AStage: TIndexStage): Boolean;
-  begin
-    Result := (ATurn = nil) or ATurn.Enter(AStage, ACancelled);
-  end;
-
-  procedure Leave;
-  begin
-    if ATurn <> nil then
-      ATurn.Leave;
-  end;
-
+  mRun: TIndexStageRun;
 begin
   Result := Default(TIndexBuildResult);
-  Total := Length(AFiles) + Length(ASearchFiles) + Length(ALibraryFiles);
-  if Total = 0 then
-    Total := 1;
+  mRun := Default(TIndexStageRun);
+  mRun.Progress := AProgress;
+  mRun.Cancelled := ACancelled;
+  mRun.Turn := ATurn;
+  mRun.Total := Length(AFiles) + Length(ASearchFiles) + Length(ALibraryFiles);
+  if mRun.Total = 0 then
+  begin
+    mRun.Total := 1;
+  end;
   if Assigned(AProgress) then
-    AProgress(TIndexProgressKind.Started, 'Symbolindex', 0);
+  begin
+    AProgress(TIndexProgressKind.Started, cTexts[TBuilderText.SymbolIndex].Text, 0);
+  end;
   try
-    if not Enter(TIndexStage.Project) then
+    // Units der Suchpfade gehören zum Projekt, auch wenn keine sie einbindet.
+    if RunStage(TIndexStage.Project, AFiles, '', 0, Result, mRun) and Assigned(FOnProjectDone) then
     begin
-      Result.Cancelled := True;
-      Exit;
+      FOnProjectDone(Result);
     end;
-    try
-      for Index := 0 to High(AFiles) do
-      begin
-        if IsCancelled(ACancelled) then
-        begin
-          Result.Cancelled := True;
-          Exit;
-        end;
-        if Assigned(AProgress) then
-          AProgress(TIndexProgressKind.Report, AFiles[Index], (Index * 100) div Total);
-        IndexFile(AFiles[Index], False, Result);
-      end;
-      IndexReferenced(Result, AProgress, ACancelled);
-    finally
-      Leave;
-    end;
-    if Result.Cancelled then
-      Exit;
-    if Assigned(AProjectDone) then
-      AProjectDone(Result);
-    if Length(ASearchFiles) > 0 then
+    if not Result.Cancelled and RunStage(TIndexStage.SearchPaths, ASearchFiles, cTexts[TBuilderText.SearchPaths].Text,
+      Length(AFiles),
+      Result, mRun) then
     begin
-      if not Enter(TIndexStage.SearchPaths) then
-      begin
-        Result.Cancelled := True;
-        Exit;
-      end;
-      try
-        // Units der Suchpfade gehören zum Projekt, auch wenn keine sie einbindet.
-        Result.Cancelled := not IndexAll(ASearchFiles, False, 'Suchpfade: ', Length(AFiles), Total, Result,
-          AProgress, ACancelled);
-      finally
-        Leave;
-      end;
-      if Result.Cancelled then
-        Exit;
-    end;
-    if Length(ALibraryFiles) > 0 then
-    begin
-      if not Enter(TIndexStage.Library_) then
-      begin
-        Result.Cancelled := True;
-        Exit;
-      end;
-      try
-        Result.Cancelled := not IndexAll(ALibraryFiles, True, 'Bibliothek: ',
-          Length(AFiles) + Length(ASearchFiles), Total, Result, AProgress, ACancelled);
-      finally
-        Leave;
-      end;
+      RunStage(TIndexStage.Library_, ALibraryFiles, cTexts[TBuilderText.LibraryText].Text, Length(AFiles) +
+        Length(ASearchFiles), Result,
+        mRun);
     end;
   finally
     if Assigned(AProgress) then
+    begin
       AProgress(TIndexProgressKind.Finished,
-        Format('%d Units, %d Symbole', [FIndex.UnitCount, FIndex.SymbolCount]), 100);
+        cTexts[TBuilderText.UnitsSymbols].Fmt([FIndex.UnitCount, FIndex.SymbolCount]), 100);
+    end;
   end;
 end;
 
@@ -696,31 +911,25 @@ var
   Existing: TUnitIndex;
   FileName: string;
   Ignored: TIndexBuildResult;
-  Failed: Boolean;
 begin
   if FIndex.FindUnit(AUnitName, Existing) then
+  begin
     Exit(True);
-  if not Assigned(FResolveUnit) then
-    Exit(False);
-  TMonitor.Enter(FFailedLock);
-  try
-    Failed := FFailedUnits.ContainsKey(UpperCase(AUnitName));
-  finally
-    TMonitor.Exit(FFailedLock);
   end;
-  if Failed then
+  if not Assigned(FResolveUnit) then
+  begin
     Exit(False);
+  end;
+  if FFailedUnits.Contains(AUnitName) then
+  begin
+    Exit(False);
+  end;
   FileName := FResolveUnit(AUnitName);
   Ignored := Default(TIndexBuildResult);
   Result := (FileName <> '') and IndexFile(FileName, True, Ignored);
   if not Result then
   begin
-    TMonitor.Enter(FFailedLock);
-    try
-      FFailedUnits.AddOrSetValue(UpperCase(AUnitName), True);
-    finally
-      TMonitor.Exit(FFailedLock);
-    end;
+    FFailedUnits.Add(AUnitName);
   end;
 end;
 
@@ -732,80 +941,71 @@ begin
   Result := False;
   // Nur Units, die der Index kennt; neue Dateien kommen wie bisher beim Speichern dazu.
   if not FIndex.FindFile(AFileName, Existing) then
+  begin
     Exit;
+  end;
   Hash := TIndexCache.HashOf(AText);
   if Hash = Existing.Hash then
+  begin
     Exit;
-  UnitIndex := TIndexExtractor.ExtractText(AText, AFileName, DefinesFor(AFileName), IncludeResolver(),
+  end;
+  UnitIndex := TIndexExtractor.ExtractText(AText, AFileName, FDefines.DefinesOf(AFileName), IncludeResolver(),
     WantsUsages(Existing.Library_));
   // Zeitstempel bleibt der der Datei: Beim Speichern liest IndexFile sie dann neu von der Platte.
   UnitIndex.Stamp := Existing.Stamp;
   UnitIndex.Hash := Hash;
-  UnitIndex.IncludeStamps := IncludeStampsOf(UnitIndex.Includes);
+  UnitIndex.IncludeStamps := IncludeStampsOf(FFileSystem, UnitIndex.Includes);
   UnitIndex.Library_ := Existing.Library_;
   FIndex.AddUnit(UnitIndex);
   Result := True;
 end;
 
-function TIndexBuilder.ApplyChanges(const AChanges: TArray<TFileChange>): Integer;
+function TIndexBuilder.ApplyChange(const AChange: TFileChange; var AIgnored: TIndexBuildResult): Integer;
 var
-  Change: TFileChange;
-  Existing: TUnitIndex;
-  Ignored: TIndexBuildResult;
-  Known: Boolean;
-  UnitIndex: TUnitIndex;
-  Dependent: TArray<TUnitIndex>;
-  Include: string;
+  mExisting, mDependent: TUnitIndex;
 begin
   Result := 0;
-  Ignored := Default(TIndexBuildResult);
-  for Change in AChanges do
+  // Units, die die Datei per $I einbinden, neu einlesen.
+  for mDependent in DependentsOf(FIndex, AChange.FileName) do
   begin
-    // Units, die die Datei per $I einbinden, neu einlesen.
-    Dependent := nil;
-    for UnitIndex in FIndex.Units do
-      for Include in UnitIndex.Includes do
-        if SameText(Include, Change.FileName) then
-        begin
-          Dependent := Dependent + [UnitIndex];
-          Break;
-        end;
-    for UnitIndex in Dependent do
-      if IndexFile(UnitIndex.FileName, UnitIndex.Library_, Ignored) then
-        Inc(Result);
-    Known := FIndex.FindFile(Change.FileName, Existing);
-    case Change.Kind of
-      TFileChangeKind.Deleted:
-        if Known then
-        begin
-          FIndex.RemoveFile(Change.FileName);
-          Inc(Result);
-        end;
-      TFileChangeKind.Created, TFileChangeKind.Changed:
-        if Known then
-        begin
-          // IndexFile vergleicht mit dem Cache vom Start; ein geänderter
-          // Zeitstempel führt zum Neueinlesen, gleicher Inhalt nicht.
-          if IndexFile(Change.FileName, Existing.Library_, Ignored) then
-            Inc(Result)
-          else
-          begin
-            FIndex.RemoveFile(Change.FileName);
-            Inc(Result);
-          end;
-        end
-        else
-        begin
-          // Eine neue Datei kann eine bisher fehlende Unit sein.
-          TMonitor.Enter(FFailedLock);
-          try
-            FFailedUnits.Clear;
-          finally
-            TMonitor.Exit(FFailedLock);
-          end;
-        end;
+    if IndexFile(mDependent.FileName, mDependent.Library_, AIgnored) then
+    begin
+      Inc(Result);
     end;
   end;
+  if not FIndex.FindFile(AChange.FileName, mExisting) then
+  begin
+    // Eine neue Datei kann eine bisher fehlende Unit sein.
+    if AChange.Kind <> TFileChangeKind.Deleted then
+    begin
+      FFailedUnits.Clear;
+    end;
+    Exit;
+  end;
+  // IndexFile vergleicht mit dem Cache vom Start; ein geänderter Zeitstempel
+  // führt zum Neueinlesen, gleicher Inhalt nicht. Was sich nicht mehr lesen
+  // lässt oder gelöscht ist, fällt aus dem Index.
+  if (AChange.Kind = TFileChangeKind.Deleted) or not IndexFile(AChange.FileName, mExisting.Library_, AIgnored) then
+  begin
+    FIndex.RemoveFile(AChange.FileName);
+  end;
+  Inc(Result);
 end;
+
+function TIndexBuilder.ApplyChanges(const AChanges: TArray<TFileChange>): Integer;
+var
+  mChange: TFileChange;
+  mIgnored: TIndexBuildResult;
+begin
+  Result := 0;
+  mIgnored := Default(TIndexBuildResult);
+  for mChange in AChanges do
+  begin
+    Inc(Result, ApplyChange(mChange, mIgnored));
+  end;
+end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Index.Builder', cTexts);
 
 end.

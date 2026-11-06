@@ -15,6 +15,9 @@ uses
 
 type
   TConditionalBranches = record
+  private
+    /// <summary>Ändert den Zweigstapel für die Direktive AName; True bei Beginn eines {$IF…}.</summary>
+    class function ApplyDirective(const AName: string; var AStack: TArray<string>; var ANext: Integer): Boolean; static;
   public
     /// <summary>Pfad je Token (gleiche Länge wie ATokens); leer, wenn der Text keine {$IF…} enthält.</summary>
     class function Paths(const ATokens: TArray<TPascalToken>): TArray<string>; static;
@@ -32,11 +35,39 @@ uses
   System.SysUtils,
   Atlas.Common.Pascal.Lexer;
 
+class function TConditionalBranches.ApplyDirective(const AName: string; var AStack: TArray<string>;
+  var ANext: Integer): Boolean;
+var
+  mTop: string;
+  mDot: Integer;
+begin
+  Result := (AName = 'IF') or (AName = 'IFDEF') or (AName = 'IFNDEF') or (AName = 'IFOPT');
+  if Result then
+  begin
+    AStack := AStack + [IntToStr(ANext) + '.0'];
+    Inc(ANext);
+  end
+  else if AStack = nil then
+  begin
+    Exit;
+  end
+  else if (AName = 'ELSE') or (AName = 'ELSEIF') then
+  begin
+    mTop := AStack[High(AStack)];
+    mDot := Pos('.', mTop);
+    AStack[High(AStack)] := Copy(mTop, 1, mDot) + IntToStr(StrToIntDef(Copy(mTop, mDot + 1, MaxInt), 0) + 1);
+  end
+  else if (AName = 'ENDIF') or (AName = 'IFEND') then
+  begin
+    SetLength(AStack, Length(AStack) - 1);
+  end;
+end;
+
 class function TConditionalBranches.Paths(const ATokens: TArray<TPascalToken>): TArray<string>;
 var
   Stack: TArray<string>;
-  Index, Next, Dot: Integer;
-  Name, Path, Top: string;
+  Index, Next: Integer;
+  Path: string;
 begin
   Result := nil;
   Stack := nil;
@@ -46,26 +77,16 @@ begin
   begin
     if ATokens[Index].Kind = TPascalTokenKind.Directive then
     begin
-      Name := TPascalLexer.DirectiveName(ATokens[Index].Text);
-      if (Name = 'IF') or (Name = 'IFDEF') or (Name = 'IFNDEF') or (Name = 'IFOPT') then
+      if ApplyDirective(TPascalLexer.DirectiveName(ATokens[Index].Text), Stack, Next) and (Result = nil) then
       begin
-        if Result = nil then
-          SetLength(Result, Length(ATokens));
-        Stack := Stack + [IntToStr(Next) + '.0'];
-        Inc(Next);
-      end
-      else if ((Name = 'ELSE') or (Name = 'ELSEIF')) and (Stack <> nil) then
-      begin
-        Top := Stack[High(Stack)];
-        Dot := Pos('.', Top);
-        Stack[High(Stack)] := Copy(Top, 1, Dot) + IntToStr(StrToIntDef(Copy(Top, Dot + 1, MaxInt), 0) + 1);
-      end
-      else if ((Name = 'ENDIF') or (Name = 'IFEND')) and (Stack <> nil) then
-        SetLength(Stack, Length(Stack) - 1);
+        SetLength(Result, Length(ATokens));
+      end;
       Path := string.Join('/', Stack);
     end;
     if Result <> nil then
+    begin
       Result[Index] := Path;
+    end;
   end;
 end;
 
@@ -73,7 +94,9 @@ class function TConditionalBranches.PathAt(const APaths: TArray<string>; AIndex:
 begin
   Result := '';
   if (AIndex >= 0) and (AIndex < Length(APaths)) then
+  begin
     Result := APaths[AIndex];
+  end;
 end;
 
 class function TConditionalBranches.Exclusive(const APath, AOther: string): Boolean;
@@ -83,13 +106,21 @@ var
 begin
   Result := False;
   if (APath = '') or (AOther = '') or (APath = AOther) then
+  begin
     Exit;
+  end;
   Mine := APath.Split(['/']);
   Theirs := AOther.Split(['/']);
   for Part in Mine do
+  begin
     for Other in Theirs do
+    begin
       if (Copy(Part, 1, Pos('.', Part)) = Copy(Other, 1, Pos('.', Other))) and (Part <> Other) then
+      begin
         Exit(True);
+      end;
+    end;
+  end;
 end;
 
 class function TConditionalBranches.Implies(const APath, AOuter: string): Boolean;

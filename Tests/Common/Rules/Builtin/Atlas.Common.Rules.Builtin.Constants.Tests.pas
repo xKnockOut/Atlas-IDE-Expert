@@ -147,6 +147,8 @@ type
     [Test]
     procedure ConstantFromOtherUnit;
     [Test]
+    procedure OverloadedMethodsOfOtherUnit;
+    [Test]
     procedure ZeroForPointer;
     [Test]
     procedure ReadingAndShadowingAreSilent;
@@ -189,6 +191,8 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.Constants,
+  Atlas.Common.Rules.Builtin.Constants.Conversions,
+  Atlas.Common.Rules.Builtin.Constants.TypedConstants,
   Atlas.Tests.RuleAssert;
 
 function ConstantFindings(const ASource: string): TArray<TRuleFinding>; overload;
@@ -521,41 +525,29 @@ begin
     '{"rules": {"constant-expression-error": {"exclude": ["Source/*.pas"]}}}', 'Source/Werte.pas'))));
 end;
 
-procedure TConstantExpressionErrorTests.RuleIsRegistered;
+/// <summary>Ob eine der eingebauten Regeln die ID ARuleId trägt.</summary>
+function IsBuiltin(const ARuleId: string): Boolean;
 var
-  Rule: IRule;
-  Found: Boolean;
+  mRule: IRule;
 begin
-  Found := False;
-  for Rule in BuiltinRules do
-    if Rule.Descriptor.Id = ConstantExpressionErrorRuleId then
-      Found := True;
-  Assert.IsTrue(Found, ConstantExpressionErrorRuleId);
-  Found := False;
-  for Rule in BuiltinRules do
-    if Rule.Descriptor.Id = DefaultParameterInvalidRuleId then
-      Found := True;
-  Assert.IsTrue(Found, DefaultParameterInvalidRuleId);
-  Found := False;
-  for Rule in BuiltinRules do
-    if Rule.Descriptor.Id = SignedUnsignedMixRuleId then
-      Found := True;
-  Assert.IsTrue(Found, SignedUnsignedMixRuleId);
-  Found := False;
-  for Rule in BuiltinRules do
-    if Rule.Descriptor.Id = NarrowingAssignmentRuleId then
-      Found := True;
-  Assert.IsTrue(Found, NarrowingAssignmentRuleId);
-  Found := False;
-  for Rule in BuiltinRules do
-    if Rule.Descriptor.Id = TypedConstantModifiedRuleId then
-      Found := True;
-  Assert.IsTrue(Found, TypedConstantModifiedRuleId);
-  Found := False;
-  for Rule in BuiltinRules do
-    if Rule.Descriptor.Id = StringLengthLimitRuleId then
-      Found := True;
-  Assert.IsTrue(Found, StringLengthLimitRuleId);
+  Result := False;
+  for mRule in BuiltinRules do
+  begin
+    if mRule.Descriptor.Id = ARuleId then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+procedure TConstantExpressionErrorTests.RuleIsRegistered;
+begin
+  Assert.IsTrue(IsBuiltin(ConstantExpressionErrorRuleId), ConstantExpressionErrorRuleId);
+  Assert.IsTrue(IsBuiltin(DefaultParameterInvalidRuleId), DefaultParameterInvalidRuleId);
+  Assert.IsTrue(IsBuiltin(SignedUnsignedMixRuleId), SignedUnsignedMixRuleId);
+  Assert.IsTrue(IsBuiltin(NarrowingAssignmentRuleId), NarrowingAssignmentRuleId);
+  Assert.IsTrue(IsBuiltin(TypedConstantModifiedRuleId), TypedConstantModifiedRuleId);
+  Assert.IsTrue(IsBuiltin(StringLengthLimitRuleId), StringLengthLimitRuleId);
 end;
 
 /// <summary>Offset von APosition in AText mit Zeilen aus #10.</summary>
@@ -568,7 +560,9 @@ begin
   while (Line < APosition.Line) and (Index <= Length(AText)) do
   begin
     if AText[Index] = #10 then
+    begin
       Inc(Line);
+    end;
     Inc(Index);
   end;
   Result := Index + APosition.Character;
@@ -583,13 +577,17 @@ var
 begin
   Edits := Copy(AFix.Edits);
   for Index := 0 to High(Edits) do
+  begin
     for Inner := Index + 1 to High(Edits) do
+    begin
       if OffsetIn(AText, Edits[Inner].Range.StartPos) > OffsetIn(AText, Edits[Index].Range.StartPos) then
       begin
         Swap := Edits[Index];
         Edits[Index] := Edits[Inner];
         Edits[Inner] := Swap;
       end;
+    end;
+  end;
   Result := AText;
   for Index := 0 to High(Edits) do
   begin
@@ -989,7 +987,9 @@ var
 begin
   Result := '';
   for Finding in AFindings do
+  begin
     Result := Result + Finding.Message + #10;
+  end;
 end;
 
 procedure TTypedConstantModifiedTests.IssueExampleWithFix;
@@ -1069,7 +1069,9 @@ begin
     begin
       Result := SameText(AFileName, AName);
       if Result then
+      begin
         AData := TEncoding.UTF8.GetBytes(AText);
+      end;
     end;
 end;
 
@@ -1135,6 +1137,26 @@ begin
   Assert.AreEqual(2, Integer(Length(Found)));
   Assert.AreEqual('Standard ist eine typisierte Konstante und wird verändert (wie W1017).', Found[0].Message);
   Assert.AreEqual(0, Integer(Length(Found[0].Fixes)));
+end;
+
+/// <summary>Überladene Methode einer Klasse aus einer anderen Unit: Die erste Überladung hat an der Stelle der
+/// Konstante einen var-Parameter, die aufgerufene nicht. Ohne eindeutige Überladung keine Meldung.</summary>
+procedure TTypedConstantModifiedTests.OverloadedMethodsOfOtherUnit;
+var
+  mIndex: ISymbolIndex;
+  mFound: TArray<TRuleFinding>;
+begin
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Leser;'#10'interface'#10'type'#10'  TLeser = class'#10 +
+    '    procedure Lies(const A: array of Integer; var B: Integer); overload;'#10 +
+    '    procedure Lies(const A, B: array of Integer; var C: Integer); overload;'#10 +
+    '    procedure Tausche(var A: Integer);'#10'  end;'#10'implementation'#10'end.', 'C:\Projekt\Leser.pas', nil));
+  mFound := TRuleAssert.IndexFindings(TTypedConstantModifiedRule.Create, 'unit Zaehlen;'#10'interface'#10 +
+    'uses'#10'  Leser;'#10'implementation'#10'const'#10'  Glieder: array[0..1] of Integer = (1, 2);'#10 +
+    '  Zaehler: Integer = 0;'#10'procedure Zaehle(ALeser: TLeser);'#10'var'#10'  X: Integer;'#10'begin'#10 +
+    '  ALeser.Lies(Glieder, Glieder, X);'#10'  ALeser.Tausche(Zaehler);'#10'end;'#10'end.',
+    mIndex, '', 'Zaehlen.pas');
+  Assert.AreEqual('Zaehler ist eine typisierte Konstante und wird verändert (wie W1016).'#10, Messages(mFound));
 end;
 
 procedure TTypedConstantModifiedTests.ZeroForPointer;

@@ -34,6 +34,9 @@ type
 
 implementation
 
+uses
+  Atlas.Common.Logging.EntryText;
+
 { TStreamLogSink }
 
 constructor TStreamLogSink.Create(AStream: TStream; AOwnsStream: Boolean);
@@ -46,7 +49,9 @@ end;
 destructor TStreamLogSink.Destroy;
 begin
   if FOwnsStream then
+  begin
     FStream.Free;
+  end;
   inherited;
 end;
 
@@ -70,7 +75,7 @@ procedure TStreamLogSink.Write(const AEntry: TLogEntry);
 var
   Data: TBytes;
 begin
-  Data := TEncoding.UTF8.GetBytes(AEntry.ToText + sLineBreak);
+  Data := TEncoding.UTF8.GetBytes(TLogEntryText.PlainLine(AEntry) + sLineBreak);
   FStream.WriteBuffer(Data, Length(Data));
 end;
 

@@ -33,7 +33,20 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TShutdownLeaksText = (MemoryLeftAtShutdownBytes);
+
+const
+  cTexts: array[TShutdownLeaksText] of TAtlasText = (
+    (De: 'Speicherrest beim Beenden: %d Bytes'; En: 'Memory left at shutdown: %d bytes'));
+
+{$SCOPEDENUMS OFF}
 
 const
   MaxLogFileLength = 1023;
@@ -63,14 +76,16 @@ begin
   {$WARN SYMBOL_PLATFORM DEFAULT}
   Result := Int64(State.TotalAllocatedMediumBlockSize) + Int64(State.TotalAllocatedLargeBlockSize);
   for Index := Low(State.SmallBlockTypeStates) to High(State.SmallBlockTypeStates) do
+  begin
     Inc(Result, Int64(State.SmallBlockTypeStates[Index].AllocatedBlockCount) *
       State.SmallBlockTypeStates[Index].UseableBlockSize);
+  end;
 end;
 {$ENDIF}
 
 class function TShutdownLeaks.Describe(ABytes: Int64): string;
 begin
-  Result := Format('Speicherrest beim Beenden: %d Bytes', [ABytes]);
+  Result := cTexts[TShutdownLeaksText.MemoryLeftAtShutdownBytes].Fmt([ABytes]);
 end;
 
 class procedure TShutdownLeaks.SetLogFile(const AFileName: string);
@@ -80,9 +95,13 @@ begin
   FillChar(LogFileBuffer, SizeOf(LogFileBuffer), 0);
   Count := Length(AFileName);
   if Count > MaxLogFileLength then
+  begin
     Count := 0;
+  end;
   if Count > 0 then
+  begin
     Move(AFileName[1], LogFileBuffer[0], Count * SizeOf(Char));
+  end;
 end;
 
 class procedure TShutdownLeaks.Enable(AReport: TShutdownLeakReport);
@@ -111,13 +130,17 @@ var
 begin
   FileName := PChar(@LogFileBuffer[0]);
   if (FileName = '') or not FileExists(FileName) then
+  begin
     Exit;
+  end;
   AssignFile(Log, FileName);
   {$I-}
   Append(Log);
   {$I+}
   if IOResult <> 0 then
+  begin
     Exit;
+  end;
   try
     // Reines ASCII: passt zu jeder Kodierung der Logdatei.
     Writeln(Log, FormatDateTime('yyyy-mm-dd hh":"nn":"ss.zzz', Now) + ' [WARN] ' + AText); // console-ok: Logdatei
@@ -131,20 +154,27 @@ var
   Rest: Int64;
 begin
   if not Enabled then
+  begin
     Exit;
+  end;
   Rest := TShutdownLeaks.AllocatedBytes - Baseline;
   if Rest <= 0 then
+  begin
     Exit;
+  end;
   try
     AppendToLog(TShutdownLeaks.Describe(Rest));
     if Assigned(Report) then
+    begin
       Report(Rest);
+    end;
   except
     // Beim Beenden darf nichts mehr scheitern.
   end;
 end;
 
 initialization
+  TAtlasTextTables.Add('Atlas.Common.Diagnostics.ShutdownLeaks', cTexts);
   Prewarm;
   Baseline := TShutdownLeaks.AllocatedBytes;
 

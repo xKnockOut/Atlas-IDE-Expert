@@ -70,7 +70,37 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Dfm.Contract,
-  Atlas.Common.Dfm.Parser;
+  Atlas.Common.Dfm.Parser,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TDataBindingText = (CycleTitle, Cycle, MasterTitle, NoMasterFields, RequiredTitle, RequiredField, OnlyInvisible,
+    NoControl, TypeTitle, ShowsField, DoubleTitle, BothBound, ForeignTitle, ForeignAccess);
+
+const
+  cTexts: array[TDataBindingText] of TAtlasText = (
+    (De: 'Zirkuläre Master-Detail- bzw. DataSource-Verknüpfung'; En: 'Circular master-detail or DataSource link'),
+    (De: 'Datenquellen bilden einen Kreis: '; En: 'Data sources form a cycle: '),
+    (De: 'Master-Detail ohne MasterFields'; En: 'Master-detail without MasterFields'),
+    (De: '%s hat MasterSource = %s, aber keine MasterFields: das Detail zeigt alle Datensätze';
+     En: '%s has MasterSource = %s but no MasterFields: the detail shows all records'),
+    (De: 'Pflichtfeld ohne sichtbares Eingabe-Control'; En: 'Required field without a visible input control'),
+    (De: 'Pflichtfeld %s.%s hat %s'; En: 'Required field %s.%s has %s'),
+    (De: 'nur unsichtbare Eingabe-Controls'; En: 'only invisible input controls'),
+    (De: 'kein Eingabe-Control'; En: 'no input control'),
+    (De: 'Datensensitives Control passt nicht zum Feldtyp'; En: 'Data-aware control does not fit the field type'),
+    (De: '%s: %s zeigt das Feld %s vom Typ %s'; En: '%s: %s shows the field %s of type %s'),
+    (De: 'Zwei Controls an demselben DataSource und DataField';
+     En: 'Two controls on the same DataSource and DataField'),
+    (De: '%s und %s sind beide an %s.%s gebunden'; En: '%s and %s are both bound to %s.%s'),
+    (De: 'Zugriff auf Controls eines anderen Formulars'; En: 'Access to controls of another form'),
+    (De: 'Zugriff auf %s.%s eines anderen Formulars; besser über eine Methode oder Property von %s';
+     En: 'Access to %s.%s of another form; better via a method or property of %s'));
+
+{$SCOPEDENUMS OFF}
 
 type
   /// <summary>Objekte der Formulardatei und Stelle der Formularklasse in der Unit.</summary>
@@ -104,13 +134,19 @@ begin
   FObjects := TList<TDfmObject>.Create;
   FParents := TDictionary<TDfmObject, TDfmObject>.Create;
   if (AContext.FormText = '') or (AContext.Tree = nil) then
+  begin
     Exit;
+  end;
   FDocument := TDfmParser.Parse(AContext.FormText);
   if FDocument.Root = nil then
+  begin
     Exit;
+  end;
   FValid := FindAnchor(AContext.Tree.Root, FDocument.Root.TypeName);
   if FValid then
+  begin
     Collect(FDocument.Root, nil);
+  end;
 end;
 
 destructor TBindingModel.Destroy;
@@ -142,10 +178,14 @@ begin
         Exit(True);
       end;
       for Index := Node.ChildCount - 1 downto 0 do
+      begin
         if Node.Children[Index].Kind in [TSyntaxKind.UnitFile, TSyntaxKind.ProgramFile,
           TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection, TSyntaxKind.TypeSection,
           TSyntaxKind.TypeDecl] then
+        begin
           Pending.Push(Node.Children[Index]);
+        end;
+      end;
     end;
   finally
     Pending.Free;
@@ -158,9 +198,13 @@ var
 begin
   FObjects.Add(AObject);
   if AParent <> nil then
+  begin
     FParents.Add(AObject, AParent);
+  end;
   for Child in AObject.Children do
+  begin
     Collect(Child, AObject);
+  end;
 end;
 
 function TBindingModel.Value(AObject: TDfmObject; const AName: string): string;
@@ -168,8 +212,12 @@ var
   Item: TDfmProperty;
 begin
   for Item in AObject.Properties do
+  begin
     if SameText(Item.Name, AName) then
+    begin
       Exit(Trim(Item.Value));
+    end;
+  end;
   Result := '';
 end;
 
@@ -178,17 +226,25 @@ var
   Obj: TDfmObject;
 begin
   if (AName = '') or (Pos('.', AName) > 0) then
+  begin
     Exit(nil);
+  end;
   for Obj in FObjects do
+  begin
     if SameText(Obj.Name, AName) then
+    begin
       Exit(Obj);
+    end;
+  end;
   Result := nil;
 end;
 
 function TBindingModel.ParentOf(AObject: TDfmObject): TDfmObject;
 begin
   if not FParents.TryGetValue(AObject, Result) then
+  begin
     Result := nil;
+  end;
 end;
 
 function TBindingModel.DataSetOf(const ADataSource: string): TDfmObject;
@@ -197,7 +253,9 @@ var
 begin
   Source := Find(ADataSource);
   if Source = nil then
+  begin
     Exit(nil);
+  end;
   Result := Find(Value(Source, 'DataSet'));
 end;
 
@@ -211,7 +269,9 @@ function Unquote(const AValue: string): string;
 begin
   Result := AValue;
   if (Length(Result) >= 2) and (Result[1] = '''') and (Result[Length(Result)] = '''') then
+  begin
     Result := StringReplace(Copy(Result, 2, Length(Result) - 2), '''''', '''', [rfReplaceAll]);
+  end;
 end;
 
 /// <summary>Persistentes Feld AFieldName des Datasets ADataSet; nil ohne.</summary>
@@ -220,8 +280,12 @@ var
   Child: TDfmObject;
 begin
   for Child in ADataSet.Children do
+  begin
     if IsPersistentField(AModel, Child) and SameText(Unquote(AModel.Value(Child, 'FieldName')), AFieldName) then
+    begin
       Exit(Child);
+    end;
+  end;
   Result := nil;
 end;
 
@@ -230,54 +294,80 @@ end;
 function TDfmCircularDataSourceRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('dfm-circular-datasource', TRuleSeverity.Warning,
-    'Zirkuläre Master-Detail- bzw. DataSource-Verknüpfung');
+    cTexts[TDataBindingText.CycleTitle].Text);
+end;
+
+/// <summary>Dataset, an das AObject über MasterSource bzw. DataSource gebunden ist; nil ohne.</summary>
+function LinkedDataSet(AModel: TBindingModel; AObject: TDfmObject): TDfmObject;
+begin
+  Result := AModel.DataSetOf(AModel.Value(AObject, 'MasterSource'));
+  if Result = nil then
+  begin
+    Result := AModel.DataSetOf(AModel.Value(AObject, 'DataSource'));
+  end;
+end;
+
+/// <summary>Weg von AStart über die Verknüpfungen zurück zu AStart ("A → B → A"); '' ohne Kreis.</summary>
+function CirclePath(AModel: TBindingModel; AStart: TDfmObject): string;
+var
+  Current: TDfmObject;
+  Steps: Integer;
+begin
+  Current := AStart;
+  Result := AStart.Name;
+  Steps := 0;
+  repeat
+    Current := LinkedDataSet(AModel, Current);
+    if Current <> nil then
+    begin
+      Result := Result + ' → ' + Current.Name;
+      Inc(Steps);
+    end;
+  until (Current = nil) or (Current = AStart) or (Steps > AModel.Objects.Count);
+  if (Current <> AStart) or (Steps = 0) then
+  begin
+    Result := '';
+  end;
+end;
+
+/// <summary>Kante: Dataset → (MasterSource bzw. DataSource) → Datenquelle → DataSet; ein Feld mit DataField
+/// ist kein Anfang.</summary>
+function StartsLink(AModel: TBindingModel; AObject: TDfmObject): Boolean;
+begin
+  Result := ((AModel.Value(AObject, 'MasterSource') <> '') or (AModel.Value(AObject, 'DataSource') <> '')) and
+    (AModel.Value(AObject, 'DataField') = '');
 end;
 
 procedure TDfmCircularDataSourceRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Model: TBindingModel;
-  Start, Current, Next: TDfmObject;
+  Start, Current: TDfmObject;
   Path: string;
-  Steps: Integer;
   Reported: TList<TDfmObject>;
 begin
   Model := TBindingModel.Create(AContext);
   Reported := TList<TDfmObject>.Create;
   try
     if not Model.Valid then
+    begin
       Exit;
+    end;
     for Start in Model.Objects do
     begin
-      // Kante: Dataset → (MasterSource bzw. DataSource) → Datenquelle → DataSet.
-      if (Model.Value(Start, 'MasterSource') = '') and (Model.Value(Start, 'DataSource') = '') then
+      if not StartsLink(Model, Start) or Reported.Contains(Start) then
+      begin
         Continue;
-      if Model.Value(Start, 'DataField') <> '' then
-        Continue;
-      Current := Start;
-      Path := Start.Name;
-      Steps := 0;
-      repeat
-        Next := Model.DataSetOf(Model.Value(Current, 'MasterSource'));
-        if Next = nil then
-          Next := Model.DataSetOf(Model.Value(Current, 'DataSource'));
-        if Next = nil then
-          Break;
-        Path := Path + ' → ' + Next.Name;
-        Current := Next;
-        Inc(Steps);
-      until (Current = Start) or (Steps > Model.Objects.Count);
-      if (Current = Start) and (Steps > 0) and not Reported.Contains(Start) then
+      end;
+      Path := CirclePath(Model, Start);
+      if Path <> '' then
       begin
         // Einmal je Kreis: alle Mitglieder gelten als gemeldet.
         Current := Start;
         repeat
           Reported.Add(Current);
-          Next := Model.DataSetOf(Model.Value(Current, 'MasterSource'));
-          if Next = nil then
-            Next := Model.DataSetOf(Model.Value(Current, 'DataSource'));
-          Current := Next;
+          Current := LinkedDataSet(Model, Current);
         until (Current = nil) or (Current = Start);
-        AReport.Add(Model.Anchor, 'Datenquellen bilden einen Kreis: ' + Path);
+        AReport.Add(Model.Anchor, cTexts[TDataBindingText.Cycle].Text + Path);
       end;
     end;
   finally
@@ -291,7 +381,7 @@ end;
 function TDfmMasterWithoutFieldsRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('dfm-master-without-fields', TRuleSeverity.Warning,
-    'Master-Detail ohne MasterFields');
+    cTexts[TDataBindingText.MasterTitle].Text);
 end;
 
 procedure TDfmMasterWithoutFieldsRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -302,11 +392,17 @@ begin
   Model := TBindingModel.Create(AContext);
   try
     if not Model.Valid then
+    begin
       Exit;
+    end;
     for Obj in Model.Objects do
+    begin
       if (Model.Value(Obj, 'MasterSource') <> '') and (Model.Value(Obj, 'MasterFields') = '') then
-        AReport.Add(Model.Anchor, Format('%s hat MasterSource = %s, aber keine MasterFields: das Detail zeigt ' +
-          'alle Datensätze', [Obj.Name, Model.Value(Obj, 'MasterSource')]));
+      begin
+        AReport.Add(Model.Anchor, cTexts[TDataBindingText.NoMasterFields].Fmt([Obj.Name, Model.Value(Obj,
+          'MasterSource')]));
+      end;
+    end;
   finally
     Model.Free;
   end;
@@ -317,7 +413,7 @@ end;
 function TDfmRequiredFieldWithoutControlRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('dfm-required-field-without-control', TRuleSeverity.Warning,
-    'Pflichtfeld ohne sichtbares Eingabe-Control');
+    cTexts[TDataBindingText.RequiredTitle].Text);
 end;
 
 /// <summary>Ist AObject und jeder Vorfahr im Formular sichtbar (kein Visible = False)?</summary>
@@ -327,47 +423,68 @@ begin
   while AObject <> nil do
   begin
     if SameText(AModel.Value(AObject, 'Visible'), 'False') then
+    begin
       Exit(False);
+    end;
     AObject := AModel.ParentOf(AObject);
+  end;
+end;
+
+/// <summary>Zeigt AControl das Feld AFieldName des Datasets ADataSet? Gitter ohne DataField zeigen alle Felder.
+/// </summary>
+function ShowsField(AModel: TBindingModel; AControl, ADataSet: TDfmObject; const AFieldName: string): Boolean;
+begin
+  Result := (AModel.DataSetOf(AModel.Value(AControl, 'DataSource')) = ADataSet) and
+    (SameText(Unquote(AModel.Value(AControl, 'DataField')), AFieldName) or
+    ContainsText(AControl.TypeName, 'Grid') and (AModel.Value(AControl, 'DataField') = ''));
+end;
+
+/// <summary>Meldet das Pflichtfeld AField von ADataSet, wenn kein sichtbares Control es zeigt.</summary>
+procedure CheckRequiredField(AModel: TBindingModel; ADataSet, AField: TDfmObject; const AReport: IRuleReport);
+var
+  Control: TDfmObject;
+  FieldName: string;
+  Bound, Shown: Boolean;
+begin
+  FieldName := Unquote(AModel.Value(AField, 'FieldName'));
+  Bound := False;
+  Shown := False;
+  for Control in AModel.Objects do
+  begin
+    if ShowsField(AModel, Control, ADataSet, FieldName) then
+    begin
+      Bound := True;
+      Shown := Shown or IsVisible(AModel, Control);
+    end;
+  end;
+  if not Shown then
+  begin
+    AReport.Add(AModel.Anchor, cTexts[TDataBindingText.RequiredField].Fmt([ADataSet.Name, FieldName,
+      IfThen(Bound, cTexts[TDataBindingText.OnlyInvisible].Text, cTexts[TDataBindingText.NoControl].Text)]));
   end;
 end;
 
 procedure TDfmRequiredFieldWithoutControlRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Model: TBindingModel;
-  DataSet, Field, Control: TDfmObject;
-  FieldName: string;
-  Bound, Shown: Boolean;
+  DataSet, Field: TDfmObject;
 begin
   Model := TBindingModel.Create(AContext);
   try
     if not Model.Valid then
+    begin
       Exit;
+    end;
     for DataSet in Model.Objects do
+    begin
       for Field in DataSet.Children do
       begin
-        if not IsPersistentField(Model, Field) or not SameText(Model.Value(Field, 'Required'), 'True') then
-          Continue;
-        FieldName := Unquote(Model.Value(Field, 'FieldName'));
-        Bound := False;
-        Shown := False;
-        for Control in Model.Objects do
+        if IsPersistentField(Model, Field) and SameText(Model.Value(Field, 'Required'), 'True') then
         begin
-          if Model.DataSetOf(Model.Value(Control, 'DataSource')) <> DataSet then
-            Continue;
-          // Gitter ohne DataField zeigen alle Felder.
-          if SameText(Unquote(Model.Value(Control, 'DataField')), FieldName) or
-            (ContainsText(Control.TypeName, 'Grid') and (Model.Value(Control, 'DataField') = '')) then
-          begin
-            Bound := True;
-            if IsVisible(Model, Control) then
-              Shown := True;
-          end;
+          CheckRequiredField(Model, DataSet, Field, AReport);
         end;
-        if not Shown then
-          AReport.Add(Model.Anchor, Format('Pflichtfeld %s.%s hat %s', [DataSet.Name, FieldName,
-            IfThen(Bound, 'nur unsichtbare Eingabe-Controls', 'kein Eingabe-Control')]));
       end;
+    end;
   finally
     Model.Free;
   end;
@@ -378,7 +495,7 @@ end;
 function TDfmControlFieldTypeMismatchRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('dfm-control-field-type-mismatch', TRuleSeverity.Warning,
-    'Datensensitives Control passt nicht zum Feldtyp');
+    cTexts[TDataBindingText.TypeTitle].Text);
 end;
 
 /// <summary>Passt das Control AControlClass zum Feld AFieldClass? True, wenn unbekannt.</summary>
@@ -387,13 +504,19 @@ const
   BlobFields: array[0..3] of string = ('TBlobField', 'TGraphicField', 'TMemoField', 'TWideMemoField');
 begin
   if SameText(AControlClass, 'TDBCheckBox') then
+  begin
     Exit(SameText(AFieldClass, 'TBooleanField') or not EndsText('Field', AFieldClass) or
       SameText(AFieldClass, 'TStringField') or SameText(AFieldClass, 'TIntegerField') or
       SameText(AFieldClass, 'TSmallintField'));
+  end;
   if SameText(AControlClass, 'TDBImage') then
+  begin
     Exit(SameText(AFieldClass, 'TGraphicField') or SameText(AFieldClass, 'TBlobField'));
+  end;
   if SameText(AControlClass, 'TDBEdit') or SameText(AControlClass, 'TDBText') then
+  begin
     Exit(not SameText(AFieldClass, 'TBooleanField') and not MatchText(AFieldClass, BlobFields));
+  end;
   Result := True;
 end;
 
@@ -406,19 +529,27 @@ begin
   Model := TBindingModel.Create(AContext);
   try
     if not Model.Valid then
+    begin
       Exit;
+    end;
     for Control in Model.Objects do
     begin
       FieldName := Unquote(Model.Value(Control, 'DataField'));
       if FieldName = '' then
+      begin
         Continue;
+      end;
       DataSet := Model.DataSetOf(Model.Value(Control, 'DataSource'));
       if DataSet = nil then
+      begin
         Continue;
+      end;
       Field := FieldOf(Model, DataSet, FieldName);
       if (Field <> nil) and not Compatible(Control.TypeName, Field.TypeName) then
-        AReport.Add(Model.Anchor, Format('%s: %s zeigt das Feld %s vom Typ %s', [Control.Name, Control.TypeName,
+      begin
+        AReport.Add(Model.Anchor, cTexts[TDataBindingText.ShowsField].Fmt([Control.Name, Control.TypeName,
           FieldName, Field.TypeName]));
+      end;
     end;
   finally
     Model.Free;
@@ -430,7 +561,7 @@ end;
 function TDfmDuplicateBindingRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('dfm-duplicate-binding', TRuleSeverity.Warning,
-    'Zwei Controls an demselben DataSource und DataField');
+    cTexts[TDataBindingText.DoubleTitle].Text);
 end;
 
 procedure TDfmDuplicateBindingRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -445,20 +576,30 @@ begin
   Seen := TDictionary<string, TDfmObject>.Create;
   try
     if not Model.Valid then
+    begin
       Exit;
+    end;
     for Control in Model.Objects do
     begin
       if (Model.Value(Control, 'DataSource') = '') or (Model.Value(Control, 'DataField') = '') then
+      begin
         Continue;
+      end;
       // Anzeige-Controls dürfen dasselbe Feld zusätzlich zeigen.
       if SameText(Control.TypeName, 'TDBText') or SameText(Control.TypeName, 'TDBImage') then
+      begin
         Continue;
+      end;
       Key := LowerCase(Model.Value(Control, 'DataSource') + '|' + Unquote(Model.Value(Control, 'DataField')));
       if Seen.TryGetValue(Key, First) then
-        AReport.Add(Model.Anchor, Format('%s und %s sind beide an %s.%s gebunden', [First.Name, Control.Name,
-          Model.Value(Control, 'DataSource'), Unquote(Model.Value(Control, 'DataField'))]))
+      begin
+        AReport.Add(Model.Anchor, cTexts[TDataBindingText.BothBound].Fmt([First.Name, Control.Name,
+          Model.Value(Control, 'DataSource'), Unquote(Model.Value(Control, 'DataField'))]));
+      end
       else
+      begin
         Seen.Add(Key, Control);
+      end;
     end;
   finally
     Seen.Free;
@@ -471,7 +612,7 @@ end;
 function TForeignFormControlAccessRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('foreign-form-control-access', TRuleSeverity.Warning,
-    'Zugriff auf Controls eines anderen Formulars');
+    cTexts[TDataBindingText.ForeignTitle].Text);
 end;
 
 const
@@ -489,9 +630,12 @@ begin
   for Depth := 0 to 16 do
   begin
     if MatchText(Name, FormBases) then
+    begin
       Exit(Depth > 0);
+    end;
     Found := False;
     for Location in AIndex.FindSymbols(Name) do
+    begin
       if (Location.Symbol.Kind = TIndexSymbolKind.ClassType) and (Location.Symbol.Container = '') and
         (Length(Location.Symbol.Ancestors) > 0) then
       begin
@@ -499,55 +643,97 @@ begin
         Found := True;
         Break;
       end;
+    end;
     if not Found then
+    begin
       Exit(False);
+    end;
   end;
   Result := False;
 end;
 
+/// <summary>Token ohne Kommentare und Direktiven.</summary>
+function CodeTokens(const ATokens: TArray<TPascalToken>): TArray<TPascalToken>;
+var
+  Token: TPascalToken;
+begin
+  Result := nil;
+  for Token in ATokens do
+  begin
+    if not (Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+    begin
+      Result := Result + [Token];
+    end;
+  end;
+end;
+
+/// <summary>Steht ab AIndex Name.Feld. am Anfang eines Ausdrucks (nicht hinter einem Punkt)?</summary>
+function IsQualifiedAccess(const ACode: TArray<TPascalToken>; AIndex: Integer): Boolean;
+begin
+  Result := (ACode[AIndex].Kind = TPascalTokenKind.Identifier) and ACode[AIndex + 1].IsSymbol('.') and
+    (ACode[AIndex + 2].Kind = TPascalTokenKind.Identifier) and ACode[AIndex + 3].IsSymbol('.');
+  Result := Result and ((AIndex = 0) or not ACode[AIndex - 1].IsSymbol('.'));
+end;
+
+/// <summary>Formularklasse der globalen Variablen AName aus einer anderen Unit; '' ohne.</summary>
+function ForeignFormClass(const AContext: TRuleContext; const AName: string): string;
+var
+  Location: TSymbolLocation;
+begin
+  Result := '';
+  for Location in AContext.Index.FindSymbols(AName) do
+  begin
+    if (Location.Symbol.Kind = TIndexSymbolKind.Variable) and (Location.Symbol.Container = '') and
+      not SameText(Location.UnitName, AContext.UnitName) then
+    begin
+      Result := Location.Symbol.TypeName;
+      Break;
+    end;
+  end;
+  if (Result <> '') and not IsFormClass(AContext.Index, Result) then
+  begin
+    Result := '';
+  end;
+end;
+
+/// <summary>Ist AName ein Feld der Klasse AFormClass?</summary>
+function IsFormField(const AContext: TRuleContext; const AName, AFormClass: string): Boolean;
+var
+  Member: TSymbolLocation;
+begin
+  Result := False;
+  for Member in AContext.Index.FindSymbols(AName) do
+  begin
+    Result := Result or (Member.Symbol.Kind = TIndexSymbolKind.Field) and
+      SameText(Member.Symbol.Container, AFormClass);
+  end;
+end;
+
 procedure TForeignFormControlAccessRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TArray<TPascalToken>;
   Code: TArray<TPascalToken>;
-  Token: TPascalToken;
   Index: Integer;
-  Location, Member: TSymbolLocation;
   FormClass: string;
-  IsField: Boolean;
 begin
   if (AContext.Index = nil) or (AContext.Tree = nil) then
+  begin
     Exit;
-  Tokens := AContext.Tree.Tokens;
-  Code := nil;
-  for Token in Tokens do
-    if not (Token.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
-      Code := Code + [Token];
+  end;
+  Code := CodeTokens(AContext.Tree.Tokens);
   for Index := 0 to High(Code) - 3 do
   begin
     // Form2.Edit1.…: globale Formularvariable, Punkt, Feld, Punkt.
-    if (Code[Index].Kind <> TPascalTokenKind.Identifier) or not Code[Index + 1].IsSymbol('.') or
-      (Code[Index + 2].Kind <> TPascalTokenKind.Identifier) or not Code[Index + 3].IsSymbol('.') then
+    if not IsQualifiedAccess(Code, Index) then
+    begin
       Continue;
-    if (Index > 0) and Code[Index - 1].IsSymbol('.') then
-      Continue;
-    FormClass := '';
-    for Location in AContext.Index.FindSymbols(Code[Index].Text) do
-      if (Location.Symbol.Kind = TIndexSymbolKind.Variable) and (Location.Symbol.Container = '') and
-        not SameText(Location.UnitName, AContext.UnitName) then
-      begin
-        FormClass := Location.Symbol.TypeName;
-        Break;
-      end;
-    if (FormClass = '') or not IsFormClass(AContext.Index, FormClass) then
-      Continue;
-    IsField := False;
-    for Member in AContext.Index.FindSymbols(Code[Index + 2].Text) do
-      if (Member.Symbol.Kind = TIndexSymbolKind.Field) and SameText(Member.Symbol.Container, FormClass) then
-        IsField := True;
-    if IsField then
+    end;
+    FormClass := ForeignFormClass(AContext, Code[Index].Text);
+    if (FormClass <> '') and IsFormField(AContext, Code[Index + 2].Text, FormClass) then
+    begin
       AReport.Add(TTextRange.Create(Code[Index].StartPos, Code[Index + 2].EndPos),
-        Format('Zugriff auf %s.%s eines anderen Formulars; besser über eine Methode oder Property von %s',
+        cTexts[TDataBindingText.ForeignAccess].Fmt(
         [Code[Index].Text, Code[Index + 2].Text, FormClass]), TRuleConfidence.Medium);
+    end;
   end;
 end;
 
@@ -560,5 +746,8 @@ begin
   ARegistry.Register(TDfmDuplicateBindingRule.Create);
   ARegistry.Register(TForeignFormControlAccessRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.DataBinding', cTexts);
 
 end.

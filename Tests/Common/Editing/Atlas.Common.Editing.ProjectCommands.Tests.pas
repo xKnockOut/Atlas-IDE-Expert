@@ -194,11 +194,13 @@ var
   Pair: TPair<string, string>;
 begin
   for Pair in Files do
+  begin
     if SameFile(Pair.Key, AFileName) then
     begin
       AText := Pair.Value;
       Exit(True);
     end;
+  end;
   AText := '';
   Result := False;
 end;
@@ -208,8 +210,12 @@ var
   Folder: string;
 begin
   for Folder in Folders do
+  begin
     if SameFile(Folder, APath) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -244,11 +250,17 @@ end;
 function TFakeHost.Setting(const AUri, AName: string): string;
 begin
   if AName = TSlashSettings.LogCall then
-    Result := LogCallValue
+  begin
+    Result := LogCallValue;
+  end
   else if AName = TSlashSettings.ComponentPalette then
-    Result := PaletteValue
+  begin
+    Result := PaletteValue;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function TFakeHost.TestUnit(const AUri, AText: string; out ATarget: TSlashTestUnit): Boolean;
@@ -287,8 +299,9 @@ end;
 
 function Run(const ACommand: string; const AHost: ISlashHost; out AEdits: TArray<TRuleEdit>): Boolean;
 begin
-  Result := TSlashCommandRegistry.Shared.AfterEnter(Format(FormUnit, [ACommand]), TTextPosition.Create(10, 0), nil,
-    nil, AEdits, nil, '', TDocumentUris.FromPath(TPath.Combine(GetCurrentDir, 'Main.pas')), AHost);
+  Result := TSlashCommandRegistry.Shared.AfterEnter(Format(FormUnit, [ACommand]), TTextPosition.Create(10, 0),
+    TSlashEnvironment.Create(nil, nil, nil, '', TDocumentUris.FromPath(TPath.Combine(GetCurrentDir, 'Main.pas')),
+    AHost), AEdits);
 end;
 
 procedure TProjectCommandsTests.DefineAddsToActiveConfiguration;
@@ -579,8 +592,9 @@ const
 function RunWithIndex(const ACommand: string; const AHost: ISlashHost; const AIndex: ISymbolIndex;
   out AEdits: TArray<TRuleEdit>): Boolean;
 begin
-  Result := TSlashCommandRegistry.Shared.AfterEnter(Format(FormUnit, [ACommand]), TTextPosition.Create(10, 0), nil,
-    nil, AEdits, AIndex, '', TDocumentUris.FromPath(TPath.Combine(GetCurrentDir, 'Main.pas')), AHost);
+  Result := TSlashCommandRegistry.Shared.AfterEnter(Format(FormUnit, [ACommand]), TTextPosition.Create(10, 0),
+    TSlashEnvironment.Create(nil, nil, AIndex, '', TDocumentUris.FromPath(TPath.Combine(GetCurrentDir, 'Main.pas')),
+    AHost), AEdits);
 end;
 
 procedure TProjectCommandsTests.ComponentGoesIntoPackage;
@@ -631,14 +645,15 @@ begin
   Host.Files.Remove('App.dproj');
   Uri := TDocumentUris.FromPath(TPath.Combine(GetCurrentDir, 'Main.pas'));
   Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Format(FormUnit, ['/component TZaehler']),
-    TTextPosition.Create(10, 0), nil, nil, nil, '', Uri, Keep, TFormatStyle.Default, Edits));
+    TTextPosition.Create(10, 0), TSlashEnvironment.Create(nil, nil, nil, '', Uri, Keep), Edits));
   Text := Host.WrittenFiles[0].Text;
   Assert.IsTrue(Pos(#13, Text) = 0, 'LF wie die Datei des Befehls');
   Assert.IsTrue(Pos(#10'  TZaehler = class(TComponent)'#10'  private'#10, Text) > 0, Text);
   Style := TFormatStyle.Default;
   Style.IndentSize := 4;
   Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(StringReplace(Format(FormUnit, ['/component TZaehler2']),
-    #10, #13#10, [rfReplaceAll]), TTextPosition.Create(10, 0), nil, nil, nil, '', Uri, Keep, Style, Edits));
+    #10, #13#10, [rfReplaceAll]), TTextPosition.Create(10, 0),
+    TSlashEnvironment.Create(nil, nil, nil, '', Uri, Keep).WithStyle(Style), Edits));
   Text := Host.WrittenFiles[0].Text;
   Assert.IsTrue(Pos(#13#10'    TZaehler2 = class(TComponent)'#13#10'    private'#13#10, Text) > 0, Text);
   Assert.IsTrue(Pos(#13#10'    RegisterComponents(', Text) > 0, Text);
@@ -739,18 +754,23 @@ var
   Swap: TRuleEdit;
 begin
   AText := Format(EventUnit, [ACommand]);
-  Result := TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(13, 0), nil, nil, Edits,
-    EventIndex, '', TDocumentUris.FromPath(TPath.Combine(GetCurrentDir, 'Main.pas')), AHost);
+  Result := TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(13, 0),
+    TSlashEnvironment.Create(nil, nil, EventIndex, '', TDocumentUris.FromPath(TPath.Combine(GetCurrentDir,
+    'Main.pas')), AHost), Edits);
   // Von hinten anwenden, damit frühere Positionen gültig bleiben.
   Table := TLineTable.Build(AText);
   for Index := 0 to High(Edits) do
+  begin
     for Next := Index + 1 to High(Edits) do
+    begin
       if Table.OffsetAt(Edits[Next].Range.StartPos) > Table.OffsetAt(Edits[Index].Range.StartPos) then
       begin
         Swap := Edits[Index];
         Edits[Index] := Edits[Next];
         Edits[Next] := Swap;
       end;
+    end;
+  end;
   for Index := 0 to High(Edits) do
   begin
     Start := Table.OffsetAt(Edits[Index].Range.StartPos);
@@ -869,14 +889,17 @@ function RunTest(const AText: string; ALine: Integer; const AHost: ISlashHost; o
 var
   Problems: TArray<TSlashProblem>;
 begin
-  Result := TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(ALine + 1, 0), nil, nil, AEdits,
-    nil, '', TDocumentUris.FromPath(TPath.Combine(GetCurrentDir, 'Kunden.pas')), AHost);
+  Result := TSlashCommandRegistry.Shared.AfterEnter(AText, TTextPosition.Create(ALine + 1, 0),
+    TSlashEnvironment.Create(nil, nil, nil, '', TDocumentUris.FromPath(TPath.Combine(GetCurrentDir, 'Kunden.pas')),
+    AHost), AEdits);
   AReason := '';
   if not Result then
   begin
     Problems := TSlashCommandRegistry.Shared.Problems(AText, nil);
     if Length(Problems) > 0 then
+    begin
       AReason := Problems[0].Message;
+    end;
   end;
 end;
 

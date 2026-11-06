@@ -54,7 +54,9 @@ begin
     TStackTrace.Uninstall;
   end;
   if Trace = '' then
+  begin
     Exit;
+  end;
 end;
 
 procedure TStackTraceTests.TearDown;

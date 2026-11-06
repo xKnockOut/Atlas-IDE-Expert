@@ -66,9 +66,23 @@ implementation
 uses
   System.Generics.Collections,
   System.Generics.Defaults,
+  System.Math,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Lsp.Positions,
-  Atlas.Common.Lsp.FuzzyMatch;
+  Atlas.Common.Lsp.FuzzyMatch,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TWorkspaceSymbolsText = (FieldQueryMissingIn);
+
+const
+  cTexts: array[TWorkspaceSymbolsText] of TAtlasText = (
+    (De: 'Feld "query" fehlt in '; En: 'Field "query" missing in '));
+
+{$SCOPEDENUMS OFF}
 
 type
   TCandidate = record
@@ -100,73 +114,115 @@ begin
   Result := Search(AIndex, AQuery, AMax, nil);
 end;
 
+/// <summary>Deklaration und Implementierung derselben Routine nur einmal: True, wenn ASymbol schon in ASeen
+/// steht; sonst wird es eingetragen.</summary>
+function IsRepeat(ASeen: TDictionary<string, Boolean>; const AUnit: TUnitIndex; const ASymbol: TIndexSymbol): Boolean;
+var
+  mKey: string;
+begin
+  Result := False;
+  if not (ASymbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine]) then
+  begin
+    Exit;
+  end;
+  mKey := LowerCase(AUnit.FileName + '|' + ASymbol.Container + '|' + ASymbol.Name + '|' +
+    IntToStr(Ord(ASymbol.Kind)));
+  Result := ASeen.ContainsKey(mKey);
+  if not Result then
+  begin
+    ASeen.Add(mKey, True);
+  end;
+end;
+
+/// <summary>Treffer ASymbol mit der Güte ARank; höhere Punktzahl zuerst, bei Gleichstand Typen vor anderen
+/// Symbolen.</summary>
+function NewCandidate(const AUnit: TUnitIndex; const ASymbol: TIndexSymbol; ARank: Integer): TCandidate;
+begin
+  Result.Item.Symbol := ASymbol;
+  Result.Item.UnitName := AUnit.UnitName;
+  Result.Item.FileName := AUnit.FileName;
+  Result.Item.Bookmark := False;
+  Result.Rank := -ARank * 2;
+  if not (ASymbol.Kind in TypeKinds) then
+  begin
+    Inc(Result.Rank);
+  end;
+end;
+
+/// <summary>Treffer der Unit AUnit für AQuery (klein geschrieben) an ACandidates anhängen.</summary>
+procedure AddUnitCandidates(ACandidates: TList<TCandidate>; ASeen: TDictionary<string, Boolean>;
+  const AUnit: TUnitIndex; const AQuery: string);
+var
+  mSymbol: TIndexSymbol;
+  mRank: Integer;
+begin
+  for mSymbol in AUnit.Symbols do
+  begin
+    mRank := TFuzzyMatch.Score(mSymbol.Name, AQuery);
+    if (mRank <> TFuzzyMatch.NoMatch) and not IsRepeat(ASeen, AUnit, mSymbol) then
+    begin
+      ACandidates.Add(NewCandidate(AUnit, mSymbol, mRank));
+    end;
+  end;
+end;
+
+/// <summary>Reihenfolge: Güte, Name, Klasse, Unit.</summary>
+function CompareCandidates(const A, B: TCandidate): Integer;
+begin
+  Result := A.Rank - B.Rank;
+  if Result = 0 then
+  begin
+    Result := CompareText(A.Item.Symbol.Name, B.Item.Symbol.Name);
+  end;
+  if Result = 0 then
+  begin
+    Result := CompareText(A.Item.Symbol.Container, B.Item.Symbol.Container);
+  end;
+  if Result = 0 then
+  begin
+    Result := CompareText(A.Item.UnitName, B.Item.UnitName);
+  end;
+end;
+
 class function TLspWorkspaceSymbols.Search(const AIndex: ISymbolIndex; const AQuery: string; AMax: Integer;
   const ACancellation: IJsonRpcCancellationToken): TArray<TWorkspaceSymbol>;
 var
-  Query: string;
-  Candidates: TList<TCandidate>;
-  Seen: TDictionary<string, Boolean>;
-  UnitIndex: TUnitIndex;
-  Symbol: TIndexSymbol;
-  Candidate: TCandidate;
-  Rank, Index: Integer;
-  Key: string;
+  mQuery: string;
+  mCandidates: TList<TCandidate>;
+  mSeen: TDictionary<string, Boolean>;
+  mUnit: TUnitIndex;
+  mIndex: Integer;
 begin
   Result := nil;
-  Query := LowerCase(Trim(AQuery));
-  if Query = '' then
+  mQuery := LowerCase(Trim(AQuery));
+  if mQuery = '' then
+  begin
     Exit;
-  Candidates := TList<TCandidate>.Create;
-  Seen := TDictionary<string, Boolean>.Create;
+  end;
+  mCandidates := TList<TCandidate>.Create;
+  mSeen := TDictionary<string, Boolean>.Create;
   try
-    for UnitIndex in AIndex.Units do
+    for mUnit in AIndex.Units do
     begin
       if ACancellation <> nil then
-        ACancellation.ThrowIfCancellationRequested;
-      for Symbol in UnitIndex.Symbols do
       begin
-        Rank := TFuzzyMatch.Score(Symbol.Name, Query);
-        if Rank = TFuzzyMatch.NoMatch then
-          Continue;
-        // Deklaration und Implementierung derselben Routine nur einmal.
-        Key := LowerCase(UnitIndex.FileName + '|' + Symbol.Container + '|' + Symbol.Name + '|' +
-          IntToStr(Ord(Symbol.Kind)));
-        if (Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine]) then
-        begin
-          if Seen.ContainsKey(Key) then
-            Continue;
-          Seen.Add(Key, True);
-        end;
-        Candidate.Item.Symbol := Symbol;
-        Candidate.Item.UnitName := UnitIndex.UnitName;
-        Candidate.Item.FileName := UnitIndex.FileName;
-        Candidate.Item.Bookmark := False;
-        // Höhere Punktzahl zuerst; bei Gleichstand Typen vor anderen Symbolen.
-        Candidate.Rank := -Rank * 2;
-        if not (Symbol.Kind in TypeKinds) then
-          Inc(Candidate.Rank);
-        Candidates.Add(Candidate);
+        ACancellation.ThrowIfCancellationRequested;
       end;
+      AddUnitCandidates(mCandidates, mSeen, mUnit, mQuery);
     end;
-    Candidates.Sort(TComparer<TCandidate>.Construct(
+    mCandidates.Sort(TComparer<TCandidate>.Construct(
       function(const A, B: TCandidate): Integer
       begin
-        Result := A.Rank - B.Rank;
-        if Result = 0 then
-          Result := CompareText(A.Item.Symbol.Name, B.Item.Symbol.Name);
-        if Result = 0 then
-          Result := CompareText(A.Item.Symbol.Container, B.Item.Symbol.Container);
-        if Result = 0 then
-          Result := CompareText(A.Item.UnitName, B.Item.UnitName);
+        Result := CompareCandidates(A, B);
       end));
-    if Candidates.Count < AMax then
-      AMax := Candidates.Count;
-    SetLength(Result, AMax);
-    for Index := 0 to AMax - 1 do
-      Result[Index] := Candidates[Index].Item;
+    SetLength(Result, Min(AMax, mCandidates.Count));
+    for mIndex := 0 to High(Result) do
+    begin
+      Result[mIndex] := mCandidates[mIndex].Item;
+    end;
   finally
-    Seen.Free;
-    Candidates.Free;
+    mSeen.Free;
+    mCandidates.Free;
   end;
 end;
 
@@ -182,14 +238,18 @@ begin
   Result := nil;
   Query := LowerCase(Trim(AQuery));
   if Query = '' then
+  begin
     Exit;
+  end;
   Candidates := TList<TCandidate>.Create;
   try
     for Hit in AHits do
     begin
       Rank := TFuzzyMatch.Score(Hit.Bookmark.Name, Query);
       if Rank = TFuzzyMatch.NoMatch then
+      begin
         Continue;
+      end;
       Candidate.Item.Symbol := Default(TIndexSymbol);
       Candidate.Item.Symbol.Name := Hit.Bookmark.Name;
       Candidate.Item.Symbol.Range := Hit.Bookmark.Range;
@@ -205,10 +265,14 @@ begin
       begin
         Result := A.Rank - B.Rank;
         if Result = 0 then
+        begin
           Result := CompareText(A.Item.Symbol.Name, B.Item.Symbol.Name);
+        end;
       end));
     for Candidate in Candidates do
+    begin
       Result := Result + [Candidate.Item];
+    end;
   finally
     Candidates.Free;
   end;
@@ -256,13 +320,21 @@ begin
     Info := TJSONObject.Create;
     Info.AddPair('name', Item.Symbol.Name);
     if Item.Bookmark then
-      Info.AddPair('kind', TJSONNumber.Create(BookmarkKind))
+    begin
+      Info.AddPair('kind', TJSONNumber.Create(BookmarkKind));
+    end
     else
+    begin
       Info.AddPair('kind', TJSONNumber.Create(LspKind(Item.Symbol.Kind)));
+    end;
     if Item.Symbol.Container <> '' then
-      Info.AddPair('containerName', Item.UnitName + '.' + Item.Symbol.Container)
+    begin
+      Info.AddPair('containerName', Item.UnitName + '.' + Item.Symbol.Container);
+    end
     else
+    begin
       Info.AddPair('containerName', Item.UnitName);
+    end;
     Location := TJSONObject.Create;
     Location.AddPair('uri', TDocumentUris.FromPath(Item.FileName));
     Location.AddPair('range', TLspPositions.RangeToJson(Item.Symbol.SelectionRange));
@@ -278,14 +350,24 @@ var
   Found: TArray<TWorkspaceSymbol>;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('query', Query)) then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "query" fehlt in ' + Method);
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TWorkspaceSymbolsText.FieldQueryMissingIn].Text + Method);
+  end;
   Found := nil;
   if Assigned(FBookmarksFor) then
+  begin
     Found := SearchBookmarks(FBookmarksFor(), Query);
+  end;
   Found := Found + Search(FIndex, Query, MaxResults, ACancellation);
   if Length(Found) > MaxResults then
+  begin
     SetLength(Found, MaxResults);
+  end;
   Result := ToJson(Found);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.WorkspaceSymbols', cTexts);
 
 end.

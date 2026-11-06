@@ -34,6 +34,9 @@ type
     /// <summary>Projekt einer Gruppe im Unterordner: atlas.json aus dem Stamm darüber.</summary>
     [Test]
     procedure LoadsFileFromParentFolder;
+    /// <summary>Basis für "exclude": Ordner der Datei, nicht der Unterordner des Projekts.</summary>
+    [Test]
+    procedure ConfigRootIsFolderOfFile;
     [Test]
     procedure LoadsLegacyFileWithoutNewOne;
     [Test]
@@ -89,11 +92,17 @@ begin
     function(const AFileName: string; out AText: string): Boolean
     begin
       if SameText(AFileName, Root + '\' + LegacyConfigurationFileName) then
-        AText := FLegacyText
+      begin
+        AText := FLegacyText;
+      end
       else if SameText(AFileName, Root + '\' + ConfigurationFileName) then
-        AText := FDiskText
+      begin
+        AText := FDiskText;
+      end
       else
+      begin
         AText := '';
+      end;
       Result := AText <> '';
     end);
   FConfiguration.OnChanged :=
@@ -140,6 +149,17 @@ begin
   FDiskText := '';
   FConfiguration.LoadWorkspace(Root + '\Packages\Expert');
   Assert.AreEqual(TServerSettings.Default.Platform, FConfiguration.Settings.Platform);
+end;
+
+procedure TLspConfigurationTests.ConfigRootIsFolderOfFile;
+begin
+  FDiskText := '{"platform": "Win64"}';
+  FConfiguration.LoadWorkspace(Root + '\Packages\Expert');
+  Assert.AreEqual(Root + '\', FConfiguration.ConfigRoot);
+  // Ohne Datei bleibt die Wurzel.
+  FDiskText := '';
+  FConfiguration.LoadWorkspace(Root + '\Packages\Expert');
+  Assert.AreEqual(Root + '\Packages\Expert', FConfiguration.ConfigRoot);
 end;
 
 procedure TLspConfigurationTests.LoadsFileFromWorkspaceRoot;
@@ -220,7 +240,9 @@ begin
     begin
       Result := nil;
       if Known then
+      begin
         Exit;
+      end;
       Issue := Default(TConfigurationIssue);
       Issue.Range := ASettings.DfmPropertyRules[0].ClassRange;
       Issue.Message := 'unbekannt: ' + ASettings.DfmPropertyRules[0].ClassName;
@@ -323,7 +345,7 @@ procedure TLspConfigurationTests.ClientLocaleFromInitialize;
   begin
     mParams := TJSONObject.ParseJSONValue(AJson);
     try
-      Result := TLspConfiguration.ClientLocaleFromInitialize(mParams);
+      Result := TLspClientLocale.FromInitialize(mParams);
     finally
       mParams.Free;
     end;
@@ -334,7 +356,7 @@ begin
   Assert.AreEqual('en-US', LocaleOf('{"locale": "en-US", "initializationOptions": {"locale": " "}}'));
   Assert.AreEqual('en-US', LocaleOf('{"locale": "en-US"}'));
   Assert.AreEqual('', LocaleOf('{"processId": 1}'));
-  Assert.AreEqual('', TLspConfiguration.ClientLocaleFromInitialize(nil));
+  Assert.AreEqual('', TLspClientLocale.FromInitialize(nil));
 end;
 
 procedure TLspConfigurationTests.IndexComesFromGlobalLayers;

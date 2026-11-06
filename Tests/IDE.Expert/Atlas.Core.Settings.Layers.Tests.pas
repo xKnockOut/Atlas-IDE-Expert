@@ -31,10 +31,6 @@ type
     [Test]
     procedure ProfilesIncludeOwnOnes;
     [Test]
-    procedure RuleRowsFromCatalogAndFile;
-    [Test]
-    procedure RuleSeverityKeepsOptions;
-    [Test]
     procedure RuleSeverityChangeTouchesOnlyThatRule;
     [Test]
     procedure ReadsServerCheckAnswer;
@@ -58,7 +54,6 @@ uses
   Atlas.Core.Settings.SchemaData,
   Atlas.Core.Settings.Layers,
   Atlas.Core.Settings.Choices,
-  Atlas.Core.Settings.RuleTable,
   Atlas.Core.Settings.Validation,
   Atlas.Core.Settings.Baseline,
   Atlas.Core.Files.TextFile;
@@ -191,6 +186,7 @@ begin
   Fields := TAtlasSettingsSchema.Fields(AtlasSchemaJson);
   Seen := 0;
   for Field in Fields do
+  begin
     if Field.Path = 'logFile' then
     begin
       Assert.IsTrue(Field.PicksFile);
@@ -209,6 +205,7 @@ begin
       Assert.AreEqual('Auswahl aus der .dproj', Field.Control);
       Inc(Seen);
     end;
+  end;
   Assert.AreEqual(3, Seen);
 end;
 
@@ -278,62 +275,11 @@ begin
   Assert.AreEqual(5, Integer(Length(TAtlasSettingChoices.Profiles(''))));
 end;
 
-procedure TAtlasSettingsLayersTests.RuleRowsFromCatalogAndFile;
-var
-  Catalog: TJSONValue;
-  Rows: TArray<TAtlasRuleRow>;
-begin
-  Catalog := TJSONObject.ParseJSONValue('{"rules": [' +
-    '{"id": "no-with", "name": "Kein with", "category": "code-smell", "severity": "warning"},' +
-    '{"id": "empty-except", "name": "Leeres except", "category": "bug", "severity": "error"}]}');
-  try
-    Rows := TAtlasRuleTable.Rows(Catalog, '{"no-with": "off", "own-rule": {"severity": "hint", "x": 1}}');
-    Assert.AreEqual(3, Integer(Length(Rows)));
-    Assert.AreEqual('no-with', Rows[0].Id);
-    Assert.AreEqual('off', Rows[0].Severity);
-    Assert.AreEqual('warning', Rows[0].DefaultSeverity);
-    Assert.IsTrue(Rows[0].Known);
-    Assert.AreEqual('', Rows[1].Severity);
-    Assert.AreEqual('own-rule', Rows[2].Id);
-    Assert.IsFalse(Rows[2].Known);
-    Assert.IsTrue(Rows[2].HasOptions);
-    Assert.AreEqual('hint', Rows[2].Severity);
-    // Ohne Server: nur die Regeln aus der Datei.
-    Assert.AreEqual(2, Integer(Length(TAtlasRuleTable.Rows(nil, '{"a": "off", "b": "error"}'))));
-    // Im Projekt: globaler Wert je Regel, das Projekt übersteuert ihn.
-    Rows := TAtlasRuleTable.Rows(nil, '{"a": "off"}', '{"a": "hint", "b": "error"}');
-    Assert.AreEqual('off', Rows[0].Severity);
-    Assert.AreEqual('hint', Rows[0].GlobalSeverity);
-  finally
-    Catalog.Free;
-  end;
-end;
-
-procedure TAtlasSettingsLayersTests.RuleSeverityKeepsOptions;
-var
-  Rules: string;
-begin
-  Rules := TAtlasRuleTable.WithSeverity('{"magic-number": {"severity": "hint", "ignore": [0]}}', 'magic-number',
-    'error');
-  Assert.IsTrue(Pos('"ignore":[0]', Rules) > 0);
-  Assert.IsTrue(Pos('"severity":"error"', Rules) > 0);
-  Rules := TAtlasRuleTable.WithSeverity('{"no-with": "error"}', 'no-with', '');
-  Assert.AreEqual('', Rules);
-  Rules := TAtlasRuleTable.WithSeverity('', 'no-with', 'off');
-  Assert.AreEqual('{"no-with":"off"}', Rules);
-end;
-
 procedure TAtlasSettingsLayersTests.RuleSeverityChangeTouchesOnlyThatRule;
 var
   Settings: TAtlasSettingsModel;
-  Path, Json: string;
 begin
-  TAtlasRuleTable.SeverityChange('{"magic-number": {"severity": "hint"}}', 'magic-number', 'off', Path, Json);
-  Assert.AreEqual('rules.magic-number.severity', Path);
-  Assert.AreEqual('"off"', Json);
-  TAtlasRuleTable.SeverityChange('{"no-with": "error"}', 'no-with', '', Path, Json);
-  Assert.AreEqual('rules.no-with', Path);
-  Assert.AreEqual('', Json);
+  // Pfade rules.<id> bzw. rules.<id>.severity (Regeltabelle des Moduls Prüfregeln) ändern nur diesen Wert.
   Settings := Model(ProjectText, '', False);
   try
     Settings.SetPath('rules.no-with', '"off"');
@@ -432,7 +378,9 @@ begin
     Saved := TAtlasTextFile.Encode(Content);
     Assert.AreEqual(Integer(Length(Bytes)), Integer(Length(Saved)));
     for Index := 0 to High(Bytes) do
+    begin
       Assert.AreEqual(Bytes[Index], Saved[Index]);
+    end;
     Settings.SetValue(Settings.IndexOf('language'), '"en"');
     Content.Text := Settings.ResultText;
     Assert.AreEqual(StringReplace(Text, '"de"', '"en"', []), Content.Text);

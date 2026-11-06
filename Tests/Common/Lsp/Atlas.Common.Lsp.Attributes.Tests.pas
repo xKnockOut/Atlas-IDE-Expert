@@ -94,15 +94,19 @@ var
 begin
   Index := Pos(AMarker, AText);
   if Index = 0 then
+  begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+  end;
   Line := 0;
   LineStart := 1;
   for Run := 1 to Index - 1 do
+  begin
     if AText[Run] = #10 then
     begin
       Inc(Line);
       LineStart := Run + 1;
     end;
+  end;
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
@@ -135,8 +139,8 @@ var
 begin
   Tree := TPascalParser.Parse(UnitHaupt);
   try
-    Result := TLspHover.InfoAt(AResolver, AIndex, Tree, UnitHaupt, HauptFile, PositionOf(UnitHaupt, AMarker),
-      ReadText);
+    Result := TLspHover.InfoAt(THoverSource.Create(AResolver, AIndex, ReadText), Tree, UnitHaupt, HauptFile,
+      PositionOf(UnitHaupt, AMarker));
   finally
     Tree.Free;
   end;
@@ -181,18 +185,21 @@ var
 begin
   Tree := TPascalParser.Parse(UnitHaupt);
   try
-    Found := TLspReferences.Find(FResolver, FIndex, Tree, HauptFile, PositionOf(UnitHaupt, 'TestFixture]'), True,
+    Found := TLspReferences.Find(FResolver, FIndex, Tree,
+      TReferenceSearch.Create(HauptFile, PositionOf(UnitHaupt, 'TestFixture]'), True,
       [AttributeFile, HauptFile],
       function(const AFileName: string; out AText: string): Boolean
       begin
         Result := ReadText(AFileName, AText);
-      end);
+      end));
   finally
     Tree.Free;
   end;
   Text := '';
   for Location in Found do
+  begin
     Text := Text + Format('%s:%d ', [ExtractFileName(Location.FileName), Location.Range.StartPos.Line]);
+  end;
   // Deklaration, [TestFixture], [DUnitX.Attributes.TestFixture(…)] und [TestFixtureAttribute].
   Assert.AreEqual('Haupt.pas:4 Haupt.pas:5 Haupt.pas:7 DUnitX.Attributes.pas:5', Trim(Text));
 end;

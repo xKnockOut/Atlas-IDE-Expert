@@ -49,6 +49,15 @@ type
     FDocCommentsFor: TFormattingEnabledFunc;
     FIndex: ISymbolIndex;
     FSlashHost: ISlashHost;
+    /// <summary>Einstellungen für AUri: Editor-Optionen aus AParams, .editorconfig und "format".</summary>
+    function StyleFor(AParams: TJSONObject; const AUri: string): TFormatStyle;
+    /// <summary>Gerüst des Dokumentationskommentars nach "///" (#88) nach AResult.</summary>
+    procedure AddDocComment(const ADocument: ITextDocument; const AUri: string; const APosition: TTextPosition;
+      const ACancellation: IJsonRpcCancellationToken; AResult: TJSONArray);
+    /// <summary>Schnellbefehl der Zeile vor Enter (#293) nach AResult.</summary>
+    procedure AddSlashCommand(AParams: TJSONObject; const ADocument: ITextDocument; const AUri: string;
+      const APosition: TTextPosition; const ACancellation: IJsonRpcCancellationToken;
+      AResult: TJSONArray);
     function HandleOnType(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function Handle(const AParams: TJSONValue; AWithRange: Boolean;
       const ACancellation: IJsonRpcCancellationToken): TJSONValue;
@@ -88,7 +97,22 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Editing.Formatter,
-  Atlas.Common.Editing.DocComments;
+  Atlas.Common.Editing.DocComments,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TFormattingText = (FieldsTextDocumentUriAndPosition, FieldRangeMissingIn, FieldTextDocumentUriMissing);
+
+const
+  cTexts: array[TFormattingText] of TAtlasText = (
+    (De: 'Felder "textDocument.uri" und "position" fehlen'; En: 'Fields "textDocument.uri" and "position" missing'),
+    (De: 'Feld "range" fehlt in '; En: 'Field "range" missing in '),
+    (De: 'Feld "textDocument.uri" fehlt'; En: 'Field "textDocument.uri" missing'));
+
+{$SCOPEDENUMS OFF}
 
 { TLspFormatting }
 
@@ -115,76 +139,117 @@ begin
   Result.AddPair('moreTriggerCharacter', TJSONArray.Create.Add('/'));
 end;
 
+/// <summary>Bearbeitungen AEdits als TextEdit[] nach AResult.</summary>
+procedure AddEdits(AResult: TJSONArray; const AEdits: TArray<TRuleEdit>);
+var
+  mEdit: TRuleEdit;
+  mItem: TJSONObject;
+begin
+  for mEdit in AEdits do
+  begin
+    mItem := TJSONObject.Create;
+    mItem.AddPair('range', TLspPositions.RangeToJson(mEdit.Range));
+    mItem.AddPair('newText', mEdit.NewText);
+    AResult.AddElement(mItem);
+  end;
+end;
+
+function TLspFormatting.StyleFor(AParams: TJSONObject; const AUri: string): TFormatStyle;
+var
+  mConfigured: TFormatStyle;
+  mOptions: TJSONValue;
+begin
+  mConfigured := TFormatStyle.Default;
+  if Assigned(FSettingsProvider) then
+  begin
+    mConfigured := FSettingsProvider(AUri);
+  end;
+  if not AParams.TryGetValue<TJSONValue>('options', mOptions) then
+  begin
+    mOptions := nil;
+  end;
+  Result := Resolve(mOptions, TDocumentUris.ToPath(AUri), mConfigured, FReadFile);
+end;
+
+procedure TLspFormatting.AddDocComment(const ADocument: ITextDocument; const AUri: string;
+  const APosition: TTextPosition; const ACancellation: IJsonRpcCancellationToken; AResult: TJSONArray);
+var
+  mCancellation: IPascalCancellation;
+  mShared: ISharedSyntaxTree;
+  mEdits: TArray<TRuleEdit>;
+begin
+  // Abgeschaltet: "///" bleibt, wie getippt.
+  if Assigned(FDocCommentsFor) and not FDocCommentsFor(AUri) then
+  begin
+    Exit;
+  end;
+  // Abbruchsignal an den Parser (Code-Review A-06).
+  mCancellation := TRequestCancellation.Create(ACancellation);
+  mShared := TSyntaxTreeCache.Get(ADocument, mCancellation);
+  // Über einer Methodenimplementierung zwei Bearbeitungen: Gerüst an der Deklaration, "///" weg.
+  if TDocComments.AfterSlash(ADocument.Text, mShared.Tree, APosition, mEdits) then
+  begin
+    AddEdits(AResult, mEdits);
+  end;
+end;
+
+procedure TLspFormatting.AddSlashCommand(AParams: TJSONObject; const ADocument: ITextDocument; const AUri: string;
+  const APosition: TTextPosition; const ACancellation: IJsonRpcCancellationToken; AResult: TJSONArray);
+var
+  mDisabled: TArray<string>;
+  mVersion: string;
+  mEdits: TArray<TRuleEdit>;
+  mEnvironment: TSlashEnvironment;
+begin
+  mDisabled := nil;
+  mVersion := '';
+  if Assigned(FDelphiVersionFor) then
+  begin
+    mVersion := FDelphiVersionFor(AUri);
+  end;
+  // Abgebrochen (Watchdog, $/cancelRequest): keine Schnellbefehle mehr ausführen, die Projekt und Platte ändern
+  // (A-06).
+  ACancellation.ThrowIfCancellationRequested;
+  if Assigned(FSlashCommandsFor) and not FSlashCommandsFor(AUri, mDisabled) then
+  begin
+    Exit;
+  end;
+  // Einrückung der Befehle wie beim Formatieren (#43): Editor-Optionen, .editorconfig, "format".
+  mEnvironment := TSlashEnvironment.Create(nil, mDisabled, FIndex, mVersion, AUri, FSlashHost).WithStyle(
+    StyleFor(AParams, AUri));
+  if TSlashCommandRegistry.Shared.AfterEnter(ADocument.Text, APosition, mEnvironment, mEdits) then
+  begin
+    AddEdits(AResult, mEdits);
+  end;
+end;
+
 function TLspFormatting.HandleOnType(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
-  Uri, Character: string;
-  Document: ITextDocument;
-  PositionValue: TJSONValue;
-  Edit: TRuleEdit;
-  Edits: TArray<TRuleEdit>;
-  Disabled: TArray<string>;
-  Item: TJSONObject;
-  Version: string;
-  Shared: ISharedSyntaxTree;
-  Cancellation: IPascalCancellation;
-  Configured, Style: TFormatStyle;
-  Options: TJSONValue;
+  mUri, mCharacter: string;
+  mDocument: ITextDocument;
+  mPositionValue: TJSONValue;
 begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
-    TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Felder "textDocument.uri" und "position" fehlen');
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
+    TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPositionValue)) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TFormattingText.FieldsTextDocumentUriAndPosition].Text);
+  end;
   Result := TJSONArray.Create;
   try
-    if not TJSONObject(AParams).TryGetValue<string>('ch', Character) or ((Character <> #10) and
-      (Character <> '/')) then
-      Exit;
-    if not FStore.TryGet(Uri, Document) then
-      Exit;
-    if Character = '/' then
+    if not TJSONObject(AParams).TryGetValue<string>('ch', mCharacter) or not FStore.TryGet(mUri, mDocument) then
     begin
-      // Abgeschaltet: "///" bleibt, wie getippt.
-      if Assigned(FDocCommentsFor) and not FDocCommentsFor(Uri) then
-        Exit;
-      // Abbruchsignal an den Parser (Code-Review A-06).
-      Cancellation := TRequestCancellation.Create(ACancellation);
-      Shared := TSyntaxTreeCache.Get(Document, Cancellation);
-      // Über einer Methodenimplementierung zwei Bearbeitungen: Gerüst an der Deklaration, "///" weg.
-      if TDocComments.AfterSlash(Document.Text, Shared.Tree, TLspPositions.ReadPosition(PositionValue), Edits) then
-        for Edit in Edits do
-        begin
-          Item := TJSONObject.Create;
-          Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
-          Item.AddPair('newText', Edit.NewText);
-          TJSONArray(Result).AddElement(Item);
-        end;
       Exit;
     end;
-    Disabled := nil;
-    Version := '';
-    if Assigned(FDelphiVersionFor) then
-      Version := FDelphiVersionFor(Uri);
-    // Abgebrochen (Watchdog, $/cancelRequest): keine Schnellbefehle mehr ausführen, die Projekt und Platte
-    // ändern (A-06).
-    ACancellation.ThrowIfCancellationRequested;
-    // Einrückung der Befehle wie beim Formatieren (#43): Editor-Optionen, .editorconfig, "format".
-    Configured := TFormatStyle.Default;
-    if Assigned(FSettingsProvider) then
-      Configured := FSettingsProvider(Uri);
-    if not TJSONObject(AParams).TryGetValue<TJSONValue>('options', Options) then
-      Options := nil;
-    Style := Resolve(Options, TDocumentUris.ToPath(Uri), Configured, FReadFile);
-    if (not Assigned(FSlashCommandsFor) or FSlashCommandsFor(Uri, Disabled)) and
-      TSlashCommandRegistry.Shared.AfterEnter(Document.Text, TLspPositions.ReadPosition(PositionValue), nil, Disabled,
-      FIndex, Version, Uri, FSlashHost, Style, Edits) then
+    if mCharacter = '/' then
     begin
-      for Edit in Edits do
-      begin
-        Item := TJSONObject.Create;
-        Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
-        Item.AddPair('newText', Edit.NewText);
-        TJSONArray(Result).AddElement(Item);
-      end;
+      AddDocComment(mDocument, mUri, TLspPositions.ReadPosition(mPositionValue), ACancellation, TJSONArray(Result));
+    end
+    else if mCharacter = #10 then
+    begin
+      AddSlashCommand(TJSONObject(AParams), mDocument, mUri, TLspPositions.ReadPosition(mPositionValue), ACancellation,
+        TJSONArray(Result));
     end;
   except
     Result.Free;
@@ -192,44 +257,92 @@ begin
   end;
 end;
 
-class function TLspFormatting.Resolve(const AOptions: TJSONValue; const AFileName: string;
-  const AConfigured: TFormatStyle; const AReadFile: TEditorConfigReadFile): TFormatStyle;
+/// <summary>Einstellungen aus den FormattingOptions des Editors (AOptions, nil = keine).</summary>
+function EditorStyle(const AOptions: TJSONValue): TFormatStyle;
 var
-  Size: Integer;
-  Flag: Boolean;
+  mSize: Integer;
+  mFlag: Boolean;
 begin
   Result := TFormatStyle.Default;
-  if AOptions is TJSONObject then
+  if not (AOptions is TJSONObject) then
   begin
-    if AOptions.TryGetValue<Integer>('tabSize', Size) and (Size >= 1) then
-      Result.IndentSize := Size;
-    if AOptions.TryGetValue<Boolean>('insertSpaces', Flag) then
-      Result.UseTabs := not Flag;
-    if AOptions.TryGetValue<Boolean>('trimTrailingWhitespace', Flag) then
-      Result.TrimTrailingWhitespace := Flag;
-    if AOptions.TryGetValue<Boolean>('insertFinalNewline', Flag) then
-      Result.InsertFinalNewline := Flag;
+    Exit;
   end;
-  if Assigned(AReadFile) and (AFileName <> '') then
-    Result := TEditorConfig.ForFile(AFileName, AReadFile, Result);
+  if AOptions.TryGetValue<Integer>('tabSize', mSize) and (mSize >= 1) then
+  begin
+    Result.IndentSize := mSize;
+  end;
+  if AOptions.TryGetValue<Boolean>('insertSpaces', mFlag) then
+  begin
+    Result.UseTabs := not mFlag;
+  end;
+  if AOptions.TryGetValue<Boolean>('trimTrailingWhitespace', mFlag) then
+  begin
+    Result.TrimTrailingWhitespace := mFlag;
+  end;
+  if AOptions.TryGetValue<Boolean>('insertFinalNewline', mFlag) then
+  begin
+    Result.InsertFinalNewline := mFlag;
+  end;
+end;
+
+/// <summary>Übernimmt Einrückung, Schreibweise und Zeilenende-Leerraum, wenn AConfigured sie ausdrücklich setzt.
+/// </summary>
+procedure ApplyGivenLayout(var AStyle: TFormatStyle; const AConfigured: TFormatStyle);
+begin
   if TFormatKey.IndentSize in AConfigured.Given then
-    Result.IndentSize := AConfigured.IndentSize;
+  begin
+    AStyle.IndentSize := AConfigured.IndentSize;
+  end;
   if TFormatKey.UseTabs in AConfigured.Given then
-    Result.UseTabs := AConfigured.UseTabs;
+  begin
+    AStyle.UseTabs := AConfigured.UseTabs;
+  end;
   if TFormatKey.KeywordCase in AConfigured.Given then
-    Result.KeywordCase := AConfigured.KeywordCase;
+  begin
+    AStyle.KeywordCase := AConfigured.KeywordCase;
+  end;
   if TFormatKey.TrimTrailingWhitespace in AConfigured.Given then
-    Result.TrimTrailingWhitespace := AConfigured.TrimTrailingWhitespace;
+  begin
+    AStyle.TrimTrailingWhitespace := AConfigured.TrimTrailingWhitespace;
+  end;
   if TFormatKey.InsertFinalNewline in AConfigured.Given then
-    Result.InsertFinalNewline := AConfigured.InsertFinalNewline;
+  begin
+    AStyle.InsertFinalNewline := AConfigured.InsertFinalNewline;
+  end;
+end;
+
+/// <summary>Übernimmt Abstände, Zeilenende und Zeilenlänge, wenn AConfigured sie ausdrücklich setzt.</summary>
+procedure ApplyGivenSpacing(var AStyle: TFormatStyle; const AConfigured: TFormatStyle);
+begin
   if TFormatKey.SpaceAroundAssignment in AConfigured.Given then
-    Result.SpaceAroundAssignment := AConfigured.SpaceAroundAssignment;
+  begin
+    AStyle.SpaceAroundAssignment := AConfigured.SpaceAroundAssignment;
+  end;
   if TFormatKey.SpaceAfterComma in AConfigured.Given then
-    Result.SpaceAfterComma := AConfigured.SpaceAfterComma;
+  begin
+    AStyle.SpaceAfterComma := AConfigured.SpaceAfterComma;
+  end;
   if TFormatKey.EndOfLine in AConfigured.Given then
-    Result.EndOfLine := AConfigured.EndOfLine;
+  begin
+    AStyle.EndOfLine := AConfigured.EndOfLine;
+  end;
   if TFormatKey.MaxLineLength in AConfigured.Given then
-    Result.MaxLineLength := AConfigured.MaxLineLength;
+  begin
+    AStyle.MaxLineLength := AConfigured.MaxLineLength;
+  end;
+end;
+
+class function TLspFormatting.Resolve(const AOptions: TJSONValue; const AFileName: string;
+  const AConfigured: TFormatStyle; const AReadFile: TEditorConfigReadFile): TFormatStyle;
+begin
+  Result := EditorStyle(AOptions);
+  if Assigned(AReadFile) and (AFileName <> '') then
+  begin
+    Result := TEditorConfig.ForFile(AFileName, AReadFile, Result);
+  end;
+  ApplyGivenLayout(Result, AConfigured);
+  ApplyGivenSpacing(Result, AConfigured);
   // Diese Schalter kennt weder der Editor noch .editorconfig (#43).
   Result.Reindent := AConfigured.Reindent;
   Result.BeginPlacement := AConfigured.BeginPlacement;
@@ -240,54 +353,56 @@ begin
   Result.Given := AConfigured.Given;
 end;
 
+/// <summary>Zeilen des Felds "range" von rangeFormatting; ein Bereich bis zum Anfang einer Zeile schließt diese
+/// Zeile nicht ein.</summary>
+procedure RangeLines(AParams: TJSONObject; out AFirstLine, ALastLine: Integer);
+var
+  mRangeValue: TJSONValue;
+  mRange: TTextRange;
+begin
+  if not AParams.TryGetValue<TJSONValue>('range', mRangeValue) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TFormattingText.FieldRangeMissingIn].Text +
+      TLspFormatting.RangeMethod);
+  end;
+  mRange := TLspPositions.ReadRange(mRangeValue);
+  AFirstLine := mRange.StartPos.Line;
+  ALastLine := mRange.EndPos.Line;
+  if (mRange.EndPos.Character = 0) and (ALastLine > AFirstLine) then
+  begin
+    Dec(ALastLine);
+  end;
+end;
+
 function TLspFormatting.Handle(const AParams: TJSONValue; AWithRange: Boolean;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
-  Uri: string;
-  Document: ITextDocument;
-  Options, RangeValue: TJSONValue;
-  Range: TTextRange;
-  Settings, Configured: TFormatStyle;
-  Edits: TArray<TRuleEdit>;
-  Edit: TRuleEdit;
-  Item: TJSONObject;
-  FirstLine, LastLine: Integer;
+  mUri: string;
+  mDocument: ITextDocument;
+  mSettings: TFormatStyle;
+  mFirstLine, mLastLine: Integer;
 begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri)) then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "textDocument.uri" fehlt');
-  if not FStore.TryGet(Uri, Document) then
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri)) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TFormattingText.FieldTextDocumentUriMissing].Text);
+  end;
+  if not FStore.TryGet(mUri, mDocument) then
+  begin
     Exit(TJSONNull.Create);
-  if not TJSONObject(AParams).TryGetValue<TJSONValue>('options', Options) then
-    Options := nil;
-  if Assigned(FSettingsProvider) then
-    Configured := FSettingsProvider(Uri)
-  else
-    Configured := TFormatStyle.Default;
-  Settings := Resolve(Options, TDocumentUris.ToPath(Uri), Configured, FReadFile);
-  FirstLine := 0;
-  LastLine := -1;
+  end;
+  mSettings := StyleFor(TJSONObject(AParams), mUri);
+  mFirstLine := 0;
+  mLastLine := -1;
   if AWithRange then
   begin
-    if not TJSONObject(AParams).TryGetValue<TJSONValue>('range', RangeValue) then
-      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "range" fehlt in ' + RangeMethod);
-    Range := TLspPositions.ReadRange(RangeValue);
-    FirstLine := Range.StartPos.Line;
-    LastLine := Range.EndPos.Line;
-    // Bereich bis zum Anfang einer Zeile: diese Zeile gehört nicht dazu.
-    if (Range.EndPos.Character = 0) and (LastLine > FirstLine) then
-      Dec(LastLine);
+    RangeLines(TJSONObject(AParams), mFirstLine, mLastLine);
   end;
   // Die Einstellungen können Dateien lesen (.editorconfig); danach nicht mehr formatieren (A-06).
   ACancellation.ThrowIfCancellationRequested;
-  Edits := TFormatter.Edits(Document.Text, TPascalLexer.Tokenize(Document.Text), Settings, FirstLine, LastLine);
   Result := TJSONArray.Create;
-  for Edit in Edits do
-  begin
-    Item := TJSONObject.Create;
-    Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
-    Item.AddPair('newText', Edit.NewText);
-    TJSONArray(Result).AddElement(Item);
-  end;
+  AddEdits(TJSONArray(Result), TFormatter.Edits(mDocument.Text, TPascalLexer.Tokenize(mDocument.Text), mSettings,
+    mFirstLine, mLastLine));
 end;
 
 function TLspFormatting.HandleFormatting(const AParams: TJSONValue;
@@ -301,5 +416,8 @@ function TLspFormatting.HandleRangeFormatting(const AParams: TJSONValue;
 begin
   Result := Handle(AParams, True, ACancellation);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.Formatting', cTexts);
 
 end.

@@ -34,6 +34,18 @@ uses
   Atlas.Common.Semantics.ExpressionTypes;
 
 type
+  /// <summary>Gefragter Bereich samt Schaltern einer Typabfrage.</summary>
+  TExpressionTypeQuery = record
+    /// <summary>Markierter Bereich; ohne Markierung sind Anfang und Ende gleich.</summary>
+    Range: TTextRange;
+    /// <summary>Den kleinsten Ausdruck nehmen, der den Bereich echt umschließt.</summary>
+    Expand: Boolean;
+    /// <summary>Was die Antwort enthalten soll (Umwandlungen, Wert).</summary>
+    Options: TExpressionTypeOptions;
+    /// <summary>Abfrage für ARange mit den Standardoptionen.</summary>
+    class function Create(const ARange: TTextRange; AExpand: Boolean): TExpressionTypeQuery; static;
+  end;
+
   TLspExpressionType = class
   public const
     Command = 'atlas.server.expressionType';
@@ -42,11 +54,10 @@ type
   public
     /// <summary>Antwort für AInfo (siehe Kopf der Unit); der Aufrufer übernimmt das Objekt.</summary>
     class function Json(const AInfo: TExpressionTypeInfo): TJSONObject; static;
-    /// <summary>Typ des Ausdrucks an ARange von ATree (Text AText); heftet den Baum für die Dauer an AResolver.
+    /// <summary>Typ des Ausdrucks an AQuery.Range von ATree (Text AText); heftet den Baum für die Dauer an AResolver.
     /// </summary>
     class function Describe(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName, AText: string;
-      const AIndex: ISymbolIndex; const ARange: TTextRange; AExpand: Boolean;
-      const AOptions: TExpressionTypeOptions): TExpressionTypeInfo; static;
+      const AIndex: ISymbolIndex; const AQuery: TExpressionTypeQuery): TExpressionTypeInfo; static;
     /// <summary>Führt den Befehl aus; der Aufrufer übernimmt das Ergebnis.</summary>
     class function Execute(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
       const AEnsureUnit: TEnsureUnitFunc; const ANamespaces: TArray<string>;
@@ -61,7 +72,30 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Lsp.Positions;
+  Atlas.Common.Lsp.Positions,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TExpressionTypeText = (URIAndRangeExpected, DocumentIsNotOpen);
+
+const
+  cTexts: array[TExpressionTypeText] of TAtlasText = (
+    (De: 'Erwartet werden URI und Bereich'; En: 'URI and range expected'),
+    (De: 'Dokument ist nicht geöffnet: '; En: 'Document is not open: '));
+
+{$SCOPEDENUMS OFF}
+
+{ TExpressionTypeQuery }
+
+class function TExpressionTypeQuery.Create(const ARange: TTextRange; AExpand: Boolean): TExpressionTypeQuery;
+begin
+  Result.Range := ARange;
+  Result.Expand := AExpand;
+  Result.Options := TExpressionTypeOptions.Default;
+end;
 
 { TLspExpressionType }
 
@@ -94,13 +128,19 @@ begin
     Item.AddPair('from', Conversion.FromType);
     Item.AddPair('to', Conversion.ToType);
     if Conversion.Kind = TExpressionConversionKind.Convert then
-      Item.AddPair('kind', 'convert')
+    begin
+      Item.AddPair('kind', 'convert');
+    end
     else
+    begin
       Item.AddPair('kind', 'widen');
+    end;
   end;
   Result.AddPair('overload', AInfo.Overload);
   if AInfo.HasValue then
+  begin
     Result.AddPair('value', TJSONNumber.Create(AInfo.Value));
+  end;
   if AInfo.Error <> TExpressionErrorKind.None then
   begin
     Error := TJSONObject.Create;
@@ -111,68 +151,85 @@ begin
 end;
 
 class function TLspExpressionType.Describe(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName,
-  AText: string; const AIndex: ISymbolIndex; const ARange: TTextRange; AExpand: Boolean;
-  const AOptions: TExpressionTypeOptions): TExpressionTypeInfo;
+  AText: string; const AIndex: ISymbolIndex; const AQuery: TExpressionTypeQuery): TExpressionTypeInfo;
 var
-  Table: TLineTable;
-  Types: TExpressionTypes;
+  mTable: TLineTable;
+  mTypes: TExpressionTypes;
 begin
-  Table := TLineTable.Build(AText);
+  mTable := TLineTable.Build(AText);
   AResolver.PinTree(ATree, AFileName);
   try
-    Types := TExpressionTypes.Create(AResolver, ATree, AFileName, AText, AIndex, AOptions);
+    mTypes := TExpressionTypes.Create(AResolver, ATree, AFileName, AText, AIndex, AQuery.Options);
     try
-      Result := Types.DescribeAt(Table.OffsetAt(ARange.StartPos), Table.OffsetAt(ARange.EndPos), AExpand);
+      Result := mTypes.DescribeAt(mTable.OffsetAt(AQuery.Range.StartPos), mTable.OffsetAt(AQuery.Range.EndPos),
+        AQuery.Expand);
     finally
-      Types.Free;
+      mTypes.Free;
     end;
   finally
     AResolver.UnpinTree;
   end;
 end;
 
+/// <summary>Schalter AName aus ASettings, sonst ADefault.</summary>
+function FlagOf(ASettings: TJSONObject; const AName: string; ADefault: Boolean): Boolean;
+var
+  mFlag: TJSONValue;
+begin
+  Result := ADefault;
+  mFlag := ASettings.GetValue(AName);
+  if mFlag is TJSONBool then
+  begin
+    Result := TJSONBool(mFlag).AsBoolean;
+  end;
+end;
+
+/// <summary>Bereich und Schalter aus den Argumenten des Befehls.</summary>
+function QueryOf(const AArguments: TJSONArray): TExpressionTypeQuery;
+var
+  mSettings: TJSONObject;
+begin
+  Result := TExpressionTypeQuery.Create(TLspPositions.ReadRange(AArguments.Items[1]), False);
+  if (AArguments.Count > 2) and (AArguments.Items[2] is TJSONObject) then
+  begin
+    mSettings := TJSONObject(AArguments.Items[2]);
+    Result.Expand := FlagOf(mSettings, 'expand', Result.Expand);
+    Result.Options.Conversions := FlagOf(mSettings, 'conversions', Result.Options.Conversions);
+    Result.Options.ConstValue := FlagOf(mSettings, 'constValue', Result.Options.ConstValue);
+  end;
+end;
+
 class function TLspExpressionType.Execute(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AEnsureUnit: TEnsureUnitFunc; const ANamespaces: TArray<string>; const AArguments: TJSONArray): TJSONValue;
 var
-  Uri: string;
-  Document: ITextDocument;
-  Shared: ISharedSyntaxTree;
-  Resolver: TNameResolver;
-  Options: TExpressionTypeOptions;
-  Settings: TJSONObject;
-  Flag: TJSONValue;
-  Expand: Boolean;
+  mUri: string;
+  mDocument: ITextDocument;
+  mShared: ISharedSyntaxTree;
+  mResolver: TNameResolver;
 begin
   if (AArguments = nil) or (AArguments.Count < 2) or not (AArguments.Items[0] is TJSONString) or
     not (AArguments.Items[1] is TJSONObject) then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Erwartet werden URI und Bereich');
-  Uri := AArguments.Items[0].Value;
-  if not AStore.TryGet(Uri, Document) then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Dokument ist nicht geöffnet: ' + Uri);
-  Options := TExpressionTypeOptions.Default;
-  Expand := False;
-  if (AArguments.Count > 2) and (AArguments.Items[2] is TJSONObject) then
   begin
-    Settings := TJSONObject(AArguments.Items[2]);
-    Flag := Settings.GetValue('expand');
-    if Flag is TJSONBool then
-      Expand := TJSONBool(Flag).AsBoolean;
-    Flag := Settings.GetValue('conversions');
-    if Flag is TJSONBool then
-      Options.Conversions := TJSONBool(Flag).AsBoolean;
-    Flag := Settings.GetValue('constValue');
-    if Flag is TJSONBool then
-      Options.ConstValue := TJSONBool(Flag).AsBoolean;
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TExpressionTypeText.URIAndRangeExpected].Text);
   end;
-  Shared := TSyntaxTreeCache.Get(Document);
-  Resolver := TNameResolver.Create(AIndex, AEnsureUnit);
+  mUri := AArguments.Items[0].Value;
+  if not AStore.TryGet(mUri, mDocument) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TExpressionTypeText.DocumentIsNotOpen].Text +
+      mUri);
+  end;
+  mShared := TSyntaxTreeCache.Get(mDocument);
+  mResolver := TNameResolver.Create(AIndex, AEnsureUnit);
   try
-    Resolver.Namespaces := ANamespaces;
-    Result := Json(Describe(Resolver, Shared.Tree, TDocumentUris.ToPath(Uri), Document.Text, AIndex,
-      TLspPositions.ReadRange(AArguments.Items[1]), Expand, Options));
+    mResolver.Namespaces := ANamespaces;
+    Result := Json(Describe(mResolver, mShared.Tree, TDocumentUris.ToPath(mUri), mDocument.Text, AIndex,
+      QueryOf(AArguments)));
   finally
-    Resolver.Free;
+    mResolver.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.ExpressionType', cTexts);
 
 end.

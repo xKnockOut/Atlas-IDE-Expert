@@ -18,6 +18,9 @@ type
     /// <summary>{$I datei} und {$INCLUDE datei} zählen, Schalter wie {$I+} und {$IFDEF} nicht.</summary>
     [Test]
     procedure HasIncludesFindsIncludeDirectives;
+    /// <summary>{$IF…} und (*$IF…*) in jeder Schreibung, andere Direktiven und $IF ohne Klammer nicht.</summary>
+    [Test]
+    procedure HasConditionalsFindsConditionalDirectives;
     /// <summary>Abnahme: {$DEFINE FOO} aus defs.inc wählt den Zweig; keine Syntaxdiagnose.</summary>
     [Test]
     procedure ActiveDiagnosticsReadIncludeDefines;
@@ -88,7 +91,9 @@ var
   Diagnostics: TArray<TSyntaxDiagnostic>;
 begin
   if not TPascalParser.ActiveDiagnostics(AText, AOptions, Diagnostics) then
+  begin
     Exit(-1);
+  end;
   Result := Length(Diagnostics);
 end;
 
@@ -105,6 +110,16 @@ begin
   Assert.IsTrue(TPascalPreprocessor.HasIncludes('(*$INCLUDE defs.inc*)'));
   Assert.IsFalse(TPascalPreprocessor.HasIncludes('{$I+}{$IFDEF X}{$ENDIF}'));
   Assert.IsFalse(TPascalPreprocessor.HasIncludes('S := ''$I x'';'));
+end;
+
+procedure TIncludeDefinesTests.HasConditionalsFindsConditionalDirectives;
+begin
+  Assert.IsTrue(TPascalPreprocessor.HasConditionals('{$IFDEF X}{$ENDIF}'));
+  Assert.IsTrue(TPascalPreprocessor.HasConditionals('{$ifndef X}{$endif}'));
+  Assert.IsTrue(TPascalPreprocessor.HasConditionals('(*$If Defined(X)*)(*$IfEnd*)'));
+  Assert.IsFalse(TPascalPreprocessor.HasConditionals('{$R+}{$I defs.inc}'));
+  Assert.IsFalse(TPascalPreprocessor.HasConditionals('S := ''$IF'';*$IF'));
+  Assert.IsFalse(TPascalPreprocessor.HasConditionals('{$I'));
 end;
 
 procedure TIncludeDefinesTests.ActiveDiagnosticsReadIncludeDefines;
@@ -184,8 +199,12 @@ const
   begin
     Result := 0;
     for Finding in TFileChecker.CheckText(nil, TServerSettings.Default, 'Ziel.pas', AText, ASource) do
+    begin
       if Finding.RuleId = SyntaxRuleId then
+      begin
         Inc(Result);
+      end;
+    end;
   end;
 
 begin
@@ -224,8 +243,8 @@ begin
     Settings.ParameterNames := False;
     Settings.InferredTypes := False;
     Settings.EndMarkers := False;
-    Hints := TLspInlayHints.Collect(nil, nil, Tree, Source, MainFile, TTextRange.Create(0, 0, 7, 0), Settings,
-      nil, Processed);
+    Hints := TLspInlayHints.Collect(TInlayHintSource.Create(nil, nil, Tree, Source, MainFile, nil),
+      TTextRange.Create(0, 0, 7, 0), Settings, Processed);
     Assert.AreEqual(1, Integer(Length(Hints)));
     Assert.AreEqual('definiert FOO, BAR', Hints[0].Text);
     Assert.AreEqual(2, Hints[0].Position.Line);
@@ -242,8 +261,8 @@ begin
     Assert.AreEqual(0, Integer(Length(TLspInlayHints.IncludeDefines(Tree, Processed,
       TTextRange.Create(3, 0, 7, 0)))));
     Settings.IncludeDefines := False;
-    Assert.AreEqual(0, Integer(Length(TLspInlayHints.Collect(nil, nil, Tree, Source, MainFile,
-      TTextRange.Create(0, 0, 7, 0), Settings, nil, Processed))));
+    Assert.AreEqual(0, Integer(Length(TLspInlayHints.Collect(TInlayHintSource.Create(nil, nil, Tree,
+      Source, MainFile, nil), TTextRange.Create(0, 0, 7, 0), Settings, Processed))));
   finally
     Tree.Free;
   end;

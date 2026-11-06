@@ -83,7 +83,24 @@ uses
   Atlas.Common.Todos.Contract,
   Atlas.Common.Todos.Scanner,
   Atlas.Common.Todos.Report,
-  Atlas.Common.Rules.Engine;
+  Atlas.Common.Rules.Engine,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TTodosText = (TodoTitle, CommentedTitle, Commented, RemoveCommented);
+
+const
+  cTexts: array[TTodosText] of TAtlasText = (
+    (De: 'Offener TODO-Kommentar'; En: 'Open TODO comment'),
+    (De: 'Auskommentierter Code'; En: 'Commented-out code'),
+    (De: '%d Zeilen auskommentierter Code; die Versionsverwaltung bewahrt ihn auf.';
+     En: '%d lines of commented-out code; version control keeps it.'),
+    (De: 'Auskommentierten Code entfernen'; En: 'Remove commented-out code'));
+
+{$SCOPEDENUMS OFF}
 
 { TTodoRules }
 
@@ -93,14 +110,39 @@ var
 begin
   Result := (AKeyword <> '') and not SameText(AKeyword, TTodos.DoneKeyword);
   if Result then
+  begin
     for Ch in AKeyword do
+    begin
       if not CharInSet(Ch, ['A'..'Z', 'a'..'z']) then
+      begin
         Exit(False);
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Gültige Schlüsselwörter aus der Option als JSON-Wert (Array von Strings), in Großbuchstaben.</summary>
+function KeywordsFromJson(AKeywords: TJSONValue): TArray<string>;
+var
+  mItem: TJSONValue;
+begin
+  Result := nil;
+  if not (AKeywords is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mItem in TJSONArray(AKeywords) do
+  begin
+    if (mItem is TJSONString) and TTodoRules.IsValidKeyword(Trim(mItem.Value)) then
+    begin
+      Result := Result + [UpperCase(Trim(mItem.Value))];
+    end;
+  end;
 end;
 
 class function TTodoRules.KeywordsFromOptions(const AOptions: string): TArray<string>;
 var
-  Value, Keywords, Item: TJSONValue;
+  Value: TJSONValue;
 begin
   Result := nil;
   if AOptions <> '' then
@@ -109,18 +151,16 @@ begin
     try
       if Value is TJSONObject then
       begin
-        Keywords := TJSONObject(Value).GetValue(TodoKeywordsOption);
-        if Keywords is TJSONArray then
-          for Item in TJSONArray(Keywords) do
-            if (Item is TJSONString) and IsValidKeyword(Trim(Item.Value)) then
-              Result := Result + [UpperCase(Trim(Item.Value))];
+        Result := KeywordsFromJson(TJSONObject(Value).GetValue(TodoKeywordsOption));
       end;
     finally
       Value.Free;
     end;
   end;
   if Length(Result) = 0 then
+  begin
     Result := TTodos.DefaultKeywords;
+  end;
 end;
 
 class function TTodoRules.Keywords(const ASettings: TServerSettings): TArray<string>;
@@ -133,7 +173,7 @@ end;
 function TTodoRule.Descriptor: TRuleDescriptor;
 begin
   // Freiwillig (#68): läuft nur eingeschaltet, wie die experimentellen Regeln.
-  Result := TRuleDescriptor.Create(TodoCommentRuleId, TRuleSeverity.Hint, 'Offener TODO-Kommentar', True);
+  Result := TRuleDescriptor.Create(TodoCommentRuleId, TRuleSeverity.Hint, cTexts[TTodosText.TodoTitle].Text, True);
 end;
 
 procedure TTodoRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -144,12 +184,20 @@ var
 begin
   Keywords := TTodoRules.KeywordsFromOptions(AContext.Options);
   if AContext.Tree <> nil then
-    Entries := TTodoScanner.FromTokens(AContext.Tree.Tokens, Keywords)
+  begin
+    Entries := TTodoScanner.FromTokens(AContext.Tree.Tokens, Keywords);
+  end
   else
+  begin
     Entries := TTodoScanner.FromTokens(TPascalLexer.Tokenize(AContext.Text), Keywords);
+  end;
   for Entry in Entries do
+  begin
     if not Entry.Done then
+    begin
       AReport.Add(Entry.Range, TTodoReport.Caption(Entry));
+    end;
+  end;
 end;
 
 type
@@ -164,7 +212,7 @@ type
 
 function TCommentedOutCodeRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(CommentedOutCodeRuleId, TRuleSeverity.Hint, 'Auskommentierter Code');
+  Result := TRuleDescriptor.Create(CommentedOutCodeRuleId, TRuleSeverity.Hint, cTexts[TTodosText.CommentedTitle].Text);
 end;
 
 class function TCommentedOutCodeRule.LooksLikeCode(const ALine: string): Boolean;
@@ -178,9 +226,13 @@ var
 begin
   Line := Trim(ALine);
   if Line = '' then
+  begin
     Exit(False);
+  end;
   if EndsStr(';', Line) or (Pos(':=', Line) > 0) or MatchText(Line, BlockWords) then
+  begin
     Exit(True);
+  end;
   Space := LastDelimiter(' ', Line);
   Last := Copy(Line, Space + 1, MaxInt);
   Result := (Space > 0) and MatchText(Last, LastWords);
@@ -203,7 +255,9 @@ begin
     Tree := TSyntaxTreeCache.Parse(Wrappers[Index, 0] + Code + Wrappers[Index, 1]);
     try
       if Length(Tree.Diagnostics) = 0 then
+      begin
         Exit(True);
+      end;
     finally
       Tree.Free;
     end;
@@ -227,35 +281,51 @@ var
     AFirst := 0;
     ALast := High(ALines);
     while (AFirst <= ALast) and not LooksLikeCode(ALines[AFirst].Text) do
+    begin
       Inc(AFirst);
+    end;
     while (ALast >= AFirst) and not LooksLikeCode(ALines[ALast].Text) do
+    begin
       Dec(ALast);
+    end;
     if ALast - AFirst + 1 < MinLines then
+    begin
       Exit;
+    end;
     // Beispiel in der Dokumentation: <code> im Kommentar oder eingeleitet von „…:“.
     for Index := 0 to High(ALines) do
+    begin
       if ContainsText(ALines[Index].Text, '<code') then
+      begin
         Exit;
+      end;
+    end;
     Previous := AFirst - 1;
     while (Previous >= 0) and (Trim(ALines[Previous].Text) = '') do
+    begin
       Dec(Previous);
+    end;
     if (Previous >= 0) and EndsStr(':', Trim(ALines[Previous].Text)) then
+    begin
       Exit;
+    end;
     Texts := nil;
     Signals := 0;
     for Index := AFirst to ALast do
     begin
       Texts := Texts + [ALines[Index].Text];
       if LooksLikeCode(ALines[Index].Text) then
+      begin
         Inc(Signals);
+      end;
     end;
     Result := (Signals * 2 >= Length(Texts)) and ParsesAsCode(Texts);
   end;
 
   procedure Report(const ARange: TTextRange; ACount, AFirstLine, ALastLine: Integer);
   begin
-    AReport.Add(ARange, Format('%d Zeilen auskommentierter Code; die Versionsverwaltung bewahrt ihn auf.',
-      [ACount]), TRuleConfidence.Medium, [TRuleFix.Create('Auskommentierten Code entfernen',
+    AReport.Add(ARange, cTexts[TTodosText.Commented].Fmt(
+      [ACount]), TRuleConfidence.Medium, [TRuleFix.Create(cTexts[TTodosText.RemoveCommented].Text,
       [TRuleEdit.Create(TTextRange.Create(AFirstLine, 0, ALastLine + 1, 0), '')])]);
   end;
 
@@ -265,8 +335,10 @@ var
     First, Last: Integer;
   begin
     if (Length(Run) >= MinLines) and IsCode(Run, First, Last) then
+    begin
       Report(TTextRange.Create(Run[First].Range.StartPos, Run[Last].Range.EndPos), Last - First + 1,
         Run[First].Line, Run[Last].Line);
+    end;
     Run := nil;
   end;
 
@@ -288,9 +360,13 @@ var
   begin
     Token := Tokens[AIndex];
     if StartsStr('(*', Token.Text) then
-      Inner := Copy(Token.Text, 3, Length(Token.Text) - 4)
+    begin
+      Inner := Copy(Token.Text, 3, Length(Token.Text) - 4);
+    end
     else
+    begin
       Inner := Copy(Token.Text, 2, Length(Token.Text) - 2);
+    end;
     Parts := TTextLines.SplitLines(Inner);
     Lines := nil;
     for Index := 0 to High(Parts) do
@@ -303,57 +379,81 @@ var
     // Nur wenn der Kommentar allein in seinen Zeilen steht, lässt er sich zeilenweise entfernen.
     if not FirstInLine(AIndex) or ((AIndex < High(Tokens)) and
       (Tokens[AIndex + 1].StartPos.Line = Token.EndPos.Line)) then
+    begin
       Exit;
+    end;
     if IsCode(Lines, First, Last) then
+    begin
       Report(TTextRange.Create(Token.StartPos, Token.EndPos), Last - First + 1, Token.StartPos.Line,
         Token.EndPos.Line);
+    end;
+  end;
+
+  // Zeilenkommentar: an den laufenden Block anhängen bzw. einen neuen beginnen.
+  procedure AddLineComment(const AToken: TPascalToken);
+  var
+    mItem: TCommentLine;
+  begin
+    // XMLDoc bleibt stumm.
+    if StartsStr('///', AToken.Text) then
+    begin
+      Flush;
+      Exit;
+    end;
+    if (Run <> nil) and (Run[High(Run)].Line + 1 <> AToken.StartPos.Line) then
+    begin
+      Flush;
+    end;
+    mItem.Line := AToken.StartPos.Line;
+    mItem.Text := Copy(AToken.Text, 3, MaxInt);
+    mItem.Range := TTextRange.Create(AToken.StartPos, AToken.EndPos);
+    Run := Run + [mItem];
+  end;
+
+  // Kommentare vor dem ersten Token sind der Dateikopf (Lizenz, Beschreibung).
+  function FirstCodeToken: Integer;
+  begin
+    Result := 0;
+    while (Result <= High(Tokens)) and (Tokens[Result].Kind in [TPascalTokenKind.Comment,
+      TPascalTokenKind.Directive]) do
+    begin
+      Inc(Result);
+    end;
   end;
 
 var
-  Index, FirstCode: Integer;
+  Index: Integer;
   Token: TPascalToken;
-  Item: TCommentLine;
 begin
   if AContext.Tree = nil then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   MinLines := TRuleOptions.Int(AContext.Options, 'minLines', DefaultMinLines);
   if MinLines < 1 then
+  begin
     MinLines := DefaultMinLines;
-  // Kommentare vor dem ersten Token sind der Dateikopf (Lizenz, Beschreibung).
-  FirstCode := 0;
-  while (FirstCode <= High(Tokens)) and (Tokens[FirstCode].Kind in [TPascalTokenKind.Comment,
-    TPascalTokenKind.Directive]) do
-    Inc(FirstCode);
+  end;
   Run := nil;
-  for Index := FirstCode to High(Tokens) do
+  for Index := FirstCodeToken to High(Tokens) do
   begin
     Token := Tokens[Index];
     if (Token.Kind <> TPascalTokenKind.Comment) or not FirstInLine(Index) then
     begin
       Flush;
-      Continue;
-    end;
-    if StartsStr('//', Token.Text) then
+    end
+    else if StartsStr('//', Token.Text) then
     begin
-      // XMLDoc bleibt stumm.
-      if StartsStr('///', Token.Text) then
-      begin
-        Flush;
-        Continue;
-      end;
-      if (Run <> nil) and (Run[High(Run)].Line + 1 <> Token.StartPos.Line) then
-        Flush;
-      Item.Line := Token.StartPos.Line;
-      Item.Text := Copy(Token.Text, 3, MaxInt);
-      Item.Range := TTextRange.Create(Token.StartPos, Token.EndPos);
-      Run := Run + [Item];
+      AddLineComment(Token);
     end
     else
     begin
       Flush;
       if Token.EndPos.Line > Token.StartPos.Line then
+      begin
         JudgeBlock(Index);
+      end;
     end;
   end;
   Flush;
@@ -364,5 +464,8 @@ begin
   ARegistry.Register(TTodoRule.Create);
   ARegistry.Register(TCommentedOutCodeRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Todos', cTexts);
 
 end.

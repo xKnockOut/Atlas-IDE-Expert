@@ -60,7 +60,32 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.Positions;
+  Atlas.Common.Lsp.Positions,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TDisableWarningText = (SwitchOffInTheWhole, ArgumentsUriLineCodeAnd, IsNeitherAWarningNor, ThereIsNoMatchingRange,
+    AffectsAllWarnings, SwitchOffInTheWhole2, SwitchOffHere, SwitchOffIn, UnknownScope);
+
+const
+  cTexts: array[TDisableWarningText] of TAtlasText = (
+    (De: '%s in der ganzen Unit abschalten (%s)'; En: 'Switch off %s in the whole unit (%s)'),
+    (De: 'Argumente "uri", "line", "code" und "scope" fehlen';
+     En: 'Arguments "uri", "line", "code" and "scope" missing'),
+    (De: ' ist keine Warnung und kein Hinweis.'; En: ' is neither a warning nor a hint.'),
+    (De: 'An dieser Stelle gibt es keinen passenden Bereich (Zeile, Routine oder Unit-Kopf).';
+     En: 'There is no matching range at this position (line, routine or unit header).'),
+    (De: ': betrifft alle Warnungen'; En: ': affects all warnings'),
+    (De: '%s im ganzen Projekt abschalten (Projektoptionen)';
+     En: 'Switch off %s in the whole project (project options)'),
+    (De: '%s hier abschalten (%s)'; En: 'Switch off %s here (%s)'),
+    (De: '%s in %s abschalten (%s)'; En: 'Switch off %s in %s (%s)'),
+    (De: 'Unbekannter Bereich: '; En: 'Unknown scope: '));
+
+{$SCOPEDENUMS OFF}
 
 const
   ScopeNames: array[TDisableWarningScope] of string = ('line', 'routine', 'unit');
@@ -75,11 +100,13 @@ var
   Scope: TDisableWarningScope;
 begin
   for Scope := Low(TDisableWarningScope) to High(TDisableWarningScope) do
+  begin
     if SameText(ScopeNames[Scope], AName) then
     begin
       AScope := Scope;
       Exit(True);
     end;
+  end;
   AScope := TDisableWarningScope.Line;
   Result := False;
 end;
@@ -88,7 +115,9 @@ function SwitchHint(const ASwitch: TDisableWarningSwitch): string;
 begin
   Result := ASwitch.OffText;
   if ASwitch.AllWarnings then
-    Result := Result + ': betrifft alle Warnungen';
+  begin
+    Result := Result + cTexts[TDisableWarningText.AffectsAllWarnings].Text;
+  end;
 end;
 
 function CommandAction(const ATitle, ACommand: string; AArguments: TJSONArray; APreferred: Boolean): TJSONObject;
@@ -103,23 +132,52 @@ begin
   Result.AddPair('title', ATitle);
   Result.AddPair('kind', TLspDisableWarning.Kind);
   if APreferred then
+  begin
     Result.AddPair('isPreferred', TJSONBool.Create(True));
+  end;
   Result.AddPair('command', Command);
 end;
 
-function ScopeAction(const AOptions: TDisableWarningOptions; const AUri: string; ALine: Integer;
-  const ASwitch: TDisableWarningSwitch; AScope: TDisableWarningScope; const ATitle: string;
-  APreferred: Boolean): TJSONObject;
+type
+  /// <summary>Meldung, zu der eine Aktion entsteht: Datei, Zeile (ab 0) und Schalter.</summary>
+  TWarningSpot = record
+    Uri: string;
+    Line: Integer;
+    Switch: TDisableWarningSwitch;
+  end;
+
+function ScopeAction(const AOptions: TDisableWarningOptions; const ASpot: TWarningSpot;
+  AScope: TDisableWarningScope; const ATitle: string; APreferred: Boolean): TJSONObject;
 var
-  Arguments: TJSONArray;
+  mArguments: TJSONArray;
 begin
-  Arguments := TJSONArray.Create;
-  Arguments.Add(AUri);
-  Arguments.AddElement(TJSONNumber.Create(ALine));
-  Arguments.Add(ASwitch.Code);
-  Arguments.Add(TLspDisableWarning.ScopeName(AScope));
-  Arguments.AddElement(TJSONBool.Create(AOptions.AskReason));
-  Result := CommandAction(ATitle, TLspDisableWarning.ClientCommand, Arguments, APreferred);
+  mArguments := TJSONArray.Create;
+  mArguments.Add(ASpot.Uri);
+  mArguments.AddElement(TJSONNumber.Create(ASpot.Line));
+  mArguments.Add(ASpot.Switch.Code);
+  mArguments.Add(TLspDisableWarning.ScopeName(AScope));
+  mArguments.AddElement(TJSONBool.Create(AOptions.AskReason));
+  Result := CommandAction(ATitle, TLspDisableWarning.ClientCommand, mArguments, APreferred);
+end;
+
+function SpotOf(const AUri: string; ALine: Integer; const ASwitch: TDisableWarningSwitch): TWarningSpot;
+begin
+  Result.Uri := AUri;
+  Result.Line := ALine;
+  Result.Switch := ASwitch;
+end;
+
+/// <summary>„im ganzen Projekt abschalten“ für Warnungen mit eigenem Bezeichner.</summary>
+function ProjectAction(const ASpot: TWarningSpot): TJSONObject;
+var
+  mArguments: TJSONArray;
+begin
+  mArguments := TJSONArray.Create;
+  mArguments.Add(ASpot.Uri);
+  mArguments.Add(ASpot.Switch.Code);
+  mArguments.Add(ASpot.Switch.Identifier);
+  Result := CommandAction(cTexts[TDisableWarningText.SwitchOffInTheWhole2].Fmt([ASpot.Switch.Code]),
+    TLspDisableWarning.ProjectCommand, mArguments, False);
 end;
 
 class function TLspDisableWarning.Actions(const AOptions: TDisableWarningOptions; ATree: TSyntaxTree;
@@ -130,12 +188,14 @@ var
   Message: TCompilerMessage;
   Switch: TDisableWarningSwitch;
   Routine: TSyntaxNode;
-  Arguments: TJSONArray;
   HasHeader: Boolean;
+  mSpot: TWarningSpot;
 begin
   Result := nil;
   if not AOptions.Enabled or (ATree = nil) then
+  begin
     Exit;
+  end;
   HasHeader := TDisableWarning.HeaderEndLine(ATree) >= 0;
   Seen := TDictionary<string, Boolean>.Create;
   try
@@ -144,29 +204,33 @@ begin
       if (Message.Line < AFirstLine) or (Message.Line > ALastLine) or
         not TDisableWarning.SwitchFor(Message.Code, AOptions.Version, Switch) or
         Seen.ContainsKey(Switch.Code + '@' + IntToStr(Message.Line)) then
+      begin
         Continue;
+      end;
       Seen.Add(Switch.Code + '@' + IntToStr(Message.Line), True);
+      mSpot := SpotOf(AUri, Message.Line, Switch);
       // Ablaufmeldungen prüft der Compiler am Ende der Routine: Ein Schalter um die Zeile wirkte nicht.
       if not Switch.RoutineWide then
-        Result := Result + [ScopeAction(AOptions, AUri, Message.Line, Switch, TDisableWarningScope.Line,
-          Format('%s hier abschalten (%s)', [Switch.Code, SwitchHint(Switch)]), True)];
+      begin
+        Result := Result + [ScopeAction(AOptions, mSpot, TDisableWarningScope.Line,
+          cTexts[TDisableWarningText.SwitchOffHere].Fmt([Switch.Code, SwitchHint(Switch)]), True)];
+      end;
       Routine := TDisableWarning.RoutineAt(ATree, Message.Line);
       if Routine <> nil then
-        Result := Result + [ScopeAction(AOptions, AUri, Message.Line, Switch, TDisableWarningScope.Routine,
-          Format('%s in %s abschalten (%s)', [Switch.Code, Routine.Name, SwitchHint(Switch)]),
+      begin
+        Result := Result + [ScopeAction(AOptions, mSpot, TDisableWarningScope.Routine,
+          cTexts[TDisableWarningText.SwitchOffIn].Fmt([Switch.Code, Routine.Name, SwitchHint(Switch)]),
           Switch.RoutineWide)];
+      end;
       if HasHeader then
-        Result := Result + [ScopeAction(AOptions, AUri, Message.Line, Switch, TDisableWarningScope.UnitWide,
-          Format('%s in der ganzen Unit abschalten (%s)', [Switch.Code, SwitchHint(Switch)]),
+      begin
+        Result := Result + [ScopeAction(AOptions, mSpot, TDisableWarningScope.UnitWide,
+          cTexts[TDisableWarningText.SwitchOffInTheWhole].Fmt([Switch.Code, SwitchHint(Switch)]),
           Switch.RoutineWide and (Routine = nil))];
+      end;
       if Switch.Identifier <> '' then
       begin
-        Arguments := TJSONArray.Create;
-        Arguments.Add(AUri);
-        Arguments.Add(Switch.Code);
-        Arguments.Add(Switch.Identifier);
-        Result := Result + [CommandAction(Format('%s im ganzen Projekt abschalten (Projektoptionen)',
-          [Switch.Code]), ProjectCommand, Arguments, False)];
+        Result := Result + [ProjectAction(mSpot)];
       end;
     end;
   finally
@@ -174,56 +238,79 @@ begin
   end;
 end;
 
+/// <summary>WorkspaceEdit mit den Änderungen AEdits an der Datei AUri.</summary>
+function WorkspaceEditJson(const AUri: string; const AEdits: TArray<TTextEdit>): TJSONObject;
+var
+  mEdit: TTextEdit;
+  mDocument, mTextDocument, mItem: TJSONObject;
+  mItems, mChanges: TJSONArray;
+begin
+  mItems := TJSONArray.Create;
+  for mEdit in AEdits do
+  begin
+    mItem := TJSONObject.Create;
+    mItem.AddPair('range', TLspPositions.RangeToJson(mEdit.Range));
+    mItem.AddPair('newText', mEdit.NewText);
+    mItems.AddElement(mItem);
+  end;
+  mTextDocument := TJSONObject.Create;
+  mTextDocument.AddPair('uri', AUri);
+  mTextDocument.AddPair('version', TJSONNull.Create);
+  mDocument := TJSONObject.Create;
+  mDocument.AddPair('textDocument', mTextDocument);
+  mDocument.AddPair('edits', mItems);
+  mChanges := TJSONArray.Create;
+  mChanges.AddElement(mDocument);
+  Result := TJSONObject.Create;
+  Result.AddPair('documentChanges', mChanges);
+end;
+
+/// <summary>Begründung aus dem fünften Argument; leer, wenn es fehlt.</summary>
+function ReasonArgument(const AArguments: TJSONArray): string;
+begin
+  Result := '';
+  if AArguments.Count > 4 then
+  begin
+    Result := AArguments.Items[4].Value;
+  end;
+end;
+
 class function TLspDisableWarning.Execute(const AArguments: TJSONArray; const AText: string; ATree: TSyntaxTree;
   const AVersion: string): TJSONValue;
 var
-  Uri, Reason: string;
-  Line: Integer;
-  Scope: TDisableWarningScope;
-  Switch: TDisableWarningSwitch;
-  Edits: TArray<TTextEdit>;
-  Edit: TTextEdit;
-  Answer, Document, TextDocument, Item, WorkspaceEdit: TJSONObject;
-  Items, Changes: TJSONArray;
+  mScope: TDisableWarningScope;
+  mSwitch: TDisableWarningSwitch;
+  mEdits: TArray<TTextEdit>;
+  mAnswer: TJSONObject;
 begin
   if (AArguments = nil) or (AArguments.Count < 4) then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Argumente "uri", "line", "code" und "scope" fehlen');
-  Uri := AArguments.Items[0].Value;
-  Line := StrToIntDef(AArguments.Items[1].Value, -1);
-  if not TryParseScope(AArguments.Items[3].Value, Scope) then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Unbekannter Bereich: ' + AArguments.Items[3].Value);
-  Reason := '';
-  if AArguments.Count > 4 then
-    Reason := AArguments.Items[4].Value;
-  if not TDisableWarning.SwitchFor(AArguments.Items[2].Value, AVersion, Switch) then
-    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
-      AArguments.Items[2].Value + ' ist keine Warnung und kein Hinweis.');
-  if not TDisableWarning.Edits(AText, ATree, Line, Switch, Scope, Reason, Edits) then
-    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
-      'An dieser Stelle gibt es keinen passenden Bereich (Zeile, Routine oder Unit-Kopf).');
-  Items := TJSONArray.Create;
-  for Edit in Edits do
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
-    Item.AddPair('newText', Edit.NewText);
-    Items.AddElement(Item);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TDisableWarningText.ArgumentsUriLineCodeAnd].Text);
   end;
-  TextDocument := TJSONObject.Create;
-  TextDocument.AddPair('uri', Uri);
-  TextDocument.AddPair('version', TJSONNull.Create);
-  Document := TJSONObject.Create;
-  Document.AddPair('textDocument', TextDocument);
-  Document.AddPair('edits', Items);
-  Changes := TJSONArray.Create;
-  Changes.AddElement(Document);
-  WorkspaceEdit := TJSONObject.Create;
-  WorkspaceEdit.AddPair('documentChanges', Changes);
-  Answer := TJSONObject.Create;
-  Answer.AddPair('edit', WorkspaceEdit);
-  Answer.AddPair('allWarnings', TJSONBool.Create(Switch.AllWarnings));
-  Result := Answer;
+  if not TryParseScope(AArguments.Items[3].Value, mScope) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TDisableWarningText.UnknownScope].Text +
+      AArguments.Items[3].Value);
+  end;
+  if not TDisableWarning.SwitchFor(AArguments.Items[2].Value, AVersion, mSwitch) then
+  begin
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      AArguments.Items[2].Value + cTexts[TDisableWarningText.IsNeitherAWarningNor].Text);
+  end;
+  if not TDisableWarning.Edits(AText, ATree, StrToIntDef(AArguments.Items[1].Value, -1),
+    TDisableWarningRequest.Create(mSwitch, mScope, ReasonArgument(AArguments)), mEdits) then
+  begin
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      cTexts[TDisableWarningText.ThereIsNoMatchingRange].Text);
+  end;
+  mAnswer := TJSONObject.Create;
+  mAnswer.AddPair('edit', WorkspaceEditJson(AArguments.Items[0].Value, mEdits));
+  mAnswer.AddPair('allWarnings', TJSONBool.Create(mSwitch.AllWarnings));
+  Result := mAnswer;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.DisableWarning', cTexts);
 
 end.

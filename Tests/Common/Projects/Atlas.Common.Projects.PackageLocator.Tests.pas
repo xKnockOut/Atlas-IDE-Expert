@@ -76,13 +76,17 @@ begin
       Item: TPair<string, TBytes>;
     begin
       if AReads <> nil then
+      begin
         AReads.Add(AFileName);
+      end;
       for Item in Map do
+      begin
         if SameText(Item.Key, AFileName) then
         begin
           AData := Item.Value;
           Exit(True);
         end;
+      end;
       AData := nil;
       Result := False;
     end;
@@ -100,7 +104,9 @@ begin
   // Wie im .dcp: Namen als ShortString mit Längenbyte zwischen Binärdaten.
   Result := 'PKX0'#0#1;
   for Name in ANames do
+  begin
     Result := Result + Chr(Length(Name)) + Name + #0#2;
+  end;
 end;
 
 { TPackageLocatorTests }

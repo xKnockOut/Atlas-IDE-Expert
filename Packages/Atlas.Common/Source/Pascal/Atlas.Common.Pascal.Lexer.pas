@@ -11,6 +11,7 @@
 interface
 
 uses
+  System.SysUtils,
   Atlas.Common.Pascal.Contract;
 
 type
@@ -36,7 +37,6 @@ type
 implementation
 
 uses
-  System.SysUtils,
   System.Generics.Collections,
   Atlas.Common.Documents.Contract;
 
@@ -73,6 +73,20 @@ type
     function ScanUntil(const ACloser: string): Boolean;
     function ScanString: Boolean;
     function TryScanMultilineString(out ATerminated: Boolean): Boolean;
+    /// <summary>Anzahl Hochkommas ab Peek(ADelta).</summary>
+    function QuoteRun(ADelta: Integer): Integer;
+    /// <summary>Anzahl Leerzeichen und Tabs ab Peek(ADelta).</summary>
+    function BlankRun(ADelta: Integer): Integer;
+    /// <summary>Kommentar oder Direktive ab FPos; False bei anderem Zeichen.</summary>
+    function ScanComment(out AKind: TPascalTokenKind; out ATerminated: Boolean): Boolean;
+    /// <summary>String, Zeichencode oder Zahl ab FPos; False bei anderem Zeichen.</summary>
+    function ScanLiteral(out AKind: TPascalTokenKind; out ATerminated: Boolean): Boolean;
+    /// <summary>&amp;begin, &amp;&amp;op_Equality und Oktalzahlen &amp;17; False bei anderem Zeichen.</summary>
+    function ScanAmpersand(out AKind: TPascalTokenKind): Boolean;
+    /// <summary>Bezeichner oder reserviertes Wort ab AStart (FPos = AStart).</summary>
+    function ScanWord(AStart: Integer): TPascalTokenKind;
+    /// <summary>Bezeichner, Symbol oder unbekanntes Zeichen ab AStart (FPos = AStart).</summary>
+    function ScanOther(AStart: Integer): TPascalTokenKind;
     procedure ScanDigits(const AAllowed: TSysCharSet);
     /// <summary>False bei einem Exponenten ohne Ziffern (1.5e;): Delphi meldet E2053.</summary>
     function ScanDecimal: Boolean;
@@ -107,9 +121,13 @@ function TScanner.Peek(ADelta: Integer): Char;
 begin
   // FPos zählt ab 0, der string ab 1.
   if FPos + ADelta < FLength then
-    Result := FText[FPos + ADelta + 1]
+  begin
+    Result := FText[FPos + ADelta + 1];
+  end
   else
+  begin
     Result := #0;
+  end;
 end;
 
 function TScanner.Peek: Char;
@@ -125,7 +143,9 @@ end;
 procedure TScanner.SkipToLineEnd;
 begin
   while (FPos < FLength) and not AtLineBreak do
+  begin
     Inc(FPos);
+  end;
 end;
 
 function TScanner.ScanUntil(const ACloser: string): Boolean;
@@ -136,9 +156,13 @@ begin
   Found := Pos(ACloser, FText, FPos + 1);
   Result := Found > 0;
   if Result then
-    FPos := Found - 1 + Length(ACloser)
+  begin
+    FPos := Found - 1 + Length(ACloser);
+  end
   else
+  begin
     FPos := FLength;
+  end;
 end;
 
 function TScanner.ScanString: Boolean;
@@ -150,7 +174,9 @@ begin
     if Peek = '''' then
     begin
       if Peek(1) = '''' then
-        Inc(FPos, 2)
+      begin
+        Inc(FPos, 2);
+      end
       else
       begin
         Inc(FPos);
@@ -158,11 +184,33 @@ begin
       end;
     end
     else if AtLineBreak then
-      Exit(False)
+    begin
+      Exit(False);
+    end
     else
+    begin
       Inc(FPos);
+    end;
   end;
   Result := False;
+end;
+
+function TScanner.QuoteRun(ADelta: Integer): Integer;
+begin
+  Result := 0;
+  while Peek(ADelta + Result) = '''' do
+  begin
+    Inc(Result);
+  end;
+end;
+
+function TScanner.BlankRun(ADelta: Integer): Integer;
+begin
+  Result := 0;
+  while CharInSet(Peek(ADelta + Result), [' ', #9]) do
+  begin
+    Inc(Result);
+  end;
 end;
 
 function TScanner.TryScanMultilineString(out ATerminated: Boolean): Boolean;
@@ -170,52 +218,54 @@ var
   QuoteCount: Integer;
   Scan: Integer;
   LineScan: Integer;
-  Count: Integer;
 begin
   // Mehrzeiliger String (Delphi 12): eine ungerade Zahl (>= 3) Hochkommas,
   // danach nur Leerraum bis zum Zeilenende. Er endet an der ersten Zeile, die
   // nach Leerraum mit genauso vielen Hochkommas beginnt.
   ATerminated := False;
-  QuoteCount := 0;
-  while Peek(QuoteCount) = '''' do
-    Inc(QuoteCount);
+  QuoteCount := QuoteRun(0);
   if (QuoteCount < 3) or not Odd(QuoteCount) then
+  begin
     Exit(False);
-  Scan := QuoteCount;
-  while CharInSet(Peek(Scan), [' ', #9]) do
-    Inc(Scan);
+  end;
+  Scan := QuoteCount + BlankRun(QuoteCount);
   if not CharInSet(Peek(Scan), [#13, #10]) then
+  begin
     Exit(False);
+  end;
 
   Result := True;
   Inc(FPos, Scan);
-  while FPos < FLength do
+  while not ATerminated and (FPos < FLength) do
   begin
     // Zeilenumbruch überspringen, dann Leerraum am Zeilenanfang.
     if Peek = #13 then
-      Inc(FPos);
-    if Peek = #10 then
-      Inc(FPos);
-    LineScan := 0;
-    while CharInSet(Peek(LineScan), [' ', #9]) do
-      Inc(LineScan);
-    Count := 0;
-    while Peek(LineScan + Count) = '''' do
-      Inc(Count);
-    if Count = QuoteCount then
     begin
-      Inc(FPos, LineScan + Count);
-      ATerminated := True;
-      Exit;
+      Inc(FPos);
     end;
-    SkipToLineEnd;
+    if Peek = #10 then
+    begin
+      Inc(FPos);
+    end;
+    LineScan := BlankRun(0);
+    ATerminated := QuoteRun(LineScan) = QuoteCount;
+    if ATerminated then
+    begin
+      Inc(FPos, LineScan + QuoteCount);
+    end
+    else
+    begin
+      SkipToLineEnd;
+    end;
   end;
 end;
 
 procedure TScanner.ScanDigits(const AAllowed: TSysCharSet);
 begin
   while CharInSet(Peek, AAllowed) do
+  begin
     Inc(FPos);
+  end;
 end;
 
 function TScanner.ScanDecimal: Boolean;
@@ -246,7 +296,9 @@ end;
 procedure TScanner.ScanIdentifier;
 begin
   while IsIdentifierPart(Peek) do
+  begin
     Inc(FPos);
+  end;
 end;
 
 function TScanner.ScanSymbol: Boolean;
@@ -256,64 +308,71 @@ var
 begin
   Pair := Peek + Peek(1);
   for Symbol in TwoCharSymbols do
+  begin
     if Pair = Symbol then
     begin
       Inc(FPos, 2);
       Exit(True);
     end;
+  end;
   Result := Pos(Peek, OneCharSymbols) > 0;
   if Result then
+  begin
     Inc(FPos);
+  end;
 end;
 
-function TScanner.Next(out AToken: TPascalToken; out AEndOffset: Integer): Boolean;
-var
-  Start: Integer;
-  C: Char;
-  Terminated: Boolean;
-  Kind: TPascalTokenKind;
+function TScanner.ScanComment(out AKind: TPascalTokenKind; out ATerminated: Boolean): Boolean;
 begin
-  while (FPos < FLength) and (Peek <= ' ') do
-    Inc(FPos);
-  if FPos >= FLength then
-    Exit(False);
-
-  Start := FPos;
-  C := Peek;
-  Terminated := True;
-  Kind := TPascalTokenKind.Unknown;
-
-  if (C = '/') and (Peek(1) = '/') then
+  Result := True;
+  ATerminated := True;
+  AKind := TPascalTokenKind.Comment;
+  if (Peek = '/') and (Peek(1) = '/') then
   begin
-    Kind := TPascalTokenKind.Comment;
     SkipToLineEnd;
   end
-  else if C = '{' then
+  else if Peek = '{' then
   begin
     if Peek(1) = '$' then
-      Kind := TPascalTokenKind.Directive
-    else
-      Kind := TPascalTokenKind.Comment;
-    Terminated := ScanUntil('}');
+    begin
+      AKind := TPascalTokenKind.Directive;
+    end;
+    ATerminated := ScanUntil('}');
   end
-  else if (C = '(') and (Peek(1) = '*') then
+  else if (Peek = '(') and (Peek(1) = '*') then
   begin
     if Peek(2) = '$' then
-      Kind := TPascalTokenKind.Directive
-    else
-      Kind := TPascalTokenKind.Comment;
+    begin
+      AKind := TPascalTokenKind.Directive;
+    end;
     Inc(FPos, 2);
-    Terminated := ScanUntil('*)');
+    ATerminated := ScanUntil('*)');
   end
-  else if C = '''' then
+  else
   begin
-    Kind := TPascalTokenKind.StringLiteral;
-    if not TryScanMultilineString(Terminated) then
-      Terminated := ScanString;
+    Result := False;
+  end;
+end;
+
+function TScanner.ScanLiteral(out AKind: TPascalTokenKind; out ATerminated: Boolean): Boolean;
+var
+  C: Char;
+begin
+  Result := True;
+  ATerminated := True;
+  AKind := TPascalTokenKind.Number;
+  C := Peek;
+  if C = '''' then
+  begin
+    AKind := TPascalTokenKind.StringLiteral;
+    if not TryScanMultilineString(ATerminated) then
+    begin
+      ATerminated := ScanString;
+    end;
   end
   else if C = '#' then
   begin
-    Kind := TPascalTokenKind.CharLiteral;
+    AKind := TPascalTokenKind.CharLiteral;
     Inc(FPos);
     if Peek = '$' then
     begin
@@ -321,62 +380,118 @@ begin
       ScanDigits(['0'..'9', 'A'..'F', 'a'..'f', '_']);
     end
     else
+    begin
       ScanDigits(['0'..'9', '_']);
+    end;
   end
   else if C = '$' then
   begin
-    Kind := TPascalTokenKind.Number;
     Inc(FPos);
     ScanDigits(['0'..'9', 'A'..'F', 'a'..'f', '_']);
   end
   else if (C = '%') and CharInSet(Peek(1), ['0', '1', '_']) then
   begin
-    Kind := TPascalTokenKind.Number;
     Inc(FPos);
     ScanDigits(['0', '1', '_']);
   end
   else if CharInSet(C, ['0'..'9']) then
   begin
-    Kind := TPascalTokenKind.Number;
-    Terminated := ScanDecimal;
+    ATerminated := ScanDecimal;
   end
-  else if (C = '&') and IsIdentifierStart(Peek(1)) then
+  else
+  begin
+    Result := False;
+  end;
+end;
+
+function TScanner.ScanAmpersand(out AKind: TPascalTokenKind): Boolean;
+begin
+  Result := Peek = '&';
+  AKind := TPascalTokenKind.Identifier;
+  if not Result then
+  begin
+    Exit;
+  end;
+  if IsIdentifierStart(Peek(1)) then
   begin
     // &begin: reserviertes Wort als Bezeichner.
-    Kind := TPascalTokenKind.Identifier;
     Inc(FPos);
     ScanIdentifier;
   end
-  else if (C = '&') and (Peek(1) = '&') and IsIdentifierStart(Peek(2)) then
+  else if (Peek(1) = '&') and IsIdentifierStart(Peek(2)) then
   begin
     // &&op_Equality: Bezeichner &op_Equality, so schreibt Spring4D die
     // Operator-Methoden nach dem .NET-Namensschema (#1137).
-    Kind := TPascalTokenKind.Identifier;
     Inc(FPos, 2);
     ScanIdentifier;
   end
-  else if (C = '&') and CharInSet(Peek(1), ['0'..'7']) then
+  else if CharInSet(Peek(1), ['0'..'7']) then
   begin
     // &17: Oktalzahl.
-    Kind := TPascalTokenKind.Number;
+    AKind := TPascalTokenKind.Number;
     Inc(FPos);
     ScanDigits(['0'..'7', '_']);
   end
-  else if IsIdentifierStart(C) then
+  else
   begin
-    ScanIdentifier;
-    // Direkt hinter @ ist ein reserviertes Wort ein Bezeichner: Sprungmarken
-    // wie @@End im asm-Block beenden den Block nicht (#861).
-    if ((Start = 0) or (FText[Start] <> '@')) and
-      TPascalLexer.IsReservedWord(Copy(FText, Start + 1, FPos - Start)) then
-      Kind := TPascalTokenKind.Keyword
-    else
-      Kind := TPascalTokenKind.Identifier;
+    Result := False;
+  end;
+end;
+
+function TScanner.ScanWord(AStart: Integer): TPascalTokenKind;
+begin
+  ScanIdentifier;
+  // Direkt hinter @ ist ein reserviertes Wort ein Bezeichner: Sprungmarken
+  // wie @@End im asm-Block beenden den Block nicht (#861).
+  if ((AStart = 0) or (FText[AStart] <> '@')) and
+    TPascalLexer.IsReservedWord(Copy(FText, AStart + 1, FPos - AStart)) then
+  begin
+    Result := TPascalTokenKind.Keyword;
+  end
+  else
+  begin
+    Result := TPascalTokenKind.Identifier;
+  end;
+end;
+
+function TScanner.ScanOther(AStart: Integer): TPascalTokenKind;
+begin
+  if IsIdentifierStart(Peek) then
+  begin
+    Result := ScanWord(AStart);
   end
   else if ScanSymbol then
-    Kind := TPascalTokenKind.Symbol
+  begin
+    Result := TPascalTokenKind.Symbol;
+  end
   else
+  begin
+    Result := TPascalTokenKind.Unknown;
     Inc(FPos);
+  end;
+end;
+
+function TScanner.Next(out AToken: TPascalToken; out AEndOffset: Integer): Boolean;
+var
+  Start: Integer;
+  Terminated: Boolean;
+  Kind: TPascalTokenKind;
+begin
+  while (FPos < FLength) and (Peek <= ' ') do
+  begin
+    Inc(FPos);
+  end;
+  if FPos >= FLength then
+  begin
+    Exit(False);
+  end;
+
+  Start := FPos;
+  Terminated := True;
+  if not (ScanComment(Kind, Terminated) or ScanLiteral(Kind, Terminated) or ScanAmpersand(Kind)) then
+  begin
+    Kind := ScanOther(Start);
+  end;
 
   AToken := Default(TPascalToken);
   AToken.Kind := Kind;
@@ -424,7 +539,9 @@ begin
     begin
       // LF nach CR gehört zum selben Zeilenumbruch.
       if not ((FOffset > 0) and (FText[FOffset] = #13)) then
+      begin
         Inc(FLine);
+      end;
       FLineStart := FOffset + 1;
     end;
     Inc(FOffset);
@@ -444,14 +561,22 @@ var
   Start, Stop: Integer;
 begin
   if Copy(AText, 1, 2) = '{$' then
-    Start := 3
+  begin
+    Start := 3;
+  end
   else if Copy(AText, 1, 3) = '(*$' then
-    Start := 4
+  begin
+    Start := 4;
+  end
   else
+  begin
     Exit('');
+  end;
   Stop := Start;
   while (Stop <= Length(AText)) and CharInSet(AText[Stop], ['A'..'Z', 'a'..'z']) do
+  begin
     Inc(Stop);
+  end;
   Result := UpperCase(Copy(AText, Start, Stop - Start));
 end;
 
@@ -478,9 +603,13 @@ end;
 class function TPascalLexer.SourceName(const AName: string): string;
 begin
   if (AName <> '') and ((AName[1] = '&') or IsReservedWord(AName)) then
-    Result := '&' + AName
+  begin
+    Result := '&' + AName;
+  end
   else
+  begin
     Result := AName;
+  end;
 end;
 
 class function TPascalLexer.ReservedWordList: TArray<string>;
@@ -489,7 +618,9 @@ var
 begin
   SetLength(Result, Length(ReservedWords));
   for Index := 0 to High(ReservedWords) do
+  begin
     Result[Index] := ReservedWords[Index];
+  end;
 end;
 
 class function TPascalLexer.Tokenize(const AText: string): TArray<TPascalToken>;
@@ -522,7 +653,9 @@ var
 begin
   ReservedWordSet := TDictionary<string, Boolean>.Create;
   for Word in ReservedWords do
+  begin
     ReservedWordSet.Add(Word, True);
+  end;
 end;
 
 initialization

@@ -48,13 +48,21 @@ implementation
 function SeparatorFor(const APath: string): Char;
 begin
   if ((Length(APath) >= 2) and (APath[2] = ':')) or APath.StartsWith('\') then
-    Result := '\'
+  begin
+    Result := '\';
+  end
   else if APath.StartsWith('/') then
-    Result := '/'
-  else if Pos('\', APath) > 0 then
-    Result := '\'
-  else
+  begin
     Result := '/';
+  end
+  else if Pos('\', APath) > 0 then
+  begin
+    Result := '\';
+  end
+  else
+  begin
+    Result := '/';
+  end;
 end;
 
 function LastSeparator(const APath: string): Integer;
@@ -62,8 +70,12 @@ var
   Index: Integer;
 begin
   for Index := Length(APath) downto 1 do
+  begin
     if CharInSet(APath[Index], ['\', '/']) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := 0;
 end;
 
@@ -73,68 +85,92 @@ begin
     ((APath <> '') and CharInSet(APath[1], ['\', '/']));
 end;
 
+/// <summary>Trennt Laufwerk, UNC-Server oder Wurzel vom Pfad ab; ARest behält den Rest.</summary>
+function PathPrefix(var ARest: string; ASeparator: Char): string;
+begin
+  if (Length(ARest) >= 2) and (ARest[2] = ':') then
+  begin
+    Result := Copy(ARest, 1, 2) + ASeparator;
+    ARest := Copy(ARest, 3, MaxInt);
+  end
+  else if (Length(ARest) >= 2) and (ARest[1] = ASeparator) and (ARest[2] = ASeparator) then
+  begin
+    Result := ASeparator + ASeparator;
+    ARest := Copy(ARest, 3, MaxInt);
+  end
+  else if (ARest <> '') and (ARest[1] = ASeparator) then
+  begin
+    Result := ASeparator;
+  end
+  else
+  begin
+    Result := '';
+  end;
+end;
+
+/// <summary>Nimmt den Pfadteil APart auf: "." und leere Teile fallen weg, ".." nimmt den letzten Teil zurück.
+/// </summary>
+procedure AddPart(AParts: TList<string>; const APart: string; AAtRoot: Boolean);
+begin
+  if (APart = '') or (APart = '.') then
+  begin
+    Exit;
+  end;
+  if APart <> '..' then
+  begin
+    AParts.Add(APart);
+  end
+  else if (AParts.Count > 0) and (AParts.Last <> '..') then
+  begin
+    AParts.Delete(AParts.Count - 1);
+  end
+  else if not AAtRoot then
+  begin
+    // Relativer Pfad über den Anfang hinaus; an der Wurzel bleibt es bei der Wurzel.
+    AParts.Add(APart);
+  end;
+end;
+
 class function TProjectPaths.Normalize(const APath: string): string;
 var
-  Separator: Char;
-  Prefix: string;
-  Rest: string;
-  Parts: TList<string>;
-  Part: string;
-  Start: Integer;
-  Index: Integer;
+  mSeparator: Char;
+  mPrefix, mRest, mPart: string;
+  mParts: TList<string>;
 begin
   if APath = '' then
+  begin
     Exit('');
-  Separator := SeparatorFor(APath);
-  Rest := StringReplace(APath, '/', Separator, [rfReplaceAll]);
-  Rest := StringReplace(Rest, '\', Separator, [rfReplaceAll]);
-  // Präfix: Laufwerk, UNC-Server oder Wurzel bleiben stehen.
-  if (Length(Rest) >= 2) and (Rest[2] = ':') then
-  begin
-    Prefix := Copy(Rest, 1, 2) + Separator;
-    Rest := Copy(Rest, 3, MaxInt);
-  end
-  else if (Length(Rest) >= 2) and (Rest[1] = Separator) and (Rest[2] = Separator) then
-  begin
-    Prefix := Separator + Separator;
-    Rest := Copy(Rest, 3, MaxInt);
-  end
-  else if (Rest <> '') and (Rest[1] = Separator) then
-    Prefix := Separator
-  else
-    Prefix := '';
-  Parts := TList<string>.Create;
+  end;
+  mSeparator := SeparatorFor(APath);
+  mRest := StringReplace(APath, '/', mSeparator, [rfReplaceAll]);
+  mRest := StringReplace(mRest, '\', mSeparator, [rfReplaceAll]);
+  mPrefix := PathPrefix(mRest, mSeparator);
+  mParts := TList<string>.Create;
   try
-    Start := 1;
-    for Index := 1 to Length(Rest) + 1 do
-      if (Index > Length(Rest)) or (Rest[Index] = Separator) then
-      begin
-        Part := Copy(Rest, Start, Index - Start);
-        Start := Index + 1;
-        if (Part = '') or (Part = '.') then
-          Continue;
-        if Part <> '..' then
-          Parts.Add(Part)
-        else if (Parts.Count > 0) and (Parts.Last <> '..') then
-          Parts.Delete(Parts.Count - 1)
-        else if Prefix = '' then
-          // Relativer Pfad über den Anfang hinaus; an der Wurzel bleibt es bei der Wurzel.
-          Parts.Add(Part);
-      end;
-    Result := Prefix + string.Join(Separator, Parts.ToArray);
+    for mPart in mRest.Split([mSeparator]) do
+    begin
+      AddPart(mParts, mPart, mPrefix <> '');
+    end;
+    Result := mPrefix + string.Join(mSeparator, mParts.ToArray);
   finally
-    Parts.Free;
+    mParts.Free;
   end;
 end;
 
 class function TProjectPaths.Combine(const ABase, APath: string): string;
 begin
   if (APath = '') then
-    Result := Normalize(ABase)
+  begin
+    Result := Normalize(ABase);
+  end
   else if IsAbsolute(APath) or (ABase = '') then
-    Result := Normalize(APath)
+  begin
+    Result := Normalize(APath);
+  end
   else
+  begin
     Result := Normalize(ABase + SeparatorFor(ABase + APath) + APath);
+  end;
 end;
 
 class function TProjectPaths.DirectoryOf(const AFileName: string): string;
@@ -143,11 +179,17 @@ var
 begin
   Index := LastSeparator(AFileName);
   if Index = 0 then
-    Result := ''
+  begin
+    Result := '';
+  end
   else if (Index = 3) and (AFileName[2] = ':') then
-    Result := Copy(AFileName, 1, 3)
+  begin
+    Result := Copy(AFileName, 1, 3);
+  end
   else
+  begin
     Result := Copy(AFileName, 1, Index - 1);
+  end;
 end;
 
 class function TProjectPaths.CommonFolder(const A, B: string): string;
@@ -158,7 +200,9 @@ var
 begin
   Result := '';
   if (A = '') or (B = '') then
+  begin
     Exit;
+  end;
   mSeparator := SeparatorFor(A);
   mLeft := Normalize(A).Split(['\', '/']);
   mRight := Normalize(B).Split(['\', '/']);
@@ -166,17 +210,25 @@ begin
   for mIndex := 0 to Min(High(mLeft), High(mRight)) do
   begin
     if not SameText(mLeft[mIndex], mRight[mIndex]) then
+    begin
       Break;
+    end;
     Inc(mCount);
   end;
   if mCount = 0 then
+  begin
     Exit;
+  end;
   Result := string.Join(mSeparator, Copy(mLeft, 0, mCount));
   // Laufwerk allein ("C:") als Ordner "C:\"; POSIX-Wurzel ("" vor dem ersten "/") als "/".
   if (Length(Result) = 2) and (Result[2] = ':') then
-    Result := Result + mSeparator
+  begin
+    Result := Result + mSeparator;
+  end
   else if Result = '' then
+  begin
     Result := mSeparator;
+  end;
 end;
 
 class function TProjectPaths.BaseName(const AFileName: string): string;
@@ -186,7 +238,9 @@ begin
   Result := Copy(AFileName, LastSeparator(AFileName) + 1, MaxInt);
   Dot := LastDelimiter('.', Result);
   if Dot > 0 then
+  begin
     Result := Copy(Result, 1, Dot - 1);
+  end;
 end;
 
 class function TProjectPaths.Extension(const AFileName: string): string;
@@ -197,9 +251,13 @@ begin
   Name := Copy(AFileName, LastSeparator(AFileName) + 1, MaxInt);
   Dot := LastDelimiter('.', Name);
   if Dot = 0 then
-    Result := ''
+  begin
+    Result := '';
+  end
   else
+  begin
     Result := LowerCase(Copy(Name, Dot, MaxInt));
+  end;
 end;
 
 class function TProjectPaths.SplitList(const AValue: string): TArray<string>;
@@ -210,57 +268,73 @@ begin
   Items := TList<string>.Create;
   try
     for Item in AValue.Split([';']) do
+    begin
       if Trim(Item) <> '' then
+      begin
         Items.Add(Trim(Item));
+      end;
+    end;
     Result := Items.ToArray;
   finally
     Items.Free;
   end;
 end;
 
+/// <summary>Wert der Variablen AName aus AVariables; False, wenn es sie nicht gibt.</summary>
+function TryVariable(const AVariables: TArray<TPair<string, string>>; const AName: string;
+  out AValue: string): Boolean;
+var
+  mVariable: TPair<string, string>;
+begin
+  for mVariable in AVariables do
+  begin
+    if SameText(mVariable.Key, AName) then
+    begin
+      AValue := mVariable.Value;
+      Exit(True);
+    end;
+  end;
+  AValue := '';
+  Result := False;
+end;
+
 class function TProjectPaths.ExpandVariables(const AText: string;
   const AVariables: TArray<TPair<string, string>>): string;
 var
-  Builder: TStringBuilder;
-  Index: Integer;
-  Close: Integer;
-  Name: string;
-  Variable: TPair<string, string>;
-  Found: Boolean;
+  mBuilder: TStringBuilder;
+  mIndex, mClose: Integer;
+  mValue: string;
 begin
   if Pos('$(', AText) = 0 then
+  begin
     Exit(AText);
-  Builder := TStringBuilder.Create;
+  end;
+  mBuilder := TStringBuilder.Create;
   try
-    Index := 1;
-    while Index <= Length(AText) do
+    mIndex := 1;
+    while mIndex <= Length(AText) do
     begin
-      if (AText[Index] = '$') and (Index < Length(AText)) and (AText[Index + 1] = '(') then
+      mClose := 0;
+      if (AText[mIndex] = '$') and (mIndex < Length(AText)) and (AText[mIndex + 1] = '(') then
       begin
-        Close := Pos(')', AText, Index + 2);
-        if Close > 0 then
-        begin
-          Name := Copy(AText, Index + 2, Close - Index - 2);
-          Found := False;
-          for Variable in AVariables do
-            if SameText(Variable.Key, Name) then
-            begin
-              Builder.Append(Variable.Value);
-              Found := True;
-              Break;
-            end;
-          if not Found then
-            Builder.Append(Copy(AText, Index, Close - Index + 1));
-          Index := Close + 1;
-          Continue;
-        end;
+        mClose := Pos(')', AText, mIndex + 2);
       end;
-      Builder.Append(AText[Index]);
-      Inc(Index);
+      if mClose = 0 then
+      begin
+        mBuilder.Append(AText[mIndex]);
+        Inc(mIndex);
+        Continue;
+      end;
+      if not TryVariable(AVariables, Copy(AText, mIndex + 2, mClose - mIndex - 2), mValue) then
+      begin
+        mValue := Copy(AText, mIndex, mClose - mIndex + 1);
+      end;
+      mBuilder.Append(mValue);
+      mIndex := mClose + 1;
     end;
-    Result := Builder.ToString;
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 

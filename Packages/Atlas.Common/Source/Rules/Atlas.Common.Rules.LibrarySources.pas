@@ -40,7 +40,9 @@ class function TLibrarySources.Normalized(const APath: string): string;
 begin
   Result := Trim(APath).Replace('\', '/');
   if (Result <> '') and not EndsStr('/', Result) then
+  begin
     Result := Result + '/';
+  end;
 end;
 
 class function TLibrarySources.IsFolder(const APath: string): Boolean;
@@ -61,18 +63,30 @@ begin
   Result.FRoots := nil;
   Result.FProjectRoots := nil;
   for mProject in AProjectRoots do
+  begin
     if IsFolder(mProject) then
+    begin
       Result.FProjectRoots := Result.FProjectRoots + [mProject];
+    end;
+  end;
   for mRoot in ARoots do
   begin
     if not IsFolder(mRoot) then
+    begin
       Continue;
+    end;
     mContainsProject := False;
     for mProject in Result.FProjectRoots do
+    begin
       if IsUnder(mProject, mRoot) then
+      begin
         mContainsProject := True;
+      end;
+    end;
     if not mContainsProject then
+    begin
       Result.FRoots := Result.FRoots + [mRoot];
+    end;
   end;
 end;
 
@@ -90,11 +104,19 @@ var
 begin
   Result := False;
   for mFolder in FProjectRoots do
+  begin
     if IsUnder(AFileName, mFolder) then
+    begin
       Exit;
+    end;
+  end;
   for mFolder in FRoots do
+  begin
     if IsUnder(AFileName, mFolder) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 end.

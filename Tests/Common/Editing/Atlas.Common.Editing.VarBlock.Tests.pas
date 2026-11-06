@@ -81,13 +81,17 @@ begin
   Offset := Pos(ANeedle, AText) - 1;
   Result := TTextPosition.Create(0, 0);
   for Index := 1 to Offset do
+  begin
     if AText[Index] = LF then
     begin
       Inc(Result.Line);
       Result.Character := 0;
     end
     else
+    begin
       Inc(Result.Character);
+    end;
+  end;
 end;
 
 /// <summary>Text nach der Aktion, deren Titel AKind enthält ('Inline', 'verschieben', 'aufr'); '' ohne.</summary>
@@ -101,11 +105,13 @@ begin
   Tree := TPascalParser.Parse(AText);
   try
     for Action in TVarBlock.Actions(AText, Tree, At(AText, ANeedle), AOptions) do
+    begin
       if Pos(AKind, Action.Title) > 0 then
       begin
         ATitle := Action.Title;
         Result := TChangeSignature.ApplyEdits(AText, Action.Edits);
       end;
+    end;
   finally
     Tree.Free;
   end;

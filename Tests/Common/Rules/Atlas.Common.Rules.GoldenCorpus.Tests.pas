@@ -52,6 +52,10 @@ type
     procedure ReferenceProjectMutationsAreFound;
     [Test]
     procedure ReferenceRatingsAreValid;
+    /// <summary>Alle Mutationen mit englischen Texten (#1458): Meldungen, Korrekturtitel und Regeltitel ohne
+    /// deutsche Wörter, außer solchen aus dem geprüften Quelltext.</summary>
+    [Test]
+    procedure EnglishTextsWithoutGerman;
   end;
 
 implementation
@@ -74,6 +78,7 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Tests.RtlStubs,
+  Atlas.Common.Localization.Texts,
   System.StrUtils;
 
 function Finding(const ARuleId: string; ALine: Integer): TRuleFinding;
@@ -206,9 +211,13 @@ begin
   begin
     Result := TPath.Combine(Directory, TPath.Combine('Tests', 'Referenzprojekt'));
     if TDirectory.Exists(Result) then
+    begin
       Exit;
+    end;
     if ExtractFileDir(Directory) = Directory then
+    begin
       Break;
+    end;
     Directory := ExtractFileDir(Directory);
   end;
   Result := '';
@@ -230,7 +239,9 @@ var
 begin
   Folder := ReferenceFolder;
   if Folder = '' then
+  begin
     Exit;
+  end;
   Rules := BuiltinRules;
   Texts := nil;
   for FileName in TDirectory.GetFiles(TPath.Combine(Folder, 'Source'), '*.pas') do
@@ -242,48 +253,84 @@ begin
   TGoldenCorpus.TimeRules(Rules, TServerSettings.Default, Texts);
 end;
 
+/// <summary>IDs der Syntaxprüfung und aller Regeln aus ARules.</summary>
+function KnownIds(const ARules: TArray<IRule>): TArray<string>;
+var
+  mRule: IRule;
+begin
+  Result := [SyntaxRuleId];
+  for mRule in ARules do
+  begin
+    Result := Result + [mRule.Descriptor.Id];
+  end;
+end;
+
+/// <summary>Geplante IDs aus APlannedText ohne Issue (#94), je eine Zeile.</summary>
+function PlannedProblems(const APlannedText: string): string;
+var
+  mLine: string;
+begin
+  Result := '';
+  for mLine in TGoldenCorpus.PlannedWithoutIssue(APlannedText) do
+  begin
+    Result := Result + sLineBreak + mLine + ' in geplante-regeln.txt nennt kein Issue';
+  end;
+end;
+
+/// <summary>Vergleicht jede Unit unter ASourceFolder mit ihren Markierungen und liefert die Abweichungen;
+/// ATexts sind die gelesenen Texte, AMarkers zählt die Markierungen.</summary>
+function CompareSources(const ASourceFolder: string; const ARules: TArray<IRule>; const AKnown,
+  APlanned: TArray<string>; out ATexts: TArray<string>; out AMarkers: Integer): string;
+var
+  mFileName, mText, mLine: string;
+  mOutcome: TGoldenResult;
+begin
+  Result := '';
+  ATexts := nil;
+  AMarkers := 0;
+  for mFileName in TDirectory.GetFiles(ASourceFolder, '*.pas') do
+  begin
+    mText := ReadSource(mFileName);
+    ATexts := ATexts + [mText];
+    Inc(AMarkers, Length(TGoldenCorpus.Markers(mText)));
+    mOutcome := TGoldenCorpus.Compare(ExtractFileName(mFileName), TGoldenCorpus.Markers(mText),
+      TFileChecker.CheckText(ARules, TServerSettings.Default, ExtractFileName(mFileName), mText), AKnown, APlanned);
+    // Writeln statt CurrentRunner.Log: DUnitX hält Log-Meldungen bis zum Ende des Laufs (Leck-Monitor).
+    for mLine in mOutcome.Skipped do
+    begin
+      System.Writeln('  übersprungen: ', mLine);
+    end;
+    for mLine in mOutcome.Missing + mOutcome.FalseAlarms + mOutcome.Unknown do
+    begin
+      Result := Result + sLineBreak + mLine;
+    end;
+  end;
+end;
+
 procedure TGoldenCorpusTests.ReferenceProjectMatchesMarkers;
 var
-  Folder, FileName, Text, Problems, Line: string;
+  Folder, Text, Problems: string;
   Rules: TArray<IRule>;
-  Rule: IRule;
-  Known, Planned, Texts: TArray<string>;
-  Outcome: TGoldenResult;
+  Texts: TArray<string>;
   Timing: TRuleTiming;
   Markers: Integer;
 begin
   Folder := ReferenceFolder;
   if Folder = '' then
-    Assert.Pass('Referenzprojekt nicht gefunden; Prüfung übersprungen');
-  Rules := BuiltinRules;
-  Known := [SyntaxRuleId];
-  for Rule in Rules do
-    Known := Known + [Rule.Descriptor.Id];
-  Text := ReadSource(TPath.Combine(Folder, 'geplante-regeln.txt'));
-  Planned := TGoldenCorpus.PlannedIds(Text);
-  // Jede geplante ID gehört zu einem offenen Issue (#94).
-  Problems := '';
-  for Line in TGoldenCorpus.PlannedWithoutIssue(Text) do
-    Problems := Problems + sLineBreak + Line + ' in geplante-regeln.txt nennt kein Issue';
-  Texts := nil;
-  Markers := 0;
-  for FileName in TDirectory.GetFiles(TPath.Combine(Folder, 'Source'), '*.pas') do
   begin
-    Text := ReadSource(FileName);
-    Texts := Texts + [Text];
-    Inc(Markers, Length(TGoldenCorpus.Markers(Text)));
-    Outcome := TGoldenCorpus.Compare(ExtractFileName(FileName), TGoldenCorpus.Markers(Text),
-      TFileChecker.CheckText(Rules, TServerSettings.Default, ExtractFileName(FileName), Text), Known, Planned);
-    // Writeln statt CurrentRunner.Log: DUnitX hält Log-Meldungen bis zum Ende des Laufs (Leck-Monitor).
-    for Line in Outcome.Skipped do
-      System.Writeln('  übersprungen: ', Line);
-    for Line in Outcome.Missing + Outcome.FalseAlarms + Outcome.Unknown do
-      Problems := Problems + sLineBreak + Line;
+    Assert.Pass('Referenzprojekt nicht gefunden; Prüfung übersprungen');
   end;
+  Rules := BuiltinRules;
+  Text := ReadSource(TPath.Combine(Folder, 'geplante-regeln.txt'));
+  Problems := PlannedProblems(Text);
+  Problems := Problems + CompareSources(TPath.Combine(Folder, 'Source'), Rules, KnownIds(Rules),
+    TGoldenCorpus.PlannedIds(Text), Texts, Markers);
   Assert.IsTrue(Markers > 0, 'Keine Markierungen im Referenzprojekt gefunden');
   // Laufzeit je Regel über den ganzen Korpus, um langsame Regeln zu erkennen.
   for Timing in TGoldenCorpus.TimeRules(Rules, TServerSettings.Default, Texts) do
+  begin
     System.Writeln(Format('  %s: %.1f ms', [Timing.RuleId, Timing.Milliseconds]));
+  end;
   Assert.AreEqual('', Problems, 'Golden-Korpus weicht ab:' + Problems);
 end;
 
@@ -305,85 +352,136 @@ begin
   Markers := nil;
 end;
 
+type
+  /// <summary>Was der Lauf mit Index braucht: Regeln, bekannte und geplante IDs, Einstellungen und das Projekt
+  /// mit dem Symbolindex.</summary>
+  TIndexRun = record
+    Rules: TArray<IRule>;
+    Known: TArray<string>;
+    Planned: TArray<string>;
+    Settings: TServerSettings;
+    Project: TCheckProject;
+  end;
+
+/// <summary>Ob AText AMarker auch ohne Index (ERWARTET) erwartet.</summary>
+function HasPlainMarker(const AText: string; const AMarker: TGoldenMarker): Boolean;
+var
+  mPlain: TGoldenMarker;
+begin
+  Result := False;
+  for mPlain in TGoldenCorpus.Markers(AText) do
+  begin
+    if (mPlain.Line = AMarker.Line) and SameText(mPlain.RuleId, AMarker.RuleId) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+/// <summary>Schaltet ARuleId in ASettings ein, wenn die Einstellungen sie noch nicht nennen.</summary>
+procedure EnableRule(var ASettings: TServerSettings; const ARuleId: string);
+var
+  mSetting: TRuleSetting;
+begin
+  for mSetting in ASettings.Rules do
+  begin
+    if SameText(mSetting.Id, ARuleId) then
+    begin
+      Exit;
+    end;
+  end;
+  mSetting := Default(TRuleSetting);
+  mSetting.Id := ARuleId;
+  mSetting.Severity := TRuleSeverity.Information;
+  ASettings.Rules := ASettings.Rules + [mSetting];
+end;
+
+/// <summary>Standardeinstellungen mit allen Regeln, die nur mit Index treffen (ERWARTET-INDEX). Sie sind teils
+/// experimentell (legacy-stack-queue) und liefen mit den Standardeinstellungen nie: ausdrücklich einschalten, wie
+/// es ein Projekt in atlas.json täte.</summary>
+function IndexOnlySettings(const ATexts: TArray<string>): TServerSettings;
+var
+  mText: string;
+  mMarker: TGoldenMarker;
+begin
+  Result := TServerSettings.Default;
+  for mText in ATexts do
+  begin
+    for mMarker in TGoldenCorpus.Markers(mText, True) do
+    begin
+      if mMarker.Expected and not HasPlainMarker(mText, mMarker) then
+      begin
+        EnableRule(Result, mMarker.RuleId);
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Symbolindex mit RTL-Stubs über alle Units unter ASourceFolder; AFiles und ATexts sind die Units.
+/// </summary>
+function ReferenceIndex(const ASourceFolder: string; out AFiles, ATexts: TArray<string>): ISymbolIndex;
+var
+  mFileName: string;
+begin
+  Result := TSymbolIndex.Create;
+  TRtlStubs.AddTo(Result);
+  AFiles := nil;
+  ATexts := nil;
+  for mFileName in TDirectory.GetFiles(ASourceFolder, '*.pas') do
+  begin
+    AFiles := AFiles + [mFileName];
+    ATexts := ATexts + [ReadSource(mFileName)];
+    Result.AddUnit(TIndexExtractor.ExtractText(ATexts[High(ATexts)], mFileName, nil));
+  end;
+end;
+
+/// <summary>Vergleicht jede Unit mit ihren Markierungen samt ERWARTET-INDEX und liefert die Abweichungen.
+/// </summary>
+function CompareWithIndex(const ARun: TIndexRun; const AFiles, ATexts: TArray<string>): string;
+var
+  mIndex: Integer;
+  mOutcome: TGoldenResult;
+  mScopes: TFindingScopes;
+  mLine: string;
+begin
+  Result := '';
+  for mIndex := 0 to High(AFiles) do
+  begin
+    mOutcome := TGoldenCorpus.Compare(ExtractFileName(AFiles[mIndex]),
+      TGoldenCorpus.Markers(ATexts[mIndex], True), TFileChecker.CheckText(ARun.Rules, ARun.Settings,
+      ExtractFileName(AFiles[mIndex]), ATexts[mIndex],
+      TCheckOrigin.Make(ARun.Project, TCheckSource.Default), mScopes), ARun.Known,
+      ARun.Planned);
+    for mLine in mOutcome.Missing + mOutcome.FalseAlarms + mOutcome.Unknown do
+    begin
+      Result := Result + sLineBreak + mLine;
+    end;
+  end;
+end;
+
 procedure TGoldenCorpusTests.ReferenceProjectWithIndexMatchesMarkers;
 var
-  Folder, FileName, Problems, Line: string;
-  Rules: TArray<IRule>;
-  Rule: IRule;
-  Known, Planned, Files, Texts: TArray<string>;
-  Index: ISymbolIndex;
-  Project: TCheckProject;
-  Scopes: TFindingScopes;
-  Outcome: TGoldenResult;
-  FileIndex: Integer;
-  Settings: TServerSettings;
-  Marker: TGoldenMarker;
-
-  function HasPlain(const AText: string; const AMarker: TGoldenMarker): Boolean;
-  var
-    Plain: TGoldenMarker;
-  begin
-    for Plain in TGoldenCorpus.Markers(AText) do
-      if (Plain.Line = AMarker.Line) and SameText(Plain.RuleId, AMarker.RuleId) then
-        Exit(True);
-    Result := False;
-  end;
-
-  procedure Enable(const ARuleId: string);
-  var
-    Setting: TRuleSetting;
-  begin
-    for Setting in Settings.Rules do
-      if SameText(Setting.Id, ARuleId) then
-        Exit;
-    Setting := Default(TRuleSetting);
-    Setting.Id := ARuleId;
-    Setting.Severity := TRuleSeverity.Information;
-    Settings.Rules := Settings.Rules + [Setting];
-  end;
-
+  Folder, Problems: string;
+  Files, Texts: TArray<string>;
+  Run: TIndexRun;
 begin
   // Wie TShellWorkspaceGroup.RuleProject: Die Regeln bekommen den Index über TCheckProject.Services. Ohne
   // Dateinamen wie der Lauf ohne Index, damit nur der Index den Unterschied macht.
   Folder := ReferenceFolder;
   if Folder = '' then
+  begin
     Assert.Pass('Referenzprojekt nicht gefunden; Prüfung übersprungen');
-  Rules := BuiltinRules;
-  Known := [SyntaxRuleId];
-  for Rule in Rules do
-    Known := Known + [Rule.Descriptor.Id];
-  Planned := TGoldenCorpus.PlannedIds(ReadSource(TPath.Combine(Folder, 'geplante-regeln.txt')));
-  Index := TSymbolIndex.Create;
-  TRtlStubs.AddTo(Index);
+  end;
+  Run := Default(TIndexRun);
+  Run.Rules := BuiltinRules;
+  Run.Known := KnownIds(Run.Rules);
+  Run.Planned := TGoldenCorpus.PlannedIds(ReadSource(TPath.Combine(Folder, 'geplante-regeln.txt')));
+  Run.Project.Services.Index := ReferenceIndex(TPath.Combine(Folder, 'Source'), Files, Texts);
+  Run.Settings := IndexOnlySettings(Texts);
+  Problems := CompareWithIndex(Run, Files, Texts);
   Files := nil;
   Texts := nil;
-  for FileName in TDirectory.GetFiles(TPath.Combine(Folder, 'Source'), '*.pas') do
-  begin
-    Files := Files + [FileName];
-    Texts := Texts + [ReadSource(FileName)];
-    Index.AddUnit(TIndexExtractor.ExtractText(Texts[High(Texts)], FileName, nil));
-  end;
-  Project := Default(TCheckProject);
-  Project.Services.Index := Index;
-  // Regeln, die nur mit Index treffen (ERWARTET-INDEX), sind teils experimentell (legacy-stack-queue) und liefen
-  // mit den Standardeinstellungen nie: ausdrücklich einschalten, wie es ein Projekt in atlas.json täte.
-  Settings := TServerSettings.Default;
-  for FileIndex := 0 to High(Texts) do
-    for Marker in TGoldenCorpus.Markers(Texts[FileIndex], True) do
-      if Marker.Expected and not HasPlain(Texts[FileIndex], Marker) then
-        Enable(Marker.RuleId);
-  Problems := '';
-  for FileIndex := 0 to High(Files) do
-  begin
-    Outcome := TGoldenCorpus.Compare(ExtractFileName(Files[FileIndex]),
-      TGoldenCorpus.Markers(Texts[FileIndex], True), TFileChecker.CheckText(Rules, Settings,
-      ExtractFileName(Files[FileIndex]), Texts[FileIndex], Project, TCheckSource.Default, Scopes), Known, Planned);
-    for Line in Outcome.Missing + Outcome.FalseAlarms + Outcome.Unknown do
-      Problems := Problems + sLineBreak + Line;
-  end;
-  Files := nil;
-  Texts := nil;
-  Project := Default(TCheckProject);
+  Run := Default(TIndexRun);
   Assert.AreEqual('', Problems, 'Golden-Korpus mit Index weicht ab:' + Problems);
 end;
 
@@ -464,6 +562,7 @@ begin
   // Gegenregeln (#1025) aus: Solange eine an ist, läuft die Regel nicht (redundant-begin-end neben
   // missing-begin-end).
   if TRuleCatalog.Shared.TryFind(ADescriptor.Id, Entry) then
+  begin
     for Other in Entry.OverriddenBy do
     begin
       Setting := Default(TRuleSetting);
@@ -471,92 +570,143 @@ begin
       Setting.Severity := TRuleSeverity.Off;
       Result.Rules := Result.Rules + [Setting];
     end;
+  end;
   Result.MinConfidence := TRuleConfidence.Low;
   Result.MinConfidenceGiven := True;
 end;
 
+type
+  /// <summary>Was die Mutationen brauchen: Ordner des Referenzprojekts, Regeln, ihre Beschreibungen samt
+  /// Syntaxprüfung (#1022) und deren IDs, Packages (#943) und Programme (#956).</summary>
+  TMutationRun = record
+    Folder: string;
+    Rules: TArray<IRule>;
+    Descriptors: TArray<TRuleDescriptor>;
+    Known: TArray<string>;
+    Packages: TArray<TPackageSource>;
+    Programs: TArray<string>;
+  end;
+
+function MutationRun(const AFolder: string): TMutationRun;
+var
+  mFileName: string;
+  mRule: IRule;
+  mDescriptor: TRuleDescriptor;
+begin
+  Result := Default(TMutationRun);
+  Result.Folder := AFolder;
+  Result.Rules := BuiltinRules;
+  // Units der Packages RefRuntime und RefDesign prüfen wie der Linter als Package-Units (#943).
+  for mFileName in TDirectory.GetFiles(AFolder, '*.dpk') do
+  begin
+    Result.Packages := Result.Packages + [TPackageReader.Read(ReadSource(mFileName))];
+  end;
+  for mFileName in TDirectory.GetFiles(AFolder, '*.dpr') do
+  begin
+    Result.Programs := Result.Programs + [ReadSource(mFileName)];
+  end;
+  // Syntaxfehler (#1022) sind keine IRule, prüft aber TFileChecker.CheckText mit.
+  for mRule in Result.Rules do
+  begin
+    Result.Descriptors := Result.Descriptors + [mRule.Descriptor];
+  end;
+  Result.Descriptors := Result.Descriptors + [TFileChecker.SyntaxDescriptor];
+  for mDescriptor in Result.Descriptors do
+  begin
+    Result.Known := Result.Known + [mDescriptor.Id];
+  end;
+end;
+
+/// <summary>Projekt für die Unit AUnitFile (Datei AFileName) wie im Linter.</summary>
+function MutationProject(const ARun: TMutationRun; const AUnitFile, AFileName: string): TCheckProject;
+begin
+  Result := TFileChecker.PackageOf(ARun.Packages, ChangeFileExt(AUnitFile, ''));
+  // Units eines Programms: CreateForm-Reihenfolge seiner .dpr wie im Linter (#956).
+  if Result.Name = '' then
+  begin
+    Result.AutoCreateForms := TFormAccessBeforeCreateRule.FormsOfProgram(ARun.Programs,
+      ChangeFileExt(AUnitFile, ''));
+  end;
+  // Formulardatei neben der Unit wie im Linter (#1054).
+  Result.FileName := AFileName;
+end;
+
+/// <summary>Wendet AMutation an und prüft, ob ihre Regel sie findet; liefert den Fehler oder ''.</summary>
+function CheckMutation(const ARun: TMutationRun; const AMutation: TRuleMutation; out ADetected: Boolean): string;
+var
+  mFileName, mText, mMutated: string;
+  mRuleIndex: Integer;
+  mSettings: TServerSettings;
+  mProject: TCheckProject;
+begin
+  ADetected := False;
+  mFileName := TPath.Combine(TPath.Combine(ARun.Folder, 'Source'), AMutation.FileName);
+  mRuleIndex := IndexText(AMutation.RuleId, ARun.Known);
+  if mRuleIndex < 0 then
+  begin
+    Exit(Format('Zeile %d: unbekannte Regel %s', [AMutation.Line, AMutation.RuleId]));
+  end;
+  if not TFile.Exists(mFileName) then
+  begin
+    Exit(Format('Zeile %d: Datei %s fehlt', [AMutation.Line, AMutation.FileName]));
+  end;
+  mText := ReadSource(mFileName);
+  if not TGoldenCorpus.Mutate(mText, AMutation, mMutated) then
+  begin
+    Exit(Format('Zeile %d: Suchtext nicht genau einmal in %s', [AMutation.Line, AMutation.FileName]));
+  end;
+  mSettings := MutationSettings(ARun.Descriptors[mRuleIndex]);
+  mProject := MutationProject(ARun, AMutation.FileName, mFileName);
+  ADetected := TGoldenCorpus.Detected(TFileChecker.CheckText(ARun.Rules, mSettings, AMutation.FileName, mText,
+    mProject), TFileChecker.CheckText(ARun.Rules, mSettings, AMutation.FileName, mMutated, mProject),
+    AMutation.RuleId);
+  Result := '';
+  if not ADetected then
+  begin
+    Result := Format('Zeile %d: %s findet die Mutation in %s nicht', [AMutation.Line, AMutation.RuleId,
+      AMutation.FileName]);
+  end;
+end;
+
 procedure TGoldenCorpusTests.ReferenceProjectMutationsAreFound;
 var
-  Folder, FileName, Text, Mutated, Problems, Line: string;
-  Rules: TArray<IRule>;
-  Rule: IRule;
-  Known, Errors: TArray<string>;
-  Descriptors: TArray<TRuleDescriptor>;
-  Descriptor: TRuleDescriptor;
+  Folder, Problems, Problem, Line: string;
+  Run: TMutationRun;
+  Errors: TArray<string>;
   Mutations: TArray<TRuleMutation>;
   Mutation: TRuleMutation;
   Found: TArray<Boolean>;
   Rate: TRuleHitRate;
   Detected: Boolean;
-  Settings: TServerSettings;
-  RuleIndex: Integer;
-  Packages: TArray<TPackageSource>;
-  Project: TCheckProject;
-  Programs: TArray<string>;
 begin
   Folder := ReferenceFolder;
   if Folder = '' then
+  begin
     Assert.Pass('Referenzprojekt nicht gefunden; Prüfung übersprungen');
-  Rules := BuiltinRules;
-  // Units der Packages RefRuntime und RefDesign prüfen wie der Linter als Package-Units (#943).
-  Packages := nil;
-  for FileName in TDirectory.GetFiles(Folder, '*.dpk') do
-    Packages := Packages + [TPackageReader.Read(ReadSource(FileName))];
-  Programs := nil;
-  for FileName in TDirectory.GetFiles(Folder, '*.dpr') do
-    Programs := Programs + [ReadSource(FileName)];
-  // Syntaxfehler (#1022) sind keine IRule, prüft aber TFileChecker.CheckText mit.
-  Descriptors := nil;
-  for Rule in Rules do
-    Descriptors := Descriptors + [Rule.Descriptor];
-  Descriptors := Descriptors + [TFileChecker.SyntaxDescriptor];
-  Known := nil;
-  for Descriptor in Descriptors do
-    Known := Known + [Descriptor.Id];
-  Mutations := TGoldenCorpus.Mutations(ReadSource(TPath.Combine(Folder, 'mutationen.txt')),
-    Errors);
+  end;
+  Run := MutationRun(Folder);
+  Mutations := TGoldenCorpus.Mutations(ReadSource(TPath.Combine(Folder, 'mutationen.txt')), Errors);
   Problems := '';
   for Line in Errors do
+  begin
     Problems := Problems + sLineBreak + 'mutationen.txt ' + Line;
+  end;
   Assert.IsTrue(Length(Mutations) > 0, 'Keine Mutationen gefunden');
   Found := nil;
   for Mutation in Mutations do
   begin
-    Detected := False;
-    FileName := TPath.Combine(TPath.Combine(Folder, 'Source'), Mutation.FileName);
-    RuleIndex := IndexText(Mutation.RuleId, Known);
-    if RuleIndex < 0 then
-      Problems := Problems + sLineBreak + Format('Zeile %d: unbekannte Regel %s', [Mutation.Line, Mutation.RuleId])
-    else if not TFile.Exists(FileName) then
-      Problems := Problems + sLineBreak + Format('Zeile %d: Datei %s fehlt', [Mutation.Line, Mutation.FileName])
-    else
+    Problem := CheckMutation(Run, Mutation, Detected);
+    if Problem <> '' then
     begin
-      Text := ReadSource(FileName);
-      if not TGoldenCorpus.Mutate(Text, Mutation, Mutated) then
-        Problems := Problems + sLineBreak + Format('Zeile %d: Suchtext nicht genau einmal in %s',
-          [Mutation.Line, Mutation.FileName])
-      else
-      begin
-        Settings := MutationSettings(Descriptors[RuleIndex]);
-        Project := TFileChecker.PackageOf(Packages, ChangeFileExt(Mutation.FileName, ''));
-        // Units eines Programms: CreateForm-Reihenfolge seiner .dpr wie im Linter (#956).
-        if Project.Name = '' then
-          Project.AutoCreateForms := TFormAccessBeforeCreateRule.FormsOfProgram(Programs,
-            ChangeFileExt(Mutation.FileName, ''));
-        // Formulardatei neben der Unit wie im Linter (#1054).
-        Project.FileName := FileName;
-        Detected := TGoldenCorpus.Detected(TFileChecker.CheckText(Rules, Settings, Mutation.FileName, Text, Project),
-          TFileChecker.CheckText(Rules, Settings, Mutation.FileName, Mutated, Project), Mutation.RuleId);
-        if not Detected then
-          Problems := Problems + sLineBreak + Format('Zeile %d: %s findet die Mutation in %s nicht',
-            [Mutation.Line, Mutation.RuleId, Mutation.FileName]);
-      end;
+      Problems := Problems + sLineBreak + Problem;
     end;
     Found := Found + [Detected];
   end;
   // Trefferquote je Regel ins Protokoll (wie die Laufzeit oben).
   for Rate in TGoldenCorpus.HitRates(Mutations, Found) do
+  begin
     System.Writeln(Format('  %s: %d von %d gefunden', [Rate.RuleId, Rate.Found, Rate.Mutations]));
+  end;
   Assert.AreEqual('', Problems, 'Mutationen:' + Problems);
 end;
 
@@ -570,10 +720,14 @@ var
 begin
   Folder := ReferenceFolder;
   if Folder = '' then
+  begin
     Assert.Pass('Referenzprojekt nicht gefunden; Prüfung übersprungen');
+  end;
   Known := nil;
   for Rule in BuiltinRules do
+  begin
     Known := Known + [Rule.Descriptor.Id];
+  end;
   // Rates wirft bei ungültiger Bewertung; die Quote ist so aus der Datei reproduzierbar.
   Rates := TGoldenCorpus.Rates(ReadSource(TPath.Combine(Folder, 'bewertungen.csv')));
   Assert.IsTrue(Length(Rates) > 0, 'bewertungen.csv enthält keine Bewertungen');
@@ -581,11 +735,147 @@ begin
   for Rate in Rates do
   begin
     if IndexText(Rate.RuleId, Known) < 0 then
+    begin
       Problems := Problems + sLineBreak + 'unbekannte Regel ' + Rate.RuleId;
+    end;
     System.Writeln(Format('  %s: %d richtig, %d falsch, Fehlalarmquote %.1f %%',
       [Rate.RuleId, Rate.Correct, Rate.Wrong, Rate.FalseAlarmRate * 100], TFormatSettings.Invariant));
   end;
   Assert.AreEqual('', Problems, 'bewertungen.csv:' + Problems);
+end;
+
+const
+  // Häufige deutsche Wörter der Meldungen; Umlaute und ß zählen immer.
+  cGermanWords: array[0..33] of string = ('und', 'oder', 'nicht', 'der', 'die', 'das', 'den', 'dem', 'des', 'ist',
+    'sind', 'wird', 'werden', 'mit', 'ohne', 'kein', 'keine', 'keinen', 'eine', 'einen', 'einer', 'ein', 'wie',
+    'auf', 'aus', 'nach', 'zum', 'zur', 'beim', 'vom', 'statt', 'fehlt', 'ersetzen', 'entfernen');
+  // Texte, die nicht aus den Regeln kommen, sondern aus Parser bzw. Editing (#1458 Gruppe B): Regel-ID und Art.
+  // Einträge entfernen, sobald die Units dort umgestellt sind.
+  cOtherGroups: array[0..2] of string = ('syntax ', 'declared-not-implemented Korrektur',
+    'constant-initializer-mismatch Korrektur');
+
+/// <summary>Erstes deutsche Wort in AText, das nicht im geprüften Quelltext ASource steht; '' ohne.</summary>
+function GermanWord(const AText, ASource: string): string;
+var
+  mWord: string;
+  mStart, mPos: Integer;
+begin
+  Result := '';
+  mPos := 1;
+  while mPos <= Length(AText) do
+  begin
+    while (mPos <= Length(AText)) and not CharInSet(AText[mPos], ['A'..'Z', 'a'..'z', '_']) and
+      (Ord(AText[mPos]) < 128) do
+    begin
+      Inc(mPos);
+    end;
+    mStart := mPos;
+    while (mPos <= Length(AText)) and (CharInSet(AText[mPos], ['A'..'Z', 'a'..'z', '0'..'9', '_']) or
+      (Ord(AText[mPos]) >= 128)) do
+    begin
+      Inc(mPos);
+    end;
+    mWord := Copy(AText, mStart, mPos - mStart);
+    // Ganz in Großbuchstaben (DES, SQL) sind Abkürzungen, keine Wörter.
+    if (mWord <> '') and (mWord <> UpperCase(mWord)) and (MatchText(mWord, cGermanWords) or
+      (mWord.IndexOfAny(['ä', 'ö', 'ü', 'Ä', 'Ö', 'Ü', 'ß']) >= 0)) and not ContainsText(ASource, mWord) then
+    begin
+      Exit(mWord);
+    end;
+    Inc(mPos);
+  end;
+end;
+
+/// <summary>Ob AKey ("Regel Art") mit einem Eintrag aus cOtherGroups beginnt.</summary>
+function StartsWithAny(const AKey: string): Boolean;
+var
+  mPrefix: string;
+begin
+  Result := False;
+  for mPrefix in cOtherGroups do
+  begin
+    if StartsText(mPrefix, AKey) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+/// <summary>Meldet AText, wenn es ein deutsches Wort enthält, einmal je Regel und Text.</summary>
+procedure AddGerman(var AProblems: string; const ARuleId, AKind, AText, ASource: string);
+var
+  mWord, mLine: string;
+begin
+  mWord := GermanWord(AText, ASource);
+  mLine := Format('%s %s: %s [%s]', [ARuleId, AKind, AText, mWord]);
+  if (mWord <> '') and (Pos(mLine, AProblems) = 0) and not StartsWithAny(ARuleId + ' ' + AKind) then
+  begin
+    AProblems := AProblems + sLineBreak + mLine;
+  end;
+end;
+
+/// <summary>Englische Texte der Befunde von AMutation; liefert die deutschen Stellen.</summary>
+function EnglishMutationProblems(const ARun: TMutationRun; const AMutation: TRuleMutation): string;
+var
+  mFileName, mText, mMutated: string;
+  mRuleIndex: Integer;
+  mFinding: TRuleFinding;
+  mFix: TRuleFix;
+begin
+  Result := '';
+  mFileName := TPath.Combine(TPath.Combine(ARun.Folder, 'Source'), AMutation.FileName);
+  mRuleIndex := IndexText(AMutation.RuleId, ARun.Known);
+  if (mRuleIndex < 0) or not TFile.Exists(mFileName) then
+  begin
+    Exit;
+  end;
+  mText := ReadSource(mFileName);
+  if not TGoldenCorpus.Mutate(mText, AMutation, mMutated) then
+  begin
+    Exit;
+  end;
+  for mFinding in TFileChecker.CheckText(ARun.Rules, MutationSettings(ARun.Descriptors[mRuleIndex]),
+    AMutation.FileName, mMutated, MutationProject(ARun, AMutation.FileName, mFileName)) do
+  begin
+    AddGerman(Result, mFinding.RuleId, 'Meldung', mFinding.Message, mMutated);
+    for mFix in mFinding.Fixes do
+    begin
+      AddGerman(Result, mFinding.RuleId, 'Korrektur', mFix.Title, mMutated);
+    end;
+  end;
+end;
+
+procedure TGoldenCorpusTests.EnglishTextsWithoutGerman;
+var
+  Folder, Problems: string;
+  Run: TMutationRun;
+  Errors: TArray<string>;
+  Mutation: TRuleMutation;
+  Descriptor: TRuleDescriptor;
+begin
+  Folder := ReferenceFolder;
+  if Folder = '' then
+  begin
+    Assert.Pass('Referenzprojekt nicht gefunden; Prüfung übersprungen');
+  end;
+  Problems := '';
+  TAtlasLocale.Use(TTextLanguage.English);
+  try
+    Run := MutationRun(Folder);
+    for Descriptor in Run.Descriptors do
+    begin
+      AddGerman(Problems, Descriptor.Id, 'Titel', Descriptor.Description, '');
+    end;
+    for Mutation in TGoldenCorpus.Mutations(ReadSource(TPath.Combine(Folder, 'mutationen.txt')), Errors) do
+    begin
+      Problems := Problems + EnglishMutationProblems(Run, Mutation);
+    end;
+  finally
+    TAtlasLocale.Use(TTextLanguage.German);
+  end;
+  Run := Default(TMutationRun);
+  Errors := nil;
+  Assert.AreEqual('', Problems, 'Deutsche Texte im englischen Lauf:' + Problems);
 end;
 
 initialization

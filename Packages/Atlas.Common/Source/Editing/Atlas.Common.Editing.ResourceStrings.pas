@@ -47,6 +47,16 @@ type
     Text: string;
   end;
 
+  /// <summary>Wo ein Eintrag gesucht oder angehängt wird: im interface- oder implementation-Teil und vor Zeile
+  /// Before (-1 = überall).</summary>
+  TResourcePlace = record
+    InInterface: Boolean;
+    Before: Integer;
+    class function Create(AInInterface: Boolean; ABefore: Integer): TResourcePlace; static;
+    /// <summary>Steht ALine vor Before (immer bei Before = -1)?</summary>
+    function Precedes(ALine: Integer): Boolean;
+  end;
+
   TResourceStrings = class
   public
     /// <summary>Name aus dem Klartext AText: SEintragWirklichLoeschen; ohne Wörter SText.</summary>
@@ -68,10 +78,10 @@ type
     class function SameText(const AEntries: TArray<TResourceEntry>; const AText: string; AInterface: Boolean;
       ABefore: Integer; out AEntry: TResourceEntry): Boolean; static;
     /// <summary>Einfügung von "ADeclaration" (ohne Einrückung, z. B. "SName = 'Text';"): hinter den letzten
-    /// Eintrag des ersten passenden Abschnitts (im implementation-Teil vor Zeile ABefore bzw. im interface-Teil),
-    /// sonst als neuer Abschnitt hinter implementation und deren uses bzw. vor implementation.</summary>
-    class function Insertion(const AText: string; const ATokens: TArray<TPascalToken>; AInterface: Boolean;
-      ABefore: Integer; const ADeclaration, ALineBreak: string; out AEdit: TTextEdit): Boolean; static;
+    /// Eintrag des ersten Abschnitts an APlace, sonst als neuer Abschnitt hinter implementation und deren uses
+    /// bzw. vor implementation.</summary>
+    class function Insertion(const AText: string; const ATokens: TArray<TPascalToken>; const APlace: TResourcePlace;
+      const ADeclaration, ALineBreak: string; out AEdit: TTextEdit): Boolean; static;
   end;
 
 implementation
@@ -96,14 +106,18 @@ function NextIndex(const ATokens: TArray<TPascalToken>; AIndex: Integer): Intege
 begin
   Result := AIndex + 1;
   while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
+  begin
     Inc(Result);
+  end;
 end;
 
 function ComparePositions(const A, B: TTextPosition): Integer;
 begin
   Result := A.Line - B.Line;
   if Result = 0 then
+  begin
     Result := A.Character - B.Character;
+  end;
 end;
 
 function TokenEnd(const AToken: TPascalToken): Integer;
@@ -111,76 +125,314 @@ begin
   Result := AToken.Offset + Length(AToken.Text);
 end;
 
+{ TResourcePlace }
+
+class function TResourcePlace.Create(AInInterface: Boolean; ABefore: Integer): TResourcePlace;
+begin
+  Result.InInterface := AInInterface;
+  Result.Before := ABefore;
+end;
+
+function TResourcePlace.Precedes(ALine: Integer): Boolean;
+begin
+  Result := (Before < 0) or (ALine < Before);
+end;
+
+{ Namen }
+
+/// <summary>Hängt AWord an AWords, wenn es nicht leer ist, und leert es.</summary>
+procedure AddWord(var AWords: TArray<string>; var AWord: string);
+begin
+  if AWord <> '' then
+  begin
+    AWords := AWords + [AWord];
+  end;
+  AWord := '';
+end;
+
+/// <summary>Beginnt an AIndex ein Format-Platzhalter (%s, %d, %0:s, %-10.2f)?</summary>
+function IsPlaceholder(const AText: string; AIndex: Integer): Boolean;
+begin
+  Result := (AText[AIndex] = '%') and (AIndex < Length(AText));
+end;
+
+/// <summary>Index hinter dem Format-Platzhalter, der an AIndex beginnt.</summary>
+function PlaceholderEnd(const AText: string; AIndex: Integer): Integer;
+begin
+  Result := AIndex + 1;
+  while (Result <= Length(AText)) and CharInSet(AText[Result], ['0'..'9', ':', '-', '.', '*']) do
+  begin
+    Inc(Result);
+  end;
+  if (Result <= Length(AText)) and CharInSet(AText[Result], ['a'..'z', 'A'..'Z', '%']) then
+  begin
+    Inc(Result);
+  end;
+end;
+
+/// <summary>Buchstaben für den Namen zu AChar (Umlaute ersetzt); ASeparates, wenn AChar Wörter trennt.</summary>
+function LetterOf(AChar: Char; out ASeparates: Boolean): string;
+begin
+  ASeparates := False;
+  case AChar of
+    'ä': Result := 'ae';
+    'ö': Result := 'oe';
+    'ü': Result := 'ue';
+    'Ä': Result := 'Ae';
+    'Ö': Result := 'Oe';
+    'Ü': Result := 'Ue';
+    'ß': Result := 'ss';
+    'A'..'Z', 'a'..'z', '0'..'9': Result := AChar;
+  else
+    Result := '';
+    // Andere Buchstaben (é) fallen weg, ohne das Wort zu trennen.
+    ASeparates := not AChar.IsLetter;
+  end;
+end;
+
+/// <summary>Wörter des Klartexts; Format-Platzhalter sind weder Wort noch Teil eines Worts.</summary>
+function SplitWords(const AText: string): TArray<string>;
+var
+  mWord, mLetter: string;
+  mIndex: Integer;
+  mSeparates: Boolean;
+begin
+  Result := nil;
+  mWord := '';
+  mIndex := 1;
+  while mIndex <= Length(AText) do
+  begin
+    if IsPlaceholder(AText, mIndex) then
+    begin
+      AddWord(Result, mWord);
+      mIndex := PlaceholderEnd(AText, mIndex);
+      Continue;
+    end;
+    mLetter := LetterOf(AText[mIndex], mSeparates);
+    if mSeparates then
+    begin
+      AddWord(Result, mWord);
+    end;
+    mWord := mWord + mLetter;
+    Inc(mIndex);
+  end;
+  AddWord(Result, mWord);
+end;
+
+/// <summary>AWords ohne Füllwörter; bleibt keins übrig, alle.</summary>
+function MeaningfulWords(const AWords: TArray<string>): TArray<string>;
+var
+  mWord: string;
+begin
+  Result := nil;
+  for mWord in AWords do
+  begin
+    if not MatchText(mWord, StopWords) then
+    begin
+      Result := Result + [mWord];
+    end;
+  end;
+  if Length(Result) = 0 then
+  begin
+    Result := AWords;
+  end;
+end;
+
+{ Abschnitte }
+
+/// <summary>Ende der Zeile ALine.</summary>
+function LineEndOf(const ALines: TArray<string>; ALine: Integer): TTextPosition;
+begin
+  Result := TTextPosition.Create(ALine, Length(ALines[ALine]));
+end;
+
+/// <summary>Einrückung von ALine.</summary>
+function LeadingSpace(const ALine: string): string;
+begin
+  Result := Copy(ALine, 1, Length(ALine) - Length(TrimLeft(ALine)));
+end;
+
+/// <summary>Index des Schlüsselworts implementation; -1 ohne.</summary>
+function ImplementationIndex(const ATokens: TArray<TPascalToken>): Integer;
+var
+  mIndex: Integer;
+begin
+  for mIndex := 0 to High(ATokens) do
+  begin
+    if ATokens[mIndex].IsKeyword('implementation') then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+  Result := -1;
+end;
+
+/// <summary>Merkt sich, ob die Tokens ab AToken im interface-Teil stehen.</summary>
+procedure TrackPart(const AToken: TPascalToken; var AInInterface: Boolean);
+begin
+  if AToken.IsKeyword('interface') then
+  begin
+    AInInterface := True;
+  end
+  else if AToken.IsKeyword('implementation') then
+  begin
+    AInInterface := False;
+  end;
+end;
+
+/// <summary>Zeile des ersten resourcestring-Abschnitts an APlace; -1 ohne.</summary>
+function SectionLineAt(const ATokens: TArray<TPascalToken>; const APlace: TResourcePlace): Integer;
+var
+  mIndex: Integer;
+  mInInterface: Boolean;
+begin
+  mInInterface := False;
+  for mIndex := 0 to High(ATokens) do
+  begin
+    TrackPart(ATokens[mIndex], mInInterface);
+    if ATokens[mIndex].IsKeyword('resourcestring') and (mInInterface = APlace.InInterface) and
+      APlace.Precedes(ATokens[mIndex].StartPos.Line) then
+    begin
+      Exit(ATokens[mIndex].StartPos.Line);
+    end;
+  end;
+  Result := -1;
+end;
+
+/// <summary>Zeile des letzten Eintrags im Abschnitt ASectionLine und Einrückung für einen neuen.</summary>
+function SectionEnd(const AEntries: TArray<TResourceEntry>; const ALines: TArray<string>; ASectionLine: Integer;
+  out AIndent: string): Integer;
+var
+  mEntry: TResourceEntry;
+begin
+  Result := ASectionLine;
+  AIndent := '';
+  for mEntry in AEntries do
+  begin
+    if mEntry.Section <> ASectionLine then
+    begin
+      Continue;
+    end;
+    if AIndent = '' then
+    begin
+      AIndent := LeadingSpace(ALines[mEntry.NameLine]);
+    end;
+    Result := mEntry.Line;
+  end;
+  // Eintrag in der Zeile von resourcestring ("resourcestring SA = 'a';"): mit zwei Leerzeichen darunter.
+  if (AIndent = '') or (Result = ASectionLine) then
+  begin
+    AIndent := '  ';
+  end;
+end;
+
+/// <summary>Zeile, hinter der ein neuer Abschnitt im implementation-Teil beginnt: hinter dessen uses.</summary>
+function AfterImplementationUses(const ATokens: TArray<TPascalToken>; AImplementation: Integer): Integer;
+var
+  mNext: Integer;
+begin
+  Result := ATokens[AImplementation].EndPos.Line;
+  mNext := NextIndex(ATokens, AImplementation);
+  if (mNext > High(ATokens)) or not ATokens[mNext].IsKeyword('uses') then
+  begin
+    Exit;
+  end;
+  while (mNext <= High(ATokens)) and not ATokens[mNext].IsSymbol(';') do
+  begin
+    Inc(mNext);
+  end;
+  if mNext <= High(ATokens) then
+  begin
+    Result := ATokens[mNext].EndPos.Line;
+  end;
+end;
+
+/// <summary>Index des ";" hinter dem Eintrag "Name = Wert;" ab AIndex; -1 ohne Eintrag, über High ohne ";".
+/// </summary>
+function EntryStop(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
+var
+  mNext: Integer;
+begin
+  mNext := NextIndex(ATokens, AIndex);
+  if (ATokens[AIndex].Kind <> TPascalTokenKind.Identifier) or (mNext > High(ATokens)) or
+    not ATokens[mNext].IsSymbol('=') then
+  begin
+    Exit(-1);
+  end;
+  Result := NextIndex(ATokens, mNext);
+  while (Result <= High(ATokens)) and not ATokens[Result].IsSymbol(';') do
+  begin
+    Inc(Result);
+  end;
+end;
+
+/// <summary>Eintrag von AIndex bis zum ";" an AStop, ohne Abschnitt und Teil.</summary>
+function EntryFrom(const AText: string; const ATokens: TArray<TPascalToken>; AIndex, AStop: Integer):
+  TResourceEntry;
+var
+  mValue: Integer;
+begin
+  Result := Default(TResourceEntry);
+  Result.Name := ATokens[AIndex].Text;
+  Result.NameLine := ATokens[AIndex].StartPos.Line;
+  Result.Line := ATokens[AStop].StartPos.Line;
+  mValue := NextIndex(ATokens, NextIndex(ATokens, AIndex));
+  if mValue < AStop then
+  begin
+    Result.Value := Trim(Copy(AText, ATokens[mValue].Offset + 1, ATokens[AStop].Offset - ATokens[mValue].Offset));
+  end;
+end;
+
+/// <summary>Tiefster Knoten, der AOffset enthält.</summary>
+function DeepestNode(ATree: TSyntaxTree; AOffset: Integer): TSyntaxNode;
+var
+  mIndex: Integer;
+  mFound: Boolean;
+begin
+  Result := ATree.Root;
+  repeat
+    mFound := False;
+    for mIndex := 0 to Result.ChildCount - 1 do
+    begin
+      if (Result[mIndex].StartOffset <= AOffset) and (AOffset < Result[mIndex].EndOffset) then
+      begin
+        Result := Result[mIndex];
+        mFound := True;
+        Break;
+      end;
+    end;
+  until not mFound;
+end;
+
+/// <summary>Liegt AChild in einer Marke des case-Zweigs ACaseItem? Marken stehen vor der Anweisung, dem letzten
+/// Kind.</summary>
+function InCaseLabel(ACaseItem, AChild: TSyntaxNode): Boolean;
+begin
+  Result := (AChild <> nil) and (ACaseItem.ChildCount > 0) and (ACaseItem[ACaseItem.ChildCount - 1] <> AChild);
+end;
+
 { TResourceStrings }
 
 class function TResourceStrings.NameFor(const AText: string): string;
 var
-  Words, Meaningful: TArray<string>;
-  Word, Letter: string;
-  Index, Count: Integer;
-  C: Char;
-
-  procedure Flush;
-  begin
-    if Word <> '' then
-      Words := Words + [Word];
-    Word := '';
-  end;
-
+  mWord: string;
+  mCount: Integer;
 begin
-  Words := nil;
-  Word := '';
-  Index := 1;
-  while Index <= Length(AText) do
-  begin
-    C := AText[Index];
-    // Format-Platzhalter %s, %d, %0:s, %-10.2f: weder Wort noch Teil eines Worts.
-    if (C = '%') and (Index < Length(AText)) then
-    begin
-      Flush;
-      Inc(Index);
-      while (Index <= Length(AText)) and CharInSet(AText[Index], ['0'..'9', ':', '-', '.', '*']) do
-        Inc(Index);
-      if (Index <= Length(AText)) and CharInSet(AText[Index], ['a'..'z', 'A'..'Z', '%']) then
-        Inc(Index);
-      Continue;
-    end;
-    case C of
-      'ä': Letter := 'ae';
-      'ö': Letter := 'oe';
-      'ü': Letter := 'ue';
-      'Ä': Letter := 'Ae';
-      'Ö': Letter := 'Oe';
-      'Ü': Letter := 'Ue';
-      'ß': Letter := 'ss';
-      'A'..'Z', 'a'..'z', '0'..'9': Letter := C;
-    else
-      Letter := '';
-      // Andere Buchstaben (é) fallen weg, ohne das Wort zu trennen.
-      if not C.IsLetter then
-        Flush;
-    end;
-    Word := Word + Letter;
-    Inc(Index);
-  end;
-  Flush;
-  Meaningful := nil;
-  for Word in Words do
-    if not MatchText(Word, StopWords) then
-      Meaningful := Meaningful + [Word];
-  if Length(Meaningful) = 0 then
-    Meaningful := Words;
   Result := 'S';
-  Count := 0;
-  for Word in Meaningful do
+  mCount := 0;
+  for mWord in MeaningfulWords(SplitWords(AText)) do
   begin
-    Result := Result + UpperCase(Copy(Word, 1, 1)) + Copy(Word, 2, MaxInt);
-    Inc(Count);
-    if Count = MaxWords then
+    Result := Result + UpperCase(Copy(mWord, 1, 1)) + Copy(mWord, 2, MaxInt);
+    Inc(mCount);
+    if mCount = MaxWords then
+    begin
       Break;
+    end;
   end;
   if Result = 'S' then
+  begin
     Result := 'SText';
+  end;
 end;
 
 class function TResourceStrings.UniqueName(const ABase: string; const ATaken: TArray<string>): string;
@@ -207,28 +459,40 @@ begin
   for Index := 0 to High(ATokens) do
   begin
     if ATokens[Index].Kind <> TPascalTokenKind.StringLiteral then
+    begin
       Continue;
+    end;
     // Echt innerhalb: hinter dem öffnenden und vor dem schließenden Hochkomma.
     Inside := (ComparePositions(ATokens[Index].StartPos, APosition) < 0) and
       ((ComparePositions(APosition, ATokens[Index].EndPos) < 0) or not ATokens[Index].Terminated);
     if not Inside then
+    begin
       Continue;
+    end;
     if not ATokens[Index].Terminated then
+    begin
       Exit;
+    end;
     // Direkt angehängte Literale und Zeichenkonstanten gehören dazu: 'Zeile'#13#10'Zwei'.
     First := Index;
     while (First > 0) and (ATokens[First - 1].Kind in [TPascalTokenKind.StringLiteral,
       TPascalTokenKind.CharLiteral]) and (TokenEnd(ATokens[First - 1]) = ATokens[First].Offset) do
+    begin
       Dec(First);
+    end;
     Last := Index;
     while (Last < High(ATokens)) and (ATokens[Last + 1].Kind in [TPascalTokenKind.StringLiteral,
       TPascalTokenKind.CharLiteral]) and (TokenEnd(ATokens[Last]) = ATokens[Last + 1].Offset) do
+    begin
       Inc(Last);
+    end;
     ALiteral.Range := TTextRange.Create(ATokens[First].StartPos, ATokens[Last].EndPos);
     ALiteral.StartOffset := ATokens[First].Offset;
     ALiteral.Source := Copy(AText, ATokens[First].Offset + 1, TokenEnd(ATokens[Last]) - ATokens[First].Offset);
     if not TStringLiterals.PlainText(ALiteral.Source, ALiteral.Text) then
+    begin
       Exit;
+    end;
     Result := Length(ALiteral.Text) > 1;
     Exit;
   end;
@@ -236,103 +500,86 @@ end;
 
 class function TResourceStrings.Allowed(ATree: TSyntaxTree; AOffset: Integer): Boolean;
 var
-  Node, Child: TSyntaxNode;
-  Index: Integer;
-  Found, InBody: Boolean;
+  mNode, mChild: TSyntaxNode;
+  mInBody: Boolean;
 begin
   Result := False;
   if (ATree = nil) or (ATree.Root = nil) then
-    Exit;
-  Node := ATree.Root;
-  repeat
-    Found := False;
-    for Index := 0 to Node.ChildCount - 1 do
-      if (Node[Index].StartOffset <= AOffset) and (AOffset < Node[Index].EndOffset) then
-      begin
-        Node := Node[Index];
-        Found := True;
-        Break;
-      end;
-  until not Found;
-  // Von innen nach außen; erst ein Anweisungsblock macht die Stelle zulässig.
-  InBody := False;
-  Child := nil;
-  while Node <> nil do
   begin
-    case Node.Kind of
+    Exit;
+  end;
+  mNode := DeepestNode(ATree, AOffset);
+  // Von innen nach außen; erst ein Anweisungsblock macht die Stelle zulässig.
+  mInBody := False;
+  mChild := nil;
+  while mNode <> nil do
+  begin
+    case mNode.Kind of
       TSyntaxKind.ConstSection, TSyntaxKind.ConstDecl, TSyntaxKind.InlineConst, TSyntaxKind.Attribute,
       TSyntaxKind.Parameter, TSyntaxKind.Parameters, TSyntaxKind.PropertyDecl, TSyntaxKind.TypeSection,
       TSyntaxKind.TypeDecl, TSyntaxKind.SetConstructor, TSyntaxKind.RangeExpr, TSyntaxKind.ExportsClause,
       TSyntaxKind.AsmBlock, TSyntaxKind.VarDecl, TSyntaxKind.VarSection:
-        if not InBody then
+        if not mInBody then
+        begin
           Exit;
+        end;
       TSyntaxKind.CaseItem:
-        // Marken stehen vor der Anweisung, dem letzten Kind.
-        if (Child <> nil) and (Node.ChildCount > 0) and (Node[Node.ChildCount - 1] <> Child) then
+        if InCaseLabel(mNode, mChild) then
+        begin
           Exit;
+        end;
       TSyntaxKind.Block, TSyntaxKind.InitializationSection, TSyntaxKind.FinalizationSection:
-        InBody := True;
+        mInBody := True;
     else
       // Übrige Werte bewusst ohne Wirkung.
     end;
-    Child := Node;
-    Node := Node.Parent;
+    mChild := mNode;
+    mNode := mNode.Parent;
   end;
-  Result := InBody;
+  Result := mInBody;
 end;
 
 class function TResourceStrings.Entries(const AText: string;
   const ATokens: TArray<TPascalToken>): TArray<TResourceEntry>;
 var
-  Index, Next, Value, Stop, Section: Integer;
-  InInterface, InSection: Boolean;
-  Entry: TResourceEntry;
+  mIndex, mStop, mSection: Integer;
+  mInInterface, mInSection: Boolean;
+  mEntry: TResourceEntry;
 begin
   Result := nil;
-  InInterface := False;
-  InSection := False;
-  Section := -1;
-  Index := 0;
-  while Index <= High(ATokens) do
+  mInInterface := False;
+  mInSection := False;
+  mSection := -1;
+  mIndex := 0;
+  while mIndex <= High(ATokens) do
   begin
-    if ATokens[Index].IsKeyword('interface') then
-      InInterface := True
-    else if ATokens[Index].IsKeyword('implementation') then
-      InInterface := False;
-    if ATokens[Index].IsKeyword('resourcestring') then
+    TrackPart(ATokens[mIndex], mInInterface);
+    if ATokens[mIndex].IsKeyword('resourcestring') then
     begin
-      InSection := True;
-      Section := ATokens[Index].StartPos.Line;
-      Index := NextIndex(ATokens, Index);
+      mInSection := True;
+      mSection := ATokens[mIndex].StartPos.Line;
+      mIndex := NextIndex(ATokens, mIndex);
       Continue;
     end;
-    if InSection then
+    if mInSection then
     begin
-      Next := NextIndex(ATokens, Index);
-      if (ATokens[Index].Kind = TPascalTokenKind.Identifier) and (Next <= High(ATokens)) and
-        ATokens[Next].IsSymbol('=') then
+      mStop := EntryStop(ATokens, mIndex);
+      if mStop > High(ATokens) then
       begin
-        Value := NextIndex(ATokens, Next);
-        Stop := Value;
-        while (Stop <= High(ATokens)) and not ATokens[Stop].IsSymbol(';') do
-          Inc(Stop);
-        if Stop > High(ATokens) then
-          Break;
-        Entry := Default(TResourceEntry);
-        Entry.Name := ATokens[Index].Text;
-        Entry.InInterface := InInterface;
-        Entry.Section := Section;
-        Entry.NameLine := ATokens[Index].StartPos.Line;
-        Entry.Line := ATokens[Stop].StartPos.Line;
-        if Value < Stop then
-          Entry.Value := Trim(Copy(AText, ATokens[Value].Offset + 1, ATokens[Stop].Offset - ATokens[Value].Offset));
-        Result := Result + [Entry];
-        Index := NextIndex(ATokens, Stop);
+        Break;
+      end;
+      if mStop >= 0 then
+      begin
+        mEntry := EntryFrom(AText, ATokens, mIndex, mStop);
+        mEntry.InInterface := mInInterface;
+        mEntry.Section := mSection;
+        Result := Result + [mEntry];
+        mIndex := NextIndex(ATokens, mStop);
         Continue;
       end;
-      InSection := False;
+      mInSection := False;
     end;
-    Index := NextIndex(ATokens, Index);
+    mIndex := NextIndex(ATokens, mIndex);
   end;
 end;
 
@@ -343,98 +590,54 @@ var
   Text: string;
 begin
   for Entry in AEntries do
+  begin
     if (Entry.InInterface = AInterface) and ((ABefore < 0) or (Entry.Line < ABefore)) and
       TStringLiterals.PlainText(Entry.Value, Text) and (Text = AText) then
     begin
       AEntry := Entry;
       Exit(True);
     end;
+  end;
   AEntry := Default(TResourceEntry);
   Result := False;
 end;
 
 class function TResourceStrings.Insertion(const AText: string; const ATokens: TArray<TPascalToken>;
-  AInterface: Boolean; ABefore: Integer; const ADeclaration, ALineBreak: string; out AEdit: TTextEdit): Boolean;
+  const APlace: TResourcePlace; const ADeclaration, ALineBreak: string; out AEdit: TTextEdit): Boolean;
 var
-  Lines: TArray<string>;
-  Index, Next, Implementation_, SectionLine, LastLine, Line: Integer;
-  InInterface: Boolean;
-  Entry: TResourceEntry;
-  Indent: string;
-
-  function LineEnd(ALine: Integer): TTextPosition;
-  begin
-    Result := TTextPosition.Create(ALine, Length(Lines[ALine]));
-  end;
-
+  mLines: TArray<string>;
+  mImplementation, mSectionLine, mLine: Integer;
+  mIndent: string;
 begin
   AEdit := Default(TTextEdit);
-  Result := False;
-  Lines := AText.Replace(#13, '').Split([#10]);
-  Implementation_ := -1;
-  for Index := 0 to High(ATokens) do
-    if ATokens[Index].IsKeyword('implementation') then
-    begin
-      Implementation_ := Index;
-      Break;
-    end;
-  if Implementation_ < 0 then
-    Exit;
+  mImplementation := ImplementationIndex(ATokens);
+  if mImplementation < 0 then
+  begin
+    Exit(False);
+  end;
+  mLines := AText.Replace(#13, '').Split([#10]);
   // Erster passender Abschnitt; der neue Eintrag kommt hinter dessen letzten.
-  SectionLine := -1;
-  InInterface := False;
-  for Index := 0 to High(ATokens) do
+  mSectionLine := SectionLineAt(ATokens, APlace);
+  if mSectionLine >= 0 then
   begin
-    if ATokens[Index].IsKeyword('interface') then
-      InInterface := True
-    else if Index = Implementation_ then
-      InInterface := False;
-    if ATokens[Index].IsKeyword('resourcestring') and (InInterface = AInterface) and
-      ((ABefore < 0) or (ATokens[Index].StartPos.Line < ABefore)) then
-    begin
-      SectionLine := ATokens[Index].StartPos.Line;
-      Break;
-    end;
-  end;
-  if SectionLine >= 0 then
-  begin
-    LastLine := SectionLine;
-    Indent := '';
-    for Entry in Entries(AText, ATokens) do
-      if Entry.Section = SectionLine then
-      begin
-        if Indent = '' then
-          Indent := Copy(Lines[Entry.NameLine], 1, Length(Lines[Entry.NameLine]) -
-            Length(TrimLeft(Lines[Entry.NameLine])));
-        LastLine := Entry.Line;
-      end;
-    // Eintrag in der Zeile von resourcestring ("resourcestring SA = 'a';"): mit zwei Leerzeichen darunter.
-    if (Indent = '') or (LastLine = SectionLine) then
-      Indent := '  ';
-    AEdit := TTextEdit.Create(TTextRange.Create(LineEnd(LastLine), LineEnd(LastLine)),
-      ALineBreak + Indent + ADeclaration);
-    Exit(True);
-  end;
-  if AInterface then
+    mLine := SectionEnd(Entries(AText, ATokens), mLines, mSectionLine, mIndent);
+    AEdit := TTextEdit.Create(TTextRange.Create(LineEndOf(mLines, mLine), LineEndOf(mLines, mLine)),
+      ALineBreak + mIndent + ADeclaration);
+  end
+  else if APlace.InInterface then
   begin
     // Neuer Abschnitt vor implementation.
-    Line := ATokens[Implementation_].StartPos.Line;
-    AEdit := TTextEdit.Create(TTextRange.Create(TTextPosition.Create(Line, 0), TTextPosition.Create(Line, 0)),
+    mLine := ATokens[mImplementation].StartPos.Line;
+    AEdit := TTextEdit.Create(TTextRange.Create(TTextPosition.Create(mLine, 0), TTextPosition.Create(mLine, 0)),
       'resourcestring' + ALineBreak + '  ' + ADeclaration + ALineBreak + ALineBreak);
-    Exit(True);
-  end;
-  // Neuer Abschnitt hinter implementation bzw. deren uses.
-  Line := ATokens[Implementation_].EndPos.Line;
-  Next := NextIndex(ATokens, Implementation_);
-  if (Next <= High(ATokens)) and ATokens[Next].IsKeyword('uses') then
+  end
+  else
   begin
-    while (Next <= High(ATokens)) and not ATokens[Next].IsSymbol(';') do
-      Inc(Next);
-    if Next <= High(ATokens) then
-      Line := ATokens[Next].EndPos.Line;
+    // Neuer Abschnitt hinter implementation bzw. deren uses.
+    mLine := AfterImplementationUses(ATokens, mImplementation);
+    AEdit := TTextEdit.Create(TTextRange.Create(LineEndOf(mLines, mLine), LineEndOf(mLines, mLine)),
+      ALineBreak + ALineBreak + 'resourcestring' + ALineBreak + '  ' + ADeclaration);
   end;
-  AEdit := TTextEdit.Create(TTextRange.Create(LineEnd(Line), LineEnd(Line)),
-    ALineBreak + ALineBreak + 'resourcestring' + ALineBreak + '  ' + ADeclaration);
   Result := True;
 end;
 

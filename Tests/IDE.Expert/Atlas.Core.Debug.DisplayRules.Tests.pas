@@ -12,6 +12,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Debugger')]
   TAtlasDisplayRulesTests = class
   public
     [Test]
@@ -67,19 +68,33 @@ begin
     begin
       Result := True;
       if AExpression = '(Kunde).Name' then
-        AText := '''Meier'''
+      begin
+        AText := '''Meier''';
+      end
       else if AExpression = '(Kunde).Ort' then
-        AText := '''Berlin'''
+      begin
+        AText := '''Berlin''';
+      end
       else if AExpression = '(Kunde).Nr' then
-        AText := '4711'
+      begin
+        AText := '4711';
+      end
       else if AExpression = '(Kunde).Saldo' then
-        AText := '1234.5'
+      begin
+        AText := '1234.5';
+      end
       else if (AExpression = '(Kunde).GetName()') and (AEvaluation = TAtlasVisualizerEvaluation.Calls) then
-        AText := '''MEIER'''
+      begin
+        AText := '''MEIER''';
+      end
       else if AExpression = 'Kunde,r' then
-        AText := '(FName:''Meier''; Ort:''Berlin''; Nr:4711; Saldo:1234.5)'
+      begin
+        AText := '(FName:''Meier''; Ort:''Berlin''; Nr:4711; Saldo:1234.5)';
+      end
       else
+      begin
         Result := False;
+      end;
     end;
 end;
 

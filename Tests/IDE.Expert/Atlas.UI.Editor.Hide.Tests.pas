@@ -44,6 +44,8 @@ type
 implementation
 
 uses
+  Atlas.Core.Modules.Contract,
+  Atlas.UI.Welcome.TestSupport,
   System.SysUtils,
   System.Types,
   System.UITypes,
@@ -58,7 +60,11 @@ uses
   Atlas.Core.Editor.Hide,
   Atlas.UI.Strings,
   Atlas.UI.Editor.Hide,
-  Atlas.UI.Settings.Page;
+  Atlas.UI.Settings.Page,
+  Atlas.UI.Settings.Page.TestSupport,
+  Atlas.UI.Analysis.SettingsSection,
+  Atlas.UI.Tests.SettingsSection,
+  Atlas.UI.Bookmarks.SettingsSection;
 
 type
   /// <summary>Zählt „Rückgängig“ (TNotifyEvent braucht eine Methode).</summary>
@@ -214,7 +220,9 @@ begin
     Assert.IsTrue(TAtlasHideMenu.ElementName(Element, False) <> '', 'Einzahl ' + IntToStr(Ord(Element)));
     Assert.IsTrue(TAtlasHideMenu.ElementName(Element, True) <> '', 'Mehrzahl ' + IntToStr(Ord(Element)));
     for Scope := Low(TAtlasHideScope) to High(TAtlasHideScope) do
+    begin
       Assert.IsTrue(TAtlasHideMenu.ScopeCaption(Element, Scope) <> '');
+    end;
   end;
   TAtlasStrings.Language := TAtlasLanguage.English;
   Assert.AreEqual('Hide block end labels everywhere',
@@ -273,6 +281,8 @@ end;
 
 procedure TAtlasHideUiTests.PageRevealsEverySettingOfElementsAndWelcome;
 var
+  mWelcome: IAtlasRegistration;
+  mModules: TArray<IAtlasRegistration>;
   Host: TForm;
   Page: TAtlasSettingsPage;
   Element: TAtlasDrawnElement;
@@ -281,6 +291,9 @@ var
   Control: TControl;
   Parent: TWinControl;
 begin
+  mWelcome := ProvideWelcomeSettings;
+  // Zeilen der Module (#1456): Code Lens an Testmethoden, Notizen und Lesezeichen.
+  mModules := ProvideSections([TAtlasTestsEditorSection, TAtlasBookmarksEditorSection, TAtlasAnalysisEditorSection]);
   Host := TForm.CreateNew(nil);
   try
     Page := TAtlasSettingsPage.Create(Host);
@@ -293,7 +306,9 @@ begin
     end;
     // Bereiche der Willkommensseite (#767) über ihren Schlüssel.
     for Section in TAtlasDrawnElements.KnownSections do
+    begin
       Assert.IsNotNull(Page.ControlOf(TAtlasDrawnElements.SectionSetting(Section)), 'Zeile für ' + Section);
+    end;
     Assert.IsNull(Page.ControlOf('GibtEsNicht'));
     Assert.IsFalse(Page.Reveal('GibtEsNicht'));
     // Reveal wählt den Reiter der Zeile und hebt sie hervor.
@@ -301,12 +316,16 @@ begin
     Control := Page.ControlOf('BlockEndLabels');
     Parent := Control.Parent;
     while (Parent <> nil) and not (Parent is TTabSheet) do
+    begin
       Parent := Parent.Parent;
+    end;
     Assert.IsNotNull(Parent);
     Assert.IsTrue(Page.Pages.ActivePage = Parent, 'Reiter der Zeile gewählt');
     Assert.IsTrue(fsBold in TCheckBox(Control).Font.Style, 'Zeile hervorgehoben');
   finally
     Host.Free;
+    mWelcome.Revoke;
+    RevokeAll(mModules);
   end;
 end;
 

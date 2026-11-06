@@ -1,9 +1,10 @@
 ﻿unit Atlas.Common.Rules.Builtin.UnusedUses.Tests;
 
-// Tests der Regel unused-uses (#1352): ungenutzter Eintrag mit sicherer
-// Korrektur, benutzte Units, initialization, usesKeep, inaktive Zweige,
-// Schweigen in Programmen, im Editor (Live) und ohne Index, und die
-// Sammelkorrektur mit zwei Einträgen derselben Liste.
+// Tests der Regel unused-uses (#1352, #1135): ungenutzter Eintrag mit
+// sicherer Korrektur, benutzte Units, initialization, usesKeep und Option
+// keep, inaktive Zweige, Schweigen in Programmen, im Editor (Live) und ohne
+// Index, lsp-ignore dort nicht als unnötig gemeldet, und die Sammelkorrektur
+// mit zwei Einträgen derselben Liste.
 
 interface
 
@@ -23,6 +24,10 @@ type
     [Test]
     procedure UsesKeepKeepsUnit;
     [Test]
+    procedure KeepOptionKeepsUnit;
+    [Test]
+    procedure SuppressionWithoutCheckIsNotUnused;
+    [Test]
     procedure InactiveBranchIsIgnored;
     [Test]
     procedure ProgramIsQuiet;
@@ -32,6 +37,8 @@ type
     procedure WithoutIndexIsQuiet;
     [Test]
     procedure BulkFixRemovesAllUnusedEntries;
+    [Test]
+    procedure FormReferenceKeepsUnit;
   end;
 
 implementation
@@ -51,7 +58,8 @@ uses
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Rules.BulkFix,
   Atlas.Common.Rules.Builtin.DeadCode,
-  Atlas.Common.Editing.TextChanges;
+  Atlas.Common.Editing.TextChanges,
+  Atlas.Tests.RuleAssert;
 
 const
   cHelper = 'unit Hilfe;'#13#10#13#10'interface'#13#10#13#10'procedure Tu;'#13#10#13#10'implementation'#13#10#13#10 +
@@ -103,8 +111,12 @@ var
 begin
   Result := '';
   for mFinding in AFindings do
+  begin
     if mFinding.RuleId = UnusedUsesRuleId then
+    begin
       Result := Result + mFinding.Message + ';';
+    end;
+  end;
 end;
 
 procedure TUnusedUsesTests.ReportsUnusedEntryWithSafeFix;
@@ -138,6 +150,75 @@ var
 begin
   mSettings := TConfigurationParser.Parse('{"usesKeep": ["Hilfe"]}', mIssues);
   Assert.AreEqual('', Names(Check(UnitText('Hilfe, Andere'), mSettings, Index, 'Bericht.pas')));
+end;
+
+procedure TUnusedUsesTests.KeepOptionKeepsUnit;
+var
+  mIssues: TArray<TConfigurationIssue>;
+  mSettings: TServerSettings;
+begin
+  mSettings := TConfigurationParser.Parse('{"rules": {"unused-uses": {"severity": "hint", "keep": ["Hilfe"]}}}',
+    mIssues);
+  Assert.AreEqual(0, Integer(Length(mIssues)));
+  Assert.AreEqual('', Names(Check(UnitText('Hilfe, Andere'), mSettings, Index, 'Bericht.pas')));
+  Assert.AreEqual('Hilfe;Andere;', string.Join(';', TUnusedUsesRule.Keep('{"keep": ["Andere"]}', ['Hilfe'])) + ';');
+end;
+
+procedure TUnusedUsesTests.SuppressionWithoutCheckIsNotUnused;
+var
+  mContext: TRuleContext;
+  mTree: TSyntaxTree;
+  mText: string;
+begin
+  // Im Editor und ohne Index prüft die Regel nicht: Ihr lsp-ignore darf nicht als unused-suppression gelten,
+  // dessen sichere Korrektur den Kommentar beim Speichern entfernte (#1135).
+  mText := UnitText('// lsp-ignore: unused-uses'#13#10'  Hilfe, Andere');
+  mTree := TSyntaxTreeCache.Parse(mText);
+  try
+    mContext := Default(TRuleContext);
+    mContext.RelativePath := 'Bericht.pas';
+    mContext.UnitName := 'Bericht';
+    mContext.Text := mText;
+    mContext.Tree := mTree;
+    mContext.Index := Index;
+    mContext.Live := True;
+    Assert.AreEqual(0, Integer(Length(TRuleEngine.Run(TArray<IRule>.Create(TUnusedUsesRule.Create),
+      TServerSettings.Default, mContext))));
+    mContext.Live := False;
+    mContext.Index := nil;
+    Assert.AreEqual(0, Integer(Length(TRuleEngine.Run(TArray<IRule>.Create(TUnusedUsesRule.Create),
+      TServerSettings.Default, mContext))));
+    // Mit Index unterdrückt der Kommentar den Treffer und ist damit genutzt.
+    mContext.Index := Index;
+    Assert.AreEqual(0, Integer(Length(TRuleEngine.Run(TArray<IRule>.Create(TUnusedUsesRule.Create),
+      TServerSettings.Default, mContext))));
+    mContext.Index := nil;
+  finally
+    mTree.Free;
+  end;
+end;
+
+procedure TUnusedUsesTests.FormReferenceKeepsUnit;
+const
+  cFormUnit = 'unit Haupt;'#13#10'interface'#13#10'type'#13#10'  THauptForm = class'#13#10'  end;'#13#10'var'#13#10 +
+    '  HauptForm: THauptForm;'#13#10'implementation'#13#10'end.'#13#10;
+  cFormText = 'object BerichtForm: TBerichtForm'#13#10'  object Query: TFDQuery'#13#10 +
+    '    Connection = HauptForm.Connection'#13#10'  end'#13#10'end'#13#10;
+var
+  mIndex: ISymbolIndex;
+  mContext: TRuleContext;
+begin
+  // Die Formulardatei verweist auf HauptForm.Connection: Der Eintrag Haupt bleibt (dfm-reference-unit-missing).
+  mIndex := Index;
+  mIndex.AddUnit(TIndexExtractor.ExtractText(cFormUnit, 'Haupt.pas', nil, nil, True));
+  mContext := Default(TRuleContext);
+  mContext.Text := UnitText('Andere, Haupt');
+  mContext.Index := mIndex;
+  mContext.FormText := cFormText;
+  Assert.AreEqual('', Names(TRuleAssert.ContextFindings(TUnusedUsesRule.Create, mContext, '')));
+  mContext.FormText := StringReplace(cFormText, 'HauptForm.', 'Query2.', []);
+  Assert.AreEqual('Aus Haupt wird nichts verwendet;', Names(TRuleAssert.ContextFindings(TUnusedUsesRule.Create,
+    mContext, '')));
 end;
 
 procedure TUnusedUsesTests.InactiveBranchIsIgnored;

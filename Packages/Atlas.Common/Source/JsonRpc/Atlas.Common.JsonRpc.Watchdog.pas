@@ -66,6 +66,11 @@ type
     FNextTicket: Int64;
     FStopping: Boolean;
     FThread: TThread;
+    /// <summary>Nimmt die abgelaufenen Einträge aus FEntries nach AExpired; liefert die nächste Fälligkeit
+    /// (High(UInt64) ohne). Nur unter der Sperre von FEntries.</summary>
+    function CollectExpired(AExpired: TList<TEntry>; ATicks: UInt64): UInt64;
+    /// <summary>Wartet, bis Einträge ablaufen, und nimmt sie nach AExpired; False beim Beenden.</summary>
+    function TakeExpired(AExpired: TList<TEntry>): Boolean;
     procedure Execute;
     procedure Expire(const AEntry: TEntry);
   public
@@ -86,7 +91,20 @@ type
 implementation
 
 uses
-  Atlas.Common.JsonRpc.Messages;
+  Atlas.Common.JsonRpc.Messages,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TWatchdogText = (TimeLimitOfMsExceeded);
+
+const
+  cTexts: array[TWatchdogText] of TAtlasText = (
+    (De: 'Zeitlimit von %d ms überschritten'; En: 'Time limit of %d ms exceeded'));
+
+{$SCOPEDENUMS OFF}
 
 const
   WaitForever = Cardinal($FFFFFFFF);
@@ -126,7 +144,9 @@ begin
     FThread.Free;
   end;
   for Entry in FEntries.Values do
+  begin
     Entry.Id.Free;
+  end;
   FEntries.Free;
   inherited;
 end;
@@ -142,7 +162,9 @@ var
   Entry: TEntry;
 begin
   if FThread = nil then
+  begin
     Exit(0);
+  end;
   Entry.Id := TJSONValue(AId.Clone);
   Entry.Method := AMethod;
   Entry.Token := AToken;
@@ -164,11 +186,15 @@ var
   Entry: TEntry;
 begin
   if ATicket = 0 then
+  begin
     Exit;
+  end;
   TMonitor.Enter(FEntries);
   try
     if not FEntries.TryGetValue(ATicket, Entry) then
+    begin
       Exit;
+    end;
     FEntries.Remove(ATicket);
   finally
     TMonitor.Exit(FEntries);
@@ -179,7 +205,9 @@ end;
 procedure TJsonRpcWatchdog.SetTimeout(ATimeoutMs: Cardinal);
 begin
   if (FThread = nil) or (ATimeoutMs = 0) then
+  begin
     Exit;
+  end;
   TMonitor.Enter(FEntries);
   try
     FTimeout := ATimeoutMs;
@@ -217,71 +245,100 @@ begin
       try
         Answered := FPending.Expire(AEntry.Token);
         if Answered then
+        begin
           AEntry.Responder(TJsonRpcMessages.Error(AEntry.Id, TJsonRpcErrorCode.RequestCancelled,
-            Format('Zeitlimit von %d ms überschritten', [Limit])));
+            cTexts[TWatchdogText.TimeLimitOfMsExceeded].Fmt([Limit])));
+        end;
       finally
         FPending.EndWork;
       end;
     end
     else
+    begin
       FPending.Cancel(AEntry.Id);
+    end;
     if Assigned(FOnTimeout) then
+    begin
       FOnTimeout(AEntry.Method, Limit, Answered);
+    end;
     if Assigned(FOnExpired) then
+    begin
       FOnExpired(AEntry.Id.ToJSON, AEntry.Method, Limit);
+    end;
   finally
     AEntry.Id.Free;
   end;
 end;
 
+function TJsonRpcWatchdog.CollectExpired(AExpired: TList<TEntry>; ATicks: UInt64): UInt64;
+var
+  mPair: TPair<Int64, TEntry>;
+begin
+  Result := High(UInt64);
+  for mPair in FEntries.ToArray do
+  begin
+    if mPair.Value.Due <= ATicks then
+    begin
+      AExpired.Add(mPair.Value);
+      FEntries.Remove(mPair.Key);
+    end
+    else if mPair.Value.Due < Result then
+    begin
+      Result := mPair.Value.Due;
+    end;
+  end;
+end;
+
+function TJsonRpcWatchdog.TakeExpired(AExpired: TList<TEntry>): Boolean;
+var
+  mTicks, mNextDue: UInt64;
+begin
+  TMonitor.Enter(FEntries);
+  try
+    Result := not FStopping;
+    if not Result then
+    begin
+      Exit;
+    end;
+    mTicks := TThread.GetTickCount64;
+    mNextDue := CollectExpired(AExpired, mTicks);
+    if (AExpired.Count = 0) and (mNextDue = High(UInt64)) then
+    begin
+      TMonitor.Wait(FEntries, WaitForever);
+    end
+    else if AExpired.Count = 0 then
+    begin
+      TMonitor.Wait(FEntries, Cardinal(mNextDue - mTicks));
+    end;
+  finally
+    TMonitor.Exit(FEntries);
+  end;
+end;
+
 procedure TJsonRpcWatchdog.Execute;
 var
-  Pair: TPair<Int64, TEntry>;
-  Expired: TList<TEntry>;
-  Entry: TEntry;
-  Ticks: UInt64;
-  NextDue: UInt64;
+  mExpired: TList<TEntry>;
+  mEntry: TEntry;
 begin
-  Expired := TList<TEntry>.Create;
+  mExpired := TList<TEntry>.Create;
   try
-    while True do
+    while TakeExpired(mExpired) do
     begin
-      TMonitor.Enter(FEntries);
-      try
-        if FStopping then
-          Exit;
-        Ticks := TThread.GetTickCount64;
-        NextDue := High(UInt64);
-        for Pair in FEntries do
-          if Pair.Value.Due <= Ticks then
-            Expired.Add(Pair.Value)
-          else if Pair.Value.Due < NextDue then
-            NextDue := Pair.Value.Due;
-        for Pair in FEntries.ToArray do
-          if Pair.Value.Due <= Ticks then
-            FEntries.Remove(Pair.Key);
-        if Expired.Count = 0 then
-        begin
-          if NextDue = High(UInt64) then
-            TMonitor.Wait(FEntries, WaitForever)
-          else
-            TMonitor.Wait(FEntries, Cardinal(NextDue - Ticks));
-        end;
-      finally
-        TMonitor.Exit(FEntries);
-      end;
       // Außerhalb der Sperre: Cancel und Meldung dürfen dauern.
-      for Entry in Expired do
+      for mEntry in mExpired do
         try
-          Expire(Entry);
+          Expire(mEntry);
         except
           // Eine fehlerhafte Meldung darf die Überwachung nicht beenden.
         end;
-      Expired.Clear;
+      mExpired.Clear;
     end;
   finally
-    Expired.Free;
+    mExpired.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.JsonRpc.Watchdog', cTexts);
 
 end.

@@ -88,7 +88,10 @@ Einstellungen: `issues.create`, `issues.create.includeCode`
 - Board im andockbaren Fenster *Atlas-Board* (`issues.board`):
   - aktueller Sprint des YouTrack-Agile-Boards bzw. des GitHub-Projekts als Spalten mit Karten
   - „Nur meine“, Suche
-  - Ziehen ändert nach Rückfrage den Zustand im Tracker
+  - Ziehen ändert nach Rückfrage den Zustand im Tracker und folgt dem Workflow von YouTrack:
+    - unter einer Zustandsmaschine löst Atlas den passenden Übergang aus wie das Board von YouTrack
+    - Spalten, die der Workflow ausschließt, leuchten nicht auf
+    - die Statuszeile nennt die erlaubten Übergänge
   - Klick öffnet die Vorschau, Doppelklick beginnt
 - Bereich *Sprint* auf der Startseite (`welcomePage.sprint`):
   - aktueller Sprint mit Resttagen, eigenen Zahlen, „Team übrig“ und Burndown
@@ -229,6 +232,21 @@ Aufruf: *Atlas › Hilfe und Diagnose*, Befehl `Atlas.ServerStatus`, Klick auf d
 - *Aktualisieren* fragt sofort, *Index neu aufbauen*.
 - *Diagnosepaket erstellen …* schreibt nach einer Vorschau eine ZIP-Datei mit Fehlerbericht (#108), Status, Protokoll der Sitzung und mit `--trace` dem Trace der letzten Minuten, anonymisiert wie der Fehlerbericht und nie mit Zugangsdaten.
 
+## Zeiten des Plugins im Diagnosefenster (`diagnosticMode.pluginTimings`, `diagnosticMode.slowThresholdMs`)
+
+Im Diagnosemodus zeigt „Atlas-Diagnose“, was in Atlas gerade langsam ist:
+
+| Reiter | Inhalt |
+|---|---|
+| *Hauptthread* | wie sehr Atlas die IDE in den letzten 60 s belegt hat, eigene Zeit je Funktion (Aufrufe, Summe, Mittel, Maximum, Aufrufe ab der Schwelle, Anteil) und die letzten 200 langsamen Aufrufe mit der laufenden Atlas-Aktion; Kontextmenü *Nur X zeigen*, *bis zum Neustart ausschalten*, *Zeile kopieren* |
+| *Server* | jede Anfrage mit Anzahl, Mittel, Maximum, Wartezeit des Hauptthreads, Zeitüberschreitungen, Abbrüchen und Fehlern |
+| *Hintergrund* | Arbeitszeit jeder Quelle der Vervollständigung im Arbeitsthread und wie oft sie zu langsam war |
+| *Hänger* | die Meldungen des Einfrier-Wächters der Sitzung und ob Atlas beteiligt war |
+| *Vervollständigung* | das bisherige Fenster |
+
+- *Anhalten*, *Zurücksetzen* und *Bericht kopieren* (ohne Quelltext und Dateinamen)
+- Ausgeschaltet läuft kein Messpunkt
+
 ## Robustheit
 
 - kein Fehler in Atlas erreicht die IDE
@@ -237,9 +255,10 @@ Aufruf: *Atlas › Hilfe und Diagnose*, Befehl `Atlas.ServerStatus`, Klick auf d
 - Prüfregeln und Editorfunktionen vertragen beliebig tief verschachtelte Ausdrücke ohne Rekursion (eine Unit jenseits des Netzes von 100000 Ebenen bekommt den Hinweis `unit-too-deep`, statt still ihre Befunde zu verlieren)
 - eine wiederholt fehlerhafte Funktion wird einzeln abgeschaltet (mit Benachrichtigung zum Wiedereinschalten), die übrigen laufen weiter
 - Serverabstürze stehen mit Ursache (Exit-Code, stderr) im Protokoll, und ein Server, der zweimal gleich abstürzt, wird nicht in einer Schleife neu gestartet
-- abgesicherter Start nach einem Absturz (ein langsamer Start ist keiner: Statt beim nächsten Start Funktionen abzuschalten, nennt Atlas, wie lange es den Start aufgehalten hat und welche seiner Teile am längsten brauchten)
+- abgesicherter Start nach einem Absturz (ein langsamer Start ist keiner: Statt beim nächsten Start Funktionen abzuschalten, nennt Atlas, wie lange es den Start aufgehalten hat und welche seiner Teile am längsten brauchten; eine IDE mit `ATLAS_NO_SESSION_MARKER=1`, etwa eine per Skript gestartete Bau-IDE, zählt weder selbst als Absturz noch wertet sie Abstürze anderer aus)
 - eigene Datendateien (Favoriten, Verläufe, Lesezeichen, Notizen …) werden in einem Schritt ersetzt, eine beschädigte liegt danach als `.defekt` daneben statt still überschrieben zu werden
 - Fehlerbericht zum Anhängen
+- Anonyme Diagnose (#1478): Protokolle von Plugin und Server, Fehlerbericht, Status, Diagnosepaket und `--timings` nennen Projekte, Units, Pfade, Benutzer und Meldungen nur als `name#N`, `datei#N`, `text#N`; Klarnamen nur nach ausdrücklicher Wahl (`diagnostics.log.names`, „Fehlerbericht anonymisieren“ aus, `--log-names`), im Paket vermerkt. Vor dem Speichern zeigt Atlas jede Datei des Pakets.
 - Tastenkonflikte mit anderen Erweiterungen (GExperts, CnPack, MMX) werden erkannt
 - Abstürze von Anfragen im Server:
   - jeder Absturz einer Anfrage im Server wird als nachstellbarer Fall gesichert (`%LOCALAPPDATA%\Atlas\crash`: Anfrage, letzte Nachrichten, Schnappschuss der Datei, Einstellungen ohne Zugangsdaten, Aufrufstapel, `wiederholen.cmd` für `AtlasServer --replay`; `Tools/New-CrashTest.ps1` macht daraus einen DUnitX-Test)
@@ -250,5 +269,5 @@ Einstellungen: `server.crashCases`, `server.crashSkip`
 
 ## Weiteres
 
-- **Update-Prüfung** nur nach Zustimmung
+- **Update-Prüfung** nur nach Zustimmung; **Update-Installer** (#1519): „Jetzt aktualisieren“ lädt und prüft das Update im Hintergrund, ein Konsolenfenster spielt es beim Schließen der IDE ein, mit Auswahl der Module, Rückfall und Ergebnis beim nächsten Start (`updates.install`, `updates.channel`, `updates.newModules`); Delphi 12 bekommt es aus dem Quelltext gebaut
 - **Barrierefreiheit:** Listen und Tooltips für UI Automation lesbar

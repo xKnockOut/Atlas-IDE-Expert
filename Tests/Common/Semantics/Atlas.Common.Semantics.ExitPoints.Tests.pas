@@ -79,11 +79,15 @@ begin
     for Point in ASet.Points do
     begin
       if Result <> '' then
+      begin
         Result := Result + ' ';
+      end;
       Result := Result + Format('%s@%d:%d', [KindNames[Point.Kind], Point.Range.StartPos.Line,
         Point.Range.StartPos.Character]);
       if Point.ResultMissing then
+      begin
         Result := Result + '!';
+      end;
     end;
   finally
     Tree.Free;
@@ -108,7 +112,9 @@ var
 begin
   Result := '';
   for Part in AParts do
+  begin
     Result := Result + Part + #10;
+  end;
 end;
 
 { TExitPointsTests }

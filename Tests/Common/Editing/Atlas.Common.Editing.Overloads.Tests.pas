@@ -106,7 +106,8 @@ begin
   Tree := Parse(AText);
   try
     Assert.IsTrue(TOverloads.Target(AText, Tree, TTextPosition.Create(ALine, ACharacter), Target), 'Ziel');
-    Assert.IsTrue(TOverloads.Build(AText, Tree, Target, AKind, ADefault, Result, Reason), Reason);
+    Assert.IsTrue(TOverloads.Build(AText, Tree, Target, TOverloadRequest.Create(AKind, ADefault), Result, Reason),
+      Reason);
   finally
     Tree.Free;
   end;
@@ -142,7 +143,9 @@ var
 begin
   Result := '';
   for Placeholder in AResult.Placeholders do
+  begin
     Result := Result + IntToStr(Placeholder.Number);
+  end;
 end;
 
 procedure TOverloadsTests.CopyMethod;

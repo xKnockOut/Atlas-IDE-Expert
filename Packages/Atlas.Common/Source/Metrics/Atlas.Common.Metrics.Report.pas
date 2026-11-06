@@ -95,7 +95,81 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   System.Generics.Defaults,
-  Atlas.Text.Json;
+  System.Math,
+  Atlas.Text.Json,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TMetricsReportText = (MethodFileLineLengthDepth, AboveAtLeastOneThreshold, ThresholdsFromAtlasJsonRules,
+    MetricThresholdMeanMaximumMethods, AboveAThreshold, NoMethodExceedsAThreshold, AndText,
+    FileMethodsLengthMaxCyclomatic, MethodsOfThese, MostComplexMethods, UnitsInUses, CodeMetrics, Depth, Cyclomatic,
+    Cognitive, Operands, Exits, InheritanceDepth, InheritanceDepthAtLeast, Files, FilesHeading, CaptionLength,
+    CaptionDepth, CaptionCyclomatic, CaptionCognitive, CaptionParameters, CaptionOperands, CaptionLocals,
+    CaptionExits);
+
+const
+  cTexts: array[TMetricsReportText] of TAtlasText = (
+    (De: '| Methode | Datei | Zeile | Länge | Tiefe | zyklomatisch | kognitiv | Parameter | Operanden | lokale ' +
+      'Variablen | Ausstiege |%s|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|';
+     En: '| Method | File | Line | Length | Depth | cyclomatic | cognitive | Parameters | Operands | local variables ' +
+      '| Exits |%s|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|'),
+    (De: ' über mindestens einem Grenzwert. '; En: ' above at least one threshold. '),
+    (De: 'Grenzwerte aus atlas.json ("rules": { "metric-…": { "max": … } }), sonst die Vorgaben.';
+     En: 'Thresholds from atlas.json ("rules": { "metric-…": { "max": … } }), otherwise the defaults.'),
+    (De: '| Kennzahl | Grenzwert | Mittelwert | Maximum | Methoden darüber |';
+     En: '| Metric | Threshold | Mean | Maximum | Methods above |'),
+    (De: '## Über einem Grenzwert'; En: '## Above a threshold'),
+    (De: 'Keine Methode überschreitet einen Grenzwert.'; En: 'No method exceeds a threshold.'),
+    (De: '… und '; En: '… and '),
+    (De: '| Datei | Methoden | Ø Länge | max. zyklomatisch | max. kognitiv | über Grenzwert |';
+     En: '| File | Methods | Ø length | max. cyclomatic | max. cognitive | above threshold |'),
+    (De: ' Methoden, davon '; En: ' methods, of these '),
+    (De: '## Komplexeste Methoden'; En: '## Most complex methods'),
+    (De: ' Units im uses'; En: ' units in uses'),
+    (De: '# Code-Metriken'; En: '# Code metrics'),
+    (De: 'Tiefe '; En: 'depth '),
+    (De: 'zyklomatisch '; En: 'cyclomatic '),
+    (De: 'kognitiv '; En: 'cognitive '),
+    (De: 'Operanden '; En: 'operands '),
+    (De: ' Ausstiege'; En: ' exits'),
+    (De: 'Vererbungstiefe '; En: 'Inheritance depth '),
+    (De: 'Vererbungstiefe mindestens '; En: 'Inheritance depth at least '),
+    (De: ' Dateien, '; En: ' files, '),
+    (De: '## Dateien'; En: '## Files'),
+    (De: 'Länge'; En: 'length'),
+    (De: 'Tiefe'; En: 'depth'),
+    (De: 'zyklomatisch'; En: 'cyclomatic'),
+    (De: 'kognitiv'; En: 'cognitive'),
+    (De: 'Parameter'; En: 'parameters'),
+    (De: 'Operanden'; En: 'operands'),
+    (De: 'lokale Variablen'; En: 'local variables'),
+    (De: 'Ausstiege'; En: 'exits'));
+
+{$SCOPEDENUMS OFF}
+
+/// <summary>Kurzname der Kennzahl in der Sprache von Atlas, z. B. „zyklomatisch“.</summary>
+function MetricCaption(AKind: TMetricKind): string;
+const
+  cCaptions: array[TMetricKind] of TMetricsReportText = (TMetricsReportText.CaptionLength,
+    TMetricsReportText.CaptionDepth, TMetricsReportText.CaptionCyclomatic, TMetricsReportText.CaptionCognitive,
+    TMetricsReportText.CaptionParameters, TMetricsReportText.CaptionOperands, TMetricsReportText.CaptionLocals,
+    TMetricsReportText.CaptionExits);
+begin
+  Result := cTexts[cCaptions[AKind]].Text;
+end;
+
+/// <summary>Zehntel als Text mit dem Dezimaltrenner der Sprache (Komma auf Deutsch).</summary>
+function DecimalText(const AText: string): string;
+begin
+  Result := AText;
+  if TAtlasLocale.Language = TTextLanguage.German then
+  begin
+    Result := StringReplace(Result, '.', ',', []);
+  end;
+end;
 
 type
   TReportRow = record
@@ -112,41 +186,56 @@ const
 function TMetricsSummary.AverageTenths(AKind: TMetricKind): Integer;
 begin
   if Methods <= 0 then
+  begin
     Exit(0);
+  end;
   Result := Integer((Totals[AKind] * 10 + Methods div 2) div Methods);
 end;
 
 { TMetricsReport }
 
+/// <summary>Zählt die Kennzahlen einer Methode in ASummary ein.</summary>
+procedure AddRoutine(var ASummary: TMetricsSummary; const ARoutine: TRoutineMetrics; const ALimits: TMetricLimits);
+var
+  mKind: TMetricKind;
+  mOver: Boolean;
+begin
+  Inc(ASummary.Methods);
+  mOver := False;
+  for mKind := Low(TMetricKind) to High(TMetricKind) do
+  begin
+    Inc(ASummary.Totals[mKind], ARoutine.Values[mKind]);
+    if ARoutine.Values[mKind] > ASummary.Maximum[mKind] then
+    begin
+      ASummary.Maximum[mKind] := ARoutine.Values[mKind];
+    end;
+    if ALimits.Exceeds(mKind, ARoutine.Values[mKind]) then
+    begin
+      Inc(ASummary.Exceeded[mKind]);
+      mOver := True;
+    end;
+  end;
+  if mOver then
+  begin
+    Inc(ASummary.OverLimits);
+  end;
+end;
+
 class function TMetricsReport.Summarize(const AFiles: TArray<TFileMetrics>;
   const ALimits: TMetricLimits): TMetricsSummary;
 var
-  FileItem: TFileMetrics;
-  Routine: TRoutineMetrics;
-  Kind: TMetricKind;
-  Over: Boolean;
+  mFile: TFileMetrics;
+  mRoutine: TRoutineMetrics;
 begin
   Result := Default(TMetricsSummary);
   Result.Files := Length(AFiles);
-  for FileItem in AFiles do
-    for Routine in FileItem.Routines do
+  for mFile in AFiles do
+  begin
+    for mRoutine in mFile.Routines do
     begin
-      Inc(Result.Methods);
-      Over := False;
-      for Kind := Low(TMetricKind) to High(TMetricKind) do
-      begin
-        Inc(Result.Totals[Kind], Routine.Values[Kind]);
-        if Routine.Values[Kind] > Result.Maximum[Kind] then
-          Result.Maximum[Kind] := Routine.Values[Kind];
-        if ALimits.Exceeds(Kind, Routine.Values[Kind]) then
-        begin
-          Inc(Result.Exceeded[Kind]);
-          Over := True;
-        end;
-      end;
-      if Over then
-        Inc(Result.OverLimits);
+      AddRoutine(Result, mRoutine, ALimits);
     end;
+  end;
 end;
 
 class function TMetricsReport.TenthsText(ATenths: Int64): string;
@@ -156,7 +245,9 @@ begin
   Value := Abs(ATenths);
   Result := IntToStr(Value div 10) + '.' + IntToStr(Value mod 10);
   if ATenths < 0 then
+  begin
     Result := '-' + Result;
+  end;
 end;
 
 class function TMetricsReport.JsonString(const AText: string): string;
@@ -172,7 +263,9 @@ begin
   for Kind := Low(TMetricKind) to High(TMetricKind) do
   begin
     if Kind <> Low(TMetricKind) then
+    begin
       Result := Result + ', ';
+    end;
     Result := Result + TMetricsReport.JsonString(TMetrics.Key(Kind)) + ': ' + IntToStr(AValues[Kind]);
   end;
   Result := Result + '}';
@@ -192,7 +285,9 @@ begin
   for Kind := Low(TMetricKind) to High(TMetricKind) do
   begin
     if Kind <> Low(TMetricKind) then
+    begin
       Average := Average + ', ';
+    end;
     Average := Average + JsonString(TMetrics.Key(Kind)) + ': ' + TenthsText(ASummary.AverageTenths(Kind));
   end;
   Average := Average + '}';
@@ -210,7 +305,9 @@ begin
   for Kind in ALimits.Exceeded(ARoutine.Values) do
   begin
     if Exceeded <> '' then
+    begin
       Exceeded := Exceeded + ', ';
+    end;
     Exceeded := Exceeded + JsonString(TMetrics.Key(Kind));
   end;
   Result := '{"name": ' + JsonString(ARoutine.Name) + ', "line": ' + IntToStr(ARoutine.NameRange.StartPos.Line + 1) +
@@ -227,7 +324,9 @@ begin
   for Index := 0 to High(AFile.Routines) do
   begin
     if Index > 0 then
+    begin
       Result := Result + ', ';
+    end;
     Result := Result + RoutineJson(AFile.Routines[Index], ALimits);
   end;
   Result := Result + ']}';
@@ -245,7 +344,9 @@ begin
     for Index := 0 to High(AFiles) do
     begin
       if Index > 0 then
+      begin
         Builder.Append(',');
+      end;
       Builder.Append(LineBreak).Append('  ').Append(FileJson(AFiles[Index], ALimits));
     end;
     Builder.Append(']}').Append(LineBreak);
@@ -265,7 +366,9 @@ function ValueCell(const ALimits: TMetricLimits; AKind: TMetricKind; AValue: Int
 begin
   Result := IntToStr(AValue);
   if ALimits.Exceeds(AKind, AValue) then
+  begin
     Result := '**' + Result + '**';
+  end;
 end;
 
 function RoutineRow(const ARow: TReportRow; const ALimits: TMetricLimits): string;
@@ -275,137 +378,201 @@ begin
   Result := '| ' + Cell(ARow.Routine.Name) + ' | ' + Cell(ARow.Path) + ' | ' +
     IntToStr(ARow.Routine.NameRange.StartPos.Line + 1);
   for Kind := Low(TMetricKind) to High(TMetricKind) do
+  begin
     Result := Result + ' | ' + ValueCell(ALimits, Kind, ARow.Routine.Values[Kind]);
+  end;
   Result := Result + ' |';
 end;
 
 function RoutineHeader: string;
 begin
-  Result := '| Methode | Datei | Zeile | Länge | Tiefe | zyklomatisch | kognitiv | Parameter | Operanden | ' +
-    'lokale Variablen | Ausstiege |' + LineBreak + '|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|';
+  Result := cTexts[TMetricsReportText.MethodFileLineLengthDepth].Fmt([LineBreak]);
+end;
+
+/// <summary>Kopf mit Titel, Überblick und Tabelle der Kennzahlen.</summary>
+procedure AppendSummary(ABuilder: TStringBuilder; const ASummary: TMetricsSummary; const ALimits: TMetricLimits;
+  const ATitle: string);
+var
+  mKind: TMetricKind;
+begin
+  ABuilder.Append(cTexts[TMetricsReportText.CodeMetrics].Text);
+  if ATitle <> '' then
+  begin
+    ABuilder.Append(': ').Append(ATitle);
+  end;
+  ABuilder.Append(LineBreak).Append(LineBreak);
+  ABuilder.Append(IntToStr(ASummary.Files)).Append(cTexts[TMetricsReportText.Files].Text)
+    .Append(IntToStr(ASummary.Methods))
+    .Append(cTexts[TMetricsReportText.MethodsOfThese].Text).Append(IntToStr(ASummary.OverLimits))
+    .Append(cTexts[TMetricsReportText.AboveAtLeastOneThreshold].Text)
+    .Append(cTexts[TMetricsReportText.ThresholdsFromAtlasJsonRules].Text)
+    .Append(LineBreak).Append(LineBreak);
+
+  ABuilder.Append(cTexts[TMetricsReportText.MetricThresholdMeanMaximumMethods].Text).Append(LineBreak);
+  ABuilder.Append('|---|---:|---:|---:|---:|').Append(LineBreak);
+  for mKind := Low(TMetricKind) to High(TMetricKind) do
+  begin
+    ABuilder.Append('| ').Append(MetricCaption(mKind)).Append(' | ').Append(IntToStr(ALimits.Values[mKind]))
+      .Append(' | ').Append(DecimalText(TMetricsReport.TenthsText(ASummary.AverageTenths(mKind))))
+      .Append(' | ').Append(IntToStr(ASummary.Maximum[mKind])).Append(' | ').Append(IntToStr(ASummary.Exceeded[mKind]))
+      .Append(' |').Append(LineBreak);
+  end;
+end;
+
+/// <summary>Alle Methoden als Zeilen in ARows, die über einem Grenzwert zusätzlich in AOver.</summary>
+procedure CollectRows(const AFiles: TArray<TFileMetrics>; const ALimits: TMetricLimits;
+  ARows, AOver: TList<TReportRow>);
+var
+  mFile: TFileMetrics;
+  mRoutine: TRoutineMetrics;
+  mRow: TReportRow;
+begin
+  for mFile in AFiles do
+  begin
+    for mRoutine in mFile.Routines do
+    begin
+      mRow.Path := mFile.Path;
+      mRow.Routine := mRoutine;
+      mRow.Exceeded := Length(ALimits.Exceeded(mRoutine.Values));
+      ARows.Add(mRow);
+      if mRow.Exceeded > 0 then
+      begin
+        AOver.Add(mRow);
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Meiste Überschreitungen zuerst, dann die kognitiv komplexesten, dann die längsten.</summary>
+function CompareOver(const A, B: TReportRow): Integer;
+begin
+  Result := B.Exceeded - A.Exceeded;
+  if Result = 0 then
+  begin
+    Result := B.Routine.Values[TMetricKind.Cognitive] - A.Routine.Values[TMetricKind.Cognitive];
+  end;
+  if Result = 0 then
+  begin
+    Result := B.Routine.Values[TMetricKind.MethodLength] - A.Routine.Values[TMetricKind.MethodLength];
+  end;
+  if Result = 0 then
+  begin
+    Result := CompareText(A.Path + A.Routine.Name, B.Path + B.Routine.Name);
+  end;
+end;
+
+/// <summary>Kognitiv komplexeste zuerst, dann die zyklomatisch komplexesten.</summary>
+function CompareComplexity(const A, B: TReportRow): Integer;
+begin
+  Result := B.Routine.Values[TMetricKind.Cognitive] - A.Routine.Values[TMetricKind.Cognitive];
+  if Result = 0 then
+  begin
+    Result := B.Routine.Values[TMetricKind.Cyclomatic] - A.Routine.Values[TMetricKind.Cyclomatic];
+  end;
+  if Result = 0 then
+  begin
+    Result := CompareText(A.Path + A.Routine.Name, B.Path + B.Routine.Name);
+  end;
+end;
+
+/// <summary>Abschnitt "Über einem Grenzwert" mit höchstens TMetricsReport.MaxRows Zeilen.</summary>
+procedure AppendOverLimits(ABuilder: TStringBuilder; AOver: TList<TReportRow>; const ALimits: TMetricLimits);
+var
+  mIndex: Integer;
+begin
+  ABuilder.Append(LineBreak).Append(cTexts[TMetricsReportText.AboveAThreshold].Text).Append(LineBreak)
+    .Append(LineBreak);
+  if AOver.Count = 0 then
+  begin
+    ABuilder.Append(cTexts[TMetricsReportText.NoMethodExceedsAThreshold].Text).Append(LineBreak);
+    Exit;
+  end;
+  AOver.Sort(TComparer<TReportRow>.Construct(
+    function(const A, B: TReportRow): Integer
+    begin
+      Result := CompareOver(A, B);
+    end));
+  ABuilder.Append(RoutineHeader).Append(LineBreak);
+  for mIndex := 0 to Min(AOver.Count, TMetricsReport.MaxRows) - 1 do
+  begin
+    ABuilder.Append(RoutineRow(AOver[mIndex], ALimits)).Append(LineBreak);
+  end;
+  if AOver.Count > TMetricsReport.MaxRows then
+  begin
+    ABuilder.Append(LineBreak).Append(cTexts[TMetricsReportText.AndText].Text)
+      .Append(IntToStr(AOver.Count - TMetricsReport.MaxRows))
+      .Append(' weitere.').Append(LineBreak);
+  end;
+end;
+
+/// <summary>Abschnitt "Komplexeste Methoden" mit höchstens TMetricsReport.TopRows Zeilen.</summary>
+procedure AppendMostComplex(ABuilder: TStringBuilder; ARows: TList<TReportRow>; const ALimits: TMetricLimits);
+var
+  mIndex: Integer;
+begin
+  if ARows.Count = 0 then
+  begin
+    Exit;
+  end;
+  ARows.Sort(TComparer<TReportRow>.Construct(
+    function(const A, B: TReportRow): Integer
+    begin
+      Result := CompareComplexity(A, B);
+    end));
+  ABuilder.Append(LineBreak).Append(cTexts[TMetricsReportText.MostComplexMethods].Text).Append(LineBreak)
+    .Append(LineBreak);
+  ABuilder.Append(RoutineHeader).Append(LineBreak);
+  for mIndex := 0 to Min(ARows.Count, TMetricsReport.TopRows) - 1 do
+  begin
+    ABuilder.Append(RoutineRow(ARows[mIndex], ALimits)).Append(LineBreak);
+  end;
+end;
+
+/// <summary>Abschnitt "Dateien" mit einer Zeile je Datei.</summary>
+procedure AppendFiles(ABuilder: TStringBuilder; const AFiles: TArray<TFileMetrics>; const ALimits: TMetricLimits);
+var
+  mFile: TFileMetrics;
+  mSummary: TMetricsSummary;
+begin
+  if Length(AFiles) = 0 then
+  begin
+    Exit;
+  end;
+  ABuilder.Append(LineBreak).Append(cTexts[TMetricsReportText.FilesHeading].Text).Append(LineBreak).Append(LineBreak);
+  ABuilder.Append(cTexts[TMetricsReportText.FileMethodsLengthMaxCyclomatic].Text)
+    .Append(LineBreak);
+  ABuilder.Append('|---|---:|---:|---:|---:|---:|').Append(LineBreak);
+  for mFile in AFiles do
+  begin
+    mSummary := TMetricsReport.Summarize(TArray<TFileMetrics>.Create(mFile), ALimits);
+    ABuilder.Append('| ').Append(Cell(mFile.Path)).Append(' | ').Append(IntToStr(mSummary.Methods))
+      .Append(' | ').Append(DecimalText(TMetricsReport.TenthsText(mSummary.AverageTenths(TMetricKind.MethodLength))))
+      .Append(' | ').Append(IntToStr(mSummary.Maximum[TMetricKind.Cyclomatic])).Append(' | ')
+      .Append(IntToStr(mSummary.Maximum[TMetricKind.Cognitive])).Append(' | ')
+      .Append(IntToStr(mSummary.OverLimits)).Append(' |').Append(LineBreak);
+  end;
 end;
 
 class function TMetricsReport.Markdown(const AFiles: TArray<TFileMetrics>; const ALimits: TMetricLimits;
   const ATitle: string): string;
 var
-  Builder: TStringBuilder;
-  Summary, FileSummary: TMetricsSummary;
-  Kind: TMetricKind;
-  Rows, Over: TList<TReportRow>;
-  Row: TReportRow;
-  FileItem: TFileMetrics;
-  Routine: TRoutineMetrics;
-  Index: Integer;
-  OneFile: TArray<TFileMetrics>;
+  mBuilder: TStringBuilder;
+  mRows, mOver: TList<TReportRow>;
 begin
-  Summary := Summarize(AFiles, ALimits);
-  SetLength(OneFile, 1);
-  Builder := TStringBuilder.Create;
-  Rows := TList<TReportRow>.Create;
-  Over := TList<TReportRow>.Create;
+  mBuilder := TStringBuilder.Create;
+  mRows := TList<TReportRow>.Create;
+  mOver := TList<TReportRow>.Create;
   try
-    if ATitle <> '' then
-      Builder.Append('# Code-Metriken: ').Append(ATitle).Append(LineBreak)
-    else
-      Builder.Append('# Code-Metriken').Append(LineBreak);
-    Builder.Append(LineBreak);
-    Builder.Append(IntToStr(Summary.Files)).Append(' Dateien, ').Append(IntToStr(Summary.Methods))
-      .Append(' Methoden, davon ').Append(IntToStr(Summary.OverLimits)).Append(' über mindestens einem Grenzwert. ')
-      .Append('Grenzwerte aus atlas.json ("rules": { "metric-…": { "max": … } }), sonst die Vorgaben.')
-      .Append(LineBreak).Append(LineBreak);
-
-    Builder.Append('| Kennzahl | Grenzwert | Mittelwert | Maximum | Methoden darüber |').Append(LineBreak);
-    Builder.Append('|---|---:|---:|---:|---:|').Append(LineBreak);
-    for Kind := Low(TMetricKind) to High(TMetricKind) do
-      Builder.Append('| ').Append(TMetrics.Caption(Kind)).Append(' | ').Append(IntToStr(ALimits.Values[Kind]))
-        .Append(' | ').Append(StringReplace(TenthsText(Summary.AverageTenths(Kind)), '.', ',', []))
-        .Append(' | ').Append(IntToStr(Summary.Maximum[Kind])).Append(' | ').Append(IntToStr(Summary.Exceeded[Kind]))
-        .Append(' |').Append(LineBreak);
-
-    for FileItem in AFiles do
-      for Routine in FileItem.Routines do
-      begin
-        Row.Path := FileItem.Path;
-        Row.Routine := Routine;
-        Row.Exceeded := Length(ALimits.Exceeded(Routine.Values));
-        Rows.Add(Row);
-        if Row.Exceeded > 0 then
-          Over.Add(Row);
-      end;
-
-    Builder.Append(LineBreak).Append('## Über einem Grenzwert').Append(LineBreak).Append(LineBreak);
-    if Over.Count = 0 then
-      Builder.Append('Keine Methode überschreitet einen Grenzwert.').Append(LineBreak)
-    else
-    begin
-      // Meiste Überschreitungen zuerst, dann die kognitiv komplexesten.
-      Over.Sort(TComparer<TReportRow>.Construct(
-        function(const A, B: TReportRow): Integer
-        begin
-          Result := B.Exceeded - A.Exceeded;
-          if Result = 0 then
-            Result := B.Routine.Values[TMetricKind.Cognitive] - A.Routine.Values[TMetricKind.Cognitive];
-          if Result = 0 then
-            Result := B.Routine.Values[TMetricKind.MethodLength] - A.Routine.Values[TMetricKind.MethodLength];
-          if Result = 0 then
-            Result := CompareText(A.Path + A.Routine.Name, B.Path + B.Routine.Name);
-        end));
-      Builder.Append(RoutineHeader).Append(LineBreak);
-      for Index := 0 to Over.Count - 1 do
-      begin
-        if Index >= MaxRows then
-        begin
-          Builder.Append(LineBreak).Append('… und ').Append(IntToStr(Over.Count - MaxRows)).Append(' weitere.')
-            .Append(LineBreak);
-          Break;
-        end;
-        Builder.Append(RoutineRow(Over[Index], ALimits)).Append(LineBreak);
-      end;
-    end;
-
-    if Rows.Count > 0 then
-    begin
-      Rows.Sort(TComparer<TReportRow>.Construct(
-        function(const A, B: TReportRow): Integer
-        begin
-          Result := B.Routine.Values[TMetricKind.Cognitive] - A.Routine.Values[TMetricKind.Cognitive];
-          if Result = 0 then
-            Result := B.Routine.Values[TMetricKind.Cyclomatic] - A.Routine.Values[TMetricKind.Cyclomatic];
-          if Result = 0 then
-            Result := CompareText(A.Path + A.Routine.Name, B.Path + B.Routine.Name);
-        end));
-      Builder.Append(LineBreak).Append('## Komplexeste Methoden').Append(LineBreak).Append(LineBreak);
-      Builder.Append(RoutineHeader).Append(LineBreak);
-      for Index := 0 to Rows.Count - 1 do
-      begin
-        if Index >= TopRows then
-          Break;
-        Builder.Append(RoutineRow(Rows[Index], ALimits)).Append(LineBreak);
-      end;
-    end;
-
-    if Length(AFiles) > 0 then
-    begin
-      Builder.Append(LineBreak).Append('## Dateien').Append(LineBreak).Append(LineBreak);
-      Builder.Append('| Datei | Methoden | Ø Länge | max. zyklomatisch | max. kognitiv | über Grenzwert |')
-        .Append(LineBreak);
-      Builder.Append('|---|---:|---:|---:|---:|---:|').Append(LineBreak);
-      for FileItem in AFiles do
-      begin
-        OneFile[0] := FileItem;
-        FileSummary := Summarize(OneFile, ALimits);
-        Builder.Append('| ').Append(Cell(FileItem.Path)).Append(' | ').Append(IntToStr(FileSummary.Methods))
-          .Append(' | ').Append(StringReplace(TenthsText(FileSummary.AverageTenths(TMetricKind.MethodLength)), '.',
-          ',', [])).Append(' | ').Append(IntToStr(FileSummary.Maximum[TMetricKind.Cyclomatic])).Append(' | ')
-          .Append(IntToStr(FileSummary.Maximum[TMetricKind.Cognitive])).Append(' | ')
-          .Append(IntToStr(FileSummary.OverLimits)).Append(' |').Append(LineBreak);
-      end;
-    end;
-    Result := Builder.ToString;
+    AppendSummary(mBuilder, Summarize(AFiles, ALimits), ALimits, ATitle);
+    CollectRows(AFiles, ALimits, mRows, mOver);
+    AppendOverLimits(mBuilder, mOver, ALimits);
+    AppendMostComplex(mBuilder, mRows, ALimits);
+    AppendFiles(mBuilder, AFiles, ALimits);
+    Result := mBuilder.ToString;
   finally
-    Over.Free;
-    Rows.Free;
-    Builder.Free;
+    mOver.Free;
+    mRows.Free;
+    mBuilder.Free;
   end;
 end;
 
@@ -415,18 +582,24 @@ class function TMetricsReport.LensTitle(const AValues: TMetricValues; const ALim
   begin
     Result := AText;
     if ALimits.Exceeds(AKind, AValues[AKind]) then
+    begin
       Result := Result + ' (> ' + IntToStr(ALimits.Values[AKind]) + ')';
+    end;
   end;
 
 begin
   Result := Part(TMetricKind.MethodLength, IntToStr(AValues[TMetricKind.MethodLength]) + ' Zeilen') + ' · ' +
-    Part(TMetricKind.NestingDepth, 'Tiefe ' + IntToStr(AValues[TMetricKind.NestingDepth])) + ' · ' +
-    Part(TMetricKind.Cyclomatic, 'zyklomatisch ' + IntToStr(AValues[TMetricKind.Cyclomatic])) + ' · ' +
-    Part(TMetricKind.Cognitive, 'kognitiv ' + IntToStr(AValues[TMetricKind.Cognitive])) + ' · ' +
+    Part(TMetricKind.NestingDepth, cTexts[TMetricsReportText.Depth].Text +
+      IntToStr(AValues[TMetricKind.NestingDepth])) + ' · ' +
+    Part(TMetricKind.Cyclomatic, cTexts[TMetricsReportText.Cyclomatic].Text +
+      IntToStr(AValues[TMetricKind.Cyclomatic])) + ' · ' +
+    Part(TMetricKind.Cognitive, cTexts[TMetricsReportText.Cognitive].Text + IntToStr(AValues[TMetricKind.Cognitive])) +
+      ' · ' +
     Part(TMetricKind.ParameterCount, IntToStr(AValues[TMetricKind.ParameterCount]) + ' Parameter') + ' · ' +
-    Part(TMetricKind.BooleanOperands, 'Operanden ' + IntToStr(AValues[TMetricKind.BooleanOperands])) + ' · ' +
+    Part(TMetricKind.BooleanOperands, cTexts[TMetricsReportText.Operands].Text +
+      IntToStr(AValues[TMetricKind.BooleanOperands])) + ' · ' +
     Part(TMetricKind.LocalCount, IntToStr(AValues[TMetricKind.LocalCount]) + ' lokale') + ' · ' +
-    Part(TMetricKind.ExitPoints, IntToStr(AValues[TMetricKind.ExitPoints]) + ' Ausstiege');
+    Part(TMetricKind.ExitPoints, IntToStr(AValues[TMetricKind.ExitPoints]) + cTexts[TMetricsReportText.Exits].Text);
 end;
 
 class function TMetricsReport.StructureKey(AKind: TStructureKind): string;
@@ -454,13 +627,17 @@ begin
   begin
     Item := AItems[Index];
     if Index > 0 then
+    begin
       Result := Result + ', ';
+    end;
     Result := Result + '{"kind": ' + JsonString(StructureKey(Item.Kind)) + ', "name": ' + JsonString(Item.Name) +
       ', "line": ' + IntToStr(Item.NameRange.StartPos.Line + 1) + ', "character": ' +
       IntToStr(Item.NameRange.StartPos.Character + 1) + ', "value": ' + IntToStr(Item.Value) + ', "limit": ' +
       IntToStr(ALimits.Structure[Item.Kind]);
     if Item.AtLeast then
+    begin
       Result := Result + ', "atLeast": true';
+    end;
     Result := Result + '}';
   end;
   Result := Result + ']';
@@ -475,19 +652,27 @@ begin
     TStructureKind.UnitLength:
       Result := IntToStr(AValue) + ' Zeilen';
     TStructureKind.UsesCount:
-      Result := IntToStr(AValue) + ' Units im uses';
+      Result := IntToStr(AValue) + cTexts[TMetricsReportText.UnitsInUses].Text;
   else
-    Result := 'Vererbungstiefe ' + IntToStr(AValue);
+    Result := cTexts[TMetricsReportText.InheritanceDepth].Text + IntToStr(AValue);
   end;
   if ALimits.ExceedsStructure(AKind, AValue) then
+  begin
     Result := Result + ' (> ' + IntToStr(ALimits.Structure[AKind]) + ')';
+  end;
 end;
 
 class function TMetricsReport.StructureLensPart(const AItem: TStructureMetrics; const ALimits: TMetricLimits): string;
 begin
   Result := StructureLensPart(AItem.Kind, AItem.Value, ALimits);
   if AItem.AtLeast and (AItem.Kind = TStructureKind.InheritanceDepth) then
-    Result := StringReplace(Result, 'Vererbungstiefe ', 'Vererbungstiefe mindestens ', []);
+  begin
+    Result := StringReplace(Result, cTexts[TMetricsReportText.InheritanceDepth].Text,
+      cTexts[TMetricsReportText.InheritanceDepthAtLeast].Text, []);
+  end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Metrics.Report', cTexts);
 
 end.

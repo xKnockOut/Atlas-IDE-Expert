@@ -253,23 +253,41 @@ const
 function TextOf(const AFileName: string): string;
 begin
   if SameText(AFileName, BasisFile) then
-    Result := UnitBasis
+  begin
+    Result := UnitBasis;
+  end
   else if SameText(AFileName, AndereFile) then
-    Result := UnitAndere
+  begin
+    Result := UnitAndere;
+  end
   else if SameText(AFileName, FormularFile) then
-    Result := UnitFormular
+  begin
+    Result := UnitFormular;
+  end
   else if SameText(AFileName, FormularForm) then
-    Result := FormFormular
+  begin
+    Result := FormFormular;
+  end
   else if SameText(AFileName, FormularInclude) then
-    Result := IncludeFormular
+  begin
+    Result := IncludeFormular;
+  end
   else if SameText(AFileName, BasisTestFile) then
-    Result := UnitBasisTests
+  begin
+    Result := UnitBasisTests;
+  end
   else if SameText(AFileName, FormularTestFile) then
-    Result := UnitFormularTests
+  begin
+    Result := UnitFormularTests;
+  end
   else if SameText(AFileName, ProgramFile) then
-    Result := ProgramTests
+  begin
+    Result := ProgramTests;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function ReadFile(const AFileName: string; out AText: string): Boolean;
@@ -290,11 +308,17 @@ var
 begin
   mIndex := Pos(AMarker, AText);
   if mIndex = 0 then
+  begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+  end;
   Result := 0;
   for mScan := 1 to mIndex - 1 do
+  begin
     if AText[mScan] = #10 then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 function Span(AFirst, ALast: Integer): TChangedLines;
@@ -338,11 +362,13 @@ var
   mTest: TAffectedTest;
 begin
   for mTest in AResult.Tests do
+  begin
     if mTest.Name = AName then
     begin
       ATest := mTest;
       Exit(True);
     end;
+  end;
   ATest := Default(TAffectedTest);
   Result := False;
 end;
@@ -353,7 +379,9 @@ var
 begin
   Result := '';
   for mTest in AResult.Tests do
+  begin
     Result := Result + mTest.Name + ' ';
+  end;
 end;
 
 function Fake(const AName, AFixture, AMethod: string): TAffectedTest;
@@ -654,7 +682,9 @@ begin
     end;
   mTests := nil;
   for mIndex := 1 to 4 do
+  begin
     mTests := mTests + [Fake(Format('U.TFix.T%d', [mIndex]), 'TFix', Format('T%d', [mIndex]))];
+  end;
   // 4 von 5 = 80 %: nicht mehr als 80 %, die Methoden bleiben.
   mCollapsed := TAffectedTests.Collapse(mTests, mTotal, mRun);
   Assert.AreEqual(4, Integer(Length(mCollapsed)));
@@ -752,10 +782,44 @@ begin
   Assert.IsTrue(Pos('run_tests tests: ', mText) > 0, mText);
 end;
 
-procedure TAffectedTestsTests.TwentyFilesInThousandUnitsStayFast;
 const
-  cUnits = 1000;
-  cChanged = 20;
+  cTwentyFilescUnits = 1000;
+  cTwentyFilescChanged = 20;
+
+/// <summary>Kette Stufe0 ← Stufe1 ← …; jede zehnte Unit hat eine Testunit, die ihre Routine aufruft.</summary>
+procedure BuildStufenChain(out ATexts, AFiles: TArray<string>);
+var
+  mIndex: Integer;
+begin
+  // Kette Stufe0 ← Stufe1 ← …; jede zehnte Unit hat eine Testunit, die ihre Routine aufruft.
+  SetLength(ATexts, cTwentyFilescUnits + cTwentyFilescUnits div 10);
+  SetLength(AFiles, Length(ATexts));
+  for mIndex := 0 to cTwentyFilescUnits - 1 do
+  begin
+    AFiles[mIndex] := Format('C:\B\Stufe%d.pas', [mIndex]);
+    if mIndex = 0 then
+    begin
+      ATexts[mIndex] := 'unit Stufe0;'#10'interface'#10'procedure Lauf0;'#10'implementation'#10 +
+        'procedure Lauf0;'#10'begin'#10'end;'#10'end.';
+    end
+    else
+    begin
+      ATexts[mIndex] := Format('unit Stufe%d;'#10'interface'#10'uses Stufe%d;'#10'procedure Lauf%d;'#10 +
+        'implementation'#10'procedure Lauf%d;'#10'begin'#10'  Lauf%d;'#10'end;'#10'end.',
+        [mIndex, mIndex - 1, mIndex, mIndex, mIndex - 1]);
+    end;
+  end;
+  for mIndex := 0 to cTwentyFilescUnits div 10 - 1 do
+  begin
+    AFiles[cTwentyFilescUnits + mIndex] := Format('C:\B\Stufe%d.Tests.pas', [mIndex * 10]);
+    ATexts[cTwentyFilescUnits + mIndex] := Format('unit Stufe%d.Tests;'#10'interface'#10'uses DUnitX.TestFramework, Stufe%d;'#10 +
+      'type'#10'  [TestFixture]'#10'  TStufe%dTests = class'#10'  public'#10'    [Test]'#10'    procedure Laeuft;'#10 +
+      '  end;'#10'implementation'#10'procedure TStufe%dTests.Laeuft;'#10'begin'#10'  Lauf%d;'#10'end;'#10'end.',
+      [mIndex * 10, mIndex * 10, mIndex * 10, mIndex * 10, mIndex * 10]);
+  end;
+end;
+
+procedure TAffectedTestsTests.TwentyFilesInThousandUnitsStayFast;
 var
   mTexts, mFiles: TArray<string>;
   mIndex: Integer;
@@ -766,34 +830,17 @@ var
   mWatch: TStopwatch;
   mFound: TAffectedResult;
 begin
-  // Kette Stufe0 ← Stufe1 ← …; jede zehnte Unit hat eine Testunit, die ihre Routine aufruft.
-  SetLength(mTexts, cUnits + cUnits div 10);
-  SetLength(mFiles, Length(mTexts));
+  BuildStufenChain(mTexts, mFiles);
   mBig := TSymbolIndex.Create;
-  for mIndex := 0 to cUnits - 1 do
-  begin
-    mFiles[mIndex] := Format('C:\B\Stufe%d.pas', [mIndex]);
-    if mIndex = 0 then
-      mTexts[mIndex] := 'unit Stufe0;'#10'interface'#10'procedure Lauf0;'#10'implementation'#10 +
-        'procedure Lauf0;'#10'begin'#10'end;'#10'end.'
-    else
-      mTexts[mIndex] := Format('unit Stufe%d;'#10'interface'#10'uses Stufe%d;'#10'procedure Lauf%d;'#10 +
-        'implementation'#10'procedure Lauf%d;'#10'begin'#10'  Lauf%d;'#10'end;'#10'end.',
-        [mIndex, mIndex - 1, mIndex, mIndex, mIndex - 1]);
-  end;
-  for mIndex := 0 to cUnits div 10 - 1 do
-  begin
-    mFiles[cUnits + mIndex] := Format('C:\B\Stufe%d.Tests.pas', [mIndex * 10]);
-    mTexts[cUnits + mIndex] := Format('unit Stufe%d.Tests;'#10'interface'#10'uses DUnitX.TestFramework, Stufe%d;'#10 +
-      'type'#10'  [TestFixture]'#10'  TStufe%dTests = class'#10'  public'#10'    [Test]'#10'    procedure Laeuft;'#10 +
-      '  end;'#10'implementation'#10'procedure TStufe%dTests.Laeuft;'#10'begin'#10'  Lauf%d;'#10'end;'#10'end.',
-      [mIndex * 10, mIndex * 10, mIndex * 10, mIndex * 10, mIndex * 10]);
-  end;
   for mIndex := 0 to High(mTexts) do
+  begin
     mBig.AddUnit(TIndexExtractor.ExtractText(mTexts[mIndex], mFiles[mIndex], nil, nil, True));
+  end;
   mInputs := nil;
-  for mIndex := 0 to cChanged - 1 do
+  for mIndex := 0 to cTwentyFilescChanged - 1 do
+  begin
     mInputs := mInputs + [Input(mFiles[mIndex * 37], LinesAt(mTexts[mIndex * 37], 'begin'))];
+  end;
   mRequest := Default(TAffectedRequest);
   mRequest.Files := mFiles;
   mRequest.Options := TImpactOptions.Default;
@@ -808,11 +855,13 @@ begin
         mSlot: Integer;
       begin
         for mSlot := 0 to High(mFiles) do
+        begin
           if SameText(mFiles[mSlot], AFileName) then
           begin
             AText := mTexts[mSlot];
             Exit(True);
           end;
+        end;
         Result := False;
       end, nil);
     mWatch.Stop;
@@ -820,7 +869,7 @@ begin
     mResolver.Free;
   end;
   Assert.IsFalse(mFound.All, mFound.AllReason);
-  Assert.AreEqual(cChanged, Integer(Length(mFound.Changes)));
+  Assert.AreEqual(cTwentyFilescChanged, Integer(Length(mFound.Changes)));
   Assert.IsTrue(Length(mFound.Tests) > 0, 'Tests der Stufen in Reichweite');
   Assert.IsTrue(mWatch.ElapsedMilliseconds < 5000, Format('%d ms', [mWatch.ElapsedMilliseconds]));
 end;

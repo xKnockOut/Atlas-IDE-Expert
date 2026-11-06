@@ -103,38 +103,40 @@ type
     Handler: TMcpPromptHandler;
   end;
 
+  /// <summary>Name, Version und Hinweis des Servers für initialize.</summary>
+  TMcpServerInfo = record
+    Name: string;
+    Version: string;
+    Instructions: string;
+  end;
+
+  /// <summary>Was der Server anbietet; die Listen gehören TMcpServer.</summary>
+  TMcpServerCatalog = record
+    Tools: TList<TMcpTool>;
+    Resources: TList<TMcpResource>;
+    Prompts: TList<TMcpPrompt>;
+    Templates: TList<TMcpResourceTemplate>;
+  end;
+
+  /// <summary>Ereignisse von TMcpServer (siehe die gleichnamigen Eigenschaften).</summary>
+  TMcpServerEvents = record
+    OnBeforeToolCall: TProc;
+    OnDisabledTools: TFunc<TArray<string>>;
+    OnAudit: TProc<string>;
+    OnPrompts: TFunc<TArray<TMcpPrompt>>;
+    OnPromptsEnabled: TFunc<Boolean>;
+  end;
+
   TMcpServer = class
   public const
     DefaultProtocolVersion = '2025-06-18';
-    InitializeMethod = 'initialize';
-    InitializedMethod = 'notifications/initialized';
-    PingMethod = 'ping';
-    ListToolsMethod = 'tools/list';
-    CallToolMethod = 'tools/call';
-    ListResourcesMethod = 'resources/list';
-    ReadResourceMethod = 'resources/read';
-    ListResourceTemplatesMethod = 'resources/templates/list';
-    ListPromptsMethod = 'prompts/list';
-    GetPromptMethod = 'prompts/get';
   private
-    FName: string;
-    FVersion: string;
-    FInstructions: string;
-    FTools: TList<TMcpTool>;
-    FOnBeforeToolCall: TProc;
-    FResources: TList<TMcpResource>;
+    FInfo: TMcpServerInfo;
+    FCatalog: TMcpServerCatalog;
+    FEvents: TMcpServerEvents;
     FRestricted: Boolean;
-    FOnDisabledTools: TFunc<TArray<string>>;
-    FOnAudit: TProc<string>;
-    FPrompts: TList<TMcpPrompt>;
-    FTemplates: TList<TMcpResourceTemplate>;
-    FOnPrompts: TFunc<TArray<TMcpPrompt>>;
-    FOnPromptsEnabled: TFunc<Boolean>;
-    function FindTool(const AName: string; out ATool: TMcpTool): Boolean;
-    function FindPrompt(const AName: string; out APrompt: TMcpPrompt): Boolean;
     /// <summary>Text des Werkzeugs; True bei isError (abgeschaltet, eingeschränkt, EMcpToolError).</summary>
     function Execute(const ATool: TMcpTool; const AArguments: TJSONObject; out AText: string): Boolean;
-    function ResourceText(const AUri, AMimeType, AText: string): TJSONObject;
   public
     constructor Create(const AName, AVersion: string);
     destructor Destroy; override;
@@ -193,25 +195,83 @@ type
     /// <summary>Optionales Argument als Text; '' wenn es fehlt.</summary>
     class function OptionalString(const AArguments: TJSONObject; const AName: string): string; static;
     /// <summary>Hinweis an das Modell in der Antwort auf initialize.</summary>
-    property Instructions: string read FInstructions write FInstructions;
+    property Instructions: string read FInfo.Instructions write FInfo.Instructions;
     /// <summary>Läuft vor jedem Werkzeugaufruf, z. B. um den Index aktuell zu halten (#48).</summary>
-    property OnBeforeToolCall: TProc read FOnBeforeToolCall write FOnBeforeToolCall;
+    property OnBeforeToolCall: TProc read FEvents.OnBeforeToolCall write FEvents.OnBeforeToolCall;
     /// <summary>Eingeschränkter Modus (#186): nur lesende Werkzeuge.</summary>
     property Restricted: Boolean read FRestricted write FRestricted;
     /// <summary>Abgeschaltete Werkzeuge (mcp.disabledTools), bei jedem Aufruf neu gelesen.</summary>
-    property OnDisabledTools: TFunc<TArray<string>> read FOnDisabledTools write FOnDisabledTools;
-    property OnAudit: TProc<string> read FOnAudit write FOnAudit;
+    property OnDisabledTools: TFunc<TArray<string>> read FEvents.OnDisabledTools write FEvents.OnDisabledTools;
+    property OnAudit: TProc<string> read FEvents.OnAudit write FEvents.OnAudit;
     /// <summary>Weitere Prompts, bei jedem Aufruf neu gelesen, z. B. mcp.customPrompts aus atlas.json.</summary>
-    property OnPrompts: TFunc<TArray<TMcpPrompt>> read FOnPrompts write FOnPrompts;
+    property OnPrompts: TFunc<TArray<TMcpPrompt>> read FEvents.OnPrompts write FEvents.OnPrompts;
     /// <summary>mcp.prompts, bei jedem Aufruf neu gelesen; ohne Ereignis an.</summary>
-    property OnPromptsEnabled: TFunc<Boolean> read FOnPromptsEnabled write FOnPromptsEnabled;
+    property OnPromptsEnabled: TFunc<Boolean> read FEvents.OnPromptsEnabled write FEvents.OnPromptsEnabled;
   end;
 
 implementation
 
 uses
   Atlas.Text.Uris,
-  Atlas.Common.JsonRpc.Contract;
+  Atlas.Common.JsonRpc.Contract,
+  Atlas.Text.LogMarks,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TServerText = (ToolDoesNotExistIn, NameOfThePromptMissing, PromptArgumentMissing, PromptsAreSwitchedOffMcp,
+    UriMissing, ToolIsOffInRestricted, ToolIsSwitchedOffIn, ToolNameMissing, ParameterMissing, UnknownPrompt,
+    UnknownResource, UnknownTool);
+
+const
+  cTexts: array[TServerText] of TAtlasText = (
+    (De: 'Werkzeug "%s" gibt es in diesem Server nicht.'; En: 'Tool "%s" does not exist in this server.'),
+    (De: 'Name des Prompts fehlt'; En: 'Name of the prompt missing'),
+    (De: 'Prompt "%s": Argument "%s" fehlt (%s)'; En: 'Prompt "%s": argument "%s" missing (%s)'),
+    (De: 'Prompts sind abgeschaltet (mcp.prompts).'; En: 'Prompts are switched off (mcp.prompts).'),
+    (De: 'uri fehlt'; En: 'uri missing'),
+    (De: 'Werkzeug "%s" ist im eingeschränkten Modus aus (nur lesende Werkzeuge).';
+     En: 'Tool "%s" is off in restricted mode (read-only tools only).'),
+    (De: 'Werkzeug "%s" ist in atlas.json abgeschaltet (mcp.disabledTools).';
+     En: 'Tool "%s" is switched off in atlas.json (mcp.disabledTools).'),
+    (De: 'Werkzeugname fehlt'; En: 'Tool name missing'),
+    (De: 'Parameter "%s" fehlt'; En: 'Parameter "%s" missing'),
+    (De: 'Unbekannter Prompt "%s"'; En: 'Unknown prompt "%s"'),
+    (De: 'Unbekannte Ressource "%s"'; En: 'Unknown resource "%s"'),
+    (De: 'Unbekanntes Werkzeug "%s"'; En: 'Unknown tool "%s"'));
+
+{$SCOPEDENUMS OFF}
+
+const
+  // Methoden des MCP-Protokolls.
+  cInitializeMethod = 'initialize';
+  cInitializedMethod = 'notifications/initialized';
+  cPingMethod = 'ping';
+  cListToolsMethod = 'tools/list';
+  cCallToolMethod = 'tools/call';
+  cListResourcesMethod = 'resources/list';
+  cReadResourceMethod = 'resources/read';
+  cListResourceTemplatesMethod = 'resources/templates/list';
+  cListPromptsMethod = 'prompts/list';
+  cGetPromptMethod = 'prompts/get';
+
+function FindToolIn(ATools: TList<TMcpTool>; const AName: string; out ATool: TMcpTool): Boolean;
+var
+  mTool: TMcpTool;
+begin
+  ATool := Default(TMcpTool);
+  for mTool in ATools do
+  begin
+    if mTool.Name = AName then
+    begin
+      ATool := mTool;
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
 
 { TMcpResourceTemplate }
 
@@ -225,7 +285,9 @@ begin
   mClose := Pos('}', UriTemplate);
   Result := (mOpen > 0) and (mClose > mOpen);
   if not Result then
+  begin
     Exit;
+  end;
   mPrefix := Copy(UriTemplate, 1, mOpen - 1);
   mSuffix := Copy(UriTemplate, mClose + 1, MaxInt);
   Result := (Length(AUri) > Length(mPrefix) + Length(mSuffix)) and SameText(Copy(AUri, 1, Length(mPrefix)), mPrefix)
@@ -252,20 +314,20 @@ end;
 constructor TMcpServer.Create(const AName, AVersion: string);
 begin
   inherited Create;
-  FName := AName;
-  FVersion := AVersion;
-  FTools := TList<TMcpTool>.Create;
-  FResources := TList<TMcpResource>.Create;
-  FPrompts := TList<TMcpPrompt>.Create;
-  FTemplates := TList<TMcpResourceTemplate>.Create;
+  FInfo.Name := AName;
+  FInfo.Version := AVersion;
+  FCatalog.Tools := TList<TMcpTool>.Create;
+  FCatalog.Resources := TList<TMcpResource>.Create;
+  FCatalog.Prompts := TList<TMcpPrompt>.Create;
+  FCatalog.Templates := TList<TMcpResourceTemplate>.Create;
 end;
 
 destructor TMcpServer.Destroy;
 begin
-  FTemplates.Free;
-  FPrompts.Free;
-  FResources.Free;
-  FTools.Free;
+  FCatalog.Templates.Free;
+  FCatalog.Prompts.Free;
+  FCatalog.Resources.Free;
+  FCatalog.Tools.Free;
   inherited;
 end;
 
@@ -284,7 +346,7 @@ begin
   Tool.InputSchema := AInputSchema;
   Tool.Handler := AHandler;
   Tool.Kind := AKind;
-  FTools.Add(Tool);
+  FCatalog.Tools.Add(Tool);
 end;
 
 function NewResource(const AUri, AName, ADescription, AMimeType: string; const AHandler: TFunc<string>;
@@ -300,13 +362,13 @@ end;
 
 procedure TMcpServer.AddResource(const AUri, AName, ADescription, AMimeType: string; const AHandler: TFunc<string>);
 begin
-  FResources.Add(NewResource(AUri, AName, ADescription, AMimeType, AHandler, False));
+  FCatalog.Resources.Add(NewResource(AUri, AName, ADescription, AMimeType, AHandler, False));
 end;
 
 procedure TMcpServer.AddPromptResource(const AUri, AName, ADescription, AMimeType: string;
   const AHandler: TFunc<string>);
 begin
-  FResources.Add(NewResource(AUri, AName, ADescription, AMimeType, AHandler, True));
+  FCatalog.Resources.Add(NewResource(AUri, AName, ADescription, AMimeType, AHandler, True));
 end;
 
 procedure TMcpServer.AddResourceTemplate(const AUriTemplate, AName, ADescription, AMimeType: string;
@@ -319,17 +381,17 @@ begin
   mTemplate.Description := ADescription;
   mTemplate.MimeType := AMimeType;
   mTemplate.Handler := AHandler;
-  FTemplates.Add(mTemplate);
+  FCatalog.Templates.Add(mTemplate);
 end;
 
 procedure TMcpServer.AddPrompt(const APrompt: TMcpPrompt);
 begin
-  FPrompts.Add(APrompt);
+  FCatalog.Prompts.Add(APrompt);
 end;
 
 function TMcpServer.PromptsEnabled: Boolean;
 begin
-  Result := not Assigned(FOnPromptsEnabled) or FOnPromptsEnabled();
+  Result := not Assigned(FEvents.OnPromptsEnabled) or FEvents.OnPromptsEnabled();
 end;
 
 function TMcpServer.Prompts: TArray<TMcpPrompt>;
@@ -339,49 +401,46 @@ var
 begin
   Result := nil;
   if not PromptsEnabled then
+  begin
     Exit;
-  Result := FPrompts.ToArray;
-  if not Assigned(FOnPrompts) then
+  end;
+  Result := FCatalog.Prompts.ToArray;
+  if not Assigned(FEvents.OnPrompts) then
+  begin
     Exit;
-  for mPrompt in FOnPrompts() do
+  end;
+  for mPrompt in FEvents.OnPrompts() do
   begin
     // Eingebaute Namen gehen vor: Ein eigener Prompt kann keinen eingebauten verdecken.
     mDuplicate := False;
     for mKnown in Result do
-      if SameText(mKnown.Name, mPrompt.Name) then
-        mDuplicate := True;
-    if not mDuplicate then
-      Result := Result + [mPrompt];
-  end;
-end;
-
-function TMcpServer.FindPrompt(const AName: string; out APrompt: TMcpPrompt): Boolean;
-var
-  mPrompt: TMcpPrompt;
-begin
-  for mPrompt in Prompts do
-    if mPrompt.Name = AName then
     begin
-      APrompt := mPrompt;
-      Exit(True);
+      if SameText(mKnown.Name, mPrompt.Name) then
+      begin
+        mDuplicate := True;
+      end;
     end;
-  Result := False;
+    if not mDuplicate then
+    begin
+      Result := Result + [mPrompt];
+    end;
+  end;
 end;
 
 function TMcpServer.ToolAvailable(const AName: string): Boolean;
 var
   mTool: TMcpTool;
 begin
-  Result := FindTool(AName, mTool) and Available(mTool);
+  Result := FindToolIn(FCatalog.Tools, AName, mTool) and Available(mTool);
 end;
 
 function TMcpServer.InvokeTool(const AName: string; const AArguments: TJSONObject; out AText: string): Boolean;
 var
   mTool: TMcpTool;
 begin
-  if not FindTool(AName, mTool) then
+  if not FindToolIn(FCatalog.Tools, AName, mTool) then
   begin
-    AText := Format('Werkzeug "%s" gibt es in diesem Server nicht.', [AName]);
+    AText := cTexts[TServerText.ToolDoesNotExistIn].Fmt([AName]);
     Exit(False);
   end;
   Result := not Execute(mTool, AArguments, AText);
@@ -416,69 +475,144 @@ begin
   Result.AddPair('prompts', mItems);
 end;
 
-function TMcpServer.GetPrompt(const AParams: TJSONValue): TJSONObject;
+/// <summary>Name des Prompts aus den Parametern von prompts/get; EJsonRpcError ohne.</summary>
+function PromptNameOf(const AParams: TJSONValue): string;
+begin
+  if not (AParams is TJSONObject) or not (TJSONObject(AParams).GetValue('name') is TJSONString) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TServerText.NameOfThePromptMissing].Text);
+  end;
+  Result := TJSONObject(AParams).GetValue('name').Value;
+end;
+
+/// <summary>Wert eines Arguments als Text: Texte gekürzt, null leer, sonst als JSON.</summary>
+function ArgumentText(AValue: TJSONValue): string;
+begin
+  if AValue is TJSONString then
+  begin
+    Result := Trim(AValue.Value);
+  end
+  else if AValue is TJSONNull then
+  begin
+    Result := '';
+  end
+  else
+  begin
+    Result := Trim(AValue.ToJSON);
+  end;
+end;
+
+/// <summary>Nicht leere Argumente aus "arguments" der Parameter in AArguments.</summary>
+procedure ReadPromptArguments(const AParams: TJSONValue; AArguments: TDictionary<string, string>);
 var
-  mName, mText, mValue: string;
-  mPrompt: TMcpPrompt;
-  mInfo: TMcpPromptArgument;
-  mArguments: TDictionary<string, string>;
-  mGiven: TJSONObject;
   mPair: TJSONPair;
+  mValue: string;
+begin
+  if not (TJSONObject(AParams).GetValue('arguments') is TJSONObject) then
+  begin
+    Exit;
+  end;
+  for mPair in TJSONObject(TJSONObject(AParams).GetValue('arguments')) do
+  begin
+    mValue := ArgumentText(mPair.JsonValue);
+    if mValue <> '' then
+    begin
+      AArguments.AddOrSetValue(mPair.JsonString.Value, mValue);
+    end;
+  end;
+end;
+
+/// <summary>EJsonRpcError, wenn ein Pflichtargument von APrompt fehlt.</summary>
+procedure CheckPromptArguments(const APrompt: TMcpPrompt; AArguments: TDictionary<string, string>);
+var
+  mInfo: TMcpPromptArgument;
+begin
+  for mInfo in APrompt.Arguments do
+  begin
+    if mInfo.Required and not AArguments.ContainsKey(mInfo.Name) then
+    begin
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+        cTexts[TServerText.PromptArgumentMissing].Fmt([APrompt.Name, mInfo.Name, mInfo.Description]));
+    end;
+  end;
+end;
+
+/// <summary>Text des Prompts; ein fachlicher Fehler wird zu EJsonRpcError(InvalidParams).</summary>
+function PromptText(const APrompt: TMcpPrompt; AArguments: TDictionary<string, string>): string;
+begin
+  try
+    Result := APrompt.Handler(AArguments);
+  except
+    on E: EMcpToolError do
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, E.Message);
+  end;
+end;
+
+/// <summary>Antwort auf prompts/get: eine Nachricht der Rolle user mit AText.</summary>
+function PromptResult(const APrompt: TMcpPrompt; const AText: string): TJSONObject;
+var
   mMessages: TJSONArray;
   mMessage, mContent: TJSONObject;
 begin
-  if not (AParams is TJSONObject) or not (TJSONObject(AParams).GetValue('name') is TJSONString) then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Name des Prompts fehlt');
-  mName := TJSONObject(AParams).GetValue('name').Value;
-  if not PromptsEnabled then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Prompts sind abgeschaltet (mcp.prompts).');
-  if not FindPrompt(mName, mPrompt) then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Format('Unbekannter Prompt "%s"', [mName]));
-  mArguments := TDictionary<string, string>.Create;
-  try
-    if TJSONObject(AParams).GetValue('arguments') is TJSONObject then
-    begin
-      mGiven := TJSONObject(TJSONObject(AParams).GetValue('arguments'));
-      for mPair in mGiven do
-      begin
-        if mPair.JsonValue is TJSONString then
-          mValue := Trim(mPair.JsonValue.Value)
-        else if mPair.JsonValue is TJSONNull then
-          mValue := ''
-        else
-          mValue := Trim(mPair.JsonValue.ToJSON);
-        if mValue <> '' then
-          mArguments.AddOrSetValue(mPair.JsonString.Value, mValue);
-      end;
-    end;
-    for mInfo in mPrompt.Arguments do
-      if mInfo.Required and not mArguments.ContainsKey(mInfo.Name) then
-        raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-          Format('Prompt "%s": Argument "%s" fehlt (%s)', [mName, mInfo.Name, mInfo.Description]));
-    // Wie vor jedem Werkzeugaufruf: geänderte Units nachladen (#48), einmal für alle eingebetteten Werkzeuge.
-    if Assigned(FOnBeforeToolCall) then
-      FOnBeforeToolCall();
-    try
-      mText := mPrompt.Handler(mArguments);
-    except
-      on E: EMcpToolError do
-        raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, E.Message);
-    end;
-  finally
-    mArguments.Free;
-  end;
   mContent := TJSONObject.Create;
   mContent.AddPair('type', 'text');
-  mContent.AddPair('text', mText);
+  mContent.AddPair('text', AText);
   mMessage := TJSONObject.Create;
   mMessage.AddPair('role', 'user');
   mMessage.AddPair('content', mContent);
   mMessages := TJSONArray.Create;
   mMessages.Add(mMessage);
   Result := TJSONObject.Create;
-  Result.AddPair('description', mPrompt.Description);
+  Result.AddPair('description', APrompt.Description);
   Result.AddPair('messages', mMessages);
+end;
+
+function FindPromptIn(const APrompts: TArray<TMcpPrompt>; const AName: string; out APrompt: TMcpPrompt): Boolean;
+var
+  mPrompt: TMcpPrompt;
+begin
+  APrompt := Default(TMcpPrompt);
+  for mPrompt in APrompts do
+  begin
+    if mPrompt.Name = AName then
+    begin
+      APrompt := mPrompt;
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function TMcpServer.GetPrompt(const AParams: TJSONValue): TJSONObject;
+var
+  mName, mText: string;
+  mPrompt: TMcpPrompt;
+  mArguments: TDictionary<string, string>;
+begin
+  mName := PromptNameOf(AParams);
+  if not PromptsEnabled then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TServerText.PromptsAreSwitchedOffMcp].Text);
+  end;
+  if not FindPromptIn(Prompts, mName, mPrompt) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TServerText.UnknownPrompt].Fmt([mName]));
+  end;
+  mArguments := TDictionary<string, string>.Create;
+  try
+    ReadPromptArguments(AParams, mArguments);
+    CheckPromptArguments(mPrompt, mArguments);
+    // Wie vor jedem Werkzeugaufruf: geänderte Units nachladen (#48), einmal für alle eingebetteten Werkzeuge.
+    if Assigned(FEvents.OnBeforeToolCall) then
+    begin
+      FEvents.OnBeforeToolCall();
+    end;
+    mText := PromptText(mPrompt, mArguments);
+  finally
+    mArguments.Free;
+  end;
+  Result := PromptResult(mPrompt, mText);
 end;
 
 function TMcpServer.Available(const ATool: TMcpTool): Boolean;
@@ -486,18 +620,28 @@ var
   Name: string;
 begin
   if FRestricted and (ATool.Kind <> TMcpToolKind.Read) then
+  begin
     Exit(False);
-  if Assigned(FOnDisabledTools) then
-    for Name in FOnDisabledTools() do
+  end;
+  if Assigned(FEvents.OnDisabledTools) then
+  begin
+    for Name in FEvents.OnDisabledTools() do
+    begin
       if SameText(Trim(Name), ATool.Name) then
+      begin
         Exit(False);
+      end;
+    end;
+  end;
   Result := True;
 end;
 
 procedure TMcpServer.Audit(const AText: string);
 begin
-  if Assigned(FOnAudit) then
-    FOnAudit(AText);
+  if Assigned(FEvents.OnAudit) then
+  begin
+    FEvents.OnAudit(AText);
+  end;
 end;
 
 function TMcpServer.ListResources: TJSONObject;
@@ -507,10 +651,12 @@ var
   Resource: TMcpResource;
 begin
   Items := TJSONArray.Create;
-  for Resource in FResources do
+  for Resource in FCatalog.Resources do
   begin
     if Resource.WithPrompts and not PromptsEnabled then
+    begin
       Continue;
+    end;
     Item := TJSONObject.Create;
     Item.AddPair('uri', Resource.Uri);
     Item.AddPair('name', Resource.Name);
@@ -522,7 +668,7 @@ begin
   Result.AddPair('resources', Items);
 end;
 
-function TMcpServer.ResourceText(const AUri, AMimeType, AText: string): TJSONObject;
+function ResourceJson(const AUri, AMimeType, AText: string): TJSONObject;
 var
   mContents: TJSONArray;
   mItem: TJSONObject;
@@ -537,38 +683,89 @@ begin
   Result.AddPair('contents', mContents);
 end;
 
-function TMcpServer.ReadResource(const AParams: TJSONValue): TJSONObject;
-var
-  Uri, mValue, mText: string;
-  Resource: TMcpResource;
-  mTemplate: TMcpResourceTemplate;
+/// <summary>uri aus den Parametern von resources/read; EJsonRpcError ohne.</summary>
+function ResourceUriOf(const AParams: TJSONValue): string;
 begin
   if not (AParams is TJSONObject) or not (TJSONObject(AParams).GetValue('uri') is TJSONString) then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'uri fehlt');
-  Uri := TJSONObject(AParams).GetValue('uri').Value;
-  for Resource in FResources do
-    if SameText(Resource.Uri, Uri) and (not Resource.WithPrompts or PromptsEnabled) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TServerText.UriMissing].Text);
+  end;
+  Result := TJSONObject(AParams).GetValue('uri').Value;
+end;
+
+/// <summary>Feste Ressource AUri aus AResources; mit Prompts verbundene nur, wenn APromptsEnabled.</summary>
+function FindResource(AResources: TList<TMcpResource>; const AUri: string; APromptsEnabled: Boolean;
+  out AResource: TMcpResource): Boolean;
+var
+  mResource: TMcpResource;
+begin
+  AResource := Default(TMcpResource);
+  for mResource in AResources do
+  begin
+    if SameText(mResource.Uri, AUri) and (not mResource.WithPrompts or APromptsEnabled) then
     begin
-      if Assigned(FOnBeforeToolCall) then
-        FOnBeforeToolCall();
-      Exit(ResourceText(Resource.Uri, Resource.MimeType, Resource.Handler()));
+      AResource := mResource;
+      Exit(True);
     end;
-  if PromptsEnabled then
-    for mTemplate in FTemplates do
-      if mTemplate.Match(Uri, mValue) then
-      begin
-        if Assigned(FOnBeforeToolCall) then
-          FOnBeforeToolCall();
-        try
-          mText := mTemplate.Handler(mValue);
-        except
-          // Mit Begründung an den Client, z. B. „liegt außerhalb des Arbeitsbereichs“ (#99).
-          on E: EMcpToolError do
-            raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, E.Message);
-        end;
-        Exit(ResourceText(Uri, mTemplate.MimeType, mText));
-      end;
-  raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Format('Unbekannte Ressource "%s"', [Uri]));
+  end;
+  Result := False;
+end;
+
+/// <summary>Vorlage aus ATemplates, auf die AUri passt; AValue ist der Wert der Variablen.</summary>
+function FindTemplate(ATemplates: TList<TMcpResourceTemplate>; const AUri: string;
+  out ATemplate: TMcpResourceTemplate; out AValue: string): Boolean;
+var
+  mTemplate: TMcpResourceTemplate;
+begin
+  ATemplate := Default(TMcpResourceTemplate);
+  AValue := '';
+  for mTemplate in ATemplates do
+  begin
+    if mTemplate.Match(AUri, AValue) then
+    begin
+      ATemplate := mTemplate;
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Text der Vorlage zu AValue; ein fachlicher Fehler wird zu EJsonRpcError(InvalidParams).</summary>
+function TemplateText(const ATemplate: TMcpResourceTemplate; const AValue: string): string;
+begin
+  try
+    Result := ATemplate.Handler(AValue);
+  except
+    // Mit Begründung an den Client, z. B. „liegt außerhalb des Arbeitsbereichs“ (#99).
+    on E: EMcpToolError do
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, E.Message);
+  end;
+end;
+
+function TMcpServer.ReadResource(const AParams: TJSONValue): TJSONObject;
+var
+  mUri, mValue: string;
+  mResource: TMcpResource;
+  mTemplate: TMcpResourceTemplate;
+begin
+  mUri := ResourceUriOf(AParams);
+  if FindResource(FCatalog.Resources, mUri, PromptsEnabled, mResource) then
+  begin
+    if Assigned(FEvents.OnBeforeToolCall) then
+    begin
+      FEvents.OnBeforeToolCall();
+    end;
+    Exit(ResourceJson(mResource.Uri, mResource.MimeType, mResource.Handler()));
+  end;
+  if not (PromptsEnabled and FindTemplate(FCatalog.Templates, mUri, mTemplate, mValue)) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TServerText.UnknownResource].Fmt([mUri]));
+  end;
+  if Assigned(FEvents.OnBeforeToolCall) then
+  begin
+    FEvents.OnBeforeToolCall();
+  end;
+  Result := ResourceJson(mUri, mTemplate.MimeType, TemplateText(mTemplate, mValue));
 end;
 
 function TMcpServer.ReadResourceText(const AUri: string; out AText: string): Boolean;
@@ -576,13 +773,11 @@ var
   mResource: TMcpResource;
 begin
   AText := '';
-  for mResource in FResources do
-    if SameText(mResource.Uri, AUri) and (not mResource.WithPrompts or PromptsEnabled) then
-    begin
-      AText := mResource.Handler();
-      Exit(True);
-    end;
-  Result := False;
+  Result := FindResource(FCatalog.Resources, AUri, PromptsEnabled, mResource);
+  if Result then
+  begin
+    AText := mResource.Handler();
+  end;
 end;
 
 function TMcpServer.ListResourceTemplates: TJSONObject;
@@ -593,7 +788,8 @@ var
 begin
   mItems := TJSONArray.Create;
   if PromptsEnabled then
-    for mTemplate in FTemplates do
+  begin
+    for mTemplate in FCatalog.Templates do
     begin
       mItem := TJSONObject.Create;
       mItem.AddPair('uriTemplate', mTemplate.UriTemplate);
@@ -602,70 +798,58 @@ begin
       mItem.AddPair('mimeType', mTemplate.MimeType);
       mItems.Add(mItem);
     end;
+  end;
   Result := TJSONObject.Create;
   Result.AddPair('resourceTemplates', mItems);
 end;
 
-function TMcpServer.FindTool(const AName: string; out ATool: TMcpTool): Boolean;
-var
-  Tool: TMcpTool;
-begin
-  for Tool in FTools do
-    if Tool.Name = AName then
-    begin
-      ATool := Tool;
-      Exit(True);
-    end;
-  Result := False;
-end;
-
 procedure TMcpServer.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterRequest(InitializeMethod,
+  ADispatcher.RegisterRequest(cInitializeMethod,
     function(const AParams: TJSONValue): TJSONValue
     begin
       Result := Initialize(AParams);
     end);
-  ADispatcher.RegisterNotification(InitializedMethod,
+  ADispatcher.RegisterNotification(cInitializedMethod,
     procedure(const AParams: TJSONValue)
     begin
     end);
-  ADispatcher.RegisterRequest(PingMethod,
+  ADispatcher.RegisterRequest(cPingMethod,
     function(const AParams: TJSONValue): TJSONValue
     begin
       Result := TJSONObject.Create;
     end);
-  ADispatcher.RegisterRequest(ListToolsMethod,
+  ADispatcher.RegisterRequest(cListToolsMethod,
     function(const AParams: TJSONValue): TJSONValue
     begin
       Result := ListTools;
     end);
-  ADispatcher.RegisterRequest(CallToolMethod,
+  ADispatcher.RegisterRequest(cCallToolMethod,
     function(const AParams: TJSONValue): TJSONValue
     begin
       Result := CallTool(AParams);
     end);
-  ADispatcher.RegisterRequest(ListResourcesMethod,
+  ADispatcher.RegisterRequest(cListResourcesMethod,
     function(const AParams: TJSONValue): TJSONValue
     begin
       Result := ListResources;
     end);
-  ADispatcher.RegisterRequest(ReadResourceMethod,
+  ADispatcher.RegisterRequest(cReadResourceMethod,
     function(const AParams: TJSONValue): TJSONValue
     begin
       Result := ReadResource(AParams);
     end);
-  ADispatcher.RegisterRequest(ListResourceTemplatesMethod,
+  ADispatcher.RegisterRequest(cListResourceTemplatesMethod,
     function(const AParams: TJSONValue): TJSONValue
     begin
       Result := ListResourceTemplates;
     end);
-  ADispatcher.RegisterRequest(ListPromptsMethod,
+  ADispatcher.RegisterRequest(cListPromptsMethod,
     function(const AParams: TJSONValue): TJSONValue
     begin
       Result := ListPrompts;
     end);
-  ADispatcher.RegisterRequest(GetPromptMethod,
+  ADispatcher.RegisterRequest(cGetPromptMethod,
     function(const AParams: TJSONValue): TJSONValue
     begin
       Result := GetPrompt(AParams);
@@ -681,24 +865,32 @@ begin
   // die in allen bisherigen Versionen gleich aussehen.
   Version := DefaultProtocolVersion;
   if (AParams is TJSONObject) and (TJSONObject(AParams).GetValue('protocolVersion') is TJSONString) then
+  begin
     Version := TJSONObject(AParams).GetValue('protocolVersion').Value;
+  end;
   Result := TJSONObject.Create;
   Result.AddPair('protocolVersion', Version);
   Capabilities := TJSONObject.Create;
   Capabilities.AddPair('tools', TJSONObject.Create);
-  if (FResources.Count > 0) or (FTemplates.Count > 0) then
+  if (FCatalog.Resources.Count > 0) or (FCatalog.Templates.Count > 0) then
+  begin
     Capabilities.AddPair('resources', TJSONObject.Create);
+  end;
   // Immer melden, wenn es Prompts geben kann: Clients fragen die Liste sonst nie ab, auch wenn mcp.prompts
   // später eingeschaltet wird (#1357).
-  if (FPrompts.Count > 0) or Assigned(FOnPrompts) then
+  if (FCatalog.Prompts.Count > 0) or Assigned(FEvents.OnPrompts) then
+  begin
     Capabilities.AddPair('prompts', TJSONObject.Create);
+  end;
   Result.AddPair('capabilities', Capabilities);
   Info := TJSONObject.Create;
-  Info.AddPair('name', FName);
-  Info.AddPair('version', FVersion);
+  Info.AddPair('name', FInfo.Name);
+  Info.AddPair('version', FInfo.Version);
   Result.AddPair('serverInfo', Info);
-  if FInstructions <> '' then
-    Result.AddPair('instructions', FInstructions);
+  if FInfo.Instructions <> '' then
+  begin
+    Result.AddPair('instructions', FInfo.Instructions);
+  end;
 end;
 
 function TMcpServer.ListTools: TJSONObject;
@@ -709,16 +901,20 @@ var
   Schema: TJSONValue;
 begin
   Tools := TJSONArray.Create;
-  for Tool in FTools do
+  for Tool in FCatalog.Tools do
   begin
     if not Available(Tool) then
+    begin
       Continue;
+    end;
     Item := TJSONObject.Create;
     Item.AddPair('name', Tool.Name);
     Item.AddPair('description', Tool.Description);
     Schema := TJSONObject.ParseJSONValue(Tool.InputSchema);
     if Schema = nil then
+    begin
       Schema := TJSONObject.ParseJSONValue('{"type":"object"}');
+    end;
     Item.AddPair('inputSchema', Schema);
     Tools.Add(Item);
   end;
@@ -732,18 +928,26 @@ begin
   if not Available(ATool) then
   begin
     if FRestricted and (ATool.Kind <> TMcpToolKind.Read) then
-      AText := Format('Werkzeug "%s" ist im eingeschränkten Modus aus (nur lesende Werkzeuge).', [ATool.Name])
+    begin
+      AText := cTexts[TServerText.ToolIsOffInRestricted].Fmt([ATool.Name]);
+    end
     else
-      AText := Format('Werkzeug "%s" ist in atlas.json abgeschaltet (mcp.disabledTools).', [ATool.Name]);
+    begin
+      AText := cTexts[TServerText.ToolIsSwitchedOffIn].Fmt([ATool.Name]);
+    end;
     Exit(True);
   end;
   try
     if ATool.Kind <> TMcpToolKind.Read then
     begin
       if AArguments <> nil then
-        Audit(Format('MCP %s %s', [ATool.Name, AArguments.ToJSON]))
+      begin
+        Audit(Format('MCP %s %s', [ATool.Name, TLogMarks.Text(AArguments.ToJSON)]));
+      end
       else
+      begin
         Audit(Format('MCP %s', [ATool.Name]));
+      end;
     end;
     AText := ATool.Handler(AArguments);
   except
@@ -765,17 +969,25 @@ var
   Item: TJSONObject;
 begin
   if not (AParams is TJSONObject) or not (TJSONObject(AParams).GetValue('name') is TJSONString) then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Werkzeugname fehlt');
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TServerText.ToolNameMissing].Text);
+  end;
   Name := TJSONObject(AParams).GetValue('name').Value;
-  if not FindTool(Name, Tool) then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Format('Unbekanntes Werkzeug "%s"', [Name]));
+  if not FindToolIn(FCatalog.Tools, Name, Tool) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TServerText.UnknownTool].Fmt([Name]));
+  end;
   Arguments := nil;
   if TJSONObject(AParams).GetValue('arguments') is TJSONObject then
+  begin
     Arguments := TJSONObject(TJSONObject(AParams).GetValue('arguments'));
+  end;
   // Z. B. geänderte Units nachladen (#48); ein Fehler dort trifft den Aufruf wie einer des Werkzeugs.
   try
-    if Available(Tool) and Assigned(FOnBeforeToolCall) then
-      FOnBeforeToolCall();
+    if Available(Tool) and Assigned(FEvents.OnBeforeToolCall) then
+    begin
+      FEvents.OnBeforeToolCall();
+    end;
     IsError := Execute(Tool, Arguments, Text);
   except
     on E: EMcpToolError do
@@ -819,19 +1031,25 @@ begin
   // ARequired = -1: alle Parameter sind Pflicht, sonst nur die ersten ARequired.
   Count := ARequired;
   if Count < 0 then
+  begin
     Count := Length(ANames);
+  end;
   Properties := '';
   Required := '';
   for Index := 0 to High(ANames) do
   begin
     if Properties <> '' then
+    begin
       Properties := Properties + ',';
+    end;
     Properties := Properties + JsonText(ANames[Index]) + ':{"type":"string","description":' +
       JsonText(ADescriptions[Index]) + '}';
     if Index < Count then
     begin
       if Required <> '' then
+      begin
         Required := Required + ',';
+      end;
       Required := Required + JsonText(ANames[Index]);
     end;
   end;
@@ -844,17 +1062,26 @@ var
 begin
   Result := '';
   if AArguments = nil then
+  begin
     Exit;
+  end;
   Value := AArguments.GetValue(AName);
   if (Value <> nil) and not (Value is TJSONNull) then
+  begin
     Result := Trim(Value.Value);
+  end;
 end;
 
 class function TMcpServer.RequiredString(const AArguments: TJSONObject; const AName: string): string;
 begin
   Result := OptionalString(AArguments, AName);
   if Result = '' then
-    raise EMcpToolError.CreateFmt('Parameter "%s" fehlt', [AName]);
+  begin
+    raise EMcpToolError.CreateFmt(cTexts[TServerText.ParameterMissing].Text, [AName]);
+  end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Mcp.Server', cTexts);
 
 end.

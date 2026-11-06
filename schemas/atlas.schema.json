@@ -1,4 +1,4 @@
-{
+﻿{
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Atlas-Konfiguration",
   "description": "Einstellungen für Atlas. Jeder Schlüssel hat genau einen Ort (x-scope): \"project\" in atlas.json im Projektordner (Atlas › Projekt-Einstellungen), \"global\" in %APPDATA%\\Atlas\\settings.json für alle Projekte (Tools › Optionen › Atlas). \"both\" an beiden Orten: Die globale Datei gilt für alle Projekte, atlas.json übersteuert je Glied (rules: je Regel). Ein Schlüssel am falschen Ort wird ignoriert und gemeldet.",
@@ -406,6 +406,15 @@
                 "description": "Nur field-free-without-nil: Methoden, in denen Free ohne nil erlaubt ist (#917). Destruktoren und Methoden mit [TearDown] gelten immer.",
                 "x-description-en": "Only field-free-without-nil: methods in which Free without nil is allowed (#917). Destructors and methods with [TearDown] always count."
               },
+              "ignoreCalls": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": [],
+                "description": "Nur hardcoded-string: weitere Routinen, deren Text-Argumente niemand übersetzt (z. B. eine eigene Pick(Englisch, 'en', 'de')). Protokoll-, Prüf-, Vergleichs- und Registry-Aufrufe gelten immer.",
+                "x-description-en": "Only hardcoded-string: further routines whose text arguments nobody translates (for example an own Pick(English, 'en', 'de')). Logging, check, comparison and registry calls always count."
+              },
               "assertPatterns": {
                 "type": "array",
                 "items": {
@@ -701,6 +710,15 @@
                 "description": "Nur unused-public-member (#1102): Namensmuster (* und ?) für Mitglieder, die immer als verwendet gelten, z. B. TPlugin.* oder *Callback.",
                 "x-description-en": "Only unused-public-member (#1102): name patterns (* and ?) for members that always count as used, e.g. TPlugin.* or *Callback."
               },
+              "keep": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "default": [],
+                "description": "Nur unused-uses (#1135): Units, die nie als ungenutzt gelten, zusätzlich zu usesKeep. Gilt auch für das Abblenden im Editor und „uses aufräumen“.",
+                "x-description-en": "Only unused-uses (#1135): units that never count as unused, in addition to usesKeep. Also applies to the dimming in the editor and to \"Clean up uses\"."
+              },
               "checkUses": {
                 "type": "boolean",
                 "default": true,
@@ -980,6 +998,25 @@
       "x-page": "Prüfregeln",
       "x-control": "Profil-Editor",
       "x-issue": "#146"
+    },
+    "ruleChecks": {
+      "type": "object",
+      "description": "Prüfregeln in der LSP-Sitzung (#1454): Modul-Schalter „Prüfregeln“ des Plugins (Tools › Optionen › Atlas › Prüfregeln). Aus = der Server prüft in der Sitzung der IDE keine Regeln; es erscheinen nur Syntaxfehler und Compilermeldungen. AtlasServer --check und das MCP-Werkzeug prüfen weiter nach atlas.json.",
+      "x-description-en": "Rule checks in the LSP session (#1454): module switch \"Rule checks\" of the plugin (Tools › Options › Atlas › Rule checks). Off = the server checks no rules in the IDE session; only syntax errors and compiler messages appear. AtlasServer --check and the MCP tool keep checking according to atlas.json.",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Hauptschalter: false = keine Regelprüfung in der LSP-Sitzung (Mitteilung beim Start und bei jeder Änderung); --check und MCP unverändert.",
+          "x-description-en": "Main switch: false = no rule checks in the LSP session (notice at start and on every change); --check and MCP unchanged."
+        }
+      },
+      "x-scope": "global",
+      "x-area": "rules",
+      "x-page": "Prüfregeln",
+      "x-control": "Kontrollkästchen „Prüfregeln“ (Modul-Schalter)",
+      "x-issue": "#1454"
     },
     "overrides": {
       "type": "array",
@@ -1599,8 +1636,8 @@
         "methodKindMarker": {
           "type": "boolean",
           "default": true,
-          "description": "Marke „ohne Self“ am Kopf solcher Methoden; aus = die Aktionen nur über Strg+.",
-          "x-description-en": "Label \"without Self\" at the header of such methods; off = the actions only via Ctrl+.",
+          "description": "Marke „braucht kein Self“ am Kopf solcher Methoden; aus = die Aktionen nur über Strg+.",
+          "x-description-en": "Label \"Self unused\" at the header of such methods; off = the actions only via Ctrl+.",
           "x-issue": "#686"
         },
         "methodKindStatic": {
@@ -2154,8 +2191,8 @@
       "type": "integer",
       "minimum": 0,
       "default": 768,
-      "description": "Obergrenze für den Symbolindex im Arbeitsspeicher in MB. Darüber werden zuerst die Verwendungen ausgelagert (sie bleiben im Cache auf der Platte), dann Bibliotheks-Units (RTL, VCL) und zuletzt Projekt-Units kompakt gehalten (nur interface-Symbole). 0: unbegrenzt.",
-      "x-description-en": "Upper limit for the symbol index in memory in MB. Above it first the usages are swapped out (they stay in the cache on disk), then library units (RTL, VCL) and finally project units are kept compact (interface symbols only). 0: unlimited.",
+      "description": "Obergrenze für den Symbolindex im Arbeitsspeicher in MB. Darüber werden zuerst Bibliotheks-Units (RTL, VCL) kompakt gehalten (nur interface-Symbole), dann die Verwendungen der Projekt-Units ausgelagert (sie bleiben im Cache auf der Platte) und zuletzt Projekt-Units kompakt gehalten. 0: unbegrenzt.",
+      "x-description-en": "Upper limit for the symbol index in memory in MB. Above it first library units (RTL, VCL) are kept compact (interface symbols only), then the usages of project units are swapped out (they stay in the cache on disk) and finally project units are kept compact. 0: unlimited.",
       "x-scope": "global",
       "x-area": "general",
       "x-page": "Speicher",
@@ -2740,6 +2777,97 @@
       "x-page": "Editor",
       "x-control": "Kontrollkästchen",
       "x-issue": "#66"
+    },
+    "smartIndent": {
+      "type": "object",
+      "description": "Einrückung beim Tippen (#1827): Nach Enter rechnet Atlas mit derselben Blocklogik wie format.reindent aus, wo die Schreibmarke stehen soll. Atlas setzt kein end; ein, das macht der Blockabschluss der IDE; geändert werden nur Leerraum und beim String das Hochkomma und +. Breite einer Ebene und Tabulatoren nach format bzw. .editorconfig.",
+      "x-description-en": "Indentation while typing (#1827): after Enter Atlas computes where the cursor belongs, with the same block logic as format.reindent. Atlas never inserts end; (the IDE's block completion does that); only whitespace changes, and for a string the quote and +. Width of one level and tabs follow format or .editorconfig.",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Hauptschalter: false = keiner der Teile wirkt, die IDE rückt wie gewohnt ein.",
+          "x-description-en": "Main switch: false = none of the parts is active, the IDE indents as usual."
+        },
+        "afterEnter": {
+          "type": "boolean",
+          "default": true,
+          "description": "Neue Zeile nach der Blockstruktur einrücken: eine Ebene tiefer hinter then, else, do, begin, try, repeat, case-Marken, var/type/const und Sichtbarkeiten, nach der einzelnen Anweisung hinter then/do zurück, in einer offenen Klammer unter dem ersten Argument.",
+          "x-description-en": "Indent the new line by the block structure: one level deeper after then, else, do, begin, try, repeat, case labels, var/type/const and visibilities, back after the single statement behind then/do, inside an open parenthesis under the first argument.",
+          "x-issue": "#1828"
+        },
+        "outdentClosers": {
+          "type": "boolean",
+          "default": true,
+          "description": "Beginnt die Zeile vor Enter mit end, until, finally, except oder else, rückt Atlas sie auf die Spalte ihres Gegenstücks (begin, repeat, try, if).",
+          "x-description-en": "If the line before Enter starts with end, until, finally, except or else, Atlas moves it to the column of its counterpart (begin, repeat, try, if).",
+          "x-issue": "#1829"
+        },
+        "splitStrings": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enter in einem String schließt ihn mit ' + und öffnet ihn in der neuen Zeile wieder, statt einen offenen String (E2052) zu hinterlassen. Nicht in mehrzeiligen Strings (''').",
+          "x-description-en": "Enter inside a string closes it with ' + and reopens it on the new line instead of leaving an unterminated string (E2052). Not in multiline strings (''').",
+          "x-issue": "#1831"
+        },
+        "splitStringsIndent": {
+          "type": "string",
+          "enum": ["indent", "align"],
+          "default": "indent",
+          "description": "Fortsetzungszeile eines getrennten Strings: indent = eine Ebene tiefer als die Anweisung; align = unter dem ersten Argument der offenen Klammer, ohne Klammer unter dem ersten Wert hinter :=.",
+          "x-description-en": "Continuation line of a split string: indent = one level deeper than the statement; align = under the first argument of the open parenthesis, without parenthesis under the first value after :=.",
+          "x-control": "Auswahl",
+          "x-issue": "#1831"
+        }
+      },
+      "x-scope": "global",
+      "x-area": "codeActions",
+      "x-page": "Eingabehilfen",
+      "x-control": "Kontrollkästchen, Auswahl",
+      "x-issue": "#1827, #1828, #1829, #1831"
+    },
+    "classCompletion": {
+      "type": "object",
+      "description": "Klassenvervollständigung (#1834): Kommentar über dem Abschnitt einer Klasse im implementation-Teil, Reihenfolge und Inhalt neuer Methodenrümpfe aus der Aktion „Fehlende Methodenrümpfe anlegen“, /impl und dem Ordnen der Methoden (editor.methodPlacement im Plugin).",
+      "x-description-en": "Class completion (#1834): comment above a class section in the implementation part, order and content of new method bodies from the action \"Create missing method bodies\", /impl and method ordering (editor.methodPlacement in the plugin).",
+      "additionalProperties": false,
+      "properties": {
+        "typeComment": {
+          "type": "string",
+          "enum": [
+            "brace",
+            "line",
+            "summary",
+            "region",
+            "off"
+          ],
+          "default": "brace",
+          "description": "Kommentar über dem ersten Rumpf einer Klasse: brace = { TFoo } wie die IDE, line = Trennlinie mit // TFoo, summary = { TFoo: erster Satz der XML-Doku }, region = {$REGION 'TFoo'} … {$ENDREGION} um alle Rümpfe, off = keiner. Ein vorhandener Kommentar wird erkannt und nicht verdoppelt; beim Ordnen wandert er mit der Klasse.",
+          "x-description-en": "Comment above the first body of a class: brace = { TFoo } like the IDE, line = separator line with // TFoo, summary = { TFoo: first sentence of the XML doc }, region = {$REGION 'TFoo'} … {$ENDREGION} around all bodies, off = none. An existing comment is recognized and not duplicated; when ordering it moves with the class.",
+          "x-control": "Auswahl",
+          "x-issue": "#1835"
+        },
+        "lifecycleFirst": {
+          "type": "boolean",
+          "default": true,
+          "description": "Konstruktoren und Destruktor (auch class constructor/destructor, AfterConstruction, BeforeDestruction) stehen auch bei editor.methodPlacement = declaration oder alphabetical und in neuen Rümpfen vor den übrigen ihrer Klasse. Bei grouped stehen sie immer vorn.",
+          "x-description-en": "Constructors and destructor (also class constructor/destructor, AfterConstruction, BeforeDestruction) come before the other bodies of their class also with editor.methodPlacement = declaration or alphabetical and in new bodies. With grouped they always come first.",
+          "x-issue": "#1836"
+        },
+        "bodyStubs": {
+          "type": "boolean",
+          "default": true,
+          "description": "Neue Rümpfe vorbefüllen: override mit inherited (Funktionen mit Result := inherited …), Destruktor mit inherited am Ende, Getter Result := FName und Setter FName := AValue, wenn ein Feld FName gleichen Typs existiert. false = leere Rümpfe.",
+          "x-description-en": "Prefill new bodies: override with inherited (functions with Result := inherited …), destructor with inherited at the end, getter Result := FName and setter FName := AValue when a field FName of the same type exists. false = empty bodies.",
+          "x-issue": "#1837"
+        }
+      },
+      "x-scope": "global",
+      "x-area": "codeActions",
+      "x-page": "Eingabehilfen",
+      "x-control": "Auswahl, Kontrollkästchen",
+      "x-issue": "#1834, #1835, #1836, #1837"
     },
     "references": {
       "type": "object",

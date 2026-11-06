@@ -65,6 +65,10 @@ type
     /// False, wenn es das Mitglied schon gibt oder ALine in keiner Klasse liegt.</summary>
     class function CreateAccessor(const AText: string; ALine: Integer; const APlan: TAccessorPlan;
       const AContext: TClassActionContext; out AAction: TCodeAction): Boolean; static;
+    /// <summary>Fehlende Methodenrümpfe an APosition (TClassCompletion.MissingBodies) mit den Einstellungen
+    /// classCompletion.* über AContext.Host (#1834).</summary>
+    class function MissingBodies(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
+      const AContext: TClassActionContext; out AAction: TCodeAction): Boolean; static;
     /// <summary>Überschreibbare Methoden der Vorfahren, die die Klasse um ALine noch nicht deklariert.</summary>
     class function OverrideCandidates(const AText: string; ALine: Integer;
       const AContext: TClassActionContext): TArray<string>; static;
@@ -80,7 +84,25 @@ uses
   Atlas.Common.Editing.ClassMembers,
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Editing.InterfaceStubs,
-  Atlas.Text.Lines;
+  Atlas.Common.Editing.ClassBodies,
+  Atlas.Common.Editing.ClassCompletion,
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TClassActionsText = (CreateGetterSetterAndField, Override, ImplementMethodsOf, Create);
+
+const
+  cTexts: array[TClassActionsText] of TAtlasText = (
+    (De: 'Getter, Setter und Feld für %s erzeugen'; En: 'Create getter, setter and field for %s'),
+    (De: '%s überschreiben'; En: 'Override %s'),
+    (De: 'Methoden von %s implementieren'; En: 'Implement methods of %s'),
+    (De: '%s anlegen'; En: 'Create %s'));
+
+{$SCOPEDENUMS OFF}
 
 { TClassActionContext }
 
@@ -97,16 +119,22 @@ var
 begin
   Found := nil;
   if (ATree <> nil) and (ATree.Root <> nil) then
+  begin
     ATree.Root.Walk(
       function(ANode: TSyntaxNode): Boolean
       begin
         if (ANode.StartPos.Line > ALine) or (ANode.EndPos.Line < ALine) then
+        begin
           Exit(False);
+        end;
         if (ANode.Kind = TSyntaxKind.TypeDecl) and (ANode.FindChild(TSyntaxKind.ClassType) <> nil) and
           (ANode.EndPos.Line > ALine) then
+        begin
           Found := ANode;
+        end;
         Result := True;
       end);
+  end;
   Result := Found;
 end;
 
@@ -123,10 +151,14 @@ begin
   for Index := 0 to High(Lines) do
   begin
     if Index > 0 then
+    begin
       Result := Result + LB;
+    end;
     Result := Result + Lines[Index];
     if Index = ALine then
+    begin
       Result := Result + LB + TTextLines.IndentOf(Lines[Index]) + '  ' + ACommand;
+    end;
   end;
 end;
 
@@ -134,11 +166,17 @@ end;
 function MapBack(const APosition: TTextPosition; APhantom: Integer): TTextPosition;
 begin
   if APosition.Line < APhantom then
-    Result := APosition
+  begin
+    Result := APosition;
+  end
   else if APosition.Line = APhantom then
-    Result := TTextPosition.Create(APhantom, 0)
+  begin
+    Result := TTextPosition.Create(APhantom, 0);
+  end
   else
+  begin
     Result := TTextPosition.Create(APosition.Line - 1, APosition.Character);
+  end;
 end;
 
 /// <summary>Führt ACommand als gedachte Zeile hinter ALine aus und rechnet die Änderungen zurück.</summary>
@@ -153,16 +191,20 @@ begin
   AEdits := nil;
   Phantom := PhantomText(AText, ALine, ACommand);
   Line := ALine + 1;
-  Result := TSlashCommandRegistry.Shared.Run(Phantom, Line, 0, AContext.Namespaces, nil, AContext.Index,
-    AContext.DelphiVersion, AContext.Uri, AContext.Host, AContext.Style, Edits, Reason);
+  Result := TSlashCommandRegistry.Shared.Run(Phantom, Line, 0, TSlashEnvironment.Create(AContext.Namespaces, nil,
+    AContext.Index, AContext.DelphiVersion, AContext.Uri, AContext.Host).WithStyle(AContext.Style), Edits, Reason);
   if not Result then
+  begin
     Exit;
+  end;
   for Edit in Edits do
   begin
     // Das Entfernen der Befehlszeile entfällt: Im echten Text gibt es sie nicht.
     if (Edit.NewText = '') and (Edit.Range.StartPos.Line = Line) and (Edit.Range.StartPos.Character = 0) and
       (Edit.Range.EndPos.Line = Line + 1) and (Edit.Range.EndPos.Character = 0) then
+    begin
       Continue;
+    end;
     AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(MapBack(Edit.Range.StartPos, Line),
       MapBack(Edit.Range.EndPos, Line)), Edit.NewText)];
   end;
@@ -178,7 +220,9 @@ begin
   Result.Text := AText;
   Result.Line := ALine;
   if (ALine >= 0) and (ALine <= High(Lines)) then
+  begin
     Result.LineText := Lines[ALine];
+  end;
   Result.Namespaces := AContext.Namespaces;
   Result.Index := AContext.Index;
   Result.DelphiVersion := AContext.DelphiVersion;
@@ -192,9 +236,103 @@ var
   Symbol: TIndexSymbol;
 begin
   for Symbol in AUnit.Symbols do
+  begin
     if SameText(Symbol.Container, AClassName) and SameText(Symbol.Name, AName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
+end;
+
+type
+  /// <summary>Eigenschaft ohne read und write: "property Name: Typ; // Kommentar".</summary>
+  TBareProperty = record
+    Indent: string;
+    Name: string;
+    TypeName: string;
+    /// <summary>Zeilenkommentar dahinter; '' ohne.</summary>
+    Comment: string;
+  end;
+
+function ParseBareProperty(const ALine: string; out AProperty: TBareProperty): Boolean;
+var
+  mMatch: TMatch;
+begin
+  AProperty := Default(TBareProperty);
+  mMatch := TRegEx.Match(ALine, '^(\s*)property\s+(\w+)\s*:\s*([^;]+?)\s*;\s*(//.*|)$', [roIgnoreCase]);
+  Result := mMatch.Success and not TRegEx.IsMatch(mMatch.Groups[3].Value,
+    '\b(read|write|index|default|stored|nodefault|implements)\b', [roIgnoreCase]);
+  if Result then
+  begin
+    AProperty.Indent := mMatch.Groups[1].Value;
+    AProperty.Name := mMatch.Groups[2].Value;
+    AProperty.TypeName := mMatch.Groups[3].Value;
+    AProperty.Comment := mMatch.Groups[4].Value;
+  end;
+end;
+
+/// <summary>Deklarationen und Rümpfe der Mitglieder F&lt;Name&gt;, Get&lt;Name&gt; und Set&lt;Name&gt;, die der Klasse
+/// AClass noch fehlen.</summary>
+procedure MissingAccessors(ASource: TCommandSource; const AIndex: ISymbolIndex; const AClass: TIndexSymbol;
+  const AProperty: TBareProperty; out ADeclarations, ABodies: string);
+var
+  mLB, mIndent, mField, mGetter, mSetter: string;
+begin
+  mLB := ASource.LineBreak;
+  mIndent := ASource.Indent(AClass.Range.EndPos.Line) + '  ';
+  mField := 'F' + AProperty.Name;
+  mGetter := 'Get' + AProperty.Name;
+  mSetter := 'Set' + AProperty.Name;
+  ADeclarations := '';
+  ABodies := '';
+  if not HasMember(ASource.UnitIndex, AClass.Name, mField) then
+  begin
+    ADeclarations := ADeclarations + mIndent + Format('%s: %s;', [mField, AProperty.TypeName]) + mLB;
+  end;
+  if not HasMember(ASource.UnitIndex, AClass.Name, mGetter) then
+  begin
+    ADeclarations := ADeclarations + mIndent + Format('function %s: %s;', [mGetter, AProperty.TypeName]) + mLB;
+    ABodies := Format('function %s.%s: %s;', [AClass.Name, mGetter, AProperty.TypeName]) + mLB + 'begin' + mLB +
+      '  Result := ' + mField + ';' + mLB + 'end;';
+  end;
+  if not HasMember(ASource.UnitIndex, AClass.Name, mSetter) then
+  begin
+    ADeclarations := ADeclarations + mIndent + Format('procedure %s(const Value: %s);', [mSetter,
+      AProperty.TypeName]) + mLB;
+    if ABodies <> '' then
+    begin
+      ABodies := ABodies + mLB + mLB;
+    end;
+    // Derselbe Setter wie bei /prop: nur bei Änderung, mit Benachrichtigung.
+    ABodies := ABodies + Format('procedure %s.%s(const Value: %s);', [AClass.Name, mSetter, AProperty.TypeName]) +
+      mLB + TSetterGenerator.Body(mField, 'Value', TSetterGenerator.NotifyCall(ASource, AIndex, AClass), mLB);
+  end;
+end;
+
+/// <summary>Ersatz der Eigenschaftszeile ALine: Feld und Zugriffsmethoden davor, denn Delphi verlangt sie vor ihrer
+/// Verwendung, und Felder stehen in einem Abschnitt vor den Methoden. Danach geht der Abschnitt der Eigenschaft
+/// weiter.</summary>
+function PropertyReplacement(ASource: TCommandSource; const AClass: TIndexSymbol; ALine: Integer;
+  const AProperty: TBareProperty; const ADeclarations: string): string;
+var
+  mLB, mIndent, mSection, mComment: string;
+begin
+  mLB := ASource.LineBreak;
+  mIndent := ASource.Indent(AClass.Range.EndPos.Line);
+  mSection := TInterfaceStubs.LastSection(ASource.Tree.Tokens, AClass.Range.StartPos.Line, ALine);
+  if mSection = '' then
+  begin
+    mSection := 'public';
+  end;
+  mComment := AProperty.Comment;
+  if mComment <> '' then
+  begin
+    mComment := ' ' + mComment;
+  end;
+  Result := mIndent + 'private' + mLB + ADeclarations + mIndent + mSection + mLB + AProperty.Indent +
+    Format('property %s: %s read Get%s write Set%s;', [AProperty.Name, AProperty.TypeName, AProperty.Name,
+    AProperty.Name]) + mComment;
 end;
 
 { TClassActions }
@@ -202,75 +340,45 @@ end;
 class function TClassActions.PropertyAccessors(const AText: string; ALine: Integer;
   const AContext: TClassActionContext; out AAction: TCodeAction): Boolean;
 var
-  Lines: TArray<string>;
-  Match: TMatch;
-  Source: TCommandSource;
-  ClassSymbol: TIndexSymbol;
-  Name, TypeName, Field, Getter, Setter, LB, Indent, Section, Declarations, Bodies, Comment: string;
-  Edits: TArray<TTextEdit>;
+  mLines: TArray<string>;
+  mProperty: TBareProperty;
+  mSource: TCommandSource;
+  mClass: TIndexSymbol;
+  mDeclarations, mBodies: string;
+  mEdits: TArray<TTextEdit>;
 begin
   AAction := Default(TCodeAction);
   Result := False;
-  Lines := TTextLines.SplitLines(AText);
-  if (ALine < 0) or (ALine > High(Lines)) then
+  mLines := TTextLines.SplitLines(AText);
+  if (ALine < 0) or (ALine > High(mLines)) or not ParseBareProperty(mLines[ALine], mProperty) then
+  begin
     Exit;
-  Match := TRegEx.Match(Lines[ALine], '^(\s*)property\s+(\w+)\s*:\s*([^;]+?)\s*;\s*(//.*|)$', [roIgnoreCase]);
-  if not Match.Success or TRegEx.IsMatch(Match.Groups[3].Value,
-    '\b(read|write|index|default|stored|nodefault|implements)\b', [roIgnoreCase]) then
-    Exit;
-  Name := Match.Groups[2].Value;
-  TypeName := Match.Groups[3].Value;
-  Comment := Match.Groups[4].Value;
-  Field := 'F' + Name;
-  Getter := 'Get' + Name;
-  Setter := 'Set' + Name;
-  // Die Property-Zeile gilt als Befehlszeile: Der Baum sieht sie nicht, sie wird ohnehin ersetzt.
-  Source := TCommandSource.Create(SlashContext(AText, ALine, AContext));
-  try
-    if not Source.ClassAt(ClassSymbol) or (ClassSymbol.Range.StartPos.Line >= ALine) or
-      (ClassSymbol.Range.EndPos.Line <= ALine) then
-      Exit;
-    LB := Source.LineBreak;
-    Indent := Source.Indent(ClassSymbol.Range.EndPos.Line);
-    Section := TInterfaceStubs.LastSection(Source.Tree.Tokens, ClassSymbol.Range.StartPos.Line, ALine);
-    if Section = '' then
-      Section := 'public';
-    // Feld und Zugriffsmethoden vor der Property: Delphi verlangt sie vor ihrer Verwendung, und Felder stehen in
-    // einem Abschnitt vor den Methoden. Danach geht der Abschnitt der Property weiter.
-    Declarations := '';
-    if not HasMember(Source.UnitIndex, ClassSymbol.Name, Field) then
-      Declarations := Declarations + Indent + '  ' + Format('%s: %s;', [Field, TypeName]) + LB;
-    Bodies := '';
-    if not HasMember(Source.UnitIndex, ClassSymbol.Name, Getter) then
-    begin
-      Declarations := Declarations + Indent + '  ' + Format('function %s: %s;', [Getter, TypeName]) + LB;
-      Bodies := Format('function %s.%s: %s;', [ClassSymbol.Name, Getter, TypeName]) + LB + 'begin' + LB +
-        '  Result := ' + Field + ';' + LB + 'end;';
-    end;
-    if not HasMember(Source.UnitIndex, ClassSymbol.Name, Setter) then
-    begin
-      Declarations := Declarations + Indent + '  ' + Format('procedure %s(const Value: %s);', [Setter, TypeName]) + LB;
-      if Bodies <> '' then
-        Bodies := Bodies + LB + LB;
-      // Derselbe Setter wie bei /prop: nur bei Änderung, mit Benachrichtigung.
-      Bodies := Bodies + Format('procedure %s.%s(const Value: %s);', [ClassSymbol.Name, Setter, TypeName]) + LB +
-        TSetterGenerator.Body(Field, 'Value', TSetterGenerator.NotifyCall(Source, AContext.Index, ClassSymbol), LB);
-    end;
-    if Declarations = '' then
-      Exit;
-    if Comment <> '' then
-      Comment := ' ' + Comment;
-    Edits := [TTextEdit.Create(TTextRange.Create(ALine, 0, ALine, Length(Lines[ALine])),
-      Indent + 'private' + LB + Declarations + Indent + Section + LB + Match.Groups[1].Value +
-      Format('property %s: %s read %s write %s;', [Name, TypeName, Getter, Setter]) + Comment)];
-    if Bodies <> '' then
-      Edits := Edits + [Source.AddBody(ClassSymbol.Name, Bodies)];
-  finally
-    Source.Free;
   end;
-  AAction.Title := Format('Getter, Setter und Feld für %s erzeugen', [Name]);
+  // Die Property-Zeile gilt als Befehlszeile: Der Baum sieht sie nicht, sie wird ohnehin ersetzt.
+  mSource := TCommandSource.Create(SlashContext(AText, ALine, AContext));
+  try
+    if not mSource.ClassAt(mClass) or (mClass.Range.StartPos.Line >= ALine) or
+      (mClass.Range.EndPos.Line <= ALine) then
+    begin
+      Exit;
+    end;
+    MissingAccessors(mSource, AContext.Index, mClass, mProperty, mDeclarations, mBodies);
+    if mDeclarations = '' then
+    begin
+      Exit;
+    end;
+    mEdits := [TTextEdit.Create(TTextRange.Create(ALine, 0, ALine, Length(mLines[ALine])),
+      PropertyReplacement(mSource, mClass, ALine, mProperty, mDeclarations))];
+    if mBodies <> '' then
+    begin
+      mEdits := mEdits + [mSource.AddBody(mClass.Name, mBodies)];
+    end;
+  finally
+    mSource.Free;
+  end;
+  AAction.Title := cTexts[TClassActionsText.CreateGetterSetterAndField].Fmt([mProperty.Name]);
   AAction.Kind := RewriteKind;
-  AAction.Edits := TSlashCommandRegistry.Reindent(AText, Edits, AContext.Style);
+  AAction.Edits := TSlashCommandRegistry.Reindent(AText, mEdits, AContext.Style);
   Result := True;
 end;
 
@@ -281,7 +389,7 @@ begin
   Result := RunPhantom(AText, ALine, '/intf ' + AInterface, AContext, AAction.Edits);
   if Result then
   begin
-    AAction.Title := Format('Methoden von %s implementieren', [AInterface]);
+    AAction.Title := cTexts[TClassActionsText.ImplementMethodsOf].Fmt([AInterface]);
     AAction.Kind := RewriteKind;
   end;
 end;
@@ -293,7 +401,7 @@ begin
   Result := RunPhantom(AText, ALine, '/override ' + AName, AContext, AAction.Edits);
   if Result then
   begin
-    AAction.Title := Format('%s überschreiben', [AName]);
+    AAction.Title := cTexts[TClassActionsText.Override].Fmt([AName]);
     AAction.Kind := RewriteKind;
   end;
 end;
@@ -316,8 +424,10 @@ begin
     Source.Free;
   end;
   if not Result then
+  begin
     Exit;
-  AAction.Title := Format('%s anlegen', [APlan.Name]);
+  end;
+  AAction.Title := cTexts[TClassActionsText.Create].Fmt([APlan.Name]);
   AAction.Kind := RewriteKind;
   AAction.Edits := TSlashCommandRegistry.Reindent(AText, Edits, AContext.Style);
 end;
@@ -342,17 +452,27 @@ begin
   Result := nil;
   Decl := ClassDeclAt(ATree, ALine);
   if Decl = nil then
+  begin
     Exit;
+  end;
   if PropertyAccessors(AText, ALine, AContext, Action) then
+  begin
     Result := Result + [Action];
+  end;
   for Name in TInterfaceStubs.HeaderAncestors(TTextLines.SplitLines(AText), Decl.StartPos.Line) do
+  begin
     if TRegEx.IsMatch(Name, '^I[A-Z]') and ImplementInterface(AText, ALine, Name, AContext, Action) then
+    begin
       Result := Result + [Action];
+    end;
+  end;
   Count := 0;
   for Name in OverrideCandidates(AText, ALine, AContext) do
   begin
     if Count >= MaxOverrides then
+    begin
       Break;
+    end;
     if OverrideMethod(AText, ALine, Name, AContext, Action) then
     begin
       Result := Result + [Action];
@@ -360,5 +480,15 @@ begin
     end;
   end;
 end;
+
+class function TClassActions.MissingBodies(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
+  const AContext: TClassActionContext; out AAction: TCodeAction): Boolean;
+begin
+  Result := TClassCompletion.MissingBodies(ATree, AText, APosition,
+    TClassBodyOptions.FromHost(AContext.Host, AContext.Uri, AContext.Style), AAction);
+end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.ClassActions', cTexts);
 
 end.

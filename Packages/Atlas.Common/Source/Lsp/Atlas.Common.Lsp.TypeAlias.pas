@@ -36,6 +36,10 @@ type
     /// </summary>
     Files: TArray<string>;
     ReadText: TReferenceReadText;
+    /// <summary>Name des neuen Alias (nur Execute).</summary>
+    Name: string;
+    /// <summary>Reichweite wie refactoring.typeAliasScope (nur Execute).</summary>
+    Scope: string;
   end;
 
   TLspTypeAlias = class
@@ -57,8 +61,7 @@ type
     /// <summary>Antwort auf atlas.server.typeAlias; EJsonRpcError mit dem Grund, wenn es nicht geht. Der Aufrufer
     /// übernimmt das Objekt.</summary>
     class function Execute(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName, AText: string;
-      const APosition: TTextPosition; const AName, AScope: string; const AContext: TTypeAliasContext): TJSONObject;
-      static;
+      const APosition: TTextPosition; const AContext: TTypeAliasContext): TJSONObject; static;
     /// <summary>Antwort auf atlas.server.inlineTypeAlias; wie Execute.</summary>
     class function ExecuteInline(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName, AText: string;
       const APosition: TTextPosition; const AContext: TTypeAliasContext): TJSONObject; static;
@@ -74,7 +77,26 @@ uses
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLspTypeAliasText = (CannotBeRead, TypeAliasNotPossible, ResolvingTheAliasNotPossible,
+    ResolvingTheAliasNotPossible2, PlacesInFiles, UnknownScope);
+
+const
+  cTexts: array[TLspTypeAliasText] of TAtlasText = (
+    (De: '%s lässt sich nicht lesen'; En: '%s cannot be read'),
+    (De: 'Typ-Alias geht nicht: '; En: 'Type alias not possible: '),
+    (De: 'Alias auflösen geht nicht: %s steht in %s'; En: 'Resolving the alias not possible: %s is in %s'),
+    (De: 'Alias auflösen geht nicht: '; En: 'Resolving the alias not possible: '),
+    (De: '%d Stellen in %d Dateien'; En: '%d places in %d files'),
+    (De: 'Unbekannte Reichweite "%s"'; En: 'Unknown scope "%s"'));
+
+{$SCOPEDENUMS OFF}
 
 const
   /// <summary>Längere Ausdrücke kürzt der Titel der Aktion.</summary>
@@ -110,9 +132,13 @@ begin
       if Resolved.Kind = TResolvedKind.Symbol then
       begin
         if Resolved.Builtin or (Resolved.UnitName = '') then
-          Result := LowerCase(Resolved.Name)
+        begin
+          Result := LowerCase(Resolved.Name);
+        end
         else
+        begin
           Result := LowerCase(Resolved.UnitName + '.' + Resolved.Name);
+        end;
       end;
     end;
 end;
@@ -165,7 +191,9 @@ function Shortened(const AText: string): string;
 begin
   Result := StringReplace(StringReplace(AText, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]);
   if Length(Result) > TitleLength then
+  begin
     Result := Copy(Result, 1, TitleLength - 1) + '…';
+  end;
 end;
 
 function NewAction(const ATitle, AKind: string; AArguments: TJSONArray; const ACommand: string): TJSONObject;
@@ -176,7 +204,9 @@ begin
   Result.AddPair('title', ATitle);
   Result.AddPair('kind', AKind);
   if AArguments = nil then
+  begin
     Exit;
+  end;
   Command := TJSONObject.Create;
   Command.AddPair('title', ATitle);
   Command.AddPair('command', ACommand);
@@ -237,9 +267,15 @@ begin
     Result := Result + [IntroduceAction(TTypeAlias.IntroduceTitle, AUri, Targets[Index], ADefaultScope)];
     // Die übrigen Reichweiten nur für den äußeren Ausdruck, sonst wird die Liste lang.
     if Index = 0 then
+    begin
       for Scope := Low(TTypeAliasScope) to High(TTypeAliasScope) do
+      begin
         if Scope <> ADefaultScope then
+        begin
           Result := Result + [IntroduceAction(ScopeTitle(Scope), AUri, Targets[Index], Scope)];
+        end;
+      end;
+    end;
   end;
   if TTypeAlias.InlineTarget(AText, ATree, APosition, Inline_, Reason) then
   begin
@@ -283,11 +319,14 @@ var
 begin
   Changes := TJSONArray.Create;
   for Item in AResult.Files do
+  begin
     Changes.AddElement(EditsJson(TDocumentUris.FromPath(Item.FileName), Item.Edits));
+  end;
   Annotation := TJSONObject.Create;
   Annotation.AddPair('label', ALabel);
   Annotation.AddPair('needsConfirmation', TJSONBool.Create(True));
-  Annotation.AddPair('description', Format('%d Stellen in %d Dateien', [AResult.Places, Length(AResult.Files)]));
+  Annotation.AddPair('description', cTexts[TLspTypeAliasText.PlacesInFiles].Fmt([AResult.Places,
+    Length(AResult.Files)]));
   Annotations := TJSONObject.Create;
   Annotations.AddPair(TLspTypeAlias.AnnotationId, Annotation);
   Edit := TJSONObject.Create;
@@ -295,7 +334,9 @@ begin
   Edit.AddPair('changeAnnotations', Annotations);
   Warnings := TJSONArray.Create;
   for Warning in AResult.Warnings do
+  begin
     Warnings.Add(Warning);
+  end;
   Result := TJSONObject.Create;
   Result.AddPair('edit', Edit);
   Result.AddPair('warnings', Warnings);
@@ -325,7 +366,9 @@ var
 begin
   Result := nil;
   for AliasFile in AFiles do
+  begin
     Result := Result + [AliasFile.Source];
+  end;
 end;
 
 function FileOf(const AFileName, AText: string): TAliasFile;
@@ -340,7 +383,9 @@ var
   Text: string;
 begin
   if not Assigned(AContext.ReadText) or not AContext.ReadText(AFileName, Text) then
-    raise Fail(Format('%s lässt sich nicht lesen', [ExtractFileName(AFileName)]));
+  begin
+    raise Fail(cTexts[TLspTypeAliasText.CannotBeRead].Fmt([ExtractFileName(AFileName)]));
+  end;
   Result := FileOf(AFileName, Text);
 end;
 
@@ -351,7 +396,9 @@ var
 begin
   AResolver.PinTree(ATree, AFileName);
   for AliasFile in AFiles do
+  begin
     AResolver.PinTree(AliasFile.Source.Tree, AliasFile.Source.FileName);
+  end;
 end;
 
 procedure UnpinAll(AResolver: TNameResolver; const AFiles: TArray<TAliasFile>);
@@ -359,7 +406,9 @@ var
   Index: Integer;
 begin
   for Index := 0 to Length(AFiles) do
+  begin
     AResolver.UnpinTree;
+  end;
 end;
 
 procedure FreeAll(const AFiles: TArray<TAliasFile>);
@@ -367,98 +416,159 @@ var
   AliasFile: TAliasFile;
 begin
   for AliasFile in AFiles do
+  begin
     AliasFile.Free;
+  end;
+end;
+
+/// <summary>Text der anderen .pas-Datei AFileName, wenn sie die eigene Unit AOwnName nennt.</summary>
+function NamesOwnUnit(const AFileName, AOwnFile, AOwnName: string; const AContext: TTypeAliasContext;
+  out AText: string): Boolean;
+begin
+  AText := '';
+  Result := not SameText(AFileName, AOwnFile) and SameText(ExtractFileExt(AFileName), '.pas') and
+    (AOwnName <> '') and Assigned(AContext.ReadText);
+  Result := Result and AContext.ReadText(AFileName, AText) and ContainsText(AText, AOwnName);
+end;
+
+/// <summary>Im Projekt nur Units, die die eigene überhaupt nennen; ob sie sie an der Stelle sehen, prüft der
+/// Kern.</summary>
+function ProjectFiles(ATree: TSyntaxTree; const AFileName: string;
+  const AContext: TTypeAliasContext): TArray<TAliasFile>;
+var
+  mFileName, mOwnName, mText: string;
+begin
+  Result := nil;
+  mOwnName := TUsesClauses.OwnName(ATree.Tokens);
+  for mFileName in AContext.Files do
+  begin
+    if NamesOwnUnit(mFileName, AFileName, mOwnName, AContext, mText) then
+    begin
+      Result := Result + [FileOf(mFileName, mText)];
+    end;
+  end;
 end;
 
 class function TLspTypeAlias.Execute(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName, AText: string;
-  const APosition: TTextPosition; const AName, AScope: string; const AContext: TTypeAliasContext): TJSONObject;
+  const APosition: TTextPosition; const AContext: TTypeAliasContext): TJSONObject;
 var
-  Scope: TTypeAliasScope;
-  Files: TArray<TAliasFile>;
-  FileName, OwnName, Text, Reason: string;
-  Outcome: TTypeAliasResult;
+  mScope: TTypeAliasScope;
+  mFiles: TArray<TAliasFile>;
+  mReason: string;
+  mOutcome: TTypeAliasResult;
 begin
-  if not TTypeAlias.ScopeOf(AScope, Scope) then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Format('Unbekannte Reichweite "%s"', [AScope]));
-  Files := nil;
+  if not TTypeAlias.ScopeOf(AContext.Scope, mScope) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TLspTypeAliasText.UnknownScope].Fmt([
+      AContext.Scope]));
+  end;
+  mFiles := nil;
   try
-    // Im Projekt nur Units, die die eigene überhaupt nennen; ob sie sie an der Stelle sehen, prüft der Kern.
-    if Scope = TTypeAliasScope.Project then
+    if mScope = TTypeAliasScope.Project then
     begin
-      OwnName := TUsesClauses.OwnName(ATree.Tokens);
-      for FileName in AContext.Files do
-        if not SameText(FileName, AFileName) and SameText(ExtractFileExt(FileName), '.pas') and
-          Assigned(AContext.ReadText) and AContext.ReadText(FileName, Text) and (OwnName <> '') and
-          ContainsText(Text, OwnName) then
-          Files := Files + [FileOf(FileName, Text)];
+      mFiles := ProjectFiles(ATree, AFileName, AContext);
     end;
-    PinAll(AResolver, ATree, AFileName, Files);
+    PinAll(AResolver, ATree, AFileName, mFiles);
     try
-      if not TTypeAlias.Introduce(TTypeAliasSource.Create(AFileName, AText, ATree), SourcesOf(Files), APosition,
-        Trim(AName), Scope, Lookup(AResolver), Outcome, Reason) then
-        raise Fail('Typ-Alias geht nicht: ' + Reason);
+      if not TTypeAlias.Introduce(TTypeAliasSource.Create(AFileName, AText, ATree), SourcesOf(mFiles),
+        TTypeAliasRequest.Create(APosition, Trim(AContext.Name), mScope, Lookup(AResolver)), mOutcome, mReason) then
+      begin
+        raise Fail(cTexts[TLspTypeAliasText.TypeAliasNotPossible].Text + mReason);
+      end;
     finally
-      UnpinAll(AResolver, Files);
+      UnpinAll(AResolver, mFiles);
     end;
   finally
-    FreeAll(Files);
+    FreeAll(mFiles);
   end;
-  Result := AnswerJson(Outcome, Format(TTypeAlias.IntroduceTitle, [Trim(AName)]));
+  Result := AnswerJson(mOutcome, Format(TTypeAlias.IntroduceTitle, [Trim(AContext.Name)]));
+end;
+
+/// <summary>EJsonRpcError, wenn der Alias ATargetName in einem Formular steht.</summary>
+procedure CheckNoForms(const ALocations: TArray<TReferenceLocation>; const ATargetName: string);
+var
+  mLocation: TReferenceLocation;
+begin
+  for mLocation in ALocations do
+  begin
+    if MatchText(ExtractFileExt(mLocation.FileName), ['.dfm', '.fmx']) then
+    begin
+      raise Fail(cTexts[TLspTypeAliasText.ResolvingTheAliasNotPossible].Fmt([ATargetName,
+        ExtractFileName(mLocation.FileName)]));
+    end;
+  end;
+end;
+
+/// <summary>Gelesene Datei AFileName aus AFiles; fehlt sie, wird sie gelesen und angehängt.</summary>
+function FileFor(var AFiles: TArray<TAliasFile>; const AFileName: string;
+  const AContext: TTypeAliasContext): TAliasFile;
+var
+  mAliasFile: TAliasFile;
+begin
+  for mAliasFile in AFiles do
+  begin
+    if SameText(mAliasFile.Source.FileName, AFileName) then
+    begin
+      Exit(mAliasFile);
+    end;
+  end;
+  Result := ReadFile(AFileName, AContext);
+  AFiles := AFiles + [Result];
 end;
 
 class function TLspTypeAlias.ExecuteInline(AResolver: TNameResolver; ATree: TSyntaxTree;
   const AFileName, AText: string; const APosition: TTextPosition; const AContext: TTypeAliasContext): TJSONObject;
 var
-  Target: TInlineAliasTarget;
-  Reason: string;
-  Locations: TArray<TReferenceLocation>;
-  Location: TReferenceLocation;
-  Files: TArray<TAliasFile>;
-  AliasFile, Found: TAliasFile;
-  Declaring: TTypeAliasSource;
-  Lines: TLineTable;
-  Outcome: TTypeAliasResult;
+  mTarget: TInlineAliasTarget;
+  mReason: string;
+  mLocations: TArray<TReferenceLocation>;
+  mLocation: TReferenceLocation;
+  mFiles: TArray<TAliasFile>;
+  mFound: TAliasFile;
+  mDeclaring: TTypeAliasSource;
+  mLines: TLineTable;
+  mOutcome: TTypeAliasResult;
 begin
-  if not TTypeAlias.InlineTarget(AText, ATree, APosition, Target, Reason) then
-    raise Fail('Alias auflösen geht nicht: ' + Reason);
-  Locations := TLspReferences.Find(AResolver, AContext.Index, ATree, AFileName, Target.NamePosition, False,
-    AContext.Files, AContext.ReadText);
-  Files := nil;
+  if not TTypeAlias.InlineTarget(AText, ATree, APosition, mTarget, mReason) then
+  begin
+    raise Fail(cTexts[TLspTypeAliasText.ResolvingTheAliasNotPossible2].Text + mReason);
+  end;
+  mLocations := TLspReferences.Find(AResolver, AContext.Index, ATree, TReferenceSearch.Create(AFileName,
+    mTarget.NamePosition, False, AContext.Files, AContext.ReadText));
+  CheckNoForms(mLocations, mTarget.Name);
+  mFiles := nil;
   try
-    Declaring := TTypeAliasSource.Create(AFileName, AText, ATree);
-    Lines := TLineTable.Build(AText);
-    for Location in Locations do
+    mDeclaring := TTypeAliasSource.Create(AFileName, AText, ATree);
+    mLines := TLineTable.Build(AText);
+    for mLocation in mLocations do
     begin
-      if MatchText(ExtractFileExt(Location.FileName), ['.dfm', '.fmx']) then
-        raise Fail(Format('Alias auflösen geht nicht: %s steht in %s', [Target.Name,
-          ExtractFileName(Location.FileName)]));
-      if SameText(Location.FileName, AFileName) then
+      if SameText(mLocation.FileName, AFileName) then
       begin
-        Declaring.Offsets := Declaring.Offsets + [Lines.OffsetAt(Location.Range.StartPos)];
-        Continue;
-      end;
-      Found := nil;
-      for AliasFile in Files do
-        if SameText(AliasFile.Source.FileName, Location.FileName) then
-          Found := AliasFile;
-      if Found = nil then
+        mDeclaring.Offsets := mDeclaring.Offsets + [mLines.OffsetAt(mLocation.Range.StartPos)];
+      end
+      else
       begin
-        Found := ReadFile(Location.FileName, AContext);
-        Files := Files + [Found];
+        mFound := FileFor(mFiles, mLocation.FileName, AContext);
+        mFound.Source.Offsets := mFound.Source.Offsets + [mFound.Lines.OffsetAt(mLocation.Range.StartPos)];
       end;
-      Found.Source.Offsets := Found.Source.Offsets + [Found.Lines.OffsetAt(Location.Range.StartPos)];
     end;
-    PinAll(AResolver, ATree, AFileName, Files);
+    PinAll(AResolver, ATree, AFileName, mFiles);
     try
-      if not TTypeAlias.InlineAlias(Declaring, SourcesOf(Files), APosition, Lookup(AResolver), Outcome, Reason) then
-        raise Fail('Alias auflösen geht nicht: ' + Reason);
+      if not TTypeAlias.InlineAlias(mDeclaring, SourcesOf(mFiles), APosition, Lookup(AResolver), mOutcome,
+        mReason) then
+      begin
+        raise Fail(cTexts[TLspTypeAliasText.ResolvingTheAliasNotPossible2].Text + mReason);
+      end;
     finally
-      UnpinAll(AResolver, Files);
+      UnpinAll(AResolver, mFiles);
     end;
   finally
-    FreeAll(Files);
+    FreeAll(mFiles);
   end;
-  Result := AnswerJson(Outcome, Format(TTypeAlias.InlineTitle, [Target.Name]));
+  Result := AnswerJson(mOutcome, Format(TTypeAlias.InlineTitle, [mTarget.Name]));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.TypeAlias', cTexts);
 
 end.

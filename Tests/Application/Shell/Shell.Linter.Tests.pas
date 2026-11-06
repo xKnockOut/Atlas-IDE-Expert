@@ -119,7 +119,7 @@ uses
   Atlas.Common.Editing.FormatCheck,
   Shell.CommandLine,
   Shell.Linter,
-  Shell.Workspace;
+  Shell.Workspace.Listings;
 
 const
   CleanUnit = 'unit Gut;'#13#10'interface'#13#10'implementation'#13#10'end.'#13#10;
@@ -146,6 +146,12 @@ begin
   finally
     TearDown;
   end;
+  Setup;
+  try
+    HotspotsNeedVersionControl;
+  finally
+    TearDown;
+  end;
 end;
 
 procedure TShellLinterTests.Setup;
@@ -162,11 +168,13 @@ end;
 procedure TShellLinterTests.TearDown;
 begin
   if TDirectory.Exists(FFolder) then
+  begin
     TDirectory.Delete(FFolder, True);
+  end;
   // Der Leckmonitor misst den Saldo von Setup und TearDown; Run merkt sich den Ordner in den Encoding-Vorgaben.
   TFileEncodingDefaults.Clear;
   // Ebenso die Ordnerlisten der .pas-/.dcu-Dateien: je Testordner ein Eintrag (IndexKnowsTypesOfOtherUnits).
-  TShellWorkspace.ClearSharedListings;
+  TSharedUnitListings.Clear;
   FFolder := '';
   FOutput := '';
 end;
@@ -179,7 +187,9 @@ end;
 function TShellLinterTests.Run(const AArgs: TArray<string>): Integer;
 begin
   if TFile.Exists(FOutput) then
+  begin
     TFile.Delete(FOutput);
+  end;
   Result := TLinterShell.Run(TCommandLineOptions.Parse(AArgs + ['--output', FOutput, '--index-cache',
     TPath.Combine(ExtractFilePath(ParamStr(0)), 'TestIndexCache')]));
 end;
@@ -188,7 +198,9 @@ function TShellLinterTests.OutputText: string;
 begin
   Result := '';
   if TFile.Exists(FOutput) then
+  begin
     Result := TFile.ReadAllText(FOutput, TEncoding.UTF8);
+  end;
 end;
 
 procedure TShellLinterTests.MissingTargetFails;
@@ -314,12 +326,16 @@ begin
     '--hotspots', Path('hotspots.pdf')])));
   mGit := TVcsChanges.ToolFor(TAtlasVcsKind.Git, '');
   if mGit = '' then
+  begin
     Exit;
+  end;
   mRunner := TShellPlatform.CreateVcsRunner(True, nil);
   mCommands := TArray<string>.Create('init -q', 'config user.name Atlas', 'config user.email test@example.org',
     'config commit.gpgsign false', 'add Src', 'commit -q -m Start');
   for mCommand in mCommands do
+  begin
     Assert.AreEqual(0, mRunner.Run(mGit, mCommand.Split([' ']), FFolder, 60000).ExitCode, mCommand);
+  end;
   Assert.AreEqual(0, TLinterShell.Hotspots(TCommandLineOptions.Parse(['--check', TPath.Combine(FFolder, 'Src'),
     '--hotspots', mReport])));
   mText := TFile.ReadAllText(mReport, TEncoding.UTF8);
@@ -375,7 +391,9 @@ procedure TShellLinterTests.QueryFormatsAndExitCodes;
   function Query(const AArgs: TArray<string>): Integer;
   begin
     if TFile.Exists(FOutput) then
+    begin
       TFile.Delete(FOutput);
+    end;
     Result := TLinterShell.Query(TCommandLineOptions.Parse(['--check', TPath.Combine(FFolder, 'Src')] + AArgs +
       ['--output', FOutput, '--index-cache', TPath.Combine(ExtractFilePath(ParamStr(0)), 'TestIndexCache')]));
   end;

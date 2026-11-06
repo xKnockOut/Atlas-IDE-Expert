@@ -1,0 +1,517 @@
+﻿unit Atlas.Core.Tracker.Workflow;
+
+// Tracker-Zustand und Kommentar beim Beginnen und Beenden (#1266), ohne VCL
+// und Open Tools API.
+// - TAtlasTrackerSyncOptions: Einstellungen issues.syncState, .stateField,
+//   .assigneeField, .startState, .assignOnStart, .startComment, .endStates
+//   und .endComment; ForConnection setzt die Werte der Verbindung mit
+//   demselben Server darüber (Liste issues.connections, #1260).
+// - Platzhalter der Kommentarvorlagen: {branch}, {commits} (Kurz-Hash und
+//   Betreff der Commits mit der Kennung, älteste zuerst), {pr} (Adresse des
+//   Pull Requests), {time} (erfasste Zeit, #1267) und {kennung}; "\n" in
+//   der Vorlage wird ein Zeilenumbruch (die Einstellung ist einzeilig).
+// - StartChange bzw. EndChange bauen die Änderung (TAtlasTrackerWrite), die
+//   der Anbieter (IAtlasTrackerWriter) schreibt. Geschrieben wird nur nach
+//   „Beginnen“ bzw. dem Klick auf „Senden“ im Beenden-Dialog.
+// - LoadValues holt Zustände und Felder für die Klapplisten (bricht beim
+//   ersten Fehler ab); CommitsFor sucht die Commits mit der Kennung gegen
+//   issues.branchBase, sonst main bzw. master.
+
+interface
+
+uses
+  System.SysUtils,
+  Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
+  Atlas.Core.Tracker.Contract,
+  Atlas.Core.Tracker.Connections,
+  Atlas.Core.Vcs.Contract;
+
+type
+  TAtlasTrackerSyncOptions = record
+    /// <summary>issues.syncState: Zustand, Zuweisung und Kommentar beim Beginnen und Beenden anbieten.</summary>
+    SyncState: Boolean;
+    /// <summary>Zustandsfeld (YouTrack); nie leer.</summary>
+    StateField: string;
+    /// <summary>Benutzerfeld für die Zuständigkeit (YouTrack); nie leer.</summary>
+    AssigneeField: string;
+    /// <summary>Zustand beim Beginnen; '' = nicht ändern.</summary>
+    StartState: string;
+    AssignOnStart: Boolean;
+    /// <summary>Kommentarvorlage beim Beginnen; '' = kein Kommentar.</summary>
+    StartComment: string;
+    /// <summary>Zielzustände im Beenden-Dialog.</summary>
+    EndStates: TArray<string>;
+    /// <summary>Kommentarvorlage beim Beenden.</summary>
+    EndComment: string;
+    /// <summary>Aus den Einstellungen; leere Feldnamen werden zu den Vorgaben. Beginnen und Beenden setzen
+    /// WithStart und WithEnd.</summary>
+    class function Create(ASyncState: Boolean; const AStateField, AAssigneeField: string): TAtlasTrackerSyncOptions;
+      static;
+    /// <summary>Kopie mit den Werten beim Beginnen.</summary>
+    function WithStart(const AStartState: string; AAssignOnStart: Boolean;
+      const AStartComment: string): TAtlasTrackerSyncOptions;
+    /// <summary>Kopie mit den Werten beim Beenden; AEndStates ist eine Liste mit Komma, Semikolon oder
+    /// Zeilenumbruch.</summary>
+    function WithEnd(const AEndStates, AEndComment: string): TAtlasTrackerSyncOptions;
+    /// <summary>Beim Beginnen gibt es etwas zu schreiben.</summary>
+    function HasStartWork: Boolean;
+  end;
+
+  /// <summary>Werte der Platzhalter.</summary>
+  TAtlasTrackerPlaceholders = record
+    Key: string;
+    Branch: string;
+    /// <summary>Zeilen „abc1234 Betreff“; '' ohne.</summary>
+    Commits: string;
+    /// <summary>Adresse des Pull Requests; '' ohne.</summary>
+    PullRequest: string;
+    /// <summary>Erfasste Zeit („1 h 25 min“, #1267); '' ohne.</summary>
+    Time: string;
+    class function Create(const AKey, ABranch: string): TAtlasTrackerPlaceholders; static;
+  end;
+
+  /// <summary>Werte vom Tracker für die Klapplisten der Seite Issue-Tracker.</summary>
+  TAtlasTrackerValueSet = record
+    /// <summary>Felder für den Zustand (YouTrack: Typ state); GitHub leer.</summary>
+    StateFields: TArray<string>;
+    /// <summary>Felder für die Zuständigkeit (YouTrack: Typ user); GitHub leer.</summary>
+    UserFields: TArray<string>;
+    /// <summary>Werte des Zustandsfeldes (GitHub: Labels).</summary>
+    States: TArray<string>;
+    /// <summary>Ergebnis der ersten fehlgeschlagenen Abfrage, sonst Ok.</summary>
+    Outcome: TAtlasTrackerWriteResult;
+  end;
+
+  TAtlasTrackerWorkflow = class
+  public const
+    DefaultStateField = 'State';
+    DefaultAssigneeField = 'Assignee';
+    /// <summary>Vorgabe von issues.endComment (wie im Schema) und ihre englische Fassung (#1458).</summary>
+    DefaultEndComment = 'Erledigt in {branch}.\n{commits}';
+    DefaultEndCommentEn = 'Done in {branch}.\n{commits}';
+    /// <summary>Zeitgrenze eines Schreibzugriffs und der Klapplisten.</summary>
+    WriteTimeoutMs = 10000;
+    /// <summary>Höchstens so viele Commits in {commits}.</summary>
+    MaxCommits = 20;
+    /// <summary>Höchstens so viele Commits werden je Branch gelesen.</summary>
+    MaxLog = 200;
+  public
+    /// <summary>Liste aus Text (Komma, Semikolon oder Zeilenumbruch); leere und doppelte Einträge entfallen.
+    /// </summary>
+    class function ParseList(const AText: string): TArray<string>; static;
+    /// <summary>Umkehrung von ParseList mit ", ".</summary>
+    class function ListText(const AItems: TArray<string>): string; static;
+    /// <summary>Der Anbieter führt Zustand und Zuständigkeit in benannten Feldern (YouTrack), so dass Zustandsfeld
+    /// und Benutzerfeld etwas bedeuten. GitHub hat keine: Zustände sind Labels, zuständig sind Benutzer.</summary>
+    class function UsesFields(const AProvider: string): Boolean; static;
+    /// <summary>issues.endComment für die Oberfläche in AEnglish: Die unveränderte Vorgabe einer Sprache folgt der
+    /// Sprache der IDE, jeder andere Text bleibt, wie er ist.</summary>
+    class function EndCommentFor(const AStored: string; AEnglish: Boolean): string; static;
+    /// <summary>AOptions mit den Werten der Verbindung zum Server von ATarget (persönliche zuerst); leere Werte der
+    /// Verbindung lassen die globalen.</summary>
+    class function ForConnection(const AOptions: TAtlasTrackerSyncOptions;
+      const AConnections: TArray<TAtlasTrackerConnection>; const ATarget: TAtlasTrackerTarget): TAtlasTrackerSyncOptions;
+      static;
+    /// <summary>Platzhalter in ATemplate ersetzen, "\n" wird #10; Leerzeilen am Ende entfallen.</summary>
+    class function Fill(const ATemplate: string; const AValues: TAtlasTrackerPlaceholders): string; static;
+    /// <summary>Betreff nennt AKey als eigenes Wort („ATL-123:“, „[#753]“), ohne Groß-/Kleinschreibung.</summary>
+    class function MentionsKey(const ASummary, AKey: string): Boolean; static;
+    /// <summary>{commits}: Commits (neueste zuerst, wie git log) mit AKey im Betreff, älteste zuerst, höchstens
+    /// MaxCommits.</summary>
+    class function CommitLines(const ACommits: TArray<TAtlasVcsCommit>; const AKey: string): string; static;
+    /// <summary>Basen für {commits}: issues.branchBase, sonst main, dann master.</summary>
+    class function CommitBases(const ABranchBase: string): TArray<string>; static;
+    /// <summary>{commits} für ABranch: Commits, die nicht in der ersten vorhandenen Basis liegen, mit AKey im
+    /// Betreff; '' ohne Branch oder wenn keine Basis passt. Ruft die Versionsverwaltung (Hintergrund).</summary>
+    class function CommitsFor(const AWork: IAtlasVcsLocalWork; const ABranch, ABranchBase, AKey: string): string;
+      static;
+    /// <summary>Änderung beim Beginnen; leer ohne issues.syncState.</summary>
+    class function StartChange(const AOptions: TAtlasTrackerSyncOptions;
+      const AValues: TAtlasTrackerPlaceholders): TAtlasTrackerWrite; static;
+    /// <summary>Änderung beim Beenden: AState '' = Zustand nicht ändern; AHandOver mit AAssignee übergibt die
+    /// Zuständigkeit.</summary>
+    class function EndChange(const AOptions: TAtlasTrackerSyncOptions; const AState, AComment: string;
+      AHandOver: Boolean; const AAssignee: string): TAtlasTrackerWrite; static;
+    /// <summary>Betreffe aus {commits} ohne Kurz-Hash, eine Zeile je Commit (Vorlage der Beschreibung einer
+    /// Zeitbuchung, #1267).</summary>
+    class function CommitSubjects(const ACommits: string): string; static;
+    /// <summary>Dauer für {time}: „1 h 25 min“, „25 min“; '' für 0.</summary>
+    class function DurationText(AMinutes: Integer): string; static;
+    /// <summary>Zustände von AStateField, Zustands- und Benutzerfelder; bricht beim ersten Fehler ab. Im
+    /// Hintergrund (Netz).</summary>
+    class function LoadValues(const AWriter: IAtlasTrackerWriter; const ATarget: TAtlasTrackerTarget;
+      const ATransport: IAtlasCiTransport; const AStateField: string): TAtlasTrackerValueSet; static;
+  end;
+
+implementation
+
+uses
+  System.StrUtils,
+  Atlas.Core.Vcs.BranchNames;
+
+{ TAtlasTrackerSyncOptions }
+
+class function TAtlasTrackerSyncOptions.Create(ASyncState: Boolean; const AStateField,
+  AAssigneeField: string): TAtlasTrackerSyncOptions;
+begin
+  Result := Default(TAtlasTrackerSyncOptions);
+  Result.SyncState := ASyncState;
+  Result.StateField := Trim(AStateField);
+  if Result.StateField = '' then
+  begin
+    Result.StateField := TAtlasTrackerWorkflow.DefaultStateField;
+  end;
+  Result.AssigneeField := Trim(AAssigneeField);
+  if Result.AssigneeField = '' then
+  begin
+    Result.AssigneeField := TAtlasTrackerWorkflow.DefaultAssigneeField;
+  end;
+end;
+
+function TAtlasTrackerSyncOptions.WithStart(const AStartState: string; AAssignOnStart: Boolean;
+  const AStartComment: string): TAtlasTrackerSyncOptions;
+begin
+  Result := Self;
+  Result.StartState := Trim(AStartState);
+  Result.AssignOnStart := AAssignOnStart;
+  Result.StartComment := AStartComment;
+end;
+
+function TAtlasTrackerSyncOptions.WithEnd(const AEndStates, AEndComment: string): TAtlasTrackerSyncOptions;
+begin
+  Result := Self;
+  Result.EndStates := TAtlasTrackerWorkflow.ParseList(AEndStates);
+  Result.EndComment := AEndComment;
+end;
+
+function TAtlasTrackerSyncOptions.HasStartWork: Boolean;
+begin
+  Result := SyncState and ((StartState <> '') or AssignOnStart or (Trim(StartComment) <> ''));
+end;
+
+{ TAtlasTrackerPlaceholders }
+
+class function TAtlasTrackerPlaceholders.Create(const AKey, ABranch: string): TAtlasTrackerPlaceholders;
+begin
+  Result.Key := AKey;
+  Result.Branch := ABranch;
+  Result.Commits := '';
+  Result.PullRequest := '';
+  Result.Time := '';
+end;
+
+{ TAtlasTrackerWorkflow }
+
+class function TAtlasTrackerWorkflow.ParseList(const AText: string): TArray<string>;
+var
+  mPart, mItem: string;
+  mFound: Boolean;
+begin
+  Result := nil;
+  for mPart in StringReplace(StringReplace(StringReplace(AText, ';', ',', [rfReplaceAll]), #13, ',',
+    [rfReplaceAll]), #10, ',', [rfReplaceAll]).Split([',']) do
+  begin
+    if Trim(mPart) = '' then
+    begin
+      Continue;
+    end;
+    mFound := False;
+    for mItem in Result do
+    begin
+      if SameText(mItem, Trim(mPart)) then
+      begin
+        mFound := True;
+      end;
+    end;
+    if not mFound then
+    begin
+      Result := Result + [Trim(mPart)];
+    end;
+  end;
+end;
+
+class function TAtlasTrackerWorkflow.ListText(const AItems: TArray<string>): string;
+begin
+  Result := string.Join(', ', AItems);
+end;
+
+class function TAtlasTrackerWorkflow.UsesFields(const AProvider: string): Boolean;
+begin
+  Result := not SameText(Trim(AProvider), TAtlasTrackerTarget.GitHub);
+end;
+
+class function TAtlasTrackerWorkflow.EndCommentFor(const AStored: string; AEnglish: Boolean): string;
+begin
+  Result := AStored;
+  if (AStored = DefaultEndComment) and AEnglish then
+  begin
+    Result := DefaultEndCommentEn;
+  end
+  else if (AStored = DefaultEndCommentEn) and not AEnglish then
+  begin
+    Result := DefaultEndComment;
+  end;
+end;
+
+class function TAtlasTrackerWorkflow.ForConnection(const AOptions: TAtlasTrackerSyncOptions;
+  const AConnections: TArray<TAtlasTrackerConnection>; const ATarget: TAtlasTrackerTarget): TAtlasTrackerSyncOptions;
+var
+  mConnection: TAtlasTrackerConnection;
+  mServer: string;
+begin
+  Result := AOptions;
+  mServer := ATarget.Server;
+  if mServer = '' then
+  begin
+    Exit;
+  end;
+  for mConnection in AConnections do
+  begin
+    if not SameText(mConnection.Provider, ATarget.Provider) or
+      not SameText(mConnection.Target.Server, mServer) then
+    begin
+      Continue;
+    end;
+    if mConnection.StateField <> '' then
+    begin
+      Result.StateField := mConnection.StateField;
+    end;
+    if mConnection.AssigneeField <> '' then
+    begin
+      Result.AssigneeField := mConnection.AssigneeField;
+    end;
+    if mConnection.StartState <> '' then
+    begin
+      Result.StartState := mConnection.StartState;
+    end;
+    if Length(mConnection.EndStates) > 0 then
+    begin
+      Result.EndStates := Copy(mConnection.EndStates);
+    end;
+    Exit;
+  end;
+end;
+
+class function TAtlasTrackerWorkflow.Fill(const ATemplate: string; const AValues: TAtlasTrackerPlaceholders): string;
+var
+  mCommits: string;
+begin
+  mCommits := StringReplace(AValues.Commits, #13#10, #10, [rfReplaceAll]);
+  Result := StringReplace(ATemplate, '\n', #10, [rfReplaceAll]);
+  Result := StringReplace(Result, #13#10, #10, [rfReplaceAll]);
+  Result := StringReplace(Result, '{branch}', AValues.Branch, [rfReplaceAll, rfIgnoreCase]);
+  Result := StringReplace(Result, '{commits}', mCommits, [rfReplaceAll, rfIgnoreCase]);
+  Result := StringReplace(Result, '{pr}', AValues.PullRequest, [rfReplaceAll, rfIgnoreCase]);
+  Result := StringReplace(Result, '{time}', AValues.Time, [rfReplaceAll, rfIgnoreCase]);
+  Result := StringReplace(Result, '{kennung}', AValues.Key, [rfReplaceAll, rfIgnoreCase]);
+  Result := StringReplace(Result, '{key}', AValues.Key, [rfReplaceAll, rfIgnoreCase]);
+  // Leere Platzhalter am Ende lassen keine Leerzeilen zurück.
+  while (Result <> '') and CharInSet(Result[Length(Result)], [#10, ' ', #9]) do
+  begin
+    Delete(Result, Length(Result), 1);
+  end;
+end;
+
+function IsKeyChar(AChar: Char): Boolean;
+begin
+  Result := CharInSet(AChar, ['A'..'Z', 'a'..'z', '0'..'9', '_', '-']);
+end;
+
+class function TAtlasTrackerWorkflow.MentionsKey(const ASummary, AKey: string): Boolean;
+var
+  mKey, mText: string;
+  mPos, mEnd: Integer;
+begin
+  Result := False;
+  mKey := UpperCase(Trim(AKey));
+  if mKey = '' then
+  begin
+    Exit;
+  end;
+  mText := UpperCase(ASummary);
+  mPos := Pos(mKey, mText);
+  while mPos > 0 do
+  begin
+    mEnd := mPos + Length(mKey);
+    // Eigenes Wort: davor und danach kein Buchstabe, keine Ziffer ("ATL-12" nicht in "ATL-123").
+    if ((mPos = 1) or not IsKeyChar(mText[mPos - 1]) or (mKey[1] = '#')) and
+      ((mEnd > Length(mText)) or not IsKeyChar(mText[mEnd])) then
+    begin
+      Exit(True);
+    end;
+    mPos := PosEx(mKey, mText, mPos + 1);
+  end;
+end;
+
+class function TAtlasTrackerWorkflow.CommitLines(const ACommits: TArray<TAtlasVcsCommit>; const AKey: string): string;
+var
+  mIndex, mCount: Integer;
+  mLines: TArray<string>;
+begin
+  mLines := nil;
+  mCount := 0;
+  for mIndex := High(ACommits) downto 0 do
+  begin
+    if not MentionsKey(ACommits[mIndex].Summary, AKey) then
+    begin
+      Continue;
+    end;
+    mLines := mLines + [ACommits[mIndex].ShortHash + ' ' + Trim(ACommits[mIndex].Summary)];
+    Inc(mCount);
+    if mCount >= MaxCommits then
+    begin
+      Break;
+    end;
+  end;
+  Result := string.Join(#10, mLines);
+end;
+
+class function TAtlasTrackerWorkflow.CommitSubjects(const ACommits: string): string;
+var
+  mLine: string;
+  mLines: TArray<string>;
+  mSpace: Integer;
+begin
+  mLines := nil;
+  for mLine in ACommits.Split([#10]) do
+  begin
+    mSpace := Pos(' ', Trim(mLine));
+    if mSpace > 0 then
+    begin
+      mLines := mLines + [Trim(Copy(Trim(mLine), mSpace + 1, MaxInt))];
+    end
+    else if Trim(mLine) <> '' then
+    begin
+      mLines := mLines + [Trim(mLine)];
+    end;
+  end;
+  Result := string.Join(#10, mLines);
+end;
+
+class function TAtlasTrackerWorkflow.CommitBases(const ABranchBase: string): TArray<string>;
+begin
+  if Trim(ABranchBase) <> '' then
+  begin
+    Result := TArray<string>.Create(Trim(ABranchBase));
+  end
+  else
+  begin
+    Result := TArray<string>.Create(TAtlasVcsBranchNames.GitBase, TAtlasVcsBranchNames.GitBaseFallback);
+  end;
+end;
+
+class function TAtlasTrackerWorkflow.CommitsFor(const AWork: IAtlasVcsLocalWork; const ABranch, ABranchBase,
+  AKey: string): string;
+var
+  mBase: string;
+  mCommits: TArray<TAtlasVcsCommit>;
+begin
+  Result := '';
+  if (AWork = nil) or (Trim(ABranch) = '') then
+  begin
+    Exit;
+  end;
+  for mBase in CommitBases(ABranchBase) do
+  begin
+    if SameText(mBase, ABranch) then
+    begin
+      Exit;
+    end
+    else if AWork.Outgoing(ABranch, mBase, MaxLog, mCommits) = TAtlasVcsOutcome.Ok then
+    begin
+      Exit(CommitLines(mCommits, AKey));
+    end;
+  end;
+end;
+
+class function TAtlasTrackerWorkflow.StartChange(const AOptions: TAtlasTrackerSyncOptions;
+  const AValues: TAtlasTrackerPlaceholders): TAtlasTrackerWrite;
+begin
+  Result := TAtlasTrackerWrite.Empty;
+  if not AOptions.SyncState then
+  begin
+    Exit;
+  end;
+  Result.StateField := AOptions.StateField;
+  Result.AssigneeField := AOptions.AssigneeField;
+  Result.State := AOptions.StartState;
+  if AOptions.AssignOnStart then
+  begin
+    Result.Assign := TAtlasTrackerAssign.Me;
+  end;
+  if Trim(AOptions.StartComment) <> '' then
+  begin
+    Result.Comment := Fill(AOptions.StartComment, AValues);
+  end;
+end;
+
+class function TAtlasTrackerWorkflow.EndChange(const AOptions: TAtlasTrackerSyncOptions; const AState,
+  AComment: string; AHandOver: Boolean; const AAssignee: string): TAtlasTrackerWrite;
+begin
+  Result := TAtlasTrackerWrite.Empty;
+  Result.StateField := AOptions.StateField;
+  Result.AssigneeField := AOptions.AssigneeField;
+  Result.State := Trim(AState);
+  Result.PreviousState := AOptions.StartState;
+  Result.Comment := Trim(AComment);
+  if AHandOver and (Trim(AAssignee) <> '') then
+  begin
+    Result.Assign := TAtlasTrackerAssign.User;
+    Result.Assignee := Trim(AAssignee);
+  end;
+end;
+
+class function TAtlasTrackerWorkflow.DurationText(AMinutes: Integer): string;
+begin
+  Result := '';
+  if AMinutes <= 0 then
+  begin
+    Exit;
+  end;
+  if AMinutes < 60 then
+  begin
+    Exit(Format('%d min', [AMinutes]));
+  end;
+  if AMinutes mod 60 = 0 then
+  begin
+    Exit(Format('%d h', [AMinutes div 60]));
+  end;
+  Result := Format('%d h %d min', [AMinutes div 60, AMinutes mod 60]);
+end;
+
+class function TAtlasTrackerWorkflow.LoadValues(const AWriter: IAtlasTrackerWriter;
+  const ATarget: TAtlasTrackerTarget; const ATransport: IAtlasCiTransport;
+  const AStateField: string): TAtlasTrackerValueSet;
+var
+  mField: string;
+begin
+  Result.StateFields := nil;
+  Result.UserFields := nil;
+  Result.States := nil;
+  Result.Outcome := TAtlasTrackerWriteResult.Ok;
+  if AWriter = nil then
+  begin
+    Result.Outcome := TAtlasTrackerWriteResult.Failed(TAtlasCiFetchError.UnknownProvider, 0, '');
+    Exit;
+  end;
+  mField := Trim(AStateField);
+  if mField = '' then
+  begin
+    mField := DefaultStateField;
+  end;
+  Result.Outcome := AWriter.Values(ATarget, ATransport, TAtlasTrackerValueKind.States, mField, WriteTimeoutMs,
+    Result.States);
+  if Result.Outcome.Succeeded then
+  begin
+    Result.Outcome := AWriter.Values(ATarget, ATransport, TAtlasTrackerValueKind.StateFields, '', WriteTimeoutMs,
+      Result.StateFields);
+  end;
+  if Result.Outcome.Succeeded then
+  begin
+    Result.Outcome := AWriter.Values(ATarget, ATransport, TAtlasTrackerValueKind.UserFields, '', WriteTimeoutMs,
+      Result.UserFields);
+  end;
+end;
+
+end.

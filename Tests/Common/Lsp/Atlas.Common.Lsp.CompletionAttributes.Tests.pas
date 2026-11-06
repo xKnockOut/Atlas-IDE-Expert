@@ -50,6 +50,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.Completion.Lists,
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Documents.Contract,
@@ -144,13 +145,17 @@ begin
   Line := 0;
   Character := 0;
   for Index := 1 to Pos('|', AMarked) - 1 do
+  begin
     if AMarked[Index] = #10 then
     begin
       Inc(Line);
       Character := 0;
     end
     else
+    begin
       Inc(Character);
+    end;
+  end;
   APosition := TTextPosition.Create(Line, Character);
   Result := StringReplace(AMarked, '|', '', []);
 end;
@@ -169,20 +174,30 @@ begin
     Marked := Copy(Marked, 3, MaxInt);
   end;
   if Marked.StartsWith('C:') then
-    Result := StringReplace(Text, '{ Code }', Copy(Marked, 3, MaxInt), [])
+  begin
+    Result := StringReplace(Text, '{ Code }', Copy(Marked, 3, MaxInt), []);
+  end
   else
+  begin
     Result := StringReplace(Text, '{ Attr }', Marked, []);
+  end;
 end;
 
 function ReadText(const AFileName: string; out AText: string): Boolean;
 begin
   Result := True;
   if SameText(AFileName, AttributesFile) then
-    AText := UnitAttributes
+  begin
+    AText := UnitAttributes;
+  end
   else if SameText(AFileName, FrameworkFile) then
-    AText := UnitFramework
+  begin
+    AText := UnitFramework;
+  end
   else
+  begin
     Result := False;
+  end;
 end;
 
 { TCompletionAttributesTests }
@@ -219,7 +234,7 @@ begin
     Request.Matching := TCompletionMatching.Prefix;
     Request.Settings := ASettings;
     Request.ReadText := ReadText;
-    Result := TLspCompletion.Collect(Request, Default(TPostfixOptions), nil);
+    Result := TCompletionLists.Collect(Request, Default(TPostfixOptions), nil);
   finally
     Request.Free;
     Tree.Free;
@@ -237,7 +252,9 @@ var
 begin
   Result := '';
   for Item in AItems.Items do
+  begin
     Result := Result + Item.Name + ' ';
+  end;
   Result := TrimRight(Result);
 end;
 
@@ -247,11 +264,13 @@ var
   Item: TCompletionItem;
 begin
   for Item in AItems.Items do
+  begin
     if Item.Name = AName then
     begin
       AItem := Item;
       Exit(True);
     end;
+  end;
   AItem := Default(TCompletionItem);
   Result := False;
 end;
@@ -267,9 +286,13 @@ procedure TCompletionAttributesTests.FindsAttributeBrackets;
     Tokens := TPascalLexer.Tokenize(Split(AMarked, Position));
     Last := -1;
     for Index := 0 to High(Tokens) do
+    begin
       if (Tokens[Index].StartPos.Line < Position.Line) or (Tokens[Index].StartPos.Line = Position.Line) and
         (Tokens[Index].EndPos.Character <= Position.Character) then
+      begin
         Last := Index;
+      end;
+    end;
     Result := TCompletionAttributes.SiteAt(Tokens, Last);
   end;
 
@@ -391,7 +414,8 @@ procedure TCompletionAttributesTests.SignatureShowsConstructor;
     Text := Split(Source(AMarked), Position);
     Tree := TPascalParser.Parse(Text);
     try
-      Result := TLspSignatureHelp.HelpAt(FResolver, FIndex, Tree, Text, HauptFile, Position, ReadText);
+      Result := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, Tree, Text, HauptFile,
+        ReadText), Position);
     finally
       Tree.Free;
     end;

@@ -66,6 +66,8 @@ type
     /// <summary>Keine Einschränkung, DONE eingeschlossen (für die Zusammenfassung).</summary>
     class function All: TTodoFilter; static;
     function Matches(const AFile: TFileTodos; const AEntry: TTodoEntry): Boolean;
+    /// <summary>UnitName ist leer oder nennt die Unit bzw. den Pfad von AFile.</summary>
+    function MatchesUnit(const AFile: TFileTodos): Boolean;
   end;
 
   // Record statt Klasse: ein Contract enthält nur Werttypen und Interfaces (Konzept 7.1, Code-Review A-12).
@@ -111,21 +113,22 @@ begin
   Result.IncludeDone := True;
 end;
 
+/// <summary>AFilterValue ist leer oder gleich AValue (ohne Groß-/Kleinschreibung).</summary>
+function MatchesValue(const AFilterValue, AValue: string): Boolean;
+begin
+  Result := (AFilterValue = '') or SameText(AFilterValue, AValue);
+end;
+
+function TTodoFilter.MatchesUnit(const AFile: TFileTodos): Boolean;
+begin
+  Result := (UnitName = '') or SameText(UnitName, AFile.UnitName) or SameText(UnitName, AFile.Path) or
+    SameText(StringReplace(UnitName, '\', '/', [rfReplaceAll]), AFile.Path);
+end;
+
 function TTodoFilter.Matches(const AFile: TFileTodos; const AEntry: TTodoEntry): Boolean;
 begin
-  Result := False;
-  if AEntry.Done and not IncludeDone then
-    Exit;
-  if (Category <> '') and not SameText(Category, AEntry.Category) then
-    Exit;
-  if (Owner <> '') and not SameText(Owner, AEntry.Owner) then
-    Exit;
-  if (Keyword <> '') and not SameText(Keyword, AEntry.Keyword) then
-    Exit;
-  if (UnitName <> '') and not SameText(UnitName, AFile.UnitName) and not SameText(UnitName, AFile.Path) and
-    not SameText(StringReplace(UnitName, '\', '/', [rfReplaceAll]), AFile.Path) then
-    Exit;
-  Result := True;
+  Result := (IncludeDone or not AEntry.Done) and MatchesValue(Category, AEntry.Category) and
+    MatchesValue(Owner, AEntry.Owner) and MatchesValue(Keyword, AEntry.Keyword) and MatchesUnit(AFile);
 end;
 
 { TTodos }
@@ -141,14 +144,18 @@ var
 begin
   Result := APath;
   for Index := Length(Result) downto 1 do
+  begin
     if (Result[Index] = '/') or (Result[Index] = '\') then
     begin
       Result := Copy(Result, Index + 1, MaxInt);
       Break;
     end;
+  end;
   Index := LastDelimiter('.', Result);
   if Index > 1 then
+  begin
     Result := Copy(Result, 1, Index - 1);
+  end;
 end;
 
 end.

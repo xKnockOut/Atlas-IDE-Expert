@@ -53,6 +53,7 @@ uses
   Atlas.Core.Results.Model,
   Atlas.Core.Lsp.Contract,
   Atlas.UI.Strings,
+  Atlas.UI.Results.Texts,
   Atlas.UI.Results.Frame;
 
 function Entry(const AFileName: string; ALine: Integer; const AText, AReason: string): TAtlasResultEntry;
@@ -83,8 +84,8 @@ begin
   try
     Frame := TAtlasResultsFrame.Create(Host);
     Frame.Parent := Host;
-    Frame.ShowRated('Verwendungen', TAtlasResults.SureOnly(Sample), 'Sicher (%d)', 'Erschlossen (%d)');
-    Assert.IsFalse(Frame.OnlySure.Visible);
+    Frame.Entries.ShowRated('Verwendungen', TAtlasResults.SureOnly(Sample), 'Sicher (%d)', 'Erschlossen (%d)');
+    Assert.IsFalse(Frame.Entries.OnlySure.Visible);
     Assert.AreEqual(4, Integer(Frame.Tree.Items.Count));
     Assert.AreEqual('Haupt.pas (1)', Frame.Tree.Items[0].Text);
     Assert.AreEqual('7: K.Speichern;', Frame.Tree.Items[1].Text);
@@ -102,8 +103,8 @@ begin
   try
     Frame := TAtlasResultsFrame.Create(Host);
     Frame.Parent := Host;
-    Frame.ShowRated('Verwendungen', Sample, 'Sicher (%d)', 'Erschlossen (%d)');
-    Assert.IsTrue(Frame.OnlySure.Visible);
+    Frame.Entries.ShowRated('Verwendungen', Sample, 'Sicher (%d)', 'Erschlossen (%d)');
+    Assert.IsTrue(Frame.Entries.OnlySure.Visible);
     // Sicher (2): Haupt.pas (1), Kunden.pas (1); Erschlossen (2): Haupt.pas (2).
     Assert.AreEqual(9, Integer(Frame.Tree.Items.Count));
     Assert.AreEqual('Sicher (2)', Frame.Tree.Items[0].Text);
@@ -127,17 +128,17 @@ begin
   try
     Frame := TAtlasResultsFrame.Create(Host);
     Frame.Parent := Host;
-    Frame.ShowRated('Verwendungen', Sample, 'Sicher (%d)', 'Erschlossen (%d)');
-    Frame.OnlySure.Checked := True;
+    Frame.Entries.ShowRated('Verwendungen', Sample, 'Sicher (%d)', 'Erschlossen (%d)');
+    Frame.Entries.OnlySure.Checked := True;
     // Der Filter bleibt sichtbar, damit er sich wieder ausschalten lässt.
-    Assert.IsTrue(Frame.OnlySure.Visible);
+    Assert.IsTrue(Frame.Entries.OnlySure.Visible);
     Assert.AreEqual(4, Integer(Frame.Tree.Items.Count));
     Assert.AreEqual('Haupt.pas (1)', Frame.Tree.Items[0].Text);
-    Frame.OnlySure.Checked := False;
+    Frame.Entries.OnlySure.Checked := False;
     Assert.AreEqual(9, Integer(Frame.Tree.Items.Count));
     // Andere Listen blenden den Filter aus.
-    Frame.ShowEntries('Implementierungen', TAtlasResults.Group(TAtlasResults.SureOnly(Sample)));
-    Assert.IsFalse(Frame.OnlySure.Visible);
+    Frame.Entries.Show('Implementierungen', TAtlasResults.Group(TAtlasResults.SureOnly(Sample)));
+    Assert.IsFalse(Frame.Entries.OnlySure.Visible);
   finally
     Host.Free;
   end;
@@ -148,19 +149,19 @@ var
   Item: TAtlasHierarchyItem;
   Text: string;
 begin
-  Text := TAtlasResultsFrame.EntryText(Entry('C:\P\Haupt.pas', 7, 'S.Speichern;', 'interface'));
+  Text := TAtlasResultsTexts.EntryText(Entry('C:\P\Haupt.pas', 7, 'S.Speichern;', 'interface'));
   Assert.AreEqual('≈ 8: S.Speichern;  [' + TAtlasStrings.Text(TAtlasTextId.ReferenceReasonInterface) + ']', Text);
-  Assert.AreEqual('7: K.Speichern;', TAtlasResultsFrame.EntryText(Entry('C:\P\Haupt.pas', 6, 'K.Speichern;', '')));
+  Assert.AreEqual('7: K.Speichern;', TAtlasResultsTexts.EntryText(Entry('C:\P\Haupt.pas', 6, 'K.Speichern;', '')));
   // Unbekannte Gründe neuerer Server erscheinen wie geliefert.
-  Assert.AreEqual('neu', TAtlasResultsFrame.ReasonText(Entry('A.pas', 0, '', 'neu').Confidence));
+  Assert.AreEqual('neu', TAtlasResultsTexts.ReasonText(Entry('A.pas', 0, '', 'neu').Confidence));
   Item := Default(TAtlasHierarchyItem);
   Item.Name := 'Lauf';
   Item.FileName := 'C:\P\Haupt.pas';
   Item.Line := 4;
-  Assert.AreEqual('Lauf  (Haupt.pas:5)', TAtlasResultsFrame.HierarchyText(Item));
+  Assert.AreEqual('Lauf  (Haupt.pas:5)', TAtlasResultsTexts.HierarchyText(Item));
   Item.Confidence := Entry('A.pas', 0, '', 'virtual').Confidence;
   Assert.AreEqual('≈ Lauf  (Haupt.pas:5)  [' + TAtlasStrings.Text(TAtlasTextId.ReferenceReasonVirtual) + ']',
-    TAtlasResultsFrame.HierarchyText(Item));
+    TAtlasResultsTexts.HierarchyText(Item));
 end;
 
 { TAtlasResultsFrameImpactTests }
@@ -215,8 +216,8 @@ begin
   try
     Frame := TAtlasResultsFrame.Create(Host);
     Frame.Parent := Host;
-    Frame.ShowImpact('Auswirkungen', SampleImpact);
-    Assert.IsTrue(Frame.ShowsImpact);
+    Frame.Impact.Show('Auswirkungen', SampleImpact);
+    Assert.IsTrue(Frame.Impact.Shows);
     // Direkt (1): Hilfe; Indirekt (2): Hilfe › Button1Click › Formular, PrueftHilfe; Tests (1); Grenze.
     Assert.AreEqual(10, Integer(Frame.Tree.Items.Count));
     Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ImpactDirect, [1]), Frame.Tree.Items[0].Text);
@@ -248,26 +249,26 @@ begin
   try
     Frame := TAtlasResultsFrame.Create(Host);
     Frame.Parent := Host;
-    Frame.OnImpactDepth :=
+    Frame.Impact.OnDepth :=
       procedure(ADepth: Integer)
       begin
         Depth := ADepth;
       end;
-    Frame.OnImpactRunTests :=
+    Frame.Impact.OnRunTests :=
       procedure(const AImpact: TAtlasImpact)
       begin
         Names := AImpact.RunNames;
       end;
-    Frame.ShowImpact('Auswirkungen', SampleImpact);
-    Assert.IsTrue(Frame.DepthBox.Visible);
-    Assert.AreEqual(5, Integer(Frame.DepthBox.Items.Count));
-    Assert.AreEqual(1, Frame.DepthBox.ItemIndex, 'Tiefe 2');
+    Frame.Impact.Show('Auswirkungen', SampleImpact);
+    Assert.IsTrue(Frame.Impact.DepthBox.Visible);
+    Assert.AreEqual(5, Integer(Frame.Impact.DepthBox.Items.Count));
+    Assert.AreEqual(1, Frame.Impact.DepthBox.ItemIndex, 'Tiefe 2');
     Assert.AreEqual(0, Depth, 'Anzeigen löst keine neue Anfrage aus');
-    Frame.DepthBox.ItemIndex := 3;
-    Frame.DepthBox.OnChange(Frame.DepthBox);
+    Frame.Impact.DepthBox.ItemIndex := 3;
+    Frame.Impact.DepthBox.OnChange(Frame.Impact.DepthBox);
     Assert.AreEqual(4, Depth);
-    Assert.IsTrue(Frame.RunTestsButton.Enabled);
-    Frame.RunTestsButton.Click;
+    Assert.IsTrue(Frame.Impact.RunTestsButton.Enabled);
+    Frame.Impact.RunTestsButton.Click;
     Assert.AreEqual(1, Integer(Length(Names)));
     Assert.AreEqual('Werkzeug.Tests.TWerkzeugTests.PrueftHilfe', Names[0]);
   finally
@@ -285,18 +286,18 @@ begin
   Item := Place('TKind', 'C:\P\Werkzeug.pas', 10, 1, -1);
   Item.Edge := 'override';
   Assert.AreEqual('TKind  (Werkzeug.pas:11)  · ' + TAtlasStrings.Text(TAtlasTextId.ImpactEdgeOverride),
-    TAtlasResultsFrame.ImpactPlaceText(Item));
+    TAtlasResultsTexts.ImpactPlaceText(Item));
   Item.Edge := 'reference';
   Item.Terminal := True;
   Item.Item.Name := 'Haupt';
   Assert.AreEqual('Haupt · ' + TAtlasStrings.Text(TAtlasTextId.ImpactUnitLevel) + '  (Werkzeug.pas:13)  · ' +
-    TAtlasStrings.Text(TAtlasTextId.ImpactEdgeReference), TAtlasResultsFrame.ImpactPlaceText(Item));
+    TAtlasStrings.Text(TAtlasTextId.ImpactEdgeReference), TAtlasResultsTexts.ImpactPlaceText(Item));
   Impact := Default(TAtlasImpact);
   Impact.CountReached := True;
   Impact.MaxPlaces := 1000;
   Impact.TimeReached := True;
   Impact.TimeoutMs := 8000;
-  Limits := TAtlasResultsFrame.ImpactLimitTexts(Impact);
+  Limits := TAtlasResultsTexts.ImpactLimitTexts(Impact);
   Assert.AreEqual(2, Integer(Length(Limits)));
   Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ImpactLimitCount, [1000]), Limits[0]);
   Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.ImpactLimitTime, [8000]), Limits[1]);
@@ -315,13 +316,13 @@ begin
     Frame.Parent := Host;
     Impact := SampleImpact;
     Impact.Tests := nil;
-    Frame.ShowImpact('Auswirkungen', Impact);
-    Assert.IsFalse(Frame.RunTestsButton.Enabled, 'ohne Tests nichts auszuführen');
+    Frame.Impact.Show('Auswirkungen', Impact);
+    Assert.IsFalse(Frame.Impact.RunTestsButton.Enabled, 'ohne Tests nichts auszuführen');
     Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.ImpactNoTests), Frame.Tree.Items[7].Text);
-    Frame.ShowEntries('Implementierungen', TAtlasResults.Group(Sample));
-    Assert.IsFalse(Frame.ShowsImpact);
-    Assert.IsFalse(Frame.DepthBox.Visible);
-    Assert.IsFalse(Frame.RunTestsButton.Visible);
+    Frame.Entries.Show('Implementierungen', TAtlasResults.Group(Sample));
+    Assert.IsFalse(Frame.Impact.Shows);
+    Assert.IsFalse(Frame.Impact.DepthBox.Visible);
+    Assert.IsFalse(Frame.Impact.RunTestsButton.Visible);
   finally
     Host.Free;
   end;
@@ -356,39 +357,39 @@ begin
   try
     mFrame := TAtlasResultsFrame.Create(mHost);
     mFrame.Parent := mHost;
-    mFrame.OnIssueOpen :=
+    mFrame.Issues.OnOpen :=
       procedure(AList, AId: Integer)
       begin
         mOpened := mOpened + Format('%d/%d ', [AList, AId]);
       end;
-    mFrame.OnIssueCommit :=
+    mFrame.Issues.OnCommit :=
       procedure(AList, AId: Integer)
       begin
         mShown := mShown + Format('%d/%d ', [AList, AId]);
       end;
-    mFrame.ShowIssues('Issues zu TKunde.Laden', 7, TArray<TAtlasResultIssue>.Create(
+    mFrame.Issues.Show('Issues zu TKunde.Laden', 7, TArray<TAtlasResultIssue>.Create(
       Issue(0, 'ATL-3 · 2 Commits', TArray<string>.Create('c1', 'c2')),
       Issue(1, 'ATL-1 · 1 Commit', TArray<string>.Create('c3'))));
-    Assert.IsTrue(mFrame.ShowsIssues);
+    Assert.IsTrue(mFrame.Issues.Shows);
     Assert.AreEqual(5, Integer(mFrame.Tree.Items.Count));
     Assert.AreEqual('ATL-3 · 2 Commits', mFrame.Tree.Items[0].Text);
     Assert.IsFalse(mFrame.Tree.Items[0].Expanded, 'Commits zugeklappt');
     Assert.AreEqual('c2', mFrame.Tree.Items[2].Text);
     // Enter auf dem Issue öffnet es, auf dem Commit zeigt es den Commit.
     mFrame.Tree.Selected := mFrame.Tree.Items[3];
-    mFrame.OpenSelectedIssue;
+    mFrame.Issues.OpenSelected;
     mFrame.Tree.Selected := mFrame.Tree.Items[2];
-    mFrame.OpenSelectedIssue;
+    mFrame.Issues.OpenSelected;
     Assert.AreEqual('7/1 ', mOpened);
     Assert.AreEqual('7/1 ', mShown);
     // Titel nachtragen: nur für die gezeigte Liste.
-    Assert.IsTrue(mFrame.SetIssueText(7, 1, 'ATL-1 · Rabatt · Offen · 1 Commit'));
+    Assert.IsTrue(mFrame.Issues.SetText(7, 1, 'ATL-1 · Rabatt · Offen · 1 Commit'));
     Assert.AreEqual('ATL-1 · Rabatt · Offen · 1 Commit', mFrame.Tree.Items[3].Text);
-    Assert.IsFalse(mFrame.SetIssueText(8, 1, 'alt'), 'andere Liste');
-    Assert.IsFalse(mFrame.SetIssueText(7, 5, 'fehlt'));
-    mFrame.ShowEntries('Andere Liste', nil);
-    Assert.IsFalse(mFrame.ShowsIssues);
-    Assert.IsFalse(mFrame.SetIssueText(7, 1, 'weg'));
+    Assert.IsFalse(mFrame.Issues.SetText(8, 1, 'alt'), 'andere Liste');
+    Assert.IsFalse(mFrame.Issues.SetText(7, 5, 'fehlt'));
+    mFrame.Entries.Show('Andere Liste', nil);
+    Assert.IsFalse(mFrame.Issues.Shows);
+    Assert.IsFalse(mFrame.Issues.SetText(7, 1, 'weg'));
   finally
     mHost.Free;
   end;

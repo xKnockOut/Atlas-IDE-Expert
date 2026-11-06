@@ -44,7 +44,8 @@ uses
   Atlas.Common.Compiler.Contract,
   Atlas.Common.Lsp.InactiveRegions,
   Atlas.Common.Lsp.Internals.Debouncer,
-  Atlas.Common.Editing.UsesActions,
+  Atlas.Common.Lsp.DiagnosticItems,
+  Atlas.Common.Lsp.FindingsMemo,
   Atlas.Common.Editing.Contract;
 
 type
@@ -89,6 +90,9 @@ type
     Cancelled: TRuleCancelled;
     /// <summary>Prüfung für den Editor (TRuleContext.Live, #896); die Komposition setzt es.</summary>
     Live: Boolean;
+    /// <summary>Zuletzt gerechnete Treffer je Datei und Text: Die Diagnose legt ab, die Code-Aktion liest
+    /// (2.0-stable); nil = keine.</summary>
+    Memo: IRuleFindingsMemo;
   end;
 
   /// <summary>Regeln und Einstellungen für AUri; False = keine Regeln prüfen. Hintergrund-Thread.</summary>
@@ -115,6 +119,21 @@ type
     UsesContext: TUsesContextProvider;
   end;
 
+  /// <summary>Was BuildParams außer dem Dokument braucht.</summary>
+  TSyntaxDiagnosticsInput = record
+    /// <summary>Inaktive Bereiche mit Bedingung als Hinweise (Tag Unnecessary).</summary>
+    Inactive: TArray<TLspInactiveRegion>;
+    /// <summary>Sprachmerkmale, die diese Version nicht kennt, werden gemeldet; '' = unbekannt.</summary>
+    DelphiVersion: string;
+    /// <summary>Prüfregeln; ohne Regeln nur Syntax und Sprachmerkmale.</summary>
+    Rules: TRuleCheckContext;
+    /// <summary>Gewählte Zielplattform und Konfiguration (#615); '' = unbekannt.</summary>
+    Platform: string;
+    Config: string;
+    /// <summary>Syntaxfehler nur aus aktiven Zweigen unter diesen Symbolen (leer = Vordefinitionen).</summary>
+    Defines: TArray<string>;
+  end;
+
   TLspSyntaxDiagnostics = class
   public const
     /// <summary>Verzögerung nach dem letzten Tastendruck; mit Parsen bleibt es unter 200 ms.</summary>
@@ -122,16 +141,7 @@ type
     /// <summary>Bündelt RefreshLater: In einer Projektgruppe melden sich viele Indexstufen kurz
     /// hintereinander, und jede Neuprüfung holt alle offenen Dokumente neu (#647).</summary>
     RefreshDelayMs = 2000;
-    Source = 'Atlas';
-    CompilerSource = 'dcc';
-    InactiveMessage = 'Inaktiver Bereich (bedingte Kompilierung)';
-    InactiveConditionMessage = 'Inaktiv: Bedingung %s nicht erfüllt';
-    InactiveTargetSuffix = ' (Zielplattform %s · %s)';
-    /// <summary>Meldungen zu uses-Einträgen (#621).</summary>
-    UsesUnusedMessage = 'Aus %s wird nichts verwendet';
-    UsesInitializationMessage = '%s wird wegen initialization nicht als ungenutzt gezeigt';
-    UsesAllowlistMessage = '%s steht in usesKeep und wird nicht als ungenutzt gezeigt';
-    UsesImplementationMessage = '%s wird nur in der implementation gebraucht';
+    Source = TLspDiagnosticItems.Source;
   private
     FStore: IDocumentStore;
     FTransport: IJsonRpcTransport;
@@ -155,6 +165,9 @@ type
     function CurrentRules(const AUri: string; out AContext: TRuleCheckContext): Boolean;
     function CurrentCompilerMessages(const AFileName: string): TArray<TCompilerMessage>;
     function CurrentUses(const AUri: string; out AContext: TUsesContext): Boolean;
+    /// <summary>Ungenutzte uses (#621) als Darstellung der Regel unused-uses (#1135) in AItems.</summary>
+    procedure AddUnusedUses(AItems: TJSONArray; const ADocument: ITextDocument; const AInput: TSyntaxDiagnosticsInput;
+      AHasRules: Boolean);
   public
     /// <summary>Bei ADelayMs = 0 wird sofort im Thread der Nachrichtenschleife geparst.</summary>
     constructor Create(const AStore: IDocumentStore; const ATransport: IJsonRpcTransport;
@@ -170,34 +183,22 @@ type
     /// <summary>Wie oben, zusätzlich mit inaktiven Bereichen als Hinweise (Tag Unnecessary).</summary>
     class function BuildParams(const ADocument: ITextDocument;
       const AInactive: TArray<TTextRange>): TJSONObject; overload; static;
-    /// <summary>Wie oben, zusätzlich mit Sprachmerkmalen, die ADelphiVersion nicht kennt.</summary>
-    class function BuildParams(const ADocument: ITextDocument; const AInactive: TArray<TTextRange>;
-      const ADelphiVersion: string): TJSONObject; overload; static;
-    /// <summary>Wie oben, zusätzlich mit den Treffern der Prüfregeln aus ARules.</summary>
+    /// <summary>Wie oben, zusätzlich mit Sprachmerkmalen, die ADelphiVersion nicht kennt ('' = alle bekannt),
+    /// und den Treffern der Prüfregeln aus ARules.</summary>
     class function BuildParams(const ADocument: ITextDocument; const AInactive: TArray<TTextRange>;
       const ADelphiVersion: string; const ARules: TRuleCheckContext): TJSONObject; overload; static;
-    /// <summary>Wie unten; Syntaxfehler nur aus aktiven Zweigen unter ADefines (leer = Vordefinitionen).</summary>
-    class function BuildParams(const ADocument: ITextDocument; const AInactive: TArray<TLspInactiveRegion>;
-      const ADelphiVersion: string; const ARules: TRuleCheckContext; const APlatform, AConfig: string;
-      const ADefines: TArray<string>): TJSONObject; overload; static;
-    /// <summary>Wie oben mit Bedingung je inaktivem Bereich und gewählter Zielplattform und
-    /// Konfiguration (#615; '' = unbekannt).</summary>
-    class function BuildParams(const ADocument: ITextDocument; const AInactive: TArray<TLspInactiveRegion>;
-      const ADelphiVersion: string; const ARules: TRuleCheckContext;
-      const APlatform, AConfig: string): TJSONObject; overload; static;
-    /// <summary>Meldung zu einem inaktiven Bereich: mit Bedingung „Inaktiv: Bedingung X nicht erfüllt“,
-    /// mit Plattform oder Konfiguration dahinter „(Zielplattform Win32 · Debug)“.</summary>
-    class function InactiveMessageOf(const ACondition, APlatform, AConfig: string): string; static;
+    /// <summary>Wie oben mit allen Angaben aus AInput.</summary>
+    class function BuildParams(const ADocument: ITextDocument; const AInput: TSyntaxDiagnosticsInput)
+      : TJSONObject; overload; static;
+    /// <summary>Wie RuleFindings über ARules.Memo (#1761): Treffer am selben Text aus dem Memo, nach Warten auf
+    /// einen laufenden Lauf am selben Text oder selbst gerechnet und abgelegt. Ohne Memo wie RuleFindings.
+    /// AWaitCancelled (nil = nie) beendet nur das Warten auf einen fremden Lauf (ERuleCheckCancelled).</summary>
+    class function SharedRuleFindings(const AText: string; ATree: TSyntaxTree; const ARules: TRuleCheckContext;
+      const AWaitCancelled: TRuleCancelled): TArray<TRuleFinding>; static;
     /// <summary>Treffer der Prüfregeln aus ARules für AText (Baum ATree), ohne die Baseline abzuziehen; so prüft
     /// auch atlas.updateBaseline (#97). Leer ohne Regeln.</summary>
     class function RuleFindings(const AText: string; ATree: TSyntaxTree;
       const ARules: TRuleCheckContext): TArray<TRuleFinding>; static;
-    /// <summary>Ein Regeltreffer als LSP-Diagnostic (code = Regelkennung). Der Aufrufer übernimmt das Objekt.</summary>
-    class function FindingToJson(const AFinding: TRuleFinding): TJSONObject; static;
-    /// <summary>Compilermeldung als LSP-Diagnostic; ALineText (falls bekannt) begrenzt den Bereich.
-    /// Der Aufrufer übernimmt das Objekt.</summary>
-    class function CompilerMessageToJson(const AMessage: TCompilerMessage; const ALineText: string;
-      AHasLineText: Boolean): TJSONObject; static;
     /// <summary>Parameter für publishDiagnostics zu ADocument (Pascal oder Formular) mit Regeln
     /// und Compilermeldungen. Threadsicher; der Aufrufer übernimmt das Objekt.</summary>
     function Compute(const ADocument: ITextDocument): TJSONObject; overload;
@@ -212,13 +213,6 @@ type
     /// <summary>Meldet die Compilermeldungen zu AFileNames neu: geöffnete Dokumente
     /// werden neu geprüft, für andere gehen nur die Compilermeldungen hinaus.</summary>
     procedure RefreshFiles(const AFileNames: TArray<string>);
-    /// <summary>Parameter mit leerer Liste, z. B. nach dem Schließen. Der Aufrufer übernimmt das Objekt.</summary>
-    class function BuildEmptyParams(const AUri: string): TJSONObject; static;
-    /// <summary>Auffällige uses-Einträge von AText als Diagnosen in AItems (#621); AInactive zählt nicht.</summary>
-    class procedure AddUsesDiagnostics(AItems: TJSONArray; const AText: string;
-      const AInactive: TArray<TTextRange>; const AContext: TUsesContext); static;
-    /// <summary>Name des Zustands in data.uses.state: unused, initialization, allowlist, implementation.</summary>
-    class function UsesStateName(AState: TUsesEntryState): string; static;
     /// <summary>Wird bei Ausnahmen beim Parsen im Hintergrund aufgerufen.</summary>
     property OnError: TProc<Exception> read GetOnError write SetOnError;
     /// <summary>Der Client holt Diagnosen selbst ab (#82): nichts senden, bei Änderungen
@@ -233,24 +227,17 @@ type
 implementation
 
 uses
-  System.Generics.Collections,
   System.Math,
   Atlas.Common.JsonRpc.Messages,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.Positions,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Rules.Scopes,
   Atlas.Common.Pascal.Preprocessor,
   Atlas.Common.Rules.Engine,
-  Atlas.Common.Rules.Checker,
-  Atlas.Common.Rules.Catalog,
-  Atlas.Common.Rules.Builtin.Deprecated,
-  Atlas.Common.Dfm.Contract,
-  Atlas.Common.Dfm.Parser,
-  Atlas.Common.Dfm.FormModel,
-  Atlas.Common.Lsp.FormFiles,
-  Atlas.Common.Pascal.Lexer;
+  Atlas.Common.Rules.Suppressions,
+  Atlas.Common.Rules.Builtin.DeadCode,
+  Atlas.Common.Rules.Checker;
 
 // Übernimmt AParams.
 procedure Send(const ATransport: IJsonRpcTransport; AParams: TJSONObject);
@@ -262,6 +249,66 @@ begin
     ATransport.WriteMessage(Notification);
   finally
     Notification.Free;
+  end;
+end;
+
+/// <summary>Parameter mit leerer Liste, z. B. nach dem Schließen.</summary>
+function EmptyParams(const AUri: string): TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('uri', AUri);
+  Result.AddPair('diagnostics', TJSONArray.Create);
+end;
+
+/// <summary>Inaktive Bereiche aus demselben Lauf wie der Baum in BuildParams (#860): kein zweiter
+/// Präprozessor-Lauf. AIssues: Befunde des Präprozessors (Include-Dateien).</summary>
+function InactiveOf(const ADocument: ITextDocument; const ADefines: TArray<string>;
+  out AIssues: TArray<TPreprocessorIssue>): TArray<TLspInactiveRegion>;
+var
+  mShared: ISharedSyntaxTree;
+begin
+  mShared := TSyntaxTreeCache.GetFor(ADocument, ADefines);
+  Result := TLspInactiveRegions.Regions(mShared.Processed, mShared.IncludesResolved, AIssues);
+end;
+
+/// <summary>Compilermeldungen zu Zeilen, die das Dokument hat, mit Zeilentext.</summary>
+procedure AddCompilerMessages(AItems: TJSONArray; const ADocument: ITextDocument;
+  const AMessages: TArray<TCompilerMessage>);
+var
+  mMessage: TCompilerMessage;
+begin
+  for mMessage in AMessages do
+  begin
+    if mMessage.Line < ADocument.LineCount then
+    begin
+      AItems.AddElement(TLspDiagnosticItems.CompilerMessageToJson(mMessage,
+        ADocument.LineText(Max(mMessage.Line, 0)), True));
+    end;
+  end;
+end;
+
+/// <summary>Treffer der Prüfregeln ohne die bekannten der Baseline (#97). Abbruch (ERuleCheckCancelled):
+/// Die bis dahin gesammelten Meldungen in AItems freigeben.</summary>
+procedure AddRuleFindings(AItems: TJSONArray; const AText: string; ATree: TSyntaxTree;
+  const ARules: TRuleCheckContext);
+var
+  mFindings: TArray<TRuleFinding>;
+  mFinding: TRuleFinding;
+begin
+  try
+    mFindings := TLspSyntaxDiagnostics.SharedRuleFindings(AText, ATree, ARules, ARules.Cancelled);
+  except
+    AItems.Free;
+    raise;
+  end;
+  // Routinen aus demselben Baum: Die Baseline braucht sie für ihren Schlüssel.
+  if ARules.Baseline <> nil then
+  begin
+    mFindings := ARules.Baseline.Filter(ARules.RelativePath, AText, TFindingScopes.FromTree(ATree), mFindings);
+  end;
+  for mFinding in mFindings do
+  begin
+    AItems.AddElement(TLspDiagnosticItems.FindingToJson(mFinding));
   end;
 end;
 
@@ -277,9 +324,13 @@ begin
   FSendLock := TObject.Create;
   FDebouncer := TDebouncer.Create(ADelayMs);
   if ADelayMs = 0 then
-    FRefreshDebouncer := TDebouncer.Create(0)
+  begin
+    FRefreshDebouncer := TDebouncer.Create(0);
+  end
   else
+  begin
     FRefreshDebouncer := TDebouncer.Create(RefreshDelayMs);
+  end;
 end;
 
 constructor TLspSyntaxDiagnostics.Create(const AStore: IDocumentStore; const ATransport: IJsonRpcTransport;
@@ -328,9 +379,13 @@ var
 begin
   Provider := FProviders.Version;
   if Assigned(Provider) then
-    Result := Provider(AUri)
+  begin
+    Result := Provider(AUri);
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function TLspSyntaxDiagnostics.CurrentTarget(const AUri: string; out APlatform, AConfig: string): Boolean;
@@ -366,122 +421,19 @@ begin
   Result := Assigned(Provider) and Provider(AUri, AContext);
 end;
 
-class function TLspSyntaxDiagnostics.UsesStateName(AState: TUsesEntryState): string;
-begin
-  case AState of
-    TUsesEntryState.KeptForInitialization:
-      Result := 'initialization';
-    TUsesEntryState.KeptByAllowlist:
-      Result := 'allowlist';
-    TUsesEntryState.OnlyImplementation:
-      Result := 'implementation';
-  else
-    Result := 'unused';
-  end;
-end;
-
-class procedure TLspSyntaxDiagnostics.AddUsesDiagnostics(AItems: TJSONArray; const AText: string;
-  const AInactive: TArray<TTextRange>; const AContext: TUsesContext);
-var
-  Entry: TUsesEntry;
-  Item, Data: TJSONObject;
-  Tags: TJSONArray;
-  Message: string;
-begin
-  for Entry in TUsesActions.Entries(TPascalLexer.Tokenize(AText), AInactive, AContext.Info, AContext.Keep) do
-  begin
-    case Entry.State of
-      TUsesEntryState.KeptForInitialization:
-        Message := UsesInitializationMessage;
-      TUsesEntryState.KeptByAllowlist:
-        Message := UsesAllowlistMessage;
-      TUsesEntryState.OnlyImplementation:
-        Message := UsesImplementationMessage;
-    else
-      Message := UsesUnusedMessage;
-    end;
-    Item := TJSONObject.Create;
-    Item.AddPair('range', TLspPositions.RangeToJson(Entry.Range));
-    Item.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Hint));
-    Item.AddPair('source', Source);
-    Item.AddPair('message', Format(Message, [Entry.Name]));
-    // Nur ungenutzte blendet der Editor ab.
-    if Entry.State = TUsesEntryState.Unused then
-    begin
-      Tags := TJSONArray.Create;
-      // DiagnosticTag.Unnecessary
-      Tags.Add(1);
-      Item.AddPair('tags', Tags);
-    end;
-    Data := TJSONObject.Create;
-    Data.AddPair('unit', Entry.Name);
-    Data.AddPair('state', UsesStateName(Entry.State));
-    Item.AddPair('data', TJSONObject.Create(TJSONPair.Create('uses', Data)));
-    AItems.AddElement(Item);
-  end;
-end;
-
 function TLspSyntaxDiagnostics.CurrentCompilerMessages(const AFileName: string): TArray<TCompilerMessage>;
 var
   Provider: TCompilerMessagesProvider;
 begin
   Provider := FProviders.CompilerMessages;
   if Assigned(Provider) then
-    Result := Provider(AFileName)
-  else
-    Result := nil;
-end;
-
-class function TLspSyntaxDiagnostics.CompilerMessageToJson(const AMessage: TCompilerMessage;
-  const ALineText: string; AHasLineText: Boolean): TJSONObject;
-var
-  Range: TTextRange;
-  First, Last: Integer;
-  Severity: Integer;
-begin
-  Range.StartPos := TTextPosition.Create(Max(AMessage.Line, 0), 0);
-  Range.EndPos := TTextPosition.Create(Max(AMessage.Line, 0) + 1, 0);
-  if AHasLineText then
   begin
-    if AMessage.Column >= 0 then
-    begin
-      // Ab der Spalte bis zum Ende des Bezeichners, mindestens ein Zeichen.
-      First := Min(AMessage.Column, Length(ALineText));
-      Last := First + 1;
-      while (Last < Length(ALineText)) and CharInSet(ALineText[Last + 1], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
-        Inc(Last);
-    end
-    else
-    begin
-      // Ganze Zeile ohne Einrückung.
-      First := 0;
-      while (First < Length(ALineText)) and CharInSet(ALineText[First + 1], [' ', #9]) do
-        Inc(First);
-      Last := Length(ALineText);
-    end;
-    Range.StartPos := TTextPosition.Create(Range.StartPos.Line, First);
-    Range.EndPos := TTextPosition.Create(Range.StartPos.Line, Max(Last, First));
+    Result := Provider(AFileName);
   end
-  else if AMessage.Column >= 0 then
-  begin
-    Range.StartPos := TTextPosition.Create(Range.StartPos.Line, AMessage.Column);
-    Range.EndPos := TTextPosition.Create(Range.StartPos.Line, AMessage.Column + 1);
-  end;
-  case AMessage.Severity of
-    TCompilerSeverity.Hint:
-      Severity := TLspDiagnosticSeverity.Hint;
-    TCompilerSeverity.Warning:
-      Severity := TLspDiagnosticSeverity.Warning;
   else
-    Severity := TLspDiagnosticSeverity.Error;
+  begin
+    Result := nil;
   end;
-  Result := TJSONObject.Create;
-  Result.AddPair('range', TLspPositions.RangeToJson(Range));
-  Result.AddPair('severity', TJSONNumber.Create(Severity));
-  if AMessage.Code <> '' then
-    Result.AddPair('code', AMessage.Code);
-  Result.AddPair('source', CompilerSource);
-  Result.AddPair('message', AMessage.Text);
 end;
 
 procedure TLspSyntaxDiagnostics.RefreshFiles(const AFileNames: TArray<string>);
@@ -495,9 +447,13 @@ begin
   if FPullMode then
   begin
     if Assigned(FOnPullFilesChanged) then
-      FOnPullFilesChanged(AFileNames)
+    begin
+      FOnPullFilesChanged(AFileNames);
+    end
     else if Assigned(FOnPullChanged) then
+    begin
       FOnPullChanged();
+    end;
     Exit;
   end;
   for FileName in AFileNames do
@@ -510,7 +466,9 @@ begin
     end;
     Items := TJSONArray.Create;
     for Item in CurrentCompilerMessages(FileName) do
-      Items.AddElement(CompilerMessageToJson(Item, '', False));
+    begin
+      Items.AddElement(TLspDiagnosticItems.CompilerMessageToJson(Item, '', False));
+    end;
     Params := TJSONObject.Create;
     Params.AddPair('uri', Uri);
     Params.AddPair('diagnostics', Items);
@@ -523,7 +481,9 @@ begin
         ScheduleParse(Document);
       end
       else
+      begin
         Send(FTransport, Params);
+      end;
     finally
       TMonitor.Exit(FSendLock);
     end;
@@ -537,12 +497,18 @@ begin
   if FPullMode then
   begin
     if Assigned(FOnPullChanged) then
+    begin
       FOnPullChanged();
+    end;
     Exit;
   end;
   for Document in FStore.Documents do
+  begin
     if not SameText(ExtractFileExt(Document.Uri), '.json') then
+    begin
       ScheduleParse(Document);
+    end;
+  end;
 end;
 
 procedure TLspSyntaxDiagnostics.RefreshLater;
@@ -559,7 +525,9 @@ begin
   // JSON-Dateien wie atlas.json prüft TLspConfiguration.
   // Im Pull-Modus fragt der Client nach Änderungen selbst nach.
   if SameText(ExtractFileExt(ADocument.Uri), '.json') or FPullMode then
+  begin
     Exit;
+  end;
   case AKind of
     TDocumentEventKind.Opened, TDocumentEventKind.Changed:
       ScheduleParse(ADocument);
@@ -568,7 +536,7 @@ begin
         TMonitor.Enter(FSendLock);
         try
           FDebouncer.Cancel(ADocument.Uri);
-          Send(FTransport, BuildEmptyParams(ADocument.Uri));
+          Send(FTransport, EmptyParams(ADocument.Uri));
         finally
           TMonitor.Exit(FSendLock);
         end;
@@ -602,76 +570,69 @@ end;
 
 function TLspSyntaxDiagnostics.Compute(const ADocument: ITextDocument; const ACancelled: TRuleCancelled): TJSONObject;
 var
-  Defines: TArray<string>;
-  Inactive: TArray<TLspInactiveRegion>;
-  Rules: TRuleCheckContext;
-  Platform, Config: string;
-  Items: TJSONArray;
-  Compiled: TCompilerMessage;
-  Form: TDfmDocument;
-  Issues: TArray<TPreprocessorIssue>;
-  Issue: TPreprocessorIssue;
-  Item: TJSONObject;
-  UsesContext: TUsesContext;
-  HasSyntaxErrors: Boolean;
-  Shared: ISharedSyntaxTree;
+  mInput: TSyntaxDiagnosticsInput;
+  mIssues: TArray<TPreprocessorIssue>;
+  mIssue: TPreprocessorIssue;
+  mItems: TJSONArray;
+  mHasRules: Boolean;
 begin
-  // Formulardateien (#44): nur Lesefehler der DFM, keine Pascal-Prüfungen.
-  if TDfmParser.IsFormFile(ADocument.Uri) then
+  if TLspDiagnosticItems.TryFormParams(ADocument.Uri, ADocument.Text, Result) then
   begin
-    Form := TDfmParser.Parse(ADocument.Text);
-    try
-      Result := TJSONObject.Create;
-      Result.AddPair('uri', ADocument.Uri);
-      // Binär gespeichert (#122): ein Hinweis statt Lesefehlern.
-      if TFormModel.IsBinary(ADocument.Text) then
-        Result.AddPair('diagnostics', TLspFormFiles.BinaryDiagnostics)
-      else
-        Result.AddPair('diagnostics', TLspFormFiles.BuildDiagnostics(Form));
-    finally
-      Form.Free;
-    end;
     Exit;
   end;
-  Inactive := nil;
-  Issues := nil;
-  if CurrentDefines(ADocument.Uri, Defines) then
+  mInput := Default(TSyntaxDiagnosticsInput);
+  mIssues := nil;
+  if CurrentDefines(ADocument.Uri, mInput.Defines) then
   begin
-    // Derselbe Lauf wie der Baum in BuildParams (#860): kein zweiter Präprozessor-Lauf.
-    Shared := TSyntaxTreeCache.GetFor(ADocument, Defines);
-    Inactive := TLspInactiveRegions.Regions(Shared.Processed, Shared.IncludesResolved, Issues);
-  end
-  else
-    Defines := nil;
-  if not CurrentRules(ADocument.Uri, Rules) then
-    Rules := Default(TRuleCheckContext);
-  Rules.Cancelled := ACancelled;
-  CurrentTarget(ADocument.Uri, Platform, Config);
-  Result := BuildParams(ADocument, Inactive, CurrentVersion(ADocument.Uri), Rules, Platform, Config, Defines);
-  Items := Result.GetValue('diagnostics') as TJSONArray;
-  for Issue in Issues do
-  begin
-    Item := TJSONObject.Create;
-    Item.AddPair('range', TLspPositions.RangeToJson(Issue.Range));
-    if Issue.Kind = TPreprocessorIssueKind.IncludeCycle then
-      Item.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Warning))
-    else
-      Item.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Hint));
-    Item.AddPair('source', Source);
-    Item.AddPair('message', Issue.Message);
-    Items.AddElement(Item);
+    mInput.Inactive := InactiveOf(ADocument, mInput.Defines, mIssues);
   end;
-  // Ungenutzte uses (#621): nicht bei Syntaxfehlern, dann fehlen Bezeichner. Entscheidend ist der Baum, nicht
-  // die Meldungen: Auch mit abgeschalteter Regel "syntax" (#1022) wäre die Auswertung unsicher.
-  if CurrentUses(ADocument.Uri, UsesContext) then
+  mHasRules := CurrentRules(ADocument.Uri, mInput.Rules);
+  if not mHasRules then
   begin
-    HasSyntaxErrors := Length(TSyntaxTreeCache.GetFor(ADocument, Defines).Tree.Diagnostics) > 0;
-    if not HasSyntaxErrors then
-      AddUsesDiagnostics(Items, ADocument.Text, TLspInactiveRegions.RangesOf(Inactive), UsesContext);
+    mInput.Rules := Default(TRuleCheckContext);
   end;
-  for Compiled in CurrentCompilerMessages(TDocumentUris.ToPath(ADocument.Uri)) do
-    if Compiled.Line < ADocument.LineCount then
-      Items.AddElement(CompilerMessageToJson(Compiled, ADocument.LineText(Max(Compiled.Line, 0)), True));
+  mInput.Rules.Cancelled := ACancelled;
+  mInput.DelphiVersion := CurrentVersion(ADocument.Uri);
+  CurrentTarget(ADocument.Uri, mInput.Platform, mInput.Config);
+  Result := BuildParams(ADocument, mInput);
+  mItems := Result.GetValue('diagnostics') as TJSONArray;
+  for mIssue in mIssues do
+  begin
+    mItems.AddElement(TLspDiagnosticItems.IssueToJson(mIssue));
+  end;
+  AddUnusedUses(mItems, ADocument, mInput, mHasRules);
+  AddCompilerMessages(mItems, ADocument, CurrentCompilerMessages(TDocumentUris.ToPath(ADocument.Uri)));
+end;
+
+procedure TLspSyntaxDiagnostics.AddUnusedUses(AItems: TJSONArray; const ADocument: ITextDocument;
+  const AInput: TSyntaxDiagnosticsInput; AHasRules: Boolean);
+var
+  mUses: TUsesContext;
+  mTree: ISharedSyntaxTree;
+  mSuppressions: TSuppressions;
+begin
+  // Das Abblenden ist die Darstellung von unused-uses im Editor (#1135): Mit der Regel aus, für ausgeschlossene
+  // Dateien und unter lsp-ignore bleibt es weg wie ihre Treffer. Ohne Regelkontext gelten die Vorgaben (an).
+  if not CurrentUses(ADocument.Uri, mUses) or (AHasRules and not TRuleEngine.RuleOn(UnusedUsesRuleId,
+    AInput.Rules.Settings, AInput.Rules.RelativePath, ChangeFileExt(ExtractFileName(AInput.Rules.FileName), '')))
+    then
+  begin
+    Exit;
+  end;
+  // Nicht bei Syntaxfehlern, dann fehlen Bezeichner. Entscheidend ist der Baum, nicht die Meldungen: Auch mit
+  // abgeschalteter Regel "syntax" (#1022) wäre die Auswertung unsicher.
+  mTree := TSyntaxTreeCache.GetFor(ADocument, AInput.Defines);
+  if Length(mTree.Tree.Diagnostics) > 0 then
+  begin
+    Exit;
+  end;
+  mSuppressions := TSuppressions.Create(mTree.Tree.Tokens);
+  try
+    TLspDiagnosticItems.AddUses(AItems, ADocument.Text, TLspInactiveRegions.RangesOf(AInput.Inactive), mUses,
+      mSuppressions);
+  finally
+    mSuppressions.Free;
+  end;
 end;
 
 procedure TLspSyntaxDiagnostics.Publish(const ADocument: ITextDocument);
@@ -693,9 +654,13 @@ begin
   try
     // Inzwischen geändert oder geschlossen: Der neuere Stand meldet selbst.
     if IsCurrent(ADocument) then
-      Send(FTransport, Params)
+    begin
+      Send(FTransport, Params);
+    end
     else
+    begin
       Params.Free;
+    end;
   finally
     TMonitor.Exit(FSendLock);
   end;
@@ -709,198 +674,78 @@ end;
 class function TLspSyntaxDiagnostics.BuildParams(const ADocument: ITextDocument;
   const AInactive: TArray<TTextRange>): TJSONObject;
 begin
-  Result := BuildParams(ADocument, AInactive, '');
-end;
-
-class function TLspSyntaxDiagnostics.BuildParams(const ADocument: ITextDocument;
-  const AInactive: TArray<TTextRange>; const ADelphiVersion: string): TJSONObject;
-begin
-  Result := BuildParams(ADocument, AInactive, ADelphiVersion, Default(TRuleCheckContext));
-end;
-
-class function TLspSyntaxDiagnostics.FindingToJson(const AFinding: TRuleFinding): TJSONObject;
-var
-  Severity: Integer;
-  Tags: TJSONArray;
-  Data: TJSONObject;
-  Entry: TRuleCatalogEntry;
-  Fix: TRuleFix;
-  Codes: TJSONArray;
-  Code: string;
-  Related: TRuleRelated;
-  RelatedItems: TJSONArray;
-  Location, RelatedItem: TJSONObject;
-begin
-  case AFinding.Severity of
-    TRuleSeverity.Error:
-      Severity := TLspDiagnosticSeverity.Error;
-    TRuleSeverity.Warning:
-      Severity := TLspDiagnosticSeverity.Warning;
-    TRuleSeverity.Information:
-      Severity := TLspDiagnosticSeverity.Information;
-  else
-    Severity := TLspDiagnosticSeverity.Hint;
-  end;
-  Result := TJSONObject.Create;
-  Result.AddPair('range', TLspPositions.RangeToJson(AFinding.Range));
-  Result.AddPair('severity', TJSONNumber.Create(Severity));
-  Result.AddPair('code', AFinding.RuleId);
-  Result.AddPair('codeDescription', TJSONObject.Create(
-    TJSONPair.Create('href', TRuleCatalog.HelpUri(AFinding.RuleId))));
-  Result.AddPair('source', Source);
-  // Konfidenz als eigenes Feld, der Meldungstext bleibt unverändert (#144).
-  Result.AddPair('message', AFinding.Message);
-  Data := TJSONObject.Create(TJSONPair.Create('confidence', ConfidenceName(AFinding.Confidence)));
-  // Fenster „Atlas-Prüfung“ und Befund-Hover (#909): Kategorie und Gruppe aus dem Katalog, Titel der
-  // bevorzugten Schnellkorrektur.
-  if TRuleCatalog.Shared.TryFind(AFinding.RuleId, Entry) then
-  begin
-    Data.AddPair('category', TRuleCatalog.CategoryName(Entry.Category));
-    Data.AddPair('group', TRuleCatalog.GroupName(Entry.Group));
-    // Gruppe „Compiler vorab“ (#1024): Codes für den Abgleich mit dcc und die Spalte „Compiler“ im Plugin.
-    if Length(Entry.CompilerCodes) > 0 then
-    begin
-      Codes := TJSONArray.Create;
-      for Code in Entry.CompilerCodes do
-        Codes.Add(Code);
-      Data.AddPair('compilerCodes', Codes);
-    end;
-  end;
-  // Wie Rules.CodeActions: bevorzugt ist nur die erste Korrektur, wenn sie keine Alternative ist.
-  if Length(AFinding.Fixes) > 0 then
-  begin
-    Fix := AFinding.Fixes[0];
-    if not Fix.Alternative then
-      Data.AddPair('fix', Fix.Title);
-  end;
-  // Zusatz für den Befund-Hover, z. B. der durchsuchte Bereich projektweiter Regeln (#1102).
-  if AFinding.Details <> '' then
-    Data.AddPair('details', AFinding.Details);
-  Result.AddPair('data', Data);
-  // Weitere Stellen (#896), z. B. die uses-Einträge eines Zyklus: anklickbar im Befund-Hover.
-  if AFinding.Related <> nil then
-  begin
-    RelatedItems := TJSONArray.Create;
-    for Related in AFinding.Related do
-    begin
-      Location := TJSONObject.Create;
-      Location.AddPair('uri', TDocumentUris.FromPath(Related.FileName));
-      Location.AddPair('range', TLspPositions.RangeToJson(Related.Range));
-      RelatedItem := TJSONObject.Create;
-      RelatedItem.AddPair('location', Location);
-      RelatedItem.AddPair('message', Related.Message);
-      RelatedItems.AddElement(RelatedItem);
-    end;
-    Result.AddPair('relatedInformation', RelatedItems);
-  end;
-  // Veraltete Symbole durchgestrichen (#38), aber nicht platform, library oder experimental (#1018).
-  if (AFinding.RuleId = DeprecatedSymbolRuleId) and TDeprecatedSymbolRule.IsDeprecation(AFinding.Message) then
-  begin
-    Tags := TJSONArray.Create;
-    // DiagnosticTag.Deprecated
-    Tags.Add(2);
-    Result.AddPair('tags', Tags);
-  end;
+  Result := BuildParams(ADocument, AInactive, '', Default(TRuleCheckContext));
 end;
 
 class function TLspSyntaxDiagnostics.BuildParams(const ADocument: ITextDocument;
   const AInactive: TArray<TTextRange>; const ADelphiVersion: string; const ARules: TRuleCheckContext): TJSONObject;
-begin
-  Result := BuildParams(ADocument, TLspInactiveRegions.FromRanges(AInactive), ADelphiVersion, ARules, '', '');
-end;
-
-class function TLspSyntaxDiagnostics.InactiveMessageOf(const ACondition, APlatform, AConfig: string): string;
 var
-  Platform, Config: string;
+  mInput: TSyntaxDiagnosticsInput;
 begin
-  if ACondition = '' then
-    Exit(InactiveMessage);
-  Result := Format(InactiveConditionMessage, [ACondition]);
-  if (APlatform = '') and (AConfig = '') then
-    Exit;
-  Platform := APlatform;
-  Config := AConfig;
-  if Platform = '' then
-    Platform := '?';
-  if Config = '' then
-    Config := '?';
-  Result := Result + Format(InactiveTargetSuffix, [Platform, Config]);
+  mInput := Default(TSyntaxDiagnosticsInput);
+  mInput.Inactive := TLspInactiveRegions.FromRanges(AInactive);
+  mInput.DelphiVersion := ADelphiVersion;
+  mInput.Rules := ARules;
+  Result := BuildParams(ADocument, mInput);
 end;
 
 class function TLspSyntaxDiagnostics.BuildParams(const ADocument: ITextDocument;
-  const AInactive: TArray<TLspInactiveRegion>; const ADelphiVersion: string; const ARules: TRuleCheckContext;
-  const APlatform, AConfig: string): TJSONObject;
-begin
-  Result := BuildParams(ADocument, AInactive, ADelphiVersion, ARules, APlatform, AConfig, nil);
-end;
-
-class function TLspSyntaxDiagnostics.BuildParams(const ADocument: ITextDocument;
-  const AInactive: TArray<TLspInactiveRegion>; const ADelphiVersion: string; const ARules: TRuleCheckContext;
-  const APlatform, AConfig: string; const ADefines: TArray<string>): TJSONObject;
+  const AInput: TSyntaxDiagnosticsInput): TJSONObject;
 var
-  RuleFinding: TRuleFinding;
-  Findings: TArray<TRuleFinding>;
-var
-  Region: TLspInactiveRegion;
-  Data: TJSONObject;
-  Tags: TJSONArray;
-  Tree: TSyntaxTree;
-  Shared: ISharedSyntaxTree;
-  Items: TJSONArray;
-  Item: TJSONObject;
+  mFinding: TRuleFinding;
+  mRegion: TLspInactiveRegion;
+  mTree: TSyntaxTree;
+  mItems: TJSONArray;
 begin
-  Items := TJSONArray.Create;
+  mItems := TJSONArray.Create;
   // Baum nur aus den aktiven Zweigen (#845): Inaktive Zweige erzeugen keine Syntaxfehler, und Regeln
   // sehen den Code, den der Compiler übersetzt. Mit den Symbolen des Projekts ist es der Baum aus Get.
-  Shared := TSyntaxTreeCache.GetFor(ADocument, ADefines);
-  Tree := Shared.Tree;
+  mTree := TSyntaxTreeCache.GetFor(ADocument, AInput.Defines).Tree;
   // Syntaxfehler als Treffer der Regel "syntax" (#1022): Schweregrad und Gruppe aus der Konfiguration,
   // Code und Korrektur wie bei den übrigen Regeln. Ohne Konfiguration gilt Default = Fehler.
-  for RuleFinding in TFileChecker.SyntaxFindings(Tree.Diagnostics, ARules.Settings) do
-    Items.AddElement(FindingToJson(RuleFinding));
-  // Merkmale in inaktiven Zweigen ({$IF CompilerVersion >= …}) sind gewollt (#109). Als Treffer der Regel
-  // language-feature wie im Linter und in den MCP-Werkzeugen (#1126); ADelphiVersion ist der Sprachstand.
-  for RuleFinding in TFileChecker.LanguageFeatureFindings(Tree, ARules.Settings, ADelphiVersion,
-    TLspInactiveRegions.RangesOf(AInactive)) do
-    Items.AddElement(FindingToJson(RuleFinding));
-  if Length(ARules.Rules) > 0 then
+  for mFinding in TFileChecker.SyntaxFindings(mTree.Diagnostics, AInput.Rules.Settings) do
   begin
-    // Abbruch (ERuleCheckCancelled): Die bis dahin gesammelten Meldungen freigeben.
-    try
-      Findings := RuleFindings(ADocument.Text, Tree, ARules);
-    except
-      Items.Free;
-      raise;
-    end;
-    // Routinen aus demselben Baum: Die Baseline (#97) braucht sie für ihren Schlüssel.
-    if ARules.Baseline <> nil then
-      Findings := ARules.Baseline.Filter(ARules.RelativePath, ADocument.Text, TFindingScopes.FromTree(Tree), Findings);
-    for RuleFinding in Findings do
-      Items.AddElement(FindingToJson(RuleFinding));
+    mItems.AddElement(TLspDiagnosticItems.FindingToJson(mFinding));
   end;
-  for Region in AInactive do
+  // Merkmale in inaktiven Zweigen ({$IF CompilerVersion >= …}) sind gewollt (#109). Als Treffer der Regel
+  // language-feature wie im Linter und in den MCP-Werkzeugen (#1126); DelphiVersion ist der Sprachstand.
+  for mFinding in TFileChecker.LanguageFeatureFindings(mTree, AInput.Rules.Settings, AInput.DelphiVersion,
+    TLspInactiveRegions.RangesOf(AInput.Inactive)) do
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('range', TLspPositions.RangeToJson(Region.Range));
-    Item.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Hint));
-    Item.AddPair('source', Source);
-    Item.AddPair('message', InactiveMessageOf(Region.Condition, APlatform, AConfig));
-    Tags := TJSONArray.Create;
-    // DiagnosticTag.Unnecessary
-    Tags.Add(1);
-    Item.AddPair('tags', Tags);
-    // Einzeln für Clients, die den Hinweis selbst setzen (Plugin, übersetzt).
-    Data := TJSONObject.Create;
-    Data.AddPair('condition', Region.Condition);
-    Data.AddPair('platform', APlatform);
-    Data.AddPair('config', AConfig);
-    Item.AddPair('data', TJSONObject.Create(TJSONPair.Create('inactive', Data)));
-    Items.AddElement(Item);
+    mItems.AddElement(TLspDiagnosticItems.FindingToJson(mFinding));
+  end;
+  if Length(AInput.Rules.Rules) > 0 then
+  begin
+    AddRuleFindings(mItems, ADocument.Text, mTree, AInput.Rules);
+  end;
+  for mRegion in AInput.Inactive do
+  begin
+    mItems.AddElement(TLspDiagnosticItems.InactiveToJson(mRegion, AInput.Platform, AInput.Config));
   end;
   Result := TJSONObject.Create;
   Result.AddPair('uri', ADocument.Uri);
   Result.AddPair('version', TJSONNumber.Create(ADocument.Version));
-  Result.AddPair('diagnostics', Items);
+  Result.AddPair('diagnostics', mItems);
+end;
+
+/// <summary>Lauf der Prüfregeln für Obtain.</summary>
+function RuleRun(const AText: string; ATree: TSyntaxTree; const ARules: TRuleCheckContext): TRuleFindingsRun;
+begin
+  Result :=
+    function: TArray<TRuleFinding>
+    begin
+      Result := TLspSyntaxDiagnostics.RuleFindings(AText, ATree, ARules);
+    end;
+end;
+
+class function TLspSyntaxDiagnostics.SharedRuleFindings(const AText: string; ATree: TSyntaxTree;
+  const ARules: TRuleCheckContext; const AWaitCancelled: TRuleCancelled): TArray<TRuleFinding>;
+begin
+  if (ARules.Memo = nil) or (ARules.FileName = '') or (Length(ARules.Rules) = 0) then
+  begin
+    Exit(RuleFindings(AText, ATree, ARules));
+  end;
+  Result := ARules.Memo.Obtain(ARules.FileName, AText, RuleRun(AText, ATree, ARules), AWaitCancelled);
 end;
 
 class function TLspSyntaxDiagnostics.RuleFindings(const AText: string; ATree: TSyntaxTree;
@@ -909,7 +754,9 @@ var
   Context: TRuleContext;
 begin
   if Length(ARules.Rules) = 0 then
+  begin
     Exit(nil);
+  end;
   Context := Default(TRuleContext);
   Context.RelativePath := ARules.RelativePath;
   Context.UnitName := ChangeFileExt(ExtractFileName(StringReplace(ARules.RelativePath, '/', '\', [rfReplaceAll])), '');
@@ -928,13 +775,6 @@ begin
   Context.Cancelled := ARules.Cancelled;
   Context.Live := ARules.Live;
   Result := TRuleEngine.Run(ARules.Rules, ARules.Settings, Context);
-end;
-
-class function TLspSyntaxDiagnostics.BuildEmptyParams(const AUri: string): TJSONObject;
-begin
-  Result := TJSONObject.Create;
-  Result.AddPair('uri', AUri);
-  Result.AddPair('diagnostics', TJSONArray.Create);
 end;
 
 end.

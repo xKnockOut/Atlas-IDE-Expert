@@ -15,11 +15,15 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Debugger')]
   TAtlasDebugExceptionBarTests = class
   private
     FForm: TForm;
     FBar: TAtlasDebugExceptionBar;
   public
+    /// <summary>Einmal-Belegungen vorwegnehmen; sie gehören nicht in die Leckmessung.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure SetUp;
     [TearDown]
@@ -64,6 +68,16 @@ begin
 end;
 
 { TAtlasDebugExceptionBarTests }
+
+procedure TAtlasDebugExceptionBarTests.WarmUpFirstUse;
+begin
+  SetUp;
+  try
+    KeepsHeightAndShowsDetail;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TAtlasDebugExceptionBarTests.SetUp;
 begin
@@ -183,8 +197,10 @@ begin
   Explanation.Busy := False;
   Explanation.Headline := 'Auftrag.Kunde ist nil';
   for Index := 1 to 8 do
+  begin
     Explanation.Lines := Explanation.Lines + [TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Ok,
       'Glied ' + IntToStr(Index))];
+  end;
   Explanation.CopyText := 'Text';
   FBar.SetExplanation(Explanation);
   Assert.AreEqual(3 + 1 + 6 + 1 + 1, FBar.Rows);

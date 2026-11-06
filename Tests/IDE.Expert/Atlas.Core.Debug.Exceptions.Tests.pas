@@ -14,6 +14,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Debugger')]
   TAtlasDebugExceptionsTests = class
   private
     FHistory: TAtlasDebugExceptionHistory;
@@ -66,7 +67,8 @@ uses
 
 function Sample(ATime: TDateTime; const AClass, AMessage, AFile: string; ALine: Integer): TAtlasDebugException;
 begin
-  Result := TAtlasDebugException.Create(ATime, AClass, AMessage, 1234, '', AFile, ALine, 'Unit1.TForm1.Button1Click');
+  Result := TAtlasDebugException.Create(ATime, AClass, AMessage, 1234, '').At(AFile, ALine,
+    'Unit1.TForm1.Button1Click');
 end;
 
 { TAtlasDebugExceptionsTests }
@@ -112,8 +114,8 @@ procedure TAtlasDebugExceptionsTests.WithoutFileRoutineSeparates;
 var
   First, Second, Found: TAtlasDebugException;
 begin
-  First := TAtlasDebugException.Create(1, 'EOSError', '', 1, '', '', 0, 'System.SysUtils.RaiseLastOSError');
-  Second := TAtlasDebugException.Create(2, 'EOSError', '', 1, '', '', 0, 'Vcl.Forms.TApplication.Run');
+  First := TAtlasDebugException.Create(1, 'EOSError', '', 1, '').At('', 0, 'System.SysUtils.RaiseLastOSError');
+  Second := TAtlasDebugException.Create(2, 'EOSError', '', 1, '').At('', 0, 'Vcl.Forms.TApplication.Run');
   FHistory.Add(First);
   FHistory.Add(Second);
   Assert.AreEqual(2, FHistory.Count, 'ohne Datei unterscheidet die Routine');

@@ -70,7 +70,9 @@ begin
   Statistics := TJsonRpcStatistics.Create;
   Assert.AreEqual(0, Integer(Length(Statistics.Recent)));
   for Index := 1 to TJsonRpcStatistics.RecentCapacity + 7 do
+  begin
     Statistics.Add('m' + IntToStr(Index), Index, Index mod 2 = 0);
+  end;
   Recent := Statistics.Recent;
   Assert.AreEqual(TJsonRpcStatistics.RecentCapacity, Integer(Length(Recent)));
   // Die ältesten sieben sind verdrängt, Reihenfolge älteste zuerst.
@@ -90,7 +92,9 @@ begin
   Lines := Sink;
   Assert.AreEqual(0, Integer(Length(Lines.Lines)));
   for Index := 1 to 5 do
+  begin
     Sink.Write(TLogEntry.Create(Now, TLogLevel.Info, 'Zeile ' + IntToStr(Index)));
+  end;
   Assert.AreEqual(3, Integer(Length(Lines.Lines)));
   Assert.EndsWith('Zeile 3', Lines.Lines[0]);
   Assert.EndsWith('Zeile 5', Lines.Lines[2]);
@@ -161,8 +165,9 @@ begin
   Assert.DoesNotContain(Text, 'D:\Tools', True);
   Assert.DoesNotContain(Text, Secret);
   Assert.DoesNotContain(Text, 'marco', True);
-  Assert.Contains(Text, '<ws>\App.dproj');
-  Assert.Contains(Text, '<ws>/Main.pas');
+  // Unter dem Arbeitsbereich bleiben nur Wurzel und Endung (#1478).
+  Assert.Contains(Text, '<ws>/<datei>.dproj');
+  Assert.Contains(Text, '<ws>/<datei>.pas');
   Assert.Contains(Text, 'anonymisiert');
   Assert.Contains(Text, 'Server: 0.1.0');
   Assert.Contains(Text, 'IDE 37.0');
@@ -172,8 +177,8 @@ procedure TBugReportTests.AnonymizesPathsUsersAndQuotedValues;
 begin
   Assert.AreEqual('Datei <pfad> und <pfad> fehlt',
     TBugReport.AnonymizePaths('Datei E:\Andere\a.pas und \\server\share\b.inc fehlt', [Root], []));
-  Assert.AreEqual('<ws>\src\a.pas', TBugReport.AnonymizePaths(Root + '\src\a.pas', [Root], []));
-  Assert.AreEqual('"<ws>\\src"', TBugReport.AnonymizePaths('"C:\\Projekte\\Geheim\\src"', [Root], []));
+  Assert.AreEqual('<ws>/<datei>.pas', TBugReport.AnonymizePaths(Root + '\src\a.pas', [Root], []));
+  Assert.AreEqual('"<ws>/<datei>"', TBugReport.AnonymizePaths('"C:\\Projekte\\Geheim\\src"', [Root], []));
   Assert.AreEqual('Zeit 10:00:01, http://x.de', TBugReport.AnonymizePaths('Zeit 10:00:01, http://x.de', [Root], []));
   Assert.AreEqual('Hallo <benutzer>', TBugReport.AnonymizePaths('Hallo Marco', [], ['marco', 'ab']));
   Assert.AreEqual('Unit "<wert>" und „<wert>“, don''t',

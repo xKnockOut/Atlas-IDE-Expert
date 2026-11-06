@@ -96,7 +96,9 @@ var
 begin
   Current := FIndex.Generation;
   if (FGraph <> nil) and (Current = FGeneration) then
+  begin
     Exit;
+  end;
   if FGraph = nil then
   begin
     FGraph := TUsesGraph.Create(FIndex.Units, FOptions);

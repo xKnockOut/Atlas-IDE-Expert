@@ -42,7 +42,25 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Editing.ResourceStrings;
+  Atlas.Common.Editing.ResourceStrings,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TResourceStringCommandsText = (AlreadyExistsThereWithA, TheUnitHasNoImplementation, FileNameAndValueExpected,
+    InvalidNameOrEmptyValue, FileNotReadable);
+
+const
+  cTexts: array[TResourceStringCommandsText] of TAtlasText = (
+    (De: '%s gibt es dort schon mit anderem Text'; En: '%s already exists there with a different text'),
+    (De: 'Die Unit hat keinen implementation-Teil'; En: 'The unit has no implementation part'),
+    (De: 'Erwartet werden Datei, Name und Wert'; En: 'File, name and value expected'),
+    (De: 'Ungültiger Name oder leerer Wert'; En: 'Invalid name or empty value'),
+    (De: 'Datei nicht lesbar: '; En: 'File not readable: '));
+
+{$SCOPEDENUMS OFF}
 
 class function TResourceStringCommands.AddEdit(const AText, AName, AValue: string; out AEdit: TTextEdit): Boolean;
 var
@@ -53,19 +71,28 @@ begin
   AEdit := Default(TTextEdit);
   Tokens := TPascalLexer.Tokenize(AText);
   for Entry in TResourceStrings.Entries(AText, Tokens) do
+  begin
     if SameText(Entry.Name, AName) then
     begin
       if Entry.Value = AValue then
+      begin
         Exit(False);
+      end;
       raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-        Format('%s gibt es dort schon mit anderem Text', [AName]));
+        cTexts[TResourceStringCommandsText.AlreadyExistsThereWithA].Fmt([AName]));
     end;
+  end;
   LineBreak := #10;
   if Pos(#13#10, AText) > 0 then
+  begin
     LineBreak := #13#10;
-  if not TResourceStrings.Insertion(AText, Tokens, True, -1, Format('%s = %s;', [AName, AValue]), LineBreak,
-    AEdit) then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Die Unit hat keinen implementation-Teil');
+  end;
+  if not TResourceStrings.Insertion(AText, Tokens, TResourcePlace.Create(True, -1), Format('%s = %s;', [AName, AValue]),
+    LineBreak, AEdit) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TResourceStringCommandsText.TheUnitHasNoImplementation].Text);
+  end;
   Result := True;
 end;
 
@@ -80,7 +107,9 @@ class function TResourceStringCommands.Applied(const AText: string; const AEdit:
     while (Line < APosition.Line) and (Index <= Length(AText)) do
     begin
       if AText[Index] = #10 then
+      begin
         Inc(Line);
+      end;
       Inc(Index);
     end;
     Result := Index - 1 + APosition.Character;
@@ -102,14 +131,23 @@ var
 begin
   if (AArguments = nil) or (AArguments.Count < 3) or not (AArguments.Items[0] is TJSONString) or
     not (AArguments.Items[1] is TJSONString) or not (AArguments.Items[2] is TJSONString) then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Erwartet werden Datei, Name und Wert');
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TResourceStringCommandsText.FileNameAndValueExpected].Text);
+  end;
   FileName := AArguments.Items[0].Value;
   Name := AArguments.Items[1].Value;
   Value := AArguments.Items[2].Value;
   if not IsValidIdent(Name) or (Value = '') then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Ungültiger Name oder leerer Wert');
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TResourceStringCommandsText.InvalidNameOrEmptyValue].Text);
+  end;
   if not ARead(FileName, Text) then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Datei nicht lesbar: ' + ExtractFileName(FileName));
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TResourceStringCommandsText.FileNotReadable].Text + ExtractFileName(FileName));
+  end;
   if AddEdit(Text, Name, Value, Edit) then
   begin
     AWrite(FileName, Applied(Text, Edit), Edit);
@@ -117,5 +155,8 @@ begin
   end;
   Result := TJSONBool.Create(False);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.ResourceStringCommands', cTexts);
 
 end.

@@ -64,20 +64,28 @@ begin
   TMonitor.Enter(FLock);
   try
     for Key in FByFile.Keys do
+    begin
       Files.AddOrSetValue(Key, FByFile[Key][0].FileName);
+    end;
     FByFile.Clear;
     FGeneral := nil;
     for Item in AMessages do
+    begin
       if Item.FileName = '' then
-        FGeneral := FGeneral + [Item]
+      begin
+        FGeneral := FGeneral + [Item];
+      end
       else
       begin
         Key := KeyOf(Item.FileName);
         if not FByFile.TryGetValue(Key, Existing) then
+        begin
           Existing := nil;
+        end;
         FByFile.AddOrSetValue(Key, Existing + [Item]);
         Files.AddOrSetValue(Key, Item.FileName);
       end;
+    end;
     Result := Files.Values.ToArray;
   finally
     TMonitor.Exit(FLock);
@@ -90,7 +98,9 @@ begin
   TMonitor.Enter(FLock);
   try
     if not FByFile.TryGetValue(KeyOf(AFileName), Result) then
+    begin
       Result := nil;
+    end;
   finally
     TMonitor.Exit(FLock);
   end;

@@ -61,6 +61,27 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Lsp.DocWiki;
 
+const
+  /// <summary>Schlüssel je Art; classref ergibt sich aus der Deklaration (KindOf).</summary>
+  cKindNames: array[TIndexSymbolKind] of string = ('class', 'object', 'record', 'interface', 'helper',
+    'enum', 'type', 'enumMember', 'constant', 'variable', 'field', 'property', 'method', 'constructor',
+    'routine');
+
+/// <summary>True, wenn der Name ab ATokens[AIndex] ein Typverweis sein kann: nicht nach einem Punkt
+/// (Mitgliedszugriff) und nicht der deklarierte Name ASelf.</summary>
+function MayReferType(const ATokens: TArray<TPascalToken>; AIndex: Integer; const AName, ASelf: string): Boolean;
+begin
+  Result := not ((AIndex > 0) and ATokens[AIndex - 1].IsSymbol('.')) and not SameText(AName, ASelf);
+end;
+
+/// <summary>AName ist ein eigener Typ mit Fundort (kein eingebauter).</summary>
+function ResolvesToSourceType(AResolver: TNameResolver; const AUnit: TUnitIndex; const AName: string;
+  out AResolved: TResolvedSymbol): Boolean;
+begin
+  Result := AResolver.ResolveTypeFrom(AUnit, AName, AResolved) and AResolved.IsType and
+    not AResolved.Builtin and (AResolved.FileName <> '');
+end;
+
 class function TLspHoverTypes.FromResolved(const ASymbol: TResolvedSymbol): THoverTypeRef;
 begin
   Result.Name := ASymbol.Name;
@@ -98,10 +119,7 @@ begin
       Name := Name + '.' + Tokens[Last + 2].Text;
       Inc(Last, 2);
     end;
-    // Nach einem Punkt (Mitgliedszugriff) und der deklarierte Name selbst sind keine Typverweise.
-    if not ((Index > 0) and Tokens[Index - 1].IsSymbol('.')) and not SameText(Name, ASelf) and
-      AResolver.ResolveTypeFrom(AUnit, Name, Resolved) and Resolved.IsType and not Resolved.Builtin and
-      (Resolved.FileName <> '') then
+    if MayReferType(Tokens, Index, Name, ASelf) and ResolvesToSourceType(AResolver, AUnit, Name, Resolved) then
     begin
       Link.Start := Tokens[Index].StartPos.Character;
       Link.Length := Tokens[Last].EndPos.Character - Tokens[Index].StartPos.Character;
@@ -120,27 +138,37 @@ var
 begin
   Result := nil;
   // Helfer nur mit Vorfahr-Helfer (#848); der Zieltyp ist kein Vorfahr.
-  if (AType.SymbolKind = TIndexSymbolKind.HelperType) and not AResolver.HelperParent(AType, Next) then
+  if (AType.SymbolKind = TIndexSymbolKind.HelperType) and not AResolver.Queries.HelperParent(AType, Next) then
+  begin
     Exit;
+  end;
   if not (AType.SymbolKind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType,
     TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType]) then
+  begin
     Exit;
+  end;
   Current := AType;
   Seen := nil;
   while Length(Result) < MaxChain do
   begin
     Key := UpperCase(Current.QualifiedName);
     if MatchStr(Key, Seen) then
+    begin
       Break;
+    end;
     Seen := Seen + [Key];
     Result := Result + [FromResolved(Current)];
     if Current.SymbolKind = TIndexSymbolKind.HelperType then
     begin
-      if not AResolver.HelperParent(Current, Next) then
+      if not AResolver.Queries.HelperParent(Current, Next) then
+      begin
         Break;
+      end;
     end
     else if not AResolver.AncestorOf(Current, Next) then
+    begin
       Break;
+    end;
     Current := Next;
   end;
 end;
@@ -151,60 +179,45 @@ var
 begin
   Match := TRegEx.Match(ADeclaration, '=\s*class\s+of\s+([A-Za-z_&][\w.]*)', [roIgnoreCase]);
   if Match.Success then
-    Result := Match.Groups[1].Value
+  begin
+    Result := Match.Groups[1].Value;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 class function TLspHoverTypes.KindOf(AKind: TIndexSymbolKind; const ADeclaration: string): string;
 begin
-  case AKind of
-    TIndexSymbolKind.ClassType:
-      if ClassRefTarget(ADeclaration) <> '' then
-        Result := KindClassRef
-      else
-        Result := 'class';
-    TIndexSymbolKind.ObjectType:
-      Result := 'object';
-    TIndexSymbolKind.RecordType:
-      Result := 'record';
-    TIndexSymbolKind.InterfaceType:
-      Result := 'interface';
-    TIndexSymbolKind.HelperType:
-      Result := 'helper';
-    TIndexSymbolKind.EnumType:
-      Result := 'enum';
-    TIndexSymbolKind.TypeAlias:
-      Result := 'type';
-    TIndexSymbolKind.EnumMember:
-      Result := 'enumMember';
-    TIndexSymbolKind.Constant:
-      Result := 'constant';
-    TIndexSymbolKind.Variable:
-      Result := 'variable';
-    TIndexSymbolKind.Field:
-      Result := 'field';
-    TIndexSymbolKind.Property_:
-      Result := 'property';
-    TIndexSymbolKind.Method:
-      Result := 'method';
-    TIndexSymbolKind.Constructor_:
-      Result := 'constructor';
+  if (AKind = TIndexSymbolKind.ClassType) and (ClassRefTarget(ADeclaration) <> '') then
+  begin
+    Result := KindClassRef;
+  end
   else
-    Result := 'routine';
+  begin
+    Result := cKindNames[AKind];
   end;
 end;
 
 class function TLspHoverTypes.Origin(const AUnitName: string): string;
 begin
   if not TDocWiki.IsLibraryUnit(AUnitName) then
+  begin
     Exit('');
+  end;
   if StartsText('Vcl.', AUnitName) then
-    Result := 'VCL'
+  begin
+    Result := 'VCL';
+  end
   else if StartsText('FMX.', AUnitName) then
-    Result := 'FMX'
+  begin
+    Result := 'FMX';
+  end
   else
+  begin
     Result := 'RTL';
+  end;
 end;
 
 end.

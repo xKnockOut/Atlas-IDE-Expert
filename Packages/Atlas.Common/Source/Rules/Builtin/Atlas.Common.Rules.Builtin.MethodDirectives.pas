@@ -59,7 +59,47 @@ uses
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Rules.Derived,
   Atlas.Common.Rules.Builtin.Inheritance,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TMethodDirectivesText = (Title, AbstractVirtual, InsertVirtual, AbstractFinal, FinalVirtual, StaticInstance,
+    StaticVirtual, AbstractSealedTitle, AbstractInSealed, SealedNotImplemented, SealedWithAbstract, SealedAbstract,
+    RemoveBody, AbstractBody);
+
+const
+  cTexts: array[TMethodDirectivesText] of TAtlasText = (
+    (De: 'abstract, final oder static falsch kombiniert'; En: 'abstract, final or static combined incorrectly'),
+    (De: 'abstract nur zusammen mit virtual oder dynamic (wie E2167).';
+     En: 'abstract only together with virtual or dynamic (like E2167).'),
+    (De: '"virtual;" vor abstract einfügen'; En: 'Insert "virtual;" before abstract'),
+    (De: '%s ist abstract und final zugleich; eine abstrakte Methode muss sich überschreiben lassen (wie E2371).';
+     En: '%s is abstract and final at the same time; an abstract method must be overridable (like E2371).'),
+    (De: 'final nur an virtuellen Methoden; %s ist nicht virtual, dynamic oder override (wie E2351).';
+     En: 'final only on virtual methods; %s is not virtual, dynamic or override (like E2351).'),
+    (De: 'static nur an Klassenmethoden; %s ist eine Instanzmethode (wie E2376).';
+     En: 'static only on class methods; %s is an instance method (like E2376).'),
+    (De: 'static nur an nicht virtuellen Klassenmethoden; %s ist virtuell (wie E2376).';
+     En: 'static only on non-virtual class methods; %s is virtual (like E2376).'),
+    (De: 'Eine Klasse ist entweder abstract oder sealed, nicht beides (wie E2383).';
+     En: 'A class is either abstract or sealed, not both (like E2383).'),
+    (De: '%s ist abstract, die Klasse %s aber sealed; abstract und sealed schließen sich aus (wie E2383).';
+     En: '%s is abstract, but the class %s is sealed; abstract and sealed exclude each other (like E2383).'),
+    (De: '%s ist sealed und implementiert die abstrakte Methode %s.%s nicht (wie E2539).';
+     En: '%s is sealed and does not implement the abstract method %s.%s (like E2539).'),
+    (De: '%s hat abstrakte Methoden und kann deshalb nicht sealed sein; kein Nachfahre könnte sie implementieren ' +
+      '(wie E2540).';
+     En: '%s has abstract methods and therefore cannot be sealed; no descendant could implement them (like E2540).'),
+    (De: '%s ist abstract und kann deshalb nicht sealed sein (wie E2540).';
+     En: '%s is abstract and therefore cannot be sealed (like E2540).'),
+    (De: 'Rumpf entfernen'; En: 'Remove body'),
+    (De: '%s.%s ist abstract und darf keinen Rumpf haben (wie E2136).';
+     En: '%s.%s is abstract and must not have a body (like E2136).'));
+
+{$SCOPEDENUMS OFF}
 
 type
   /// <summary>Methodendeklaration einer Klasse: abstrakt oder nicht, mit Zweig der bedingten Übersetzung.</summary>
@@ -75,20 +115,23 @@ function WithoutTypeParams(const AName: string): string;
 begin
   Result := AName;
   if Pos('<', Result) > 0 then
+  begin
     Result := Copy(Result, 1, Pos('<', Result) - 1);
+  end;
 end;
 
 function TAbstractDeclarationInvalidRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(AbstractDeclarationInvalidRuleId, TRuleSeverity.Error,
-    'abstract, final oder static falsch kombiniert');
+    cTexts[TMethodDirectivesText.Title].Text);
 end;
 
 procedure TAbstractDeclarationInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Tokens: TArray<TPascalToken>;
   Paths: TArray<string>;
-  Declared: TArray<TDeclaredMethod>;
+  // Deklarierte Methoden je Klasse.Name (Großbuchstaben): Lookup suchte je Rumpf über alle (quadratisch).
+  Declared: TDictionary<string, TArray<TDeclaredMethod>>;
   Lines: TArray<string>;
   Cache: IRuleDerivedCache;
   Ancestry: TAncestry;
@@ -104,9 +147,13 @@ var
     begin
       Middle := (Low + High) div 2;
       if Tokens[Middle].Offset < AOffset then
-        Low := Middle + 1
+      begin
+        Low := Middle + 1;
+      end
       else
+      begin
         High := Middle;
+      end;
     end;
     Result := Low;
   end;
@@ -116,18 +163,40 @@ var
     Result := TTextRange.Create(Tokens[AIndex].StartPos, Tokens[AIndex].EndPos);
   end;
 
+  function DeclaredKey(const AClassName, AName: string): string;
+  begin
+    Result := UpperCase(AClassName) + '.' + UpperCase(AName);
+  end;
+
+  procedure AddDeclared(const AMethod: TDeclaredMethod);
+  var
+    mKey: string;
+    mGroup: TArray<TDeclaredMethod>;
+  begin
+    mKey := DeclaredKey(AMethod.ClassName, AMethod.Name);
+    if not Declared.TryGetValue(mKey, mGroup) then
+    begin
+      mGroup := nil;
+    end;
+    Declared.AddOrSetValue(mKey, mGroup + [AMethod]);
+  end;
+
   /// <summary>Token der Direktive ADirective im Kopf AHeader; -1 ohne.</summary>
   function DirectiveToken(AHeader: TSyntaxNode; const ADirective: string): Integer;
   var
     Index: Integer;
   begin
     for Index := 0 to AHeader.ChildCount - 1 do
+    begin
       if (AHeader[Index].Kind = TSyntaxKind.Directive) and SameText(AHeader[Index].Name, ADirective) then
       begin
         Result := TokenAt(AHeader[Index].StartOffset);
         if Result < Length(Tokens) then
+        begin
           Exit;
+        end;
       end;
+    end;
     Result := -1;
   end;
 
@@ -144,7 +213,9 @@ var
   begin
     First := TokenAt(AHeader.StartOffset);
     if First >= Length(Tokens) then
+    begin
       Exit;
+    end;
     IsClassMethod := Tokens[First].IsKeyword('class');
     IsVirtual := HasDirective(AHeader, 'virtual') or HasDirective(AHeader, 'dynamic') or
       HasDirective(AHeader, 'override') or HasDirective(AHeader, 'message');
@@ -152,27 +223,39 @@ var
     Final := DirectiveToken(AHeader, 'final');
     Static := DirectiveToken(AHeader, 'static');
     if (Abstract_ >= 0) and not IsVirtual then
-      AReport.Add(TokenRange(Abstract_), 'abstract nur zusammen mit virtual oder dynamic (wie E2167).',
-        TRuleConfidence.High, [TRuleFix.Create('"virtual;" vor abstract einfügen',
+    begin
+      AReport.Add(TokenRange(Abstract_), cTexts[TMethodDirectivesText.AbstractVirtual].Text,
+        TRuleConfidence.High, [TRuleFix.Create(cTexts[TMethodDirectivesText.InsertVirtual].Text,
         [TRuleEdit.Create(TTextRange.Create(Tokens[Abstract_].StartPos, Tokens[Abstract_].StartPos), 'virtual; ')])]);
+    end;
     if (Abstract_ >= 0) and (Final >= 0) then
-      AReport.Add(TokenRange(Final), Format('%s ist abstract und final zugleich; eine abstrakte Methode muss ' +
-        'sich überschreiben lassen (wie E2371).', [AHeader.Name]), TRuleConfidence.High)
+    begin
+      AReport.Add(TokenRange(Final), cTexts[TMethodDirectivesText.AbstractFinal].Fmt([AHeader.Name]),
+        TRuleConfidence.High);
+    end
     else if (Final >= 0) and not IsVirtual then
-      AReport.Add(TokenRange(Final), Format('final nur an virtuellen Methoden; %s ist nicht virtual, dynamic ' +
-        'oder override (wie E2351).', [AHeader.Name]), TRuleConfidence.High);
+    begin
+      AReport.Add(TokenRange(Final), cTexts[TMethodDirectivesText.FinalVirtual].Fmt([AHeader.Name]),
+        TRuleConfidence.High);
+    end;
     if Static >= 0 then
+    begin
       if not IsClassMethod then
-        AReport.Add(TokenRange(Static), Format('static nur an Klassenmethoden; %s ist eine Instanzmethode ' +
-          '(wie E2376).', [AHeader.Name]), TRuleConfidence.High)
+      begin
+        AReport.Add(TokenRange(Static), cTexts[TMethodDirectivesText.StaticInstance].Fmt([AHeader.Name]),
+          TRuleConfidence.High);
+      end
       else if IsVirtual or (Abstract_ >= 0) then
-        AReport.Add(TokenRange(Static), Format('static nur an nicht virtuellen Klassenmethoden; %s ist virtuell ' +
-          '(wie E2376).', [AHeader.Name]), TRuleConfidence.High);
+      begin
+        AReport.Add(TokenRange(Static), cTexts[TMethodDirectivesText.StaticVirtual].Fmt([AHeader.Name]),
+          TRuleConfidence.High);
+      end;
+    end;
     Method.ClassName := AClassName;
     Method.Name := AHeader.Name;
     Method.IsAbstract := Abstract_ >= 0;
     Method.Path := TConditionalBranches.PathAt(Paths, First);
-    Declared := Declared + [Method];
+    AddDeclared(Method);
   end;
 
   /// <summary>E2383: "class abstract sealed" bzw. "class sealed abstract". ASealed: die Klasse ist sealed,
@@ -186,7 +269,9 @@ var
     ASealed := False;
     Index := TokenAt(ABody.StartOffset);
     if (Index >= Length(Tokens)) or not Tokens[Index].IsKeyword('class') then
+    begin
       Exit;
+    end;
     Abstract_ := False;
     Sealed := False;
     Inc(Index);
@@ -196,21 +281,61 @@ var
       if Tokens[Index].Kind <> TPascalTokenKind.Comment then
       begin
         if SameText(Tokens[Index].Text, 'abstract') then
-          Abstract_ := True
+        begin
+          Abstract_ := True;
+        end
         else if SameText(Tokens[Index].Text, 'sealed') then
-          Sealed := True
+        begin
+          Sealed := True;
+        end
         else
+        begin
           Break;
+        end;
         AAbstract := Abstract_;
         ASealed := Sealed;
         if Abstract_ and Sealed then
         begin
-          AReport.Add(TokenRange(Index), 'Eine Klasse ist entweder abstract oder sealed, nicht beides ' +
-            '(wie E2383).', TRuleConfidence.High);
+          AReport.Add(TokenRange(Index), cTexts[TMethodDirectivesText.AbstractSealedTitle].Text, TRuleConfidence.High);
           Exit;
         end;
       end;
       Inc(Index);
+    end;
+  end;
+
+  /// <summary>Token des Namens AName ab AFrom vor dem Offset AEnd (davor können Attribute stehen); -1 ohne.
+  /// </summary>
+  function NameToken(AFrom, AEnd: Integer; const AName: string): Integer;
+  begin
+    Result := AFrom;
+    while (Result < Length(Tokens)) and (Tokens[Result].Offset < AEnd) do
+    begin
+      if (Tokens[Result].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Result].Text, AName) then
+      begin
+        Exit;
+      end;
+      Inc(Result);
+    end;
+    Result := -1;
+  end;
+
+  /// <summary>E2383 an jeder eigenen abstrakten Methode der sealed-Klasse AName.</summary>
+  procedure ReportOwnAbstract(ABody: TSyntaxNode; const AName: string);
+  var
+    mIndex, mAbstract: Integer;
+  begin
+    for mIndex := 0 to ABody.ChildCount - 1 do
+    begin
+      if ABody[mIndex].Kind = TSyntaxKind.RoutineHeader then
+      begin
+        mAbstract := DirectiveToken(ABody[mIndex], 'abstract');
+        if mAbstract >= 0 then
+        begin
+          AReport.Add(TokenRange(mAbstract), cTexts[TMethodDirectivesText.AbstractInSealed].Fmt([ABody[mIndex].Name,
+            AName]), TRuleConfidence.High);
+        end;
+      end;
     end;
   end;
 
@@ -219,83 +344,111 @@ var
   procedure CheckSealed(ADecl, ABody: TSyntaxNode; AAbstract: Boolean);
   var
     mName: string;
-    mNameToken, mIndex, mAbstract: Integer;
+    mNameToken, mIndex: Integer;
     mLocation: TSymbolLocation;
     mOpen: TArray<TIndexSymbol>;
     mOwners: TArray<string>;
   begin
     mName := WithoutTypeParams(ADecl.Name);
-    // Der Name vor dem Rumpf (davor können Attribute stehen).
-    mNameToken := TokenAt(ADecl.StartOffset);
-    while (mNameToken < Length(Tokens)) and (Tokens[mNameToken].Offset < ABody.StartOffset) and
-      not ((Tokens[mNameToken].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[mNameToken].Text, mName)) do
-      Inc(mNameToken);
-    if (mNameToken >= Length(Tokens)) or (Tokens[mNameToken].Offset >= ABody.StartOffset) then
+    mNameToken := NameToken(TokenAt(ADecl.StartOffset), ABody.StartOffset, mName);
+    if mNameToken < 0 then
+    begin
       Exit;
-    for mIndex := 0 to ABody.ChildCount - 1 do
-      if ABody[mIndex].Kind = TSyntaxKind.RoutineHeader then
-      begin
-        mAbstract := DirectiveToken(ABody[mIndex], 'abstract');
-        if mAbstract >= 0 then
-          AReport.Add(TokenRange(mAbstract), Format('%s ist abstract, die Klasse %s aber sealed; abstract und ' +
-            'sealed schließen sich aus (wie E2383).', [ABody[mIndex].Name, mName]), TRuleConfidence.High);
-      end;
+    end;
+    ReportOwnAbstract(ABody, mName);
     mOpen := nil;
     mOwners := nil;
     if Ancestry.FindClass(mName, mLocation) and (mLocation.FileName = '') then
+    begin
       mOpen := Ancestry.OpenAbstractMethods(mLocation, mOwners);
+    end;
     for mIndex := 0 to High(mOpen) do
-      AReport.Add(TokenRange(mNameToken), Format('%s ist sealed und implementiert die abstrakte Methode %s.%s ' +
-        'nicht (wie E2539).', [mName, mOwners[mIndex], mOpen[mIndex].Name]), TRuleConfidence.High);
+    begin
+      AReport.Add(TokenRange(mNameToken), cTexts[TMethodDirectivesText.SealedNotImplemented].Fmt([mName,
+        mOwners[mIndex], mOpen[mIndex].Name]), TRuleConfidence.High);
+    end;
     if mOpen <> nil then
-      AReport.Add(TokenRange(mNameToken), Format('%s hat abstrakte Methoden und kann deshalb nicht sealed sein; ' +
-        'kein Nachfahre könnte sie implementieren (wie E2540).', [mName]), TRuleConfidence.High)
+    begin
+      AReport.Add(TokenRange(mNameToken), cTexts[TMethodDirectivesText.SealedWithAbstract].Fmt([mName]),
+        TRuleConfidence.High);
+    end
     else if AAbstract then
-      AReport.Add(TokenRange(mNameToken), Format('%s ist abstract und kann deshalb nicht sealed sein (wie E2540).',
+    begin
+      AReport.Add(TokenRange(mNameToken), cTexts[TMethodDirectivesText.SealedAbstract].Fmt(
         [mName]), TRuleConfidence.High);
+    end;
+  end;
+
+  /// <summary>Prüft die Klasse oder das Objekt der Typdeklaration ANode. Ergebnis ist deren Rumpf, ohne Klasse
+  /// oder Objekt ANode selbst.</summary>
+  function CheckTypeDecl(ANode: TSyntaxNode): TSyntaxNode;
+  var
+    mIndex: Integer;
+    mAbstract, mSealed: Boolean;
+  begin
+    Result := ANode.FindChild(TSyntaxKind.ClassType);
+    if Result = nil then
+    begin
+      Result := ANode.FindChild(TSyntaxKind.ObjectType);
+    end;
+    if Result = nil then
+    begin
+      Exit(ANode);
+    end;
+    mAbstract := False;
+    mSealed := False;
+    if Result.Kind = TSyntaxKind.ClassType then
+    begin
+      CheckClassHeader(Result, mAbstract, mSealed);
+    end;
+    for mIndex := 0 to Result.ChildCount - 1 do
+    begin
+      if Result[mIndex].Kind = TSyntaxKind.RoutineHeader then
+      begin
+        CheckHeader(WithoutTypeParams(ANode.Name), Result[mIndex]);
+      end;
+    end;
+    if mSealed then
+    begin
+      CheckSealed(ANode, Result, mAbstract);
+    end;
+  end;
+
+  /// <summary>Nur Deklarationscontainer: Anweisungen und Ausdrücke enthalten keine Typen (#1094).</summary>
+  procedure PushContainers(APending: TStack<TSyntaxNode>; ANode: TSyntaxNode);
+  var
+    mIndex: Integer;
+  begin
+    for mIndex := ANode.ChildCount - 1 downto 0 do
+    begin
+      if ANode[mIndex].Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection,
+        TSyntaxKind.TypeSection, TSyntaxKind.TypeDecl, TSyntaxKind.RoutineDecl] then
+      begin
+        APending.Push(ANode[mIndex]);
+      end;
+    end;
   end;
 
   // Iterativ (Bericht M1).
   procedure Visit(ARoot: TSyntaxNode);
   var
-    Pending: TStack<TSyntaxNode>;
-    Node, Body: TSyntaxNode;
-    Index: Integer;
-    mAbstract, mSealed: Boolean;
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
   begin
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ARoot);
-      while Pending.Count > 0 do
+      mPending.Push(ARoot);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if Node.Kind = TSyntaxKind.TypeDecl then
+        mNode := mPending.Pop;
+        if mNode.Kind = TSyntaxKind.TypeDecl then
         begin
-          Body := Node.FindChild(TSyntaxKind.ClassType);
-          if Body = nil then
-            Body := Node.FindChild(TSyntaxKind.ObjectType);
-          if Body <> nil then
-          begin
-            mAbstract := False;
-            mSealed := False;
-            if Body.Kind = TSyntaxKind.ClassType then
-              CheckClassHeader(Body, mAbstract, mSealed);
-            for Index := 0 to Body.ChildCount - 1 do
-              if Body[Index].Kind = TSyntaxKind.RoutineHeader then
-                CheckHeader(WithoutTypeParams(Node.Name), Body[Index]);
-            if mSealed then
-              CheckSealed(Node, Body, mAbstract);
-            Node := Body;
-          end;
+          mNode := CheckTypeDecl(mNode);
         end;
-        // Nur Deklarationscontainer: Anweisungen und Ausdrücke enthalten keine Typen (#1094).
-        for Index := Node.ChildCount - 1 downto 0 do
-          if Node[Index].Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection,
-            TSyntaxKind.TypeSection, TSyntaxKind.TypeDecl, TSyntaxKind.RoutineDecl] then
-            Pending.Push(Node[Index]);
+        PushContainers(mPending, mNode);
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
@@ -304,16 +457,28 @@ var
   procedure Lookup(const AClassName, AName, APath: string; out AAbstract, AConcrete: Boolean);
   var
     Method: TDeclaredMethod;
+    mGroup: TArray<TDeclaredMethod>;
   begin
     AAbstract := False;
     AConcrete := False;
-    for Method in Declared do
-      if SameText(Method.ClassName, AClassName) and SameText(Method.Name, AName) and
-        not TConditionalBranches.Exclusive(Method.Path, APath) then
+    if not Declared.TryGetValue(DeclaredKey(AClassName, AName), mGroup) then
+    begin
+      Exit;
+    end;
+    for Method in mGroup do
+    begin
+      if not TConditionalBranches.Exclusive(Method.Path, APath) then
+      begin
         if Method.IsAbstract then
-          AAbstract := True
+        begin
+          AAbstract := True;
+        end
         else
+        begin
           AConcrete := True;
+        end;
+      end;
+    end;
   end;
 
   /// <summary>Korrektur: den Rumpf mit seinen Zeilen und einer folgenden Leerzeile entfernen.</summary>
@@ -327,48 +492,80 @@ var
     if (StartPos.Line >= Length(Lines)) or (EndPos.Line >= Length(Lines)) or
       (Trim(Copy(Lines[StartPos.Line], 1, StartPos.Character)) <> '') or
       (Trim(Copy(Lines[EndPos.Line], EndPos.Character + 1, MaxInt)) <> '') then
+    begin
       Exit;
+    end;
     StartPos.Character := 0;
     EndPos.Line := EndPos.Line + 1;
     EndPos.Character := 0;
     if (EndPos.Line < Length(Lines)) and (Trim(Lines[EndPos.Line]) = '') and (StartPos.Line > 0) and
       (Trim(Lines[StartPos.Line - 1]) = '') then
+    begin
       EndPos.Line := EndPos.Line + 1;
-    Result := [TRuleFix.Create('Rumpf entfernen', [TRuleEdit.Create(TTextRange.Create(StartPos, EndPos), '')])];
+    end;
+    Result := [TRuleFix.Create(cTexts[TMethodDirectivesText.RemoveBody].Text,
+      [TRuleEdit.Create(TTextRange.Create(StartPos, EndPos), '')])];
+  end;
+
+  /// <summary>Token des Methodennamens AName hinter dem Klassennamen im Kopf AHeader; -1 ohne.</summary>
+  function QualifiedNameToken(AHeader: TSyntaxNode; const AName: string): Integer;
+  begin
+    Result := TokenAt(AHeader.StartOffset);
+    while (Result < Length(Tokens)) and (Tokens[Result].Offset < AHeader.EndOffset) do
+    begin
+      if (Result > 0) and Tokens[Result - 1].IsSymbol('.') and
+        (Tokens[Result].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Result].Text, AName) then
+      begin
+        Exit;
+      end;
+      Inc(Result);
+    end;
+    Result := -1;
+  end;
+
+  /// <summary>Hat ARoutine einen Rumpf (Block oder asm)?</summary>
+  function HasBody(ARoutine: TSyntaxNode): Boolean;
+  begin
+    Result := (ARoutine.FindChild(TSyntaxKind.Block) <> nil) or (ARoutine.FindChild(TSyntaxKind.AsmBlock) <> nil);
+  end;
+
+  /// <summary>Gehört der Rumpf ARoutine zu einer abstrakten Methode AClassName.AName, und keine gleichnamige
+  /// nicht abstrakte wird mit ihm übersetzt?</summary>
+  function IsAbstractBody(ARoutine: TSyntaxNode; const AClassName, AName: string): Boolean;
+  var
+    mAbstract, mConcrete: Boolean;
+  begin
+    Lookup(AClassName, AName, TConditionalBranches.PathAt(Paths, TokenAt(ARoutine.StartOffset)), mAbstract,
+      mConcrete);
+    Result := mAbstract and not mConcrete;
   end;
 
   procedure CheckBody(ARoutine: TSyntaxNode);
   var
-    Parts: TArray<string>;
-    ClassName, Name: string;
-    IsAbstract, IsConcrete: Boolean;
-    Header: TSyntaxNode;
-    First: Integer;
+    mParts: TArray<string>;
+    mClassName, mName: string;
+    mHeader: TSyntaxNode;
+    mFirst: Integer;
   begin
-    if (ARoutine.FindChild(TSyntaxKind.Block) = nil) and (ARoutine.FindChild(TSyntaxKind.AsmBlock) = nil) then
+    mParts := ARoutine.Name.Split(['.']);
+    if not HasBody(ARoutine) or (Length(mParts) < 2) then
+    begin
       Exit;
-    Parts := ARoutine.Name.Split(['.']);
-    if Length(Parts) < 2 then
+    end;
+    mClassName := mParts[High(mParts) - 1];
+    mName := mParts[High(mParts)];
+    mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+    if (mHeader = nil) or not IsAbstractBody(ARoutine, mClassName, mName) then
+    begin
       Exit;
-    ClassName := Parts[High(Parts) - 1];
-    Name := Parts[High(Parts)];
-    First := TokenAt(ARoutine.StartOffset);
-    Lookup(ClassName, Name, TConditionalBranches.PathAt(Paths, First), IsAbstract, IsConcrete);
-    if not IsAbstract or IsConcrete then
-      Exit;
-    Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
-    if Header = nil then
-      Exit;
+    end;
     // Den Namen hinter dem Klassennamen markieren.
-    First := TokenAt(Header.StartOffset);
-    while (First < Length(Tokens)) and (Tokens[First].Offset < Header.EndOffset) and
-      not ((Tokens[First].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[First].Text, Name) and
-      (First > 0) and Tokens[First - 1].IsSymbol('.')) do
-      Inc(First);
-    if (First >= Length(Tokens)) or (Tokens[First].Offset >= Header.EndOffset) then
-      Exit;
-    AReport.Add(TokenRange(First), Format('%s.%s ist abstract und darf keinen Rumpf haben (wie E2136).',
-      [ClassName, Name]), TRuleConfidence.High, RemoveBody(ARoutine));
+    mFirst := QualifiedNameToken(mHeader, mName);
+    if mFirst >= 0 then
+    begin
+      AReport.Add(TokenRange(mFirst), cTexts[TMethodDirectivesText.AbstractBody].Fmt(
+        [mClassName, mName]), TRuleConfidence.High, RemoveBody(ARoutine));
+    end;
   end;
 
   // Rekursion nur in den implementation-Abschnitt (höchstens zwei Ebenen, unabhängig von der Ausdruckstiefe).
@@ -377,33 +574,50 @@ var
     Index: Integer;
   begin
     for Index := 0 to ANode.ChildCount - 1 do
+    begin
       if ANode[Index].Kind = TSyntaxKind.RoutineDecl then
-        CheckBody(ANode[Index])
+      begin
+        CheckBody(ANode[Index]);
+      end
       else if ANode[Index].Kind = TSyntaxKind.ImplementationSection then
+      begin
         VisitBodies(ANode[Index]);
+      end;
+    end;
   end;
 
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Paths := TConditionalBranches.Paths(Tokens);
   Lines := TTextLines.SplitLines(AContext.Text);
-  Declared := nil;
   Cache := TRuleDerived.Open(AContext);
-  Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(Cache, AContext));
+  Declared := TDictionary<string, TArray<TDeclaredMethod>>.Create;
   try
-    Visit(AContext.Tree.Root);
+    Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(Cache, AContext));
+    try
+      Visit(AContext.Tree.Root);
+    finally
+      Ancestry.Free;
+    end;
+    if Declared.Count > 0 then
+    begin
+      VisitBodies(AContext.Tree.Root);
+    end;
   finally
-    Ancestry.Free;
+    Declared.Free;
   end;
-  if Declared <> nil then
-    VisitBodies(AContext.Tree.Root);
 end;
 
 procedure RegisterMethodDirectiveRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TAbstractDeclarationInvalidRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.MethodDirectives', cTexts);
 
 end.

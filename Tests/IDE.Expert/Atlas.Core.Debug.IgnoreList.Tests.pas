@@ -11,6 +11,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Debugger')]
   TAtlasDebugIgnoreListTests = class
   private
     FFolder: string;
@@ -45,7 +46,9 @@ const
 procedure TAtlasDebugIgnoreListTests.TearDown;
 begin
   if (FFolder <> '') and TDirectory.Exists(FFolder) then
+  begin
     TDirectory.Delete(FFolder, True);
+  end;
   FFolder := '';
 end;
 

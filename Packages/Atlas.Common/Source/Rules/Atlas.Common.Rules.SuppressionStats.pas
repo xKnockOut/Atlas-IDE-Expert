@@ -31,6 +31,7 @@ type
   private
     FCounts: TDictionary<string, TSuppressionCount>;
     FFiles: Integer;
+    procedure Count(const AId: string; AFileWide, AUnused: Boolean; ASeen: TList<string>);
   public
     constructor Create;
     destructor Destroy; override;
@@ -54,7 +55,22 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Rules.Suppressions,
-  Atlas.Common.Rules.Engine;
+  Atlas.Common.Rules.Engine,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TSuppressionStatsText = (Row, Summary);
+
+const
+  cTexts: array[TSuppressionStatsText] of TAtlasText = (
+    (De: '%-30s %5d  (Zeile %d, Datei %d, ungenutzt %d, in %d Dateien)';
+     En: '%-30s %5d  (line %d, file %d, unused %d, in %d files)'),
+    (De: '%d Dateien ausgewertet, %d Regeln unterdrückt'; En: '%d files evaluated, %d rules suppressed'));
+
+{$SCOPEDENUMS OFF}
 
 { TSuppressionCount }
 
@@ -67,7 +83,9 @@ function CompareCounts(const ALeft, ARight: TSuppressionCount): Integer;
 begin
   Result := ARight.Total - ALeft.Total;
   if Result = 0 then
+  begin
     Result := CompareText(ALeft.RuleId, ARight.RuleId);
+  end;
 end;
 
 { TSuppressionStats }
@@ -84,58 +102,80 @@ begin
   inherited;
 end;
 
+/// <summary>Meldet die Engine den Unterdrückungskommentar in ALine als ungenutzt? (je Kommentar mit Beginn in
+/// seiner Zeile)</summary>
+function IsUnused(const AFindings: TArray<TRuleFinding>; ALine: Integer): Boolean;
+var
+  mFinding: TRuleFinding;
+begin
+  Result := False;
+  for mFinding in AFindings do
+  begin
+    if SameText(mFinding.RuleId, UnusedSuppressionRuleId) and (mFinding.Range.StartPos.Line = ALine) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+procedure TSuppressionStats.Count(const AId: string; AFileWide, AUnused: Boolean; ASeen: TList<string>);
+var
+  mCount: TSuppressionCount;
+begin
+  if not FCounts.TryGetValue(AId, mCount) then
+  begin
+    mCount := Default(TSuppressionCount);
+    mCount.RuleId := AId;
+  end;
+  if AFileWide then
+  begin
+    Inc(mCount.FileCount);
+  end
+  else
+  begin
+    Inc(mCount.LineCount);
+  end;
+  if AUnused then
+  begin
+    Inc(mCount.UnusedCount);
+  end;
+  if not ASeen.Contains(AId) then
+  begin
+    ASeen.Add(AId);
+    Inc(mCount.Files);
+  end;
+  FCounts.AddOrSetValue(AId, mCount);
+end;
+
 procedure TSuppressionStats.Add(const AText: string; const AFindings: TArray<TRuleFinding>);
 var
-  Tree: TSyntaxTree;
-  Suppressions: TSuppressions;
-  Entry: TSuppressionEntry;
-  Finding: TRuleFinding;
-  Id: string;
-  Count: TSuppressionCount;
-  Unused: Boolean;
-  Seen: TList<string>;
+  mTree: TSyntaxTree;
+  mSuppressions: TSuppressions;
+  mEntry: TSuppressionEntry;
+  mId: string;
+  mUnused: Boolean;
+  mSeen: TList<string>;
 begin
   Inc(FFiles);
-  Tree := TSyntaxTreeCache.Parse(AText);
-  Seen := TList<string>.Create;
+  mTree := TSyntaxTreeCache.Parse(AText);
+  mSeen := TList<string>.Create;
   try
-    Suppressions := TSuppressions.Create(Tree.Tokens);
+    mSuppressions := TSuppressions.Create(mTree.Tokens);
     try
-      for Entry in Suppressions.Entries do
+      for mEntry in mSuppressions.Entries do
       begin
-        // Ungenutzt meldet die Engine je Kommentar mit Beginn in seiner Zeile.
-        Unused := False;
-        for Finding in AFindings do
-          if SameText(Finding.RuleId, UnusedSuppressionRuleId) and
-            (Finding.Range.StartPos.Line = Entry.Range.StartPos.Line) then
-            Unused := True;
-        for Id in Entry.Ids do
+        mUnused := IsUnused(AFindings, mEntry.Range.StartPos.Line);
+        for mId in mEntry.Ids do
         begin
-          if not FCounts.TryGetValue(Id, Count) then
-          begin
-            Count := Default(TSuppressionCount);
-            Count.RuleId := Id;
-          end;
-          if Entry.TargetLine < 0 then
-            Inc(Count.FileCount)
-          else
-            Inc(Count.LineCount);
-          if Unused then
-            Inc(Count.UnusedCount);
-          if not Seen.Contains(Id) then
-          begin
-            Seen.Add(Id);
-            Inc(Count.Files);
-          end;
-          FCounts.AddOrSetValue(Id, Count);
+          Count(mId, mEntry.TargetLine < 0, mUnused, mSeen);
         end;
       end;
     finally
-      Suppressions.Free;
+      mSuppressions.Free;
     end;
   finally
-    Seen.Free;
-    Tree.Free;
+    mSeen.Free;
+    mTree.Free;
   end;
 end;
 
@@ -164,10 +204,12 @@ begin
     if AFormat = TFindingsFormat.Text then
     begin
       for Count in Counts do
-        Builder.Append(Format('%-30s %5d  (Zeile %d, Datei %d, ungenutzt %d, in %d Dateien)',
+      begin
+        Builder.Append(cTexts[TSuppressionStatsText.Row].Fmt(
           [Count.RuleId, Count.Total, Count.LineCount, Count.FileCount, Count.UnusedCount, Count.Files]))
           .Append(sLineBreak);
-      Builder.Append(Format('%d Dateien ausgewertet, %d Regeln unterdrückt', [FFiles, FCounts.Count]))
+      end;
+      Builder.Append(cTexts[TSuppressionStatsText.Summary].Fmt([FFiles, FCounts.Count]))
         .Append(sLineBreak);
     end
     else
@@ -177,7 +219,9 @@ begin
       for Count in Counts do
       begin
         if not First then
+        begin
           Builder.Append(',');
+        end;
         First := False;
         Builder.Append('{"rule":').Append(TFindingsOutput.JsonString(Count.RuleId));
         Builder.Append(Format(',"total":%d,"line":%d,"file":%d,"unused":%d,"files":%d}',
@@ -190,5 +234,8 @@ begin
     Builder.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.SuppressionStats', cTexts);
 
 end.

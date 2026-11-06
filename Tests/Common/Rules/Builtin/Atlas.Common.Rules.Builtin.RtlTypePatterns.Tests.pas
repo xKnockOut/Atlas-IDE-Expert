@@ -20,6 +20,8 @@ type
     [Test]
     procedure DeclaredTypesByScope;
     [Test]
+    procedure DeclaredTypesThroughFields;
+    [Test]
     procedure Int32MulOverflow;
     [Test]
     procedure SizeOfPointer;
@@ -33,6 +35,10 @@ type
     procedure ConstructorOnInstance;
     [Test]
     procedure FormatWithoutSettings;
+    [Test]
+    procedure FormatWithoutSettingsOwnRoutineInOtherUnit;
+    [Test]
+    procedure FormatWithoutSettingsOwnRoutineInSameUnit;
     [Test]
     procedure LocaleSpecifiers;
     [Test]
@@ -69,6 +75,12 @@ type
     procedure WritelnInGuiAppSilentCases;
     [Test]
     procedure WritelnInGuiAppOptions;
+  end;
+
+  /// <summary>Regeln zu Umwandlungen, Dictionary, DelimitedText, CreateProcess und globalen FormatSettings.</summary>
+  [TestFixture]
+  TRtlConversionRulesTests = class
+  public
     [Test]
     procedure UncheckedConversionIssueExample;
     [Test]
@@ -128,8 +140,14 @@ uses
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Pascal.DeclaredTypes,
   Atlas.Common.Rules.Builtin.RtlTypePatterns,
+  Atlas.Common.Rules.Builtin.RtlTypePatterns.Memory,
+  Atlas.Common.Rules.Builtin.RtlTypePatterns.Collections,
+  Atlas.Common.Rules.Builtin.RtlTypePatterns.Conversions,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Index.Extractor,
   Atlas.Tests.RuleAssert;
 
 function InRoutine(const AVars, ABody: string): string;
@@ -162,6 +180,34 @@ begin
     Assert.AreEqual('', Types.DeclaredType('Unbekannt', At));
     // Vor der Inline-Deklaration ist C nicht bekannt.
     Assert.AreEqual('', Types.DeclaredType('C', TTextPosition.Create(14, 0)));
+  finally
+    Types.Free;
+    Tree.Free;
+  end;
+end;
+
+procedure TRtlTypePatternRulesTests.DeclaredTypesThroughFields;
+const
+  Source = 'unit U;'#10'interface'#10'type'#10'  TTeile = record'#10'    Menu: TPopupMenu;'#10'  end;'#10 +
+    '  TFoo = class'#10'    FTeile: TTeile;'#10'    procedure Run;'#10'  end;'#10'implementation'#10 +
+    'procedure TFoo.Run;'#10'begin'#10'  FTeile.Menu.Items.Clear;'#10'end;'#10'end.';
+var
+  Tree: TSyntaxTree;
+  Types: TDeclaredTypes;
+  At: TTextPosition;
+  Member: string;
+begin
+  Tree := TPascalParser.Parse(Source);
+  Types := TDeclaredTypes.Create(Tree, Source);
+  try
+    At := TTextPosition.Create(13, 4);
+    Assert.IsTrue(Types.FieldType('TTeile', 'menu', Member));
+    Assert.AreEqual('TPopupMenu', Member);
+    Assert.IsFalse(Types.FieldType('TTeile', 'Fehlt', Member));
+    Assert.AreEqual('TPopupMenu', Types.ChainType('FTeile.Menu', At));
+    Assert.AreEqual('TPopupMenu', Types.ChainType('Self.FTeile.Menu', At));
+    Assert.AreEqual('TTeile', Types.ChainType('FTeile', At));
+    Assert.AreEqual('', Types.ChainType('FTeile.Menu.Items', At), 'TPopupMenu ist nicht in der Datei deklariert');
   finally
     Types.Free;
     Tree.Free;
@@ -273,6 +319,70 @@ begin
     '  S := FormatDateTime(''hh:nn'', Now);'#10'  S := FormatFloat(''0.0'', X);')))));
 end;
 
+/// <summary>Unit Fall mit AUses, die in einer Routine Format('%.2f', [X]) aufruft.</summary>
+function FormatCaller(const AUses, ACall: string): string;
+begin
+  Result := 'unit Fall;'#10'interface'#10'implementation'#10'uses'#10'  ' + AUses + ';'#10 +
+    'procedure Zeigen(X: Double);'#10'var'#10'  S: string;'#10'begin'#10'  S := ' + ACall + ';'#10'end;'#10'end.';
+end;
+
+/// <summary>Index mit der Unit Werkzeuge (eigenes Format und FloatToStr mit TFormatSettings im Rumpf) und, mit
+/// AWithSysUtils, einem Ausschnitt von System.SysUtils.</summary>
+function ToolsIndex(AWithSysUtils: Boolean): ISymbolIndex;
+begin
+  Result := TSymbolIndex.Create;
+  Result.AddUnit(TIndexExtractor.ExtractText('unit Werkzeuge;'#10'interface'#10'uses'#10'  System.SysUtils;'#10 +
+    'function Format(const AFormat: string; const AArgs: array of const): string;'#10 +
+    'function FloatToStr(AValue: Extended): string;'#10'implementation'#10'end.', 'C:\Projekt\Werkzeuge.pas', nil));
+  if AWithSysUtils then
+  begin
+    Result.AddUnit(TIndexExtractor.ExtractText('unit System.SysUtils;'#10'interface'#10 +
+      'function Format(const AFormat: string; const AArgs: array of const): string;'#10 +
+      'function FloatToStr(AValue: Extended): string;'#10'implementation'#10'end.',
+      'C:\BDS\source\rtl\sys\System.SysUtils.pas', nil));
+  end;
+end;
+
+procedure TRtlTypePatternRulesTests.FormatWithoutSettingsOwnRoutineInOtherUnit;
+var
+  mIndex: ISymbolIndex;
+begin
+  // Marcos Fall: eigene Routine Format in einer anderen Unit, die TFormatSettings selbst übergibt. Sie steht in
+  // uses nach System.SysUtils und verdeckt damit die RTL.
+  mIndex := ToolsIndex(True);
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TFormatWithoutSettingsRule.Create,
+    FormatCaller('System.SysUtils, Werkzeuge', 'Format(''%.2f'', [X])'), mIndex, '', 'Fall.pas'))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TFormatWithoutSettingsRule.Create,
+    FormatCaller('System.SysUtils, Werkzeuge', 'FloatToStr(X)'), mIndex, '', 'Fall.pas'))));
+  // Steht System.SysUtils danach, ruft der Compiler die RTL: mit und ohne System.SysUtils im Index.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.IndexFindings(TFormatWithoutSettingsRule.Create,
+    FormatCaller('Werkzeuge, System.SysUtils', 'Format(''%.2f'', [X])'), mIndex, '', 'Fall.pas'))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.IndexFindings(TFormatWithoutSettingsRule.Create,
+    FormatCaller('Werkzeuge, SysUtils', 'Format(''%.2f'', [X])'), ToolsIndex(False), '', 'Fall.pas'))));
+  // Ausdrücklich die RTL.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.IndexFindings(TFormatWithoutSettingsRule.Create,
+    FormatCaller('System.SysUtils, Werkzeuge', 'System.SysUtils.Format(''%.2f'', [X])'), mIndex, '', 'Fall.pas'))));
+  // Ohne Werkzeuge bleibt es die RTL.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.IndexFindings(TFormatWithoutSettingsRule.Create,
+    FormatCaller('System.SysUtils', 'Format(''%.2f'', [X])'), mIndex, '', 'Fall.pas'))));
+end;
+
+procedure TRtlTypePatternRulesTests.FormatWithoutSettingsOwnRoutineInSameUnit;
+begin
+  // Routine der eigenen Unit und Methode der eigenen Klasse verdecken die RTL auch ohne Index.
+  TRuleAssert.Silent(TFormatWithoutSettingsRule.Create, 'unit U;'#10'interface'#10'uses'#10'  System.SysUtils;'#10 +
+    'function Format(const AFormat: string; const AArgs: array of const): string;'#10'implementation'#10 +
+    'function Format(const AFormat: string; const AArgs: array of const): string;'#10'begin'#10 +
+    '  Result := System.SysUtils.Format(AFormat, AArgs, TFormatSettings.Invariant);'#10'end;'#10 +
+    'procedure P(X: Double);'#10'begin'#10'  Format(''%.2f'', [X]);'#10'end;'#10'end.');
+  TRuleAssert.Silent(TFormatWithoutSettingsRule.Create, 'unit U;'#10'interface'#10'type'#10'  TBericht = class'#10 +
+    '    function Format(const AFormat: string; const AArgs: array of const): string;'#10 +
+    '    procedure Schreiben(X: Double);'#10'  end;'#10'implementation'#10 +
+    'function TBericht.Format(const AFormat: string; const AArgs: array of const): string;'#10'begin'#10 +
+    '  Result := AFormat;'#10'end;'#10'procedure TBericht.Schreiben(X: Double);'#10'begin'#10 +
+    '  Format(''%.2f'', [X]);'#10'end;'#10'end.');
+end;
+
 procedure TRtlTypePatternRulesTests.LocaleSpecifiers;
 begin
   Assert.IsTrue(TFormatWithoutSettingsRule.HasLocaleSpecifier('%.2f'));
@@ -337,7 +447,9 @@ const
       ';', '  ZeroMemory(@' + AVar + ', SizeOf(' + AVar + '));'));
     Result := '';
     if Length(Findings) = 1 then
+    begin
       Result := Findings[0].Message;
+    end;
   end;
 
 begin
@@ -722,7 +834,7 @@ begin
     'var'#10'  Menge: Integer;'#10 + AVars + 'begin'#10 + ABody + #10'end;'#10'end.';
 end;
 
-procedure TRtlTypePatternRulesTests.UncheckedConversionIssueExample;
+procedure TRtlConversionRulesTests.UncheckedConversionIssueExample;
 var
   Source, Fixed: string;
   Findings: TArray<TRuleFinding>;
@@ -741,7 +853,7 @@ begin
   TRuleAssert.Silent(TUncheckedConversionRule.Create, Fixed);
 end;
 
-procedure TRtlTypePatternRulesTests.UncheckedConversionVariants;
+procedure TRtlConversionRulesTests.UncheckedConversionVariants;
 var
   Findings: TArray<TRuleFinding>;
 begin
@@ -765,7 +877,7 @@ begin
   Assert.AreEqual(0, Integer(Length(Findings[5].Fixes)));
 end;
 
-procedure TRtlTypePatternRulesTests.UncheckedConversionSilentCases;
+procedure TRtlConversionRulesTests.UncheckedConversionSilentCases;
 begin
   // Im try/except, Konstante, Variable statt Eingabe, IntToStr, StrToIntDef.
   TRuleAssert.Silent(TUncheckedConversionRule.Create, Eingabe('', '  try'#10 +
@@ -777,7 +889,7 @@ begin
     '    Menge := StrToInt(edtMenge.Text);'#10'  finally'#10'    Fertig;'#10'  end;'));
 end;
 
-procedure TRtlTypePatternRulesTests.UncheckedConversionOptions;
+procedure TRtlConversionRulesTests.UncheckedConversionOptions;
 var
   Source: string;
   Issues: TArray<TConfigurationIssue>;
@@ -805,7 +917,7 @@ begin
     AVars + 'begin'#10 + ABody + #10'end;'#10'end.';
 end;
 
-procedure TRtlTypePatternRulesTests.DictionaryGetIssueExample;
+procedure TRtlConversionRulesTests.DictionaryGetIssueExample;
 var
   Source, Fixed: string;
   Findings: TArray<TRuleFinding>;
@@ -822,7 +934,7 @@ begin
   TRuleAssert.Silent(TDictionaryGetWithoutCheckRule.Create, Fixed);
 end;
 
-procedure TRtlTypePatternRulesTests.DictionaryGetVariants;
+procedure TRtlConversionRulesTests.DictionaryGetVariants;
 var
   Findings: TArray<TRuleFinding>;
 begin
@@ -844,7 +956,7 @@ begin
     '["Alt/*.pas"]}}}', 'Alt/U.pas'))));
 end;
 
-procedure TRtlTypePatternRulesTests.DictionaryGetSilentCases;
+procedure TRtlConversionRulesTests.DictionaryGetSilentCases;
 begin
   // ContainsKey davor, TryGetValue, Add, Schreiben, for in Keys, kein Dictionary.
   TRuleAssert.Silent(TDictionaryGetWithoutCheckRule.Create, Preisliste('  Namen: TStringList;'#10 +
@@ -881,7 +993,7 @@ begin
     '  finally'#10'    Teile.Free;'#10'  end;'#10'end;'#10'end.';
 end;
 
-procedure TRtlTypePatternRulesTests.DelimitedTextIssueExample;
+procedure TRtlConversionRulesTests.DelimitedTextIssueExample;
 var
   Source, Fixed: string;
   Findings: TArray<TRuleFinding>;
@@ -913,7 +1025,7 @@ begin
   TRuleAssert.Silent(TDelimitedTextWithoutStrictRule.Create, Fixed);
 end;
 
-procedure TRtlTypePatternRulesTests.DelimitedTextVariants;
+procedure TRtlConversionRulesTests.DelimitedTextVariants;
 const
   Feld =
     'unit Import;'#10 +
@@ -952,7 +1064,7 @@ begin
   Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
 end;
 
-procedure TRtlTypePatternRulesTests.DelimitedTextSilentCases;
+procedure TRtlConversionRulesTests.DelimitedTextSilentCases;
 begin
   // Ohne eigenen Delimiter, mit StrictDelimiter := False (bewusst) oder beim Lesen.
   TRuleAssert.Silent(TDelimitedTextWithoutStrictRule.Create, Teilen('    Teile.DelimitedText := Zeile;'#10));
@@ -965,7 +1077,7 @@ begin
     '    Teile.DelimitedText := Zeile;'#10));
 end;
 
-procedure TRtlTypePatternRulesTests.DelimitedTextOffAndExclude;
+procedure TRtlConversionRulesTests.DelimitedTextOffAndExclude;
 var
   Source: string;
 begin
@@ -984,7 +1096,7 @@ begin
     'begin'#10 + ABody + 'end;'#10'end.';
 end;
 
-procedure TRtlTypePatternRulesTests.UncheckedEnumCastIssueExample;
+procedure TRtlConversionRulesTests.UncheckedEnumCastIssueExample;
 var
   Source, Fixed: string;
   Findings: TArray<TRuleFinding>;
@@ -1017,7 +1129,7 @@ begin
   TRuleAssert.Silent(TUncheckedEnumCastRule.Create, Fixed);
 end;
 
-procedure TRtlTypePatternRulesTests.UncheckedEnumCastVariants;
+procedure TRtlConversionRulesTests.UncheckedEnumCastVariants;
 var
   Findings: TArray<TRuleFinding>;
 begin
@@ -1044,7 +1156,7 @@ begin
     '{"rules": {"unchecked-enum-cast": {"sources": ["LeseZahl"]}}}'))));
 end;
 
-procedure TRtlTypePatternRulesTests.UncheckedEnumCastSilentCases;
+procedure TRtlConversionRulesTests.UncheckedEnumCastSilentCases;
 begin
   // Geprüfte Variable, EnsureRange, Konstanten, unbekannte Typen und Klassen-Casts.
   TRuleAssert.Silent(TUncheckedEnumCastRule.Create, Auftrag('', 'var'#10'  N: Integer;'#10,
@@ -1058,7 +1170,7 @@ begin
   Assert.AreEqual('von außen', TUncheckedEnumCastRule.Origin('LeseZahl'));
 end;
 
-procedure TRtlTypePatternRulesTests.UncheckedEnumCastOffAndExclude;
+procedure TRtlConversionRulesTests.UncheckedEnumCastOffAndExclude;
 var
   Source: string;
   Issues: TArray<TConfigurationIssue>;
@@ -1079,7 +1191,7 @@ begin
     '  SI: TStartupInfo;'#10'  PI: TProcessInformation;'#10 + AVars + 'begin'#10 + ABody + 'end;'#10'end.';
 end;
 
-procedure TRtlTypePatternRulesTests.CreateProcessIssueExample;
+procedure TRtlConversionRulesTests.CreateProcessIssueExample;
 var
   Source, Fixed: string;
   Findings: TArray<TRuleFinding>;
@@ -1109,7 +1221,7 @@ begin
   TRuleAssert.Silent(TCreateProcessReadonlyCommandLineRule.Create, Fixed);
 end;
 
-procedure TRtlTypePatternRulesTests.CreateProcessVariants;
+procedure TRtlConversionRulesTests.CreateProcessVariants;
 var
   Source: string;
   Findings: TArray<TRuleFinding>;
@@ -1145,7 +1257,7 @@ begin
   Assert.AreEqual(0, Integer(Length(Findings[0].Fixes)));
 end;
 
-procedure TRtlTypePatternRulesTests.CreateProcessSilentCases;
+procedure TRtlConversionRulesTests.CreateProcessSilentCases;
 begin
   // Beschreibbare Puffer: UniqueString, Funktionsergebnis, mehrteilige Verkettung, Ansi-Fassung, nil.
   TRuleAssert.Silent(TCreateProcessReadonlyCommandLineRule.Create, Starten('  Befehl: string;'#10,
@@ -1161,7 +1273,7 @@ begin
   Assert.AreEqual(-1, TCreateProcessReadonlyCommandLineRule.CommandLineIndex('CreateProcessA'));
 end;
 
-procedure TRtlTypePatternRulesTests.CreateProcessOffAndExclude;
+procedure TRtlConversionRulesTests.CreateProcessOffAndExclude;
 var
   Source: string;
 begin
@@ -1186,7 +1298,7 @@ begin
     AVars + 'begin'#10 + ABody + 'end;'#10'end.';
 end;
 
-procedure TRtlTypePatternRulesTests.GlobalFormatSettingsIssueExample;
+procedure TRtlConversionRulesTests.GlobalFormatSettingsIssueExample;
 var
   Source, Fixed: string;
   Findings: TArray<TRuleFinding>;
@@ -1216,7 +1328,7 @@ begin
   TRuleAssert.Silent(TGlobalFormatSettingsModifiedRule.Create, Fixed);
 end;
 
-procedure TRtlTypePatternRulesTests.GlobalFormatSettingsVariants;
+procedure TRtlConversionRulesTests.GlobalFormatSettingsVariants;
 const
   Formular = 'unit Haupt;'#10'interface'#10'uses'#10'  System.SysUtils, Vcl.Forms;'#10'type'#10 +
     '  THaupt = class(TForm)'#10'    procedure FormCreate(Sender: TObject);'#10'  end;'#10'implementation'#10 +
@@ -1248,7 +1360,9 @@ begin
   Assert.Contains(Findings[2].Message, 'Ändert die kurzen Monatsnamen');
   // Mehrere Änderungen in der Routine (Zurücksetzen im finally) bzw. kein Aufruf danach: ohne Korrektur.
   for Index := 0 to High(Findings) do
+  begin
     Assert.AreEqual(0, Integer(Length(Findings[Index].Fixes)));
+  end;
   Findings := TRuleAssert.Findings(TGlobalFormatSettingsModifiedRule.Create, Export('uses System.SysUtils;'#10,
     'var'#10'  Alt: Char;'#10, '  Alt := FormatSettings.DecimalSeparator;'#10 +
     '  FormatSettings.DecimalSeparator := ''.'';'#10'  try'#10'    Writeln(FloatToStr(Betrag));'#10'  finally'#10 +
@@ -1269,7 +1383,7 @@ begin
     TGlobalFormatSettingsModifiedRule.Subject('NormalizedLocaleName'));
 end;
 
-procedure TRtlTypePatternRulesTests.GlobalFormatSettingsSilentCases;
+procedure TRtlConversionRulesTests.GlobalFormatSettingsSilentCases;
 const
   Eigene = 'unit Eigene;'#10'interface'#10'uses'#10'  System.SysUtils;'#10'type'#10'  TZahlFeld = class'#10 +
     '  private'#10'    DecimalSeparator: Char;'#10'    procedure Setzen;'#10'  end;'#10 +
@@ -1292,7 +1406,7 @@ begin
     '  with Feld do'#10'    DecimalSeparator := ''.'';'#10));
 end;
 
-procedure TRtlTypePatternRulesTests.GlobalFormatSettingsOptions;
+procedure TRtlConversionRulesTests.GlobalFormatSettingsOptions;
 const
   Programm = 'program Start;'#10'uses'#10'  System.SysUtils;'#10'begin'#10 +
     '  FormatSettings.DecimalSeparator := ''.'';'#10'end.';
@@ -1319,5 +1433,6 @@ end;
 
 initialization
   TDUnitX.RegisterTestFixture(TRtlTypePatternRulesTests);
+  TDUnitX.RegisterTestFixture(TRtlConversionRulesTests);
 
 end.

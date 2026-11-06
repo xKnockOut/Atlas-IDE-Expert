@@ -48,7 +48,9 @@ begin
     Builder.Append('unit U;'#10'interface'#10'implementation'#10'procedure P;'#10'var'#10'  X: Integer;'#10 +
       'begin'#10'  X := 1');
     for Index := 2 to ChainLength do
+    begin
       Builder.Append(' - 1');
+    end;
     Builder.Append(';'#10'  var Y := 2;'#10'  X := Y;'#10'end;'#10'end.'#10);
     Result := Builder.ToString;
   finally

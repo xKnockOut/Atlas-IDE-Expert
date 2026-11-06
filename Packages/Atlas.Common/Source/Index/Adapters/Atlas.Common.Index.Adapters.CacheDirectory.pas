@@ -82,9 +82,12 @@ type
     /// TArchitectureRequest.ScopeKey), gleich für LSP- und MCP-Prozess; außerhalb von Index, damit das Aufräumen
     /// der Index-Caches ihn nicht erfasst.</summary>
     class function ArchitectureFileFor(const ARoot, AScopeKey: string): string; static;
-    /// <summary>Sperrt ACacheFile; nil, wenn eine andere Instanz sie hält. Freigeben hebt die Sperre auf.</summary>
+    /// <summary>Sperrt ACacheFile; nil, wenn eine andere Instanz sie hält. Freigeben hebt die Sperre auf.
+    /// Hält dieser Prozess die Sperre schon (anderes Projekt der Gruppe), gleich nil, ohne die Datei zu öffnen.
+    /// </summary>
     class function TryLock(const ACacheFile: string): TStream; static;
-    /// <summary>True, wenn eine andere Instanz ACacheFile gesperrt hat.</summary>
+    /// <summary>True, wenn eine andere Instanz oder dieser Prozess ACacheFile gesperrt hat. Eigene Sperren
+    /// beantwortet der Prozess selbst (#1479).</summary>
     class function IsLocked(const ACacheFile: string): Boolean; static;
     /// <summary>Löscht die ältesten Caches über AMaxBytes; liefert die Anzahl.</summary>
     class function Cleanup(const ARoot: string; AMaxBytes: Int64; const AKeep: string): Integer; overload; static;
@@ -167,8 +170,12 @@ var
 begin
   Result := Trim(AValue);
   for Index := 1 to Length(Result) do
+  begin
     if not CharInSet(Result[Index], ['0'..'9', 'A'..'Z', 'a'..'z', '.', '-', '_']) then
+    begin
       Result[Index] := '_';
+    end;
+  end;
 end;
 
 class function TIndexCacheDirectory.VersionFolder(const ARoot, AIdeVersion: string): string;
@@ -177,7 +184,9 @@ var
 begin
   Name := SafeFolderName(AIdeVersion);
   if Name = '' then
+  begin
     Name := NoVersion;
+  end;
   Result := TPath.Combine(TPath.Combine(ARoot, IndexFolder), Name);
 end;
 
@@ -212,11 +221,116 @@ begin
     ArchitectureFileName);
 end;
 
+type
+  /// <summary>Sperrdateien, die dieser Prozess offen hält (#1479). Das Aufräumen fragt bei jedem Projektstart
+  /// alle Caches ab, ob sie gesperrt sind; in einer Projektgruppe hält der eigene Prozess die Sperren der schon
+  /// gestarteten Projekte. Die Probe über die Datei schlägt dann nur fehl, kostet aber: Free Pascal wartet unter
+  /// Linux bei belegter Sperre, bevor es aufgibt (gemessen 14 von 17 s bis „bereit“ bei 18 Projekten).</summary>
+  TIndexCacheHeldLocks = class
+  strict private
+    class var FLock: TObject;
+    class var FFiles: TDictionary<string, Boolean>;
+  public
+    class constructor Create;
+    class destructor Destroy;
+    class function KeyOf(const ACacheFile: string): string; static;
+    class function Held(const ACacheFile: string): Boolean; static;
+    class procedure Add(const AKey: string); static;
+    class procedure Remove(const AKey: string); static;
+  end;
+
+  /// <summary>Offene Sperrdatei; meldet sich in TIndexCacheHeldLocks an und beim Freigeben ab.</summary>
+  TIndexCacheLockStream = class(TFileStream)
+  strict private
+    FKey: string;
+  public
+    constructor Create(const ACacheFile: string);
+    destructor Destroy; override;
+  end;
+
+{ TIndexCacheHeldLocks }
+
+class constructor TIndexCacheHeldLocks.Create;
+begin
+  FLock := TObject.Create;
+  FFiles := TDictionary<string, Boolean>.Create;
+end;
+
+class destructor TIndexCacheHeldLocks.Destroy;
+begin
+  // Eine Sperre, die erst nach dieser Unit freigegeben wird, meldet sich dann ins Leere ab (Remove prüft nil).
+  FreeAndNil(FFiles);
+  FreeAndNil(FLock);
+end;
+
+class function TIndexCacheHeldLocks.KeyOf(const ACacheFile: string): string;
+begin
+  Result := AnsiUpperCase(ExpandFileName(ACacheFile));
+end;
+
+class function TIndexCacheHeldLocks.Held(const ACacheFile: string): Boolean;
+begin
+  System.TMonitor.Enter(FLock);
+  try
+    Result := FFiles.ContainsKey(KeyOf(ACacheFile));
+  finally
+    System.TMonitor.Exit(FLock);
+  end;
+end;
+
+class procedure TIndexCacheHeldLocks.Add(const AKey: string);
+begin
+  System.TMonitor.Enter(FLock);
+  try
+    FFiles.AddOrSetValue(AKey, True);
+  finally
+    System.TMonitor.Exit(FLock);
+  end;
+end;
+
+class procedure TIndexCacheHeldLocks.Remove(const AKey: string);
+begin
+  if FLock = nil then
+  begin
+    Exit;
+  end;
+  System.TMonitor.Enter(FLock);
+  try
+    FFiles.Remove(AKey);
+  finally
+    System.TMonitor.Exit(FLock);
+  end;
+end;
+
+{ TIndexCacheLockStream }
+
+constructor TIndexCacheLockStream.Create(const ACacheFile: string);
+begin
+  inherited Create(ACacheFile + TIndexCacheDirectory.LockExtension, fmCreate or fmShareExclusive);
+  // Erst nach dem Öffnen anmelden: Scheitert es, gehört die Sperre einem anderen.
+  FKey := TIndexCacheHeldLocks.KeyOf(ACacheFile);
+  TIndexCacheHeldLocks.Add(FKey);
+end;
+
+destructor TIndexCacheLockStream.Destroy;
+begin
+  // Abmelden vor dem Schließen: Danach darf eine Probe die Datei wieder öffnen.
+  if FKey <> '' then
+  begin
+    TIndexCacheHeldLocks.Remove(FKey);
+  end;
+  inherited;
+end;
+
 class function TIndexCacheDirectory.TryLock(const ACacheFile: string): TStream;
 begin
+  if TIndexCacheHeldLocks.Held(ACacheFile) then
+  begin
+    Exit(nil);
+  end;
   try
     ForceDirectories(ExtractFileDir(ACacheFile));
-    Result := TFileStream.Create(ACacheFile + LockExtension, fmCreate or fmShareExclusive);
+    Result := TIndexCacheLockStream.Create(ACacheFile);
   except
     on EStreamError do
       Result := nil;
@@ -230,7 +344,13 @@ var
   Lock: TStream;
 begin
   if not FileExists(ACacheFile + LockExtension) then
+  begin
     Exit(False);
+  end;
+  if TIndexCacheHeldLocks.Held(ACacheFile) then
+  begin
+    Exit(True);
+  end;
   Lock := TryLock(ACacheFile);
   Result := Lock = nil;
   Lock.Free;
@@ -242,11 +362,15 @@ var
 begin
   Result := nil;
   if not TDirectory.Exists(ARoot) then
+  begin
     Exit;
+  end;
   Result := TDirectory.GetFiles(ARoot, TIndexCacheDirectory.LegacyPattern);
   Folder := TPath.Combine(ARoot, TIndexCacheDirectory.IndexFolder);
   if TDirectory.Exists(Folder) then
+  begin
     Result := Result + TDirectory.GetFiles(Folder, TIndexCacheDirectory.CachePattern, TSearchOption.soAllDirectories);
+  end;
 end;
 
 function ListCaches(const ARoot: string): TArray<TCacheFileInfo>;
@@ -271,18 +395,24 @@ var
 begin
   Result := System.SysUtils.DeleteFile(AFileName);
   if not Result then
+  begin
     Exit;
+  end;
   System.SysUtils.DeleteFile(AFileName + TIndexCacheDirectory.LockExtension);
   // Leeren Projektordner mitnehmen; der Versionsordner bleibt. Herkunft und Marke gehören auch einem Cache
   // anderen Formats im selben Ordner und bleiben, solange einer da ist.
   Folder := ExtractFileDir(AFileName);
   if Length(TDirectory.GetFiles(Folder, TIndexCacheDirectory.CachePattern)) > 0 then
+  begin
     Exit;
+  end;
   System.SysUtils.DeleteFile(TPath.Combine(Folder, TIndexCacheDirectory.OriginFileName));
   System.SysUtils.DeleteFile(TPath.Combine(Folder, TIndexCacheDirectory.UseMarkerFileName));
   try
     if TDirectory.Exists(Folder) and TDirectory.IsEmpty(Folder) then
+    begin
       TDirectory.Delete(Folder);
+    end;
   except
     on Exception do
       ;
@@ -301,8 +431,12 @@ var
 begin
   Result := 0;
   for FileName in TIndexCacheHousekeeping.SelectForRemoval(ListCaches(ARoot), AMaxBytes, AKeep) do
+  begin
     if RemoveCache(FileName) then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 function IsLegacyCache(const ARoot, AFileName: string): Boolean;
@@ -328,8 +462,12 @@ begin
   Result := nil;
   try
     for Entry in TIndexCache.ReadEntries(TFile.ReadAllBytes(ACacheFile)) do
+    begin
       if not Entry.Header.Library_ and (Entry.Header.FileName <> '') then
+      begin
         Result := Result + [Entry.Header.FileName];
+      end;
+    end;
   except
     // Nicht lesbar (gesperrt, beschädigt): Herkunft unbekannt, der Cache bleibt.
     on Exception do
@@ -343,7 +481,9 @@ var
 begin
   Result := nil;
   if IsLibraryCache(ACacheFile) then
+  begin
     Exit;
+  end;
   Origin := TIndexCacheDirectory.ReadOrigin(ACacheFile);
   if Origin <> '' then
   begin
@@ -352,12 +492,14 @@ begin
   end;
   Result := ProjectUnitsOf(ACacheFile);
   for Origin in Result do
+  begin
     if FileExists(Origin) then
     begin
       // Nachtragen, damit der Cache beim nächsten Mal nicht wieder gelesen wird.
       TIndexCacheDirectory.WriteOrigin(ACacheFile, Origin);
       Break;
     end;
+  end;
 end;
 
 /// <summary>Projekt einer Build-Datei (#556); '' = unbekannt.</summary>
@@ -370,7 +512,9 @@ begin
     Root := TJSONObject.ParseJSONValue(TFile.ReadAllText(AFileName, TEncoding.UTF8));
     try
       if Root is TJSONObject then
+      begin
         Result := TJSONObject(Root).GetValue<string>('project', '');
+      end;
     finally
       Root.Free;
     end;
@@ -384,13 +528,23 @@ class procedure TIndexCacheDirectory.TouchUse(const ACacheFile: string);
 var
   Marker: string;
 begin
+  // Ohne Cache-Datei (kein Bibliotheks- oder Suchpfad-Cache) gibt es nichts zu vermerken; sonst entstünde die
+  // Marke im aktuellen Ordner.
+  if ACacheFile = '' then
+  begin
+    Exit;
+  end;
   Marker := TPath.Combine(ExtractFileDir(ACacheFile), UseMarkerFileName);
   try
     ForceDirectories(ExtractFileDir(Marker));
     if FileExists(Marker) then
-      TFile.SetLastWriteTime(Marker, Now)
+    begin
+      TFile.SetLastWriteTime(Marker, Now);
+    end
     else
+    begin
       TFile.WriteAllText(Marker, '');
+    end;
   except
     // Ohne Marke zählt die Zeit des Caches; schlimmstenfalls wird er früher neu aufgebaut.
     on Exception do
@@ -406,13 +560,17 @@ begin
   Result := 0;
   try
     if FileExists(ACacheFile) then
+    begin
       Result := TFile.GetLastWriteTime(ACacheFile);
+    end;
     Marker := TPath.Combine(ExtractFileDir(ACacheFile), UseMarkerFileName);
     if FileExists(Marker) then
     begin
       Used := TFile.GetLastWriteTime(Marker);
       if Used > Result then
+      begin
         Result := Used;
+      end;
     end;
   except
     on Exception do
@@ -427,10 +585,16 @@ var
 begin
   Result := 0;
   if AMaxAgeDays <= 0 then
+  begin
     Exit;
+  end;
   for FileName in TIndexCacheHousekeeping.SelectUnused(ListCaches(ARoot), AKeep, Now, AMaxAgeDays) do
+  begin
     if RemoveCache(FileName) then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 class function TIndexCacheDirectory.ReadOrigin(const ACacheFile: string): string;
@@ -441,7 +605,9 @@ begin
   FileName := TPath.Combine(ExtractFileDir(ACacheFile), OriginFileName);
   try
     if FileExists(FileName) then
+    begin
       Result := Trim(TFile.ReadAllText(FileName, TEncoding.UTF8));
+    end;
   except
     on Exception do
       Result := '';
@@ -451,7 +617,9 @@ end;
 class procedure TIndexCacheDirectory.WriteOrigin(const ACacheFile, AOrigin: string);
 begin
   if (AOrigin = '') or SameText(ReadOrigin(ACacheFile), AOrigin) then
+  begin
     Exit;
+  end;
   try
     ForceDirectories(ExtractFileDir(ACacheFile));
     TFile.WriteAllText(TPath.Combine(ExtractFileDir(ACacheFile), OriginFileName), AOrigin, TEncoding.UTF8);
@@ -467,15 +635,38 @@ var
   Drive: string;
 begin
   if FileExists(APath) or DirectoryExists(APath) then
+  begin
     Exit(True);
+  end;
   // Fehlt das Laufwerk oder die Freigabe (USB-Platte, Netz), ist das Projekt nicht gelöscht, nur nicht da.
   Drive := ExtractFileDrive(APath);
   Result := (Drive <> '') and not DirectoryExists(IncludeTrailingPathDelimiter(Drive));
 end;
 
+/// <summary>Löscht die Build-Stände (build-*.json) in ARoot, deren Projekt es nicht mehr gibt; Anzahl.</summary>
+function RemoveOrphanBuilds(const ARoot: string): Integer;
+var
+  mFileName, mProject: string;
+begin
+  Result := 0;
+  if not TDirectory.Exists(ARoot) then
+  begin
+    Exit;
+  end;
+  for mFileName in TDirectory.GetFiles(ARoot, TIndexCacheDirectory.BuildPattern) do
+  begin
+    mProject := BuildProjectOf(mFileName);
+    if (mProject <> '') and not TIndexCacheDirectory.OriginExists(mProject) and
+      System.SysUtils.DeleteFile(mFileName) then
+    begin
+      Inc(Result);
+    end;
+  end;
+end;
+
 class function TIndexCacheDirectory.RemoveOrphans(const ARoot: string; const AKeep: TArray<string>): Integer;
 var
-  FileName, Project: string;
+  FileName: string;
   Infos: TList<TCacheFileInfo>;
   Info: TCacheFileInfo;
   Exists: TFunc<string, Boolean>;
@@ -492,11 +683,15 @@ begin
       begin
         // Format bis 11: liest keine Version mehr.
         if not Info.Locked and (IndexText(FileName, AKeep) < 0) and RemoveCache(FileName) then
+        begin
           Inc(Result);
+        end;
         Continue;
       end;
       if not Info.Locked then
+      begin
         Info.Origins := OriginsOf(FileName);
+      end;
       Infos.Add(Info);
     end;
     Exists :=
@@ -505,18 +700,16 @@ begin
         Result := TIndexCacheDirectory.OriginExists(APath);
       end;
     for FileName in TIndexCacheHousekeeping.SelectOrphans(Infos.ToArray, AKeep, Exists) do
+    begin
       if RemoveCache(FileName) then
+      begin
         Inc(Result);
+      end;
+    end;
   finally
     Infos.Free;
   end;
-  if TDirectory.Exists(ARoot) then
-    for FileName in TDirectory.GetFiles(ARoot, BuildPattern) do
-    begin
-      Project := BuildProjectOf(FileName);
-      if (Project <> '') and not OriginExists(Project) and System.SysUtils.DeleteFile(FileName) then
-        Inc(Result);
-    end;
+  Inc(Result, RemoveOrphanBuilds(ARoot));
 end;
 
 class function TIndexCacheDirectory.Clear(const ARoot: string): Integer;
@@ -525,8 +718,12 @@ var
 begin
   Result := 0;
   for Info in ListCaches(ARoot) do
+  begin
     if not Info.Locked and RemoveCache(Info.FileName) then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 class function TIndexCacheDirectory.Remove(const AFiles: TArray<string>): Integer;
@@ -535,8 +732,12 @@ var
 begin
   Result := 0;
   for FileName in AFiles do
+  begin
     if (FileName <> '') and FileExists(FileName) and not IsLocked(FileName) and RemoveCache(FileName) then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 class function TIndexCacheDirectory.TotalSize(const ARoot: string): Int64;
@@ -550,8 +751,12 @@ var
 begin
   Result := 0;
   for FileName in AFiles do
+  begin
     if (FileName <> '') and FileExists(FileName) then
+    begin
       Inc(Result, TFile.GetSize(FileName));
+    end;
+  end;
 end;
 
 end.

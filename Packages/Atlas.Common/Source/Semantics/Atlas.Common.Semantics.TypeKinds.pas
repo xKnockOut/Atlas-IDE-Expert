@@ -55,13 +55,32 @@ uses
   System.SysUtils,
   System.StrUtils,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Localization.Texts,
   Atlas.Common.Semantics.ExpressionTypes;
 
 const
-  cKindTexts: array[TResolvedTypeKind] of string = ('ein Typ unbekannter Art', 'eine Ganzzahl', 'eine Gleitkommazahl',
-    'eine Zahl vom Typ Currency', 'ein Boolean', 'ein Zeichen', 'ein String', 'ein Variant', 'ein Zeiger',
-    'eine Aufzählung', 'eine Menge', 'ein Array', 'ein Record', 'ein object-Typ', 'eine Klasse',
-    'eine Klassenreferenz', 'ein Interface', 'ein Helfer', 'ein prozeduraler Typ', 'eine Datei');
+  // Art als Satzteil („ist eine Menge“), deutsch und englisch (#1458).
+  cKindTexts: array[TResolvedTypeKind] of TAtlasText = (
+    (De: 'ein Typ unbekannter Art'; En: 'a type of unknown kind'),
+    (De: 'eine Ganzzahl'; En: 'an integer'),
+    (De: 'eine Gleitkommazahl'; En: 'a floating-point number'),
+    (De: 'eine Zahl vom Typ Currency'; En: 'a number of type Currency'),
+    (De: 'ein Boolean'; En: 'a Boolean'),
+    (De: 'ein Zeichen'; En: 'a character'),
+    (De: 'ein String'; En: 'a string'),
+    (De: 'ein Variant'; En: 'a Variant'),
+    (De: 'ein Zeiger'; En: 'a pointer'),
+    (De: 'eine Aufzählung'; En: 'an enumeration'),
+    (De: 'eine Menge'; En: 'a set'),
+    (De: 'ein Array'; En: 'an array'),
+    (De: 'ein Record'; En: 'a record'),
+    (De: 'ein object-Typ'; En: 'an object type'),
+    (De: 'eine Klasse'; En: 'a class'),
+    (De: 'eine Klassenreferenz'; En: 'a class reference'),
+    (De: 'ein Interface'; En: 'an interface'),
+    (De: 'ein Helfer'; En: 'a helper'),
+    (De: 'ein prozeduraler Typ'; En: 'a procedural type'),
+    (De: 'eine Datei'; En: 'a file'));
 
 { TResolvedTypeKinds }
 
@@ -94,6 +113,59 @@ begin
   end;
 end;
 
+type
+  TTypeTextPrefix = record
+    Prefix: string;
+    Kind: TResolvedTypeKind;
+  end;
+
+const
+  // Reihenfolge wie die Prüfung: der erste passende Anfang entscheidet.
+  cTypeTextPrefixes: array[0..9] of TTypeTextPrefix = (
+    (Prefix: '^'; Kind: TResolvedTypeKind.Pointer_),
+    (Prefix: 'class of '; Kind: TResolvedTypeKind.ClassReference),
+    (Prefix: 'set of '; Kind: TResolvedTypeKind.Set_),
+    (Prefix: 'array'; Kind: TResolvedTypeKind.Array_),
+    (Prefix: 'packed array'; Kind: TResolvedTypeKind.Array_),
+    (Prefix: 'procedure'; Kind: TResolvedTypeKind.Procedure_),
+    (Prefix: 'function'; Kind: TResolvedTypeKind.Procedure_),
+    (Prefix: 'reference to '; Kind: TResolvedTypeKind.Procedure_),
+    (Prefix: 'file of '; Kind: TResolvedTypeKind.File_),
+    (Prefix: 'string['; Kind: TResolvedTypeKind.String_));
+
+/// <summary>Art nach dem Anfang von AText ("^", "class of ", "set of " ...); False ohne passenden Anfang.</summary>
+function KindOfPrefix(const AText: string; out AKind: TResolvedTypeKind): Boolean;
+var
+  mPrefix: TTypeTextPrefix;
+begin
+  for mPrefix in cTypeTextPrefixes do
+  begin
+    if StartsText(mPrefix.Prefix, AText) then
+    begin
+      AKind := mPrefix.Kind;
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Art eines Typtexts ohne passenden Anfang: Dateityp, Aufzählung oder eingebauter Name.</summary>
+function KindOfWord(const AText: string): TResolvedTypeKind;
+begin
+  if SameText(AText, 'file') or SameText(AText, 'Text') or SameText(AText, 'TextFile') then
+  begin
+    Result := TResolvedTypeKind.File_;
+  end
+  else if StartsStr('(', AText) then
+  begin
+    Result := TResolvedTypeKind.Enumeration;
+  end
+  else
+  begin
+    Result := TResolvedTypeKinds.OfBuiltin(AText);
+  end;
+end;
+
 class function TResolvedTypeKinds.OfText(const ATypeText: string): TResolvedTypeKind;
 var
   mText: string;
@@ -101,27 +173,17 @@ begin
   mText := Trim(ATypeText);
   // "type Integer" ist ein eigener Typ derselben Art.
   if StartsText('type ', mText) then
+  begin
     mText := Trim(Copy(mText, 6, MaxInt));
+  end;
   if mText = '' then
-    Exit(TResolvedTypeKind.Unknown);
-  if StartsStr('^', mText) then
-    Exit(TResolvedTypeKind.Pointer_);
-  if StartsText('class of ', mText) then
-    Exit(TResolvedTypeKind.ClassReference);
-  if StartsText('set of ', mText) then
-    Exit(TResolvedTypeKind.Set_);
-  if StartsText('array', mText) or StartsText('packed array', mText) then
-    Exit(TResolvedTypeKind.Array_);
-  if StartsText('procedure', mText) or StartsText('function', mText) or StartsText('reference to ', mText) then
-    Exit(TResolvedTypeKind.Procedure_);
-  if SameText(mText, 'file') or StartsText('file of ', mText) or SameText(mText, 'Text') or
-    SameText(mText, 'TextFile') then
-    Exit(TResolvedTypeKind.File_);
-  if StartsText('string[', mText) then
-    Exit(TResolvedTypeKind.String_);
-  if StartsStr('(', mText) then
-    Exit(TResolvedTypeKind.Enumeration);
-  Result := OfBuiltin(mText);
+  begin
+    Result := TResolvedTypeKind.Unknown;
+  end
+  else if not KindOfPrefix(mText, Result) then
+  begin
+    Result := KindOfWord(mText);
+  end;
 end;
 
 class function TResolvedTypeKinds.OfType(const AType: TResolvedSymbol): TResolvedTypeKind;
@@ -135,15 +197,23 @@ var
 begin
   // Eingebaute Typen tragen in der Namensauflösung die Symbolart RecordType; maßgeblich ist ihr Name.
   if AType.Builtin then
+  begin
     Exit(OfBuiltin(AType.Name));
+  end;
   if not AType.Found or not AType.IsType then
+  begin
     Exit(TResolvedTypeKind.Unknown);
+  end;
   // "TClass = class of TObject" steht im Index als Klasse.
   mText := ADeclaredText;
   if mText = '' then
+  begin
     mText := DeclaredText(AType.Signature);
+  end;
   if StartsText('class of ', mText) then
+  begin
     Exit(TResolvedTypeKind.ClassReference);
+  end;
   case AType.SymbolKind of
     TIndexSymbolKind.ClassType:
       Result := TResolvedTypeKind.Class_;
@@ -172,7 +242,7 @@ end;
 
 class function TResolvedTypeKinds.Describe(AKind: TResolvedTypeKind): string;
 begin
-  Result := cKindTexts[AKind];
+  Result := cKindTexts[AKind].Text;
 end;
 
 class function TResolvedTypeKinds.DeclaredText(const ASignature: string): string;
@@ -193,10 +263,15 @@ begin
           Result := Copy(ASignature, mIndex + 1, MaxInt);
           mEnd := Pos(';', Result);
           if mEnd > 0 then
+          begin
             Result := Copy(Result, 1, mEnd - 1);
+          end;
           Exit(Trim(Result));
         end;
     end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Semantics.TypeKinds', cKindTexts);
 
 end.

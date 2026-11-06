@@ -102,53 +102,76 @@ begin
   Result := (ANameMask and AQueryMask) = AQueryMask;
 end;
 
+/// <summary>Ist ASymbol ein Eintrag des Namensindex (im interface, nicht Mitglied eines Typs)?</summary>
+function IsImportEntry(const ASymbol: TIndexSymbol): Boolean;
+begin
+  Result := ASymbol.InInterface and (ASymbol.Container = '');
+end;
+
+function IsImportHelper(const ASymbol: TIndexSymbol): Boolean;
+begin
+  Result := (ASymbol.Kind = TIndexSymbolKind.HelperType) and (Length(ASymbol.Ancestors) > 0);
+end;
+
+/// <summary>Zählt Einträge und Helfer, damit Build die Arrays einmal anlegt.</summary>
+procedure CountImportEntries(const AUnits: TArray<TUnitIndex>; out AEntries, AHelpers: Integer);
+var
+  mUnitPos, mSymbolPos: Integer;
+begin
+  AEntries := 0;
+  AHelpers := 0;
+  for mUnitPos := 0 to High(AUnits) do
+  begin
+    for mSymbolPos := 0 to High(AUnits[mUnitPos].Symbols) do
+    begin
+      if IsImportEntry(AUnits[mUnitPos].Symbols[mSymbolPos]) then
+      begin
+        Inc(AEntries);
+        Inc(AHelpers, Ord(IsImportHelper(AUnits[mUnitPos].Symbols[mSymbolPos])));
+      end;
+    end;
+  end;
+end;
+
 class function TImportNameIndex.Build(const AIndex: ISymbolIndex): TImportNameIndex;
 var
-  Pass, UnitPos, SymbolPos, Used, Helpers: Integer;
-  Symbol: TIndexSymbol;
+  mPass, mUnitPos, mSymbolPos, mUsed, mHelpers: Integer;
+  mSymbol: TIndexSymbol;
 begin
   // Generation vor Units lesen: Ändert sich der Index dazwischen, baut der nächste Aufruf neu.
   Result.Generation := AIndex.Generation;
   Result.Units := AIndex.Units;
-  Used := 0;
-  Helpers := 0;
-  for UnitPos := 0 to High(Result.Units) do
-    for SymbolPos := 0 to High(Result.Units[UnitPos].Symbols) do
-      if Result.Units[UnitPos].Symbols[SymbolPos].InInterface and
-        (Result.Units[UnitPos].Symbols[SymbolPos].Container = '') then
-      begin
-        Inc(Used);
-        if (Result.Units[UnitPos].Symbols[SymbolPos].Kind = TIndexSymbolKind.HelperType) and
-          (Length(Result.Units[UnitPos].Symbols[SymbolPos].Ancestors) > 0) then
-          Inc(Helpers);
-      end;
-  SetLength(Result.Entries, Used);
-  SetLength(Result.Helpers, Helpers);
-  Used := 0;
-  Helpers := 0;
-  for Pass := 0 to 1 do
-    for UnitPos := 0 to High(Result.Units) do
+  CountImportEntries(Result.Units, mUsed, mHelpers);
+  SetLength(Result.Entries, mUsed);
+  SetLength(Result.Helpers, mHelpers);
+  mUsed := 0;
+  mHelpers := 0;
+  // Erst die Projekt-Units, dann die Bibliothek.
+  for mPass := 0 to 1 do
+  begin
+    for mUnitPos := 0 to High(Result.Units) do
     begin
-      if Result.Units[UnitPos].Library_ <> (Pass = 1) then
-        Continue;
-      for SymbolPos := 0 to High(Result.Units[UnitPos].Symbols) do
+      for mSymbolPos := 0 to High(Result.Units[mUnitPos].Symbols) do
       begin
-        Symbol := Result.Units[UnitPos].Symbols[SymbolPos];
-        if not Symbol.InInterface or (Symbol.Container <> '') then
-          Continue;
-        Result.Entries[Used].UnitPos := UnitPos;
-        Result.Entries[Used].SymbolPos := SymbolPos;
-        Result.Entries[Used].Mask := MaskOf(Symbol.Name);
-        Inc(Used);
-        if (Symbol.Kind = TIndexSymbolKind.HelperType) and (Length(Symbol.Ancestors) > 0) then
+        mSymbol := Result.Units[mUnitPos].Symbols[mSymbolPos];
+        if (Result.Units[mUnitPos].Library_ <> (mPass = 1)) or not IsImportEntry(mSymbol) then
         begin
-          Result.Helpers[Helpers].UnitPos := UnitPos;
-          Result.Helpers[Helpers].SymbolPos := SymbolPos;
-          Result.Helpers[Helpers].Mask := 0;
-          Inc(Helpers);
+          Continue;
+        end;
+        Result.Entries[mUsed].UnitPos := mUnitPos;
+        Result.Entries[mUsed].SymbolPos := mSymbolPos;
+        Result.Entries[mUsed].Mask := MaskOf(mSymbol.Name);
+        Inc(mUsed);
+        if IsImportHelper(mSymbol) then
+        begin
+          Result.Helpers[mHelpers].UnitPos := mUnitPos;
+          Result.Helpers[mHelpers].SymbolPos := mSymbolPos;
+          Result.Helpers[mHelpers].Mask := 0;
+          Inc(mHelpers);
         end;
       end;
     end;
+  end;
 end;
 
 function TImportNameIndex.Count: Integer;
@@ -167,7 +190,9 @@ begin
     Fresh := (CacheOwner = Pointer(AIndex as TObject)) and (CacheNames.Generation = AIndex.Generation);
     if not Fresh and (CacheOwner = Pointer(AIndex as TObject)) and (CacheNames.Count >= LargeCount) and
       (CacheWatch.ElapsedMilliseconds < RebuildMs) then
+    begin
       Fresh := True;
+    end;
     if not Fresh then
     begin
       CacheNames := TImportNameIndex.Build(AIndex);

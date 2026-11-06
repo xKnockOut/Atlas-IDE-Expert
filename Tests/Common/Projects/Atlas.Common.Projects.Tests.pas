@@ -400,8 +400,12 @@ var
   begin
     Result := '-';
     for Origin in Project.DefineOrigins do
+    begin
       if Origin.Key = AName then
+      begin
         Exit(Origin.Value);
+      end;
+    end;
   end;
 
 begin
@@ -503,7 +507,9 @@ begin
   Existing := TList<string>.Create;
   try
     for Item in AExisting do
+    begin
       Existing.Add(LowerCase(Item));
+    end;
     Files := Existing.ToArray;
   finally
     Existing.Free;
@@ -514,8 +520,12 @@ begin
       Candidate: string;
     begin
       for Candidate in Files do
+      begin
         if Candidate = LowerCase(AFileName) then
+        begin
           Exit(True);
+        end;
+      end;
       Result := False;
     end);
 end;
@@ -573,21 +583,31 @@ begin
         Known: Integer;
       begin
         if not Listed.TryGetValue(LowerCase(AFolder), Known) then
+        begin
           Known := 0;
+        end;
         Listed.AddOrSetValue(LowerCase(AFolder), Known + 1);
         if SameText(AFolder, 'C:\Studio\37.0\source\rtl\sys') then
-          Result := ['C:\Studio\37.0\source\rtl\sys\System.SysUtils.pas']
+        begin
+          Result := ['C:\Studio\37.0\source\rtl\sys\System.SysUtils.pas'];
+        end
         else if SameText(AFolder, 'C:\Other') then
-          Result := ['C:\Other\Helper.pas']
+        begin
+          Result := ['C:\Other\Helper.pas'];
+        end
         else
+        begin
           Result := nil;
+        end;
       end;
     Assert.AreEqual('C:\Studio\37.0\source\rtl\sys\System.SysUtils.pas', Resolver.Resolve('SysUtils'));
     Assert.AreEqual('C:\Studio\37.0\source\rtl\sys\System.SysUtils.pas', Resolver.Resolve('System.SysUtils'));
     Assert.AreEqual('C:\Other\Helper.pas', Resolver.Resolve('Helper', 'C:\Other'));
     Assert.AreEqual('', Resolver.Resolve('Missing'));
     for Count in Listed.Values do
+    begin
       Assert.AreEqual(1, Count, 'jeder Ordner einmal');
+    end;
   finally
     Resolver.Free;
     Listed.Free;

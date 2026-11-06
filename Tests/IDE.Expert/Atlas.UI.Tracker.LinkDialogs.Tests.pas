@@ -12,6 +12,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasLinkDialogsTests = class
   private
     FLanguage: TAtlasLanguage;

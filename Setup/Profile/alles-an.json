@@ -44,6 +44,16 @@
     "welcomePage.tests.ci.login": true,
     "welcomePage.quickActions": true,
     "shortcutTips.enabled": true,
-    "notifications.enabled": true
+    "notifications.enabled": true,
+    "debug.enabled": true,
+    "issues.enabled": true,
+    "analysis.enabled": true,
+    "tests.enabled": true,
+    "buildTools.enabled": true,
+    "buildPipeline.enabled": true,
+    "bookmarks.enabled": true,
+    "designer.enabled": true,
+    "ruleChecks.enabled": true,
+    "search.enabled": true
   }
 }

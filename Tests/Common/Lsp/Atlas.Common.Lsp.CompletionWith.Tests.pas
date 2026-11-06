@@ -49,6 +49,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.Completion.Lists,
   System.SysUtils,
   System.JSON,
   Atlas.Common.Documents.Contract,
@@ -100,13 +101,17 @@ begin
   Line := 0;
   Character := 0;
   for Index := 1 to Pos('|', AMarked) - 1 do
+  begin
     if AMarked[Index] = #10 then
     begin
       Inc(Line);
       Character := 0;
     end
     else
+    begin
       Inc(Character);
+    end;
+  end;
   APosition := TTextPosition.Create(Line, Character);
   Result := StringReplace(AMarked, '|', '', []);
 end;
@@ -141,7 +146,7 @@ begin
     Request.Index := FIndex;
     Request.Matching := TCompletionMatching.Prefix;
     Request.Settings := ASettings;
-    Result := TLspCompletion.Collect(Request, Default(TPostfixOptions), nil);
+    Result := TCompletionLists.Collect(Request, Default(TPostfixOptions), nil);
   finally
     Request.Free;
     Tree.Free;
@@ -159,11 +164,13 @@ var
   Item: TCompletionItem;
 begin
   for Item in AItems.Items do
+  begin
     if Item.Name = AName then
     begin
       AItem := Item;
       Exit(True);
     end;
+  end;
   AItem := Default(TCompletionItem);
   Result := False;
 end;
@@ -174,8 +181,12 @@ var
 begin
   Result := 0;
   for Item in AItems.Items do
+  begin
     if SameText(Item.Name, AName) then
+    begin
       Inc(Result);
+    end;
+  end;
 end;
 
 procedure TCompletionWithTests.MembersCarryOrigin;

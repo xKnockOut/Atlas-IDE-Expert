@@ -2,7 +2,8 @@
 
 // Einreihen in den Hauptthread über TAtlasMainThread (Code-Review A-02):
 // Einträge überleben das Freigeben des einreihenden Arbeiters, nicht aber
-// Stop (Entladen); Ausnahmen zählen für das angegebene Feature.
+// Stop (Entladen); Ausnahmen zählen für das angegebene Feature. Einträge eines
+// abgemeldeten oder entladenen Moduls verfallen, die anderer Module nicht.
 
 interface
 
@@ -36,6 +37,20 @@ type
     procedure ExceptionCountsForFeature;
     [Test]
     procedure QueueFromWorkerRunsInMainThread;
+    [Test]
+    procedure ModuleOfIsModuleOfTheCode;
+    [Test]
+    procedure CloseModuleDropsWaitingAndLaterEntries;
+    [Test]
+    procedure CloseOtherModuleKeepsEntries;
+    [Test]
+    procedure ModuleUnloadedDropsButStaysOpen;
+    [Test]
+    procedure CloseModuleDropsEntriesOfWorker;
+    [Test]
+    // Wie StopDropsWaitingAndLaterEntries: Start legt einen neuen Besitzer-Thread an.
+    [IgnoreMemoryLeaks]
+    procedure StopEmptiesPendingList;
   end;
 
 implementation
@@ -55,7 +70,9 @@ var
 begin
   Watch := TStopwatch.StartNew;
   while not AThread.Finished and (Watch.ElapsedMilliseconds < 5000) do
+  begin
     Sleep(1);
+  end;
 end;
 
 { TAtlasMainThreadTests }
@@ -78,7 +95,9 @@ begin
   TAtlasGuard.Fuse.ResetAll;
   TAtlasGuard.RotatingLog.Folder := FOldFolder;
   if TDirectory.Exists(FFolder) then
+  begin
     TDirectory.Delete(FFolder, True);
+  end;
   FFolder := '';
   FOldFolder := '';
 end;
@@ -213,6 +232,154 @@ begin
   Worker.Free;
   CheckSynchronize;
   Assert.IsTrue(RanIn = MainThreadID, 'Eintrag läuft im Hauptthread');
+end;
+
+/// <summary>Zählt jeden Aufruf in ACount; eigene Routine, damit keine andere anonyme Methode den Rahmen teilt.
+/// </summary>
+function Counter(var ACount: Integer): TThreadProcedure;
+var
+  mCount: PInteger;
+begin
+  mCount := @ACount;
+  Result :=
+    procedure
+    begin
+      Inc(mCount^);
+    end;
+end;
+
+/// <summary>Arbeit eines Arbeiters, der AProc über Queue einreiht; eigene Routine, damit der Arbeiter den Wert
+/// einfängt und nicht die Variable des Tests.</summary>
+function Enqueuer(const AProc: TThreadProcedure): TProc;
+var
+  mProc: TThreadProcedure;
+begin
+  mProc := AProc;
+  Result :=
+    procedure
+    begin
+      TAtlasMainThread.Queue(TAtlasFeature.Hover, mProc);
+    end;
+end;
+
+procedure TAtlasMainThreadTests.ModuleOfIsModuleOfTheCode;
+var
+  mCount: Integer;
+begin
+  mCount := 0;
+  Assert.IsTrue(TAtlasMainThread.ModuleOf(Counter(mCount)) = NativeUInt(FindHInstance(@Counter)),
+    'Modul der Routine, die die anonyme Methode übersetzt hat');
+  Assert.IsTrue(TAtlasMainThread.ModuleOf(Counter(mCount)) <> 0);
+  Assert.IsTrue(TAtlasMainThread.ModuleOf(nil) = 0, 'ohne Methode');
+end;
+
+procedure TAtlasMainThreadTests.CloseModuleDropsWaitingAndLaterEntries;
+var
+  mCount: Integer;
+  mIncrement: TThreadProcedure;
+  mModule: NativeUInt;
+begin
+  mCount := 0;
+  mIncrement := Counter(mCount);
+  mModule := TAtlasMainThread.ModuleOf(mIncrement);
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Completion, mIncrement);
+  Assert.AreEqual(1, TAtlasMainThread.PendingCount);
+  TAtlasMainThread.CloseModule(mModule);
+  try
+    Assert.AreEqual(0, TAtlasMainThread.PendingCount, 'wartender Eintrag verworfen');
+    TAtlasMainThread.ForceQueue(TAtlasFeature.Completion, mIncrement);
+    Assert.AreEqual(0, TAtlasMainThread.PendingCount, 'späterer Eintrag nicht angenommen');
+    CheckSynchronize;
+    Assert.AreEqual(0, mCount, 'nichts vom abgemeldeten Modul ausgeführt');
+    TAtlasMainThread.Queue(TAtlasFeature.Completion, mIncrement);
+    Assert.AreEqual(1, mCount, 'Queue im Hauptthread läuft weiter sofort');
+  finally
+    TAtlasMainThread.OpenModule(mModule);
+  end;
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Completion, mIncrement);
+  CheckSynchronize;
+  Assert.AreEqual(2, mCount, 'nach dem Anmelden wieder angenommen');
+  mIncrement := nil;
+end;
+
+procedure TAtlasMainThreadTests.CloseOtherModuleKeepsEntries;
+var
+  mCount: Integer;
+  mIncrement: TThreadProcedure;
+  mOther: NativeUInt;
+begin
+  mCount := 0;
+  mIncrement := Counter(mCount);
+  mOther := TAtlasMainThread.ModuleOf(mIncrement) + 1;
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Completion, mIncrement);
+  TAtlasMainThread.CloseModule(mOther);
+  try
+    TAtlasMainThread.ForceQueue(TAtlasFeature.Completion, mIncrement);
+    CheckSynchronize;
+    Assert.AreEqual(2, mCount, 'Einträge anderer Module laufen');
+  finally
+    TAtlasMainThread.OpenModule(mOther);
+  end;
+  mIncrement := nil;
+end;
+
+procedure TAtlasMainThreadTests.ModuleUnloadedDropsButStaysOpen;
+var
+  mCount: Integer;
+  mIncrement: TThreadProcedure;
+begin
+  mCount := 0;
+  mIncrement := Counter(mCount);
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Completion, mIncrement);
+  TAtlasMainThread.ModuleUnloaded(TAtlasMainThread.ModuleOf(mIncrement));
+  CheckSynchronize;
+  Assert.AreEqual(0, mCount, 'wartender Eintrag des entladenen Moduls verworfen');
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Completion, mIncrement);
+  CheckSynchronize;
+  Assert.AreEqual(1, mCount, 'ein neu geladenes Package unter demselben Handle beginnt offen');
+  mIncrement := nil;
+end;
+
+procedure TAtlasMainThreadTests.CloseModuleDropsEntriesOfWorker;
+var
+  mCount: Integer;
+  mIncrement: TThreadProcedure;
+  mModule: NativeUInt;
+  mWorker: TThread;
+begin
+  mCount := 0;
+  mIncrement := Counter(mCount);
+  mModule := TAtlasMainThread.ModuleOf(mIncrement);
+  mWorker := TThread.CreateAnonymousThread(Enqueuer(mIncrement));
+  mWorker.FreeOnTerminate := False;
+  mWorker.Start;
+  WaitFinished(mWorker);
+  mWorker.Free;
+  // Wie beim Abmelden eines Moduls, dessen Arbeiter noch ein Ergebnis eingereiht hat.
+  TAtlasMainThread.CloseModule(mModule);
+  try
+    CheckSynchronize;
+    Assert.AreEqual(0, mCount, 'Eintrag des Arbeiters verworfen');
+  finally
+    TAtlasMainThread.OpenModule(mModule);
+  end;
+  mIncrement := nil;
+end;
+
+procedure TAtlasMainThreadTests.StopEmptiesPendingList;
+var
+  mCount: Integer;
+begin
+  mCount := 0;
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Completion, Counter(mCount));
+  TAtlasMainThread.Stop;
+  try
+    Assert.AreEqual(0, TAtlasMainThread.PendingCount, 'Stop leert die Liste');
+  finally
+    TAtlasMainThread.Start;
+  end;
+  CheckSynchronize;
+  Assert.AreEqual(0, mCount);
 end;
 
 initialization

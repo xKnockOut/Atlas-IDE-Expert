@@ -31,11 +31,17 @@ function FinalPathNameByHandle(hFile: THandle; lpszFilePath: PWideChar; cchFileP
 function LongPathForApi(const APath: string): string;
 begin
   if (Length(APath) < MAX_PATH) or (Copy(APath, 1, 4) = '\\?\') then
-    Result := APath
+  begin
+    Result := APath;
+  end
   else if Copy(APath, 1, 2) = '\\' then
-    Result := '\\?\UNC\' + Copy(APath, 3, MaxInt)
+  begin
+    Result := '\\?\UNC\' + Copy(APath, 3, MaxInt);
+  end
   else
+  begin
     Result := '\\?\' + APath;
+  end;
 end;
 
 class function TWindowsPathCanonicalizer.Canonicalize(const APath: string): string;
@@ -46,13 +52,17 @@ var
 begin
   Result := APath;
   if APath = '' then
+  begin
     Exit;
+  end;
   // FILE_FLAG_BACKUP_SEMANTICS erlaubt auch Ordner.
   Handle := CreateFile(PChar(LongPathForApi(APath)), 0,
     FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE, nil, OPEN_EXISTING,
     FILE_FLAG_BACKUP_SEMANTICS, 0);
   if Handle = INVALID_HANDLE_VALUE then
+  begin
     Exit;
+  end;
   try
     SetLength(Buffer, MAX_PATH);
     Len := FinalPathNameByHandle(Handle, PWideChar(Buffer), Length(Buffer),
@@ -64,15 +74,23 @@ begin
         FinalPathFlags);
     end;
     if (Len = 0) or (Len >= DWORD(Length(Buffer))) then
+    begin
       Exit;
+    end;
     SetLength(Buffer, Len);
     // \\?\C:\... bzw. \\?\UNC\server\... zurück in die gewohnte Form
     if SameText(Copy(Buffer, 1, 8), '\\?\UNC\') then
-      Result := '\\' + Copy(Buffer, 9, MaxInt)
+    begin
+      Result := '\\' + Copy(Buffer, 9, MaxInt);
+    end
     else if Copy(Buffer, 1, 4) = '\\?\' then
-      Result := Copy(Buffer, 5, MaxInt)
+    begin
+      Result := Copy(Buffer, 5, MaxInt);
+    end
     else
+    begin
       Result := Buffer;
+    end;
   finally
     CloseHandle(Handle);
   end;

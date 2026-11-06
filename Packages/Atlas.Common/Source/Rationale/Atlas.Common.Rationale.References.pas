@@ -45,12 +45,117 @@ function WithoutLeadingZeros(const ADigits: string): string;
 begin
   Result := ADigits;
   while (Length(Result) > 1) and (Result[1] = '0') do
+  begin
     Delete(Result, 1, 1);
+  end;
+end;
+
+/// <summary>Ein Verweis darf bei AIndex beginnen: am Anfang oder nach einem Zeichen, das nicht verbindet.</summary>
+function MayStartAt(const AText: string; AIndex: Integer): Boolean;
+begin
+  Result := (AIndex = 1) or not JoinsLink(AText[AIndex - 1]);
+end;
+
+/// <summary>Ein Verweis darf vor AEnd enden: am Ende oder vor einem Zeichen, das nicht verbindet.</summary>
+function MayEndBefore(const AText: string; AEnd: Integer): Boolean;
+begin
+  Result := (AEnd > Length(AText)) or not JoinsLink(AText[AEnd]);
+end;
+
+/// <summary>Erste Stelle ab AStart, die keine Ziffer ist.</summary>
+function DigitsEnd(const AText: string; AStart: Integer): Integer;
+begin
+  Result := AStart;
+  while (Result <= Length(AText)) and IsDigit(AText[Result]) do
+  begin
+    Inc(Result);
+  end;
+end;
+
+/// <summary>URL ab AIndex bis zum Leerraum, ohne Satzzeichen am Ende; Ende hinter der URL, 0 ohne.</summary>
+function ReadUrl(const AText, ALower: string; AIndex: Integer; var ALink: TRationaleLink): Integer;
+begin
+  Result := 0;
+  if (StartsText('https://', Copy(ALower, AIndex, 8)) or StartsText('http://', Copy(ALower, AIndex, 7))) and
+    MayStartAt(AText, AIndex) then
+  begin
+    Result := AIndex;
+    while (Result <= Length(AText)) and (AText[Result] > ' ') do
+    begin
+      Inc(Result);
+    end;
+    while (Result > AIndex) and CharInSet(AText[Result - 1], ['.', ',', ';', ':', ')', '!', '?', '''', '"']) do
+    begin
+      Dec(Result);
+    end;
+    ALink.Kind := TRationaleLinkKind.Url;
+    ALink.Key := Copy(AText, AIndex, Result - AIndex);
+  end;
+end;
+
+/// <summary>ADR-0007, ADR 7 oder ADR7 ab AIndex; Ende hinter der Nummer, 0 ohne.</summary>
+function ReadAdr(const AText, ALower: string; AIndex: Integer; var ALink: TRationaleLink): Integer;
+var
+  mDigits: Integer;
+begin
+  Result := 0;
+  if (Copy(ALower, AIndex, 3) = 'adr') and MayStartAt(AText, AIndex) then
+  begin
+    mDigits := AIndex + 3;
+    if (mDigits <= Length(AText)) and CharInSet(AText[mDigits], ['-', ' ']) then
+    begin
+      Inc(mDigits);
+    end;
+    Result := DigitsEnd(AText, mDigits);
+    if (Result > mDigits) and MayEndBefore(AText, Result) then
+    begin
+      ALink.Kind := TRationaleLinkKind.Adr;
+      ALink.Key := WithoutLeadingZeros(Copy(AText, mDigits, Result - mDigits));
+    end
+    else
+    begin
+      Result := 0;
+    end;
+  end;
+end;
+
+/// <summary>#312 ab AIndex, nicht #13#10 und nicht mitten in einem Wort; Ende hinter der Nummer, 0 ohne.</summary>
+function ReadIssue(const AText: string; AIndex: Integer; var ALink: TRationaleLink): Integer;
+begin
+  Result := 0;
+  if (AText[AIndex] = '#') and MayStartAt(AText, AIndex) then
+  begin
+    Result := DigitsEnd(AText, AIndex + 1);
+    if (Result > AIndex + 1) and MayEndBefore(AText, Result) then
+    begin
+      ALink.Kind := TRationaleLinkKind.Issue;
+      ALink.Key := WithoutLeadingZeros(Copy(AText, AIndex + 1, Result - AIndex - 1));
+    end
+    else
+    begin
+      Result := 0;
+    end;
+  end;
+end;
+
+/// <summary>Verweis ab AIndex (URL, ADR oder Issue); Ende hinter dem Verweis, 0 ohne.</summary>
+function ReadLink(const AText, ALower: string; AIndex: Integer; out ALink: TRationaleLink): Integer;
+begin
+  ALink := Default(TRationaleLink);
+  Result := ReadUrl(AText, ALower, AIndex, ALink);
+  if Result = 0 then
+  begin
+    Result := ReadAdr(AText, ALower, AIndex, ALink);
+  end;
+  if Result = 0 then
+  begin
+    Result := ReadIssue(AText, AIndex, ALink);
+  end;
 end;
 
 class function TRationaleReferences.Find(const AText: string): TArray<TRationaleLink>;
 var
-  mIndex, mEnd, mDigits: Integer;
+  mIndex, mEnd: Integer;
   mLink: TRationaleLink;
   mLower: string;
 begin
@@ -59,51 +164,7 @@ begin
   mIndex := 1;
   while mIndex <= Length(AText) do
   begin
-    mLink := Default(TRationaleLink);
-    mEnd := 0;
-    // URL bis zum Leerraum, ohne Satzzeichen am Ende.
-    if (StartsText('https://', Copy(mLower, mIndex, 8)) or StartsText('http://', Copy(mLower, mIndex, 7))) and
-      ((mIndex = 1) or not JoinsLink(AText[mIndex - 1])) then
-    begin
-      mEnd := mIndex;
-      while (mEnd <= Length(AText)) and (AText[mEnd] > ' ') do
-        Inc(mEnd);
-      while (mEnd > mIndex) and CharInSet(AText[mEnd - 1], ['.', ',', ';', ':', ')', '!', '?', '''', '"']) do
-        Dec(mEnd);
-      mLink.Kind := TRationaleLinkKind.Url;
-      mLink.Key := Copy(AText, mIndex, mEnd - mIndex);
-    end
-    // ADR-0007, ADR 7, ADR7.
-    else if (Copy(mLower, mIndex, 3) = 'adr') and ((mIndex = 1) or not JoinsLink(AText[mIndex - 1])) then
-    begin
-      mDigits := mIndex + 3;
-      if (mDigits <= Length(AText)) and CharInSet(AText[mDigits], ['-', ' ']) then
-        Inc(mDigits);
-      mEnd := mDigits;
-      while (mEnd <= Length(AText)) and IsDigit(AText[mEnd]) do
-        Inc(mEnd);
-      if (mEnd > mDigits) and ((mEnd > Length(AText)) or not JoinsLink(AText[mEnd])) then
-      begin
-        mLink.Kind := TRationaleLinkKind.Adr;
-        mLink.Key := WithoutLeadingZeros(Copy(AText, mDigits, mEnd - mDigits));
-      end
-      else
-        mEnd := 0;
-    end
-    // #312, nicht #13#10 und nicht mitten in einem Wort.
-    else if (AText[mIndex] = '#') and ((mIndex = 1) or not JoinsLink(AText[mIndex - 1])) then
-    begin
-      mEnd := mIndex + 1;
-      while (mEnd <= Length(AText)) and IsDigit(AText[mEnd]) do
-        Inc(mEnd);
-      if (mEnd > mIndex + 1) and ((mEnd > Length(AText)) or not JoinsLink(AText[mEnd])) then
-      begin
-        mLink.Kind := TRationaleLinkKind.Issue;
-        mLink.Key := WithoutLeadingZeros(Copy(AText, mIndex + 1, mEnd - mIndex - 1));
-      end
-      else
-        mEnd := 0;
-    end;
+    mEnd := ReadLink(AText, mLower, mIndex, mLink);
     if mEnd > mIndex then
     begin
       mLink.Start := mIndex - 1;
@@ -112,7 +173,9 @@ begin
       mIndex := mEnd;
     end
     else
+    begin
       Inc(mIndex);
+    end;
   end;
 end;
 
@@ -124,21 +187,29 @@ var
 begin
   Result := '';
   if AKey = '' then
+  begin
     Exit;
+  end;
   mNames := Copy(AFileNames);
   TArray.Sort<string>(mNames);
   for mFileName in mNames do
   begin
     mName := LowerCase(ExtractFileName(StringReplace(mFileName, '\', '/', [rfReplaceAll]).Replace('/', PathDelim)));
     if StartsStr('adr-', mName) or StartsStr('adr_', mName) then
+    begin
       Delete(mName, 1, 4);
+    end;
     mEnd := 1;
     while (mEnd <= Length(mName)) and IsDigit(mName[mEnd]) do
+    begin
       Inc(mEnd);
+    end;
     mDigits := Copy(mName, 1, mEnd - 1);
     if (mDigits <> '') and (WithoutLeadingZeros(mDigits) = AKey) and (mEnd <= Length(mName)) and
       CharInSet(mName[mEnd], ['-', '_', '.', ' ']) then
+    begin
       Exit(mFileName);
+    end;
   end;
 end;
 

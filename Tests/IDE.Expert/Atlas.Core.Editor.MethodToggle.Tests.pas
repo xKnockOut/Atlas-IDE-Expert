@@ -46,6 +46,14 @@ type
     /// <summary>Sprungmarke @@End im asm-Rumpf beendet die Methode nicht (#861).</summary>
     [Test]
     procedure AsmLabelEndDoesNotCloseBody;
+    /// <summary>BodyAt (#1455, vorher TAtlasBookmarks.MethodAt): Rumpf um die Zeile, nicht die Deklaration, außerhalb
+    /// jeder Methode False.</summary>
+    [Test]
+    procedure BodyAtFindsImplementationAroundLine;
+    /// <summary>MethodNameAt (#1455, vorher TAtlasWelcomeContinue.MethodAt): Name um die Zeile ab 1; leer ohne Text,
+    /// vor Zeile 1 und außerhalb jeder Methode.</summary>
+    [Test]
+    procedure MethodNameAtLine;
   end;
 
 implementation
@@ -61,7 +69,9 @@ var
 begin
   Result := '';
   for Line in ALines do
+  begin
     Result := Result + Line + #13#10;
+  end;
 end;
 
 /// <summary>Ziel als "Zeile:Zeichen" (0-basiert) oder "-" ohne Gegenstück.</summary>
@@ -70,9 +80,13 @@ var
   Target: TAtlasMethodPlace;
 begin
   if TAtlasMethodToggle.Counterpart(AText, ALine, ACharacter, Target) then
-    Result := IntToStr(Target.Line) + ':' + IntToStr(Target.Character)
+  begin
+    Result := IntToStr(Target.Line) + ':' + IntToStr(Target.Character);
+  end
   else
+  begin
     Result := '-';
+  end;
 end;
 
 /// <summary>Wie oben, Cursor am Zeilenanfang.</summary>
@@ -568,8 +582,12 @@ var
   begin
     Result := -1;
     for Place in APlaces do
+    begin
       if Place.IsBody and (Place.Name = 'Clock') then
+      begin
         Result := Place.LastLine;
+      end;
+    end;
   end;
 
 begin
@@ -613,6 +631,51 @@ begin
   Assert.AreEqual(19, ClockEnd(TAtlasMethodToggle.Places(Text, ['FPC', 'UNIX'])));
 end;
 
+procedure TAtlasMethodToggleTests.BodyAtFindsImplementationAroundLine;
+var
+  mPlaces: TArray<TAtlasMethodPlace>;
+  mPlace: TAtlasMethodPlace;
+begin
+  mPlaces := TAtlasMethodToggle.Places(Source([
+    'unit Demo;',                 // 0
+    'interface',                  // 1
+    'type',                       // 2
+    '  TFoo = class',             // 3
+    '    procedure Run;',         // 4
+    '    procedure Stop;',        // 5
+    '  end;',                     // 6
+    'implementation',             // 7
+    'procedure TFoo.Run;',        // 8
+    'begin',                      // 9
+    '  Stop;',                    // 10
+    'end;',                       // 11
+    '',                           // 12
+    'procedure TFoo.Stop;',       // 13
+    'begin',                      // 14
+    'end;',                       // 15
+    'end.']));
+  Assert.IsTrue(TAtlasMethodToggle.BodyAt(mPlaces, 10, mPlace));
+  Assert.AreEqual('TFoo.Run', mPlace.Name);
+  Assert.AreEqual(8, mPlace.FirstLine);
+  Assert.AreEqual(11, mPlace.LastLine);
+  Assert.IsTrue(TAtlasMethodToggle.BodyAt(mPlaces, 13, mPlace), 'Kopf gehört zum Rumpf');
+  Assert.AreEqual('TFoo.Stop', mPlace.Name);
+  Assert.IsFalse(TAtlasMethodToggle.BodyAt(mPlaces, 4, mPlace), 'Deklaration ist kein Rumpf');
+  Assert.AreEqual('', mPlace.Name);
+  Assert.IsFalse(TAtlasMethodToggle.BodyAt(mPlaces, 12, mPlace), 'zwischen zwei Methoden');
+  Assert.IsFalse(TAtlasMethodToggle.BodyAt(nil, 10, mPlace));
+end;
+
+procedure TAtlasMethodToggleTests.MethodNameAtLine;
+var
+  mText: string;
+begin
+  mText := 'unit U;'#10'interface'#10'implementation'#10'procedure Run;'#10'begin'#10'  X;'#10'end;'#10'end.';
+  Assert.AreEqual('Run', TAtlasMethodToggle.MethodNameAt(mText, 6));
+  Assert.AreEqual('', TAtlasMethodToggle.MethodNameAt(mText, 2));
+  Assert.AreEqual('', TAtlasMethodToggle.MethodNameAt(mText, 0));
+  Assert.AreEqual('', TAtlasMethodToggle.MethodNameAt('', 6));
+end;
 
 initialization
   TDUnitX.RegisterTestFixture(TAtlasMethodToggleTests);

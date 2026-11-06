@@ -82,7 +82,22 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Rationale.References,
   Atlas.Common.Todos.Contract,
-  Atlas.Common.Rules.Builtin.Todos;
+  Atlas.Common.Rules.Builtin.Todos,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TRationaleText = (Rationale, Rationale2);
+
+const
+  cTexts: array[TRationaleText] of TAtlasText = (
+    (De: '**Begründung**' + #10;
+     En: '**Rationale**' + #10),
+    (De: 'Begründung'; En: 'Rationale'));
+
+{$SCOPEDENUMS OFF}
 
 { TRationaleOptions }
 
@@ -111,9 +126,15 @@ var
 begin
   Result := Length(A) = Length(B);
   if Result then
+  begin
     for mIndex := 0 to High(A) do
+    begin
       if not SameText(A[mIndex], B[mIndex]) then
+      begin
         Exit(False);
+      end;
+    end;
+  end;
 end;
 
 function IsRoutine(AKind: TIndexSymbolKind): Boolean;
@@ -121,69 +142,113 @@ begin
   Result := AKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
 end;
 
+/// <summary>Ist AOther eine weitere Deklaration derselben Routine wie ASymbol in der Datei AFile?</summary>
+function IsCounterpart(const AUnit: TUnitIndex; const AOther, ASymbol: TIndexSymbol; const AFile: string): Boolean;
+begin
+  Result := (AOther.Kind = ASymbol.Kind) and SameText(AOther.Name, ASymbol.Name) and
+    SameText(AOther.Container, ASymbol.Container) and
+    not (AOther.SelectionRange.StartPos = ASymbol.SelectionRange.StartPos) and
+    SameText(AUnit.SymbolFile(AOther), AFile);
+end;
+
+/// <summary>ASymbol und das Gegenstück derselben Routine in derselben Datei; bei Überladungen das mit gleichen
+/// Parametertypen.</summary>
+function PartsOf(const AUnit: TUnitIndex; const ASymbol: TIndexSymbol): TArray<TIndexSymbol>;
+var
+  mCandidates: TArray<TIndexSymbol>;
+  mOther: TIndexSymbol;
+  mFile: string;
+begin
+  Result := [ASymbol];
+  if not IsRoutine(ASymbol.Kind) then
+  begin
+    Exit;
+  end;
+  mFile := AUnit.SymbolFile(ASymbol);
+  mCandidates := nil;
+  for mOther in AUnit.Symbols do
+  begin
+    if IsCounterpart(AUnit, mOther, ASymbol, mFile) then
+    begin
+      mCandidates := mCandidates + [mOther];
+    end;
+  end;
+  if Length(mCandidates) = 1 then
+  begin
+    Result := Result + mCandidates;
+    Exit;
+  end;
+  for mOther in mCandidates do
+  begin
+    if SameParamTypes(mOther.ParamTypes, ASymbol.ParamTypes) then
+    begin
+      Result := Result + [mOther];
+      Exit;
+    end;
+  end;
+end;
+
+/// <summary>Steht in AEntries schon ein Eintrag mit Zeile und Marker von AEntry?</summary>
+function HasEntry(const AEntries: TArray<TRationaleEntry>; const AEntry: TRationaleEntry): Boolean;
+var
+  mKnown: TRationaleEntry;
+begin
+  for mKnown in AEntries do
+  begin
+    if (mKnown.Line = AEntry.Line) and (mKnown.Marker = AEntry.Marker) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Nach Zeile; Einfügen hält gleiche Zeilen in ihrer Reihenfolge.</summary>
+procedure SortByLine(var AEntries: TArray<TRationaleEntry>);
+var
+  mIndex, mInner: Integer;
+  mSwap: TRationaleEntry;
+begin
+  for mIndex := 1 to High(AEntries) do
+  begin
+    mSwap := AEntries[mIndex];
+    mInner := mIndex - 1;
+    while (mInner >= 0) and (AEntries[mInner].Line > mSwap.Line) do
+    begin
+      AEntries[mInner + 1] := AEntries[mInner];
+      Dec(mInner);
+    end;
+    AEntries[mInner + 1] := mSwap;
+  end;
+end;
+
 class function TLspRationale.OfSymbol(const AUnit: TUnitIndex; const ASymbol: TIndexSymbol):
   TArray<TRationaleEntry>;
 var
-  mCandidates, mParts: TArray<TIndexSymbol>;
-  mOther: TIndexSymbol;
-  mEntry, mKnown: TRationaleEntry;
-  mFile: string;
-  mIndex, mInner: Integer;
-  mDuplicate: Boolean;
-  mSwap: TRationaleEntry;
+  mPart: TIndexSymbol;
+  mEntry: TRationaleEntry;
 begin
-  mParts := [ASymbol];
-  if IsRoutine(ASymbol.Kind) then
-  begin
-    // Gegenstück derselben Routine in derselben Datei; bei Überladungen die mit gleichen Parametertypen.
-    mFile := AUnit.SymbolFile(ASymbol);
-    mCandidates := nil;
-    for mOther in AUnit.Symbols do
-      if (mOther.Kind = ASymbol.Kind) and SameText(mOther.Name, ASymbol.Name) and
-        SameText(mOther.Container, ASymbol.Container) and
-        not (mOther.SelectionRange.StartPos = ASymbol.SelectionRange.StartPos) and
-        SameText(AUnit.SymbolFile(mOther), mFile) then
-        mCandidates := mCandidates + [mOther];
-    if Length(mCandidates) = 1 then
-      mParts := mParts + mCandidates
-    else
-      for mOther in mCandidates do
-        if SameParamTypes(mOther.ParamTypes, ASymbol.ParamTypes) then
-        begin
-          mParts := mParts + [mOther];
-          Break;
-        end;
-  end;
   Result := nil;
-  for mOther in mParts do
-    for mEntry in TRationale.DecodeAll(mOther.Rationale) do
-    begin
-      mDuplicate := False;
-      for mKnown in Result do
-        if (mKnown.Line = mEntry.Line) and (mKnown.Marker = mEntry.Marker) then
-          mDuplicate := True;
-      if not mDuplicate then
-        Result := Result + [mEntry];
-    end;
-  // Nach Zeile; Einfügen hält gleiche Zeilen in ihrer Reihenfolge.
-  for mIndex := 1 to High(Result) do
+  for mPart in PartsOf(AUnit, ASymbol) do
   begin
-    mSwap := Result[mIndex];
-    mInner := mIndex - 1;
-    while (mInner >= 0) and (Result[mInner].Line > mSwap.Line) do
+    for mEntry in TRationale.DecodeAll(mPart.Rationale) do
     begin
-      Result[mInner + 1] := Result[mInner];
-      Dec(mInner);
+      if not HasEntry(Result, mEntry) then
+      begin
+        Result := Result + [mEntry];
+      end;
     end;
-    Result[mInner + 1] := mSwap;
   end;
+  SortByLine(Result);
 end;
 
 class function TLspRationale.Markers(const AHints: THintSettings): TArray<string>;
 begin
   Result := AHints.RationaleMarkers;
   if Length(Result) = 0 then
+  begin
     Result := TRationale.DefaultMarkers;
+  end;
 end;
 
 class function TLspRationale.ByMarkers(const AEntries: TArray<TRationaleEntry>;
@@ -197,19 +262,27 @@ class function TLspRationale.Select(const AEntries: TArray<TRationaleEntry>;
 begin
   Result := nil;
   if AOptions.Enabled then
+  begin
     Result := ByMarkers(AEntries, AOptions);
+  end;
 end;
 
 class function TLspRationale.AdrFolder(const AFolder, ARoot: string): string;
 begin
   Result := Trim(AFolder);
   if Result = '' then
+  begin
     Result := TRationale.DefaultAdrFolder;
+  end;
   Result := StringReplace(StringReplace(Result, '/', PathDelim, [rfReplaceAll]), '\', PathDelim, [rfReplaceAll]);
   if TPath.IsPathRooted(Result) then
+  begin
     Exit;
+  end;
   if ARoot = '' then
+  begin
     Exit('');
+  end;
   Result := ExcludeTrailingPathDelimiter(TPath.Combine(ARoot, Result));
 end;
 
@@ -219,10 +292,14 @@ var
 begin
   Result := nil;
   if (AFolder = '') or not TDirectory.Exists(AFolder) then
+  begin
     Exit;
+  end;
   try
     for mFile in TDirectory.GetFiles(AFolder) do
+    begin
       Result := Result + [mFile];
+    end;
   except
     // Ordner nicht lesbar: Verweise bleiben Text.
     // EInOutError schließt EDirectoryNotFoundException ein.
@@ -247,7 +324,9 @@ begin
       begin
         mFile := TRationaleReferences.AdrFile(ALink.Key, AAdrFiles);
         if mFile = '' then
+        begin
           Exit(TextRun(AText));
+        end;
         Result := TJSONObject.Create;
         Result.AddPair('kind', 'ref');
         Result.AddPair('text', AText);
@@ -292,12 +371,16 @@ begin
     for mLink in TRationaleReferences.Find(mEntry.Text) do
     begin
       if mLink.Start > mPos then
+      begin
         mRuns.AddElement(TextRun(Copy(mEntry.Text, mPos + 1, mLink.Start - mPos)));
+      end;
       mRuns.AddElement(LinkRun(mLink, Copy(mEntry.Text, mLink.Start + 1, mLink.Length), AAdrFiles));
       mPos := mLink.Start + mLink.Length;
     end;
     if mPos < Length(mEntry.Text) then
+    begin
       mRuns.AddElement(TextRun(Copy(mEntry.Text, mPos + 1, MaxInt)));
+    end;
     mSection.AddPair('runs', mRuns);
     ASections.AddElement(mSection);
   end;
@@ -309,10 +392,14 @@ var
 begin
   Result := '';
   if Length(AEntries) = 0 then
+  begin
     Exit;
-  Result := '**Begründung**' + #10;
+  end;
+  Result := cTexts[TRationaleText.Rationale].Text;
   for mEntry in AEntries do
+  begin
     Result := Result + #10 + '- **' + mEntry.Marker + ':** ' + mEntry.Text;
+  end;
 end;
 
 class function TLspRationale.ToPlainText(const AEntries: TArray<TRationaleEntry>): string;
@@ -321,10 +408,17 @@ var
 begin
   Result := '';
   if Length(AEntries) = 0 then
+  begin
     Exit;
-  Result := 'Begründung';
+  end;
+  Result := cTexts[TRationaleText.Rationale2].Text;
   for mEntry in AEntries do
+  begin
     Result := Result + #10 + mEntry.Marker + ': ' + mEntry.Text;
+  end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.Rationale', cTexts);
 
 end.

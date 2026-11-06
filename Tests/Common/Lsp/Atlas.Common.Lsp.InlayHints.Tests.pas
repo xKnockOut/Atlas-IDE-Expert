@@ -32,7 +32,7 @@ type
     /// <summary>#862: hinter ^C in Konstanten der Code, nicht in Ausdrücken; abschaltbar; data.controlChar.</summary>
     [Test]
     procedure ControlCharCodesBehindConstants;
-    /// <summary>#686: „ohne Self“ hinter dem Kopf von Methoden ohne Self; aus in Default; data.methodWithoutSelf.
+    /// <summary>#686: „braucht kein Self“ hinter dem Kopf von Methoden ohne Self; aus in Default; data.methodWithoutSelf.
     /// </summary>
     [Test]
     procedure MethodMarkersBehindHeaders;
@@ -274,7 +274,9 @@ var
 begin
   Result := '';
   for Hint in AHints do
+  begin
     Result := Result + Format('%d:%d %s|', [Hint.Position.Line, Hint.Position.Character, Hint.Text]);
+  end;
 end;
 
 procedure TLspInlayHintsTests.ParameterNamesBeforeArguments;
@@ -285,7 +287,8 @@ begin
   try
     // Zeile 7: Wert heißt schon so, Faktor nicht. Zeile 11 ebenso; der Kopf in Zeile 4 bekommt keine.
     Assert.AreEqual('6:9 Wert:|6:12 Faktor:|7:15 Faktor:|11:18 Wert:|11:21 Faktor:|',
-      Describe(TLspInlayHints.ParameterNames(FResolver, FIndex, Tree, UnitHaupt, HauptFile, WholeFile, ReadFile)));
+      Describe(TLspInlayHints.ParameterNames(TInlayHintSource.Create(FResolver, FIndex, Tree, UnitHaupt, HauptFile,
+        ReadFile), WholeFile)));
   finally
     Tree.Free;
   end;
@@ -369,11 +372,11 @@ begin
     Settings.ParameterNames := False;
     Settings.InferredTypes := False;
     Settings.EndMarkers := False;
-    Assert.AreEqual('3:12 #3|4:10 #27|', Describe(TLspInlayHints.Collect(FResolver, FIndex, Tree, Source, 'C.pas',
-      WholeFile, Settings, nil)));
+    Assert.AreEqual('3:12 #3|4:10 #27|', Describe(TLspInlayHints.Collect(TInlayHintSource.Create(FResolver, FIndex,
+      Tree, Source, 'C.pas', nil), WholeFile, Settings)));
     Settings.ControlChars := False;
-    Assert.AreEqual('', Describe(TLspInlayHints.Collect(FResolver, FIndex, Tree, Source, 'C.pas', WholeFile,
-      Settings, nil)));
+    Assert.AreEqual('', Describe(TLspInlayHints.Collect(TInlayHintSource.Create(FResolver, FIndex, Tree, Source,
+      'C.pas', nil), WholeFile, Settings)));
     Json := TLspInlayHints.ToJson(TLspInlayHints.ControlChars(Tree, Source, WholeFile));
     try
       Assert.AreEqual(27, Json.Items[1].GetValue<Integer>('data.controlChar.code'));
@@ -405,11 +408,11 @@ begin
     Settings.ControlChars := False;
     // Vorgabe ist an (refactoring.methodKindMarker); hier erst ohne.
     Settings.MethodWithoutSelf := False;
-    Assert.AreEqual('', Describe(TLspInlayHints.Collect(FResolver, FIndex, Tree, Source, 'R.pas', WholeFile,
-      Settings, nil)));
+    Assert.AreEqual('', Describe(TLspInlayHints.Collect(TInlayHintSource.Create(FResolver, FIndex, Tree, Source,
+      'R.pas', nil), WholeFile, Settings)));
     Settings.MethodWithoutSelf := True;
-    Assert.AreEqual('11:47 ohne Self|', Describe(TLspInlayHints.Collect(FResolver, FIndex, Tree, Source, 'R.pas',
-      WholeFile, Settings, nil)));
+    Assert.AreEqual('11:47 Self unused|', Describe(TLspInlayHints.Collect(TInlayHintSource.Create(FResolver, FIndex,
+      Tree, Source, 'R.pas', nil), WholeFile, Settings)));
     Json := TLspInlayHints.ToJson(TLspInlayHints.MethodMarkers(FResolver, Tree, Source, 'R.pas', WholeFile, nil));
     try
       Assert.AreEqual(1, Integer(Json.Count));
@@ -450,8 +453,8 @@ begin
     Settings := TInlayHintSettings.Default;
     Settings.ParameterNames := False;
     Settings.EndMarkerMinLines := 5;
-    Hints := TLspInlayHints.Collect(FResolver, FIndex, Tree, UnitHaupt, HauptFile,
-      TTextRange.Create(TTextPosition.Create(9, 0), TTextPosition.Create(30, 0)), Settings, ReadFile);
+    Hints := TLspInlayHints.Collect(TInlayHintSource.Create(FResolver, FIndex, Tree, UnitHaupt, HauptFile,
+      ReadFile), TTextRange.Create(TTextPosition.Create(9, 0), TTextPosition.Create(30, 0)), Settings);
     Assert.AreEqual('9:7 : string|10:7 : TFoo|11:7 : Integer|13:7 : TFarbe|18:4 // Arbeite|', Describe(Hints));
   finally
     Tree.Free;
@@ -465,8 +468,10 @@ var
 begin
   Result := '';
   for Hint in AHints do
+  begin
     Result := Result + Format('%d:%d %s @%d:%d|', [Hint.Position.Line, Hint.Position.Character, Hint.Text,
       Hint.BlockStart.Line, Hint.BlockStart.Character]);
+  end;
 end;
 
 procedure TLspInlayHintsTests.EndMarkersForEveryBlockKind;
@@ -533,9 +538,13 @@ var
     try
       Result := '';
       for Item in Response.GetValue<TJSONArray>('result') do
+      begin
         if TJSONObject(Item).GetValue('data') <> nil then
+        begin
           Result := Result + Format('%s @%d|', [TJSONObject(Item).GetValue<string>('label'),
             TJSONObject(Item).GetValue<Integer>('data.blockStart.line')]);
+        end;
+      end;
     finally
       Response.Free;
     end;

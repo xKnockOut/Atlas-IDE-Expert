@@ -6,7 +6,8 @@
     Einzige Quelle ist Packages/Atlas.Common/Katalog/regelkatalog.json mit den
     Übersetzungen regelkatalog.<sprache>.json (#145). Daraus entstehen:
 
-    - Packages/Atlas.Common/Source/Rules/Atlas.Common.Rules.Catalog.Data.pas
+    - Packages/Atlas.Common/Source/Rules/Atlas.Common.Rules.Catalog.Data.pas und die Teil-Units
+      Atlas.Common.Rules.Catalog.Data.<Sprache>.<Gruppe>.pas (je Regelgruppe, compiler je Stufe)
     - docs/Regeln.md und docs/en/Rules.md (#1458)
     - die Regelzahlen in README.md, README_DE.md und den Seiten Code-Analyse (docs/features)
 
@@ -150,40 +151,171 @@ foreach ($Language in $Overlays.Keys) {
     }
 }
 
-# Eingebettete Unit. Je Katalog ein konstantes Array mit einer JSON-Zeile je Element, zur Laufzeit mit #10
-# verbunden. Früher war jeder Katalog ein einziger Ausdruck aus über 5000 mit + verketteten Literalen; daran lief
-# der Compiler der IDE (32 Bit) aus dem Speicher (F2046 „Zu wenig Arbeitsspeicher“).
-function ConvertTo-DelphiLines([string] $Name, [string] $Text) {
-    $Lines = $Text -replace "`r", '' -split "`n"
-    $Parts = foreach ($Line in $Lines) {
-        $Chunks = for ($I = 0; $I -lt [Math]::Max(1, $Line.Length); $I += 200) {
-            "'" + ($Line.Substring($I, [Math]::Min(200, $Line.Length - $I)) -replace "'", "''") + "'"
-        }
-        # Jedes Stück in eine eigene Zeile: Delphi bricht bei mehr als 1023 Zeichen je Zeile ab (F2069).
-        '    ' + ($Chunks -join " +`r`n    ")
+# Eingebettete Units. Je Katalog konstante Arrays mit einer JSON-Zeile je Element, zur Laufzeit mit #10 verbunden.
+# Früher war jeder Katalog ein einziger Ausdruck aus über 5000 mit + verketteten Literalen; daran lief der Compiler
+# der IDE (32 Bit) aus dem Speicher (F2046 „Zu wenig Arbeitsspeicher“). Die Regeln stehen deshalb in Teil-Units je
+# Gruppe der Einstellungsseite (#909), Atlas.Common.Rules.Catalog.Data.<Sprache>.<Gruppe>, die Gruppe compiler
+# zusätzlich nach Stufe geteilt (CompilerSyntax, CompilerNames, CompilerTypes). So bleibt jede Unit unter der Grenze
+# von metric-unit-length (2000), und der Name sagt, welche Regeln sie enthält. Atlas.Common.Rules.Catalog.Data fügt
+# über Atlas.Common.Rules.Catalog.Data.<Sprache> die Teile in der Reihenfolge der Gruppen zusammen; innerhalb einer Gruppe gilt die Reihenfolge des Katalogs.
+$PartLimit = 1900
+$PartPrefix = 'Atlas.Common.Rules.Catalog.Data.'
+$CompilerLevelParts = [ordered]@{ 'A' = 'CompilerSyntax'; 'B' = 'CompilerNames'; 'T' = 'CompilerTypes' }
+
+function ConvertTo-DelphiLine([string] $Line) {
+    $Chunks = for ($I = 0; $I -lt [Math]::Max(1, $Line.Length); $I += 200) {
+        "'" + ($Line.Substring($I, [Math]::Min(200, $Line.Length - $I)) -replace "'", "''") + "'"
     }
-    "  ${Name}: array[0..$($Lines.Count - 1)] of string = (`r`n" + ($Parts -join ",`r`n") + ");`r`n"
+    # Jedes Stück in eine eigene Zeile: Delphi bricht bei mehr als 1023 Zeichen je Zeile ab (F2069).
+    '    ' + (@($Chunks) -join " +`r`n    ")
+}
+
+# Texte der Elemente von "rules" in $Text, unverändert aus der Datei, in der Reihenfolge des Katalogs.
+function Get-RuleTexts([string] $Text, [string] $Source) {
+    $Texts = New-Object System.Collections.Generic.List[string]
+    $Depth = 0
+    $InString = $false
+    $Escaped = $false
+    $Start = -1
+    for ($I = 0; $I -lt $Text.Length; $I++) {
+        $Char = $Text[$I]
+        if ($InString) {
+            if ($Escaped) { $Escaped = $false }
+            elseif ($Char -eq '\') { $Escaped = $true }
+            elseif ($Char -eq '"') { $InString = $false }
+            continue
+        }
+        if ($Char -eq '"') { $InString = $true; continue }
+        if ($Char -eq '{' -or $Char -eq '[') {
+            $Depth++
+            if ($Depth -eq 3 -and $Char -eq '{') { $Start = $I }
+        }
+        elseif ($Char -eq '}' -or $Char -eq ']') {
+            if ($Depth -eq 3 -and $Char -eq '}') { $Texts.Add($Text.Substring($Start, $I - $Start + 1)) }
+            $Depth--
+        }
+    }
+    $Parsed = $Text | ConvertFrom-Json
+    if ((@($Parsed.PSObject.Properties.Name) -join ',') -ne 'rules' -or $Texts.Count -ne @($Parsed.rules).Count) {
+        $Problems.Add("Katalog\${Source}: erwartet ein Objekt nur mit ""rules"" und je Regel ein Objekt")
+    }
+    , $Texts
+}
+
+# Name des Teils einer Regel: die Gruppe in Pascal-Schreibweise (find-bugs -> FindBugs), compiler nach Stufe.
+function Get-PartName($Rule) {
+    if ($Rule.group -eq 'compiler') {
+        return $CompilerLevelParts[[string]$Rule.level]
+    }
+    (@(([string]$Rule.group) -split '-') | ForEach-Object { $_.Substring(0, 1).ToUpperInvariant() + $_.Substring(1) }) -join ''
+}
+
+# Reihenfolge der Teile: Gruppen wie auf der Einstellungsseite, compiler als seine drei Stufen.
+$PartOrder = foreach ($Group in $GroupNames.Keys) {
+    if ($Group -eq 'compiler') { $CompilerLevelParts.Values }
+    else { Get-PartName ([pscustomobject]@{ group = $Group }) }
+}
+$PartOfRule = @{}
+foreach ($Rule in $Base.rules) {
+    $PartOfRule[[string]$Rule.id] = Get-PartName $Rule
+}
+
+function New-PartUnit([string] $Name, [string] $Const, [string] $Source, $Lines) {
+    $Header = "// Nicht von Hand ändern.`r`n"
+    # Nur Teile mit einer echten http://-Adresse (Beispiel "bad" der Regel) unterdrücken die Regel, sonst meldet
+    # unused-suppression die wirkungslose Unterdrückung.
+    if (@($Lines | Where-Object { $_ -match 'http://(?!localhost|127\.|\[::1\])\w' }).Count -gt 0) {
+        $Header += "// Die Beispiele ""bad"" zeigen absichtlich unsichere URLs (#1109).`r`n// lsp-ignore-file: security-insecure-http`r`n"
+    }
+    $Pascal = @($Lines | ForEach-Object { ConvertTo-DelphiLine $_ })
+    "unit $Name;`r`n`r`n// Erzeugt von Tools/Update-RuleCatalog.ps1 aus Katalog\$Source.`r`n" + $Header +
+    "`r`ninterface`r`n`r`nconst`r`n" +
+    "  ${Const}: array[0..$($Pascal.Count - 1)] of string = (`r`n" + ($Pascal -join ",`r`n") + ");`r`n`r`n" +
+    "implementation`r`n`r`nend.`r`n"
+}
+
+# Kürzel der Kataloge: En für den Grundkatalog, sonst die Sprache mit großem Anfangsbuchstaben (De).
+$Catalogs = [ordered]@{ 'En' = @{ Source = 'regelkatalog.json'; Text = $BaseText } }
+foreach ($Language in $Overlays.Keys) {
+    $Key = $Language.Substring(0, 1).ToUpperInvariant() + $Language.Substring(1)
+    $Catalogs[$Key] = @{ Source = "regelkatalog.$Language.json"; Text = $Overlays[$Language] }
+}
+$PartUnits = [ordered]@{}
+$PartConsts = @{}
+$PartUnitOfConst = @{}
+foreach ($Key in $Catalogs.Keys) {
+    $Source = $Catalogs[$Key].Source
+    $Grouped = @{}
+    foreach ($RuleText in (Get-RuleTexts $Catalogs[$Key].Text $Source)) {
+        $Id = [string](($RuleText | ConvertFrom-Json).id)
+        if (-not $PartOfRule.ContainsKey($Id)) {
+            $Problems.Add("Katalog\${Source}: Regel '$Id' fehlt im Grundkatalog")
+            continue
+        }
+        $Part = $PartOfRule[$Id]
+        if (-not $Grouped.ContainsKey($Part)) { $Grouped[$Part] = New-Object System.Collections.Generic.List[string] }
+        $Grouped[$Part].Add($RuleText)
+    }
+    $Consts = @()
+    foreach ($Part in $PartOrder) {
+        if (-not $Grouped.ContainsKey($Part)) { continue }
+        # Regeln eines Teils mit Komma getrennt; die Kommas zwischen den Teilen setzt Catalog.Data.
+        $Lines = @(($Grouped[$Part] -join ",`n") -replace "`r", '' -split "`n")
+        $Name = "$PartPrefix$Key.$Part"
+        $Const = "CatalogLines$Key$Part"
+        $PartUnits[$Name] = New-PartUnit $Name $Const $Source $Lines
+        $PartUnitOfConst[$Const] = $Name
+        $Size = @($PartUnits[$Name] -split "`n").Count
+        if ($Size -gt $PartLimit) {
+            $Problems.Add("$Name hat $Size Zeilen (höchstens $PartLimit): die Gruppe in Get-PartName weiter nach Inhalt teilen")
+        }
+        $Consts += $Const
+    }
+    $PartConsts[$Key] = $Consts
+}
+
+# Je Sprache eine Unit Atlas.Common.Rules.Catalog.Data.<Sprache>, die ihre Teile zum JSON zusammenfügt; so bindet
+# keine Unit mehr als 30 Units ein (metric-uses-count).
+function New-LanguageUnit([string] $Key, [string] $Source) {
+    $Name = "$PartPrefix$Key"
+    $Text = New-Object System.Text.StringBuilder
+    [void]$Text.Append("unit $Name;`r`n`r`n// Erzeugt von Tools/Update-RuleCatalog.ps1 aus Katalog\$Source.`r`n")
+    [void]$Text.Append("// Nicht von Hand ändern. Die Regeln stehen je Gruppe in den Teil-Units $Name.<Gruppe>.`r`n`r`ninterface`r`n`r`n")
+    [void]$Text.Append("/// <summary>Der Katalog aus $Source als JSON, Regeln nach Gruppen geordnet.</summary>`r`n")
+    [void]$Text.Append("function RuleCatalog${Key}Json: string;`r`n`r`nimplementation`r`n`r`nuses`r`n  System.SysUtils,`r`n  ")
+    [void]$Text.Append((@($PartConsts[$Key]) | ForEach-Object { $PartUnitOfConst[$_] }) -join ",`r`n  ")
+    [void]$Text.Append(";`r`n`r`n/// <summary>Zeilen mit #10 verbunden, auch nach der letzten.</summary>`r`nfunction Joined(const ALines: array of string): string;`r`nbegin`r`n  Result := string.Join(#10, ALines) + #10;`r`nend;`r`n`r`n")
+    [void]$Text.Append("function RuleCatalog${Key}Json: string;`r`nbegin`r`n  Result := '{' + #10 + '  ""rules"": [' + #10 +`r`n    ")
+    [void]$Text.Append((@($PartConsts[$Key]) | ForEach-Object { "Joined($_)" }) -join " + ',' + #10 +`r`n    ")
+    [void]$Text.Append(" +`r`n    '  ]' + #10 + '}' + #10;`r`nend;`r`n`r`nend.`r`n")
+    $Text.ToString()
+}
+$LanguageUnits = [ordered]@{}
+foreach ($Key in $Catalogs.Keys) {
+    $LanguageUnits["$PartPrefix$Key"] = New-LanguageUnit $Key $Catalogs[$Key].Source
 }
 
 $Unit = New-Object System.Text.StringBuilder
 [void]$Unit.Append("unit Atlas.Common.Rules.Catalog.Data;`r`n`r`n")
 [void]$Unit.Append("// Erzeugt von Tools/Update-RuleCatalog.ps1 aus Katalog\regelkatalog*.json.`r`n")
-[void]$Unit.Append("// Nicht von Hand ändern.`r`n// Die Beispiele ""bad"" zeigen absichtlich unsichere URLs (#1109).`r`n// lsp-ignore-file: security-insecure-http`r`n`r`ninterface`r`n`r`n")
+[void]$Unit.Append("// Nicht von Hand ändern. Je Sprache eine Unit $PartPrefix<Sprache>, die Regeln je Gruppe in deren Teil-Units.`r`n`r`ninterface`r`n`r`n")
 [void]$Unit.Append("/// <summary>Englischer Grundkatalog als JSON.</summary>`r`nfunction RuleCatalogBaseJson: string;`r`n")
 [void]$Unit.Append("/// <summary>Übersetzung als JSON, '' für unbekannte Sprachen.</summary>`r`nfunction RuleCatalogOverlayJson(const ALanguage: string): string;`r`n`r`n")
-[void]$Unit.Append("implementation`r`n`r`nuses`r`n  System.SysUtils;`r`n`r`n")
-[void]$Unit.Append("const`r`n")
-[void]$Unit.Append((ConvertTo-DelphiLines 'BaseLines' $BaseText) + "`r`n")
-foreach ($Language in $Overlays.Keys) {
-    [void]$Unit.Append((ConvertTo-DelphiLines "OverlayLines_$Language" $Overlays[$Language]) + "`r`n")
+[void]$Unit.Append("implementation`r`n`r`nuses`r`n  System.SysUtils")
+foreach ($Name in $LanguageUnits.Keys) {
+    [void]$Unit.Append(",`r`n  $Name")
 }
-[void]$Unit.Append("/// <summary>Zeilen mit #10 verbunden, auch nach der letzten.</summary>`r`nfunction Joined(const ALines: array of string): string;`r`nbegin`r`n  Result := string.Join(#10, ALines) + #10;`r`nend;`r`n`r`n")
-[void]$Unit.Append("function RuleCatalogBaseJson: string;`r`nbegin`r`n  Result := Joined(BaseLines);`r`nend;`r`n`r`n")
+[void]$Unit.Append(";`r`n`r`n")
+[void]$Unit.Append("function RuleCatalogBaseJson: string;`r`nbegin`r`n  Result := RuleCatalogEnJson;`r`nend;`r`n`r`n")
 [void]$Unit.Append("function RuleCatalogOverlayJson(const ALanguage: string): string;`r`nbegin`r`n")
 foreach ($Language in $Overlays.Keys) {
-    [void]$Unit.Append("  if SameText(ALanguage, '$Language') then`r`n    Exit(Joined(OverlayLines_$Language));`r`n")
+    $Key = $Language.Substring(0, 1).ToUpperInvariant() + $Language.Substring(1)
+    [void]$Unit.Append("  if SameText(ALanguage, '$Language') then`r`n  begin`r`n    Exit(RuleCatalog${Key}Json);`r`n  end;`r`n")
 }
 [void]$Unit.Append("  Result := '';`r`nend;`r`n`r`nend.`r`n")
+foreach ($Name in $LanguageUnits.Keys) {
+    $PartUnits[$Name] = $LanguageUnits[$Name]
+}
 $UnitText = $Unit.ToString()
 
 # Benutzerdokumentation: docs/Regeln.md (deutsch, Übersetzung aus regelkatalog.de.json) und docs/en/Rules.md
@@ -312,6 +444,31 @@ function Sync-File([string] $Path, [string] $Content) {
 }
 
 Sync-File $UnitPath $UnitText
+foreach ($Name in $PartUnits.Keys) {
+    Sync-File (Join-Path $SourceDir "Rules/$Name.pas") $PartUnits[$Name]
+}
+# Teil-Units, die der Katalog nicht mehr braucht, und Teile, die im Package fehlen.
+foreach ($File in Get-ChildItem (Join-Path $SourceDir 'Rules') -Filter "$PartPrefix*.pas") {
+    if (($File.BaseName -match '^Atlas\.Common\.Rules\.Catalog\.Data\.[\w.]+$') -and -not $PartUnits.Contains($File.BaseName)) {
+        if ($Check) {
+            $Problems.Add("$($File.Name) gehört nicht mehr zum Katalog; pwsh Tools/Update-RuleCatalog.ps1 ausführen")
+        }
+        else {
+            Remove-Item $File.FullName
+        }
+    }
+}
+$PackageDir = Join-Path $Root 'Packages/Atlas.Common'
+$Dpk = Read-Text (Join-Path $PackageDir 'Atlas.Common.dpk')
+$Dproj = Read-Text (Join-Path $PackageDir 'Atlas.Common.dproj')
+foreach ($Name in $PartUnits.Keys) {
+    if (-not $Dpk.Contains("$Name in 'Source\Rules\$Name.pas'")) {
+        $Problems.Add("$Name fehlt in Atlas.Common.dpk")
+    }
+    if (-not $Dproj.Contains("Source\Rules\$Name.pas")) {
+        $Problems.Add("$Name fehlt in Atlas.Common.dproj (DCCReference)")
+    }
+}
 Sync-File $DocPath $DocText
 Sync-File $DocPathEn $DocTextEn
 

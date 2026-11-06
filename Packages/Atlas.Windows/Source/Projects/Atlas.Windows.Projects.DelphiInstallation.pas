@@ -33,6 +33,9 @@ type
     class function Versions: TArray<string>; static;
     /// <summary>Neueste Installation oder nil, wenn keine gefunden wurde.</summary>
     class function Latest: ILibraryPathProvider; static;
+    /// <summary>Installationsordner der Version (z. B. "37.0") ohne abschließenden Trenner; '' ohne Installation.
+    /// </summary>
+    class function RootDirOf(const AVersion: string): string; static;
     /// <summary>EProjectError, wenn die Version nicht installiert ist.</summary>
     constructor Create(const AVersion: string);
     { ILibraryPathProvider }
@@ -64,7 +67,9 @@ begin
   Result := TRegistry.Create(AAccess);
   Result.RootKey := ARoot;
   if not Result.OpenKeyReadOnly(AKey) then
+  begin
     FreeAndNil(Result);
+  end;
 end;
 
 // Wie oben mit AAccess = KEY_READ.
@@ -78,9 +83,13 @@ var
   Buffer: array[0..MAX_PATH] of Char;
 begin
   if SHGetFolderPath(0, AFolder, 0, SHGFP_TYPE_CURRENT, Buffer) = S_OK then
-    Result := Buffer
+  begin
+    Result := Buffer;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function CompareVersions(const A, B: string): Integer;
@@ -91,11 +100,17 @@ begin
   NumberA := StrToFloatDef(A, 0, TFormatSettings.Invariant);
   NumberB := StrToFloatDef(B, 0, TFormatSettings.Invariant);
   if NumberA < NumberB then
-    Result := -1
+  begin
+    Result := -1;
+  end
   else if NumberA > NumberB then
-    Result := 1
+  begin
+    Result := 1;
+  end
   else
+  begin
     Result := 0;
+  end;
 end;
 
 function ReadRootDir(const AVersion: string): string;
@@ -110,18 +125,24 @@ begin
     if Registry <> nil then
       try
         if Registry.ValueExists('RootDir') then
+        begin
           Result := ExcludeTrailingPathDelimiter(Registry.ReadString('RootDir'));
+        end;
       finally
         Registry.Free;
       end;
     if Result <> '' then
+    begin
       Exit;
+    end;
   end;
   Registry := OpenRead(HKEY_CURRENT_USER, BdsKey + '\' + AVersion);
   if Registry <> nil then
     try
       if Registry.ValueExists('RootDir') then
+      begin
         Result := ExcludeTrailingPathDelimiter(Registry.ReadString('RootDir'));
+      end;
     finally
       Registry.Free;
     end;
@@ -147,8 +168,12 @@ begin
         Registry.Free;
       end;
     for Name in Names do
+    begin
       if (StrToFloatDef(Name, 0, TFormatSettings.Invariant) > 0) and (ReadRootDir(Name) <> '') then
+      begin
         Found.Add(Name);
+      end;
+    end;
     Found.Sort(TComparer<string>.Construct(CompareVersions));
     Result := Found.ToArray;
   finally
@@ -157,15 +182,24 @@ begin
   end;
 end;
 
+class function TDelphiInstallation.RootDirOf(const AVersion: string): string;
+begin
+  Result := ReadRootDir(AVersion);
+end;
+
 class function TDelphiInstallation.Latest: ILibraryPathProvider;
 var
   Installed: TArray<string>;
 begin
   Installed := Versions;
   if Length(Installed) = 0 then
-    Result := nil
+  begin
+    Result := nil;
+  end
   else
+  begin
     Result := TDelphiInstallation.Create(Installed[High(Installed)]);
+  end;
 end;
 
 constructor TDelphiInstallation.Create(const AVersion: string);
@@ -174,7 +208,9 @@ begin
   FVersion := AVersion;
   FRootDir := ReadRootDir(AVersion);
   if FRootDir = '' then
+  begin
     raise EProjectError.CreateFmt('Delphi-Version %s ist nicht installiert', [AVersion]);
+  end;
   LoadVariables;
 end;
 
@@ -195,7 +231,9 @@ begin
       try
         Registry.GetValueNames(Names);
         for Name in Names do
+        begin
           Values.Add(TPair<string, string>.Create(Name, Registry.ReadString(Name)));
+        end;
       finally
         Registry.Free;
       end;
@@ -208,8 +246,12 @@ begin
     Values.Add(TPair<string, string>.Create('BDSUSERDIR', IncludeTrailingPathDelimiter(FolderPath(CSIDL_PERSONAL)) + StudioFolder));
     Values.Add(TPair<string, string>.Create('BDSCatalogRepository', IncludeTrailingPathDelimiter(FolderPath(CSIDL_PERSONAL)) + StudioFolder + '\CatalogRepository'));
     for Name in EnvironmentNames do
+    begin
       if GetEnvironmentVariable(Name) <> '' then
+      begin
         Values.Add(TPair<string, string>.Create(Name, GetEnvironmentVariable(Name)));
+      end;
+    end;
     FVariables := Values.ToArray;
   finally
     Names.Free;
@@ -228,30 +270,34 @@ begin
     Result := TProjectPaths.ExpandVariables(Result,
       FVariables + [TPair<string, string>.Create('Platform', APlatform)]);
     if Pos('$(', Result) = 0 then
+    begin
       Break;
+    end;
   end;
 end;
 
 function TDelphiInstallation.ReadPaths(const APlatform, AValueName: string): TArray<string>;
 var
-  Registry: TRegistry;
-  Items: TList<string>;
-  Item: string;
+  mRegistry: TRegistry;
+  mItem: string;
 begin
-  Items := TList<string>.Create;
+  Result := nil;
+  mRegistry := OpenRead(HKEY_CURRENT_USER, BdsKey + '\' + FVersion + '\Library\' + APlatform);
+  if mRegistry = nil then
+  begin
+    Exit;
+  end;
   try
-    Registry := OpenRead(HKEY_CURRENT_USER, BdsKey + '\' + FVersion + '\Library\' + APlatform);
-    if Registry <> nil then
-      try
-        if Registry.ValueExists(AValueName) then
-          for Item in TProjectPaths.SplitList(Registry.ReadString(AValueName)) do
-            Items.Add(TProjectPaths.Normalize(ExpandFor(Item, APlatform)));
-      finally
-        Registry.Free;
-      end;
-    Result := Items.ToArray;
+    if not mRegistry.ValueExists(AValueName) then
+    begin
+      Exit;
+    end;
+    for mItem in TProjectPaths.SplitList(mRegistry.ReadString(AValueName)) do
+    begin
+      Result := Result + [TProjectPaths.Normalize(ExpandFor(mItem, APlatform))];
+    end;
   finally
-    Items.Free;
+    mRegistry.Free;
   end;
 end;
 

@@ -47,7 +47,20 @@ type
 implementation
 
 uses
-  Atlas.Common.Documents.TextDocument;
+  Atlas.Common.Documents.TextDocument,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TDocumentStoreText = (DocumentIsNotOpen);
+
+const
+  cTexts: array[TDocumentStoreText] of TAtlasText = (
+    (De: 'Dokument ist nicht geöffnet: %s'; En: 'Document is not open: %s'));
+
+{$SCOPEDENUMS OFF}
 
 { TDocumentStore }
 
@@ -77,7 +90,9 @@ begin
     FLock.Leave;
   end;
   if Found then
+  begin
     Exit;
+  end;
   Result := TDocumentUris.Key(AUri, FCanonicalize);
   FLock.Enter;
   try
@@ -108,7 +123,9 @@ begin
     FLock.Leave;
   end;
   for Listener in Listeners do
+  begin
     Listener(AKind, ADocument);
+  end;
 end;
 
 function TDocumentStore.Take(const AUri: string; out ADocument: ITextDocument): Boolean;
@@ -152,7 +169,9 @@ var
   Key: string;
 begin
   if not TryGet(AUri, Current) then
-    raise EDocumentError.CreateFmt('Dokument ist nicht geöffnet: %s', [AUri]);
+  begin
+    raise EDocumentError.CreateFmt(cTexts[TDocumentStoreText.DocumentIsNotOpen].Text, [AUri]);
+  end;
   Key := KeyOf(AUri);
   Result := Current.ApplyChanges(AChanges, AVersion);
   FLock.Enter;
@@ -169,7 +188,9 @@ var
   Document: ITextDocument;
 begin
   if TryGet(AUri, Document) then
+  begin
     Notify(TDocumentEventKind.Saved, Document);
+  end;
 end;
 
 procedure TDocumentStore.Close(const AUri: string);
@@ -177,7 +198,9 @@ var
   Document: ITextDocument;
 begin
   if Take(AUri, Document) then
+  begin
     Notify(TDocumentEventKind.Closed, Document);
+  end;
 end;
 
 function TDocumentStore.TryGet(const AUri: string; out ADocument: ITextDocument): Boolean;
@@ -212,5 +235,8 @@ begin
     FLock.Leave;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Documents.Providers.DocumentStore', cTexts);
 
 end.

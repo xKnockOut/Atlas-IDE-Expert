@@ -45,6 +45,10 @@ type
     FBodies: TObjectDictionary<string, TDictionary<string, TEventHandlerBody>>;
     function BodiesOf(const AFileName: string): TDictionary<string, TEventHandlerBody>;
     function ResolveInAncestors(var AHandler: TEventHandler): Boolean;
+    /// <summary>Die .pas-Dateien aus AFiles, ohne Angabe die Projekt-Units des Index.</summary>
+    function SourceFiles(const AFiles: TArray<string>): TArray<string>;
+    /// <summary>Lesbare Formulardateien zur Unit AFileName mit dem Text AText.</summary>
+    function FormsOf(const AFileName, AText: string): TArray<TEventHandlerForm>;
   public
     constructor Create(const ASourceFor: TLspMetricsSourceFunc; const AReadText: TMetricsReadText);
     destructor Destroy; override;
@@ -93,11 +97,15 @@ var
   Tree: TSyntaxTree;
 begin
   if FBodies.TryGetValue(LowerCase(AFileName), Result) then
+  begin
     Exit;
+  end;
   Result := TDictionary<string, TEventHandlerBody>.Create;
   FBodies.Add(LowerCase(AFileName), Result);
   if not (Assigned(FReadText) and FReadText(AFileName, Text)) then
+  begin
     Exit;
+  end;
   Tree := TSyntaxTreeCache.Parse(Text, nil);
   try
     TEventHandlers.Bodies(Tree, Result);
@@ -115,7 +123,9 @@ var
 begin
   Result := False;
   if FIndex = nil then
+  begin
     Exit;
+  end;
   // Die Klasse selbst (Rumpf in einer anderen Unit, etwa per Include) und ihre Vorfahren.
   ClassName := AHandler.Container;
   Depth := 0;
@@ -125,66 +135,101 @@ begin
     for Location in FIndex.FindSymbols(ClassName) do
     begin
       if not (Location.Symbol.Kind in ClassKinds) then
+      begin
         Continue;
+      end;
       FileName := Location.FileName;
       Container := AHandler.Container;
       AHandler.Container := ClassName;
       if TEventHandlers.Resolve(AHandler, FileName, BodiesOf(FileName)) then
+      begin
         Exit(True);
+      end;
       AHandler.Container := Container;
       if (Next = '') and (Length(Location.Symbol.Ancestors) > 0) then
+      begin
         Next := Location.Symbol.Ancestors[0];
+      end;
     end;
     ClassName := Next;
     Inc(Depth);
   end;
 end;
 
+function TLspEventHandlers.SourceFiles(const AFiles: TArray<string>): TArray<string>;
+var
+  mFileName: string;
+  mUnit: TUnitIndex;
+begin
+  Result := nil;
+  if Length(AFiles) > 0 then
+  begin
+    for mFileName in AFiles do
+    begin
+      if SameText(ExtractFileExt(mFileName), '.pas') then
+      begin
+        Result := Result + [mFileName];
+      end;
+    end;
+    Exit;
+  end;
+  if FIndex = nil then
+  begin
+    Exit;
+  end;
+  for mUnit in FIndex.Units do
+  begin
+    if not mUnit.Library_ then
+    begin
+      Result := Result + [mUnit.FileName];
+    end;
+  end;
+end;
+
+function TLspEventHandlers.FormsOf(const AFileName, AText: string): TArray<TEventHandlerForm>;
+var
+  mFormFile: string;
+  mForm: TEventHandlerForm;
+begin
+  Result := nil;
+  for mFormFile in TFormFiles.FormFiles(AFileName, AText) do
+  begin
+    mForm := Default(TEventHandlerForm);
+    mForm.FileName := mFormFile;
+    if FReadText(mFormFile, mForm.Text) then
+    begin
+      Result := Result + [mForm];
+    end;
+  end;
+end;
+
 function TLspEventHandlers.Collect(const AFiles: TArray<string>; out AUnresolved: Integer): TArray<TEventHandler>;
 var
-  Files: TArray<string>;
-  UnitIndex: TUnitIndex;
-  FileName, Text, FormFile: string;
-  Forms: TArray<TEventHandlerForm>;
-  Form: TEventHandlerForm;
-  Found, Handler: TEventHandler;
+  mFileName, mText: string;
+  mFound, mHandler: TEventHandler;
 begin
   Result := nil;
   AUnresolved := 0;
   FBodies.Clear;
-  Files := nil;
-  if Length(AFiles) > 0 then
-  begin
-    for FileName in AFiles do
-      if SameText(ExtractFileExt(FileName), '.pas') then
-        Files := Files + [FileName];
-  end
-  else if FIndex <> nil then
-    for UnitIndex in FIndex.Units do
-      if not UnitIndex.Library_ then
-        Files := Files + [UnitIndex.FileName];
   if not Assigned(FReadText) then
-    Exit;
-  for FileName in Files do
   begin
-    if not FReadText(FileName, Text) then
+    Exit;
+  end;
+  for mFileName in SourceFiles(AFiles) do
+  begin
+    if not FReadText(mFileName, mText) then
+    begin
       Continue;
-    Forms := nil;
-    for FormFile in TFormFiles.FormFiles(FileName, Text) do
-    begin
-      Form.FileName := FormFile;
-      if FReadText(FormFile, Form.Text) then
-        Forms := Forms + [Form];
     end;
-    for Found in TEventHandlers.Collect(FileName, Text, Forms) do
+    for mFound in TEventHandlers.Collect(mFileName, mText, FormsOf(mFileName, mText)) do
     begin
-      Handler := Found;
-      if (Handler.Line < 0) and not ResolveInAncestors(Handler) then
+      mHandler := mFound;
+      if (mHandler.Line < 0) and not ResolveInAncestors(mHandler) then
       begin
         Inc(AUnresolved);
         Continue;
       end;
-      Result := Result + [Handler];
+      Result := Result + [mHandler];
     end;
   end;
   FBodies.Clear;
@@ -218,7 +263,9 @@ begin
       Item.AddPair('source', Handler.SourceFile);
       Item.AddPair('sourceLine', TJSONNumber.Create(Handler.SourceLine));
       if Handler.Interval >= 0 then
+      begin
         Item.AddPair('interval', TJSONNumber.Create(Handler.Interval));
+      end;
     end;
     Root.AddPair('unresolved', TJSONNumber.Create(AUnresolved));
     Result := Root.ToJSON;
@@ -236,9 +283,13 @@ var
 begin
   FileName := '';
   if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
+  begin
     FileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
+  end;
   if not (Assigned(FSourceFor) and FSourceFor(FileName, True, Source)) then
+  begin
     Source := Default(TLspMetricsSource);
+  end;
   Handlers := Collect(Source.Files, Unresolved);
   Result := TJSONObject.ParseJSONValue(ToJson(Handlers, Unresolved));
 end;

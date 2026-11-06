@@ -46,7 +46,9 @@ var
 begin
   Result := '';
   for Index := 0 to High(ALines) do
+  begin
     Result := Result + ALines[Index] + #10;
+  end;
 end;
 
 /// <summary>Aufrufstelle am "|" in AMarked.</summary>
@@ -57,13 +59,17 @@ begin
   Line := 0;
   Character := 0;
   for Index := 1 to Pos('|', AMarked) - 1 do
+  begin
     if AMarked[Index] = #10 then
     begin
       Inc(Line);
       Character := 0;
     end
     else
+    begin
       Inc(Character);
+    end;
+  end;
   ATree := TPascalParser.Parse(StringReplace(AMarked, '|', '', []));
   Result := TCreateMethod.Site(ATree.Tokens, TTextPosition.Create(Line, Character), ASite);
 end;
@@ -77,18 +83,28 @@ begin
   Tree := nil;
   try
     if not SiteOf(AMarked, Site, Tree) then
+    begin
       Exit('-');
+    end;
     Result := Site.Name;
     if Site.Qualifier <> '' then
+    begin
       Result := Site.Qualifier + '.' + Result;
+    end;
     Result := Result + '(';
     for Argument in Site.Arguments do
+    begin
       Result := Result + Argument.Text + '|';
+    end;
     Result := Result + ') ' + IntToStr(Ord(Site.Context));
     if Site.Target <> '' then
+    begin
       Result := Result + ' ' + Site.Target;
+    end;
     if Site.CloseIndex < 0 then
+    begin
       Result := Result + ' offen';
+    end;
     Result := Result + ' @' + Tree.Tokens[Site.StatementStart].Text;
   finally
     Tree.Free;
@@ -135,7 +151,9 @@ begin
       'TKunde(Obj), Hole(1), @Puffer, Self, nil, -0.5);'#10'end.', Site, Tree));
     Names := '';
     for Argument in Site.Arguments do
+    begin
       Names := Names + TCreateMethod.ArgumentName(Tree.Tokens, Argument) + ',';
+    end;
     Assert.AreEqual('Kunde,Rate,Ziel,Rate,Value,Value,Text,Flag,Name,Count,Kunde,Hole,Puffer,,,Value,', Names);
     Assert.AreEqual('Double', TCreateMethod.LiteralType(Tree.Tokens, Site.Arguments[3]));
     Assert.AreEqual('Integer', TCreateMethod.LiteralType(Tree.Tokens, Site.Arguments[5]));
@@ -186,14 +204,10 @@ begin
   Assert.IsFalse(TCreateMethod.WantsConst('Integer', False, False));
 end;
 
-procedure TCreateMethodTests.MethodGoesIntoSectionAndBody;
-var
-  Text: string;
-  Tree: TSyntaxTree;
-  Plan: TCreateMethodPlan;
-  Edits: TArray<TTextEdit>;
+/// <summary>Klasse TRechner, deren Methode Rechne das noch fehlende Pruefe aufruft.</summary>
+function RechnerCallsPruefe: string;
 begin
-  Text := Join([
+  Result := Join([
     'unit U;',
     'interface',
     'type',
@@ -207,6 +221,16 @@ begin
     '  Pruefe;',
     'end;',
     'end.']);
+end;
+
+procedure TCreateMethodTests.MethodGoesIntoSectionAndBody;
+var
+  Text: string;
+  Tree: TSyntaxTree;
+  Plan: TCreateMethodPlan;
+  Edits: TArray<TTextEdit>;
+begin
+  Text := RechnerCallsPruefe;
   Plan := Default(TCreateMethodPlan);
   Plan.Name := 'Pruefe';
   Plan.TypeName := 'TRechner';

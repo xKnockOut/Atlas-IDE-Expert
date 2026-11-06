@@ -24,6 +24,9 @@ type
     function ItemAt(const AMarked: string; out AItem: TCompletionItem): Boolean; overload;
     function HeaderAt(const AMarked: string): string;
   public
+    /// <summary>Einmal-Belegungen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -74,7 +77,8 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Lsp.CompletionCollector,
-  Atlas.Common.Lsp.CompletionAnonymous;
+  Atlas.Common.Lsp.CompletionAnonymous,
+  Atlas.Common.Lsp.Completion.Methods;
 
 const
   HauptFile = 'C:\P\Haupt.pas';
@@ -139,13 +143,17 @@ begin
   Line := 0;
   Character := 0;
   for Index := 1 to Pos('|', AMarked) - 1 do
+  begin
     if AMarked[Index] = #10 then
     begin
       Inc(Line);
       Character := 0;
     end
     else
+    begin
       Inc(Character);
+    end;
+  end;
   APosition := TTextPosition.Create(Line, Character);
   Result := StringReplace(AMarked, '|', '', []);
 end;
@@ -163,6 +171,16 @@ begin
 end;
 
 { TCompletionAnonymousTests }
+
+procedure TCompletionAnonymousTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    AloneAfterParenthesis;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TCompletionAnonymousTests.Setup;
 begin
@@ -193,7 +211,7 @@ begin
     Request.Resolver := FResolver;
     Request.Index := FIndex;
     Request.Settings := ASettings;
-    Result := TLspCompletion.AnonymousItem(Request, ASnippets, ANamingFor, AItem);
+    Result := TCompletionMethods.AnonymousItem(Request, ASnippets, ANamingFor, AItem);
   finally
     Request.Free;
     Tree.Free;
@@ -211,7 +229,9 @@ var
 begin
   Result := '-';
   if ItemAt(AMarked, Item) then
+  begin
     Result := Item.Name;
+  end;
 end;
 
 procedure TCompletionAnonymousTests.ParsesDeclarations;
@@ -407,7 +427,9 @@ begin
     begin
       Result := '';
       if AKind = TNamingKind.Parameter then
+      begin
         Result := 'A';
+      end;
     end;
   Assert.IsTrue(ItemAt('P := |', True, TCompletionSettings.Default, NamingFor, Item));
   Assert.AreEqual('procedure(const AValue: string)', Item.Name);
@@ -442,7 +464,9 @@ var
   begin
     Trigger := '';
     if ATrigger <> '' then
+    begin
       Trigger := ',"context":{"triggerKind":2,"triggerCharacter":"' + ATrigger + '"}';
+    end;
     Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"textDocument/completion",' +
       '"params":{"textDocument":{"uri":"' + Uri.Replace('\', '\\') + '"},"position":{"line":' +
       IntToStr(Position.Line) + ',"character":' + IntToStr(Position.Character) + '}' + Trigger + '}}') as TJSONObject;

@@ -110,7 +110,9 @@ begin
   Changes := TMcpFreshness.Changes(Index, FileSystemRef, ['C:\P\A.pas', 'C:\P\B.pas', 'C:\P\C.pas', 'C:\P\D.pas']);
   Text := '';
   for Change in Changes do
+  begin
     Text := Text + ExtractFileName(Change.FileName) + ':' + IntToStr(Ord(Change.Kind)) + ' ';
+  end;
   // A unverändert; B geändert, C gelöscht, D neu.
   Assert.AreEqual(Format('B.pas:%d C.pas:%d D.pas:%d ', [Ord(TFileChangeKind.Changed), Ord(TFileChangeKind.Deleted),
     Ord(TFileChangeKind.Created)]), Text);

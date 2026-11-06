@@ -7,7 +7,7 @@
     - Titel und Text je deutsch und englisch vorhanden.
     - command, try und Befehle unter usage, die mit "Atlas." beginnen, sind Befehle der Befehlspalette oder
       Atlas-Tasten (stehen als 'Atlas.…' in den Quellen des Plugins).
-    - setting ist ein Registry-Name aus Atlas.Core.Settings.Plugin.pas (Schalter oder Auswahl).
+    - setting ist ein Registry-Name aus Atlas.Core.Settings.Plugin.<Bereich>.pas (Schalter oder Auswahl).
     - Jeder Tipp hat ein Bild: echte PNG-Datei unter Setup/Tipps mit 320 × 180 Pixeln und daneben <name>@2x.png
       mit 640 × 360 (Anzeige bei 100 % bzw. ab 125 %), dazu die Vorlage Tools/Tipps/Vorlagen/<name>.html, aus
       der Tools/Tipps/Render-Tips.mjs beide erzeugt.
@@ -49,10 +49,14 @@ if (-not (Test-Path $File)) {
 }
 $Json = Get-Content -Raw -Encoding utf8 $File | ConvertFrom-Json
 
-$PluginSource = Join-Path $Root 'Packages/Atlas.IDE.Expert/Source'
-$Sources = (Get-ChildItem -Recurse -Filter '*.pas' $PluginSource | ForEach-Object { Get-Content -Raw $_.FullName }) -join "`n"
-$SettingsUnit = Get-Content -Raw (Join-Path $PluginSource 'Core/Settings/Atlas.Core.Settings.Plugin.pas')
-$Settings = [regex]::Matches($SettingsUnit, "Read(Integer|String)\('([A-Za-z]+)'") | ForEach-Object { $_.Groups[2].Value }
+# Alle Plugin-Packages (Base und Module, #1456): Packages/Atlas.IDE.*/Source.
+$PluginSources = @(Get-ChildItem -Path (Join-Path $Root 'Packages') -Directory -Filter 'Atlas.IDE.*' |
+    ForEach-Object { Join-Path $_.FullName 'Source' } | Where-Object { Test-Path $_ })
+$PluginFiles = @($PluginSources | ForEach-Object { Get-ChildItem -Recurse -Filter '*.pas' $_ })
+$Sources = ($PluginFiles | ForEach-Object { Get-Content -Raw $_.FullName }) -join "`n"
+# Registry-Namen aus Exchange der Bereichs-Units von TAtlasPluginSettings (Atlas.Core.Settings.Plugin.<Bereich>).
+$SettingsUnits = ($PluginFiles | Where-Object Name -like 'Atlas.Core.Settings.Plugin.*.pas' | ForEach-Object { Get-Content -Raw $_.FullName }) -join "`n"
+$Settings = [regex]::Matches($SettingsUnits, "AIo\.(?:Flag|Number|Text|TrimmedText)\('([A-Za-z]+)'") | ForEach-Object { $_.Groups[1].Value }
 $Templates = Join-Path $Root 'Tools/Tipps/Vorlagen'
 
 function PngSize([string] $Path) {
@@ -111,7 +115,7 @@ foreach ($Tip in $Tips) {
     }
     $Setting = [string](Field $Tip 'setting')
     if ($Setting -ne '' -and $Settings -notcontains $Setting) {
-        $Errors.Add("${Id}: Einstellung $Setting gibt es nicht (Registry-Name aus Atlas.Core.Settings.Plugin.pas)")
+        $Errors.Add("${Id}: Einstellung $Setting gibt es nicht (Registry-Name aus Atlas.Core.Settings.Plugin.<Bereich>)")
     }
     $Image = [string](Field $Tip 'image')
     $Path = $null

@@ -23,6 +23,9 @@ type
     procedure InvalidFormatStrings;
     [Test]
     procedure ArgumentCount;
+    /// <summary>Überladungen mit verschiedenem Ergebnis (IfThen aus System.Math und System.StrUtils).</summary>
+    [Test]
+    procedure OpenOverloadIsSilent;
     [Test]
     procedure ArgumentTypes;
     [Test]
@@ -156,6 +159,13 @@ begin
   Assert.AreEqual(28, mFound[1].Range.StartPos.Character);
   Assert.AreEqual('Der Formatstring braucht 2 Argumente, die Liste hat 1: EConvertError zur Laufzeit.',
     mFound[2].Message);
+end;
+
+procedure TFormatArgsTests.OpenOverloadIsSilent;
+begin
+  Assert.AreEqual(0, Integer(Length(Findings(Source('function Wahl(A: Integer): Integer; overload;'#10 +
+    'begin'#10'  Result := A;'#10'end;'#10'function Wahl(const A: string): string; overload;'#10 +
+    'begin'#10'  Result := A;'#10'end;'#10, '  S := Format(''%s'', [Wahl(AName)]);'#10)))));
 end;
 
 procedure TFormatArgsTests.ArgumentTypes;

@@ -72,7 +72,8 @@ implementation
 uses
   System.Generics.Collections,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Dfm.BinaryForm;
+  Atlas.Common.Dfm.BinaryForm,
+  Atlas.Text.LogMarks;
 
 { TSelectBuildArgs }
 
@@ -83,7 +84,9 @@ var
 begin
   Result := Default(TSelectBuildArgs);
   if (AArguments = nil) or (AArguments.Count = 0) or not (AArguments.Items[0] is TJSONObject) then
+  begin
     Exit;
+  end;
   Options := TJSONObject(AArguments.Items[0]);
   Options.TryGetValue<string>('config', Result.Config);
   Options.TryGetValue<string>('platform', Result.Platform);
@@ -93,8 +96,12 @@ begin
   begin
     Result.HasDefines := True;
     for Define in TJSONArray(DefinesValue) do
+    begin
       if Define is TJSONString then
+      begin
         Result.Defines := Result.Defines + [TJSONString(Define).Value];
+      end;
+    end;
   end;
 end;
 
@@ -111,15 +118,21 @@ var
 begin
   Result := Default(TSelectProjectArgs);
   if (AArguments = nil) or (AArguments.Count = 0) or not (AArguments.Items[0] is TJSONObject) then
+  begin
     Exit;
+  end;
   Value := TJSONObject(AArguments.Items[0]).GetValue('project');
   // TJSONNumber erbt von TJSONString.
   Result.HasProject := (Value is TJSONString) and not (Value is TJSONNumber);
   if not Result.HasProject then
+  begin
     Exit;
+  end;
   Result.Project := Trim(Value.Value);
   if Result.Project.StartsWith('file:', True) then
+  begin
     Result.Project := TDocumentUris.ToPath(Result.Project);
+  end;
 end;
 
 { TBuildCommands }
@@ -129,8 +142,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(AItems) do
+  begin
     if SameText(AItems[Index].Project, ATarget) or SameText(AItems[Index].Name, ATarget) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -153,9 +170,13 @@ begin
     Entry.AddPair('selected', TJSONBool.Create(Item.Selected));
     Items.AddElement(Entry);
     if Item.Selected and (Selected = '') then
+    begin
       Selected := Item.Project;
+    end;
     if Item.Active and (Active = '') then
+    begin
       Active := Item.Project;
+    end;
   end;
   Result := TJSONObject.Create;
   Result.AddPair('selected', Selected);
@@ -170,7 +191,9 @@ var
 begin
   Result := TJSONArray.Create;
   for Value in AValues do
+  begin
     Result.Add(Value);
+  end;
 end;
 
 class function TBuildCommands.ProjectItem(const AFolder: string; const AProject: TProjectInfo;
@@ -180,10 +203,14 @@ var
 begin
   Config := AArgs.Config;
   if Config = '' then
+  begin
     Config := AProject.Config;
+  end;
   Platform := AArgs.Platform;
   if Platform = '' then
+  begin
     Platform := AProject.Platform;
+  end;
   Result := TJSONObject.Create;
   Result.AddPair('folder', AFolder);
   Result.AddPair('project', AProject.FileName);
@@ -206,9 +233,15 @@ begin
     Exit;
   end;
   for FileName in AProjectSources do
+  begin
     for Extension in TArray<string>.Create('.dfm', '.fmx') do
+    begin
       if AExists(ChangeFileExt(FileName, Extension)) then
+      begin
         Result := Result + [ChangeFileExt(FileName, Extension)];
+      end;
+    end;
+  end;
 end;
 
 class function TBuildCommands.ConvertForms(const AFiles: TArray<string>; const ALogger: ILogger;
@@ -224,11 +257,13 @@ begin
       begin
         Inc(Result);
         if Backup <> '' then
+        begin
           Inc(ABackups);
+        end;
       end;
     except
       on E: Exception do
-        ALogger.Warning(Format('%s nicht umgewandelt: %s', [Form, E.Message]));
+        ALogger.Warning(Format('%s nicht umgewandelt: %s', [TLogMarks.Path(Form), TLogMarks.Text(E.Message)]));
     end;
 end;
 

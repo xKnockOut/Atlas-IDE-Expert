@@ -62,6 +62,9 @@ type
   public
     /// <summary>Alle uses-Listen (nicht requires/contains) in Reihenfolge.</summary>
     class function Clauses(const ATokens: TArray<TPascalToken>): TArray<TUsesClauseInfo>; static;
+    /// <summary>Liegt AOffset zwischen uses und Semikolon einer der Listen AClauses?</summary>
+    class function InClause(const ATokens: TArray<TPascalToken>; const AClauses: TArray<TUsesClauseInfo>;
+      AOffset: Integer): Boolean; static;
     /// <summary>Schreibt die schlichten Listen nach AOptions um; False ohne Änderung.</summary>
     class function Rewrite(const ATokens: TArray<TPascalToken>; const AText: string; const AOptions: TUsesRewrite;
       const ALineBreak: string; out AEdits: TArray<TTextEdit>): Boolean; static;
@@ -105,7 +108,9 @@ function NextIndex(const ATokens: TArray<TPascalToken>; AIndex: Integer): Intege
 begin
   Result := AIndex + 1;
   while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
+  begin
     Inc(Result);
+  end;
 end;
 
 /// <summary>Index des Semikolons, das die Anweisung ab AIndex abschließt; -1 ohne.</summary>
@@ -115,7 +120,9 @@ begin
   while Result <= High(ATokens) do
   begin
     if ATokens[Result].IsSymbol(';') then
+    begin
       Exit;
+    end;
     Inc(Result);
   end;
   Result := -1;
@@ -126,7 +133,9 @@ function FirstIndex(const ATokens: TArray<TPascalToken>): Integer;
 begin
   Result := NextIndex(ATokens, -1);
   if Result > High(ATokens) then
+  begin
     Result := -1;
+  end;
 end;
 
 /// <summary>Index des Abschnittsworts (interface/implementation) bzw. des Semikolons
@@ -138,27 +147,41 @@ begin
   Result := -1;
   First := FirstIndex(ATokens);
   if First < 0 then
+  begin
     Exit;
+  end;
   HeaderEnd := SemicolonAfter(ATokens, First);
   if HeaderEnd < 0 then
+  begin
     Exit;
+  end;
   if not ATokens[First].IsKeyword('unit') then
+  begin
     // program, library, package: ein uses (bzw. contains) hinter dem Kopf.
     Exit(HeaderEnd);
+  end;
   Interface_ := NextIndex(ATokens, HeaderEnd);
   if (Interface_ > High(ATokens)) or not ATokens[Interface_].IsKeyword('interface') then
+  begin
     Exit;
+  end;
   Implementation_ := -1;
   for Index := Interface_ + 1 to High(ATokens) do
+  begin
     if ATokens[Index].IsKeyword('implementation') then
     begin
       Implementation_ := Index;
       Break;
     end;
+  end;
   if (Implementation_ >= 0) and (AOffset >= ATokens[Implementation_].Offset) then
-    Result := Implementation_
+  begin
+    Result := Implementation_;
+  end
   else
+  begin
     Result := Interface_;
+  end;
 end;
 
 function ReadNames(const ATokens: TArray<TPascalToken>; AUses: Integer; var ANames: TArray<string>): Integer;
@@ -176,16 +199,24 @@ begin
     if ATokens[Index].IsSymbol(';') or ATokens[Index].IsSymbol(',') then
     begin
       if Name <> '' then
+      begin
         ANames := ANames + [Name];
+      end;
       Name := '';
       AfterIn := False;
       if ATokens[Index].IsSymbol(';') then
+      begin
         Exit(Index);
+      end;
     end
     else if ATokens[Index].IsKeyword('in') then
-      AfterIn := True
+    begin
+      AfterIn := True;
+    end
     else if not AfterIn and ((ATokens[Index].Kind = TPascalTokenKind.Identifier) or ATokens[Index].IsSymbol('.')) then
+    begin
       Name := Name + ATokens[Index].Text;
+    end;
     Inc(Index);
   end;
   Result := -1;
@@ -203,9 +234,13 @@ var
   Name: string;
 begin
   for Name in AUsed do
+  begin
     if SameText(Name, 'DUnitX.TestFramework') or SameText(Name, 'TestFramework') or
       Name.StartsWith('TestInsight.', True) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -221,7 +256,9 @@ begin
     begin
       Index := ReadNames(ATokens, Index, Result);
       if Index < 0 then
+      begin
         Exit;
+      end;
     end;
     Inc(Index);
   end;
@@ -235,85 +272,147 @@ var
 begin
   if ATokens[AIndex].IsKeyword('uses') or ATokens[AIndex].IsKeyword('requires') or
     ATokens[AIndex].IsKeyword('contains') then
+  begin
     Exit(True);
+  end;
   if not ((ATokens[AIndex].Kind = TPascalTokenKind.Identifier) and
     (SameText(ATokens[AIndex].Text, 'contains') or SameText(ATokens[AIndex].Text, 'requires'))) then
+  begin
     Exit(False);
+  end;
   Previous := AIndex - 1;
   while (Previous >= 0) and IsTrivia(ATokens[Previous]) do
+  begin
     Dec(Previous);
+  end;
   Result := (Previous >= 0) and ATokens[Previous].IsSymbol(';');
+end;
+
+/// <summary>Token-Index von "implementation"; Length(ATokens) ohne.</summary>
+function ImplementationIndex(const ATokens: TArray<TPascalToken>): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := Length(ATokens);
+  for mIndex := 0 to High(ATokens) do
+  begin
+    if ATokens[mIndex].IsKeyword('implementation') then
+    begin
+      Exit(mIndex);
+    end;
+  end;
+end;
+
+/// <summary>Art der Liste zum Schlüsselwort AToken (uses, contains, requires).</summary>
+function ListKindOf(const AToken: TPascalToken): TUsesListKind;
+begin
+  Result := TUsesListKind.UsesList;
+  if SameText(AToken.Text, 'contains') then
+  begin
+    Result := TUsesListKind.ContainsList;
+  end
+  else if SameText(AToken.Text, 'requires') then
+  begin
+    Result := TUsesListKind.RequiresList;
+  end;
+end;
+
+type
+  /// <summary>Liest die Einträge einer Liste: uses A, B.C in 'b.pas', D; ein Eintrag je Name, Position über alle
+  /// Namensteile.</summary>
+  TReferenceReader = record
+    Name: string;
+    First: Integer;
+    Last: Integer;
+    AfterIn: Boolean;
+    /// <summary>Vorlage mit List und InInterface.</summary>
+    Reference: TUsesReference;
+    /// <summary>Schließt den Eintrag am Komma bzw. Semikolon ab.</summary>
+    procedure Flush(const ATokens: TArray<TPascalToken>; var AResult: TArray<TUsesReference>);
+    /// <summary>Nimmt das Token an AIndex auf (Namensteil oder "in").</summary>
+    procedure Take(const ATokens: TArray<TPascalToken>; AIndex: Integer);
+  end;
+
+procedure TReferenceReader.Flush(const ATokens: TArray<TPascalToken>; var AResult: TArray<TUsesReference>);
+begin
+  if Name <> '' then
+  begin
+    Reference.Name := Name;
+    Reference.Range := TTextRange.Create(ATokens[First].StartPos, ATokens[Last].EndPos);
+    AResult := AResult + [Reference];
+  end;
+  Name := '';
+  First := -1;
+  AfterIn := False;
+end;
+
+procedure TReferenceReader.Take(const ATokens: TArray<TPascalToken>; AIndex: Integer);
+begin
+  if ATokens[AIndex].IsKeyword('in') then
+  begin
+    AfterIn := True;
+  end
+  else if not AfterIn and ((ATokens[AIndex].Kind = TPascalTokenKind.Identifier) or
+    ATokens[AIndex].IsSymbol('.')) then
+  begin
+    if First < 0 then
+    begin
+      First := AIndex;
+    end;
+    Last := AIndex;
+    Name := Name + ATokens[AIndex].Text;
+  end;
+end;
+
+/// <summary>Liest die Liste, deren Schlüsselwort an AIndex steht, nach AResult; AIndex steht danach auf dem
+/// abschließenden Semikolon (bzw. hinter dem letzten Token).</summary>
+procedure ReadReferences(const ATokens: TArray<TPascalToken>; var AIndex: Integer; AInInterface: Boolean;
+  var AResult: TArray<TUsesReference>);
+var
+  mReader: TReferenceReader;
+begin
+  mReader := Default(TReferenceReader);
+  mReader.First := -1;
+  mReader.Last := -1;
+  mReader.Reference.InInterface := AInInterface;
+  mReader.Reference.List := ListKindOf(ATokens[AIndex]);
+  Inc(AIndex);
+  while AIndex <= High(ATokens) do
+  begin
+    if ATokens[AIndex].IsSymbol(';') or ATokens[AIndex].IsSymbol(',') then
+    begin
+      mReader.Flush(ATokens, AResult);
+      if ATokens[AIndex].IsSymbol(';') then
+      begin
+        Break;
+      end;
+    end
+    else
+    begin
+      mReader.Take(ATokens, AIndex);
+    end;
+    Inc(AIndex);
+  end;
 end;
 
 class function TUsesClauses.References(const ATokens: TArray<TPascalToken>): TArray<TUsesReference>;
 var
-  Index, First, Last: Integer;
-  Name: string;
-  AfterIn: Boolean;
-  Reference: TUsesReference;
-  List: TUsesListKind;
-  IsUnit: Boolean;
-  Implementation_: Integer;
+  mIndex, mFirst, mImplementation: Integer;
+  mIsUnit: Boolean;
 begin
   Result := nil;
   // Abschnitt je Eintrag (#268): in einer Unit gilt alles vor "implementation" als interface.
-  First := FirstIndex(ATokens);
-  IsUnit := (First >= 0) and ATokens[First].IsKeyword('unit');
-  Implementation_ := Length(ATokens);
-  for Index := 0 to High(ATokens) do
-    if ATokens[Index].IsKeyword('implementation') then
-    begin
-      Implementation_ := Index;
-      Break;
-    end;
-  Index := 0;
-  while Index <= High(ATokens) do
+  mFirst := FirstIndex(ATokens);
+  mIsUnit := (mFirst >= 0) and ATokens[mFirst].IsKeyword('unit');
+  mImplementation := ImplementationIndex(ATokens);
+  mIndex := 0;
+  while mIndex <= High(ATokens) do
   begin
-    if IsListStart(ATokens, Index) then
+    if IsListStart(ATokens, mIndex) then
     begin
-      Reference.InInterface := IsUnit and (Index < Implementation_);
-      List := TUsesListKind.UsesList;
-      if SameText(ATokens[Index].Text, 'contains') then
-        List := TUsesListKind.ContainsList
-      else if SameText(ATokens[Index].Text, 'requires') then
-        List := TUsesListKind.RequiresList;
-      // uses A, B.C in 'b.pas', D; ein Eintrag je Name, Position über alle Namensteile.
-      Name := '';
-      First := -1;
-      Last := -1;
-      AfterIn := False;
-      Inc(Index);
-      while Index <= High(ATokens) do
-      begin
-        if ATokens[Index].IsSymbol(';') or ATokens[Index].IsSymbol(',') then
-        begin
-          if Name <> '' then
-          begin
-            Reference.Name := Name;
-            Reference.Range := TTextRange.Create(ATokens[First].StartPos, ATokens[Last].EndPos);
-            Reference.List := List;
-            Result := Result + [Reference];
-          end;
-          Name := '';
-          First := -1;
-          AfterIn := False;
-          if ATokens[Index].IsSymbol(';') then
-            Break;
-        end
-        else if ATokens[Index].IsKeyword('in') then
-          AfterIn := True
-        else if not AfterIn and ((ATokens[Index].Kind = TPascalTokenKind.Identifier) or
-          ATokens[Index].IsSymbol('.')) then
-        begin
-          if First < 0 then
-            First := Index;
-          Last := Index;
-          Name := Name + ATokens[Index].Text;
-        end;
-        Inc(Index);
-      end;
+      ReadReferences(ATokens, mIndex, mIsUnit and (mIndex < mImplementation), Result);
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
 end;
 
@@ -324,15 +423,25 @@ begin
   Result := '';
   First := FirstIndex(ATokens);
   if First < 0 then
+  begin
     Exit;
+  end;
   HeaderEnd := SemicolonAfter(ATokens, First);
   if HeaderEnd < 0 then
+  begin
     Exit;
+  end;
   for Index := First + 1 to HeaderEnd - 1 do
+  begin
     if (ATokens[Index].Kind = TPascalTokenKind.Identifier) or ATokens[Index].IsSymbol('.') then
-      Result := Result + ATokens[Index].Text
+    begin
+      Result := Result + ATokens[Index].Text;
+    end
     else if not IsTrivia(ATokens[Index]) then
+    begin
       Break;
+    end;
+  end;
 end;
 
 class function TUsesClauses.IsUsed(const AUsed: TArray<string>; const AUnitName: string;
@@ -343,10 +452,16 @@ begin
   for Used in AUsed do
   begin
     if SameText(Used, AUnitName) then
+    begin
       Exit(True);
+    end;
     for Namespace in ANamespaces do
+    begin
       if SameText(Namespace + '.' + Used, AUnitName) then
+      begin
         Exit(True);
+      end;
+    end;
   end;
   Result := False;
 end;
@@ -370,9 +485,13 @@ var
 begin
   Dot := Pos('.', AName);
   if Dot = 0 then
-    Result := #$FFFF
+  begin
+    Result := #$FFFF;
+  end
   else
+  begin
     Result := Copy(AName, 1, Dot - 1);
+  end;
 end;
 
 function ItemLess(const A, B: TUsesItem; AByNamespace: Boolean): Boolean;
@@ -381,9 +500,13 @@ var
 begin
   Compared := 0;
   if AByNamespace then
+  begin
     Compared := CompareText(GroupOf(A.Name), GroupOf(B.Name));
+  end;
   if Compared = 0 then
+  begin
     Compared := CompareText(A.Name, B.Name);
+  end;
   Result := (Compared < 0) or ((Compared = 0) and (A.Order < B.Order));
 end;
 
@@ -411,8 +534,12 @@ var
   Name: string;
 begin
   for Name in ANames do
+  begin
     if SameText(Name, AName) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -422,9 +549,13 @@ var
   Index: Integer;
 begin
   for Index := AFirst to ALast do
+  begin
     if (ATokens[Index].Kind = TPascalTokenKind.Directive) or
       ((ATokens[Index].Kind = TPascalTokenKind.Comment) and (Copy(ATokens[Index].Text, 1, 2) = '//')) then
+    begin
       Exit(False);
+    end;
+  end;
   Result := True;
 end;
 
@@ -442,14 +573,18 @@ begin
   while Index <= High(ATokens) do
   begin
     if ATokens[Index].IsKeyword('implementation') then
-      InImplementation := True
+    begin
+      InImplementation := True;
+    end
     else if ATokens[Index].IsKeyword('uses') then
     begin
       Clause.UsesIndex := Index;
       Clause.Names := nil;
       Clause.Semicolon := ReadNames(ATokens, Index, Clause.Names);
       if Clause.Semicolon < 0 then
+      begin
         Exit;
+      end;
       Clause.InInterface := IsUnit and not InImplementation;
       Clause.Plain := IsPlainList(ATokens, Index + 1, Clause.Semicolon - 1);
       Result := Result + [Clause];
@@ -477,107 +612,214 @@ begin
   Result := Rewrite(ATokens, AText, Options, ALineBreak, AEdits);
 end;
 
+class function TUsesClauses.InClause(const ATokens: TArray<TPascalToken>;
+  const AClauses: TArray<TUsesClauseInfo>; AOffset: Integer): Boolean;
+var
+  mClause: TUsesClauseInfo;
+begin
+  Result := False;
+  for mClause in AClauses do
+  begin
+    if (AOffset > ATokens[mClause.UsesIndex].Offset) and (AOffset < ATokens[mClause.Semicolon].Offset) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
+/// <summary>Eintrag ab ACursor bis zum nächsten Komma (bzw. ASemicolon) mit seinem Quelltext; ACursor steht
+/// danach auf dem Komma bzw. auf ASemicolon.</summary>
+function ReadItem(const ATokens: TArray<TPascalToken>; const AText: string; var ACursor: Integer;
+  ASemicolon: Integer): TUsesItem;
+var
+  mFirst, mLast: Integer;
+  mAfterIn: Boolean;
+begin
+  Result := Default(TUsesItem);
+  mFirst := ACursor;
+  mLast := ACursor;
+  mAfterIn := False;
+  while (ACursor < ASemicolon) and not ATokens[ACursor].IsSymbol(',') do
+  begin
+    if ATokens[ACursor].IsKeyword('in') then
+    begin
+      mAfterIn := True;
+    end
+    else if not mAfterIn and ((ATokens[ACursor].Kind = TPascalTokenKind.Identifier) or
+      ATokens[ACursor].IsSymbol('.')) then
+    begin
+      Result.Name := Result.Name + ATokens[ACursor].Text;
+    end;
+    mLast := ACursor;
+    Inc(ACursor);
+  end;
+  Result.Text := Copy(AText, ATokens[mFirst].Offset + 1, TokenEnd(ATokens[mLast]) - ATokens[mFirst].Offset);
+end;
+
+/// <summary>Einträge der Liste zwischen uses (AIndex) und ASemicolon, Trennzeichen sind die Kommas.</summary>
+function ReadItems(const ATokens: TArray<TPascalToken>; const AText: string; AIndex, ASemicolon: Integer):
+  TArray<TUsesItem>;
+var
+  mCursor: Integer;
+  mItem: TUsesItem;
+begin
+  Result := nil;
+  mCursor := NextIndex(ATokens, AIndex);
+  while mCursor < ASemicolon do
+  begin
+    mItem := ReadItem(ATokens, AText, mCursor, ASemicolon);
+    mItem.Order := Length(Result);
+    Result := Result + [mItem];
+    if mCursor < ASemicolon then
+    begin
+      mCursor := NextIndex(ATokens, mCursor);
+    end;
+  end;
+end;
+
+/// <summary>Haben AKept andere Einträge oder eine andere Reihenfolge als AItems?</summary>
+function OrderChanged(const AItems, AKept: TArray<TUsesItem>): Boolean;
+var
+  mIndex: Integer;
+begin
+  Result := Length(AKept) <> Length(AItems);
+  for mIndex := 0 to High(AKept) do
+  begin
+    if AKept[mIndex].Order <> mIndex then
+    begin
+      Result := True;
+    end;
+  end;
+end;
+
+/// <summary>Quelltext der Einträge AKept, getrennt durch ASeparator.</summary>
+function JoinItems(const AKept: TArray<TUsesItem>; const ASeparator: string): string;
+var
+  mIndex: Integer;
+begin
+  Result := '';
+  for mIndex := 0 to High(AKept) do
+  begin
+    if mIndex > 0 then
+    begin
+      Result := Result + ASeparator;
+    end;
+    Result := Result + AKept[mIndex].Text;
+  end;
+end;
+
+type
+  /// <summary>Zustand von TUsesClauses.Rewrite über alle Listen der Datei.</summary>
+  TUsesRewriter = record
+    Tokens: TArray<TPascalToken>;
+    Text: string;
+    Options: TUsesRewrite;
+    LineBreak: string;
+    /// <summary>Namen der bisherigen Listen (für Dedupe).</summary>
+    Seen: TArray<string>;
+    Edits: TArray<TTextEdit>;
+    /// <summary>Behaltene Einträge, ohne Drop und (mit Dedupe) ohne schon gesehene.</summary>
+    function Keep(const AItems: TArray<TUsesItem>): TArray<TUsesItem>;
+    /// <summary>Edit für die Liste mit den Einträgen AKept; ohne Einträge entfällt die ganze Liste.</summary>
+    function ListEdit(AIndex, ASemicolon: Integer; const AKept: TArray<TUsesItem>): TTextEdit;
+    /// <summary>Schreibt die schlichte Liste zwischen uses (AIndex) und ASemicolon um.</summary>
+    procedure RewriteList(AIndex, ASemicolon: Integer);
+  end;
+
+function TUsesRewriter.Keep(const AItems: TArray<TUsesItem>): TArray<TUsesItem>;
+var
+  mItem: TUsesItem;
+begin
+  Result := nil;
+  for mItem in AItems do
+  begin
+    if not ContainsName(Options.Drop, mItem.Name) and not (Options.Dedupe and ContainsName(Seen, mItem.Name)) then
+    begin
+      Result := Result + [mItem];
+      Seen := Seen + [mItem.Name];
+    end;
+  end;
+  if Options.Sort then
+  begin
+    SortItems(Result, Options.ByNamespace);
+  end;
+end;
+
+function TUsesRewriter.ListEdit(AIndex, ASemicolon: Integer; const AKept: TArray<TUsesItem>): TTextEdit;
+var
+  mFirst, mLast: Integer;
+  mSeparator: string;
+begin
+  if AKept = nil then
+  begin
+    Exit(TTextEdit.Create(TTextRange.Create(Tokens[AIndex].StartPos, Tokens[ASemicolon].EndPos), ''));
+  end;
+  mFirst := NextIndex(Tokens, AIndex);
+  // Bis zum Semikolon, damit ein Kommentar am letzten Eintrag nicht doppelt erscheint.
+  mLast := ASemicolon - 1;
+  mSeparator := ', ';
+  if Tokens[mLast].StartPos.Line > Tokens[AIndex].StartPos.Line then
+  begin
+    mSeparator := ',' + LineBreak + StringOfChar(' ', Tokens[mFirst].StartPos.Character);
+  end;
+  Result := TTextEdit.Create(TTextRange.Create(Tokens[mFirst].StartPos, Tokens[mLast].EndPos),
+    JoinItems(AKept, mSeparator));
+end;
+
+procedure TUsesRewriter.RewriteList(AIndex, ASemicolon: Integer);
+var
+  mItems, mKept: TArray<TUsesItem>;
+begin
+  mItems := ReadItems(Tokens, Text, AIndex, ASemicolon);
+  if mItems = nil then
+  begin
+    Exit;
+  end;
+  mKept := Keep(mItems);
+  if OrderChanged(mItems, mKept) then
+  begin
+    Edits := Edits + [ListEdit(AIndex, ASemicolon, mKept)];
+  end;
+end;
+
 class function TUsesClauses.Rewrite(const ATokens: TArray<TPascalToken>; const AText: string;
   const AOptions: TUsesRewrite; const ALineBreak: string; out AEdits: TArray<TTextEdit>): Boolean;
 var
-  Index, Semicolon, Cursor, First, Last, ItemIndex: Integer;
-  Seen: TArray<string>;
-  Items, Kept: TArray<TUsesItem>;
-  Item: TUsesItem;
-  Changed, AfterIn: Boolean;
-  Separator, NewText: string;
-  Names: TArray<string>;
+  mIndex, mSemicolon: Integer;
+  mNames: TArray<string>;
+  mRewriter: TUsesRewriter;
 begin
-  AEdits := nil;
-  Seen := nil;
-  Index := 0;
-  while Index <= High(ATokens) do
+  mRewriter := Default(TUsesRewriter);
+  mRewriter.Tokens := ATokens;
+  mRewriter.Text := AText;
+  mRewriter.Options := AOptions;
+  mRewriter.LineBreak := ALineBreak;
+  mIndex := 0;
+  while mIndex <= High(ATokens) do
   begin
-    if not ATokens[Index].IsKeyword('uses') then
+    if not ATokens[mIndex].IsKeyword('uses') then
     begin
-      Inc(Index);
+      Inc(mIndex);
       Continue;
     end;
-    Names := nil;
-    Semicolon := ReadNames(ATokens, Index, Names);
-    if Semicolon < 0 then
+    mNames := nil;
+    mSemicolon := ReadNames(ATokens, mIndex, mNames);
+    if mSemicolon < 0 then
+    begin
       Break;
-    if not IsPlainList(ATokens, Index + 1, Semicolon - 1) then
+    end;
+    if IsPlainList(ATokens, mIndex + 1, mSemicolon - 1) then
+    begin
+      mRewriter.RewriteList(mIndex, mSemicolon);
+    end
+    else
     begin
       // Unangetastet, aber die Namen zählen für spätere Listen.
-      Seen := Seen + Names;
-      Index := Semicolon + 1;
-      Continue;
+      mRewriter.Seen := mRewriter.Seen + mNames;
     end;
-    // Einträge mit ihrem Quelltext, Trennzeichen sind die Kommas.
-    Items := nil;
-    Cursor := NextIndex(ATokens, Index);
-    while Cursor < Semicolon do
-    begin
-      First := Cursor;
-      Last := Cursor;
-      Item.Name := '';
-      AfterIn := False;
-      while (Cursor < Semicolon) and not ATokens[Cursor].IsSymbol(',') do
-      begin
-        if ATokens[Cursor].IsKeyword('in') then
-          AfterIn := True
-        else if not AfterIn and ((ATokens[Cursor].Kind = TPascalTokenKind.Identifier) or
-          ATokens[Cursor].IsSymbol('.')) then
-          Item.Name := Item.Name + ATokens[Cursor].Text;
-        Last := Cursor;
-        Inc(Cursor);
-      end;
-      Item.Text := Copy(AText, ATokens[First].Offset + 1, TokenEnd(ATokens[Last]) - ATokens[First].Offset);
-      Item.Order := Length(Items);
-      Items := Items + [Item];
-      if Cursor < Semicolon then
-        Cursor := NextIndex(ATokens, Cursor);
-    end;
-    if Items = nil then
-    begin
-      Index := Semicolon + 1;
-      Continue;
-    end;
-    Kept := nil;
-    for Item in Items do
-      if not ContainsName(AOptions.Drop, Item.Name) and not (AOptions.Dedupe and ContainsName(Seen, Item.Name)) then
-      begin
-        Kept := Kept + [Item];
-        Seen := Seen + [Item.Name];
-      end;
-    if AOptions.Sort then
-      SortItems(Kept, AOptions.ByNamespace);
-    Changed := Length(Kept) <> Length(Items);
-    for ItemIndex := 0 to High(Kept) do
-      if Kept[ItemIndex].Order <> ItemIndex then
-        Changed := True;
-    if Changed then
-    begin
-      First := NextIndex(ATokens, Index);
-      // Bis zum Semikolon, damit ein Kommentar am letzten Eintrag nicht doppelt erscheint.
-      Last := Semicolon - 1;
-      if Kept = nil then
-        AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(ATokens[Index].StartPos, ATokens[Semicolon].EndPos), '')]
-      else
-      begin
-        if ATokens[Last].StartPos.Line > ATokens[Index].StartPos.Line then
-          Separator := ',' + ALineBreak + StringOfChar(' ', ATokens[First].StartPos.Character)
-        else
-          Separator := ', ';
-        NewText := '';
-        for ItemIndex := 0 to High(Kept) do
-        begin
-          if ItemIndex > 0 then
-            NewText := NewText + Separator;
-          NewText := NewText + Kept[ItemIndex].Text;
-        end;
-        AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(ATokens[First].StartPos, ATokens[Last].EndPos),
-          NewText)];
-      end;
-    end;
-    Index := Semicolon + 1;
+    mIndex := mSemicolon + 1;
   end;
+  AEdits := mRewriter.Edits;
   Result := AEdits <> nil;
 end;
 
@@ -590,29 +832,39 @@ var
 begin
   Start := SectionStart(ATokens, AOffset);
   if Start < 0 then
+  begin
     Exit(False);
+  end;
   UsesIndex := NextIndex(ATokens, Start);
   if (UsesIndex <= High(ATokens)) and (ATokens[UsesIndex].IsKeyword('uses')) then
   begin
     Names := nil;
     Semicolon := ReadNames(ATokens, UsesIndex, Names);
     if Semicolon < 0 then
+    begin
       Exit(False);
+    end;
     LastName := Semicolon - 1;
     while (LastName > UsesIndex) and IsTrivia(ATokens[LastName]) do
+    begin
       Dec(LastName);
+    end;
     if ATokens[LastName].StartPos.Line > ATokens[UsesIndex].StartPos.Line then
     begin
       // Mehrzeilige Liste: eigene Zeile, eingerückt wie die Zeile des letzten Eintrags.
       while (LastName > UsesIndex) and (ATokens[LastName - 1].StartPos.Line = ATokens[LastName].StartPos.Line) do
+      begin
         Dec(LastName);
+      end;
       Indent := StringOfChar(' ', ATokens[LastName].StartPos.Character);
       AEdit := TTextEdit.Create(TTextRange.Create(ATokens[Semicolon].StartPos, ATokens[Semicolon].StartPos),
         ',' + ALineBreak + Indent + AUnitName);
     end
     else
+    begin
       AEdit := TTextEdit.Create(TTextRange.Create(ATokens[Semicolon].StartPos, ATokens[Semicolon].StartPos),
         ', ' + AUnitName);
+    end;
     Exit(True);
   end;
   AEdit := TTextEdit.Create(TTextRange.Create(ATokens[Start].EndPos, ATokens[Start].EndPos),

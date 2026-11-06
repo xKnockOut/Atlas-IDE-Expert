@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Lsp.Rename.Tests;
 
-// Tests für das Umbenennen im Projekt (#30).
+// Tests für das Umbenennen im Projekt (#30); Typkommentare wandern mit (#1838).
 
 interface
 
@@ -52,6 +52,10 @@ type
     procedure RejectsFieldThatWouldBeHiddenByLocal;
     [Test]
     procedure AllowsRenameWithoutShadowing;
+    [Test]
+    procedure RenamesTypeComments;
+    [Test]
+    procedure KeepsTypeCommentsWhenOff;
   end;
 
 implementation
@@ -63,7 +67,9 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
-  Atlas.Common.Index.Extractor;
+  Atlas.Common.Index.Extractor,
+  Atlas.Common.Configuration.Contract,
+  Atlas.Common.Lsp.References;
 
 const
   WerkzeugFile = 'C:\P\Werkzeug.pas';
@@ -177,15 +183,19 @@ var
 begin
   Index := Pos(AMarker, AText);
   if Index = 0 then
+  begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+  end;
   Line := 0;
   LineStart := 1;
   for I := 1 to Index - 1 do
+  begin
     if AText[I] = #10 then
     begin
       Inc(Line);
       LineStart := I + 1;
     end;
+  end;
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
@@ -222,18 +232,24 @@ var
 begin
   Tree := TPascalParser.Parse(UnitHaupt);
   try
-    Result := TLspRename.Edits(FResolver, FIndex, Tree, HauptFile, PositionOf(UnitHaupt, AMarker), ANewName,
-      [WerkzeugFile, HauptFile],
+    Result := TLspRename.Edits(FResolver, FIndex, Tree, TReferenceSearch.Create(HauptFile,
+      PositionOf(UnitHaupt, AMarker), True, [WerkzeugFile, HauptFile],
       function(const AFileName: string; out AText: string): Boolean
       begin
         Result := True;
         if SameText(AFileName, WerkzeugFile) then
-          AText := UnitWerkzeug
+        begin
+          AText := UnitWerkzeug;
+        end
         else if SameText(AFileName, WerkzeugDfm) then
-          AText := FormWerkzeug
+        begin
+          AText := FormWerkzeug;
+        end
         else
+        begin
           Result := False;
-      end);
+        end;
+      end), ANewName);
   finally
     Tree.Free;
   end;
@@ -252,13 +268,16 @@ begin
   try
     Result := '';
     try
-      TLspRename.Edits(Resolver, Index, Tree, KundeFile, PositionOf(UnitKunde, AMarker), ANewName, [KundeFile],
+      TLspRename.Edits(Resolver, Index, Tree, TReferenceSearch.Create(KundeFile, PositionOf(UnitKunde, AMarker),
+        True, [KundeFile],
         function(const AFileName: string; out AText: string): Boolean
         begin
           Result := SameText(AFileName, KundeFile);
           if Result then
+          begin
             AText := UnitKunde;
-        end);
+          end;
+        end), ANewName);
     except
       on E: EJsonRpcError do
         Result := E.Message;
@@ -281,27 +300,37 @@ begin
   // FMX (#87): Formular und Plattformansicht über die {$R}-Direktiven der Unit.
   UnitText := UnitMaske;
   if AFmx then
+  begin
     UnitText := StringReplace(UnitText, 'implementation'#10,
       'implementation'#10'{$R *.fmx}'#10'{$R *.Windows.fmx MSWINDOWS}'#10, []);
+  end;
   Index := TSymbolIndex.Create;
   Index.AddUnit(TIndexExtractor.ExtractText(UnitText, MaskeFile, nil));
   Resolver := TNameResolver.Create(Index);
   Tree := TPascalParser.Parse(UnitText);
   try
-    Result := TLspRename.Edits(Resolver, Index, Tree, MaskeFile, PositionOf(UnitText, AMarker), ANewName,
-      [MaskeFile],
+    Result := TLspRename.Edits(Resolver, Index, Tree, TReferenceSearch.Create(MaskeFile,
+      PositionOf(UnitText, AMarker), True, [MaskeFile],
       function(const AFileName: string; out AText: string): Boolean
       begin
         Result := True;
         if SameText(AFileName, MaskeFile) then
-          AText := UnitText
+        begin
+          AText := UnitText;
+        end
         else if not AFmx and SameText(AFileName, MaskeDfm) then
-          AText := FormMaske
+        begin
+          AText := FormMaske;
+        end
         else if AFmx and (SameText(AFileName, MaskeFmx) or SameText(AFileName, MaskeWindowsFmx)) then
-          AText := FormMaske
+        begin
+          AText := FormMaske;
+        end
         else
+        begin
           Result := False;
-      end, nil, AHandlers);
+        end;
+      end), TRenameRequest.Create(ANewName, AHandlers, TReferenceSettings.SureOnly, nil));
   finally
     Tree.Free;
     Resolver.Free;
@@ -354,12 +383,20 @@ begin
   Werkzeug := 0;
   Form := 0;
   for Edit in Found do
+  begin
     if SameText(Edit.FileName, HauptFile) then
-      Inc(Haupt)
+    begin
+      Inc(Haupt);
+    end
     else if SameText(Edit.FileName, WerkzeugFile) then
-      Inc(Werkzeug)
+    begin
+      Inc(Werkzeug);
+    end
     else if SameText(Edit.FileName, WerkzeugDfm) then
+    begin
       Inc(Form);
+    end;
+  end;
   Assert.AreEqual(3, Haupt);
   Assert.AreEqual(2, Werkzeug);
   Assert.AreEqual(2, Form);
@@ -390,12 +427,20 @@ begin
   Handler := 0;
   Other := 0;
   for Edit in Found do
+  begin
     if Edit.NewText = 'btnSpeichern' then
-      Inc(Field)
+    begin
+      Inc(Field);
+    end
     else if Edit.NewText = 'btnSpeichernClick' then
-      Inc(Handler)
+    begin
+      Inc(Handler);
+    end
     else
+    begin
       Inc(Other);
+    end;
+  end;
   // Feld, Verwendung im Code und Objektname in der DFM.
   Assert.AreEqual(3, Field);
   // Deklaration, Implementierung und Zuordnung in der DFM; Eigen bleibt.
@@ -408,7 +453,9 @@ var
   Edit: TRenameEdit;
 begin
   for Edit in FormEdits('Button1: TObject', 'btnSpeichern', False) do
+  begin
     Assert.AreEqual('btnSpeichern', Edit.NewText);
+  end;
 end;
 
 procedure TLspRenameTests.RenamesHandlersInFmxViews;
@@ -419,10 +466,16 @@ begin
   Fmx := 0;
   Windows := 0;
   for Edit in FormEdits('Button1: TObject', 'btnSpeichern', True, True) do
+  begin
     if SameText(Edit.FileName, MaskeFmx) then
-      Inc(Fmx)
+    begin
+      Inc(Fmx);
+    end
     else if SameText(Edit.FileName, MaskeWindowsFmx) then
+    begin
       Inc(Windows);
+    end;
+  end;
   // Objektname und Zuordnung OnClick in beiden Formularen.
   Assert.AreEqual(2, Fmx);
   Assert.AreEqual(2, Windows);
@@ -437,6 +490,7 @@ begin
   Fmx := 0;
   Windows := 0;
   for Edit in FormEdits('Button1Click(Sender', 'Speichern', False, True) do
+  begin
     if SameText(Edit.FileName, MaskeFmx) then
     begin
       Inc(Fmx);
@@ -448,7 +502,10 @@ begin
       Assert.AreEqual('Speichern', Edit.NewText);
     end
     else
+    begin
       Assert.AreEqual(MaskeFile, Edit.FileName, 'nur Unit und Formulare');
+    end;
+  end;
   Assert.AreEqual(1, Fmx);
   Assert.AreEqual(1, Windows);
 end;
@@ -487,6 +544,108 @@ begin
   Assert.AreEqual('', KundeError('Anzahl := Wert', 'Zaehler'));
 end;
 
+const
+  KopfFile = 'C:\P\Kopf.pas';
+
+  UnitKopf =
+    'unit Kopf;'#10 +                                // 0
+    'interface'#10 +                                 // 1
+    'type'#10 +                                      // 2
+    '  TKunde = class'#10 +                          // 3
+    '    procedure Lauf;'#10 +                       // 4
+    '    procedure Halt;'#10 +                       // 5
+    '  end;'#10 +                                    // 6
+    'implementation'#10 +                            // 7
+    #10 +                                            // 8
+    '{ TKunde }'#10 +                                // 9
+    #10 +                                            // 10
+    'procedure TKunde.Lauf;'#10 +                    // 11
+    'begin'#10 +                                     // 12
+    'end;'#10 +                                      // 13
+    #10 +                                            // 14
+    '// TKunde ist hier gemeint.'#10 +               // 15
+    '(* TKunde *)'#10 +                              // 16
+    'procedure TKunde.Halt;'#10 +                    // 17
+    'begin'#10 +                                     // 18
+    'end;'#10 +                                      // 19
+    #10 +                                            // 20
+    '// TKunde'#10 +                                 // 21
+    'procedure Frei;'#10 +                           // 22
+    'begin'#10 +                                     // 23
+    'end;'#10 +                                      // 24
+    'end.';
+
+function KopfEdits(ATypeComments: Boolean): TArray<TRenameEdit>;
+var
+  Index: ISymbolIndex;
+  Resolver: TNameResolver;
+  Tree: TSyntaxTree;
+  Request: TRenameRequest;
+begin
+  Index := TSymbolIndex.Create;
+  Index.AddUnit(TIndexExtractor.ExtractText(UnitKopf, KopfFile, nil));
+  Resolver := TNameResolver.Create(Index);
+  Tree := TPascalParser.Parse(UnitKopf);
+  try
+    Request := TRenameRequest.Create('TCustomer');
+    Request.TypeComments := ATypeComments;
+    Result := TLspRename.Edits(Resolver, Index, Tree, TReferenceSearch.Create(KopfFile,
+      PositionOf(UnitKopf, 'TKunde = class'), True, [KopfFile],
+      function(const AFileName: string; out AText: string): Boolean
+      begin
+        Result := SameText(AFileName, KopfFile);
+        if Result then
+        begin
+          AText := UnitKopf;
+        end;
+      end), Request);
+  finally
+    Tree.Free;
+    Resolver.Free;
+  end;
+end;
+
+function EditOnLine(const AEdits: TArray<TRenameEdit>; ALine: Integer; out AEdit: TRenameEdit): Boolean;
+var
+  Edit: TRenameEdit;
+begin
+  for Edit in AEdits do
+  begin
+    if Edit.Range.StartPos.Line = ALine then
+    begin
+      AEdit := Edit;
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+procedure TLspRenameTests.RenamesTypeComments;
+var
+  Found: TArray<TRenameEdit>;
+  Edit: TRenameEdit;
+begin
+  Found := KopfEdits(True);
+  Assert.IsTrue(EditOnLine(Found, 9, Edit), '{ TKunde } über den Rümpfen');
+  Assert.AreEqual(2, Edit.Range.StartPos.Character);
+  Assert.AreEqual(8, Edit.Range.EndPos.Character);
+  Assert.AreEqual('TCustomer', Edit.NewText);
+  Assert.IsTrue(EditOnLine(Found, 16, Edit), '(* TKunde *) direkt über dem Rumpf');
+  Assert.AreEqual(3, Edit.Range.StartPos.Character);
+  Assert.IsFalse(EditOnLine(Found, 15, Edit), 'Kommentar mit anderem Text bleibt');
+  Assert.IsFalse(EditOnLine(Found, 21, Edit), 'über einer freien Routine bleibt');
+  Assert.IsTrue(EditOnLine(Found, 11, Edit), 'Rumpf wie bisher');
+end;
+
+procedure TLspRenameTests.KeepsTypeCommentsWhenOff;
+var
+  Found: TArray<TRenameEdit>;
+  Edit: TRenameEdit;
+begin
+  Found := KopfEdits(False);
+  Assert.IsFalse(EditOnLine(Found, 9, Edit), 'classCompletion.typeComment = off: Kommentar bleibt');
+  Assert.IsTrue(EditOnLine(Found, 11, Edit));
+end;
 
 initialization
   TDUnitX.RegisterTestFixture(TLspRenameTests);

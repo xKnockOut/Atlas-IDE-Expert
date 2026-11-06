@@ -71,7 +71,9 @@ var
 begin
   Result := '';
   for Line in ALines do
+  begin
     Result := Result + Line + LF;
+  end;
 end;
 
 /// <summary>Unit mit der Klasse TFoo (Mitglieder AMembers) und der Implementierung AImplementation.</summary>
@@ -98,36 +100,62 @@ begin
   Result := TNestedRoutineLookup.FromTree(ATree);
 end;
 
-/// <summary>Herauslösen bzw. Einbetten an AMarker; AResult ist der geänderte Text, der fehlerfrei parsen muss.
-/// </summary>
-function Run(const AText, AMarker: string; AEmbed, APassThrough: Boolean; const AConstTypes: array of string;
-  out AAction: TCodeAction; out AReason, AResult: string): Boolean;
+type
+  /// <summary>Was Run ausführt: Einbetten (mit oder ohne Durchreichen) oder Herauslösen; ConstTypes sind die
+  /// Typnamen, die das Lookup als konstant meldet.</summary>
+  TNestedMode = record
+    Embed: Boolean;
+    PassThrough: Boolean;
+    ConstTypes: TArray<string>;
+  end;
+
+function Mode(AEmbed, APassThrough: Boolean; const AConstTypes: array of string): TNestedMode;
+var
+  Index: Integer;
+begin
+  Result := Default(TNestedMode);
+  Result.Embed := AEmbed;
+  Result.PassThrough := APassThrough;
+  SetLength(Result.ConstTypes, Length(AConstTypes));
+  for Index := 0 to High(AConstTypes) do
+  begin
+    Result.ConstTypes[Index] := AConstTypes[Index];
+  end;
+end;
+
+/// <summary>Herauslösen bzw. Einbetten an AMarker nach AMode; AResult ist der geänderte Text, der fehlerfrei
+/// parsen muss.</summary>
+function Run(const AText, AMarker: string; const AMode: TNestedMode; out AAction: TCodeAction;
+  out AReason, AResult: string): Boolean;
 var
   Tree, Check: TSyntaxTree;
   Lookup: TNestedRoutineLookup;
   ConstTypes: TArray<string>;
-  Index: Integer;
 begin
   AResult := '';
-  SetLength(ConstTypes, Length(AConstTypes));
-  for Index := 0 to High(AConstTypes) do
-    ConstTypes[Index] := AConstTypes[Index];
+  ConstTypes := AMode.ConstTypes;
   Tree := TPascalParser.Parse(AText);
   try
     Assert.AreEqual(0, Integer(Length(Tree.Diagnostics)), 'Quelle parst nicht: ' + AText);
     Lookup := NoLookup(Tree);
     if ConstTypes <> nil then
+    begin
       Lookup.ConstType :=
         function(const ATypeName: string; AOffset: Integer): Boolean
         begin
           Result := IndexText(ATypeName, ConstTypes) >= 0;
         end;
-    if AEmbed then
-      Result := TNestedRoutines.Embed(AText, Tree, PositionOf(AText, AMarker), Lookup, TFormatStyle.Default,
-        APassThrough, AAction, AReason)
+    end;
+    if AMode.Embed then
+    begin
+      Result := TNestedRoutines.Embed(TNestedRoutineRequest.Create(AText, Tree, PositionOf(AText, AMarker), Lookup,
+        TFormatStyle.Default), AMode.PassThrough, AAction, AReason);
+    end
     else
-      Result := TNestedRoutines.Extract(AText, Tree, PositionOf(AText, AMarker), Lookup, TFormatStyle.Default,
-        AAction, AReason);
+    begin
+      Result := TNestedRoutines.Extract(TNestedRoutineRequest.Create(AText, Tree, PositionOf(AText, AMarker), Lookup,
+        TFormatStyle.Default), AAction, AReason);
+    end;
     if Result and (AAction.Disabled = '') then
     begin
       AResult := TChangeSignature.ApplyEdits(AText, AAction.Edits);
@@ -147,8 +175,8 @@ function Extracted(const AText, AMarker: string; out AAction: TCodeAction): stri
 var
   Reason: string;
 begin
-  Assert.IsTrue(Run(AText, AMarker, False, False, [], AAction, Reason, Result), 'Aktion fehlt (' + Reason + '): ' +
-    AText);
+  Assert.IsTrue(Run(AText, AMarker, Mode(False, False, []), AAction, Reason, Result),
+    'Aktion fehlt (' + Reason + '): ' + AText);
 end;
 
 function ExtractReason(const AText, AMarker: string): string;
@@ -156,15 +184,15 @@ var
   Action: TCodeAction;
   Text: string;
 begin
-  Assert.IsFalse(Run(AText, AMarker, False, False, [], Action, Result, Text), 'Aktion unerwartet: ' + Text);
+  Assert.IsFalse(Run(AText, AMarker, Mode(False, False, []), Action, Result, Text), 'Aktion unerwartet: ' + Text);
 end;
 
 function Embedded(const AText, AMarker: string; APassThrough: Boolean; out AAction: TCodeAction): string;
 var
   Reason: string;
 begin
-  Assert.IsTrue(Run(AText, AMarker, True, APassThrough, [], AAction, Reason, Result), 'Aktion fehlt (' + Reason +
-    '): ' + AText);
+  Assert.IsTrue(Run(AText, AMarker, Mode(True, APassThrough, []), AAction, Reason, Result),
+    'Aktion fehlt (' + Reason + '): ' + AText);
 end;
 
 function EmbedReason(const AText, AMarker: string; APassThrough: Boolean): string;
@@ -172,7 +200,7 @@ var
   Action: TCodeAction;
   Text: string;
 begin
-  Assert.IsFalse(Run(AText, AMarker, True, APassThrough, [], Action, Result, Text), 'Aktion unerwartet: ' + Text);
+  Assert.IsFalse(Run(AText, AMarker, Mode(True, APassThrough, []), Action, Result, Text), 'Aktion unerwartet: ' + Text);
 end;
 
 procedure TNestedRoutinesTests.ExtractCapturesReadAndWritten;
@@ -360,7 +388,7 @@ begin
     'begin',
     '  Middle;',
     'end;']));
-  Assert.IsTrue(Run(Text, 'procedure Deep', False, False, [], Action, Reason, Done));
+  Assert.IsTrue(Run(Text, 'procedure Deep', Mode(False, False, []), Action, Reason, Done));
   Assert.IsTrue(ContainsStr(Action.Disabled, 'Middle'), Action.Disabled);
   Assert.AreEqual(0, Integer(Length(Action.Edits)));
   // Die mittlere geht.
@@ -370,7 +398,8 @@ begin
   Assert.AreNotEqual('', ExtractReason(Text, 'procedure Outer'));
 end;
 
-procedure TNestedRoutinesTests.ExtractRefusesChangedMeaning;
+/// <summary>Result der äußeren Funktion, andere lokale Routine, lokaler Typ.</summary>
+procedure AssertRefusesResultRoutineAndType;
 begin
   // Result der äußeren Funktion.
   Assert.AreNotEqual('', ExtractReason(PlainUnit(Lines([
@@ -416,6 +445,11 @@ begin
     'begin',
     '  Use;',
     'end;'])), 'procedure Use'));
+end;
+
+/// <summary>with, Methodenzeiger und künftiger var-Parameter in einer anonymen Methode.</summary>
+procedure AssertRefusesWithPointerAndCapture;
+begin
   // with.
   Assert.AreNotEqual('', ExtractReason(PlainUnit(Lines([
     'procedure Outer;',
@@ -458,6 +492,12 @@ begin
     'end;'])), 'procedure Use'));
 end;
 
+procedure TNestedRoutinesTests.ExtractRefusesChangedMeaning;
+begin
+  AssertRefusesResultRoutineAndType;
+  AssertRefusesWithPointerAndCapture;
+end;
+
 procedure TNestedRoutinesTests.ExtractUsesConstLookup;
 var
   Text, Reason, Done: string;
@@ -477,7 +517,7 @@ begin
     'begin',
     '  Show;',
     'end;']));
-  Assert.IsTrue(Run(Text, 'procedure Show', False, False, ['TPoint'], Action, Reason, Done), Reason);
+  Assert.IsTrue(Run(Text, 'procedure Show', Mode(False, False, ['TPoint']), Action, Reason, Done), Reason);
   Assert.IsTrue(ContainsStr(Done, 'procedure Show(var Count: Integer; const Point: TPoint);'), Done);
   Done := Extracted(Text, 'procedure Show', Action);
   Assert.IsTrue(ContainsStr(Done, 'procedure Show(var Count: Integer; Point: TPoint);'), Done);

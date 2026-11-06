@@ -36,6 +36,17 @@ type
     procedure CodesOnlyWhereDccReports;
   end;
 
+  [TestFixture]
+  TDocScannerTests = class
+  public
+    [Test]
+    procedure ElementsWithAttributes;
+    [Test]
+    procedure Entities;
+    [Test]
+    procedure BrokenStructureStops;
+  end;
+
 implementation
 
 uses
@@ -46,6 +57,7 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.XmlDoc,
+  Atlas.Common.Rules.Builtin.XmlDoc.Scanner,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
   Atlas.Tests.RuleAssert;
@@ -86,7 +98,9 @@ begin
   while (Line < APosition.Line) and (Index <= Length(AText)) do
   begin
     if AText[Index] = #10 then
+    begin
       Inc(Line);
+    end;
     Inc(Index);
   end;
   Result := Index + APosition.Character;
@@ -387,7 +401,9 @@ var
 begin
   Result := '';
   for Finding in AFound do
+  begin
     Result := Result + Finding.Message + sLineBreak;
+  end;
 end;
 
 procedure TXmlDocRuleTests.CodesOnlyWhereDccReports;
@@ -407,7 +423,9 @@ begin
       'procedure Machen;'#10'begin'#10'end;'#10'end.');
     Assert.IsTrue(Length(Found) > 0, Text);
     for Finding in Found do
+    begin
       Assert.IsFalse(Pos('(wie ', Finding.Message) > 0, Text + ': ' + Finding.Message);
+    end;
   end;
   // Cm.W1204: dcc meldet W1205 einmal je Kommentar; das Endtag dahinter bleibt ohne Code.
   Found := Findings('unit U;'#10'interface'#10'/// <sum(mary>Text</sum(mary>'#10'procedure Machen;'#10 +
@@ -425,7 +443,86 @@ begin
   Assert.AreEqual('Doku-Kommentar ist kein wohlgeformtes XML: ''<'' muss &lt; heißen.', Found[1].Message);
 end;
 
+{ TDocScannerTests }
+
+/// <summary>Verstöße des Scanners für AXml.</summary>
+function ScanFlaws(const AXml: string; out ABroken: Boolean): TArray<TDocFlaw>;
+var
+  mScanner: TDocScanner;
+begin
+  mScanner := TDocScanner.Create(AXml);
+  try
+    mScanner.Scan;
+    ABroken := mScanner.Broken;
+    Result := mScanner.Flaws;
+  finally
+    mScanner.Free;
+  end;
+end;
+
+procedure TDocScannerTests.ElementsWithAttributes;
+var
+  mScanner: TDocScanner;
+  mElements: TArray<TDocElement>;
+  mAttribute: TDocAttribute;
+begin
+  mScanner := TDocScanner.Create('<summary>Text<see cref=''TFoo''/></summary><param name="A">x</param>');
+  try
+    mScanner.Scan;
+    Assert.IsFalse(mScanner.Broken);
+    Assert.AreEqual(0, Integer(Length(mScanner.Flaws)));
+    mElements := mScanner.Elements;
+  finally
+    mScanner.Free;
+  end;
+  Assert.AreEqual(3, Integer(Length(mElements)));
+  Assert.AreEqual('summary', mElements[0].Name);
+  Assert.IsTrue(mElements[0].HasChildren);
+  Assert.AreEqual('see', mElements[1].Name);
+  Assert.AreEqual(1, mElements[1].Depth);
+  Assert.IsTrue(mElements[1].Attribute('cref', mAttribute));
+  Assert.AreEqual('TFoo', mAttribute.Value);
+  // Leeres Element: Endtag fällt mit dem Starttag zusammen.
+  Assert.AreEqual(mElements[1].OpenStop, mElements[1].Stop);
+  Assert.IsTrue(mElements[2].Attribute('name', mAttribute));
+  Assert.AreEqual('A', mAttribute.Value);
+  Assert.AreEqual(0, mElements[2].Depth);
+end;
+
+procedure TDocScannerTests.Entities;
+var
+  mFlaws: TArray<TDocFlaw>;
+  mBroken: Boolean;
+begin
+  Assert.AreEqual(0, Integer(Length(ScanFlaws('a &lt; b &#60; &#x3C; &amp;', mBroken))));
+  mFlaws := ScanFlaws('&# &#x; &nbsp; A&B', mBroken);
+  Assert.IsFalse(mBroken);
+  Assert.AreEqual(4, Integer(Length(mFlaws)));
+  Assert.AreEqual('Doku-Kommentar ist kein wohlgeformtes XML: &nbsp; ist in XML nicht definiert.', mFlaws[2].Message);
+  Assert.AreEqual(17, mFlaws[3].Start);
+end;
+
+procedure TDocScannerTests.BrokenStructureStops;
+var
+  mFlaws: TArray<TDocFlaw>;
+  mBroken: Boolean;
+begin
+  mFlaws := ScanFlaws('<summary a="x>Text</summary> & ', mBroken);
+  Assert.IsTrue(mBroken);
+  Assert.AreEqual(1, Integer(Length(mFlaws)));
+  Assert.AreEqual('Doku-Kommentar ist kein wohlgeformtes XML: Anführungszeichen hinter a fehlt.', mFlaws[0].Message);
+  mFlaws := ScanFlaws('<b>x<!-- offen', mBroken);
+  Assert.IsTrue(mBroken);
+  Assert.AreEqual('Doku-Kommentar ist kein wohlgeformtes XML: <!-- wird nicht mit --> geschlossen.', mFlaws[0].Message);
+  mFlaws := ScanFlaws('<summary>Text<b x=1>fett</b>', mBroken);
+  Assert.IsTrue(mBroken);
+  Assert.AreEqual(2, Integer(Length(mFlaws)));
+  Assert.AreEqual('Doku-Kommentar ist kein wohlgeformtes XML: Wert von x ohne Anführungszeichen.', mFlaws[0].Message);
+  Assert.AreEqual('</summary> ergänzen', mFlaws[1].FixTitle);
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TXmlDocRuleTests);
+  TDUnitX.RegisterTestFixture(TDocScannerTests);
 
 end.

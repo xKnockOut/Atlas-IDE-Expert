@@ -64,6 +64,12 @@ type
     procedure CheckedCountCountsDeliveredFiles;
     [Test]
     procedure CopyTextUsesCompilerFormat;
+  end;
+
+  /// <summary>Stufen, angeheftete Gruppen, geschlossene Units und der Zeilencache der Befundliste.</summary>
+  [TestFixture]
+  TAtlasFindingsTierTests = class
+  public
     /// <summary>#1108: aktive Unit angepinnt, Trennzeilen, geöffnete und nicht geöffnete Gruppen alphabetisch.
     /// </summary>
     [Test]
@@ -117,6 +123,7 @@ uses
   Atlas.Core.Problems.Contract,
   Atlas.Core.Problems.Store,
   Atlas.Core.Problems.Findings,
+  Atlas.Core.Problems.FindingsCache,
   Atlas.Core.Style.Color,
   Atlas.Core.Style.Palette,
   Atlas.Core.Problems.Colors;
@@ -155,7 +162,9 @@ var
 begin
   Result := '';
   for Item in AView.Visible do
+  begin
     Result := Result + Item.Location + ' ';
+  end;
   Result := Result.Trim;
 end;
 
@@ -519,16 +528,24 @@ begin
     View.Grouping := TAtlasFindingGrouping.None;
     View.SetFindings(Copy(Sample, 0, 2));
     for Row in View.Rows do
+    begin
       Assert.IsFalse(Row.IsNew);
+    end;
     View.SetFindings(Sample);
     NewCount := 0;
     for Row in View.Rows do
+    begin
       if Row.IsNew then
+      begin
         Inc(NewCount);
+      end;
+    end;
     Assert.AreEqual(2, NewCount);
     View.ClearNew;
     for Row in View.Rows do
+    begin
       Assert.IsFalse(Row.IsNew);
+    end;
   finally
     View.Free;
   end;
@@ -673,9 +690,11 @@ var
 begin
   Result := nil;
   for Name in ['C', 'Z', 'B', 'D', 'A'] do
+  begin
     Result := Result + TAtlasFindings.FromProblems('C:\P\' + Name + '.pas',
       [Problem(5, 'empty-except', 'Leer', TAtlasProblemSeverity.Warning),
       Problem(2, 'syntax', 'Fehlt', TAtlasProblemSeverity.Error)], nil);
+  end;
 end;
 
 function TierView: TAtlasFindingsView;
@@ -701,22 +720,32 @@ begin
       Part := 'S' + IntToStr(Ord(Row.Tier)) + ':' + Row.Caption + ':' + IntToStr(Row.Units) + '/' +
         IntToStr(Row.Count);
       if Row.IsCleanActive then
+      begin
         Part := Part + ':clean';
+      end;
     end
     else if Row.IsGroup then
-      Part := 'G:' + Row.Caption
+    begin
+      Part := 'G:' + Row.Caption;
+    end
     else
+    begin
       Part := 'F:' + AView.Finding(Row.Finding).Location;
+    end;
     if Row.Pinned then
+    begin
       Part := Part + '*';
+    end;
     if Row.Dimmed then
+    begin
       Part := Part + '~';
+    end;
     Result := Result + Part + ' ';
   end;
   Result := Result.Trim;
 end;
 
-procedure TAtlasFindingsTests.TiersOrderFileGroups;
+procedure TAtlasFindingsTierTests.TiersOrderFileGroups;
 var
   View: TAtlasFindingsView;
 begin
@@ -735,7 +764,7 @@ begin
   end;
 end;
 
-procedure TAtlasFindingsTests.TiersWithoutGroupingAreSections;
+procedure TAtlasFindingsTierTests.TiersWithoutGroupingAreSections;
 var
   View: TAtlasFindingsView;
   Items: TArray<TAtlasFinding>;
@@ -756,7 +785,7 @@ begin
   end;
 end;
 
-procedure TAtlasFindingsTests.TiersInsideRuleAndCategoryGroups;
+procedure TAtlasFindingsTierTests.TiersInsideRuleAndCategoryGroups;
 var
   View: TAtlasFindingsView;
 begin
@@ -773,7 +802,7 @@ begin
   end;
 end;
 
-procedure TAtlasFindingsTests.ColumnSortWorksInsideTiers;
+procedure TAtlasFindingsTierTests.ColumnSortWorksInsideTiers;
 var
   View: TAtlasFindingsView;
 begin
@@ -794,7 +823,7 @@ begin
   end;
 end;
 
-procedure TAtlasFindingsTests.SwitchingEditorMovesOnlyPinnedGroup;
+procedure TAtlasFindingsTierTests.SwitchingEditorMovesOnlyPinnedGroup;
 var
   View: TAtlasFindingsView;
 begin
@@ -815,7 +844,7 @@ begin
   end;
 end;
 
-procedure TAtlasFindingsTests.SectionsAreSkippedBySelectionStepAndCopy;
+procedure TAtlasFindingsTierTests.SectionsAreSkippedBySelectionStepAndCopy;
 var
   View: TAtlasFindingsView;
   Item: TAtlasFinding;
@@ -845,7 +874,7 @@ begin
   end;
 end;
 
-procedure TAtlasFindingsTests.ClosedUnitsDimmedNormalHidden;
+procedure TAtlasFindingsTierTests.ClosedUnitsDimmedNormalHidden;
 var
   View: TAtlasFindingsView;
   Counts: TAtlasFindingCounts;
@@ -878,7 +907,7 @@ begin
   end;
 end;
 
-procedure TAtlasFindingsTests.CleanActiveUnitShowsWithoutFindings;
+procedure TAtlasFindingsTierTests.CleanActiveUnitShowsWithoutFindings;
 var
   View: TAtlasFindingsView;
   Counts: TAtlasFindingCounts;
@@ -906,7 +935,7 @@ begin
   end;
 end;
 
-procedure TAtlasFindingsTests.SelectionAndCollapseSurviveResort;
+procedure TAtlasFindingsTierTests.SelectionAndCollapseSurviveResort;
 var
   View: TAtlasFindingsView;
   Item: TAtlasFinding;
@@ -931,7 +960,7 @@ begin
   end;
 end;
 
-procedure TAtlasFindingsTests.FormFilePinsItsUnitIgnoringCase;
+procedure TAtlasFindingsTierTests.FormFilePinsItsUnitIgnoringCase;
 var
   View: TAtlasFindingsView;
 begin
@@ -949,7 +978,7 @@ begin
   end;
 end;
 
-procedure TAtlasFindingsTests.OpenFirstOffKeepsOrderOf909;
+procedure TAtlasFindingsTierTests.OpenFirstOffKeepsOrderOf909;
 var
   View, Plain: TAtlasFindingsView;
   Grouping: TAtlasFindingGrouping;
@@ -973,7 +1002,7 @@ begin
   end;
 end;
 
-procedure TAtlasFindingsTests.CurrentFileScopeHasNoSections;
+procedure TAtlasFindingsTierTests.CurrentFileScopeHasNoSections;
 var
   View: TAtlasFindingsView;
   Filter: TAtlasFindingFilter;
@@ -991,7 +1020,7 @@ begin
   end;
 end;
 
-procedure TAtlasFindingsTests.ProjectScopeLimitsClosedUnits;
+procedure TAtlasFindingsTierTests.ProjectScopeLimitsClosedUnits;
 var
   View: TAtlasFindingsView;
   Filter: TAtlasFindingFilter;
@@ -1012,7 +1041,7 @@ begin
   end;
 end;
 
-procedure TAtlasFindingsTests.ClosedUnitsNames;
+procedure TAtlasFindingsTierTests.ClosedUnitsNames;
 var
   Value: TAtlasClosedUnits;
 begin
@@ -1025,7 +1054,7 @@ begin
   Assert.AreEqual('dimmed', TAtlasFindings.ClosedUnitsNames[TAtlasClosedUnits.Dimmed]);
 end;
 
-procedure TAtlasFindingsTests.DimmedColorsStayReadable;
+procedure TAtlasFindingsTierTests.DimmedColorsStayReadable;
 var
   Back, Text, Dimmed: TAtlasColor;
   Backs: array[0..3] of TAtlasColor;
@@ -1050,7 +1079,9 @@ begin
       TAtlasColorMath.ToHex(Dimmed));
     // Ausgegraut heißt: weniger Kontrast als der Text, solange das Maß es erlaubt; zu blasser Text wird kräftiger.
     if TAtlasColorMath.Contrast(Text, Back) >= AtlasDimmedMinContrast then
+    begin
       Assert.IsTrue(TAtlasColorMath.Contrast(Dimmed, Back) <= TAtlasColorMath.Contrast(Text, Back) + 0.01);
+    end;
   end;
   Assert.AreNotEqual(TAtlasColorMath.ToHex(Texts[0]), TAtlasColorMath.ToHex(DimmedTextColor(Texts[0], Backs[0])));
   // Symbole bleiben unterscheidbar.
@@ -1086,7 +1117,9 @@ begin
       Inc(Count);
       SetLength(Result, 40);
       for Index := 0 to High(Result) do
+      begin
         Result[Index] := Format('%s %d', [ExtractFileName(AFileName), Index]);
+      end;
     end;
 end;
 
@@ -1096,11 +1129,13 @@ var
 begin
   SetLength(Result, ACount);
   for Index := 0 to ACount - 1 do
+  begin
     Result[Index] := Problem(Index, 'r' + IntToStr(Index mod 7), 'Treffer ' + IntToStr(Index),
       TAtlasProblemSeverity.Warning);
+  end;
 end;
 
-procedure TAtlasFindingsTests.ReadLinesOncePerFile;
+procedure TAtlasFindingsTierTests.ReadLinesOncePerFile;
 var
   Store: TAtlasProblemStore;
   Counter: TReadCounter;
@@ -1120,7 +1155,7 @@ begin
   end;
 end;
 
-procedure TAtlasFindingsTests.StampChangesOnlyForTheChangedFile;
+procedure TAtlasFindingsTierTests.StampChangesOnlyForTheChangedFile;
 var
   Store: TAtlasProblemStore;
   A, B: Integer;
@@ -1156,7 +1191,7 @@ begin
   end;
 end;
 
-procedure TAtlasFindingsTests.CacheRebuildsOnlyChangedFiles;
+procedure TAtlasFindingsTierTests.CacheRebuildsOnlyChangedFiles;
 var
   Store: TAtlasProblemStore;
   Cache: TAtlasFindingsCache;
@@ -1207,7 +1242,7 @@ begin
   end;
 end;
 
-procedure TAtlasFindingsTests.CacheSurvivesNewStore;
+procedure TAtlasFindingsTierTests.CacheSurvivesNewStore;
 var
   First, Second: TAtlasProblemStore;
   Cache: TAtlasFindingsCache;
@@ -1233,7 +1268,7 @@ begin
   end;
 end;
 
-procedure TAtlasFindingsTests.CacheWithManyFindingsIsFast;
+procedure TAtlasFindingsTierTests.CacheWithManyFindingsIsFast;
 const
   Files = 2000;
   PerFile = 28;
@@ -1253,7 +1288,9 @@ begin
   Counter := TReadCounter.Create;
   try
     for Index := 0 to Files - 1 do
+    begin
       Store.Update(Format('C:\P\Unit%d.pas', [Index]), '', False, ManyProblems(PerFile), '', True);
+    end;
     Watch := TStopwatch.StartNew;
     Items := Cache.Build(Store, nil, Counter.Reader(), Changed);
     FirstMs := Watch.ElapsedMilliseconds;
@@ -1283,6 +1320,7 @@ end;
 
 initialization
   TDUnitX.RegisterTestFixture(TAtlasFindingsTests);
+  TDUnitX.RegisterTestFixture(TAtlasFindingsTierTests);
 
 
 end.

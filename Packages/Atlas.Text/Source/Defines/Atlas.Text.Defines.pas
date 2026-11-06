@@ -49,50 +49,80 @@ var
     Symbol: string;
   begin
     for Symbol in ASymbols do
+    begin
       Symbols := Symbols + [Symbol];
+    end;
   end;
 
 begin
   Symbols := nil;
   Add(['CONDITIONALEXPRESSIONS', 'UNICODE', 'NATIVECODE', 'ASSEMBLER']);
   if ACompilerVersion > 0 then
+  begin
     Add([Format('VER%d', [Round(ACompilerVersion * 10)])]);
+  end;
   Platform := UpperCase(APlatform);
   if (Platform = 'WIN32') or (Platform = '') then
-    Add(['MSWINDOWS', 'WIN32', 'CPUX86', 'CPU386', 'CPU32BITS'])
+  begin
+    Add(['MSWINDOWS', 'WIN32', 'CPUX86', 'CPU386', 'CPU32BITS']);
+  end
   else if Platform = 'WIN64' then
-    Add(['MSWINDOWS', 'WIN64', 'CPUX64', 'CPU64BITS'])
+  begin
+    Add(['MSWINDOWS', 'WIN64', 'CPUX64', 'CPU64BITS']);
+  end
   else if Platform = 'WIN64X' then
-    Add(['MSWINDOWS', 'WIN64', 'CPUX64', 'CPU64BITS', 'LLVM'])
+  begin
+    Add(['MSWINDOWS', 'WIN64', 'CPUX64', 'CPU64BITS', 'LLVM']);
+  end
   else if Platform = 'LINUX64' then
-    Add(['LINUX', 'LINUX64', 'POSIX', 'POSIX64', 'CPUX64', 'CPU64BITS'])
+  begin
+    Add(['LINUX', 'LINUX64', 'POSIX', 'POSIX64', 'CPUX64', 'CPU64BITS']);
+  end
   else if (Platform = 'OSX64') or (Platform = 'OSXARM64') then
   begin
     Add(['MACOS', 'MACOS64', 'POSIX', 'POSIX64', 'CPU64BITS']);
     if Platform = 'OSX64' then
-      Add(['CPUX64'])
+    begin
+      Add(['CPUX64']);
+    end
     else
+    begin
       Add(['CPUARM64']);
+    end;
   end
   else if Platform = 'ANDROID' then
-    Add(['ANDROID', 'ANDROID32', 'LINUX', 'POSIX', 'POSIX32', 'CPUARM', 'CPUARM32', 'CPU32BITS'])
+  begin
+    Add(['ANDROID', 'ANDROID32', 'LINUX', 'POSIX', 'POSIX32', 'CPUARM', 'CPUARM32', 'CPU32BITS']);
+  end
   else if Platform = 'ANDROID64' then
-    Add(['ANDROID', 'ANDROID64', 'LINUX', 'POSIX', 'POSIX64', 'CPUARM', 'CPUARM64', 'CPU64BITS'])
+  begin
+    Add(['ANDROID', 'ANDROID64', 'LINUX', 'POSIX', 'POSIX64', 'CPUARM', 'CPUARM64', 'CPU64BITS']);
+  end
   else if Platform = 'IOSDEVICE64' then
-    Add(['IOS', 'IOS64', 'MACOS', 'POSIX', 'POSIX64', 'CPUARM', 'CPUARM64', 'CPU64BITS'])
+  begin
+    Add(['IOS', 'IOS64', 'MACOS', 'POSIX', 'POSIX64', 'CPUARM', 'CPUARM64', 'CPU64BITS']);
+  end
   else if Platform = 'IOSSIMARM64' then
+  begin
     Add(['IOS', 'IOS64', 'IOSSIMULATOR', 'MACOS', 'POSIX', 'POSIX64', 'CPUARM', 'CPUARM64', 'CPU64BITS']);
+  end;
   Result := Symbols;
 end;
 
 class function TTextDefines.CompilerVersionOfBds(ABdsVersion: Double): Double;
 begin
   if ABdsVersion >= 37 then
-    Result := ABdsVersion
+  begin
+    Result := ABdsVersion;
+  end
   else if ABdsVersion >= 8 then
-    Result := ABdsVersion + 13
+  begin
+    Result := ABdsVersion + 13;
+  end
   else
+  begin
     Result := 0;
+  end;
 end;
 
 class function TTextDefines.IsCompilerSymbol(const ASymbol: string): Boolean;
@@ -103,17 +133,25 @@ var
 begin
   Name := UpperCase(Trim(ASymbol));
   if Name = '' then
+  begin
     Exit(False);
+  end;
   // VER80 bis VER370 und künftige Versionen.
   if (Length(Name) > 3) and (Copy(Name, 1, 3) = 'VER') then
   begin
     Digits := Copy(Name, 4, MaxInt);
     if TryStrToInt(Digits, Number) and (Number > 0) then
+    begin
       Exit(True);
+    end;
   end;
   for Symbol in CompilerSymbols do
+  begin
     if Symbol = Name then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 

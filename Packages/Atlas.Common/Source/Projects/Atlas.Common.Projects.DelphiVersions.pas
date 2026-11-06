@@ -50,6 +50,28 @@ type
 
 implementation
 
+uses
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TDelphiVersionsText = (BDSIsNotInstalledAnd, BDSIsNotInstalledAtlas);
+
+const
+  cTexts: array[TDelphiVersionsText] of TAtlasText = (
+    (De: '%s (BDS %s) ist nicht installiert und keine andere Delphi-Version gefunden; Bibliothekspfade und ' +
+      'RTL-Quellen fehlen';
+     En: '%s (BDS %s) is not installed and no other Delphi version was found; library paths and RTL sources are ' +
+      'missing'),
+    (De: '%s (BDS %s) ist nicht installiert; Atlas wählt die Version automatisch (je Projekt nach ProjectVersion der ' +
+      '.dproj, sonst %s)';
+     En: '%s (BDS %s) is not installed; Atlas chooses the version automatically (per project by ProjectVersion of ' +
+      'the .dproj, otherwise %s)'));
+
+{$SCOPEDENUMS OFF}
+
 type
   TVersionRange = record
     FromProject: Double;
@@ -81,11 +103,15 @@ begin
   Result := '';
   Start := Pos('<ProjectVersion>', ADprojText);
   if Start = 0 then
+  begin
     Exit;
+  end;
   Inc(Start, Length('<ProjectVersion>'));
   Stop := Pos('</ProjectVersion>', ADprojText);
   if Stop > Start then
+  begin
     Result := Trim(Copy(ADprojText, Start, Stop - Start));
+  end;
 end;
 
 class function TDelphiVersions.BdsForProjectVersion(const AProjectVersion: string): string;
@@ -96,10 +122,16 @@ begin
   Result := '';
   Value := ToNumber(AProjectVersion);
   if Value < Ranges[0].FromProject then
+  begin
     Exit;
+  end;
   for Index := 0 to High(Ranges) - 1 do
+  begin
     if (Value >= Ranges[Index].FromProject) and (Value < Ranges[Index + 1].FromProject) then
+    begin
       Exit(Ranges[Index].Bds);
+    end;
+  end;
 end;
 
 class function TDelphiVersions.ProductName(const ABdsVersion: string): string;
@@ -107,8 +139,12 @@ var
   Range: TVersionRange;
 begin
   for Range in Ranges do
+  begin
     if (Range.Bds <> '') and (ToNumber(Range.Bds) = ToNumber(ABdsVersion)) then
+    begin
       Exit(Range.Name);
+    end;
+  end;
   Result := 'BDS ' + ABdsVersion;
 end;
 
@@ -118,10 +154,16 @@ var
 begin
   Result := False;
   if ToNumber(ABdsVersion) = 0 then
+  begin
     Exit;
+  end;
   for Version in AInstalled do
+  begin
     if ToNumber(Version) = ToNumber(ABdsVersion) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 class function TDelphiVersions.LatestKnown: string;
@@ -137,36 +179,68 @@ begin
   Result := Choose(AConfigured, AProjectVersion, AInstalled, Missing);
 end;
 
+/// <summary>Wahl ohne Installation: die eingestellte Version, sonst die zum Projekt passende, sonst die neueste
+/// bekannte.</summary>
+function ChooseWithoutInstallation(const AConfigured, AWanted: string): string;
+begin
+  if ToNumber(AConfigured) > 0 then
+  begin
+    Result := AConfigured;
+  end
+  else if AWanted <> '' then
+  begin
+    Result := AWanted;
+  end
+  else
+  begin
+    Result := TDelphiVersions.LatestKnown;
+  end;
+end;
+
+/// <summary>Erste installierte Version ab AWanted, sonst die letzte installierte.</summary>
+function ChooseInstalled(const AWanted: string; const AInstalled: TArray<string>): string;
+var
+  mVersion: string;
+begin
+  if AWanted <> '' then
+  begin
+    for mVersion in AInstalled do
+    begin
+      if ToNumber(mVersion) >= ToNumber(AWanted) then
+      begin
+        Exit(mVersion);
+      end;
+    end;
+  end;
+  Result := AInstalled[High(AInstalled)];
+end;
+
 class function TDelphiVersions.Choose(const AConfigured, AProjectVersion: string; const AInstalled: TArray<string>;
   out AConfiguredMissing: Boolean): string;
 var
-  Wanted: string;
-  Version: string;
+  mWanted: string;
 begin
   AConfiguredMissing := False;
   if AConfigured <> '' then
   begin
     if IsInstalled(AConfigured, AInstalled) then
+    begin
       Exit(AConfigured);
+    end;
     // Fehlt sie, liefe das Projekt ohne Bibliothekspfade; die automatische Wahl greift (#47).
     AConfiguredMissing := True;
   end;
-  Wanted := BdsForProjectVersion(AProjectVersion);
+  mWanted := BdsForProjectVersion(AProjectVersion);
   // Ohne Installation fehlten sonst CompilerVersion und VERxxx, und beide Zweige von
   // {$IF CompilerVersion >= 36}A{$ELSE}B{$ENDIF} blieben stehen (#1321).
   if Length(AInstalled) = 0 then
   begin
-    if ToNumber(AConfigured) > 0 then
-      Exit(AConfigured);
-    if Wanted <> '' then
-      Exit(Wanted);
-    Exit(LatestKnown);
+    Result := ChooseWithoutInstallation(AConfigured, mWanted);
+  end
+  else
+  begin
+    Result := ChooseInstalled(mWanted, AInstalled);
   end;
-  if Wanted <> '' then
-    for Version in AInstalled do
-      if ToNumber(Version) >= ToNumber(Wanted) then
-        Exit(Version);
-  Result := AInstalled[High(AInstalled)];
 end;
 
 class function TDelphiVersions.ConfigurationIssues(const ASettings: TServerSettings;
@@ -178,21 +252,27 @@ var
 begin
   Result := nil;
   if (ASettings.DelphiVersion = '') or IsInstalled(ASettings.DelphiVersion, AInstalled) then
+  begin
     Exit;
+  end;
   Issue := Default(TConfigurationIssue);
   Issue.Range := ASettings.DelphiVersionRange;
   Issue.IsError := False;
   if Length(AInstalled) = 0 then
-    Issue.Message := Format('%s (BDS %s) ist nicht installiert und keine andere Delphi-Version gefunden; ' +
-      'Bibliothekspfade und RTL-Quellen fehlen', [ProductName(ASettings.DelphiVersion), ASettings.DelphiVersion])
+  begin
+    Issue.Message := cTexts[TDelphiVersionsText.BDSIsNotInstalledAnd].Fmt([ProductName(ASettings.DelphiVersion),
+      ASettings.DelphiVersion]);
+  end
   else
   begin
     Fallback := Choose(ASettings.DelphiVersion, '', AInstalled, Missing);
-    Issue.Message := Format('%s (BDS %s) ist nicht installiert; Atlas wählt die Version automatisch ' +
-      '(je Projekt nach ProjectVersion der .dproj, sonst %s)', [ProductName(ASettings.DelphiVersion),
+    Issue.Message := cTexts[TDelphiVersionsText.BDSIsNotInstalledAtlas].Fmt([ProductName(ASettings.DelphiVersion),
       ASettings.DelphiVersion, ProductName(Fallback)]);
   end;
   Result := [Issue];
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Projects.DelphiVersions', cTexts);
 
 end.

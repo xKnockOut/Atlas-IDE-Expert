@@ -2,7 +2,8 @@
 
 // Tests für „Klasse in eigene Unit verschieben“ (#103 Teil B): neue Unit samt
 // uses aus den benötigten Namen, Änderungen an der Ursprungs-Unit und an
-// verwendenden Units, Ablehnungsgründe. Vorher und Nachher müssen parsen.
+// verwendenden Units, Ablehnungsgründe, Typkommentar (#1838). Vorher und
+// Nachher müssen parsen.
 
 interface
 
@@ -31,6 +32,8 @@ type
     procedure RejectsOtherCases;
     [Test]
     procedure UpdatesUsingUnits;
+    [Test]
+    procedure MovesTypeComment;
   end;
 
 implementation
@@ -50,7 +53,9 @@ var
 begin
   Result := '';
   for Index := 0 to High(ALines) do
+  begin
     Result := Result + ALines[Index] + #10;
+  end;
 end;
 
 procedure CheckParses(const AText: string);
@@ -79,18 +84,38 @@ begin
       Result := Default(TMoveClassMeaning);
       Name := ANames[High(ANames)];
       if MatchText(Name, ['TStrings', 'TStringList']) then
-        Result.UnitName := 'System.Classes'
+      begin
+        Result.UnitName := 'System.Classes';
+      end
       else if MatchText(Name, ['Format', 'IntToStr']) then
-        Result.UnitName := 'System.SysUtils'
+      begin
+        Result.UnitName := 'System.SysUtils';
+      end
       else if MatchText(Name, ['Integer', 'string', 'TObject', 'Inc']) then
+      begin
         Result.UnitName := 'System';
+      end;
       Result.Found := Result.UnitName <> '';
     end;
 end;
 
-/// <summary>Verschiebt die Klasse auf der Zeile mit AMarker; '-' mit Grund, sonst neue Unit und geänderte
-/// Ursprungs-Unit.</summary>
-function Relocate(const AText, AMarker, ANewUnit: string; const ALookup: TMoveClassLookup; out ANewText, AOrigin,
+type
+  /// <summary>Ziel-Unit einer Verschiebung und das Lookup für die Units, die sie verwenden.</summary>
+  TMoveTarget = record
+    NewUnit: string;
+    Lookup: TMoveClassLookup;
+  end;
+
+function Into(const ANewUnit: string; const ALookup: TMoveClassLookup): TMoveTarget;
+begin
+  Result := Default(TMoveTarget);
+  Result.NewUnit := ANewUnit;
+  Result.Lookup := ALookup;
+end;
+
+/// <summary>Verschiebt die Klasse auf der Zeile mit AMarker nach ATarget; '-' mit Grund, sonst neue Unit und
+/// geänderte Ursprungs-Unit.</summary>
+function Relocate(const AText, AMarker: string; const ATarget: TMoveTarget; out ANewText, AOrigin,
   AReason: string): Boolean; overload;
 var
   Tree: TSyntaxTree;
@@ -102,14 +127,20 @@ begin
   CheckParses(AText);
   Line := 0;
   for Index := 1 to Pos(AMarker, AText) - 1 do
+  begin
     if AText[Index] = #10 then
+    begin
       Inc(Line);
+    end;
+  end;
   Tree := TPascalParser.Parse(AText);
   try
-    Result := TMoveClass.Plan('lager.pas', AText, Tree, TTextPosition.Create(Line, 4), ANewUnit, ALookup, Plan,
-      AReason);
+    Result := TMoveClass.Plan(TMoveClassSource.Create('lager.pas', AText, Tree), TTextPosition.Create(Line, 4),
+      ATarget.NewUnit, ATarget.Lookup, Plan, AReason);
     if not Result then
+    begin
       Exit;
+    end;
     ANewText := Plan.Text;
     AOrigin := TChangeSignature.ApplyEdits(AText, Plan.OriginEdits);
     CheckParses(ANewText);
@@ -123,7 +154,7 @@ function Relocate(const AText, AMarker: string; out ANewText, AOrigin: string): 
 var
   Reason: string;
 begin
-  Result := Relocate(AText, AMarker, 'Stock', FakeLookup(), ANewText, AOrigin, Reason);
+  Result := Relocate(AText, AMarker, Into('Stock', FakeLookup()), ANewText, AOrigin, Reason);
   Assert.IsTrue(Result, Reason);
 end;
 
@@ -131,7 +162,7 @@ function Rejected(const AText, AMarker: string): string;
 var
   NewText, Origin: string;
 begin
-  Assert.IsFalse(Relocate(AText, AMarker, 'Stock', FakeLookup(), NewText, Origin, Result));
+  Assert.IsFalse(Relocate(AText, AMarker, Into('Stock', FakeLookup()), NewText, Origin, Result));
 end;
 
 procedure TMoveClassTests.DefaultUnitNameDropsT;
@@ -161,6 +192,23 @@ begin
   Assert.AreEqual(Join(['unit Lager;', '', 'interface', '', 'uses', '  System.SysUtils, System.Classes;', '',
     'type', '  TBase = class', '  end;', '', 'implementation', '', 'uses', '  Stock;', '', 'procedure Run;',
     'begin', '  TStock.Create.Free;', 'end;', '', 'end.']), Origin);
+end;
+
+procedure TMoveClassTests.MovesTypeComment;
+var
+  NewText, Origin: string;
+begin
+  Assert.IsTrue(Relocate(Join(['unit Lager;', '', 'interface', '', 'type', '  TBase = class', '    procedure Go;',
+    '  end;', '', '  TStock = class', '    function Count: Integer;', '  end;', '', 'implementation', '',
+    '{ TBase }', '', 'procedure TBase.Go;', 'begin', 'end;', '', '{ TStock }', '', 'function TStock.Count: Integer;',
+    'begin', '  Result := 0;', 'end;', '', 'end.']), 'TStock = class', NewText, Origin));
+  Assert.AreEqual(Join(['unit Stock;', '', 'interface', '', 'type', '  TStock = class',
+    '    function Count: Integer;', '  end;', '', 'implementation', '', '{ TStock }', '',
+    'function TStock.Count: Integer;', 'begin', '  Result := 0;', 'end;', '', 'end.']), NewText,
+    'Kommentar steht in der neuen Unit vor den Rümpfen (#1838)');
+  Assert.AreEqual(Join(['unit Lager;', '', 'interface', '', 'type', '  TBase = class', '    procedure Go;',
+    '  end;', '', 'implementation', '', '{ TBase }', '', 'procedure TBase.Go;', 'begin', 'end;', '', 'end.']),
+    Origin, 'kein { TStock } bleibt zurück');
 end;
 
 procedure TMoveClassTests.UsesOriginInterface;
@@ -200,7 +248,7 @@ begin
   Assert.IsTrue(Relocate(Join(['unit Lager;', '', 'interface', '', 'uses', '  Classes;', '', 'type',
     '  TStock = class', '    FItems: TStrings;', '    procedure Add;', '  end;', '', 'implementation', '', 'uses',
     '  SysUtils;', '', 'procedure TStock.Add;', 'begin', '  FItems.Add(IntToStr(1));', 'end;', '', 'end.']),
-    'TStock = class', 'Lager.Stock', nil, NewText, Origin, Reason), Reason);
+    'TStock = class', Into('Lager.Stock', nil), NewText, Origin, Reason), Reason);
   Assert.AreEqual(Join(['unit Lager.Stock;', '', 'interface', '', 'uses', '  Classes;', '', 'type',
     '  TStock = class', '    FItems: TStrings;', '    procedure Add;', '  end;', '', 'implementation', '', 'uses',
     '  SysUtils;', '', 'procedure TStock.Add;', 'begin', '  FItems.Add(IntToStr(1));', 'end;', '', 'end.']), NewText);
@@ -236,9 +284,9 @@ begin
     'end;', '{$ENDIF}', '', 'end.']), 'TStock = class'), 'bedingt');
   // Kein Klassentyp an der Stelle, ungültiger Name.
   Assert.IsFalse(Relocate(Join(['unit Lager;', '', 'interface', '', 'type', '  TKind = (kA, kB);', '',
-    'implementation', '', 'end.']), 'TKind', 'Stock', FakeLookup(), NewText, Origin, Reason));
+    'implementation', '', 'end.']), 'TKind', Into('Stock', FakeLookup()), NewText, Origin, Reason));
   Assert.IsFalse(Relocate(Join(['unit Lager;', '', 'interface', '', 'type', '  TStock = class', '  end;', '',
-    'implementation', '', 'end.']), 'TStock', 'Neue Unit', FakeLookup(), NewText, Origin, Reason));
+    'implementation', '', 'end.']), 'TStock', Into('Neue Unit', FakeLookup()), NewText, Origin, Reason));
   Assert.Contains(Reason, 'gültig');
 end;
 
@@ -252,12 +300,14 @@ begin
     '', 'procedure Run;', 'var', '  S: Lager.TStock;', 'begin', '  S := TStock.Create;', 'end;', '', 'end.']);
   Tree := TPascalParser.Parse(Text);
   try
-    Assert.IsTrue(TMoveClass.UpdateUser(Text, Tree, 'Lager', 'Stock', 'TStock', nil, True, Edits));
+    Assert.IsTrue(TMoveClass.UpdateUser(Text, Tree, TMoveClassNames.Create('Lager', 'Stock', 'TStock'), nil, True,
+      Edits));
     Assert.AreEqual(Join(['unit Kasse;', '', 'interface', '', 'uses', '  System.Classes,', '  Lager,', '  Stock;',
       '', 'implementation', '', 'procedure Run;', 'var', '  S: Stock.TStock;', 'begin', '  S := TStock.Create;',
       'end;', '', 'end.']), TChangeSignature.ApplyEdits(Text, Edits));
     // Ohne Vorkommen keine Änderung.
-    Assert.IsFalse(TMoveClass.UpdateUser(Text, Tree, 'Lager', 'Stock', 'TOther', nil, True, Edits));
+    Assert.IsFalse(TMoveClass.UpdateUser(Text, Tree, TMoveClassNames.Create('Lager', 'Stock', 'TOther'), nil, True,
+      Edits));
   finally
     Tree.Free;
   end;

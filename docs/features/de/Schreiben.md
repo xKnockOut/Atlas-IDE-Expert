@@ -88,9 +88,14 @@ Einstellungen: `completion.formatPlaceholders`
 | Umschließung entfernen, mit Vorschau | Strg+Umschalt+Entf | #657 |
 | Atlas-Spalte in der Zeilenleiste | | #768 |
 
-- Methodenrümpfe in Deklarationsreihenfolge (#660):
+- Methodenrümpfe ordnen (#660, #1836; `editor.methodPlacement`):
+  - Vorgabe „gruppiert, Konstruktor zuerst“: Konstruktoren und Destruktor, dann Get/Set-Paare in der Reihenfolge der Properties, dann Überschreibungen, dann der Rest wie deklariert; außerdem „wie die Deklaration“ und „alphabetisch“, dort mit `classCompletion.lifecycleFirst` ebenfalls Konstruktor zuerst
   - neue Rümpfe aus der Klassenvervollständigung wandern im selben Rückgängig-Schritt an ihre Stelle
-  - „implementation wie Klasse ordnen“ mit Vorschau
+  - „implementation wie Klasse ordnen“ mit Vorschau; der Kommentar über dem Abschnitt einer Klasse und eine Region `{$REGION 'TKunde'}` wandern mit
+- Klassenvervollständigung (#1834, `classCompletion.*`):
+  - Kommentar über dem Abschnitt einer Klasse (#1835, `typeComment`): `{ TKunde }` wie die IDE (Vorgabe), Trennlinie mit `// TKunde`, `{ TKunde: erster Satz der Doku }`, Region um alle Rümpfe oder keiner; ein vorhandener wird nicht verdoppelt
+  - neue Rümpfe vorbefüllt (#1837, `bodyStubs`): `inherited` bei `override`, im Destruktor am Ende, Getter `Result := FName` und Setter `FName := AValue`
+  - Umbenennen und „Klasse verschieben“ nehmen den Kommentar `{ TKunde }` mit (#1838)
 - var-Block pflegen (#644):
   - Variable an ihrer ersten Zuweisung zur Inline-Variablen machen und zurück
   - var-Abschnitt aufräumen (ungenutzte entfernen, nach erster Verwendung oder Namen sortieren, gleiche Typen zusammenfassen)
@@ -147,6 +152,7 @@ Außerdem (#849):
 - **Anweisung vervollständigen** (Strg+Umschalt+Enter)
 - **Muster fortsetzen** als Schattentext
 - **Kommentare fortsetzen** beim Enter
+- **Einrückung beim Tippen** (#1827, `smartIndent`, Seite *Eingabehilfen*): Nach Enter rechnet Atlas mit derselben Blocklogik wie der Formatierer, wohin die Schreibmarke gehört: eine Ebene tiefer hinter `begin`, `then`, `do`, `try`, `case`-Marken und Abschnitten, zurück nach der einzelnen Anweisung, in offener Klammer unter dem ersten Argument. Beginnt die Zeile darüber mit `end`, `until`, `finally`, `except` oder `else`, rückt sie auf ihr Gegenstück. Enter mitten in einem String schließt ihn mit `' +` und öffnet ihn in der neuen Zeile, eingerückt oder ausgerichtet (`smartIndent.splitStringsIndent`). Weicht die Datei vom Stil ab, folgt Atlas ihrer vorhandenen Einrückung. Strg+Z nimmt nur die Einrückung zurück. `end;` fügt Atlas nie ein.
 - **Formatieren** nach eigenen Regeln (Strg+Umschalt+Alt+L), weil RAD Studio 13 keinen Formatierer mehr hat:
   - Bereiche zwischen `// atlas-format: off` und `// atlas-format: on` bleiben unverändert.
   - Derselbe Formatierer läuft ohne IDE (`--format-check`, `--format-write`, MCP `format_code`, siehe [Formatieren ohne IDE](Kommandozeile.md#formatieren-ohne-ide)).

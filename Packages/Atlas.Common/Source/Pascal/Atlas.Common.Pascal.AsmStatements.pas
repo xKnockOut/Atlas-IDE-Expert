@@ -75,92 +75,252 @@ const
   cRegisters16: array[0..7] of string = ('ax', 'bx', 'cx', 'dx', 'si', 'di', 'bp', 'sp');
   cRegisters32: array[0..7] of string = ('eax', 'ebx', 'ecx', 'edx', 'esi', 'edi', 'ebp', 'esp');
 
+type
+  /// <summary>Teilt die Token eines asm-Blocks Zeile für Zeile in Anweisungen (TAsmStatements.Split).</summary>
+  TAsmSplitter = class
+  private
+    FTokens: TArray<TPascalToken>;
+    FPaths: TArray<string>;
+    FAsmPath: string;
+    FList: TList<TAsmStatement>;
+    FCode: TList<Integer>;
+    FUncertain: Boolean;
+    FLastLine: Integer;
+    /// <summary>Schließt die laufende Anweisung ab.</summary>
+    procedure Flush;
+    /// <summary>Kommentar: zählt nicht, macht aber eine Anweisung mit { } oder (* *) mitten darin unsicher.</summary>
+    procedure VisitComment(const AToken: TPascalToken);
+    /// <summary>Direktive oder Token aus einem anderen Zweig als das asm.</summary>
+    procedure VisitForeign(const AToken: TPascalToken);
+    procedure VisitCode(AIndex: Integer);
+    /// <summary>Gehört das Token AIndex sicher zum asm-Block (keine Direktive, gleicher oder umschließender Zweig)?</summary>
+    function Belongs(AIndex: Integer): Boolean;
+  public
+    constructor Create(const ATokens: TArray<TPascalToken>; const APaths: TArray<string>; AAsm: Integer);
+    destructor Destroy; override;
+    procedure Visit(AIndex: Integer);
+    /// <summary>Alle Anweisungen; schließt die letzte ab.</summary>
+    function Statements: TArray<TAsmStatement>;
+  end;
+
+/// <summary>Index in ACode hinter Sprungmarke (@@Ende:, @Ende:, Ende:) und Präfixen (lock, rep …).</summary>
+function InstructionStart(const ATokens: TArray<TPascalToken>; const ACode: TArray<Integer>): Integer;
+begin
+  Result := 0;
+  while (Result < Length(ACode)) and ATokens[ACode[Result]].IsSymbol('@') do
+  begin
+    Inc(Result);
+  end;
+  if (Result + 1 < Length(ACode)) and (ATokens[ACode[Result]].Kind in [TPascalTokenKind.Identifier,
+    TPascalTokenKind.Keyword, TPascalTokenKind.Number]) and ATokens[ACode[Result + 1]].IsSymbol(':') then
+  begin
+    Inc(Result, 2);
+  end
+  else
+  begin
+    Result := 0;
+  end;
+  while (Result + 1 < Length(ACode)) and MatchText(ATokens[ACode[Result]].Text, cPrefixes) do
+  begin
+    Inc(Result);
+  end;
+end;
+
+/// <summary>Liest den Befehl ab ACode[AStart] in AStatement und rückt AStart dahinter; False, wenn dort
+/// kein Befehl steht.</summary>
+function ReadMnemonic(const ATokens: TArray<TPascalToken>; const ACode: TArray<Integer>; var AStart: Integer;
+  var AStatement: TAsmStatement): Boolean;
+var
+  mToken: TPascalToken;
+begin
+  mToken := ATokens[ACode[AStart]];
+  Result := True;
+  if mToken.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword] then
+  begin
+    AStatement.Mnemonic := LowerCase(mToken.Text);
+    AStatement.MnemonicToken := ACode[AStart];
+    Inc(AStart);
+  end
+  else if mToken.IsSymbol('.') and (AStart + 1 < Length(ACode)) and
+    (ATokens[ACode[AStart + 1]].Kind = TPascalTokenKind.Identifier) then
+  begin
+    // Win64: .noframe, .params, .pushnv, .savenv
+    AStatement.Mnemonic := '.' + LowerCase(ATokens[ACode[AStart + 1]].Text);
+    AStatement.MnemonicToken := ACode[AStart];
+    Inc(AStart, 2);
+  end
+  else
+  begin
+    Result := False;
+  end;
+end;
+
+/// <summary>Ändert die Klammertiefe ADepth für AToken; True bei einem Komma auf Tiefe 0.</summary>
+function IsOperandSeparator(const AToken: TPascalToken; var ADepth: Integer): Boolean;
+begin
+  Result := False;
+  if AToken.IsSymbol('[') or AToken.IsSymbol('(') then
+  begin
+    Inc(ADepth);
+  end
+  else if (AToken.IsSymbol(']') or AToken.IsSymbol(')')) and (ADepth > 0) then
+  begin
+    Dec(ADepth);
+  end
+  else
+  begin
+    Result := AToken.IsSymbol(',') and (ADepth = 0);
+  end;
+end;
+
+/// <summary>Operanden aus ACode ab AStart: Ein Komma außerhalb von [] und () trennt.</summary>
+function SplitOperands(const ATokens: TArray<TPascalToken>; const ACode: TArray<Integer>;
+  AStart: Integer): TArray<TAsmOperand>;
+var
+  mIndex, mDepth: Integer;
+  mOperand: TAsmOperand;
+begin
+  Result := nil;
+  mOperand.Tokens := nil;
+  mDepth := 0;
+  for mIndex := AStart to High(ACode) do
+  begin
+    if IsOperandSeparator(ATokens[ACode[mIndex]], mDepth) then
+    begin
+      Result := Result + [mOperand];
+      mOperand.Tokens := nil;
+    end
+    else
+    begin
+      mOperand.Tokens := mOperand.Tokens + [ACode[mIndex]];
+    end;
+  end;
+  Result := Result + [mOperand];
+end;
+
 /// <summary>Anweisung aus den Code-Token ACode (Indizes in ATokens).</summary>
 function Build(const ATokens: TArray<TPascalToken>; const ACode: TArray<Integer>; AUncertain: Boolean): TAsmStatement;
 var
-  mIndex, mStart, mDepth: Integer;
-  mOperand: TList<Integer>;
-  mToken: TPascalToken;
-
-  function TokenAt(APosition: Integer): TPascalToken;
-  begin
-    Result := ATokens[ACode[APosition]];
-  end;
-
-  procedure AddOperand;
-  var
-    mItem: TAsmOperand;
-  begin
-    mItem.Tokens := mOperand.ToArray;
-    Result.Operands := Result.Operands + [mItem];
-    mOperand.Clear;
-  end;
-
+  mStart: Integer;
 begin
   Result := Default(TAsmStatement);
   Result.MnemonicToken := -1;
   Result.Uncertain := AUncertain;
   Result.LastToken := ACode[High(ACode)];
-  // Sprungmarke: @@Ende:, @Ende: oder Ende:
-  mStart := 0;
-  while (mStart < Length(ACode)) and TokenAt(mStart).IsSymbol('@') do
-    Inc(mStart);
-  if (mStart + 1 < Length(ACode)) and (TokenAt(mStart).Kind in [TPascalTokenKind.Identifier,
-    TPascalTokenKind.Keyword, TPascalTokenKind.Number]) and TokenAt(mStart + 1).IsSymbol(':') then
-    Inc(mStart, 2)
-  else
-    mStart := 0;
-  while (mStart + 1 < Length(ACode)) and MatchText(TokenAt(mStart).Text, cPrefixes) do
-    Inc(mStart);
+  mStart := InstructionStart(ATokens, ACode);
   if mStart >= Length(ACode) then
   begin
     Result.FirstToken := Result.LastToken;
     Exit;
   end;
   Result.FirstToken := ACode[mStart];
-  mToken := TokenAt(mStart);
-  if mToken.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword] then
+  if not ReadMnemonic(ATokens, ACode, mStart, Result) then
   begin
-    Result.Mnemonic := LowerCase(mToken.Text);
-    Result.MnemonicToken := ACode[mStart];
-    Inc(mStart);
+    Result.Uncertain := True;
   end
-  else if mToken.IsSymbol('.') and (mStart + 1 < Length(ACode)) and
-    (TokenAt(mStart + 1).Kind = TPascalTokenKind.Identifier) then
+  else if mStart < Length(ACode) then
   begin
-    // Win64: .noframe, .params, .pushnv, .savenv
-    Result.Mnemonic := '.' + LowerCase(TokenAt(mStart + 1).Text);
-    Result.MnemonicToken := ACode[mStart];
-    Inc(mStart, 2);
+    Result.Operands := SplitOperands(ATokens, ACode, mStart);
+  end;
+end;
+
+{ TAsmSplitter }
+
+constructor TAsmSplitter.Create(const ATokens: TArray<TPascalToken>; const APaths: TArray<string>; AAsm: Integer);
+begin
+  inherited Create;
+  FTokens := ATokens;
+  FPaths := APaths;
+  FAsmPath := TConditionalBranches.PathAt(APaths, AAsm);
+  FList := TList<TAsmStatement>.Create;
+  FCode := TList<Integer>.Create;
+  FLastLine := -1;
+end;
+
+destructor TAsmSplitter.Destroy;
+begin
+  FCode.Free;
+  FList.Free;
+  inherited;
+end;
+
+procedure TAsmSplitter.Flush;
+begin
+  if FCode.Count > 0 then
+  begin
+    FList.Add(Build(FTokens, FCode.ToArray, FUncertain));
+  end;
+  FCode.Clear;
+  FUncertain := False;
+end;
+
+function TAsmSplitter.Belongs(AIndex: Integer): Boolean;
+begin
+  Result := (FTokens[AIndex].Kind <> TPascalTokenKind.Directive) and
+    TConditionalBranches.Implies(TConditionalBranches.PathAt(FPaths, AIndex), FAsmPath);
+end;
+
+procedure TAsmSplitter.VisitComment(const AToken: TPascalToken);
+begin
+  if (FCode.Count > 0) and (AToken.StartPos.Line <= FLastLine) and not AToken.Text.StartsWith('//') then
+  begin
+    FUncertain := True;
+  end;
+end;
+
+procedure TAsmSplitter.VisitForeign(const AToken: TPascalToken);
+begin
+  // Steht die Direktive (oder das fremde Token) in einer eigenen Zeile, endet die Anweisung davor sauber.
+  if AToken.StartPos.Line > FLastLine then
+  begin
+    Flush;
+  end;
+  FUncertain := True;
+  FLastLine := AToken.EndPos.Line;
+end;
+
+procedure TAsmSplitter.VisitCode(AIndex: Integer);
+var
+  mToken: TPascalToken;
+begin
+  mToken := FTokens[AIndex];
+  if mToken.StartPos.Line > FLastLine then
+  begin
+    Flush;
+  end;
+  FLastLine := mToken.EndPos.Line;
+  if mToken.IsSymbol(';') then
+  begin
+    Flush;
+    Exit;
+  end;
+  if (mToken.Kind = TPascalTokenKind.Unknown) or not mToken.Terminated then
+  begin
+    FUncertain := True;
+  end;
+  FCode.Add(AIndex);
+end;
+
+procedure TAsmSplitter.Visit(AIndex: Integer);
+begin
+  if FTokens[AIndex].Kind = TPascalTokenKind.Comment then
+  begin
+    VisitComment(FTokens[AIndex]);
+  end
+  else if not Belongs(AIndex) then
+  begin
+    VisitForeign(FTokens[AIndex]);
   end
   else
   begin
-    Result.Uncertain := True;
-    Exit;
+    VisitCode(AIndex);
   end;
-  if mStart >= Length(ACode) then
-    Exit;
-  mOperand := TList<Integer>.Create;
-  try
-    mDepth := 0;
-    for mIndex := mStart to High(ACode) do
-    begin
-      mToken := TokenAt(mIndex);
-      if mToken.IsSymbol('[') or mToken.IsSymbol('(') then
-        Inc(mDepth)
-      else if (mToken.IsSymbol(']') or mToken.IsSymbol(')')) and (mDepth > 0) then
-        Dec(mDepth)
-      else if mToken.IsSymbol(',') and (mDepth = 0) then
-      begin
-        AddOperand;
-        Continue;
-      end;
-      mOperand.Add(ACode[mIndex]);
-    end;
-    AddOperand;
-  finally
-    mOperand.Free;
-  end;
+end;
+
+function TAsmSplitter.Statements: TArray<TAsmStatement>;
+begin
+  Flush;
+  Result := FList.ToArray;
 end;
 
 { TAsmStatements }
@@ -174,77 +334,39 @@ end;
 class function TAsmStatements.Split(const ATokens: TArray<TPascalToken>; const APaths: TArray<string>; AAsm, AFirst,
   ALast: Integer): TArray<TAsmStatement>;
 var
-  mList: TList<TAsmStatement>;
-  mCode: TList<Integer>;
-  mUncertain: Boolean;
-  mIndex, mLastLine: Integer;
-  mToken: TPascalToken;
-  mAsmPath: string;
-
-  procedure Flush;
-  begin
-    if mCode.Count > 0 then
-      mList.Add(Build(ATokens, mCode.ToArray, mUncertain));
-    mCode.Clear;
-    mUncertain := False;
-  end;
-
+  mSplitter: TAsmSplitter;
+  mIndex: Integer;
 begin
-  mList := TList<TAsmStatement>.Create;
-  mCode := TList<Integer>.Create;
+  mSplitter := TAsmSplitter.Create(ATokens, APaths, AAsm);
   try
-    mUncertain := False;
-    mLastLine := -1;
-    mAsmPath := TConditionalBranches.PathAt(APaths, AAsm);
     for mIndex := AFirst to ALast do
     begin
-      mToken := ATokens[mIndex];
-      if mToken.Kind = TPascalTokenKind.Comment then
-      begin
-        if (mCode.Count > 0) and (mToken.StartPos.Line <= mLastLine) and not mToken.Text.StartsWith('//') then
-          mUncertain := True;
-        Continue;
-      end;
-      if (mToken.Kind = TPascalTokenKind.Directive) or
-        not TConditionalBranches.Implies(TConditionalBranches.PathAt(APaths, mIndex), mAsmPath) then
-      begin
-        // Steht die Direktive (oder das fremde Token) in einer eigenen Zeile, endet die Anweisung davor sauber.
-        if mToken.StartPos.Line > mLastLine then
-          Flush;
-        mUncertain := True;
-        mLastLine := mToken.EndPos.Line;
-        Continue;
-      end;
-      if mToken.StartPos.Line > mLastLine then
-        Flush;
-      mLastLine := mToken.EndPos.Line;
-      if mToken.IsSymbol(';') then
-      begin
-        Flush;
-        Continue;
-      end;
-      if (mToken.Kind = TPascalTokenKind.Unknown) or not mToken.Terminated then
-        mUncertain := True;
-      mCode.Add(mIndex);
+      mSplitter.Visit(mIndex);
     end;
-    Flush;
-    Result := mList.ToArray;
+    Result := mSplitter.Statements;
   finally
-    mCode.Free;
-    mList.Free;
+    mSplitter.Free;
   end;
 end;
 
 class function TAsmStatements.RegisterSize(const AName: string): Integer;
 begin
   if MatchText(AName, cRegisters8) then
-    Result := 1
+  begin
+    Result := 1;
+  end
   else if MatchText(AName, cRegisters16) then
-    Result := 2
+  begin
+    Result := 2;
+  end
   else if MatchText(AName, cRegisters32) then
-    Result := 4
+  begin
+    Result := 4;
+  end
   else
+  begin
     Result := 0;
+  end;
 end;
 
 class function TAsmStatements.IsDataDirective(const AMnemonic: string): Boolean;

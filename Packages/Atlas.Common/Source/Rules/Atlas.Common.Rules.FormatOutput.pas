@@ -60,7 +60,31 @@ uses
   System.Math,
   Atlas.Text.Lines,
   Atlas.Text.Diff,
-  Atlas.Common.Rules.Output;
+  Atlas.Common.Rules.Output,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TFormatOutputText = (SyntaxError, Unstable, NotWritten, Formatted, Deviations, Line, More, WrittenSummary,
+    ChangedSummary, SyntaxSummary);
+
+const
+  cTexts: array[TFormatOutputText] of TAtlasText = (
+    (De: '%s(%d,%d): Syntaxfehler, nicht formatiert: %s'; En: '%s(%d,%d): syntax error, not formatted: %s'),
+    (De: '%s: Formatierung nicht stabil, ein zweiter Lauf ändert erneut';
+     En: '%s: formatting not stable, a second run changes again'),
+    (De: '%s: nicht geschrieben: %s'; En: '%s: not written: %s'),
+    (De: '%s: formatiert (%d Abweichungen)'; En: '%s: formatted (%d deviations)'),
+    (De: '%s: %d Abweichungen'; En: '%s: %d deviations'),
+    (De: '  Zeile %d: %s'; En: '  Line %d: %s'),
+    (De: '  … und %d weitere (alle mit --format json)'; En: '  … and %d more (all with --format json)'),
+    (De: 'Formatierung: %d von %d Dateien geschrieben'; En: 'Formatting: %d of %d files written'),
+    (De: 'Formatierung: %d von %d Dateien weichen ab'; En: 'Formatting: %d of %d files deviate'),
+    (De: ', %d mit Syntaxfehlern nicht formatiert'; En: ', %d not formatted because of syntax errors'));
+
+{$SCOPEDENUMS OFF}
 
 { TFormattedFile }
 
@@ -86,14 +110,14 @@ end;
 
 function SyntaxLine(const AFile: TFormattedFile): string;
 begin
-  Result := Format('%s(%d,%d): Syntaxfehler, nicht formatiert: %s', [AFile.Path,
+  Result := cTexts[TFormatOutputText.SyntaxError].Fmt([AFile.Path,
     AFile.Outcome.SyntaxError.StartPos.Line + 1, AFile.Outcome.SyntaxError.StartPos.Character + 1,
     AFile.Outcome.SyntaxError.Message]);
 end;
 
 function UnstableLine(const AFile: TFormattedFile): string;
 begin
-  Result := Format('%s: Formatierung nicht stabil, ein zweiter Lauf ändert erneut', [AFile.Path]);
+  Result := cTexts[TFormatOutputText.Unstable].Fmt([AFile.Path]);
 end;
 
 class function TFormatOutput.Problems(const AFiles: TArray<TFormattedFile>): TArray<string>;
@@ -104,11 +128,45 @@ begin
   for mFile in AFiles do
   begin
     if mFile.Outcome.HasSyntaxError then
+    begin
       Result := Result + [SyntaxLine(mFile)];
+    end;
     if not mFile.Outcome.Stable then
+    begin
       Result := Result + [UnstableLine(mFile)];
+    end;
     if mFile.Error <> '' then
-      Result := Result + [Format('%s: nicht geschrieben: %s', [mFile.Path, mFile.Error])];
+    begin
+      Result := Result + [cTexts[TFormatOutputText.NotWritten].Fmt([mFile.Path, mFile.Error])];
+    end;
+  end;
+end;
+
+/// <summary>Zeilen einer geänderten Datei: formatiert, nicht geschrieben oder die ersten Abweichungen.</summary>
+procedure AppendChanged(ABuilder: TStringBuilder; const AFile: TFormattedFile; AWrite: Boolean);
+var
+  mIndex, mCount: Integer;
+begin
+  mCount := Length(AFile.Outcome.Deviations);
+  if AWrite and AFile.Written then
+  begin
+    ABuilder.AppendLine(cTexts[TFormatOutputText.Formatted].Fmt([AFile.Path, mCount]));
+    Exit;
+  end;
+  if AWrite then
+  begin
+    ABuilder.AppendLine(cTexts[TFormatOutputText.NotWritten].Fmt([AFile.Path, AFile.Error]));
+    Exit;
+  end;
+  ABuilder.AppendLine(cTexts[TFormatOutputText.Deviations].Fmt([AFile.Path, mCount]));
+  for mIndex := 0 to Min(mCount, TFormatOutput.cShownPerFile) - 1 do
+  begin
+    ABuilder.AppendLine(cTexts[TFormatOutputText.Line].Fmt([AFile.Outcome.Deviations[mIndex].Line + 1,
+      AFile.Outcome.Deviations[mIndex].Message]));
+  end;
+  if mCount > TFormatOutput.cShownPerFile then
+  begin
+    ABuilder.AppendLine(cTexts[TFormatOutputText.More].Fmt([mCount - TFormatOutput.cShownPerFile]));
   end;
 end;
 
@@ -116,38 +174,23 @@ function RenderText(const AFiles: TArray<TFormattedFile>; AWrite: Boolean): stri
 var
   mBuilder: TStringBuilder;
   mFile: TFormattedFile;
-  mIndex, mCount: Integer;
-  mLine: string;
 begin
   mBuilder := TStringBuilder.Create;
   try
     for mFile in AFiles do
     begin
       if mFile.Outcome.HasSyntaxError then
+      begin
         mBuilder.AppendLine(SyntaxLine(mFile));
-      mCount := Length(mFile.Outcome.Deviations);
+      end;
       if mFile.Outcome.Changed then
       begin
-        if AWrite and mFile.Written then
-          mBuilder.AppendLine(Format('%s: formatiert (%d Abweichungen)', [mFile.Path, mCount]))
-        else if AWrite then
-          mBuilder.AppendLine(Format('%s: nicht geschrieben: %s', [mFile.Path, mFile.Error]))
-        else
-        begin
-          mBuilder.AppendLine(Format('%s: %d Abweichungen', [mFile.Path, mCount]));
-          for mIndex := 0 to Min(mCount, TFormatOutput.cShownPerFile) - 1 do
-          begin
-            mLine := Format('  Zeile %d: %s', [mFile.Outcome.Deviations[mIndex].Line + 1,
-              mFile.Outcome.Deviations[mIndex].Message]);
-            mBuilder.AppendLine(mLine);
-          end;
-          if mCount > TFormatOutput.cShownPerFile then
-            mBuilder.AppendLine(Format('  … und %d weitere (alle mit --format json)',
-              [mCount - TFormatOutput.cShownPerFile]));
-        end;
+        AppendChanged(mBuilder, mFile, AWrite);
       end;
       if not mFile.Outcome.Stable then
+      begin
         mBuilder.AppendLine(UnstableLine(mFile));
+      end;
     end;
     Result := mBuilder.ToString;
   finally
@@ -155,68 +198,103 @@ begin
   end;
 end;
 
-function RenderJson(const AFiles: TArray<TFormattedFile>; AWrite: Boolean): string;
+function JsonBool(AValue: Boolean): string;
+begin
+  Result := LowerCase(BoolToStr(AValue, True));
+end;
+
+/// <summary>Eine Datei als JSON-Objekt mit Fehler, Syntaxfehler und allen Abweichungen.</summary>
+procedure AppendJsonFile(ABuilder: TStringBuilder; const AFile: TFormattedFile);
 var
-  mBuilder: TStringBuilder;
-  mFile: TFormattedFile;
   mDeviation: TFormatDeviation;
-  mFirstFile, mFirstDeviation: Boolean;
+  mFirst: Boolean;
+begin
+  ABuilder.Append('{"path":').Append(TFindingsOutput.JsonString(SlashPath(AFile.Path)));
+  ABuilder.Append(',"changed":').Append(JsonBool(AFile.Outcome.Changed));
+  ABuilder.Append(',"stable":').Append(JsonBool(AFile.Outcome.Stable));
+  ABuilder.Append(',"written":').Append(JsonBool(AFile.Written));
+  if AFile.Error <> '' then
+  begin
+    ABuilder.Append(',"error":').Append(TFindingsOutput.JsonString(AFile.Error));
+  end;
+  if AFile.Outcome.HasSyntaxError then
+  begin
+    ABuilder.Append(',"syntaxError":{"line":').Append(AFile.Outcome.SyntaxError.StartPos.Line + 1)
+      .Append(',"column":').Append(AFile.Outcome.SyntaxError.StartPos.Character + 1)
+      .Append(',"message":').Append(TFindingsOutput.JsonString(AFile.Outcome.SyntaxError.Message)).Append('}');
+  end;
+  ABuilder.Append(',"deviations":[');
+  mFirst := True;
+  for mDeviation in AFile.Outcome.Deviations do
+  begin
+    if not mFirst then
+    begin
+      ABuilder.Append(',');
+    end;
+    mFirst := False;
+    ABuilder.Append('{"line":').Append(mDeviation.Line + 1);
+    ABuilder.Append(',"kind":').Append(TFindingsOutput.JsonString(TFormatCheck.KindName(mDeviation.Kind)));
+    ABuilder.Append(',"message":').Append(TFindingsOutput.JsonString(mDeviation.Message)).Append('}');
+  end;
+  ABuilder.Append(']}');
+end;
+
+/// <summary>"summary" mit den Zählern über alle Dateien.</summary>
+procedure AppendJsonSummary(ABuilder: TStringBuilder; const AFiles: TArray<TFormattedFile>);
+var
+  mFile: TFormattedFile;
   mChanged, mSyntax, mUnstable, mWritten: Integer;
 begin
   mChanged := 0;
   mSyntax := 0;
   mUnstable := 0;
   mWritten := 0;
+  for mFile in AFiles do
+  begin
+    Inc(mChanged, Ord(mFile.Outcome.Changed));
+    Inc(mSyntax, Ord(mFile.Outcome.HasSyntaxError));
+    Inc(mUnstable, Ord(not mFile.Outcome.Stable));
+    Inc(mWritten, Ord(mFile.Written));
+  end;
+  ABuilder.Append('"summary":{"files":').Append(Length(AFiles));
+  ABuilder.Append(',"changed":').Append(mChanged);
+  ABuilder.Append(',"syntaxErrors":').Append(mSyntax);
+  ABuilder.Append(',"unstable":').Append(mUnstable);
+  ABuilder.Append(',"written":').Append(mWritten).Append('}');
+end;
+
+function RenderJson(const AFiles: TArray<TFormattedFile>; AWrite: Boolean): string;
+var
+  mBuilder: TStringBuilder;
+  mFile: TFormattedFile;
+  mFirst: Boolean;
+begin
   mBuilder := TStringBuilder.Create;
   try
     if AWrite then
-      mBuilder.Append('{"mode":"write","files":[')
+    begin
+      mBuilder.Append('{"mode":"write","files":[');
+    end
     else
+    begin
       mBuilder.Append('{"mode":"check","files":[');
-    mFirstFile := True;
+    end;
+    mFirst := True;
     for mFile in AFiles do
     begin
-      if mFile.Outcome.Changed then
-        Inc(mChanged);
-      if mFile.Outcome.HasSyntaxError then
-        Inc(mSyntax);
-      if not mFile.Outcome.Stable then
-        Inc(mUnstable);
-      if mFile.Written then
-        Inc(mWritten);
-      if not mFile.NeedsAttention then
-        Continue;
-      if not mFirstFile then
-        mBuilder.Append(',');
-      mFirstFile := False;
-      mBuilder.Append('{"path":').Append(TFindingsOutput.JsonString(SlashPath(mFile.Path)));
-      mBuilder.Append(',"changed":').Append(LowerCase(BoolToStr(mFile.Outcome.Changed, True)));
-      mBuilder.Append(',"stable":').Append(LowerCase(BoolToStr(mFile.Outcome.Stable, True)));
-      mBuilder.Append(',"written":').Append(LowerCase(BoolToStr(mFile.Written, True)));
-      if mFile.Error <> '' then
-        mBuilder.Append(',"error":').Append(TFindingsOutput.JsonString(mFile.Error));
-      if mFile.Outcome.HasSyntaxError then
-        mBuilder.Append(',"syntaxError":{"line":').Append(mFile.Outcome.SyntaxError.StartPos.Line + 1)
-          .Append(',"column":').Append(mFile.Outcome.SyntaxError.StartPos.Character + 1)
-          .Append(',"message":').Append(TFindingsOutput.JsonString(mFile.Outcome.SyntaxError.Message)).Append('}');
-      mBuilder.Append(',"deviations":[');
-      mFirstDeviation := True;
-      for mDeviation in mFile.Outcome.Deviations do
+      if mFile.NeedsAttention then
       begin
-        if not mFirstDeviation then
+        if not mFirst then
+        begin
           mBuilder.Append(',');
-        mFirstDeviation := False;
-        mBuilder.Append('{"line":').Append(mDeviation.Line + 1);
-        mBuilder.Append(',"kind":').Append(TFindingsOutput.JsonString(TFormatCheck.KindName(mDeviation.Kind)));
-        mBuilder.Append(',"message":').Append(TFindingsOutput.JsonString(mDeviation.Message)).Append('}');
+        end;
+        mFirst := False;
+        AppendJsonFile(mBuilder, mFile);
       end;
-      mBuilder.Append(']}');
     end;
-    mBuilder.Append('],"summary":{"files":').Append(Length(AFiles));
-    mBuilder.Append(',"changed":').Append(mChanged);
-    mBuilder.Append(',"syntaxErrors":').Append(mSyntax);
-    mBuilder.Append(',"unstable":').Append(mUnstable);
-    mBuilder.Append(',"written":').Append(mWritten).Append('}}');
+    mBuilder.Append('],');
+    AppendJsonSummary(mBuilder, AFiles);
+    mBuilder.Append('}');
     Result := mBuilder.ToString + sLineBreak;
   finally
     mBuilder.Free;
@@ -235,7 +313,9 @@ begin
     for mFile in AFiles do
     begin
       if not mFile.Outcome.Changed then
+      begin
         Continue;
+      end;
       mPath := SlashPath(mFile.Path);
       mOld := TTextLines.SplitLines(mFile.Outcome.Original);
       mNew := TTextLines.SplitLines(mFile.Outcome.Formatted);
@@ -246,7 +326,9 @@ begin
         SetLength(mNew, Length(mNew) - 1);
       end;
       for mLine in TTextDiff.Unified('a/' + mPath, 'b/' + mPath, mOld, mNew, TFormatOutput.cDiffContext) do
+      begin
         mBuilder.Append(mLine).Append(#10);
+      end;
     end;
     Result := mBuilder.ToString;
   finally
@@ -278,18 +360,30 @@ begin
   for mFile in AFiles do
   begin
     if mFile.Outcome.Changed then
+    begin
       Inc(mChanged);
+    end;
     if mFile.Written then
+    begin
       Inc(mWritten);
+    end;
     if mFile.Outcome.HasSyntaxError then
+    begin
       Inc(mSyntax);
+    end;
   end;
   if AWrite then
-    Result := Format('Formatierung: %d von %d Dateien geschrieben', [mWritten, Length(AFiles)])
+  begin
+    Result := cTexts[TFormatOutputText.WrittenSummary].Fmt([mWritten, Length(AFiles)]);
+  end
   else
-    Result := Format('Formatierung: %d von %d Dateien weichen ab', [mChanged, Length(AFiles)]);
+  begin
+    Result := cTexts[TFormatOutputText.ChangedSummary].Fmt([mChanged, Length(AFiles)]);
+  end;
   if mSyntax > 0 then
-    Result := Result + Format(', %d mit Syntaxfehlern nicht formatiert', [mSyntax]);
+  begin
+    Result := Result + cTexts[TFormatOutputText.SyntaxSummary].Fmt([mSyntax]);
+  end;
 end;
 
 class function TFormatOutput.ExitCode(const AFiles: TArray<TFormattedFile>; AWrite: Boolean): Integer;
@@ -300,10 +394,17 @@ begin
   for mFile in AFiles do
   begin
     if mFile.Error <> '' then
+    begin
       Exit(TFindingsOutput.ExitFailure);
+    end;
     if mFile.Outcome.HasSyntaxError or not mFile.Outcome.Stable or (not AWrite and mFile.Outcome.Changed) then
+    begin
       Result := TFindingsOutput.ExitFindings;
+    end;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.FormatOutput', cTexts);
 
 end.

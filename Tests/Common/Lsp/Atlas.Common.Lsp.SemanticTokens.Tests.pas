@@ -118,13 +118,17 @@ var
 begin
   Result := '';
   for Token in ATokens do
+  begin
     if Token.Position.Line = ALine then
     begin
       Result := Result + IntToStr(Token.Position.Character) + ' ' + TLspSemanticTokens.TypeName(Token.TokenType);
       for Modifier in Token.Modifiers do
+      begin
         Result := Result + '+' + IntToStr(Ord(Modifier));
+      end;
       Result := Result + '|';
     end;
+  end;
 end;
 
 procedure TLspSemanticTokensTests.ClassifiesDeclarations;

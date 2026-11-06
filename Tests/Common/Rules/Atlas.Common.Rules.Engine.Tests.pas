@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Rules.Engine.Tests;
 
 // Tests für Prüfregel-Framework: Registrierung, Schweregrad aus der
-// Konfiguration, Ausnahmen, Unterdrückung per Kommentar und Korrekturen.
+// Konfiguration, Ausnahmen, Unterdrückung per Kommentar und Korrekturen;
+// keine unused-suppression, wo eine Regel mangels Wissen nicht entscheidet.
 
 interface
 
@@ -47,6 +48,8 @@ type
     procedure SuppressesWholeFile;
     [Test]
     procedure SuppressionReasonIsNoId;
+    [Test]
+    procedure UndecidedLineKeepsSuppression;
     [Test]
     procedure UnknownRuleIdWithSuggestion;
     [Test]
@@ -148,14 +151,41 @@ var
   Range: TTextRange;
 begin
   for Token in AContext.Tree.Tokens do
+  begin
     if (Token.Kind = TPascalTokenKind.Identifier) and SameText(Token.Text, 'Marker') then
     begin
       Range := TTextRange.Create(Token.StartPos, Token.EndPos);
       if FWithFix then
-        AReport.Add(Range, 'Marker gefunden', [TRuleFix.Create('Umbenennen', [TRuleEdit.Create(Range, 'Zeichen')])])
+      begin
+        AReport.Add(Range, 'Marker gefunden', [TRuleFix.Create('Umbenennen', [TRuleEdit.Create(Range, 'Zeichen')])]);
+      end
       else
+      begin
         AReport.Add(Range, 'Marker gefunden');
+      end;
     end;
+  end;
+end;
+
+type
+  /// <summary>Wie TMarkerRule, kann aber die Zeile FUndecided nicht entscheiden (IRuleLineCertainty).</summary>
+  TUncertainMarkerRule = class(TMarkerRule, IRuleLineCertainty)
+  private
+    FUndecided: Integer;
+  public
+    constructor Create(AUndecided: Integer);
+    function Decides(const AContext: TRuleContext; ALine: Integer): Boolean;
+  end;
+
+constructor TUncertainMarkerRule.Create(AUndecided: Integer);
+begin
+  inherited Create;
+  FUndecided := AUndecided;
+end;
+
+function TUncertainMarkerRule.Decides(const AContext: TRuleContext; ALine: Integer): Boolean;
+begin
+  Result := ALine <> FUndecided;
 end;
 
 var
@@ -251,7 +281,9 @@ end;
 procedure TFailingRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 begin
   if Assigned(FBefore) then
+  begin
     FBefore();
+  end;
   AReport.Add(TTextRange.Create(0, 0, 0, 4), 'halber Treffer');
   raise FError.Create('Regel gescheitert');
 end;
@@ -262,7 +294,9 @@ var
 begin
   Result := ' ';
   for Note in ANotes.Notes do
+  begin
     Result := Result + Note + ' ';
+  end;
 end;
 
 /// <summary>Prozedur mit einer Kette aus ACount Subtraktionen: linkslastig und so tief wie lang.</summary>
@@ -276,7 +310,9 @@ begin
     Builder.Append('unit U;'#13#10'interface'#13#10'implementation'#13#10'procedure P;'#13#10'begin'#13#10);
     Builder.Append('  Marker := 1');
     for Index := 1 to ACount do
+    begin
       Builder.Append(' - 1');
+    end;
     Builder.Append(';'#13#10'end;'#13#10'end.');
     Result := Builder.ToString;
   finally
@@ -470,6 +506,20 @@ begin
     SourceWith('  Marker := 1;'#13#10'  Marker := 2;'#13#10));
 end;
 
+procedure TRuleEngineTests.UndecidedLineKeepsSuppression;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  // Zeile 5 kann die Regel nicht entscheiden: Ihr lsp-ignore dort ist keine unused-suppression, auch nicht "*".
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUncertainMarkerRule.Create(5),
+    SourceWith('  X := 1; // lsp-ignore: marker'#13#10)))));
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TUncertainMarkerRule.Create(5),
+    SourceWith('  X := 1; // lsp-ignore: *'#13#10)))));
+  mFindings := TRuleAssert.Findings(TUncertainMarkerRule.Create(7), SourceWith('  X := 1; // lsp-ignore: marker'#13#10));
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual(UnusedSuppressionRuleId, mFindings[0].RuleId);
+end;
+
 procedure TRuleEngineTests.SuppressionReasonIsNoId;
 begin
   // Nach "--" steht eine Begründung; das "*" darin gilt nicht als Kennung (#297).
@@ -658,7 +708,9 @@ begin
   end;
   Joined := '';
   for Note in Notes.Notes do
+  begin
     Joined := Joined + Note + ' ';
+  end;
   Assert.Contains(Joined, 'slowRule=langsam ');
   Assert.Contains(Joined, 'slowRuleMs=');
   Assert.DoesNotContain(Joined, 'schnell');

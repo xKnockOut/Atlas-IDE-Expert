@@ -50,6 +50,7 @@ implementation
 
 uses
   System.SysUtils,
+  Atlas.Core.Settings.Plugin,
   Atlas.Core.Style.Syntax,
   Atlas.Core.Outline.Model,
   Atlas.Core.Editor.Overview,
@@ -75,9 +76,32 @@ begin
   Result := TAtlasMinimapFold.Create(ALine, AHidden);
 end;
 
+/// <summary>Vorgaben mit den Minimap-Einstellungen aus den Argumenten.</summary>
+function MinimapSettings(const ARender, ASide, ASlider: string; AWidth, AScale, AMaxColumn: Integer):
+  TAtlasPluginSettings;
+begin
+  Result := TAtlasPluginSettings.Defaults;
+  Result.MinimapRender := ARender;
+  Result.MinimapSide := ASide;
+  Result.MinimapShowSlider := ASlider;
+  Result.MinimapWidth := AWidth;
+  Result.MinimapScale := AScale;
+  Result.MinimapMaxColumn := AMaxColumn;
+end;
+
+/// <summary>Überschriften, Methode, Marken und Klicksprung zugleich an bzw. aus.</summary>
+procedure SetMinimapFlags(var ASettings: TAtlasPluginSettings; AValue: Boolean);
+begin
+  ASettings.MinimapSectionHeaders := AValue;
+  ASettings.MinimapHighlightMethod := AValue;
+  ASettings.MinimapMarkers := AValue;
+  ASettings.MinimapClickJumps := AValue;
+end;
+
 procedure TAtlasMinimapTests.OptionsFromSettings;
 var
   Options: TAtlasMinimapOptions;
+  mSettings: TAtlasPluginSettings;
 begin
   Options := TAtlasMinimap.Defaults;
   Assert.AreEqual(Ord(TAtlasMinimapRender.Characters), Ord(Options.Render));
@@ -89,7 +113,9 @@ begin
   Assert.IsTrue(Options.SectionHeaders and Options.HighlightMethod and Options.Markers and Options.ClickJumps);
   Assert.AreEqual(4, Options.RowHeight);
 
-  Options := TAtlasMinimap.Options('Characters', 'LEFT', 'mouseover', 80, 3, 60, False, False, False, False);
+  mSettings := MinimapSettings('Characters', 'LEFT', 'mouseover', 80, 3, 60);
+  SetMinimapFlags(mSettings, False);
+  Options := TAtlasMinimap.Options(mSettings);
   Assert.AreEqual(Ord(TAtlasMinimapRender.Characters), Ord(Options.Render));
   Assert.AreEqual(Ord(TAtlasMinimapSide.Left), Ord(Options.Side));
   Assert.AreEqual(Ord(TAtlasMinimapSlider.MouseOver), Ord(Options.Slider));
@@ -102,7 +128,9 @@ begin
   Assert.AreEqual(80, Options.ColumnX(200, 80), 'nach der höchsten Spalte geklemmt');
 
   // Unbekannte Namen: Vorgabe; Zahlen geklemmt.
-  Options := TAtlasMinimap.Options('pixel', 'oben', '', 5, 9, 10000, True, True, True, True);
+  mSettings := MinimapSettings('pixel', 'oben', '', 5, 9, 10000);
+  SetMinimapFlags(mSettings, True);
+  Options := TAtlasMinimap.Options(mSettings);
   Assert.AreEqual(Ord(TAtlasMinimapRender.Characters), Ord(Options.Render));
   Assert.AreEqual(Ord(TAtlasMinimapSide.Right), Ord(Options.Side));
   Assert.AreEqual(Ord(TAtlasMinimapSlider.Always), Ord(Options.Slider));
@@ -334,6 +362,7 @@ begin
   Assert.AreEqual(26, Bars[0].Bottom);
   Found := 0;
   for Bar in Bars do
+  begin
     if Bar.Kind = TAtlasOverviewMarkKind.Search then
     begin
       Inc(Found);
@@ -341,6 +370,7 @@ begin
       Assert.AreEqual(110, Bar.Top);
       Assert.AreEqual(114, Bar.Bottom);
     end;
+  end;
   Assert.AreEqual(1, Found);
   // Der Fehler liegt in der Faltung: auf ihrer Kopfzeile, wichtigste Art zuletzt.
   Assert.AreEqual(Ord(TAtlasOverviewMarkKind.Error), Ord(Bars[2].Kind));

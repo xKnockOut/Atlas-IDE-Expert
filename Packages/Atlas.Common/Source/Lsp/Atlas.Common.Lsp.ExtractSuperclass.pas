@@ -48,6 +48,8 @@ type
     NameSuffix: string;
     MethodMode: string;
     RaiseVisibility: string;
+    /// <summary>Auflöser für Execute; gehört dem Aufrufer. Prepare braucht ihn nicht.</summary>
+    Resolver: TNameResolver;
   end;
 
   TLspExtractSuperclass = class
@@ -67,9 +69,8 @@ type
       const AContext: TExtractSuperclassContext): TJSONObject; static;
     /// <summary>{"edit": WorkspaceEdit, "warnings": [...], "file": URI der Unit mit der Basisklasse, "line":
     /// Zeile dort (0-basiert), "name", "moved"}; EJsonRpcError bei ungültiger Anfrage. Der Aufrufer übernimmt das Objekt.</summary>
-    class function Execute(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName, AText: string;
-      const APosition: TTextPosition; ARequest: TJSONValue; const AContext: TExtractSuperclassContext): TJSONObject;
-      static;
+    class function Execute(ATree: TSyntaxTree; const AFileName, AText: string; const APosition: TTextPosition;
+      ARequest: TJSONValue; const AContext: TExtractSuperclassContext): TJSONObject; static;
   end;
 
 implementation
@@ -91,11 +92,40 @@ uses
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.MoveClass,
-  Atlas.Common.Lsp.WorkspaceChanges;
+  Atlas.Common.Lsp.WorkspaceChanges,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLspExtractSuperclassText = (ExtractSuperclass, ExtractSuperclassFrom, AfterTheChangeNoLonger,
+    RequestWithNameUnitAnd, IsNotAValidUnit, TheBaseClassCannotBe, UnknownOriginOfTheNew, WithMembersFiles,
+    ExtractSuperclass2, AlreadyExists, IsAlreadyInTheProject);
+
+const
+  cTexts: array[TLspExtractSuperclassText] of TAtlasText = (
+    (De: 'Basisklasse herauslösen: '; En: 'Extract superclass: '),
+    (De: 'Basisklasse aus %s herauslösen …'; En: 'Extract superclass from %s …'),
+    (De: 'Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s).';
+     En: 'After the change %s no longer parses without errors (line %d: %s).'),
+    (De: 'Anfrage mit name, unit und members fehlt'; En: 'Request with name, unit and members missing'),
+    (De: '"%s" ist kein gültiger Unit-Name.'; En: '"%s" is not a valid unit name.'),
+    (De: 'Die Basisklasse lässt sich nicht in eine eigene Unit verschieben: %s';
+     En: 'The base class cannot be moved into a unit of its own: %s'),
+    (De: 'Unbekannte Herkunft von %s: Die neue Unit übernimmt dafür die uses der alten.';
+     En: 'Unknown origin of %s: the new unit takes over the uses of the old one for it.'),
+    (De: '%s mit %d Mitgliedern, %d Dateien'; En: '%s with %d members, %d files'),
+    (De: 'Basisklasse herauslösen'; En: 'Extract superclass'),
+    (De: '%s gibt es schon.'; En: '%s already exists.'),
+    (De: '%s steht schon im Projekt.'; En: '%s is already in the project.'));
+
+{$SCOPEDENUMS OFF}
 
 function Failed(const AMessage: string): EJsonRpcError;
 begin
-  Result := EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Basisklasse herauslösen: ' + AMessage);
+  Result := EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+    cTexts[TLspExtractSuperclassText.ExtractSuperclass].Text + AMessage);
 end;
 
 function KindText(AKind: TTransferKind): string;
@@ -126,12 +156,20 @@ begin
           Result := not Found;
           if (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(ANode.Name, AName) and
             (ANode.FindChild(TSyntaxKind.InterfaceType) <> nil) then
+          begin
             Found := True;
+          end;
         end);
       if not Found and (AIndex <> nil) then
+      begin
         for Location in AIndex.FindSymbols(AName) do
+        begin
           if (Location.Symbol.Kind = TIndexSymbolKind.InterfaceType) and (Location.Symbol.Container = '') then
+          begin
             Found := True;
+          end;
+        end;
+      end;
       Result := Found;
     end;
 end;
@@ -151,14 +189,22 @@ begin
         begin
           Result := not Found;
           if (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(ANode.Name, AName) then
+          begin
             Found := True;
+          end;
         end);
       if not Found and (AIndex <> nil) then
+      begin
         for Location in AIndex.FindSymbols(AName) do
+        begin
           if (Location.Symbol.Container = '') and (Location.Symbol.Kind in [TIndexSymbolKind.ClassType,
             TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType, TIndexSymbolKind.InterfaceType,
             TIndexSymbolKind.TypeAlias]) then
+          begin
             Found := True;
+          end;
+        end;
+      end;
       Result := Found;
     end;
 end;
@@ -173,10 +219,15 @@ var
 begin
   Result := nil;
   if not AEnabled or (ATree = nil) or (TExtractSuperclass.ClassAt(ATree, APosition.Line) = nil) then
+  begin
     Exit;
-  if not TExtractSuperclass.Prepare(ATree, AText, APosition.Line, 'Base', nil, Info, Reason) then
+  end;
+  if not TExtractSuperclass.Prepare(TClassSource.Create(ATree, AText, APosition.Line), 'Base', nil, Info,
+    Reason) then
+  begin
     Exit;
-  Title := Format('Basisklasse aus %s herauslösen …', [Info.ClassName]);
+  end;
+  Title := cTexts[TLspExtractSuperclassText.ExtractSuperclassFrom].Fmt([Info.ClassName]);
   Arguments := TJSONArray.Create;
   Arguments.Add(AUri);
   Arguments.AddElement(TLspPositions.PositionToJson(APosition));
@@ -191,19 +242,44 @@ begin
   Result := [Action];
 end;
 
+/// <summary>Ein Kandidat für prepare; abstract nach refactoring.extractSuperclassMethodMode (AMethodMode).</summary>
+function CandidateJson(const AItem: TTransferCandidate; const AMethodMode: string): TJSONObject;
+var
+  mNeeds: TJSONArray;
+  mNeed: Integer;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('id', TJSONNumber.Create(AItem.Id));
+  Result.AddPair('name', AItem.Name);
+  Result.AddPair('kind', KindText(AItem.Kind));
+  Result.AddPair('display', AItem.Display);
+  Result.AddPair('visibility', TClassEdits.VisibilityName(AItem.Visibility));
+  Result.AddPair('checked', TJSONBool.Create(False));
+  Result.AddPair('enabled', TJSONBool.Create(AItem.Enabled));
+  Result.AddPair('reason', AItem.Reason);
+  Result.AddPair('canAbstract', TJSONBool.Create(AItem.CanAbstract));
+  Result.AddPair('abstract', TJSONBool.Create(AItem.CanAbstract and SameText(AMethodMode, 'abstract')));
+  mNeeds := TJSONArray.Create;
+  for mNeed in AItem.Needs do
+  begin
+    mNeeds.AddElement(TJSONNumber.Create(mNeed));
+  end;
+  Result.AddPair('needs', mNeeds);
+end;
+
 class function TLspExtractSuperclass.Prepare(ATree: TSyntaxTree; const AText: string;
   const APosition: TTextPosition; const AContext: TExtractSuperclassContext): TJSONObject;
 var
   Info: TSuperclassInfo;
   Reason, Note, NewUnit: string;
   Item: TTransferCandidate;
-  List, Notes, Units, Needs: TJSONArray;
-  Entry: TJSONObject;
-  Need: Integer;
+  List, Notes, Units: TJSONArray;
 begin
-  if not TExtractSuperclass.Prepare(ATree, AText, APosition.Line, AContext.NameSuffix,
+  if not TExtractSuperclass.Prepare(TClassSource.Create(ATree, AText, APosition.Line), AContext.NameSuffix,
     NameCheck(ATree, AContext.Index), Info, Reason) then
+  begin
     raise Failed(Reason);
+  end;
   Result := TJSONObject.Create;
   Result.AddPair('className', Info.ClassName);
   Result.AddPair('ownUnit', TUsesClauses.OwnName(ATree.Tokens));
@@ -212,27 +288,14 @@ begin
   List := TJSONArray.Create;
   for Item in Info.Candidates do
   begin
-    Entry := TJSONObject.Create;
-    Entry.AddPair('id', TJSONNumber.Create(Item.Id));
-    Entry.AddPair('name', Item.Name);
-    Entry.AddPair('kind', KindText(Item.Kind));
-    Entry.AddPair('display', Item.Display);
-    Entry.AddPair('visibility', TClassEdits.VisibilityName(Item.Visibility));
-    Entry.AddPair('checked', TJSONBool.Create(False));
-    Entry.AddPair('enabled', TJSONBool.Create(Item.Enabled));
-    Entry.AddPair('reason', Item.Reason);
-    Entry.AddPair('canAbstract', TJSONBool.Create(Item.CanAbstract));
-    Entry.AddPair('abstract', TJSONBool.Create(Item.CanAbstract and SameText(AContext.MethodMode, 'abstract')));
-    Needs := TJSONArray.Create;
-    for Need in Item.Needs do
-      Needs.AddElement(TJSONNumber.Create(Need));
-    Entry.AddPair('needs', Needs);
-    List.AddElement(Entry);
+    List.AddElement(CandidateJson(Item, AContext.MethodMode));
   end;
   Result.AddPair('candidates', List);
   Notes := TJSONArray.Create;
   for Note in Info.Notes do
+  begin
     Notes.Add(Note);
+  end;
   Result.AddPair('notes', Notes);
   // Ziele: dieselbe Unit oder eine neue mit dem Namen der Basisklasse ohne T.
   NewUnit := TMoveClass.DefaultUnitName(Info.SuggestedName);
@@ -240,9 +303,13 @@ begin
   Units.Add(NewUnit);
   Result.AddPair('units', Units);
   if SameText(AContext.Target, 'newUnit') then
-    Result.AddPair('unit', NewUnit)
+  begin
+    Result.AddPair('unit', NewUnit);
+  end
   else
+  begin
     Result.AddPair('unit', '');
+  end;
 end;
 
 function Ids(AObject: TJSONObject; const AKey: string): TArray<Integer>;
@@ -252,16 +319,24 @@ begin
   Result := nil;
   Value := AObject.GetValue(AKey);
   if Value is TJSONArray then
+  begin
     for Item in TJSONArray(Value) do
+    begin
       if Item is TJSONNumber then
+      begin
         Result := Result + [TJSONNumber(Item).AsInt];
+      end;
+    end;
+  end;
 end;
 
 function Field(AObject: TJSONObject; const AKey: string): string;
 begin
   Result := '';
   if AObject.GetValue(AKey) <> nil then
+  begin
     Result := Trim(AObject.GetValue(AKey).Value);
+  end;
 end;
 
 /// <summary>Fehlerfrei parsen wie vorher; sonst EJsonRpcError mit der ersten Meldung.</summary>
@@ -272,101 +347,232 @@ begin
   Check := TSyntaxTreeCache.Parse(ANewText);
   try
     if Length(Check.Diagnostics) > ABefore then
-      raise Failed(Format('Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s).',
-        [ExtractFileName(AFileName), Check.Diagnostics[0].StartPos.Line + 1, Check.Diagnostics[0].Message]));
+    begin
+      raise Failed(cTexts[TLspExtractSuperclassText.AfterTheChangeNoLonger].Fmt([ExtractFileName(AFileName),
+        Check.Diagnostics[0].StartPos.Line + 1, Check.Diagnostics[0].Message]));
+    end;
   finally
     Check.Free;
   end;
 end;
 
-class function TLspExtractSuperclass.Execute(AResolver: TNameResolver; ATree: TSyntaxTree;
-  const AFileName, AText: string; const APosition: TTextPosition; ARequest: TJSONValue;
-  const AContext: TExtractSuperclassContext): TJSONObject;
-var
-  Body: TJSONObject;
-  Request: TSuperclassRequest;
-  Plan: TSuperclassPlan;
-  Move: TMoveClassPlan;
-  UnitName, OwnUnit, Reason, NewFile, NewText, Description: string;
-  Item: TProjectUnit;
-  Changes: TWorkspaceChanges;
-  Tree: TSyntaxTree;
-  Warning: string;
+function RaiseVisibilityOf(const ASetting: string): TClassVisibility;
 begin
-  if not (ARequest is TJSONObject) then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Anfrage mit name, unit und members fehlt');
-  Body := TJSONObject(ARequest);
-  Request := Default(TSuperclassRequest);
-  Request.Name := Field(Body, 'name');
-  Request.Members := Ids(Body, 'members');
-  Request.Abstract := Ids(Body, 'abstract');
-  UnitName := Field(Body, 'unit');
-  OwnUnit := TUsesClauses.OwnName(ATree.Tokens);
-  Request.SameUnit := (UnitName = '') or SameText(UnitName, OwnUnit);
-  if SameText(AContext.RaiseVisibility, 'strictProtected') then
-    Request.RaiseVisibility := TClassVisibility.StrictProtected
+  if SameText(ASetting, 'strictProtected') then
+  begin
+    Result := TClassVisibility.StrictProtected;
+  end
   else
-    Request.RaiseVisibility := TClassVisibility.Protected_;
-  if not Request.SameUnit and not IsIdentifier(StringReplace(UnitName, '.', '_', [rfReplaceAll])) then
-    raise Failed(Format('"%s" ist kein gültiger Unit-Name.', [UnitName]));
-  if not TExtractSuperclass.Plan(ATree, AText, APosition.Line, Request, InterfaceCheck(ATree, AContext.Index),
-    NameCheck(ATree, AContext.Index), Plan, Reason) then
-    raise Failed(Reason);
-  Changes := TWorkspaceChanges.Create;
-  try
-    for Warning in Plan.Warnings do
-      Changes.Warn(Warning);
-    NewFile := AFileName;
-    NewText := Plan.Text;
-    if not Request.SameUnit then
-    begin
-      // Die Basisklasse steht jetzt über der Klasse; „Klasse verschieben“ bringt sie in die neue Unit.
-      NewFile := TProjectPaths.Combine(TProjectPaths.DirectoryOf(AFileName), UnitName + '.pas');
-      if Assigned(AContext.Exists) and AContext.Exists(NewFile) then
-        raise Failed(Format('%s gibt es schon.', [ExtractFileName(NewFile)]));
-      if AContext.HasProject then
-        for Item in AContext.Project.Units do
-          if SameText(Item.Name, UnitName) then
-            raise Failed(Format('%s steht schon im Projekt.', [UnitName]));
-      Tree := TSyntaxTreeCache.Parse(Plan.Text);
-      try
-        AResolver.PinTree(Tree, AFileName);
-        try
-          if not TMoveClass.Plan(AFileName, Plan.Text, Tree, TTextPosition.Create(Plan.BaseLine, 0), UnitName,
-            TLspMoveClass.Lookup(AResolver), Move, Reason) then
-            raise Failed(Format('Die Basisklasse lässt sich nicht in eine eigene Unit verschieben: %s', [Reason]));
-        finally
-          AResolver.UnpinTree;
-        end;
-      finally
-        Tree.Free;
-      end;
-      NewText := TTextChanges.Apply(Plan.Text, Move.OriginEdits);
-      Changes.CreateFile(NewFile, Move.Text);
-      if Move.Unresolved <> nil then
-        Changes.Warn(Format('Unbekannte Herkunft von %s: Die neue Unit übernimmt dafür die uses der alten.',
-          [string.Join(', ', Move.Unresolved)]));
-    end;
-    CheckParses(AFileName, NewText, Length(ATree.Diagnostics));
-    Changes.Add(AFileName, TTextChanges.Diff(AText, NewText));
-    if not Request.SameUnit then
-      Changes.RegisterUnit(AContext.HasProject, AContext.Project, AContext.ReadText, NewFile, UnitName);
-    Description := Format('%s mit %d Mitgliedern, %d Dateien', [Plan.BaseName,
-      Length(Plan.Moved) + Length(Plan.Abstracts), Changes.FileCount]);
-    Result := TJSONObject.Create;
-    Result.AddPair('edit', Changes.ToJson(AnnotationId, 'Basisklasse herauslösen', Description));
-    Result.AddPair('warnings', Changes.WarningsJson);
-    Result.AddPair('file', TDocumentUris.FromPath(NewFile));
-    // Zeile der Basisklasse in derselben Unit; in der neuen Unit vom Anfang an.
-    if Request.SameUnit then
-      Result.AddPair('line', TJSONNumber.Create(Plan.BaseLine))
-    else
-      Result.AddPair('line', TJSONNumber.Create(0));
-    Result.AddPair('name', Plan.BaseName);
-    Result.AddPair('moved', TJSONNumber.Create(Length(Plan.Moved) + Length(Plan.Abstracts)));
-  finally
-    Changes.Free;
+  begin
+    Result := TClassVisibility.Protected_;
   end;
 end;
+
+type
+  /// <summary>Ein Lauf von atlas.server.extractSuperclass: Plan, Verschieben in eine neue Unit, Antwort.</summary>
+  TSuperclassExtraction = class
+  private
+    FTree: TSyntaxTree;
+    FFileName: string;
+    FText: string;
+    FPosition: TTextPosition;
+    FContext: TExtractSuperclassContext;
+    FRequest: TSuperclassRequest;
+    FUnitName: string;
+    FPlan: TSuperclassPlan;
+    FChanges: TWorkspaceChanges;
+    FNewFile: string;
+    FNewText: string;
+    procedure MakePlan;
+    procedure CheckNewUnit;
+    function PlanMove: TMoveClassPlan;
+    procedure MoveToNewUnit;
+    function Answer: TJSONObject;
+  public
+    constructor Create(ATree: TSyntaxTree; const AFileName, AText: string; const APosition: TTextPosition;
+      const AContext: TExtractSuperclassContext);
+    destructor Destroy; override;
+    procedure ReadRequest(ARequest: TJSONValue);
+    function Run: TJSONObject;
+  end;
+
+constructor TSuperclassExtraction.Create(ATree: TSyntaxTree; const AFileName, AText: string;
+  const APosition: TTextPosition; const AContext: TExtractSuperclassContext);
+begin
+  inherited Create;
+  FTree := ATree;
+  FFileName := AFileName;
+  FText := AText;
+  FPosition := APosition;
+  FContext := AContext;
+  FChanges := TWorkspaceChanges.Create;
+end;
+
+destructor TSuperclassExtraction.Destroy;
+begin
+  FChanges.Free;
+  inherited;
+end;
+
+procedure TSuperclassExtraction.ReadRequest(ARequest: TJSONValue);
+var
+  mBody: TJSONObject;
+begin
+  if not (ARequest is TJSONObject) then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TLspExtractSuperclassText.RequestWithNameUnitAnd].Text);
+  end;
+  mBody := TJSONObject(ARequest);
+  FRequest := Default(TSuperclassRequest);
+  FRequest.Name := Field(mBody, 'name');
+  FRequest.Members := Ids(mBody, 'members');
+  FRequest.Abstract := Ids(mBody, 'abstract');
+  FUnitName := Field(mBody, 'unit');
+  FRequest.SameUnit := (FUnitName = '') or SameText(FUnitName, TUsesClauses.OwnName(FTree.Tokens));
+  FRequest.RaiseVisibility := RaiseVisibilityOf(FContext.RaiseVisibility);
+  if not FRequest.SameUnit and not IsIdentifier(StringReplace(FUnitName, '.', '_', [rfReplaceAll])) then
+  begin
+    raise Failed(cTexts[TLspExtractSuperclassText.IsNotAValidUnit].Fmt([FUnitName]));
+  end;
+end;
+
+procedure TSuperclassExtraction.MakePlan;
+var
+  mReason: string;
+begin
+  if not TExtractSuperclass.Plan(TClassSource.Create(FTree, FText, FPosition.Line), FRequest,
+    InterfaceCheck(FTree, FContext.Index), NameCheck(FTree, FContext.Index), FPlan, mReason) then
+  begin
+    raise Failed(mReason);
+  end;
+end;
+
+procedure TSuperclassExtraction.CheckNewUnit;
+var
+  mItem: TProjectUnit;
+begin
+  if Assigned(FContext.Exists) and FContext.Exists(FNewFile) then
+  begin
+    raise Failed(cTexts[TLspExtractSuperclassText.AlreadyExists].Fmt([ExtractFileName(FNewFile)]));
+  end;
+  if not FContext.HasProject then
+  begin
+    Exit;
+  end;
+  for mItem in FContext.Project.Units do
+  begin
+    if SameText(mItem.Name, FUnitName) then
+    begin
+      raise Failed(cTexts[TLspExtractSuperclassText.IsAlreadyInTheProject].Fmt([FUnitName]));
+    end;
+  end;
+end;
+
+function TSuperclassExtraction.PlanMove: TMoveClassPlan;
+var
+  mTree: TSyntaxTree;
+  mReason: string;
+begin
+  mTree := TSyntaxTreeCache.Parse(FPlan.Text);
+  try
+    FContext.Resolver.PinTree(mTree, FFileName);
+    try
+      if not TMoveClass.Plan(TMoveClassSource.Create(FFileName, FPlan.Text, mTree),
+        TTextPosition.Create(FPlan.BaseLine, 0), FUnitName, TLspMoveClass.Lookup(FContext.Resolver), Result,
+        mReason) then
+      begin
+        raise Failed(cTexts[TLspExtractSuperclassText.TheBaseClassCannotBe].Fmt([mReason]));
+      end;
+    finally
+      FContext.Resolver.UnpinTree;
+    end;
+  finally
+    mTree.Free;
+  end;
+end;
+
+procedure TSuperclassExtraction.MoveToNewUnit;
+var
+  mMove: TMoveClassPlan;
+begin
+  // Die Basisklasse steht jetzt über der Klasse; „Klasse verschieben“ bringt sie in die neue Unit.
+  FNewFile := TProjectPaths.Combine(TProjectPaths.DirectoryOf(FFileName), FUnitName + '.pas');
+  CheckNewUnit;
+  mMove := PlanMove;
+  FNewText := TTextChanges.Apply(FPlan.Text, mMove.OriginEdits);
+  FChanges.CreateFile(FNewFile, mMove.Text);
+  if mMove.Unresolved <> nil then
+  begin
+    FChanges.Warn(cTexts[TLspExtractSuperclassText.UnknownOriginOfTheNew].Fmt([string.Join(', ', mMove.Unresolved)]));
+  end;
+end;
+
+function TSuperclassExtraction.Answer: TJSONObject;
+var
+  mMoved: Integer;
+  mDescription: string;
+begin
+  mMoved := Length(FPlan.Moved) + Length(FPlan.Abstracts);
+  mDescription := cTexts[TLspExtractSuperclassText.WithMembersFiles].Fmt([FPlan.BaseName, mMoved, FChanges.FileCount]);
+  Result := TJSONObject.Create;
+  Result.AddPair('edit', FChanges.ToJson(TLspExtractSuperclass.AnnotationId,
+    cTexts[TLspExtractSuperclassText.ExtractSuperclass2].Text,
+    mDescription));
+  Result.AddPair('warnings', FChanges.WarningsJson);
+  Result.AddPair('file', TDocumentUris.FromPath(FNewFile));
+  // Zeile der Basisklasse in derselben Unit; in der neuen Unit vom Anfang an.
+  if FRequest.SameUnit then
+  begin
+    Result.AddPair('line', TJSONNumber.Create(FPlan.BaseLine));
+  end
+  else
+  begin
+    Result.AddPair('line', TJSONNumber.Create(0));
+  end;
+  Result.AddPair('name', FPlan.BaseName);
+  Result.AddPair('moved', TJSONNumber.Create(mMoved));
+end;
+
+function TSuperclassExtraction.Run: TJSONObject;
+var
+  mWarning: string;
+begin
+  MakePlan;
+  for mWarning in FPlan.Warnings do
+  begin
+    FChanges.Warn(mWarning);
+  end;
+  FNewFile := FFileName;
+  FNewText := FPlan.Text;
+  if not FRequest.SameUnit then
+  begin
+    MoveToNewUnit;
+  end;
+  CheckParses(FFileName, FNewText, Length(FTree.Diagnostics));
+  FChanges.Add(FFileName, TTextChanges.Diff(FText, FNewText));
+  if not FRequest.SameUnit then
+  begin
+    FChanges.RegisterUnit(FContext.HasProject, FContext.Project, FContext.ReadText, FNewFile, FUnitName);
+  end;
+  Result := Answer;
+end;
+
+class function TLspExtractSuperclass.Execute(ATree: TSyntaxTree; const AFileName, AText: string;
+  const APosition: TTextPosition; ARequest: TJSONValue; const AContext: TExtractSuperclassContext): TJSONObject;
+var
+  mExtraction: TSuperclassExtraction;
+begin
+  mExtraction := TSuperclassExtraction.Create(ATree, AFileName, AText, APosition, AContext);
+  try
+    mExtraction.ReadRequest(ARequest);
+    Result := mExtraction.Run;
+  finally
+    mExtraction.Free;
+  end;
+end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.ExtractSuperclass', cTexts);
 
 end.

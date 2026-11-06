@@ -52,6 +52,10 @@ type
       AWithRange: Boolean): TJSONValue;
     function HandleFull(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
     function HandleRange(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+    /// <summary>Wie Collect mit FIndex und Abbruch.</summary>
+    function CollectFor(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+      const ARange: TTextRange; AWithRange: Boolean;
+      const ACancellation: IJsonRpcCancellationToken): TArray<TSemanticToken>;
   private
     /// <summary>Unter TLspNamespaces gelesen und ersetzt (Code-Review A-03): Die Komposition setzt sie
     /// beim Laden eines Projekts, Anfragen lesen sie in Worker-Threads.</summary>
@@ -67,12 +71,8 @@ type
     class function Capability: TJSONObject; static;
     class function TypeName(AType: TSemanticTokenType): string; static;
     /// <summary>Eingeordnete Bezeichner in ARange (alle, wenn AWithRange False), nach Position.</summary>
-    class function Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree; const AFileName: string;
-      const ARange: TTextRange; AWithRange: Boolean;
-      const ACancellation: IJsonRpcCancellationToken): TArray<TSemanticToken>; overload; static;
-    /// <summary>Wie oben ohne Abbruch (ACancellation = nil).</summary>
-    class function Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree; const AFileName: string;
-      const ARange: TTextRange; AWithRange: Boolean): TArray<TSemanticToken>; overload; static;
+    class function Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+      const AFileName: string; const ARange: TTextRange; AWithRange: Boolean): TArray<TSemanticToken>; static;
     /// <summary>Modifier reassigned an jedem Token, das eine Stelle der Namen ASymbols ist (#712).</summary>
     class procedure MarkReassigned(var ATokens: TArray<TSemanticToken>;
       const ASymbols: TArray<TReassignedSymbol>); static;
@@ -94,7 +94,17 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Index.LibraryUnits,
   Atlas.Common.Lsp.Internals.Cancellation,
-  Atlas.Common.Lsp.Reassigned;
+  Atlas.Common.Lsp.Reassigned,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TSemanticTokensText = (FieldTextDocumentUriMissing, FieldRangeMissing);
+
+const
+  cTexts: array[TSemanticTokensText] of TAtlasText = (
+    (De: 'Feld "textDocument.uri" fehlt'; En: 'Field "textDocument.uri" missing'),
+    (De: 'Feld "range" fehlt'; En: 'Field "range" missing'));
 
 const
   TypeNames: array[TSemanticTokenType] of string = ('namespace', 'class', 'enum', 'interface', 'struct', 'type',
@@ -105,9 +115,13 @@ const
 function ComparePositions(const A, B: TTextPosition): Integer;
 begin
   if A.Line <> B.Line then
-    Result := A.Line - B.Line
+  begin
+    Result := A.Line - B.Line;
+  end
   else
+  begin
     Result := A.Character - B.Character;
+  end;
 end;
 
 function InRange(const ARange: TTextRange; const APosition: TTextPosition): Boolean;
@@ -118,33 +132,20 @@ end;
 function CleanName(const AText: string): string;
 begin
   if (AText <> '') and (AText[1] = '&') then
-    Result := Copy(AText, 2, MaxInt)
+  begin
+    Result := Copy(AText, 2, MaxInt);
+  end
   else
+  begin
     Result := AText;
+  end;
 end;
 
-function Classify(const ASymbol: TResolvedSymbol; out AType: TSemanticTokenType;
-  out AModifiers: TSemanticTokenModifiers): Boolean;
+/// <summary>Art eines Typs in AType; False für Symbole, die keine Typen sind.</summary>
+function TypeKindOf(AKind: TIndexSymbolKind; out AType: TSemanticTokenType): Boolean;
 begin
   Result := True;
-  AModifiers := [];
-  case ASymbol.Kind of
-    TResolvedKind.UnitName:
-      begin
-        AType := TSemanticTokenType.Namespace;
-        if TLibraryUnits.IsLibraryUnit(ASymbol.UnitName) then
-          Include(AModifiers, TSemanticTokenModifier.DefaultLibrary);
-        Exit;
-      end;
-    TResolvedKind.Symbol:
-      if TLibraryUnits.IsLibraryUnit(ASymbol.UnitName) then
-        Include(AModifiers, TSemanticTokenModifier.DefaultLibrary);
-    TResolvedKind.Local:
-      ;
-  else
-    Exit(False);
-  end;
-  case ASymbol.SymbolKind of
+  case AKind of
     TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.HelperType:
       AType := TSemanticTokenType.Class_;
     TIndexSymbolKind.RecordType:
@@ -155,30 +156,288 @@ begin
       AType := TSemanticTokenType.Enum;
     TIndexSymbolKind.TypeAlias:
       AType := TSemanticTokenType.Type_;
+  else
+    AType := TSemanticTokenType.Variable;
+    Result := False;
+  end;
+end;
+
+/// <summary>Art eines Symbols, das kein Typ ist.</summary>
+function MemberType(const ASymbol: TResolvedSymbol): TSemanticTokenType;
+begin
+  case ASymbol.SymbolKind of
     TIndexSymbolKind.EnumMember:
-      AType := TSemanticTokenType.EnumMember;
-    TIndexSymbolKind.Constant:
-      begin
-        AType := TSemanticTokenType.Variable;
-        Include(AModifiers, TSemanticTokenModifier.Readonly);
-      end;
+      Result := TSemanticTokenType.EnumMember;
     TIndexSymbolKind.Field:
-      AType := TSemanticTokenType.Field;
+      Result := TSemanticTokenType.Field;
     TIndexSymbolKind.Property_:
       // Ereignisse: Properties mit Methodentyp wie TNotifyEvent.
       if EndsText('Event', ASymbol.TypeName) or EndsText('EventHandler', ASymbol.TypeName) then
-        AType := TSemanticTokenType.Event
+      begin
+        Result := TSemanticTokenType.Event;
+      end
       else
-        AType := TSemanticTokenType.Property_;
+      begin
+        Result := TSemanticTokenType.Property_;
+      end;
     TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_:
-      AType := TSemanticTokenType.Method;
+      Result := TSemanticTokenType.Method;
     TIndexSymbolKind.Routine:
-      AType := TSemanticTokenType.Function_;
+      Result := TSemanticTokenType.Function_;
   else
-    if ASymbol.IsParameter then
-      AType := TSemanticTokenType.Parameter
+    // Konstanten, Variablen und Parameter.
+    if ASymbol.IsParameter and (ASymbol.SymbolKind <> TIndexSymbolKind.Constant) then
+    begin
+      Result := TSemanticTokenType.Parameter;
+    end
     else
-      AType := TSemanticTokenType.Variable;
+    begin
+      Result := TSemanticTokenType.Variable;
+    end;
+  end;
+end;
+
+function Classify(const ASymbol: TResolvedSymbol; out AType: TSemanticTokenType;
+  out AModifiers: TSemanticTokenModifiers): Boolean;
+begin
+  AModifiers := [];
+  AType := TSemanticTokenType.Variable;
+  if not (ASymbol.Kind in [TResolvedKind.UnitName, TResolvedKind.Symbol, TResolvedKind.Local]) then
+  begin
+    Exit(False);
+  end;
+  Result := True;
+  if (ASymbol.Kind <> TResolvedKind.Local) and TLibraryUnits.IsLibraryUnit(ASymbol.UnitName) then
+  begin
+    Include(AModifiers, TSemanticTokenModifier.DefaultLibrary);
+  end;
+  if ASymbol.Kind = TResolvedKind.UnitName then
+  begin
+    AType := TSemanticTokenType.Namespace;
+    Exit;
+  end;
+  if not TypeKindOf(ASymbol.SymbolKind, AType) then
+  begin
+    AType := MemberType(ASymbol);
+  end;
+  if ASymbol.SymbolKind = TIndexSymbolKind.Constant then
+  begin
+    Include(AModifiers, TSemanticTokenModifier.Readonly);
+  end;
+end;
+
+function PositionKey(const APosition: TTextPosition): string;
+begin
+  Result := IntToStr(APosition.Line) + ':' + IntToStr(APosition.Character);
+end;
+
+type
+  /// <summary>Ein Durchlauf über die Bezeichner eines Baums.</summary>
+  TSemanticCollect = class
+  private
+    FResolver: TNameResolver;
+    FTree: TSyntaxTree;
+    FFileName: string;
+    FTokens: TArray<TPascalToken>;
+    FDeclarations: TDictionary<string, TIndexSymbol>;
+    FUnitNames: TDictionary<string, Boolean>;
+    FList: TList<TSemanticToken>;
+    procedure AddUnitNames(const AIndex: ISymbolIndex);
+    function PreviousCode(AIndex: Integer): Integer;
+    function AddDeclaration(var AItem: TSemanticToken; AIndex: Integer): Boolean;
+    function ChainAt(AIndex: Integer; out APrevious: Integer): TArray<string>;
+    procedure AddUnitPart(var AItem: TSemanticToken; const ANames: TArray<string>);
+    procedure AddToken(AIndex: Integer);
+  public
+    constructor Create(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+      const AFileName: string);
+    destructor Destroy; override;
+    function Run(const ARange: TTextRange; AWithRange: Boolean;
+      const ACancellation: IJsonRpcCancellationToken): TArray<TSemanticToken>;
+  end;
+
+{ TSemanticCollect }
+
+constructor TSemanticCollect.Create(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
+  const AFileName: string);
+var
+  mSymbol: TIndexSymbol;
+begin
+  inherited Create;
+  FResolver := AResolver;
+  FTree := ATree;
+  FFileName := AFileName;
+  FTokens := ATree.Tokens;
+  FList := TList<TSemanticToken>.Create;
+  // Namen von Deklarationen (auch Methoden in Klassen, die Resolve nicht als Verwendung kennt).
+  FDeclarations := TDictionary<string, TIndexSymbol>.Create;
+  for mSymbol in TIndexExtractor.Extract(ATree, AFileName).Symbols do
+  begin
+    FDeclarations.AddOrSetValue(PositionKey(mSymbol.SelectionRange.StartPos), mSymbol);
+  end;
+  FUnitNames := TDictionary<string, Boolean>.Create;
+  AddUnitNames(AIndex);
+end;
+
+destructor TSemanticCollect.Destroy;
+begin
+  FList.Free;
+  FUnitNames.Free;
+  FDeclarations.Free;
+  inherited;
+end;
+
+procedure TSemanticCollect.AddUnitNames(const AIndex: ISymbolIndex);
+var
+  mUnit: TUnitIndex;
+  mParts: TArray<string>;
+  mCount: Integer;
+begin
+  // Unit-Namen und ihre Präfixe (System, System.SysUtils): Teile einer gepunkteten Unit.
+  if AIndex = nil then
+  begin
+    Exit;
+  end;
+  for mUnit in AIndex.Units do
+  begin
+    mParts := mUnit.UnitName.Split(['.']);
+    for mCount := 1 to Length(mParts) do
+    begin
+      FUnitNames.AddOrSetValue(UpperCase(string.Join('.', Copy(mParts, 0, mCount))), True);
+    end;
+  end;
+end;
+
+function TSemanticCollect.PreviousCode(AIndex: Integer): Integer;
+begin
+  Result := AIndex - 1;
+  while (Result >= 0) and (FTokens[Result].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+  begin
+    Dec(Result);
+  end;
+end;
+
+function TSemanticCollect.AddDeclaration(var AItem: TSemanticToken; AIndex: Integer): Boolean;
+var
+  mSymbol: TIndexSymbol;
+  mResolved: TResolvedSymbol;
+begin
+  Result := FDeclarations.TryGetValue(PositionKey(FTokens[AIndex].StartPos), mSymbol);
+  if not Result then
+  begin
+    Exit;
+  end;
+  mResolved := Default(TResolvedSymbol);
+  mResolved.Kind := TResolvedKind.Symbol;
+  mResolved.Name := mSymbol.Name;
+  mResolved.SymbolKind := mSymbol.Kind;
+  mResolved.TypeName := mSymbol.TypeName;
+  if Classify(mResolved, AItem.TokenType, AItem.Modifiers) then
+  begin
+    Include(AItem.Modifiers, TSemanticTokenModifier.Declaration);
+    FList.Add(AItem);
+  end;
+end;
+
+function TSemanticCollect.ChainAt(AIndex: Integer; out APrevious: Integer): TArray<string>;
+var
+  mFirst: Integer;
+begin
+  // Kette A.B.C bis zu diesem Bezeichner, wie Resolve sie bildet.
+  Result := TArray<string>.Create(CleanName(FTokens[AIndex].Text));
+  mFirst := AIndex;
+  APrevious := PreviousCode(mFirst);
+  while (APrevious >= 1) and FTokens[APrevious].IsSymbol('.') and (PreviousCode(APrevious) >= 0) and
+    (FTokens[PreviousCode(APrevious)].Kind = TPascalTokenKind.Identifier) do
+  begin
+    mFirst := PreviousCode(APrevious);
+    Result := TArray<string>.Create(CleanName(FTokens[mFirst].Text)) + Result;
+    APrevious := PreviousCode(mFirst);
+  end;
+end;
+
+procedure TSemanticCollect.AddUnitPart(var AItem: TSemanticToken; const ANames: TArray<string>);
+var
+  mChain: string;
+begin
+  // Teil eines gepunkteten Unit-Namens (System in System.SysUtils); Variablen gehen vor.
+  mChain := string.Join('.', ANames);
+  if not FUnitNames.ContainsKey(UpperCase(mChain)) then
+  begin
+    Exit;
+  end;
+  AItem.TokenType := TSemanticTokenType.Namespace;
+  AItem.Modifiers := [];
+  if TLibraryUnits.IsLibraryUnit(mChain) then
+  begin
+    Include(AItem.Modifiers, TSemanticTokenModifier.DefaultLibrary);
+  end;
+  FList.Add(AItem);
+end;
+
+procedure TSemanticCollect.AddToken(AIndex: Integer);
+var
+  mItem: TSemanticToken;
+  mNames: TArray<string>;
+  mPrevious: Integer;
+  mResolved: TResolvedSymbol;
+begin
+  mItem := Default(TSemanticToken);
+  mItem.Position := FTokens[AIndex].StartPos;
+  mItem.Length := Length(FTokens[AIndex].Text);
+  if AddDeclaration(mItem, AIndex) then
+  begin
+    Exit;
+  end;
+  mNames := ChainAt(AIndex, mPrevious);
+  // Foo(1).Bar: Ergebnis eines Ausdrucks, nicht auflösbar.
+  if (mPrevious >= 0) and FTokens[mPrevious].IsSymbol('.') then
+  begin
+    Exit;
+  end;
+  if (Length(mNames) = 1) and SameText(mNames[0], 'Self') then
+  begin
+    mItem.TokenType := TSemanticTokenType.Variable;
+    mItem.Modifiers := [TSemanticTokenModifier.Readonly];
+    FList.Add(mItem);
+    Exit;
+  end;
+  mResolved := FResolver.ResolveChain(FTree, FFileName, mNames, FTokens[AIndex].Offset,
+    (mPrevious >= 0) and FTokens[mPrevious].IsKeyword('inherited'));
+  if Classify(mResolved, mItem.TokenType, mItem.Modifiers) then
+  begin
+    FList.Add(mItem);
+  end
+  else
+  begin
+    AddUnitPart(mItem, mNames);
+  end;
+end;
+
+function TSemanticCollect.Run(const ARange: TTextRange; AWithRange: Boolean;
+  const ACancellation: IJsonRpcCancellationToken): TArray<TSemanticToken>;
+var
+  mIndex: Integer;
+begin
+  FResolver.PinTree(FTree, FFileName);
+  try
+    for mIndex := 0 to High(FTokens) do
+    begin
+      // C in ^C ist ein Steuerzeichen, kein Name (#862).
+      if (FTokens[mIndex].Kind <> TPascalTokenKind.Identifier) or FTree.IsControlCharPart(mIndex) or
+        (AWithRange and not InRange(ARange, FTokens[mIndex].StartPos)) then
+      begin
+        Continue;
+      end;
+      if Assigned(ACancellation) and ((mIndex and 255) = 0) then
+      begin
+        ACancellation.ThrowIfCancellationRequested;
+      end;
+      AddToken(mIndex);
+    end;
+    Result := FList.ToArray;
+  finally
+    FResolver.UnpinTree;
   end;
 end;
 
@@ -228,10 +487,14 @@ var
 begin
   Types := TJSONArray.Create;
   for TokenType := Low(TSemanticTokenType) to High(TSemanticTokenType) do
+  begin
     Types.Add(TypeNames[TokenType]);
+  end;
   Modifiers := TJSONArray.Create;
   for Modifier := Low(TSemanticTokenModifier) to High(TSemanticTokenModifier) do
+  begin
     Modifiers.Add(ModifierNames[Modifier]);
+  end;
   Legend := TJSONObject.Create;
   Legend.AddPair('tokenTypes', Types);
   Legend.AddPair('tokenModifiers', Modifiers);
@@ -243,137 +506,33 @@ end;
 
 class function TLspSemanticTokens.Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
   const AFileName: string; const ARange: TTextRange; AWithRange: Boolean): TArray<TSemanticToken>;
-begin
-  Result := Collect(AResolver, AIndex, ATree, AFileName, ARange, AWithRange, nil);
-end;
-
-class function TLspSemanticTokens.Collect(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-  const AFileName: string;
-  const ARange: TTextRange; AWithRange: Boolean;
-  const ACancellation: IJsonRpcCancellationToken): TArray<TSemanticToken>;
 var
-  Tokens: TArray<TPascalToken>;
-  Declarations: TDictionary<string, TIndexSymbol>;
-  Symbol: TIndexSymbol;
-  Names: TList<string>;
-  List: TList<TSemanticToken>;
-  Index, First, Previous: Integer;
-  Resolved: TResolvedSymbol;
-  Item: TSemanticToken;
-  Inherited_: Boolean;
-  UnitNames: TDictionary<string, Boolean>;
-  UnitInfo: TUnitIndex;
-  Parts: TArray<string>;
-  Count: Integer;
-  Chain: string;
-
-  function Key(const APosition: TTextPosition): string;
-  begin
-    Result := IntToStr(APosition.Line) + ':' + IntToStr(APosition.Character);
-  end;
-
-  function PreviousCode(AIndex: Integer): Integer;
-  begin
-    Result := AIndex - 1;
-    while (Result >= 0) and (Tokens[Result].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
-      Dec(Result);
-  end;
-
+  mCollect: TSemanticCollect;
 begin
   Result := nil;
   if ATree = nil then
+  begin
     Exit;
-  Tokens := ATree.Tokens;
-  Declarations := TDictionary<string, TIndexSymbol>.Create;
-  UnitNames := TDictionary<string, Boolean>.Create;
-  Names := TList<string>.Create;
-  List := TList<TSemanticToken>.Create;
-  AResolver.PinTree(ATree, AFileName);
+  end;
+  mCollect := TSemanticCollect.Create(AResolver, AIndex, ATree, AFileName);
   try
-    // Namen von Deklarationen (auch Methoden in Klassen, die Resolve nicht als Verwendung kennt).
-    for Symbol in TIndexExtractor.Extract(ATree, AFileName).Symbols do
-      Declarations.AddOrSetValue(Key(Symbol.SelectionRange.StartPos), Symbol);
-    // Unit-Namen und ihre Präfixe (System, System.SysUtils): Teile einer gepunkteten Unit.
-    if AIndex <> nil then
-      for UnitInfo in AIndex.Units do
-      begin
-        Parts := UnitInfo.UnitName.Split(['.']);
-        for Count := 1 to Length(Parts) do
-          UnitNames.AddOrSetValue(UpperCase(string.Join('.', Copy(Parts, 0, Count))), True);
-      end;
-    for Index := 0 to High(Tokens) do
-    begin
-      // C in ^C ist ein Steuerzeichen, kein Name (#862).
-      if (Tokens[Index].Kind <> TPascalTokenKind.Identifier) or ATree.IsControlCharPart(Index) then
-        Continue;
-      if AWithRange and not InRange(ARange, Tokens[Index].StartPos) then
-        Continue;
-      if Assigned(ACancellation) and ((Index and 255) = 0) then
-        ACancellation.ThrowIfCancellationRequested;
-      Item := Default(TSemanticToken);
-      Item.Position := Tokens[Index].StartPos;
-      Item.Length := Length(Tokens[Index].Text);
-      if Declarations.TryGetValue(Key(Tokens[Index].StartPos), Symbol) then
-      begin
-        Resolved := Default(TResolvedSymbol);
-        Resolved.Kind := TResolvedKind.Symbol;
-        Resolved.Name := Symbol.Name;
-        Resolved.SymbolKind := Symbol.Kind;
-        Resolved.TypeName := Symbol.TypeName;
-        if Classify(Resolved, Item.TokenType, Item.Modifiers) then
-        begin
-          Include(Item.Modifiers, TSemanticTokenModifier.Declaration);
-          List.Add(Item);
-        end;
-        Continue;
-      end;
-      // Kette A.B.C bis zu diesem Bezeichner, wie Resolve sie bildet.
-      Names.Clear;
-      Names.Add(CleanName(Tokens[Index].Text));
-      First := Index;
-      Previous := PreviousCode(First);
-      while (Previous >= 1) and Tokens[Previous].IsSymbol('.') and (PreviousCode(Previous) >= 0) and
-        (Tokens[PreviousCode(Previous)].Kind = TPascalTokenKind.Identifier) do
-      begin
-        First := PreviousCode(Previous);
-        Names.Insert(0, CleanName(Tokens[First].Text));
-        Previous := PreviousCode(First);
-      end;
-      // Foo(1).Bar: Ergebnis eines Ausdrucks, nicht auflösbar.
-      if (Previous >= 0) and Tokens[Previous].IsSymbol('.') then
-        Continue;
-      if (Names.Count = 1) and SameText(Names[0], 'Self') then
-      begin
-        Item.TokenType := TSemanticTokenType.Variable;
-        Item.Modifiers := [TSemanticTokenModifier.Readonly];
-        List.Add(Item);
-        Continue;
-      end;
-      Inherited_ := (Previous >= 0) and Tokens[Previous].IsKeyword('inherited');
-      Resolved := AResolver.ResolveChain(ATree, AFileName, Names.ToArray, Tokens[Index].Offset, Inherited_);
-      if Classify(Resolved, Item.TokenType, Item.Modifiers) then
-      begin
-        List.Add(Item);
-        Continue;
-      end;
-      // Teil eines gepunkteten Unit-Namens (System in System.SysUtils); Variablen gehen vor.
-      Chain := string.Join('.', Names.ToArray);
-      if UnitNames.ContainsKey(UpperCase(Chain)) then
-      begin
-        Item.TokenType := TSemanticTokenType.Namespace;
-        Item.Modifiers := [];
-        if TLibraryUnits.IsLibraryUnit(Chain) then
-          Include(Item.Modifiers, TSemanticTokenModifier.DefaultLibrary);
-        List.Add(Item);
-      end;
-    end;
-    Result := List.ToArray;
+    Result := mCollect.Run(ARange, AWithRange, nil);
   finally
-    AResolver.UnpinTree;
-    List.Free;
-    Names.Free;
-    UnitNames.Free;
-    Declarations.Free;
+    mCollect.Free;
+  end;
+end;
+
+function TLspSemanticTokens.CollectFor(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
+  const ARange: TTextRange; AWithRange: Boolean; const ACancellation: IJsonRpcCancellationToken):
+  TArray<TSemanticToken>;
+var
+  mCollect: TSemanticCollect;
+begin
+  mCollect := TSemanticCollect.Create(AResolver, FIndex, ATree, AFileName);
+  try
+    Result := mCollect.Run(ARange, AWithRange, ACancellation);
+  finally
+    mCollect.Free;
   end;
 end;
 
@@ -386,17 +545,27 @@ var
   Index: Integer;
 begin
   if ASymbols = nil then
+  begin
     Exit;
+  end;
   Places := TDictionary<string, Boolean>.Create;
   try
     for Symbol in ASymbols do
+    begin
       for Occurrence in Symbol.Occurrences do
+      begin
         Places.AddOrSetValue(IntToStr(Occurrence.Range.StartPos.Line) + ':' +
           IntToStr(Occurrence.Range.StartPos.Character), True);
+      end;
+    end;
     for Index := 0 to High(ATokens) do
+    begin
       if Places.ContainsKey(IntToStr(ATokens[Index].Position.Line) + ':' +
         IntToStr(ATokens[Index].Position.Character)) then
+      begin
         Include(ATokens[Index].Modifiers, TSemanticTokenModifier.Reassigned);
+      end;
+    end;
   finally
     Places.Free;
   end;
@@ -414,14 +583,20 @@ begin
   begin
     Result[Index * 5] := ATokens[Index].Position.Line - Line;
     if ATokens[Index].Position.Line = Line then
-      Result[Index * 5 + 1] := ATokens[Index].Position.Character - Character
+    begin
+      Result[Index * 5 + 1] := ATokens[Index].Position.Character - Character;
+    end
     else
+    begin
       Result[Index * 5 + 1] := ATokens[Index].Position.Character;
+    end;
     Result[Index * 5 + 2] := ATokens[Index].Length;
     Result[Index * 5 + 3] := Ord(ATokens[Index].TokenType);
     Bits := 0;
     for Modifier in ATokens[Index].Modifiers do
+    begin
       Bits := Bits or (1 shl Ord(Modifier));
+    end;
     Result[Index * 5 + 4] := Bits;
     Line := ATokens[Index].Position.Line;
     Character := ATokens[Index].Position.Character;
@@ -445,16 +620,23 @@ var
   Value: Integer;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri)) then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "textDocument.uri" fehlt');
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TSemanticTokensText.FieldTextDocumentUriMissing].Text);
+  end;
   Range := Default(TTextRange);
   if AWithRange then
   begin
     if not TJSONObject(AParams).TryGetValue<TJSONValue>('range', RangeValue) then
-      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "range" fehlt');
+    begin
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TSemanticTokensText.FieldRangeMissing].Text);
+    end;
     Range := TLspPositions.ReadRange(RangeValue);
   end;
   if not FStore.TryGet(Uri, Document) then
+  begin
     Exit(TJSONNull.Create);
+  end;
   Cancellation := TRequestCancellation.Create(ACancellation);
   Shared := TSyntaxTreeCache.Get(Document, Cancellation);
   Tree := Shared.Tree;
@@ -462,7 +644,7 @@ begin
   Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
     Resolver.Namespaces := Namespaces;
-    Tokens := Collect(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri), Range, AWithRange, ACancellation);
+    Tokens := CollectFor(Resolver, Tree, TDocumentUris.ToPath(Uri), Range, AWithRange, ACancellation);
     ACancellation.ThrowIfCancellationRequested;
     // Andere Clients kennen die Ziele des Plugins nicht: Es gilt die Vorgabe (lokale Variablen, Wertparameter).
     MarkReassigned(Tokens, TReassigned.Filter(TLspReassigned.Analyze(Resolver, Tree, TDocumentUris.ToPath(Uri),
@@ -473,7 +655,9 @@ begin
   end;
   Data := TJSONArray.Create;
   for Value in Values do
+  begin
     Data.Add(Value);
+  end;
   Result := TJSONObject.Create;
   TJSONObject(Result).AddPair('data', Data);
 end;
@@ -489,5 +673,8 @@ function TLspSemanticTokens.HandleRange(const AParams: TJSONValue;
 begin
   Result := Handle(AParams, ACancellation, True);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.SemanticTokens', cTexts);
 
 end.

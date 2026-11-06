@@ -1,7 +1,8 @@
 {
   "project": "Tests/Atlas.Tests.dproj",
   "minDelphiVersion": "23.0",
-  "exclude": ["Tools/Linux/Compat/**"],
+  "exclude": ["Tools/Linux/Compat/**", "Tests/Compilermeldungen/Faelle/**", "Tests/DccFaelle/**",
+    "Tests/Referenzprojekt/**", "Tests/**/*Golden.pas", "Setup/Beispiele/**"],
   "rules": {
     "metric-method-length": "off",
     "metric-nesting-depth": "off",
@@ -32,7 +33,11 @@
         "Atlas.Common.Rules.Contract -> Atlas.Common.Pascal.SyntaxTree",
         "Atlas.Common.Semantics.Contract -> Atlas.Common.Pascal.SyntaxTree",
         "Atlas.Common.Documents.Contract -> Atlas.Text.Lines",
-        "Atlas.IDE.CodeInsight.Composition -> Atlas.Core.*"
+        "Atlas.IDE.CodeInsight.Composition.Adapters -> Atlas.Core.*",
+        "Atlas.IDE.Debug.Composition -> Atlas.Core.*",
+        "Atlas.IDE.BuildTools.Composition -> Atlas.Core.*",
+        "Atlas.IDE.Tests.Composition -> Atlas.Core.*",
+        "Atlas.IDE.Tracker.Composition -> Atlas.Core.*"
       ]
     },
     "architecture-contract-content": {

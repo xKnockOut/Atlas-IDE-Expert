@@ -17,6 +17,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Analysis')]
   TAtlasUnitRelationsFrameTests = class
   private
     FForm: TForm;
@@ -56,7 +57,7 @@ uses
   Vcl.Controls,
   System.SysUtils,
   Vcl.ComCtrls,
-  Atlas.UI.Strings,
+  Atlas.UI.Analysis.Strings,
   Atlas.Core.UnitRelations.Model.Tests;
 
 procedure TAtlasUnitRelationsFrameTests.SetUp;
@@ -120,30 +121,33 @@ begin
   Uses_ := FFrame.Tree.Items.GetFirstNode;
   UsedBy := Uses_.GetNextSibling;
   Assert.IsNull(UsedBy.GetNextSibling, 'zwei Abschnitte');
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsUses, [3]), Uses_.Text);
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsUsedBy, [2]), UsedBy.Text);
+  Assert.AreEqual(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.UnitRelationsUses, [3]), Uses_.Text);
+  Assert.AreEqual(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.UnitRelationsUsedBy, [2]), UsedBy.Text);
   Assert.IsTrue(Uses_.Expanded);
   Assert.IsTrue(UsedBy.Expanded);
   // Projekt-Units zuerst, die Bibliothek als eingeklappte Gruppe dahinter.
   Assert.AreEqual(3, Uses_.Count, 'B, C, Bibliothek');
   Library_ := Uses_.Item[2];
   Assert.IsTrue(FFrame.IsLibraryGroup(Library_));
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsLibrary, [1]), Library_.Text);
+  Assert.AreEqual(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.UnitRelationsLibrary, [1]), Library_.Text);
   Assert.IsFalse(Library_.Expanded, 'Bibliothek eingeklappt');
   Assert.IsTrue(Library_.Item[0].Text.StartsWith('System  intf'));
-  Assert.IsTrue(Library_.Item[0].Text.EndsWith(TAtlasStrings.Text(TAtlasTextId.UnitRelationsUnused)));
+  Assert.IsTrue(Library_.Item[0].Text.EndsWith(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsUnused)));
   // Verwender nach Abschnitt (#554), beide Gruppen offen.
   Assert.AreEqual(2, UsedBy.Count);
   Assert.IsTrue(FFrame.IsUsedByGroup(UsedBy.Item[0]));
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsUsedByInterface, [1]), UsedBy.Item[0].Text);
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsUsedByImplementation, [1]), UsedBy.Item[1].Text);
+  Assert.AreEqual(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.UnitRelationsUsedByInterface, [1]),
+    UsedBy.Item[0].Text);
+  Assert.AreEqual(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.UnitRelationsUsedByImplementation, [1]),
+    UsedBy.Item[1].Text);
   Assert.IsTrue(UsedBy.Item[0].Expanded);
   Assert.IsTrue(UsedBy.Item[1].Expanded);
   Assert.AreEqual('E  intf', UsedBy.Item[0].Item[0].Text);
   Assert.AreEqual('F  impl', UsedBy.Item[1].Item[0].Text);
   // Alle Ebenen: C hat Daten darunter, B die Wurzel A als „siehe oben“.
   Assert.AreEqual(1, Uses_.Item[1].Count);
-  Assert.IsTrue(Uses_.Item[0].Item[0].Text.EndsWith(TAtlasStrings.Text(TAtlasTextId.UnitRelationsRepeated)));
+  Assert.IsTrue(Uses_.Item[0].Item[0].Text.EndsWith(TAtlasAnalysisStrings.Text(
+    TAtlasAnalysisTextId.UnitRelationsRepeated)));
   Assert.IsTrue(FFrame.AllLevels, 'Antwort mit depth 0');
 end;
 
@@ -153,13 +157,16 @@ var
 begin
   Load;
   Assert.AreEqual('A', FFrame.Title.Caption);
-  Assert.IsTrue(string(FFrame.Info.Caption).StartsWith(TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsRecompile, [4])));
-  Assert.IsTrue(string(FFrame.Info.Caption).EndsWith(TAtlasStrings.Text(TAtlasTextId.UnitRelationsCycle)));
+  Assert.IsTrue(string(FFrame.Info.Caption).StartsWith(TAtlasAnalysisStrings.Fmt(
+    TAtlasAnalysisTextId.UnitRelationsRecompile, [4])));
+  Assert.IsTrue(string(FFrame.Info.Caption).EndsWith(TAtlasAnalysisStrings.Text(
+    TAtlasAnalysisTextId.UnitRelationsCycle)));
   Assert.AreEqual('A - B - A', FFrame.Info.Hint);
   B := FFrame.FindEntry('B', True);
   Assert.IsNotNull(B);
-  Assert.AreEqual('B  intf · ' + TAtlasStrings.Text(TAtlasTextId.UnitRelationsCycle), B.Text);
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsCyclePath, ['A - B - A']), FFrame.HintOf(B));
+  Assert.AreEqual('B  intf · ' + TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsCycle), B.Text);
+  Assert.AreEqual(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.UnitRelationsCyclePath, ['A - B - A']),
+    FFrame.HintOf(B));
   Assert.AreEqual('C:\P\C.pas', FFrame.HintOf(FFrame.FindEntry('C', True)), 'sonst die Datei');
   Assert.AreEqual('', FFrame.HintOf(FFrame.Tree.Items.GetFirstNode), 'Abschnitt ohne Hinweis');
   FFrame.SetMessage('keine Datei');
@@ -175,13 +182,14 @@ begin
   Load;
   FFrame.Filter.Text := 'dat';
   Uses_ := FFrame.Tree.Items.GetFirstNode;
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsUses, [1]), Uses_.Text);
+  Assert.AreEqual(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.UnitRelationsUses, [1]), Uses_.Text);
   Assert.AreEqual(1, Uses_.Count);
   Assert.IsTrue(Uses_.Item[0].Text.StartsWith('C  impl'));
   Assert.IsTrue(Uses_.Item[0].Expanded, 'mit Filter aufgeklappt');
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsUsedBy, [0]), Uses_.GetNextSibling.Text);
+  Assert.AreEqual(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.UnitRelationsUsedBy, [0]), Uses_.GetNextSibling.Text);
   FFrame.Filter.Text := '';
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsUses, [3]), FFrame.Tree.Items.GetFirstNode.Text);
+  Assert.AreEqual(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.UnitRelationsUses, [3]),
+    FFrame.Tree.Items.GetFirstNode.Text);
 end;
 
 procedure TAtlasUnitRelationsFrameTests.OpensUnitOrUsesEntry;
@@ -283,11 +291,13 @@ begin
     '"onlyImplementation":true},{"name":"C","file":"C:\\P\\C.pas","section":"interface"}],' +
     '"usedBy":[{"name":"D","file":"C:\\P\\D.pas","section":"implementation"}],"depth":1}', Relations));
   FFrame.SetRelations(Relations);
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsRecompile, [2]) + ' · ' +
-    TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsMovable, [1]), FFrame.Info.Caption);
+  Assert.AreEqual(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.UnitRelationsRecompile, [2]) + ' · ' +
+    TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.UnitRelationsMovable, [1]), FFrame.Info.Caption);
   B := FFrame.FindEntry('B', True);
-  Assert.AreEqual('B  intf · ' + TAtlasStrings.Text(TAtlasTextId.UnitRelationsOnlyImplementation), B.Text);
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsOnlyImplementationHint, ['B']), FFrame.HintOf(B));
+  Assert.AreEqual('B  intf · ' + TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.UnitRelationsOnlyImplementation),
+    B.Text);
+  Assert.AreEqual(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.UnitRelationsOnlyImplementationHint, ['B']),
+    FFrame.HintOf(B));
   Assert.AreEqual('C  intf', FFrame.FindEntry('C', True).Text);
   FFrame.Tree.Selected := B;
   FFrame.UpdateMenu;
@@ -297,7 +307,8 @@ begin
   // Nur Verwender über implementation-uses: eine Gruppe.
   UsedBy := FFrame.Tree.Items.GetFirstNode.GetNextSibling;
   Assert.AreEqual(1, UsedBy.Count);
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.UnitRelationsUsedByImplementation, [1]), UsedBy.Item[0].Text);
+  Assert.AreEqual(TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.UnitRelationsUsedByImplementation, [1]),
+    UsedBy.Item[0].Text);
 end;
 
 initialization

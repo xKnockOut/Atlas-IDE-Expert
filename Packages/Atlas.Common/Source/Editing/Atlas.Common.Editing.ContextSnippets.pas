@@ -59,14 +59,36 @@ uses
   Atlas.Common.Editing.ClassMembers,
   Atlas.Common.Editing.ClassCommands,
   Atlas.Common.Editing.TypeCommands,
-  Atlas.Text.Chars;
+  Atlas.Text.Chars,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TContextSnippetsText = (PropertyWithSetterWhichChecks, SetOnlyOnChange, CreateObjectFieldsOf, FreeCreatedFieldsOf,
+    WithoutNotification, Calls);
+
+const
+  cTexts: array[TContextSnippetsText] of TAtlasText = (
+    (De: 'Property %s: %s mit Setter %s, der auf Änderung prüft und %s';
+     En: 'Property %s: %s with setter %s, which checks for a change and %s'),
+    (De: '%s nur bei Änderung setzen; %s'; En: 'Set %s only on change; %s'),
+    (De: '%d Objektfelder von %s erzeugen'; En: 'Create %d object fields of %s'),
+    (De: '%d erzeugte Felder von %s freigeben'; En: 'Free %d created fields of %s'),
+    (De: 'ohne Benachrichtigung'; En: 'without notification'),
+    (De: 'ruft %s auf'; En: 'calls %s'));
+
+{$SCOPEDENUMS OFF}
 
 /// <summary>Typ mit Typargumenten: TObjectList&lt;TKunde&gt;.</summary>
 function FullType(const AField: TIndexSymbol): string;
 begin
   Result := AField.TypeName;
   if AField.TypeArgs <> '' then
+  begin
     Result := Result + '<' + AField.TypeArgs + '>';
+  end;
 end;
 
 /// <summary>Zeilen des Rumpfs zwischen begin und end ohne die Cursorzeile, verbunden mit #10.</summary>
@@ -76,8 +98,12 @@ var
 begin
   Result := '';
   for Index := ABlock.StartPos.Line + 1 to ABlock.EndPos.Line - 1 do
+  begin
     if Index <> ASource.Line then
+    begin
       Result := Result + ASource.Lines[Index] + #10;
+    end;
+  end;
 end;
 
 /// <summary>Kommt AName als ganzes Wort in AText vor (ohne Groß/Klein)?</summary>
@@ -94,7 +120,9 @@ begin
     After := Found + Length(Name);
     if ((Found = 1) or not TTextChars.IsAsciiIdentChar(Upper[Found - 1])) and
       ((After > Length(Upper)) or not TTextChars.IsAsciiIdentChar(Upper[After])) then
+    begin
       Exit(True);
+    end;
     Found := PosEx(Name, Upper, Found + 1);
   end;
   Result := False;
@@ -113,9 +141,13 @@ end;
 function NotifyText(const ACall: string): string;
 begin
   if ACall = '' then
-    Result := 'ohne Benachrichtigung'
+  begin
+    Result := cTexts[TContextSnippetsText.WithoutNotification].Text;
+  end
   else
-    Result := 'ruft ' + ACall + ' auf';
+  begin
+    Result := cTexts[TContextSnippetsText.Calls].Fmt([ACall]);
+  end;
 end;
 
 { prop }
@@ -136,21 +168,27 @@ begin
   for Field in Members(ASource, AClass, [TIndexSymbolKind.Field]) do
   begin
     if (Length(Field.Name) < 2) or not CharInSet(Field.Name[1], ['F', 'f']) or (Field.TypeName = '') then
+    begin
       Continue;
+    end;
     Name := Copy(Field.Name, 2, MaxInt);
     if FindMember(ASource, AClass, Name, [TIndexSymbolKind.Property_], Member) then
+    begin
       Continue;
+    end;
     Setter := 'Set' + Name;
     TypeText := FullType(Field);
     Edits := nil;
     if not FindMember(ASource, AClass, Setter, [TIndexSymbolKind.Method], Member) then
+    begin
       // Wie /changed: eigener private-Abschnitt vor "end", weil Felder vor Methoden stehen müssen.
       Edits := [ASource.BeforeLine(EndLine, Indent + 'private' + LB + Indent + '  ' +
         Format('procedure %s(const Value: %s);', [Setter, TypeText])),
         ASource.AddBody(AClass.Name, Format('procedure %s.%s(const Value: %s);', [AClass.Name, Setter, TypeText]) +
         LB + TSetterGenerator.Body(Field.Name, 'Value', Call, LB))];
+    end;
     Result := Result + [Snippet('prop', 'prop ' + Name,
-      Format('Property %s: %s mit Setter %s, der auf Änderung prüft und %s', [Name, TypeText, Setter,
+      cTexts[TContextSnippetsText.PropertyWithSetterWhichChecks].Fmt([Name, TypeText, Setter,
       NotifyText(Call)]),
       Format('property ${1:%s}: %s read %s write %s;$0', [TContextSnippets.Escape(Name),
       TContextSnippets.Escape(TypeText), Field.Name, Setter]), Edits)];
@@ -170,33 +208,45 @@ begin
   // Feld: read-Teil der Property, die über AMethod schreibt; sonst FName zu SetName.
   Field := '';
   for Prop in Members(ASource, AClass, [TIndexSymbolKind.Property_]) do
+  begin
     if SameText(Accessor(RangeText(ASource.Lines, Prop.Range), 'write'), AMethod) then
     begin
       Field := Accessor(RangeText(ASource.Lines, Prop.Range), 'read');
       Break;
     end;
+  end;
   if (Field = '') and StartsText('Set', AMethod) and (Length(AMethod) > 3) then
+  begin
     Field := 'F' + Copy(AMethod, 4, MaxInt);
+  end;
   if (Field = '') or not FindMember(ASource, AClass, Field, [TIndexSymbolKind.Field], Member) then
+  begin
     Exit;
+  end;
   Field := Member.Name;
   Value := ParameterNames(RoutineSignature(ASource.Lines[ARoutine.StartPos.Line]));
   if (Value = '') or (Pos(',', Value) > 0) or Mentions(BodyText(ASource, ABlock), Field) then
+  begin
     Exit;
+  end;
   Call := TSetterGenerator.NotifyCall(ASource, AContext.Index, AClass);
   // Die Benachrichtigung ist der Platzhalter; ohne bleibt nur die Endposition.
   if Call <> '' then
+  begin
     Call := '${1:' + Call + '}';
+  end;
   Text := '';
   Found := False;
   for Line in TSetterGenerator.Statements(Field, Value, Call) do
   begin
     if Found then
+    begin
       Text := Text + #10;
+    end;
     Text := Text + Line;
     Found := True;
   end;
-  Result := [Snippet('changed', 'changed ' + Field, Format('%s nur bei Änderung setzen; %s', [Field,
+  Result := [Snippet('changed', 'changed ' + Field, cTexts[TContextSnippetsText.SetOnlyOnChange].Fmt([Field,
     NotifyText(TSetterGenerator.NotifyCall(ASource, AContext.Index, AClass))]), Text + '$0', nil)];
 end;
 
@@ -222,20 +272,29 @@ begin
   begin
     if (IndexText(Field.Name, Created) >= 0) or Mentions(Body, Field.Name) or
       not IsObjectField(ASource, AContext.Index, Field) then
+    begin
       Continue;
+    end;
     Inc(Number);
     Owner := '';
     if OwnerKnown and IsComponentType(ASource, AContext.Index, Field.TypeName) then
+    begin
       Owner := '(Self)';
+    end;
     Lines := Lines + [Format('%s := ${%d:%s}.Create%s;', [Field.Name, Number,
       TContextSnippets.Escape(FullType(Field)), Owner])];
   end;
   if Number = 0 then
+  begin
     Exit;
+  end;
   if not Mentions(Body, 'inherited') then
+  begin
     Lines := ['inherited;'] + Lines;
+  end;
   Text := string.Join(#10, Lines) + '$0';
-  Result := [Snippet('create', 'create', Format('%d Objektfelder von %s erzeugen', [Number, AClass.Name]), Text,
+  Result := [Snippet('create', 'create', cTexts[TContextSnippetsText.CreateObjectFieldsOf].Fmt([Number, AClass.Name]),
+    Text,
     nil)];
 end;
 
@@ -254,61 +313,101 @@ begin
   Lines := nil;
   // In umgekehrter Reihenfolge der Erzeugung freigeben, wie /dtor.
   for Index := High(Created) downto 0 do
+  begin
     if not Mentions(Body, Created[Index]) then
+    begin
       Lines := Lines + [Format('FreeAndNil(%s);', [Created[Index]])];
+    end;
+  end;
   if Length(Lines) = 0 then
+  begin
     Exit;
-  Result := [Snippet('free', 'free', Format('%d erzeugte Felder von %s freigeben', [Integer(Length(Lines)),
+  end;
+  Result := [Snippet('free', 'free', cTexts[TContextSnippetsText.FreeCreatedFieldsOf].Fmt([Integer(Length(Lines)),
     AClass.Name]), string.Join(#10, Lines) + '$0', nil)];
   if not Mentions(Body, 'inherited') then
+  begin
     Result[0].Text := Result[0].Text + #10'inherited;';
+  end;
 end;
 
 { TContextSnippets }
 
-class function TContextSnippets.At(const AContext: TSlashContext; ACharacter: Integer): TArray<TContextSnippet>;
+/// <summary>Höchstens ein Wort vor dem Cursor, nichts dahinter.</summary>
+function IsWordBeforeCursor(const ALineText: string; ACharacter: Integer): Boolean;
 var
-  Source: TCommandSource;
-  ClassSymbol: TIndexSymbol;
-  Routine, Block: TSyntaxNode;
-  Before, Head, Method: string;
-  Index, Dot: Integer;
+  mBefore: string;
+  mIndex: Integer;
+begin
+  Result := (ACharacter >= 0) and (ACharacter <= Length(ALineText)) and
+    (Trim(Copy(ALineText, ACharacter + 1, MaxInt)) = '');
+  mBefore := TrimLeft(Copy(ALineText, 1, ACharacter));
+  mIndex := 1;
+  while Result and (mIndex <= Length(mBefore)) do
+  begin
+    Result := TTextChars.IsAsciiIdentChar(mBefore[mIndex]);
+    Inc(mIndex);
+  end;
+end;
+
+/// <summary>Vorschläge im Rumpf der Methode ARoutine: im Konstruktor, Destruktor bzw. Setter.</summary>
+function RoutineItems(ASource: TCommandSource; const AContext: TSlashContext; const AClass: TIndexSymbol;
+  ARoutine: TSyntaxNode): TArray<TContextSnippet>;
+var
+  mBlock: TSyntaxNode;
+  mHead, mMethod: string;
 begin
   Result := nil;
-  // Höchstens ein Wort vor dem Cursor, nichts dahinter.
-  if (ACharacter < 0) or (ACharacter > Length(AContext.LineText)) or
-    (Trim(Copy(AContext.LineText, ACharacter + 1, MaxInt)) <> '') then
+  mBlock := ARoutine.FindChild(TSyntaxKind.Block);
+  if (mBlock = nil) or (mBlock.StartPos.Line >= AContext.Line) or (mBlock.EndPos.Line <= AContext.Line) then
+  begin
     Exit;
-  Before := TrimLeft(Copy(AContext.LineText, 1, ACharacter));
-  for Index := 1 to Length(Before) do
-    if not TTextChars.IsAsciiIdentChar(Before[Index]) then
-      Exit;
-  Source := TCommandSource.Create(AContext);
+  end;
+  mMethod := Copy(ARoutine.Name, LastDelimiter('.', ARoutine.Name) + 1, MaxInt);
+  mHead := LowerCase(TrimLeft(ASource.Lines[ARoutine.StartPos.Line]));
+  if StartsStr('constructor ', mHead) then
+  begin
+    Result := ConstructorItems(ASource, AContext, AClass, mBlock);
+  end
+  else if StartsStr('destructor ', mHead) then
+  begin
+    Result := DestructorItems(ASource, AClass, mBlock);
+  end
+  else if StartsStr('procedure ', mHead) then
+  begin
+    Result := SetterItems(ASource, AContext, AClass, ARoutine, mBlock, mMethod);
+  end;
+end;
+
+class function TContextSnippets.At(const AContext: TSlashContext; ACharacter: Integer): TArray<TContextSnippet>;
+var
+  mSource: TCommandSource;
+  mClass: TIndexSymbol;
+  mRoutine: TSyntaxNode;
+begin
+  Result := nil;
+  if not IsWordBeforeCursor(AContext.LineText, ACharacter) then
+  begin
+    Exit;
+  end;
+  mSource := TCommandSource.Create(AContext);
   try
-    if not Source.ClassAt(ClassSymbol) then
-      Exit;
-    Routine := Source.RoutineAt;
-    if Routine = nil then
+    if not mSource.ClassAt(mClass) then
     begin
-      // In der Klassendeklaration.
-      if (ClassSymbol.Range.StartPos.Line < AContext.Line) and (ClassSymbol.Range.EndPos.Line > AContext.Line) then
-        Result := PropertyItems(Source, AContext, ClassSymbol);
       Exit;
     end;
-    Block := Routine.FindChild(TSyntaxKind.Block);
-    if (Block = nil) or (Block.StartPos.Line >= AContext.Line) or (Block.EndPos.Line <= AContext.Line) then
-      Exit;
-    Dot := LastDelimiter('.', Routine.Name);
-    Method := Copy(Routine.Name, Dot + 1, MaxInt);
-    Head := LowerCase(TrimLeft(Source.Lines[Routine.StartPos.Line]));
-    if StartsStr('constructor ', Head) then
-      Result := ConstructorItems(Source, AContext, ClassSymbol, Block)
-    else if StartsStr('destructor ', Head) then
-      Result := DestructorItems(Source, ClassSymbol, Block)
-    else if StartsStr('procedure ', Head) then
-      Result := SetterItems(Source, AContext, ClassSymbol, Routine, Block, Method);
+    mRoutine := mSource.RoutineAt;
+    if mRoutine <> nil then
+    begin
+      Result := RoutineItems(mSource, AContext, mClass, mRoutine);
+    end
+    // In der Klassendeklaration.
+    else if (mClass.Range.StartPos.Line < AContext.Line) and (mClass.Range.EndPos.Line > AContext.Line) then
+    begin
+      Result := PropertyItems(mSource, AContext, mClass);
+    end;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -318,17 +417,119 @@ var
 begin
   Result := '';
   for C in AText do
+  begin
     if CharInSet(C, ['\', '$', '}']) then
-      Result := Result + '\' + C
+    begin
+      Result := Result + '\' + C;
+    end
     else
+    begin
       Result := Result + C;
+    end;
+  end;
+end;
+
+function PlainUntilClose(const AText: string; var AIndex: Integer; AInside: Boolean): string; forward;
+
+/// <summary>Zeichen hinter "\" an AIndex: geschützte Zeichen ohne "\", sonst "\" selbst.</summary>
+function EscapedChar(const AText: string; var AIndex: Integer): string;
+begin
+  if (AIndex < Length(AText)) and CharInSet(AText[AIndex + 1], ['\', '$', '}', ',', '|']) then
+  begin
+    Result := AText[AIndex + 1];
+    Inc(AIndex, 2);
+  end
+  else
+  begin
+    Result := '\';
+    Inc(AIndex);
+  end;
+end;
+
+procedure SkipIdent(const AText: string; var AIndex: Integer);
+begin
+  while (AIndex <= Length(AText)) and TTextChars.IsAsciiIdentChar(AText[AIndex]) do
+  begin
+    Inc(AIndex);
+  end;
+end;
+
+/// <summary>Bis hinter das nächste "}".</summary>
+procedure SkipPastClose(const AText: string; var AIndex: Integer);
+begin
+  while (AIndex <= Length(AText)) and (AText[AIndex] <> '}') do
+  begin
+    Inc(AIndex);
+  end;
+  Inc(AIndex);
+end;
+
+/// <summary>Auswahl: die erste Möglichkeit bis "," bzw. "|".</summary>
+function FirstChoice(const AText: string; var AIndex: Integer): string;
+var
+  mStart: Integer;
+begin
+  mStart := AIndex;
+  while (AIndex <= Length(AText)) and not CharInSet(AText[AIndex], [',', '|']) do
+  begin
+    Inc(AIndex);
+  end;
+  Result := Copy(AText, mStart, AIndex - mStart);
+end;
+
+/// <summary>${1}, ${1:Vorgabe}, ${1|a,b|}, ${NAME:Vorgabe} ab dem Namen: Vorgabe bzw. erste Auswahl.</summary>
+function PlaceholderText(const AText: string; var AIndex: Integer): string;
+begin
+  Result := '';
+  SkipIdent(AText, AIndex);
+  if (AIndex <= Length(AText)) and (AText[AIndex] = ':') then
+  begin
+    Inc(AIndex);
+    Result := PlainUntilClose(AText, AIndex, True);
+  end
+  else if (AIndex <= Length(AText)) and (AText[AIndex] = '|') then
+  begin
+    Inc(AIndex);
+    Result := FirstChoice(AText, AIndex);
+    SkipPastClose(AText, AIndex);
+  end
+  else
+  begin
+    SkipPastClose(AText, AIndex);
+  end;
+end;
+
+/// <summary>Platzhalter ab "$" an AIndex lesen; False, wenn das "$" Text bleibt ($FF, Textende).</summary>
+function DollarText(const AText: string; var AIndex: Integer; out APart: string): Boolean;
+begin
+  APart := '';
+  Result := AIndex < Length(AText);
+  if not Result then
+  begin
+    Exit;
+  end;
+  if CharInSet(AText[AIndex + 1], ['0'..'9']) then
+  begin
+    // $1; "$" vor einem Buchstaben bleibt Text ($FF).
+    Inc(AIndex);
+    SkipIdent(AText, AIndex);
+  end
+  else if AText[AIndex + 1] = '{' then
+  begin
+    Inc(AIndex, 2);
+    APart := PlaceholderText(AText, AIndex);
+  end
+  else
+  begin
+    Result := False;
+  end;
 end;
 
 /// <summary>Liest ab AIndex bis zum passenden "}" (oder Textende) und gibt den Klartext zurück; AIndex steht danach
 /// hinter dem "}".</summary>
 function PlainUntilClose(const AText: string; var AIndex: Integer; AInside: Boolean): string;
 var
-  Start: Integer;
+  mPart: string;
 begin
   Result := '';
   while AIndex <= Length(AText) do
@@ -336,16 +537,7 @@ begin
     case AText[AIndex] of
       '\':
         begin
-          if (AIndex < Length(AText)) and CharInSet(AText[AIndex + 1], ['\', '$', '}', ',', '|']) then
-          begin
-            Result := Result + AText[AIndex + 1];
-            Inc(AIndex, 2);
-          end
-          else
-          begin
-            Result := Result + '\';
-            Inc(AIndex);
-          end;
+          Result := Result + EscapedChar(AText, AIndex);
           Continue;
         end;
       '}':
@@ -355,47 +547,10 @@ begin
           Exit;
         end;
       '$':
-        if AIndex < Length(AText) then
+        if DollarText(AText, AIndex, mPart) then
         begin
-          // $1; "$" vor einem Buchstaben bleibt Text ($FF).
-          if CharInSet(AText[AIndex + 1], ['0'..'9']) then
-          begin
-            Inc(AIndex);
-            while (AIndex <= Length(AText)) and TTextChars.IsAsciiIdentChar(AText[AIndex]) do
-              Inc(AIndex);
-            Continue;
-          end;
-          // ${1}, ${1:Vorgabe}, ${1|a,b|}, ${NAME:Vorgabe}
-          if AText[AIndex + 1] = '{' then
-          begin
-            Inc(AIndex, 2);
-            while (AIndex <= Length(AText)) and TTextChars.IsAsciiIdentChar(AText[AIndex]) do
-              Inc(AIndex);
-            if (AIndex <= Length(AText)) and (AText[AIndex] = ':') then
-            begin
-              Inc(AIndex);
-              Result := Result + PlainUntilClose(AText, AIndex, True);
-            end
-            else if (AIndex <= Length(AText)) and (AText[AIndex] = '|') then
-            begin
-              // Auswahl: die erste Möglichkeit.
-              Inc(AIndex);
-              Start := AIndex;
-              while (AIndex <= Length(AText)) and not CharInSet(AText[AIndex], [',', '|']) do
-                Inc(AIndex);
-              Result := Result + Copy(AText, Start, AIndex - Start);
-              while (AIndex <= Length(AText)) and (AText[AIndex] <> '}') do
-                Inc(AIndex);
-              Inc(AIndex);
-            end
-            else
-            begin
-              while (AIndex <= Length(AText)) and (AText[AIndex] <> '}') do
-                Inc(AIndex);
-              Inc(AIndex);
-            end;
-            Continue;
-          end;
+          Result := Result + mPart;
+          Continue;
         end;
     end;
     Result := Result + AText[AIndex];
@@ -410,5 +565,8 @@ begin
   Index := 1;
   Result := PlainUntilClose(ASnippet, Index, False);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.ContextSnippets', cTexts);
 
 end.

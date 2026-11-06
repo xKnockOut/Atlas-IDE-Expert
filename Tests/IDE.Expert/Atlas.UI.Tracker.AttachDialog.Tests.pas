@@ -10,10 +10,11 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,  Atlas.UI.Tracker.Strings;
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasAttachDialogTests = class
   private
     FLanguage: TAtlasLanguage;
@@ -49,7 +50,9 @@ uses
   Vcl.Graphics,
   Atlas.Core.Tracker.Attach,
   Atlas.UI.Tracker.Capture,
-  Atlas.UI.Tracker.AttachDialog;
+  Atlas.UI.Tracker.AttachDialog,
+  Atlas.Core.Tracker.Files,
+  Atlas.Core.Tracker.Adapters.LocalFiles;
 
 function Input: TAtlasAttachDialogInput;
 begin
@@ -62,7 +65,9 @@ begin
     begin
       Result := '';
       if (Pos('-', AInput) > 1) and (Pos(' ', AInput) = 0) then
+      begin
         Result := UpperCase(AInput);
+      end;
     end;
 end;
 
@@ -91,6 +96,7 @@ end;
 
 procedure TAtlasAttachDialogTests.Setup;
 begin
+  TAtlasTrackerFiles.Install(TAtlasTrackerLocalFiles.Create, nil);
   FLanguage := TAtlasStrings.Language;
   TAtlasStrings.Language := TAtlasLanguage.German;
   FDir := TPath.Combine(TPath.GetTempPath, 'AtlasAttachDialogTests-' + TGUID.NewGuid.ToString);
@@ -98,9 +104,12 @@ end;
 
 procedure TAtlasAttachDialogTests.TearDown;
 begin
+  TAtlasTrackerFiles.Uninstall;
   TAtlasStrings.Language := FLanguage;
   if TDirectory.Exists(FDir) then
+  begin
     TDirectory.Delete(FDir, True);
+  end;
   FDir := '';
 end;
 
@@ -114,14 +123,15 @@ begin
     mDialog := TAtlasAttachDialog.CreateFor(nil, Input, mTemp);
     try
       mDialog.HandleNeeded;
-      Assert.IsFalse(mDialog.ScreenshotCheck.Enabled, 'kein Programm');
-      Assert.IsFalse(mDialog.WindowBox.Enabled);
-      Assert.IsFalse(mDialog.FormCheck.Enabled, 'kein Formular');
-      Assert.IsFalse(mDialog.DebugNoteCheck.Enabled, 'nicht angehalten');
-      Assert.IsFalse(mDialog.ExceptionsCheck.Enabled, 'leerer Verlauf');
-      Assert.AreEqual(0, mDialog.FileList.Items.Count);
-      Assert.IsFalse(mDialog.SendButton.Enabled, 'nichts zu senden');
-      Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.AttachUploadHint, ['YouTrack']), mDialog.HintLabel.Caption);
+      Assert.IsFalse(mDialog.Parts.Screenshot.Enabled, 'kein Programm');
+      Assert.IsFalse(mDialog.Parts.WindowBox.Enabled);
+      Assert.IsFalse(mDialog.Parts.FormCheck.Enabled, 'kein Formular');
+      Assert.IsFalse(mDialog.Parts.DebugNote.Enabled, 'nicht angehalten');
+      Assert.IsFalse(mDialog.Parts.Exceptions.Enabled, 'leerer Verlauf');
+      Assert.AreEqual(0, mDialog.Parts.List.Items.Count);
+      Assert.IsFalse(mDialog.Parts.Send.Enabled, 'nichts zu senden');
+      Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachUploadHint, ['YouTrack']),
+        mDialog.Parts.Hint.Caption);
     finally
       mDialog.Free;
     end;
@@ -149,21 +159,23 @@ begin
     mDialog := TAtlasAttachDialog.CreateFor(nil, mInput, mTemp);
     try
       mDialog.HandleNeeded;
-      Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.AttachFallbackHint, ['GitHub']), mDialog.HintLabel.Caption);
-      Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.AttachExceptions, [3]), mDialog.ExceptionsCheck.Caption);
-      mDialog.DebugNoteCheck.Checked := True;
-      mDialog.ExceptionsCheck.Checked := True;
+      Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachFallbackHint, ['GitHub']),
+        mDialog.Parts.Hint.Caption);
+      Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachExceptions, [3]),
+        mDialog.Parts.Exceptions.Caption);
+      mDialog.Parts.DebugNote.Checked := True;
+      mDialog.Parts.Exceptions.Checked := True;
       mFiles := mDialog.Files;
       Assert.AreEqual(2, Integer(Length(mFiles)));
       Assert.AreEqual('debug-notiz-2026-10-28-1405.md', mFiles[0].Name);
       Assert.IsTrue(mFiles[0].IsMarkdown);
       Assert.AreEqual('exception-verlauf.txt', mFiles[1].Name);
-      Assert.AreEqual(2, mDialog.FileList.Items.Count);
-      Assert.AreEqual('Debug-Notiz', mDialog.FileList.Items[0].Caption);
-      Assert.AreEqual(TAtlasAttachDialog.SizeText(mFiles[1].Size), mDialog.FileList.Items[1].SubItems[0]);
+      Assert.AreEqual(2, mDialog.Parts.List.Items.Count);
+      Assert.AreEqual('Debug-Notiz', mDialog.Parts.List.Items[0].Caption);
+      Assert.AreEqual(TAtlasAttachDialog.SizeText(mFiles[1].Size), mDialog.Parts.List.Items[1].SubItems[0]);
       // Der Ordner des Laufs enthält genau diese Dateien.
       Assert.AreEqual(2, Integer(Length(TDirectory.GetFiles(mTemp.Folder))));
-      mDialog.DebugNoteCheck.Checked := False;
+      mDialog.Parts.DebugNote.Checked := False;
       Assert.AreEqual(1, Integer(Length(TDirectory.GetFiles(mTemp.Folder))));
       Assert.IsTrue(mDialog.CanSend);
     finally
@@ -194,11 +206,12 @@ begin
     mDialog := TAtlasAttachDialog.CreateFor(nil, mInput, mTemp);
     try
       mDialog.HandleNeeded;
-      Assert.IsTrue(mDialog.FormCheck.Enabled);
-      Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.AttachForm, ['Form1']), mDialog.FormCheck.Caption);
+      Assert.IsTrue(mDialog.Parts.FormCheck.Enabled);
+      Assert.AreEqual(TAtlasTrackerStrings.Fmt(TAtlasTrackerTextId.AttachForm, ['Form1']),
+        mDialog.Parts.FormCheck.Caption);
       mDialog.SetScreenshot(mShot);
-      Assert.IsTrue(mDialog.ScreenshotCheck.Checked, 'aufgenommen = angehakt');
-      mDialog.FormCheck.Checked := True;
+      Assert.IsTrue(mDialog.Parts.Screenshot.Checked, 'aufgenommen = angehakt');
+      mDialog.Parts.FormCheck.Checked := True;
       mFiles := mDialog.Files;
       Assert.AreEqual(2, Integer(Length(mFiles)));
       Assert.AreEqual('bildschirmfoto.png', mFiles[0].Name);
@@ -232,7 +245,9 @@ begin
   mLines := TStringList.Create;
   try
     for mIndex := 1 to 300 do
+    begin
       mLines.Add('Zeile ' + IntToStr(mIndex));
+    end;
     mLines.SaveToFile(mLog, TEncoding.UTF8);
   finally
     mLines.Free;
@@ -244,16 +259,16 @@ begin
     mDialog := TAtlasAttachDialog.CreateFor(nil, mInput, mTemp);
     try
       mDialog.HandleNeeded;
-      Assert.AreEqual(mLog, mDialog.LogBox.Text);
-      Assert.AreEqual('200', mDialog.LogCountEdit.Text);
-      mDialog.LogCheck.Checked := True;
+      Assert.AreEqual(mLog, mDialog.Parts.LogBox.Text);
+      Assert.AreEqual('200', mDialog.Parts.LogCount.Text);
+      mDialog.Parts.Log.Checked := True;
       mFiles := mDialog.Files;
       Assert.AreEqual(1, Integer(Length(mFiles)));
       Assert.AreEqual('app.log', mFiles[0].Name);
       Assert.AreEqual('app.log (letzte 200 Zeilen)', mFiles[0].DisplayName);
       Assert.IsTrue(mFiles[0].Text.StartsWith('Zeile 101'#13#10), mFiles[0].Text);
       Assert.IsTrue(mFiles[0].Text.EndsWith('Zeile 300'), mFiles[0].Text);
-      mDialog.LogLinesCheck.Checked := False;
+      mDialog.Parts.LogLines.Checked := False;
       mFiles := mDialog.Files;
       Assert.IsTrue(mFiles[0].Text.StartsWith('Zeile 1'#13#10), 'ganze Datei');
       Assert.AreEqual('app.log', mFiles[0].DisplayName);
@@ -279,9 +294,9 @@ begin
     mDialog := TAtlasAttachDialog.CreateFor(nil, mInput, mTemp);
     try
       mDialog.HandleNeeded;
-      mDialog.LogCheck.Checked := True;
+      mDialog.Parts.Log.Checked := True;
       Assert.AreEqual(0, Integer(Length(mDialog.Files)));
-      Assert.IsFalse(mDialog.SendButton.Enabled);
+      Assert.IsFalse(mDialog.Parts.Send.Enabled);
     finally
       mDialog.Free;
     end;
@@ -303,20 +318,21 @@ begin
     mDialog := TAtlasAttachDialog.CreateFor(nil, mInput, mTemp);
     try
       mDialog.HandleNeeded;
-      Assert.AreEqual(2, mDialog.IssueBox.Items.Count);
+      Assert.AreEqual(2, mDialog.Parts.Issue.Items.Count);
       Assert.AreEqual('ATL-7', mDialog.Key, 'vorgewählt');
-      mDialog.IssueBox.Text := 'ATL-2 Zweites Issue';
+      mDialog.Parts.Issue.Text := 'ATL-2 Zweites Issue';
       Assert.AreEqual('ATL-2', mDialog.Key, 'nur die Kennung');
-      mDialog.CommentCheck.Checked := True;
+      mDialog.Parts.Comment.Checked := True;
       Assert.IsFalse(mDialog.CanSend, 'leerer Kommentar');
-      mDialog.CommentMemo.Lines.Text := 'Siehe Anhang';
+      mDialog.Parts.CommentMemo.Lines.Text := 'Siehe Anhang';
       Assert.IsTrue(mDialog.CanSend);
       Assert.AreEqual('Siehe Anhang', mDialog.CommentText);
-      Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.AttachCommentOnly), mDialog.FileList.Items[0].Caption);
-      mDialog.IssueBox.Text := 'kaputt';
+      Assert.AreEqual(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachCommentOnly),
+        mDialog.Parts.List.Items[0].Caption);
+      mDialog.Parts.Issue.Text := 'kaputt';
       Assert.AreEqual('', mDialog.Key);
       Assert.IsFalse(mDialog.CanSend, 'ungültige Kennung');
-      mDialog.CommentCheck.Checked := False;
+      mDialog.Parts.Comment.Checked := False;
       Assert.AreEqual('', mDialog.CommentText, 'Haken aus = kein Kommentar');
     finally
       mDialog.Free;

@@ -40,6 +40,13 @@ type
   /// (0 = erstes nach with).</summary>
   TWithOwnerLookup = reference to function(AWith, AIdentifier: TSyntaxNode; out AElement: Integer): TWithOwner;
 
+  /// <summary>Ergebnis von TWithResolution.Resolve mit Grund.</summary>
+  TWithResolved = record
+    Action: TCodeAction;
+    /// <summary>Warum es die Aktion nicht gibt; '' bei Erfolg.</summary>
+    Reason: string;
+  end;
+
   TWithResolution = class
   public const
     ItemName = 'Item';
@@ -50,10 +57,10 @@ type
     class function Elements(ATree: TSyntaxTree; AWith: TSyntaxNode): TArray<TSyntaxNode>; static;
     /// <summary>Rumpf der with-Anweisung; nil bei leerem Rumpf.</summary>
     class function BodyOf(ATree: TSyntaxTree; AWith: TSyntaxNode): TSyntaxNode; static;
-    /// <summary>„with auflösen“ für AWith; False mit Grund in AReason.</summary>
+    /// <summary>„with auflösen“ für AWith; False mit Grund in AResolved.Reason.</summary>
     class function Resolve(const AText: string; ATree: TSyntaxTree; AWith: TSyntaxNode;
-      const ALookup: TWithOwnerLookup; const AOptions: TExtractOptions; out AAction: TCodeAction;
-      out AReason: string): Boolean; overload; static;
+      const ALookup: TWithOwnerLookup; const AOptions: TExtractOptions; out AResolved: TWithResolved): Boolean;
+      overload; static;
     class function Resolve(const AText: string; ATree: TSyntaxTree; AWith: TSyntaxNode;
       const ALookup: TWithOwnerLookup; const AOptions: TExtractOptions; out AAction: TCodeAction): Boolean;
       overload; static;
@@ -68,19 +75,35 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Editing.UsesClause,
-  Atlas.Common.Editing.RoutineBody;
+  Atlas.Common.Editing.RoutineBody,
+  Atlas.Common.Localization.Texts;
 
-function Fail(const AReason: string; out AOut: string): Boolean;
-begin
-  AOut := AReason;
-  Result := False;
-end;
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TWithResolutionText = (NoWithStatement, NotInARoutine, CannotBeResolvedUnambiguously, TypeOfIsNotA, WithIsNotInA,
+    ResolveWith, WithWithoutBody);
+
+const
+  cTexts: array[TWithResolutionText] of TAtlasText = (
+    (De: 'keine with-Anweisung'; En: 'no with statement'),
+    (De: 'nicht in einer Routine'; En: 'not in a routine'),
+    (De: ' ist nicht eindeutig auflösbar'; En: ' cannot be resolved unambiguously'),
+    (De: 'Typ von %s ist kein Klassentyp'; En: 'Type of %s is not a class type'),
+    (De: 'with steht nicht in einer Anweisungsliste'; En: 'with is not in a statement list'),
+    (De: 'with auflösen'; En: 'Resolve with'),
+    (De: 'with ohne Rumpf'; En: 'with without body'));
+
+{$SCOPEDENUMS OFF}
 
 function Compare(const A, B: TTextPosition): Integer;
 begin
   Result := A.Line - B.Line;
   if Result = 0 then
+  begin
     Result := A.Character - B.Character;
+  end;
 end;
 
 class function TWithResolution.WithAt(ATree: TSyntaxTree; const APosition: TTextPosition): TSyntaxNode;
@@ -91,19 +114,25 @@ var
 begin
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   Node := ATree.Root;
   repeat
     Descended := False;
     for Index := 0 to Node.ChildCount - 1 do
+    begin
       if (Compare(Node[Index].StartPos, APosition) <= 0) and (Compare(APosition, Node[Index].EndPos) <= 0) then
       begin
         Node := Node[Index];
         if Node.Kind = TSyntaxKind.WithStatement then
+        begin
           Result := Node;
+        end;
         Descended := True;
         Break;
       end;
+    end;
   until not Descended;
 end;
 
@@ -120,11 +149,17 @@ begin
   while (Index <= High(Tokens)) and (Tokens[Index].Offset < AWith.EndOffset) do
   begin
     if Tokens[Index].IsSymbol('(') or Tokens[Index].IsSymbol('[') then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if Tokens[Index].IsSymbol(')') or Tokens[Index].IsSymbol(']') then
-      Dec(Depth)
+    begin
+      Dec(Depth);
+    end
     else if (Depth = 0) and Tokens[Index].IsKeyword('do') then
+    begin
       Exit(Tokens[Index].Offset);
+    end;
     Inc(Index);
   end;
 end;
@@ -136,10 +171,16 @@ begin
   Result := nil;
   Offset := DoOffset(ATree, AWith);
   if Offset < 0 then
+  begin
     Exit;
+  end;
   for Index := 0 to AWith.ChildCount - 1 do
+  begin
     if AWith[Index].EndOffset <= Offset then
+    begin
       Result := Result + [AWith[Index]];
+    end;
+  end;
 end;
 
 class function TWithResolution.BodyOf(ATree: TSyntaxTree; AWith: TSyntaxNode): TSyntaxNode;
@@ -149,7 +190,9 @@ begin
   Result := nil;
   Offset := DoOffset(ATree, AWith);
   if (Offset >= 0) and (AWith.ChildCount > 0) and (AWith[AWith.ChildCount - 1].StartOffset > Offset) then
+  begin
     Result := AWith[AWith.ChildCount - 1];
+  end;
 end;
 
 procedure CollectIdentifiers(ANode: TSyntaxNode; AList: TList<TSyntaxNode>);
@@ -162,7 +205,9 @@ begin
     function(AChild: TSyntaxNode): Boolean
     begin
       if AChild.Kind = TSyntaxKind.Identifier then
+      begin
         List.Add(AChild);
+      end;
       Result := True;
     end);
 end;
@@ -176,7 +221,9 @@ begin
   Node := ANode;
   while (Node.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.Dereference, TSyntaxKind.IndexAccess]) and
     (Node.ChildCount > 0) do
+  begin
     Node := Node[0];
+  end;
   Result := Node.Kind = TSyntaxKind.Identifier;
 end;
 
@@ -185,12 +232,18 @@ function VariableFor(const ATypeName: string): string;
 begin
   Result := ATypeName;
   if Pos('<', Result) > 0 then
+  begin
     Result := Copy(Result, 1, Pos('<', Result) - 1);
+  end;
   Result := Result.Substring(Result.LastIndexOf('.') + 1);
   if (Length(Result) > 1) and CharInSet(Result[1], ['T', 'I']) and CharInSet(Result[2], ['A'..'Z']) then
+  begin
     Result := Copy(Result, 2, MaxInt);
+  end;
   if (Result = '') or not CharInSet(Result[1], ['A'..'Z', 'a'..'z', '_']) then
+  begin
     Result := TWithResolution.ItemName;
+  end;
 end;
 
 type
@@ -199,183 +252,344 @@ type
     Element: Integer;
   end;
 
-class function TWithResolution.Resolve(const AText: string; ATree: TSyntaxTree; AWith: TSyntaxNode;
-  const ALookup: TWithOwnerLookup; const AOptions: TExtractOptions; out AAction: TCodeAction): Boolean;
-var
-  Reason: string;
+  /// <summary>Ablauf von „with auflösen“ für eine with-Anweisung.</summary>
+  TWithResolver = class
+  private
+    FText: string;
+    FTree: TSyntaxTree;
+    FWith: TSyntaxNode;
+    FLookup: TWithOwnerLookup;
+    FOptions: TExtractOptions;
+    FItems: TArray<TSyntaxNode>;
+    FBody: TSyntaxNode;
+    FRoutine: TSyntaxNode;
+    FPrefixes: TArray<string>;
+    FUsed: TArray<Boolean>;
+    FQualified: TList<TQualified>;
+    FLineBreak: string;
+    FWithIndent: string;
+    FInList: Boolean;
+    FTaken: TArray<string>;
+    FDeclarations: string;
+    FEdits: TArray<TTextEdit>;
+    FReason: string;
+    function Fail(const AReason: string): Boolean;
+    /// <summary>Elemente, Rumpf und Routine bestimmen; False mit Grund.</summary>
+    function Prepare: Boolean;
+    /// <summary>Bezeichner im Rumpf, die einem Element gehören, merken; False bei nicht auflösbarem.</summary>
+    function CollectQualified: Boolean;
+    /// <summary>Vorangestellter Text für Element AIndex; aufwendige Ausdrücke in eine Variable.</summary>
+    function PrefixElement(AIndex: Integer): Boolean;
+    /// <summary>Variable für das aufwendige Element AIndex vom Typ AProbed anlegen und belegen.</summary>
+    procedure DeclareVariable(AIndex: Integer; const AProbed: TProbedType);
+    /// <summary>Rumpftext mit vorangestellten Ausdrücken, von hinten nach vorn qualifiziert.</summary>
+    function QualifiedBody: string;
+    /// <summary>begin … end in einer Liste: begin und end entfallen, die Anweisungen rücken auf die Höhe von with.
+    /// </summary>
+    function UnwrappedBlock(const ABodyText: string): string;
+    /// <summary>Einzelne Anweisung bzw. begin … end außerhalb einer Liste: auf die Höhe von with.</summary>
+    function AlignedStatement(const ABodyText: string): string;
+  public
+    constructor Create(const AText: string; ATree: TSyntaxTree; AWith: TSyntaxNode; const ALookup: TWithOwnerLookup;
+      const AOptions: TExtractOptions);
+    destructor Destroy; override;
+    /// <summary>Führt die Auflösung aus; False mit Grund in AResolved.Reason.</summary>
+    function Run(out AResolved: TWithResolved): Boolean;
+  end;
+
+constructor TWithResolver.Create(const AText: string; ATree: TSyntaxTree; AWith: TSyntaxNode;
+  const ALookup: TWithOwnerLookup; const AOptions: TExtractOptions);
 begin
-  Result := Resolve(AText, ATree, AWith, ALookup, AOptions, AAction, Reason);
+  inherited Create;
+  FText := AText;
+  FTree := ATree;
+  FWith := AWith;
+  FLookup := ALookup;
+  FOptions := AOptions;
+  FQualified := TList<TQualified>.Create;
 end;
 
-class function TWithResolution.Resolve(const AText: string; ATree: TSyntaxTree; AWith: TSyntaxNode;
-  const ALookup: TWithOwnerLookup; const AOptions: TExtractOptions; out AAction: TCodeAction;
-  out AReason: string): Boolean;
-var
-  Items: TArray<TSyntaxNode>;
-  Body, Node, Routine: TSyntaxNode;
-  Identifiers: TList<TSyntaxNode>;
-  Qualified: TList<TQualified>;
-  Entry: TQualified;
-  Prefixes: TArray<string>;
-  Used: TArray<Boolean>;
-  Element, Index: Integer;
-  Probed: TProbedType;
-  Name, Declarations, LineBreak, WithIndent, BodyText, Content, NewText, BodyIndent: string;
-  Lines: TArray<string>;
-  First, Last: Integer;
-  Edits: TArray<TTextEdit>;
-  UsesEdit: TTextEdit;
-  InList: Boolean;
-  Tokens: TArray<TPascalToken>;
-  Taken: TArray<string>;
+destructor TWithResolver.Destroy;
 begin
-  AAction := Default(TCodeAction);
-  AReason := '';
-  if (ATree = nil) or (AWith = nil) or not Assigned(ALookup) then
-    Exit(Fail('keine with-Anweisung', AReason));
-  Items := Elements(ATree, AWith);
-  Body := BodyOf(ATree, AWith);
-  if (Items = nil) or (Body = nil) then
-    Exit(Fail('with ohne Rumpf', AReason));
-  Routine := TRoutineBody.RoutineAt(ATree, AWith.StartOffset);
-  if Routine = nil then
-    Exit(Fail('nicht in einer Routine', AReason));
-  SetLength(Prefixes, Length(Items));
-  SetLength(Used, Length(Items));
-  for Index := 0 to High(Items) do
+  FQualified.Free;
+  inherited;
+end;
+
+function TWithResolver.Fail(const AReason: string): Boolean;
+begin
+  FReason := AReason;
+  Result := False;
+end;
+
+function TWithResolver.Prepare: Boolean;
+begin
+  if (FTree = nil) or (FWith = nil) or not Assigned(FLookup) then
   begin
-    Prefixes[Index] := '';
-    Used[Index] := False;
+    Exit(Fail(cTexts[TWithResolutionText.NoWithStatement].Text));
   end;
-  Qualified := TList<TQualified>.Create;
-  Identifiers := TList<TSyntaxNode>.Create;
+  FItems := TWithResolution.Elements(FTree, FWith);
+  FBody := TWithResolution.BodyOf(FTree, FWith);
+  if (FItems = nil) or (FBody = nil) then
+  begin
+    Exit(Fail(cTexts[TWithResolutionText.WithWithoutBody].Text));
+  end;
+  FRoutine := TRoutineBody.RoutineAt(FTree, FWith.StartOffset);
+  if FRoutine = nil then
+  begin
+    Exit(Fail(cTexts[TWithResolutionText.NotInARoutine].Text));
+  end;
+  // SetLength füllt mit '' bzw. False.
+  SetLength(FPrefixes, Length(FItems));
+  SetLength(FUsed, Length(FItems));
+  Result := True;
+end;
+
+function TWithResolver.CollectQualified: Boolean;
+var
+  mIdentifiers: TList<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mElement: Integer;
+  mEntry: TQualified;
+begin
+  Result := True;
+  mIdentifiers := TList<TSyntaxNode>.Create;
   try
-    CollectIdentifiers(Body, Identifiers);
-    for Node in Identifiers do
-      case ALookup(AWith, Node, Element) of
+    CollectIdentifiers(FBody, mIdentifiers);
+    for mNode in mIdentifiers do
+    begin
+      case FLookup(FWith, mNode, mElement) of
         TWithOwner.Unknown:
-          Exit(Fail(Node.Name + ' ist nicht eindeutig auflösbar', AReason));
+          Exit(Fail(mNode.Name + cTexts[TWithResolutionText.CannotBeResolvedUnambiguously].Text));
         TWithOwner.Element:
-          if (Element >= 0) and (Element <= High(Items)) then
+          if (mElement >= 0) and (mElement <= High(FItems)) then
           begin
-            Used[Element] := True;
-            Entry.Offset := Node.StartOffset - Body.StartOffset;
-            Entry.Element := Element;
-            Qualified.Add(Entry);
+            FUsed[mElement] := True;
+            mEntry.Offset := mNode.StartOffset - FBody.StartOffset;
+            mEntry.Element := mElement;
+            FQualified.Add(mEntry);
           end;
-      end;
-    LineBreak := TTextLines.LineBreakOf(AText);
-    WithIndent := TTextLines.IndentOf(AText, AWith.StartPos.Line);
-    InList := TRoutineBody.InList(AWith);
-    Tokens := ATree.Tokens;
-    Taken := nil;
-    Declarations := '';
-    Edits := nil;
-    // Vorangestellter Text je Element; aufwendige Ausdrücke in eine Variable.
-    for Index := 0 to High(Items) do
-    begin
-      if not Used[Index] then
-        Continue;
-      if IsSimple(Items[Index]) then
-      begin
-        Prefixes[Index] := TRoutineBody.TextOf(AText, Items[Index]);
-        Continue;
-      end;
-      Probed := TExtractRefactoring.TypeOfExpression(AText, ATree, Items[Index], AWith, AOptions);
-      if not Probed.IsReference then
-        Exit(Fail('Typ von ' + TRoutineBody.TextOf(AText, Items[Index]) + ' ist kein Klassentyp', AReason));
-      if not InList then
-        Exit(Fail('with steht nicht in einer Anweisungsliste', AReason));
-      Name := TRoutineBody.UniqueName(Tokens, AOptions.Names.Local(VariableFor(Probed.Name)));
-      while IndexText(Name, Taken) >= 0 do
-        Name := Name + '_';
-      Taken := Taken + [Name];
-      Prefixes[Index] := Name;
-      // Klammern um eine Typumwandlung braucht die Zuweisung nicht.
-      Node := Items[Index];
-      if (Node.Kind = TSyntaxKind.ParenExpr) and (Node.ChildCount = 1) then
-        Node := Node[0];
-      if AOptions.InlineVar then
-        Declarations := Declarations + 'var ' + Name + ' := ' + TRoutineBody.TextOf(AText, Node) + ';' + LineBreak +
-          WithIndent
       else
-      begin
-        Edits := Edits + [TRoutineBody.AddVariable(AText, Routine, Name, Probed.Name, AOptions.Style)];
-        Declarations := Declarations + Name + ' := ' + TRoutineBody.TextOf(AText, Node) + ';' + LineBreak +
-          WithIndent;
+        // Other: bleibt, wie es ist.
       end;
-      if (Probed.UnitName <> '') and TUsesClauses.AddUnit(Tokens, AWith.StartOffset, Probed.UnitName, LineBreak,
-        UsesEdit) then
-        Edits := Edits + [UsesEdit];
     end;
-    // Bezeichner von hinten nach vorn qualifizieren.
-    Qualified.Sort(TComparer<TQualified>.Construct(
-      function(const A, B: TQualified): Integer
-      begin
-        Result := B.Offset - A.Offset;
-      end));
-    BodyText := TRoutineBody.TextOf(AText, Body);
-    for Entry in Qualified do
-      BodyText := Copy(BodyText, 1, Entry.Offset) + Prefixes[Entry.Element] + '.' +
-        Copy(BodyText, Entry.Offset + 1, MaxInt);
   finally
-    Identifiers.Free;
-    Qualified.Free;
+    mIdentifiers.Free;
   end;
-  if (Body.Kind = TSyntaxKind.Block) and InList and StartsText('begin', BodyText) and EndsText('end', BodyText) then
+end;
+
+procedure TWithResolver.DeclareVariable(AIndex: Integer; const AProbed: TProbedType);
+var
+  mName: string;
+  mNode: TSyntaxNode;
+  mUsesEdit: TTextEdit;
+begin
+  mName := TRoutineBody.UniqueName(FTree.Tokens, FOptions.Names.Local(VariableFor(AProbed.Name)));
+  while IndexText(mName, FTaken) >= 0 do
   begin
-    // begin … end entfallen; die Anweisungen rücken auf die Höhe von with.
-    Content := Copy(BodyText, 6, Length(BodyText) - 8);
-    Lines := TTextLines.SplitLines(Content);
-    First := 0;
-    while (First <= High(Lines)) and (Trim(Lines[First]) = '') do
-      Inc(First);
-    Last := High(Lines);
-    while (Last >= First) and (Trim(Lines[Last]) = '') do
-      Dec(Last);
-    NewText := '';
-    // Das ";" hinter der letzten Anweisung steht schon hinter der with-Anweisung.
-    if (Last >= First) and EndsStr(';', TrimRight(Lines[Last])) then
-    begin
-      Lines[Last] := TrimRight(Lines[Last]);
-      Lines[Last] := Copy(Lines[Last], 1, Length(Lines[Last]) - 1);
-    end;
-    if First <= Last then
-    begin
-      BodyIndent := TTextLines.IndentOf(Lines[First]);
-      for Index := First to Last do
-      begin
-        if Index > First then
-          NewText := NewText + LineBreak + WithIndent;
-        if StartsStr(BodyIndent, Lines[Index]) then
-          NewText := NewText + Copy(Lines[Index], Length(BodyIndent) + 1, MaxInt)
-        else
-          NewText := NewText + TrimLeft(Lines[Index]);
-      end;
-    end;
+    mName := mName + '_';
+  end;
+  FTaken := FTaken + [mName];
+  FPrefixes[AIndex] := mName;
+  // Klammern um eine Typumwandlung braucht die Zuweisung nicht.
+  mNode := FItems[AIndex];
+  if (mNode.Kind = TSyntaxKind.ParenExpr) and (mNode.ChildCount = 1) then
+  begin
+    mNode := mNode[0];
+  end;
+  if FOptions.InlineVar then
+  begin
+    FDeclarations := FDeclarations + 'var ';
   end
   else
   begin
-    // Einzelne Anweisung bzw. begin … end außerhalb einer Liste: auf die Höhe von with.
-    if Body.StartPos.Line > AWith.StartPos.Line then
-      BodyIndent := TTextLines.IndentOf(AText, Body.StartPos.Line)
-    else
-      BodyIndent := WithIndent;
-    NewText := TRoutineBody.Reindent(BodyText, BodyIndent, '', LineBreak);
-    Lines := TTextLines.SplitLines(NewText);
-    NewText := '';
-    for Index := 0 to High(Lines) do
+    FEdits := FEdits + [TRoutineBody.AddVariable(FText, FRoutine, mName, AProbed.Name, FOptions.Style)];
+  end;
+  FDeclarations := FDeclarations + mName + ' := ' + TRoutineBody.TextOf(FText, mNode) + ';' + FLineBreak +
+    FWithIndent;
+  if (AProbed.UnitName <> '') and TUsesClauses.AddUnit(FTree.Tokens, FWith.StartOffset, AProbed.UnitName,
+    FLineBreak, mUsesEdit) then
+  begin
+    FEdits := FEdits + [mUsesEdit];
+  end;
+end;
+
+function TWithResolver.PrefixElement(AIndex: Integer): Boolean;
+var
+  mProbed: TProbedType;
+begin
+  Result := True;
+  if IsSimple(FItems[AIndex]) then
+  begin
+    FPrefixes[AIndex] := TRoutineBody.TextOf(FText, FItems[AIndex]);
+    Exit;
+  end;
+  mProbed := TExtractRefactoring.TypeOfExpression(FText, FTree, FItems[AIndex], FWith, FOptions);
+  if not mProbed.IsReference then
+  begin
+    Exit(Fail(cTexts[TWithResolutionText.TypeOfIsNotA].Fmt([TRoutineBody.TextOf(FText, FItems[AIndex])])));
+  end;
+  if not FInList then
+  begin
+    Exit(Fail(cTexts[TWithResolutionText.WithIsNotInA].Text));
+  end;
+  DeclareVariable(AIndex, mProbed);
+end;
+
+function TWithResolver.QualifiedBody: string;
+var
+  mEntry: TQualified;
+begin
+  FQualified.Sort(TComparer<TQualified>.Construct(
+    function(const A, B: TQualified): Integer
     begin
-      if Index > 0 then
-        NewText := NewText + LineBreak + WithIndent;
-      NewText := NewText + Lines[Index];
+      Result := B.Offset - A.Offset;
+    end));
+  Result := TRoutineBody.TextOf(FText, FBody);
+  for mEntry in FQualified do
+  begin
+    Result := Copy(Result, 1, mEntry.Offset) + FPrefixes[mEntry.Element] + '.' + Copy(Result, mEntry.Offset + 1,
+      MaxInt);
+  end;
+end;
+
+/// <summary>ALine ohne die Einrückung AIndent (sonst ohne führende Leerzeichen).</summary>
+function Outdented(const ALine, AIndent: string): string;
+begin
+  if StartsStr(AIndent, ALine) then
+  begin
+    Result := Copy(ALine, Length(AIndent) + 1, MaxInt);
+  end
+  else
+  begin
+    Result := TrimLeft(ALine);
+  end;
+end;
+
+function TWithResolver.UnwrappedBlock(const ABodyText: string): string;
+var
+  mLines: TArray<string>;
+  mFirst, mLast, mIndex: Integer;
+  mBodyIndent: string;
+begin
+  Result := '';
+  mLines := TTextLines.SplitLines(Copy(ABodyText, 6, Length(ABodyText) - 8));
+  mFirst := 0;
+  while (mFirst <= High(mLines)) and (Trim(mLines[mFirst]) = '') do
+  begin
+    Inc(mFirst);
+  end;
+  mLast := High(mLines);
+  while (mLast >= mFirst) and (Trim(mLines[mLast]) = '') do
+  begin
+    Dec(mLast);
+  end;
+  if mFirst > mLast then
+  begin
+    Exit;
+  end;
+  // Das ";" hinter der letzten Anweisung steht schon hinter der with-Anweisung.
+  if EndsStr(';', TrimRight(mLines[mLast])) then
+  begin
+    mLines[mLast] := TrimRight(mLines[mLast]);
+    mLines[mLast] := Copy(mLines[mLast], 1, Length(mLines[mLast]) - 1);
+  end;
+  mBodyIndent := TTextLines.IndentOf(mLines[mFirst]);
+  for mIndex := mFirst to mLast do
+  begin
+    if mIndex > mFirst then
+    begin
+      Result := Result + FLineBreak + FWithIndent;
+    end;
+    Result := Result + Outdented(mLines[mIndex], mBodyIndent);
+  end;
+end;
+
+function TWithResolver.AlignedStatement(const ABodyText: string): string;
+var
+  mLines: TArray<string>;
+  mIndex: Integer;
+  mBodyIndent: string;
+begin
+  mBodyIndent := FWithIndent;
+  if FBody.StartPos.Line > FWith.StartPos.Line then
+  begin
+    mBodyIndent := TTextLines.IndentOf(FText, FBody.StartPos.Line);
+  end;
+  mLines := TTextLines.SplitLines(TRoutineBody.Reindent(ABodyText, mBodyIndent, '', FLineBreak));
+  Result := '';
+  for mIndex := 0 to High(mLines) do
+  begin
+    if mIndex > 0 then
+    begin
+      Result := Result + FLineBreak + FWithIndent;
+    end;
+    Result := Result + mLines[mIndex];
+  end;
+end;
+
+function TWithResolver.Run(out AResolved: TWithResolved): Boolean;
+var
+  mIndex: Integer;
+  mBodyText, mNewText: string;
+begin
+  AResolved := Default(TWithResolved);
+  Result := Prepare and CollectQualified;
+  if Result then
+  begin
+    FLineBreak := TTextLines.LineBreakOf(FText);
+    FWithIndent := TTextLines.IndentOf(FText, FWith.StartPos.Line);
+    FInList := TRoutineBody.InList(FWith);
+    mIndex := 0;
+    while Result and (mIndex <= High(FItems)) do
+    begin
+      Result := not FUsed[mIndex] or PrefixElement(mIndex);
+      Inc(mIndex);
     end;
   end;
-  Edits := Edits + [TTextEdit.Create(TTextRange.Create(AWith.StartPos, AWith.EndPos), Declarations + NewText)];
-  AAction.Title := 'with auflösen';
-  AAction.Kind := RewriteKind;
-  AAction.Edits := Edits;
-  Result := True;
+  if not Result then
+  begin
+    AResolved.Reason := FReason;
+    Exit;
+  end;
+  mBodyText := QualifiedBody;
+  if (FBody.Kind = TSyntaxKind.Block) and FInList and StartsText('begin', mBodyText) and
+    EndsText('end', mBodyText) then
+  begin
+    mNewText := UnwrappedBlock(mBodyText);
+  end
+  else
+  begin
+    mNewText := AlignedStatement(mBodyText);
+  end;
+  AResolved.Action.Title := cTexts[TWithResolutionText.ResolveWith].Text;
+  AResolved.Action.Kind := RewriteKind;
+  AResolved.Action.Edits := FEdits + [TTextEdit.Create(TTextRange.Create(FWith.StartPos, FWith.EndPos),
+    FDeclarations + mNewText)];
 end;
+
+class function TWithResolution.Resolve(const AText: string; ATree: TSyntaxTree; AWith: TSyntaxNode;
+  const ALookup: TWithOwnerLookup; const AOptions: TExtractOptions; out AAction: TCodeAction): Boolean;
+var
+  mResolved: TWithResolved;
+begin
+  Result := Resolve(AText, ATree, AWith, ALookup, AOptions, mResolved);
+  AAction := mResolved.Action;
+end;
+
+class function TWithResolution.Resolve(const AText: string; ATree: TSyntaxTree; AWith: TSyntaxNode;
+  const ALookup: TWithOwnerLookup; const AOptions: TExtractOptions; out AResolved: TWithResolved): Boolean;
+var
+  mResolver: TWithResolver;
+begin
+  mResolver := TWithResolver.Create(AText, ATree, AWith, ALookup, AOptions);
+  try
+    Result := mResolver.Run(AResolved);
+  finally
+    mResolver.Free;
+  end;
+end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.WithResolution', cTexts);
 
 end.

@@ -261,11 +261,17 @@ begin
   try
     Node := TExpressionTypes.FindExpression(Tree, Start, Start + Length(AInner), False);
     for Step := 1 to ASteps do
+    begin
       if Node <> nil then
+      begin
         Node := TExpressionTypes.FindExpression(Tree, Node.StartOffset, Node.EndOffset, True);
+      end;
+    end;
     Result := '';
     if Node <> nil then
+    begin
       Result := Copy(UnitMain, Node.StartOffset + 1, Node.EndOffset - Node.StartOffset);
+    end;
   finally
     Tree.Free;
   end;
@@ -279,10 +285,14 @@ begin
   for Conversion in AInfo.Conversions do
   begin
     if Result <> '' then
+    begin
       Result := Result + ' ';
+    end;
     Result := Result + Conversion.Expression + ':' + Conversion.FromType + '>' + Conversion.ToType;
     if Conversion.Kind = TExpressionConversionKind.Convert then
+    begin
       Result := Result + '!';
+    end;
   end;
 end;
 

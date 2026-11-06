@@ -41,7 +41,23 @@ implementation
 uses
   System.IOUtils,
   System.StrUtils,
-  Atlas.Common.Mcp.Server;
+  Atlas.Common.Mcp.Server,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TPathsText = (PathMissing, LiesOutsideTheWorkspaceAnd);
+
+const
+  cTexts: array[TPathsText] of TAtlasText = (
+    (De: 'Pfad fehlt'; En: 'Path missing'),
+    (De: '"%s" liegt außerhalb des Arbeitsbereichs (%s) und seiner Bibliothekspfade; MCP-Werkzeuge lesen nur dort ' +
+      '(#99).';
+     En: '"%s" lies outside the workspace (%s) and its library paths; MCP tools only read there (#99).'));
+
+{$SCOPEDENUMS OFF}
 
 { TMcpPathGuard }
 
@@ -68,7 +84,9 @@ function TMcpPathGuard.Normalize(const APath: string): string;
 begin
   Result := ExcludeTrailingPathDelimiter(TPath.GetFullPath(APath.Replace('/', '\')));
   if Assigned(FCanonicalize) then
+  begin
     Result := ExcludeTrailingPathDelimiter(FCanonicalize(Result));
+  end;
 end;
 
 class function TMcpPathGuard.IsInside(const AFolder, APath: string): Boolean;
@@ -81,19 +99,35 @@ var
   Folder: string;
 begin
   if Trim(APath) = '' then
-    raise EMcpToolError.Create('Pfad fehlt');
+  begin
+    raise EMcpToolError.Create(cTexts[TPathsText.PathMissing].Text);
+  end;
   if TPath.IsRelativePath(APath) then
-    Result := Normalize(TPath.Combine(FRoot, APath))
+  begin
+    Result := Normalize(TPath.Combine(FRoot, APath));
+  end
   else
+  begin
     Result := Normalize(APath);
+  end;
   if IsInside(FRoot, Result) then
+  begin
     Exit;
+  end;
   if Assigned(FExtraRoots) then
+  begin
     for Folder in FExtraRoots() do
+    begin
       if (Trim(Folder) <> '') and IsInside(Normalize(Folder), Result) then
+      begin
         Exit;
-  raise EMcpToolError.CreateFmt('"%s" liegt außerhalb des Arbeitsbereichs (%s) und seiner Bibliothekspfade; ' +
-    'MCP-Werkzeuge lesen nur dort (#99).', [Result, FRoot]);
+      end;
+    end;
+  end;
+  raise EMcpToolError.CreateFmt(cTexts[TPathsText.LiesOutsideTheWorkspaceAnd].Text, [Result, FRoot]);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Mcp.Paths', cTexts);
 
 end.

@@ -12,6 +12,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasTipCatalogTests = class
   public
     [Test]
@@ -27,6 +28,7 @@ type
   end;
 
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasDiscoverTests = class
   public
     /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
@@ -258,7 +260,9 @@ begin
     Loaded.Free;
     Usage.Free;
     if TDirectory.Exists(Folder) then
+    begin
       TDirectory.Delete(Folder, True);
+    end;
   end;
 end;
 
@@ -523,7 +527,9 @@ begin
     Loaded.Free;
     Usage.Free;
     if TDirectory.Exists(Folder) then
+    begin
       TDirectory.Delete(Folder, True);
+    end;
   end;
 end;
 

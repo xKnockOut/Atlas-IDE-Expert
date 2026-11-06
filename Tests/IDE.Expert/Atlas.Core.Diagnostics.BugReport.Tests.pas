@@ -67,7 +67,9 @@ begin
   Assert.Contains(Text, '- Atlas: 0.1.0');
   Assert.Contains(Text, '- IDE: 37.0');
   Assert.Contains(Text, '- Plattform: Win32');
-  Assert.Contains(Text, '"Diagnose": 0');
+  // Anonym bleiben von den Einstellungen Schlüssel, Zahlen und feste Werte (#1478); die Schreibweise des
+  // Formatierers zählt nicht.
+  Assert.IsTrue(Text.Contains('"Diagnose": 0') or Text.Contains('"Diagnose":0'), Text);
   Assert.Contains(Text, 'letzte 2 Zeilen');
   // Überschriften des Servers eine Ebene tiefer.
   Assert.Contains(Text, '## Atlas-Fehlerbericht (Server)');
@@ -95,10 +97,10 @@ begin
   Text := TAtlasBugReport.Build(Input);
   Assert.DoesNotContain(Text, 'Projekte', True);
   Assert.DoesNotContain(Text, 'TKundeForm');
-  Assert.Contains(Text, '<ws>\Main.pas');
+  Assert.Contains(Text, '<ws>/<datei>.pas');
   Assert.Contains(Text, '"<wert>"');
   Assert.Contains(Text, 'anonymisiert');
-  Assert.AreEqual('<pfad> und <ws>/a.pas', TAtlasBugReport.AnonymizePaths('D:\x\y.dpr und C:/Projekte/Kunde/a.pas',
+  Assert.AreEqual('<pfad> und <ws>/<datei>.pas', TAtlasBugReport.AnonymizePaths('D:\x\y.dpr und C:/Projekte/Kunde/a.pas',
     [Root + '\'], []));
   Assert.AreEqual('Benutzer <benutzer>', TAtlasBugReport.AnonymizePaths('Benutzer MARCO', [], ['marco']));
 end;
@@ -110,10 +112,14 @@ var
 begin
   Report := Input;
   Report.Anonymize := False;
+  Report.PluginLogNames := True;
   Text := TAtlasBugReport.Build(Report);
   Assert.Contains(Text, Root + '\Main.pas');
   Assert.Contains(Text, 'TKundeForm');
   Assert.DoesNotContain(Text, 'anonymisiert');
+  // Klarnamen nur ausdrücklich, sichtbar vermerkt (#1478).
+  Assert.IsTrue(Text.Contains('mit Klarnamen (ausdrücklich gewählt)'), Text);
+  Assert.IsTrue(Text.Contains('geschrieben mit Klarnamen (diagnostics.log.names)'), Text);
 end;
 
 procedure TAtlasBugReportTests.ServerArgumentsCarryAnonymizeAndClient;

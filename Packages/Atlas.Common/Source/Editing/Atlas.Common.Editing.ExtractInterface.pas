@@ -50,6 +50,15 @@ type
   /// <summary>Ist ATypeName ein Methodenzeiger (procedure … of object, reference to)?</summary>
   TIsMethodPointer = reference to function(const ATypeName: string): Boolean;
 
+  /// <summary>Rückfragen an den Aufrufer; jede darf nil sein.</summary>
+  TExtractInterfaceLookups = record
+    Ancestors: TClassAncestorsLookup;
+    NameInUse: TNameInUse;
+    IsMethodPointer: TIsMethodPointer;
+    class function Create(const AAncestors: TClassAncestorsLookup; const ANameInUse: TNameInUse;
+      const AIsMethodPointer: TIsMethodPointer): TExtractInterfaceLookups; static;
+  end;
+
   TExtractCandidate = record
     /// <summary>Index des Mitglieds in TClassLayout.Members.</summary>
     Id: Integer;
@@ -111,17 +120,15 @@ type
     /// Interfaces in der Vorfahrenliste und deren Nachfahren ja; die Kette bis TObject ohne solche nein.</summary>
     class function Supports(const AAncestor: string; const ALookup: TClassAncestorsLookup): TInterfaceSupport;
       static;
-    /// <summary>Kandidaten und Vorschlag für die Klasse auf Zeile ALine; False mit Grund ohne Klasse oder ohne
+    /// <summary>Kandidaten und Vorschlag für die Klasse in ASource; False mit Grund ohne Klasse oder ohne
     /// Kandidaten.</summary>
-    class function Prepare(ATree: TSyntaxTree; const AText: string; ALine: Integer;
-      const ALookup: TClassAncestorsLookup; const AIsMethodPointer: TIsMethodPointer;
+    class function Prepare(const ASource: TClassSource; const ALookups: TExtractInterfaceLookups;
       out AInfo: TExtractInterfaceInfo; out AReason: string): Boolean; static;
     /// <summary>Änderungen für ARequest; False mit Grund (Name ungültig oder vergeben, nichts gewählt,
     /// Kandidat nicht wählbar).</summary>
-    class function Plan(ATree: TSyntaxTree; const AText: string; ALine: Integer;
-      const ARequest: TExtractInterfaceRequest; const ALookup: TClassAncestorsLookup;
-      const ANameInUse: TNameInUse; const AIsMethodPointer: TIsMethodPointer; out APlan: TExtractInterfacePlan;
-      out AReason: string): Boolean; static;
+    class function Plan(const ASource: TClassSource; const ARequest: TExtractInterfaceRequest;
+      const ALookups: TExtractInterfaceLookups; out APlan: TExtractInterfacePlan; out AReason: string): Boolean;
+      static;
     /// <summary>Änderung, die ADeclaration (aus dem Plan) samt "type" vor die implementation einer anderen Unit
     /// setzt; False ohne interface-Teil.</summary>
     class function InsertIntoUnit(ATree: TSyntaxTree; const AText, ADeclaration: string;
@@ -136,7 +143,49 @@ implementation
 uses
   System.StrUtils,
   Atlas.Text.Lines,
-  Atlas.Common.Pascal.Contract;
+  Atlas.Common.Pascal.Contract,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TEditingExtractInterfaceText = (PropertyWithoutReadAndWrite, GenericMethodNotAllowedIn,
+    DoesNotImplementIInterfaceLacks, WhetherImplementsIInterfaceIsNot, ThereIsNoClassAt, HasNoPublicOrPublished,
+    TheClassHasChangedPlease, CannotGoIntoTheInterface, IsNotAValidIdentifier, NoMemberIsSelected,
+    TheNameIsAlreadyTaken, GoesIntoTheInterfaceToo, TheUnitHasNoImplementation, PropertyWithoutTypeInherited,
+    ConstructorText, DestructorText, ClassMethod, MessageHandler);
+
+const
+  cTexts: array[TEditingExtractInterfaceText] of TAtlasText = (
+    (De: 'Property ohne read und write'; En: 'property without read and write'),
+    (De: 'generische Methode (in Interfaces nicht erlaubt)'; En: 'generic method (not allowed in interfaces)'),
+    (De: '%s implementiert IInterface nicht: %s fehlen _AddRef, _Release und QueryInterface (Referenzzählen).';
+     En: '%s does not implement IInterface: %s lacks _AddRef, _Release and QueryInterface (reference counting).'),
+    (De: 'Ob %s IInterface implementiert, ist nicht bekannt; sonst fehlen %s _AddRef, _Release und QueryInterface ' +
+      '(Referenzzählen).';
+     En: 'Whether %s implements IInterface is not known; otherwise %s lacks _AddRef, _Release and QueryInterface ' +
+      '(reference counting).'),
+    (De: 'An dieser Stelle steht keine Klasse.'; En: 'There is no class at this position.'),
+    (De: '%s hat keine public- oder published-Methoden und -Properties für ein Interface.';
+     En: '%s has no public or published methods and properties for an interface.'),
+    (De: 'Die Klasse hat sich geändert; bitte die Aktion erneut aufrufen.';
+     En: 'The class has changed; please call the action again.'),
+    (De: '%s kann nicht ins Interface: %s.'; En: '%s cannot go into the interface: %s.'),
+    (De: '"%s" ist kein gültiger Bezeichner.'; En: '"%s" is not a valid identifier.'),
+    (De: 'Es ist kein Mitglied gewählt.'; En: 'No member is selected.'),
+    (De: 'Der Name %s ist schon vergeben.'; En: 'The name %s is already taken.'),
+    (De: '%s kommt als Zugriffsmethode von %s mit ins Interface.';
+     En: '%s goes into the interface too, as accessor of %s.'),
+    (De: 'Die Unit hat keinen implementation-Teil für die neuen Zugriffsmethoden.';
+     En: 'The unit has no implementation part for the new accessors.'),
+    (De: 'Property ohne Typ (geerbt)'; En: 'property without type (inherited)'),
+    (De: 'Konstruktor'; En: 'constructor'),
+    (De: 'Destruktor'; En: 'destructor'),
+    (De: 'Klassenmethode'; En: 'class method'),
+    (De: 'Botschaftsbehandlung'; En: 'message handler'));
+
+{$SCOPEDENUMS OFF}
 
 const
   /// <summary>Klassen der RTL, die IInterface implementieren.</summary>
@@ -149,7 +198,19 @@ function StripT(const AName: string): string;
 begin
   Result := AName;
   if (Length(Result) > 1) and CharInSet(Result[1], ['T', 't']) and CharInSet(Result[2], ['A'..'Z']) then
+  begin
     Result := Copy(Result, 2, MaxInt);
+  end;
+end;
+
+{ TExtractInterfaceLookups }
+
+class function TExtractInterfaceLookups.Create(const AAncestors: TClassAncestorsLookup; const ANameInUse: TNameInUse;
+  const AIsMethodPointer: TIsMethodPointer): TExtractInterfaceLookups;
+begin
+  Result.Ancestors := AAncestors;
+  Result.NameInUse := ANameInUse;
+  Result.IsMethodPointer := AIsMethodPointer;
 end;
 
 { TExtractInterface }
@@ -164,96 +225,170 @@ begin
   Result := TClassLayout.DeclAt(ATree, ALine, False);
 end;
 
+/// <summary>Klassenname ohne generische Parameter und ohne Unit davor.</summary>
+function BareClassName(const AName: string): string;
+begin
+  Result := AName;
+  if Pos('<', Result) > 0 then
+  begin
+    Result := Copy(Result, 1, Pos('<', Result) - 1);
+  end;
+  if Pos('.', Result) > 0 then
+  begin
+    Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
+  end;
+end;
+
+/// <summary>Entscheidet für die Klasse AName allein, ob sie IInterface implementiert (True, Ergebnis in
+/// ASupport); False mit ihrem Vorfahr AParent, wenn erst die Kette darüber es zeigt.</summary>
+function SupportStep(const AName: string; const ALookup: TClassAncestorsLookup; var ASupport: TInterfaceSupport;
+  out AParent: string): Boolean;
+var
+  mChain: TArray<string>;
+begin
+  Result := True;
+  AParent := '';
+  if MatchText(AName, InterfacedRoots) then
+  begin
+    ASupport := TInterfaceSupport.Yes;
+  end
+  else if SameText(AName, 'TObject') then
+  begin
+    ASupport := TInterfaceSupport.No;
+  end
+  else if not Assigned(ALookup) or not ALookup(AName, mChain) then
+  begin
+    ASupport := TInterfaceSupport.Unknown;
+  end
+  // Interfaces in der Liste: die Klasse implementiert IInterface selbst.
+  else if Length(mChain) > 1 then
+  begin
+    ASupport := TInterfaceSupport.Yes;
+  end
+  else if mChain = nil then
+  begin
+    ASupport := TInterfaceSupport.No;
+  end
+  else
+  begin
+    AParent := BareClassName(mChain[0]);
+    Result := False;
+  end;
+end;
+
 class function TExtractInterface.Supports(const AAncestor: string;
   const ALookup: TClassAncestorsLookup): TInterfaceSupport;
 var
-  Name: string;
-  Chain: TArray<string>;
-  Depth: Integer;
+  mName, mParent: string;
+  mDepth: Integer;
 begin
-  Name := AAncestor;
-  if Pos('<', Name) > 0 then
-    Name := Copy(Name, 1, Pos('<', Name) - 1);
-  if Pos('.', Name) > 0 then
-    Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
-  for Depth := 1 to 32 do
-  begin
-    if MatchText(Name, InterfacedRoots) then
-      Exit(TInterfaceSupport.Yes);
-    if SameText(Name, 'TObject') then
-      Exit(TInterfaceSupport.No);
-    if not Assigned(ALookup) or not ALookup(Name, Chain) then
-      Exit(TInterfaceSupport.Unknown);
-    // Interfaces in der Liste: die Klasse implementiert IInterface selbst.
-    if Length(Chain) > 1 then
-      Exit(TInterfaceSupport.Yes);
-    if Chain = nil then
-      Exit(TInterfaceSupport.No);
-    Name := Chain[0];
-    if Pos('<', Name) > 0 then
-      Name := Copy(Name, 1, Pos('<', Name) - 1);
-    if Pos('.', Name) > 0 then
-      Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
-  end;
   Result := TInterfaceSupport.Unknown;
+  mName := BareClassName(AAncestor);
+  mDepth := 0;
+  while (mDepth < 32) and not SupportStep(mName, ALookup, Result, mParent) do
+  begin
+    mName := mParent;
+    Inc(mDepth);
+  end;
+end;
+
+/// <summary>Öffentliche Methode, Property oder Operator?</summary>
+function IsCandidate(const AMember: TClassMember): Boolean;
+begin
+  Result := (AMember.Visibility in [TClassVisibility.Public_, TClassVisibility.Published_]) and
+    (AMember.IsMethod or (AMember.Kind = TClassMemberKind.Property_) or
+    (AMember.Kind = TClassMemberKind.Other) and (AMember.Node.Kind = TSyntaxKind.RoutineHeader));
+end;
+
+/// <summary>Warum die Property nicht ins Interface kann; '' wenn sie kann.</summary>
+function PropertyReason(const AMember: TClassMember): string;
+begin
+  Result := '';
+  if AMember.IsClassMember then
+  begin
+    Result := 'Klassen-Property';
+  end
+  else if AMember.IsRedeclaration then
+  begin
+    Result := cTexts[TEditingExtractInterfaceText.PropertyWithoutTypeInherited].Text;
+  end
+  else if (AMember.ReadAccessor = '') and (AMember.WriteAccessor = '') then
+  begin
+    Result := cTexts[TEditingExtractInterfaceText.PropertyWithoutReadAndWrite].Text;
+  end;
+end;
+
+/// <summary>Warum die Methode nicht ins Interface kann; '' wenn sie kann.</summary>
+function MethodReason(const AMember: TClassMember): string;
+begin
+  case AMember.Kind of
+    TClassMemberKind.Constructor_:
+      Result := cTexts[TEditingExtractInterfaceText.ConstructorText].Text;
+    TClassMemberKind.Destructor_:
+      Result := cTexts[TEditingExtractInterfaceText.DestructorText].Text;
+    TClassMemberKind.Other:
+      Result := 'Operator';
+  else
+    Result := '';
+    if AMember.IsClassMember then
+    begin
+      Result := cTexts[TEditingExtractInterfaceText.ClassMethod].Text;
+    end
+    else if AMember.IsGeneric then
+    begin
+      Result := cTexts[TEditingExtractInterfaceText.GenericMethodNotAllowedIn].Text;
+    end
+    else if AMember.HasDirective('message') then
+    begin
+      Result := cTexts[TEditingExtractInterfaceText.MessageHandler].Text;
+    end;
+  end;
+end;
+
+function CandidateOf(ALayout: TClassLayout; AIndex: Integer; const AIsMethodPointer: TIsMethodPointer):
+  TExtractCandidate;
+var
+  mMember: TClassMember;
+begin
+  mMember := ALayout.Members[AIndex];
+  Result := Default(TExtractCandidate);
+  Result.Id := AIndex;
+  Result.Name := mMember.Name;
+  Result.Visibility := mMember.Visibility;
+  if mMember.Kind = TClassMemberKind.Property_ then
+  begin
+    Result.Kind := TExtractCandidateKind.Property_;
+    Result.Display := ALayout.Declaration(AIndex);
+    Result.Reason := PropertyReason(mMember);
+  end
+  else
+  begin
+    Result.Kind := TExtractCandidateKind.Method;
+    Result.Display := ALayout.Head(AIndex);
+    Result.Reason := MethodReason(mMember);
+  end;
+  Result.Enabled := Result.Reason = '';
+  Result.Checked := Result.Enabled and (Result.Kind = TExtractCandidateKind.Method) and
+    (mMember.Visibility = TClassVisibility.Public_);
+  // Ereignis-Properties sind wählbar, aber nicht vorab gewählt (wie alle Properties).
+  if Result.Enabled and (Result.Kind = TExtractCandidateKind.Property_) and Assigned(AIsMethodPointer) and
+    AIsMethodPointer(mMember.TypeName) then
+  begin
+    Result.Display := Result.Display + '  // Ereignis';
+  end;
 end;
 
 function Candidates(ALayout: TClassLayout; const AIsMethodPointer: TIsMethodPointer): TArray<TExtractCandidate>;
 var
-  Index: Integer;
-  Member: TClassMember;
-  Item: TExtractCandidate;
+  mIndex: Integer;
 begin
   Result := nil;
-  for Index := 0 to High(ALayout.Members) do
+  for mIndex := 0 to High(ALayout.Members) do
   begin
-    Member := ALayout.Members[Index];
-    if not (Member.Visibility in [TClassVisibility.Public_, TClassVisibility.Published_]) then
-      Continue;
-    if not (Member.IsMethod or (Member.Kind = TClassMemberKind.Property_) or
-      (Member.Kind = TClassMemberKind.Other) and (Member.Node.Kind = TSyntaxKind.RoutineHeader)) then
-      Continue;
-    Item := Default(TExtractCandidate);
-    Item.Id := Index;
-    Item.Name := Member.Name;
-    Item.Visibility := Member.Visibility;
-    Item.Enabled := True;
-    if Member.Kind = TClassMemberKind.Property_ then
+    if IsCandidate(ALayout.Members[mIndex]) then
     begin
-      Item.Kind := TExtractCandidateKind.Property_;
-      Item.Display := ALayout.Declaration(Index);
-      if Member.IsClassMember then
-        Item.Reason := 'Klassen-Property'
-      else if Member.IsRedeclaration then
-        Item.Reason := 'Property ohne Typ (geerbt)'
-      else if (Member.ReadAccessor = '') and (Member.WriteAccessor = '') then
-        Item.Reason := 'Property ohne read und write';
-    end
-    else
-    begin
-      Item.Kind := TExtractCandidateKind.Method;
-      Item.Display := ALayout.Head(Index);
-      if Member.Kind = TClassMemberKind.Constructor_ then
-        Item.Reason := 'Konstruktor'
-      else if Member.Kind = TClassMemberKind.Destructor_ then
-        Item.Reason := 'Destruktor'
-      else if Member.Kind = TClassMemberKind.Other then
-        Item.Reason := 'Operator'
-      else if Member.IsClassMember then
-        Item.Reason := 'Klassenmethode'
-      else if Member.IsGeneric then
-        Item.Reason := 'generische Methode (in Interfaces nicht erlaubt)'
-      else if Member.HasDirective('message') then
-        Item.Reason := 'Botschaftsbehandlung';
+      Result := Result + [CandidateOf(ALayout, mIndex, AIsMethodPointer)];
     end;
-    Item.Enabled := Item.Reason = '';
-    Item.Checked := Item.Enabled and (Item.Kind = TExtractCandidateKind.Method) and
-      (Member.Visibility = TClassVisibility.Public_);
-    // Ereignis-Properties sind wählbar, aber nicht vorab gewählt (wie alle Properties).
-    if Item.Enabled and (Item.Kind = TExtractCandidateKind.Property_) and Assigned(AIsMethodPointer) and
-      AIsMethodPointer(Member.TypeName) then
-      Item.Display := Item.Display + '  // Ereignis';
-    Result := Result + [Item];
   end;
 end;
 
@@ -268,10 +403,14 @@ begin
     SameText(ANewAncestors[0], 'System.TObject') then
   begin
     if Length(ANewAncestors) > 1 then
+    begin
       // TObject mit Interfaces: Die Klasse implementiert IInterface schon selbst.
-      ANewAncestors := ANewAncestors + [AInterfaceName]
+      ANewAncestors := ANewAncestors + [AInterfaceName];
+    end
     else
+    begin
       ANewAncestors := ['TInterfacedObject', AInterfaceName];
+    end;
     Exit;
   end;
   if Length(ANewAncestors) = 1 then
@@ -279,51 +418,59 @@ begin
     First := ANewAncestors[0];
     case TExtractInterface.Supports(First, ALookup) of
       TInterfaceSupport.No:
-        Result := Format('%s implementiert IInterface nicht: %s fehlen _AddRef, _Release und QueryInterface ' +
-          '(Referenzzählen).', [First, ALayout.Name]);
+        Result := cTexts[TEditingExtractInterfaceText.DoesNotImplementIInterfaceLacks].Fmt([First, ALayout.Name]);
       TInterfaceSupport.Unknown:
-        Result := Format('Ob %s IInterface implementiert, ist nicht bekannt; sonst fehlen %s _AddRef, _Release und ' +
-          'QueryInterface (Referenzzählen).', [First, ALayout.Name]);
+        Result := cTexts[TEditingExtractInterfaceText.WhetherImplementsIInterfaceIsNot].Fmt([First, ALayout.Name]);
     end;
   end;
   ANewAncestors := ANewAncestors + [AInterfaceName];
 end;
 
-class function TExtractInterface.Prepare(ATree: TSyntaxTree; const AText: string; ALine: Integer;
-  const ALookup: TClassAncestorsLookup; const AIsMethodPointer: TIsMethodPointer; out AInfo: TExtractInterfaceInfo;
-  out AReason: string): Boolean;
+function HasEnabled(const AItems: TArray<TExtractCandidate>): Boolean;
 var
-  Decl: TSyntaxNode;
-  Layout: TClassLayout;
-  Item: TExtractCandidate;
-  Ancestors: TArray<string>;
-  Note: string;
+  mItem: TExtractCandidate;
+begin
+  Result := False;
+  for mItem in AItems do
+  begin
+    Result := Result or mItem.Enabled;
+  end;
+end;
+
+class function TExtractInterface.Prepare(const ASource: TClassSource; const ALookups: TExtractInterfaceLookups;
+  out AInfo: TExtractInterfaceInfo; out AReason: string): Boolean;
+var
+  mDecl: TSyntaxNode;
+  mLayout: TClassLayout;
+  mAncestors: TArray<string>;
+  mNote: string;
 begin
   AInfo := Default(TExtractInterfaceInfo);
   AReason := '';
-  Decl := ClassAt(ATree, ALine);
-  if Decl = nil then
+  mDecl := ClassAt(ASource.Tree, ASource.Line);
+  if mDecl = nil then
   begin
-    AReason := 'An dieser Stelle steht keine Klasse.';
+    AReason := cTexts[TEditingExtractInterfaceText.ThereIsNoClassAt].Text;
     Exit(False);
   end;
-  Layout := TClassLayout.Read(ATree, AText, Decl);
+  mLayout := TClassLayout.Read(ASource.Tree, ASource.Text, mDecl);
   try
-    AInfo.ClassName := Layout.Name;
-    AInfo.SuggestedName := DefaultName(Layout.Name);
-    AInfo.Candidates := Candidates(Layout, AIsMethodPointer);
-    Note := AncestorNote(Layout, ALookup, Ancestors, AInfo.SuggestedName);
-    if Note <> '' then
-      AInfo.Notes := AInfo.Notes + [Note];
+    AInfo.ClassName := mLayout.Name;
+    AInfo.SuggestedName := DefaultName(mLayout.Name);
+    AInfo.Candidates := Candidates(mLayout, ALookups.IsMethodPointer);
+    mNote := AncestorNote(mLayout, ALookups.Ancestors, mAncestors, AInfo.SuggestedName);
+    if mNote <> '' then
+    begin
+      AInfo.Notes := AInfo.Notes + [mNote];
+    end;
   finally
-    Layout.Free;
+    mLayout.Free;
   end;
-  for Item in AInfo.Candidates do
-    if Item.Enabled then
-      Exit(True);
-  AReason := Format('%s hat keine public- oder published-Methoden und -Properties für ein Interface.',
-    [AInfo.ClassName]);
-  Result := False;
+  Result := HasEnabled(AInfo.Candidates);
+  if not Result then
+  begin
+    AReason := cTexts[TEditingExtractInterfaceText.HasNoPublicOrPublished].Fmt([AInfo.ClassName]);
+  end;
 end;
 
 /// <summary>Erste Bezeichner aller Typverweise unter ANode.</summary>
@@ -341,16 +488,26 @@ begin
     begin
       Result := True;
       if AChild.Kind <> TSyntaxKind.TypeReference then
+      begin
         Exit;
+      end;
       Part := AChild.Name;
       if Pos('.', Part) > 0 then
+      begin
         Part := Copy(Part, 1, Pos('.', Part) - 1);
+      end;
       if (Part <> '') and IsIdentifier(Part) then
+      begin
         Found := Found + [Part];
+      end;
     end);
   for Name in Found do
+  begin
     if IndexText(Name, ANames) < 0 then
+    begin
       ANames := ANames + [Name];
+    end;
+  end;
 end;
 
 function MethodDeclaration(ALayout: TClassLayout; AIndex: Integer): string;
@@ -359,25 +516,39 @@ var
 begin
   Result := ALayout.Head(AIndex);
   for Directive in ALayout.Members[AIndex].Directives do
+  begin
     if MatchText(Directive, KeptDirectives) then
+    begin
       Result := Result + ' ' + Directive + ';';
+    end;
+  end;
 end;
 
 function PropertyDeclaration(const AMember: TClassMember; const AReader, AWriter: string): string;
 begin
   Result := 'property ' + AMember.Name;
   if AMember.Parameters <> '' then
+  begin
     Result := Result + '[' + AMember.Parameters + ']';
+  end;
   Result := Result + ': ' + AMember.TypeName;
   if AMember.IndexSpecifier <> '' then
+  begin
     Result := Result + ' index ' + AMember.IndexSpecifier;
+  end;
   if AReader <> '' then
+  begin
     Result := Result + ' read ' + AReader;
+  end;
   if AWriter <> '' then
+  begin
     Result := Result + ' write ' + AWriter;
+  end;
   Result := Result + ';';
   if AMember.IsDefaultArray then
+  begin
     Result := Result + ' default;';
+  end;
 end;
 
 /// <summary>Ist AName eine Methode der Klasse (Zugriffsmethode statt Feld)?</summary>
@@ -386,8 +557,12 @@ var
   Index: Integer;
 begin
   for Index in ALayout.Find(AName) do
+  begin
     if ALayout.Members[Index].IsMethod then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -404,194 +579,377 @@ begin
   end;
 end;
 
-class function TExtractInterface.Plan(ATree: TSyntaxTree; const AText: string; ALine: Integer;
-  const ARequest: TExtractInterfaceRequest; const ALookup: TClassAncestorsLookup; const ANameInUse: TNameInUse;
-  const AIsMethodPointer: TIsMethodPointer; out APlan: TExtractInterfacePlan; out AReason: string): Boolean;
-var
-  Decl: TSyntaxNode;
-  Layout: TClassLayout;
-  Items: TArray<TExtractCandidate>;
-  Item: TExtractCandidate;
-  Chosen, Methods: TArray<Integer>;
-  Id, Index, Accessor: Integer;
-  Member: TClassMember;
-  Found: Boolean;
-  Lines, NewMethods, NewBodies, Taken: TArray<string>;
-  Reader, Writer, Doc, Note, Text, Indent, Declaration, LineBreak, Getter, Setter, Value: string;
-  Ancestors: TArray<string>;
-  Edit: TTextEdit;
-  PropertyEdits: TArray<TTextEdit>;
-  BodiesLine: Integer;
-
-  function Fail(const AMessage: string): Boolean;
-  begin
-    AReason := AMessage;
-    Result := False;
-  end;
-
-  procedure AddMethod(AIndex: Integer);
-  var
-    Known: Integer;
-  begin
-    for Known in Methods do
-      if Known = AIndex then
-        Exit;
-    Methods := Methods + [AIndex];
-  end;
-
+/// <summary>Ist AName schon vergeben (die Klasse selbst, eine Klasse der Unit, laut Rückfrage)?</summary>
+function NameTaken(ATree: TSyntaxTree; ALayout: TClassLayout; const AName: string;
+  const ANameInUse: TNameInUse): Boolean;
 begin
-  APlan := Default(TExtractInterfacePlan);
+  Result := SameText(AName, ALayout.Name) or (TClassLayout.DeclNamed(ATree, AName) <> nil) or
+    (Assigned(ANameInUse) and ANameInUse(AName));
+end;
+
+/// <summary>Grund, warum der Kandidat AId nicht gewählt werden kann; '' wenn er kann.</summary>
+function CandidateError(const AItems: TArray<TExtractCandidate>; AId: Integer): string;
+var
+  mItem: TExtractCandidate;
+begin
+  Result := cTexts[TEditingExtractInterfaceText.TheClassHasChangedPlease].Text;
+  for mItem in AItems do
+  begin
+    if (mItem.Id = AId) and not mItem.Enabled then
+    begin
+      Exit(cTexts[TEditingExtractInterfaceText.CannotGoIntoTheInterface].Fmt([mItem.Name, mItem.Reason]));
+    end;
+    if mItem.Id = AId then
+    begin
+      Result := '';
+    end;
+  end;
+end;
+
+/// <summary>Grund, warum ARequest an der Klasse ADecl nicht geht (keine Klasse, Name, leere Auswahl); '' sonst.
+/// </summary>
+function RequestError(ADecl: TSyntaxNode; const ARequest: TExtractInterfaceRequest): string;
+begin
+  Result := '';
+  if ADecl = nil then
+  begin
+    Result := cTexts[TEditingExtractInterfaceText.ThereIsNoClassAt].Text;
+  end
+  else if not IsIdentifier(ARequest.Name) then
+  begin
+    Result := cTexts[TEditingExtractInterfaceText.IsNotAValidIdentifier].Fmt([ARequest.Name]);
+  end
+  else if ARequest.Members = nil then
+  begin
+    Result := cTexts[TEditingExtractInterfaceText.NoMemberIsSelected].Text;
+  end;
+end;
+
+/// <summary>Grund, warum Name oder Auswahl an ALayout nicht gehen; '' sonst. AChosen: die gewählten Ids.</summary>
+function ChoiceError(ATree: TSyntaxTree; ALayout: TClassLayout; const ARequest: TExtractInterfaceRequest;
+  const ALookups: TExtractInterfaceLookups; out AChosen: TArray<Integer>): string;
+var
+  mItems: TArray<TExtractCandidate>;
+  mId: Integer;
+begin
+  AChosen := nil;
+  if NameTaken(ATree, ALayout, ARequest.Name, ALookups.NameInUse) then
+  begin
+    Exit(cTexts[TEditingExtractInterfaceText.TheNameIsAlreadyTaken].Fmt([ARequest.Name]));
+  end;
+  mItems := Candidates(ALayout, ALookups.IsMethodPointer);
+  Result := '';
+  for mId in ARequest.Members do
+  begin
+    Result := CandidateError(mItems, mId);
+    if Result <> '' then
+    begin
+      Exit;
+    end;
+    AChosen := AChosen + [mId];
+  end;
+end;
+
+type
+  /// <summary>Baut Interface und Änderungen an der Klasse für TExtractInterface.Plan.</summary>
+  TInterfaceBuilder = class
+  strict private
+    FLayout: TClassLayout;
+    FRequest: TExtractInterfaceRequest;
+    FPlan: TExtractInterfacePlan;
+    FMethods: TArray<Integer>;
+    FPropertyLines: TArray<string>;
+    FNewMethods: TArray<string>;
+    FNewBodies: TArray<string>;
+    FTaken: TArray<string>;
+    FPropertyEdits: TArray<TTextEdit>;
+    procedure AddMethod(AIndex: Integer);
+    /// <summary>Nimmt die Zugriffsmethode AAccessor mit; ist sie nicht öffentlich, mit Warnung.</summary>
+    procedure TakeAccessor(AAccessor: Integer; const AName, AProperty: string);
+    procedure Redirect(AId: Integer; const AKind, AName: string);
+    function NewName(const ABase: string): string;
+    /// <summary>Lesezugriff der Property im Interface: vorhandene Methode oder neuer Getter für ein Feld.</summary>
+    function ReadAccessor(AId: Integer): string;
+    /// <summary>Schreibzugriff der Property im Interface: vorhandene Methode oder neuer Setter für ein Feld.
+    /// </summary>
+    function WriteAccessor(AId: Integer): string;
+    procedure AddProperty(AId: Integer);
+    function MemberLines(const AChosen: TArray<Integer>): string;
+    function SameUnitEdit: TTextEdit;
+  public
+    constructor Create(ALayout: TClassLayout; const ARequest: TExtractInterfaceRequest; AClassOffset: Integer);
+    procedure Collect(const AChosen: TArray<Integer>);
+    /// <summary>Vorfahrenliste, neue Zugriffsmethoden mit Rümpfen, umgestellte Properties und mit SameUnit das
+    /// Interface selbst; False mit Grund ohne implementation-Teil für neue Rümpfe.</summary>
+    function ClassEdits(ATree: TSyntaxTree; const AText: string; const ALookup: TClassAncestorsLookup;
+      out AReason: string): Boolean;
+    property Plan: TExtractInterfacePlan read FPlan;
+  end;
+
+constructor TInterfaceBuilder.Create(ALayout: TClassLayout; const ARequest: TExtractInterfaceRequest;
+  AClassOffset: Integer);
+begin
+  inherited Create;
+  FLayout := ALayout;
+  FRequest := ARequest;
+  FPlan.ClassName := ALayout.Name;
+  FPlan.InterfaceName := ARequest.Name;
+  FPlan.InInterface := ALayout.InInterface;
+  FPlan.ClassOffset := AClassOffset;
+end;
+
+procedure TInterfaceBuilder.AddMethod(AIndex: Integer);
+var
+  mKnown: Integer;
+begin
+  for mKnown in FMethods do
+  begin
+    if mKnown = AIndex then
+    begin
+      Exit;
+    end;
+  end;
+  FMethods := FMethods + [AIndex];
+end;
+
+procedure TInterfaceBuilder.TakeAccessor(AAccessor: Integer; const AName, AProperty: string);
+begin
+  AddMethod(AAccessor);
+  if FLayout.Members[AAccessor].Visibility in [TClassVisibility.StrictPrivate, TClassVisibility.Private_,
+    TClassVisibility.StrictProtected, TClassVisibility.Protected_] then
+  begin
+    FPlan.Warnings := FPlan.Warnings + [cTexts[TEditingExtractInterfaceText.GoesIntoTheInterfaceToo].Fmt([AName,
+      AProperty])];
+  end;
+end;
+
+procedure TInterfaceBuilder.Redirect(AId: Integer; const AKind, AName: string);
+var
+  mEdit: TTextEdit;
+begin
+  // Property in der Klasse auf die neue Methode umstellen.
+  if TClassEdits.ReplaceAccessor(FLayout, AId, AKind, AName, mEdit) then
+  begin
+    FPropertyEdits := FPropertyEdits + [mEdit];
+  end;
+end;
+
+function TInterfaceBuilder.NewName(const ABase: string): string;
+begin
+  Result := UniqueMemberName(FLayout, ABase, FTaken);
+  FTaken := FTaken + [Result];
+end;
+
+function TInterfaceBuilder.ReadAccessor(AId: Integer): string;
+var
+  mMember: TClassMember;
+  mAccessor: Integer;
+  mGetter, mLineBreak: string;
+begin
+  mMember := FLayout.Members[AId];
+  Result := mMember.ReadAccessor;
+  mAccessor := -1;
+  if Result <> '' then
+  begin
+    mAccessor := MethodIndex(FLayout, Result);
+  end;
+  if mAccessor >= 0 then
+  begin
+    TakeAccessor(mAccessor, Result, mMember.Name);
+  end
+  else if Result <> '' then
+  begin
+    // Feld: Getter anlegen.
+    mLineBreak := FLayout.LineBreak;
+    mGetter := NewName('Get' + mMember.Name);
+    FNewMethods := FNewMethods + [Format('function %s: %s;', [mGetter, mMember.TypeName])];
+    FNewBodies := FNewBodies + [Format('function %s.%s: %s;', [FLayout.Name, mGetter, mMember.TypeName]) +
+      mLineBreak + 'begin' + mLineBreak + '  Result := ' + Result + ';' + mLineBreak + 'end;'];
+    Redirect(AId, 'read', mGetter);
+    Result := mGetter;
+  end;
+end;
+
+function TInterfaceBuilder.WriteAccessor(AId: Integer): string;
+const
+  cValue = 'Value';
+var
+  mMember: TClassMember;
+  mAccessor: Integer;
+  mSetter, mLineBreak: string;
+begin
+  mMember := FLayout.Members[AId];
+  Result := mMember.WriteAccessor;
+  mAccessor := -1;
+  if Result <> '' then
+  begin
+    mAccessor := MethodIndex(FLayout, Result);
+  end;
+  if mAccessor >= 0 then
+  begin
+    TakeAccessor(mAccessor, Result, mMember.Name);
+  end
+  else if Result <> '' then
+  begin
+    // Feld: Setter anlegen.
+    mLineBreak := FLayout.LineBreak;
+    mSetter := NewName('Set' + mMember.Name);
+    FNewMethods := FNewMethods + [Format('procedure %s(const %s: %s);', [mSetter, cValue, mMember.TypeName])];
+    FNewBodies := FNewBodies + [Format('procedure %s.%s(const %s: %s);', [FLayout.Name, mSetter, cValue,
+      mMember.TypeName]) + mLineBreak + 'begin' + mLineBreak + '  ' + Result + ' := ' + cValue + ';' +
+      mLineBreak + 'end;'];
+    Redirect(AId, 'write', mSetter);
+    Result := mSetter;
+  end;
+end;
+
+procedure TInterfaceBuilder.AddProperty(AId: Integer);
+var
+  mReader, mWriter, mDoc: string;
+begin
+  mReader := ReadAccessor(AId);
+  mWriter := WriteAccessor(AId);
+  for mDoc in FLayout.DocLines(AId) do
+  begin
+    FPropertyLines := FPropertyLines + ['  ' + mDoc];
+  end;
+  FPropertyLines := FPropertyLines + ['  ' + PropertyDeclaration(FLayout.Members[AId], mReader, mWriter)];
+end;
+
+function TInterfaceBuilder.MemberLines(const AChosen: TArray<Integer>): string;
+var
+  mIndex: Integer;
+  mText: string;
+begin
+  Result := '';
+  // Methoden vor die Properties.
+  for mIndex in FMethods do
+  begin
+    for mText in FLayout.DocLines(mIndex) do
+    begin
+      Result := Result + #10'  ' + mText;
+    end;
+    Result := Result + #10'  ' + MethodDeclaration(FLayout, mIndex);
+    FPlan.Methods := FPlan.Methods + [FLayout.Members[mIndex].Name];
+    CollectTypeNames(FLayout.Members[mIndex].Node, FPlan.TypeNames);
+  end;
+  for mText in FNewMethods do
+  begin
+    Result := Result + #10'  ' + mText;
+  end;
+  for mText in FPropertyLines do
+  begin
+    Result := Result + #10 + mText;
+  end;
+  for mIndex in AChosen do
+  begin
+    if FLayout.Members[mIndex].Kind = TClassMemberKind.Property_ then
+    begin
+      CollectTypeNames(FLayout.Members[mIndex].Node, FPlan.TypeNames);
+    end;
+  end;
+end;
+
+procedure TInterfaceBuilder.Collect(const AChosen: TArray<Integer>);
+var
+  mId: Integer;
+begin
+  // Methoden in Reihenfolge der Klasse, dann die Zugriffsmethoden der Properties.
+  for mId in AChosen do
+  begin
+    if FLayout.Members[mId].Kind <> TClassMemberKind.Property_ then
+    begin
+      AddMethod(mId);
+    end;
+  end;
+  for mId in AChosen do
+  begin
+    if FLayout.Members[mId].Kind = TClassMemberKind.Property_ then
+    begin
+      AddProperty(mId);
+    end;
+  end;
+  FPlan.Declaration := FRequest.Name + ' = interface' + #10'  [''' + FRequest.Guid + ''']' + MemberLines(AChosen) +
+    #10'end;';
+end;
+
+function TInterfaceBuilder.SameUnitEdit: TTextEdit;
+var
+  mText, mLine: string;
+begin
+  mText := '';
+  for mLine in FPlan.Declaration.Split([#10]) do
+  begin
+    mText := mText + FLayout.Indent + mLine + FLayout.LineBreak;
+  end;
+  Result := TClassEdits.InsertBeforeLine(FLayout.FirstLine, mText + FLayout.LineBreak);
+end;
+
+function TInterfaceBuilder.ClassEdits(ATree: TSyntaxTree; const AText: string; const ALookup: TClassAncestorsLookup;
+  out AReason: string): Boolean;
+var
+  mAncestors: TArray<string>;
+  mNote: string;
+  mBodiesLine: Integer;
+begin
   AReason := '';
-  Decl := ClassAt(ATree, ALine);
-  if Decl = nil then
-    Exit(Fail('An dieser Stelle steht keine Klasse.'));
-  if not IsIdentifier(ARequest.Name) then
-    Exit(Fail(Format('"%s" ist kein gültiger Bezeichner.', [ARequest.Name])));
-  if ARequest.Members = nil then
-    Exit(Fail('Es ist kein Mitglied gewählt.'));
-  Layout := TClassLayout.Read(ATree, AText, Decl);
-  try
-    LineBreak := Layout.LineBreak;
-    if SameText(ARequest.Name, Layout.Name) or (TClassLayout.DeclNamed(ATree, ARequest.Name) <> nil) or
-      Assigned(ANameInUse) and ANameInUse(ARequest.Name) then
-      Exit(Fail(Format('Der Name %s ist schon vergeben.', [ARequest.Name])));
-    Items := Candidates(Layout, AIsMethodPointer);
-    Chosen := nil;
-    for Id in ARequest.Members do
+  mNote := AncestorNote(FLayout, ALookup, mAncestors, FRequest.Name);
+  if mNote <> '' then
+  begin
+    FPlan.Warnings := TArray<string>.Create(mNote) + FPlan.Warnings;
+  end;
+  FPlan.Edits := TArray<TTextEdit>.Create(TClassEdits.SetAncestors(FLayout, mAncestors)) + FPropertyEdits;
+  if FNewMethods <> nil then
+  begin
+    FPlan.Edits := FPlan.Edits + [TClassEdits.InsertMembers(FLayout, TClassVisibility.Private_, False, FNewMethods)];
+    mBodiesLine := TClassEdits.BodiesEnd(ATree, FLayout.Name);
+    if mBodiesLine < 0 then
     begin
-      Found := False;
-      for Item in Items do
-        if Item.Id = Id then
-        begin
-          if not Item.Enabled then
-            Exit(Fail(Format('%s kann nicht ins Interface: %s.', [Item.Name, Item.Reason])));
-          Found := True;
-        end;
-      if not Found then
-        Exit(Fail('Die Klasse hat sich geändert; bitte die Aktion erneut aufrufen.'));
-      Chosen := Chosen + [Id];
+      AReason := cTexts[TEditingExtractInterfaceText.TheUnitHasNoImplementation].Text;
+      Exit(False);
     end;
-    APlan.ClassName := Layout.Name;
-    APlan.InterfaceName := ARequest.Name;
-    APlan.InInterface := Layout.InInterface;
-    APlan.ClassOffset := Decl.StartOffset;
-    // Methoden in Reihenfolge der Klasse, dann die Zugriffsmethoden der Properties.
-    Methods := nil;
-    for Id in Chosen do
-      if Layout.Members[Id].Kind <> TClassMemberKind.Property_ then
-        AddMethod(Id);
-    Lines := nil;
-    NewMethods := nil;
-    NewBodies := nil;
-    Taken := nil;
-    PropertyEdits := nil;
-    for Id in Chosen do
-    begin
-      Member := Layout.Members[Id];
-      if Member.Kind <> TClassMemberKind.Property_ then
-        Continue;
-      Reader := Member.ReadAccessor;
-      Writer := Member.WriteAccessor;
-      Getter := '';
-      Setter := '';
-      if Reader <> '' then
-      begin
-        Accessor := MethodIndex(Layout, Reader);
-        if Accessor >= 0 then
-        begin
-          AddMethod(Accessor);
-          if Layout.Members[Accessor].Visibility in [TClassVisibility.StrictPrivate, TClassVisibility.Private_,
-            TClassVisibility.StrictProtected, TClassVisibility.Protected_] then
-            APlan.Warnings := APlan.Warnings + [Format('%s kommt als Zugriffsmethode von %s mit ins Interface.',
-              [Reader, Member.Name])];
-        end
-        else
-        begin
-          // Feld: Getter anlegen.
-          Getter := UniqueMemberName(Layout, 'Get' + Member.Name, Taken);
-          Taken := Taken + [Getter];
-          NewMethods := NewMethods + [Format('function %s: %s;', [Getter, Member.TypeName])];
-          NewBodies := NewBodies + [Format('function %s.%s: %s;', [Layout.Name, Getter, Member.TypeName]) +
-            LineBreak + 'begin' + LineBreak + '  Result := ' + Reader + ';' + LineBreak + 'end;'];
-          Reader := Getter;
-        end;
-      end;
-      if Writer <> '' then
-      begin
-        Accessor := MethodIndex(Layout, Writer);
-        if Accessor >= 0 then
-        begin
-          AddMethod(Accessor);
-          if Layout.Members[Accessor].Visibility in [TClassVisibility.StrictPrivate, TClassVisibility.Private_,
-            TClassVisibility.StrictProtected, TClassVisibility.Protected_] then
-            APlan.Warnings := APlan.Warnings + [Format('%s kommt als Zugriffsmethode von %s mit ins Interface.',
-              [Writer, Member.Name])];
-        end
-        else
-        begin
-          Setter := UniqueMemberName(Layout, 'Set' + Member.Name, Taken);
-          Taken := Taken + [Setter];
-          Value := 'Value';
-          NewMethods := NewMethods + [Format('procedure %s(const %s: %s);', [Setter, Value, Member.TypeName])];
-          NewBodies := NewBodies + [Format('procedure %s.%s(const %s: %s);', [Layout.Name, Setter, Value,
-            Member.TypeName]) + LineBreak + 'begin' + LineBreak + '  ' + Writer + ' := ' + Value + ';' + LineBreak +
-            'end;'];
-          Writer := Setter;
-        end;
-      end;
-      // Property in der Klasse auf die neuen Methoden umstellen.
-      if (Getter <> '') and TClassEdits.ReplaceAccessor(Layout, Id, 'read', Getter, Edit) then
-        PropertyEdits := PropertyEdits + [Edit];
-      if (Setter <> '') and TClassEdits.ReplaceAccessor(Layout, Id, 'write', Setter, Edit) then
-        PropertyEdits := PropertyEdits + [Edit];
-      for Doc in Layout.DocLines(Id) do
-        Lines := Lines + ['  ' + Doc];
-      Lines := Lines + ['  ' + PropertyDeclaration(Member, Reader, Writer)];
-    end;
-    // Methoden vor die Properties.
-    Declaration := '';
-    for Index in Methods do
-    begin
-      for Doc in Layout.DocLines(Index) do
-        Declaration := Declaration + #10'  ' + Doc;
-      Declaration := Declaration + #10'  ' + MethodDeclaration(Layout, Index);
-      APlan.Methods := APlan.Methods + [Layout.Members[Index].Name];
-      CollectTypeNames(Layout.Members[Index].Node, APlan.TypeNames);
-    end;
-    for Index := 0 to High(NewMethods) do
-      Declaration := Declaration + #10'  ' + NewMethods[Index];
-    for Text in Lines do
-      Declaration := Declaration + #10 + Text;
-    for Id in Chosen do
-      if Layout.Members[Id].Kind = TClassMemberKind.Property_ then
-        CollectTypeNames(Layout.Members[Id].Node, APlan.TypeNames);
-    APlan.Declaration := ARequest.Name + ' = interface' + #10'  [''' + ARequest.Guid + ''']' + Declaration +
-      #10'end;';
-    // Klasse: Vorfahrenliste, neue Zugriffsmethoden mit Rümpfen, umgestellte Properties.
-    Note := AncestorNote(Layout, ALookup, Ancestors, ARequest.Name);
-    if Note <> '' then
-      APlan.Warnings := [Note] + APlan.Warnings;
-    APlan.Edits := [TClassEdits.SetAncestors(Layout, Ancestors)] + PropertyEdits;
-    if NewMethods <> nil then
-    begin
-      APlan.Edits := APlan.Edits + [TClassEdits.InsertMembers(Layout, TClassVisibility.Private_, False, NewMethods)];
-      BodiesLine := TClassEdits.BodiesEnd(ATree, Layout.Name);
-      if BodiesLine < 0 then
-        Exit(Fail('Die Unit hat keinen implementation-Teil für die neuen Zugriffsmethoden.'));
-      APlan.Edits := APlan.Edits + [TClassEdits.InsertBodies(AText, BodiesLine, NewBodies)];
-    end;
-    if ARequest.SameUnit then
-    begin
-      Indent := Layout.Indent;
-      Text := '';
-      for Doc in APlan.Declaration.Split([#10]) do
-        Text := Text + Indent + Doc + LineBreak;
-      APlan.Edits := APlan.Edits + [TClassEdits.InsertBeforeLine(Layout.FirstLine, Text + LineBreak)];
-    end;
-  finally
-    Layout.Free;
+    FPlan.Edits := FPlan.Edits + [TClassEdits.InsertBodies(AText, mBodiesLine, FNewBodies)];
+  end;
+  if FRequest.SameUnit then
+  begin
+    FPlan.Edits := FPlan.Edits + [SameUnitEdit];
   end;
   Result := True;
+end;
+
+class function TExtractInterface.Plan(const ASource: TClassSource; const ARequest: TExtractInterfaceRequest;
+  const ALookups: TExtractInterfaceLookups; out APlan: TExtractInterfacePlan; out AReason: string): Boolean;
+var
+  mDecl: TSyntaxNode;
+  mLayout: TClassLayout;
+  mBuilder: TInterfaceBuilder;
+  mChosen: TArray<Integer>;
+begin
+  APlan := Default(TExtractInterfacePlan);
+  mDecl := ClassAt(ASource.Tree, ASource.Line);
+  AReason := RequestError(mDecl, ARequest);
+  if AReason <> '' then
+  begin
+    Exit(False);
+  end;
+  mLayout := TClassLayout.Read(ASource.Tree, ASource.Text, mDecl);
+  try
+    AReason := ChoiceError(ASource.Tree, mLayout, ARequest, ALookups, mChosen);
+    Result := AReason = '';
+    if Result then
+    begin
+      mBuilder := TInterfaceBuilder.Create(mLayout, ARequest, mDecl.StartOffset);
+      try
+        mBuilder.Collect(mChosen);
+        Result := mBuilder.ClassEdits(ASource.Tree, ASource.Text, ALookups.Ancestors, AReason);
+        APlan := mBuilder.Plan;
+      finally
+        mBuilder.Free;
+      end;
+    end;
+  finally
+    mLayout.Free;
+  end;
 end;
 
 class function TExtractInterface.InsertIntoUnit(ATree: TSyntaxTree; const AText, ADeclaration: string;
@@ -604,16 +962,26 @@ begin
   Implementation_ := nil;
   Interface_ := nil;
   for Index := 0 to ATree.Root.ChildCount - 1 do
+  begin
     if ATree.Root[Index].Kind = TSyntaxKind.ImplementationSection then
-      Implementation_ := ATree.Root[Index]
+    begin
+      Implementation_ := ATree.Root[Index];
+    end
     else if ATree.Root[Index].Kind = TSyntaxKind.InterfaceSection then
+    begin
       Interface_ := ATree.Root[Index];
+    end;
+  end;
   if (Interface_ = nil) or (Implementation_ = nil) then
+  begin
     Exit(False);
+  end;
   LineBreak := TTextLines.LineBreakOf(AText);
   Text := 'type' + LineBreak;
   for Part in ADeclaration.Split([#10]) do
+  begin
     Text := Text + '  ' + Part + LineBreak;
+  end;
   Line := Implementation_.StartPos.Line;
   AEdit := TClassEdits.InsertBeforeLine(Line, Text + LineBreak);
   Result := True;
@@ -626,12 +994,19 @@ var
 begin
   Result := 'unit ' + AUnitName + ';' + ALineBreak + ALineBreak + 'interface' + ALineBreak + ALineBreak;
   if AUses <> nil then
+  begin
     Result := Result + 'uses' + ALineBreak + '  ' + string.Join(',' + ALineBreak + '  ', AUses) + ';' + ALineBreak +
       ALineBreak;
+  end;
   Result := Result + 'type' + ALineBreak;
   for Part in ADeclaration.Split([#10]) do
+  begin
     Result := Result + '  ' + Part + ALineBreak;
+  end;
   Result := Result + ALineBreak + 'implementation' + ALineBreak + ALineBreak + 'end.' + ALineBreak;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.ExtractInterface', cTexts);
 
 end.

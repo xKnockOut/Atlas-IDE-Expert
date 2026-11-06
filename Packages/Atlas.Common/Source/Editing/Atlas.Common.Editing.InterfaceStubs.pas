@@ -83,13 +83,21 @@ begin
   Text := Trim(ADeclaration);
   AIsClass := StartsText('class ', Text);
   if AIsClass then
+  begin
     Text := TrimLeft(Copy(Text, 7, MaxInt));
+  end;
   if StartsText('procedure ', Text) then
-    AKind := 'procedure'
+  begin
+    AKind := 'procedure';
+  end
   else if StartsText('function ', Text) then
-    AKind := 'function'
+  begin
+    AKind := 'function';
+  end
   else
+  begin
     Exit(False);
+  end;
   Text := TrimLeft(Copy(Text, Length(AKind) + 1, MaxInt));
   // Ende des Kopfs: erstes ";" außerhalb von Klammern.
   Depth := 0;
@@ -120,7 +128,9 @@ begin
       ')', '>': Dec(Depth);
       ':':
         if Depth = 0 then
+        begin
           Exit(Trim(Copy(AHead, Index + 1, MaxInt)));
+        end;
     end;
   Result := '';
 end;
@@ -137,29 +147,45 @@ begin
   AStub := Default(TInterfaceStub);
   Result := Split(ADeclaration, IsClass, Kind, Head, Directives) and not IsClass;
   if not Result then
+  begin
     Exit;
+  end;
   // "Name(…): T", "Name: T", "Name<T>(…)": bis zum ersten Trennzeichen.
   Name := Head;
   if Pos('(', Name) > 0 then
+  begin
     Name := Copy(Name, 1, Pos('(', Name) - 1);
+  end;
   if Pos(':', Name) > 0 then
+  begin
     Name := Copy(Name, 1, Pos(':', Name) - 1);
+  end;
   if Pos('<', Name) > 0 then
+  begin
     Name := Copy(Name, 1, Pos('<', Name) - 1);
+  end;
   AStub.InterfaceName := AInterfaceName;
   AStub.Name := Trim(Name);
   AStub.Declaration := Kind + ' ' + Head + ';';
   for Directive in Kept do
+  begin
     if Directives.Contains(' ' + Directive + ' ') then
+    begin
       AStub.Declaration := AStub.Declaration + ' ' + Directive + ';';
+    end;
+  end;
   // Rumpf: Standardwerte stehen nur in der Deklaration.
   AStub.Body := Kind + ' ' + ATypeName + '.' + TRegEx.Replace(Head, '\s*=\s*[^;)]+', '') + ';' + ALineBreak +
     'begin' + ALineBreak;
   ResultType := ReturnType(Head);
   if (Kind = 'function') and (ResultType <> '') then
-    AStub.Body := AStub.Body + '  Result := Default(' + ResultType + ');' + ALineBreak
+  begin
+    AStub.Body := AStub.Body + '  Result := Default(' + ResultType + ');' + ALineBreak;
+  end
   else
+  begin
     AStub.Body := AStub.Body + ALineBreak;
+  end;
   AStub.Body := AStub.Body + 'end;';
 end;
 
@@ -173,19 +199,31 @@ begin
   for Index := 0 to High(ATokens) do
   begin
     if ATokens[Index].StartPos.Line <= AFirstLine then
+    begin
       Continue;
+    end;
     if ATokens[Index].StartPos.Line >= ALastLine then
+    begin
       Break;
+    end;
     if not (ATokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) then
+    begin
       Continue;
+    end;
     Word := LowerCase(ATokens[Index].Text);
     if not MatchStr(Word, ['private', 'protected', 'public', 'published']) then
+    begin
       Continue;
+    end;
     Previous := Index - 1;
     while (Previous >= 0) and (ATokens[Previous].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+    begin
       Dec(Previous);
+    end;
     if (Previous >= 0) and SameText(ATokens[Previous].Text, 'strict') then
+    begin
       Word := 'strict ' + Word;
+    end;
     Result := Word;
   end;
 end;
@@ -198,7 +236,9 @@ begin
   Result := nil;
   Range := TTextRange.Create(AEndLine, 0, AEndLine, 0);
   if AHeader then
+  begin
     Result := Result + [TTextEdit.Create(Range, AIndent + ASection + ALineBreak)];
+  end;
   Result := Result + [TTextEdit.Create(Range, AIndent + '  { ' + AStub.InterfaceName + ' }' + ALineBreak),
     TTextEdit.Create(Range, AIndent + '  ' + AStub.Declaration + ALineBreak)];
 end;
@@ -222,11 +262,13 @@ begin
   begin
     Found := -1;
     for Index := 0 to High(Result) do
+    begin
       if SameRange(Result[Index].Range, Edit.Range) then
       begin
         Found := Index;
         Break;
       end;
+    end;
     if Found < 0 then
     begin
       Result := Result + [Edit];
@@ -234,7 +276,9 @@ begin
       Continue;
     end;
     if Pos(#0 + Edit.NewText + #0, Seen[Found]) > 0 then
+    begin
       Continue;
+    end;
     Seen[Found] := Seen[Found] + Edit.NewText + #0;
     Result[Found].NewText := Result[Found].NewText + Edit.NewText;
   end;
@@ -250,20 +294,32 @@ begin
   Result := '';
   Last := ARange.EndPos.Line;
   if Last - ARange.StartPos.Line >= MaxLines then
+  begin
     Last := ARange.StartPos.Line;
+  end;
   for Line := ARange.StartPos.Line to Last do
   begin
     if (Line < 0) or (Line > High(ALines)) then
+    begin
       Break;
+    end;
     if Line = ARange.StartPos.Line then
-      Result := Trim(Copy(ALines[Line], ARange.StartPos.Character + 1, MaxInt))
+    begin
+      Result := Trim(Copy(ALines[Line], ARange.StartPos.Character + 1, MaxInt));
+    end
     else
+    begin
       Result := Result + ' ' + Trim(ALines[Line]);
+    end;
   end;
   while Pos('  ', Result) > 0 do
+  begin
     Result := StringReplace(Result, '  ', ' ', [rfReplaceAll]);
+  end;
   if Length(Result) > MaxLength then
+  begin
     Result := Copy(Result, 1, MaxLength) + ' …';
+  end;
 end;
 
 class function TInterfaceStubs.HeaderAncestors(const ALines: TArray<string>; AStartLine: Integer): TArray<string>;
@@ -275,10 +331,14 @@ begin
   Result := nil;
   Text := '';
   for Line := AStartLine to Min(AStartLine + 5, High(ALines)) do
+  begin
     Text := Text + ' ' + ALines[Line];
+  end;
   Match := TRegEx.Match(Text, '=\s*class\s*(?:sealed\s*|abstract\s*)?\(', [roIgnoreCase]);
   if not Match.Success then
+  begin
     Exit;
+  end;
   Depth := 0;
   Part := '';
   for Index := Match.Index + Match.Length to Length(Text) do
@@ -291,7 +351,9 @@ begin
           if Depth = 0 then
           begin
             if Trim(Part) <> '' then
+            begin
               Result := Result + [StringReplace(Trim(Part), ' ', '', [rfReplaceAll])];
+            end;
             Exit;
           end;
           Dec(Depth);
@@ -330,10 +392,14 @@ var
 begin
   Result := AContainer;
   if Length(ABindings) = 0 then
+  begin
     Exit;
+  end;
   Values := nil;
   for Binding in ABindings do
+  begin
     Values := Values + [Copy(Binding, Pos('=', Binding) + 1, MaxInt)];
+  end;
   Result := Result + '<' + string.Join(', ', Values) + '>';
 end;
 

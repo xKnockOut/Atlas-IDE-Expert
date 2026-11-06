@@ -171,9 +171,13 @@ var
 begin
   Result := TReplay.Create;
   for Pair in Switches do
+  begin
     Result.Switches.Add(Pair.Key, Pair.Value);
+  end;
   for Pair in Warns do
+  begin
     Result.Warns.Add(Pair.Key, Pair.Value);
+  end;
 end;
 
 function Before(const A, B: TTextPosition): Boolean;
@@ -187,11 +191,13 @@ var
   Pair: TPair<string, string>;
 begin
   for Pair in AProperties do
+  begin
     if SameText(Pair.Key, AName) then
     begin
       AValue := LowerCase(Trim(Pair.Value));
       Exit(True);
     end;
+  end;
   AValue := '';
   Result := False;
 end;
@@ -219,97 +225,166 @@ var
 begin
   Text := LowerCase(Trim(AText));
   if (Text = 'on') or (Text = '+') or (Text = 'true') then
-    Result := '8'
+  begin
+    Result := '8';
+  end
   else if (Text = 'off') or (Text = '-') or (Text = 'false') then
-    Result := '1'
+  begin
+    Result := '1';
+  end
   else if (Text = '1') or (Text = '2') or (Text = '4') or (Text = '8') or (Text = '16') then
-    Result := Text
+  begin
+    Result := Text;
+  end
   else
+  begin
     Result := '';
+  end;
+end;
+
+/// <summary>Ausrichtung aus der .dproj, sonst 8.</summary>
+function AlignSwitch(const AInput: TCompilerSwitchInput): TSwitchEntry;
+var
+  mValue: string;
+begin
+  Result := Default(TSwitchEntry);
+  Result.Value := '8';
+  Result.Origin := TSwitchOrigin.Make(TSwitchOriginKind.Default, '');
+  if PropertyValue(AInput.Properties, TCompilerSwitches.AlignProperty, mValue) and (AlignValue(mValue) <> '') then
+  begin
+    Result.Value := AlignValue(mValue);
+    Result.Origin := TSwitchOrigin.Make(TSwitchOriginKind.Project, TCompilerSwitches.AlignProperty);
+  end;
+end;
+
+/// <summary>Ist ADefine ein Schaltereintrag für ALetter ("$R+" aus der .dproj, "$R-*" Vorgabe des Compilers
+/// ohne Eintrag dort, #847)? AValue: "+" oder "-".</summary>
+function SwitchDefine(const ADefine: string; ALetter: Char; out AValue: Char; out AIsDefault: Boolean): Boolean;
+var
+  mEntry: string;
+begin
+  AValue := #0;
+  AIsDefault := False;
+  if not TPascalPreprocessor.IsSwitchEntry(ADefine) then
+  begin
+    Exit(False);
+  end;
+  mEntry := Copy(Trim(ADefine), 2, MaxInt);
+  AIsDefault := EndsStr('*', mEntry);
+  if AIsDefault then
+  begin
+    mEntry := Copy(mEntry, 1, Length(mEntry) - 1);
+  end;
+  Result := (Length(mEntry) = 2) and (UpCase(mEntry[1]) = ALetter) and CharInSet(mEntry[2], ['+', '-']);
+  if Result then
+  begin
+    AValue := mEntry[2];
+  end;
+end;
+
+/// <summary>Schalter ALetter (außer A) aus Vorgabe und Symbolen des Projekts.</summary>
+function FlagSwitch(const AInput: TCompilerSwitchInput; ALetter: Char): TSwitchEntry;
+var
+  mDefine: string;
+  mValue: Char;
+  mIsDefault: Boolean;
+begin
+  Result := Default(TSwitchEntry);
+  Result.Value := TPascalPreprocessor.SwitchDefault(ALetter);
+  Result.Origin := TSwitchOrigin.Make(TSwitchOriginKind.Default, TPascalPreprocessor.SwitchProperty(ALetter));
+  for mDefine in AInput.Defines do
+  begin
+    if SwitchDefine(mDefine, ALetter, mValue, mIsDefault) then
+    begin
+      Result.Value := mValue;
+      if not mIsDefault then
+      begin
+        Result.Origin.Kind := TSwitchOriginKind.Project;
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Schalter HINTS bzw. WARNINGS aus der .dproj.</summary>
+function MessageSwitch(const AInput: TCompilerSwitchInput; const AName: string): TSwitchEntry;
+var
+  mProp, mValue: string;
+begin
+  Result := Default(TSwitchEntry);
+  Result.Name := AName;
+  Result.Value := 'ON';
+  mProp := TCompilerSwitches.WarningsProperty;
+  if AName = 'HINTS' then
+  begin
+    mProp := TCompilerSwitches.HintsProperty;
+  end;
+  Result.Origin := TSwitchOrigin.Make(TSwitchOriginKind.Default, '');
+  if PropertyValue(AInput.Properties, mProp, mValue) and ((mValue = 'true') or (mValue = 'false')) then
+  begin
+    if mValue = 'false' then
+    begin
+      Result.Value := 'OFF';
+    end;
+    Result.Origin := TSwitchOrigin.Make(TSwitchOriginKind.Project, mProp);
+  end;
+  Result.ProjectValue := Result.Value;
+end;
+
+/// <summary>Einzelne Warnungen: &lt;DCC_SYMBOL_DEPRECATED&gt;false&lt;/DCC_SYMBOL_DEPRECATED&gt; bzw. error.</summary>
+procedure AddProjectWarns(const AInput: TCompilerSwitchInput; AReplay: TReplay);
+var
+  mEntry, mValue: string;
+  mSwitch: TSwitchEntry;
+begin
+  for mEntry in TDirectiveNames.Warnings do
+  begin
+    if not PropertyValue(AInput.Properties, 'DCC_' + mEntry, mValue) or
+      ((mValue <> 'false') and (mValue <> 'error')) then
+    begin
+      Continue;
+    end;
+    mSwitch := Default(TSwitchEntry);
+    mSwitch.Name := mEntry;
+    mSwitch.Value := 'ERROR';
+    if mValue = 'false' then
+    begin
+      mSwitch.Value := 'OFF';
+    end;
+    mSwitch.ProjectValue := mSwitch.Value;
+    mSwitch.Origin := TSwitchOrigin.Make(TSwitchOriginKind.Project, 'DCC_' + mEntry);
+    AReplay.Warns.AddOrSetValue(mEntry, mSwitch);
+  end;
 end;
 
 /// <summary>Projektstand der Schalter (ohne lokale Direktiven).</summary>
 procedure ProjectSwitches(const AInput: TCompilerSwitchInput; AReplay: TReplay);
 var
   Letter: Char;
-  Define, Entry, Value, Prop: string;
-  IsDefault: Boolean;
+  Entry: string;
   Switch: TSwitchEntry;
   Index: Integer;
 begin
   for Index := 1 to Length(TCompilerSwitches.Letters) do
   begin
     Letter := TCompilerSwitches.Letters[Index];
-    Switch := Default(TSwitchEntry);
-    Switch.Name := Letter;
-    Switch.LongName := LongNameOf(Letter);
     if Letter = 'A' then
     begin
-      Switch.Value := '8';
-      Switch.Origin := TSwitchOrigin.Make(TSwitchOriginKind.Default, '');
-      if PropertyValue(AInput.Properties, TCompilerSwitches.AlignProperty, Value) and (AlignValue(Value) <> '') then
-      begin
-        Switch.Value := AlignValue(Value);
-        Switch.Origin := TSwitchOrigin.Make(TSwitchOriginKind.Project, TCompilerSwitches.AlignProperty);
-      end;
+      Switch := AlignSwitch(AInput);
     end
     else
     begin
-      Switch.Value := TPascalPreprocessor.SwitchDefault(Letter);
-      Switch.Origin := TSwitchOrigin.Make(TSwitchOriginKind.Default, TPascalPreprocessor.SwitchProperty(Letter));
-      for Define in AInput.Defines do
-      begin
-        // "$R+" aus der .dproj, "$R-*" Vorgabe des Compilers ohne Eintrag dort (#847).
-        if not TPascalPreprocessor.IsSwitchEntry(Define) then
-          Continue;
-        Entry := Copy(Trim(Define), 2, MaxInt);
-        IsDefault := EndsStr('*', Entry);
-        if IsDefault then
-          Entry := Copy(Entry, 1, Length(Entry) - 1);
-        if (Length(Entry) = 2) and (UpCase(Entry[1]) = Letter) and CharInSet(Entry[2], ['+', '-']) then
-        begin
-          Switch.Value := Entry[2];
-          if not IsDefault then
-            Switch.Origin.Kind := TSwitchOriginKind.Project;
-        end;
-      end;
+      Switch := FlagSwitch(AInput, Letter);
     end;
+    Switch.Name := Letter;
+    Switch.LongName := LongNameOf(Letter);
     Switch.ProjectValue := Switch.Value;
     AReplay.Switches.AddOrSetValue(Letter, Switch);
   end;
   for Entry in TArray<string>.Create('HINTS', 'WARNINGS') do
   begin
-    Switch := Default(TSwitchEntry);
-    Switch.Name := Entry;
-    Switch.Value := 'ON';
-    if Entry = 'HINTS' then
-      Prop := TCompilerSwitches.HintsProperty
-    else
-      Prop := TCompilerSwitches.WarningsProperty;
-    Switch.Origin := TSwitchOrigin.Make(TSwitchOriginKind.Default, '');
-    if PropertyValue(AInput.Properties, Prop, Value) and ((Value = 'true') or (Value = 'false')) then
-    begin
-      if Value = 'false' then
-        Switch.Value := 'OFF';
-      Switch.Origin := TSwitchOrigin.Make(TSwitchOriginKind.Project, Prop);
-    end;
-    Switch.ProjectValue := Switch.Value;
-    AReplay.Switches.AddOrSetValue(Entry, Switch);
+    AReplay.Switches.AddOrSetValue(Entry, MessageSwitch(AInput, Entry));
   end;
-  // Einzelne Warnungen: <DCC_SYMBOL_DEPRECATED>false</DCC_SYMBOL_DEPRECATED> bzw. error.
-  for Entry in TDirectiveNames.Warnings do
-    if PropertyValue(AInput.Properties, 'DCC_' + Entry, Value) and ((Value = 'false') or (Value = 'error')) then
-    begin
-      Switch := Default(TSwitchEntry);
-      Switch.Name := Entry;
-      if Value = 'false' then
-        Switch.Value := 'OFF'
-      else
-        Switch.Value := 'ERROR';
-      Switch.ProjectValue := Switch.Value;
-      Switch.Origin := TSwitchOrigin.Make(TSwitchOriginKind.Project, 'DCC_' + Entry);
-      AReplay.Warns.AddOrSetValue(Entry, Switch);
-    end;
+  AddProjectWarns(AInput, AReplay);
 end;
 
 /// <summary>Name und Rest einer Direktive ("WARN SYMBOL_DEPRECATED OFF" → "WARN", "SYMBOL_DEPRECATED OFF").
@@ -325,7 +400,9 @@ var
   Switch: TSwitchEntry;
 begin
   if not AReplay.Switches.TryGetValue(AName, Switch) then
+  begin
     Exit;
+  end;
   Switch.Value := AValue;
   Switch.Origin := AOrigin;
   AReplay.Switches[AName] := Switch;
@@ -348,9 +425,13 @@ begin
   begin
     // Zurück zum Stand des Projekts.
     if AProject.Warns.ContainsKey(Name) then
-      AReplay.Warns.AddOrSetValue(Name, Known)
+    begin
+      AReplay.Warns.AddOrSetValue(Name, Known);
+    end
     else
+    begin
       AReplay.Warns.Remove(Name);
+    end;
     Exit;
   end;
   Switch.Value := AState;
@@ -358,70 +439,132 @@ begin
   AReplay.Warns.AddOrSetValue(Name, Switch);
 end;
 
+/// <summary>{$WARN Name ON|OFF|ERROR|DEFAULT}.</summary>
+procedure ApplyWarn(AReplay, AProject: TReplay; const AArgument: string; const AOrigin: TSwitchOrigin);
+var
+  mWords: TArray<string>;
+  mState: string;
+begin
+  mWords := AArgument.Split([' ', #9], TStringSplitOptions.ExcludeEmpty);
+  if Length(mWords) <> 2 then
+  begin
+    Exit;
+  end;
+  mState := UpperCase(mWords[1]);
+  if MatchStr(mState, ['ON', 'OFF', 'ERROR', 'DEFAULT']) then
+  begin
+    SetWarn(AReplay, AProject, mWords[0], mState, AOrigin);
+  end;
+end;
+
+/// <summary>{$HINTS ON|OFF}, {$WARNINGS ON|OFF}.</summary>
+procedure ApplyMessages(AReplay: TReplay; const AName, AArgument: string; const AOrigin: TSwitchOrigin);
+begin
+  if SameText(AArgument, 'ON') or SameText(AArgument, 'OFF') then
+  begin
+    SetSwitch(AReplay, AName, UpperCase(AArgument), AOrigin);
+  end;
+end;
+
+/// <summary>{$ALIGN 8}.</summary>
+procedure ApplyAlign(AReplay: TReplay; const AArgument: string; const AOrigin: TSwitchOrigin);
+var
+  mValue: string;
+begin
+  mValue := AlignValue(AArgument);
+  if mValue <> '' then
+  begin
+    SetSwitch(AReplay, 'A', mValue, AOrigin);
+  end;
+end;
+
+/// <summary>Lange Form eines Schalters ({$RANGECHECKS ON}).</summary>
+procedure ApplyLong(AReplay: TReplay; ALetter: Char; const AArgument: string; const AOrigin: TSwitchOrigin);
+begin
+  if SameText(AArgument, 'ON') then
+  begin
+    SetSwitch(AReplay, ALetter, '+', AOrigin);
+  end
+  else if SameText(AArgument, 'OFF') then
+  begin
+    SetSwitch(AReplay, ALetter, '-', AOrigin);
+  end;
+end;
+
+/// <summary>Ein Teil eines Kurzschalters ("R-", "A4") als Buchstabe und Wert; False bei anderem Text.</summary>
+function ShortChange(const APart: string; out AChange: TPair<string, string>): Boolean;
+var
+  mValue: string;
+  mLetter: Char;
+begin
+  AChange := TPair<string, string>.Create('', '');
+  mValue := Trim(APart);
+  if Length(mValue) < 2 then
+  begin
+    Exit(False);
+  end;
+  mLetter := UpCase(mValue[1]);
+  if mLetter = 'A' then
+  begin
+    AChange := TPair<string, string>.Create('A', AlignValue(Copy(mValue, 2, MaxInt)));
+    Result := AChange.Value <> '';
+  end
+  else
+  begin
+    AChange := TPair<string, string>.Create(mLetter, Copy(mValue, 2, MaxInt));
+    Result := (Length(mValue) = 2) and CharInSet(mValue[2], ['+', '-']);
+  end;
+end;
+
+/// <summary>Kurzschalter {$R-}, {$R-,Q+}, {$A4}; {$R Datei.res} oder {$I datei} ändern nichts.</summary>
+procedure ApplyShort(AReplay: TReplay; const ABody: string; const AOrigin: TSwitchOrigin);
+var
+  mChanges: TArray<TPair<string, string>>;
+  mChange: TPair<string, string>;
+  mPart: string;
+begin
+  mChanges := nil;
+  for mPart in ABody.Split([',']) do
+  begin
+    if not ShortChange(mPart, mChange) then
+    begin
+      Exit;
+    end;
+    mChanges := mChanges + [mChange];
+  end;
+  for mChange in mChanges do
+  begin
+    SetSwitch(AReplay, mChange.Key, mChange.Value, AOrigin);
+  end;
+end;
+
 /// <summary>Wirkung der Direktive ABody auf AReplay; andere Direktiven ändern nichts.</summary>
 procedure Apply(AReplay, AProject: TReplay; const ABody: string; const AOrigin: TSwitchOrigin);
 var
-  Name, Argument, Part, Value, State: string;
+  Name, Argument: string;
   Letter: Char;
-  Parts: TArray<string>;
-  Words: TArray<string>;
-  Changes: TArray<TPair<string, string>>;
-  Change: TPair<string, string>;
 begin
   Split(ABody, Name, Argument);
   if (Name = 'HINTS') or (Name = 'WARNINGS') then
   begin
-    if SameText(Argument, 'ON') or SameText(Argument, 'OFF') then
-      SetSwitch(AReplay, Name, UpperCase(Argument), AOrigin);
-    Exit;
-  end;
-  if Name = 'WARN' then
+    ApplyMessages(AReplay, Name, Argument, AOrigin);
+  end
+  else if Name = 'WARN' then
   begin
-    Words := Argument.Split([' ', #9], TStringSplitOptions.ExcludeEmpty);
-    if Length(Words) <> 2 then
-      Exit;
-    State := UpperCase(Words[1]);
-    if (State = 'ON') or (State = 'OFF') or (State = 'ERROR') or (State = 'DEFAULT') then
-      SetWarn(AReplay, AProject, Words[0], State, AOrigin);
-    Exit;
-  end;
-  if Name = 'ALIGN' then
+    ApplyWarn(AReplay, AProject, Argument, AOrigin);
+  end
+  else if Name = 'ALIGN' then
   begin
-    Value := AlignValue(Argument);
-    if Value <> '' then
-      SetSwitch(AReplay, 'A', Value, AOrigin);
-    Exit;
-  end;
-  if TPascalPreprocessor.LongSwitchLetter(Name, Letter) then
+    ApplyAlign(AReplay, Argument, AOrigin);
+  end
+  else if TPascalPreprocessor.LongSwitchLetter(Name, Letter) then
   begin
-    if SameText(Argument, 'ON') then
-      SetSwitch(AReplay, Letter, '+', AOrigin)
-    else if SameText(Argument, 'OFF') then
-      SetSwitch(AReplay, Letter, '-', AOrigin);
-    Exit;
-  end;
-  // Kurzschalter {$R-}, {$R-,Q+}, {$A4}; {$R Datei.res} oder {$I datei} ändern nichts.
-  Changes := nil;
-  Parts := ABody.Split([',']);
-  for Part in Parts do
+    ApplyLong(AReplay, Letter, Argument, AOrigin);
+  end
+  else
   begin
-    Value := Trim(Part);
-    if Length(Value) < 2 then
-      Exit;
-    Letter := UpCase(Value[1]);
-    if Letter = 'A' then
-    begin
-      if AlignValue(Copy(Value, 2, MaxInt)) = '' then
-        Exit;
-      Changes := Changes + [TPair<string, string>.Create('A', AlignValue(Copy(Value, 2, MaxInt)))];
-    end
-    else if (Length(Value) = 2) and CharInSet(Value[2], ['+', '-']) then
-      Changes := Changes + [TPair<string, string>.Create(Letter, Value[2])]
-    else
-      Exit;
+    ApplyShort(AReplay, ABody, AOrigin);
   end;
-  for Change in Changes do
-    SetSwitch(AReplay, Change.Key, Change.Value, AOrigin);
 end;
 
 function SortedEntries(const AValues: TEnumerable<TSwitchEntry>): TSwitchEntries;
@@ -432,7 +575,9 @@ begin
   List := TList<TSwitchEntry>.Create;
   try
     for Entry in AValues do
+    begin
       List.Add(Entry);
+    end;
     // Namen sind eindeutig: die Sortierung ist eindeutig.
     List.Sort(TComparer<TSwitchEntry>.Construct(
       function(const ALeft, ARight: TSwitchEntry): Integer
@@ -449,12 +594,129 @@ function OriginOf(const AProcessed: TPreprocessorResult; AFileIndex: Integer; co
   const AText: string): TSwitchOrigin;
 begin
   if AFileIndex = 0 then
-    Result := TSwitchOrigin.Make(TSwitchOriginKind.Directive, AText)
+  begin
+    Result := TSwitchOrigin.Make(TSwitchOriginKind.Directive, AText);
+  end
   else
+  begin
     Result := TSwitchOrigin.Make(TSwitchOriginKind.Include, AText);
+  end;
   if (AFileIndex >= 0) and (AFileIndex < Length(AProcessed.Files)) then
+  begin
     Result.FileName := AProcessed.Files[AFileIndex];
+  end;
   Result.Line := ARange.StartPos.Line;
+end;
+
+/// <summary>Stand der Schalter vor APosition: Projektstand AProject, dann die Direktiven davor mit
+/// {$PUSHOPT}/{$POPOPT}. Der Aufrufer gibt das Ergebnis frei.</summary>
+function ReplayAt(const AProcessed: TPreprocessorResult; const APosition: TTextPosition; AProject: TReplay): TReplay;
+var
+  mStack: TObjectStack<TReplay>;
+  mSite: TDirectiveSite;
+  mName, mArgument: string;
+begin
+  Result := AProject.Copy;
+  mStack := TObjectStack<TReplay>.Create(True);
+  try
+    for mSite in AProcessed.DirectiveSites do
+    begin
+      if not Before(mSite.RootPos, APosition) then
+      begin
+        Continue;
+      end;
+      Split(mSite.Body, mName, mArgument);
+      if mName = 'PUSHOPT' then
+      begin
+        mStack.Push(Result.Copy);
+      end
+      else if (mName = 'POPOPT') and (mStack.Count > 0) then
+      begin
+        Result.Free;
+        Result := mStack.Extract;
+      end
+      else if mName <> 'POPOPT' then
+      begin
+        Apply(Result, AProject, mSite.Body, OriginOf(AProcessed, mSite.FileIndex, mSite.Range,
+          '{$' + mSite.Body + '}'));
+      end;
+    end;
+  finally
+    mStack.Free;
+  end;
+end;
+
+/// <summary>Symbol ADefine des Projekts mit seiner Herkunft aus AInput.DefineOrigins.</summary>
+function ProjectDefine(const AInput: TCompilerSwitchInput; const ADefine: string): TSwitchEntry;
+var
+  mOrigin: TSwitchDefineOrigin;
+begin
+  Result := Default(TSwitchEntry);
+  Result.Name := UpperCase(Trim(ADefine));
+  Result.Origin := TSwitchOrigin.Make(TSwitchOriginKind.Project, '');
+  for mOrigin in AInput.DefineOrigins do
+  begin
+    if SameText(mOrigin.Name, Result.Name) then
+    begin
+      Result.Origin := mOrigin.Origin;
+    end;
+  end;
+end;
+
+/// <summary>Symbole vor APosition: Projekt und Compiler, dann $DEFINE/$UNDEF vor der Stelle.</summary>
+function DefinesAt(const AProcessed: TPreprocessorResult; const APosition: TTextPosition;
+  const AInput: TCompilerSwitchInput): TSwitchEntries;
+var
+  mDefines: TDictionary<string, TSwitchEntry>;
+  mDefine: string;
+  mSite: TDefineSite;
+  mEntry: TSwitchEntry;
+begin
+  mDefines := TDictionary<string, TSwitchEntry>.Create;
+  try
+    for mDefine in AInput.Defines do
+    begin
+      if not TPascalPreprocessor.IsSwitchEntry(mDefine) and (Trim(mDefine) <> '') then
+      begin
+        mEntry := ProjectDefine(AInput, mDefine);
+        mDefines.AddOrSetValue(mEntry.Name, mEntry);
+      end;
+    end;
+    for mSite in AProcessed.DefineSites do
+    begin
+      if not Before(mSite.RootPos, APosition) then
+      begin
+        Continue;
+      end;
+      if mSite.Undefine then
+      begin
+        mDefines.Remove(mSite.Name);
+        Continue;
+      end;
+      mEntry := Default(TSwitchEntry);
+      mEntry.Name := mSite.Name;
+      mEntry.Origin := OriginOf(AProcessed, mSite.FileIndex, mSite.Range, '{$DEFINE ' + mSite.Name + '}');
+      mDefines.AddOrSetValue(mEntry.Name, mEntry);
+    end;
+    Result := SortedEntries(mDefines.Values);
+  finally
+    mDefines.Free;
+  end;
+end;
+
+/// <summary>Warnungen, die nicht ON sind, nach Namen sortiert.</summary>
+function ChangedWarns(AReplay: TReplay): TSwitchEntries;
+var
+  mWarn: TSwitchEntry;
+begin
+  Result := nil;
+  for mWarn in SortedEntries(AReplay.Warns.Values) do
+  begin
+    if mWarn.Value <> 'ON' then
+    begin
+      Result := Result + [mWarn];
+    end;
+  end;
 end;
 
 { TCompilerSwitches }
@@ -462,124 +724,97 @@ end;
 class function TCompilerSwitches.At(const AProcessed: TPreprocessorResult; const APosition: TTextPosition;
   const AInput: TCompilerSwitchInput): TCompilerSwitchState;
 var
-  Project, Replay, Saved: TReplay;
-  Stack: TObjectStack<TReplay>;
-  Site: TDirectiveSite;
-  DefineSite: TDefineSite;
-  Name, Argument, Define: string;
+  Project, Replay: TReplay;
   Index: Integer;
-  Entry: TSwitchEntry;
-  Origin: TSwitchDefineOrigin;
-  Defines: TDictionary<string, TSwitchEntry>;
-  Warn: TSwitchEntry;
 begin
   Result := Default(TCompilerSwitchState);
   Project := TReplay.Create;
-  Stack := TObjectStack<TReplay>.Create(True);
-  Defines := TDictionary<string, TSwitchEntry>.Create;
   Replay := nil;
   try
     ProjectSwitches(AInput, Project);
-    Replay := Project.Copy;
-    for Site in AProcessed.DirectiveSites do
-    begin
-      if not Before(Site.RootPos, APosition) then
-        Continue;
-      Split(Site.Body, Name, Argument);
-      if Name = 'PUSHOPT' then
-        Stack.Push(Replay.Copy)
-      else if Name = 'POPOPT' then
-      begin
-        if Stack.Count > 0 then
-        begin
-          Saved := Stack.Extract;
-          Replay.Free;
-          Replay := Saved;
-        end;
-      end
-      else
-        Apply(Replay, Project, Site.Body, OriginOf(AProcessed, Site.FileIndex, Site.Range, '{$' + Site.Body + '}'));
-    end;
+    Replay := ReplayAt(AProcessed, APosition, Project);
     for Index := 1 to Length(Letters) do
+    begin
       Result.Switches := Result.Switches + [Replay.Switches[Letters[Index]]];
+    end;
     Result.Hints := Replay.Switches['HINTS'];
     Result.Warnings := Replay.Switches['WARNINGS'];
-    Result.Warns := nil;
-    for Warn in SortedEntries(Replay.Warns.Values) do
-      if Warn.Value <> 'ON' then
-        Result.Warns := Result.Warns + [Warn];
-    // Symbole: Projekt und Compiler, dann $DEFINE/$UNDEF vor der Stelle.
-    for Define in AInput.Defines do
-    begin
-      if TPascalPreprocessor.IsSwitchEntry(Define) or (Trim(Define) = '') then
-        Continue;
-      Entry := Default(TSwitchEntry);
-      Entry.Name := UpperCase(Trim(Define));
-      Entry.Origin := TSwitchOrigin.Make(TSwitchOriginKind.Project, '');
-      for Origin in AInput.DefineOrigins do
-        if SameText(Origin.Name, Entry.Name) then
-          Entry.Origin := Origin.Origin;
-      Defines.AddOrSetValue(Entry.Name, Entry);
-    end;
-    for DefineSite in AProcessed.DefineSites do
-    begin
-      if not Before(DefineSite.RootPos, APosition) then
-        Continue;
-      if DefineSite.Undefine then
-        Defines.Remove(DefineSite.Name)
-      else
-      begin
-        Entry := Default(TSwitchEntry);
-        Entry.Name := DefineSite.Name;
-        Entry.Origin := OriginOf(AProcessed, DefineSite.FileIndex, DefineSite.Range,
-          '{$DEFINE ' + DefineSite.Name + '}');
-        Defines.AddOrSetValue(Entry.Name, Entry);
-      end;
-    end;
-    Result.Defines := SortedEntries(Defines.Values);
+    Result.Warns := ChangedWarns(Replay);
+    Result.Defines := DefinesAt(AProcessed, APosition, AInput);
   finally
     Replay.Free;
-    Defines.Free;
-    Stack.Free;
     Project.Free;
   end;
 end;
 
 { TCompilerSwitchState }
 
+/// <summary>Kurzform eines abweichenden Schalters ("A4", "R−", "Q+").</summary>
+function SwitchSummary(const AEntry: TSwitchEntry): string;
+begin
+  if AEntry.Name = 'A' then
+  begin
+    Result := 'A' + AEntry.Value;
+  end
+  else if AEntry.Value = '-' then
+  begin
+    Result := AEntry.Name + MinusSign;
+  end
+  else
+  begin
+    Result := AEntry.Name + AEntry.Value;
+  end;
+end;
+
+/// <summary>Abweichende Warnungen: eine mit Namen, mehrere als Anzahl; '' ohne.</summary>
+function WarnsSummary(const AWarns: TSwitchEntries): string;
+var
+  mEntry: TSwitchEntry;
+  mCount: Integer;
+begin
+  Result := '';
+  mCount := 0;
+  for mEntry in AWarns do
+  begin
+    if mEntry.Deviates then
+    begin
+      Inc(mCount);
+      Result := 'WARN ' + mEntry.Name + ' ' + mEntry.Value;
+    end;
+  end;
+  if mCount > 1 then
+  begin
+    Result := Format('WARN %d×', [mCount]);
+  end;
+end;
+
 function TCompilerSwitchState.Summary: string;
 var
   Entry: TSwitchEntry;
   Parts: TArray<string>;
-  Count: Integer;
+  Warn: string;
 begin
   Parts := nil;
   for Entry in Switches do
+  begin
     if Entry.Deviates then
     begin
-      if Entry.Name = 'A' then
-        Parts := Parts + ['A' + Entry.Value]
-      else if Entry.Value = '-' then
-        Parts := Parts + [Entry.Name + MinusSign]
-      else
-        Parts := Parts + [Entry.Name + Entry.Value];
+      Parts := Parts + [SwitchSummary(Entry)];
     end;
+  end;
   if Hints.Deviates then
-    Parts := Parts + ['HINTS ' + Hints.Value];
-  if Warnings.Deviates then
-    Parts := Parts + ['WARNINGS ' + Warnings.Value];
-  Count := 0;
-  for Entry in Warns do
-    if Entry.Deviates then
-      Inc(Count);
-  if Count = 1 then
   begin
-    for Entry in Warns do
-      if Entry.Deviates then
-        Parts := Parts + ['WARN ' + Entry.Name + ' ' + Entry.Value];
-  end
-  else if Count > 1 then
-    Parts := Parts + [Format('WARN %d×', [Count])];
+    Parts := Parts + ['HINTS ' + Hints.Value];
+  end;
+  if Warnings.Deviates then
+  begin
+    Parts := Parts + ['WARNINGS ' + Warnings.Value];
+  end;
+  Warn := WarnsSummary(Warns);
+  if Warn <> '' then
+  begin
+    Parts := Parts + [Warn];
+  end;
   Result := String.Join(' ', Parts);
 end;
 

@@ -43,15 +43,20 @@ end;
 
 procedure TAtlasSettingsPageNamesTests.EverySchemaPageKnown;
 var
-  Missing: string;
-  Match: TMatch;
+  mMissing: string;
+  mMatch: TMatch;
+  mPage: string;
 begin
-  Missing := '';
-  for Match in TRegEx.Matches(AtlasSchemaJson + AtlasPluginSchemaJson, '"x-page"\s*:\s*"([^"]+)"') do
-    if not TAtlasSettingsPageNames.Known(Match.Groups[1].Value) and (Pos('|' + Match.Groups[1].Value + '|',
-      Missing + '|') = 0) then
-      Missing := Missing + '|' + Match.Groups[1].Value;
-  Assert.AreEqual('', Missing, 'x-page ohne englischen Namen in Atlas.Core.Settings.PageNames');
+  mMissing := '';
+  for mMatch in TRegEx.Matches(AtlasSchemaJson + AtlasPluginSchemaJson, '"x-page"\s*:\s*"([^"]+)"') do
+  begin
+    mPage := mMatch.Groups[1].Value;
+    if not TAtlasSettingsPageNames.Known(mPage) and (Pos('|' + mPage + '|', mMissing + '|') = 0) then
+    begin
+      mMissing := mMissing + '|' + mPage;
+    end;
+  end;
+  Assert.AreEqual('', mMissing, 'x-page ohne englischen Namen in Atlas.Core.Settings.PageNames');
 end;
 
 end.

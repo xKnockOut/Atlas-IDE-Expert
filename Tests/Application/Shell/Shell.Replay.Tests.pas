@@ -69,6 +69,23 @@ begin
   Result.AddPair('error', mError);
 end;
 
+/// <summary>Antwort des Testservers auf die Anfrage AMessage: zu textDocument/hover der Fehler ACode mit AText
+/// (außer ACode = 0), sonst ein leeres Ergebnis.</summary>
+function FakeAnswer(AMessage: TJSONObject; const AMethod: string; ACode: Integer; const AText: string): TJSONObject;
+begin
+  if (AMethod = 'textDocument/hover') and (ACode <> 0) then
+  begin
+    Result := ErrorResponse(ACode, AText);
+  end
+  else
+  begin
+    Result := TJSONObject.Create;
+    Result.AddPair('result', TJSONNull.Create);
+  end;
+  Result.AddPair('jsonrpc', TJsonRpcMessages.Version);
+  Result.AddPair('id', TJSONValue(AMessage.GetValue('id').Clone));
+end;
+
 function TShellReplayTests.FakeServer(ACode: Integer; const AText: string; out AMethods: TFunc<string>): TReplayServer;
 var
   mSeen: string;
@@ -98,23 +115,17 @@ begin
           mSeen := mSeen + mMethod + ';';
           if mMessage.GetValue('id') <> nil then
           begin
-            if (mMethod = 'textDocument/hover') and (ACode <> 0) then
-              mAnswer := ErrorResponse(ACode, AText)
-            else
-            begin
-              mAnswer := TJSONObject.Create;
-              mAnswer.AddPair('result', TJSONNull.Create);
-            end;
+            mAnswer := FakeAnswer(mMessage, mMethod, ACode, AText);
             try
-              mAnswer.AddPair('jsonrpc', TJsonRpcMessages.Version);
-              mAnswer.AddPair('id', TJSONValue(mMessage.GetValue('id').Clone));
               ATransport.WriteMessage(mAnswer);
             finally
               mAnswer.Free;
             end;
           end;
           if mMethod = 'exit' then
+          begin
             Exit;
+          end;
         finally
           mMessage.Free;
         end;

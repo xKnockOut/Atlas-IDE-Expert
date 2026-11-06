@@ -64,6 +64,12 @@ type
     function ImplementsName(const AOwner: TIndexSymbol; const AChain: TArray<TIndexSymbol>;
       const AName: string): Boolean;
     function IsAccessor(const ASymbol: TIndexSymbol): Boolean;
+    function InterfaceHas(const AInterface: TIndexSymbol; const AName: string): Boolean;
+    function MapsMethod(const AOwner: TIndexSymbol; const AName: string): Boolean;
+    function NameReason(const ASymbol: TIndexSymbol): TConsideredUsedReason;
+    function TypeAttributeReason(const AOwner: TIndexSymbol): TConsideredUsedReason;
+    function AncestryReason(const ASymbol, AOwner: TIndexSymbol): TConsideredUsedReason;
+    function OwnerReason(const ASymbol, AOwner: TIndexSymbol): TConsideredUsedReason;
     procedure CollectExports;
   public
     /// <summary>AUnit und ATokens: Unit und Code-Tokens (ohne Kommentare) der Datei, in der die Mitglieder
@@ -91,9 +97,32 @@ type
 implementation
 
 uses
-  System.StrUtils;
+  System.StrUtils,
+  System.Math,
+  Atlas.Common.Localization.Texts;
 
 const
+  /// <summary>Begründungen für den Befund-Hover in beiden Sprachen (#1458); None hat keinen Text.</summary>
+  cTexts: array[TConsideredUsedReason.Directive..TConsideredUsedReason.HelperMember] of TAtlasText = (
+    (De: 'virtuell, überschrieben oder Message-Handler'; En: 'virtual, overridden or message handler'),
+    (De: 'Konstruktor oder Destruktor'; En: 'constructor or destructor'),
+    (De: 'Operator'; En: 'operator'),
+    (De: 'for-in-Enumerator'; En: 'for-in enumerator'),
+    (De: 'Default-Property'; En: 'default property'),
+    (De: 'Property mit implements'; En: 'property with implements'),
+    (De: 'Mitglied mit Attribut (RTTI)'; En: 'member with attribute (RTTI)'),
+    (De: 'Typ mit Attribut aus keepAttributes'; En: 'type with attribute from keepAttributes'),
+    (De: 'Name aus keepPatterns'; En: 'name from keepPatterns'),
+    (De: 'Testklasse'; En: 'test class'),
+    (De: 'setzt eine Interface-Methode um'; En: 'implements an interface method'),
+    (De: 'Vorfahr oder Interface nicht im Index'; En: 'ancestor or interface not in the index'),
+    (De: 'published Property eines TPersistent-Nachfahren (Streaming)';
+     En: 'published property of a TPersistent descendant (streaming)'),
+    (De: 'Zugriffsmethode einer Property'; En: 'accessor of a property'),
+    (De: 'in exports'; En: 'in exports'),
+    (De: 'Mitglied eines Interfaces'; En: 'member of an interface'),
+    (De: 'Mitglied eines Helfers'; En: 'member of a helper'));
+
   KeptDirectives: array[0..5] of string = ('message', 'virtual', 'dynamic', 'abstract', 'override', 'reintroduce');
   EnumeratorNames: array[0..2] of string = ('GetEnumerator', 'MoveNext', 'Current');
   AccessorWords: array[0..4] of string = ('read', 'write', 'stored', 'add', 'remove');
@@ -106,7 +135,9 @@ begin
   Result := AName;
   Position := Pos('<', Result);
   if Position > 0 then
+  begin
     Result := Copy(Result, 1, Position - 1);
+  end;
   Result := Copy(Result, LastDelimiter('.', Result) + 1, MaxInt);
 end;
 
@@ -166,52 +197,23 @@ begin
       N := StarN;
     end
     else
+    begin
       Exit(False);
+    end;
   end;
   while (P <= Length(Pattern)) and (Pattern[P] = '*') do
+  begin
     Inc(P);
+  end;
   Result := P > Length(Pattern);
 end;
 
 class function TConsideredUsed.Explain(AReason: TConsideredUsedReason): string;
 begin
-  case AReason of
-    TConsideredUsedReason.Directive:
-      Result := 'virtuell, überschrieben oder Message-Handler';
-    TConsideredUsedReason.Constructor_:
-      Result := 'Konstruktor oder Destruktor';
-    TConsideredUsedReason.Operator:
-      Result := 'Operator';
-    TConsideredUsedReason.Enumerator:
-      Result := 'for-in-Enumerator';
-    TConsideredUsedReason.DefaultProperty:
-      Result := 'Default-Property';
-    TConsideredUsedReason.Implements:
-      Result := 'Property mit implements';
-    TConsideredUsedReason.Attribute:
-      Result := 'Mitglied mit Attribut (RTTI)';
-    TConsideredUsedReason.KeepAttribute:
-      Result := 'Typ mit Attribut aus keepAttributes';
-    TConsideredUsedReason.KeepPattern:
-      Result := 'Name aus keepPatterns';
-    TConsideredUsedReason.TestFixture:
-      Result := 'Testklasse';
-    TConsideredUsedReason.InterfaceMethod:
-      Result := 'setzt eine Interface-Methode um';
-    TConsideredUsedReason.UnknownAncestor:
-      Result := 'Vorfahr oder Interface nicht im Index';
-    TConsideredUsedReason.Streamed:
-      Result := 'published Property eines TPersistent-Nachfahren (Streaming)';
-    TConsideredUsedReason.Accessor:
-      Result := 'Zugriffsmethode einer Property';
-    TConsideredUsedReason.Exported:
-      Result := 'in exports';
-    TConsideredUsedReason.InterfaceMember:
-      Result := 'Mitglied eines Interfaces';
-    TConsideredUsedReason.HelperMember:
-      Result := 'Mitglied eines Helfers';
-  else
-    Result := '';
+  Result := '';
+  if AReason <> TConsideredUsedReason.None then
+  begin
+    Result := cTexts[AReason].Text;
   end;
 end;
 
@@ -232,13 +234,19 @@ begin
     Middle := (Low + High_) div 2;
     if (ATokens[Middle].StartPos.Line < APosition.Line) or ((ATokens[Middle].StartPos.Line = APosition.Line) and
       (ATokens[Middle].StartPos.Character < APosition.Character)) then
-      Low := Middle + 1
+    begin
+      Low := Middle + 1;
+    end
     else
+    begin
       High_ := Middle;
+    end;
   end;
   Result := Low;
   if Result > High(ATokens) then
+  begin
     Result := -1;
+  end;
 end;
 
 function TConsideredUsed.AttributesBefore(const APosition: TTextPosition): TArray<string>;
@@ -246,39 +254,54 @@ begin
   Result := AttributesAt(FTokens, APosition);
 end;
 
+/// <summary>Eine Attributgruppe [A, B('x')] rückwärts ab AAt (auf "]"); AAt steht danach auf "[". Der erste
+/// Bezeichner nach [ oder , ist der Name, ohne die Endung Attribute.</summary>
+procedure ReadAttributeGroup(const ATokens: TArray<TPascalToken>; var AAt: Integer; var ANames: TArray<string>);
+var
+  mDepth: Integer;
+  mName: string;
+begin
+  mDepth := 0;
+  while AAt >= 0 do
+  begin
+    if ATokens[AAt].IsSymbol(']') then
+    begin
+      Inc(mDepth);
+    end
+    else if ATokens[AAt].IsSymbol('[') then
+    begin
+      Dec(mDepth);
+      if mDepth = 0 then
+      begin
+        Exit;
+      end;
+    end
+    else if (mDepth = 1) and (ATokens[AAt].Kind = TPascalTokenKind.Identifier) and (AAt > 0) and
+      (ATokens[AAt - 1].IsSymbol('[') or ATokens[AAt - 1].IsSymbol(',')) then
+    begin
+      mName := ATokens[AAt].Text;
+      if EndsText('Attribute', mName) and (Length(mName) > Length('Attribute')) then
+      begin
+        mName := Copy(mName, 1, Length(mName) - Length('Attribute'));
+      end;
+      ANames := ANames + [mName];
+    end;
+    Dec(AAt);
+  end;
+end;
+
 class function TConsideredUsed.AttributesAt(const ATokens: TArray<TPascalToken>;
   const APosition: TTextPosition): TArray<string>;
 var
-  At, Depth: Integer;
-  Name: string;
+  mAt: Integer;
 begin
   Result := nil;
-  At := TokenIndexAt(ATokens, APosition) - 1;
-  // Rückwärts über [A, B('x')] [C] direkt vor der Deklaration; der erste Bezeichner nach [ oder , ist der Name.
-  while (At >= 0) and ATokens[At].IsSymbol(']') do
+  mAt := TokenIndexAt(ATokens, APosition) - 1;
+  // Rückwärts über [A, B('x')] [C] direkt vor der Deklaration.
+  while (mAt >= 0) and ATokens[mAt].IsSymbol(']') do
   begin
-    Depth := 0;
-    while At >= 0 do
-    begin
-      if ATokens[At].IsSymbol(']') then
-        Inc(Depth)
-      else if ATokens[At].IsSymbol('[') then
-      begin
-        Dec(Depth);
-        if Depth = 0 then
-          Break;
-      end
-      else if (Depth = 1) and (ATokens[At].Kind = TPascalTokenKind.Identifier) and (At > 0) and
-        (ATokens[At - 1].IsSymbol('[') or ATokens[At - 1].IsSymbol(',')) then
-      begin
-        Name := ATokens[At].Text;
-        if EndsText('Attribute', Name) and (Length(Name) > Length('Attribute')) then
-          Name := Copy(Name, 1, Length(Name) - Length('Attribute'));
-        Result := Result + [Name];
-      end;
-      Dec(At);
-    end;
-    Dec(At);
+    ReadAttributeGroup(ATokens, mAt, Result);
+    Dec(mAt);
   end;
 end;
 
@@ -287,12 +310,14 @@ var
   Symbol: TIndexSymbol;
 begin
   for Symbol in FUnit.Symbols do
+  begin
     if (Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
       TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType]) and SameText(Symbol.QualifiedName, AContainer) then
     begin
       AOwner := Symbol;
       Exit(True);
     end;
+  end;
   AOwner := Default(TIndexSymbol);
   Result := False;
 end;
@@ -306,20 +331,26 @@ begin
   Short := ShortName(AName);
   // Zuerst die eigene Unit, dann der Index.
   for Symbol in FUnit.Symbols do
+  begin
     if (Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.InterfaceType,
       TIndexSymbolKind.RecordType]) and SameText(Symbol.Name, Short) then
     begin
       AType := Symbol;
       Exit(True);
     end;
+  end;
   if FIndex <> nil then
+  begin
     for Location in FIndex.FindSymbols(Short) do
+    begin
       if Location.Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType,
         TIndexSymbolKind.InterfaceType, TIndexSymbolKind.RecordType] then
       begin
         AType := Location.Symbol;
         Exit(True);
       end;
+    end;
+  end;
   AType := Default(TIndexSymbol);
   Result := False;
 end;
@@ -340,7 +371,9 @@ begin
     Exit(False);
   end;
   if FChains.TryGetValue(Key, AChain) then
+  begin
     Exit(True);
+  end;
   Collected := nil;
   Known := True;
   Pending := TList<TIndexSymbol>.Create;
@@ -354,7 +387,9 @@ begin
       for Ancestor in Current.Ancestors do
       begin
         if Seen.ContainsKey(LowerCase(ShortName(Ancestor))) then
+        begin
           Continue;
+        end;
         Seen.Add(LowerCase(ShortName(Ancestor)), True);
         if not FindType(Ancestor, Found) then
         begin
@@ -385,44 +420,84 @@ var
   Symbol: TIndexSymbol;
 begin
   for Symbol in AChain do
+  begin
     if SameText(Symbol.Name, ATypeName) then
+    begin
       Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function TConsideredUsed.InterfaceHas(const AInterface: TIndexSymbol; const AName: string): Boolean;
+var
+  mMember: TIndexSymbol;
+  mLocation: TSymbolLocation;
+begin
+  if FIndex <> nil then
+  begin
+    for mLocation in FIndex.FindSymbols(AName) do
+    begin
+      if SameText(mLocation.Symbol.Container, AInterface.QualifiedName) or
+        SameText(mLocation.Symbol.Container, AInterface.Name) then
+      begin
+        Exit(True);
+      end;
+    end;
+  end;
+  // Interface aus der eigenen Unit, die (noch) nicht im Index steht.
+  for mMember in FUnit.Symbols do
+  begin
+    if SameText(mMember.Name, AName) and SameText(mMember.Container, AInterface.QualifiedName) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+function TConsideredUsed.MapsMethod(const AOwner: TIndexSymbol; const AName: string): Boolean;
+var
+  mAt, mLast: Integer;
+begin
+  // Methodenzuordnung im Typ: procedure IFoo.Bar = Baz;
+  mAt := TokenAt(AOwner.Range.StartPos);
+  mLast := TokenAt(AOwner.Range.EndPos);
+  if mAt < 0 then
+  begin
+    Exit(False);
+  end;
+  if mLast < 0 then
+  begin
+    mLast := High(FTokens);
+  end;
+  // Vor dem Namen stehen mindestens IFoo . Bar =.
+  mAt := Max(mAt, 3);
+  while (mAt <= mLast) and (mAt < High(FTokens)) do
+  begin
+    if SameText(FTokens[mAt].Text, AName) and FTokens[mAt - 1].IsSymbol('=') and
+      (FTokens[mAt - 2].Kind = TPascalTokenKind.Identifier) and FTokens[mAt - 3].IsSymbol('.') then
+    begin
+      Exit(True);
+    end;
+    Inc(mAt);
+  end;
   Result := False;
 end;
 
 function TConsideredUsed.ImplementsName(const AOwner: TIndexSymbol; const AChain: TArray<TIndexSymbol>;
   const AName: string): Boolean;
 var
-  Symbol, Member: TIndexSymbol;
-  Location: TSymbolLocation;
-  At, Last: Integer;
+  mSymbol: TIndexSymbol;
 begin
-  for Symbol in AChain do
-    if Symbol.Kind = TIndexSymbolKind.InterfaceType then
-    begin
-      if FIndex <> nil then
-        for Location in FIndex.FindSymbols(AName) do
-          if SameText(Location.Symbol.Container, Symbol.QualifiedName) or
-            SameText(Location.Symbol.Container, Symbol.Name) then
-            Exit(True);
-      // Interface aus der eigenen Unit, die (noch) nicht im Index steht.
-      for Member in FUnit.Symbols do
-        if SameText(Member.Name, AName) and SameText(Member.Container, Symbol.QualifiedName) then
-          Exit(True);
-    end;
-  // Methodenzuordnung im Typ: procedure IFoo.Bar = Baz;
-  At := TokenAt(AOwner.Range.StartPos);
-  Last := TokenAt(AOwner.Range.EndPos);
-  if (At < 0) or (Last < 0) then
-    Last := High(FTokens);
-  while (At >= 0) and (At <= Last) and (At < High(FTokens)) do
+  for mSymbol in AChain do
   begin
-    if (At >= 3) and SameText(FTokens[At].Text, AName) and FTokens[At - 1].IsSymbol('=') and
-      (FTokens[At - 2].Kind = TPascalTokenKind.Identifier) and FTokens[At - 3].IsSymbol('.') then
+    if (mSymbol.Kind = TIndexSymbolKind.InterfaceType) and InterfaceHas(mSymbol, AName) then
+    begin
       Exit(True);
-    Inc(At);
+    end;
   end;
-  Result := False;
+  Result := MapsMethod(AOwner, AName);
 end;
 
 function TConsideredUsed.IsAccessor(const ASymbol: TIndexSymbol): Boolean;
@@ -432,14 +507,20 @@ var
   Index: Integer;
 begin
   for Symbol in FUnit.Symbols do
+  begin
     if (Symbol.Kind = TIndexSymbolKind.Property_) and SameText(Symbol.Container, ASymbol.Container) then
     begin
       Words := Symbol.Signature.Replace(';', ' ').Replace(':', ' ').Split([' '],
         TStringSplitOptions.ExcludeEmpty);
       for Index := 0 to High(Words) - 1 do
+      begin
         if (IndexText(Words[Index], AccessorWords) >= 0) and SameText(Words[Index + 1], ASymbol.Name) then
+        begin
           Exit(True);
+        end;
+      end;
     end;
+  end;
   Result := False;
 end;
 
@@ -452,74 +533,188 @@ begin
   for Index := 0 to High(FTokens) do
   begin
     if FTokens[Index].IsKeyword('exports') then
-      InExports := True
+    begin
+      InExports := True;
+    end
     else if InExports and FTokens[Index].IsSymbol(';') then
-      InExports := False
+    begin
+      InExports := False;
+    end
     else if InExports and (FTokens[Index].Kind = TPascalTokenKind.Identifier) and (Index > 0) and
       (FTokens[Index - 1].IsKeyword('exports') or FTokens[Index - 1].IsSymbol(',')) then
+    begin
       FExported.AddOrSetValue(LowerCase(FTokens[Index].Text), True);
+    end;
+  end;
+end;
+
+function HasKeptDirective(const ASymbol: TIndexSymbol): Boolean;
+var
+  mDirective: string;
+begin
+  for mDirective in KeptDirectives do
+  begin
+    if ASymbol.HasDirective(mDirective) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Gründe, die schon die Deklaration verrät: Direktiven, Konstruktoren, Operatoren, Enumerator,
+/// Default-Property und implements.</summary>
+function DeclarationReason(const ASymbol: TIndexSymbol): TConsideredUsedReason;
+var
+  mSignature: string;
+  mProperty: Boolean;
+begin
+  Result := TConsideredUsedReason.None;
+  mSignature := TrimLeft(ASymbol.Signature);
+  mProperty := ASymbol.Kind = TIndexSymbolKind.Property_;
+  if HasKeptDirective(ASymbol) then
+  begin
+    Result := TConsideredUsedReason.Directive;
+  end
+  else if (ASymbol.Kind = TIndexSymbolKind.Constructor_) or StartsText('constructor', mSignature) or
+    StartsText('destructor', mSignature) or StartsText('class constructor', mSignature) or
+    StartsText('class destructor', mSignature) then
+  begin
+    Result := TConsideredUsedReason.Constructor_;
+  end
+  else if StartsText('class operator', mSignature) then
+  begin
+    Result := TConsideredUsedReason.Operator;
+  end
+  else if (ASymbol.Container <> '') and (IndexText(ASymbol.Name, EnumeratorNames) >= 0) then
+  begin
+    Result := TConsideredUsedReason.Enumerator;
+  end
+  else if mProperty and ASymbol.IsDefault then
+  begin
+    Result := TConsideredUsedReason.DefaultProperty;
+  end
+  else if mProperty and ContainsText(' ' + mSignature + ' ', ' implements ') then
+  begin
+    Result := TConsideredUsedReason.Implements;
+  end;
+end;
+
+function TConsideredUsed.NameReason(const ASymbol: TIndexSymbol): TConsideredUsedReason;
+var
+  mPattern: string;
+begin
+  if AttributesBefore(ASymbol.Range.StartPos) <> nil then
+  begin
+    Exit(TConsideredUsedReason.Attribute);
+  end;
+  for mPattern in FKeepPatterns do
+  begin
+    if Matches(mPattern, ASymbol.Name) or ((ASymbol.Container <> '') and
+      Matches(mPattern, ASymbol.Container + '.' + ASymbol.Name)) then
+    begin
+      Exit(TConsideredUsedReason.KeepPattern);
+    end;
+  end;
+  Result := TConsideredUsedReason.None;
+  if (ASymbol.Container = '') and FExported.ContainsKey(LowerCase(ASymbol.Name)) then
+  begin
+    Result := TConsideredUsedReason.Exported;
+  end;
+end;
+
+function TConsideredUsed.TypeAttributeReason(const AOwner: TIndexSymbol): TConsideredUsedReason;
+var
+  mAttribute: string;
+begin
+  for mAttribute in AttributesBefore(AOwner.Range.StartPos) do
+  begin
+    if SameText(mAttribute, 'TestFixture') then
+    begin
+      Exit(TConsideredUsedReason.TestFixture);
+    end;
+    if IndexText(mAttribute, FKeepAttributes) >= 0 then
+    begin
+      Exit(TConsideredUsedReason.KeepAttribute);
+    end;
+  end;
+  Result := TConsideredUsedReason.None;
+end;
+
+function TConsideredUsed.AncestryReason(const ASymbol, AOwner: TIndexSymbol): TConsideredUsedReason;
+var
+  mAncestors: TArray<TIndexSymbol>;
+  mPublished: Boolean;
+begin
+  Result := TConsideredUsedReason.None;
+  mPublished := ASymbol.Visibility = TIndexVisibility.Published;
+  if not Chain(AOwner, mAncestors) then
+  begin
+    Result := TConsideredUsedReason.UnknownAncestor;
+  end
+  else if mPublished and ChainHas(mAncestors, 'TTestCase') then
+  begin
+    Result := TConsideredUsedReason.TestFixture;
+  end
+  else if mPublished and (ASymbol.Kind = TIndexSymbolKind.Property_) and ChainHas(mAncestors, 'TPersistent') then
+  begin
+    Result := TConsideredUsedReason.Streamed;
+  end
+  else if (ASymbol.Kind = TIndexSymbolKind.Method) and ImplementsName(AOwner, mAncestors, ASymbol.Name) then
+  begin
+    Result := TConsideredUsedReason.InterfaceMethod;
+  end;
+end;
+
+function TConsideredUsed.OwnerReason(const ASymbol, AOwner: TIndexSymbol): TConsideredUsedReason;
+begin
+  if AOwner.Kind = TIndexSymbolKind.InterfaceType then
+  begin
+    Result := TConsideredUsedReason.InterfaceMember;
+  end
+  else if AOwner.Kind = TIndexSymbolKind.HelperType then
+  begin
+    Result := TConsideredUsedReason.HelperMember;
+  end
+  else
+  begin
+    Result := TypeAttributeReason(AOwner);
+  end;
+  if Result <> TConsideredUsedReason.None then
+  begin
+    Exit;
+  end;
+  if (ASymbol.Kind = TIndexSymbolKind.Method) and IsAccessor(ASymbol) then
+  begin
+    Result := TConsideredUsedReason.Accessor;
+  end
+  else
+  begin
+    Result := AncestryReason(ASymbol, AOwner);
   end;
 end;
 
 function TConsideredUsed.Reason(const ASymbol: TIndexSymbol): TConsideredUsedReason;
 var
-  Directive, Attribute, Pattern, Signature: string;
-  OwnerSymbol: TIndexSymbol;
-  HasOwner: Boolean;
-  Ancestors: TArray<TIndexSymbol>;
+  mOwner: TIndexSymbol;
 begin
-  for Directive in KeptDirectives do
-    if ASymbol.HasDirective(Directive) then
-      Exit(TConsideredUsedReason.Directive);
-  Signature := TrimLeft(ASymbol.Signature);
-  if (ASymbol.Kind = TIndexSymbolKind.Constructor_) or StartsText('constructor', Signature) or
-    StartsText('destructor', Signature) or StartsText('class constructor', Signature) or
-    StartsText('class destructor', Signature) then
-    Exit(TConsideredUsedReason.Constructor_);
-  if StartsText('class operator', Signature) then
-    Exit(TConsideredUsedReason.Operator);
-  if (ASymbol.Container <> '') and (IndexText(ASymbol.Name, EnumeratorNames) >= 0) then
-    Exit(TConsideredUsedReason.Enumerator);
-  if (ASymbol.Kind = TIndexSymbolKind.Property_) and ASymbol.IsDefault then
-    Exit(TConsideredUsedReason.DefaultProperty);
-  if (ASymbol.Kind = TIndexSymbolKind.Property_) and ContainsText(' ' + Signature + ' ', ' implements ') then
-    Exit(TConsideredUsedReason.Implements);
-  if AttributesBefore(ASymbol.Range.StartPos) <> nil then
-    Exit(TConsideredUsedReason.Attribute);
-  for Pattern in FKeepPatterns do
-    if Matches(Pattern, ASymbol.Name) or ((ASymbol.Container <> '') and
-      Matches(Pattern, ASymbol.Container + '.' + ASymbol.Name)) then
-      Exit(TConsideredUsedReason.KeepPattern);
-  if (ASymbol.Container = '') and FExported.ContainsKey(LowerCase(ASymbol.Name)) then
-    Exit(TConsideredUsedReason.Exported);
-  if ASymbol.Container = '' then
-    Exit(TConsideredUsedReason.None);
-  HasOwner := Owner(ASymbol.Container, OwnerSymbol);
-  if not HasOwner then
-    Exit(TConsideredUsedReason.UnknownAncestor);
-  if OwnerSymbol.Kind = TIndexSymbolKind.InterfaceType then
-    Exit(TConsideredUsedReason.InterfaceMember);
-  if OwnerSymbol.Kind = TIndexSymbolKind.HelperType then
-    Exit(TConsideredUsedReason.HelperMember);
-  for Attribute in AttributesBefore(OwnerSymbol.Range.StartPos) do
+  Result := DeclarationReason(ASymbol);
+  if Result = TConsideredUsedReason.None then
   begin
-    if SameText(Attribute, 'TestFixture') then
-      Exit(TConsideredUsedReason.TestFixture);
-    if IndexText(Attribute, FKeepAttributes) >= 0 then
-      Exit(TConsideredUsedReason.KeepAttribute);
+    Result := NameReason(ASymbol);
   end;
-  if (ASymbol.Kind = TIndexSymbolKind.Method) and IsAccessor(ASymbol) then
-    Exit(TConsideredUsedReason.Accessor);
-  if not Chain(OwnerSymbol, Ancestors) then
+  if (Result <> TConsideredUsedReason.None) or (ASymbol.Container = '') then
+  begin
+    Exit;
+  end;
+  if not Owner(ASymbol.Container, mOwner) then
+  begin
     Exit(TConsideredUsedReason.UnknownAncestor);
-  if (ASymbol.Visibility = TIndexVisibility.Published) and ChainHas(Ancestors, 'TTestCase') then
-    Exit(TConsideredUsedReason.TestFixture);
-  if (ASymbol.Visibility = TIndexVisibility.Published) and (ASymbol.Kind = TIndexSymbolKind.Property_) and
-    ChainHas(Ancestors, 'TPersistent') then
-    Exit(TConsideredUsedReason.Streamed);
-  if (ASymbol.Kind = TIndexSymbolKind.Method) and ImplementsName(OwnerSymbol, Ancestors, ASymbol.Name) then
-    Exit(TConsideredUsedReason.InterfaceMethod);
-  Result := TConsideredUsedReason.None;
+  end;
+  Result := OwnerReason(ASymbol, mOwner);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.ConsideredUsed', cTexts);
 
 end.

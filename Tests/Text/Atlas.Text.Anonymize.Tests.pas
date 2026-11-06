@@ -26,12 +26,24 @@ type
     procedure UserNameBeforeUmlaut;
     [Test]
     procedure FenceSafe;
+    [Test]
+    procedure WorkspaceRootAloneStays;
+    [Test]
+    procedure RedactsMarkedValues;
+    [Test]
+    procedure MarkedPathUnderRootAndBareName;
+    [Test]
+    procedure JsonValuesKeepKeywordsOnly;
+    [Test]
+    procedure KeywordsAreLowerWordsAndPlatforms;
   end;
 
 implementation
 
 uses
-  Atlas.Text.Anonymize;
+  System.SysUtils,
+  Atlas.Text.Anonymize,
+  Atlas.Text.LogMarks;
 
 const
   Root = 'C:\Projekte\Geheim';
@@ -40,21 +52,22 @@ procedure TTextAnonymizerTests.ReplacesWorkspaceAndOtherPaths;
 begin
   Assert.AreEqual('Datei <pfad> und <pfad> fehlt',
     TTextAnonymizer.AnonymizePaths('Datei E:\Andere\a.pas und \\server\share\b.inc fehlt', [Root], []));
-  Assert.AreEqual('<ws>\src\a.pas', TTextAnonymizer.AnonymizePaths(Root + '\src\a.pas', [Root + '\'], []));
-  Assert.AreEqual('<pfad> und <ws>/a.pas',
+  Assert.AreEqual('<ws>/<datei>.pas', TTextAnonymizer.AnonymizePaths(Root + '\src\a.pas', [Root + '\'], []));
+  Assert.AreEqual('<pfad> und <ws>/<datei>.pas',
     TTextAnonymizer.AnonymizePaths('D:\x\y.dpr und C:/Projekte/Geheim/a.pas', [Root], []));
 end;
 
 procedure TTextAnonymizerTests.ReplacesFileUrisAndJsonEscapes;
 begin
-  Assert.AreEqual('<ws>/Main.pas', TTextAnonymizer.AnonymizePaths('file:///C%3A/Projekte/Geheim/Main.pas', [Root], []));
-  Assert.AreEqual('"<ws>\\src"', TTextAnonymizer.AnonymizePaths('"C:\\Projekte\\Geheim\\src"', [Root], []));
+  Assert.AreEqual('<ws>/<datei>.pas', TTextAnonymizer.AnonymizePaths('file:///C%3A/Projekte/Geheim/Main.pas', [Root],
+    []));
+  Assert.AreEqual('"<ws>/<datei>"', TTextAnonymizer.AnonymizePaths('"C:\\Projekte\\Geheim\\src"', [Root], []));
   Assert.AreEqual('<pfad>', TTextAnonymizer.AnonymizePaths('file:///d%3A/x/y.pas', [Root], []));
 end;
 
 procedure TTextAnonymizerTests.LongestRootFirst;
 begin
-  Assert.AreEqual('<ws>\a.pas', TTextAnonymizer.AnonymizePaths(Root + '\Sub\a.pas', [Root, Root + '\Sub'], []));
+  Assert.AreEqual('<ws>/<datei>.pas', TTextAnonymizer.AnonymizePaths(Root + '\Sub\a.pas', [Root, Root + '\Sub'], []));
 end;
 
 procedure TTextAnonymizerTests.KeepsTimesAndWebUrls;
@@ -88,6 +101,64 @@ end;
 procedure TTextAnonymizerTests.FenceSafe;
 begin
   Assert.AreEqual('a ` ` ` b', TTextAnonymizer.FenceSafe('a ``` b'));
+end;
+
+procedure TTextAnonymizerTests.WorkspaceRootAloneStays;
+begin
+  Assert.AreEqual('Ordner <ws> geladen', TTextAnonymizer.AnonymizePaths('Ordner ' + Root + ' geladen', [Root], []));
+  // Unterordner und Dateiname verraten das Projekt (#1478): nur die Endung bleibt.
+  Assert.AreEqual('<ws>/<datei>.dproj, <ws>/<datei>', TTextAnonymizer.AnonymizePaths(Root +
+    '\Kunden\Kunden.dproj, ' + Root + '\Kunden\Daten', [Root], []));
+end;
+
+procedure TTextAnonymizerTests.RedactsMarkedValues;
+begin
+  Assert.AreEqual('Typ <name> fehlt: <text>', TTextAnonymizer.AnonymizeLogLine('Typ ' + TLogMarks.Name('TKunde') +
+    ' fehlt: ' + TLogMarks.Text('Kunde.Speichern ist nil'), [Root], []));
+  Assert.AreEqual('Typ <name>', TTextAnonymizer.RedactMarks('Typ ' + TLogMarks.Name('TKunde'), []));
+end;
+
+procedure TTextAnonymizerTests.MarkedPathUnderRootAndBareName;
+begin
+  Assert.AreEqual('<ws>/<datei>.pas', TTextAnonymizer.RedactMarks(TLogMarks.Path(Root + '\Kunde.pas'), [Root]));
+  Assert.AreEqual('<pfad>', TTextAnonymizer.RedactMarks(TLogMarks.Path('D:\Andere\Kunde.pas'), [Root]));
+  Assert.AreEqual('<datei>.pas', TTextAnonymizer.RedactMarks(TLogMarks.Path('Kunde.pas'), [Root]));
+  Assert.AreEqual('<datei>', TTextAnonymizer.RedactMarks(TLogMarks.Path('Kunden'), [Root]));
+end;
+
+procedure TTextAnonymizerTests.JsonValuesKeepKeywordsOnly;
+var
+  mText: string;
+begin
+  mText := TTextAnonymizer.AnonymizeJsonValues('{"logLevel": "warning", "rules": {"unused-unit": "off"}, ' +
+    '"exclude": ["Kunden.Daten", "**/Generiert/*.pas"], "project": "Kunden.dproj", "count": 3, "on": true, ' +
+    '"config": "Release"}');
+  Assert.Contains(mText, '"warning"');
+  Assert.Contains(mText, '"unused-unit"');
+  Assert.Contains(mText, '"off"');
+  Assert.Contains(mText, '"Release"');
+  Assert.Contains(mText, '3');
+  Assert.Contains(mText, 'true');
+  Assert.IsFalse(mText.Contains('Kunden'), 'Unit- und Projektnamen');
+  Assert.IsFalse(mText.Contains('Generiert'), 'Muster mit Ordnernamen');
+  Assert.AreEqual('{}', TTextAnonymizer.AnonymizeJsonValues('kein JSON'));
+end;
+
+procedure TTextAnonymizerTests.KeywordsAreLowerWordsAndPlatforms;
+begin
+  Assert.IsTrue(TTextAnonymizer.IsKeyword('unused-unit'));
+  Assert.IsTrue(TTextAnonymizer.IsKeyword('editor.font_size'));
+  Assert.IsTrue(TTextAnonymizer.IsKeyword('1.2.0'));
+  Assert.IsTrue(TTextAnonymizer.IsKeyword('Win64'));
+  Assert.IsTrue(TTextAnonymizer.IsKeyword(''));
+  // Schon ersetzt (SettingsWithoutPaths des Plugins) bleibt ersetzt.
+  Assert.IsTrue(TTextAnonymizer.IsKeyword('<pfad>'));
+  Assert.IsFalse(TTextAnonymizer.IsKeyword('<Kunden>'));
+  Assert.IsFalse(TTextAnonymizer.IsKeyword('Kunden'));
+  Assert.IsFalse(TTextAnonymizer.IsKeyword('kunden--daten'));
+  Assert.IsFalse(TTextAnonymizer.IsKeyword('kunden-'));
+  Assert.IsFalse(TTextAnonymizer.IsKeyword('src/kunden'));
+  Assert.IsFalse(TTextAnonymizer.IsKeyword('https://firma.example'));
 end;
 
 initialization

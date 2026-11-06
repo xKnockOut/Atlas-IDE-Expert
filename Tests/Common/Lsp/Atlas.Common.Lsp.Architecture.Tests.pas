@@ -295,7 +295,9 @@ begin
     Assert.Contains(TFile.ReadAllText(Target, TEncoding.UTF8), '<!doctype html>');
   finally
     if TDirectory.Exists(Folder) then
+    begin
       TDirectory.Delete(Folder, True);
+    end;
     Lsp.Free;
     Service.Free;
   end;
@@ -330,12 +332,65 @@ begin
   end;
 end;
 
+/// <summary>Speichert den Bericht von ALsp nach ATarget.</summary>
+procedure SaveReportTo(const ALsp: TLspArchitecture; const ATarget: string);
+var
+  mArguments: TJSONArray;
+begin
+  mArguments := TJSONArray.Create;
+  try
+    mArguments.Add('');
+    mArguments.Add(ATarget);
+    ALsp.SaveReport(mArguments).Free;
+  finally
+    mArguments.Free;
+  end;
+end;
+
+/// <summary>architecture.baseline relativ zum Projekt; "compare": false schaltet ab.</summary>
+procedure AssertBaselineSettingAndCompareOff(const ALsp: TLspArchitecture; const AFolder: string);
+var
+  mAnswer: TJSONObject;
+begin
+  // architecture.baseline relativ zum Projekt; "compare": false schaltet ab.
+  BaselineSetting := 'stand.json';
+  ProjectRoot := AFolder;
+  mAnswer := Ask(ALsp, '{"format": "markdown"}');
+  try
+    Assert.Contains(mAnswer.GetValue<string>('text'), '## Vergleich');
+  finally
+    mAnswer.Free;
+  end;
+  mAnswer := Ask(ALsp, '{"compare": false}');
+  try
+    Assert.IsNull(mAnswer.GetValue('comparison'));
+  finally
+    mAnswer.Free;
+  end;
+end;
+
+/// <summary>Fehlender Stand: Meldung, die Übersicht kommt trotzdem.</summary>
+procedure AssertMissingBaselineReported(const ALsp: TLspArchitecture);
+var
+  mAnswer: TJSONObject;
+begin
+  // Fehlender Stand: Meldung, die Übersicht kommt trotzdem.
+  BaselineSetting := 'fehlt.json';
+  mAnswer := Ask(ALsp, '{}');
+  try
+    Assert.Contains(mAnswer.GetValue<string>('comparisonError'), 'nicht gefunden');
+    Assert.IsNotNull(mAnswer.GetValue('data'));
+    Assert.IsNull(mAnswer.GetValue('comparison'));
+  finally
+    mAnswer.Free;
+  end;
+end;
+
 procedure TLspArchitectureTests.SavesStateAndCompares;
 var
   Service, Later: TArchitectureService;
   Lsp, LaterLsp: TLspArchitecture;
   Folder, Target: string;
-  Arguments: TJSONArray;
   Answer: TJSONObject;
   Index: ISymbolIndex;
 begin
@@ -351,14 +406,7 @@ begin
   Folder := TPath.Combine(TPath.GetTempPath, 'atlas-vergleich-' + IntToStr(Random(1000000)));
   try
     Target := TPath.Combine(Folder, 'stand.json');
-    Arguments := TJSONArray.Create;
-    try
-      Arguments.Add('');
-      Arguments.Add(Target);
-      Lsp.SaveReport(Arguments).Free;
-    finally
-      Arguments.Free;
-    end;
+    SaveReportTo(Lsp, Target);
     Assert.Contains(TFile.ReadAllText(Target, TEncoding.UTF8), '"format": 2');
     Answer := Ask(LaterLsp, '{"compareWith": ' + JsonPath(Target) + '}');
     try
@@ -376,46 +424,18 @@ begin
     finally
       Answer.Free;
     end;
-    // architecture.baseline relativ zum Projekt; "compare": false schaltet ab.
-    BaselineSetting := 'stand.json';
-    ProjectRoot := Folder;
-    Answer := Ask(LaterLsp, '{"format": "markdown"}');
-    try
-      Assert.Contains(Answer.GetValue<string>('text'), '## Vergleich');
-    finally
-      Answer.Free;
-    end;
-    Answer := Ask(LaterLsp, '{"compare": false}');
-    try
-      Assert.IsNull(Answer.GetValue('comparison'));
-    finally
-      Answer.Free;
-    end;
+    AssertBaselineSettingAndCompareOff(LaterLsp, Folder);
     Target := TPath.Combine(Folder, 'bericht.md');
-    Arguments := TJSONArray.Create;
-    try
-      Arguments.Add('');
-      Arguments.Add(Target);
-      LaterLsp.SaveReport(Arguments).Free;
-    finally
-      Arguments.Free;
-    end;
+    SaveReportTo(LaterLsp, Target);
     Assert.Contains(TFile.ReadAllText(Target, TEncoding.UTF8), '### Neue Zyklen (1)');
-    // Fehlender Stand: Meldung, die Übersicht kommt trotzdem.
-    BaselineSetting := 'fehlt.json';
-    Answer := Ask(LaterLsp, '{}');
-    try
-      Assert.Contains(Answer.GetValue<string>('comparisonError'), 'nicht gefunden');
-      Assert.IsNotNull(Answer.GetValue('data'));
-      Assert.IsNull(Answer.GetValue('comparison'));
-    finally
-      Answer.Free;
-    end;
+    AssertMissingBaselineReported(LaterLsp);
   finally
     BaselineSetting := '';
     ProjectRoot := 'C:\Projekt';
     if TDirectory.Exists(Folder) then
+    begin
       TDirectory.Delete(Folder, True);
+    end;
     LaterLsp.Free;
     Later.Free;
     Lsp.Free;
@@ -428,12 +448,25 @@ begin
   Result := AAnswer.GetValue<TJSONObject>('data').GetValue<TJSONObject>('grouping').GetValue<Double>('resolution');
 end;
 
+/// <summary>Die Antwort auf AParams nennt die Feinheit AExpected.</summary>
+procedure AssertResolutionOf(const ALsp: TLspArchitecture; const AParams: string; AExpected: Double;
+  const AMessage: string);
+var
+  mAnswer: TJSONObject;
+begin
+  mAnswer := Ask(ALsp, AParams);
+  try
+    Assert.AreEqual(AExpected, ResolutionIn(mAnswer), 1E-9, AMessage);
+  finally
+    mAnswer.Free;
+  end;
+end;
+
 procedure TLspArchitectureTests.ResolutionOverridesSettingForOneCall;
 var
   mService: TArchitectureService;
   mLsp: TLspArchitecture;
   mAnswer: TJSONObject;
-  mValue: Double;
   mFolder, mTarget: string;
   mArguments: TJSONArray;
   mOptions: TJSONObject;
@@ -444,28 +477,10 @@ begin
   mLsp := NewLsp(mService);
   mFolder := TPath.Combine(TPath.GetTempPath, 'atlas-feinheit-' + IntToStr(Random(1000000)));
   try
-    mAnswer := Ask(mLsp, '{}');
-    try
-      mValue := ResolutionIn(mAnswer);
-      Assert.AreEqual(Double(1.5), mValue, 1E-9, 'Einstellung');
-    finally
-      mAnswer.Free;
-    end;
-    mAnswer := Ask(mLsp, '{"resolution": 2}');
-    try
-      mValue := ResolutionIn(mAnswer);
-      Assert.AreEqual(Double(2), mValue, 1E-9, 'Anfrage');
-    finally
-      mAnswer.Free;
-    end;
+    AssertResolutionOf(mLsp, '{}', 1.5, 'Einstellung');
+    AssertResolutionOf(mLsp, '{"resolution": 2}', 2, 'Anfrage');
     // Die Einstellung bleibt; ein anderer Wert rechnet neu.
-    mAnswer := Ask(mLsp, '{}');
-    try
-      mValue := ResolutionIn(mAnswer);
-      Assert.AreEqual(Double(1.5), mValue, 1E-9, 'wieder die Einstellung');
-    finally
-      mAnswer.Free;
-    end;
+    AssertResolutionOf(mLsp, '{}', 1.5, 'wieder die Einstellung');
     Assert.AreEqual(3, mService.Computations);
     mAnswer := Ask(mLsp, '{"format": "markdown", "resolution": 2}');
     try
@@ -492,7 +507,9 @@ begin
   finally
     ResolutionSetting := 1;
     if TDirectory.Exists(mFolder) then
+    begin
       TDirectory.Delete(mFolder, True);
+    end;
     mLsp.Free;
     mService.Free;
   end;

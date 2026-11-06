@@ -76,15 +76,38 @@ uses
   Atlas.Common.Configuration.Internals.JsonTree,
   Atlas.Common.Configuration.Internals.ScopeData,
   Atlas.Common.Configuration.Internals.Forbidden,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TScopesText = (AppliesToAllProjectsAnd, BelongsToTheProjectAtlas);
+
+const
+  cTexts: array[TScopesText] of TAtlasText = (
+    (De: '"%s" gilt für alle Projekte und gehört in die globalen Einstellungen (Tools › Optionen › Atlas, Datei ' +
+      '%%APPDATA%%\Atlas\settings.json); in atlas.json wird es ignoriert';
+     En: '"%s" applies to all projects and belongs in the global settings (Tools › Options › Atlas, file ' +
+      '%%APPDATA%%\Atlas\settings.json); in atlas.json it is ignored'),
+    (De: '"%s" gehört zum Projekt (atlas.json, Atlas › Projekt-Einstellungen); in den globalen Einstellungen wird es ' +
+      'ignoriert';
+     En: '"%s" belongs to the project (atlas.json, Atlas › Project Settings); in the global settings it is ignored'));
+
+{$SCOPEDENUMS OFF}
 
 function Listed(const APath: string; const AList: array of string): Boolean;
 var
   Item: string;
 begin
   for Item in AList do
+  begin
     if Item = APath then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -94,12 +117,20 @@ var
 begin
   Result := '"';
   for Ch in AKey do
+  begin
     if (Ch = '"') or (Ch = '\') then
-      Result := Result + '\' + Ch
+    begin
+      Result := Result + '\' + Ch;
+    end
     else if Ord(Ch) < 32 then
-      Result := Result + Format('\u%.4x', [Ord(Ch)])
+    begin
+      Result := Result + Format('\u%.4x', [Ord(Ch)]);
+    end
     else
+    begin
       Result := Result + Ch;
+    end;
+  end;
   Result := Result + '"';
 end;
 
@@ -111,11 +142,13 @@ end;
 function Misplaced(const APath: string; AKeep: TConfigurationScope): string;
 begin
   if AKeep = TConfigurationScope.Project then
-    Result := Format('"%s" gilt für alle Projekte und gehört in die globalen Einstellungen ' +
-      '(Tools › Optionen › Atlas, Datei %%APPDATA%%\Atlas\settings.json); in atlas.json wird es ignoriert', [APath])
+  begin
+    Result := cTexts[TScopesText.AppliesToAllProjectsAnd].Fmt([APath]);
+  end
   else
-    Result := Format('"%s" gehört zum Projekt (atlas.json, Atlas › Projekt-Einstellungen); in den globalen ' +
-      'Einstellungen wird es ignoriert', [APath]);
+  begin
+    Result := cTexts[TScopesText.BelongsToTheProjectAtlas].Fmt([APath]);
+  end;
 end;
 
 function FilterScope(const AText: string; AKeep: TConfigurationScope;
@@ -128,14 +161,22 @@ var
   Dot: Integer;
 begin
   if Listed(APath, GlobalSettingPaths) and Listed(APath, ProjectSettingPaths) then
+  begin
     Exit(TConfigurationScope.Both);
+  end;
   if Listed(APath, GlobalSettingPaths) then
+  begin
     Exit(TConfigurationScope.Global);
+  end;
   if Listed(APath, ProjectSettingPaths) then
+  begin
     Exit(TConfigurationScope.Project);
+  end;
   Dot := Pos('.', APath);
   if Dot > 0 then
+  begin
     Exit(ScopeOf(Copy(APath, 1, Dot - 1)));
+  end;
   Result := TConfigurationScope.Unknown;
 end;
 
@@ -145,11 +186,19 @@ var
 begin
   Result := False;
   for Item in GlobalSettingPaths do
+  begin
     if Item.StartsWith(AKey + '.') then
+    begin
       Result := True;
+    end;
+  end;
   for Item in ProjectSettingPaths do
+  begin
     if Item.StartsWith(AKey + '.') then
+    begin
       Result := True;
+    end;
+  end;
 end;
 
 class function TConfigurationScopes.Filter(const AText: string; AKeep: TConfigurationScope;
@@ -158,7 +207,9 @@ var
   Forbidden, Ignored: TArray<TConfigurationIssue>;
 begin
   if AKeep <> TConfigurationScope.Project then
+  begin
     Exit(FilterScope(AText, AKeep, AIssues));
+  end;
   // atlas.json gilt für alle im Team (#486): ohne Zugangsdaten und absolute Pfade. Die Meldungen zum Ort beziehen
   // sich auf den Originaltext.
   FilterScope(AText, AKeep, AIssues);
@@ -166,94 +217,159 @@ begin
   AIssues := AIssues + Forbidden;
 end;
 
-function FilterScope(const AText: string; AKeep: TConfigurationScope;
-  out AIssues: TArray<TConfigurationIssue>): string;
-var
-  Root, Value: TJsonNode;
-  Index, Sub: Integer;
-  Key, Path: string;
-  Parts, Members: TArray<string>;
-  Removed, SubRemoved: Boolean;
-  Scope: TConfigurationScope;
-
-  procedure Report(AKeyStart: Integer; const AKeyText, APath: string);
-  var
-    Issue: TConfigurationIssue;
-  begin
-    Issue.Range := TTextRange.Create(TLineTable.Build(AText).PositionAt(AKeyStart),
-      TLineTable.Build(AText).PositionAt(AKeyStart + Length(AKeyText) + 2));
-    Issue.Message := Misplaced(APath, AKeep);
-    Issue.IsError := False;
-    AIssues := AIssues + [Issue];
-  end;
-
-  function Keeps(AScope: TConfigurationScope): Boolean;
-  begin
-    Result := (AScope = TConfigurationScope.Unknown) or (AScope = TConfigurationScope.Both) or (AScope = AKeep);
-  end;
-
+/// <summary>Wurzelobjekt von AText; nil bei leerem Text, Syntaxfehler (meldet der Parser) oder einer Wurzel,
+/// die kein Objekt ist.</summary>
+function ParseRootObject(const AText: string): TJsonNode;
 begin
-  AIssues := nil;
-  Result := AText;
+  Result := nil;
   if Trim(AText) = '' then
+  begin
     Exit;
+  end;
   try
-    Root := TJsonTree.Parse(AText);
+    Result := TJsonTree.Parse(AText);
   except
     // Syntaxfehler meldet der Parser.
     on EJsonTreeError do
       Exit;
   end;
-  try
-    if Root.Kind <> TJsonKind.Object_ then
-      Exit;
-    Parts := nil;
-    Removed := False;
-    for Index := 0 to Root.Count - 1 do
+  if Result.Kind <> TJsonKind.Object_ then
+  begin
+    FreeAndNil(Result);
+  end;
+end;
+
+/// <summary>"schlüssel": wert aus dem Originaltext.</summary>
+function Member(const AText, AKey: string; AValue: TJsonNode): string;
+begin
+  Result := QuoteKey(AKey) + ': ' + NodeText(AText, AValue);
+end;
+
+type
+  /// <summary>Sammelt beim Filtern auf einen Ort die behaltenen Glieder und die Meldungen.</summary>
+  TScopeFilter = record
+    Text: string;
+    Keep: TConfigurationScope;
+    Issues: TArray<TConfigurationIssue>;
+    Parts: TArray<string>;
+    Removed: Boolean;
+    procedure Report(AKeyStart: Integer; const AKeyText, APath: string);
+    function Keeps(AScope: TConfigurationScope): Boolean;
+    procedure AddMixed(const AKey: string; AValue: TJsonNode);
+    procedure Add(ARoot: TJsonNode; AIndex: Integer);
+  end;
+
+procedure TScopeFilter.Report(AKeyStart: Integer; const AKeyText, APath: string);
+var
+  mIssue: TConfigurationIssue;
+begin
+  mIssue.Range := TTextRange.Create(TLineTable.Build(Text).PositionAt(AKeyStart),
+    TLineTable.Build(Text).PositionAt(AKeyStart + Length(AKeyText) + 2));
+  mIssue.Message := Misplaced(APath, Keep);
+  mIssue.IsError := False;
+  Issues := Issues + [mIssue];
+end;
+
+function TScopeFilter.Keeps(AScope: TConfigurationScope): Boolean;
+begin
+  Result := (AScope = TConfigurationScope.Unknown) or (AScope = TConfigurationScope.Both) or (AScope = Keep);
+end;
+
+procedure TScopeFilter.AddMixed(const AKey: string; AValue: TJsonNode);
+var
+  mSub: Integer;
+  mPath: string;
+  mMembers: TArray<string>;
+  mSubRemoved: Boolean;
+begin
+  mMembers := nil;
+  mSubRemoved := False;
+  for mSub := 0 to AValue.Count - 1 do
+  begin
+    mPath := AKey + '.' + AValue.Keys[mSub];
+    if Keeps(TConfigurationScopes.ScopeOf(mPath)) then
     begin
-      Key := Root.Keys[Index];
-      Value := Root[Index];
-      if TConfigurationScopes.IsMixed(Key) and (Value.Kind = TJsonKind.Object_) then
-      begin
-        Members := nil;
-        SubRemoved := False;
-        for Sub := 0 to Value.Count - 1 do
-        begin
-          Path := Key + '.' + Value.Keys[Sub];
-          if Keeps(TConfigurationScopes.ScopeOf(Path)) then
-            Members := Members + [QuoteKey(Value.Keys[Sub]) + ': ' + NodeText(AText, Value[Sub])]
-          else
-          begin
-            Report(Value.KeyStarts[Sub], Value.Keys[Sub], Path);
-            SubRemoved := True;
-          end;
-        end;
-        if not SubRemoved then
-          Parts := Parts + [QuoteKey(Key) + ': ' + NodeText(AText, Value)]
-        else
-        begin
-          Removed := True;
-          // Ein leeres Objekt wäre an diesem Ort sinnlos; es fällt ganz weg.
-          if Length(Members) > 0 then
-            Parts := Parts + [QuoteKey(Key) + ': {' + string.Join(', ', Members) + '}'];
-        end;
-        Continue;
-      end;
-      Scope := TConfigurationScope.Unknown;
-      if Key <> '$schema' then
-        Scope := TConfigurationScopes.ScopeOf(Key);
-      if Keeps(Scope) then
-        Parts := Parts + [QuoteKey(Key) + ': ' + NodeText(AText, Value)]
-      else
-      begin
-        Report(Root.KeyStarts[Index], Key, Key);
-        Removed := True;
-      end;
+      mMembers := mMembers + [Member(Text, AValue.Keys[mSub], AValue[mSub])];
+    end
+    else
+    begin
+      Report(AValue.KeyStarts[mSub], AValue.Keys[mSub], mPath);
+      mSubRemoved := True;
     end;
-    if Removed then
-      Result := '{' + string.Join(', ', Parts) + '}';
+  end;
+  if not mSubRemoved then
+  begin
+    Parts := Parts + [Member(Text, AKey, AValue)];
+  end
+  else
+  begin
+    Removed := True;
+    // Ein leeres Objekt wäre an diesem Ort sinnlos; es fällt ganz weg.
+    if Length(mMembers) > 0 then
+    begin
+      Parts := Parts + [QuoteKey(AKey) + ': {' + string.Join(', ', mMembers) + '}'];
+    end;
+  end;
+end;
+
+procedure TScopeFilter.Add(ARoot: TJsonNode; AIndex: Integer);
+var
+  mKey: string;
+  mValue: TJsonNode;
+  mScope: TConfigurationScope;
+begin
+  mKey := ARoot.Keys[AIndex];
+  mValue := ARoot[AIndex];
+  if TConfigurationScopes.IsMixed(mKey) and (mValue.Kind = TJsonKind.Object_) then
+  begin
+    AddMixed(mKey, mValue);
+    Exit;
+  end;
+  mScope := TConfigurationScope.Unknown;
+  if mKey <> '$schema' then
+  begin
+    mScope := TConfigurationScopes.ScopeOf(mKey);
+  end;
+  if Keeps(mScope) then
+  begin
+    Parts := Parts + [Member(Text, mKey, mValue)];
+  end
+  else
+  begin
+    Report(ARoot.KeyStarts[AIndex], mKey, mKey);
+    Removed := True;
+  end;
+end;
+
+function FilterScope(const AText: string; AKeep: TConfigurationScope;
+  out AIssues: TArray<TConfigurationIssue>): string;
+var
+  mRoot: TJsonNode;
+  mIndex: Integer;
+  mFilter: TScopeFilter;
+begin
+  AIssues := nil;
+  Result := AText;
+  mRoot := ParseRootObject(AText);
+  if mRoot = nil then
+  begin
+    Exit;
+  end;
+  try
+    mFilter := Default(TScopeFilter);
+    mFilter.Text := AText;
+    mFilter.Keep := AKeep;
+    for mIndex := 0 to mRoot.Count - 1 do
+    begin
+      mFilter.Add(mRoot, mIndex);
+    end;
+    AIssues := mFilter.Issues;
+    if mFilter.Removed then
+    begin
+      Result := '{' + string.Join(', ', mFilter.Parts) + '}';
+    end;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
@@ -278,62 +394,82 @@ begin
   Result := (Trim(AText) <> '') and TConfigurationParser.Parse(AText, Ignored).ExperimentalEnabled;
 end;
 
+/// <summary>Objekt AValue ohne die Glieder aus APaths; ARemoved wird gesetzt, wenn eines fehlt.</summary>
+function WithoutListedMembers(const AText, AKey: string; AValue: TJsonNode; const APaths: TArray<string>;
+  var ARemoved: Boolean): string;
+var
+  mSub: Integer;
+  mMembers: TArray<string>;
+  mSubRemoved: Boolean;
+begin
+  mMembers := nil;
+  mSubRemoved := False;
+  for mSub := 0 to AValue.Count - 1 do
+  begin
+    if Listed(AKey + '.' + AValue.Keys[mSub], APaths) then
+    begin
+      mSubRemoved := True;
+    end
+    else
+    begin
+      mMembers := mMembers + [Member(AText, AValue.Keys[mSub], AValue[mSub])];
+    end;
+  end;
+  if not mSubRemoved then
+  begin
+    Result := Member(AText, AKey, AValue);
+  end
+  else
+  begin
+    ARemoved := True;
+    Result := QuoteKey(AKey) + ': {' + string.Join(', ', mMembers) + '}';
+  end;
+end;
+
 class function TConfigurationScopes.WithoutExperimental(const AText: string; const APaths: TArray<string>): string;
 var
-  Root, Value: TJsonNode;
-  Index, Sub: Integer;
-  Key: string;
-  Parts, Members: TArray<string>;
-  Removed, SubRemoved: Boolean;
+  mRoot, mValue: TJsonNode;
+  mIndex: Integer;
+  mKey: string;
+  mParts: TArray<string>;
+  mRemoved: Boolean;
 begin
   Result := AText;
-  if (Length(APaths) = 0) or (Trim(AText) = '') or ExperimentalEnabled(AText) then
+  if (Length(APaths) = 0) or ExperimentalEnabled(AText) then
+  begin
     Exit;
-  try
-    Root := TJsonTree.Parse(AText);
-  except
-    // Syntaxfehler meldet der Parser.
-    on EJsonTreeError do
-      Exit;
+  end;
+  mRoot := ParseRootObject(AText);
+  if mRoot = nil then
+  begin
+    Exit;
   end;
   try
-    if Root.Kind <> TJsonKind.Object_ then
-      Exit;
-    Parts := nil;
-    Removed := False;
-    for Index := 0 to Root.Count - 1 do
+    mParts := nil;
+    mRemoved := False;
+    for mIndex := 0 to mRoot.Count - 1 do
     begin
-      Key := Root.Keys[Index];
-      Value := Root[Index];
-      if Listed(Key, APaths) then
+      mKey := mRoot.Keys[mIndex];
+      mValue := mRoot[mIndex];
+      if Listed(mKey, APaths) then
       begin
-        Removed := True;
-        Continue;
-      end;
-      if Value.Kind <> TJsonKind.Object_ then
+        mRemoved := True;
+      end
+      else if mValue.Kind <> TJsonKind.Object_ then
       begin
-        Parts := Parts + [QuoteKey(Key) + ': ' + NodeText(AText, Value)];
-        Continue;
-      end;
-      Members := nil;
-      SubRemoved := False;
-      for Sub := 0 to Value.Count - 1 do
-        if Listed(Key + '.' + Value.Keys[Sub], APaths) then
-          SubRemoved := True
-        else
-          Members := Members + [QuoteKey(Value.Keys[Sub]) + ': ' + NodeText(AText, Value[Sub])];
-      if not SubRemoved then
-        Parts := Parts + [QuoteKey(Key) + ': ' + NodeText(AText, Value)]
+        mParts := mParts + [Member(AText, mKey, mValue)];
+      end
       else
       begin
-        Removed := True;
-        Parts := Parts + [QuoteKey(Key) + ': {' + string.Join(', ', Members) + '}'];
+        mParts := mParts + [WithoutListedMembers(AText, mKey, mValue, APaths, mRemoved)];
       end;
     end;
-    if Removed then
-      Result := '{' + string.Join(', ', Parts) + '}';
+    if mRemoved then
+    begin
+      Result := '{' + string.Join(', ', mParts) + '}';
+    end;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
@@ -341,7 +477,12 @@ class function TConfigurationScopes.GlobalFile(const AAppData: string): string;
 begin
   Result := '';
   if AAppData <> '' then
+  begin
     Result := IncludeTrailingPathDelimiter(AAppData) + GlobalFolder + PathDelim + GlobalName;
+  end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Configuration.Scopes', cTexts);
 
 end.

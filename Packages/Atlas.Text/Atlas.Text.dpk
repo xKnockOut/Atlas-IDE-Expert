@@ -44,6 +44,7 @@ contains
   Atlas.Text.Lines in 'Source\Lines\Atlas.Text.Lines.pas',
   Atlas.Text.Chars in 'Source\Chars\Atlas.Text.Chars.pas',
   Atlas.Text.Encoding in 'Source\Encoding\Atlas.Text.Encoding.pas',
+  Atlas.Text.LogMarks in 'Source\LogMarks\Atlas.Text.LogMarks.pas',
   Atlas.Text.Anonymize in 'Source\Anonymize\Atlas.Text.Anonymize.pas',
   Atlas.Text.Uris in 'Source\Uris\Atlas.Text.Uris.pas',
   Atlas.Text.Diff in 'Source\Diff\Atlas.Text.Diff.pas',
@@ -57,6 +58,8 @@ contains
   Atlas.Text.DUnitX in 'Source\DUnitX\Atlas.Text.DUnitX.pas',
   Atlas.Text.TestResults in 'Source\TestResults\Atlas.Text.TestResults.pas',
   Atlas.Text.MapFile in 'Source\MapFile\Atlas.Text.MapFile.pas',
-  Atlas.Text.StepFilter in 'Source\StepFilter\Atlas.Text.StepFilter.pas';
+  Atlas.Text.StepFilter in 'Source\StepFilter\Atlas.Text.StepFilter.pas',
+  Atlas.Text.Updates in 'Source\Updates\Atlas.Text.Updates.pas',
+  Atlas.Text.UpdateRun in 'Source\UpdateRun\Atlas.Text.UpdateRun.pas';
 
 end.

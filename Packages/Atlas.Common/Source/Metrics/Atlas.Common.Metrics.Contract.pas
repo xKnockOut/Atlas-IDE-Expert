@@ -119,8 +119,6 @@ type
     /// <summary>Kennung in JSON und Bericht: length, nesting, cyclomatic, cognitive, parameters, operands, locals,
     /// exits.</summary>
     class function Key(AKind: TMetricKind): string; static;
-    /// <summary>Kurzname auf Deutsch, z. B. „zyklomatisch“.</summary>
-    class function Caption(AKind: TMetricKind): string; static;
     /// <summary>Kennzahl zur Kennung aus Key; False bei unbekannter Kennung.</summary>
     class function TryKindOf(const AKey: string; out AKind: TMetricKind): Boolean; static;
   end;
@@ -164,8 +162,12 @@ var
 begin
   Result := nil;
   for Kind := Low(TMetricKind) to High(TMetricKind) do
+  begin
     if Exceeds(Kind, AValues[Kind]) then
+    begin
       Result := Result + [Kind];
+    end;
+  end;
 end;
 
 { TFileMetrics }
@@ -200,38 +202,18 @@ begin
   end;
 end;
 
-class function TMetrics.Caption(AKind: TMetricKind): string;
-begin
-  case AKind of
-    TMetricKind.MethodLength:
-      Result := 'Länge';
-    TMetricKind.NestingDepth:
-      Result := 'Tiefe';
-    TMetricKind.Cyclomatic:
-      Result := 'zyklomatisch';
-    TMetricKind.Cognitive:
-      Result := 'kognitiv';
-    TMetricKind.ParameterCount:
-      Result := 'Parameter';
-    TMetricKind.BooleanOperands:
-      Result := 'Operanden';
-    TMetricKind.LocalCount:
-      Result := 'lokale Variablen';
-  else
-    Result := 'Ausstiege';
-  end;
-end;
-
 class function TMetrics.TryKindOf(const AKey: string; out AKind: TMetricKind): Boolean;
 var
   Kind: TMetricKind;
 begin
   for Kind := Low(TMetricKind) to High(TMetricKind) do
+  begin
     if SameText(Key(Kind), Trim(AKey)) then
     begin
       AKind := Kind;
       Exit(True);
     end;
+  end;
   AKind := TMetricKind.MethodLength;
   Result := False;
 end;

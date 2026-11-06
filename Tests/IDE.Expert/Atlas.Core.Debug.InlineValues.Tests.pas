@@ -15,6 +15,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Debugger')]
   TAtlasInlineValuesTests = class
   private
     FValues: TAtlasInlineValues;
@@ -80,7 +81,9 @@ begin
   while FValues.NextPending(Name) do
   begin
     if Result <> '' then
+    begin
       Result := Result + ' ';
+    end;
     Result := Result + Name;
     FValues.Put(Name, Name + ASuffix, True);
   end;

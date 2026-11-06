@@ -22,6 +22,7 @@ interface
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   Atlas.Common.Index.Contract,
   Atlas.Common.Architecture.UsesService,
   Atlas.Common.Rules.Contract;
@@ -32,6 +33,23 @@ type
   /// <summary>Sind alle Projekte geladen und indiziert? Sonst der Grund in AReason.</summary>
   TRuleProjectComplete = reference to function(out AReason: string): Boolean;
 
+  /// <summary>Bezeichner je Datei für NameIn ohne Verwendungen im Index: Jede Datei wird je Instanz einmal
+  /// gelesen und in Tokens zerlegt, nicht für jeden gesuchten Namen neu gelesen und geparst.</summary>
+  TRuleFileNames = class
+  private
+    FLock: TObject;
+    /// <summary>Kleingeschriebene Bezeichner je gelesener Datei (Schlüssel in Großbuchstaben).</summary>
+    FNames: TObjectDictionary<string, TDictionary<string, Boolean>>;
+    function NamesOf(const AFileName: string; const AReadText: TRuleProjectReadText): TDictionary<string, Boolean>;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    /// <summary>Bezeichner von AText ohne führendes &amp;, kleingeschrieben.</summary>
+    class function Identifiers(const AText: string): TDictionary<string, Boolean>; static;
+    /// <summary>Kommt AName als Bezeichner in AFileName vor? Unknown, wenn die Datei nicht lesbar ist.</summary>
+    function Lookup(const AFileName, AName: string; const AReadText: TRuleProjectReadText): TRuleNameAnswer;
+  end;
+
   TRuleProjectFiles = class(TInterfacedObject, IRuleProjectFiles)
   private
     FProjects: TArray<TRuleProject>;
@@ -40,9 +58,11 @@ type
     FComplete: TRuleProjectComplete;
     FUsesGraph: TUsesGraphService;
     FOwnsUsesGraph: Boolean;
+    FFileNames: TRuleFileNames;
     /// <summary>Der Uses-Graph-Dienst; ohne hereingereichten einer über FIndex. nil ohne Index.</summary>
     function UsesGraph: TUsesGraphService;
-    function TextHasName(const AText, AName: string): Boolean;
+    /// <summary>Steht AName in einer der Include-Dateien? Unknown, wenn eine nicht lesbar ist.</summary>
+    function NameInIncludes(const AIncludes: TArray<string>; const AName: string): TRuleNameAnswer;
   public
     /// <summary>AIndex darf nil sein (dann sucht NameIn im Text); AComplete nil = vollständig.</summary>
     constructor Create(const AProjects: TArray<TRuleProject>; const AIndex: ISymbolIndex;
@@ -76,9 +96,88 @@ uses
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Index.Usages,
   Atlas.Common.Pascal.Contract,
+  Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Rules.Profiles;
+
+{ TRuleFileNames }
+
+constructor TRuleFileNames.Create;
+begin
+  inherited Create;
+  FLock := TObject.Create;
+  FNames := TObjectDictionary<string, TDictionary<string, Boolean>>.Create([doOwnsValues]);
+end;
+
+destructor TRuleFileNames.Destroy;
+begin
+  FNames.Free;
+  FLock.Free;
+  inherited;
+end;
+
+class function TRuleFileNames.Identifiers(const AText: string): TDictionary<string, Boolean>;
+var
+  mToken: TPascalToken;
+  mName: string;
+begin
+  Result := TDictionary<string, Boolean>.Create;
+  // Nur Bezeichner zählen, nicht Kommentare und Strings; die Tokens reichen, ein Syntaxbaum ist nicht nötig.
+  for mToken in TPascalLexer.Tokenize(AText) do
+  begin
+    if mToken.Kind = TPascalTokenKind.Identifier then
+    begin
+      mName := mToken.Text;
+      if StartsStr('&', mName) then
+      begin
+        mName := Copy(mName, 2, MaxInt);
+      end;
+      Result.AddOrSetValue(AnsiLowerCase(mName), True);
+    end;
+  end;
+end;
+
+function TRuleFileNames.NamesOf(const AFileName: string;
+  const AReadText: TRuleProjectReadText): TDictionary<string, Boolean>;
+var
+  mKey, mText: string;
+begin
+  mKey := AnsiUpperCase(AFileName);
+  System.TMonitor.Enter(FLock);
+  try
+    if FNames.TryGetValue(mKey, Result) then
+    begin
+      Exit;
+    end;
+    Result := nil;
+    // Nicht lesbare Dateien nicht merken: Sie können während der Prüfung lesbar werden.
+    if Assigned(AReadText) and AReadText(AFileName, mText) then
+    begin
+      Result := Identifiers(mText);
+      FNames.Add(mKey, Result);
+    end;
+  finally
+    System.TMonitor.Exit(FLock);
+  end;
+end;
+
+function TRuleFileNames.Lookup(const AFileName, AName: string;
+  const AReadText: TRuleProjectReadText): TRuleNameAnswer;
+var
+  mNames: TDictionary<string, Boolean>;
+begin
+  mNames := NamesOf(AFileName, AReadText);
+  if mNames = nil then
+  begin
+    Exit(TRuleNameAnswer.Unknown);
+  end;
+  Result := TRuleNameAnswer.Absent;
+  if mNames.ContainsKey(AnsiLowerCase(AName)) then
+  begin
+    Result := TRuleNameAnswer.Present;
+  end;
+end;
 
 { TRuleProjectFiles }
 
@@ -86,6 +185,7 @@ constructor TRuleProjectFiles.Create(const AProjects: TArray<TRuleProject>; cons
   const AReadText: TRuleProjectReadText; const AComplete: TRuleProjectComplete);
 begin
   inherited Create;
+  FFileNames := TRuleFileNames.Create;
   FProjects := AProjects;
   FIndex := AIndex;
   FReadText := AReadText;
@@ -102,7 +202,10 @@ end;
 destructor TRuleProjectFiles.Destroy;
 begin
   if FOwnsUsesGraph then
+  begin
     FUsesGraph.Free;
+  end;
+  FFileNames.Free;
   inherited;
 end;
 
@@ -124,7 +227,9 @@ var
 begin
   Result := nil;
   if UsesGraph = nil then
+  begin
     Exit;
+  end;
   Steps := nil;
   FromUnit := AFromUnit;
   ToFile := AToFile;
@@ -137,9 +242,13 @@ begin
       Step: TRuleUsesStep;
     begin
       if InterfaceOnly then
-        Sections := InterfaceUsesOnly
+      begin
+        Sections := InterfaceUsesOnly;
+      end
       else
+      begin
         Sections := AllUsesSections;
+      end;
       for Edge in AGraph.Path(AGraph.IndexOf(FromUnit), AGraph.IndexOfFile(ToFile), Sections) do
       begin
         Step.UnitName := AGraph.Node(Edge.Target).UnitName;
@@ -162,7 +271,9 @@ begin
   AUsers := nil;
   Result := False;
   if UsesGraph = nil then
+  begin
     Exit;
+  end;
   Users := nil;
   Known := False;
   FileName := AFileName;
@@ -176,13 +287,17 @@ begin
     begin
       Node := AGraph.IndexOfFile(FileName);
       if Node < 0 then
+      begin
         Exit;
+      end;
       Known := True;
       for Ref in AGraph.Node(Node).Incoming do
       begin
         Source := AGraph.Node(Ref.Source);
         if not Source.Active then
+        begin
           Continue;
+        end;
         Step.UnitName := Source.UnitName;
         Step.FileName := Source.FileName;
         Step.InInterface := Source.Outgoing[Ref.Item].Section = TUsesSection.Interface_;
@@ -209,24 +324,36 @@ begin
     Result.IsTest := IsTestSource(Text);
   end
   else if SameText(ExtractFileExt(AMainSource), '.dpk') then
+  begin
     Result.Kind := TRuleProjectKind.Package;
+  end;
   for Source in ASources do
+  begin
     if SameText(ExtractFileExt(Source), '.pas') then
     begin
       if FileExists(ChangeFileExt(Source, '.dfm')) then
-        Result.Forms := Result.Forms + [ChangeFileExt(Source, '.dfm')]
+      begin
+        Result.Forms := Result.Forms + [ChangeFileExt(Source, '.dfm')];
+      end
       else if FileExists(ChangeFileExt(Source, '.fmx')) then
+      begin
         Result.Forms := Result.Forms + [ChangeFileExt(Source, '.fmx')];
+      end;
     end;
+  end;
 end;
 
 function TRuleProjectFiles.Complete(out AReason: string): Boolean;
 begin
   AReason := '';
   if Assigned(FComplete) then
-    Result := FComplete(AReason)
+  begin
+    Result := FComplete(AReason);
+  end
   else
+  begin
     Result := True;
+  end;
 end;
 
 function TRuleProjectFiles.ProjectsOf(const AFileName: string; AWholeGroup: Boolean): TArray<TRuleProject>;
@@ -242,15 +369,25 @@ begin
   begin
     Member := False;
     for Source in Project.Sources do
+    begin
       if SameText(Source, AFileName) then
+      begin
         Member := True;
+      end;
+    end;
     if Member then
-      Result := Result + [Project]
+    begin
+      Result := Result + [Project];
+    end
     else
+    begin
       Others := Others + [Project];
+    end;
   end;
   if AWholeGroup and (Result <> nil) then
+  begin
     Result := Result + Others;
+  end;
 end;
 
 function TRuleProjectFiles.ReadText(const AFileName: string; out AText: string): Boolean;
@@ -259,37 +396,10 @@ begin
   Result := Assigned(FReadText) and FReadText(AFileName, AText);
 end;
 
-function TRuleProjectFiles.TextHasName(const AText, AName: string): Boolean;
-var
-  Tree: TSyntaxTree;
-  Token: TPascalToken;
-  Name: string;
-begin
-  Result := False;
-  // Erst billig im Text suchen, dann nur Bezeichner zählen (nicht Kommentare und Strings).
-  if not ContainsText(AText, AName) then
-    Exit;
-  Tree := TSyntaxTreeCache.Parse(AText);
-  try
-    for Token in Tree.Tokens do
-      if Token.Kind = TPascalTokenKind.Identifier then
-      begin
-        Name := Token.Text;
-        if StartsStr('&', Name) then
-          Name := Copy(Name, 2, MaxInt);
-        if SameText(Name, AName) then
-          Exit(True);
-      end;
-  finally
-    Tree.Free;
-  end;
-end;
-
 function TRuleProjectFiles.NameIn(const AFileName, AName: string): TRuleNameAnswer;
 var
   Indexed: TUnitIndex;
   HasUnit: Boolean;
-  Text, Include: string;
 begin
   HasUnit := (FIndex <> nil) and FIndex.FindFile(AFileName, Indexed);
   if HasUnit then
@@ -300,19 +410,27 @@ begin
       TIndexUsageAnswer.Absent:
         Exit(TRuleNameAnswer.Absent);
     end;
-  if not ReadText(AFileName, Text) then
-    Exit(TRuleNameAnswer.Unknown);
-  if TextHasName(Text, AName) then
-    Exit(TRuleNameAnswer.Present);
-  if HasUnit then
-    for Include in Indexed.Includes do
-    begin
-      if not ReadText(Include, Text) then
-        Exit(TRuleNameAnswer.Unknown);
-      if TextHasName(Text, AName) then
-        Exit(TRuleNameAnswer.Present);
-    end;
+  // Ohne Verwendungen (ausgelagert, aus): Bezeichner der Datei, je Datei einmal gelesen.
+  Result := FFileNames.Lookup(AFileName, AName, FReadText);
+  if HasUnit and (Result = TRuleNameAnswer.Absent) then
+  begin
+    Result := NameInIncludes(Indexed.Includes, AName);
+  end;
+end;
+
+function TRuleProjectFiles.NameInIncludes(const AIncludes: TArray<string>; const AName: string): TRuleNameAnswer;
+var
+  mInclude: string;
+begin
   Result := TRuleNameAnswer.Absent;
+  for mInclude in AIncludes do
+  begin
+    Result := FFileNames.Lookup(mInclude, AName, FReadText);
+    if Result <> TRuleNameAnswer.Absent then
+    begin
+      Exit;
+    end;
+  end;
 end;
 
 class function TRuleProjectFiles.KindOfSource(const AFileName, AText: string): TRuleProjectKind;
@@ -321,21 +439,31 @@ var
   Token: TPascalToken;
 begin
   if SameText(ExtractFileExt(AFileName), '.dpk') then
+  begin
     Exit(TRuleProjectKind.Package);
+  end;
   Result := TRuleProjectKind.Unknown;
   Tree := TSyntaxTreeCache.Parse(AText);
   try
     for Token in Tree.Tokens do
+    begin
       if Token.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword] then
       begin
         if SameText(Token.Text, 'program') then
-          Result := TRuleProjectKind.Application
+        begin
+          Result := TRuleProjectKind.Application;
+        end
         else if SameText(Token.Text, 'library') then
-          Result := TRuleProjectKind.Library_
+        begin
+          Result := TRuleProjectKind.Library_;
+        end
         else if SameText(Token.Text, 'package') then
+        begin
           Result := TRuleProjectKind.Package;
+        end;
         Exit;
       end;
+    end;
   finally
     Tree.Free;
   end;

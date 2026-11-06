@@ -25,6 +25,10 @@ type
     HasInitialization: Boolean;
     /// <summary>Namen der interface-Symbole, auch Mitglieder.</summary>
     Names: TArray<string>;
+    /// <summary>Die Formulardatei der geprüften Unit verweist auf ein Modul dieser Unit (Connection =
+    /// Form1.Connection): Der Eintrag gilt als im implementation-Teil verwendet, die IDE braucht ihn
+    /// (dfm-reference-unit-missing).</summary>
+    UsedByForm: Boolean;
   end;
 
   TUsesUnitInfoFunc = reference to function(const AUnitName: string): TUsesUnitInfo;
@@ -40,6 +44,8 @@ type
     Keep: TArray<string>;
     /// <summary>Unit-Namespaces des Projekts (System für SysUtils).</summary>
     Namespaces: TArray<string>;
+    /// <summary>Inaktive Zweige, deren uses bei der Prüfung nicht zählen (#621); nil = keine.</summary>
+    Inactive: TArray<TTextRange>;
   end;
 
   /// <summary>Datei, die ein Befehl neu anlegt oder ganz ersetzt (/unit, #297).</summary>
@@ -135,6 +141,12 @@ type
     EnumHelper = 'enumHelper';
     /// <summary>/helper für Mengen mit Contains, ToText, Toggle und All (#875); 'false' = leerer Helper.</summary>
     SetHelper = 'setHelper';
+    /// <summary>classCompletion.typeComment (#1835): brace, line, summary, region oder off.</summary>
+    TypeComment = 'typeComment';
+    /// <summary>classCompletion.bodyStubs (#1837); 'false' = leere Rümpfe.</summary>
+    BodyStubs = 'bodyStubs';
+    /// <summary>classCompletion.lifecycleFirst (#1836); 'false' = Konstruktoren nicht vorziehen.</summary>
+    LifecycleFirst = 'lifecycleFirst';
   end;
 
   /// <summary>Ort und Inhalt der Befehlszeile.</summary>
@@ -208,7 +220,9 @@ implementation
 procedure TSlashContext.Defer(const AAction: TProc);
 begin
   if Actions <> nil then
+  begin
     Actions.Add(AAction);
+  end;
 end;
 
 { TSlashFile }

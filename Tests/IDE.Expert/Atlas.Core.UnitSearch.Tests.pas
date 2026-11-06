@@ -14,10 +14,12 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Search')]
   TAtlasUnitSearchTests = class
   private
     function Entries: TAtlasUnitEntries;
     function Names(const AEntries: TAtlasUnitEntries; const AOrder: TArray<Integer>): string;
+    class function ManyUnits: TAtlasUnitEntries; static;
   public
     [Test]
     procedure ParsesFilterSyntax;
@@ -110,7 +112,9 @@ begin
   for Index in AOrder do
   begin
     if Result <> '' then
+    begin
       Result := Result + ',';
+    end;
     Result := Result + AEntries[Index].Name;
   end;
 end;
@@ -225,7 +229,9 @@ begin
     TAtlasUnitSearch.OriginsForScope('group'), []);
   Assert.AreEqual('Atlas.Core.Settings.Plugin,Atlas.UI.Settings.Page,Atlas.Core.Settings.Tests', Names(List, Order));
   for Index := 0 to High(List) do
+  begin
     List[Index].IsOpen := List[Index].Name = 'Atlas.Core.Settings.Tests';
+  end;
   Order := TAtlasUnitSearch.Order(List, TAtlasUnitQuery.Parse('Settings', True),
     TAtlasUnitSearch.OriginsForScope('group'), []);
   Assert.AreEqual('Atlas.Core.Settings.Tests', List[Order[0]].Name, 'offene Unit zuerst');
@@ -286,7 +292,8 @@ var
 begin
   List := Entries;
   Order := TAtlasUnitSearch.Order(List, TAtlasUnitQuery.Parse('', True), TAtlasUnitSearch.OriginsForScope('group'), []);
-  Rows := TAtlasUnitSearch.Rows(List, Order, TAtlasUnitGrouping.Project, Root, 'Atlas.IDE.Expert', nil, False);
+  Rows := TAtlasUnitSearch.Rows(List, Order,
+    TAtlasUnitLayout.Create(TAtlasUnitGrouping.Project, Root, 'Atlas.IDE.Expert', nil, False));
   // Aktives Projekt oben, dann alphabetisch.
   Assert.IsTrue(Rows[0].IsGroup);
   Assert.AreEqual('Atlas.IDE.Expert', Rows[0].Group);
@@ -295,13 +302,14 @@ begin
   Assert.AreEqual('Atlas.Common', Rows[4].Group);
   Assert.AreEqual(2, Integer(Rows[4].Count), 'BinaryForm und Optionen.inc');
   // Eingeklappt: nur der Kopf.
-  Rows := TAtlasUnitSearch.Rows(List, Order, TAtlasUnitGrouping.Project, Root, 'Atlas.IDE.Expert',
-    ['atlas.common'], False);
+  Rows := TAtlasUnitSearch.Rows(List, Order,
+    TAtlasUnitLayout.Create(TAtlasUnitGrouping.Project, Root, 'Atlas.IDE.Expert', ['atlas.common'], False));
   Assert.AreEqual(3 + 1 + 1 + 2 + 1, Integer(Length(Rows)));
   Assert.IsTrue(Rows[4].Collapsed);
   Assert.AreEqual(2, Integer(Rows[4].Count));
   // Ohne Gruppierung keine Köpfe.
-  Rows := TAtlasUnitSearch.Rows(List, Order, TAtlasUnitGrouping.None, Root, '', nil, False);
+  Rows := TAtlasUnitSearch.Rows(List, Order,
+    TAtlasUnitLayout.Create(TAtlasUnitGrouping.None, Root, '', nil, False));
   Assert.AreEqual(Integer(Length(Order)), Integer(Length(Rows)));
   Assert.IsFalse(Rows[0].IsGroup);
 end;
@@ -315,7 +323,8 @@ begin
   List := Entries;
   Order := TAtlasUnitSearch.Order(List, TAtlasUnitQuery.Parse('settingstests', True),
     TAtlasUnitSearch.OriginsForScope('group'), []);
-  Rows := TAtlasUnitSearch.Rows(List, Order, TAtlasUnitGrouping.Folder, Root, 'Atlas.IDE.Expert', nil, True);
+  Rows := TAtlasUnitSearch.Rows(List, Order,
+    TAtlasUnitLayout.Create(TAtlasUnitGrouping.Folder, Root, 'Atlas.IDE.Expert', nil, True));
   Assert.AreEqual('Tests\IDE.Expert', Rows[0].Group);
   Assert.AreEqual('Packages\Atlas.IDE.Expert\Source\Core\Settings',
     TAtlasUnitSearch.GroupOf(List[5], TAtlasUnitGrouping.Folder, Root));
@@ -450,10 +459,10 @@ begin
   end;
 end;
 
-procedure TAtlasUnitSearchTests.FiveThousandUnitsPerKeystroke;
+/// <summary>Namen wie in einer großen Projektgruppe: Bereich, Feature, Rolle (10 × 25 × 20 = 5000).</summary>
+class function TAtlasUnitSearchTests.ManyUnits: TAtlasUnitEntries;
 const
   Count = 5000;
-  // Tastendruck für Tastendruck wie im Fenster; „-t:test “ wird beim Leerzeichen zum Filter.
   Areas: array[0..9] of string = ('Common', 'Windows', 'Core', 'UI', 'IDE', 'Server', 'Setup', 'Tests', 'Tools',
     'Shell');
   Features: array[0..24] of string = ('Settings', 'Completion', 'Hover', 'Index', 'Lsp', 'Dfm', 'Editing', 'Rules',
@@ -462,11 +471,31 @@ const
   Roles: array[0..19] of string = ('Page', 'Contract', 'Model', 'Window', 'Controller', 'Store', 'Parser', 'Writer',
     'Reader', 'Provider', 'Editor', 'Painter', 'Commands', 'State', 'Tests', 'Frame', 'Dialog', 'Adapter', 'Cache',
     'Composition');
+var
+  mIndex: Integer;
+begin
+  Result := nil;
+  SetLength(Result, Count);
+  for mIndex := 0 to Count - 1 do
+  begin
+    Result[mIndex].Name := Format('Atlas.%s.%s.%s', [Areas[mIndex mod 10], Features[(mIndex div 10) mod 25],
+      Roles[mIndex div 250]]);
+    Result[mIndex].FileName := Format('%s\Packages\P%d\Source\Feature%d\%s.pas',
+      [Root, mIndex mod 7, mIndex mod 97, Result[mIndex].Name]);
+    Result[mIndex].Project := Format('Atlas.IDE.P%d', [mIndex mod 7]);
+    Result[mIndex].Projects := [Result[mIndex].Project];
+    Result[mIndex].Origin := TAtlasUnitOrigin.Group;
+    Result[mIndex].Kind := TAtlasUnitKind(mIndex mod 6);
+  end;
+end;
+
+procedure TAtlasUnitSearchTests.FiveThousandUnitsPerKeystroke;
+const
+  // Tastendruck für Tastendruck wie im Fenster; „-t:test “ wird beim Leerzeichen zum Filter.
   Typed: array[0..11] of string = ('s', 'se', 'set', 'sett', 'settp', 'settpa', 'settpag', 'settpage',
     '-t:test ', '-t:test s', '-t:test se', '-t:test settpage');
 var
   Units: TAtlasUnitEntries;
-  Index: Integer;
   Pattern: string;
   Watch: TStopwatch;
   Order: TArray<Integer>;
@@ -476,19 +505,7 @@ var
   All: TAtlasUnitOrigins;
 begin
   // Abnahme #777: unter 50 ms je Tastendruck bei 5000 Units (Filtern, Ordnen, Gruppen bilden).
-  SetLength(Units, Count);
-  // Namen wie in einer großen Projektgruppe: Bereich, Feature, Rolle (10 × 25 × 20 = 5000).
-  for Index := 0 to Count - 1 do
-  begin
-    Units[Index].Name := Format('Atlas.%s.%s.%s', [Areas[Index mod 10], Features[(Index div 10) mod 25],
-      Roles[Index div 250]]);
-    Units[Index].FileName := Format('%s\Packages\P%d\Source\Feature%d\%s.pas',
-      [Root, Index mod 7, Index mod 97, Units[Index].Name]);
-    Units[Index].Project := Format('Atlas.IDE.P%d', [Index mod 7]);
-    Units[Index].Projects := [Units[Index].Project];
-    Units[Index].Origin := TAtlasUnitOrigin.Group;
-    Units[Index].Kind := TAtlasUnitKind(Index mod 6);
-  end;
+  Units := ManyUnits;
   TAtlasUnitSearch.SortByName(Units);
   All := [Low(TAtlasUnitOrigin)..High(TAtlasUnitOrigin)];
   Worst := 0;
@@ -498,12 +515,17 @@ begin
     Watch := TStopwatch.StartNew;
     Query := TAtlasUnitQuery.Parse(Pattern, True);
     if HasPrevious and Query.Narrows(Previous) then
-      Order := TAtlasUnitSearch.Order(Units, Query, All, [], Order)
+    begin
+      Order := TAtlasUnitSearch.Order(Units, Query, All, [], Order);
+    end
     else
+    begin
       Order := TAtlasUnitSearch.Order(Units, Query, All, []);
+    end;
     Previous := Query;
     HasPrevious := True;
-    TAtlasUnitSearch.Rows(Units, Order, TAtlasUnitGrouping.Folder, Root, 'Atlas.IDE.P1', nil, True);
+    TAtlasUnitSearch.Rows(Units, Order,
+      TAtlasUnitLayout.Create(TAtlasUnitGrouping.Folder, Root, 'Atlas.IDE.P1', nil, True));
     Worst := Max(Worst, Watch.ElapsedMilliseconds);
     Assert.IsTrue(Length(Order) > 0, Pattern);
   end;

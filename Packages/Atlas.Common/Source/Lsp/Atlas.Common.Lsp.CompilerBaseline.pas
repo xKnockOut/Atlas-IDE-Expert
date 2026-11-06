@@ -83,13 +83,30 @@ type
 implementation
 
 uses
+  System.Math,
   System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Scopes,
-  Atlas.Common.Rules.Output;
+  Atlas.Common.Rules.Output,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TCompilerBaselineText = (BaselineNotReadableWriteIt, NoWorkspaceFoundForThe, AnswerOfTheBaselineIs);
+
+const
+  cTexts: array[TCompilerBaselineText] of TAtlasText = (
+    (De: 'Baseline nicht lesbar: erst mit atlas.updateBaseline neu schreiben';
+     En: 'Baseline not readable: write it again with atlas.updateBaseline first'),
+    (De: 'Kein Arbeitsbereich für die Baseline gefunden'; En: 'No workspace found for the baseline'),
+    (De: 'Antwort der Baseline ist kein gültiges JSON'; En: 'Answer of the baseline is not valid JSON'));
+
+{$SCOPEDENUMS OFF}
 
 /// Pfad relativ zu ARoot mit "/", '' außerhalb; Trenner und Groß-/Kleinschreibung zählen nicht.
 function RelativeTo(const ARoot, AFileName: string): string;
@@ -98,12 +115,18 @@ var
 begin
   Root := TRuleBaseline.NormalizePath(ARoot);
   if (Root <> '') and (Root[Length(Root)] <> '/') then
+  begin
     Root := Root + '/';
+  end;
   Name := TRuleBaseline.NormalizePath(AFileName);
   if (Root <> '/') and (Length(Name) > Length(Root)) and SameText(Copy(Name, 1, Length(Root)), Root) then
-    Result := Copy(Name, Length(Root) + 1, MaxInt)
+  begin
+    Result := Copy(Name, Length(Root) + 1, MaxInt);
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 { TLspCompilerBaseline }
@@ -136,7 +159,9 @@ var
 begin
   Result := nil;
   if not (AValue is TJSONArray) then
+  begin
     Exit;
+  end;
   for Item in TJSONArray(AValue) do
   begin
     Message := Default(TLspCompilerMessage);
@@ -144,13 +169,19 @@ begin
     begin
       Field := TJSONObject(Item).GetValue('file');
       if Field is TJSONString then
+      begin
         Message.FileName := Field.Value;
+      end;
       Field := TJSONObject(Item).GetValue('line');
       if Field is TJSONNumber then
+      begin
         Message.Line := TJSONNumber(Field).AsInt;
+      end;
       Field := TJSONObject(Item).GetValue('code');
       if Field is TJSONString then
+      begin
         Message.Code := UpperCase(Field.Value);
+      end;
     end;
     // Ungültige Einträge bleiben als leere Meldung stehen: Die Positionen der Antwort gelten für die Eingabe.
     Result := Result + [Message];
@@ -166,9 +197,13 @@ begin
   // Neuer Name, sonst der frühere (#403) wie atlas.updateBaseline.
   FileName := FileIn(ARoot, BaselineFileName);
   if not FFiles.Exists(FileName) and FFiles.Exists(FileIn(ARoot, LegacyBaselineFileName)) then
+  begin
     FileName := FileIn(ARoot, LegacyBaselineFileName);
+  end;
   if not (FFiles.Exists(FileName) and FFiles.Read(FileName, Text)) then
+  begin
     Exit;
+  end;
   try
     Result := TRuleBaseline.FromJson(Text);
     APrevious := 'valid';
@@ -180,15 +215,25 @@ begin
   end;
 end;
 
+/// <summary>Treffer zur Meldung AMessage am Anfang ihrer Zeile.</summary>
+function FindingOf(const AMessage: TLspCompilerMessage): TRuleFinding;
+var
+  mLine: Integer;
+begin
+  mLine := Max(AMessage.Line - 1, 0);
+  Result := Default(TRuleFinding);
+  Result.RuleId := LowerCase(AMessage.Code);
+  Result.Range := TTextRange.Create(TTextPosition.Create(mLine, 0), TTextPosition.Create(mLine, 0));
+end;
+
 function TLspCompilerBaseline.SourcesOf(const ARoot: string; const AMessages: TArray<TLspCompilerMessage>;
   out AOwner, ASlot: TArray<Integer>): TArray<TBaselineSource>;
 var
   ByPath: TDictionary<string, Integer>;
   Unreadable: TDictionary<string, Boolean>;
-  Index, Owner, Line: Integer;
+  Index, Owner: Integer;
   Relative, Key, Text: string;
   Source: TBaselineSource;
-  Finding: TRuleFinding;
 begin
   Result := nil;
   SetLength(AOwner, Length(AMessages));
@@ -201,11 +246,15 @@ begin
       AOwner[Index] := -1;
       ASlot[Index] := -1;
       if not Accepts(AMessages[Index]) then
+      begin
         Continue;
+      end;
       Relative := RelativeTo(ARoot, AMessages[Index].FileName);
       Key := LowerCase(Relative);
       if (Relative = '') or Unreadable.ContainsKey(Key) then
+      begin
         Continue;
+      end;
       if not ByPath.TryGetValue(Key, Owner) then
       begin
         if not (Assigned(FReadText) and FReadText(AMessages[Index].FileName, Text)) then
@@ -220,15 +269,9 @@ begin
         Result := Result + [Source];
         ByPath.Add(Key, Owner);
       end;
-      Line := AMessages[Index].Line - 1;
-      if Line < 0 then
-        Line := 0;
-      Finding := Default(TRuleFinding);
-      Finding.RuleId := LowerCase(AMessages[Index].Code);
-      Finding.Range := TTextRange.Create(TTextPosition.Create(Line, 0), TTextPosition.Create(Line, 0));
       AOwner[Index] := Owner;
       ASlot[Index] := Length(Result[Owner].Findings);
-      Result[Owner].Findings := Result[Owner].Findings + [Finding];
+      Result[Owner].Findings := Result[Owner].Findings + [FindingOf(AMessages[Index])];
     end;
   finally
     Unreadable.Free;
@@ -249,18 +292,26 @@ begin
   Old := Load(ASource.Root, Previous);
   // Eine unbrauchbare Datei nicht still ersetzen: Sie enthält womöglich Regeltreffer (Bericht N3).
   if Previous = 'invalid' then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Baseline nicht lesbar: erst mit atlas.updateBaseline neu schreiben');
+      cTexts[TCompilerBaselineText.BaselineNotReadableWriteIt].Text);
+  end;
   Sources := SourcesOf(ASource.Root, AMessages, Owner, Slot);
   Skipped := 0;
   for Index := 0 to High(AMessages) do
+  begin
     if Accepts(AMessages[Index]) and (Owner[Index] < 0) then
+    begin
       Inc(Skipped);
+    end;
+  end;
   Outcome := TRuleBaseline.ReplaceCompiler(Old, Sources);
   FileName := FileIn(ASource.Root, BaselineFileName);
   FFiles.Write(FileName, Outcome.Json);
   if Assigned(FOnWritten) then
+  begin
     FOnWritten(FileName);
+  end;
   Result := Format('{"format": %d, "file": %s, "previous": %s, "total": %d, "files": %d, ' +
     '"added": %d, "removed": %d, "unchanged": %d, "skipped": %d}', [FormatVersion,
     TFindingsOutput.JsonString(FileName), TFindingsOutput.JsonString(Previous), Outcome.Total, Outcome.Files,
@@ -278,18 +329,28 @@ var
 begin
   SetLength(Result, Length(AMessages));
   for Index := 0 to High(Result) do
+  begin
     Result[Index] := False;
+  end;
   Baseline := Load(ASource.Root, APrevious);
   if Baseline = nil then
+  begin
     Exit;
+  end;
   Sources := SourcesOf(ASource.Root, AMessages, Owner, Slot);
   SetLength(Marks, Length(Sources));
   for Index := 0 to High(Sources) do
+  begin
     Marks[Index] := Baseline.Classify(Sources[Index].Path, Sources[Index].Text,
       TFindingScopes.FromText(Sources[Index].Text), Sources[Index].Findings);
+  end;
   for Index := 0 to High(AMessages) do
+  begin
     if Owner[Index] >= 0 then
+    begin
       Result[Index] := Marks[Owner[Index]][Slot[Index]].State = TBaselineState.Unchanged;
+    end;
+  end;
 end;
 
 function TLspCompilerBaseline.SourceOf(const AArguments: TJSONArray): TLspMetricsSource;
@@ -298,16 +359,23 @@ var
 begin
   FileName := '';
   if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
+  begin
     FileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
+  end;
   if not (Assigned(FSourceFor) and FSourceFor(FileName, False, Result)) then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Kein Arbeitsbereich für die Baseline gefunden');
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TCompilerBaselineText.NoWorkspaceFoundForThe].Text);
+  end;
 end;
 
 function MessagesArgument(const AArguments: TJSONArray): TArray<TLspCompilerMessage>;
 begin
   Result := nil;
   if (AArguments <> nil) and (AArguments.Count > 1) then
+  begin
     Result := TLspCompilerBaseline.MessagesOf(AArguments.Items[1]);
+  end;
 end;
 
 function TLspCompilerBaseline.ExecuteAdd(const AArguments: TJSONArray): TJSONValue;
@@ -317,7 +385,10 @@ begin
   Text := Add(SourceOf(AArguments), MessagesArgument(AArguments));
   Result := TJSONObject.ParseJSONValue(Text);
   if Result = nil then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, 'Antwort der Baseline ist kein gültiges JSON');
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError,
+      cTexts[TCompilerBaselineText.AnswerOfTheBaselineIs].Text);
+  end;
 end;
 
 function TLspCompilerBaseline.ExecuteClassify(const AArguments: TJSONArray): TJSONValue;
@@ -335,9 +406,16 @@ begin
   Indexes := TJSONArray.Create;
   Answer.AddPair('baselined', Indexes);
   for Index := 0 to High(Baselined) do
+  begin
     if Baselined[Index] then
+    begin
       Indexes.Add(Index);
+    end;
+  end;
   Result := Answer;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.CompilerBaseline', cTexts);
 
 end.

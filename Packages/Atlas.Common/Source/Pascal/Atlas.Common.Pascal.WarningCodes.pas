@@ -145,8 +145,12 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(Table) do
+  begin
     if SameText(Table[Index].Code, Trim(ACode)) then
+    begin
       Exit(Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -156,18 +160,28 @@ var
 begin
   Result := (Length(ACode) = 5) and (UpCase(ACode[1]) = ALetter);
   if Result then
+  begin
     for Index := 2 to 5 do
+    begin
       if not CharInSet(ACode[Index], ['0'..'9']) then
+      begin
         Exit(False);
+      end;
+    end;
+  end;
 end;
 
 class function TWarningCodes.KindOf(const ACode: string): TWarningCodeKind;
 begin
   Result := TWarningCodeKind.None;
   if IsNumbered(Trim(ACode), 'H') then
-    Result := TWarningCodeKind.Hint
+  begin
+    Result := TWarningCodeKind.Hint;
+  end
   else if IsNumbered(Trim(ACode), 'W') then
+  begin
     Result := TWarningCodeKind.Warning;
+  end;
 end;
 
 class function TWarningCodes.Identifier(const ACode, AVersion: string): string;
@@ -177,12 +191,16 @@ begin
   Result := '';
   Index := IndexOf(ACode);
   if Index < 0 then
+  begin
     Exit;
+  end;
   Version := TLanguageFeatures.ParseVersion(AVersion);
   // Ohne gültige Version gilt die aktuelle: Dort kennt Delphi alle Bezeichner der Tabelle.
   if (Table[Index].Since <> '') and (Version >= 0) and
     (Version < TLanguageFeatures.ParseVersion(Table[Index].Since)) then
+  begin
     Exit;
+  end;
   Result := Table[Index].Identifier;
 end;
 
@@ -193,7 +211,9 @@ begin
   Result := '';
   Index := IndexOf(ACode);
   if Index >= 0 then
+  begin
     Result := Table[Index].Since;
+  end;
 end;
 
 class function TWarningCodes.IsRoutineWide(const ACode: string): Boolean;
@@ -207,7 +227,9 @@ var
 begin
   SetLength(Result, Length(Table));
   for Index := 0 to High(Table) do
+  begin
     Result[Index] := Table[Index].Code;
+  end;
 end;
 
 end.

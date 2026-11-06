@@ -46,7 +46,9 @@ var
 begin
   Result := '';
   for Index := 0 to High(ALines) do
+  begin
     Result := Result + ALines[Index] + #10;
+  end;
 end;
 
 /// <summary>Herkunft aus AOwners ("Name=0,Ort=1"); fehlende Namen sind Other, "?" ist Unknown.</summary>
@@ -65,11 +67,15 @@ begin
       Result := TWithOwner.Other;
       At := Pos(',' + LowerCase(AIdentifier.Name) + '=', LowerCase(Owners));
       if At = 0 then
+      begin
         Exit;
+      end;
       Value := Copy(Owners, At + Length(AIdentifier.Name) + 2, MaxInt);
       Value := Copy(Value, 1, Pos(',', Value) - 1);
       if Value = '?' then
+      begin
         Exit(TWithOwner.Unknown);
+      end;
       AElement := StrToInt(Value);
       Result := TWithOwner.Element;
     end;
@@ -95,31 +101,37 @@ end;
 /// <summary>Ergebnis von „with auflösen“ am "|" in AMarked; '-' ohne Angebot.</summary>
 function Resolve(const AMarked, AOwners: string; const AOptions: TExtractOptions): string;
 var
-  Text, Reason: string;
+  Text: string;
   Line, Character, Index: Integer;
   Tree: TSyntaxTree;
   WithNode: TSyntaxNode;
-  Action: TCodeAction;
+  Resolved: TWithResolved;
 begin
   Line := 0;
   Character := 0;
   for Index := 1 to Pos('|', AMarked) - 1 do
+  begin
     if AMarked[Index] = #10 then
     begin
       Inc(Line);
       Character := 0;
     end
     else
+    begin
       Inc(Character);
+    end;
+  end;
   Text := StringReplace(AMarked, '|', '', []);
   Tree := TPascalParser.Parse(Text);
   try
     WithNode := TWithResolution.WithAt(Tree, TTextPosition.Create(Line, Character));
-    if (WithNode = nil) or not TWithResolution.Resolve(Text, Tree, WithNode, Lookup(AOwners), AOptions, Action,
-      Reason) then
+    if (WithNode = nil) or not TWithResolution.Resolve(Text, Tree, WithNode, Lookup(AOwners), AOptions,
+      Resolved) then
+    begin
       Exit('-');
-    Assert.AreEqual('with auflösen', Action.Title);
-    Result := TChangeSignature.ApplyEdits(Text, Action.Edits);
+    end;
+    Assert.AreEqual('with auflösen', Resolved.Action.Title);
+    Result := TChangeSignature.ApplyEdits(Text, Resolved.Action.Edits);
   finally
     Tree.Free;
   end;

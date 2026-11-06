@@ -104,8 +104,10 @@ begin
     Units := Data.GetValue<TJSONArray>('units');
     Assert.AreEqual(12, Units.Count);
     for Index := 1 to Units.Count - 1 do
+    begin
       Assert.IsTrue(CompareText((Units.Items[Index - 1] as TJSONObject).GetValue<string>('name'),
         (Units.Items[Index] as TJSONObject).GetValue<string>('name')) < 0, 'Units nach Namen');
+    end;
     Assert.AreEqual('App/Core/Base.pas', (Units.Items[0] as TJSONObject).GetValue<string>('file'));
     Assert.AreEqual('Core', (Units.Items[0] as TJSONObject).GetValue<string>('subsystem'));
   finally
@@ -215,7 +217,9 @@ begin
     Assert.Contains(Error, 'nicht gefunden');
   finally
     if TDirectory.Exists(Folder) then
+    begin
       TDirectory.Delete(Folder, True);
+    end;
   end;
 end;
 
@@ -271,6 +275,7 @@ begin
   Assert.IsTrue(TArchitectureSnapshots.Parse(mText, mRead, mError), mError);
   mFound := False;
   for mSubsystem in mRead.Subsystems do
+  begin
     if mSubsystem.Name = mName then
     begin
       Assert.AreEqual('App', mSubsystem.Parent);
@@ -282,6 +287,7 @@ begin
       Assert.AreEqual('', mSubsystem.Parent);
       Assert.IsFalse(mSubsystem.Foundation);
     end;
+  end;
   Assert.IsTrue(mFound);
 end;
 

@@ -61,6 +61,7 @@ implementation
 
 uses
   System.Classes,
+  System.Math,
   System.StrUtils,
   Atlas.Text.Chars,
   Atlas.Text.Lines,
@@ -79,10 +80,16 @@ var
 begin
   InString := False;
   for I := 1 to Length(ALine) do
+  begin
     if ALine[I] = '''' then
-      InString := not InString
+    begin
+      InString := not InString;
+    end
     else if not InString and ((ALine[I] = '{') or (Copy(ALine, I, 2) = '//') or (Copy(ALine, I, 2) = '(*')) then
+    begin
       Exit(I);
+    end;
+  end;
   Result := Length(ALine) + 1;
 end;
 
@@ -94,10 +101,16 @@ var
 begin
   InString := False;
   for I := 1 to ACodeEnd - Length(AWhat) do
+  begin
     if ALine[I] = '''' then
-      InString := not InString
+    begin
+      InString := not InString;
+    end
     else if not InString and (I >= AFrom) and (Copy(ALine, I, Length(AWhat)) = AWhat) then
+    begin
       Exit(I);
+    end;
+  end;
   Result := 0;
 end;
 
@@ -112,70 +125,120 @@ begin
   CodeEnd := CommentStart(ALine);
   Assign := CodePos(':=', ALine, 1, CodeEnd);
   if Assign = 0 then
+  begin
     Exit(False);
+  end;
   Start := 1;
   while (Start < Assign) and IsBlank(ALine[Start]) do
+  begin
     Inc(Start);
+  end;
   AAssignment.Indent := Copy(ALine, 1, Start - 1);
   Before := Copy(ALine, Start, Assign - Start);
   AAssignment.Left := TrimRight(Before);
   AAssignment.GapBefore := Copy(Before, Length(AAssignment.Left) + 1, MaxInt);
   Semi := CodePos(';', ALine, Assign + 2, CodeEnd);
   if Semi = 0 then
+  begin
     Semi := CodeEnd;
+  end;
   After := Copy(ALine, Assign + 2, Semi - Assign - 2);
   AAssignment.Right := Trim(After);
   AAssignment.GapAfter := Copy(After, 1, Length(After) - Length(TrimLeft(After)));
   AAssignment.Semicolon := Copy(After, Length(AAssignment.GapAfter + AAssignment.Right) + 1, MaxInt);
   if Semi < CodeEnd then
+  begin
     AAssignment.Semicolon := AAssignment.Semicolon + ';';
+  end;
   if Semi < CodeEnd then
-    AAssignment.Tail := Copy(ALine, Semi + 1, MaxInt)
+  begin
+    AAssignment.Tail := Copy(ALine, Semi + 1, MaxInt);
+  end
   else
+  begin
     AAssignment.Tail := Copy(ALine, CodeEnd, MaxInt);
+  end;
   // Hinter dem Semikolon darf nur noch Leerraum und ein Kommentar stehen.
   Result := (AAssignment.Left <> '') and (AAssignment.Right <> '') and
     (Trim(Copy(AAssignment.Tail, 1, CommentStart(AAssignment.Tail) - 1)) = '');
 end;
 
+/// <summary>Überspringt ab AIndex eine Indexklammer samt verschachtelter Klammern; False, wenn sie offen
+/// bleibt.</summary>
+function SkipBrackets(const AExpression: string; var AIndex: Integer): Boolean;
+var
+  mDepth: Integer;
+begin
+  mDepth := 0;
+  repeat
+    if AExpression[AIndex] = '[' then
+    begin
+      Inc(mDepth);
+    end
+    else if AExpression[AIndex] = ']' then
+    begin
+      Dec(mDepth);
+    end;
+    Inc(AIndex);
+  until (mDepth = 0) or (AIndex > Length(AExpression));
+  Result := mDepth = 0;
+end;
+
+/// <summary>Überspringt Indizes und ^ hinter einem Bezeichner; False bei offener Klammer.</summary>
+function SkipSelectors(const AExpression: string; var AIndex: Integer): Boolean;
+begin
+  Result := True;
+  while Result and (AIndex <= Length(AExpression)) and CharInSet(AExpression[AIndex], ['[', '^']) do
+  begin
+    if AExpression[AIndex] = '^' then
+    begin
+      Inc(AIndex);
+    end
+    else
+    begin
+      Result := SkipBrackets(AExpression, AIndex);
+    end;
+  end;
+end;
+
+/// <summary>Überspringt ab AIndex einen Bezeichner samt Indizes und ^; False, wenn dort keiner beginnt oder eine
+/// Klammer offen bleibt.</summary>
+function SkipDesignatorPart(const AExpression: string; var AIndex: Integer): Boolean;
+begin
+  Result := (AIndex <= Length(AExpression)) and TTextChars.IsIdentStart(AExpression[AIndex]);
+  if Result then
+  begin
+    while (AIndex <= Length(AExpression)) and TTextChars.IsIdentChar(AExpression[AIndex]) do
+    begin
+      Inc(AIndex);
+    end;
+    Result := SkipSelectors(AExpression, AIndex);
+  end;
+end;
+
 class function TAssignmentSwap.IsAssignable(const AExpression: string): Boolean;
 var
-  I, Depth: Integer;
-  Expression: string;
+  mIndex: Integer;
+  mExpression: string;
 begin
-  Expression := Trim(AExpression);
-  if (Expression = '') or SameText(Expression, 'nil') or SameText(Expression, 'True') or
-    SameText(Expression, 'False') then
-    Exit(False);
-  I := 1;
-  while I <= Length(Expression) do
+  mExpression := Trim(AExpression);
+  if (mExpression = '') or (IndexText(mExpression, ['nil', 'True', 'False']) >= 0) then
   begin
-    if not TTextChars.IsIdentStart(Expression[I]) then
-      Exit(False);
-    while (I <= Length(Expression)) and TTextChars.IsIdentChar(Expression[I]) do
-      Inc(I);
-    // Nach einem Bezeichner: Indizes und ^, dann ein Punkt oder das Ende.
-    while (I <= Length(Expression)) and CharInSet(Expression[I], ['[', '^']) do
-      if Expression[I] = '^' then
-        Inc(I)
-      else
-      begin
-        Depth := 0;
-        repeat
-          if Expression[I] = '[' then
-            Inc(Depth)
-          else if Expression[I] = ']' then
-            Dec(Depth);
-          Inc(I);
-        until (Depth = 0) or (I > Length(Expression));
-        if Depth <> 0 then
-          Exit(False);
-      end;
-    if I > Length(Expression) then
+    Exit(False);
+  end;
+  mIndex := 1;
+  // Nach jedem Bezeichner: ein Punkt oder das Ende.
+  while SkipDesignatorPart(mExpression, mIndex) do
+  begin
+    if mIndex > Length(mExpression) then
+    begin
       Exit(True);
-    if Expression[I] <> '.' then
+    end;
+    if mExpression[mIndex] <> '.' then
+    begin
       Exit(False);
-    Inc(I);
+    end;
+    Inc(mIndex);
   end;
   Result := False;
 end;
@@ -187,83 +250,149 @@ var
 begin
   Rest := TrimLeft(ATail);
   if StartsStr('//', Rest) then
+  begin
     Result := Copy(ATail, 1, Length(ATail) - Length(Rest)) + '// ' + TAssignmentSwap.Marker + ';' +
-      Copy(Rest, 3, MaxInt)
+      Copy(Rest, 3, MaxInt);
+  end
   else if Rest = '' then
-    Result := ' // ' + TAssignmentSwap.Marker
+  begin
+    Result := ' // ' + TAssignmentSwap.Marker;
+  end
   else
+  begin
     Result := ' // ' + TAssignmentSwap.Marker + ' ' + Rest;
+  end;
 end;
 
-class function TAssignmentSwap.Swap(const AText: string; const ARange: TTextRange; const AReadOnly: TReadOnlyCheck;
-  out AEdits: TArray<TTextEdit>): Boolean;
-var
-  Lines: TArray<string>;
-  Parsed: TArray<TAssignmentLine>;
-  IsAssignment, Swappable: TArray<Boolean>;
-  First, LastLine, Index, Column, Width, MinGap, Count: Integer;
-  Text, NewText, Gap: string;
-  Aligned: Boolean;
+/// <summary>Zeilen der Markierung ARange in einem Text mit den Zeilen 0..AHigh; False ohne.</summary>
+function SelectedLines(const ARange: TTextRange; AHigh: Integer; out AFirst, ALast: Integer): Boolean;
 begin
-  AEdits := nil;
-  Lines := TTextLines.SplitLines(AText);
-  First := ARange.StartPos.Line;
-  LastLine := ARange.EndPos.Line;
+  AFirst := ARange.StartPos.Line;
+  ALast := ARange.EndPos.Line;
   // Markierung bis zum Zeilenanfang: Diese Zeile gehört nicht mehr dazu.
-  if (LastLine > First) and (ARange.EndPos.Character = 0) then
-    Dec(LastLine);
-  if LastLine > High(Lines) then
-    LastLine := High(Lines);
-  if (First < 0) or (First > LastLine) then
-    Exit(False);
-  Count := LastLine - First + 1;
-  SetLength(Parsed, Count);
-  SetLength(IsAssignment, Count);
-  SetLength(Swappable, Count);
+  if (ALast > AFirst) and (ARange.EndPos.Character = 0) then
+  begin
+    Dec(ALast);
+  end;
+  ALast := Min(ALast, AHigh);
+  Result := (AFirst >= 0) and (AFirst <= ALast);
+end;
+
+/// <summary>Lassen sich beide Seiten der Zuweisung tauschen?</summary>
+function IsSwappable(const ALine: TAssignmentLine; const AReadOnly: TReadOnlyCheck): Boolean;
+begin
+  Result := TAssignmentSwap.IsAssignable(ALine.Left) and TAssignmentSwap.IsAssignable(ALine.Right) and
+    not (Assigned(AReadOnly) and AReadOnly(ALine.Right));
+end;
+
+type
+  /// <summary>Die markierten Zeilen, zerlegt, mit der Ausrichtung der tauschbaren Zuweisungen.</summary>
+  TSwapBlock = record
+    Lines: TArray<string>;
+    First: Integer;
+    Parsed: TArray<TAssignmentLine>;
+    IsAssignment, Swappable: TArray<Boolean>;
+    /// <summary>Spalte von := aller tauschbaren Zeilen; -1 vor der ersten.</summary>
+    Column: Integer;
+    Width: Integer;
+    MinGap: Integer;
+    /// <summary>Stehen alle := der tauschbaren Zeilen in derselben Spalte?</summary>
+    Aligned: Boolean;
+    /// <summary>Zerlegt ACount Zeilen ab First; False, wenn keine tauschbar ist.</summary>
+    function Analyze(ACount: Integer; const AReadOnly: TReadOnlyCheck): Boolean;
+    procedure Measure(AIndex: Integer);
+    /// <summary>Neuer Text der Zeile AIndex: getauscht oder als nicht umkehrbar markiert; False, wenn sie
+    /// bleibt.</summary>
+    function NewLine(AIndex: Integer; out AText: string): Boolean;
+  end;
+
+function TSwapBlock.Analyze(ACount: Integer; const AReadOnly: TReadOnlyCheck): Boolean;
+var
+  mIndex: Integer;
+begin
+  SetLength(Parsed, ACount);
+  SetLength(IsAssignment, ACount);
+  SetLength(Swappable, ACount);
   Column := -1;
   Aligned := True;
   MinGap := MaxInt;
   Width := 0;
   Result := False;
-  for Index := 0 to Count - 1 do
+  for mIndex := 0 to ACount - 1 do
   begin
-    IsAssignment[Index] := Parse(Lines[First + Index], Parsed[Index]);
-    Swappable[Index] := IsAssignment[Index] and IsAssignable(Parsed[Index].Left) and
-      IsAssignable(Parsed[Index].Right) and not (Assigned(AReadOnly) and AReadOnly(Parsed[Index].Right));
-    if not Swappable[Index] then
-      Continue;
-    Result := True;
-    if Column < 0 then
-      Column := Length(Parsed[Index].Indent + Parsed[Index].Left + Parsed[Index].GapBefore)
-    else if Column <> Length(Parsed[Index].Indent + Parsed[Index].Left + Parsed[Index].GapBefore) then
-      Aligned := False;
-    if Length(Parsed[Index].GapBefore) < MinGap then
-      MinGap := Length(Parsed[Index].GapBefore);
-    if Length(Parsed[Index].Indent + Parsed[Index].Right) > Width then
-      Width := Length(Parsed[Index].Indent + Parsed[Index].Right);
-  end;
-  if not Result then
-    Exit;
-  for Index := 0 to Count - 1 do
-  begin
-    if not IsAssignment[Index] then
-      Continue;
-    Text := Lines[First + Index];
-    if Swappable[Index] then
+    IsAssignment[mIndex] := TAssignmentSwap.Parse(Lines[First + mIndex], Parsed[mIndex]);
+    Swappable[mIndex] := IsAssignment[mIndex] and IsSwappable(Parsed[mIndex], AReadOnly);
+    if Swappable[mIndex] then
     begin
-      Gap := Parsed[Index].GapBefore;
-      if Aligned then
-        Gap := StringOfChar(' ', Width + MinGap - Length(Parsed[Index].Indent + Parsed[Index].Right));
-      NewText := Parsed[Index].Indent + Parsed[Index].Right + Gap + ':=' + Parsed[Index].GapAfter +
-        Parsed[Index].Left + Parsed[Index].Semicolon + Parsed[Index].Tail;
-    end
-    else if ContainsText(Parsed[Index].Tail, TAssignmentSwap.Marker) then
-      Continue
-    else
-      NewText := Copy(Text, 1, Length(Text) - Length(Parsed[Index].Tail)) + MarkTail(Parsed[Index].Tail);
-    if NewText <> Text then
-      AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(First + Index, 0, First + Index, Length(Text)),
-        NewText)];
+      Measure(mIndex);
+      Result := True;
+    end;
+  end;
+end;
+
+/// <summary>Merkt Spalte, kleinsten Abstand vor := und Breite der tauschbaren Zeile AIndex.</summary>
+procedure TSwapBlock.Measure(AIndex: Integer);
+var
+  mColumn: Integer;
+begin
+  mColumn := Length(Parsed[AIndex].Indent + Parsed[AIndex].Left + Parsed[AIndex].GapBefore);
+  if Column < 0 then
+  begin
+    Column := mColumn;
+  end
+  else if Column <> mColumn then
+  begin
+    Aligned := False;
+  end;
+  MinGap := Min(MinGap, Length(Parsed[AIndex].GapBefore));
+  Width := Max(Width, Length(Parsed[AIndex].Indent + Parsed[AIndex].Right));
+end;
+
+function TSwapBlock.NewLine(AIndex: Integer; out AText: string): Boolean;
+var
+  mOld, mGap: string;
+begin
+  mOld := Lines[First + AIndex];
+  AText := mOld;
+  if Swappable[AIndex] then
+  begin
+    mGap := Parsed[AIndex].GapBefore;
+    if Aligned then
+    begin
+      mGap := StringOfChar(' ', Width + MinGap - Length(Parsed[AIndex].Indent + Parsed[AIndex].Right));
+    end;
+    AText := Parsed[AIndex].Indent + Parsed[AIndex].Right + mGap + ':=' + Parsed[AIndex].GapAfter +
+      Parsed[AIndex].Left + Parsed[AIndex].Semicolon + Parsed[AIndex].Tail;
+  end
+  else if IsAssignment[AIndex] and not ContainsText(Parsed[AIndex].Tail, TAssignmentSwap.Marker) then
+  begin
+    AText := Copy(mOld, 1, Length(mOld) - Length(Parsed[AIndex].Tail)) + MarkTail(Parsed[AIndex].Tail);
+  end;
+  Result := AText <> mOld;
+end;
+
+class function TAssignmentSwap.Swap(const AText: string; const ARange: TTextRange; const AReadOnly: TReadOnlyCheck;
+  out AEdits: TArray<TTextEdit>): Boolean;
+var
+  mBlock: TSwapBlock;
+  mLast, mIndex: Integer;
+  mNewText: string;
+begin
+  AEdits := nil;
+  mBlock.Lines := TTextLines.SplitLines(AText);
+  Result := SelectedLines(ARange, High(mBlock.Lines), mBlock.First, mLast) and
+    mBlock.Analyze(mLast - mBlock.First + 1, AReadOnly);
+  if not Result then
+  begin
+    Exit;
+  end;
+  for mIndex := 0 to High(mBlock.Parsed) do
+  begin
+    if mBlock.NewLine(mIndex, mNewText) then
+    begin
+      AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(mBlock.First + mIndex, 0, mBlock.First + mIndex,
+        Length(mBlock.Lines[mBlock.First + mIndex])), mNewText)];
+    end;
   end;
 end;
 
@@ -275,10 +404,16 @@ var
 begin
   Expression := Trim(AExpression);
   while (Expression <> '') and CharInSet(Expression[Length(Expression)], [']', '^']) do
+  begin
     if Expression[Length(Expression)] = '^' then
-      Expression := Copy(Expression, 1, Length(Expression) - 1)
+    begin
+      Expression := Copy(Expression, 1, Length(Expression) - 1);
+    end
     else
+    begin
       Expression := Copy(Expression, 1, LastDelimiter('[', Expression) - 1);
+    end;
+  end;
   Dot := LastDelimiter('.', Expression);
   Result := Copy(Expression, Dot + 1, MaxInt);
 end;
@@ -292,8 +427,12 @@ begin
   Result := '';
   Lines := TTextLines.SplitLines(AText);
   for Line := ARange.StartPos.Line to ARange.EndPos.Line do
+  begin
     if (Line >= 0) and (Line <= High(Lines)) then
+    begin
       Result := Result + ' ' + Lines[Line];
+    end;
+  end;
 end;
 
 function HasWord(const AText, AWord: string): Boolean;
@@ -307,44 +446,65 @@ begin
   begin
     if ((Start = 1) or not TTextChars.IsIdentChar(Lower[Start - 1])) and
       ((Start + Length(AWord) > Length(Lower)) or not TTextChars.IsIdentChar(Lower[Start + Length(AWord)])) then
+    begin
       Exit(True);
+    end;
     Start := PosEx(AWord, Lower, Start + 1);
   end;
   Result := False;
 end;
 
+/// <summary>Deklarationstext der Eigenschaft an ALocation; die Datei AFileName aus AText, andere von der Platte.
+/// False, wenn die Datei fehlt, gesperrt ist oder sich nicht lesen lässt.</summary>
+function PropertyDeclaration(const ALocation: TSymbolLocation; const AFileName, AText: string;
+  out ADeclaration: string): Boolean;
+var
+  mText: string;
+begin
+  ADeclaration := '';
+  Result := True;
+  mText := AText;
+  if not SameText(ALocation.FileName, AFileName) then
+  begin
+    try
+      mText := TFileEncoding.LoadText(ALocation.FileName);
+    except
+      // Fehlt oder gesperrt (EFOpenError) bzw. Lesefehler.
+      on EStreamError do
+        Result := False;
+      on EInOutError do
+        Result := False;
+    end;
+  end;
+  if Result then
+  begin
+    ADeclaration := RangeText(mText, ALocation.Symbol.Range);
+  end;
+end;
+
 class function TAssignmentSwap.ReadOnlyByIndex(const AIndex: ISymbolIndex; const AFileName, AText,
   AExpression: string): Boolean;
 var
-  Location: TSymbolLocation;
-  Text, Declaration: string;
+  mLocation: TSymbolLocation;
+  mDeclaration: string;
 begin
   Result := False;
   if AIndex = nil then
-    Exit;
-  for Location in AIndex.FindSymbols(LastName(AExpression)) do
   begin
-    if Location.Symbol.Kind <> TIndexSymbolKind.Property_ then
-      Continue;
-    if SameText(Location.FileName, AFileName) then
-      Text := AText
-    else
-      try
-        Text := TFileEncoding.LoadText(Location.FileName);
-      except
-        // Fehlt oder gesperrt (EFOpenError) bzw. Lesefehler.
-        on EStreamError do
-          Continue;
-        on EInOutError do
-          Continue;
+    Exit;
+  end;
+  for mLocation in AIndex.FindSymbols(LastName(AExpression)) do
+  begin
+    if (mLocation.Symbol.Kind = TIndexSymbolKind.Property_) and
+      PropertyDeclaration(mLocation, AFileName, AText, mDeclaration) then
+    begin
+      if HasWord(mDeclaration, 'write') then
+      begin
+        Exit(False);
       end;
-    Declaration := RangeText(Text, Location.Symbol.Range);
-    // "property X;" hebt nur die Sichtbarkeit an und sagt nichts über write.
-    if not HasWord(Declaration, 'read') and not HasWord(Declaration, 'write') then
-      Continue;
-    if HasWord(Declaration, 'write') then
-      Exit(False);
-    Result := True;
+      // "property X;" hebt nur die Sichtbarkeit an und sagt nichts über write.
+      Result := Result or HasWord(mDeclaration, 'read');
+    end;
   end;
 end;
 

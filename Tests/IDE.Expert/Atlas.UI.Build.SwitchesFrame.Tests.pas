@@ -9,14 +9,19 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Build.Strings;
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Build')]
   TAtlasBuildSwitchesFrameTests = class
   private
     FLanguage: TAtlasLanguage;
   public
+    /// <summary>Einmal-Belegungen vorwegnehmen; sie gehören nicht in die Leckmessung.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -47,8 +52,26 @@ uses
   Atlas.Core.Build.CompilerSwitches,
   Atlas.UI.Build.SwitchesFrame;
 
-function Row(ASection: TAtlasSwitchSection; const AName, AValue, AProject: string; AKind: TAtlasSwitchOriginKind;
-  const AText, AFile: string; ALine: Integer): TAtlasSwitchRow;
+type
+  /// <summary>Woher ein Schalter stammt: Art, Text, Datei und Zeile (0-basiert, -1 ohne).</summary>
+  TSwitchOrigin = record
+    Kind: TAtlasSwitchOriginKind;
+    Text: string;
+    FileName: string;
+    Line: Integer;
+  end;
+
+function Origin(AKind: TAtlasSwitchOriginKind; const AText, AFile: string; ALine: Integer): TSwitchOrigin;
+begin
+  Result := Default(TSwitchOrigin);
+  Result.Kind := AKind;
+  Result.Text := AText;
+  Result.FileName := AFile;
+  Result.Line := ALine;
+end;
+
+function Row(ASection: TAtlasSwitchSection; const AName, AValue, AProject: string;
+  const AOrigin: TSwitchOrigin): TAtlasSwitchRow;
 begin
   Result := Default(TAtlasSwitchRow);
   Result.Section := ASection;
@@ -56,10 +79,10 @@ begin
   Result.Value := AValue;
   Result.ProjectValue := AProject;
   Result.Deviates := AValue <> AProject;
-  Result.Kind := AKind;
-  Result.OriginText := AText;
-  Result.FileName := AFile;
-  Result.Line := ALine;
+  Result.Kind := AOrigin.Kind;
+  Result.OriginText := AOrigin.Text;
+  Result.FileName := AOrigin.FileName;
+  Result.Line := AOrigin.Line;
 end;
 
 function SampleView: TAtlasCompilerSwitchView;
@@ -71,18 +94,28 @@ begin
   Result.Configuration := 'Debug';
   Result.Platform := 'Win64';
   Result.Summary := 'R'#$2212;
-  Range := Row(TAtlasSwitchSection.Switches, 'R', '-', '+', TAtlasSwitchOriginKind.Directive, '{$R-}',
-    'C:\P\A.pas', 9);
+  Range := Row(TAtlasSwitchSection.Switches, 'R', '-', '+', Origin(TAtlasSwitchOriginKind.Directive, '{$R-}',
+    'C:\P\A.pas', 9));
   Range.LongName := 'RANGECHECKS';
   Result.Rows := [Range,
-    Row(TAtlasSwitchSection.Switches, 'Q', '+', '+', TAtlasSwitchOriginKind.Project, 'DCC_IntegerOverflowCheck',
-      '', -1),
-    Row(TAtlasSwitchSection.Messages, 'HINTS', 'ON', 'ON', TAtlasSwitchOriginKind.Default, '', '', -1),
-    Row(TAtlasSwitchSection.Defines, 'DEBUG', '', '', TAtlasSwitchOriginKind.Project,
-      'Konfiguration Debug (.dproj)', '', -1)];
+    Row(TAtlasSwitchSection.Switches, 'Q', '+', '+', Origin(TAtlasSwitchOriginKind.Project,
+      'DCC_IntegerOverflowCheck', '', -1)),
+    Row(TAtlasSwitchSection.Messages, 'HINTS', 'ON', 'ON', Origin(TAtlasSwitchOriginKind.Default, '', '', -1)),
+    Row(TAtlasSwitchSection.Defines, 'DEBUG', '', '', Origin(TAtlasSwitchOriginKind.Project,
+      'Konfiguration Debug (.dproj)', '', -1))];
 end;
 
 { TAtlasBuildSwitchesFrameTests }
+
+procedure TAtlasBuildSwitchesFrameTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    ShowsViewWithSummary;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TAtlasBuildSwitchesFrameTests.Setup;
 begin
@@ -98,17 +131,19 @@ end;
 procedure TAtlasBuildSwitchesFrameTests.OriginTexts;
 begin
   Assert.AreEqual('gesetzt in Zeile 10', TAtlasBuildSwitchesFrame.OriginText(Row(TAtlasSwitchSection.Switches,
-    'R', '-', '+', TAtlasSwitchOriginKind.Directive, '{$R-}', 'C:\P\A.pas', 9)));
+    'R', '-', '+', Origin(TAtlasSwitchOriginKind.Directive, '{$R-}', 'C:\P\A.pas', 9))));
   Assert.AreEqual('gesetzt in Optionen.inc, Zeile 3', TAtlasBuildSwitchesFrame.OriginText(
-    Row(TAtlasSwitchSection.Switches, 'Q', '-', '+', TAtlasSwitchOriginKind.Include, '{$Q-}',
-    'C:\P\Optionen.inc', 2)));
+    Row(TAtlasSwitchSection.Switches, 'Q', '-', '+', Origin(TAtlasSwitchOriginKind.Include, '{$Q-}',
+    'C:\P\Optionen.inc', 2))));
   Assert.AreEqual('Projektoption DCC_Hints', TAtlasBuildSwitchesFrame.OriginText(
-    Row(TAtlasSwitchSection.Messages, 'HINTS', 'OFF', 'OFF', TAtlasSwitchOriginKind.Project, 'DCC_Hints', '', -1)));
+    Row(TAtlasSwitchSection.Messages, 'HINTS', 'OFF', 'OFF', Origin(TAtlasSwitchOriginKind.Project, 'DCC_Hints',
+    '', -1))));
   Assert.AreEqual('Compiler-Vorgabe', TAtlasBuildSwitchesFrame.OriginText(
-    Row(TAtlasSwitchSection.Switches, 'R', '-', '-', TAtlasSwitchOriginKind.Default, 'DCC_RangeChecking', '', -1)));
+    Row(TAtlasSwitchSection.Switches, 'R', '-', '-', Origin(TAtlasSwitchOriginKind.Default, 'DCC_RangeChecking',
+    '', -1))));
   Assert.AreEqual('Compiler-Vorgabe (Plattform Win64)', TAtlasBuildSwitchesFrame.OriginText(
-    Row(TAtlasSwitchSection.Defines, 'WIN64', '', '', TAtlasSwitchOriginKind.Default,
-    'Compiler-Vorgabe (Plattform Win64)', '', -1)));
+    Row(TAtlasSwitchSection.Defines, 'WIN64', '', '', Origin(TAtlasSwitchOriginKind.Default,
+    'Compiler-Vorgabe (Plattform Win64)', '', -1))));
 end;
 
 procedure TAtlasBuildSwitchesFrameTests.CellsWithMinusAndLongName;
@@ -178,7 +213,7 @@ begin
     Frame.HandleNeeded;
     Assert.IsTrue(Frame.EmptyLabel.Visible, 'ohne Stand der Hinweis');
     Frame.SetView(SampleView, 'C:\P\A.pas', 19);
-    Frame.SetMessage(TAtlasStrings.Text(TAtlasTextId.CompilerSwitchesNoServer));
+    Frame.SetMessage(TAtlasBuildStrings.Text(TAtlasBuildTextId.CompilerSwitchesNoServer));
     Assert.IsTrue(Frame.EmptyLabel.Visible);
     Assert.IsFalse(Frame.List.Visible);
     Assert.AreEqual('Der Atlas-Server läuft nicht.', Frame.EmptyLabel.Caption);

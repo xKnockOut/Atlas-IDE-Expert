@@ -121,13 +121,21 @@ const
 function TextOf(const AFileName: string): string;
 begin
   if SameText(AFileName, PanelsFile) then
-    Result := UnitPanels
+  begin
+    Result := UnitPanels;
+  end
   else if SameText(AFileName, MainFile) then
-    Result := UnitMain
+  begin
+    Result := UnitMain;
+  end
   else if SameText(AFileName, OtherFile) then
-    Result := UnitOther
+  begin
+    Result := UnitOther;
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 /// <summary>Wendet die Edits aus einem documentChanges-Eintrag auf AText an.</summary>
@@ -165,6 +173,7 @@ begin
   Context.Index := AIndex;
   Context.Files := [PanelsFile, MainFile, OtherFile];
   Context.Options := AOptions;
+  Context.ReplaceCalls := AReplaceCalls;
   Context.ReadText :=
     function(const AFileName: string; out AText: string): Boolean
     begin
@@ -175,8 +184,7 @@ begin
   Resolver := TNameResolver.Create(AIndex, nil);
   Answer := nil;
   try
-    Answer := TLspPropertyFromAccessors.Execute(Resolver, Tree, PanelsFile, UnitPanels, APosition, AReplaceCalls,
-      Context);
+    Answer := TLspPropertyFromAccessors.Execute(Resolver, Tree, PanelsFile, UnitPanels, APosition, Context);
     for Item in (Answer.GetValue('edit') as TJSONObject).GetValue('documentChanges') as TJSONArray do
     begin
       Document := TJSONObject(Item);
@@ -184,7 +192,9 @@ begin
       Result := Result + [ExtractFileName(FileName) + '|' + Apply(TextOf(FileName), Document)];
     end;
     for Item in Answer.GetValue('warnings') as TJSONArray do
+    begin
       AWarnings := AWarnings + [Item.Value];
+    end;
     Assert.IsTrue(((Answer.GetValue('edit') as TJSONObject).GetValue('changeAnnotations') as TJSONObject)
       .GetValue(TLspPropertyFromAccessors.AnnotationId) <> nil);
   finally
@@ -280,22 +290,20 @@ var
 begin
   Tree := TPascalParser.Parse(UnitPanels);
   try
-    Actions := TLspPropertyFromAccessors.Actions(True, Tree, UnitPanels, 'file:///C:/P/Panels.pas',
+    Actions := TLspPropertyFromAccessors.Actions(Tree, UnitPanels, 'file:///C:/P/Panels.pas',
       TTextPosition.Create(8, 14), TPropertyFromAccessorsOptions.Default, TReplaceCalls.Ask);
     Action := Actions[1];
     Assert.AreEqual(TLspPropertyFromAccessors.ClientCommand,
       (Action.GetValue('command') as TJSONObject).GetValue('command').Value);
     Assert.AreEqual('Property Caption anlegen|Property Caption anlegen und Aufrufe umstellen|', Titles(Actions));
     Assert.AreEqual('Fehlende Properties anlegen (1) und Aufrufe umstellen|', Titles(
-      TLspPropertyFromAccessors.Actions(True, Tree, UnitPanels, 'file:///C:/P/Panels.pas', TTextPosition.Create(4, 4),
+      TLspPropertyFromAccessors.Actions(Tree, UnitPanels, 'file:///C:/P/Panels.pas', TTextPosition.Create(4, 4),
       TPropertyFromAccessorsOptions.Default, TReplaceCalls.Always)));
-    Assert.AreEqual('Property Caption anlegen|', Titles(TLspPropertyFromAccessors.Actions(True, Tree, UnitPanels,
+    Assert.AreEqual('Property Caption anlegen|', Titles(TLspPropertyFromAccessors.Actions(Tree, UnitPanels,
       'file:///C:/P/Panels.pas', TTextPosition.Create(9, 14), TPropertyFromAccessorsOptions.Default,
       TReplaceCalls.Never)));
-    // Abgeschaltet oder neben den Zugriffsmethoden: nichts.
-    Assert.AreEqual('', Titles(TLspPropertyFromAccessors.Actions(False, Tree, UnitPanels, 'file:///C:/P/Panels.pas',
-      TTextPosition.Create(8, 14), TPropertyFromAccessorsOptions.Default, TReplaceCalls.Ask)));
-    Assert.AreEqual('', Titles(TLspPropertyFromAccessors.Actions(True, Tree, UnitPanels, 'file:///C:/P/Panels.pas',
+    // Neben den Zugriffsmethoden: nichts.
+    Assert.AreEqual('', Titles(TLspPropertyFromAccessors.Actions(Tree, UnitPanels, 'file:///C:/P/Panels.pas',
       TTextPosition.Create(10, 14), TPropertyFromAccessorsOptions.Default, TReplaceCalls.Ask)));
   finally
     Tree.Free;

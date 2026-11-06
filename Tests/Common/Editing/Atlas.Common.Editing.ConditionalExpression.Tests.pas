@@ -78,17 +78,29 @@ begin
   Result := TValueType.Create(TValueKind.Unknown, '');
   Name := ANode.Name;
   if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 0) then
+  begin
     Name := ANode[0].Name;
+  end;
   if MatchText(Name, ['X', 'I', 'N', 'F', 'G']) then
-    Result := TValueType.Create(TValueKind.Whole, '')
+  begin
+    Result := TValueType.Create(TValueKind.Whole, '');
+  end
   else if SameText(Name, 'S') then
-    Result := TValueType.Create(TValueKind.Text, '')
+  begin
+    Result := TValueType.Create(TValueKind.Text, '');
+  end
   else if SameText(Name, 'Ready') then
-    Result := TValueType.Create(TValueKind.Logical, '')
+  begin
+    Result := TValueType.Create(TValueKind.Logical, '');
+  end
   else if MatchText(Name, ['P', 'Q']) then
-    Result := TValueType.Create(TValueKind.Named, 'TFoo')
+  begin
+    Result := TValueType.Create(TValueKind.Named, 'TFoo');
+  end
   else if SameText(Name, 'R') then
+  begin
     Result := TValueType.Create(TValueKind.Named, 'TBar');
+  end;
 end;
 
 /// <summary>IfThen aus System.Math, außer der Name ist anders.</summary>

@@ -214,8 +214,12 @@ var
 begin
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = ForVariableMisuseRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found);
 end;
 
@@ -304,8 +308,12 @@ var
 begin
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = ForVariableAfterLoopRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found);
 end;
 

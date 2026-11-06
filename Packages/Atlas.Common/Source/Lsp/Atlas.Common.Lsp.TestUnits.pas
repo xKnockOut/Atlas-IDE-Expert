@@ -22,6 +22,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
+  Atlas.Common.Pascal.Contract,
   Atlas.Common.Editing.TestUnits;
 
 type
@@ -82,8 +83,10 @@ type
     /// <summary>Gegenstück der Unit AFileName mit Text AText; ALine 0-basiert, -1 = ohne Zeile.</summary>
     class function Resolve(const AFileName, AText: string; ALine: Integer;
       const AContext: TTestUnitContext): TTestUnitTarget; overload; static;
-    /// <summary>Wie oben mit fertigem Index der Unit (aus dem Syntaxbaum des offenen Dokuments).</summary>
-    class function Resolve(const AFileName, AText: string; const ASource: TUnitIndex; ALine: Integer;
+    /// <summary>Wie oben mit fertigen Token und fertigem Index der Unit (aus dem Syntaxbaum des offenen
+    /// Dokuments; große Units nicht je Code-Aktion neu zerlegen).</summary>
+    class function Resolve(const AFileName: string; const ATokens: TArray<TPascalToken>; const ASource: TUnitIndex;
+      ALine: Integer;
       const AContext: TTestUnitContext): TTestUnitTarget; overload; static;
     /// <summary>Ordner für neue Testunits: testUnits.folder unter der Wurzel, sonst der des Testprogramms.</summary>
     class function TestFolder(const AContext: TTestUnitContext): string; static;
@@ -104,13 +107,37 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Profiles,
-  Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Index.Extractor,
+  Atlas.Common.Semantics.TreeUnits,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.UnitTemplates,
-  Atlas.Common.Lsp.Positions;
+  Atlas.Common.Lsp.Positions,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLspTestUnitsText = (UnitNotFound, NoTestProjectFoundDUnitX, SwitchToUnit, SwitchToTestUnit, CreateADUnitXTestUnit,
+    NeedsTheURIOfThe, FileBelongsToNoWorkspace, HasNeitherClassesNorRoutines);
+
+const
+  cTexts: array[TLspTestUnitsText] of TAtlasText = (
+    (De: 'Unit %s nicht gefunden'; En: 'Unit %s not found'),
+    (De: 'Kein Testprojekt gefunden (DUnitX oder DUnit im Arbeitsbereich); „testUnits.project“ in atlas.json ' +
+      'festlegen';
+     En: 'No test project found (DUnitX or DUnit in the workspace); set “testUnits.project” in atlas.json'),
+    (De: 'Zur Unit %s wechseln'; En: 'Switch to unit %s'),
+    (De: 'Zur Testunit %s wechseln'; En: 'Switch to test unit %s'),
+    (De: 'DUnitX-Testunit für %s anlegen'; En: 'Create a DUnitX test unit for %s'),
+    (De: ' braucht die URI der Unit'; En: ' needs the URI of the unit'),
+    (De: 'Datei gehört zu keinem Arbeitsbereich'; En: 'File belongs to no workspace'),
+    (De: '%s hat weder Klassen noch Routinen im interface';
+     En: '%s has neither classes nor routines in the interface'));
+
+{$SCOPEDENUMS OFF}
 
 const
   LineBreak = #13#10;
@@ -133,14 +160,22 @@ begin
     Folder := StringReplace(StringReplace(AContext.Settings.Folder, '/', PathDelim, [rfReplaceAll]), '\', PathDelim,
       [rfReplaceAll]);
     if (Pos(':', Folder) > 0) or Folder.StartsWith(PathDelim) then
-      Result := IncludeTrailingPathDelimiter(Folder)
+    begin
+      Result := IncludeTrailingPathDelimiter(Folder);
+    end
     else
+    begin
       Result := IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(AContext.Root) + Folder);
+    end;
   end
   else if AContext.TestProgram <> '' then
-    Result := ExtractFilePath(AContext.TestProgram)
+  begin
+    Result := ExtractFilePath(AContext.TestProgram);
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function IsUnitText(const ATokens: TArray<TPascalToken>): Boolean;
@@ -149,65 +184,107 @@ var
 begin
   Result := False;
   for Token in ATokens do
+  begin
     if Token.Kind = TPascalTokenKind.Keyword then
+    begin
       Exit(Token.IsKeyword('unit'));
+    end;
+  end;
 end;
 
 class function TLspTestUnits.Resolve(const AFileName, AText: string; ALine: Integer;
   const AContext: TTestUnitContext): TTestUnitTarget;
 begin
-  Result := Resolve(AFileName, AText, TIndexExtractor.ExtractText(AText, AFileName, nil), ALine, AContext);
+  Result := Resolve(AFileName, TPascalLexer.Tokenize(AText), TIndexExtractor.ExtractText(AText, AFileName, nil), ALine,
+    AContext);
 end;
 
-class function TLspTestUnits.Resolve(const AFileName, AText: string; const ASource: TUnitIndex; ALine: Integer;
-  const AContext: TTestUnitContext): TTestUnitTarget;
+/// <summary>Zu prüfende Unit ATested einer Testunit eintragen.</summary>
+procedure SetTested(var ATarget: TTestUnitTarget; const ATested: string; const AContext: TTestUnitContext);
+begin
+  ATarget.IsTest := True;
+  ATarget.Counterpart := ATested;
+  if Assigned(AContext.FindUnit) then
+  begin
+    ATarget.CounterpartFile := AContext.FindUnit(ATested);
+  end;
+  if ATarget.CounterpartFile = '' then
+  begin
+    ATarget.Reason := cTexts[TLspTestUnitsText.UnitNotFound].Fmt([ATested]);
+  end;
+end;
+
+/// <summary>Datei der Testunit im Projekt oder im Testordner AFolder.</summary>
+procedure FindTestFile(var ATarget: TTestUnitTarget; const AContext: TTestUnitContext; const AFolder: string);
+begin
+  if Assigned(AContext.FindUnit) then
+  begin
+    ATarget.CounterpartFile := AContext.FindUnit(ATarget.Counterpart);
+  end;
+  if (ATarget.CounterpartFile = '') and (AFolder <> '') and Assigned(AContext.Exists) and
+    AContext.Exists(AFolder + ATarget.Counterpart + '.pas') then
+  begin
+    ATarget.CounterpartFile := AFolder + ATarget.Counterpart + '.pas';
+  end;
+end;
+
+/// <summary>Ob und wo eine neue Testunit entstehen kann; sonst der Grund.</summary>
+procedure PlanTestUnit(var ATarget: TTestUnitTarget; ALine: Integer; const AContext: TTestUnitContext;
+  const AFolder: string);
+begin
+  if ALine >= 0 then
+  begin
+    ATarget.ClassName := TTestUnits.ClassAt(ATarget.Source, ALine);
+  end;
+  ATarget.ClassAtLine := ATarget.ClassName <> '';
+  if ATarget.ClassName = '' then
+  begin
+    ATarget.ClassName := TTestUnits.FirstClass(ATarget.Source);
+  end;
+  if AContext.TestProgram = '' then
+  begin
+    ATarget.Reason := cTexts[TLspTestUnitsText.NoTestProjectFoundDUnitX].Text;
+  end
+  else if (ATarget.ClassName = '') and (Length(TTestUnits.TestMethods(ATarget.Source, '')) = 0) then
+  begin
+    ATarget.Reason := cTexts[TLspTestUnitsText.HasNeitherClassesNorRoutines].Fmt([ATarget.UnitName]);
+  end
+  else
+  begin
+    ATarget.CanCreate := True;
+    ATarget.NewFile := AFolder + ATarget.Counterpart + '.pas';
+  end;
+end;
+
+class function TLspTestUnits.Resolve(const AFileName: string; const ATokens: TArray<TPascalToken>;
+  const ASource: TUnitIndex; ALine: Integer; const AContext: TTestUnitContext): TTestUnitTarget;
 var
-  Tokens: TArray<TPascalToken>;
-  Tested, Folder: string;
+  mTested, mFolder: string;
 begin
   Result := Default(TTestUnitTarget);
   Result.FileName := AFileName;
-  Tokens := TPascalLexer.Tokenize(AText);
-  if not IsUnitText(Tokens) then
+  if not IsUnitText(ATokens) then
+  begin
     Exit;
+  end;
   Result.Source := ASource;
   Result.UnitName := Result.Source.UnitName;
   if Result.UnitName = '' then
-    Result.UnitName := ChangeFileExt(ExtractFileName(AFileName), '');
-  if TTestUnits.TestedUnitName(Result.UnitName, AContext.Settings.Pattern, Tested) and
-    TRuleProfiles.IsTestUnit(Tokens) then
   begin
-    Result.IsTest := True;
-    Result.Counterpart := Tested;
-    if Assigned(AContext.FindUnit) then
-      Result.CounterpartFile := AContext.FindUnit(Tested);
-    if Result.CounterpartFile = '' then
-      Result.Reason := Format('Unit %s nicht gefunden', [Tested]);
+    Result.UnitName := ChangeFileExt(ExtractFileName(AFileName), '');
+  end;
+  if TTestUnits.TestedUnitName(Result.UnitName, AContext.Settings.Pattern, mTested) and
+    TRuleProfiles.IsTestUnit(ATokens) then
+  begin
+    SetTested(Result, mTested, AContext);
     Exit;
   end;
   Result.Counterpart := TTestUnits.TestUnitName(Result.UnitName, AContext.Settings.Pattern);
-  if Assigned(AContext.FindUnit) then
-    Result.CounterpartFile := AContext.FindUnit(Result.Counterpart);
-  Folder := TestFolder(AContext);
-  if (Result.CounterpartFile = '') and (Folder <> '') and Assigned(AContext.Exists) and
-    AContext.Exists(Folder + Result.Counterpart + '.pas') then
-    Result.CounterpartFile := Folder + Result.Counterpart + '.pas';
-  if Result.CounterpartFile <> '' then
-    Exit;
-  if ALine >= 0 then
-    Result.ClassName := TTestUnits.ClassAt(Result.Source, ALine);
-  Result.ClassAtLine := Result.ClassName <> '';
-  if Result.ClassName = '' then
-    Result.ClassName := TTestUnits.FirstClass(Result.Source);
-  if AContext.TestProgram = '' then
-    Result.Reason := 'Kein Testprojekt gefunden (DUnitX oder DUnit im Arbeitsbereich); ' +
-      '„testUnits.project“ in atlas.json festlegen'
-  else if (Result.ClassName = '') and (Length(TTestUnits.TestMethods(Result.Source, '')) = 0) then
-    Result.Reason := Format('%s hat weder Klassen noch Routinen im interface', [Result.UnitName])
-  else
+  mFolder := TestFolder(AContext);
+  FindTestFile(Result, AContext, mFolder);
+  if Result.CounterpartFile = '' then
   begin
-    Result.CanCreate := True;
-    Result.NewFile := Folder + Result.Counterpart + '.pas';
+    PlanTestUnit(Result, ALine, AContext, mFolder);
   end;
 end;
 
@@ -242,7 +319,9 @@ var
   Edit: TRuleEdit;
 begin
   if not ATarget.CanCreate then
+  begin
     Exit(nil);
+  end;
   NewUri := TDocumentUris.FromPath(ATarget.NewFile);
   Changes := TJSONArray.Create;
   Creation := TJSONObject.Create;
@@ -258,14 +337,18 @@ begin
   Relative := TTestUnits.RelativePath(ExtractFilePath(AContext.TestProgram), ATarget.NewFile);
   Text := AContext.ReadText(AContext.TestProgram);
   if TUnitTemplates.UnitProgramEdit(Text, ATarget.Counterpart, Relative, Edit) then
+  begin
     Changes.AddElement(DocumentEdit(TDocumentUris.FromPath(AContext.TestProgram), [Edit]));
+  end;
   ProjectFile := ChangeFileExt(AContext.TestProgram, '.dproj');
   if AContext.Exists(ProjectFile) then
   begin
     Text := AContext.ReadText(ProjectFile);
     if (Pos('"' + Relative + '"', Text) = 0) and
       TUnitTemplates.ProjectEdit(Text, Relative, '', TFormKind.Form, False, Edit) then
+    begin
       Changes.AddElement(DocumentEdit(TDocumentUris.FromPath(ProjectFile), [Edit]));
+    end;
   end;
   Result := TJSONObject.Create;
   Result.AddPair('documentChanges', Changes);
@@ -283,10 +366,13 @@ begin
   if FStore.TryGet(AUri, Document) then
   begin
     Shared := TSyntaxTreeCache.Get(Document);
-    Result := Resolve(FileName, Document.Text, TIndexExtractor.Extract(Shared.Tree, FileName), ALine, AContext);
+    Result := Resolve(FileName, Shared.Tree.Tokens, TTreeExtracts.ForTree(Shared.Tree).Extracted(FileName), ALine,
+      AContext);
   end
   else
+  begin
     Result := Resolve(FileName, AContext.ReadText(FileName), ALine, AContext);
+  end;
 end;
 
 function CommandJson(const ATitle, ACommand, AArgument: string): TJSONObject;
@@ -310,16 +396,24 @@ var
 begin
   Result := nil;
   if not Assigned(FContextFor) or not FContextFor(AUri, Context) then
+  begin
     Exit;
+  end;
   Target := ResolveUri(AUri, ALine, Context);
   if Target.UnitName = '' then
+  begin
     Exit;
+  end;
   if Target.CounterpartFile <> '' then
   begin
     if Target.IsTest then
-      Title := Format('Zur Unit %s wechseln', [Target.Counterpart])
+    begin
+      Title := cTexts[TLspTestUnitsText.SwitchToUnit].Fmt([Target.Counterpart]);
+    end
     else
-      Title := Format('Zur Testunit %s wechseln', [Target.Counterpart]);
+    begin
+      Title := cTexts[TLspTestUnitsText.SwitchToTestUnit].Fmt([Target.Counterpart]);
+    end;
     Action := TJSONObject.Create;
     Action.AddPair('title', Title);
     Action.AddPair('kind', RewriteKind);
@@ -329,11 +423,15 @@ begin
   end;
   // Anlegen nur auf einer Klasse (#274) oder in einer Unit ohne Klassen.
   if not Target.CanCreate or not (Target.ClassAtLine or (Target.ClassName = '')) then
+  begin
     Exit;
+  end;
   Subject := Target.ClassName;
   if Subject = '' then
+  begin
     Subject := Target.UnitName;
-  Title := Format('DUnitX-Testunit für %s anlegen', [Subject]);
+  end;
+  Title := cTexts[TLspTestUnitsText.CreateADUnitXTestUnit].Fmt([Subject]);
   Edit := CreateEdit(Target, Context);
   Action := TJSONObject.Create;
   Action.AddPair('title', Title);
@@ -352,17 +450,21 @@ var
   Answer: TJSONObject;
 begin
   if (AArguments = nil) or (AArguments.Count = 0) then
-    raise EArgumentException.Create(Command + ' braucht die URI der Unit');
+  begin
+    raise EArgumentException.Create(Command + cTexts[TLspTestUnitsText.NeedsTheURIOfThe].Text);
+  end;
   Uri := AArguments.Items[0].Value;
   Line := -1;
   if AArguments.Count > 1 then
+  begin
     Line := StrToIntDef(AArguments.Items[1].Value, -1);
+  end;
   Answer := TJSONObject.Create;
   Result := Answer;
   if not Assigned(FContextFor) or not FContextFor(Uri, Context) then
   begin
     Answer.AddPair('unit', '');
-    Answer.AddPair('reason', 'Datei gehört zu keinem Arbeitsbereich');
+    Answer.AddPair('reason', cTexts[TLspTestUnitsText.FileBelongsToNoWorkspace].Text);
     Exit;
   end;
   Target := ResolveUri(Uri, Line, Context);
@@ -370,9 +472,13 @@ begin
   Answer.AddPair('isTest', TJSONBool.Create(Target.IsTest));
   Answer.AddPair('counterpart', Target.Counterpart);
   if Target.CounterpartFile <> '' then
-    Answer.AddPair('uri', TDocumentUris.FromPath(Target.CounterpartFile))
+  begin
+    Answer.AddPair('uri', TDocumentUris.FromPath(Target.CounterpartFile));
+  end
   else
+  begin
     Answer.AddPair('uri', TJSONNull.Create);
+  end;
   Answer.AddPair('canCreate', TJSONBool.Create(Target.CanCreate));
   if Target.CanCreate then
   begin
@@ -381,5 +487,8 @@ begin
   end;
   Answer.AddPair('reason', Target.Reason);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.TestUnits', cTexts);
 
 end.

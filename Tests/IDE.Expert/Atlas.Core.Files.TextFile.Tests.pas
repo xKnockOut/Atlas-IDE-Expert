@@ -81,7 +81,9 @@ var
 begin
   Result := '';
   for Value in ABytes do
+  begin
     Result := Result + IntToHex(Value, 2) + ' ';
+  end;
 end;
 
 procedure TAtlasTextFileTests.KeepsBytesOnRoundTrip;
@@ -92,7 +94,9 @@ begin
   Samples := [TBytes.Create($EF, $BB, $BF, $61, $0D, $0A, $C3, $A4), TBytes.Create($61, $0A, $C3, $A4),
     TBytes.Create($FF, $FE, $61, $00, $0D, $00), TBytes.Create($FE, $FF, $00, $61), TBytes.Create($61, $E4, $0D, $0A)];
   for Sample in Samples do
+  begin
     Assert.AreEqual(Hex(Sample), Hex(TAtlasTextFile.Encode(TAtlasTextFile.Decode(Sample))));
+  end;
 end;
 
 procedure TAtlasTextFileTests.ChecksUtf8Sequences;

@@ -39,7 +39,29 @@ uses
   Atlas.Text.Lines,
   Atlas.Text.Checkin,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Configuration.Internals.JsonTree;
+  Atlas.Common.Configuration.Internals.JsonTree,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TForbiddenText = (ContainsCredentialsInTheAddress, AbsolutePathsDoNotBelong, LooksLikeCredentialsTheyDo);
+
+const
+  cTexts: array[TForbiddenText] of TAtlasText = (
+    (De: '"%s" enthält Zugangsdaten in der Adresse; atlas.json gilt für alle im Team, der Wert wird ignoriert';
+     En: '"%s" contains credentials in the address; atlas.json applies to everyone in the team, the value is ignored'),
+    (De: '"%s": absolute Pfade gehören nicht in atlas.json (gilt für alle im Team); der Wert wird ignoriert, bitte ' +
+      'relativ zum Projektordner angeben';
+     En: '"%s": absolute paths do not belong in atlas.json (applies to everyone in the team); the value is ignored, ' +
+      'please give it relative to the project folder'),
+    (De: '"%s" sieht nach Zugangsdaten aus; die gehören nicht in atlas.json (gilt für alle im Team, Anmeldespeicher ' +
+      'von Windows verwenden) und werden ignoriert';
+     En: '"%s" looks like credentials; they do not belong in atlas.json (applies to everyone in the team, use the ' +
+      'Windows Credential Manager) and are ignored'));
+
+{$SCOPEDENUMS OFF}
 
 const
   PathSettings: array[0..5] of string = ('project', 'testUnits.folder', 'testUnits.project', 'exclude[]',
@@ -55,6 +77,10 @@ type
     function NodeText(ANode: TJsonNode): string;
     /// <summary>Text des Knotens ohne verbotene Teile; AChanged, wenn etwas fehlt.</summary>
     function Rebuild(ANode: TJsonNode; const APath: string; out AChanged: Boolean): string;
+    /// <summary>Glied ohne Verbotenes in AChild; False, wenn das Glied ganz entfällt.</summary>
+    function RebuildItem(ANode: TJsonNode; const APath: string; var AChanged: Boolean; out AChild: string): Boolean;
+    function RebuildObject(ANode: TJsonNode; const APath: string; out AChanged: Boolean): string;
+    function RebuildArray(ANode: TJsonNode; const APath: string; out AChanged: Boolean): string;
     /// <summary>Ist der Wert selbst verboten (String mit Zugangsdaten oder absolutem Pfad)?</summary>
     function Forbidden(ANode: TJsonNode; const APath: string): Boolean;
   public
@@ -69,19 +95,29 @@ var
 begin
   Result := '"';
   for Ch in AKey do
+  begin
     if (Ch = '"') or (Ch = '\') then
-      Result := Result + '\' + Ch
+    begin
+      Result := Result + '\' + Ch;
+    end
     else if Ord(Ch) < 32 then
-      Result := Result + Format('\u%.4x', [Ord(Ch)])
+    begin
+      Result := Result + Format('\u%.4x', [Ord(Ch)]);
+    end
     else
+    begin
       Result := Result + Ch;
+    end;
+  end;
   Result := Result + '"';
 end;
 
 function Join(const APath, AKey: string): string;
 begin
   if APath = '' then
+  begin
     Exit(AKey);
+  end;
   Result := APath + '.' + AKey;
 end;
 
@@ -115,77 +151,103 @@ var
 begin
   Result := False;
   if ANode.Kind <> TJsonKind.String_ then
+  begin
     Exit;
+  end;
   Shown := StringReplace(APath, '[]', '', [rfReplaceAll]);
   if TTextCheckin.HasUrlCredentials(ANode.Value) then
   begin
-    Report(ANode.Start, ANode.Stop, Format('"%s" enthält Zugangsdaten in der Adresse; atlas.json gilt für alle ' +
-      'im Team, der Wert wird ignoriert', [Shown]));
+    Report(ANode.Start, ANode.Stop, cTexts[TForbiddenText.ContainsCredentialsInTheAddress].Fmt([Shown]));
     Exit(True);
   end;
   if TForbiddenEntries.IsPathSetting(APath) and TTextCheckin.IsMachinePath(ANode.Value) then
   begin
-    Report(ANode.Start, ANode.Stop, Format('"%s": absolute Pfade gehören nicht in atlas.json (gilt für alle im ' +
-      'Team); der Wert wird ignoriert, bitte relativ zum Projektordner angeben', [Shown]));
+    Report(ANode.Start, ANode.Stop, cTexts[TForbiddenText.AbsolutePathsDoNotBelong].Fmt([Shown]));
     Exit(True);
   end;
 end;
 
-function TStripper.Rebuild(ANode: TJsonNode; const APath: string; out AChanged: Boolean): string;
+function TStripper.RebuildItem(ANode: TJsonNode; const APath: string; var AChanged: Boolean;
+  out AChild: string): Boolean;
 var
-  Index: Integer;
-  Key, Path, Child: string;
-  Parts: TArray<string>;
-  ChildChanged: Boolean;
+  mChildChanged: Boolean;
+begin
+  AChild := '';
+  if Forbidden(ANode, APath) then
+  begin
+    AChanged := True;
+    Exit(False);
+  end;
+  AChild := Rebuild(ANode, APath, mChildChanged);
+  if mChildChanged then
+  begin
+    AChanged := True;
+  end;
+  Result := True;
+end;
+
+function TStripper.RebuildObject(ANode: TJsonNode; const APath: string; out AChanged: Boolean): string;
+var
+  mIndex: Integer;
+  mKey, mPath, mChild: string;
+  mParts: TArray<string>;
 begin
   AChanged := False;
-  Parts := nil;
+  mParts := nil;
+  for mIndex := 0 to ANode.Count - 1 do
+  begin
+    mKey := ANode.Keys[mIndex];
+    mPath := Join(APath, mKey);
+    if TTextCheckin.IsCredentialKey(mKey) then
+    begin
+      Report(ANode.KeyStarts[mIndex], ANode.KeyStarts[mIndex] + Length(mKey) + 2,
+        cTexts[TForbiddenText.LooksLikeCredentialsTheyDo].Fmt([mPath]));
+      AChanged := True;
+    end
+    else if RebuildItem(ANode[mIndex], mPath, AChanged, mChild) then
+    begin
+      mParts := mParts + [QuoteKey(mKey) + ': ' + mChild];
+    end;
+  end;
+  Result := NodeText(ANode);
+  if AChanged then
+  begin
+    Result := '{' + string.Join(', ', mParts) + '}';
+  end;
+end;
+
+function TStripper.RebuildArray(ANode: TJsonNode; const APath: string; out AChanged: Boolean): string;
+var
+  mIndex: Integer;
+  mChild: string;
+  mParts: TArray<string>;
+begin
+  AChanged := False;
+  mParts := nil;
+  for mIndex := 0 to ANode.Count - 1 do
+  begin
+    if RebuildItem(ANode[mIndex], APath + '[]', AChanged, mChild) then
+    begin
+      mParts := mParts + [mChild];
+    end;
+  end;
+  Result := NodeText(ANode);
+  if AChanged then
+  begin
+    Result := '[' + string.Join(', ', mParts) + ']';
+  end;
+end;
+
+function TStripper.Rebuild(ANode: TJsonNode; const APath: string; out AChanged: Boolean): string;
+begin
+  AChanged := False;
   if ANode.Kind = TJsonKind.Object_ then
   begin
-    for Index := 0 to ANode.Count - 1 do
-    begin
-      Key := ANode.Keys[Index];
-      Path := Join(APath, Key);
-      if TTextCheckin.IsCredentialKey(Key) then
-      begin
-        Report(ANode.KeyStarts[Index], ANode.KeyStarts[Index] + Length(Key) + 2, Format('"%s" sieht nach ' +
-          'Zugangsdaten aus; die gehören nicht in atlas.json (gilt für alle im Team, Anmeldespeicher von Windows ' +
-          'verwenden) und werden ignoriert', [Path]));
-        AChanged := True;
-        Continue;
-      end;
-      if Forbidden(ANode[Index], Path) then
-      begin
-        AChanged := True;
-        Continue;
-      end;
-      Child := Rebuild(ANode[Index], Path, ChildChanged);
-      if ChildChanged then
-        AChanged := True;
-      Parts := Parts + [QuoteKey(Key) + ': ' + Child];
-    end;
-    if not AChanged then
-      Exit(NodeText(ANode));
-    Exit('{' + string.Join(', ', Parts) + '}');
+    Exit(RebuildObject(ANode, APath, AChanged));
   end;
   if ANode.Kind = TJsonKind.Array_ then
   begin
-    Path := APath + '[]';
-    for Index := 0 to ANode.Count - 1 do
-    begin
-      if Forbidden(ANode[Index], Path) then
-      begin
-        AChanged := True;
-        Continue;
-      end;
-      Child := Rebuild(ANode[Index], Path, ChildChanged);
-      if ChildChanged then
-        AChanged := True;
-      Parts := Parts + [Child];
-    end;
-    if not AChanged then
-      Exit(NodeText(ANode));
-    Exit('[' + string.Join(', ', Parts) + ']');
+    Exit(RebuildArray(ANode, APath, AChanged));
   end;
   Result := NodeText(ANode);
 end;
@@ -197,7 +259,9 @@ var
 begin
   Result := FText;
   if Trim(FText) = '' then
+  begin
     Exit;
+  end;
   try
     Root := TJsonTree.Parse(FText);
   except
@@ -207,10 +271,14 @@ begin
   end;
   try
     if Root.Kind <> TJsonKind.Object_ then
+    begin
       Exit;
+    end;
     Result := Rebuild(Root, '', Changed);
     if not Changed then
+    begin
       Result := FText;
+    end;
   finally
     Root.Free;
   end;
@@ -223,8 +291,12 @@ var
   Item: string;
 begin
   for Item in PathSettings do
+  begin
     if Item = APath then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -240,5 +312,8 @@ begin
     Stripper.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Configuration.Internals.Forbidden', cTexts);
 
 end.

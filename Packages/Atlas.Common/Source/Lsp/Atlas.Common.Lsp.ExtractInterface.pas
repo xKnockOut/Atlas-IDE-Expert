@@ -43,6 +43,8 @@ type
     Exists: TExtractExists;
     /// <summary>GUID für das Interface; leer = neue GUID.</summary>
     Guid: string;
+    /// <summary>Auflöser für Execute; gehört dem Aufrufer. Prepare braucht ihn nicht.</summary>
+    Resolver: TNameResolver;
   end;
 
   TLspExtractInterface = class
@@ -64,9 +66,8 @@ type
       const AContext: TExtractInterfaceContext): TJSONObject; static;
     /// <summary>{"edit": WorkspaceEdit, "warnings": [...], "file": URI der Ziel-Unit, "name": Interface};
     /// EJsonRpcError bei ungültiger Anfrage. Der Aufrufer übernimmt das Objekt.</summary>
-    class function Execute(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName, AText: string;
-      const APosition: TTextPosition; ARequest: TJSONValue; const AContext: TExtractInterfaceContext): TJSONObject;
-      static;
+    class function Execute(ATree: TSyntaxTree; const AFileName, AText: string; const APosition: TTextPosition;
+      ARequest: TJSONValue; const AContext: TExtractInterfaceContext): TJSONObject; static;
   end;
 
 implementation
@@ -87,11 +88,43 @@ uses
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.MoveClass,
   Atlas.Common.Lsp.PropertyFromAccessors,
-  Atlas.Common.Lsp.WorkspaceChanges;
+  Atlas.Common.Lsp.WorkspaceChanges,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLspExtractInterfaceText = (ExtractInterface, ExtractInterfaceFrom, RequestWithNameUnitAnd, AfterTheChangeNoLonger,
+    IsNotAValidUnit, ComesFromWhichWouldHave, CannotBeRead, TheNameIsAlreadyTaken, HasNoInterfacePart,
+    AlreadyExistsButDoesNot, WithMethodsFiles, ExtractInterface2);
+
+const
+  cTexts: array[TLspExtractInterfaceText] of TAtlasText = (
+    (De: 'Interface herauslösen: '; En: 'Extract interface: '),
+    (De: 'Interface aus %s herauslösen …'; En: 'Extract interface from %s …'),
+    (De: 'Anfrage mit name, unit und members fehlt'; En: 'Request with name, unit and members missing'),
+    (De: 'Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s).';
+     En: 'After the change %s no longer parses without errors (line %d: %s).'),
+    (De: '"%s" ist kein gültiger Unit-Name.'; En: '"%s" is not a valid unit name.'),
+    (De: '%s stammt aus %s, die %s im interface einbinden müsste (Kreisverweis). Das Interface bitte in derselben ' +
+      'Unit anlegen.';
+     En: '%s comes from %s, which would have to use %s in the interface (circular reference). Please create the ' +
+      'interface in the same unit.'),
+    (De: '%s lässt sich nicht lesen.'; En: '%s cannot be read.'),
+    (De: 'Der Name %s ist in %s schon vergeben.'; En: 'The name %s is already taken in %s.'),
+    (De: '%s hat keinen interface-Teil.'; En: '%s has no interface part.'),
+    (De: '%s gibt es schon, gehört aber nicht zum Projekt.';
+     En: '%s already exists but does not belong to the project.'),
+    (De: '%s mit %d Methoden, %d Dateien'; En: '%s with %d methods, %d files'),
+    (De: 'Interface herauslösen'; En: 'Extract interface'));
+
+{$SCOPEDENUMS OFF}
 
 function Failed(const AMessage: string): EJsonRpcError;
 begin
-  Result := EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Interface herauslösen: ' + AMessage);
+  Result := EJsonRpcError.Create(TLspErrorCode.RequestFailed, cTexts[TLspExtractInterfaceText.ExtractInterface].Text +
+    AMessage);
 end;
 
 function VisibilityText(AVisibility: TClassVisibility): string;
@@ -108,36 +141,59 @@ begin
     end;
 end;
 
+/// <summary>Vorfahren aus dem Kopf der Klassendeklaration ADecl (TypeReference vor dem ersten Mitglied).</summary>
+function TreeAncestors(ADecl: TSyntaxNode): TArray<string>;
+var
+  mBody: TSyntaxNode;
+  mIndex: Integer;
+begin
+  Result := nil;
+  mBody := ADecl.FindChild(TSyntaxKind.ClassType);
+  mIndex := 0;
+  while (mIndex < mBody.ChildCount) and (mBody[mIndex].Kind = TSyntaxKind.TypeReference) do
+  begin
+    Result := Result + [mBody[mIndex].Name];
+    Inc(mIndex);
+  end;
+end;
+
+/// <summary>Vorfahren der Klasse AClassName laut Index; False ohne Index oder Klasse.</summary>
+function IndexAncestors(const AIndex: ISymbolIndex; const AClassName: string;
+  out AAncestors: TArray<string>): Boolean;
+var
+  mLocation: TSymbolLocation;
+begin
+  AAncestors := nil;
+  Result := False;
+  if AIndex = nil then
+  begin
+    Exit;
+  end;
+  for mLocation in AIndex.FindSymbols(AClassName) do
+  begin
+    if (mLocation.Symbol.Kind = TIndexSymbolKind.ClassType) and (mLocation.Symbol.Container = '') then
+    begin
+      AAncestors := mLocation.Symbol.Ancestors;
+      Exit(True);
+    end;
+  end;
+end;
+
 class function TLspExtractInterface.AncestorsLookup(ATree: TSyntaxTree;
   const AIndex: ISymbolIndex): TClassAncestorsLookup;
 begin
   Result :=
     function(const AClassName: string; out AAncestors: TArray<string>): Boolean
     var
-      Decl, Body: TSyntaxNode;
-      Index: Integer;
-      Location: TSymbolLocation;
+      mDecl: TSyntaxNode;
     begin
-      AAncestors := nil;
-      Decl := TClassLayout.DeclNamed(ATree, AClassName);
-      if Decl <> nil then
+      mDecl := TClassLayout.DeclNamed(ATree, AClassName);
+      if mDecl <> nil then
       begin
-        Body := Decl.FindChild(TSyntaxKind.ClassType);
-        for Index := 0 to Body.ChildCount - 1 do
-          if Body[Index].Kind = TSyntaxKind.TypeReference then
-            AAncestors := AAncestors + [Body[Index].Name]
-          else
-            Break;
+        AAncestors := TreeAncestors(mDecl);
         Exit(True);
       end;
-      if AIndex <> nil then
-        for Location in AIndex.FindSymbols(AClassName) do
-          if (Location.Symbol.Kind = TIndexSymbolKind.ClassType) and (Location.Symbol.Container = '') then
-          begin
-            AAncestors := Location.Symbol.Ancestors;
-            Exit(True);
-          end;
-      Result := False;
+      Result := IndexAncestors(AIndex, AClassName, AAncestors);
     end;
 end;
 
@@ -151,10 +207,15 @@ var
 begin
   Result := nil;
   if not AEnabled or (ATree = nil) or (TExtractInterface.ClassAt(ATree, APosition.Line) = nil) then
+  begin
     Exit;
-  if not TExtractInterface.Prepare(ATree, AText, APosition.Line, nil, nil, Info, Reason) then
+  end;
+  if not TExtractInterface.Prepare(TClassSource.Create(ATree, AText, APosition.Line),
+    TExtractInterfaceLookups.Create(nil, nil, nil), Info, Reason) then
+  begin
     Exit;
-  Title := Format('Interface aus %s herauslösen …', [Info.ClassName]);
+  end;
+  Title := cTexts[TLspExtractInterfaceText.ExtractInterfaceFrom].Fmt([Info.ClassName]);
   Arguments := TJSONArray.Create;
   Arguments.Add(AUri);
   Arguments.AddElement(TLspPositions.PositionToJson(APosition));
@@ -179,9 +240,12 @@ var
   Entry: TJSONObject;
   ProjectUnit: TProjectUnit;
 begin
-  if not TExtractInterface.Prepare(ATree, AText, APosition.Line, AncestorsLookup(ATree, AContext.Index),
-    MethodPointer(AContext.Index), Info, Reason) then
+  if not TExtractInterface.Prepare(TClassSource.Create(ATree, AText, APosition.Line),
+    TExtractInterfaceLookups.Create(AncestorsLookup(ATree, AContext.Index), nil, MethodPointer(AContext.Index)), Info,
+    Reason) then
+  begin
     raise Failed(Reason);
+  end;
   Result := TJSONObject.Create;
   Result.AddPair('className', Info.ClassName);
   Result.AddPair('name', Info.SuggestedName);
@@ -193,9 +257,13 @@ begin
     Entry.AddPair('id', TJSONNumber.Create(Item.Id));
     Entry.AddPair('name', Item.Name);
     if Item.Kind = TExtractCandidateKind.Property_ then
-      Entry.AddPair('kind', 'property')
+    begin
+      Entry.AddPair('kind', 'property');
+    end
     else
+    begin
       Entry.AddPair('kind', 'method');
+    end;
     Entry.AddPair('display', Item.Display);
     Entry.AddPair('visibility', VisibilityText(Item.Visibility));
     Entry.AddPair('checked', TJSONBool.Create(Item.Checked));
@@ -206,34 +274,53 @@ begin
   Result.AddPair('candidates', List);
   Notes := TJSONArray.Create;
   for Note in Info.Notes do
+  begin
     Notes.Add(Note);
+  end;
   Result.AddPair('notes', Notes);
   Units := TJSONArray.Create;
   if AContext.HasProject then
+  begin
     for ProjectUnit in AContext.Project.Units do
+    begin
       Units.Add(ProjectUnit.Name);
+    end;
+  end;
   Result.AddPair('units', Units);
 end;
 
-function ReadRequest(ARequest: TJSONValue; out AName, AUnit: string): TArray<Integer>;
+function ReadRequestJson(ARequest: TJSONValue; out AName, AUnit: string): TArray<Integer>;
 var
   Item: TJSONValue;
   Members: TJSONValue;
 begin
   if not (ARequest is TJSONObject) then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Anfrage mit name, unit und members fehlt');
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TLspExtractInterfaceText.RequestWithNameUnitAnd].Text);
+  end;
   AName := '';
   AUnit := '';
   if TJSONObject(ARequest).GetValue('name') <> nil then
+  begin
     AName := Trim(TJSONObject(ARequest).GetValue('name').Value);
+  end;
   if TJSONObject(ARequest).GetValue('unit') <> nil then
+  begin
     AUnit := Trim(TJSONObject(ARequest).GetValue('unit').Value);
+  end;
   Result := nil;
   Members := TJSONObject(ARequest).GetValue('members');
   if Members is TJSONArray then
+  begin
     for Item in TJSONArray(Members) do
+    begin
       if Item is TJSONNumber then
+      begin
         Result := Result + [TJSONNumber(Item).AsInt];
+      end;
+    end;
+  end;
 end;
 
 /// <summary>Datei der Unit AUnitName aus Projekt oder Index; '' ohne.</summary>
@@ -243,170 +330,327 @@ var
   UnitIndex: TUnitIndex;
 begin
   if AContext.HasProject then
+  begin
     for ProjectUnit in AContext.Project.Units do
+    begin
       if SameText(ProjectUnit.Name, AUnitName) and (ProjectUnit.FileName <> '') then
+      begin
         Exit(ProjectUnit.FileName);
+      end;
+    end;
+  end;
   if (AContext.Index <> nil) and AContext.Index.FindUnit(AUnitName, UnitIndex) and (UnitIndex.FileName <> '') then
+  begin
     Exit(UnitIndex.FileName);
+  end;
   Result := '';
 end;
 
-class function TLspExtractInterface.Execute(AResolver: TNameResolver; ATree: TSyntaxTree;
-  const AFileName, AText: string; const APosition: TTextPosition; ARequest: TJSONValue;
-  const AContext: TExtractInterfaceContext): TJSONObject;
+/// <summary>Fehlerfrei parsen wie vorher (ABefore Meldungen); sonst EJsonRpcError mit der ersten Meldung.</summary>
+procedure CheckParses(const AFileName, ANewText: string; ABefore: Integer);
 var
-  Name, UnitName, OwnUnit, TargetFile, TargetText, Reason, TypeName, LineBreak: string;
-  Members: TArray<Integer>;
-  Request: TExtractInterfaceRequest;
-  Plan: TExtractInterfacePlan;
-  Lookup: TMoveClassLookup;
-  Meaning: TMoveClassMeaning;
-  Needed, TargetUses: TArray<string>;
-  NeedsOwn, IsNew: Boolean;
-  TargetTree: TSyntaxTree;
-  Edit: TTextEdit;
-  Edits, ClassEdits: TArray<TTextEdit>;
-  Changes: TWorkspaceChanges;
-  Before, Count: Integer;
-  Check: TSyntaxTree;
-  NewText, Description: string;
+  mCheck: TSyntaxTree;
 begin
-  Members := ReadRequest(ARequest, Name, UnitName);
-  OwnUnit := TUsesClauses.OwnName(ATree.Tokens);
-  Request := Default(TExtractInterfaceRequest);
-  Request.Name := Name;
-  Request.Members := Members;
-  Request.Guid := AContext.Guid;
-  if Request.Guid = '' then
-    Request.Guid := TGUID.NewGuid.ToString;
-  Request.SameUnit := (UnitName = '') or SameText(UnitName, OwnUnit);
-  if not Request.SameUnit and not IsIdentifier(StringReplace(UnitName, '.', '_', [rfReplaceAll])) then
-    raise Failed(Format('"%s" ist kein gültiger Unit-Name.', [UnitName]));
-  LineBreak := TTextLines.LineBreakOf(AText);
-  AResolver.PinTree(ATree, AFileName);
+  mCheck := TSyntaxTreeCache.Parse(ANewText);
   try
-    if not TExtractInterface.Plan(ATree, AText, APosition.Line, Request, AncestorsLookup(ATree, AContext.Index),
-      function(const AName: string): Boolean
-      var
-        Resolved: TResolvedSymbol;
-      begin
-        Resolved := AResolver.ResolveChain(ATree, AFileName, [AName], TExtractInterface.ClassAt(ATree,
-          APosition.Line).StartOffset);
-        Result := Resolved.Kind in [TResolvedKind.Symbol, TResolvedKind.UnitName];
-      end, MethodPointer(AContext.Index), Plan, Reason) then
-      raise Failed(Reason);
-    // Units der Typen in den Signaturen (nur für eine andere Ziel-Unit).
-    Needed := nil;
-    NeedsOwn := False;
-    if not Request.SameUnit then
+    if Length(mCheck.Diagnostics) > ABefore then
     begin
-      Lookup := TLspMoveClass.Lookup(AResolver);
-      for TypeName in Plan.TypeNames do
-      begin
-        Meaning := Lookup(ATree, AFileName, [TypeName], Plan.ClassOffset);
-        if not Meaning.Found or Meaning.IsLocal or (Meaning.UnitName = '') or SameText(Meaning.UnitName, 'System') or
-          SameText(Meaning.UnitName, UnitName) then
-          Continue;
-        if SameText(Meaning.UnitName, OwnUnit) then
-        begin
-          if Plan.InInterface then
-            raise Failed(Format('%s stammt aus %s, die %s im interface einbinden müsste (Kreisverweis). ' +
-              'Das Interface bitte in derselben Unit anlegen.', [TypeName, OwnUnit, UnitName]));
-          NeedsOwn := True;
-          Continue;
-        end;
-        if IndexText(Meaning.UnitName, Needed) < 0 then
-          Needed := Needed + [Meaning.UnitName];
-      end;
-      if NeedsOwn then
-        Needed := Needed + [OwnUnit];
+      raise Failed(cTexts[TLspExtractInterfaceText.AfterTheChangeNoLonger].Fmt([ExtractFileName(AFileName),
+        mCheck.Diagnostics[0].StartPos.Line + 1, mCheck.Diagnostics[0].Message]));
     end;
   finally
-    AResolver.UnpinTree;
-  end;
-  Changes := TWorkspaceChanges.Create;
-  try
-    for Reason in Plan.Warnings do
-      Changes.Warn(Reason);
-    ClassEdits := Plan.Edits;
-    TargetFile := AFileName;
-    if not Request.SameUnit then
-    begin
-      // Die Unit der Klasse bindet die Ziel-Unit ein (im Abschnitt der Klasse).
-      if not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(ATree.Tokens), UnitName, nil) and
-        TUsesClauses.AddUnit(ATree.Tokens, Plan.ClassOffset, UnitName, LineBreak, Edit) then
-        ClassEdits := ClassEdits + [Edit];
-      TargetFile := UnitFile(AContext, UnitName);
-      IsNew := TargetFile = '';
-      if IsNew then
-      begin
-        TargetFile := TProjectPaths.Combine(TProjectPaths.DirectoryOf(AFileName), UnitName + '.pas');
-        if Assigned(AContext.Exists) and AContext.Exists(TargetFile) then
-          raise Failed(Format('%s gibt es schon, gehört aber nicht zum Projekt.', [ExtractFileName(TargetFile)]));
-        Changes.CreateFile(TargetFile, TExtractInterface.NewUnitText(UnitName, Plan.Declaration, Needed, LineBreak));
-      end
-      else
-      begin
-        if not (Assigned(AContext.ReadText) and AContext.ReadText(TargetFile, TargetText)) then
-          raise Failed(Format('%s lässt sich nicht lesen.', [ExtractFileName(TargetFile)]));
-        TargetTree := TSyntaxTreeCache.Parse(TargetText);
-        try
-          if TClassLayout.DeclNamed(TargetTree, Name) <> nil then
-            raise Failed(Format('Der Name %s ist in %s schon vergeben.', [Name, UnitName]));
-          if not TExtractInterface.InsertIntoUnit(TargetTree, TargetText, Plan.Declaration, Edit) then
-            raise Failed(Format('%s hat keinen interface-Teil.', [UnitName]));
-          // Fehlende uses der Ziel-Unit in einem Schritt (eine Einfügung), dann das Interface.
-          TargetUses := nil;
-          for TypeName in Needed do
-            if not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(TargetTree.Tokens), TypeName, nil) then
-              TargetUses := TargetUses + [TypeName];
-          Edits := [Edit];
-          if (TargetUses <> nil) and TUsesClauses.AddUnit(TargetTree.Tokens, 0, string.Join(', ', TargetUses),
-            TTextLines.LineBreakOf(TargetText), Edit) then
-            Edits := Edits + [Edit];
-          NewText := TTextChanges.Apply(TargetText, Edits);
-          // Ergebnis prüfen.
-          Check := TSyntaxTreeCache.Parse(NewText);
-          try
-            if Length(Check.Diagnostics) > Length(TargetTree.Diagnostics) then
-              raise Failed(Format('Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s).',
-                [ExtractFileName(TargetFile), Check.Diagnostics[0].StartPos.Line + 1, Check.Diagnostics[0].Message]));
-          finally
-            Check.Free;
-          end;
-          Changes.Add(TargetFile, TTextChanges.Diff(TargetText, NewText));
-        finally
-          TargetTree.Free;
-        end;
-      end;
-    end
-    else
-      IsNew := False;
-    // Die Unit der Klasse muss weiter fehlerfrei parsen.
-    NewText := TTextChanges.Apply(AText, ClassEdits);
-    Check := TSyntaxTreeCache.Parse(NewText);
-    try
-      Before := Length(ATree.Diagnostics);
-      if Length(Check.Diagnostics) > Before then
-        raise Failed(Format('Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s).',
-          [ExtractFileName(AFileName), Check.Diagnostics[0].StartPos.Line + 1, Check.Diagnostics[0].Message]));
-    finally
-      Check.Free;
-    end;
-    Changes.Add(AFileName, ClassEdits);
-    if IsNew then
-      Changes.RegisterUnit(AContext.HasProject, AContext.Project, AContext.ReadText, TargetFile, UnitName);
-    Count := Length(Plan.Methods);
-    Description := Format('%s mit %d Methoden, %d Dateien', [Name, Count, Changes.FileCount]);
-    Result := TJSONObject.Create;
-    Result.AddPair('edit', Changes.ToJson(AnnotationId, 'Interface herauslösen', Description));
-    Result.AddPair('warnings', Changes.WarningsJson);
-    Result.AddPair('file', TDocumentUris.FromPath(TargetFile));
-    Result.AddPair('name', Name);
-    Result.AddPair('methods', TJSONNumber.Create(Count));
-  finally
-    Changes.Free;
+    mCheck.Free;
   end;
 end;
+
+/// <summary>Units aus AUnits, die ATree noch nicht einbindet.</summary>
+function MissingUses(ATree: TSyntaxTree; const AUnits: TArray<string>): TArray<string>;
+var
+  mUnit: string;
+begin
+  Result := nil;
+  for mUnit in AUnits do
+  begin
+    if not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(ATree.Tokens), mUnit, nil) then
+    begin
+      Result := Result + [mUnit];
+    end;
+  end;
+end;
+
+type
+  /// <summary>Ein Lauf von atlas.server.extractInterface: Plan, Units der Signaturen, Änderungen je Datei.</summary>
+  TInterfaceExtraction = class
+  private
+    FTree: TSyntaxTree;
+    FFileName: string;
+    FText: string;
+    FPosition: TTextPosition;
+    FContext: TExtractInterfaceContext;
+    FRequest: TExtractInterfaceRequest;
+    FUnitName: string;
+    FOwnUnit: string;
+    FLineBreak: string;
+    FPlan: TExtractInterfacePlan;
+    FNeeded: TArray<string>;
+    FChanges: TWorkspaceChanges;
+    FClassEdits: TArray<TTextEdit>;
+    FTargetFile: string;
+    FIsNew: Boolean;
+    function Resolves(const AName: string): Boolean;
+    procedure MakePlan;
+    procedure AddNeeded(const ATypeName: string; const AMeaning: TMoveClassMeaning; var ANeedsOwn: Boolean);
+    procedure CollectNeeded;
+    procedure InsertIntoTarget;
+    procedure PlaceInterface;
+    function Answer: TJSONObject;
+  public
+    constructor Create(ATree: TSyntaxTree; const AFileName, AText: string; const APosition: TTextPosition;
+      const AContext: TExtractInterfaceContext);
+    destructor Destroy; override;
+    procedure ReadRequest(ARequest: TJSONValue);
+    function Run: TJSONObject;
+  end;
+
+constructor TInterfaceExtraction.Create(ATree: TSyntaxTree; const AFileName, AText: string;
+  const APosition: TTextPosition; const AContext: TExtractInterfaceContext);
+begin
+  inherited Create;
+  FTree := ATree;
+  FFileName := AFileName;
+  FText := AText;
+  FPosition := APosition;
+  FContext := AContext;
+  FOwnUnit := TUsesClauses.OwnName(ATree.Tokens);
+  FLineBreak := TTextLines.LineBreakOf(AText);
+  FChanges := TWorkspaceChanges.Create;
+end;
+
+destructor TInterfaceExtraction.Destroy;
+begin
+  FChanges.Free;
+  inherited;
+end;
+
+procedure TInterfaceExtraction.ReadRequest(ARequest: TJSONValue);
+var
+  mName: string;
+begin
+  FRequest := Default(TExtractInterfaceRequest);
+  FRequest.Members := ReadRequestJson(ARequest, mName, FUnitName);
+  FRequest.Name := mName;
+  FRequest.Guid := FContext.Guid;
+  if FRequest.Guid = '' then
+  begin
+    FRequest.Guid := TGUID.NewGuid.ToString;
+  end;
+  FRequest.SameUnit := (FUnitName = '') or SameText(FUnitName, FOwnUnit);
+  if not FRequest.SameUnit and not IsIdentifier(StringReplace(FUnitName, '.', '_', [rfReplaceAll])) then
+  begin
+    raise Failed(cTexts[TLspExtractInterfaceText.IsNotAValidUnit].Fmt([FUnitName]));
+  end;
+end;
+
+function TInterfaceExtraction.Resolves(const AName: string): Boolean;
+var
+  mResolved: TResolvedSymbol;
+begin
+  mResolved := FContext.Resolver.ResolveChain(FTree, FFileName, [AName],
+    TExtractInterface.ClassAt(FTree, FPosition.Line).StartOffset);
+  Result := mResolved.Kind in [TResolvedKind.Symbol, TResolvedKind.UnitName];
+end;
+
+procedure TInterfaceExtraction.MakePlan;
+var
+  mSelf: TInterfaceExtraction;
+  mReason: string;
+begin
+  mSelf := Self;
+  if not TExtractInterface.Plan(TClassSource.Create(FTree, FText, FPosition.Line), FRequest,
+    TExtractInterfaceLookups.Create(TLspExtractInterface.AncestorsLookup(FTree, FContext.Index),
+    function(const AName: string): Boolean
+    begin
+      Result := mSelf.Resolves(AName);
+    end, MethodPointer(FContext.Index)), FPlan, mReason) then
+  begin
+    raise Failed(mReason);
+  end;
+end;
+
+procedure TInterfaceExtraction.AddNeeded(const ATypeName: string; const AMeaning: TMoveClassMeaning;
+  var ANeedsOwn: Boolean);
+begin
+  if not AMeaning.Found or AMeaning.IsLocal or (AMeaning.UnitName = '') or SameText(AMeaning.UnitName, 'System') or
+    SameText(AMeaning.UnitName, FUnitName) then
+  begin
+    Exit;
+  end;
+  if not SameText(AMeaning.UnitName, FOwnUnit) then
+  begin
+    if IndexText(AMeaning.UnitName, FNeeded) < 0 then
+    begin
+      FNeeded := FNeeded + [AMeaning.UnitName];
+    end;
+    Exit;
+  end;
+  if FPlan.InInterface then
+  begin
+    raise Failed(cTexts[TLspExtractInterfaceText.ComesFromWhichWouldHave].Fmt([ATypeName, FOwnUnit, FUnitName]));
+  end;
+  ANeedsOwn := True;
+end;
+
+procedure TInterfaceExtraction.CollectNeeded;
+var
+  mLookup: TMoveClassLookup;
+  mTypeName: string;
+  mNeedsOwn: Boolean;
+begin
+  // Units der Typen in den Signaturen (nur für eine andere Ziel-Unit).
+  FNeeded := nil;
+  if FRequest.SameUnit then
+  begin
+    Exit;
+  end;
+  mNeedsOwn := False;
+  mLookup := TLspMoveClass.Lookup(FContext.Resolver);
+  for mTypeName in FPlan.TypeNames do
+  begin
+    AddNeeded(mTypeName, mLookup(FTree, FFileName, [mTypeName], FPlan.ClassOffset), mNeedsOwn);
+  end;
+  if mNeedsOwn then
+  begin
+    FNeeded := FNeeded + [FOwnUnit];
+  end;
+end;
+
+procedure TInterfaceExtraction.InsertIntoTarget;
+var
+  mTargetText, mNewText: string;
+  mTargetTree: TSyntaxTree;
+  mEdit: TTextEdit;
+  mEdits: TArray<TTextEdit>;
+  mTargetUses: TArray<string>;
+begin
+  if not (Assigned(FContext.ReadText) and FContext.ReadText(FTargetFile, mTargetText)) then
+  begin
+    raise Failed(cTexts[TLspExtractInterfaceText.CannotBeRead].Fmt([ExtractFileName(FTargetFile)]));
+  end;
+  mTargetTree := TSyntaxTreeCache.Parse(mTargetText);
+  try
+    if TClassLayout.DeclNamed(mTargetTree, FRequest.Name) <> nil then
+    begin
+      raise Failed(cTexts[TLspExtractInterfaceText.TheNameIsAlreadyTaken].Fmt([FRequest.Name, FUnitName]));
+    end;
+    if not TExtractInterface.InsertIntoUnit(mTargetTree, mTargetText, FPlan.Declaration, mEdit) then
+    begin
+      raise Failed(cTexts[TLspExtractInterfaceText.HasNoInterfacePart].Fmt([FUnitName]));
+    end;
+    // Fehlende uses der Ziel-Unit in einem Schritt (eine Einfügung), dann das Interface.
+    mTargetUses := MissingUses(mTargetTree, FNeeded);
+    mEdits := [mEdit];
+    if (mTargetUses <> nil) and TUsesClauses.AddUnit(mTargetTree.Tokens, 0, string.Join(', ', mTargetUses),
+      TTextLines.LineBreakOf(mTargetText), mEdit) then
+    begin
+      mEdits := mEdits + [mEdit];
+    end;
+    mNewText := TTextChanges.Apply(mTargetText, mEdits);
+    CheckParses(FTargetFile, mNewText, Length(mTargetTree.Diagnostics));
+    FChanges.Add(FTargetFile, TTextChanges.Diff(mTargetText, mNewText));
+  finally
+    mTargetTree.Free;
+  end;
+end;
+
+procedure TInterfaceExtraction.PlaceInterface;
+var
+  mEdit: TTextEdit;
+begin
+  FClassEdits := FPlan.Edits;
+  FTargetFile := FFileName;
+  FIsNew := False;
+  if FRequest.SameUnit then
+  begin
+    Exit;
+  end;
+  // Die Unit der Klasse bindet die Ziel-Unit ein (im Abschnitt der Klasse).
+  if not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(FTree.Tokens), FUnitName, nil) and
+    TUsesClauses.AddUnit(FTree.Tokens, FPlan.ClassOffset, FUnitName, FLineBreak, mEdit) then
+  begin
+    FClassEdits := FClassEdits + [mEdit];
+  end;
+  FTargetFile := UnitFile(FContext, FUnitName);
+  FIsNew := FTargetFile = '';
+  if not FIsNew then
+  begin
+    InsertIntoTarget;
+    Exit;
+  end;
+  FTargetFile := TProjectPaths.Combine(TProjectPaths.DirectoryOf(FFileName), FUnitName + '.pas');
+  if Assigned(FContext.Exists) and FContext.Exists(FTargetFile) then
+  begin
+    raise Failed(cTexts[TLspExtractInterfaceText.AlreadyExistsButDoesNot].Fmt([ExtractFileName(FTargetFile)]));
+  end;
+  FChanges.CreateFile(FTargetFile, TExtractInterface.NewUnitText(FUnitName, FPlan.Declaration, FNeeded, FLineBreak));
+end;
+
+function TInterfaceExtraction.Answer: TJSONObject;
+var
+  mCount: Integer;
+  mDescription: string;
+begin
+  mCount := Length(FPlan.Methods);
+  mDescription := cTexts[TLspExtractInterfaceText.WithMethodsFiles].Fmt([FRequest.Name, mCount, FChanges.FileCount]);
+  Result := TJSONObject.Create;
+  Result.AddPair('edit', FChanges.ToJson(TLspExtractInterface.AnnotationId,
+    cTexts[TLspExtractInterfaceText.ExtractInterface2].Text, mDescription));
+  Result.AddPair('warnings', FChanges.WarningsJson);
+  Result.AddPair('file', TDocumentUris.FromPath(FTargetFile));
+  Result.AddPair('name', FRequest.Name);
+  Result.AddPair('methods', TJSONNumber.Create(mCount));
+end;
+
+function TInterfaceExtraction.Run: TJSONObject;
+var
+  mWarning: string;
+begin
+  FContext.Resolver.PinTree(FTree, FFileName);
+  try
+    MakePlan;
+    CollectNeeded;
+  finally
+    FContext.Resolver.UnpinTree;
+  end;
+  for mWarning in FPlan.Warnings do
+  begin
+    FChanges.Warn(mWarning);
+  end;
+  PlaceInterface;
+  // Die Unit der Klasse muss weiter fehlerfrei parsen.
+  CheckParses(FFileName, TTextChanges.Apply(FText, FClassEdits), Length(FTree.Diagnostics));
+  FChanges.Add(FFileName, FClassEdits);
+  if FIsNew then
+  begin
+    FChanges.RegisterUnit(FContext.HasProject, FContext.Project, FContext.ReadText, FTargetFile, FUnitName);
+  end;
+  Result := Answer;
+end;
+
+class function TLspExtractInterface.Execute(ATree: TSyntaxTree; const AFileName, AText: string;
+  const APosition: TTextPosition; ARequest: TJSONValue; const AContext: TExtractInterfaceContext): TJSONObject;
+var
+  mExtraction: TInterfaceExtraction;
+begin
+  mExtraction := TInterfaceExtraction.Create(ATree, AFileName, AText, APosition, AContext);
+  try
+    mExtraction.ReadRequest(ARequest);
+    Result := mExtraction.Run;
+  finally
+    mExtraction.Free;
+  end;
+end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.ExtractInterface', cTexts);
 
 end.

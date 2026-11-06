@@ -29,15 +29,25 @@ function TextOf(const AFileName: string): string;
 begin
   Result := '';
   if SameText(AFileName, 'C:\P\KundenDaten.pas') then
-    Result := 'unit KundenDaten;'#10'interface'#10'type'#10'  TKunde = class'#10'  end;'#10'implementation'#10'end.'#10
+  begin
+    Result := 'unit KundenDaten;'#10'interface'#10'type'#10'  TKunde = class'#10'  end;'#10'implementation'#10'end.'#10;
+  end
   else if SameText(AFileName, 'C:\P\A.pas') then
-    Result := 'unit A;'#10'interface'#10'uses Kunden;'#10'implementation'#10'end.'#10
+  begin
+    Result := 'unit A;'#10'interface'#10'uses Kunden;'#10'implementation'#10'end.'#10;
+  end
   else if SameText(AFileName, 'C:\P\B.pas') then
-    Result := 'unit B;'#10'interface'#10'implementation'#10'uses Kunden;'#10'var'#10'  K: Kunden.TKunde;'#10'end.'#10
+  begin
+    Result := 'unit B;'#10'interface'#10'implementation'#10'uses Kunden;'#10'var'#10'  K: Kunden.TKunde;'#10'end.'#10;
+  end
   else if SameText(AFileName, 'C:\P\C.pas') then
-    Result := 'unit C;'#10'interface'#10'uses'#10'  System.Classes,'#10'  Kunden;'#10'implementation'#10'end.'#10
+  begin
+    Result := 'unit C;'#10'interface'#10'uses'#10'  System.Classes,'#10'  Kunden;'#10'implementation'#10'end.'#10;
+  end
   else if SameText(AFileName, 'C:\P\D.pas') then
+  begin
     Result := 'unit D;'#10'interface'#10'implementation'#10'end.'#10;
+  end;
 end;
 
 procedure TLspUnitRenameTests.AdjustsUsingUnits;
@@ -60,8 +70,10 @@ begin
     Changes := (Answer.GetValue('edit') as TJSONObject).GetValue('documentChanges') as TJSONArray;
     Uris := '';
     for Index := 0 to Changes.Count - 1 do
+    begin
       Uris := Uris + ExtractFileName(TDocumentUris.ToPath((((Changes.Items[Index] as TJSONObject).GetValue(
         'textDocument')) as TJSONObject).GetValue('uri').Value)) + '|';
+    end;
     Assert.AreEqual('A.pas|B.pas|C.pas|', Uris);
     // B: uses und der qualifizierte Typ.
     Assert.AreEqual(2, ((Changes.Items[1] as TJSONObject).GetValue('edits') as TJSONArray).Count);

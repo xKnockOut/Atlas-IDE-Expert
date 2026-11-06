@@ -157,17 +157,21 @@ begin
   repeat
     Index := Pos(AMarker, AText, Index + 1);
     if Index = 0 then
+    begin
       raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+    end;
     Inc(Found);
   until Found = AOccurrence;
   Line := 0;
   LineStart := 1;
   for Found := 1 to Index - 1 do
+  begin
     if AText[Found] = #10 then
     begin
       Inc(Line);
       LineStart := Found + 1;
     end;
+  end;
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
@@ -511,13 +515,15 @@ var
 begin
   Tree := TPascalParser.Parse(SourceVerdeckt);
   try
-    Candidates := FResolver.OwnScopeCandidates(Tree, 'C:\P\Haupt.pas', Pos('Anzahl := Wert; {M3}', SourceVerdeckt) - 1);
-    FResolver.UsedScopeCandidates;
+    Candidates := FResolver.Candidates.OwnScopeCandidates(Tree, 'C:\P\Haupt.pas', Pos('Anzahl := Wert; {M3}',
+      SourceVerdeckt) - 1);
+    FResolver.Candidates.UsedScopeCandidates;
   finally
     Tree.Free;
   end;
   Found := 0;
   for Candidate in Candidates do
+  begin
     if SameText(Candidate.Name, 'Wert') then
     begin
       Inc(Found);
@@ -525,6 +531,7 @@ begin
       Assert.AreEqual(1, Integer(Length(Candidate.Hides)));
       Assert.AreEqual('Feld TKunde.Wert', Candidate.Hides[0]);
     end;
+  end;
   Assert.AreEqual(1, Found);
 end;
 
@@ -817,9 +824,9 @@ begin
     Assert.AreEqual('TBasis.Melde', FResolver.Resolve(Tree, 'C:\P\Haupt.pas',
       PositionOf(PinSource, 'Melde;', 1)).QualifiedName);
     FResolver.UnpinTree;
-    // Ungepinnt wertet jeder Aufruf neu aus; das Ergebnis bleibt gleich.
+    // Ungepinnt teilt der Aufruf das am Baum hinterlegte Extrakt (kein neues Extrahieren je Anbieter).
     Second := FResolver.ExtractedUnit(Tree, 'C:\P\Haupt.pas');
-    Assert.IsFalse(Pointer(First.Symbols) = Pointer(Second.Symbols));
+    Assert.IsTrue(Pointer(First.Symbols) = Pointer(Second.Symbols));
     Assert.AreEqual(Integer(Length(First.Symbols)), Integer(Length(Second.Symbols)));
     Assert.AreEqual('TBasis.Melde', FResolver.Resolve(Tree, 'C:\P\Haupt.pas',
       PositionOf(PinSource, 'Melde;', 1)).QualifiedName);
@@ -1063,7 +1070,9 @@ begin
       function(ANode: TSyntaxNode): Boolean
       begin
         if (ANode.Kind = TSyntaxKind.MemberAccess) and MatchText(ANode.Name, ['Pos', 'Mitte']) then
+        begin
           Receivers := Receivers + [ANode];
+        end;
         Result := True;
       end);
     Assert.AreEqual(2, Integer(Length(Receivers)));

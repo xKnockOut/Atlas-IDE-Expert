@@ -5,6 +5,7 @@ interface
 uses
   DUnitX.TestFramework,
   Atlas.Common.Index.Contract,
+  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.CodeLens;
 
@@ -15,6 +16,7 @@ type
     FIndex: ISymbolIndex;
     FResolver: TNameResolver;
     function Describe(const AEntries: TArray<TCodeLensEntry>): string;
+    function SourceOf(ATree: TSyntaxTree): TCodeLensSource;
   public
     [Setup]
     procedure Setup;
@@ -41,7 +43,6 @@ uses
   System.SysUtils,
   System.JSON,
   Atlas.Common.Documents.Contract,
-  Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
@@ -99,11 +100,17 @@ function ReadFile(const AFileName: string; out AText: string): Boolean;
 begin
   Result := True;
   if SameText(AFileName, HauptFile) then
-    AText := UnitHaupt
+  begin
+    AText := UnitHaupt;
+  end
   else if SameText(AFileName, BasisFile) then
-    AText := UnitBasis
+  begin
+    AText := UnitBasis;
+  end
   else
+  begin
     Result := False;
+  end;
 end;
 
 { TLspCodeLensTests }
@@ -122,14 +129,25 @@ begin
   FIndex := nil;
 end;
 
+function TLspCodeLensTests.SourceOf(ATree: TSyntaxTree): TCodeLensSource;
+begin
+  Result.Resolver := FResolver;
+  Result.Index := FIndex;
+  Result.Tree := ATree;
+  Result.FileName := HauptFile;
+  Result.ReadText := ReadFile;
+end;
+
 function TLspCodeLensTests.Describe(const AEntries: TArray<TCodeLensEntry>): string;
 var
   Entry: TCodeLensEntry;
 begin
   Result := '';
   for Entry in AEntries do
+  begin
     Result := Result + Format('%d %d %s %d|', [Entry.Range.StartPos.Line, Ord(Entry.Kind), Entry.Title,
       Length(Entry.Targets)]);
+  end;
 end;
 
 procedure TLspCodeLensTests.FindsMessageHandlersAndInheritedOnes;
@@ -167,7 +185,7 @@ begin
     Assert.AreEqual(
       '4 0  0|4 2 1 Nachfahre 1|4 3 behandelt WM_PAINT, WM_SIZE (WM_PAINT auch in TBasis) 2|' +
       '5 0  0|5 1 überschreibt TBasis.WMPaint 1|6 0  0|7 0  0|7 1 überschreibt TBasis.Zeichne 1|9 0  0|',
-      Describe(TLspCodeLens.Lenses(FResolver, FIndex, Tree, HauptFile, ReadFile)));
+      Describe(TLspCodeLens.Lenses(SourceOf(Tree))));
   finally
     Tree.Free;
   end;
@@ -181,10 +199,9 @@ var
 begin
   Tree := TPascalParser.Parse(UnitHaupt);
   try
-    Entries := TLspCodeLens.Lenses(FResolver, FIndex, Tree, HauptFile, ReadFile);
+    Entries := TLspCodeLens.Lenses(SourceOf(Tree));
     // Zeichne in TFoo (Zeile 7): zwei Aufrufe, der Kopf "procedure TFoo.Zeichne" zählt nicht.
-    Resolved := TLspCodeLens.ResolveReferences(FResolver, FIndex, Tree, HauptFile, Entries[6],
-      [HauptFile, BasisFile], ReadFile);
+    Resolved := TLspCodeLens.ResolveReferences(SourceOf(Tree), Entries[6], [HauptFile, BasisFile]);
     Assert.AreEqual('2 Referenzen', Resolved.Title);
     Assert.AreEqual(14, Resolved.Targets[0].Range.StartPos.Line);
   finally

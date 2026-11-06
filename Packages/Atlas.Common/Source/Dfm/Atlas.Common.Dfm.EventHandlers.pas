@@ -102,9 +102,13 @@ var
 begin
   Dot := LastDelimiter('.', AQualified);
   if Dot > 1 then
-    Result := Copy(AQualified, 1, Dot - 1)
+  begin
+    Result := Copy(AQualified, 1, Dot - 1);
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 function IntervalOf(AObject: TDfmObject): Integer;
@@ -113,8 +117,12 @@ var
 begin
   Result := -1;
   for Item in AObject.Properties do
+  begin
     if SameText(Item.Name, 'Interval') then
+    begin
       Exit(StrToIntDef(Trim(Item.Value), -1));
+    end;
+  end;
 end;
 
 { TEventHandlers }
@@ -130,11 +138,17 @@ begin
   begin
     Index := Position - 1;
     while (Index > 0) and CharInSet(AText[Index], [' ', #9]) do
+    begin
       Dec(Index);
+    end;
     while (Index > 0) and CharInSet(AText[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+    begin
       Dec(Index);
+    end;
     if TDfmProperty.IsEventName(Copy(AText, Index + 1, Position - Index - 1).Trim) then
+    begin
       Exit(True);
+    end;
     Position := PosEx(':=', AText, Position + 2);
   end;
 end;
@@ -142,7 +156,9 @@ end;
 class procedure TEventHandlers.Bodies(ATree: TSyntaxTree; ABodies: TDictionary<string, TEventHandlerBody>);
 begin
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   ATree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     var
@@ -151,18 +167,26 @@ begin
     begin
       Result := True;
       if (ANode.Kind <> TSyntaxKind.RoutineDecl) or (Pos('.', ANode.Name) = 0) then
+      begin
         Exit;
+      end;
       Block := ANode.FindChild(TSyntaxKind.Block);
       if Block = nil then
+      begin
         Block := ANode.FindChild(TSyntaxKind.AsmBlock);
+      end;
       if Block = nil then
+      begin
         Exit;
+      end;
       Body.Line := Block.StartPos.Line;
       // Erste Anweisung in einer eigenen Zeile nach begin, sonst das end.
       Body.BodyLine := Block.EndPos.Line;
       if (Block.Kind = TSyntaxKind.Block) and (Block.ChildCount > 0) and
         (Block.Children[0].StartPos.Line > Block.StartPos.Line) then
+      begin
         Body.BodyLine := Block.Children[0].StartPos.Line;
+      end;
       ABodies.AddOrSetValue(LowerCase(ANode.Name), Body);
     end);
 end;
@@ -174,7 +198,9 @@ var
 begin
   Result := (ABodies <> nil) and ABodies.TryGetValue(LowerCase(AHandler.Container + '.' + AHandler.Handler), Body);
   if not Result then
+  begin
     Exit;
+  end;
   AHandler.FileName := AFileName;
   AHandler.Line := Body.Line;
   AHandler.BodyLine := Body.BodyLine;
@@ -213,71 +239,118 @@ begin
   end;
 end;
 
+/// <summary>Ereignis und Komponente aus dem Ziel einer Zuweisung (Komponente.OnXyz oder OnXyz der eigenen
+/// Klasse); False bei anderem Ziel.</summary>
+function ReadEventTarget(ATarget: TSyntaxNode; const AUnitText: string; var AHandler: TEventHandler): Boolean;
+var
+  mObject: TSyntaxNode;
+begin
+  Result := True;
+  if (ATarget.Kind = TSyntaxKind.MemberAccess) and (ATarget.ChildCount > 0) then
+  begin
+    AHandler.Event := ATarget.Name;
+    mObject := ATarget.Children[0];
+    if (mObject.EndOffset > mObject.StartOffset) and (mObject.EndOffset <= Length(AUnitText)) then
+    begin
+      AHandler.Component := Copy(AUnitText, mObject.StartOffset + 1, mObject.EndOffset - mObject.StartOffset);
+    end;
+    if SameText(AHandler.Component, 'Self') then
+    begin
+      AHandler.Component := '';
+    end;
+  end
+  else if ATarget.Kind = TSyntaxKind.Identifier then
+  begin
+    AHandler.Event := ATarget.Name;
+  end
+  else
+  begin
+    Result := False;
+  end;
+  Result := Result and TDfmProperty.IsEventName(AHandler.Event);
+end;
+
+/// <summary>Wert ist Self.Methode.</summary>
+function IsSelfMember(AValue: TSyntaxNode): Boolean;
+begin
+  Result := (AValue.Kind = TSyntaxKind.MemberAccess) and (AValue.ChildCount > 0) and
+    (AValue.Children[0].Kind = TSyntaxKind.Identifier) and SameText(AValue.Children[0].Name, 'Self');
+end;
+
+/// <summary>Methode aus dem Wert einer Zuweisung (Methode oder Self.Methode); nil, anonyme Methoden und fremde
+/// Objekte zählen nicht.</summary>
+function ReadEventValue(AValue: TSyntaxNode; var AHandler: TEventHandler): Boolean;
+begin
+  Result := (AValue.Kind = TSyntaxKind.Identifier) or IsSelfMember(AValue);
+  if Result then
+  begin
+    AHandler.Handler := AValue.Name;
+    Result := (AHandler.Handler <> '') and not SameText(AHandler.Handler, 'nil');
+  end;
+end;
+
+/// <summary>Methode (Klasse.Name), in der ANode steht; nil außerhalb.</summary>
+function EnclosingMethod(ANode: TSyntaxNode): TSyntaxNode;
+begin
+  Result := ANode.Parent;
+  while (Result <> nil) and not ((Result.Kind = TSyntaxKind.RoutineDecl) and (Pos('.', Result.Name) > 0)) do
+  begin
+    Result := Result.Parent;
+  end;
+end;
+
+/// <summary>Zuordnung aus der Zuweisung ANode (Komponente.OnXyz := Methode) in einer Methode; False sonst.
+/// </summary>
+function CodeHandlerOf(ANode: TSyntaxNode; const AUnitFile, AUnitText: string; out AHandler: TEventHandler): Boolean;
+var
+  mRoutine: TSyntaxNode;
+begin
+  AHandler := Default(TEventHandler);
+  AHandler.Origin := TEventHandlerOrigin.Code;
+  AHandler.Line := -1;
+  AHandler.BodyLine := -1;
+  AHandler.Interval := -1;
+  mRoutine := nil;
+  Result := (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount >= 2) and
+    ReadEventTarget(ANode.Children[0], AUnitText, AHandler) and ReadEventValue(ANode.Children[1], AHandler);
+  if Result then
+  begin
+    mRoutine := EnclosingMethod(ANode);
+    Result := mRoutine <> nil;
+  end;
+  if Result then
+  begin
+    AHandler.Container := ContainerOf(mRoutine.Name);
+    AHandler.FormClass := AHandler.Container;
+    AHandler.SourceFile := AUnitFile;
+    AHandler.SourceLine := ANode.StartPos.Line;
+  end;
+end;
+
 class function TEventHandlers.FromCode(ATree: TSyntaxTree; const AUnitFile, AUnitText: string;
   ABodies: TDictionary<string, TEventHandlerBody>): TArray<TEventHandler>;
 var
-  Found: TArray<TEventHandler>;
+  mFound: TArray<TEventHandler>;
 begin
-  Found := nil;
+  mFound := nil;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit(nil);
+  end;
   ATree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     var
-      Target, Value, Routine: TSyntaxNode;
-      Handler: TEventHandler;
+      mHandler: TEventHandler;
     begin
       Result := True;
-      if (ANode.Kind <> TSyntaxKind.AssignStatement) or (ANode.ChildCount < 2) then
-        Exit;
-      Target := ANode.Children[0];
-      Value := ANode.Children[1];
-      Handler := Default(TEventHandler);
-      Handler.Origin := TEventHandlerOrigin.Code;
-      Handler.Line := -1;
-      Handler.BodyLine := -1;
-      Handler.Interval := -1;
-      // Ziel: Komponente.OnXyz oder OnXyz (Eigenschaft der eigenen Klasse).
-      if (Target.Kind = TSyntaxKind.MemberAccess) and (Target.ChildCount > 0) then
+      if CodeHandlerOf(ANode, AUnitFile, AUnitText, mHandler) then
       begin
-        Handler.Event := Target.Name;
-        if (Target.Children[0].EndOffset > Target.Children[0].StartOffset) and
-          (Target.Children[0].EndOffset <= Length(AUnitText)) then
-          Handler.Component := Copy(AUnitText, Target.Children[0].StartOffset + 1,
-            Target.Children[0].EndOffset - Target.Children[0].StartOffset);
-        if SameText(Handler.Component, 'Self') then
-          Handler.Component := '';
-      end
-      else if Target.Kind = TSyntaxKind.Identifier then
-        Handler.Event := Target.Name
-      else
-        Exit;
-      if not TDfmProperty.IsEventName(Handler.Event) then
-        Exit;
-      // Wert: Methode oder Self.Methode; nil, anonyme Methoden und fremde Objekte zählen nicht.
-      if Value.Kind = TSyntaxKind.Identifier then
-        Handler.Handler := Value.Name
-      else if (Value.Kind = TSyntaxKind.MemberAccess) and (Value.ChildCount > 0) and
-        (Value.Children[0].Kind = TSyntaxKind.Identifier) and SameText(Value.Children[0].Name, 'Self') then
-        Handler.Handler := Value.Name
-      else
-        Exit;
-      if (Handler.Handler = '') or SameText(Handler.Handler, 'nil') then
-        Exit;
-      Routine := ANode.Parent;
-      while (Routine <> nil) and not ((Routine.Kind = TSyntaxKind.RoutineDecl) and (Pos('.', Routine.Name) > 0)) do
-        Routine := Routine.Parent;
-      if Routine = nil then
-        Exit;
-      Handler.Container := ContainerOf(Routine.Name);
-      Handler.FormClass := Handler.Container;
-      Handler.SourceFile := AUnitFile;
-      Handler.SourceLine := ANode.StartPos.Line;
-      // Nur Methoden der eigenen Klasse: lokale Variablen mit Methodenzeigern haben keinen Rumpf hier.
-      Resolve(Handler, AUnitFile, ABodies);
-      Found := Found + [Handler];
+        // Nur Methoden der eigenen Klasse: lokale Variablen mit Methodenzeigern haben keinen Rumpf hier.
+        Resolve(mHandler, AUnitFile, ABodies);
+        mFound := mFound + [mHandler];
+      end;
     end);
-  Result := Found;
+  Result := mFound;
 end;
 
 class function TEventHandlers.Collect(const AUnitFile, AUnitText: string;
@@ -289,15 +362,21 @@ var
 begin
   Result := nil;
   if (Length(AForms) = 0) and not MayAssignHandlers(AUnitText) then
+  begin
     Exit;
+  end;
   Bodies := TDictionary<string, TEventHandlerBody>.Create;
   Tree := TSyntaxTreeCache.Parse(AUnitText, nil);
   try
     TEventHandlers.Bodies(Tree, Bodies);
     for Form in AForms do
+    begin
       Result := Result + FromForm(Form, AUnitFile, Bodies);
+    end;
     if MayAssignHandlers(AUnitText) then
+    begin
       Result := Result + FromCode(Tree, AUnitFile, AUnitText, Bodies);
+    end;
   finally
     Tree.Free;
     Bodies.Free;

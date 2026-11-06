@@ -167,7 +167,9 @@ function SignificantIndex(const ATokens: TArray<TPascalToken>; AFrom: Integer): 
 begin
   Result := AFrom;
   while (Result <= High(ATokens)) and (ATokens[Result].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+  begin
     Inc(Result);
+  end;
 end;
 
 function TryByte(const AToken: TPascalToken; out AValue: Byte): Boolean;
@@ -177,7 +179,9 @@ begin
   Result := (AToken.Kind = TPascalTokenKind.Number) and TryStrToInt(AToken.Text, Value) and
     (Value >= 0) and (Value <= 255);
   if Result then
+  begin
     AValue := Value;
+  end;
 end;
 
 function TryRgbCall(const ATokens: TArray<TPascalToken>; AIndex: Integer; out AColor: TRgbColor;
@@ -190,17 +194,25 @@ begin
   Result := False;
   I := SignificantIndex(ATokens, AIndex + 1);
   if (I > High(ATokens)) or (ATokens[I].Text <> '(') then
+  begin
     Exit;
+  end;
   for Part := 0 to 2 do
   begin
     I := SignificantIndex(ATokens, I + 1);
     if (I > High(ATokens)) or not TryByte(ATokens[I], Parts[Part]) then
+    begin
       Exit;
+    end;
     I := SignificantIndex(ATokens, I + 1);
     if I > High(ATokens) then
+    begin
       Exit;
+    end;
     if (Part < 2) and (ATokens[I].Text <> ',') or (Part = 2) and (ATokens[I].Text <> ')') then
+    begin
       Exit;
+    end;
   end;
   AColor := TRgbColor.Create(Parts[0], Parts[1], Parts[2]);
   ALast := I;
@@ -215,7 +227,9 @@ begin
   Result := (Length(AText) = 9) and (AText[1] = '$') and (Copy(AText, 2, 2) = '00') and
     TryStrToInt64(AText, Value);
   if Result then
+  begin
     AColor := TRgbColor.FromTColor(Cardinal(Value));
+  end;
 end;
 
 function TryNamed(const AName: string; out AColor: TRgbColor): Boolean;
@@ -223,11 +237,13 @@ var
   Named: TNamedColor;
 begin
   for Named in NamedColors do
+  begin
     if SameText(Named.Name, AName) then
     begin
       AColor := FromRgbValue(Named.Value);
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -236,12 +252,16 @@ var
   Entry: TSystemColor;
 begin
   for Entry in SystemColors do
+  begin
     if SameText(Entry.Name, AName) then
     begin
       if not (Assigned(AProvider) and AProvider(Entry.Index, AColor)) then
+      begin
         AColor := FromRgbValue(Entry.DefaultValue);
+      end;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -308,8 +328,12 @@ var
   Named: TNamedColor;
 begin
   for Named in NamedColors do
+  begin
     if FromRgbValue(Named.Value) = AColor then
+    begin
       Exit(Named.Name);
+    end;
+  end;
   Result := '';
 end;
 
@@ -337,15 +361,21 @@ begin
       Add(Rgb, TColorFormat.Rgb);
     TColorFormat.Named:
       if Name <> '' then
+      begin
         Add(Name, TColorFormat.Named);
+      end;
     TColorFormat.Hex: ;
     TColorFormat.SystemColor: ;
   end;
   Add(Hex, TColorFormat.Hex);
   if (AFormat <> TColorFormat.Rgb) then
+  begin
     Add(Rgb, TColorFormat.Rgb);
+  end;
   if (Name <> '') and (AFormat <> TColorFormat.Named) then
+  begin
     Add(Name, TColorFormat.Named);
+  end;
 end;
 
 end.

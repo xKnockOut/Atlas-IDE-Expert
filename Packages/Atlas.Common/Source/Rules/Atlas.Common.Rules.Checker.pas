@@ -84,6 +84,17 @@ type
   /// <summary>Projekt und Dienste (Index, #1112) je Datei, etwa aus den Arbeitsbereichen des MCP-Servers.</summary>
   TCheckProjectFunc = reference to function(const AFileName: string): TCheckProject;
 
+  /// <summary>Herkunft einer geprüften Datei: Projekt (#943) und Symbole samt Include-Dateien (#860).</summary>
+  TCheckOrigin = record
+    Project: TCheckProject;
+    Source: TCheckSource;
+    class function Make(const AProject: TCheckProject; const ASource: TCheckSource): TCheckOrigin; static;
+    /// <summary>Projekt und Quelle für AFileName aus AProject und ASource; nil wie TFileChecker.ProjectOf und
+    /// TFileChecker.SourceOf.</summary>
+    class function ForFile(const AProject: TCheckProjectFunc; const ASource: TCheckSourceFunc;
+      const AFileName: string): TCheckOrigin; static;
+  end;
+
   TFileChecker = class
   public
     /// <summary>Beschreibung der eingebauten Syntaxprüfung.</summary>
@@ -131,8 +142,8 @@ type
     /// <summary>Wie oben mit Projekt (#943) und Symbolen (#860) zugleich; alle anderen Fassungen rufen diese.
     /// </summary>
     class function CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
-      const ARelativePath, AText: string; const AProject: TCheckProject; const ASource: TCheckSource;
-      out AScopes: TFindingScopes): TArray<TRuleFinding>; overload; static;
+      const ARelativePath, AText: string; const AOrigin: TCheckOrigin; out AScopes: TFindingScopes):
+      TArray<TRuleFinding>; overload; static;
   end;
 
 implementation
@@ -143,38 +154,60 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Pascal.LanguageFeatures,
-  Atlas.Common.Rules.Engine;
+  Atlas.Common.Rules.Engine,
+  Atlas.Common.Localization.Texts;
 
-/// <summary>Formulardatei neben AFileName und Dateizugriff relativ zu ihrem Ordner, wie im Server (#1054).</summary>
-procedure SetFiles(var AContext: TRuleContext; const AFileName: string);
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TCheckerText = (SyntaxTitle, NewerFeatureTitle);
+
+const
+  cTexts: array[TCheckerText] of TAtlasText = (
+    (De: 'Syntaxfehler des Parsers'; En: 'Syntax error of the parser'),
+    (De: 'Sprachmerkmal einer neueren Delphi-Version'; En: 'Language feature of a newer Delphi version'));
+
+{$SCOPEDENUMS OFF}
+
+/// <summary>Formulardatei (.dfm, sonst .fmx) neben einer .pas-Datei; leer ohne oder wenn nicht lesbar.</summary>
+procedure LoadForm(var AContext: TRuleContext; const AFileName: string);
 var
-  Folder, Extension: string;
-  FileFormat: TFileFormat;
+  mExtension: string;
+  mFileFormat: TFileFormat;
 begin
-  AContext.FileName := AFileName;
-  if SameText(ExtractFileExt(AFileName), '.pas') then
-    for Extension in TArray<string>.Create('.dfm', '.fmx') do
-      if TFile.Exists(ChangeFileExt(AFileName, Extension)) then
-      begin
-        try
-          AContext.FormText := TFileEncoding.LoadFromFile(ChangeFileExt(AFileName, Extension), FileFormat);
-          AContext.FormFile := ChangeFileExt(AFileName, Extension);
-        except
-          on EInOutError do
-            AContext.FormText := '';
-          on EStreamError do
-            AContext.FormText := '';
-        end;
-        Break;
+  if not SameText(ExtractFileExt(AFileName), '.pas') then
+  begin
+    Exit;
+  end;
+  for mExtension in TArray<string>.Create('.dfm', '.fmx') do
+  begin
+    if TFile.Exists(ChangeFileExt(AFileName, mExtension)) then
+    begin
+      try
+        AContext.FormText := TFileEncoding.LoadFromFile(ChangeFileExt(AFileName, mExtension), mFileFormat);
+        AContext.FormFile := ChangeFileExt(AFileName, mExtension);
+      except
+        on EInOutError do
+          AContext.FormText := '';
+        on EStreamError do
+          AContext.FormText := '';
       end;
-  Folder := ExtractFilePath(AFileName);
-  AContext.ReadFile :=
+      Exit;
+    end;
+  end;
+end;
+
+/// <summary>Liest Dateien relativ zu AFolder; False, wenn sie fehlen oder nicht lesbar sind.</summary>
+function FolderReader(const AFolder: string): TRuleFileReader;
+begin
+  Result :=
     function(const AName: string; out AData: TBytes): Boolean
     begin
-      Result := TFile.Exists(TPath.Combine(Folder, AName));
+      Result := TFile.Exists(TPath.Combine(AFolder, AName));
       if Result then
       try
-        AData := TFile.ReadAllBytes(TPath.Combine(Folder, AName));
+        AData := TFile.ReadAllBytes(TPath.Combine(AFolder, AName));
       except
         on EInOutError do
           Result := False;
@@ -182,12 +215,39 @@ begin
           Result := False;
       end;
     end;
-  // Fehlende Dateien aus {$I} und {$R} (#1379).
-  AContext.FileExists :=
+end;
+
+/// <summary>Prüft, ob es eine Datei relativ zu AFolder gibt (fehlende Dateien aus {$I} und {$R}, #1379).</summary>
+function FolderExists(const AFolder: string): TRuleFileExists;
+begin
+  Result :=
     function(const AName: string): Boolean
     begin
-      Result := TFile.Exists(TPath.Combine(Folder, AName));
+      Result := TFile.Exists(TPath.Combine(AFolder, AName));
     end;
+end;
+
+/// <summary>Formulardatei neben AFileName und Dateizugriff relativ zu ihrem Ordner, wie im Server (#1054).</summary>
+procedure SetFiles(var AContext: TRuleContext; const AFileName: string);
+begin
+  AContext.FileName := AFileName;
+  LoadForm(AContext, AFileName);
+  AContext.ReadFile := FolderReader(ExtractFilePath(AFileName));
+  AContext.FileExists := FolderExists(ExtractFilePath(AFileName));
+end;
+
+{ TCheckOrigin }
+
+class function TCheckOrigin.Make(const AProject: TCheckProject; const ASource: TCheckSource): TCheckOrigin;
+begin
+  Result.Project := AProject;
+  Result.Source := ASource;
+end;
+
+class function TCheckOrigin.ForFile(const AProject: TCheckProjectFunc; const ASource: TCheckSourceFunc;
+  const AFileName: string): TCheckOrigin;
+begin
+  Result := Make(TFileChecker.ProjectOf(AProject, AFileName), TFileChecker.SourceOf(ASource, AFileName));
 end;
 
 { TCheckSource }
@@ -214,7 +274,7 @@ end;
 
 class function TFileChecker.SyntaxDescriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(SyntaxRuleId, TRuleSeverity.Error, 'Syntaxfehler des Parsers');
+  Result := TRuleDescriptor.Create(SyntaxRuleId, TRuleSeverity.Error, cTexts[TCheckerText.SyntaxTitle].Text);
 end;
 
 class function TFileChecker.SyntaxFindings(const ADiagnostics: TArray<TSyntaxDiagnostic>;
@@ -228,7 +288,9 @@ begin
   Severity := ASettings.RuleSeverity(SyntaxRuleId, TRuleSeverity.Error);
   // Auch Syntaxfehler gehören zu einer Gruppe (#909, seit #1022 „Compiler vorab“).
   if (Severity = TRuleSeverity.Off) or TRuleEngine.GroupOff(SyntaxRuleId, ASettings) then
+  begin
     Exit;
+  end;
   for Diagnostic in ADiagnostics do
   begin
     Finding := Default(TRuleFinding);
@@ -238,7 +300,9 @@ begin
     Finding.Severity := Severity;
     Finding.Confidence := TRuleConfidence.High;
     if Diagnostic.FixTitle <> '' then
+    begin
       Finding.Fixes := [TRuleFix.Create(Diagnostic.FixTitle, Diagnostic.FixEdits, Diagnostic.FixSafe)];
+    end;
     Result := Result + [Finding];
   end;
 end;
@@ -246,7 +310,7 @@ end;
 class function TFileChecker.LanguageFeatureDescriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(LanguageFeatureRuleId, TRuleSeverity.Warning,
-    'Sprachmerkmal einer neueren Delphi-Version');
+    cTexts[TCheckerText.NewerFeatureTitle].Text);
 end;
 
 class function TFileChecker.LanguageFeatureFindings(ATree: TSyntaxTree; const ASettings: TServerSettings;
@@ -259,12 +323,16 @@ begin
   Result := nil;
   Severity := ASettings.RuleSeverity(LanguageFeatureRuleId, TRuleSeverity.Warning);
   if (Severity = TRuleSeverity.Off) or TRuleEngine.GroupOff(LanguageFeatureRuleId, ASettings) then
+  begin
     Exit;
+  end;
   for Feature in TLanguageFeatures.Check(ATree, ALanguageLevel, AInactive) do
   begin
     // Bedingungsausdrücke meldet die Regel conditional-expression-version (#684) als Fehler mit Korrektur.
     if Feature.Feature = TLanguageFeature.IfExpression then
+    begin
       Continue;
+    end;
     Finding := Default(TRuleFinding);
     Finding.RuleId := LanguageFeatureRuleId;
     Finding.Range := TTextRange.Create(Feature.StartPos, Feature.EndPos);
@@ -291,8 +359,8 @@ end;
 class function TFileChecker.CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
   const ARelativePath, AText: string; out AScopes: TFindingScopes): TArray<TRuleFinding>;
 begin
-  Result := CheckText(ARules, ASettings, ARelativePath, AText, Default(TCheckProject), TCheckSource.Default,
-    AScopes);
+  Result := CheckText(ARules, ASettings, ARelativePath, AText,
+    TCheckOrigin.Make(Default(TCheckProject), TCheckSource.Default), AScopes);
 end;
 
 class function TFileChecker.CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
@@ -300,14 +368,16 @@ class function TFileChecker.CheckText(const ARules: TArray<IRule>; const ASettin
 var
   Scopes: TFindingScopes;
 begin
-  Result := CheckText(ARules, ASettings, ARelativePath, AText, AProject, TCheckSource.Default, Scopes);
+  Result := CheckText(ARules, ASettings, ARelativePath, AText,
+    TCheckOrigin.Make(AProject, TCheckSource.Default), Scopes);
 end;
 
 class function TFileChecker.CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
   const ARelativePath, AText: string; const AProject: TCheckProject; out AScopes: TFindingScopes):
   TArray<TRuleFinding>;
 begin
-  Result := CheckText(ARules, ASettings, ARelativePath, AText, AProject, TCheckSource.Default, AScopes);
+  Result := CheckText(ARules, ASettings, ARelativePath, AText,
+    TCheckOrigin.Make(AProject, TCheckSource.Default), AScopes);
 end;
 
 class function TFileChecker.CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
@@ -315,28 +385,36 @@ class function TFileChecker.CheckText(const ARules: TArray<IRule>; const ASettin
 var
   Scopes: TFindingScopes;
 begin
-  Result := CheckText(ARules, ASettings, ARelativePath, AText, Default(TCheckProject), ASource, Scopes);
+  Result := CheckText(ARules, ASettings, ARelativePath, AText,
+    TCheckOrigin.Make(Default(TCheckProject), ASource), Scopes);
 end;
 
 class function TFileChecker.CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
   const ARelativePath, AText: string; const ASource: TCheckSource;
   out AScopes: TFindingScopes): TArray<TRuleFinding>;
 begin
-  Result := CheckText(ARules, ASettings, ARelativePath, AText, Default(TCheckProject), ASource, AScopes);
+  Result := CheckText(ARules, ASettings, ARelativePath, AText,
+    TCheckOrigin.Make(Default(TCheckProject), ASource), AScopes);
 end;
 
 class function TFileChecker.SourceOf(const ASource: TCheckSourceFunc; const AFileName: string): TCheckSource;
 begin
   if Assigned(ASource) then
-    Result := ASource(AFileName)
+  begin
+    Result := ASource(AFileName);
+  end
   else
+  begin
     Result := TCheckSource.Default;
+  end;
 end;
 
 class function TFileChecker.ProjectOf(const AProject: TCheckProjectFunc; const AFileName: string): TCheckProject;
 begin
   if Assigned(AProject) then
-    Result := AProject(AFileName)
+  begin
+    Result := AProject(AFileName);
+  end
   else
   begin
     Result := Default(TCheckProject);
@@ -351,17 +429,19 @@ var
 begin
   Result := Default(TCheckProject);
   for Source in APackages do
+  begin
     if Source.IsPackage and (Source.ContainsIndex(AUnitName) >= 0) then
     begin
       Result.Application := TRuleApplicationKind.Package;
       Result.Name := Source.Name;
       Exit;
     end;
+  end;
 end;
 
 class function TFileChecker.CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
-  const ARelativePath, AText: string; const AProject: TCheckProject; const ASource: TCheckSource;
-  out AScopes: TFindingScopes): TArray<TRuleFinding>;
+  const ARelativePath, AText: string; const AOrigin: TCheckOrigin; out AScopes: TFindingScopes):
+  TArray<TRuleFinding>;
 var
   Tree: TSyntaxTree;
   Processed: TPreprocessorResult;
@@ -371,10 +451,12 @@ var
 begin
   AScopes := TFindingScopes.FromTree(nil);
   if (ARelativePath <> '') and ASettings.IsExcluded(ARelativePath) then
+  begin
     Exit(nil);
+  end;
   // Baum nur aus den aktiven Zweigen wie im Editor: Inaktive Zweige erzeugen keine Syntaxfehler und keine
   // Regeltreffer.
-  Tree := TSyntaxTreeCache.ParseActive(AText, ASource.Options, nil, Processed);
+  Tree := TSyntaxTreeCache.ParseActive(AText, AOrigin.Source.Options, nil, Processed);
   try
     AScopes := TFindingScopes.FromTree(Tree);
     // Der Baum enthält nur die aktiven Zweige: Inaktive erzeugen keine Syntaxfehler.
@@ -387,22 +469,29 @@ begin
     Context.Tree := Tree;
     // Inaktive Zweige für Regeln, die selbst über die Token gehen (unused-uses, #1352).
     Context.InactiveRanges := TPascalPreprocessor.MainInactive(Processed);
-    Context.Application := AProject.Application;
-    Context.ProjectName := AProject.Name;
-    Context.AutoCreateForms := AProject.AutoCreateForms;
-    Context.ProjectMainSource := AProject.ProjectMainSource;
+    Context.Application := AOrigin.Project.Application;
+    Context.ProjectName := AOrigin.Project.Name;
+    Context.AutoCreateForms := AOrigin.Project.AutoCreateForms;
+    Context.ProjectMainSource := AOrigin.Project.ProjectMainSource;
     // Index und Projektdienste auf demselben Weg wie im Server (#1112).
-    AProject.Services.ApplyTo(Context);
+    AOrigin.Project.Services.ApplyTo(Context);
     // Pfad aus dem Projekt (#1054), sonst aus der Symbolquelle (#860): Formulardatei und Nachbardateien.
-    FileName := AProject.FileName;
+    FileName := AOrigin.Project.FileName;
     if FileName = '' then
-      FileName := ASource.FileName;
+    begin
+      FileName := AOrigin.Source.FileName;
+    end;
     if FileName <> '' then
+    begin
       SetFiles(Context, FileName);
+    end;
     Result := Syntax + TRuleEngine.Run(ARules, ASettings, Context);
   finally
     Tree.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Checker', cTexts);
 
 end.

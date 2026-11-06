@@ -32,6 +32,9 @@ type
     /// <summary>Beschriftungen der Einträge, durch Komma getrennt und mit Komma eingefasst.</summary>
     class function Labels(AAnswer: TJSONObject): string; static;
   public
+    /// <summary>Einmal-Belegungen vorwegnehmen.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -81,6 +84,16 @@ const
     'end.';
 
 { TLspExpressionCompletionTests }
+
+procedure TLspExpressionCompletionTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    OffersLocalsAndParameters;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TLspExpressionCompletionTests.Setup;
 begin
@@ -133,7 +146,9 @@ var
 begin
   Result := ',';
   for Value in AAnswer.GetValue('items') as TJSONArray do
+  begin
     Result := Result + (Value as TJSONObject).GetValue('label').Value + ',';
+  end;
 end;
 
 procedure TLspExpressionCompletionTests.PlacesBeforeStatementAndAfterBegin;

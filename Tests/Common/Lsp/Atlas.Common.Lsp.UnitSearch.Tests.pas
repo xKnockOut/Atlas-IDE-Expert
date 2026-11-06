@@ -81,9 +81,13 @@ function Chain(const AType: string): TArray<string>;
 begin
   Result := nil;
   if SameText(AType, 'TBasisForm') then
-    Result := ['Vcl.Forms.TForm']
+  begin
+    Result := ['Vcl.Forms.TForm'];
+  end
   else if SameText(AType, 'TKreis') then
+  begin
     Result := ['TKreis'];
+  end;
 end;
 
 const
@@ -110,9 +114,25 @@ const
     '  end'#13#10 +
     'end';
 
+/// <summary>Projekte App und Tests; Kunden.pas steht in beiden.</summary>
+function UnitSearchProjects: TArray<TUnitSearchProject>;
+var
+  mMain, mTests: TUnitSearchProject;
+begin
+  mMain := Default(TUnitSearchProject);
+  mMain.Name := 'App';
+  mMain.FileName := 'C:\P\App.dproj';
+  mMain.Files := ['C:\P\App.dpr', 'C:\P\Kunden.pas', 'C:\P\Haupt.pas', 'C:\P\Neu.pas'];
+  mTests := Default(TUnitSearchProject);
+  mTests.Name := 'Tests';
+  mTests.FileName := 'C:\P\Tests\Tests.dproj';
+  mTests.IsTest := True;
+  mTests.Files := ['C:\P\Tests\Tests.dpr', 'C:\P\Tests\Kunden.Tests.pas', 'C:\P\Kunden.pas'];
+  Result := [mMain, mTests];
+end;
+
 function TUnitSearchTests.Context: TUnitSearchContext;
 var
-  Main, Tests: TUnitSearchProject;
   Kunden, Haupt, KundenTests, Hilfe, Sys: TUnitIndex;
 begin
   Kunden := MakeUnit('Kunden', 'C:\P\Kunden.pas', ['System.SysUtils']);
@@ -122,18 +142,9 @@ begin
   Hilfe := MakeUnit('Hilfe', 'C:\Lib\Hilfe.pas', nil);
   Sys := MakeUnit('System.SysUtils', 'C:\BDS\SysUtils.pas', nil);
   Sys.Library_ := True;
-  Main := Default(TUnitSearchProject);
-  Main.Name := 'App';
-  Main.FileName := 'C:\P\App.dproj';
-  Main.Files := ['C:\P\App.dpr', 'C:\P\Kunden.pas', 'C:\P\Haupt.pas', 'C:\P\Neu.pas'];
-  Tests := Default(TUnitSearchProject);
-  Tests.Name := 'Tests';
-  Tests.FileName := 'C:\P\Tests\Tests.dproj';
-  Tests.IsTest := True;
-  Tests.Files := ['C:\P\Tests\Tests.dpr', 'C:\P\Tests\Kunden.Tests.pas', 'C:\P\Kunden.pas'];
   Result := Default(TUnitSearchContext);
   Result.Units := [Kunden, Haupt, KundenTests, Hilfe, Sys];
-  Result.Projects := [Main, Tests];
+  Result.Projects := UnitSearchProjects;
   Result.AncestorsOf :=
     function(AType: string): TArray<string>
     begin
@@ -148,11 +159,17 @@ begin
     function(AFile: string): string
     begin
       if SameText(AFile, 'C:\P\Haupt.dfm') then
-        Result := FormText
+      begin
+        Result := FormText;
+      end
       else if SameText(AFile, 'C:\P\Haupt.pas') then
-        Result := '// Hauptfenster'#13#10'// der Anwendung'#13#10'unit Haupt;'#13#10'interface'#13#10'end.'
+      begin
+        Result := '// Hauptfenster'#13#10'// der Anwendung'#13#10'unit Haupt;'#13#10'interface'#13#10'end.';
+      end
       else
+      begin
         Result := '';
+      end;
     end;
   Result.Modified :=
     function(AFile: string): TDateTime
@@ -261,8 +278,12 @@ var
   Item: TJSONValue;
 begin
   for Item in AUnits do
+  begin
     if TJSONObject(Item).GetValue<string>('name') = AName then
+    begin
       Exit(TJSONObject(Item));
+    end;
+  end;
   Result := nil;
 end;
 
@@ -401,7 +422,9 @@ function DeclaringKunde(const AName: string): TArray<string>;
 begin
   Result := nil;
   if SameText(AName, 'TKunde') then
+  begin
     Result := ['Kunden'];
+  end;
 end;
 
 procedure TUnitSearchTests.AddUsesBuildsWorkspaceEdit;
@@ -442,7 +465,9 @@ var
 begin
   Result := '';
   for Item in AEdits do
+  begin
     Result := Result + (Item as TJSONObject).GetValue<string>('newText');
+  end;
 end;
 
 procedure TUnitSearchTests.AddUsesTakesSection;

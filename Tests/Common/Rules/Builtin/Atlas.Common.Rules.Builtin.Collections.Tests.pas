@@ -203,7 +203,9 @@ begin
         begin
           Result := Complete;
           if not Complete then
+          begin
             AReason := 'Index läuft (1 von 2 Units)';
+          end;
         end);
       Result := TRuleEngine.Run([TLegacyTListRule.Create], Settings, Context);
       Context.ProjectFiles := nil;
@@ -352,8 +354,10 @@ begin
     '  Pos := Umwandeln(FPositionen[I]);'#10, '  Pos := TUnbekannt(FPositionen[I]);'#10,
     // Cast auf etwas anderes als die Liste.
     '  Pos := TPosition(Obj);'#10] do
+  begin
     Assert.AreEqual(0, Integer(Length(Findings(Auftrag('System.Classes', 'TList', Statement).Replace('begin'#10,
       'function Umwandeln(P: Pointer): TPosition;'#10'begin'#10'end;'#10#10'begin'#10)))), Statement);
+  end;
   // Generische Liste mit überflüssigem Cast: nicht diese Regel.
   Assert.AreEqual(0, Integer(Length(Findings(Auftrag('System.Generics.Collections', 'TList<TObject>',
     '  Pos := TPosition(FPositionen[I]);'#10)))));
@@ -655,7 +659,9 @@ begin
     // Ohne Cast, Pointer, unbekannter Typ, Cast auf etwas anderes als den Stapel.
     '  FOffen.Push(Knoten);'#10'  if FOffen.Count = 0 then'#10'    Exit;'#10'  FOffen.Pop;'#10,
     '  Obj := Pointer(FOffen.Pop);'#10, '  Knoten := TUnbekannt(FOffen.Pop);'#10, '  Knoten := TKnoten(Obj);'#10] do
+  begin
     Assert.AreEqual(0, Integer(Length(StackFindings(Suche('System.Contnrs', 'TObjectStack', Statement)))), Statement);
+  end;
   // Generischer Stapel und generische Warteschlange mit überflüssigem Cast: nicht diese Regel.
   Assert.AreEqual(0, Integer(Length(StackFindings(Suche('System.Generics.Collections', 'TStack<TObject>',
     '  Knoten := TKnoten(FOffen.Pop);'#10)))));
@@ -796,9 +802,13 @@ begin
   begin
     Result := TPath.Combine(Directory, TPath.Combine('Tests', 'Referenzprojekt'));
     if TDirectory.Exists(Result) then
+    begin
       Exit;
+    end;
     if ExtractFileDir(Directory) = Directory then
+    begin
       Break;
+    end;
     Directory := ExtractFileDir(Directory);
   end;
   Result := '';
@@ -821,7 +831,9 @@ begin
   // Zeilen, jede weitere Meldung ist ein Fehlalarm.
   Folder := ReferenceFolder;
   if Folder = '' then
+  begin
     Assert.Pass('Referenzprojekt nicht gefunden; Prüfung übersprungen');
+  end;
   Index := BaseIndex;
   Files := nil;
   Texts := nil;
@@ -837,11 +849,17 @@ begin
   begin
     Lines := Texts[FileIndex].Replace(#13#10, #10).Split([#10]);
     for LineIndex := 0 to High(Lines) do
+    begin
       if Lines[LineIndex].Contains(Marker) then
+      begin
         Expected := Expected + ExtractFileName(Files[FileIndex]) + ':' + IntToStr(LineIndex + 1) + #10;
+      end;
+    end;
     for Finding in TRuleAssert.IndexFindings(TLegacyStackQueueRule.Create, Texts[FileIndex], Index, StackQueueOn,
       ExtractFileName(Files[FileIndex])) do
+    begin
       Actual := Actual + ExtractFileName(Files[FileIndex]) + ':' + IntToStr(Finding.Range.StartPos.Line + 1) + #10;
+    end;
   end;
   Assert.IsTrue(Expected <> '', 'Keine Markierungen im Referenzprojekt');
   Assert.AreEqual(Expected, Actual);

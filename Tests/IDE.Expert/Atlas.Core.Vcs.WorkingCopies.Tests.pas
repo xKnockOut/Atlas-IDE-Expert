@@ -85,9 +85,13 @@ type
 function Root: string;
 begin
   if PathDelim = '\' then
-    Result := 'C:\Projekte\Kasse'
+  begin
+    Result := 'C:\Projekte\Kasse';
+  end
   else
+  begin
     Result := '/home/projekte/kasse';
+  end;
 end;
 
 function Under(const ARelative: string): string;
@@ -106,9 +110,13 @@ begin
     mFileName := TPath.Combine(mDirectory, TPath.Combine('Tests', TPath.Combine('Data',
       TPath.Combine(AFolder, AName))));
     if TFile.Exists(mFileName) then
+    begin
       Exit(TFile.ReadAllText(mFileName, TEncoding.UTF8));
+    end;
     if ExtractFileDir(mDirectory) = mDirectory then
+    begin
       Break;
+    end;
     mDirectory := ExtractFileDir(mDirectory);
   end;
   raise Exception.Create('Tests\Data\' + AFolder + '\' + AName + ' nicht gefunden');

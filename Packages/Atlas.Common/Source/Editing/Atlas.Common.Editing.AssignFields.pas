@@ -78,7 +78,16 @@ implementation
 
 uses
   System.StrUtils,
-  System.RegularExpressions;
+  System.RegularExpressions,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TAssignFieldsText = (AssignAllFields);
+
+const
+  cTexts: array[TAssignFieldsText] of TAtlasText = (
+    (De: 'Alle Felder zuweisen (%d)'; En: 'Assign all fields (%d)'));
 
 const
   NumberTypes: array[0..27] of string = ('integer', 'cardinal', 'int64', 'uint64', 'byte', 'word', 'longint',
@@ -100,10 +109,14 @@ begin
   Result := LowerCase(Trim(ATypeName));
   Index := Pos('<', Result);
   if Index > 0 then
+  begin
     Result := Trim(Copy(Result, 1, Index - 1));
+  end;
   Index := LastDelimiter('.', Result);
   if Index > 0 then
+  begin
     Result := Copy(Result, Index + 1, MaxInt);
+  end;
 end;
 
 /// <summary>Beginnt ein Typtext mit dem Wort AWord (nicht mit einem längeren Namen)?</summary>
@@ -128,7 +141,9 @@ begin
         Dec(Depth);
       ':':
         if Depth = 0 then
+        begin
           Exit(Copy(ASignature, Index + 1, MaxInt));
+        end;
     end;
 end;
 
@@ -142,19 +157,27 @@ begin
   begin
     Found := -1;
     for Index := 0 to High(Result) do
+    begin
       if SameText(Result[Index].Name, Member.Name) then
       begin
         Found := Index;
         Break;
       end;
+    end;
     if Found < 0 then
-      Result := Result + [Member]
+    begin
+      Result := Result + [Member];
+    end
     else if (Member.Kind = TIndexSymbolKind.Property_) and (Member.TypeName = '') and
       (Result[Found].Kind = TIndexSymbolKind.Property_) then
+    begin
       // "property Caption;" im published-Abschnitt: Typ und Zugriff bleiben die geerbten.
-      Result[Found].Visibility := Member.Visibility
+      Result[Found].Visibility := Member.Visibility;
+    end
     else
+    begin
       Result[Found] := Member;
+    end;
   end;
 end;
 
@@ -163,7 +186,9 @@ begin
   Result := (AMember.Visibility in [TIndexVisibility.Public, TIndexVisibility.Published]) and
     (AMember.TypeName <> '');
   if not Result then
+  begin
     Exit;
+  end;
   case AMember.Kind of
     TIndexSymbolKind.Field:
       Result := True;
@@ -175,33 +200,76 @@ begin
   end;
 end;
 
-class function TAssignFields.KindOfText(const ATypeName: string; out AKind: TAssignValueKind): Boolean;
+const
+  /// <summary>Typtexte, die mit einem dieser Wörter beginnen, sind Verweise.</summary>
+  cReferenceWords: array[0..4] of string = ('array', 'procedure', 'function', 'reference', 'class');
+
+/// <summary>Art eines Typtexts nach seiner Form: "set of", Zeiger, Arrays, prozedurale Typen, Klassenverweise,
+/// "string[n]"; False für einen Typnamen.</summary>
+function KindOfShape(const AText: string; out AKind: TAssignValueKind): Boolean;
 var
-  Text, Bare: string;
+  mWord: string;
 begin
   AKind := TAssignValueKind.Other;
-  Result := True;
-  Text := Trim(ATypeName);
-  if Text.StartsWith('type ', True) then
-    Text := Trim(Copy(Text, 6, MaxInt));
-  Bare := BareName(Text);
-  if StartsWithWord(Text, 'set') then
-    AKind := TAssignValueKind.SetOf
-  else if Text.StartsWith('^') or StartsWithWord(Text, 'array') or StartsWithWord(Text, 'procedure') or
-    StartsWithWord(Text, 'function') or StartsWithWord(Text, 'reference') or StartsWithWord(Text, 'class') then
-    AKind := TAssignValueKind.Reference
-  else if StartsWithWord(Text, 'string') or (IndexText(Bare, TextTypes) >= 0) then
-    AKind := TAssignValueKind.Text
-  else if (IndexText(Bare, NumberTypes) >= 0) or SameText(Bare, 'ttime') then
-    AKind := TAssignValueKind.Number
-  else if IndexText(Bare, CharTypes) >= 0 then
-    AKind := TAssignValueKind.Character
-  else if IndexText(Bare, BooleanTypes) >= 0 then
-    AKind := TAssignValueKind.Boolean_
-  else if IndexText(Bare, ReferenceTypes) >= 0 then
-    AKind := TAssignValueKind.Reference
-  else
-    Result := False;
+  if StartsWithWord(AText, 'set') then
+  begin
+    AKind := TAssignValueKind.SetOf;
+  end
+  else if AText.StartsWith('^') then
+  begin
+    AKind := TAssignValueKind.Reference;
+  end
+  else if StartsWithWord(AText, 'string') then
+  begin
+    AKind := TAssignValueKind.Text;
+  end;
+  for mWord in cReferenceWords do
+  begin
+    if StartsWithWord(AText, mWord) and (AKind = TAssignValueKind.Other) then
+    begin
+      AKind := TAssignValueKind.Reference;
+    end;
+  end;
+  Result := AKind <> TAssignValueKind.Other;
+end;
+
+/// <summary>Art eines bekannten Typnamens ABare (ohne Unit); False für unbekannte Namen.</summary>
+function KindOfName(const ABare: string; out AKind: TAssignValueKind): Boolean;
+begin
+  AKind := TAssignValueKind.Other;
+  if IndexText(ABare, TextTypes) >= 0 then
+  begin
+    AKind := TAssignValueKind.Text;
+  end
+  else if (IndexText(ABare, NumberTypes) >= 0) or SameText(ABare, 'ttime') then
+  begin
+    AKind := TAssignValueKind.Number;
+  end
+  else if IndexText(ABare, CharTypes) >= 0 then
+  begin
+    AKind := TAssignValueKind.Character;
+  end
+  else if IndexText(ABare, BooleanTypes) >= 0 then
+  begin
+    AKind := TAssignValueKind.Boolean_;
+  end
+  else if IndexText(ABare, ReferenceTypes) >= 0 then
+  begin
+    AKind := TAssignValueKind.Reference;
+  end;
+  Result := AKind <> TAssignValueKind.Other;
+end;
+
+class function TAssignFields.KindOfText(const ATypeName: string; out AKind: TAssignValueKind): Boolean;
+var
+  mText: string;
+begin
+  mText := Trim(ATypeName);
+  if mText.StartsWith('type ', True) then
+  begin
+    mText := Trim(Copy(mText, 6, MaxInt));
+  end;
+  Result := KindOfShape(mText, AKind) or KindOfName(BareName(mText), AKind);
 end;
 
 class function TAssignFields.DefaultValue(AKind: TAssignValueKind; const ATypeName, AFirstValue: string): string;
@@ -223,7 +291,9 @@ begin
       begin
         Result := AFirstValue;
         if Result = '' then
+        begin
           Result := 'Default(' + Trim(ATypeName) + ')';
+        end;
       end;
   else
     Result := 'Default(' + Trim(ATypeName) + ')';
@@ -242,15 +312,21 @@ begin
   // "Opts . Inner" steht auch mit Leerzeichen um den Punkt da.
   Parts := AExpression.Split(['.']);
   for Index := 0 to High(Parts) do
+  begin
     Parts[Index] := TRegEx.Escape(Trim(Parts[Index]));
+  end;
   Pattern := '^\s*' + string.Join('\s*\.\s*', Parts) + '\s*\.\s*([A-Za-z_][A-Za-z0-9_]*)\s*:=';
   for Index := ALine + 1 to High(ALines) do
   begin
     if Trim(ALines[Index]) = '' then
+    begin
       Continue;
+    end;
     Found := TRegEx.Match(ALines[Index], Pattern, [roIgnoreCase]);
     if not Found.Success then
+    begin
       Break;
+    end;
     Result := Result + [Found.Groups[1].Value];
   end;
 end;
@@ -262,8 +338,12 @@ var
 begin
   Result := nil;
   for Field in AFields do
+  begin
     if IndexText(Field.Name, ANames) < 0 then
+    begin
       Result := Result + [Field];
+    end;
+  end;
 end;
 
 class function TAssignFields.Line(const AExpression: string; const AField: TAssignField): string;
@@ -280,7 +360,9 @@ begin
   for Index := 1 to Length(AText) do
   begin
     if CharInSet(AText[Index], ['$', '}', '\']) then
+    begin
       Result := Result + '\';
+    end;
     Result := Result + AText[Index];
   end;
 end;
@@ -293,7 +375,9 @@ begin
   for Index := 0 to High(AFields) do
   begin
     if Index > 0 then
+    begin
       Result := Result + #10;
+    end;
     Result := Result + Escaped(AExpression) + '.' + Escaped(AFields[Index].Name) + ' := ${' +
       IntToStr(Index + 1) + ':' + Escaped(AFields[Index].Value) + '};';
   end;
@@ -308,14 +392,19 @@ begin
   for Index := 0 to High(AFields) do
   begin
     if Index > 0 then
+    begin
       Result := Result + ALineBreak + AIndent;
+    end;
     Result := Result + Line(AExpression, AFields[Index]);
   end;
 end;
 
 class function TAssignFields.Title(ACount: Integer): string;
 begin
-  Result := Format('Alle Felder zuweisen (%d)', [ACount]);
+  Result := cTexts[TAssignFieldsText.AssignAllFields].Fmt([ACount]);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.AssignFields', cTexts);
 
 end.

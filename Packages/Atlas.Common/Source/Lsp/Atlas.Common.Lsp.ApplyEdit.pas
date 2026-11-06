@@ -50,7 +50,22 @@ implementation
 uses
   System.Generics.Collections,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Lsp.Positions;
+  Atlas.Common.Lsp.Positions,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TApplyEditText = (NoAnswer, NotApplied, Error);
+
+const
+  cTexts: array[TApplyEditText] of TAtlasText = (
+    (De: 'keine Antwort'; En: 'no answer'),
+    (De: 'nicht übernommen'; En: 'not applied'),
+    (De: 'Fehler'; En: 'error'));
+
+{$SCOPEDENUMS OFF}
 
 class function TLspApplyEdit.ClientSupports(const AInitializeParams: TJSONObject): Boolean;
 var
@@ -79,7 +94,9 @@ var
 begin
   Lines := AText.Split([#10]);
   if Length(Lines) = 0 then
+  begin
     Lines := [''];
+  end;
   Result := TTextRange.Create(0, 0, High(Lines), Length(Lines[High(Lines)]));
 end;
 
@@ -107,7 +124,9 @@ begin
       Range := TTextRange.Create(0, 0, 0, 0);
     end
     else
+    begin
       Range := WholeRange(Change.OldText);
+    end;
     Document := TJSONObject.Create;
     Document.AddPair('uri', Uri);
     Document.AddPair('version', TJSONNull.Create);
@@ -136,7 +155,9 @@ begin
   // Ende des alten Texts: letzte Zeile, Länge in UTF-16-Einheiten wie im LSP üblich.
   Lines := AOldText.Split([#10]);
   if Length(Lines) = 0 then
+  begin
     Lines := [''];
+  end;
   Last := Lines[High(Lines)];
   Edit := TJSONObject.Create;
   Edit.AddPair('range', TLspPositions.RangeToJson(TTextRange.Create(0, 0, High(Lines), Length(Last))));
@@ -176,7 +197,9 @@ var
 begin
   Params := TJSONObject.Create;
   if ALabel <> '' then
+  begin
     Params.AddPair('label', ALabel);
+  end;
   Params.AddPair('edit', AEdit);
   Result := TJSONObject.Create;
   Result.AddPair('jsonrpc', '2.0');
@@ -193,18 +216,25 @@ begin
   Result := False;
   if AResponse = nil then
   begin
-    AReason := 'keine Antwort';
+    AReason := cTexts[TApplyEditText.NoAnswer].Text;
     Exit;
   end;
   if AResponse.GetValue('error') <> nil then
   begin
     if not AResponse.TryGetValue<string>('error.message', AReason) then
-      AReason := 'Fehler';
+    begin
+      AReason := cTexts[TApplyEditText.Error].Text;
+    end;
     Exit;
   end;
   Result := AResponse.TryGetValue<Boolean>('result.applied', Applied) and Applied;
   if not Result and not AResponse.TryGetValue<string>('result.failureReason', AReason) then
-    AReason := 'nicht übernommen';
+  begin
+    AReason := cTexts[TApplyEditText.NotApplied].Text;
+  end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.ApplyEdit', cTexts);
 
 end.

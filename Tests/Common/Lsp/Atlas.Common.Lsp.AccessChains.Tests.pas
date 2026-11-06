@@ -137,16 +137,58 @@ end;
 
 function TLspAccessChainsTests.Chains(ALine, APointerSize: Integer): TAccessChainsResult;
 var
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
+  mSource: TAccessChainSource;
 begin
-  Tree := TPascalParser.Parse(UnitText);
-  Resolver := TNameResolver.Create(FIndex);
+  mSource := Default(TAccessChainSource);
+  mSource.Tree := TPascalParser.Parse(UnitText);
+  mSource.Resolver := TNameResolver.Create(FIndex);
   try
-    Result := TLspAccessChains.Collect(Resolver, FIndex, nil, Tree, UnitText, FileName, ALine, APointerSize);
+    mSource.Index := FIndex;
+    mSource.Text := UnitText;
+    mSource.FileName := FileName;
+    mSource.PointerSize := APointerSize;
+    Result := TLspAccessChains.Collect(mSource, ALine);
   finally
-    Resolver.Free;
-    Tree.Free;
+    mSource.Resolver.Free;
+    mSource.Tree.Free;
+  end;
+end;
+
+/// <summary>ALink als "Ausdruck:art:Typ" mit :call, :self, :idx=… und :plain.</summary>
+function LinkText(const ALink: TAccessLink): string;
+begin
+  Result := ALink.Expression + ':' + TLspAccessChains.KindName(ALink.Kind) + ':' + ALink.TypeName;
+  if ALink.Call then
+  begin
+    Result := Result + ':call';
+  end;
+  if ALink.ImplicitSelf then
+  begin
+    Result := Result + ':self';
+  end;
+  if ALink.IndexText <> '' then
+  begin
+    Result := Result + ':idx=' + ALink.IndexText;
+  end;
+  if ALink.IndexPlain then
+  begin
+    Result := Result + ':plain';
+  end;
+end;
+
+/// <summary>Die Glieder von AChain, mit Leerzeichen getrennt.</summary>
+function ChainText(const AChain: TAccessChain): string;
+var
+  mLink: TAccessLink;
+begin
+  Result := '';
+  for mLink in AChain.Links do
+  begin
+    if Result <> '' then
+    begin
+      Result := Result + ' ';
+    end;
+    Result := Result + LinkText(mLink);
   end;
 end;
 
@@ -154,31 +196,16 @@ function TLspAccessChainsTests.Describe(ALine: Integer): string;
 var
   Found: TAccessChainsResult;
   Chain: TAccessChain;
-  Link: TAccessLink;
-  Part: string;
 begin
   Result := '';
   Found := Chains(ALine);
   for Chain in Found.Chains do
   begin
     if Result <> '' then
-      Result := Result + ' | ';
-    Part := '';
-    for Link in Chain.Links do
     begin
-      if Part <> '' then
-        Part := Part + ' ';
-      Part := Part + Link.Expression + ':' + TLspAccessChains.KindName(Link.Kind) + ':' + Link.TypeName;
-      if Link.Call then
-        Part := Part + ':call';
-      if Link.ImplicitSelf then
-        Part := Part + ':self';
-      if Link.IndexText <> '' then
-        Part := Part + ':idx=' + Link.IndexText;
-      if Link.IndexPlain then
-        Part := Part + ':plain';
+      Result := Result + ' | ';
     end;
-    Result := Result + Part;
+    Result := Result + ChainText(Chain);
   end;
 end;
 

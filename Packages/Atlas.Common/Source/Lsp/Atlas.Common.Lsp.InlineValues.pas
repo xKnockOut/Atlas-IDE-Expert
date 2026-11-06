@@ -78,7 +78,21 @@ uses
   Atlas.Common.Lsp.Internals.Cancellation,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Pascal.Contract,
-  Atlas.Common.Pascal.TreeCache;
+  Atlas.Common.Pascal.TreeCache,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TInlineValuesText = (FieldsTextDocumentUriRangeAnd);
+
+const
+  cTexts: array[TInlineValuesText] of TAtlasText = (
+    (De: 'Felder "textDocument.uri", "range" und "context.stoppedLocation" fehlen in ';
+     En: 'Fields "textDocument.uri", "range" and "context.stoppedLocation" missing in '));
+
+{$SCOPEDENUMS OFF}
 
 type
   TOffsetRange = record
@@ -105,7 +119,9 @@ begin
       begin
         Node := Child;
         if Node.Kind = TSyntaxKind.RoutineDecl then
+        begin
           Result := Node;
+        end;
         Descended := True;
         Break;
       end;
@@ -119,9 +135,13 @@ var
   Token: TPascalToken;
 begin
   for Token in ATokens do
+  begin
     if (Token.StartPos.Line >= ALine) and not (Token.Kind in [TPascalTokenKind.Comment,
       TPascalTokenKind.Directive]) then
+    begin
       Exit(Token.Offset);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -161,8 +181,12 @@ var
   Range: TOffsetRange;
 begin
   for Range in ARanges do
+  begin
     if (Range.StartOffset <= AOffset) and (AOffset < Range.EndOffset) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -192,88 +216,162 @@ begin
   ADispatcher.RegisterConcurrentRequest(Method, Handle);
 end;
 
+/// <summary>Zeilen von AFirstLine bis ALastLine, in denen ARoutine Werte zeigt: ab ihrem Anfang bzw. ARange bis
+/// zum Halt bzw. zum Ende von ARange. False, wenn nichts bleibt.</summary>
+function LineSpan(ARoutine: TSyntaxNode; const ARange: TTextRange; AStoppedLine: Integer;
+  out AFirstLine, ALastLine: Integer): Boolean;
+begin
+  AFirstLine := ARoutine.StartPos.Line;
+  if ARange.StartPos.Line > AFirstLine then
+  begin
+    AFirstLine := ARange.StartPos.Line;
+  end;
+  ALastLine := AStoppedLine;
+  if ARange.EndPos.Line < ALastLine then
+  begin
+    ALastLine := ARange.EndPos.Line;
+  end;
+  Result := AFirstLine <= ALastLine;
+end;
+
+/// <summary>True, wenn der Bezeichner an AIndex weder Mitglied eines anderen Ausdrucks (X.Name, @Name, ^Name) noch
+/// Aufruf bzw. Umwandlung (Name(…)) ist.</summary>
+function IsPlainName(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
+var
+  mBefore, mAfter: Integer;
+begin
+  mBefore := AIndex - 1;
+  while (mBefore >= 0) and not Significant(ATokens[mBefore]) do
+  begin
+    Dec(mBefore);
+  end;
+  if (mBefore >= 0) and (ATokens[mBefore].IsSymbol('.') or ATokens[mBefore].IsSymbol('@') or
+    ATokens[mBefore].IsSymbol('^')) then
+  begin
+    Exit(False);
+  end;
+  mAfter := AIndex + 1;
+  while (mAfter <= High(ATokens)) and not Significant(ATokens[mAfter]) do
+  begin
+    Inc(mAfter);
+  end;
+  Result := not ((mAfter <= High(ATokens)) and ATokens[mAfter].IsSymbol('('));
+end;
+
+type
+  /// <summary>Was Collect über die Routine mit dem Haltepunkt weiß.</summary>
+  TCollectScope = record
+    Resolver: TNameResolver;
+    Tree: TSyntaxTree;
+    FileName: string;
+    Routine: TSyntaxNode;
+    /// <summary>Felder nur in Methoden („TKlasse.Name“), dort gehören sie Self.</summary>
+    IsMethod: Boolean;
+    Withs: TArray<TOffsetRange>;
+  end;
+
+/// <summary>Art des Werts für ASymbol an AOffset; False, wenn der Name keinen Wert zeigt.</summary>
+function ValueKind(const AScope: TCollectScope; const ASymbol: TResolvedSymbol; AOffset: Integer;
+  out AKind: TInlineValueKind): Boolean;
+begin
+  AKind := TInlineValueKind.Local;
+  if (ASymbol.Kind = TResolvedKind.Local) and (ASymbol.SymbolKind = TIndexSymbolKind.Variable) then
+  begin
+    Exit(True);
+  end;
+  AKind := TInlineValueKind.Field;
+  Result := AScope.IsMethod and (ASymbol.Kind = TResolvedKind.Symbol) and
+    (ASymbol.SymbolKind = TIndexSymbolKind.Field) and (ASymbol.Container <> '') and not InAny(AScope.Withs, AOffset);
+end;
+
+/// <summary>Wert für den Bezeichner AToken; False, wenn er keinen zeigt.</summary>
+function TryValue(const AScope: TCollectScope; const AToken: TPascalToken; out AValue: TInlineValue): Boolean;
+var
+  mSymbol: TResolvedSymbol;
+begin
+  AValue := Default(TInlineValue);
+  mSymbol := AScope.Resolver.Resolve(AScope.Tree, AScope.FileName, AToken.StartPos);
+  Result := ValueKind(AScope, mSymbol, AToken.Offset, AValue.Kind);
+  AValue.Range := TTextRange.Create(AToken.StartPos, AToken.EndPos);
+  AValue.Name := AToken.Text;
+  AValue.TypeName := mSymbol.TypeName;
+end;
+
+/// <summary>True, wenn das Token an AIndex ein schlichter Bezeichner der Routine ab Zeile AFirstLine ist.</summary>
+function IsCandidate(const AScope: TCollectScope; AIndex, AFirstLine: Integer): Boolean;
+var
+  mToken: TPascalToken;
+begin
+  mToken := AScope.Tree.Tokens[AIndex];
+  Result := (mToken.StartPos.Line >= AFirstLine) and (mToken.Offset >= AScope.Routine.StartOffset) and
+    (mToken.Kind = TPascalTokenKind.Identifier) and not AScope.Tree.IsControlCharPart(AIndex) and
+    IsPlainName(AScope.Tree.Tokens, AIndex);
+end;
+
+/// <summary>Werte der Bezeichner in den Zeilen AFirstLine bis ALastLine, je Zeile jeder Name einmal.</summary>
+function ScanValues(const AScope: TCollectScope; AFirstLine, ALastLine: Integer): TArray<TInlineValue>;
+var
+  mTokens: TArray<TPascalToken>;
+  mIndex: Integer;
+  mToken: TPascalToken;
+  mFound: TList<TInlineValue>;
+  mSeen: TDictionary<string, Boolean>;
+  mValue: TInlineValue;
+  mKey: string;
+begin
+  mTokens := AScope.Tree.Tokens;
+  mFound := TList<TInlineValue>.Create;
+  mSeen := TDictionary<string, Boolean>.Create;
+  try
+    mIndex := 0;
+    while (mIndex <= High(mTokens)) and (mTokens[mIndex].StartPos.Line <= ALastLine) and
+      (mFound.Count < TLspInlineValues.MaxValues) do
+    begin
+      mToken := mTokens[mIndex];
+      mKey := IntToStr(mToken.StartPos.Line) + ':' + LowerCase(mToken.Text);
+      if IsCandidate(AScope, mIndex, AFirstLine) and not mSeen.ContainsKey(mKey) and
+        TryValue(AScope, mToken, mValue) then
+      begin
+        mSeen.Add(mKey, True);
+        mFound.Add(mValue);
+      end;
+      Inc(mIndex);
+    end;
+    Result := mFound.ToArray;
+  finally
+    mSeen.Free;
+    mFound.Free;
+  end;
+end;
+
 class function TLspInlineValues.Collect(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   const ARange: TTextRange; AStoppedLine: Integer): TArray<TInlineValue>;
 var
-  Tokens: TArray<TPascalToken>;
-  Offset, FirstLine, LastLine, Index, Before, After: Integer;
-  Routine: TSyntaxNode;
-  Withs: TArray<TOffsetRange>;
-  Token: TPascalToken;
-  Symbol: TResolvedSymbol;
-  Found: TList<TInlineValue>;
-  Seen: TDictionary<string, Boolean>;
-  Value: TInlineValue;
-  Key: string;
-  IsMethod: Boolean;
+  mOffset, mFirstLine, mLastLine: Integer;
+  mScope: TCollectScope;
 begin
   Result := nil;
-  Tokens := ATree.Tokens;
-  Offset := LineOffset(Tokens, AStoppedLine);
-  if Offset < 0 then
+  mOffset := LineOffset(ATree.Tokens, AStoppedLine);
+  if mOffset < 0 then
+  begin
     Exit;
-  Routine := RoutineAt(ATree.Root, Offset);
-  if Routine = nil then
+  end;
+  mScope := Default(TCollectScope);
+  mScope.Routine := RoutineAt(ATree.Root, mOffset);
+  if (mScope.Routine = nil) or not LineSpan(mScope.Routine, ARange, AStoppedLine, mFirstLine, mLastLine) then
+  begin
     Exit;
-  FirstLine := Routine.StartPos.Line;
-  if ARange.StartPos.Line > FirstLine then
-    FirstLine := ARange.StartPos.Line;
-  LastLine := AStoppedLine;
-  if ARange.EndPos.Line < LastLine then
-    LastLine := ARange.EndPos.Line;
-  if FirstLine > LastLine then
-    Exit;
-  // Felder nur in Methoden („TKlasse.Name“), dort gehören sie Self.
-  IsMethod := Pos('.', Routine.Name) > 0;
-  Withs := WithRanges(Routine);
-  Found := TList<TInlineValue>.Create;
-  Seen := TDictionary<string, Boolean>.Create;
+  end;
+  mScope.Resolver := AResolver;
+  mScope.Tree := ATree;
+  mScope.FileName := AFileName;
+  mScope.IsMethod := Pos('.', mScope.Routine.Name) > 0;
+  mScope.Withs := WithRanges(mScope.Routine);
   AResolver.PinTree(ATree, AFileName);
   try
-    for Index := 0 to High(Tokens) do
-    begin
-      Token := Tokens[Index];
-      if Token.StartPos.Line > LastLine then
-        Break;
-      if (Token.StartPos.Line < FirstLine) or (Token.Offset < Routine.StartOffset) or
-        (Token.Kind <> TPascalTokenKind.Identifier) or ATree.IsControlCharPart(Index) then
-        Continue;
-      // Kein Mitglied eines anderen Ausdrucks (X.Name) und kein Aufruf bzw. keine Umwandlung (Name(…)).
-      Before := Index - 1;
-      while (Before >= 0) and not Significant(Tokens[Before]) do
-        Dec(Before);
-      if (Before >= 0) and (Tokens[Before].IsSymbol('.') or Tokens[Before].IsSymbol('@') or
-        Tokens[Before].IsSymbol('^')) then
-        Continue;
-      After := Index + 1;
-      while (After <= High(Tokens)) and not Significant(Tokens[After]) do
-        Inc(After);
-      if (After <= High(Tokens)) and Tokens[After].IsSymbol('(') then
-        Continue;
-      Key := IntToStr(Token.StartPos.Line) + ':' + LowerCase(Token.Text);
-      if Seen.ContainsKey(Key) then
-        Continue;
-      Symbol := AResolver.Resolve(ATree, AFileName, Token.StartPos);
-      if (Symbol.Kind = TResolvedKind.Local) and (Symbol.SymbolKind = TIndexSymbolKind.Variable) then
-        Value.Kind := TInlineValueKind.Local
-      else if IsMethod and (Symbol.Kind = TResolvedKind.Symbol) and (Symbol.SymbolKind = TIndexSymbolKind.Field) and
-        (Symbol.Container <> '') and not InAny(Withs, Token.Offset) then
-        Value.Kind := TInlineValueKind.Field
-      else
-        Continue;
-      Seen.Add(Key, True);
-      Value.Range := TTextRange.Create(Token.StartPos, Token.EndPos);
-      Value.Name := Token.Text;
-      Value.TypeName := Symbol.TypeName;
-      Found.Add(Value);
-      if Found.Count >= MaxValues then
-        Break;
-    end;
-    Result := Found.ToArray;
+    Result := ScanValues(mScope, mFirstLine, mLastLine);
   finally
     AResolver.UnpinTree;
-    Seen.Free;
-    Found.Free;
   end;
 end;
 
@@ -290,7 +388,9 @@ begin
     Item.AddPair('variableName', Value.Name);
     Item.AddPair('caseSensitiveLookup', TJSONBool.Create(False));
     if Value.TypeName <> '' then
+    begin
       Item.AddPair('atlasType', Value.TypeName);
+    end;
     Result.AddElement(Item);
   end;
 end;
@@ -308,10 +408,14 @@ begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('range', RangeValue) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('context.stoppedLocation', StoppedValue)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Felder "textDocument.uri", "range" und "context.stoppedLocation" fehlen in ' + Method);
+      cTexts[TInlineValuesText.FieldsTextDocumentUriRangeAnd].Text + Method);
+  end;
   if not FStore.TryGet(Uri, Document) then
+  begin
     Exit(TJSONNull.Create);
+  end;
   // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
   Cancellation := TRequestCancellation.Create(ACancellation);
   Shared := TSyntaxTreeCache.Get(Document, Cancellation);
@@ -326,5 +430,8 @@ begin
     Resolver.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.InlineValues', cTexts);
 
 end.

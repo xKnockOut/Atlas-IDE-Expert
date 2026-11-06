@@ -51,7 +51,9 @@ var
 begin
   Result := '';
   for Index := 0 to High(ALines) do
+  begin
     Result := Result + ALines[Index] + #10;
+  end;
 end;
 
 /// <summary>Namensposition am "|" in AMarked als "Art Typ" ("field TCustomerList", "global …"); '-' ohne.</summary>
@@ -67,24 +69,36 @@ begin
   Line := 0;
   Character := 0;
   for Index := 1 to Pos('|', AMarked) - 1 do
+  begin
     if AMarked[Index] = #10 then
     begin
       Inc(Line);
       Character := 0;
     end
     else
+    begin
       Inc(Character);
+    end;
+  end;
   Text := StringReplace(AMarked, '|', '', []);
   Tree := TPascalParser.Parse(Text);
   try
     if not TNameSuggestions.Site(Tree, TTextPosition.Create(Line, Character), Site) then
+    begin
       Exit('-');
+    end;
     if Site.Global then
-      Result := 'global ' + Site.TypeText
+    begin
+      Result := 'global ' + Site.TypeText;
+    end
     else
+    begin
       Result := Kinds[Site.Kind] + ' ' + Site.TypeText;
+    end;
     if Site.Typed <> '' then
+    begin
       Result := Result + ' (' + Site.Typed + ')';
+    end;
   finally
     Tree.Free;
   end;

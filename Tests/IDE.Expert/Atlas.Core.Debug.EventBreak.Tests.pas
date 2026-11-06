@@ -13,6 +13,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Debugger')]
   TCoreDebugEventBreakTests = class
   private
     FAnswer: TAtlasEventAnswer;
@@ -179,7 +180,9 @@ begin
   Selected := TAtlasEventBreak.Select(FAnswer.Handlers, Choice, nil, TArray<string>.Create('TfrmHaupt'));
   Assert.AreEqual(3, Integer(Length(Selected)));
   for Index in Selected do
+  begin
     Assert.AreEqual('TfrmHaupt', FAnswer.Handlers[Index].Form);
+  end;
   Selected := TAtlasEventBreak.Select(FAnswer.Handlers, Choice, nil, nil);
   Assert.AreEqual(0, Integer(Length(Selected)), 'kein Formular sichtbar');
 end;

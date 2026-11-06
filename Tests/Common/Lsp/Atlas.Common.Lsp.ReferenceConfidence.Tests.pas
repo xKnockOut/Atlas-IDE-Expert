@@ -27,6 +27,9 @@ type
     function HitAt(const ALocations: TArray<TReferenceLocation>; const AFileName: string; ALine: Integer;
       out ALocation: TReferenceLocation): Boolean;
   public
+    /// <summary>Einmal-Belegungen vorwegnehmen; sie gehören nicht in die Leckmessung.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -167,19 +170,33 @@ var
 begin
   Index := Pos(AMarker, AText);
   if Index = 0 then
+  begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+  end;
   Line := 0;
   LineStart := 1;
   for I := 1 to Index - 1 do
+  begin
     if AText[I] = #10 then
     begin
       Inc(Line);
       LineStart := I + 1;
     end;
+  end;
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
 { TReferenceConfidenceTests }
+
+procedure TReferenceConfidenceTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    LspResponses;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TReferenceConfidenceTests.Setup;
 begin
@@ -205,13 +222,21 @@ function TReferenceConfidenceTests.ReadText(const AFileName: string; out AText: 
 begin
   Result := True;
   if SameText(AFileName, KundenFile) then
-    AText := UnitKunden
+  begin
+    AText := UnitKunden;
+  end
   else if SameText(AFileName, HauptFile) then
-    AText := UnitHaupt
+  begin
+    AText := UnitHaupt;
+  end
   else if SameText(AFileName, WerteFile) then
-    AText := UnitWerte
+  begin
+    AText := UnitWerte;
+  end
   else
+  begin
     Result := False;
+  end;
 end;
 
 function TReferenceConfidenceTests.FindSpeichern(const ASettings: TReferenceSettings): TArray<TReferenceLocation>;
@@ -220,8 +245,8 @@ var
 begin
   Tree := TPascalParser.Parse(UnitKunden);
   try
-    Result := TLspReferences.Find(FResolver, FIndex, Tree, KundenFile, PositionOf(UnitKunden, 'Speichern; override'),
-      True, [KundenFile, HauptFile], ReadText, ASettings, nil);
+    Result := TLspReferences.Find(FResolver, FIndex, Tree, TReferenceSearch.Create(KundenFile, PositionOf(UnitKunden,
+      'Speichern; override'), True, [KundenFile, HauptFile], ReadText), ASettings, nil);
   finally
     Tree.Free;
   end;
@@ -237,7 +262,9 @@ begin
     Result := Result + Format('%s:%d:%d=%s', [ChangeFileExt(ExtractFileName(Location.FileName), ''),
       Location.Range.StartPos.Line, Location.Range.StartPos.Character, Location.Confidence.LevelName]);
     if not Location.Confidence.IsSure then
+    begin
       Result := Result + '/' + Location.Confidence.ReasonName;
+    end;
     Result := Result + ' ';
   end;
   Result := Trim(Result);
@@ -249,11 +276,13 @@ var
   Location: TReferenceLocation;
 begin
   for Location in ALocations do
+  begin
     if SameText(Location.FileName, AFileName) and (Location.Range.StartPos.Line = ALine) then
     begin
       ALocation := Location;
       Exit(True);
     end;
+  end;
   ALocation := Default(TReferenceLocation);
   Result := False;
 end;
@@ -324,8 +353,8 @@ var
 begin
   Tree := TPascalParser.Parse(UnitWerte);
   try
-    Result := TLspReferences.Find(AResolver, AIndex, Tree, WerteFile, PositionOf(UnitWerte, AMarker), False,
-      TArray<string>.Create(WerteFile), AReadText, ASettings, nil);
+    Result := TLspReferences.Find(AResolver, AIndex, Tree, TReferenceSearch.Create(WerteFile, PositionOf(UnitWerte,
+      AMarker), False, TArray<string>.Create(WerteFile), AReadText), ASettings, nil);
   finally
     Tree.Free;
   end;
@@ -362,14 +391,14 @@ begin
   // Wie im Editor: Der Parser überspringt den Zweig NIE, die Token-Liste enthält ihn.
   Tree := TPascalParser.ParseActive(UnitHaupt, nil);
   try
-    Found := TLspReferences.Find(FResolver, FIndex, Tree, HauptFile, PositionOf(UnitHaupt, 'Speichern;'),
-      False, [KundenFile, HauptFile], ReadText, Settings(True, False), nil);
+    Found := TLspReferences.Find(FResolver, FIndex, Tree, TReferenceSearch.Create(HauptFile, PositionOf(UnitHaupt,
+      'Speichern;'), False, [KundenFile, HauptFile], ReadText), Settings(True, False), nil);
     Assert.IsTrue(HitAt(Found, HauptFile, 11, Location), 'Stelle in NIE fehlt: ' + Describe(Found));
     Assert.AreEqual('inactiveBranch', Location.Confidence.ReasonName);
     Assert.IsTrue(Location.Confidence.Renameable);
     // Ohne Einstufung wie vor #1119: sicher.
-    Found := TLspReferences.Find(FResolver, FIndex, Tree, HauptFile, PositionOf(UnitHaupt, 'Speichern;'),
-      False, [KundenFile, HauptFile], ReadText, Settings(False, False), nil);
+    Found := TLspReferences.Find(FResolver, FIndex, Tree, TReferenceSearch.Create(HauptFile, PositionOf(UnitHaupt,
+      'Speichern;'), False, [KundenFile, HauptFile], ReadText), Settings(False, False), nil);
     Assert.IsTrue(HitAt(Found, HauptFile, 11, Location), Describe(Found));
     Assert.IsTrue(Location.Confidence.IsSure);
   finally
@@ -417,15 +446,57 @@ begin
   end;
 end;
 
+/// <summary>Referenzen tragen die Sicherheit je Fundstelle.</summary>
+procedure AssertReferenceLevels(const ADispatcher: TJsonRpcDispatcher; const AUri, APosition: string);
+var
+  mResponse: TJSONObject;
+  mReasons: string;
+  mItem: TJSONValue;
+begin
+  mResponse := Request(ADispatcher, 'textDocument/references', '{"textDocument":{"uri":"' + AUri.Replace('', '\') +
+    '"},"position":' + APosition + ',"context":{"includeDeclaration":false}}');
+  try
+    Assert.IsTrue(mResponse.GetValue('result') is TJSONArray, mResponse.ToJSON);
+    mReasons := '';
+    for mItem in TJSONArray(mResponse.GetValue('result')) do
+    begin
+      mReasons := mReasons + TJSONObject(mItem).GetValue<string>('atlasConfidence.level') + ' ';
+    end;
+    Assert.AreEqual('sure sure inferred inferred inferred inferred', Trim(mReasons));
+  finally
+    mResponse.Free;
+  end;
+end;
+
+/// <summary>Umbenennen nennt die Gründe der nicht geänderten Stellen.</summary>
+procedure AssertRenameUnchangedReasons(const ADispatcher: TJsonRpcDispatcher; const AUri, APosition: string);
+var
+  mResponse: TJSONObject;
+  mReasons: string;
+  mItem: TJSONValue;
+begin
+  mResponse := Request(ADispatcher, 'textDocument/rename', '{"textDocument":{"uri":"' + AUri.Replace('', '\') +
+    '"},"position":' + APosition + ',"newName":"Sichern"}');
+  try
+    Assert.IsTrue(mResponse.GetValue('result') is TJSONObject, mResponse.ToJSON);
+    mReasons := '';
+    for mItem in mResponse.GetValue<TJSONArray>('result.atlasUnchanged') do
+    begin
+      mReasons := mReasons + TJSONObject(mItem).GetValue<string>('atlasConfidence.reason') + ' ';
+    end;
+    Assert.AreEqual('interface virtual unresolved', Trim(mReasons));
+  finally
+    mResponse.Free;
+  end;
+end;
+
 procedure TReferenceConfidenceTests.LspResponses;
 var
   Store: IDocumentStore;
   References: TLspReferences;
   Rename: TLspRename;
   Dispatcher: TJsonRpcDispatcher;
-  Response: TJSONObject;
-  Uri, Position, Reasons: string;
-  Item: TJSONValue;
+  Uri, Position: string;
   Files: TReferenceFilesProvider;
   Provider: TReferenceSettingsProvider;
 begin
@@ -452,28 +523,8 @@ begin
     Rename.Attach(Dispatcher);
     Position := Format('{"line":%d,"character":%d}', [PositionOf(UnitKunden, 'Speichern; override').Line,
       PositionOf(UnitKunden, 'Speichern; override').Character]);
-    Response := Request(Dispatcher, 'textDocument/references', '{"textDocument":{"uri":"' + Uri.Replace('', '\') +
-      '"},"position":' + Position + ',"context":{"includeDeclaration":false}}');
-    try
-      Assert.IsTrue(Response.GetValue('result') is TJSONArray, Response.ToJSON);
-      Reasons := '';
-      for Item in TJSONArray(Response.GetValue('result')) do
-        Reasons := Reasons + TJSONObject(Item).GetValue<string>('atlasConfidence.level') + ' ';
-      Assert.AreEqual('sure sure inferred inferred inferred inferred', Trim(Reasons));
-    finally
-      Response.Free;
-    end;
-    Response := Request(Dispatcher, 'textDocument/rename', '{"textDocument":{"uri":"' + Uri.Replace('', '\') +
-      '"},"position":' + Position + ',"newName":"Sichern"}');
-    try
-      Assert.IsTrue(Response.GetValue('result') is TJSONObject, Response.ToJSON);
-      Reasons := '';
-      for Item in Response.GetValue<TJSONArray>('result.atlasUnchanged') do
-        Reasons := Reasons + TJSONObject(Item).GetValue<string>('atlasConfidence.reason') + ' ';
-      Assert.AreEqual('interface virtual unresolved', Trim(Reasons));
-    finally
-      Response.Free;
-    end;
+    AssertReferenceLevels(Dispatcher, Uri, Position);
+    AssertRenameUnchangedReasons(Dispatcher, Uri, Position);
   finally
     Dispatcher.Free;
     Rename.Free;
@@ -495,19 +546,24 @@ var
 begin
   Tree := TPascalParser.Parse(UnitKunden);
   try
-    Edits := TLspRename.Edits(FResolver, FIndex, Tree, KundenFile, PositionOf(UnitKunden, 'Speichern; override'),
-      'Sichern', [KundenFile, HauptFile], ReadText, nil, False, Settings(True, False), Unchanged);
+    Edits := TLspRename.Edits(FResolver, FIndex, Tree, TReferenceSearch.Create(KundenFile,
+      PositionOf(UnitKunden, 'Speichern; override'), True, [KundenFile, HauptFile], ReadText),
+      TRenameRequest.Create('Sichern', False, Settings(True, False), nil), Unchanged);
   finally
     Tree.Free;
   end;
   Lines := '';
   for Edit in Edits do
+  begin
     Lines := Lines + Format('%s:%d ', [ChangeFileExt(ExtractFileName(Edit.FileName), ''), Edit.Range.StartPos.Line]);
+  end;
   // Deklaration, Rumpf, sicherer Aufruf und die eindeutige Stelle im inaktiven Zweig.
   Assert.AreEqual('Kunden:10 Kunden:16 Haupt:6 Haupt:11', Trim(Lines));
   Lines := '';
   for Location in Unchanged do
+  begin
     Lines := Lines + Format('%d/%s ', [Location.Range.StartPos.Line, Location.Confidence.ReasonName]);
+  end;
   Assert.AreEqual('7/interface 8/virtual 9/unresolved', Trim(Lines));
 end;
 
@@ -527,8 +583,8 @@ begin
   Item.SelectionRange := TTextRange.Create(PositionOf(UnitKunden, 'Speichern; override'),
     PositionOf(UnitKunden, '; override'));
   Item.Range := Item.SelectionRange;
-  Calls := TLspHierarchies.IncomingCalls(FResolver, FIndex, Item, [KundenFile, HauptFile], ReadText,
-    Settings(True, False), nil);
+  Calls := TLspHierarchies.IncomingCalls(THierarchyCallSource.Create(FResolver, FIndex, ReadText, nil), Item,
+    [KundenFile, HauptFile], Settings(True, False));
   Kinds := '';
   for Call in Calls do
   begin
@@ -545,8 +601,8 @@ begin
     Json.Free;
   end;
   // Ohne Einstufung nur der sichere Aufrufer.
-  Assert.AreEqual(1, Integer(Length(TLspHierarchies.IncomingCalls(FResolver, FIndex, Item, [KundenFile, HauptFile],
-    ReadText, Settings(False, False), nil))));
+  Assert.AreEqual(1, Integer(Length(TLspHierarchies.IncomingCalls(THierarchyCallSource.Create(FResolver, FIndex,
+    ReadText, nil), Item, [KundenFile, HauptFile], Settings(False, False)))));
 end;
 
 procedure TReferenceConfidenceTests.McpListsSureThenInferred;
@@ -609,16 +665,22 @@ begin
   Text := 'unit Haupt;'#10'interface'#10'uses Kunden;'#10'implementation'#10'procedure Lauf(K: TKunde);'#10 +
     'begin'#10;
   for Index := 1 to Count do
+  begin
     Text := Text + '  K.Speichern;'#10;
+  end;
   Text := Text + 'end;'#10'end.';
   Read :=
     function(const AFileName: string; out AResult: string): Boolean
     begin
       Result := True;
       if SameText(AFileName, HauptFile) then
-        AResult := Text
+      begin
+        AResult := Text;
+      end
       else
+      begin
         Result := ReadText(AFileName, AResult);
+      end;
     end;
   Tree := TPascalParser.Parse(UnitKunden);
   try
@@ -627,14 +689,14 @@ begin
     for Round := 1 to Rounds do
     begin
       Watch := TStopwatch.StartNew;
-      Assert.AreEqual(Count + 1, Integer(Length(TLspReferences.Find(FResolver, FIndex, Tree, KundenFile,
-        PositionOf(UnitKunden, 'Speichern; override'), False, [KundenFile, HauptFile], Read,
-        Settings(False, False), nil))));
+      Assert.AreEqual(Count + 1, Integer(Length(TLspReferences.Find(FResolver, FIndex, Tree,
+        TReferenceSearch.Create(KundenFile, PositionOf(UnitKunden, 'Speichern; override'), False, [KundenFile,
+        HauptFile], Read), Settings(False, False), nil))));
       Inc(Sure, Watch.ElapsedMilliseconds);
       Watch := TStopwatch.StartNew;
-      Assert.AreEqual(Count + 1, Integer(Length(TLspReferences.Find(FResolver, FIndex, Tree, KundenFile,
-        PositionOf(UnitKunden, 'Speichern; override'), False, [KundenFile, HauptFile], Read,
-        Settings(True, True), nil))));
+      Assert.AreEqual(Count + 1, Integer(Length(TLspReferences.Find(FResolver, FIndex, Tree,
+        TReferenceSearch.Create(KundenFile, PositionOf(UnitKunden, 'Speichern; override'), False, [KundenFile,
+        HauptFile], Read), Settings(True, True), nil))));
       Inc(Inferred, Watch.ElapsedMilliseconds);
     end;
   finally

@@ -71,15 +71,21 @@ begin
   Result := '';
   Pending := False;
   for Index := 1 to Length(AText) do
+  begin
     if IsSpace(AText[Index]) then
-      Pending := Result <> ''
+    begin
+      Pending := Result <> '';
+    end
     else
     begin
       if Pending then
+      begin
         Result := Result + ' ';
+      end;
       Pending := False;
       Result := Result + AText[Index];
     end;
+  end;
 end;
 
 function IsKeyword(const AWord: string; const AKeywords: TArray<string>): Boolean;
@@ -87,13 +93,153 @@ var
   Keyword: string;
 begin
   for Keyword in AKeywords do
+  begin
     if SameText(Trim(Keyword), AWord) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
-{ TTodoScanner }
+type
+  /// <summary>Lesestelle im Inhalt eines Kommentars für ParseBody.</summary>
+  TTodoBodyReader = record
+    Text: string;
+    Position: Integer;
+    procedure SkipSpaces;
+    /// <summary>Beginnt an AIndex eine Option (-o, -c)?</summary>
+    function OptionAt(AIndex: Integer): Boolean;
+    /// <summary>Liest Buchstaben (ALetters) bzw. Ziffern ab Position.</summary>
+    function ReadLetters: string;
+    function ReadDigits: string;
+    /// <summary>Wert einer Option: in ' oder " bis zum gleichen Zeichen, sonst bis ":" oder zur nächsten Option.
+    /// </summary>
+    function ReadOptionValue: string;
+    function AtEnd: Boolean;
+    function Current: Char;
+  end;
 
+procedure TTodoBodyReader.SkipSpaces;
+begin
+  while not AtEnd and IsSpace(Current) do
+  begin
+    Inc(Position);
+  end;
+end;
+
+function TTodoBodyReader.OptionAt(AIndex: Integer): Boolean;
+begin
+  Result := (AIndex < Length(Text)) and (Text[AIndex] = '-') and CharInSet(Text[AIndex + 1], ['o', 'O', 'c', 'C']);
+end;
+
+function TTodoBodyReader.ReadLetters: string;
+var
+  mStart: Integer;
+begin
+  mStart := Position;
+  while not AtEnd and IsLetter(Current) do
+  begin
+    Inc(Position);
+  end;
+  Result := Copy(Text, mStart, Position - mStart);
+end;
+
+function TTodoBodyReader.ReadDigits: string;
+var
+  mStart: Integer;
+begin
+  mStart := Position;
+  while not AtEnd and CharInSet(Current, ['0'..'9']) do
+  begin
+    Inc(Position);
+  end;
+  Result := Copy(Text, mStart, Position - mStart);
+end;
+
+function TTodoBodyReader.ReadOptionValue: string;
+var
+  mStart: Integer;
+  mQuote: Char;
+begin
+  if not AtEnd and ((Current = '''') or (Current = '"')) then
+  begin
+    mQuote := Current;
+    Inc(Position);
+    mStart := Position;
+    while not AtEnd and (Current <> mQuote) do
+    begin
+      Inc(Position);
+    end;
+    Result := Copy(Text, mStart, Position - mStart);
+    if not AtEnd then
+    begin
+      Inc(Position);
+    end;
+    Exit;
+  end;
+  mStart := Position;
+  while not AtEnd and (Current <> ':') and not (IsSpace(Current) and OptionAt(Position + 1)) do
+  begin
+    Inc(Position);
+  end;
+  Result := Copy(Text, mStart, Position - mStart);
+end;
+
+function TTodoBodyReader.AtEnd: Boolean;
+begin
+  Result := Position > Length(Text);
+end;
+
+function TTodoBodyReader.Current: Char;
+begin
+  Result := Text[Position];
+end;
+
+/// <summary>Liest die Marke am Anfang in AEntry (Keyword, Done); False, wenn keine Marke dasteht.</summary>
+function ReadMarker(var AReader: TTodoBodyReader; const AKeywords: TArray<string>; var AEntry: TTodoEntry): Boolean;
+var
+  mWord: string;
+begin
+  AReader.SkipSpaces;
+  mWord := UpperCase(AReader.ReadLetters);
+  // Nach der Marke: Ende, Leerraum oder Doppelpunkt; sonst ist es ein gewöhnliches Wort.
+  Result := (mWord <> '') and (AReader.AtEnd or IsSpace(AReader.Current) or (AReader.Current = ':'));
+  if Result then
+  begin
+    AEntry.Done := mWord = TTodos.DoneKeyword;
+    Result := AEntry.Done or IsKeyword(mWord, AKeywords);
+  end;
+  if Result then
+  begin
+    AEntry.Keyword := mWord;
+  end;
+end;
+
+/// <summary>Optionen -oPerson -cKategorie, Werte mit Leerzeichen auch in ' oder ".</summary>
+procedure ReadOptions(var AReader: TTodoBodyReader; var AEntry: TTodoEntry);
+var
+  mOption: Char;
+  mValue: string;
+begin
+  while AReader.OptionAt(AReader.Position) do
+  begin
+    mOption := UpCase(AReader.Text[AReader.Position + 1]);
+    Inc(AReader.Position, 2);
+    mValue := Collapse(AReader.ReadOptionValue);
+    if mOption = 'O' then
+    begin
+      AEntry.Owner := mValue;
+    end
+    else
+    begin
+      AEntry.Category := mValue;
+    end;
+    AReader.SkipSpaces;
+  end;
+end;
+
+{ TTodoScanner }
 class function TTodoScanner.CommentBody(const AComment: string): string;
 var
   First, Last: Integer;
@@ -104,19 +250,25 @@ begin
   begin
     First := 3;
     while (First <= Last) and (AComment[First] = '/') do
+    begin
       Inc(First);
+    end;
   end
   else if Copy(AComment, 1, 2) = '(*' then
   begin
     First := 3;
     if (Last >= 4) and (Copy(AComment, Last - 1, 2) = '*)') then
+    begin
       Dec(Last, 2);
+    end;
   end
   else if Copy(AComment, 1, 1) = '{' then
   begin
     First := 2;
     if (Last >= 2) and (AComment[Last] = '}') then
+    begin
       Dec(Last);
+    end;
   end;
   Result := Copy(AComment, First, Last - First + 1);
 end;
@@ -124,86 +276,30 @@ end;
 class function TTodoScanner.ParseBody(const ABody: string; const AKeywords: TArray<string>;
   out AEntry: TTodoEntry): Boolean;
 var
-  Position, Start, Len: Integer;
-  Word, Value: string;
-  Option, Quote: Char;
-
-  procedure SkipSpaces;
-  begin
-    while (Position <= Len) and IsSpace(ABody[Position]) do
-      Inc(Position);
-  end;
-
-  /// <summary>Beginnt an Index eine Option (-o, -c)?</summary>
-  function OptionAt(AIndex: Integer): Boolean;
-  begin
-    Result := (AIndex < Len) and (ABody[AIndex] = '-') and CharInSet(ABody[AIndex + 1], ['o', 'O', 'c', 'C']);
-  end;
-
+  mReader: TTodoBodyReader;
+  mPriority: string;
 begin
   AEntry := Default(TTodoEntry);
-  Result := False;
-  Len := Length(ABody);
-  Position := 1;
-  SkipSpaces;
-  Start := Position;
-  while (Position <= Len) and IsLetter(ABody[Position]) do
-    Inc(Position);
-  Word := UpperCase(Copy(ABody, Start, Position - Start));
-  if Word = '' then
-    Exit;
-  // Nach der Marke: Ende, Leerraum oder Doppelpunkt; sonst ist es ein gewöhnliches Wort.
-  if (Position <= Len) and not IsSpace(ABody[Position]) and (ABody[Position] <> ':') then
-    Exit;
-  if Word = TTodos.DoneKeyword then
-    AEntry.Done := True
-  else if not IsKeyword(Word, AKeywords) then
-    Exit;
-  AEntry.Keyword := Word;
-  SkipSpaces;
-  // Priorität
-  Start := Position;
-  while (Position <= Len) and CharInSet(ABody[Position], ['0'..'9']) do
-    Inc(Position);
-  if Position > Start then
+  mReader.Text := ABody;
+  mReader.Position := 1;
+  Result := ReadMarker(mReader, AKeywords, AEntry);
+  if not Result then
   begin
-    AEntry.Priority := StrToIntDef(Copy(ABody, Start, Position - Start), 0);
-    SkipSpaces;
+    Exit;
   end;
-  // Optionen -oPerson -cKategorie, Werte mit Leerzeichen auch in ' oder "
-  while OptionAt(Position) do
+  mReader.SkipSpaces;
+  mPriority := mReader.ReadDigits;
+  if mPriority <> '' then
   begin
-    Option := UpCase(ABody[Position + 1]);
-    Inc(Position, 2);
-    if (Position <= Len) and ((ABody[Position] = '''') or (ABody[Position] = '"')) then
-    begin
-      Quote := ABody[Position];
-      Inc(Position);
-      Start := Position;
-      while (Position <= Len) and (ABody[Position] <> Quote) do
-        Inc(Position);
-      Value := Copy(ABody, Start, Position - Start);
-      if Position <= Len then
-        Inc(Position);
-    end
-    else
-    begin
-      Start := Position;
-      while (Position <= Len) and (ABody[Position] <> ':') and
-        not (IsSpace(ABody[Position]) and OptionAt(Position + 1)) do
-        Inc(Position);
-      Value := Copy(ABody, Start, Position - Start);
-    end;
-    if Option = 'O' then
-      AEntry.Owner := Collapse(Value)
-    else
-      AEntry.Category := Collapse(Value);
-    SkipSpaces;
+    AEntry.Priority := StrToIntDef(mPriority, 0);
+    mReader.SkipSpaces;
   end;
-  if (Position <= Len) and (ABody[Position] = ':') then
-    Inc(Position);
-  AEntry.Text := Collapse(Copy(ABody, Position, MaxInt));
-  Result := True;
+  ReadOptions(mReader, AEntry);
+  if not mReader.AtEnd and (mReader.Current = ':') then
+  begin
+    Inc(mReader.Position);
+  end;
+  AEntry.Text := Collapse(Copy(ABody, mReader.Position, MaxInt));
 end;
 
 class function TTodoScanner.FromTokens(const ATokens: TArray<TPascalToken>;
@@ -214,12 +310,14 @@ var
 begin
   Result := nil;
   for Token in ATokens do
+  begin
     if (Token.Kind = TPascalTokenKind.Comment) and ParseBody(CommentBody(Token.Text), AKeywords, Entry) then
     begin
       Entry.Range.StartPos := Token.StartPos;
       Entry.Range.EndPos := Token.EndPos;
       Result := Result + [Entry];
     end;
+  end;
 end;
 
 class function TTodoScanner.ForText(const AText: string; const AKeywords: TArray<string>): TArray<TTodoEntry>;
@@ -246,13 +344,19 @@ begin
     for FileName in AFiles do
     begin
       if not TMetricsCollector.IsSource(FileName) or Seen.ContainsKey(UpperCase(FileName)) then
+      begin
         Continue;
+      end;
       Seen.Add(UpperCase(FileName), True);
       if not Assigned(AReadText) or not AReadText(FileName, Text) then
+      begin
         Continue;
+      end;
       Entries := ForText(Text, AKeywords);
       if Length(Entries) > 0 then
+      begin
         List.Add(TFileTodos.Create(TMetricsCollector.RelativePath(ARoot, FileName), Entries));
+      end;
     end;
     Result := List.ToArray;
   finally
@@ -273,10 +377,16 @@ begin
     Kept := FileItem;
     Kept.Entries := nil;
     for Entry in FileItem.Entries do
+    begin
       if AFilter.Matches(FileItem, Entry) then
+      begin
         Kept.Entries := Kept.Entries + [Entry];
+      end;
+    end;
     if Length(Kept.Entries) > 0 then
+    begin
       Result := Result + [Kept];
+    end;
   end;
 end;
 

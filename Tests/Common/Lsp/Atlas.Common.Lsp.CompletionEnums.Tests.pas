@@ -42,13 +42,17 @@ begin
   Line := 0;
   Character := 0;
   for Index := 1 to Pos('|', AMarked) - 1 do
+  begin
     if AMarked[Index] = #10 then
     begin
       Inc(Line);
       Character := 0;
     end
     else
+    begin
       Inc(Character);
+    end;
+  end;
   APosition := TTextPosition.Create(Line, Character);
   Result := TPascalLexer.Tokenize(StringReplace(AMarked, '|', '', []));
 end;
@@ -61,9 +65,13 @@ var
 begin
   Tokens := Split(AMarked, Position);
   if TCompletionEnums.ValueSlot(Tokens, Position, Slot) then
-    Result := string.Join('.', Slot.Names)
+  begin
+    Result := string.Join('.', Slot.Names);
+  end
   else
+  begin
     Result := '-';
+  end;
 end;
 
 function SetText(const AMarked: string; out ASlot: TEnumSetSlot): Boolean;

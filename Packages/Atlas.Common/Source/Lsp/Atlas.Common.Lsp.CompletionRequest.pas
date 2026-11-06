@@ -16,13 +16,15 @@ interface
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Index.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.Documentation;
+  Atlas.Common.Lsp.Documentation,
+  Atlas.Common.Lsp.IdeTypes;
 
 type
   TCompletionContextKind = (None, Scope, Member, UsesClause);
@@ -264,6 +266,7 @@ type
     FLinesReady: Boolean;
     FUnitIndex: TUnitIndex;
     FUnitIndexReady: Boolean;
+    FIdeTypes: TArray<TIdeTypeEntry>;
     procedure SetTree(AValue: TSyntaxTree);
     procedure SetResolver(AValue: TNameResolver);
   public
@@ -300,7 +303,16 @@ type
     property Settings: TCompletionSettings read FSettings write FSettings;
     /// <summary>context.triggerCharacter der Anfrage; '' ohne.</summary>
     property Trigger: string read FTrigger write FTrigger;
+    /// <summary>Typen aus den Packages der IDE (atlas/ideTypes), auch ohne Quelltext; nil ohne Plugin.</summary>
+    property IdeTypes: TArray<TIdeTypeEntry> read FIdeTypes write FIdeTypes;
   end;
+
+/// <summary>Zeilen von AText ohne Zeilenende (getrennt an LF, ein CR davor fällt weg).</summary>
+function TextLines(const AText: string): TArray<string>;
+/// <summary>Zeilen von AFileName, je Datei einmal gelesen (Code-Review P-07); AText für die eigene Datei
+/// AOwnFile. False, wenn die Datei nicht lesbar ist (auch das merkt sich ACache).</summary>
+function CachedLines(ACache: TDictionary<string, TArray<string>>; const AFileName, AOwnFile, AText: string;
+  const AReadText: TCompletionReadText; out ALines: TArray<string>): Boolean;
 
 implementation
 
@@ -348,8 +360,12 @@ begin
     FLines := nil;
     FLines := FText.Split([#10]);
     for mIndex := 0 to High(FLines) do
+    begin
       if FLines[mIndex].EndsWith(#13) then
+      begin
         FLines[mIndex] := Copy(FLines[mIndex], 1, Length(FLines[mIndex]) - 1);
+      end;
+    end;
     FLinesReady := True;
   end;
   Result := FLines;
@@ -359,7 +375,9 @@ function TCompletionRequest.LineText(ALine: Integer): string;
 begin
   Lines;
   if (ALine < 0) or (ALine > High(FLines)) then
+  begin
     Exit('');
+  end;
   Result := FLines[ALine];
 end;
 
@@ -372,11 +390,15 @@ begin
   begin
     Start := PosEx(#10, FText, Start) + 1;
     if Start = 1 then
+    begin
       Exit('');
+    end;
   end;
   Stop := Start;
   while (Stop <= Length(FText)) and (FText[Stop] <> #10) and (FText[Stop] <> #13) do
+  begin
     Inc(Stop);
+  end;
   Result := Copy(FText, Start, Min(FPosition.Character, Stop - Start));
 end;
 
@@ -389,7 +411,9 @@ begin
   while (Line < APosition.Line) and (mIndex <= Length(FText)) do
   begin
     if FText[mIndex] = #10 then
+    begin
       Inc(Line);
+    end;
     Inc(mIndex);
   end;
   Result := mIndex - 1 + APosition.Character;
@@ -398,9 +422,13 @@ end;
 function TCompletionRequest.LineBreak: string;
 begin
   if Pos(#13#10, FText) > 0 then
-    Result := #13#10
+  begin
+    Result := #13#10;
+  end
   else
+  begin
     Result := #10;
+  end;
 end;
 
 function TCompletionRequest.UnitIndex: TUnitIndex;
@@ -411,6 +439,43 @@ begin
     FUnitIndexReady := True;
   end;
   Result := FUnitIndex;
+end;
+
+function TextLines(const AText: string): TArray<string>;
+var
+  mIndex: Integer;
+begin
+  Result := AText.Split([#10]);
+  for mIndex := 0 to High(Result) do
+  begin
+    if Result[mIndex].EndsWith(#13) then
+    begin
+      Result[mIndex] := Copy(Result[mIndex], 1, Length(Result[mIndex]) - 1);
+    end;
+  end;
+end;
+
+function CachedLines(ACache: TDictionary<string, TArray<string>>; const AFileName, AOwnFile, AText: string;
+  const AReadText: TCompletionReadText; out ALines: TArray<string>): Boolean;
+var
+  mKey, mSource: string;
+begin
+  mKey := AnsiUpperCase(AFileName);
+  if not ACache.TryGetValue(mKey, ALines) then
+  begin
+    ALines := nil;
+    if SameText(AFileName, AOwnFile) then
+    begin
+      ALines := TextLines(AText);
+    end
+    else if Assigned(AReadText) and AReadText(AFileName, mSource) then
+    begin
+      ALines := TextLines(mSource);
+    end;
+    // nil steht für "nicht lesbar"; TextLines liefert sonst mindestens eine Zeile.
+    ACache.Add(mKey, ALines);
+  end;
+  Result := ALines <> nil;
 end;
 
 end.

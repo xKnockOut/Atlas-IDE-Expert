@@ -84,11 +84,13 @@ var
 begin
   ARoutine := Default(TFormatRoutine);
   for mRoutine in ARoutines do
+  begin
     if SameTail(mRoutine.Name, AQualified) then
     begin
       ARoutine := mRoutine;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 

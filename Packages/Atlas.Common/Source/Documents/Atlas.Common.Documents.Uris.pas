@@ -74,13 +74,19 @@ var
 begin
   Path := ToPath(AUri);
   if Path = '' then
+  begin
     Exit(AUri);
+  end;
   Path := NormalizePath(Path);
   if Assigned(ACanonicalize) then
+  begin
     Path := NormalizePath(ACanonicalize(Path));
+  end;
   // Windows-Dateisysteme unterscheiden Groß-/Kleinschreibung nicht.
   if TTextUris.IsWindowsPath(Path) then
+  begin
     Path := AnsiLowerCase(Path);
+  end;
   Result := 'file:' + Path;
 end;
 

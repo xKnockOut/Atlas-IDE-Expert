@@ -53,7 +53,9 @@ var
 begin
   SetLength(Items, Length(AItems));
   for Index := 0 to High(AItems) do
+  begin
     Items[Index] := UpperCase(Trim(AItems[Index]));
+  end;
   TArray.Sort<string>(Items);
   Result := String.Join(';', Items);
 end;
@@ -81,7 +83,9 @@ begin
   try
     AddFile(AProject.MainSource);
     for ProjectUnit in AProject.Units do
+    begin
       AddFile(ProjectUnit.FileName);
+    end;
     Result := Found.ToArray;
   finally
     Seen.Free;
@@ -102,12 +106,16 @@ begin
   Folders := TDictionary<string, Boolean>.Create;
   try
     for FileName in ASkip do
+    begin
       Seen.AddOrSetValue(AnsiUpperCase(FileName), True);
+    end;
     for Folder in APaths do
     begin
       Key := AnsiUpperCase(ExcludeTrailingPathDelimiter(Trim(Folder)));
       if (Key = '') or Folders.ContainsKey(Key) then
+      begin
         Continue;
+      end;
       Folders.Add(Key, True);
       Units := AListUnits(ExcludeTrailingPathDelimiter(Trim(Folder)));
       TArray.Sort<string>(Units);
@@ -115,10 +123,14 @@ begin
       begin
         Key := AnsiUpperCase(FileName);
         if Seen.ContainsKey(Key) then
+        begin
           Continue;
+        end;
         Seen.Add(Key, True);
         if Assigned(AExcluded) and AExcluded(FileName) then
+        begin
           Continue;
+        end;
         Found.Add(FileName);
       end;
     end;
@@ -135,7 +147,9 @@ var
   Version: Double;
 begin
   if not TryStrToFloat(ABdsVersion, Version, TFormatSettings.Invariant) then
+  begin
     Version := 0;
+  end;
   // Dazu die Schalterstände für $IFOPT ("$R+", #847).
   Result := AProject.Defines + TPascalPreprocessor.PredefinedSymbols(AProject.Platform,
     TPascalPreprocessor.CompilerVersionOfBds(Version)) + TPascalPreprocessor.ProjectSwitches(AProject.Properties);
@@ -147,7 +161,9 @@ var
   Version: Double;
 begin
   if not TryStrToFloat(ABdsVersion, Version, TFormatSettings.Invariant) then
+  begin
     Version := 0;
+  end;
   Result := TPascalPreprocessor.PredefinedSymbols(AProject.Platform, TPascalPreprocessor.CompilerVersionOfBds(Version));
 end;
 

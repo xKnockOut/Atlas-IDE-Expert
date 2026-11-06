@@ -35,7 +35,20 @@ uses
   System.Generics.Collections,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Documents.Contract;
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TFormFilesText = (FormIsStoredAsBinary);
+
+const
+  cTexts: array[TFormFilesText] of TAtlasText = (
+    (De: 'Formular ist binär gespeichert; in Text umwandeln?'; En: 'Form is stored as binary; convert to text?'));
+
+{$SCOPEDENUMS OFF}
 
 function ObjectToJson(AObject: TDfmObject): TJSONObject;
 var
@@ -47,21 +60,32 @@ var
 begin
   Result := TJSONObject.Create;
   if AObject.Kind = TDfmObjectKind.Item then
-    Name := 'item'
+  begin
+    Name := 'item';
+  end
   else if AObject.Name = '' then
-    Name := AObject.TypeName
+  begin
+    Name := AObject.TypeName;
+  end
   else
+  begin
     Name := AObject.Name + ': ' + AObject.TypeName;
+  end;
   Result.AddPair('name', Name);
   if AObject.Kind = TDfmObjectKind.Inherited_ then
-    Result.AddPair('detail', 'inherited')
+  begin
+    Result.AddPair('detail', 'inherited');
+  end
   else if AObject.Kind = TDfmObjectKind.Inline_ then
+  begin
     Result.AddPair('detail', 'inline');
+  end;
   Result.AddPair('kind', TJSONNumber.Create(TLspSymbolKind.Object_));
   Result.AddPair('range', TLspPositions.RangeToJson(AObject.Range));
   Result.AddPair('selectionRange', TLspPositions.RangeToJson(AObject.NameRange));
   Children := TJSONArray.Create;
   for Item in AObject.Properties do
+  begin
     if Item.IsEvent then
     begin
       Event := TJSONObject.Create;
@@ -71,8 +95,11 @@ begin
       Event.AddPair('selectionRange', TLspPositions.RangeToJson(Item.NameRange));
       Children.AddElement(Event);
     end;
+  end;
   for Child in AObject.Children do
+  begin
     Children.AddElement(ObjectToJson(Child));
+  end;
   Result.AddPair('children', Children);
 end;
 
@@ -91,6 +118,7 @@ begin
   end;
   // Mehrzeilige Werte wie Binärdaten und Stringlisten.
   for Item in AObject.Properties do
+  begin
     if Item.ValueRange.EndPos.Line > Item.ValueRange.StartPos.Line then
     begin
       Range := TJSONObject.Create;
@@ -98,8 +126,11 @@ begin
       Range.AddPair('endLine', TJSONNumber.Create(Item.ValueRange.EndPos.Line));
       AItems.AddElement(Range);
     end;
+  end;
   for Child in AObject.Children do
+  begin
     AddFolding(Child, AItems);
+  end;
 end;
 
 { TLspFormFiles }
@@ -108,14 +139,18 @@ class function TLspFormFiles.BuildSymbols(ADocument: TDfmDocument): TJSONArray;
 begin
   Result := TJSONArray.Create;
   if ADocument.Root <> nil then
+  begin
     Result.AddElement(ObjectToJson(ADocument.Root));
+  end;
 end;
 
 class function TLspFormFiles.BuildFoldingRanges(ADocument: TDfmDocument): TJSONArray;
 begin
   Result := TJSONArray.Create;
   if ADocument.Root <> nil then
+  begin
     AddFolding(ADocument.Root, Result);
+  end;
 end;
 
 class function TLspFormFiles.BinaryDiagnostics: TJSONArray;
@@ -128,7 +163,7 @@ begin
   Item.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Hint));
   Item.AddPair('source', 'Atlas');
   Item.AddPair('code', BinaryCode);
-  Item.AddPair('message', 'Formular ist binär gespeichert; in Text umwandeln?');
+  Item.AddPair('message', cTexts[TFormFilesText.FormIsStoredAsBinary].Text);
   Result.AddElement(Item);
 end;
 
@@ -148,5 +183,8 @@ begin
     Result.AddElement(Item);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.FormFiles', cTexts);
 
 end.

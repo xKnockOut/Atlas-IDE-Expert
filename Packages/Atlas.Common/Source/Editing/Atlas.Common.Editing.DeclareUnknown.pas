@@ -7,7 +7,7 @@
 //   - Shape: Form eines Ausdrucks. Vergleiche ergeben Boolean, "/" Extended, div und mod Integer, "as T" den
 //     Typ T; sonst entscheidet der erste Operand (TermFirst..TermLast), den der Aufrufer auflöst.
 //   - Namen und Platzhalter: Feldname mit F-Konvention, Vorgabewert für Konstanten, "$0" für den Cursor.
-// Die Vervollständigung (TLspCompletion.DeclareItems) baut daraus die Einträge; /var aus #294 ist derselbe
+// Die Vervollständigung (TCompletionValues.DeclareItems) baut daraus die Einträge; /var aus #294 ist derselbe
 // Vorgang als Befehl.
 
 interface
@@ -62,13 +62,16 @@ type
 implementation
 
 uses
+  System.StrUtils,
   System.Math;
 
 function Compare(const A, B: TTextPosition): Integer;
 begin
   Result := A.Line - B.Line;
   if Result = 0 then
+  begin
     Result := A.Character - B.Character;
+  end;
 end;
 
 function IsTrivia(const AToken: TPascalToken): Boolean;
@@ -80,14 +83,18 @@ function Prev(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 begin
   Result := AIndex - 1;
   while (Result >= 0) and IsTrivia(ATokens[Result]) do
+  begin
     Dec(Result);
+  end;
 end;
 
 function Next(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 begin
   Result := AIndex + 1;
   while (Result <= High(ATokens)) and IsTrivia(ATokens[Result]) do
+  begin
     Inc(Result);
+  end;
 end;
 
 function IsKeywordIn(const AToken: TPascalToken; const AWords: array of string): Boolean;
@@ -96,10 +103,16 @@ var
 begin
   Result := False;
   if AToken.Kind <> TPascalTokenKind.Keyword then
+  begin
     Exit;
+  end;
   for Word in AWords do
+  begin
     if AToken.IsKeyword(Word) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function IsSymbolIn(const AToken: TPascalToken; const ASymbols: array of string): Boolean;
@@ -108,8 +121,12 @@ var
 begin
   Result := False;
   for Symbol in ASymbols do
+  begin
     if AToken.IsSymbol(Symbol) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 /// <summary>Ende einer Anweisung auf Klammertiefe 0.</summary>
@@ -118,80 +135,136 @@ begin
   Result := AToken.IsSymbol(';') or IsKeywordIn(AToken, ['end', 'else', 'until', 'except', 'finally']);
 end;
 
+/// <summary>Letztes Token vor APosition ohne Kommentare und Direktiven; -1 ohne.</summary>
+function LastTokenBefore(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := -1;
+  mIndex := 0;
+  while (mIndex <= High(ATokens)) and (Compare(ATokens[mIndex].StartPos, APosition) < 0) do
+  begin
+    if not IsTrivia(ATokens[mIndex]) then
+    begin
+      Result := mIndex;
+    end;
+    Inc(mIndex);
+  end;
+end;
+
+/// <summary>Bezeichner an AIndex, in oder direkt hinter dem der Cursor steht.</summary>
+function IsNameAt(const ATokens: TArray<TPascalToken>; AIndex: Integer; const APosition: TTextPosition): Boolean;
+begin
+  Result := (AIndex >= 0) and (ATokens[AIndex].Kind = TPascalTokenKind.Identifier) and
+    (Compare(APosition, ATokens[AIndex].EndPos) <= 0);
+end;
+
+/// <summary>Mitglied ("X.Name"), Aufruf ("Name(" ist #472), Kette ("Name.X") oder generischer Typ.</summary>
+function IsLinked(const ATokens: TArray<TPascalToken>; ABefore, AAfter: Integer): Boolean;
+begin
+  Result := ((ABefore >= 0) and ATokens[ABefore].IsSymbol('.')) or
+    ((AAfter <= High(ATokens)) and IsSymbolIn(ATokens[AAfter], ['(', '.', '<', '^']));
+end;
+
+/// <summary>Inline-Deklaration ("var Name", "var X: Name", "const Name = …") vor dem Namen in derselben
+/// Anweisung.</summary>
+function InDeclaration(const ATokens: TArray<TPascalToken>; ABefore: Integer): Boolean;
+var
+  mScan: Integer;
+begin
+  Result := False;
+  mScan := ABefore;
+  while not Result and (mScan >= 0) and not EndsStatement(ATokens[mScan]) and
+    not IsKeywordIn(ATokens[mScan], ['begin', 'then', 'do', 'try', 'repeat', 'of']) do
+  begin
+    Result := IsKeywordIn(ATokens[mScan], ['var', 'const', 'type', 'procedure', 'function', 'property', 'threadvar']);
+    mScan := Prev(ATokens, mScan);
+  end;
+end;
+
+/// <summary>Cursor im Namen: Zeichen ab Namensanfang; auf einer anderen Zeile das Namensende.</summary>
+function CursorOffset(const AName: TPascalToken; const APosition: TTextPosition): Integer;
+begin
+  Result := Length(AName.Text);
+  if APosition.Line = AName.StartPos.Line then
+  begin
+    Result := Max(0, Min(Result, APosition.Character - AName.StartPos.Character));
+  end;
+end;
+
+/// <summary>Ende der rechten Seite: schließende Klammer auf Tiefe 0 oder Ende der Anweisung; führt ADepth nach.</summary>
+function EndsValue(const AToken: TPascalToken; var ADepth: Integer): Boolean;
+begin
+  Result := False;
+  if IsSymbolIn(AToken, ['(', '[']) then
+  begin
+    Inc(ADepth);
+  end
+  else if IsSymbolIn(AToken, [')', ']']) then
+  begin
+    Result := ADepth = 0;
+    Dec(ADepth);
+  end
+  else
+  begin
+    Result := (ADepth = 0) and EndsStatement(AToken);
+  end;
+end;
+
+/// <summary>Rechte Seite ab AFrom bis zum Ende der Anweisung in ValueFirst..ValueLast.</summary>
+procedure ReadValue(const ATokens: TArray<TPascalToken>; AFrom: Integer; var ASlot: TUnknownSlot);
+var
+  mScan, mDepth: Integer;
+begin
+  mDepth := 0;
+  mScan := AFrom;
+  while (mScan <= High(ATokens)) and not EndsValue(ATokens[mScan], mDepth) do
+  begin
+    if ASlot.ValueFirst < 0 then
+    begin
+      ASlot.ValueFirst := mScan;
+    end;
+    ASlot.ValueLast := mScan;
+    mScan := Next(ATokens, mScan);
+  end;
+end;
+
 { TDeclareUnknown }
 
 class function TDeclareUnknown.Slot(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition;
   out ASlot: TUnknownSlot): Boolean;
 var
-  Index, Before, After, Scan, Depth: Integer;
+  mBefore, mAfter: Integer;
+  mName: TPascalToken;
 begin
   ASlot := Default(TUnknownSlot);
   ASlot.ValueFirst := -1;
   ASlot.ValueLast := -1;
-  Result := False;
-  ASlot.NameIndex := -1;
-  for Index := 0 to High(ATokens) do
+  ASlot.NameIndex := LastTokenBefore(ATokens, APosition);
+  Result := IsNameAt(ATokens, ASlot.NameIndex, APosition);
+  if not Result then
   begin
-    if Compare(ATokens[Index].StartPos, APosition) >= 0 then
-      Break;
-    if not IsTrivia(ATokens[Index]) then
-      ASlot.NameIndex := Index;
+    Exit;
   end;
-  if (ASlot.NameIndex < 0) or (ATokens[ASlot.NameIndex].Kind <> TPascalTokenKind.Identifier) or
-    (Compare(APosition, ATokens[ASlot.NameIndex].EndPos) > 0) then
-    Exit;
-  Before := Prev(ATokens, ASlot.NameIndex);
-  After := Next(ATokens, ASlot.NameIndex);
-  // Mitglied ("X.Name"), Aufruf ("Name(" ist #472), Kette ("Name.X") oder generischer Typ.
-  if (Before >= 0) and ATokens[Before].IsSymbol('.') then
-    Exit;
-  if (After <= High(ATokens)) and IsSymbolIn(ATokens[After], ['(', '.', '<', '^']) then
-    Exit;
-  // Inline-Deklaration ("var Name", "var X: Name", "const Name = …").
-  Scan := Before;
-  while (Scan >= 0) and not EndsStatement(ATokens[Scan]) and
-    not IsKeywordIn(ATokens[Scan], ['begin', 'then', 'do', 'try', 'repeat', 'of']) do
+  mName := ATokens[ASlot.NameIndex];
+  mBefore := Prev(ATokens, ASlot.NameIndex);
+  mAfter := Next(ATokens, ASlot.NameIndex);
+  Result := not IsLinked(ATokens, mBefore, mAfter) and not InDeclaration(ATokens, mBefore) and
+    not StartsText('&', mName.Text);
+  if not Result then
   begin
-    if IsKeywordIn(ATokens[Scan], ['var', 'const', 'type', 'procedure', 'function', 'property', 'threadvar']) then
-      Exit;
-    Scan := Prev(ATokens, Scan);
+    Exit;
   end;
-  ASlot.Name := ATokens[ASlot.NameIndex].Text;
-  if (ASlot.Name <> '') and (ASlot.Name[1] = '&') then
-    Exit;
-  ASlot.NameRange := TTextRange.Create(ATokens[ASlot.NameIndex].StartPos, ATokens[ASlot.NameIndex].EndPos);
-  ASlot.CursorOffset := Max(0, Min(Length(ASlot.Name), APosition.Character - ATokens[ASlot.NameIndex].StartPos.Character));
-  if APosition.Line <> ATokens[ASlot.NameIndex].StartPos.Line then
-    ASlot.CursorOffset := Length(ASlot.Name);
-  ASlot.InlineAllowed := (Before >= 0) and (ATokens[Before].IsSymbol(';') or
-    IsKeywordIn(ATokens[Before], ['begin', 'try', 'finally', 'except', 'repeat']));
-  if (After <= High(ATokens)) and ATokens[After].IsSymbol(':=') then
+  ASlot.Name := mName.Text;
+  ASlot.NameRange := TTextRange.Create(mName.StartPos, mName.EndPos);
+  ASlot.CursorOffset := CursorOffset(mName, APosition);
+  ASlot.AssignTarget := (mAfter <= High(ATokens)) and ATokens[mAfter].IsSymbol(':=');
+  ASlot.InlineAllowed := ASlot.AssignTarget and (mBefore >= 0) and (ATokens[mBefore].IsSymbol(';') or
+    IsKeywordIn(ATokens[mBefore], ['begin', 'try', 'finally', 'except', 'repeat']));
+  if ASlot.AssignTarget then
   begin
-    ASlot.AssignTarget := True;
-    // Rechte Seite bis zum Ende der Anweisung.
-    Depth := 0;
-    Scan := Next(ATokens, After);
-    while Scan <= High(ATokens) do
-    begin
-      if IsSymbolIn(ATokens[Scan], ['(', '[']) then
-        Inc(Depth)
-      else if IsSymbolIn(ATokens[Scan], [')', ']']) then
-      begin
-        if Depth = 0 then
-          Break;
-        Dec(Depth);
-      end
-      else if (Depth = 0) and EndsStatement(ATokens[Scan]) then
-        Break;
-      if ASlot.ValueFirst < 0 then
-        ASlot.ValueFirst := Scan;
-      ASlot.ValueLast := Scan;
-      Scan := Next(ATokens, Scan);
-    end;
-  end
-  else
-    ASlot.InlineAllowed := False;
-  Result := True;
+    ReadValue(ATokens, Next(ATokens, mAfter), ASlot);
+  end;
 end;
 
 /// <summary>Index der schließenden Klammer zu AIndex ("(" oder "["); ALast, wenn sie fehlt.</summary>
@@ -204,12 +277,16 @@ begin
   while Result <= ALast do
   begin
     if IsSymbolIn(ATokens[Result], ['(', '[']) then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if IsSymbolIn(ATokens[Result], [')', ']']) then
     begin
       Dec(Depth);
       if Depth = 0 then
+      begin
         Exit;
+      end;
     end;
     Result := Next(ATokens, Result);
   end;
@@ -223,70 +300,155 @@ begin
     IsKeywordIn(AToken, ['and', 'or', 'xor', 'div', 'mod', 'shl', 'shr', 'in', 'is', 'as']);
 end;
 
-class function TDeclareUnknown.Shape(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer;
-  out ATermFirst, ATermLast: Integer): string;
+/// <summary>"(" einer Klammergruppe, kein Aufruf ("F(A = B)") und kein Index.</summary>
+function IsGroupOpen(const ATokens: TArray<TPascalToken>; AFirst, AIndex: Integer): Boolean;
 var
-  Index, AsType, TermFirst, TermLast: Integer;
-  Comparison, Divides, IntegerDivides: Boolean;
+  mBefore: Integer;
 begin
-  Result := '';
-  ATermFirst := -1;
-  ATermLast := -1;
-  if (AFirst < 0) or (ALast < AFirst) then
-    Exit;
+  Result := ATokens[AIndex].IsSymbol('(');
+  if Result and (AIndex <> AFirst) then
+  begin
+    mBefore := Prev(ATokens, AIndex);
+    Result := not ((ATokens[mBefore].Kind = TPascalTokenKind.Identifier) or IsSymbolIn(ATokens[mBefore], [')', ']']));
+  end;
+end;
+
+/// <summary>Geklammerter Vergleich ab AIndex ("(A > 1) and B").</summary>
+function IsGroupedComparison(const ATokens: TArray<TPascalToken>; AFirst, AIndex, ALast: Integer): Boolean;
+var
+  mTermFirst, mTermLast: Integer;
+begin
+  Result := IsGroupOpen(ATokens, AFirst, AIndex) and (TDeclareUnknown.Shape(ATokens, Next(ATokens, AIndex),
+    Prev(ATokens, Closing(ATokens, AIndex, ALast)), mTermFirst, mTermLast) = 'Boolean');
+end;
+
+type
+  /// <summary>Operatoren auf oberster Ebene eines Ausdrucks, die seinen Typ festlegen.</summary>
+  TExpressionShape = record
+    Comparison: Boolean;
+    Divides: Boolean;
+    IntegerDivides: Boolean;
+    /// <summary>Token hinter "as"; -1 ohne.</summary>
+    AsType: Integer;
+    procedure Scan(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer);
+    procedure Note(const ATokens: TArray<TPascalToken>; AIndex: Integer);
+    /// <summary>Boolean, Typ hinter "as" am Ende, Extended oder Integer; '' ohne solchen Operator.</summary>
+    function TypeName(const ATokens: TArray<TPascalToken>; ALast: Integer): string;
+  end;
+
+procedure TExpressionShape.Scan(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer);
+var
+  mIndex: Integer;
+begin
   Comparison := False;
   Divides := False;
   IntegerDivides := False;
   AsType := -1;
-  Index := AFirst;
-  while Index <= ALast do
+  mIndex := AFirst;
+  while mIndex <= ALast do
   begin
-    // Geklammerter Vergleich ("(A > 1) and B"), aber kein Aufruf ("F(A = B)") und kein Index.
-    if ATokens[Index].IsSymbol('(') and ((Index = AFirst) or not ((ATokens[Prev(ATokens, Index)].Kind =
-      TPascalTokenKind.Identifier) or IsSymbolIn(ATokens[Prev(ATokens, Index)], [')', ']']))) and
-      (Shape(ATokens, Next(ATokens, Index), Prev(ATokens, Closing(ATokens, Index, ALast)), TermFirst,
-      TermLast) = 'Boolean') then
-      Comparison := True;
-    if IsSymbolIn(ATokens[Index], ['(', '[']) then
-      Index := Closing(ATokens, Index, ALast)
-    else if IsSymbolIn(ATokens[Index], ['=', '<>', '<', '>', '<=', '>=']) or
-      IsKeywordIn(ATokens[Index], ['in', 'is']) then
-      Comparison := True
-    else if ATokens[Index].IsSymbol('/') then
-      Divides := True
-    else if IsKeywordIn(ATokens[Index], ['div', 'mod']) then
-      IntegerDivides := True
-    else if ATokens[Index].IsKeyword('as') then
-      AsType := Next(ATokens, Index);
-    Index := Next(ATokens, Index);
+    Comparison := Comparison or IsGroupedComparison(ATokens, AFirst, mIndex, ALast);
+    if IsSymbolIn(ATokens[mIndex], ['(', '[']) then
+    begin
+      mIndex := Closing(ATokens, mIndex, ALast);
+    end
+    else
+    begin
+      Note(ATokens, mIndex);
+    end;
+    mIndex := Next(ATokens, mIndex);
   end;
+end;
+
+procedure TExpressionShape.Note(const ATokens: TArray<TPascalToken>; AIndex: Integer);
+begin
+  if IsSymbolIn(ATokens[AIndex], ['=', '<>', '<', '>', '<=', '>=']) or IsKeywordIn(ATokens[AIndex], ['in', 'is']) then
+  begin
+    Comparison := True;
+  end
+  else if ATokens[AIndex].IsSymbol('/') then
+  begin
+    Divides := True;
+  end
+  else if IsKeywordIn(ATokens[AIndex], ['div', 'mod']) then
+  begin
+    IntegerDivides := True;
+  end
+  else if ATokens[AIndex].IsKeyword('as') then
+  begin
+    AsType := Next(ATokens, AIndex);
+  end;
+end;
+
+function TExpressionShape.TypeName(const ATokens: TArray<TPascalToken>; ALast: Integer): string;
+begin
+  Result := '';
   if Comparison then
-    Exit('Boolean');
-  if (AsType >= 0) and (AsType = ALast) and (ATokens[AsType].Kind = TPascalTokenKind.Identifier) then
-    Exit(ATokens[AsType].Text);
-  if Divides then
-    Exit('Extended');
-  if IntegerDivides then
-    Exit('Integer');
-  // Erster Operand, ohne Vorzeichen und not.
+  begin
+    Result := 'Boolean';
+  end
+  else if (AsType >= 0) and (AsType = ALast) and (ATokens[AsType].Kind = TPascalTokenKind.Identifier) then
+  begin
+    Result := ATokens[AsType].Text;
+  end
+  else if Divides then
+  begin
+    Result := 'Extended';
+  end
+  else if IntegerDivides then
+  begin
+    Result := 'Integer';
+  end;
+end;
+
+/// <summary>Erster Operand ohne Vorzeichen und not in ATermFirst..ATermLast; 'Pointer' für "@X", sonst ''.</summary>
+function FirstTerm(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer;
+  out ATermFirst, ATermLast: Integer): string;
+var
+  mIndex: Integer;
+begin
+  Result := '';
   ATermFirst := AFirst;
   while (ATermFirst < ALast) and (IsSymbolIn(ATokens[ATermFirst], ['-', '+']) or ATokens[ATermFirst].IsKeyword('not')) do
+  begin
     ATermFirst := Next(ATokens, ATermFirst);
+  end;
+  ATermLast := -1;
   if ATokens[ATermFirst].IsSymbol('@') then
   begin
     ATermFirst := -1;
     Exit('Pointer');
   end;
   ATermLast := ATermFirst;
-  Index := ATermFirst;
-  while Index <= ALast do
+  mIndex := ATermFirst;
+  while (mIndex <= ALast) and ((mIndex = ATermFirst) or not IsOperator(ATokens[mIndex])) do
   begin
-    if (Index > ATermFirst) and IsOperator(ATokens[Index]) then
-      Break;
-    if IsSymbolIn(ATokens[Index], ['(', '[']) then
-      Index := Closing(ATokens, Index, ALast);
-    ATermLast := Index;
-    Index := Next(ATokens, Index);
+    if IsSymbolIn(ATokens[mIndex], ['(', '[']) then
+    begin
+      mIndex := Closing(ATokens, mIndex, ALast);
+    end;
+    ATermLast := mIndex;
+    mIndex := Next(ATokens, mIndex);
+  end;
+end;
+
+class function TDeclareUnknown.Shape(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer;
+  out ATermFirst, ATermLast: Integer): string;
+var
+  mShape: TExpressionShape;
+begin
+  Result := '';
+  ATermFirst := -1;
+  ATermLast := -1;
+  if (AFirst < 0) or (ALast < AFirst) then
+  begin
+    Exit;
+  end;
+  mShape.Scan(ATokens, AFirst, ALast);
+  Result := mShape.TypeName(ATokens, ALast);
+  if Result = '' then
+  begin
+    Result := FirstTerm(ATokens, AFirst, ALast, ATermFirst, ATermLast);
   end;
 end;
 
@@ -297,19 +459,29 @@ begin
     TPascalTokenKind.Number:
       if (AToken.Text[1] <> '$') and (AToken.Text[1] <> '%') and
         ((Pos('.', AToken.Text) > 0) or (Pos('e', LowerCase(AToken.Text)) > 0)) then
-        Result := 'Extended'
+      begin
+        Result := 'Extended';
+      end
       else
+      begin
         Result := 'Integer';
+      end;
     TPascalTokenKind.StringLiteral:
       if (Length(AToken.Text) = 3) or (AToken.Text = '''''''''') then
-        Result := 'Char'
+      begin
+        Result := 'Char';
+      end
       else
+      begin
         Result := 'string';
+      end;
     TPascalTokenKind.CharLiteral:
       Result := 'Char';
     TPascalTokenKind.Identifier:
       if SameText(AToken.Text, 'True') or SameText(AToken.Text, 'False') then
+      begin
         Result := 'Boolean';
+      end;
   else
     // Übrige Werte bewusst ohne Wirkung.
   end;
@@ -321,7 +493,9 @@ var
 begin
   Result := -1;
   if (AFirst < 0) or (ALast < AFirst) then
+  begin
     Exit;
+  end;
   // Aufruf am Ende überspringen: "F(x)" hat den Typ von F.
   if ATokens[ALast].IsSymbol(')') then
   begin
@@ -329,19 +503,25 @@ begin
     while ALast >= AFirst do
     begin
       if ATokens[ALast].IsSymbol(')') then
-        Inc(Depth)
+      begin
+        Inc(Depth);
+      end
       else if ATokens[ALast].IsSymbol('(') then
       begin
         Dec(Depth);
         if Depth = 0 then
+        begin
           Break;
+        end;
       end;
       ALast := Prev(ATokens, ALast);
     end;
     ALast := Prev(ATokens, ALast);
   end;
   if (ALast >= AFirst) and (ATokens[ALast].Kind = TPascalTokenKind.Identifier) then
+  begin
     Result := ALast;
+  end;
 end;
 
 class function TDeclareUnknown.UsesFieldPrefix(const AFieldNames: TArray<string>): Boolean;
@@ -351,8 +531,12 @@ var
 begin
   Prefixed := 0;
   for Name in AFieldNames do
+  begin
     if (Length(Name) >= 2) and (Name[1] = 'F') and CharInSet(Name[2], ['A'..'Z']) then
+    begin
       Inc(Prefixed);
+    end;
+  end;
   Result := 2 * Prefixed >= Length(AFieldNames);
 end;
 
@@ -360,9 +544,13 @@ class function TDeclareUnknown.FieldName(const AName: string; APrefix: Boolean):
 begin
   Result := AName;
   if not APrefix or (AName = '') then
+  begin
     Exit;
+  end;
   if (Length(AName) >= 2) and (AName[1] = 'F') and CharInSet(AName[2], ['A'..'Z']) then
+  begin
     Exit;
+  end;
   Result := 'F' + UpperCase(Copy(AName, 1, 1)) + Copy(AName, 2, MaxInt);
 end;
 
@@ -375,15 +563,27 @@ var
   Name: string;
 begin
   for Name in Integers do
+  begin
     if SameText(Name, ATypeName) then
+    begin
       Exit('0');
+    end;
+  end;
   for Name in Floats do
+  begin
     if SameText(Name, ATypeName) then
+    begin
       Exit('0.0');
+    end;
+  end;
   if SameText(ATypeName, 'string') or SameText(ATypeName, 'UnicodeString') then
+  begin
     Exit('''''');
+  end;
   if SameText(ATypeName, 'Boolean') then
+  begin
     Exit('False');
+  end;
   Result := ValuePlaceholder;
 end;
 

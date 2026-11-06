@@ -32,6 +32,7 @@ type
 
   TMapFile = class
   private type
+    TSection = (Header, Segments, Publics, Lines, Other);
     TSymbol = record
       Address: UInt64;
       Name: string;
@@ -46,7 +47,19 @@ type
     FCodeStart: UInt64;
     FSymbols: TList<TSymbol>;
     FLines: TList<TLineEntry>;
+    // Zustand nur während Parse.
+    FSection: TSection;
+    FHeaderDone: Boolean;
+    FCurrentUnit: string;
+    FCurrentFile: string;
     procedure Parse(const AText: string);
+    /// <summary>True, wenn ALine einen Abschnitt beginnt (und FSection umstellt).</summary>
+    function StartsSection(const ALine: string): Boolean;
+    procedure StartLineSection(const ALine: string);
+    procedure ReadHeader(const AParts: TArray<string>);
+    procedure ReadPublic(const AParts: TArray<string>);
+    procedure ReadLineNumbers(const AParts: TArray<string>);
+    procedure SortEntries;
     function GetSymbolCount: Integer;
   public
     constructor Create(const AText: string);
@@ -73,10 +86,14 @@ const
 function TMapLocation.ToString: string;
 begin
   if not Found then
+  begin
     Exit('');
+  end;
   Result := Routine;
   if Line > 0 then
+  begin
     Result := Result + Format(' (%s:%d)', [FileName, Line]);
+  end;
 end;
 
 /// <summary>Liest "0001:00ABCDEF"; False bei anderem Segment oder Format.</summary>
@@ -89,7 +106,9 @@ begin
   Result := (Colon = 5) and TryStrToInt('$' + Copy(AText, 1, 4), ASegment) and
     TryStrToInt64('$' + Copy(AText, Colon + 1, MaxInt), Value);
   if Result then
+  begin
     AAddress := UInt64(Value);
+  end;
 end;
 
 /// <summary>Teile einer Zeile, durch Leerzeichen getrennt.</summary>
@@ -102,12 +121,62 @@ begin
   while Index <= Length(ALine) do
   begin
     while (Index <= Length(ALine)) and CharInSet(ALine[Index], [' ', #9]) do
+    begin
       Inc(Index);
+    end;
     Start := Index;
     while (Index <= Length(ALine)) and not CharInSet(ALine[Index], [' ', #9]) do
+    begin
       Inc(Index);
+    end;
     if Index > Start then
+    begin
       Result := Result + [Copy(ALine, Start, Index - Start)];
+    end;
+  end;
+end;
+
+/// <summary>Adresse im Codesegment 0001; False bei anderem Segment oder Format.</summary>
+function ReadCodeAddress(const AText: string; out AAddress: UInt64): Boolean;
+var
+  mSegment: Integer;
+begin
+  Result := ReadAddress(AText, mSegment, AAddress) and (mSegment = 1);
+end;
+
+function CompareAddress(ALeft, ARight: UInt64): Integer;
+begin
+  Result := 0;
+  if ALeft < ARight then
+  begin
+    Result := -1;
+  end
+  else if ALeft > ARight then
+  begin
+    Result := 1;
+  end;
+end;
+
+/// <summary>Letzter Index mit Adresse &lt;= AAddress in einer nach Adresse sortierten Folge; -1 ohne.</summary>
+function LastAtOrBefore(ACount: Integer; const AAddressOf: TFunc<Integer, UInt64>; AAddress: UInt64): Integer;
+var
+  mLeft, mRight, mMiddle: Integer;
+begin
+  Result := -1;
+  mLeft := 0;
+  mRight := ACount - 1;
+  while mLeft <= mRight do
+  begin
+    mMiddle := (mLeft + mRight) div 2;
+    if AAddressOf(mMiddle) <= AAddress then
+    begin
+      Result := mMiddle;
+      mLeft := mMiddle + 1;
+    end
+    else
+    begin
+      mRight := mMiddle - 1;
+    end;
   end;
 end;
 
@@ -134,162 +203,184 @@ begin
   Result := FSymbols.Count;
 end;
 
-procedure TMapFile.Parse(const AText: string);
-type
-  TSection = (Header, Segments, Publics, Lines, Other);
+procedure TMapFile.StartLineSection(const ALine: string);
 var
-  Section: TSection;
-  Line, CurrentUnit, CurrentFile, Inside: string;
-  Parts: TArray<string>;
-  Segment, Index, Open, Close, Number: Integer;
-  Address: UInt64;
-  HeaderDone: Boolean;
-  Symbol: TSymbol;
-  Entry: TLineEntry;
+  mInside: string;
+  mOpen, mClose: Integer;
 begin
-  Section := TSection.Header;
-  HeaderDone := False;
-  for Line in StringReplace(AText, #13, '', [rfReplaceAll]).Split([#10]) do
+  // Line numbers for System(System.pas) segment .text
+  mInside := Copy(ALine, Length('Line numbers for ') + 1, MaxInt);
+  mOpen := Pos('(', mInside);
+  mClose := Pos(')', mInside);
+  FCurrentUnit := Copy(mInside, 1, mOpen - 1);
+  FCurrentFile := Copy(mInside, mOpen + 1, mClose - mOpen - 1);
+  // Nur Codesegment .text zählt.
+  FSection := TSection.Other;
+  if ContainsText(Copy(mInside, mClose + 1, MaxInt), '.text') then
   begin
-    if Trim(Line) = '' then
-      Continue;
-    if StartsText('Detailed map of segments', Trim(Line)) then
-      Section := TSection.Segments
-    else if ContainsText(Line, 'Publics by Value') then
-      Section := TSection.Publics
-    else if ContainsText(Line, 'Publics by Name') or StartsText('Bound resource files', Trim(Line)) or
-      StartsText('Program entry point', Trim(Line)) then
-      Section := TSection.Other
-    else if StartsText('Line numbers for ', Line) then
-    begin
-      // Line numbers for System(System.pas) segment .text
-      Section := TSection.Lines;
-      Inside := Copy(Line, Length('Line numbers for ') + 1, MaxInt);
-      Open := Pos('(', Inside);
-      Close := Pos(')', Inside);
-      CurrentUnit := Copy(Inside, 1, Open - 1);
-      CurrentFile := Copy(Inside, Open + 1, Close - Open - 1);
-      // Nur Codesegment .text zählt.
-      if not ContainsText(Copy(Inside, Close + 1, MaxInt), '.text') then
-        Section := TSection.Other;
-    end
-    else
-    begin
-      Parts := Words(Line);
-      case Section of
-        TSection.Header:
-          // 0001:00401000 0012345H .text CODE
-          if not HeaderDone and (Length(Parts) >= 3) and ReadAddress(Parts[0], Segment, Address) and
-            (Segment = 1) then
-          begin
-            if Address >= DefaultImageBase then
-              FCodeStart := Address - DefaultImageBase
-            else if Address > 0 then
-              FCodeStart := Address;
-            HeaderDone := True;
-          end;
-        TSection.Publics:
-          if (Length(Parts) >= 2) and ReadAddress(Parts[0], Segment, Address) and (Segment = 1) then
-          begin
-            Symbol.Address := Address;
-            Symbol.Name := Parts[High(Parts)];
-            FSymbols.Add(Symbol);
-          end;
-        TSection.Lines:
-          begin
-            // Paare "Zeile Adresse".
-            Index := 0;
-            while Index + 1 <= High(Parts) do
-            begin
-              if TryStrToInt(Parts[Index], Number) and ReadAddress(Parts[Index + 1], Segment, Address) and
-                (Segment = 1) then
-              begin
-                Entry.Address := Address;
-                Entry.Line := Number;
-                Entry.UnitName := CurrentUnit;
-                Entry.FileName := CurrentFile;
-                FLines.Add(Entry);
-              end;
-              Inc(Index, 2);
-            end;
-          end;
-      end;
-    end;
+    FSection := TSection.Lines;
   end;
+end;
+
+function TMapFile.StartsSection(const ALine: string): Boolean;
+var
+  mTrimmed: string;
+begin
+  Result := True;
+  mTrimmed := Trim(ALine);
+  if StartsText('Detailed map of segments', mTrimmed) then
+  begin
+    FSection := TSection.Segments;
+  end
+  else if ContainsText(ALine, 'Publics by Value') then
+  begin
+    FSection := TSection.Publics;
+  end
+  else if ContainsText(ALine, 'Publics by Name') or StartsText('Bound resource files', mTrimmed) or
+    StartsText('Program entry point', mTrimmed) then
+  begin
+    FSection := TSection.Other;
+  end
+  else if StartsText('Line numbers for ', ALine) then
+  begin
+    StartLineSection(ALine);
+  end
+  else
+  begin
+    Result := False;
+  end;
+end;
+
+procedure TMapFile.ReadHeader(const AParts: TArray<string>);
+var
+  mAddress: UInt64;
+begin
+  // 0001:00401000 0012345H .text CODE
+  if FHeaderDone or (Length(AParts) < 3) or not ReadCodeAddress(AParts[0], mAddress) then
+  begin
+    Exit;
+  end;
+  if mAddress >= DefaultImageBase then
+  begin
+    FCodeStart := mAddress - DefaultImageBase;
+  end
+  else if mAddress > 0 then
+  begin
+    FCodeStart := mAddress;
+  end;
+  FHeaderDone := True;
+end;
+
+procedure TMapFile.ReadPublic(const AParts: TArray<string>);
+var
+  mSymbol: TSymbol;
+begin
+  if (Length(AParts) >= 2) and ReadCodeAddress(AParts[0], mSymbol.Address) then
+  begin
+    mSymbol.Name := AParts[High(AParts)];
+    FSymbols.Add(mSymbol);
+  end;
+end;
+
+procedure TMapFile.ReadLineNumbers(const AParts: TArray<string>);
+var
+  mIndex: Integer;
+  mEntry: TLineEntry;
+begin
+  // Paare "Zeile Adresse".
+  mIndex := 0;
+  while mIndex + 1 <= High(AParts) do
+  begin
+    if TryStrToInt(AParts[mIndex], mEntry.Line) and ReadCodeAddress(AParts[mIndex + 1], mEntry.Address) then
+    begin
+      mEntry.UnitName := FCurrentUnit;
+      mEntry.FileName := FCurrentFile;
+      FLines.Add(mEntry);
+    end;
+    Inc(mIndex, 2);
+  end;
+end;
+
+procedure TMapFile.SortEntries;
+begin
   FSymbols.Sort(TComparer<TSymbol>.Construct(
     function(const ALeft, ARight: TSymbol): Integer
     begin
-      if ALeft.Address < ARight.Address then
-        Result := -1
-      else if ALeft.Address > ARight.Address then
-        Result := 1
-      else
-        Result := 0;
+      Result := CompareAddress(ALeft.Address, ARight.Address);
     end));
   FLines.Sort(TComparer<TLineEntry>.Construct(
     function(const ALeft, ARight: TLineEntry): Integer
     begin
-      if ALeft.Address < ARight.Address then
-        Result := -1
-      else if ALeft.Address > ARight.Address then
-        Result := 1
-      else
-        Result := 0;
+      Result := CompareAddress(ALeft.Address, ARight.Address);
     end));
+end;
+
+procedure TMapFile.Parse(const AText: string);
+var
+  mLine: string;
+  mParts: TArray<string>;
+begin
+  FSection := TSection.Header;
+  FHeaderDone := False;
+  for mLine in StringReplace(AText, #13, '', [rfReplaceAll]).Split([#10]) do
+  begin
+    if (Trim(mLine) = '') or StartsSection(mLine) then
+    begin
+      Continue;
+    end;
+    mParts := Words(mLine);
+    case FSection of
+      TSection.Header:
+        ReadHeader(mParts);
+      TSection.Publics:
+        ReadPublic(mParts);
+      TSection.Lines:
+        ReadLineNumbers(mParts);
+    end;
+  end;
+  FCurrentUnit := '';
+  FCurrentFile := '';
+  SortEntries;
 end;
 
 function TMapFile.Resolve(AModuleOffset: UInt64): TMapLocation;
 var
-  Address: UInt64;
-  Left, Right, Middle, Found: Integer;
-  Dot: Integer;
+  mAddress: UInt64;
+  mFound, mDot: Integer;
 begin
   Result := Default(TMapLocation);
   if (AModuleOffset < FCodeStart) or (FSymbols.Count = 0) then
-    Exit;
-  Address := AModuleOffset - FCodeStart;
-  // Letztes Symbol mit Adresse <= Address.
-  Left := 0;
-  Right := FSymbols.Count - 1;
-  Found := -1;
-  while Left <= Right do
   begin
-    Middle := (Left + Right) div 2;
-    if FSymbols[Middle].Address <= Address then
-    begin
-      Found := Middle;
-      Left := Middle + 1;
-    end
-    else
-      Right := Middle - 1;
-  end;
-  if Found < 0 then
     Exit;
+  end;
+  mAddress := AModuleOffset - FCodeStart;
+  mFound := LastAtOrBefore(FSymbols.Count,
+    function(AIndex: Integer): UInt64
+    begin
+      Result := FSymbols[AIndex].Address;
+    end, mAddress);
+  if mFound < 0 then
+  begin
+    Exit;
+  end;
   Result.Found := True;
-  Result.Routine := FSymbols[Found].Name;
-  Dot := Pos('.', Result.Routine);
-  if Dot > 0 then
-    Result.UnitName := Copy(Result.Routine, 1, Dot - 1);
-  // Zeile: letzte Zeilenangabe <= Address, nicht vor dem Anfang der Routine.
-  Left := 0;
-  Right := FLines.Count - 1;
-  Found := -1;
-  while Left <= Right do
+  Result.Routine := FSymbols[mFound].Name;
+  mDot := Pos('.', Result.Routine);
+  if mDot > 0 then
   begin
-    Middle := (Left + Right) div 2;
-    if FLines[Middle].Address <= Address then
-    begin
-      Found := Middle;
-      Left := Middle + 1;
-    end
-    else
-      Right := Middle - 1;
+    Result.UnitName := Copy(Result.Routine, 1, mDot - 1);
   end;
-  if (Found >= 0) and (FLines[Found].Address >= FSymbols[0].Address) then
+  // Zeile: letzte Zeilenangabe <= Address, nicht vor dem Anfang der Routine.
+  mFound := LastAtOrBefore(FLines.Count,
+    function(AIndex: Integer): UInt64
+    begin
+      Result := FLines[AIndex].Address;
+    end, mAddress);
+  if (mFound >= 0) and (FLines[mFound].Address >= FSymbols[0].Address) then
   begin
-    Result.Line := FLines[Found].Line;
-    Result.FileName := FLines[Found].FileName;
-    Result.UnitName := FLines[Found].UnitName;
+    Result.Line := FLines[mFound].Line;
+    Result.FileName := FLines[mFound].FileName;
+    Result.UnitName := FLines[mFound].UnitName;
   end;
 end;
 
@@ -306,14 +397,18 @@ begin
     for Line in StringReplace(AStackTrace, #13, '', [rfReplaceAll]).Split([#10]) do
     begin
       if Line = '' then
+      begin
         Continue;
+      end;
       Builder.Append(Line);
       if StartsText(Prefix, Trim(Line)) and
         TryStrToInt64('$' + Copy(Trim(Line), Length(Prefix) + 1, MaxInt), Offset) then
       begin
         Location := Resolve(UInt64(Offset));
         if Location.Found then
+        begin
           Builder.Append(' ').Append(Location.ToString);
+        end;
       end;
       Builder.Append(sLineBreak);
     end;

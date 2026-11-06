@@ -74,7 +74,9 @@ begin
   SetLength(Offsets, Length(Lines) + 1);
   Offsets[0] := 0;
   for Index := 0 to High(Lines) do
+  begin
     Offsets[Index + 1] := Offsets[Index] + Length(Lines[Index]) + 1;
+  end;
   TArray.Sort<TRuleEdit>(AEdits, TComparer<TRuleEdit>.Construct(
     function(const ALeft, ARight: TRuleEdit): Integer
     begin
@@ -292,7 +294,7 @@ var
 begin
   // Delphi 10.2 (BDS 19.0) kennt keine Inline-Variablen (#109): beide in den var-Abschnitt.
   Assert.IsTrue(TSlashCommandRegistry.Shared.AfterEnter(Format(RoutineUnit, ['/filter Kunden Aktiv']),
-    TTextPosition.Create(15, 0), nil, nil, Edits, nil, '19.0'));
+    TTextPosition.Create(15, 0), TSlashEnvironment.Create(nil, nil, nil, '19.0', '', nil), Edits));
   Text := Apply(Format(RoutineUnit, ['/filter Kunden Aktiv']), Edits);
   Assert.IsTrue(Parses(Text), Text);
   Assert.Contains(Text, 'procedure P(Kunden: TList<TKunde>);'#10'var'#10'  Treffer: TList<TKunde>;'#10 +

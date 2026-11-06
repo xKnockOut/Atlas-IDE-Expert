@@ -52,14 +52,20 @@ begin
   AInput := Default(TLspBulkFixInput);
   Result := SameText(ExtractFileName(AFileName), 'U.pas') or SameText(ExtractFileName(AFileName), 'V.pas');
   if not Result then
+  begin
     Exit;
+  end;
   AInput.Rules := BuiltinRules;
   AInput.Settings := TServerSettings.Default;
   AInput.RelativePath := ExtractFileName(AFileName);
   if SameText(ExtractFileName(AFileName), 'U.pas') then
-    AInput.Text := cAssignedFree
+  begin
+    AInput.Text := cAssignedFree;
+  end
   else
+  begin
     AInput.Text := cClean;
+  end;
   AInput.Project.FileName := AFileName;
   AInput.Source := TCheckSource.Default;
   AInput.Baseline := Baseline;

@@ -18,6 +18,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Prüfregeln | `rules` | – | settings.json (Tools › Optionen › Atlas) und atlas.json (Atlas › Projekt-Einstellungen) | nein | Tabelle aus dem Regelkatalog | #41 |
 | Prüfregeln | `profile` | `"standard"` | atlas.json (Atlas › Projekt-Einstellungen) | nein | Auswahl | #146 |
 | Prüfregeln | `profiles` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Profil-Editor | #146 |
+| Prüfregeln | `ruleChecks`: `enabled` | – | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen „Prüfregeln“ (Modul-Schalter) | #1454 |
 | Prüfregeln | `overrides` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Liste mit Mustern | #146 |
 | Prüfregeln | `excludeTests` | `false` | settings.json (Tools › Optionen › Atlas) und atlas.json (Atlas › Projekt-Einstellungen) | nein | Kontrollkästchen | #146 |
 | Prüfregeln | `testProfile` | – | atlas.json (Atlas › Projekt-Einstellungen) | nein | Auswahl | #146 |
@@ -46,6 +47,8 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Editor | `highlight`: `blockPairs`, `directives`, `exitPoints`, `exitKeywords` | – | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen, Liste | #307 |
 | Editor | `inlayHints`: `parameterNames`, `inferredTypes`, `endMarkers`, `endMarkerMinLines`, `includeDefines`, `controlChars` | – | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen, Zahlenfeld | #35, #453, #860, #862 |
 | Editor | `codeLens`: `metrics` | – | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen | #66 |
+| Eingabehilfen | `smartIndent`: `enabled`, `afterEnter`, `outdentClosers`, `splitStrings`, `splitStringsIndent` | – | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen, Auswahl | #1827, #1828, #1829, #1831 |
+| Eingabehilfen | `classCompletion`: `typeComment`, `lifecycleFirst`, `bodyStubs` | – | settings.json (Tools › Optionen › Atlas) | nein | Auswahl, Kontrollkästchen | #1834, #1835, #1836, #1837 |
 | Befehle | `references`: `inferred`, `textMatches` | – | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen | #1119 |
 | Befehle | `navigation`: `symbolPath`, `impact`, `impactDepth` | – | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen, Zahlenfeld | #1117, #1120 |
 | Hints | `hints`: `xmlDocExpand`, `xmlDocFull`, `xmlDocMaxLines`, `publishedMembers`, `rationale`, `rationaleMarkers`, `adrFolder` | – | settings.json (Tools › Optionen › Atlas) | nein | Kontrollkästchen, Zahlenfeld | #654 |
@@ -125,7 +128,9 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Allgemein | Abgesicherter Start nach einem Absturz: Rückfrage (`safeMode.askAfterCrash`), ohne Rückfrage nach zwei Abstürzen (`safeMode.autoAfterRepeatedCrash`), Taste beim Laden (`safeMode.startupKey`: shift, ctrl, none), langsamer Start ab (`safeMode.startupTimeoutMs`; Atlas nennt dann seine Startanteile im Meldungsfenster, abschaltbar mit `robustness.hangHint`, und im Protokoll; kein Absturz, Bericht N4), gemerkte Einstellungsstände (`safeMode.keepSettingsHistory`) | an, an, shift, 30000, 5 | Plugin (Registry `SafeAskAfterCrash`, `SafeAutoAfterRepeatedCrash`, `SafeStartupKey`, `SafeStartupTimeoutMs`, `SafeKeepSettingsHistory`); Kommandozeile `-AtlasSafeMode`, Umgebungsvariable `ATLAS_SAFE_MODE=1` | nein | Kontrollkästchen, Kontrollkästchen, Auswahl, Zahl (1000–120000), Zahl (0–50) | #722 |
 | Allgemein | Atlas-Änderungen über mehrere Dateien zurücknehmen: an/aus (`undo.multiFile`), Anzahl Sätze (`undo.multiFile.depth`), über Neustarts sichern (`undo.multiFile.persist`) bis höchstens MB (`undo.multiFile.maxSizeMb`), bei Konflikten (`undo.multiFile.onConflict`: partial, abort), neu angelegte Dateien (`undo.multiFile.newFiles`: recycleBin, delete, keep), Tasten Zurücknehmen und Wiederherstellen | an, 20, an, 50, partial, recycleBin, Strg+Alt+Z, Strg+Alt+Umschalt+Z | Plugin (Registry `UndoMultiFile`, `UndoMultiFileDepth`, `UndoMultiFilePersist`, `UndoMultiFileMaxSizeMb`, `UndoMultiFileOnConflict`, `UndoMultiFileNewFiles`, `UndoKey`, `RedoKey`); Sicherung in `%LOCALAPPDATA%\Atlas\undo` | nein | Kontrollkästchen, Zahl (1–200), Kontrollkästchen, Zahl (1–1024), Auswahl, Auswahl, Tastenkürzel, Tastenkürzel | #721 |
 | Allgemein | Nach Zustimmung beim ersten Start höchstens einmal täglich auf eine neue Atlas-Version prüfen (`updates.check`); übertragen werden nur Atlas- und IDE-Version, ein Hinweis erscheint in der Meldungsansicht und als gelbe Zeile „Version“ im Statusfeld und in der Zustandskachel | aus | Plugin (Registry `UpdatesCheck`); Zustand (auch die gefundene neue Version) in `%LOCALAPPDATA%\Atlas\updates.json` | nein | Kontrollkästchen | #495 |
+| Allgemein | Updates installieren (`updates.install`: off nur Hinweis wie bisher, ask auf Klick „Herunterladen und beim Beenden installieren“, auto gleich laden); Kanal (`updates.channel`: stable, prerelease auch Vorabversionen); neue Module eines Updates (`updates.newModules`: ask Auswahl zeigen, install mit installieren, skip nicht installieren). Geladen und geprüft wird im Hintergrund nach `%LOCALAPPDATA%\Atlas\Updates\<Version>`, getauscht beim Beenden der IDE von `AtlasUpdate.exe` mit Rückfall; gesperrt bei einer Installation über GetIt, ohne `AtlasUpdate.exe` oder ohne Schreibrechte im Atlas-Ordner. Wirkt nur mit `updates.check` | ask, stable, ask | Plugin (Registry `UpdatesInstall`, `UpdatesChannel`, `UpdatesNewModules`); abgelehnte neue Module in `%LOCALAPPDATA%\Atlas\Updates\declined.txt` | nein | Auswahllisten | #1519 |
 | Allgemein | Fehlerbericht (*Atlas › Fehlerbericht erstellen…*) anonymisieren: Pfade unter dem Projekt zu `<ws>`, andere Pfade zu `<pfad>`, Benutzername und Bezeichner im Protokoll ersetzen (`diagnostics.bugReport.anonymize`) | an | Plugin (Registry `BugReportAnonymize`) | nein | Kontrollkästchen | #108 |
+| Allgemein | Protokoll des Plugins (`atlas.log`) mit Klarnamen schreiben: Namen, Pfade und Meldungen im Klartext statt `name#N`, `datei#N.pas` und `text#N` (`diagnostics.log.names`) | aus | Plugin (Registry `LogNames`) | nein | Kontrollkästchen | #1478 |
 | Allgemein | Einstellungen exportieren, importieren und zurücksetzen (`settings.exportImport`, Schnellschalter): Knöpfe unten auf *Tools › Optionen › Atlas* und Befehle *Atlas.SettingsExport*, *Atlas.SettingsImport*, *Atlas.SettingsProfile*, *Atlas.SettingsReset* (Befehlspalette); geänderte Werte mit Punkt am Feld (`settings.markModified`), Sicherung in `%APPDATA%\Atlas\Backups` vor jedem Import (`settings.backupBeforeImport`), Zugangsdaten auslassen oder als Platzhalter (`settings.exportSecrets`: omit, placeholder); Bereiche siehe unten | an, an, an, omit | Plugin (Registry `SettingsExportImport`, `SettingsMarkModified`, `SettingsBackupBeforeImport`, `SettingsExportSecrets`) | nein | Kontrollkästchen, Auswahl, Knöpfe „Exportieren…“, „Importieren…“, „Profil laden…“, „Seite zurücksetzen“, „Alles zurücksetzen…“, Kontextmenü „Auf Standard zurücksetzen“ | #723 |
 | Vervollständigung | Favoriten anheften (`completion.favorites`, Schnellschalter): Strg+D in der offenen Liste oder Klick auf den Stern, der beim Überfahren einer Zeile erscheint, heftet den Eintrag an bzw. löst ihn; angeheftete Einträge stehen mit Stern links vor allen anderen Gruppen, unabhängig von Lernen und Rangfolge, aber nur, wenn sie zum getippten Präfix passen; je Paar (Typ, Member) wie die lernende Gewichtung, höchstens 5 je Typ (ein sechster ersetzt nichts, die Fußzeile nennt den Grund); Liste mit „Entfernen“ und „Alle entfernen“ auf der Optionsseite | an | Plugin (Registry `Favorites`); Favoriten in `%APPDATA%\Atlas\favorites.json` (Typ, Member, Art, Unit, Signatur, Zeitpunkt; lesbar ohne Server) | nein | Kontrollkästchen, Liste mit Knöpfen | #458 |
 | Editor | Zwischen Unit und Testunit wechseln: Code Lens über der Zeile `unit …;` (`codeLens.testUnit`) und Tastenkürzel (Befehl auch im Atlas-Menü, Kontextmenü und in der Befehlspalette) | an, keins | Plugin (Registry `CodeLensTestUnit`, `TestUnitKey`) | nein | Kontrollkästchen, Tastenkürzel | #189 |
@@ -142,6 +147,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Editor | Fehlertext am Zeilenende (`editor.inlineDiagnostics`: `off`, `errors`, `errorsAndWarnings`, `all`): hinter dem letzten Zeichen steht gekürzt der Text der schwersten Diagnose der Zeile in ihrer Farbe, gedimmt; weitere als „(+2)“; in der Cursorzeile erst nach 1 s Tipp-Pause; teilt den Platz mit Inlay-Hints und Blockende-Beschriftungen; nur mit `problems.enabled` | errors | Plugin (Registry `InlineDiagnostics`) | nein | Auswahl | #509 |
 | Compiler | Zähler „Fehler/Warnungen/Hinweise“ in der Statusleiste (`problems.statusCounter`): zählt wie die Liste „Atlas-Probleme“ (ohne Compilermeldungen); ein Klick öffnet die Liste; ausgeblendet, solange die Atlas-Statusleiste am Editor ihre Befundzähler zeigt (#1155) | an | Plugin (Registry `ProblemsStatusCounter`) | nein | Kontrollkästchen | #509 |
 | Befehle | Nächster bzw. vorheriger Befund in der Datei (`keys.nextProblem`, `keys.previousProblem`; leer = keins; auch Befehlspalette *Atlas.NextProblem*/*Atlas.PreviousProblem* und Atlas-Untermenü im Editor-Kontextmenü): springt über alle Atlas-Diagnosen der Datei, am Ende wieder von vorn | Strg+Alt+F8, Strg+Alt+Umschalt+F8 | Plugin (Registry `NextProblemKey`, `PreviousProblemKey`) | nein | Tastenkürzel | #509 |
+| Befehle | Tastenkürzel für „Datei jetzt prüfen“ (`keys.checkFile`; leer = keins; auch Befehlspalette *Atlas.CheckFile*, Atlas-Untermenü im Editor-Kontextmenü und Tastenkürzel-Übersicht; Vorrang wie die Editorbefehle): prüft die offene Datei sofort, auch ungespeichert, in jedem Modus von `problems.update` (im Live-Modus ohne die Wartezeit); ohne `problems.enabled` bleibt das Kürzel frei | Strg+Umschalt+Alt+P | Plugin (Registry `CheckFileKey`) | nein | Tastenkürzel | #1744 |
 | Editor | Ausblenden direkt am Element (#628): Rechtsklick auf Code Lens, Blockende-Beschriftung oder Inlay-Hint, für Unterstreichungen, Randsymbole (Notizen, Lesezeichen), Klammerfarben, Blocklinien, Abblendungen und die Vorschau der Vervollständigung der Eintrag „Element ausblenden …“ im Editor-Kontextmenü (gilt für die Stelle des Rechtsklicks) oder Strg+. (an der Cursorzeile) bietet „Nur hier ausblenden“ (bei Befunden mit Regel ein Unterdrückungskommentar `// lsp-ignore: <Regel>` über der Zeile, #147; sonst ein Eintrag im Abschnitt `hidden` der Projektdatei `.atlas`), „In dieser Datei ausblenden“ (`// lsp-ignore-file: <Regel>` am Dateianfang bzw. Eintrag ohne `anchor`; Elemente, die nur ganze Dateien kennen, bieten nur diesen und „überall“), „… überall ausblenden“ (schaltet die Einstellung des Elements aus, alle verschwinden sofort) und „Einstellungen dazu …“ (öffnet *Tools › Optionen › Atlas* mit der Zeile hervorgehoben); danach kurz „Ausgeblendet · Rückgängig“ (Benachrichtigungsquelle `hidden`); Befehl *Atlas.HideElement* in der Befehlspalette; Taste (`keys.hideElement`, Reiter *Befehle*; leer = keins; Vorrang wie die Editorbefehle, sonst bleibt Strg+. bei der IDE) | Strg+. | Plugin (Registry `HideElementKey`); „Nur hier“ und „In dieser Datei“ ohne Regel in `.atlas` (braucht `teamFile.enabled`) | nein | Tastenkürzel | #628 |
 | Befehle | Erzeugen-Menü (`keys.generateMenu`, Schnellschalter): Alt+Einfg, *Atlas › Erzeugen…*, Atlas-Untermenü im Editor-Kontextmenü und Befehlspalette (*Atlas.GenerateMenu*) öffnen am Cursor ein Menü mit den Gruppen Erzeugen (Schnellbefehle mit Ortsregel aus #293, „Interface implementieren“, Code-Aktionen der Art refactor), Umschließen (nur mit Markierung) und Vorlagen (Code-Vorlagen mit passendem `context:`); jede Zeile mit Ziffer 1–9 und `/name`, Tippen filtert unscharf, zuletzt gewählte stehen oben, Einträge mit Auswahl (Felder, Methoden) öffnen sie; Entf blendet einen Eintrag aus; aus: die Funktion ruht, Alt+Einfg bleibt frei | an | Plugin (Registry `GenerateMenu`); zuletzt gewählte in `%APPDATA%\Atlas\generate-recent.txt` | nein | Kontrollkästchen | #719 |
 | Befehle | Tastenkürzel des Erzeugen-Menüs (`keys.generateMenu.key`; leer = keins) | Alt+Einfg | Plugin (Registry `GenerateMenuKey`) | nein | Tastenkürzel | #719 |
@@ -171,7 +177,7 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 | Units suchen | Aktionsleiste (`unitSearch.actions`) | an | Plugin (Registry `UnitSearchActions`) | nein | Kontrollkästchen | #777 |
 | Units suchen | Aktion „In uses aufnehmen“ (`unitSearch.actions.addUses`) | an | Plugin (Registry `UnitSearchActionsAddUses`) | nein | Kontrollkästchen | #777 |
 | Willkommensseite | Atlas-Willkommensseite auf der Willkommensseite der IDE und im andockbaren Fenster „Atlas-Start“ (*Ansicht › Atlas-Start*, Atlas-Menü, *Atlas.WelcomeStart* in der Palette; der Desktop der IDE stellt es wieder her) (`welcomePage.enabled`, Schnellschalter), Atlas-Bereiche auf der Willkommensseite der IDE (`welcomePage.ideWelcomePage`, unabhängig vom Fenster; aus = Bereiche weg und Layout der IDE wiederhergestellt), Atlas-Layout dort (`welcomePage.layout`: off = einzelne Bereiche, atlas = ein Bereich „Atlas“ oben über alle Spalten; Befehle *Atlas-Layout anwenden* und *Atlas-Layout zurücksetzen*), Fenster „Atlas-Start“ beim Start der IDE öffnen (`welcomePage.openOnStart`), öffnen, sobald das letzte Projekt bzw. die Projektgruppe geschlossen ist (`welcomePage.openWhenNoProject`; nicht beim Beenden der IDE), Kopf mit Symbol und Version (`welcomePage.header`), Grußzeile (`welcomePage.greeting`), Suchfeld im Kopf (`welcomePage.search`), Gruppe „Symbole“ darin (`welcomePage.search.symbols`, braucht laufenden Server), Taste für das Suchfeld (`welcomePage.search.key`, auf der sichtbaren Willkommensseite der IDE bzw. bei Fokus im Fenster „Atlas-Start“), Karte „Neu in Atlas“ (`welcomePage.whatsNew`: off = nie, afterUpdate = einmalig nach einem Update, always = immer), Bereich „Weiterarbeiten“ mit den letzten Arbeitsständen (Reiter, zuletzt bearbeitete Datei und Methode, „Fortsetzen“ öffnet Projekt und Reiter und setzt den Cursor an die letzte Änderung; *Atlas.Continue* in der Palette) (`welcomePage.continue`; aus = kein Bereich, nichts wird mitgeschrieben), höchstens so viele Arbeitsstände (`welcomePage.continue.count`, 1–20), „Neu seit deinem letzten Öffnen“ mit eingehenden Commits zu den eigenen Dateien aus dem lokalen Stand der Remote-Branches (`welcomePage.continue.incoming`), vorher abrufen (`welcomePage.continue.fetch`: fetch im Hintergrund, 5 s, ohne Rückfrage nach Zugangsdaten), Reiter „Gemerkt“ mit Notizen, Lesezeichen und Favoriten aller Projekte (`welcomePage.saved`), Bereich „Projekte“ mit Zustand je Projekt (`welcomePage.projectStatus`), höchstens so viele Projekte (`welcomePage.maxProjects`, 1–30), Branch und Änderungen frisch abfragen (`welcomePage.refreshVcs`), Bereich „Projektverlauf“ mit einer Linie je Reihe über die letzten Builds des in „Projekte“ gewählten (sonst obersten) Projekts, letzter Wert, Vorwert, Lücke für unbekannte Werte, Klick auf einen Punkt zeigt Build, Datum, Branch und Commit; Klick auf eine Projektzeile wählt sie dann, Doppelklick öffnet (`welcomePage.trends`; aus = kein Bereich, keine neuen Messpunkte, Klick öffnet wieder), gespeicherte und gezeigte Builds je Projekt (`welcomePage.trends.points`, 2–100), gezeigte Reihen (`welcomePage.trends.series`: Liste aus warnings, ruleHits, todos, duration, methodLength), Bereich „Nicht gesichert“ mit nicht Committetem, nicht Gepushtem und Stashes je Projekt (`welcomePage.unsaved`), erst ab so vielen Stunden zeigen (`welcomePage.unsaved.minAgeHours`, 0–8760), gelb ab (`welcomePage.unsaved.warnHours`, 0–8760), rot ab (`welcomePage.unsaved.alertHours`, 0–8760, nie unter warnHours), Bereich ausblenden, wenn alles gesichert ist (`welcomePage.unsaved.hideWhenClean`; sonst Zeile „Alles gesichert“), Zustandskachel „Atlas“ mit Server, Version, Index, Einrichtung und Diagnosemodus (`welcomePage.statusTile`), Kachel nur bei einer gelben oder roten Zeile (`welcomePage.statusTile.onlyProblems`), Karte „Atlas entdecken“ mit einem Tipp je Start aus `tips.json` der Installation, Bild, tatsächlichem Kürzel und „Noch nie benutzt“/„Zuletzt vor 3 Wochen“, Knöpfe „Ausprobieren“, „Nächster Tipp“, „Nicht mehr zeigen“ (`welcomePage.discover`; zuerst eingeschaltete, nie benutzte Funktionen, dann lange nicht benutzte; abgeschaltete nie), Nutzung je Befehl lokal zählen (`tips.usageTracking`; aus = Tipps der Reihe nach, es wird nichts gezählt), Knöpfe „Zählung zurücksetzen“ und „Gesperrte Tipps wieder zeigen“, Bereich „Hilfe und Rückmeldung“ mit „Atlas-Doku“ (lokale HTML-Doku `Doku\index.html` der Installation, sonst die Doku-Seite des Repositorys), „Tastenkürzel“ (Übersicht aus #520, ausgegraut mit `keys.overview` aus) und „Problem melden …“ (Dialog: Kurzbeschreibung, Häkchen für Logs, Versionen, Einstellungen ohne Pfade und letzte Diagnosedaten, Vorschau jeder Datei, „ZIP anlegen“ schreibt `Atlas-Diagnose-<Datum>.zip` und zeigt sie im Explorer, „Issue-Seite öffnen“ legt die Vorlage in die Zwischenablage und öffnet die Seite im Browser; Atlas sendet nichts) (`welcomePage.help`), Ziel für „Issue-Seite öffnen“ (`welcomePage.help.reportUrl`, nur http:// oder https://, sonst die Vorgabe), Ordner für das Diagnosepaket (`welcomePage.help.reportFolder`, leer = Desktop), Karte „<Projekt> für Atlas einrichten“ für das aktive bzw. zuletzt geöffnete Projekt mit den Schritten atlas.json anlegen (Vorlage „Bestehendes Projekt“, „Neues Projekt, streng“ oder „Altprojekt mit Baseline“ aus dem Ordner `Vorlagen` der Installation, vorher gegen das Schema geprüft und gezeigt), Baseline erzeugen (#97) und Suchpfade und Defines prüfen (fehlende Units aus uses, Defines ohne Quelle; Klick öffnet die Projektoptionen), jeder Schritt nur auf Klick, „Für dieses Projekt nicht mehr fragen“ dauerhaft, *Atlas.ProjectSetup* in der Palette fragt wieder (`welcomePage.projectSetup`, Schnellschalter; aus = keine Karte, keine Knöpfe, kein Befehl), Knöpfe „Neu mit Atlas“ (Unit, Formular, Testklasse) öffnen das Erzeugen-Menü mit den Dateivorlagen und legen die Datei im aktuellen Projekt an (`welcomePage.newFromTemplate`), Bereich „Testergebnisse“ mit einer Zeile je Projekt aus dem letzten DUnitX-Lauf in der IDE (#69: Ampel, Marke „2 fehlgeschlagen“ bzw. „alle 57 ok“, bestanden, übersprungen, Dauer, Zeit), darunter die fehlgeschlagenen Tests des gewählten Projekts mit Meldung und Datei:Zeile, Doppelklick öffnet Projekt und Test, „Fehlgeschlagene erneut ausführen“ startet genau diese Tests, „Im Debugger“ den gewählten (#585) (`welcomePage.tests`), höchstens so viele Fehlschläge (`welcomePage.tests.maxFailures`, 1–50), Ergebnisse vom Build-Server (`welcomePage.tests.ci`; Server, Job und Multibranch aus dem Abschnitt `ci` der `.atlas`, bei Multibranch der Job des aktuellen Branches; REST `…/lastCompletedBuild/api/json` und `…/testReport/api/json`; zweite Zeile „Jenkins #482 · 2 fehlgeschlagen · vor 40 Min. · main“, Server-Fehlschläge in derselben Liste mit Marke „Server“, „lokal grün, Server rot“ hervorgehoben, „Im Browser“ öffnet die Seite des Builds; abgefragt beim Anzeigen im Hintergrund mit 5 s Zeitgrenze; nicht erreichbar = letzter Stand mit „Stand vom …“, kein Dialog; aus = kein Netzzugriff, `.atlas` wird dafür nicht gelesen), Anbieter, wenn die `.atlas` keinen nennt (`welcomePage.tests.ci.provider`: jenkins), höchstens alle so viele Minuten je Job (`welcomePage.tests.ci.intervalMinutes`, 1–1440, auch nach einem Fehler und über einen Neustart hinweg), Hinweis in der Benachrichtigungszentrale, wenn ein neuer Build rot wird (`welcomePage.tests.ci.notify`, Quelle `buildServer`, mit „Im Browser“), Befehl „Zugang zum Build-Server hinterlegen …“ (*Atlas.CiLogin*, Schnellschalter; auch im Kontextmenü des Bereichs): Benutzer und API-Token für den Server aus der `.atlas` des aktiven Projekts im Anmeldespeicher von Windows (Ziel `Atlas:ci:<Server>`), das Token verdeckt eingegeben, beide Felder leer entfernt den Zugang; angemeldet wird nur über https und nur beim eingetragenen Server, Weiterleitungen nur auf denselben Rechner; Adresse, Job, Benutzer und Token kommen nie ins Protokoll, Schnellaktionen je Projekt in „Projekte“ und „Weiterarbeiten“: Knöpfe in der Zeile unter der Maus bzw. der Tastatur „Öffnen und bauen ▾“ (öffnet Projekt bzw. Gruppe wie die IDE und baut mit der zuletzt benutzten oder gewählten Konfiguration und Plattform, Release-Wächter #533 gilt), „Tests“ (baut das zugehörige DUnitX-Testprojekt und führt es aus, #69; Ergebnis auch in „Testergebnisse“), „Startprofil ▾“ (#575), „Pull“ bzw. bei SVN „Aktualisieren“ (nur vorwärts, gesperrt bei lokalen Änderungen: „Erst lokale Änderungen sichern“), „Ordner“ (Explorer) und „Konsole“; Fortschritt „baut … 12 s“ in der Zeile, Ergebnis als Marke; ohne Maus über Pfeiltasten, Enter, Alt+↓ und Kontextmenütaste (`welcomePage.quickActions`, Schnellschalter; aus = keine Knöpfe, die Tasten bleiben bei der IDE), gezeigte Knöpfe (`welcomePage.quickActions.items`: Liste aus build, tests, run, pull, folder, console), Programm für „Konsole“ im Projektordner (`welcomePage.quickActions.console`; ohne Windows-Terminal cmd.exe), Taste für „Öffnen und bauen“ (`welcomePage.quickActions.buildKey`) und für „Tests“ (`welcomePage.quickActions.testKey`), beide nur in einer Zeile mit Fokus, Bereich „Meine Issues · <Projekt>“ mit den mir zugewiesenen offenen Issues aus dem Tracker der `.atlas` des in „Projekte“ gewählten, sonst des aktiven Projekts (Abschnitt `tracker`; GitHub: Vorgabe-Abfrage `assignee:@me state:open`, Kennung `#123`, Labels und verknüpfter Pull Request mit CI-Ampel; YouTrack: Vorgabe `for: me #Unresolved`, Kennung `ATL-123`, Zustand, Priorität und Sprint), Klick auf die Kennung öffnet das Issue im Browser, abgefragt beim Anzeigen höchstens alle 10 Minuten im Hintergrund mit 5 s Zeitgrenze, nicht erreichbar = letzter Stand mit „Stand vom …“, kein Dialog; „Beginnen“ legt unter Git den Branch nach Muster von der Basis an und checkt ihn aus (vorhandener Branch: nur auschecken; bei lokalen Änderungen fragt Atlas vorher), unter SVN `svn copy ^/trunk ^/branches/<Name>` und `svn switch`, und öffnet danach das Projekt; das aktuelle Issue steht im Atlas-Statusfeld (Zeile `atlas.issue`, Klick beendet es nach Rückfrage) (`welcomePage.issues`, Schnellschalter; aus = kein Bereich, kein Netzzugriff); Tracker, Abfrage, Muster und Zugang stehen seit #1280 auf der Seite Issue-Tracker („Tracker-Einstellungen …“), frei anordnen mit „Seite anpassen“ (Leiste unter dem Kopf, Kontextmenü der Bereiche, *Atlas.WelcomeCustomize* in der Palette): Griff zum Ziehen und Strg+Pfeiltasten, Breite und Auge je Bereich, „Bereich hinzufügen“, „Zurücksetzen“, Leiste „Ausgeblendet“, benannte Layouts mit Umschalter im Kopf; Ausblenden schaltet die Einstellung des Bereichs (`welcomePage.customLayout`, Schnellschalter; aus = kein Bearbeitungsmodus, festes Atlas-Layout), Spalten der Seite (`welcomePage.columns`, 1–3), aktives Layout (`welcomePage.activeLayout`, leer = Standard), Layouts mit Plätzen, Breiten, Spalten und Sichtbarkeit (`welcomePage.layouts`, JSON, leer = ein Layout „Standard“ wie das Atlas-Layout); Bereich „Sprint“ (`welcomePage.sprint`, #1277): aktueller Sprint des Boards aus #1272 (YouTrack-Agile-Board bzw. GitHub-Projekt mit Iterationen) mit Name, Zeitraum und „noch n Tage“ (Arbeitstage laut YouTrack, sonst Montag bis Freitag), „meine offen“, „meine erledigt“ und „Team übrig“ (Punkte des Schätzfeldes, sonst Anzahl) und Burndown; Klick auf „meine offen“/„meine erledigt“ filtert „Meine Issues“ („Gefiltert: … · alle zeigen“), „Team übrig“ und Diagramm öffnen das Board, der Titel das Board im Browser; ohne Tracker „Kein Board für dieses Projekt – zuordnen …“; lädt beim Anzeigen und mit „Meine Issues“ höchstens alle 10 Minuten, letzter Stand in `%LOCALAPPDATA%\Atlas\issues\<Tracker>-sprint.json` mit „Stand vom …“ ohne Netz | an, aus, an, an, an, an, an, Strg+E, afterUpdate, an, 5, an, aus, an, an, 8, an, an, 30, alle fünf, an, 0, 24, 72, aus, an, aus, an, an, an, Issue-Seite des Atlas-Repositorys, Desktop, an, an, an, 5, aus, jenkins, 10, an, an, an, alle sechs, wt.exe, Strg+B, Strg+T, aus, an, 2, Standard, leer, an | Plugin (Registry `WelcomePage`, `WelcomePageIdePage`, `WelcomePageLayout`, `WelcomePageOpenOnStart`, `WelcomePageOpenWhenNoProject`, `WelcomePageHeader`, `WelcomePageGreeting`, `WelcomePageSearch`, `WelcomePageSearchSymbols`, `WelcomePageSearchKey`, `WelcomePageWhatsNew`, `WelcomePageContinue`, `WelcomePageContinueCount`, `WelcomePageContinueIncoming`, `WelcomePageContinueFetch`, `WelcomePageSaved`, `WelcomePageProjectStatus`, `WelcomePageMaxProjects`, `WelcomePageRefreshVcs`, `WelcomePageTrends`, `WelcomePageTrendsPoints`, `WelcomePageTrendsSeries`, `WelcomePageUnsaved`, `WelcomePageUnsavedMinAgeHours`, `WelcomePageUnsavedWarnHours`, `WelcomePageUnsavedAlertHours`, `WelcomePageUnsavedHideWhenClean`, `WelcomePageStatusTile`, `WelcomePageStatusTileOnlyProblems`, `WelcomePageDiscover`, `TipsUsageTracking`, `WelcomePageHelp`, `WelcomePageHelpReportUrl`, `WelcomePageHelpReportFolder`, `WelcomePageProjectSetup`, `WelcomePageNewFromTemplate`, `WelcomePageTests`, `WelcomePageTestsMaxFailures`, `WelcomePageTestsCi`, `WelcomePageTestsCiProvider`, `WelcomePageTestsCiIntervalMinutes`, `WelcomePageTestsCiNotify`, `CiLogin`, `WelcomePageQuickActions`, `WelcomePageQuickActionsItems`, `WelcomePageQuickActionsConsole`, `WelcomePageQuickActionsBuildKey`, `WelcomePageQuickActionsTestKey`, `WelcomePageIssues`, `WelcomePageSprint`, `WelcomePageCustomLayout`, `WelcomePageColumns`, `WelcomePageActiveLayout`, `WelcomePageLayouts`; gesehene Version in `WhatsNewSeen`); Zählung je Befehl (nur Kennung, Zähler, Datum, nichts wird versendet) in `%LOCALAPPDATA%\Atlas\usage.json`, gesperrte und zuletzt gezeigter Tipp im Abschnitt `discover` von `%LOCALAPPDATA%\Atlas\shortcut-tips.json`; eine Sicherung `%LOCALAPPDATA%\Atlas\welcomepage-layout-backup.json` früherer Fassungen schreibt Atlas beim Start einmal zurück und löscht sie, sonst nimmt es seine Bereiche aus dem Layout der IDE (Marke `welcomepage-layout-pending`, bis die IDE den Stand übernommen hat), Projektzustand (auch Abschnitte `unsaved`, `continue`, `trends`, `setup`, `tests`, `ci` und `issues`, die beiden letzten mit letztem Stand, Zeit des letzten Versuchs und Fehlerart, ohne Zugang; `issues` auch mit aktuellem Issue und Zustimmung zum Git-Hook) in `%LOCALAPPDATA%\Atlas\projects\<Schlüssel>.json`, letzter Index-Stand der Kachel („Stand vom …“) in `%LOCALAPPDATA%\Atlas\index-state.json` | nein | Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Tastenfeld, Auswahl, Kontrollkästchen, Zahl (1–20), Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Zahl (1–30), Kontrollkästchen, Kontrollkästchen, Zahl (2–100), fünf Kontrollkästchen, Kontrollkästchen, Zahl (0–8760), Zahl (0–8760), Zahl (0–8760), Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Knopf, Knopf, Kontrollkästchen, Textfeld, Textfeld mit „…“, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Zahl (1–50), Kontrollkästchen, Auswahl, Zahl (1–1440), Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, sechs Kontrollkästchen, Textfeld, Tastenfeld, Tastenfeld, Kontrollkästchen, Kontrollkästchen, Zahl (1–3), Auswahl mit „Neu …“, „Umbenennen …“ und „Löschen“, Bearbeitungsmodus der Seite, Kontrollkästchen | #753, #761, #1114, #760, #756, #755, #592, #758, #762, #754, #757, #766, #759, #763, #764, #765, #767, #1277 |
-| Issue-Tracker | Anbieter (`issues.tracker`: leer = aus der `.atlas`, github, youtrack), „Beginnen“ (`issues.start`: branch, remember = nur Kennung merken), Branch-Muster (`issues.branchPattern` mit `{kennung}`, `{nummer}` und `{kurztitel}` = erste drei Wörter, klein, Umlaute ersetzt, mit Bindestrichen; leer = `feature/{kennung}-{kurztitel}`, unter SVN `{kennung}-{kurztitel}`), Basis (`issues.branchBase`, leer = main, sonst master; SVN trunk), Präfix für Commit-Nachrichten, solange ein Issue aktuell ist (`issues.commitPattern`, leer = aus; im Commit-Dialog der IDE und nach einmaliger Zustimmung je Projekt über den Git-Hook `prepare-commit-msg`, der den Präfix aus `.git/atlas-commit-prefix` liest; einen fremden Hook ändert Atlas nie), Befehl „Zugang zum Issue-Tracker hinterlegen …“ (`issues.login`, *Atlas.TrackerLogin*, Schnellschalter; auch im Kontextmenü des Bereichs): Token für den Tracker aus der `.atlas` des aktiven Projekts im Anmeldespeicher von Windows (Ziel `Atlas:tracker:<Server>`), verdeckt eingegeben, leer entfernt es; gesendet als „Authorization: Bearer“ nur über https an den Tracker; Adresse, Projekt, Kennungen, Titel und Token kommen nie ins Protokoll; Tabelle „Verbindungen“ (`issues.connections`, #1260): mehrere persönliche Tracker je Name, Anbieter und https-Adresse in settings.json, Token je Server im Anmeldespeicher mit Zustand (fehlt, gespeichert, geprüft, abgelehnt, nicht erreichbar) und „Prüfen“ gegen den angemeldeten Benutzer; Verbindungen aus der `.atlas` erscheinen schreibgeschützt; Tabelle „Projekte“ (`issues.projects`, #1261): Delphi-Projekte ohne `tracker` in der `.atlas` persönlich einem Tracker-Projekt zuordnen („Gilt für“ = `.dproj`, `.groupproj` oder Ordner, Verbindung, Tracker-Projekt); es gilt die `.atlas`, sonst die Zeile für genau diese `.dproj`, sonst die für die geöffnete `.groupproj`, sonst der längste passende Ordner (Pfade ohne Groß-/Kleinschreibung, auch UNC); „Aktuelles Projekt hinzufügen“, „Hinzufügen …“, Entfernen; ohne Zuordnung bietet „Meine Issues“ „zuordnen …“ an; Tabelle „Abfragen“ (`issues.queries`, #1262): benannte Abfragen (Name, Abfrage, Verbindung, Tracker-Projekt; leere Verbindung bzw. leeres Projekt = alle), in „Meine Issues“ nur die zur aufgelösten Verbindung und zum Projekt passenden; ohne passende gilt „Mir zugewiesen“ mit der Vorgabe des Anbieters; die frühere Einstellung `issues.query` übernimmt Atlas als Abfrage „Standard“ vorn (eine Zeile im Protokoll); Klappliste der Abfragen im Kopf von „Meine Issues“ mit Treffern je Abfrage, Auswahl je Projekt gemerkt, „Abfragen bearbeiten …“ öffnet diese Seite, Zeile „Abfrage: …“ unter der Liste (`issues.queryPicker`; aus = erste passende Abfrage, keine Klappliste); „Bearbeiten …“ bzw. Doppelklick öffnet den Dialog „Abfrage bearbeiten“ (#1263) mit Vorlagen (YouTrack auf Deutsch und Englisch: Mir zugewiesen, Aktueller Sprint, Von mir erstellt, Kürzlich geändert; GitHub mit englischen Suchbegriffen) und „Testen“: einmal an den Tracker (5 s), Ergebnis „N Issues gefunden“ mit den ersten Kennungen oder die Ursache (kein Token, abgelehnt, Projekt unbekannt, Abfrage abgelehnt mit der Meldung des Trackers, Antwort nicht lesbar, nicht erreichbar) samt gesendeter Abfrage ohne Token, bei leerer Liste und deutscher Oberfläche der Tipp auf die deutsche Vorlage; „Prüfen“ erkennt die Sprache der YouTrack-Oberfläche (`language` an der Verbindung), die Vorgabe „Mir zugewiesen“ folgt ihr; Befehl „Issue anlegen …“ (`issues.create`, #1268; *Atlas.CreateIssue* in Palette und Editor-Kontextmenü, Taste `keys.createIssue` ohne Vorgabe auf dem Reiter *Befehle*; im Fenster „Atlas-Prüfung“ „Für diesen Befund ein Issue anlegen …“, mehrere markierte Befunde ergeben ein Issue mit Liste): Titel aus der ersten Zeile der Auswahl bzw. dem TODO unter dem Cursor, Beschreibung mit Unit, Zeile, Methode, Branch und Commit, Codeausschnitt (Auswahl bzw. ±5 Zeilen) als eigenes Häkchen (`issues.create.includeCode`, Vorgabe an), Tracker aus der Zuordnung bzw. `.atlas` mit Klappliste der übrigen Verbindungen, Typ, Priorität und Zuständig mit Listen vom Tracker, „mir zuweisen“, „gleich beginnen“; nichts geht ohne „Anlegen“ hinaus; danach `// TODO ATL-130: …` (auch `{ TODO … }`, `(* TODO … *)`) bzw. auf Nachfrage `// ATL-130`, Kennung in der Zwischenablage, Benachrichtigung mit „Im Browser öffnen“; ein Fehler (z. B. 403) lässt den Code unverändert; Einstellungen unter `issues.*` (bis #1280 `welcomePage.issues.*`; gespeicherte Werte übernimmt Atlas beim ersten Start, eine Zeile je Übernahme im Protokoll); Issue-Vorschau (`issues.preview`, #1264, Schnellschalter): Klick auf ein Issue in „Meine Issues“ bzw. Befehl *Atlas.IssueShow* zeigt es im Dockfenster „Atlas-Issue“ mit Beschreibung (Markdown wie im Hover), Feldern, Anhängen, verknüpften Issues und Verlauf, Strg+Klick öffnet den Browser; Bilder und Anhänge nur vom Server des Tokens, Zwischenspeicher 7 Tage in `%LOCALAPPDATA%\Atlas\issues`; Kommentare laden (`issues.preview.comments`); Issue-Kennungen im Code (`issues.codeLinks`, #1265, Schnellschalter): `ATL-123`, `#42` und `owner/repo#42` in Kommentaren (in Literalen nur mit dem Commit-Präfix) gepunktet unterstrichen, Hover mit Titel, Zustand, Zuständig und Aktualisiert aus dem Zwischenspeicher der Vorschau (erst der Hover fragt den Tracker), Strg+Klick öffnet die Vorschau, Strg+Umschalt+Klick den Browser, Rechtsklick „Issue anzeigen“, „Im Browser öffnen“, „Kennung kopieren“, „Beginnen“, Issues in der Zeilenhistorie (`issues.blameLinks`, #1275, Schnellschalter): Kennungen aus der Commit-Nachricht hinter der Zeit der Zeilenhistorie („anna, vor 3 Mon. · ATL-97 · Betreff“; ganze Nachrichten lädt Atlas nach jedem blame im Hintergrund), Hover mit Titel und Zustand je Kennung aus dem Zwischenspeicher der Vorschau (sonst im Hintergrund geladen) und dem Link „Issues zu dieser Methode (n)“, Strg+Klick öffnet die Vorschau, Strg+Umschalt+Klick den Browser, Rechtsklick „Issue anzeigen“, „Im Browser öffnen“, „Kennung kopieren“, „Issues zu dieser Methode“; Befehl *Atlas.BlameIssues* „Issues zu dieser Methode“ (außerhalb einer Methode: Unit) listet im Ergebnisfenster je Issue Titel, Zustand, Zeit des letzten Commits und Anzahl der Commits (Git `log -L`, SVN `log --diff` rückwärts verfolgt), Klick öffnet die Vorschau, Doppelklick zeigt den Commit; höchstens durchsuchte Revisionen (`issues.blameLinks.maxRevisions`, 1–5000); Tracker beim Beginnen und Beenden nachführen (`issues.syncState`, #1266, Schnellschalter; aus = „Beginnen“ und „Beenden“ ändern im Tracker nichts): „Beginnen“ setzt nach dem Branch den Zustand (`issues.startState`, leer = nicht ändern; GitHub: Label), weist mir zu (`issues.assignOnStart`) und kommentiert (`issues.startComment`, leer = kein Kommentar), Ergebnis als Zeile in der Meldungsansicht, ein Fehler lässt den Branch stehen; „Beenden“ (Statusfeld, Kontextmenü, Knopf der Vorschau) zeigt den Dialog „ATL-123 beenden“ mit Zielzustand aus `issues.endStates` und „Zustand nicht ändern“, Kommentar aus `issues.endComment` mit `{branch}`, `{commits}`, `{pr}`, `{time}`, `{kennung}` (`\n` = neue Zeile) und „Zuständigkeit übergeben an …“; ohne „Senden“ wird nichts geschrieben, Fehler (403, 400) zeigt der Dialog mit dem Text des Trackers; in der Vorschau „Kommentar schreiben …“ (Markdown, Strg+Enter sendet); YouTrack über `POST /api/commands` mit Zustandsfeld (`issues.stateField`) und Benutzerfeld (`issues.assigneeField`), GitHub über Kommentar und PATCH (Labels, Zuständige, „Erledigt“ schließt); Zustandsfeld, Benutzerfeld, Zustand beim Beginnen und Zielzustände je Verbindung in `issues.connections` (`stateField`, `assigneeField`, `startState`, `endStates`), sonst die globalen Werte; Klapplisten „Werte vom Tracker laden“; Zeit je Issue erfassen (`issues.timeTracking`, #1267, Schnellschalter, aus = weder Anzeige noch Datei noch Dialog): die Uhr läuft, solange ein Issue aktuell und die IDE aktiv ist (Eingabe, Debugger-Lauf), Leerlauf über `issues.idleMinutes` hält sie an und wird nicht gezählt; Statusfeld „ATL-123 · 1:25“ mit Pause/Weiter, Zurücksetzen, Korrigieren; Speicher je Issue und Tag in `%LOCALAPPDATA%\Atlas\time.json` (Dateisperre, mehrere IDEs zählen nicht doppelt); beim Beenden bzw. Wechsel „… buchen?“ mit Dauer (gerundet auf `issues.timeRounding` Minuten), Arbeitstyp und Beschreibung, Knöpfe Buchen, Später, Verwerfen; YouTrack als Work Item, GitHub optional als Kommentar „Aufwand: …“; Befehl *Offene Zeitbuchungen …*; Checklisten in der Vorschau (`issues.preview.checklists`, #1273): Aufgabenlisten der Beschreibung (`- [ ]`, `* [x]`, `1. [ ]`, auch eingerückt, nicht in Codeblöcken) als Häkchen mit „3/5“ im Kopf; Abhaken lädt die aktuelle Beschreibung, prüft die Zeile (Text und Position), ändert nur `[ ]`/`[x]` und schreibt zurück (YouTrack `POST /api/issues/<Kennung>`, GitHub `PATCH …/issues/<n>`), wurde sie inzwischen geändert, schreibt Atlas nichts und lädt neu; „Punkt hinzufügen …“ hängt `- [ ] Text` an; ohne Schreibrecht nur lesend, Checklisten in Kommentaren nur lesend; aus = Liste als Text; Fortschritt des aktuellen Issues im Statusfeld (`issues.checklistStatus`, Zeile `atlas.issue.checklist` „ATL-131 · 3/5“, Klick öffnet die Vorschau an der Liste, ohne Checkliste keine Zeile); Verknüpfungen als Baum (`issues.preview.links`, #1279): hängt ab von, blockiert, Unteraufgaben mit Fortschritt (2/3), übergeordnet, Duplikate, „bezieht sich auf“ und Erwähnungen eingeklappt, je Zeile Symbol (offen, erledigt, blockiert), Kennung, Titel und Zustand, dazu „Unteraufgabe anlegen …“ und „Verknüpfen …“ (YouTrack und GitHub; aus: flache Liste); Warnung beim „Beginnen“, solange ein „hängt ab von“-Issue offen ist (`issues.warnBlocked`); Board (`issues.board`, #1272, *Atlas.Board*, Ansicht › Atlas › Board): Dockfenster „Atlas-Board“ mit den Spalten des Agile-Boards (YouTrack, Board und Sprint wählbar, „aktueller Sprint“ vorgewählt) bzw. des GitHub-Projekts (Status-Feld, Iterationen als Sprints; ohne Projekt oder ohne Berechtigung `read:project` Offen/Geschlossen mit Hinweis), Karten mit Kennung, Titel, Kürzel des Zuständigen, Prioritätsstreifen, Checklisten-Fortschritt und Schloss; „Nur meine“/„Alle“ (`issues.board.onlyMine` = Filter beim Öffnen), Suche, Aktualisieren; Ziehen in eine andere Spalte fragt nach (`issues.board.confirmMove`, „Nicht mehr fragen“ schaltet ab) mit optionalem Kommentar und schreibt über dieselben Wege wie „Beenden“ (YouTrack `POST /api/commands`, GitHub `updateProjectV2ItemFieldValue` bzw. Schließen/Öffnen), bei Fehler springt die Karte zurück; Doppelklick öffnet die Vorschau, Kontextmenü Beginnen, Im Browser öffnen, Mir zuweisen; das aktuelle Issue ist hervorgehoben; schmal (unter 360 Pixel) als Liste nach Spalten gruppiert; letzter Stand in `%LOCALAPPDATA%\Atlas\issues\<Tracker>-board.json`, offline mit Hinweis; Sprint-Kachel (#1277): Burndown mit Ist-Linie, gestrichelter Ideallinie, Marke „heute“ und Tooltip je Tag (`issues.sprint.burndown`), Vergleich mit dem vorherigen Sprint (blasse Linie auf Sprinttage normiert, „erledigt 5 · Vorsprint 4 am selben Tag ▲1“) und Velocity der letzten drei Sprints als Balken (`issues.sprint.compare`; aus = kein früherer Sprint wird gefragt; abgeschlossene Sprints einmal gefragt und als `<Tracker>-sprint-<Board>-<Sprint>.json` zwischengespeichert); Issues in der Befehlspalette suchen (`issues.paletteSearch`, #1270): `#Text` bzw. `ATL-Text` sucht im Tracker, `#42` bzw. `ATL-12` liest das Issue direkt, ein leeres `#` zeigt die zuletzt geöffneten ohne Netzabfrage; Enter Vorschau, Strg+Enter Beginnen, Umschalt+Enter Browser, Strg+C Kennung kopieren; Kommentar-Editor (`issues.commentEditor`, #1278) in der Vorschau und im Beenden-Dialog: „@“ schlägt Benutzer des Trackers vor (YouTrack Login und Name, GitHub zuweisbare Benutzer), „#“ bzw. `ATL-` Issues; Pfeile, Enter oder Tab, Esc; Strg+B fett, Strg+I kursiv, Strg+Umschalt+K Code-Block, „Vorschau“ mit dem Renderer der Issue-Vorschau; Entwürfe je Tracker, Issue und Feld in `%LOCALAPPDATA%\Atlas\issues\drafts.json` (2 s nach der letzten Änderung und beim Schließen, nach dem Senden gelöscht); aus = einfaches Textfeld; Tabelle „Textbausteine“ (`issues.commentSnippets`, Name und Text mit `{issue}`, `{branch}`, `{commit}`, `{version}`), einzufügen mit Strg+Leer oder „Textbaustein ▾“; Reiter „Entwicklung“ mit Branches und Commits zur Kennung, Pull Requests mit CI-Ampel bzw. verknüpften Änderungen und geänderten Units, gesucht erst beim Öffnen des Reiters (`issues.preview.development`); Meldungen zu meinen Issues (`issues.notify`, #1271, Schnellschalter): jede Verbindung (Tracker der `.atlas` und `issues.connections`) wird im Hintergrund nach Änderungen gefragt (YouTrack: geänderte Issues und ihre Aktivitäten, GitHub: `/notifications` bedingt mit If-Modified-Since), neue Kommentare anderer, Zuweisungen und Zustandswechsel erscheinen je Issue zusammengefasst in der Benachrichtigungszentrale (Quelle „Issues“, einblenden, nur sammeln oder aus wie andere Quellen), „Öffnen“ zeigt das Issue in „Atlas-Issue“ am ersten neuen Kommentar, betroffene Issues tragen in „Meine Issues“ einen Punkt, bis sie geöffnet wurden; eigene Änderungen meldet Atlas nicht, beim ersten Einschalten gilt „jetzt“; nur bei aktiver IDE (minimiert oder 30 min ohne Eingabe setzt aus, danach einmal nachgeholt), zusätzlich beim Öffnen von „Meine Issues“; ein Fehler (Token abgelehnt, nicht erreichbar) kommt einmal, bis zum nächsten Erfolg nicht wieder; Abstand (`issues.notify.intervalMinutes`, 2–1440; nach Fehlern verdoppelt bis 60 Minuten, GitHub mindestens X-Poll-Interval), Umfang (`issues.notify.scope`: assigned, assignedOrCreated, watched); „An Issue anhängen …“ (`issues.attach`, #1276, Schnellschalter; Atlas-Menü, *Atlas.IssueAttach* in der Palette, „Anhängen …“ im Fenster „Atlas-Issue“, Zeile `atlas.issue.attach` im Statusfeld unter dem aktuellen Issue): Bildschirmfoto des laufenden Programms (Hauptfenster des debuggten Prozesses oder per Klick gewählt) und Formular im Designer mit Rahmen, Pfeil und Schwärzen, Logdatei (auf Wunsch nur die letzten Zeilen), Debug-Notiz (Ort, Ausschnitt, Aufrufstapel, letzte Exception; Werte geheimer Namen als ***) und Exception-Verlauf in einem Schritt; der Dialog zeigt Namen und Größen, gesendet wird erst mit „Senden“; YouTrack lädt die Dateien hoch (`POST /api/issues/<Kennung>/attachments`) und schreibt auf Wunsch einen Kommentar mit Verweisen, GitHub bekommt Texte als Codeblock im Kommentar, Bilder liegen in der Zwischenablage (Hinweis „In GitHub mit Strg+V einfügen“) und der Browser öffnet das Issue; Dateien liegen nur bis zum Senden bzw. Abbrechen in `%TEMP%\Atlas\attach`; Logdateien zum Vorschlagen (`issues.attach.logFiles`, getrennt durch „;“, mit `$(ProjectDir)`, `$(ProjectName)`, Umgebungsvariablen und `*`), Bilder höchstens so breit (`issues.attach.maxImageWidth`, 320–7680) | leer, branch, leer, leer, `{kennung} `, an, keine, keine, keine, an, an, an, an, an, an, an, 200, an, an, State, Assignee, leer, aus, leer, leer, `Erledigt in {branch}.\n{commits}`, aus, 10, 5, an, an, an, an, an, an, an, an, an, an, an, zwei Bausteine („Bitte mit aktuellem Build prüfen“, „Behoben in {commit}“), an, aus, 10, assignedOrCreated, an, leer, 1920 | Plugin (Registry `IssuesTracker`, `IssuesStart`, `IssuesBranchPattern`, `IssuesBranchBase`, `IssuesCommitPattern`, `TrackerLogin`, `IssuesQueryPicker`, `IssuesCreate`, `IssuesCreateIncludeCode`, `CreateIssueKey`, `IssuesPreview`, `IssuesPreviewComments`, `IssuesCodeLinks`, `IssuesBlameLinks`, `IssuesBlameMaxRevisions`, `IssuesSyncState`, `IssuesStateField`, `IssuesAssigneeField`, `IssuesStartState`, `IssuesAssignOnStart`, `IssuesStartComment`, `IssuesEndStates`, `IssuesEndComment`, `IssuesTimeTracking`, `IssuesIdleMinutes`, `IssuesTimeRounding`, `IssuesPreviewChecklists`, `IssuesChecklistStatus`, `IssuesPreviewLinks`, `IssuesWarnBlocked`, `IssuesBoard`, `IssuesBoardConfirmMove`, `IssuesBoardOnlyMine`, `IssuesSprintBurndown`, `IssuesSprintCompare`, `IssuesPaletteSearch`, `IssuesCommentEditor`, `IssuesCommentSnippets`, `IssuesPreviewDevelopment`, `IssuesNotify`, `IssuesNotifyIntervalMinutes`, `IssuesNotifyScope`, `IssuesAttach`, `IssuesAttachLogFiles`, `IssuesAttachMaxImageWidth`; `issues.connections`, `issues.projects` und `issues.queries` in settings.json; Stand der Meldungen je Verbindung in `%LOCALAPPDATA%\Atlas\issues\notify.json`) | nein | Auswahl, Auswahl, Textfeld, Textfeld, Textfeld, Kontrollkästchen, Tabelle, Tabelle, Tabelle, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Zahl, Kontrollkästchen, Klappliste, Klappliste, Klappliste, Kontrollkästchen, Textfeld, Textfeld, Textfeld, Kontrollkästchen, Zahl (1–120), Zahl (1–60), Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Tabelle, Kontrollkästchen, Kontrollkästchen, Zahl (2–1440), Auswahl, Kontrollkästchen, Textfeld, Zahl (320–7680) | #765, #1280, #1260, #1261, #1262, #1268, #1264, #1265, #1275, #1266, #1267, #1273, #1279, #1272, #1277, #1270, #1278, #1269, #1271, #1276 |
+| Issue-Tracker | Anbieter (`issues.tracker`: leer = aus der `.atlas`, github, youtrack), „Beginnen“ (`issues.start`: branch, remember = nur Kennung merken), Branch-Muster (`issues.branchPattern` mit `{kennung}`, `{nummer}` und `{kurztitel}` = erste drei Wörter, klein, Umlaute ersetzt, mit Bindestrichen; leer = `feature/{kennung}-{kurztitel}`, unter SVN `{kennung}-{kurztitel}`), Basis (`issues.branchBase`, leer = main, sonst master; SVN trunk), Präfix für Commit-Nachrichten, solange ein Issue aktuell ist (`issues.commitPattern`, leer = aus; im Commit-Dialog der IDE und nach einmaliger Zustimmung je Projekt über den Git-Hook `prepare-commit-msg`, der den Präfix aus `.git/atlas-commit-prefix` liest; einen fremden Hook ändert Atlas nie), Befehl „Zugang zum Issue-Tracker hinterlegen …“ (`issues.login`, *Atlas.TrackerLogin*, Schnellschalter; auch im Kontextmenü des Bereichs): Token für den Tracker aus der `.atlas` des aktiven Projekts im Anmeldespeicher von Windows (Ziel `Atlas:tracker:<Server>`), verdeckt eingegeben, leer entfernt es; gesendet als „Authorization: Bearer“ nur über https an den Tracker; Adresse, Projekt, Kennungen, Titel und Token kommen nie ins Protokoll; Tabelle „Verbindungen“ (`issues.connections`, #1260): mehrere persönliche Tracker je Name, Anbieter und https-Adresse in settings.json, Token je Server im Anmeldespeicher mit Zustand (fehlt, gespeichert, geprüft, abgelehnt, nicht erreichbar) und „Prüfen“ gegen den angemeldeten Benutzer; Verbindungen aus der `.atlas` erscheinen schreibgeschützt; Tabelle „Projekte“ (`issues.projects`, #1261): Delphi-Projekte ohne `tracker` in der `.atlas` persönlich einem Tracker-Projekt zuordnen („Gilt für“ = `.dproj`, `.groupproj` oder Ordner, Verbindung, Tracker-Projekt); es gilt die `.atlas`, sonst die Zeile für genau diese `.dproj`, sonst die für die geöffnete `.groupproj`, sonst der längste passende Ordner (Pfade ohne Groß-/Kleinschreibung, auch UNC); „Aktuelles Projekt hinzufügen“, „Hinzufügen …“, Entfernen; ohne Zuordnung bietet „Meine Issues“ „zuordnen …“ an; Tabelle „Abfragen“ (`issues.queries`, #1262): benannte Abfragen (Name, Abfrage, Verbindung, Tracker-Projekt; leere Verbindung bzw. leeres Projekt = alle), in „Meine Issues“ nur die zur aufgelösten Verbindung und zum Projekt passenden; ohne passende gilt „Mir zugewiesen“ mit der Vorgabe des Anbieters; die frühere Einstellung `issues.query` übernimmt Atlas als Abfrage „Standard“ vorn (eine Zeile im Protokoll); Klappliste der Abfragen im Kopf von „Meine Issues“ mit Treffern je Abfrage, Auswahl je Projekt gemerkt, „Abfragen bearbeiten …“ öffnet diese Seite, Zeile „Abfrage: …“ unter der Liste (`issues.queryPicker`; aus = erste passende Abfrage, keine Klappliste); „Bearbeiten …“ bzw. Doppelklick öffnet den Dialog „Abfrage bearbeiten“ (#1263) mit Vorlagen (YouTrack auf Deutsch und Englisch: Mir zugewiesen, Aktueller Sprint, Von mir erstellt, Kürzlich geändert; GitHub mit englischen Suchbegriffen) und „Testen“: einmal an den Tracker (5 s), Ergebnis „N Issues gefunden“ mit den ersten Kennungen oder die Ursache (kein Token, abgelehnt, Projekt unbekannt, Abfrage abgelehnt mit der Meldung des Trackers, Antwort nicht lesbar, nicht erreichbar) samt gesendeter Abfrage ohne Token, bei leerer Liste und deutscher Oberfläche der Tipp auf die deutsche Vorlage; „Prüfen“ erkennt die Sprache der YouTrack-Oberfläche (`language` an der Verbindung), die Vorgabe „Mir zugewiesen“ folgt ihr; Befehl „Issue anlegen …“ (`issues.create`, #1268; *Atlas.CreateIssue* in Palette und Editor-Kontextmenü, Taste `keys.createIssue` ohne Vorgabe auf dem Reiter *Befehle*; im Fenster „Atlas-Prüfung“ „Für diesen Befund ein Issue anlegen …“, mehrere markierte Befunde ergeben ein Issue mit Liste): Titel aus der ersten Zeile der Auswahl bzw. dem TODO unter dem Cursor, Beschreibung mit Unit, Zeile, Methode, Branch und Commit, Codeausschnitt (Auswahl bzw. ±5 Zeilen) als eigenes Häkchen (`issues.create.includeCode`, Vorgabe an), Tracker aus der Zuordnung bzw. `.atlas` mit Klappliste der übrigen Verbindungen, Typ, Priorität und Zuständig mit Listen vom Tracker, „mir zuweisen“, „gleich beginnen“; nichts geht ohne „Anlegen“ hinaus; danach `// TODO ATL-130: …` (auch `{ TODO … }`, `(* TODO … *)`) bzw. auf Nachfrage `// ATL-130`, Kennung in der Zwischenablage, Benachrichtigung mit „Im Browser öffnen“; ein Fehler (z. B. 403) lässt den Code unverändert; Einstellungen unter `issues.*` (bis #1280 `welcomePage.issues.*`; gespeicherte Werte übernimmt Atlas beim ersten Start, eine Zeile je Übernahme im Protokoll); Issue-Vorschau (`issues.preview`, #1264, Schnellschalter): Klick auf ein Issue in „Meine Issues“ bzw. Befehl *Atlas.IssueShow* zeigt es im Dockfenster „Atlas-Issue“ mit Beschreibung (Markdown wie im Hover), Feldern, Anhängen, verknüpften Issues und Verlauf, Strg+Klick öffnet den Browser; Bilder und Anhänge nur vom Server des Tokens, Zwischenspeicher 7 Tage in `%LOCALAPPDATA%\Atlas\issues`; Kommentare laden (`issues.preview.comments`); Issue-Kennungen im Code (`issues.codeLinks`, #1265, Schnellschalter): `ATL-123`, `#42` und `owner/repo#42` in Kommentaren (in Literalen nur mit dem Commit-Präfix) gepunktet unterstrichen, Hover mit Titel, Zustand, Zuständig und Aktualisiert aus dem Zwischenspeicher der Vorschau (erst der Hover fragt den Tracker), Strg+Klick öffnet die Vorschau, Strg+Umschalt+Klick den Browser, Rechtsklick „Issue anzeigen“, „Im Browser öffnen“, „Kennung kopieren“, „Beginnen“, Issues in der Zeilenhistorie (`issues.blameLinks`, #1275, Schnellschalter): Kennungen aus der Commit-Nachricht hinter der Zeit der Zeilenhistorie („anna, vor 3 Mon. · ATL-97 · Betreff“; ganze Nachrichten lädt Atlas nach jedem blame im Hintergrund), Hover mit Titel und Zustand je Kennung aus dem Zwischenspeicher der Vorschau (sonst im Hintergrund geladen) und dem Link „Issues zu dieser Methode (n)“, Strg+Klick öffnet die Vorschau, Strg+Umschalt+Klick den Browser, Rechtsklick „Issue anzeigen“, „Im Browser öffnen“, „Kennung kopieren“, „Issues zu dieser Methode“; Befehl *Atlas.BlameIssues* „Issues zu dieser Methode“ (außerhalb einer Methode: Unit) listet im Ergebnisfenster je Issue Titel, Zustand, Zeit des letzten Commits und Anzahl der Commits (Git `log -L`, SVN `log --diff` rückwärts verfolgt), Klick öffnet die Vorschau, Doppelklick zeigt den Commit; höchstens durchsuchte Revisionen (`issues.blameLinks.maxRevisions`, 1–5000); Tracker beim Beginnen und Beenden nachführen (`issues.syncState`, #1266, Schnellschalter; aus = „Beginnen“ und „Beenden“ ändern im Tracker nichts): „Beginnen“ setzt nach dem Branch den Zustand (`issues.startState`, leer = nicht ändern; GitHub: Label), weist mir zu (`issues.assignOnStart`) und kommentiert (`issues.startComment`, leer = kein Kommentar), Ergebnis als Zeile in der Meldungsansicht, ein Fehler lässt den Branch stehen; „Beenden“ (Statusfeld, Kontextmenü, Knopf der Vorschau) zeigt den Dialog „ATL-123 beenden“ mit Zielzustand aus `issues.endStates` und „Zustand nicht ändern“, Kommentar aus `issues.endComment` (die unveränderte Vorgabe folgt der Sprache der IDE) mit `{branch}`, `{commits}`, `{pr}`, `{time}`, `{kennung}` (`\n` = neue Zeile) und „Zuständigkeit übergeben an …“; ohne „Senden“ wird nichts geschrieben, Fehler (403, 400) zeigt der Dialog mit dem Text des Trackers; in der Vorschau „Kommentar schreiben …“ (Markdown, Strg+Enter sendet); YouTrack über `POST /api/commands` mit Zustandsfeld (`issues.stateField`) und Benutzerfeld (`issues.assigneeField`), GitHub über Kommentar und PATCH (Labels, Zuständige, „Erledigt“ schließt); Zustandsfeld, Benutzerfeld, Zustand beim Beginnen und Zielzustände je Verbindung in `issues.connections` (`stateField`, `assigneeField`, `startState`, `endStates`), sonst die globalen Werte; Klapplisten „Werte vom Tracker laden“; Zeit je Issue erfassen (`issues.timeTracking`, #1267, Schnellschalter, aus = weder Anzeige noch Datei noch Dialog): die Uhr läuft, solange ein Issue aktuell und die IDE aktiv ist (Eingabe, Debugger-Lauf), Leerlauf über `issues.idleMinutes` hält sie an und wird nicht gezählt; Statusfeld „ATL-123 · 1:25“ mit Pause/Weiter, Zurücksetzen, Korrigieren; Speicher je Issue und Tag in `%LOCALAPPDATA%\Atlas\time.json` (Dateisperre, mehrere IDEs zählen nicht doppelt); beim Beenden bzw. Wechsel „… buchen?“ mit Dauer (gerundet auf `issues.timeRounding` Minuten), Arbeitstyp und Beschreibung, Knöpfe Buchen, Später, Verwerfen; YouTrack als Work Item, GitHub optional als Kommentar „Aufwand: …“; Befehl *Offene Zeitbuchungen …*; Checklisten in der Vorschau (`issues.preview.checklists`, #1273): Aufgabenlisten der Beschreibung (`- [ ]`, `* [x]`, `1. [ ]`, auch eingerückt, nicht in Codeblöcken) als Häkchen mit „3/5“ im Kopf; Abhaken lädt die aktuelle Beschreibung, prüft die Zeile (Text und Position), ändert nur `[ ]`/`[x]` und schreibt zurück (YouTrack `POST /api/issues/<Kennung>`, GitHub `PATCH …/issues/<n>`), wurde sie inzwischen geändert, schreibt Atlas nichts und lädt neu; „Punkt hinzufügen …“ hängt `- [ ] Text` an; ohne Schreibrecht nur lesend, Checklisten in Kommentaren nur lesend; aus = Liste als Text; Fortschritt des aktuellen Issues im Statusfeld (`issues.checklistStatus`, Zeile `atlas.issue.checklist` „ATL-131 · 3/5“, Klick öffnet die Vorschau an der Liste, ohne Checkliste keine Zeile); Verknüpfungen als Baum (`issues.preview.links`, #1279): hängt ab von, blockiert, Unteraufgaben mit Fortschritt (2/3), übergeordnet, Duplikate, „bezieht sich auf“ und Erwähnungen eingeklappt, je Zeile Symbol (offen, erledigt, blockiert), Kennung, Titel und Zustand, dazu „Unteraufgabe anlegen …“ und „Verknüpfen …“ (YouTrack und GitHub; aus: flache Liste); Warnung beim „Beginnen“, solange ein „hängt ab von“-Issue offen ist (`issues.warnBlocked`); Board (`issues.board`, #1272, *Atlas.Board*, Ansicht › Atlas › Board): Dockfenster „Atlas-Board“ mit den Spalten des Agile-Boards (YouTrack, Board und Sprint wählbar, „aktueller Sprint“ vorgewählt) bzw. des GitHub-Projekts (Status-Feld, Iterationen als Sprints; ohne Projekt oder ohne Berechtigung `read:project` Offen/Geschlossen mit Hinweis), Karten mit Kennung, Titel, Kürzel des Zuständigen, Prioritätsstreifen, Checklisten-Fortschritt und Schloss; „Nur meine“/„Alle“ (`issues.board.onlyMine` = Filter beim Öffnen), Suche, Aktualisieren; Ziehen in eine andere Spalte fragt nach (`issues.board.confirmMove`, „Nicht mehr fragen“ schaltet ab) mit optionalem Kommentar und schreibt über dieselben Wege wie „Beenden“ (YouTrack `POST /api/commands`, GitHub `updateProjectV2ItemFieldValue` bzw. Schließen/Öffnen), bei Fehler springt die Karte zurück; Doppelklick öffnet die Vorschau, Kontextmenü Beginnen, Im Browser öffnen, Mir zuweisen; das aktuelle Issue ist hervorgehoben; schmal (unter 360 Pixel) als Liste nach Spalten gruppiert; letzter Stand in `%LOCALAPPDATA%\Atlas\issues\<Tracker>-board.json`, offline mit Hinweis; Sprint-Kachel (#1277): Burndown mit Ist-Linie, gestrichelter Ideallinie, Marke „heute“ und Tooltip je Tag (`issues.sprint.burndown`), Vergleich mit dem vorherigen Sprint (blasse Linie auf Sprinttage normiert, „erledigt 5 · Vorsprint 4 am selben Tag ▲1“) und Velocity der letzten drei Sprints als Balken (`issues.sprint.compare`; aus = kein früherer Sprint wird gefragt; abgeschlossene Sprints einmal gefragt und als `<Tracker>-sprint-<Board>-<Sprint>.json` zwischengespeichert); Issues in der Befehlspalette suchen (`issues.paletteSearch`, #1270): `#Text` bzw. `ATL-Text` sucht im Tracker, `#42` bzw. `ATL-12` liest das Issue direkt, ein leeres `#` zeigt die zuletzt geöffneten ohne Netzabfrage; Enter Vorschau, Strg+Enter Beginnen, Umschalt+Enter Browser, Strg+C Kennung kopieren; Kommentar-Editor (`issues.commentEditor`, #1278) in der Vorschau und im Beenden-Dialog: „@“ schlägt Benutzer des Trackers vor (YouTrack Login und Name, GitHub zuweisbare Benutzer), „#“ bzw. `ATL-` Issues; Pfeile, Enter oder Tab, Esc; Strg+B fett, Strg+I kursiv, Strg+Umschalt+K Code-Block, „Vorschau“ mit dem Renderer der Issue-Vorschau; Entwürfe je Tracker, Issue und Feld in `%LOCALAPPDATA%\Atlas\issues\drafts.json` (2 s nach der letzten Änderung und beim Schließen, nach dem Senden gelöscht); aus = einfaches Textfeld; Tabelle „Textbausteine“ (`issues.commentSnippets`, Name und Text mit `{issue}`, `{branch}`, `{commit}`, `{version}`), einzufügen mit Strg+Leer oder „Textbaustein ▾“; die unveränderten Vorgaben folgen der Sprache der IDE (#1458); Reiter „Entwicklung“ mit Branches und Commits zur Kennung, Pull Requests mit CI-Ampel bzw. verknüpften Änderungen und geänderten Units, gesucht erst beim Öffnen des Reiters (`issues.preview.development`); Meldungen zu meinen Issues (`issues.notify`, #1271, Schnellschalter): jede Verbindung (Tracker der `.atlas` und `issues.connections`) wird im Hintergrund nach Änderungen gefragt (YouTrack: geänderte Issues und ihre Aktivitäten, GitHub: `/notifications` bedingt mit If-Modified-Since), neue Kommentare anderer, Zuweisungen und Zustandswechsel erscheinen je Issue zusammengefasst in der Benachrichtigungszentrale (Quelle „Issues“, einblenden, nur sammeln oder aus wie andere Quellen), „Öffnen“ zeigt das Issue in „Atlas-Issue“ am ersten neuen Kommentar, betroffene Issues tragen in „Meine Issues“ einen Punkt, bis sie geöffnet wurden; eigene Änderungen meldet Atlas nicht, beim ersten Einschalten gilt „jetzt“; nur bei aktiver IDE (minimiert oder 30 min ohne Eingabe setzt aus, danach einmal nachgeholt), zusätzlich beim Öffnen von „Meine Issues“; ein Fehler (Token abgelehnt, nicht erreichbar) kommt einmal, bis zum nächsten Erfolg nicht wieder; Abstand (`issues.notify.intervalMinutes`, 2–1440; nach Fehlern verdoppelt bis 60 Minuten, GitHub mindestens X-Poll-Interval), Umfang (`issues.notify.scope`: assigned, assignedOrCreated, watched); „An Issue anhängen …“ (`issues.attach`, #1276, Schnellschalter; Atlas-Menü, *Atlas.IssueAttach* in der Palette, „Anhängen …“ im Fenster „Atlas-Issue“, Zeile `atlas.issue.attach` im Statusfeld unter dem aktuellen Issue): Bildschirmfoto des laufenden Programms (Hauptfenster des debuggten Prozesses oder per Klick gewählt) und Formular im Designer mit Rahmen, Pfeil und Schwärzen, Logdatei (auf Wunsch nur die letzten Zeilen), Debug-Notiz (Ort, Ausschnitt, Aufrufstapel, letzte Exception; Werte geheimer Namen als ***) und Exception-Verlauf in einem Schritt; der Dialog zeigt Namen und Größen, gesendet wird erst mit „Senden“; YouTrack lädt die Dateien hoch (`POST /api/issues/<Kennung>/attachments`) und schreibt auf Wunsch einen Kommentar mit Verweisen, GitHub bekommt Texte als Codeblock im Kommentar, Bilder liegen in der Zwischenablage (Hinweis „In GitHub mit Strg+V einfügen“) und der Browser öffnet das Issue; Dateien liegen nur bis zum Senden bzw. Abbrechen in `%TEMP%\Atlas\attach`; Logdateien zum Vorschlagen (`issues.attach.logFiles`, getrennt durch „;“, mit `$(ProjectDir)`, `$(ProjectName)`, Umgebungsvariablen und `*`), Bilder höchstens so breit (`issues.attach.maxImageWidth`, 320–7680) | leer, branch, leer, leer, `{kennung} `, an, keine, keine, keine, an, an, an, an, an, an, an, 200, an, an, State, Assignee, leer, aus, leer, leer, `Erledigt in {branch}.\n{commits}` (englische IDE: `Done in {branch}.\n{commits}`), aus, 10, 5, an, an, an, an, an, an, an, an, an, an, an, zwei Bausteine („Bitte mit aktuellem Build prüfen“, „Behoben in {commit}“; englische IDE: „Please check with the current build“, „Fixed in {commit}“), an, aus, 10, assignedOrCreated, an, leer, 1920 | Plugin (Registry `IssuesTracker`, `IssuesStart`, `IssuesBranchPattern`, `IssuesBranchBase`, `IssuesCommitPattern`, `TrackerLogin`, `IssuesQueryPicker`, `IssuesCreate`, `IssuesCreateIncludeCode`, `CreateIssueKey`, `IssuesPreview`, `IssuesPreviewComments`, `IssuesCodeLinks`, `IssuesBlameLinks`, `IssuesBlameMaxRevisions`, `IssuesSyncState`, `IssuesStateField`, `IssuesAssigneeField`, `IssuesStartState`, `IssuesAssignOnStart`, `IssuesStartComment`, `IssuesEndStates`, `IssuesEndComment`, `IssuesTimeTracking`, `IssuesIdleMinutes`, `IssuesTimeRounding`, `IssuesPreviewChecklists`, `IssuesChecklistStatus`, `IssuesPreviewLinks`, `IssuesWarnBlocked`, `IssuesBoard`, `IssuesBoardConfirmMove`, `IssuesBoardOnlyMine`, `IssuesSprintBurndown`, `IssuesSprintCompare`, `IssuesPaletteSearch`, `IssuesCommentEditor`, `IssuesCommentSnippets`, `IssuesPreviewDevelopment`, `IssuesNotify`, `IssuesNotifyIntervalMinutes`, `IssuesNotifyScope`, `IssuesAttach`, `IssuesAttachLogFiles`, `IssuesAttachMaxImageWidth`; `issues.connections`, `issues.projects` und `issues.queries` in settings.json; Stand der Meldungen je Verbindung in `%LOCALAPPDATA%\Atlas\issues\notify.json`) | nein | Auswahl, Auswahl, Textfeld, Textfeld, Textfeld, Kontrollkästchen, Tabelle, Tabelle, Tabelle, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Zahl, Kontrollkästchen, Klappliste, Klappliste, Klappliste, Kontrollkästchen, Textfeld, Textfeld, Textfeld, Kontrollkästchen, Zahl (1–120), Zahl (1–60), Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Kontrollkästchen, Tabelle, Kontrollkästchen, Kontrollkästchen, Zahl (2–1440), Auswahl, Kontrollkästchen, Textfeld, Zahl (320–7680) | #765, #1280, #1260, #1261, #1262, #1268, #1264, #1265, #1275, #1266, #1267, #1273, #1279, #1272, #1277, #1270, #1278, #1269, #1271, #1276 |
 
 ## Bereiche für Export, Import und Zurücksetzen
 
@@ -179,20 +185,20 @@ Alle Einstellungen mit Seite und Bedienelement im Einstellungs-Plugin (#227). Ei
 
 | Bereich | Schlüssel |
 |---|---|
-| Editor (`editor`) | `editor.dimUnusedUses`, `editor.recursionMarkers`, `editor.recursionMarkers.depth`, `problems.enabled`, `inlayHints.parameterNames`, `inlayHints.inferredTypes`, `inlayHints.includeDefines`, `inlayHints.controlChars`, `inlayHints.methodKind`, `editor.blockEndLabels`, `editor.blockEndLabels.minLines`, `notes.enabled`, `codeLens.metrics`, `metrics`, `codeLens.tests`, `todos.list`, `baseline.update`, `metrics.report`, `dfmRules.apply`, `editor.hoverTooltip`, `editor.reloadExternal`, `editor.openForEdits`, `search.replaceIdeSearch`, `search.fromFirstHit`, `search.resultsInMessages`, `search.replace`, `search.regex`, `search.history`, `search.multiFile`, `problems.statusCounter`, `hover.problemActions`, `editor.inlineDiagnostics`, `editor.continueComments`, `editor.continueComments.lineComments`, `editor.continueComments.lists`, `editor.completeStatement`, `editor.completeStatement.beginEnd`, `editor.completeStatement.tryKind`, `editor.completeStatement.methodBody`, `editor.format`, `editor.continuePattern`, `editor.continuePattern.minLines`, `editor.multiCursor`, `editor.linkedEditing`, `editor.smartPaste`, `editor.multiCursorModifier`, `editor.continueComments.blockPrefix`, `editor.wrapSelection`, `editor.wrapSelection.chars`, `codeLens.testUnit`, `hints.xmlDocExpand`, `hints.xmlDocMaxLines`, `undo.multiFile`, `undo.multiFile.depth`, `undo.multiFile.persist`, `undo.multiFile.maxSizeMb`, `undo.multiFile.onConflict`, `undo.multiFile.newFiles`, `unitSearch.enabled`, `unitSearch.replaceIdeDialog`, `unitSearch.replaceUseUnitDialog`, `unitSearch.replaceFormsDialog`, `unitSearch.rememberCollapsed`, `unitSearch.filters`, `unitSearch.filterSyntax`, `unitSearch.formCaptions`, `unitSearch.preview`, `unitSearch.preview.form`, `unitSearch.preview.usedBy`, `unitSearch.preview.autoCollapse`, `unitSearch.multiSelect`, `unitSearch.actions`, `unitSearch.actions.addUses`, `unitSearch.pathStyle`, `unitSearch.groupBy`, `unitSearch.defaultScope`, `quickOpen.enabled`, `quickOpen.librarySources`, `navHistory.enabled`, `peek.enabled`, `references.inferred`, `references.textMatches`, `callHierarchy.diagram`, `navigation.impact`, `navigation.impactDepth`, `peek.heightLines`, `peek.showImplementation`, `navigation.dataFlow`, `navigation.dataFlow.maxDepth`, `navigation.dataFlow.excludeTests`, `outline.enabled`, `navigation.symbolPath`, `outline.alphabetical`, `outline.followCursor`, `outline.conditions`, `editor.breadcrumbs`, `editor.breadcrumbsShowUnit`, `editor.breadcrumbsIdeColors`, `editor.breadcrumbsHideIdeToolbar`, `editor.toolbar`, `editor.toolbar.position`, `editor.toolbar.items`, `editor.toolbar.returnButton`, `editor.toolbar.labels`, `editor.statusBar`, `editor.designerBar`, `editor.designerBar.searchKey`, `editor.designerBar.searchStyle`, `editor.designerBar.tabOrderClick`, `editor.designerBar.align`, `editor.statusBar.items`, `editor.stickyScroll`, `editor.stickyScrollMaxLines`, `editor.stickyScrollTypes`, `editor.stickyScrollRoutines`, `editor.stickyScrollBlocks`, `editor.stickyScrollLoops`, `editor.stickyScrollTry`, `editor.stickyScrollCase`, `editor.stickyScrollWith`, `editor.stickyScrollBlockMinLines`, `editor.minimap`, `editor.minimap.render`, `editor.minimap.width`, `editor.minimap.scale`, `editor.minimap.maxColumn`, `editor.minimap.side`, `editor.minimap.showSlider`, `editor.minimap.sectionHeaders`, `editor.minimap.highlightMethod`, `editor.minimap.markers`, `editor.minimap.clickJumps`, `editor.gitGutter`, `editor.gitBlame`, `editor.gutterColumn`, `editor.gutterColumn.problems`, `editor.gutterColumn.codeActions`, `editor.gutterColumn.overrides`, `hints.expressionType`, `hints.expressionType.conversions`, `hints.expressionType.constValue`, `editor.methodPlacement`, `editor.overviewRuler`, `editor.overviewRulerKinds`, `inlayHints.endMarkers`, `inlayHints.endMarkerMinLines`, `hints.xmlDocFull`, `hints.publishedMembers`, `hints.rationale`, `hints.rationaleMarkers`, `hints.adrFolder`, `directives.completion`, `directives.hover` |
+| Editor (`editor`) | `editor.dimUnusedUses`, `editor.recursionMarkers`, `editor.recursionMarkers.depth`, `problems.enabled`, `inlayHints.parameterNames`, `inlayHints.inferredTypes`, `inlayHints.includeDefines`, `inlayHints.controlChars`, `inlayHints.methodKind`, `editor.blockEndLabels`, `editor.blockEndLabels.minLines`, `notes.enabled`, `codeLens.metrics`, `metrics`, `codeLens.tests`, `todos.list`, `baseline.update`, `metrics.report`, `dfmRules.apply`, `editor.hoverTooltip`, `editor.reloadExternal`, `editor.openForEdits`, `search.enabled`, `search.replaceIdeSearch`, `search.fromFirstHit`, `search.resultsInMessages`, `search.replace`, `search.regex`, `search.history`, `search.multiFile`, `problems.statusCounter`, `hover.problemActions`, `hover.membersMaxLines`, `editor.inlineDiagnostics`, `editor.continueComments`, `editor.continueComments.lineComments`, `editor.continueComments.lists`, `editor.completeStatement`, `editor.completeStatement.beginEnd`, `editor.completeStatement.tryKind`, `editor.completeStatement.methodBody`, `editor.format`, `editor.continuePattern`, `editor.continuePattern.minLines`, `editor.multiCursor`, `editor.linkedEditing`, `editor.smartPaste`, `editor.multiCursorModifier`, `editor.continueComments.blockPrefix`, `editor.wrapSelection`, `editor.wrapSelection.chars`, `codeLens.testUnit`, `hints.xmlDocExpand`, `hints.xmlDocMaxLines`, `undo.multiFile`, `undo.multiFile.depth`, `undo.multiFile.persist`, `undo.multiFile.maxSizeMb`, `undo.multiFile.onConflict`, `undo.multiFile.newFiles`, `unitSearch.enabled`, `unitSearch.replaceIdeDialog`, `unitSearch.replaceUseUnitDialog`, `unitSearch.replaceFormsDialog`, `unitSearch.rememberCollapsed`, `unitSearch.filters`, `unitSearch.filterSyntax`, `unitSearch.formCaptions`, `unitSearch.preview`, `unitSearch.preview.form`, `unitSearch.preview.usedBy`, `unitSearch.preview.autoCollapse`, `unitSearch.multiSelect`, `unitSearch.actions`, `unitSearch.actions.addUses`, `unitSearch.pathStyle`, `unitSearch.groupBy`, `unitSearch.defaultScope`, `quickOpen.enabled`, `quickOpen.librarySources`, `navHistory.enabled`, `peek.enabled`, `references.inferred`, `references.textMatches`, `callHierarchy.diagram`, `navigation.impact`, `navigation.impactDepth`, `peek.heightLines`, `peek.showImplementation`, `navigation.dataFlow`, `navigation.dataFlow.maxDepth`, `navigation.dataFlow.excludeTests`, `outline.enabled`, `navigation.symbolPath`, `outline.alphabetical`, `outline.followCursor`, `outline.conditions`, `editor.breadcrumbs`, `editor.breadcrumbsShowUnit`, `editor.breadcrumbsIdeColors`, `editor.breadcrumbsHideIdeToolbar`, `editor.toolbar`, `editor.toolbar.position`, `editor.toolbar.items`, `editor.toolbar.returnButton`, `editor.toolbar.labels`, `editor.statusBar`, `designer.enabled`, `editor.designerBar`, `editor.designerBar.searchKey`, `editor.designerBar.searchStyle`, `editor.designerBar.tabOrderClick`, `editor.designerBar.align`, `editor.statusBar.items`, `editor.stickyScroll`, `editor.stickyScrollMaxLines`, `editor.stickyScrollTypes`, `editor.stickyScrollRoutines`, `editor.stickyScrollBlocks`, `editor.stickyScrollLoops`, `editor.stickyScrollTry`, `editor.stickyScrollCase`, `editor.stickyScrollWith`, `editor.stickyScrollBlockMinLines`, `editor.minimap`, `editor.minimap.render`, `editor.minimap.width`, `editor.minimap.scale`, `editor.minimap.maxColumn`, `editor.minimap.side`, `editor.minimap.showSlider`, `editor.minimap.sectionHeaders`, `editor.minimap.highlightMethod`, `editor.minimap.markers`, `editor.minimap.clickJumps`, `editor.gitGutter`, `editor.gitBlame`, `editor.gutterColumn`, `editor.gutterColumn.problems`, `editor.gutterColumn.codeActions`, `editor.gutterColumn.overrides`, `hints.expressionType`, `hints.expressionType.conversions`, `hints.expressionType.constValue`, `editor.methodPlacement`, `editor.regionFolds`, `editor.overviewRuler`, `editor.overviewRulerKinds`, `inlayHints.endMarkers`, `inlayHints.endMarkerMinLines`, `hints.xmlDocFull`, `hints.publishedMembers`, `hints.rationale`, `hints.rationaleMarkers`, `hints.adrFolder`, `directives.completion`, `directives.hover` |
 | Vervollständigung (`completion`) | `completion.enabled`, `completion.filterChips`, `completion.preview`, `completion.groupInherited`, `completion.variantBranch`, `completion.listMode`, `completion.listMode.scope`, `completion.learning`, `completion.favorites`, `completion.visibleRows`, `completion.panelCollapsed`, `completion.selectionMarker`, `completion.autoParentheses`, `completion.fixCase`, `completion.commitCharacters`, `completion.autoUses`, `completion.parameterHints`, `completion.formatPlaceholders`, `completion.openDelayMs`, `completion.matching`, `completion.offerTryFinally`, `completion.keywords`, `completion.genericConstraints`, `completion.resourceStrings`, `completion.typeConversion`, `completion.assignAllFields`, `completion.usesDetails`, `completion.inheritedCall`, `completion.attributes`, `completion.anonymousMethods`, `completion.withOrigin`, `completion.exceptionClasses`, `completion.syntaxNotice`, `completion.sameNameVariants`, `completion.sameNameInsert`, `completion.showFmxUnits`, `completion.nameSuggestions` |
-| Hervorhebung (`highlighting`) | `highlight.pairColors`, `highlight.pairGuides`, `highlight.pairOwners`, `highlight.inactiveDim`, `highlight.pairGuideWidth`, `highlight.pairGuideOpacity`, `highlight.pairColorsLight`, `highlight.pairColorsDark`, `highlight.selectionMatches`, `highlight.selectionMatches.minLength`, `highlight.selectionMatches.caseSensitive`, `highlight.selectionMatches.wholeWord`, `highlight.selectionMatches.navigateF3`, `highlight.selectionMatches.maxMatches`, `editor.exitPoints`, `editor.exitPoints.exceptions`, `editor.exitPoints.loops`, `editor.exitPoints.badge`, `highlight.reassigned`, `highlight.reassigned.targets`, `highlight.reassigned.style`, `highlight.reassigned.color`, `highlight.blockPairs`, `highlight.directives`, `highlight.exitPoints`, `highlight.exitKeywords` |
-| Tastenkürzel (`keys`) | `keys.palette`, `keys.check`, `keys.palettePriority`, `keys.checkPriority`, `keys.completion`, `keys.signature`, `keys.completionPriority`, `keys.signaturePriority`, `bookmarks.key`, `bookmarks.quick.keyPriority`, `bookmarks.quick.setKey`, `bookmarks.quick.setKeyPriority`, `bookmarks.quick.jumpKey`, `bookmarks.quick.jumpKeyPriority`, `keys.nextBookmark`, `keys.previousBookmark`, `keys.hideElement`, `keys.nextProblem`, `keys.previousProblem`, `keys.searchReplace`, `keys.search`, `keys.searchNext`, `keys.searchPrevious`, `keys.searchInMethod`, `keys.createIssue`, `keys.problemsWindow`, `keys.gotoInterface`, `keys.gotoImplementation`, `keys.codeActions`, `keys.expandSelection`, `keys.shrinkSelection`, `keys.implementations`, `keys.typeDefinition`, `keys.methodToggleUp`, `keys.methodToggleDown`, `keys.jumpToMatch`, `keys.jumpToMatchShortcut`, `keys.jumpToMatchSelect`, `keys.moveLines`, `keys.moveLinesUp`, `keys.moveLinesDown`, `keys.duplicateLinesUp`, `keys.duplicateLinesDown`, `keys.toggleBlockComment`, `keys.toggleBlockComment.key`, `keys.toggleBlockComment.style`, `keys.toggleBlockComment.fallback`, `keys.toggleBlockComment.ownLines`, `keys.toggleBlockComment.withoutSelection`, `keys.newLineAround`, `keys.newLineAround.belowKey`, `keys.newLineAround.aboveKey`, `keys.newLineAround.statementAware`, `keys.unwrap`, `keys.unwrap.key`, `keys.safeDelete`, `keys.safeDelete.key`, `keys.completeStatement`, `keys.format`, `keys.multiCursor.next`, `keys.multiCursor.skip`, `keys.multiCursor.lineEnds`, `keys.multiCursor.above`, `keys.multiCursor.below`, `keys.testUnit`, `keys.editorPriority`, `keys.generateMenu.key`, `keys.quickToggles`, `keys.quickTogglesPriority`, `keys.diagnosticMode`, `keys.diagnosticModePriority`, `keys.overview`, `keys.startupCheck`, `keys.undoChange`, `keys.redoChange`, `unitSearch.key`, `keys.quickOpen`, `keys.navBack`, `keys.navForward`, `keys.lastEdit`, `keys.peekDefinition`, `keys.peekReferences`, `keys.breadcrumbs`, `keys.expressionType`, `keys.nextChange`, `keys.previousChange`, `welcomePage.search.key`, `welcomePage.quickActions.buildKey`, `welcomePage.quickActions.testKey`, `notifications.key` |
-| Code-Aktionen (`codeActions`) | `keys.generateMenu`, `codeActions.methodToggle`, `slashCommands.enabled`, `keys.generateMenu.groups`, `keys.generateMenu.hidden`, `keys.generateMenu.recentFirst`, `keys.generateMenu.showCommandNames`, `usesCommand`, `completeBlocks.docComment`, `slashCommands.disabled`, `slashCommands.headerTemplate`, `slashCommands.logCall`, `slashCommands.componentPalette`, `slashCommands.todoOwner`, `slashCommands.todoCategory`, `slashCommands.sortUsesRemoveUnused`, `slashCommands.enumHelper`, `slashCommands.setHelper` |
-| Prüfregeln (`rules`) | `problems.window`, `problems.window.scope`, `problems.window.groupBy`, `problems.window.columns`, `problems.window.compiler`, `problems.window.followCursor`, `problems.window.openFirst`, `problems.window.closedUnits`, `problems.window.showCleanActive`, `problems.compilerMerge`, `problems.showCompilerCode`, `problems.live`, `fix.bulk`, `problems.list`, `rules`, `excludeTests` |
-| Build (`build`) | `build.checkOnSave`, `compiler.mcpBuild`, `build.onOpen`, `tests.run`, `tests.afterBuild`, `tests.affected`, `tests.affectedDepth`, `tests.affectedBeforeCommit`, `tests.buildFirst`, `build.releaseGuard`, `build.zeroHints`, `build.showInterfaceCost`, `taskRunner.enabled`, `taskRunner.problemsFromOutput`, `taskRunner.beforeBuild`, `taskRunner.saveBeforeRun`, `taskRunner.runChecksParallel`, `taskRunner.onlyFindings`, `build.summary`, `build.warningsAsErrors`, `build.compilerSwitches`, `build.showSwitchesInStatusBar`, `build.checkOnSaveDelayMs`, `build.checkOnSaveMaxMs`, `build.onOpenKind`, `build.onOpenScope`, `build.onOpenDelayMs`, `build.onOpenExclude`, `build.onOpenConfig`, `build.onOpenPlatform`, `compiler.onSave`, `build.gate`, `build.gateTimeoutMs`, `build.releaseConfigs`, `build.releaseChecks`, `compiler.backend`, `compiler.ideCommand`, `mcp.disabledTools`, `mcp.prompts`, `mcp.promptLanguage`, `tasks` |
-| Debug (`debug`) | `startProfiles.enabled`, `startProfiles.statusField`, `tests.debug`, `debug.testBreakAtStart`, `debug.hoverValues`, `debug.explainUnavailable`, `debug.completionInDialogs`, `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`, `debug.explainAccessViolation`, `debug.explainAccessViolation.allowCalls`, `debug.exceptionHistory`, `debug.justMyCode`, `debug.exceptionBanner`, `debug.exceptionBanner.ignoreAtLocation`, `debug.inlineValues`, `debug.inlineValuesPerLine`, `debug.ownCodeFolders`, `debug.visualizers`, `debug.visualizers.types`, `debug.visualizers.nameFields`, `debug.visualizers.maxLength`, `debug.visualizers.timeoutMs`, `debug.visualizers.maxImagePixels`, `debug.visualizers.evaluation`, `debug.displayRules`, `debug.displayRules.allowCalls`, `debug.stepIntoTarget`, `debug.stepFilters`, `debug.stepFilters.kinds`, `debug.stepFilters.patterns`, `debug.stepIntoTarget.key`, `debug.breakOnNextEvent`, `debug.breakOnNextEvent.excluded` |
+| Hervorhebung (`highlighting`) | `highlight.pairColors`, `highlight.pairGuides`, `highlight.pairOwners`, `highlight.nestedRoutines`, `highlight.nestedRoutineBand`, `highlight.inactiveDim`, `highlight.pairGuideWidth`, `highlight.pairGuideOpacity`, `highlight.pairColorsLight`, `highlight.pairColorsDark`, `highlight.nestedRoutineColorLight`, `highlight.nestedRoutineColorDark`, `highlight.selectionMatches`, `highlight.selectionMatches.minLength`, `highlight.selectionMatches.caseSensitive`, `highlight.selectionMatches.wholeWord`, `highlight.selectionMatches.navigateF3`, `highlight.selectionMatches.maxMatches`, `editor.exitPoints`, `editor.exitPoints.exceptions`, `editor.exitPoints.loops`, `editor.exitPoints.badge`, `highlight.reassigned`, `highlight.reassigned.targets`, `highlight.reassigned.style`, `highlight.reassigned.color`, `highlight.blockPairs`, `highlight.directives`, `highlight.exitPoints`, `highlight.exitKeywords` |
+| Tastenkürzel (`keys`) | `keys.palette`, `keys.check`, `keys.palettePriority`, `keys.checkPriority`, `keys.completion`, `keys.signature`, `keys.completionPriority`, `keys.signaturePriority`, `bookmarks.key`, `bookmarks.quick.keyPriority`, `bookmarks.quick.setKey`, `bookmarks.quick.setKeyPriority`, `bookmarks.quick.jumpKey`, `bookmarks.quick.jumpKeyPriority`, `keys.nextBookmark`, `keys.previousBookmark`, `keys.hideElement`, `keys.nextProblem`, `keys.previousProblem`, `keys.searchReplace`, `keys.search`, `keys.searchNext`, `keys.searchPrevious`, `keys.searchInMethod`, `keys.createIssue`, `keys.problemsWindow`, `keys.checkFile`, `keys.gotoInterface`, `keys.gotoImplementation`, `keys.codeActions`, `keys.expandSelection`, `keys.shrinkSelection`, `keys.implementations`, `keys.typeDefinition`, `keys.methodToggleUp`, `keys.methodToggleDown`, `keys.jumpToMatch`, `keys.jumpToMatchShortcut`, `keys.jumpToMatchSelect`, `keys.moveLines`, `keys.moveLinesUp`, `keys.moveLinesDown`, `keys.duplicateLinesUp`, `keys.duplicateLinesDown`, `keys.toggleBlockComment`, `keys.toggleBlockComment.key`, `keys.toggleBlockComment.style`, `keys.toggleBlockComment.fallback`, `keys.toggleBlockComment.ownLines`, `keys.toggleBlockComment.withoutSelection`, `keys.newLineAround`, `keys.newLineAround.belowKey`, `keys.newLineAround.aboveKey`, `keys.newLineAround.statementAware`, `keys.unwrap`, `keys.unwrap.key`, `keys.safeDelete`, `keys.safeDelete.key`, `keys.completeStatement`, `keys.format`, `keys.multiCursor.next`, `keys.multiCursor.skip`, `keys.multiCursor.lineEnds`, `keys.multiCursor.above`, `keys.multiCursor.below`, `keys.testUnit`, `keys.editorPriority`, `keys.generateMenu.key`, `keys.quickToggles`, `keys.quickTogglesPriority`, `keys.diagnosticMode`, `keys.diagnosticModePriority`, `keys.overview`, `keys.startupCheck`, `keys.undoChange`, `keys.redoChange`, `unitSearch.key`, `keys.quickOpen`, `keys.navBack`, `keys.navForward`, `keys.lastEdit`, `keys.peekDefinition`, `keys.peekReferences`, `keys.breadcrumbs`, `keys.expressionType`, `keys.nextChange`, `keys.previousChange`, `welcomePage.search.key`, `welcomePage.quickActions.buildKey`, `welcomePage.quickActions.testKey`, `notifications.key` |
+| Code-Aktionen (`codeActions`) | `keys.generateMenu`, `codeActions.methodToggle`, `slashCommands.enabled`, `keys.generateMenu.groups`, `keys.generateMenu.hidden`, `keys.generateMenu.recentFirst`, `keys.generateMenu.showCommandNames`, `usesCommand`, `completeBlocks.docComment`, `slashCommands.disabled`, `slashCommands.headerTemplate`, `slashCommands.logCall`, `slashCommands.componentPalette`, `slashCommands.todoOwner`, `slashCommands.todoCategory`, `slashCommands.sortUsesRemoveUnused`, `slashCommands.enumHelper`, `slashCommands.setHelper`, `smartIndent.enabled`, `smartIndent.afterEnter`, `smartIndent.outdentClosers`, `smartIndent.splitStrings`, `smartIndent.splitStringsIndent`, `classCompletion.typeComment`, `classCompletion.lifecycleFirst`, `classCompletion.bodyStubs` |
+| Prüfregeln (`rules`) | `problems.window`, `problems.window.scope`, `problems.window.scopeProjects`, `problems.window.scopeProject`, `problems.window.groupBy`, `problems.window.columns`, `problems.window.compiler`, `problems.window.followCursor`, `problems.window.openFirst`, `problems.window.closedUnits`, `problems.window.showCleanActive`, `problems.compilerMerge`, `problems.showCompilerCode`, `ruleChecks.enabled`, `problems.update`, `problems.liveDelayMs`, `fix.bulk`, `problems.list`, `rules`, `excludeTests` |
+| Build (`build`) | `build.checkOnSave`, `compiler.mcpBuild`, `buildTools.enabled`, `buildPipeline.enabled`, `build.onOpen`, `tests.enabled`, `tests.run`, `tests.afterBuild`, `tests.affected`, `tests.affectedDepth`, `tests.affectedBeforeCommit`, `tests.buildFirst`, `build.releaseGuard`, `build.zeroHints`, `build.showInterfaceCost`, `taskRunner.enabled`, `taskRunner.problemsFromOutput`, `taskRunner.beforeBuild`, `taskRunner.saveBeforeRun`, `taskRunner.runChecksParallel`, `taskRunner.onlyFindings`, `build.summary`, `build.warningsAsErrors`, `build.compilerSwitches`, `build.showSwitchesInStatusBar`, `build.checkOnSaveDelayMs`, `build.checkOnSaveMaxMs`, `build.onOpenKind`, `build.onOpenScope`, `build.onOpenDelayMs`, `build.onOpenExclude`, `build.onOpenConfig`, `build.onOpenPlatform`, `compiler.onSave`, `build.gate`, `build.gateTimeoutMs`, `build.releaseConfigs`, `build.releaseChecks`, `compiler.backend`, `compiler.ideCommand`, `mcp.disabledTools`, `mcp.prompts`, `mcp.promptLanguage`, `tasks` |
+| Debug (`debug`) | `startProfiles.enabled`, `startProfiles.statusField`, `tests.debug`, `debug.testBreakAtStart`, `debug.enabled`, `debug.hoverValues`, `debug.explainUnavailable`, `debug.completionInDialogs`, `debug.evaluateWindow`, `debug.evaluateWindow.replaceCtrlF7`, `debug.explainAccessViolation`, `debug.explainAccessViolation.allowCalls`, `debug.exceptionHistory`, `debug.justMyCode`, `debug.exceptionBanner`, `debug.exceptionBanner.ignoreAtLocation`, `debug.inlineValues`, `debug.inlineValuesPerLine`, `debug.ownCodeFolders`, `debug.visualizers`, `debug.visualizers.types`, `debug.visualizers.nameFields`, `debug.visualizers.maxLength`, `debug.visualizers.timeoutMs`, `debug.visualizers.maxImagePixels`, `debug.visualizers.evaluation`, `debug.displayRules`, `debug.displayRules.allowCalls`, `debug.stepIntoTarget`, `debug.stepFilters`, `debug.stepFilters.kinds`, `debug.stepFilters.patterns`, `debug.stepIntoTarget.key`, `debug.breakOnNextEvent`, `debug.breakOnNextEvent.excluded` |
 | Vorlagen/Snippets (`snippets`) | `snippets.enabled`, `snippets.importIdeTemplates`, `completion.postfixTemplates` |
-| Lesezeichen (`bookmarks`) | `bookmarks.named`, `bookmarks.shared`, `bookmarks.quick`, `bookmarks.quick.gutter`, `bookmarks.quick.gutterClick`, `bookmarks.quick.numberedKeys`, `bookmarks.quick.key`, `bookmarks.quick.chordWait`, `bookmarks.quick.scope`, `bookmarks.quick.importIde` |
+| Lesezeichen (`bookmarks`) | `bookmarks.enabled`, `bookmarks.named`, `bookmarks.shared`, `bookmarks.quick`, `bookmarks.quick.gutter`, `bookmarks.quick.gutterClick`, `bookmarks.quick.numberedKeys`, `bookmarks.quick.key`, `bookmarks.quick.chordWait`, `bookmarks.quick.scope`, `bookmarks.quick.importIde` |
 | Willkommensseite (`welcome`) | `welcomePage.enabled`, `welcomePage.projectSetup`, `welcomePage.tests.ci.login`, `welcomePage.quickActions`, `welcomePage.ideWelcomePage`, `welcomePage.layout`, `welcomePage.openOnStart`, `welcomePage.openWhenNoProject`, `welcomePage.header`, `welcomePage.greeting`, `welcomePage.search`, `welcomePage.search.symbols`, `welcomePage.whatsNew`, `welcomePage.projectStatus`, `welcomePage.maxProjects`, `welcomePage.refreshVcs`, `welcomePage.unsaved`, `welcomePage.unsaved.minAgeHours`, `welcomePage.unsaved.warnHours`, `welcomePage.unsaved.alertHours`, `welcomePage.unsaved.hideWhenClean`, `welcomePage.statusTile`, `welcomePage.statusTile.onlyProblems`, `welcomePage.discover`, `tips.usageTracking`, `welcomePage.help`, `welcomePage.help.reportUrl`, `welcomePage.help.reportFolder`, `welcomePage.newFromTemplate`, `welcomePage.continue`, `welcomePage.continue.count`, `welcomePage.continue.incoming`, `welcomePage.continue.fetch`, `welcomePage.saved`, `welcomePage.trends`, `welcomePage.trends.points`, `welcomePage.trends.series`, `welcomePage.tests`, `welcomePage.tests.maxFailures`, `welcomePage.tests.ci`, `welcomePage.tests.ci.provider`, `welcomePage.tests.ci.intervalMinutes`, `welcomePage.tests.ci.notify`, `welcomePage.quickActions.items`, `welcomePage.quickActions.console`, `welcomePage.issues`, `welcomePage.sprint`, `welcomePage.customLayout`, `welcomePage.columns`, `welcomePage.layouts`, `welcomePage.activeLayout` |
-| Issue-Tracker (`issues`) | `issues.tracker`, `issues.start`, `issues.branchPattern`, `issues.branchBase`, `issues.commitPattern`, `issues.login`, `issues.connections`, `issues.projects`, `issues.queries`, `issues.queryPicker`, `issues.create`, `issues.create.includeCode`, `issues.preview`, `issues.preview.comments`, `issues.codeLinks`, `issues.blameLinks`, `issues.blameLinks.maxRevisions`, `issues.syncState`, `issues.stateField`, `issues.assigneeField`, `issues.startState`, `issues.assignOnStart`, `issues.startComment`, `issues.endStates`, `issues.endComment`, `issues.timeTracking`, `issues.idleMinutes`, `issues.timeRounding`, `issues.preview.checklists`, `issues.checklistStatus`, `issues.preview.links`, `issues.warnBlocked`, `issues.board`, `issues.board.confirmMove`, `issues.board.onlyMine`, `issues.sprint.burndown`, `issues.sprint.compare`, `issues.paletteSearch`, `issues.commentEditor`, `issues.commentSnippets`, `issues.preview.development`, `issues.notify`, `issues.notify.intervalMinutes`, `issues.notify.scope`, `issues.attach`, `issues.attach.logFiles`, `issues.attach.maxImageWidth` |
+| Issue-Tracker (`issues`) | `issues.enabled`, `issues.tracker`, `issues.start`, `issues.branchPattern`, `issues.branchBase`, `issues.commitPattern`, `issues.login`, `issues.connections`, `issues.projects`, `issues.queries`, `issues.queryPicker`, `issues.create`, `issues.create.includeCode`, `issues.preview`, `issues.preview.comments`, `issues.codeLinks`, `issues.blameLinks`, `issues.blameLinks.maxRevisions`, `issues.syncState`, `issues.stateField`, `issues.assigneeField`, `issues.startState`, `issues.assignOnStart`, `issues.startComment`, `issues.endStates`, `issues.endComment`, `issues.timeTracking`, `issues.idleMinutes`, `issues.timeRounding`, `issues.preview.checklists`, `issues.checklistStatus`, `issues.preview.links`, `issues.warnBlocked`, `issues.board`, `issues.board.confirmMove`, `issues.board.onlyMine`, `issues.sprint.burndown`, `issues.sprint.compare`, `issues.paletteSearch`, `issues.commentEditor`, `issues.commentSnippets`, `issues.preview.development`, `issues.notify`, `issues.notify.intervalMinutes`, `issues.notify.scope`, `issues.attach`, `issues.attach.logFiles`, `issues.attach.maxImageWidth` |
 | Versionsverwaltung (`vcs`) | `vcs.provider`, `vcs.git.path`, `vcs.svn.path`, `vcs.timeoutSeconds`, `vcs.projects`, `vcs.branch.confirm`, `vcs.branch.svn.location`, `vcs.branch.svn.source`, `vcs.branch.svn.after`, `vcs.branch.svn.checkoutFolder`, `vcs.branch.svn.message`, `vcs.externals.onBranch`, `vcs.externals.suggestBranch`, `vcs.externals.rules`, `vcs.externals.show`, `vcs.externals.update`, `vcs.branch.git.base`, `vcs.branch.git.push`, `vcs.branch.git.uncommitted`, `vcs.branch.git.worktree`, `vcs.branch.git.worktreeFolder`, `vcs.git`, `vcs.svn` |
-| Allgemein (`general`) | `diagnosticMode.enabled`, `diagnostics.processes`, `server.statusWindow`, `architecture.enabled`, `architecture.scope`, `architecture.includeLibraryUnits`, `architecture.centralUnits`, `query.enabled`, `hotspots.enabled`, `hotspots.months`, `hotspots.coupling.minCommits`, `experimental.enabled`, `teamFile.enabled`, `settings.exportImport`, `shortcutTips.enabled`, `notifications.enabled`, `statusField.showSummary`, `robustness.hangThresholdMs`, `robustness.providerTimeLimitMs`, `robustness.hangHint`, `index.projectGroup`, `index.searchPaths`, `index.libraryPaths`, `index.usages`, `memoryBudgetMb`, `statusField.enabled`, `statusField.hidden`, `statusField.openToggles`, `statusField.indexProgress`, `ui.setupChecklist`, `shortcutTips.scope`, `safeMode.askAfterCrash`, `safeMode.autoAfterRepeatedCrash`, `safeMode.startupKey`, `safeMode.startupTimeoutMs`, `safeMode.keepSettingsHistory`, `updates.check`, `diagnostics.bugReport.anonymize`, `notifications.sources`, `notifications.maxEntries`, `settings.markModified`, `settings.backupBeforeImport`, `settings.exportSecrets`, `language`, `index.removeOrphans`, `index.cacheMaxAgeDays`, `index.cacheMaxMb`, `architecture.explainAssignment`, `architecture.grouping`, `hotspots.coupling`, `requestTimeoutMs`, `server.crashCases`, `server.crashSkip`, `diagnostics.log`, `diagnostics.logDays`, `diagnostics.logMapFile`, `diagnostics.librarySources`, `logLevel`, `logFile`, `traceFile` |
+| Allgemein (`general`) | `diagnosticMode.enabled`, `diagnosticMode.pluginTimings`, `diagnosticMode.slowThresholdMs`, `diagnostics.processes`, `server.statusWindow`, `analysis.enabled`, `architecture.enabled`, `architecture.scope`, `architecture.includeLibraryUnits`, `architecture.centralUnits`, `query.enabled`, `hotspots.enabled`, `hotspots.months`, `hotspots.coupling.minCommits`, `experimental.enabled`, `teamFile.enabled`, `settings.exportImport`, `shortcutTips.enabled`, `notifications.enabled`, `statusField.showSummary`, `robustness.hangThresholdMs`, `robustness.providerTimeLimitMs`, `robustness.hangHint`, `index.projectGroup`, `index.searchPaths`, `index.libraryPaths`, `index.usages`, `memoryBudgetMb`, `statusField.enabled`, `statusField.hidden`, `statusField.openToggles`, `statusField.indexProgress`, `ui.setupChecklist`, `shortcutTips.scope`, `safeMode.askAfterCrash`, `safeMode.autoAfterRepeatedCrash`, `safeMode.startupKey`, `safeMode.startupTimeoutMs`, `safeMode.keepSettingsHistory`, `updates.check`, `updates.install`, `updates.channel`, `updates.newModules`, `diagnostics.bugReport.anonymize`, `diagnostics.log.names`, `notifications.sources`, `notifications.maxEntries`, `settings.markModified`, `settings.backupBeforeImport`, `settings.exportSecrets`, `language`, `index.removeOrphans`, `index.cacheMaxAgeDays`, `index.cacheMaxMb`, `architecture.explainAssignment`, `architecture.grouping`, `hotspots.coupling`, `requestTimeoutMs`, `server.crashCases`, `server.crashSkip`, `diagnostics.log`, `diagnostics.logDays`, `diagnostics.logMapFile`, `diagnostics.librarySources`, `logLevel`, `logFile`, `traceFile` |
 | nicht exportiert (Zustand, nur dieser Rechner) | `ui.architectureWindowPlaced`, `ui.hotspotsWindowPlaced`, `ui.unitRelationsWindowPlaced`, `completion.listWidth`, `completion.panelWidth`, `server.path`, `ui.setupChecklistSeen`, `editor.minimap.noticeShown`, `welcomePage.whatsNewSeen`, `delphiVersion` |
 
 ## Experimentelle Funktionen
@@ -223,8 +229,11 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
   - `completion.enabled`
     - `teamFile.enabled`
   - `diagnosticMode.enabled`
+    - `diagnosticMode.pluginTimings`
+    - `diagnosticMode.slowThresholdMs`
   - `diagnostics.processes`
   - `server.statusWindow`
+  - `analysis.enabled`
   - `experimental.enabled`
   - `editor.reloadExternal`
   - `editor.openForEdits`
@@ -254,16 +263,16 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
     - `settings.exportSecrets`
 
 - **Architektur** (`general.architecture`)
-  - `architecture.enabled`
+  - `architecture.enabled` – hängt an `analysis.enabled`
     - `architecture.scope`
     - `architecture.includeLibraryUnits`
     - `architecture.centralUnits`
 
 - **Code-Abfragen** (`general.query`)
-  - `query.enabled`
+  - `query.enabled` – hängt an `search.enabled`
 
 - **Hotspots** (`general.hotspots`)
-  - `hotspots.enabled`
+  - `hotspots.enabled` – hängt an `analysis.enabled`
     - `hotspots.months`
     - `hotspots.coupling.minCommits`
 
@@ -281,6 +290,7 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
   - `inlayHints.methodKind`
   - `editor.blockEndLabels`
     - `editor.blockEndLabels.minLines`
+  - `bookmarks.enabled`
   - `editor.inlineDiagnostics`
   - `editor.continuePattern` – hängt an `completion.enabled`
     - `editor.continuePattern.minLines`
@@ -291,12 +301,16 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
   - `callHierarchy.diagram`
   - `editor.breadcrumbsIdeColors`
   - `editor.breadcrumbsHideIdeToolbar`
+  - `designer.enabled`
   - `editor.methodPlacement`
+  - `editor.regionFolds`
 
 - **Paarfärbung** (`editor.pairs`)
   - `highlight.pairColors` – hängt an `completion.enabled`
     - `highlight.pairGuides`
     - `highlight.pairOwners`
+    - `highlight.nestedRoutines`
+    - `highlight.nestedRoutineBand`
     - `highlight.pairGuideWidth`
     - `highlight.pairGuideOpacity`
 
@@ -317,7 +331,7 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
     - `editor.statusBar.items`
 
 - **Designer-Leiste** (`editor.designerBar`)
-  - `editor.designerBar`
+  - `editor.designerBar` – hängt an `designer.enabled`
     - `editor.designerBar.searchKey`
     - `editor.designerBar.searchStyle`
     - `editor.designerBar.tabOrderClick` (experimentell)
@@ -421,12 +435,12 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
     - `keys.multiCursor.below`
 
 - **Notizen und Lesezeichen** (`editor.notes`)
-  - `notes.enabled`
-  - `bookmarks.named`
+  - `notes.enabled` – hängt an `bookmarks.enabled`
+  - `bookmarks.named` – hängt an `bookmarks.enabled`
     - `bookmarks.shared`
 
 - **Schnelle Lesezeichen** (`editor.quickBookmarks`)
-  - `bookmarks.quick`
+  - `bookmarks.quick` – hängt an `bookmarks.enabled`
     - `bookmarks.quick.gutter`
       - `bookmarks.quick.gutterClick`
     - `bookmarks.quick.numberedKeys`
@@ -436,27 +450,30 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
     - `bookmarks.quick.importIde`
 
 - **Code Lens und Kennzahlen** (`editor.codeLens`)
+  - `codeLens.metrics` – hängt an `analysis.enabled`
   - `metrics` – hängt an `completion.enabled`
-    - `codeLens.metrics`
   - `codeLens.tests` – hängt an `tests.run`
   - `todos.list`
-  - `baseline.update`
+  - `baseline.update` – hängt an `ruleChecks.enabled`
   - `metrics.report`
-  - `dfmRules.apply`
+  - `dfmRules.apply` – hängt an `ruleChecks.enabled`
   - `codeLens.testUnit` – hängt an `completion.enabled`
 
 ### Compiler
 
 - **Hauptknoten**
-  - `compiler.mcpBuild`
-  - `build.zeroHints`
+  - `buildTools.enabled`
+    - `build.compilerSwitches`
+      - `build.showSwitchesInStatusBar`
+  - `buildPipeline.enabled`
+    - `compiler.mcpBuild`
+    - `build.zeroHints`
+    - `build.summary`
+    - `build.warningsAsErrors`
+    - `build.gate`
+    - `build.gateTimeoutMs`
+  - `tests.enabled`
   - `build.showInterfaceCost`
-  - `build.summary`
-  - `build.warningsAsErrors`
-  - `build.compilerSwitches`
-    - `build.showSwitchesInStatusBar`
-  - `build.gate`
-  - `build.gateTimeoutMs`
 
 - **Probleme** (`compiler.problems`)
   - `problems.enabled` – hängt an `completion.enabled`
@@ -469,7 +486,7 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
   - `compiler.onSave`
 
 - **Tests** (`compiler.tests`)
-  - `tests.run` – hängt an `completion.enabled`
+  - `tests.run` – hängt an `tests.enabled`
     - `tests.afterBuild`
     - `tests.affected`
       - `tests.affectedDepth`
@@ -477,11 +494,11 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
     - `tests.buildFirst`
 
 - **Startprofile** (`compiler.startProfiles`)
-  - `startProfiles.enabled`
+  - `startProfiles.enabled` – hängt an `buildTools.enabled`
     - `startProfiles.statusField`
 
 - **Beim Öffnen bauen** (`compiler.openBuild`)
-  - `build.onOpen`
+  - `build.onOpen` – hängt an `buildTools.enabled`
     - `build.onOpenKind`
     - `build.onOpenScope`
     - `build.onOpenDelayMs`
@@ -490,7 +507,7 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
     - `build.onOpenPlatform`
 
 - **Projektaufgaben** (`compiler.tasks`)
-  - `taskRunner.enabled`
+  - `taskRunner.enabled` – hängt an `buildTools.enabled`
     - `taskRunner.problemsFromOutput`
     - `taskRunner.beforeBuild`
     - `taskRunner.saveBeforeRun`
@@ -513,6 +530,7 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
   - `keys.searchInMethod`
   - `keys.createIssue`
   - `keys.problemsWindow`
+  - `keys.checkFile`
   - `keys.gotoInterface`
   - `keys.gotoImplementation`
   - `keys.codeActions`
@@ -599,7 +617,7 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
     - `outline.conditions`
 
 - **Weg zwischen Symbolen** (`commands.symbolPath`)
-  - `navigation.symbolPath`
+  - `navigation.symbolPath` – hängt an `analysis.enabled`
 
 - **Erzeugen-Menü** (`commands.generateMenu`)
   - `keys.generateMenu`
@@ -614,6 +632,7 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
 - **Hauptknoten**
   - `editor.hoverTooltip` – hängt an `completion.enabled`
     - `hover.problemActions`
+    - `hover.membersMaxLines`
 
 ### Vervollständigung
 
@@ -634,43 +653,44 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
 ### Debuggen
 
 - **Hauptknoten**
-  - `tests.debug`
+  - `tests.debug` – hängt an `tests.enabled`
     - `debug.testBreakAtStart`
-  - `debug.hoverValues`
-  - `debug.explainUnavailable`
-  - `debug.completionInDialogs`
-  - `debug.evaluateWindow`
-    - `debug.evaluateWindow.replaceCtrlF7`
-  - `debug.explainAccessViolation`
-    - `debug.explainAccessViolation.allowCalls`
-  - `debug.exceptionHistory`
-    - `debug.exceptionBanner`
-      - `debug.exceptionBanner.ignoreAtLocation`
-  - `debug.justMyCode`
-    - `debug.ownCodeFolders`
-  - `debug.inlineValues`
-    - `debug.inlineValuesPerLine`
-  - `debug.visualizers`
-    - `debug.visualizers.types`
-    - `debug.visualizers.nameFields`
-    - `debug.visualizers.maxLength`
-    - `debug.visualizers.timeoutMs`
-    - `debug.visualizers.maxImagePixels`
-    - `debug.visualizers.evaluation`
-  - `debug.displayRules`
-    - `debug.displayRules.allowCalls`
-  - `debug.stepIntoTarget`
-    - `debug.stepIntoTarget.key`
-  - `debug.stepFilters`
-    - `debug.stepFilters.kinds`
-    - `debug.stepFilters.patterns`
-  - `debug.breakOnNextEvent`
-    - `debug.breakOnNextEvent.excluded`
+  - `debug.enabled`
+    - `debug.hoverValues`
+    - `debug.explainUnavailable`
+    - `debug.completionInDialogs`
+    - `debug.evaluateWindow`
+      - `debug.evaluateWindow.replaceCtrlF7`
+    - `debug.explainAccessViolation`
+      - `debug.explainAccessViolation.allowCalls`
+    - `debug.exceptionHistory`
+      - `debug.exceptionBanner`
+        - `debug.exceptionBanner.ignoreAtLocation`
+    - `debug.justMyCode`
+      - `debug.ownCodeFolders`
+    - `debug.inlineValues`
+      - `debug.inlineValuesPerLine`
+    - `debug.visualizers`
+      - `debug.visualizers.types`
+      - `debug.visualizers.nameFields`
+      - `debug.visualizers.maxLength`
+      - `debug.visualizers.timeoutMs`
+      - `debug.visualizers.maxImagePixels`
+      - `debug.visualizers.evaluation`
+    - `debug.displayRules`
+      - `debug.displayRules.allowCalls`
+    - `debug.stepIntoTarget`
+      - `debug.stepIntoTarget.key`
+    - `debug.stepFilters`
+      - `debug.stepFilters.kinds`
+      - `debug.stepFilters.patterns`
+    - `debug.breakOnNextEvent`
+      - `debug.breakOnNextEvent.excluded`
 
 ### Release-Build
 
 - **Hauptknoten**
-  - `build.releaseGuard` – hängt an `completion.enabled`
+  - `build.releaseGuard` – hängt an `buildPipeline.enabled`
     - `build.releaseConfigs`
     - `build.releaseChecks`
 
@@ -683,6 +703,11 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
     - `welcomePage.openOnStart`
     - `welcomePage.openWhenNoProject`
     - `welcomePage.whatsNew`
+  - `welcomePage.tests.ci` – hängt an `issues.enabled`
+    - `welcomePage.tests.ci.login`
+    - `welcomePage.tests.ci.provider`
+    - `welcomePage.tests.ci.intervalMinutes`
+    - `welcomePage.tests.ci.notify`
 
 - **Kopf** (`welcome.header`)
   - `welcomePage.header` – hängt an `welcomePage.enabled`
@@ -713,17 +738,12 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
 - **Testergebnisse** (`welcome.tests`)
   - `welcomePage.tests` – hängt an `welcomePage.enabled`
     - `welcomePage.tests.maxFailures`
-    - `welcomePage.tests.ci`
-      - `welcomePage.tests.ci.login`
-      - `welcomePage.tests.ci.provider`
-      - `welcomePage.tests.ci.intervalMinutes`
-      - `welcomePage.tests.ci.notify`
 
 - **Meine Issues** (`welcome.issues`)
-  - `welcomePage.issues` – hängt an `welcomePage.enabled`
+  - `welcomePage.issues` – hängt an `issues.enabled`
 
 - **Sprint** (`welcome.sprint`)
-  - `welcomePage.sprint` – hängt an `welcomePage.enabled`
+  - `welcomePage.sprint` – hängt an `issues.enabled`
 
 - **Schnellaktionen** (`welcome.quickActions`)
   - `welcomePage.quickActions` – hängt an `welcomePage.enabled`
@@ -807,32 +827,33 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
 ### Units suchen
 
 - **Hauptknoten**
-  - `search.replaceIdeSearch`
-  - `search.fromFirstHit`
-  - `search.resultsInMessages`
-  - `search.replace`
-  - `search.regex`
-  - `search.history`
-  - `search.multiFile`
-  - `unitSearch.enabled`
-    - `unitSearch.replaceIdeDialog`
-    - `unitSearch.replaceUseUnitDialog`
-    - `unitSearch.replaceFormsDialog`
-    - `unitSearch.rememberCollapsed`
-    - `unitSearch.filters`
-    - `unitSearch.filterSyntax`
-    - `unitSearch.formCaptions`
-    - `unitSearch.preview`
-      - `unitSearch.preview.form`
-      - `unitSearch.preview.usedBy`
-      - `unitSearch.preview.autoCollapse`
-    - `unitSearch.multiSelect`
-    - `unitSearch.actions`
-      - `unitSearch.actions.addUses`
-    - `unitSearch.pathStyle`
-    - `unitSearch.groupBy`
-    - `unitSearch.defaultScope`
-    - `unitSearch.key`
+  - `search.enabled`
+    - `search.replaceIdeSearch`
+    - `search.fromFirstHit`
+    - `search.resultsInMessages`
+    - `search.replace`
+    - `search.regex`
+    - `search.history`
+    - `search.multiFile`
+    - `unitSearch.enabled`
+      - `unitSearch.replaceIdeDialog`
+      - `unitSearch.replaceUseUnitDialog`
+      - `unitSearch.replaceFormsDialog`
+      - `unitSearch.rememberCollapsed`
+      - `unitSearch.filters`
+      - `unitSearch.filterSyntax`
+      - `unitSearch.formCaptions`
+      - `unitSearch.preview`
+        - `unitSearch.preview.form`
+        - `unitSearch.preview.usedBy`
+        - `unitSearch.preview.autoCollapse`
+      - `unitSearch.multiSelect`
+      - `unitSearch.actions`
+        - `unitSearch.actions.addUses`
+      - `unitSearch.pathStyle`
+      - `unitSearch.groupBy`
+      - `unitSearch.defaultScope`
+      - `unitSearch.key`
 
 - **Schnell öffnen** (`unitSearch.quickOpen`)
   - `quickOpen.enabled`
@@ -844,12 +865,19 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
 - **Hauptknoten**
   - `highlight.pairColorsLight` – hängt an `highlight.pairColors`
   - `highlight.pairColorsDark` – hängt an `highlight.pairColors`
+  - `highlight.nestedRoutineColorLight` – hängt an `highlight.pairColors`
+  - `highlight.nestedRoutineColorDark` – hängt an `highlight.pairColors`
 
 ### Prüfregeln
+
+- **Hauptknoten**
+  - `ruleChecks.enabled`
 
 - **Prüffenster** (`rules.window`)
   - `problems.window` – hängt an `problems.enabled`
     - `problems.window.scope`
+    - `problems.window.scopeProjects`
+      - `problems.window.scopeProject`
     - `problems.window.groupBy`
     - `problems.window.columns`
     - `problems.window.compiler`
@@ -857,8 +885,9 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
     - `problems.window.openFirst`
       - `problems.window.closedUnits`
       - `problems.window.showCleanActive`
-    - `fix.bulk`
-  - `problems.live` – hängt an `problems.enabled`
+  - `problems.update` – hängt an `problems.enabled`
+  - `problems.liveDelayMs` – hängt an `problems.enabled`
+  - `fix.bulk` – hängt an `ruleChecks.enabled`
   - `problems.list` – hängt an `problems.enabled`
 
 - **Compiler vorab** (`rules.group.compiler`)
@@ -883,7 +912,11 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
   - `safeMode.startupTimeoutMs`
   - `safeMode.keepSettingsHistory`
   - `updates.check`
+  - `updates.install`
+  - `updates.channel`
+  - `updates.newModules`
   - `diagnostics.bugReport.anonymize`
+  - `diagnostics.log.names`
 
 ### Rückgängig
 
@@ -898,53 +931,54 @@ Riskante oder unreife Funktionen kommen als **experimentell** (#834): Sie haben 
 ### Issue-Tracker
 
 - **Hauptknoten**
-  - `issues.tracker`
-  - `issues.start`
-  - `issues.branchPattern`
-  - `issues.branchBase`
-  - `issues.commitPattern`
-  - `issues.login`
-  - `issues.connections`
-  - `issues.projects`
-  - `issues.queries`
-  - `issues.queryPicker`
-  - `issues.create`
-    - `issues.create.includeCode`
-  - `issues.preview`
-    - `issues.preview.comments`
-    - `issues.preview.checklists`
-    - `issues.preview.links`
-    - `issues.preview.development`
-  - `issues.codeLinks`
-  - `issues.blameLinks`
-    - `issues.blameLinks.maxRevisions`
-  - `issues.syncState`
-  - `issues.stateField`
-  - `issues.assigneeField`
-  - `issues.startState`
-  - `issues.assignOnStart`
-  - `issues.startComment`
-  - `issues.endStates`
-  - `issues.endComment`
-  - `issues.timeTracking`
-    - `issues.idleMinutes`
-    - `issues.timeRounding`
-  - `issues.checklistStatus`
-  - `issues.warnBlocked`
-  - `issues.board`
-    - `issues.board.confirmMove`
-    - `issues.board.onlyMine`
-  - `issues.sprint.burndown`
-  - `issues.sprint.compare`
-  - `issues.paletteSearch`
-  - `issues.commentEditor`
-  - `issues.commentSnippets`
-  - `issues.notify`
-    - `issues.notify.intervalMinutes`
-    - `issues.notify.scope`
-  - `issues.attach`
-    - `issues.attach.logFiles`
-    - `issues.attach.maxImageWidth`
+  - `issues.enabled`
+    - `issues.tracker`
+    - `issues.start`
+    - `issues.branchPattern`
+    - `issues.branchBase`
+    - `issues.commitPattern`
+    - `issues.login`
+    - `issues.connections`
+    - `issues.projects`
+    - `issues.queries`
+    - `issues.queryPicker`
+    - `issues.create`
+      - `issues.create.includeCode`
+    - `issues.preview`
+      - `issues.preview.comments`
+      - `issues.preview.checklists`
+      - `issues.preview.links`
+      - `issues.preview.development`
+    - `issues.codeLinks`
+    - `issues.blameLinks`
+      - `issues.blameLinks.maxRevisions`
+    - `issues.syncState`
+    - `issues.stateField`
+    - `issues.assigneeField`
+    - `issues.startState`
+    - `issues.assignOnStart`
+    - `issues.startComment`
+    - `issues.endStates`
+    - `issues.endComment`
+    - `issues.timeTracking`
+      - `issues.idleMinutes`
+      - `issues.timeRounding`
+    - `issues.checklistStatus`
+    - `issues.warnBlocked`
+    - `issues.board`
+      - `issues.board.confirmMove`
+      - `issues.board.onlyMine`
+    - `issues.sprint.burndown`
+    - `issues.sprint.compare`
+    - `issues.paletteSearch`
+    - `issues.commentEditor`
+    - `issues.commentSnippets`
+    - `issues.notify`
+      - `issues.notify.intervalMinutes`
+      - `issues.notify.scope`
+    - `issues.attach`
+      - `issues.attach.logFiles`
+      - `issues.attach.maxImageWidth`
 
 ### Versionsverwaltung
 

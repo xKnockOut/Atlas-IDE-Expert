@@ -33,7 +33,7 @@ type
   /// zusammenstieße (#658).</summary>
   TLinkedConflict = record
     Name: string;
-    /// <summary>Wie TNameResolver.ShadowText, z. B. "Feld TKunde.Total".</summary>
+    /// <summary>Wie TResolvedSymbol.ShadowText, z. B. "Feld TKunde.Total".</summary>
     Detail: string;
   end;
 
@@ -88,7 +88,21 @@ uses
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Lsp.Internals.Cancellation;
+  Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLinkedEditingText = (FieldsTextDocumentUriAndPosition);
+
+const
+  cTexts: array[TLinkedEditingText] of TAtlasText = (
+    (De: 'Felder "textDocument.uri" und "position" fehlen in ';
+     En: 'Fields "textDocument.uri" and "position" missing in '));
+
+{$SCOPEDENUMS OFF}
 
 const
   RoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
@@ -114,10 +128,14 @@ begin
   begin
     Token := ATokens[Index];
     if Before(APosition, Token.StartPos) then
+    begin
       Break;
+    end;
     if (Token.Kind = TPascalTokenKind.Identifier) and (Token.EndPos.Line = APosition.Line) and
       not Before(Token.EndPos, APosition) then
+    begin
       Exit(Index);
+    end;
   end;
   Result := -1;
 end;
@@ -130,9 +148,13 @@ begin
   for Index := 0 to High(ATokens) do
   begin
     if ATokens[Index].StartPos = APosition then
+    begin
       Exit(Index);
+    end;
     if Before(APosition, ATokens[Index].StartPos) then
+    begin
       Break;
+    end;
   end;
   Result := -1;
 end;
@@ -155,7 +177,9 @@ begin
       begin
         Node := Child;
         if Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
+        begin
           Result := Node;
+        end;
         Descended := True;
         Break;
       end;
@@ -204,91 +228,150 @@ begin
   UnitIndex := TIndexExtractor.Extract(ATree, AFileName);
   Target := Default(TIndexSymbol);
   for Symbol in UnitIndex.Symbols do
+  begin
     if (Symbol.Kind in RoutineKinds) and Contains(Symbol.SelectionRange, APosition) then
     begin
       Target := Symbol;
       Break;
     end;
+  end;
   if Target.Name = '' then
+  begin
     Exit;
+  end;
   for Symbol in UnitIndex.Symbols do
+  begin
     if (Symbol.Kind = Target.Kind) and SameText(Symbol.Name, Target.Name) and
       SameText(Symbol.Container, Target.Container) then
+    begin
       Result := Result + [Symbol.SelectionRange];
+    end;
+  end;
   if Length(Result) <> 2 then
+  begin
     Result := nil;
+  end;
+end;
+
+/// <summary>Lokale Variable oder Konstante der Datei AFileName, die man verknüpft umbenennen kann. Result gehört
+/// zur Funktion, lokale Typen und Routinen bleiben beim Umbenennen über den Server (#30).</summary>
+function IsLinkableLocal(const ASymbol: TResolvedSymbol; const AFileName: string): Boolean;
+begin
+  Result := (ASymbol.Kind = TResolvedKind.Local) and
+    (ASymbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Constant]) and
+    not SameText(ASymbol.Name, 'Result') and SameText(ASymbol.FileName, AFileName);
+end;
+
+/// <summary>Token der Deklaration von ASymbol und die innerste Routine darum; False ohne eine.</summary>
+function DeclarationRoutine(ATree: TSyntaxTree; const ASymbol: TResolvedSymbol; out ADeclaration: Integer;
+  out ARoutine: TSyntaxNode): Boolean;
+begin
+  ARoutine := nil;
+  ADeclaration := TokenStartingAt(ATree.Tokens, ASymbol.SelectionRange.StartPos);
+  if ADeclaration >= 0 then
+  begin
+    ARoutine := InnermostRoutine(ATree.Root, ATree.Tokens[ADeclaration].Offset);
+  end;
+  Result := ARoutine <> nil;
+end;
+
+/// <summary>Stellen aus AHighlights innerhalb von ARoutine.</summary>
+function RangesIn(const AHighlights: TArray<TDocumentHighlight>; ARoutine: TSyntaxNode): TArray<TTextRange>;
+var
+  Highlight: TDocumentHighlight;
+begin
+  Result := nil;
+  for Highlight in AHighlights do
+  begin
+    if not Before(Highlight.Range.StartPos, ARoutine.StartPos) and not Before(ARoutine.EndPos, Highlight.Range.EndPos)
+    then
+    begin
+      Result := Result + [Highlight.Range];
+    end;
+  end;
+end;
+
+/// <summary>Offsets, an denen sichtbare Namen geprüft werden: die Deklaration ADeclaration, dann Vorkommen aus
+/// ARanges bis ConflictProbes.</summary>
+function ProbeOffsets(const ATokens: TArray<TPascalToken>; const ARanges: TArray<TTextRange>;
+  ADeclaration: Integer): TArray<Integer>;
+var
+  Range: TTextRange;
+  Probe: Integer;
+begin
+  Result := [ATokens[ADeclaration].Offset];
+  for Range in ARanges do
+  begin
+    Probe := TokenStartingAt(ATokens, Range.StartPos);
+    if (Probe >= 0) and (Length(Result) < TLspLinkedEditing.ConflictProbes) and (Probe <> ADeclaration) then
+    begin
+      Result := Result + [ATokens[Probe].Offset];
+    end;
+  end;
+end;
+
+/// <summary>Namen, die an AOffsets sichtbar sind, ohne AName selbst: Ohne neuen Namen gibt es keinen Konflikt.
+/// </summary>
+function ScopeConflicts(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName, AName: string;
+  const AOffsets: TArray<Integer>): TArray<TLinkedConflict>;
+var
+  Seen: TDictionary<string, Boolean>;
+  Candidate: TResolvedSymbol;
+  Conflict: TLinkedConflict;
+  Probe: Integer;
+begin
+  Result := nil;
+  Seen := TDictionary<string, Boolean>.Create;
+  try
+    Seen.Add(LowerCase(AName), True);
+    for Probe in AOffsets do
+    begin
+      for Candidate in AResolver.Candidates.OwnScopeCandidates(ATree, AFileName, Probe) do
+      begin
+        if not Seen.ContainsKey(LowerCase(Candidate.Name)) then
+        begin
+          Seen.Add(LowerCase(Candidate.Name), True);
+          Conflict.Name := Candidate.Name;
+          Conflict.Detail := Candidate.ShadowText;
+          Result := Result + [Conflict];
+        end;
+      end;
+    end;
+  finally
+    Seen.Free;
+  end;
 end;
 
 class function TLspLinkedEditing.LocalRanges(AResolver: TNameResolver; const AIndex: ISymbolIndex;
   ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition;
   out AConflicts: TArray<TLinkedConflict>): TArray<TTextRange>;
 var
-  Tokens: TArray<TPascalToken>;
-  Index, Declaration, Probe: Integer;
-  Symbol, Candidate: TResolvedSymbol;
+  Index, Declaration: Integer;
+  Symbol: TResolvedSymbol;
   Routine: TSyntaxNode;
-  Highlight: TDocumentHighlight;
-  Found: TList<TTextRange>;
-  Offsets: TList<Integer>;
-  Conflicts: TList<TLinkedConflict>;
-  Seen: TDictionary<string, Boolean>;
-  Conflict: TLinkedConflict;
 begin
   Result := nil;
   AConflicts := nil;
-  Tokens := ATree.Tokens;
-  Index := IdentifierAt(Tokens, APosition);
+  Index := IdentifierAt(ATree.Tokens, APosition);
   if Index < 0 then
+  begin
     Exit;
-  Found := TList<TTextRange>.Create;
-  Offsets := TList<Integer>.Create;
-  Conflicts := TList<TLinkedConflict>.Create;
-  Seen := TDictionary<string, Boolean>.Create;
+  end;
   AResolver.PinTree(ATree, AFileName);
   try
-    Symbol := AResolver.Resolve(ATree, AFileName, Tokens[Index].StartPos);
-    // Result gehört zur Funktion, lokale Typen und Routinen bleiben beim Umbenennen über den Server (#30).
-    if (Symbol.Kind <> TResolvedKind.Local) or
-      not (Symbol.SymbolKind in [TIndexSymbolKind.Variable, TIndexSymbolKind.Constant]) or
-      SameText(Symbol.Name, 'Result') or not SameText(Symbol.FileName, AFileName) then
-      Exit;
-    Declaration := TokenStartingAt(Tokens, Symbol.SelectionRange.StartPos);
-    if Declaration < 0 then
-      Exit;
-    Routine := InnermostRoutine(ATree.Root, Tokens[Declaration].Offset);
-    if Routine = nil then
-      Exit;
-    Offsets.Add(Tokens[Declaration].Offset);
-    for Highlight in TLspDocumentHighlights.Highlights(AResolver, AIndex, ATree, AFileName, Tokens[Index].StartPos) do
-      if not Before(Highlight.Range.StartPos, Routine.StartPos) and not Before(Routine.EndPos, Highlight.Range.EndPos)
-      then
-      begin
-        Found.Add(Highlight.Range);
-        Probe := TokenStartingAt(Tokens, Highlight.Range.StartPos);
-        if (Probe >= 0) and (Offsets.Count < ConflictProbes) and (Probe <> Declaration) then
-          Offsets.Add(Tokens[Probe].Offset);
-      end;
-    if Found.Count = 0 then
-      Exit;
-    Result := Found.ToArray;
-    // Gleichnamige zählen nicht: Ohne neuen Namen gibt es keinen Konflikt.
-    Seen.Add(LowerCase(Symbol.Name), True);
-    for Probe in Offsets do
-      for Candidate in AResolver.OwnScopeCandidates(ATree, AFileName, Probe) do
-        if not Seen.ContainsKey(LowerCase(Candidate.Name)) then
-        begin
-          Seen.Add(LowerCase(Candidate.Name), True);
-          Conflict.Name := Candidate.Name;
-          Conflict.Detail := TNameResolver.ShadowText(Candidate);
-          Conflicts.Add(Conflict);
-        end;
-    AConflicts := Conflicts.ToArray;
+    Symbol := AResolver.Resolve(ATree, AFileName, ATree.Tokens[Index].StartPos);
+    if IsLinkableLocal(Symbol, AFileName) and DeclarationRoutine(ATree, Symbol, Declaration, Routine) then
+    begin
+      Result := RangesIn(TLspDocumentHighlights.Highlights(AResolver, AIndex, ATree, AFileName,
+        ATree.Tokens[Index].StartPos), Routine);
+    end;
+    if Result <> nil then
+    begin
+      AConflicts := ScopeConflicts(AResolver, ATree, AFileName, Symbol.Name, ProbeOffsets(ATree.Tokens, Result,
+        Declaration));
+    end;
   finally
     AResolver.UnpinTree;
-    Seen.Free;
-    Conflicts.Free;
-    Offsets.Free;
-    Found.Free;
   end;
 end;
 
@@ -299,12 +382,16 @@ var
   Answer: TJSONObject;
 begin
   if Length(ARanges) = 0 then
+  begin
     Exit(TJSONNull.Create);
+  end;
   Answer := TJSONObject.Create;
   Items := TJSONArray.Create;
   Answer.AddPair('ranges', Items);
   for Range in ARanges do
+  begin
     Items.AddElement(TLspPositions.RangeToJson(Range));
+  end;
   Answer.AddPair('wordPattern', WordPattern);
   Result := Answer;
 end;
@@ -318,7 +405,9 @@ var
 begin
   Result := ToJson(ARanges);
   if not (Result is TJSONObject) then
+  begin
     Exit;
+  end;
   Items := TJSONArray.Create;
   TJSONObject(Result).AddPair('atlasConflicts', Items);
   for Conflict in AConflicts do
@@ -347,10 +436,14 @@ var
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
+  begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Felder "textDocument.uri" und "position" fehlen in ' + Method);
+      cTexts[TLinkedEditingText.FieldsTextDocumentUriAndPosition].Text + Method);
+  end;
   if not FStore.TryGet(Uri, Document) then
+  begin
     Exit(TJSONNull.Create);
+  end;
   // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
   Cancellation := TRequestCancellation.Create(ACancellation);
   Shared := TSyntaxTreeCache.Get(Document, Cancellation);
@@ -358,7 +451,9 @@ begin
   ACancellation.ThrowIfCancellationRequested;
   Position := TLspPositions.ReadPosition(PositionValue);
   if not TJSONObject(AParams).TryGetValue<Boolean>('atlasLocals', LocalsOnly) then
+  begin
     LocalsOnly := False;
+  end;
   // Erst lokale Bezeichner (#658), dann Methoden und Routinen (#39).
   if FIndex <> nil then
   begin
@@ -370,12 +465,19 @@ begin
       Resolver.Free;
     end;
     if Length(Found) > 0 then
+    begin
       Exit(ToJson(Found, Conflicts));
+    end;
   end;
   if LocalsOnly then
+  begin
     Exit(TJSONNull.Create);
+  end;
   Found := Ranges(Tree, TDocumentUris.ToPath(Uri), Position);
   Result := ToJson(Found);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.LinkedEditing', cTexts);
 
 end.

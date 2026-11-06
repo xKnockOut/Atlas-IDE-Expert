@@ -39,11 +39,13 @@ begin
     begin
       AText := '';
       for Pair in AFiles do
+      begin
         if Copy(Pair, 1, Pos('=', Pair) - 1) = AFileName then
         begin
           AText := Copy(Pair, Pos('=', Pair) + 1, MaxInt);
           Exit(True);
         end;
+      end;
       Result := False;
     end;
 end;

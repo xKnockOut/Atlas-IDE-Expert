@@ -42,6 +42,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.Completion.Lists,
   System.SysUtils,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
@@ -98,16 +99,20 @@ begin
   // Cursor hinter AMarker.
   Index := Pos(AMarker, AText);
   if Index = 0 then
+  begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+  end;
   Inc(Index, Length(AMarker));
   Line := 0;
   LineStart := 1;
   for Scan := 1 to Index - 1 do
+  begin
     if AText[Scan] = #10 then
     begin
       Inc(Line);
       LineStart := Scan + 1;
     end;
+  end;
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
@@ -123,7 +128,9 @@ var
 begin
   Result := '';
   for Signature in AHelp.Signatures do
+  begin
     Result := Result + Signature.Text + '|';
+  end;
 end;
 
 { TNestedOverloadsTests }
@@ -146,8 +153,8 @@ var
 begin
   Tree := TPascalParser.Parse(UnitHaupt);
   try
-    Result := TLspSignatureHelp.HelpAt(FResolver, FIndex, Tree, UnitHaupt, HauptFile, PositionOf(UnitHaupt, AMarker),
-      NoText);
+    Result := TLspSignatureHelp.HelpAt(TSignatureHelpRequest.Create(FResolver, FIndex, Tree, UnitHaupt, HauptFile,
+      NoText), PositionOf(UnitHaupt, AMarker));
   finally
     Tree.Free;
   end;
@@ -161,7 +168,7 @@ begin
   Text := StringReplace(UnitHaupt, '  |', ACode, []);
   Tree := TPascalParser.Parse(Text);
   try
-    Result := TLspCompletion.Collect(FResolver, FIndex, Tree, HauptFile, PositionOf(Text, AMarker),
+    Result := TCompletionLists.Collect(FResolver, FIndex, Tree, HauptFile, PositionOf(Text, AMarker),
       TCompletionMatching.Prefix);
   finally
     Tree.Free;
@@ -224,6 +231,7 @@ begin
   Items := ItemsAt('  Hil', 'Hilf(4);'#10'  Hil');
   Count := 0;
   for Item in Items.Items do
+  begin
     if SameText(Item.Name, 'Hilf') then
     begin
       Inc(Count);
@@ -232,6 +240,7 @@ begin
       Assert.AreEqual(1, Integer(Length(Item.Overloads)));
       Assert.IsTrue(Item.HasParameters);
     end;
+  end;
   Assert.AreEqual(1, Count);
 end;
 
@@ -245,12 +254,16 @@ begin
   Items := ItemsAt('  ', #10'  begin'#10'    T');
   Names := '';
   for Item in Items.Items do
+  begin
     Names := Names + Item.Name + ' ';
+  end;
   Assert.IsTrue(Pos('Tief ', Names) > 0, Names);
   Items := ItemsAt('  ', #10'    Hil');
   Names := '';
   for Item in Items.Items do
+  begin
     Names := Names + Item.Name + ' ';
+  end;
   Assert.IsTrue(Pos('Hilf ', Names) > 0, Names);
 end;
 

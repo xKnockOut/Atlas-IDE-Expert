@@ -77,7 +77,9 @@ begin
   begin
     Result := Result + Action.GetValue<string>('title', '');
     if Action.GetValue<Boolean>('isPreferred', False) then
+    begin
       Result := Result + ' *';
+    end;
     Result := Result + '|';
   end;
 end;
@@ -87,7 +89,9 @@ var
   Action: TJSONObject;
 begin
   for Action in AActions do
+  begin
     Action.Free;
+  end;
 end;
 
 function ActionsFor(const AOptions: TDisableWarningOptions; AFirst, ALast: Integer;

@@ -69,9 +69,17 @@ type
     [Test]
     procedure SafeModificationsAreSilent;
     [Test]
+    procedure LaterBreakLeavesLoop;
+    [Test]
     procedure MutatingMethodsOption;
     [Test]
     procedure CollectionModifiedOffAndExclude;
+  end;
+
+  /// <summary>Regeln zu Destroy, case, Datenmengen, Transaktionen, Vergleichen als Anweisung und doppelten case-Marken.</summary>
+  [TestFixture]
+  TStatementPatternRulesTests = class
+  public
     [Test]
     procedure DestroyCalledDirectlyIssueExample;
     [Test]
@@ -198,6 +206,10 @@ uses
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Rules.Builtin.Statements,
+  Atlas.Common.Rules.Builtin.Statements.Loops,
+  Atlas.Common.Rules.Builtin.Statements.Cases,
+  Atlas.Common.Rules.Builtin.Statements.Datasets,
+  Atlas.Common.Rules.Builtin.Statements.Properties,
   Atlas.Common.Index.Contract,
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
@@ -526,6 +538,27 @@ begin
     '  for I := 0 to 9 do'#10'    Kunden.Delete(0);'#10));
 end;
 
+procedure TStatementRulesTests.LaterBreakLeavesLoop;
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  // Break oder Exit später im selben Block, nach einem Merker und nach einer inneren for-Schleife hinter dem Aufruf
+  // (Modules.Registry, Settings.Parts).
+  TRuleAssert.Silent(TCollectionModifiedInLoopRule.Create,
+    ListBody('  for I := 0 to Kunden.Count - 1 do'#10'    if Kunden[I].Name = '''' then'#10'    begin'#10 +
+    '      Kunden.Delete(I);'#10'      Gefunden := True;'#10'      Break;'#10'    end;'#10 +
+    '  for I := 0 to Kunden.Count - 1 do'#10'    if Kunden[I].Name = '''' then'#10'    begin'#10 +
+    '      Kunden.Delete(I);'#10'      for var Name in Namen do'#10'        Schluessel.Remove(Name);'#10 +
+    '      Exit;'#10'    end;'#10));
+  // Bedingtes Break und Break nur der inneren Schleife lassen die Meldung stehen.
+  Findings := TRuleAssert.Findings(TCollectionModifiedInLoopRule.Create,
+    ListBody('  for I := 0 to Kunden.Count - 1 do'#10'  begin'#10'    Kunden.Delete(I);'#10 +
+    '    if Fertig then'#10'      Break;'#10'  end;'#10 +
+    '  for I := 0 to Kunden.Count - 1 do'#10'    while Weiter do'#10'    begin'#10'      Kunden.Delete(I);'#10 +
+    '      Break;'#10'    end;'#10));
+  Assert.AreEqual(2, Integer(Length(Findings)));
+end;
+
 procedure TStatementRulesTests.MutatingMethodsOption;
 const
   Source = '  for I := 0 to Kunden.Count - 1 do'#10'    Kunden.Loeschen(I);'#10 +
@@ -566,27 +599,43 @@ var
 begin
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = EmptyStatementRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found);
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = LoopOffByOneRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found, LoopOffByOneRuleId);
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = CollectionModifiedInLoopRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found, CollectionModifiedInLoopRuleId);
   Found := False;
   for Rule in BuiltinRules do
+  begin
     if Rule.Descriptor.Id = DestroyCalledDirectlyRuleId then
+    begin
       Found := True;
+    end;
+  end;
   Assert.IsTrue(Found, DestroyCalledDirectlyRuleId);
 end;
 
-procedure TStatementRulesTests.DestroyCalledDirectlyIssueExample;
+procedure TStatementPatternRulesTests.DestroyCalledDirectlyIssueExample;
 var
   Findings: TArray<TRuleFinding>;
   Text: string;
@@ -608,7 +657,7 @@ begin
     Body('  Liste.Destroy();'#10'  TObject(Liste).Destroy;'#10)))));
 end;
 
-procedure TStatementRulesTests.DestroyCalledDirectlySilentCases;
+procedure TStatementPatternRulesTests.DestroyCalledDirectlySilentCases;
 begin
   // inherited Destroy im Destruktor, eigener Destruktor mit Argumenten, Methodenzeiger.
   TRuleAssert.Silent(TDestroyCalledDirectlyRule.Create, 'unit U;'#10'interface'#10'implementation'#10 +
@@ -617,7 +666,7 @@ begin
     '  Ereignis := Liste.Destroy;'#10));
 end;
 
-procedure TStatementRulesTests.DestroyCalledDirectlyOffAndExclude;
+procedure TStatementPatternRulesTests.DestroyCalledDirectlyOffAndExclude;
 const
   Source = '  Verbindung.Destroy;'#10;
 begin
@@ -638,7 +687,7 @@ begin
     'end;'#10'end.';
 end;
 
-procedure TStatementRulesTests.CaseMissingEnumValueIssueExample;
+procedure TStatementPatternRulesTests.CaseMissingEnumValueIssueExample;
 var
   Source, Fixed: string;
   Findings: TArray<TRuleFinding>;
@@ -657,7 +706,7 @@ begin
   TRuleAssert.Silent(TCaseMissingEnumValueRule.Create, Fixed);
 end;
 
-procedure TStatementRulesTests.CaseMissingEnumValueVariants;
+procedure TStatementPatternRulesTests.CaseMissingEnumValueVariants;
 var
   Findings: TArray<TRuleFinding>;
   Source: string;
@@ -692,7 +741,7 @@ begin
     TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
 end;
 
-procedure TStatementRulesTests.CaseMissingEnumValueSilentCases;
+procedure TStatementPatternRulesTests.CaseMissingEnumValueSilentCases;
 begin
   // Vollständig, mit else, Ganzzahl, unbekannter Typ, Aufruf als Selektor.
   TRuleAssert.Silent(TCaseMissingEnumValueRule.Create, Bestellung('  case Stand of'#10 +
@@ -702,7 +751,7 @@ begin
     '    bsNeu: ;'#10'  end;'));
 end;
 
-procedure TStatementRulesTests.CaseMissingEnumValueOptions;
+procedure TStatementPatternRulesTests.CaseMissingEnumValueOptions;
 var
   Source: string;
   Findings: TArray<TRuleFinding>;
@@ -719,7 +768,7 @@ begin
   Assert.AreEqual('"requireElse" muss true oder false sein', Issues[0].Message);
 end;
 
-procedure TStatementRulesTests.DatasetLoopIssueExample;
+procedure TStatementPatternRulesTests.DatasetLoopIssueExample;
 var
   Source, Fixed: string;
   Findings: TArray<TRuleFinding>;
@@ -742,7 +791,7 @@ begin
   TRuleAssert.Silent(TDatasetLoopWithoutNextRule.Create, Fixed);
 end;
 
-procedure TStatementRulesTests.DatasetLoopVariants;
+procedure TStatementPatternRulesTests.DatasetLoopVariants;
 var
   Findings: TArray<TRuleFinding>;
 begin
@@ -763,7 +812,7 @@ begin
   Assert.AreEqual(0, Integer(Length(Findings[2].Fixes)));
 end;
 
-procedure TStatementRulesTests.DatasetLoopSilentCases;
+procedure TStatementPatternRulesTests.DatasetLoopSilentCases;
 begin
   // Next in allen Zweigen, Delete, Break/Exit/raise, try … finally, Datenmenge weitergegeben, with, andere Bedingung.
   TRuleAssert.Silent(TDatasetLoopWithoutNextRule.Create, Body('  while not Q.Eof do'#10'  begin'#10 +
@@ -775,7 +824,7 @@ begin
     '  while not Q.Eof do'#10'    raise EAbbruch.Create(''x'');'#10));
 end;
 
-procedure TStatementRulesTests.DatasetLoopOffAndExclude;
+procedure TStatementPatternRulesTests.DatasetLoopOffAndExclude;
 var
   Source: string;
 begin
@@ -786,7 +835,7 @@ begin
     '{"rules": {"dataset-loop-without-next": {"exclude": ["Source/*.pas"]}}}', 'Source/Daten.pas'))));
 end;
 
-procedure TStatementRulesTests.DatasetEditIssueExample;
+procedure TStatementPatternRulesTests.DatasetEditIssueExample;
 var
   Source, Fixed: string;
   Findings: TArray<TRuleFinding>;
@@ -816,7 +865,7 @@ begin
   TRuleAssert.Silent(TDatasetEditWithoutPostRule.Create, Fixed);
 end;
 
-procedure TStatementRulesTests.DatasetEditVariants;
+procedure TStatementPatternRulesTests.DatasetEditVariants;
 var
   Findings: TArray<TRuleFinding>;
 begin
@@ -829,7 +878,7 @@ begin
   Assert.AreEqual(0, Integer(Length(Findings[1].Fixes)));
 end;
 
-procedure TStatementRulesTests.DatasetEditSilentCases;
+procedure TStatementPatternRulesTests.DatasetEditSilentCases;
 begin
   // Post, Cancel, CheckBrowseMode, Post in anderer Routine, weitergegeben, Insert mit Argumenten, Edit ohne Empfänger.
   TRuleAssert.Silent(TDatasetEditWithoutPostRule.Create, Body('  A.Edit;'#10'  A[''X''] := 1;'#10'  A.Post;'#10 +
@@ -840,7 +889,7 @@ begin
     'procedure TForm1.SpeichernClick(Sender: TObject);'#10'begin'#10'  tblKunde.Post;'#10'end;'#10'end.');
 end;
 
-procedure TStatementRulesTests.DatasetEditOnlyOnDataSets;
+procedure TStatementPatternRulesTests.DatasetEditOnlyOnDataSets;
 var
   mFindings: TArray<TRuleFinding>;
 begin
@@ -860,7 +909,7 @@ begin
   Assert.AreEqual('Nach Insert fehlt Post oder Cancel; die Änderung bleibt offen.', mFindings[1].Message);
 end;
 
-procedure TStatementRulesTests.DatasetEditOffAndExclude;
+procedure TStatementPatternRulesTests.DatasetEditOffAndExclude;
 var
   Source: string;
 begin
@@ -871,7 +920,7 @@ begin
     '{"rules": {"dataset-edit-without-post": {"exclude": ["Source/*.pas"]}}}', 'Source/Daten.pas'))));
 end;
 
-procedure TStatementRulesTests.TransactionIssueExample;
+procedure TStatementPatternRulesTests.TransactionIssueExample;
 var
   Source, Fixed: string;
   Findings: TArray<TRuleFinding>;
@@ -894,7 +943,7 @@ begin
   TRuleAssert.Silent(TTransactionWithoutRollbackRule.Create, Fixed);
 end;
 
-procedure TStatementRulesTests.TransactionVariants;
+procedure TStatementPatternRulesTests.TransactionVariants;
 var
   Source: string;
   Findings: TArray<TRuleFinding>;
@@ -918,7 +967,7 @@ begin
   Assert.AreEqual('BeginTrans', TTransactionWithoutRollbackRule.Pairs('')[2].Start);
 end;
 
-procedure TStatementRulesTests.TransactionSilentCases;
+procedure TStatementPatternRulesTests.TransactionSilentCases;
 begin
   // Rollback im folgenden try, try … finally um try … except, Rollback in anderer Routine, ohne Empfänger.
   TRuleAssert.Silent(TTransactionWithoutRollbackRule.Create, Body('  A.StartTransaction;'#10'  try'#10 +
@@ -931,7 +980,7 @@ begin
     'procedure TForm1.VerwerfenClick(Sender: TObject);'#10'begin'#10'  Db.Rollback;'#10'end;'#10'end.');
 end;
 
-procedure TStatementRulesTests.TransactionOptions;
+procedure TStatementPatternRulesTests.TransactionOptions;
 var
   Source: string;
   Issues: TArray<TConfigurationIssue>;
@@ -964,7 +1013,7 @@ begin
     AStatements + 'end;'#10'end.';
 end;
 
-procedure TStatementRulesTests.ComparisonAsStatementIssueExample;
+procedure TStatementPatternRulesTests.ComparisonAsStatementIssueExample;
 const
   Statements = '  Result = 0;'#10'  for var B in FBuchungen do'#10'    Result := Result + B.Betrag;'#10;
   Fixed = '  Result := 0;'#10'  for var B in FBuchungen do'#10'    Result := Result + B.Betrag;'#10;
@@ -987,7 +1036,7 @@ begin
   TRuleAssert.Silent(TComparisonAsStatementRule.Create, Text);
 end;
 
-procedure TStatementRulesTests.ComparisonAsStatementVariants;
+procedure TStatementPatternRulesTests.ComparisonAsStatementVariants;
 var
   Findings: TArray<TRuleFinding>;
 begin
@@ -1016,7 +1065,7 @@ begin
   Assert.AreEqual('Vergleich als Anweisung (wie E2014); gemeint ist wohl Result := 0.', Findings[0].Message);
 end;
 
-procedure TStatementRulesTests.ComparisonAsStatementSilentCases;
+procedure TStatementPatternRulesTests.ComparisonAsStatementSilentCases;
 begin
   // Zuweisungen, Bedingungen, generische Aufrufe und Typumwandlungen.
   TRuleAssert.Silent(TComparisonAsStatementRule.Create, Konto('  Result := 0;'#10 +
@@ -1024,7 +1073,7 @@ begin
     '  TFoo.Bar<Integer>(1);'#10'  (Sender as TButton).Click;'#10'  while not FAktiv do'#10'    Laden;'#10));
 end;
 
-procedure TStatementRulesTests.ComparisonAsStatementOffAndExclude;
+procedure TStatementPatternRulesTests.ComparisonAsStatementOffAndExclude;
 const
   Statements = '  Result = 0;'#10;
 begin
@@ -1045,7 +1094,7 @@ begin
     'procedure Pruefen(Status: TStatus; Zahl: Integer; Zeichen: Char);'#10'begin'#10 + ACase + 'end;'#10'end.';
 end;
 
-procedure TStatementRulesTests.DuplicateCaseLabelIssueExample;
+procedure TStatementPatternRulesTests.DuplicateCaseLabelIssueExample;
 const
   Statements = '  case Status of'#10'    stNeu, stOffen: Bearbeiten;'#10'    stGeschlossen: Archivieren;'#10 +
     '    stOffen: Erinnern;'#10'  end;'#10;
@@ -1080,7 +1129,7 @@ begin
     '    stNeu, stOffen: Erinnern;'#10'  end;'#10), Findings[0].Fixes[0].Edits));
 end;
 
-procedure TStatementRulesTests.DuplicateCaseLabelValues;
+procedure TStatementPatternRulesTests.DuplicateCaseLabelValues;
 var
   Findings: TArray<TRuleFinding>;
 begin
@@ -1100,7 +1149,7 @@ begin
   Assert.AreEqual('TStatus.stOffen liegt schon in stNeu..stOffen aus Zeile 24 (wie E2030).', Findings[5].Message);
 end;
 
-procedure TStatementRulesTests.DuplicateCaseLabelVariantRecord;
+procedure TStatementPatternRulesTests.DuplicateCaseLabelVariantRecord;
 const
   Source = 'unit Formen;'#10'interface'#10'type'#10'  TForm = record'#10'    case Art: Integer of'#10 +
     '      0: (Radius: Double);'#10'      1, 2: (Breite, Hoehe: Double);'#10'      2: (Seite: Double);'#10 +
@@ -1115,7 +1164,7 @@ begin
     TChangeSignature.ApplyEdits(Source, Findings[0].Fixes[0].Edits));
 end;
 
-procedure TStatementRulesTests.DuplicateCaseLabelFromIndex;
+procedure TStatementPatternRulesTests.DuplicateCaseLabelFromIndex;
 const
   Source = 'unit Auftraege;'#10'interface'#10'uses'#10'  Grenzen;'#10'implementation'#10 +
     'procedure P(Zahl: Integer; Farbe: TFarbe);'#10'begin'#10'  case Zahl of'#10'    Oben: A;'#10'    10: B;'#10 +
@@ -1137,7 +1186,7 @@ begin
   Assert.AreEqual('fGruen liegt schon in fRot..fBlau aus Zeile 15 (wie E2030).', Findings[2].Message);
 end;
 
-procedure TStatementRulesTests.DuplicateCaseLabelSilentCases;
+procedure TStatementPatternRulesTests.DuplicateCaseLabelSilentCases;
 begin
   // Verschiedene Werte, unbekannte Namen und Aufzählungen mit eigenen Werten.
   TRuleAssert.Silent(TDuplicateCaseLabelRule.Create, Vorgang('  case Status of'#10 +
@@ -1158,7 +1207,7 @@ begin
     '  case A of'#10'    aEins: X;'#10'    aAuch: Y;'#10'  end;'#10'end;'#10'end.');
 end;
 
-procedure TStatementRulesTests.DuplicateCaseLabelOffAndExclude;
+procedure TStatementPatternRulesTests.DuplicateCaseLabelOffAndExclude;
 const
   Statements = '  case Zahl of'#10'    1: A;'#10'    1: B;'#10'  end;'#10;
 begin
@@ -1222,7 +1271,9 @@ begin
   while (Line < APosition.Line) and (Index <= Length(AText)) do
   begin
     if AText[Index] = #10 then
+    begin
       Inc(Line);
+    end;
     Inc(Index);
   end;
   Result := Index + APosition.Character;
@@ -1237,13 +1288,17 @@ var
 begin
   Edits := Copy(AFix.Edits);
   for Index := 0 to High(Edits) do
+  begin
     for Inner := Index + 1 to High(Edits) do
+    begin
       if OffsetIn(AText, Edits[Inner].Range.StartPos) > OffsetIn(AText, Edits[Index].Range.StartPos) then
       begin
         Swap := Edits[Index];
         Edits[Index] := Edits[Inner];
         Edits[Inner] := Swap;
       end;
+    end;
+  end;
   Result := AText;
   for Index := 0 to High(Edits) do
   begin
@@ -1583,6 +1638,7 @@ end;
 
 initialization
   TDUnitX.RegisterTestFixture(TStatementRulesTests);
+  TDUnitX.RegisterTestFixture(TStatementPatternRulesTests);
   TDUnitX.RegisterTestFixture(TAssignToPropertyMemberTests);
   TDUnitX.RegisterTestFixture(TReadonlyPropertyAssignedTests);
   TDUnitX.RegisterTestFixture(TUntypedPointerRefcountTests);

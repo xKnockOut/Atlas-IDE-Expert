@@ -1,7 +1,8 @@
 ﻿unit Atlas.Common.Editing.MethodOrder.Tests;
 
 // Methodenrümpfe in Deklarationsreihenfolge (#660): Ordnen der ganzen Unit
-// und Einfügestelle neuer Rümpfe.
+// und Einfügestelle neuer Rümpfe. Gruppiert mit Lebenszyklus zuerst (#1836)
+// und Typkommentare, die mit ihrem Typ wandern oder neu entstehen (#1835).
 
 interface
 
@@ -35,9 +36,23 @@ type
     [Test]
     procedure LeavesNewBodyInPlace;
     [Test]
+    procedure LeavesNewGroupInPlace;
+    [Test]
     procedure IgnoresKnownAndHalfTypedBodies;
     [Test]
     procedure Names;
+    [Test]
+    procedure GroupsLifecycleAccessorsOverrides;
+    [Test]
+    procedure LifecycleFirstWithDeclaration;
+    [Test]
+    procedure TypeCommentMovesWithItsType;
+    [Test]
+    procedure RegionMovesWithItsType;
+    [Test]
+    procedure PlaceNewAddsTypeComment;
+    [Test]
+    procedure PlaceNewKeepsExistingTypeComment;
   end;
 
 implementation
@@ -48,6 +63,7 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Editing.TypeComments,
   Atlas.Common.Editing.MethodOrder;
 
 const
@@ -106,7 +122,9 @@ var
 begin
   Result := FooKopf;
   for Name in ANames do
+  begin
     Result := Result + #10'procedure ' + Name + ';'#10'begin'#10'end;'#10;
+  end;
   Result := Result + Ende;
 end;
 
@@ -175,7 +193,9 @@ begin
   Assert.AreEqual(Kopf + SpeichernZahl + SpeichernText + Hilfe + Neu + Laden + Machen + Lauf + Ende, Done);
   Assert.IsTrue(ParsesClean(Done), 'Ergebnis parst');
   for Part in TArray<string>.Create(Machen, SpeichernText, Hilfe, Neu, Laden, Lauf, SpeichernZahl) do
+  begin
     Assert.AreEqual(1, Count(Done, Part), 'derselbe Rumpf genau einmal');
+  end;
   Assert.AreEqual(4, Integer(Length(Order.Moves)));
   Assert.AreEqual('Speichern', Order.Moves[0].Name);
   Assert.AreEqual(-4, Order.Moves[0].Delta);
@@ -298,6 +318,15 @@ begin
   Assert.AreEqual(0, Integer(Length(Order.Edits)));
 end;
 
+procedure TMethodOrderTests.LeavesNewGroupInPlace;
+var
+  Order: TMethodOrderResult;
+begin
+  // Zwei neue Rümpfe direkt hinter ihrem Ziel: die ganze Gruppe bleibt, auch der zweite.
+  Placed(Foo(['TFoo.A']), Foo(['TFoo.A', 'TFoo.B', 'TFoo.C']), Order);
+  Assert.AreEqual(0, Integer(Length(Order.Edits)));
+end;
+
 procedure TMethodOrderTests.IgnoresKnownAndHalfTypedBodies;
 var
   Order: TMethodOrderResult;
@@ -317,9 +346,153 @@ var
   Placement: TMethodPlacement;
 begin
   for Placement := Low(TMethodPlacement) to High(TMethodPlacement) do
+  begin
     Assert.AreEqual(Ord(Placement), Ord(TMethodOrder.PlacementOf(TMethodOrder.PlacementName(Placement))));
-  Assert.AreEqual(Ord(TMethodPlacement.Declaration), Ord(TMethodOrder.PlacementOf('')));
+  end;
+  Assert.AreEqual(Ord(TMethodPlacement.Grouped), Ord(TMethodOrder.PlacementOf('')), 'Vorgabe gruppiert (#1836)');
   Assert.AreEqual('', TMethodOrder.ReasonName(TMethodStayReason.None));
+end;
+
+const
+  GruppeKopf =
+    'unit U;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TFenster = class(TBasis)'#10 +
+    '  private'#10 +
+    '    FName: string;'#10 +
+    '    procedure Zeichnen;'#10 +
+    '    function GetName: string;'#10 +
+    '    procedure SetName(const AValue: string);'#10 +
+    '  protected'#10 +
+    '    procedure Paint; override;'#10 +
+    '  public'#10 +
+    '    constructor Create;'#10 +
+    '    destructor Destroy; override;'#10 +
+    '    property Name: string read GetName write SetName;'#10 +
+    '  end;'#10 +
+    'implementation'#10;
+
+function Body(const AName: string): string;
+begin
+  Result := #10 + AName + ';'#10'begin'#10'end;'#10;
+end;
+
+function Grouped: string;
+begin
+  Result := GruppeKopf + Body('procedure TFenster.Zeichnen') + Body('function TFenster.GetName: string') +
+    Body('procedure TFenster.SetName(const AValue: string)') + Body('procedure TFenster.Paint') +
+    Body('constructor TFenster.Create') + Body('destructor TFenster.Destroy') + Ende;
+end;
+
+function ArrangedWith(const AText: string; const AOptions: TMethodOrderOptions): string;
+var
+  Tree: TSyntaxTree;
+  Order: TMethodOrderResult;
+begin
+  Tree := TPascalParser.Parse(AText);
+  try
+    Order := TMethodOrder.Arrange(Tree, AText, AOptions);
+  finally
+    Tree.Free;
+  end;
+  Result := TChangeSignature.ApplyEdits(AText, Order.Edits);
+end;
+
+function PlacedWith(const ABefore, AText: string; const AOptions: TMethodOrderOptions): string;
+var
+  Tree: TSyntaxTree;
+  Order: TMethodOrderResult;
+begin
+  Tree := TPascalParser.Parse(AText);
+  try
+    Order := TMethodOrder.PlaceNew(Tree, AText, ABefore, AOptions);
+  finally
+    Tree.Free;
+  end;
+  Result := TChangeSignature.ApplyEdits(AText, Order.Edits);
+end;
+
+procedure TMethodOrderTests.GroupsLifecycleAccessorsOverrides;
+var
+  Done: string;
+begin
+  Done := ArrangedWith(Grouped, TMethodOrderOptions.Create(TMethodPlacement.Grouped));
+  Assert.AreEqual(GruppeKopf + Body('constructor TFenster.Create') + Body('destructor TFenster.Destroy') +
+    Body('function TFenster.GetName: string') + Body('procedure TFenster.SetName(const AValue: string)') +
+    Body('procedure TFenster.Paint') + Body('procedure TFenster.Zeichnen') + Ende, Done);
+  Assert.AreEqual(Done, ArrangedWith(Done, TMethodOrderOptions.Create(TMethodPlacement.Grouped)),
+    'zweites Ordnen ändert nichts');
+end;
+
+procedure TMethodOrderTests.LifecycleFirstWithDeclaration;
+var
+  Options: TMethodOrderOptions;
+begin
+  Options := TMethodOrderOptions.Create(TMethodPlacement.Declaration);
+  Options.LifecycleFirst := True;
+  Assert.AreEqual(GruppeKopf + Body('constructor TFenster.Create') + Body('destructor TFenster.Destroy') +
+    Body('procedure TFenster.Zeichnen') + Body('function TFenster.GetName: string') +
+    Body('procedure TFenster.SetName(const AValue: string)') + Body('procedure TFenster.Paint') + Ende,
+    ArrangedWith(Grouped, Options));
+  Options.LifecycleFirst := False;
+  Assert.AreEqual(GruppeKopf + Body('procedure TFenster.Zeichnen') + Body('function TFenster.GetName: string') +
+    Body('procedure TFenster.SetName(const AValue: string)') + Body('procedure TFenster.Paint') +
+    Body('constructor TFenster.Create') + Body('destructor TFenster.Destroy') + Ende,
+    ArrangedWith(Grouped, Options), 'ohne Vorziehen wie deklariert');
+end;
+
+procedure TMethodOrderTests.TypeCommentMovesWithItsType;
+var
+  Text, Done: string;
+begin
+  // TBar steht vorn, ist aber nach TFoo deklariert: Kommentar { TBar } wandert mit.
+  Text := FooKopf + #10'{ TBar }'#10 + Body('procedure TBar.X') + #10'{ TFoo }'#10 + Body('procedure TFoo.A') + Ende;
+  Done := ArrangedWith(Text, TMethodOrderOptions.Create(TMethodPlacement.Declaration));
+  Assert.AreEqual(FooKopf + #10'{ TFoo }'#10 + Body('procedure TFoo.A') + #10'{ TBar }'#10 +
+    Body('procedure TBar.X') + Ende, Done);
+  Assert.IsTrue(ParsesClean(Done));
+end;
+
+procedure TMethodOrderTests.RegionMovesWithItsType;
+var
+  Text, Done: string;
+begin
+  Text := FooKopf + #10'{$REGION ''TBar''}'#10 + Body('procedure TBar.X') + '{$ENDREGION}'#10 +
+    #10'{$REGION ''TFoo''}'#10 + Body('procedure TFoo.B') + Body('procedure TFoo.A') + '{$ENDREGION}'#10 + Ende;
+  Done := ArrangedWith(Text, TMethodOrderOptions.Create(TMethodPlacement.Declaration));
+  Assert.AreEqual(FooKopf + #10'{$REGION ''TFoo''}'#10 + Body('procedure TFoo.A') + Body('procedure TFoo.B') +
+    '{$ENDREGION}'#10 + #10'{$REGION ''TBar''}'#10 + Body('procedure TBar.X') + '{$ENDREGION}'#10 + Ende, Done,
+    'Typregion ist kein Hindernis, sie wandert mit');
+end;
+
+procedure TMethodOrderTests.PlaceNewAddsTypeComment;
+var
+  Before, Text: string;
+  Options: TMethodOrderOptions;
+begin
+  Before := FooKopf + Body('procedure TFoo.A') + Ende;
+  Text := FooKopf + Body('procedure TFoo.A') + Body('procedure TBar.X') + Ende;
+  Options := TMethodOrderOptions.Create(TMethodPlacement.Declaration);
+  Options.TypeComment := TTypeCommentStyle.Brace;
+  Assert.AreEqual(FooKopf + Body('procedure TFoo.A') + #10'{ TBar }'#10 + Body('procedure TBar.X') + Ende,
+    PlacedWith(Before, Text, Options), 'Typ ohne Rümpfe bekommt den Kommentar');
+  Options.TypeComment := TTypeCommentStyle.Off;
+  Assert.AreEqual(Text, PlacedWith(Before, Text, Options), 'aus: wie bisher');
+end;
+
+procedure TMethodOrderTests.PlaceNewKeepsExistingTypeComment;
+var
+  Before, Text: string;
+  Options: TMethodOrderOptions;
+begin
+  Before := FooKopf + #10'{ TFoo }'#10 + Body('procedure TFoo.A') + Body('procedure TFoo.C') + Ende;
+  Text := FooKopf + #10'{ TFoo }'#10 + Body('procedure TFoo.A') + Body('procedure TFoo.C') +
+    Body('procedure TFoo.B') + Ende;
+  Options := TMethodOrderOptions.Create(TMethodPlacement.Declaration);
+  Options.TypeComment := TTypeCommentStyle.Brace;
+  Assert.AreEqual(FooKopf + #10'{ TFoo }'#10 + Body('procedure TFoo.A') + Body('procedure TFoo.B') +
+    Body('procedure TFoo.C') + Ende, PlacedWith(Before, Text, Options), 'kein zweiter Kommentar');
 end;
 
 initialization

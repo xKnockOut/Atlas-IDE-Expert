@@ -4,7 +4,8 @@
 
 .DESCRIPTION
     Mit englischer IDE soll Atlas englisch sprechen. Benutzertexte stehen deshalb in
-    Texttabellen (array[…] of TAtlasText mit De und En, im Plugin Atlas.UI.Strings).
+    Texttabellen (array[…] of TAtlasText mit De und En, im Plugin die Sprachtabellen
+    array[TAtlasLanguage, …] of string in Atlas.UI.Strings und den Strings-Units der Module).
     Dieses Werkzeug sucht in Packages/ und Application/ String-Literale, die nach
     deutschem Text aussehen: Umlaute oder ß, oder ein häufiges deutsches Wort
     (und, nicht, oder, der, die, das, ist, mit, für, kein, wird, …).
@@ -12,10 +13,12 @@
     Ausgenommen sind:
     - Kommentare und Direktiven,
     - die Einträge von Texttabellen "array[…] of TAtlasText = (" bis zum Ende ");",
+    - die deutsche Zeile der Sprachtabellen "array[TAtlasLanguage, …] of string = ((…), (…));"
+      (die erste Klammer); die englische Zeile wird geprüft, deutscher Text dort ist ein Fund,
     - Zeilen mit dem Kommentar "// german-ok" (Text, der deutsch bleiben muss,
       etwa Schlüsselwörter der deutschen YouTrack-Oberfläche),
-    - Atlas.UI.Strings (Texttabelle des Plugins) und die erzeugten Units
-      (*SchemaData.pas, *ProfileData.pas, *Catalog.Data.pas).
+    - die erzeugten Units
+      (*SchemaData.pas, *ProfileData.pas, *Catalog.Data.pas und ihre Teile *Catalog.Data.*.pas).
 
     Den Altbestand hält Tools/GermanText.baseline.json je Datei fest. Eine Datei darf
     nicht mehr Funde haben als dort eingetragen; neue Dateien haben 0. Sinkt die Zahl,
@@ -53,7 +56,7 @@ $ErrorActionPreference = 'Stop'
 
 if ($BaselinePath -eq '') { $BaselinePath = Join-Path $Root 'Tools/GermanText.baseline.json' }
 $SourceDirs = @('Packages', 'Application')
-$SkipNames = '^(Atlas\.UI\.Strings\.pas|.*SchemaData\.pas|.*ProfileData\.pas|.*Catalog\.Data\.pas)$'
+$SkipNames = '^(.*SchemaData\.pas|.*ProfileData\.pas|.*Catalog\.Data(\.[\w.]+)?\.pas)$'
 $GermanWords = '(?i)(?<![\w%])(und|nicht|oder|der|die|das|dem|den|des|ist|sind|mit|für|kein|keine|keinen|wird|werden|wurde|nach|beim|vom|zum|zur|eine|einen|einer|bitte|Datei|Fehler|Einstellung|gefunden|fehlt|ungültig|unbekannt)(?![\w])'
 $Umlaut = '[äöüÄÖÜß]'
 $TableStart = '(?i)\bof\s+TAtlasText\s*=\s*\('
@@ -69,6 +72,40 @@ function Test-German([string] $Literal) {
 # Direktiven und Literale (wie Check-Delphi12); zeichenweise wäre es in PowerShell zu langsam.
 $Noise = [regex]::new('(?s)\{.*?\}|\(\*.*?\*\)|//[^\n]*|''(?:[^''\n]|'''')*''', 'Compiled')
 $TableRegex = [regex]::new('(?i)\bof\s+TAtlasText\s*=\s*\(', 'Compiled')
+$LanguageTableRegex = [regex]::new('(?i)\barray\s*\[\s*TAtlasLanguage\s*,[^\]]*\]\s*of\s+string\s*=\s*\(', 'Compiled')
+$Parens = [char[]]'()'
+
+# Bereiche der deutschen Zeilen in Sprachtabellen (array[TAtlasLanguage, TXyzTextId] of string = ((…), (…));):
+# Anfang und Ende der ersten Klammer der Tiefe 2. $Code ist der Text ohne Kommentare und Literale.
+function Get-GermanRows([string] $Code) {
+    $Rows = New-Object 'System.Collections.Generic.List[int[]]'
+    foreach ($Match in $LanguageTableRegex.Matches($Code)) {
+        $Depth = 1
+        $Row = -1
+        $Start = 0
+        $At = $Code.IndexOfAny($Parens, $Match.Index + $Match.Length)
+        while ($At -ge 0) {
+            if ($Code[$At] -eq [char]'(') {
+                $Depth++
+                if ($Depth -eq 2) { $Row++; $Start = $At }
+            }
+            else {
+                if (($Depth -eq 2) -and ($Row -eq 0)) { $Rows.Add([int[]]@($Start, $At)) }
+                $Depth--
+                if ($Depth -eq 0) { break }
+            }
+            $At = $Code.IndexOfAny($Parens, $At + 1)
+        }
+    }
+    return , $Rows
+}
+
+function Test-InRows($Rows, [int] $Index) {
+    foreach ($Range in $Rows) {
+        if (($Index -gt $Range[0]) -and ($Index -lt $Range[1])) { return $true }
+    }
+    return $false
+}
 function Get-Findings([string] $Text) {
     $Findings = New-Object System.Collections.Generic.List[object]
     $Text = $Text.Replace("`r`n", "`n")
@@ -82,6 +119,7 @@ function Get-Findings([string] $Text) {
     # Code ohne Kommentare und Literale je Zeile, für die Grenzen der Texttabellen.
     $Code = $Noise.Replace($Text, { param($m) [regex]::Replace($m.Value, '[^\n]', ' ') })
     $CodeLines = $Code.Split("`n")
+    $GermanRows = Get-GermanRows $Code
     $Skip = New-Object 'bool[]' ($Lines.Count + 1)
     $InTable = $false
     for ($Index = 0; $Index -lt $Lines.Count; $Index++) {
@@ -96,6 +134,7 @@ function Get-Findings([string] $Text) {
         if ($Match.Value[0] -ne "'") { continue }
         $Literal = $Match.Value.Substring(1, $Match.Value.Length - 2).Replace("''", "'")
         if (-not (Test-German $Literal)) { continue }
+        if (Test-InRows $GermanRows $Match.Index) { continue }
         $Line = $Starts.BinarySearch($Match.Index)
         if ($Line -lt 0) { $Line = (-bnot $Line) - 1 }
         if ($Skip[$Line]) { continue }
@@ -115,10 +154,13 @@ if ($SelfTest) {
         "  cTexts: array[TX] of TAtlasText = (",
         "    (De: 'Datei fehlt'; En: 'File missing'),",
         "    (De: 'Größe'; En: 'Size'));",
-        "  Log('nach der Tabelle');") -join "`r`n"
+        "  Log('nach der Tabelle');",
+        "  cTexts: array[TAtlasLanguage, TY] of string = (",
+        "    ('Größe', 'Datei (fehlt)'),",
+        "    ('Size', 'Datei fehlt'));") -join "`r`n"
     $Result = Get-Findings $Sample
     $Got = @($Result | ForEach-Object { "$($_.Line):$($_.Text)" }) -join '|'
-    $Expected = '3:Datei fehlt|4:Größe|10:nach der Tabelle'
+    $Expected = '3:Datei fehlt|4:Größe|10:nach der Tabelle|13:Datei fehlt'
     if ($Got -cne $Expected) { Write-Host "Selbsttest fehlgeschlagen: erwartet $Expected, erhalten $Got"; exit 1 }
     Write-Host 'Selbsttest bestanden.'
     exit 0
@@ -160,7 +202,7 @@ foreach ($Key in $Counts.Keys) {
     if ($Baseline.ContainsKey($Key)) { $Allowed = [int]$Baseline[$Key] }
     if ($Counts[$Key] -gt $Allowed) {
         $Failed = $true
-        Write-Host "${Key}: $($Counts[$Key]) deutsche Literale, erlaubt $Allowed. Texte in eine Texttabelle (TAtlasText) stellen oder mit // german-ok begründen:"
+        Write-Host "${Key}: $($Counts[$Key]) deutsche Literale, erlaubt $Allowed. Texte in eine Texttabelle (TAtlasText oder Sprachtabelle des Moduls) stellen oder mit // german-ok begründen:"
         foreach ($Finding in $Details[$Key]) { Write-Host "  Zeile $($Finding.Line): '$($Finding.Text)'" }
     }
 }

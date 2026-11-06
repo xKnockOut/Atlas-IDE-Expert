@@ -28,6 +28,17 @@ uses
   Atlas.Common.Lsp.References;
 
 type
+  /// <summary>Eingaben einer Abfrage-Datenquelle (TLspQuery.Source).</summary>
+  TLspQueryInput = record
+    Index: ISymbolIndex;
+    EnsureUnit: TEnsureUnitFunc;
+    /// <summary>Projektordner für die Spalte "Datei".</summary>
+    Root: string;
+    Files: TArray<string>;
+    Namespaces: TArray<string>;
+    ReadText: TReferenceReadText;
+  end;
+
   /// <summary>Einstellungen und Projektordner zum Arbeitsbereich von AFileName ('' = der einzige oder erste);
   /// False, wenn keiner passt.</summary>
   TLspQuerySettingsFunc = reference to function(const AFileName: string; out ASettings: TServerSettings;
@@ -57,11 +68,10 @@ type
     class function Calls(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc;
       const ANamespaces, AFiles: TArray<string>; const AReadText: TReferenceReadText;
       const ASettings: TReferenceSettings): TQueryCallsFunc; static;
-    /// <summary>Datenquelle einer Abfrage über AFiles mit Calls wie oben; ein Weg für LSP-Server, MCP und --check,
-    /// damit alle dieselben Zahlen liefern.</summary>
-    class function Source(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc; const ARoot: string;
-      const AFiles, ANamespaces: TArray<string>; const AReadText: TReferenceReadText;
-      const AReferences: TReferenceSettings): TQuerySource; static;
+    /// <summary>Datenquelle einer Abfrage über AInput.Files mit Calls wie oben; ein Weg für LSP-Server, MCP und
+    /// --check, damit alle dieselben Zahlen liefern.</summary>
+    class function Source(const AInput: TLspQueryInput; const AReferences: TReferenceSettings): TQuerySource;
+      static;
   end;
 
 implementation
@@ -72,7 +82,25 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Lsp.ReferenceConfidence,
   Atlas.Common.Lsp.Hierarchies,
-  Atlas.Common.Query.Output;
+  Atlas.Common.Query.Output,
+  System.Generics.Collections,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TQueryText = (QueryMissing, QueryResultIsNotValid, FormatIsJsonMarkdownCsv, NoProjectLoaded, CatalogIsNotValidJSON);
+
+const
+  cTexts: array[TQueryText] of TAtlasText = (
+    (De: '"query" fehlt'; En: '"query" missing'),
+    (De: 'Abfrageergebnis ist kein gültiges JSON'; En: 'Query result is not valid JSON'),
+    (De: '"format" ist json, markdown, csv oder text'; En: '"format" is json, markdown, csv or text'),
+    (De: 'Kein Projekt geladen'; En: 'No project loaded'),
+    (De: 'Katalog ist kein gültiges JSON'; En: 'Catalog is not valid JSON'));
+
+{$SCOPEDENUMS OFF}
 
 function StringOf(const AObject: TJSONObject; const AName: string): string;
 var
@@ -80,32 +108,46 @@ var
 begin
   Result := '';
   if AObject = nil then
+  begin
     Exit;
+  end;
   mValue := AObject.GetValue(AName);
   if mValue is TJSONString then
+  begin
     Result := Trim(mValue.Value);
+  end;
 end;
 
 function PathOf(const AText: string): string;
 begin
   if StartsText('file:', AText) then
-    Result := TDocumentUris.ToPath(AText)
+  begin
+    Result := TDocumentUris.ToPath(AText);
+  end
   else
+  begin
     Result := AText;
+  end;
 end;
 
 function ParamsOf(const AParams: TJSONValue): TJSONObject;
 begin
   if AParams is TJSONObject then
-    Result := TJSONObject(AParams)
+  begin
+    Result := TJSONObject(AParams);
+  end
   else
+  begin
     Result := nil;
+  end;
 end;
 
 function CancelOf(const ACancellation: IJsonRpcCancellationToken): TQueryCancelled;
 begin
   if ACancellation = nil then
+  begin
     Exit(nil);
+  end;
   Result :=
     function: Boolean
     begin
@@ -116,9 +158,13 @@ end;
 function QualifiedOf(const AItem: THierarchyItem): string;
 begin
   if AItem.Container <> '' then
-    Result := AItem.Container + '.' + AItem.Name
+  begin
+    Result := AItem.Container + '.' + AItem.Name;
+  end
   else
+  begin
     Result := AItem.Name;
+  end;
 end;
 
 /// <summary>TQueryReadText über AReadText; eigene Routine, damit die Methodenreferenz nur AReadText festhält.
@@ -156,57 +202,92 @@ begin
     end);
 end;
 
+/// <summary>Abfrage aus AParams: query, limit und fields; EJsonRpcError ohne query.</summary>
+function RequestOf(const AParams: TJSONObject; const ACancellation: IJsonRpcCancellationToken): TQueryRequest;
+var
+  mQuery: string;
+  mLimit: Integer;
+  mFields: TJSONArray;
+  mValue: TJSONValue;
+begin
+  mQuery := StringOf(AParams, 'query');
+  if mQuery = '' then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TQueryText.QueryMissing].Text);
+  end;
+  mLimit := 0;
+  if AParams <> nil then
+  begin
+    AParams.TryGetValue<Integer>('limit', mLimit);
+  end;
+  if not ((AParams <> nil) and AParams.TryGetValue<TJSONArray>('fields', mFields)) then
+  begin
+    mFields := nil;
+  end;
+  Result := TQueryRequest.Create(mQuery, mLimit);
+  if mFields <> nil then
+  begin
+    for mValue in mFields do
+    begin
+      if mValue is TJSONString then
+      begin
+        Result.Fields := Result.Fields + [mValue.Value];
+      end;
+    end;
+  end;
+  Result.Cancelled := CancelOf(ACancellation);
+end;
+
+/// <summary>Ergebnis AResult im Format AFormat (Text AFormatText) in AAnswer.</summary>
+procedure AddResult(AAnswer: TJSONObject; const AResult: TQueryResult; AFormat: TQueryOutputFormat;
+  const AFormatText: string);
+var
+  mValue: TJSONValue;
+begin
+  if AFormat <> TQueryOutputFormat.Json then
+  begin
+    AAnswer.AddPair('format', LowerCase(AFormatText));
+    AAnswer.AddPair('text', TQueryOutput.Render(AResult, AFormat));
+    Exit;
+  end;
+  mValue := TJSONObject.ParseJSONValue(TQueryOutput.Json(AResult));
+  if mValue = nil then
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, cTexts[TQueryText.QueryResultIsNotValid].Text);
+  end;
+  AAnswer.AddPair('format', 'json');
+  AAnswer.AddPair('data', mValue);
+end;
+
 function TLspQuery.Answer(const AParams: TJSONObject; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
   mSettings: TServerSettings;
-  mRoot, mFormatText, mQuery: string;
+  mRoot, mFormatText: string;
   mFormat: TQueryOutputFormat;
-  mRequest: TQueryRequest;
   mResult: TQueryResult;
   mAnswer: TJSONObject;
-  mFields: TJSONArray;
-  mValue: TJSONValue;
-  mLimit: Integer;
 begin
   mFormatText := StringOf(AParams, 'format');
   if not TQueryOutput.TryParseFormat(mFormatText, TQueryOutputFormat.Json, mFormat) then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"format" ist json, markdown, csv oder text');
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TQueryText.FormatIsJsonMarkdownCsv].Text);
+  end;
   if not (Assigned(FSettingsFor) and FSettingsFor(PathOf(StringOf(AParams, 'uri')), mSettings, mRoot)) then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Kein Projekt geladen');
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TQueryText.NoProjectLoaded].Text);
+  end;
   mAnswer := TJSONObject.Create;
   try
     mAnswer.AddPair('enabled', TJSONBool.Create(mSettings.QueryEnabled));
     if mSettings.QueryEnabled then
     begin
-      mQuery := StringOf(AParams, 'query');
-      if mQuery = '' then
-        raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"query" fehlt');
-      mLimit := 0;
-      if AParams <> nil then
-        AParams.TryGetValue<Integer>('limit', mLimit);
-      mRequest := TQueryRequest.Create(mQuery, mLimit);
-      if (AParams <> nil) and AParams.TryGetValue<TJSONArray>('fields', mFields) then
-        for mValue in mFields do
-          if mValue is TJSONString then
-            mRequest.Fields := mRequest.Fields + [mValue.Value];
-      mRequest.Cancelled := CancelOf(ACancellation);
-      mResult := FQueries.Execute(mRequest);
+      mResult := FQueries.Execute(RequestOf(AParams, ACancellation));
       if (ACancellation <> nil) and ACancellation.IsCancellationRequested then
+      begin
         ACancellation.ThrowIfCancellationRequested;
-      mAnswer.AddPair('root', mRoot);
-      if mFormat = TQueryOutputFormat.Json then
-      begin
-        mValue := TJSONObject.ParseJSONValue(TQueryOutput.Json(mResult));
-        if mValue = nil then
-          raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, 'Abfrageergebnis ist kein gültiges JSON');
-        mAnswer.AddPair('format', 'json');
-        mAnswer.AddPair('data', mValue);
-      end
-      else
-      begin
-        mAnswer.AddPair('format', LowerCase(mFormatText));
-        mAnswer.AddPair('text', TQueryOutput.Render(mResult, mFormat));
       end;
+      mAnswer.AddPair('root', mRoot);
+      AddResult(mAnswer, mResult, mFormat, mFormatText);
     end;
     Result := mAnswer;
     mAnswer := nil;
@@ -228,7 +309,9 @@ var
   mValue: TJSONValue;
 begin
   if not (Assigned(FSettingsFor) and FSettingsFor(PathOf(StringOf(ParamsOf(AParams), 'uri')), mSettings, mRoot)) then
+  begin
     mSettings := TServerSettings.Default;
+  end;
   mAnswer := TJSONObject.Create;
   try
     mAnswer.AddPair('enabled', TJSONBool.Create(mSettings.QueryEnabled));
@@ -236,7 +319,9 @@ begin
     begin
       mValue := TJSONObject.ParseJSONValue(TQueryOutput.CatalogJson(mSettings.Queries));
       if mValue = nil then
-        raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, 'Katalog ist kein gültiges JSON');
+      begin
+        raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, cTexts[TQueryText.CatalogIsNotValidJSON].Text);
+      end;
       mAnswer.AddPair('catalog', mValue);
     end;
     Result := mAnswer;
@@ -254,11 +339,19 @@ begin
   mParams := TJSONObject.Create;
   try
     if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
+    begin
       mParams.AddPair('uri', AArguments.Items[0].Value);
+    end;
     if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONObject) then
+    begin
       for mPair in TJSONObject(AArguments.Items[1]) do
+      begin
         if mPair.JsonString.Value <> 'uri' then
+        begin
           mParams.AddPair(mPair.JsonString.Value, TJSONValue(mPair.JsonValue.Clone));
+        end;
+      end;
+    end;
     Result := Answer(mParams, nil);
   finally
     mParams.Free;
@@ -283,9 +376,14 @@ begin
       try
         mResolver.Namespaces := ANamespaces;
         if AIncoming then
-          mCalls := TLspHierarchies.IncomingCalls(mResolver, AIndex, mItem, AFiles, AReadText, ASettings, nil)
+        begin
+          mCalls := TLspHierarchies.IncomingCalls(THierarchyCallSource.Create(mResolver, AIndex, AReadText, nil), mItem,
+            AFiles, ASettings);
+        end
         else
+        begin
           mCalls := TLspHierarchies.OutgoingCalls(mResolver, AIndex, mItem, AReadText, nil);
+        end;
       finally
         mResolver.Free;
       end;
@@ -311,17 +409,19 @@ begin
     end;
 end;
 
-class function TLspQuery.Source(const AIndex: ISymbolIndex; const AEnsureUnit: TEnsureUnitFunc; const ARoot: string;
-  const AFiles, ANamespaces: TArray<string>; const AReadText: TReferenceReadText;
-  const AReferences: TReferenceSettings): TQuerySource;
+class function TLspQuery.Source(const AInput: TLspQueryInput; const AReferences: TReferenceSettings): TQuerySource;
 begin
   Result := Default(TQuerySource);
-  Result.Index := AIndex;
-  Result.Root := ARoot;
-  Result.Files := AFiles;
-  Result.Namespaces := ANamespaces;
-  Result.ReadText := QueryReadTextOf(AReadText);
-  Result.Calls := Calls(AIndex, AEnsureUnit, ANamespaces, AFiles, AReadText, AReferences);
+  Result.Index := AInput.Index;
+  Result.Root := AInput.Root;
+  Result.Files := AInput.Files;
+  Result.Namespaces := AInput.Namespaces;
+  Result.ReadText := QueryReadTextOf(AInput.ReadText);
+  Result.Calls := Calls(AInput.Index, AInput.EnsureUnit, AInput.Namespaces, AInput.Files, AInput.ReadText,
+    AReferences);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.Query', cTexts);
 
 end.

@@ -10,7 +10,9 @@
 //   (name#N), Pfade unter einem Arbeitsbereich zu <ws>/…, andere zu <pfad>,
 //   Benutzer- und Rechnername zu <benutzer> (Atlas.Text.Anonymize).
 // - Protokoll: dieselben Regeln wie der Fehlerbericht, dazu Text in
-//   Anführungszeichen zu <wert>.
+//   Anführungszeichen zu <wert>; gekennzeichnete Namen, Pfade und fremder
+//   Text (Atlas.Text.LogMarks, #1478) werden ersetzt. Die erste Zeile sagt,
+//   ob das Protokoll anonymisiert ist oder Klarnamen enthält.
 // - Trace: Jede Zeile wird als JSON gelesen; Schlüssel, Zahlen und die Werte
 //   von "jsonrpc" und "method" bleiben, jeder andere Text wird <wert>. Zeilen,
 //   die kein JSON tragen, entfallen (gezählt). So bleibt sichtbar, welche
@@ -73,7 +75,28 @@ implementation
 
 uses
   System.Generics.Collections,
-  Atlas.Text.Anonymize;
+  Atlas.Text.Anonymize,
+  Atlas.Text.LogMarks,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TServerPackageText = (SessionLogAnonymized, SessionLogWithRealNames, TraceOfTheLastMinutes,
+    AnonymizedKeysNumbersAndMethods, LinesWithoutJSONLeftOut);
+
+const
+  cTexts: array[TServerPackageText] of TAtlasText = (
+    (De: '# Protokoll der Sitzung, anonymisiert'; En: '# Session log, anonymized'),
+    (De: '# Protokoll der Sitzung mit Klarnamen (ausdrücklich gewählt)';
+     En: '# Session log with real names (explicitly chosen)'),
+    (De: '# Trace der letzten %d Minuten'; En: '# Trace of the last %d minutes'),
+    (De: ', anonymisiert (Schlüssel, Zahlen und Methoden bleiben)';
+     En: ', anonymized (keys, numbers and methods remain)'),
+    (De: '# %d Zeilen ohne JSON ausgelassen'; En: '# %d lines without JSON left out'));
+
+{$SCOPEDENUMS OFF}
 
 { TServerPackage }
 
@@ -106,8 +129,11 @@ var
 begin
   Result := TJSONArray.Create;
   for mItem in AArray do
+  begin
     if AAll and IsText(mItem) and (mItem.Value <> '') then
-      Result.Add(TTextAnonymizer.ValueLabel)
+    begin
+      Result.Add(TTextAnonymizer.ValueLabel);
+    end
     else
     begin
       mCopy := TJSONValue(mItem.Clone);
@@ -122,35 +148,63 @@ begin
         Result.AddElement(mCopy);
       end;
     end;
+  end;
+end;
+
+/// <summary>Ersetzt einen Textwert im Paar APair durch eine Marke, wenn AAll gilt und der Schlüssel kein
+/// Protokollfeld (jsonrpc, method) ist.</summary>
+procedure ScrubText(APair: TJSONPair; AAll: Boolean);
+var
+  mKey: string;
+begin
+  mKey := APair.JsonString.Value;
+  if AAll and not SameText(mKey, 'jsonrpc') and not SameText(mKey, 'method') and (APair.JsonValue.Value <> '') then
+  begin
+    ReplaceValue(APair, TTextAnonymizer.ValueLabel);
+  end;
+end;
+
+/// <summary>Bereinigt den Wert eines Paars: Geheimnisse immer, mit AAll auch alle Texte.</summary>
+procedure ScrubPair(APair: TJSONPair; AAll: Boolean);
+begin
+  if TServerPackage.IsSecretKey(APair.JsonString.Value) and not (APair.JsonValue is TJSONNull) then
+  begin
+    ReplaceValue(APair, TServerPackage.SecretLabel);
+  end
+  else if IsText(APair.JsonValue) then
+  begin
+    ScrubText(APair, AAll);
+  end
+  else if AAll and (APair.JsonValue is TJSONArray) then
+  begin
+    // Texte in Arrays lassen sich nicht an Ort und Stelle ersetzen: bereinigte Kopie einsetzen.
+    APair.JsonValue := ScrubbedArray(TJSONArray(APair.JsonValue), AAll);
+  end
+  else
+  begin
+    TServerPackage.Scrub(APair.JsonValue, AAll);
+  end;
 end;
 
 class procedure TServerPackage.Scrub(AValue: TJSONValue; AAll: Boolean);
 var
   mPair: TJSONPair;
   mItem: TJSONValue;
-  mKey: string;
 begin
   if AValue is TJSONObject then
+  begin
     for mPair in TJSONObject(AValue) do
     begin
-      mKey := mPair.JsonString.Value;
-      if IsSecretKey(mKey) and not (mPair.JsonValue is TJSONNull) then
-        ReplaceValue(mPair, SecretLabel)
-      else if IsText(mPair.JsonValue) then
-      begin
-        if AAll and not SameText(mKey, 'jsonrpc') and not SameText(mKey, 'method') and
-          (mPair.JsonValue.Value <> '') then
-          ReplaceValue(mPair, TTextAnonymizer.ValueLabel);
-      end
-      else if AAll and (mPair.JsonValue is TJSONArray) then
-        // Texte in Arrays lassen sich nicht an Ort und Stelle ersetzen: bereinigte Kopie einsetzen.
-        mPair.JsonValue := ScrubbedArray(TJSONArray(mPair.JsonValue), AAll)
-      else
-        Scrub(mPair.JsonValue, AAll);
-    end
+      ScrubPair(mPair, AAll);
+    end;
+  end
   else if AValue is TJSONArray then
+  begin
     for mItem in TJSONArray(AValue) do
+    begin
       Scrub(mItem, AAll);
+    end;
+  end;
 end;
 
 /// <summary>Trace-Zeile mit bereinigtem JSON; '' ohne JSON.</summary>
@@ -163,13 +217,19 @@ begin
   Result := '';
   mStart := Pos('{', ALine);
   if mStart = 0 then
+  begin
     Exit;
+  end;
   mValue := TJSONObject.ParseJSONValue(Copy(ALine, mStart, MaxInt));
   if mValue = nil then
+  begin
     Exit;
+  end;
   try
     if mValue is TJSONArray then
-      mScrubbed := ScrubbedArray(TJSONArray(mValue), AAll)
+    begin
+      mScrubbed := ScrubbedArray(TJSONArray(mValue), AAll);
+    end
     else
     begin
       mScrubbed := nil;
@@ -182,7 +242,9 @@ begin
         mScrubbed.Free;
       end
     else
+    begin
       Result := Copy(ALine, 1, mStart - 1) + mValue.ToJSON([]);
+    end;
   finally
     mValue.Free;
   end;
@@ -197,7 +259,9 @@ class function TServerPackage.SecretFreeTraceLine(const ALine: string): string;
 begin
   Result := ScrubbedTraceLine(ALine, False);
   if Result = '' then
+  begin
     Result := ALine;
+  end;
 end;
 
 /// <summary>Status-JSON mit Zugangsdaten entfernt und, mit AAnonymize, Pfaden und Benutzernamen ersetzt.</summary>
@@ -207,7 +271,9 @@ var
 begin
   mValue := TJSONObject.ParseJSONValue(AInput.StatusJson);
   if mValue = nil then
+  begin
     Exit('{}');
+  end;
   try
     TServerPackage.Scrub(mValue, False);
     Result := mValue.Format(2);
@@ -215,66 +281,99 @@ begin
     mValue.Free;
   end;
   if AInput.Anonymize then
+  begin
     Result := TTextAnonymizer.AnonymizePaths(Result, AInput.Workspaces, AInput.Identity);
+  end;
 end;
 
-class function TServerPackage.Build(const AInput: TServerPackageInput): TArray<TServerPackageFile>;
+/// <summary>Protokollzeilen, mit AAnonymize ohne Pfade und Namen.</summary>
+function LogText(const AInput: TServerPackageInput): string;
 var
-  mFile: TServerPackageFile;
+  mBuilder: TStringBuilder;
+  mLine, mText: string;
+begin
+  mBuilder := TStringBuilder.Create;
+  try
+    if AInput.Anonymize then
+    begin
+      mBuilder.Append(cTexts[TServerPackageText.SessionLogAnonymized].Text).Append(sLineBreak);
+    end
+    else
+    begin
+      mBuilder.Append(cTexts[TServerPackageText.SessionLogWithRealNames].Text).Append(sLineBreak);
+    end;
+    for mLine in AInput.LogLines do
+    begin
+      if AInput.Anonymize then
+      begin
+        mText := TTextAnonymizer.AnonymizeLogLine(mLine, AInput.Workspaces, AInput.Identity);
+      end
+      else
+      begin
+        mText := TLogMarks.Plain(mLine);
+      end;
+      mBuilder.Append(mText).Append(sLineBreak);
+    end;
+    Result := mBuilder.ToString;
+  finally
+    mBuilder.Free;
+  end;
+end;
+
+/// <summary>Trace-Zeilen ohne Geheimnisse, mit AAnonymize auch ohne Texte; Zeilen ohne JSON fallen weg.</summary>
+function TraceText(const AInput: TServerPackageInput): string;
+var
   mBuilder: TStringBuilder;
   mLine, mText: string;
   mDropped: Integer;
 begin
-  Result := nil;
-  mFile.Name := StatusName;
-  mFile.Content := StatusText(AInput);
-  Result := Result + [mFile];
-
-  mBuilder := TStringBuilder.Create;
-  try
-    for mLine in AInput.LogLines do
-    begin
-      mText := mLine;
-      if AInput.Anonymize then
-        mText := TTextAnonymizer.AnonymizeLogLine(mText, AInput.Workspaces, AInput.Identity);
-      mBuilder.Append(mText).Append(sLineBreak);
-    end;
-    mFile.Name := LogName;
-    mFile.Content := mBuilder.ToString;
-    Result := Result + [mFile];
-  finally
-    mBuilder.Free;
-  end;
-
-  if not AInput.Tracing then
-    Exit;
   mBuilder := TStringBuilder.Create;
   try
     mDropped := 0;
-    mBuilder.Append(Format('# Trace der letzten %d Minuten', [AInput.TraceMinutes]));
+    mBuilder.Append(cTexts[TServerPackageText.TraceOfTheLastMinutes].Fmt([AInput.TraceMinutes]));
     if AInput.Anonymize then
-      mBuilder.Append(', anonymisiert (Schlüssel, Zahlen und Methoden bleiben)');
+    begin
+      mBuilder.Append(cTexts[TServerPackageText.AnonymizedKeysNumbersAndMethods].Text);
+    end;
     mBuilder.Append(sLineBreak);
     for mLine in AInput.TraceLines do
     begin
-      if AInput.Anonymize then
-        mText := AnonymizeTraceLine(mLine)
-      else
-        mText := SecretFreeTraceLine(mLine);
+      mText := ScrubbedTraceLine(mLine, AInput.Anonymize);
+      if (mText = '') and not AInput.Anonymize then
+      begin
+        mText := mLine;
+      end;
       if mText = '' then
       begin
         Inc(mDropped);
-        Continue;
+      end
+      else
+      begin
+        mBuilder.Append(mText).Append(sLineBreak);
       end;
-      mBuilder.Append(mText).Append(sLineBreak);
     end;
     if mDropped > 0 then
-      mBuilder.Append(Format('# %d Zeilen ohne JSON ausgelassen', [mDropped])).Append(sLineBreak);
-    mFile.Name := TraceName;
-    mFile.Content := mBuilder.ToString;
-    Result := Result + [mFile];
+    begin
+      mBuilder.Append(cTexts[TServerPackageText.LinesWithoutJSONLeftOut].Fmt([mDropped])).Append(sLineBreak);
+    end;
+    Result := mBuilder.ToString;
   finally
     mBuilder.Free;
+  end;
+end;
+
+function PackageFile(const AName, AContent: string): TServerPackageFile;
+begin
+  Result.Name := AName;
+  Result.Content := AContent;
+end;
+
+class function TServerPackage.Build(const AInput: TServerPackageInput): TArray<TServerPackageFile>;
+begin
+  Result := [PackageFile(StatusName, StatusText(AInput)), PackageFile(LogName, LogText(AInput))];
+  if AInput.Tracing then
+  begin
+    Result := Result + [PackageFile(TraceName, TraceText(AInput))];
   end;
 end;
 
@@ -295,5 +394,8 @@ begin
   end;
   Result.AddPair('files', mFiles);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Diagnostics.ServerPackage', cTexts);
 
 end.

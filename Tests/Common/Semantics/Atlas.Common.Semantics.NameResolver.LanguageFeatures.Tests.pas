@@ -1,0 +1,551 @@
+﻿unit Atlas.Common.Semantics.NameResolver.LanguageFeatures.Tests;
+
+// Tests für die Namensauflösung, Ausbaustufe 2 (#263): Überladungen,
+// Generics, Helfer, with, Inline-Variablen, Sichtbarkeit und Ausdrücke
+// als Empfänger. Je Punkt ein positiver und ein negativer Fall.
+
+interface
+
+uses
+  DUnitX.TestFramework,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Semantics.NameResolver;
+
+type
+  [TestFixture]
+  TNameResolverLanguageFeatureTests = class
+  private
+    FIndex: ISymbolIndex;
+    FResolver: TNameResolver;
+    procedure AddUnit(const AFileName, AText: string);
+    function ResolveAllAt(const AText, AMarker: string; AOccurrence: Integer = 1): TArray<TResolvedSymbol>;
+    function ResolveAt(const AText, AMarker: string; AOccurrence: Integer = 1): TResolvedSymbol;
+  public
+    [Setup]
+    procedure Setup;
+    [TearDown]
+    procedure TearDown;
+    [Test]
+    procedure ChoosesOverloadByArgumentCount;
+    [Test]
+    procedure AmbiguousOverloadsGiveAllCandidates;
+    [Test]
+    procedure ParameterTypeAliasFitsItsBaseType;
+    [Test]
+    procedure SubstitutesGenericTypeArguments;
+    [Test]
+    procedure FollowsGenericAncestors;
+    [Test]
+    procedure NonGenericTypeBeatsGenericOfSameName;
+    [Test]
+    procedure BindsGenericMethodArguments;
+    [Test]
+    procedure UsesHelpersForBuiltinAndClassTypes;
+    /// <summary>#686: sichtbarer Helper zu einem Typnamen, auch für eingebaute Typen.</summary>
+    [Test]
+    procedure VisibleHelperForTypeName;
+    [Test]
+    procedure WithFindsMembersOfExpression;
+    [Test]
+    procedure WithUnknownTypeGivesNoResult;
+    [Test]
+    procedure InfersInlineVarTypes;
+    [Test]
+    procedure ForVarIsLocalToLoop;
+    [Test]
+    procedure HidesMembersByVisibility;
+    [Test]
+    procedure ResolvesExpressionReceivers;
+    [Test]
+    procedure IndexKeepsSignaturesAndGenerics;
+    [Test]
+    procedure MissingMembersOfGenericInterfaces;
+  end;
+
+implementation
+
+uses
+  System.SysUtils,
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.Parser,
+  Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Index.Cache,
+  Atlas.Common.Index.Extractor;
+
+const
+  UnitSystem =
+    'unit System;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TObject = class'#10 +
+    '  public'#10 +
+    '    constructor Create;'#10 +
+    '  end;'#10 +
+    '  IInterface = interface end;'#10 +
+    '  TArray<T> = array of T;'#10 +
+    '  TDateTime = type Double;'#10 +
+    'implementation'#10 +
+    'constructor TObject.Create; begin end;'#10 +
+    'end.';
+
+  UnitSysUtils =
+    'unit System.SysUtils;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TFormatSettings = record'#10 +
+    '    DecimalSeparator: Char;'#10 +
+    '  end;'#10 +
+    '  TStringHelper = record helper for string'#10 +
+    '    function Split(const Separators: array of Char): TArray<string>;'#10 +
+    '    function ToUpper: string;'#10 +
+    '  end;'#10 +
+    'function Format(const Format: string; const Args: array of const): string; overload;'#10 +
+    'function Format(const Format: string; const Args: array of const;'#10 +
+    '  const AFormatSettings: TFormatSettings): string; overload;'#10 +
+    'function IntToStr(Value: Integer): string; overload;'#10 +
+    'function IntToStr(Value: Int64): string; overload;'#10 +
+    'function FileAge(const FileName: string): LongInt; overload; deprecated;'#10 +
+    'function FileAge(const FileName: string; out FileDateTime: TDateTime;'#10 +
+    '  FollowLink: Boolean = True): Boolean; overload;'#10 +
+    'implementation'#10 +
+    'end.';
+
+  UnitCollections =
+    'unit System.Generics.Collections;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TList<T> = class'#10 +
+    '  private'#10 +
+    '    FCount: Integer;'#10 +
+    '    function GetItem(Index: Integer): T;'#10 +
+    '  public'#10 +
+    '    function First: T;'#10 +
+    '    function Add(const Value: T): Integer;'#10 +
+    '    function Map<R>(const Value: R): R;'#10 +
+    '    property Items[Index: Integer]: T read GetItem; default;'#10 +
+    '    property Count: Integer read FCount;'#10 +
+    '  end;'#10 +
+    '  TObjectList<T> = class(TList<T>)'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'end.';
+
+  UnitKunden =
+    'unit Kunden;'#10 +
+    'interface'#10 +
+    'uses System.Generics.Collections;'#10 +
+    'type'#10 +
+    '  TKunde = class'#10 +
+    '  strict private'#10 +
+    '    FGeheim: Integer;'#10 +
+    '  private'#10 +
+    '    FIntern: Integer;'#10 +
+    '  protected'#10 +
+    '    procedure Schuetzt;'#10 +
+    '  public'#10 +
+    '    Name: string;'#10 +
+    '    function Kopie: TKunde;'#10 +
+    '  end;'#10 +
+    '  TKundenListe = class(TObjectList<TKunde>)'#10 +
+    '  end;'#10 +
+    '  TKundeHelper = class helper for TKunde'#10 +
+    '    function Anrede: string;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'procedure TKunde.Schuetzt; begin end;'#10 +
+    'function TKunde.Kopie: TKunde; begin Result := Self; end;'#10 +
+    'function TKundeHelper.Anrede: string; begin Result := ''''; end;'#10 +
+    'end.';
+
+  // Rumpf einer Routine in Haupt; Kopf mit allen Variablen der Tests.
+  Head =
+    'unit Haupt;'#10 +
+    'interface'#10 +
+    'uses System.SysUtils, System.Generics.Collections, Kunden;'#10 +
+    'type'#10 +
+    '  TMein = class(TKunde)'#10 +
+    '    procedure Arbeite;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'function Liefere(A: Integer): TKunde; begin Result := nil; end;'#10 +
+    'procedure TMein.Arbeite; begin Schuetzt; end;'#10 +
+    'procedure P;'#10 +
+    'var'#10 +
+    '  L: TList<TKunde>;'#10 +
+    '  Liste: TKundenListe;'#10 +
+    '  K: TKunde;'#10 +
+    '  S: string;'#10 +
+    '  I: Integer;'#10 +
+    '  O: TObject;'#10 +
+    '  FS: TFormatSettings;'#10 +
+    '  Name: Integer;'#10 +
+    '  Alter: TDateTime;'#10 +
+    'begin'#10;
+  Tail =
+    #10'end;'#10 +
+    'end.';
+
+function PositionOf(const AText, AMarker: string; AOccurrence: Integer): TTextPosition;
+var
+  Index, Found, Line, LineStart: Integer;
+begin
+  Found := 0;
+  Index := 0;
+  repeat
+    Index := Pos(AMarker, AText, Index + 1);
+    if Index = 0 then
+    begin
+      raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+    end;
+    Inc(Found);
+  until Found = AOccurrence;
+  Line := 0;
+  LineStart := 1;
+  for Found := 1 to Index - 1 do
+  begin
+    if AText[Found] = #10 then
+    begin
+      Inc(Line);
+      LineStart := Found + 1;
+    end;
+  end;
+  Result := TTextPosition.Create(Line, Index - LineStart);
+end;
+
+{ TNameResolverLanguageFeatureTests }
+
+procedure TNameResolverLanguageFeatureTests.Setup;
+begin
+  FIndex := TSymbolIndex.Create;
+  AddUnit('C:\Lib\System.pas', UnitSystem);
+  AddUnit('C:\Lib\System.SysUtils.pas', UnitSysUtils);
+  AddUnit('C:\Lib\System.Generics.Collections.pas', UnitCollections);
+  AddUnit('C:\P\Kunden.pas', UnitKunden);
+  FResolver := TNameResolver.Create(FIndex);
+end;
+
+procedure TNameResolverLanguageFeatureTests.TearDown;
+begin
+  FResolver.Free;
+  FIndex := nil;
+end;
+
+procedure TNameResolverLanguageFeatureTests.AddUnit(const AFileName, AText: string);
+begin
+  FIndex.AddUnit(TIndexExtractor.ExtractText(AText, AFileName, nil));
+end;
+
+function TNameResolverLanguageFeatureTests.ResolveAllAt(const AText, AMarker: string;
+  AOccurrence: Integer): TArray<TResolvedSymbol>;
+var
+  Tree: TSyntaxTree;
+begin
+  Tree := TPascalParser.Parse(AText);
+  try
+    Result := FResolver.ResolveAll(Tree, 'C:\P\Haupt.pas', PositionOf(AText, AMarker, AOccurrence));
+  finally
+    Tree.Free;
+  end;
+end;
+
+function TNameResolverLanguageFeatureTests.ResolveAt(const AText, AMarker: string; AOccurrence: Integer): TResolvedSymbol;
+var
+  Results: TArray<TResolvedSymbol>;
+begin
+  Results := ResolveAllAt(AText, AMarker, AOccurrence);
+  if Length(Results) > 0 then
+  begin
+    Result := Results[0];
+  end
+  else
+  begin
+    Result := Default(TResolvedSymbol);
+  end;
+end;
+
+procedure TNameResolverLanguageFeatureTests.ChoosesOverloadByArgumentCount;
+const
+  Source = Head + '  S := Format(''%d'', [1]);'#10'  S := Format(''%d'', [1], FS);' + Tail;
+var
+  R: TResolvedSymbol;
+begin
+  R := ResolveAt(Source, 'Format(''%d'', [1]);');
+  Assert.AreEqual('System.SysUtils', R.UnitName);
+  Assert.AreEqual(2, R.MaxArgs);
+  R := ResolveAt(Source, 'Format(''%d'', [1], FS)');
+  Assert.AreEqual(3, R.MaxArgs);
+  // Negativ: drei Argumente wählen nie die Überladung mit zwei.
+  Assert.AreEqual(1, Integer(Length(ResolveAllAt(Source, 'Format(''%d'', [1], FS)'))));
+end;
+
+procedure TNameResolverLanguageFeatureTests.AmbiguousOverloadsGiveAllCandidates;
+const
+  Source = Head + '  S := IntToStr(I);'#10'  S := IntToStr(Name);' + Tail;
+begin
+  // Integer passt genau, Int64 nur der Familie nach: beide gleich gut, also beide.
+  Assert.AreEqual(2, Integer(Length(ResolveAllAt(Source, 'IntToStr(I)'))));
+  Assert.IsTrue(ResolveAt(Source, 'IntToStr(I)').Found);
+end;
+
+procedure TNameResolverLanguageFeatureTests.ParameterTypeAliasFitsItsBaseType;
+const
+  Source = Head + '  if FileAge(S, Alter) then'#10'    I := FileAge(S);' + Tail;
+var
+  mResults: TArray<TResolvedSymbol>;
+begin
+  // Das Argument Alter: TDateTime zählt als Double (Alias verfolgt), der Parameter TDateTime ebenso. Vorher passte
+  // keine Überladung, und die erste (veraltete, ein Argument) stand vorn.
+  mResults := ResolveAllAt(Source, 'FileAge(S, Alter)');
+  Assert.AreEqual(1, Integer(Length(mResults)));
+  Assert.AreEqual(3, mResults[0].MaxArgs);
+  mResults := ResolveAllAt(Source, 'FileAge(S);');
+  Assert.AreEqual(1, Integer(Length(mResults)));
+  Assert.AreEqual(1, mResults[0].MaxArgs);
+  mResults := nil;
+end;
+
+procedure TNameResolverLanguageFeatureTests.SubstitutesGenericTypeArguments;
+const
+  Source = Head + '  S := L.First.Name;'#10'  S := L.Items[0].Name;'#10'  S := L[0].Name;'#10 +
+    '  S := L.First.Unbekannt;' + Tail;
+var
+  R: TResolvedSymbol;
+begin
+  R := ResolveAt(Source, 'Name;');
+  Assert.AreEqual('TKunde', R.Container);
+  Assert.AreEqual('Kunden', R.UnitName);
+  Assert.AreEqual('TKunde', ResolveAt(Source, 'Name;', 2).Container);
+  Assert.AreEqual('TKunde', ResolveAt(Source, 'Name;', 3).Container);
+  Assert.IsFalse(ResolveAt(Source, 'Unbekannt').Found);
+end;
+
+procedure TNameResolverLanguageFeatureTests.NonGenericTypeBeatsGenericOfSameName;
+const
+  UnitClasses = 'unit System.Classes;'#10'interface'#10'type'#10'  TList = class'#10'  public'#10 +
+    '    function Extract(Item: Pointer): Pointer;'#10'  end;'#10'implementation'#10'end.';
+  Body = 'type'#10'  TBestand = class'#10'    Alt: TList;'#10'    Neu: TList<TKunde>;'#10'  end;'#10 +
+    'implementation'#10'procedure P(B: TBestand);'#10'begin'#10'  B.Alt.Extract(nil);'#10'  B.Neu.First;'#10 +
+    'end;'#10'end.';
+var
+  UsesOrder: string;
+  R: TResolvedSymbol;
+begin
+  // Wie im Compiler (#981): TList ohne Typargumente ist System.Classes.TList, auch wenn
+  // System.Generics.Collections mit TList<T> weiter hinten in uses steht; TList<…> bleibt generisch.
+  AddUnit('C:\Lib\System.Classes.pas', UnitClasses);
+  for UsesOrder in ['System.Classes, System.Generics.Collections', 'System.Generics.Collections, System.Classes'] do
+  begin
+    R := ResolveAt('unit Haupt;'#10'interface'#10'uses ' + UsesOrder + ', Kunden;'#10 + Body, 'Extract');
+    Assert.IsTrue(R.Found, UsesOrder);
+    Assert.AreEqual('System.Classes', R.UnitName, UsesOrder);
+    R := ResolveAt('unit Haupt;'#10'interface'#10'uses ' + UsesOrder + ', Kunden;'#10 + Body, 'First');
+    Assert.AreEqual('System.Generics.Collections', R.UnitName, UsesOrder);
+  end;
+end;
+
+procedure TNameResolverLanguageFeatureTests.FollowsGenericAncestors;
+const
+  Source = Head + '  S := Liste.First.Name;'#10'  I := Liste.Count;'#10'  S := Liste.FCount;' + Tail;
+begin
+  Assert.AreEqual('TKunde', ResolveAt(Source, 'Name;').Container);
+  Assert.AreEqual('TList', ResolveAt(Source, 'Count;').Container);
+  // FCount ist private in einer anderen Unit.
+  Assert.IsFalse(ResolveAt(Source, 'FCount').Found);
+end;
+
+procedure TNameResolverLanguageFeatureTests.MissingMembersOfGenericInterfaces;
+const
+  UnitListen =
+    'unit Listen;'#10'interface'#10'type'#10 +
+    '  IVergleich<T> = interface'#10'    function Compare(const Left, Right: T): Integer;'#10'  end;'#10 +
+    '  IListe<T> = interface(IVergleich<T>)'#10'    procedure Add(const AItem: T);'#10'  end;'#10 +
+    'implementation'#10'end.';
+  Source =
+    'unit Haupt;'#10'interface'#10'uses Listen, Kunden;'#10'type'#10 +
+    '  TMeineListe = class(TObject, IListe<TKunde>)'#10 +
+    '    function Compare(const Left, Right: TKunde): Integer;'#10'  end;'#10 +
+    'implementation'#10'end.';
+var
+  Tree: TSyntaxTree;
+  Missing: TArray<TResolvedSymbol>;
+begin
+  AddUnit('C:\P\Listen.pas', UnitListen);
+  Tree := TPascalParser.Parse(Source);
+  try
+    // Ohne Typargumente aus dem Quelltext (Index kennt nur die des ersten Vorfahren) und mit ihnen.
+    Missing := FResolver.Queries.MissingInterfaceMembers(TIndexExtractor.Extract(Tree, 'C:\P\Haupt.pas'), 'TMeineListe',
+      ['TObject', 'IListe<TKunde>']);
+    Assert.AreEqual(1, Integer(Length(Missing)));
+    Assert.AreEqual('Add', Missing[0].Name);
+    Assert.AreEqual('IListe', Missing[0].Container);
+    Assert.AreEqual(1, Integer(Length(Missing[0].Bindings)));
+    Assert.AreEqual('T=TKunde', Missing[0].Bindings[0]);
+  finally
+    Tree.Free;
+  end;
+  Assert.AreEqual('TKunde', FResolver.Queries.UnqualifyType('Kunden.TKunde'));
+  Assert.AreEqual('TList<TKunde>', FResolver.Queries.UnqualifyType('System.Generics.Collections.TList<Kunden.TKunde>'));
+  Assert.AreEqual('TOuter.TInner', FResolver.Queries.UnqualifyType('TOuter.TInner'));
+  Assert.AreEqual('TKunde', FResolver.Queries.UnqualifyType('Haupt.TKunde', 'Haupt'));
+end;
+
+procedure TNameResolverLanguageFeatureTests.BindsGenericMethodArguments;
+const
+  Source = Head + '  S := L.Map<TKunde>(K).Name;'#10'  S := L.Map<Integer>(1).Name;' + Tail;
+begin
+  Assert.AreEqual('TKunde', ResolveAt(Source, 'Name;').Container);
+  Assert.IsFalse(ResolveAt(Source, 'Name;', 2).Found);
+end;
+
+procedure TNameResolverLanguageFeatureTests.UsesHelpersForBuiltinAndClassTypes;
+const
+  Source = Head + '  S.Split(['','']);'#10'  S := K.Anrede;'#10'  I.Split(['','']);' + Tail;
+var
+  R: TResolvedSymbol;
+begin
+  R := ResolveAt(Source, 'Split');
+  Assert.AreEqual('TStringHelper', R.Container);
+  Assert.AreEqual('System.SysUtils', R.UnitName);
+  Assert.AreEqual('TKundeHelper', ResolveAt(Source, 'Anrede').Container);
+  Assert.IsFalse(ResolveAt(Source, 'Split', 2).Found);
+end;
+
+procedure TNameResolverLanguageFeatureTests.VisibleHelperForTypeName;
+const
+  Source = Head + '  S := '''';' + Tail;
+var
+  Tree: TSyntaxTree;
+  Offset: Integer;
+  Helper: TResolvedSymbol;
+begin
+  Tree := TPascalParser.Parse(Source);
+  try
+    Offset := Pos('S := ''''', Source) - 1;
+    Assert.IsTrue(FResolver.VisibleHelper(Tree, 'C:\P\Haupt.pas', 'string', Offset, Helper));
+    Assert.AreEqual('TStringHelper', Helper.Name);
+    Assert.AreEqual('System.SysUtils', Helper.UnitName);
+    Assert.IsTrue(FResolver.VisibleHelper(Tree, 'C:\P\Haupt.pas', 'TKunde', Offset, Helper));
+    Assert.AreEqual('TKundeHelper', Helper.Name);
+    Assert.IsFalse(FResolver.VisibleHelper(Tree, 'C:\P\Haupt.pas', 'Integer', Offset, Helper));
+    Assert.IsFalse(FResolver.VisibleHelper(Tree, 'C:\P\Haupt.pas', '', Offset, Helper));
+  finally
+    Tree.Free;
+  end;
+end;
+
+procedure TNameResolverLanguageFeatureTests.WithFindsMembersOfExpression;
+const
+  Source = Head + '  with L.First do'#10'    S := Kopie.Name;'#10'  with K do'#10'    Name := '''';' + Tail;
+begin
+  Assert.AreEqual('TKunde', ResolveAt(Source, 'Kopie').Container);
+  // Mitglied verdeckt die lokale Variable Name: Integer.
+  Assert.AreEqual('TKunde', ResolveAt(Source, 'Name :=').Container);
+end;
+
+procedure TNameResolverLanguageFeatureTests.WithUnknownTypeGivesNoResult;
+const
+  Source = Head + '  with Unbekannt do'#10'    Name := 1;'#10'  Name := 2;' + Tail;
+var
+  R: TResolvedSymbol;
+begin
+  Assert.IsFalse(ResolveAt(Source, 'Name := 1').Found);
+  // Außerhalb des with wieder die lokale Variable.
+  R := ResolveAt(Source, 'Name := 2');
+  Assert.IsTrue(R.Kind = TResolvedKind.Local);
+end;
+
+procedure TNameResolverLanguageFeatureTests.InfersInlineVarTypes;
+const
+  Source = Head + '  var Neu := TKunde.Create;'#10'  S := Neu.Name;'#10 +
+    '  var W := if True then ''a'' else ''b'';'#10'  S := W.ToUpper;'#10 +
+    '  var Zahl := 5;'#10'  Zahl.ToUpper;' + Tail;
+begin
+  Assert.AreEqual('TKunde', ResolveAt(Source, 'Name;').Container);
+  Assert.AreEqual('TStringHelper', ResolveAt(Source, 'ToUpper').Container);
+  Assert.IsFalse(ResolveAt(Source, 'ToUpper', 2).Found);
+end;
+
+procedure TNameResolverLanguageFeatureTests.ForVarIsLocalToLoop;
+const
+  Source = Head + '  for var Lauf := 0 to 3 do'#10'    I := Lauf;'#10'  I := Lauf;' + Tail;
+var
+  R: TResolvedSymbol;
+begin
+  R := ResolveAt(Source, 'Lauf;');
+  Assert.IsTrue(R.Kind = TResolvedKind.Local);
+  Assert.IsFalse(ResolveAt(Source, 'Lauf;', 2).Found);
+end;
+
+procedure TNameResolverLanguageFeatureTests.HidesMembersByVisibility;
+const
+  Source = Head + '  I := K.FIntern;'#10'  I := K.FGeheim;'#10'  K.Schuetzt;'#10'  S := K.Name;' + Tail;
+var
+  R: TResolvedSymbol;
+begin
+  Assert.IsFalse(ResolveAt(Source, 'FIntern').Found);
+  Assert.IsFalse(ResolveAt(Source, 'FGeheim').Found);
+  Assert.IsFalse(ResolveAt(Source, 'Schuetzt;', 2).Found);
+  Assert.IsTrue(ResolveAt(Source, 'Name;').Found);
+  // protected im Nachfahren sichtbar.
+  R := ResolveAt(Source, 'Schuetzt;');
+  Assert.AreEqual('TKunde', R.Container);
+end;
+
+procedure TNameResolverLanguageFeatureTests.ResolvesExpressionReceivers;
+const
+  Source = Head + '  S := Liefere(1).Name;'#10'  S := (O as TKunde).Name;'#10'  S := L.First.Kopie.Name;'#10 +
+    '  S := (O as Unbekannt).Name;' + Tail;
+begin
+  Assert.AreEqual('TKunde', ResolveAt(Source, 'Name;').Container);
+  Assert.AreEqual('TKunde', ResolveAt(Source, 'Name;', 2).Container);
+  Assert.AreEqual('TKunde', ResolveAt(Source, 'Name;', 3).Container);
+  Assert.IsFalse(ResolveAt(Source, 'Name;', 4).Found);
+end;
+
+procedure TNameResolverLanguageFeatureTests.IndexKeepsSignaturesAndGenerics;
+var
+  Units: TArray<TUnitIndex>;
+  Symbol: TIndexSymbol;
+  Checked: Integer;
+begin
+  Units := TIndexCache.Deserialize(TIndexCache.Serialize([TIndexExtractor.ExtractText(UnitCollections,
+    'C:\Lib\System.Generics.Collections.pas', nil), TIndexExtractor.ExtractText(UnitKunden, 'C:\P\Kunden.pas', nil)]));
+  Assert.AreEqual(2, Integer(Length(Units)));
+  Checked := 0;
+  for Symbol in Units[0].Symbols do
+  begin
+    if (Symbol.Name = 'TList') then
+    begin
+      Assert.AreEqual('T', Symbol.TypeParams);
+      Inc(Checked);
+    end
+    else if (Symbol.Name = 'Items') then
+    begin
+      Assert.IsTrue(Symbol.IsDefault);
+      Assert.AreEqual(1, Symbol.MaxArgs);
+      Inc(Checked);
+    end
+    else if (Symbol.Name = 'FCount') then
+    begin
+      Assert.AreEqual(Ord(TIndexVisibility.Private), Ord(Symbol.Visibility));
+      Inc(Checked);
+    end;
+  end;
+  for Symbol in Units[1].Symbols do
+  begin
+    if Symbol.Name = 'TKundenListe' then
+    begin
+      Assert.AreEqual('TObjectList', Symbol.Ancestors[0]);
+      Assert.AreEqual(1, Integer(Length(Symbol.AncestorArgs)));
+      Assert.AreEqual('TKunde', Symbol.AncestorArgs[0]);
+      Inc(Checked);
+    end;
+  end;
+  Assert.AreEqual(4, Checked);
+end;
+
+initialization
+  TDUnitX.RegisterTestFixture(TNameResolverLanguageFeatureTests);
+
+end.

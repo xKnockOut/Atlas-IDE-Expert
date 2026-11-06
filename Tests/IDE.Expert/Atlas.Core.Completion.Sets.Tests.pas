@@ -74,8 +74,12 @@ begin
   Empty := False;
   Checked := '';
   for Index in AOrder do
+  begin
     if not TAtlasRanking.IsHeader(Index) and AItems[Index].Checked then
+    begin
       Checked := Checked + AItems[Index].Name + ' ';
+    end;
+  end;
   Checked := Checked.Trim;
 end;
 
@@ -129,7 +133,9 @@ begin
   repeat
     CheckSynchronize(5);
     if ACondition() then
+    begin
       Exit(True);
+    end;
   until TThread.GetTickCount64 - Start > 3000;
   Result := False;
 end;
@@ -140,10 +146,16 @@ var
 begin
   Result := '';
   for Index in AOrder do
+  begin
     if TAtlasRanking.IsHeader(Index) then
-      Result := Result + '# '
+    begin
+      Result := Result + '# ';
+    end
     else
+    begin
       Result := Result + AItems[Index].Name + ' ';
+    end;
+  end;
   Result := Result.Trim;
 end;
 
@@ -440,37 +452,44 @@ begin
   Assert.AreEqual('IExporter', Item.SetOf);
 end;
 
-procedure TAtlasCompletionSetsTests.AssignListCommitsCheckedLines;
+/// <summary>Eintrag „Alle Felder zuweisen“ wie vom Server (#491) mit seinen drei Zeilen.</summary>
+function AssignItemFromServer: TAtlasCompletionItem;
 var
-  Json: TJSONObject;
-  Item, Committed: TAtlasCompletionItem;
-  Lines: TAtlasCompletionItems;
-  View: TSetView;
-  ViewRef: IAtlasCompletionView;
-  Controller: TAtlasCompletionController;
-  Context: TAtlasContext;
+  mJson: TJSONObject;
+  mLines: TAtlasCompletionItems;
 begin
   // Wie vom Server (#491): textEdit über "Opts." mit unverändertem Text, die Zeilen unter data.assign.
-  Json := TJSONObject.ParseJSONValue('{"label":"Alle Felder zuweisen (3)","kind":15,"detail":"TOpts",' +
+  mJson := TJSONObject.ParseJSONValue('{"label":"Alle Felder zuweisen (3)","kind":15,"detail":"TOpts",' +
     '"textEdit":{"range":{"start":{"line":5,"character":2},"end":{"line":5,"character":7}},"newText":"Opts."},' +
     '"data":{"action":"assign","pinned":true,"assign":[{"name":"A","detail":"Integer","text":"Opts.A := 0;\r\n  "},' +
     '{"name":"B","detail":"string","text":"Opts.B := '''';\r\n  "},{"name":"C","detail":"Boolean",' +
     '"text":"Opts.C := False;\r\n  "}]}}') as TJSONObject;
   try
-    Item := TAtlasServerCompletionProvider.ItemFromLsp(Json, 0);
+    Result := TAtlasServerCompletionProvider.ItemFromLsp(mJson, 0);
   finally
-    Json.Free;
+    mJson.Free;
   end;
-  Assert.AreEqual(3, Integer(Length(Item.Assignments)));
-  Assert.AreEqual('B', Item.Assignments[1].Name);
-  Assert.AreEqual('Opts.C := False;'#13#10'  ', Item.Assignments[2].Text);
-  Lines := TAtlasCompletionSets.AssignItems(Item);
-  Assert.AreEqual(3, Integer(Length(Lines)));
-  Assert.IsTrue(Lines[0].Batch and Lines[0].Assign and Lines[0].Checked);
-  Assert.AreEqual('TOpts', Lines[0].SetOf);
-  Assert.AreEqual(2, Lines[0].SetRange.StartCharacter);
-  Assert.AreEqual(7, Lines[0].SetRange.EndCharacter);
-  Assert.AreEqual(7, Lines[0].AdditionalEdits[0].StartCharacter, 'hinter dem Punkt');
+  Assert.AreEqual(3, Integer(Length(Result.Assignments)));
+  Assert.AreEqual('B', Result.Assignments[1].Name);
+  Assert.AreEqual('Opts.C := False;'#13#10'  ', Result.Assignments[2].Text);
+  mLines := TAtlasCompletionSets.AssignItems(Result);
+  Assert.AreEqual(3, Integer(Length(mLines)));
+  Assert.IsTrue(mLines[0].Batch and mLines[0].Assign and mLines[0].Checked);
+  Assert.AreEqual('TOpts', mLines[0].SetOf);
+  Assert.AreEqual(2, mLines[0].SetRange.StartCharacter);
+  Assert.AreEqual(7, mLines[0].SetRange.EndCharacter);
+  Assert.AreEqual(7, mLines[0].AdditionalEdits[0].StartCharacter, 'hinter dem Punkt');
+end;
+
+procedure TAtlasCompletionSetsTests.AssignListCommitsCheckedLines;
+var
+  Item, Committed: TAtlasCompletionItem;
+  View: TSetView;
+  ViewRef: IAtlasCompletionView;
+  Controller: TAtlasCompletionController;
+  Context: TAtlasContext;
+begin
+  Item := AssignItemFromServer;
   View := TSetView.Create;
   ViewRef := View;
   Controller := TAtlasCompletionController.Create(TAtlasFixedCompletionProvider.Create([Item]) as
@@ -507,12 +526,29 @@ begin
   finally
     Controller.Free;
   end;
-  Lines := nil;
+end;
+
+/// <summary>Hinweis „2 Methoden von IExporter fehlen“ wie vom Server; er entfernt das getippte Wort.</summary>
+function ImplementHintFromServer: TAtlasCompletionItem;
+var
+  mJson: TJSONObject;
+begin
+  // Der Hinweis entfernt das getippte Wort: textEdit ohne Text bleibt hier erhalten.
+  mJson := TJSONObject.ParseJSONValue('{"label":"2 Methoden von IExporter fehlen","kind":15,"textEdit":{"range":' +
+    '{"start":{"line":7,"character":4},"end":{"line":7,"character":6}},"newText":""},"data":{"action":"implement",' +
+    '"hint":true,"container":"IExporter"}}') as TJSONObject;
+  try
+    Result := TAtlasServerCompletionProvider.ItemFromLsp(mJson, 0);
+  finally
+    mJson.Free;
+  end;
+  Assert.IsTrue(Result.Hint);
+  Assert.IsTrue(Result.HasTextEdit);
+  Assert.AreEqual('', Result.TextEdit.NewText);
 end;
 
 procedure TAtlasCompletionSetsTests.HintStaysOnTopWithoutSelection;
 var
-  Json: TJSONObject;
   Hint, Item: TAtlasCompletionItem;
   Items: TAtlasCompletionItems;
   View: TSetView;
@@ -520,18 +556,7 @@ var
   Controller: TAtlasCompletionController;
   Context: TAtlasContext;
 begin
-  // Der Hinweis entfernt das getippte Wort: textEdit ohne Text bleibt hier erhalten.
-  Json := TJSONObject.ParseJSONValue('{"label":"2 Methoden von IExporter fehlen","kind":15,"textEdit":{"range":' +
-    '{"start":{"line":7,"character":4},"end":{"line":7,"character":6}},"newText":""},"data":{"action":"implement",' +
-    '"hint":true,"container":"IExporter"}}') as TJSONObject;
-  try
-    Hint := TAtlasServerCompletionProvider.ItemFromLsp(Json, 0);
-  finally
-    Json.Free;
-  end;
-  Assert.IsTrue(Hint.Hint);
-  Assert.IsTrue(Hint.HasTextEdit);
-  Assert.AreEqual('', Hint.TextEdit.NewText);
+  Hint := ImplementHintFromServer;
   Item := Default(TAtlasCompletionItem);
   Item.Name := 'Exception';
   Item.Kind := TAtlasItemKind.Class_;

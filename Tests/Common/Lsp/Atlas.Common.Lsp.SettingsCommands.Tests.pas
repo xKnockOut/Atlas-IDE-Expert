@@ -128,6 +128,7 @@ begin
     Assert.AreEqual(Integer(Length(Entries)), Rules.Count);
     Found := False;
     for Index := 0 to Rules.Count - 1 do
+    begin
       if Rules.Items[Index].GetValue<string>('id') = 'syntax' then
       begin
         Found := True;
@@ -135,12 +136,43 @@ begin
         Assert.AreEqual('bug', Rules.Items[Index].GetValue<string>('category'));
         Assert.IsTrue(Rules.Items[Index].GetValue<string>('name') <> '');
       end;
+    end;
     Assert.IsTrue(Found);
     Assert.AreEqual('C:\Users\x\AppData\Roaming\Atlas\settings.json', Answer.GetValue<string>('globalFile'));
     Assert.IsTrue(Answer.GetValue<string>('version') <> '');
   finally
     Answer.Free;
   end;
+end;
+
+/// <summary>metric-method-length: Gruppe style, experimentell, eine Option max mit Vorgabe 60.</summary>
+procedure AssertMethodLengthEntry(const ARule: TJSONValue);
+var
+  mOptions: TJSONArray;
+  mOption: TJSONValue;
+begin
+  Assert.AreEqual('style', ARule.GetValue<string>('group'));
+  Assert.IsTrue(ARule.GetValue<Boolean>('experimental'));
+  mOptions := ARule.GetValue<TJSONArray>('options');
+  Assert.AreEqual(1, mOptions.Count);
+  mOption := mOptions.Items[0];
+  Assert.AreEqual('max', mOption.GetValue<string>('name'));
+  Assert.AreEqual('integer', mOption.GetValue<string>('type'));
+  Assert.AreEqual(60, mOption.GetValue<Integer>('default'));
+  Assert.IsTrue(mOption.GetValue<string>('description') <> '');
+  Assert.IsTrue(ARule.GetValue<string>('bad') <> '');
+end;
+
+/// <summary>Tabelle der Symbole (#1133): Spalten, Listen markiert.</summary>
+procedure AssertForbiddenSymbolColumns(const ARule: TJSONValue);
+var
+  mOption: TJSONValue;
+begin
+  mOption := ARule.GetValue<TJSONArray>('options').Items[0];
+  Assert.AreEqual('object-list', mOption.GetValue<string>('type'));
+  Assert.AreEqual('name', mOption.GetValue<TJSONArray>('columns').Items[0].GetValue<string>('name'));
+  Assert.IsNull(mOption.GetValue<TJSONArray>('columns').Items[0].FindValue('list'));
+  Assert.IsTrue(mOption.GetValue<TJSONArray>('columns').Items[5].GetValue<Boolean>('list'));
 end;
 
 procedure TLspSettingsCommandsTests.CatalogCarriesGroupOptionsAndExperimental;
@@ -150,8 +182,7 @@ var
   Answer: TJSONObject;
   Rules: TJSONArray;
   Rule: TJSONValue;
-  Options, Overrides: TJSONArray;
-  Option: TJSONValue;
+  Overrides: TJSONArray;
   Index: Integer;
   SeenMetric: Boolean;
   SeenSyntax: Boolean;
@@ -174,25 +205,12 @@ begin
       if Rule.GetValue<string>('id') = 'metric-method-length' then
       begin
         SeenMetric := True;
-        Assert.AreEqual('style', Rule.GetValue<string>('group'));
-        Assert.IsTrue(Rule.GetValue<Boolean>('experimental'));
-        Options := Rule.GetValue<TJSONArray>('options');
-        Assert.AreEqual(1, Options.Count);
-        Option := Options.Items[0];
-        Assert.AreEqual('max', Option.GetValue<string>('name'));
-        Assert.AreEqual('integer', Option.GetValue<string>('type'));
-        Assert.AreEqual(60, Option.GetValue<Integer>('default'));
-        Assert.IsTrue(Option.GetValue<string>('description') <> '');
-        Assert.IsTrue(Rule.GetValue<string>('bad') <> '');
+        AssertMethodLengthEntry(Rule);
       end;
       // Tabelle der Symbole (#1133): Spalten, Listen markiert.
       if Rule.GetValue<string>('id') = 'forbidden-symbol' then
       begin
-        Option := Rule.GetValue<TJSONArray>('options').Items[0];
-        Assert.AreEqual('object-list', Option.GetValue<string>('type'));
-        Assert.AreEqual('name', Option.GetValue<TJSONArray>('columns').Items[0].GetValue<string>('name'));
-        Assert.IsNull(Option.GetValue<TJSONArray>('columns').Items[0].FindValue('list'));
-        Assert.IsTrue(Option.GetValue<TJSONArray>('columns').Items[5].GetValue<Boolean>('list'));
+        AssertForbiddenSymbolColumns(Rule);
       end;
       // Gegenregel (#1025).
       if Rule.GetValue<string>('id') = 'redundant-begin-end' then

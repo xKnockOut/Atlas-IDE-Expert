@@ -13,6 +13,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasNewIssueTests = class
   public
     /// <summary>Abnahme: Die Kennung kommt in alle drei TODO-Schreibweisen, auch mit Optionen der IDE.</summary>
@@ -48,6 +49,7 @@ uses
   System.Generics.Collections,
   System.JSON,
   Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Internals.GitHubApi,
   Atlas.Core.Tracker.Providers.GitHub,
@@ -72,8 +74,8 @@ type
     procedure Reply(const AMethod, APrefix: string; AStatus: Integer; const AText: string);
     function Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
       out AError: TAtlasCiFetchError): Boolean;
-    function Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
-      out AError: TAtlasCiFetchError): Boolean;
+    function Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AResponse: TAtlasCiResponse):
+      Boolean;
   end;
 
 destructor TFakeTransport.Destroy;
@@ -104,12 +106,14 @@ begin
   AText := '';
   Result := True;
   for mIndex := 0 to High(FPrefixes) do
+  begin
     if (FMethods[mIndex] = AMethod) and AUrl.StartsWith(FPrefixes[mIndex]) then
     begin
       AStatus := FStatus[mIndex];
       AText := FTexts[mIndex];
       Exit;
     end;
+  end;
 end;
 
 function TFakeTransport.Get(const AUrl: string; ATimeoutMs: Integer; out AStatus: Integer; out AText: string;
@@ -119,12 +123,12 @@ begin
   Result := Answer('GET', AUrl, AStatus, AText);
 end;
 
-function TFakeTransport.Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer; out AStatus: Integer;
-  out AText: string; out AError: TAtlasCiFetchError): Boolean;
+function TFakeTransport.Send(const AMethod, AUrl, ABody: string; ATimeoutMs: Integer;
+  out AResponse: TAtlasCiResponse): Boolean;
 begin
-  AError := TAtlasCiFetchError.None;
+  AResponse := TAtlasCiResponse.Failed(TAtlasCiFetchError.None);
   Bodies := Bodies + [ABody];
-  Result := Answer(AMethod, AUrl, AStatus, AText);
+  Result := Answer(AMethod, AUrl, AResponse.Status, AResponse.Text);
 end;
 
 function YouTrackTarget: TAtlasTrackerTarget;
@@ -151,18 +155,30 @@ begin
     for mPart in APath.Split(['.']) do
     begin
       if (mValue is TJSONArray) and TryStrToInt(mPart, mIndex) and (mIndex < TJSONArray(mValue).Count) then
-        mValue := TJSONArray(mValue).Items[mIndex]
+      begin
+        mValue := TJSONArray(mValue).Items[mIndex];
+      end
       else if mValue is TJSONObject then
-        mValue := TJSONObject(mValue).Values[mPart]
+      begin
+        mValue := TJSONObject(mValue).Values[mPart];
+      end
       else
+      begin
         mValue := nil;
+      end;
       if mValue = nil then
+      begin
         Exit;
+      end;
     end;
     if mValue is TJSONString then
-      Result := TJSONString(mValue).Value
+    begin
+      Result := TJSONString(mValue).Value;
+    end
     else
+    begin
       Result := mValue.ToJSON;
+    end;
   finally
     mRoot.Free;
   end;
@@ -242,7 +258,9 @@ begin
   mContext := TAtlasNewIssueContext.Empty;
   SetLength(mContext.Lines, 20);
   for mIndex := 0 to High(mContext.Lines) do
+  begin
     mContext.Lines[mIndex] := '    Zeile' + IntToStr(mIndex + 1) + ';';
+  end;
   mContext.FileName := 'C:\Projekte\Kasse\Source\Main.pas';
   mContext.Line := 10;
   mContext.Method := 'TMainForm.FormClose';

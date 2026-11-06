@@ -13,10 +13,14 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Debugger')]
   TAtlasDebugExceptionsFrameTests = class
   private
     FLanguage: TAtlasLanguage;
   public
+    /// <summary>Einmal-Belegungen vorwegnehmen; sie gehören nicht in die Leckmessung.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Setup]
     procedure Setup;
     [TearDown]
@@ -50,7 +54,7 @@ uses
 
 function Sample(ATime: TDateTime; const AClass, AMessage, AFile: string; ALine: Integer): TAtlasDebugException;
 begin
-  Result := TAtlasDebugException.Create(ATime, AClass, AMessage, 77, '', AFile, ALine, 'Unit1.Laden');
+  Result := TAtlasDebugException.Create(ATime, AClass, AMessage, 77, '').At(AFile, ALine, 'Unit1.Laden');
 end;
 
 function SampleHistory: TAtlasDebugExceptionHistory;
@@ -62,6 +66,16 @@ begin
 end;
 
 { TAtlasDebugExceptionsFrameTests }
+
+procedure TAtlasDebugExceptionsFrameTests.WarmUpFirstUse;
+begin
+  Setup;
+  try
+    ShowsRowsNewestFirst;
+  finally
+    TearDown;
+  end;
+end;
 
 procedure TAtlasDebugExceptionsFrameTests.Setup;
 begin
@@ -246,33 +260,33 @@ begin
     Frame := TAtlasDebugExceptionsFrame.Create(Host);
     Frame.Parent := Host;
     Frame.HandleNeeded;
-    Frame.JustMyCode := True;
+    Frame.Stack.JustMyCode := True;
     Frame.SetHistory(History, TAtlasDebugIgnoreList.Empty);
     Opened := '';
-    Frame.OnOpenFrame :=
+    Frame.Stack.OnOpenFrame :=
       procedure(AFrame: TAtlasDebugFrame)
       begin
         Opened := AFrame.FileName + ':' + IntToStr(AFrame.Line);
       end;
-    Assert.AreEqual(0, Integer(Frame.Stack.Items.Count), 'ohne Auswahl kein Stapel');
+    Assert.AreEqual(0, Integer(Frame.Stack.List.Items.Count), 'ohne Auswahl kein Stapel');
     Frame.List.Items[0].Selected := True;
-    Assert.AreEqual(2, Integer(Frame.Stack.Items.Count));
-    Assert.AreEqual('… 2 Bibliotheksrahmen', Frame.Stack.Items[0].Caption);
-    Assert.AreEqual('Kunde.pas:10', Frame.Stack.Items[1].SubItems[0]);
-    Frame.OpenStackRow(1);
+    Assert.AreEqual(2, Integer(Frame.Stack.List.Items.Count));
+    Assert.AreEqual('… 2 Bibliotheksrahmen', Frame.Stack.List.Items[0].Caption);
+    Assert.AreEqual('Kunde.pas:10', Frame.Stack.List.Items[1].SubItems[0]);
+    Frame.Stack.OpenRow(1);
     Assert.AreEqual('C:\P\Kunde.pas:10', Opened);
     // Gruppe aufklappen: drei Zeilen, die ersten beiden abgeschwächt.
-    Frame.OpenStackRow(0);
-    Assert.AreEqual(3, Integer(Frame.Stack.Items.Count));
-    Assert.IsTrue(Frame.StackRows[0].Faded);
-    Assert.IsFalse(Frame.StackRows[2].Faded);
+    Frame.Stack.OpenRow(0);
+    Assert.AreEqual(3, Integer(Frame.Stack.List.Items.Count));
+    Assert.IsTrue(Frame.Stack.Rows[0].Faded);
+    Assert.IsFalse(Frame.Stack.Rows[2].Faded);
     Opened := '';
-    Frame.OpenStackRow(0);
+    Frame.Stack.OpenRow(0);
     Assert.AreEqual('', Opened, 'Rahmen ohne Quelltext springt nicht');
     // Ohne „Nur eigener Code“ jeder Rahmen einzeln.
-    Frame.JustMyCode := False;
-    Assert.AreEqual(3, Integer(Frame.Stack.Items.Count));
-    Assert.IsFalse(Frame.StackRows[0].Faded);
+    Frame.Stack.JustMyCode := False;
+    Assert.AreEqual(3, Integer(Frame.Stack.List.Items.Count));
+    Assert.IsFalse(Frame.Stack.Rows[0].Faded);
   finally
     Host.Free;
     History.Free;

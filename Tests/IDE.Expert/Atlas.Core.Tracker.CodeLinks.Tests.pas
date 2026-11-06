@@ -12,6 +12,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasCodeLinksTests = class
   public
     /// <summary>Ohne Tracker, GitHub ohne owner/repo und YouTrack ohne Kürzel: keine Erkennung.</summary>
@@ -81,7 +82,9 @@ var
 begin
   Result := '';
   for mMatch in TAtlasCodeLinks.LineMatches(APattern, ALine, TAtlasCodeLinkState.Code, cCommit) do
+  begin
     Result := Result + mMatch.Key + '|';
+  end;
 end;
 
 /// <summary>Kennungen eines Textes in Zeilen: „Zeile:Kennung|“.</summary>
@@ -91,7 +94,9 @@ var
 begin
   Result := '';
   for mItem in TAtlasCodeLinks.Find(APattern, ALines, cCommit) do
+  begin
     Result := Result + IntToStr(mItem.Line) + ':' + mItem.Match.Key + '|';
+  end;
 end;
 
 procedure TAtlasCodeLinksTests.PatternNeedsConfiguredTracker;

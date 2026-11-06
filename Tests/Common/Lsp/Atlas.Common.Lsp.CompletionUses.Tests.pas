@@ -54,6 +54,7 @@ type
 implementation
 
 uses
+  Atlas.Common.Lsp.Completion.Lists,
   System.SysUtils,
   System.JSON,
   System.Generics.Collections,
@@ -86,16 +87,20 @@ begin
   // Cursor hinter AMarker.
   Index := Pos(AMarker, AText);
   if Index = 0 then
+  begin
     raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+  end;
   Inc(Index, Length(AMarker));
   Line := 0;
   LineStart := 1;
   for Scan := 1 to Index - 1 do
+  begin
     if AText[Scan] = #10 then
     begin
       Inc(Line);
       LineStart := Scan + 1;
     end;
+  end;
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
@@ -160,7 +165,7 @@ begin
     Settings := TCompletionSettings.Default;
     Settings.UsesDetails := AUsesDetails;
     Request.Settings := Settings;
-    Result := TLspCompletion.Collect(Request, TPostfixOptions.Default, nil);
+    Result := TCompletionLists.Collect(Request, TPostfixOptions.Default, nil);
   finally
     Request.Free;
     Tree.Free;
@@ -173,7 +178,9 @@ var
 begin
   Result := '';
   for Item in AItems.Items do
+  begin
     Result := Result + Item.Name + ' ';
+  end;
   Result := Result.Trim;
 end;
 
@@ -183,11 +190,13 @@ var
   Item: TCompletionItem;
 begin
   for Item in AItems.Items do
+  begin
     if Item.Name = AName then
     begin
       AItem := Item;
       Exit(True);
     end;
+  end;
   AItem := Default(TCompletionItem);
   Result := False;
 end;

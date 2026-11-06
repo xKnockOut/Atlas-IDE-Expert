@@ -57,23 +57,47 @@ uses
   Atlas.Common.Semantics.ConstantValues,
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLspOverloadsText = (ThereIsNoHeaderOf, OverloadNotPossible, UnknownKind);
+
+const
+  cTexts: array[TLspOverloadsText] of TAtlasText = (
+    (De: 'Hier steht kein Kopf einer Routine mit Rumpf in dieser Unit.';
+     En: 'There is no header of a routine with a body in this unit here.'),
+    (De: 'Überladung geht nicht: '; En: 'Overload not possible: '),
+    (De: 'Unbekannte Art "%s"'; En: 'Unknown kind "%s"'));
+
+{$SCOPEDENUMS OFF}
 
 class function TLspOverloads.KindName(AKind: TOverloadKind): string;
 begin
   if AKind = TOverloadKind.Forward then
-    Result := ForwardName
+  begin
+    Result := ForwardName;
+  end
   else
+  begin
     Result := CopyName;
+  end;
 end;
 
 class function TLspOverloads.KindOf(const AName: string; out AKind: TOverloadKind): Boolean;
 begin
   Result := True;
   if SameText(AName, ForwardName) then
-    AKind := TOverloadKind.Forward
+  begin
+    AKind := TOverloadKind.Forward;
+  end
   else if SameText(AName, CopyName) then
-    AKind := TOverloadKind.Copy
+  begin
+    AKind := TOverloadKind.Copy;
+  end
   else
   begin
     AKind := TOverloadKind.Copy;
@@ -116,7 +140,9 @@ var
 begin
   Result := nil;
   if not TOverloads.Target(AText, ATree, APosition, Target) then
+  begin
     Exit;
+  end;
   Result := [NewAction(AUri, APosition, Target, TOverloadKind.Forward),
     NewAction(AUri, APosition, Target, TOverloadKind.Copy)];
 end;
@@ -132,7 +158,9 @@ begin
   Values := TConstantValues.Create(ATree, AFileName, AIndex, AResolver);
   try
     if Values.EnumMembers(ASymbol, Names) and (Length(Names) > 0) then
+    begin
       Result := Names[0];
+    end;
   finally
     Values.Free;
   end;
@@ -151,10 +179,14 @@ begin
     begin
       Result := '';
       if ATypeOffset < 0 then
+      begin
         Exit;
+      end;
       Resolved := AResolver.ResolveType(ATree, AFileName, Lines.PositionAt(ATypeOffset));
       if not Resolved.Found then
+      begin
         Exit;
+      end;
       case Resolved.SymbolKind of
         TIndexSymbolKind.ClassType, TIndexSymbolKind.InterfaceType:
           Result := 'nil';
@@ -207,7 +239,9 @@ begin
   end;
   Warnings := TJSONArray.Create;
   for Warning in AResult.Warnings do
+  begin
     Warnings.Add(Warning);
+  end;
   Result := TJSONObject.Create;
   Result.AddPair('edit', Edit);
   Result.AddPair('placeholders', Placeholders);
@@ -223,12 +257,21 @@ var
   Reason: string;
 begin
   if not KindOf(AKind, Kind) then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Format('Unbekannte Art "%s"', [AKind]));
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TLspOverloadsText.UnknownKind].Fmt([AKind]));
+  end;
   if not TOverloads.Target(AText, ATree, APosition, Target) then
-    raise Fail('Hier steht kein Kopf einer Routine mit Rumpf in dieser Unit.');
-  if not TOverloads.Build(AText, ATree, Target, Kind, ADefault, Outcome, Reason) then
-    raise Fail('Überladung geht nicht: ' + Reason);
+  begin
+    raise Fail(cTexts[TLspOverloadsText.ThereIsNoHeaderOf].Text);
+  end;
+  if not TOverloads.Build(AText, ATree, Target, TOverloadRequest.Create(Kind, ADefault), Outcome, Reason) then
+  begin
+    raise Fail(cTexts[TLspOverloadsText.OverloadNotPossible].Text + Reason);
+  end;
   Result := AnswerJson(TDocumentUris.FromPath(AFileName), Outcome);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.Overloads', cTexts);
 
 end.

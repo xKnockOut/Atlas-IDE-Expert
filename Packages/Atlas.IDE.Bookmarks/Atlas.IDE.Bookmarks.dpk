@@ -1,0 +1,70 @@
+﻿package Atlas.IDE.Bookmarks;
+
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'Atlas IDE Expert – Lesezeichen'}
+{$DESIGNONLY}
+{$IMPLICITBUILD OFF}
+{$LIBSUFFIX AUTO}
+
+// Modul Lesezeichen (#1456, ADR 0017): benannte Lesezeichen, Notizen und Vertrag „Gemerkt“.
+// Meldet sich in der Unit-Initialisierung von Atlas.IDE.Bookmarks.Composition über die Registry
+// des Kern-Packages Atlas.IDE.Base an und lässt sich ohne Neustart der IDE laden und entladen
+// (Regeln 1 bis 4). Requiret nur das Kern-Package
+// (mit den Verträgen zwischen Modulen), kein anderes Modul (Regel 9).
+
+requires
+  rtl,
+  vcl,
+  vclwinx,
+  designide,
+  Atlas.IDE.Base;
+
+contains
+  Atlas.UI.Bookmarks.Strings in 'Source\UI\Bookmarks\Atlas.UI.Bookmarks.Strings.pas',
+  Atlas.Core.Notes.Store in 'Source\Core\Notes\Atlas.Core.Notes.Store.pas',
+  Atlas.UI.Notes.Dialog in 'Source\UI\Notes\Atlas.UI.Notes.Dialog.pas',
+  Atlas.UI.Notes.List in 'Source\UI\Notes\Atlas.UI.Notes.List.pas',
+  Atlas.IDE.Notes.Service in 'Source\IDE\Notes\Atlas.IDE.Notes.Service.pas',
+  Atlas.IDE.Notes.Gutter in 'Source\IDE\Notes\Atlas.IDE.Notes.Gutter.pas',
+  Atlas.Core.Bookmarks.Store in 'Source\Core\Bookmarks\Atlas.Core.Bookmarks.Store.pas',
+  Atlas.Core.Bookmarks.SavedPlaces in 'Source\Core\Bookmarks\Atlas.Core.Bookmarks.SavedPlaces.pas',
+  Atlas.Core.Bookmarks.Quick in 'Source\Core\Bookmarks\Atlas.Core.Bookmarks.Quick.pas',
+  Atlas.UI.Bookmarks.Dialog in 'Source\UI\Bookmarks\Atlas.UI.Bookmarks.Dialog.pas',
+  Atlas.UI.Todos.Dialog in 'Source\UI\Todos\Atlas.UI.Todos.Dialog.pas',
+  Atlas.UI.Bookmarks.Frame in 'Source\UI\Bookmarks\Atlas.UI.Bookmarks.Frame.pas' {AtlasBookmarksFrame: TFrame},
+  Atlas.IDE.Bookmarks.Window in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Window.pas',
+  Atlas.IDE.Bookmarks.Service in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Service.pas',
+  Atlas.IDE.Bookmarks.QuickService in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.QuickService.pas',
+  Atlas.IDE.Bookmarks.SavedPlaces in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.SavedPlaces.pas',
+  Atlas.IDE.Bookmarks.Composition in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Composition.pas',
+  Atlas.IDE.Bookmarks.Composition.Todos in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Composition.Todos.pas',
+  Atlas.IDE.Bookmarks.Gutter in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.Gutter.pas',
+  Atlas.IDE.Bookmarks.QuickColumn in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.QuickColumn.pas',
+  Atlas.IDE.Bookmarks.QuickPopups in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.QuickPopups.pas',
+  Atlas.IDE.Bookmarks.QuickChord in 'Source\IDE\Bookmarks\Atlas.IDE.Bookmarks.QuickChord.pas',
+  Atlas.UI.Bookmarks.SettingsSection in 'Source\UI\Bookmarks\Atlas.UI.Bookmarks.SettingsSection.pas';
+
+end.

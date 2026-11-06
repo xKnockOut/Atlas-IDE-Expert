@@ -69,40 +69,59 @@ uses
   System.SysUtils,
   System.StrUtils;
 
+/// <summary>Erster Vorfahr von ASymbol; '' ohne.</summary>
+function FirstOf(const ASymbol: TIndexSymbol): string;
+begin
+  Result := '';
+  if Length(ASymbol.Ancestors) > 0 then
+  begin
+    Result := ASymbol.Ancestors[0];
+  end;
+end;
+
+/// <summary>Erster Vorfahr der Klasse AName; '' ohne oder wenn sie weder in der Unit noch im Index steht. Die
+/// eigene Unit geht vor.</summary>
+function FirstAncestor(ASource: TCommandSource; const AIndex: ISymbolIndex; const AName: string): string;
+var
+  mSymbol: TIndexSymbol;
+  mLocation: TSymbolLocation;
+begin
+  for mSymbol in ASource.UnitIndex.Symbols do
+  begin
+    if (mSymbol.Kind = TIndexSymbolKind.ClassType) and SameText(mSymbol.Name, AName) and (mSymbol.Container = '') then
+    begin
+      Exit(FirstOf(mSymbol));
+    end;
+  end;
+  if AIndex <> nil then
+  begin
+    for mLocation in AIndex.FindSymbols(AName) do
+    begin
+      if mLocation.Symbol.Kind = TIndexSymbolKind.ClassType then
+      begin
+        Exit(FirstOf(mLocation.Symbol));
+      end;
+    end;
+  end;
+  Result := '';
+end;
+
 function Ancestors(ASource: TCommandSource; const AIndex: ISymbolIndex; const AClassName: string): TArray<string>;
 var
-  Name, Next: string;
-  Symbol: TIndexSymbol;
-  Location: TSymbolLocation;
-  Depth: Integer;
-  Found: Boolean;
+  mName, mNext: string;
+  mDepth: Integer;
 begin
   Result := nil;
-  Name := AClassName;
-  for Depth := 1 to 32 do
+  mName := AClassName;
+  for mDepth := 1 to 32 do
   begin
-    Next := '';
-    Found := False;
-    for Symbol in ASource.UnitIndex.Symbols do
-      if (Symbol.Kind = TIndexSymbolKind.ClassType) and SameText(Symbol.Name, Name) and (Symbol.Container = '') then
-      begin
-        Found := True;
-        if Length(Symbol.Ancestors) > 0 then
-          Next := Symbol.Ancestors[0];
-        Break;
-      end;
-    if not Found and (AIndex <> nil) then
-      for Location in AIndex.FindSymbols(Name) do
-        if Location.Symbol.Kind = TIndexSymbolKind.ClassType then
-        begin
-          if Length(Location.Symbol.Ancestors) > 0 then
-            Next := Location.Symbol.Ancestors[0];
-          Break;
-        end;
-    if (Next = '') or (IndexText(Next, Result) >= 0) then
+    mNext := FirstAncestor(ASource, AIndex, mName);
+    if (mNext = '') or (IndexText(mNext, Result) >= 0) then
+    begin
       Exit;
-    Result := Result + [Next];
-    Name := Next;
+    end;
+    Result := Result + [mNext];
+    mName := mNext;
   end;
 end;
 
@@ -111,8 +130,12 @@ var
   Name: string;
 begin
   for Name in AChain do
+  begin
     if MatchText(Name, ARoots) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -128,6 +151,7 @@ var
   Symbol: TIndexSymbol;
 begin
   for Symbol in ASource.UnitIndex.Symbols do
+  begin
     if (Symbol.Kind in AKinds) and SameText(Symbol.Name, AName) and SameText(Symbol.Container, AClass.Name) and
       (Symbol.Range.StartPos.Line >= AClass.Range.StartPos.Line) and
       (Symbol.Range.EndPos.Line <= AClass.Range.EndPos.Line) then
@@ -135,6 +159,7 @@ begin
       AMember := Symbol;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -144,10 +169,14 @@ var
 begin
   Result := nil;
   for Symbol in ASource.UnitIndex.Symbols do
+  begin
     if (Symbol.Kind in AKinds) and SameText(Symbol.Container, AClass.Name) and
       (Symbol.Range.StartPos.Line >= AClass.Range.StartPos.Line) and
       (Symbol.Range.EndPos.Line <= AClass.Range.EndPos.Line) then
+    begin
       Result := Result + [Symbol];
+    end;
+  end;
 end;
 
 function FindBody(ASource: TCommandSource; const AClassName, AName: string): TSyntaxNode;
@@ -158,11 +187,17 @@ begin
   Result := nil;
   Section := ASource.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
   if Section = nil then
+  begin
     Exit;
+  end;
   for Index := 0 to Section.ChildCount - 1 do
+  begin
     if (Section[Index].Kind = TSyntaxKind.RoutineDecl) and SameText(Section[Index].Name, AClassName + '.' + AName) and
       (Section[Index].FindChild(TSyntaxKind.Block) <> nil) then
+    begin
       Exit(Section[Index]);
+    end;
+  end;
 end;
 
 function Accessor(const ADeclaration, AKeyword: string): string;
@@ -172,31 +207,59 @@ var
 begin
   Words := ADeclaration.Replace(';', ' ').Split([' ', #9], TStringSplitOptions.ExcludeEmpty);
   for Index := 0 to High(Words) - 1 do
+  begin
     if SameText(Words[Index], AKeyword) then
+    begin
       Exit(Words[Index + 1]);
+    end;
+  end;
   Result := '';
+end;
+
+/// <summary>Feld, dem die Zeile ALine ein neues Objekt zuweist ("FListe := TList.Create"); '' sonst.</summary>
+function CreatedField(const ALine: string): string;
+var
+  mLine: string;
+  mAssign: Integer;
+begin
+  Result := '';
+  mLine := Trim(ALine);
+  mAssign := Pos(':=', mLine);
+  if (mAssign > 0) and (Pos('.Create', Copy(mLine, mAssign, MaxInt)) > 0) then
+  begin
+    Result := Trim(Copy(mLine, 1, mAssign - 1));
+  end;
+end;
+
+/// <summary>Ist ASymbol ein Konstruktor der Klasse AClassName mit Rumpf über mehrere Zeilen?</summary>
+function IsConstructorOf(const ASymbol: TIndexSymbol; const AClassName: string): Boolean;
+begin
+  Result := (ASymbol.Kind = TIndexSymbolKind.Constructor_) and SameText(ASymbol.Container, AClassName) and
+    (ASymbol.Range.EndPos.Line > ASymbol.Range.StartPos.Line);
 end;
 
 function CreatedFields(ASource: TCommandSource; const AClassName: string): TArray<string>;
 var
-  Symbol: TIndexSymbol;
-  Index, Assign: Integer;
-  Line, Field: string;
+  mSymbol: TIndexSymbol;
+  mIndex: Integer;
+  mField: string;
 begin
   Result := nil;
-  for Symbol in ASource.UnitIndex.Symbols do
-    if (Symbol.Kind = TIndexSymbolKind.Constructor_) and SameText(Symbol.Container, AClassName) and
-      (Symbol.Range.EndPos.Line > Symbol.Range.StartPos.Line) then
-      for Index := Symbol.Range.StartPos.Line to Symbol.Range.EndPos.Line do
+  for mSymbol in ASource.UnitIndex.Symbols do
+  begin
+    if not IsConstructorOf(mSymbol, AClassName) then
+    begin
+      Continue;
+    end;
+    for mIndex := mSymbol.Range.StartPos.Line to mSymbol.Range.EndPos.Line do
+    begin
+      mField := CreatedField(ASource.Lines[mIndex]);
+      if IsValidIdent(mField) and (IndexText(mField, Result) < 0) then
       begin
-        Line := Trim(ASource.Lines[Index]);
-        Assign := Pos(':=', Line);
-        if (Assign = 0) or (Pos('.Create', Copy(Line, Assign, MaxInt)) = 0) then
-          Continue;
-        Field := Trim(Copy(Line, 1, Assign - 1));
-        if IsValidIdent(Field) and (IndexText(Field, Result) < 0) then
-          Result := Result + [Field];
+        Result := Result + [mField];
       end;
+    end;
+  end;
 end;
 
 { TSetterGenerator }
@@ -207,13 +270,21 @@ var
   Member: TIndexSymbol;
 begin
   if DescendsFrom(Ancestors(ASource, AIndex, AClass.Name), ControlRoots) then
-    Result := 'Invalidate'
+  begin
+    Result := 'Invalidate';
+  end
   else if FindMember(ASource, AClass, 'Changed', [TIndexSymbolKind.Method], Member) then
-    Result := 'Changed'
+  begin
+    Result := 'Changed';
+  end
   else if FindMember(ASource, AClass, 'DoChange', [TIndexSymbolKind.Method], Member) then
-    Result := 'DoChange'
+  begin
+    Result := 'DoChange';
+  end
   else
+  begin
     Result := '';
+  end;
 end;
 
 class function TSetterGenerator.Statements(const AField, AValue, ACall: string): TArray<string>;
@@ -230,7 +301,9 @@ var
 begin
   Result := 'begin';
   for Line in Statements(AField, AValue, ACall) do
+  begin
     Result := Result + ALineBreak + '  ' + Line;
+  end;
   Result := Result + ALineBreak + 'end;';
 end;
 

@@ -34,7 +34,24 @@ uses
   System.Generics.Collections,
   System.DateUtils,
   System.StrUtils,
-  System.IOUtils;
+  System.IOUtils,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TBuildToolsText = (NoBuildFromTheIDE, TheLastBuildConcernedNot);
+
+const
+  cTexts: array[TBuildToolsText] of TAtlasText = (
+    (De: 'Noch kein Build aus der IDE für %s bekannt. Das IDE-Plugin meldet Builds, sobald Atlas in der IDE läuft ' +
+      'und dort compiliert wurde.';
+     En: 'No build from the IDE known yet for %s. The IDE plugin reports builds as soon as Atlas runs in the IDE and ' +
+      'compiled there.'),
+    (De: 'Der letzte Build betraf %s, nicht %s.'; En: 'The last build concerned %s, not %s.'));
+
+{$SCOPEDENUMS OFF}
 
 function SeverityText(ASeverity: TCompilerSeverity): string;
 const
@@ -48,8 +65,12 @@ var
   Severity: TCompilerSeverity;
 begin
   for Severity := Low(TCompilerSeverity) to High(TCompilerSeverity) do
+  begin
     if SameText(SeverityText(Severity), AText) then
+    begin
       Exit(Severity);
+    end;
+  end;
   Result := TCompilerSeverity.Hint;
 end;
 
@@ -59,7 +80,9 @@ var
   Root, FileName: string;
 begin
   if (ARoot = '') or (AFileName = '') then
+  begin
     Exit(AFileName = '');
+  end;
   try
     Root := IncludeTrailingPathDelimiter(TPath.GetFullPath(ARoot));
     FileName := TPath.GetFullPath(AFileName);
@@ -112,7 +135,9 @@ begin
     Root.AddPair('finishedAt', DateToISO8601(ABuild.FinishedAt, False));
     Root.AddPair('messages', MessagesToJson(ABuild.Messages, '', Omitted));
     if ABuild.RequestedBy <> '' then
+    begin
       Root.AddPair('requestedBy', ABuild.RequestedBy);
+    end;
     Result := Root.ToJSON;
   finally
     Root.Free;
@@ -131,7 +156,9 @@ begin
   try
     Result := Value is TJSONObject;
     if not Result then
+    begin
       Exit;
+    end;
     Root := TJSONObject(Value);
     ABuild.Known := True;
     ABuild.Project := Root.GetValue<string>('project', '');
@@ -143,7 +170,9 @@ begin
     ABuild.FinishedAt := ISO8601ToDate(Root.GetValue<string>('finishedAt', '2000-01-01T00:00:00'), False);
     ABuild.RequestedBy := Root.GetValue<string>('requestedBy', '');
     if Root.TryGetValue<TJSONArray>('messages', Items) then
+    begin
       for Item in Items do
+      begin
         if Item is TJSONObject then
         begin
           Message.FileName := TJSONObject(Item).GetValue<string>('file', '');
@@ -154,6 +183,8 @@ begin
           Message.Text := TJSONObject(Item).GetValue<string>('text', '');
           ABuild.Messages := ABuild.Messages + [Message];
         end;
+      end;
+    end;
   finally
     Value.Free;
   end;
@@ -161,8 +192,7 @@ end;
 
 class function TMcpBuildTools.NoBuild(const ARoot: string): string;
 begin
-  Result := Format('Noch kein Build aus der IDE für %s bekannt. Das IDE-Plugin meldet Builds, sobald Atlas ' +
-    'in der IDE läuft und dort compiliert wurde.', [ARoot]);
+  Result := cTexts[TBuildToolsText.NoBuildFromTheIDE].Fmt([ARoot]);
 end;
 
 class function TMcpBuildTools.Report(const ABuild: TIdeBuild; const ARoot, AProject: string): string;
@@ -173,14 +203,20 @@ var
   Omitted: Integer;
 begin
   if not ABuild.Known then
+  begin
     Exit(NoBuild(ARoot));
+  end;
   if (AProject <> '') and not SameText(AProject, ABuild.Project) and
     not SameText(AProject, ExtractFileName(ABuild.Project)) and
     not SameText(ChangeFileExt(AProject, ''), ChangeFileExt(ExtractFileName(ABuild.Project), '')) then
-    Exit(Format('Der letzte Build betraf %s, nicht %s.', [ExtractFileName(ABuild.Project), AProject]));
+  begin
+    Exit(cTexts[TBuildToolsText.TheLastBuildConcernedNot].Fmt([ExtractFileName(ABuild.Project), AProject]));
+  end;
   FillChar(Counts, SizeOf(Counts), 0);
   for Message in ABuild.Messages do
+  begin
     Inc(Counts[Message.Severity]);
+  end;
   Root := TJSONObject.Create;
   try
     Root.AddPair('result', IfThen(ABuild.Success, 'success', 'failed'));
@@ -192,17 +228,24 @@ begin
     Root.AddPair('platform', ABuild.Platform);
     // Angestoßen von Claude Code (build_project, #261) statt vom Benutzer.
     if ABuild.RequestedBy <> '' then
+    begin
       Root.AddPair('requestedBy', ABuild.RequestedBy);
+    end;
     Root.AddPair('errors', TJSONNumber.Create(Counts[TCompilerSeverity.Error] + Counts[TCompilerSeverity.Fatal]));
     Root.AddPair('warnings', TJSONNumber.Create(Counts[TCompilerSeverity.Warning]));
     Root.AddPair('hints', TJSONNumber.Create(Counts[TCompilerSeverity.Hint]));
     Root.AddPair('messages', MessagesToJson(ABuild.Messages, ARoot, Omitted));
     if Omitted > 0 then
+    begin
       Root.AddPair('omittedOutsideWorkspace', TJSONNumber.Create(Omitted));
+    end;
     Result := Root.Format(2);
   finally
     Root.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Mcp.BuildTools', cTexts);
 
 end.

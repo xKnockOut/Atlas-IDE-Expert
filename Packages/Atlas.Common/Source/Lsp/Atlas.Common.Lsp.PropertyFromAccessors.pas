@@ -38,6 +38,8 @@ type
     Files: TArray<string>;
     ReadText: TReferenceReadText;
     Options: TPropertyFromAccessorsOptions;
+    /// <summary>Aufrufe auf die Property umstellen.</summary>
+    ReplaceCalls: Boolean;
   end;
 
   TLspPropertyFromAccessors = class
@@ -47,16 +49,15 @@ type
     Kind = 'refactor.rewrite';
     AnnotationId = 'propertyFromAccessors';
   public
-    /// <summary>Code-Aktionen an APosition; nil, wenn abgeschaltet oder dort keine Property fehlt. Der Aufrufer
+    /// <summary>Code-Aktionen an APosition; nil, wenn dort keine Property fehlt. Der Aufrufer
     /// übernimmt die Objekte.</summary>
-    class function Actions(AEnabled: Boolean; ATree: TSyntaxTree; const AText, AUri: string;
+    class function Actions(ATree: TSyntaxTree; const AText, AUri: string;
       const APosition: TTextPosition; const AOptions: TPropertyFromAccessorsOptions;
       AReplaceCalls: TReplaceCalls): TArray<TJSONObject>; static;
     /// <summary>{"edit": WorkspaceEdit, "warnings": [...], "properties": n, "calls": n}; EJsonRpcError, wenn an
     /// APosition keine Property fehlt oder das Ergebnis nicht parst. Der Aufrufer übernimmt das Objekt.</summary>
     class function Execute(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName, AText: string;
-      const APosition: TTextPosition; AReplaceCalls: Boolean; const AContext: TPropertyFromAccessorsContext):
-      TJSONObject; static;
+      const APosition: TTextPosition; const AContext: TPropertyFromAccessorsContext): TJSONObject; static;
     /// <summary>Ist ATypeName ein prozeduraler Typ (procedure/function … of object, reference to)?</summary>
     class function IsProcedural(const ATypeName: string; const AIndex: ISymbolIndex): Boolean; static;
   end;
@@ -73,7 +74,35 @@ uses
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.Positions;
+  Atlas.Common.Lsp.Positions,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TPropertyFromAccessorsText = (AfterTheChangeNoLonger, PropertyFromGetterAndSetter, WhetherIsMeantAsA,
+    IsUsedAsAMethod, StaysVisibleItIsStill, AndUpdateCalls, NoPropertyIsMissingHere, PropertiesCallsUpdatedFiles,
+    CreateMissingProperties, CreateProperty, Line);
+
+const
+  cTexts: array[TPropertyFromAccessorsText] of TAtlasText = (
+    (De: 'Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s).';
+     En: 'After the change %s no longer parses without errors (line %d: %s).'),
+    (De: 'Property aus Getter und Setter'; En: 'Property from getter and setter'),
+    (De: '%s: Ob %s dort als Methodenzeiger gemeint ist, lässt sich nicht bestimmen; die Stelle bleibt.';
+     En: '%s: whether %s is meant as a method pointer there cannot be determined; the place stays.'),
+    (De: '%s: %s wird als Methodenzeiger verwendet und bleibt.'; En: '%s: %s is used as a method pointer and stays.'),
+    (De: '%s bleibt sichtbar: Es wird außerhalb der Klasse noch benutzt.';
+     En: '%s stays visible: it is still used outside the class.'),
+    (De: ' und Aufrufe umstellen'; En: ' and update calls'),
+    (De: 'Hier fehlt keine Property.'; En: 'No property is missing here.'),
+    (De: '%d Properties, %d Aufrufe umgestellt, %d Dateien'; En: '%d properties, %d calls updated, %d files'),
+    (De: 'Fehlende Properties anlegen (%d)'; En: 'Create missing properties (%d)'),
+    (De: 'Property %s anlegen'; En: 'Create property %s'),
+    (De: '%s, Zeile %d'; En: '%s, line %d'));
+
+{$SCOPEDENUMS OFF}
 
 const
   ProceduralPattern = '=\s*(reference\s+to\s+)?(procedure|function)\b';
@@ -102,7 +131,9 @@ type
 destructor TSourceFile.Destroy;
 begin
   if OwnsTree then
+  begin
     Tree.Free;
+  end;
   inherited;
 end;
 
@@ -113,7 +144,7 @@ end;
 
 function Where(const AFileName: string; const APosition: TTextPosition): string;
 begin
-  Result := Format('%s, Zeile %d', [ExtractFileName(AFileName), APosition.Line + 1]);
+  Result := cTexts[TPropertyFromAccessorsText.Line].Fmt([ExtractFileName(AFileName), APosition.Line + 1]);
 end;
 
 /// <summary>Routine mit Rumpf, in der APosition liegt; nil außerhalb.</summary>
@@ -127,7 +158,9 @@ begin
     begin
       Result := (ANode.StartPos.Line <= APosition.Line) and (ANode.EndPos.Line >= APosition.Line);
       if Result and (ANode.Kind = TSyntaxKind.RoutineDecl) then
+      begin
         Found := ANode;
+      end;
     end);
   Result := Found;
 end;
@@ -143,7 +176,9 @@ begin
     begin
       if (ANode.Kind = TSyntaxKind.TypeDecl) and (ANode.StartPos.Line = AProperty.ClassLine) and
         (APosition.Line >= ANode.StartPos.Line) and (APosition.Line <= ANode.EndPos.Line) then
+      begin
         Found := True;
+      end;
       Result := not Found;
     end);
   Result := Found;
@@ -155,20 +190,128 @@ var
   Location: TSymbolLocation;
 begin
   if TRegEx.IsMatch(ATypeName, '^\s*(reference\s+to\s+)?(procedure|function)\b', [roIgnoreCase]) then
+  begin
     Exit(True);
+  end;
   Name := Trim(ATypeName);
   if Pos('<', Name) > 0 then
+  begin
     Name := Copy(Name, 1, Pos('<', Name) - 1);
+  end;
   if Pos('.', Name) > 0 then
+  begin
     Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
+  end;
   if IndexText(Name, KnownProcedural) >= 0 then
+  begin
     Exit(True);
+  end;
   if AIndex <> nil then
+  begin
     for Location in AIndex.FindSymbols(Name) do
+    begin
       if (Location.Symbol.Container = '') and (Location.Symbol.Kind = TIndexSymbolKind.TypeAlias) and
         TRegEx.IsMatch(Location.Symbol.Signature, ProceduralPattern, [roIgnoreCase]) then
+      begin
         Exit(True);
+      end;
+    end;
+  end;
   Result := False;
+end;
+
+/// <summary>Wert oder Methodenzeiger nach dem Typnamen ATypeName.</summary>
+function ByType(const ATypeName: string; const AIndex: ISymbolIndex): TUnclearResult;
+begin
+  if TLspPropertyFromAccessors.IsProcedural(ATypeName, AIndex) then
+  begin
+    Result := TUnclearResult.Pointer_;
+  end
+  else
+  begin
+    Result := TUnclearResult.Value;
+  end;
+end;
+
+/// <summary>Zuweisung an Result bei APosition: der Ergebnistyp der Routine.</summary>
+function ResultTarget(const AIndex: ISymbolIndex; ASource: TSourceFile; const APosition: TTextPosition):
+  TUnclearResult;
+var
+  mRoutine, mHeader, mTypeRef: TSyntaxNode;
+begin
+  Result := TUnclearResult.Unknown;
+  mRoutine := RoutineAt(ASource.Tree, APosition);
+  mHeader := nil;
+  if mRoutine <> nil then
+  begin
+    mHeader := mRoutine.FindChild(TSyntaxKind.RoutineHeader);
+  end;
+  mTypeRef := nil;
+  if mHeader <> nil then
+  begin
+    mTypeRef := mHeader.FindChild(TSyntaxKind.TypeReference);
+  end;
+  if mTypeRef <> nil then
+  begin
+    Result := ByType(Copy(ASource.Text, mTypeRef.StartOffset + 1, mTypeRef.EndOffset - mTypeRef.StartOffset), AIndex);
+  end;
+end;
+
+/// <summary>Zuweisung an eine Variable, ein Feld oder eine Property bei APosition: der deklarierte Typ, sonst der
+/// aufgelöste Typ.</summary>
+function AssignTarget(AResolver: TNameResolver; const AIndex: ISymbolIndex; ASource: TSourceFile;
+  const APosition: TTextPosition): TUnclearResult;
+var
+  mResolved: TResolvedSymbol;
+begin
+  mResolved := AResolver.Resolve(ASource.Tree, ASource.FileName, APosition);
+  if mResolved.Found and (mResolved.TypeName <> '') then
+  begin
+    Exit(ByType(mResolved.TypeName, AIndex));
+  end;
+  mResolved := AResolver.ResolveType(ASource.Tree, ASource.FileName, APosition);
+  if not mResolved.Found then
+  begin
+    Exit(TUnclearResult.Unknown);
+  end;
+  if mResolved.Builtin or (not TRegEx.IsMatch(mResolved.Signature, ProceduralPattern, [roIgnoreCase]) and
+    not TLspPropertyFromAccessors.IsProcedural(mResolved.Name, AIndex)) then
+  begin
+    Result := TUnclearResult.Value;
+  end
+  else
+  begin
+    Result := TUnclearResult.Pointer_;
+  end;
+end;
+
+/// <summary>Argument Nummer AArgument des Aufrufs ATarget: Assigned prüft Zeiger, die eingebauten Routinen in
+/// ValueIntrinsics nehmen Werte, sonst entscheiden die Parameter der Kandidaten.</summary>
+function ArgumentTarget(AResolver: TNameResolver; const AIndex: ISymbolIndex; ASource: TSourceFile;
+  const ATarget: TPascalToken; AArgument: Integer): TUnclearResult;
+var
+  mCandidate: TResolvedSymbol;
+begin
+  if SameText(ATarget.Text, 'Assigned') then
+  begin
+    Exit(TUnclearResult.Pointer_);
+  end;
+  if IndexText(ATarget.Text, ValueIntrinsics) >= 0 then
+  begin
+    Exit(TUnclearResult.Value);
+  end;
+  Result := TUnclearResult.Unknown;
+  for mCandidate in AResolver.ResolveAll(ASource.Tree, ASource.FileName, ATarget.StartPos) do
+  begin
+    if AArgument <= High(mCandidate.ParamTypes) then
+    begin
+      if TLspPropertyFromAccessors.IsProcedural(mCandidate.ParamTypes[AArgument], AIndex) then
+      begin
+        Exit(TUnclearResult.Pointer_);
+      end;
+      Result := TUnclearResult.Value;
+    end;
+  end;
 end;
 
 /// <summary>Ist der Getter bei ANameToken ein Wert oder ein Methodenzeiger? Ziel der Zuweisung bzw. Parameter
@@ -176,70 +319,27 @@ end;
 function ResolveUnclear(AResolver: TNameResolver; const AIndex: ISymbolIndex; ASource: TSourceFile;
   ANameToken: Integer): TUnclearResult;
 var
-  Tokens: TArray<TPascalToken>;
-  Target, Argument: Integer;
-  Routine, TypeRef: TSyntaxNode;
-  Resolved: TResolvedSymbol;
-  Candidates: TArray<TResolvedSymbol>;
-  Candidate: TResolvedSymbol;
-  Checked: Boolean;
+  mTokens: TArray<TPascalToken>;
+  mTarget, mArgument: Integer;
 begin
-  Result := TUnclearResult.Unknown;
-  Tokens := ASource.Tree.Tokens;
-  Target := TPropertyFromAccessors.UnclearTarget(Tokens, ANameToken, Argument);
-  if Target < 0 then
-    Exit;
-  if Argument < 0 then
+  mTokens := ASource.Tree.Tokens;
+  mTarget := TPropertyFromAccessors.UnclearTarget(mTokens, ANameToken, mArgument);
+  if mTarget < 0 then
   begin
-    // Zuweisung: Result nimmt den Ergebnistyp der Routine, sonst der Typ des Ziels.
-    if SameText(Tokens[Target].Text, 'Result') then
-    begin
-      Routine := RoutineAt(ASource.Tree, Tokens[Target].StartPos);
-      TypeRef := nil;
-      if (Routine <> nil) and (Routine.FindChild(TSyntaxKind.RoutineHeader) <> nil) then
-        TypeRef := Routine.FindChild(TSyntaxKind.RoutineHeader).FindChild(TSyntaxKind.TypeReference);
-      if TypeRef = nil then
-        Exit;
-      if TLspPropertyFromAccessors.IsProcedural(Copy(ASource.Text, TypeRef.StartOffset + 1,
-        TypeRef.EndOffset - TypeRef.StartOffset), AIndex) then
-        Exit(TUnclearResult.Pointer_);
-      Exit(TUnclearResult.Value);
-    end;
-    // Variable, Feld, Property: der deklarierte Typ; sonst der aufgelöste Typ.
-    Resolved := AResolver.Resolve(ASource.Tree, ASource.FileName, Tokens[Target].StartPos);
-    if Resolved.Found and (Resolved.TypeName <> '') then
-    begin
-      if TLspPropertyFromAccessors.IsProcedural(Resolved.TypeName, AIndex) then
-        Exit(TUnclearResult.Pointer_);
-      Exit(TUnclearResult.Value);
-    end;
-    Resolved := AResolver.ResolveType(ASource.Tree, ASource.FileName, Tokens[Target].StartPos);
-    if not Resolved.Found then
-      Exit;
-    if Resolved.Builtin or (not TRegEx.IsMatch(Resolved.Signature, ProceduralPattern, [roIgnoreCase]) and
-      not TLspPropertyFromAccessors.IsProcedural(Resolved.Name, AIndex)) then
-      Result := TUnclearResult.Value
-    else
-      Result := TUnclearResult.Pointer_;
-    Exit;
-  end;
-  // Argument: Assigned prüft Zeiger, die eingebauten Routinen oben nehmen Werte.
-  if SameText(Tokens[Target].Text, 'Assigned') then
-    Exit(TUnclearResult.Pointer_);
-  if IndexText(Tokens[Target].Text, ValueIntrinsics) >= 0 then
-    Exit(TUnclearResult.Value);
-  Candidates := AResolver.ResolveAll(ASource.Tree, ASource.FileName, Tokens[Target].StartPos);
-  Checked := False;
-  for Candidate in Candidates do
+    Result := TUnclearResult.Unknown;
+  end
+  else if mArgument >= 0 then
   begin
-    if Argument > High(Candidate.ParamTypes) then
-      Continue;
-    Checked := True;
-    if TLspPropertyFromAccessors.IsProcedural(Candidate.ParamTypes[Argument], AIndex) then
-      Exit(TUnclearResult.Pointer_);
+    Result := ArgumentTarget(AResolver, AIndex, ASource, mTokens[mTarget], mArgument);
+  end
+  else if SameText(mTokens[mTarget].Text, 'Result') then
+  begin
+    Result := ResultTarget(AIndex, ASource, mTokens[mTarget].StartPos);
+  end
+  else
+  begin
+    Result := AssignTarget(AResolver, AIndex, ASource, mTokens[mTarget].StartPos);
   end;
-  if Checked then
-    Result := TUnclearResult.Value;
 end;
 
 function EditsJson(const AUri: string; const AEdits: TArray<TTextEdit>): TJSONObject;
@@ -265,9 +365,365 @@ begin
   Result.AddPair('edits', Items);
 end;
 
+/// <summary>Getter und Setter von AItem, soweit vorhanden.</summary>
+function MethodsOf(const AItem: TAccessorProperty): TArray<TAccessorMethod>;
+begin
+  Result := nil;
+  if AItem.Getter.Exists then
+  begin
+    Result := Result + [AItem.Getter];
+  end;
+  if AItem.Setter.Exists then
+  begin
+    Result := Result + [AItem.Setter];
+  end;
+end;
+
+/// <summary>EJsonRpcError, wenn AUnit nach ihren Änderungen mehr Parserfehler hat als vorher.</summary>
+procedure CheckParses(AUnit: TSourceFile);
+var
+  mTree: TSyntaxTree;
+begin
+  mTree := TSyntaxTreeCache.Parse(TChangeSignature.ApplyEdits(AUnit.Text, AUnit.Edits));
+  try
+    if Length(mTree.Diagnostics) > Length(AUnit.Tree.Diagnostics) then
+    begin
+      raise Fail(cTexts[TPropertyFromAccessorsText.AfterTheChangeNoLonger].Fmt([ExtractFileName(AUnit.FileName),
+        mTree.Diagnostics[0].StartPos.Line + 1, mTree.Diagnostics[0].Message]));
+    end;
+  finally
+    mTree.Free;
+  end;
+end;
+
+/// <summary>Änderungsanmerkung für die Vorschau.</summary>
+function AnnotationsJson(APropertyCount, ACalls, AFileCount: Integer): TJSONObject;
+var
+  mAnnotation: TJSONObject;
+begin
+  mAnnotation := TJSONObject.Create;
+  mAnnotation.AddPair('label', cTexts[TPropertyFromAccessorsText.PropertyFromGetterAndSetter].Text);
+  mAnnotation.AddPair('needsConfirmation', TJSONBool.Create(True));
+  mAnnotation.AddPair('description', cTexts[TPropertyFromAccessorsText.PropertiesCallsUpdatedFiles].Fmt([
+    APropertyCount, ACalls, AFileCount]));
+  Result := TJSONObject.Create;
+  Result.AddPair(TLspPropertyFromAccessors.AnnotationId, mAnnotation);
+end;
+
+type
+  /// <summary>Verwendung einer Zugriffsmethode an einer Fundstelle der Referenzsuche.</summary>
+  TAccessorHit = record
+    Item: TAccessorProperty;
+    Method: TAccessorMethod;
+    IsGetter: Boolean;
+    Location: TReferenceLocation;
+    Unit_: TSourceFile;
+    Token: Integer;
+    /// <summary>In der eigenen Klasse (Deklaration oder Methoden).</summary>
+    Internal: Boolean;
+    /// <summary>Im Rumpf des Getters oder Setters selbst.</summary>
+    OwnBody: Boolean;
+  end;
+
+  /// <summary>Ein Lauf von Execute: gelesene Dateien, Fundstellen, Warnungen und Zähler.</summary>
+  TPropertyRun = class
+  private
+    FResolver: TNameResolver;
+    FTree: TSyntaxTree;
+    FFileName: string;
+    FText: string;
+    FContext: TPropertyFromAccessorsContext;
+    FSources: TObjectDictionary<string, TSourceFile>;
+    FOrder: TList<string>;
+    /// <summary>Zugriffsmethoden, die außerhalb der Klasse benutzt bleiben.</summary>
+    FRemaining: TDictionary<string, Boolean>;
+    FWarnings: TArray<string>;
+    FHidden: TArray<string>;
+    FCalls: Integer;
+    FEditCount: Integer;
+    FFileCount: Integer;
+    procedure Warn(const AText: string);
+    function NewSource(const AName: string): TSourceFile;
+    function Source(const AName: string): TSourceFile;
+    function HitAt(const AItem: TAccessorProperty; const AMethod: TAccessorMethod;
+      const ALocation: TReferenceLocation; out AHit: TAccessorHit): Boolean;
+    function UseOf(const AHit: TAccessorHit): TAccessorUse;
+    procedure AddReference(const AItem: TAccessorProperty; const AMethod: TAccessorMethod;
+      const ALocation: TReferenceLocation);
+    procedure CollectReferences(const AItem: TAccessorProperty; const AMethods: TArray<TAccessorMethod>);
+    procedure HideMethods(const AMethods: TArray<TAccessorMethod>);
+    function Changes: TJSONArray;
+  public
+    constructor Create(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName, AText: string;
+      const AContext: TPropertyFromAccessorsContext);
+    destructor Destroy; override;
+    procedure Run(const AProperties: TArray<TAccessorProperty>);
+    /// <summary>Antwort von Execute; der Aufrufer übernimmt das Objekt.</summary>
+    function Answer(APropertyCount: Integer): TJSONObject;
+  end;
+
+constructor TPropertyRun.Create(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName, AText: string;
+  const AContext: TPropertyFromAccessorsContext);
+begin
+  inherited Create;
+  FResolver := AResolver;
+  FTree := ATree;
+  FFileName := AFileName;
+  FText := AText;
+  FContext := AContext;
+  FSources := TObjectDictionary<string, TSourceFile>.Create([doOwnsValues]);
+  FOrder := TList<string>.Create;
+  FRemaining := TDictionary<string, Boolean>.Create;
+end;
+
+destructor TPropertyRun.Destroy;
+begin
+  FRemaining.Free;
+  FOrder.Free;
+  FSources.Free;
+  inherited;
+end;
+
+procedure TPropertyRun.Warn(const AText: string);
+begin
+  FWarnings := FWarnings + [AText];
+end;
+
+function TPropertyRun.NewSource(const AName: string): TSourceFile;
+var
+  mText: string;
+begin
+  Result := nil;
+  if SameText(AName, FFileName) then
+  begin
+    Result := TSourceFile.Create;
+    Result.Text := FText;
+    Result.Tree := FTree;
+  end
+  else if Assigned(FContext.ReadText) and FContext.ReadText(AName, mText) then
+  begin
+    Result := TSourceFile.Create;
+    Result.Text := mText;
+    Result.Tree := TSyntaxTreeCache.Parse(mText);
+    Result.OwnsTree := True;
+  end;
+end;
+
+function TPropertyRun.Source(const AName: string): TSourceFile;
+begin
+  if not FSources.TryGetValue(UpperCase(AName), Result) then
+  begin
+    Result := NewSource(AName);
+    if Result <> nil then
+    begin
+      Result.FileName := AName;
+      FSources.Add(UpperCase(AName), Result);
+      FOrder.Add(AName);
+    end;
+  end;
+end;
+
+function TPropertyRun.HitAt(const AItem: TAccessorProperty; const AMethod: TAccessorMethod;
+  const ALocation: TReferenceLocation; out AHit: TAccessorHit): Boolean;
+var
+  mRoutine: TSyntaxNode;
+begin
+  AHit := Default(TAccessorHit);
+  AHit.Item := AItem;
+  AHit.Method := AMethod;
+  AHit.IsGetter := AMethod.Name = AItem.Getter.Name;
+  AHit.Location := ALocation;
+  AHit.Unit_ := Source(ALocation.FileName);
+  Result := (AHit.Unit_ <> nil) and (AHit.Unit_.Tree <> nil);
+  if Result then
+  begin
+    AHit.Token := TChangeSignature.NameTokenAt(AHit.Unit_.Tree.Tokens, ALocation.Range.StartPos);
+    Result := (AHit.Token >= 0) and not TPropertyFromAccessors.IsHeaderName(AHit.Unit_.Tree.Tokens, AHit.Token);
+  end;
+  if Result then
+  begin
+    // In der eigenen Klasse (Deklaration oder Methoden) bleibt eine Verwendung „innen“.
+    mRoutine := RoutineAt(AHit.Unit_.Tree, ALocation.Range.StartPos);
+    AHit.Internal := SameText(ALocation.FileName, FFileName) and (InClassDecl(AHit.Unit_.Tree, AItem,
+      ALocation.Range.StartPos) or ((mRoutine <> nil) and StartsText(AItem.ClassName + '.', mRoutine.Name)));
+    AHit.OwnBody := AHit.Internal and (mRoutine <> nil) and
+      (SameText(mRoutine.Name, AItem.ClassName + '.' + AItem.Getter.Name) or
+      SameText(mRoutine.Name, AItem.ClassName + '.' + AItem.Setter.Name));
+  end;
+end;
+
+function TPropertyRun.UseOf(const AHit: TAccessorHit): TAccessorUse;
+begin
+  Result := TPropertyFromAccessors.UseOf(AHit.Unit_.Tree.Tokens, AHit.Token, AHit.IsGetter);
+  if Result <> TAccessorUse.Unclear then
+  begin
+    Exit;
+  end;
+  case ResolveUnclear(FResolver, FContext.Index, AHit.Unit_, AHit.Token) of
+    TUnclearResult.Value:
+      Result := TAccessorUse.Call;
+    TUnclearResult.Pointer_:
+      Result := TAccessorUse.Pointer_;
+  else
+    if FContext.ReplaceCalls and not AHit.OwnBody then
+    begin
+      Warn(cTexts[TPropertyFromAccessorsText.WhetherIsMeantAsA].Fmt([Where(AHit.Location.FileName,
+        AHit.Location.Range.StartPos), AHit.Method.Name]));
+    end;
+    Result := TAccessorUse.Keep;
+  end;
+end;
+
+procedure TPropertyRun.AddReference(const AItem: TAccessorProperty; const AMethod: TAccessorMethod;
+  const ALocation: TReferenceLocation);
+var
+  mHit: TAccessorHit;
+  mUse: TAccessorUse;
+  mAdded: TArray<TTextEdit>;
+begin
+  // Formulardateien binden Ereignisse: Methodenzeiger, die Methode bleibt sichtbar.
+  if MatchText(ExtractFileExt(ALocation.FileName), ['.dfm', '.fmx']) then
+  begin
+    FRemaining.AddOrSetValue(UpperCase(AMethod.Name), True);
+    Exit;
+  end;
+  if not HitAt(AItem, AMethod, ALocation, mHit) then
+  begin
+    Exit;
+  end;
+  mUse := UseOf(mHit);
+  if (mUse = TAccessorUse.Call) and FContext.ReplaceCalls and not mHit.OwnBody and
+    TPropertyFromAccessors.CallEdit(mHit.Unit_.Tree.Tokens, mHit.Token, AItem, mHit.IsGetter, mAdded) then
+  begin
+    mHit.Unit_.Edits := mHit.Unit_.Edits + mAdded;
+    Inc(FCalls);
+    Exit;
+  end;
+  if (mUse = TAccessorUse.Pointer_) and FContext.ReplaceCalls then
+  begin
+    Warn(cTexts[TPropertyFromAccessorsText.IsUsedAsAMethod].Fmt([Where(ALocation.FileName, ALocation.Range.StartPos),
+      AMethod.Name]));
+  end;
+  if not mHit.Internal then
+  begin
+    FRemaining.AddOrSetValue(UpperCase(AMethod.Name), True);
+  end;
+end;
+
+procedure TPropertyRun.CollectReferences(const AItem: TAccessorProperty; const AMethods: TArray<TAccessorMethod>);
+var
+  mMethod: TAccessorMethod;
+  mLocation: TReferenceLocation;
+begin
+  for mMethod in AMethods do
+  begin
+    for mLocation in TLspReferences.Find(FResolver, FContext.Index, FTree, TReferenceSearch.Create(FFileName,
+      mMethod.NamePos, False, FContext.Files, FContext.ReadText)) do
+    begin
+      AddReference(AItem, mMethod, mLocation);
+    end;
+  end;
+end;
+
+procedure TPropertyRun.HideMethods(const AMethods: TArray<TAccessorMethod>);
+var
+  mMethod: TAccessorMethod;
+begin
+  for mMethod in AMethods do
+  begin
+    if not TPropertyFromAccessors.CanHide(mMethod, FContext.Options) then
+    begin
+      Continue;
+    end;
+    if FRemaining.ContainsKey(UpperCase(mMethod.Name)) then
+    begin
+      Warn(cTexts[TPropertyFromAccessorsText.StaysVisibleItIsStill].Fmt([mMethod.Name]));
+    end
+    else
+    begin
+      FHidden := FHidden + [mMethod.Name];
+    end;
+  end;
+end;
+
+procedure TPropertyRun.Run(const AProperties: TArray<TAccessorProperty>);
+var
+  mItem: TAccessorProperty;
+  mMethods: TArray<TAccessorMethod>;
+  mOwn: TSourceFile;
+begin
+  Source(FFileName);
+  for mItem in AProperties do
+  begin
+    mMethods := MethodsOf(mItem);
+    if FContext.ReplaceCalls or (FContext.Options.Hiding <> TAccessorHiding.Off) then
+    begin
+      CollectReferences(mItem, mMethods);
+    end;
+    if FContext.Options.Hiding <> TAccessorHiding.Off then
+    begin
+      HideMethods(mMethods);
+    end;
+  end;
+  mOwn := Source(FFileName);
+  mOwn.Edits := mOwn.Edits + TPropertyFromAccessors.Edits(FTree, FText, AProperties, FHidden, FContext.Options);
+end;
+
+function TPropertyRun.Changes: TJSONArray;
+var
+  mName: string;
+  mUnit: TSourceFile;
+begin
+  Result := TJSONArray.Create;
+  try
+    for mName in FOrder do
+    begin
+      mUnit := FSources[UpperCase(mName)];
+      if mUnit.Edits <> nil then
+      begin
+        // Das Ergebnis muss weiter fehlerfrei parsen.
+        CheckParses(mUnit);
+        Result.AddElement(EditsJson(TDocumentUris.FromPath(mName), mUnit.Edits));
+        Inc(FEditCount, Length(mUnit.Edits));
+        Inc(FFileCount);
+      end;
+    end;
+  except
+    Result.Free;
+    raise;
+  end;
+end;
+
+function TPropertyRun.Answer(APropertyCount: Integer): TJSONObject;
+var
+  mEdit: TJSONObject;
+  mWarnings: TJSONArray;
+  mWarning: string;
+begin
+  mEdit := TJSONObject.Create;
+  try
+    mEdit.AddPair('documentChanges', Changes);
+  except
+    mEdit.Free;
+    raise;
+  end;
+  mEdit.AddPair('changeAnnotations', AnnotationsJson(APropertyCount, FCalls, FFileCount));
+  mWarnings := TJSONArray.Create;
+  for mWarning in FWarnings do
+  begin
+    mWarnings.Add(mWarning);
+  end;
+  Result := TJSONObject.Create;
+  Result.AddPair('edit', mEdit);
+  Result.AddPair('warnings', mWarnings);
+  Result.AddPair('properties', TJSONNumber.Create(APropertyCount));
+  Result.AddPair('calls', TJSONNumber.Create(FCalls));
+  Result.AddPair('edits', TJSONNumber.Create(FEditCount));
+end;
+
 { TLspPropertyFromAccessors }
 
-class function TLspPropertyFromAccessors.Actions(AEnabled: Boolean; ATree: TSyntaxTree; const AText, AUri: string;
+class function TLspPropertyFromAccessors.Actions(ATree: TSyntaxTree; const AText, AUri: string;
   const APosition: TTextPosition; const AOptions: TPropertyFromAccessorsOptions;
   AReplaceCalls: TReplaceCalls): TArray<TJSONObject>;
 
@@ -296,214 +752,56 @@ var
   Title: string;
 begin
   Result := nil;
-  if not AEnabled or (ATree = nil) then
+  if ATree = nil then
+  begin
     Exit;
+  end;
   Found := TPropertyFromAccessors.At(ATree, AText, APosition.Line, AOptions, Whole);
   if Found = nil then
+  begin
     Exit;
+  end;
   if Whole then
-    Title := Format('Fehlende Properties anlegen (%d)', [Length(Found)])
+  begin
+    Title := cTexts[TPropertyFromAccessorsText.CreateMissingProperties].Fmt([Length(Found)]);
+  end
   else
-    Title := Format('Property %s anlegen', [Found[0].Name]);
+  begin
+    Title := cTexts[TPropertyFromAccessorsText.CreateProperty].Fmt([Found[0].Name]);
+  end;
   if AReplaceCalls <> TReplaceCalls.Always then
+  begin
     Result := Result + [Action(Title, False)];
+  end;
   if AReplaceCalls <> TReplaceCalls.Never then
-    Result := Result + [Action(Title + ' und Aufrufe umstellen', True)];
+  begin
+    Result := Result + [Action(Title + cTexts[TPropertyFromAccessorsText.AndUpdateCalls].Text, True)];
+  end;
 end;
 
 class function TLspPropertyFromAccessors.Execute(AResolver: TNameResolver; ATree: TSyntaxTree;
-  const AFileName, AText: string; const APosition: TTextPosition; AReplaceCalls: Boolean;
+  const AFileName, AText: string; const APosition: TTextPosition;
   const AContext: TPropertyFromAccessorsContext): TJSONObject;
 var
-  Sources: TObjectDictionary<string, TSourceFile>;
-  Order: TList<string>;
-
-  function Source(const AName: string): TSourceFile;
-  var
-    Text: string;
-  begin
-    if Sources.TryGetValue(UpperCase(AName), Result) then
-      Exit;
-    Result := nil;
-    if SameText(AName, AFileName) then
-    begin
-      Result := TSourceFile.Create;
-      Result.Text := AText;
-      Result.Tree := ATree;
-    end
-    else if Assigned(AContext.ReadText) and AContext.ReadText(AName, Text) then
-    begin
-      Result := TSourceFile.Create;
-      Result.Text := Text;
-      Result.Tree := TSyntaxTreeCache.Parse(Text);
-      Result.OwnsTree := True;
-    end;
-    if Result = nil then
-      Exit;
-    Result.FileName := AName;
-    Sources.Add(UpperCase(AName), Result);
-    Order.Add(AName);
-  end;
-
-var
-  Properties: TArray<TAccessorProperty>;
-  Item: TAccessorProperty;
-  Method: TAccessorMethod;
-  Methods: TArray<TAccessorMethod>;
-  IsGetter, Whole, Internal, OwnBody, NeedReferences: Boolean;
-  Location: TReferenceLocation;
-  Unit_: TSourceFile;
-  Token: Integer;
-  Use: TAccessorUse;
-  Routine: TSyntaxNode;
-  Added: TArray<TTextEdit>;
-  Remaining: TDictionary<string, Boolean>;
-  Warnings, Hidden: TArray<string>;
-  Calls, EditCount, FileCount, Before_: Integer;
-  Name, Text, Warning: string;
-  Tree: TSyntaxTree;
-  Changes, WarningList: TJSONArray;
-  Edit, Annotation, Annotations: TJSONObject;
+  mProperties: TArray<TAccessorProperty>;
+  mWhole: Boolean;
+  mRun: TPropertyRun;
 begin
-  Properties := TPropertyFromAccessors.At(ATree, AText, APosition.Line, AContext.Options, Whole);
-  if Properties = nil then
-    raise Fail('Hier fehlt keine Property.');
-  Warnings := nil;
-  Hidden := nil;
-  Calls := 0;
-  EditCount := 0;
-  FileCount := 0;
-  NeedReferences := AReplaceCalls or (AContext.Options.Hiding <> TAccessorHiding.Off);
-  Sources := TObjectDictionary<string, TSourceFile>.Create([doOwnsValues]);
-  Order := TList<string>.Create;
-  Remaining := TDictionary<string, Boolean>.Create;
-  try
-    Source(AFileName);
-    for Item in Properties do
-    begin
-      Methods := nil;
-      if Item.Getter.Exists then
-        Methods := Methods + [Item.Getter];
-      if Item.Setter.Exists then
-        Methods := Methods + [Item.Setter];
-      for Method in Methods do
-      begin
-        if not NeedReferences then
-          Break;
-        IsGetter := Method.Name = Item.Getter.Name;
-        for Location in TLspReferences.Find(AResolver, AContext.Index, ATree, AFileName, Method.NamePos, False,
-          AContext.Files, AContext.ReadText) do
-        begin
-          // Formulardateien binden Ereignisse: Methodenzeiger, die Methode bleibt sichtbar.
-          if MatchText(ExtractFileExt(Location.FileName), ['.dfm', '.fmx']) then
-          begin
-            Remaining.AddOrSetValue(UpperCase(Method.Name), True);
-            Continue;
-          end;
-          Unit_ := Source(Location.FileName);
-          if (Unit_ = nil) or (Unit_.Tree = nil) then
-            Continue;
-          Token := TChangeSignature.NameTokenAt(Unit_.Tree.Tokens, Location.Range.StartPos);
-          if (Token < 0) or TPropertyFromAccessors.IsHeaderName(Unit_.Tree.Tokens, Token) then
-            Continue;
-          // In der eigenen Klasse (Deklaration oder Methoden) bleibt eine Verwendung „innen“.
-          Routine := RoutineAt(Unit_.Tree, Location.Range.StartPos);
-          OwnBody := False;
-          Internal := SameText(Location.FileName, AFileName) and (InClassDecl(Unit_.Tree, Item,
-            Location.Range.StartPos) or ((Routine <> nil) and StartsText(Item.ClassName + '.', Routine.Name)));
-          if Internal and (Routine <> nil) then
-            OwnBody := SameText(Routine.Name, Item.ClassName + '.' + Item.Getter.Name) or
-              SameText(Routine.Name, Item.ClassName + '.' + Item.Setter.Name);
-          Use := TPropertyFromAccessors.UseOf(Unit_.Tree.Tokens, Token, IsGetter);
-          if Use = TAccessorUse.Unclear then
-            case ResolveUnclear(AResolver, AContext.Index, Unit_, Token) of
-              TUnclearResult.Value:
-                Use := TAccessorUse.Call;
-              TUnclearResult.Pointer_:
-                Use := TAccessorUse.Pointer_;
-            else
-              if AReplaceCalls and not OwnBody then
-                Warnings := Warnings + [Format('%s: Ob %s dort als Methodenzeiger gemeint ist, lässt sich nicht ' +
-                  'bestimmen; die Stelle bleibt.', [Where(Location.FileName, Location.Range.StartPos), Method.Name])];
-              Use := TAccessorUse.Keep;
-            end;
-          if (Use = TAccessorUse.Call) and AReplaceCalls and not OwnBody and
-            TPropertyFromAccessors.CallEdit(Unit_.Tree.Tokens, Token, Item, IsGetter, Added) then
-          begin
-            Unit_.Edits := Unit_.Edits + Added;
-            Inc(Calls);
-            Continue;
-          end;
-          if (Use = TAccessorUse.Pointer_) and AReplaceCalls then
-            Warnings := Warnings + [Format('%s: %s wird als Methodenzeiger verwendet und bleibt.',
-              [Where(Location.FileName, Location.Range.StartPos), Method.Name])];
-          if not Internal then
-            Remaining.AddOrSetValue(UpperCase(Method.Name), True);
-        end;
-      end;
-      if AContext.Options.Hiding <> TAccessorHiding.Off then
-        for Method in Methods do
-          if TPropertyFromAccessors.CanHide(Method, AContext.Options) then
-          begin
-            if Remaining.ContainsKey(UpperCase(Method.Name)) then
-              Warnings := Warnings + [Format('%s bleibt sichtbar: Es wird außerhalb der Klasse noch benutzt.',
-                [Method.Name])]
-            else
-              Hidden := Hidden + [Method.Name];
-          end;
-    end;
-    Unit_ := Source(AFileName);
-    Unit_.Edits := Unit_.Edits + TPropertyFromAccessors.Edits(ATree, AText, Properties, Hidden, AContext.Options);
-    // Das Ergebnis muss weiter fehlerfrei parsen.
-    Changes := TJSONArray.Create;
-    try
-      for Name in Order do
-      begin
-        Unit_ := Sources[UpperCase(Name)];
-        if Unit_.Edits = nil then
-          Continue;
-        Text := TChangeSignature.ApplyEdits(Unit_.Text, Unit_.Edits);
-        Tree := TSyntaxTreeCache.Parse(Text);
-        try
-          Before_ := Length(Unit_.Tree.Diagnostics);
-          if Length(Tree.Diagnostics) > Before_ then
-            raise Fail(Format('Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s).',
-              [ExtractFileName(Name), Tree.Diagnostics[0].StartPos.Line + 1, Tree.Diagnostics[0].Message]));
-        finally
-          Tree.Free;
-        end;
-        Changes.AddElement(EditsJson(TDocumentUris.FromPath(Name), Unit_.Edits));
-        Inc(EditCount, Length(Unit_.Edits));
-        Inc(FileCount);
-      end;
-    except
-      Changes.Free;
-      raise;
-    end;
-  finally
-    Remaining.Free;
-    Order.Free;
-    Sources.Free;
+  mProperties := TPropertyFromAccessors.At(ATree, AText, APosition.Line, AContext.Options, mWhole);
+  if mProperties = nil then
+  begin
+    raise Fail(cTexts[TPropertyFromAccessorsText.NoPropertyIsMissingHere].Text);
   end;
-  Annotation := TJSONObject.Create;
-  Annotation.AddPair('label', 'Property aus Getter und Setter');
-  Annotation.AddPair('needsConfirmation', TJSONBool.Create(True));
-  Annotation.AddPair('description', Format('%d Properties, %d Aufrufe umgestellt, %d Dateien',
-    [Length(Properties), Calls, FileCount]));
-  Annotations := TJSONObject.Create;
-  Annotations.AddPair(AnnotationId, Annotation);
-  Edit := TJSONObject.Create;
-  Edit.AddPair('documentChanges', Changes);
-  Edit.AddPair('changeAnnotations', Annotations);
-  WarningList := TJSONArray.Create;
-  for Warning in Warnings do
-    WarningList.Add(Warning);
-  Result := TJSONObject.Create;
-  Result.AddPair('edit', Edit);
-  Result.AddPair('warnings', WarningList);
-  Result.AddPair('properties', TJSONNumber.Create(Length(Properties)));
-  Result.AddPair('calls', TJSONNumber.Create(Calls));
-  Result.AddPair('edits', TJSONNumber.Create(EditCount));
+  mRun := TPropertyRun.Create(AResolver, ATree, AFileName, AText, AContext);
+  try
+    mRun.Run(mProperties);
+    Result := mRun.Answer(Length(mProperties));
+  finally
+    mRun.Free;
+  end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.PropertyFromAccessors', cTexts);
 
 end.

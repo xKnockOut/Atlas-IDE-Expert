@@ -1,7 +1,8 @@
 ﻿unit Atlas.UI.Search.Bar.Tests;
 
 // Suchleiste der Atlas-Suche (#878): Felder nach der Suche setzen und
-// zurücklesen, Bereich Auswahl nur mit Auswahl, Füllen erst mit Fenster,
+// zurücklesen, Bereich Auswahl nur mit Auswahl, Füllen erst mit Fenster
+// (Teile setzen und Suche lesen auch ohne, Delphi 12),
 // Tasten Enter/Umschalt+Enter/F3/Esc und Meldung jeder Änderung. Dazu (#893)
 // Teile nach den Einstellungen, Ersetzen-Zeile mit Tasten, Fehler- und
 // Vorschauzeile und Verlauf mit Pfeil hoch/runter.
@@ -10,10 +11,12 @@ interface
 
 uses
   DUnitX.TestFramework,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Search.Strings;
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Search')]
   TAtlasSearchBarTests = class
   private
     FLanguage: TAtlasLanguage;
@@ -94,7 +97,7 @@ var
   Key: Word;
 begin
   Key := AKey;
-  ABar.TextEdit.OnKeyDown(ABar.TextEdit, Key, AShift);
+  ABar.Parts.TextEdit.OnKeyDown(ABar.Parts.TextEdit, Key, AShift);
   Assert.AreEqual(0, Integer(Key), 'Taste verbraucht');
 end;
 
@@ -131,23 +134,23 @@ begin
   try
     Bar := NewBar(Host);
     Bar.Prepare(SampleQuery, ['procedure Inner;', 'function ReadLocation: Boolean;'], False);
-    Assert.AreEqual('Open', Bar.TextEdit.Text);
-    Assert.AreEqual(2, Integer(Bar.ScopeBox.Items.Count), 'Methode und Unit, keine Auswahl');
-    Assert.AreEqual(Ord(TAtlasSearchScope.Method), Bar.ScopeBox.ItemIndex);
-    Assert.AreEqual(1, Bar.LevelBox.ItemIndex);
-    Assert.IsTrue(Bar.LevelBox.Visible, 'Stufe nur bei Methode');
-    Assert.IsTrue(Bar.IdentifierBox.Checked);
-    Assert.IsFalse(Bar.CaseBox.Enabled, 'Bezeichner-Modus ohne Groß-/Kleinschreibung');
-    Assert.IsFalse(Bar.WholeBox.Enabled);
+    Assert.AreEqual('Open', Bar.Parts.TextEdit.Text);
+    Assert.AreEqual(2, Integer(Bar.Parts.ScopeBox.Items.Count), 'Methode und Unit, keine Auswahl');
+    Assert.AreEqual(Ord(TAtlasSearchScope.Method), Bar.Parts.ScopeBox.ItemIndex);
+    Assert.AreEqual(1, Bar.Parts.LevelBox.ItemIndex);
+    Assert.IsTrue(Bar.Parts.LevelBox.Visible, 'Stufe nur bei Methode');
+    Assert.IsTrue(Bar.Parts.IdentifierBox.Checked);
+    Assert.IsFalse(Bar.Parts.CaseBox.Enabled, 'Bezeichner-Modus ohne Groß-/Kleinschreibung');
+    Assert.IsFalse(Bar.Parts.WholeBox.Enabled);
     Query := Bar.Query;
     Assert.AreEqual('Open', Query.Text);
     Assert.IsTrue(Query.Options.Identifier);
     Assert.AreEqual(Ord(TAtlasSearchScope.Method), Ord(Query.Scope));
     Assert.AreEqual(1, Query.Level);
     // Unit: keine Stufe.
-    Bar.ScopeBox.ItemIndex := Ord(TAtlasSearchScope.UnitFile);
-    Bar.ScopeBox.OnChange(Bar.ScopeBox);
-    Assert.IsFalse(Bar.LevelBox.Visible);
+    Bar.Parts.ScopeBox.ItemIndex := Ord(TAtlasSearchScope.UnitFile);
+    Bar.Parts.ScopeBox.OnChange(Bar.Parts.ScopeBox);
+    Assert.IsFalse(Bar.Parts.LevelBox.Visible);
     Assert.AreEqual(Ord(TAtlasSearchScope.UnitFile), Ord(Bar.Query.Scope));
   finally
     Host.Free;
@@ -166,11 +169,11 @@ begin
     Query := SampleQuery;
     Query.Scope := TAtlasSearchScope.Selection;
     Bar.Prepare(Query, nil, False);
-    Assert.AreEqual(Ord(TAtlasSearchScope.UnitFile), Bar.ScopeBox.ItemIndex, 'ohne Auswahl die Unit');
-    Assert.IsFalse(Bar.LevelBox.Visible);
+    Assert.AreEqual(Ord(TAtlasSearchScope.UnitFile), Bar.Parts.ScopeBox.ItemIndex, 'ohne Auswahl die Unit');
+    Assert.IsFalse(Bar.Parts.LevelBox.Visible);
     Bar.Prepare(Query, nil, True);
-    Assert.AreEqual(3, Integer(Bar.ScopeBox.Items.Count));
-    Assert.AreEqual(Ord(TAtlasSearchScope.Selection), Bar.ScopeBox.ItemIndex);
+    Assert.AreEqual(3, Integer(Bar.Parts.ScopeBox.Items.Count));
+    Assert.AreEqual(Ord(TAtlasSearchScope.Selection), Bar.Parts.ScopeBox.ItemIndex);
     Assert.AreEqual(Ord(TAtlasSearchScope.Selection), Ord(Bar.Query.Scope));
   finally
     Host.Free;
@@ -190,9 +193,9 @@ begin
     Assert.IsFalse(Bar.HandleAllocated);
     Bar.Parent := Host;
     Bar.HandleNeeded;
-    Assert.AreEqual(2, Integer(Bar.ScopeBox.Items.Count));
-    Assert.AreEqual('Open', Bar.TextEdit.Text);
-    Assert.AreEqual(0, Bar.LevelBox.ItemIndex, 'zu hohe Stufe fällt auf die innerste');
+    Assert.AreEqual(2, Integer(Bar.Parts.ScopeBox.Items.Count));
+    Assert.AreEqual('Open', Bar.Parts.TextEdit.Text);
+    Assert.AreEqual(0, Bar.Parts.LevelBox.ItemIndex, 'zu hohe Stufe fällt auf die innerste');
   finally
     Host.Free;
   end;
@@ -209,8 +212,8 @@ begin
     Bar := TAtlasSearchBar.Create(Host);
     Bar.Features := TAtlasSearchBarFeatures.Create(True, True, True);
     Assert.IsFalse(Bar.HandleAllocated, 'Features darf kein Fenster anlegen');
-    Assert.IsFalse(Bar.ScopeBox.HandleAllocated, 'auch nicht für die Bereichsliste');
-    Assert.IsFalse(Bar.LevelBox.HandleAllocated, 'auch nicht für die Stufenliste');
+    Assert.IsFalse(Bar.Parts.ScopeBox.HandleAllocated, 'auch nicht für die Bereichsliste');
+    Assert.IsFalse(Bar.Parts.LevelBox.HandleAllocated, 'auch nicht für die Stufenliste');
     Assert.AreEqual(Ord(TAtlasSearchScope.UnitFile), Ord(Bar.Query.Scope), 'ohne Fenster der Bereich der Vorgabe');
     Bar.Prepare(SampleQuery, ['procedure Outer;', 'procedure Inner;'], False);
     Assert.AreEqual(Ord(TAtlasSearchScope.Method), Ord(Bar.Query.Scope), 'ohne Fenster der vorbereitete Bereich');
@@ -218,10 +221,10 @@ begin
     Assert.IsFalse(Bar.HandleAllocated, 'Query darf kein Fenster anlegen');
     Bar.Parent := Host;
     Bar.HandleNeeded;
-    Assert.AreEqual(5, Integer(Bar.ScopeBox.Items.Count), 'Unit, Methode, offene Dateien, Projekt, Projektgruppe');
+    Assert.AreEqual(5, Integer(Bar.Parts.ScopeBox.Items.Count), 'Unit, Methode, offene Dateien, Projekt, Projektgruppe');
     Assert.AreEqual(Ord(TAtlasSearchScope.Method), Ord(Bar.Query.Scope));
-    Assert.AreEqual(1, Bar.LevelBox.ItemIndex);
-    Assert.IsTrue(Bar.LevelBox.Visible, 'Stufe sichtbar bei Bereich Methode');
+    Assert.AreEqual(1, Bar.Parts.LevelBox.ItemIndex);
+    Assert.IsTrue(Bar.Parts.LevelBox.Visible, 'Stufe sichtbar bei Bereich Methode');
   finally
     Host.Free;
   end;
@@ -238,20 +241,24 @@ begin
     Bar := NewBar(Host);
     Bar.Prepare(SampleQuery, nil, False);
     Log := '';
-    Bar.OnStep :=
+    Bar.Events.OnStep :=
       procedure(ABackward: Boolean)
       begin
         if ABackward then
-          Log := Log + 'zurück;'
+        begin
+          Log := Log + 'zurück;';
+        end
         else
+        begin
           Log := Log + 'vor;';
+        end;
       end;
-    Bar.OnList :=
+    Bar.Events.OnList :=
       procedure
       begin
         Log := Log + 'liste;';
       end;
-    Bar.OnClose :=
+    Bar.Events.OnClose :=
       procedure
       begin
         Log := Log + 'zu;';
@@ -270,7 +277,7 @@ begin
     Assert.AreEqual('zu;', Log);
     // Ohne Liste in den Meldungen (search.resultsInMessages aus) springt Enter nur.
     Log := '';
-    Bar.ListVisible := False;
+    Bar.SetListVisible(False);
     Press(Bar, VK_RETURN, []);
     Assert.AreEqual('vor;', Log);
   finally
@@ -289,7 +296,7 @@ begin
   try
     Bar := NewBar(Host);
     Count := 0;
-    Bar.OnQueryChanged :=
+    Bar.Events.OnQueryChanged :=
       procedure
       begin
         Inc(Count);
@@ -297,15 +304,15 @@ begin
     Bar.Prepare(SampleQuery, ['procedure Inner;'], False);
     Assert.AreEqual(0, Count, 'Vorbelegen meldet nichts');
     // Text per Programm löst bei TComboBox kein OnChange aus: wie beim Tippen melden.
-    Bar.TextEdit.Text := 'Close';
-    Bar.TextEdit.OnChange(Bar.TextEdit);
+    Bar.Parts.TextEdit.Text := 'Close';
+    Bar.Parts.TextEdit.OnChange(Bar.Parts.TextEdit);
     Assert.AreEqual(1, Count);
     Assert.AreEqual('Close', Bar.Query.Text);
-    Bar.IdentifierBox.Checked := False;
+    Bar.Parts.IdentifierBox.Checked := False;
     Assert.AreEqual(2, Count);
-    Assert.IsTrue(Bar.CaseBox.Enabled, 'ohne Bezeichner-Modus wieder wählbar');
+    Assert.IsTrue(Bar.Parts.CaseBox.Enabled, 'ohne Bezeichner-Modus wieder wählbar');
     Bar.SetCounter('3 von 9');
-    Assert.AreEqual('3 von 9', Bar.Counter);
+    Assert.AreEqual('3 von 9', Bar.Parts.CounterLabel.Caption);
   finally
     Host.Free;
   end;
@@ -321,18 +328,18 @@ begin
   try
     Bar := NewBar(Host);
     Entered := nil;
-    Bar.OnControlEnter :=
+    Bar.Events.OnControlEnter :=
       procedure(AControl: TWinControl)
       begin
         Entered := Entered + [AControl];
       end;
-    Bar.TextEdit.OnEnter(Bar.TextEdit);
-    Bar.ScopeBox.OnEnter(Bar.ScopeBox);
-    Bar.IdentifierBox.OnEnter(Bar.IdentifierBox);
+    Bar.Parts.TextEdit.OnEnter(Bar.Parts.TextEdit);
+    Bar.Parts.ScopeBox.OnEnter(Bar.Parts.ScopeBox);
+    Bar.Parts.IdentifierBox.OnEnter(Bar.Parts.IdentifierBox);
     Assert.AreEqual(3, Integer(Length(Entered)));
-    Assert.AreSame(Bar.TextEdit, Entered[0]);
-    Assert.AreSame(Bar.ScopeBox, Entered[1]);
-    Assert.AreSame(Bar.IdentifierBox, Entered[2]);
+    Assert.AreSame(Bar.Parts.TextEdit, Entered[0]);
+    Assert.AreSame(Bar.Parts.ScopeBox, Entered[1]);
+    Assert.AreSame(Bar.Parts.IdentifierBox, Entered[2]);
   finally
     Host.Free;
     Entered := nil;
@@ -345,7 +352,9 @@ var
 begin
   Key := AKey;
   if AControl is TComboBox then
+  begin
     TComboBox(AControl).OnKeyDown(AControl, Key, AShift);
+  end;
   Assert.AreEqual(0, Integer(Key), 'Taste verbraucht');
 end;
 
@@ -359,28 +368,28 @@ begin
     Bar := NewBar(Host);
     Bar.Prepare(SampleQuery, nil, False);
     // Vorgabe: alles aus wie vor #893.
-    Assert.IsFalse(Bar.ToggleButton.Visible);
-    Assert.IsFalse(Bar.RegexBox.Visible);
+    Assert.IsFalse(Bar.Parts.ToggleButton.Visible);
+    Assert.IsFalse(Bar.Parts.RegexBox.Visible);
     Bar.ReplaceShown := True;
     Assert.IsFalse(Bar.ReplaceShown, 'ohne search.replace keine Ersetzen-Zeile');
-    Assert.AreEqual(2, Integer(Bar.ScopeBox.Items.Count));
+    Assert.AreEqual(2, Integer(Bar.Parts.ScopeBox.Items.Count));
     Bar.Features := TAtlasSearchBarFeatures.Create(True, True, True);
-    Assert.IsTrue(Bar.ToggleButton.Visible);
-    Assert.IsTrue(Bar.RegexBox.Visible);
-    Assert.AreEqual(5, Integer(Bar.ScopeBox.Items.Count), 'Unit, Methode, offene Dateien, Projekt, Projektgruppe');
-    Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SearchScopeProject), Bar.ScopeBox.Items[3]);
+    Assert.IsTrue(Bar.Parts.ToggleButton.Visible);
+    Assert.IsTrue(Bar.Parts.RegexBox.Visible);
+    Assert.AreEqual(5, Integer(Bar.Parts.ScopeBox.Items.Count), 'Unit, Methode, offene Dateien, Projekt, Projektgruppe');
+    Assert.AreEqual(TAtlasSearchStrings.Text(TAtlasSearchTextId.SearchScopeProject), Bar.Parts.ScopeBox.Items[3]);
     Bar.ReplaceShown := True;
-    Assert.IsTrue(Bar.ReplaceRow.Visible);
-    Bar.RegexBox.Checked := True;
+    Assert.IsTrue(Bar.Parts.ReplaceRow.Visible);
+    Bar.Parts.RegexBox.Checked := True;
     Assert.IsTrue(Bar.Query.Options.Regex);
     // search.regex aus: Option weg, Suche ohne Regex.
     Bar.Features := TAtlasSearchBarFeatures.Create(True, False, False);
-    Assert.IsFalse(Bar.RegexBox.Visible);
+    Assert.IsFalse(Bar.Parts.RegexBox.Visible);
     Assert.IsFalse(Bar.Query.Options.Regex);
-    Assert.AreEqual(2, Integer(Bar.ScopeBox.Items.Count), 'ohne search.multiFile nur die Bereiche aus #878');
+    Assert.AreEqual(2, Integer(Bar.Parts.ScopeBox.Items.Count), 'ohne search.multiFile nur die Bereiche aus #878');
     Bar.Features := TAtlasSearchBarFeatures.Create(False, False, False);
     Assert.IsFalse(Bar.ReplaceShown);
-    Assert.IsFalse(Bar.ReplaceRow.Visible);
+    Assert.IsFalse(Bar.Parts.ReplaceRow.Visible);
   finally
     Host.Free;
   end;
@@ -399,26 +408,26 @@ begin
     Bar.Prepare(SampleQuery, nil, False);
     Bar.ReplaceShown := True;
     Log := '';
-    Bar.OnReplace :=
+    Bar.Events.OnReplace :=
       procedure
       begin
         Log := Log + 'eins;';
       end;
-    Bar.OnReplaceAll :=
+    Bar.Events.OnReplaceAll :=
       procedure
       begin
         Log := Log + 'alle;';
       end;
-    Bar.OnStep :=
+    Bar.Events.OnStep :=
       procedure(ABackward: Boolean)
       begin
         Log := Log + 'vor;';
       end;
-    PressIn(Bar.ReplaceEdit, VK_RETURN, []);
-    PressIn(Bar.ReplaceEdit, VK_RETURN, [ssCtrl]);
+    PressIn(Bar.Parts.ReplaceEdit, VK_RETURN, []);
+    PressIn(Bar.Parts.ReplaceEdit, VK_RETURN, [ssCtrl]);
     Assert.AreEqual('eins;alle;', Log, 'Enter ersetzt einen, Strg+Enter alle');
     Log := '';
-    PressIn(Bar.ReplaceEdit, VK_F3, []);
+    PressIn(Bar.Parts.ReplaceEdit, VK_F3, []);
     Assert.AreEqual('vor;', Log, 'F3 springt auch im Ersetzen-Feld');
   finally
     Host.Free;
@@ -470,7 +479,7 @@ begin
     Bar.SetHistories(Search, Replace);
     Bar.Prepare(SampleQuery, nil, False);
     Count := 0;
-    Bar.OnQueryChanged :=
+    Bar.Events.OnQueryChanged :=
       procedure
       begin
         Inc(Count);
@@ -478,19 +487,19 @@ begin
     Search.Remember('vorige');
     Search.Remember('Open');
     // Akzeptanzkriterium: Pfeil hoch holt die vorige Suche, auch wenn die letzte im Feld steht.
-    PressIn(Bar.TextEdit, VK_UP, []);
-    Assert.AreEqual('vorige', Bar.TextEdit.Text);
+    PressIn(Bar.Parts.TextEdit, VK_UP, []);
+    Assert.AreEqual('vorige', Bar.Parts.TextEdit.Text);
     Assert.AreEqual(1, Count, 'neue Suche angestoßen');
-    PressIn(Bar.TextEdit, VK_DOWN, []);
-    PressIn(Bar.TextEdit, VK_DOWN, []);
-    Assert.AreEqual('Open', Bar.TextEdit.Text, 'zurück zum getippten Text');
+    PressIn(Bar.Parts.TextEdit, VK_DOWN, []);
+    PressIn(Bar.Parts.TextEdit, VK_DOWN, []);
+    Assert.AreEqual('Open', Bar.Parts.TextEdit.Text, 'zurück zum getippten Text');
     // Enter merkt den Text; im Ersetzen-Feld nur bei offener Zeile.
     Bar.ReplaceShown := True;
-    Bar.ReplaceEdit.Text := '$1.ToString';
+    Bar.Parts.ReplaceEdit.Text := '$1.ToString';
     Bar.Remember;
     Assert.AreEqual('$1.ToString', Replace.Items[0]);
-    PressIn(Bar.ReplaceEdit, VK_UP, []);
-    Assert.AreEqual('$1.ToString', Bar.ReplaceEdit.Text);
+    PressIn(Bar.Parts.ReplaceEdit, VK_UP, []);
+    Assert.AreEqual('$1.ToString', Bar.Parts.ReplaceEdit.Text);
   finally
     Host.Free;
     Search.Free;

@@ -45,9 +45,13 @@ begin
     begin
       Result := nil;
       if SameText(AName, 'TJSONObject') then
-        Result := ['System.JSON']
+      begin
+        Result := ['System.JSON'];
+      end
       else if SameText(AName, 'TList') then
+      begin
         Result := ['System.Classes', 'System.Generics.Collections'];
+      end;
     end;
 end;
 

@@ -14,6 +14,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Tracker')]
   TAtlasTrackerQueryTestTests = class
   public
     /// <summary>Abnahme: Antworten aus Beispieldateien → Meldungen.</summary>
@@ -47,12 +48,14 @@ uses
   System.IOUtils,
   Atlas.Text.Uris,
   Atlas.Core.Ci.Contract,
+  Atlas.Core.CiBuild.Contract,
   Atlas.Core.Tracker.Contract,
   Atlas.Core.Tracker.Connections,
   Atlas.Core.Tracker.Providers.GitHub,
   Atlas.Core.Tracker.Providers.YouTrack,
   Atlas.Core.Tracker.QueryTest,
-  Atlas.Core.Tracker.Templates;
+  Atlas.Core.Tracker.Templates,
+  Atlas.Core.Tracker.YouTrackApi;
 
 type
   /// <summary>Transport mit festen Antworten je Adressanfang (erster Treffer gilt); merkt die Adressen.</summary>
@@ -95,12 +98,14 @@ begin
   AText := '';
   AError := TAtlasCiFetchError.None;
   for mIndex := 0 to High(FPrefixes) do
+  begin
     if AUrl.StartsWith(FPrefixes[mIndex]) then
     begin
       AStatus := FStatus[mIndex];
       AText := FTexts[mIndex];
       Exit(True);
     end;
+  end;
   AStatus := 404;
   Result := True;
 end;
@@ -116,9 +121,13 @@ begin
     mFileName := TPath.Combine(mDirectory, TPath.Combine('Tests', TPath.Combine('Data',
       TPath.Combine(AFolder, AName))));
     if TFile.Exists(mFileName) then
+    begin
       Exit(TFile.ReadAllText(mFileName, TEncoding.UTF8));
+    end;
     if ExtractFileDir(mDirectory) = mDirectory then
+    begin
       Break;
+    end;
     mDirectory := ExtractFileDir(mDirectory);
   end;
   raise Exception.Create('Tests\Data\' + AFolder + '\' + AName + ' nicht gefunden');
@@ -132,7 +141,7 @@ end;
 /// <summary>Anfang der Adresse der Liste zu ATarget (ohne fields und $top).</summary>
 function ListPrefix(const ATarget: TAtlasTrackerTarget): string;
 begin
-  Result := ATarget.Url + '/api/issues?query=' + TTextUris.PercentEncode(TAtlasYouTrackTracker.FullQuery(ATarget)) +
+  Result := ATarget.Url + '/api/issues?query=' + TTextUris.PercentEncode(TAtlasYouTrackApi.FullQuery(ATarget)) +
     '&';
 end;
 
@@ -339,7 +348,9 @@ begin
   mTemplates := TAtlasTrackerTemplates.Templates('youtrack', 'de');
   Assert.AreEqual(4, Integer(Length(mTemplates)));
   for mTemplate in mTemplates do
+  begin
     Assert.AreEqual('de', mTemplate.Language);
+  end;
   Assert.AreEqual('assignee: meine #Ungelöst', mTemplates[0].Query);
   Assert.AreEqual(8, Integer(Length(TAtlasTrackerTemplates.Templates('youtrack', ''))), 'beide Sprachen');
   Assert.AreEqual('assignee: me #Unresolved', TAtlasTrackerTemplates.QueryOf('youtrack', 'en_US',
@@ -385,9 +396,9 @@ begin
   mTarget := TAtlasTrackerTarget.Create('youtrack', 'https://YT.local/', 'ATL', '');
   mTarget.Language := TAtlasTrackerConnections.LanguageOf(mItems, mTarget);
   Assert.AreEqual('de', mTarget.Language);
-  Assert.AreEqual('project: ATL assignee: meine #Ungelöst', TAtlasYouTrackTracker.FullQuery(mTarget));
+  Assert.AreEqual('project: ATL assignee: meine #Ungelöst', TAtlasYouTrackApi.FullQuery(mTarget));
   mTarget.Language := '';
-  Assert.AreEqual('project: ATL for: me #Unresolved', TAtlasYouTrackTracker.FullQuery(mTarget),
+  Assert.AreEqual('project: ATL for: me #Unresolved', TAtlasYouTrackApi.FullQuery(mTarget),
     'ohne erkannte Sprache wie bisher');
   // Abgelehnt: keine Spracherkennung.
   mTransport := TFakeTransport.Create;

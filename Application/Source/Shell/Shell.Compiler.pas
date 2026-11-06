@@ -108,7 +108,23 @@ uses
   System.IOUtils,
   System.DateUtils,
   Atlas.Common.Projects.Paths,
-  Atlas.Common.Compiler.IdeCommand;
+  Atlas.Common.Compiler.IdeCommand,
+  Atlas.Text.LogMarks,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TIdeCompilerText = (NoIde, ForeignIde, NoResult);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TIdeCompilerText] of TAtlasText = (
+    (De: 'cc.ps1 start hat keine IDE gestartet (Exit-Code %d)';
+    En: 'cc.ps1 start did not start an IDE (exit code %d)'),
+    (De: 'cc.ps1 start nannte die schon laufende IDE %d; Atlas baut nur in einer eigenen IDE';
+    En: 'cc.ps1 start named the already running IDE %d; Atlas only builds in an IDE of its own'),
+    (De: 'cc.ps1 build hat kein Ergebnis geliefert (Exit-Code %d)';
+    En: 'cc.ps1 build returned no result (exit code %d)'));
 
 { TShellCompilerEditions }
 
@@ -141,8 +157,10 @@ begin
   Result := '';
   try
     if TFile.Exists(AFileName) then
+    begin
       Result := Format('%d-%s', [TFile.GetSize(AFileName),
         DateToISO8601(TFile.GetLastWriteTimeUtc(AFileName), True)]);
+    end;
   except
     on Exception do
       Result := '';
@@ -152,10 +170,14 @@ end;
 procedure TShellCompilerEditions.EnsureLoaded;
 begin
   if FLoaded then
+  begin
     Exit;
+  end;
   FLoaded := True;
   if (FFileName = '') or not TFile.Exists(FFileName) then
+  begin
     Exit;
+  end;
   try
     FCache.Load(TFile.ReadAllText(FFileName, TEncoding.UTF8));
   except
@@ -167,7 +189,9 @@ end;
 procedure TShellCompilerEditions.Save;
 begin
   if FFileName = '' then
+  begin
     Exit;
+  end;
   try
     ForceDirectories(ExtractFileDir(FFileName));
     TFile.WriteAllText(FFileName, FCache.ToJson, TEncoding.UTF8);
@@ -204,7 +228,9 @@ begin
     EnsureLoaded;
     Result := FCache.Find(ABdsRoot, AVersion, Stamp);
     if Result <> TCompilerEdition.Unknown then
+    begin
       Exit;
+    end;
     Exists := Stamp <> '';
     Output := nil;
     if Exists then
@@ -230,7 +256,9 @@ begin
     FLogger.Info(Format('Delphi %s: %s', [AVersion, TCompilerEditions.Describe(Result)]));
     // Unklar (keine Ausgabe) wird nicht gemerkt; der nächste Lauf prüft erneut.
     if Result <> TCompilerEdition.Unknown then
+    begin
       Store(ABdsRoot, AVersion, Stamp, Result);
+    end;
   finally
     TMonitor.Exit(FLock);
   end;
@@ -286,25 +314,31 @@ begin
   AError := '';
   // Eigene Instanz wiederverwenden, solange sie läuft und zum selben cc.ps1 gehört.
   if (FPid <> 0) and SameText(FScript, AScript) and FRunning(FPid) then
+  begin
     Exit(True);
+  end;
   if (FPid <> 0) and FRunning(FPid) then
+  begin
     Quit(FProcess);
+  end;
   FPid := 0;
   Running := FIdes();
   Code := Run(FProcess, AScript, TCompilerIdeCommand.StartArguments(AProject),
     TProjectPaths.DirectoryOf(AProject), Output);
   if not TCompilerIdeCommand.ParsePid(Output, mPid) then
   begin
-    AError := Format('cc.ps1 start hat keine IDE gestartet (Exit-Code %d)', [Code]);
+    AError := cTexts[TIdeCompilerText.NoIde].Fmt([Code]);
     Exit(False);
   end;
   for Other in Running do
+  begin
     if Other = mPid then
     begin
       // Nie in eine fremde IDE bauen, etwa die des Benutzers (ADR 0007).
-      AError := Format('cc.ps1 start nannte die schon laufende IDE %d; Atlas baut nur in einer eigenen IDE', [mPid]);
+      AError := cTexts[TIdeCompilerText.ForeignIde].Fmt([mPid]);
       Exit(False);
     end;
+  end;
   FPid := mPid;
   FScript := AScript;
   FLogger.Info(Format('Eigene IDE für das Kompilieren gestartet (pid %d)', [mPid]));
@@ -322,20 +356,26 @@ begin
   AMessages := nil;
   ASucceeded := False;
   if not EnsureInstance(AScript, AProject, AError) then
+  begin
     Exit(False);
+  end;
   Code := Run(FProcess, AScript, TCompilerIdeCommand.BuildArguments(FPid, AProject, APlatform),
     TProjectPaths.DirectoryOf(AProject), Output);
   if not TCompilerIdeCommand.ParseBuild(Output, Report) then
   begin
     // Ist die eigene IDE weg, startet der nächste Lauf eine neue.
     if not FRunning(FPid) then
+    begin
       FPid := 0;
-    AError := Format('cc.ps1 build hat kein Ergebnis geliefert (Exit-Code %d)', [Code]);
+    end;
+    AError := cTexts[TIdeCompilerText.NoResult].Fmt([Code]);
     Exit(False);
   end;
   Lines := nil;
   if Report.LogFile <> '' then
+  begin
     Lines := FReadLines(Report.LogFile);
+  end;
   AMessages := TCompilerIdeCommand.Messages(Lines, AProject);
   ASucceeded := Report.Ok;
   if not Report.Ok and (Length(AMessages) = 0) then
@@ -343,7 +383,9 @@ begin
     // ADR 0007: cc.ps1 kann Fehlertexte der IDE nicht immer lesen; dann steht im Log nur „Misslungen“.
     Detail := '';
     if Report.Error <> '' then
-      Detail := ': ' + Report.Error;
+    begin
+      Detail := ': ' + TLogMarks.Text(Report.Error);
+    end;
     FLogger.Warning('Build über die IDE misslungen, ohne lesbare Meldungen' + Detail);
   end;
   Result := True;
@@ -354,15 +396,22 @@ var
   Output: TArray<string>;
 begin
   if FPid = 0 then
+  begin
     Exit;
+  end;
   try
     if FRunning(FPid) then
+    begin
       Run(AProcess, FScript, TCompilerIdeCommand.QuitArguments(FPid), '', Output);
+    end;
   except
     on E: Exception do
       FLogger.Warning('Eigene IDE nicht beendet: ' + E.ClassName);
   end;
   FPid := 0;
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Compiler', cTexts);
 
 end.

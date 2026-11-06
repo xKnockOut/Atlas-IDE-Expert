@@ -2,7 +2,7 @@
 
 // Attribute nach "[" (#465, ARG-066): Steht der Cursor auf dem Namen in einer Attributklammer vor einer
 // Deklaration (TAttributes.InBracket), bleiben nur Attributklassen (Nachfahren von TCustomAttribute,
-// TNameResolver.AttributeClassOf), gezeigt ohne die Endung Attribute.
+// TNameResolver.Queries.AttributeClassOf), gezeigt ohne die Endung Attribute.
 // - Bekannte Attribute zuerst, in dieser Reihenfolge: DUnitX (Test, TestCase, TestFixture, Setup, TearDown),
 //   JSONName, JSONMarshalled und die Compiler-Attribute weak, unsafe, volatile, Ref; die übrigen danach wie
 //   gesammelt. Die Compiler-Attribute haben keine Klasse und kommen immer dazu, wenn sie zum Getippten passen.
@@ -64,7 +64,9 @@ var
 begin
   Result := nil;
   for Name in KnownNames do
+  begin
     Result := Result + [Name + 'Attribute'];
+  end;
 end;
 
 class function TCompletionAttributes.SiteAt(const ATokens: TArray<TPascalToken>; ALast: Integer): Boolean;
@@ -79,7 +81,7 @@ begin
     var
       AttributeClass: TResolvedSymbol;
     begin
-      Result := AResolver.AttributeClassOf(ASymbol, AttributeClass);
+      Result := AResolver.Queries.AttributeClassOf(ASymbol, AttributeClass);
     end;
 end;
 
@@ -90,17 +92,25 @@ begin
   Result := '';
   Open := Pos('(', ASignature);
   if Open = 0 then
+  begin
     Exit;
+  end;
   Depth := 0;
   for Index := Open to Length(ASignature) do
+  begin
     if ASignature[Index] = '(' then
-      Inc(Depth)
+    begin
+      Inc(Depth);
+    end
     else if ASignature[Index] = ')' then
     begin
       Dec(Depth);
       if Depth = 0 then
+      begin
         Exit(Copy(ASignature, Open, Index - Open + 1));
+      end;
     end;
+  end;
 end;
 
 /// <summary>Rang eines bekannten Attributs (0 …), -1 sonst.</summary>
@@ -109,11 +119,19 @@ var
   Index: Integer;
 begin
   for Index := 0 to High(TCompletionAttributes.KnownNames) do
+  begin
     if SameText(AName, TCompletionAttributes.KnownNames[Index]) then
+    begin
       Exit(Index);
+    end;
+  end;
   for Index := 0 to High(TCompletionAttributes.CompilerNames) do
+  begin
     if SameText(AName, TCompletionAttributes.CompilerNames[Index]) then
+    begin
       Exit(Length(TCompletionAttributes.KnownNames) + Index);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -128,107 +146,208 @@ type
     Order: Integer;
   end;
 
+/// <summary>Bekannte nach ihrem Rang, dann die übrigen in der gesammelten Reihenfolge; Order macht es eindeutig.
+/// </summary>
+function CompareEntries(const A, B: TAttributeEntry): Integer;
+begin
+  if (A.Rank >= 0) <> (B.Rank >= 0) then
+  begin
+    Result := 1;
+    if A.Rank >= 0 then
+    begin
+      Result := -1;
+    end;
+  end
+  else if (A.Rank >= 0) and (A.Rank <> B.Rank) then
+  begin
+    Result := A.Rank - B.Rank;
+  end
+  else
+  begin
+    Result := A.Order - B.Order;
+  end;
+end;
+
+/// <summary>Vorzug eines Eintrags (siehe TAttributeEntry.Preference).</summary>
+function PreferenceOf(const AItem: TCompletionItem; const ASymbol: TResolvedSymbol): Integer;
+begin
+  Result := 0;
+  if Length(AItem.AdditionalEdits) = 0 then
+  begin
+    Exit;
+  end;
+  Result := 2;
+  if ASymbol.SymbolKind = TIndexSymbolKind.TypeAlias then
+  begin
+    Result := 1;
+  end;
+end;
+
+/// <summary>Detail eines Attributs: Parameter des eigenen Konstruktors, sonst die Unit der Klasse.</summary>
+function DetailOf(ARequest: TCompletionRequest; const AAttributeClass: TResolvedSymbol): string;
+var
+  mCtor: TResolvedSymbol;
+begin
+  Result := '';
+  if ARequest.Resolver.DeclaredMember(AAttributeClass, 'Create', mCtor) and
+    not SameText(mCtor.Container, 'TCustomAttribute') and not SameText(mCtor.Container, 'TObject') then
+  begin
+    Result := TCompletionAttributes.ParameterText(mCtor.Signature);
+  end;
+  if Result = '' then
+  begin
+    Result := AAttributeClass.UnitName;
+  end;
+end;
+
+type
+  /// <summary>Sammelt die Attribut-Einträge einer Anfrage, eine Klasse nur einmal.</summary>
+  TAttributeList = class
+  private
+    FRequest: TCompletionRequest;
+    FPrefix: string;
+    FUnits: TDictionary<string, TUnitIndex>;
+    FByKey: TDictionary<string, Integer>;
+    FEntries: TList<TAttributeEntry>;
+    FOrder: Integer;
+    function Matches(const AName: string): Boolean;
+    procedure Keep(var AEntry: TAttributeEntry);
+  public
+    constructor Create(ARequest: TCompletionRequest; const APrefix: string);
+    destructor Destroy; override;
+    procedure AddItem(const AItem: TCompletionItem);
+    procedure AddCompilerNames;
+    function Items: TArray<TCompletionItem>;
+  end;
+
+constructor TAttributeList.Create(ARequest: TCompletionRequest; const APrefix: string);
+begin
+  inherited Create;
+  FRequest := ARequest;
+  FPrefix := APrefix;
+  FUnits := TDictionary<string, TUnitIndex>.Create;
+  FByKey := TDictionary<string, Integer>.Create;
+  FEntries := TList<TAttributeEntry>.Create;
+end;
+
+destructor TAttributeList.Destroy;
+begin
+  FEntries.Free;
+  FByKey.Free;
+  FUnits.Free;
+  inherited;
+end;
+
+function TAttributeList.Matches(const AName: string): Boolean;
+begin
+  Result := MatchScore(AName, FPrefix, FRequest.Matching) <> TFuzzyMatch.NoMatch;
+end;
+
+procedure TAttributeList.Keep(var AEntry: TAttributeEntry);
+var
+  mExisting: Integer;
+begin
+  AEntry.Rank := KnownRank(AEntry.Item.Name);
+  AEntry.Order := FOrder;
+  Inc(FOrder);
+  if AEntry.Key = '' then
+  begin
+    FEntries.Add(AEntry);
+  end
+  else if not FByKey.TryGetValue(AEntry.Key, mExisting) then
+  begin
+    FByKey.Add(AEntry.Key, FEntries.Count);
+    FEntries.Add(AEntry);
+  end
+  else if AEntry.Preference < FEntries[mExisting].Preference then
+  begin
+    AEntry.Order := FEntries[mExisting].Order;
+    FEntries[mExisting] := AEntry;
+  end;
+end;
+
+procedure TAttributeList.AddItem(const AItem: TCompletionItem);
+var
+  mSymbol, mAttributeClass: TResolvedSymbol;
+  mName: string;
+  mEntry: TAttributeEntry;
+begin
+  if not TCompletionGenerics.ItemSymbol(FRequest, FUnits, AItem, mSymbol) or
+    not FRequest.Resolver.Queries.AttributeClassOf(mSymbol, mAttributeClass) then
+  begin
+    Exit;
+  end;
+  mName := TAttributes.ShortName(AItem.Name);
+  if not Matches(mName) then
+  begin
+    Exit;
+  end;
+  mEntry := Default(TAttributeEntry);
+  mEntry.Item := AItem;
+  mEntry.Item.Name := mName;
+  mEntry.Item.FilterText := mName;
+  mEntry.Item.InsertText := mName;
+  mEntry.Item.Attribute := True;
+  mEntry.Item.Detail := DetailOf(FRequest, mAttributeClass);
+  mEntry.Key := UpperCase(mAttributeClass.UnitName + '.' + mAttributeClass.QualifiedName);
+  mEntry.Preference := PreferenceOf(AItem, mSymbol);
+  Keep(mEntry);
+end;
+
+procedure TAttributeList.AddCompilerNames;
+var
+  mName: string;
+  mEntry: TAttributeEntry;
+begin
+  // Compiler-Attribute ohne Klasse.
+  for mName in TCompletionAttributes.CompilerNames do
+  begin
+    if Matches(mName) then
+    begin
+      mEntry := Default(TAttributeEntry);
+      mEntry.Item.Name := mName;
+      mEntry.Item.Detail := 'Compiler';
+      mEntry.Item.Kind := KindKeyword;
+      mEntry.Item.Attribute := True;
+      Keep(mEntry);
+    end;
+  end;
+end;
+
+function TAttributeList.Items: TArray<TCompletionItem>;
+var
+  mSorted: TArray<TAttributeEntry>;
+  mIndex: Integer;
+begin
+  mSorted := FEntries.ToArray;
+  TArray.Sort<TAttributeEntry>(mSorted, TComparer<TAttributeEntry>.Construct(
+    function(const A, B: TAttributeEntry): Integer
+    begin
+      Result := CompareEntries(A, B);
+    end));
+  SetLength(Result, Length(mSorted));
+  for mIndex := 0 to High(mSorted) do
+  begin
+    Result[mIndex] := mSorted[mIndex].Item;
+  end;
+end;
+
 class function TCompletionAttributes.Apply(ARequest: TCompletionRequest; const AContext: TCompletionContext;
   const AItems: TArray<TCompletionItem>): TArray<TCompletionItem>;
 var
-  Units: TDictionary<string, TUnitIndex>;
-  ByKey: TDictionary<string, Integer>;
-  Entries: TList<TAttributeEntry>;
-  Item: TCompletionItem;
-  Entry: TAttributeEntry;
-  Symbol, AttributeClass, Ctor: TResolvedSymbol;
-  Name, Params: string;
-  Existing, Index, Order: Integer;
-  Sorted: TArray<TAttributeEntry>;
+  mList: TAttributeList;
+  mItem: TCompletionItem;
 begin
-  Units := TDictionary<string, TUnitIndex>.Create;
-  ByKey := TDictionary<string, Integer>.Create;
-  Entries := TList<TAttributeEntry>.Create;
+  mList := TAttributeList.Create(ARequest, AContext.Prefix);
   try
-    Order := 0;
-    for Item in AItems do
+    for mItem in AItems do
     begin
-      if not TCompletionGenerics.ItemSymbol(ARequest, Units, Item, Symbol) or
-        not ARequest.Resolver.AttributeClassOf(Symbol, AttributeClass) then
-        Continue;
-      Name := TAttributes.ShortName(Item.Name);
-      if MatchScore(Name, AContext.Prefix, ARequest.Matching) = TFuzzyMatch.NoMatch then
-        Continue;
-      Entry := Default(TAttributeEntry);
-      Entry.Item := Item;
-      Entry.Item.Name := Name;
-      Entry.Item.FilterText := Name;
-      Entry.Item.InsertText := Name;
-      Entry.Item.Attribute := True;
-      Params := '';
-      if ARequest.Resolver.DeclaredMember(AttributeClass, 'Create', Ctor) and
-        not SameText(Ctor.Container, 'TCustomAttribute') and not SameText(Ctor.Container, 'TObject') then
-        Params := ParameterText(Ctor.Signature);
-      if Params <> '' then
-        Entry.Item.Detail := Params
-      else
-        Entry.Item.Detail := AttributeClass.UnitName;
-      Entry.Key := UpperCase(AttributeClass.UnitName + '.' + AttributeClass.QualifiedName);
-      if Length(Item.AdditionalEdits) = 0 then
-        Entry.Preference := 0
-      else if Symbol.SymbolKind = TIndexSymbolKind.TypeAlias then
-        Entry.Preference := 1
-      else
-        Entry.Preference := 2;
-      Entry.Rank := KnownRank(Name);
-      Entry.Order := Order;
-      Inc(Order);
-      if ByKey.TryGetValue(Entry.Key, Existing) then
-      begin
-        if Entry.Preference < Entries[Existing].Preference then
-        begin
-          Entry.Order := Entries[Existing].Order;
-          Entries[Existing] := Entry;
-        end;
-        Continue;
-      end;
-      ByKey.Add(Entry.Key, Entries.Count);
-      Entries.Add(Entry);
+      mList.AddItem(mItem);
     end;
-    // Compiler-Attribute ohne Klasse.
-    for Name in CompilerNames do
-    begin
-      if MatchScore(Name, AContext.Prefix, ARequest.Matching) = TFuzzyMatch.NoMatch then
-        Continue;
-      Entry := Default(TAttributeEntry);
-      Entry.Item.Name := Name;
-      Entry.Item.Detail := 'Compiler';
-      Entry.Item.Kind := KindKeyword;
-      Entry.Item.Attribute := True;
-      Entry.Rank := KnownRank(Name);
-      Entry.Order := Order;
-      Inc(Order);
-      Entries.Add(Entry);
-    end;
-    // Bekannte nach ihrem Rang, dann die übrigen in der gesammelten Reihenfolge; Order macht es eindeutig.
-    Sorted := Entries.ToArray;
-    TArray.Sort<TAttributeEntry>(Sorted, TComparer<TAttributeEntry>.Construct(
-      function(const A, B: TAttributeEntry): Integer
-      begin
-        if (A.Rank >= 0) <> (B.Rank >= 0) then
-        begin
-          if A.Rank >= 0 then
-            Result := -1
-          else
-            Result := 1;
-        end
-        else if (A.Rank >= 0) and (A.Rank <> B.Rank) then
-          Result := A.Rank - B.Rank
-        else
-          Result := A.Order - B.Order;
-      end));
-    SetLength(Result, Length(Sorted));
-    for Index := 0 to High(Sorted) do
-      Result[Index] := Sorted[Index].Item;
+    mList.AddCompilerNames;
+    Result := mList.Items;
   finally
-    Entries.Free;
-    ByKey.Free;
-    Units.Free;
+    mList.Free;
   end;
 end;
 

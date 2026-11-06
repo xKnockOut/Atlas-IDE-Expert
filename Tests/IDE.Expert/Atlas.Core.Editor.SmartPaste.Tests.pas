@@ -21,6 +21,8 @@ type
     [Test]
     procedure ReindentFromLineStartAndMidLineCopy;
     [Test]
+    procedure ReindentUsesServerColumn;
+    [Test]
     procedure KeepsSingleLinesAndCodeBefore;
     [Test]
     procedure ReadsAnalysisAndSelection;
@@ -45,7 +47,9 @@ begin
   Lines := Copy(APasted);
   Lines[0] := APrefix + Lines[0];
   for Edit in AEdits do
+  begin
     Lines[Edit.Line] := Edit.Indent + Copy(Lines[Edit.Line], Edit.Remove + 1, MaxInt);
+  end;
   Result := string.Join('|', Lines);
 end;
 
@@ -86,14 +90,14 @@ var
 begin
   // Block mit 8 Leerzeichen, Einfügestelle mit 2.
   Pasted := ['        if A then', '          B;', '', '        C;', ''];
-  Assert.IsTrue(TAtlasSmartPaste.Reindent('  ', 'begin', Pasted, 8, 2, Edits));
+  Assert.IsTrue(TAtlasSmartPaste.Reindent('  ', 'begin', Pasted, 8, 2, TAtlasSmartPaste.NoColumn, Edits));
   Assert.AreEqual('  if A then|    B;||  C;|', Applied('  ', Pasted, Edits));
   // Schon richtig: nichts zu tun.
   Pasted := ['  A;', '  B;'];
-  Assert.IsFalse(TAtlasSmartPaste.Reindent('', '  X;', Pasted, 8, 2, Edits));
+  Assert.IsFalse(TAtlasSmartPaste.Reindent('', '  X;', Pasted, 8, 2, TAtlasSmartPaste.NoColumn, Edits));
   // Tabulatoren zählen bis zur nächsten Position.
   Pasted := [#9'A;', #9#9'B;'];
-  Assert.IsTrue(TAtlasSmartPaste.Reindent('    ', '', Pasted, 4, 2, Edits));
+  Assert.IsTrue(TAtlasSmartPaste.Reindent('    ', '', Pasted, 4, 2, TAtlasSmartPaste.NoColumn, Edits));
   Assert.AreEqual('    A;|        B;', Applied('    ', Pasted, Edits));
 end;
 
@@ -104,28 +108,46 @@ var
 begin
   // Am Zeilenanfang nach „  begin“: eine Stufe tiefer als die Zeile darüber.
   Pasted := ['      X := 1;', '      Y := 2;'];
-  Assert.IsTrue(TAtlasSmartPaste.Reindent('', '  begin // Start', Pasted, 8, 2, Edits));
+  Assert.IsTrue(TAtlasSmartPaste.Reindent('', '  begin // Start', Pasted, 8, 2, TAtlasSmartPaste.NoColumn, Edits));
   Assert.AreEqual('    X := 1;|    Y := 2;', Applied('', Pasted, Edits));
   // Aus der Mitte der Zeile kopiert: Die erste Zeile hat keinen Leerraum, die übrigen ihren alten.
   Pasted := ['if A then', '          B', '        else', '          C;'];
-  Assert.IsTrue(TAtlasSmartPaste.Reindent('    ', '', Pasted, 8, 2, Edits));
+  Assert.IsTrue(TAtlasSmartPaste.Reindent('    ', '', Pasted, 8, 2, TAtlasSmartPaste.NoColumn, Edits));
   Assert.AreEqual('    if A then|      B|    else|      C;', Applied('    ', Pasted, Edits));
   // Ohne Zeile auf derselben Ebene: eine Stufe über der flachsten.
   Pasted := ['if A then', '          B;'];
-  Assert.IsTrue(TAtlasSmartPaste.Reindent('    ', '', Pasted, 8, 2, Edits));
+  Assert.IsTrue(TAtlasSmartPaste.Reindent('    ', '', Pasted, 8, 2, TAtlasSmartPaste.NoColumn, Edits));
   Assert.AreEqual('    if A then|      B;', Applied('    ', Pasted, Edits));
   // Beginnt der Block mit einem Zeilenumbruch, zählt die erste Zeile mit Inhalt.
   Pasted := ['', '        A;', '        B;'];
-  Assert.IsTrue(TAtlasSmartPaste.Reindent('  ', '', Pasted, 8, 2, Edits));
+  Assert.IsTrue(TAtlasSmartPaste.Reindent('  ', '', Pasted, 8, 2, TAtlasSmartPaste.NoColumn, Edits));
   Assert.AreEqual('  |  A;|  B;', Applied('  ', Pasted, Edits));
+end;
+
+procedure TAtlasSmartPasteTests.ReindentUsesServerColumn;
+var
+  Pasted: TArray<string>;
+  Edits: TArray<TAtlasIndentEdit>;
+begin
+  // Nach „  if A then B;“ hielte die Heuristik die Zeile darüber; der Server kennt die Blockstruktur (#1832).
+  Pasted := ['      X := 1;', '        Y := 2;'];
+  Assert.IsTrue(TAtlasSmartPaste.Reindent('', '  if A then B;', Pasted, 8, 2, 2, Edits));
+  Assert.AreEqual('  X := 1;|    Y := 2;', Applied('', Pasted, Edits));
+  // Ohne Spalte vom Server dieselbe Heuristik wie bisher.
+  Assert.IsTrue(TAtlasSmartPaste.Reindent('', '  if A then', Pasted, 8, 2, TAtlasSmartPaste.NoColumn, Edits));
+  Assert.AreEqual('    X := 1;|      Y := 2;', Applied('', Pasted, Edits));
+  // Code vor der Einfügestelle: auch mit Spalte vom Server bleibt alles.
+  Assert.IsFalse(TAtlasSmartPaste.Reindent('  S := ', '', Pasted, 8, 2, 4, Edits));
 end;
 
 procedure TAtlasSmartPasteTests.KeepsSingleLinesAndCodeBefore;
 var
   Edits: TArray<TAtlasIndentEdit>;
 begin
-  Assert.IsFalse(TAtlasSmartPaste.Reindent('  ', '', ['        TJSONObject.Create;'], 8, 2, Edits), 'eine Zeile');
-  Assert.IsFalse(TAtlasSmartPaste.Reindent('  S := ', '', ['Foo(', '        1);'], 8, 2, Edits), 'Code davor');
+  Assert.IsFalse(TAtlasSmartPaste.Reindent('  ', '', ['        TJSONObject.Create;'], 8, 2, TAtlasSmartPaste.NoColumn,
+    Edits), 'eine Zeile');
+  Assert.IsFalse(TAtlasSmartPaste.Reindent('  S := ', '', ['Foo(', '        1);'], 8, 2, TAtlasSmartPaste.NoColumn,
+    Edits), 'Code davor');
   Assert.IsTrue(TAtlasSmartPaste.Opens('  try'));
   Assert.IsTrue(TAtlasSmartPaste.Opens('  if A then // weiter'));
   Assert.IsFalse(TAtlasSmartPaste.Opens('  A.Then'), 'nach Punkt');

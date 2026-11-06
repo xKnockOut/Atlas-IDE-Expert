@@ -25,6 +25,13 @@ type
     procedure Cancel;
     /// <summary>Abbruch, weil das Dokument sich geändert hat.</summary>
     procedure CancelModified;
+    /// <summary>Abbruch, weil das Zeitlimit abgelaufen ist (Watchdog); ein späteres Cancel überschreibt ihn.
+    /// </summary>
+    procedure Expire;
+    /// <summary>True, wenn nur das Zeitlimit abgelaufen ist: kein ausdrücklicher Abbruch ($/cancelRequest, Ende
+    /// der Verbindung), kein geändertes Dokument. Eine Arbeit, deren Ergebnis gespeichert wird, darf dann zu Ende
+    /// laufen.</summary>
+    function OnlyExpired: Boolean;
     /// <summary>Beansprucht die einzige Antwort auf die Anfrage: True genau beim ersten Aufruf (Worker oder
     /// Watchdog, Code-Review A-06). Threadsicher.</summary>
     function TryAnswer: Boolean;
@@ -32,7 +39,7 @@ type
 
   TJsonRpcCancellation = class(TInterfacedObject, IJsonRpcCancellationToken, IJsonRpcCancellationSource)
   private
-    /// <summary>0 = offen, 1 = abgebrochen, 2 = Dokument geändert.</summary>
+    /// <summary>0 = offen, 1 = abgebrochen, 2 = Dokument geändert, 3 = Zeitlimit abgelaufen.</summary>
     FCancelled: Integer;
     /// <summary>1, sobald jemand die Antwort beansprucht hat.</summary>
     FAnswered: Integer;
@@ -41,7 +48,25 @@ type
     procedure ThrowIfCancellationRequested;
     procedure Cancel;
     procedure CancelModified;
+    procedure Expire;
+    function OnlyExpired: Boolean;
     function TryAnswer: Boolean;
+  end;
+
+  /// <summary>Signal einer Anfrage ohne ihr bloßes Zeitlimit (#1761): für Arbeit, deren Ergebnis gespeichert wird
+  /// und die nach dem Zeitlimit zu Ende laufen darf, auch für tiefe Aufrufe über TJsonRpcCurrentRequest.
+  /// Ausdrücklicher Abbruch und geändertes Dokument gelten weiter.</summary>
+  TJsonRpcPastTimeout = class(TInterfacedObject, IJsonRpcCancellationToken)
+  private
+    FRequest: IJsonRpcCancellationToken;
+  public
+    /// <summary>ARequest darf nil sein (nie abgebrochen).</summary>
+    constructor Create(const ARequest: IJsonRpcCancellationToken);
+    function IsCancellationRequested: Boolean;
+    procedure ThrowIfCancellationRequested;
+    /// <summary>True, wenn bei ARequest nur das Zeitlimit abgelaufen ist (IJsonRpcCancellationSource.OnlyExpired).
+    /// </summary>
+    class function OnlyExpired(const ARequest: IJsonRpcCancellationToken): Boolean; static;
   end;
 
   IJsonRpcPendingRequests = interface
@@ -88,6 +113,12 @@ type
     FWorkCount: Integer;
     FIdle: TLightweightEvent;
     class function KeyOf(const AId: TJSONValue): string; static;
+    /// <summary>Benachrichtigungen der Methode AName ändern ein Dokument.</summary>
+    function IsChangeMethod(const AName: string): Boolean;
+    /// <summary>Vermerkt die Anfrage AId als offen, mit dem Dokument aus AMessage.</summary>
+    procedure ObserveRequest(const AMessage: TJSONObject; const AId: TJSONValue);
+    /// <summary>Cancel, wenn AId gesetzt ist.</summary>
+    procedure CancelById(const AId: TJSONValue);
   public
     constructor Create;
     destructor Destroy; override;
@@ -116,13 +147,19 @@ begin
   Result := '';
   Params := AMessage.GetValue('params');
   if not (Params is TJSONObject) then
+  begin
     Exit;
+  end;
   Document := TJSONObject(Params).GetValue('textDocument');
   if not (Document is TJSONObject) then
+  begin
     Exit;
+  end;
   Uri := TJSONObject(Document).GetValue('uri');
   if Uri is TJSONString then
+  begin
     Result := Uri.Value;
+  end;
 end;
 
 { TJsonRpcCancellation }
@@ -135,7 +172,7 @@ end;
 procedure TJsonRpcCancellation.ThrowIfCancellationRequested;
 begin
   case TInterlocked.CompareExchange(FCancelled, 0, 0) of
-    1:
+    1, 3:
       raise EJsonRpcRequestCancelled.Create;
     2:
       raise EJsonRpcContentModified.Create;
@@ -149,13 +186,54 @@ end;
 
 procedure TJsonRpcCancellation.CancelModified;
 begin
-  // Ein ausdrücklicher Abbruch bleibt ein Abbruch.
-  TInterlocked.CompareExchange(FCancelled, 2, 0);
+  // Ein ausdrücklicher Abbruch bleibt ein Abbruch; ein geändertes Dokument wiegt schwerer als das Zeitlimit.
+  if TInterlocked.CompareExchange(FCancelled, 2, 0) = 3 then
+  begin
+    TInterlocked.CompareExchange(FCancelled, 2, 3);
+  end;
+end;
+
+procedure TJsonRpcCancellation.Expire;
+begin
+  TInterlocked.CompareExchange(FCancelled, 3, 0);
+end;
+
+function TJsonRpcCancellation.OnlyExpired: Boolean;
+begin
+  Result := TInterlocked.CompareExchange(FCancelled, 0, 0) = 3;
 end;
 
 function TJsonRpcCancellation.TryAnswer: Boolean;
 begin
   Result := TInterlocked.CompareExchange(FAnswered, 1, 0) = 0;
+end;
+
+{ TJsonRpcPastTimeout }
+
+constructor TJsonRpcPastTimeout.Create(const ARequest: IJsonRpcCancellationToken);
+begin
+  inherited Create;
+  FRequest := ARequest;
+end;
+
+class function TJsonRpcPastTimeout.OnlyExpired(const ARequest: IJsonRpcCancellationToken): Boolean;
+var
+  mSource: IJsonRpcCancellationSource;
+begin
+  Result := Supports(ARequest, IJsonRpcCancellationSource, mSource) and mSource.OnlyExpired;
+end;
+
+function TJsonRpcPastTimeout.IsCancellationRequested: Boolean;
+begin
+  Result := (FRequest <> nil) and FRequest.IsCancellationRequested and not OnlyExpired(FRequest);
+end;
+
+procedure TJsonRpcPastTimeout.ThrowIfCancellationRequested;
+begin
+  if IsCancellationRequested then
+  begin
+    FRequest.ThrowIfCancellationRequested;
+  end;
 end;
 
 { TJsonRpcPendingRequests }
@@ -182,80 +260,105 @@ class function TJsonRpcPendingRequests.KeyOf(const AId: TJSONValue): string;
 begin
   // ToJSON unterscheidet die id 1 von der id "1".
   if AId = nil then
-    Result := 'null'
+  begin
+    Result := 'null';
+  end
   else
+  begin
     Result := AId.ToJSON;
+  end;
+end;
+
+/// <summary>Id der abzubrechenden Anfrage aus params.AKey; nil ohne.</summary>
+function CancelledId(const AMessage: TJSONObject; const AKey: string): TJSONValue;
+var
+  mParams: TJSONValue;
+begin
+  Result := nil;
+  mParams := AMessage.GetValue('params');
+  if mParams is TJSONObject then
+  begin
+    Result := TJSONObject(mParams).GetValue(AKey);
+  end;
+end;
+
+function TJsonRpcPendingRequests.IsChangeMethod(const AName: string): Boolean;
+var
+  mName: string;
+begin
+  FLock.Enter;
+  try
+    for mName in FChangeMethods do
+    begin
+      if mName = AName then
+      begin
+        Exit(True);
+      end;
+    end;
+  finally
+    FLock.Leave;
+  end;
+  Result := False;
+end;
+
+procedure TJsonRpcPendingRequests.ObserveRequest(const AMessage: TJSONObject; const AId: TJSONValue);
+var
+  mUri: string;
+begin
+  Acquire(AId);
+  mUri := DocumentUri(AMessage);
+  if mUri <> '' then
+  begin
+    FLock.Enter;
+    try
+      FUris.AddOrSetValue(KeyOf(AId), mUri);
+    finally
+      FLock.Leave;
+    end;
+  end;
+end;
+
+procedure TJsonRpcPendingRequests.CancelById(const AId: TJSONValue);
+begin
+  if AId <> nil then
+  begin
+    Cancel(AId);
+  end;
 end;
 
 function TJsonRpcPendingRequests.Observe(const AMessage: TJSONObject): Boolean;
 var
-  Method: TJSONValue;
-  Id: TJSONValue;
-  Params: TJSONValue;
-  Uri: string;
-
-  function IsChangeMethod(const AName: string): Boolean;
-  var
-    Name: string;
-  begin
-    FLock.Enter;
-    try
-      for Name in FChangeMethods do
-        if Name = AName then
-          Exit(True);
-    finally
-      FLock.Leave;
-    end;
-    Result := False;
-  end;
-
+  mMethod, mId: TJSONValue;
+  mUri: string;
 begin
   Result := False;
-  Method := AMessage.GetValue('method');
-  if not (Method is TJSONString) then
+  mMethod := AMessage.GetValue('method');
+  if not (mMethod is TJSONString) then
+  begin
     Exit;
-  Id := AMessage.GetValue('id');
-  if Id <> nil then
+  end;
+  mId := AMessage.GetValue('id');
+  if mId <> nil then
   begin
-    Acquire(Id);
-    Uri := DocumentUri(AMessage);
-    if Uri <> '' then
-    begin
-      FLock.Enter;
-      try
-        FUris.AddOrSetValue(KeyOf(Id), Uri);
-      finally
-        FLock.Leave;
-      end;
-    end;
+    ObserveRequest(AMessage, mId);
   end
-  else if Method.Value = JsonRpcCancelRequestMethod then
+  else if mMethod.Value = JsonRpcCancelRequestMethod then
   begin
-    Params := AMessage.GetValue('params');
-    if Params is TJSONObject then
-    begin
-      Id := TJSONObject(Params).GetValue('id');
-      if Id <> nil then
-        Cancel(Id);
-    end;
+    CancelById(CancelledId(AMessage, 'id'));
     Result := True;
   end
-  else if Method.Value = McpCancelledMethod then
+  else if mMethod.Value = McpCancelledMethod then
   begin
-    Params := AMessage.GetValue('params');
-    if Params is TJSONObject then
-    begin
-      Id := TJSONObject(Params).GetValue('requestId');
-      if Id <> nil then
-        Cancel(Id);
-    end;
+    CancelById(CancelledId(AMessage, 'requestId'));
     Result := True;
   end
-  else if IsChangeMethod(Method.Value) then
+  else if IsChangeMethod(mMethod.Value) then
   begin
-    Uri := DocumentUri(AMessage);
-    if Uri <> '' then
-      CancelForUri(Uri);
+    mUri := DocumentUri(AMessage);
+    if mUri <> '' then
+    begin
+      CancelForUri(mUri);
+    end;
   end;
 end;
 
@@ -304,7 +407,9 @@ begin
   FLock.Enter;
   try
     if FRequests.TryGetValue(KeyOf(AId), Source) then
+    begin
       Source.Cancel;
+    end;
   finally
     FLock.Leave;
   end;
@@ -317,7 +422,9 @@ begin
   FLock.Enter;
   try
     for Source in FRequests.Values do
+    begin
       Source.Cancel;
+    end;
   finally
     FLock.Leave;
   end;
@@ -328,8 +435,10 @@ var
   Source: IJsonRpcCancellationSource;
 begin
   if not Supports(AToken, IJsonRpcCancellationSource, Source) then
+  begin
     Exit(False);
-  Source.Cancel;
+  end;
+  Source.Expire;
   Result := Source.TryAnswer;
 end;
 
@@ -339,7 +448,9 @@ var
 begin
   // Fremde Token (Tests, eigene Implementierungen) kennen keine Antwortsperre.
   if not Supports(AToken, IJsonRpcCancellationSource, Source) then
+  begin
     Exit(True);
+  end;
   Result := Source.TryAnswer;
 end;
 
@@ -361,8 +472,12 @@ begin
   FLock.Enter;
   try
     for Pair in FUris do
+    begin
       if (Pair.Value = AUri) and FRequests.TryGetValue(Pair.Key, Source) then
+      begin
         Source.CancelModified;
+      end;
+    end;
   finally
     FLock.Leave;
   end;
@@ -374,7 +489,9 @@ begin
   try
     Inc(FWorkCount);
     if FWorkCount = 1 then
+    begin
       FIdle.ResetEvent;
+    end;
   finally
     FLock.Leave;
   end;
@@ -386,7 +503,9 @@ begin
   try
     Dec(FWorkCount);
     if FWorkCount = 0 then
+    begin
       FIdle.SetEvent;
+    end;
   finally
     FLock.Leave;
   end;

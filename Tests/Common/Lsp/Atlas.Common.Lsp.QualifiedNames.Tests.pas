@@ -119,17 +119,21 @@ begin
   repeat
     Index := Pos(AMarker, AText, Index + 1);
     if Index = 0 then
+    begin
       raise Exception.CreateFmt('"%s" nicht gefunden', [AMarker]);
+    end;
     Inc(Found);
   until Found = AOccurrence;
   Line := 0;
   LineStart := 1;
   for Found := 1 to Index - 1 do
+  begin
     if AText[Found] = #10 then
     begin
       Inc(Line);
       LineStart := Found + 1;
     end;
+  end;
   Result := TTextPosition.Create(Line, Index - LineStart);
 end;
 
@@ -156,8 +160,8 @@ var
 begin
   Tree := TPascalParser.Parse(UnitMain);
   try
-    Assert.IsTrue(TQualifiedNames.At(FResolver, FIndex, Tree, MainFile, PositionOf(UnitMain, AMarker, AOccurrence),
-      AWithParameters, Result, Error), Error);
+    Assert.IsTrue(TQualifiedNames.At(FResolver, FIndex, Tree, TQualifiedNameRequest.Create(MainFile,
+      PositionOf(UnitMain, AMarker, AOccurrence), AWithParameters), Result, Error), Error);
   finally
     Tree.Free;
   end;
@@ -210,8 +214,8 @@ var
 begin
   Tree := TPascalParser.Parse(UnitMain);
   try
-    Assert.IsFalse(TQualifiedNames.At(FResolver, FIndex, Tree, MainFile, TTextPosition.Create(17, 0), False, Name,
-      Error));
+    Assert.IsFalse(TQualifiedNames.At(FResolver, FIndex, Tree, TQualifiedNameRequest.Create(MainFile,
+      TTextPosition.Create(17, 0), False), Name, Error));
     Assert.AreEqual('', Name);
     Assert.AreEqual('An Zeile 18, Spalte 1 steht kein bekanntes Symbol', Error);
   finally

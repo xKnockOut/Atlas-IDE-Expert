@@ -184,7 +184,9 @@ var
   mWork: TProc;
 begin
   for mWork in FWork.ToArray do
+  begin
     mWork();
+  end;
   FWork.Clear;
 end;
 

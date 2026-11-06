@@ -50,7 +50,20 @@ uses
   Atlas.Common.Lsp.FormFiles,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Common.Lsp.Internals.Cancellation;
+  Atlas.Common.Lsp.Internals.Cancellation,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TFoldingRangesText = (FieldTextDocumentUriMissingIn);
+
+const
+  cTexts: array[TFoldingRangesText] of TAtlasText = (
+    (De: 'Feld "textDocument.uri" fehlt in '; En: 'Field "textDocument.uri" missing in '));
+
+{$SCOPEDENUMS OFF}
 
 const
   KindComment = 'comment';
@@ -60,7 +73,9 @@ const
 procedure AddRange(AList: TList<TFoldingRange>; AStartLine, AEndLine: Integer; const AKind: string);
 begin
   if AEndLine > AStartLine then
+  begin
     AList.Add(TFoldingRange.Create(AStartLine, AEndLine, AKind));
+  end;
 end;
 
 procedure CollectNodes(ARoot: TSyntaxNode; AList: TList<TFoldingRange>);
@@ -95,7 +110,9 @@ begin
         // Übrige Werte bewusst ohne Wirkung.
       end;
       for Index := 0 to Node.ChildCount - 1 do
+      begin
         Pending.Push(Node[Index]);
+      end;
     end;
   finally
     Pending.Free;
@@ -109,60 +126,110 @@ begin
   // {$REGION 'x'} oder (*$REGION*); Groß- und Kleinschreibung egal.
   Text := AToken.Text;
   if Text.StartsWith('{$') then
-    Text := Text.Substring(2)
+  begin
+    Text := Text.Substring(2);
+  end
   else if Text.StartsWith('(*$') then
-    Text := Text.Substring(3)
+  begin
+    Text := Text.Substring(3);
+  end
   else
+  begin
     Exit(False);
+  end;
   Result := Text.ToUpper.StartsWith(AName) and
     ((Length(Text) = Length(AName)) or not CharInSet(Text.Chars[Length(AName)], ['A'..'Z', 'a'..'z', '0'..'9', '_']));
 end;
 
+type
+  /// <summary>Faltbereiche aus Tokens: Regionen und Kommentarblöcke.</summary>
+  TTokenFolds = record
+    List: TList<TFoldingRange>;
+    Regions: TStack<Integer>;
+    /// <summary>Erste und letzte Zeile des laufenden Blocks aus Zeilenkommentaren (-1 = keiner).</summary>
+    LineStart: Integer;
+    LineEnd: Integer;
+    /// <summary>Letzte Zeile des vorigen Tokens.</summary>
+    PreviousLine: Integer;
+    procedure Directive(const AToken: TPascalToken);
+    procedure LineComment(const AToken: TPascalToken);
+    procedure Comment(const AToken: TPascalToken);
+    procedure CloseLineComments;
+  end;
+
+procedure TTokenFolds.Directive(const AToken: TPascalToken);
+begin
+  if IsDirective(AToken, 'REGION') then
+  begin
+    Regions.Push(AToken.StartPos.Line);
+  end
+  else if IsDirective(AToken, 'ENDREGION') and (Regions.Count > 0) then
+  begin
+    AddRange(List, Regions.Pop, AToken.EndPos.Line, KindRegion);
+  end;
+end;
+
+procedure TTokenFolds.CloseLineComments;
+begin
+  if LineStart >= 0 then
+  begin
+    AddRange(List, LineStart, LineEnd, KindComment);
+  end;
+end;
+
+procedure TTokenFolds.LineComment(const AToken: TPascalToken);
+begin
+  // Zeilenkommentar am Zeilenanfang: Block fortsetzen oder neu beginnen.
+  if (LineStart >= 0) and (AToken.StartPos.Line = LineEnd + 1) then
+  begin
+    LineEnd := AToken.StartPos.Line;
+    Exit;
+  end;
+  CloseLineComments;
+  LineStart := AToken.StartPos.Line;
+  LineEnd := LineStart;
+end;
+
+procedure TTokenFolds.Comment(const AToken: TPascalToken);
+begin
+  if AToken.Text.StartsWith('//') and (AToken.StartPos.Line > PreviousLine) then
+  begin
+    LineComment(AToken);
+  end
+  else
+  begin
+    // Blockkommentar über mehrere Zeilen.
+    AddRange(List, AToken.StartPos.Line, AToken.EndPos.Line, KindComment);
+  end;
+end;
+
 procedure CollectTokens(const ATokens: TArray<TPascalToken>; AList: TList<TFoldingRange>);
 var
-  Regions: TStack<Integer>;
-  Token: TPascalToken;
-  LineStart: Integer;
-  LineEnd: Integer;
-  PreviousLine: Integer;
+  mFolds: TTokenFolds;
+  mToken: TPascalToken;
 begin
-  Regions := TStack<Integer>.Create;
+  mFolds := Default(TTokenFolds);
+  mFolds.List := AList;
+  mFolds.LineStart := -1;
+  mFolds.LineEnd := -1;
+  mFolds.PreviousLine := -1;
+  mFolds.Regions := TStack<Integer>.Create;
   try
-    LineStart := -1;
-    LineEnd := -1;
-    PreviousLine := -1;
-    for Token in ATokens do
+    for mToken in ATokens do
     begin
-      if Token.Kind = TPascalTokenKind.Directive then
+      if mToken.Kind = TPascalTokenKind.Directive then
       begin
-        if IsDirective(Token, 'REGION') then
-          Regions.Push(Token.StartPos.Line)
-        else if IsDirective(Token, 'ENDREGION') and (Regions.Count > 0) then
-          AddRange(AList, Regions.Pop, Token.EndPos.Line, KindRegion);
-      end;
-      if (Token.Kind = TPascalTokenKind.Comment) and Token.Text.StartsWith('//') and
-        (Token.StartPos.Line > PreviousLine) then
-      begin
-        // Zeilenkommentar am Zeilenanfang: Block fortsetzen oder neu beginnen.
-        if (LineStart >= 0) and (Token.StartPos.Line = LineEnd + 1) then
-          LineEnd := Token.StartPos.Line
-        else
-        begin
-          if LineStart >= 0 then
-            AddRange(AList, LineStart, LineEnd, KindComment);
-          LineStart := Token.StartPos.Line;
-          LineEnd := LineStart;
-        end;
+        mFolds.Directive(mToken);
       end
-      else if Token.Kind = TPascalTokenKind.Comment then
-        // Blockkommentar über mehrere Zeilen.
-        AddRange(AList, Token.StartPos.Line, Token.EndPos.Line, KindComment);
-      PreviousLine := Token.EndPos.Line;
+      else if mToken.Kind = TPascalTokenKind.Comment then
+      begin
+        mFolds.Comment(mToken);
+      end;
+      mFolds.PreviousLine := mToken.EndPos.Line;
     end;
-    if LineStart >= 0 then
-      AddRange(AList, LineStart, LineEnd, KindComment);
+    mFolds.CloseLineComments;
   finally
-    Regions.Free;
+    mFolds.Regions.Free;
   end;
 end;
 
@@ -206,11 +273,17 @@ begin
       begin
         Result := ALeft.StartLine - ARight.StartLine;
         if Result = 0 then
+        begin
           Result := ARight.EndLine - ALeft.EndLine;
+        end;
       end));
     for Range in List do
+    begin
       if (Unique.Count = 0) or (Unique.Last.StartLine <> Range.StartLine) then
+      begin
         Unique.Add(Range);
+      end;
+    end;
     Result := Unique.ToArray;
   finally
     Unique.Free;
@@ -230,7 +303,9 @@ begin
     Item.AddPair('startLine', TJSONNumber.Create(Range.StartLine));
     Item.AddPair('endLine', TJSONNumber.Create(Range.EndLine));
     if Range.Kind <> '' then
+    begin
       Item.AddPair('kind', Range.Kind);
+    end;
     Result.AddElement(Item);
   end;
 end;
@@ -246,10 +321,15 @@ var
   Form: TDfmDocument;
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri)) then
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "textDocument.uri" fehlt in ' + Method);
+  begin
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TFoldingRangesText.FieldTextDocumentUriMissingIn].Text + Method);
+  end;
   // Nicht geöffnete Dokumente haben keine Faltbereiche.
   if not FStore.TryGet(Uri, Document) then
+  begin
     Exit(TJSONNull.Create);
+  end;
   // Formulardateien (#44) haben einen eigenen Baum.
   if TDfmParser.IsFormFile(Uri) then
   begin
@@ -267,5 +347,8 @@ begin
   ACancellation.ThrowIfCancellationRequested;
   Result := ToJson(Collect(Tree));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.FoldingRanges', cTexts);
 
 end.

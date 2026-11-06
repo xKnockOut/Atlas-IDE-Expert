@@ -122,6 +122,10 @@ type
     FDefines: TUsesDefinesFunc;
     FComponent: TArray<Boolean>;
     FNode: Integer;
+    FDepth: Integer;
+    FOutgoing: Boolean;
+    FDistance: TArray<Integer>;
+    FExpanded: TArray<Boolean>;
     function InComponent(ANode: Integer): Boolean;
     function EdgeBetween(ASource, ATarget: Integer; ASection: TUsesSection; out AEdge: TUsesEdge): Boolean;
     function UsesCyclePath(ATarget: Integer): string;
@@ -129,8 +133,21 @@ type
     procedure Locate(const AEdge: TUsesEdge; var ARelation: TUnitRelation);
     function FromEdge(const AEdge: TUsesEdge; AOutgoing: Boolean): TUnitRelation;
     function Distances(AStart: Integer; AOutgoing: Boolean): TArray<Integer>;
-    function Expand(ANode, ALevel, ADepth: Integer; AOutgoing: Boolean; const ADistance: TArray<Integer>;
-      var AExpanded: TArray<Boolean>): TArray<TUnitRelation>;
+    /// <summary>Eingehende Kanten von ANode, nach Name der verwendenden Unit, dann interface vor implementation.
+    /// </summary>
+    function IncomingEdges(const ANode: TUsesNode): TUsesEdges;
+    /// <summary>Kinder von ARelation (Unit AOther auf Ebene ALevel + 1) oder Markierung als wiederholt.</summary>
+    procedure ExpandChild(var ARelation: TUnitRelation; AOther, ALevel: Integer);
+    /// <summary>Baum unter ANode auf Ebene ALevel mit FDepth, FOutgoing, FDistance und FExpanded.</summary>
+    function Expand(ANode, ALevel: Integer): TArray<TUnitRelation>;
+    /// <summary>Baum unter FNode; AMarkStart: FNode selbst gilt als schon ausgeklappt.</summary>
+    function ExpandFrom(ADepth: Integer; AOutgoing: Boolean; const ADistance: TArray<Integer>;
+      AMarkStart: Boolean): TArray<TUnitRelation>;
+    procedure MarkComponent(var AResult: TUnitRelations);
+    /// <summary>Bäume über ADepth Ebenen an die erste Ebene von „Verwendet“ (aus dem Text) hängen.</summary>
+    procedure AttachUsesTrees(var AResult: TUnitRelations; ADepth: Integer);
+    procedure MarkCycles(var AResult: TUnitRelations);
+    procedure BuildFound(var AResult: TUnitRelations; ADepth: Integer);
     function TextUses(const AFileName: string): TArray<TUnitRelation>;
   public
     /// <summary>ALocator findet die Fundstellen der Kanten; AReader/ADefines lesen die uses der Unit selbst.</summary>
@@ -170,8 +187,12 @@ var
   Item: Integer;
 begin
   for Item in ANodes do
+  begin
     if Item = ANode then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -182,11 +203,13 @@ var
 begin
   Result := AFileName;
   for Index := Length(Result) downto 1 do
+  begin
     if (Result[Index] = '\') or (Result[Index] = '/') then
     begin
       Result := Copy(Result, Index + 1, MaxInt);
       Break;
     end;
+  end;
   Result := ChangeFileExt(Result, '');
 end;
 
@@ -196,8 +219,12 @@ var
   Name: string;
 begin
   for Name in ANames do
+  begin
     if SameText(Name, AName) or EndsText('.' + Name, AName) or EndsText('.' + AName, Name) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -217,9 +244,13 @@ end;
 class function TUnitRelationsBuilder.SectionName(ASection: TUsesSection): string;
 begin
   if ASection = TUsesSection.Interface_ then
-    Result := 'interface'
+  begin
+    Result := 'interface';
+  end
   else
+  begin
     Result := 'implementation';
+  end;
 end;
 
 function TUnitRelationsBuilder.InComponent(ANode: Integer): Boolean;
@@ -233,11 +264,13 @@ var
   Edge: TUsesEdge;
 begin
   for Edge in FGraph.Node(ASource).Outgoing do
+  begin
     if (Edge.Target = ATarget) and (Edge.Section = ASection) then
     begin
       AEdge := Edge;
       Exit(True);
     end;
+  end;
   AEdge := Default(TUsesEdge);
   Result := False;
 end;
@@ -249,14 +282,20 @@ var
 begin
   Result := '';
   if not EdgeBetween(FNode, ATarget, TUsesSection.Interface_, First) then
+  begin
     Exit;
+  end;
   if ATarget = FNode then
-    Back := nil
+  begin
+    Back := nil;
+  end
   else
   begin
     Back := FGraph.Path(ATarget, FNode, InterfaceUsesOnly);
     if Back = nil then
+    begin
       Exit;
+    end;
   end;
   Result := FGraph.Describe(TUsesEdges.Create(First) + Back);
 end;
@@ -268,14 +307,20 @@ var
 begin
   Result := '';
   if not EdgeBetween(ASource, FNode, TUsesSection.Interface_, Last) then
+  begin
     Exit;
+  end;
   if ASource = FNode then
-    Forth := nil
+  begin
+    Forth := nil;
+  end
   else
   begin
     Forth := FGraph.Path(FNode, ASource, InterfaceUsesOnly);
     if Forth = nil then
+    begin
       Exit;
+    end;
   end;
   Result := FGraph.Describe(Forth + TUsesEdges.Create(Last));
 end;
@@ -302,9 +347,13 @@ var
 begin
   Result := Default(TUnitRelation);
   if AOutgoing then
-    Other := AEdge.Target
+  begin
+    Other := AEdge.Target;
+  end
   else
+  begin
     Other := AEdge.Source;
+  end;
   Node := FGraph.Node(Other);
   Result.Name := Node.UnitName;
   Result.FileName := Node.FileName;
@@ -324,7 +373,9 @@ var
   procedure Visit(ANext: Integer);
   begin
     if Result[ANext] >= 0 then
+    begin
       Exit;
+    end;
     Result[ANext] := Result[Current] + 1;
     Queue.Enqueue(ANext);
   end;
@@ -332,7 +383,9 @@ var
 begin
   SetLength(Result, FGraph.NodeCount);
   for Current := 0 to High(Result) do
+  begin
     Result[Current] := -1;
+  end;
   Result[AStart] := 0;
   Queue := TQueue<Integer>.Create;
   try
@@ -344,94 +397,137 @@ begin
       if AOutgoing then
       begin
         for Edge in Node.Outgoing do
+        begin
           Visit(Edge.Target);
+        end;
       end
       else
+      begin
         for Ref in Node.Incoming do
+        begin
           Visit(Ref.Source);
+        end;
+      end;
     end;
   finally
     Queue.Free;
   end;
 end;
 
-function TUnitRelationsBuilder.Expand(ANode, ALevel, ADepth: Integer; AOutgoing: Boolean;
-  const ADistance: TArray<Integer>; var AExpanded: TArray<Boolean>): TArray<TUnitRelation>;
+function TUnitRelationsBuilder.IncomingEdges(const ANode: TUsesNode): TUsesEdges;
 var
-  Node: TUsesNode;
-  Edge: TUsesEdge;
-  Ref: TUsesEdgeRef;
-  Edges: TUsesEdges;
-  Seen: TDictionary<Integer, Boolean>;
-  Relation: TUnitRelation;
-  Other: Integer;
-  Names: TArray<string>;
-  Index, Swap: Integer;
-  Temp: TUsesEdge;
+  mRef: TUsesEdgeRef;
+  mNames: TArray<string>;
+  mIndex, mSwap: Integer;
+  mTemp: TUsesEdge;
 begin
   Result := nil;
-  Node := FGraph.Node(ANode);
-  // Kanten der Ebene: ausgehend in Quelltextreihenfolge, eingehend nach Name der verwendenden Unit.
-  Edges := nil;
-  if AOutgoing then
-    Edges := Node.Outgoing
+  for mRef in ANode.Incoming do
+  begin
+    Result := Result + [FGraph.Node(mRef.Source).Outgoing[mRef.Item]];
+  end;
+  SetLength(mNames, Length(Result));
+  for mIndex := 0 to High(Result) do
+  begin
+    mNames[mIndex] := LowerCase(FGraph.Node(Result[mIndex].Source).UnitName);
+  end;
+  // Einfügesortierung: stabil und eindeutig (Name, dann interface vor implementation).
+  for mIndex := 1 to High(Result) do
+  begin
+    mSwap := mIndex;
+    while (mSwap > 0) and ((mNames[mSwap - 1] > mNames[mSwap]) or ((mNames[mSwap - 1] = mNames[mSwap]) and
+      (Ord(Result[mSwap - 1].Section) > Ord(Result[mSwap].Section)))) do
+    begin
+      mTemp := Result[mSwap - 1];
+      Result[mSwap - 1] := Result[mSwap];
+      Result[mSwap] := mTemp;
+      mNames[mSwap] := mNames[mSwap - 1];
+      mNames[mSwap - 1] := LowerCase(FGraph.Node(Result[mSwap - 1].Source).UnitName);
+      Dec(mSwap);
+    end;
+  end;
+end;
+
+procedure TUnitRelationsBuilder.ExpandChild(var ARelation: TUnitRelation; AOther, ALevel: Integer);
+begin
+  // Kinder nur unterhalb der gewünschten Tiefe; jede Unit einmal, auf ihrer kürzesten Ebene.
+  if (FDepth <> 0) and (ALevel + 1 >= FDepth) then
+  begin
+    Exit;
+  end;
+  if FExpanded[AOther] or (FDistance[AOther] <> ALevel + 1) then
+  begin
+    if FOutgoing then
+    begin
+      ARelation.Repeated := FGraph.Node(AOther).Outgoing <> nil;
+    end
+    else
+    begin
+      ARelation.Repeated := FGraph.Node(AOther).Incoming <> nil;
+    end;
+  end
   else
   begin
-    for Ref in Node.Incoming do
-      Edges := Edges + [FGraph.Node(Ref.Source).Outgoing[Ref.Item]];
-    SetLength(Names, Length(Edges));
-    for Index := 0 to High(Edges) do
-      Names[Index] := LowerCase(FGraph.Node(Edges[Index].Source).UnitName);
-    // Einfügesortierung: stabil und eindeutig (Name, dann interface vor implementation).
-    for Index := 1 to High(Edges) do
-    begin
-      Swap := Index;
-      while (Swap > 0) and ((Names[Swap - 1] > Names[Swap]) or ((Names[Swap - 1] = Names[Swap]) and
-        (Ord(Edges[Swap - 1].Section) > Ord(Edges[Swap].Section)))) do
-      begin
-        Temp := Edges[Swap - 1];
-        Edges[Swap - 1] := Edges[Swap];
-        Edges[Swap] := Temp;
-        Names[Swap] := Names[Swap - 1];
-        Names[Swap - 1] := LowerCase(FGraph.Node(Edges[Swap - 1].Source).UnitName);
-        Dec(Swap);
-      end;
-    end;
+    FExpanded[AOther] := True;
+    ARelation.Children := Expand(AOther, ALevel + 1);
   end;
-  Seen := TDictionary<Integer, Boolean>.Create;
+end;
+
+function TUnitRelationsBuilder.Expand(ANode, ALevel: Integer): TArray<TUnitRelation>;
+var
+  mEdge: TUsesEdge;
+  mEdges: TUsesEdges;
+  mSeen: TDictionary<Integer, Boolean>;
+  mRelation: TUnitRelation;
+  mOther: Integer;
+begin
+  Result := nil;
+  // Kanten der Ebene: ausgehend in Quelltextreihenfolge, eingehend nach Name der verwendenden Unit.
+  if FOutgoing then
+  begin
+    mEdges := FGraph.Node(ANode).Outgoing;
+  end
+  else
+  begin
+    mEdges := IncomingEdges(FGraph.Node(ANode));
+  end;
+  mSeen := TDictionary<Integer, Boolean>.Create;
   try
-    for Edge in Edges do
+    for mEdge in mEdges do
     begin
-      if AOutgoing then
-        Other := Edge.Target
-      else
-        Other := Edge.Source;
-      // Eine Unit, die in beiden Listen steht, nur einmal (die erste Kante).
-      if Seen.ContainsKey(Other) then
-        Continue;
-      Seen.Add(Other, True);
-      Relation := FromEdge(Edge, AOutgoing);
-      // Kinder nur unterhalb der gewünschten Tiefe; jede Unit einmal, auf ihrer kürzesten Ebene.
-      if (ADepth = 0) or (ALevel + 1 < ADepth) then
+      if FOutgoing then
       begin
-        if AExpanded[Other] or (ADistance[Other] <> ALevel + 1) then
-        begin
-          if AOutgoing then
-            Relation.Repeated := FGraph.Node(Other).Outgoing <> nil
-          else
-            Relation.Repeated := FGraph.Node(Other).Incoming <> nil;
-        end
-        else
-        begin
-          AExpanded[Other] := True;
-          Relation.Children := Expand(Other, ALevel + 1, ADepth, AOutgoing, ADistance, AExpanded);
-        end;
+        mOther := mEdge.Target;
+      end
+      else
+      begin
+        mOther := mEdge.Source;
       end;
-      Result := Result + [Relation];
+      // Eine Unit, die in beiden Listen steht, nur einmal (die erste Kante).
+      if mSeen.ContainsKey(mOther) then
+      begin
+        Continue;
+      end;
+      mSeen.Add(mOther, True);
+      mRelation := FromEdge(mEdge, FOutgoing);
+      ExpandChild(mRelation, mOther, ALevel);
+      Result := Result + [mRelation];
     end;
   finally
-    Seen.Free;
+    mSeen.Free;
   end;
+end;
+
+function TUnitRelationsBuilder.ExpandFrom(ADepth: Integer; AOutgoing: Boolean; const ADistance: TArray<Integer>;
+  AMarkStart: Boolean): TArray<TUnitRelation>;
+begin
+  FDepth := ADepth;
+  FOutgoing := AOutgoing;
+  FDistance := ADistance;
+  FExpanded := nil;
+  SetLength(FExpanded, FGraph.NodeCount);
+  FExpanded[FNode] := AMarkStart;
+  Result := Expand(FNode, 0);
 end;
 
 function TUnitRelationsBuilder.TextUses(const AFileName: string): TArray<TUnitRelation>;
@@ -445,18 +541,26 @@ var
 begin
   Result := nil;
   if not (Assigned(FReader) and FReader(AFileName, Text)) then
+  begin
     Exit;
+  end;
   Defines := nil;
   if Assigned(FDefines) then
+  begin
     Defines := FDefines(AFileName);
+  end;
   for Reference in TUsesLocator.UsesReferences(Text, Defines) do
   begin
     Relation := Default(TUnitRelation);
     Relation.Name := Reference.Name;
     if Reference.InInterface then
-      Relation.Section := TUsesSection.Interface_
+    begin
+      Relation.Section := TUsesSection.Interface_;
+    end
     else
+    begin
       Relation.Section := TUsesSection.Implementation_;
+    end;
     Relation.LocationFile := AFileName;
     Relation.Line := Reference.Range.StartPos.Line;
     Relation.Character := Reference.Range.StartPos.Character;
@@ -479,21 +583,129 @@ begin
   Result := Build(AFileName, ADepth, AUnused, nil);
 end;
 
+procedure TUnitRelationsBuilder.MarkComponent(var AResult: TUnitRelations);
+var
+  mCycle: TUsesCycle;
+  mMember: Integer;
+begin
+  for mCycle in FGraph.Cycles(InterfaceUsesOnly) do
+  begin
+    if ContainsNode(FNode, mCycle.Component) then
+    begin
+      for mMember in mCycle.Component do
+      begin
+        FComponent[mMember] := True;
+      end;
+      AResult.InCycle := True;
+    end;
+  end;
+end;
+
+procedure TUnitRelationsBuilder.AttachUsesTrees(var AResult: TUnitRelations; ADepth: Integer);
+var
+  mIndex, mChild, mTarget: Integer;
+  mTree: TArray<TUnitRelation>;
+begin
+  mTree := ExpandFrom(ADepth, True, Distances(FNode, True), True);
+  for mIndex := 0 to High(AResult.Uses_) do
+  begin
+    mTarget := FGraph.IndexOf(AResult.Uses_[mIndex].Name);
+    if mTarget < 0 then
+    begin
+      Continue;
+    end;
+    for mChild := 0 to High(mTree) do
+    begin
+      if SameText(mTree[mChild].Name, FGraph.Node(mTarget).UnitName) then
+      begin
+        AResult.Uses_[mIndex].Children := mTree[mChild].Children;
+        AResult.Uses_[mIndex].Repeated := mTree[mChild].Repeated;
+        // Steht die Unit in beiden Listen, gehört der Baum zum ersten Eintrag.
+        mTree[mChild].Name := '';
+        Break;
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Kreispfade der interface-Einträge, die im Kreis der Unit liegen.</summary>
+procedure TUnitRelationsBuilder.MarkCycles(var AResult: TUnitRelations);
+var
+  mIndex, mMember: Integer;
+begin
+  for mIndex := 0 to High(AResult.UsedBy) do
+  begin
+    mMember := FGraph.IndexOfFile(AResult.UsedBy[mIndex].FileName);
+    if (AResult.UsedBy[mIndex].Section = TUsesSection.Interface_) and InComponent(mMember) then
+    begin
+      AResult.UsedBy[mIndex].CyclePath := UsedByCyclePath(mMember);
+      AResult.UsedBy[mIndex].Cycle := AResult.UsedBy[mIndex].CyclePath <> '';
+    end;
+  end;
+  for mIndex := 0 to High(AResult.Uses_) do
+  begin
+    mMember := FGraph.IndexOf(AResult.Uses_[mIndex].Name);
+    if (AResult.Uses_[mIndex].Section = TUsesSection.Interface_) and InComponent(mMember) then
+    begin
+      AResult.Uses_[mIndex].CyclePath := UsesCyclePath(mMember);
+      AResult.Uses_[mIndex].Cycle := AResult.Uses_[mIndex].CyclePath <> '';
+      if AResult.CyclePath = '' then
+      begin
+        AResult.CyclePath := AResult.Uses_[mIndex].CyclePath;
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Beziehungen einer Unit, die im Graphen steht.</summary>
+procedure TUnitRelationsBuilder.BuildFound(var AResult: TUnitRelations; ADepth: Integer);
+var
+  mNode: TUsesNode;
+  mDistance: TArray<Integer>;
+begin
+  mNode := FGraph.Node(FNode);
+  AResult.Found := True;
+  AResult.UnitName := mNode.UnitName;
+  AResult.FileName := mNode.FileName;
+  MarkComponent(AResult);
+  AResult.RecompileCount := FGraph.RecompileCount(FNode);
+  AResult.DependencyCount := Length(FGraph.Dependencies(FNode, AllUsesSections));
+  AResult.DependentCount := Length(FGraph.Dependents(FNode, AllUsesSections));
+  // Ohne lesbaren Text: die Kanten des Graphen.
+  if (AResult.Uses_ = nil) and (mNode.Outgoing <> nil) then
+  begin
+    SetLength(mDistance, FGraph.NodeCount);
+    AResult.Uses_ := ExpandFrom(1, True, mDistance, False);
+  end;
+  // Bäume über alle bzw. ADepth Ebenen; die erste Ebene von „Verwendet“ bleibt die aus dem Text.
+  if ADepth <> 1 then
+  begin
+    AttachUsesTrees(AResult, ADepth);
+    mDistance := Distances(FNode, False);
+  end
+  else
+  begin
+    // Nur direkt: Expand baut keine Kinder, die Abstände zählen nicht.
+    mDistance := nil;
+    SetLength(mDistance, FGraph.NodeCount);
+  end;
+  AResult.UsedBy := ExpandFrom(ADepth, False, mDistance, True);
+  MarkCycles(AResult);
+end;
+
 function TUnitRelationsBuilder.Build(const AFileName: string; ADepth: Integer; const AUnused,
   AOnlyImplementation: TArray<string>): TUnitRelations;
 var
-  Cycle: TUsesCycle;
-  Member, Index, Child, Target: Integer;
-  Expanded: TArray<Boolean>;
-  Distance: TArray<Integer>;
-  Tree: TArray<TUnitRelation>;
-  Node: TUsesNode;
+  mIndex, mDepth: Integer;
 begin
   Result := Default(TUnitRelations);
   Result.FileName := AFileName;
   Result.UnitName := BareName(AFileName);
-  if ADepth < 0 then
-    ADepth := 1;
+  mDepth := ADepth;
+  if mDepth < 0 then
+  begin
+    mDepth := 1;
+  end;
   FNode := FGraph.IndexOfFile(AFileName);
   FComponent := nil;
   SetLength(FComponent, FGraph.NodeCount);
@@ -501,87 +713,13 @@ begin
   Result.Uses_ := TextUses(AFileName);
   if FNode >= 0 then
   begin
-    Node := FGraph.Node(FNode);
-    Result.Found := True;
-    Result.UnitName := Node.UnitName;
-    Result.FileName := Node.FileName;
-    for Cycle in FGraph.Cycles(InterfaceUsesOnly) do
-      if ContainsNode(FNode, Cycle.Component) then
-      begin
-        for Member in Cycle.Component do
-          FComponent[Member] := True;
-        Result.InCycle := True;
-      end;
-    Result.RecompileCount := FGraph.RecompileCount(FNode);
-    Result.DependencyCount := Length(FGraph.Dependencies(FNode, AllUsesSections));
-    Result.DependentCount := Length(FGraph.Dependents(FNode, AllUsesSections));
-    // Ohne lesbaren Text: die Kanten des Graphen.
-    if (Result.Uses_ = nil) and (Node.Outgoing <> nil) then
-    begin
-      SetLength(Distance, FGraph.NodeCount);
-      SetLength(Expanded, FGraph.NodeCount);
-      Result.Uses_ := Expand(FNode, 0, 1, True, Distance, Expanded);
-    end;
-    // Bäume über alle bzw. ADepth Ebenen; die erste Ebene von „Verwendet“ bleibt die aus dem Text.
-    if ADepth <> 1 then
-    begin
-      Distance := Distances(FNode, True);
-      Expanded := nil;
-      SetLength(Expanded, FGraph.NodeCount);
-      Expanded[FNode] := True;
-      Tree := Expand(FNode, 0, ADepth, True, Distance, Expanded);
-      for Index := 0 to High(Result.Uses_) do
-      begin
-        Target := FGraph.IndexOf(Result.Uses_[Index].Name);
-        for Child := 0 to High(Tree) do
-          if (Target >= 0) and SameText(Tree[Child].Name, FGraph.Node(Target).UnitName) then
-          begin
-            Result.Uses_[Index].Children := Tree[Child].Children;
-            Result.Uses_[Index].Repeated := Tree[Child].Repeated;
-            // Steht die Unit in beiden Listen, gehört der Baum zum ersten Eintrag.
-            Tree[Child].Name := '';
-            Break;
-          end;
-      end;
-    end;
-    if ADepth <> 1 then
-      Distance := Distances(FNode, False)
-    else
-    begin
-      // Nur direkt: Expand baut keine Kinder, die Abstände zählen nicht.
-      Distance := nil;
-      SetLength(Distance, FGraph.NodeCount);
-    end;
-    Expanded := nil;
-    SetLength(Expanded, FGraph.NodeCount);
-    Expanded[FNode] := True;
-    Result.UsedBy := Expand(FNode, 0, ADepth, False, Distance, Expanded);
-    for Index := 0 to High(Result.UsedBy) do
-    begin
-      Member := FGraph.IndexOfFile(Result.UsedBy[Index].FileName);
-      if (Result.UsedBy[Index].Section = TUsesSection.Interface_) and InComponent(Member) then
-      begin
-        Result.UsedBy[Index].CyclePath := UsedByCyclePath(Member);
-        Result.UsedBy[Index].Cycle := Result.UsedBy[Index].CyclePath <> '';
-      end;
-    end;
-    for Index := 0 to High(Result.Uses_) do
-    begin
-      Target := FGraph.IndexOf(Result.Uses_[Index].Name);
-      if (Result.Uses_[Index].Section = TUsesSection.Interface_) and InComponent(Target) then
-      begin
-        Result.Uses_[Index].CyclePath := UsesCyclePath(Target);
-        Result.Uses_[Index].Cycle := Result.Uses_[Index].CyclePath <> '';
-        if Result.CyclePath = '' then
-          Result.CyclePath := Result.Uses_[Index].CyclePath;
-      end;
-    end;
+    BuildFound(Result, mDepth);
   end;
-  for Index := 0 to High(Result.Uses_) do
+  for mIndex := 0 to High(Result.Uses_) do
   begin
-    Result.Uses_[Index].Unused := NamedIn(Result.Uses_[Index].Name, AUnused);
-    Result.Uses_[Index].OnlyImplementation := (Result.Uses_[Index].Section = TUsesSection.Interface_) and
-      NamedIn(Result.Uses_[Index].Name, AOnlyImplementation);
+    Result.Uses_[mIndex].Unused := NamedIn(Result.Uses_[mIndex].Name, AUnused);
+    Result.Uses_[mIndex].OnlyImplementation := (Result.Uses_[mIndex].Section = TUsesSection.Interface_) and
+      NamedIn(Result.Uses_[mIndex].Name, AOnlyImplementation);
   end;
 end;
 
@@ -596,7 +734,9 @@ begin
   Result.UnitName := BareName(AFileName);
   Node := AGraph.IndexOfFile(AFileName);
   if Node < 0 then
+  begin
     Exit;
+  end;
   Result.Found := True;
   Result.UnitName := AGraph.Node(Node).UnitName;
   Result.FileName := AGraph.Node(Node).FileName;
@@ -605,7 +745,9 @@ begin
   Result.RecompileCount := Length(Units);
   SetLength(Result.Units, Min(Max(ALimit, 0), Length(Units)));
   for Index := 0 to High(Result.Units) do
+  begin
     Result.Units[Index] := AGraph.Node(Units[Index]).UnitName;
+  end;
 end;
 
 class function TUnitRelationsBuilder.CostToJson(const ACost: TUnitInterfaceCost): TJSONObject;
@@ -620,7 +762,9 @@ begin
   Result.AddPair('recompileCount', TJSONNumber.Create(ACost.RecompileCount));
   List := TJSONArray.Create;
   for Name in ACost.Units do
+  begin
     List.Add(Name);
+  end;
   Result.AddPair('units', List);
 end;
 
@@ -635,7 +779,9 @@ var
 begin
   SetLength(Result, AGraph.NodeCount);
   for Current := 0 to High(Result) do
+  begin
     Result[Current] := -1;
+  end;
   Result[ATarget] := ATarget;
   Queue := TQueue<Integer>.Create;
   try
@@ -647,9 +793,13 @@ begin
       begin
         Source := AGraph.Node(Ref.Source);
         if not Source.Active or (Result[Ref.Source] >= 0) then
+        begin
           Continue;
+        end;
         if AInterfaceOnly and (Source.Outgoing[Ref.Item].Section <> TUsesSection.Interface_) then
+        begin
           Continue;
+        end;
         Result[Ref.Source] := Current;
         Queue.Enqueue(Ref.Source);
       end;
@@ -666,7 +816,9 @@ var
 begin
   Result := '';
   if (AStart = ATarget) or (ANext[AStart] < 0) then
+  begin
     Exit;
+  end;
   Result := AGraph.Node(ATarget).UnitName;
   Node := AStart;
   while Node <> ATarget do
@@ -688,7 +840,9 @@ begin
   Result.UnitName := BareName(AFileName);
   Target := AGraph.IndexOfFile(AFileName);
   if Target < 0 then
+  begin
     Exit;
+  end;
   Result.Found := True;
   Result.UnitName := AGraph.Node(Target).UnitName;
   Result.FileName := AGraph.Node(Target).FileName;
@@ -699,7 +853,9 @@ begin
   for Node in Order do
   begin
     if ByAny[Node] < 0 then
+    begin
       Continue;
+    end;
     Candidate := Default(TUnitUseCandidate);
     Candidate.Name := AGraph.Node(Node).UnitName;
     Candidate.FileName := AGraph.Node(Node).FileName;
@@ -725,9 +881,13 @@ begin
     Item := TJSONObject.Create;
     Item.AddPair('name', Candidate.Name);
     if Candidate.FileName <> '' then
+    begin
       Item.AddPair('file', Candidate.FileName);
+    end;
     if Candidate.InterfacePath <> '' then
+    begin
       Item.AddPair('interfacePath', Candidate.InterfacePath);
+    end;
     Item.AddPair('path', Candidate.Path);
     List.AddElement(Item);
   end;
@@ -743,21 +903,31 @@ begin
   Result := TJSONObject.Create;
   Result.AddPair('name', ARelation.Name);
   if ARelation.FileName <> '' then
+  begin
     Result.AddPair('file', ARelation.FileName);
+  end;
   Result.AddPair('section', TUnitRelationsBuilder.SectionName(ARelation.Section));
   if ARelation.Library_ then
+  begin
     Result.AddPair('library', TJSONBool.Create(True));
+  end;
   if ARelation.Cycle then
   begin
     Result.AddPair('cycle', TJSONBool.Create(True));
     Result.AddPair('cyclePath', ARelation.CyclePath);
   end;
   if ARelation.Unused then
+  begin
     Result.AddPair('unused', TJSONBool.Create(True));
+  end;
   if ARelation.OnlyImplementation then
+  begin
     Result.AddPair('onlyImplementation', TJSONBool.Create(True));
+  end;
   if ARelation.Repeated then
+  begin
     Result.AddPair('repeated', TJSONBool.Create(True));
+  end;
   if ARelation.Line >= 0 then
   begin
     Location := TJSONObject.Create;
@@ -770,7 +940,9 @@ begin
   begin
     Children := TJSONArray.Create;
     for Child in ARelation.Children do
+    begin
       Children.AddElement(RelationJson(Child));
+    end;
     Result.AddPair('children', Children);
   end;
 end;
@@ -789,14 +961,20 @@ begin
   Result.AddPair('dependents', TJSONNumber.Create(ARelations.DependentCount));
   Result.AddPair('inCycle', TJSONBool.Create(ARelations.InCycle));
   if ARelations.CyclePath <> '' then
+  begin
     Result.AddPair('cyclePath', ARelations.CyclePath);
+  end;
   List := TJSONArray.Create;
   for Relation in ARelations.Uses_ do
+  begin
     List.AddElement(RelationJson(Relation));
+  end;
   Result.AddPair('uses', List);
   List := TJSONArray.Create;
   for Relation in ARelations.UsedBy do
+  begin
     List.AddElement(RelationJson(Relation));
+  end;
   Result.AddPair('usedBy', List);
 end;
 

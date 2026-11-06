@@ -42,6 +42,16 @@ type
     function OnText: string;
   end;
 
+  /// <summary>Was abgeschaltet wird, in welchem Bereich und mit welcher Begründung.</summary>
+  TDisableWarningRequest = record
+    Switch: TDisableWarningSwitch;
+    Scope: TDisableWarningScope;
+    /// <summary>Begründung für den Kommentar; '' ohne.</summary>
+    Reason: string;
+    class function Create(const ASwitch: TDisableWarningSwitch; AScope: TDisableWarningScope;
+      const AReason: string): TDisableWarningRequest; static;
+  end;
+
   TDisableWarning = class
   public
     /// <summary>Schalter für ACode in der Delphi-Version AVersion (BDS-Nummer); False bei Fehlern und
@@ -51,11 +61,10 @@ type
     class function RoutineAt(ATree: TSyntaxTree; ALine: Integer): TSyntaxNode; static;
     /// <summary>Zeile (ab 0), hinter der der Kopf (unit X; program X; …) endet; -1 ohne Kopf.</summary>
     class function HeaderEndLine(ATree: TSyntaxTree): Integer; static;
-    /// <summary>Einfügungen für ASwitch im Bereich AScope um Zeile ALine (ab 0); False, wenn es den Bereich dort
-    /// nicht gibt (Zeile außerhalb des Texts, keine Routine, kein Kopf).</summary>
+    /// <summary>Einfügungen für den Schalter von ARequest in seinem Bereich um Zeile ALine (ab 0); False, wenn es
+    /// den Bereich dort nicht gibt (Zeile außerhalb des Texts, keine Routine, kein Kopf).</summary>
     class function Edits(const AText: string; ATree: TSyntaxTree; ALine: Integer;
-      const ASwitch: TDisableWarningSwitch; AScope: TDisableWarningScope; const AReason: string;
-      out AEdits: TArray<TTextEdit>): Boolean; static;
+      const ARequest: TDisableWarningRequest; out AEdits: TArray<TTextEdit>): Boolean; static;
     /// <summary>Begründung als einzeiliger Kommentar; '' ohne.</summary>
     class function ReasonComment(const AReason: string): string; static;
   end;
@@ -73,21 +82,33 @@ uses
 function TDisableWarningSwitch.OffText: string;
 begin
   if Hint then
-    Result := '{$HINTS OFF}'
+  begin
+    Result := '{$HINTS OFF}';
+  end
   else if Identifier <> '' then
-    Result := '{$WARN ' + Identifier + ' OFF}'
+  begin
+    Result := '{$WARN ' + Identifier + ' OFF}';
+  end
   else
+  begin
     Result := '{$WARNINGS OFF}';
+  end;
 end;
 
 function TDisableWarningSwitch.OnText: string;
 begin
   if Hint then
-    Result := '{$HINTS ON}'
+  begin
+    Result := '{$HINTS ON}';
+  end
   else if Identifier <> '' then
-    Result := '{$WARN ' + Identifier + ' ON}'
+  begin
+    Result := '{$WARN ' + Identifier + ' ON}';
+  end
   else
+  begin
     Result := '{$WARNINGS ON}';
+  end;
 end;
 
 { TDisableWarning }
@@ -120,19 +141,25 @@ begin
   // Von oben nach unten absteigen; die tiefste Routine mit Rumpf (verschachtelte Routinen) gewinnt.
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) then
+  begin
     Exit;
+  end;
   Node := ATree.Root;
   repeat
     Descended := False;
     for Index := 0 to Node.ChildCount - 1 do
+    begin
       if (Node[Index].StartPos.Line <= ALine) and (ALine <= Node[Index].EndPos.Line) then
       begin
         Node := Node[Index];
         if (Node.Kind = TSyntaxKind.RoutineDecl) and (Node.FindChild(TSyntaxKind.Block) <> nil) then
+        begin
           Result := Node;
+        end;
         Descended := True;
         Break;
       end;
+    end;
   until not Descended;
 end;
 
@@ -144,22 +171,30 @@ var
 begin
   Result := -1;
   if ATree = nil then
+  begin
     Exit;
+  end;
   Tokens := ATree.Tokens;
   Started := False;
   for Index := 0 to High(Tokens) do
   begin
     if Tokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+    begin
       Continue;
+    end;
     if not Started then
     begin
       // Der Kopf muss das erste Wort sein; sonst (Include-Datei, Ausschnitt) gibt es keinen.
       if not MatchText(Tokens[Index].Text, ['unit', 'program', 'library', 'package']) then
+      begin
         Exit;
+      end;
       Started := True;
     end
     else if Tokens[Index].IsSymbol(';') then
+    begin
       Exit(Tokens[Index].EndPos.Line);
+    end;
   end;
 end;
 
@@ -168,7 +203,9 @@ begin
   Result := StringReplace(AReason, #13#10, ' ', [rfReplaceAll]);
   Result := Trim(StringReplace(StringReplace(Result, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]));
   if Result <> '' then
+  begin
     Result := ' // ' + Result;
+  end;
 end;
 
 /// <summary>Neue Zeile vor ALine.</summary>
@@ -183,9 +220,18 @@ begin
   Result := TTextEdit.Create(TTextRange.Create(ALine, ALength, ALine, ALength), ALineBreak + AText);
 end;
 
+{ TDisableWarningRequest }
+
+class function TDisableWarningRequest.Create(const ASwitch: TDisableWarningSwitch; AScope: TDisableWarningScope;
+  const AReason: string): TDisableWarningRequest;
+begin
+  Result.Switch := ASwitch;
+  Result.Scope := AScope;
+  Result.Reason := AReason;
+end;
+
 class function TDisableWarning.Edits(const AText: string; ATree: TSyntaxTree; ALine: Integer;
-  const ASwitch: TDisableWarningSwitch; AScope: TDisableWarningScope; const AReason: string;
-  out AEdits: TArray<TTextEdit>): Boolean;
+  const ARequest: TDisableWarningRequest; out AEdits: TArray<TTextEdit>): Boolean;
 var
   Lines: TArray<string>;
   LineBreak, Indent: string;
@@ -196,14 +242,19 @@ begin
   Lines := TTextLines.SplitLines(AText, LineBreak);
   Result := (ALine >= 0) and (ALine <= High(Lines));
   if not Result then
+  begin
     Exit;
-  case AScope of
+  end;
+  case ARequest.Scope of
     TDisableWarningScope.UnitWide:
       begin
         First := HeaderEndLine(ATree);
         Result := (First >= 0) and (First <= High(Lines));
         if Result then
-          AEdits := [After(First, Length(Lines[First]), ASwitch.OffText + ReasonComment(AReason), LineBreak)];
+        begin
+          AEdits := [After(First, Length(Lines[First]), ARequest.Switch.OffText + ReasonComment(ARequest.Reason),
+            LineBreak)];
+        end;
         Exit;
       end;
     TDisableWarningScope.Routine:
@@ -211,7 +262,9 @@ begin
         Routine := RoutineAt(ATree, ALine);
         Result := Routine <> nil;
         if not Result then
+        begin
           Exit;
+        end;
         First := Routine.StartPos.Line;
         Last := Routine.EndPos.Line;
       end;
@@ -221,10 +274,12 @@ begin
   end;
   Result := Last <= High(Lines);
   if not Result then
+  begin
     Exit;
+  end;
   Indent := TTextLines.IndentOf(Lines[First]);
-  AEdits := [Before(First, Indent + ASwitch.OffText + ReasonComment(AReason), LineBreak),
-    After(Last, Length(Lines[Last]), Indent + ASwitch.OnText, LineBreak)];
+  AEdits := [Before(First, Indent + ARequest.Switch.OffText + ReasonComment(ARequest.Reason), LineBreak),
+    After(Last, Length(Lines[Last]), Indent + ARequest.Switch.OnText, LineBreak)];
 end;
 
 end.

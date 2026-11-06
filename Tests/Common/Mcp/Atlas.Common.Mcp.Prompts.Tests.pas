@@ -119,9 +119,13 @@ const
 function Joined(const AArguments: TJSONObject): string;
 begin
   if AArguments = nil then
-    Result := '{}'
+  begin
+    Result := '{}';
+  end
   else
+  begin
     Result := AArguments.ToJSON;
+  end;
 end;
 
 procedure TMcpPromptsTests.AddTool(const AName: string; AKind: TMcpToolKind);
@@ -136,6 +140,24 @@ begin
     end, AKind);
 end;
 
+/// <summary>Formular- und Unittext der Prompts nach Dateiendung.</summary>
+function ReadPromptText(const AFileName: string; out AText: string): Boolean;
+begin
+  Result := True;
+  if SameText(ExtractFileExt(AFileName), '.dfm') then
+  begin
+    AText := cFormText;
+  end
+  else if SameText(ExtractFileExt(AFileName), '.pas') then
+  begin
+    AText := cUnitText;
+  end
+  else
+  begin
+    Result := False;
+  end;
+end;
+
 procedure TMcpPromptsTests.Setup;
 var
   mName: string;
@@ -144,7 +166,9 @@ begin
   for mName in TArray<string>.Create('get_unit_outline', 'get_diagnostics', 'get_metrics', 'find_unused_code',
     'get_dfm_info', 'get_declaration', 'get_call_hierarchy', 'get_impact', 'explain_finding', 'get_last_build',
     'get_unit_dependencies', 'get_todos') do
+  begin
     AddTool(mName, TMcpToolKind.Read);
+  end;
   AddTool('apply_code_action', TMcpToolKind.Write);
   AddTool('run_tests', TMcpToolKind.Process);
   FServer.AddResource('delphi://conventions', 'Konventionen', '', 'text/markdown',
@@ -165,7 +189,9 @@ begin
     begin
       FResolved := AUnit;
       if AUnit = 'Fremd.Unit' then
+      begin
         raise EMcpToolError.Create('"C:\Fremd\Fremd.Unit.pas" liegt außerhalb des Arbeitsbereichs (C:\P)');
+      end;
       Result := 'C:\P\' + AUnit + '.pas';
     end;
   FPrompts.ResolveFile :=
@@ -174,17 +200,7 @@ begin
       FResolved := APath;
       Result := 'C:\P\' + APath;
     end;
-  FPrompts.ReadText :=
-    function(const AFileName: string; out AText: string): Boolean
-    begin
-      Result := True;
-      if SameText(ExtractFileExt(AFileName), '.dfm') then
-        AText := cFormText
-      else if SameText(ExtractFileExt(AFileName), '.pas') then
-        AText := cUnitText
-      else
-        Result := False;
-    end;
+  FPrompts.ReadText := ReadPromptText;
   FPrompts.Changes :=
     function(const ABase: string): TMcpChangeSet
     begin
@@ -192,7 +208,9 @@ begin
       Result := FChanges;
       Result.Base := ABase;
       if ABase = '' then
+      begin
         Result.Base := 'HEAD';
+      end;
     end;
   FPrompts.Register;
 end;
@@ -254,7 +272,9 @@ begin
   mResult := FServer.ListPrompts;
   try
     for mItem in mResult.GetValue<TJSONArray>('prompts') do
+    begin
       Result := Result + mItem.GetValue<string>('name') + ',';
+    end;
   finally
     mResult.Free;
   end;
@@ -546,7 +566,9 @@ begin
   mBuilder := TStringBuilder.Create;
   try
     for mIndex := 1 to 2000 do
+    begin
       mBuilder.Append(Format('Zeile %d mit Umlauten äöü', [mIndex])).Append(#10);
+    end;
     mText := mBuilder.ToString;
   finally
     mBuilder.Free;

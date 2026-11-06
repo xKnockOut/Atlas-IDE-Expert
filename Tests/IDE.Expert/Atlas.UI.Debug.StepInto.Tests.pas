@@ -11,6 +11,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Debugger')]
   TAtlasStepIntoWindowTests = class
   public
     /// <summary>Erste Benutzung ungemessen vorwegnehmen.</summary>
@@ -41,9 +42,13 @@ begin
   Result.Kind := AKind;
   Result.HasTarget := AAvailable;
   if AAvailable then
-    Result.Location := 'Haupt.pas:12'
+  begin
+    Result.Location := 'Haupt.pas:12';
+  end
   else
+  begin
     Result.Unavailable := TAtlasStepUnavailable.NoSource;
+  end;
 end;
 
 function Sample: TArray<TAtlasStepRow>;

@@ -69,6 +69,22 @@ type
 
 implementation
 
+uses
+  System.Generics.Collections,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TRecentMessagesText = (Characters);
+
+const
+  cTexts: array[TRecentMessagesText] of TAtlasText = (
+    (De: '… (%d Zeichen)'; En: '… (%d characters)'));
+
+{$SCOPEDENUMS OFF}
+
 const
   /// <summary>Platzhalter für die übrigen Werte eines Arrays bzw. Objekts über der Grenze.</summary>
   cRest = '"…"';
@@ -79,9 +95,14 @@ var
   mValue: TJSONString;
 begin
   if Length(AText) > AMaxString then
-    mValue := TJSONString.Create(Copy(AText, 1, AMaxString) + Format('… (%d Zeichen)', [Length(AText)]))
+  begin
+    mValue := TJSONString.Create(Copy(AText, 1, AMaxString) + cTexts[TRecentMessagesText.Characters].Fmt([
+      Length(AText)]));
+  end
   else
+  begin
     mValue := TJSONString.Create(AText);
+  end;
   try
     Result := mValue.ToJSON;
   finally
@@ -90,58 +111,83 @@ begin
 end;
 
 procedure WriteShort(const AValue: TJSONValue; AMaxString: Integer; const AOut: TStringBuilder;
+  AMaxLength: Integer); forward;
+
+procedure WriteShortObject(AObject: TJSONObject; AMaxString: Integer; const AOut: TStringBuilder;
   AMaxLength: Integer);
 var
   mIndex: Integer;
-  mObject: TJSONObject;
-  mArray: TJSONArray;
+begin
+  AOut.Append('{');
+  for mIndex := 0 to AObject.Count - 1 do
+  begin
+    if mIndex > 0 then
+    begin
+      AOut.Append(',');
+    end;
+    // Über der Grenze: ein Platzhalter für den Rest, damit das Ergebnis gültiges JSON bleibt.
+    if AOut.Length > AMaxLength then
+    begin
+      AOut.Append(cRestPair);
+      Break;
+    end;
+    AOut.Append(ShortenedText(AObject.Pairs[mIndex].JsonString.Value, AMaxString));
+    AOut.Append(':');
+    WriteShort(AObject.Pairs[mIndex].JsonValue, AMaxString, AOut, AMaxLength);
+  end;
+  AOut.Append('}');
+end;
+
+procedure WriteShortArray(AArray: TJSONArray; AMaxString: Integer; const AOut: TStringBuilder;
+  AMaxLength: Integer);
+var
+  mIndex: Integer;
+begin
+  AOut.Append('[');
+  for mIndex := 0 to AArray.Count - 1 do
+  begin
+    if mIndex > 0 then
+    begin
+      AOut.Append(',');
+    end;
+    if AOut.Length > AMaxLength then
+    begin
+      AOut.Append(cRest);
+      Break;
+    end;
+    WriteShort(AArray.Items[mIndex], AMaxString, AOut, AMaxLength);
+  end;
+  AOut.Append(']');
+end;
+
+procedure WriteShort(const AValue: TJSONValue; AMaxString: Integer; const AOut: TStringBuilder;
+  AMaxLength: Integer);
 begin
   if AValue = nil then
-    AOut.Append('null')
+  begin
+    AOut.Append('null');
+  end
   // TJSONNumber erbt von TJSONString: Zahlen zuerst, sonst würden sie zu Zeichenketten.
   else if AValue is TJSONNumber then
-    AOut.Append(AValue.ToJSON)
+  begin
+    AOut.Append(AValue.ToJSON);
+  end
   else if AValue is TJSONString then
-    AOut.Append(ShortenedText(TJSONString(AValue).Value, AMaxString))
+  begin
+    AOut.Append(ShortenedText(TJSONString(AValue).Value, AMaxString));
+  end
   else if AValue is TJSONObject then
   begin
-    mObject := TJSONObject(AValue);
-    AOut.Append('{');
-    for mIndex := 0 to mObject.Count - 1 do
-    begin
-      if mIndex > 0 then
-        AOut.Append(',');
-      // Über der Grenze: ein Platzhalter für den Rest, damit das Ergebnis gültiges JSON bleibt.
-      if AOut.Length > AMaxLength then
-      begin
-        AOut.Append(cRestPair);
-        Break;
-      end;
-      AOut.Append(ShortenedText(mObject.Pairs[mIndex].JsonString.Value, AMaxString));
-      AOut.Append(':');
-      WriteShort(mObject.Pairs[mIndex].JsonValue, AMaxString, AOut, AMaxLength);
-    end;
-    AOut.Append('}');
+    WriteShortObject(TJSONObject(AValue), AMaxString, AOut, AMaxLength);
   end
   else if AValue is TJSONArray then
   begin
-    mArray := TJSONArray(AValue);
-    AOut.Append('[');
-    for mIndex := 0 to mArray.Count - 1 do
-    begin
-      if mIndex > 0 then
-        AOut.Append(',');
-      if AOut.Length > AMaxLength then
-      begin
-        AOut.Append(cRest);
-        Break;
-      end;
-      WriteShort(mArray.Items[mIndex], AMaxString, AOut, AMaxLength);
-    end;
-    AOut.Append(']');
+    WriteShortArray(TJSONArray(AValue), AMaxString, AOut, AMaxLength);
   end
   else
+  begin
     AOut.Append(AValue.ToJSON);
+  end;
 end;
 
 { TJsonRpcRecentMessages }
@@ -178,7 +224,9 @@ var
   mIsRequest: Boolean;
 begin
   if AMessage = nil then
+  begin
     Exit;
+  end;
   mText := Shortened(AMessage, MaxString, MaxMessage);
   mIdValue := AMessage.GetValue('id');
   mMethodValue := AMessage.GetValue('method');
@@ -195,7 +243,9 @@ begin
     begin
       mParams := mParamsValue.ToJSON;
       if Length(mParams) > MaxParams then
+      begin
         mParams := Shortened(mParamsValue, MaxString, MaxParams);
+      end;
     end;
   end;
   System.TMonitor.Enter(FLock);
@@ -203,7 +253,9 @@ begin
     FMessages[FMessageNext] := mText;
     FMessageNext := (FMessageNext + 1) mod Capacity;
     if FMessageCount < Capacity then
+    begin
       Inc(FMessageCount);
+    end;
     if mIsRequest then
     begin
       FRequests[FRequestNext].Id := mId;
@@ -225,13 +277,19 @@ begin
   try
     mCount := ACount;
     if mCount > FMessageCount then
+    begin
       mCount := FMessageCount;
+    end;
     if mCount <= 0 then
+    begin
       Exit;
+    end;
     SetLength(Result, mCount);
     mStart := (FMessageNext - mCount + Capacity) mod Capacity;
     for mIndex := 0 to mCount - 1 do
+    begin
       Result[mIndex] := FMessages[(mStart + mIndex) mod Capacity];
+    end;
   finally
     System.TMonitor.Exit(FLock);
   end;
@@ -245,7 +303,9 @@ begin
   AParams := '';
   Result := False;
   if AId = '' then
+  begin
     Exit;
+  end;
   System.TMonitor.Enter(FLock);
   try
     // Die jüngste Anfrage mit dieser id zuerst: Clients vergeben ids nach einem Neustart neu.
@@ -263,5 +323,8 @@ begin
     System.TMonitor.Exit(FLock);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.JsonRpc.RecentMessages', cTexts);
 
 end.

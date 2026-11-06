@@ -60,8 +60,12 @@ var
 begin
   Result := '';
   for Index := 0 to High(AFit.Visible) do
+  begin
     if AFit.Visible[Index] then
+    begin
       Result := Result + IntToStr(Index);
+    end;
+  end;
 end;
 
 function Menu(const AFit: TAtlasToolbarFit): string;
@@ -70,7 +74,9 @@ var
 begin
   Result := '';
   for Index in AFit.Overflow do
+  begin
     Result := Result + IntToStr(Index);
+  end;
 end;
 
 procedure TAtlasToolbarLayoutTests.EverythingFits;

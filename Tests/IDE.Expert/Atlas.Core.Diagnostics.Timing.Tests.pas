@@ -56,12 +56,14 @@ var
   Row: TAtlasTimingRow;
 begin
   for Row in ARows do
+  begin
     if (Row.Kind = AKind) and ((AKind <> TAtlasTimingRowKind.Step) or (Row.Step = AStep)) and
       ((AKind <> TAtlasTimingRowKind.Provider) or (Row.Name = AName)) then
     begin
       ARow := Row;
       Exit(True);
     end;
+  end;
   ARow := Default(TAtlasTimingRow);
   Result := False;
 end;
@@ -114,7 +116,9 @@ begin
   Timings := NewTimings;
   try
     for Index := 1 to 60 do
+    begin
       Timings.BeginQuery(0, 'Bezeichner', '');
+    end;
     Queries := Timings.Snapshot;
     Assert.AreEqual(TAtlasQueryTimings.Capacity, Integer(Length(Queries)));
     Assert.AreEqual(11, Queries[0].Id, 'die ältesten fallen heraus');

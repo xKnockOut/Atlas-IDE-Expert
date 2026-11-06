@@ -48,9 +48,13 @@ begin
           mBuilder.Append('\r');
       else
         if Ord(mChar) < 32 then
-          mBuilder.Append('\u' + IntToHex(Ord(mChar), 4))
+        begin
+          mBuilder.Append('\u' + IntToHex(Ord(mChar), 4));
+        end
         else
+        begin
           mBuilder.Append(mChar);
+        end;
       end;
     mBuilder.Append('"');
     Result := mBuilder.ToString;

@@ -52,6 +52,7 @@ implementation
 
 uses
   System.Generics.Collections,
+  System.StrUtils,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Configuration.Scopes,
@@ -63,7 +64,9 @@ function FirstString(const AArguments: TJSONArray): string;
 begin
   Result := '';
   if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
+  begin
     Result := AArguments.Items[0].Value;
+  end;
 end;
 
 /// <summary>Spalten einer Option der Art "object-list" (#1133): [{"name": …, "list": true}].</summary>
@@ -78,7 +81,9 @@ begin
     mObject := TJSONObject.Create;
     mObject.AddPair('name', mColumn.Name);
     if mColumn.List then
+    begin
       mObject.AddPair('list', TJSONBool.Create(True));
+    end;
     Result.AddElement(mObject);
   end;
 end;
@@ -96,7 +101,9 @@ begin
   Scope := TConfigurationScope.Project;
   if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONString) and
     SameText(AArguments.Items[1].Value, 'global') then
+  begin
     Scope := TConfigurationScope.Global;
+  end;
   TConfigurationScopes.Filter(FirstString(AArguments), Scope, Misplaced);
   Issues := Issues + Misplaced;
   Items := TJSONArray.Create;
@@ -110,7 +117,9 @@ begin
     Item.AddPair('error', TJSONBool.Create(Issue.IsError));
     Items.AddElement(Item);
     if Issue.IsError then
+    begin
       Valid := False;
+    end;
   end;
   Result := TJSONObject.Create;
   Result.AddPair('valid', TJSONBool.Create(Valid));
@@ -135,66 +144,96 @@ begin
   Result := Catalog(AEntries, AGlobalFile, nil);
 end;
 
+/// <summary>Option einer Regel mit Art, Spalten, Vorgabe und Beschreibung.</summary>
+function OptionJson(const AOption: TRuleOption): TJSONObject;
+var
+  mDefault: TJSONValue;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('name', AOption.Name);
+  Result.AddPair('type', AOption.Kind);
+  if AOption.Columns <> nil then
+  begin
+    Result.AddPair('columns', ColumnsJson(AOption.Columns));
+  end;
+  mDefault := nil;
+  if AOption.DefaultJson <> '' then
+  begin
+    mDefault := TJSONObject.ParseJSONValue(AOption.DefaultJson);
+  end;
+  if mDefault <> nil then
+  begin
+    Result.AddPair('default', mDefault);
+  end;
+  Result.AddPair('description', AOption.Description);
+end;
+
+function OptionsJson(const AOptions: TArray<TRuleOption>): TJSONArray;
+var
+  mOption: TRuleOption;
+begin
+  Result := TJSONArray.Create;
+  for mOption in AOptions do
+  begin
+    Result.AddElement(OptionJson(mOption));
+  end;
+end;
+
+function StringsJson(const AItems: TArray<string>): TJSONArray;
+var
+  mItem: string;
+begin
+  Result := TJSONArray.Create;
+  for mItem in AItems do
+  begin
+    Result.Add(mItem);
+  end;
+end;
+
+/// <summary>Setzt AName auf true, wenn AValue gilt.</summary>
+procedure AddFlag(AObject: TJSONObject; const AName: string; AValue: Boolean);
+begin
+  if AValue then
+  begin
+    AObject.AddPair(AName, TJSONBool.Create(True));
+  end;
+end;
+
+/// <summary>Eintrag einer Regel im Katalog.</summary>
+function RuleJson(const AEntry: TRuleCatalogEntry; const AExperimental: TArray<string>): TJSONObject;
+begin
+  Result := TJSONObject.Create;
+  Result.AddPair('id', AEntry.Id);
+  Result.AddPair('name', AEntry.Name);
+  Result.AddPair('category', TRuleCatalog.CategoryName(AEntry.Category));
+  Result.AddPair('severity', TFindingsOutput.SeverityName(AEntry.DefaultSeverity));
+  Result.AddPair('group', TRuleCatalog.GroupName(AEntry.Group));
+  Result.AddPair('description', AEntry.Description);
+  Result.AddPair('bad', AEntry.Bad);
+  Result.AddPair('good', AEntry.Good);
+  Result.AddPair('options', OptionsJson(AEntry.Options));
+  if AEntry.OverriddenBy <> nil then
+  begin
+    Result.AddPair('overriddenBy', StringsJson(AEntry.OverriddenBy));
+  end;
+  AddFlag(Result, 'experimental', MatchText(AEntry.Id, AExperimental));
+  // Sammelkorrektur (#1352): Das Plugin bietet „Alle sicheren Treffer korrigieren …“ nur dafür an.
+  AddFlag(Result, 'safeFix', AEntry.SafeFix);
+end;
+
 class function TLspSettingsCommands.Catalog(const AEntries: TArray<TRuleCatalogEntry>; const AGlobalFile: string;
   const AExperimental: TArray<string>): TJSONObject;
 var
-  Rules, Options, Overrides: TJSONArray;
-  Rule, OptionObject: TJSONObject;
-  Entry: TRuleCatalogEntry;
-  Option: TRuleOption;
-  DefaultValue: TJSONValue;
-  Id: string;
-  Experimental: Boolean;
+  mRules: TJSONArray;
+  mEntry: TRuleCatalogEntry;
 begin
-  Rules := TJSONArray.Create;
-  for Entry in AEntries do
+  mRules := TJSONArray.Create;
+  for mEntry in AEntries do
   begin
-    Rule := TJSONObject.Create;
-    Rule.AddPair('id', Entry.Id);
-    Rule.AddPair('name', Entry.Name);
-    Rule.AddPair('category', TRuleCatalog.CategoryName(Entry.Category));
-    Rule.AddPair('severity', TFindingsOutput.SeverityName(Entry.DefaultSeverity));
-    Rule.AddPair('group', TRuleCatalog.GroupName(Entry.Group));
-    Rule.AddPair('description', Entry.Description);
-    Rule.AddPair('bad', Entry.Bad);
-    Rule.AddPair('good', Entry.Good);
-    Options := TJSONArray.Create;
-    for Option in Entry.Options do
-    begin
-      OptionObject := TJSONObject.Create;
-      OptionObject.AddPair('name', Option.Name);
-      OptionObject.AddPair('type', Option.Kind);
-      if Option.Columns <> nil then
-        OptionObject.AddPair('columns', ColumnsJson(Option.Columns));
-      DefaultValue := nil;
-      if Option.DefaultJson <> '' then
-        DefaultValue := TJSONObject.ParseJSONValue(Option.DefaultJson);
-      if DefaultValue <> nil then
-        OptionObject.AddPair('default', DefaultValue);
-      OptionObject.AddPair('description', Option.Description);
-      Options.AddElement(OptionObject);
-    end;
-    Rule.AddPair('options', Options);
-    if Entry.OverriddenBy <> nil then
-    begin
-      Overrides := TJSONArray.Create;
-      for Id in Entry.OverriddenBy do
-        Overrides.Add(Id);
-      Rule.AddPair('overriddenBy', Overrides);
-    end;
-    Experimental := False;
-    for Id in AExperimental do
-      if SameText(Id, Entry.Id) then
-        Experimental := True;
-    if Experimental then
-      Rule.AddPair('experimental', TJSONBool.Create(True));
-    // Sammelkorrektur (#1352): Das Plugin bietet „Alle sicheren Treffer korrigieren …“ nur dafür an.
-    if Entry.SafeFix then
-      Rule.AddPair('safeFix', TJSONBool.Create(True));
-    Rules.AddElement(Rule);
+    mRules.AddElement(RuleJson(mEntry, AExperimental));
   end;
   Result := TJSONObject.Create;
-  Result.AddPair('rules', Rules);
+  Result.AddPair('rules', mRules);
   Result.AddPair('globalFile', AGlobalFile);
   Result.AddPair('version', TProductVersion.Version);
 end;

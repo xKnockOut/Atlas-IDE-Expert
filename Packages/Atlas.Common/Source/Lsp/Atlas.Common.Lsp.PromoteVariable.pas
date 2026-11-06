@@ -25,6 +25,14 @@ uses
   Atlas.Common.Lsp.References;
 
 type
+  /// <summary>Was atlas.server.promoteVariable braucht außer Baum, Text und Stelle.</summary>
+  TPromoteVariableContext = record
+    Lookup: TPromoteLookup;
+    Style: TFormatStyle;
+    /// <summary>Name des neuen Felds bzw. der Variablen.</summary>
+    NewName: string;
+  end;
+
   TLspPromoteVariable = class
   public const
     ClientCommand = 'atlas.promoteVariable';
@@ -40,7 +48,7 @@ type
     /// <summary>Antwort auf atlas.server.promoteVariable; EJsonRpcError mit dem Grund, wenn es nicht geht. Der
     /// Aufrufer übernimmt das Objekt.</summary>
     class function Execute(ATree: TSyntaxTree; const AText, AUri: string; const APosition: TTextPosition;
-      const AName: string; const ALookup: TPromoteLookup; const AStyle: TFormatStyle): TJSONObject; static;
+      const AContext: TPromoteVariableContext): TJSONObject; static;
   end;
 
 implementation
@@ -53,7 +61,20 @@ uses
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.CodeActions,
   Atlas.Common.Lsp.FormMentions,
-  Atlas.Common.Lsp.InlayHints;
+  Atlas.Common.Lsp.InlayHints,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLspPromoteVariableText = (ConversionNotPossible);
+
+const
+  cTexts: array[TLspPromoteVariableText] of TAtlasText = (
+    (De: 'Umwandeln geht nicht: '; En: 'Conversion not possible: '));
+
+{$SCOPEDENUMS OFF}
 
 class function TLspPromoteVariable.Lookup(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   const AReadText: TReferenceReadText): TPromoteLookup;
@@ -70,8 +91,12 @@ begin
       Result := '';
       for Found in TLspInlayHints.Inferred(AResolver, ATree, FileName, TTextRange.Create(ALocal.Decl.StartPos,
         ALocal.Decl.EndPos)) do
+      begin
         if SameText(Found.Name, ALocal.Name) and not Found.ForIn then
+        begin
           Exit(Found.TypeName);
+        end;
+      end;
     end;
   Result.MemberExists :=
     function(const AClassName, AName: string; AOffset: Integer): Boolean
@@ -91,7 +116,9 @@ var
 begin
   Result := nil;
   if not TPromoteVariable.Target(AText, ATree, APosition, ALookup, Target, Reason) then
+  begin
     Exit;
+  end;
   Arguments := TJSONArray.Create;
   Arguments.Add(AUri);
   Arguments.AddElement(TLspPositions.PositionToJson(APosition));
@@ -108,23 +135,31 @@ begin
 end;
 
 class function TLspPromoteVariable.Execute(ATree: TSyntaxTree; const AText, AUri: string;
-  const APosition: TTextPosition; const AName: string; const ALookup: TPromoteLookup;
-  const AStyle: TFormatStyle): TJSONObject;
+  const APosition: TTextPosition; const AContext: TPromoteVariableContext): TJSONObject;
 var
   Promoted: TPromoteResult;
   Reason, Warning: string;
   Warnings: TJSONArray;
 begin
-  if not TPromoteVariable.Execute(AText, ATree, APosition, ALookup, AStyle, AName, Promoted, Reason) then
-    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Umwandeln geht nicht: ' + Reason);
+  if not TPromoteVariable.Execute(AText, ATree, TPromoteRequest.Create(APosition, AContext.Lookup, AContext.Style,
+    AContext.NewName), Promoted, Reason) then
+  begin
+    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+      cTexts[TLspPromoteVariableText.ConversionNotPossible].Text + Reason);
+  end;
   Warnings := TJSONArray.Create;
   for Warning in Promoted.Warnings do
+  begin
     Warnings.Add(Warning);
+  end;
   Result := TJSONObject.Create;
   Result.AddPair('edit', TLspCodeActions.WorkspaceEditJson(AUri, Promoted.Edits));
   Result.AddPair('warnings', Warnings);
   Result.AddPair('places', TJSONNumber.Create(Promoted.Places));
   Result.AddPair('files', TJSONNumber.Create(1));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.PromoteVariable', cTexts);
 
 end.

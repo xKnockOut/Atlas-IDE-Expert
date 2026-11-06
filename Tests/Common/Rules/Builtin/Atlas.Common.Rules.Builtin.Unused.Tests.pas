@@ -124,6 +124,9 @@ uses
   Atlas.Common.Configuration.Parser,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Builtin.Unused,
+  Atlas.Common.Rules.Builtin.Unused.Shared,
+  Atlas.Common.Rules.Builtin.Unused.Duplicates,
+  Atlas.Common.Rules.Builtin.Unused.EmptyRoutines,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.ChangeSignature,
@@ -159,7 +162,9 @@ var
   begin
     Result := 0;
     for Index := 0 to ALine - 1 do
+    begin
       Inc(Result, Length(Lines[Index]) + 1);
+    end;
     Inc(Result, ACharacter);
   end;
 
@@ -660,8 +665,12 @@ begin
   Assert.AreEqual(1, Integer(Length(Findings)));
   Result := '';
   for Fix in Findings[0].Fixes do
+  begin
     if Fix.Title = ATitle then
+    begin
       Result := TChangeSignature.ApplyEdits(ASource, Fix.Edits);
+    end;
+  end;
   Assert.AreNotEqual('', Result, ATitle);
   Tree := TPascalParser.Parse(Result);
   try

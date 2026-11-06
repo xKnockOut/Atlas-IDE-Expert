@@ -11,7 +11,8 @@ Der Server prüft jede Unit beim Tippen.
 
 ### Fenster „Atlas-Prüfung“
 
-- Befunde der Datei, des Projekts oder der Projektgruppe live
+- Befunde der Datei, des aktuellen Projekts oder der Projektgruppe live
+- Bei offener Gruppe stehen in der Bereichsliste unter einem Trennstrich alle Projekte der Gruppe; so zeigt das Fenster ein Projekt, ohne es zu aktivieren (abschaltbar: `problems.window.scopeProjects`)
 - Filter je Art, Kategorie und Text
 - Gruppierung nach Datei, Regel oder Kategorie, sortierbare Spalten
 
@@ -29,6 +30,14 @@ Der Server prüft jede Unit beim Tippen.
 
 Einstellungen: `fix.bulk`
 
+### Wann die Prüfung läuft
+
+- `problems.update` (*Tools › Optionen › Atlas › Prüfregeln › Prüffenster*):
+  - live beim Tippen mit eigener Verzögerung `problems.liveDelayMs` in Millisekunden (100 bis 10000, Vorgabe 400)
+  - beim Speichern
+  - nur auf Anforderung über „Datei jetzt prüfen“ (Befehlspalette, Editor-Kontextmenü, eigenes Kürzel Strg+Umschalt+Alt+P `keys.checkFile`, Klick auf die Schaltfläche der Prüfung in der Atlas-Statusleiste, z. B. „beim Speichern · Projekt 91 %“)
+- Die frühere Einstellung „Laufende Prüfung beim Tippen“ wird übernommen
+
 ### Befund-Hover und Optionen
 
 - **Befund-Hover** mit Schweregrad, Regel und Aktionszeile „Alt+Enter: Korrektur“, „Für diese Zeile unterdrücken“, „Regel einstellen…“
@@ -38,7 +47,7 @@ Einstellungen: `fix.bulk`
 
 ## Prüfregeln
 
-**312 Prüfregeln** in vier Kategorien: 203 Fehler, 99 Code-Smells, 5 Schwachstellen, 5 Sicherheits-Hotspots. Darunter:
+**313 Prüfregeln** in vier Kategorien: 204 Fehler, 99 Code-Smells, 5 Schwachstellen, 5 Sicherheits-Hotspots. Darunter:
 
 ### Korrektheit
 
@@ -349,6 +358,7 @@ Compilerfehler schon beim Tippen, ohne Build.
 - Formulare, die `Application.CreateForm` und zusätzlich der Code erzeugt (die Korrektur entfernt die Zeile aus der `.dpr`)
 - Handler in geerbten Formularen, die den Handler des Vorfahren nicht mehr aufrufen (die Korrektur fügt `inherited;` ein)
 - Formulare, die sich im eigenen Ereignis-Handler freigeben (die Korrektur nimmt `Release` bzw. `Action := caFree`)
+- Verweise der Formulardatei auf Komponenten eines anderen Formulars oder Datenmoduls, dessen Unit nicht in den uses steht (`Connection = Form1.Connection`; die Korrektur ergänzt die Unit)
 
 ### Laufzeitumgebung
 

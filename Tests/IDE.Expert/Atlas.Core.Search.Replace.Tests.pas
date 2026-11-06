@@ -12,6 +12,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Search')]
   TAtlasSearchReplaceTests = class
   public
     /// <summary>Einmalige Puffer der Regex-Engine (Fehlertexte, Gruppen) vor dem Leckmonitor anlegen.</summary>
@@ -50,7 +51,7 @@ type
     [Test]
     procedure PlanSkipsReadOnlyAndChangedFiles;
     [Test]
-    procedure RowsCarryPreviewOnlyWithRegex;
+    procedure RowsCarryPreview;
     [Test]
     procedure FollowSelectionSwitchesRegexOff;
     [Test]
@@ -82,7 +83,9 @@ begin
   for Hit in AHits do
   begin
     if Result <> '' then
+    begin
       Result := Result + ' ';
+    end;
     Result := Result + Format('%d:%d+%d', [Hit.Line, Hit.Character, Hit.Length]);
   end;
 end;
@@ -317,9 +320,13 @@ begin
     function(const AFileName: string): string
     begin
       if SameText(ExtractFileName(AFileName), 'Neu.pas') then
-        Result := 'xa'
+      begin
+        Result := 'xa';
+      end
       else
+      begin
         Result := 'a';
+      end;
     end;
   Search := Query('a', False, False, False, False);
   List := TAtlasReplaceList.Create(Search, 'b');
@@ -339,7 +346,7 @@ begin
   end;
 end;
 
-procedure TAtlasSearchReplaceTests.RowsCarryPreviewOnlyWithRegex;
+procedure TAtlasSearchReplaceTests.RowsCarryPreview;
 var
   List: TAtlasReplaceList;
   Search: TAtlasSearchQuery;
@@ -360,11 +367,12 @@ begin
   finally
     List.Free;
   end;
-  Search := Query('Free', False, False, False, False);
+  // Ohne Regex: der gefundene Text (hier in anderer Schreibweise) und der Ersatz.
+  Search := Query('free', False, False, False, False);
   List := TAtlasReplaceList.Create(Search, 'Destroy');
   try
     List.Add(Hits('C:\P\Eins.pas', 'X.Free;', Search));
-    Assert.AreEqual('', List.Rows[1].Preview, 'Vorschau nur mit Regex');
+    Assert.AreEqual('Free → Destroy', List.Rows[1].Preview, 'Vorschau auch ohne Regex');
   finally
     List.Free;
   end;
@@ -382,13 +390,62 @@ begin
   Assert.AreEqual('x.y', Next.Text);
 end;
 
+/// <summary>Strg+H nur mit search.replaceIdeSearch und search.replace; aus = die IDE behält die Taste.</summary>
+procedure AssertReplaceKeys;
+var
+  mSettings: TAtlasPluginSettings;
+  mEntries: TArray<TAtlasKeyEntry>;
+  mEntry: TAtlasKeyEntry;
+  mFound: Boolean;
+  mIndex: Integer;
+begin
+  // Strg+H nur mit search.replaceIdeSearch und search.replace; aus = die IDE behält die Taste.
+  mSettings := TAtlasPluginSettings.Defaults;
+  mFound := False;
+  for mEntry in TAtlasKeyEntry.AllFromSettings(mSettings) do
+  begin
+    if mEntry.Func = TAtlasKeyFunction.SearchReplace then
+    begin
+      mFound := True;
+      Assert.AreEqual($4048, Integer(mEntry.Key));
+      Assert.IsFalse(mEntry.Disabled);
+      Assert.IsTrue(mEntry.Priority, 'bewusst übernommen wie Strg+F');
+    end;
+  end;
+  Assert.IsTrue(mFound);
+  Assert.AreEqual('Atlas.SearchReplace', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.SearchReplace));
+  mSettings.SearchReplace := False;
+  for mEntry in TAtlasKeyEntry.AllFromSettings(mSettings) do
+  begin
+    if mEntry.Func = TAtlasKeyFunction.SearchReplace then
+    begin
+      Assert.IsTrue(mEntry.Disabled);
+    end;
+  end;
+  mSettings := TAtlasPluginSettings.Defaults;
+  mSettings.SearchReplaceIde := False;
+  mEntries := TAtlasKeyEntry.AllFromSettings(mSettings);
+  for mEntry in mEntries do
+  begin
+    if mEntry.Func = TAtlasKeyFunction.SearchReplace then
+    begin
+      Assert.IsTrue(mEntry.Disabled);
+    end;
+  end;
+  for mIndex := 0 to High(mEntries) do
+  begin
+    if mEntries[mIndex].Func = TAtlasKeyFunction.SearchReplace then
+    begin
+      mEntries[mIndex].Key := $C048;
+    end;
+  end;
+  TAtlasKeyEntry.ToSettings(mEntries, mSettings);
+  Assert.AreEqual($C048, mSettings.SearchReplaceKey);
+end;
+
 procedure TAtlasSearchReplaceTests.SettingsDefaultsNormalizeAndKeys;
 var
   Settings: TAtlasPluginSettings;
-  Entries: TArray<TAtlasKeyEntry>;
-  Entry: TAtlasKeyEntry;
-  Found: Boolean;
-  Index: Integer;
 begin
   Settings := TAtlasPluginSettings.Defaults;
   Assert.IsTrue(Settings.SearchReplace);
@@ -404,34 +461,7 @@ begin
   Settings.SearchHistory := 1000;
   Settings.Normalize;
   Assert.AreEqual(TAtlasPluginSettings.MaxSearchHistory, Settings.SearchHistory);
-  // Strg+H nur mit search.replaceIdeSearch und search.replace; aus = die IDE behält die Taste.
-  Settings := TAtlasPluginSettings.Defaults;
-  Found := False;
-  for Entry in TAtlasKeyEntry.AllFromSettings(Settings) do
-    if Entry.Func = TAtlasKeyFunction.SearchReplace then
-    begin
-      Found := True;
-      Assert.AreEqual($4048, Integer(Entry.Key));
-      Assert.IsFalse(Entry.Disabled);
-      Assert.IsTrue(Entry.Priority, 'bewusst übernommen wie Strg+F');
-    end;
-  Assert.IsTrue(Found);
-  Assert.AreEqual('Atlas.SearchReplace', TAtlasKeyMap.CommandIdOf(TAtlasKeyFunction.SearchReplace));
-  Settings.SearchReplace := False;
-  for Entry in TAtlasKeyEntry.AllFromSettings(Settings) do
-    if Entry.Func = TAtlasKeyFunction.SearchReplace then
-      Assert.IsTrue(Entry.Disabled);
-  Settings := TAtlasPluginSettings.Defaults;
-  Settings.SearchReplaceIde := False;
-  Entries := TAtlasKeyEntry.AllFromSettings(Settings);
-  for Entry in Entries do
-    if Entry.Func = TAtlasKeyFunction.SearchReplace then
-      Assert.IsTrue(Entry.Disabled);
-  for Index := 0 to High(Entries) do
-    if Entries[Index].Func = TAtlasKeyFunction.SearchReplace then
-      Entries[Index].Key := $C048;
-  TAtlasKeyEntry.ToSettings(Entries, Settings);
-  Assert.AreEqual($C048, Settings.SearchReplaceKey);
+  AssertReplaceKeys;
 end;
 
 initialization

@@ -223,17 +223,29 @@ function ReadFile(const AFileName: string; out AText: string): Boolean;
 begin
   Result := True;
   if SameText(AFileName, HauptFile) then
-    AText := UnitHaupt
+  begin
+    AText := UnitHaupt;
+  end
   else if SameText(AFileName, RechnerFile) then
-    AText := UnitRechner
+  begin
+    AText := UnitRechner;
+  end
   else if SameText(AFileName, KundenFile) then
-    AText := UnitKunden
+  begin
+    AText := UnitKunden;
+  end
   else if SameText(AFileName, LagerFile) then
-    AText := UnitLager
+  begin
+    AText := UnitLager;
+  end
   else if SameText(AFileName, KasseFile) then
-    AText := UnitKasse
+  begin
+    AText := UnitKasse;
+  end
   else
+  begin
     Result := False;
+  end;
 end;
 
 { TLspRefactoringsTests }
@@ -282,7 +294,9 @@ begin
   try
     for Action in TLspRefactorings.Actions(Tree, AText, TTextRange.Create(TTextPosition.Create(ALine, ACharacter),
       TTextPosition.Create(ALine, ACharacter)), AContext) do
+    begin
       Result := Result + Action.Title + '|';
+    end;
   finally
     Tree.Free;
   end;
@@ -298,13 +312,17 @@ begin
   try
     for Action in TLspRefactorings.Actions(Tree, AText, TTextRange.Create(TTextPosition.Create(ALine, ACharacter),
       TTextPosition.Create(ALine, ACharacter)), Context) do
+    begin
       if Action.Title = ATitle then
       begin
         // case vervollständigen trägt die Kennung für das Plugin (#697).
         if ATitle.StartsWith('case ') then
+        begin
           Assert.AreEqual(CaseCompleteTag, Action.Tag);
+        end;
         Exit(TChangeSignature.ApplyEdits(AText, Action.Edits));
       end;
+    end;
   finally
     Tree.Free;
   end;
@@ -489,7 +507,7 @@ begin
   Completion := TLspCompletion.Create(Store, FIndex);
   Dispatcher := TJsonRpcDispatcher.Create;
   try
-    Completion.WithFor :=
+    Completion.Hooks.WithFor :=
       function(ARequest: TCompletionRequest; out AEdits: TArray<TTextEdit>): Boolean
       begin
         Inc(Asked);
@@ -525,11 +543,13 @@ begin
   try
     for Action in TLspRefactorings.Actions(Tree, UnitRechner, TTextRange.Create(TTextPosition.Create(ALine,
       ACharacter), TTextPosition.Create(ALine, ACharacter)), AContext) do
+    begin
       if Action.Title = ATitle then
       begin
         AAction := Action;
         Exit(True);
       end;
+    end;
   finally
     Tree.Free;
   end;
@@ -601,7 +621,9 @@ var
   begin
     Trigger := '';
     if ATrigger <> '' then
+    begin
       Trigger := ',"context":{"triggerKind":2,"triggerCharacter":"' + ATrigger + '"}';
+    end;
     Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":1,"method":"textDocument/completion",' +
       '"params":{"textDocument":{"uri":"' + Uri.Replace('\', '\\') + '"},"position":{"line":' + IntToStr(ALine) +
       ',"character":' + IntToStr(ACharacter) + '}' + Trigger + '}}') as TJSONObject;
@@ -628,7 +650,7 @@ begin
   Completion := TLspCompletion.Create(Store, FIndex);
   Dispatcher := TJsonRpcDispatcher.Create;
   try
-    Completion.CreateFor :=
+    Completion.Hooks.CreateFor :=
       function(ARequest: TCompletionRequest; out ATitle, ADetail: string; out AEdits: TArray<TTextEdit>): Boolean
       var
         Rechner: TRefactoringContext;
@@ -637,8 +659,9 @@ begin
         Rechner := Context;
         Rechner.FileName := RechnerFile;
         Rechner.Settings.CreateMethodCaretInBody := True;
+        Rechner.CaretMarker := True;
         Result := Enabled and TLspRefactorings.CreateMethod(ARequest.Resolver, ARequest.Tree, ARequest.Text,
-          ARequest.Position, Rechner, True, Created);
+          ARequest.Position, Rechner, Created);
         ATitle := Created.Title;
         ADetail := Created.Detail;
         AEdits := Created.Edits;
@@ -680,7 +703,9 @@ var
     begin
       Titles_ := Titles_ + Item.Title + '|';
       if Item.Title = ATitle then
+      begin
         Result := TChangeSignature.ApplyEdits(UnitKasse, Item.Edits);
+      end;
     end;
   end;
 
@@ -707,8 +732,12 @@ begin
     Tree := TPascalParser.Parse(Result_);
     for Action in TLspRefactorings.Actions(Tree, Result_, TTextRange.Create(TTextPosition.Create(9, 2),
       TTextPosition.Create(9, 2)), Kasse) do
+    begin
       if Action.Title = 'Variable X einbetten' then
+      begin
         Titles_ := TChangeSignature.ApplyEdits(Result_, Action.Edits);
+      end;
+    end;
     Assert.AreEqual(StringReplace(StringReplace(Result_, 'var'#10'  X: Integer;'#10, '', []),
       '  X := L.Doppelt + 1;'#10'  Zeige(X);', '  Zeige(L.Doppelt + 1);', []), Titles_);
   finally

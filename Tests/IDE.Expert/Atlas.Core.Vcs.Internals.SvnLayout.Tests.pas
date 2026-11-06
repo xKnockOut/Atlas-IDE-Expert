@@ -44,9 +44,13 @@ uses
 function Root: string;
 begin
   if PathDelim = '\' then
-    Result := 'C:\Projekte\Kasse'
+  begin
+    Result := 'C:\Projekte\Kasse';
+  end
   else
+  begin
     Result := '/projekte/kasse';
+  end;
 end;
 
 function Beside(const AName: string): string;
@@ -146,9 +150,13 @@ begin
   Assert.AreEqual(Root + PathDelim + 'branches' + PathDelim + 'x', TAtlasSvnLayout.CheckoutFolder('branches\{name}',
     Root, '', 'x', ''), 'unter der Arbeitskopie');
   if PathDelim = '\' then
-    Assert.AreEqual('D:\Branches\x', TAtlasSvnLayout.CheckoutFolder('D:\Branches\{name}', Root, '', 'x', ''))
+  begin
+    Assert.AreEqual('D:\Branches\x', TAtlasSvnLayout.CheckoutFolder('D:\Branches\{name}', Root, '', 'x', ''));
+  end
   else
+  begin
     Assert.AreEqual('/branches/x', TAtlasSvnLayout.CheckoutFolder('/branches/{name}', Root, '', 'x', ''));
+  end;
   Assert.AreEqual('', TAtlasSvnLayout.CheckoutFolder('', Root, '', 'x', ''));
   Assert.AreEqual('', TAtlasSvnLayout.CheckoutFolder('..\{name}', '', '', 'x', ''));
 end;

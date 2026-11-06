@@ -19,6 +19,7 @@ uses
 
 type
   [TestFixture]
+  [Category('Atlas.IDE.Welcome')]
   TAtlasWelcomeContinueTests = class
   public
     [Test]
@@ -162,11 +163,13 @@ begin
   ARevision := '';
   Result := TAtlasVcsOutcome.Failed;
   for Known in FKnown do
+  begin
     if Known = ARef then
     begin
       ARevision := ARef;
       Exit(TAtlasVcsOutcome.Ok);
     end;
+  end;
   // Branch des Upstreams: dessen heutiger Stand.
   if ARef = FHead.Upstream then
   begin
@@ -196,8 +199,12 @@ var
 begin
   Result := False;
   for Call in Calls do
+  begin
     if Call = AName then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function TFakeVcs.CalledStarting(const APrefix: string): Boolean;
@@ -206,8 +213,12 @@ var
 begin
   Result := False;
   for Call in Calls do
+  begin
     if Call.StartsWith(APrefix) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 function Path(const AName: string): string;
@@ -239,7 +250,9 @@ begin
   Result.Known := True;
   Result.At := Stamp(9, 0);
   for Name in ANames do
+  begin
     Result.Tabs := Result.Tabs + [TAtlasWorkTab.Create(Path(Name), 1, 1)];
+  end;
 end;
 
 { TAtlasWelcomeContinueTests }
@@ -367,7 +380,9 @@ begin
   Names := ['Main.pas', 'Kunde.pas', 'Liste.pas', 'Daten.pas', 'Hilfe.pas', 'Form1.pas', 'Projekt.dpr'];
   Open := nil;
   for Name in Names do
+  begin
     Open := Open + [TAtlasWorkTab.Create(Path(Name), 5, 3)];
+  end;
   Change := TAtlasWorkTab.Create(Path('Daten.pas'), 120, 14);
   Change.ChangedAt := Stamp(17, 30);
   Changes := [Change];
@@ -381,7 +396,9 @@ begin
   Assert.AreEqual(7, Integer(Length(Plan.Open)));
   Assert.AreEqual(0, Integer(Length(Plan.Missing)));
   for Index := 0 to High(Names) do
+  begin
     Assert.AreEqual(Path(Names[Index]), Plan.Open[Index].FileName, 'gleiche Reihenfolge');
+  end;
   Assert.AreEqual(4, Plan.Active, 'zuletzt aktiver Reiter');
   Assert.AreEqual(120, Plan.Open[3].Line, 'Cursor an der letzten Änderung');
   Assert.AreEqual(14, Plan.Open[3].Column);
@@ -439,17 +456,27 @@ begin
       ASummary := TAtlasProjectSummary.Create(AProject);
       Result := not AProject.Contains('Ohne');
       if not Result then
+      begin
         Exit;
+      end;
       State := StateOf(['X.pas']);
       if AProject.Contains('Leer') then
+      begin
         State.Tabs := nil;
+      end;
       Hour := 8;
       if AProject.Contains('B.') then
+      begin
         Hour := 12;
+      end;
       if AProject.Contains('C.') then
+      begin
         Hour := 10;
+      end;
       if AProject.Contains('D.') then
+      begin
         Hour := 10;
+      end;
       State.At := Stamp(Hour, 0);
       TAtlasWelcomeContinue.Write(ASummary, State);
     end;
@@ -690,27 +717,27 @@ begin
   Fake.FHead.Branch := 'feature/42-kasse';
   Fake.FHead.Upstream := '';
   Fake.FKnown := ['origin/develop'];
-  Assert.IsTrue(TAtlasWelcomeContinue.ProbeIncoming(Vcs, nil, Path('Atlas.dproj'), 'develop', StateOf(['A.pas']),
-    Stamp(9, 0), Found));
+  Assert.IsTrue(TAtlasWelcomeContinue.ProbeIncoming(Vcs, nil, TAtlasContinueProbe.Create(Path('Atlas.dproj'), 'develop',
+    StateOf(['A.pas']), Stamp(9, 0)), Found));
   Assert.IsTrue(Found.Available);
   Assert.AreEqual('origin/develop', Found.Upstream);
   Assert.IsTrue(Fake.Called('incoming origin/develop'));
   // Nur lokal vorhanden: der lokale Hauptbranch.
   Fake.FKnown := ['develop'];
   Fake.Calls := nil;
-  Assert.IsTrue(TAtlasWelcomeContinue.ProbeIncoming(Vcs, nil, Path('Atlas.dproj'), 'develop', StateOf(['A.pas']),
-    Stamp(9, 0), Found));
+  Assert.IsTrue(TAtlasWelcomeContinue.ProbeIncoming(Vcs, nil, TAtlasContinueProbe.Create(Path('Atlas.dproj'), 'develop',
+    StateOf(['A.pas']), Stamp(9, 0)), Found));
   Assert.AreEqual('develop', Found.Upstream);
   // Auf dem Hauptbranch selbst und ohne Hauptbranch: kein Abschnitt wie bisher.
   Fake.FHead.Branch := 'develop';
   Fake.Calls := nil;
-  Assert.IsTrue(TAtlasWelcomeContinue.ProbeIncoming(Vcs, nil, Path('Atlas.dproj'), 'develop', StateOf(['A.pas']),
-    Stamp(9, 0), Found));
+  Assert.IsTrue(TAtlasWelcomeContinue.ProbeIncoming(Vcs, nil, TAtlasContinueProbe.Create(Path('Atlas.dproj'), 'develop',
+    StateOf(['A.pas']), Stamp(9, 0)), Found));
   Assert.IsFalse(Found.Available);
   Assert.IsFalse(Fake.CalledStarting('incoming'));
   Fake.FHead.Branch := 'feature/42-kasse';
-  Assert.IsTrue(TAtlasWelcomeContinue.ProbeIncoming(Vcs, nil, Path('Atlas.dproj'), '', StateOf(['A.pas']),
-    Stamp(9, 0), Found));
+  Assert.IsTrue(TAtlasWelcomeContinue.ProbeIncoming(Vcs, nil, TAtlasContinueProbe.Create(Path('Atlas.dproj'), '',
+    StateOf(['A.pas']), Stamp(9, 0)), Found));
   Assert.IsFalse(Found.Available);
 end;
 

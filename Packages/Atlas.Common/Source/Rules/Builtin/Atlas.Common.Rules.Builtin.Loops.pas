@@ -63,7 +63,37 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Semantics.ControlFlow,
-  Atlas.Common.Rules.Derived;
+  Atlas.Common.Rules.Derived,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TLoopsText = (ToWhile, LoopVarTitle, Modified, VarParam, Assigned, OuterVariable, FieldKind, GlobalVariable,
+    NonLocal, ReadAfterTitle, ReadAfter, UseForVar);
+
+const
+  cTexts: array[TLoopsText] of TAtlasText = (
+    (De: 'Auf while-Schleife umstellen'; En: 'Convert to while loop'),
+    (De: 'Schleifenvariable verändert oder nicht lokal'; En: 'Loop variable modified or not local'),
+    (De: 'Schleifenvariable %s darf im Rumpf nicht verändert werden (wie E2081).';
+     En: 'Loop variable %s must not be modified in the body (like E2081).'),
+    (De: 'Schleifenvariable %s wird als var-Parameter an %s übergeben (wie W1015).';
+     En: 'Loop variable %s is passed as var parameter to %s (like W1015).'),
+    (De: 'Schleifenvariable %s darf im Rumpf nicht zugewiesen werden (wie E2081).';
+     En: 'Loop variable %s must not be assigned in the body (like E2081).'),
+    (De: 'eine Variable der umgebenden Routine'; En: 'a variable of the enclosing routine'),
+    (De: 'ein Feld'; En: 'a field'),
+    (De: 'eine globale Variable'; En: 'a global variable'),
+    (De: 'Schleifenvariable %s ist %s, keine einfache lokale Variable (wie %s).';
+     En: 'Loop variable %s is %s, not a simple local variable (like %s).'),
+    (De: 'Schleifenvariable nach der Schleife gelesen'; En: 'Loop variable read after the loop'),
+    (De: '%s ist nach der Schleife undefiniert, wenn kein Break erreicht wurde (wie W1037).';
+     En: '%s is undefined after the loop if no Break was reached (like W1037).'),
+    (De: 'for var %s verwenden'; En: 'Use for var %s'));
+
+{$SCOPEDENUMS OFF}
 
 type
   TNameSet = TDictionary<string, Boolean>;
@@ -74,8 +104,12 @@ var
   Diagnostic: TSyntaxDiagnostic;
 begin
   for Diagnostic in ATree.Diagnostics do
+  begin
     if (Diagnostic.StartPos.Line >= AScope.StartPos.Line) and (Diagnostic.StartPos.Line <= AScope.EndPos.Line) then
+    begin
       Exit(True);
+    end;
+  end;
   Result := False;
 end;
 
@@ -85,8 +119,12 @@ var
   Part: string;
 begin
   for Part in ANames.Split([',']) do
+  begin
     if Trim(Part) <> '' then
+    begin
       ASet.AddOrSetValue(LowerCase(Trim(Part)), True);
+    end;
+  end;
 end;
 
 /// <summary>Variablen der Abschnitte var direkt unter AOwner (Routine oder Unit-Abschnitt).</summary>
@@ -99,9 +137,15 @@ begin
   begin
     Section := AOwner[Index];
     if Section.Kind = TSyntaxKind.VarSection then
+    begin
       for Item := 0 to Section.ChildCount - 1 do
+      begin
         if Section[Item].Kind = TSyntaxKind.VarDecl then
+        begin
           AddNames(ASet, Section[Item].Name);
+        end;
+      end;
+    end;
   end;
 end;
 
@@ -121,9 +165,13 @@ begin
   begin
     Middle := (Low + High) div 2;
     if ATokens[Middle].Offset < AOffset then
-      Low := Middle + 1
+    begin
+      Low := Middle + 1;
+    end
     else
+    begin
       High := Middle;
+    end;
   end;
   Result := Low;
 end;
@@ -133,14 +181,18 @@ begin
   Result := AIndex;
   while (Result <= High(ATokens)) and (ATokens[Result].Kind in [TPascalTokenKind.Comment,
     TPascalTokenKind.Directive]) do
+  begin
     Inc(Result);
+  end;
 end;
 
 function PreviousCode(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 begin
   Result := AIndex - 1;
   while (Result >= 0) and (ATokens[Result].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+  begin
     Dec(Result);
+  end;
 end;
 
 function SourceOf(const AText: string; ANode: TSyntaxNode): string;
@@ -156,7 +208,9 @@ begin
   LineStart := AOffset - ACharacter;
   Index := LineStart + 1;
   while (Index <= AOffset) and CharInSet(AText[Index], [' ', #9]) do
+  begin
     Inc(Index);
+  end;
   Result := Copy(AText, LineStart + 1, Index - LineStart - 1);
 end;
 
@@ -177,76 +231,147 @@ begin
       Node := Pending.Pop;
       if Node.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
         TSyntaxKind.RepeatStatement, TSyntaxKind.AnonymousMethod] then
+      begin
         Continue;
+      end;
       if (Node.Kind = TSyntaxKind.CallStatement) and SameText(Node.Name, 'Continue') then
+      begin
         Exit(True);
+      end;
       for Index := Node.ChildCount - 1 downto 0 do
+      begin
         Pending.Push(Node[Index]);
+      end;
     end;
   finally
     Pending.Free;
   end;
 end;
 
+type
+  /// <summary>Teile der Umstellung einer for- auf eine while-Schleife.</summary>
+  TWhileParts = record
+    /// <summary>Ersatz für "for … do": Startzuweisung und "while … do".</summary>
+    Head: string;
+    /// <summary>Inc bzw. Dec.</summary>
+    Step: string;
+    LineBreak: string;
+    Indent: string;
+    /// <summary>Das do der for-Schleife.</summary>
+    DoToken: Integer;
+  end;
+
+/// <summary>Vergleich und Schritt der Schleife: downto zwischen AStart und AStop zählt rückwärts.</summary>
+procedure LoopDirection(const ATokens: TArray<TPascalToken>; AStart, AStop: TSyntaxNode; out ACompare,
+  AStep: string);
+var
+  mIndex: Integer;
+begin
+  ACompare := '<=';
+  AStep := 'Inc';
+  for mIndex := TokenAt(ATokens, AStart.EndOffset) to TokenAt(ATokens, AStop.StartOffset) do
+  begin
+    if (mIndex <= High(ATokens)) and ATokens[mIndex].IsKeyword('downto') then
+    begin
+      ACompare := '>=';
+      AStep := 'Dec';
+    end;
+  end;
+end;
+
+/// <summary>Startzuweisung "I := A;", mit AInline als "var I: Typ := A;".</summary>
+function LoopStart(const AText: string; ALoop, AStartExpr: TSyntaxNode; AInline: Boolean): string;
+var
+  mTypeRef: TSyntaxNode;
+begin
+  mTypeRef := ALoop.FindChild(TSyntaxKind.TypeReference);
+  Result := ALoop.Name + ' := ' + SourceOf(AText, AStartExpr) + ';';
+  if AInline and (mTypeRef <> nil) then
+  begin
+    Result := 'var ' + ALoop.Name + ': ' + SourceOf(AText, mTypeRef) + ' := ' + SourceOf(AText, AStartExpr) + ';';
+  end
+  else if AInline then
+  begin
+    Result := 'var ' + Result;
+  end;
+end;
+
+/// <summary>Änderungen für einen Rumpf mit begin … end: vor dem end Inc(I); fehlt das Semikolon nach der letzten
+/// Anweisung, kommt es dazu. False ohne end.</summary>
+function BlockLoopEdits(const AText: string; const ATokens: TArray<TPascalToken>; ALoop, ABody: TSyntaxNode;
+  const AParts: TWhileParts; out AEdits: TArray<TRuleEdit>): Boolean;
+var
+  mEnd, mBefore: Integer;
+begin
+  AEdits := nil;
+  mEnd := PreviousCode(ATokens, TokenAt(ATokens, ABody.EndOffset));
+  Result := (mEnd >= 0) and ATokens[mEnd].IsKeyword('end');
+  if not Result then
+  begin
+    Exit;
+  end;
+  AEdits := [TRuleEdit.Create(TTextRange.Create(ALoop.StartPos, ATokens[AParts.DoToken].EndPos), AParts.Head)];
+  mBefore := PreviousCode(ATokens, mEnd);
+  if (mBefore >= 0) and not ATokens[mBefore].IsSymbol(';') and not ATokens[mBefore].IsKeyword('begin') then
+  begin
+    AEdits := AEdits + [TRuleEdit.Create(TTextRange.Create(ATokens[mBefore].EndPos, ATokens[mBefore].EndPos), ';')];
+  end;
+  AEdits := AEdits + [TRuleEdit.Create(TTextRange.Create(ATokens[mEnd].StartPos, ATokens[mEnd].StartPos),
+    '  ' + AParts.Step + '(' + ALoop.Name + ');' + AParts.LineBreak + IndentAt(AText, ATokens[mEnd].Offset,
+    ATokens[mEnd].StartPos.Character))];
+end;
+
+/// <summary>Änderungen für einen Rumpf aus einer Anweisung: in begin … end mit Inc(I) einschließen.</summary>
+function SingleLoopEdits(const ATokens: TArray<TPascalToken>; ALoop, ABody: TSyntaxNode;
+  const AParts: TWhileParts): TArray<TRuleEdit>;
+begin
+  Result := [TRuleEdit.Create(TTextRange.Create(ALoop.StartPos, ATokens[AParts.DoToken].EndPos),
+    AParts.Head + AParts.LineBreak + AParts.Indent + 'begin'),
+    TRuleEdit.Create(TTextRange.Create(ABody.EndPos, ABody.EndPos), ';' + AParts.LineBreak + AParts.Indent + '  ' +
+    AParts.Step + '(' + ALoop.Name + ');' + AParts.LineBreak + AParts.Indent + 'end')];
+end;
+
 // Korrektur: for I := A to B do S wird I := A; while I <= B do begin S; Inc(I); end.
 function WhileLoopFix(const AText: string; const ATokens: TArray<TPascalToken>; ALoop: TSyntaxNode;
   AInline: Boolean): TArray<TRuleFix>;
 var
-  StartExpr, StopExpr, Body, TypeRef: TSyntaxNode;
-  DoToken, EndToken, Before, Index: Integer;
-  Indent, Head, Step, Compare, LineBreak: string;
-  Edits: TArray<TRuleEdit>;
+  mStartExpr, mStopExpr, mBody: TSyntaxNode;
+  mCompare: string;
+  mParts: TWhileParts;
+  mEdits: TArray<TRuleEdit>;
 begin
   Result := nil;
-  if ALoop.ChildCount < 3 then
-    Exit;
-  StartExpr := ALoop[ALoop.ChildCount - 3];
-  StopExpr := ALoop[ALoop.ChildCount - 2];
-  Body := ALoop[ALoop.ChildCount - 1];
-  TypeRef := ALoop.FindChild(TSyntaxKind.TypeReference);
-  if HasOwnContinue(Body) then
-    Exit;
-  LineBreak := #10;
-  if Pos(#13#10, AText) > 0 then
-    LineBreak := #13#10;
-  Compare := '<=';
-  Step := 'Inc';
-  for Index := TokenAt(ATokens, StartExpr.EndOffset) to TokenAt(ATokens, StopExpr.StartOffset) do
-    if (Index <= High(ATokens)) and ATokens[Index].IsKeyword('downto') then
-    begin
-      Compare := '>=';
-      Step := 'Dec';
-    end;
-  DoToken := PreviousCode(ATokens, TokenAt(ATokens, Body.StartOffset));
-  if (DoToken < 0) or not ATokens[DoToken].IsKeyword('do') then
-    Exit;
-  Indent := IndentAt(AText, ALoop.StartOffset, ALoop.StartPos.Character);
-  Head := ALoop.Name + ' := ' + SourceOf(AText, StartExpr) + ';';
-  if AInline and (TypeRef <> nil) then
-    Head := 'var ' + ALoop.Name + ': ' + SourceOf(AText, TypeRef) + ' := ' + SourceOf(AText, StartExpr) + ';'
-  else if AInline then
-    Head := 'var ' + Head;
-  Head := Head + LineBreak + Indent + 'while ' + ALoop.Name + ' ' + Compare + ' ' + SourceOf(AText, StopExpr) + ' do';
-  if Body.Kind = TSyntaxKind.Block then
+  if (ALoop.ChildCount < 3) or HasOwnContinue(ALoop[ALoop.ChildCount - 1]) then
   begin
-    // Vor dem end des Blocks: Inc(I); fehlt das Semikolon nach der letzten Anweisung, kommt es dazu.
-    EndToken := PreviousCode(ATokens, TokenAt(ATokens, Body.EndOffset));
-    if (EndToken < 0) or not ATokens[EndToken].IsKeyword('end') then
-      Exit;
-    Edits := [TRuleEdit.Create(TTextRange.Create(ALoop.StartPos, ATokens[DoToken].EndPos), Head)];
-    Before := PreviousCode(ATokens, EndToken);
-    if (Before >= 0) and not ATokens[Before].IsSymbol(';') and not ATokens[Before].IsKeyword('begin') then
-      Edits := Edits + [TRuleEdit.Create(TTextRange.Create(ATokens[Before].EndPos, ATokens[Before].EndPos), ';')];
-    Edits := Edits + [TRuleEdit.Create(TTextRange.Create(ATokens[EndToken].StartPos, ATokens[EndToken].StartPos),
-      '  ' + Step + '(' + ALoop.Name + ');' + LineBreak + IndentAt(AText, ATokens[EndToken].Offset,
-      ATokens[EndToken].StartPos.Character))];
+    Exit;
+  end;
+  mStartExpr := ALoop[ALoop.ChildCount - 3];
+  mStopExpr := ALoop[ALoop.ChildCount - 2];
+  mBody := ALoop[ALoop.ChildCount - 1];
+  mParts := Default(TWhileParts);
+  mParts.LineBreak := #10;
+  if Pos(#13#10, AText) > 0 then
+  begin
+    mParts.LineBreak := #13#10;
+  end;
+  LoopDirection(ATokens, mStartExpr, mStopExpr, mCompare, mParts.Step);
+  mParts.DoToken := PreviousCode(ATokens, TokenAt(ATokens, mBody.StartOffset));
+  if (mParts.DoToken < 0) or not ATokens[mParts.DoToken].IsKeyword('do') then
+  begin
+    Exit;
+  end;
+  mParts.Indent := IndentAt(AText, ALoop.StartOffset, ALoop.StartPos.Character);
+  mParts.Head := LoopStart(AText, ALoop, mStartExpr, AInline) + mParts.LineBreak + mParts.Indent + 'while ' +
+    ALoop.Name + ' ' + mCompare + ' ' + SourceOf(AText, mStopExpr) + ' do';
+  if mBody.Kind <> TSyntaxKind.Block then
+  begin
+    mEdits := SingleLoopEdits(ATokens, ALoop, mBody, mParts);
   end
-  else
-    Edits := [TRuleEdit.Create(TTextRange.Create(ALoop.StartPos, ATokens[DoToken].EndPos),
-      Head + LineBreak + Indent + 'begin'),
-      TRuleEdit.Create(TTextRange.Create(Body.EndPos, Body.EndPos), ';' + LineBreak + Indent + '  ' + Step + '(' +
-      ALoop.Name + ');' + LineBreak + Indent + 'end')];
-  Result := [TRuleFix.Create('Auf while-Schleife umstellen', Edits)];
+  else if not BlockLoopEdits(AText, ATokens, ALoop, mBody, mParts, mEdits) then
+  begin
+    Exit;
+  end;
+  Result := [TRuleFix.Create(cTexts[TLoopsText.ToWhile].Text, mEdits)];
 end;
 
 { TForVariableMisuseRule }
@@ -254,7 +379,7 @@ end;
 function TForVariableMisuseRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(ForVariableMisuseRuleId, TRuleSeverity.Error,
-    'Schleifenvariable verändert oder nicht lokal');
+    cTexts[TLoopsText.LoopVarTitle].Text);
 end;
 
 procedure TForVariableMisuseRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -264,63 +389,102 @@ var
   VarRoutines: TDictionary<string, TArray<TArray<Boolean>>>;
 
 
+  // var- bzw. out-Modus jedes Parameters des Kopfs AHeader in Reihenfolge.
+  function ParameterModes(AHeader: TSyntaxNode): TArray<Boolean>;
+  var
+    mParams: TSyntaxNode;
+    mItem, mCount: Integer;
+  begin
+    Result := nil;
+    mParams := AHeader.FindChild(TSyntaxKind.Parameters);
+    if mParams = nil then
+    begin
+      Exit;
+    end;
+    for mItem := 0 to mParams.ChildCount - 1 do
+    begin
+      if mParams[mItem].Kind <> TSyntaxKind.Parameter then
+      begin
+        Continue;
+      end;
+      for mCount := 1 to Length(mParams[mItem].Name.Split([','])) do
+      begin
+        Result := Result + [mParams[mItem].Modifier in [TParameterModifier.VarParam, TParameterModifier.OutParam]];
+      end;
+    end;
+  end;
+
+  // Merkt sich die Parametermodi der Routine mit dem Kopf AHeader unter ihrem Namen ohne Klasse.
+  procedure AddVarRoutine(AHeader: TSyntaxNode);
+  var
+    mKey: string;
+    mKnown: TArray<TArray<Boolean>>;
+  begin
+    mKey := LowerCase(AHeader.Name);
+    if Pos('.', mKey) > 0 then
+    begin
+      mKey := Copy(mKey, LastDelimiter('.', mKey) + 1, MaxInt);
+    end;
+    if not VarRoutines.TryGetValue(mKey, mKnown) then
+    begin
+      mKnown := nil;
+    end;
+    VarRoutines.AddOrSetValue(mKey, mKnown + [ParameterModes(AHeader)]);
+  end;
+
+  procedure AddFields(AField: TSyntaxNode; const AClassName: string);
+  var
+    mKey: string;
+  begin
+    for mKey in AField.Name.Split([',']) do
+    begin
+      Fields.AddOrSetValue(AClassName + '.' + LowerCase(Trim(mKey)), True);
+    end;
+  end;
+
   // Felder der Klassen dieser Datei (Typname klein -> Feldnamen) und Routinen mit var/out-Parametern.
   procedure CollectDeclarations(ANode: TSyntaxNode; const AClass: string);
   var
-    Index, Item, Count: Integer;
-    Child, Params: TSyntaxNode;
-    Modes: TArray<Boolean>;
-    Key, ClassName: string;
-    Known: TArray<TArray<Boolean>>;
-    Pending: TStack<TSyntaxNode>;
-    Classes: TStack<string>;
+    mIndex: Integer;
+    mChild: TSyntaxNode;
+    mClassName: string;
+    mPending: TStack<TSyntaxNode>;
+    mClasses: TStack<string>;
   begin
     // Iterativ (Bericht M1): zu jedem Kind auf dem Stapel der Name der umgebenden Klasse.
-    Pending := TStack<TSyntaxNode>.Create;
-    Classes := TStack<string>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
+    mClasses := TStack<string>.Create;
     try
-      for Index := ANode.ChildCount - 1 downto 0 do
+      for mIndex := ANode.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(ANode[Index]);
-        Classes.Push(AClass);
+        mPending.Push(ANode[mIndex]);
+        mClasses.Push(AClass);
       end;
-      while Pending.Count > 0 do
+      while mPending.Count > 0 do
       begin
-        Child := Pending.Pop;
-        ClassName := Classes.Pop;
-        if (Child.Kind = TSyntaxKind.Field) and (ClassName <> '') then
+        mChild := mPending.Pop;
+        mClassName := mClasses.Pop;
+        if (mChild.Kind = TSyntaxKind.Field) and (mClassName <> '') then
         begin
-          for Key in Child.Name.Split([',']) do
-            Fields.AddOrSetValue(ClassName + '.' + LowerCase(Trim(Key)), True);
+          AddFields(mChild, mClassName);
         end
-        else if Child.Kind = TSyntaxKind.TypeDecl then
-          ClassName := LowerCase(Child.Name)
-        else if Child.Kind = TSyntaxKind.RoutineHeader then
+        else if mChild.Kind = TSyntaxKind.TypeDecl then
         begin
-          Params := Child.FindChild(TSyntaxKind.Parameters);
-          Modes := nil;
-          if Params <> nil then
-            for Item := 0 to Params.ChildCount - 1 do
-              if Params[Item].Kind = TSyntaxKind.Parameter then
-                for Count := 1 to Length(Params[Item].Name.Split([','])) do
-                  Modes := Modes + [Params[Item].Modifier in [TParameterModifier.VarParam,
-                    TParameterModifier.OutParam]];
-          Key := LowerCase(Child.Name);
-          if Pos('.', Key) > 0 then
-            Key := Copy(Key, LastDelimiter('.', Key) + 1, MaxInt);
-          if not VarRoutines.TryGetValue(Key, Known) then
-            Known := nil;
-          VarRoutines.AddOrSetValue(Key, Known + [Modes]);
+          mClassName := LowerCase(mChild.Name);
+        end
+        else if mChild.Kind = TSyntaxKind.RoutineHeader then
+        begin
+          AddVarRoutine(mChild);
         end;
-        for Index := Child.ChildCount - 1 downto 0 do
+        for mIndex := mChild.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Child[Index]);
-          Classes.Push(ClassName);
+          mPending.Push(mChild[mIndex]);
+          mClasses.Push(mClassName);
         end;
       end;
     finally
-      Classes.Free;
-      Pending.Free;
+      mClasses.Free;
+      mPending.Free;
     end;
   end;
 
@@ -332,65 +496,102 @@ var
   begin
     Result := False;
     if not VarRoutines.TryGetValue(LowerCase(AName), Known) then
+    begin
       Exit;
+    end;
     for Modes in Known do
+    begin
       if (AArgument > High(Modes)) or not Modes[AArgument] then
+      begin
         Exit(False);
+      end;
+    end;
     Result := True;
   end;
 
 
+  // Inc/Dec und var-Übergabe der Schleifenvariablen AName als Argument des Aufrufs ACall.
+  procedure CheckCallArguments(ACall, ALoop: TSyntaxNode; const AName: string; AInline: Boolean);
+  var
+    mIndex: Integer;
+    mTarget: TSyntaxNode;
+    mName: string;
+  begin
+    mName := ACall[0].Name;
+    for mIndex := 1 to ACall.ChildCount - 1 do
+    begin
+      mTarget := ACall[mIndex];
+      if not IsPlainName(mTarget, AName) then
+      begin
+        Continue;
+      end;
+      if (mIndex = 1) and MatchText(mName, ['Inc', 'Dec']) and not VarRoutines.ContainsKey('inc') and
+        not VarRoutines.ContainsKey('dec') then
+      begin
+        AReport.Add(TTextRange.Create(mTarget.StartPos, mTarget.EndPos),
+          cTexts[TLoopsText.Modified].Fmt([AName]),
+          TRuleConfidence.High, WhileLoopFix(AContext.Text, Tokens, ALoop, AInline));
+      end
+      else if PassesByReference(mName, mIndex - 1) then
+      begin
+        AReport.Add(TTextRange.Create(mTarget.StartPos, mTarget.EndPos),
+          cTexts[TLoopsText.VarParam].Fmt([AName, mName]),
+          TRuleConfidence.High);
+      end;
+    end;
+  end;
+
+  // Anweisung "Name(Argumente);" mit einfachem Namen?
+  function IsNamedCall(ANode: TSyntaxNode): Boolean;
+  begin
+    Result := (ANode.Kind = TSyntaxKind.CallStatement) and (ANode.ChildCount = 1) and
+      (ANode[0].Kind = TSyntaxKind.Call) and (ANode[0].ChildCount > 1);
+    Result := Result and (ANode[0][0].Kind = TSyntaxKind.Identifier);
+  end;
+
+  // Anonyme Methoden laufen später, with kann den Namen umdeuten, eine innere Schleife mit demselben Namen prüft
+  // der eigene Durchlauf.
+  function SkipsBody(ANode: TSyntaxNode; const AName: string): Boolean;
+  begin
+    Result := (ANode.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.WithStatement]) or
+      ((ANode.Kind = TSyntaxKind.ForStatement) and SameText(ANode.Name, AName));
+  end;
+
   // Meldungen im Rumpf: Zuweisung, Inc/Dec und var-Übergabe der Schleifenvariablen AName.
   procedure CheckBody(ABody, ALoop: TSyntaxNode; const AName: string; AInline: Boolean);
   var
-    Index: Integer;
-    Node, Target, Call: TSyntaxNode;
-    Name: string;
-    Pending: TStack<TSyntaxNode>;
+    mIndex: Integer;
+    mNode: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
   begin
     // Iterativ (Bericht M1).
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ABody);
-      while Pending.Count > 0 do
+      mPending.Push(ABody);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        // Anonyme Methoden laufen später, with kann den Namen umdeuten, eine innere Schleife mit demselben
-        // Namen prüft der eigene Durchlauf.
-        if (Node.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.WithStatement]) or
-          ((Node.Kind = TSyntaxKind.ForStatement) and SameText(Node.Name, AName)) then
-          Continue;
-        if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount > 0) and IsPlainName(Node[0], AName) then
-          AReport.Add(TTextRange.Create(Node[0].StartPos, Node[0].EndPos),
-            Format('Schleifenvariable %s darf im Rumpf nicht zugewiesen werden (wie E2081).', [AName]),
-            TRuleConfidence.High, WhileLoopFix(AContext.Text, Tokens, ALoop, AInline))
-        else if (Node.Kind = TSyntaxKind.CallStatement) and (Node.ChildCount = 1) and
-          (Node[0].Kind = TSyntaxKind.Call) and (Node[0].ChildCount > 1) and
-          (Node[0][0].Kind = TSyntaxKind.Identifier) then
+        mNode := mPending.Pop;
+        if SkipsBody(mNode, AName) then
         begin
-          Call := Node[0];
-          Name := Call[0].Name;
-          for Index := 1 to Call.ChildCount - 1 do
-          begin
-            Target := Call[Index];
-            if not IsPlainName(Target, AName) then
-              Continue;
-            if (Index = 1) and (SameText(Name, 'Inc') or SameText(Name, 'Dec')) and
-              not VarRoutines.ContainsKey('inc') and not VarRoutines.ContainsKey('dec') then
-              AReport.Add(TTextRange.Create(Target.StartPos, Target.EndPos),
-                Format('Schleifenvariable %s darf im Rumpf nicht verändert werden (wie E2081).', [AName]),
-                TRuleConfidence.High, WhileLoopFix(AContext.Text, Tokens, ALoop, AInline))
-            else if PassesByReference(Name, Index - 1) then
-              AReport.Add(TTextRange.Create(Target.StartPos, Target.EndPos),
-                Format('Schleifenvariable %s wird als var-Parameter an %s übergeben (wie W1015).', [AName, Name]),
-                TRuleConfidence.High);
-          end;
+          Continue;
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
-          Pending.Push(Node[Index]);
+        if (mNode.Kind = TSyntaxKind.AssignStatement) and (mNode.ChildCount > 0) and IsPlainName(mNode[0], AName) then
+        begin
+          AReport.Add(TTextRange.Create(mNode[0].StartPos, mNode[0].EndPos),
+            cTexts[TLoopsText.Assigned].Fmt([AName]),
+            TRuleConfidence.High, WhileLoopFix(AContext.Text, Tokens, ALoop, AInline));
+        end
+        else if IsNamedCall(mNode) then
+        begin
+          CheckCallArguments(mNode[0], ALoop, AName, AInline);
+        end;
+        for mIndex := mNode.ChildCount - 1 downto 0 do
+        begin
+          mPending.Push(mNode[mIndex]);
+        end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
@@ -410,11 +611,17 @@ var
       begin
         Node := Pending.Pop;
         if Node = ALoop then
+        begin
           Continue;
+        end;
         if (Node.Kind = TSyntaxKind.Identifier) and SameText(Node.Name, AName) then
+        begin
           Exit(True);
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -442,87 +649,119 @@ var
         begin
           Node := Pending.Pop;
           if Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
+          begin
             Continue;
+          end;
           if Node.Kind in [TSyntaxKind.InlineVar, TSyntaxKind.InlineConst] then
+          begin
             AddNames(Locals, Node.Name);
+          end;
           for Child := Node.ChildCount - 1 downto 0 do
+          begin
             Pending.Push(Node[Child]);
+          end;
         end;
       finally
         Pending.Free;
       end;
     end;
 
+    // Art der nicht lokalen Schleifenvariablen AKey ('' bei unbekannter) und der Code der Meldung. Eine globale
+    // Variable übersetzt Delphi 13 mit Warnung W1019, die anderen Fälle sind Fehler E1019.
+    function NonLocalKind(const AKey: string; out ACode: string): string;
+    begin
+      Result := '';
+      ACode := 'E1019';
+      if AOuterLocals.ContainsKey(AKey) then
+      begin
+        Result := cTexts[TLoopsText.OuterVariable].Text;
+      end
+      else if (AClass <> '') and Fields.ContainsKey(AClass + '.' + AKey) then
+      begin
+        Result := cTexts[TLoopsText.FieldKind].Text;
+      end
+      else if Globals.ContainsKey(AKey) then
+      begin
+        Result := cTexts[TLoopsText.GlobalVariable].Text;
+        ACode := 'W1019';
+      end;
+    end;
+
+    // Nicht lokal: lokale Variable einer umgebenden Routine, Feld der eigenen Klasse oder globale Variable.
+    procedure CheckNonLocal(ALoop: TSyntaxNode; AForToken: Integer);
+    var
+      mKind, mCode: string;
+      mFixes: TArray<TRuleFix>;
+    begin
+      mKind := NonLocalKind(LowerCase(ALoop.Name), mCode);
+      if mKind = '' then
+      begin
+        Exit;
+      end;
+      mFixes := nil;
+      if not UsedOutside(ABody, ALoop, ALoop.Name) then
+      begin
+        mFixes := [TRuleFix.Create(cTexts[TLoopsText.UseForVar].Fmt([ALoop.Name]),
+          [TRuleEdit.Create(TTextRange.Create(Tokens[AForToken].StartPos, Tokens[AForToken].StartPos), 'var ')])];
+      end;
+      AReport.Add(TTextRange.Create(Tokens[AForToken].StartPos, Tokens[AForToken].EndPos),
+        cTexts[TLoopsText.NonLocal].Fmt([ALoop.Name, mKind, mCode]),
+        TRuleConfidence.High, mFixes);
+    end;
+
+    procedure CheckFor(ALoop: TSyntaxNode);
+    var
+      mForToken: Integer;
+      mIsInline: Boolean;
+    begin
+      // Erstes Code-Token nach for: var bei for var I, sonst der Name.
+      mForToken := NextCode(Tokens, TokenAt(Tokens, ALoop.StartOffset) + 1);
+      mIsInline := (mForToken <= High(Tokens)) and Tokens[mForToken].IsKeyword('var');
+      if not mIsInline and not Locals.ContainsKey(LowerCase(ALoop.Name)) then
+      begin
+        CheckNonLocal(ALoop, mForToken);
+      end;
+      if ALoop.ChildCount > 0 then
+      begin
+        CheckBody(ALoop[ALoop.ChildCount - 1], ALoop, ALoop.Name, mIsInline);
+      end;
+    end;
+
     procedure VisitLoops(ARoot: TSyntaxNode);
     var
-      Child, ForToken: Integer;
-      Name, Key, Kind, mCode: string;
-      IsInline, InWith: Boolean;
-      Fixes: TArray<TRuleFix>;
-      Node: TSyntaxNode;
-      Pending: TStack<TSyntaxNode>;
-      PendingInWith: TStack<Boolean>;
+      mChild: Integer;
+      mInWith: Boolean;
+      mNode: TSyntaxNode;
+      mPending: TStack<TSyntaxNode>;
+      mPendingInWith: TStack<Boolean>;
     begin
       // Iterativ (Bericht M1): zu jedem Knoten auf dem Stapel, ob er in einer with-Anweisung liegt.
-      Pending := TStack<TSyntaxNode>.Create;
-      PendingInWith := TStack<Boolean>.Create;
+      mPending := TStack<TSyntaxNode>.Create;
+      mPendingInWith := TStack<Boolean>.Create;
       try
-        Pending.Push(ARoot);
-        PendingInWith.Push(False);
-        while Pending.Count > 0 do
+        mPending.Push(ARoot);
+        mPendingInWith.Push(False);
+        while mPending.Count > 0 do
         begin
-          Node := Pending.Pop;
-          InWith := PendingInWith.Pop;
-          if Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
+          mNode := mPending.Pop;
+          mInWith := mPendingInWith.Pop or (mNode.Kind = TSyntaxKind.WithStatement);
+          if mNode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
+          begin
             Continue;
-          if Node.Kind = TSyntaxKind.WithStatement then
-            InWith := True;
-          if (Node.Kind = TSyntaxKind.ForStatement) and (Node.Name <> '') and not InWith then
-          begin
-            Name := Node.Name;
-            // Erstes Code-Token nach for: var bei for var I, sonst der Name.
-            ForToken := NextCode(Tokens, TokenAt(Tokens, Node.StartOffset) + 1);
-            IsInline := (ForToken <= High(Tokens)) and Tokens[ForToken].IsKeyword('var');
-            Key := LowerCase(Name);
-            if not IsInline and not Locals.ContainsKey(Key) then
-            begin
-              // Nicht lokal: lokale Variable einer umgebenden Routine, Feld der eigenen Klasse oder globale Variable.
-              // Eine globale Variable übersetzt Delphi 13 mit Warnung W1019, die anderen Fälle sind Fehler E1019.
-              Kind := '';
-              mCode := 'E1019';
-              if AOuterLocals.ContainsKey(Key) then
-                Kind := 'eine Variable der umgebenden Routine'
-              else if (AClass <> '') and Fields.ContainsKey(AClass + '.' + Key) then
-                Kind := 'ein Feld'
-              else if Globals.ContainsKey(Key) then
-              begin
-                Kind := 'eine globale Variable';
-                mCode := 'W1019';
-              end;
-              if Kind <> '' then
-              begin
-                Fixes := nil;
-                if not UsedOutside(ABody, Node, Name) then
-                  Fixes := [TRuleFix.Create('for var ' + Name + ' verwenden',
-                    [TRuleEdit.Create(TTextRange.Create(Tokens[ForToken].StartPos, Tokens[ForToken].StartPos),
-                    'var ')])];
-                AReport.Add(TTextRange.Create(Tokens[ForToken].StartPos, Tokens[ForToken].EndPos),
-                  Format('Schleifenvariable %s ist %s, keine einfache lokale Variable (wie %s).', [Name, Kind, mCode]),
-                  TRuleConfidence.High, Fixes);
-              end;
-            end;
-            if Node.ChildCount > 0 then
-              CheckBody(Node[Node.ChildCount - 1], Node, Name, IsInline);
           end;
-          for Child := Node.ChildCount - 1 downto 0 do
+          if (mNode.Kind = TSyntaxKind.ForStatement) and (mNode.Name <> '') and not mInWith then
           begin
-            Pending.Push(Node[Child]);
-            PendingInWith.Push(InWith);
+            CheckFor(mNode);
+          end;
+          for mChild := mNode.ChildCount - 1 downto 0 do
+          begin
+            mPending.Push(mNode[mChild]);
+            mPendingInWith.Push(mInWith);
           end;
         end;
       finally
-        PendingInWith.Free;
-        Pending.Free;
+        mPendingInWith.Free;
+        mPending.Free;
       end;
     end;
 
@@ -540,23 +779,35 @@ var
       begin
         Params := Header.FindChild(TSyntaxKind.Parameters);
         if Params <> nil then
+        begin
           for Index := 0 to Params.ChildCount - 1 do
+          begin
             AddNames(Locals, Params[Index].Name);
+          end;
+        end;
       end;
       CollectInline(ABody);
       if not ParserBroken(AContext.Tree, ARoutine) then
+      begin
         VisitLoops(ABody);
+      end;
       // Lokale Routinen: deren umgebende Variablen sind diese plus die äußeren. Die Rekursion bleibt (Bericht M1):
       // sie geht nur über verschachtelte Routinendeklarationen, nicht über Ausdrücke oder Anweisungsketten.
       for Pair in AOuterLocals do
+      begin
         Outer.AddOrSetValue(Pair.Key, True);
+      end;
       for Pair in Locals do
+      begin
         Outer.AddOrSetValue(Pair.Key, True);
+      end;
       for Index := 0 to ARoutine.ChildCount - 1 do
       begin
         Child := ARoutine[Index];
         if (Child.Kind = TSyntaxKind.RoutineDecl) and (Child.FindChild(TSyntaxKind.Block) <> nil) then
+        begin
           CheckRoutine(Child, Child.FindChild(TSyntaxKind.Block), Outer, AClass);
+        end;
       end;
     finally
       Outer.Free;
@@ -578,7 +829,9 @@ var
       begin
         ClassName := '';
         if Pos('.', Body.Name) > 0 then
+        begin
           ClassName := LowerCase(Copy(Body.Name, 1, LastDelimiter('.', Body.Name) - 1));
+        end;
         NoOuter := TNameSet.Create;
         try
           CheckRoutine(Body, Body.FindChild(TSyntaxKind.Block), NoOuter, ClassName);
@@ -587,7 +840,9 @@ var
         end;
       end
       else if Body.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection] then
+      begin
         VisitRoutines(Body);
+      end;
     end;
   end;
 
@@ -597,13 +852,19 @@ var
   begin
     AddVariables(Globals, ANode);
     for Index := 0 to ANode.ChildCount - 1 do
+    begin
       if ANode[Index].Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection] then
+      begin
         AddVariables(Globals, ANode[Index]);
+      end;
+    end;
   end;
 
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'for') then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Globals := TNameSet.Create;
   Fields := TNameSet.Create;
@@ -624,7 +885,7 @@ end;
 function TForVariableAfterLoopRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(ForVariableAfterLoopRuleId, TRuleSeverity.Warning,
-    'Schleifenvariable nach der Schleife gelesen');
+    cTexts[TLoopsText.ReadAfterTitle].Text);
 end;
 
 procedure TForVariableAfterLoopRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -637,7 +898,9 @@ var
   function IsInside(ANode, AOuter: TSyntaxNode): Boolean;
   begin
     while (ANode <> nil) and (ANode <> AOuter) do
+    begin
       ANode := ANode.Parent;
+    end;
     Result := ANode <> nil;
   end;
 
@@ -658,16 +921,24 @@ var
       begin
         Node := Pending.Pop;
         if Node.Kind = TSyntaxKind.AnonymousMethod then
+        begin
           Continue;
+        end;
         if (Node.Kind = TSyntaxKind.Identifier) and SameText(Node.Name, AName) then
+        begin
           Exit(Node);
+        end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           if not (Node[Index].Kind in [TSyntaxKind.Block, TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement,
             TSyntaxKind.IfStatement, TSyntaxKind.CaseStatement, TSyntaxKind.CaseItem, TSyntaxKind.CaseElse,
             TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
             TSyntaxKind.RepeatStatement, TSyntaxKind.WithStatement, TSyntaxKind.TryStatement,
             TSyntaxKind.RaiseStatement, TSyntaxKind.LabeledStatement]) then
+          begin
             Pending.Push(Node[Index]);
+          end;
+        end;
       end;
     finally
       Pending.Free;
@@ -691,16 +962,22 @@ var
       begin
         Node := Pending.Pop;
         if Seen.ContainsKey(Node) then
+        begin
           Continue;
+        end;
         Seen.Add(Node, True);
         if Node.Syntax <> nil then
         begin
           if IsInside(Node.Syntax, ALoop) and (Node.Syntax <> ALoop) then
+          begin
             Exit(True);
+          end;
           Continue;
         end;
         for Next in Node.Successors do
+        begin
           Pending.Push(Next);
+        end;
       end;
     finally
       Seen.Free;
@@ -708,57 +985,105 @@ var
     end;
   end;
 
+  // Erreichbarer Bedingungsknoten der Schleife ALoop; nil ohne.
+  function ConditionOf(ALoop: TSyntaxNode): TFlowNode;
+  var
+    mNode: TFlowNode;
+  begin
+    Result := nil;
+    for mNode in Graph.Nodes do
+    begin
+      if (mNode.Kind = TFlowNodeKind.Condition) and (mNode.Syntax = ALoop) then
+      begin
+        Result := mNode;
+      end;
+    end;
+    if (Result <> nil) and (Graph.IsReachable(Result) <> TFlowAnswer.Yes) then
+    begin
+      Result := nil;
+    end;
+  end;
+
+  // Normaler Ausgang: Nachfolger ANext der Bedingung ACondition außerhalb der Schleife.
+  function IsLoopExit(ANext, ACondition: TFlowNode; ALoop: TSyntaxNode): Boolean;
+  begin
+    Result := (ANext <> ACondition) and (((ANext.Syntax = nil) and not EntersBody(ANext, ALoop)) or
+      ((ANext.Syntax <> nil) and not IsInside(ANext.Syntax, ALoop)));
+  end;
+
+  procedure ReportRead(ANode: TFlowNode; ALoop: TSyntaxNode);
+  var
+    mTarget: TSyntaxNode;
+  begin
+    mTarget := FindName(ANode.Syntax, ALoop.Name);
+    if (mTarget = nil) or Reported.ContainsKey(mTarget) then
+    begin
+      Exit;
+    end;
+    Reported.Add(mTarget, True);
+    AReport.Add(TTextRange.Create(mTarget.StartPos, mTarget.EndPos), cTexts[TLoopsText.ReadAfter].Fmt([ALoop.Name]),
+      TRuleConfidence.High,
+      WhileLoopFix(AContext.Text, Tokens, ALoop, False));
+  end;
+
+  // Folgt dem Fluss ab ANode, solange die Schleifenvariable weder neu belegt noch gelesen wird; ein Lesen meldet
+  // ReportRead.
+  procedure FollowFlow(ANode: TFlowNode; ALoop: TSyntaxNode; APending: TStack<TFlowNode>);
+  var
+    mNext: TFlowNode;
+  begin
+    if SameText(ANode.Defines, ALoop.Name) or ANode.TouchesName(ALoop.Name) then
+    begin
+      Exit;
+    end;
+    if ANode.ReadsName(ALoop.Name) and (ANode.Syntax <> nil) then
+    begin
+      ReportRead(ANode, ALoop);
+      Exit;
+    end;
+    for mNext in ANode.Successors do
+    begin
+      if not ANode.IsImplicitRaiseEdge(mNext) then
+      begin
+        APending.Push(mNext);
+      end;
+    end;
+  end;
+
   procedure CheckLoop(ALoop: TSyntaxNode);
   var
-    Condition, Node, Next: TFlowNode;
-    Pending: TStack<TFlowNode>;
-    Seen: TDictionary<TFlowNode, Boolean>;
-    Name: string;
-    Target: TSyntaxNode;
-    Range: TTextRange;
+    mCondition, mNode, mNext: TFlowNode;
+    mPending: TStack<TFlowNode>;
+    mSeen: TDictionary<TFlowNode, Boolean>;
   begin
-    Condition := nil;
-    for Node in Graph.Nodes do
-      if (Node.Kind = TFlowNodeKind.Condition) and (Node.Syntax = ALoop) then
-        Condition := Node;
-    if (Condition = nil) or (Graph.IsReachable(Condition) <> TFlowAnswer.Yes) then
+    mCondition := ConditionOf(ALoop);
+    if mCondition = nil then
+    begin
       Exit;
-    Name := ALoop.Name;
-    Pending := TStack<TFlowNode>.Create;
-    Seen := TDictionary<TFlowNode, Boolean>.Create;
+    end;
+    mPending := TStack<TFlowNode>.Create;
+    mSeen := TDictionary<TFlowNode, Boolean>.Create;
     try
-      // Normaler Ausgang: Nachfolger der Bedingung außerhalb der Schleife.
-      for Next in Condition.Successors do
-        if (Next <> Condition) and (((Next.Syntax = nil) and not EntersBody(Next, ALoop)) or
-          ((Next.Syntax <> nil) and not IsInside(Next.Syntax, ALoop))) then
-          Pending.Push(Next);
-      while Pending.Count > 0 do
+      for mNext in mCondition.Successors do
       begin
-        Node := Pending.Pop;
-        if Seen.ContainsKey(Node) then
-          Continue;
-        Seen.Add(Node, True);
-        if SameText(Node.Defines, Name) or Node.TouchesName(Name) then
-          Continue;
-        if Node.ReadsName(Name) and (Node.Syntax <> nil) then
+        if IsLoopExit(mNext, mCondition, ALoop) then
         begin
-          Target := FindName(Node.Syntax, Name);
-          if (Target <> nil) and not Reported.ContainsKey(Target) then
-          begin
-            Reported.Add(Target, True);
-            Range := TTextRange.Create(Target.StartPos, Target.EndPos);
-            AReport.Add(Range, Format('%s ist nach der Schleife undefiniert, wenn kein Break erreicht wurde ' +
-              '(wie W1037).', [Name]), TRuleConfidence.High, WhileLoopFix(AContext.Text, Tokens, ALoop, False));
-          end;
+          mPending.Push(mNext);
+        end;
+      end;
+      while mPending.Count > 0 do
+      begin
+        mNode := mPending.Pop;
+        if mSeen.ContainsKey(mNode) then
+        begin
           Continue;
         end;
-        for Next in Node.Successors do
-          if not Node.IsImplicitRaiseEdge(Next) then
-            Pending.Push(Next);
+        mSeen.Add(mNode, True);
+        FollowFlow(mNode, ALoop, mPending);
       end;
     finally
-      Seen.Free;
-      Pending.Free;
+      mSeen.Free;
+      mPending.Free;
     end;
   end;
 
@@ -776,15 +1101,21 @@ var
       begin
         Node := Pending.Pop;
         if Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
+        begin
           Continue;
+        end;
         if (Node.Kind = TSyntaxKind.ForStatement) and ALocals.ContainsKey(LowerCase(Node.Name)) then
         begin
           ForToken := NextCode(Tokens, TokenAt(Tokens, Node.StartOffset) + 1);
           if (ForToken <= High(Tokens)) and not Tokens[ForToken].IsKeyword('var') then
+          begin
             CheckLoop(Node);
+          end;
         end;
         for Index := Node.ChildCount - 1 downto 0 do
+        begin
           Pending.Push(Node[Index]);
+        end;
       end;
     finally
       Pending.Free;
@@ -796,7 +1127,9 @@ var
   Locals: TNameSet;
 begin
   if (AContext.Tree = nil) or not ContainsText(AContext.Text, 'for') then
+  begin
     Exit;
+  end;
   Tokens := AContext.Tree.Tokens;
   Cache := TRuleDerived.Open(AContext);
   Reported := TDictionary<TSyntaxNode, Boolean>.Create;
@@ -806,14 +1139,20 @@ begin
     begin
       Block := Routine.FindChild(TSyntaxKind.Block);
       if Block = nil then
+      begin
         Continue;
+      end;
       Locals.Clear;
       AddVariables(Locals, Routine);
       if Locals.Count = 0 then
+      begin
         Continue;
+      end;
       Graph := TRuleDerived.Graph(Cache, AContext, Routine);
       if (Graph = nil) or not Graph.Complete then
+      begin
         Continue;
+      end;
       VisitLoops(Block, Locals);
     end;
   finally
@@ -827,5 +1166,8 @@ begin
   ARegistry.Register(TForVariableMisuseRule.Create);
   ARegistry.Register(TForVariableAfterLoopRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Loops', cTexts);
 
 end.

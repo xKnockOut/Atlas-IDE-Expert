@@ -175,7 +175,7 @@ begin
   FProgress := nil;
   FId := 0;
   FCompletion := TLspCompletion.Create(FStore, FIndex);
-  FCompletion.ReadText :=
+  FCompletion.Hooks.ReadText :=
     function(const AFileName: string; out AText: string): Boolean
     begin
       if SameText(ExtractFileExt(AFileName), '.dfm') then
@@ -185,7 +185,7 @@ begin
       end;
       Result := FFiles.TryGetValue(LowerCase(AFileName), AText);
     end;
-  FCompletion.Notify :=
+  FCompletion.Hooks.Notify :=
     procedure(const AMethod: string; AParams: TJSONObject)
     begin
       try
@@ -229,15 +229,19 @@ var
 begin
   Marker := Pos('|', AText);
   if Marker = 0 then
+  begin
     raise Exception.Create('Marker "|" fehlt');
+  end;
   Line := 0;
   LineStart := 1;
   for Index := 1 to Marker - 1 do
+  begin
     if AText[Index] = #10 then
     begin
       Inc(Line);
       LineStart := Index + 1;
     end;
+  end;
   Text := Copy(AText, 1, Marker - 1) + Copy(AText, Marker + 1, MaxInt);
   Uri := TDocumentUris.FromPath(HauptFile);
   FStore.Close(Uri);
@@ -245,9 +249,13 @@ begin
   Params := '{"textDocument":{"uri":"' + Uri.Replace('\', '\\') + '"},"position":{"line":' + IntToStr(Line) +
     ',"character":' + IntToStr(Marker - LineStart) + '}';
   if ATrigger <> '' then
+  begin
     Params := Params + ',"context":{"triggerKind":2,"triggerCharacter":"' + ATrigger + '"}';
+  end;
   if AToken <> '' then
+  begin
     Params := Params + ',"partialResultToken":"' + AToken + '"';
+  end;
   Params := Params + '}';
   Inc(FId);
   Request := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","id":' + IntToStr(FId) +
@@ -275,7 +283,9 @@ begin
   Result := '';
   Items := AResult.GetValue('items') as TJSONArray;
   for Index := 0 to Items.Count - 1 do
+  begin
     Result := Result + ' ' + (Items.Items[Index] as TJSONObject).GetValue<string>('label');
+  end;
   Result := Result.Trim;
 end;
 
@@ -323,7 +333,9 @@ begin
     Assert.IsTrue(ItemCount(Answer) > 0, Answer.ToJSON);
     Assert.IsTrue(Pos('"insertText":"uses "', Answer.ToJSON) > 0, Answer.ToJSON);
     for Index := 0 to ItemCount(Answer) - 1 do
+    begin
       Assert.AreEqual(14, ItemAt(Answer, Index).GetValue<Integer>('kind'));
+    end;
     Assert.IsFalse(Answer.ToJSON.Contains('"Wert"'), Answer.ToJSON);
   finally
     Answer.Free;
@@ -374,7 +386,7 @@ var
 begin
   Line := -1;
   Blanked := False;
-  FCompletion.RuleIdsFor :=
+  FCompletion.Hooks.RuleIdsFor :=
     function(const AUri, AText: string; ALine: Integer; out AIds: TArray<string>): Boolean
     begin
       Line := ALine;
@@ -391,7 +403,7 @@ begin
     Answer.Free;
   end;
   // Ohne Auskunft der ganze Katalog.
-  FCompletion.RuleIdsFor := nil;
+  FCompletion.Hooks.RuleIdsFor := nil;
   Answer := Complete(Source);
   try
     Assert.IsTrue(ItemCount(Answer) > 2, Labels(Answer));
@@ -669,7 +681,7 @@ begin
   finally
     Answer.Free;
   end;
-  FCompletion.SettingsFor :=
+  FCompletion.Hooks.SettingsFor :=
     function(const AUri: string): TCompletionSettings
     begin
       Result := TCompletionSettings.Default;
@@ -712,7 +724,9 @@ begin
       end;
     end;
     if ItemCount(Answer) > 0 then
+    begin
       Assert.AreEqual(Format('%.5d', [Sent]), ItemAt(Answer, 0).GetValue<string>('sortText'));
+    end;
   finally
     Answer.Free;
   end;
@@ -784,10 +798,16 @@ const
   begin
     Result := 'unit Kunden;'#13#10'interface'#13#10'type'#13#10'  TKunde = class'#13#10;
     for Index := 1 to AFields do
+    begin
       if Index <= APrefixed then
-        Result := Result + '    FWert' + IntToStr(Index) + ': Integer;'#13#10
+      begin
+        Result := Result + '    FWert' + IntToStr(Index) + ': Integer;'#13#10;
+      end
       else
+      begin
         Result := Result + '    Wert' + IntToStr(Index) + ': Integer;'#13#10;
+      end;
+    end;
     Result := Result + '  end;'#13#10'implementation'#13#10'end.';
   end;
 
@@ -856,12 +876,14 @@ var
   Answer: TJSONObject;
 begin
   AddUnit(KundenFile, FieldUnit(5, 0));
-  FCompletion.NamingFor :=
+  FCompletion.Hooks.NamingFor :=
     function(const AUri: string; AKind: TNamingKind): string
     begin
       Result := '';
       if AKind = TNamingKind.Field then
+      begin
         Result := 'F';
+      end;
     end;
   Answer := Complete(FieldSite);
   try
@@ -869,7 +891,7 @@ begin
   finally
     Answer.Free;
   end;
-  FCompletion.SettingsFor :=
+  FCompletion.Hooks.SettingsFor :=
     function(const AUri: string): TCompletionSettings
     begin
       Result := TCompletionSettings.Default;
@@ -942,7 +964,7 @@ procedure TLspCompletionHandleTests.ResourceStringAsLinkedSnippet;
 var
   Answer, Item: TJSONObject;
 begin
-  FCompletion.SnippetSupport := True;
+  FCompletion.Hooks.SnippetSupport := True;
   Answer := Complete(StringReplace(FrageUnit, 'Eintrag wirklich', 'Preis in $ wirklich', []));
   try
     // Platzhalter-Modus (#51): derselbe Platzhalter an der Stelle und im Abschnitt, "$" maskiert.
@@ -982,7 +1004,7 @@ var
   Arguments: TJSONArray;
 begin
   AddUnit(TexteFile, TexteUnit);
-  FCompletion.SettingsFor :=
+  FCompletion.Hooks.SettingsFor :=
     function(const AUri: string): TCompletionSettings
     begin
       Result := TCompletionSettings.Default;
@@ -1032,7 +1054,7 @@ begin
   finally
     Answer.Free;
   end;
-  FCompletion.SettingsFor :=
+  FCompletion.Hooks.SettingsFor :=
     function(const AUri: string): TCompletionSettings
     begin
       Result := TCompletionSettings.Default;
@@ -1059,7 +1081,7 @@ var
   Enabled: Boolean;
 begin
   Enabled := True;
-  FCompletion.DocCommentsFor :=
+  FCompletion.Hooks.DocCommentsFor :=
     function(const AUri: string): Boolean
     begin
       Result := Enabled;
@@ -1099,7 +1121,7 @@ var
   Enabled: Boolean;
 begin
   Enabled := True;
-  FCompletion.SymbolsFor :=
+  FCompletion.Hooks.SymbolsFor :=
     function(const AUri: string): TConditionalContext
     begin
       Result := TConditionalContext.Default;

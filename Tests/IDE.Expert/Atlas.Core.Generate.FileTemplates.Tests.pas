@@ -53,7 +53,9 @@ var
   Snippet: TAtlasSnippet;
 begin
   for Kind := Low(TAtlasNewFileKind) to High(TAtlasNewFileKind) do
+  begin
     Assert.IsTrue(Length(TAtlasFileTemplates.OfKind(nil, Kind)) > 0, TAtlasFileTemplates.KindWord(Kind));
+  end;
   Assert.AreEqual(2, Integer(Length(TAtlasFileTemplates.OfKind(nil, TAtlasNewFileKind.UnitFile))));
   for Snippet in TAtlasFileTemplates.BuiltIn do
   begin

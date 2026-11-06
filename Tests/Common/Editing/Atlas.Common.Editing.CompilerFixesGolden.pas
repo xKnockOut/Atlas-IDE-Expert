@@ -1,4 +1,4 @@
-﻿unit Atlas.Common.Editing.CompilerFixesGolden; // lsp-ignore-file: unused-public-member -- Golden-Datei: Das Testprojekt übersetzt nur das Ergebnis der Aktion.
+﻿unit Atlas.Common.Editing.CompilerFixesGolden;
 
 // Golden-Datei für die Schnellkorrekturen an Compilermeldungen, Teil 2
 // (#549): genau das, was die Korrekturen aus dem Vorher-Text in
@@ -47,7 +47,9 @@ function Erster(const AText: string): Integer;
 begin
   Result := Default(Integer);
   if AText <> '' then
+  begin
     Result := Ord(AText[1]);
+  end;
 end;
 
 function Doppelt(const AText: string): Integer;

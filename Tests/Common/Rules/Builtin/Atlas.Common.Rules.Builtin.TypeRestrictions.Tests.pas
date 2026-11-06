@@ -134,6 +134,12 @@ uses
   Atlas.Common.Index.SymbolIndex,
   Atlas.Common.Index.Extractor,
   Atlas.Common.Rules.Builtin.TypeRestrictions,
+  Atlas.Common.Rules.Builtin.TypeRestrictions.Heads,
+  Atlas.Common.Rules.Builtin.TypeRestrictions.Operators,
+  Atlas.Common.Rules.Builtin.TypeRestrictions.Generics,
+  Atlas.Common.Rules.Builtin.TypeRestrictions.Records,
+  Atlas.Common.Rules.Builtin.TypeRestrictions.Attributes,
+  Atlas.Common.Rules.Builtin.TypeRestrictions.TypeInfo,
   Atlas.Common.Editing.ChangeSignature,
   Atlas.Tests.RuleAssert;
 
@@ -334,7 +340,9 @@ begin
   for Finding in AFound do
   begin
     if Result <> '' then
+    begin
       Result := Result + '|';
+    end;
     Result := Result + IntToStr(Finding.Range.StartPos.Line + 1) + ': ' + Finding.Message;
   end;
 end;

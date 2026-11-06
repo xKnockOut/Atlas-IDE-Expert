@@ -44,6 +44,7 @@ uses
   Atlas.Common.Rules.ProjectFiles,
   Atlas.Common.Rules.Builtin,
   Atlas.Common.Architecture.UsesGraph,
+  Atlas.Common.Mcp.Contract,
   Atlas.Common.Mcp.DeadCodeTools;
 
 const
@@ -88,12 +89,20 @@ begin
   Result.Texts := Texts;
   Result.Index := TSymbolIndex.Create;
   for Pair in Texts do
+  begin
     if Pair.Key = UpperCase(AppFile) then
-      Result.Index.AddUnit(TIndexExtractor.ExtractText(Pair.Value, AppFile, nil, nil, True))
+    begin
+      Result.Index.AddUnit(TIndexExtractor.ExtractText(Pair.Value, AppFile, nil, nil, True));
+    end
     else if Pair.Key = UpperCase(MainFile) then
-      Result.Index.AddUnit(TIndexExtractor.ExtractText(Pair.Value, MainFile, nil, nil, True))
+    begin
+      Result.Index.AddUnit(TIndexExtractor.ExtractText(Pair.Value, MainFile, nil, nil, True));
+    end
     else
+    begin
       Result.Index.AddUnit(TIndexExtractor.ExtractText(Pair.Value, OrphanFile, nil, nil, True));
+    end;
+  end;
   Result.Sources := [AppFile, MainFile, OrphanFile];
   Project := Default(TRuleProject);
   Project.FileName := 'C:\P\App.dproj';
@@ -108,7 +117,9 @@ begin
     begin
       Result := not Incomplete;
       if Incomplete then
+      begin
         AReason := 'Index wird aufgebaut';
+      end;
     end);
 end;
 
@@ -127,8 +138,8 @@ var
 begin
   Data := Fixture(False);
   try
-    Text := TMcpDeadCodeTools.FindUnused(BuiltinRules, TServerSettings.Default, Root, [MainFile, OrphanFile],
-      Data.Index, Data.Files, nil, False);
+    Text := TMcpDeadCodeTools.FindUnused(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, Root),
+      [MainFile, OrphanFile], Data.Index, Data.Files, nil, False);
     Assert.AreEqual(
       '# Ungenutzter Code'#13#10 +
       '2 Befunde in 2 Dateien (unused-private-member, unused-public-member, unused-declaration, unused-unit).'#13#10 +
@@ -151,8 +162,8 @@ var
 begin
   Data := Fixture(False);
   try
-    Json := TJSONObject.ParseJSONValue(TMcpDeadCodeTools.FindUnused(BuiltinRules, TServerSettings.Default, Root,
-      Data.Sources, Data.Index, Data.Files, nil, True));
+    Json := TJSONObject.ParseJSONValue(TMcpDeadCodeTools.FindUnused(TMcpRuleScope.Create(BuiltinRules,
+      TServerSettings.Default, Root), Data.Sources, Data.Index, Data.Files, nil, True));
     try
       Assert.AreEqual(3, (Json as TJSONObject).GetValue<Integer>('files'));
       Assert.AreEqual(2, (Json as TJSONObject).GetValue<Integer>('total'));
@@ -176,8 +187,8 @@ var
 begin
   Data := Fixture(True);
   try
-    Text := TMcpDeadCodeTools.FindUnused(BuiltinRules, TServerSettings.Default, Root, [MainFile], Data.Index,
-      Data.Files, nil, False);
+    Text := TMcpDeadCodeTools.FindUnused(TMcpRuleScope.Create(BuiltinRules, TServerSettings.Default, Root), [MainFile],
+      Data.Index, Data.Files, nil, False);
     Assert.IsTrue(Pos('Hinweis: Index wird aufgebaut; unused-public-member und unused-unit schweigen', Text) > 0, Text);
     // Regeln innerhalb der Unit melden trotzdem.
     Assert.IsTrue(Pos('Routine Hilfe wird nirgends verwendet.', Text) > 0, Text);
@@ -194,8 +205,8 @@ var
 begin
   Data := Fixture(False);
   try
-    Text := TMcpDeadCodeTools.FindUnused(BuiltinRules, TConfigurationParser.Parse(
-      '{"rules": {"unused-private-member": "off"}, "deadCode": {"keepPatterns": ["Hilfe"]}}', Issues), Root,
+    Text := TMcpDeadCodeTools.FindUnused(TMcpRuleScope.Create(BuiltinRules, TConfigurationParser.Parse(
+      '{"rules": {"unused-private-member": "off"}, "deadCode": {"keepPatterns": ["Hilfe"]}}', Issues), Root),
       [MainFile], Data.Index, Data.Files, nil, False);
     Assert.IsTrue(Pos('0 Befunde in 1 Dateien', Text) > 0, Text);
     Issues := nil;

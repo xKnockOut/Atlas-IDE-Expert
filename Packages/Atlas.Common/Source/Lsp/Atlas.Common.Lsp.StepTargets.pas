@@ -96,6 +96,20 @@ type
     function TargetOf(const AUnit: TUnitIndex; const ABody: TIndexSymbol; out ATarget: TLspStepTarget): Boolean;
     function IsInterface(const AUnit: TUnitIndex; const AContainer: string): Boolean;
     procedure AddTargets(var ACall: TLspStepCall; const AUnit: TUnitIndex; const AParamTypes: TArray<string>);
+    function ResolveTarget(const ASite: TStepCallSite; const APosition: TTextPosition;
+      out AResolved: TResolvedSymbol): Boolean;
+    function LocalCall(const ASite: TStepCallSite; const AResolved: TResolvedSymbol;
+      var ACall: TLspStepCall): Boolean;
+    function RoutineCall(const ASite: TStepCallSite; const AResolved: TResolvedSymbol; const AOwner: TUnitIndex;
+      var ACall: TLspStepCall): Boolean;
+    function FindAccessor(const AOwner: TUnitIndex; const AContainer, AName: string; var ACall: TLspStepCall;
+      out AAccess: TResolvedSymbol; out AFound: Boolean): Boolean;
+    function PropertyCall(const ASite: TStepCallSite; const AResolved: TResolvedSymbol; const AOwner: TUnitIndex;
+      var ACall: TLspStepCall): Boolean;
+    function SymbolCall(const ASite: TStepCallSite; const AResolved: TResolvedSymbol;
+      var ACall: TLspStepCall): Boolean;
+    function ResolvedCall(const ASite: TStepCallSite; const AResolved: TResolvedSymbol;
+      var ACall: TLspStepCall): Boolean;
     function ResolveSite(const ASite: TStepCallSite; out ACall: TLspStepCall): Boolean;
     function ResolveInherited(const APosition: TTextPosition;
       out ACall: TLspStepCall): Boolean;
@@ -109,8 +123,7 @@ type
     /// <summary>Aufrufe der Anweisung an ALine (ab 0); False ohne Anweisung.</summary>
     function Answer(ALine: Integer; out AAnswer: TLspStepAnswer): Boolean;
     /// <summary>Der Befehl: Antwort als JSON (format 1). Ohne Anweisung bleibt calls leer.</summary>
-    class function Execute(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-      const AText, AFileName: string; ALine: Integer; const AReadText: TMetricsReadText): TJSONObject; static;
+    function Execute(ALine: Integer): TJSONObject;
     class function ToJson(const AAnswer: TLspStepAnswer): TJSONObject; static;
     /// <summary>Name hinter read bzw. write im Kopf einer Eigenschaft; '' ohne.</summary>
     class function Accessor(const ASignature: string; AWrite: Boolean): string; static;
@@ -144,7 +157,9 @@ begin
   while ANode <> nil do
   begin
     if ANode.Kind = TSyntaxKind.WithStatement then
+    begin
       Exit(True);
+    end;
     ANode := ANode.Parent;
   end;
 end;
@@ -156,7 +171,9 @@ begin
   Result := AName;
   Dot := LastDelimiter('.', Result);
   if Dot > 0 then
+  begin
     Result := Copy(Result, Dot + 1, MaxInt);
+  end;
 end;
 
 { TLspStepTargets }
@@ -188,13 +205,21 @@ var
 begin
   Result := '';
   if AWrite then
-    Key := 'write'
+  begin
+    Key := 'write';
+  end
   else
+  begin
     Key := 'read';
+  end;
   Words := ASignature.Replace(';', ' ').Replace(#9, ' ').Split([' '], TStringSplitOptions.ExcludeEmpty);
   for Index := 0 to High(Words) - 1 do
+  begin
     if SameText(Words[Index], Key) then
+    begin
       Exit(Words[Index + 1]);
+    end;
+  end;
 end;
 
 class function TLspStepTargets.LooksLikeCast(const AName: string): Boolean;
@@ -207,14 +232,20 @@ function TLspStepTargets.TextOf(ANode: TSyntaxNode): string;
 begin
   Result := '';
   if (ANode = nil) or (ANode.EndOffset <= ANode.StartOffset) or (ANode.EndOffset > Length(FText)) then
+  begin
     Exit;
+  end;
   Result := Copy(FText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
   // Mehrzeilig: in eine Zeile.
   Result := Result.Replace(#13#10, ' ').Replace(#10, ' ').Replace(#13, ' ');
   while Pos('  ', Result) > 0 do
+  begin
     Result := Result.Replace('  ', ' ');
+  end;
   if Length(Result) > MaxText then
+  begin
     Result := Copy(Result, 1, MaxText - 1) + '…';
+  end;
 end;
 
 function TLspStepTargets.OwnUnit: TUnitIndex;
@@ -242,12 +273,18 @@ var
   Text: string;
 begin
   if SameText(AFileName, FFileName) then
+  begin
     Exit(FTree);
+  end;
   if FTrees.TryGetValue(LowerCase(AFileName), Result) then
+  begin
     Exit;
+  end;
   Result := nil;
   if Assigned(FReadText) and FReadText(AFileName, Text) then
+  begin
     Result := TSyntaxTreeCache.Parse(Text, nil);
+  end;
   FTrees.Add(LowerCase(AFileName), Result);
 end;
 
@@ -260,7 +297,9 @@ begin
   ALine := -1;
   Tree := TreeOf(AFileName);
   if (Tree = nil) or (Tree.Root = nil) then
+  begin
     Exit;
+  end;
   Found := -1;
   // Die innerste Routine, deren Kopf die Namenszeile enthält: Anfang davor, Rumpf danach.
   Tree.Root.Walk(
@@ -270,14 +309,22 @@ begin
     begin
       Result := ANode.StartPos.Line <= ANameLine;
       if not Result or (ANode.EndPos.Line < ANameLine) then
+      begin
         Exit(False);
+      end;
       if ANode.Kind <> TSyntaxKind.RoutineDecl then
+      begin
         Exit;
+      end;
       Body := ANode.FindChild(TSyntaxKind.Block);
       if Body = nil then
+      begin
         Body := ANode.FindChild(TSyntaxKind.AsmBlock);
+      end;
       if (Body <> nil) and (Body.StartPos.Line >= ANameLine) then
+      begin
         Found := Body.StartPos.Line;
+      end;
     end);
   ALine := Found;
   Result := Found >= 0;
@@ -294,26 +341,36 @@ begin
   Matches := TList<TIndexSymbol>.Create;
   try
     for Symbol in AUnit.Symbols do
+    begin
       if (Symbol.Kind in RoutineKinds) and SameText(Symbol.Container, AContainer) and SameText(Symbol.Name, AName)
       then
+      begin
         Matches.Add(Symbol);
+      end;
+    end;
     if Matches.Count = 0 then
+    begin
       Exit;
+    end;
     if Matches.Count = 1 then
     begin
       // Nur ein Eintrag: Rumpf nur bei einer Routine, die allein im implementation-Teil steht.
       Result := (AContainer = '') and not Matches[0].InInterface;
       if Result then
+      begin
         ABody := Matches[0];
+      end;
       Exit;
     end;
     // Deklaration und Rumpf, bei Überladungen der letzte mit denselben Parametern.
     for Index := Matches.Count - 1 downto 1 do
+    begin
       if SameParams(Matches[Index].ParamTypes, AParamTypes) then
       begin
         ABody := Matches[Index];
         Exit(True);
       end;
+    end;
     ABody := Matches[Matches.Count - 1];
     Result := True;
   finally
@@ -336,10 +393,16 @@ var
 begin
   Result := False;
   if AContainer = '' then
+  begin
     Exit;
+  end;
   for Symbol in AUnit.Symbols do
+  begin
     if (Symbol.Kind = TIndexSymbolKind.InterfaceType) and SameText(Symbol.QualifiedName, AContainer) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 procedure TLspStepTargets.AddTargets(var ACall: TLspStepCall; const AUnit: TUnitIndex;
@@ -351,19 +414,29 @@ var
   Other: TUnitIndex;
 begin
   if FindBody(AUnit, ACall.Container, ACall.Name, AParamTypes, Body) and TargetOf(AUnit, Body, Target) then
+  begin
     ACall.Targets := ACall.Targets + [Target];
+  end;
   if not ACall.IsVirtual or (FIndex = nil) then
+  begin
     Exit;
+  end;
   // Überschreibungen in allen Nachfahren bzw. Klassen, die das Interface implementieren.
   for Location in TLspImplementations.AllDescendantsOf(FIndex, ACall.Container) do
   begin
     if Length(ACall.Targets) >= MaxTargets then
+    begin
       Break;
+    end;
     if not UnitOf(Location.FileName, Other) then
+    begin
       Continue;
+    end;
     if FindBody(Other, Location.Symbol.QualifiedName, ACall.Name, AParamTypes, Body) and
       TargetOf(Other, Body, Target) then
+    begin
       ACall.Targets := ACall.Targets + [Target];
+    end;
   end;
 end;
 
@@ -381,8 +454,11 @@ begin
   for Item in Found do
   begin
     if not UnitOf(Item.FileName, Owner) then
+    begin
       Continue;
+    end;
     for Symbol in Owner.Symbols do
+    begin
       if (Symbol.Kind in RoutineKinds) and (Symbol.Range.StartPos.Line = Item.Range.StartPos.Line) and
         (Symbol.SelectionRange.StartPos.Line = Item.SelectionRange.StartPos.Line) and
         (Symbol.SelectionRange.StartPos.Character = Item.SelectionRange.StartPos.Character) then
@@ -393,9 +469,12 @@ begin
         ACall.DeclFile := Item.FileName;
         ACall.DeclLine := Item.SelectionRange.StartPos.Line;
         if TargetOf(Owner, Symbol, Target) then
+        begin
           ACall.Targets := [Target];
+        end;
         Exit(True);
       end;
+    end;
   end;
 end;
 
@@ -408,179 +487,290 @@ begin
   Result := False;
   if not ASite.Explicit or (ASite.Callee = nil) or
     not (ASite.Callee.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) then
+  begin
     Exit;
+  end;
   Name := LastPart(ASite.Callee.Name);
   if (Name = '') or TSystemIntrinsics.IsKnown(Name) then
+  begin
     Exit;
+  end;
   if (ASite.Node.ChildCount = 2) and LooksLikeCast(Name) then
+  begin
     Exit;
+  end;
   ACall.Name := Name;
   ACall.Kind := 'call';
   Result := True;
 end;
 
+function TLspStepTargets.ResolveTarget(const ASite: TStepCallSite; const APosition: TTextPosition;
+  out AResolved: TResolvedSymbol): Boolean;
+var
+  mTypeSymbol: TResolvedSymbol;
+  mTypeFound: Boolean;
+begin
+  if ASite.Node.Kind <> TSyntaxKind.IndexAccess then
+  begin
+    AResolved := FResolver.Resolve(FTree, FFileName, APosition);
+    Exit(True);
+  end;
+  // Liste[i]: die indizierte bzw. Default-Property.
+  Result := FResolver.NodeType(FTree, FFileName, ASite.Node, AResolved, mTypeSymbol, mTypeFound);
+end;
+
+function TLspStepTargets.LocalCall(const ASite: TStepCallSite; const AResolved: TResolvedSymbol;
+  var ACall: TLspStepCall): Boolean;
+var
+  mTarget: TLspStepTarget;
+begin
+  // Verschachtelte Routine: Rumpf in dieser Datei.
+  if AResolved.SymbolKind <> TIndexSymbolKind.Routine then
+  begin
+    Exit(ResolveUnknown(ASite, ACall));
+  end;
+  ACall.Name := AResolved.Name;
+  ACall.Kind := 'call';
+  ACall.DeclFile := FFileName;
+  ACall.DeclLine := AResolved.SelectionRange.StartPos.Line;
+  mTarget.Container := '';
+  mTarget.Name := AResolved.Name;
+  mTarget.FileName := FFileName;
+  if BeginLine(FFileName, AResolved.SelectionRange.StartPos.Line, mTarget.Line) then
+  begin
+    ACall.Targets := [mTarget];
+  end;
+  Result := True;
+end;
+
+function TLspStepTargets.RoutineCall(const ASite: TStepCallSite; const AResolved: TResolvedSymbol;
+  const AOwner: TUnitIndex; var ACall: TLspStepCall): Boolean;
+var
+  mStatement: Boolean;
+begin
+  // Prozedur ohne Klammern als Wert (OnClick := Klick, Sortiere(Vergleiche)): Methodenzeiger, kein Aufruf.
+  mStatement := (ASite.Node.Parent <> nil) and (ASite.Node.Parent.Kind = TSyntaxKind.CallStatement);
+  Result := not ASite.Assigned and (ASite.Explicit or mStatement or (AResolved.TypeName <> '') or
+    (AResolved.SymbolKind = TIndexSymbolKind.Constructor_));
+  if not Result then
+  begin
+    Exit;
+  end;
+  ACall.Name := AResolved.Name;
+  ACall.Container := AResolved.Container;
+  if AResolved.SymbolKind = TIndexSymbolKind.Constructor_ then
+  begin
+    ACall.Kind := 'constructor';
+  end
+  else
+  begin
+    ACall.Kind := 'call';
+  end;
+  ACall.IsVirtual := AResolved.IsVirtual or IsInterface(AOwner, AResolved.Container);
+  ACall.ReceiverInterface := IsInterface(AOwner, AResolved.Container);
+  AddTargets(ACall, AOwner, AResolved.ParamTypes);
+end;
+
+function TLspStepTargets.FindAccessor(const AOwner: TUnitIndex; const AContainer, AName: string;
+  var ACall: TLspStepCall; out AAccess: TResolvedSymbol; out AFound: Boolean): Boolean;
+var
+  mSymbol: TIndexSymbol;
+begin
+  AAccess := Default(TResolvedSymbol);
+  AFound := False;
+  // Getter bzw. Setter derselben Klasse; ein Feld als Zugriff ist kein Aufruf.
+  for mSymbol in AOwner.Symbols do
+  begin
+    if not (SameText(mSymbol.Container, AContainer) and SameText(mSymbol.Name, AName)) then
+    begin
+      Continue;
+    end;
+    if not (mSymbol.Kind in RoutineKinds) then
+    begin
+      Exit(False);
+    end;
+    if not AFound then
+    begin
+      AAccess.Name := mSymbol.Name;
+      AAccess.ParamTypes := mSymbol.ParamTypes;
+      AAccess.IsVirtual := mSymbol.IsVirtual;
+      ACall.DeclFile := AOwner.SymbolFile(mSymbol);
+      ACall.DeclLine := mSymbol.SelectionRange.StartPos.Line;
+      AFound := True;
+    end;
+  end;
+  Result := True;
+end;
+
+function TLspStepTargets.PropertyCall(const ASite: TStepCallSite; const AResolved: TResolvedSymbol;
+  const AOwner: TUnitIndex; var ACall: TLspStepCall): Boolean;
+var
+  mAccessorName: string;
+  mAccess: TResolvedSymbol;
+  mFound: Boolean;
+begin
+  mAccessorName := Accessor(AResolved.Signature, ASite.Assigned);
+  Result := (mAccessorName <> '') and FindAccessor(AOwner, AResolved.Container, mAccessorName, ACall, mAccess,
+    mFound);
+  // Zugriff in einem Vorfahren: nur ein Name mit Get/Set gilt sicher als Methode.
+  Result := Result and (mFound or StartsText('Get', mAccessorName) or StartsText('Set', mAccessorName));
+  if not Result then
+  begin
+    Exit;
+  end;
+  ACall.Name := mAccessorName;
+  ACall.Container := AResolved.Container;
+  if ASite.Assigned then
+  begin
+    ACall.Kind := 'setter';
+  end
+  else
+  begin
+    ACall.Kind := 'getter';
+  end;
+  ACall.IsVirtual := mAccess.IsVirtual or IsInterface(AOwner, AResolved.Container);
+  ACall.ReceiverInterface := IsInterface(AOwner, AResolved.Container);
+  if mFound then
+  begin
+    AddTargets(ACall, AOwner, mAccess.ParamTypes);
+  end;
+end;
+
+function TLspStepTargets.SymbolCall(const ASite: TStepCallSite; const AResolved: TResolvedSymbol;
+  var ACall: TLspStepCall): Boolean;
+var
+  mOwner: TUnitIndex;
+begin
+  if not UnitOf(AResolved.FileName, mOwner) then
+  begin
+    mOwner := Default(TUnitIndex);
+  end;
+  ACall.DeclFile := AResolved.FileName;
+  ACall.DeclLine := AResolved.SelectionRange.StartPos.Line;
+  case AResolved.SymbolKind of
+    TIndexSymbolKind.Method, TIndexSymbolKind.Routine, TIndexSymbolKind.Constructor_:
+      Result := RoutineCall(ASite, AResolved, mOwner, ACall);
+    TIndexSymbolKind.Property_:
+      Result := PropertyCall(ASite, AResolved, mOwner, ACall);
+  else
+    // Variable, Feld, Parameter: mit Klammern ein Aufruf über einen Zeiger, Ziel unbekannt.
+    Result := ASite.Explicit and not ASite.Assigned;
+    if Result then
+    begin
+      ACall.Name := AResolved.Name;
+      ACall.Kind := 'call';
+      ACall.DeclFile := '';
+      ACall.DeclLine := -1;
+    end;
+  end;
+  // Methode ohne Empfänger in einer Methode: Self (in with gehört sie vielleicht zum with-Ausdruck).
+  if Result and (ACall.Receiver = '') and (ACall.Container <> '') and (ACall.Kind <> 'constructor') and
+    not InWith(ASite.Node) then
+  begin
+    ACall.Receiver := 'Self';
+  end;
+end;
+
+function TLspStepTargets.ResolvedCall(const ASite: TStepCallSite; const AResolved: TResolvedSymbol;
+  var ACall: TLspStepCall): Boolean;
+begin
+  if AResolved.Kind = TResolvedKind.None then
+  begin
+    Exit(ResolveUnknown(ASite, ACall));
+  end;
+  if AResolved.IsType then
+  begin
+    Exit(False);
+  end;
+  if AResolved.Kind = TResolvedKind.Local then
+  begin
+    Exit(LocalCall(ASite, AResolved, ACall));
+  end;
+  Result := SymbolCall(ASite, AResolved, ACall);
+end;
+
 function TLspStepTargets.ResolveSite(const ASite: TStepCallSite; out ACall: TLspStepCall): Boolean;
 var
-  Position: TTextPosition;
-  Resolved, TypeSymbol, Access: TResolvedSymbol;
-  TypeFound: Boolean;
-  Owner: TUnitIndex;
-  Symbol: TIndexSymbol;
-  AccessorName: string;
-  Found: Boolean;
-  Target: TLspStepTarget;
-  Statement: Boolean;
+  mPosition: TTextPosition;
+  mResolved: TResolvedSymbol;
 begin
   Result := False;
   ACall := Default(TLspStepCall);
   ACall.DeclLine := -1;
   ACall.Text := TextOf(ASite.Node);
-  if not TStepCalls.NamePosition(ASite.Callee, Position) then
+  if not TStepCalls.NamePosition(ASite.Callee, mPosition) then
+  begin
     Exit;
-  ACall.Position := Position;
+  end;
+  ACall.Position := mPosition;
   if ASite.Receiver <> nil then
+  begin
     ACall.Receiver := TextOf(ASite.Receiver);
+  end;
   if ASite.Callee.Kind = TSyntaxKind.InheritedExpr then
-    Exit(ResolveInherited(Position, ACall));
-  if ASite.Node.Kind = TSyntaxKind.IndexAccess then
   begin
-    // Liste[i]: die indizierte bzw. Default-Property.
-    if not FResolver.NodeType(FTree, FFileName, ASite.Node, Resolved, TypeSymbol, TypeFound) then
-      Exit;
+    Result := ResolveInherited(mPosition, ACall);
   end
-  else
-    Resolved := FResolver.Resolve(FTree, FFileName, Position);
-  if Resolved.Kind = TResolvedKind.None then
-    Exit(ResolveUnknown(ASite, ACall));
-  if Resolved.IsType then
-    Exit;
-  // Verschachtelte Routine: Rumpf in dieser Datei.
-  if Resolved.Kind = TResolvedKind.Local then
+  else if ResolveTarget(ASite, mPosition, mResolved) then
   begin
-    if Resolved.SymbolKind <> TIndexSymbolKind.Routine then
-      Exit(ResolveUnknown(ASite, ACall));
-    ACall.Name := Resolved.Name;
-    ACall.Kind := 'call';
-    ACall.DeclFile := FFileName;
-    ACall.DeclLine := Resolved.SelectionRange.StartPos.Line;
-    Target.Container := '';
-    Target.Name := Resolved.Name;
-    Target.FileName := FFileName;
-    if BeginLine(FFileName, Resolved.SelectionRange.StartPos.Line, Target.Line) then
-      ACall.Targets := [Target];
-    Exit(True);
+    Result := ResolvedCall(ASite, mResolved, ACall);
   end;
-  if not UnitOf(Resolved.FileName, Owner) then
-    Owner := Default(TUnitIndex);
-  ACall.DeclFile := Resolved.FileName;
-  ACall.DeclLine := Resolved.SelectionRange.StartPos.Line;
-  case Resolved.SymbolKind of
-    TIndexSymbolKind.Method, TIndexSymbolKind.Routine, TIndexSymbolKind.Constructor_:
+end;
+
+/// <summary>Nur Namen und Punkte, und kein Aufruf darin: Das Auswerten von AReceiver ruft nichts auf.</summary>
+function IsPlainReceiver(AReceiver: TSyntaxNode): Boolean;
+begin
+  Result := AReceiver.Search(
+    function(ANode: TSyntaxNode): TSyntaxSearchStep
+    begin
+      if (ANode.Kind = TSyntaxKind.Identifier) or
+        ((ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.FindChild(TSyntaxKind.GenericArgs) = nil)) then
       begin
-        // Prozedur ohne Klammern als Wert (OnClick := Klick, Sortiere(Vergleiche)): Methodenzeiger, kein Aufruf.
-        Statement := (ASite.Node.Parent <> nil) and (ASite.Node.Parent.Kind = TSyntaxKind.CallStatement);
-        if not ASite.Explicit and not Statement and (Resolved.TypeName = '') and
-          (Resolved.SymbolKind <> TIndexSymbolKind.Constructor_) then
-          Exit;
-        if ASite.Assigned then
-          Exit;
-        ACall.Name := Resolved.Name;
-        ACall.Container := Resolved.Container;
-        if Resolved.SymbolKind = TIndexSymbolKind.Constructor_ then
-          ACall.Kind := 'constructor'
-        else
-          ACall.Kind := 'call';
-        ACall.IsVirtual := Resolved.IsVirtual or IsInterface(Owner, Resolved.Container);
-        ACall.ReceiverInterface := IsInterface(Owner, Resolved.Container);
-        AddTargets(ACall, Owner, Resolved.ParamTypes);
-      end;
-    TIndexSymbolKind.Property_:
+        Result := TSyntaxSearchStep.Descend;
+      end
+      else
       begin
-        AccessorName := Accessor(Resolved.Signature, ASite.Assigned);
-        if AccessorName = '' then
-          Exit;
-        Found := False;
-        Access := Default(TResolvedSymbol);
-        // Getter bzw. Setter derselben Klasse; ein Feld als Zugriff ist kein Aufruf.
-        for Symbol in Owner.Symbols do
-          if SameText(Symbol.Container, Resolved.Container) and SameText(Symbol.Name, AccessorName) then
-          begin
-            if not (Symbol.Kind in RoutineKinds) then
-              Exit;
-            if not Found then
-            begin
-              Access.Name := Symbol.Name;
-              Access.ParamTypes := Symbol.ParamTypes;
-              Access.IsVirtual := Symbol.IsVirtual;
-              ACall.DeclFile := Owner.SymbolFile(Symbol);
-              ACall.DeclLine := Symbol.SelectionRange.StartPos.Line;
-              Found := True;
-            end;
-          end;
-        // Zugriff in einem Vorfahren: nur ein Name mit Get/Set gilt sicher als Methode.
-        if not Found and not (StartsText('Get', AccessorName) or StartsText('Set', AccessorName)) then
-          Exit;
-        ACall.Name := AccessorName;
-        ACall.Container := Resolved.Container;
-        if ASite.Assigned then
-          ACall.Kind := 'setter'
-        else
-          ACall.Kind := 'getter';
-        ACall.IsVirtual := Access.IsVirtual or IsInterface(Owner, Resolved.Container);
-        ACall.ReceiverInterface := IsInterface(Owner, Resolved.Container);
-        if Found then
-          AddTargets(ACall, Owner, Access.ParamTypes);
+        Result := TSyntaxSearchStep.Found;
       end;
-  else
-    // Variable, Feld, Parameter: mit Klammern ein Aufruf über einen Zeiger, Ziel unbekannt.
-    if not ASite.Explicit or ASite.Assigned then
-      Exit;
-    ACall.Name := Resolved.Name;
-    ACall.Kind := 'call';
-    ACall.DeclFile := '';
-    ACall.DeclLine := -1;
+    end) = nil;
+end;
+
+/// <summary>True, wenn eine der Aufrufstellen in AReceiver liegt.</summary>
+function HasCallInside(AReceiver: TSyntaxNode; const ASites: TArray<TStepCallSite>;
+  const ACallSites: TArray<Integer>): Boolean;
+var
+  mSite: Integer;
+  mNode: TSyntaxNode;
+begin
+  for mSite in ACallSites do
+  begin
+    mNode := ASites[mSite].Node;
+    if (mNode.StartOffset >= AReceiver.StartOffset) and (mNode.EndOffset <= AReceiver.EndOffset) then
+    begin
+      Exit(True);
+    end;
   end;
-  // Methode ohne Empfänger in einer Methode: Self (in with gehört sie vielleicht zum with-Ausdruck).
-  if (ACall.Receiver = '') and (ACall.Container <> '') and (ACall.Kind <> 'constructor') and
-    not InWith(ASite.Node) then
-    ACall.Receiver := 'Self';
-  Result := True;
+  Result := False;
 end;
 
 procedure TLspStepTargets.MarkReceivers(var AAnswer: TLspStepAnswer; const ASites: TArray<TStepCallSite>;
   const ACallSites: TArray<Integer>);
 var
-  Index, Other: Integer;
-  Receiver, Node: TSyntaxNode;
-  Simple: Boolean;
+  mIndex: Integer;
+  mReceiver: TSyntaxNode;
 begin
-  for Index := 0 to High(AAnswer.Calls) do
+  for mIndex := 0 to High(AAnswer.Calls) do
   begin
-    Receiver := ASites[ACallSites[Index]].Receiver;
-    if Receiver = nil then
+    mReceiver := ASites[ACallSites[mIndex]].Receiver;
+    if mReceiver = nil then
     begin
-      AAnswer.Calls[Index].ReceiverSimple := AAnswer.Calls[Index].Receiver = 'Self';
-      Continue;
-    end;
-    // Nur Namen und Punkte, und kein Aufruf darin: Das Auswerten ruft nichts auf.
-    Simple := Receiver.Search(
-      function(ANode: TSyntaxNode): TSyntaxSearchStep
-      begin
-        if (ANode.Kind = TSyntaxKind.Identifier) or
-          ((ANode.Kind = TSyntaxKind.MemberAccess) and (ANode.FindChild(TSyntaxKind.GenericArgs) = nil)) then
-          Result := TSyntaxSearchStep.Descend
-        else
-          Result := TSyntaxSearchStep.Found;
-      end) = nil;
-    for Other := 0 to High(AAnswer.Calls) do
+      AAnswer.Calls[mIndex].ReceiverSimple := AAnswer.Calls[mIndex].Receiver = 'Self';
+    end
+    else
     begin
-      if not Simple then
-        Break;
-      Node := ASites[ACallSites[Other]].Node;
-      if (Node.StartOffset >= Receiver.StartOffset) and (Node.EndOffset <= Receiver.EndOffset) then
-        Simple := False;
+      AAnswer.Calls[mIndex].ReceiverSimple := IsPlainReceiver(mReceiver) and
+        not HasCallInside(mReceiver, ASites, ACallSites);
     end;
-    AAnswer.Calls[Index].ReceiverSimple := Simple;
   end;
 end;
 
@@ -596,32 +786,29 @@ begin
   AAnswer.FollowLine := -1;
   Result := TStepCalls.Find(FTree, ALine, Statement);
   if not Result then
+  begin
     Exit;
+  end;
   AAnswer.Line := Statement.Node.StartPos.Line;
   AAnswer.FollowLine := Statement.FollowLine;
   CallSites := nil;
   for Index := 0 to High(Statement.Sites) do
+  begin
     if ResolveSite(Statement.Sites[Index], Call) then
     begin
       AAnswer.Calls := AAnswer.Calls + [Call];
       CallSites := CallSites + [Index];
     end;
+  end;
   MarkReceivers(AAnswer, Statement.Sites, CallSites);
 end;
 
-class function TLspStepTargets.Execute(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
-  const AText, AFileName: string; ALine: Integer; const AReadText: TMetricsReadText): TJSONObject;
+function TLspStepTargets.Execute(ALine: Integer): TJSONObject;
 var
-  Targets: TLspStepTargets;
-  Answer: TLspStepAnswer;
+  mAnswer: TLspStepAnswer;
 begin
-  Targets := TLspStepTargets.Create(AResolver, AIndex, ATree, AText, AFileName, AReadText);
-  try
-    Targets.Answer(ALine, Answer);
-  finally
-    Targets.Free;
-  end;
-  Result := ToJson(Answer);
+  Answer(ALine, mAnswer);
+  Result := ToJson(mAnswer);
 end;
 
 class function TLspStepTargets.ToJson(const AAnswer: TLspStepAnswer): TJSONObject;

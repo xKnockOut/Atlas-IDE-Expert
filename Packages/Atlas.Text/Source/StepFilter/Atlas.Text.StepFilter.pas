@@ -71,11 +71,13 @@ var
   mKind: TStepFilterKind;
 begin
   for mKind := Low(TStepFilterKind) to High(TStepFilterKind) do
+  begin
     if SameText(Trim(AName), KindNames[mKind]) then
     begin
       AKind := mKind;
       Exit(True);
     end;
+  end;
   Result := False;
 end;
 
@@ -86,8 +88,12 @@ var
 begin
   Result := [];
   for mPart in AText.Split([',', ';']) do
+  begin
     if TryKind(mPart, mKind) then
+    begin
       Include(Result, mKind);
+    end;
+  end;
 end;
 
 class function TStepFilterNames.KindsText(AKinds: TStepFilterKinds): string;
@@ -96,12 +102,16 @@ var
 begin
   Result := '';
   for mKind := Low(TStepFilterKind) to High(TStepFilterKind) do
+  begin
     if mKind in AKinds then
     begin
       if Result <> '' then
+      begin
         Result := Result + ',';
+      end;
       Result := Result + KindNames[mKind];
     end;
+  end;
 end;
 
 class function TStepFilterNames.NormalizeKinds(const AText: string): string;
@@ -116,14 +126,20 @@ var
 begin
   Result := False;
   if APattern = '' then
+  begin
     Exit;
+  end;
   mOnlyWild := True;
   for mChar in APattern do
   begin
     if (mChar <= ' ') or (mChar = PatternSeparator) or (mChar = '''') or (mChar = '"') then
+    begin
       Exit;
+    end;
     if (mChar <> '*') and (mChar <> '.') then
+    begin
       mOnlyWild := False;
+    end;
   end;
   Result := not mOnlyWild;
 end;
@@ -137,9 +153,13 @@ begin
   begin
     mPattern := Trim(mPart);
     if Length(Result) >= MaxPatterns then
+    begin
       Break;
+    end;
     if IsValidPattern(mPattern) and (IndexOfPattern(Result, mPattern) < 0) then
+    begin
       Result := Result + [mPattern];
+    end;
   end;
 end;
 
@@ -183,10 +203,14 @@ begin
       mText := mMark;
     end
     else
+    begin
       Exit(False);
+    end;
   end;
   while (mPattern <= Length(APattern)) and (APattern[mPattern] = '*') do
+  begin
     Inc(mPattern);
+  end;
   Result := mPattern > Length(APattern);
 end;
 
@@ -199,13 +223,21 @@ begin
   mPattern := UpperCase(Trim(APattern));
   mName := UpperCase(Trim(AName));
   if not IsValidPattern(mPattern) or (mName = '') then
+  begin
     Exit;
+  end;
   if WildMatch(mPattern, mName) then
+  begin
     Exit(True);
+  end;
   // Vorn weggelassene Teile: ab jedem Punkt des Namens neu.
   for mIndex := 1 to Length(mName) - 1 do
+  begin
     if (mName[mIndex] = '.') and WildMatch(mPattern, Copy(mName, mIndex + 1, MaxInt)) then
+    begin
       Exit(True);
+    end;
+  end;
 end;
 
 class function TStepFilterNames.MatchingPattern(const APatterns: TArray<string>; const AName: string): Integer;
@@ -213,8 +245,12 @@ var
   mIndex: Integer;
 begin
   for mIndex := 0 to High(APatterns) do
+  begin
     if Matches(APatterns[mIndex], AName) then
+    begin
       Exit(mIndex);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -223,8 +259,12 @@ var
   mIndex: Integer;
 begin
   for mIndex := 0 to High(APatterns) do
+  begin
     if SameText(APatterns[mIndex], Trim(APattern)) then
+    begin
       Exit(mIndex);
+    end;
+  end;
   Result := -1;
 end;
 
@@ -234,7 +274,9 @@ begin
   Result := Copy(APatterns);
   if IsValidPattern(Trim(APattern)) and (IndexOfPattern(Result, APattern) < 0) and
     (Length(Result) < MaxPatterns) then
+  begin
     Result := Result + [Trim(APattern)];
+  end;
 end;
 
 class function TStepFilterNames.WithoutPattern(const APatterns: TArray<string>;
@@ -244,8 +286,12 @@ var
 begin
   Result := nil;
   for mItem in APatterns do
+  begin
     if not SameText(mItem, Trim(APattern)) then
+    begin
       Result := Result + [mItem];
+    end;
+  end;
 end;
 
 end.

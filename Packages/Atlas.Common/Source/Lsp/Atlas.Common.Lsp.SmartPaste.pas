@@ -40,7 +40,20 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Lsp.Positions;
+  Atlas.Common.Lsp.Positions,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TSmartPasteText = (ArgumentsUriAndRangeMissing);
+
+const
+  cTexts: array[TSmartPasteText] of TAtlasText = (
+    (De: 'Argumente "uri" und "range" fehlen'; En: 'Arguments "uri" and "range" missing'));
+
+{$SCOPEDENUMS OFF}
 
 function NamesJson(const ANames: TArray<string>): TJSONArray;
 var
@@ -48,70 +61,111 @@ var
 begin
   Result := TJSONArray.Create;
   for Name in ANames do
+  begin
     Result.Add(Name);
+  end;
+end;
+
+/// <summary>Was fehlt im eingefügten Bereich ARange? Eindeutige Units, mehrdeutige Namen und ob die Einfügestelle
+/// im interface-Teil liegt.</summary>
+procedure AddMissing(AResult: TJSONObject; const ATokens: TArray<TPascalToken>; ATree: TSyntaxTree;
+  const ARange: TTextRange; const AUses: TUsesContext);
+var
+  mNames: TArray<TSmartPasteName>;
+  mItem: TSmartPasteName;
+  mChoices: TJSONArray;
+  mChoice: TJSONObject;
+begin
+  mNames := TSmartPaste.Missing(ATokens, ATree, ARange, AUses.Declaring, AUses.Namespaces);
+  AResult.AddPair('units', NamesJson(TSmartPaste.Certain(mNames)));
+  mChoices := TJSONArray.Create;
+  for mItem in mNames do
+  begin
+    if Length(mItem.Units) > 1 then
+    begin
+      mChoice := TJSONObject.Create;
+      mChoice.AddPair('name', mItem.Name);
+      mChoice.AddPair('units', NamesJson(mItem.Units));
+      mChoices.AddElement(mChoice);
+    end;
+  end;
+  AResult.AddPair('choices', mChoices);
+  AResult.AddPair('interface', TJSONBool.Create(TSmartPaste.InInterface(ATokens, ARange.StartPos)));
+end;
+
+/// <summary>Zeichenketten aus AValues.</summary>
+function StringsOf(AValues: TJSONArray): TArray<string>;
+var
+  mValue: TJSONValue;
+begin
+  Result := nil;
+  for mValue in AValues do
+  begin
+    if mValue is TJSONString then
+    begin
+      Result := Result + [mValue.Value];
+    end;
+  end;
+end;
+
+/// <summary>WorkspaceEdit mit AEdits für die Datei AUri.</summary>
+function WorkspaceEditJson(const AUri: string; const AEdits: TArray<TTextEdit>): TJSONObject;
+var
+  mList: TJSONArray;
+  mChange, mChanges: TJSONObject;
+  mEdit: TTextEdit;
+begin
+  mList := TJSONArray.Create;
+  for mEdit in AEdits do
+  begin
+    mChange := TJSONObject.Create;
+    mChange.AddPair('range', TLspPositions.RangeToJson(mEdit.Range));
+    mChange.AddPair('newText', mEdit.NewText);
+    mList.AddElement(mChange);
+  end;
+  mChanges := TJSONObject.Create;
+  mChanges.AddPair(AUri, mList);
+  Result := TJSONObject.Create;
+  Result.AddPair('changes', mChanges);
 end;
 
 class function TLspSmartPaste.Execute(const AArguments: TJSONArray; const AUri, AText: string; ATree: TSyntaxTree;
   const AUses: TUsesContext; const AInterfaceUses: TInterfaceUsesFunc): TJSONObject;
 var
-  Tokens: TArray<TPascalToken>;
-  Range: TTextRange;
-  Names: TArray<TSmartPasteName>;
-  Item: TSmartPasteName;
-  Choices, List: TJSONArray;
-  Choice, Changes, WorkspaceEdit, Change: TJSONObject;
-  Units, Added, Moved: TArray<string>;
-  Value: TJSONValue;
-  Edits: TArray<TTextEdit>;
-  Edit: TTextEdit;
+  mRange: TTextRange;
+  mTarget: TSmartPasteTarget;
+  mUses: TSmartPasteUses;
 begin
   if (AArguments = nil) or (AArguments.Count < 2) or not (AArguments.Items[1] is TJSONObject) then
-    raise EArgumentException.Create('Argumente "uri" und "range" fehlen');
-  Range := TLspPositions.ReadRange(AArguments.Items[1]);
-  Tokens := TPascalLexer.Tokenize(AText);
+  begin
+    raise EArgumentException.Create(cTexts[TSmartPasteText.ArgumentsUriAndRangeMissing].Text);
+  end;
+  mRange := TLspPositions.ReadRange(AArguments.Items[1]);
+  mTarget := Default(TSmartPasteTarget);
+  mTarget.Tokens := TPascalLexer.Tokenize(AText);
   Result := TJSONObject.Create;
   if (AArguments.Count < 3) or not (AArguments.Items[2] is TJSONArray) then
   begin
-    Names := TSmartPaste.Missing(Tokens, ATree, Range, AUses.Declaring, AUses.Namespaces);
-    Result.AddPair('units', NamesJson(TSmartPaste.Certain(Names)));
-    Choices := TJSONArray.Create;
-    for Item in Names do
-      if Length(Item.Units) > 1 then
-      begin
-        Choice := TJSONObject.Create;
-        Choice.AddPair('name', Item.Name);
-        Choice.AddPair('units', NamesJson(Item.Units));
-        Choices.AddElement(Choice);
-      end;
-    Result.AddPair('choices', Choices);
-    Result.AddPair('interface', TJSONBool.Create(TSmartPaste.InInterface(Tokens, Range.StartPos)));
+    AddMissing(Result, mTarget.Tokens, ATree, mRange, AUses);
     Exit;
   end;
-  Units := nil;
-  for Value in TJSONArray(AArguments.Items[2]) do
-    if Value is TJSONString then
-      Units := Units + [Value.Value];
-  if TSmartPaste.UsesEdits(Tokens, Range.StartPos, Units, AInterfaceUses, AUses.Namespaces,
-    TTextLines.LineBreakOf(AText), Edits, Added, Moved) then
+  mTarget.Position := mRange.StartPos;
+  mTarget.InterfaceUses := AInterfaceUses;
+  mTarget.Namespaces := AUses.Namespaces;
+  mTarget.LineBreak := TTextLines.LineBreakOf(AText);
+  if TSmartPaste.UsesEdits(mTarget, StringsOf(TJSONArray(AArguments.Items[2])), mUses) then
   begin
-    List := TJSONArray.Create;
-    for Edit in Edits do
-    begin
-      Change := TJSONObject.Create;
-      Change.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
-      Change.AddPair('newText', Edit.NewText);
-      List.AddElement(Change);
-    end;
-    Changes := TJSONObject.Create;
-    Changes.AddPair(AUri, List);
-    WorkspaceEdit := TJSONObject.Create;
-    WorkspaceEdit.AddPair('changes', Changes);
-    Result.AddPair('edit', WorkspaceEdit);
+    Result.AddPair('edit', WorkspaceEditJson(AUri, mUses.Edits));
   end
   else
+  begin
     Result.AddPair('edit', TJSONNull.Create);
-  Result.AddPair('added', NamesJson(Added));
-  Result.AddPair('toImplementation', NamesJson(Moved));
+  end;
+  Result.AddPair('added', NamesJson(mUses.Added));
+  Result.AddPair('toImplementation', NamesJson(mUses.ToImplementation));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.SmartPaste', cTexts);
 
 end.
