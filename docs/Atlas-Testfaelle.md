@@ -9766,6 +9766,68 @@ Vorbereitung: Plugin mit diesem Stand gebaut, Fenster „Atlas-Prüfung“ (Strg
 
 Wer das Dropdown nach einem Andocken oder Themenwechsel mit leeren oder doppelten Einträgen sieht (PEP1), bitte melden.
 
+## Klassenvervollständigung: Typkommentar, Reihenfolge, Vorbefüllung (#1834, #1835, #1836, #1837, #1838)
+
+Vorbereitung: Plugin und AtlasServer mit diesem Stand gebaut, Einstellungen unverändert (`classCompletion.typeComment` = `brace`, `lifecycleFirst` und `bodyStubs` an, `editor.methodPlacement` = `grouped`). Neue Unit `Fenster.pas`:
+
+```pascal
+unit Fenster;
+
+interface
+
+uses
+  System.Classes;
+
+type
+  /// <summary>Hauptfenster der Anwendung.</summary>
+  TFenster = class(TComponent)
+  private
+    FName: string;
+    procedure Zeichnen;
+    function GetName: string;
+    procedure SetName(const AValue: string);
+  protected
+    procedure Loaded; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    property Name: string read GetName write SetName;
+  end;
+
+implementation
+
+end.
+```
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| KK1 | Schreibmarke auf `TFenster = class`, Glühbirne › „6 fehlende Methodenrümpfe für TFenster erzeugen“ | Über den Rümpfen steht `{ TFenster }` mit einer Leerzeile danach (**Abnahme**) |
+| KK2 | Rückgängig, IDE-Klassenvervollständigung Strg+Umschalt+C | Die IDE legt `{ TFenster }` an; Atlas legt keinen zweiten Kommentar an |
+| KK3 | `classCompletion.typeComment` auf `line`, KK1 wiederholen | Drei Zeilen `//----…` / `// TFenster` / `//----…`, Breite nach `format.maxLineLength` bzw. 80 |
+| KK4 | `typeComment` auf `summary`, KK1 wiederholen | `{ TFenster: Hauptfenster der Anwendung. }`; ohne `<summary>` über der Klasse wie `brace` |
+| KK5 | `typeComment` auf `region`, KK1 wiederholen | `{$REGION 'TFenster'}` vor dem ersten und `{$ENDREGION}` hinter dem letzten Rumpf; die Region lässt sich falten |
+| KK6 | `typeComment` auf `off`, KK1 wiederholen | Kein Kommentar, Rümpfe wie bisher (**Abnahme**) |
+| KK7 | Zweite Klasse `TLeiste` unter `TFenster` deklarieren, ihre Rümpfe mit Kommentar oben in die implementation verschieben, „implementation wie Klasse ordnen“ | `{ TLeiste }` wandert mit den Rümpfen von TLeiste hinter TFenster; Vorschau zeigt die Bewegungen |
+| KK8 | Wie KK7 mit `region` | Region samt Inhalt wandert mit; Rümpfe in der Region bleiben nicht mehr stehen |
+| KK9 | Einstellungsseite Eingabehilfen, Abschnitt `classCompletion` auf Deutsch und Englisch | Auswahl brace/line/summary/region/off und zwei Schalter mit Beschreibung; englisch „Class completion …“ |
+| MRG1 | KK1 | Reihenfolge Create, Destroy, GetName, SetName, Loaded, Zeichnen (**Abnahme**) |
+| MRG2 | Rümpfe von Hand in Deklarationsreihenfolge bringen, „implementation wie Klasse ordnen“ | Vorschau verschiebt Create und Destroy nach oben, GetName/SetName dahinter; Ordnen ein Rückgängig-Schritt |
+| MRG3 | Optionen › Atlas › Editor: „Methodenrümpfe ordnen“ zeigt „gruppiert, Konstruktor zuerst“ als Vorgabe; auf „wie die Deklaration“ stellen, MRG2 | Create und Destroy stehen trotzdem oben (`lifecycleFirst`), danach Zeichnen, GetName, SetName, Loaded |
+| MRG4 | `classCompletion.lifecycleFirst` aus, MRG3 | Streng wie deklariert: Zeichnen, GetName, SetName, Loaded, Create, Destroy |
+| MRG5 | Neue Methode `procedure Laden;` unter `public` ergänzen, Strg+Umschalt+C | Rumpf landet hinter Zeichnen (Gruppe „übrige“), nicht vor Create |
+| MRG6 | Englische IDE: Optionsseite | „grouped, constructors first“ in der Auswahl |
+| RV1 | KK1, Rümpfe ansehen | `Create`: `inherited Create(AOwner);`, `Destroy`: Leerzeile, dann `inherited;`, `GetName`: `Result := FName;`, `SetName`: `FName := AValue;`, `Loaded`: `inherited Loaded;`, `Zeichnen` leer (**Abnahme**) |
+| RV2 | Feld `FName` in `FText` umbenennen, Rümpfe löschen, KK1 | Getter und Setter leer (kein Feld F<Name>) |
+| RV3 | `function Wert(A, B: Integer): Integer; override;` ergänzen, Rumpf erzeugen | `Result := inherited Wert(A, B);` |
+| RV4 | Klasse ohne Vorfahren (`class`), `constructor Create;` | Rumpf leer (kein `inherited` bei TObject) |
+| RV5 | `classCompletion.bodyStubs` aus, KK1 | Alle Rümpfe leer wie bisher |
+| RV6 | Unit übersetzen nach RV1 | Übersetzt ohne Fehler und Warnungen |
+| KU1 | Nach KK1 `TFenster` umbenennen (Umbenennen-Dialog) in `TMainWindow` | Vorschau nennt die Zeile `{ TFenster }  →  { TMainWindow }`; danach steht `{ TMainWindow }` über den Rümpfen (**Abnahme**) |
+| KU2 | Kommentar `// TFenster ist hier gemeint` über einer freien Routine, KU1 | Dieser Kommentar bleibt unverändert |
+| KU3 | „Klasse in eigene Unit verschieben“ auf `TFenster` | Neue Unit enthält `{ TFenster }` vor den Rümpfen; in der alten Unit bleibt kein `{ TFenster }` zurück |
+| KU4 | `classCompletion.typeComment` auf `off`, KU1 und KU3 | Kommentar bleibt wie bisher stehen (Umbenennen ändert ihn nicht, Verschieben lässt ihn zurück) |
+| KK10 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TTypeCommentsTests`, `TClassBodiesTests`, `TClassCompletionTests`, `TMethodOrderTests`, `TMoveClassTests.MovesTypeComment`, `TLspRenameTests.RenamesTypeComments`, `TConfigurationParserTests.ReadsClassCompletion`, `TAtlasEditingSettingsTests.MethodPlacementOptions` grün |
+
 ## Published-Mitglieder im Hover scrollen (#1841)
 
 Vorbereitung: Plugin mit diesem Stand gebaut, `hover.membersMaxLines` unverändert (15). Eine Unit mit `uses Vcl.Forms, Vcl.StdCtrls;` und `var F: TForm; B: TButton;`.

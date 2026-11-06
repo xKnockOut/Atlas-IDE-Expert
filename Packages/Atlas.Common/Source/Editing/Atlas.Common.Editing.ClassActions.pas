@@ -65,6 +65,10 @@ type
     /// False, wenn es das Mitglied schon gibt oder ALine in keiner Klasse liegt.</summary>
     class function CreateAccessor(const AText: string; ALine: Integer; const APlan: TAccessorPlan;
       const AContext: TClassActionContext; out AAction: TCodeAction): Boolean; static;
+    /// <summary>Fehlende Methodenrümpfe an APosition (TClassCompletion.MissingBodies) mit den Einstellungen
+    /// classCompletion.* über AContext.Host (#1834).</summary>
+    class function MissingBodies(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
+      const AContext: TClassActionContext; out AAction: TCodeAction): Boolean; static;
     /// <summary>Überschreibbare Methoden der Vorfahren, die die Klasse um ALine noch nicht deklariert.</summary>
     class function OverrideCandidates(const AText: string; ALine: Integer;
       const AContext: TClassActionContext): TArray<string>; static;
@@ -80,6 +84,8 @@ uses
   Atlas.Common.Editing.ClassMembers,
   Atlas.Common.Editing.CommandSource,
   Atlas.Common.Editing.InterfaceStubs,
+  Atlas.Common.Editing.ClassBodies,
+  Atlas.Common.Editing.ClassCompletion,
   Atlas.Text.Lines,
   Atlas.Common.Localization.Texts;
 
@@ -473,6 +479,13 @@ begin
       Inc(Count);
     end;
   end;
+end;
+
+class function TClassActions.MissingBodies(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
+  const AContext: TClassActionContext; out AAction: TCodeAction): Boolean;
+begin
+  Result := TClassCompletion.MissingBodies(ATree, AText, APosition,
+    TClassBodyOptions.FromHost(AContext.Host, AContext.Uri, AContext.Style), AAction);
 end;
 
 initialization

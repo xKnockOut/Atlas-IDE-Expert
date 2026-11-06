@@ -50,6 +50,8 @@ type
     FileName: string;
     Text: string;
     Tree: TSyntaxTree;
+    /// <summary>Typkommentar über den Rümpfen ({ TKunde }) mitnehmen (#1838); Create setzt True.</summary>
+    TypeComments: Boolean;
     class function Create(const AFileName, AText: string; ATree: TSyntaxTree): TMoveClassSource; static;
   end;
 
@@ -106,6 +108,7 @@ uses
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Editing.ChangeSignature,
+  Atlas.Common.Editing.TypeComments,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -336,6 +339,25 @@ begin
   begin
     Dec(Index);
     Result := ATokens[Index].Offset;
+  end;
+end;
+
+/// <summary>Typkommentar der Klasse AClassName ({ TKunde }, // TKunde, Trennlinie) über der Zeile AFirstLine, mit
+/// Leerzeilen dazwischen (#1838); Start = Stop ohne. Regionen bleiben, ihr Ende stünde sonst allein.</summary>
+function TypeHeaderRange(const ASource: TMoveClassSource; const ALines: TLineTable; AFirstLine: Integer;
+  const AClassName: string): TOffsetRange;
+var
+  mComment: TTypeComment;
+begin
+  Result := MakeRange(0, 0);
+  if not ASource.TypeComments then
+  begin
+    Exit;
+  end;
+  mComment := TTypeComments.Find(TTextLines.SplitLines(ASource.Text), AFirstLine, AFirstLine, AClassName);
+  if mComment.Found and (mComment.Style <> TTypeCommentStyle.Region) and (mComment.Last < AFirstLine) then
+  begin
+    Result := MakeRange(ALines.LineStart(mComment.First), ALines.LineContentEnd(mComment.Last));
   end;
 end;
 
@@ -1011,6 +1033,8 @@ type
     Attributes: TArray<TSyntaxNode>;
     Methods: TArray<TSyntaxNode>;
     DeclRange: TOffsetRange;
+    /// <summary>Typkommentar über den Rümpfen (#1838); Start = Stop ohne.</summary>
+    HeaderRange: TOffsetRange;
     Moved: TArray<TOffsetRange>;
     TopLevel: TDictionary<string, Integer>;
     Own: TDictionary<string, Boolean>;
@@ -1162,6 +1186,15 @@ begin
   for mNode in Methods do
   begin
     Moved := Moved + [PieceOf(mNode)];
+  end;
+  HeaderRange := MakeRange(0, 0);
+  if Methods <> nil then
+  begin
+    HeaderRange := TypeHeaderRange(Source, Lines, Lines.PositionAt(PieceOf(Methods[0]).Start).Line, Plan.ClassName);
+  end;
+  if HeaderRange.Stop > HeaderRange.Start then
+  begin
+    Moved := Moved + [HeaderRange];
   end;
 end;
 
@@ -1429,6 +1462,10 @@ var
   mNode: TSyntaxNode;
 begin
   Result := '';
+  if HeaderRange.Stop > HeaderRange.Start then
+  begin
+    Result := PieceText(Source.Text, Lines, HeaderRange);
+  end;
   for mNode in Methods do
   begin
     if Result <> '' then
@@ -1579,6 +1616,7 @@ begin
   Result.FileName := AFileName;
   Result.Text := AText;
   Result.Tree := ATree;
+  Result.TypeComments := True;
 end;
 
 { TMoveClassNames }
