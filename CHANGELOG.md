@@ -6,6 +6,8 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
+## [2.0.0-beta.2] - 2026-11-06
+
 ### Behoben
 - Delphi 12: Der Bau des Plugins aus dem Quelltext (`AtlasUpdate install` bzw. Update) brach in MSBuild mit MSB4066 ab („Das Include-Attribut im <DCCReference>-Element ist unbekannt“). In `Atlas.IDE.Analysis.dproj` standen drei Unit-Einträge mitten im Eintrag eines Rahmens, in `Atlas.IDE.Base.dproj` ein leerer; die IDE übergeht das, MSBuild nicht. Auch `Tests/DccFaelle/DccFaelle.groupproj` war nach Zusammenführungen kein gültiges XML. Neue CI-Prüfung `Tools/Check-ProjectFiles.ps1`: Jede `.dproj` und `.groupproj` ist gültiges XML, `DCCReference` steht direkt in einer `ItemGroup`, Metadaten haben keine Attribute.
 
