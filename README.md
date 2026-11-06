@@ -44,7 +44,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Indentation while typing:** after Enter the caret lands where the block structure puts it, `end`, `until`, `finally` and `else` move to their counterpart, and a string is split with `' +` when you break the line
 
 ### [Understanding](docs/features/en/Understanding.md)
-- **Hover** with declaration, XMLDoc, inheritance, constant values and debugger values
+- **Hover** with declaration, XMLDoc, inheritance, constant values and debugger values; the expanded published members of large components scroll with the mouse wheel (`hover.membersMaxLines`, default 15 rows)
 - **Type hints, code metrics and recursion marks** in the editor; inactive `{$IFDEF}` branches dimmed
 - **Pair colours and block lines** by depth; local routines stand out (one level deeper or their own colour, optionally shaded)
 - **Architecture overview:** subsystems, central units, cycles, comparison with a saved state

@@ -9765,3 +9765,18 @@ Vorbereitung: Plugin mit diesem Stand gebaut, Fenster „Atlas-Prüfung“ (Strg
 | PEP10 | Oberfläche auf Englisch; danach `Atlas.Tests` bauen und ausführen | „Current file“, „Current project“, „Project group“, Projekte mit „(active)“, Kontrollkästchen „Individual projects of the group in the window's scope list“. Tests: 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasScopeProjectsTests`, `TAtlasProblemsFrameTests.ScopeListOffersGroupProjects`, `TAtlasPluginSettingsTests.ProblemsWindowOptions`, `TAtlasSettingsPageTests.RulesAreaWindowSettings` grün |
 
 Wer das Dropdown nach einem Andocken oder Themenwechsel mit leeren oder doppelten Einträgen sieht (PEP1), bitte melden.
+
+## Published-Mitglieder im Hover scrollen (#1841)
+
+Vorbereitung: Plugin mit diesem Stand gebaut, `hover.membersMaxLines` unverändert (15). Eine Unit mit `uses Vcl.Forms, Vcl.StdCtrls;` und `var F: TForm; B: TButton;`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| HMS1 | Maus über `TForm`, im Hover bei PROPERTIES „+ n weitere Properties“ klicken | Der Hinweis bleibt im Bildschirm; die Tabelle zeigt 15 Zeilen, rechts ein schmaler Daumen; Zusammenfassung, Schalter und Aktionsleiste stehen fest (**Abnahme**) |
+| HMS2 | Wie HMS1, Mausrad über der Tabelle nach unten bis zum Ende | Je Stufe drei Zeilen; am Ende stehen EREIGNISSE und ihre letzte Zeile, der Daumen unten; nichts ragt über die Linie darüber oder in die Aktionsleiste (**Abnahme**) |
+| HMS3 | Bei HMS2 „+ n weitere Ereignisse“ bzw. den Titel EREIGNISSE ▾ anklicken, wenn sichtbar | Klick wirkt; der Bereich bleibt an seiner Stelle bzw. springt höchstens an das neue Ende |
+| HMS4 | Mausrad über der XMLDoc eines Typs mit langer Doku und vielen Mitgliedern | Die Doku scrollt, die Mitglieder nicht; über den Mitgliedern scrollen nur diese |
+| HMS5 | Hover nahe am unteren Bildschirmrand, Mitglieder aufklappen | Der Hinweis wächst nach oben und bleibt ganz sichtbar; der Rollbereich ist höchstens so hoch wie der Platz |
+| HMS6 | Optionen › Atlas › Editor: „Mitglieder im Hover: höchstens Zeilen ohne Scrollen“ auf 5, dann auf 0 | 5: Tabelle fünf Zeilen hoch. 0: so hoch wie der Bildschirm zulässt, darunter kein Daumen |
+| HMS7 | IDE auf Englisch | Text der Option „Members in the hover: max. lines before scrolling (0 = screen)“ |
+| HMS8 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `THoverLayoutTests.PublishedMembersScroll`, `ScrolledMembersDropHiddenHits`, `TAtlasPluginSettingsTests.HoverMembersMaxLinesRoundTrip` grün |

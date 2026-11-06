@@ -95,6 +95,7 @@ contains
   Atlas.Core.Hover.Contract in 'Source\Core\Hover\Atlas.Core.Hover.Contract.pas',
   Atlas.Core.Hover.Declaration in 'Source\Core\Hover\Atlas.Core.Hover.Declaration.pas',
   Atlas.Core.Hover.History in 'Source\Core\Hover\Atlas.Core.Hover.History.pas',
+  Atlas.Core.Hover.Items in 'Source\Core\Hover\Atlas.Core.Hover.Items.pas',
   Atlas.Core.Hover.Layout in 'Source\Core\Hover\Atlas.Core.Hover.Layout.pas',
   Atlas.Core.Hover.Texts in 'Source\Core\Hover\Atlas.Core.Hover.Texts.pas',
   Atlas.Core.Hover.DebugValue in 'Source\Core\Hover\Atlas.Core.Hover.DebugValue.pas',

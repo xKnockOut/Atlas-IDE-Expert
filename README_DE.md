@@ -44,7 +44,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Einrückung beim Tippen:** Nach Enter steht die Schreibmarke an der richtigen Stelle der Blockstruktur, `end`, `until`, `finally` und `else` rücken auf ihr Gegenstück, ein String wird beim Umbruch mit `' +` getrennt
 
 ### [Verstehen](docs/features/de/Verstehen.md)
-- **Hover** mit Deklaration, XMLDoc, Vererbung, Werten von Konstanten und Werten beim Debuggen
+- **Hover** mit Deklaration, XMLDoc, Vererbung, Werten von Konstanten und Werten beim Debuggen; die aufgeklappten published-Mitglieder großer Komponenten scrollen mit dem Mausrad (`hover.membersMaxLines`, Vorgabe 15 Zeilen)
 - **Typhinweise, Code-Metriken und Rekursionsmarken** im Editor; inaktive `{$IFDEF}`-Zweige abgeblendet
 - **Paarfarben und Blocklinien** nach Tiefe; lokale Routinen heben sich ab (eine Stufe tiefer oder eigene Farbe, auf Wunsch hinterlegt)
 - **Architekturübersicht:** Teilsysteme, zentrale Units, Zyklen, Vergleich mit einem gespeicherten Stand
