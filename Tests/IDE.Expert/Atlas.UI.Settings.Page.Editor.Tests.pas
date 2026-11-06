@@ -102,6 +102,7 @@ begin
   Assert.IsTrue(CheckOf(APage, 'ExpressionTypeConstValue').Checked);
   Assert.AreEqual(ShortCutToText($6054), EditOf(APage, 'ExpressionTypeKey').Text);
   Assert.AreEqual(0, APage.Part<TAtlasSettingsEditorCodePart>.MethodPlacementBox.Choice, 'Methoden wie die Deklaration (#660)');
+  Assert.AreEqual(0, APage.Part<TAtlasSettingsEditorCodePart>.RegionFoldsBox.Choice, 'Regionen unveraendert (#1814)');
 end;
 /// <summary>Vorgaben und Änderungen: Atlas-Spalte, gleicher Text, Blockkommentar.</summary>
 procedure EditHideElementSelection(APage: TAtlasSettingsPage);
@@ -176,6 +177,7 @@ begin
   CheckOf(APage, 'ExpressionTypeConstValue').Checked := False;
   EditOf(APage, 'ExpressionTypeKey').Text := '';
   APage.Part<TAtlasSettingsEditorCodePart>.MethodPlacementBox.Choice := 2;
+  APage.Part<TAtlasSettingsEditorCodePart>.RegionFoldsBox.Choice := 1;
   APage.Part<TAtlasSettingsEditorCodePart>.InlineDiagnostics.Choice := 2;
   CheckOf(APage, 'ProblemsStatusCounter').Checked := False;
   EditOf(APage, 'PreviousProblemKey').Text := '';
@@ -205,6 +207,7 @@ begin
   Assert.IsTrue(ASaved.ExpressionTypeConversions);
   Assert.IsFalse(ASaved.ExpressionTypeConstValue);
   Assert.AreEqual('off', ASaved.MethodPlacement, 'Methodenreihenfolge abschaltbar');
+  Assert.AreEqual('collapse', ASaved.RegionFolds, 'Regionen beim Oeffnen zuklappen (#1814)');
   Assert.AreEqual(0, ASaved.ExpressionTypeKey, 'leer = kein Kuerzel');
   Assert.IsTrue(ASaved.GutterColumn);
   Assert.IsTrue(ASaved.GutterColumnProblems);

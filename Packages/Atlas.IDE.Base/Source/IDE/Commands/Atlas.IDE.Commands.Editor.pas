@@ -106,6 +106,7 @@ uses
   Atlas.IDE.Editor.Unwrap,
   Atlas.IDE.Editor.ExpressionType,
   Atlas.IDE.Editor.MethodPlacement,
+  Atlas.IDE.Editor.RegionFolds,
   Atlas.IDE.Commands.EditorMenu;
 
 type
@@ -205,6 +206,8 @@ begin
     begin
       TAtlasIdeMethodPlacement.Dismiss;
     end);
+  // Regionen beim Öffnen (#1814): eine frisch geöffnete Datei bei ihrer ersten Anzeige falten.
+  TAtlasGuard.Run(TAtlasFeature.RegionFolds, TAtlasIdeRegionFolds.ViewActivated);
 end;
 
 procedure TEditorNotifier.EditorViewModified(const EditWindow: INTAEditWindow; const EditView: IOTAEditView);
