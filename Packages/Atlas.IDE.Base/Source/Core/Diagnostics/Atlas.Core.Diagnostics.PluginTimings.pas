@@ -10,7 +10,12 @@
 //   auf).
 // - Langsame Aufrufe: ab ThresholdMs eigener Zeit ein Eintrag im Ring der
 //   letzten 200, mit der längsten Atlas-Aktion (TAtlasActivity) des
-//   Aufrufs.
+//   Aufrufs. Wartet der Hauptthread auf den Server, zählt die Anfrage als
+//   Aktion („atlas.server.testUnit“), damit der Verursacher dabeisteht.
+// - Modale Dialoge: Zwischen ModalBegin und ModalEnd verarbeitet die IDE
+//   Nachrichten, sie hängt nicht. Diese Zeit zählt nicht als eigene Zeit des
+//   Aufrufs, der den Dialog öffnete, und nicht zur Belegung (Diagnose vom
+//   06.11.2026: Tracker 34 s, Willkommensseite 11,8 s ohne Hänger).
 // - Belegung: Wie viel jeder Sekunde der äußerste Atlas-Aufruf den Hauptthread
 //   hielt, für die letzten 60 Sekunden (TAtlasBusyMeter).
 // - Server: Dauer, Zeitüberschreitung und Abbruch je Anfrage (TLspClient) und
@@ -130,6 +135,8 @@ type
     ChildUs: Int64;
     Activity: string;
     ActivityUs: Int64;
+    /// <summary>Darin offene modale Dialoge; zählt nicht zur Belegung.</summary>
+    IdleUs: Int64;
   end;
 
   /// <summary>Stapel der laufenden Aufrufe im Hauptthread; gehört dem Hauptthread allein.</summary>
@@ -148,6 +155,11 @@ type
       out AOuter: Boolean): Boolean;
     /// <summary>Eine Aktion von AUs µs im obersten Aufruf; die längste bleibt.</summary>
     procedure Activity(const AName: string; AUs: Int64);
+    /// <summary>Verschachtelte Zeit des obersten Aufrufs; 0 ohne Aufruf.</summary>
+    function TopChildUs: Int64;
+    /// <summary>Im obersten Aufruf stand AUs µs ein modaler Dialog offen; vorher hatte er AChildUsBefore
+    /// verschachtelte Zeit. Danach zählt die ganze Dialogzeit als verschachtelt, nicht als eigene.</summary>
+    procedure Waited(AChildUsBefore, AUs: Int64);
     property Depth: Integer read FDepth;
   end;
 
@@ -175,6 +187,11 @@ type
     FThresholdMs: Integer;
     FPaused: Boolean;
     FVersion: Integer;
+    /// <summary>Offene modale Dialoge; gezählt wird nur der äußerste (nur Hauptthread).</summary>
+    FModalDepth: Integer;
+    FModalStart: Int64;
+    FModalFrame: Integer;
+    FModalChildUs: Int64;
     procedure AddSlow(AFeature: TAtlasFeature; const AActivity: string; AMs: Double);
     procedure RecordCall(AFeature: TAtlasFeature; const AFrame: TAtlasCallFrame; AOwnUs, AStop: Int64;
       AOuter: Boolean);
@@ -204,6 +221,10 @@ type
     /// <summary>Quelle AName hat AMs gearbeitet (aus jedem Thread).</summary>
     procedure SourceDone(const AName: string; AMs: Double);
     procedure HangDone(const AHang: TAtlasHangEntry);
+    /// <summary>Ein modaler Dialog öffnet sich (Application.OnModalBegin); nur im Hauptthread.</summary>
+    procedure ModalBegin;
+    /// <summary>Der modale Dialog ist zu (Application.OnModalEnd); nur im Hauptthread.</summary>
+    procedure ModalEnd;
     /// <summary>Alle Werte verwerfen; „Messung seit“ beginnt neu.</summary>
     procedure Reset;
     function Snapshot: TAtlasPluginSnapshot;
@@ -401,7 +422,28 @@ begin
   if not AOuter then
   begin
     Inc(FFrames[FDepth - 1].ChildUs, mElapsed);
+    Inc(FFrames[FDepth - 1].IdleUs, AFrame.IdleUs);
   end;
+end;
+
+function TAtlasCallStack.TopChildUs: Int64;
+begin
+  Result := 0;
+  if FDepth > 0 then
+  begin
+    Result := FFrames[FDepth - 1].ChildUs;
+  end;
+end;
+
+procedure TAtlasCallStack.Waited(AChildUsBefore, AUs: Int64);
+begin
+  if (FDepth = 0) or (AUs <= 0) then
+  begin
+    Exit;
+  end;
+  // Aufrufe im Dialog sind darin enthalten; sie zählen für sich, aber nicht doppelt.
+  FFrames[FDepth - 1].ChildUs := AChildUsBefore + AUs;
+  Inc(FFrames[FDepth - 1].IdleUs, AUs);
 end;
 
 procedure TAtlasCallStack.Activity(const AName: string; AUs: Int64);
@@ -518,7 +560,7 @@ begin
     end;
     if AOuter then
     begin
-      FBusy.Add(AFrame.Start, AStop);
+      FBusy.Add(AFrame.Start, Max(AFrame.Start, AStop - AFrame.IdleUs));
     end;
     Inc(FVersion);
   finally
@@ -540,6 +582,35 @@ begin
     FSlow.Delete(0);
   end;
   FSlow.Add(mCall);
+end;
+
+procedure TAtlasPluginRecorder.ModalBegin;
+begin
+  if not FIsMainThread() then
+  begin
+    Exit;
+  end;
+  Inc(FModalDepth);
+  if FModalDepth = 1 then
+  begin
+    FModalStart := FClock();
+    FModalFrame := FStack.Depth;
+    FModalChildUs := FStack.TopChildUs;
+  end;
+end;
+
+procedure TAtlasPluginRecorder.ModalEnd;
+begin
+  if not FIsMainThread() or (FModalDepth = 0) then
+  begin
+    Exit;
+  end;
+  Dec(FModalDepth);
+  // Nur, wenn noch derselbe Aufruf oben steht, der den Dialog geöffnet hat.
+  if (FModalDepth = 0) and (FModalFrame > 0) and (FStack.Depth = FModalFrame) then
+  begin
+    FStack.Waited(FModalChildUs, FClock() - FModalStart);
+  end;
 end;
 
 procedure TAtlasPluginRecorder.ActivityDone(const AName: string; AStarted: Int64);
@@ -670,6 +741,7 @@ begin
     FSources.Clear;
     FHangs.Clear;
     FBusy.Reset(FClock());
+    FModalDepth := 0;
     FSince := FNow();
     Inc(FVersion);
   finally
@@ -808,6 +880,11 @@ begin
   begin
     mShared := Shared;
     mShared.RequestDone(AMethod, AMs, AOutcome, mShared.OnMainThread);
+    // Hat der Hauptthread gewartet, steht die Anfrage als Aktion beim langsamen Aufruf.
+    if mShared.OnMainThread then
+    begin
+      mShared.ActivityDone(AMethod, mShared.Stamp - Round(AMs * 1000));
+    end;
   end;
 end;
 

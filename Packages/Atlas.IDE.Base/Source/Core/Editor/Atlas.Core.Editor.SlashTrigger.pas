@@ -12,6 +12,9 @@
 // abgeschaltet, keine Deklaration darunter). Damit Atlas nicht bei jedem
 // weiteren Zeichen erneut fragt, merkt sich die IDE-Schicht den Schlüssel
 // des letzten Auslösers.
+// Die Anfrage läuft im Hintergrund (Diagnose 06.11.2026: bis zu 3 s Hänger
+// beim Tippen); die Antwort gilt nur, solange Datei und Text unverändert sind
+// (StillValid), denn die Änderungen des Servers zählen auf diesen Stand.
 // Das eingesetzte Gerüst füllt der Platzhalter-Modus (#51): je Beschreibung
 // (zwischen ">" und "</") ein leerer Platzhalter, Tab springt weiter, am Ende
 // steht der Cursor hinter dem letzten Tag.
@@ -36,6 +39,8 @@ type
     /// <summary>Schlüssel gegen wiederholtes Auslösen an derselben Stelle.</summary>
     class function Key(const AFileName: string; ALine: Integer; AKind: TAtlasSlashKind;
       const APrevious: string): string; static;
+    /// <summary>Gilt die Antwort für AAskedFile mit Text AAskedText noch für den Stand ANowFile, ANowText?</summary>
+    class function StillValid(const AAskedFile, AAskedText, ANowFile, ANowText: string): Boolean; static;
     /// <summary>Platzhalter für ein eingesetztes ///-Gerüst AText: je leerer Beschreibung zwischen "&gt;" und
     /// "&lt;/" einer, die Endposition hinter dem letzten Tag (ohne abschließenden Zeilenumbruch). Ohne
     /// Beschreibung keine Platzhalter.</summary>
@@ -82,6 +87,11 @@ class function TAtlasSlashTrigger.Key(const AFileName: string; ALine: Integer; A
   const APrevious: string): string;
 begin
   Result := Format('%s|%d|%d|%s', [AnsiUpperCase(AFileName), ALine, Ord(AKind), Trim(APrevious)]);
+end;
+
+class function TAtlasSlashTrigger.StillValid(const AAskedFile, AAskedText, ANowFile, ANowText: string): Boolean;
+begin
+  Result := SameText(AAskedFile, ANowFile) and (AAskedText = ANowText);
 end;
 
 class function TAtlasSlashTrigger.DocCommentExpansion(const AText: string): TAtlasSnippetExpansion;

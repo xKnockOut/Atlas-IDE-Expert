@@ -28,6 +28,9 @@ type
     /// <summary>#88: je Beschreibung ein leerer Platzhalter, Endposition hinter dem letzten Tag.</summary>
     [Test]
     procedure DocCommentPlaceholdersInDescriptions;
+    /// <summary>Antwort im Hintergrund: gilt nur für dieselbe Datei mit unverändertem Text.</summary>
+    [Test]
+    procedure SlashAnswerOnlyForUnchangedText;
   end;
 
 implementation
@@ -131,6 +134,13 @@ begin
     TAtlasSlashTrigger.Key('C:\P\A.pas', 3, TAtlasSlashKind.Command, '/try '));
   Assert.AreNotEqual(TAtlasSlashTrigger.Key('a.pas', 3, TAtlasSlashKind.Command, '/try'),
     TAtlasSlashTrigger.Key('a.pas', 4, TAtlasSlashKind.Command, '/try'));
+end;
+
+procedure TAtlasEditorCommandsTests.SlashAnswerOnlyForUnchangedText;
+begin
+  Assert.IsTrue(TAtlasSlashTrigger.StillValid('C:\P\A.pas', '/try'#13#10, 'c:\p\a.pas', '/try'#13#10));
+  Assert.IsFalse(TAtlasSlashTrigger.StillValid('A.pas', '/try'#13#10, 'A.pas', '/try'#13#10'x'), 'weitergetippt');
+  Assert.IsFalse(TAtlasSlashTrigger.StillValid('A.pas', '/try'#13#10, 'B.pas', '/try'#13#10), 'andere Datei');
 end;
 
 procedure TAtlasEditorCommandsTests.SearchFindsNextAndPreviousWithWrap;
