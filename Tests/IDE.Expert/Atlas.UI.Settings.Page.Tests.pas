@@ -121,6 +121,10 @@ procedure TAtlasSettingsPageTests.WarmUp;
 begin
   WarmUpSettingsPage;
   FilterAndResetPerNode;
+  // Erste Fehler legen die Listen der Sicherung an.
+  TAtlasGuard.ReportProvider('Testquelle', 'Fehler');
+  TAtlasGuard.Fuse.Failed(TAtlasFeature.Pairs);
+  TAtlasGuard.Fuse.ResetAll;
 end;
 /// <summary>Liegt AControl in AParent (oder ist es selbst)?</summary>
 function Inside(AControl, AParent: TControl): Boolean;
