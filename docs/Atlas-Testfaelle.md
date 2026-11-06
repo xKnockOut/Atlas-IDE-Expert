@@ -9746,3 +9746,18 @@ Vorbereitung: Plugin und AtlasServer mit diesem Stand gebaut, Blockeinrückung d
 | ET15 | Atlas-Einstellungen (settings.json), Seite *Eingabehilfen*, Abschnitt `smartIndent`: `enabled` aus; dann nur `outdentClosers` aus; dann nur `splitStrings` aus; dann nur `afterEnter` aus | `enabled` aus: IDE wie ohne Atlas. `outdentClosers` aus: `end` bleibt stehen. `splitStrings` aus: ET10 lässt einen offenen String (wie ohne Atlas). `afterEnter` aus: nur noch Schlusswörter und Strings. Seite und Beschreibungen auch auf Englisch („Typing aids“) |
 | ET16 | `editor.smartPaste` = `indent`, nach `if A then B;` am Zeilenanfang einen zweizeiligen Block einfügen (Strg+V); dann ohne laufenden Server | Mit Server: erste Zeile unter `if`, die zweite behält ihren Abstand; ein eigener Rückgängig-Schritt. Ohne Server: Heuristik wie bisher (Ebene der Zeile darüber) |
 | ET17 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TSmartIndentTests`, `TLspSmartIndentTests`, `TAtlasSmartIndentTests`, `TAtlasSmartPasteTests.ReindentUsesServerColumn`, `TBlockIndenterTests.ReportsLineInfo`, `TConfigurationParserTests.ReadsSmartIndent` grün |
+
+## Published-Mitglieder im Hover scrollen (#1841)
+
+Vorbereitung: Plugin mit diesem Stand gebaut, `hover.membersMaxLines` unverändert (15). Eine Unit mit `uses Vcl.Forms, Vcl.StdCtrls;` und `var F: TForm; B: TButton;`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| HMS1 | Maus über `TForm`, im Hover bei PROPERTIES „+ n weitere Properties“ klicken | Der Hinweis bleibt im Bildschirm; die Tabelle zeigt 15 Zeilen, rechts ein schmaler Daumen; Zusammenfassung, Schalter und Aktionsleiste stehen fest (**Abnahme**) |
+| HMS2 | Wie HMS1, Mausrad über der Tabelle nach unten bis zum Ende | Je Stufe drei Zeilen; am Ende stehen EREIGNISSE und ihre letzte Zeile, der Daumen unten; nichts ragt über die Linie darüber oder in die Aktionsleiste (**Abnahme**) |
+| HMS3 | Bei HMS2 „+ n weitere Ereignisse“ bzw. den Titel EREIGNISSE ▾ anklicken, wenn sichtbar | Klick wirkt; der Bereich bleibt an seiner Stelle bzw. springt höchstens an das neue Ende |
+| HMS4 | Mausrad über der XMLDoc eines Typs mit langer Doku und vielen Mitgliedern | Die Doku scrollt, die Mitglieder nicht; über den Mitgliedern scrollen nur diese |
+| HMS5 | Hover nahe am unteren Bildschirmrand, Mitglieder aufklappen | Der Hinweis wächst nach oben und bleibt ganz sichtbar; der Rollbereich ist höchstens so hoch wie der Platz |
+| HMS6 | Optionen › Atlas › Editor: „Mitglieder im Hover: höchstens Zeilen ohne Scrollen“ auf 5, dann auf 0 | 5: Tabelle fünf Zeilen hoch. 0: so hoch wie der Bildschirm zulässt, darunter kein Daumen |
+| HMS7 | IDE auf Englisch | Text der Option „Members in the hover: max. lines before scrolling (0 = screen)“ |
+| HMS8 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `THoverLayoutTests.PublishedMembersScroll`, `ScrolledMembersDropHiddenHits`, `TAtlasPluginSettingsTests.HoverMembersMaxLinesRoundTrip` grün |

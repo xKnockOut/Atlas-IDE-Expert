@@ -29,6 +29,10 @@
 // („+ n weitere …“ zeigt alle), und die Standard-Property einer Array-Property.
 // Die Schalter tragen die Klickfläche Published mit Ord(TAtlasHoverPublishedToggle);
 // TAtlasHoverView.Toggle schaltet um. Strg+C heißt dann „Liste kopieren“.
+// Die Tabellen und die Standard-Property bilden einen Rollbereich: Ist er höher als
+// Input.Members.MaxLines Tabellenzeilen (hover.membersMaxLines) bzw. als Input.Members.Limit
+// (Platz auf dem Bildschirm), zeigt der Tooltip nur Members.View mit einem Daumen am rechten
+// Rand (TAtlasHoverScroll, Atlas.Core.Hover.Items, #1841).
 
 interface
 
@@ -41,26 +45,18 @@ uses
   Atlas.Core.Problems.Contract,
   Atlas.Core.Documentation.Contract,
   Atlas.Core.Hover.DebugValue,
+  Atlas.Core.Hover.Items,
   Atlas.Core.Hover.Texts;
 
 type
   {$SCOPEDENUMS ON}
   TAtlasHoverAction = (Navigate, Usages, Copy, Help);
-  /// <summary>Schriften des Tooltips: UI, Editorschrift, beide verkleinert, Badge.</summary>
-  TAtlasHoverFont = (Ui, Mono, SmallUi, SmallMono, Badge);
-  /// <summary>DebugFix: Korrektur unter „kein Zugriff“ (#840), Index in View.DebugValue.Note.Fixes.</summary>
-  TAtlasHoverHitKind = (Link, Ancestor, Path, Back, Action, ProblemAction, Published, DebugFix);
   /// <summary>Schalter der published-Mitglieder (#110): geerbte zeigen, nur mit Vorgabe, Abschnitte zu- bzw.
   /// aufklappen, alle Zeilen zeigen.</summary>
   TAtlasHoverPublishedToggle = (ShowInherited, OnlyDefaults, Properties, Events, MoreProperties, MoreEvents);
   /// <summary>Aktion unter einem Problem im Tooltip (#621). Related: Sprung zu einer weiteren Stelle (#896),
   /// ShowGraph: Unit-Beziehungen zeigen (#896).</summary>
   TAtlasHoverProblemAction = (RemoveUses, RemoveAllUses, MoveUses, Fix, SuppressLine, Configure, Related, ShowGraph);
-  /// <summary>Fill: Fläche; Line: waagrechte Linie; Text: Text ab Rect.TopLeft; CenterText: zentriert in
-  /// Rect; Frame: umrandetes Rechteck mit Fläche Back; RoundFill: gefülltes Rechteck mit Radius; Block:
-  /// umbrechender Text in Rect (UI-Schrift, Ellipse); Styled: eingefärbte Deklaration From..Till; Doc: XMLDoc
-  /// ab Rect.TopLeft.</summary>
-  TAtlasHoverItemKind = (Fill, Line, Text, CenterText, Frame, RoundFill, Block, Styled, Doc);
   {$SCOPEDENUMS OFF}
 
   /// <summary>Was der Tooltip zeigt: Inhalt, Pfad und Zustand.</summary>
@@ -90,13 +86,6 @@ type
     procedure Toggle(AToggle: TAtlasHoverPublishedToggle);
   end;
 
-  TAtlasHoverFace = record
-    Font: TAtlasHoverFont;
-    Bold: Boolean;
-    Underline: Boolean;
-    class function Create(AFont: TAtlasHoverFont; ABold, AUnderline: Boolean): TAtlasHoverFace; static;
-  end;
-
   /// <summary>Messen in der Oberfläche; Build ruft nur diese Funktionen.</summary>
   IAtlasHoverMeasure = interface
     function TextWidth(const AFace: TAtlasHoverFace; const AText: string): Integer;
@@ -108,34 +97,6 @@ type
     function DeclarationWidth(AFrom, ATill: Integer): Integer;
     /// <summary>Zeilen der eingefärbten Deklaration bei Umbruch an Leerzeichen.</summary>
     function DeclarationLines(AWidth, AIndent: Integer): TArray<TPoint>;
-  end;
-
-  TAtlasHoverItem = record
-    Kind: TAtlasHoverItemKind;
-    Rect: TRect;
-    Text: string;
-    Face: TAtlasHoverFace;
-    Color: TAtlasColor;
-    /// <summary>Farbe, solange die Klickfläche HotKind/HotIndex unter der Maus ist.</summary>
-    HotColor: TAtlasColor;
-    /// <summary>Fläche von Frame.</summary>
-    Back: TAtlasColor;
-    /// <summary>Radius von Frame und RoundFill in logischen Pixeln.</summary>
-    Radius: Integer;
-    PenWidth: Integer;
-    HotPenWidth: Integer;
-    HotUnderline: Boolean;
-    HotKind: TAtlasHoverHitKind;
-    /// <summary>-1: hängt an keiner Klickfläche.</summary>
-    HotIndex: Integer;
-    From: Integer;
-    Till: Integer;
-  end;
-
-  TAtlasHoverHit = record
-    Kind: TAtlasHoverHitKind;
-    Index: Integer;
-    Rect: TRect;
   end;
 
   TAtlasHoverInput = record
@@ -153,6 +114,8 @@ type
     ProblemActions: Boolean;
     /// <summary>problems.showCompilerCode aus (#1024): Meldungen ohne „(wie E2035)“, Bestätigung ohne Code.</summary>
     HideCompilerCode: Boolean;
+    /// <summary>Rollbereich der published-Mitglieder: Zeilen, Grenze und gewünschter Versatz (#1841).</summary>
+    Members: TAtlasHoverScrollRequest;
   end;
 
   TAtlasHoverLayout = record
@@ -169,6 +132,8 @@ type
     AnchorShift: Integer;
     /// <summary>Erstes Problem (Index in View.Problems) mit „Alt+Enter: …“ im Hover, -1 ohne (#909).</summary>
     FixProblem: Integer;
+    /// <summary>Rollbereich der published-Mitglieder (#1841).</summary>
+    Members: TAtlasHoverScroll;
     class function Build(const AInput: TAtlasHoverInput; const AMeasure: IAtlasHoverMeasure): TAtlasHoverLayout;
       static;
     /// <summary>Index der Klickfläche ProblemAction: Problem in View.Problems und Aktion (#621).</summary>
@@ -304,6 +269,8 @@ type
     procedure MemberSection(AEvents: Boolean);
     procedure PublishedSummary;
     procedure DefaultPropertyRow;
+    /// <summary>Rollbereich ab ATop (Bausteine ab AFirstItem, Klickflächen ab AFirstHit) begrenzen.</summary>
+    procedure ClipMembers(ATop, AFirstItem, AFirstHit: Integer);
   protected
     procedure PublishedMembers;
   end;
@@ -388,15 +355,6 @@ begin
   end;
 end;
 
-{ TAtlasHoverFace }
-
-class function TAtlasHoverFace.Create(AFont: TAtlasHoverFont; ABold, AUnderline: Boolean): TAtlasHoverFace;
-begin
-  Result.Font := AFont;
-  Result.Bold := ABold;
-  Result.Underline := AUnderline;
-end;
-
 { THotSpot }
 
 function NoHot: THotSpot;
@@ -439,6 +397,7 @@ begin
   FLayout.AnchorItem := -1;
   FLayout.AnchorHit := -1;
   FLayout.FixProblem := -1;
+  FLayout.Members := TAtlasHoverScroll.None;
 end;
 
 function TPainter.Scale(AValue: Integer): Integer;
@@ -922,8 +881,6 @@ begin
   ToggleChip(FInput.Texts.PublishedOnlyDefaults, FInput.View.OnlyDefaults, TAtlasHoverPublishedToggle.OnlyDefaults,
     FRight - mChipsWidth + mInheritedWidth + Scale(6));
   Inc(FY, Height(mSmallFace) + Scale(10));
-  MemberSection(False);
-  MemberSection(True);
 end;
 
 procedure TPublishedPainter.DefaultPropertyRow;
@@ -961,7 +918,27 @@ begin
   Inc(FY, Height(mMonoFace) + Scale(8));
 end;
 
+procedure TPublishedPainter.ClipMembers(ATop, AFirstItem, AFirstHit: Integer);
+var
+  mItem: TAtlasHoverItem;
+begin
+  // Rollbereich (#1841): Grenze aus Zeilen und Platz, Bausteine verschieben, verdeckte Klickflächen streichen.
+  if not FLayout.Members.Fit(FInput.Members, ATop, FY, FInput.Width, Height(Face(TAtlasHoverFont.Mono, False)) +
+    Scale(3)) then
+  begin
+    Exit;
+  end;
+  FLayout.Members.Shift(FItems, AFirstItem, FItemCount, FHits, AFirstHit, FHitCount);
+  mItem := NewItem(TAtlasHoverItemKind.RoundFill, FLayout.Members.Thumb(Scale(16), Scale(7), Scale(3)),
+    FColors.Muted);
+  mItem.Radius := 2;
+  Add(mItem);
+  FY := FLayout.Members.View.Bottom;
+end;
+
 procedure TPublishedPainter.PublishedMembers;
+var
+  mTop, mFirstItem, mFirstHit: Integer;
 begin
   // published-Mitglieder einer Komponentenklasse (#110).
   if (Length(FData.Members) = 0) and (FData.DefaultProperty = '') then
@@ -974,10 +951,20 @@ begin
   begin
     PublishedSummary;
   end;
+  // Tabellen und Standard-Property scrollen; Zusammenfassung und Schalter bleiben stehen.
+  mTop := FY;
+  mFirstItem := FItemCount;
+  mFirstHit := FHitCount;
+  if Length(FData.Members) > 0 then
+  begin
+    MemberSection(False);
+    MemberSection(True);
+  end;
   if FData.DefaultProperty <> '' then
   begin
     DefaultPropertyRow;
   end;
+  ClipMembers(mTop, mFirstItem, mFirstHit);
   FX := FLeft;
 end;
 
