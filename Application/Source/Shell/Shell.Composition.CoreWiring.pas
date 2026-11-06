@@ -41,6 +41,8 @@ uses
   Atlas.Common.Query.Contract,
   Atlas.Common.Lsp.IdeProject,
   Atlas.Common.Lsp.WatchedFiles,
+  Atlas.Common.Lsp.IdeTypes,
+  Atlas.Common.Rules.Contract,
   Atlas.Common.Projects.Selection,
   Atlas.Common.Diagnostics.Anonymizer,
   Atlas.Common.Configuration.Contract,
@@ -132,6 +134,11 @@ begin
     function: TLspIdeProject
     begin
       Result := AParts.IdeArea.Ide.Project;
+    end;
+  Result.IdeTypes :=
+    function: IRuleIdeTypes
+    begin
+      Result := AParts.IdeArea.Ide.Types.Catalog;
     end;
   Result.Selection :=
     function: TProjectSelection

@@ -42,6 +42,12 @@
 // die Datei irgendwo als Typ deklariert (auch verschachtelt), und Namen, die der
 // Index als verschachtelten Typ kennt (geerbte innere Typen). Korrektur: die
 // Unit, die den Typ im Index deklariert, in uses aufnehmen.
+//
+// Typen der IDE (atlas/ideTypes, TRuleContext.IdeTypes): Kennt die laufende
+// IDE einen Typ aus ihren Packages (auch ohne oder mit abweichendem
+// Quelltext) in einer Unit, die im uses steht (bzw. vor dem Punkt), schweigen
+// unresolved-type und unresolved-identifier für ihn. Steht keine solche Unit im
+// uses, schlägt unresolved-type ihre Units zusätzlich zu denen des Index vor.
 
 interface
 
@@ -187,11 +193,84 @@ begin
     cTexts[TUnresolvedText.Title].Text);
 end;
 
+/// <summary>Meint der uses-Eintrag AUsed die Unit AUnit, auch über einen Namespace des Projekts?</summary>
+function UsesNames(const AUsed, AUnit: string; const ANamespaces: TArray<string>): Boolean;
+var
+  mNamespace: string;
+begin
+  Result := SameText(AUsed, AUnit);
+  for mNamespace in ANamespaces do
+  begin
+    Result := Result or SameText(mNamespace + '.' + AUsed, AUnit);
+  end;
+end;
+
+/// <summary>Steht AUnit in AUsed (auch über ANamespaces)?</summary>
+function UnitUsed(const AUnit: string; const AUsed, ANamespaces: TArray<string>): Boolean;
+var
+  mUsed: string;
+begin
+  for mUsed in AUsed do
+  begin
+    if UsesNames(mUsed, AUnit, ANamespaces) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Kennt die IDE den Typ ANames (Name, ggf. mit Unit davor) in einer Unit, die sichtbar ist: die vor dem
+/// Punkt bzw. eine aus AUsed?</summary>
+function IdeDeclares(const AIdeTypes: IRuleIdeTypes; const ANames, AUsed, ANamespaces: TArray<string>): Boolean;
+var
+  mUnit, mQualifier: string;
+  mVisible: TArray<string>;
+begin
+  Result := False;
+  if (AIdeTypes = nil) or (Length(ANames) = 0) then
+  begin
+    Exit;
+  end;
+  mVisible := AUsed;
+  if Length(ANames) > 1 then
+  begin
+    mQualifier := string.Join('.', Copy(ANames, 0, High(ANames)));
+    mVisible := TArray<string>.Create(mQualifier);
+  end;
+  for mUnit in AIdeTypes.UnitsOf(ANames[High(ANames)]) do
+  begin
+    Result := Result or UnitUsed(mUnit, mVisible, ANamespaces);
+  end;
+end;
+
+/// <summary>AUnits und dahinter die Units, in denen die IDE den Typ ABare kennt, ohne Doppelte und ohne AOwnUnit.
+/// </summary>
+function WithIdeUnits(const AIdeTypes: IRuleIdeTypes; const ABare, AOwnUnit: string;
+  const AUnits: TArray<string>): TArray<string>;
+var
+  mUnit: string;
+begin
+  Result := AUnits;
+  if AIdeTypes = nil then
+  begin
+    Exit;
+  end;
+  for mUnit in AIdeTypes.UnitsOf(ABare) do
+  begin
+    if not SameText(mUnit, AOwnUnit) and (IndexText(mUnit, Result) < 0) then
+    begin
+      Result := Result + [mUnit];
+    end;
+  end;
+end;
+
 procedure TUnresolvedIdentifierRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Resolver: TNameResolver;
   mCache: IRuleDerivedCache;
   Name: TUnresolvedName;
+  mUsed: TArray<string>;
 begin
   if (AContext.Tree = nil) or not TUnresolvedNames.Available(AContext.Index) then
   begin
@@ -200,8 +279,15 @@ begin
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   Resolver := TRuleDerived.Resolver(mCache, AContext);
+  mUsed := TUsesClauses.UsedUnits(AContext.Tree.Tokens);
   for Name in TUnresolvedNames.Find(Resolver, AContext.Tree, AContext.RelativePath) do
   begin
+    // Typ aus einem Package der IDE, dessen Unit im uses steht (TFoo.Create).
+    if (Name.Code = '') and IdeDeclares(AContext.IdeTypes, TArray<string>.Create(Name.Name), mUsed,
+      AContext.Namespaces) then
+    begin
+      Continue;
+    end;
     if Name.Code <> '' then
     begin
       AReport.Add(Name.Range, TUnresolvedNames.Describe(Name), TRuleConfidence.Medium);
@@ -1434,6 +1520,8 @@ type
     FLines: TArray<Boolean>;
     FLineBreak: string;
     FOwnUnit: string;
+    // Units aus den uses-Listen der Datei, für die Typen der IDE.
+    FUsed: TArray<string>;
     FLevel: TRuleConfidence;
     // Typnamen und Typparameter der Datei: gelten als bekannt.
     FDeclared: TDictionary<string, Boolean>;
@@ -1561,14 +1649,16 @@ begin
   begin
     FReport.Add(mRange, NotATypeMessage(ANode.Name, Length(mNames) > 1, mResolved.SymbolKind), FLevel);
   end;
-  if mResolved.Found or Unclear(ANode, mBare) then
+  if mResolved.Found or Unclear(ANode, mBare) or
+    IdeDeclares(FContext.IdeTypes, mNames, FUsed, FContext.Namespaces) then
   begin
     Exit;
   end;
   mUnits := nil;
   if Length(mNames) = 1 then
   begin
-    mUnits := TUnresolvedTypeRule.DeclaringUnits(FContext.Index, mBare, FOwnUnit, GenericArity(ANode));
+    mUnits := WithIdeUnits(FContext.IdeTypes, mBare, FOwnUnit,
+      TUnresolvedTypeRule.DeclaringUnits(FContext.Index, mBare, FOwnUnit, GenericArity(ANode)));
   end;
   FReport.Add(mRange, MissingTypeMessage(ANode, mUnits), FLevel, UsesFixes(FContext.Tree.Tokens, ANode.StartOffset,
     mUnits, FLineBreak));
@@ -1610,6 +1700,7 @@ begin
   FLines := ConditionalLines(FContext.Tree.Tokens);
   FLineBreak := TTextLines.LineBreakOf(FContext.Text);
   FOwnUnit := TUsesClauses.OwnName(FContext.Tree.Tokens);
+  FUsed := TUsesClauses.UsedUnits(FContext.Tree.Tokens);
   // Mit Include-Dateien kann der Typ dort deklariert sein.
   FLevel := IncludeConfidence(FContext.Tree.Tokens);
   Collect(FContext.Tree.Root);
