@@ -138,6 +138,7 @@
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.Contract.pas"/>
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.Declaration.pas"/>
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.History.pas"/>
+        <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.Items.pas"/>
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.Layout.pas"/>
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.Texts.pas"/>
         <DCCReference Include="Source\Core\Hover\Atlas.Core.Hover.DebugValue.pas"/>

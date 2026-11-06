@@ -57,6 +57,8 @@ type
     ProjectFor: TShellProjectFunc;
     NewNamesFor: TShellNewNamesFunc;
     MissingUnitSetupFor: TShellMissingUnitSetupFunc;
+    /// <summary>classCompletion.typeComment der Datei (#1838).</summary>
+    TypeCommentFor: TShellUriTextFunc;
   end;
 
   /// <summary>Basis der Teile: Zugriff auf die Dienste und die Prüfungen, die jeder Befehl braucht.</summary>
@@ -65,6 +67,8 @@ type
     FServices: TShellRefactoringServices;
   protected
     function Settings(const AUri: string): TRefactoringSettings;
+    /// <summary>Typkommentare mitnehmen (#1838): classCompletion.typeComment nicht off.</summary>
+    function TypeComments(const AUri: string): Boolean;
     /// <summary>Code-Aktion: eingeschaltet, Datei geöffnet und eine .pas-Datei.</summary>
     function TryOpen(const AUri: string; AEnabled: Boolean; out ADocument: ITextDocument): Boolean; overload;
     /// <summary>Wie TryOpen für die Endungen AExtensions.</summary>
@@ -153,6 +157,11 @@ end;
 function TShellRefactoringPart.Settings(const AUri: string): TRefactoringSettings;
 begin
   Result := FServices.SettingsFor(AUri);
+end;
+
+function TShellRefactoringPart.TypeComments(const AUri: string): Boolean;
+begin
+  Result := not Assigned(FServices.TypeCommentFor) or not SameText(FServices.TypeCommentFor(AUri), 'off');
 end;
 
 function TShellRefactoringPart.TryOpen(const AUri: string; AEnabled: Boolean; out ADocument: ITextDocument): Boolean;

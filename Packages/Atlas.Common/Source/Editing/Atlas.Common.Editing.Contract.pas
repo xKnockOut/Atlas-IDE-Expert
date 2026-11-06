@@ -141,6 +141,12 @@ type
     EnumHelper = 'enumHelper';
     /// <summary>/helper für Mengen mit Contains, ToText, Toggle und All (#875); 'false' = leerer Helper.</summary>
     SetHelper = 'setHelper';
+    /// <summary>classCompletion.typeComment (#1835): brace, line, summary, region oder off.</summary>
+    TypeComment = 'typeComment';
+    /// <summary>classCompletion.bodyStubs (#1837); 'false' = leere Rümpfe.</summary>
+    BodyStubs = 'bodyStubs';
+    /// <summary>classCompletion.lifecycleFirst (#1836); 'false' = Konstruktoren nicht vorziehen.</summary>
+    LifecycleFirst = 'lifecycleFirst';
   end;
 
   /// <summary>Ort und Inhalt der Befehlszeile.</summary>

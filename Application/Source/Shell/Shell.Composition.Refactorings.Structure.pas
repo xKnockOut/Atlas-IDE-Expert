@@ -312,6 +312,7 @@ begin
   mContext.Exists := Exists;
   mContext.HasProject := Project(mFileName, mContext.Project);
   mContext.UnitName := AArguments.Items[2].Value;
+  mContext.TypeComments := TypeComments(mUri);
   mResolver := NewResolver;
   try
     mAnswer := TLspMoveClass.Execute(mResolver, TSyntaxTreeCache.Get(mDocument, nil).Tree, mFileName, mDocument.Text,
