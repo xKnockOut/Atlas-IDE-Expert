@@ -613,6 +613,7 @@ begin
   TAtlasIdeStyle.Apply(FTip, FWordRect);
   FTip.ProblemActions := TAtlasIdeSettings.Current.HoverProblemActions;
   FTip.HideCompilerCode := not TAtlasIdeSettings.Current.ProblemsShowCompilerCode;
+  FTip.MembersMaxLines := TAtlasIdeSettings.Current.HoverMembersMaxLines;
   FTip.ShowContent(CurrentView, FWordRect);
   TAtlasKeyHook.Add(FKeys);
   FShownKey := FKey;

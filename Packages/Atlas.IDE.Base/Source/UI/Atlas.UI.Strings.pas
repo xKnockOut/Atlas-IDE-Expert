@@ -762,7 +762,9 @@ type
     ProblemsCheckFileCommand, StatusBarManual, StatusBarLiveManualHint, StatusBarCheckFileClick,
     // Lokale Routinen abheben (#1788).
     SettingsNestedRoutines, SettingsNestedRoutinesOuter, SettingsNestedRoutinesDeeper, SettingsNestedRoutinesColor,
-    SettingsNestedRoutineBand, SettingsNestedRoutineColorLight, SettingsNestedRoutineColorDark);
+    SettingsNestedRoutineBand, SettingsNestedRoutineColorLight, SettingsNestedRoutineColorDark,
+    // Rollbereich der published-Mitglieder im Hover (#1841).
+    SettingsHoverMembersMaxLines);
 
   TAtlasStrings = class
   private
@@ -2638,7 +2640,8 @@ const
      'in eigener Farbe, Blocklinie gestrichelt',
      'Zeilen lokaler Routinen hinterlegen',
      'Lokale Routinen im hellen Thema',
-     'Lokale Routinen im dunklen Thema'),
+     'Lokale Routinen im dunklen Thema',
+     'Mitglieder im Hover: höchstens Zeilen ohne Scrollen (0 = Bildschirm)'),
     ('Enter to accept · Esc to close', '%d of %d', 'No matches for “%s”', 'Backspace widens the search',
      'No suggestions here', 'Esc closes', 'No details for this entry', 'Overload', 'Deprecated: %s', 'Deprecated.',
      'Inherited from %s', 'Inherited', 'optional, default %s', 'No overload with %d parameters.', '… %d more',
@@ -4430,7 +4433,8 @@ const
      'in their own colour, dashed guide',
      'Shade the lines of local routines',
      'Local routines in the light theme',
-     'Local routines in the dark theme'));
+     'Local routines in the dark theme',
+     'Members in the hover: max. lines before scrolling (0 = screen)'));
 
 { TAtlasStrings }
 

@@ -29,6 +29,11 @@
 // („+ n weitere …“ zeigt alle), und die Standard-Property einer Array-Property.
 // Die Schalter tragen die Klickfläche Published mit Ord(TAtlasHoverPublishedToggle);
 // TAtlasHoverView.Toggle schaltet um. Strg+C heißt dann „Liste kopieren“.
+// Die Tabellen und die Standard-Property bilden einen Rollbereich: Ist er höher als
+// Input.MembersMaxLines Tabellenzeilen (hover.membersMaxLines) bzw. als Input.MembersLimit
+// (Platz auf dem Bildschirm), zeigt der Tooltip nur MembersView, verschoben um MembersScroll,
+// mit einem Daumen am rechten Rand; Bausteine ClipFrom..ClipTill - 1 zeichnet das Fenster
+// beschnitten auf MembersView, Klickflächen außerhalb entfallen.
 
 interface
 
@@ -153,6 +158,13 @@ type
     ProblemActions: Boolean;
     /// <summary>problems.showCompilerCode aus (#1024): Meldungen ohne „(wie E2035)“, Bestätigung ohne Code.</summary>
     HideCompilerCode: Boolean;
+    /// <summary>Rollbereich der published-Mitglieder: höchstens so viele Tabellenzeilen ohne Scrollen
+    /// (hover.membersMaxLines), 0 = unbegrenzt.</summary>
+    MembersMaxLines: Integer;
+    /// <summary>Höchsthöhe des Rollbereichs in Pixeln (Platz auf dem Bildschirm), 0 = unbegrenzt.</summary>
+    MembersLimit: Integer;
+    /// <summary>Gewünschter Versatz des Rollbereichs in Pixeln; Build begrenzt ihn.</summary>
+    MembersScroll: Integer;
   end;
 
   TAtlasHoverLayout = record
@@ -169,6 +181,15 @@ type
     AnchorShift: Integer;
     /// <summary>Erstes Problem (Index in View.Problems) mit „Alt+Enter: …“ im Hover, -1 ohne (#909).</summary>
     FixProblem: Integer;
+    /// <summary>Sichtbarer Rollbereich der published-Mitglieder (Höhe 0 ohne Mitglieder), volle Höhe seines
+    /// Inhalts, Versatz und Höhe einer Tabellenzeile (Schritt des Mausrads).</summary>
+    MembersView: TRect;
+    MembersContent: Integer;
+    MembersScroll: Integer;
+    MembersRow: Integer;
+    /// <summary>Bausteine [ClipFrom, ClipTill) beschnitten auf MembersView zeichnen; ClipFrom = -1 ohne.</summary>
+    ClipFrom: Integer;
+    ClipTill: Integer;
     class function Build(const AInput: TAtlasHoverInput; const AMeasure: IAtlasHoverMeasure): TAtlasHoverLayout;
       static;
     /// <summary>Index der Klickfläche ProblemAction: Problem in View.Problems und Aktion (#621).</summary>
@@ -194,6 +215,10 @@ type
     /// <summary>Letzte Randfläche an den unteren Rand eines Fensters der Höhe AClientHeight schieben (nie
     /// nach oben über ihre Lage hinaus); wiederholbar.</summary>
     procedure Anchor(AClientHeight: Integer);
+    /// <summary>Ist der Rollbereich der Mitglieder höher als sichtbar?</summary>
+    function MembersScrollable: Boolean;
+    /// <summary>Größter Versatz des Rollbereichs; 0, wenn er nicht scrollt.</summary>
+    function MembersMaxScroll: Integer;
   end;
 
 /// <summary>Badge-Art zum Kürzel aus TAtlasHoverData.Badge.</summary>
@@ -214,6 +239,8 @@ const
   /// </summary>
   PropertyRows = 7;
   EventRows = 4;
+  /// <summary>So viele Tabellenzeilen bleiben im Rollbereich mindestens sichtbar.</summary>
+  MinMemberRows = 3;
   /// <summary>Höchstens so viele weitere Stellen je Problem im Hover (#896).</summary>
   MaxRelated = 64;
 
@@ -304,6 +331,18 @@ type
     procedure MemberSection(AEvents: Boolean);
     procedure PublishedSummary;
     procedure DefaultPropertyRow;
+    /// <summary>Höhe einer Tabellenzeile.</summary>
+    function MemberRowHeight: Integer;
+    /// <summary>Höchsthöhe des Rollbereichs aus Input.MembersMaxLines und Input.MembersLimit; 0 = unbegrenzt.
+    /// </summary>
+    function MembersLimit: Integer;
+    /// <summary>Verschiebt die Bausteine ab AFirstItem und die Klickflächen ab AFirstHit um AScroll nach oben
+    /// und streicht Klickflächen außerhalb von AView.</summary>
+    procedure ShiftMembers(AFirstItem, AFirstHit, AScroll: Integer; const AView: TRect);
+    /// <summary>Daumen am rechten Rand des Rollbereichs.</summary>
+    procedure MembersThumb;
+    /// <summary>Rollbereich ab ATop (Bausteine ab AFirstItem, Klickflächen ab AFirstHit) begrenzen.</summary>
+    procedure ClipMembers(ATop, AFirstItem, AFirstHit: Integer);
   protected
     procedure PublishedMembers;
   end;
@@ -439,6 +478,7 @@ begin
   FLayout.AnchorItem := -1;
   FLayout.AnchorHit := -1;
   FLayout.FixProblem := -1;
+  FLayout.ClipFrom := -1;
 end;
 
 function TPainter.Scale(AValue: Integer): Integer;
@@ -922,8 +962,6 @@ begin
   ToggleChip(FInput.Texts.PublishedOnlyDefaults, FInput.View.OnlyDefaults, TAtlasHoverPublishedToggle.OnlyDefaults,
     FRight - mChipsWidth + mInheritedWidth + Scale(6));
   Inc(FY, Height(mSmallFace) + Scale(10));
-  MemberSection(False);
-  MemberSection(True);
 end;
 
 procedure TPublishedPainter.DefaultPropertyRow;
@@ -961,7 +999,94 @@ begin
   Inc(FY, Height(mMonoFace) + Scale(8));
 end;
 
+function TPublishedPainter.MemberRowHeight: Integer;
+begin
+  Result := Height(Face(TAtlasHoverFont.Mono, False)) + Scale(3);
+end;
+
+function TPublishedPainter.MembersLimit: Integer;
+begin
+  Result := 0;
+  if FInput.MembersMaxLines > 0 then
+  begin
+    Result := FInput.MembersMaxLines * MemberRowHeight;
+  end;
+  if (FInput.MembersLimit > 0) and ((Result = 0) or (FInput.MembersLimit < Result)) then
+  begin
+    Result := FInput.MembersLimit;
+  end;
+  if Result > 0 then
+  begin
+    Result := Max(Result, MinMemberRows * MemberRowHeight);
+  end;
+end;
+
+procedure TPublishedPainter.ShiftMembers(AFirstItem, AFirstHit, AScroll: Integer; const AView: TRect);
+var
+  mIndex, mKept: Integer;
+  mRect: TRect;
+begin
+  for mIndex := AFirstItem to FItemCount - 1 do
+  begin
+    FItems[mIndex].Rect.Offset(0, -AScroll);
+  end;
+  mKept := AFirstHit;
+  for mIndex := AFirstHit to FHitCount - 1 do
+  begin
+    mRect := FHits[mIndex].Rect;
+    mRect.Offset(0, -AScroll);
+    mRect.Intersect(AView);
+    if not mRect.IsEmpty then
+    begin
+      FHits[mKept] := FHits[mIndex];
+      FHits[mKept].Rect := mRect;
+      Inc(mKept);
+    end;
+  end;
+  FHitCount := mKept;
+end;
+
+procedure TPublishedPainter.MembersThumb;
+var
+  mView: TRect;
+  mThumbHeight, mThumbTop: Integer;
+  mItem: TAtlasHoverItem;
+begin
+  mView := FLayout.MembersView;
+  // Höhe im Verhältnis sichtbar zu ganz, Lage im Verhältnis Versatz zu größtem Versatz.
+  mThumbHeight := Max(Scale(16), Integer(Int64(mView.Height) * mView.Height div FLayout.MembersContent));
+  mThumbTop := mView.Top + Integer(Int64(mView.Height - mThumbHeight) * FLayout.MembersScroll div
+    FLayout.MembersMaxScroll);
+  mItem := NewItem(TAtlasHoverItemKind.RoundFill, Rect(FInput.Width - Scale(7), mThumbTop, FInput.Width - Scale(3),
+    mThumbTop + mThumbHeight), FColors.Muted);
+  mItem.Radius := 2;
+  Add(mItem);
+end;
+
+procedure TPublishedPainter.ClipMembers(ATop, AFirstItem, AFirstHit: Integer);
+var
+  mLimit: Integer;
+begin
+  FLayout.MembersRow := MemberRowHeight;
+  FLayout.MembersContent := FY - ATop;
+  FLayout.MembersView := Rect(0, ATop, FInput.Width, FY);
+  mLimit := MembersLimit;
+  if (mLimit = 0) or (FLayout.MembersContent <= mLimit) then
+  begin
+    Exit;
+  end;
+  FLayout.MembersView.Bottom := ATop + mLimit;
+  FLayout.MembersScroll := EnsureRange(FInput.MembersScroll, 0, FLayout.MembersMaxScroll);
+  ShiftMembers(AFirstItem, AFirstHit, FLayout.MembersScroll, FLayout.MembersView);
+  FLayout.ClipFrom := AFirstItem;
+  FLayout.ClipTill := FItemCount;
+  MembersThumb;
+  FY := FLayout.MembersView.Bottom;
+end;
+
 procedure TPublishedPainter.PublishedMembers;
+var
+  mTop, mFirstItem, mFirstHit: Integer;
 begin
   // published-Mitglieder einer Komponentenklasse (#110).
   if (Length(FData.Members) = 0) and (FData.DefaultProperty = '') then
@@ -974,10 +1099,20 @@ begin
   begin
     PublishedSummary;
   end;
+  // Tabellen und Standard-Property scrollen; Zusammenfassung und Schalter bleiben stehen.
+  mTop := FY;
+  mFirstItem := FItemCount;
+  mFirstHit := FHitCount;
+  if Length(FData.Members) > 0 then
+  begin
+    MemberSection(False);
+    MemberSection(True);
+  end;
   if FData.DefaultProperty <> '' then
   begin
     DefaultPropertyRow;
   end;
+  ClipMembers(mTop, mFirstItem, mFirstHit);
   FX := FLeft;
 end;
 
@@ -1976,6 +2111,16 @@ begin
     Hits[Index].Rect.Offset(0, Delta);
   end;
   AnchorShift := Wanted;
+end;
+
+function TAtlasHoverLayout.MembersScrollable: Boolean;
+begin
+  Result := MembersContent > MembersView.Height;
+end;
+
+function TAtlasHoverLayout.MembersMaxScroll: Integer;
+begin
+  Result := Max(0, MembersContent - MembersView.Height);
 end;
 
 end.
