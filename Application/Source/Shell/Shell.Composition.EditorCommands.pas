@@ -16,7 +16,8 @@ uses
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.DocumentHighlights,
   Atlas.Common.Lsp.ResourceStringCommands,
-  Atlas.Common.Lsp.SmartIndent;
+  Atlas.Common.Lsp.SmartIndent,
+  Atlas.Common.Lsp.MethodOrder;
 
 type
   TShellEditorReadText = reference to function(const AFileName: string; out AText: string): Boolean;
@@ -37,6 +38,8 @@ type
     ResourceStringWrite: TResourceStringWrite;
     /// <summary>Einrückung beim Tippen (#1827) je Datei.</summary>
     SmartIndentFor: TSmartIndentOptionsFunc;
+    /// <summary>Einstellungen zum Ordnen der Methodenrümpfe (#1834) je Datei.</summary>
+    MethodOrderFor: TMethodOrderOptionsFunc;
   end;
 
   /// <summary>Befehle des Plugins am Editor.</summary>
@@ -73,7 +76,6 @@ uses
   Atlas.Common.Lsp.ExitPoints,
   Atlas.Common.Lsp.Reassigned,
   Atlas.Common.Lsp.ExpressionType,
-  Atlas.Common.Lsp.MethodOrder,
   Atlas.Common.Lsp.OverrideMarks,
   Atlas.Common.Lsp.QualifiedNames,
   Atlas.Common.Lsp.EnumValueCommands,
@@ -134,7 +136,7 @@ end;
 
 function TShellEditorCommands.RunMethodOrder(const AArguments: TJSONArray): TJSONValue;
 begin
-  Result := TLspMethodOrder.Execute(FServices.Documents, AArguments);
+  Result := TLspMethodOrder.Execute(FServices.Documents, FServices.MethodOrderFor, AArguments);
 end;
 
 function TShellEditorCommands.RunOverrideMarks(const AArguments: TJSONArray): TJSONValue;

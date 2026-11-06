@@ -378,7 +378,8 @@ begin
       Continue;
     end;
     Fixes := nil;
-    if TClassCompletion.MissingBodies(AContext.Tree, AContext.Text, Method.Symbol.SelectionRange.StartPos, Action) then
+    if TClassCompletion.MissingBodies(AContext.Tree, AContext.Text, Method.Symbol.SelectionRange.StartPos,
+      AContext.ClassCompletion, AContext.Formatting, Action) then
     begin
       Fixes := [TRuleFix.Create(Action.Title, Action.Edits)];
     end;

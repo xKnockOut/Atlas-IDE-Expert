@@ -58,6 +58,7 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Editing.CodeActions,
+  Atlas.Common.Editing.ClassBodies,
   Atlas.Common.Editing.ClassCompletion,
   Atlas.Common.Editing.ClassMembers,
   Atlas.Common.Editing.CommandSource,
@@ -338,8 +339,10 @@ begin
     begin
       Exit(Fail(cTexts[TClassCommandsText.ImplOnlyAppliesInA].Text, AReason));
     end;
+    // Kommentar, Reihenfolge und Vorbefüllung nach classCompletion.* (#1834).
     if not TClassCompletion.MissingBodies(Source.Tree, Source.Text,
-      TTextPosition.Create(ClassSymbol.SelectionRange.StartPos.Line, 0), Action) then
+      TTextPosition.Create(ClassSymbol.SelectionRange.StartPos.Line, 0),
+      TClassBodyOptions.FromHost(AContext.Host, AContext.Uri, AContext.Style), Action) then
     begin
       Exit(Fail(cTexts[TClassCommandsText.AllMethodsOfHaveA].Fmt([ClassSymbol.Name]), AReason));
     end;

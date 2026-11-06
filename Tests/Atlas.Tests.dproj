@@ -134,6 +134,8 @@
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.Reassigned.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.ExpressionType.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.MethodOrder.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.TypeComments.Tests.pas"/>
+        <DCCReference Include="Common\Editing\Atlas.Common.Editing.ClassBodies.Tests.pas"/>
         <DCCReference Include="Common\Lsp\Atlas.Common.Lsp.MethodOrder.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.SuggestConst.Tests.pas"/>
         <DCCReference Include="Common\Editing\Atlas.Common.Editing.VarBlock.Tests.pas"/>
@@ -684,6 +686,8 @@
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.Contract.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.Declaration.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.History.pas"/>
+        <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.Items.pas"/>
+        <DCCReference Include="IDE.Expert\Atlas.Core.Hover.Items.Tests.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.Layout.pas"/>
         <DCCReference Include="..\Packages\Atlas.IDE.Base\Source\Core\Hover\Atlas.Core.Hover.Texts.pas"/>
         <DCCReference Include="IDE.Expert\Atlas.Core.Hover.Layout.Tests.pas"/>

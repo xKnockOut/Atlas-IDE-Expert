@@ -2818,6 +2818,48 @@
       "x-control": "Kontrollkästchen, Auswahl",
       "x-issue": "#1827, #1828, #1829, #1831"
     },
+    "classCompletion": {
+      "type": "object",
+      "description": "Klassenvervollständigung (#1834): Kommentar über dem Abschnitt einer Klasse im implementation-Teil, Reihenfolge und Inhalt neuer Methodenrümpfe aus der Aktion „Fehlende Methodenrümpfe anlegen“, /impl und dem Ordnen der Methoden (editor.methodPlacement im Plugin).",
+      "x-description-en": "Class completion (#1834): comment above a class section in the implementation part, order and content of new method bodies from the action \"Create missing method bodies\", /impl and method ordering (editor.methodPlacement in the plugin).",
+      "additionalProperties": false,
+      "properties": {
+        "typeComment": {
+          "type": "string",
+          "enum": [
+            "brace",
+            "line",
+            "summary",
+            "region",
+            "off"
+          ],
+          "default": "brace",
+          "description": "Kommentar über dem ersten Rumpf einer Klasse: brace = { TFoo } wie die IDE, line = Trennlinie mit // TFoo, summary = { TFoo: erster Satz der XML-Doku }, region = {$REGION 'TFoo'} … {$ENDREGION} um alle Rümpfe, off = keiner. Ein vorhandener Kommentar wird erkannt und nicht verdoppelt; beim Ordnen wandert er mit der Klasse.",
+          "x-description-en": "Comment above the first body of a class: brace = { TFoo } like the IDE, line = separator line with // TFoo, summary = { TFoo: first sentence of the XML doc }, region = {$REGION 'TFoo'} … {$ENDREGION} around all bodies, off = none. An existing comment is recognized and not duplicated; when ordering it moves with the class.",
+          "x-control": "Auswahl",
+          "x-issue": "#1835"
+        },
+        "lifecycleFirst": {
+          "type": "boolean",
+          "default": true,
+          "description": "Konstruktoren und Destruktor (auch class constructor/destructor, AfterConstruction, BeforeDestruction) stehen auch bei editor.methodPlacement = declaration oder alphabetical und in neuen Rümpfen vor den übrigen ihrer Klasse. Bei grouped stehen sie immer vorn.",
+          "x-description-en": "Constructors and destructor (also class constructor/destructor, AfterConstruction, BeforeDestruction) come before the other bodies of their class also with editor.methodPlacement = declaration or alphabetical and in new bodies. With grouped they always come first.",
+          "x-issue": "#1836"
+        },
+        "bodyStubs": {
+          "type": "boolean",
+          "default": true,
+          "description": "Neue Rümpfe vorbefüllen: override mit inherited (Funktionen mit Result := inherited …), Destruktor mit inherited am Ende, Getter Result := FName und Setter FName := AValue, wenn ein Feld FName gleichen Typs existiert. false = leere Rümpfe.",
+          "x-description-en": "Prefill new bodies: override with inherited (functions with Result := inherited …), destructor with inherited at the end, getter Result := FName and setter FName := AValue when a field FName of the same type exists. false = empty bodies.",
+          "x-issue": "#1837"
+        }
+      },
+      "x-scope": "global",
+      "x-area": "codeActions",
+      "x-page": "Eingabehilfen",
+      "x-control": "Auswahl, Kontrollkästchen",
+      "x-issue": "#1834, #1835, #1836, #1837"
+    },
     "references": {
       "type": "object",
       "description": "Treffersicherheit von Verwendungen, Aufrufhierarchie und Umbenennen: Neben den sicheren (eindeutig aufgelösten) Stellen erscheinen erschlossene mit Grund, etwa Aufrufe über ein Interface oder in einem inaktiven {$IFDEF}-Zweig. Umbenennen ändert nur sichere Stellen und listet die erschlossenen.",

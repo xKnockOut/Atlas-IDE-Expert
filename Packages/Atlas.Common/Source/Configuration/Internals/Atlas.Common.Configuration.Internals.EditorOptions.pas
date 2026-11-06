@@ -1,6 +1,6 @@
 ﻿unit Atlas.Common.Configuration.Internals.EditorOptions;
 
-// Abschnitte von atlas.json zum Editor: inlayHints, codeLens, smartIndent, references,
+// Abschnitte von atlas.json zum Editor: inlayHints, codeLens, smartIndent, classCompletion, references,
 // navigation, directives, hints, stringLiteral, memberOrder, highlight und
 // completion. Jeder Abschnitt ist ein Objekt; Schalter, feste Werte und
 // eigene Glieder liest TConfigurationReader.ReadObject.
@@ -115,6 +115,20 @@ end;
 procedure TakeSmartIndent(const ASource: TServerSettings; const AFileText: string; var ATarget: TServerSettings);
 begin
   ATarget.SmartIndent := ASource.SmartIndent;
+end;
+
+procedure ReadClassCompletion(AReader: TConfigurationReader; ANode: TJsonNode; var ASettings: TServerSettings);
+begin
+  AReader.ReadObject(ANode, 'classCompletion', [TFlagOption.Create('bodyStubs', ASettings.ClassCompletion.BodyStubs),
+    TFlagOption.Create('lifecycleFirst', ASettings.ClassCompletion.LifecycleFirst)],
+    [TChoiceOption.Create('typeComment', ['brace', 'line', 'summary', 'region', 'off'],
+    ASettings.ClassCompletion.TypeComment)], [], ASettings);
+end;
+
+procedure TakeClassCompletion(const ASource: TServerSettings; const AFileText: string;
+  var ATarget: TServerSettings);
+begin
+  ATarget.ClassCompletion := ASource.ClassCompletion;
 end;
 
 procedure ReadReferences(AReader: TConfigurationReader; ANode: TJsonNode; var ASettings: TServerSettings);
@@ -613,10 +627,11 @@ begin
 end;
 
 const
-  cSections: array[0..10] of TConfigurationSection = (
+  cSections: array[0..11] of TConfigurationSection = (
     (Section: 'inlayHints'; Read: ReadInlayHints; Take: TakeInlayHints),
     (Section: 'codeLens'; Read: ReadCodeLens; Take: TakeCodeLens),
     (Section: 'smartIndent'; Read: ReadSmartIndent; Take: TakeSmartIndent),
+    (Section: 'classCompletion'; Read: ReadClassCompletion; Take: TakeClassCompletion),
     (Section: 'references'; Read: ReadReferences; Take: TakeReferences),
     (Section: 'navigation'; Read: ReadNavigation; Take: TakeNavigation),
     (Section: 'directives'; Read: ReadDirectives; Take: TakeDirectives),
