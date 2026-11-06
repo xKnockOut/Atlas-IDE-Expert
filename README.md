@@ -56,6 +56,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Quick open** (Ctrl+P), unit search (Ctrl+F12) and a search bar with replace across files
 - **Results window** for references, callers and implementations, plus impact and data flow
 - **Bookmarks, notes, minimap and sticky scroll**
+- **Regions:** collapse or expand all `{$REGION}` blocks when a file opens, or on demand
 
 ### [Code analysis](docs/features/en/Code-analysis.md)
 - **313 check rules** while you type: 204 bugs, 99 code smells, 10 security rules
