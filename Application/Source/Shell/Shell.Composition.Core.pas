@@ -42,6 +42,8 @@ type
     IdeProject: TShellFoldersIdeProjectFunc;
     /// <summary>Typen der laufenden IDE (atlas/ideTypes).</summary>
     IdeTypes: TShellFoldersIdeTypesFunc;
+    /// <summary>Text einer Ersatz-Unit der IDE ("atlas-ide:…"); False für andere Pfade.</summary>
+    IdeText: TShellFoldersReadText;
     Selection: TShellFoldersSelectionFunc;
     Anonymizer: TShellFoldersAnonymizerFunc;
     ClientName: TShellFoldersTextFunc;
@@ -251,6 +253,11 @@ function TShellCore.ReadText(const AFileName: string; out AText: string): Boolea
 var
   mDocument: ITextDocument;
 begin
+  // Ersatz-Units der IDE gibt es nur im Speicher.
+  if Assigned(FServices.IdeText) and FServices.IdeText(AFileName, AText) then
+  begin
+    Exit(True);
+  end;
   // Geöffnete Dokumente haben Vorrang vor der Datei auf der Platte.
   if FServices.Documents.TryGet(TDocumentUris.FromPath(AFileName), mDocument) then
   begin

@@ -3271,6 +3271,7 @@ Vorbereitung: Projektgruppe mit zwei Projekten; in Projekt A die Units `Kunden.p
 | ER18 | `search.multiFile` aus | Bereiche nur Methode, Unit, Auswahl; offenes Fenster „Atlas-Suche: Ersetzen“ verschwindet |
 | ER19 | Wie ER11, Fenster „Atlas-Suche: Ersetzen“ angedockt und frei schwebend, bei 100 % und 150 % Skalierung | Unter der fetten Kopfzeile eine Zeile mit Hinweis links und Knopf „Ausgewählte ersetzen“ rechts in voller Höhe, Beschriftung lesbar; der Knopf bleibt beim Verkleinern des Fensters sichtbar |
 | ER20 | Wie ER12, danach den Knopf ansehen | Hinweis „n Ersetzungen in m Dateien“ links neben dem Knopf, Knopf sichtbar (ausgegraut, bis die neue Suche Treffer hat), Kopfzeile „Keine Suche über Dateien.“ bzw. die neuen Treffer |
+| ER21 | Wie ER11, aber ohne `.*`: Suchen `free`, Ersetzen `Destroy`, „Auswählen …“ | Spalte „Vorher → nachher“ in jeder Trefferzeile gefüllt, z. B. „Free → Destroy“ (gefundener Text in seiner Schreibweise); mit `.*` wie bisher mit eingesetzten Gruppen |
 
 ## Projektaufgaben aus atlas.json (#900)
 

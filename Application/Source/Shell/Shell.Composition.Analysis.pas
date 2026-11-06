@@ -32,6 +32,9 @@ type
   TShellAnalysisServices = record
     Documents: IDocumentStore;
     Index: ISymbolIndex;
+    /// <summary>Index für Hover und Parameterhilfe: der gemeinsame samt Ersatz-Units der IDE; nil = Index.
+    /// </summary>
+    EditorIndex: ISymbolIndex;
     ReadText: TShellAnalysisReadText;
     ProjectFiles: TReferenceFilesProvider;
     EnsureUnit: TEnsureUnitFunc;
@@ -98,7 +101,8 @@ end;
 
 procedure TShellAnalysis.CreateReferenceViews;
 begin
-  FSignatureHelp := TLspSignatureHelp.Create(FServices.Documents, FServices.Index, ReadText, FServices.EnsureUnit);
+  FSignatureHelp := TLspSignatureHelp.Create(FServices.Documents, FServices.EditorIndex, ReadText,
+    FServices.EnsureUnit);
   FSignatureHelp.FormatRoutinesFor := FServices.FormatRoutinesFor;
   FHierarchies := TLspHierarchies.Create(FServices.Documents, FServices.Index, ReadText, FServices.ProjectFiles,
     FServices.EnsureUnit);

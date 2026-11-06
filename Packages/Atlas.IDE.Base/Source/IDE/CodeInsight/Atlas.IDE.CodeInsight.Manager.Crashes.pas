@@ -33,8 +33,9 @@ type
     /// <summary>Hauptthread nach ServerEnded: anhalten oder die Ursache ins Statusfeld.</summary>
     procedure ServerEndedMain(ACode: Cardinal; AContinues: Boolean);
     procedure AcceptNotifications(ASession: TLspSession); override;
-    /// <summary>atlas/crashCase und atlas/crashSkip (#1355) in den Hauptthread.</summary>
-    procedure AcceptCrashNotifications(ASession: TLspSession);
+    /// <summary>atlas/crashCase und atlas/crashSkip (#1355) in den Hauptthread; atlas/ideMembersWanted an
+    /// QueueIdeMembers.</summary>
+    procedure AcceptAtlasNotifications(ASession: TLspSession);
     /// <summary>Fall oder übersprungene Anfrage im Hauptthread melden, solange ASession die Sitzung ist.</summary>
     procedure QueueCrashCase(ASession: TLspSession; const ACase: TAtlasCrashCase);
     procedure QueueCrashSkip(ASession: TLspSession; const ASkip: TAtlasCrashSkip);
@@ -53,6 +54,7 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Lsp.Crashes,
+  Atlas.Core.Lsp.IdeMembers,
   Atlas.Core.Notifications.Contract,
   Atlas.Core.Notifications.Center,
   Atlas.Core.Notifications.Sources,
@@ -143,15 +145,15 @@ end;
 procedure TAtlasCodeInsightCrashes.AcceptNotifications(ASession: TLspSession);
 begin
   inherited AcceptNotifications(ASession);
-  AcceptCrashNotifications(ASession);
+  AcceptAtlasNotifications(ASession);
 end;
 
-procedure TAtlasCodeInsightCrashes.AcceptCrashNotifications(ASession: TLspSession);
+procedure TAtlasCodeInsightCrashes.AcceptAtlasNotifications(ASession: TLspSession);
 var
   mManager: TAtlasCodeInsightCrashes;
 begin
   mManager := Self;
-  ASession.OnCrashNotification :=
+  ASession.OnAtlasNotification :=
     procedure(const AMethod: string; const AParams: TJSONValue)
     var
       mCase: TAtlasCrashCase;
@@ -165,7 +167,11 @@ begin
           mManager.QueueCrashCase(ASession, mCase);
         end;
       end
-      else if TAtlasCrashCases.ParseSkip(AParams, mSkip) then
+      else if AMethod = TAtlasIdeMembers.WantedMethod then
+      begin
+        mManager.QueueIdeMembers(ASession, TAtlasIdeMembers.WantedUnits(AParams));
+      end
+      else if (AMethod = TAtlasCrashCases.SkipNotification) and TAtlasCrashCases.ParseSkip(AParams, mSkip) then
       begin
         mManager.QueueCrashSkip(ASession, mSkip);
       end;
