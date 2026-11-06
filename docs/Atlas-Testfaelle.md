@@ -9747,6 +9747,21 @@ Vorbereitung: Plugin und AtlasServer mit diesem Stand gebaut, Blockeinrückung d
 | ET16 | `editor.smartPaste` = `indent`, nach `if A then B;` am Zeilenanfang einen zweizeiligen Block einfügen (Strg+V); dann ohne laufenden Server | Mit Server: erste Zeile unter `if`, die zweite behält ihren Abstand; ein eigener Rückgängig-Schritt. Ohne Server: Heuristik wie bisher (Ebene der Zeile darüber) |
 | ET17 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TSmartIndentTests`, `TLspSmartIndentTests`, `TAtlasSmartIndentTests`, `TAtlasSmartPasteTests.ReindentUsesServerColumn`, `TBlockIndenterTests.ReportsLineInfo`, `TConfigurationParserTests.ReadsSmartIndent` grün |
 
+## Hänger aus der Diagnose vom 06.11.2026 (Hauptthread)
+
+Vorbereitung: Plugin mit diesem Stand gebaut, Diagnosemodus an (Plugin-Zeiten an, Schwelle 16 ms), Server läuft und ist beschäftigt (z. B. direkt nach dem Öffnen einer großen Projektgruppe, während „Index …“ läuft).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| HB1 | In einer Unit `/try` tippen, Enter | Gerüst erscheint wie bisher; die IDE friert dabei nicht ein (kein Hänger im Reiter *Hänger*), Reiter *Server*: `textDocument/onTypeFormatting` mit „Hauptthread gewartet“ 0 (**Abnahme**) |
+| HB2 | Über einer Methodendeklaration `///` tippen | ///-Gerüst mit Platzhaltern wie bisher, Tab springt weiter |
+| HB3 | `/try`, Enter und sofort weitertippen | Nichts wird nachträglich eingesetzt; der getippte Text bleibt unverändert |
+| HB4 | Code Lens „→ Testunit …“ über `unit …;` anklicken | Testunit öffnet sich; die IDE bleibt bedienbar, bis sie offen ist; `atlas.server.testUnit` mit „Hauptthread gewartet“ 0 (**Abnahme**) |
+| HB5 | Zur Testunit wechseln, wenn es noch keine gibt (Befehl oder Lens) | Testunit wird angelegt, ins Testprojekt eingetragen und geöffnet, wie bisher |
+| HB6 | Einen Atlas-Dialog (z. B. Issue anlegen, Atlas-Einstellungen) 20 s offen lassen, dann schließen; Reiter *Hauptthread* ansehen | Die Funktion zeigt keine 20 s Maximum, die Belegung steigt nicht; Aufrufe im Dialog stehen für sich (**Abnahme**) |
+| HB7 | Einen Befehl auslösen, der noch auf den Server wartet (z. B. Units suchen öffnen), dann *Langsame Aufrufe* ansehen | In der Spalte *Aktion* steht die Anfrage, z. B. `workspace/executeCommand atlas.server.units` |
+| HB8 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasEditorCommandsTests.SlashAnswerOnlyForUnchangedText`, `TAtlasPluginTimingsTests.ModalDialogIsNotOwnTime` grün |
+
 ## Prüffenster: einzelne Projekte der Gruppe (#1843)
 
 Vorbereitung: Plugin mit diesem Stand gebaut, Fenster „Atlas-Prüfung“ (Strg+Alt+P), Projektgruppe mit mindestens drei Projekten, deren Units Befunde haben.
