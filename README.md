@@ -59,7 +59,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 
 ### [Code analysis](docs/features/en/Code-analysis.md)
 - **313 check rules** while you type: 204 bugs, 99 code smells, 10 security rules
-- **"Compiler ahead":** dcc errors and warnings before you build, with quick fixes
+- **"Compiler ahead":** dcc errors and warnings before you build, with quick fixes; Atlas finds units like dcc, including namespaces and unit aliases (`WinTypes`, `WinProcs`)
 - **Window "Atlas Findings"** for file, project or group, with bulk fixes
 - **Profiles, confidence, baseline and suppressions** for legacy projects
 - **Linter for CI** with text, JSON or SARIF output. All rules: [docs/Regeln.md](docs/Regeln.md)

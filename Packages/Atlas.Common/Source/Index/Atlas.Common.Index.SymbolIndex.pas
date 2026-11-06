@@ -28,6 +28,10 @@
 // statt bei jedem Aufruf alle Units zu kopieren; UnavailableUnits nur die Units mit nicht geltenden
 // Zweigen. Das Einordnen der Zeichenketten in den Pool läuft außerhalb der Index-Sperre unter einer
 // eigenen, damit Leser nicht auf das Einlesen großer Units warten.
+//
+// Unit-Aliase: FindUnit führt einen Alias (WinTypes → Winapi.Windows) auf seine
+// Unit, wenn es keine Unit dieses Namens gibt. Die Vorgaben von Delphi gelten
+// immer, AddUnitAliases ergänzt die Aliase der geladenen Projekte.
 
 interface
 
@@ -128,6 +132,8 @@ type
     FShrinkable: TDictionary<string, Boolean>;
     FGeneration: Int64;
     FRefs: TSymbolRefTables;
+    // Unit-Aliase (Vorgaben von Delphi und die der Projekte). Unter FLock.
+    FAliases: TArray<TPair<string, string>>;
     procedure AddLocked(const AKey: string; const AUnit: TUnitIndex);
     procedure ShrinkLocked;
     function OverBudgetLocked: Boolean;
@@ -144,6 +150,7 @@ type
     procedure AddUnit(const AUnit: TUnitIndex);
     procedure RemoveFile(const AFileName: string);
     function FindUnit(const AUnitName: string; out AUnit: TUnitIndex): Boolean;
+    procedure AddUnitAliases(const AAliases: TArray<TPair<string, string>>);
     function FindFile(const AFileName: string; out AUnit: TUnitIndex): Boolean;
     function FindSymbols(const AName: string): TArray<TSymbolLocation>;
     function HasSymbol(const AName: string; const AMatch: TSymbolMatch): Boolean;
@@ -165,6 +172,7 @@ implementation
 
 uses
   System.StrUtils,
+  Atlas.Common.Projects.UnitAliases,
   Atlas.Common.Index.NameIndex;
 
 var
@@ -204,6 +212,7 @@ begin
   FPool := TStringPool.Create;
   FRefs := TSymbolRefTables.Create;
   FShrinkable := TDictionary<string, Boolean>.Create;
+  FAliases := TUnitAliases.Defaults;
 end;
 
 destructor TSymbolIndex.Destroy;
@@ -600,11 +609,27 @@ end;
 
 function TSymbolIndex.FindUnit(const AUnitName: string; out AUnit: TUnitIndex): Boolean;
 var
-  FileKey: string;
+  mFileKey, mTarget: string;
 begin
   FLock.Enter;
   try
-    Result := FUnitFiles.TryGetValue(UpperCase(AUnitName), FileKey) and FFiles.TryGetValue(FileKey, AUnit);
+    Result := FUnitFiles.TryGetValue(UpperCase(AUnitName), mFileKey) and FFiles.TryGetValue(mFileKey, AUnit);
+    // Wie dcc: uses WinTypes lädt Winapi.Windows. Eine Unit, die selbst so heißt, geht vor.
+    if not Result and TUnitAliases.Target(FAliases, AUnitName, mTarget) then
+    begin
+      Result := FUnitFiles.TryGetValue(UpperCase(mTarget), mFileKey) and FFiles.TryGetValue(mFileKey, AUnit);
+    end;
+  finally
+    FLock.Leave;
+  end;
+end;
+
+procedure TSymbolIndex.AddUnitAliases(const AAliases: TArray<TPair<string, string>>);
+begin
+  FLock.Enter;
+  try
+    // Die neuen zuerst: Ein Projekt kann einen Alias der Vorgaben anders belegen.
+    FAliases := TUnitAliases.Merge(AAliases, FAliases);
   finally
     FLock.Leave;
   end;
