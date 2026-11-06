@@ -15,6 +15,7 @@ interface
 
 uses
   System.SysUtils,
+  System.Generics.Collections,
   Atlas.Common.Documents.Contract;
 
 type
@@ -228,7 +229,12 @@ type
     /// <summary>Fügt die Unit hinzu oder ersetzt den Stand derselben Datei.</summary>
     procedure AddUnit(const AUnit: TUnitIndex);
     procedure RemoveFile(const AFileName: string);
+    /// <summary>Unit mit dem Namen AUnitName; ein Unit-Alias (WinTypes) führt auf seine Unit, wenn keine Unit
+    /// so heißt.</summary>
     function FindUnit(const AUnitName: string; out AUnit: TUnitIndex): Boolean;
+    /// <summary>Ergänzt Unit-Aliase (Name → Unit, DCC_UnitAlias eines Projekts) vor den bisherigen; die Vorgaben
+    /// von Delphi kennt der Index von Anfang an.</summary>
+    procedure AddUnitAliases(const AAliases: TArray<TPair<string, string>>);
     function FindFile(const AFileName: string; out AUnit: TUnitIndex): Boolean;
     /// <summary>Alle Symbole mit diesem Namen (ohne Groß-/Kleinschreibung).</summary>
     function FindSymbols(const AName: string): TArray<TSymbolLocation>;
@@ -328,8 +334,7 @@ type
 implementation
 
 uses
-  System.StrUtils,
-  System.Generics.Collections;
+  System.StrUtils;
 
 type
   TUnitNameTable = class(TInterfacedObject, IUnitNameTable)

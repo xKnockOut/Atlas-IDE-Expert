@@ -9687,3 +9687,14 @@ Trifft „nächsten Block zuklappen“ an der Kopfzeile einer Region einen ander
 | LK1 | `Atlas.Tests` (Win64) vollständig laufen lassen | Alle Tests grün, keine Leckmeldung, `TESTEXIT 0` |
 | LK2 | Nur die Fixtures `TGoldenCorpusTests`, `TLspClientTests`, `TAtlasTimeLimitTests`, `TAtlasLogRedactorTests`, `TAtlasMainThreadTests`, `TIndexCacheDirectoryTests`, `TLspInlineValuesTests`, `TMcpToolsTests`, `TAtlasSettingsPageTests` einzeln laufen lassen (`--run:`) | Keine Leckmeldung, auch wenn die Fixture als erste läuft |
 | LK3 | `ForgetStartsNumberingAgain` | Grün |
+
+## Unit-Aliase im uses (WinTypes, WinProcs)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UAL1 | VCL-Projekt ohne eigene Unit-Aliase, in einer Unit `uses WinTypes, WinProcs;` schreiben, speichern | Kein Befund `uses-unit-not-found` („Unit WinTypes nicht gefunden (wie F2613)“) mehr; dcc übersetzt ohne Meldung |
+| UAL2 | In derselben Unit `var R: TRect;` und `MessageBeep(0);` verwenden, Strg+Klick auf `MessageBeep` | Keine Befunde zu unbekannten Bezeichnern; Strg+Klick öffnet `Winapi.Windows.pas`; Hover zeigt die Deklaration |
+| UAL3 | Strg+Klick auf `WinTypes` im uses | `Winapi.Windows.pas` öffnet sich |
+| UAL4 | Unit mit `uses WinTypes;`, aus der nichts verwendet wird | `unused-uses` blendet `WinTypes` ab; mit `TRect` im Code bleibt es normal |
+| UAL5 | In den Projektoptionen unter „Unit-Aliase“ `Alt=System.SysUtils` eintragen, speichern, Projekt neu laden, `uses Alt;` und `IntToStr(1)` schreiben | Kein `uses-unit-not-found`, `IntToStr` löst sich auf; ohne den Eintrag meldet Atlas wie dcc F2613 |
+| UAL6 | `uses DbiTypes;` in einem Projekt ohne BDE | Atlas meldet `uses-unit-not-found` wie dcc (Ziel-Unit BDE fehlt) |
