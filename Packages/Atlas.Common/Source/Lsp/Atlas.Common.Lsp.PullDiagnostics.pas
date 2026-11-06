@@ -616,6 +616,8 @@ begin
   begin
     raise EJsonRpcError.Create(FErrorCode, FErrorMessage);
   end;
+  // Gewollt: dieselbe Klasse mit derselben Meldung; eigene Felder hat nur EJsonRpcError (oben).
+  // lsp-ignore: class-reference-nonvirtual-constructor -- nur die Meldung wird übertragen
   raise FErrorClass.Create(FErrorMessage);
 end;
 

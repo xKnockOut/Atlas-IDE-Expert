@@ -15,6 +15,8 @@ type
     procedure FieldHidesFieldIsReported;
     [Test]
     procedure OtherNameIsSilent;
+    [Test]
+    procedure InterfaceMethodIsSilent;
   end;
 
 implementation
@@ -42,6 +44,26 @@ begin
     'unit U;'#10'interface'#10'type'#10'  TBasis = class'#10'  protected'#10'    FWert: Integer;'#10 +
     '  end;'#10'  TAbleitung = class(TBasis)'#10'  protected'#10'    FZahl: Integer;'#10'  end;'#10 +
     'implementation'#10'end.'#10);
+end;
+
+/// <summary>QueryInterface über TInterfacedObject (Atlas.IDE.CodeInsight.Manager) und eine Methode eines eigenen
+/// Interfaces verdecken gewollt; ohne Interface in der Liste bleibt die Meldung.</summary>
+procedure TInheritanceMemberHidesTests.InterfaceMethodIsSilent;
+const
+  cBase = 'unit U;'#10'interface'#10'type'#10'  IFoo = interface'#10'    procedure Run;'#10'  end;'#10 +
+    '  TBasis = class(TObject, IInterface)'#10'  public'#10 +
+    '    function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;'#10 +
+    '    procedure Run;'#10'  end;'#10;
+  cMembers = '  public'#10'    function QueryInterface(const IID: TGUID; out Obj): HResult; stdcall;'#10 +
+    '    procedure Run;'#10'  end;'#10'implementation'#10'end.'#10;
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  TRuleAssert.Silent(TMemberHidesAncestorRule.Create,
+    cBase + '  TAbleitung = class(TBasis, IFoo)'#10 + cMembers);
+  mFindings := TRuleAssert.Findings(TMemberHidesAncestorRule.Create,
+    cBase + '  TAbleitung = class(TBasis)'#10 + cMembers);
+  Assert.AreEqual(2, Integer(Length(mFindings)));
 end;
 
 initialization

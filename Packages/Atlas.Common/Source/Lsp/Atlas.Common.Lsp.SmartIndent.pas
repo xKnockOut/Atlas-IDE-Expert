@@ -45,6 +45,7 @@ type
 implementation
 
 uses
+  System.Generics.Collections,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Localization.Texts;
 

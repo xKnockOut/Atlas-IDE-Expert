@@ -13,7 +13,10 @@
 //                            Korrektur SameText bzw. AnsiSameText (#936)
 //   magic-number             Zahlenliteral in Anweisungen außerhalb von const, Typen und Array-Grenzen,
 //                            nicht in der Option "allowed" (Standard aus, niedrige Konfidenz); Korrektur
-//                            „Konstante einführen“ aus #50 (#937)
+//                            „Konstante einführen“ aus #50 (#937). Still bei Zahlen, die für sich sprechen: DPI-Basis
+//                            96 in MulDiv, volle Bitmasken ($FF, $FFFF, $FFFFFFFF), Zeiteinheiten 24, 60, 1000, 3600
+//                            in *, /, div, mod und Argumente von Aufrufen in einem Array-Literal, deren Argumente
+//                            alle Zahlen sind (Punktlisten wie [P(3.5, 1.5), P(9.5, 1.5)])
 //   line-length, public-field, global-variable und missing-begin-end stehen in Style.LineLength,
 //                            Style.Declarations und Style.BeginEnd; RegisterStyleRules meldet auch sie an.
 // Exit, Break und Continue aus einem finally-Block lehnt der Compiler selbst ab;
@@ -1428,6 +1431,73 @@ var
     Result := False;
   end;
 
+  // Zahl als Literal (auch negativ)?
+  function IsNumberNode(ANode: TSyntaxNode): Boolean;
+  var
+    mValue: Double;
+  begin
+    if (ANode.Kind = TSyntaxKind.UnaryExpr) and (ANode.Name = '-') and (ANode.ChildCount = 1) then
+    begin
+      ANode := ANode[0];
+    end;
+    Result := (ANode.Kind = TSyntaxKind.Literal) and NumberValue(Text(ANode), mValue);
+  end;
+
+  // Element einer Punktliste: Aufruf in einem Array-Literal mit mindestens zwei Argumenten, die alle Zahlen sind
+  // ([P(3.5, 1.5), P(9.5, 1.5)]). SetBounds(12, 9, 360, 23) allein zählt nicht: Pixelwerte brauchen Namen.
+  function AllNumberArguments(ACall: TSyntaxNode): Boolean;
+  var
+    mIndex: Integer;
+  begin
+    Result := (ACall.ChildCount >= 3) and (ACall.Parent <> nil) and (ACall.Parent.Kind = TSyntaxKind.SetConstructor);
+    for mIndex := 1 to ACall.ChildCount - 1 do
+    begin
+      Result := Result and IsNumberNode(ACall[mIndex]);
+    end;
+  end;
+
+  // Zahlen, die für sich sprechen (siehe Kopf der Unit). SameValue nur mit Double-Werten: Mit einem
+  // Ganzzahl-Argument wählt FPC die Single-Überladung, dann gälte 65536 als $FFFF.
+  function SpeaksForItself(ANode: TSyntaxNode; AValue: Double): Boolean;
+  const
+    cFullMasks: array[0..2] of Double = (255, 65535, 4294967295);
+    cTimeUnits: array[0..3] of Double = (24, 60, 1000, 3600);
+    cDpiBase: Double = 96;
+  var
+    mParent: TSyntaxNode;
+
+    function OneOf(const AValues: array of Double): Boolean;
+    var
+      mValue: Double;
+    begin
+      Result := False;
+      for mValue in AValues do
+      begin
+        Result := Result or SameValue(AValue, mValue);
+      end;
+    end;
+
+  begin
+    if StartsText('$', Text(ANode)) and OneOf(cFullMasks) then
+    begin
+      Exit(True);
+    end;
+    mParent := ANode.Parent;
+    if mParent = nil then
+    begin
+      Exit(False);
+    end;
+    if mParent.Kind = TSyntaxKind.Call then
+    begin
+      Result := (SameText(mParent.Name, 'MulDiv') and SameValue(AValue, cDpiBase)) or AllNumberArguments(mParent);
+    end
+    else
+    begin
+      Result := (mParent.Kind = TSyntaxKind.BinaryExpr) and MatchText(mParent.Name, ['*', '/', 'div', 'mod']) and
+        OneOf(cTimeUnits);
+    end;
+  end;
+
   procedure CheckLiteral(ALiteral: TSyntaxNode);
   var
     Node: TSyntaxNode;
@@ -1448,7 +1518,7 @@ var
       Node := Node.Parent;
       Value := -Value;
     end;
-    if IsAllowed(Value) then
+    if IsAllowed(Value) or SpeaksForItself(Node, Value) then
     begin
       Exit;
     end;

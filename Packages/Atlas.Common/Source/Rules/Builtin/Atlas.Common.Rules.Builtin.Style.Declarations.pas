@@ -5,7 +5,8 @@
 //                    includeRecords. Der Abschnitt ohne Sichtbarkeitswort zählt nur bei Klassen ohne Vorfahren bzw.
 //                    mit TObject: sonst stehen dort die Felder des Designers. Korrektur „Feld kapseln“: FName im
 //                    private-Abschnitt am Ende der Klasse, dazu property Name read FName write FName (wie
-//                    /encapsulate, #298)
+//                    /encapsulate, #298). Typen unter einem private-/protected-Abschnitt (protected type
+//                    TEntry = class …) sind Hilfsklassen ihrer Klasse und bleiben still
 //   global-variable  var bzw. threadvar im interface-Teil einer Unit (Standard aus, #941); die Formularvariable des
 //                    Designers (frmHaupt: TfrmHaupt) nur mit includeFormVariables
 
@@ -282,24 +283,64 @@ var
     Result := (Ancestor = nil) or SameText(NodeText(Ancestor), 'TObject');
   end;
 
+  // Abschnitt, aus dem von außen niemand zugreift (private, protected, strict …).
+  function HiddenSection(const AVisibility: string): Boolean;
+  begin
+    Result := (AVisibility <> '') and not MatchText(AVisibility, ['public', 'published', 'automated']);
+  end;
+
+  // Kinder auf den Stapel, rückwärts; Typen in einem verborgenen Abschnitt erben „verborgen“ (TEntry unter
+  // protected type ist eine Hilfsklasse, ihre Felder sind von außen nicht erreichbar).
+  procedure PushChildren(ANode: TSyntaxNode; AHidden: Boolean; APending: TStack<TSyntaxNode>;
+    AHiddenFlags: TStack<Boolean>);
+  var
+    Index: Integer;
+    Flags: TArray<Boolean>;
+    Visibility: string;
+  begin
+    SetLength(Flags, ANode.ChildCount);
+    Visibility := '';
+    for Index := 0 to ANode.ChildCount - 1 do
+    begin
+      if ANode[Index].Kind = TSyntaxKind.Visibility then
+      begin
+        Visibility := ANode[Index].Name;
+      end;
+      Flags[Index] := AHidden or (ANode.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType]) and
+        HiddenSection(Visibility);
+    end;
+    for Index := ANode.ChildCount - 1 downto 0 do
+    begin
+      APending.Push(ANode[Index]);
+      AHiddenFlags.Push(Flags[Index]);
+    end;
+  end;
+
   procedure Visit(ANode: TSyntaxNode);
   var
     Pending: TStack<TSyntaxNode>;
+    HiddenFlags: TStack<Boolean>;
     Node: TSyntaxNode;
-    Index: Integer;
+    Hidden: Boolean;
   begin
     // Iterativ (Bericht M1).
     Pending := TStack<TSyntaxNode>.Create;
+    HiddenFlags := TStack<Boolean>.Create;
     try
       Pending.Push(ANode);
+      HiddenFlags.Push(False);
       while Pending.Count > 0 do
       begin
         Node := Pending.Pop;
+        Hidden := HiddenFlags.Pop;
         case Node.Kind of
           TSyntaxKind.ClassType:
-            CheckType(Node, PlainClass(Node), 'public');
+            if not Hidden then
+            begin
+              CheckType(Node, PlainClass(Node), 'public');
+            end;
           TSyntaxKind.RecordType:
-            if IncludeRecords then
+            if IncludeRecords and not Hidden then
             begin
               CheckType(Node, True, 'public');
             end;
@@ -308,12 +349,10 @@ var
         else
           // Übrige Werte bewusst ohne Wirkung.
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
-        begin
-          Pending.Push(Node[Index]);
-        end;
+        PushChildren(Node, Hidden, Pending, HiddenFlags);
       end;
     finally
+      HiddenFlags.Free;
       Pending.Free;
     end;
   end;

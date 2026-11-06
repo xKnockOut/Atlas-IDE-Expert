@@ -236,9 +236,10 @@ const
     '      "name": "Member verdeckt einen Member des Vorfahren",',
     '      "description": "Eine Property heißt wie ein Feld eines Vorfahren (wie W1009), ein Feld wie ein Feld oder eine Property eines Vorfahren oder eine nicht virtuelle Methode hat Namen und Parameter e' +
     'iner nicht virtuellen Methode eines Vorfahren (die beiden letzten ohne Code: Delphi 13 übersetzt sie still). Code, der über den Vorfahrtyp zugreift, sieht weiter den alten Member. Virtuelle Methoden m' +
-    'eldet hides-virtual, lokale Namen shadowed-name. Neu veröffentlichte Properties (property Caption;), Properties mit neuem Typ über einer Property des Vorfahren, overload, reintroduce, Konstruktoren un' +
-    'd Klassenmethoden bleiben unbeanstandet. Member, die der Nachfahre nicht sieht (private einer anderen Unit, strict private mit ignoreStrictPrivate), zählen nicht; Vorfahren kommen aus der Datei und de' +
-    'm Symbolindex. Korrektur für Felder und Properties: den Member in der Klassendeklaration und in den Rümpfen ihrer Methoden in dieser Unit umbenennen (aus FName wird FKundeName).",',
+    'eldet hides-virtual, lokale Namen shadowed-name. Neu veröffentlichte Properties (property Caption;), Properties mit neuem Typ über einer Property des Vorfahren, Methoden, die eine Methode eines Interf' +
+    'aces aus der eigenen Vorfahrenliste umsetzen (QueryInterface über TInterfacedObject), overload, reintroduce, Konstruktoren und Klassenmethoden bleiben unbeanstandet. Member, die der Nachfahre nicht si' +
+    'eht (private einer anderen Unit, strict private mit ignoreStrictPrivate), zählen nicht; Vorfahren kommen aus der Datei und dem Symbolindex. Korrektur für Felder und Properties: den Member in der Klass' +
+    'endeklaration und in den Rümpfen ihrer Methoden in dieser Unit umbenennen (aus FName wird FKundeName).",',
     '      "options": [',
     '        {',
     '          "name": "ignoreStrictPrivate",',

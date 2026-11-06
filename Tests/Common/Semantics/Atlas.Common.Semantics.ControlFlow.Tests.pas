@@ -22,6 +22,8 @@ type
     [Test]
     procedure ForBoundsAndDirection;
     [Test]
+    procedure ForWithConstantBoundRunsAtLeastOnce;
+    [Test]
     procedure ExitWithValueSetsResult;
     [Test]
     procedure BreakLeavesLoop;
@@ -250,6 +252,38 @@ begin
   Assert.IsTrue(MayEndWithoutResult('  for I := 0 downto 64 do'#13#10'    Result := I;'));
   Assert.IsTrue(MayEndWithoutResult('  for I := 0 to X do'#13#10'    Result := I;'));
   Assert.IsTrue(MayEndWithoutResult('  for I := 0 to 64 do'#13#10'    if I > X then'#13#10'      Result := I;'));
+end;
+
+/// <summary>Eine echte Konstante der Unit als Grenze gilt wie ihr Wert (WithRetries
+/// im Update-Netzadapter, cAttempts = 3); typisierte, doppelt deklarierte oder verdeckte Namen
+/// nicht.</summary>
+procedure TControlFlowTests.ForWithConstantBoundRunsAtLeastOnce;
+
+  function MayEndWithoutResult(const ADeclarations, ABody: string): Boolean;
+  var
+    mFixture: TFlowFixture;
+  begin
+    mFixture := FlowWith(ADeclarations, ABody);
+    try
+      Result := mFixture.Graph.MayEndWithout('Result') = TFlowAnswer.Yes;
+    finally
+      mFixture.Free;
+    end;
+  end;
+
+const
+  cLoop = '  for I := 1 to cAttempts do'#13#10'    Result := I;';
+begin
+  Assert.IsFalse(MayEndWithoutResult('const cAttempts = 3;', cLoop));
+  Assert.IsFalse(MayEndWithoutResult('const cAttempts = $10;', '  for I := cAttempts downto 2 do'#13#10 +
+    '    Result := I;'));
+  Assert.IsTrue(MayEndWithoutResult('const cAttempts = 0;', cLoop));
+  Assert.IsTrue(MayEndWithoutResult('const cAttempts: Integer = 3;', cLoop));
+  Assert.IsTrue(MayEndWithoutResult('', cLoop));
+  Assert.IsTrue(MayEndWithoutResult('{$IF Defined(A)}const cAttempts = 3;{$ELSE}const cAttempts = 0;{$IFEND}',
+    cLoop));
+  Assert.IsTrue(MayEndWithoutResult('const cAttempts = 3;'#13#10 +
+    'procedure G(cAttempts: Integer);'#13#10'begin'#13#10'end;', cLoop));
 end;
 
 /// <summary>Grenzen aus Zahlenliteralen (auch $hex, nach dem Typ einer Inline-Variablen) und downto aus dem

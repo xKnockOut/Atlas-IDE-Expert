@@ -533,9 +533,9 @@ begin
   SplitNumbered(mLast, mPrefix, mValue, mDigits);
   AValue := IntToStr(mValues[High(mValues)] + mStep);
   // Führende Nullen wie im Vorbild ("Spalte01").
-  while (Length(AValue) < mDigits) and (Copy(mLast, Length(mPrefix) + 1, 1) = '0') do
+  if (Length(AValue) < mDigits) and (Copy(mLast, Length(mPrefix) + 1, 1) = '0') then
   begin
-    AValue := '0' + AValue;
+    AValue := StringOfChar('0', mDigits - Length(AValue)) + AValue;
   end;
   AValue := mPrefix + AValue;
   Result := DeclaresName(AInput) or (Assigned(AInput.Exists) and AInput.Exists(AValue));
