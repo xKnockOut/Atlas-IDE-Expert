@@ -53,6 +53,7 @@ The language of findings, light bulb, hover and settings follows the IDE (#1458)
 | `highlight` | global (settings.json) | object | – |  | Highlight related keywords when the cursor is on one of them. |
 | `inlayHints` | global (settings.json) | object | – |  | Inlay hints in the editor. |
 | `codeLens` | global (settings.json) | object | – |  | Code lens in the editor. |
+| `smartIndent` | global (settings.json) | object | – |  | Indentation while typing (#1827): after Enter Atlas computes where the cursor belongs, with the same block logic as format.reindent. Atlas never inserts end; (the IDE's block completion does that); only whitespace changes, and for a string the quote and +. Width of one level and tabs follow format or .editorconfig. |
 | `references` | global (settings.json) | object | – |  | Accuracy of usages, call hierarchy and rename: besides the certain (uniquely resolved) places, inferred ones appear with a reason, for example calls via an interface or in an inactive {$IFDEF} branch. Rename only changes certain places and lists the inferred ones. |
 | `navigation` | global (settings.json) | object | – |  | Navigation through the code: path between two symbols or units via calls, fields, interfaces, inheritance and uses (plugin command "Path between symbols…", MCP tool find_path) and impact analysis: what is affected if I change a symbol? Callers, references, overrides, interface implementations and form bindings by level, plus the affected tests (plugin command "Show impact", MCP tool get_impact). |
 | `hints` | global (settings.json) | object | – |  | Display of XMLDoc comments (///) and rationales (// WHY: …, #1123) in the hover tooltip and in the detail panel of the completion of the IDE plugin. The server always prepares the documentation completely; the values only control the display. Without a value the values from Tools › Options › Third Party › Atlas apply. |
@@ -317,6 +318,16 @@ The language of findings, light bulb, hover and settings follows the IDE (#1458)
 | Key | Place | Type | Default | Values | Meaning |
 |---|---|---|---|---|---|
 | `codeLens.metrics` | global (settings.json) | boolean | `true` |  | Metrics above every method: length in lines of code, nesting depth, cyclomatic and cognitive complexity, number of parameters. The limits are set with the rules metric-* under "max". |
+
+## smartIndent
+
+| Key | Place | Type | Default | Values | Meaning |
+|---|---|---|---|---|---|
+| `smartIndent.enabled` | global (settings.json) | boolean | `true` |  | Main switch: false = none of the parts is active, the IDE indents as usual. |
+| `smartIndent.afterEnter` | global (settings.json) | boolean | `true` |  | Indent the new line by the block structure: one level deeper after then, else, do, begin, try, repeat, case labels, var/type/const and visibilities, back after the single statement behind then/do, inside an open parenthesis under the first argument. |
+| `smartIndent.outdentClosers` | global (settings.json) | boolean | `true` |  | If the line before Enter starts with end, until, finally, except or else, Atlas moves it to the column of its counterpart (begin, repeat, try, if). |
+| `smartIndent.splitStrings` | global (settings.json) | boolean | `true` |  | Enter inside a string closes it with ' + and reopens it on the new line instead of leaving an unterminated string (E2052). Not in multiline strings ('''). |
+| `smartIndent.splitStringsIndent` | global (settings.json) | string | `"indent"` | `"indent"`, `"align"` | Continuation line of a split string: indent = one level deeper than the statement; align = under the first argument of the open parenthesis, without parenthesis under the first value after :=. |
 
 ## references
 

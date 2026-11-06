@@ -15,6 +15,19 @@ uses
   Atlas.Common.Pascal.Contract;
 
 type
+  /// <summary>Ergebnis je Zeile für die Einrückung beim Tippen (#1828).</summary>
+  TIndentLineInfo = record
+    /// <summary>Zielspalte; bei einer Zeile, die bleibt, die vorhandene.</summary>
+    Column: Integer;
+    /// <summary>Die Zeile bekommt eine Zielspalte (sonst bleibt sie, etwa im asm-Block oder hinter {$ELSE}).
+    /// </summary>
+    Placed: Boolean;
+    /// <summary>Die Zeile setzt eine Anweisung fort, die weiter oben begonnen hat.</summary>
+    Continued: Boolean;
+    /// <summary>Erste Zeile dieser Anweisung, wenn Continued; sonst die Zeile selbst.</summary>
+    StatementLine: Integer;
+  end;
+
   TBlockIndenter = class
   public const
     /// <summary>Zeile bleibt, wie sie ist.</summary>
@@ -24,6 +37,15 @@ type
     /// AIndentSize: Breite einer Ebene.</summary>
     class function Columns(const ATokens: TArray<TPascalToken>; const AColumns: TArray<Integer>;
       AIndentSize: Integer): TArray<Integer>; static;
+    /// <summary>Wie Columns, dazu je Zeile, ob sie eine Anweisung fortsetzt und wo diese beginnt.</summary>
+    class function Lines(const ATokens: TArray<TPascalToken>; const AColumns: TArray<Integer>;
+      AIndentSize: Integer): TArray<TIndentLineInfo>; static;
+    /// <summary>Breite des führenden Leerraums von ALine in Spalten (Tab bis zur nächsten Ebene); ALength ist
+    /// seine Länge in Zeichen.</summary>
+    class function LeadingColumns(const ALine: string; AIndentSize: Integer; out ALength: Integer): Integer; static;
+    /// <summary>Leerraum für AColumns Spalten: mit AUseTabs Tabulatoren je Ebene und Leerzeichen für den Rest.
+    /// </summary>
+    class function IndentText(AColumns, AIndentSize: Integer; AUseTabs: Boolean): string; static;
   end;
 
 implementation
@@ -151,6 +173,10 @@ type
     Follow: TArray<Boolean>;
     /// <summary>Erstes Token der Zeile; -1 ohne.</summary>
     FirstToken: TArray<Integer>;
+    /// <summary>Zeile setzt eine Anweisung fort (#1828).</summary>
+    Continued: TArray<Boolean>;
+    /// <summary>Erste Zeile der fortgesetzten Anweisung; -1 ohne.</summary>
+    StatementOf: TArray<Integer>;
     procedure Init(const ATokens: TArray<TPascalToken>; const AColumns: TArray<Integer>);
     procedure Place(ALine, AColumn: Integer);
     /// <summary>Kommentarzeilen folgen der nächsten Codezeile.</summary>
@@ -237,6 +263,9 @@ type
   public
     function Run(const ATokens: TArray<TPascalToken>; const AColumns: TArray<Integer>;
       AIndentSize: Integer): TArray<Integer>;
+    /// <summary>Wie Run, mit den Angaben je Zeile (#1828).</summary>
+    function RunLines(const ATokens: TArray<TPascalToken>; const AColumns: TArray<Integer>;
+      AIndentSize: Integer): TArray<TIndentLineInfo>;
   end;
 
 const
@@ -529,11 +558,14 @@ begin
   SetLength(Placed, Length(AColumns));
   SetLength(Follow, Length(AColumns));
   SetLength(FirstToken, Length(AColumns));
+  SetLength(Continued, Length(AColumns));
+  SetLength(StatementOf, Length(AColumns));
   for mLine := 0 to High(AColumns) do
   begin
     Target[mLine] := TBlockIndenter.Keep;
     Resolved[mLine] := AColumns[mLine];
     FirstToken[mLine] := -1;
+    StatementOf[mLine] := -1;
   end;
   for mIndex := 0 to High(ATokens) do
   begin
@@ -646,6 +678,8 @@ begin
   if (FState.StmtLine >= 0) and (FState.StmtLine < FLine) then
   begin
     mDelta := FLines.Resolved[FState.StmtLine] - FLines.Original[FState.StmtLine];
+    FLines.Continued[FLine] := True;
+    FLines.StatementOf[FLine] := FState.StmtLine;
   end;
   Place(FLines.Original[FLine] + mDelta);
 end;
@@ -1373,6 +1407,26 @@ begin
   end;
 end;
 
+function TIndenter.RunLines(const ATokens: TArray<TPascalToken>; const AColumns: TArray<Integer>;
+  AIndentSize: Integer): TArray<TIndentLineInfo>;
+var
+  mLine: Integer;
+begin
+  Run(ATokens, AColumns, AIndentSize);
+  SetLength(Result, Length(AColumns));
+  for mLine := 0 to High(AColumns) do
+  begin
+    Result[mLine].Column := FLines.Resolved[mLine];
+    Result[mLine].Placed := FLines.Placed[mLine];
+    Result[mLine].Continued := FLines.Continued[mLine];
+    Result[mLine].StatementLine := mLine;
+    if FLines.Continued[mLine] then
+    begin
+      Result[mLine].StatementLine := FLines.StatementOf[mLine];
+    end;
+  end;
+end;
+
 function TIndenter.Run(const ATokens: TArray<TPascalToken>; const AColumns: TArray<Integer>;
   AIndentSize: Integer): TArray<Integer>;
 var
@@ -1411,6 +1465,57 @@ begin
     Result := mIndenter.Run(ATokens, AColumns, AIndentSize);
   finally
     mIndenter.Free;
+  end;
+end;
+
+class function TBlockIndenter.Lines(const ATokens: TArray<TPascalToken>; const AColumns: TArray<Integer>;
+  AIndentSize: Integer): TArray<TIndentLineInfo>;
+var
+  mIndenter: TIndenter;
+begin
+  mIndenter := TIndenter.Create;
+  try
+    Result := mIndenter.RunLines(ATokens, AColumns, AIndentSize);
+  finally
+    mIndenter.Free;
+  end;
+end;
+
+class function TBlockIndenter.LeadingColumns(const ALine: string; AIndentSize: Integer; out ALength: Integer): Integer;
+var
+  mIndex, mStep: Integer;
+begin
+  mStep := Max(AIndentSize, 1);
+  mIndex := 1;
+  Result := 0;
+  while (mIndex <= Length(ALine)) and CharInSet(ALine[mIndex], [' ', #9]) do
+  begin
+    if ALine[mIndex] = #9 then
+    begin
+      Result := (Result div mStep + 1) * mStep;
+    end
+    else
+    begin
+      Inc(Result);
+    end;
+    Inc(mIndex);
+  end;
+  ALength := mIndex - 1;
+end;
+
+class function TBlockIndenter.IndentText(AColumns, AIndentSize: Integer; AUseTabs: Boolean): string;
+var
+  mStep, mColumns: Integer;
+begin
+  mStep := Max(AIndentSize, 1);
+  mColumns := Max(AColumns, 0);
+  if AUseTabs then
+  begin
+    Result := StringOfChar(#9, mColumns div mStep) + StringOfChar(' ', mColumns mod mStep);
+  end
+  else
+  begin
+    Result := StringOfChar(' ', mColumns);
   end;
 end;
 

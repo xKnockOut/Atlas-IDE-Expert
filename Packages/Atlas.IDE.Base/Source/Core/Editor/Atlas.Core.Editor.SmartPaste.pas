@@ -14,7 +14,9 @@
 //   Einrückung die kleinste der übrigen Zeilen, eine Stufe weniger nach einem
 //   öffnenden Wort. Steht vor der Einfügestelle Code oder ist es nur eine
 //   Zeile, bleibt alles, wie es ist. Tabulatoren zählen bis zur nächsten
-//   Tabulatorposition; neue Einrückung besteht aus Leerzeichen.
+//   Tabulatorposition; neue Einrückung besteht aus Leerzeichen. Kennt der
+//   Server die Spalte nach der Blockstruktur (#1832, wie nach Enter), gilt
+//   sie für die erste Zeile statt der Heuristik.
 // - Antwort des Servers (atlas.server.pasteUses) lesen: eindeutige Units und
 //   mehrdeutige Bezeichner mit Auswahl; die gewählten Units zusammenstellen.
 
@@ -54,6 +56,8 @@ type
   TAtlasSmartPaste = class
   public const
     Command = 'atlas.server.pasteUses';
+    /// <summary>Reindent ohne Spalte vom Server: die Heuristik bestimmt sie.</summary>
+    NoColumn = -1;
     ModeOff = 'off';
     ModeUses = 'uses';
     ModeIndent = 'indent';
@@ -78,9 +82,10 @@ type
     /// <summary>Endet die Zeile (ohne Kommentar) mit einem Wort, nach dem eingerückt wird?</summary>
     class function Opens(const ALine: string): Boolean; static;
     /// <summary>Einrückung für den eingefügten Block APasted; APrefix: Zeile vor der Einfügestelle, AAbove: die
-    /// nächste nicht leere Zeile darüber ('' ohne). False ohne Änderung.</summary>
-    class function Reindent(const APrefix, AAbove: string; const APasted: TArray<string>; ATabWidth, AStep: Integer;
-      out AEdits: TArray<TAtlasIndentEdit>): Boolean; static;
+    /// nächste nicht leere Zeile darüber ('' ohne); AColumn: Spalte vom Server nach der Blockstruktur (#1832),
+    /// NoColumn für die Heuristik. False ohne Änderung.</summary>
+    class function Reindent(const APrefix, AAbove: string; const APasted: TArray<string>; ATabWidth, AStep,
+      AColumn: Integer; out AEdits: TArray<TAtlasIndentEdit>): Boolean; static;
     /// <summary>Antwort des Servers ohne gewählte Units; Valid = False ohne gültige Antwort.</summary>
     class function ReadAnalysis(AValue: TJSONValue): TAtlasPasteAnalysis; static;
     /// <summary>Eindeutige und gewählte Units ohne Doppelte.</summary>
@@ -422,7 +427,7 @@ begin
 end;
 
 class function TAtlasSmartPaste.Reindent(const APrefix, AAbove: string; const APasted: TArray<string>;
-  ATabWidth, AStep: Integer; out AEdits: TArray<TAtlasIndentEdit>): Boolean;
+  ATabWidth, AStep, AColumn: Integer; out AEdits: TArray<TAtlasIndentEdit>): Boolean;
 var
   mFirst, mIndex, mTarget, mDelta: Integer;
   mEdit: TAtlasIndentEdit;
@@ -436,7 +441,11 @@ begin
   end;
   if mFirst >= 0 then
   begin
-    mTarget := TargetIndent(APrefix, AAbove, ATabWidth, AStep);
+    mTarget := AColumn;
+    if mTarget = NoColumn then
+    begin
+      mTarget := TargetIndent(APrefix, AAbove, ATabWidth, AStep);
+    end;
     mDelta := mTarget - BaseIndent(APasted, mFirst, ATabWidth, AStep);
     for mIndex := mFirst to High(APasted) do
     begin

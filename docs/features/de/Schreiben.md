@@ -147,6 +147,7 @@ Außerdem (#849):
 - **Anweisung vervollständigen** (Strg+Umschalt+Enter)
 - **Muster fortsetzen** als Schattentext
 - **Kommentare fortsetzen** beim Enter
+- **Einrückung beim Tippen** (#1827, `smartIndent`, Seite *Eingabehilfen*): Nach Enter rechnet Atlas mit derselben Blocklogik wie der Formatierer, wohin die Schreibmarke gehört: eine Ebene tiefer hinter `begin`, `then`, `do`, `try`, `case`-Marken und Abschnitten, zurück nach der einzelnen Anweisung, in offener Klammer unter dem ersten Argument. Beginnt die Zeile darüber mit `end`, `until`, `finally`, `except` oder `else`, rückt sie auf ihr Gegenstück. Enter mitten in einem String schließt ihn mit `' +` und öffnet ihn in der neuen Zeile, eingerückt oder ausgerichtet (`smartIndent.splitStringsIndent`). Weicht die Datei vom Stil ab, folgt Atlas ihrer vorhandenen Einrückung. Strg+Z nimmt nur die Einrückung zurück. `end;` fügt Atlas nie ein.
 - **Formatieren** nach eigenen Regeln (Strg+Umschalt+Alt+L), weil RAD Studio 13 keinen Formatierer mehr hat:
   - Bereiche zwischen `// atlas-format: off` und `// atlas-format: on` bleiben unverändert.
   - Derselbe Formatierer läuft ohne IDE (`--format-check`, `--format-write`, MCP `format_code`, siehe [Formatieren ohne IDE](Kommandozeile.md#formatieren-ohne-ide)).
