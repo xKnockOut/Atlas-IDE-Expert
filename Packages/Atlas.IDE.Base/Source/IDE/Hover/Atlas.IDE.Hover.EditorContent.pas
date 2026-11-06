@@ -287,6 +287,7 @@ procedure TAtlasEditorHoverContent.Refresh;
 begin
   FTip.ProblemActions := TAtlasIdeSettings.Current.HoverProblemActions;
   FTip.HideCompilerCode := not TAtlasIdeSettings.Current.ProblemsShowCompilerCode;
+  FTip.MembersMaxLines := TAtlasIdeSettings.Current.HoverMembersMaxLines;
   FTip.UpdateContent(CurrentView);
 end;
 

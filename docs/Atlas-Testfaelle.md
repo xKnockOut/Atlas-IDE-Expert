@@ -9808,3 +9808,18 @@ end.
 | KU3 | „Klasse in eigene Unit verschieben“ auf `TFenster` | Neue Unit enthält `{ TFenster }` vor den Rümpfen; in der alten Unit bleibt kein `{ TFenster }` zurück |
 | KU4 | `classCompletion.typeComment` auf `off`, KU1 und KU3 | Kommentar bleibt wie bisher stehen (Umbenennen ändert ihn nicht, Verschieben lässt ihn zurück) |
 | KK10 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TTypeCommentsTests`, `TClassBodiesTests`, `TClassCompletionTests`, `TMethodOrderTests`, `TMoveClassTests.MovesTypeComment`, `TLspRenameTests.RenamesTypeComments`, `TConfigurationParserTests.ReadsClassCompletion`, `TAtlasEditingSettingsTests.MethodPlacementOptions` grün |
+
+## Published-Mitglieder im Hover scrollen (#1841)
+
+Vorbereitung: Plugin mit diesem Stand gebaut, `hover.membersMaxLines` unverändert (15). Eine Unit mit `uses Vcl.Forms, Vcl.StdCtrls;` und `var F: TForm; B: TButton;`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| HMS1 | Maus über `TForm`, im Hover bei PROPERTIES „+ n weitere Properties“ klicken | Der Hinweis bleibt im Bildschirm; die Tabelle zeigt 15 Zeilen, rechts ein schmaler Daumen; Zusammenfassung, Schalter und Aktionsleiste stehen fest (**Abnahme**) |
+| HMS2 | Wie HMS1, Mausrad über der Tabelle nach unten bis zum Ende | Je Stufe drei Zeilen; am Ende stehen EREIGNISSE und ihre letzte Zeile, der Daumen unten; nichts ragt über die Linie darüber oder in die Aktionsleiste (**Abnahme**) |
+| HMS3 | Bei HMS2 „+ n weitere Ereignisse“ bzw. den Titel EREIGNISSE ▾ anklicken, wenn sichtbar | Klick wirkt; der Bereich bleibt an seiner Stelle bzw. springt höchstens an das neue Ende |
+| HMS4 | Mausrad über der XMLDoc eines Typs mit langer Doku und vielen Mitgliedern | Die Doku scrollt, die Mitglieder nicht; über den Mitgliedern scrollen nur diese |
+| HMS5 | Hover nahe am unteren Bildschirmrand, Mitglieder aufklappen | Der Hinweis wächst nach oben und bleibt ganz sichtbar; der Rollbereich ist höchstens so hoch wie der Platz |
+| HMS6 | Optionen › Atlas › Editor: „Mitglieder im Hover: höchstens Zeilen ohne Scrollen“ auf 5, dann auf 0 | 5: Tabelle fünf Zeilen hoch. 0: so hoch wie der Bildschirm zulässt, darunter kein Daumen |
+| HMS7 | IDE auf Englisch | Text der Option „Members in the hover: max. lines before scrolling (0 = screen)“ |
+| HMS8 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `THoverLayoutTests.PublishedMembersScroll`, `ScrolledMembersDropHiddenHits`, `TAtlasPluginSettingsTests.HoverMembersMaxLinesRoundTrip` grün |

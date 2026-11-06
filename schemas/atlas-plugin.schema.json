@@ -2794,6 +2794,18 @@
       "x-parent": "editor.hoverTooltip",
       "x-issue": "#909"
     },
+    "HoverMembersMaxLines": {
+      "type": "integer",
+      "default": 15,
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Zeilen der published-Mitglieder (Properties, Ereignisse) im Hover, bevor sie mit dem Mausrad scrollen; 0 = bis zur Bildschirmhöhe.",
+      "x-key": "hover.membersMaxLines",
+      "x-area": "editor",
+      "x-page": "Hints",
+      "x-parent": "editor.hoverTooltip",
+      "x-issue": "#1841"
+    },
     "InlineDiagnostics": {
       "type": "string",
       "enum": [
