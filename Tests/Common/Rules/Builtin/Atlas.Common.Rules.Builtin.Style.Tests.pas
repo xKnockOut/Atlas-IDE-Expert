@@ -477,11 +477,11 @@ var
 begin
   Source := InRoutine('  X: Double;', '  X := -7 * 3.5 + $FF;'#10'  Warten(1000);'#10'  X := 2 * 10 - 1;');
   Findings := TRuleAssert.Findings(TMagicNumberRule.Create, Source, MagicOn);
-  Assert.AreEqual(4, Integer(Length(Findings)));
+  // $FF ist eine volle Bitmaske und spricht für sich.
+  Assert.AreEqual(3, Integer(Length(Findings)));
   Assert.AreEqual('Zahl -7 ohne Namen; als Konstante wird klar, was sie bedeutet.', Findings[0].Message);
   Assert.AreEqual('Zahl 3.5 ohne Namen; als Konstante wird klar, was sie bedeutet.', Findings[1].Message);
-  Assert.AreEqual('Zahl $FF ohne Namen; als Konstante wird klar, was sie bedeutet.', Findings[2].Message);
-  Assert.AreEqual('Zahl 1000 ohne Namen; als Konstante wird klar, was sie bedeutet.', Findings[3].Message);
+  Assert.AreEqual('Zahl 1000 ohne Namen; als Konstante wird klar, was sie bedeutet.', Findings[2].Message);
   Findings := TRuleAssert.Findings(TMagicNumberRule.Create, Source,
     '{ "minConfidence": "low", "rules": { "magic-number": { "severity": "hint", "allowed": [1000, -7, 255, 3.5] } } }');
   Assert.AreEqual(3, Integer(Length(Findings)), '2 und 10 nicht mehr erlaubt');
@@ -499,6 +499,17 @@ begin
     '  TFeld = array[0..41] of Integer;'#10'  TTag = 1..31;'#10'implementation'#10'procedure P;'#10'const'#10 +
     '  Tage = 30;'#10'var'#10'  A: array[0..9] of Byte;'#10'begin'#10'  if X > Grenze then'#10'    X := 0;'#10 +
     '  S := ''42'' + #13#10;'#10'  X := X * 2 + 1 - 100;'#10'  var B: array[0..4] of Byte;'#10'end;'#10'end.',
+    MagicOn))));
+  // Zahlen, die für sich sprechen: DPI-Basis, Bitmasken, Zeiteinheiten, Punktlisten (Marcos Lauf 06.11.2026).
+  // Gemeldet bleiben 72 in MulDiv, WaitFor(1000) und Pixelwerte außerhalb einer Punktliste (SetBounds: 4 Zahlen).
+  Assert.AreEqual(6, Integer(Length(TRuleAssert.Findings(TMagicNumberRule.Create, 'unit U;'#10'interface'#10 +
+    'implementation'#10'procedure P;'#10'begin'#10'  X := MulDiv(X, PPI, 96);'#10'  K := EnsureRange(K, 0, $FFFF);'#10 +
+    '  M := S div 60 + S mod 3600 + Ms div 1000;'#10'  Q := [P(3.5, 1.5), P(-2, 12.5)];'#10 +
+    '  Y := MulDiv(X, PPI, 72);'#10'  T.WaitFor(1000);'#10'  E.SetBounds(12, 9, 360, 23);'#10'end;'#10'end.',
+    MagicOn))));
+  // Nahe an einer Bitmaske ist keine: $10000 und $FFFD bleiben gemeldet (nicht über SameValue mit Single).
+  Assert.AreEqual(2, Integer(Length(TRuleAssert.Findings(TMagicNumberRule.Create, 'unit U;'#10'interface'#10 +
+    'implementation'#10'procedure P;'#10'begin'#10'  Dec(C, $10000);'#10'  Put(R, $FFFD);'#10'end;'#10'end.',
     MagicOn))));
   TConfigurationParser.Parse('{"rules": {"magic-number": {"allowed": ["42"]}}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
@@ -688,6 +699,15 @@ begin
     '  TfrmHaupt = class(TForm)'#10'    btnOk: TButton;'#10'  private'#10'    FA: Integer;'#10'  protected'#10 +
     '    FB: Integer;'#10'  strict private'#10'    FC: Integer;'#10'  public'#10'    class var Anzahl: Integer;'#10 +
     '    property A: Integer read FA;'#10'  end;'), FieldOn))));
+  // Hilfsklasse unter protected type bzw. strict private type: ihre Felder erreicht von außen niemand.
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TPublicFieldRule.Create, TypeUnit(
+    '  TListe = class'#10'  protected type'#10'    TEintrag = class'#10'      Name: string;'#10'    end;'#10 +
+    '  strict private type'#10'    TZeile = class'#10'    public'#10'      Text: string;'#10'    end;'#10 +
+    '  private'#10'    FA: TEintrag;'#10'  end;'), FieldOn))));
+  // Unter public type zählt die Hilfsklasse weiter.
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(TPublicFieldRule.Create, TypeUnit(
+    '  TListe = class'#10'  public type'#10'    TEintrag = class'#10'      Name: string;'#10'    end;'#10 +
+    '  end;'), FieldOn))));
   TConfigurationParser.Parse('{"rules": {"public-field": {"includeRecords": "ja"}}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.AreEqual('"includeRecords" muss true oder false sein', Issues[0].Message);

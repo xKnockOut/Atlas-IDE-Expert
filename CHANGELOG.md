@@ -77,6 +77,16 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 - Plugin: Hänger aus der Diagnose vom 06.11.2026: Ein Klick auf die Code Lens „→ Testunit“ (auch Befehl und Taste) wartete im Hauptthread bis zu 30 s auf den Server, die Schnellbefehle und ///-Gerüste bis zu 3 s. Beide fragen jetzt im Hintergrund; die Antwort der Schnellbefehle gilt nur, solange der Text unverändert ist. Die Plugin-Zeitmessung rechnet offene modale Dialoge nicht mehr der Funktion zu, die sie geöffnet hat.
 - Plugin: Zugriffsverletzung in `Atlas.Core.Diagnostics.MainThread`, wenn ein Modul-Package einzeln entladen wurde (Packages-Dialog, Update, abgesicherter Start): Seine wartenden Einträge für den Hauptthread liefen danach in nicht mehr geladenem Code. Jetzt verwirft die Registry die Einträge eines Moduls, bevor sie es stoppt, und nimmt bis zur neuen Anmeldung keine an.
 - Plugin: Ohne `"language"` in `settings.json` kamen die Serverbefunde auf einem deutschen System englisch (#1458): Die Spracherkennung der IDE ergab dort „en“. Sie prüft jetzt zuerst die geladenen Ressourcen-DLLs der IDE, dann die Locales in HKCU und HKLM (Schreibweisen `DE`, `DEU`, `de-DE`), dann Windows, und schreibt das Ergebnis ins Protokoll. Werkzeugaufrufe aus den Optionen (Index-Cache löschen, Baseline, Unterdrückungen) bekommen die Sprache mit `--locale`.
+- Fehlalarme aus einem Lauf mit allen, auch experimentellen Regeln über ein großes Projekt (06.11.2026):
+  - `public-field` schweigt in Typen, die in privaten oder geschützten Abschnitten stehen.
+  - `loop-invariant-call` schweigt bei Feldern von Records derselben Datei, `string-concat-in-loop`, wenn der String in jedem Durchlauf direkt im Rumpf neu gesetzt wird.
+  - `method-without-self` erkennt Handler, die über einen Cast einem Ereignis zugewiesen werden.
+  - `magic-number` lässt volle Masken, Zeiteinheiten, die DPI-Basis in `MulDiv` und Zahlenlisten in Array-Literalen gelten.
+  - `hardcoded-string` meldet keine Maschinentexte mehr (Log, Assert, `OutputDebugString`, Markup, JSON, Formatmuster, `Font.Name`); neue Option `ignoreCalls`.
+  - `naming-prefix` meldet keine A/B-Paare und keine Parameter von Ereignis-Handlern, `member-hides-ancestor` keine Methoden von Interfaces in der Vorfahrenliste.
+  - `class-reference-constructor`: Kann die Regel eine Zeile nicht entscheiden, bleibt deren `lsp-ignore` gültig.
+  - `result-not-set`: Eine Schleife `for … to cKonstante` zählt als Zuweisung. `unresolved-identifier`: kein Fehlalarm mehr bei `NoErrMsg` (Hinweiswort vor dem Startwert; Indexversion 32, der Index wird einmal neu aufgebaut).
+  - `requires`: Packages aus der Projektgruppe gelten als gefunden.
 
 ## [1.2.0] - 2026-11-01
 

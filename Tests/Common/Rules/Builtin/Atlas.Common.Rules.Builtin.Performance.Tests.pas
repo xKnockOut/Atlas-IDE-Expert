@@ -23,17 +23,23 @@ type
     [Test]
     procedure StringConcatOutsideLoopOrNoStringSilent;
     [Test]
+    procedure StringConcatResetInEachPassSilent;
+    [Test]
     procedure LoopInvariantCallReported;
     [Test]
     procedure ArgumentChangedInLoopSilent;
     [Test]
     procedure ForBoundsAndCheapConditionSilent;
     [Test]
+    procedure FieldTextAndDeleteInLoopSilent;
+    [Test]
     procedure MissingBeginUpdateReported;
     [Test]
     procedure BeginUpdatePresentSilent;
     [Test]
     procedure BeginUpdateMenuSilent;
+    [Test]
+    procedure BeginUpdateMenuInFieldSilent;
     [Test]
     procedure BeginUpdateFewIterationsSilent;
     [Test]
@@ -131,6 +137,24 @@ begin
     '  S := S + ''x'';'#10'  for I := 1 to 10 do'#10'    N := N + I;')));
 end;
 
+/// <summary>Wird der String am Anfang jedes Durchlaufs neu gesetzt, wächst er nicht über die Schleife
+/// (FillProcesses in Atlas.UI.Diagnostics.ProcessesDialog); in einer inneren Schleife schon.</summary>
+procedure TPerformanceRulesTests.StringConcatResetInEachPassSilent;
+begin
+  Assert.AreEqual(0, Count(TStringConcatInLoopRule.Create, InRoutine('  S: string;'#10'  I: Integer;',
+    '  for I := 1 to 10 do'#10'  begin'#10'    S := IntToStr(I);'#10'    S := S + ''x'';'#10'  end;')));
+  Assert.AreEqual(1, Count(TStringConcatInLoopRule.Create, InRoutine('  S: string;'#10'  I, J: Integer;',
+    '  for I := 1 to 10 do'#10'  begin'#10'    S := '''';'#10'    for J := 1 to 10 do'#10 +
+    '      S := S + ''x'';'#10'  end;')));
+  // Nur manchmal neu gesetzt (hinter then): Der String wächst über die Durchläufe.
+  Assert.AreEqual(1, Count(TStringConcatInLoopRule.Create, InRoutine('  S: string;'#10'  I: Integer;',
+    '  for I := 1 to 10 do'#10'  begin'#10'    if I mod 3 = 0 then'#10'      S := '''';'#10 +
+    '    S := S + ''x'';'#10'  end;')));
+  // repeat … until: neu gesetzt am Anfang jedes Durchlaufs.
+  Assert.AreEqual(0, Count(TStringConcatInLoopRule.Create, InRoutine('  S: string;'#10'  I: Integer;',
+    '  repeat'#10'    S := IntToStr(I);'#10'    S := S + ''x'';'#10'    Inc(I);'#10'  until I > 10;')));
+end;
+
 procedure TPerformanceRulesTests.LoopInvariantCallReported;
 var
   Findings: TArray<TRuleFinding>;
@@ -156,6 +180,23 @@ begin
   Assert.AreEqual(0, Count(TLoopInvariantCallRule.Create, InRoutine('  I: Integer;',
     '  for I := 1 to Length(Trim(S)) do'#10'    Inc(N);'#10'  while I < List.Count do'#10'    Inc(I);'#10 +
     '  while Reader.Trim do'#10'    Inc(I);')));
+end;
+
+/// <summary>.Text eines Record-Felds liest nur (Atlas.Core.Documentation.Layout, Settings.JsonText); Delete ändert
+/// die Variable der Bedingung (Slashed in Atlas.Core.Vcs.WorkingCopies).</summary>
+procedure TPerformanceRulesTests.FieldTextAndDeleteInLoopSilent;
+const
+  Source = 'unit U;'#10'interface'#10'type'#10'  TSpan = record'#10'    Text: string;'#10'  end;'#10 +
+    '  TScanner = record'#10'    Text: string;'#10'  end;'#10'  TW = class'#10'    Scanner: TScanner;'#10 +
+    '    function Count(const ASpan: TSpan): Integer;'#10'  end;'#10'implementation'#10 +
+    'function TW.Count(const ASpan: TSpan): Integer;'#10'begin'#10'  Result := 0;'#10 +
+    '  while Result < Length(ASpan.Text) do'#10'    Inc(Result);'#10 +
+    '  while (Result > 1) and (Scanner.Text[Result - 1] = '' '') do'#10'    Dec(Result);'#10 +
+    '  while Result < Length(Memo.Lines.Text) do'#10'    Inc(Result);'#10'end;'#10'end.';
+begin
+  Assert.AreEqual(1, Count(TLoopInvariantCallRule.Create, Source));
+  Assert.AreEqual(0, Count(TLoopInvariantCallRule.Create, InRoutine('  S: string;',
+    '  while Copy(S, 1, 2) = ''./'' do'#10'    Delete(S, 1, 2);')));
 end;
 
 procedure TPerformanceRulesTests.MissingBeginUpdateReported;
@@ -193,6 +234,23 @@ begin
   Findings := TRuleAssert.Findings(TMissingBeginUpdateRule.Create, Source, AllOn);
   Assert.AreEqual(1, Integer(Length(Findings)));
   Assert.Contains(Findings[0].Message, 'FList.Items.BeginUpdate');
+end;
+
+/// <summary>Das Menü steckt in einem Record-Feld (FParts.Menu in Atlas.UI.Notifications.Window).</summary>
+procedure TPerformanceRulesTests.BeginUpdateMenuInFieldSilent;
+const
+  Source = 'unit U;'#10'interface'#10'uses Vcl.Menus;'#10'type'#10'  TParts = record'#10 +
+    '    Menu: TPopupMenu;'#10'    List: TListBox;'#10'  end;'#10'  TF = class'#10'    FParts: TParts;'#10 +
+    '    procedure Fill(const ANames: TArray<string>);'#10'  end;'#10'implementation'#10 +
+    'procedure TF.Fill(const ANames: TArray<string>);'#10'var'#10'  Name: string;'#10'begin'#10 +
+    '  for Name in ANames do'#10'  begin'#10'    FParts.Menu.Items.Add(NewLine);'#10 +
+    '    FParts.List.Items.Add(Name);'#10'  end;'#10'end;'#10'end.';
+var
+  Findings: TArray<TRuleFinding>;
+begin
+  Findings := TRuleAssert.Findings(TMissingBeginUpdateRule.Create, Source, AllOn);
+  Assert.AreEqual(1, Integer(Length(Findings)));
+  Assert.Contains(Findings[0].Message, 'FParts.List.Items.BeginUpdate');
 end;
 
 procedure TPerformanceRulesTests.BeginUpdateFewIterationsSilent;

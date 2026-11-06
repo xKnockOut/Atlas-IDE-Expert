@@ -23,8 +23,12 @@
 // Sichtbarkeitsabschnitt eines Formulars, Frames oder Datenmoduls
 // (Komponenten), Parameter von Methoden
 // mit override oder message, von published-Methoden, von Ereignis-Handlern
-// (ein Parameter heißt Sender) und von Methoden, die eine Interface-Methode
-// erfüllen: Sie behalten die Namen ihrer Vorlage. Bleibt offen, ob eine
+// (ein Parameter heißt Sender oder der Code weist die Methode einer Property
+// OnXyz zu: FEvents.OnEditorPaintLine := PaintLine) und von Methoden, die eine
+// Interface-Methode erfüllen: Sie behalten die Namen ihrer Vorlage. In einer
+// Parameterliste mit einem Parameter, der genau wie das Präfix heißt
+// (Vergleicher function(const A, B: T)), gelten Namen aus einem Buchstaben als
+// Paar und werden nicht gemeldet. Bleibt offen, ob eine
 // Methode ein Interface erfüllt (Interface weder in der Datei noch im Index),
 // schweigt die Regel für ihre Parameter.
 //
@@ -95,6 +99,7 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.SyntaxTree,
+  Atlas.Common.Pascal.EventAssignments,
   Atlas.Common.Index.Contract,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Rules.Derived,
@@ -255,6 +260,8 @@ type
     // Wurzel und alle RoutineDecl in Baumreihenfolge.
     FRoot: TSyntaxNode;
     FRoutineDecls: TArray<TSyntaxNode>;
+    /// <summary>Methoden, die der Code einer Property OnXyz zuweist (TEventAssignments).</summary>
+    FEventMethods: TArray<string>;
     /// <summary>Token des Namens in [AStart, AEnd), nicht hinter einem Punkt; hinter AQualifier. (Self, Typname)
     /// doch.</summary>
     function NameTokens(AStart, AEnd: Integer; const AName: string; const AQualifiers: array of string):
@@ -284,6 +291,7 @@ type
       out AEdits: TArray<Integer>): Boolean;
     function IsMemberUse(AIndex: Integer; const ATypeName: string; const AMethods: TArray<TSyntaxNode>): Boolean;
     procedure CheckUnitConstant(ADecl: TSyntaxNode);
+    function IsEventMethod(AParams: TSyntaxNode): Boolean;
     procedure CheckParameters(AParams: TSyntaxNode);
     function ParameterOwner(AParams: TSyntaxNode; out AOwner: TParameterOwner): Boolean;
     function HeaderOwner(AHeader: TSyntaxNode; var AOwner: TParameterOwner): Boolean;
@@ -775,6 +783,7 @@ begin
   FTokens := TRuleDerived.CodeTokens(FCache, AContext);
   FIndex := AContext.Index;
   FRoot := AContext.Tree.Root;
+  FEventMethods := TEventAssignments.Names(AContext.Tree.Tokens);
 end;
 
 function TNamingCheck.NameTokens(AStart, AEnd: Integer; const AName: string; const AQualifiers: array of string):
@@ -1159,17 +1168,36 @@ begin
     []), CanFix, nil);
 end;
 
+/// <summary>Gehören die Parameter AParams zu einer Methode, die der Code einem Ereignis zuweist?</summary>
+function TNamingCheck.IsEventMethod(AParams: TSyntaxNode): Boolean;
+var
+  mName: string;
+begin
+  Result := False;
+  if (AParams.Parent = nil) or not (AParams.Parent.Kind in [TSyntaxKind.RoutineHeader, TSyntaxKind.RoutineDecl]) or
+    (FEventMethods = nil) then
+  begin
+    Exit;
+  end;
+  mName := AParams.Parent.Name;
+  mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
+  Result := MatchText(mName, FEventMethods);
+end;
+
 procedure TNamingCheck.CheckParameters(AParams: TSyntaxNode);
 var
   mOwner: TParameterOwner;
   mIndex: Integer;
   mName: string;
+  mPair: Boolean;
 begin
   // Ereignis-Handler: Die Namen gibt der Ereignistyp vor (FormClose(Sender; var Action)).
-  if (MatchText('Sender', ParameterNames(AParams))) or not ParameterOwner(AParams, mOwner) then
+  if (MatchText('Sender', ParameterNames(AParams))) or not ParameterOwner(AParams, mOwner) or
+    IsEventMethod(AParams) then
   begin
     Exit;
   end;
+  mPair := MatchText(FConvention.Prefixes[TRuleNamingKind.Parameter], ParameterNames(AParams));
   for mIndex := 0 to AParams.ChildCount - 1 do
   begin
     if AParams[mIndex].Kind <> TSyntaxKind.Parameter then
@@ -1178,7 +1206,7 @@ begin
     end;
     for mName in SplitString(AParams[mIndex].Name, ',') do
     begin
-      if Wanted(TRuleNamingKind.Parameter, Trim(mName)) then
+      if Wanted(TRuleNamingKind.Parameter, Trim(mName)) and not (mPair and (Length(Trim(mName)) = 1)) then
       begin
         CheckParameter(AParams, AParams[mIndex], Trim(mName), mOwner);
       end;

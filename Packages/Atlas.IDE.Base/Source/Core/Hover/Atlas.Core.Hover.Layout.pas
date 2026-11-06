@@ -88,6 +88,7 @@ type
 
   /// <summary>Messen in der Oberfläche; Build ruft nur diese Funktionen.</summary>
   IAtlasHoverMeasure = interface
+    ['{96C7EBD2-5C83-4DC6-8E88-88DB86BCD6D5}']
     function TextWidth(const AFace: TAtlasHoverFace; const AText: string): Integer;
     /// <summary>Zeilenhöhe der Schrift (Höhe von „Wg“).</summary>
     function TextHeight(const AFace: TAtlasHoverFace): Integer;

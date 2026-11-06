@@ -191,17 +191,22 @@ var
   mItem: TListItem;
   mClient: string;
 begin
-  for mRow in ARows do
-  begin
-    mItem := AList.Items.Add;
-    mItem.Caption := mRow.Kind;
-    mClient := mRow.Caption;
-    if mRow.Own then
+  AList.Items.BeginUpdate;
+  try
+    for mRow in ARows do
     begin
-      mClient := mClient + TAtlasStrings.Text(TAtlasTextId.ProcessesOwn);
+      mItem := AList.Items.Add;
+      mItem.Caption := mRow.Kind;
+      mClient := mRow.Caption;
+      if mRow.Own then
+      begin
+        mClient := mClient + TAtlasStrings.Text(TAtlasTextId.ProcessesOwn);
+      end;
+      mItem.SubItems.Add(mClient);
+      mItem.SubItems.Add(mRow.State);
     end;
-    mItem.SubItems.Add(mClient);
-    mItem.SubItems.Add(mRow.State);
+  finally
+    AList.Items.EndUpdate;
   end;
 end;
 

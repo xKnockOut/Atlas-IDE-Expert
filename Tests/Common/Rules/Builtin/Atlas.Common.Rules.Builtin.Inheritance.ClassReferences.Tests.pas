@@ -17,6 +17,8 @@ type
     procedure NonvirtualConstructorIsReported;
     [Test]
     procedure VirtualConstructorIsSilent;
+    [Test]
+    procedure UnknownClassRefKeepsSuppression;
   end;
 
 implementation
@@ -54,6 +56,29 @@ begin
     'implementation'#10'constructor TPlugin.Create;'#10'begin'#10'end;'#10 +
     'function Neu(Klasse: TPluginKlasse): TPlugin;'#10'begin'#10'  Result := Klasse.Create;'#10'end;'#10 +
     'end.'#10);
+end;
+
+procedure TInheritanceClassReferencesTests.UnknownClassRefKeepsSuppression;
+const
+  Ignore = ' // lsp-ignore: class-reference-nonvirtual-constructor';
+var
+  mFindings: TArray<TRuleFinding>;
+begin
+  // ExceptClass kennt der Index nicht (RTL fehlt): Die Regel kann die Zeile nicht entscheiden, ihr lsp-ignore ist
+  // keine unused-suppression (PullDiagnostics, raise FErrorClass.Create).
+  mFindings := TRuleAssert.Findings(TClassReferenceNonvirtualConstructorRule.Create,
+    'unit U;'#10'interface'#10'implementation'#10'procedure Wirf(AKlasse: ExceptClass);'#10'begin'#10 +
+    '  raise AKlasse.Create(''x'');' + Ignore + #10'end;'#10'end.'#10);
+  Assert.AreEqual(0, Integer(Length(mFindings)));
+  // Bekannte Klasse mit virtuellem Konstruktor: entschieden, das lsp-ignore wirkt nicht.
+  mFindings := TRuleAssert.Findings(TClassReferenceNonvirtualConstructorRule.Create,
+    'unit U;'#10'interface'#10'type'#10'  TPlugin = class'#10'  public'#10 +
+    '    constructor Create; virtual;'#10'  end;'#10'  TPluginKlasse = class of TPlugin;'#10 +
+    'implementation'#10'constructor TPlugin.Create;'#10'begin'#10'end;'#10 +
+    'function Neu(Klasse: TPluginKlasse): TPlugin;'#10'begin'#10'  Result := Klasse.Create;' + Ignore + #10 +
+    'end;'#10'end.'#10);
+  Assert.AreEqual(1, Integer(Length(mFindings)));
+  Assert.AreEqual('unused-suppression', mFindings[0].RuleId);
 end;
 
 initialization

@@ -357,20 +357,14 @@ function TWrapJob.PlanSelection(var APlan: TPlan; const ASelected: string; const
   AStopPos: TLspTextPosition): Boolean;
 begin
   Result := True;
-  if FOpen = '''' then
-  begin
-    Result := PlanQuote(APlan, ASelected, AStartPos, AStopPos);
-  end
-  else if FOpen = '<' then
-  begin
-    Result := PlanAngle(APlan, ASelected);
-  end
-  else if FOpen = '{' then
-  begin
-    Result := PlanBrace(APlan, ASelected, AStartPos, AStopPos);
-  end
+  case FOpen of
+    '''':
+      Result := PlanQuote(APlan, ASelected, AStartPos, AStopPos);
+    '<':
+      Result := PlanAngle(APlan, ASelected);
+    '{':
+      Result := PlanBrace(APlan, ASelected, AStartPos, AStopPos);
   else
-  begin
     APlan.Text := FOpen + ASelected + TAtlasWrapSelection.CloserOf(FOpen);
     APlan.SelStart := 1;
     APlan.SelStop := 1 + Length(ASelected);
