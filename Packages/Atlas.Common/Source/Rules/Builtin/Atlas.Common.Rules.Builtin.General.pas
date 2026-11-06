@@ -11,7 +11,13 @@
 //   guid-syntax-invalid       GUID-Literal eines Interfaces oder einer TGUID-Konstante nicht in der Form
 //                             '{8-4-4-4-12}' (#1072, wie E2204); Korrektur: neue GUID bzw. Klammern ergänzen
 //   file-header               Dateikopf weicht von der Vorlage ab (Option "template", Standard aus)
-//   hardcoded-string          Text im Code statt resourcestring (Standard aus, niedrige Konfidenz)
+//   hardcoded-string          Text im Code statt resourcestring (Standard aus, niedrige Konfidenz). Still bei
+//                             Texten, die niemand übersetzt: Argumente von Protokoll- und Prüfaufrufen (…Log,
+//                             Log…, Diagnose, Trace, Debug, Assert, OutputDebugString), Vergleichs- und
+//                             Registry-Aufrufen (StartsText, Pos, ReadString …), Masken von FormatDateTime und
+//                             FormatFloat, Markup (HTML ab <, JSON ab { oder "Schlüssel":, Markdown # und ##) und
+//                             Font.Name; Option "ignoreCalls" nennt weitere Routinen (z. B. ein eigenes
+//                             Pick(Englisch, 'en', 'de')).
 
 interface
 
@@ -87,6 +93,7 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Text.Lines,
+  Atlas.Common.Rules.Options,
   Atlas.Common.Localization.Texts;
 
 {$SCOPEDENUMS ON}
@@ -1042,15 +1049,113 @@ begin
   end;
 end;
 
+const
+  /// <summary>Routinen, deren Text-Argumente kein Benutzer liest: Prüfungen, Vergleiche, Registry, Masken.</summary>
+  cMachineTextCalls: array[0..30] of string = ('Assert', 'OutputDebugString', 'Diagnose', 'Trace', 'Debug',
+    'StartsText', 'EndsText', 'StartsStr', 'EndsStr', 'ContainsText', 'ContainsStr', 'SameText', 'SameStr',
+    'AnsiSameText', 'Pos', 'PosEx', 'IndexText', 'IndexStr', 'MatchText', 'MatchStr', 'StartsWith', 'EndsWith',
+    'ReadString', 'ReadInteger', 'ReadBool', 'WriteString', 'ValueExists', 'OpenKey', 'OpenKeyReadOnly',
+    'FormatDateTime', 'FormatFloat');
+
+/// <summary>Protokoll- oder Maschinenaufruf AName (auch mit Präfix F/A wie FLog, ADiagnose) oder einer aus
+/// AIgnored?</summary>
+function IsMachineTextCall(const AName: string; const AIgnored: TArray<string>): Boolean;
+var
+  mName: string;
+begin
+  mName := AName;
+  if (Length(mName) > 2) and CharInSet(mName[1], ['F', 'A']) and CharInSet(mName[2], ['A'..'Z']) then
+  begin
+    mName := Copy(mName, 2, MaxInt);
+  end;
+  Result := StartsStr('Log', mName) or EndsStr('Log', mName) or MatchText(mName, cMachineTextCalls) or
+    MatchText(AName, AIgnored);
+end;
+
+/// <summary>Steht das Literal AIndex in den Argumenten eines Aufrufs aus IsMachineTextCall, auch verschachtelt
+/// (Log(Format('…')))? Gesucht wird rückwärts bis zum Anfang der Anweisung.</summary>
+function InMachineTextCall(const ATokens: TArray<TPascalToken>; AIndex: Integer;
+  const AIgnored: TArray<string>): Boolean;
+var
+  mIndex, mDepth, mCallee: Integer;
+begin
+  Result := False;
+  mDepth := 0;
+  mIndex := PreviousCode(ATokens, AIndex);
+  while mIndex >= 0 do
+  begin
+    if ATokens[mIndex].IsSymbol(')') or ATokens[mIndex].IsSymbol(']') then
+    begin
+      Inc(mDepth);
+    end
+    else if (ATokens[mIndex].IsSymbol('(') or ATokens[mIndex].IsSymbol('[')) and (mDepth > 0) then
+    begin
+      Dec(mDepth);
+    end
+    else if ATokens[mIndex].IsSymbol('(') then
+    begin
+      mCallee := PreviousCode(ATokens, mIndex);
+      if (mCallee >= 0) and (ATokens[mCallee].Kind = TPascalTokenKind.Identifier) and
+        IsMachineTextCall(ATokens[mCallee].Text, AIgnored) then
+      begin
+        Exit(True);
+      end;
+    end
+    else if (mDepth = 0) and (ATokens[mIndex].IsSymbol(';') or (ATokens[mIndex].Kind = TPascalTokenKind.Keyword)) then
+    begin
+      Exit;
+    end;
+    mIndex := PreviousCode(ATokens, mIndex);
+  end;
+end;
+
+/// <summary>Font.Name := 'Segoe UI': Schriftnamen übersetzt niemand.</summary>
+function IsFontName(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
+var
+  mAssign, mName, mDot: Integer;
+begin
+  mAssign := PreviousCode(ATokens, AIndex);
+  mName := PreviousCode(ATokens, mAssign);
+  mDot := PreviousCode(ATokens, mName);
+  Result := (mDot > 0) and ATokens[mAssign].IsSymbol(':=') and SameText(ATokens[mName].Text, 'Name') and
+    ATokens[mDot].IsSymbol('.') and SameText(ATokens[PreviousCode(ATokens, mDot)].Text, 'Font');
+end;
+
+/// <summary>Markup oder Daten statt Text: HTML/XML (&lt;), JSON ({ oder "Schlüssel":), Markdown-Überschrift (# bzw.
+/// ##). Ein Text, der nur mit einem Zitat beginnt ('"%s" ist keine Formulardatei'), zählt nicht.</summary>
+function LooksLikeMarkup(const AValue: string): Boolean;
+var
+  mText: string;
+begin
+  mText := TrimLeft(AValue);
+  if mText = '' then
+  begin
+    Exit(False);
+  end;
+  case mText[1] of
+    '<', '{':
+      Result := True;
+    '"':
+      Result := Pos('":', mText) > 0;
+    '#':
+      Result := (Length(mText) > 1) and CharInSet(mText[2], ['#', ' ']);
+  else
+    Result := False;
+  end;
+end;
+
 procedure THardcodedStringRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
   Tokens: TArray<TPascalToken>;
   Index, Depth: Integer;
+  Value: string;
+  Ignored: TArray<string>;
 begin
   if AContext.Tree = nil then
   begin
     Exit;
   end;
+  Ignored := TRuleOptions.Strings(AContext.Options, 'ignoreCalls', nil);
   Tokens := AContext.Tree.Tokens;
   Depth := 0;
   for Index := 0 to High(Tokens) do
@@ -1065,7 +1170,9 @@ begin
     begin
       Continue;
     end;
-    if LooksLikeText(AnsiDequotedStr(Tokens[Index].Text, '''')) then
+    Value := AnsiDequotedStr(Tokens[Index].Text, '''');
+    if LooksLikeText(Value) and not LooksLikeMarkup(Value) and not IsFontName(Tokens, Index) and
+      not InMachineTextCall(Tokens, Index, Ignored) then
     begin
       AReport.Add(TokenRange(Tokens[Index]), cTexts[TGeneralText.HardcodedString].Text,
         TRuleConfidence.Low);

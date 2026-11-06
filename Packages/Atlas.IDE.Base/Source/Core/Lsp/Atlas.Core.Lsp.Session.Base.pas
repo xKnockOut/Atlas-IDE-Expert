@@ -158,6 +158,7 @@ type
   /// <summary>Id einer Serveranfrage, auf die später geantwortet wird (#397). Wer zuerst Take ruft, antwortet;
   /// kommt keine Antwort, gibt der letzte Verweis die Id frei (Code-Review S-07).</summary>
   ILspPendingId = interface
+    ['{99D9B680-B103-49D4-AA8A-57D6CD498B8E}']
     function Take: TJSONValue;
   end;
 

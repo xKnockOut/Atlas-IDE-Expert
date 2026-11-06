@@ -620,6 +620,8 @@ begin
         Exit(TAtlasDebugStackRead.Wait);
       csInaccessible:
         Exit;
+      csAccessible:
+        ; // Lesbar: Tiefe unten holen.
     end;
     try
       ADepth := AThread.GetCallCount;
