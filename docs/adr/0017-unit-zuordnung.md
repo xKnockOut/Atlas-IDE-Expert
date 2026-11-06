@@ -1,4 +1,4 @@
-﻿# ADR 0017: Zuordnung der Units zu Packages
+# ADR 0017: Zuordnung der Units zu Packages
 
 - Stand: 2026-11-01, Branch `Pilot-2.0.0-beta.1` (6364e487), nachgezogen auf ef9b9d95 (#1455), Quellen unter `Packages/Atlas.IDE.Base/Source`
 - Bezug: [ADR 0017](0017-funktions-packages.md), Abschnitt „Fortschreibung: Laden, Entladen, Versionen“; #1455, #1456
@@ -195,6 +195,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Editor.Selection` | `Core/Editor/Atlas.Core.Editor.Selection.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.SelectionMatches` | `Core/Editor/Atlas.Core.Editor.SelectionMatches.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.SlashTrigger` | `Core/Editor/Atlas.Core.Editor.SlashTrigger.pas` | Ordner `Core/Editor` |
+| `Atlas.Core.Editor.SmartIndent` | `Core/Editor/Atlas.Core.Editor.SmartIndent.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.SmartPaste` | `Core/Editor/Atlas.Core.Editor.SmartPaste.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.SnapshotPolicy` | `Core/Editor/Atlas.Core.Editor.SnapshotPolicy.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.StatementCompletion` | `Core/Editor/Atlas.Core.Editor.StatementCompletion.pas` | Ordner `Core/Editor` |
@@ -536,6 +537,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Editor.SafeDelete` | `IDE/Editor/Atlas.IDE.Editor.SafeDelete.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.SelectionMatches` | `IDE/Editor/Atlas.IDE.Editor.SelectionMatches.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.ServerEdit` | `IDE/Editor/Atlas.IDE.Editor.ServerEdit.pas` | Ordner `IDE/Editor` |
+| `Atlas.IDE.Editor.SmartIndent` | `IDE/Editor/Atlas.IDE.Editor.SmartIndent.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.SmartPaste` | `IDE/Editor/Atlas.IDE.Editor.SmartPaste.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.StatementCompletion` | `IDE/Editor/Atlas.IDE.Editor.StatementCompletion.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.TestUnitLens` | `IDE/Editor/Atlas.IDE.Editor.TestUnitLens.pas` | Ordner `IDE/Editor` |
