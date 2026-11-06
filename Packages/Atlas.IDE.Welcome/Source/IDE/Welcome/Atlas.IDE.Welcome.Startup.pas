@@ -60,8 +60,38 @@ var
   GWelcome: TAtlasIdeWelcome;
   GTiles: TAtlasIdeWelcomeTiles;
   GRegistrations: TArray<IAtlasRegistration>;
+  // Dauer der langsamen Schritte beim Start (Startzeit 06.11.2026: Welcome 10 s), für atlas.log.
+  GSteps: string;
+
+const
+  cStepLogMs = 20;
 
 { Bausteine }
+
+/// <summary>Millisekunden seit AStart (Now); genau genug für die Startzeiten in atlas.log.</summary>
+function ElapsedMs(AStart: TDateTime): Int64;
+begin
+  Result := Round((Now - AStart) * MSecsPerDay);
+end;
+
+/// <summary>AProc ausführen; ab cStepLogMs steht der Schritt mit Dauer in GSteps.</summary>
+procedure Step(const AName: string; const AProc: TProc);
+var
+  mStart: TDateTime;
+  mMs: Int64;
+begin
+  mStart := Now;
+  AProc();
+  mMs := ElapsedMs(mStart);
+  if mMs >= cStepLogMs then
+  begin
+    if GSteps <> '' then
+    begin
+      GSteps := GSteps + ', ';
+    end;
+    GSteps := GSteps + Format('%s %d ms', [AName, mMs]);
+  end;
+end;
 
 procedure Warn(AText: string);
 begin
@@ -158,11 +188,31 @@ end;
 /// </summary>
 procedure StartProjectSections;
 begin
-  GWelcome.Search := TAtlasIdeWelcomeSearch.Create(PaletteCommands, Execute);
-  GWelcome.Areas.WhatsNew := TAtlasIdeWhatsNew.Create(PaletteHas, Execute, Warn);
-  GWelcome.Areas.Projects := TAtlasIdeProjects.Create(Warn);
-  GWelcome.Areas.Trends := TAtlasIdeTrends.Create(GWelcome.Areas.Projects);
-  GWelcome.Areas.Unsaved := TAtlasIdeUnsaved.Create(Warn);
+  Step('Search',
+    procedure
+    begin
+      GWelcome.Search := TAtlasIdeWelcomeSearch.Create(PaletteCommands, Execute);
+    end);
+  Step('WhatsNew',
+    procedure
+    begin
+      GWelcome.Areas.WhatsNew := TAtlasIdeWhatsNew.Create(PaletteHas, Execute, Warn);
+    end);
+  Step('Projects',
+    procedure
+    begin
+      GWelcome.Areas.Projects := TAtlasIdeProjects.Create(Warn);
+    end);
+  Step('Trends',
+    procedure
+    begin
+      GWelcome.Areas.Trends := TAtlasIdeTrends.Create(GWelcome.Areas.Projects);
+    end);
+  Step('Unsaved',
+    procedure
+    begin
+      GWelcome.Areas.Unsaved := TAtlasIdeUnsaved.Create(Warn);
+    end);
 end;
 
 /// <summary>Schnellaktionen (#764), „Weiterarbeiten“ (#755), Zustand (#754), „Atlas entdecken“ (#757), Hilfe
@@ -170,14 +220,38 @@ end;
 procedure StartWorkSections;
 begin
   // Meldungen tragen Pfade und gehen deshalb nur in die Meldungsansicht.
-  GWelcome.Areas.QuickActions := TAtlasIdeQuickActions.Create(GWelcome.Areas.Projects, Note);
-  TAtlasWelcomeNeighbors.Connect(GWelcome.Areas.QuickActions);
-  GWelcome.Areas.ContinueWork := TAtlasIdeContinue.Create(Warn);
-  GWelcome.Areas.ContinueWork.Hooks.OnServerAccess := ShowVcsServer;
-  GWelcome.Areas.State := TAtlasIdeWelcomeState.CreateForHost;
-  GWelcome.Areas.Discover := TAtlasIdeDiscover.Create(PaletteCommands, TryCommand, Warn);
-  GWelcome.Areas.Help := TAtlasIdeHelp.Create(ShowKeys);
-  GWelcome.Areas.Setup := TAtlasWelcomeNeighbors.CreateSetup(Note);
+  Step('QuickActions',
+    procedure
+    begin
+      GWelcome.Areas.QuickActions := TAtlasIdeQuickActions.Create(GWelcome.Areas.Projects, Note);
+      TAtlasWelcomeNeighbors.Connect(GWelcome.Areas.QuickActions);
+    end);
+  Step('Continue',
+    procedure
+    begin
+      GWelcome.Areas.ContinueWork := TAtlasIdeContinue.Create(Warn);
+      GWelcome.Areas.ContinueWork.Hooks.OnServerAccess := ShowVcsServer;
+    end);
+  Step('State',
+    procedure
+    begin
+      GWelcome.Areas.State := TAtlasIdeWelcomeState.CreateForHost;
+    end);
+  Step('Discover',
+    procedure
+    begin
+      GWelcome.Areas.Discover := TAtlasIdeDiscover.Create(PaletteCommands, TryCommand, Warn);
+    end);
+  Step('Help',
+    procedure
+    begin
+      GWelcome.Areas.Help := TAtlasIdeHelp.Create(ShowKeys);
+    end);
+  Step('Setup',
+    procedure
+    begin
+      GWelcome.Areas.Setup := TAtlasWelcomeNeighbors.CreateSetup(Note);
+    end);
   GWelcome.Layouts.OnHideSetting := HideSetting;
   GWelcome.Layouts.OnShowSetting := ShowSetting;
 end;
@@ -199,18 +273,42 @@ end;
 { TAtlasIdeWelcomeStartup }
 
 class procedure TAtlasIdeWelcomeStartup.Start(const AScope: IAtlasModuleScope);
+var
+  mStart: TDateTime;
+  mScope: IAtlasModuleScope;
 begin
   if GWelcome <> nil then
   begin
     Exit;
   end;
-  GWelcome := CreatePage;
+  GSteps := '';
+  mStart := Now;
+  mScope := AScope;
+  Step('Page',
+    procedure
+    begin
+      GWelcome := CreatePage;
+    end);
   StartProjectSections;
   StartWorkSections;
-  Provide(AScope);
-  GTiles := TAtlasIdeWelcomeTiles.Create(AtlasModuleRegistry, ScopeProvide(AScope), TAtlasWelcomeSections.Default);
-  GTiles.Start(TAtlasWelcomeTileProjects.Access(CurrentPage));
-  GWelcome.Sync;
+  Step('Provide',
+    procedure
+    begin
+      Provide(mScope);
+    end);
+  Step('Tiles',
+    procedure
+    begin
+      GTiles := TAtlasIdeWelcomeTiles.Create(AtlasModuleRegistry, ScopeProvide(mScope), TAtlasWelcomeSections.Default);
+      GTiles.Start(TAtlasWelcomeTileProjects.Access(CurrentPage));
+    end);
+  Step('Sync',
+    procedure
+    begin
+      GWelcome.Sync;
+    end);
+  TAtlasGuard.Log(Format('Welcome start %d ms: %s', [ElapsedMs(mStart), GSteps]));
+  GSteps := '';
 end;
 
 class procedure TAtlasIdeWelcomeStartup.Stop;
