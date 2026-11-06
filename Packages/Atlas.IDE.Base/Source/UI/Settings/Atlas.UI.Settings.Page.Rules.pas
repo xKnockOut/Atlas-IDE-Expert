@@ -40,7 +40,8 @@ implementation
 uses
   System.Math,
   System.StrUtils,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Problems.ScopeBox;
 
 const
   /// <summary>Werte von problems.window.scope und problems.window.groupBy in der Reihenfolge der Auswahl (#909).
@@ -65,6 +66,8 @@ begin
   FProblemsWindowScope := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowScope),
     [TAtlasStrings.Text(TAtlasTextId.ProblemsScopeFile), TAtlasStrings.Text(TAtlasTextId.ProblemsScopeProject),
     TAtlasStrings.Text(TAtlasTextId.ProblemsScopeGroup)]);
+  // Einzelne Projekte der Gruppe in der Bereichsliste (#1843).
+  BindCheck('ProblemsWindowScopeProjects', AddCheck(TAtlasProblemsScopeBox.Text(TAtlasScopeBoxText.Setting)));
   FProblemsWindowGroupBy := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsProblemsWindowGroupBy),
     [TAtlasStrings.Text(TAtlasTextId.ProblemsGroupNone), TAtlasStrings.Text(TAtlasTextId.ProblemsGroupFile),
     TAtlasStrings.Text(TAtlasTextId.ProblemsGroupRule), TAtlasStrings.Text(TAtlasTextId.ProblemsGroupCategory)]);
