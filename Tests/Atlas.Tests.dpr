@@ -274,6 +274,7 @@ uses
   Atlas.Common.Rules.Builtin.ForbiddenSymbols.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.ForbiddenSymbols.Tests.pas',
   Atlas.Common.Rules.Builtin.MethodWithoutSelf.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.MethodWithoutSelf.Tests.pas',
   Atlas.Common.Rules.Builtin.Unresolved.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Unresolved.Tests.pas',
+  Atlas.Common.Projects.UnitAliases.Tests in 'Common\Projects\Atlas.Common.Projects.UnitAliases.Tests.pas',
   Atlas.Common.Projects.UnitLookup.Tests in 'Common\Projects\Atlas.Common.Projects.UnitLookup.Tests.pas',
   Atlas.Common.Rules.Builtin.Packages.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.Packages.Tests.pas',
   Atlas.Common.Rules.Builtin.OpenTools.Tests in 'Common\Rules\Builtin\Atlas.Common.Rules.Builtin.OpenTools.Tests.pas',
