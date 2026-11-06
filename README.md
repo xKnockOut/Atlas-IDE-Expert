@@ -262,6 +262,7 @@ pwsh Tools/Check-WindowHosts.ps1           # dock windows and editor bars use th
   - The job needs a self-hosted Windows runner (labels `self-hosted`, `windows`, `delphi`) on the developer's workstation. It runs in the signed-in user context, not as a service, because `cc.ps1` starts an IDE, and only while that machine is switched on. Every job starts its own scratch IDE.
   - It runs only with the repository variable `DELPHI_RUNNER=true`; otherwise the job "uebersprungen" says so in the run summary. `CC_SCRIPT` overrides the path to `cc.ps1`.
   - A new push to the same branch cancels the running build (`concurrency`).
+- `release.yml`: release for the tag `v<version>`. Without the Delphi runner the release package is missing; `pwsh Tools/Publish-ReleasePackage.ps1 -Version <version>` then attaches a locally built one and enters it in the update installer's version files (#1849, [docs/Release.md](docs/Release.md), German).
 - `package-dependencies.yml`: package dependencies, the stdout rule, Delphi 12 compatibility, rule catalog, configuration docs, no Embarcadero sources in `Tests/`, and Atlas windows and editor bars only through their shared hosts.
 
 ## Command line
