@@ -1,3 +1,9 @@
+## Release-Paket ohne Delphi-Runner (#1849, 06.11.2026, Branch `claude/project-thread-a48wa8` auf `Pilot-2.0.0-beta.1`)
+- Entscheidung Marco: Paket lokal bauen und an das Release hängen (statt Server-Bau aus dem Quelltext beim Nutzer). Ohne Runner meldete die Update-Prüfung das Release, der Installer brach mit „kein Paket“ ab (auch der Quelltext-Bau braucht ein Paket für AtlasServer/AtlasUpdate).
+- Neu: `Tools/New-ReleasePackage.ps1` (Packen, vorher im Workflow-Schritt; prüft EXE/BPL/Map je Package und Plattform, Version, Build jünger als letzter Commit), `Tools/New-VersionFile.ps1` (atlas-version.json, auch im Workflow), `Tools/Publish-ReleasePackage.ps1` (gh: ZIP + AtlasServer.exe/.map + atlas-version.json ins Release, atlas-version-beta.json nur ersetzen, wenn der Kanal auf diese Version zeigt), Selbsttest `Tools/Test-ReleasePackage.ps1` in package-dependencies.yml.
+- Kein workflow_dispatch: wäre erst aufrufbar, wenn der Workflow auf `main` liegt.
+- Geprüft (Cloud): Selbsttest grün, Publish mit gefälschtem `gh` durchgespielt. Offen: RP1–RP5 auf Marcos PC (Release-Builds, echter Upload).
+
 ## Release 2.0.0-beta.1 vorbereitet (05.11.2026, Branch `claude/project-thread-a48wa8` auf `Pilot-2.0.0-beta.1`)
 - Version stand schon überall auf 2.0.0-beta.1 (Marco, c03f26ed). CHANGELOG: alles aus [Unveröffentlicht] in den Abschnitt `[2.0.0-beta.1]` übernommen, nachgetragen: Modulaufteilung (#1454–#1456), Einstellungen in den Modulen (#1743), interner Umbau für 0 Atlas-Befunde; der veraltete Eintrag „Grundstock der Modul-Verträge … noch nicht verdrahtet“ entfällt. [Unveröffentlicht] ist leer: Einträge von PRs, die noch in die Beta sollen (#1751, Server-Überlastung), vor dem Tag in den Abschnitt 2.0.0-beta.1 verschieben.
 - Sieben Karten „Neu in Atlas“ für 2.0 mit titleEn/textEn (Module, Update-Installer, Sprache, dfm-reference-unit-missing, Taste „Datei jetzt prüfen“, anonyme Diagnose, problems.update). `Update-WhatsNew.ps1` grün.

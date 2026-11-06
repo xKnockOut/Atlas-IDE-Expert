@@ -261,6 +261,7 @@ pwsh Tools/Check-WindowHosts.ps1           # Fenster und Editorleisten über die
   - Der Job braucht einen selbst gehosteten Windows-Runner (Labels `self-hosted`, `windows`, `delphi`) auf dem Arbeitsrechner des Entwicklers. Er läuft im angemeldeten Benutzerkontext und nicht als Dienst, weil `cc.ps1` eine IDE startet, und nur, solange dieser Rechner eingeschaltet ist. Jeder Job startet eine eigene Scratch-IDE.
   - Er läuft nur mit der Repository-Variablen `DELPHI_RUNNER=true`; sonst meldet der Job „uebersprungen“ das in der Zusammenfassung des Laufs. `CC_SCRIPT` überschreibt den Pfad zu `cc.ps1`.
   - Ein neuer Push auf denselben Branch bricht den laufenden Build ab (`concurrency`).
+- `release.yml`: Release zum Tag `v<Version>`. Ohne Delphi-Runner fehlt das Release-Paket; `pwsh Tools/Publish-ReleasePackage.ps1 -Version <Version>` hängt danach ein lokal gebautes an und trägt es in die Versionsdateien des Update-Installers ein (#1849, [docs/Release.md](docs/Release.md)).
 - `package-dependencies.yml`: Package-Abhängigkeiten, stdout-Regel, Delphi-12-Verträglichkeit, Regelkatalog, Konfigurationsdoku, keine Embarcadero-Quellen in `Tests/` und Atlas-Fenster und Editorleisten nur über ihre gemeinsamen Hüllen.
 
 ## Kommandozeile
