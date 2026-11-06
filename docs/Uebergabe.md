@@ -1,3 +1,10 @@
+## IDE-Start 60 s mit Willkommensseite (06.11.2026, Branch `claude/project-thread-a48wa8` auf `Pilot-2.0.0-beta.1`)
+
+- **Befund:** Nach der Installation von 2.0.0-beta.1 aus dem Release-Paket dauerte Marcos IDE-Start 60 s (vorher 0,7–6,5 s), `atlas.log`: „davon Atlas 9563 ms: Welcome 9091 ms“. Ohne „Neu in Atlas“ und „Atlas entdecken“ wieder 4,8 s.
+- **Ursache:** `TAtlasIdeDiscover.AllowedIds` ruft je Tipp `FindCommand` → `TAtlasIdeHost.PaletteCommands` → `TAtlasIdePalette.AtlasCommands`; dort je Befehl `TAtlasIdeKeyMap.AtlasShortCut` mit `AtlasEntries` (Einstellungen, `TakenAction`) und `TAtlasIdeKeys.Owner` (Aktionen der IDE). Rund 60 Tipps × 200 Befehle. Im Branch-Build lag kein `tips.json` neben der BPL.
+- **Fix:** `AtlasShortCuts` (einmal je Liste), Palette-Eigenschaft `ShortCutsOf`, `Execute` ohne Tasten, Discover mit Befehlsliste je Durchgang. Zeitmessung „Welcome start“/„Welcome sync“ in `atlas.log`. Handtests WS1–WS4.
+- **Offen:** Delphi-Build; Marcos Vorschlag, „Neu in Atlas“ und „Atlas entdecken“ in eigene Dialoge mit Markierung bei Neuem zu legen (Entwurf mit Mockup folgt).
+
 ## Quelltext-Bau Delphi 12 scheiterte an MSB4066 (06.11.2026, Branch `claude/project-thread-a48wa8` auf `Pilot-2.0.0-beta.1`)
 
 - **Befund:** Marcos erster `AtlasUpdate install` mit 2.0.0-beta.1 unter Delphi 12 brach im MSBuild-Bau ab: „MSB4066: Das Include-Attribut im <DCCReference>-Element ist unbekannt“. Ursache: In `Atlas.IDE.Analysis.dproj` standen drei `DCCReference` (#1756) im Eintrag von `Atlas.UI.UnitRelations.Frame.pas`, in `Atlas.IDE.Base.dproj` ein leeres `<DCCReference/>` unter `Atlas.UI.Settings.Page.pas`. Die IDE übergeht das, MSBuild nicht. `Tests/DccFaelle/DccFaelle.groupproj` war nach Zusammenführungen kein gültiges XML (drei offene `Build`-Ziele).

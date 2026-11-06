@@ -9883,3 +9883,12 @@ Vorbereitung: Plugin und Server mit diesem Stand gebaut. In der `atlas.json` von
 | RP3 | Nach Tag und Release-Workflow: `pwsh Tools/Publish-ReleasePackage.ps1 -Version <V> -WhatIf` | Nennt ZIP, `atlas-version.json`, `AtlasServer.exe`/`.map` und `atlas-version-beta.json`, lädt nichts hoch |  |
 | RP4 | Wie RP3 ohne `-WhatIf` | Release hat das ZIP; `atlas-version.json` enthält `packages.37.0` mit SHA-256; `update-channel/atlas-version-beta.json` zeigt auf `<V>` |  |
 | RP5 | Rechner mit der Vorversion: Update-Prüfung, „Herunterladen und beim Beenden installieren“, IDE schließen (**Abnahme**) | `<V>` wird gemeldet, geladen, geprüft und eingespielt; nächster Start meldet das Ergebnis |  |
+
+## IDE-Start mit Willkommensseite (06.11.2026)
+
+| ID | Schritte | Erwartet |
+|---|---|---|
+| WS1 | Release-Paket installiert, „Neu in Atlas“ und „Atlas entdecken“ eingeblendet, Delphi starten, in `atlas.log` die Zeile „Start: …“ suchen | Start wie ohne die Karten (wenige Sekunden), „Welcome“ unter 1 s |
+| WS2 | Dieselbe Sitzung: `atlas.log` nach „Welcome start“ durchsuchen | Eine Zeile mit Gesamtdauer; nur Bereiche ab 20 ms sind genannt |
+| WS3 | Befehlspalette öffnen, Atlas-Befehle mit Tastenkürzel ansehen; Tastenkürzel-Übersicht öffnen | Tasten wie vorher (z. B. Strg+Umschalt+Alt+P bei „Datei jetzt prüfen“) |
+| WS4 | „Atlas entdecken“: „Nächster Tipp“ mehrmals, „Ausprobieren“ | Tipps wechseln ohne Verzögerung, Ausprobieren führt den Befehl aus |

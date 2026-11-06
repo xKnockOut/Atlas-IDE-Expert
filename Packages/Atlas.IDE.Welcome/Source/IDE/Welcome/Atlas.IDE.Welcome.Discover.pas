@@ -52,7 +52,12 @@ type
     FCurrent: string;
     FTitle: string;
     FStarted: Boolean;
+    // Befehlsliste für einen Durchgang über alle Tipps (AllowedIds): einmal gebaut statt je Tipp (Start 06.11.2026).
+    FSnapshot: TArray<TAtlasCommand>;
+    FSnapshotActive: Boolean;
     procedure Report(const AText: string);
+    /// <summary>Befehle der Palette; während AllowedIds die einmal gebaute Liste.</summary>
+    function Commands: TArray<TAtlasCommand>;
     /// <summary>„Ausprobieren“ für ATip: Beispiel öffnen, sonst den Befehl über die Palette ausführen.</summary>
     procedure TryFound(const ATip: TAtlasTip);
     procedure Changed;
@@ -236,15 +241,12 @@ var
   KeyText: string;
 begin
   ACommand := Default(TAtlasCommand);
-  if Assigned(FCommands) then
+  for Command in Commands do
   begin
-    for Command in FCommands() do
+    if SameText(Command.Id, AId) then
     begin
-      if SameText(Command.Id, AId) then
-      begin
-        ACommand := Command;
-        Exit(True);
-      end;
+      ACommand := Command;
+      Exit(True);
     end;
   end;
   // Atlas-Taste ohne Befehl der Palette: Taste aus den Einstellungen, nicht über die Palette ausführbar.
@@ -283,16 +285,44 @@ begin
     end);
 end;
 
+function TAtlasIdeDiscover.Commands: TArray<TAtlasCommand>;
+begin
+  Result := nil;
+  if FSnapshotActive then
+  begin
+    Result := FSnapshot;
+  end
+  else if Assigned(FCommands) then
+  begin
+    Result := FCommands();
+  end;
+end;
+
 function TAtlasIdeDiscover.AllowedIds: TArray<string>;
 var
   Tip: TAtlasTip;
+  mOuter: Boolean;
 begin
   Result := nil;
-  for Tip in Tips do
+  mOuter := not FSnapshotActive;
+  if mOuter then
   begin
-    if not FState.IsBlocked(Tip.Id) and IsEnabled(Tip) then
+    FSnapshot := Commands;
+    FSnapshotActive := True;
+  end;
+  try
+    for Tip in Tips do
     begin
-      Result := Result + [Tip.Id];
+      if not FState.IsBlocked(Tip.Id) and IsEnabled(Tip) then
+      begin
+        Result := Result + [Tip.Id];
+      end;
+    end;
+  finally
+    if mOuter then
+    begin
+      FSnapshotActive := False;
+      FSnapshot := nil;
     end;
   end;
 end;
