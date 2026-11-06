@@ -106,6 +106,7 @@ Code completion in its own popup:
 - **Complete statement** (Ctrl+Shift+Enter)
 - **Continue patterns** as ghost text
 - **Continue comments** on Enter
+- **Indentation while typing** (#1827, `smartIndent`, page *Typing aids*): after Enter Atlas works out with the formatter's block logic where the caret belongs: one level deeper after `begin`, `then`, `do`, `try`, `case` labels and sections, back after the single statement, inside an open parenthesis under the first argument. If the line above starts with `end`, `until`, `finally`, `except` or `else`, it moves to its counterpart. Enter inside a string closes it with `' +` and reopens it on the new line, indented or aligned (`smartIndent.splitStringsIndent`). If the file deviates from the style, Atlas follows its existing indentation. Ctrl+Z undoes just the indentation. Atlas never inserts `end;`.
 - **Move and duplicate lines** (Alt+↑/↓, Shift+Alt+↑/↓)
 - **Multiple cursors** *(experimental)*
 - **Linked editing of identifiers** *(experimental)*

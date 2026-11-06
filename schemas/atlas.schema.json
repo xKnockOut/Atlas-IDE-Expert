@@ -2769,6 +2769,55 @@
       "x-control": "Kontrollkästchen",
       "x-issue": "#66"
     },
+    "smartIndent": {
+      "type": "object",
+      "description": "Einrückung beim Tippen (#1827): Nach Enter rechnet Atlas mit derselben Blocklogik wie format.reindent aus, wo die Schreibmarke stehen soll. Atlas setzt kein end; ein, das macht der Blockabschluss der IDE; geändert werden nur Leerraum und beim String das Hochkomma und +. Breite einer Ebene und Tabulatoren nach format bzw. .editorconfig.",
+      "x-description-en": "Indentation while typing (#1827): after Enter Atlas computes where the cursor belongs, with the same block logic as format.reindent. Atlas never inserts end; (the IDE's block completion does that); only whitespace changes, and for a string the quote and +. Width of one level and tabs follow format or .editorconfig.",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Hauptschalter: false = keiner der Teile wirkt, die IDE rückt wie gewohnt ein.",
+          "x-description-en": "Main switch: false = none of the parts is active, the IDE indents as usual."
+        },
+        "afterEnter": {
+          "type": "boolean",
+          "default": true,
+          "description": "Neue Zeile nach der Blockstruktur einrücken: eine Ebene tiefer hinter then, else, do, begin, try, repeat, case-Marken, var/type/const und Sichtbarkeiten, nach der einzelnen Anweisung hinter then/do zurück, in einer offenen Klammer unter dem ersten Argument.",
+          "x-description-en": "Indent the new line by the block structure: one level deeper after then, else, do, begin, try, repeat, case labels, var/type/const and visibilities, back after the single statement behind then/do, inside an open parenthesis under the first argument.",
+          "x-issue": "#1828"
+        },
+        "outdentClosers": {
+          "type": "boolean",
+          "default": true,
+          "description": "Beginnt die Zeile vor Enter mit end, until, finally, except oder else, rückt Atlas sie auf die Spalte ihres Gegenstücks (begin, repeat, try, if).",
+          "x-description-en": "If the line before Enter starts with end, until, finally, except or else, Atlas moves it to the column of its counterpart (begin, repeat, try, if).",
+          "x-issue": "#1829"
+        },
+        "splitStrings": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enter in einem String schließt ihn mit ' + und öffnet ihn in der neuen Zeile wieder, statt einen offenen String (E2052) zu hinterlassen. Nicht in mehrzeiligen Strings (''').",
+          "x-description-en": "Enter inside a string closes it with ' + and reopens it on the new line instead of leaving an unterminated string (E2052). Not in multiline strings (''').",
+          "x-issue": "#1831"
+        },
+        "splitStringsIndent": {
+          "type": "string",
+          "enum": ["indent", "align"],
+          "default": "indent",
+          "description": "Fortsetzungszeile eines getrennten Strings: indent = eine Ebene tiefer als die Anweisung; align = unter dem ersten Argument der offenen Klammer, ohne Klammer unter dem ersten Wert hinter :=.",
+          "x-description-en": "Continuation line of a split string: indent = one level deeper than the statement; align = under the first argument of the open parenthesis, without parenthesis under the first value after :=.",
+          "x-control": "Auswahl",
+          "x-issue": "#1831"
+        }
+      },
+      "x-scope": "global",
+      "x-area": "codeActions",
+      "x-page": "Eingabehilfen",
+      "x-control": "Kontrollkästchen, Auswahl",
+      "x-issue": "#1827, #1828, #1829, #1831"
+    },
     "references": {
       "type": "object",
       "description": "Treffersicherheit von Verwendungen, Aufrufhierarchie und Umbenennen: Neben den sicheren (eindeutig aufgelösten) Stellen erscheinen erschlossene mit Grund, etwa Aufrufe über ein Interface oder in einem inaktiven {$IFDEF}-Zweig. Umbenennen ändert nur sichere Stellen und listet die erschlossenen.",

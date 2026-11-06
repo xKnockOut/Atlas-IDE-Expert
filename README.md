@@ -41,6 +41,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Templates:** code, postfix and class-aware templates, your own snippets, slash commands like `/uses` and `/extract`
 - **Generate menu** (Alt+Ins) and editing helpers: surround, move lines, toggle comments, tidy `var` blocks
 - **Formatter** (Ctrl+Shift+Alt+L), also without the IDE
+- **Indentation while typing:** after Enter the caret lands where the block structure puts it, `end`, `until`, `finally` and `else` move to their counterpart, and a string is split with `' +` when you break the line
 
 ### [Understanding](docs/features/en/Understanding.md)
 - **Hover** with declaration, XMLDoc, inheritance, constant values and debugger values

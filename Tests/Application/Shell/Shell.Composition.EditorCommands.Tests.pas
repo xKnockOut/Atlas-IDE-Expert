@@ -27,6 +27,9 @@ type
     /// prüft.</summary>
     [Test]
     procedure ToLiteralAsksForSettings;
+    /// <summary>atlas.server.smartIndent (#1827): falsche Argumente ergeben InvalidParams.</summary>
+    [Test]
+    procedure SmartIndentRejectsMissingLine;
   end;
 
 implementation
@@ -45,7 +48,8 @@ uses
   Atlas.Common.Lsp.QualifiedNames,
   Atlas.Common.Lsp.EnumValueCommands,
   Atlas.Common.Lsp.ResourceStringCommands,
-  Atlas.Common.Lsp.StringLiteralCommands;
+  Atlas.Common.Lsp.StringLiteralCommands,
+  Atlas.Common.Lsp.SmartIndent;
 
 procedure TShellEditorCommandsTests.Setup;
 begin
@@ -88,7 +92,7 @@ begin
     for mName in TArray<string>.Create(TLspExitPoints.Command, TLspReassigned.Command, TLspExpressionType.Command,
       TLspMethodOrder.Command, TLspOverrideMarks.Command, TQualifiedNames.Command, TEnumValueCommands.Command,
       TResourceStringCommands.AddCommand, TStringLiteralCommands.PlainTextCommand,
-      TStringLiteralCommands.ToLiteralCommand) do
+      TStringLiteralCommands.ToLiteralCommand, TLspSmartIndent.Command) do
     begin
       Assert.IsTrue(Pos('"' + mName + '"', mText) > 0, mName);
     end;
@@ -119,6 +123,32 @@ begin
         mResult.Free;
       end, EJsonRpcError);
     Assert.AreEqual(1, FLiteralCalls);
+  finally
+    mArguments.Free;
+    mCommands.Free;
+    mEditorCommands.Free;
+  end;
+end;
+
+procedure TShellEditorCommandsTests.SmartIndentRejectsMissingLine;
+var
+  mEditorCommands: TShellEditorCommands;
+  mCommands: TLspCommands;
+  mArguments: TJSONArray;
+  mResult: TJSONValue;
+begin
+  mEditorCommands := TShellEditorCommands.Create(NewServices);
+  mCommands := TLspCommands.Create;
+  mArguments := TJSONArray.Create;
+  try
+    mEditorCommands.RegisterTextCommands(mCommands);
+    mArguments.Add('file:///tmp/A.pas');
+    Assert.WillRaise(
+      procedure
+      begin
+        mResult := mCommands.Execute(TLspSmartIndent.Command, mArguments);
+        mResult.Free;
+      end, EJsonRpcError);
   finally
     mArguments.Free;
     mCommands.Free;

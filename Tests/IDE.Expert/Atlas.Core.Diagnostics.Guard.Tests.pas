@@ -620,6 +620,7 @@ begin
   Assert.AreEqual('Typ des Ausdrucks', TAtlasGuard.FeatureName(TAtlasFeature.ExpressionType));
   Assert.AreEqual('Methodenreihenfolge', TAtlasGuard.FeatureName(TAtlasFeature.MethodPlacement));
   Assert.AreEqual('Regionen falten', TAtlasGuard.FeatureName(TAtlasFeature.RegionFolds));
+  Assert.AreEqual('Einrückung beim Tippen', TAtlasGuard.FeatureName(TAtlasFeature.SmartIndent));
   Assert.AreEqual('Issue-Kennungen', TAtlasGuard.FeatureName(TAtlasFeature.IssueLinks));
   Assert.AreEqual('Issues in der Zeilenhistorie', TAtlasGuard.FeatureName(TAtlasFeature.BlameIssues));
   Assert.AreEqual('Code-Abfragen', TAtlasGuard.FeatureName(TAtlasFeature.Query));
