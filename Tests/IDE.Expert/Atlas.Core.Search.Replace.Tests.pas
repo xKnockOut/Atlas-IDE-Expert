@@ -51,7 +51,7 @@ type
     [Test]
     procedure PlanSkipsReadOnlyAndChangedFiles;
     [Test]
-    procedure RowsCarryPreviewOnlyWithRegex;
+    procedure RowsCarryPreview;
     [Test]
     procedure FollowSelectionSwitchesRegexOff;
     [Test]
@@ -346,7 +346,7 @@ begin
   end;
 end;
 
-procedure TAtlasSearchReplaceTests.RowsCarryPreviewOnlyWithRegex;
+procedure TAtlasSearchReplaceTests.RowsCarryPreview;
 var
   List: TAtlasReplaceList;
   Search: TAtlasSearchQuery;
@@ -367,11 +367,12 @@ begin
   finally
     List.Free;
   end;
-  Search := Query('Free', False, False, False, False);
+  // Ohne Regex: der gefundene Text (hier in anderer Schreibweise) und der Ersatz.
+  Search := Query('free', False, False, False, False);
   List := TAtlasReplaceList.Create(Search, 'Destroy');
   try
     List.Add(Hits('C:\P\Eins.pas', 'X.Free;', Search));
-    Assert.AreEqual('', List.Rows[1].Preview, 'Vorschau nur mit Regex');
+    Assert.AreEqual('Free → Destroy', List.Rows[1].Preview, 'Vorschau auch ohne Regex');
   finally
     List.Free;
   end;
