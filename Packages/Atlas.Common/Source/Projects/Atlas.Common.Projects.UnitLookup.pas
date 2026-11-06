@@ -12,7 +12,8 @@
 //   3. Ordner der verwendenden Datei, Projektordner, Suchpfade der .dproj,
 //      DCU-Ausgabeordner, Bibliothekspfade der Installation; je Ordner Name.pas
 //      oder Name.dcu, auch mit jedem Unit-Namespace davor (SysUtils →
-//      System.SysUtils)
+//      System.SysUtils); ein Unit-Alias (WinTypes → Winapi.Windows,
+//      TUnitAliases) wird ebenso gesucht
 //   3a. Units, die ein anderes Projekt der Projektgruppe in einen dieser Ordner
 //      übersetzt (DCC_DcuOutput): Die Gruppe baut es vorher, auch wenn die .dcu
 //      für Plattform oder Konfiguration noch fehlt
@@ -36,6 +37,7 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   Atlas.Common.Projects.Contract,
+  Atlas.Common.Projects.UnitAliases,
   Atlas.Common.Rules.Contract;
 
 type
@@ -91,6 +93,8 @@ type
     MaxFolderDepth = 4;
   private
     FSetup: TUnitLookupSetup;
+    // Unit-Aliase des Projekts samt Vorgaben von Delphi; nach dem Konstruktor nur gelesen.
+    FAliases: TArray<TUnitAlias>;
     FProjectFolders: TArray<string>;
     FUncertain: Boolean;
     // Ordner für FindFile (#1379): FProjectFolders samt Include- und Ressourcenpfaden; nach dem Konstruktor nur
@@ -288,6 +292,7 @@ var
 begin
   inherited Create;
   FSetup := ASetup;
+  FAliases := TUnitAliases.OfProject(ASetup.Project);
   FLock := TObject.Create;
   FListings := TObjectDictionary<string, TDictionary<string, string>>.Create([doOwnsValues]);
   // Einmal je Projekt statt je uses-Eintrag und Namespace über alle Units (#1342).
@@ -363,12 +368,21 @@ end;
 
 function TUnitLookup.Candidates(const AUnitName: string): TArray<string>;
 var
-  Namespace: string;
+  mNamespace, mTarget: string;
 begin
   Result := [AUnitName];
-  for Namespace in FSetup.Project.Namespaces do
+  for mNamespace in FSetup.Project.Namespaces do
   begin
-    Result := Result + [Namespace + '.' + AUnitName];
+    Result := Result + [mNamespace + '.' + AUnitName];
+  end;
+  // dcc ersetzt einen Alias durch seine Unit und sucht diese wie jede andere (WinTypes → Winapi.Windows).
+  if TUnitAliases.Target(FAliases, AUnitName, mTarget) then
+  begin
+    Result := Result + [mTarget];
+    for mNamespace in FSetup.Project.Namespaces do
+    begin
+      Result := Result + [mNamespace + '.' + mTarget];
+    end;
   end;
 end;
 
