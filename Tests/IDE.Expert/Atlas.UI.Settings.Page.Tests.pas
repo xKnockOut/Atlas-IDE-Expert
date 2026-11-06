@@ -100,7 +100,6 @@ uses
   System.StrUtils,
   Vcl.Graphics,
   Vcl.Controls,
-  Vcl.Graphics,
   Vcl.Menus,
   Vcl.Forms,
   Vcl.ComCtrls,

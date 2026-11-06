@@ -59,6 +59,7 @@ uses
   Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Editing.CodeActions,
   Atlas.Common.Editing.ClassBodies,
+  Atlas.Common.Editing.TypeComments,
   Atlas.Common.Editing.ClassCompletion,
   Atlas.Common.Editing.ClassMembers,
   Atlas.Common.Editing.CommandSource,
@@ -1213,7 +1214,8 @@ begin
 end;
 
 /// <summary>Deklaration und Rumpf für die fehlende Methode AMember; nil, wenn sie sich nicht erzeugen lässt.</summary>
-function MemberEdits(const ATarget: TIntfTarget; const AMember: TResolvedSymbol): TArray<TTextEdit>;
+function MemberEdits(const ATarget: TIntfTarget; const AMember: TResolvedSymbol;
+  const AOptions: TClassBodyOptions): TArray<TTextEdit>;
 var
   mLines: TArray<string>;
   mStub: TInterfaceStub;
@@ -1230,7 +1232,7 @@ begin
   end;
   Result := TInterfaceStubs.ClassEdits(mStub, ATarget.EndLine, ATarget.Indent, ATarget.Section, ATarget.NeedHeader,
     mSource.LineBreak);
-  if TClassCompletion.BodyEdit(mSource.Tree, mSource.Text, ATarget.TypeName, mStub.Body, mEdit) then
+  if TClassCompletion.BodyEdit(mSource.Tree, mSource.Text, ATarget.TypeName, mStub.Body, AOptions, mEdit) then
   begin
     Result := Result + [mEdit];
   end
@@ -1244,6 +1246,7 @@ end;
 function IntfEdits(ASource: TCommandSource; const AContext: TSlashContext; const AName: string;
   out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
+  mOptions: TClassBodyOptions;
   mClass: TIndexSymbol;
   mTarget: TIntfTarget;
   mOwn: TUnitIndex;
@@ -1272,9 +1275,12 @@ begin
     Exit(Fail(cTexts[TClassCommandsText.IsAlreadyAttachedToAnd].Fmt([AName, mClass.Name]), AReason));
   end;
   mEdits := nil;
+  mOptions := TClassBodyOptions.Default;
   for mMember in mMissing do
   begin
-    mEdits := mEdits + MemberEdits(mTarget, mMember);
+    mEdits := mEdits + MemberEdits(mTarget, mMember, mOptions);
+    // Jede Methode sieht denselben Ausgangstext: Den Typkommentar bekommt nur die erste.
+    mOptions.TypeComment := TTypeCommentStyle.Off;
   end;
   if not mListed and not HeaderEdit(ASource, mClass, AName, mEdit) then
   begin
