@@ -11,19 +11,26 @@
 // - Refresh füllt den Frame bei neuem Stand (oder erzwungen).
 // - Report liefert den Abschnitt für Bericht und letzte Diagnosedaten; ''
 //   bei ausgeschalteter Messung.
+// - Modale Dialoge (Application.OnModalBegin/OnModalEnd) meldet die Instanz
+//   dem Rekorder: Ihre Zeit zählt nicht als Belegung des Hauptthreads.
 
 interface
 
 uses
   System.SysUtils,
+  Vcl.AppEvnts,
   Atlas.UI.Diagnostics.PluginFrame;
 
 type
   TAtlasIdePluginTimings = class
   private
     FShownVersion: Integer;
+    FEvents: TApplicationEvents;
+    procedure ModalBegin(Sender: TObject);
+    procedure ModalEnd(Sender: TObject);
   public
     constructor Create;
+    destructor Destroy; override;
     /// <summary>Messung nach dem Diagnosemodus (AModeOn) und den Einstellungen; Frame nach Bedarf anpassen.
     /// </summary>
     procedure Apply(AModeOn: Boolean; AFrame: TAtlasDiagnosticsFrame);
@@ -48,6 +55,10 @@ uses
   Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.Settings;
 
+const
+  // Protokollzeile (nicht übersetzt, wie das übrige Protokoll).
+  cLogTimingsOn = 'Diagnosemodus: Plugin-Zeiten werden gemessen';
+
 procedure Fill(AFrame: TAtlasDiagnosticsFrame);
 begin
   AFrame.SetSnapshot(TAtlasPluginTimings.Shared.Snapshot, TAtlasTimeLimit.BusyCount);
@@ -59,6 +70,31 @@ constructor TAtlasIdePluginTimings.Create;
 begin
   inherited Create;
   FShownVersion := -1;
+  FEvents := TApplicationEvents.Create(nil);
+  FEvents.OnModalBegin := ModalBegin;
+  FEvents.OnModalEnd := ModalEnd;
+end;
+
+destructor TAtlasIdePluginTimings.Destroy;
+begin
+  FEvents.Free;
+  inherited;
+end;
+
+procedure TAtlasIdePluginTimings.ModalBegin(Sender: TObject);
+begin
+  if TAtlasPluginTimings.Enabled then
+  begin
+    TAtlasPluginTimings.Shared.ModalBegin;
+  end;
+end;
+
+procedure TAtlasIdePluginTimings.ModalEnd(Sender: TObject);
+begin
+  if TAtlasPluginTimings.Enabled then
+  begin
+    TAtlasPluginTimings.Shared.ModalEnd;
+  end;
 end;
 
 procedure TAtlasIdePluginTimings.Apply(AModeOn: Boolean; AFrame: TAtlasDiagnosticsFrame);
@@ -71,7 +107,7 @@ begin
   if mWanted and not TAtlasPluginTimings.Enabled then
   begin
     TAtlasPluginTimings.Shared.Reset;
-    TAtlasGuard.Log('Diagnosemodus: Plugin-Zeiten werden gemessen');
+    TAtlasGuard.Log(cLogTimingsOn);
   end;
   TAtlasPluginTimings.Shared.ThresholdMs := mSettings.DiagnosticSlowMs;
   TAtlasPluginTimings.Enabled := mWanted;
