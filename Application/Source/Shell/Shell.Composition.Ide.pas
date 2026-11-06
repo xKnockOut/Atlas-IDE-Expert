@@ -2,7 +2,8 @@
 
 // Internals-Rolle Shell: Nachrichten aus der IDE. Compilermeldungen aus dem Meldungsfenster (#528), der letzte
 // Build für den MCP-Prozess (#556), die Pause der Projektprüfung während eines Compiles (#1247), der
-// Projektkontext (#396), der betroffene Projekte neu lädt, und neue Präfixe aus .atlas (#1111).
+// Projektkontext (#396), der betroffene Projekte neu lädt, neue Präfixe aus .atlas (#1111) und die Typen aus den
+// Packages der IDE (atlas/ideTypes), nach denen offene Dateien neu geprüft werden.
 
 interface
 
@@ -12,6 +13,7 @@ uses
   Atlas.Common.JsonRpc.Dispatcher,
   Atlas.Common.Lsp.IdeBuild,
   Atlas.Common.Lsp.IdeProject,
+  Atlas.Common.Lsp.IdeTypes,
   Shell.Workspace,
   Shell.Composition.Workspaces;
 
@@ -30,6 +32,8 @@ type
     Compiling: TShellIdeCompilingProc;
     /// <summary>Namenskonvention geändert: offene Dateien neu prüfen.</summary>
     NamingChanged: TShellIdeRefreshProc;
+    /// <summary>Typen der IDE geändert: offene Dateien neu prüfen.</summary>
+    TypesChanged: TShellIdeRefreshProc;
   end;
 
   /// <summary>Build und Projektkontext aus der IDE.</summary>
@@ -38,6 +42,7 @@ type
     FServices: TShellIdeServices;
     FBuild: TLspIdeBuild;
     FProject: TLspIdeProject;
+    FTypes: TLspIdeTypes;
     procedure MessagesReceived(const AMessages: TArray<TCompilerMessage>);
     /// <summary>Ordner des Projekts für die Build-Datei: Wurzel des Arbeitsbereichs, sonst der Projektordner.
     /// </summary>
@@ -48,6 +53,7 @@ type
     function WorkspacesOfProject(const AProject: string): TArray<TShellWorkspace>;
     procedure ProjectChanged(const AContext: TIdeProjectContext);
     procedure NamingChanged(const AContext: TIdeProjectContext);
+    procedure TypesChanged(ACount: Integer);
   public
     constructor Create(const AServices: TShellIdeServices);
     destructor Destroy; override;
@@ -55,6 +61,8 @@ type
     procedure Attach(ADispatcher: TJsonRpcDispatcher);
     property Build: TLspIdeBuild read FBuild;
     property Project: TLspIdeProject read FProject;
+    /// <summary>Typen aus den Packages der IDE (atlas/ideTypes).</summary>
+    property Types: TLspIdeTypes read FTypes;
   end;
 
 implementation
@@ -84,12 +92,17 @@ begin
   FProject.OnChanged := ProjectChanged;
   // Neue Präfixe aus .atlas (#1111): naming-prefix und shadowed-name prüfen neu, das Projekt bleibt geladen.
   FProject.OnNamingChanged := NamingChanged;
+  // Typen aus den Packages der IDE: unresolved-type und unresolved-identifier schweigen für sie, offene Dateien
+  // prüfen neu.
+  FTypes := TLspIdeTypes.Create;
+  FTypes.OnChanged := TypesChanged;
 end;
 
 destructor TShellIde.Destroy;
 begin
   FreeAndNil(FBuild);
   FreeAndNil(FProject);
+  FreeAndNil(FTypes);
   inherited Destroy;
 end;
 
@@ -97,6 +110,7 @@ procedure TShellIde.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   FBuild.Attach(ADispatcher);
   FProject.Attach(ADispatcher);
+  FTypes.Attach(ADispatcher);
 end;
 
 procedure TShellIde.MessagesReceived(const AMessages: TArray<TCompilerMessage>);
@@ -183,6 +197,15 @@ end;
 procedure TShellIde.NamingChanged(const AContext: TIdeProjectContext);
 begin
   FServices.NamingChanged();
+end;
+
+procedure TShellIde.TypesChanged(ACount: Integer);
+begin
+  FServices.Logger.Info(Format('IDE-Typen: %d', [ACount]));
+  if Assigned(FServices.TypesChanged) then
+  begin
+    FServices.TypesChanged();
+  end;
 end;
 
 end.

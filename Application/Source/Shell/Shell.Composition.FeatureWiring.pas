@@ -30,6 +30,7 @@ uses
   System.JSON,
   Atlas.Common.Lsp.ApplyEdit,
   Atlas.Common.Lsp.IdeProject,
+  Atlas.Common.Lsp.IdeTypes,
   Atlas.Common.Lsp.TestUnits,
   Atlas.Common.Editing.Contract,
   Atlas.Common.Compiler.Contract,
@@ -122,6 +123,11 @@ begin
     function(const AProjectFile: string; out AContext: TIdeProjectContext): Boolean
     begin
       Result := AParts.IdeArea.Ide.Project.Find(AProjectFile, AContext);
+    end;
+  mServices.IdeTypesFor :=
+    function: TArray<TIdeTypeEntry>
+    begin
+      Result := AParts.IdeArea.Ide.Types.Catalog.Entries;
     end;
   mServices.VisitWorkspaces :=
     procedure(const AVisit: TShellWorkspacesProc)

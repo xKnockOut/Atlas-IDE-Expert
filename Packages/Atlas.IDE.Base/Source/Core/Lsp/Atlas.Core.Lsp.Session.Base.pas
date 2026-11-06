@@ -22,6 +22,7 @@ uses
   Atlas.Core.InlayHints.Store,
   Atlas.Core.Lsp.TextChanges,
   Atlas.Core.Lsp.WorkspaceEdits,
+  Atlas.Core.Lsp.IdeTypes,
   Atlas.Core.Lsp.Session.Json;
 
 type
@@ -62,6 +63,8 @@ type
     FOnCrashNotification: TLspCrashNotificationProc;
     FInitializeOptions: TLspInitializeOptions;
     FServerVersion: string;
+    /// <summary>Typen der IDE für atlas/ideTypes, solange initialize noch aussteht; nil ohne.</summary>
+    FIdeTypes: TJSONObject;
     procedure SyncLocked(const AFileName, AText: string);
     procedure CloseLocked(const AFileName: string);
     /// <summary>Lese-Thread-Empfänger setzen; fängt nur Zähler, Client und Callbacks ein, nie Self.</summary>
@@ -91,6 +94,9 @@ type
     /// gleich mit seinem Kontext geladen wird. Ergebnis: die neu gemeldeten oder für initialize
     /// gemerkten Kontexte (fürs Diagnoseprotokoll).</summary>
     function SetProjectContexts(const AContexts: TArray<TAtlasProjectContext>): TArray<TAtlasProjectContext>;
+    /// <summary>Typen aus den geladenen Packages der IDE als atlas/ideTypes; jede Meldung ersetzt den Stand beim
+    /// Server. Vor Initialize nur gemerkt und gleich nach initialized geschickt.</summary>
+    procedure SetIdeTypes(const ATypes: TArray<TAtlasIdeType>);
     procedure Initialize;
     /// <summary>Vor Initialize setzen (#397): workspace/applyEdit des Servers annehmen.</summary>
     property OnApplyEdit: TLspApplyEditProc read FOnApplyEdit write FOnApplyEdit;
@@ -297,6 +303,7 @@ end;
 
 destructor TLspSessionBase.Destroy;
 begin
+  FIdeTypes.Free;
   FSentContexts.Free;
   FDocuments.Free;
   FDocLock.Free;
@@ -331,6 +338,22 @@ begin
   end;
   FClient.Notify('initialized', TJSONObject.Create);
   FInitialized := True;
+  if FIdeTypes <> nil then
+  begin
+    FClient.Notify(TAtlasIdeTypes.Method, FIdeTypes);
+    FIdeTypes := nil;
+  end;
+end;
+
+procedure TLspSessionBase.SetIdeTypes(const ATypes: TArray<TAtlasIdeType>);
+begin
+  if FInitialized then
+  begin
+    FClient.Notify(TAtlasIdeTypes.Method, TAtlasIdeTypes.ToJson(ATypes));
+    Exit;
+  end;
+  FIdeTypes.Free;
+  FIdeTypes := TAtlasIdeTypes.ToJson(ATypes);
 end;
 
 procedure TLspSessionBase.Sync(const AFileName, AText: string);

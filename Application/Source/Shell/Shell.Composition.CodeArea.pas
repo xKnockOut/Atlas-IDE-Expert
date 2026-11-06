@@ -17,6 +17,7 @@ uses
   Atlas.Common.Projects.MissingUnit,
   Atlas.Common.Lsp.IdeProject,
   Atlas.Common.Lsp.Completion,
+  Atlas.Common.Lsp.Completion.Hooks,
   Atlas.Common.Lsp.Refactorings,
   Shell.Workspace,
   Shell.Composition.Contract,
@@ -45,6 +46,8 @@ type
     RuleIdsFor: TSlashRuleIdsFunc;
     MessagesFor: TShellCompilerMessagesFunc;
     IdeProjectFor: TShellCodeIdeProjectFunc;
+    /// <summary>Typen aus den Packages der IDE (atlas/ideTypes) für die Vervollständigung.</summary>
+    IdeTypesFor: TCompletionIdeTypesFunc;
     VisitWorkspaces: TShellVisitWorkspacesProc;
     Notify: TCompletionNotifyProc;
     Log: TCompletionLogProc;
@@ -298,6 +301,7 @@ begin
   Result.SlashCommandsFor := mCore.FileOptions.SlashCommands();
   Result.RuleIdsFor := FServices.RuleIdsFor;
   Result.NamingFor := NamingPrefixFor;
+  Result.IdeTypesFor := FServices.IdeTypesFor;
   Result.HintsFor :=
     function(const AUri: string): THintSettings
     begin

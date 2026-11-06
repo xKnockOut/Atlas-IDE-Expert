@@ -23,7 +23,8 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Semantics.NameResolver,
-  Atlas.Common.Lsp.Documentation;
+  Atlas.Common.Lsp.Documentation,
+  Atlas.Common.Lsp.IdeTypes;
 
 type
   TCompletionContextKind = (None, Scope, Member, UsesClause);
@@ -265,6 +266,7 @@ type
     FLinesReady: Boolean;
     FUnitIndex: TUnitIndex;
     FUnitIndexReady: Boolean;
+    FIdeTypes: TArray<TIdeTypeEntry>;
     procedure SetTree(AValue: TSyntaxTree);
     procedure SetResolver(AValue: TNameResolver);
   public
@@ -301,6 +303,8 @@ type
     property Settings: TCompletionSettings read FSettings write FSettings;
     /// <summary>context.triggerCharacter der Anfrage; '' ohne.</summary>
     property Trigger: string read FTrigger write FTrigger;
+    /// <summary>Typen aus den Packages der IDE (atlas/ideTypes), auch ohne Quelltext; nil ohne Plugin.</summary>
+    property IdeTypes: TArray<TIdeTypeEntry> read FIdeTypes write FIdeTypes;
   end;
 
 /// <summary>Zeilen von AText ohne Zeilenende (getrennt an LF, ein CR davor fällt weg).</summary>
