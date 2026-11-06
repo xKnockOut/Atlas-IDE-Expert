@@ -39,6 +39,10 @@ type
     procedure BusyCountsOnlyOutermostCall;
     [Test]
     procedure BusySplitsAtSecondBoundary;
+    /// <summary>Ein offener modaler Dialog zählt weder als eigene Zeit noch als Belegung; Aufrufe darin zählen
+    /// für sich.</summary>
+    [Test]
+    procedure ModalDialogIsNotOwnTime;
     [Test]
     procedure OtherThreadsAreNotMeasured;
     [Test]
@@ -181,6 +185,40 @@ begin
   Assert.AreEqual(1, Integer(Length(mSnapshot.Busy)), 'eine abgeschlossene Sekunde');
   Assert.AreEqual(50.0, mSnapshot.Busy[0], 0.001);
   Assert.AreEqual(50.0, mSnapshot.BusyPercent, 0.001);
+end;
+
+procedure TAtlasPluginTimingsTests.ModalDialogIsNotOwnTime;
+var
+  mOuter, mInner: Integer;
+  mSnapshot: TAtlasPluginSnapshot;
+  mTiming: TAtlasFeatureTiming;
+begin
+  mOuter := FRecorder.Enter;
+  FClockUs := 10000;
+  FRecorder.ModalBegin;
+  FClockUs := 20000;
+  mInner := FRecorder.Enter;
+  FClockUs := 30000;
+  FRecorder.Leave(TAtlasFeature.Hover, mInner);
+  FClockUs := 5010000;
+  FRecorder.ModalEnd;
+  FClockUs := 5015000;
+  Call(mOuter);
+  FClockUs := 6000000;
+  mSnapshot := FRecorder.Snapshot;
+  for mTiming in mSnapshot.Features do
+  begin
+    if mTiming.Feature = TAtlasFeature.Hover then
+    begin
+      Assert.AreEqual(10.0, mTiming.Stat.TotalMs, 0.001, 'Aufruf im Dialog');
+    end
+    else
+    begin
+      Assert.AreEqual(15.0, mTiming.Stat.TotalMs, 0.001, 'ohne die Zeit des Dialogs');
+    end;
+  end;
+  Assert.AreEqual(1.5, mSnapshot.Busy[0], 0.001, 'Belegung ohne Dialog');
+  Assert.AreEqual(0.0, mSnapshot.Busy[5], 0.001);
 end;
 
 procedure TAtlasPluginTimingsTests.BusySplitsAtSecondBoundary;
