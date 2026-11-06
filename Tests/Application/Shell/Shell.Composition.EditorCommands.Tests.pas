@@ -23,6 +23,10 @@ type
     /// <summary>Markierungs- und Textbefehle stehen in executeCommandProvider.</summary>
     [Test]
     procedure RegistersAllCommands;
+    /// <summary>Lesende Befehle laufen nebenläufig, schreibende in der Reihenfolge der Nachrichten (Diagnose
+    /// 06.11.2026).</summary>
+    [Test]
+    procedure ReadingCommandsRunConcurrently;
     /// <summary>„Text in Literal“ fragt die Einstellungen der Datei über den Dienst ab, bevor es die Argumente
     /// prüft.</summary>
     [Test]
@@ -151,6 +155,34 @@ begin
       end, EJsonRpcError);
   finally
     mArguments.Free;
+    mCommands.Free;
+    mEditorCommands.Free;
+  end;
+end;
+
+procedure TShellEditorCommandsTests.ReadingCommandsRunConcurrently;
+var
+  mEditorCommands: TShellEditorCommands;
+  mCommands: TLspCommands;
+  mName: string;
+begin
+  mEditorCommands := TShellEditorCommands.Create(NewServices);
+  mCommands := TLspCommands.Create;
+  try
+    mEditorCommands.RegisterMarkCommands(mCommands);
+    mEditorCommands.RegisterTextCommands(mCommands);
+    for mName in TArray<string>.Create(TLspExitPoints.Command, TLspReassigned.Command,
+      TLspExpressionType.Command, TLspMethodOrder.Command, TLspOverrideMarks.Command, TQualifiedNames.Command,
+      TEnumValueCommands.Command, TStringLiteralCommands.PlainTextCommand, TStringLiteralCommands.ToLiteralCommand,
+      TLspSmartIndent.Command) do
+    begin
+      Assert.IsTrue(mCommands.IsConcurrentCommand(mName), mName);
+    end;
+    for mName in TArray<string>.Create(TResourceStringCommands.AddCommand) do
+    begin
+      Assert.IsFalse(mCommands.IsConcurrentCommand(mName), mName);
+    end;
+  finally
     mCommands.Free;
     mEditorCommands.Free;
   end;
