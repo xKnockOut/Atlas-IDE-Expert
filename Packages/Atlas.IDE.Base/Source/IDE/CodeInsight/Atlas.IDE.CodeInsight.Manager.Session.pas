@@ -105,7 +105,6 @@ uses
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Projects.Context,
   Atlas.IDE.Outline.Cache,
-  Atlas.UI.Strings,
   Atlas.IDE.CodeInsight.Manager.Paths,
   Atlas.IDE.CodeInsight.Manager.Handlers,
   Atlas.IDE.CodeInsight.IdeTypes,
@@ -133,19 +132,6 @@ const
 function UiText(AId: TSessionText): string;
 begin
   Result := cTexts[TAtlasTextLanguage.Current, AId];
-end;
-
-/// <summary>Sprache der Oberfläche für den Server (#1458): Befunde, Code-Aktionen und Hover wie die Oberfläche.</summary>
-function InterfaceLocale: string;
-begin
-  if TAtlasStrings.Language = TAtlasLanguage.English then
-  begin
-    Result := 'en';
-  end
-  else
-  begin
-    Result := 'de';
-  end;
 end;
 
 constructor TAtlasCodeInsightSession.Create(const AAdapters: TAtlasCodeInsightAdapters);
@@ -368,7 +354,10 @@ var
   mProjects: TArray<string>;
 begin
   FSession := TLspSession.Create(FServer.Client);
-  FSession.InitializeOptions := TLspInitializeOptions.ForLocale(InterfaceLocale);
+  // Sprache der Oberfläche (#1458): Befunde, Code-Aktionen und Hover wie die Oberfläche; ohne "language" in
+  // settings.json entscheidet allein diese Angabe.
+  FSession.InitializeOptions := TLspInitializeOptions.ForLocale(TAtlasTextLanguage.Code);
+  Diagnose('initialize mit locale ' + TAtlasTextLanguage.Code);
   FContextsChecked := 0;
   RefreshContexts;
   AcceptNotifications(FSession);

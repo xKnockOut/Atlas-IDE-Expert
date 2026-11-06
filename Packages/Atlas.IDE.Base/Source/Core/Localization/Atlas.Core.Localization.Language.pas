@@ -39,9 +39,34 @@ type
     /// <summary>Meldet eine Tabelle an (nur im initialization-Teil).</summary>
     class procedure AddTable(const AName: string; const AGerman, AEnglish: array of string); static;
     class function Tables: TArray<TAtlasTextTableEntry>; static;
+    /// <summary>Kennung der aktuellen Sprache für den Server (#1458): "de" oder "en" (initialize.locale,
+    /// --locale).</summary>
+    class function Code: string; static;
+  end;
+
+  /// <summary>Woher die Sprache der IDE stammt (#446, Protokollzeile beim Laden).</summary>
+  TAtlasIdeLanguageSource = (Resources, Registry, Windows, Fallback);
+
+  /// <summary>Erkannte Sprache der IDE samt Quelle und gelesenem Wert.</summary>
+  TAtlasIdeLanguage = record
+    Language: TAtlasLanguage;
+    Source: TAtlasIdeLanguageSource;
+    /// <summary>Gelesener Wert der Quelle (Endung der Ressourcen, Eintrag der Registry); sonst ''.</summary>
+    Value: string;
+    /// <summary>Sprache aus dem, was die IDE zeigt (#446): Endung der geladenen Ressourcen-DLLs der IDE
+    /// (coreide370.de), sonst Eintrag für bds.exe unter Software\Embarcadero\Locales (BDSSetLang, Installer),
+    /// sonst die Anzeigesprache von Windows (AWindowsGerman), sonst Englisch. Eine erkannte Sprache außer
+    /// Deutsch gilt als Englisch und entscheidet ebenso; leere Angaben überspringt die Wahl.</summary>
+    class function Decide(const AResourceCodes: TArray<string>; const ARegistered: string;
+      AWindowsGerman: Boolean): TAtlasIdeLanguage; static;
+    /// <summary>Kurzbeschreibung für atlas.log, etwa „de (Ressourcen: DE)“.</summary>
+    function Describe: string;
   end;
 
 implementation
+
+uses
+  System.SysUtils;
 
 function Copied(const ATexts: array of string): TArray<string>;
 var
@@ -74,6 +99,94 @@ end;
 class function TAtlasTextLanguage.Tables: TArray<TAtlasTextTableEntry>;
 begin
   Result := FTables;
+end;
+
+class function TAtlasTextLanguage.Code: string;
+begin
+  if FCurrent = TAtlasLanguage.English then
+  begin
+    Result := 'en';
+  end
+  else
+  begin
+    Result := 'de';
+  end;
+end;
+
+/// <summary>Sprachteil einer Kennung in Großbuchstaben: „de-DE“ → „DE“, „DEU“ bleibt „DEU“.</summary>
+function PrimaryCode(const ACode: string): string;
+var
+  mIndex: Integer;
+begin
+  Result := '';
+  for mIndex := 1 to Length(ACode) do
+  begin
+    if not CharInSet(ACode[mIndex], ['A'..'Z', 'a'..'z']) then
+    begin
+      Break;
+    end;
+    Result := Result + UpCase(ACode[mIndex]);
+  end;
+end;
+
+/// <summary>Sprache zu ACode; False bei leerer Kennung.</summary>
+function TryLanguageOf(const ACode: string; out ALanguage: TAtlasLanguage): Boolean;
+var
+  mPrimary: string;
+begin
+  mPrimary := PrimaryCode(Trim(ACode));
+  Result := mPrimary <> '';
+  ALanguage := TAtlasLanguage.English;
+  if (mPrimary = 'DE') or (mPrimary = 'DEU') then
+  begin
+    ALanguage := TAtlasLanguage.German;
+  end;
+end;
+
+{ TAtlasIdeLanguage }
+
+class function TAtlasIdeLanguage.Decide(const AResourceCodes: TArray<string>; const ARegistered: string;
+  AWindowsGerman: Boolean): TAtlasIdeLanguage;
+var
+  mCode: string;
+begin
+  Result := Default(TAtlasIdeLanguage);
+  for mCode in AResourceCodes do
+  begin
+    if TryLanguageOf(mCode, Result.Language) then
+    begin
+      Result.Source := TAtlasIdeLanguageSource.Resources;
+      Result.Value := Trim(mCode);
+      Exit;
+    end;
+  end;
+  if TryLanguageOf(ARegistered, Result.Language) then
+  begin
+    Result.Source := TAtlasIdeLanguageSource.Registry;
+    Result.Value := Trim(ARegistered);
+    Exit;
+  end;
+  Result.Source := TAtlasIdeLanguageSource.Fallback;
+  Result.Language := TAtlasLanguage.English;
+  if AWindowsGerman then
+  begin
+    Result.Source := TAtlasIdeLanguageSource.Windows;
+    Result.Language := TAtlasLanguage.German;
+  end;
+end;
+
+function TAtlasIdeLanguage.Describe: string;
+const
+  cLanguages: array[TAtlasLanguage] of string = ('de', 'en');
+  cSources: array[TAtlasIdeLanguageSource] of string = ('Ressourcen', 'Registry Locales', 'Windows',
+    'Vorgabe');
+begin
+  Result := cLanguages[Language] + ' (' + cSources[Source];
+  if Value <> '' then
+  begin
+    Result := Result + ': ' + Value;
+  end;
+  Result := Result + ')';
 end;
 
 initialization
