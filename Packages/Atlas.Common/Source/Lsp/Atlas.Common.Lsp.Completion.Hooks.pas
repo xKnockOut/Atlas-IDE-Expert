@@ -17,6 +17,7 @@ uses
   Atlas.Common.Lsp.Documentation,
   Atlas.Common.Lsp.ConditionalSymbols,
   Atlas.Common.Lsp.CompletionRequest,
+  Atlas.Common.Lsp.IdeTypes,
   Atlas.Common.Lsp.Completion.Names,
   Atlas.Common.Lsp.Completion.Postfix;
 
@@ -43,6 +44,9 @@ type
   /// Angebot (bekannter Name, kein Aufruf, abgeschaltet).</summary>
   TCompletionCreateFunc = reference to function(ARequest: TCompletionRequest; out ATitle, ADetail: string;
     out AEdits: TArray<TTextEdit>): Boolean;
+
+  /// <summary>Typen aus den Packages der IDE (atlas/ideTypes) für die Vervollständigung.</summary>
+  TCompletionIdeTypesFunc = reference to function: TArray<TIdeTypeEntry>;
 
   /// <summary>Rückrufe und Schalter einer TLspCompletion. Die Felder setzt die Komposition vor der ersten Anfrage;
   /// Namensräume und eigene Postfix-Vorlagen können sich danach ändern und sind gesperrt.</summary>
@@ -83,6 +87,8 @@ type
     /// <summary>Bedingte Symbole in Direktiven und Schalter directives.completion (#102); ohne Zuweisung an,
     /// nur mit den Symbolen der Datei.</summary>
     SymbolsFor: TConditionalContextFunc;
+    /// <summary>Typen aus den Packages der IDE, auch ohne Quelltext; ohne Zuweisung keine.</summary>
+    IdeTypesFor: TCompletionIdeTypesFunc;
     /// <summary>Für Teilergebnisse über $/progress (#616); ohne Zuweisung kommt alles in der Antwort.</summary>
     Notify: TCompletionNotifyProc;
     /// <summary>Zeiten je Anfrage (#616); ohne Zuweisung keine Messung.</summary>
