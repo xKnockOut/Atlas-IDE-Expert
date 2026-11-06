@@ -24,6 +24,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Semantics.NameResolver,
+  Atlas.Common.Lsp.IdeTypes,
   Atlas.Common.Lsp.CompletionRequest;
 
 const
@@ -142,6 +143,10 @@ type
     /// <summary>Nur die Symbole namens ANames aus nicht eingebundenen Units (#465: bekannte Attributklassen schon
     /// nach "[" ohne Eingabe); der Name muss zum getippten Anfang passen.</summary>
     procedure AddFromOtherUnits(const ANames: TArray<string>); overload;
+    /// <summary>Typen aus den Packages der IDE (TCompletionRequest.IdeTypes), die weder die Liste noch der Index
+    /// bringt: aus eingebundenen Units ohne Quelltext direkt, sonst mit uses-Eintrag wie Bibliotheks-Importe.
+    /// Ohne Vorfilter (SetAdmit), denn die Art des Typs ist unbekannt.</summary>
+    procedure AddIdeTypes;
     /// <summary>Gleichnamige Bezeichner aus anderen Units (#475): je Eintrag aus einer eingebundenen Unit, dessen
     /// Name weitere Units deklarieren, diese Varianten direkt dahinter; der Eintrag selbst trägt „aktiv“.
     /// Nach den Units aus uses aufrufen, vor dem Senden ihrer Stufe.</summary>
@@ -201,7 +206,16 @@ uses
   Atlas.Common.Editing.InterfaceStubs,
   Atlas.Common.Lsp.FuzzyMatch,
   Atlas.Common.Lsp.CompletionSameNames,
-  Atlas.Text.Fuzzy;
+  Atlas.Text.Fuzzy,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TCompletionCollectorText = (AddToUses);
+
+const
+  cTexts: array[TCompletionCollectorText] of TAtlasText = (
+    (De: ' (uses ergänzen)'; En: ' (add to uses)'));
 
 const
   // Kürzel über Wortanfänge (#882): zwischen Anfang (TFuzzyMatch, ab etwa 3000) und Teilwort (höchstens
@@ -1139,7 +1153,8 @@ begin
   mMember.FileName := AUnitInfo.FileName;
   mMember.SelectionRange.StartPos := ASymbol.SelectionRange.StartPos;
   // Gleichnamige Symbole verschiedener Units bleiben alle wählbar.
-  Result := ACollector.Add(ASymbol.Name, AUnitInfo.UnitName + ' (uses ergänzen)', CompletionKindOf(ASymbol.Kind),
+  Result := ACollector.Add(ASymbol.Name, AUnitInfo.UnitName + cTexts[TCompletionCollectorText.AddToUses].Text,
+    CompletionKindOf(ASymbol.Kind),
     ImportPenalty(AUnitInfo), mMember, [AEdit]);
 end;
 
@@ -1220,6 +1235,59 @@ begin
     AddImports(Self, mWanted);
   finally
     mWanted.Free;
+  end;
+end;
+
+/// <summary>Eintrag für den IDE-Typ AType; AUsed: seine Unit steht schon im uses. False, wenn er nicht passt.
+/// </summary>
+function AddIdeType(ACollector: TCompletionCollector; const AType: TIdeTypeEntry; AUsed: Boolean): Boolean;
+var
+  mEdit: TRuleEdit;
+begin
+  if AUsed then
+  begin
+    Exit(ACollector.Add(AType.Name, AType.UnitName, KindClass, Default(TResolvedSymbol)));
+  end;
+  // Fest #13#10 wie bei AddImports.
+  Result := TUsesClauses.AddUnit(ACollector.FRequest.Tree.Tokens, ACollector.FContext.Offset, AType.UnitName,
+    #13#10, mEdit) and ACollector.Add(AType.Name, AType.UnitName + cTexts[TCompletionCollectorText.AddToUses].Text,
+    KindClass, PenaltyLibraryImport, Default(TResolvedSymbol), [mEdit]);
+end;
+
+procedure TCompletionCollector.AddIdeTypes;
+var
+  mKnown: TDictionary<string, Boolean>;
+  mType: TIdeTypeEntry;
+  mUsed: TArray<string>;
+  mOwn: string;
+  mAdded: Integer;
+begin
+  if (Length(FRequest.IdeTypes) = 0) or Assigned(FAdmit) or not KindAllowed(Self, TIndexSymbolKind.ClassType) then
+  begin
+    Exit;
+  end;
+  mKnown := KnownNames(Self);
+  try
+    mUsed := TUsesClauses.UsedUnits(FRequest.Tree.Tokens);
+    mOwn := TUsesClauses.OwnName(FRequest.Tree.Tokens);
+    mAdded := 0;
+    for mType in FRequest.IdeTypes do
+    begin
+      if mKnown.ContainsKey(UpperCase(mType.Name)) or SameText(mType.UnitName, mOwn) or
+        not AddIdeType(Self, mType, TUsesClauses.IsUsed(mUsed, mType.UnitName, FRequest.Resolver.Namespaces)) then
+      begin
+        Continue;
+      end;
+      mKnown.AddOrSetValue(UpperCase(mType.Name), True);
+      Inc(mAdded);
+      if mAdded >= CompletionMaxImportItems then
+      begin
+        FImportsCapped := True;
+        Exit;
+      end;
+    end;
+  finally
+    mKnown.Free;
   end;
 end;
 
@@ -1539,7 +1607,8 @@ begin
     mMember := TResolvedSymbol.FromIndex(AUnitInfo, mSymbol);
     mMember.IsHelper := True;
     mMember.Depth := ADepth;
-    if ACollector.Add(mSymbol.Name, AUnitInfo.UnitName + ' (uses ergänzen)', CompletionKindOf(mSymbol.Kind),
+    if ACollector.Add(mSymbol.Name, AUnitInfo.UnitName + cTexts[TCompletionCollectorText.AddToUses].Text,
+      CompletionKindOf(mSymbol.Kind),
       ImportPenalty(AUnitInfo), mMember, [AEdit]) then
     begin
       AKnown.AddOrSetValue(UpperCase(mSymbol.Name), True);
@@ -1884,5 +1953,8 @@ begin
   AIncomplete := FTruncated or FImportsCapped or
     ((FContext.Kind = TCompletionContextKind.Scope) and (Length(FContext.Prefix) < CompletionMinImportPrefix));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.CompletionCollector', cTexts);
 
 end.

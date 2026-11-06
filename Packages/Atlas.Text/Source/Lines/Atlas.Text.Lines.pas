@@ -122,24 +122,27 @@ begin
   Result := 0;
 end;
 
+/// <summary>Index (1-basiert) des nächsten CR oder LF ab AIndex, sonst Length(AText) + 1. Eine enge Schleife
+/// ohne Aufruf je Zeichen: Große Units haben über eine Million Zeichen.</summary>
+function NextBreak(const AText: string; AIndex: Integer): Integer;
+begin
+  Result := AIndex;
+  while (Result <= Length(AText)) and ((AText[Result] > #13) or not CharInSet(AText[Result], [#10, #13])) do
+  begin
+    Inc(Result);
+  end;
+end;
+
 function CountBreaks(const AText: string): Integer;
 var
-  Index, Len: Integer;
+  Index: Integer;
 begin
   Result := 0;
-  Index := 1;
+  Index := NextBreak(AText, 1);
   while Index <= Length(AText) do
   begin
-    Len := BreakLengthAt(AText, Index);
-    if Len > 0 then
-    begin
-      Inc(Result);
-      Inc(Index, Len);
-    end
-    else
-    begin
-      Inc(Index);
-    end;
+    Inc(Result);
+    Index := NextBreak(AText, Index + BreakLengthAt(AText, Index));
   end;
 end;
 
@@ -157,22 +160,15 @@ begin
   Result.FLength := Length(AText);
   Result.FStarts[0] := 0;
   Line := 0;
-  Index := 1;
+  Index := NextBreak(AText, 1);
   while Index <= Length(AText) do
   begin
     Len := BreakLengthAt(AText, Index);
-    if Len > 0 then
-    begin
-      // Index ist 1-basiert: Das Zeichen bei Index liegt am Offset Index - 1.
-      Result.FContentEnds[Line] := Index - 1;
-      Inc(Line);
-      Result.FStarts[Line] := Index - 1 + Len;
-      Inc(Index, Len);
-    end
-    else
-    begin
-      Inc(Index);
-    end;
+    // Index ist 1-basiert: Das Zeichen bei Index liegt am Offset Index - 1.
+    Result.FContentEnds[Line] := Index - 1;
+    Inc(Line);
+    Result.FStarts[Line] := Index - 1 + Len;
+    Index := NextBreak(AText, Index + Len);
   end;
   Result.FContentEnds[Line] := Length(AText);
 end;
@@ -373,27 +369,19 @@ end;
 
 class function TTextLines.SplitLines(const AText: string): TArray<string>;
 var
-  Index, Start, Count, Len: Integer;
+  Index, Start, Count: Integer;
 begin
   Result := nil;
   SetLength(Result, CountBreaks(AText) + 1);
   Count := 0;
   Start := 1;
-  Index := 1;
+  Index := NextBreak(AText, 1);
   while Index <= Length(AText) do
   begin
-    Len := BreakLengthAt(AText, Index);
-    if Len > 0 then
-    begin
-      Result[Count] := Copy(AText, Start, Index - Start);
-      Inc(Count);
-      Inc(Index, Len);
-      Start := Index;
-    end
-    else
-    begin
-      Inc(Index);
-    end;
+    Result[Count] := Copy(AText, Start, Index - Start);
+    Inc(Count);
+    Start := Index + BreakLengthAt(AText, Index);
+    Index := NextBreak(AText, Start);
   end;
   Result[Count] := Copy(AText, Start, MaxInt);
 end;
@@ -422,21 +410,14 @@ begin
   SetLength(Result, Count);
   Count := 0;
   Start := 1;
-  Index := 1;
+  Index := NextBreak(AText, 1);
   while Index <= Length(AText) do
   begin
     Len := BreakLengthAt(AText, Index);
-    if Len > 0 then
-    begin
-      Result[Count] := Copy(AText, Start, Index - Start + Len);
-      Inc(Count);
-      Inc(Index, Len);
-      Start := Index;
-    end
-    else
-    begin
-      Inc(Index);
-    end;
+    Result[Count] := Copy(AText, Start, Index - Start + Len);
+    Inc(Count);
+    Start := Index + Len;
+    Index := NextBreak(AText, Start);
   end;
   if Start <= Length(AText) then
   begin

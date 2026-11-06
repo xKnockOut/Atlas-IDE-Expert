@@ -40,7 +40,35 @@ uses
   Atlas.Common.Index.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
-  Atlas.Common.Rules.Options;
+  Atlas.Common.Rules.Options,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TDllExportsText = (DynamicArray, NoGuid, AndWord, Title, Returns, HasParameter, NoConvention, ExportedProcedure,
+    ExportedFunction, ShareMem, OtherLanguages, AddStdcall);
+
+const
+  cTexts: array[TDllExportsText] of TAtlasText = (
+    (De: ' (dynamisches Array)'; En: ' (dynamic array)'),
+    (De: ' (Interface ohne GUID)'; En: ' (interface without GUID)'),
+    (De: ' und '; En: ' and '),
+    (De: 'Exportierte Routine nicht sicher über DLL-Grenzen aufrufbar';
+     En: 'Exported routine cannot be called safely across DLL boundaries'),
+    (De: 'gibt %s zurück'; En: 'returns %s'),
+    (De: 'hat den Parameter %s: %s'; En: 'has the parameter %s: %s'),
+    (De: 'hat keine Aufrufkonvention'; En: 'has no calling convention'),
+    (De: 'Exportierte Prozedur '; En: 'Exported procedure '),
+    (De: 'Exportierte Funktion '; En: 'Exported function '),
+    (De: '; Aufrufer ohne ShareMem stürzen ab. Besser PChar mit Puffer und Länge übergeben.';
+     En: '; callers without ShareMem crash. Better pass PChar with buffer and length.'),
+    (De: '; Aufrufer aus anderen Sprachen oder Delphi-Versionen stürzen ab.';
+     En: '; callers from other languages or Delphi versions crash.'),
+    (De: 'Aufrufkonvention stdcall ergänzen'; En: 'Add calling convention stdcall'));
+
+{$SCOPEDENUMS OFF}
 
 const
   CallingConventions: array[0..4] of string = ('stdcall', 'cdecl', 'safecall', 'winapi', 'pascal');
@@ -417,11 +445,11 @@ begin
   Result := Trim(ATypeName);
   case AKind of
     TExportTypeKind.DynamicArray:
-      Result := Result + ' (dynamisches Array)';
+      Result := Result + cTexts[TDllExportsText.DynamicArray].Text;
     TExportTypeKind.ObjectType:
       Result := Result + ' (Objekt)';
     TExportTypeKind.InterfaceWithoutGuid:
-      Result := Result + ' (Interface ohne GUID)';
+      Result := Result + cTexts[TDllExportsText.NoGuid].Text;
     TExportTypeKind.Safe: ;
     TExportTypeKind.ManagedString: ;
   end;
@@ -440,7 +468,7 @@ begin
     end
     else if Index = High(AParts) then
     begin
-      Result := Result + ' und ' + AParts[Index];
+      Result := Result + cTexts[TDllExportsText.AndWord].Text + AParts[Index];
     end
     else
     begin
@@ -454,7 +482,7 @@ end;
 function TDllExportUnsafeRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(DllExportUnsafeRuleId, TRuleSeverity.Warning,
-    'Exportierte Routine nicht sicher über DLL-Grenzen aufrufbar');
+    cTexts[TDllExportsText.Title].Text);
 end;
 
 /// <summary>Köpfe der Gruppe zum Eintrag AEntry: Überladungen wählt die Parameterliste im exports-Eintrag;
@@ -559,7 +587,8 @@ begin
   mKind := BoundaryKind(AContext, mTypeRef, AAllowStrings);
   if mKind <> TExportTypeKind.Safe then
   begin
-    AProblems.Parts := AProblems.Parts + [Format('gibt %s zurück', [Described(NodeText(AContext.Text, mTypeRef),
+    AProblems.Parts := AProblems.Parts + [cTexts[TDllExportsText.Returns].Fmt([Described(NodeText(AContext.Text,
+      mTypeRef),
       mKind)])];
   end;
   AProblems.Memory := mKind in [TExportTypeKind.ManagedString, TExportTypeKind.DynamicArray];
@@ -584,7 +613,7 @@ begin
   end;
   for mName in AParameter.Name.Split([',']) do
   begin
-    AProblems.Parts := AProblems.Parts + [Format('hat den Parameter %s: %s', [Trim(mName),
+    AProblems.Parts := AProblems.Parts + [cTexts[TDllExportsText.HasParameter].Fmt([Trim(mName),
       Described(NodeText(AContext.Text, mTypeRef), mKind)])];
   end;
   AProblems.Memory := AProblems.Memory or (mKind in [TExportTypeKind.ManagedString, TExportTypeKind.DynamicArray]);
@@ -608,25 +637,25 @@ begin
   end;
   if not AConvention then
   begin
-    Result.Parts := Result.Parts + ['hat keine Aufrufkonvention'];
+    Result.Parts := Result.Parts + [cTexts[TDllExportsText.NoConvention].Text];
   end;
 end;
 
 function MessageOf(const AProblems: TExportProblems): string;
 begin
-  Result := 'Exportierte Prozedur ';
+  Result := cTexts[TDllExportsText.ExportedProcedure].Text;
   if AProblems.IsFunction then
   begin
-    Result := 'Exportierte Funktion ';
+    Result := cTexts[TDllExportsText.ExportedFunction].Text;
   end;
   Result := Result + Joined(AProblems.Parts);
   if AProblems.Memory then
   begin
-    Result := Result + '; Aufrufer ohne ShareMem stürzen ab. Besser PChar mit Puffer und Länge übergeben.';
+    Result := Result + cTexts[TDllExportsText.ShareMem].Text;
   end
   else
   begin
-    Result := Result + '; Aufrufer aus anderen Sprachen oder Delphi-Versionen stürzen ab.';
+    Result := Result + cTexts[TDllExportsText.OtherLanguages].Text;
   end;
 end;
 
@@ -642,7 +671,7 @@ begin
     mEdits := mEdits + [TRuleEdit.Create(TTextRange.Create(mHeader.EndPos, mHeader.EndPos), ' stdcall;')];
   end;
   // Ändert die Schnittstelle für vorhandene Aufrufer: nur einzeln.
-  Result := [TRuleFix.Create('Aufrufkonvention stdcall ergänzen', mEdits, False)];
+  Result := [TRuleFix.Create(cTexts[TDllExportsText.AddStdcall].Text, mEdits, False)];
 end;
 
 procedure TDllExportUnsafeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -687,5 +716,8 @@ procedure RegisterDllExportRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TDllExportUnsafeRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.DllExports', cTexts);
 
 end.

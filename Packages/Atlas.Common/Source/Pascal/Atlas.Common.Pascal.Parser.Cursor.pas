@@ -134,7 +134,37 @@ uses
   System.Generics.Defaults,
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.Preprocessor,
-  Atlas.Common.Pascal.SyntaxChecks;
+  Atlas.Common.Pascal.SyntaxChecks,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TCursorText = (IncompleteString, CloseString, CloseCommentInLine, Missing, Add, OperatorOrMissing,
+    ExpectedButEndOfFile, ExpectedButFound, NestedTooDeeplyMoreThan, UnexpectedEndOfFileIn,
+    SyntaxErrorInFloatingPoint, Identifier, Like, Statement, IdentifierExpected);
+
+const
+  cTexts: array[TCursorText] of TAtlasText = (
+    (De: 'Unvollständiger String'; En: 'Incomplete string'),
+    (De: 'String schließen'; En: 'Close string'),
+    (De: 'Kommentar in Zeile %d schließen'; En: 'Close comment in line %d'),
+    (De: ''';'' fehlt'; En: ''';'' missing'),
+    (De: ''';'' ergänzen'; En: 'Add '';'''),
+    (De: 'Operator oder '';'' fehlt'; En: 'Operator or '';'' missing'),
+    (De: ' erwartet, aber Dateiende gefunden'; En: ' expected but end of file found'),
+    (De: '%s erwartet, aber ''%s'' gefunden'; En: '%s expected but ''%s'' found'),
+    (De: 'Zu tief verschachtelt (mehr als %d Ebenen); Rest der Datei nicht ausgewertet';
+     En: 'Nested too deeply (more than %d levels); rest of the file not evaluated'),
+    (De: 'Unerwartetes Dateiende im Kommentar ab Zeile %d'; En: 'Unexpected end of file in the comment from line %d'),
+    (De: 'Syntaxfehler in Gleitkommazahl'; En: 'Syntax error in floating point number'),
+    (De: 'Bezeichner'; En: 'identifier'),
+    (De: ' (wie %s).'; En: ' (like %s).'),
+    (De: 'Anweisung'; En: 'statement'),
+    (De: 'Bezeichner erwartet'; En: 'Identifier expected'));
+
+{$SCOPEDENUMS OFF}
 
 function SameWord(const A, B: string): Boolean; inline;
 begin
@@ -504,7 +534,7 @@ begin
   else if AToken.Kind = TPascalTokenKind.Number then
   begin
     // 1.5e: Exponent ohne Ziffern (#1382).
-    DiagnoseCode('E2053', 'Syntaxfehler in Gleitkommazahl', AToken.StartPos, AToken.EndPos);
+    DiagnoseCode('E2053', cTexts[TCursorText.SyntaxErrorInFloatingPoint].Text, AToken.StartPos, AToken.EndPos);
   end
   else if AToken.Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
   begin
@@ -527,12 +557,12 @@ begin
   end;
   if AToken.StartPos.Line = AToken.EndPos.Line then
   begin
-    DiagnoseCode('E2052', 'Unvollständiger String', AToken.StartPos, AToken.EndPos,
-      TParserFix.Create('String schließen', AToken.EndPos, AToken.EndPos, '''', False));
+    DiagnoseCode('E2052', cTexts[TCursorText.IncompleteString].Text, AToken.StartPos, AToken.EndPos,
+      TParserFix.Create(cTexts[TCursorText.CloseString].Text, AToken.EndPos, AToken.EndPos, '''', False));
   end
   else
   begin
-    DiagnoseCode('E2052', 'Unvollständiger String', AToken.StartPos, AToken.StartPos);
+    DiagnoseCode('E2052', cTexts[TCursorText.IncompleteString].Text, AToken.StartPos, AToken.StartPos);
   end;
 end;
 
@@ -553,9 +583,9 @@ begin
   mCloser := CommentCloser(AToken.Text);
   // Geschlossen wird am Ende der ersten Zeile: Meist fehlt dort die Klammer.
   mLineEnd := FirstLineEnd(AToken);
-  DiagnoseCode('E2057', Format('Unerwartetes Dateiende im Kommentar ab Zeile %d', [mFirst.Line + 1]), mFirst,
+  DiagnoseCode('E2057', cTexts[TCursorText.UnexpectedEndOfFileIn].Fmt([mFirst.Line + 1]), mFirst,
     TTextPosition.Create(mFirst.Line, mFirst.Character + Length(mCloser)),
-    TParserFix.Create(Format('Kommentar in Zeile %d schließen', [mFirst.Line + 1]), mLineEnd, mLineEnd, mCloser,
+    TParserFix.Create(cTexts[TCursorText.CloseCommentInLine].Fmt([mFirst.Line + 1]), mLineEnd, mLineEnd, mCloser,
     False));
 end;
 
@@ -599,13 +629,13 @@ begin
   end;
   if (FIndex > 0) and (AtEnd or (Current.StartPos.Line > Previous.EndPos.Line)) then
   begin
-    DiagnoseCode(Code, ''';'' fehlt', Previous.EndPos, Previous.EndPos,
-      TParserFix.Create(''';'' ergänzen', Previous.EndPos, Previous.EndPos, ';', False));
+    DiagnoseCode(Code, cTexts[TCursorText.Missing].Text, Previous.EndPos, Previous.EndPos,
+      TParserFix.Create(cTexts[TCursorText.Add].Text, Previous.EndPos, Previous.EndPos, ';', False));
   end
   else if AStatement then
   begin
     // B := 1 2; – es fehlt ein Operator oder das Semikolon.
-    DiagnoseCode(Code, 'Operator oder '';'' fehlt', Current.StartPos, Current.EndPos);
+    DiagnoseCode(Code, cTexts[TCursorText.OperatorOrMissing].Text, Current.StartPos, Current.EndPos);
   end
   else
   begin
@@ -622,7 +652,7 @@ begin
   end
   else
   begin
-    DiagnoseUnexpected('Bezeichner');
+    DiagnoseUnexpected(cTexts[TCursorText.Identifier].Text);
     Result := '';
   end;
 end;
@@ -664,7 +694,7 @@ var
   Diagnostic: TSyntaxDiagnostic;
 begin
   Diagnostic := Default(TSyntaxDiagnostic);
-  Diagnostic.Message := AMessage + Format(' (wie %s).', [ACode]);
+  Diagnostic.Message := AMessage + cTexts[TCursorText.Like].Fmt([ACode]);
   Diagnostic.StartPos := AStartPos;
   Diagnostic.EndPos := AEndPos;
   Diagnostic.Code := ACode;
@@ -687,11 +717,11 @@ begin
   Expected := StringReplace(AExpected, '"', '''', [rfReplaceAll]);
   if AtEnd then
   begin
-    DiagnoseCode(ACode, Expected + ' erwartet, aber Dateiende gefunden', Current.StartPos, Current.EndPos);
+    DiagnoseCode(ACode, Expected + cTexts[TCursorText.ExpectedButEndOfFile].Text, Current.StartPos, Current.EndPos);
   end
   else
   begin
-    DiagnoseCode(ACode, Format('%s erwartet, aber ''%s'' gefunden', [Expected, Current.Text]), Current.StartPos,
+    DiagnoseCode(ACode, cTexts[TCursorText.ExpectedButFound].Fmt([Expected, Current.Text]), Current.StartPos,
       Current.EndPos);
   end;
 end;
@@ -727,7 +757,7 @@ begin
     TRecovery.Members:
       DiagnoseUnexpected('"end"');
   else
-    DiagnoseUnexpected('Anweisung');
+    DiagnoseUnexpected(cTexts[TCursorText.Statement].Text);
   end;
   repeat
     Advance;
@@ -749,7 +779,7 @@ begin
   if IsSym('.') then
   begin
     Advance;
-    DiagnoseCode('E2372', 'Bezeichner erwartet', Current.StartPos, Current.EndPos);
+    DiagnoseCode('E2372', cTexts[TCursorText.IdentifierExpected].Text, Current.StartPos, Current.EndPos);
   end;
 end;
 
@@ -789,11 +819,14 @@ var
   Start: Integer;
 begin
   // Schutz vor Stapelüberlauf: Der Rest der Datei wird nicht mehr ausgewertet.
-  Diagnose(Format('Zu tief verschachtelt (mehr als %d Ebenen); Rest der Datei nicht ausgewertet', [MaxNesting]));
+  Diagnose(cTexts[TCursorText.NestedTooDeeplyMoreThan].Fmt([MaxNesting]));
   Start := NodeStart;
   Result := StartNode(TSyntaxKind.Error);
   FIndex := Length(FTokens);
   FinishNode(Result, Start);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Pascal.Parser.Cursor', cTexts);
 
 end.

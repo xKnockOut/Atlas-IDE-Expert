@@ -4,6 +4,12 @@
 // Instanzmitglieder sind, ob ein Interface ein Mitglied hat, welcher Helper
 // für einen Typ sichtbar ist und ob ein Name schon sichtbar ist. Mit
 // Namensauflösung über TNameResolver, sonst über die Klasse in der Datei.
+//
+// Interfaces der Vorfahrenliste: Das Mitglied zählt auch aus geerbten
+// Interfaces. Ist ein Interface unbekannt (ToolsAPI, RTL ohne Index), kann
+// die Methode zu ihm gehören und bleibt unangetastet: alle Einträge hinter dem
+// ersten (dort stehen nur Interfaces) und ein erster Eintrag der Form IFoo.
+// IInterface, IUnknown und IDispatch kennt die Unit selbst.
 
 interface
 
@@ -22,7 +28,8 @@ type
 
   /// <summary>Art des Bezeichners bzw. Typnamens ANode im Rumpf; AVisibility bei Mitgliedern.</summary>
   TMemberLevelFunc = reference to function(ANode: TSyntaxNode; out AVisibility: TIndexVisibility): TMemberLevel;
-  /// <summary>Hat das Interface ATypeName ein Mitglied AName (sichtbar an AOffset)?</summary>
+  /// <summary>Kann AName zum Interface ATypeName gehören, das an AOffset in der Vorfahrenliste steht? Auch bei
+  /// einem unbekannten Interface; AOffset außerhalb einer Vorfahrenliste zählt wie ein erster Eintrag.</summary>
   TMethodTypeMemberFunc = reference to function(const ATypeName, AName: string; AOffset: Integer): Boolean;
   /// <summary>Name des an AOffset sichtbaren Helpers für ATypeName, '' ohne.</summary>
   TMethodHelperFunc = reference to function(const ATypeName: string; AOffset: Integer): string;
@@ -48,6 +55,8 @@ type
       const AFileName: string): TMethodLookup; static;
     /// <summary>Erster Teil eines Typ- oder Bezeichnernamens: TInner aus TInner&lt;X&gt;, A aus A.B.</summary>
     class function HeadName(const AName: string): string; static;
+    /// <summary>Heißt der Typ wie ein Interface (IFoo, auch Unit.IFoo&lt;T&gt;)?</summary>
+    class function IsInterfaceName(const ATypeName: string): Boolean; static;
   end;
 
 implementation
@@ -61,7 +70,30 @@ uses
   Atlas.Common.Editing.RoutineParts,
   Atlas.Common.Editing.NestedRoutines;
 
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Gehört ein Name zu einem Interface: nein, ja, unbekannt (Interface oder Vorfahr nicht bekannt).
+  /// </summary>
+  TInterfaceMembership = (No, Yes, Unknown);
+
+{$SCOPEDENUMS OFF}
+
+  /// <summary>Wo nach Interface-Mitgliedern gefragt wird: Auflöser, Baum und Datei, sichtbar an Offset.</summary>
+  TInterfaceQuery = record
+    Resolver: TNameResolver;
+    Tree: TSyntaxTree;
+    FileName: string;
+    Offset: Integer;
+  end;
+
 const
+  /// <summary>Interfaces aus System, die auch ohne Index bekannt sind, und ihre Mitglieder.</summary>
+  cBaseInterfaces: array[0..2] of string = ('IInterface', 'IUnknown', 'IDispatch');
+  cBaseInterfaceMembers: array[0..6] of string = ('QueryInterface', '_AddRef', '_Release', 'GetTypeInfoCount',
+    'GetTypeInfo', 'GetIDsOfNames', 'Invoke');
+  /// <summary>Tiefe der Interface-Vererbung, bis zu der gesucht wird.</summary>
+  cInterfaceDepth = 8;
   // Helper der RTL (System.SysUtils, System.Character), falls der Index sie nicht kennt.
   RtlHelpedTypes: array[0..14] of string = ('string', 'UnicodeString', 'Integer', 'Cardinal', 'Int64', 'UInt64',
     'NativeInt', 'NativeUInt', 'Byte', 'Word', 'ShortInt', 'SmallInt', 'Double', 'Single', 'Boolean');
@@ -287,25 +319,137 @@ begin
     end);
 end;
 
-function InterfaceHasMember(ATree: TSyntaxTree; const ATypeName, AName: string): Boolean;
+/// <summary>Typname ohne Typargumente: IComparer aus IComparer&lt;T&gt;, Namensraum bleibt.</summary>
+function WithoutTypeArgs(const ATypeName: string): string;
+begin
+  Result := ATypeName;
+  if Pos('<', Result) > 0 then
+  begin
+    Result := Copy(Result, 1, Pos('<', Result) - 1);
+  end;
+  Result := Trim(Result);
+end;
+
+/// <summary>Letzter Teil eines Typnamens ohne Namensraum und Typargumente.</summary>
+function LastTypePart(const ATypeName: string): string;
+var
+  mParts: TArray<string>;
+begin
+  mParts := WithoutTypeArgs(ATypeName).Split(['.']);
+  Result := '';
+  if mParts <> nil then
+  begin
+    Result := mParts[High(mParts)];
+  end;
+end;
+
+/// <summary>Ist ATypeName IInterface, IUnknown oder IDispatch? Dann sagt AMembership, ob AName dazugehört.
+/// </summary>
+function BaseInterfaceMembership(const ATypeName, AName: string; out AMembership: TInterfaceMembership): Boolean;
+begin
+  Result := MatchText(LastTypePart(ATypeName), cBaseInterfaces);
+  AMembership := TInterfaceMembership.No;
+  if Result and MatchText(AName, cBaseInterfaceMembers) then
+  begin
+    AMembership := TInterfaceMembership.Yes;
+  end;
+end;
+
+/// <summary>Vereinigt AMembership des Vorfahren mit dem bisherigen Stand AResult (ja vor unbekannt vor nein).
+/// </summary>
+function Merged(AResult, AMembership: TInterfaceMembership): TInterfaceMembership;
+begin
+  Result := AResult;
+  if (AMembership = TInterfaceMembership.Yes) or (Result = TInterfaceMembership.No) then
+  begin
+    Result := AMembership;
+  end;
+end;
+
+/// <summary>Deklariert die Datei einen Typ AName (gleich welcher Art)?</summary>
+function DeclaredInFile(ATree: TSyntaxTree; const AName: string): Boolean;
+var
+  mName: string;
+begin
+  mName := AName;
+  Result := ATree.Root.Search(
+    function(ANode: TSyntaxNode): TSyntaxSearchStep
+    begin
+      Result := TSyntaxSearchStep.Descend;
+      if (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(ANode.Name, mName) then
+      begin
+        Result := TSyntaxSearchStep.Found;
+      end;
+    end) <> nil;
+end;
+
+/// <summary>Gehört AName zum Interface ATypeName der Datei oder einem seiner Vorfahren? Unbekannt, wenn die
+/// Datei den Typ nicht deklariert.</summary>
+function TreeMembership(ATree: TSyntaxTree; const ATypeName, AName: string; ADepth: Integer): TInterfaceMembership;
 var
   mBody: TSyntaxNode;
   mIndex: Integer;
 begin
-  Result := False;
-  mBody := InterfaceBody(ATree, TMethodLookup.HeadName(ATypeName));
-  if mBody = nil then
+  if BaseInterfaceMembership(ATypeName, AName, Result) then
   begin
     Exit;
   end;
+  mBody := InterfaceBody(ATree, TMethodLookup.HeadName(ATypeName));
+  if mBody = nil then
+  begin
+    Result := TInterfaceMembership.Unknown;
+    if DeclaredInFile(ATree, TMethodLookup.HeadName(ATypeName)) then
+    begin
+      Result := TInterfaceMembership.No;
+    end;
+    Exit;
+  end;
+  Result := TInterfaceMembership.No;
   for mIndex := 0 to mBody.ChildCount - 1 do
   begin
     if (mBody[mIndex].Kind in [TSyntaxKind.RoutineHeader, TSyntaxKind.PropertyDecl]) and
       SameText(mBody[mIndex].Name, AName) then
     begin
-      Exit(True);
+      Exit(TInterfaceMembership.Yes);
+    end;
+    if (mBody[mIndex].Kind = TSyntaxKind.TypeReference) and (ADepth < cInterfaceDepth) then
+    begin
+      Result := Merged(Result, TreeMembership(ATree, mBody[mIndex].Name, AName, ADepth + 1));
     end;
   end;
+end;
+
+/// <summary>Steht an AOffset ein Eintrag der Vorfahrenliste einer Klasse hinter dem ersten? Dort stehen nur
+/// Interfaces.</summary>
+function IsLaterHeritage(ATree: TSyntaxTree; AOffset: Integer): Boolean;
+var
+  mOffset: Integer;
+begin
+  mOffset := AOffset;
+  Result := ATree.Root.Search(
+    function(ANode: TSyntaxNode): TSyntaxSearchStep
+    begin
+      Result := TSyntaxSearchStep.Descend;
+      if (ANode.StartOffset > mOffset) or (ANode.EndOffset < mOffset) then
+      begin
+        Result := TSyntaxSearchStep.Skip;
+      end
+      else if (ANode.Kind = TSyntaxKind.TypeReference) and (ANode.StartOffset = mOffset) and
+        (ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.ClassType) and
+        (ANode.Parent.FindChild(TSyntaxKind.TypeReference) <> ANode) then
+      begin
+        Result := TSyntaxSearchStep.Found;
+      end;
+    end) <> nil;
+end;
+
+/// <summary>Bindet AMembership die Methode? Ein unbekannter Typ bindet, wenn er ein Interface sein muss (Eintrag
+/// hinter dem ersten) oder so heißt (IFoo).</summary>
+function MembershipBinds(ATree: TSyntaxTree; const ATypeName: string; AMembership: TInterfaceMembership;
+  AOffset: Integer): Boolean;
+begin
+  Result := (AMembership = TInterfaceMembership.Yes) or ((AMembership = TInterfaceMembership.Unknown) and
+    (TMethodLookup.IsInterfaceName(ATypeName) or IsLaterHeritage(ATree, AOffset)));
 end;
 
 function TreeInterfaceMember(ATree: TSyntaxTree): TMethodTypeMemberFunc;
@@ -313,7 +457,7 @@ begin
   Result :=
     function(const ATypeName, AName: string; AOffset: Integer): Boolean
     begin
-      Result := InterfaceHasMember(ATree, ATypeName, AName);
+      Result := MembershipBinds(ATree, ATypeName, TreeMembership(ATree, ATypeName, AName, 0), AOffset);
     end;
 end;
 
@@ -438,26 +582,75 @@ begin
     end;
 end;
 
-function ResolverInterfaceMember(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
-  const AFallback: TMethodTypeMemberFunc): TMethodTypeMemberFunc;
+function ResolvedMembership(const AQuery: TInterfaceQuery; const ATypeName, AName: string;
+  ADepth: Integer): TInterfaceMembership; forward;
+
+/// <summary>Gehört AName zum aufgelösten Interface AInterface (Teile des Namens AParts) oder einem Vorfahren?
+/// </summary>
+function ResolvedInterfaceMembership(const AQuery: TInterfaceQuery; const AInterface: TResolvedSymbol;
+  const AParts: TArray<string>; const AName: string; ADepth: Integer): TInterfaceMembership;
+var
+  mAncestor: string;
+begin
+  if AQuery.Resolver.ResolveChain(AQuery.Tree, AQuery.FileName, AParts + [AName], AQuery.Offset).Found then
+  begin
+    Exit(TInterfaceMembership.Yes);
+  end;
+  Result := TInterfaceMembership.No;
+  if ADepth >= cInterfaceDepth then
+  begin
+    Exit;
+  end;
+  for mAncestor in AInterface.Ancestors do
+  begin
+    Result := Merged(Result, ResolvedMembership(AQuery, mAncestor, AName, ADepth + 1));
+  end;
+end;
+
+/// <summary>Wie TreeMembership über AResolver (an AOffset sichtbar); Typen, die er nicht kennt, sucht es in der
+/// Datei. Eine Klasse bindet nicht.</summary>
+function ResolvedMembership(const AQuery: TInterfaceQuery; const ATypeName, AName: string;
+  ADepth: Integer): TInterfaceMembership;
+var
+  mResolved: TResolvedSymbol;
+  mParts: TArray<string>;
+begin
+  if BaseInterfaceMembership(ATypeName, AName, Result) then
+  begin
+    Exit;
+  end;
+  mParts := WithoutTypeArgs(ATypeName).Split(['.']);
+  mResolved := AQuery.Resolver.ResolveChain(AQuery.Tree, AQuery.FileName, mParts, AQuery.Offset);
+  if not mResolved.Found then
+  begin
+    Result := TreeMembership(AQuery.Tree, ATypeName, AName, ADepth);
+  end
+  else if mResolved.SymbolKind = TIndexSymbolKind.InterfaceType then
+  begin
+    Result := ResolvedInterfaceMembership(AQuery, mResolved, mParts, AName, ADepth);
+  end
+  else
+  begin
+    Result := TInterfaceMembership.No;
+  end;
+end;
+
+function ResolverInterfaceMember(AResolver: TNameResolver; ATree: TSyntaxTree;
+  const AFileName: string): TMethodTypeMemberFunc;
 var
   mFileName: string;
-  mFallback: TMethodTypeMemberFunc;
 begin
   mFileName := AFileName;
-  mFallback := AFallback;
   Result :=
     function(const ATypeName, AName: string; AOffset: Integer): Boolean
     var
-      mResolved: TResolvedSymbol;
+      mQuery: TInterfaceQuery;
     begin
-      mResolved := AResolver.ResolveChain(ATree, mFileName, TMethodLookup.HeadName(ATypeName).Split(['.']), AOffset);
-      if not mResolved.Found then
-      begin
-        Exit(mFallback(ATypeName, AName, AOffset));
-      end;
-      Result := (mResolved.SymbolKind = TIndexSymbolKind.InterfaceType) and AResolver.ResolveChain(ATree,
-        mFileName, [TMethodLookup.HeadName(ATypeName), AName], AOffset).Found;
+      mQuery.Resolver := AResolver;
+      mQuery.Tree := ATree;
+      mQuery.FileName := mFileName;
+      mQuery.Offset := AOffset;
+      Result := MembershipBinds(ATree, ATypeName, ResolvedMembership(mQuery, ATypeName, AName, 0), AOffset);
     end;
 end;
 
@@ -515,7 +708,7 @@ class function TMethodLookup.FromResolver(AResolver: TNameResolver; ATree: TSynt
 begin
   Result := FromTree(ATree);
   Result.MemberLevel := ResolverMemberLevel(AResolver, ATree, AFileName);
-  Result.InterfaceMember := ResolverInterfaceMember(AResolver, ATree, AFileName, Result.InterfaceMember);
+  Result.InterfaceMember := ResolverInterfaceMember(AResolver, ATree, AFileName);
   Result.VisibleHelper := ResolverVisibleHelper(AResolver, ATree, AFileName, Result.VisibleHelper);
   Result.NameVisible := ResolverNameVisible(AResolver, ATree, AFileName);
 end;
@@ -532,6 +725,14 @@ begin
     Result := Copy(Result, 1, Pos('.', Result) - 1);
   end;
   Result := Trim(Result);
+end;
+
+class function TMethodLookup.IsInterfaceName(const ATypeName: string): Boolean;
+var
+  mName: string;
+begin
+  mName := LastTypePart(ATypeName);
+  Result := (Length(mName) > 1) and (mName[1] = 'I') and CharInSet(mName[2], ['A'..'Z']);
 end;
 
 end.

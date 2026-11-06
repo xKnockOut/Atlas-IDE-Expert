@@ -15,6 +15,9 @@
 //     („R− Q− HINTS OFF“) über den Empfänger aus Start; ohne Abweichung,
 //     ohne Pascal-Datei oder ausgeschaltet meldet Atlas '' (kein Feld).
 // Ohne build.compilerSwitches ist nichts angemeldet. Nur im Hauptthread verwenden.
+// Ohne Bedarf (Fenster zu, Statusfeld aus) räumt der Zeitgeber einmal ab und
+// läuft danach leer, ohne gesicherten Aufruf je Takt: Vorher zählte das
+// Diagnose-Fenster bei „Compile-Ereignisse“ 20 Aufrufe je Sekunde.
 
 interface
 
@@ -52,11 +55,15 @@ type
     FViewLine: Integer;
     FStatusText: string;
     FMessage: string;
+    /// <summary>Hat der letzte Takt verfolgt? Ohne Bedarf wird danach einmal abgeräumt.</summary>
+    FFollowing: Boolean;
     constructor Create(const ASession: TAtlasCompilerSwitchesSessionFunc;
       const AStatus: TAtlasCompilerSwitchesStatusProc);
     procedure Tick(Sender: TObject);
     /// <summary>Stelle im Editor verfolgen und bei Bedarf fragen (im Hauptthread).</summary>
     procedure Follow;
+    /// <summary>Ohne Bedarf: Stand vergessen (beim Öffnen sofort fragen), Statusfeld leeren.</summary>
+    procedure Rest;
     /// <summary>Fenster sichtbar oder Statusfeld an.</summary>
     function Wanted: Boolean;
     procedure Ask;
@@ -280,11 +287,33 @@ begin
   begin
     Exit;
   end;
+  if not Wanted then
+  begin
+    // Fenster zu, Statusfeld aus: einmal abräumen, danach nichts je Takt.
+    if FFollowing then
+    begin
+      FFollowing := False;
+      TAtlasGuard.Run(TAtlasFeature.Build,
+        procedure
+        begin
+          Rest;
+        end);
+    end;
+    Exit;
+  end;
+  FFollowing := True;
   TAtlasGuard.Run(TAtlasFeature.Build,
     procedure
     begin
       Follow;
     end);
+end;
+
+procedure TAtlasIdeCompilerSwitches.Rest;
+begin
+  // Nichts fragen; beim Öffnen sofort.
+  FFollow.Invalidate;
+  UpdateStatus;
 end;
 
 procedure TAtlasIdeCompilerSwitches.Follow;
@@ -293,13 +322,6 @@ var
   mFileName: string;
   mCursor: TOTAEditPos;
 begin
-  if not Wanted then
-  begin
-    // Fenster zu, Statusfeld aus: nichts fragen, beim Öffnen sofort.
-    FFollow.Invalidate;
-    UpdateStatus;
-    Exit;
-  end;
   mView := TAtlasEditorBuffer.ActiveView;
   mFileName := '';
   if (mView <> nil) and (mView.Buffer <> nil) then

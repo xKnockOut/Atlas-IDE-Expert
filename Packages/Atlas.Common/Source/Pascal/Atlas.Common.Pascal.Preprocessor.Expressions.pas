@@ -123,7 +123,32 @@ implementation
 uses
   System.Math,
   System.StrUtils,
-  Atlas.Common.Pascal.Lexer;
+  Atlas.Common.Pascal.Lexer,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TExpressionsText = (ExpressionMissing, ConstantFromTheCode, ExpressionEndsUnexpectedly, NameExpected, Unknown, True,
+    False, TargetPlatform, Expected, Unexpected, DivisionByZero, UnknownFunction);
+
+const
+  cTexts: array[TExpressionsText] of TAtlasText = (
+    (De: 'Ausdruck fehlt'; En: 'Expression missing'),
+    (De: 'Konstante aus dem Code'; En: 'Constant from the code'),
+    (De: 'Ausdruck endet unerwartet'; En: 'Expression ends unexpectedly'),
+    (De: 'Name erwartet'; En: 'Name expected'),
+    (De: 'unbekannt'; En: 'unknown'),
+    (De: 'wahr'; En: 'true'),
+    (De: 'falsch'; En: 'false'),
+    (De: 'Zielplattform '; En: 'target platform '),
+    (De: '"%s" erwartet'; En: '"%s" expected'),
+    (De: 'Unerwartet: "%s"'; En: 'Unexpected: "%s"'),
+    (De: 'Division durch null'; En: 'Division by zero'),
+    (De: 'Unbekannte Funktion "%s"'; En: 'Unknown function "%s"'));
+
+{$SCOPEDENUMS OFF}
 
 const
   BooleanValue: array[Boolean] of Double = (0, 1);
@@ -132,15 +157,15 @@ function BoolText(const AValue: TEvalValue): string;
 begin
   if not AValue.Known then
   begin
-    Result := 'unbekannt';
+    Result := cTexts[TExpressionsText.Unknown].Text;
   end
   else if AValue.Number <> 0 then
   begin
-    Result := 'wahr';
+    Result := cTexts[TExpressionsText.True].Text;
   end
   else
   begin
-    Result := 'falsch';
+    Result := cTexts[TExpressionsText.False].Text;
   end;
 end;
 
@@ -152,7 +177,7 @@ begin
   end
   else
   begin
-    Result := 'unbekannt';
+    Result := cTexts[TExpressionsText.Unknown].Text;
   end;
 end;
 
@@ -376,7 +401,7 @@ begin
   Result := PlatformSize(mName, mKnown);
   if mKnown and (FPlatform <> '') then
   begin
-    AOrigin := 'Zielplattform ' + FPlatform;
+    AOrigin := cTexts[TExpressionsText.TargetPlatform].Text + FPlatform;
   end;
 end;
 
@@ -469,7 +494,7 @@ function TExpressionEvaluator.Next: TPascalToken;
 begin
   if AtEnd then
   begin
-    raise EPreprocessorExpression.Create('Ausdruck endet unerwartet');
+    raise EPreprocessorExpression.Create(cTexts[TExpressionsText.ExpressionEndsUnexpectedly].Text);
   end;
   Result := FTokens[FIndex];
   Inc(FIndex);
@@ -479,7 +504,7 @@ procedure TExpressionEvaluator.Expect(const ASymbol: string);
 begin
   if AtEnd or not Peek.IsSymbol(ASymbol) then
   begin
-    raise EPreprocessorExpression.CreateFmt('"%s" erwartet', [ASymbol]);
+    raise EPreprocessorExpression.CreateFmt(cTexts[TExpressionsText.Expected].Text, [ASymbol]);
   end;
   Inc(FIndex);
 end;
@@ -494,7 +519,7 @@ function TExpressionEvaluator.ReadName: string;
 begin
   if AtEnd or not (Peek.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) then
   begin
-    raise EPreprocessorExpression.Create('Name erwartet');
+    raise EPreprocessorExpression.Create(cTexts[TExpressionsText.NameExpected].Text);
   end;
   Result := Next.Text;
   // Qualifizierte Namen wie System.SysUtils
@@ -503,7 +528,7 @@ begin
     Inc(FIndex);
     if AtEnd or not (Peek.Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) then
     begin
-      raise EPreprocessorExpression.Create('Name erwartet');
+      raise EPreprocessorExpression.Create(cTexts[TExpressionsText.NameExpected].Text);
     end;
     Result := Result + '.' + Next.Text;
   end;
@@ -539,12 +564,12 @@ begin
   FParts.Clear;
   if AtEnd then
   begin
-    raise EPreprocessorExpression.Create('Ausdruck fehlt');
+    raise EPreprocessorExpression.Create(cTexts[TExpressionsText.ExpressionMissing].Text);
   end;
   Value := ParseOr;
   if not AtEnd then
   begin
-    raise EPreprocessorExpression.CreateFmt('Unerwartet: "%s"', [Peek.Text]);
+    raise EPreprocessorExpression.CreateFmt(cTexts[TExpressionsText.Unexpected].Text, [Peek.Text]);
   end;
   if not Value.Known then
   begin
@@ -685,7 +710,7 @@ begin
     Right := ParseUnary;
     if (Op <> '*') and Right.IsFalse then
     begin
-      raise EPreprocessorExpression.Create('Division durch null');
+      raise EPreprocessorExpression.Create(cTexts[TExpressionsText.DivisionByZero].Text);
     end;
     if not Result.Known or not Right.Known then
     begin
@@ -934,10 +959,10 @@ begin
   // Konstante aus dem Code oder einer anderen Unit: Der Wert ist hier nicht bekannt.
   if not AtEnd and Peek.IsSymbol('(') then
   begin
-    raise EPreprocessorExpression.CreateFmt('Unbekannte Funktion "%s"', [mName]);
+    raise EPreprocessorExpression.CreateFmt(cTexts[TExpressionsText.UnknownFunction].Text, [mName]);
   end;
   Result := TEvalValue.Unknown;
-  AddPart(mName, 'unbekannt', 'Konstante aus dem Code');
+  AddPart(mName, cTexts[TExpressionsText.Unknown].Text, cTexts[TExpressionsText.ConstantFromTheCode].Text);
 end;
 
 function TExpressionEvaluator.ParsePrimary: TEvalValue;
@@ -971,5 +996,8 @@ begin
     Result := ParseNamed;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Pascal.Preprocessor.Expressions', cTexts);
 
 end.

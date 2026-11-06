@@ -69,7 +69,21 @@ uses
   System.Generics.Collections,
   Atlas.Text.Chars,
   Atlas.Text.Lines,
-  Atlas.Common.Lsp.Positions;
+  Atlas.Common.Lsp.Positions,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TExpressionCompletionText = (FieldsTextDocumentUriPositionAnd);
+
+const
+  cTexts: array[TExpressionCompletionText] of TAtlasText = (
+    (De: 'Felder "textDocument.uri", "position" und "expression" fehlen in ';
+     En: 'Fields "textDocument.uri", "position" and "expression" missing in '));
+
+{$SCOPEDENUMS OFF}
 
 const
   // LSP CompletionItemKind.Keyword und .Snippet; InsertTextFormat.Snippet.
@@ -324,7 +338,7 @@ begin
     TJSONObject(AParams).TryGetValue<string>('expression', Expression)) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Felder "textDocument.uri", "position" und "expression" fehlen in ' + Method);
+      cTexts[TExpressionCompletionText.FieldsTextDocumentUriPositionAnd].Text + Method);
   end;
   if not FStore.TryGet(Uri, Document) then
   begin
@@ -334,5 +348,8 @@ begin
   TJSONObject(AParams).TryGetValue<Integer>('character', Character);
   Result := Complete(Document, TLspPositions.ReadPosition(PositionValue).Line, Expression, Character, ACancellation);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.ExpressionCompletion', cTexts);
 
 end.

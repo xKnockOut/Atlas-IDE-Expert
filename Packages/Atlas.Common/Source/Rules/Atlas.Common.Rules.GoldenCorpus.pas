@@ -124,7 +124,27 @@ uses
   System.StrUtils,
   System.Diagnostics,
   Atlas.Common.Rules.Checker,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TGoldenCorpusText = (Planned, UnknownRule, Missing, FalseAlarm, BadVerdict, BadLine);
+
+const
+  cTexts: array[TGoldenCorpusText] of TAtlasText = (
+    (De: ' ist geplant und wird übersprungen'; En: ' is planned and skipped'),
+    (De: ' ist keine bekannte Regel'; En: ' is not a known rule'),
+    (De: ' erwartet, aber nicht gemeldet'; En: ' expected but not reported'),
+    (De: ' gemeldet, obwohl KEIN-TREFFER'; En: ' reported although KEIN-TREFFER'),
+    (De: 'Zeile %d: Bewertung "%s" ist weder richtig noch falsch';
+     En: 'Line %d: verdict "%s" is neither right nor wrong'),
+    (De: 'Zeile %d: erwartet "regel-id | Datei | Suchtext | Ersatz"';
+     En: 'Line %d: expected "rule-id | file | search text | replacement"'));
+
+{$SCOPEDENUMS OFF}
 
 /// <summary>Regel-IDs bestehen aus Kleinbuchstaben, Ziffern und Bindestrichen.</summary>
 function IsRuleId(const AId: string): Boolean;
@@ -332,22 +352,22 @@ begin
     mPlace := Format('%s(%d): %s', [AFileName, mMarker.Line + 1, mMarker.RuleId]);
     if not Contains(AKnownIds, mMarker.RuleId) and Contains(APlannedIds, mMarker.RuleId) then
     begin
-      Result.Skipped := Result.Skipped + [mPlace + ' ist geplant und wird übersprungen'];
+      Result.Skipped := Result.Skipped + [mPlace + cTexts[TGoldenCorpusText.Planned].Text];
       Continue;
     end;
     if not Contains(AKnownIds, mMarker.RuleId) then
     begin
-      Result.Unknown := Result.Unknown + [mPlace + ' ist keine bekannte Regel'];
+      Result.Unknown := Result.Unknown + [mPlace + cTexts[TGoldenCorpusText.UnknownRule].Text];
       Continue;
     end;
     mFound := Reported(AFindings, mMarker.RuleId, mMarker.Line);
     if mMarker.Expected and not mFound then
     begin
-      Result.Missing := Result.Missing + [mPlace + ' erwartet, aber nicht gemeldet'];
+      Result.Missing := Result.Missing + [mPlace + cTexts[TGoldenCorpusText.Missing].Text];
     end
     else if not mMarker.Expected and mFound then
     begin
-      Result.FalseAlarms := Result.FalseAlarms + [mPlace + ' gemeldet, obwohl KEIN-TREFFER'];
+      Result.FalseAlarms := Result.FalseAlarms + [mPlace + cTexts[TGoldenCorpusText.FalseAlarm].Text];
     end;
   end;
 end;
@@ -418,7 +438,7 @@ begin
     end
     else
     begin
-      raise EArgumentException.CreateFmt('Zeile %d: Bewertung "%s" ist weder richtig noch falsch',
+      raise EArgumentException.CreateFmt(cTexts[TGoldenCorpusText.BadVerdict].Text,
         [mIndex + 1, mColumns[3]]);
     end;
   end;
@@ -515,7 +535,7 @@ begin
     Parts := SplitParts(Line);
     if (Length(Parts) <> 4) or (Parts[0] = '') or (Parts[1] = '') or (Parts[2] = '') then
     begin
-      AErrors := AErrors + [Format('Zeile %d: erwartet "regel-id | Datei | Suchtext | Ersatz"', [Index + 1])];
+      AErrors := AErrors + [cTexts[TGoldenCorpusText.BadLine].Fmt([Index + 1])];
       Continue;
     end;
     Mutation.RuleId := Parts[0];
@@ -633,5 +653,8 @@ begin
     Result := Result + [Timing];
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.GoldenCorpus', cTexts);
 
 end.

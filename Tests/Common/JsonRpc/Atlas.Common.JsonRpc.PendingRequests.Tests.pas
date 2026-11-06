@@ -38,6 +38,13 @@ type
     procedure ExpireClaimsAnswerOnce;
     [Test]
     procedure TryAnswerAcceptsForeignToken;
+    /// <summary>#1761: Nur das Zeitlimit lässt eine Arbeit zu Ende laufen; Abbruch und geändertes Dokument
+    /// wiegen schwerer.</summary>
+    [Test]
+    procedure ExpireIsOnlyExpiredUntilCancelOrChange;
+    /// <summary>TJsonRpcPastTimeout übergeht das bloße Zeitlimit, nicht den Abbruch.</summary>
+    [Test]
+    procedure PastTimeoutIgnoresOnlyExpiry;
   end;
 
 implementation
@@ -312,6 +319,59 @@ begin
   Assert.IsTrue(Pending.TryAnswer(Token));
   Assert.IsTrue(Pending.TryAnswer(Token));
   Assert.IsFalse(Pending.Expire(Token));
+end;
+
+procedure TJsonRpcPendingRequestsTests.ExpireIsOnlyExpiredUntilCancelOrChange;
+var
+  mExpired, mCancelled, mChanged: IJsonRpcCancellationSource;
+  mCode: Integer;
+begin
+  mExpired := TJsonRpcCancellation.Create;
+  Assert.IsFalse(mExpired.OnlyExpired);
+  mExpired.Expire;
+  Assert.IsTrue(mExpired.IsCancellationRequested);
+  Assert.IsTrue(mExpired.OnlyExpired);
+  Assert.WillRaise(
+    procedure
+    begin
+      mExpired.ThrowIfCancellationRequested;
+    end, EJsonRpcRequestCancelled);
+  mCancelled := TJsonRpcCancellation.Create;
+  mCancelled.Expire;
+  mCancelled.Cancel;
+  Assert.IsFalse(mCancelled.OnlyExpired, 'Abbruch nach dem Zeitlimit');
+  mChanged := TJsonRpcCancellation.Create;
+  mChanged.Expire;
+  mChanged.CancelModified;
+  Assert.IsFalse(mChanged.OnlyExpired, 'Dokument nach dem Zeitlimit geändert');
+  mCode := 0;
+  try
+    mChanged.ThrowIfCancellationRequested;
+  except
+    on E: EJsonRpcContentModified do
+      mCode := E.Code;
+  end;
+  Assert.AreEqual(TJsonRpcErrorCode.ContentModified, mCode);
+end;
+
+procedure TJsonRpcPendingRequestsTests.PastTimeoutIgnoresOnlyExpiry;
+var
+  mSource: IJsonRpcCancellationSource;
+  mToken: IJsonRpcCancellationToken;
+begin
+  mSource := TJsonRpcCancellation.Create;
+  mToken := TJsonRpcPastTimeout.Create(mSource);
+  mSource.Expire;
+  Assert.IsFalse(mToken.IsCancellationRequested, 'nur das Zeitlimit');
+  mToken.ThrowIfCancellationRequested;
+  mSource.Cancel;
+  Assert.IsTrue(mToken.IsCancellationRequested, 'ausdrücklicher Abbruch');
+  Assert.WillRaise(
+    procedure
+    begin
+      mToken.ThrowIfCancellationRequested;
+    end, EJsonRpcRequestCancelled);
+  Assert.IsFalse((TJsonRpcPastTimeout.Create(nil) as IJsonRpcCancellationToken).IsCancellationRequested, 'ohne Anfrage');
 end;
 
 initialization

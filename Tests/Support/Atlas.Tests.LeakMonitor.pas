@@ -27,7 +27,16 @@
 //   PreTest die Freigabe zum Setup; Belegungen in der Lücke gehören DUnitX und zählen nicht.
 // - Ein negativer Saldo (andere Threads geben älteren Speicher frei) ist nie
 //   ein Leck des Tests und wird als 0 gemeldet.
+// - Anonymes Protokoll (#1478): Das gemeinsame atlas.log (TAtlasGuard.RotatingLog) nummeriert jeden neuen Namen,
+//   Pfad und Text und behält die Nummern bis Programmende (höchstens MaxLabels). Jeder Wert zählte so als Leck
+//   des Tests, der ihn zuerst schreibt (z. B. FailingProviderTripsOnlyItself, GuardErrorLineHidesMessage).
+//   PostTearDown vergisst die Nummern vor der letzten Messung; jeder Test beginnt mit leerer Tabelle.
 // Bleibt ein Leck, hängt der Bericht Thread-Anzahl und Wartezeit an.
+//
+// Der Monitor ist der einzige Haken vor jedem Setup und setzt deshalb auch den gemeinsamen Ausgangszustand:
+// Jeder Test beginnt mit deutschen Texten (TAtlasLocale, #1458). Die Sprache gilt prozessweit, und Tests, die
+// Einstellungen anwenden (TShellSettings.SetLoose wählt ohne language Englisch), ließen sonst nachfolgende Tests
+// je nach Reihenfolge englisch prüfen.
 
 interface
 
@@ -95,11 +104,13 @@ uses
   System.Generics.Collections,
   DUnitX.ServiceLocator,
   Atlas.Common.Editing.SlashCommands,
+  Atlas.Common.Localization.Texts,
   Atlas.Common.Rules.Catalog,
   Atlas.Core.Files.DataFile,
   Atlas.Core.Settings.Catalog,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Settings.Transfer,
+  Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.TimeLimit;
 
 const
@@ -347,6 +358,24 @@ begin
   end;
 end;
 
+/// <summary>Gemeinsame Befehlsliste je Sprache (#1458): entsteht beim ersten Zugriff in der jeweiligen Sprache und
+/// bleibt; sonst trifft das je nach Reihenfolge einen anderen Test als Leck (die englische etwa
+/// EnglishTextsWithoutGerman über die Regel slash-command, rund 23 KB).</summary>
+procedure PrewarmSlashCommands;
+var
+  mLanguage: TTextLanguage;
+begin
+  try
+    for mLanguage := Low(TTextLanguage) to High(TTextLanguage) do
+    begin
+      TAtlasLocale.Use(mLanguage);
+      TSlashCommandRegistry.Shared;
+    end;
+  finally
+    TAtlasLocale.Use(TTextLanguage.German);
+  end;
+end;
+
 procedure PrewarmRuntime;
 var
   Task: ITask;
@@ -354,9 +383,7 @@ var
   Json: TJSONValue;
 begin
   PrewarmWaitObjects;
-  // Gemeinsame Befehlsliste: entsteht beim ersten Zugriff und bleibt; sonst trifft das je nach
-  // Reihenfolge (paralleler Lauf) einen anderen Test als Leck.
-  TSlashCommandRegistry.Shared;
+  PrewarmSlashCommands;
   // Ebenso der gemeinsame Regelkatalog mit Gruppen und Optionen (#909).
   TRuleCatalog.Shared;
   // Legt den Standard-Thread-Pool und seinen Überwachungs-Thread an (bleiben bis Programmende).
@@ -476,6 +503,7 @@ end;
 
 procedure TLeakMonitor.PreSetup;
 begin
+  TAtlasLocale.Use(TTextLanguage.German);
   Start;
   FSetUpBefore := AllocatedBytes;
 end;
@@ -529,6 +557,8 @@ end;
 
 procedure TLeakMonitor.PostTearDown;
 begin
+  // Nummern des anonymen Protokolls gehören keinem Test (siehe Kopf); vor der Messung vergessen.
+  TAtlasGuard.RotatingLog.Redactor.Forget;
   FTearDownAllocated := AllocatedBytes - FTearDownBefore;
   if RawTotal > 0 then
   begin

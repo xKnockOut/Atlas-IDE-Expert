@@ -9,6 +9,10 @@ type
   [TestFixture]
   TLspClientTests = class
   public
+    /// <summary>Erste Benutzung des gemeinsamen Rekorders (TAtlasPluginTimings.Shared, lebt bis zum Entladen)
+    /// ungemessen vorwegnehmen; sonst meldet TimingNamesExecutedCommand ihn je nach Reihenfolge als Leck.</summary>
+    [SetupFixture]
+    procedure WarmUpFirstUse;
     [Test]
     procedure AnswersRequestFromSplitFrames;
     [Test]
@@ -176,6 +180,11 @@ const
 
 { TLspClientTests }
 
+procedure TLspClientTests.WarmUpFirstUse;
+begin
+  TimingNamesExecutedCommand;
+end;
+
 procedure TLspClientTests.AnswersRequestFromSplitFrames;
 var
   Client: TLspClient;
@@ -227,6 +236,7 @@ begin
     var
       mRequest: TJSONObject;
       mId: Integer;
+      mReply: TBytes;
     begin
       mRequest := Unframe(ABytes);
       try
@@ -234,7 +244,8 @@ begin
       finally
         mRequest.Free;
       end;
-      mClient.Receive(TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":null}', [mId])), 1);
+      mReply := TLspClient.Frame(Format('{"jsonrpc":"2.0","id":%d,"result":null}', [mId]));
+      mClient.Receive(mReply, Length(mReply));
     end);
   TAtlasPluginTimings.Shared.Reset;
   TAtlasPluginTimings.Enabled := True;

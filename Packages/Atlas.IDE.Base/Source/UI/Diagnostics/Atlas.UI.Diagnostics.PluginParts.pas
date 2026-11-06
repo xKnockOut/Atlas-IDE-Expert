@@ -5,7 +5,9 @@
 //   kein Fenster, anders als TTabControl.Tabs).
 // - TAtlasDiagnosticBar: Belegung des Hauptthreads (Verlauf der letzten 60 s
 //   und Mittel), Schwelle, Anhalten/Weiter, Zurücksetzen, Bericht kopieren und
-//   ein kurzer Hinweis.
+//   ein kurzer Hinweis. Passen Angaben und Knöpfe nicht nebeneinander (das
+//   Fenster in seiner Startgröße), stehen die Knöpfe in einer zweiten Zeile;
+//   vorher lagen sie über Verlauf und Schwelle.
 // - TAtlasTablePage: eine Seite mit Kopfzeile und Tabelle (Server,
 //   Hintergrund, Hänger).
 // - TAtlasFeatureMenu: Kontextmenü der Funktionen (nur diese zeigen, alle
@@ -57,6 +59,7 @@ type
 
   TAtlasDiagnosticBar = class(TPanel)
   private
+    FButtons: TPanel;
     FSpark: TPaintBox;
     FBusy: TLabel;
     FThreshold: TLabel;
@@ -70,20 +73,34 @@ type
     FOnPause: TProc<Boolean>;
     FOnReset: TProc;
     FOnCopy: TProc;
+    FArranging: Boolean;
+    /// <summary>Breite der Knöpfe nebeneinander; in der zweiten Zeile ist FButtons so breit wie die Leiste.</summary>
+    FButtonsWidth: Integer;
     function NewButton(AId: TAtlasTextId; AClick: TNotifyEvent): TButton;
     function NewLabel: TLabel;
+    function RowHeight: Integer;
+    function InfoWidth: Integer;
+    procedure Arrange;
     procedure SparkPaint(Sender: TObject);
     procedure PauseClick(Sender: TObject);
     procedure ResetClick(Sender: TObject);
     procedure CopyClick(Sender: TObject);
+  protected
+    procedure CreateWnd; override;
+    procedure Resize; override;
   public
     constructor Create(AOwner: TComponent); override;
+    /// <summary>Angaben links und Knöpfe rechts passen nicht in eine Zeile: Knöpfe darunter.</summary>
+    class function NeedsTwoRows(AInfoWidth, AButtonsWidth, AClientWidth: Integer): Boolean; static;
     procedure SetSnapshot(const ASnapshot: TAtlasPluginSnapshot);
     procedure SetColors(const AColors: TAtlasColors);
     procedure ShowNote(const AText: string);
     property Busy: TLabel read FBusy;
     property Threshold: TLabel read FThreshold;
     property Note: TLabel read FNote;
+    property Spark: TPaintBox read FSpark;
+    /// <summary>Knöpfe Anhalten, Zurücksetzen, Bericht kopieren; rechts bzw. (schmal) in der zweiten Zeile.</summary>
+    property Buttons: TPanel read FButtons;
     property PauseButton: TButton read FPause;
     property ResetButton: TButton read FReset;
     property CopyButton: TButton read FCopy;
@@ -243,8 +260,13 @@ begin
   inherited Create(AOwner);
   BevelOuter := bvNone;
   ParentBackground := True;
-  Height := MulDiv(32, CurrentPPI, 96);
+  Height := RowHeight;
   FColors := TAtlasColors.Light;
+  FButtons := TPanel.Create(Self);
+  FButtons.Parent := Self;
+  FButtons.BevelOuter := bvNone;
+  FButtons.ParentBackground := True;
+  FButtons.Align := alRight;
   // alRight von rechts nach links: Kopieren, Zurücksetzen, Anhalten.
   FCopy := NewButton(TAtlasTextId.DiagnosticCopy, CopyClick);
   FReset := NewButton(TAtlasTextId.DiagReset, ResetClick);
@@ -263,12 +285,81 @@ begin
   FNote := NewLabel;
   FNote.Left := MulDiv(800, CurrentPPI, 96);
   FNote.Font.Color := clGrayText;
+  FButtonsWidth := FCopy.Width + FReset.Width + FPause.Width + 3 * (FCopy.Margins.Left + FCopy.Margins.Right);
+  FButtons.Width := FButtonsWidth;
+  Arrange;
+end;
+
+function TAtlasDiagnosticBar.RowHeight: Integer;
+begin
+  Result := MulDiv(32, CurrentPPI, 96);
+end;
+
+function TAtlasDiagnosticBar.InfoWidth: Integer;
+var
+  mControl: TControl;
+begin
+  Result := 0;
+  for mControl in TArray<TControl>.Create(FBusy, FSpark, FThreshold, FNote) do
+  begin
+    // Ein leerer Hinweis braucht keinen Platz.
+    if (mControl <> FNote) or (FNote.Caption <> '') then
+    begin
+      Inc(Result, mControl.Width + mControl.Margins.Left + mControl.Margins.Right);
+    end;
+  end;
+end;
+
+class function TAtlasDiagnosticBar.NeedsTwoRows(AInfoWidth, AButtonsWidth, AClientWidth: Integer): Boolean;
+begin
+  Result := (AClientWidth > 0) and (AInfoWidth + AButtonsWidth > AClientWidth);
+end;
+
+procedure TAtlasDiagnosticBar.Arrange;
+var
+  mTwoRows: Boolean;
+begin
+  if FArranging or (FButtons = nil) or not HandleAllocated then
+  begin
+    Exit;
+  end;
+  FArranging := True;
+  try
+    mTwoRows := NeedsTwoRows(InfoWidth, FButtonsWidth, ClientWidth);
+    if mTwoRows then
+    begin
+      // Knöpfe rechtsbündig in der zweiten Zeile; die Angaben behalten die erste ganz.
+      FButtons.Align := alBottom;
+      FButtons.Height := RowHeight;
+      Height := 2 * RowHeight;
+    end
+    else
+    begin
+      FButtons.Align := alRight;
+      FButtons.Width := FButtonsWidth;
+      Height := RowHeight;
+    end;
+  finally
+    FArranging := False;
+  end;
+end;
+
+procedure TAtlasDiagnosticBar.CreateWnd;
+begin
+  inherited;
+  Arrange;
+end;
+
+procedure TAtlasDiagnosticBar.Resize;
+begin
+  inherited;
+  Arrange;
 end;
 
 function TAtlasDiagnosticBar.NewButton(AId: TAtlasTextId; AClick: TNotifyEvent): TButton;
 begin
   Result := TButton.Create(Self);
-  Result.Parent := Self;
+  Result.Parent := FButtons;
   Result.Align := alRight;
   Result.AlignWithMargins := True;
   Result.Width := MulDiv(110, CurrentPPI, 96);
@@ -298,6 +389,8 @@ begin
   begin
     FPause.Caption := TAtlasStrings.Text(TAtlasTextId.DiagResume);
   end;
+  // Längere Angaben (Prozent, Sprache) können die zweite Zeile nötig machen.
+  Arrange;
   FSpark.Invalidate;
 end;
 
@@ -310,6 +403,7 @@ end;
 procedure TAtlasDiagnosticBar.ShowNote(const AText: string);
 begin
   FNote.Caption := AText;
+  Arrange;
 end;
 
 procedure TAtlasDiagnosticBar.SparkPaint(Sender: TObject);

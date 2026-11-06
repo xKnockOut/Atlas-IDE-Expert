@@ -81,7 +81,6 @@ uses
   Atlas.Core.UnitRelations.Model,
   Atlas.Core.UnitRelations.InterfaceCost,
   Atlas.Core.EditorToolbar.Sections,
-  Atlas.Text.Lines,
   Atlas.UI.Strings,
   Atlas.UI.Analysis.Strings,
   Atlas.UI.UnitRelations.Frame,
@@ -311,7 +310,7 @@ begin
   mSnapshot := TAtlasEditorSnapshots.Get(AView);
   if (mSnapshot.Version <> FSectionsVersion) or not SameText(mFileName, FSectionsFile) then
   begin
-    FSections := TAtlasSectionScanner.Scan(TTextLines.SplitLines(mSnapshot.Text));
+    FSections := TAtlasSectionScanner.Scan(mSnapshot.Text);
     FSectionsVersion := mSnapshot.Version;
     FSectionsFile := mFileName;
   end;

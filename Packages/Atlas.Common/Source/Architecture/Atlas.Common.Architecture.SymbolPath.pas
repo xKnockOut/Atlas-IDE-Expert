@@ -166,7 +166,54 @@ uses
   System.StrUtils,
   System.Math,
   System.Diagnostics,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TArchitectureSymbolPathText = (OfType, ParameterOfType, ResultOfType, Contains, IsAmbiguousMatches,
+    PleaseQualifyTheNameTType, NoPathInAtMost, OnlyTheAllowedEdgeKinds, ShortestPath1Step, ShortestPathSteps,
+    BelongsTo, NoteShorterPathsViaCalls, NoSymbolAndNoUnit, NoPathFoundInSearch, UsesImplementation, InheritsFrom,
+    ImplementedBy, HasField, Calls, MoreThanPathsOfEqual, Cancelled, TimeLimit, NodeLimit, UsesText, Implements, Step,
+    Steps, SearchedNodes, PathsOfEqualLength, Inferred, Path);
+
+const
+  cTexts: array[TArchitectureSymbolPathText] of TAtlasText = (
+    (De: 'vom Typ'; En: 'of type'),
+    (De: 'Parameter vom Typ'; En: 'parameter of type'),
+    (De: 'Ergebnis vom Typ'; En: 'result of type'),
+    (De: 'enthält'; En: 'contains'),
+    (De: '"%s" ist mehrdeutig (%d Treffer):'; En: '"%s" is ambiguous (%d matches):'),
+    (De: 'Bitte qualifiziert angeben (TTyp.Name oder Unit.Name).';
+     En: 'Please qualify the name (TType.Name or Unit.Name).'),
+    (De: 'Kein Weg in höchstens %s.'; En: 'No path in at most %s.'),
+    (De: ' Nur die erlaubten Kantenarten (via) wurden durchsucht.';
+     En: ' Only the allowed edge kinds (via) were searched.'),
+    (De: 'Kürzester Weg (1 Schritt'; En: 'Shortest path (1 step'),
+    (De: 'Kürzester Weg (%d Schritte'; En: 'Shortest path (%d steps'),
+    (De: '   gehört zu %s'; En: '   belongs to %s'),
+    (De: 'Hinweis: Kürzere Wege über Aufrufe nur bis %s geprüft (Suche abgebrochen: %s).';
+     En: 'Note: shorter paths via calls only checked up to %s (search stopped: %s).'),
+    (De: 'Kein Symbol und keine Unit "%s" im Index.'; En: 'No symbol and no unit "%s" in the index.'),
+    (De: 'Kein Weg gefunden in %s (Suche nach %d Knoten abgebrochen: %s).';
+     En: 'No path found in %s (search stopped after %d nodes: %s).'),
+    (De: 'verwendet (implementation)'; En: 'uses (implementation)'),
+    (De: 'erbt von'; En: 'inherits from'),
+    (De: 'umgesetzt von'; En: 'implemented by'),
+    (De: 'hat Feld'; En: 'has field'),
+    (De: 'ruft auf'; En: 'calls'),
+    (De: ', mehr als %d Wege gleich lang'; En: ', more than %d paths of equal length'),
+    (De: 'abgebrochen'; En: 'cancelled'),
+    (De: 'Zeitlimit'; En: 'time limit'),
+    (De: 'Knotengrenze'; En: 'node limit'),
+    (De: 'verwendet'; En: 'uses'),
+    (De: 'setzt um'; En: 'implements'),
+    (De: '1 Schritt'; En: '1 step'),
+    (De: '%d Schritten'; En: '%d steps'),
+    (De: 'Durchsucht: %d Knoten, %s'; En: 'Searched: %d nodes, %s'),
+    (De: ', %d Wege gleich lang'; En: ', %d paths of equal length'),
+    (De: '[erschlossen] '; En: '[inferred] '),
+    (De: 'Weg %d:'; En: 'Path %d:'));
 
 const
   cEdgeNames: array[TSymbolPathEdgeKind] of string = ('uses', 'inherits', 'implements', 'hasField', 'parameter',
@@ -388,15 +435,15 @@ begin
   begin
     if Assigned(FCancelled) and FCancelled() then
     begin
-      FAbortReason := 'abgebrochen';
+      FAbortReason := cTexts[TArchitectureSymbolPathText.Cancelled].Text;
     end
     else if (FTimeoutMs > 0) and (Elapsed > FTimeoutMs) then
     begin
-      FAbortReason := 'Zeitlimit';
+      FAbortReason := cTexts[TArchitectureSymbolPathText.TimeLimit].Text;
     end
     else if FVisited > FMaxNodes then
     begin
-      FAbortReason := 'Knotengrenze';
+      FAbortReason := cTexts[TArchitectureSymbolPathText.NodeLimit].Text;
     end;
   end;
   Result := FAbortReason <> '';
@@ -881,21 +928,24 @@ class function TSymbolPathSearch.StepCaption(const AStep: TSymbolPathStep; const
 begin
   case AStep.Kind of
     TSymbolPathEdgeKind.Uses_:
-      Result := Either(AStep.Implementation_, 'verwendet (implementation)', 'verwendet');
+      Result := Either(AStep.Implementation_, cTexts[TArchitectureSymbolPathText.UsesImplementation].Text,
+        cTexts[TArchitectureSymbolPathText.UsesText].Text);
     TSymbolPathEdgeKind.Inherits:
-      Result := 'erbt von';
+      Result := cTexts[TArchitectureSymbolPathText.InheritsFrom].Text;
     TSymbolPathEdgeKind.Implements:
-      Result := Either(AStep.Reverse, 'umgesetzt von', 'setzt um');
+      Result := Either(AStep.Reverse, cTexts[TArchitectureSymbolPathText.ImplementedBy].Text,
+        cTexts[TArchitectureSymbolPathText.Implements].Text);
     TSymbolPathEdgeKind.HasField:
-      Result := Either(AFrom.IsUnit or (AFrom.Symbol.Kind in SymbolPathValueKinds), 'vom Typ', 'hat Feld');
+      Result := Either(AFrom.IsUnit or (AFrom.Symbol.Kind in SymbolPathValueKinds),
+        cTexts[TArchitectureSymbolPathText.OfType].Text, cTexts[TArchitectureSymbolPathText.HasField].Text);
     TSymbolPathEdgeKind.Parameter:
-      Result := 'Parameter vom Typ';
+      Result := cTexts[TArchitectureSymbolPathText.ParameterOfType].Text;
     TSymbolPathEdgeKind.Result_:
-      Result := 'Ergebnis vom Typ';
+      Result := cTexts[TArchitectureSymbolPathText.ResultOfType].Text;
     TSymbolPathEdgeKind.Calls:
-      Result := 'ruft auf';
+      Result := cTexts[TArchitectureSymbolPathText.Calls].Text;
   else
-    Result := 'enthält';
+    Result := cTexts[TArchitectureSymbolPathText.Contains].Text;
   end;
 end;
 
@@ -933,38 +983,39 @@ function StepsText(ACount: Integer): string;
 begin
   if ACount = 1 then
   begin
-    Result := '1 Schritt';
+    Result := cTexts[TArchitectureSymbolPathText.Step].Text;
   end
   else
   begin
-    Result := Format('%d Schritten', [ACount]);
+    Result := cTexts[TArchitectureSymbolPathText.Steps].Fmt([ACount]);
   end;
 end;
 
 function SearchedText(const AResult: TSymbolPathResult): string;
 begin
-  Result := Format('Durchsucht: %d Knoten, %s', [AResult.Visited, Seconds(AResult.ElapsedMs)]);
+  Result := cTexts[TArchitectureSymbolPathText.SearchedNodes].Fmt([AResult.Visited, Seconds(AResult.ElapsedMs)]);
 end;
 
 procedure AppendAmbiguous(ALines: TStringBuilder; const AResult: TSymbolPathResult; const ARoot: string);
 var
   mNode: TSymbolPathNode;
 begin
-  ALines.Append(Format('"%s" ist mehrdeutig (%d Treffer):', [AResult.Subject, Length(AResult.Candidates)]));
+  ALines.Append(cTexts[TArchitectureSymbolPathText.IsAmbiguousMatches].Fmt([AResult.Subject,
+    Length(AResult.Candidates)]));
   for mNode in AResult.Candidates do
   begin
     ALines.Append(sLineBreak).Append(Format('  %s  %s:%d', [mNode.Caption, RelativePath(mNode.FileName, ARoot),
       mNode.Position.Line + 1]));
   end;
-  ALines.Append(sLineBreak).Append('Bitte qualifiziert angeben (TTyp.Name oder Unit.Name).');
+  ALines.Append(sLineBreak).Append(cTexts[TArchitectureSymbolPathText.PleaseQualifyTheNameTType].Text);
 end;
 
 procedure AppendNoPath(ALines: TStringBuilder; const AResult: TSymbolPathResult);
 begin
-  ALines.Append(Format('Kein Weg in höchstens %s.', [StepsText(AResult.MaxSteps)]));
+  ALines.Append(cTexts[TArchitectureSymbolPathText.NoPathInAtMost].Fmt([StepsText(AResult.MaxSteps)]));
   if AResult.Restricted then
   begin
-    ALines.Append(' Nur die erlaubten Kantenarten (via) wurden durchsucht.');
+    ALines.Append(cTexts[TArchitectureSymbolPathText.OnlyTheAllowedEdgeKinds].Text);
   end;
   ALines.Append(sLineBreak).Append(SearchedText(AResult));
 end;
@@ -979,14 +1030,15 @@ begin
   begin
     mSteps := Length(AResult.Routes[0].Steps);
   end;
-  Result := Either(mSteps = 1, 'Kürzester Weg (1 Schritt', Format('Kürzester Weg (%d Schritte', [mSteps]));
+  Result := Either(mSteps = 1, cTexts[TArchitectureSymbolPathText.ShortestPath1Step].Text,
+    cTexts[TArchitectureSymbolPathText.ShortestPathSteps].Fmt([mSteps]));
   if AResult.MoreRoutes then
   begin
-    Result := Result + Format(', mehr als %d Wege gleich lang', [AResult.RouteCount]);
+    Result := Result + cTexts[TArchitectureSymbolPathText.MoreThanPathsOfEqual].Fmt([AResult.RouteCount]);
   end
   else if AResult.RouteCount > 1 then
   begin
-    Result := Result + Format(', %d Wege gleich lang', [AResult.RouteCount]);
+    Result := Result + cTexts[TArchitectureSymbolPathText.PathsOfEqualLength].Fmt([AResult.RouteCount]);
   end;
   Result := Result + '):';
 end;
@@ -1000,7 +1052,7 @@ begin
   mLocation := Format('%s:%d', [RelativePath(AStep.FileName, ARoot), AStep.Position.Line + 1]);
   if AStep.Inferred then
   begin
-    mLocation := '[erschlossen] ' + mLocation;
+    mLocation := cTexts[TArchitectureSymbolPathText.Inferred].Text + mLocation;
   end;
   Result := '   ' + mCaption + StringOfChar(' ', Max(1, 18 - Length(mCaption))) + mLocation;
 end;
@@ -1022,7 +1074,7 @@ begin
   mLast := ARoute.Nodes[High(ARoute.Nodes)];
   if (mLast.UnitName <> ATarget.UnitName) or (mLast.Caption <> ATarget.Caption) then
   begin
-    ALines.Append(sLineBreak).Append(Format('   gehört zu %s', [ATarget.Caption]));
+    ALines.Append(sLineBreak).Append(cTexts[TArchitectureSymbolPathText.BelongsTo].Fmt([ATarget.Caption]));
   end;
 end;
 
@@ -1035,14 +1087,14 @@ begin
   begin
     if Length(AResult.Routes) > 1 then
     begin
-      ALines.Append(sLineBreak).Append(Format('Weg %d:', [mIndex + 1]));
+      ALines.Append(sLineBreak).Append(cTexts[TArchitectureSymbolPathText.Path].Fmt([mIndex + 1]));
     end;
     AppendRoute(ALines, AResult.Routes[mIndex], AResult.Target, ARoot);
   end;
   if AResult.CallsIncomplete then
   begin
-    ALines.Append(sLineBreak).Append(Format('Hinweis: Kürzere Wege über Aufrufe nur bis %s geprüft ' +
-      '(Suche abgebrochen: %s).', [StepsText(AResult.SearchedSteps), AResult.AbortReason]));
+    ALines.Append(sLineBreak).Append(cTexts[TArchitectureSymbolPathText.NoteShorterPathsViaCalls].Fmt([
+      StepsText(AResult.SearchedSteps), AResult.AbortReason]));
   end;
   ALines.Append(sLineBreak).Append(SearchedText(AResult));
 end;
@@ -1055,14 +1107,14 @@ begin
   try
     case AResult.Status of
       TSymbolPathStatus.NotFound:
-        mLines.Append(Format('Kein Symbol und keine Unit "%s" im Index.', [AResult.Subject]));
+        mLines.Append(cTexts[TArchitectureSymbolPathText.NoSymbolAndNoUnit].Fmt([AResult.Subject]));
       TSymbolPathStatus.Ambiguous:
         AppendAmbiguous(mLines, AResult, ARoot);
       TSymbolPathStatus.NoPath:
         AppendNoPath(mLines, AResult);
       TSymbolPathStatus.Aborted:
-        mLines.Append(Format('Kein Weg gefunden in %s (Suche nach %d Knoten abgebrochen: %s).',
-          [StepsText(AResult.SearchedSteps), AResult.Visited, AResult.AbortReason])).Append(sLineBreak)
+        mLines.Append(cTexts[TArchitectureSymbolPathText.NoPathFoundInSearch].Fmt([StepsText(AResult.SearchedSteps),
+          AResult.Visited, AResult.AbortReason])).Append(sLineBreak)
           .Append(SearchedText(AResult));
     else
       AppendFound(mLines, AResult, ARoot);
@@ -1176,5 +1228,8 @@ begin
     mRoutes.AddElement(RouteJson(mRoute));
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Architecture.SymbolPath', cTexts);
 
 end.

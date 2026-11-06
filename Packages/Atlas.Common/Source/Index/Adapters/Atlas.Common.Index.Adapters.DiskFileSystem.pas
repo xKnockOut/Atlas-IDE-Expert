@@ -34,7 +34,20 @@ implementation
 uses
   System.Classes,
   System.IOUtils,
-  Atlas.Common.Documents.FileEncoding;
+  Atlas.Common.Documents.FileEncoding,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TDiskFileSystemText = (TargetNotReplaced);
+
+const
+  cTexts: array[TDiskFileSystemText] of TAtlasText = (
+    (De: 'Ziel nicht ersetzt'; En: 'Target not replaced'));
+
+{$SCOPEDENUMS OFF}
 
 type
   /// <summary>Hält die Sperrdatei offen, solange jemand die Schnittstelle hält.</summary>
@@ -183,7 +196,7 @@ begin
   end;
   if not Result and (AError = '') then
   begin
-    AError := 'Ziel nicht ersetzt';
+    AError := cTexts[TDiskFileSystemText.TargetNotReplaced].Text;
   end;
   // Keine Reste, weder bei Erfolg noch bei Fehler (Test FailedReplaceLeavesNoRemains).
   if FileExists(Temp) then
@@ -212,5 +225,8 @@ begin
       Result := nil;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Index.Adapters.DiskFileSystem', cTexts);
 
 end.

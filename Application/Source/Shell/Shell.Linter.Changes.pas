@@ -38,7 +38,17 @@ uses
   Atlas.Common.Documents.FileEncoding,
   Atlas.Common.Rules.ChangedFiles,
   Shell.Platform,
-  Shell.Linter.Output;
+  Shell.Linter.Output,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TLinterChangesText = (Changed);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TLinterChangesText] of TAtlasText = (
+    (De: '%s: %d von %d Dateien geändert gegenüber %s'; En: '%s: %d of %d files changed compared with %s'));
 
 class function TLinterChanges.Detect(const AConfigRoot: string; const ASettings: TServerSettings): TVcsChanges;
 var
@@ -74,8 +84,8 @@ begin
     begin
       Result := IncludeNamesOf(AFileName);
     end);
-  TLinterOutput.Error(Format('%s: %d von %d Dateien geändert gegenüber %s', [AGit.Name, Length(Result),
-    Length(AFiles), AOptions.ChangedRef]));
+  TLinterOutput.Error(cTexts[TLinterChangesText.Changed].Fmt([AGit.Name, Length(Result), Length(AFiles),
+    AOptions.ChangedRef]));
 end;
 
 class function TLinterChanges.InChangedLines(const AFindings: TArray<TRuleFinding>; AGit: TVcsChanges;
@@ -116,5 +126,8 @@ begin
   end;
   Result := Length(ASpans) > 0;
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Linter.Changes', cTexts);
 
 end.

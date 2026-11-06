@@ -45,14 +45,35 @@ uses
   Atlas.Common.Rules.TypedScope,
   Atlas.Common.Rules.Options,
   Atlas.Text.Lines,
-  Atlas.Common.Rules.Builtin.Constants.Types;
+  Atlas.Common.Rules.Builtin.Constants.Types,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TConstantsTypedConstantsText = (Title, ToVar, NeedsJ, Changed, ZeroNil, WriteNil);
+
+const
+  cTexts: array[TConstantsTypedConstantsText] of TAtlasText = (
+    (De: 'Typisierte Konstante verändert'; En: 'Typed constant changed'),
+    (De: 'In var mit Initialwert umwandeln'; En: 'Convert to var with initial value'),
+    (De: '%s ist eine typisierte Konstante und kann ohne {$J+} nicht verändert werden (wie %s).';
+     En: '%s is a typed constant and cannot be changed without {$J+} (like %s).'),
+    (De: '%s ist eine typisierte Konstante und wird verändert (wie %s).';
+     En: '%s is a typed constant and is changed (like %s).'),
+    (De: '%s ist ein Zeiger; die 0 wird zu nil umgewandelt (wie W1013).';
+     En: '%s is a pointer; the 0 is converted to nil (like W1013).'),
+    (De: 'nil schreiben'; En: 'Write nil'));
+
+{$SCOPEDENUMS OFF}
 
 { TTypedConstantModifiedRule }
 
 function TTypedConstantModifiedRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(TypedConstantModifiedRuleId, TRuleSeverity.Warning,
-    'Typisierte Konstante verändert');
+    cTexts[TConstantsTypedConstantsText.Title].Text);
 end;
 
 /// <summary>Position der schließenden Klammer zur öffnenden an AOpen; 0, wenn keine passt.</summary>
@@ -666,7 +687,7 @@ var
     begin
       Exit;
     end;
-    AFix := TRuleFix.Create('In var mit Initialwert umwandeln', mEdits);
+    AFix := TRuleFix.Create(cTexts[TConstantsTypedConstantsText.ToVar].Text, mEdits);
     Result := True;
   end;
 
@@ -699,8 +720,8 @@ var
       begin
         Code := 'E2064';
       end;
-      AReport.AddWithSeverity(TTextRange.Create(ATarget.StartPos, ATarget.EndPos), Format('%s ist eine ' +
-        'typisierte Konstante und kann ohne {$J+} nicht verändert werden (wie %s).', [Symbol.Name, Code]),
+      AReport.AddWithSeverity(TTextRange.Create(ATarget.StartPos, ATarget.EndPos),
+        cTexts[TConstantsTypedConstantsText.NeedsJ].Fmt([Symbol.Name, Code]),
         TRuleSeverity.Error, Fixes);
       Exit;
     end;
@@ -717,8 +738,8 @@ var
     begin
       Code := 'W1017';
     end;
-    AReport.Add(TTextRange.Create(ATarget.StartPos, ATarget.EndPos), Format('%s ist eine typisierte Konstante ' +
-      'und wird verändert (wie %s).', [Symbol.Name, Code]), TRuleConfidence.High, Fixes);
+    AReport.Add(TTextRange.Create(ATarget.StartPos, ATarget.EndPos),
+      cTexts[TConstantsTypedConstantsText.Changed].Fmt([Symbol.Name, Code]), TRuleConfidence.High, Fixes);
   end;
 
   /// <summary>Nennt eines der Argumente des Aufrufs ANode einen verdächtigen Namen?</summary>
@@ -825,9 +846,10 @@ var
     begin
       Exit;
     end;
-    AReport.Add(TTextRange.Create(Value.StartPos, Value.EndPos), Format('%s ist ein Zeiger; die 0 wird zu nil ' +
-      'umgewandelt (wie W1013).', [ANode.Name]), TRuleConfidence.High,
-      [TRuleFix.Create('nil schreiben', [TTextEdit.Create(TTextRange.Create(Value.StartPos, Value.EndPos), 'nil')],
+    AReport.Add(TTextRange.Create(Value.StartPos, Value.EndPos),
+      cTexts[TConstantsTypedConstantsText.ZeroNil].Fmt([ANode.Name]), TRuleConfidence.High,
+      [TRuleFix.Create(cTexts[TConstantsTypedConstantsText.WriteNil].Text,
+        [TTextEdit.Create(TTextRange.Create(Value.StartPos, Value.EndPos), 'nil')],
       True)]);
   end;
 
@@ -898,5 +920,8 @@ begin
     LocalNames.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Constants.TypedConstants', cTexts);
 
 end.

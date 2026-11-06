@@ -763,7 +763,7 @@ end;
 class procedure TAtlasTrackerSprintView.Post(const AAction: TThreadProcedure);
 begin
   // Die Quelle füllt Bereiche danach neu: nicht im eigenen Mausereignis.
-  TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage, AAction);
+  TAtlasMainThread.ForceQueue(TAtlasFeature.Tracker, AAction);
 end;
 
 procedure TAtlasTrackerSprintView.ClickAt(AKind: TAtlasSprintHitKind);

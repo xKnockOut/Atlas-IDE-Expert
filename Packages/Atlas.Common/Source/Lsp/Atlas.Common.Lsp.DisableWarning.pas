@@ -60,7 +60,32 @@ uses
   Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Documents.Contract,
   Atlas.Common.Lsp.Contract,
-  Atlas.Common.Lsp.Positions;
+  Atlas.Common.Lsp.Positions,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TDisableWarningText = (SwitchOffInTheWhole, ArgumentsUriLineCodeAnd, IsNeitherAWarningNor, ThereIsNoMatchingRange,
+    AffectsAllWarnings, SwitchOffInTheWhole2, SwitchOffHere, SwitchOffIn, UnknownScope);
+
+const
+  cTexts: array[TDisableWarningText] of TAtlasText = (
+    (De: '%s in der ganzen Unit abschalten (%s)'; En: 'Switch off %s in the whole unit (%s)'),
+    (De: 'Argumente "uri", "line", "code" und "scope" fehlen';
+     En: 'Arguments "uri", "line", "code" and "scope" missing'),
+    (De: ' ist keine Warnung und kein Hinweis.'; En: ' is neither a warning nor a hint.'),
+    (De: 'An dieser Stelle gibt es keinen passenden Bereich (Zeile, Routine oder Unit-Kopf).';
+     En: 'There is no matching range at this position (line, routine or unit header).'),
+    (De: ': betrifft alle Warnungen'; En: ': affects all warnings'),
+    (De: '%s im ganzen Projekt abschalten (Projektoptionen)';
+     En: 'Switch off %s in the whole project (project options)'),
+    (De: '%s hier abschalten (%s)'; En: 'Switch off %s here (%s)'),
+    (De: '%s in %s abschalten (%s)'; En: 'Switch off %s in %s (%s)'),
+    (De: 'Unbekannter Bereich: '; En: 'Unknown scope: '));
+
+{$SCOPEDENUMS OFF}
 
 const
   ScopeNames: array[TDisableWarningScope] of string = ('line', 'routine', 'unit');
@@ -91,7 +116,7 @@ begin
   Result := ASwitch.OffText;
   if ASwitch.AllWarnings then
   begin
-    Result := Result + ': betrifft alle Warnungen';
+    Result := Result + cTexts[TDisableWarningText.AffectsAllWarnings].Text;
   end;
 end;
 
@@ -151,7 +176,7 @@ begin
   mArguments.Add(ASpot.Uri);
   mArguments.Add(ASpot.Switch.Code);
   mArguments.Add(ASpot.Switch.Identifier);
-  Result := CommandAction(Format('%s im ganzen Projekt abschalten (Projektoptionen)', [ASpot.Switch.Code]),
+  Result := CommandAction(cTexts[TDisableWarningText.SwitchOffInTheWhole2].Fmt([ASpot.Switch.Code]),
     TLspDisableWarning.ProjectCommand, mArguments, False);
 end;
 
@@ -188,19 +213,19 @@ begin
       if not Switch.RoutineWide then
       begin
         Result := Result + [ScopeAction(AOptions, mSpot, TDisableWarningScope.Line,
-          Format('%s hier abschalten (%s)', [Switch.Code, SwitchHint(Switch)]), True)];
+          cTexts[TDisableWarningText.SwitchOffHere].Fmt([Switch.Code, SwitchHint(Switch)]), True)];
       end;
       Routine := TDisableWarning.RoutineAt(ATree, Message.Line);
       if Routine <> nil then
       begin
         Result := Result + [ScopeAction(AOptions, mSpot, TDisableWarningScope.Routine,
-          Format('%s in %s abschalten (%s)', [Switch.Code, Routine.Name, SwitchHint(Switch)]),
+          cTexts[TDisableWarningText.SwitchOffIn].Fmt([Switch.Code, Routine.Name, SwitchHint(Switch)]),
           Switch.RoutineWide)];
       end;
       if HasHeader then
       begin
         Result := Result + [ScopeAction(AOptions, mSpot, TDisableWarningScope.UnitWide,
-          Format('%s in der ganzen Unit abschalten (%s)', [Switch.Code, SwitchHint(Switch)]),
+          cTexts[TDisableWarningText.SwitchOffInTheWhole].Fmt([Switch.Code, SwitchHint(Switch)]),
           Switch.RoutineWide and (Routine = nil))];
       end;
       if Switch.Identifier <> '' then
@@ -261,27 +286,31 @@ begin
   if (AArguments = nil) or (AArguments.Count < 4) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Argumente "uri", "line", "code" und "scope" fehlen');
+      cTexts[TDisableWarningText.ArgumentsUriLineCodeAnd].Text);
   end;
   if not TryParseScope(AArguments.Items[3].Value, mScope) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Unbekannter Bereich: ' + AArguments.Items[3].Value);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TDisableWarningText.UnknownScope].Text +
+      AArguments.Items[3].Value);
   end;
   if not TDisableWarning.SwitchFor(AArguments.Items[2].Value, AVersion, mSwitch) then
   begin
     raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
-      AArguments.Items[2].Value + ' ist keine Warnung und kein Hinweis.');
+      AArguments.Items[2].Value + cTexts[TDisableWarningText.IsNeitherAWarningNor].Text);
   end;
   if not TDisableWarning.Edits(AText, ATree, StrToIntDef(AArguments.Items[1].Value, -1),
     TDisableWarningRequest.Create(mSwitch, mScope, ReasonArgument(AArguments)), mEdits) then
   begin
     raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
-      'An dieser Stelle gibt es keinen passenden Bereich (Zeile, Routine oder Unit-Kopf).');
+      cTexts[TDisableWarningText.ThereIsNoMatchingRange].Text);
   end;
   mAnswer := TJSONObject.Create;
   mAnswer.AddPair('edit', WorkspaceEditJson(AArguments.Items[0].Value, mEdits));
   mAnswer.AddPair('allWarnings', TJSONBool.Create(mSwitch.AllWarnings));
   Result := mAnswer;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.DisableWarning', cTexts);
 
 end.

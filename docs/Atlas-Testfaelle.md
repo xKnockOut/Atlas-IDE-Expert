@@ -598,6 +598,10 @@ Gleiche Ablage wie die benannten Lesezeichen, `format` 2 mit `kind` (`named`, `q
 | AS18 | `build.onOpen` an, großes Projekt als zuletzt geöffnetes, Langsamer Start ab 1000, IDE neu starten | Meldung aus AS14 nennt „Aktion Bauen beim Öffnen … ms“ unter den längsten Teilen |
 | AS19 | Wie AS14, aber Optionen › Robustheit „Hinweis im Meldungsfenster nach langen Hängern (ab 2 s)“ aus | Kein Eintrag im Meldungsfenster; die Zeile aus AS17 steht trotzdem im Protokoll |
 | AS20 | `safemode.json` einer älteren Fassung mit `"slowStart": true` unter `%LOCALAPPDATA%\Atlas\Session` ablegen, IDE starten | Keine Rückfrage, Atlas startet normal; danach steht `slowStart` nicht mehr in der Datei |
+| AS21 | `set ATLAS_NO_SESSION_MARKER=1`, aus dieser Konsole `bds -r <Profil>` starten, warten bis Atlas geladen ist | Unter `%LOCALAPPDATA%\Atlas\Session` entsteht keine `session-<pid>.json` dieser IDE; im Protokoll steht „Atlas gestartet (…), Stufe Normal, Grund None, ohne Sitzungsmarke (ATLAS_NO_SESSION_MARKER)“ |
+| AS22 | Bei AS21 die IDE im Taskmanager beenden, danach die IDE normal (ohne Variable) starten | Keine Rückfrage „Die letzte Sitzung wurde unerwartet beendet“, Atlas startet normal; `crashCount` in `safemode.json` unverändert |
+| AS23 | Normale IDE wie AS3 im Taskmanager beenden, danach eine IDE mit `ATLAS_NO_SESSION_MARKER=1` starten und wieder schließen, dann normal starten | Die IDE mit Variable startet normal ohne Rückfrage und lässt die Marke der abgestürzten Sitzung liegen; erst der normale Start fragt wie AS3 |
+| AS24 | `ATLAS_NO_SESSION_MARKER=1` und `ATLAS_SAFE_MODE=1` setzen, IDE starten | Wie AS12 (nur Einstellungsseite und Statusfeld), aber ohne Startmarke |
 
 ## Atlas-Änderungen zurücknehmen (#721)
 
@@ -1711,6 +1715,9 @@ Vorbereitung: RAD Studio mit Atlas-Plugin; Projektgruppe mit einer Anwendung und
 | TR22 | Schnellschalter „DUnitX-Tests ausführen“ aus | Marken und beide Befehle verschwinden, kein Lauf nach dem Build |
 | TR23 | Claude Code: „Führe die Tests über run_tests aus“ (vorhandene EXE) | JSON mit `result` `failed`, Zahlen und je Fehlschlag Name, `expected`/`actual`, Datei und Zeile; kein Compiler läuft; die Projekt-Zusammenfassung ändert sich nicht |
 | TR24 | `run_tests` mit `build: true` ohne laufende IDE bzw. mit `tests: ["Unit.TFixture.Methode"]` | Ohne IDE der Grund wie bei `build_project`, keine Tests; mit Filter nur dieser Test |
+| TR25 | Fixture mit vier Tests, nach IDE-Neustart nur einen Test über seine Marke ausführen (bestanden) | Die Marke des Tests „Test ausführen · bestanden“ in Grün; die Marke der Klasse „Tests der Klasse ausführen · 1/4 bestanden“ in Gelb, die übrigen Tests ohne Stand |
+| TR26 | Danach die anderen drei Tests einzeln ausführen (alle bestanden) | Klassenmarke zählt mit („2/4“, „3/4“) und zeigt nach dem vierten „Tests der Klasse ausführen · bestanden“ in Grün |
+| TR27 | `[TestCase]`-Methode mit zwei Fällen in eigener Zeile, nur „Fall ausführen“ am ersten Fall | Fallmarke „bestanden“; Marke der Methode „Test ausführen · 1/2 bestanden“ in Gelb; schlägt ein Fall fehl, sind Methode und Klasse sofort „fehlgeschlagen“ |
 
 ## Einzelnen Test debuggen (#585)
 
@@ -2972,6 +2979,10 @@ Vorbereitung: uKundeForm mit zwei Fehlern, fünf Warnungen und einem Hinweis, `p
 | ASL16 | 150 % und 200 % Skalierung | Leiste eine Zeile, Symbole und Zahnrad scharf |
 | ASL17 | Leiste durch einen Fehler abgeschaltet (atlas.log „Atlas-Statusleiste: durch die Sicherung abgeschaltet“), dann Atlas › Abgeschaltete Funktionen einschalten | Leisten verschwinden und das Atlas-Feld kehrt in die Statuszeile zurück; nach dem Einschalten ohne Neustart wieder da |
 | ASL18 | Optionen › Editor | „Atlas-Statusleiste …“ und das Feld „Elemente“; unbekannte oder doppelte Einträge verschwinden beim Speichern |
+| ASL19 | Benachrichtigungen an, keine ungelesenen (z. B. nach „Alle gelesen“), hell und dunkel | Hinter dem Status steht eine neutrale Plakette „0“; Tooltip „0 ungelesene Benachrichtigungen; …“ (englisch „0 unread notifications; …“); Klick öffnet die Liste |
+| ASL20 | Build mit Fehlern, dann in der Liste „Alle gelesen“ | Plakette wird rot mit „1“, danach wieder neutral „0“; sie verschwindet nicht |
+| ASL21 | `notifications.enabled` aus (Seite *Allgemein* oder Schnellschalter), danach wieder an | Aus: keine Plakette in der Leiste; an: Plakette „0“ ohne Neustart wieder da |
+| ASL22 | Element „Status“ in „Leiste anpassen“ abwählen | Keine Plakette in der Leiste; im Atlas-Feld der IDE-Statuszeile erscheint sie wie bisher nur mit ungelesenen Einträgen |
 
 ## Projektprüfung als begrenzter Lauf (#1247)
 
@@ -3091,8 +3102,8 @@ Vorbereitung: uKundeForm mit zwei Fehlern, fünf Warnungen und einem Hinweis, `p
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
-| MOS1 | In einer Klasse `function TRechner.Doppelt(A: Integer): Integer; begin Result := A * 2; end;` (ohne Felder), Datei öffnen | Hinter dem Kopf der Implementierung die graue Marke „ohne Self“ (englische IDE: „no Self“); nicht hinter Methoden, die Felder, Properties, Self oder inherited nutzen |
-| MOS2 | Rechtsklick auf die Marke, „Ausblenden“ hier; danach Einstellung „Marke ohne Self“ auf der Seite Editor aus | Marke verschwindet an dieser Zeile bzw. überall; nach Wiedereinschalten wieder da |
+| MOS1 | In einer Klasse `function TRechner.Doppelt(A: Integer): Integer; begin Result := A * 2; end;` (ohne Felder), Datei öffnen | Hinter dem Kopf der Implementierung die graue Marke „braucht kein Self“ (englische IDE: „Self unused“); nicht hinter Methoden, die Felder, Properties, Self oder inherited nutzen |
+| MOS2 | Rechtsklick auf die Marke, „Ausblenden“ hier; danach Einstellung „Marke ‚braucht kein Self‘“ auf der Seite Editor aus | Marke verschwindet an dieser Zeile bzw. überall; nach Wiedereinschalten wieder da |
 | MOS3 | Cursor auf den Kopf von `Doppelt`, Alt+Enter | Aktionen „In class-Methode umwandeln“, „In class-Methode umwandeln, Aufrufe über TRechner“, „In freie Routine umwandeln“; ohne Parameter einfachen Typs kein Helper |
 | MOS4 | „In class-Methode umwandeln“, Vorschau prüfen, übernehmen, übersetzen | Deklaration `class function Doppelt(A: Integer): Integer; static;`, Implementierung `class function TRechner.Doppelt…`; Aufrufe über Instanzen unverändert; Projekt übersetzt |
 | MOS5 | `refactoring.methodKindStatic` = false, MOS4 wiederholen; dann eine Methode, die eine class-Methode der Klasse aufruft | Ohne `static`; im zweiten Fall auch mit Schalter an kein `static`, die Vorschau warnt |
@@ -3103,6 +3114,8 @@ Vorbereitung: uKundeForm mit zwei Fehlern, fünf Warnungen und einem Hinweis, `p
 | MOS10 | Methode, die als Ereignis in der .dfm steht, virtuelle Methode, Überladung, Methode, die als `@TObj.M` oder Methodenzeiger übergeben wird | Keine Marke, keine Aktion; über atlas.server.methodKind ein Fehler mit Grund |
 | MOS11 | In atlas.json `"rules": { "method-without-self": "hint" }`, Problems-Ansicht | Hinweis „TRechner.Doppelt braucht Self nicht …“ mit Schnellkorrektur „In class-Methode umwandeln“; ohne Eintrag kein Hinweis (experimentell); im Profil strict aktiv |
 | MOS12 | `refactoring.methodKind` aus | Keine Marke, keine Aktionen, kein Hinweis; `refactoring.methodKindMarker` aus: Aktionen bleiben, nur die Marke fehlt |
+| MOS13 | Cursor irgendwo anders, Linksklick auf die Marke „braucht kein Self“ hinter `Doppelt` | Cursor steht am Ende des Kopfs, die Auswahl der Code-Aktionen öffnet sich wie mit Strg+. (Umwandlungen wie MOS3); Klick mit Strg/Umschalt/Alt tut nichts Besonderes |
+| MOS14 | Marke sichtbar, dann Einstellung „Marke ‚braucht kein Self‘“ aus, ohne zu scrollen an dieselbe Stelle klicken | Nur der normale Klick des Editors, keine Aktionsauswahl; Klick auf eine Blockende-Beschriftung springt weiter zum Blockanfang |
 
 ## Aufzählung mit Namenstabelle (#667)
 
@@ -3256,6 +3269,8 @@ Vorbereitung: Projektgruppe mit zwei Projekten; in Projekt A die Units `Kunden.p
 | ER16 | `search.regex` aus | Keine Option `.*`, keine Vorschau |
 | ER17 | `search.history` = 0 | Pfeil hoch ändert nichts, keine Verlaufsliste |
 | ER18 | `search.multiFile` aus | Bereiche nur Methode, Unit, Auswahl; offenes Fenster „Atlas-Suche: Ersetzen“ verschwindet |
+| ER19 | Wie ER11, Fenster „Atlas-Suche: Ersetzen“ angedockt und frei schwebend, bei 100 % und 150 % Skalierung | Unter der fetten Kopfzeile eine Zeile mit Hinweis links und Knopf „Ausgewählte ersetzen“ rechts in voller Höhe, Beschriftung lesbar; der Knopf bleibt beim Verkleinern des Fensters sichtbar |
+| ER20 | Wie ER12, danach den Knopf ansehen | Hinweis „n Ersetzungen in m Dateien“ links neben dem Knopf, Knopf sichtbar (ausgegraut, bis die neue Suche Treffer hat), Kopfzeile „Keine Suche über Dateien.“ bzw. die neuen Treffer |
 
 ## Projektaufgaben aus atlas.json (#900)
 
@@ -4619,7 +4634,7 @@ Voraussetzung: Server läuft; Einstellungen auf Vorgabe; Projekt mit einigen Bef
 | AP11 | Kontextmenü › „Regel abschalten“ | Regel in den globalen Einstellungen auf off, alle Befunde dieser Regel weg |
 | AP12 | `problems.window.compiler` an, übersetzen | dcc-Meldungen mit Kategorie „Compiler“ im Fenster |
 | AP13 | `problems.window.followCursor` an, im Editor durch die Datei gehen | Die Auswahl folgt dem Befund an der Cursorzeile |
-| AP14 | `problems.update` auf „Beim Speichern“ bzw. „Nur auf Anforderung“ | Anzeige „Beim Speichern“ bzw. „Manuell“ in Grau und Knopf „Datei jetzt prüfen“; die Liste ändert sich erst beim Speichern bzw. erst auf den Knopf |
+| AP14 | `problems.update` auf „Beim Speichern“ bzw. „Nur auf Anforderung“ | Anzeige „Beim Speichern“ bzw. „Manuell“ in Grau, kein Knopf „Datei jetzt prüfen“ im Fenster; die Liste ändert sich erst beim Speichern bzw. erst auf Klick auf die Prüfung in der Atlas-Statusleiste |
 | AP15 | Maus über einen Befund im Editor | Tooltip: Pille „Fehler“/„Warnung“/„Info“, Fehler zuerst, darunter „Atlas · regel-id“ bzw. „dcc · W1036“ und die Aktionszeile „Alt+Enter: …“, „Für diese Zeile unterdrücken“, „Regel einstellen…“ (**Abnahme**) |
 | AP16 | Tooltip festhalten, Tab/Umschalt+Tab, Enter | Aktionen werden der Reihe nach markiert, Enter führt die markierte aus |
 | AP17 | „Regel einstellen…“ im Tooltip | Der Dialog der Projekt-Einstellungen (ohne Projekt der globale) öffnet sich im Knoten der Gruppe, die Regel ist markiert |
@@ -8115,6 +8130,8 @@ Vorbereitung: Atlas-Server läuft, Projekt geöffnet und indiziert, Diagnoselog 
 | AW24 | Während F8 die Werte nachlädt: im Eingabefeld tippen, Pfeiltasten im Baum, Fenster verschieben | Fenster reagiert ohne spürbare Verzögerung (vorher wurde der Baum nach jeder Zeitscheibe neu aufgebaut) |
 | AW25 | Objekt-Zeile zugeklappt, F8 | Aufklappzeichen bleibt beim Neu-Auswerten stehen (kein kurzes Verschwinden) |
 | AW26 | Langer String (z. B. 1 MB `TStringList.Text`) als Ausdruck, Ansicht JSON bzw. Text gewählt, F8 mehrmals | Baumzeile gekürzt mit …, Ansicht unten unverändert ohne Ruckeln; Fenster schließen und wieder andocken: Zeilen, Farben und Auswahl stimmen |
+| AW27 | Fenster frei schwebend öffnen und größer ziehen, dann schmal ziehen und wieder breit; auch angedockt | Kein leerer Streifen unter der Tastenhilfe: Baum (bzw. nach dem Teiler die Ansicht) füllt die Höhe, die Tastenhilfe umbricht schmal auf mehrere Zeilen und wird breit wieder einzeilig |
+| AW28 | Leiste über der Ansicht ansehen | Links Text, Zeilen, JSON, Hex; rechts Ändern …, Festheften, IDE-Dialog (IDE-Dialog ganz rechts) |
 
 ## Werte im Editor beim Debuggen (#508)
 
@@ -9284,7 +9301,7 @@ Vorbereitung: uKundeForm mit einigen Befunden geöffnet, Fenster „Atlas-Prüfu
 | LV2 | Live, Verzögerung 2000, OK; tippen und anhalten | Die Liste ändert sich erst etwa 2 s nach dem letzten Tastendruck; mit 100 fast sofort (**Abnahme**) |
 | LV3 | Verzögerung 50 bzw. 50000 eingeben, OK, Dialog wieder öffnen | Wert auf 100 bzw. 10000 begrenzt |
 | LV4 | „Beim Speichern“; tippen, dann Strg+S | Beim Tippen keine Prüfung; nach dem Speichern die neuen Befunde |
-| LV5 | „Nur auf Anforderung“; Datei öffnen, tippen, speichern | Beim Öffnen einmal geprüft, danach weder beim Tippen noch beim Speichern; Knopf „Datei jetzt prüfen“ im Fenster prüft sofort (**Abnahme**) |
+| LV5 | „Nur auf Anforderung“; Datei öffnen, tippen, speichern | Beim Öffnen einmal geprüft, danach weder beim Tippen noch beim Speichern; Klick auf „manuell · …“ in der Atlas-Statusleiste prüft sofort (**Abnahme**) |
 | LV6 | In LV5 Befehlspalette (Strg+Umschalt+P) › „Datei jetzt prüfen“ | Die offene Datei wird geprüft; mit ausgeschalteten Prüfregeln fehlt der Befehl |
 | LV7 | In LV5 Klick auf „manuell · …“ in der Statusleiste | Nur die offene Datei wird geprüft; im Live-Modus prüft der Klick weiter alle Units neu (ASL7a) |
 | LV8 | Einstellungen einer älteren Version mit „Live-Prüfung“ aus (Registry `ProblemsLive` = 0) übernehmen bzw. eine exportierte Datei mit `"problems.live": false` importieren | Danach „Beim Speichern“; mit `ProblemsLive` = 1 bzw. `true` „Live beim Tippen“ |
@@ -9372,7 +9389,7 @@ Vorbereitung: Testgruppe mit 8 Projekten, Index-Cache vorhanden, Diagnoselog an 
 
 ## Abgebrochene Serveranfragen in 2.0-stable (05.11.2026)
 
-Vorbereitung: großes Projekt bzw. Projektgruppe, Fenster „Atlas-Diagnose“ (Reiter Hauptthread, Server, Hänger) und „Atlas-Server“ offen.
+Vorbereitung: großes Projekt bzw. Projektgruppe, Fenster „Atlas-Diagnose“ (Reiter Hauptthread, Server, Hänger) und „Atlas-Server“ offen. Für AA22 bis AA26 ohne eigene große Unit: `node Tools/Benchmark/big-unit.mjs BigUnit.pas` erzeugt eine Unit mit etwa 27.600 Zeilen (600 Methoden mit je drei verschachtelten lokalen Routinen); `--lines L` für etwa L Zeilen, `--routines N` für genau N Methoden, `--depth D` für die Verschachtelungstiefe (0 = keine). Die Unit in ein Projekt aufnehmen und öffnen.
 
 | Nr. | Schritte | Erwartet |
 |---|---|---|
@@ -9388,6 +9405,23 @@ Vorbereitung: großes Projekt bzw. Projektgruppe, Fenster „Atlas-Diagnose“ (
 | AA10 | Mehrere Tabs offen, zehnmal zwischen Tabs wechseln und einmal alle Dateien schließen; danach `atlas.log` ansehen | Je Leiste höchstens eine Zeile „gesperrt (Enabled := False) … weitere Sperren ohne Protokoll“ und eine „wieder freigegeben …“, kein Aufrufstapel; Brotkrümel, Editorleiste und Statusleiste bleiben bedienbar |
 | AA11 | Fenster „Atlas-Diagnose“, Reiter „Server“, nach einigen Minuten Arbeit | Serverbefehle stehen je Befehl („workspace/executeCommand atlas.server.status“ usw.), nicht mehr alle in einer Zeile |
 | AA12 | Domänenkonto (Arbeitsrechner), Willkommensseite oder „Atlas-Start“ offen, einige Minuten arbeiten; dann Fenster „Atlas-Diagnose“, Reiter „Hauptthread“ | Willkommensseite ohne Aufrufe über 16 ms im 5-s-Takt, Max. deutlich unter 8,3 s; der Gruß zeigt nach kurzer Zeit den Vornamen (vorher kurz den Kontonamen) |
+| AA13 | Willkommensseite bzw. „Atlas-Start“ offen und geschlossen, je einige Minuten ohne Projektwechsel arbeiten; dann Fenster „Atlas-Diagnose“, Reiter „Hauptthread“ | Willkommensseite ohne Aufrufe im Sekundentakt; in „Langsame Aufrufe“ keine Willkommensseite mehr alle 1–2 s (**Abnahme**) |
+| AA14 | Karte „<Projekt> für Atlas einrichten“ sichtbar: anderes Projekt der Gruppe aktivieren (Doppelklick in der Projektverwaltung), dann Projekt schließen, dann anderes Projekt öffnen | Die Karte nennt jeweils sofort das neue Ziel (ohne Projekt das oberste aus „Wieder öffnen“) |
+| AA15 | Server indiziert, Willkommensseite offen; Thema der IDE wechseln, Sprache bzw. `welcomePage.greeting` umschalten | Kurzstatus zählt weiter mit; nach Thema, Sprache und Schalter stimmen Symbol, Gruß und Texte sofort |
+| AA16 | Fenster „Atlas-Diagnose“ in der Startgröße bzw. schmal ziehen, dann breit ziehen | Schmal: Knöpfe Anhalten, Zurücksetzen, Bericht kopieren in einer zweiten Zeile rechts, Verlauf und „Langsam ab … ms“ ganz sichtbar; breit: wieder eine Zeile |
+| AA17 | Server läuft, Diagnosemodus an; eine Unit mit Testunit und Metriken öffnen, tippen, Datei wechseln, Rekursionssymbole an (editor.recursionMarkers); dann Fenster „Atlas-Diagnose“, Reiter „Server“ | Bei `atlas.server.testUnit`, `atlas.server.metrics` und `atlas.server.recursion` „Hauptthread gewartet“ 0; Lens „→ Testunit“, Metriken in der Statusleiste und ↻ erscheinen wie vorher nach der Tipp-Pause |
+| AA18 | Wie AA17, während der Server indexiert bzw. nach „Server neu starten“ | Kein Stocken; die Lens und die Symbole kommen nach dem Indexieren bzw. Neustart wieder, keine Zugriffsverletzung beim Neustart oder Schließen der IDE |
+| AA19 | Diagnosemodus an; in einer sehr großen Unit (über 20.000 Zeilen) tippen, scrollen, Datei wechseln, Lesezeichen und Rekursionssymbole an | Tippen flüssig; Lens, Rand, Lesezeichen erscheinen nach der Tipp-Pause wie vorher; nach dem Speichern in einem anderen Editor stimmen die Marken |
+| AA20 | Fenster „Compiler-Schalter“ zu und Statusfeld der Schalter aus, eine Minute arbeiten; dann Fenster öffnen | Im Reiter „Hauptthread“ wachsen die Aufrufe von „Compile-Ereignisse“ ohne Build nicht mehr um 20 je Sekunde; das Fenster füllt sich sofort |
+| AA21 | Zwei große Formulare im Designer offen, im einen eine Komponente verschieben | Nur dieses Formular geht an den Server (Diagnoselog); „Formulare“ im Hauptthread deutlich unter 187 ms; Umbenennen eines Handlers in beiden Formularen wirkt weiter |
+| AA22 | Server mit diesem Stand; die größte Unit des Projekts (über 30.000 Zeilen) öffnen und einige Minuten darin arbeiten | Keine Mitteilung „Absturzfall gesichert – Der Server hat die Anfrage abgebrochen: textDocument/codeAction bzw. textDocument/diagnostic“; Fenster „Atlas-Prüfung“ zeigt die Befunde der Unit spätestens einige Sekunden nach der Tipp-Pause (**Abnahme**) |
+| AA23 | Wie AA22, Task-Manager offen | AtlasServer.exe fällt nach der Prüfung wieder auf etwa 0 % CPU; kein dauernder Lauf je Cursorbewegung; Speicher wächst nicht weiter |
+| AA24 | Wie AA22: Cursor auf Zeilen mit und ohne Befund, Hover über Bezeichner | Glühbirne erscheint (während einer laufenden Prüfung höchstens nach etwa 1,5 s, dann ohne Regelkorrekturen); Hover erscheint; Fenster „Atlas-Diagnose“, Reiter „Server“: `textDocument/codeAction` ohne Zeitlimit |
+| AA25 | Während die Prüfung von AA22 läuft, weiter tippen | Die Befunde folgen dem neuen Stand; kein alter Stand bleibt stehen |
+| AA26 | Wie AA22, nach Ende der Prüfung: Cursor mit den Pfeiltasten durch die Unit bewegen, auch in Klassendeklarationen mit Get-/Set-Methoden und auf String-Literalen | Glühbirne folgt dem Cursor ohne spürbare Verzögerung; „Property aus Zugriffsmethoden“, „Als Klartext kopieren“ und uses-Aktionen erscheinen wie bisher; Fenster „Atlas-Diagnose“, Reiter „Server“: `textDocument/codeAction` deutlich unter 1 s |
+| AA27 | Fenster „Atlas-Diagnose“ in der Startgröße öffnen, Reiter „Server“; danach schmaler und breiter ziehen | Spalte „Anfrage“ zeigt `textDocument/codeAction` lesbar; alle Spalten enden am rechten Rand (keine abgeschnittene Spalte); breit wieder volle Breiten |
+| AA28 | Große Unit (`node Tools/Benchmark/big-unit.mjs --lines 30000`) mit Editor- und Statusleiste öffnen, einige Zeilen tippen und nach jeder Pause kurz warten; dann „Atlas-Diagnose“, Reiter „Hauptthread“ | Tippen ohne Stocken; Editorleiste markiert den Abschnitt am Cursor richtig (interface, implementation, uses), Statusleiste zeigt Befundzahlen und Methode; Statusleiste und Editorleiste ohne Aufrufe über der Schwelle |
+| AA29 | Projekt mit `.atlas` öffnen, die Datei außerhalb der IDE ändern; dann eine neue `.atlas` eine Ebene höher anlegen (die alte löschen); Projekt wechseln | Änderung gilt nach etwa 2 s; die neue Datei weiter oben gilt nach höchstens etwa 10 s; nach dem Projektwechsel sofort die Datei des neuen Projekts; „Einstellungen“ im Diagnose-Fenster ohne Aufrufe über der Schwelle |
 
 ## Prüfregeln vollständig im Modul (#1755)
 
@@ -9428,3 +9462,239 @@ Vorbereitung: Win32-Plugin und alle Module gebaut; eigenes Registry-Profil (`bds
 | LA8 | Marke rechts anklicken › Ausblenden › „Nur hier“ | Nur diese Marke verschwindet; Eintrag in `.atlas` wie bisher |
 | LA9 | Englische Oberfläche (`ui.language` = en) | Marken englisch („12 lines · depth 2 · …“), Zeile in den Optionen englisch |
 | LA10 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasAnalysisMetricsLensTests`, `TAtlasEditorMetricsTests`, `TAnalysisSettingsSectionTests.MetricsLensRoundTrip` grün |
+
+## Meldungen des Servers zweisprachig (#1458, Gruppe C)
+
+Vorbereitung: AtlasServer und `Atlas.Tests` aus dem Branch gebaut; ein Projekt mit Befunden; MCP-Client (z. B. Claude Code) mit `AtlasServer --mcp`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ZE1 | `AtlasServer --check <Projekt> --locale en` | Zusammenfassung, Hinweise und Fehlermeldungen englisch (z. B. „Symbol index: … units in … s“), Befundtexte englisch (**Abnahme**) |
+| ZE2 | Wie ZE1 mit `--locale de` | Dieselben Ausgaben deutsch wie bisher |
+| ZE3 | `AtlasServer --check <Projekt> --locale xx --format foo` | Zwei Warnungen in der Sprache aus `settings.json` (ohne `language` englisch): unbekannte Sprache und unbekanntes Format |
+| ZE4 | `AtlasServer --mcp --locale en`, im Client die Werkzeugliste ansehen | Beschreibungen aller Werkzeuge und Parameter englisch; ein Aufruf ohne Pflichtargument meldet „Argument … is missing“ (**Abnahme**) |
+| ZE5 | Wie ZE4 mit `--locale de` | Beschreibungen und Meldungen deutsch |
+| ZE6 | In der IDE mit englischer Oberfläche (`language` = en) eine abgeschaltete Refaktorierung (z. B. `refactoring.safeDelete` aus) auslösen | Meldung englisch „"Safe delete" is turned off (refactoring.safeDelete).“ |
+| ZE7 | In der IDE mit englischer Oberfläche „Projekt kompilieren“ ohne gültige Lizenz bzw. ohne Projekt | Meldungen des Servers englisch (z. B. „No folder with a project open“) |
+| ZE8 | `Atlas.Tests` bauen und ausführen (Win64) | 0 Fehler, 0 Warnungen, 0 Hinweise; `TShellTextsTests`, `TCommandLineOptionsTests.WarningTextFollowsLanguage`, `TMcpToolsTests.ToolsSpeakBothLanguages`, `TLocalizationTextsTests.AllTablesComplete` grün; Tests mit deutschen Erwartungen unabhängig von der Reihenfolge grün |
+| ZE9 | AtlasServer mit Delphi 12 und 13 übersetzen | 0 Fehler, 0 Warnungen, 0 Hinweise |
+## Tracker-, Willkommens- und Debugger-Texte englisch (#1458, Gruppe E)
+
+Vorbereitung: Win32-Plugin und alle Module gebaut; eigenes Registry-Profil (`bds -r AtlasEn`); Projekt in einem Git-Repository mit Tracker-Verbindung (YouTrack oder GitHub).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UE1 | Englische Oberfläche (`ui.language` = en), IDE neu starten; Willkommensseite, „My issues“, Board, Issue-Vorschau, Fenster „Evaluate“ und „Exceptions“ öffnen | Alle Überschriften, Knöpfe, Menüs, Hinweise und Meldungen englisch (**Abnahme**) |
+| UE2 | *Tools › Options › Atlas › Issue tracker*, Tabelle „Snippets“ (nie geändert) | Zwei Bausteine „Please check with the current build“ und „Fixed in {commit}“ |
+| UE3 | Im Kommentar-Editor der Issue-Vorschau „Snippet ▾“ | Dieselben englischen Bausteine |
+| UE4 | Feld „Comment when finishing“ (nie geändert); dann ein Issue beenden | Feld zeigt `Done in {branch}.\n{commits}`, der Dialog „Finish …“ schlägt „Done in <Branch>.“ vor |
+| UE5 | Deutsche Oberfläche (`ui.language` = de), UE2 und UE4 | Wieder „Bitte mit aktuellem Build prüfen“, „Behoben in {commit}“ und `Erledigt in {branch}.\n{commits}` |
+| UE6 | Einen Baustein umbenennen, OK, Sprache wechseln | Eigene Bausteine bleiben, wie sie sind |
+| UE7 | Englische Oberfläche: beim Debuggen „Attach to issue …“ mit Debug-Notiz | Anhang heißt `debug-note-JJJJ-MM-TT-hhmm.md` (deutsch `debug-notiz-…`) |
+| UE8 | Englische Oberfläche: Issue beginnen, Git-Hook erlauben; `.git/hooks/prepare-commit-msg` öffnen | Kommentarzeilen englisch („Created by Atlas …“); Commit bekommt das Präfix wie bisher |
+| UE9 | Zeitbuchung „Correct …“ mit `2 hours 30 minutes`, dann `1 hour` | Wird als 2:30 bzw. 1:00 übernommen |
+| UE10 | `Atlas.Tests` bauen und ausführen; Win32-Plugin und Win64-Gruppe bauen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasCommentEditorTests.SnippetDefaultsFollowLanguage`, `TAtlasTrackerWorkflowTests.EndCommentFollowsLanguage`, `TAtlasTrackerSettingsTablesTests.SnippetsDefaultsInLanguage`, `TAtlasCommitHookTests`, `TAtlasDebugNoteTests.FileNameHasDateAndTime` grün |
+
+## Texte von Atlas.IDE.Base englisch (#1458, Gruppe D)
+
+Vorbereitung: Win32-Plugin und alle Module gebaut; eigenes Registry-Profil (`bds -r AtlasEn`); englische Oberfläche (`ui.language` = en), IDE neu gestartet.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BEN1 | Datei mit Encoding UTF-8 ohne BOM öffnen, Statusfeld „Format“ ansehen und anklicken | Format und Menü englisch („UTF-8 without BOM“, „LF“ …), Hinweise beim Speichern englisch („… saved as …“) |
+| BEN2 | Vervollständigung mit Strg+Leertaste in einer Unit, auch mit Code-Vorlagen (`for`, `try`) | Kennzeichen der Einträge, Vorlagennamen und -beschreibungen englisch |
+| BEN3 | *Tools › Options › Keyboard* (Tastaturbelegungen der IDE) | Einträge „Atlas completion“ und „Atlas compiler check“ |
+| BEN4 | Pfad zum Server in den Optionen auf eine nicht vorhandene Datei setzen, IDE neu starten | Meldungsfenster „Server not found: … (the built-in Code Insight stays active)“; Statusfeld „AtlasServer.exe not found“ |
+| BEN5 | Server im Task-Manager beenden | Hinweis zum Ende englisch (z. B. „exit code unknown …“) |
+| BEN6 | Doku-Tooltip über einer Routine mit XML-Doku (Parameter, Rückgabe, Ausnahmen) | Überschriften englisch („Parameters“, „Returns“ …) |
+| BEN7 | Aufrufdiagramm einer Routine öffnen (Rechtsklick › Aufrufhierarchie › Diagramm) | Seitentitel „Call diagram: …“, Schalter, Legende und Hinweis englisch |
+| BEN8 | Umbenennen eines Ereignisses einer Form, die im Designer offen ist, so dass Atlas ablehnt | Grund englisch („open in the designer; there Atlas only changes …“) |
+| BEN9 | Atlas-Änderung rückgängig machen, während das Projekt ungespeichert ist | Grund „project has unsaved changes; please save first“ |
+| BEN10 | Fehlerbericht anlegen (Atlas › Problem melden) und Diagnosefenster öffnen | Texte und Funktionsnamen der Sicherung englisch |
+| BEN11 | Teamdatei `.atlas` neu anlegen (Optionen › Projekt) | Kommentare im Gerüst englisch, Datei gültig |
+| BEN12 | Deutsche Oberfläche (`ui.language` = de), BEN1, BEN3 und BEN7 | Wieder deutsche Texte |
+| BEN13 | `Atlas.Tests` bauen und ausführen; Win32-Plugin und Win64-Gruppe bauen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasTextLanguageTests`, `TAtlasCallDiagramTests.HtmlFollowsLanguage`, `TAtlasServerCrashesTests.DescribesExitCodesInEnglish`, `TAtlasTeamFileTests.SkeletonIsValidInEnglish` grün |
+
+## Lokale Routinen in Paarfarben und Blocklinien (#1788)
+
+Vorbereitung: Win32-Plugin gebaut, eigenes Registry-Profil; Paarfarben und Blocklinien an. Unit mit dieser Routine öffnen:
+
+```pascal
+procedure TForm1.Laden;
+var
+  mListe: TStringList;
+
+  function Gueltig(const AName: string): Boolean;
+  begin
+    Result := AName <> '';
+  end;
+
+begin
+  mListe := TStringList.Create;
+  try
+    if Gueltig('x') then
+    begin
+      mListe.Add('x');
+    end;
+  finally
+    mListe.Free;
+  end;
+end;
+```
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| LR1 | Vorgabe (`highlight.nestedRoutines` = `deeper`) | `procedure`, äußeres `begin`/`end` und ihre Linie in der ersten Paarfarbe (blau); `function Gueltig`, ihr `begin`/`end` und ihre Linie in der zweiten (rot) (**Abnahme**) |
+| LR2 | *Tools › Optionen › Atlas › Editor*: „Lokale Routinen färben“ zeigt drei Einträge ohne Buchstaben: „wie die äußere Routine“, „eine Stufe tiefer“, „in eigener Farbe, Blocklinie gestrichelt“ | Wie beschrieben; „eine Stufe tiefer“ gewählt |
+| LR3 | „wie die äußere Routine“, OK | Gueltig wieder in derselben Farbe wie die äußere Routine (Stand vor #1788), ohne Neustart |
+| LR4 | „in eigener Farbe, Blocklinie gestrichelt“, OK | `function`, `begin`, `end` von Gueltig in Bernstein, ihre Blocklinie gestrichelt; `try`/`if` der äußeren Routine unverändert |
+| LR5 | Reiter *Farben*: Flächen „Lokale Routinen im hellen/dunklen Thema“ anklicken, Farbe wählen, OK | Neue Farbe sofort im Editor; „Standardfarben“ setzt sie zurück, gespeichert bleibt dann leer |
+| LR6 | „Zeilen lokaler Routinen hinterlegen“ an, OK | Zeilen von `function Gueltig` bis zu ihrem `end;` schwach in ihrer Farbe hinterlegt, Text gut lesbar; die äußere Routine nicht |
+| LR7 | Band an, drei Stufen (Prozedur in Gueltig) | Innerste Routine in ihrer Farbe, die mittlere in ihrer; keine doppelte Überlagerung |
+| LR8 | Lange Routine scrollen, bis der mitlaufende Kopf `function Gueltig` zeigt | Kopfzeile und Linien im Kopf in derselben Farbe wie im Editor |
+| LR9 | Unit mit `interface`-Teil mit mehreren Routinen und Klassen | Klassen im interface und Routinen der implementation in der ersten Paarfarbe (keine falsche Stufe) |
+| LR10 | Paarfarben aus | Keine Farben, kein Band |
+| LR11 | Englische Oberfläche | Beschriftungen englisch |
+| LR12 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasPairsTests`, `TAtlasRoutineNestingTests`, Einstellungs- und Seitentests grün |
+| LR13 | Große Unit, Kopf nicht sichtbar (Anfang einer Routine oben); mit dem Rollrad zügig in kleinen Schritten nach unten und oben scrollen | Blocklinien bleiben durchgehend; keine Bruchstücke spitz auslaufender Linien in den Zeilen über dem unteren Rand |
+
+## Datei prüfen über die Atlas-Statusleiste statt über einen Knopf (05.11.2026)
+
+Vorbereitung: Win32-Plugin gebaut, eigenes Registry-Profil; Prüfregeln (`problems.enabled`) und Atlas-Statusleiste an, Fenster „Atlas-Prüfung“ offen, eine Unit mit Befunden im Editor.
+
+| Nr. | Schritt | Erwartet |
+|---|---|---|
+| PS1 | `problems.update` nacheinander auf „Live“, „Beim Speichern“ und „Nur auf Anforderung“ | Rechts im Fenster „Atlas-Prüfung“ steht nur die Anzeige „● Live“, „Beim Speichern“ bzw. „Manuell“; ein Knopf „Datei jetzt prüfen“ erscheint in keinem Modus, nichts ist abgeschnitten (**Abnahme**) |
+| PS2 | „Beim Speichern“; in der Unit einen Befund einbauen, nicht speichern, Maus über „beim Speichern · Projekt xx %“ in der Atlas-Statusleiste | Tooltip endet mit „Klick: Datei jetzt prüfen“ |
+| PS3 | In PS2 auf „beim Speichern · Projekt xx %“ klicken | Die offene Datei wird sofort geprüft, auch ungespeichert; der neue Befund erscheint in Statusleiste und Fenster, die übrigen Units werden nicht neu geprüft (**Abnahme**) |
+| PS4 | „Nur auf Anforderung“; Befund einbauen, auf „manuell · …“ in der Statusleiste klicken | Die offene Datei wird geprüft wie in PS3 |
+| PS5 | „Live“; auf die Live-Prüfung in der Statusleiste klicken | Wie bisher: „Atlas prüft alle Units neu …“, alle Units werden neu geprüft |
+| PS6 | Befehlspalette › „Datei jetzt prüfen“ und Strg+Umschalt+Alt+P | Beides prüft die offene Datei weiterhin |
+| PS7 | IDE auf Englisch (Atlas-Sprache English), PS1–PS3 wiederholen | Fenster „Atlas Findings“ ohne Knopf „Check file now“; Tooltip der Statusleiste endet mit „Click: check this file now“, Klick auf „on save · project xx %“ prüft die Datei |
+## Zusatzfelder in der Atlas-Statusleiste (05.11.2026)
+
+Vorbereitung: Win32-Plugin gebaut, eigenes Registry-Profil; Atlas-Statusleiste an (`editor.statusBar`) mit dem Element „Status“; Modul Analyse installiert, `architecture.enabled` und `build.showInterfaceCost` an; Unit `Unten.pas` aus IK1 offen.
+
+| Nr. | Schritt | Erwartung |
+|---|---|---|
+| ZF1 | Einfügemarke in den interface-Teil von `Unten.pas` | „interface-Änderung: 2 Units werden neu kompiliert“ steht in der Atlas-Statusleiste direkt hinter dem Status (und hinter einer Plakette ungelesener Benachrichtigungen), mit Trennstrich; in der Statuszeile der IDE steht das Feld nicht mehr (**Abnahme**) |
+| ZF2 | Maus über das Feld aus ZF1 | Tooltip nennt die ersten Units wie bisher; das Feld wird hervorgehoben |
+| ZF3 | Klick auf das Feld aus ZF1 | „Unit-Beziehungen“ öffnet sich mit „Abhängigkeiten dieser Unit“ (wie IK-Klick in der Statuszeile) |
+| ZF4 | Einfügemarke in den implementation-Teil | Das Feld verschwindet aus der Atlas-Statusleiste, ohne Lücke oder doppelten Trennstrich |
+| ZF5 | Zahnrad › „Status“ ausblenden, dann interface-Teil wie ZF1 | Das Feld steht wieder in der Statuszeile der IDE (zusammen mit dem Atlas-Feld); nach dem Einblenden von „Status“ wieder in der Atlas-Leiste |
+| ZF6 | Zahnrad › „Statusleiste ausblenden“ | Atlas-Feld und alle Zusatzfelder stehen in der Statuszeile der IDE; Klick auf das Feld aus ZF1 dort öffnet „Unit-Beziehungen“ |
+| ZF7 | Mit Leiste und Status: Startprofil (#575), Compilerschalter, Schnell-Lesezeichen, Mehrfachcursor oder Zeit eines Tracker-Issues auslösen | Auch diese Felder stehen hinter dem Status in der Atlas-Leiste statt in der Statuszeile; ein Klick tut dort dasselbe wie vorher in der Statuszeile |
+| ZF8 | Editorfenster schmal ziehen | Zusatzfelder kürzen sich mit „…“ zusammen mit der Live-Prüfung, nach der Methode; Zähler bleiben; nichts bricht um |
+| ZF9 | Zweites Editorfenster öffnen (Ansicht › Neues Editorfenster), dort interface-Teil wie ZF1 | Die Leiste jedes Fensters zeigt die Zusatzfelder hinter ihrem Status |
+## Kontextmenü Atlas im Editor: Untermenüs und Tastenkürzel (05.11.2026)
+
+Ausgangslage: Das Untermenü *Atlas* im Kontextmenü des Editors war mit rund 40 Einträgen höher als der Bildschirm (oben abgeschnitten), und die Tastenkürzel klebten direkt am Text („FormatierenStrg+Alt+Umsch+L“).
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| EK1 | Rechtsklick im Editor › *Atlas* | Oben „Code-Aktionen“ und „Erzeugen …“, Trennlinie, Untermenüs *Navigation*, *Bearbeiten*, *Suchen und analysieren*, *Befunde*, Trennlinie, *Debuggen*, *Tests*, *Notizen und Lesezeichen*, „Weg von hier nach …“, „Issue anlegen …“, Trennlinie, „Element ausblenden …“; das Menü passt auf den Bildschirm (**Abnahme**) |
+| EK2 | Untermenüs öffnen | Kürzel stehen in einer eigenen Spalte rechtsbündig (z. B. *Bearbeiten › Formatieren* Strg+Alt+Umsch+L, *Befunde › Nächster Befund* Strg+Alt+F8), nicht mehr am Text (**Abnahme**) |
+| EK3 | Jeden Eintrag einmal per Maus wählen (Navigation, Bearbeiten, Suchen und analysieren, Befunde, Debuggen, Tests, Notizen und Lesezeichen) | Jeder Befehl läuft genau einmal |
+| EK4 | Kontextmenü einmal öffnen und schließen, danach im Editor Strg+Alt+Umsch+L, Strg+Alt+K, Alt+Enter, Strg+W drücken | Jeder Befehl läuft genau einmal (kein doppeltes Formatieren, kein zweiter Dialog) (**Abnahme**) |
+| EK5 | Nach EK4: Strg+Umschalt+↑ in einer Methode, dann außerhalb einer Methode; Strg+. auf einer Zeile ohne Element | In der Methode Wechsel Deklaration ⇄ Implementierung; außerhalb die Klassennavigation der IDE bzw. IDE Insight wie ohne Atlas |
+| EK6 | *Tools › Optionen › Atlas › Befehle*: Kürzel für „Formatieren“ ändern, OK, Kontextmenü öffnen | Das neue Kürzel steht im Menü, ohne Neustart |
+| EK7 | Prüfregeln aus (`problems.enabled`), Kontextmenü | *Befunde* zeigt nur „Nächster Befund“ und „Vorheriger Befund“, „Datei jetzt prüfen“ fehlt |
+| EK8 | Module Debugger und Tests über die Modulschalter abschalten, Kontextmenü | Untermenüs *Debuggen* und *Tests* fehlen, keine leeren Untermenüs, keine doppelte Trennlinie; wieder einschalten: sie erscheinen ohne Neustart |
+| EK9 | Englische Oberfläche | Untermenüs *Navigation*, *Edit*, *Search and analyze*, *Findings*, *Debugging*, *Tests*, *Notes and bookmarks*; Kürzel rechtsbündig |
+| EK10 | Rechtsklick in die Rinne einer anderen Zeile › *Atlas › Notizen und Lesezeichen › Notiz an dieser Zeile…* | Dialog nennt die angeklickte Zeile (wie NO6) |
+| EK11 | `Atlas.Tests` bauen und ausführen, Plugin-Packages bauen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasMenuSlotsTests`, `TAtlasKeyStrokeTests` grün |
+
+## Englische Texte der übrigen Module (#1458, Gruppe F)
+
+Vorbereitung: Win32-Plugin mit den Modulen Build-Werkzeuge, Build-Pipeline und Tests gebaut; eigenes Registry-Profil (`bds -r AtlasEnglisch`); Git-Projekt mit Testprojekt. Englisch über `ui.language` = en bzw. englische IDE, Deutsch über `ui.language` = de.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| ENF1 | In `atlas.json` des Projekts `"tasks": [{"name": "Lint", "command": "x", "args": 1, "key": "Q"}, {"command": "y"}]` eintragen, Projekt aktivieren; englische Oberfläche | Meldungsansicht (Gruppe Atlas) nennt englisch „Lint: args must be a list“, „Lint: key "Q" not readable“, „tasks[1]: without name“ (**Abnahme**) |
+| ENF2 | Dasselbe mit deutscher Oberfläche | „Lint: args muss eine Liste sein“, „Lint: Taste "Q" nicht lesbar“, „tasks[1]: ohne name“ wie bisher |
+| ENF3 | Englische Oberfläche; in Claude Code `build_project` für ein Projekt, das in der IDE nicht offen ist | Antwort „The project X.dproj is not open in the IDE“ |
+| ENF4 | Englisch; während ein Build in der IDE läuft, `build_project` aufrufen; danach mit laufendem Debugger | „A build or compiler check is already running in the IDE“ bzw. „The debugger is running in the IDE“ |
+| ENF5 | Englisch; `build_project` mit `mode` = `clean` (über die Auftragsdatei im Eingang) | Antwort „Unknown mode "clean"; allowed are make, build and check“ |
+| ENF6 | Englisch; `tests.affectedBeforeCommit` an, Hook anlegen lassen (`.git/hooks/pre-commit` vorher löschen); Datei ändern und in Git Bash committen | Hook-Kommentare englisch; Frage „Atlas: Run the affected tests now (test EXE without a new build)? [y/N]“; `y` startet die Tests, nach Fehlschlag „Atlas: Tests failed. Commit anyway? [y/N]“ |
+| ENF7 | Deutsch; Einstellung aus- und einschalten (Hook neu schreiben), committen | Fragen deutsch mit „[j/N]“; `j` und `y` gelten in beiden Sprachen |
+| ENF8 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasTaskDefinitionsTests`, `TAtlasTaskTextsTests.IssueInBothLanguages`, `TAtlasBuildInboxTests`, `TAtlasAffectedHookTests` und die Strings-Tests von Build, BuildPipeline und Tests grün |
+
+## Kräftige Farben im Benachrichtigungsfenster
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| BN1 | Dunkles Design, Benachrichtigungen mit Warnung und Fehler (z. B. Build mit Warnungen), Glocke in der Atlas-Statusleiste anklicken | Gelbes „!“ und rotes „×“ so kräftig wie die rote/gelbe Plakette unten in der Statusleiste; Zeichen dunkel und gut lesbar (**Abnahme**) |
+| BN2 | Wie BN1, ungelesene Einträge | Balken links in derselben kräftigen Farbe wie die Plakette |
+| BN3 | Helles Design, wie BN1 | Kräftige Füllung mit dunklem Rand; „!“ auf Gelb dunkel, „×“ auf Rot weiß; Info-Einträge blau |
+| BN4 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasNotificationsWindowTests` grün |
+
+## Fehlalarme von vier Prüfregeln (method-without-self, handle-leak, field-not-freed, unused-suppression)
+
+Vorbereitung: Plugin und Server mit diesem Stand gebaut; Testprojekt mit eigener `atlas.json`, darin `"rules": {"method-without-self": "hint"}`. Fenster „Atlas-Prüfung“ offen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FPR1 | Unit mit `TMelder = class(TNotifierObject, IOTAWizard)` und `function GetIDString: string;` (Rumpf `Result := 'X.Melder';`), uses `ToolsAPI` | Kein `method-without-self` an `GetIDString`, auch ohne ToolsAPI-Quelltext im Index |
+| FPR2 | `TVergleich = class(TInterfacedObject, IComparer<Integer>)` mit `function Compare(const A, B: Integer): Integer;` (Rumpf `Result := A - B;`) | Kein `method-without-self` an `Compare` |
+| FPR3 | `IBasis = interface procedure Zeige; end; IKind = interface(IBasis) end; TZeiger = class(TInterfacedObject, IKind)` mit `Zeige` ohne Self und einer weiteren Methode `Doppelt(A: Integer): Integer` ohne Self | Nur `TZeiger.Doppelt` wird gemeldet, `Zeige` nicht |
+| FPR4 | Funktion `function Darf: Boolean; var Token: THandle; begin Result := OpenProcessToken(GetCurrentProcess, TOKEN_QUERY, Token); if not Result then begin Exit; end; CloseHandle(Token); end;` | Kein `handle-leak` |
+| FPR5 | Wie FPR4, aber `CloseHandle(Token)` nur im Zweig `if not Result then` | `handle-leak` „Token nicht auf jedem Weg mit CloseHandle geschlossen“ bleibt |
+| FPR6 | Klasse mit Feld `FPos: TPos;`, wobei `TPos = Atlas.Text.Lines.TTextPosition` (Alias anderen Namens in einer anderen Unit des Projekts), im Konstruktor `FPos := TPos.Create(1, 2);` | Kein `field-not-freed` an `FPos` |
+| FPR7 | In einer Unit ohne `Winapi.Windows` im uses `RenameFile(A, B); // lsp-ignore: inline-not-expanded`, Datei speichern | Kein Hinweis `unused-suppression`, der Kommentar bleibt beim Speichern stehen; bitte zusätzlich melden, ob ohne den Kommentar `inline-not-expanded` (H2443, Winapi.Windows fehlt) erscheint |
+| FPR8 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TMethodLookupTests`, `TMethodWithoutSelfRuleTests.InterfaceMethodsAreSilent`, `TFlowHandleLeakTests`, `TFreeFieldTypesTests.FollowsAliasesOfOtherUnits`, `TRuleEngineTests.UndecidedLineKeepsSuppression`, `TInliningRulesTests.UnknownCallKeepsSuppression` grün |
+
+## Module unter „Known Packages“ (Meldung vom 05.11.2026)
+
+Nur im eigenen Profil testen (`bds -r <Name>`, Kopie des Standardprofils mit Base und allen Modulen aus einem Ordner), nie im Standardprofil. Registry-Pfade unten für Delphi 13 und die klassische IDE; die 64-Bit-IDE nutzt `Known Packages x64`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| KPM1 | IDE im Profil starten, alle Module eingetragen; `atlas.log` öffnen | Zeile `Known Packages: 11 Module im Ordner von Base, fehlend: -; abgeschaltet: -; aus anderem Ordner: -; andere bds.exe: n`; kein Hinweis „Atlas-Module fehlen“ |
+| KPM2 | IDE schließen, unter `HKCU\Software\Embarcadero\<Profil>\37.0\Known Packages` die Werte für Debugger und Search löschen, IDE starten | Protokoll `fehlend: Debugger, Search`; Benachrichtigung „Atlas-Module fehlen in der IDE“ (Warnung, Plakette gelb) mit „Die Module Debugger, Search …“ und Knopf „Wieder eintragen“ (**Abnahme**) |
+| KPM3 | Wie KPM2, „Wieder eintragen“ klicken, Registry ansehen, IDE neu starten | Zwei Werte mit Pfad der BPL und Beschreibung „Atlas Debugger“/„Atlas Search“; Hinweis „Atlas-Module wieder eingetragen · Die IDE lädt Debugger, Search beim nächsten Start.“; nach dem Neustart sind beide Module geladen und das Protokoll meldet `fehlend: -` (**Abnahme**) |
+| KPM4 | Wie KPM3, aber vor dem Neustart die IDE normal beenden und die Registry erneut ansehen | Die Werte stehen noch da. Fehlen sie, schreibt die IDE beim Beenden ihre eigene Liste zurück; bitte melden (das wäre die Ursache vom 05.11.) |
+| KPM5 | Ein Modul unter *Komponente › Packages installieren* abwählen (Häkchen weg), IDE neu starten | Protokoll `abgeschaltet: <Modul>`, kein Hinweis |
+| KPM6 | Ein Modul aus einem anderen Ordner eintragen (z. B. `Output\Win32\Release\Bpl`) | Protokoll `aus anderem Ordner: <Modul>`, kein Hinweis |
+| KPM7 | IDE A läuft; zweite IDE B im selben Profil starten, in B ein Modul über *Komponente › Packages installieren › Entfernen* entfernen | In `atlas.log` von A: `Known Packages geändert: entfernt <Modul>; neu -; in dieser IDE 11 Module angemeldet, andere bds.exe: 1` (A hat die Änderung nicht selbst gemacht) |
+| KPM8 | In einer IDE Base neu übersetzen, während Base und Module installiert sind (Projektgruppe Atlas, nur `Atlas.IDE.Base` bauen) | Protokoll zeigt, ob und wann Module aus der Liste fallen (`Known Packages geändert: entfernt …; in dieser IDE n Module angemeldet`); Ergebnis bitte melden (zweiter Verdacht für den 05.11.) |
+| KPM9 | IDE beenden, Protokoll ansehen | Zeile `Known Packages: … (beim Entladen)` mit dem Stand beim Beenden |
+| KPM10 | Oberfläche auf Englisch, KPM2 wiederholen | „Atlas modules missing from the IDE“, „The modules Debugger, Search are no longer listed under "Known Packages" …“, Knopf „Register again“ |
+| KPM11 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasKnownPackagesTests` grün |
+
+## Regionen beim Öffnen auf- oder zuklappen (#1814)
+
+Vorbereitung: Plugin mit diesem Stand gebaut. Unit `Regionen.pas` mit drei Regionen auf oberster Ebene (`{$REGION 'Ereignisse'}`, `{$REGION 'Laden'}`, `{$REGION 'Getter'}`), in „Laden“ eine innere Region `{$REGION 'Intern'}`, eine Region innerhalb eines Methodenrumpfs und eine mit `(*$REGION 'Alt'*)`. Datei vor jedem Test schließen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| RF1 | Optionen › Atlas › Editor: „Regionen beim Öffnen:“ steht auf „unverändert lassen“; `Regionen.pas` öffnen | Faltung wie ohne Atlas (alles offen); im Menü Atlas › Navigation stehen „Alle Regionen zuklappen“ und „Alle Regionen aufklappen“ |
+| RF2 | Einstellung „alle zuklappen“, `Regionen.pas` öffnen | Nach kurzer Pause sind alle Regionen zugeklappt, auch die innere „Intern“, die im Methodenrumpf und `(*$REGION*)`; andere Blöcke (Klassen, Methoden) bleiben offen; Schreibmarke und Ausschnitt wie vorher (**Abnahme**) |
+| RF3 | Wie RF2, aber die Datei war vorher mit der Schreibmarke in „Laden“ gespeichert (Desktop merkt sich die Stelle), IDE neu starten | „Laden“ (und eine Region um sie) bleibt offen, die übrigen sind zu; die Marke steht an der gemerkten Stelle |
+| RF4 | Wie RF2, danach „Laden“ von Hand aufklappen, auf einen anderen Reiter und zurück wechseln | „Laden“ bleibt offen: Atlas klappt nur beim ersten Anzeigen nach dem Öffnen |
+| RF5 | Mehrere Dateien mit Regionen im Desktop, Einstellung „alle zuklappen“, IDE neu starten, nacheinander alle Reiter anklicken | Jede Datei ist beim ersten Anklicken zugeklappt |
+| RF6 | Einstellung „alle aufklappen“; Regionen in einer Datei von Hand zuklappen, Datei schließen und wieder öffnen | Alle Regionen offen |
+| RF7 | Schreibmarke in „Intern“, Menü Atlas › Navigation › „Alle Regionen zuklappen“, danach „Alle Regionen aufklappen“; dasselbe über das Kontextmenü (Atlas › Navigation) und die Befehlspalette | Zu: alle Regionen zu, die Marke steht auf der Kopfzeile von „Laden“. Auf: alle offen. Keine anderen Blöcke verändert (**Abnahme**) |
+| RF8 | Einstellung „aus (auch keine Befehle)“ | Menü, Kontextmenü und Palette zeigen die Befehle nicht; beim Öffnen ändert Atlas nichts |
+| RF9 | Oberfläche auf Englisch | „Regions when a file opens:“ mit „leave unchanged“, „collapse all“, „expand all“, „off (no commands either)“; Befehle „Collapse all regions“, „Expand all regions“ |
+| RF10 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasRegionFoldsTests`, `TAtlasRegionFoldsTextsTests`, `TAtlasEditingSettingsTests.RegionFoldsOptions` grün |
+
+Trifft „nächsten Block zuklappen“ an der Kopfzeile einer Region einen anderen Block als die Region (RF2), bitte melden: Dann braucht Atlas einen anderen Weg.
+
+## Leckmeldungen der Tests (Offene Punkte Cloud, Punkt 4)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| LK1 | `Atlas.Tests` (Win64) vollständig laufen lassen | Alle Tests grün, keine Leckmeldung, `TESTEXIT 0` |
+| LK2 | Nur die Fixtures `TGoldenCorpusTests`, `TLspClientTests`, `TAtlasTimeLimitTests`, `TAtlasLogRedactorTests`, `TAtlasMainThreadTests`, `TIndexCacheDirectoryTests`, `TLspInlineValuesTests`, `TMcpToolsTests`, `TAtlasSettingsPageTests` einzeln laufen lassen (`--run:`) | Keine Leckmeldung, auch wenn die Fixture als erste läuft |
+| LK3 | `ForgetStartsNumberingAgain` | Grün |
+
+## Unit-Aliase im uses (WinTypes, WinProcs)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UAL1 | VCL-Projekt ohne eigene Unit-Aliase, in einer Unit `uses WinTypes, WinProcs;` schreiben, speichern | Kein Befund `uses-unit-not-found` („Unit WinTypes nicht gefunden (wie F2613)“) mehr; dcc übersetzt ohne Meldung |
+| UAL2 | In derselben Unit `var R: TRect;` und `MessageBeep(0);` verwenden, Strg+Klick auf `MessageBeep` | Keine Befunde zu unbekannten Bezeichnern; Strg+Klick öffnet `Winapi.Windows.pas`; Hover zeigt die Deklaration |
+| UAL3 | Strg+Klick auf `WinTypes` im uses | `Winapi.Windows.pas` öffnet sich |
+| UAL4 | Unit mit `uses WinTypes;`, aus der nichts verwendet wird | `unused-uses` blendet `WinTypes` ab; mit `TRect` im Code bleibt es normal |
+| UAL5 | In den Projektoptionen unter „Unit-Aliase“ `Alt=System.SysUtils` eintragen, speichern, Projekt neu laden, `uses Alt;` und `IntToStr(1)` schreiben | Kein `uses-unit-not-found`, `IntToStr` löst sich auf; ohne den Eintrag meldet Atlas wie dcc F2613 |
+| UAL6 | `uses DbiTypes;` in einem Projekt ohne BDE | Atlas meldet `uses-unit-not-found` wie dcc (Ziel-Unit BDE fehlt) |

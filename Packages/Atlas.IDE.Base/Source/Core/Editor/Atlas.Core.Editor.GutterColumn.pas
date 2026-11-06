@@ -200,14 +200,18 @@ class function TAtlasGutterColumn.Choose(const ALine: TAtlasGutterLine;
   const AOptions: TAtlasGutterColumnOptions): TAtlasGutterSymbol;
 begin
   Result := TAtlasGutterSymbol.None;
-  if AOptions.Problems and (ALine.Problem in [TAtlasGutterSymbol.Error, TAtlasGutterSymbol.Warning,
-    TAtlasGutterSymbol.Hint]) then
+  if AOptions.Problems and (ALine.Problem in [TAtlasGutterSymbol.Error, TAtlasGutterSymbol.Warning]) then
   begin
     Result := ALine.Problem;
   end
+  // Vor dem Hinweis: Die Glühbirne sagt, dass sich an der Zeile etwas tun lässt.
   else if AOptions.CodeActions and ALine.Action then
   begin
     Result := TAtlasGutterSymbol.Action;
+  end
+  else if AOptions.Problems and (ALine.Problem = TAtlasGutterSymbol.Hint) then
+  begin
+    Result := ALine.Problem;
   end
   else if AOptions.Overrides and ALine.Overrides then
   begin

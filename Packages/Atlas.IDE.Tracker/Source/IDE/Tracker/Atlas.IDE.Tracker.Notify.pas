@@ -325,7 +325,7 @@ end;
 
 procedure TAtlasIdeIssueNotify.TimerTick(Sender: TObject);
 begin
-  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+  TAtlasGuard.Run(TAtlasFeature.Tracker,
     procedure
     begin
       Poll(False);
@@ -533,7 +533,7 @@ end;
 class procedure TAtlasIdeIssueNotify.Deliver(const AKeep: IInterface; AOwner: TAtlasIdeIssueNotify;
   const AOutcome: TOutcome);
 begin
-  TAtlasMainThread.Queue(TAtlasFeature.WelcomePage,
+  TAtlasMainThread.Queue(TAtlasFeature.Tracker,
     procedure
     begin
       if AKeep <> nil then

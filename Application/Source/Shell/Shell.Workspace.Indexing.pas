@@ -97,10 +97,22 @@ uses
   Atlas.Common.Index.Adapters.CacheDirectory,
   Atlas.Common.Index.Processes,
   Atlas.Common.Index.ProjectFiles,
+  Atlas.Common.Projects.UnitAliases,
   Atlas.Common.Diagnostics.ShutdownLeaks,
   Shell.Workspace.Listings,
   Shell.Workspace.Packages,
-  Atlas.Text.LogMarks;
+  Atlas.Text.LogMarks,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TWorkspaceIndexingText = (FromCache, Failed);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TWorkspaceIndexingText] of TAtlasText = (
+    (De: 'Stand übernommen (%d Units aus dem Cache)'; En: 'State taken over (%d units from the cache)'),
+    (De: 'Fehlgeschlagen'; En: 'Failed'));
 
 const
   /// <summary>So lange wartet ein lesender Prozess höchstens auf den Cache des schreibenden (#62).</summary>
@@ -248,8 +260,8 @@ begin
   end
   else
   begin
-    FParts.Cache.Report(TIndexProcessInfo.StateReady, False, Format('Stand übernommen (%d Units aus dem Cache)',
-      [AResult.FromCache]));
+    FParts.Cache.Report(TIndexProcessInfo.StateReady, False,
+      cTexts[TWorkspaceIndexingText.FromCache].Fmt([AResult.FromCache]));
   end;
   FEncodings.Report(FParts.State.ProjectFiles);
   FParts.Events.IndexFinished;
@@ -298,7 +310,7 @@ begin
   IndexEvent(Format('index project#%d failed %s', [FParts.Setup.Priority, AError.ClassName]));
   try
     // Ohne aktiven Fortschritt ein No-op.
-    FProgress.Finish('Fehlgeschlagen');
+    FProgress.Finish(cTexts[TWorkspaceIndexingText.Failed].Text);
   except
     // Transport schon geschlossen: Das Log genügt.
   end;
@@ -320,6 +332,8 @@ begin
   mSource.LibraryPaths := ALoaded.CompilerLibraryPaths;
   mSource.Packages := TPackageLocatorHold.Create(Result);
   mSource.Index := FParts.Index;
+  // Unit-Aliase der .dproj (DCC_UnitAlias) für Namensauflösung und Vorschläge; die Vorgaben kennt der Index.
+  FParts.Index.AddUnitAliases(TUnitAliases.OfProject(ALoaded.Project));
   if Assigned(FParts.Setup.OnGroupProjects) then
   begin
     mSource.GroupOutputsOf := TShellPackageLookups.GroupOutputsOf(FParts.Setup.OnGroupProjects,
@@ -467,5 +481,8 @@ function TShellWorkspaceIndexing.Index: ISymbolIndex;
 begin
   Result := FParts.Index;
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Workspace.Indexing', cTexts);
 
 end.

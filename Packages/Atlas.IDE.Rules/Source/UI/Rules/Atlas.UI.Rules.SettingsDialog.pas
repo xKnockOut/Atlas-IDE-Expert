@@ -80,7 +80,6 @@ function TAtlasRulesSettingsDialog.RuleGroups: TArray<string>;
 var
   mIndex: Integer;
 begin
-  // GroupIds ist ein statisches Array; Delphi weist es nicht an TArray<string> zu (E2010), FPC schon.
   SetLength(Result, Length(TAtlasRuleTable.GroupIds));
   for mIndex := 0 to High(TAtlasRuleTable.GroupIds) do
   begin

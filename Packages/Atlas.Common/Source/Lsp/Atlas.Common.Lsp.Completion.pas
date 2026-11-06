@@ -377,6 +377,10 @@ begin
     mRequest.Uri := AUri;
     mRequest.Index := FIndex;
     mRequest.ReadText := FHooks.ReadText;
+    if Assigned(FHooks.IdeTypesFor) then
+    begin
+      mRequest.IdeTypes := FHooks.IdeTypesFor();
+    end;
     mTrigger := '';
     if AParams <> nil then
     begin

@@ -2,8 +2,9 @@
 
 // Tests der Regel method-without-self (#686): Treffer samt Korrektur „In
 // class-Methode umwandeln“, Methoden mit Feldern bleiben stumm, die Regel ist
-// experimentell, schweigt mit refactoring.methodKind aus und bei Ereignissen
-// der Formulardatei.
+// experimentell, schweigt mit refactoring.methodKind aus, bei Ereignissen
+// der Formulardatei und bei Methoden von Interfaces, auch geerbten und
+// unbekannten (ToolsAPI, IComparer<T> ohne Index).
 
 interface
 
@@ -22,6 +23,8 @@ type
     procedure ExperimentalAndSwitchedOff;
     [Test]
     procedure FormEventIsSilent;
+    [Test]
+    procedure InterfaceMethodsAreSilent;
   end;
 
 implementation
@@ -110,6 +113,54 @@ begin
     'object Rechner: TRechner'#10'  OnClick = Doppelt'#10'end', Enabled))));
   Assert.AreEqual(1, Integer(Length(TRuleAssert.FormFindings(Rule, Source,
     'object Rechner: TRechner'#10'end', Enabled))));
+end;
+
+procedure TMethodWithoutSelfRuleTests.InterfaceMethodsAreSilent;
+const
+  cMelder =
+    'unit Melder;'#10 +
+    'interface'#10 +
+    'uses ToolsAPI, System.Generics.Defaults;'#10 +
+    'type'#10 +
+    '  IBasis = interface'#10 +
+    '    procedure Zeige;'#10 +
+    '  end;'#10 +
+    '  IKind = interface(IBasis)'#10 +
+    '  end;'#10 +
+    '  TMelder = class(TNotifierObject, IOTAWizard)'#10 +
+    '    function GetIDString: string;'#10 +
+    '  end;'#10 +
+    '  TVergleich = class(TInterfacedObject, IComparer<Integer>)'#10 +
+    '    function Compare(const A, B: Integer): Integer;'#10 +
+    '  end;'#10 +
+    '  TZeiger = class(TInterfacedObject, IKind)'#10 +
+    '    procedure Zeige;'#10 +
+    '    function Doppelt(A: Integer): Integer;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'function TMelder.GetIDString: string;'#10 +
+    'begin'#10 +
+    '  Result := ''Atlas.Melder'';'#10 +
+    'end;'#10 +
+    'function TVergleich.Compare(const A, B: Integer): Integer;'#10 +
+    'begin'#10 +
+    '  Result := A - B;'#10 +
+    'end;'#10 +
+    'procedure TZeiger.Zeige;'#10 +
+    'begin'#10 +
+    'end;'#10 +
+    'function TZeiger.Doppelt(A: Integer): Integer;'#10 +
+    'begin'#10 +
+    '  Result := A * 2;'#10 +
+    'end;'#10 +
+    'end.';
+var
+  Found: TArray<TRuleFinding>;
+begin
+  // IOTAWizard und IComparer<T> kennt der Index nicht, Zeige erbt IKind von IBasis: Nur Doppelt bleibt.
+  Found := TRuleAssert.Findings(Rule, cMelder, Enabled);
+  Assert.AreEqual(1, Integer(Length(Found)));
+  Assert.IsTrue(Pos('TZeiger.Doppelt', Found[0].Message) > 0, Found[0].Message);
 end;
 
 initialization

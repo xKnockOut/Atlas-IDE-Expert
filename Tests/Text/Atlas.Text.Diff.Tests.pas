@@ -29,6 +29,10 @@ type
     /// </summary>
     [Test]
     procedure UnifiedDiff;
+    /// <summary>Gleicher Anfang und gleiches Ende direkt im Text wie über die Zeilen, für alle kurzen Texte aus
+    /// „a“, „b“ und LF.</summary>
+    [Test]
+    procedure PrefixSuffixOfTextMatchesLines;
   end;
 
 implementation
@@ -146,6 +150,77 @@ begin
   Assert.AreEqual('--- a'#10'+++ b'#10'@@ -0,0 +1 @@'#10'+neu',
     string.Join(#10, TTextDiff.Unified('a', 'b', ['1'], ['neu', '1'], 0)));
   Assert.AreEqual(0, Integer(Length(TTextDiff.Unified('a', 'b', ['1'], ['1'], 3))));
+end;
+
+/// <summary>Zeilen an LF getrennt, auch die leere letzte.</summary>
+function LfLines(const AText: string): TArray<string>;
+var
+  mStart, mIndex, mCount: Integer;
+begin
+  Result := nil;
+  SetLength(Result, Length(AText) + 1);
+  mCount := 0;
+  mStart := 1;
+  for mIndex := 1 to Length(AText) do
+  begin
+    if AText[mIndex] = #10 then
+    begin
+      Result[mCount] := Copy(AText, mStart, mIndex - mStart);
+      Inc(mCount);
+      mStart := mIndex + 1;
+    end;
+  end;
+  Result[mCount] := Copy(AText, mStart, MaxInt);
+  SetLength(Result, mCount + 1);
+end;
+
+/// <summary>Alle Texte aus „a“, „b“ und LF mit höchstens ALength Zeichen.</summary>
+function ShortTexts(ALength: Integer): TArray<string>;
+const
+  cChars: array[0..2] of Char = ('a', 'b', #10);
+var
+  mShorter: TArray<string>;
+  mText: string;
+  mChar: Char;
+begin
+  Result := TArray<string>.Create('');
+  if ALength = 0 then
+  begin
+    Exit;
+  end;
+  mShorter := ShortTexts(ALength - 1);
+  for mText in mShorter do
+  begin
+    if Length(mText) = ALength - 1 then
+    begin
+      for mChar in cChars do
+      begin
+        Result := Result + [mText + mChar];
+      end;
+    end;
+  end;
+  Result := Result + Copy(mShorter, 1, MaxInt);
+end;
+
+procedure TTextDiffTests.PrefixSuffixOfTextMatchesLines;
+var
+  mTexts: TArray<string>;
+  mOld, mNew: string;
+  mPrefix, mSuffix, mLinePrefix, mLineSuffix, mOldCount, mNewCount: Integer;
+begin
+  mTexts := ShortTexts(4);
+  for mOld in mTexts do
+  begin
+    for mNew in mTexts do
+    begin
+      TTextDiff.CommonPrefixSuffix(LfLines(mOld), LfLines(mNew), mLinePrefix, mLineSuffix);
+      TTextDiff.CommonPrefixSuffix(mOld, mNew, mPrefix, mSuffix, mOldCount, mNewCount);
+      Assert.AreEqual(mLinePrefix, mPrefix, 'Anfang ' + mOld.QuotedString + ' -> ' + mNew.QuotedString);
+      Assert.AreEqual(mLineSuffix, mSuffix, 'Ende ' + mOld.QuotedString + ' -> ' + mNew.QuotedString);
+      Assert.AreEqual(Integer(Length(LfLines(mNew))), mNewCount, 'Zeilen ' + mNew.QuotedString);
+    end;
+  end;
+  mTexts := nil;
 end;
 
 initialization

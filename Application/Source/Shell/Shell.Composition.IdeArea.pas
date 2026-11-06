@@ -190,6 +190,7 @@ begin
       mServices.Diagnostics().Pull.Check.Pause(TLspWorkspaceCheck.cPauseCompile, ARunning, CompilePauseLimitMs);
     end;
   Result.NamingChanged := RefreshLater;
+  Result.TypesChanged := RefreshLater;
 end;
 
 end.

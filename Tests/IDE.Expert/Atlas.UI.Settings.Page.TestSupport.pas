@@ -79,7 +79,11 @@ procedure WarmUpSettingsPage;
 var
   Host: TForm;
   Page: TAtlasSettingsPage;
+  mRegistrations: TArray<IAtlasRegistration>;
 begin
+  // Erste Anmeldung legt die Listen der Registry an: nicht dem ersten Setup anrechnen.
+  mRegistrations := ProvideSections([TAtlasSettingsSection]);
+  RevokeAll(mRegistrations);
   TAtlasSettingsPage.Create(nil).Free;
   // Auch mit Fenster (Reiter, PageControl): einmalige VCL-Daten nicht dem ersten Test anrechnen.
   Host := TForm.CreateNew(nil);

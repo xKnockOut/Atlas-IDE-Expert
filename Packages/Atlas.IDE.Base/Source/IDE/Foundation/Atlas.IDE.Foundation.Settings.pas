@@ -73,7 +73,7 @@ type
     class function InlayDefineHintsOn: Boolean; static;
     /// <summary>Plugin eingeschaltet und Codes von Steuerzeichen an (#862).</summary>
     class function InlayCharHintsOn: Boolean; static;
-    /// <summary>Plugin eingeschaltet und Marken „ohne Self“ an (#686).</summary>
+    /// <summary>Plugin eingeschaltet und Marken „braucht kein Self“ an (#686).</summary>
     class function InlayMethodHintsOn: Boolean; static;
     /// <summary>Plugin eingeschaltet und Blockende-Beschriftungen an (#620); ohne Kopie des Einstellungsrecords.
     /// </summary>

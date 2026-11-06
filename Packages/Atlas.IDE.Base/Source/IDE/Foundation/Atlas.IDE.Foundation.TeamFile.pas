@@ -11,7 +11,10 @@
 //   geöffneten .groupproj (LocateFor).
 // - Ein Zeitgeber prüft alle 2 s im Hauptthread, ob sich aktives Projekt,
 //   Ort oder Zeitstempel der Datei geändert haben; nur dann wird neu gelesen
-//   und OnChanged gerufen. Ist die Datei gerade gesperrt, folgt der nächste
+//   und OnChanged gerufen. Den Ort sucht er (Ordner aufwärts bis zur Wurzel
+//   des Repositorys) nur bei anderem Projekt oder anderer Gruppe, nach
+//   Refresh, wenn die Datei verschwunden ist, und sonst alle 10 s; je Takt
+//   fragt er nur den Zeitstempel der Datei (Dateizugriffe im Hauptthread). Ist die Datei gerade gesperrt, folgt der nächste
 //   Versuch beim nächsten Takt.
 // - Meldungen zur Datei (fehlerhaft, Zugangsdaten, absolute Pfade …) stehen
 //   einmal je gelesenem Stand in der Meldungsansicht (Gruppe Atlas), nie als
@@ -42,7 +45,13 @@ type
     FTimer: TTimer;
     FCurrent: TAtlasTeamSettings;
     FStamp: string;
+    /// <summary>Projekt und Gruppe der letzten Suche nach dem Ort, ihr Ergebnis und Zeitpunkt.</summary>
+    FLocateKey: string;
+    FLocated: string;
+    FLocatedAt: UInt64;
     procedure Tick(Sender: TObject);
+    /// <summary>Ort der Datei für AProject; sucht nur neu, wenn nötig (siehe Kopf).</summary>
+    function LocatedFor(const AProject: string): string;
     procedure Check;
     class function PathExists(const APath: string): Boolean; static;
     /// <summary>Liest AFileName; False, wenn die Datei nicht lesbar ist (gesperrt, gelöscht).</summary>
@@ -83,6 +92,7 @@ type
 implementation
 
 uses
+  Winapi.Windows,
   System.IOUtils,
   ToolsAPI,
   Atlas.Core.Diagnostics.Guard,
@@ -92,6 +102,8 @@ uses
 
 const
   CheckMs = 2000;
+  /// <summary>Spätestens nach dieser Zeit den Ort neu suchen (neu angelegte Datei weiter oben).</summary>
+  RelocateMs = 10000;
 
 { TAtlasIdeTeamFile }
 
@@ -275,11 +287,19 @@ begin
   begin
     Project := ActiveProject;
   end;
-  FileName := LocateFor(Project);
+  FileName := LocatedFor(Project);
   Stamp := Project + '|' + FileName;
-  if (FileName <> '') and FileAge(FileName, Age) then
+  if FileName <> '' then
   begin
-    Stamp := Stamp + '|' + FloatToStr(Age, TFormatSettings.Invariant);
+    if FileAge(FileName, Age) then
+    begin
+      Stamp := Stamp + '|' + FloatToStr(Age, TFormatSettings.Invariant);
+    end
+    else
+    begin
+      // Verschwunden: beim nächsten Takt den Ort neu suchen.
+      FLocatedAt := 0;
+    end;
   end;
   if Stamp = FStamp then
   begin
@@ -299,6 +319,22 @@ begin
   begin
     FOnChanged();
   end;
+end;
+
+function TAtlasIdeTeamFile.LocatedFor(const AProject: string): string;
+var
+  mKey: string;
+  mNow: UInt64;
+begin
+  mKey := AProject + '|' + ActiveGroupFolder;
+  mNow := GetTickCount64;
+  if (mKey <> FLocateKey) or (FLocatedAt = 0) or (mNow - FLocatedAt >= RelocateMs) then
+  begin
+    FLocated := LocateFor(AProject);
+    FLocateKey := mKey;
+    FLocatedAt := mNow;
+  end;
+  Result := FLocated;
 end;
 
 procedure TAtlasIdeTeamFile.Tick(Sender: TObject);
@@ -352,6 +388,7 @@ begin
     Exit;
   end;
   FInstance.FStamp := '';
+  FInstance.FLocatedAt := 0;
   FInstance.Check;
 end;
 

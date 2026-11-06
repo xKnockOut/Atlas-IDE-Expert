@@ -99,7 +99,8 @@ uses
   Winapi.Windows,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Hangs,
-  Atlas.IDE.Build.CheckOnSave;
+  Atlas.IDE.Build.CheckOnSave,
+  Atlas.UI.BuildPipeline.Strings;
 
 function NowMs: Int64;
 begin
@@ -148,7 +149,7 @@ begin
   FOwner.FCancelReason := AReason;
   if FOwner.FCancelReason = '' then
   begin
-    FOwner.FCancelReason := 'Ein Teilnehmer hat den Build abgebrochen';
+    FOwner.FCancelReason := TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.McpRefusedCancelled);
   end;
 end;
 
@@ -178,7 +179,7 @@ begin
   // Offener Auftrag: ohne Ergebnis abschließen, damit der Auftraggeber nicht wartet.
   if FBusy and Assigned(FOnDone) then
     try
-      FOnDone(FReport, 'Atlas wurde in der IDE beendet');
+      FOnDone(FReport, TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.McpRefusedShutdown));
     except
       on Exception do
         ;
@@ -213,19 +214,19 @@ begin
   Result := '';
   if FBusy then
   begin
-    Result := 'Atlas baut in der IDE schon ein Projekt';
+    Result := TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.McpRefusedBusy);
   end
   else if FForeignBuild or FEvents.Background then
   begin
-    Result := 'In der IDE läuft schon ein Build oder eine Compilerprüfung';
+    Result := TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.McpRefusedForeignBuild);
   end
   else if Debugging then
   begin
-    Result := 'In der IDE läuft der Debugger';
+    Result := TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.McpRefusedDebugging);
   end
   else if not (ARequest.Kind in [TAtlasCompileKind.Make, TAtlasCompileKind.Build, TAtlasCompileKind.Check]) then
   begin
-    Result := 'Nur make, build und check sind möglich';
+    Result := TAtlasBuildPipelineStrings.Text(TAtlasBuildPipelineTextId.McpRefusedKind);
   end;
 end;
 
@@ -242,18 +243,20 @@ begin
   if not Supports(BorlandIDEServices, IOTAModuleServices, Services) or
     not Supports(Services.FindModule(ARequest.Project), IOTAProject, AProject) or (AProject.ProjectBuilder = nil) then
   begin
-    Result := Format('Das Projekt %s ist in der IDE nicht offen', [ExtractFileName(ARequest.Project)]);
+    Result := TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.McpRefusedProjectClosed,
+      [ExtractFileName(ARequest.Project)]);
   end
   else if (ARequest.Configuration <> '') and
     (not Supports(AProject.ProjectOptions, IOTAProjectOptionsConfigurations, AConfigurations) or
     not ConfigurationKnown(AConfigurations, ARequest.Configuration)) then
   begin
-    Result := Format('Das Projekt kennt die Konfiguration %s nicht', [ARequest.Configuration]);
+    Result := TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.McpRefusedConfiguration,
+      [ARequest.Configuration]);
   end
   else if (ARequest.Platform <> '') and
     (not Supports(AProject, IOTAProjectPlatforms, APlatforms) or not APlatforms.Enabled[ARequest.Platform]) then
   begin
-    Result := Format('Die Plattform %s ist im Projekt nicht aktiviert', [ARequest.Platform]);
+    Result := TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.McpRefusedPlatform, [ARequest.Platform]);
   end;
 end;
 
@@ -373,7 +376,7 @@ begin
     on E: Exception do
     begin
       TAtlasGuard.Report(TAtlasFeature.Build, E);
-      EndRequest(Format('Build in der IDE fehlgeschlagen: %s', [E.Message]));
+      EndRequest(TAtlasBuildPipelineStrings.Fmt(TAtlasBuildPipelineTextId.McpBuildException, [E.Message]));
       Exit(True);
     end;
   end;

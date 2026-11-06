@@ -88,11 +88,43 @@ uses
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.MoveClass,
   Atlas.Common.Lsp.PropertyFromAccessors,
-  Atlas.Common.Lsp.WorkspaceChanges;
+  Atlas.Common.Lsp.WorkspaceChanges,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLspExtractInterfaceText = (ExtractInterface, ExtractInterfaceFrom, RequestWithNameUnitAnd, AfterTheChangeNoLonger,
+    IsNotAValidUnit, ComesFromWhichWouldHave, CannotBeRead, TheNameIsAlreadyTaken, HasNoInterfacePart,
+    AlreadyExistsButDoesNot, WithMethodsFiles, ExtractInterface2);
+
+const
+  cTexts: array[TLspExtractInterfaceText] of TAtlasText = (
+    (De: 'Interface herauslösen: '; En: 'Extract interface: '),
+    (De: 'Interface aus %s herauslösen …'; En: 'Extract interface from %s …'),
+    (De: 'Anfrage mit name, unit und members fehlt'; En: 'Request with name, unit and members missing'),
+    (De: 'Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s).';
+     En: 'After the change %s no longer parses without errors (line %d: %s).'),
+    (De: '"%s" ist kein gültiger Unit-Name.'; En: '"%s" is not a valid unit name.'),
+    (De: '%s stammt aus %s, die %s im interface einbinden müsste (Kreisverweis). Das Interface bitte in derselben ' +
+      'Unit anlegen.';
+     En: '%s comes from %s, which would have to use %s in the interface (circular reference). Please create the ' +
+      'interface in the same unit.'),
+    (De: '%s lässt sich nicht lesen.'; En: '%s cannot be read.'),
+    (De: 'Der Name %s ist in %s schon vergeben.'; En: 'The name %s is already taken in %s.'),
+    (De: '%s hat keinen interface-Teil.'; En: '%s has no interface part.'),
+    (De: '%s gibt es schon, gehört aber nicht zum Projekt.';
+     En: '%s already exists but does not belong to the project.'),
+    (De: '%s mit %d Methoden, %d Dateien'; En: '%s with %d methods, %d files'),
+    (De: 'Interface herauslösen'; En: 'Extract interface'));
+
+{$SCOPEDENUMS OFF}
 
 function Failed(const AMessage: string): EJsonRpcError;
 begin
-  Result := EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Interface herauslösen: ' + AMessage);
+  Result := EJsonRpcError.Create(TLspErrorCode.RequestFailed, cTexts[TLspExtractInterfaceText.ExtractInterface].Text +
+    AMessage);
 end;
 
 function VisibilityText(AVisibility: TClassVisibility): string;
@@ -183,7 +215,7 @@ begin
   begin
     Exit;
   end;
-  Title := Format('Interface aus %s herauslösen …', [Info.ClassName]);
+  Title := cTexts[TLspExtractInterfaceText.ExtractInterfaceFrom].Fmt([Info.ClassName]);
   Arguments := TJSONArray.Create;
   Arguments.Add(AUri);
   Arguments.AddElement(TLspPositions.PositionToJson(APosition));
@@ -264,7 +296,8 @@ var
 begin
   if not (ARequest is TJSONObject) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Anfrage mit name, unit und members fehlt');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TLspExtractInterfaceText.RequestWithNameUnitAnd].Text);
   end;
   AName := '';
   AUnit := '';
@@ -322,8 +355,8 @@ begin
   try
     if Length(mCheck.Diagnostics) > ABefore then
     begin
-      raise Failed(Format('Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s).',
-        [ExtractFileName(AFileName), mCheck.Diagnostics[0].StartPos.Line + 1, mCheck.Diagnostics[0].Message]));
+      raise Failed(cTexts[TLspExtractInterfaceText.AfterTheChangeNoLonger].Fmt([ExtractFileName(AFileName),
+        mCheck.Diagnostics[0].StartPos.Line + 1, mCheck.Diagnostics[0].Message]));
     end;
   finally
     mCheck.Free;
@@ -414,7 +447,7 @@ begin
   FRequest.SameUnit := (FUnitName = '') or SameText(FUnitName, FOwnUnit);
   if not FRequest.SameUnit and not IsIdentifier(StringReplace(FUnitName, '.', '_', [rfReplaceAll])) then
   begin
-    raise Failed(Format('"%s" ist kein gültiger Unit-Name.', [FUnitName]));
+    raise Failed(cTexts[TLspExtractInterfaceText.IsNotAValidUnit].Fmt([FUnitName]));
   end;
 end;
 
@@ -462,8 +495,7 @@ begin
   end;
   if FPlan.InInterface then
   begin
-    raise Failed(Format('%s stammt aus %s, die %s im interface einbinden müsste (Kreisverweis). ' +
-      'Das Interface bitte in derselben Unit anlegen.', [ATypeName, FOwnUnit, FUnitName]));
+    raise Failed(cTexts[TLspExtractInterfaceText.ComesFromWhichWouldHave].Fmt([ATypeName, FOwnUnit, FUnitName]));
   end;
   ANeedsOwn := True;
 end;
@@ -502,17 +534,17 @@ var
 begin
   if not (Assigned(FContext.ReadText) and FContext.ReadText(FTargetFile, mTargetText)) then
   begin
-    raise Failed(Format('%s lässt sich nicht lesen.', [ExtractFileName(FTargetFile)]));
+    raise Failed(cTexts[TLspExtractInterfaceText.CannotBeRead].Fmt([ExtractFileName(FTargetFile)]));
   end;
   mTargetTree := TSyntaxTreeCache.Parse(mTargetText);
   try
     if TClassLayout.DeclNamed(mTargetTree, FRequest.Name) <> nil then
     begin
-      raise Failed(Format('Der Name %s ist in %s schon vergeben.', [FRequest.Name, FUnitName]));
+      raise Failed(cTexts[TLspExtractInterfaceText.TheNameIsAlreadyTaken].Fmt([FRequest.Name, FUnitName]));
     end;
     if not TExtractInterface.InsertIntoUnit(mTargetTree, mTargetText, FPlan.Declaration, mEdit) then
     begin
-      raise Failed(Format('%s hat keinen interface-Teil.', [FUnitName]));
+      raise Failed(cTexts[TLspExtractInterfaceText.HasNoInterfacePart].Fmt([FUnitName]));
     end;
     // Fehlende uses der Ziel-Unit in einem Schritt (eine Einfügung), dann das Interface.
     mTargetUses := MissingUses(mTargetTree, FNeeded);
@@ -557,7 +589,7 @@ begin
   FTargetFile := TProjectPaths.Combine(TProjectPaths.DirectoryOf(FFileName), FUnitName + '.pas');
   if Assigned(FContext.Exists) and FContext.Exists(FTargetFile) then
   begin
-    raise Failed(Format('%s gibt es schon, gehört aber nicht zum Projekt.', [ExtractFileName(FTargetFile)]));
+    raise Failed(cTexts[TLspExtractInterfaceText.AlreadyExistsButDoesNot].Fmt([ExtractFileName(FTargetFile)]));
   end;
   FChanges.CreateFile(FTargetFile, TExtractInterface.NewUnitText(FUnitName, FPlan.Declaration, FNeeded, FLineBreak));
 end;
@@ -568,9 +600,10 @@ var
   mDescription: string;
 begin
   mCount := Length(FPlan.Methods);
-  mDescription := Format('%s mit %d Methoden, %d Dateien', [FRequest.Name, mCount, FChanges.FileCount]);
+  mDescription := cTexts[TLspExtractInterfaceText.WithMethodsFiles].Fmt([FRequest.Name, mCount, FChanges.FileCount]);
   Result := TJSONObject.Create;
-  Result.AddPair('edit', FChanges.ToJson(TLspExtractInterface.AnnotationId, 'Interface herauslösen', mDescription));
+  Result.AddPair('edit', FChanges.ToJson(TLspExtractInterface.AnnotationId,
+    cTexts[TLspExtractInterfaceText.ExtractInterface2].Text, mDescription));
   Result.AddPair('warnings', FChanges.WarningsJson);
   Result.AddPair('file', TDocumentUris.FromPath(FTargetFile));
   Result.AddPair('name', FRequest.Name);
@@ -616,5 +649,8 @@ begin
     mExtraction.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.ExtractInterface', cTexts);
 
 end.

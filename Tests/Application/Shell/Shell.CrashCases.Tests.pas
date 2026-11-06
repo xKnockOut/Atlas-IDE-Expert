@@ -12,6 +12,7 @@ uses
   DUnitX.TestFramework,
   Atlas.Common.Documents.Contract,
   Atlas.Common.JsonRpc.RecentMessages,
+  Atlas.Common.Diagnostics.CrashSkip,
   Shell.CrashCases;
 
 type
@@ -135,6 +136,21 @@ begin
   end;
 end;
 
+/// <summary>Ist AMessage der Text, mit dem eine der übersprungenen Anfragen von ACases abgelehnt wird?</summary>
+function IsSkipText(ACases: TShellCrashCases; const AMessage: string): Boolean;
+var
+  mEntry: TCrashSkipEntry;
+begin
+  Result := False;
+  for mEntry in ACases.Skipped do
+  begin
+    if AMessage = TShellCrashCases.SkipText(mEntry) then
+    begin
+      Exit(True);
+    end;
+  end;
+end;
+
 function TShellCrashCasesTests.GuardRejects: Boolean;
 var
   mParams: TJSONValue;
@@ -146,7 +162,7 @@ begin
       FCases.Guard(cHover, mParams);
     except
       on E: EJsonRpcError do
-        Result := E.Message.StartsWith(TShellCrashCases.SkipMessage);
+        Result := IsSkipText(FCases, E.Message);
     end;
   finally
     mParams.Free;

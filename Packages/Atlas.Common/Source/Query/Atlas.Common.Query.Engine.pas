@@ -62,7 +62,21 @@ uses
   Atlas.Common.Rules.ConsideredUsed,
   Atlas.Common.Rules.Builtin.Inheritance,
   Atlas.Common.Query.Catalog,
-  Atlas.Common.Query.Language;
+  Atlas.Common.Query.Language,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TQueryEngineText = (QueryCancelled, Inferred);
+
+const
+  cTexts: array[TQueryEngineText] of TAtlasText = (
+    (De: 'Abfrage abgebrochen'; En: 'Query cancelled'),
+    (De: 'erschlossen: %s (%s)'; En: 'inferred: %s (%s)'));
+
+{$SCOPEDENUMS OFF}
 
 type
   EQueryCancelled = class(Exception);
@@ -405,7 +419,7 @@ procedure TQueryFacts.CheckCancelled;
 begin
   if Assigned(FSource.Cancelled) and FSource.Cancelled() then
   begin
-    raise EQueryCancelled.Create('Abfrage abgebrochen');
+    raise EQueryCancelled.Create(cTexts[TQueryEngineText.QueryCancelled].Text);
   end;
 end;
 
@@ -804,7 +818,7 @@ begin
     if mCall.Inferred and not AElement.Inferred then
     begin
       AElement.Inferred := True;
-      AElement.InferredDetail := Format('erschlossen: %s (%s)', [mCall.Name, mCall.Reason]);
+      AElement.InferredDetail := cTexts[TQueryEngineText.Inferred].Fmt([mCall.Name, mCall.Reason]);
     end;
   end;
 end;
@@ -1852,5 +1866,8 @@ begin
     Result.ElapsedMs := mWatch.ElapsedMilliseconds;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Query.Engine', cTexts);
 
 end.

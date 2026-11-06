@@ -86,7 +86,24 @@ uses
   System.Generics.Collections,
   Atlas.Common.JsonRpc.Messages,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Logging.Providers.Logger;
+  Atlas.Common.Logging.Providers.Logger,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TReplayText = (Original, Isolated, Reproduced, NotReproduced, Unreadable, NoAnswer, NoError, Error);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TReplayText] of TAtlasText = (
+    (De: 'mit den Projekten des Absturzes'; En: 'with the projects of the crash'),
+    (De: 'isoliert'; En: 'isolated'),
+    (De: 'reproduziert (%s): %s'; En: 'reproduced (%s): %s'),
+    (De: 'nicht reproduziert (%s): %s'; En: 'not reproduced (%s): %s'),
+    (De: 'Fall nicht lesbar: %s'; En: 'Case not readable: %s'),
+    (De: 'keine Antwort'; En: 'no answer'),
+    (De: 'Antwort ohne Fehler'; En: 'answer without error'),
+    (De: 'Fehler %d: %s'; En: 'Error %d: %s'));
 
 const
   cRequestId = 'atlas-replay';
@@ -295,19 +312,19 @@ var
 begin
   if Original then
   begin
-    mPlace := 'mit den Projekten des Absturzes';
+    mPlace := cTexts[TReplayText.Original].Text;
   end
   else
   begin
-    mPlace := 'isoliert';
+    mPlace := cTexts[TReplayText.Isolated].Text;
   end;
   case Outcome of
     TReplayOutcome.Reproduced:
-      Result := 'reproduziert (' + mPlace + '): ' + Detail;
+      Result := cTexts[TReplayText.Reproduced].Fmt([mPlace, Detail]);
     TReplayOutcome.NotReproduced:
-      Result := 'nicht reproduziert (' + mPlace + '): ' + Detail;
+      Result := cTexts[TReplayText.NotReproduced].Fmt([mPlace, Detail]);
   else
-    Result := 'Fall nicht lesbar: ' + Detail;
+    Result := cTexts[TReplayText.Unreadable].Fmt([Detail]);
   end;
 end;
 
@@ -412,13 +429,13 @@ begin
   Result := False;
   if AResponse = nil then
   begin
-    ADetail := 'keine Antwort';
+    ADetail := cTexts[TReplayText.NoAnswer].Text;
     Exit;
   end;
   mError := AResponse.GetValue('error');
   if not (mError is TJSONObject) then
   begin
-    ADetail := 'Antwort ohne Fehler';
+    ADetail := cTexts[TReplayText.NoError].Text;
     Exit;
   end;
   mCode := 0;
@@ -433,7 +450,7 @@ begin
   begin
     mText := mValue.Value;
   end;
-  ADetail := Format('Fehler %d: %s', [mCode, mText]);
+  ADetail := cTexts[TReplayText.Error].Fmt([mCode, mText]);
   if ACase.Kind = TCrashCaseKind.Timeout then
   begin
     Result := mCode = TJsonRpcErrorCode.RequestCancelled;
@@ -666,5 +683,8 @@ begin
     Result := ExitUnreadable;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Replay', cTexts);
 
 end.

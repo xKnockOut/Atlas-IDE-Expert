@@ -87,7 +87,23 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Semantics.Reassigned,
   Atlas.Common.Editing.RoutineBody,
-  Atlas.Common.Editing.RoutineLocals;
+  Atlas.Common.Editing.RoutineLocals,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TVarBlockText = (CleanUpVarBlock, ConvertToInlineVariableVar, MoveToVarBlock, Unused);
+
+const
+  cTexts: array[TVarBlockText] of TAtlasText = (
+    (De: 'var-Block aufräumen'; En: 'Clean up var block'),
+    (De: 'In Inline-Variable umwandeln (var %s)'; En: 'Convert to inline variable (var %s)'),
+    (De: 'In var-Block verschieben (%s)'; En: 'Move to var block (%s)'),
+    (De: ' (ungenutzt: %s)'; En: ' (unused: %s)'));
+
+{$SCOPEDENUMS OFF}
 
 const
   LoopKinds = [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
@@ -763,7 +779,7 @@ begin
   begin
     mMove.CollectComments(AInfo);
     AAction := Default(TCodeAction);
-    AAction.Title := Format('In Inline-Variable umwandeln (var %s)', [ASymbol.Name]);
+    AAction.Title := cTexts[TVarBlockText.ConvertToInlineVariableVar].Fmt([ASymbol.Name]);
     AAction.Kind := RewriteKind;
     AAction.Edits := mMove.Edits;
   end;
@@ -969,7 +985,7 @@ begin
   if Result then
   begin
     AAction := Default(TCodeAction);
-    AAction.Title := Format('In var-Block verschieben (%s)', [ASymbol.Name]);
+    AAction.Title := cTexts[TVarBlockText.MoveToVarBlock].Fmt([ASymbol.Name]);
     AAction.Kind := RewriteKind;
     AAction.Edits := mEdits;
   end;
@@ -1431,10 +1447,10 @@ begin
     Exit;
   end;
   AAction := Default(TCodeAction);
-  AAction.Title := 'var-Block aufräumen';
+  AAction.Title := cTexts[TVarBlockText.CleanUpVarBlock].Text;
   if Removed <> '' then
   begin
-    AAction.Title := AAction.Title + Format(' (ungenutzt: %s)', [Removed]);
+    AAction.Title := AAction.Title + cTexts[TVarBlockText.Unused].Fmt([Removed]);
   end;
   AAction.Kind := RewriteKind;
   AAction.Edits := TArray<TTextEdit>.Create(TTextEdit.Create(TTextRange.Create(RangeStart, RangeEnd), mNewText));
@@ -1544,5 +1560,8 @@ begin
     Result := Result + [Action];
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.VarBlock', cTexts);
 
 end.

@@ -42,6 +42,12 @@
 // die Datei irgendwo als Typ deklariert (auch verschachtelt), und Namen, die der
 // Index als verschachtelten Typ kennt (geerbte innere Typen). Korrektur: die
 // Unit, die den Typ im Index deklariert, in uses aufnehmen.
+//
+// Typen der IDE (atlas/ideTypes, TRuleContext.IdeTypes): Kennt die laufende
+// IDE einen Typ aus ihren Packages (auch ohne oder mit abweichendem
+// Quelltext) in einer Unit, die im uses steht (bzw. vor dem Punkt), schweigen
+// unresolved-type und unresolved-identifier für ihn. Steht keine solche Unit im
+// uses, schlägt unresolved-type ihre Units zusätzlich zu denen des Index vor.
 
 interface
 
@@ -121,7 +127,58 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.Attributes,
   Atlas.Common.Semantics.SystemIntrinsics,
-  Atlas.Common.Semantics.UnresolvedNames;
+  Atlas.Common.Semantics.UnresolvedNames,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TUnresolvedText = (Title, UndeclaredMeant, Undeclared, UsesTitle, OrSep, AddUses, UsesItself, FileNotFound,
+    SystemNotFound, AddSearchPath, UseName, OutsidePaths, Similar, UnitNotFound, PackageNotFound, AttributeTitle,
+    AttributeIgnored, TestsDontRun, LikeCode, UnitMissing, Candidates, NotType, RoutineNotType, ConstantNotType,
+    TypeTitle, TypeUndeclared, MissingInUses, TypeCandidates, LikeE2564, LikeE2003);
+
+const
+  cTexts: array[TUnresolvedText] of TAtlasText = (
+    (De: 'Bezeichner ist im Projekt und seinen Units nicht deklariert (wie Compilerfehler E2003).';
+     En: 'Identifier is not declared in the project and its units (like compiler error E2003).'),
+    (De: '"%s" ist nicht deklariert; gemeint ist %s? ({$SCOPEDENUMS ON})';
+     En: '"%s" is not declared; is %s meant? ({$SCOPEDENUMS ON})'),
+    (De: '"%s" ist nicht deklariert'; En: '"%s" is not declared'),
+    (De: 'Unit in uses nicht gefunden (wie F2613)'; En: 'Unit in uses not found (like F2613)'),
+    (De: ' oder '; En: ' or '),
+    (De: 'uses %s ergänzen'; En: 'Add uses %s'),
+    (De: '%s verwendet sich selbst (wie F2092).'; En: '%s uses itself (like F2092).'),
+    (De: 'Datei %s für %s nicht gefunden (wie F1026).'; En: 'File %s for %s not found (like F1026).'),
+    (De: 'Unit System nicht gefunden; der Bibliothekspfad der Installation fehlt (wie F1027).';
+     En: 'Unit System not found; the library path of the installation is missing (like F1027).'),
+    (De: 'Ordner %s in den Suchpfad aufnehmen'; En: 'Add folder %s to the search path'),
+    (De: '%s verwenden'; En: 'Use %s'),
+    (De: 'Unit %s nicht gefunden; sie liegt in %s außerhalb der Suchpfade (wie F2613).';
+     En: 'Unit %s not found; it is in %s outside the search paths (like F2613).'),
+    (De: 'Unit %s nicht gefunden; ähnlich: %s (wie F2613).'; En: 'Unit %s not found; similar: %s (like F2613).'),
+    (De: 'Unit %s nicht gefunden (wie F2613).'; En: 'Unit %s not found (like F2613).'),
+    (De: 'Package %s nicht gefunden (wie E2202).'; En: 'Package %s not found (like E2202).'),
+    (De: 'Attribut nicht gefunden und vom Compiler still ignoriert (wie W1074)';
+     En: 'Attribute not found and silently ignored by the compiler (like W1074)'),
+    (De: 'Attribut %s nicht gefunden und wird ignoriert'; En: 'Attribute %s not found and is ignored'),
+    (De: '; die Tests laufen nicht'; En: '; the tests do not run'),
+    (De: ' (wie %s).'; En: ' (like %s).'),
+    (De: ' Unit %s fehlt.'; En: ' Unit %s is missing.'),
+    (De: ' In Frage kommen %s.'; En: ' Candidates are %s.'),
+    (De: '%s ist kein Typ (wie E2005).'; En: '%s is not a type (like E2005).'),
+    (De: '%s ist eine Routine, kein Typ (wie E2007).'; En: '%s is a routine, not a type (like E2007).'),
+    (De: '%s ist eine Konstante, kein Typ; der Compiler liest sie als Anfang eines Teilbereichs %s..Ende (wie E2029).';
+     En: '%s is a constant, not a type; the compiler reads it as the start of a subrange %s..end (like E2029).'),
+    (De: 'Typ in einer Deklaration nicht gefunden'; En: 'Type not found in a declaration'),
+    (De: 'Typ %s ist nicht deklariert'; En: 'Type %s is not declared'),
+    (De: '; %s fehlt in uses'; En: '; %s is missing in uses'),
+    (De: '; in Frage kommen %s'; En: '; candidates are %s'),
+    (De: ' (wie E2564).'; En: ' (like E2564).'),
+    (De: ' (wie E2003).'; En: ' (like E2003).'));
+
+{$SCOPEDENUMS OFF}
 
 type
   TUnresolvedIdentifierRule = class(TInterfacedObject, IRule)
@@ -133,7 +190,79 @@ type
 function TUnresolvedIdentifierRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('unresolved-identifier', TRuleSeverity.Warning,
-    'Bezeichner ist im Projekt und seinen Units nicht deklariert (wie Compilerfehler E2003).');
+    cTexts[TUnresolvedText.Title].Text);
+end;
+
+/// <summary>Meint der uses-Eintrag AUsed die Unit AUnit, auch über einen Namespace des Projekts?</summary>
+function UsesNames(const AUsed, AUnit: string; const ANamespaces: TArray<string>): Boolean;
+var
+  mNamespace: string;
+begin
+  Result := SameText(AUsed, AUnit);
+  for mNamespace in ANamespaces do
+  begin
+    Result := Result or SameText(mNamespace + '.' + AUsed, AUnit);
+  end;
+end;
+
+/// <summary>Steht AUnit in AUsed (auch über ANamespaces)?</summary>
+function UnitUsed(const AUnit: string; const AUsed, ANamespaces: TArray<string>): Boolean;
+var
+  mUsed: string;
+begin
+  for mUsed in AUsed do
+  begin
+    if UsesNames(mUsed, AUnit, ANamespaces) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
+/// <summary>Kennt die IDE den Typ ANames (Name, ggf. mit Unit davor) in einer Unit, die sichtbar ist: die vor dem
+/// Punkt bzw. eine aus AUsed?</summary>
+function IdeDeclares(const AIdeTypes: IRuleIdeTypes; const ANames, AUsed, ANamespaces: TArray<string>): Boolean;
+var
+  mUnit, mQualifier: string;
+  mVisible: TArray<string>;
+begin
+  Result := False;
+  if (AIdeTypes = nil) or (Length(ANames) = 0) then
+  begin
+    Exit;
+  end;
+  mVisible := AUsed;
+  if Length(ANames) > 1 then
+  begin
+    mQualifier := string.Join('.', Copy(ANames, 0, High(ANames)));
+    mVisible := TArray<string>.Create(mQualifier);
+  end;
+  for mUnit in AIdeTypes.UnitsOf(ANames[High(ANames)]) do
+  begin
+    Result := Result or UnitUsed(mUnit, mVisible, ANamespaces);
+  end;
+end;
+
+/// <summary>AUnits und dahinter die Units, in denen die IDE den Typ ABare kennt, ohne Doppelte und ohne AOwnUnit.
+/// </summary>
+function WithIdeUnits(const AIdeTypes: IRuleIdeTypes; const ABare, AOwnUnit: string;
+  const AUnits: TArray<string>): TArray<string>;
+var
+  mUnit: string;
+begin
+  Result := AUnits;
+  if AIdeTypes = nil then
+  begin
+    Exit;
+  end;
+  for mUnit in AIdeTypes.UnitsOf(ABare) do
+  begin
+    if not SameText(mUnit, AOwnUnit) and (IndexText(mUnit, Result) < 0) then
+    begin
+      Result := Result + [mUnit];
+    end;
+  end;
 end;
 
 procedure TUnresolvedIdentifierRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -141,6 +270,7 @@ var
   Resolver: TNameResolver;
   mCache: IRuleDerivedCache;
   Name: TUnresolvedName;
+  mUsed: TArray<string>;
 begin
   if (AContext.Tree = nil) or not TUnresolvedNames.Available(AContext.Index) then
   begin
@@ -149,20 +279,27 @@ begin
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
   Resolver := TRuleDerived.Resolver(mCache, AContext);
+  mUsed := TUsesClauses.UsedUnits(AContext.Tree.Tokens);
   for Name in TUnresolvedNames.Find(Resolver, AContext.Tree, AContext.RelativePath) do
   begin
+    // Typ aus einem Package der IDE, dessen Unit im uses steht (TFoo.Create).
+    if (Name.Code = '') and IdeDeclares(AContext.IdeTypes, TArray<string>.Create(Name.Name), mUsed,
+      AContext.Namespaces) then
+    begin
+      Continue;
+    end;
     if Name.Code <> '' then
     begin
       AReport.Add(Name.Range, TUnresolvedNames.Describe(Name), TRuleConfidence.Medium);
     end
     else if Name.Suggestion <> '' then
     begin
-      AReport.Add(Name.Range, Format('"%s" ist nicht deklariert; gemeint ist %s? ({$SCOPEDENUMS ON})',
+      AReport.Add(Name.Range, cTexts[TUnresolvedText.UndeclaredMeant].Fmt(
         [Name.Name, Name.Suggestion]), TRuleConfidence.Medium);
     end
     else
     begin
-      AReport.Add(Name.Range, Format('"%s" ist nicht deklariert', [Name.Name]), TRuleConfidence.Medium);
+      AReport.Add(Name.Range, cTexts[TUnresolvedText.Undeclared].Fmt([Name.Name]), TRuleConfidence.Medium);
     end;
   end;
 end;
@@ -172,7 +309,7 @@ end;
 function TUsesUnitNotFoundRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('uses-unit-not-found', TRuleSeverity.Error,
-    'Unit in uses nicht gefunden (wie F2613)');
+    cTexts[TUnresolvedText.UsesTitle].Text);
 end;
 
 function IsCode(const AToken: TPascalToken): Boolean;
@@ -526,7 +663,7 @@ begin
     end
     else if Index = High(AItems) then
     begin
-      Result := Result + ' oder ' + AItems[Index];
+      Result := Result + cTexts[TUnresolvedText.OrSep].Text + AItems[Index];
     end
     else
     begin
@@ -561,7 +698,7 @@ begin
   begin
     if TUsesClauses.AddUnit(ATokens, AOffset, mUnitName, ALineBreak, mEdit) then
     begin
-      Result := Result + [TRuleFix.Create(Format('uses %s ergänzen', [mUnitName]), [mEdit])];
+      Result := Result + [TRuleFix.Create(cTexts[TUnresolvedText.AddUses].Fmt([mUnitName]), [mEdit])];
     end;
   end;
   MarkAlternatives(Result);
@@ -764,7 +901,7 @@ begin
   begin
     if (mEntry.Kind <> TUsesListKind.RequiredPackage) and (FOwn <> '') and SameText(mEntry.Name, FOwn) then
     begin
-      FReport.Add(mEntry.Range, Format('%s verwendet sich selbst (wie F2092).', [mEntry.Name]));
+      FReport.Add(mEntry.Range, cTexts[TUnresolvedText.UsesItself].Fmt([mEntry.Name]));
     end;
   end;
 end;
@@ -784,7 +921,7 @@ begin
     if (mEntry.Kind <> TUsesListKind.RequiredPackage) and (mEntry.InPath <> '') and
       not InCondition(FLines, mEntry.Range.StartPos.Line) and not FContext.FileExists(mEntry.InPath) then
     begin
-      FReport.Add(mEntry.Range, Format('Datei %s für %s nicht gefunden (wie F1026).', [mEntry.InPath,
+      FReport.Add(mEntry.Range, cTexts[TUnresolvedText.FileNotFound].Fmt([mEntry.InPath,
         mEntry.Name]));
     end;
   end;
@@ -797,8 +934,7 @@ begin
     TRuleUnitAnswer.Missing;
   if Result and (Length(FEntries) > 0) then
   begin
-    FReport.Add(FEntries[0].Range, 'Unit System nicht gefunden; der Bibliothekspfad der Installation fehlt ' +
-      '(wie F1027).');
+    FReport.Add(FEntries[0].Range, cTexts[TUnresolvedText.SystemNotFound].Text);
   end;
 end;
 
@@ -817,7 +953,7 @@ begin
   if (mKey <> '') and (TDprojEditor.AddToList(mProjectText, mKey, 'DCC_UnitSearchPath', AFolder, mNewText) =
     TDprojEditResult.Added) then
   begin
-    mFix := TRuleFix.Create(Format('Ordner %s in den Suchpfad aufnehmen', [AFolder]),
+    mFix := TRuleFix.Create(cTexts[TUnresolvedText.AddSearchPath].Fmt([AFolder]),
       [TUsesUnitNotFoundRule.DiffEdit(mProjectText, mNewText)]);
     mFix.FileName := mProjectFile;
     AFixes := [mFix] + AFixes;
@@ -834,7 +970,7 @@ begin
   mFixes := nil;
   for mSuggestion in mSuggested do
   begin
-    mFixes := mFixes + [TRuleFix.Create(Format('%s verwenden', [mSuggestion]),
+    mFixes := mFixes + [TRuleFix.Create(cTexts[TUnresolvedText.UseName].Fmt([mSuggestion]),
       [TTextEdit.Create(AEntry.Range, mSuggestion)])];
   end;
   mFolder := FContext.Units.FolderOutsidePaths(AEntry.Name);
@@ -842,17 +978,17 @@ begin
   MarkAlternatives(mFixes);
   if mFolder <> '' then
   begin
-    FReport.Add(AEntry.Range, Format('Unit %s nicht gefunden; sie liegt in %s außerhalb der Suchpfade ' +
-      '(wie F2613).', [AEntry.Name, mFolder]), TRuleConfidence.High, mFixes);
+    FReport.Add(AEntry.Range, cTexts[TUnresolvedText.OutsidePaths].Fmt([AEntry.Name, mFolder]), TRuleConfidence.High,
+      mFixes);
   end
   else if Length(mSuggested) > 0 then
   begin
-    FReport.Add(AEntry.Range, Format('Unit %s nicht gefunden; ähnlich: %s (wie F2613).',
+    FReport.Add(AEntry.Range, cTexts[TUnresolvedText.Similar].Fmt(
       [AEntry.Name, Alternatives(mSuggested)]), TRuleConfidence.High, mFixes);
   end
   else
   begin
-    FReport.Add(AEntry.Range, Format('Unit %s nicht gefunden (wie F2613).', [AEntry.Name]));
+    FReport.Add(AEntry.Range, cTexts[TUnresolvedText.UnitNotFound].Fmt([AEntry.Name]));
   end;
 end;
 
@@ -866,7 +1002,7 @@ begin
   begin
     if FContext.Units.FindPackage(AEntry.Name) = TRuleUnitAnswer.Missing then
     begin
-      FReport.Add(AEntry.Range, Format('Package %s nicht gefunden (wie E2202).', [AEntry.Name]));
+      FReport.Add(AEntry.Range, cTexts[TUnresolvedText.PackageNotFound].Fmt([AEntry.Name]));
     end;
     Exit;
   end;
@@ -876,7 +1012,7 @@ begin
   end;
   if AEntry.InPath <> '' then
   begin
-    FReport.Add(AEntry.Range, Format('Datei %s für %s nicht gefunden (wie F1026).', [AEntry.InPath, AEntry.Name]));
+    FReport.Add(AEntry.Range, cTexts[TUnresolvedText.FileNotFound].Fmt([AEntry.InPath, AEntry.Name]));
   end
   else
   begin
@@ -939,7 +1075,7 @@ const
 function TUnresolvedAttributeRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('unresolved-attribute', TRuleSeverity.Error,
-    'Attribut nicht gefunden und vom Compiler still ignoriert (wie W1074)');
+    cTexts[TUnresolvedText.AttributeTitle].Text);
 end;
 
 /// <summary>Ist ALocation ein Typ auf oberster Ebene, der eine Attributklasse sein kann?</summary>
@@ -1023,19 +1159,19 @@ end;
 /// <summary>Meldung für das fehlende Attribut AName mit dem Code ACode und den Kandidaten AUnits.</summary>
 function AttributeMessage(const AName, ABare, ACode: string; const AUnits: TArray<string>): string;
 begin
-  Result := Format('Attribut %s nicht gefunden und wird ignoriert', [AName]);
+  Result := cTexts[TUnresolvedText.AttributeIgnored].Fmt([AName]);
   if MatchText(ABare, DUnitXAttributes) or ((Length(AUnits) > 0) and StartsText('DUnitX', AUnits[0])) then
   begin
-    Result := Result + '; die Tests laufen nicht';
+    Result := Result + cTexts[TUnresolvedText.TestsDontRun].Text;
   end;
-  Result := Result + Format(' (wie %s).', [ACode]);
+  Result := Result + cTexts[TUnresolvedText.LikeCode].Fmt([ACode]);
   if Length(AUnits) = 1 then
   begin
-    Result := Result + Format(' Unit %s fehlt.', [AUnits[0]]);
+    Result := Result + cTexts[TUnresolvedText.UnitMissing].Fmt([AUnits[0]]);
   end
   else if Length(AUnits) > 1 then
   begin
-    Result := Result + Format(' In Frage kommen %s.', [Alternatives(AUnits)]);
+    Result := Result + cTexts[TUnresolvedText.Candidates].Fmt([Alternatives(AUnits)]);
   end;
 end;
 
@@ -1246,26 +1382,25 @@ function NotATypeMessage(const AName: string; AQualified: Boolean; AKind: TIndex
 begin
   if AQualified then
   begin
-    Result := Format('%s ist kein Typ (wie E2005).', [AName]);
+    Result := cTexts[TUnresolvedText.NotType].Fmt([AName]);
   end
   else if AKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine] then
   begin
-    Result := Format('%s ist eine Routine, kein Typ (wie E2007).', [AName]);
+    Result := cTexts[TUnresolvedText.RoutineNotType].Fmt([AName]);
   end
   else if AKind in [TIndexSymbolKind.EnumMember, TIndexSymbolKind.Constant] then
   begin
-    Result := Format('%s ist eine Konstante, kein Typ; der Compiler liest sie als Anfang eines Teilbereichs ' +
-      '%s..Ende (wie E2029).', [AName, AName]);
+    Result := cTexts[TUnresolvedText.ConstantNotType].Fmt([AName, AName]);
   end
   else
   begin
-    Result := Format('%s ist kein Typ (wie E2005).', [AName]);
+    Result := cTexts[TUnresolvedText.NotType].Fmt([AName]);
   end;
 end;
 
 function TUnresolvedTypeRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create('unresolved-type', TRuleSeverity.Error, 'Typ in einer Deklaration nicht gefunden');
+  Result := TRuleDescriptor.Create('unresolved-type', TRuleSeverity.Error, cTexts[TUnresolvedText.TypeTitle].Text);
 end;
 
 /// <summary>Zahl der Typparameter von ASymbol.</summary>
@@ -1344,23 +1479,23 @@ end;
 /// <summary>Meldung für den nicht deklarierten Typ ANode mit den Kandidaten AUnits.</summary>
 function MissingTypeMessage(ANode: TSyntaxNode; const AUnits: TArray<string>): string;
 begin
-  Result := Format('Typ %s ist nicht deklariert', [ANode.Name]);
+  Result := cTexts[TUnresolvedText.TypeUndeclared].Fmt([ANode.Name]);
   if Length(AUnits) = 1 then
   begin
-    Result := Result + Format('; %s fehlt in uses', [AUnits[0]]);
+    Result := Result + cTexts[TUnresolvedText.MissingInUses].Fmt([AUnits[0]]);
   end
   else if Length(AUnits) > 1 then
   begin
-    Result := Result + Format('; in Frage kommen %s', [Alternatives(AUnits)]);
+    Result := Result + cTexts[TUnresolvedText.TypeCandidates].Fmt([Alternatives(AUnits)]);
   end;
   // Ziel eines Zeigertyps (PFoo = ^TFoo) meldet der Compiler als undefinierten Typ.
   if (ANode.Parent <> nil) and (ANode.Parent.Kind = TSyntaxKind.PointerType) then
   begin
-    Result := Result + ' (wie E2564).';
+    Result := Result + cTexts[TUnresolvedText.LikeE2564].Text;
   end
   else
   begin
-    Result := Result + ' (wie E2003).';
+    Result := Result + cTexts[TUnresolvedText.LikeE2003].Text;
   end;
 end;
 
@@ -1385,6 +1520,8 @@ type
     FLines: TArray<Boolean>;
     FLineBreak: string;
     FOwnUnit: string;
+    // Units aus den uses-Listen der Datei, für die Typen der IDE.
+    FUsed: TArray<string>;
     FLevel: TRuleConfidence;
     // Typnamen und Typparameter der Datei: gelten als bekannt.
     FDeclared: TDictionary<string, Boolean>;
@@ -1512,14 +1649,16 @@ begin
   begin
     FReport.Add(mRange, NotATypeMessage(ANode.Name, Length(mNames) > 1, mResolved.SymbolKind), FLevel);
   end;
-  if mResolved.Found or Unclear(ANode, mBare) then
+  if mResolved.Found or Unclear(ANode, mBare) or
+    IdeDeclares(FContext.IdeTypes, mNames, FUsed, FContext.Namespaces) then
   begin
     Exit;
   end;
   mUnits := nil;
   if Length(mNames) = 1 then
   begin
-    mUnits := TUnresolvedTypeRule.DeclaringUnits(FContext.Index, mBare, FOwnUnit, GenericArity(ANode));
+    mUnits := WithIdeUnits(FContext.IdeTypes, mBare, FOwnUnit,
+      TUnresolvedTypeRule.DeclaringUnits(FContext.Index, mBare, FOwnUnit, GenericArity(ANode)));
   end;
   FReport.Add(mRange, MissingTypeMessage(ANode, mUnits), FLevel, UsesFixes(FContext.Tree.Tokens, ANode.StartOffset,
     mUnits, FLineBreak));
@@ -1561,6 +1700,7 @@ begin
   FLines := ConditionalLines(FContext.Tree.Tokens);
   FLineBreak := TTextLines.LineBreakOf(FContext.Text);
   FOwnUnit := TUsesClauses.OwnName(FContext.Tree.Tokens);
+  FUsed := TUsesClauses.UsedUnits(FContext.Tree.Tokens);
   // Mit Include-Dateien kann der Typ dort deklariert sein.
   FLevel := IncludeConfidence(FContext.Tree.Tokens);
   Collect(FContext.Tree.Root);
@@ -1596,5 +1736,8 @@ begin
   ARegistry.Register(TUnresolvedAttributeRule.Create);
   ARegistry.Register(TUnresolvedTypeRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Unresolved', cTexts);
 
 end.

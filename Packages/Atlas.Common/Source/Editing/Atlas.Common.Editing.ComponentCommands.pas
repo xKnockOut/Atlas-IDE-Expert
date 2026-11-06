@@ -35,7 +35,67 @@ uses
   Atlas.Common.Editing.ClassCommands,
   Atlas.Text.Lines,
   Atlas.Common.Editing.ClassMembers,
-  Atlas.Common.Editing.CommandSource;
+  Atlas.Common.Editing.CommandSource,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TComponentCommandsText = (ExpectedIsNotifyOnNameEventType, NotifyOnlyAppliesInA, EventTypeNotFoundProcedure,
+    ChangedOnlyAppliesInA, HasNoProperty, BodyOfNotFound, TypeOfNotRecognized, MultiLinePropertyDeclarationPlease,
+    ExpectedIsChangedProperty, LoadedOnlyAppliesInA, DoesNotDescendFromTComponent, NotificationOnlyAppliesInA,
+    DoesNotDescendFromTComponent2, NoFieldsWithAComponent, HasNoField, HasNoEvent, ThereIsNoDfmOr, IsNotATextDFM,
+    IsNotIn, IsAlreadyAssignedTo, EventOnlyAppliesInA, ExpectedIsEventButton1OnClick, EventNeedsTheEditor,
+    EventWithFieldPropertyAnd, SetterWithChangeCheckAnd, OverrideLoaded, CreateAnEventHandlerAnd,
+    NotificationForComponentFields, AlreadyHas, AlreadyHasLoaded, NotificationAlreadyHandlesTheseFields,
+    ChangedColor);
+
+const
+  cTexts: array[TComponentCommandsText] of TAtlasText = (
+    (De: 'Erwartet wird /notify OnName[: Ereignistyp]'; En: 'Expected is /notify OnName[: EventType]'),
+    (De: '/notify gilt nur in einer Klasse oder einer ihrer Methoden';
+     En: '/notify only applies in a class or one of its methods'),
+    (De: 'Ereignistyp %s nicht gefunden (procedure(...) of object)';
+     En: 'Event type %s not found (procedure(...) of object)'),
+    (De: '/changed gilt nur in einer Klasse oder einer ihrer Methoden';
+     En: '/changed only applies in a class or one of its methods'),
+    (De: '%s hat keine Property %s'; En: '%s has no property %s'),
+    (De: 'Rumpf von %s.%s nicht gefunden'; En: 'Body of %s.%s not found'),
+    (De: 'Typ von %s nicht erkannt'; En: 'Type of %s not recognized'),
+    (De: 'Mehrzeilige Property-Deklaration: Setter bitte mit /prop anlegen';
+     En: 'Multi-line property declaration: please create the setter with /prop'),
+    (De: 'Erwartet wird /changed Property'; En: 'Expected is /changed Property'),
+    (De: '/loaded gilt nur in einer Klasse oder einer ihrer Methoden';
+     En: '/loaded only applies in a class or one of its methods'),
+    (De: '%s stammt nicht von TComponent ab; Loaded gibt es dort nicht';
+     En: '%s does not descend from TComponent; Loaded does not exist there'),
+    (De: '/notification gilt nur in einer Klasse oder einer ihrer Methoden';
+     En: '/notification only applies in a class or one of its methods'),
+    (De: '%s stammt nicht von TComponent ab'; En: '%s does not descend from TComponent'),
+    (De: 'Keine Felder mit Komponententyp'; En: 'No fields with a component type'),
+    (De: '%s hat kein Feld %s'; En: '%s has no field %s'),
+    (De: '%s hat kein Ereignis %s'; En: '%s has no event %s'),
+    (De: 'Neben der Unit liegt keine .dfm oder .fmx'; En: 'There is no .dfm or .fmx next to the unit'),
+    (De: '%s ist keine Text-DFM'; En: '%s is not a text DFM'),
+    (De: '%s steht nicht in %s'; En: '%s is not in %s'),
+    (De: '%s ist schon %s zugewiesen'; En: '%s is already assigned to %s'),
+    (De: '/event gilt nur in einer Formularklasse oder einer ihrer Methoden';
+     En: '/event only applies in a form class or one of its methods'),
+    (De: 'Erwartet wird /event Button1.OnClick bzw. /event OnCreate';
+     En: 'Expected is /event Button1.OnClick or /event OnCreate'),
+    (De: '/event braucht den Editor'; En: '/event needs the editor'),
+    (De: 'Ereignis mit Feld, Property und Do-Methode'; En: 'Event with field, property and Do method'),
+    (De: 'Setter mit Änderungsprüfung und Benachrichtigung'; En: 'Setter with change check and notification'),
+    (De: 'Loaded überschreiben'; En: 'Override Loaded'),
+    (De: 'Ereignis-Handler anlegen und in der DFM zuweisen'; En: 'Create an event handler and assign it in the DFM'),
+    (De: 'Notification für Komponentenfelder'; En: 'Notification for component fields'),
+    (De: '%s hat schon %s'; En: '%s already has %s'),
+    (De: '%s hat schon Loaded'; En: '%s already has Loaded'),
+    (De: 'Notification behandelt diese Felder schon'; En: 'Notification already handles these fields'),
+    (De: '/changed Farbe'; En: '/changed Color'));
+
+{$SCOPEDENUMS OFF}
 
 /// <summary>Abschnitte vor "end" der Klasse: Feld in private (vorhandener Abschnitt oder neuer), dann AMore.</summary>
 function AddToClass(ASource: TCommandSource; const AClass: TIndexSymbol; const AField: string;
@@ -250,7 +310,7 @@ begin
   AEdits := nil;
   if not ParseNotifyArguments(AContext.Arguments, mName, mTypeName) then
   begin
-    Exit(Fail('Erwartet wird /notify OnName[: Ereignistyp]', AReason));
+    Exit(Fail(cTexts[TComponentCommandsText.ExpectedIsNotifyOnNameEventType].Text, AReason));
   end;
   mField := 'F' + mName;
   mMethod := 'Do' + Copy(mName, 3, MaxInt);
@@ -258,15 +318,15 @@ begin
   try
     if not mSource.ClassAt(mClass) then
     begin
-      Exit(Fail('/notify gilt nur in einer Klasse oder einer ihrer Methoden', AReason));
+      Exit(Fail(cTexts[TComponentCommandsText.NotifyOnlyAppliesInA].Text, AReason));
     end;
     if HasEvent(mSource, mClass, mName, mField) then
     begin
-      Exit(Fail(Format('%s hat schon %s', [mClass.Name, mName]), AReason));
+      Exit(Fail(cTexts[TComponentCommandsText.AlreadyHas].Fmt([mClass.Name, mName]), AReason));
     end;
     if not EventParameters(mSource, AContext.Index, mTypeName, mParameters) then
     begin
-      Exit(Fail(Format('Ereignistyp %s nicht gefunden (procedure(...) of object)', [mTypeName]), AReason));
+      Exit(Fail(cTexts[TComponentCommandsText.EventTypeNotFoundProcedure].Fmt([mTypeName]), AReason));
     end;
     NotifyParameters(mParameters, mOwn, mNames);
     mLB := mSource.LineBreak;
@@ -322,11 +382,11 @@ function TChangedTarget.Find(out AReason: string): Boolean;
 begin
   if not Source.ClassAt(ClassSymbol) then
   begin
-    Exit(Fail('/changed gilt nur in einer Klasse oder einer ihrer Methoden', AReason));
+    Exit(Fail(cTexts[TComponentCommandsText.ChangedOnlyAppliesInA].Text, AReason));
   end;
   if not FindMember(Source, ClassSymbol, Name, [TIndexSymbolKind.Property_], Prop) then
   begin
-    Exit(Fail(Format('%s hat keine Property %s', [ClassSymbol.Name, Name]), AReason));
+    Exit(Fail(cTexts[TComponentCommandsText.HasNoProperty].Fmt([ClassSymbol.Name, Name]), AReason));
   end;
   Declaration := RangeText(Source.Lines, Prop.Range);
   Result := True;
@@ -349,7 +409,7 @@ begin
   ARoutine := FindBody(Source, ClassSymbol.Name, mWriter);
   if ARoutine = nil then
   begin
-    Exit(Fail(Format('Rumpf von %s.%s nicht gefunden', [ClassSymbol.Name, mWriter]), AReason));
+    Exit(Fail(cTexts[TComponentCommandsText.BodyOfNotFound].Fmt([ClassSymbol.Name, mWriter]), AReason));
   end;
   mSignature := RoutineSignature(Source.Lines[ARoutine.StartPos.Line]);
   if ParameterNames(mSignature) <> '' then
@@ -366,11 +426,11 @@ begin
   AEdits := nil;
   if Prop.TypeName = '' then
   begin
-    Exit(Fail(Format('Typ von %s nicht erkannt', [Name]), AReason));
+    Exit(Fail(cTexts[TComponentCommandsText.TypeOfNotRecognized].Fmt([Name]), AReason));
   end;
   if Prop.Range.StartPos.Line <> Prop.Range.EndPos.Line then
   begin
-    Exit(Fail('Mehrzeilige Property-Deklaration: Setter bitte mit /prop anlegen', AReason));
+    Exit(Fail(cTexts[TComponentCommandsText.MultiLinePropertyDeclarationPlease].Text, AReason));
   end;
   mWriter := 'Set' + Name;
   if Pos(' write ', Declaration) > 0 then
@@ -403,7 +463,7 @@ begin
   mTarget.Name := Trim(AContext.Arguments);
   if not IsValidIdent(mTarget.Name) then
   begin
-    Exit(Fail('Erwartet wird /changed Property', AReason));
+    Exit(Fail(cTexts[TComponentCommandsText.ExpectedIsChangedProperty].Text, AReason));
   end;
   mSource := TCommandSource.Create(AContext);
   try
@@ -449,16 +509,16 @@ begin
   try
     if not Source.ClassAt(ClassSymbol) then
     begin
-      Exit(Fail('/loaded gilt nur in einer Klasse oder einer ihrer Methoden', AReason));
+      Exit(Fail(cTexts[TComponentCommandsText.LoadedOnlyAppliesInA].Text, AReason));
     end;
     if not DescendsFrom(Ancestors(Source, AContext.Index, ClassSymbol.Name), ComponentRoots) then
     begin
-      Exit(Fail(Format('%s stammt nicht von TComponent ab; Loaded gibt es dort nicht', [ClassSymbol.Name]),
+      Exit(Fail(cTexts[TComponentCommandsText.DoesNotDescendFromTComponent].Fmt([ClassSymbol.Name]),
         AReason));
     end;
     if FindMember(Source, ClassSymbol, 'Loaded', [TIndexSymbolKind.Method], Member) then
     begin
-      Exit(Fail(Format('%s hat schon Loaded', [ClassSymbol.Name]), AReason));
+      Exit(Fail(cTexts[TComponentCommandsText.AlreadyHasLoaded].Fmt([ClassSymbol.Name]), AReason));
     end;
     LB := Source.LineBreak;
     AEdits := AddToClass(Source, ClassSymbol, '', ['protected', 'procedure Loaded; override;']) +
@@ -604,24 +664,27 @@ begin
   try
     if not mSource.ClassAt(mClass) then
     begin
-      Exit(Fail('/notification gilt nur in einer Klasse oder einer ihrer Methoden', AReason));
+      Exit(Fail(cTexts[TComponentCommandsText.NotificationOnlyAppliesInA].Text, AReason));
     end;
     if not DescendsFrom(Ancestors(mSource, AContext.Index, mClass.Name), ComponentRoots) then
     begin
-      Exit(Fail(Format('%s stammt nicht von TComponent ab', [mClass.Name]), AReason));
+      Exit(Fail(cTexts[TComponentCommandsText.DoesNotDescendFromTComponent2].Fmt([mClass.Name]), AReason));
     end;
     mFields := NotificationFields(mSource, AContext, mClass.Name);
+    if (mFields = nil) and (AContext.Arguments = '') then
+    begin
+      Exit(Fail(cTexts[TComponentCommandsText.NoFieldsWithAComponent].Text, AReason));
+    end;
     if mFields = nil then
     begin
-      Exit(Fail(IfThen(AContext.Arguments = '', 'Keine Felder mit Komponententyp',
-        Format('%s hat kein Feld %s', [mClass.Name, AContext.Arguments])), AReason));
+      Exit(Fail(cTexts[TComponentCommandsText.HasNoField].Fmt([mClass.Name, AContext.Arguments]), AReason));
     end;
     // Vorhandene Bedingungen nicht verdoppeln.
     mRoutine := FindBody(mSource, mClass.Name, 'Notification');
     mLines := NotificationLines(mFields, RoutineText(mSource, mRoutine));
     if mLines = nil then
     begin
-      Exit(Fail('Notification behandelt diese Felder schon', AReason));
+      Exit(Fail(cTexts[TComponentCommandsText.NotificationAlreadyHandlesTheseFields].Text, AReason));
     end;
     AEdits := NotificationEdits(mSource, mClass, mRoutine, mLines) +
       FreeNotificationEdits(mSource, mClass.Name, mFields) + [mSource.RemoveCommand];
@@ -754,7 +817,7 @@ begin
   end;
   if ComponentType = '' then
   begin
-    Result := Fail(Format('%s hat kein Feld %s', [ClassSymbol.Name, Component]), AReason);
+    Result := Fail(cTexts[TComponentCommandsText.HasNoField].Fmt([ClassSymbol.Name, Component]), AReason);
   end;
 end;
 
@@ -790,12 +853,12 @@ var
 begin
   if not ReadEventType(AContext, mTypeName) then
   begin
-    Exit(Fail(Format('%s hat kein Ereignis %s', [ComponentType, Event]), AReason));
+    Exit(Fail(cTexts[TComponentCommandsText.HasNoEvent].Fmt([ComponentType, Event]), AReason));
   end;
   mChain := mTypeName.Split(['.']);
   if not EventSignature(Source, AContext.Index, mChain[High(mChain)], Kind, Params, ResultType) then
   begin
-    Exit(Fail(Format('Ereignistyp %s nicht gefunden (procedure(...) of object)', [mTypeName]), AReason));
+    Exit(Fail(cTexts[TComponentCommandsText.EventTypeNotFoundProcedure].Fmt([mTypeName]), AReason));
   end;
   Result := True;
 end;
@@ -862,7 +925,7 @@ begin
   Result := FormFile <> '';
   if not Result then
   begin
-    Result := Fail('Neben der Unit liegt keine .dfm oder .fmx', AReason);
+    Result := Fail(cTexts[TComponentCommandsText.ThereIsNoDfmOr].Text, AReason);
   end;
 end;
 
@@ -874,7 +937,7 @@ begin
   ATarget := nil;
   if ADocument.Root = nil then
   begin
-    Exit(Fail(Format('%s ist keine Text-DFM', [ExtractFileName(FormFile)]), AReason));
+    Exit(Fail(cTexts[TComponentCommandsText.IsNotATextDFM].Fmt([ExtractFileName(FormFile)]), AReason));
   end;
   ATarget := ADocument.Root;
   if Component <> '' then
@@ -883,13 +946,13 @@ begin
   end;
   if ATarget = nil then
   begin
-    Exit(Fail(Format('%s steht nicht in %s', [Component, ExtractFileName(FormFile)]), AReason));
+    Exit(Fail(cTexts[TComponentCommandsText.IsNotIn].Fmt([Component, ExtractFileName(FormFile)]), AReason));
   end;
   for mProp in ATarget.Properties do
   begin
     if SameText(mProp.Name, Event) then
     begin
-      Exit(Fail(Format('%s ist schon %s zugewiesen', [Arguments, Trim(mProp.Value)]), AReason));
+      Exit(Fail(cTexts[TComponentCommandsText.IsAlreadyAssignedTo].Fmt([Arguments, Trim(mProp.Value)]), AReason));
     end;
   end;
   Result := True;
@@ -936,7 +999,7 @@ var
 begin
   if not Source.ClassAt(ClassSymbol) then
   begin
-    Exit(Fail('/event gilt nur in einer Formularklasse oder einer ihrer Methoden', AReason));
+    Exit(Fail(cTexts[TComponentCommandsText.EventOnlyAppliesInA].Text, AReason));
   end;
   Result := FindComponentType(AReason) and ReadSignature(AContext, AReason);
   if Result then
@@ -1003,11 +1066,11 @@ begin
   mPlan.Arguments := AContext.Arguments;
   if not ParseEventArguments(AContext.Arguments, mPlan.Component, mPlan.Event) then
   begin
-    Exit(Fail('Erwartet wird /event Button1.OnClick bzw. /event OnCreate', AReason));
+    Exit(Fail(cTexts[TComponentCommandsText.ExpectedIsEventButton1OnClick].Text, AReason));
   end;
   if AContext.Host = nil then
   begin
-    Exit(Fail('/event braucht den Editor', AReason));
+    Exit(Fail(cTexts[TComponentCommandsText.EventNeedsTheEditor].Text, AReason));
   end;
   if AContext.Uri <> '' then
   begin
@@ -1040,15 +1103,20 @@ end;
 
 procedure RegisterComponentCommands(const ARegister: TSlashRegister);
 begin
-  ARegister(Command('notify', 'Ereignis mit Feld, Property und Do-Methode', '/notify OnChange',
+  ARegister(Command('notify', cTexts[TComponentCommandsText.EventWithFieldPropertyAnd].Text, '/notify OnChange',
     ExecuteNotify));
-  ARegister(Command('changed', 'Setter mit Änderungsprüfung und Benachrichtigung', '/changed Farbe',
+  ARegister(Command('changed', cTexts[TComponentCommandsText.SetterWithChangeCheckAnd].Text,
+    cTexts[TComponentCommandsText.ChangedColor].Text,
     ExecuteChanged));
-  ARegister(Command('loaded', 'Loaded überschreiben', '/loaded', ExecuteLoaded));
-  ARegister(Command('event', 'Ereignis-Handler anlegen und in der DFM zuweisen', '/event Button1.OnClick',
+  ARegister(Command('loaded', cTexts[TComponentCommandsText.OverrideLoaded].Text, '/loaded', ExecuteLoaded));
+  ARegister(Command('event', cTexts[TComponentCommandsText.CreateAnEventHandlerAnd].Text, '/event Button1.OnClick',
     ExecuteEvent));
-  ARegister(Command('notification', 'Notification für Komponentenfelder', '/notification FDataSource',
+  ARegister(Command('notification', cTexts[TComponentCommandsText.NotificationForComponentFields].Text,
+    '/notification FDataSource',
     ExecuteNotification));
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.ComponentCommands', cTexts);
 
 end.

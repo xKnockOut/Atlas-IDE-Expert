@@ -75,7 +75,23 @@ uses
   System.SysUtils,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Lexer,
-  Atlas.Common.Pascal.Parser.Cursor;
+  Atlas.Common.Pascal.Parser.Cursor,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TTypesText = (PrivateOrProtected, ProcedureFunctionPropertyOrVar, Identifier, FieldName);
+
+const
+  cTexts: array[TTypesText] of TAtlasText = (
+    (De: '"private" oder "protected"'; En: '"private" or "protected"'),
+    (De: '"procedure", "function", "property" oder "var"'; En: '"procedure", "function", "property" or "var"'),
+    (De: 'Bezeichner'; En: 'identifier'),
+    (De: 'Feldname'; En: 'field name'));
+
+{$SCOPEDENUMS OFF}
 
 { TTypeParser }
 
@@ -358,7 +374,7 @@ begin
     end
     else
     begin
-      DiagnoseUnexpected('Bezeichner');
+      DiagnoseUnexpected(cTexts[TTypesText.Identifier].Text);
     end;
     if AcceptSym('=') then
     begin
@@ -587,7 +603,7 @@ begin
   end
   else if mNode.Name = 'strict' then
   begin
-    DiagnoseUnexpected('E2375', '"private" oder "protected"');
+    DiagnoseUnexpected('E2375', cTexts[TTypesText.PrivateOrProtected].Text);
   end;
   FinishNode(mNode, mStart);
   AParent.Add(mNode);
@@ -614,7 +630,7 @@ begin
   begin
     // class vor etwas anderem als Routine, var, property; Delphi 13 meldet E2123 (#1382).
     Advance;
-    DiagnoseUnexpected('E2123', '"procedure", "function", "property" oder "var"');
+    DiagnoseUnexpected('E2123', cTexts[TTypesText.ProcedureFunctionPropertyOrVar].Text);
   end;
 end;
 
@@ -877,7 +893,7 @@ begin
     end
     else
     begin
-      DiagnoseUnexpected('Feldname');
+      DiagnoseUnexpected(cTexts[TTypesText.FieldName].Text);
     end;
     AcceptSym(';');
     if FIndex = Before then
@@ -886,5 +902,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Pascal.Parser.Types', cTexts);
 
 end.

@@ -71,7 +71,7 @@ type
     SmartPaste, WrapSelection, Unwrap, Hide, Search, UnitSearch, Generate, ContinueLines, SlashCommands,
     GoToDefinition, EditorToolbar, QuickBookmarks, StatusBar, Architecture, UnitRelations, SymbolPath, Tasks, Debugger,
     ExitPoints, Reassigned, ExpressionType, MethodPlacement, IssueLinks,
-    BlameIssues, Query, Hotspots, DesignerBar);
+    BlameIssues, Query, Hotspots, DesignerBar, Tracker, WelcomeUpdates, RegionFolds);
 {$SCOPEDENUMS OFF}
 
   TAtlasFeatures = set of TAtlasFeature;
@@ -282,7 +282,28 @@ uses
   System.IOUtils,
   System.DateUtils,
   Atlas.Text.LogMarks,
-  Atlas.Core.Product.Version;
+  Atlas.Core.Product.Version,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TGuardText = (FeatureTripped, SourceTripped);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TGuardText] of string = (
+    ('Atlas: %s nach %d Fehlern in %d Minuten abgeschaltet (zuletzt: %s). Wieder einschalten unter Tools > Optionen > Drittanbieter > Atlas oder über Atlas > Abgeschaltete Funktionen einschalten.',
+     'Atlas: Quelle „%s“ nach %d Fehlern in %d Minuten abgeschaltet (zuletzt: %s); die übrigen Quellen laufen weiter. Wieder einschalten unter Tools > Optionen > Drittanbieter > Atlas oder über Atlas > Abgeschaltete Funktionen einschalten.'),
+    ('Atlas: %s switched off after %d errors in %d minutes (last: %s). Switch it on again under Tools > Options > Third Party > Atlas or via Atlas > Re-enable switched-off features.',
+     'Atlas: source "%s" switched off after %d errors in %d minutes (last: %s); the other sources keep running. Switch it on again under Tools > Options > Third Party > Atlas or via Atlas > Re-enable switched-off features.'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TGuardText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 { TAtlasRotatingLog }
 
@@ -754,21 +775,37 @@ end;
 
 class function TAtlasGuard.FeatureName(AFeature: TAtlasFeature): string;
 const
-  Names: array[TAtlasFeature] of string = ('Vervollständigung', 'Parameter-Hint', 'Tooltip', 'Klammerpaare',
-    'Probleme', 'Neuladen', 'Befehlspalette', 'Prüfung beim Speichern', 'Wächter', 'Server', 'Einstellungen', 'Menü',
-    'Dateien', 'Inlay-Hints', 'Ergebnisfenster', 'Editorbefehle', 'Formulare', 'Compile-Ereignisse', 'Statusfeld',
-    'Willkommensseite', 'Tastenkürzel-Tipps', 'Notizen', 'Lesezeichen',
-    'Benachrichtigungen', 'Brotkrumenleiste', 'Gliederung', 'Mitlaufender Kopf', 'Minimap', 'Änderungsmarken',
-    'Atlas-Spalte', 'Rekursionssymbole', 'Übersichtsleiste', 'Gleichen Text hervorheben', 'Mehrere Einfügemarken',
-    'Bezeichner mitziehen', 'Code Lens', 'Navigationsverlauf', 'Definition einblenden', 'Einfügen mit uses-Ergänzung',
-    'Markierung umschließen', 'Umschließung entfernen', 'Ausblenden am Element', 'Atlas-Suche', 'Units suchen',
-    'Erzeugen-Menü', 'Kommentar und Muster fortsetzen', 'Schnellbefehle', 'Gehe zu Definition', 'Editorleiste',
-    'Schnelle Lesezeichen', 'Atlas-Statusleiste', 'Architekturübersicht', 'Unit-Beziehungen',
-    'Weg zwischen Symbolen', 'Projektaufgaben', 'Debuggen',
-    'Austrittspunkte', 'Neu zugewiesene Variablen', 'Typ des Ausdrucks', 'Methodenreihenfolge',
-    'Issue-Kennungen', 'Issues in der Zeilenhistorie', 'Code-Abfragen', 'Hotspots', 'Designer-Leiste');
+  Names: array[TAtlasLanguage, TAtlasFeature] of string = (
+    ('Vervollständigung', 'Parameter-Hint', 'Tooltip', 'Klammerpaare',
+      'Probleme', 'Neuladen', 'Befehlspalette', 'Prüfung beim Speichern', 'Wächter', 'Server', 'Einstellungen', 'Menü',
+      'Dateien', 'Inlay-Hints', 'Ergebnisfenster', 'Editorbefehle', 'Formulare', 'Compile-Ereignisse', 'Statusfeld',
+      'Willkommensseite', 'Tastenkürzel-Tipps', 'Notizen', 'Lesezeichen',
+      'Benachrichtigungen', 'Brotkrumenleiste', 'Gliederung', 'Mitlaufender Kopf', 'Minimap', 'Änderungsmarken',
+      'Atlas-Spalte', 'Rekursionssymbole', 'Übersichtsleiste', 'Gleichen Text hervorheben', 'Mehrere Einfügemarken',
+      'Bezeichner mitziehen', 'Code Lens', 'Navigationsverlauf', 'Definition einblenden', 'Einfügen mit uses-Ergänzung',
+      'Markierung umschließen', 'Umschließung entfernen', 'Ausblenden am Element', 'Atlas-Suche', 'Units suchen',
+      'Erzeugen-Menü', 'Kommentar und Muster fortsetzen', 'Schnellbefehle', 'Gehe zu Definition', 'Editorleiste',
+      'Schnelle Lesezeichen', 'Atlas-Statusleiste', 'Architekturübersicht', 'Unit-Beziehungen',
+      'Weg zwischen Symbolen', 'Projektaufgaben', 'Debuggen',
+      'Austrittspunkte', 'Neu zugewiesene Variablen', 'Typ des Ausdrucks', 'Methodenreihenfolge',
+      'Issue-Kennungen', 'Issues in der Zeilenhistorie', 'Code-Abfragen', 'Hotspots', 'Designer-Leiste', 'Tracker',
+      'Willkommensseite: Aktualisieren', 'Regionen falten'),
+    ('Completion', 'Parameter hint', 'Tooltip', 'Bracket pairs',
+      'Problems', 'Reload', 'Command palette', 'Check on save', 'Watchdog', 'Server', 'Settings', 'Menu',
+      'Files', 'Inlay hints', 'Results window', 'Editor commands', 'Forms', 'Compile events', 'Status field',
+      'Welcome page', 'Shortcut tips', 'Notes', 'Bookmarks',
+      'Notifications', 'Breadcrumbs', 'Outline', 'Sticky scroll', 'Minimap', 'Change marks',
+      'Atlas column', 'Recursion markers', 'Overview ruler', 'Highlight same text', 'Multiple carets',
+      'Linked identifier editing', 'Code Lens', 'Navigation history', 'Peek definition', 'Paste with uses completion',
+      'Surround selection', 'Remove surrounding', 'Hide at element', 'Atlas Search', 'Search units',
+      'Generate menu', 'Continue comment and pattern', 'Quick commands', 'Go to definition', 'Editor toolbar',
+      'Quick bookmarks', 'Atlas status bar', 'Architecture overview', 'Unit relations',
+      'Path between symbols', 'Project tasks', 'Debugging',
+      'Exit points', 'Reassigned variables', 'Type of expression', 'Method order',
+      'Issue keys', 'Issues in line history', 'Code queries', 'Hotspots', 'Designer bar', 'Tracker',
+      'Welcome page: updates', 'Region folding'));
 begin
-  Result := Names[AFeature];
+  Result := Names[TAtlasTextLanguage.Current, AFeature];
 end;
 
 class procedure TAtlasGuard.Log(const AText: string);
@@ -916,9 +953,7 @@ begin
   begin
     Exit;
   end;
-  Warn(Format('Atlas: %s nach %d Fehlern in %d Minuten abgeschaltet (zuletzt: %s). ' +
-    'Wieder einschalten unter Tools > Optionen > Drittanbieter > Atlas oder über Atlas > Abgeschaltete ' +
-    'Funktionen einschalten.', [FeatureName(AFeature), TAtlasFuse.Limit, TAtlasFuse.WindowMinutes,
+  Warn(Format(UiText(TGuardText.FeatureTripped), [FeatureName(AFeature), TAtlasFuse.Limit, TAtlasFuse.WindowMinutes,
     TLogMarks.Text(SafeMessage(E.Message))]));
   Tripped := FOnTripped;
   if Assigned(Tripped) then
@@ -934,9 +969,7 @@ begin
   Log(ErrorLine('Quelle ' + AName, E));
   if (FFuse <> nil) and FFuse.ProviderFailed(AName) then
   begin
-    Warn(Format('Atlas: Quelle „%s“ nach %d Fehlern in %d Minuten abgeschaltet (zuletzt: %s); die übrigen ' +
-      'Quellen laufen weiter. Wieder einschalten unter Tools > Optionen > Drittanbieter > Atlas oder über ' +
-      'Atlas > Abgeschaltete Funktionen einschalten.', [AName, TAtlasFuse.Limit, TAtlasFuse.WindowMinutes,
+    Warn(Format(UiText(TGuardText.SourceTripped), [AName, TAtlasFuse.Limit, TAtlasFuse.WindowMinutes,
       TLogMarks.Text(SafeMessage(E.Message))]));
   end;
 end;
@@ -1110,5 +1143,8 @@ begin
     EnableProvider(Name);
   end;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Diagnostics.Guard', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

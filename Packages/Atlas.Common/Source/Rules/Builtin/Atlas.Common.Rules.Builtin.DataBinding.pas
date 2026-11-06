@@ -70,7 +70,37 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Dfm.Contract,
-  Atlas.Common.Dfm.Parser;
+  Atlas.Common.Dfm.Parser,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TDataBindingText = (CycleTitle, Cycle, MasterTitle, NoMasterFields, RequiredTitle, RequiredField, OnlyInvisible,
+    NoControl, TypeTitle, ShowsField, DoubleTitle, BothBound, ForeignTitle, ForeignAccess);
+
+const
+  cTexts: array[TDataBindingText] of TAtlasText = (
+    (De: 'Zirkuläre Master-Detail- bzw. DataSource-Verknüpfung'; En: 'Circular master-detail or DataSource link'),
+    (De: 'Datenquellen bilden einen Kreis: '; En: 'Data sources form a cycle: '),
+    (De: 'Master-Detail ohne MasterFields'; En: 'Master-detail without MasterFields'),
+    (De: '%s hat MasterSource = %s, aber keine MasterFields: das Detail zeigt alle Datensätze';
+     En: '%s has MasterSource = %s but no MasterFields: the detail shows all records'),
+    (De: 'Pflichtfeld ohne sichtbares Eingabe-Control'; En: 'Required field without a visible input control'),
+    (De: 'Pflichtfeld %s.%s hat %s'; En: 'Required field %s.%s has %s'),
+    (De: 'nur unsichtbare Eingabe-Controls'; En: 'only invisible input controls'),
+    (De: 'kein Eingabe-Control'; En: 'no input control'),
+    (De: 'Datensensitives Control passt nicht zum Feldtyp'; En: 'Data-aware control does not fit the field type'),
+    (De: '%s: %s zeigt das Feld %s vom Typ %s'; En: '%s: %s shows the field %s of type %s'),
+    (De: 'Zwei Controls an demselben DataSource und DataField';
+     En: 'Two controls on the same DataSource and DataField'),
+    (De: '%s und %s sind beide an %s.%s gebunden'; En: '%s and %s are both bound to %s.%s'),
+    (De: 'Zugriff auf Controls eines anderen Formulars'; En: 'Access to controls of another form'),
+    (De: 'Zugriff auf %s.%s eines anderen Formulars; besser über eine Methode oder Property von %s';
+     En: 'Access to %s.%s of another form; better via a method or property of %s'));
+
+{$SCOPEDENUMS OFF}
 
 type
   /// <summary>Objekte der Formulardatei und Stelle der Formularklasse in der Unit.</summary>
@@ -264,7 +294,7 @@ end;
 function TDfmCircularDataSourceRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('dfm-circular-datasource', TRuleSeverity.Warning,
-    'Zirkuläre Master-Detail- bzw. DataSource-Verknüpfung');
+    cTexts[TDataBindingText.CycleTitle].Text);
 end;
 
 /// <summary>Dataset, an das AObject über MasterSource bzw. DataSource gebunden ist; nil ohne.</summary>
@@ -337,7 +367,7 @@ begin
           Reported.Add(Current);
           Current := LinkedDataSet(Model, Current);
         until (Current = nil) or (Current = Start);
-        AReport.Add(Model.Anchor, 'Datenquellen bilden einen Kreis: ' + Path);
+        AReport.Add(Model.Anchor, cTexts[TDataBindingText.Cycle].Text + Path);
       end;
     end;
   finally
@@ -351,7 +381,7 @@ end;
 function TDfmMasterWithoutFieldsRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('dfm-master-without-fields', TRuleSeverity.Warning,
-    'Master-Detail ohne MasterFields');
+    cTexts[TDataBindingText.MasterTitle].Text);
 end;
 
 procedure TDfmMasterWithoutFieldsRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -369,8 +399,8 @@ begin
     begin
       if (Model.Value(Obj, 'MasterSource') <> '') and (Model.Value(Obj, 'MasterFields') = '') then
       begin
-        AReport.Add(Model.Anchor, Format('%s hat MasterSource = %s, aber keine MasterFields: das Detail zeigt ' +
-          'alle Datensätze', [Obj.Name, Model.Value(Obj, 'MasterSource')]));
+        AReport.Add(Model.Anchor, cTexts[TDataBindingText.NoMasterFields].Fmt([Obj.Name, Model.Value(Obj,
+          'MasterSource')]));
       end;
     end;
   finally
@@ -383,7 +413,7 @@ end;
 function TDfmRequiredFieldWithoutControlRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('dfm-required-field-without-control', TRuleSeverity.Warning,
-    'Pflichtfeld ohne sichtbares Eingabe-Control');
+    cTexts[TDataBindingText.RequiredTitle].Text);
 end;
 
 /// <summary>Ist AObject und jeder Vorfahr im Formular sichtbar (kein Visible = False)?</summary>
@@ -429,8 +459,8 @@ begin
   end;
   if not Shown then
   begin
-    AReport.Add(AModel.Anchor, Format('Pflichtfeld %s.%s hat %s', [ADataSet.Name, FieldName,
-      IfThen(Bound, 'nur unsichtbare Eingabe-Controls', 'kein Eingabe-Control')]));
+    AReport.Add(AModel.Anchor, cTexts[TDataBindingText.RequiredField].Fmt([ADataSet.Name, FieldName,
+      IfThen(Bound, cTexts[TDataBindingText.OnlyInvisible].Text, cTexts[TDataBindingText.NoControl].Text)]));
   end;
 end;
 
@@ -465,7 +495,7 @@ end;
 function TDfmControlFieldTypeMismatchRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('dfm-control-field-type-mismatch', TRuleSeverity.Warning,
-    'Datensensitives Control passt nicht zum Feldtyp');
+    cTexts[TDataBindingText.TypeTitle].Text);
 end;
 
 /// <summary>Passt das Control AControlClass zum Feld AFieldClass? True, wenn unbekannt.</summary>
@@ -517,7 +547,7 @@ begin
       Field := FieldOf(Model, DataSet, FieldName);
       if (Field <> nil) and not Compatible(Control.TypeName, Field.TypeName) then
       begin
-        AReport.Add(Model.Anchor, Format('%s: %s zeigt das Feld %s vom Typ %s', [Control.Name, Control.TypeName,
+        AReport.Add(Model.Anchor, cTexts[TDataBindingText.ShowsField].Fmt([Control.Name, Control.TypeName,
           FieldName, Field.TypeName]));
       end;
     end;
@@ -531,7 +561,7 @@ end;
 function TDfmDuplicateBindingRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('dfm-duplicate-binding', TRuleSeverity.Warning,
-    'Zwei Controls an demselben DataSource und DataField');
+    cTexts[TDataBindingText.DoubleTitle].Text);
 end;
 
 procedure TDfmDuplicateBindingRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -563,7 +593,7 @@ begin
       Key := LowerCase(Model.Value(Control, 'DataSource') + '|' + Unquote(Model.Value(Control, 'DataField')));
       if Seen.TryGetValue(Key, First) then
       begin
-        AReport.Add(Model.Anchor, Format('%s und %s sind beide an %s.%s gebunden', [First.Name, Control.Name,
+        AReport.Add(Model.Anchor, cTexts[TDataBindingText.BothBound].Fmt([First.Name, Control.Name,
           Model.Value(Control, 'DataSource'), Unquote(Model.Value(Control, 'DataField'))]));
       end
       else
@@ -582,7 +612,7 @@ end;
 function TForeignFormControlAccessRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('foreign-form-control-access', TRuleSeverity.Warning,
-    'Zugriff auf Controls eines anderen Formulars');
+    cTexts[TDataBindingText.ForeignTitle].Text);
 end;
 
 const
@@ -701,7 +731,7 @@ begin
     if (FormClass <> '') and IsFormField(AContext, Code[Index + 2].Text, FormClass) then
     begin
       AReport.Add(TTextRange.Create(Code[Index].StartPos, Code[Index + 2].EndPos),
-        Format('Zugriff auf %s.%s eines anderen Formulars; besser über eine Methode oder Property von %s',
+        cTexts[TDataBindingText.ForeignAccess].Fmt(
         [Code[Index].Text, Code[Index + 2].Text, FormClass]), TRuleConfidence.Medium);
     end;
   end;
@@ -716,5 +746,8 @@ begin
   ARegistry.Register(TDfmDuplicateBindingRule.Create);
   ARegistry.Register(TForeignFormControlAccessRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.DataBinding', cTexts);
 
 end.

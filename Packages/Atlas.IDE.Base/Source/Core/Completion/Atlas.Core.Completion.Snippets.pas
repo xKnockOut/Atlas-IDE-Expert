@@ -144,7 +144,92 @@ uses
   System.Classes,
   System.StrUtils,
   Atlas.Text.Lines,
-  Atlas.Text.Chars;
+  Atlas.Text.Chars,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TSnippetsText = (LineUnknownContextAllowed, LinePostfixIsTrueOr, LineUnknownFileKindAllowed,
+    LineUnknownKeyAllowedName, LineKeyValueOrExpected, LineBetweenHeaderAndText, KeyPrefixIsMissing,
+    PrefixOnlyLettersDigitsAnd, SnippetTextIsMissing, TryFinallyWithCreateFree, CreateAnObjectAndFree,
+    HandleAnExceptionOfA, ForInLoop, IterateOverTheItemsOf, ForLoopWithCounter, CountFrom0ToCount, WhileLoop,
+    AsLongAsTheCondition, RepeatUntilLoop, AtLeastOnceUntilThe, ClassWithConstructorAndDestructor,
+    ClassDeclarationInTheType, RecordDeclarationInTheType, PropertyWithFieldAndSetter, DeclarationInTheClassPropset,
+    SetterWithChangeCheck, SetsTheFieldOnlyWhen, ComponentSkeleton, ComponentWithPublishedSectionReg,
+    RegisterProcedure, RegisterTheComponentInThe);
+
+const
+  cTexts: array[TAtlasLanguage, TSnippetsText] of string = (
+    ('Zeile %d: unbekannter Kontext "%s" (erlaubt: %s)',
+     'Zeile %d: "postfix" ist true oder false',
+     'Zeile %d: unbekannte Dateiart "%s" (erlaubt: %s)',
+     'Zeile %d: unbekannter Schlüssel "%s" (erlaubt: name, prefix, description, postfix, type, context, file)',
+     'Zeile %d: "Schlüssel: Wert" oder "---" erwartet',
+     'Zeile "---" zwischen Kopf und Text fehlt',
+     'Schlüssel "prefix" fehlt',
+     'Kürzel "%s": nur Buchstaben, Ziffern und _',
+     'Text der Vorlage fehlt',
+     'try…finally mit Create/Free',
+     'Objekt anlegen und sicher wieder freigeben.',
+     'Ausnahme einer Klasse behandeln.',
+     'for…in-Schleife',
+     'Über die Elemente einer Liste laufen (Inline-Variable).',
+     'for-Schleife mit Zähler',
+     'Von 0 bis Count - 1 zählen (Inline-Variable).',
+     'while-Schleife',
+     'Solange die Bedingung gilt.',
+     'repeat…until-Schleife',
+     'Mindestens einmal, bis die Bedingung gilt.',
+     'Klasse mit Konstruktor und Destruktor',
+     'Klassendeklaration im type-Abschnitt.',
+     'Record-Deklaration im type-Abschnitt.',
+     'Property mit Feld und Setter',
+     'Deklaration in der Klasse; den Setter legt propset an.',
+     'Setter mit Prüfung auf Änderung',
+     'Setzt das Feld nur bei Änderung und zeichnet neu.',
+     'Komponentengerüst',
+     'Komponente mit published-Abschnitt; die Registrierung legt reg an.',
+     'Register-Prozedur',
+     'Komponente in der Palette registrieren.'),
+    ('Line %d: unknown context "%s" (allowed: %s)',
+     'Line %d: "postfix" is true or false',
+     'Line %d: unknown file kind "%s" (allowed: %s)',
+     'Line %d: unknown key "%s" (allowed: name, prefix, description, postfix, type, context, file)',
+     'Line %d: "key: value" or "---" expected',
+     'Line "---" between header and text is missing',
+     'Key "prefix" is missing',
+     'Prefix "%s": only letters, digits and _',
+     'Snippet text is missing',
+     'try…finally with Create/Free',
+     'Create an object and free it safely.',
+     'Handle an exception of a class.',
+     'for…in loop',
+     'Iterate over the items of a list (inline variable).',
+     'for loop with counter',
+     'Count from 0 to Count - 1 (inline variable).',
+     'while loop',
+     'As long as the condition holds.',
+     'repeat…until loop',
+     'At least once, until the condition holds.',
+     'Class with constructor and destructor',
+     'Class declaration in the type section.',
+     'Record declaration in the type section.',
+     'Property with field and setter',
+     'Declaration in the class; propset creates the setter.',
+     'Setter with change check',
+     'Sets the field only when it changes and repaints.',
+     'Component skeleton',
+     'Component with published section; reg creates the registration.',
+     'Register procedure',
+     'Register the component in the palette.'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TSnippetsText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 type
   TSegment = record
@@ -271,7 +356,7 @@ begin
   begin
     if (Trim(mWord) <> '') and (IndexText(Trim(mWord), TAtlasSnippets.ContextWords) < 0) then
     begin
-      AError := Format('Zeile %d: unbekannter Kontext "%s" (erlaubt: %s)',
+      AError := Format(UiText(TSnippetsText.LineUnknownContextAllowed),
         [ALine, Trim(mWord), string.Join(', ', TAtlasSnippets.ContextWords)]);
       Exit(False);
     end;
@@ -290,7 +375,7 @@ begin
   end
   else
   begin
-    AError := Format('Zeile %d: "postfix" ist true oder false', [ALine]);
+    AError := Format(UiText(TSnippetsText.LinePostfixIsTrueOr), [ALine]);
   end;
 end;
 
@@ -305,7 +390,7 @@ begin
   end
   else
   begin
-    AError := Format('Zeile %d: unbekannte Dateiart "%s" (erlaubt: %s)',
+    AError := Format(UiText(TSnippetsText.LineUnknownFileKindAllowed),
       [ALine, AValue, string.Join(', ', TAtlasSnippets.FileKinds)]);
   end;
 end;
@@ -350,8 +435,7 @@ begin
   end
   else
   begin
-    AError := Format('Zeile %d: unbekannter Schlüssel "%s" (erlaubt: name, prefix, description, postfix, type, ' +
-      'context, file)', [ALine, AKey]);
+    AError := Format(UiText(TSnippetsText.LineUnknownKeyAllowedName), [ALine, AKey]);
     Result := False;
   end;
 end;
@@ -379,7 +463,7 @@ begin
     mColon := Pos(':', mLine);
     if (mLine <> '') and (mLine[1] <> '#') and (mColon = 0) then
     begin
-      AError := Format('Zeile %d: "Schlüssel: Wert" oder "---" erwartet', [mIndex + 1]);
+      AError := Format(UiText(TSnippetsText.LineKeyValueOrExpected), [mIndex + 1]);
       Result := False;
     end
     else if (mLine <> '') and (mLine[1] <> '#') then
@@ -400,17 +484,17 @@ begin
   AError := '';
   if ASeparator < 0 then
   begin
-    AError := 'Zeile "---" zwischen Kopf und Text fehlt';
+    AError := UiText(TSnippetsText.LineBetweenHeaderAndText);
   end
   else if APrefix = '' then
   begin
-    AError := 'Schlüssel "prefix" fehlt';
+    AError := UiText(TSnippetsText.KeyPrefixIsMissing);
   end;
   for mIndex := 1 to Length(APrefix) do
   begin
     if (AError = '') and not TTextChars.IsAsciiIdentChar(APrefix[mIndex]) then
     begin
-      AError := Format('Kürzel "%s": nur Buchstaben, Ziffern und _', [APrefix]);
+      AError := Format(UiText(TSnippetsText.PrefixOnlyLettersDigitsAnd), [APrefix]);
     end;
   end;
   Result := AError = '';
@@ -593,7 +677,7 @@ begin
   Result := Trim(mBody) <> '';
   if not Result then
   begin
-    AError := 'Text der Vorlage fehlt';
+    AError := UiText(TSnippetsText.SnippetTextIsMissing);
     Exit;
   end;
   ASnippet.Body := mBody;
@@ -661,35 +745,35 @@ end;
 class function TAtlasSnippets.BuiltIn: TAtlasSnippetList;
 begin
   Result := [
-    Snippet('tryf', 'try…finally mit Create/Free', 'Objekt anlegen und sicher wieder freigeben.',
+    Snippet('tryf', UiText(TSnippetsText.TryFinallyWithCreateFree), UiText(TSnippetsText.CreateAnObjectAndFree),
       '${1:List} := ${2:TStringList}.Create;'#10'try'#10'  $0'#10'finally'#10'  ${1}.Free;'#10'end;', 'statement'),
-    Snippet('trye', 'try…except', 'Ausnahme einer Klasse behandeln.',
+    Snippet('trye', 'try…except', UiText(TSnippetsText.HandleAnExceptionOfA),
       'try'#10'  $0'#10'except'#10'  on E: ${1:Exception} do'#10'    ${2:raise};'#10'end;', 'statement'),
-    Snippet('forin', 'for…in-Schleife', 'Über die Elemente einer Liste laufen (Inline-Variable).',
+    Snippet('forin', UiText(TSnippetsText.ForInLoop), UiText(TSnippetsText.IterateOverTheItemsOf),
       'for var ${1:Item} in ${2:List} do'#10'begin'#10'  $0'#10'end;', 'statement'),
-    Snippet('fori', 'for-Schleife mit Zähler', 'Von 0 bis Count - 1 zählen (Inline-Variable).',
+    Snippet('fori', UiText(TSnippetsText.ForLoopWithCounter), UiText(TSnippetsText.CountFrom0ToCount),
       'for var ${1:I} := ${2:0} to ${3:List.Count - 1} do'#10'begin'#10'  $0'#10'end;', 'statement'),
-    Snippet('while', 'while-Schleife', 'Solange die Bedingung gilt.',
+    Snippet('while', UiText(TSnippetsText.WhileLoop), UiText(TSnippetsText.AsLongAsTheCondition),
       'while ${1:Condition} do'#10'begin'#10'  $0'#10'end;', 'statement'),
-    Snippet('repeat', 'repeat…until-Schleife', 'Mindestens einmal, bis die Bedingung gilt.',
+    Snippet('repeat', UiText(TSnippetsText.RepeatUntilLoop), UiText(TSnippetsText.AtLeastOnceUntilThe),
       'repeat'#10'  $0'#10'until ${1:Condition};', 'statement'),
-    Snippet('class', 'Klasse mit Konstruktor und Destruktor', 'Klassendeklaration im type-Abschnitt.',
+    Snippet('class', UiText(TSnippetsText.ClassWithConstructorAndDestructor), UiText(TSnippetsText.ClassDeclarationInTheType),
       '${1:TMyClass} = class(${2:TObject})'#10'private'#10'  $0'#10'public'#10'  constructor Create;'#10 +
       '  destructor Destroy; override;'#10'end;', 'declaration'),
-    Snippet('record', 'Record', 'Record-Deklaration im type-Abschnitt.',
+    Snippet('record', 'Record', UiText(TSnippetsText.RecordDeclarationInTheType),
       '${1:TMyRecord} = record'#10'  ${2:Value}: ${3:Integer};$0'#10'end;', 'declaration'),
-    Snippet('prop', 'Property mit Feld und Setter', 'Deklaration in der Klasse; den Setter legt propset an.',
+    Snippet('prop', UiText(TSnippetsText.PropertyWithFieldAndSetter), UiText(TSnippetsText.DeclarationInTheClassPropset),
       'property ${1:Value}: ${2:Integer} read F${1} write Set${1};$0', 'class'),
     // Gleiche Form wie /prop, /changed und die Vorlage „changed“ des Servers (TSetterGenerator).
-    Snippet('propset', 'Setter mit Prüfung auf Änderung', 'Setzt das Feld nur bei Änderung und zeichnet neu.',
+    Snippet('propset', UiText(TSnippetsText.SetterWithChangeCheck), UiText(TSnippetsText.SetsTheFieldOnlyWhen),
       'procedure ${1:TMyControl}.Set${2:Value}(const Value: ${3:Integer});'#10'begin'#10 +
       '  if F${2} <> Value then'#10'  begin'#10'    F${2} := Value;'#10'    Invalidate;$0'#10'  end;'#10'end;',
       'implementation'),
-    Snippet('comp', 'Komponentengerüst', 'Komponente mit published-Abschnitt; die Registrierung legt reg an.',
+    Snippet('comp', UiText(TSnippetsText.ComponentSkeleton), UiText(TSnippetsText.ComponentWithPublishedSectionReg),
       '${1:TMyControl} = class(${2:TCustomControl})'#10'protected'#10'  procedure Paint; override;'#10 +
       'public'#10'  constructor Create(AOwner: TComponent); override;'#10'published'#10'  $0'#10'end;',
       'declaration'),
-    Snippet('reg', 'Register-Prozedur', 'Komponente in der Palette registrieren.',
+    Snippet('reg', UiText(TSnippetsText.RegisterProcedure), UiText(TSnippetsText.RegisterTheComponentInThe),
       'procedure Register;'#10'begin'#10'  RegisterComponents(''${1:Atlas}'', [${2:TMyControl}]);$0'#10'end;',
       'implementation')];
 end;
@@ -1094,5 +1178,8 @@ begin
     LoadSnippetFile(APath, mName, Result, AErrors);
   end;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Completion.Snippets', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.
