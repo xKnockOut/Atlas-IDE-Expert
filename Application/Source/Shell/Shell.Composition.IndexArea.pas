@@ -2,7 +2,8 @@
 
 // Teilwurzel Index der Komposition: gemeinsamer Symbolindex aller Ordner, Uses-Graph (#64), Declared(X) in {$IF}
 // (#847), die Ordner des Arbeitsbereichs vom Client und die Ereignisse des Indexaufbaus (Projekt geladen,
-// Stufe fertig). Wer außerhalb auf Namespaces oder Bibliotheksordner hört, bekommt sie über die Dienste.
+// Stufe fertig). Dazu die Ersatz-Units der IDE (atlas/ideMembers) und der Index für Hover, Vervollständigung und
+// Parameterhilfe, der sie zum gemeinsamen Index hinzunimmt. Wer außerhalb auf Namespaces oder Bibliotheksordner hört, bekommt sie über die Dienste.
 
 interface
 
@@ -13,6 +14,7 @@ uses
   Atlas.Common.Architecture.UsesService,
   Atlas.Common.Diagnostics.Anonymizer,
   Atlas.Common.Lsp.WorkspaceFolders,
+  Atlas.Common.Lsp.IdeUnits,
   Shell.Composition.Core,
   Shell.Composition.DiagnosticsArea;
 
@@ -39,6 +41,8 @@ type
     NamespacesChanged: TShellIndexNamesProc;
     LibraryRootsChanged: TShellIndexNamesProc;
     Queue: TShellIndexQueueFunc;
+    /// <summary>Der Aufbau ist ganz fertig (alle Stufen, kein Projekt mehr offen).</summary>
+    IndexFinished: TProc;
   end;
 
   /// <summary>Hält Index, Uses-Graph und Ordner des Arbeitsbereichs.</summary>
@@ -49,6 +53,8 @@ type
     /// <summary>Uses-Graph über FIndex für uses-cycle und unused-unit (#64); lebt so lange wie der Index.</summary>
     FUsesGraph: TUsesGraphService;
     FFolders: TLspWorkspaceFolders;
+    FIdeUnits: TIdeUnits;
+    FEditorIndex: ISymbolIndex;
     procedure FoldersChanged(const AAdded, ARemoved: TArray<TWorkspaceFolder>);
     procedure CollectNamespaces(out ANamespaces, ALibraryRoots: TArray<string>);
     procedure ApplyNamespaces(const ANamespaces: TArray<string>);
@@ -65,6 +71,10 @@ type
     procedure IndexStageDone(AProjectStage: Boolean);
     property Index: ISymbolIndex read FIndex;
     property UsesGraph: TUsesGraphService read FUsesGraph;
+    /// <summary>Ersatz-Units der IDE für Units ohne Quelltext.</summary>
+    property IdeUnits: TIdeUnits read FIdeUnits;
+    /// <summary>Index samt Ersatz-Units für Hover, Vervollständigung und Parameterhilfe.</summary>
+    property EditorIndex: ISymbolIndex read FEditorIndex;
   end;
 
 implementation
@@ -72,6 +82,7 @@ implementation
 uses
   System.StrUtils,
   Atlas.Common.Index.SymbolIndex,
+  Atlas.Common.Lsp.IdeIndex,
   Atlas.Common.Architecture.UsesGraph,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.Preprocessor,
@@ -107,12 +118,16 @@ begin
   FFolders := TLspWorkspaceFolders.Create;
   FFolders.OnChanged := FoldersChanged;
   FFolders.Attach(FServices.Dispatcher);
+  FIdeUnits := TIdeUnits.Create;
+  FEditorIndex := TIdeIndex.Create(FIndex, FIdeUnits.Index);
 end;
 
 destructor TShellIndexArea.Destroy;
 begin
   FreeAndNil(FFolders);
   FreeAndNil(FUsesGraph);
+  FEditorIndex := nil;
+  FreeAndNil(FIdeUnits);
   FIndex := nil;
   FServices := Default(TShellIndexAreaServices);
   inherited;
@@ -266,6 +281,11 @@ begin
   if FServices.Core().Workspaces.ProjectIndexPending then
   begin
     Exit;
+  end;
+  // Erst am Ende des ganzen Aufbaus steht fest, welche Units der IDE keinen Quelltext haben.
+  if not AProjectStage and Assigned(FServices.IndexFinished) then
+  begin
+    FServices.IndexFinished();
   end;
   // Nach der Projektstufe kennt der Index alles, was das Projekt über uses erreicht. Das Ende des Aufbaus
   // (Suchpfade, Bibliothek) startet die Prüfung nicht noch einmal von vorn (Diagnose-Log 29.10.2026).

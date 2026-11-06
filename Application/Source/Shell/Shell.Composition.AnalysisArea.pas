@@ -30,6 +30,9 @@ type
     Dispatcher: TJsonRpcDispatcher;
     Documents: IDocumentStore;
     Index: ISymbolIndex;
+    /// <summary>Gemeinsamer Index samt Ersatz-Units der IDE für Hover, Vervollständigung und Parameterhilfe.
+    /// </summary>
+    EditorIndex: ISymbolIndex;
     FormatRoutinesFor: TFormatRoutinesFunc;
     UsesContextFor: TUsesContextProvider;
     RefreshLater: TShellRefreshProc;
@@ -117,6 +120,7 @@ begin
   Result := Default(TShellAnalysisServices);
   Result.Documents := FServices.Documents;
   Result.Index := FServices.Index;
+  Result.EditorIndex := FServices.EditorIndex;
   Result.ReadText := ReadText;
   Result.ProjectFiles := ProjectFiles;
   Result.EnsureUnit := mCore.Folders.EnsureUnitFunc();

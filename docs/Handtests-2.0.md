@@ -452,6 +452,22 @@ Vorbereitung: ein Fremd-Package mit eigenen Komponententypen ist in der IDE inst
 | IT7 | Vervollständigung von RTL- und VCL-Typen (z. B. `TButton`) | Kein Typ doppelt |  |
 | IT8 | IDE ohne Fremd-Packages starten | Start unverändert, Protokollzeile zeigt eine kleine Zahl |  |
 
+### Mitglieder der IDE-Typen für Hover und Vervollständigung (atlas/ideMembers)
+
+Vorbereitung wie bei IT: Fremd-Package installiert, Unit `FremdUnit` ohne .pas im Suchpfad, darin `TFremdTyp` mit Properties, Methoden und einem Aufzählungstyp.
+
+| Nr. | Schritte | Erwartet | Ergebnis |
+|----|----------|-----------|---|
+| IM1 | Projekt öffnen, warten bis der Index fertig ist, Atlas-Protokoll öffnen | Zeile `IDE-Mitglieder: N Units, M Typen, X ms, RTTI unlesbar: 0` mit N > 0; Dauer klein |  |
+| IM2 | Maus über `TFremdTyp` im Code | Hover zeigt die Klasse mit Unit `FremdUnit` (**Abnahme**) |  |
+| IM3 | `var G: TFremdTyp;` … Maus über `G.EineProperty` | Hover zeigt `property EineProperty: TTyp;` (**Abnahme**) |  |
+| IM4 | `G.` tippen | Vervollständigung listet Properties und Methoden von `TFremdTyp` samt geerbten aus dem Vorfahren (**Abnahme**) |  |
+| IM5 | `G.EineMethode(` tippen | Parameterhilfe zeigt die Parameter mit Typen |  |
+| IM6 | Methode mit Parameter vom Aufzählungstyp aufrufen, im Parameter Strg+Leertaste | Die Werte des Aufzählungstyps werden angeboten |  |
+| IM7 | Im Hover Strg+Klick bzw. auf den Typverweis klicken | Kein Fehlerdialog „Datei nicht gefunden“, nichts passiert |  |
+| IM8 | Strg+Klick im Editor auf `EineProperty` | Wie bisher (kein Sprung in eine Ersatz-Unit) |  |
+| IM9 | Prüffenster nach IM1–IM6 | Keine neuen Befunde in fremden Units, keine Datei `atlas-ide:` |  |
+
 ### Unit-Aliase im uses (WinTypes, WinProcs)
 
 | Nr. | Schritte | Erwartet | Ergebnis |

@@ -109,6 +109,17 @@ begin
     end;
 end;
 
+/// <summary>Text der Ersatz-Units der IDE; vor der Teilwurzel Index und nach dem Freigeben keiner.</summary>
+function IdeTextOf(AParts: TShellParts): TShellFoldersReadText;
+begin
+  Result :=
+    function(const AFileName: string; out AText: string): Boolean
+    begin
+      AText := '';
+      Result := (AParts.IndexArea <> nil) and AParts.IndexArea.IdeUnits.ReadText(AFileName, AText);
+    end;
+end;
+
 class function TShellCoreWiring.CoreServices(AParts: TShellParts): TShellCoreServices;
 begin
   Result := Default(TShellCoreServices);
@@ -147,6 +158,7 @@ begin
       Result := AParts.IdeArea.Ide.Project;
     end;
   Result.IdeTypes := IdeTypesOf(AParts);
+  Result.IdeText := IdeTextOf(AParts);
   Result.Selection :=
     function: TProjectSelection
     begin
@@ -261,6 +273,15 @@ begin
     function(const AWork: TProc): Boolean
     begin
       Result := (AParts.Connection <> nil) and AParts.Connection.Queue(AWork);
+    end;
+  // Danach fragt die IDE-Seite nach den Mitgliedern der Units ohne Quelltext.
+  Result.IndexFinished :=
+    procedure
+    begin
+      if AParts.IdeArea <> nil then
+      begin
+        AParts.IdeArea.Ide.IndexFinished;
+      end;
     end;
 end;
 
