@@ -369,8 +369,6 @@ begin
     (RegionName(ALine, mName) and SameText(mName, ATypeName));
 end;
 
-/// <summary>Teile des qualifizierten Typnamens im Kopf eines Rumpfs (TAussen.TKunde.Foo → TAussen, TKunde; ohne
-/// generische Parameter); leer, wenn ALine kein Rumpf ist.</summary>
 /// <summary>ALine ohne die Schlüsselwörter eines Routinenkopfs vorn (class function …).</summary>
 function WithoutHeadWords(const ALine: string): string;
 const
@@ -395,6 +393,8 @@ begin
   end;
 end;
 
+/// <summary>Teile des qualifizierten Typnamens im Kopf eines Rumpfs (TAussen.TKunde.Foo → TAussen, TKunde; ohne
+/// generische Parameter); leer, wenn ALine kein Rumpf ist.</summary>
 function BodyTypeParts(const ALine: string): TArray<string>;
 var
   mText, mName: string;
