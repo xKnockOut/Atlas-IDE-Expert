@@ -325,10 +325,10 @@ procedure StartPalette;
 begin
   RegisterPalette;
   // Atlas-Befehle zeigen ihre Taste (#520).
-  PaletteInstance.ShortCutOf :=
-    function(AId: string): string
+  PaletteInstance.ShortCutsOf :=
+    function: TFunc<string, string>
     begin
-      Result := TAtlasIdeKeyMap.AtlasShortCut(AId);
+      Result := TAtlasIdeKeyMap.AtlasShortCuts();
     end;
   RegisterPartCommands;
   // Zusatzquelle der Palette (#1270), etwa Issues aus „Meine Issues“: erst beim Öffnen gefragt, von einem

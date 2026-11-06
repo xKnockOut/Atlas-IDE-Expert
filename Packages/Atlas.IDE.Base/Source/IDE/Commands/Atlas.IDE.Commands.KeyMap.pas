@@ -77,6 +77,10 @@ type
     class function SetupKeys: TArray<TAtlasSetupKey>; static;
     /// <summary>Taste eines Atlas-Befehls der Palette als Text, wenn Atlas sie belegt; sonst ''.</summary>
     class function AtlasShortCut(const ACommandId: string): string; static;
+    /// <summary>Wie AtlasShortCut für viele Befehle: Belegungen und Konflikte einmal auswerten, dann nur
+    /// nachschlagen. Die ganze Palette fragte sonst je Befehl alle Einstellungen und Aktionen der IDE ab
+    /// (Willkommensseite: 60 s Start, 06.11.2026).</summary>
+    class function AtlasShortCuts: TFunc<string, string>; static;
     /// <summary>Ziel des HTML-Exports.</summary>
     class function ExportFile: string; static;
     /// <summary>Fenster zeigen und neu einlesen; Suche und Filter bleiben.</summary>
@@ -878,23 +882,64 @@ begin
 end;
 
 class function TAtlasIdeKeyMap.AtlasShortCut(const ACommandId: string): string;
-var
-  Entry: TAtlasKeyEntry;
 begin
   Result := '';
-  if ACommandId = '' then
+  if ACommandId <> '' then
   begin
-    Exit;
+    Result := AtlasShortCuts()(ACommandId);
   end;
-  // Mehrere Tasten für einen Befehl (#775, #777): die erste, die Atlas hält.
-  for Entry in AtlasEntries do
-  begin
-    if (Entry.Key <> 0) and not Entry.Disabled and SameText(TAtlasKeyMap.CommandIdOf(Entry.Func), ACommandId) and
-      TAtlasKeyConflicts.ShouldBind(Entry.Key, TAtlasIdeKeys.Owner(Entry.Key), Entry.Priority) then
+end;
+
+/// <summary>Nachschlagen in AIds/AKeys (gleich lang); eigene Routine, damit die Methodenreferenz nur die Arrays hält.
+/// </summary>
+function ShortCutLookup(const AIds, AKeys: TArray<string>): TFunc<string, string>;
+begin
+  Result :=
+    function(AId: string): string
+    var
+      mIndex: Integer;
     begin
-      Exit(ShortCutToText(TShortCut(Entry.Key)));
+      Result := '';
+      for mIndex := 0 to High(AIds) do
+      begin
+        if SameText(AIds[mIndex], AId) then
+        begin
+          Exit(AKeys[mIndex]);
+        end;
+      end;
+    end;
+end;
+
+class function TAtlasIdeKeyMap.AtlasShortCuts: TFunc<string, string>;
+var
+  mEntry: TAtlasKeyEntry;
+  mId: string;
+  mIds, mKeys: TArray<string>;
+  mKnown: Boolean;
+  mIndex: Integer;
+begin
+  mIds := nil;
+  mKeys := nil;
+  // Mehrere Tasten für einen Befehl (#775, #777): die erste, die Atlas hält.
+  for mEntry in AtlasEntries do
+  begin
+    mId := TAtlasKeyMap.CommandIdOf(mEntry.Func);
+    if (mEntry.Key = 0) or mEntry.Disabled or (mId = '') then
+    begin
+      Continue;
+    end;
+    mKnown := False;
+    for mIndex := 0 to High(mIds) do
+    begin
+      mKnown := mKnown or SameText(mIds[mIndex], mId);
+    end;
+    if not mKnown and TAtlasKeyConflicts.ShouldBind(mEntry.Key, TAtlasIdeKeys.Owner(mEntry.Key), mEntry.Priority) then
+    begin
+      mIds := mIds + [mId];
+      mKeys := mKeys + [ShortCutToText(TShortCut(mEntry.Key))];
     end;
   end;
+  Result := ShortCutLookup(mIds, mKeys);
 end;
 
 class function TAtlasIdeKeyMap.ExportFile: string;

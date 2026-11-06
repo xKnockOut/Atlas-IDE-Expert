@@ -48,7 +48,7 @@ type
     FAtlasCommands: TList<TPair<TAtlasCommand, TProc>>;
     // Befehle mit Sichtbarkeit nach einer Einstellung (#520); ohne Eintrag immer sichtbar.
     FVisible: TDictionary<string, TFunc<Boolean>>;
-    FShortCutOf: TFunc<string, string>;
+    FShortCutsOf: TFunc<TFunc<string, string>>;
     FSourceOf: TFunc<IAtlasPaletteSource>;
     FBinding: TBinding;
     // Hält das Binding am Leben: Abmelden gibt die Referenz der IDE frei, Rebind meldet es neu an.
@@ -62,11 +62,14 @@ type
     function IsVisible(const AId: string): Boolean;
     /// <summary>Sichtbare Befehle der angemeldeten Module (#1455, IAtlasCommandSource), bei jedem Aufruf neu
     /// gefragt: Sie kommen und gehen mit ihrem Modul.</summary>
-    function ModuleCommands: TArray<TAtlasCommand>;
+    function ModuleCommands(const AShortCuts: TFunc<string, string>): TArray<TAtlasCommand>;
     /// <summary>Befehl AId eines Moduls ausführen; False, wenn ihn keins anbietet.</summary>
     function RunModuleCommand(const AId: string): Boolean;
-    /// <summary>Atlas-Befehl mit seiner Taste aus ShortCutOf.</summary>
-    function WithShortCut(const ACommand: TAtlasCommand): TAtlasCommand;
+    /// <summary>Tasten aller Atlas-Befehle, einmal je Aufruf ausgewertet (ShortCutsOf); nil ohne.</summary>
+    function ShortCuts: TFunc<string, string>;
+    /// <summary>Atlas-Befehl mit seiner Taste aus AShortCuts (nil: ohne Taste).</summary>
+    class function WithShortCut(const ACommand: TAtlasCommand; const AShortCuts: TFunc<string, string>): TAtlasCommand;
+      static;
     /// <summary>Zusatzquelle an das Fenster hängen (#1270); eigene Routine, damit die anonymen Methoden nur
     /// Fenster und Quelle halten.</summary>
     class procedure Attach(AWindow: TAtlasPaletteWindow; const ASource: IAtlasPaletteSource); static;
@@ -87,8 +90,9 @@ type
     procedure Show;
     /// <summary>Tastenkürzel nach den Einstellungen (neu) belegen; bei Konflikt ohne Vorrang keins (#494).</summary>
     procedure Rebind;
-    /// <summary>Taste eines Atlas-Befehls als Text ('' ohne), gesetzt von der Komposition (#520).</summary>
-    property ShortCutOf: TFunc<string, string> read FShortCutOf write FShortCutOf;
+    /// <summary>Liefert das Nachschlagen „Taste eines Atlas-Befehls als Text ('' ohne)“, gesetzt von der
+    /// Komposition (#520); einmal je Liste gefragt.</summary>
+    property ShortCutsOf: TFunc<TFunc<string, string>> read FShortCutsOf write FShortCutsOf;
     /// <summary>Zusatzquelle beim Öffnen (Issues, #1270); nil bzw. Ergebnis nil = nur Befehle.</summary>
     property SourceOf: TFunc<IAtlasPaletteSource> read FSourceOf write FSourceOf;
   end;
@@ -256,7 +260,7 @@ begin
   Result := not FVisible.TryGetValue(AId, Visible) or Visible();
 end;
 
-function TAtlasIdePalette.ModuleCommands: TArray<TAtlasCommand>;
+function TAtlasIdePalette.ModuleCommands(const AShortCuts: TFunc<string, string>): TArray<TAtlasCommand>;
 var
   mModuleCommand: TAtlasModuleCommand;
   mCommand: TAtlasCommand;
@@ -271,7 +275,7 @@ begin
       mCommand.Caption := 'Atlas: ' + mModuleCommand.Caption;
       mCommand.Description := mModuleCommand.Description;
       mCommand.IsAtlas := True;
-      Result := Result + [WithShortCut(mCommand)];
+      Result := Result + [WithShortCut(mCommand, AShortCuts)];
     end;
   end;
 end;
@@ -287,12 +291,22 @@ begin
   end;
 end;
 
-function TAtlasIdePalette.WithShortCut(const ACommand: TAtlasCommand): TAtlasCommand;
+function TAtlasIdePalette.ShortCuts: TFunc<string, string>;
+begin
+  Result := nil;
+  if Assigned(FShortCutsOf) then
+  begin
+    Result := FShortCutsOf();
+  end;
+end;
+
+class function TAtlasIdePalette.WithShortCut(const ACommand: TAtlasCommand;
+  const AShortCuts: TFunc<string, string>): TAtlasCommand;
 begin
   Result := ACommand;
-  if (Result.ShortCut = '') and Assigned(FShortCutOf) then
+  if (Result.ShortCut = '') and Assigned(AShortCuts) then
   begin
-    Result.ShortCut := FShortCutOf(Result.Id);
+    Result.ShortCut := AShortCuts(Result.Id);
   end;
 end;
 
@@ -344,17 +358,8 @@ var
   Action: TCustomAction;
   Command: TAtlasCommand;
   Seen: TDictionary<string, Boolean>;
-  Pair: TPair<TAtlasCommand, TProc>;
 begin
-  Result := nil;
-  for Pair in FAtlasCommands do
-  begin
-    if IsVisible(Pair.Key.Id) then
-    begin
-      Result := Result + [WithShortCut(Pair.Key)];
-    end;
-  end;
-  Result := Result + ModuleCommands;
+  Result := AtlasCommands;
   if not Supports(BorlandIDEServices, INTAServices, Services) or (Services.ActionList = nil) then
   begin
     Exit;
@@ -398,16 +403,18 @@ end;
 function TAtlasIdePalette.AtlasCommands: TArray<TAtlasCommand>;
 var
   Pair: TPair<TAtlasCommand, TProc>;
+  mShortCuts: TFunc<string, string>;
 begin
+  mShortCuts := ShortCuts();
   Result := nil;
   for Pair in FAtlasCommands do
   begin
     if IsVisible(Pair.Key.Id) then
     begin
-      Result := Result + [WithShortCut(Pair.Key)];
+      Result := Result + [WithShortCut(Pair.Key, mShortCuts)];
     end;
   end;
-  Result := Result + ModuleCommands;
+  Result := Result + ModuleCommands(mShortCuts);
 end;
 
 procedure TAtlasIdePalette.Execute(const AId: string);
@@ -423,7 +430,7 @@ begin
       Exit;
     end;
   end;
-  for mCommand in ModuleCommands do
+  for mCommand in ModuleCommands(nil) do
   begin
     if mCommand.Id = AId then
     begin

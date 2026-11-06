@@ -6,6 +6,9 @@ Server und Claude-Code-Plugin tragen immer dieselbe Version.
 
 ## [Unveröffentlicht]
 
+### Behoben
+- IDE-Start mit Willkommensseite rund 60 s statt wenige Sekunden (06.11.2026, erst mit Release-Paket): Die Karte „Atlas entdecken“ prüfte für jeden Tipp, ob sein Befehl existiert, und baute dafür jedes Mal die ganze Befehlsliste; jeder Befehl fragte dabei für sein Tastenkürzel alle Tasteneinstellungen und Aktionen der IDE ab. Im Branch-Build fehlte `tips.json` neben der BPL, deshalb fiel es dort nicht auf. Jetzt wertet die Palette die Tastenkürzel einmal je Liste aus (`TAtlasIdeKeyMap.AtlasShortCuts`), „Atlas entdecken“ baut die Liste einmal für alle Tipps, und das Ausführen eines Modulbefehls fragt keine Tasten mehr ab. `atlas.log` nennt beim Start die Dauer der langsamen Bereiche der Willkommensseite („Welcome start … ms“), ein Abgleich über 200 ms seine Schritte („Welcome sync …“).
+
 ## [2.0.0-beta.2] - 2026-11-06
 
 ### Behoben
