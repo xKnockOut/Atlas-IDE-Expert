@@ -136,6 +136,12 @@ From `atlas.json` (`tasks`):
   - the IDE's folding chords keep working
   - they follow code changes and take over the IDE bookmarks as soon as the column is drawn
 
+## Regions
+
+- **Regions when a file opens** (Options › Editor): "leave unchanged" (default), "collapse all" or "expand all" `{$REGION}` blocks the first time a file is shown; the region holding the caret stays open
+- **Collapse all regions** / **Expand all regions** in the Atlas menu (Navigation), the editor context menu and the command palette
+- "off (no commands either)" hides the commands as well
+
 ## Scroll bar and overview
 
 - **Overview ruler** at the scroll bar with errors, matches and changes

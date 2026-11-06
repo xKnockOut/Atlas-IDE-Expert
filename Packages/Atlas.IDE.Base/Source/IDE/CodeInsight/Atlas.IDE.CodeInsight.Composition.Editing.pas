@@ -30,6 +30,7 @@ uses
   Atlas.IDE.Editor.Unwrap,
   Atlas.IDE.Editor.ExpressionType,
   Atlas.IDE.Editor.MethodPlacement,
+  Atlas.IDE.Editor.RegionFolds,
   Atlas.IDE.CodeInsight.Composition.Session,
   Atlas.IDE.CodeInsight.Composition.Status;
 
@@ -112,6 +113,8 @@ begin
   TAtlasIdeExpressionType.Install(RunningSession, MessageLines());
   // Methodenrümpfe in Deklarationsreihenfolge (#660): neue Rümpfe an ihre Stelle, Befehl mit Vorschau.
   TAtlasIdeMethodPlacement.Install(RunningSession, MessageLines(), UnopenedPolicy);
+  // Regionen beim Öffnen auf- oder zuklappen (#1814).
+  TAtlasIdeRegionFolds.Install;
 end;
 
 procedure UninstallEditing;
@@ -122,6 +125,7 @@ begin
   TAtlasIdeUnwrap.Uninstall;
   TAtlasIdeExpressionType.Uninstall;
   TAtlasIdeMethodPlacement.Uninstall;
+  TAtlasIdeRegionFolds.Uninstall;
   TAtlasIdeSmartPaste.Uninstall;
   TAtlasIdeWrapSelection.Uninstall;
   TAtlasIdeLinkedEditing.Uninstall;

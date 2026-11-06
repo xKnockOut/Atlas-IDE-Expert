@@ -194,6 +194,8 @@ begin
   begin
     Result.ProjectWarnings := ProjectWarningsOf(mInfo);
   end;
+  // Typen aus den Packages der IDE: unresolved-type und unresolved-identifier schweigen für sie.
+  Result.IdeTypes := ASetup.IdeTypes;
 end;
 
 end.

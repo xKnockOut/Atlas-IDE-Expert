@@ -19,6 +19,7 @@ uses
   Atlas.Common.Projects.Selection,
   Atlas.Common.Lsp.IdeProject,
   Atlas.Common.Lsp.WorkspaceFolders,
+  Atlas.Common.Rules.Contract,
   Shell.Workspace,
   Shell.Composition.Workspaces,
   Shell.Composition.Settings,
@@ -27,6 +28,8 @@ uses
 type
   TShellFoldersIndexFunc = reference to function: ISymbolIndex;
   TShellFoldersIdeProjectFunc = reference to function: TLspIdeProject;
+  /// <summary>Typen der laufenden IDE (atlas/ideTypes); nil ohne Plugin.</summary>
+  TShellFoldersIdeTypesFunc = reference to function: IRuleIdeTypes;
   TShellFoldersSelectionFunc = reference to function: TProjectSelection;
   TShellFoldersAnonymizerFunc = reference to function: ILogAnonymizer;
   TShellFoldersTextFunc = reference to function: string;
@@ -43,6 +46,7 @@ type
     Configuration: TShellConfiguration;
     Index: TShellFoldersIndexFunc;
     IdeProject: TShellFoldersIdeProjectFunc;
+    IdeTypes: TShellFoldersIdeTypesFunc;
     Selection: TShellFoldersSelectionFunc;
     /// <summary>Anonymisierer des Server-Logs (#647); nil ohne.</summary>
     Anonymizer: TShellFoldersAnonymizerFunc;
@@ -275,6 +279,10 @@ begin
   Result.Setup.Scheduler := FScheduler;
   Result.Setup.Deferred := ADeferred;
   Result.Setup.IdeProjects := FServices.IdeProject();
+  if Assigned(FServices.IdeTypes) then
+  begin
+    Result.Setup.IdeTypes := FServices.IdeTypes();
+  end;
   Result.Setup.Origin := AOrigin;
   Result.Setup.Selection := FServices.Selection();
   // Anmeldung am Index-Cache für „Prozesse am Projekt“ (#62).

@@ -10,6 +10,8 @@
 // Fehlalarme aus der Prüfung von Atlas und der RTL: Alias einer Deklaration
 // aus System (tkRecord in System.TypInfo, TList<T>.Add), Zyklus bei Rümpfen
 // nur mit eingebauten Typen und Intrinsics (THashFNV1a32.GetHashValue).
+// lsp-ignore an einem Aufruf, den der Index nicht kennt, bleibt ohne
+// unused-suppression (RenameFile unter Linux).
 
 interface
 
@@ -60,6 +62,8 @@ type
     procedure IndexKeepsBodyReferences;
     [Test]
     procedure RuleIsRegistered;
+    [Test]
+    procedure UnknownCallKeepsSuppression;
     /// <summary>#1220: Tausende Aufrufe einer inline-Routine, deren Unit über eine lange uses-Kette läuft, bleiben
     /// deutlich unter einer Sekunde; die Zyklussuche läuft je Unit nur einmal.</summary>
     [Test]
@@ -239,6 +243,19 @@ begin
 end;
 
 { TInliningRulesTests }
+
+procedure TInliningRulesTests.UnknownCallKeepsSuppression;
+var
+  Found: TArray<TRuleFinding>;
+begin
+  // RenameFile kennt der Index nicht (RTL fehlt): Die Regel kann die Zeile nicht entscheiden, ihr lsp-ignore ist
+  // keine unused-suppression. In einer Zeile mit nur bekannten Namen schon.
+  Found := Findings(Haupt('Werk.Json', '  RenameFile(''a'', ''b''); // lsp-ignore: inline-not-expanded'#10));
+  Assert.AreEqual(0, Integer(Length(Found)), Messages(Found));
+  Found := Findings(Haupt('Werk.Json', '  X := 1; // lsp-ignore: inline-not-expanded'#10));
+  Assert.AreEqual(1, Integer(Length(Found)), Messages(Found));
+  Assert.AreEqual('unused-suppression', Found[0].RuleId);
+end;
 
 procedure TInliningRulesTests.MissingUnitIsReported;
 var
