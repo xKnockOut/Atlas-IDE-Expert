@@ -48,6 +48,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Shell.CrashCases,
   Shell.Composition.FileChanges,
+  Shell.Composition.Folders,
   Shell.Composition.Compile,
   Shell.Composition.DiagnosticsArea,
   Shell.Composition.DocumentEvents,
@@ -98,6 +99,16 @@ begin
   TShellDocumentEvents.Attach(AParts.Documents, mServices);
 end;
 
+/// <summary>Katalog der Typen aus der IDE (atlas/ideTypes) für die Prüfregeln.</summary>
+function IdeTypesOf(AParts: TShellParts): TShellFoldersIdeTypesFunc;
+begin
+  Result :=
+    function: IRuleIdeTypes
+    begin
+      Result := AParts.IdeArea.Ide.Types.Catalog;
+    end;
+end;
+
 class function TShellCoreWiring.CoreServices(AParts: TShellParts): TShellCoreServices;
 begin
   Result := Default(TShellCoreServices);
@@ -135,11 +146,7 @@ begin
     begin
       Result := AParts.IdeArea.Ide.Project;
     end;
-  Result.IdeTypes :=
-    function: IRuleIdeTypes
-    begin
-      Result := AParts.IdeArea.Ide.Types.Catalog;
-    end;
+  Result.IdeTypes := IdeTypesOf(AParts);
   Result.Selection :=
     function: TProjectSelection
     begin

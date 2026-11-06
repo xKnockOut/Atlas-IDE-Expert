@@ -371,7 +371,6 @@ begin
   FSession.InitializeOptions := TLspInitializeOptions.ForLocale(InterfaceLocale);
   FContextsChecked := 0;
   RefreshContexts;
-  SendIdeTypes;
   AcceptNotifications(FSession);
   mProjects := GroupProjects;
   FSession.SetProjects(mProjects);
@@ -384,6 +383,7 @@ begin
     end);
   FProjectsChecked := GetTickCount;
   FSession.Initialize;
+  SendIdeTypes;
   if ADocuments <> nil then
   begin
     FSession.Reopen(ADocuments);
@@ -575,7 +575,8 @@ begin
   try
     mWatch := TStopwatch.StartNew;
     mTypes := TAtlasIdeTypeCollector.Collect(mFailed);
-    FSession.SetIdeTypes(mTypes);
+    // Nach Initialize: Der Server ersetzt mit jeder Meldung den ganzen Stand und prüft offene Dateien neu.
+    FSession.Notify(TAtlasIdeTypes.Method, TAtlasIdeTypes.ToJson(mTypes));
     Diagnose(Format('IDE-Typen: %d, %d ms, RTTI unlesbar: %d', [Length(mTypes), mWatch.ElapsedMilliseconds,
       mFailed]));
   except

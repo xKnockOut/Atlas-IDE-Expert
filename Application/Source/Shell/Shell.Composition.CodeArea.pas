@@ -17,7 +17,6 @@ uses
   Atlas.Common.Projects.MissingUnit,
   Atlas.Common.Lsp.IdeProject,
   Atlas.Common.Lsp.Completion,
-  Atlas.Common.Lsp.Completion.Hooks,
   Atlas.Common.Lsp.Refactorings,
   Shell.Workspace,
   Shell.Composition.Contract,
@@ -47,7 +46,7 @@ type
     MessagesFor: TShellCompilerMessagesFunc;
     IdeProjectFor: TShellCodeIdeProjectFunc;
     /// <summary>Typen aus den Packages der IDE (atlas/ideTypes) für die Vervollständigung.</summary>
-    IdeTypesFor: TCompletionIdeTypesFunc;
+    IdeTypesFor: TShellCompletionIdeTypesFunc;
     VisitWorkspaces: TShellVisitWorkspacesProc;
     Notify: TCompletionNotifyProc;
     Log: TCompletionLogProc;

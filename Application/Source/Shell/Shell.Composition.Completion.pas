@@ -24,6 +24,9 @@ type
   TShellLanguageLevelFunc = reference to function(const AUri: string): string;
   TShellRefactoringContextFunc = reference to function(const AUri: string): TRefactoringContext;
 
+  /// <summary>Typen aus der IDE (atlas/ideTypes); derselbe Typ wie in den Hooks, nur ohne deren Unit.</summary>
+  TShellCompletionIdeTypesFunc = TCompletionIdeTypesFunc;
+
   /// <summary>Was die Vervollständigung von der Komposition braucht.</summary>
   TShellCompletionServices = record
     Documents: IDocumentStore;
