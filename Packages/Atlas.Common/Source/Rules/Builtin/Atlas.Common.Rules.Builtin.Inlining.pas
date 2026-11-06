@@ -31,6 +31,11 @@
 // Für H2456/H2457 zählen eingebaute Typen, Intrinsics und System nicht als
 // Verweis (THashFNV1a32.GetHashValue mit Integer(...) in
 // System.Generics.Defaults).
+//
+// Kennt der Index einen Namen einer Zeile nicht (RTL unter Linux ohne
+// Delphi), kann die Regel dort nicht entscheiden (IRuleLineCertainty): Ein
+// lsp-ignore für sie in dieser Zeile gilt dann nicht als unused-suppression
+// (RenameFile braucht unter Windows Winapi.Windows, H2443).
 
 interface
 
@@ -42,10 +47,12 @@ const
   InlineNotExpandedRuleId = 'inline-not-expanded';
 
 type
-  TInlineNotExpandedRule = class(TInterfacedObject, IRule)
+  TInlineNotExpandedRule = class(TInterfacedObject, IRule, IRuleLineCertainty)
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
+    /// <summary>False, wenn ein Bezeichner in ALine (-1 = in der Datei) sich nicht auflösen lässt.</summary>
+    function Decides(const AContext: TRuleContext; ALine: Integer): Boolean;
   end;
 
 procedure RegisterInliningRules(ARegistry: TRuleRegistry);
@@ -1075,6 +1082,52 @@ begin
     Check.Run;
   finally
     Check.Free;
+  end;
+end;
+
+/// <summary>Bezeichner in ALine (-1 = überall), den AResolver nicht auflösen kann und der kein Intrinsic ist?
+/// </summary>
+function IsUnknownName(AResolver: TNameResolver; const AContext: TRuleContext; const AToken: TPascalToken;
+  ALine: Integer): Boolean;
+begin
+  Result := (AToken.Kind = TPascalTokenKind.Identifier) and ((ALine < 0) or (AToken.StartPos.Line = ALine));
+  Result := Result and not TUnresolvedNames.IsIntrinsic(AToken.Text) and
+    not AResolver.Resolve(AContext.Tree, AContext.RelativePath, AToken.StartPos).Found;
+end;
+
+function TInlineNotExpandedRule.Decides(const AContext: TRuleContext; ALine: Integer): Boolean;
+var
+  mIndex: ISymbolIndex;
+  mResolver: TNameResolver;
+  mToken: TPascalToken;
+begin
+  Result := True;
+  if AContext.Tree = nil then
+  begin
+    Exit;
+  end;
+  mIndex := AContext.Index;
+  if mIndex = nil then
+  begin
+    mIndex := TSymbolIndex.Create;
+  end;
+  mResolver := TNameResolver.Create(mIndex, AContext.EnsureUnit, AContext.TreeUnits);
+  try
+    mResolver.Namespaces := AContext.Namespaces;
+    mResolver.PinTree(AContext.Tree, AContext.RelativePath);
+    try
+      for mToken in AContext.Tree.Tokens do
+      begin
+        if IsUnknownName(mResolver, AContext, mToken, ALine) then
+        begin
+          Exit(False);
+        end;
+      end;
+    finally
+      mResolver.UnpinTree;
+    end;
+  finally
+    mResolver.Free;
   end;
 end;
 

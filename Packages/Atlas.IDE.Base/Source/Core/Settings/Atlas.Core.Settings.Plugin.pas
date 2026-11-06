@@ -711,6 +711,7 @@ type
       write FEditorInsight.ExpressionTypeConstValue;
     property ExpressionTypeKey: Integer read FEditingKeys.ExpressionTypeKey write FEditingKeys.ExpressionTypeKey;
     property MethodPlacement: string read FEditorTyping.MethodPlacement write FEditorTyping.MethodPlacement;
+    property RegionFolds: string read FEditorTyping.RegionFolds write FEditorTyping.RegionFolds;
     property SafeDelete: Boolean read FEditingKeys.SafeDelete write FEditingKeys.SafeDelete;
     property SafeDeleteKey: Integer read FEditingKeys.SafeDeleteKey write FEditingKeys.SafeDeleteKey;
     property NextChangeKey: Integer read FNavigationKeys.NextChangeKey write FNavigationKeys.NextChangeKey;

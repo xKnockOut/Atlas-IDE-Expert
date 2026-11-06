@@ -21,7 +21,7 @@ type
     /// 7 Fenster, 8 Aufrufdiagramm, 9 Auswirkungen, 10/11 Datenfluss.</summary>
     class procedure RunResults(ACommand: Integer); static;
     /// <summary>Editorbefehle (#399): 0 Code-Aktionen, 1/2 Auswahl, 3 Typdefinition, 4/5 qualifizierter Name,
-    /// 6 Methode, 7 Testunit, 10 Erzeugen, 11 Formatieren, 12 Methodenreihenfolge.</summary>
+    /// 6 Methode, 7 Testunit, 10 Erzeugen, 11 Formatieren, 12 Methodenreihenfolge, 13/14 Regionen zu/auf.</summary>
     class procedure RunEditor(ACommand: Integer); static;
     /// <summary>Abschnittssprünge der Editorleiste (#1101): 0 interface, 1 implementation, 2 uses,
     /// 3 initialization, 4 zurück, 5 Methode suchen.</summary>
@@ -49,15 +49,16 @@ uses
   Atlas.IDE.EditorToolbar.Service,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.Editor.MethodPlacement,
+  Atlas.IDE.Editor.RegionFolds,
   Atlas.IDE.Generate.Commands,
   Atlas.IDE.Commands.ShortcutTips;
 
 const
   // Kennungen der Befehlspalette für die Tastenkürzel-Tipps (#600), je Tag der Einträge.
-  EditorIds: array[0..12] of string = ('Atlas.CodeActions', 'Atlas.ExpandSelection', 'Atlas.ShrinkSelection',
+  EditorIds: array[0..14] of string = ('Atlas.CodeActions', 'Atlas.ExpandSelection', 'Atlas.ShrinkSelection',
     'Atlas.TypeDefinition', 'Atlas.CopyQualifiedName', 'Atlas.CopyQualifiedNameParams', 'Atlas.ToggleMethod',
     'Atlas.SwitchTestUnit', '', '', 'Atlas.GenerateMenu', 'Atlas.FormatCode',
-    'Atlas.MethodOrder');
+    'Atlas.MethodOrder', 'Atlas.CollapseRegions', 'Atlas.ExpandRegions');
   ResultsIds: array[0..11] of string = ('Atlas.References', 'Atlas.Implementations', 'Atlas.SymbolSearch',
     'Atlas.Callers', 'Atlas.Calls', 'Atlas.Supertypes', 'Atlas.Subtypes', 'Atlas.ResultsWindow', 'Atlas.CallDiagram',
     'Atlas.Impact', 'Atlas.DataFlowSources', 'Atlas.DataFlowTargets');
@@ -109,6 +110,8 @@ begin
     10: TAtlasIdeGenerate.Show;
     11: TAtlasIdeEditorCommands.FormatCode;
     12: TAtlasGuard.Run(TAtlasFeature.MethodPlacement, TAtlasIdeMethodPlacement.Run);
+    13: TAtlasGuard.Run(TAtlasFeature.RegionFolds, TAtlasIdeRegionFolds.CollapseAll);
+    14: TAtlasGuard.Run(TAtlasFeature.RegionFolds, TAtlasIdeRegionFolds.ExpandAll);
   else
     TAtlasIdeEditorCommands.CopyQualifiedName(True);
   end;

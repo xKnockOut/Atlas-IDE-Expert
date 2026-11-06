@@ -598,6 +598,10 @@ Gleiche Ablage wie die benannten Lesezeichen, `format` 2 mit `kind` (`named`, `q
 | AS18 | `build.onOpen` an, großes Projekt als zuletzt geöffnetes, Langsamer Start ab 1000, IDE neu starten | Meldung aus AS14 nennt „Aktion Bauen beim Öffnen … ms“ unter den längsten Teilen |
 | AS19 | Wie AS14, aber Optionen › Robustheit „Hinweis im Meldungsfenster nach langen Hängern (ab 2 s)“ aus | Kein Eintrag im Meldungsfenster; die Zeile aus AS17 steht trotzdem im Protokoll |
 | AS20 | `safemode.json` einer älteren Fassung mit `"slowStart": true` unter `%LOCALAPPDATA%\Atlas\Session` ablegen, IDE starten | Keine Rückfrage, Atlas startet normal; danach steht `slowStart` nicht mehr in der Datei |
+| AS21 | `set ATLAS_NO_SESSION_MARKER=1`, aus dieser Konsole `bds -r <Profil>` starten, warten bis Atlas geladen ist | Unter `%LOCALAPPDATA%\Atlas\Session` entsteht keine `session-<pid>.json` dieser IDE; im Protokoll steht „Atlas gestartet (…), Stufe Normal, Grund None, ohne Sitzungsmarke (ATLAS_NO_SESSION_MARKER)“ |
+| AS22 | Bei AS21 die IDE im Taskmanager beenden, danach die IDE normal (ohne Variable) starten | Keine Rückfrage „Die letzte Sitzung wurde unerwartet beendet“, Atlas startet normal; `crashCount` in `safemode.json` unverändert |
+| AS23 | Normale IDE wie AS3 im Taskmanager beenden, danach eine IDE mit `ATLAS_NO_SESSION_MARKER=1` starten und wieder schließen, dann normal starten | Die IDE mit Variable startet normal ohne Rückfrage und lässt die Marke der abgestürzten Sitzung liegen; erst der normale Start fragt wie AS3 |
+| AS24 | `ATLAS_NO_SESSION_MARKER=1` und `ATLAS_SAFE_MODE=1` setzen, IDE starten | Wie AS12 (nur Einstellungsseite und Statusfeld), aber ohne Startmarke |
 
 ## Atlas-Änderungen zurücknehmen (#721)
 
@@ -9636,3 +9640,73 @@ Anlass: Zugriffsverletzung 06:31:15 in `Atlas.Core.Diagnostics.MainThread` (Zeil
 | HE4 | Wie HE3, während eine Prüfung oder ein Tracker-Abruf läuft (viele Einträge unterwegs) | Kein Absturz; IDE bleibt bedienbar |
 | HE5 | Nach HE3 die Packages wieder anhaken (laden) | Module melden sich an und arbeiten normal (Willkommensseite aktualisiert sich, Tracker-Vorschau lädt) |
 | HE6 | IDE mehrmals normal beenden, auch mit laufender Prüfung | Kein Absturz beim Beenden; „Atlas entladen“ im Protokoll ohne Fehler im Schritt MainThread |
+## Fehlalarme von vier Prüfregeln (method-without-self, handle-leak, field-not-freed, unused-suppression)
+
+Vorbereitung: Plugin und Server mit diesem Stand gebaut; Testprojekt mit eigener `atlas.json`, darin `"rules": {"method-without-self": "hint"}`. Fenster „Atlas-Prüfung“ offen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| FPR1 | Unit mit `TMelder = class(TNotifierObject, IOTAWizard)` und `function GetIDString: string;` (Rumpf `Result := 'X.Melder';`), uses `ToolsAPI` | Kein `method-without-self` an `GetIDString`, auch ohne ToolsAPI-Quelltext im Index |
+| FPR2 | `TVergleich = class(TInterfacedObject, IComparer<Integer>)` mit `function Compare(const A, B: Integer): Integer;` (Rumpf `Result := A - B;`) | Kein `method-without-self` an `Compare` |
+| FPR3 | `IBasis = interface procedure Zeige; end; IKind = interface(IBasis) end; TZeiger = class(TInterfacedObject, IKind)` mit `Zeige` ohne Self und einer weiteren Methode `Doppelt(A: Integer): Integer` ohne Self | Nur `TZeiger.Doppelt` wird gemeldet, `Zeige` nicht |
+| FPR4 | Funktion `function Darf: Boolean; var Token: THandle; begin Result := OpenProcessToken(GetCurrentProcess, TOKEN_QUERY, Token); if not Result then begin Exit; end; CloseHandle(Token); end;` | Kein `handle-leak` |
+| FPR5 | Wie FPR4, aber `CloseHandle(Token)` nur im Zweig `if not Result then` | `handle-leak` „Token nicht auf jedem Weg mit CloseHandle geschlossen“ bleibt |
+| FPR6 | Klasse mit Feld `FPos: TPos;`, wobei `TPos = Atlas.Text.Lines.TTextPosition` (Alias anderen Namens in einer anderen Unit des Projekts), im Konstruktor `FPos := TPos.Create(1, 2);` | Kein `field-not-freed` an `FPos` |
+| FPR7 | In einer Unit ohne `Winapi.Windows` im uses `RenameFile(A, B); // lsp-ignore: inline-not-expanded`, Datei speichern | Kein Hinweis `unused-suppression`, der Kommentar bleibt beim Speichern stehen; bitte zusätzlich melden, ob ohne den Kommentar `inline-not-expanded` (H2443, Winapi.Windows fehlt) erscheint |
+| FPR8 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TMethodLookupTests`, `TMethodWithoutSelfRuleTests.InterfaceMethodsAreSilent`, `TFlowHandleLeakTests`, `TFreeFieldTypesTests.FollowsAliasesOfOtherUnits`, `TRuleEngineTests.UndecidedLineKeepsSuppression`, `TInliningRulesTests.UnknownCallKeepsSuppression` grün |
+
+## Module unter „Known Packages“ (Meldung vom 05.11.2026)
+
+Nur im eigenen Profil testen (`bds -r <Name>`, Kopie des Standardprofils mit Base und allen Modulen aus einem Ordner), nie im Standardprofil. Registry-Pfade unten für Delphi 13 und die klassische IDE; die 64-Bit-IDE nutzt `Known Packages x64`.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| KPM1 | IDE im Profil starten, alle Module eingetragen; `atlas.log` öffnen | Zeile `Known Packages: 11 Module im Ordner von Base, fehlend: -; abgeschaltet: -; aus anderem Ordner: -; andere bds.exe: n`; kein Hinweis „Atlas-Module fehlen“ |
+| KPM2 | IDE schließen, unter `HKCU\Software\Embarcadero\<Profil>\37.0\Known Packages` die Werte für Debugger und Search löschen, IDE starten | Protokoll `fehlend: Debugger, Search`; Benachrichtigung „Atlas-Module fehlen in der IDE“ (Warnung, Plakette gelb) mit „Die Module Debugger, Search …“ und Knopf „Wieder eintragen“ (**Abnahme**) |
+| KPM3 | Wie KPM2, „Wieder eintragen“ klicken, Registry ansehen, IDE neu starten | Zwei Werte mit Pfad der BPL und Beschreibung „Atlas Debugger“/„Atlas Search“; Hinweis „Atlas-Module wieder eingetragen · Die IDE lädt Debugger, Search beim nächsten Start.“; nach dem Neustart sind beide Module geladen und das Protokoll meldet `fehlend: -` (**Abnahme**) |
+| KPM4 | Wie KPM3, aber vor dem Neustart die IDE normal beenden und die Registry erneut ansehen | Die Werte stehen noch da. Fehlen sie, schreibt die IDE beim Beenden ihre eigene Liste zurück; bitte melden (das wäre die Ursache vom 05.11.) |
+| KPM5 | Ein Modul unter *Komponente › Packages installieren* abwählen (Häkchen weg), IDE neu starten | Protokoll `abgeschaltet: <Modul>`, kein Hinweis |
+| KPM6 | Ein Modul aus einem anderen Ordner eintragen (z. B. `Output\Win32\Release\Bpl`) | Protokoll `aus anderem Ordner: <Modul>`, kein Hinweis |
+| KPM7 | IDE A läuft; zweite IDE B im selben Profil starten, in B ein Modul über *Komponente › Packages installieren › Entfernen* entfernen | In `atlas.log` von A: `Known Packages geändert: entfernt <Modul>; neu -; in dieser IDE 11 Module angemeldet, andere bds.exe: 1` (A hat die Änderung nicht selbst gemacht) |
+| KPM8 | In einer IDE Base neu übersetzen, während Base und Module installiert sind (Projektgruppe Atlas, nur `Atlas.IDE.Base` bauen) | Protokoll zeigt, ob und wann Module aus der Liste fallen (`Known Packages geändert: entfernt …; in dieser IDE n Module angemeldet`); Ergebnis bitte melden (zweiter Verdacht für den 05.11.) |
+| KPM9 | IDE beenden, Protokoll ansehen | Zeile `Known Packages: … (beim Entladen)` mit dem Stand beim Beenden |
+| KPM10 | Oberfläche auf Englisch, KPM2 wiederholen | „Atlas modules missing from the IDE“, „The modules Debugger, Search are no longer listed under "Known Packages" …“, Knopf „Register again“ |
+| KPM11 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasKnownPackagesTests` grün |
+
+## Regionen beim Öffnen auf- oder zuklappen (#1814)
+
+Vorbereitung: Plugin mit diesem Stand gebaut. Unit `Regionen.pas` mit drei Regionen auf oberster Ebene (`{$REGION 'Ereignisse'}`, `{$REGION 'Laden'}`, `{$REGION 'Getter'}`), in „Laden“ eine innere Region `{$REGION 'Intern'}`, eine Region innerhalb eines Methodenrumpfs und eine mit `(*$REGION 'Alt'*)`. Datei vor jedem Test schließen.
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| RF1 | Optionen › Atlas › Editor: „Regionen beim Öffnen:“ steht auf „unverändert lassen“; `Regionen.pas` öffnen | Faltung wie ohne Atlas (alles offen); im Menü Atlas › Navigation stehen „Alle Regionen zuklappen“ und „Alle Regionen aufklappen“ |
+| RF2 | Einstellung „alle zuklappen“, `Regionen.pas` öffnen | Nach kurzer Pause sind alle Regionen zugeklappt, auch die innere „Intern“, die im Methodenrumpf und `(*$REGION*)`; andere Blöcke (Klassen, Methoden) bleiben offen; Schreibmarke und Ausschnitt wie vorher (**Abnahme**) |
+| RF3 | Wie RF2, aber die Datei war vorher mit der Schreibmarke in „Laden“ gespeichert (Desktop merkt sich die Stelle), IDE neu starten | „Laden“ (und eine Region um sie) bleibt offen, die übrigen sind zu; die Marke steht an der gemerkten Stelle |
+| RF4 | Wie RF2, danach „Laden“ von Hand aufklappen, auf einen anderen Reiter und zurück wechseln | „Laden“ bleibt offen: Atlas klappt nur beim ersten Anzeigen nach dem Öffnen |
+| RF5 | Mehrere Dateien mit Regionen im Desktop, Einstellung „alle zuklappen“, IDE neu starten, nacheinander alle Reiter anklicken | Jede Datei ist beim ersten Anklicken zugeklappt |
+| RF6 | Einstellung „alle aufklappen“; Regionen in einer Datei von Hand zuklappen, Datei schließen und wieder öffnen | Alle Regionen offen |
+| RF7 | Schreibmarke in „Intern“, Menü Atlas › Navigation › „Alle Regionen zuklappen“, danach „Alle Regionen aufklappen“; dasselbe über das Kontextmenü (Atlas › Navigation) und die Befehlspalette | Zu: alle Regionen zu, die Marke steht auf der Kopfzeile von „Laden“. Auf: alle offen. Keine anderen Blöcke verändert (**Abnahme**) |
+| RF8 | Einstellung „aus (auch keine Befehle)“ | Menü, Kontextmenü und Palette zeigen die Befehle nicht; beim Öffnen ändert Atlas nichts |
+| RF9 | Oberfläche auf Englisch | „Regions when a file opens:“ mit „leave unchanged“, „collapse all“, „expand all“, „off (no commands either)“; Befehle „Collapse all regions“, „Expand all regions“ |
+| RF10 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TAtlasRegionFoldsTests`, `TAtlasRegionFoldsTextsTests`, `TAtlasEditingSettingsTests.RegionFoldsOptions` grün |
+
+Trifft „nächsten Block zuklappen“ an der Kopfzeile einer Region einen anderen Block als die Region (RF2), bitte melden: Dann braucht Atlas einen anderen Weg.
+
+## Leckmeldungen der Tests (Offene Punkte Cloud, Punkt 4)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| LK1 | `Atlas.Tests` (Win64) vollständig laufen lassen | Alle Tests grün, keine Leckmeldung, `TESTEXIT 0` |
+| LK2 | Nur die Fixtures `TGoldenCorpusTests`, `TLspClientTests`, `TAtlasTimeLimitTests`, `TAtlasLogRedactorTests`, `TAtlasMainThreadTests`, `TIndexCacheDirectoryTests`, `TLspInlineValuesTests`, `TMcpToolsTests`, `TAtlasSettingsPageTests` einzeln laufen lassen (`--run:`) | Keine Leckmeldung, auch wenn die Fixture als erste läuft |
+| LK3 | `ForgetStartsNumberingAgain` | Grün |
+
+## Unit-Aliase im uses (WinTypes, WinProcs)
+
+| Nr. | Schritte | Erwartet |
+|---|---|---|
+| UAL1 | VCL-Projekt ohne eigene Unit-Aliase, in einer Unit `uses WinTypes, WinProcs;` schreiben, speichern | Kein Befund `uses-unit-not-found` („Unit WinTypes nicht gefunden (wie F2613)“) mehr; dcc übersetzt ohne Meldung |
+| UAL2 | In derselben Unit `var R: TRect;` und `MessageBeep(0);` verwenden, Strg+Klick auf `MessageBeep` | Keine Befunde zu unbekannten Bezeichnern; Strg+Klick öffnet `Winapi.Windows.pas`; Hover zeigt die Deklaration |
+| UAL3 | Strg+Klick auf `WinTypes` im uses | `Winapi.Windows.pas` öffnet sich |
+| UAL4 | Unit mit `uses WinTypes;`, aus der nichts verwendet wird | `unused-uses` blendet `WinTypes` ab; mit `TRect` im Code bleibt es normal |
+| UAL5 | In den Projektoptionen unter „Unit-Aliase“ `Alt=System.SysUtils` eintragen, speichern, Projekt neu laden, `uses Alt;` und `IntToStr(1)` schreiben | Kein `uses-unit-not-found`, `IntToStr` löst sich auf; ohne den Eintrag meldet Atlas wie dcc F2613 |
+| UAL6 | `uses DbiTypes;` in einem Projekt ohne BDE | Atlas meldet `uses-unit-not-found` wie dcc (Ziel-Unit BDE fehlt) |

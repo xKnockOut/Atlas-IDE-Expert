@@ -7,7 +7,8 @@
 //   3. Suchpfade des Projekts, dann Bibliotheks- und Quellpfade der Installation
 //
 // In jedem Ordner wird zuerst der Name selbst gesucht, danach mit jedem
-// Unit-Namespace als Präfix (SysUtils → System.SysUtils). Ergebnisse werden
+// Unit-Namespace als Präfix (SysUtils → System.SysUtils), für einen Unit-Alias
+// danach seine Unit (WinTypes → Winapi.Windows). Ergebnisse werden
 // zwischengespeichert; Invalidate leert den Speicher, z. B. nach
 // Dateiänderungen. Die Klasse ist threadsicher.
 //
@@ -20,12 +21,15 @@ interface
 uses
   System.SysUtils,
   System.Generics.Collections,
-  Atlas.Common.Projects.Contract;
+  Atlas.Common.Projects.Contract,
+  Atlas.Common.Projects.UnitAliases;
 
 type
   TUnitResolver = class
   private
     FProject: TProjectInfo;
+    // Unit-Aliase des Projekts samt Vorgaben von Delphi; nach dem Konstruktor nur gelesen.
+    FAliases: TArray<TUnitAlias>;
     FDirectories: TArray<string>;
     FFileExists: TFunc<string, Boolean>;
     FCache: TDictionary<string, string>;
@@ -71,6 +75,7 @@ var
 begin
   inherited Create;
   FProject := AProject;
+  FAliases := TUnitAliases.OfProject(AProject);
   FFileExists := AFileExists;
   FCache := TDictionary<string, string>.Create;
   FLock := TObject.Create;
@@ -106,7 +111,7 @@ end;
 function TUnitResolver.Candidates(const AUnitName: string): TArray<string>;
 var
   Names: TList<string>;
-  Namespace: string;
+  Namespace, mTarget: string;
 begin
   Names := TList<string>.Create;
   try
@@ -114,6 +119,14 @@ begin
     for Namespace in FProject.Namespaces do
     begin
       Names.Add(Namespace + '.' + AUnitName);
+    end;
+    if TUnitAliases.Target(FAliases, AUnitName, mTarget) then
+    begin
+      Names.Add(mTarget);
+      for Namespace in FProject.Namespaces do
+      begin
+        Names.Add(Namespace + '.' + mTarget);
+      end;
     end;
     Result := Names.ToArray;
   finally

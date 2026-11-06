@@ -40,6 +40,8 @@ type
     /// <summary>Aktives Projekt der IDE.</summary>
     ActiveProject: TShellRegistryActiveFunc;
     IdeProject: TShellFoldersIdeProjectFunc;
+    /// <summary>Typen der laufenden IDE (atlas/ideTypes).</summary>
+    IdeTypes: TShellFoldersIdeTypesFunc;
     Selection: TShellFoldersSelectionFunc;
     Anonymizer: TShellFoldersAnonymizerFunc;
     ClientName: TShellFoldersTextFunc;
@@ -198,6 +200,7 @@ begin
   Result.Configuration := FConfiguration;
   Result.Index := FServices.Index;
   Result.IdeProject := FServices.IdeProject;
+  Result.IdeTypes := FServices.IdeTypes;
   Result.Selection := FServices.Selection;
   Result.Anonymizer := FServices.Anonymizer;
   Result.ClientName := FServices.ClientName;

@@ -81,6 +81,10 @@ type
     procedure OffersSymbolsOfUnusedUnitsWithUsesEdit;
     [Test]
     procedure ImportsNeedTwoCharactersAndSkipUsedUnits;
+    /// <summary>Typen der IDE (atlas/ideTypes): aus nicht eingebundener Unit mit uses-Eintrag, aus eingebundener
+    /// ohne; nicht bei einem Zeichen.</summary>
+    [Test]
+    procedure OffersIdeTypesWithUsesEdit;
     [Test]
     procedure MembersCarryContainerDepthAndOverloads;
   end;
@@ -97,7 +101,10 @@ uses
   Atlas.Common.Index.Extractor,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Lsp.CompletionRequest,
-  Atlas.Common.Lsp.Completion.Context;
+  Atlas.Common.Lsp.Completion.Context,
+  Atlas.Common.Lsp.Completion.Lists,
+  Atlas.Common.Lsp.Completion.Values,
+  Atlas.Common.Lsp.IdeTypes;
 
 procedure TLspCompletionTests.Setup;
 begin
@@ -531,6 +538,77 @@ begin
   Assert.AreEqual(#13#10#13#10'uses'#13#10'  Extra;', Items.Items[0].AdditionalEdits[0].NewText);
   Assert.AreEqual(8, Items.Items[0].AdditionalEdits[0].Range.StartPos.Line);
 end;
+/// <summary>Vervollständigung an AMarker mit den Typen ATypes aus der IDE.</summary>
+function IdeItemsAt(const ALookup: TEnumLookup; const AText, AMarker: string;
+  const ATypes: TArray<TIdeTypeEntry>): TCompletionItems;
+var
+  mRequest: TCompletionRequest;
+  mPostfix: TPostfixOptions;
+begin
+  mPostfix := TPostfixOptions.Default;
+  mPostfix.Enabled := False;
+  mRequest := RequestOf(ALookup, PositionOf(AText, AMarker));
+  try
+    mRequest.IdeTypes := ATypes;
+    Result := TCompletionLists.Collect(mRequest, mPostfix, nil);
+  finally
+    mRequest.Free;
+  end;
+end;
+
+/// <summary>Eintrag namens AName in AItems oder ein leerer.</summary>
+function ItemNamed(const AItems: TCompletionItems; const AName: string): TCompletionItem;
+var
+  mItem: TCompletionItem;
+begin
+  Result := Default(TCompletionItem);
+  for mItem in AItems.Items do
+  begin
+    if mItem.Name = AName then
+    begin
+      Exit(mItem);
+    end;
+  end;
+end;
+
+procedure TLspCompletionTests.OffersIdeTypesWithUsesEdit;
+var
+  mTypes: TArray<TIdeTypeEntry>;
+  mText: string;
+  mTree: TSyntaxTree;
+  mItems: TCompletionItems;
+  mGrid: TCompletionItem;
+  mColumn: TCompletionItem;
+begin
+  SetLength(mTypes, 2);
+  mTypes[0].Name := 'TVendorGrid';
+  mTypes[0].UnitName := 'Vendor.Grid';
+  mTypes[1].Name := 'TVendorColumn';
+  mTypes[1].UnitName := 'Werkzeug';
+  mText := WithCode('  TVen');
+  mTree := TPascalParser.Parse(mText);
+  try
+    mItems := IdeItemsAt(LookupOf(FResolver, FIndex, mTree, mText, nil), mText, '  TVen', mTypes);
+    mGrid := ItemNamed(mItems, 'TVendorGrid');
+    mColumn := ItemNamed(mItems, 'TVendorColumn');
+    Assert.AreEqual('Vendor.Grid (uses ergänzen)', mGrid.Detail);
+    Assert.AreEqual(1, Integer(Length(mGrid.AdditionalEdits)));
+    Assert.AreEqual('Werkzeug', mColumn.Detail);
+    Assert.AreEqual(0, Integer(Length(mColumn.AdditionalEdits)));
+  finally
+    mTree.Free;
+  end;
+  mText := WithCode('  T');
+  mTree := TPascalParser.Parse(mText);
+  try
+    mItems := IdeItemsAt(LookupOf(FResolver, FIndex, mTree, mText, nil), mText, '  T', mTypes);
+    Assert.AreEqual('', ItemNamed(mItems, 'TVendorGrid').Name);
+  finally
+    mTree.Free;
+  end;
+  mTypes := nil;
+end;
+
 procedure TLspCompletionTests.ImportsNeedTwoCharactersAndSkipUsedUnits;
 begin
   FIndex.AddUnit(TIndexExtractor.ExtractText('unit Extra;'#10'interface'#10'procedure Berechne;'#10 +
