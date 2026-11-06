@@ -89,17 +89,15 @@ type
   end;
 
   TOverloads = class
-  public const
-    CopyTitle = 'Überladung anlegen (Kopie)';
-    ForwardTitle = 'Überladung anlegen (als Weiterleitung)';
-    DestructorReason = 'Destruktoren überlädt Atlas nicht.';
-    GenericReason = 'Generische Routinen überlädt Atlas nicht.';
-    NoParameterReason = 'Ohne Parameter gibt es keinen, der in der Weiterleitung wegfallen kann.';
-    VarParameterReason = 'Der letzte Parameter %s ist var bzw. out; die Weiterleitung hätte keinen Wert dafür.';
-    ExistsReason = 'Die Überladung %s(%s) gibt es schon.';
-    OverrideNote = 'Die neue Überladung von %s ist nicht virtuell, weil das Original eine Methode des Vorfahren ' +
-      'überschreibt. In den Vorfahr bringt sie „Mitglied in Vorfahr verschieben“.';
   public
+    class function CopyTitle: string; static;
+    class function ForwardTitle: string; static;
+    class function DestructorReason: string; static;
+    class function GenericReason: string; static;
+    class function NoParameterReason: string; static;
+    class function VarParameterReason: string; static;
+    class function ExistsReason: string; static;
+    class function OverrideNote: string; static;
     /// <summary>Routine, auf deren Kopf (Deklaration oder Implementierung) APosition steht.</summary>
     class function Target(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
       out ATarget: TOverloadTarget): Boolean; static;
@@ -124,7 +122,74 @@ uses
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Editing.RoutineParts,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TOverloadsText = (CreateOverloadCopy, CreateOverloadAsForwarding, AtlasDoesNotOverloadDestructors,
+    AtlasDoesNotOverloadGeneric, WithoutParametersThereIsNone, TheLastParameterIsVar, TheOverloadAlreadyExists,
+    TheNewOverloadOfIs);
+
+const
+  cTexts: array[TOverloadsText] of TAtlasText = (
+    (De: 'Überladung anlegen (Kopie)'; En: 'Create overload (copy)'),
+    (De: 'Überladung anlegen (als Weiterleitung)'; En: 'Create overload (as forwarding)'),
+    (De: 'Destruktoren überlädt Atlas nicht.'; En: 'Atlas does not overload destructors.'),
+    (De: 'Generische Routinen überlädt Atlas nicht.'; En: 'Atlas does not overload generic routines.'),
+    (De: 'Ohne Parameter gibt es keinen, der in der Weiterleitung wegfallen kann.';
+     En: 'Without parameters there is none that can be dropped in the forwarding.'),
+    (De: 'Der letzte Parameter %s ist var bzw. out; die Weiterleitung hätte keinen Wert dafür.';
+     En: 'The last parameter %s is var or out; the forwarding would have no value for it.'),
+    (De: 'Die Überladung %s(%s) gibt es schon.'; En: 'The overload %s(%s) already exists.'),
+    (De: 'Die neue Überladung von %s ist nicht virtuell, weil das Original eine Methode des Vorfahren überschreibt. ' +
+      'In den Vorfahr bringt sie „Mitglied in Vorfahr verschieben“.';
+     En: 'The new overload of %s is not virtual because the original overrides a method of the ancestor. “Move ' +
+      'member to ancestor” brings it into the ancestor.'));
+
+{$SCOPEDENUMS OFF}
+
+class function TOverloads.CopyTitle: string;
+begin
+  Result := cTexts[TOverloadsText.CreateOverloadCopy].Text;
+end;
+
+class function TOverloads.ForwardTitle: string;
+begin
+  Result := cTexts[TOverloadsText.CreateOverloadAsForwarding].Text;
+end;
+
+class function TOverloads.DestructorReason: string;
+begin
+  Result := cTexts[TOverloadsText.AtlasDoesNotOverloadDestructors].Text;
+end;
+
+class function TOverloads.GenericReason: string;
+begin
+  Result := cTexts[TOverloadsText.AtlasDoesNotOverloadGeneric].Text;
+end;
+
+class function TOverloads.NoParameterReason: string;
+begin
+  Result := cTexts[TOverloadsText.WithoutParametersThereIsNone].Text;
+end;
+
+class function TOverloads.VarParameterReason: string;
+begin
+  Result := cTexts[TOverloadsText.TheLastParameterIsVar].Text;
+end;
+
+class function TOverloads.ExistsReason: string;
+begin
+  Result := cTexts[TOverloadsText.TheOverloadAlreadyExists].Text;
+end;
+
+class function TOverloads.OverrideNote: string;
+begin
+  Result := cTexts[TOverloadsText.TheNewOverloadOfIs].Text;
+end;
 
 type
   /// <summary>Platzhalter in einer Einfügung, Offsets ab ihrem Anfang.</summary>
@@ -1240,5 +1305,8 @@ begin
   AResult := mWriter.Outcome;
   Result := True;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.Overloads', cTexts);
 
 end.

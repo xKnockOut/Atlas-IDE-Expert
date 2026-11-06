@@ -112,14 +112,46 @@ uses
   Atlas.Common.Rules.Options,
   Atlas.Common.Rules.Builtin.Concurrency.Syntax,
   Atlas.Common.Rules.Builtin.Concurrency.Threads,
-  Atlas.Common.Rules.Builtin.Concurrency.MainThread;
+  Atlas.Common.Rules.Builtin.Concurrency.MainThread,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TConcurrencyText = (VclTitle, VclAccess, WrapQueue, LockTitle, WrapTryFinally, LockNoFinally, PairTitle, StateStuck,
+    NotInFinally, SameFor, GridFrozen, DisplayLocked, SearchHandleOpen, FileOpen, MemoryAllocated, CursorStuck);
+
+const
+  cTexts: array[TConcurrencyText] of TAtlasText = (
+    (De: 'VCL-Zugriff aus einem Thread ohne Synchronize oder Queue';
+     En: 'VCL access from a thread without Synchronize or Queue'),
+    (De: '%s aus einem Thread: VCL-Zugriffe nur über Synchronize oder Queue';
+     En: '%s from a thread: VCL access only via Synchronize or Queue'),
+    (De: 'In TThread.Queue einschließen'; En: 'Wrap in TThread.Queue'),
+    (De: 'Sperre ohne try/finally mit passender Freigabe'; En: 'Lock without try/finally with matching release'),
+    (De: 'In try/finally einschließen'; En: 'Wrap in try/finally'),
+    (De: '%s ohne try/finally mit %s: eine Ausnahme lässt die Sperre gesetzt';
+     En: '%s without try/finally with %s: an exception leaves the lock set'),
+    (De: 'Paarige Aufrufe ohne try/finally'; En: 'Paired calls without try/finally'),
+    (De: 'bleibt der Zustand hängen'; En: 'the state stays stuck'),
+    (De: '%s steht nicht im finally; bei einer Exception %s.'; En: '%s is not in finally; on an exception %s.'),
+    (De: ' Gleiches gilt für %s.'; En: ' The same applies to %s.'),
+    (De: 'bleibt das Grid eingefroren'; En: 'the grid stays frozen'),
+    (De: 'bleibt die Anzeige gesperrt'; En: 'the display stays locked'),
+    (De: 'bleibt das Suchhandle offen'; En: 'the search handle stays open'),
+    (De: 'bleibt die Datei offen'; En: 'the file stays open'),
+    (De: 'bleibt der Speicher belegt'; En: 'the memory stays allocated'),
+    (De: 'bleibt der Mauszeiger stehen'; En: 'the mouse cursor stays as it is'));
+
+{$SCOPEDENUMS OFF}
 
 { TThreadVclAccessRule }
 
 function TThreadVclAccessRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('thread-vcl-access', TRuleSeverity.Warning,
-    'VCL-Zugriff aus einem Thread ohne Synchronize oder Queue');
+    cTexts[TConcurrencyText.VclTitle].Text);
 end;
 
 /// <summary>Erster VCL-Zugriff in ANode außerhalb von Synchronize/Queue, sonst nil.</summary>
@@ -165,11 +197,11 @@ begin
     begin
       Continue;
     end;
-    mMessage := Format('%s aus einem Thread: VCL-Zugriffe nur über Synchronize oder Queue', [mAccess.Name]);
+    mMessage := cTexts[TConcurrencyText.VclAccess].Fmt([mAccess.Name]);
     if mStatement.Kind in [TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement] then
     begin
       AReport.Add(NodeRange(mAccess), mMessage, TRuleConfidence.High,
-        [TRuleFix.Create('In TThread.Queue einschließen', [TRuleEdit.Create(NodeRange(mStatement),
+        [TRuleFix.Create(cTexts[TConcurrencyText.WrapQueue].Text, [TRuleEdit.Create(NodeRange(mStatement),
         'TThread.Queue(nil, procedure begin ' + SourceText(AContext.Text, mStatement) + ' end)')])]);
     end
     else if IsStatementList(mStatement) or (mStatement.ChildCount > 0) then
@@ -283,7 +315,7 @@ end;
 function TLockWithoutFinallyRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('lock-without-finally', TRuleSeverity.Warning,
-    'Sperre ohne try/finally mit passender Freigabe');
+    cTexts[TConcurrencyText.LockTitle].Text);
 end;
 
 class function TLockWithoutFinallyRule.LockPairs(const AOptions: string): TArray<TLockPair>;
@@ -467,7 +499,7 @@ var
     Middle := StringReplace(Middle, #10, #10'  ', [rfReplaceAll]);
     NewText := 'try' + sLineBreak + Indent + '  ' + Middle + sLineBreak + Indent + 'finally' + sLineBreak +
       Indent + '  ' + SourceText(AContext.Text, Release) + ';' + sLineBreak + Indent + 'end';
-    Result := [TRuleFix.Create('In try/finally einschließen', [TRuleEdit.Create(
+    Result := [TRuleFix.Create(cTexts[TConcurrencyText.WrapTryFinally].Text, [TRuleEdit.Create(
       TTextRange.Create(First.StartPos, Release.EndPos), NewText)])];
   end;
 
@@ -565,7 +597,7 @@ var
         Continue;
       end;
       AReport.Add(NameRange(Call.Member),
-        Format('%s ohne try/finally mit %s: eine Ausnahme lässt die Sperre gesetzt', [Call.Method, Release]),
+        cTexts[TConcurrencyText.LockNoFinally].Fmt([Call.Method, Release]),
         TRuleConfidence.High, WrapFix(AList, Index, ReleaseIndex));
     end;
   end;
@@ -588,23 +620,27 @@ end;
 { TPairWithoutFinallyRule }
 
 const
-  // Open, Close, OpenArg, CloseArg, Folge.
-  BuiltinStatePairs: array[0..8, 0..4] of string = (
-    ('DisableControls', 'EnableControls', '-1', '-1', 'bleibt das Grid eingefroren'),
-    ('BeginUpdate', 'EndUpdate', '-1', '-1', 'bleibt die Anzeige gesperrt'),
-    ('FindFirst', 'FindClose', '2', '0', 'bleibt das Suchhandle offen'),
-    ('Reset', 'CloseFile', '0', '0', 'bleibt die Datei offen'),
-    ('Rewrite', 'CloseFile', '0', '0', 'bleibt die Datei offen'),
-    ('Append', 'CloseFile', '0', '0', 'bleibt die Datei offen'),
-    ('GetMem', 'FreeMem', '0', '0', 'bleibt der Speicher belegt'),
-    ('AllocMem', 'FreeMem', '-2', '0', 'bleibt der Speicher belegt'),
-    ('Screen.Cursor :=', 'Screen.Cursor :=', '-1', '-1', 'bleibt der Mauszeiger stehen'));
+  // Open, Close, OpenArg, CloseArg; die Folge steht in BuiltinStateConsequences.
+  BuiltinStatePairs: array[0..8, 0..3] of string = (
+    ('DisableControls', 'EnableControls', '-1', '-1'),
+    ('BeginUpdate', 'EndUpdate', '-1', '-1'),
+    ('FindFirst', 'FindClose', '2', '0'),
+    ('Reset', 'CloseFile', '0', '0'),
+    ('Rewrite', 'CloseFile', '0', '0'),
+    ('Append', 'CloseFile', '0', '0'),
+    ('GetMem', 'FreeMem', '0', '0'),
+    ('AllocMem', 'FreeMem', '-2', '0'),
+    ('Screen.Cursor :=', 'Screen.Cursor :=', '-1', '-1'));
+  BuiltinStateConsequences: array[0..8] of TConcurrencyText = (TConcurrencyText.GridFrozen,
+    TConcurrencyText.DisplayLocked, TConcurrencyText.SearchHandleOpen, TConcurrencyText.FileOpen,
+    TConcurrencyText.FileOpen, TConcurrencyText.FileOpen, TConcurrencyText.MemoryAllocated,
+    TConcurrencyText.MemoryAllocated, TConcurrencyText.CursorStuck);
   AssignSuffix = ':=';
 
 function TPairWithoutFinallyRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('pair-without-finally', TRuleSeverity.Warning,
-    'Paarige Aufrufe ohne try/finally');
+    cTexts[TConcurrencyText.PairTitle].Text);
 end;
 
 class function TPairWithoutFinallyRule.Pairs(const AOptions: string): TArray<TStatePair>;
@@ -621,7 +657,7 @@ begin
     Pair.Close := BuiltinStatePairs[Index, 1];
     Pair.OpenArg := StrToInt(BuiltinStatePairs[Index, 2]);
     Pair.CloseArg := StrToInt(BuiltinStatePairs[Index, 3]);
-    Pair.Consequence := BuiltinStatePairs[Index, 4];
+    Pair.Consequence := cTexts[BuiltinStateConsequences[Index]].Text;
     Result := Result + [Pair];
   end;
   if Trim(AOptions) = '' then
@@ -657,7 +693,7 @@ begin
         begin
           Pair.CloseArg := Number;
         end;
-        Pair.Consequence := 'bleibt der Zustand hängen';
+        Pair.Consequence := cTexts[TConcurrencyText.StateStuck].Text;
         Result := Result + [Pair];
       end;
     end;
@@ -956,7 +992,7 @@ var
     begin
       Closes := Closes + LineBreak + Indent + '  ' + Trim(SourceText(AContext.Text, AList[Index])) + ';';
     end;
-    Result := [TRuleFix.Create('In try/finally einschließen', [TRuleEdit.Create(
+    Result := [TRuleFix.Create(cTexts[TConcurrencyText.WrapTryFinally].Text, [TRuleEdit.Create(
       TTextRange.Create(First.StartPos, AList[ALastClose].EndPos), 'try' + LineBreak + Indent + '  ' + Middle +
       LineBreak + Indent + 'finally' + Closes + LineBreak + Indent + 'end')])];
   end;
@@ -988,11 +1024,11 @@ var
   begin
     GroupBounds(AGroup, ACloses, FirstClose, LastClose, LastOpen, Inner);
     Others := OtherCloses(AGroup, Inner);
-    Message := Format('%s steht nicht im finally; bei einer Exception %s.',
+    Message := cTexts[TConcurrencyText.NotInFinally].Fmt(
       [CloseName(AGroup[Inner].Pair), StatePairs[AGroup[Inner].Pair].Consequence]);
     if Others <> '' then
     begin
-      Message := Message + Format(' Gleiches gilt für %s.', [Others]);
+      Message := Message + cTexts[TConcurrencyText.SameFor].Fmt([Others]);
     end;
     // Korrektur nur, wenn alle Öffnungen vor dem ersten Schließen stehen und die Schließen-Anweisungen
     // verschieden sind und direkt aufeinander folgen.
@@ -1173,5 +1209,8 @@ begin
   ARegistry.Register(TAnonymousThreadNotStartedRule.Create);
   ARegistry.Register(TTaskExceptionUnobservedRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Concurrency', cTexts);
 
 end.

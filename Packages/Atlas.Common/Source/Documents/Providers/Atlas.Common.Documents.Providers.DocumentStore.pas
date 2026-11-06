@@ -47,7 +47,20 @@ type
 implementation
 
 uses
-  Atlas.Common.Documents.TextDocument;
+  Atlas.Common.Documents.TextDocument,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TDocumentStoreText = (DocumentIsNotOpen);
+
+const
+  cTexts: array[TDocumentStoreText] of TAtlasText = (
+    (De: 'Dokument ist nicht geöffnet: %s'; En: 'Document is not open: %s'));
+
+{$SCOPEDENUMS OFF}
 
 { TDocumentStore }
 
@@ -157,7 +170,7 @@ var
 begin
   if not TryGet(AUri, Current) then
   begin
-    raise EDocumentError.CreateFmt('Dokument ist nicht geöffnet: %s', [AUri]);
+    raise EDocumentError.CreateFmt(cTexts[TDocumentStoreText.DocumentIsNotOpen].Text, [AUri]);
   end;
   Key := KeyOf(AUri);
   Result := Current.ApplyChanges(AChanges, AVersion);
@@ -222,5 +235,8 @@ begin
     FLock.Leave;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Documents.Providers.DocumentStore', cTexts);
 
 end.

@@ -59,6 +59,11 @@ type
 function ContextTool(const AContext: TMcpToolContext; ATool: TMcpContextTool): TMcpToolHandler;
 /// <summary>dryRun-Argument; Vorgabe true (#61).</summary>
 function DryRunOf(const AArguments: TJSONObject): Boolean;
+/// <summary>Eingabeschema ASchema mit den Beschreibungen in der Sprache der Texte (#1458): Jedes %s in ASchema steht
+/// für eine Beschreibung und wird der Reihe nach durch ADescriptions als JSON-Text ersetzt, so bleibt der Aufbau
+/// des Schemas für beide Sprachen derselbe. Weniger Beschreibungen als Platzhalter lassen den Rest stehen
+/// (ungültiges JSON, das die Tests der Werkzeuge melden).</summary>
+function SchemaWith(const ASchema: string; const ADescriptions: array of string): string;
 // Als gewöhnliche Funktion, weil sie als TReadText-Rückruf an mehrere Werkzeuge geht.
 function ReadSourceText(const AFileName: string; out AText: string): Boolean;
 /// <summary>Projektdatei ohne Ausnahme auswerten; False, wenn sie nicht lesbar ist.</summary>
@@ -93,6 +98,32 @@ begin
   begin
     Result := True;
   end;
+end;
+
+function SchemaWith(const ASchema: string; const ADescriptions: array of string): string;
+var
+  mRest: string;
+  mIndex, mAt: Integer;
+  mText: TJSONString;
+begin
+  Result := '';
+  mRest := ASchema;
+  for mIndex := 0 to High(ADescriptions) do
+  begin
+    mAt := Pos('%s', mRest);
+    if mAt = 0 then
+    begin
+      Break;
+    end;
+    mText := TJSONString.Create(ADescriptions[mIndex]);
+    try
+      Result := Result + Copy(mRest, 1, mAt - 1) + mText.ToJSON;
+    finally
+      mText.Free;
+    end;
+    mRest := Copy(mRest, mAt + 2, MaxInt);
+  end;
+  Result := Result + mRest;
 end;
 
 // Als gewöhnliche Funktion, weil sie als TReadText-Rückruf an mehrere Werkzeuge geht.

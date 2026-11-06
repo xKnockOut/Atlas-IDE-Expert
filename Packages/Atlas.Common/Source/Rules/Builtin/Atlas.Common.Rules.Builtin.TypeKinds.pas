@@ -64,7 +64,56 @@ uses
   Atlas.Common.Semantics.NameResolver,
   Atlas.Common.Semantics.TypeIdentity,
   Atlas.Common.Semantics.TypeKinds,
-  Atlas.Common.Semantics.UnresolvedNames;
+  Atlas.Common.Semantics.UnresolvedNames,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TTypeKindsText = (NotArray, RemoveCaret, NotPointer, NotStructured, WithNeeds, ObjectAncestor, ClassAncestor,
+    HelperAncestor, RecordHelper, NewCtor, DisposeDtor, PointsTo, TypeOf, Slice, RecordConst, CannotRead, CannotWrite,
+    NotClassMethod, Title);
+
+const
+  cTexts: array[TTypeKindsText] of TAtlasText = (
+    (De: '%s ist %s (%s), kein Array; ein Index ist hier nicht möglich (wie E2016).';
+     En: '%s is %s (%s), not an array; an index is not possible here (like E2016).'),
+    (De: '^ entfernen'; En: 'Remove ^'),
+    (De: '%s ist %s (%s), kein Zeiger; ^ ist hier nicht möglich (wie E2017).';
+     En: '%s is %s (%s), not a pointer; ^ is not possible here (like E2017).'),
+    (De: '%s ist %s (%s), kein Record, keine Klasse und kein object-Typ; .%s ist hier nicht möglich (wie E2018).';
+     En: '%s is %s (%s), not a record, class or object type; .%s is not possible here (like E2018).'),
+    (De: 'with braucht einen Record, eine Klasse oder einen object-Typ; %s ist %s (%s) (wie E2018).';
+     En: 'with needs a record, a class or an object type; %s is %s (%s) (like E2018).'),
+    (De: 'Der Vorfahr eines object-Typs muss ein object-Typ sein; %s ist %s (wie E2019).';
+     En: 'The ancestor of an object type must be an object type; %s is %s (like E2019).'),
+    (De: 'Der Vorfahr einer Klasse muss eine Klasse sein; %s ist %s (wie E2021).';
+     En: 'The ancestor of a class must be a class; %s is %s (like E2021).'),
+    (De: 'Der Vorfahr eines Class-Helpers muss ein Class-Helper sein; %s ist %s (wie E2022).';
+     En: 'The ancestor of a class helper must be a class helper; %s is %s (like E2022).'),
+    (De: 'Ein Record-Helper braucht einen Record oder einfachen Typ; %s ist %s, dafür gibt es class helper (wie ' +
+      'E2474).';
+     En: 'A record helper needs a record or simple type; %s is %s, there is class helper for that (like E2474).'),
+    (De: 'New mit Konstruktor braucht einen Zeiger auf einen Record oder object-Typ';
+     En: 'New with constructor needs a pointer to a record or object type'),
+    (De: 'Dispose mit Destruktor braucht einen Zeiger auf einen object-Typ';
+     En: 'Dispose with destructor needs a pointer to an object type'),
+    (De: '%s; %s zeigt auf %s (wie %s).'; En: '%s; %s points to %s (like %s).'),
+    (De: 'TypeOf braucht einen object-Typ mit VMT; %s ist %s (%s) (wie E2019).';
+     En: 'TypeOf needs an object type with VMT; %s is %s (%s) (like E2019).'),
+    (De: 'Slice ist nur als Argument für einen offenen Array-Parameter möglich (wie E2193).';
+     En: 'Slice is only possible as argument for an open array parameter (like E2193).'),
+    (De: '%s ist ein Record (%s); array of const nimmt keine Records (wie E2150).';
+     En: '%s is a record (%s); array of const takes no records (like E2150).'),
+    (De: '%s kann %s nicht einlesen: %s ist %s (wie E2055).'; En: '%s cannot read %s: %s is %s (like E2055).'),
+    (De: '%s kann %s nicht ausgeben: %s ist %s (wie E2054).'; En: '%s cannot write %s: %s is %s (like E2054).'),
+    (De: '%s ist keine Klassenmethode; %s.%s geht nur in Methoden von %s und seinen Nachfahren (wie E2076).';
+     En: '%s is not a class method; %s.%s works only in methods of %s and its descendants (like E2076).'),
+    (De: 'Ausdruck oder Deklaration hat nicht die geforderte Typart';
+     En: 'Expression or declaration does not have the required type kind'));
+
+{$SCOPEDENUMS OFF}
 
 type
   /// <summary>Ein Prüflauf über einen Baum; hält Namensauflösung und Ziel der Meldungen.</summary>
@@ -501,7 +550,7 @@ begin
   begin
     Exit;
   end;
-  FReport.Add(Range(ANode), Format('%s ist %s (%s), kein Array; ein Index ist hier nicht möglich (wie E2016).',
+  FReport.Add(Range(ANode), cTexts[TTypeKindsText.NotArray].Fmt(
     [NodeText(ANode[0]), TResolvedTypeKinds.Describe(mKind), mType.Name]), TRuleConfidence.High);
 end;
 
@@ -528,9 +577,9 @@ begin
     (ANode.Parent.Kind = TSyntaxKind.MemberAccess) and (ANode.Parent.ChildCount > 0) and
     (ANode.Parent[0] = ANode) then
   begin
-    mFixes := [TRuleFix.Create('^ entfernen', [TTextEdit.Create(Range(ANode), mBase)], True)];
+    mFixes := [TRuleFix.Create(cTexts[TTypeKindsText.RemoveCaret].Text, [TTextEdit.Create(Range(ANode), mBase)], True)];
   end;
-  FReport.Add(Range(ANode), Format('%s ist %s (%s), kein Zeiger; ^ ist hier nicht möglich (wie E2017).',
+  FReport.Add(Range(ANode), cTexts[TTypeKindsText.NotPointer].Fmt(
     [mBase, TResolvedTypeKinds.Describe(mKind), mType.Name]), TRuleConfidence.High, mFixes);
 end;
 
@@ -551,8 +600,8 @@ begin
   begin
     Exit;
   end;
-  FReport.Add(Range(ANode), Format('%s ist %s (%s), kein Record, keine Klasse und kein object-Typ; .%s ist hier ' +
-    'nicht möglich (wie E2018).', [NodeText(ANode[0]), TResolvedTypeKinds.Describe(mKind), mType.Name, ANode.Name]),
+  FReport.Add(Range(ANode), cTexts[TTypeKindsText.NotStructured].Fmt([NodeText(ANode[0]),
+    TResolvedTypeKinds.Describe(mKind), mType.Name, ANode.Name]),
     TRuleConfidence.High);
 end;
 
@@ -572,8 +621,8 @@ begin
     begin
       Continue;
     end;
-    FReport.Add(Range(mElement), Format('with braucht einen Record, eine Klasse oder einen object-Typ; %s ist %s ' +
-      '(%s) (wie E2018).', [NodeText(mElement), TResolvedTypeKinds.Describe(mKind), mType.Name]),
+    FReport.Add(Range(mElement), cTexts[TTypeKindsText.WithNeeds].Fmt([NodeText(mElement),
+      TResolvedTypeKinds.Describe(mKind), mType.Name]),
       TRuleConfidence.High);
   end;
 end;
@@ -595,8 +644,8 @@ begin
   begin
     Exit;
   end;
-  FReport.Add(Range(mRefs[0]), Format('Der Vorfahr eines object-Typs muss ein object-Typ sein; %s ist %s ' +
-    '(wie E2019).', [mRefs[0].Name, TResolvedTypeKinds.Describe(mKind)]), TRuleConfidence.High);
+  FReport.Add(Range(mRefs[0]), cTexts[TTypeKindsText.ObjectAncestor].Fmt([mRefs[0].Name,
+    TResolvedTypeKinds.Describe(mKind)]), TRuleConfidence.High);
 end;
 
 procedure TTypeKindChecker.CheckClassType(ANode: TSyntaxNode);
@@ -616,7 +665,7 @@ begin
   begin
     Exit;
   end;
-  FReport.Add(Range(mRefs[0]), Format('Der Vorfahr einer Klasse muss eine Klasse sein; %s ist %s (wie E2021).',
+  FReport.Add(Range(mRefs[0]), cTexts[TTypeKindsText.ClassAncestor].Fmt(
     [mRefs[0].Name, TResolvedTypeKinds.Describe(mKind)]), TRuleConfidence.High);
 end;
 
@@ -640,8 +689,8 @@ begin
     if mKind in [TResolvedTypeKind.Class_, TResolvedTypeKind.Record_, TResolvedTypeKind.Interface_,
       TResolvedTypeKind.Object_] then
     begin
-      FReport.Add(Range(mRefs[0]), Format('Der Vorfahr eines Class-Helpers muss ein Class-Helper sein; %s ist %s ' +
-        '(wie E2022).', [mRefs[0].Name, TResolvedTypeKinds.Describe(mKind)]), TRuleConfidence.High);
+      FReport.Add(Range(mRefs[0]), cTexts[TTypeKindsText.HelperAncestor].Fmt([mRefs[0].Name,
+        TResolvedTypeKinds.Describe(mKind)]), TRuleConfidence.High);
     end;
   end
   else if SameText(ANode.Name, 'record') then
@@ -649,8 +698,8 @@ begin
     mKind := ReferencedKind(mTarget, mType);
     if mKind in [TResolvedTypeKind.Class_, TResolvedTypeKind.Interface_] then
     begin
-      FReport.Add(Range(mTarget), Format('Ein Record-Helper braucht einen Record oder einfachen Typ; %s ist %s, ' +
-        'dafür gibt es class helper (wie E2474).', [mTarget.Name, TResolvedTypeKinds.Describe(mKind)]),
+      FReport.Add(Range(mTarget), cTexts[TTypeKindsText.RecordHelper].Fmt([mTarget.Name,
+        TResolvedTypeKinds.Describe(mKind)]),
         TRuleConfidence.High);
     end;
   end;
@@ -668,12 +717,12 @@ begin
   end;
   if IsIntrinsic(ANode, 'New') then
   begin
-    mRoutine := 'New mit Konstruktor braucht einen Zeiger auf einen Record oder object-Typ';
+    mRoutine := cTexts[TTypeKindsText.NewCtor].Text;
     mCode := 'E2467';
   end
   else if IsIntrinsic(ANode, 'Dispose') then
   begin
-    mRoutine := 'Dispose mit Destruktor braucht einen Zeiger auf einen object-Typ';
+    mRoutine := cTexts[TTypeKindsText.DisposeDtor].Text;
     mCode := 'E2019';
   end
   else
@@ -690,7 +739,7 @@ begin
   begin
     Exit;
   end;
-  FReport.Add(Range(ANode[1]), Format('%s; %s zeigt auf %s (wie %s).', [mRoutine, NodeText(ANode[1]), mPointee,
+  FReport.Add(Range(ANode[1]), cTexts[TTypeKindsText.PointsTo].Fmt([mRoutine, NodeText(ANode[1]), mPointee,
     mCode]), TRuleConfidence.High);
 end;
 
@@ -704,7 +753,7 @@ begin
   begin
     Exit;
   end;
-  FReport.Add(Range(ANode[1]), Format('TypeOf braucht einen object-Typ mit VMT; %s ist %s (%s) (wie E2019).',
+  FReport.Add(Range(ANode[1]), cTexts[TTypeKindsText.TypeOf].Fmt(
     [NodeText(ANode[1]), TResolvedTypeKinds.Describe(mKind), mType.Name]), TRuleConfidence.High);
 end;
 
@@ -746,7 +795,7 @@ begin
   end;
   if mMisplaced then
   begin
-    FReport.Add(Range(ANode), 'Slice ist nur als Argument für einen offenen Array-Parameter möglich (wie E2193).',
+    FReport.Add(Range(ANode), cTexts[TTypeKindsText.Slice].Text,
       TRuleConfidence.High);
   end;
 end;
@@ -785,7 +834,7 @@ begin
     begin
       Continue;
     end;
-    FReport.Add(Range(mElement), Format('%s ist ein Record (%s); array of const nimmt keine Records (wie E2150).',
+    FReport.Add(Range(mElement), cTexts[TTypeKindsText.RecordConst].Fmt(
       [NodeText(mElement), mType.Name]), TRuleConfidence.High);
   end;
 end;
@@ -830,7 +879,7 @@ begin
   mText := NodeText(AArg);
   if not AWrite then
   begin
-    FReport.Add(Range(AArg), Format('%s kann %s nicht einlesen: %s ist %s (wie E2055).', [ARoutine, mText,
+    FReport.Add(Range(AArg), cTexts[TTypeKindsText.CannotRead].Fmt([ARoutine, mText,
       mType.Name, TResolvedTypeKinds.Describe(mKind)]), TRuleConfidence.High);
     Exit;
   end;
@@ -839,7 +888,7 @@ begin
   begin
     mFixes := [TRuleFix.Create(mText + '.ToString', [TTextEdit.Create(Range(AArg), mText + '.ToString')])];
   end;
-  FReport.Add(Range(AArg), Format('%s kann %s nicht ausgeben: %s ist %s (wie E2054).', [ARoutine, mText,
+  FReport.Add(Range(AArg), cTexts[TTypeKindsText.CannotWrite].Fmt([ARoutine, mText,
     mType.Name, TResolvedTypeKinds.Describe(mKind)]), TRuleConfidence.High, mFixes);
 end;
 
@@ -941,8 +990,8 @@ begin
   // In Methoden der Klasse und ihrer Nachfahren ruft TBasis.Machen die Methode mit Self auf.
   if not InsideOwnClass(ANode, mBaseType) then
   begin
-    FReport.Add(Range(ANode), Format('%s ist keine Klassenmethode; %s.%s geht nur in Methoden von %s und seinen ' +
-      'Nachfahren (wie E2076).', [mMember.Name, ANode[0].Name, ANode.Name, mBaseType.Name]), TRuleConfidence.High);
+    FReport.Add(Range(ANode), cTexts[TTypeKindsText.NotClassMethod].Fmt([mMember.Name, ANode[0].Name, ANode.Name,
+      mBaseType.Name]), TRuleConfidence.High);
   end;
 end;
 
@@ -1014,7 +1063,7 @@ end;
 function TTypeKindRequiredRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(TypeKindRequiredRuleId, TRuleSeverity.Error,
-    'Ausdruck oder Deklaration hat nicht die geforderte Typart');
+    cTexts[TTypeKindsText.Title].Text);
 end;
 
 procedure TTypeKindRequiredRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -1049,5 +1098,8 @@ procedure RegisterTypeKindRules(const ARegistry: TRuleRegistry);
 begin
   ARegistry.Register(TTypeKindRequiredRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.TypeKinds', cTexts);
 
 end.

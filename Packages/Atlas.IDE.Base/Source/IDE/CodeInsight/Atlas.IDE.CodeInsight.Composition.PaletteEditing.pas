@@ -3,7 +3,7 @@
 // Befehle der Palette (#502) zum Bearbeiten im Editor: Sprung zum Gegenstück (#635), Änderungen (#507), Zeilen
 // verschieben (#634), Anweisung vervollständigen (#697), Formatieren (#43), Blockkommentar (#703), neue Zeile
 // (#700), Umschließung entfernen (#657), Ausdruckstyp (#689), Methodenreihenfolge (#660), sicher löschen (#716) und
-// mehrere Einfügemarken (#589). Jeder nur sichtbar, solange seine Einstellung an ist.
+// mehrere Einfügemarken (#589) und Regionen zu-/aufklappen (#1814). Jeder nur sichtbar, solange seine Einstellung an ist.
 
 interface
 
@@ -17,6 +17,7 @@ implementation
 
 uses
   Atlas.UI.Strings,
+  Atlas.UI.Editor.RegionFolds,
   Atlas.Core.Settings.Plugin,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Editor.LineMove,
@@ -32,6 +33,7 @@ uses
   Atlas.IDE.Editor.ExpressionType,
   Atlas.IDE.Editor.MethodPlacement,
   Atlas.IDE.Editor.MultiCursor,
+  Atlas.IDE.Editor.RegionFolds,
   Atlas.IDE.CodeInsight.Composition.Session;
 
 function JumpToMatchVisible: Boolean;
@@ -261,11 +263,36 @@ begin
     Guarded(TAtlasFeature.MultiCursor, MultiCursorBelow), MultiCursorVisible);
 end;
 
+function RegionFoldsVisible: Boolean;
+begin
+  Result := TAtlasIdeRegionFolds.Enabled;
+end;
+
+procedure CollapseRegions;
+begin
+  TAtlasIdeRegionFolds.CollapseAll;
+end;
+
+procedure ExpandRegions;
+begin
+  TAtlasIdeRegionFolds.ExpandAll;
+end;
+
+/// <summary>Alle Regionen zu- bzw. aufklappen (#1814).</summary>
+procedure AddRegionCommands(APalette: TAtlasIdePalette);
+begin
+  APalette.RegisterCommand('Atlas.CollapseRegions', TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.CollapseCommand),
+    '', Guarded(TAtlasFeature.RegionFolds, CollapseRegions), RegionFoldsVisible);
+  APalette.RegisterCommand('Atlas.ExpandRegions', TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.ExpandCommand),
+    '', Guarded(TAtlasFeature.RegionFolds, ExpandRegions), RegionFoldsVisible);
+end;
+
 procedure AddEditingCommands(APalette: TAtlasIdePalette);
 begin
   AddLineCommands(APalette);
   AddCodeCommands(APalette);
   AddMultiCursorCommands(APalette);
+  AddRegionCommands(APalette);
 end;
 
 end.

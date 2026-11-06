@@ -79,7 +79,19 @@ uses
   Atlas.Common.Rules.Catalog,
   Atlas.Common.Rules.CodeActions,
   Atlas.Common.Rules.Builtin.General,
-  Atlas.Common.Editing.CodeActions;
+  Atlas.Common.Editing.CodeActions,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TSlashCompositionText = (NoWorkspace, NoUnit, IsTest);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TSlashCompositionText] of TAtlasText = (
+    (De: 'Datei gehört zu keinem Arbeitsbereich'; En: 'File belongs to no workspace'),
+    (De: 'Die Datei ist keine Unit'; En: 'The file is not a unit'),
+    (De: 'Die Datei ist selbst eine Testunit'; En: 'The file is a test unit itself'));
 
 /// <summary>Schreibt eine resourcestring-Unit (#473) über den Slash-Host AHost. Eigene Routine, damit die Closure
 /// nur AHost einfängt.</summary>
@@ -202,7 +214,7 @@ begin
   ATarget := Default(TSlashTestUnit);
   if not FServices.TestUnitContextFor(AUri, mContext) then
   begin
-    ATarget.Reason := 'Datei gehört zu keinem Arbeitsbereich';
+    ATarget.Reason := cTexts[TSlashCompositionText.NoWorkspace].Text;
     Result := False;
     Exit;
   end;
@@ -211,11 +223,11 @@ begin
   ATarget.TestProgram := mContext.TestProgram;
   if mTarget.UnitName = '' then
   begin
-    ATarget.Reason := 'Die Datei ist keine Unit';
+    ATarget.Reason := cTexts[TSlashCompositionText.NoUnit].Text;
   end
   else if mTarget.IsTest then
   begin
-    ATarget.Reason := 'Die Datei ist selbst eine Testunit';
+    ATarget.Reason := cTexts[TSlashCompositionText.IsTest].Text;
   end
   else if mTarget.CounterpartFile <> '' then
   begin
@@ -305,5 +317,8 @@ begin
     mTree.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Composition.Slash', cTexts);
 
 end.

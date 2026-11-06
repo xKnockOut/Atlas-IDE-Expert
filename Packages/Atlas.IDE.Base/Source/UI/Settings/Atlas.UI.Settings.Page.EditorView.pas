@@ -19,6 +19,7 @@ type
   TAtlasSettingsEditorViewPart = class(TAtlasSettingsPagePart)
   private
     FXmlDocExpand: TAtlasChoiceBox;
+    FNestedRoutines: TAtlasChoiceBox;
     FStickyScrollBlockMinLines: TEdit;
     FMinimapRender: TAtlasChoiceBox;
     FMinimapSide: TAtlasChoiceBox;
@@ -42,6 +43,8 @@ type
     procedure BindMarks; override;
     property StickyScrollBlockMinLines: TEdit read FStickyScrollBlockMinLines;
     property MinimapRender: TAtlasChoiceBox read FMinimapRender;
+    /// <summary>Zum Testen: Färbung lokaler Routinen (#1788).</summary>
+    property NestedRoutines: TAtlasChoiceBox read FNestedRoutines;
     /// <summary>Zum Testen: Editorleiste (#1101).</summary>
     property EditorToolbarItemsEdit: TEdit read FEditorToolbarItems;
     property EditorToolbarPositionBox: TAtlasChoiceBox read FEditorToolbarPosition;
@@ -63,6 +66,7 @@ uses
   Vcl.Controls,
   Atlas.UI.Strings,
   Atlas.Core.Documentation.Contract,
+  Atlas.Core.Editor.RoutineNesting,
   Atlas.Core.Settings.ToolbarItems,
   Atlas.Core.Settings.StatusBarItems;
 
@@ -88,6 +92,12 @@ begin
   BindCheck('PairOwners', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsPairOwners)));
   BindText('PairGuideWidth', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsPairGuideWidth)));
   BindText('PairGuideOpacity', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsPairGuideOpacity)));
+  // Lokale Routinen abheben (#1788): Färbung und Band getrennt.
+  FNestedRoutines := AddChoice(TAtlasStrings.Text(TAtlasTextId.SettingsNestedRoutines),
+    [TAtlasStrings.Text(TAtlasTextId.SettingsNestedRoutinesOuter),
+    TAtlasStrings.Text(TAtlasTextId.SettingsNestedRoutinesDeeper),
+    TAtlasStrings.Text(TAtlasTextId.SettingsNestedRoutinesColor)]);
+  BindCheck('NestedRoutineBand', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsNestedRoutineBand)));
   BindCheck('InactiveDim', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInactiveDim)));
   BindCheck('InlayHints', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayHints)));
   // Typmarken von Inline-Variablen (#453), unabhängig von den Parameternamen.
@@ -96,7 +106,7 @@ begin
   BindCheck('InlayDefineHints', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayDefineHints)));
   // Code hinter Steuerzeichen wie ^C (#862).
   BindCheck('InlayCharHints', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayCharHints)));
-  // Marke „ohne Self“ hinter Methoden, die Self nicht brauchen (#686).
+  // Marke „braucht kein Self“ hinter Methoden, die Self nicht brauchen (#686).
   BindCheck('InlayMethodHints', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsInlayMethodHints)));
   // Beschriftung hinter dem end langer Blöcke (#620).
   BindCheck('BlockEndLabels', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsBlockEndLabels)));
@@ -199,6 +209,7 @@ begin
   FPage.Marks.Bind(FSelectionMatchesMinLength, ['SelectionMatchesMinLength']);
   FPage.Marks.Bind(FSelectionMatchesMaxMatches, ['SelectionMatchesMaxMatches']);
   FPage.Marks.Bind(FXmlDocExpand, ['XmlDocExpand']);
+  FPage.Marks.Bind(FNestedRoutines, ['NestedRoutines']);
 end;
 
 procedure TAtlasSettingsEditorViewPart.Load(const ASettings: TAtlasPluginSettings);
@@ -213,6 +224,7 @@ begin
   FSelectionMatchesMinLength.Text := IntToStr(ASettings.SelectionMatchesMinLength);
   FSelectionMatchesMaxMatches.Text := IntToStr(ASettings.SelectionMatchesMaxMatches);
   FXmlDocExpand.Choice := Ord(TAtlasDocDisplay.ExpandOf(ASettings.XmlDocExpand));
+  FNestedRoutines.Choice := Ord(TAtlasRoutineNesting.StyleOf(ASettings.NestedRoutines));
 end;
 
 procedure TAtlasSettingsEditorViewPart.Save(var ASettings: TAtlasPluginSettings);
@@ -243,6 +255,8 @@ begin
   ASettings.SelectionMatchesMaxMatches := StrToIntDef(FSelectionMatchesMaxMatches.Text,
     ASettings.SelectionMatchesMaxMatches);
   ASettings.XmlDocExpand := TAtlasDocDisplay.ExpandName(TAtlasDocExpand(EnsureRange(FXmlDocExpand.Choice, 0, 2)));
+  ASettings.NestedRoutines := TAtlasRoutineNesting.StyleNames[TAtlasNestedRoutineStyle(EnsureRange(
+    FNestedRoutines.Choice, Ord(Low(TAtlasNestedRoutineStyle)), Ord(High(TAtlasNestedRoutineStyle))))];
 end;
 
 /// <summary>„Leiste anpassen …“ (#1101): Dialog auf den Werten der Seite; übernommen wird erst mit OK der Optionen.

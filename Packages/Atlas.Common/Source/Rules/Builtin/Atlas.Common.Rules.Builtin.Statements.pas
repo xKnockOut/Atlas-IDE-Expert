@@ -69,14 +69,47 @@ uses
   Atlas.Common.Rules.Builtin.Statements.Loops,
   Atlas.Common.Rules.Builtin.Statements.Cases,
   Atlas.Common.Rules.Builtin.Statements.Datasets,
-  Atlas.Common.Rules.Builtin.Statements.Properties;
+  Atlas.Common.Rules.Builtin.Statements.Properties,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TStatementsText = (EmptyTitle, EmptyLoop, EmptyNextLine, RemoveSemicolon, EmptyBlock, DestroyTitle, DestroyDirect,
+    FreeInstead, ComparisonTitle, ComparisonUnused, ComparisonMeant, AssignMeant, ToAssign, ExpressionUnused);
+
+const
+  cTexts: array[TStatementsText] of TAtlasText = (
+    (De: 'Leere Anweisung nach then, do oder else'; En: 'Empty statement after then, do or else'),
+    (De: 'Leere Anweisung nach %s: die Schleife dreht leer.'; En: 'Empty statement after %s: the loop spins empty.'),
+    (De: 'Leere Anweisung nach %s: die nächste Zeile läuft immer.';
+     En: 'Empty statement after %s: the next line always runs.'),
+    (De: 'Semikolon entfernen'; En: 'Remove semicolon'),
+    (De: 'Leerer Block nach %s: hier passiert nichts.'; En: 'Empty block after %s: nothing happens here.'),
+    (De: 'Destroy statt Free aufgerufen'; En: 'Destroy called instead of Free'),
+    (De: 'Destroy direkt aufgerufen; Free prüft vorher auf nil.';
+     En: 'Destroy called directly; Free checks for nil first.'),
+    (De: 'Free statt Destroy'; En: 'Free instead of Destroy'),
+    (De: 'Vergleich statt Zuweisung als Anweisung'; En: 'Comparison instead of assignment as statement'),
+    (De: 'Vergleich als Anweisung (wie E2014); das Ergebnis wird nicht verwendet.';
+     En: 'Comparison as statement (like E2014); the result is not used.'),
+    (De: 'Vergleich als Anweisung (wie E2014); gemeint ist wohl %s.';
+     En: 'Comparison as statement (like E2014); %s is probably meant.'),
+    (De: 'Vergleich als Anweisung (wie E2014); gemeint ist wohl := statt =.';
+     En: 'Comparison as statement (like E2014); := instead of = is probably meant.'),
+    (De: '= durch := ersetzen'; En: 'Replace = with :='),
+    (De: 'Ausdruck als Anweisung (wie E2014); das Ergebnis wird nicht verwendet.';
+     En: 'Expression as statement (like E2014); the result is not used.'));
+
+{$SCOPEDENUMS OFF}
 
 { TEmptyStatementRule }
 
 function TEmptyStatementRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(EmptyStatementRuleId, TRuleSeverity.Warning,
-    'Leere Anweisung nach then, do oder else');
+    cTexts[TStatementsText.EmptyTitle].Text);
 end;
 
 procedure TEmptyStatementRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -101,14 +134,15 @@ var
     mWord := LowerCase(Tokens[AKeyword].Text);
     if AIsLoop then
     begin
-      mMessage := Format('Leere Anweisung nach %s: die Schleife dreht leer.', [mWord]);
+      mMessage := cTexts[TStatementsText.EmptyLoop].Fmt([mWord]);
     end
     else
     begin
-      mMessage := Format('Leere Anweisung nach %s: die nächste Zeile läuft immer.', [mWord]);
+      mMessage := cTexts[TStatementsText.EmptyNextLine].Fmt([mWord]);
     end;
     Report.Add(TTextRange.Create(Tokens[AKeyword].StartPos, Tokens[ANext].EndPos), mMessage, TRuleConfidence.High,
-      [TRuleFix.Create('Semikolon entfernen', [TRuleEdit.Create(TTextRange.Create(Tokens[ANext].StartPos,
+      [TRuleFix.Create(cTexts[TStatementsText.RemoveSemicolon].Text,
+        [TRuleEdit.Create(TTextRange.Create(Tokens[ANext].StartPos,
       Tokens[ANext].EndPos), '')])]);
   end;
 
@@ -128,7 +162,7 @@ var
     if not (mHasComment and AllowCommented) then
     begin
       Report.Add(TTextRange.Create(Tokens[AKeyword].StartPos, Tokens[mIndex - 1].EndPos),
-        Format('Leerer Block nach %s: hier passiert nichts.', [LowerCase(Tokens[AKeyword].Text)]),
+        cTexts[TStatementsText.EmptyBlock].Fmt([LowerCase(Tokens[AKeyword].Text)]),
         TRuleConfidence.High);
     end;
   end;
@@ -284,7 +318,7 @@ end;
 function TDestroyCalledDirectlyRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(DestroyCalledDirectlyRuleId, TRuleSeverity.Warning,
-    'Destroy statt Free aufgerufen');
+    cTexts[TStatementsText.DestroyTitle].Text);
 end;
 
 procedure TDestroyCalledDirectlyRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -343,8 +377,8 @@ var
     if mName >= 0 then
     begin
       mRange := TTextRange.Create(Tokens[mName].StartPos, Tokens[mName].EndPos);
-      AReport.Add(mRange, 'Destroy direkt aufgerufen; Free prüft vorher auf nil.', TRuleConfidence.High,
-        [TRuleFix.Create('Free statt Destroy', [TRuleEdit.Create(mRange, 'Free')], True)]);
+      AReport.Add(mRange, cTexts[TStatementsText.DestroyDirect].Text, TRuleConfidence.High,
+        [TRuleFix.Create(cTexts[TStatementsText.FreeInstead].Text, [TRuleEdit.Create(mRange, 'Free')], True)]);
     end;
   end;
 
@@ -386,7 +420,7 @@ end;
 function TComparisonAsStatementRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create(ComparisonAsStatementRuleId, TRuleSeverity.Error,
-    'Vergleich statt Zuweisung als Anweisung');
+    cTexts[TStatementsText.ComparisonTitle].Text);
 end;
 
 class function TComparisonAsStatementRule.ExpressionOf(AStatement: TSyntaxNode): TSyntaxNode;
@@ -502,7 +536,7 @@ var
     mSuggestion: string;
   begin
     AFixes := nil;
-    Result := 'Vergleich als Anweisung (wie E2014); das Ergebnis wird nicht verwendet.';
+    Result := cTexts[TStatementsText.ComparisonUnused].Text;
     mEquals := AssignmentEquals(AExpression);
     if mEquals < 0 then
     begin
@@ -511,13 +545,14 @@ var
     mSuggestion := Compact(AExpression[0]) + ' := ' + Compact(AExpression[1]);
     if Length(mSuggestion) <= MaxSuggestion then
     begin
-      Result := Format('Vergleich als Anweisung (wie E2014); gemeint ist wohl %s.', [mSuggestion]);
+      Result := cTexts[TStatementsText.ComparisonMeant].Fmt([mSuggestion]);
     end
     else
     begin
-      Result := 'Vergleich als Anweisung (wie E2014); gemeint ist wohl := statt =.';
+      Result := cTexts[TStatementsText.AssignMeant].Text;
     end;
-    AFixes := [TRuleFix.Create('= durch := ersetzen', [TRuleEdit.Create(TTextRange.Create(Tokens[mEquals].StartPos,
+    AFixes := [TRuleFix.Create(cTexts[TStatementsText.ToAssign].Text,
+      [TRuleEdit.Create(TTextRange.Create(Tokens[mEquals].StartPos,
       Tokens[mEquals].EndPos), ':=')], True)];
   end;
 
@@ -533,7 +568,7 @@ var
     end
     else
     begin
-      mMessage := 'Ausdruck als Anweisung (wie E2014); das Ergebnis wird nicht verwendet.';
+      mMessage := cTexts[TStatementsText.ExpressionUnused].Text;
     end;
     AReport.Add(TTextRange.Create(AExpression.StartPos, AExpression.EndPos), mMessage, TRuleConfidence.High, mFixes);
   end;
@@ -591,5 +626,8 @@ begin
   ARegistry.Register(TUntypedPointerRefcountRule.Create);
   ARegistry.Register(TReadonlyPropertyAssignedRule.Create);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Statements', cTexts);
 
 end.

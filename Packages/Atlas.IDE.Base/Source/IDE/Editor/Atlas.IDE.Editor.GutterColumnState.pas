@@ -359,6 +359,8 @@ begin
   if not AOk then
   begin
     FRetryAt := TThread.GetTickCount64 + RetryMs;
+    // Ohne Antwort noch einmal fragen, sonst bliebe die Glühbirne aus, bis die Einfügemarke wandert.
+    FAction.Asked := False;
   end;
   // Inzwischen eine andere Zeile gefragt: Diese Antwort gilt nicht mehr.
   if not SameText(FAction.FileName, AFileName) or (FAction.Line <> ALine) or (FAction.Text <> ALineText) then

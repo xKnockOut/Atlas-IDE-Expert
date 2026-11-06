@@ -105,7 +105,22 @@ uses
   Atlas.Common.Documents.Contract,
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TPublishedMembersText = (DefaultImplicit, Implicit, Events);
+
+const
+  cTexts: array[TPublishedMembersText] of TAtlasText = (
+    (De: 'default %s (implizit)'; En: 'default %s (implicit)'),
+    (De: ' = `%s` (implizit)'; En: ' = `%s` (implicit)'),
+    (De: 'Ereignisse'; En: 'Events'));
+
+{$SCOPEDENUMS OFF}
 
 const
   BooleanTypes: array[0..3] of string = ('Boolean', 'ByteBool', 'WordBool', 'LongBool');
@@ -869,7 +884,7 @@ begin
     TPublishedDefaultKind.Explicit:
       Result := 'default ' + AMember.DefaultValue;
     TPublishedDefaultKind.Implicit:
-      Result := 'default ' + AMember.DefaultValue + ' (implizit)';
+      Result := cTexts[TPublishedMembersText.DefaultImplicit].Fmt([AMember.DefaultValue]);
     TPublishedDefaultKind.NoDefault:
       Result := 'nodefault';
   else
@@ -896,7 +911,7 @@ begin
     TPublishedDefaultKind.Explicit:
       Result := Result + ' = `' + AMember.DefaultValue + '`';
     TPublishedDefaultKind.Implicit:
-      Result := Result + ' = `' + AMember.DefaultValue + '` (implizit)';
+      Result := Result + cTexts[TPublishedMembersText.Implicit].Fmt([AMember.DefaultValue]);
     TPublishedDefaultKind.NoDefault:
       Result := Result + ' · nodefault';
     TPublishedDefaultKind.None: ;
@@ -1004,7 +1019,7 @@ var
 begin
   Compact := Length(AMembers) > CompactLimit;
   Properties := Section('Published-Properties', AMembers, False, Compact);
-  Events := Section('Ereignisse', AMembers, True, Compact);
+  Events := Section(cTexts[TPublishedMembersText.Events].Text, AMembers, True, Compact);
   Result := '';
   if ADefaultProperty <> '' then
   begin
@@ -1070,5 +1085,8 @@ begin
   end;
   AddText(Result, 'defaultProperty', ADefaultProperty);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.PublishedMembers', cTexts);
 
 end.

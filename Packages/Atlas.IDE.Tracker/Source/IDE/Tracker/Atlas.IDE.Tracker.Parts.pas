@@ -479,7 +479,7 @@ end;
 procedure CreateIssue;
 begin
   // Läuft in „Issue anlegen“ der Willkommensseite, daher deren Sicherung.
-  TAtlasGuard.Run(TAtlasFeature.WelcomePage, CreateIssueNow);
+  TAtlasGuard.Run(TAtlasFeature.Tracker, CreateIssueNow);
 end;
 
 function CreateIssueVisible: Boolean;

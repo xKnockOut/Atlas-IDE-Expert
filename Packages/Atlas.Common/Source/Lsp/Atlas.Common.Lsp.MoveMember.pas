@@ -87,7 +87,40 @@ uses
   Atlas.Common.Lsp.Contract,
   Atlas.Common.Lsp.Positions,
   Atlas.Common.Lsp.MoveClass,
-  Atlas.Common.Lsp.WorkspaceChanges;
+  Atlas.Common.Lsp.WorkspaceChanges,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLspMoveMemberText = (DirectionUpOrDownMissing, HasNoAncestorInThe, HasNoDescendantsInThe, CannotBeRead,
+    IsOnlyInTheImplementation, ComesFromWhichWouldHave, IsNoLongerReadableAfter, AfterTheChangeNoLonger,
+    PleaseChooseATargetThat, RequestWithMembersAndTargets, MoveMember, MoveToAncestor, MoveToDescendants,
+    MembersFiles, MoveMember2);
+
+const
+  cTexts: array[TLspMoveMemberText] of TAtlasText = (
+    (De: 'Richtung "up" oder "down" fehlt'; En: 'Direction "up" or "down" missing'),
+    (De: '%s hat keinen Vorfahren im Projekt.'; En: '%s has no ancestor in the project.'),
+    (De: '%s hat keine Nachfahren im Projekt.'; En: '%s has no descendants in the project.'),
+    (De: '%s lässt sich nicht lesen.'; En: '%s cannot be read.'),
+    (De: '%s steht nur im implementation-Teil von %s und ist in %s nicht sichtbar.';
+     En: '%s is only in the implementation part of %s and is not visible in %s.'),
+    (De: '%s stammt aus %s, die %s im interface einbinden müsste (Kreisverweis).';
+     En: '%s comes from %s, which would have to use %s in the interface (circular reference).'),
+    (De: '%s ist nach dem Umbau nicht mehr lesbar.'; En: '%s is no longer readable after the change.'),
+    (De: 'Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s).';
+     En: 'After the change %s no longer parses without errors (line %d: %s).'),
+    (De: 'Bitte ein Ziel wählen, das im Projekt liegt.'; En: 'Please choose a target that lies in the project.'),
+    (De: 'Anfrage mit members und targets fehlt'; En: 'Request with members and targets missing'),
+    (De: 'Mitglied verschieben: '; En: 'Move member: '),
+    (De: '„%s“ in Vorfahr verschieben …'; En: 'Move “%s” to ancestor …'),
+    (De: '„%s“ in Nachfahren verschieben …'; En: 'Move “%s” to descendants …'),
+    (De: '%d Mitglieder, %d Dateien'; En: '%d members, %d files'),
+    (De: 'Mitglied verschieben'; En: 'Move member'));
+
+{$SCOPEDENUMS OFF}
 
 type
   /// <summary>Klasse des Projekts mit Unit und Vorfahr.</summary>
@@ -103,7 +136,7 @@ const
 
 function Failed(const AMessage: string): EJsonRpcError;
 begin
-  Result := EJsonRpcError.Create(TLspErrorCode.RequestFailed, 'Mitglied verschieben: ' + AMessage);
+  Result := EJsonRpcError.Create(TLspErrorCode.RequestFailed, cTexts[TLspMoveMemberText.MoveMember].Text + AMessage);
 end;
 
 function PlainName(const AName: string): string;
@@ -127,7 +160,8 @@ begin
   end
   else
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Richtung "up" oder "down" fehlt');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TLspMoveMemberText.DirectionUpOrDownMissing].Text);
   end;
 end;
 
@@ -314,12 +348,12 @@ begin
   end;
   if FindClass(ATree, AText, AFileName, AIndex, Found.Ancestor, Hit) then
   begin
-    Result := Result + [Action(Format('„%s“ in Vorfahr verschieben …', [Found.SelectedName]), AUri, APosition,
+    Result := Result + [Action(cTexts[TLspMoveMemberText.MoveToAncestor].Fmt([Found.SelectedName]), AUri, APosition,
       'up')];
   end;
   if DirectDescendants(ATree, AText, AFileName, AIndex, Found.ClassName) <> nil then
   begin
-    Result := Result + [Action(Format('„%s“ in Nachfahren verschieben …', [Found.SelectedName]), AUri, APosition,
+    Result := Result + [Action(cTexts[TLspMoveMemberText.MoveToDescendants].Fmt([Found.SelectedName]), AUri, APosition,
       'down')];
   end;
 end;
@@ -407,11 +441,11 @@ begin
   Hits := TargetHits(ATree, AText, AFileName, AContext.Index, Found, Up);
   if (Hits = nil) and Up then
   begin
-    raise Failed(Format('%s hat keinen Vorfahren im Projekt.', [Found.ClassName]));
+    raise Failed(cTexts[TLspMoveMemberText.HasNoAncestorInThe].Fmt([Found.ClassName]));
   end;
   if Hits = nil then
   begin
-    raise Failed(Format('%s hat keine Nachfahren im Projekt.', [Found.ClassName]));
+    raise Failed(cTexts[TLspMoveMemberText.HasNoDescendantsInThe].Fmt([Found.ClassName]));
   end;
   Result := TJSONObject.Create;
   Result.AddPair('className', Found.ClassName);
@@ -471,7 +505,7 @@ function ReadFile(const AContext: TMoveMemberContext; const AFileName: string): 
 begin
   if not (Assigned(AContext.ReadText) and AContext.ReadText(AFileName, Result)) then
   begin
-    raise Failed(Format('%s lässt sich nicht lesen.', [ExtractFileName(AFileName)]));
+    raise Failed(cTexts[TLspMoveMemberText.CannotBeRead].Fmt([ExtractFileName(AFileName)]));
   end;
 end;
 
@@ -648,8 +682,7 @@ procedure TUsesScan.NoteSourceUnit(const ADisplay: string; ALine: Integer; ADecl
 begin
   if (FImplementationLine >= 0) and (ALine > FImplementationLine) then
   begin
-    raise Failed(Format('%s steht nur im implementation-Teil von %s und ist in %s nicht sichtbar.',
-      [ADisplay, FSourceUnit, FTargetUnit]));
+    raise Failed(cTexts[TLspMoveMemberText.IsOnlyInTheImplementation].Fmt([ADisplay, FSourceUnit, FTargetUnit]));
   end;
   // Nachfahren binden die Quelle ohnehin ein.
   if not FUp then
@@ -658,8 +691,7 @@ begin
   end;
   if ADeclaration and FInInterface then
   begin
-    raise Failed(Format('%s stammt aus %s, die %s im interface einbinden müsste (Kreisverweis).',
-      [ADisplay, FSourceUnit, FTargetUnit]));
+    raise Failed(cTexts[TLspMoveMemberText.ComesFromWhichWouldHave].Fmt([ADisplay, FSourceUnit, FTargetUnit]));
   end;
   AddOnce(ImplementationUnits, FSourceUnit);
 end;
@@ -772,7 +804,7 @@ begin
   Target := TMemberTransfer.ParseLayout(Text, ATarget.ClassName, TargetTree);
   if Target = nil then
   begin
-    raise Failed(Format('%s ist nach dem Umbau nicht mehr lesbar.', [ATarget.ClassName]));
+    raise Failed(cTexts[TLspMoveMemberText.IsNoLongerReadableAfter].Fmt([ATarget.ClassName]));
   end;
   try
     AScan.Scan(ASource, Target, TUsesClauses.OwnName(TargetTree.Tokens), AIds, ABodyIds);
@@ -821,8 +853,8 @@ begin
   try
     if Length(Check.Diagnostics) > Length(Before.Diagnostics) then
     begin
-      raise Failed(Format('Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s).',
-        [ExtractFileName(AFileName), Check.Diagnostics[0].StartPos.Line + 1, Check.Diagnostics[0].Message]));
+      raise Failed(cTexts[TLspMoveMemberText.AfterTheChangeNoLonger].Fmt([ExtractFileName(AFileName),
+        Check.Diagnostics[0].StartPos.Line + 1, Check.Diagnostics[0].Message]));
     end;
   finally
     Check.Free;
@@ -917,7 +949,7 @@ begin
   end;
   if FTargets = nil then
   begin
-    raise Failed('Bitte ein Ziel wählen, das im Projekt liegt.');
+    raise Failed(cTexts[TLspMoveMemberText.PleaseChooseATargetThat].Text);
   end;
 end;
 
@@ -1061,10 +1093,11 @@ begin
         mChanges.Add(mFileName, TTextChanges.Diff(FFiles.Original(mFileName), FFiles.Text(mFileName)));
       end;
     end;
-    mDescription := Format('%d Mitglieder, %d Dateien', [Length(FPlan.Moved) + Length(FPlan.Abstracts),
+    mDescription := cTexts[TLspMoveMemberText.MembersFiles].Fmt([Length(FPlan.Moved) + Length(FPlan.Abstracts),
       mChanges.FileCount]);
     Result := TJSONObject.Create;
-    Result.AddPair('edit', mChanges.ToJson(TLspMoveMember.AnnotationId, 'Mitglied verschieben', mDescription));
+    Result.AddPair('edit', mChanges.ToJson(TLspMoveMember.AnnotationId, cTexts[TLspMoveMemberText.MoveMember2].Text,
+      mDescription));
     Result.AddPair('warnings', mChanges.WarningsJson);
     Result.AddPair('file', TDocumentUris.FromPath(FTargets[0].FileName));
     Result.AddPair('line', TJSONNumber.Create(ClassLine(FFiles.Text(FTargets[0].FileName), FTargets[0].ClassName)));
@@ -1081,7 +1114,8 @@ var
 begin
   if not (FContext.Request is TJSONObject) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Anfrage mit members und targets fehlt');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TLspMoveMemberText.RequestWithMembersAndTargets].Text);
   end;
   mBody := TJSONObject(FContext.Request);
   FUp := IsUp(FContext.Direction);
@@ -1118,5 +1152,8 @@ begin
     mRun.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.MoveMember', cTexts);
 
 end.

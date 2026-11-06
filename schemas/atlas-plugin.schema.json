@@ -608,6 +608,33 @@
       "x-captionEn": "Colour statements",
       "x-issue": "#653"
     },
+    "NestedRoutines": {
+      "type": "string",
+      "enum": [
+        "outer",
+        "deeper",
+        "color"
+      ],
+      "default": "deeper",
+      "description": "Lokale Routinen in Paarfarben, Blocklinien und mitlaufendem Kopf: outer = wie die äußere Routine, deeper = eine Stufe tiefer, color = eigene Farbe (highlight.nestedRoutineColorLight/Dark) mit gestrichelter Blocklinie.",
+      "x-key": "highlight.nestedRoutines",
+      "x-area": "highlighting",
+      "x-feature": "Pairs",
+      "x-page": "Editor",
+      "x-parent": "highlight.pairColors",
+      "x-issue": "#1788"
+    },
+    "NestedRoutineBand": {
+      "type": "boolean",
+      "default": false,
+      "description": "Zeilen lokaler Routinen vom Kopf bis zum end schwach in ihrer Farbe hinterlegen.",
+      "x-key": "highlight.nestedRoutineBand",
+      "x-area": "highlighting",
+      "x-feature": "Pairs",
+      "x-page": "Editor",
+      "x-parent": "highlight.pairColors",
+      "x-issue": "#1788"
+    },
     "InactiveDim": {
       "type": "boolean",
       "default": true,
@@ -733,8 +760,8 @@
       "x-page": "Editor",
       "x-quickToggle": true,
       "x-drawing": true,
-      "x-caption": "Marke „ohne Self“",
-      "x-captionEn": "“no Self” marker",
+      "x-caption": "Marke „braucht kein Self“",
+      "x-captionEn": "“Self unused” marker",
       "x-issue": "#686"
     },
     "BlockEndLabels": {
@@ -2468,6 +2495,28 @@
       "x-page": "Farben",
       "x-parent": "highlight.pairColors",
       "x-node": ""
+    },
+    "NestedRoutineColorLight": {
+      "type": "string",
+      "default": "",
+      "description": "Eigene Farbe lokaler Routinen im hellen Schema (#RRGGBB); leer = Vorgabe der Palette.",
+      "x-key": "highlight.nestedRoutineColorLight",
+      "x-area": "highlighting",
+      "x-page": "Farben",
+      "x-parent": "highlight.pairColors",
+      "x-node": "",
+      "x-issue": "#1788"
+    },
+    "NestedRoutineColorDark": {
+      "type": "string",
+      "default": "",
+      "description": "Eigene Farbe lokaler Routinen im dunklen Schema (#RRGGBB); leer = Vorgabe der Palette.",
+      "x-key": "highlight.nestedRoutineColorDark",
+      "x-area": "highlighting",
+      "x-page": "Farben",
+      "x-parent": "highlight.pairColors",
+      "x-node": "",
+      "x-issue": "#1788"
     },
     "ProblemsStatusCounter": {
       "type": "boolean",
@@ -5169,6 +5218,26 @@
       "x-caption": "Methodenrümpfe ordnen",
       "x-captionEn": "Order method bodies",
       "x-issue": "#660"
+    },
+    "RegionFolds": {
+      "description": "Regionen ({$REGION} … {$ENDREGION}) beim Öffnen einer Pascal-Datei (#1814): keep lässt die Faltung, wie die IDE sie zeigt, collapse klappt alle Regionen zu, expand alle auf. Die Region mit der Schreibmarke bleibt beim Zuklappen offen. Die Befehle „Alle Regionen zuklappen“ und „Alle Regionen aufklappen“ (Menü Atlas, Kontextmenü, Befehlspalette) gibt es außer bei off immer.",
+      "type": "string",
+      "enum": [
+        "keep",
+        "collapse",
+        "expand",
+        "off"
+      ],
+      "default": "keep",
+      "x-key": "editor.regionFolds",
+      "x-area": "editor",
+      "x-feature": "RegionFolds",
+      "x-page": "Editor",
+      "x-offValue": "off",
+      "x-control": "Auswahl",
+      "x-caption": "Regionen beim Öffnen",
+      "x-captionEn": "Regions when a file opens",
+      "x-issue": "#1814"
     },
     "NextChangeKey": {
       "description": "Tastenkürzel „Nächste Änderung“: springt reihum zum nächsten Block mit Änderungsmarke (0 = keins).",

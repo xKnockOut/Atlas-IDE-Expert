@@ -42,6 +42,7 @@ uses
   Atlas.IDE.Foundation.StructureSwitch,
   Atlas.IDE.Commands.Editor,
   Atlas.IDE.Undo.Changes,
+  Atlas.IDE.Diagnostics.KnownPackages,
   Atlas.IDE.Editor.ExitPoints,
   Atlas.IDE.Editor.Reassigned,
   Atlas.IDE.CodeInsight.Composition.Session,
@@ -104,6 +105,9 @@ begin
   // Hinweis „Prüfregeln sind aus“ (#1454): je atlas.json mit Regeln einmal, solange das Modul aus ist.
   Features.Add('RuleChecksNotice', TAtlasSafeLevel.Normal, RuleChecksNoticeStarted, StartRuleChecksNotice,
     StopRuleChecksNotice);
+  // Module unter „Known Packages“ (Meldung vom 05.11.2026): auch abgesichert, liest nur die Registry; meldet
+  // fehlende Module und protokolliert Änderungen der Liste.
+  Features.Add('KnownPackages', TAtlasSafeLevel.Safe, KnownPackagesStarted, StartKnownPackages, StopKnownPackages);
 end;
 
 /// <summary>Einrichtung (#625): auch abgesichert, sie fragt den Server nie selbst und startet ihn nur auf

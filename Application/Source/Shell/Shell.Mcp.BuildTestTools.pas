@@ -34,7 +34,67 @@ uses
   Atlas.Common.Index.Adapters.CacheDirectory,
   Atlas.Common.Projects.Contract,
   Shell.Platform,
-  Shell.Mcp.Ide;
+  Shell.Mcp.Ide,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TMcpBuildTestText = (GetLastBuildTool, GetLastBuildProject, BuildProjectTool, BuildProjectProject, BuildProjectMode,
+    BuildProjectConfiguration, BuildProjectPlatform, RunTestsTool, RunTestsProject, RunTestsTests, RunTestsBuild,
+    RunTestsConfiguration, RunTestsPlatform, RunTestsTimeoutSeconds, ProjectUnreadable, BuildFailed, TimedOut,
+    ExeMissing);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TMcpBuildTestText] of TAtlasText = (
+    (De: 'Ergebnis des letzten Builds, den der Benutzer in der IDE gestartet hat: Erfolg, Art, Zeitpunkt, Dauer, ' +
+    'Projekt, Konfiguration, Plattform und alle Compilermeldungen mit Datei, Zeile, Spalte, Code und Text.';
+    En: 'Result of the last build the user started in the IDE: success, kind, time, duration, project, ' +
+    'configuration, platform and all compiler messages with file, line, column, code and text.'),
+    (De: 'Projekt (Name oder .dproj) zum Filtern; leer = letzter Build';
+    En: 'Project (name or .dproj) to filter by; empty = last build'),
+    (De: 'Baut ein Projekt in der laufenden RAD-Studio-IDE über das Atlas-Plugin (#261), auch ohne ' +
+    'Kommandozeilen-Compiler (Starter Edition), und liefert Ergebnis und alle Compilermeldungen wie ' +
+    'get_last_build. Das Projekt muss in der IDE offen sein; ohne project baut es das aktive Projekt, wenn ' +
+    'es unter dem Arbeitsordner liegt. Wartet bis zum Ende des Builds.';
+    En: 'Builds a project in the running RAD Studio IDE through the Atlas plugin (#261), also without a ' +
+    'command-line compiler (Starter Edition), and returns the result and all compiler messages like ' +
+    'get_last_build. The project must be open in the IDE; without project it builds the active project if it ' +
+    'lies below the working folder. Waits until the build has finished.'),
+    (De: 'Projekt (.dproj mit Pfad, Dateiname oder Name); leer = aktives Projekt der IDE';
+    En: 'Project (.dproj with path, file name or name); empty = active project of the IDE'),
+    (De: 'make: geänderte Units, build: alles neu, check: nur Syntax';
+    En: 'make: changed units, build: everything, check: syntax only'),
+    (De: 'z. B. Debug oder Release; leer = aktive Konfiguration';
+    En: 'e.g. Debug or Release; empty = active configuration'),
+    (De: 'z. B. Win32 oder Win64; leer = aktive Plattform'; En: 'e.g. Win32 or Win64; empty = active platform'),
+    (De: 'Führt die DUnitX-Tests eines Testprojekts aus (#69) und liefert bestandene, fehlgeschlagene und ' +
+    'übersprungene Tests; jeder fehlgeschlagene Test mit Meldung, erwartetem und tatsächlichem Wert, Datei ' +
+    'und Zeile. Startet die vorhandene Test-EXE ohne Compiler; mit build: true baut es das Projekt vorher in ' +
+    'der laufenden IDE wie build_project. Die Plattform kommt aus dem Testprojekt (ein Projekt nur für Win64 ' +
+    'läuft als Win64). Das Testprogramm braucht den XML-Logger von DUnitX (Vorlage von RAD Studio).';
+    En: 'Runs the DUnitX tests of a test project (#69) and returns passed, failed and skipped tests; each failed ' +
+    'test with message, expected and actual value, file and line. Starts the existing test EXE without a ' +
+    'compiler; with build: true it first builds the project in the running IDE like build_project. The ' +
+    'platform comes from the test project (a project only for Win64 runs as Win64). The test program needs ' +
+    'the XML logger of DUnitX (RAD Studio template).'),
+    (De: 'Testprojekt (.dproj mit Pfad, Dateiname oder Name); leer = das einzige DUnitX-Projekt unter dem ' +
+    'Arbeitsordner';
+    En: 'Test project (.dproj with path, file name or name); empty = the only DUnitX project below the working ' +
+    'folder'),
+    (De: 'Nur diese Tests: Unit.Fixture oder Unit.Fixture.Methode; leer = alle';
+    En: 'Only these tests: Unit.Fixture or Unit.Fixture.Method; empty = all'),
+    (De: 'Vorher in der IDE bauen (make)'; En: 'Build in the IDE first (make)'),
+    (De: 'z. B. Debug; leer = Vorgabe des Projekts'; En: 'e.g. Debug; empty = project default'),
+    (De: 'z. B. Win64; leer = Vorgabe des Projekts, sonst die erste aktivierte Plattform';
+    En: 'e.g. Win64; empty = project default, otherwise the first enabled platform'),
+    (De: 'Zeitlimit des Testlaufs in Sekunden (höchstens 3600)';
+    En: 'Time limit of the test run in seconds (at most 3600)'),
+    (De: 'Projektdatei nicht lesbar: %s'; En: 'Project file not readable: %s'),
+    (De: 'Build fehlgeschlagen; Tests nicht ausgeführt.'; En: 'Build failed; tests not run.'),
+    (De: 'Testlauf nach %d s abgebrochen (timeoutSeconds).'; En: 'Test run aborted after %d s (timeoutSeconds).'),
+    (De: 'Test-EXE fehlt: %s. Mit "build": true bauen oder das Projekt in der IDE für %s/%s bauen.';
+    En: 'Test EXE missing: %s. Build with "build": true or build the project in the IDE for %s/%s.'));
 
 function ReadSourceLines(const AFileName: string; out ALines: TArray<string>): Boolean;
 var
@@ -128,10 +188,9 @@ end;
 
 procedure AddGetLastBuild(const AContext: TMcpToolContext);
 begin
-  AContext.Server.AddTool('get_last_build',
-    'Ergebnis des letzten Builds, den der Benutzer in der IDE gestartet hat: Erfolg, Art, Zeitpunkt, Dauer, ' +
-    'Projekt, Konfiguration, Plattform und alle Compilermeldungen mit Datei, Zeile, Spalte, Code und Text.',
-    TMcpServer.StringSchema(['project'], ['Projekt (Name oder .dproj) zum Filtern; leer = letzter Build'], 0),
+  AContext.Server.AddTool('get_last_build', cTexts[TMcpBuildTestText.GetLastBuildTool].Text,
+    TMcpServer.StringSchema(['project'],
+      [cTexts[TMcpBuildTestText.GetLastBuildProject].Text], 0),
     ContextTool(AContext, ToolGetLastBuild));
 end;
 
@@ -144,18 +203,16 @@ end;
 
 procedure AddBuildProject(const AContext: TMcpToolContext);
 begin
-  AContext.Server.AddTool('build_project',
-    'Baut ein Projekt in der laufenden RAD-Studio-IDE über das Atlas-Plugin (#261), auch ohne ' +
-    'Kommandozeilen-Compiler (Starter Edition), und liefert Ergebnis und alle Compilermeldungen wie ' +
-    'get_last_build. Das Projekt muss in der IDE offen sein; ohne project baut es das aktive Projekt, wenn es ' +
-    'unter dem Arbeitsordner liegt. Wartet bis zum Ende des Builds.',
-    '{"type":"object","properties":{' +
-      '"project":{"type":"string","description":"Projekt (.dproj mit Pfad, Dateiname oder Name); ' +
-        'leer = aktives Projekt der IDE"},' +
-      '"mode":{"type":"string","enum":["make","build","check"],"default":"make",' +
-        '"description":"make: geänderte Units, build: alles neu, check: nur Syntax"},' +
-      '"configuration":{"type":"string","description":"z. B. Debug oder Release; leer = aktive Konfiguration"},' +
-      '"platform":{"type":"string","description":"z. B. Win32 oder Win64; leer = aktive Plattform"}}}',
+  AContext.Server.AddTool('build_project', cTexts[TMcpBuildTestText.BuildProjectTool].Text,
+    SchemaWith('{"type":"object","properties":{' +
+      '"project":{"type":"string","description":%s},' +
+      '"mode":{"type":"string","enum":["make","build","check"],"default":"make","description":%s},' +
+      '"configuration":{"type":"string","description":%s},' +
+      '"platform":{"type":"string","description":%s}}}',
+      [cTexts[TMcpBuildTestText.BuildProjectProject].Text,
+      cTexts[TMcpBuildTestText.BuildProjectMode].Text,
+      cTexts[TMcpBuildTestText.BuildProjectConfiguration].Text,
+      cTexts[TMcpBuildTestText.BuildProjectPlatform].Text]),
     ContextTool(AContext, ToolBuildProject), TMcpToolKind.Process);
 end;
 
@@ -190,7 +247,7 @@ procedure LoadTestProject(const AProject, AConfiguration, APlatform: string; out
 begin
   if not LoadProject(AProject, AConfiguration, APlatform, AInfo) then
   begin
-    raise EMcpToolError.Create('Projektdatei nicht lesbar: ' + AProject);
+    raise EMcpToolError.Create(cTexts[TMcpBuildTestText.ProjectUnreadable].Fmt([AProject]));
   end;
 end;
 
@@ -248,7 +305,7 @@ begin
     Result := not mBuild.Success;
     if Result then
     begin
-      AReport := 'Build fehlgeschlagen; Tests nicht ausgeführt.' + sLineBreak +
+      AReport := cTexts[TMcpBuildTestText.BuildFailed].Text + sLineBreak +
         TMcpBuildTools.Report(mBuild, ARoot, '');
     end;
   end;
@@ -269,7 +326,7 @@ begin
     mCode := RunTestProcess(ATarget, TDUnitXCommandLine.Arguments(mResultFile, ATests), ATimeout, mOutput, mTimedOut);
     if mTimedOut then
     begin
-      raise EMcpToolError.CreateFmt('Testlauf nach %d s abgebrochen (timeoutSeconds).', [ATimeout]);
+      raise EMcpToolError.Create(cTexts[TMcpBuildTestText.TimedOut].Fmt([ATimeout]));
     end;
     mXml := '';
     if FileExists(mResultFile) then
@@ -303,31 +360,29 @@ begin
   end;
   if not FileExists(mTarget.Executable) then
   begin
-    raise EMcpToolError.CreateFmt('Test-EXE fehlt: %s. Mit "build": true bauen oder das Projekt in der IDE ' +
-      'für %s/%s bauen.', [mTarget.Executable, mTarget.Configuration, mTarget.Platform]);
+    raise EMcpToolError.Create(cTexts[TMcpBuildTestText.ExeMissing].Fmt([mTarget.Executable, mTarget.Configuration,
+      mTarget.Platform]));
   end;
   Result := RunTestExe(mTarget, mTests, mTimeout, mInfo);
 end;
 
 procedure AddRunTests(const AContext: TMcpToolContext);
 begin
-  AContext.Server.AddTool('run_tests',
-    'Führt die DUnitX-Tests eines Testprojekts aus (#69) und liefert bestandene, fehlgeschlagene und ' +
-    'übersprungene Tests; jeder fehlgeschlagene Test mit Meldung, erwartetem und tatsächlichem Wert, Datei und ' +
-    'Zeile. Startet die vorhandene Test-EXE ohne Compiler; mit build: true baut es das Projekt vorher in der ' +
-    'laufenden IDE wie build_project. Die Plattform kommt aus dem Testprojekt (ein Projekt nur für Win64 läuft ' +
-    'als Win64). Das Testprogramm braucht den XML-Logger von DUnitX (Vorlage von RAD Studio).',
-    '{"type":"object","properties":{' +
-      '"project":{"type":"string","description":"Testprojekt (.dproj mit Pfad, Dateiname oder Name); leer = ' +
-        'das einzige DUnitX-Projekt unter dem Arbeitsordner"},' +
-      '"tests":{"type":"array","items":{"type":"string"},"description":"Nur diese Tests: Unit.Fixture oder ' +
-        'Unit.Fixture.Methode; leer = alle"},' +
-      '"build":{"type":"boolean","default":false,"description":"Vorher in der IDE bauen (make)"},' +
-      '"configuration":{"type":"string","description":"z. B. Debug; leer = Vorgabe des Projekts"},' +
-      '"platform":{"type":"string","description":"z. B. Win64; leer = Vorgabe des Projekts, sonst die erste ' +
-        'aktivierte Plattform"},' +
-      '"timeoutSeconds":{"type":"integer","default":600,"description":"Zeitlimit des Testlaufs in Sekunden ' +
-        '(höchstens 3600)"}}}',
+  AContext.Server.AddTool('run_tests', cTexts[TMcpBuildTestText.RunTestsTool].Text,
+    SchemaWith('{"type":"object","properties":{' +
+      '"project":{"type":"string","description":%s},' +
+      '"tests":{"type":"array","items":{"type":"string"},' +
+      '"description":%s},' +
+      '"build":{"type":"boolean","default":false,"description":%s},' +
+      '"configuration":{"type":"string","description":%s},' +
+      '"platform":{"type":"string","description":%s},' +
+      '"timeoutSeconds":{"type":"integer","default":600,"description":%s}}}',
+      [cTexts[TMcpBuildTestText.RunTestsProject].Text,
+      cTexts[TMcpBuildTestText.RunTestsTests].Text,
+      cTexts[TMcpBuildTestText.RunTestsBuild].Text,
+      cTexts[TMcpBuildTestText.RunTestsConfiguration].Text,
+      cTexts[TMcpBuildTestText.RunTestsPlatform].Text,
+      cTexts[TMcpBuildTestText.RunTestsTimeoutSeconds].Text]),
     ContextTool(AContext, ToolRunTests), TMcpToolKind.Process);
 end;
 
@@ -337,5 +392,8 @@ begin
   AddBuildProject(AContext);
   AddRunTests(AContext);
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Mcp.BuildTestTools', cTexts);
 
 end.

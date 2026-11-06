@@ -1035,7 +1035,7 @@ end;
 
 procedure TAtlasIdeIssuesServices.ShowTimeOpen;
 begin
-  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+  TAtlasGuard.Run(TAtlasFeature.Tracker,
     procedure
     begin
       if FContext.Started and (FTime <> nil) and TAtlasIdeTrackerTime.Active then

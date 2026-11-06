@@ -14,6 +14,7 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Index.Contract,
   Atlas.Common.Lsp.IdeProject,
+  Atlas.Common.Rules.Contract,
   Atlas.Common.Projects.Selection,
   Atlas.Common.Index.Scheduler,
   Atlas.Common.Index.Processes;
@@ -42,6 +43,7 @@ type
     FActivated: Boolean;
     FLoopThreadId: TThreadID;
     FIdeProjects: TLspIdeProject;
+    FIdeTypes: IRuleIdeTypes;
     FOrigin: string;
     FOnPackageFolders: TFunc<TArray<string>>;
     FOnGroupProjects: TFunc<TArray<string>>;
@@ -72,6 +74,9 @@ type
     /// <summary>Projektkontexte aus der IDE (#396): Was die IDE meldet, hat Vorrang vor der .dproj. nil ohne
     /// Plugin; gehört der Komposition.</summary>
     property IdeProjects: TLspIdeProject read FIdeProjects write FIdeProjects;
+    /// <summary>Typen der laufenden IDE ohne Quelltext (atlas/ideTypes) für die Prüfregeln; nil ohne Plugin.
+    /// </summary>
+    property IdeTypes: IRuleIdeTypes read FIdeTypes write FIdeTypes;
     /// <summary>Eintrag des Clients, aus dem der Arbeitsbereich stammt (TWorkspaceFolder.Key); zum Entfernen.</summary>
     property Origin: string read FOrigin write FOrigin;
     /// <summary>Ordner, in denen requires-Packages als .dpk gesucht werden (#46), z. B. die Projekte der Gruppe.

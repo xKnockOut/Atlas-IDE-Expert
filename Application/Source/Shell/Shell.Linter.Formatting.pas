@@ -54,7 +54,27 @@ uses
   Shell.Linter.Output,
   Shell.Linter.Settings,
   Shell.Linter.Files,
-  Shell.Linter.Changes;
+  Shell.Linter.Changes,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TLinterFormattingText = (Exclusive, Conflicts, Formats, BinaryForm, NotReplaceable);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TLinterFormattingText] of TAtlasText = (
+    (De: '--format-check und --format-write schließen sich aus';
+    En: '--format-check and --format-write exclude each other'),
+    (De: '--format-check und --format-write gehen nicht mit --metrics, --todos, --suppression-stats oder ' +
+    '--update-baseline';
+    En: '--format-check and --format-write do not go with --metrics, --todos, --suppression-stats or ' +
+    '--update-baseline'),
+    (De: '--format-check und --format-write gibt es mit --format text, json oder diff';
+    En: '--format-check and --format-write exist with --format text, json or diff'),
+    (De: 'Binär gespeichertes Formular wird nicht geändert'; En: 'A form saved as binary is not changed'),
+    (De: 'Datei nicht ersetzbar (gesperrt oder schreibgeschützt)';
+    En: 'File cannot be replaced (locked or read-only)'));
 
 class function TLinterFormatting.KindOf(const AOptions: TCommandLineOptions; out AKind: TFormatOutputKind): Boolean;
 begin
@@ -62,16 +82,15 @@ begin
   Result := False;
   if AOptions.FormatCheck and AOptions.FormatWrite then
   begin
-    TLinterOutput.Error('--format-check und --format-write schließen sich aus');
+    TLinterOutput.Error(cTexts[TLinterFormattingText.Exclusive].Text);
   end
   else if AOptions.Metrics or AOptions.Todos or AOptions.SuppressionStats or AOptions.UpdateBaseline then
   begin
-    TLinterOutput.Error('--format-check und --format-write gehen nicht mit --metrics, --todos, ' +
-      '--suppression-stats oder --update-baseline');
+    TLinterOutput.Error(cTexts[TLinterFormattingText.Conflicts].Text);
   end
   else if not AOptions.FormatDiff and (AOptions.CheckFormat = TFindingsFormat.Sarif) then
   begin
-    TLinterOutput.Error('--format-check und --format-write gibt es mit --format text, json oder diff');
+    TLinterOutput.Error(cTexts[TLinterFormattingText.Formats].Text);
   end
   else
   begin
@@ -93,7 +112,7 @@ var
 begin
   if TFileEncoding.IsBinaryFormFile(AFileName) then
   begin
-    raise EFileEncodingError.Create('Binär gespeichertes Formular wird nicht geändert');
+    raise EFileEncodingError.Create(cTexts[TLinterFormattingText.BinaryForm].Text);
   end;
   mTemp := AFileName + '.atlas-format.tmp';
   TFile.WriteAllBytes(mTemp, TFileEncoding.EncodeKeepingLineBreaks(AText, AFormat));
@@ -103,7 +122,7 @@ begin
     begin
       TFile.Delete(mTemp);
     end;
-    raise EInOutError.Create('Datei nicht ersetzbar (gesperrt oder schreibgeschützt)');
+    raise EInOutError.Create(cTexts[TLinterFormattingText.NotReplaceable].Text);
   end;
 end;
 
@@ -256,5 +275,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Linter.Formatting', cTexts);
 
 end.

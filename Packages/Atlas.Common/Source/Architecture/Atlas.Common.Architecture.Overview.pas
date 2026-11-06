@@ -296,10 +296,6 @@ type
     RareLimit = 2;
     IsolatedName = 'Ohne uses-Beziehung';
     FoundationName = 'Fundament';
-    /// <summary>Regel, nach der Units ins Teilsystem „Fundament“ kommen (Bericht, Fenster, get_architecture).
-    /// </summary>
-    FoundationRule = 'Units mit Rolle Fundament, deren direkt Abhängige in mindestens drei Teilsystemen liegen ' +
-      'oder höchstens zu 60 % im eigenen, und Units, die nur sie verwenden';
     /// <summary>Knapp zugeordnet (#1368), wenn das stärkste andere Teilsystem mindestens so viel Prozent der Summe
     /// des eigenen erreicht.</summary>
     ClosePercent = 75;
@@ -307,6 +303,9 @@ type
     AlignedBaseline = 'baseline';
     AlignedLast = 'last';
   public
+    /// <summary>Regel, nach der Units ins Teilsystem „Fundament“ kommen (Bericht, Fenster, get_architecture).
+    /// </summary>
+    class function FoundationRule: string; static;
     /// <summary>Übersicht über alle aktiven Units von AGraph. ALocator darf nil sein (dann ohne Fundstellen).
     /// ACentralCount: Länge der Liste zentraler Units (5..100).</summary>
     class function Analyze(AGraph: TUsesGraph; ALocator: TUsesLocator; ACentralCount: Integer): TArchitectureOverview;
@@ -345,7 +344,26 @@ uses
   Atlas.Common.Architecture.Louvain,
   Atlas.Common.Architecture.Overview.Foundations,
   Atlas.Common.Architecture.Overview.Naming,
-  Atlas.Common.Architecture.Overview.Splitting;
+  Atlas.Common.Architecture.Overview.Splitting,
+  Atlas.Common.Localization.Texts;
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TOverviewText = (Hub, UnitsWithTheFoundationRole, Foundation);
+
+const
+  cTexts: array[TOverviewText] of TAtlasText = (
+    (De: 'Drehscheibe'; En: 'hub'),
+    (De: 'Units mit Rolle Fundament, deren direkt Abhängige in mindestens drei Teilsystemen liegen oder höchstens zu ' +
+      '60 % im eigenen, und Units, die nur sie verwenden';
+     En: 'Units with the foundation role whose direct dependents lie in at least three subsystems or at most 60 % in ' +
+      'their own, and units that only they use'),
+    (De: 'Fundament'; En: 'foundation'));
+
+class function TArchitectureAnalyzer.FoundationRule: string;
+begin
+  Result := cTexts[TOverviewText.UnitsWithTheFoundationRole].Text;
+end;
 
 function ContainsInt(AValue: Integer; const AValues: TArray<Integer>): Boolean;
 var
@@ -815,9 +833,9 @@ class function TArchitectureAnalyzer.RoleCaption(ARole: TOverviewUnitRole): stri
 begin
   case ARole of
     TOverviewUnitRole.Foundation:
-      Result := 'Fundament';
+      Result := cTexts[TOverviewText.Foundation].Text;
     TOverviewUnitRole.Hub:
-      Result := 'Drehscheibe';
+      Result := cTexts[TOverviewText.Hub].Text;
   else
     Result := '';
   end;
@@ -1910,5 +1928,8 @@ begin
   Result.Created := Now;
   Result.DurationMs := MilliSecondsBetween(Result.Created, Started);
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Architecture.Overview', cTexts);
 
 end.

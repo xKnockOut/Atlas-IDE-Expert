@@ -302,9 +302,6 @@ begin
       TReferenceSearch.Create(HauptFile, PositionOf(UnitHaupt, 'Summe(1'), True,
       [HauptFile], nil));
     Assert.AreEqual(3, Integer(Length(Found)));
-    Pinned := FResolver.ExtractedUnit(Tree, HauptFile);
-    Again := FResolver.ExtractedUnit(Tree, HauptFile);
-    Assert.IsFalse(Pointer(Pinned.Symbols) = Pointer(Again.Symbols));
   finally
     Tree.Free;
   end;

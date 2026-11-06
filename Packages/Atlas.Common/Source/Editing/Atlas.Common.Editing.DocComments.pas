@@ -59,7 +59,24 @@ implementation
 uses
   System.SysUtils,
   System.StrUtils,
-  Atlas.Text.Lines;
+  Atlas.Text.Lines,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TDocCommentsText = (AddMissingParam, AdaptTheDocumentationToThe, SynchronizeParameters,
+    GenerateDocumentationComment);
+
+const
+  cTexts: array[TDocCommentsText] of TAtlasText = (
+    (De: 'Fehlende <param> ergänzen'; En: 'Add missing <param>'),
+    (De: 'Dokumentation an die Signatur anpassen'; En: 'Adapt the documentation to the signature'),
+    (De: 'Parameter abgleichen'; En: 'Synchronize parameters'),
+    (De: 'Dokumentationskommentar erzeugen'; En: 'Generate documentation comment'));
+
+{$SCOPEDENUMS OFF}
 
 const
   DeclarationKinds = [TSyntaxKind.TypeDecl, TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl, TSyntaxKind.Field,
@@ -614,7 +631,7 @@ begin
   if Result then
   begin
     AAction := Actions[0];
-    AAction.Title := 'Parameter abgleichen';
+    AAction.Title := cTexts[TDocCommentsText.SynchronizeParameters].Text;
   end;
 end;
 
@@ -808,7 +825,7 @@ begin
   mAction.Kind := RewriteKind;
   if mBlock.First = mBlock.Top then
   begin
-    mAction.Title := 'Dokumentationskommentar erzeugen';
+    mAction.Title := cTexts[TDocCommentsText.GenerateDocumentationComment].Text;
     mAction.Edits := [TTextEdit.Create(TTextRange.Create(mBlock.Top, 0, mBlock.Top, 0),
       TTextLines.JoinLines(TDocComments.Skeleton(mSignature, mBlock.Indent), mBlock.LineBreak) + mBlock.LineBreak)];
   end
@@ -817,10 +834,10 @@ begin
     // Vorhandene <param> mit der Signatur abgleichen.
     mStale := mBlock.MarkStale(mSignature.Params);
     mAction.Edits := mStale + mBlock.InsertMissing(mSignature.Params);
-    mAction.Title := 'Fehlende <param> ergänzen';
+    mAction.Title := cTexts[TDocCommentsText.AddMissingParam].Text;
     if mStale <> nil then
     begin
-      mAction.Title := 'Dokumentation an die Signatur anpassen';
+      mAction.Title := cTexts[TDocCommentsText.AdaptTheDocumentationToThe].Text;
     end;
   end;
   if mAction.Edits <> nil then
@@ -828,5 +845,8 @@ begin
     Result := [mAction];
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.DocComments', cTexts);
 
 end.

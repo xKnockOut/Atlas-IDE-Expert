@@ -6,7 +6,8 @@
 // Ordner der Projekte (Git-Arbeitsverzeichnis, sonst Projektordner) werden beobachtet; gesammelte Änderungen gehen
 // bei der nächsten Anfrage als workspace/didChangeWatchedFiles an den Server. Projektkontext (#396): Konfiguration,
 // Plattform und Optionen der Projekte gehen in initialize mit; Änderungen prüft die Sitzung höchstens einmal je
-// Sekunde. workspace/applyEdit (#397) und window/showMessage (#121) übernimmt der Hauptthread.
+// Sekunde. workspace/applyEdit (#397) und window/showMessage (#121) übernimmt der Hauptthread. Typen der IDE: Beim
+// Start jeder Sitzung gehen die Typen der geladenen Packages als atlas/ideTypes an den Server (auch ohne .pas).
 
 interface
 
@@ -51,6 +52,8 @@ type
     procedure RefreshProjects;
     /// <summary>Meldet geänderte Projektkontexte (#396); höchstens einmal je Sekunde (Hauptthread).</summary>
     procedure RefreshContexts;
+    /// <summary>Typen der geladenen Packages an die Sitzung (atlas/ideTypes, Hauptthread).</summary>
+    procedure SendIdeTypes;
     /// <summary>Beobachtet die Ordner dieser Projekte (#395).</summary>
     procedure WatchProjects(const AProjects: TArray<string>);
     /// <summary>Gesammelte Änderungen außerhalb der IDE an den Server (Hauptthread, #395).</summary>
@@ -104,7 +107,33 @@ uses
   Atlas.IDE.Outline.Cache,
   Atlas.UI.Strings,
   Atlas.IDE.CodeInsight.Manager.Paths,
-  Atlas.IDE.CodeInsight.Manager.Handlers;
+  Atlas.IDE.CodeInsight.Manager.Handlers,
+  Atlas.IDE.CodeInsight.IdeTypes,
+  Atlas.Core.Lsp.IdeTypes,
+  System.Diagnostics,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TSessionText = (ServerNotFoundTheBuilt, ServerNotFound, AtlasServerExeNotFound);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TSessionText] of string = (
+    ('Server nicht gefunden: %s (die eingebaute Code Insight bleibt aktiv)',
+     'Server nicht gefunden: %s',
+     'AtlasServer.exe nicht gefunden'),
+    ('Server not found: %s (the built-in Code Insight stays active)',
+     'Server not found: %s',
+     'AtlasServer.exe not found'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TSessionText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 /// <summary>Sprache der Oberfläche für den Server (#1458): Befunde, Code-Aktionen und Hover wie die Oberfläche.</summary>
 function InterfaceLocale: string;
@@ -282,8 +311,8 @@ begin
   Diagnose('Starte Server: ' + mPath);
   if not FileExists(mPath) then
   begin
-    ReportError('Server nicht gefunden: ' + mPath);
-    SetPhase(TAtlasServerPhase.Failed, 'AtlasServer.exe nicht gefunden');
+    ReportError(Format(UiText(TSessionText.ServerNotFound), [mPath]));
+    SetPhase(TAtlasServerPhase.Failed, UiText(TSessionText.AtlasServerExeNotFound));
     Exit(False);
   end;
   SetPhase(TAtlasServerPhase.Starting, '');
@@ -354,6 +383,7 @@ begin
     end);
   FProjectsChecked := GetTickCount;
   FSession.Initialize;
+  SendIdeTypes;
   if ADocuments <> nil then
   begin
     FSession.Reopen(ADocuments);
@@ -536,6 +566,27 @@ begin
   end;
 end;
 
+procedure TAtlasCodeInsightSession.SendIdeTypes;
+var
+  mWatch: TStopwatch;
+  mTypes: TArray<TAtlasIdeType>;
+  mFailed: Integer;
+begin
+  try
+    mWatch := TStopwatch.StartNew;
+    mTypes := TAtlasIdeTypeCollector.Collect(mFailed);
+    // Nach Initialize: Der Server ersetzt mit jeder Meldung den ganzen Stand und prüft offene Dateien neu.
+    FSession.Notify(TAtlasIdeTypes.Method, TAtlasIdeTypes.ToJson(mTypes));
+    Diagnose(Format('IDE-Typen: %d, %d ms, RTTI unlesbar: %d', [Length(mTypes), mWatch.ElapsedMilliseconds,
+      mFailed]));
+  except
+    on E: Exception do
+    begin
+      Diagnose('IDE-Typen: ' + E.Message);
+    end;
+  end;
+end;
+
 procedure TAtlasCodeInsightSession.WatchProjects(const AProjects: TArray<string>);
 begin
   try
@@ -602,7 +653,7 @@ begin
     FServerFound := FileExists(mPath);
     if not FServerFound then
     begin
-      ReportError('Server nicht gefunden: ' + mPath + ' (die eingebaute Code Insight bleibt aktiv)');
+      ReportError(Format(UiText(TSessionText.ServerNotFoundTheBuilt), [mPath]));
     end;
   end;
   Result := FServerFound;
@@ -624,5 +675,8 @@ begin
     ((mExtension = '.pas') or (mExtension = '.dpr') or (mExtension = '.dpk') or (mExtension = '.inc')) and
     ServerAvailable;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.IDE.CodeInsight.Manager.Session', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

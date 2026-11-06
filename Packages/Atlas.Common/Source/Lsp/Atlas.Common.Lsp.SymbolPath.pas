@@ -67,7 +67,25 @@ uses
   System.StrUtils,
   Atlas.Common.Documents.Uris,
   Atlas.Common.JsonRpc.CurrentRequest,
-  Atlas.Common.Architecture.UsesGraph;
+  Atlas.Common.Architecture.UsesGraph,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TLspSymbolPathText = (ViaKnowsUsesInheritsImplements, MaxStepsLiesBetween1And, FromAndToAreRequired,
+    NoProjectLoaded);
+
+const
+  cTexts: array[TLspSymbolPathText] of TAtlasText = (
+    (De: '"via" kennt uses, inherits, implements, hasField, parameter, result, calls, contains und library';
+     En: '"via" knows uses, inherits, implements, hasField, parameter, result, calls, contains and library'),
+    (De: '"maxSteps" liegt zwischen 1 und %d'; En: '"maxSteps" lies between 1 and %d'),
+    (De: '"from" und "to" sind nötig'; En: '"from" and "to" are required'),
+    (De: 'Kein Projekt geladen'; En: 'No project loaded'));
+
+{$SCOPEDENUMS OFF}
 
 function StringOf(const AObject: TJSONObject; const AName: string): string;
 var
@@ -165,8 +183,8 @@ begin
   begin
     if not (mItem is TJSONString) or not TSymbolPathSearch.TryParseEdge(mItem.Value, mKind, mLibrary) then
     begin
-      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"via" kennt uses, inherits, implements, ' +
-        'hasField, parameter, result, calls, contains und library');
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+        cTexts[TLspSymbolPathText.ViaKnowsUsesInheritsImplements].Text);
     end;
     if mLibrary then
     begin
@@ -190,8 +208,8 @@ begin
   Result := AValue.AsInt;
   if (Result < 1) or (Result > TSymbolPathRequest.MaxStepsLimit) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Format('"maxSteps" liegt zwischen 1 und %d',
-      [TSymbolPathRequest.MaxStepsLimit]));
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TLspSymbolPathText.MaxStepsLiesBetween1And].Fmt([TSymbolPathRequest.MaxStepsLimit]));
   end;
 end;
 
@@ -204,7 +222,7 @@ begin
   Result.To_ := StringOf(AParams, 'to');
   if (Result.From = '') or (Result.To_ = '') then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"from" und "to" sind nötig');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TLspSymbolPathText.FromAndToAreRequired].Text);
   end;
   mValue := ParamValue(AParams, 'via');
   if mValue is TJSONArray then
@@ -258,7 +276,7 @@ begin
   end;
   if not (Assigned(FSourceFor) and FSourceFor(PathOf(StringOf(Params, 'uri')), Settings, Namespaces)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Kein Projekt geladen');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TLspSymbolPathText.NoProjectLoaded].Text);
   end;
   Answer := TJSONObject.Create;
   try
@@ -325,5 +343,8 @@ begin
     Params.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.SymbolPath', cTexts);
 
 end.

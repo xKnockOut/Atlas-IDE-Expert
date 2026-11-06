@@ -102,10 +102,29 @@ uses
   Atlas.Common.Compiler.OutputParser,
   Atlas.Common.JsonRpc.Messages,
   Shell.Platform,
-  Atlas.Text.LogMarks;
+  Atlas.Text.LogMarks,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TCompileHostText = (Restricted, TrustHint, NotUsable, NotLicensed, NoMessages, Compiling, CompilingIde, CheckSetup,
+    Failed, Summary);
+{$SCOPEDENUMS OFF}
 
 const
-  cRestrictedReason = 'Der Arbeitsbereich ist nicht vertrauenswürdig';
+  cTexts: array[TCompileHostText] of TAtlasText = (
+    (De: 'Der Arbeitsbereich ist nicht vertrauenswürdig'; En: 'The workspace is not trusted'),
+    (De: 'Dem Ordner im Editor vertrauen; ein Compilerlauf kann Build-Ereignisse des Projekts ausführen.';
+    En: 'Trust the folder in the editor; a compiler run can execute build events of the project.'),
+    (De: 'Compiler nicht nutzbar'; En: 'Compiler not usable'),
+    (De: 'Kommandozeilen-Compiler nicht lizenziert'; En: 'Command-line compiler not licensed'),
+    (De: '%s endet mit Exit-Code %d ohne Meldungen:%s'; En: '%s ends with exit code %d without messages:%s'),
+    (De: 'Projekt kompilieren'; En: 'Compile project'),
+    (De: 'Projekt über eine eigene IDE kompilieren'; En: 'Compile project through an IDE of its own'),
+    (De: 'cc.ps1 und die Delphi-Installation prüfen; Einzelheiten stehen im Server-Log.';
+    En: 'Check cc.ps1 and the Delphi installation; details are in the server log.'),
+    (De: 'Fehlgeschlagen'; En: 'Failed'),
+    (De: '%d Fehler, %d Warnungen, %d Hinweise'; En: '%d errors, %d warnings, %d hints'));
 
 constructor TShellCompileHost.Create(const AServices: TShellCompileServices);
 begin
@@ -228,8 +247,8 @@ end;
 /// <summary>Grund für Workspace Trust (#186).</summary>
 function RestrictedChoice: TCompilerBackendChoice;
 begin
-  Result := TCompilerBackendChoice.Unavailable(cRestrictedReason,
-    'Dem Ordner im Editor vertrauen; ein Compilerlauf kann Build-Ereignisse des Projekts ausführen.');
+  Result := TCompilerBackendChoice.Unavailable(cTexts[TCompileHostText.Restricted].Text,
+    cTexts[TCompileHostText.TrustHint].Text);
 end;
 
 /// <summary>Kein nutzbarer Weg: bewusst abgeschaltet nur im Status, sonst Grund und Ausweg einmal als Meldung (#261).
@@ -407,7 +426,7 @@ begin
     on E: Exception do
     begin
       Unavailable(TCompilerBackendChoice.Unavailable(E.Message, ''), False);
-      FServices.Progress.Finish('Fehlgeschlagen');
+      FServices.Progress.Finish(cTexts[TCompileHostText.Failed].Text);
     end;
   end;
 end;
@@ -424,11 +443,11 @@ begin
   if not mChoice.Usable then
   begin
     Unavailable(mChoice, True);
-    FServices.Progress.Finish('Compiler nicht nutzbar');
+    FServices.Progress.Finish(cTexts[TCompileHostText.NotUsable].Text);
     Exit;
   end;
   Remember(mChoice);
-  FServices.Progress.Finish('Kommandozeilen-Compiler nicht lizenziert');
+  FServices.Progress.Finish(cTexts[TCompileHostText.NotLicensed].Text);
   if AJob.Manual then
   begin
     mIdeJob := AJob;
@@ -472,7 +491,7 @@ var
 begin
   mLines := TList<string>.Create;
   try
-    FServices.Progress.Start('Projekt kompilieren');
+    FServices.Progress.Start(cTexts[TCompileHostText.Compiling].Text);
     mCode := RunCompiler(FServices.Process, AJob, mLines);
     mOutput := mLines.ToArray;
   finally
@@ -486,9 +505,9 @@ begin
   else if (mCode <> 0) and (Length(mMessages) = 0) then
   begin
     // Abbruch ohne eine einzige Meldung: Der Compiler selbst ist nicht nutzbar. Bisherige Meldungen bleiben stehen.
-    Unavailable(TCompilerBackendChoice.Unavailable(Format('%s endet mit Exit-Code %d ohne Meldungen:%s',
-      [ExtractFileName(AJob.Request.Executable), mCode, OutputStart(mOutput)]), ''), False);
-    FServices.Progress.Finish('Compiler nicht nutzbar');
+    Unavailable(TCompilerBackendChoice.Unavailable(cTexts[TCompileHostText.NoMessages].Fmt([
+      ExtractFileName(AJob.Request.Executable), mCode, OutputStart(mOutput)]), ''), False);
+    FServices.Progress.Finish(cTexts[TCompileHostText.NotUsable].Text);
   end
   else
   begin
@@ -502,12 +521,11 @@ var
   mSucceeded: Boolean;
   mError: string;
 begin
-  FServices.Progress.Start('Projekt über eine eigene IDE kompilieren');
+  FServices.Progress.Start(cTexts[TCompileHostText.CompilingIde].Text);
   if not FServices.IdeCompiler.Build(AJob.Settings.IdeCommand, AJob.Project, AJob.Platform, mMessages, mSucceeded, mError) then
   begin
-    Unavailable(TCompilerBackendChoice.Unavailable(mError,
-      'cc.ps1 und die Delphi-Installation prüfen; Einzelheiten stehen im Server-Log.'), True);
-    FServices.Progress.Finish('Fehlgeschlagen');
+    Unavailable(TCompilerBackendChoice.Unavailable(mError, cTexts[TCompileHostText.CheckSetup].Text), True);
+    FServices.Progress.Finish(cTexts[TCompileHostText.Failed].Text);
   end
   else if mSucceeded then
   begin
@@ -541,7 +559,7 @@ begin
     end;
   end;
   FServices.Publish(FResults.Replace(AMessages));
-  mSummary := Format('%d Fehler, %d Warnungen, %d Hinweise', [mCounts[TCompilerSeverity.Error] +
+  mSummary := cTexts[TCompileHostText.Summary].Fmt([mCounts[TCompilerSeverity.Error] +
     mCounts[TCompilerSeverity.Fatal], mCounts[TCompilerSeverity.Warning], mCounts[TCompilerSeverity.Hint]]);
   FServices.Logger.Info(Format('Kompiliert über %s: %s', [AVia, mSummary]));
   FServices.Progress.Finish(mSummary);
@@ -612,7 +630,7 @@ begin
     end;
   if FRestricted then
   begin
-    mChoice := TCompilerBackendChoice.Unavailable(cRestrictedReason, '');
+    mChoice := TCompilerBackendChoice.Unavailable(cTexts[TCompileHostText.Restricted].Text, '');
     mKnown := True;
   end;
   if not mKnown then
@@ -624,5 +642,8 @@ begin
   AStatus.CompilerBackend := TCompilerBackends.BackendText(mChoice.Backend);
   AStatus.CompilerReason := mChoice.MessageText;
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Composition.Compile', cTexts);
 
 end.

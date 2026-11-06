@@ -72,7 +72,20 @@ uses
   Atlas.Core.Vcs.Composition,
   Atlas.Common.Hotspots.History,
   Shell.Platform,
-  Shell.VcsChanges;
+  Shell.VcsChanges,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  THotspotVcsText = (NoWorkingCopy, NotInstalled, Failed);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[THotspotVcsText] of TAtlasText = (
+    (De: '%s liegt weder in einem Git-Repository noch in einer SVN-Arbeitskopie';
+    En: '%s is neither in a Git repository nor in an SVN working copy'),
+    (De: '%s ist nicht installiert (vcs.%s.path)'; En: '%s is not installed (vcs.%s.path)'),
+    (De: '%s %s ist fehlgeschlagen (Exit-Code %d)'; En: '%s %s failed (exit code %d)'));
 
 const
   /// <summary>Der Verlauf eines Jahres großer Repositorys braucht mehr als die üblichen Abfragen.</summary>
@@ -108,12 +121,12 @@ begin
         Result := TVcsChanges.ToolFor(TAtlasVcsKind.Svn, ASettings.VcsSvnPath);
       end;
   else
-    AError := Format('%s liegt weder in einem Git-Repository noch in einer SVN-Arbeitskopie', [AFolder]);
+    AError := cTexts[THotspotVcsText.NoWorkingCopy].Fmt([AFolder]);
     Exit;
   end;
   if Result = '' then
   begin
-    AError := Format('%s ist nicht installiert (vcs.%s.path)', [AtlasVcsKindName(AWorkingCopy.Kind),
+    AError := cTexts[THotspotVcsText.NotInstalled].Fmt([AtlasVcsKindName(AWorkingCopy.Kind),
       THotspots.KindName(AKind)]);
   end;
 end;
@@ -222,7 +235,7 @@ begin
   end
   else
   begin
-    AError := Format('%s %s ist fehlgeschlagen (Exit-Code %d)', [ExtractFileName(FExecutable), AArguments[0],
+    AError := cTexts[THotspotVcsText.Failed].Fmt([ExtractFileName(FExecutable), AArguments[0],
       mResult.ExitCode]);
   end;
 end;
@@ -419,5 +432,8 @@ begin
     AText := '';
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Hotspots', cTexts);
 
 end.

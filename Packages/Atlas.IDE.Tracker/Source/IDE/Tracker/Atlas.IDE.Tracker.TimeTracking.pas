@@ -388,7 +388,7 @@ end;
 
 procedure TAtlasIdeTrackerTime.TimerTick(Sender: TObject);
 begin
-  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+  TAtlasGuard.Run(TAtlasFeature.Tracker,
     procedure
     var
       mOffer: TAtlasTimeIssue;
@@ -742,7 +742,7 @@ begin
     begin
       if (mKeep <> nil) and not mOwner.FStopped then
       begin
-        TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+        TAtlasGuard.Run(TAtlasFeature.Tracker,
           procedure
           begin
             mOwner.ShowBook(mIssue, TAtlasTrackerWorkflow.CommitSubjects(mCommits));

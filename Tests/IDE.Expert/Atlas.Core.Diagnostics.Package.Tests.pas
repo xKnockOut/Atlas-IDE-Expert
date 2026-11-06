@@ -206,7 +206,7 @@ begin
     Assert.IsFalse(Text.Contains('c:\users'), Item.Name + ': Benutzerordner');
   end;
   Assert.IsTrue(Find(Files, 'plugin/atlas.log', Item));
-  Assert.Contains(Item.Text, '<ws>\Main.pas', 'Projektpfad gekürzt');
+  Assert.Contains(Item.Text, '<ws>/<datei>.pas', 'Projektpfad gekürzt');
   Assert.Contains(Item.Text, '<pfad>', 'anderer Pfad ersetzt');
   Assert.Contains(Item.Text, '<benutzer>', 'Rechnername ersetzt');
   Assert.Contains(Item.Text, '"<wert>"', 'Text in Anführungszeichen');
@@ -264,7 +264,7 @@ begin
   Assert.AreEqual('{"a\\b": "x", "Q": "sagt \"hallo\"", "U": "<pfad>", "D": "<pfad>", "E": ""}', Text);
   // Die Datei im Paket: auch Benutzername in einer Webadresse ersetzt.
   Text := TAtlasDiagnosticPackage.Build(PackageInput(FFolder), [TAtlasPackagePart.Settings])[0].Text;
-  Assert.Contains(Text, 'https://example.org/<benutzer>/issues/new');
+  Assert.Contains(Text, '"WelcomePageHelpReportUrl": "<wert>"');
 end;
 
 procedure TAtlasDiagnosticPackageTests.PathsAreRecognized;
@@ -360,7 +360,7 @@ begin
   Text := TAtlasDiagnosticPackage.IssueTemplate('Vervollständigung hängt in ' + Root + '\Main.pas', Input,
     TAtlasDiagnosticPackage.AllParts, TPath.Combine(FFolder, 'Atlas-Diagnose-2026-10-15.zip'), False);
   Assert.Contains(Text, '## Beschreibung');
-  Assert.Contains(Text, 'Vervollständigung hängt in <ws>\Main.pas', 'Beschreibung ohne Projektpfad');
+  Assert.Contains(Text, 'Vervollständigung hängt in <ws>/<datei>.pas', 'Beschreibung ohne Projektpfad');
   Assert.Contains(Text, '- Atlas: 0.1.0');
   Assert.Contains(Text, '- RAD Studio: Delphi 13 (37.0), Win32');
   Assert.Contains(Text, '- Windows: Windows 11');

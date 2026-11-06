@@ -89,7 +89,33 @@ uses
   Atlas.Common.Documents.Uris,
   Atlas.Common.Architecture.Layout,
   Atlas.Common.Architecture.Report,
-  Atlas.Common.Architecture.Snapshot;
+  Atlas.Common.Architecture.Snapshot,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TArchitectureText = (ResolutionIsANumberFrom, ScopeIsProjectOrProjectGroup, NoProjectLoaded, AreNotValidJSON,
+    FormatIsJsonMarkdownHtml, SectionIsOverviewCentralSubsystems, TargetFileMissingMdHtml,
+    ArchitectureOverviewIsSwitchedOff, ArchitectureData, ComparisonData);
+
+const
+  cTexts: array[TArchitectureText] of TAtlasText = (
+    (De: '"resolution" ist eine Zahl von 0,2 bis 5,0'; En: '"resolution" is a number from 0.2 to 5.0'),
+    (De: '"scope" ist project oder projectGroup'; En: '"scope" is project or projectGroup'),
+    (De: 'Kein Projekt geladen'; En: 'No project loaded'),
+    (De: ' sind kein gültiges JSON'; En: ' are not valid JSON'),
+    (De: '"format" ist json, markdown, html oder text'; En: '"format" is json, markdown, html or text'),
+    (De: '"section" ist overview, central, subsystems, cycles oder crossLinks';
+     En: '"section" is overview, central, subsystems, cycles or crossLinks'),
+    (De: 'Zieldatei fehlt (.md, .html oder .json)'; En: 'Target file missing (.md, .html or .json)'),
+    (De: 'Architekturübersicht ist ausgeschaltet (architecture.enabled)';
+     En: 'Architecture overview is switched off (architecture.enabled)'),
+    (De: 'Architekturdaten'; En: 'Architecture data'),
+    (De: 'Vergleichsdaten'; En: 'Comparison data'));
+
+{$SCOPEDENUMS OFF}
 
 function StringOf(const AObject: TJSONObject; const AName: string): string;
 var
@@ -142,7 +168,7 @@ begin
   end;
   if not (mValue is TJSONNumber) or not TArchitectureGrouping.ValidResolution(TJSONNumber(mValue).AsDouble) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"resolution" ist eine Zahl von 0,2 bis 5,0');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TArchitectureText.ResolutionIsANumberFrom].Text);
   end;
   AFound := True;
   Result := TJSONNumber(mValue).AsDouble;
@@ -223,12 +249,13 @@ begin
   Scope := StringOf(AParams, 'scope');
   if (Scope <> '') and (Scope <> 'project') and (Scope <> 'projectGroup') then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"scope" ist project oder projectGroup');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TArchitectureText.ScopeIsProjectOrProjectGroup].Text);
   end;
   mResolution := ResolutionOf(AParams, mFound);
   if not (Assigned(FSourceFor) and FSourceFor(FileName, Scope, Request, ASettings)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Kein Projekt geladen');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TArchitectureText.NoProjectLoaded].Text);
   end;
   AEnabled := ASettings.ArchitectureEnabled;
   if not AEnabled then
@@ -314,18 +341,18 @@ begin
   Result := TJSONObject.ParseJSONValue(AText);
   if Result = nil then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, AWhat + ' sind kein gültiges JSON');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, AWhat + cTexts[TArchitectureText.AreNotValidJSON].Text);
   end;
 end;
 
 procedure AddJsonReport(AAnswer: TJSONObject; const AState: TArchitectureState);
 begin
   AAnswer.AddPair('data', ParsedJson(TArchitectureReport.Json(AState.Overview,
-    TArchitectureLayouter.Compute(AState.Overview)), 'Architekturdaten'));
+    TArchitectureLayouter.Compute(AState.Overview)), cTexts[TArchitectureText.ArchitectureData].Text));
   if AState.Compared then
   begin
     AAnswer.AddPair('comparison', ParsedJson(TArchitectureComparer.Json(AState.Comparison, AState.FailOn),
-      'Vergleichsdaten'));
+      cTexts[TArchitectureText.ComparisonData].Text));
   end;
 end;
 
@@ -426,12 +453,13 @@ begin
   end;
   if not TryParseFormat(StringOf(mParams, 'format'), mFormat) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, '"format" ist json, markdown, html oder text');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TArchitectureText.FormatIsJsonMarkdownHtml].Text);
   end;
   if not TArchitectureReport.ParseSection(StringOf(mParams, 'section'), mSection) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      '"section" ist overview, central, subsystems, cycles oder crossLinks');
+      cTexts[TArchitectureText.SectionIsOverviewCentralSubsystems].Text);
   end;
   mState := StateFor(Self, mParams);
   Compare(mState);
@@ -502,7 +530,7 @@ begin
   end;
   if Result = '' then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Zieldatei fehlt (.md, .html oder .json)');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TArchitectureText.TargetFileMissingMdHtml].Text);
   end;
 end;
 
@@ -558,8 +586,8 @@ begin
   end;
   if not mState.Enabled then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidRequest, 'Architekturübersicht ist ausgeschaltet ' +
-      '(architecture.enabled)');
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidRequest,
+      cTexts[TArchitectureText.ArchitectureOverviewIsSwitchedOff].Text);
   end;
   mAnswer := TJSONObject.Create;
   try
@@ -572,5 +600,8 @@ begin
     mAnswer.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.Architecture', cTexts);
 
 end.

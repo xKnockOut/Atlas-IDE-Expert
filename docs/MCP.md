@@ -14,6 +14,9 @@ claude mcp add delphi -- AtlasServer.exe --mcp --root C:\Projekte\App
 aktuelle Verzeichnis. `--log <Datei>` schreibt ein Protokoll, stdout gehört allein
 dem Protokoll.
 
+Sprache (#1458): Die Beschreibungen der Werkzeuge und ihrer Parameter, Hinweise und Fehlermeldungen
+folgen `--locale de|en`, sonst `language` aus der globalen `settings.json`, sonst Englisch.
+
 Liegt in `--root` genau eine `.groupproj`, indiziert der Server zusätzlich alle
 übrigen Projekte der Gruppe in denselben Index (`index.projectGroup`, Standard an).
 So findet er auch Units, die nur ein anderes Projekt der Gruppe enthält, wenn

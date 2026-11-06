@@ -97,6 +97,22 @@ uses
   Atlas.Common.Rules.Output;
 
 type
+{$SCOPEDENUMS ON}
+  /// <summary>Art eines Hinweises zur Befehlszeile.</summary>
+  TCommandLineWarningKind = (MissingValue, LogLevel, Format, FixRules, Severity, FailOn, ProcessId, Locale,
+    UnknownParameter);
+{$SCOPEDENUMS OFF}
+
+  /// <summary>Hinweis zu einem ungültigen oder unbekannten Parameter. Der Text entsteht erst bei der Ausgabe, weil
+  /// die Sprache (#1458) beim Lesen der Befehlszeile noch nicht feststeht (--locale, settings.json).</summary>
+  TCommandLineWarning = record
+    Kind: TCommandLineWarningKind;
+    /// <summary>Parametername bzw. abgelehnter Wert.</summary>
+    Value: string;
+    /// <summary>Hinweis in der aktuellen Sprache.</summary>
+    function Text: string;
+  end;
+
   TCommandLineOptions = record
   public const
     DefaultLogLevel = TLogLevel.Info;
@@ -191,7 +207,7 @@ type
     /// <summary>--fix-dry-run: nur den Diff ausgeben.</summary>
     FixDryRun: Boolean;
     /// <summary>Hinweise zu ungültigen oder unbekannten Parametern, für das Log.</summary>
-    Warnings: TArray<string>;
+    Warnings: TArray<TCommandLineWarning>;
     class function Parse(const AArgs: TArray<string>): TCommandLineOptions; static;
     /// <summary>Parameter des laufenden Prozesses.</summary>
     class function FromProcess: TCommandLineOptions; static;
@@ -206,6 +222,28 @@ uses
   Atlas.Common.Rules.Filter,
   Atlas.Common.Localization.Texts,
   Atlas.Common.Architecture.Comparison;
+
+const
+  cTexts: array[TCommandLineWarningKind] of TAtlasText = (
+    (De: 'Parameter %s erwartet einen Wert'; En: 'Parameter %s expects a value'),
+    (De: 'Unbekannte Log-Stufe "%s", verwendet wird info'; En: 'Unknown log level "%s", using info'),
+    (De: 'Unbekanntes Format "%s", verwendet wird text'; En: 'Unknown format "%s", using text'),
+    (De: '--fix erwartet Regeln, z. B. --fix redundant-cast oder --fix all';
+    En: '--fix expects rules, e.g. --fix redundant-cast or --fix all'),
+    (De: 'Unbekannter Schweregrad "%s", gemeldet wird alles'; En: 'Unknown severity "%s", reporting everything'),
+    (De: 'Unbekannter Wert "%s" für --fail-on, verwendet wird error';
+    En: 'Unknown value "%s" for --fail-on, using error'),
+    (De: 'Ungültige Prozess-ID "%s" wird ignoriert'; En: 'Invalid process ID "%s" is ignored'),
+    (De: 'Unbekannte Sprache "%s" für --locale, erlaubt sind de und en';
+    En: 'Unknown language "%s" for --locale, allowed are de and en'),
+    (De: 'Unbekannter Parameter "%s" wird ignoriert'; En: 'Unknown parameter "%s" is ignored'));
+
+{ TCommandLineWarning }
+
+function TCommandLineWarning.Text: string;
+begin
+  Result := cTexts[Kind].Fmt([Value]);
+end;
 
 { TCommandLineOptions }
 
@@ -251,9 +289,13 @@ begin
   end;
 end;
 
-procedure AddWarning(var AOptions: TCommandLineOptions; const AText: string);
+procedure AddWarning(var AOptions: TCommandLineOptions; AKind: TCommandLineWarningKind; const AValue: string);
+var
+  mWarning: TCommandLineWarning;
 begin
-  AOptions.Warnings := AOptions.Warnings + [AText];
+  mWarning.Kind := AKind;
+  mWarning.Value := AValue;
+  AOptions.Warnings := AOptions.Warnings + [mWarning];
 end;
 
 type
@@ -339,7 +381,7 @@ begin
     Value := Args[Index];
     Exit;
   end;
-  AddWarning(AOptions, Format('Parameter %s erwartet einen Wert', [Name]));
+  AddWarning(AOptions, TCommandLineWarningKind.MissingValue, Name);
   Result := False;
 end;
 
@@ -383,7 +425,7 @@ begin
   end
   else
   begin
-    AddWarning(AOptions, Format('Unbekannte Log-Stufe "%s", verwendet wird info', [AValue]));
+    AddWarning(AOptions, TCommandLineWarningKind.LogLevel, AValue);
   end;
 end;
 
@@ -405,7 +447,7 @@ begin
   // dunitx gibt es nur für --affected-tests (#1353), csv nur für --query (#1351); dort wird der Wert geprüft.
   else if not SameText(AValue, 'dunitx') and not SameText(AValue, 'csv') then
   begin
-    AddWarning(AOptions, Format('Unbekanntes Format "%s", verwendet wird text', [AValue]));
+    AddWarning(AOptions, TCommandLineWarningKind.Format, AValue);
   end;
 end;
 
@@ -424,7 +466,7 @@ begin
   AOptions.FixRules := TFindingFilter.SplitList(AValue);
   if AOptions.FixRules = nil then
   begin
-    AddWarning(AOptions, '--fix erwartet Regeln, z. B. --fix redundant-cast oder --fix all');
+    AddWarning(AOptions, TCommandLineWarningKind.FixRules, '');
   end;
 end;
 
@@ -438,7 +480,7 @@ begin
   end
   else
   begin
-    AddWarning(AOptions, Format('Unbekannter Schweregrad "%s", gemeldet wird alles', [AValue]));
+    AddWarning(AOptions, TCommandLineWarningKind.Severity, AValue);
   end;
 end;
 
@@ -456,7 +498,7 @@ begin
   // Abweichungsarten für --compare (#1121) prüft der Architekturbericht.
   else if not TArchitectureComparer.ParseKindList(AValue, mKinds, mKindError) then
   begin
-    AddWarning(AOptions, Format('Unbekannter Wert "%s" für --fail-on, verwendet wird error', [AValue]));
+    AddWarning(AOptions, TCommandLineWarningKind.FailOn, AValue);
   end;
 end;
 
@@ -476,7 +518,7 @@ begin
   end
   else
   begin
-    AddWarning(AOptions, Format('Ungültige Prozess-ID "%s" wird ignoriert', [AValue]));
+    AddWarning(AOptions, TCommandLineWarningKind.ProcessId, AValue);
   end;
 end;
 
@@ -594,7 +636,7 @@ var
 begin
   if (AOptions.Locale <> '') and not TAtlasLocale.TryParse(AOptions.Locale, mLanguage) then
   begin
-    AddWarning(AOptions, Format('Unbekannte Sprache "%s" für --locale, erlaubt sind de und en', [AOptions.Locale]));
+    AddWarning(AOptions, TCommandLineWarningKind.Locale, AOptions.Locale);
     AOptions.Locale := '';
   end;
 end;
@@ -617,7 +659,7 @@ begin
     if not ApplyTabled(Result, mReader, mTables) and not ApplyOptional(Result, mReader)
       and (mReader.Name <> '--stdio') then
     begin
-      AddWarning(Result, Format('Unbekannter Parameter "%s" wird ignoriert', [mReader.Arg]));
+      AddWarning(Result, TCommandLineWarningKind.UnknownParameter, mReader.Arg);
     end;
   end;
   CheckLocale(Result);
@@ -642,5 +684,8 @@ begin
   end;
   Result := Parse(Args);
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.CommandLine', cTexts);
 
 end.

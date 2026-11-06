@@ -32,7 +32,24 @@ uses
   Atlas.Common.Pascal.ConditionalBranches,
   Atlas.Common.Editing.RoutineBody,
   Atlas.Common.Rules.Options,
-  Atlas.Common.Rules.Builtin.Unused.Shared;
+  Atlas.Common.Rules.Builtin.Unused.Shared,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Befundmeldungen in beiden Sprachen (#1458).</summary>
+  TUnusedDuplicatesText = (Title, FirstLost, ProbablyMeant, AlreadySet, JumpToFirst);
+
+const
+  cTexts: array[TUnusedDuplicatesText] of TAtlasText = (
+    (De: 'Feld oder Property wird zweimal gesetzt'; En: 'Field or property is set twice'),
+    (De: 'der erste Wert geht ungelesen verloren'; En: 'the first value gets lost unread'),
+    (De: 'gemeint ist vermutlich '; En: 'probably meant is '),
+    (De: '%s wird in Zeile %d schon gesetzt; %s.'; En: '%s is already set in line %d; %s.'),
+    (De: 'Zur ersten Zuweisung springen'; En: 'Go to the first assignment'));
+
+{$SCOPEDENUMS OFF}
 
 const
   // Gegenstücke für den Hinweis "gemeint ist vermutlich …" (Left/Top vertauscht beim Kopieren).
@@ -46,7 +63,7 @@ const
 function TDuplicateAssignmentRule.Descriptor: TRuleDescriptor;
 begin
   Result := TRuleDescriptor.Create('duplicate-assignment', TRuleSeverity.Warning,
-    'Feld oder Property wird zweimal gesetzt');
+    cTexts[TUnusedDuplicatesText.Title].Text);
 end;
 
 // Iterativ (Bericht M1): erst die Kette aus Punkten und ^ hinab, dann den Schlüssel von innen nach außen bauen.
@@ -261,11 +278,12 @@ function DuplicateHint(AParent: TSyntaxNode; const AKey, ADisplay, AName: string
 var
   mOther: string;
 begin
-  Result := 'der erste Wert geht ungelesen verloren';
+  Result := cTexts[TUnusedDuplicatesText.FirstLost].Text;
   mOther := TDuplicateAssignmentRule.Counterpart(AName);
   if (mOther <> '') and not AssignsTarget(AParent, Copy(AKey, 1, Length(AKey) - Length(AName)) + mOther) then
   begin
-    Result := 'gemeint ist vermutlich ' + Copy(ADisplay, 1, Length(ADisplay) - Length(AName)) + mOther;
+    Result := cTexts[TUnusedDuplicatesText.ProbablyMeant].Text + Copy(ADisplay, 1, Length(ADisplay) - Length(AName)) +
+      mOther;
   end;
 end;
 
@@ -399,9 +417,9 @@ begin
   end;
   mDisplay := NodeText(mSecond[0]);
   FReport.Add(TTextRange.Create(mSecond[0].StartPos, mSecond[0].EndPos),
-    Format('%s wird in Zeile %d schon gesetzt; %s.', [mDisplay, mFirst.StartPos.Line + 1,
+    cTexts[TUnusedDuplicatesText.AlreadySet].Fmt([mDisplay, mFirst.StartPos.Line + 1,
     DuplicateHint(AParent, AKey, mDisplay, mParts[High(mParts)])]), TRuleConfidence.High,
-    [TRuleFix.Jump('Zur ersten Zuweisung springen', mFirst.StartPos)]);
+    [TRuleFix.Jump(cTexts[TUnusedDuplicatesText.JumpToFirst].Text, mFirst.StartPos)]);
 end;
 
 /// <summary>Nur Anweisungsfolgen; then- und else-Zweig eines if stehen auch nebeneinander.</summary>
@@ -470,5 +488,8 @@ begin
     mCheck.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Rules.Builtin.Unused.Duplicates', cTexts);
 
 end.

@@ -78,7 +78,17 @@ uses
   Atlas.Common.Pascal.SyntaxTree,
   Atlas.Common.Pascal.TreeCache,
   Atlas.Common.Rules.Checker,
-  Shell.Platform;
+  Shell.Platform,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TBaselineHostText = (NotWritten);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TBaselineHostText] of TAtlasText = (
+    (De: 'Baseline nicht geschrieben (%s)'; En: 'Baseline not written (%s)'));
 
 function BaselineFileExists(const AFileName: string): Boolean;
 begin
@@ -111,7 +121,7 @@ begin
   mDisk := TDiskIndexFileSystem.Create;
   if not mDisk.WriteBytes(AFileName, TEncoding.UTF8.GetBytes(AText), mError) then
   begin
-    raise EInOutError.Create('Baseline nicht geschrieben (' + mError + ')');
+    raise EInOutError.Create(cTexts[TBaselineHostText.NotWritten].Fmt([mError]));
   end;
 end;
 
@@ -298,5 +308,8 @@ function TShellBaselines.RunCompilerBaselineClassify(const AArguments: TJSONArra
 begin
   Result := FCompilerBaseline.ExecuteClassify(AArguments);
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Composition.Baselines', cTexts);
 
 end.

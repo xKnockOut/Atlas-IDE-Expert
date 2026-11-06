@@ -53,6 +53,21 @@ type
 
 implementation
 
+uses
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TInactiveRegionsText = (InLineText);
+
+const
+  cTexts: array[TInactiveRegionsText] of TAtlasText = (
+    (De: '%s (in %s, Zeile %d)'; En: '%s (in %s, line %d)'));
+
+{$SCOPEDENUMS OFF}
+
 { TLspInactiveRegion }
 
 class function TLspInactiveRegion.Create(const ARange: TTextRange; const ACondition: string): TLspInactiveRegion;
@@ -163,8 +178,8 @@ begin
     // Befund aus einer eingebundenen Datei: Ort in der .inc nennen.
     if mIssue.FileIndex <> 0 then
     begin
-      Result[High(Result)].Message := Format('%s (in %s, Zeile %d)',
-        [mIssue.Message, ExtractFileName(AProcessed.Files[mIssue.FileIndex]), mIssue.Range.StartPos.Line + 1]);
+      Result[High(Result)].Message := cTexts[TInactiveRegionsText.InLineText].Fmt([mIssue.Message,
+        ExtractFileName(AProcessed.Files[mIssue.FileIndex]), mIssue.Range.StartPos.Line + 1]);
     end;
     Result[High(Result)].FileIndex := 0;
   end;
@@ -195,5 +210,8 @@ begin
     Result := Result + [TLspInactiveRegion.Create(mRange, ConditionAt(AProcessed, mRange.StartPos))];
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.InactiveRegions', cTexts);
 
 end.

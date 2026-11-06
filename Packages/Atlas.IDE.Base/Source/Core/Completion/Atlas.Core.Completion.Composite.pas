@@ -93,8 +93,8 @@ type
     class function Work(const AEntry: TEntry; const AContext: TAtlasContext;
       const APart: IAtlasCompletionSink): TProc; static;
   public
-    /// <summary>Name einer Quelle ohne IAtlasNamedProvider.</summary>
-    const DefaultName = 'Vervollständigung';
+    /// <summary>Name einer Quelle ohne IAtlasNamedProvider, in der Sprache der Oberfläche.</summary>
+    class function DefaultName: string; static;
     constructor Create;
     destructor Destroy; override;
     /// <summary>Quelle anmelden; ihr Name (IAtlasNamedProvider) gilt für die Sicherung je Quelle.</summary>
@@ -111,7 +111,26 @@ implementation
 uses
   System.Classes,
   Atlas.Core.Diagnostics.PluginTimings,
-  Atlas.Core.Diagnostics.Timing;
+  Atlas.Core.Diagnostics.Timing,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TCompositeText = (Completion);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TCompositeText] of string = (
+    ('Vervollständigung'),
+    ('Completion'));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TCompositeText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 function TimeLimitOf(ALimitMs: Integer): Integer;
 begin
@@ -271,6 +290,11 @@ begin
 end;
 
 { TAtlasCompletionProviders }
+
+class function TAtlasCompletionProviders.DefaultName: string;
+begin
+  Result := UiText(TCompositeText.Completion);
+end;
 
 constructor TAtlasCompletionProviders.Create;
 begin
@@ -463,5 +487,8 @@ begin
       end);
   end;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.Core.Completion.Composite', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

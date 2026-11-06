@@ -45,7 +45,20 @@ implementation
 uses
   System.Generics.Collections,
   Atlas.Common.Documents.Uris,
-  Atlas.Common.Lsp.Positions;
+  Atlas.Common.Lsp.Positions,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TDocumentLinksText = (FieldTextDocumentUriMissingIn);
+
+const
+  cTexts: array[TDocumentLinksText] of TAtlasText = (
+    (De: 'Feld "textDocument.uri" fehlt in '; En: 'Field "textDocument.uri" missing in '));
+
+{$SCOPEDENUMS OFF}
 
 constructor TLspDocumentLinks.Create(const AStore: IDocumentStore; const ASearchPaths: TSearchPathsProvider);
 begin
@@ -111,7 +124,8 @@ var
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Feld "textDocument.uri" fehlt in ' + Method);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      cTexts[TDocumentLinksText.FieldTextDocumentUriMissingIn].Text + Method);
   end;
   if not FStore.TryGet(Uri, Document) then
   begin
@@ -131,5 +145,8 @@ begin
     TJSONArray(Result).AddElement(LinkToJson(Link));
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.DocumentLinks', cTexts);
 
 end.

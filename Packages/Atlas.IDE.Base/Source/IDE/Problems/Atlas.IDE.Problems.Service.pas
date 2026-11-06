@@ -121,7 +121,26 @@ uses
   Atlas.IDE.Problems.Window,
   Atlas.IDE.Foundation.Navigation,
   Atlas.IDE.Foundation.Settings,
-  Atlas.IDE.Settings.Project;
+  Atlas.IDE.Settings.Project,
+  Atlas.Core.Localization.Language;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Benutzertexte dieser Unit (#1458).</summary>
+  TProblemsServiceText = (AtlasCheck);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TAtlasLanguage, TProblemsServiceText] of string = (
+    ('Atlas-Prüfung: '),
+    ('Atlas check: '));
+
+/// <summary>Text AId in der Sprache der Oberfläche.</summary>
+function UiText(AId: TProblemsServiceText): string;
+begin
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
+end;
 
 const
   TickMs = 250;
@@ -554,11 +573,6 @@ end;
 /// <summary>Öffnen, Beheben und Unterdrücken aus der Liste.</summary>
 procedure WireFixes(AFrame: TAtlasProblemsFrame);
 begin
-  AFrame.OnCheckFile :=
-    procedure
-    begin
-      TAtlasIdeProblems.CheckFileNow;
-    end;
   AFrame.OnOpen :=
     procedure(const AFinding: TAtlasFinding)
     begin
@@ -719,7 +733,7 @@ begin
   except
     on E: Exception do
     begin
-      Say('Atlas-Prüfung: ' + E.Message);
+      Say(UiText(TProblemsServiceText.AtlasCheck) + E.Message);
       TAtlasGuard.Report(TAtlasFeature.Problems, E);
     end;
   end;
@@ -895,5 +909,8 @@ begin
   end;
   Result := True;
 end;
+
+initialization
+  TAtlasTextLanguage.AddTable('Atlas.IDE.Problems.Service', cTexts[TAtlasLanguage.German], cTexts[TAtlasLanguage.English]);
 
 end.

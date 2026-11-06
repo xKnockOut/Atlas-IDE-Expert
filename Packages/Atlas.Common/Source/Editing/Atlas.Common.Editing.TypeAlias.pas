@@ -109,18 +109,15 @@ type
   end;
 
   TTypeAlias = class
-  public const
-    IntroduceTitle = 'Typ-Alias einführen (%s)';
-    HereTitle = 'Typ-Alias einführen, nur diese Stelle (%s)';
-    UnitTitle = 'Typ-Alias einführen, in der Unit (%s)';
-    ProjectTitle = 'Typ-Alias einführen, im Projekt (%s)';
-    InlineTitle = 'Alias auflösen (%s)';
-    /// <summary>Grund bei offenen generischen Parametern (%s: die Parameter).</summary>
-    OpenParamsReason = 'Kein Typ-Alias: Der Ausdruck nutzt den generischen Parameter %s, und Delphi kennt keine ' +
-      'generischen Aliase. Möglich wäre eine Ableitung TName<T> = class(TBasis<T>), die Atlas nicht selbst anlegt.';
-    CompatibilityNote = 'Atlas schreibt X = Y: zuweisungsverträglich mit dem Ausdruck. X = type Y wäre ein ' +
-      'eigener, nicht verträglicher Typ.';
   public
+    class function IntroduceTitle: string; static;
+    class function HereTitle: string; static;
+    class function UnitTitle: string; static;
+    class function ProjectTitle: string; static;
+    class function InlineTitle: string; static;
+    /// <summary>Grund bei offenen generischen Parametern (%s: die Parameter).</summary>
+    class function OpenParamsReason: string; static;
+    class function CompatibilityNote: string; static;
     /// <summary>Typausdrücke an APosition, für die ein Alias lohnt: der äußere zuerst, dann der innerste, wenn
     /// er ein anderer ist. Leer ohne Treffer.</summary>
     class function Targets(const AText: string; ATree: TSyntaxTree; const AFileName: string;
@@ -157,7 +154,108 @@ uses
   Atlas.Common.Pascal.Lexer,
   Atlas.Common.Pascal.Parser,
   Atlas.Common.Editing.ChangeSignature,
-  Atlas.Common.Editing.UsesClause;
+  Atlas.Common.Editing.UsesClause,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TEditingTypeAliasText = (AfterTheChangeNoLonger, IsNotAValidIdentifier, UsesTypesFromTheImplementation,
+    TheUnitHasNoInterface, TheNameIsAlreadyTaken, IsNotDeclaredYetBefore, GetsAForwardDeclarationBefore,
+    EqualExpressionsRemainNotUsed, IsInTheImplementationPart, ThereIsNoTypeAlias, IsGeneric, IsNotAnAlias,
+    TypeIsADistinctType, NoTree, UsesForCannotBeAdded, UsesKeepParameterResultProperty, NoUseOfCanBe,
+    IsNotUsedAnywhere, IsReplacedByPlacesIn, TheAliasIsRemoved, InPlacesInFiles, Line, ImplementationPart,
+    InterfacePart, IntroduceTypeAlias, IntroduceTypeAliasThisPlace, IntroduceTypeAliasInThe, IntroduceTypeAliasInThe2,
+    ResolveAlias, NoTypeAliasTheExpression, AtlasWritesXYAssignment, ThereIsNoTypeExpression);
+
+const
+  cTexts: array[TEditingTypeAliasText] of TAtlasText = (
+    (De: 'Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s)';
+     En: 'After the change %s no longer parses without errors (line %d: %s)'),
+    (De: '"%s" ist kein gültiger Bezeichner'; En: '"%s" is not a valid identifier'),
+    (De: '%s nutzt Typen aus dem implementation-Teil; ersetzt wird nur in dieser Unit';
+     En: '%s uses types from the implementation part; it is replaced only in this unit'),
+    (De: 'Die Unit hat keinen interface-Teil'; En: 'The unit has no interface part'),
+    (De: 'Der Name %s ist schon vergeben'; En: 'The name %s is already taken'),
+    (De: '%s ist vor der ersten Verwendung von %s noch nicht deklariert';
+     En: '%s is not declared yet before the first use of %s'),
+    (De: '%s bekommt eine Vorwärtsdeklaration vor dem Alias'; En: '%s gets a forward declaration before the alias'),
+    (De: '%s: %d gleiche Ausdrücke bleiben (%s nicht eingebunden oder %s dort vergeben)';
+     En: '%s: %d equal expressions remain (%s not used or %s taken there)'),
+    (De: '%s steht im implementation-Teil; andere Units sehen ihn nicht';
+     En: '%s is in the implementation part; other units do not see it'),
+    (De: 'Hier steht kein Typ-Alias'; En: 'There is no type alias here'),
+    (De: '%s ist generisch'; En: '%s is generic'),
+    (De: '%s ist kein Alias'; En: '%s is not an alias'),
+    (De: '%s = type … ist ein eigener Typ; Auflösen würde die Bedeutung ändern';
+     En: '%s = type … is a distinct type; resolving it would change the meaning'),
+    (De: 'kein Baum'; En: 'no tree'),
+    (De: '%s: uses für %s lässt sich nicht ergänzen'; En: '%s: uses for %s cannot be added'),
+    (De: '%d Verwendungen behalten %s (Parameter, Ergebnis, Property, Typargument, Ausdruck oder eine Unit, die den ' +
+      'Typ nicht sieht); der Alias bleibt';
+     En: '%d uses keep %s (parameter, result, property, type argument, expression or a unit that does not see the ' +
+      'type); the alias stays'),
+    (De: 'Keine Verwendung von %s lässt sich ersetzen'; En: 'No use of %s can be replaced'),
+    (De: '%s wird nirgends verwendet'; En: '%s is not used anywhere'),
+    (De: '%s wird durch %s ersetzt, %d Stellen in %d Dateien'; En: '%s is replaced by %s, %d places in %d files'),
+    (De: '; der Alias entfällt.'; En: '; the alias is removed.'),
+    (De: '%s = %s; im %s, %d Stellen in %d Dateien.'; En: '%s = %s; in %s, %d places in %d files.'),
+    (De: '%s, Zeile %d'; En: '%s, line %d'),
+    (De: 'implementation-Teil'; En: 'implementation part'),
+    (De: 'interface-Teil'; En: 'interface part'),
+    (De: 'Typ-Alias einführen (%s)'; En: 'Introduce type alias (%s)'),
+    (De: 'Typ-Alias einführen, nur diese Stelle (%s)'; En: 'Introduce type alias, this place only (%s)'),
+    (De: 'Typ-Alias einführen, in der Unit (%s)'; En: 'Introduce type alias, in the unit (%s)'),
+    (De: 'Typ-Alias einführen, im Projekt (%s)'; En: 'Introduce type alias, in the project (%s)'),
+    (De: 'Alias auflösen (%s)'; En: 'Resolve alias (%s)'),
+    (De: 'Kein Typ-Alias: Der Ausdruck nutzt den generischen Parameter %s, und Delphi kennt keine generischen ' +
+      'Aliase. Möglich wäre eine Ableitung TName<T> = class(TBasis<T>), die Atlas nicht selbst anlegt.';
+     En: 'No type alias: the expression uses the generic parameter %s, and Delphi has no generic aliases. A ' +
+      'descendant TName<T> = class(TBase<T>) would be possible, which Atlas does not create itself.'),
+    (De: 'Atlas schreibt X = Y: zuweisungsverträglich mit dem Ausdruck. X = type Y wäre ein eigener, nicht ' +
+      'verträglicher Typ.';
+     En: 'Atlas writes X = Y: assignment compatible with the expression. X = type Y would be a distinct, ' +
+      'incompatible type.'),
+    (De: 'Hier steht kein Typausdruck, für den ein Alias lohnt';
+     En: 'There is no type expression here that is worth an alias'));
+
+{$SCOPEDENUMS OFF}
+
+class function TTypeAlias.IntroduceTitle: string;
+begin
+  Result := cTexts[TEditingTypeAliasText.IntroduceTypeAlias].Text;
+end;
+
+class function TTypeAlias.HereTitle: string;
+begin
+  Result := cTexts[TEditingTypeAliasText.IntroduceTypeAliasThisPlace].Text;
+end;
+
+class function TTypeAlias.UnitTitle: string;
+begin
+  Result := cTexts[TEditingTypeAliasText.IntroduceTypeAliasInThe].Text;
+end;
+
+class function TTypeAlias.ProjectTitle: string;
+begin
+  Result := cTexts[TEditingTypeAliasText.IntroduceTypeAliasInThe2].Text;
+end;
+
+class function TTypeAlias.InlineTitle: string;
+begin
+  Result := cTexts[TEditingTypeAliasText.ResolveAlias].Text;
+end;
+
+class function TTypeAlias.OpenParamsReason: string;
+begin
+  Result := cTexts[TEditingTypeAliasText.NoTypeAliasTheExpression].Text;
+end;
+
+class function TTypeAlias.CompatibilityNote: string;
+begin
+  Result := cTexts[TEditingTypeAliasText.AtlasWritesXYAssignment].Text;
+end;
 
 const
   TypeKinds = [TSyntaxKind.TypeReference, TSyntaxKind.ArrayType, TSyntaxKind.SetType, TSyntaxKind.ProcedureType,
@@ -177,7 +275,7 @@ end;
 
 function Where(const AFileName: string; ALine: Integer): string;
 begin
-  Result := Format('%s, Zeile %d', [ExtractFileName(AFileName), ALine + 1]);
+  Result := cTexts[TEditingTypeAliasText.Line].Fmt([ExtractFileName(AFileName), ALine + 1]);
 end;
 
 function LastPart(const AName: string): string;
@@ -1017,8 +1115,8 @@ begin
     try
       if Length(Tree.Diagnostics) > Length(Change.Tree.Diagnostics) then
       begin
-        Exit(Fail(Format('Nach der Änderung parst %s nicht mehr fehlerfrei (Zeile %d: %s)',
-          [ExtractFileName(Change.FileName), Tree.Diagnostics[0].StartPos.Line + 1, Tree.Diagnostics[0].Message]),
+        Exit(Fail(cTexts[TEditingTypeAliasText.AfterTheChangeNoLonger].Fmt([ExtractFileName(Change.FileName),
+          Tree.Diagnostics[0].StartPos.Line + 1, Tree.Diagnostics[0].Message]),
           AReason));
       end;
     finally
@@ -1073,8 +1171,6 @@ begin
   end;
 end;
 
-const
-  cNoAliasTarget = 'Hier steht kein Typausdruck, für den ein Alias lohnt';
 
 type
   /// <summary>Arbeitsstand von TTypeAlias.Introduce: Ausdruck Node mit Schlüssel Key, seine Stellen Sites (First die
@@ -1143,12 +1239,12 @@ var
 begin
   if not IsIdentifier(Name) then
   begin
-    Exit(Format('"%s" ist kein gültiger Bezeichner', [Name]));
+    Exit(cTexts[TEditingTypeAliasText.IsNotAValidIdentifier].Fmt([Name]));
   end;
   mCandidates := TTypeAlias.Targets(Declaring.Text, Declaring.Tree, Declaring.FileName, APosition, Lookup);
   if mCandidates = nil then
   begin
-    Exit(cNoAliasTarget);
+    Exit(cTexts[TEditingTypeAliasText.ThereIsNoTypeExpression].Text);
   end;
   Target := mCandidates[0];
   for mIndex := 1 to High(mCandidates) do
@@ -1166,7 +1262,7 @@ begin
   end
   else if Node = nil then
   begin
-    Result := cNoAliasTarget;
+    Result := cTexts[TEditingTypeAliasText.ThereIsNoTypeExpression].Text;
   end
   else
   begin
@@ -1209,8 +1305,8 @@ begin
   begin
     ExportNeeded := False;
     Scope := TTypeAliasScope.InUnit;
-    Outcome.Warnings := Outcome.Warnings + [Format('%s nutzt Typen aus dem implementation-Teil; ersetzt wird nur ' +
-      'in dieser Unit', [Target.TypeText])];
+    Outcome.Warnings := Outcome.Warnings + [cTexts[TEditingTypeAliasText.UsesTypesFromTheImplementation].Fmt([
+      Target.TypeText])];
   end;
 end;
 
@@ -1238,7 +1334,7 @@ begin
   mSection := Declaring.Tree.Root.FindChild(TSyntaxKind.InterfaceSection);
   if mSection = nil then
   begin
-    Exit('Die Unit hat keinen interface-Teil');
+    Exit(cTexts[TEditingTypeAliasText.TheUnitHasNoInterface].Text);
   end;
   Result := '';
   Top := nil;
@@ -1307,7 +1403,7 @@ function TIntroduction.PlacementIssue: string;
 begin
   if Assigned(Lookup.NameTaken) and Lookup.NameTaken(Declaring.Tree, Declaring.FileName, Name, First.StartOffset) then
   begin
-    Exit(Format('Der Name %s ist schon vergeben', [Name]));
+    Exit(cTexts[TEditingTypeAliasText.TheNameIsAlreadyTaken].Fmt([Name]));
   end;
   Result := '';
   if ExportNeeded then
@@ -1366,14 +1462,14 @@ begin
     mKind := ForwardKindOf(mLocal);
     if mKind = '' then
     begin
-      Exit(Format('%s ist vor der ersten Verwendung von %s noch nicht deklariert', [mLocal.Name, Target.TypeText]));
+      Exit(cTexts[TEditingTypeAliasText.IsNotDeclaredYetBefore].Fmt([mLocal.Name, Target.TypeText]));
     end;
     if not ContainsText(AForwards, ' ' + mLocal.Name + ' = ') then
     begin
       AForwards := AForwards + Indent + mLocal.Name + ' = ' + mKind + ';' + LineBreak;
     end;
-    Outcome.Warnings := Outcome.Warnings + [Format('%s bekommt eine Vorwärtsdeklaration vor dem Alias',
-      [mLocal.Name])];
+    Outcome.Warnings := Outcome.Warnings + [cTexts[TEditingTypeAliasText.GetsAForwardDeclarationBefore].Fmt([
+      mLocal.Name])];
   end;
 end;
 
@@ -1437,8 +1533,8 @@ begin
   end;
   if mSkipped > 0 then
   begin
-    Outcome.Warnings := Outcome.Warnings + [Format('%s: %d gleiche Ausdrücke bleiben (%s nicht eingebunden ' +
-      'oder %s dort vergeben)', [ExtractFileName(AOther.FileName), mSkipped, AUnitName, Name])];
+    Outcome.Warnings := Outcome.Warnings + [cTexts[TEditingTypeAliasText.EqualExpressionsRemainNotUsed].Fmt([
+      ExtractFileName(AOther.FileName), mSkipped, AUnitName, Name])];
   end;
   if mChange.Edits <> nil then
   begin
@@ -1466,8 +1562,7 @@ begin
   end
   else if (Scope = TTypeAliasScope.Project) and (Others <> nil) then
   begin
-    Outcome.Warnings := Outcome.Warnings + [Format('%s steht im implementation-Teil; andere Units sehen ihn nicht',
-      [Name])];
+    Outcome.Warnings := Outcome.Warnings + [cTexts[TEditingTypeAliasText.IsInTheImplementationPart].Fmt([Name])];
   end;
 end;
 
@@ -1475,12 +1570,12 @@ function TIntroduction.PreviewText(const AResult: TTypeAliasResult): string;
 var
   mVisible: string;
 begin
-  mVisible := 'implementation-Teil';
+  mVisible := cTexts[TEditingTypeAliasText.ImplementationPart].Text;
   if InInterface(First) or ExportNeeded then
   begin
-    mVisible := 'interface-Teil';
+    mVisible := cTexts[TEditingTypeAliasText.InterfacePart].Text;
   end;
-  Result := Format('%s = %s; im %s, %d Stellen in %d Dateien.', [Name, Target.TypeText, mVisible, AResult.Places,
+  Result := cTexts[TEditingTypeAliasText.InPlacesInFiles].Fmt([Name, Target.TypeText, mVisible, AResult.Places,
     Length(AResult.Files)]) + sLineBreak + TTypeAlias.CompatibilityNote;
   if PreviewLines <> nil then
   begin
@@ -1570,22 +1665,22 @@ var
 begin
   if (ADecl = nil) or (AOffset >= ADecl.StartOffset + Length(ADecl.Name)) then
   begin
-    Exit('Hier steht kein Typ-Alias');
+    Exit(cTexts[TEditingTypeAliasText.ThereIsNoTypeAlias].Text);
   end;
   if ADecl.FindChild(TSyntaxKind.GenericParams) <> nil then
   begin
-    Exit(Format('%s ist generisch', [ADecl.Name]));
+    Exit(cTexts[TEditingTypeAliasText.IsGeneric].Fmt([ADecl.Name]));
   end;
   mExpression := AliasExpression(ADecl);
   Result := '';
   if (mExpression = nil) or (ADecl.ChildCount <> 1) then
   begin
-    Result := Format('%s ist kein Alias', [ADecl.Name]);
+    Result := cTexts[TEditingTypeAliasText.IsNotAnAlias].Fmt([ADecl.Name]);
   end
   // X = type Y: eigener Typ.
   else if IsDistinctType(ATree, ADecl, mExpression) then
   begin
-    Result := Format('%s = type … ist ein eigener Typ; Auflösen würde die Bedeutung ändern', [ADecl.Name]);
+    Result := cTexts[TEditingTypeAliasText.TypeIsADistinctType].Fmt([ADecl.Name]);
   end;
 end;
 
@@ -1598,7 +1693,7 @@ begin
   ATarget := Default(TInlineAliasTarget);
   if (ATree = nil) or (ATree.Root = nil) then
   begin
-    Exit(Fail('kein Baum', AReason));
+    Exit(Fail(cTexts[TEditingTypeAliasText.NoTree].Text, AReason));
   end;
   mOffset := TLineTable.Build(AText).OffsetAt(APosition);
   mDecl := AliasDecl(ATree, mOffset);
@@ -1774,7 +1869,7 @@ begin
     end;
     if not TUsesClauses.AddUnit(ASource.Tree.Tokens, AFirstSite, mUnitName, mLineBreak, mUsesEdit) then
     begin
-      Exit(Format('%s: uses für %s lässt sich nicht ergänzen', [ExtractFileName(ASource.FileName), mUnitName]));
+      Exit(cTexts[TEditingTypeAliasText.UsesForCannotBeAdded].Fmt([ExtractFileName(ASource.FileName), mUnitName]));
     end;
     AChange.Edits := AChange.Edits + [mUsesEdit];
   end;
@@ -1877,27 +1972,27 @@ begin
   end
   else
   begin
-    Outcome.Warnings := Outcome.Warnings + [Format('%d Verwendungen behalten %s (Parameter, Ergebnis, Property, ' +
-      'Typargument, Ausdruck oder eine Unit, die den Typ nicht sieht); der Alias bleibt', [Kept, Target.Name])];
+    Outcome.Warnings := Outcome.Warnings + [cTexts[TEditingTypeAliasText.UsesKeepParameterResultProperty].Fmt([Kept,
+      Target.Name])];
   end;
   Result := '';
   if (Outcome.Places = 0) and (Kept > 0) then
   begin
-    Result := Format('Keine Verwendung von %s lässt sich ersetzen', [Target.Name]);
+    Result := cTexts[TEditingTypeAliasText.NoUseOfCanBe].Fmt([Target.Name]);
   end
   else if Outcome.Places = 0 then
   begin
-    Outcome.Warnings := Outcome.Warnings + [Format('%s wird nirgends verwendet', [Target.Name])];
+    Outcome.Warnings := Outcome.Warnings + [cTexts[TEditingTypeAliasText.IsNotUsedAnywhere].Fmt([Target.Name])];
   end;
 end;
 
 function TInlining.PreviewText(const AResult: TTypeAliasResult): string;
 begin
-  Result := Format('%s wird durch %s ersetzt, %d Stellen in %d Dateien', [Target.Name, Target.TypeText,
+  Result := cTexts[TEditingTypeAliasText.IsReplacedByPlacesIn].Fmt([Target.Name, Target.TypeText,
     AResult.Places, Length(AResult.Files)]);
   if Kept = 0 then
   begin
-    Result := Result + '; der Alias entfällt.';
+    Result := Result + cTexts[TEditingTypeAliasText.TheAliasIsRemoved].Text;
   end
   else
   begin
@@ -1931,5 +2026,8 @@ begin
     Result := True;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Editing.TypeAlias', cTexts);
 
 end.

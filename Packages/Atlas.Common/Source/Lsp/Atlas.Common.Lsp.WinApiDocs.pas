@@ -44,7 +44,22 @@ type
 implementation
 
 uses
-  System.StrUtils;
+  System.StrUtils,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TWinApiDocsText = (For64BitUseTruncates, MicrosoftDocumentation);
+
+const
+  cTexts: array[TWinApiDocsText] of TAtlasText = (
+    (De: 'Für 64 Bit `%s` verwenden; `%s` schneidet Zeiger und Handles ab.';
+     En: 'For 64 bit use `%s`; `%s` truncates pointers and handles.'),
+    (De: '[Microsoft-Dokumentation](%s)'; En: '[Microsoft documentation](%s)'));
+
+{$SCOPEDENUMS OFF}
 
 type
   /// <summary>Kind: nf = Funktion, ns = Struktur. WideVariant: Seite gibt es als …a und …w.</summary>
@@ -254,13 +269,15 @@ class function TWinApiDocs.HoverText(const AName: string): string;
 var
   Replacement: string;
 begin
-  Result := '[Microsoft-Dokumentation](' + Url(AName) + ')';
+  Result := cTexts[TWinApiDocsText.MicrosoftDocumentation].Fmt([Url(AName)]);
   Replacement := PtrVariant(AName);
   if Replacement <> '' then
   begin
-    Result := Result + #10#10 + Format('Für 64 Bit `%s` verwenden; `%s` schneidet Zeiger und Handles ab.',
-      [Replacement, AName]);
+    Result := Result + #10#10 + cTexts[TWinApiDocsText.For64BitUseTruncates].Fmt([Replacement, AName]);
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.WinApiDocs', cTexts);
 
 end.

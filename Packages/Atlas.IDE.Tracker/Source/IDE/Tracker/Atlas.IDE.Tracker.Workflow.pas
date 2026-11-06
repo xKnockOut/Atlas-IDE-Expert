@@ -219,7 +219,8 @@ begin
   mSettings := TAtlasIdeSettings.Current;
   Result := TAtlasTrackerSyncOptions.Create(mSettings.IssuesSyncState, mSettings.IssuesStateField,
     mSettings.IssuesAssigneeField).WithStart(mSettings.IssuesStartState, mSettings.IssuesAssignOnStart,
-    mSettings.IssuesStartComment).WithEnd(mSettings.IssuesEndStates, mSettings.IssuesEndComment);
+    mSettings.IssuesStartComment).WithEnd(mSettings.IssuesEndStates,
+    TAtlasTrackerWorkflow.EndCommentFor(mSettings.IssuesEndComment, TAtlasTrackerStrings.English));
   Result := TAtlasTrackerWorkflow.ForConnection(Result, TAtlasTrackerConnections.Read(mSettings.IssuesConnections),
     ATarget);
 end;
@@ -397,7 +398,7 @@ begin
     begin
       if not mOwner.FStopped then
       begin
-        TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+        TAtlasGuard.Run(TAtlasFeature.Tracker,
           procedure
           begin
             mOwner.ShowEnd(mProvider, mTarget, mInput, mOptions, mCommits, mEnded);

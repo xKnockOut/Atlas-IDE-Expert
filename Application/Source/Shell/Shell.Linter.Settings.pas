@@ -19,6 +19,8 @@ type
     class function Resolve(const ATarget: string; out AResult: TLinterTarget): Boolean; static;
     /// <summary>Wie Resolve, ohne ATarget der aktuelle Ordner.</summary>
     class function ResolveOrCurrent(const ATarget: string; out AResult: TLinterTarget): Boolean; static;
+    /// <summary>Ziel von --check wie Resolve; False mit Meldung auf stderr auch, wenn --source-root fehlt.</summary>
+    class function ResolveCheck(const AOptions: TCommandLineOptions; out AResult: TLinterTarget): Boolean; static;
     /// <summary>Name des Ziels für Berichte: Ordnername bzw. Dateiname ohne Endung.</summary>
     function Title: string;
     /// <summary>Ist das Ziel ein Ordner?</summary>
@@ -39,6 +41,10 @@ type
     class function SourceRootOf(const AOptions: TCommandLineOptions; const AConfigRoot: string): string; static;
     /// <summary>Filter aus --rules, --units und --min-severity.</summary>
     class function FilterOf(const AOptions: TCommandLineOptions): TFindingFilter; static;
+    /// <summary>Prüft Kombinationen der Befehlszeile von --check; False mit Meldung auf stderr. --update-baseline
+    /// mit --changed/--diff ist erlaubt und bekommt nur einen Hinweis (die Baseline gilt immer für alle Dateien).
+    /// </summary>
+    class function Validate(const AOptions: TCommandLineOptions): Boolean; static;
   end;
 
 implementation
@@ -51,7 +57,27 @@ uses
   Atlas.Common.Query.Language,
   Atlas.Common.Rules.Output,
   Shell.Bootstrap,
-  Shell.Linter.Output;
+  Shell.Linter.Output,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TLinterSettingsText = (NotFound, NoSourceRoot, DiffOnly, MetricsFormat, TodosFormat, TodosMetrics, BaselineAll);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TLinterSettingsText] of TAtlasText = (
+    (De: 'Ziel "%s" nicht gefunden'; En: 'Target "%s" not found'),
+    (De: 'Quellwurzel "%s" nicht gefunden'; En: 'Source root "%s" not found'),
+    (De: '--format diff gibt es nur mit --format-check oder --format-write';
+    En: '--format diff only exists with --format-check or --format-write'),
+    (De: '--metrics gibt es nur mit --format text (Markdown) oder json';
+    En: '--metrics only exists with --format text (Markdown) or json'),
+    (De: '--todos gibt es nur mit --format text (Markdown) oder json';
+    En: '--todos only exists with --format text (Markdown) or json'),
+    (De: '--todos und --metrics schließen sich aus'; En: '--todos and --metrics exclude each other'),
+    (De: '--update-baseline schreibt die Baseline immer für alle Dateien; --changed/--diff wird ignoriert';
+    En: '--update-baseline always writes the baseline for all files; --changed/--diff is ignored'));
 
 { TLinterTarget }
 
@@ -62,7 +88,7 @@ begin
   Result := TFile.Exists(ATarget) or TDirectory.Exists(ATarget);
   if not Result then
   begin
-    TLinterOutput.Error(Format('Ziel "%s" nicht gefunden', [ATarget]));
+    TLinterOutput.Error(cTexts[TLinterSettingsText.NotFound].Fmt([ATarget]));
     Exit;
   end;
   if AResult.IsFolder then
@@ -211,5 +237,56 @@ begin
   Result.Units := AOptions.UnitFilter;
   Result.MinSeverity := AOptions.MinSeverity;
 end;
+
+class function TLinterTarget.ResolveCheck(const AOptions: TCommandLineOptions; out AResult: TLinterTarget): Boolean;
+begin
+  Result := Resolve(AOptions.CheckTarget, AResult);
+  if Result and (AOptions.SourceRoot <> '') and not TDirectory.Exists(AOptions.SourceRoot) then
+  begin
+    TLinterOutput.Error(cTexts[TLinterSettingsText.NoSourceRoot].Fmt([AOptions.SourceRoot]));
+    Result := False;
+  end;
+end;
+
+/// <summary>Fehler der Kombination von Optionen in AOptions; '' ohne Fehler.</summary>
+function OptionError(const AOptions: TCommandLineOptions): string;
+begin
+  Result := '';
+  if AOptions.FormatDiff then
+  begin
+    Result := cTexts[TLinterSettingsText.DiffOnly].Text;
+  end
+  else if AOptions.Metrics and (AOptions.CheckFormat = TFindingsFormat.Sarif) then
+  begin
+    Result := cTexts[TLinterSettingsText.MetricsFormat].Text;
+  end
+  else if AOptions.Todos and (AOptions.CheckFormat = TFindingsFormat.Sarif) then
+  begin
+    Result := cTexts[TLinterSettingsText.TodosFormat].Text;
+  end
+  else if AOptions.Todos and AOptions.Metrics then
+  begin
+    Result := cTexts[TLinterSettingsText.TodosMetrics].Text;
+  end;
+end;
+
+class function TLinterSettings.Validate(const AOptions: TCommandLineOptions): Boolean;
+var
+  mError: string;
+begin
+  mError := OptionError(AOptions);
+  Result := mError = '';
+  if not Result then
+  begin
+    TLinterOutput.Error(mError);
+  end
+  else if (AOptions.ChangedRef <> '') and AOptions.UpdateBaseline then
+  begin
+    TLinterOutput.Error(cTexts[TLinterSettingsText.BaselineAll].Text);
+  end;
+end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Linter.Settings', cTexts);
 
 end.

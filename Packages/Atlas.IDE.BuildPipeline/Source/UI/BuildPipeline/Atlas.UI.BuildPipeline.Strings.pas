@@ -24,7 +24,10 @@ type
     SettingsReleaseCheckAssertions, SettingsReleaseCheckRangeChecks, SettingsReleaseCheckOverflowChecks,
     SettingsReleaseCheckMemoryLeaks, SettingsReleaseCheckVersionInfo, SettingsReleaseCheckOutputFolder,
     SettingsReleaseNotChecked, SettingsReleaseExpectOff, SettingsReleaseExpectOn, SettingsBuildGateTimeout,
-    SettingsBuildSummary, SettingsBuildWarningsAsErrors);
+    SettingsBuildSummary, SettingsBuildWarningsAsErrors,
+    McpRefusedCancelled, McpRefusedShutdown, McpRefusedBusy, McpRefusedForeignBuild, McpRefusedDebugging,
+    McpRefusedKind, McpRefusedProjectClosed, McpRefusedConfiguration, McpRefusedPlatform, McpBuildException,
+    McpRequestUnreadable, McpRequestNoProject, McpRequestUnknownMode);
 
   TAtlasBuildPipelineStrings = class
   public
@@ -100,7 +103,20 @@ const
      'prüfen, Soll: an',
      'Zeitlimit der Prüfung vor dem Compile in ms (build.gateTimeoutMs)',
      'Zusammenfassung nach jedem Build (build.summary)',
-     'Codes, die als Fehler zählen (build.warningsAsErrors, z. B. W1035, H2164)'),
+     'Codes, die als Fehler zählen (build.warningsAsErrors, z. B. W1035, H2164)',
+     'Ein Teilnehmer hat den Build abgebrochen',
+     'Atlas wurde in der IDE beendet',
+     'Atlas baut in der IDE schon ein Projekt',
+     'In der IDE läuft schon ein Build oder eine Compilerprüfung',
+     'In der IDE läuft der Debugger',
+     'Nur make, build und check sind möglich',
+     'Das Projekt %s ist in der IDE nicht offen',
+     'Das Projekt kennt die Konfiguration %s nicht',
+     'Die Plattform %s ist im Projekt nicht aktiviert',
+     'Build in der IDE fehlgeschlagen: %s',
+     'Auftrag nicht lesbar',
+     'Auftrag ohne Projekt',
+     'Unbekannte Art "%s"; erlaubt sind make, build und check'),
     ('Claude Code is building %s in the IDE …',
      'Build for Claude Code finished: %s, %d errors',
      'Build for Claude Code refused: %s (%s)',
@@ -160,7 +176,20 @@ const
      'check, expected: on',
      'Time limit of the check before compiling in ms (build.gateTimeoutMs)',
      'Summary after every build (build.summary)',
-     'Codes that count as errors (build.warningsAsErrors, e.g. W1035, H2164)'));
+     'Codes that count as errors (build.warningsAsErrors, e.g. W1035, H2164)',
+     'A participant cancelled the build',
+     'Atlas was shut down in the IDE',
+     'Atlas is already building a project in the IDE',
+     'A build or compiler check is already running in the IDE',
+     'The debugger is running in the IDE',
+     'Only make, build and check are possible',
+     'The project %s is not open in the IDE',
+     'The project has no configuration %s',
+     'The platform %s is not enabled in the project',
+     'Build in the IDE failed: %s',
+     'Request not readable',
+     'Request without project',
+     'Unknown mode "%s"; allowed are make, build and check'));
 
 { TAtlasBuildPipelineStrings }
 

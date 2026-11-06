@@ -221,7 +221,22 @@ uses
   Atlas.Common.Editing.UsesClause,
   Atlas.Common.Pascal.Lexer,
   Atlas.Text.Lines,
-  Atlas.Text.DUnitX;
+  Atlas.Text.DUnitX,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TImpactText = (TimeLimitOfTheImpact, FieldsTextDocumentUriAndPosition);
+
+const
+  cTexts: array[TImpactText] of TAtlasText = (
+    (De: 'Zeitlimit der Auswirkungsanalyse erreicht'; En: 'Time limit of the impact analysis reached'),
+    (De: 'Felder "textDocument.uri" und "position" fehlen in ';
+     En: 'Fields "textDocument.uri" and "position" missing in '));
+
+{$SCOPEDENUMS OFF}
 
 const
   // Bäume, die eine Analyse höchstens zugleich hält; danach werden sie verworfen.
@@ -402,7 +417,7 @@ begin
   end;
   if Expired then
   begin
-    raise EImpactTimeLimit.Create('Zeitlimit der Auswirkungsanalyse erreicht');
+    raise EImpactTimeLimit.Create(cTexts[TImpactText.TimeLimitOfTheImpact].Text);
   end;
 end;
 
@@ -1519,7 +1534,7 @@ begin
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
   begin
     raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      'Felder "textDocument.uri" und "position" fehlen in ' + Method);
+      cTexts[TImpactText.FieldsTextDocumentUriAndPosition].Text + Method);
   end;
   Options := OptionsFrom(TJSONObject(AParams), Uri);
   Cancellation := TRequestCancellation.Create(ACancellation);
@@ -1552,5 +1567,8 @@ begin
     Resolver.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Lsp.Impact', cTexts);
 
 end.

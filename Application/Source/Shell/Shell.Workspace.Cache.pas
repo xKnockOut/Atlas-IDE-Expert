@@ -73,7 +73,20 @@ uses
   System.IOUtils,
   Atlas.Common.Index.Adapters.CacheDirectory,
   Atlas.Common.Index.CacheHousekeeping,
-  Atlas.Text.LogMarks;
+  Atlas.Text.LogMarks,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TWorkspaceCacheText = (Released, Updating, Locked, ReadOnly);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TWorkspaceCacheText] of TAtlasText = (
+    (De: 'Sperre freigegeben (Index löschen)'; En: 'Lock released (clear index)'),
+    (De: 'Index wird aktualisiert'; En: 'Index is being updated'),
+    (De: 'Cache-Sperre erhalten, Index wird aufgebaut'; En: 'Cache lock acquired, index is being built'),
+    (De: 'Sperre belegt, lade Cache nur lesend'; En: 'Lock taken, loading the cache read-only'));
 
 { TShellCacheFiles }
 
@@ -187,7 +200,7 @@ procedure TShellWorkspaceCache.Release;
 begin
   FreeAndNil(FCacheLock);
   FCacheLockFile := '';
-  Report(TIndexProcessInfo.StateReady, False, 'Sperre freigegeben (Index löschen)');
+  Report(TIndexProcessInfo.StateReady, False, cTexts[TWorkspaceCacheText.Released].Text);
 end;
 
 function TShellWorkspaceCache.Lock(const AFiles: TShellCacheFiles; const AOrigin: string;
@@ -195,7 +208,7 @@ function TShellWorkspaceCache.Lock(const AFiles: TShellCacheFiles; const AOrigin
 begin
   if SameText(AFiles.ProjectFile, FCacheLockFile) and (FCacheLock <> nil) then
   begin
-    Report(AFiles.ProjectFile, TIndexProcessInfo.StateBuilding, True, 'Index wird aktualisiert');
+    Report(AFiles.ProjectFile, TIndexProcessInfo.StateBuilding, True, cTexts[TWorkspaceCacheText.Updating].Text);
     Exit(True);
   end;
   FreeAndNil(FCacheLock);
@@ -205,11 +218,11 @@ begin
   // Für „Prozesse am Projekt“ (#62): wer schreibt, wer nur liest.
   if Result then
   begin
-    Report(AFiles.ProjectFile, TIndexProcessInfo.StateBuilding, True, 'Cache-Sperre erhalten, Index wird aufgebaut');
+    Report(AFiles.ProjectFile, TIndexProcessInfo.StateBuilding, True, cTexts[TWorkspaceCacheText.Locked].Text);
   end
   else
   begin
-    Report(AFiles.ProjectFile, TIndexProcessInfo.StateReading, False, 'Sperre belegt, lade Cache nur lesend');
+    Report(AFiles.ProjectFile, TIndexProcessInfo.StateReading, False, cTexts[TWorkspaceCacheText.ReadOnly].Text);
   end;
   try
     // Herkunft und Benutzung vermerken (#905): Danach erkennt jede Instanz verwaiste und ungenutzte Caches.
@@ -303,5 +316,8 @@ begin
       DiscardNow(mFiles, mLogger);
     end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Workspace.Cache', cTexts);
 
 end.

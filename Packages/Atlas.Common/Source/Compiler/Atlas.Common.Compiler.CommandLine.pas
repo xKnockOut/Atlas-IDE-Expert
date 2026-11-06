@@ -27,7 +27,22 @@ type
 implementation
 
 uses
-  Atlas.Common.Projects.Paths;
+  Atlas.Common.Projects.Paths,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TCommandLineText = (PlatformIsNotSupportedFor, ProjectHasNoMainFile);
+
+const
+  cTexts: array[TCommandLineText] of TAtlasText = (
+    (De: 'Plattform %s wird beim Kompilieren noch nicht unterstützt';
+     En: 'Platform %s is not supported for compiling yet'),
+    (De: 'Projekt %s hat keine Hauptdatei'; En: 'Project %s has no main file'));
+
+{$SCOPEDENUMS OFF}
 
 function JoinList(const AItems: TArray<string>): string;
 var
@@ -61,7 +76,7 @@ begin
   end
   else
   begin
-    raise ECompilerError.CreateFmt('Plattform %s wird beim Kompilieren noch nicht unterstützt', [APlatform]);
+    raise ECompilerError.CreateFmt(cTexts[TCommandLineText.PlatformIsNotSupportedFor].Text, [APlatform]);
   end;
 end;
 
@@ -87,7 +102,7 @@ var
 begin
   if AProject.MainSource = '' then
   begin
-    raise ECompilerError.CreateFmt('Projekt %s hat keine Hauptdatei', [AProject.FileName]);
+    raise ECompilerError.CreateFmt(cTexts[TCommandLineText.ProjectHasNoMainFile].Text, [AProject.FileName]);
   end;
   Result := Default(TCompilerRequest);
   Result.Executable := ExecutableFor(ABdsRoot, AProject.Platform);
@@ -124,5 +139,8 @@ begin
     Arguments.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.Compiler.CommandLine', cTexts);
 
 end.

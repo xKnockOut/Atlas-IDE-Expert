@@ -49,7 +49,17 @@ uses
   Atlas.Common.Lsp.WorkDoneProgress,
   Shell.Platform,
   Shell.VcsChanges,
-  Shell.Workspace;
+  Shell.Workspace,
+  Atlas.Common.Localization.Texts;
+
+type
+{$SCOPEDENUMS ON}
+  TCompileSetupText = (NoFolder);
+{$SCOPEDENUMS OFF}
+
+const
+  cTexts: array[TCompileSetupText] of TAtlasText = (
+    (De: 'Kein Ordner mit Projekt geöffnet'; En: 'No folder with a project open'));
 
 function RunningIdes: TArray<Cardinal>;
 begin
@@ -91,7 +101,7 @@ begin
     mWorkspace := TShellWorkspaces.Choose(mWorkspace, AWorkspaces.Items);
     if mWorkspace = nil then
     begin
-      AError := 'Kein Ordner mit Projekt geöffnet';
+      AError := cTexts[TCompileSetupText.NoFolder].Text;
     end
     else if mWorkspace.CompileJob(AJob, AError) then
     begin
@@ -141,5 +151,8 @@ begin
   mServices.Publish := AServices.Publish;
   Result := TShellCompileHost.Create(mServices);
 end;
+
+initialization
+  TAtlasTextTables.Add('Shell.Composition.CompileSetup', cTexts);
 
 end.

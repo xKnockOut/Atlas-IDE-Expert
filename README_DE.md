@@ -45,6 +45,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 ### [Verstehen](docs/features/de/Verstehen.md)
 - **Hover** mit Deklaration, XMLDoc, Vererbung, Werten von Konstanten und Werten beim Debuggen
 - **Typhinweise, Code-Metriken und Rekursionsmarken** im Editor; inaktive `{$IFDEF}`-Zweige abgeblendet
+- **Paarfarben und Blocklinien** nach Tiefe; lokale Routinen heben sich ab (eine Stufe tiefer oder eigene Farbe, auf Wunsch hinterlegt)
 - **Architekturübersicht:** Teilsysteme, zentrale Units, Zyklen, Vergleich mit einem gespeicherten Stand
 - **Code-Abfragen** wie `classes where inherits TForm and methods > 40`
 - **Hotspots, Aufrufdiagramm, Unit-Beziehungen** und der Weg zwischen zwei Symbolen
@@ -55,12 +56,14 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Schnell öffnen** (Strg+P), Unitsuche (Strg+F12) und Suchleiste mit Ersetzen über Dateien hinweg
 - **Ergebnisfenster** für Referenzen, Aufrufer und Implementierungen, dazu Auswirkungen und Datenfluss
 - **Lesezeichen, Notizen, Minimap und mitlaufender Kopf**
+- **Regionen:** alle `{$REGION}`-Blöcke beim Öffnen einer Datei oder auf Befehl zu- bzw. aufklappen
 
 ### [Code-Analyse](docs/features/de/Code-Analyse.md)
 - **313 Prüfregeln** schon beim Tippen: 204 Fehler, 99 Code-Smells, 10 Sicherheitsregeln
-- **„Compiler vorab“:** Fehler und Warnungen von dcc vor dem Build, mit Schnellkorrekturen
+- **„Compiler vorab“:** Fehler und Warnungen von dcc vor dem Build, mit Schnellkorrekturen; Units sucht Atlas wie dcc, samt Namespaces und Unit-Aliasen (`WinTypes`, `WinProcs`)
 - **Fenster „Atlas-Prüfung“** für Datei, Projekt oder Gruppe, mit Sammelkorrekturen
 - **Profile, Konfidenz, Baseline und Unterdrückungen** für gewachsene Projekte
+- **Typen aus installierten Packages:** Die IDE meldet Atlas die Typen ihrer Packages (auch ohne .pas). „Typ ist nicht deklariert“ schweigt für sie, die Schnellkorrektur schlägt ihre Unit vor, die Vervollständigung bietet sie mit `uses`-Eintrag an
 - **Linter für CI** mit Ausgabe als Text, JSON oder SARIF. Alle Regeln: [docs/Regeln.md](docs/Regeln.md)
 
 ### [Umbauen und Code-Aktionen](docs/features/de/Umbauen.md)
@@ -85,6 +88,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Atlas-Willkommensseite** mit Projekten, Verlauf, Issues und Neuigkeiten
 - **Issue-Tracker** (GitHub, YouTrack) und **Versionsverwaltung** (Git, SVN) in der IDE
 - **Befehlspalette** (Strg+Umschalt+P), Benachrichtigungen, Serverfenster
+- **Kontextmenü *Atlas*** im Editor mit Untermenüs (Navigation, Bearbeiten, Suchen und analysieren, Befunde, Module) und rechtsbündigen Tastenkürzeln
 - **Robustheit:** Fehler erreichen nie die IDE, sicherer Start, nachspielbare Absturzfälle
 
 ### [Einstellungen](docs/features/de/Einstellungen.md)
@@ -92,7 +96,7 @@ Kurzer Überblick; jede Überschrift führt zur ausführlichen Beschreibung. Mit
 - **Modulschalter** für ganze Bereiche wie Debuggen, Tests oder Issue-Tracker; jedes Modul bringt seine Einstellungen selbst mit, ohne installiertes Modul fehlen sie
 - **Exportieren, Importieren, Profile und Zurücksetzen**
 - **Werte fürs Team** in `.atlas` und `atlas.json`
-- **Sprache wie die IDE** (Deutsch oder Englisch)
+- **Sprache wie die IDE** (Deutsch oder Englisch), auch Issue-Tracker, Willkommensseite und Debugger; unveränderte Vorgabetexte wie Textbausteine wechseln mit; ebenso Meldungen, Statuszeilen, Hinweise der Vervollständigung, Code-Vorlagen, Hinweise zu Serverabstürzen und das Aufrufdiagramm; außerdem Hinweise zu ungültigen Projektaufgaben, die Antworten von IDE-Builds für Claude Code und die Fragen des pre-commit-Hooks für betroffene Tests; dazu Meldungen und Korrekturen aller Prüfregeln; und die Antworten des Servers: Meldungen, Codeaktionen, Hover, MCP-Antworten, Berichte und Architekturkarte sowie die Meldungen von `--check` und die Beschreibungen der MCP-Werkzeuge
 
 ### [Claude Code und MCP](docs/features/de/Claude-Code.md)
 - **32 MCP-Werkzeuge** zum Lesen, Prüfen, Bauen, Testen, Umbenennen und Korrigieren von Delphi-Code
@@ -113,7 +117,7 @@ Noch nicht in `main`, als Issues angelegt:
 1. Repository klonen und `Atlas.groupproj` in RAD Studio öffnen.
 2. `Atlas.Text`, `Atlas.Common`, `Atlas.Windows`, `AtlasServer` und `AtlasUpdate` für **Win64** erzeugen (alle für dieselbe Plattform). Ergebnis: `Output\Win64\Debug\Bin\AtlasServer.exe` und `AtlasUpdate.exe`. Alternativ `AtlasServer.exe` aus einem [Release](https://github.com/xKnockOut/Atlas-IDE-Expert/releases) nehmen; der Server hängt nicht von der Delphi-Version ab.
 3. Das Kern-Package `Atlas.IDE.Base` und danach die Modul-Packages `Atlas.IDE.<Modul>` ([Aufbau](#aufbau)) mit der Delphi-Version erzeugen, in der das Plugin laufen soll: für die klassische IDE **Win32**, für die 64-Bit-IDE **Win64**. Ergebnis: `Output\Win32\Debug\Bpl\Atlas.IDE.Base370.bpl`, `Atlas.IDE.Debugger370.bpl` … (Delphi 13; Delphi 12: `…290.bpl`, 64-Bit-IDE: `Output\Win64\…`).
-4. *Komponente › Packages installieren › Hinzufügen*: zuerst `Atlas.IDE.Base`, dann jedes gewünschte Modul. Ein Modul braucht nur das Kern-Package; fehlt es oder ist es ausgeschaltet (`debug.enabled` …), fallen nur seine Funktionen weg.
+4. *Komponente › Packages installieren › Hinzufügen*: zuerst `Atlas.IDE.Base`, dann jedes gewünschte Modul. Ein Modul braucht nur das Kern-Package; fehlt es oder ist es ausgeschaltet (`debug.enabled` …), fallen nur seine Funktionen weg. Verschwinden Module später aus „Known Packages“ der IDE, meldet Atlas das beim Start mit „Wieder eintragen“ und protokolliert jede Änderung der Liste ([Einzelheiten](docs/RAD-Studio.md)).
 5. Liegt der Server nicht unter `Output\…\Bin` oder neben der BPL: *Tools › Optionen › Drittanbieter › Atlas*, Feld „Atlas-Server“. Die Seite zeigt an, ob der Server gefunden wird.
 6. Delphi einmal neu starten: Atlas schaltet Help Insight und die Strukturhervorhebung der IDE ab, damit nichts doppelt erscheint; die IDE liest diese Schalter nur beim Start.
 

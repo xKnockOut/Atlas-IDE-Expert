@@ -4,7 +4,8 @@
 // Ansichten unten (Text mit sichtbaren Steuerzeichen, Zeilen aus „.Text“,
 // JSON, Hex, Hinweis bei unpassender Ansicht), Baum mit Platzhalter zum Aufklappen und Kindern aus
 // Teilen, Enter/Strg+Enter im Eingabefeld, Entf auf einem Feld entfernt die
-// ganze Zeile, Knopf „Festheften“ bzw. „Lösen“.
+// ganze Zeile, Knopf „Festheften“ bzw. „Lösen“, Tastenhilfe passt ihre Höhe der
+// Breite an (kein leerer Streifen unten, Baum wächst mit), Reihenfolge der Knöpfe.
 
 interface
 
@@ -36,6 +37,10 @@ type
     procedure DeleteRemovesWholeRow;
     [Test]
     procedure PinCaption;
+    [Test]
+    procedure KeysFollowWidth;
+    [Test]
+    procedure ButtonOrder;
   end;
 
 implementation
@@ -44,6 +49,7 @@ uses
   System.SysUtils,
   System.Classes,
   Winapi.Windows,
+  Vcl.Controls,
   Vcl.Forms,
   Atlas.Core.Debug.Evaluate,
   Atlas.UI.Debug.EvaluateFrame;
@@ -254,6 +260,69 @@ begin
   finally
     Host.Free;
     List.Free;
+  end;
+end;
+
+procedure TAtlasDebugEvaluateFrameTests.KeysFollowWidth;
+var
+  mHost: TForm;
+  mFrame: TAtlasDebugEvaluateFrame;
+  mWide, mTree: Integer;
+begin
+  mHost := TForm.CreateNew(nil);
+  try
+    mHost.ClientWidth := 900;
+    mHost.ClientHeight := 600;
+    mFrame := TAtlasDebugEvaluateFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.Align := alClient;
+    mFrame.HandleNeeded;
+    mWide := mFrame.Parts.Keys.Height;
+    Assert.IsTrue(mWide > 0, 'Tastenhilfe sichtbar');
+    mHost.ClientWidth := 200;
+    Assert.IsTrue(mFrame.Parts.Keys.Height > mWide, 'schmal: mehr Zeilen');
+    mHost.ClientWidth := 900;
+    Assert.AreEqual(mWide, mFrame.Parts.Keys.Height, 'wieder breit: wieder eine Zeile, kein leerer Streifen');
+    // Höher: Der Baum bekommt den ganzen Zuwachs.
+    mTree := mFrame.Parts.Tree.Height;
+    mHost.ClientHeight := 800;
+    Assert.AreEqual(mTree + 200, mFrame.Parts.Tree.Height, 'Baum wächst mit');
+    Assert.AreEqual(mHost.ClientHeight, mFrame.Parts.Keys.Top + mFrame.Parts.Keys.Height +
+      mFrame.Parts.Keys.Margins.Bottom, 'Tastenhilfe schließt unten ab');
+  finally
+    mHost.Free;
+  end;
+end;
+
+procedure TAtlasDebugEvaluateFrameTests.ButtonOrder;
+var
+  mHost: TForm;
+  mFrame: TAtlasDebugEvaluateFrame;
+  mKind: TAtlasEvalView;
+begin
+  mHost := TForm.CreateNew(nil);
+  try
+    mHost.ClientWidth := 900;
+    mFrame := TAtlasDebugEvaluateFrame.Create(mHost);
+    mFrame.Parent := mHost;
+    mFrame.Align := alClient;
+    mFrame.HandleNeeded;
+    // Ein unsichtbares Fenster legt die Leiste nicht an, dann richtet sie sich nicht neu aus.
+    mFrame.Parts.Bar.HandleNeeded;
+    mFrame.Parts.Bar.Realign;
+    // Links Text, Zeilen, JSON, Hex; rechts Ändern, Festheften, IDE-Dialog (IDE-Dialog ganz rechts).
+    for mKind := Low(TAtlasEvalView) to Pred(High(TAtlasEvalView)) do
+    begin
+      Assert.IsTrue(mFrame.Parts.ViewButtons[mKind].Left < mFrame.Parts.ViewButtons[Succ(mKind)].Left,
+        'Ansichten in Reihenfolge');
+    end;
+    Assert.IsTrue(mFrame.Parts.ViewButtons[TAtlasEvalView.Text].Left < mFrame.Parts.ModifyButton.Left, 'Ansichten links von Ändern');
+    Assert.IsTrue(mFrame.Parts.ModifyButton.Left < mFrame.Parts.PinButton.Left, 'Ändern vor Festheften');
+    Assert.IsTrue(mFrame.Parts.PinButton.Left < mFrame.Parts.IdeDialogButton.Left, 'Festheften vor IDE-Dialog');
+    Assert.IsTrue(mFrame.Parts.IdeDialogButton.Left + mFrame.Parts.IdeDialogButton.Width <=
+      mFrame.Parts.Bar.ClientWidth, 'innerhalb der Leiste');
+  finally
+    mHost.Free;
   end;
 end;
 

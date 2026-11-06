@@ -152,7 +152,8 @@ uses
   Atlas.Core.Vcs.Contract,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Projects.Context,
-  Atlas.IDE.Vcs.Service;
+  Atlas.IDE.Vcs.Service,
+  Atlas.UI.Tracker.Strings;
 
 { TAtlasIdeCommentService }
 
@@ -393,7 +394,7 @@ end;
 
 function TAtlasIdeCommentAssist.Snippets: TArray<TAtlasCommentSnippet>;
 begin
-  Result := TAtlasCommentSnippets.Read(TAtlasIdeSettings.Current.IssuesCommentSnippets);
+  Result := TAtlasCommentSnippets.Read(TAtlasIdeSettings.Current.IssuesCommentSnippets, TAtlasTrackerStrings.English);
 end;
 
 procedure TAtlasIdeCommentAssist.CancelUsers;
@@ -472,7 +473,7 @@ begin
       begin
         Exit;
       end;
-      TAtlasMainThread.Queue(TAtlasFeature.WelcomePage,
+      TAtlasMainThread.Queue(TAtlasFeature.Tracker,
         procedure
         begin
           if mKeep <> nil then
@@ -613,7 +614,7 @@ begin
       begin
         Exit;
       end;
-      TAtlasMainThread.Queue(TAtlasFeature.WelcomePage,
+      TAtlasMainThread.Queue(TAtlasFeature.Tracker,
         procedure
         begin
           if mKeep <> nil then
@@ -761,7 +762,7 @@ begin
   begin
     Exit;
   end;
-  TAtlasGuard.Run(TAtlasFeature.WelcomePage,
+  TAtlasGuard.Run(TAtlasFeature.Tracker,
     procedure
     begin
       ADone(AValues);

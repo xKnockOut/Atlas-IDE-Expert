@@ -91,7 +91,20 @@ type
 implementation
 
 uses
-  Atlas.Common.JsonRpc.Messages;
+  Atlas.Common.JsonRpc.Messages,
+  Atlas.Common.Localization.Texts;
+
+{$SCOPEDENUMS ON}
+
+type
+  /// <summary>Texte der Unit in beiden Sprachen (#1458).</summary>
+  TWatchdogText = (TimeLimitOfMsExceeded);
+
+const
+  cTexts: array[TWatchdogText] of TAtlasText = (
+    (De: 'Zeitlimit von %d ms überschritten'; En: 'Time limit of %d ms exceeded'));
+
+{$SCOPEDENUMS OFF}
 
 const
   WaitForever = Cardinal($FFFFFFFF);
@@ -234,7 +247,7 @@ begin
         if Answered then
         begin
           AEntry.Responder(TJsonRpcMessages.Error(AEntry.Id, TJsonRpcErrorCode.RequestCancelled,
-            Format('Zeitlimit von %d ms überschritten', [Limit])));
+            cTexts[TWatchdogText.TimeLimitOfMsExceeded].Fmt([Limit])));
         end;
       finally
         FPending.EndWork;
@@ -324,5 +337,8 @@ begin
     mExpired.Free;
   end;
 end;
+
+initialization
+  TAtlasTextTables.Add('Atlas.Common.JsonRpc.Watchdog', cTexts);
 
 end.
