@@ -254,8 +254,8 @@ pwsh Tools/Check-ProjectFiles.ps1          # project files readable by MSBuild (
 
 ## Branches
 
-- `Pilot-2.0.0-beta.1` (unstable): all changes for v2.0 land here once Atlas and CI (FPC) are green. Not necessarily built with Delphi yet.
-- `Pilot-2.0-stable` (stable): only points at Pilot commits that built with Delphi with no errors, warnings or hints and whose tests passed. The branch is only fast-forwarded, never edited directly. Tags `delphi-ok-YYYY-MM-DD` mark each confirmed state.
+- `main`: next version. All new work lands here.
+- `release/X.Y`: bug fixes for the released version, started from its tag. Each fix is merged forward into `main`.
 
 ## CI
 
