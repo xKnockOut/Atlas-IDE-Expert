@@ -21,7 +21,7 @@ type
 
   TMcpStatusTools = class
   public const
-    ToolName = 'get_server_status';
+    cToolName = 'get_server_status';
   public
     /// <summary>Text des Werkzeugs: AJson = JSON (mit "source"), sonst Markdown mit Quelle in der ersten Zeile.
     /// </summary>

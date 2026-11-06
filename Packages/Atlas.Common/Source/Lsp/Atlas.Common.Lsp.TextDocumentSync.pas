@@ -57,7 +57,7 @@ function RequireObject(const AValue: TJSONValue; const AContext: string): TJSONO
 begin
   if not (AValue is TJSONObject) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TTextDocumentSyncText.ParametersMissingIn].Text + AContext);
   end;
   Result := TJSONObject(AValue);
@@ -67,7 +67,7 @@ function RequireString(const AObject: TJSONObject; const APath, AContext: string
 begin
   if not AObject.TryGetValue<string>(APath, Result) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TTextDocumentSyncText.FieldMissingIn].Fmt([APath]) + AContext);
   end;
 end;
@@ -76,37 +76,37 @@ function RequireInteger(const AObject: TJSONObject; const APath, AContext: strin
 begin
   if not AObject.TryGetValue<Integer>(APath, Result) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TTextDocumentSyncText.FieldMissingOrNotA].Fmt([APath]) + AContext);
   end;
 end;
 
 function ReadChanges(const AParams: TJSONObject): TArray<TTextChange>;
 var
-  Changes: TJSONArray;
-  Item: TJSONValue;
-  Entry: TJSONObject;
-  Range: TJSONValue;
-  Text: string;
+  mChanges: TJSONArray;
+  mItem: TJSONValue;
+  mEntry: TJSONObject;
+  mRange: TJSONValue;
+  mText: string;
 begin
-  if not AParams.TryGetValue<TJSONArray>('contentChanges', Changes) then
+  if not AParams.TryGetValue<TJSONArray>('contentChanges', mChanges) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      cTexts[TTextDocumentSyncText.FieldContentChangesMissingIn].Text + TLspTextDocumentMethod.DidChange);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TTextDocumentSyncText.FieldContentChangesMissingIn].Text + TLspTextDocumentMethod.cDidChange);
   end;
   Result := nil;
-  for Item in Changes do
+  for mItem in mChanges do
   begin
-    Entry := RequireObject(Item, TLspTextDocumentMethod.DidChange);
-    Text := RequireString(Entry, 'text', TLspTextDocumentMethod.DidChange);
-    Range := Entry.GetValue('range');
-    if Range = nil then
+    mEntry := RequireObject(mItem, TLspTextDocumentMethod.cDidChange);
+    mText := RequireString(mEntry, 'text', TLspTextDocumentMethod.cDidChange);
+    mRange := mEntry.GetValue('range');
+    if mRange = nil then
     begin
-      Result := Result + [TTextChange.Full(Text)];
+      Result := Result + [TTextChange.Full(mText)];
     end
     else
     begin
-      Result := Result + [TTextChange.Ranged(TLspPositions.ReadRange(Range), Text)];
+      Result := Result + [TTextChange.Ranged(TLspPositions.ReadRange(mRange), mText)];
     end;
   end;
 end;
@@ -121,61 +121,61 @@ end;
 
 procedure TLspTextDocumentSync.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterNotification(TLspTextDocumentMethod.DidOpen, HandleDidOpen);
-  ADispatcher.RegisterNotification(TLspTextDocumentMethod.DidChange, HandleDidChange);
-  ADispatcher.RegisterNotification(TLspTextDocumentMethod.DidSave, HandleDidSave);
-  ADispatcher.RegisterNotification(TLspTextDocumentMethod.DidClose, HandleDidClose);
+  ADispatcher.RegisterNotification(TLspTextDocumentMethod.cDidOpen, HandleDidOpen);
+  ADispatcher.RegisterNotification(TLspTextDocumentMethod.cDidChange, HandleDidChange);
+  ADispatcher.RegisterNotification(TLspTextDocumentMethod.cDidSave, HandleDidSave);
+  ADispatcher.RegisterNotification(TLspTextDocumentMethod.cDidClose, HandleDidClose);
 end;
 
 class function TLspTextDocumentSync.Capability: TJSONObject;
 var
-  Save: TJSONObject;
+  mSave: TJSONObject;
 begin
-  Save := TJSONObject.Create;
-  Save.AddPair('includeText', TJSONBool.Create(False));
+  mSave := TJSONObject.Create;
+  mSave.AddPair('includeText', TJSONBool.Create(False));
   Result := TJSONObject.Create;
   Result.AddPair('openClose', TJSONBool.Create(True));
-  Result.AddPair('change', TJSONNumber.Create(TLspTextDocumentSyncKind.Incremental));
-  Result.AddPair('save', Save);
+  Result.AddPair('change', TJSONNumber.Create(TLspTextDocumentSyncKind.cIncremental));
+  Result.AddPair('save', mSave);
 end;
 
 procedure TLspTextDocumentSync.HandleDidOpen(const AParams: TJSONValue);
 var
-  Params: TJSONObject;
+  mParams: TJSONObject;
 begin
-  Params := RequireObject(AParams, TLspTextDocumentMethod.DidOpen);
+  mParams := RequireObject(AParams, TLspTextDocumentMethod.cDidOpen);
   FStore.Open(
-    RequireString(Params, 'textDocument.uri', TLspTextDocumentMethod.DidOpen),
-    RequireString(Params, 'textDocument.languageId', TLspTextDocumentMethod.DidOpen),
-    RequireInteger(Params, 'textDocument.version', TLspTextDocumentMethod.DidOpen),
-    RequireString(Params, 'textDocument.text', TLspTextDocumentMethod.DidOpen));
+    RequireString(mParams, 'textDocument.uri', TLspTextDocumentMethod.cDidOpen),
+    RequireString(mParams, 'textDocument.languageId', TLspTextDocumentMethod.cDidOpen),
+    RequireInteger(mParams, 'textDocument.version', TLspTextDocumentMethod.cDidOpen),
+    RequireString(mParams, 'textDocument.text', TLspTextDocumentMethod.cDidOpen));
 end;
 
 procedure TLspTextDocumentSync.HandleDidChange(const AParams: TJSONValue);
 var
-  Params: TJSONObject;
+  mParams: TJSONObject;
 begin
-  Params := RequireObject(AParams, TLspTextDocumentMethod.DidChange);
+  mParams := RequireObject(AParams, TLspTextDocumentMethod.cDidChange);
   FStore.Change(
-    RequireString(Params, 'textDocument.uri', TLspTextDocumentMethod.DidChange),
-    RequireInteger(Params, 'textDocument.version', TLspTextDocumentMethod.DidChange),
-    ReadChanges(Params));
+    RequireString(mParams, 'textDocument.uri', TLspTextDocumentMethod.cDidChange),
+    RequireInteger(mParams, 'textDocument.version', TLspTextDocumentMethod.cDidChange),
+    ReadChanges(mParams));
 end;
 
 procedure TLspTextDocumentSync.HandleDidSave(const AParams: TJSONValue);
 var
-  Params: TJSONObject;
+  mParams: TJSONObject;
 begin
-  Params := RequireObject(AParams, TLspTextDocumentMethod.DidSave);
-  FStore.Save(RequireString(Params, 'textDocument.uri', TLspTextDocumentMethod.DidSave));
+  mParams := RequireObject(AParams, TLspTextDocumentMethod.cDidSave);
+  FStore.Save(RequireString(mParams, 'textDocument.uri', TLspTextDocumentMethod.cDidSave));
 end;
 
 procedure TLspTextDocumentSync.HandleDidClose(const AParams: TJSONValue);
 var
-  Params: TJSONObject;
+  mParams: TJSONObject;
 begin
-  Params := RequireObject(AParams, TLspTextDocumentMethod.DidClose);
-  FStore.Close(RequireString(Params, 'textDocument.uri', TLspTextDocumentMethod.DidClose));
+  mParams := RequireObject(AParams, TLspTextDocumentMethod.cDidClose);
+  FStore.Close(RequireString(mParams, 'textDocument.uri', TLspTextDocumentMethod.cDidClose));
 end;
 
 initialization

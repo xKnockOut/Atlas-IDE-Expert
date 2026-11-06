@@ -6,7 +6,7 @@
 interface
 
 const
-  CatalogLinesEnRobustness: array[0..179] of string = (
+  cCatalogLinesEnRobustness: array[0..179] of string = (
     '{',
     '      "id": "random-without-randomize",',
     '      "name": "Random without Randomize",',

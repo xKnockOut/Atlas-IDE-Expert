@@ -48,10 +48,10 @@ type
 
   TLspMoveMember = class
   public const
-    ClientCommand = 'atlas.moveMember';
-    PrepareCommand = 'atlas.server.moveMember.prepare';
-    ApplyCommand = 'atlas.server.moveMember';
-    AnnotationId = 'moveMember';
+    cClientCommand = 'atlas.moveMember';
+    cPrepareCommand = 'atlas.server.moveMember.prepare';
+    cApplyCommand = 'atlas.server.moveMember';
+    cAnnotationId = 'moveMember';
   public
     /// <summary>Die Code-Aktionen an APosition, wenn es dort ein Ziel gibt; sonst nil. Ob die Funktion
     /// eingeschaltet ist, prüft der Aufrufer. Der Aufrufer übernimmt die Objekte.</summary>
@@ -132,11 +132,11 @@ type
 
 const
   /// <summary>Höchstens so viele Vorfahren nach oben.</summary>
-  MaxDepth = 16;
+  cMaxDepth = 16;
 
 function Failed(const AMessage: string): EJsonRpcError;
 begin
-  Result := EJsonRpcError.Create(TLspErrorCode.RequestFailed, cTexts[TLspMoveMemberText.MoveMember].Text + AMessage);
+  Result := EJsonRpcError.Create(TLspErrorCode.cRequestFailed, cTexts[TLspMoveMemberText.MoveMember].Text + AMessage);
 end;
 
 function PlainName(const AName: string): string;
@@ -160,7 +160,7 @@ begin
   end
   else
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TLspMoveMemberText.DirectionUpOrDownMissing].Text);
   end;
 end;
@@ -168,51 +168,51 @@ end;
 /// <summary>Liegt die Datei in einer Bibliothek (RTL/VCL, Suchpfade)?</summary>
 function IsLibrary(const AIndex: ISymbolIndex; const AFileName: string): Boolean;
 var
-  UnitIndex: TUnitIndex;
+  mUnitIndex: TUnitIndex;
 begin
-  Result := not AIndex.FindFile(AFileName, UnitIndex) or UnitIndex.Library_;
+  Result := not AIndex.FindFile(AFileName, mUnitIndex) or mUnitIndex.Library_;
 end;
 
 /// <summary>Klasse AName in ATree (Datei AFileName).</summary>
 function DeclHit(ATree: TSyntaxTree; const AText, AFileName, AName: string; out AHit: TClassHit): Boolean;
 var
-  Decl: TSyntaxNode;
-  Layout: TClassLayout;
+  mDecl: TSyntaxNode;
+  mLayout: TClassLayout;
 begin
-  Decl := TClassLayout.DeclNamed(ATree, AName);
-  Result := Decl <> nil;
+  mDecl := TClassLayout.DeclNamed(ATree, AName);
+  Result := mDecl <> nil;
   if not Result then
   begin
     Exit;
   end;
-  Layout := TClassLayout.Read(ATree, AText, Decl);
+  mLayout := TClassLayout.Read(ATree, AText, mDecl);
   try
-    AHit.Ref := TMemberClassRef.Create(AFileName, Layout.Name);
+    AHit.Ref := TMemberClassRef.Create(AFileName, mLayout.Name);
     AHit.UnitName := TUsesClauses.OwnName(ATree.Tokens);
-    if Layout.Ancestors <> nil then
+    if mLayout.Ancestors <> nil then
     begin
-      AHit.Ancestor := Layout.Ancestors[0];
+      AHit.Ancestor := mLayout.Ancestors[0];
     end;
   finally
-    Layout.Free;
+    mLayout.Free;
   end;
 end;
 
 /// <summary>Klasse AName des Projekts im Index, nicht in AFileName.</summary>
 function IndexHit(const AIndex: ISymbolIndex; const AFileName, AName: string; out AHit: TClassHit): Boolean;
 var
-  Location: TSymbolLocation;
+  mLocation: TSymbolLocation;
 begin
-  for Location in AIndex.FindSymbols(AName) do
+  for mLocation in AIndex.FindSymbols(AName) do
   begin
-    if (Location.Symbol.Kind = TIndexSymbolKind.ClassType) and (Location.Symbol.Container = '') and
-      not SameText(Location.FileName, AFileName) and not IsLibrary(AIndex, Location.FileName) then
+    if (mLocation.Symbol.Kind = TIndexSymbolKind.ClassType) and (mLocation.Symbol.Container = '') and
+      not SameText(mLocation.FileName, AFileName) and not IsLibrary(AIndex, mLocation.FileName) then
     begin
-      AHit.Ref := TMemberClassRef.Create(Location.FileName, Location.Symbol.Name);
-      AHit.UnitName := Location.UnitName;
-      if Location.Symbol.Ancestors <> nil then
+      AHit.Ref := TMemberClassRef.Create(mLocation.FileName, mLocation.Symbol.Name);
+      AHit.UnitName := mLocation.UnitName;
+      if mLocation.Symbol.Ancestors <> nil then
       begin
-        AHit.Ancestor := Location.Symbol.Ancestors[0];
+        AHit.Ancestor := mLocation.Symbol.Ancestors[0];
       end;
       Exit(True);
     end;
@@ -224,27 +224,27 @@ end;
 function FindClass(ATree: TSyntaxTree; const AText, AFileName: string; const AIndex: ISymbolIndex;
   const AName: string; out AHit: TClassHit): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
   AHit := Default(TClassHit);
-  Name := PlainName(AName);
-  Result := (Name <> '') and not SameText(Name, 'TObject') and (DeclHit(ATree, AText, AFileName, Name, AHit) or
-    ((AIndex <> nil) and IndexHit(AIndex, AFileName, Name, AHit)));
+  mName := PlainName(AName);
+  Result := (mName <> '') and not SameText(mName, 'TObject') and (DeclHit(ATree, AText, AFileName, mName, AHit) or
+    ((AIndex <> nil) and IndexHit(AIndex, AFileName, mName, AHit)));
 end;
 
 /// <summary>Vorfahren des Projekts ab AAncestor, der direkte zuerst.</summary>
 function AncestorChain(ATree: TSyntaxTree; const AText, AFileName: string; const AIndex: ISymbolIndex;
   const AAncestor: string): TArray<TClassHit>;
 var
-  Hit: TClassHit;
-  Name: string;
+  mHit: TClassHit;
+  mName: string;
 begin
   Result := nil;
-  Name := AAncestor;
-  while (Length(Result) < MaxDepth) and FindClass(ATree, AText, AFileName, AIndex, Name, Hit) do
+  mName := AAncestor;
+  while (Length(Result) < cMaxDepth) and FindClass(ATree, AText, AFileName, AIndex, mName, mHit) do
   begin
-    Result := Result + [Hit];
-    Name := Hit.Ancestor;
+    Result := Result + [mHit];
+    mName := mHit.Ancestor;
   end;
 end;
 
@@ -252,43 +252,43 @@ end;
 function DirectDescendants(ATree: TSyntaxTree; const AText, AFileName: string; const AIndex: ISymbolIndex;
   const AClassName: string): TArray<TClassHit>;
 var
-  Decl: TSyntaxNode;
-  Layout: TClassLayout;
-  Location: TSymbolLocation;
-  Hit: TClassHit;
+  mDecl: TSyntaxNode;
+  mLayout: TClassLayout;
+  mLocation: TSymbolLocation;
+  mHit: TClassHit;
 begin
   Result := nil;
-  for Decl in TClassLayout.AllDecls(ATree) do
+  for mDecl in TClassLayout.AllDecls(ATree) do
   begin
-    Layout := TClassLayout.Read(ATree, AText, Decl);
+    mLayout := TClassLayout.Read(ATree, AText, mDecl);
     try
-      if (Layout.Ancestors <> nil) and SameText(PlainName(Layout.Ancestors[0]), AClassName) then
+      if (mLayout.Ancestors <> nil) and SameText(PlainName(mLayout.Ancestors[0]), AClassName) then
       begin
-        Hit := Default(TClassHit);
-        Hit.Ref := TMemberClassRef.Create(AFileName, Layout.Name);
-        Hit.UnitName := TUsesClauses.OwnName(ATree.Tokens);
-        Hit.Ancestor := Layout.Ancestors[0];
-        Result := Result + [Hit];
+        mHit := Default(TClassHit);
+        mHit.Ref := TMemberClassRef.Create(AFileName, mLayout.Name);
+        mHit.UnitName := TUsesClauses.OwnName(ATree.Tokens);
+        mHit.Ancestor := mLayout.Ancestors[0];
+        Result := Result + [mHit];
       end;
     finally
-      Layout.Free;
+      mLayout.Free;
     end;
   end;
   if AIndex = nil then
   begin
     Exit;
   end;
-  for Location in AIndex.Descendants(AClassName) do
+  for mLocation in AIndex.Descendants(AClassName) do
   begin
-    if (Location.Symbol.Kind = TIndexSymbolKind.ClassType) and not SameText(Location.FileName, AFileName) and
-      not IsLibrary(AIndex, Location.FileName) and (Location.Symbol.Ancestors <> nil) and
-      SameText(PlainName(Location.Symbol.Ancestors[0]), AClassName) then
+    if (mLocation.Symbol.Kind = TIndexSymbolKind.ClassType) and not SameText(mLocation.FileName, AFileName) and
+      not IsLibrary(AIndex, mLocation.FileName) and (mLocation.Symbol.Ancestors <> nil) and
+      SameText(PlainName(mLocation.Symbol.Ancestors[0]), AClassName) then
     begin
-      Hit := Default(TClassHit);
-      Hit.Ref := TMemberClassRef.Create(Location.FileName, Location.Symbol.Name);
-      Hit.UnitName := Location.UnitName;
-      Hit.Ancestor := Location.Symbol.Ancestors[0];
-      Result := Result + [Hit];
+      mHit := Default(TClassHit);
+      mHit.Ref := TMemberClassRef.Create(mLocation.FileName, mLocation.Symbol.Name);
+      mHit.UnitName := mLocation.UnitName;
+      mHit.Ancestor := mLocation.Symbol.Ancestors[0];
+      Result := Result + [mHit];
     end;
   end;
 end;
@@ -307,53 +307,53 @@ end;
 
 function Info(ATree: TSyntaxTree; const AText: string; const APosition: TTextPosition): TMoveMemberInfo;
 var
-  Reason: string;
+  mReason: string;
 begin
-  if not TMoveMember.Prepare(ATree, AText, APosition.Line, Result, Reason) then
+  if not TMoveMember.Prepare(ATree, AText, APosition.Line, Result, mReason) then
   begin
-    raise Failed(Reason);
+    raise Failed(mReason);
   end;
 end;
 
 function Action(const ATitle, AUri: string; const APosition: TTextPosition; const ADirection: string): TJSONObject;
 var
-  Arguments: TJSONArray;
-  Command: TJSONObject;
+  mArguments: TJSONArray;
+  mCommand: TJSONObject;
 begin
-  Arguments := TJSONArray.Create;
-  Arguments.Add(AUri);
-  Arguments.AddElement(TLspPositions.PositionToJson(APosition));
-  Arguments.Add(ADirection);
-  Command := TJSONObject.Create;
-  Command.AddPair('title', ATitle);
-  Command.AddPair('command', TLspMoveMember.ClientCommand);
-  Command.AddPair('arguments', Arguments);
+  mArguments := TJSONArray.Create;
+  mArguments.Add(AUri);
+  mArguments.AddElement(TLspPositions.PositionToJson(APosition));
+  mArguments.Add(ADirection);
+  mCommand := TJSONObject.Create;
+  mCommand.AddPair('title', ATitle);
+  mCommand.AddPair('command', TLspMoveMember.cClientCommand);
+  mCommand.AddPair('arguments', mArguments);
   Result := TJSONObject.Create;
   Result.AddPair('title', ATitle);
-  Result.AddPair('kind', TMoveMember.Kind);
-  Result.AddPair('command', Command);
+  Result.AddPair('kind', TMoveMember.cKind);
+  Result.AddPair('command', mCommand);
 end;
 
 class function TLspMoveMember.Actions(ATree: TSyntaxTree; const AText, AFileName, AUri: string;
   const APosition: TTextPosition; const AIndex: ISymbolIndex): TArray<TJSONObject>;
 var
-  Found: TMoveMemberInfo;
-  Reason: string;
-  Hit: TClassHit;
+  mFound: TMoveMemberInfo;
+  mReason: string;
+  mHit: TClassHit;
 begin
   Result := nil;
-  if (ATree = nil) or not TMoveMember.Prepare(ATree, AText, APosition.Line, Found, Reason) then
+  if (ATree = nil) or not TMoveMember.Prepare(ATree, AText, APosition.Line, mFound, mReason) then
   begin
     Exit;
   end;
-  if FindClass(ATree, AText, AFileName, AIndex, Found.Ancestor, Hit) then
+  if FindClass(ATree, AText, AFileName, AIndex, mFound.Ancestor, mHit) then
   begin
-    Result := Result + [Action(cTexts[TLspMoveMemberText.MoveToAncestor].Fmt([Found.SelectedName]), AUri, APosition,
+    Result := Result + [Action(cTexts[TLspMoveMemberText.MoveToAncestor].Fmt([mFound.SelectedName]), AUri, APosition,
       'up')];
   end;
-  if DirectDescendants(ATree, AText, AFileName, AIndex, Found.ClassName) <> nil then
+  if DirectDescendants(ATree, AText, AFileName, AIndex, mFound.ClassName) <> nil then
   begin
-    Result := Result + [Action(cTexts[TLspMoveMemberText.MoveToDescendants].Fmt([Found.SelectedName]), AUri, APosition,
+    Result := Result + [Action(cTexts[TLspMoveMemberText.MoveToDescendants].Fmt([mFound.SelectedName]), AUri, APosition,
       'down')];
   end;
 end;
@@ -374,8 +374,8 @@ end;
 
 function CandidateJson(const AItem: TTransferCandidate; ASelected: Integer; AUp: Boolean): TJSONObject;
 var
-  Needs: TJSONArray;
-  Need: Integer;
+  mNeeds: TJSONArray;
+  mNeed: Integer;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('id', TJSONNumber.Create(AItem.Id));
@@ -389,27 +389,27 @@ begin
   // Abstrakt wählen gibt es nur nach oben; nach unten gilt die Wahl für alle Methoden.
   Result.AddPair('canAbstract', TJSONBool.Create(AUp and AItem.CanAbstract));
   Result.AddPair('abstract', TJSONBool.Create(False));
-  Needs := TJSONArray.Create;
-  for Need in AItem.Needs do
+  mNeeds := TJSONArray.Create;
+  for mNeed in AItem.Needs do
   begin
-    Needs.AddElement(TJSONNumber.Create(Need));
+    mNeeds.AddElement(TJSONNumber.Create(mNeed));
   end;
-  Result.AddPair('needs', Needs);
+  Result.AddPair('needs', mNeeds);
 end;
 
 function TargetsJson(const AHits: TArray<TClassHit>; AUp: Boolean): TJSONArray;
 var
-  Hit: TClassHit;
-  Entry: TJSONObject;
+  mHit: TClassHit;
+  mEntry: TJSONObject;
 begin
   Result := TJSONArray.Create;
-  for Hit in AHits do
+  for mHit in AHits do
   begin
-    Entry := TJSONObject.Create;
-    Entry.AddPair('name', Hit.Ref.ClassName);
-    Entry.AddPair('unit', Hit.UnitName);
-    Entry.AddPair('checked', TJSONBool.Create(not AUp or (Result.Count = 0)));
-    Result.AddElement(Entry);
+    mEntry := TJSONObject.Create;
+    mEntry.AddPair('name', mHit.Ref.ClassName);
+    mEntry.AddPair('unit', mHit.UnitName);
+    mEntry.AddPair('checked', TJSONBool.Create(not AUp or (Result.Count = 0)));
+    Result.AddElement(mEntry);
   end;
 end;
 
@@ -430,56 +430,56 @@ end;
 class function TLspMoveMember.Prepare(ATree: TSyntaxTree; const AText, AFileName: string;
   const APosition: TTextPosition; const AContext: TMoveMemberContext): TJSONObject;
 var
-  Found: TMoveMemberInfo;
-  Up: Boolean;
-  Hits: TArray<TClassHit>;
-  Item: TTransferCandidate;
-  List: TJSONArray;
+  mFound: TMoveMemberInfo;
+  mUp: Boolean;
+  mHits: TArray<TClassHit>;
+  mItem: TTransferCandidate;
+  mList: TJSONArray;
 begin
-  Up := IsUp(AContext.Direction);
-  Found := Info(ATree, AText, APosition);
-  Hits := TargetHits(ATree, AText, AFileName, AContext.Index, Found, Up);
-  if (Hits = nil) and Up then
+  mUp := IsUp(AContext.Direction);
+  mFound := Info(ATree, AText, APosition);
+  mHits := TargetHits(ATree, AText, AFileName, AContext.Index, mFound, mUp);
+  if (mHits = nil) and mUp then
   begin
-    raise Failed(cTexts[TLspMoveMemberText.HasNoAncestorInThe].Fmt([Found.ClassName]));
+    raise Failed(cTexts[TLspMoveMemberText.HasNoAncestorInThe].Fmt([mFound.ClassName]));
   end;
-  if Hits = nil then
+  if mHits = nil then
   begin
-    raise Failed(cTexts[TLspMoveMemberText.HasNoDescendantsInThe].Fmt([Found.ClassName]));
+    raise Failed(cTexts[TLspMoveMemberText.HasNoDescendantsInThe].Fmt([mFound.ClassName]));
   end;
   Result := TJSONObject.Create;
-  Result.AddPair('className', Found.ClassName);
+  Result.AddPair('className', mFound.ClassName);
   Result.AddPair('ownUnit', TUsesClauses.OwnName(ATree.Tokens));
-  Result.AddPair('member', Found.SelectedName);
+  Result.AddPair('member', mFound.SelectedName);
   Result.AddPair('direction', LowerCase(AContext.Direction));
   Result.AddPair('name', '');
-  List := TJSONArray.Create;
-  for Item in Found.Candidates do
+  mList := TJSONArray.Create;
+  for mItem in mFound.Candidates do
   begin
-    List.AddElement(CandidateJson(Item, Found.Selected, Up));
+    mList.AddElement(CandidateJson(mItem, mFound.Selected, mUp));
   end;
-  Result.AddPair('candidates', List);
-  Result.AddPair('targets', TargetsJson(Hits, Up));
-  Result.AddPair('multiTarget', TJSONBool.Create(not Up));
+  Result.AddPair('candidates', mList);
+  Result.AddPair('targets', TargetsJson(mHits, mUp));
+  Result.AddPair('multiTarget', TJSONBool.Create(not mUp));
   // Nach unten bleiben benutzte Mitglieder oben (sie werden bei Bedarf sichtbar gemacht).
-  Result.AddPair('needsRequired', TJSONBool.Create(Up));
-  Result.AddPair('option', OptionJson(Up));
+  Result.AddPair('needsRequired', TJSONBool.Create(mUp));
+  Result.AddPair('option', OptionJson(mUp));
   Result.AddPair('notes', TJSONArray.Create);
 end;
 
 function Ids(AObject: TJSONObject; const AKey: string): TArray<Integer>;
 var
-  Value, Item: TJSONValue;
+  mValue, mItem: TJSONValue;
 begin
   Result := nil;
-  Value := AObject.GetValue(AKey);
-  if Value is TJSONArray then
+  mValue := AObject.GetValue(AKey);
+  if mValue is TJSONArray then
   begin
-    for Item in TJSONArray(Value) do
+    for mItem in TJSONArray(mValue) do
     begin
-      if Item is TJSONNumber then
+      if mItem is TJSONNumber then
       begin
-        Result := Result + [TJSONNumber(Item).AsInt];
+        Result := Result + [TJSONNumber(mItem).AsInt];
       end;
     end;
   end;
@@ -487,15 +487,15 @@ end;
 
 function Names(AObject: TJSONObject; const AKey: string): TArray<string>;
 var
-  Value, Item: TJSONValue;
+  mValue, mItem: TJSONValue;
 begin
   Result := nil;
-  Value := AObject.GetValue(AKey);
-  if Value is TJSONArray then
+  mValue := AObject.GetValue(AKey);
+  if mValue is TJSONArray then
   begin
-    for Item in TJSONArray(Value) do
+    for mItem in TJSONArray(mValue) do
     begin
-      Result := Result + [Trim(Item.Value)];
+      Result := Result + [Trim(mItem.Value)];
     end;
   end;
 end;
@@ -519,31 +519,31 @@ type
 /// <summary>Zeilen der Klasse und ihrer Rümpfe.</summary>
 function ClassRanges(ALayout: TClassLayout; const AFileName: string): TArray<TLineRange>;
 var
-  Member: TClassMember;
-  Range: TLineRange;
+  mMember: TClassMember;
+  mRange: TLineRange;
 begin
-  Range.FileName := AFileName;
-  Range.First := ALayout.FirstLine;
-  Range.Last := ALayout.EndLine;
-  Result := [Range];
-  for Member in ALayout.Members do
+  mRange.FileName := AFileName;
+  mRange.First := ALayout.FirstLine;
+  mRange.Last := ALayout.EndLine;
+  Result := [mRange];
+  for mMember in ALayout.Members do
   begin
-    if Member.Body <> nil then
+    if mMember.Body <> nil then
     begin
-      Range.First := Member.BodyFirstLine;
-      Range.Last := Member.BodyLastLine;
-      Result := Result + [Range];
+      mRange.First := mMember.BodyFirstLine;
+      mRange.Last := mMember.BodyLastLine;
+      Result := Result + [mRange];
     end;
   end;
 end;
 
 function InRanges(const ARanges: TArray<TLineRange>; const AFileName: string; ALine: Integer): Boolean;
 var
-  Range: TLineRange;
+  mRange: TLineRange;
 begin
-  for Range in ARanges do
+  for mRange in ARanges do
   begin
-    if SameText(Range.FileName, AFileName) and (ALine >= Range.First) and (ALine <= Range.Last) then
+    if SameText(mRange.FileName, AFileName) and (ALine >= mRange.First) and (ALine <= mRange.Last) then
     begin
       Exit(True);
     end;
@@ -572,8 +572,8 @@ end;
 /// <summary>Namen, die ANode benutzt, mit ihrer Stelle (Bezeichner und Typverweise).</summary>
 procedure CollectNames(ANode: TSyntaxNode; var ANames: TArray<TArray<string>>; var AOffsets: TArray<Integer>);
 var
-  Index: Integer;
-  Name: string;
+  mIndex: Integer;
+  mName: string;
 begin
   if ANode = nil then
   begin
@@ -582,12 +582,12 @@ begin
   if (ANode.Kind = TSyntaxKind.Identifier) and ((ANode.Parent = nil) or
     (ANode.Parent.Kind <> TSyntaxKind.GenericParams)) then
   begin
-    Name := ANode.Name;
-    if Name.StartsWith('&') then
+    mName := ANode.Name;
+    if mName.StartsWith('&') then
     begin
-      Name := Name.Substring(1);
+      mName := mName.Substring(1);
     end;
-    ANames := ANames + [TArray<string>.Create(Name)];
+    ANames := ANames + [TArray<string>.Create(mName)];
     AOffsets := AOffsets + [ANode.StartOffset];
   end
   else if (ANode.Kind = TSyntaxKind.TypeReference) and (ANode.Name <> '') then
@@ -595,21 +595,21 @@ begin
     ANames := ANames + [ANode.Name.Split(['.'])];
     AOffsets := AOffsets + [ANode.StartOffset];
   end;
-  for Index := 0 to ANode.ChildCount - 1 do
+  for mIndex := 0 to ANode.ChildCount - 1 do
   begin
-    CollectNames(ANode[Index], ANames, AOffsets);
+    CollectNames(ANode[mIndex], ANames, AOffsets);
   end;
 end;
 
 function SectionLine(ATree: TSyntaxTree; AKind: TSyntaxKind): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to ATree.Root.ChildCount - 1 do
+  for mIndex := 0 to ATree.Root.ChildCount - 1 do
   begin
-    if ATree.Root[Index].Kind = AKind then
+    if ATree.Root[mIndex].Kind = AKind then
     begin
-      Exit(ATree.Root[Index].StartPos.Line);
+      Exit(ATree.Root[mIndex].StartPos.Line);
     end;
   end;
   Result := -1;
@@ -617,13 +617,13 @@ end;
 
 function SectionOffset(ATree: TSyntaxTree; AKind: TSyntaxKind): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to ATree.Root.ChildCount - 1 do
+  for mIndex := 0 to ATree.Root.ChildCount - 1 do
   begin
-    if ATree.Root[Index].Kind = AKind then
+    if ATree.Root[mIndex].Kind = AKind then
     begin
-      Exit(ATree.Root[Index].StartOffset + 1);
+      Exit(ATree.Root[mIndex].StartOffset + 1);
     end;
   end;
   Result := -1;
@@ -698,65 +698,65 @@ end;
 
 procedure TUsesScan.Note(const ANames: TArray<string>; AOffset: Integer; ADeclaration: Boolean);
 var
-  Meaning: TMoveClassMeaning;
+  mMeaning: TMoveClassMeaning;
 begin
-  Meaning := FLookup(FTree, FFileName, ANames, AOffset);
-  if not Meaning.Found or Meaning.IsLocal or (Meaning.UnitName = '') or SameText(Meaning.UnitName, 'System') or
-    SameText(Meaning.UnitName, FTargetUnit) then
+  mMeaning := FLookup(FTree, FFileName, ANames, AOffset);
+  if not mMeaning.Found or mMeaning.IsLocal or (mMeaning.UnitName = '') or SameText(mMeaning.UnitName, 'System') or
+    SameText(mMeaning.UnitName, FTargetUnit) then
   begin
     Exit;
   end;
   // Mitglieder der Klasse selbst (sie wandern mit oder sind geerbt).
-  if SameText(Meaning.FileName, FFileName) and InRanges(FRanges, FFileName, Meaning.Position.Line) then
+  if SameText(mMeaning.FileName, FFileName) and InRanges(FRanges, FFileName, mMeaning.Position.Line) then
   begin
     Exit;
   end;
-  if SameText(Meaning.UnitName, FSourceUnit) then
+  if SameText(mMeaning.UnitName, FSourceUnit) then
   begin
-    NoteSourceUnit(string.Join('.', ANames), Meaning.Position.Line, ADeclaration);
+    NoteSourceUnit(string.Join('.', ANames), mMeaning.Position.Line, ADeclaration);
   end
   else if ADeclaration and FInInterface then
   begin
-    AddOnce(InterfaceUnits, Meaning.UnitName);
+    AddOnce(InterfaceUnits, mMeaning.UnitName);
   end
   else
   begin
-    AddOnce(ImplementationUnits, Meaning.UnitName);
+    AddOnce(ImplementationUnits, mMeaning.UnitName);
   end;
 end;
 
 procedure TUsesScan.NoteNode(ANode: TSyntaxNode; ADeclaration: Boolean);
 var
-  NameList: TArray<TArray<string>>;
-  Offsets: TArray<Integer>;
-  Index: Integer;
+  mNameList: TArray<TArray<string>>;
+  mOffsets: TArray<Integer>;
+  mIndex: Integer;
 begin
-  NameList := nil;
-  Offsets := nil;
-  CollectNames(ANode, NameList, Offsets);
-  for Index := 0 to High(NameList) do
+  mNameList := nil;
+  mOffsets := nil;
+  CollectNames(ANode, mNameList, mOffsets);
+  for mIndex := 0 to High(mNameList) do
   begin
-    Note(NameList[Index], Offsets[Index], ADeclaration);
+    Note(mNameList[mIndex], mOffsets[mIndex], ADeclaration);
   end;
 end;
 
 procedure TUsesScan.Scan(ASource, ATarget: TClassLayout; const ATargetUnit: string;
   const AIds, ABodyIds: TArray<Integer>);
 var
-  Id: Integer;
+  mId: Integer;
 begin
   FTargetUnit := ATargetUnit;
   FInInterface := ATarget.InInterface;
   FRanges := ClassRanges(ASource, FFileName);
   FResolver.PinTree(FTree, FFileName);
   try
-    for Id in AIds do
+    for mId in AIds do
     begin
       // Erst die Deklaration, dann der Rumpf.
-      NoteNode(ASource.Members[Id].Node, True);
-      if TMemberTransfer.Has(ABodyIds, Id) then
+      NoteNode(ASource.Members[mId].Node, True);
+      if TMemberTransfer.Has(ABodyIds, mId) then
       begin
-        NoteNode(ASource.Members[Id].Body, False);
+        NoteNode(ASource.Members[mId].Body, False);
       end;
     end;
   finally
@@ -768,25 +768,25 @@ end;
 procedure AddMissing(ATree: TSyntaxTree; AKind: TSyntaxKind; const AUnits, AExcept: TArray<string>;
   const ALineBreak: string; var AEdits: TArray<TTextEdit>);
 var
-  Used, Missing: TArray<string>;
-  Name: string;
-  Offset: Integer;
-  Edit: TTextEdit;
+  mUsed, mMissing: TArray<string>;
+  mName: string;
+  mOffset: Integer;
+  mEdit: TTextEdit;
 begin
-  Used := TUsesClauses.UsedUnits(ATree.Tokens);
-  Missing := nil;
-  for Name in AUnits do
+  mUsed := TUsesClauses.UsedUnits(ATree.Tokens);
+  mMissing := nil;
+  for mName in AUnits do
   begin
-    if not TUsesClauses.IsUsed(Used, Name, nil) and (IndexText(Name, AExcept) < 0) then
+    if not TUsesClauses.IsUsed(mUsed, mName, nil) and (IndexText(mName, AExcept) < 0) then
     begin
-      Missing := Missing + [Name];
+      mMissing := mMissing + [mName];
     end;
   end;
-  Offset := SectionOffset(ATree, AKind);
-  if (Missing <> nil) and (Offset >= 0) and TUsesClauses.AddUnit(ATree.Tokens, Offset, string.Join(', ', Missing),
-    ALineBreak, Edit) then
+  mOffset := SectionOffset(ATree, AKind);
+  if (mMissing <> nil) and (mOffset >= 0) and TUsesClauses.AddUnit(ATree.Tokens, mOffset, string.Join(', ', mMissing),
+    ALineBreak, mEdit) then
   begin
-    AEdits := AEdits + [Edit];
+    AEdits := AEdits + [mEdit];
   end;
 end;
 
@@ -795,70 +795,70 @@ end;
 procedure AddUses(AScan: TUsesScan; ASource: TClassLayout; const AIds, ABodyIds: TArray<Integer>;
   AFiles: TMemberFiles; const ATarget: TMemberClassRef);
 var
-  Text: string;
-  TargetTree: TSyntaxTree;
-  Target: TClassLayout;
-  Edits: TArray<TTextEdit>;
+  mText: string;
+  mTargetTree: TSyntaxTree;
+  mTarget: TClassLayout;
+  mEdits: TArray<TTextEdit>;
 begin
-  Text := AFiles.Text(ATarget.FileName);
-  Target := TMemberTransfer.ParseLayout(Text, ATarget.ClassName, TargetTree);
-  if Target = nil then
+  mText := AFiles.Text(ATarget.FileName);
+  mTarget := TMemberTransfer.ParseLayout(mText, ATarget.ClassName, mTargetTree);
+  if mTarget = nil then
   begin
     raise Failed(cTexts[TLspMoveMemberText.IsNoLongerReadableAfter].Fmt([ATarget.ClassName]));
   end;
   try
-    AScan.Scan(ASource, Target, TUsesClauses.OwnName(TargetTree.Tokens), AIds, ABodyIds);
-    Edits := nil;
-    AddMissing(TargetTree, TSyntaxKind.InterfaceSection, AScan.InterfaceUnits, nil, TTextLines.LineBreakOf(Text),
-      Edits);
-    AddMissing(TargetTree, TSyntaxKind.ImplementationSection, AScan.ImplementationUnits, AScan.InterfaceUnits,
-      TTextLines.LineBreakOf(Text), Edits);
-    if Edits <> nil then
+    AScan.Scan(ASource, mTarget, TUsesClauses.OwnName(mTargetTree.Tokens), AIds, ABodyIds);
+    mEdits := nil;
+    AddMissing(mTargetTree, TSyntaxKind.InterfaceSection, AScan.InterfaceUnits, nil, TTextLines.LineBreakOf(mText),
+      mEdits);
+    AddMissing(mTargetTree, TSyntaxKind.ImplementationSection, AScan.ImplementationUnits, AScan.InterfaceUnits,
+      TTextLines.LineBreakOf(mText), mEdits);
+    if mEdits <> nil then
     begin
-      AFiles.Put(ATarget.FileName, TTextChanges.Apply(Text, Edits));
+      AFiles.Put(ATarget.FileName, TTextChanges.Apply(mText, mEdits));
     end;
   finally
-    Target.Free;
-    TargetTree.Free;
+    mTarget.Free;
+    mTargetTree.Free;
   end;
 end;
 
 /// <summary>Kopfzeile der Klasse AClassName in AText; 0 ohne.</summary>
 function ClassLine(const AText, AClassName: string): Integer;
 var
-  Layout: TClassLayout;
-  Tree: TSyntaxTree;
+  mLayout: TClassLayout;
+  mTree: TSyntaxTree;
 begin
   Result := 0;
-  Layout := TMemberTransfer.ParseLayout(AText, AClassName, Tree);
-  if Layout = nil then
+  mLayout := TMemberTransfer.ParseLayout(AText, AClassName, mTree);
+  if mLayout = nil then
   begin
     Exit;
   end;
   try
-    Result := Layout.HeaderLine;
+    Result := mLayout.HeaderLine;
   finally
-    Layout.Free;
-    Tree.Free;
+    mLayout.Free;
+    mTree.Free;
   end;
 end;
 
 /// <summary>Fehlerfrei parsen wie vorher; sonst EJsonRpcError mit der ersten Meldung.</summary>
 procedure CheckParses(const AFileName, AOriginal, ANewText: string);
 var
-  Before, Check: TSyntaxTree;
+  mBefore, mCheck: TSyntaxTree;
 begin
-  Before := TSyntaxTreeCache.Parse(AOriginal);
-  Check := TSyntaxTreeCache.Parse(ANewText);
+  mBefore := TSyntaxTreeCache.Parse(AOriginal);
+  mCheck := TSyntaxTreeCache.Parse(ANewText);
   try
-    if Length(Check.Diagnostics) > Length(Before.Diagnostics) then
+    if Length(mCheck.Diagnostics) > Length(mBefore.Diagnostics) then
     begin
       raise Failed(cTexts[TLspMoveMemberText.AfterTheChangeNoLonger].Fmt([ExtractFileName(AFileName),
-        Check.Diagnostics[0].StartPos.Line + 1, Check.Diagnostics[0].Message]));
+        mCheck.Diagnostics[0].StartPos.Line + 1, mCheck.Diagnostics[0].Message]));
     end;
   finally
-    Check.Free;
-    Before.Free;
+    mCheck.Free;
+    mBefore.Free;
   end;
 end;
 
@@ -1096,7 +1096,7 @@ begin
     mDescription := cTexts[TLspMoveMemberText.MembersFiles].Fmt([Length(FPlan.Moved) + Length(FPlan.Abstracts),
       mChanges.FileCount]);
     Result := TJSONObject.Create;
-    Result.AddPair('edit', mChanges.ToJson(TLspMoveMember.AnnotationId, cTexts[TLspMoveMemberText.MoveMember2].Text,
+    Result.AddPair('edit', mChanges.ToJson(TLspMoveMember.cAnnotationId, cTexts[TLspMoveMemberText.MoveMember2].Text,
       mDescription));
     Result.AddPair('warnings', mChanges.WarningsJson);
     Result.AddPair('file', TDocumentUris.FromPath(FTargets[0].FileName));
@@ -1114,7 +1114,7 @@ var
 begin
   if not (FContext.Request is TJSONObject) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TLspMoveMemberText.RequestWithMembersAndTargets].Text);
   end;
   mBody := TJSONObject(FContext.Request);

@@ -361,7 +361,7 @@ begin
   mOverview := Sample;
   Assert.IsFalse(Pos('"foundation":true', TArchitectureReport.Json(mOverview, TArchitectureLayouter.Compute(mOverview))) > 0);
   // Teilsystem „Fundament“ (#1365): Kennzeichen, kein Zusammenhalt, Regel als Hinweis.
-  mOverview.Subsystems[0].Name := TArchitectureAnalyzer.FoundationName;
+  mOverview.Subsystems[0].Name := TArchitectureAnalyzer.cFoundationName;
   mOverview.Subsystems[0].Foundation := True;
   mOverview.Subsystems[0].ColorSlot := -1;
   mJson := TArchitectureReport.Json(mOverview, TArchitectureLayouter.Compute(mOverview));

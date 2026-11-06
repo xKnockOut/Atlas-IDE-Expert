@@ -21,7 +21,7 @@ uses
   Atlas.Common.Rules.Contract;
 
 const
-  AttributeUsageInvalidRuleId = 'attribute-usage-invalid';
+  cAttributeUsageInvalidRuleId = 'attribute-usage-invalid';
 
 type
   TAttributeUsageInvalidRule = class(TInterfacedObject, IRule)
@@ -81,15 +81,15 @@ const
 
 const
   // Attribute des Compilers, die er selbst prüft (System.WeakAttribute …).
-  CompilerCheckedAttributes: array[0..3] of string = ('Weak', 'Unsafe', 'Volatile', 'Ref');
+  cCompilerCheckedAttributes: array[0..3] of string = ('Weak', 'Unsafe', 'Volatile', 'Ref');
   // Typarten, die sicher weder Klasse noch Interface sind (E2584). ProcedureType fehlt: reference to ist ein
   // Interface.
-  NonReferenceTypeKinds = [TSyntaxKind.RecordType, TSyntaxKind.EnumType, TSyntaxKind.SetType, TSyntaxKind.ArrayType,
+  cNonReferenceTypeKinds = [TSyntaxKind.RecordType, TSyntaxKind.EnumType, TSyntaxKind.SetType, TSyntaxKind.ArrayType,
     TSyntaxKind.PointerType, TSyntaxKind.FileType, TSyntaxKind.SubrangeType];
   // Ziele, an denen Volatile nicht stehen darf (Compiler Attributes: keine Typen, Routinen, Methoden).
   // Längste verfolgte Alias-Kette.
   cMaxAliasDepth = 16;
-  VolatileForbiddenTargets = [TSyntaxKind.TypeDecl, TSyntaxKind.RoutineDecl, TSyntaxKind.RoutineHeader,
+  cVolatileForbiddenTargets = [TSyntaxKind.TypeDecl, TSyntaxKind.RoutineDecl, TSyntaxKind.RoutineHeader,
     TSyntaxKind.PropertyDecl];
 
 /// <summary>Knoten des Namens eines Eintrags im Attribut-Knoten ([Name] bzw. [Name(…)]).</summary>
@@ -106,28 +106,28 @@ end;
 /// erst die Kette hinab, dann die Namen von innen nach außen anhängen.</summary>
 function DottedNameOf(ANode: TSyntaxNode): string;
 var
-  Chain: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
+  mChain: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
 begin
-  Chain := TStack<TSyntaxNode>.Create;
+  mChain := TStack<TSyntaxNode>.Create;
   try
-    Node := ANode;
-    while (Node.Kind = TSyntaxKind.MemberAccess) and (Node.ChildCount = 1) do
+    mNode := ANode;
+    while (mNode.Kind = TSyntaxKind.MemberAccess) and (mNode.ChildCount = 1) do
     begin
-      Chain.Push(Node);
-      Node := Node[0];
+      mChain.Push(mNode);
+      mNode := mNode[0];
     end;
     Result := '';
-    if Node.Kind = TSyntaxKind.Identifier then
+    if mNode.Kind = TSyntaxKind.Identifier then
     begin
-      Result := Node.Name;
+      Result := mNode.Name;
     end;
-    while (Chain.Count > 0) and (Result <> '') do
+    while (mChain.Count > 0) and (Result <> '') do
     begin
-      Result := Result + '.' + Chain.Pop.Name;
+      Result := Result + '.' + mChain.Pop.Name;
     end;
   finally
-    Chain.Free;
+    mChain.Free;
   end;
 end;
 
@@ -135,60 +135,60 @@ end;
 /// [WeakAttribute] und [System.Weak] zählen mit; deklariert die Datei einen Typ gleichen Namens, nicht.</summary>
 function CompilerAttribute(const ATypes: TFileTypes; AItem: TSyntaxNode): string;
 var
-  Name, Bare: string;
-  Dot: Integer;
+  mName, mBare: string;
+  mDot: Integer;
 begin
   Result := '';
-  Name := DottedNameOf(AttributeNameNode(AItem));
-  Dot := LastDelimiter('.', Name);
-  if (Dot > 0) and not SameText(Copy(Name, 1, Dot - 1), 'System') then
+  mName := DottedNameOf(AttributeNameNode(AItem));
+  mDot := LastDelimiter('.', mName);
+  if (mDot > 0) and not SameText(Copy(mName, 1, mDot - 1), 'System') then
   begin
     Exit;
   end;
-  Bare := Copy(Name, Dot + 1, MaxInt);
-  if EndsText('Attribute', Bare) and (Length(Bare) > Length('Attribute')) then
+  mBare := Copy(mName, mDot + 1, MaxInt);
+  if EndsText('Attribute', mBare) and (Length(mBare) > Length('Attribute')) then
   begin
-    Bare := Copy(Bare, 1, Length(Bare) - Length('Attribute'));
+    mBare := Copy(mBare, 1, Length(mBare) - Length('Attribute'));
   end;
-  if not MatchText(Bare, CompilerCheckedAttributes) then
-  begin
-    Exit;
-  end;
-  if (ATypes.IndexOf(Bare) >= 0) or (ATypes.IndexOf(Bare + 'Attribute') >= 0) then
+  if not MatchText(mBare, cCompilerCheckedAttributes) then
   begin
     Exit;
   end;
-  Result := CompilerCheckedAttributes[IndexText(Bare, CompilerCheckedAttributes)];
+  if (ATypes.IndexOf(mBare) >= 0) or (ATypes.IndexOf(mBare + 'Attribute') >= 0) then
+  begin
+    Exit;
+  end;
+  Result := cCompilerCheckedAttributes[IndexText(mBare, cCompilerCheckedAttributes)];
 end;
 
 /// <summary>Deklaration, zu der der Attribut-Knoten AAttribute gehört: der nächste Geschwisterknoten, der kein
 /// Attribut ist, bzw. der Parameter; nil ohne.</summary>
 function AttributeTarget(AAttribute: TSyntaxNode): TSyntaxNode;
 var
-  Parent: TSyntaxNode;
-  Index: Integer;
-  Found: Boolean;
+  mParent: TSyntaxNode;
+  mIndex: Integer;
+  mFound: Boolean;
 begin
   Result := nil;
-  Parent := AAttribute.Parent;
-  if Parent = nil then
+  mParent := AAttribute.Parent;
+  if mParent = nil then
   begin
     Exit;
   end;
-  if Parent.Kind = TSyntaxKind.Parameter then
+  if mParent.Kind = TSyntaxKind.Parameter then
   begin
-    Exit(Parent);
+    Exit(mParent);
   end;
-  Found := False;
-  for Index := 0 to Parent.ChildCount - 1 do
+  mFound := False;
+  for mIndex := 0 to mParent.ChildCount - 1 do
   begin
-    if Parent[Index] = AAttribute then
+    if mParent[mIndex] = AAttribute then
     begin
-      Found := True;
+      mFound := True;
     end
-    else if Found and (Parent[Index].Kind <> TSyntaxKind.Attribute) then
+    else if mFound and (mParent[mIndex].Kind <> TSyntaxKind.Attribute) then
     begin
-      Exit(Parent[Index]);
+      Exit(mParent[mIndex]);
     end;
   end;
 end;
@@ -210,7 +210,7 @@ begin
   begin
     Exit;
   end;
-  if ATypes.DeclaredKind(AName) in NonReferenceTypeKinds then
+  if ATypes.DeclaredKind(AName) in cNonReferenceTypeKinds then
   begin
     Exit(TAliasStep.NoReference);
   end;
@@ -218,8 +218,8 @@ begin
   if mIndex < 0 then
   begin
     // Pointer bleibt außen vor: die Hilfe nennt nur Klassen und Interfaces, der Fall ist nicht abgeglichen.
-    if not SameText(AName, 'Pointer') and (MatchText(AName, BuiltinTypeNames) or
-      MatchText(AName, BooleanTypeNames)) then
+    if not SameText(AName, 'Pointer') and (MatchText(AName, cBuiltinTypeNames) or
+      MatchText(AName, cBooleanTypeNames)) then
     begin
       Result := TAliasStep.NoReference;
     end;
@@ -241,7 +241,7 @@ var
   mName: string;
   mDepth: Integer;
 begin
-  Result := AType.Kind in NonReferenceTypeKinds;
+  Result := AType.Kind in cNonReferenceTypeKinds;
   if Result or (AType.Kind <> TSyntaxKind.TypeReference) or (AType.FindChild(TSyntaxKind.GenericArgs) <> nil) then
   begin
     Exit;
@@ -262,22 +262,22 @@ end;
 
 function TAttributeUsageInvalidRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(AttributeUsageInvalidRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cAttributeUsageInvalidRuleId, TRuleSeverity.Error,
     cTexts[TTypeRestrictionsAttributesText.Title].Text);
 end;
 
 procedure TAttributeUsageInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TArray<TPascalToken>;
-  Types: TFileTypes;
-  Paths: TArray<string>;
-  Attributes: TList<TSyntaxNode>;
-  Names: TDeclarationNames;
+  mTokens: TArray<TPascalToken>;
+  mTypes: TFileTypes;
+  mPaths: TArray<string>;
+  mAttributes: TList<TSyntaxNode>;
+  mNames: TDeclarationNames;
   Node: TSyntaxNode;
 
   function PathOf(ANode: TSyntaxNode): string;
   begin
-    Result := TConditionalBranches.PathAt(Paths, TRoutineBody.TokenAt(Tokens, ANode.StartOffset));
+    Result := TConditionalBranches.PathAt(mPaths, TRoutineBody.TokenAt(mTokens, ANode.StartOffset));
   end;
 
   /// <summary>Liegt ANode in ARoot (ARoot selbst eingeschlossen)?</summary>
@@ -297,21 +297,21 @@ var
   /// <summary>Ist der var-Abschnitt ASection am Attribut sichtbar? Unit-Ebene oder umgebende Routine.</summary>
   function VarSectionVisible(ASection, AAttribute: TSyntaxNode): Boolean;
   var
-    Holder: TSyntaxNode;
+    mHolder: TSyntaxNode;
   begin
     Result := False;
     if (ASection = nil) or (ASection.Kind <> TSyntaxKind.VarSection) or (ASection.Parent = nil) then
     begin
       Exit;
     end;
-    Holder := ASection.Parent;
-    if Holder.Kind = TSyntaxKind.RoutineDecl then
+    mHolder := ASection.Parent;
+    if mHolder.Kind = TSyntaxKind.RoutineDecl then
     begin
-      Result := Inside(AAttribute, Holder);
+      Result := Inside(AAttribute, mHolder);
     end
     else
     begin
-      Result := Holder.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection];
+      Result := mHolder.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection];
     end;
   end;
 
@@ -330,18 +330,18 @@ var
   /// <summary>Steht AName am Attribut sicher für eine Variable bzw. Routine der Datei?</summary>
   function CertainVariable(const AName: string; AAttribute: TSyntaxNode): Boolean;
   var
-    Decls: TList<TSyntaxNode>;
-    Decl: TSyntaxNode;
+    mDecls: TList<TSyntaxNode>;
+    mDecl: TSyntaxNode;
   begin
     Result := False;
-    Decls := Names.OnlyVariables(AName);
-    if Decls = nil then
+    mDecls := mNames.OnlyVariables(AName);
+    if mDecls = nil then
     begin
       Exit;
     end;
-    for Decl in Decls do
+    for mDecl in mDecls do
     begin
-      if VisibleAt(Decl, AAttribute) then
+      if VisibleAt(mDecl, AAttribute) then
       begin
         Exit(True);
       end;
@@ -352,7 +352,7 @@ var
   /// Meldung.</summary>
   function ReportNonConstant(ANode, AAttribute: TSyntaxNode; const AAttributeName: string): Boolean;
   var
-    Callee: TSyntaxNode;
+    mCallee: TSyntaxNode;
   begin
     Result := False;
     if ANode.Kind = TSyntaxKind.Identifier then
@@ -370,11 +370,11 @@ var
     begin
       Exit;
     end;
-    Callee := ANode[0];
-    Result := (Callee.Kind = TSyntaxKind.Identifier) and CertainVariable(Callee.Name, AAttribute);
+    mCallee := ANode[0];
+    Result := (mCallee.Kind = TSyntaxKind.Identifier) and CertainVariable(mCallee.Name, AAttribute);
     if Result then
     begin
-      AReport.Add(NodeRange(ANode), cTexts[TTypeRestrictionsAttributesText.CallNotConst].Fmt([Callee.Name,
+      AReport.Add(NodeRange(ANode), cTexts[TTypeRestrictionsAttributesText.CallNotConst].Fmt([mCallee.Name,
         AAttributeName]), TRuleConfidence.High, nil);
     end;
   end;
@@ -382,51 +382,51 @@ var
   // Iterativ (Bericht M1).
   procedure CheckArgument(AArgument, AAttribute: TSyntaxNode; const AAttributeName: string; var AReported: Boolean);
   var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
-    Index: Integer;
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
+    mIndex: Integer;
   begin
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(AArgument);
-      while (Pending.Count > 0) and not AReported do
+      mPending.Push(AArgument);
+      while (mPending.Count > 0) and not AReported do
       begin
-        Node := Pending.Pop;
-        case Node.Kind of
+        mNode := mPending.Pop;
+        case mNode.Kind of
           TSyntaxKind.Identifier, TSyntaxKind.Call:
-            AReported := ReportNonConstant(Node, AAttribute, AAttributeName);
+            AReported := ReportNonConstant(mNode, AAttribute, AAttributeName);
           TSyntaxKind.BinaryExpr, TSyntaxKind.UnaryExpr, TSyntaxKind.ParenExpr, TSyntaxKind.SetConstructor,
           TSyntaxKind.IndexAccess, TSyntaxKind.RangeExpr:
-            for Index := Node.ChildCount - 1 downto 0 do
+            for mIndex := mNode.ChildCount - 1 downto 0 do
             begin
-              Pending.Push(Node[Index]);
+              mPending.Push(mNode[mIndex]);
             end;
         else
           // Übrige Werte bewusst ohne Wirkung.
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
   procedure CheckArguments(AAttribute: TSyntaxNode);
   var
-    Index, Argument: Integer;
-    Item: TSyntaxNode;
-    Reported: Boolean;
+    mIndex, mArgument: Integer;
+    mItem: TSyntaxNode;
+    mReported: Boolean;
   begin
-    for Index := 0 to AAttribute.ChildCount - 1 do
+    for mIndex := 0 to AAttribute.ChildCount - 1 do
     begin
-      Item := AAttribute[Index];
-      if Item.Kind <> TSyntaxKind.Call then
+      mItem := AAttribute[mIndex];
+      if mItem.Kind <> TSyntaxKind.Call then
       begin
         Continue;
       end;
-      Reported := False;
-      for Argument := 1 to Item.ChildCount - 1 do
+      mReported := False;
+      for mArgument := 1 to mItem.ChildCount - 1 do
       begin
-        CheckArgument(Item[Argument], AAttribute, DottedNameOf(Item[0]), Reported);
+        CheckArgument(mItem[mArgument], AAttribute, DottedNameOf(mItem[0]), mReported);
       end;
     end;
   end;
@@ -434,54 +434,54 @@ var
   /// <summary>Alle Attribut-Knoten vor dem Ziel, zu dem AAttribute gehört (ohne Parameter: nur AAttribute).</summary>
   function AttributeGroup(AAttribute: TSyntaxNode): TArray<TSyntaxNode>;
   var
-    Parent: TSyntaxNode;
-    Index: Integer;
+    mParent: TSyntaxNode;
+    mIndex: Integer;
   begin
     Result := [AAttribute];
-    Parent := AAttribute.Parent;
-    if (Parent = nil) or (Parent.Kind = TSyntaxKind.Parameter) then
+    mParent := AAttribute.Parent;
+    if (mParent = nil) or (mParent.Kind = TSyntaxKind.Parameter) then
     begin
       Result := nil;
-      if Parent <> nil then
+      if mParent <> nil then
       begin
-        for Index := 0 to Parent.ChildCount - 1 do
+        for mIndex := 0 to mParent.ChildCount - 1 do
         begin
-          if Parent[Index].Kind = TSyntaxKind.Attribute then
+          if mParent[mIndex].Kind = TSyntaxKind.Attribute then
           begin
-            Result := Result + [Parent[Index]];
+            Result := Result + [mParent[mIndex]];
           end;
         end;
       end;
       Exit;
     end;
-    Index := 0;
-    while (Index < Parent.ChildCount) and (Parent[Index] <> AAttribute) do
+    mIndex := 0;
+    while (mIndex < mParent.ChildCount) and (mParent[mIndex] <> AAttribute) do
     begin
-      Inc(Index);
+      Inc(mIndex);
     end;
-    while (Index + 1 < Parent.ChildCount) and (Parent[Index + 1].Kind = TSyntaxKind.Attribute) do
+    while (mIndex + 1 < mParent.ChildCount) and (mParent[mIndex + 1].Kind = TSyntaxKind.Attribute) do
     begin
-      Inc(Index);
-      Result := Result + [Parent[Index]];
+      Inc(mIndex);
+      Result := Result + [mParent[mIndex]];
     end;
   end;
 
   /// <summary>Ist AAttribute das erste Attribut vor seinem Ziel?</summary>
   function FirstOfGroup(AAttribute: TSyntaxNode): Boolean;
   var
-    Parent: TSyntaxNode;
-    Index: Integer;
+    mParent: TSyntaxNode;
+    mIndex: Integer;
   begin
-    Parent := AAttribute.Parent;
-    if Parent = nil then
+    mParent := AAttribute.Parent;
+    if mParent = nil then
     begin
       Exit(False);
     end;
-    for Index := 0 to Parent.ChildCount - 1 do
+    for mIndex := 0 to mParent.ChildCount - 1 do
     begin
-      if Parent[Index] = AAttribute then
+      if mParent[mIndex] = AAttribute then
       begin
-        Exit((Index = 0) or (Parent[Index - 1].Kind <> TSyntaxKind.Attribute));
+        Exit((mIndex = 0) or (mParent[mIndex - 1].Kind <> TSyntaxKind.Attribute));
       end;
     end;
     Result := False;
@@ -489,28 +489,28 @@ var
 
   procedure CheckWeakTarget(AItem, ATarget: TSyntaxNode);
   var
-    Child: Integer;
-    TypeNode: TSyntaxNode;
+    mChild: Integer;
+    mTypeNode: TSyntaxNode;
   begin
     if not (ATarget.Kind in [TSyntaxKind.Field, TSyntaxKind.VarDecl]) then
     begin
       Exit;
     end;
-    TypeNode := nil;
-    for Child := 0 to ATarget.ChildCount - 1 do
+    mTypeNode := nil;
+    for mChild := 0 to ATarget.ChildCount - 1 do
     begin
-      if ATarget[Child].Kind <> TSyntaxKind.Attribute then
+      if ATarget[mChild].Kind <> TSyntaxKind.Attribute then
       begin
-        TypeNode := ATarget[Child];
+        mTypeNode := ATarget[mChild];
         Break;
       end;
     end;
-    if (TypeNode = nil) or not CertainlyNoReference(Types, TypeNode) then
+    if (mTypeNode = nil) or not CertainlyNoReference(mTypes, mTypeNode) then
     begin
       Exit;
     end;
     AReport.Add(NodeRange(AItem), cTexts[TTypeRestrictionsAttributesText.WeakType].Fmt([Trim(ATarget.Name),
-      OneLine(AContext.Text, TypeNode)]), TRuleConfidence.High,
+      OneLine(AContext.Text, mTypeNode)]), TRuleConfidence.High,
       nil);
   end;
 
@@ -519,13 +519,13 @@ var
   function IsDuplicate(const AItems: TArray<TSyntaxNode>; const AItemNames: TArray<string>; AIndex: Integer):
     Boolean;
   var
-    Other: Integer;
+    mOther: Integer;
   begin
     Result := False;
-    for Other := 0 to AIndex - 1 do
+    for mOther := 0 to AIndex - 1 do
     begin
-      if SameText(AItemNames[Other], AItemNames[AIndex]) and
-        not TConditionalBranches.Exclusive(PathOf(AItems[Other]), PathOf(AItems[AIndex])) then
+      if SameText(AItemNames[mOther], AItemNames[AIndex]) and
+        not TConditionalBranches.Exclusive(PathOf(AItems[mOther]), PathOf(AItems[AIndex])) then
       begin
         Exit(True);
       end;
@@ -534,7 +534,7 @@ var
 
   procedure CheckItem(AItem, ATarget: TSyntaxNode; const AName: string);
   begin
-    if SameText(AName, 'Volatile') and (ATarget.Kind in VolatileForbiddenTargets) then
+    if SameText(AName, 'Volatile') and (ATarget.Kind in cVolatileForbiddenTargets) then
     begin
       AReport.Add(NodeRange(AItem), cTexts[TTypeRestrictionsAttributesText.VolatileTarget].Text, TRuleConfidence.High,
         nil);
@@ -547,44 +547,45 @@ var
 
   procedure CheckTarget(AFirst: TSyntaxNode);
   var
-    Items: TArray<TSyntaxNode>;
-    ItemNames: TArray<string>;
-    Attribute, Target: TSyntaxNode;
-    Index: Integer;
+    mItems: TArray<TSyntaxNode>;
+    mItemNames: TArray<string>;
+    mAttribute, mTarget: TSyntaxNode;
+    mIndex: Integer;
   begin
-    Target := AttributeTarget(AFirst);
-    if Target = nil then
+    mTarget := AttributeTarget(AFirst);
+    if mTarget = nil then
     begin
       Exit;
     end;
-    Items := nil;
-    for Attribute in AttributeGroup(AFirst) do
+    mItems := nil;
+    for mAttribute in AttributeGroup(AFirst) do
     begin
-      for Index := 0 to Attribute.ChildCount - 1 do
+      for mIndex := 0 to mAttribute.ChildCount - 1 do
       begin
-        Items := Items + [Attribute[Index]];
+        mItems := mItems + [mAttribute[mIndex]];
       end;
     end;
-    SetLength(ItemNames, Length(Items));
-    for Index := 0 to High(Items) do
+    SetLength(mItemNames, Length(mItems));
+    for mIndex := 0 to High(mItems) do
     begin
-      ItemNames[Index] := CompilerAttribute(Types, Items[Index]);
+      mItemNames[mIndex] := CompilerAttribute(mTypes, mItems[mIndex]);
     end;
-    for Index := 0 to High(Items) do
+    for mIndex := 0 to High(mItems) do
     begin
-      if ItemNames[Index] = '' then
+      if mItemNames[mIndex] = '' then
       begin
         Continue;
       end;
-      if IsDuplicate(Items, ItemNames, Index) then
+      if IsDuplicate(mItems, mItemNames, mIndex) then
       begin
-        AReport.Add(NodeRange(Items[Index]), cTexts[TTypeRestrictionsAttributesText.Duplicate].Fmt([ItemNames[Index]]),
+        AReport.Add(NodeRange(mItems[mIndex]),
+          cTexts[TTypeRestrictionsAttributesText.Duplicate].Fmt([mItemNames[mIndex]]),
           TRuleConfidence.High,
           nil);
       end
       else
       begin
-        CheckItem(Items[Index], Target, ItemNames[Index]);
+        CheckItem(mItems[mIndex], mTarget, mItemNames[mIndex]);
       end;
     end;
   end;
@@ -594,11 +595,11 @@ begin
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
-  Types := TFileTypes.Collect(AContext.Tree.Root);
-  Paths := TConditionalBranches.Paths(Tokens);
-  Names := nil;
-  Attributes := TList<TSyntaxNode>.Create;
+  mTokens := AContext.Tree.Tokens;
+  mTypes := TFileTypes.Collect(AContext.Tree.Root);
+  mPaths := TConditionalBranches.Paths(mTokens);
+  mNames := nil;
+  mAttributes := TList<TSyntaxNode>.Create;
   try
     AContext.Tree.Root.Walk(
       function(ANode: TSyntaxNode): Boolean
@@ -606,15 +607,15 @@ begin
         Result := True;
         if ANode.Kind = TSyntaxKind.Attribute then
         begin
-          Attributes.Add(ANode);
+          mAttributes.Add(ANode);
         end;
       end);
-    if Attributes.Count = 0 then
+    if mAttributes.Count = 0 then
     begin
       Exit;
     end;
-    Names := TDeclarationNames.Create(AContext.Tree.Root);
-    for Node in Attributes do
+    mNames := TDeclarationNames.Create(AContext.Tree.Root);
+    for Node in mAttributes do
     begin
       CheckArguments(Node);
       if FirstOfGroup(Node) then
@@ -623,8 +624,8 @@ begin
       end;
     end;
   finally
-    Names.Free;
-    Attributes.Free;
+    mNames.Free;
+    mAttributes.Free;
   end;
 end;
 

@@ -39,14 +39,15 @@ type
 
   TTodoReport = class
   public const
-    Format = 1;
+    cFormat = 1;
   public
     class function Summarize(const AFiles: TArray<TFileTodos>): TTodoSummary; static;
     class function SummaryJson(const ASummary: TTodoSummary): string; static;
     class function EntryJson(const AEntry: TTodoEntry): string; static;
     /// <summary>{"file": …, "unit": …, "todos": […]} einer Datei.</summary>
     class function FileJson(const AFile: TFileTodos): string; static;
-    /// <summary>Vollständige Daten (siehe Kopf der Unit); ARoot (absolut) erscheint als "root", wenn nicht leer.</summary>
+    /// <summary>Vollständige Daten (siehe Kopf der Unit); ARoot (absolut) erscheint als "root", wenn nicht
+    /// leer.</summary>
     class function Json(const AFiles: TArray<TFileTodos>; const ARoot: string): string; overload; static;
     class function Json(const AFiles: TArray<TFileTodos>): string; overload; static;
     /// <summary>Übersicht als Markdown: Zahlen, Kategorien, Personen und je Unit eine Tabelle. ATitle z. B. der
@@ -92,7 +93,7 @@ type
   TCountPair = TPair<string, Integer>;
 
 const
-  LineBreak = #13#10;
+  cLineBreak = #13#10;
 
 function JsonText(const AText: string): string;
 begin
@@ -108,13 +109,13 @@ end;
 
 function TTodoSummary.CountOf(const AKeyword: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(Keywords) do
+  for mIndex := 0 to High(Keywords) do
   begin
-    if SameText(Keywords[Index], AKeyword) then
+    if SameText(Keywords[mIndex], AKeyword) then
     begin
-      Exit(KeywordCounts[Index]);
+      Exit(KeywordCounts[mIndex]);
     end;
   end;
   Result := 0;
@@ -191,20 +192,20 @@ end;
 
 class function TTodoReport.SummaryJson(const ASummary: TTodoSummary): string;
 var
-  Index: Integer;
-  Keywords: string;
+  mIndex: Integer;
+  mKeywords: string;
 begin
-  Keywords := '';
-  for Index := 0 to High(ASummary.Keywords) do
+  mKeywords := '';
+  for mIndex := 0 to High(ASummary.Keywords) do
   begin
-    if Index > 0 then
+    if mIndex > 0 then
     begin
-      Keywords := Keywords + ', ';
+      mKeywords := mKeywords + ', ';
     end;
-    Keywords := Keywords + JsonText(ASummary.Keywords[Index]) + ': ' + IntToStr(ASummary.KeywordCounts[Index]);
+    mKeywords := mKeywords + JsonText(ASummary.Keywords[mIndex]) + ': ' + IntToStr(ASummary.KeywordCounts[mIndex]);
   end;
   Result := '{"files": ' + IntToStr(ASummary.Files) + ', "open": ' + IntToStr(ASummary.Open) + ', "done": ' +
-    IntToStr(ASummary.Done) + ', "keywords": {' + Keywords + '}}';
+    IntToStr(ASummary.Done) + ', "keywords": {' + mKeywords + '}}';
 end;
 
 class function TTodoReport.EntryJson(const AEntry: TTodoEntry): string;
@@ -218,45 +219,45 @@ end;
 
 class function TTodoReport.FileJson(const AFile: TFileTodos): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '{"file": ' + JsonText(AFile.Path) + ', "unit": ' + JsonText(AFile.UnitName) + ', "todos": [';
-  for Index := 0 to High(AFile.Entries) do
+  for mIndex := 0 to High(AFile.Entries) do
   begin
-    if Index > 0 then
+    if mIndex > 0 then
     begin
       Result := Result + ', ';
     end;
-    Result := Result + EntryJson(AFile.Entries[Index]);
+    Result := Result + EntryJson(AFile.Entries[mIndex]);
   end;
   Result := Result + ']}';
 end;
 
 class function TTodoReport.Json(const AFiles: TArray<TFileTodos>; const ARoot: string): string;
 var
-  Builder: TStringBuilder;
-  Index: Integer;
+  mBuilder: TStringBuilder;
+  mIndex: Integer;
 begin
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    Builder.Append('{"format": ').Append(IntToStr(Format));
+    mBuilder.Append('{"format": ').Append(IntToStr(cFormat));
     if ARoot <> '' then
     begin
-      Builder.Append(', "root": ').Append(JsonText(ARoot));
+      mBuilder.Append(', "root": ').Append(JsonText(ARoot));
     end;
-    Builder.Append(', "summary": ').Append(SummaryJson(Summarize(AFiles))).Append(', "files": [');
-    for Index := 0 to High(AFiles) do
+    mBuilder.Append(', "summary": ').Append(SummaryJson(Summarize(AFiles))).Append(', "files": [');
+    for mIndex := 0 to High(AFiles) do
     begin
-      if Index > 0 then
+      if mIndex > 0 then
       begin
-        Builder.Append(',');
+        mBuilder.Append(',');
       end;
-      Builder.Append(LineBreak).Append('  ').Append(FileJson(AFiles[Index]));
+      mBuilder.Append(cLineBreak).Append('  ').Append(FileJson(AFiles[mIndex]));
     end;
-    Builder.Append(']}').Append(LineBreak);
-    Result := Builder.ToString;
+    mBuilder.Append(']}').Append(cLineBreak);
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
@@ -267,25 +268,25 @@ end;
 
 class function TTodoReport.Caption(const AEntry: TTodoEntry): string;
 var
-  Details: string;
+  mDetails: string;
 begin
   Result := AEntry.Keyword;
   if AEntry.Priority > 0 then
   begin
     Result := Result + ' ' + IntToStr(AEntry.Priority);
   end;
-  Details := AEntry.Category;
+  mDetails := AEntry.Category;
   if AEntry.Owner <> '' then
   begin
-    if Details <> '' then
+    if mDetails <> '' then
     begin
-      Details := Details + ', ';
+      mDetails := mDetails + ', ';
     end;
-    Details := Details + AEntry.Owner;
+    mDetails := mDetails + AEntry.Owner;
   end;
-  if Details <> '' then
+  if mDetails <> '' then
   begin
-    Result := Result + ' [' + Details + ']';
+    Result := Result + ' [' + mDetails + ']';
   end;
   if AEntry.Text <> '' then
   begin
@@ -348,13 +349,13 @@ begin
     begin
       Exit;
     end;
-    ABuilder.Append(LineBreak).Append('## ').Append(AHeading).Append(LineBreak).Append(LineBreak);
-    ABuilder.Append('| ').Append(AColumn).Append(cTexts[TTodosReportText.Entries].Text).Append(LineBreak);
-    ABuilder.Append('|---|---:|').Append(LineBreak);
+    ABuilder.Append(cLineBreak).Append('## ').Append(AHeading).Append(cLineBreak).Append(cLineBreak);
+    ABuilder.Append('| ').Append(AColumn).Append(cTexts[TTodosReportText.Entries].Text).Append(cLineBreak);
+    ABuilder.Append('|---|---:|').Append(cLineBreak);
     for mPair in ByCount(mCounts) do
     begin
       ABuilder.Append('| ').Append(Cell(mPair.Key)).Append(' | ').Append(IntToStr(mPair.Value)).Append(' |')
-        .Append(LineBreak);
+        .Append(cLineBreak);
     end;
   finally
     mCounts.Free;
@@ -371,7 +372,7 @@ begin
   begin
     ABuilder.Append(': ').Append(ATitle);
   end;
-  ABuilder.Append(LineBreak).Append(LineBreak);
+  ABuilder.Append(cLineBreak).Append(cLineBreak);
   ABuilder.Append(IntToStr(ASummary.Open)).Append(cTexts[TTodosReportText.OpenEntriesIn].Text)
     .Append(IntToStr(ASummary.Files))
     .Append(' Dateien');
@@ -392,7 +393,7 @@ begin
     end;
     ABuilder.Append(')');
   end;
-  ABuilder.Append('.').Append(LineBreak);
+  ABuilder.Append('.').Append(cLineBreak);
 end;
 
 /// <summary>Tabelle der Einträge einer Datei.</summary>
@@ -401,11 +402,11 @@ var
   mEntry: TTodoEntry;
   mKind, mPriority: string;
 begin
-  ABuilder.Append(LineBreak).Append('## ').Append(AFile.UnitName).Append(' (')
-    .Append(IntToStr(Length(AFile.Entries))).Append(')').Append(LineBreak).Append(LineBreak);
-  ABuilder.Append('`').Append(AFile.Path).Append('`').Append(LineBreak).Append(LineBreak);
-  ABuilder.Append(cTexts[TTodosReportText.LineMarkerPriorityCategoryPerson].Text).Append(LineBreak);
-  ABuilder.Append('|---:|---|---:|---|---|---|').Append(LineBreak);
+  ABuilder.Append(cLineBreak).Append('## ').Append(AFile.UnitName).Append(' (')
+    .Append(IntToStr(Length(AFile.Entries))).Append(')').Append(cLineBreak).Append(cLineBreak);
+  ABuilder.Append('`').Append(AFile.Path).Append('`').Append(cLineBreak).Append(cLineBreak);
+  ABuilder.Append(cTexts[TTodosReportText.LineMarkerPriorityCategoryPerson].Text).Append(cLineBreak);
+  ABuilder.Append('|---:|---|---:|---|---|---|').Append(cLineBreak);
   for mEntry in AFile.Entries do
   begin
     mKind := mEntry.Keyword;
@@ -420,7 +421,7 @@ begin
     end;
     ABuilder.Append('| ').Append(IntToStr(mEntry.Range.StartPos.Line + 1)).Append(' | ').Append(mKind)
       .Append(' | ').Append(mPriority).Append(' | ').Append(Cell(mEntry.Category)).Append(' | ')
-      .Append(Cell(mEntry.Owner)).Append(' | ').Append(Cell(mEntry.Text)).Append(' |').Append(LineBreak);
+      .Append(Cell(mEntry.Owner)).Append(' | ').Append(Cell(mEntry.Text)).Append(' |').Append(cLineBreak);
   end;
 end;
 
@@ -434,7 +435,7 @@ begin
     AppendHeader(mBuilder, Summarize(AFiles), ATitle);
     if Length(AFiles) = 0 then
     begin
-      mBuilder.Append(LineBreak).Append(cTexts[TTodosReportText.NoEntries].Text).Append(LineBreak);
+      mBuilder.Append(cLineBreak).Append(cTexts[TTodosReportText.NoEntries].Text).Append(cLineBreak);
     end
     else
     begin

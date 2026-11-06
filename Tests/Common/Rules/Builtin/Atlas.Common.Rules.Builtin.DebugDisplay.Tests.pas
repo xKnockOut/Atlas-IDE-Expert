@@ -91,7 +91,7 @@ begin
   Source := StringReplace(Kunden, '{Ort}', '{Stadt.Name}', []);
   Found := Findings(Source);
   Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(DebugDisplayPlaceholderRuleId, Found[0].RuleId);
+  Assert.AreEqual(cDebugDisplayPlaceholderRuleId, Found[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Found[0].Severity));
   Assert.AreEqual(3, Found[0].Range.StartPos.Line);
   Assert.AreEqual(Pos('Stadt', '  // atlas-debug: ''{Name}, {Stadt.Name}') - 1, Found[0].Range.StartPos.Character);
@@ -191,7 +191,7 @@ begin
   Found := False;
   for Rule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = DebugDisplayPlaceholderRuleId then
+    if Rule.Descriptor.Id = cDebugDisplayPlaceholderRuleId then
     begin
       Found := True;
     end;

@@ -170,9 +170,9 @@ const
 
 const
   /// <summary>Mitglieder, die über ein Interface oder eine überschriebene Methode erreicht werden.</summary>
-  MemberKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Property_];
-  ClassKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType];
-  ReasonNames: array[TReferenceReason] of string = ('', 'interface', 'virtual', 'ambiguous', 'unresolved',
+  cMemberKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Property_];
+  cClassKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType];
+  cReasonNames: array[TReferenceReason] of string = ('', 'interface', 'virtual', 'ambiguous', 'unresolved',
     'inactiveBranch', 'text');
 
 function CleanName(const AText: string): string;
@@ -205,18 +205,18 @@ end;
 /// <summary>Name im Kopf einer Routine: procedure Name, procedure TTyp.Name, constructor TA.TB.Create.</summary>
 function InRoutineHeader(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := PreviousToken(ATokens, AIndex);
-  while (Index > 0) and (ATokens[Index].Kind = TPascalTokenKind.Symbol) and (ATokens[Index].Text = '.') and
-    (ATokens[PreviousToken(ATokens, Index)].Kind = TPascalTokenKind.Identifier) do
+  mIndex := PreviousToken(ATokens, AIndex);
+  while (mIndex > 0) and (ATokens[mIndex].Kind = TPascalTokenKind.Symbol) and (ATokens[mIndex].Text = '.') and
+    (ATokens[PreviousToken(ATokens, mIndex)].Kind = TPascalTokenKind.Identifier) do
   begin
-    Index := PreviousToken(ATokens, PreviousToken(ATokens, Index));
+    mIndex := PreviousToken(ATokens, PreviousToken(ATokens, mIndex));
   end;
-  Result := (Index >= 0) and (ATokens[Index].Kind = TPascalTokenKind.Keyword) and
-    (SameText(ATokens[Index].Text, 'procedure') or SameText(ATokens[Index].Text, 'function') or
-    SameText(ATokens[Index].Text, 'constructor') or SameText(ATokens[Index].Text, 'destructor') or
-    SameText(ATokens[Index].Text, 'operator'));
+  Result := (mIndex >= 0) and (ATokens[mIndex].Kind = TPascalTokenKind.Keyword) and
+    (SameText(ATokens[mIndex].Text, 'procedure') or SameText(ATokens[mIndex].Text, 'function') or
+    SameText(ATokens[mIndex].Text, 'constructor') or SameText(ATokens[mIndex].Text, 'destructor') or
+    SameText(ATokens[mIndex].Text, 'operator'));
 end;
 
 function Before(const A, B: TTextPosition): Boolean;
@@ -227,10 +227,10 @@ end;
 /// <summary>Letzter Teil eines qualifizierten Namens: Kunden.TKunde → TKunde.</summary>
 function ShortName(const AName: string): string;
 var
-  Dot: Integer;
+  mDot: Integer;
 begin
-  Dot := LastDelimiter('.', AName);
-  Result := Copy(AName, Dot + 1, MaxInt);
+  mDot := LastDelimiter('.', AName);
+  Result := Copy(AName, mDot + 1, MaxInt);
 end;
 
 { TReferenceConfidence }
@@ -277,12 +277,12 @@ end;
 
 function TReferenceConfidence.ReasonName: string;
 begin
-  Result := ReasonNames[Reason];
+  Result := cReasonNames[Reason];
 end;
 
 class function TReferenceConfidence.NameOfReason(AReason: TReferenceReason): string;
 begin
-  Result := ReasonNames[AReason];
+  Result := cReasonNames[AReason];
 end;
 
 function TReferenceConfidence.ToJson: TJSONObject;
@@ -345,23 +345,23 @@ end;
 class function TReferenceClassifier.SymbolOf(AResolver: TNameResolver; const AIndex: ISymbolIndex;
   ATree: TSyntaxTree; const AFileName: string; const AWanted: TDefinitionTarget; out ASymbol: TIndexSymbol): Boolean;
 var
-  OwnerUnit: TUnitIndex;
-  Symbol: TIndexSymbol;
+  mOwnerUnit: TUnitIndex;
+  mSymbol: TIndexSymbol;
 begin
   ASymbol := Default(TIndexSymbol);
   if SameText(AWanted.FileName, AFileName) then
   begin
-    OwnerUnit := AResolver.ExtractedUnit(ATree, AFileName);
+    mOwnerUnit := AResolver.ExtractedUnit(ATree, AFileName);
   end
-  else if not TIndexFiles.UnitOf(AIndex, AWanted.FileName, OwnerUnit) then
+  else if not TIndexFiles.UnitOf(AIndex, AWanted.FileName, mOwnerUnit) then
   begin
     Exit(False);
   end;
-  for Symbol in OwnerUnit.Symbols do
+  for mSymbol in mOwnerUnit.Symbols do
   begin
-    if Symbol.SelectionRange.StartPos = AWanted.SelectionRange.StartPos then
+    if mSymbol.SelectionRange.StartPos = AWanted.SelectionRange.StartPos then
     begin
-      ASymbol := Symbol;
+      ASymbol := mSymbol;
       Exit(True);
     end;
   end;
@@ -371,7 +371,7 @@ end;
 class function TReferenceClassifier.InactiveOf(const AText: string;
   const ADefines: TArray<string>): TArray<TLspInactiveRegion>;
 var
-  Issues: TArray<TPreprocessorIssue>;
+  mIssues: TArray<TPreprocessorIssue>;
 begin
   Result := nil;
   if not TPascalPreprocessor.HasConditionals(AText) then
@@ -380,20 +380,20 @@ begin
   end;
   // Dieselben Optionen wie der Baum des Editors, damit „inaktiv“ hier dasselbe heißt wie beim Abblenden.
   Result := TLspInactiveRegions.Regions(TPascalPreprocessor.Process(AText,
-    TPascalPreprocessor.EditorOptions(ADefines)), False, Issues);
+    TPascalPreprocessor.EditorOptions(ADefines)), False, mIssues);
 end;
 
 class function TReferenceClassifier.RegionAt(const AInactive: TArray<TLspInactiveRegion>;
   const APosition: TTextPosition; out ACondition: string): Boolean;
 var
-  Region: TLspInactiveRegion;
+  mRegion: TLspInactiveRegion;
 begin
   ACondition := '';
-  for Region in AInactive do
+  for mRegion in AInactive do
   begin
-    if not Before(APosition, Region.Range.StartPos) and Before(APosition, Region.Range.EndPos) then
+    if not Before(APosition, mRegion.Range.StartPos) and Before(APosition, mRegion.Range.EndPos) then
     begin
-      ACondition := Region.Condition;
+      ACondition := mRegion.Condition;
       Exit(True);
     end;
   end;
@@ -429,7 +429,7 @@ end;
 
 function TReferenceClassifier.SameMemberElsewhere(const AResolved: TResolvedSymbol): Boolean;
 begin
-  Result := FHasSymbol and (FSymbol.Kind in MemberKinds) and (FSymbol.Container <> '');
+  Result := FHasSymbol and (FSymbol.Kind in cMemberKinds) and (FSymbol.Container <> '');
   if Result then
   begin
     Result := (AResolved.Kind = TResolvedKind.Symbol) and (AResolved.SymbolKind = FSymbol.Kind) and
@@ -446,7 +446,7 @@ begin
   AClasses := 0;
   for mLocation in Descendants(AContainer) do
   begin
-    if mLocation.Symbol.Kind in ClassKinds then
+    if mLocation.Symbol.Kind in cClassKinds then
     begin
       Inc(AClasses);
     end;
@@ -514,30 +514,30 @@ end;
 function TReferenceClassifier.Ambiguous(ATree: TSyntaxTree; const AFileName: string;
   const APosition: TTextPosition; AMatched: Boolean; out AConfidence: TReferenceConfidence): Boolean;
 var
-  All: TArray<TResolvedSymbol>;
-  Candidate: TResolvedSymbol;
-  Targets: TArray<TDefinitionTarget>;
+  mAll: TArray<TResolvedSymbol>;
+  mCandidate: TResolvedSymbol;
+  mTargets: TArray<TDefinitionTarget>;
 begin
   Result := False;
-  All := FResolver.ResolveAll(ATree, AFileName, APosition);
-  if Length(All) < 2 then
+  mAll := FResolver.ResolveAll(ATree, AFileName, APosition);
+  if Length(mAll) < 2 then
   begin
     Exit;
   end;
   if AMatched then
   begin
     AConfidence := TReferenceConfidence.Inferred(TReferenceReason.Ambiguous,
-      cTexts[TReferenceConfidenceText.OverloadNotUniqueCandidatesThis].Fmt([Length(All)]), True);
+      cTexts[TReferenceConfidenceText.OverloadNotUniqueCandidatesThis].Fmt([Length(mAll)]), True);
     Exit(True);
   end;
-  for Candidate in All do
+  for mCandidate in mAll do
   begin
-    Targets := TLspDefinition.TargetsOf(FResolver, FIndex, TDefinitionQuery.Create(ATree, AFileName, APosition, True),
-      Candidate);
-    if (Length(Targets) > 0) and SameTarget(Targets[0], FWanted) then
+    mTargets := TLspDefinition.TargetsOf(FResolver, FIndex, TDefinitionQuery.Create(ATree, AFileName, APosition, True),
+      mCandidate);
+    if (Length(mTargets) > 0) and SameTarget(mTargets[0], FWanted) then
     begin
       AConfidence := TReferenceConfidence.Inferred(TReferenceReason.Ambiguous,
-        cTexts[TReferenceConfidenceText.OverloadNotUniqueCandidatesAmong].Fmt([Length(All)]), False);
+        cTexts[TReferenceConfidenceText.OverloadNotUniqueCandidatesAmong].Fmt([Length(mAll)]), False);
       Exit(True);
     end;
   end;
@@ -546,26 +546,26 @@ end;
 function TReferenceClassifier.Classify(ATree: TSyntaxTree; const AFileName: string; ATokenIndex: Integer;
   const AInactive: TArray<TLspInactiveRegion>; out AConfidence: TReferenceConfidence): Boolean;
 var
-  Position: TTextPosition;
-  Resolved: TResolvedSymbol;
-  Targets: TArray<TDefinitionTarget>;
-  Inactive: Boolean;
-  Condition: string;
+  mPosition: TTextPosition;
+  mResolved: TResolvedSymbol;
+  mTargets: TArray<TDefinitionTarget>;
+  mInactive: Boolean;
+  mCondition: string;
 begin
-  Position := ATree.Tokens[ATokenIndex].StartPos;
-  Inactive := FSettings.Inferred and RegionAt(AInactive, Position, Condition);
-  Resolved := FResolver.Resolve(ATree, AFileName, Position);
-  Targets := TLspDefinition.TargetsOf(FResolver, FIndex, TDefinitionQuery.Create(ATree, AFileName, Position, True),
-    Resolved);
-  if (Length(Targets) > 0) and SameTarget(Targets[0], FWanted) then
+  mPosition := ATree.Tokens[ATokenIndex].StartPos;
+  mInactive := FSettings.Inferred and RegionAt(AInactive, mPosition, mCondition);
+  mResolved := FResolver.Resolve(ATree, AFileName, mPosition);
+  mTargets := TLspDefinition.TargetsOf(FResolver, FIndex, TDefinitionQuery.Create(ATree, AFileName, mPosition, True),
+    mResolved);
+  if (Length(mTargets) > 0) and SameTarget(mTargets[0], FWanted) then
   begin
-    if Inactive then
+    if mInactive then
     begin
-      AConfidence := TReferenceConfidence.Inferred(TReferenceReason.InactiveBranch, InactiveDetail(Condition), True);
+      AConfidence := TReferenceConfidence.Inferred(TReferenceReason.InactiveBranch, InactiveDetail(mCondition), True);
     end
     // ResolveAll nur bei Aufrufen von Überladungen: Sonst gibt es keinen zweiten Kandidaten.
     else if not (FSettings.Inferred and FOverloaded and not InRoutineHeader(ATree.Tokens, ATokenIndex) and
-      Ambiguous(ATree, AFileName, Position, True, AConfidence)) then
+      Ambiguous(ATree, AFileName, mPosition, True, AConfidence)) then
     begin
       AConfidence := TReferenceConfidence.Sure;
     end;
@@ -578,18 +578,18 @@ begin
   begin
     Exit(False);
   end;
-  if Inactive then
+  if mInactive then
   begin
-    AConfidence := TReferenceConfidence.Inferred(TReferenceReason.InactiveBranch, InactiveDetail(Condition), False);
+    AConfidence := TReferenceConfidence.Inferred(TReferenceReason.InactiveBranch, InactiveDetail(mCondition), False);
     Exit(True);
   end;
-  if Length(Targets) = 0 then
+  if Length(mTargets) = 0 then
   begin
     AConfidence := TReferenceConfidence.Inferred(TReferenceReason.Unresolved,
       cTexts[TReferenceConfidenceText.SameNameTypeCannotBe].Text, False);
     Exit(True);
   end;
-  Result := Ambiguous(ATree, AFileName, Position, False, AConfidence) or InheritedCall(Resolved, AConfidence);
+  Result := Ambiguous(ATree, AFileName, mPosition, False, AConfidence) or InheritedCall(mResolved, AConfidence);
 end;
 
 function TReferenceClassifier.TextMatch(const AToken: TPascalToken; out AConfidence: TReferenceConfidence): Boolean;

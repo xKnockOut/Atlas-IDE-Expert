@@ -102,34 +102,34 @@ type
 
   TLspPullDiagnostics = class
   public const
-    DocumentMethod = 'textDocument/diagnostic';
-    WorkspaceMethod = 'workspace/diagnostic';
-    RefreshMethod = 'workspace/diagnostic/refresh';
+    cDocumentMethod = 'textDocument/diagnostic';
+    cWorkspaceMethod = 'workspace/diagnostic';
+    cRefreshMethod = 'workspace/diagnostic/refresh';
     /// <summary>Pause der Projektprüfung vom Client (#1247), z. B. {"reason":"debug","paused":true} beim
     /// Debuggen (#1241).</summary>
-    PauseMethod = 'atlas/workspaceCheck/pause';
+    cPauseMethod = 'atlas/workspaceCheck/pause';
     /// <summary>Alle Dateien neu prüfen (#1231, Klick auf die Live-Prüfung der Atlas-Statusleiste): ruft Changed.
     /// </summary>
-    RecheckCommand = 'atlas.server.recheck';
-    Identifier = 'atlas';
-    DefaultWaitMs = 10000;
+    cRecheckCommand = 'atlas.server.recheck';
+    cIdentifier = 'atlas';
+    cDefaultWaitMs = 10000;
     /// <summary>Grundcodes leerer Antworten im Diagnoselog (#647).</summary>
-    ReasonIndexLoading = 'indexLoading';
-    ReasonNoChanges = 'noChanges';
+    cReasonIndexLoading = 'indexLoading';
+    cReasonNoChanges = 'noChanges';
     /// <summary>Höchstzahl Dateibefunde je Antwort; den Rest holt der Client gleich mit der nächsten.</summary>
-    MaxWorkspaceReports = 200;
+    cMaxWorkspaceReports = 200;
     /// <summary>Takt, in dem Wartende den Abbruch prüfen; Änderungen wecken sofort.</summary>
-    ChangeSliceMs = 100;
+    cChangeSliceMs = 100;
     /// <summary>Neuer Fortschritt ohne neue Befunde beendet das Long-Polling frühestens nach dieser Zeit.</summary>
-    ProgressMs = 1000;
+    cProgressMs = 1000;
     /// <summary>Neue Befunde während eines Laufs sammelt eine Anfrage so lange, bevor sie antwortet.</summary>
-    BatchMs = 1000;
+    cBatchMs = 1000;
     /// <summary>So lange rechnet die Prüfung einer geöffneten Datei nach abgelaufenem Zeitlimit höchstens weiter.
     /// </summary>
-    DetachedMaxMs = 120000;
+    cDetachedMaxMs = 120000;
     /// <summary>So lange wartet textDocument/diagnostic auf die Prüfung einer geöffneten Datei, höchstens bis
     /// TimeLimitMs; das Plugin wartet 8 s.</summary>
-    DefaultDocumentWaitMs = 5000;
+    cDefaultDocumentWaitMs = 5000;
   private
     FStore: IDocumentStore;
     FDiagnostics: TLspSyntaxDiagnostics;
@@ -266,10 +266,10 @@ end;
 function Diagnose(ADiagnostics: TLspSyntaxDiagnostics; const ADocument: ITextDocument;
   const ACancelled: TRuleCancelled; const ACancellation: IJsonRpcCancellationToken): TJSONArray;
 var
-  Params: TJSONObject;
+  mParams: TJSONObject;
 begin
   try
-    Params := ADiagnostics.Compute(ADocument, ACancelled);
+    mParams := ADiagnostics.Compute(ADocument, ACancelled);
   except
     on ERuleCheckCancelled do
     begin
@@ -283,9 +283,9 @@ begin
     end;
   end;
   try
-    Result := Params.GetValue('diagnostics').Clone as TJSONArray;
+    Result := mParams.GetValue('diagnostics').Clone as TJSONArray;
   finally
-    Params.Free;
+    mParams.Free;
   end;
 end;
 
@@ -302,10 +302,10 @@ begin
   FStamp := AStamp;
   FReadText := AReadText;
   FGeneration := 1;
-  FWaitMs := DefaultWaitMs;
+  FWaitMs := cDefaultWaitMs;
   FReports := TPullReportCache.Create;
   FJobs := TDictionary<string, IPullDocumentJob>.Create;
-  FDocumentWaitMs := DefaultDocumentWaitMs;
+  FDocumentWaitMs := cDefaultDocumentWaitMs;
   FCheck := CreateCheck(AFiles);
 end;
 
@@ -340,7 +340,7 @@ begin
   TInterlocked.Exchange(FStopping, 1);
   while TInterlocked.CompareExchange(FRunningJobs, 0, 0) > 0 do
   begin
-    Sleep(TPullReportCache.RunningPollMs);
+    Sleep(TPullReportCache.cRunningPollMs);
   end;
   // Dann: Der Thread der Projektprüfung rechnet mit FDiagnostics und FStore.
   FCheck.Free;
@@ -362,9 +362,9 @@ end;
 
 procedure TLspPullDiagnostics.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterConcurrentRequest(DocumentMethod, HandleDocument);
-  ADispatcher.RegisterConcurrentRequest(WorkspaceMethod, WorkspaceReport);
-  ADispatcher.RegisterNotification(PauseMethod, HandlePause);
+  ADispatcher.RegisterConcurrentRequest(cDocumentMethod, HandleDocument);
+  ADispatcher.RegisterConcurrentRequest(cWorkspaceMethod, WorkspaceReport);
+  ADispatcher.RegisterNotification(cPauseMethod, HandlePause);
 end;
 
 class function TLspPullProtocol.ClientSupportsPull(const AInitializeParams: TJSONObject): Boolean;
@@ -374,37 +374,37 @@ end;
 
 class function TLspPullProtocol.ClientSupportsRefresh(const AInitializeParams: TJSONObject): Boolean;
 var
-  Value: Boolean;
+  mValue: Boolean;
 begin
   Result := (AInitializeParams <> nil) and
-    AInitializeParams.TryGetValue<Boolean>('capabilities.workspace.diagnostics.refreshSupport', Value) and Value;
+    AInitializeParams.TryGetValue<Boolean>('capabilities.workspace.diagnostics.refreshSupport', mValue) and mValue;
 end;
 
 class function TLspPullProtocol.Capability: TJSONObject;
 begin
   Result := TJSONObject.Create;
-  Result.AddPair('identifier', TLspPullDiagnostics.Identifier);
+  Result.AddPair('identifier', TLspPullDiagnostics.cIdentifier);
   Result.AddPair('interFileDependencies', TJSONBool.Create(True));
   Result.AddPair('workspaceDiagnostics', TJSONBool.Create(True));
 end;
 
 class function TLspPullProtocol.TimeLimitMs(ATimeoutMs: Cardinal): Cardinal;
 var
-  Half, Reserved: Int64;
+  mHalf, mReserved: Int64;
 begin
   if ATimeoutMs = 0 then
   begin
     Exit(High(Cardinal));
   end;
-  Half := Int64(ATimeoutMs) div 2;
-  Reserved := Int64(ATimeoutMs) - 2000;
-  if Reserved > Half then
+  mHalf := Int64(ATimeoutMs) div 2;
+  mReserved := Int64(ATimeoutMs) - 2000;
+  if mReserved > mHalf then
   begin
-    Result := Cardinal(Reserved);
+    Result := Cardinal(mReserved);
   end
   else
   begin
-    Result := Cardinal(Half);
+    Result := Cardinal(mHalf);
   end;
 end;
 
@@ -446,23 +446,23 @@ end;
 
 procedure TLspPullDiagnostics.SendRefresh;
 var
-  Request: TJSONObject;
-  Counter: Integer;
+  mRequest: TJSONObject;
+  mCounter: Integer;
 begin
   if not FRefreshSupport or (FTransport = nil) then
   begin
     Exit;
   end;
   // Geöffnete Dokumente holt der Client nach refresh neu ab (z. B. nach einem Compilerlauf).
-  Counter := TInterlocked.Increment(FRefreshCounter);
-  Request := TJSONObject.Create;
+  mCounter := TInterlocked.Increment(FRefreshCounter);
+  mRequest := TJSONObject.Create;
   try
-    Request.AddPair('jsonrpc', '2.0');
-    Request.AddPair('id', Format('atlas/diagnostic-refresh-%d', [Counter]));
-    Request.AddPair('method', RefreshMethod);
-    FTransport.WriteMessage(Request);
+    mRequest.AddPair('jsonrpc', '2.0');
+    mRequest.AddPair('id', Format('atlas/diagnostic-refresh-%d', [mCounter]));
+    mRequest.AddPair('method', cRefreshMethod);
+    FTransport.WriteMessage(mRequest);
   finally
-    Request.Free;
+    mRequest.Free;
   end;
 end;
 
@@ -517,7 +517,7 @@ begin
     function: Boolean
     begin
       Result := AOwner.Stopping or AOwner.Outdated(ADocument, AGeneration) or
-        (mClock.ElapsedMilliseconds > TLspPullDiagnostics.DetachedMaxMs);
+        (mClock.ElapsedMilliseconds > TLspPullDiagnostics.cDetachedMaxMs);
     end;
 end;
 
@@ -731,9 +731,10 @@ begin
     end;
     if (mClock.ElapsedMilliseconds >= Int64(mWait)) and mJob.Abandon then
     begin
-      raise EJsonRpcError.Create(TLspErrorCode.ServerCancelled, cTexts[TPullDiagnosticsText.StillChecking].Fmt([mWait]));
+      raise EJsonRpcError.Create(TLspErrorCode.cServerCancelled,
+        cTexts[TPullDiagnosticsText.StillChecking].Fmt([mWait]));
     end;
-    Sleep(TPullReportCache.RunningPollMs);
+    Sleep(TPullReportCache.cRunningPollMs);
   end;
   Result := mJob.Items;
 end;
@@ -741,67 +742,67 @@ end;
 function TLspPullDiagnostics.DocumentReport(const AUri, APreviousResultId: string;
   const ACancellation: IJsonRpcCancellationToken): TJSONObject;
 var
-  Document: ITextDocument;
-  FileName, Text, ResultId: string;
-  Stamp: Int64;
+  mDocument: ITextDocument;
+  mFileName, mText, mResultId: string;
+  mStamp: Int64;
   mGeneration: Integer;
-  Open: Boolean;
+  mOpen: Boolean;
 begin
-  FileName := TDocumentUris.ToPath(AUri);
+  mFileName := TDocumentUris.ToPath(AUri);
   mGeneration := TInterlocked.CompareExchange(FGeneration, 0, 0);
-  Open := False;
+  mOpen := False;
   // atlas.json prüft TLspConfiguration und meldet weiter per publishDiagnostics.
-  if SameText(ExtractFileExt(FileName), '.json') then
+  if SameText(ExtractFileExt(mFileName), '.json') then
   begin
-    ResultId := '';
+    mResultId := '';
   end
-  else if FStore.TryGet(AUri, Document) then
+  else if FStore.TryGet(AUri, mDocument) then
   begin
-    ResultId := Format('%d:v%d', [mGeneration, Document.Version]);
-    Open := True;
+    mResultId := Format('%d:v%d', [mGeneration, mDocument.Version]);
+    mOpen := True;
   end
-  else if Assigned(FStamp) and FStamp(FileName, Stamp) and FReadText(FileName, Text) then
+  else if Assigned(FStamp) and FStamp(mFileName, mStamp) and FReadText(mFileName, mText) then
   begin
-    ResultId := Format('%d:t%d', [mGeneration, Stamp]);
-    Document := TTextDocument.Create(AUri, 'objectpascal', 0, Text);
+    mResultId := Format('%d:t%d', [mGeneration, mStamp]);
+    mDocument := TTextDocument.Create(AUri, 'objectpascal', 0, mText);
   end
   else
   begin
-    ResultId := '';
+    mResultId := '';
   end;
   Result := TJSONObject.Create;
-  if (ResultId <> '') and (ResultId = APreviousResultId) then
+  if (mResultId <> '') and (mResultId = APreviousResultId) then
   begin
     Result.AddPair('kind', 'unchanged');
-    Result.AddPair('resultId', ResultId);
+    Result.AddPair('resultId', mResultId);
     Exit;
   end;
   Result.AddPair('kind', 'full');
-  if ResultId <> '' then
+  if mResultId <> '' then
   begin
-    Result.AddPair('resultId', ResultId);
+    Result.AddPair('resultId', mResultId);
   end;
-  if Document = nil then
+  if mDocument = nil then
   begin
     Result.AddPair('items', TJSONArray.Create);
   end
   else
   begin
-    TRequestDiagnostics.Subject(LabelOf(FileName));
+    TRequestDiagnostics.Subject(LabelOf(mFileName));
     try
-      if Open then
+      if mOpen then
       begin
         // Geöffnete Datei (#1761): Die Prüfung läuft im eigenen Thread zu Ende, auch wenn die Anfrage vorher
         // antwortet.
-        Result.AddPair('items', OpenItems(ResultId, Document, mGeneration, ACancellation));
+        Result.AddPair('items', OpenItems(mResultId, mDocument, mGeneration, ACancellation));
       end
       else
       begin
         // Vorrang vor der Projektprüfung (#1247): Sie beginnt solange keine neue Datei.
         FCheck.EnterForeground;
         try
-          Result.AddPair('items', FReports.Get(AUri, ResultId,
-            Computation(Self, Document, RequestCancelled(ACancellation), ACancellation), ACancellation));
+          Result.AddPair('items', FReports.Get(AUri, mResultId,
+            Computation(Self, mDocument, RequestCancelled(ACancellation), ACancellation), ACancellation));
         finally
           FCheck.LeaveForeground;
         end;
@@ -817,19 +818,19 @@ end;
 function TLspPullDiagnostics.HandleDocument(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
-  Uri, Previous: string;
+  mUri, mPrevious: string;
 begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri)) then
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      cTexts[TPullDiagnosticsText.FieldTextDocumentUriMissingIn].Text + DocumentMethod);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TPullDiagnosticsText.FieldTextDocumentUriMissingIn].Text + cDocumentMethod);
   end;
-  if not TJSONObject(AParams).TryGetValue<string>('previousResultId', Previous) then
+  if not TJSONObject(AParams).TryGetValue<string>('previousResultId', mPrevious) then
   begin
-    Previous := '';
+    mPrevious := '';
   end;
   ACancellation.ThrowIfCancellationRequested;
-  Result := DocumentReport(Uri, Previous, ACancellation);
+  Result := DocumentReport(mUri, mPrevious, ACancellation);
 end;
 
 /// <summary>previousResultIds der Anfrage AParams nach APrevious (Uri -> Ergebnis-Id).</summary>
@@ -857,8 +858,8 @@ end;
 /// einzeln, der Client fragte sofort neu, und das Plugin baute seine Ansicht je Unit neu auf.</summary>
 function ReadyToSend(ACheck: TLspWorkspaceCheck; AItems: TJSONArray; const AClock: TStopwatch): Boolean;
 begin
-  Result := (AItems.Count > 0) and ((AClock.ElapsedMilliseconds >= TLspPullDiagnostics.BatchMs) or
-    (AItems.Count >= TLspPullDiagnostics.MaxWorkspaceReports) or not ACheck.Run.Active);
+  Result := (AItems.Count > 0) and ((AClock.ElapsedMilliseconds >= TLspPullDiagnostics.cBatchMs) or
+    (AItems.Count >= TLspPullDiagnostics.cMaxWorkspaceReports) or not ACheck.Run.Active);
 end;
 
 /// <summary>Befunde der Projektprüfung; gibt es nichts Neues, wartet es bis APollMs auf neue Befunde oder einen
@@ -871,22 +872,22 @@ var
 begin
   mChange := ACheck.ChangeCount;
   mStart := ACheck.Run;
-  Result := ACheck.Collect(APrevious, TLspPullDiagnostics.MaxWorkspaceReports);
+  Result := ACheck.Collect(APrevious, TLspPullDiagnostics.cMaxWorkspaceReports);
   while (AClock.ElapsedMilliseconds < Int64(APollMs)) and not ACancellation.IsCancellationRequested and
     not ReadyToSend(ACheck, Result, AClock) do
   begin
-    mNext := ACheck.WaitForChange(mChange, TLspPullDiagnostics.ChangeSliceMs);
+    mNext := ACheck.WaitForChange(mChange, TLspPullDiagnostics.cChangeSliceMs);
     if mNext = mChange then
     begin
       Continue;
     end;
     mChange := mNext;
     Result.Free;
-    Result := ACheck.Collect(APrevious, TLspPullDiagnostics.MaxWorkspaceReports);
+    Result := ACheck.Collect(APrevious, TLspPullDiagnostics.cMaxWorkspaceReports);
     mNow := ACheck.Run;
     // Anfang, Ende, Pause sofort melden; bloßen Fortschritt höchstens alle ProgressMs.
     if mNow.StateDiffers(mStart) or ((mNow.Done <> mStart.Done) and
-      (AClock.ElapsedMilliseconds >= TLspPullDiagnostics.ProgressMs)) then
+      (AClock.ElapsedMilliseconds >= TLspPullDiagnostics.cProgressMs)) then
     begin
       Break;
     end;
@@ -898,11 +899,11 @@ procedure NoteEmpty(const ARun: TWorkspaceCheckRun; ABusy: Boolean);
 begin
   if (ARun.Paused = TLspWorkspaceCheck.cPauseIndex) or ABusy then
   begin
-    TRequestDiagnostics.Reason(TLspPullDiagnostics.ReasonIndexLoading);
+    TRequestDiagnostics.Reason(TLspPullDiagnostics.cReasonIndexLoading);
   end
   else
   begin
-    TRequestDiagnostics.DefaultReason(TLspPullDiagnostics.ReasonNoChanges);
+    TRequestDiagnostics.DefaultReason(TLspPullDiagnostics.cReasonNoChanges);
   end;
 end;
 

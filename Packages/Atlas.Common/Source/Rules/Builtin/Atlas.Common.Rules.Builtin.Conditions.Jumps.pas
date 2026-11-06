@@ -12,9 +12,9 @@ uses
 
 const
   // Aufrufe, die die Schleife verlassen: über die Routine, das Programm oder eine Ausnahme.
-  LeavingCalls: array[0..4] of string = ('Exit', 'Halt', 'Abort', 'RunError', 'ExitProcess');
+  cLeavingCalls: array[0..4] of string = ('Exit', 'Halt', 'Abort', 'RunError', 'ExitProcess');
   // Aufrufe, die das Programm beenden oder eine Ausnahme auslösen.
-  RaisingCalls: array[0..3] of string = ('Halt', 'Abort', 'RunError', 'ExitProcess');
+  cRaisingCalls: array[0..3] of string = ('Halt', 'Abort', 'RunError', 'ExitProcess');
 
 /// <summary>Letzter Teil des Namens einer Routine: "TFoo.Bar" → "Bar".</summary>
 function ShortName(const AName: string): string;
@@ -43,13 +43,13 @@ uses
 
 function ShortName(const AName: string): string;
 var
-  Dot: Integer;
+  mDot: Integer;
 begin
   Result := AName;
-  Dot := Result.LastIndexOf('.');
-  if Dot >= 0 then
+  mDot := Result.LastIndexOf('.');
+  if mDot >= 0 then
   begin
-    Result := Copy(Result, Dot + 2, MaxInt);
+    Result := Copy(Result, mDot + 2, MaxInt);
   end;
 end;
 
@@ -81,81 +81,81 @@ end;
 
 function Raises(ANode: TSyntaxNode; ARaising: TDictionary<string, Boolean>): Boolean;
 var
-  Index: Integer;
-  Name: string;
-  Node: TSyntaxNode;
-  Pending: TStack<TSyntaxNode>;
+  mIndex: Integer;
+  mName: string;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
 begin
   // Iterativ (Bericht M1).
   Result := False;
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ANode);
-    while Pending.Count > 0 do
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      if Node.Kind = TSyntaxKind.AnonymousMethod then
+      mNode := mPending.Pop;
+      if mNode.Kind = TSyntaxKind.AnonymousMethod then
       begin
         Continue;
       end;
-      if Node.Kind = TSyntaxKind.RaiseStatement then
+      if mNode.Kind = TSyntaxKind.RaiseStatement then
       begin
         Exit(True);
       end;
-      if Node.Kind in [TSyntaxKind.Call, TSyntaxKind.Identifier] then
+      if mNode.Kind in [TSyntaxKind.Call, TSyntaxKind.Identifier] then
       begin
-        Name := CalledName(Node);
-        if MatchText(Name, RaisingCalls) or ((Name <> '') and ARaising.ContainsKey(LowerCase(Name))) then
+        mName := CalledName(mNode);
+        if MatchText(mName, cRaisingCalls) or ((mName <> '') and ARaising.ContainsKey(LowerCase(mName))) then
         begin
           Exit(True);
         end;
       end;
-      for Index := Node.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(Node[Index]);
+        mPending.Push(mNode[mIndex]);
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
 function RaisingRoutines(ATree: TSyntaxTree): TDictionary<string, Boolean>;
 var
-  Routines: TList<TSyntaxNode>;
-  Changed: Boolean;
-  Routine: TSyntaxNode;
+  mRoutines: TList<TSyntaxNode>;
+  mChanged: Boolean;
+  mRoutine: TSyntaxNode;
 
   procedure Collect(ARoot: TSyntaxNode);
   var
-    Index: Integer;
-    Node: TSyntaxNode;
-    Pending: TStack<TSyntaxNode>;
+    mIndex: Integer;
+    mNode: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
   begin
     // Iterativ (Bericht M1).
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ARoot);
-      while Pending.Count > 0 do
+      mPending.Push(ARoot);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if Node.Kind = TSyntaxKind.RoutineDecl then
+        mNode := mPending.Pop;
+        if mNode.Kind = TSyntaxKind.RoutineDecl then
         begin
-          Routines.Add(Node);
+          mRoutines.Add(mNode);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
 begin
   Result := TDictionary<string, Boolean>.Create;
-  Routines := TList<TSyntaxNode>.Create;
+  mRoutines := TList<TSyntaxNode>.Create;
   try
     if ATree.Root <> nil then
     begin
@@ -163,56 +163,57 @@ begin
     end;
     // Bis nichts mehr dazukommt: A ruft B, B löst aus.
     repeat
-      Changed := False;
-      for Routine in Routines do
+      mChanged := False;
+      for mRoutine in mRoutines do
       begin
-        if not Result.ContainsKey(LowerCase(ShortName(Routine.Name))) and (Routine.FindChild(TSyntaxKind.Block) <> nil) and
-          Raises(Routine.FindChild(TSyntaxKind.Block), Result) then
+        if not Result.ContainsKey(LowerCase(ShortName(mRoutine.Name))) and
+          (mRoutine.FindChild(TSyntaxKind.Block) <> nil) and
+          Raises(mRoutine.FindChild(TSyntaxKind.Block), Result) then
         begin
-          Result.Add(LowerCase(ShortName(Routine.Name)), True);
-          Changed := True;
+          Result.Add(LowerCase(ShortName(mRoutine.Name)), True);
+          mChanged := True;
         end;
       end;
-    until not Changed;
+    until not mChanged;
   finally
-    Routines.Free;
+    mRoutines.Free;
   end;
 end;
 
 function HasExit(ANode: TSyntaxNode; AInner: Boolean; ARaising: TDictionary<string, Boolean>): Boolean;
 var
-  Index: Integer;
-  Name: string;
-  Inner: Boolean;
-  Node: TSyntaxNode;
-  Pending: TStack<TSyntaxNode>;
-  PendingInner: TStack<Boolean>;
+  mIndex: Integer;
+  mName: string;
+  mInner: Boolean;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+  mPendingInner: TStack<Boolean>;
 begin
   // Iterativ (Bericht M1).
   Result := False;
-  Pending := TStack<TSyntaxNode>.Create;
-  PendingInner := TStack<Boolean>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
+  mPendingInner := TStack<Boolean>.Create;
   try
-    Pending.Push(ANode);
-    PendingInner.Push(AInner);
-    while Pending.Count > 0 do
+    mPending.Push(ANode);
+    mPendingInner.Push(AInner);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      Inner := PendingInner.Pop;
-      case Node.Kind of
+      mNode := mPending.Pop;
+      mInner := mPendingInner.Pop;
+      case mNode.Kind of
         TSyntaxKind.AnonymousMethod:
           Continue;
         TSyntaxKind.RaiseStatement, TSyntaxKind.GotoStatement:
           Exit(True);
         TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.Call:
           begin
-            Name := CalledName(Node);
-            if SameText(Name, 'Terminated') or MatchText(JumpName(Node), LeavingCalls) or
-              ((Name <> '') and ARaising.ContainsKey(LowerCase(Name))) then
+            mName := CalledName(mNode);
+            if SameText(mName, 'Terminated') or MatchText(JumpName(mNode), cLeavingCalls) or
+              ((mName <> '') and ARaising.ContainsKey(LowerCase(mName))) then
             begin
               Exit(True);
             end;
-            if SameText(JumpName(Node), 'Break') and not Inner then
+            if SameText(JumpName(mNode), 'Break') and not mInner then
             begin
               Exit(True);
             end;
@@ -220,35 +221,35 @@ begin
       else
         // Übrige Werte bewusst ohne Wirkung.
       end;
-      Inner := Inner or (Node.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement,
+      mInner := mInner or (mNode.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement,
         TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement]);
-      for Index := Node.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(Node[Index]);
-        PendingInner.Push(Inner);
+        mPending.Push(mNode[mIndex]);
+        mPendingInner.Push(mInner);
       end;
     end;
   finally
-    PendingInner.Free;
-    Pending.Free;
+    mPendingInner.Free;
+    mPending.Free;
   end;
 end;
 
 function InTryExcept(ANode: TSyntaxNode): Boolean;
 var
-  Child, Parent: TSyntaxNode;
+  mChild, mParent: TSyntaxNode;
 begin
-  Child := ANode;
-  Parent := ANode.Parent;
-  while (Parent <> nil) and not (Parent.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) do
+  mChild := ANode;
+  mParent := ANode.Parent;
+  while (mParent <> nil) and not (mParent.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) do
   begin
-    if (Parent.Kind = TSyntaxKind.TryStatement) and (Child.Kind <> TSyntaxKind.ExceptBlock) and
-      (Child.Kind <> TSyntaxKind.FinallyBlock) and (Parent.FindChild(TSyntaxKind.ExceptBlock) <> nil) then
+    if (mParent.Kind = TSyntaxKind.TryStatement) and (mChild.Kind <> TSyntaxKind.ExceptBlock) and
+      (mChild.Kind <> TSyntaxKind.FinallyBlock) and (mParent.FindChild(TSyntaxKind.ExceptBlock) <> nil) then
     begin
       Exit(True);
     end;
-    Child := Parent;
-    Parent := Parent.Parent;
+    mChild := mParent;
+    mParent := mParent.Parent;
   end;
   Result := False;
 end;

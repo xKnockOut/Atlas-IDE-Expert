@@ -279,7 +279,7 @@ begin
         Result := True;
       end;
     Formatting.Attach(Dispatcher);
-    Assert.AreEqual(TJsonRpcErrorCode.RequestCancelled, ErrorCodeOf(Dispatcher,
+    Assert.AreEqual(TJsonRpcErrorCode.cRequestCancelled, ErrorCodeOf(Dispatcher,
       '{"jsonrpc":"2.0","id":1,"method":"textDocument/onTypeFormatting","params":{"textDocument":{"uri":"' +
       CancelUri + '"},"position":{"line":2,"character":0},"ch":"\n"}}'));
     Assert.IsFalse(SlashAsked, 'Schnellbefehle trotz Abbruch');
@@ -313,7 +313,7 @@ begin
     end, nil);
   try
     Formatting.Attach(Dispatcher);
-    Assert.AreEqual(TJsonRpcErrorCode.RequestCancelled, ErrorCodeOf(Dispatcher,
+    Assert.AreEqual(TJsonRpcErrorCode.cRequestCancelled, ErrorCodeOf(Dispatcher,
       '{"jsonrpc":"2.0","id":1,"method":"textDocument/formatting","params":{"textDocument":{"uri":"' +
       CancelUri + '"},"options":{"tabSize":2,"insertSpaces":true}}}'));
   finally

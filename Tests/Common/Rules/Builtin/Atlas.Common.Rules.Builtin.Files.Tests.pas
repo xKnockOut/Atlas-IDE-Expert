@@ -89,7 +89,7 @@ var
 begin
   Findings := PathFindings(Body('  Ordner := TPath.GetDocumentsPath;'#10'  Ziel := Ordner + ''export.csv'';'#10));
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(PathConcatWithoutDelimiterRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cPathConcatWithoutDelimiterRuleId, Findings[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
   Assert.AreEqual('Ordner kommt aus GetDocumentsPath und hat keinen abschließenden Backslash; das Ergebnis ist ' +
@@ -211,7 +211,7 @@ begin
   Findings := TRuleAssert.Findings(THardcodedPathRule.Create,
     UnitWith('  Protokoll.SaveToFile(''C:\Users\marco\Desktop\log.txt'');'));
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(HardcodedPathRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cHardcodedPathRuleId, Findings[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
   Assert.AreEqual('Fester Benutzerpfad; auf anderen Rechnern gibt es ihn nicht.', Findings[0].Message);
@@ -294,7 +294,7 @@ var
 begin
   Findings := CompareFindings(CompareUnit('ExtractFileName(Datei) = ''Config.ini'''));
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(FilenameCompareCaseRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cFilenameCompareCaseRuleId, Findings[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
   Assert.AreEqual('Dateinamen unterscheiden unter Windows nicht nach Groß-/Kleinschreibung; SameFileName ' +
@@ -400,9 +400,9 @@ begin
   begin
     Ids := Ids + ' ' + Rule.Descriptor.Id;
   end;
-  Assert.IsTrue(Pos(' ' + PathConcatWithoutDelimiterRuleId, Ids) > 0);
-  Assert.IsTrue(Pos(' ' + HardcodedPathRuleId, Ids) > 0);
-  Assert.IsTrue(Pos(' ' + FilenameCompareCaseRuleId, Ids) > 0);
+  Assert.IsTrue(Pos(' ' + cPathConcatWithoutDelimiterRuleId, Ids) > 0);
+  Assert.IsTrue(Pos(' ' + cHardcodedPathRuleId, Ids) > 0);
+  Assert.IsTrue(Pos(' ' + cFilenameCompareCaseRuleId, Ids) > 0);
 end;
 
 initialization

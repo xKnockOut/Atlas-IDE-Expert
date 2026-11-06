@@ -42,9 +42,9 @@ type
 
   TArchitectureLayouter = class
   public const
-    Spacing = 40.0;
+    cSpacing = 40.0;
     /// <summary>Abstand zwischen zwei Teilsystemen.</summary>
-    Gap = 30.0;
+    cGap = 30.0;
   public
     class function Compute(const AOverview: TArchitectureOverview): TArchitectureLayout; static;
   end;
@@ -64,8 +64,8 @@ end;
 /// <summary>Lage einer Unit an Stelle AIndex im Teilsystem (0 = Mitte), relativ zur Mitte.</summary>
 function RingPoint(AIndex: Integer): TLayoutPoint;
 var
-  Ring, First, Capacity, Slot: Integer;
-  Angle: Double;
+  mRing, mFirst, mCapacity, mSlot: Integer;
+  mAngle: Double;
 begin
   Result.X := 0;
   Result.Y := 0;
@@ -74,47 +74,47 @@ begin
     Exit;
   end;
   // Ring r beginnt bei 1 + 3·r·(r-1) und fasst 6·r Units.
-  Ring := 1;
-  First := 1;
-  while AIndex >= First + 6 * Ring do
+  mRing := 1;
+  mFirst := 1;
+  while AIndex >= mFirst + 6 * mRing do
   begin
-    Inc(First, 6 * Ring);
-    Inc(Ring);
+    Inc(mFirst, 6 * mRing);
+    Inc(mRing);
   end;
-  Capacity := 6 * Ring;
-  Slot := AIndex - First;
+  mCapacity := 6 * mRing;
+  mSlot := AIndex - mFirst;
   // Jeder zweite Ring um einen halben Platz versetzt, damit Speichen nicht übereinanderliegen.
-  Angle := (Slot + 0.5 * (Ring mod 2)) / Capacity * 2 * Pi - Pi / 2;
-  Result.X := Cos(Angle) * Ring * TArchitectureLayouter.Spacing;
-  Result.Y := Sin(Angle) * Ring * TArchitectureLayouter.Spacing;
+  mAngle := (mSlot + 0.5 * (mRing mod 2)) / mCapacity * 2 * Pi - Pi / 2;
+  Result.X := Cos(mAngle) * mRing * TArchitectureLayouter.cSpacing;
+  Result.Y := Sin(mAngle) * mRing * TArchitectureLayouter.cSpacing;
 end;
 
 function RingRadius(ACount: Integer): Double;
 var
-  Ring, First: Integer;
+  mRing, mFirst: Integer;
 begin
   if ACount <= 1 then
   begin
-    Exit(TArchitectureLayouter.Spacing * 0.75);
+    Exit(TArchitectureLayouter.cSpacing * 0.75);
   end;
-  Ring := 1;
-  First := 1;
-  while ACount > First + 6 * Ring do
+  mRing := 1;
+  mFirst := 1;
+  while ACount > mFirst + 6 * mRing do
   begin
-    Inc(First, 6 * Ring);
-    Inc(Ring);
+    Inc(mFirst, 6 * mRing);
+    Inc(mRing);
   end;
-  Result := (Ring + 0.75) * TArchitectureLayouter.Spacing;
+  Result := (mRing + 0.75) * TArchitectureLayouter.cSpacing;
 end;
 
-function Overlaps(const ACircles: TArray<TLayoutCircle>; ACount: Integer; X, Y, ARadius: Double): Boolean;
+function Overlaps(const ACircles: TArray<TLayoutCircle>; ACount: Integer; AX, AY, ARadius: Double): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to ACount - 1 do
+  for mIndex := 0 to ACount - 1 do
   begin
-    if Sqr(ACircles[Index].X - X) + Sqr(ACircles[Index].Y - Y) <
-      Sqr(ACircles[Index].Radius + ARadius + TArchitectureLayouter.Gap) - 1E-6 then
+    if Sqr(ACircles[mIndex].X - AX) + Sqr(ACircles[mIndex].Y - AY) <
+      Sqr(ACircles[mIndex].Radius + ARadius + TArchitectureLayouter.cGap) - 1E-6 then
     begin
       Exit(True);
     end;
@@ -208,7 +208,7 @@ begin
   for mStep := 0 to cAngles - 1 do
   begin
     mAngle := mStep / cAngles * 2 * Pi;
-    mDistance := ALayout.Subsystems[AOther].Radius + mRadius + TArchitectureLayouter.Gap;
+    mDistance := ALayout.Subsystems[AOther].Radius + mRadius + TArchitectureLayouter.cGap;
     mX := ALayout.Subsystems[AOther].X + Cos(mAngle) * mDistance;
     mY := ALayout.Subsystems[AOther].Y + Sin(mAngle) * mDistance;
     if Overlaps(ALayout.Subsystems, APlaced, mX, mY, mRadius) then

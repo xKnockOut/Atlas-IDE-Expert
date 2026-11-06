@@ -22,7 +22,7 @@ type
 
   TLspCommands = class
   public const
-    Method = 'workspace/executeCommand';
+    cMethod = 'workspace/executeCommand';
   private
     FHandlers: TDictionary<string, TLspCommandHandler>;
     FNames: TList<string>;
@@ -95,41 +95,41 @@ end;
 
 function TLspCommands.IsConcurrent(const AParams: TJSONValue): Boolean;
 var
-  Command: string;
+  mCommand: string;
 begin
-  Result := (AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('command', Command) and
-    FConcurrent.ContainsKey(Command);
+  Result := (AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('command', mCommand) and
+    FConcurrent.ContainsKey(mCommand);
 end;
 
 procedure TLspCommands.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   // Nach Attach ändert sich FConcurrent nicht mehr; IsConcurrent liest nur.
-  ADispatcher.RegisterConditionalRequest(Method, HandleExecute, IsConcurrent);
+  ADispatcher.RegisterConditionalRequest(cMethod, HandleExecute, IsConcurrent);
 end;
 
 function TLspCommands.Capability: TJSONObject;
 var
-  Commands: TJSONArray;
-  Name: string;
+  mCommands: TJSONArray;
+  mName: string;
 begin
-  Commands := TJSONArray.Create;
-  for Name in FNames do
+  mCommands := TJSONArray.Create;
+  for mName in FNames do
   begin
-    Commands.Add(Name);
+    mCommands.Add(mName);
   end;
   Result := TJSONObject.Create;
-  Result.AddPair('commands', Commands);
+  Result.AddPair('commands', mCommands);
 end;
 
 function TLspCommands.Execute(const ACommand: string; const AArguments: TJSONArray): TJSONValue;
 var
-  Handler: TLspCommandHandler;
+  mHandler: TLspCommandHandler;
 begin
-  if not FHandlers.TryGetValue(ACommand, Handler) then
+  if not FHandlers.TryGetValue(ACommand, mHandler) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TCommandsText.UnknownCommand].Text + ACommand);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TCommandsText.UnknownCommand].Text + ACommand);
   end;
-  Result := Handler(AArguments);
+  Result := mHandler(AArguments);
   if Result = nil then
   begin
     Result := TJSONNull.Create;
@@ -138,22 +138,22 @@ end;
 
 function TLspCommands.HandleExecute(const AParams: TJSONValue): TJSONValue;
 var
-  Command: string;
-  Arguments: TJSONValue;
+  mCommand: string;
+  mArguments: TJSONValue;
 begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('command', Command)) then
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('command', mCommand)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TCommandsText.FieldCommandMissingIn].Text +
-      Method);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TCommandsText.FieldCommandMissingIn].Text +
+      cMethod);
   end;
-  Arguments := TJSONObject(AParams).GetValue('arguments');
-  if Arguments is TJSONArray then
+  mArguments := TJSONObject(AParams).GetValue('arguments');
+  if mArguments is TJSONArray then
   begin
-    Result := Execute(Command, TJSONArray(Arguments));
+    Result := Execute(mCommand, TJSONArray(mArguments));
   end
   else
   begin
-    Result := Execute(Command, nil);
+    Result := Execute(mCommand, nil);
   end;
 end;
 

@@ -56,7 +56,8 @@
 //
 // Den Abgleich (auch über Überladungen) liefert TClassCompletion.Unmatched aus
 // #42; Paare mit abweichendem Kopf ordnet TClassCompletion.Pairs zu. Sie meldet
-// nur signature-mismatch, die beiden anderen Regeln finden fehlende Namen. Abstrakte, externe und forward-Methoden, Interfaces und generische
+// nur signature-mismatch, die beiden anderen Regeln finden fehlende Namen. Abstrakte, externe und forward-Methoden,
+// Interfaces und generische
 // Typen erzeugen keinen Treffer. Methoden innerhalb von {$IF…}-Blöcken werden
 // übergangen, weil der Syntaxbaum auch inaktive Zweige enthält. Bindet die
 // Datei Include-Dateien ein, können dort Rümpfe stehen: dann nur mittlere
@@ -136,16 +137,17 @@ type
   TTypeTooLargeRule = Atlas.Common.Rules.Builtin.Declarations.TypeSizes.TTypeTooLargeRule;
 
   /// <summary>Liegt in Atlas.Common.Rules.Builtin.Declarations.VariantRecords.</summary>
-  TVariantRecordManagedFieldRule = Atlas.Common.Rules.Builtin.Declarations.VariantRecords.TVariantRecordManagedFieldRule;
+  TVariantRecordManagedFieldRule =
+    Atlas.Common.Rules.Builtin.Declarations.VariantRecords.TVariantRecordManagedFieldRule;
 
   /// <summary>Liegt in Atlas.Common.Rules.Builtin.Declarations.Defaults.</summary>
   TDefaultParameterRule = Atlas.Common.Rules.Builtin.Declarations.Defaults.TDefaultParameterRule;
 
 const
-  FieldAfterMethodRuleId = 'field-after-method';
-  DuplicateDeclarationRuleId = Atlas.Common.Rules.Builtin.Declarations.Duplicates.DuplicateDeclarationRuleId;
-  OverloadDirectiveMissingRuleId = Atlas.Common.Rules.Builtin.Declarations.Overloads.OverloadDirectiveMissingRuleId;
-  DefaultParameterRuleId = Atlas.Common.Rules.Builtin.Declarations.Defaults.DefaultParameterRuleId;
+  cFieldAfterMethodRuleId = 'field-after-method';
+  cDuplicateDeclarationRuleId = Atlas.Common.Rules.Builtin.Declarations.Duplicates.cDuplicateDeclarationRuleId;
+  cOverloadDirectiveMissingRuleId = Atlas.Common.Rules.Builtin.Declarations.Overloads.cOverloadDirectiveMissingRuleId;
+  cDefaultParameterRuleId = Atlas.Common.Rules.Builtin.Declarations.Defaults.cDefaultParameterRuleId;
 
 procedure RegisterDeclarationRules(const ARegistry: TRuleRegistry);
 
@@ -229,73 +231,73 @@ end;
 /// <summary>Markiert die Zeilen AFrom bis ATo.</summary>
 procedure MarkLines(var ALines: TArray<Boolean>; AFrom, ATo: Integer);
 var
-  Line: Integer;
+  mLine: Integer;
 begin
-  for Line := AFrom to ATo do
+  for mLine := AFrom to ATo do
   begin
-    ALines[Line] := True;
+    ALines[mLine] := True;
   end;
 end;
 
 /// <summary>Zeilen innerhalb von {$IF…}…{$ENDIF}: Element I gilt für Zeile I.</summary>
 function ConditionalLines(const AContext: TRuleContext): TArray<Boolean>;
 var
-  Token: TPascalToken;
-  Text: string;
-  Depth, LastLine, StartLine: Integer;
+  mToken: TPascalToken;
+  mText: string;
+  mDepth, mLastLine, mStartLine: Integer;
 begin
-  LastLine := 0;
-  for Token in AContext.Tree.Tokens do
+  mLastLine := 0;
+  for mToken in AContext.Tree.Tokens do
   begin
-    LastLine := Token.EndPos.Line;
+    mLastLine := mToken.EndPos.Line;
   end;
-  SetLength(Result, LastLine + 1);
-  Depth := 0;
-  StartLine := 0;
-  for Token in AContext.Tree.Tokens do
+  SetLength(Result, mLastLine + 1);
+  mDepth := 0;
+  mStartLine := 0;
+  for mToken in AContext.Tree.Tokens do
   begin
-    if Token.Kind <> TPascalTokenKind.Directive then
+    if mToken.Kind <> TPascalTokenKind.Directive then
     begin
       Continue;
     end;
-    Text := UpperCase(Token.Text);
-    if IsIfStart(Text) then
+    mText := UpperCase(mToken.Text);
+    if IsIfStart(mText) then
     begin
-      if Depth = 0 then
+      if mDepth = 0 then
       begin
-        StartLine := Token.StartPos.Line;
+        mStartLine := mToken.StartPos.Line;
       end;
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if (Depth > 0) and IsIfEnd(Text) then
+    else if (mDepth > 0) and IsIfEnd(mText) then
     begin
-      Dec(Depth);
-      if Depth = 0 then
+      Dec(mDepth);
+      if mDepth = 0 then
       begin
-        MarkLines(Result, StartLine, Token.EndPos.Line);
+        MarkLines(Result, mStartLine, mToken.EndPos.Line);
       end;
     end;
   end;
   // Nicht geschlossener Block: bis zum Dateiende.
-  if Depth > 0 then
+  if mDepth > 0 then
   begin
-    MarkLines(Result, StartLine, LastLine);
+    MarkLines(Result, mStartLine, mLastLine);
   end;
 end;
 
 /// <summary>Bindet die Datei Include-Dateien ein ({$I datei} oder {$INCLUDE datei})?</summary>
 function HasIncludes(const AContext: TRuleContext): Boolean;
 var
-  Token: TPascalToken;
-  Text: string;
+  mToken: TPascalToken;
+  mText: string;
 begin
-  for Token in AContext.Tree.Tokens do
+  for mToken in AContext.Tree.Tokens do
   begin
-    if Token.Kind = TPascalTokenKind.Directive then
+    if mToken.Kind = TPascalTokenKind.Directive then
     begin
-      Text := UpperCase(Token.Text);
+      mText := UpperCase(mToken.Text);
       // {$I+} und {$I-} schalten die E/A-Prüfung um und sind keine Includes.
-      if StartsStr('{$INCLUDE ', Text) or StartsStr('{$I ', Text) then
+      if StartsStr('{$INCLUDE ', mText) or StartsStr('{$I ', mText) then
       begin
         Exit(True);
       end;
@@ -306,10 +308,10 @@ end;
 
 function IsConditional(const ALines: TArray<Boolean>; const AMethod: TUnmatchedMethod): Boolean;
 var
-  Line: Integer;
+  mLine: Integer;
 begin
-  Line := AMethod.Symbol.Range.StartPos.Line;
-  Result := (Line >= 0) and (Line <= High(ALines)) and ALines[Line];
+  mLine := AMethod.Symbol.Range.StartPos.Line;
+  Result := (mLine >= 0) and (mLine <= High(ALines)) and ALines[mLine];
 end;
 
 /// <summary>AFix als gleichrangige Alternative markieren, wenn schon andere Korrekturen vorliegen.</summary>
@@ -322,12 +324,12 @@ end;
 /// <summary>Gehört AMethod zu einem Paar mit abweichendem Kopf? Das meldet signature-mismatch.</summary>
 function InPair(const APairs: TArray<TSignaturePair>; const AMethod: TUnmatchedMethod): Boolean;
 var
-  Pair: TSignaturePair;
+  mPair: TSignaturePair;
 begin
-  for Pair in APairs do
+  for mPair in APairs do
   begin
-    if (Pair.Declaration.Symbol.SelectionRange.StartPos = AMethod.Symbol.SelectionRange.StartPos) or
-      (Pair.Body.Symbol.SelectionRange.StartPos = AMethod.Symbol.SelectionRange.StartPos) then
+    if (mPair.Declaration.Symbol.SelectionRange.StartPos = AMethod.Symbol.SelectionRange.StartPos) or
+      (mPair.Body.Symbol.SelectionRange.StartPos = AMethod.Symbol.SelectionRange.StartPos) then
     begin
       Exit(True);
     end;
@@ -357,34 +359,34 @@ end;
 
 procedure TDeclaredNotImplementedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Lines: TArray<Boolean>;
-  Pairs: TArray<TSignaturePair>;
-  Method: TUnmatchedMethod;
-  Action: TCodeAction;
-  Fixes: TArray<TRuleFix>;
-  Level: TRuleConfidence;
+  mLines: TArray<Boolean>;
+  mPairs: TArray<TSignaturePair>;
+  mMethod: TUnmatchedMethod;
+  mAction: TCodeAction;
+  mFixes: TArray<TRuleFix>;
+  mLevel: TRuleConfidence;
 begin
   if AContext.Tree = nil then
   begin
     Exit;
   end;
-  Lines := ConditionalLines(AContext);
-  Level := Confidence(AContext);
-  Pairs := TClassCompletion.Pairs(AContext.Tree, AContext.Text);
-  for Method in TClassCompletion.Unmatched(AContext.Tree, AContext.Text) do
+  mLines := ConditionalLines(AContext);
+  mLevel := Confidence(AContext);
+  mPairs := TClassCompletion.Pairs(AContext.Tree, AContext.Text);
+  for mMethod in TClassCompletion.Unmatched(AContext.Tree, AContext.Text) do
   begin
-    if not Method.Declared or IsConditional(Lines, Method) or InPair(Pairs, Method) then
+    if not mMethod.Declared or IsConditional(mLines, mMethod) or InPair(mPairs, mMethod) then
     begin
       Continue;
     end;
-    Fixes := nil;
-    if TClassCompletion.MissingBodies(AContext.Tree, AContext.Text, Method.Symbol.SelectionRange.StartPos,
-      AContext.ClassCompletion, AContext.Formatting, Action) then
+    mFixes := nil;
+    if TClassCompletion.MissingBodies(AContext.Tree, AContext.Text, mMethod.Symbol.SelectionRange.StartPos,
+      AContext.ClassCompletion, AContext.Formatting, mAction) then
     begin
-      Fixes := [TRuleFix.Create(Action.Title, Action.Edits)];
+      mFixes := [TRuleFix.Create(mAction.Title, mAction.Edits)];
     end;
-    AReport.Add(Method.Symbol.SelectionRange, cTexts[TDeclarationsText.NotImplemented].Fmt(
-      [Method.TypeName, Method.Symbol.Name]), Level, Fixes);
+    AReport.Add(mMethod.Symbol.SelectionRange, cTexts[TDeclarationsText.NotImplemented].Fmt(
+      [mMethod.TypeName, mMethod.Symbol.Name]), mLevel, mFixes);
   end;
 end;
 
@@ -398,34 +400,34 @@ end;
 
 procedure TImplementedNotDeclaredRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Lines: TArray<Boolean>;
-  Pairs: TArray<TSignaturePair>;
-  Method: TUnmatchedMethod;
-  Edit: TRuleEdit;
-  Fixes: TArray<TRuleFix>;
-  Level: TRuleConfidence;
+  mLines: TArray<Boolean>;
+  mPairs: TArray<TSignaturePair>;
+  mMethod: TUnmatchedMethod;
+  mEdit: TRuleEdit;
+  mFixes: TArray<TRuleFix>;
+  mLevel: TRuleConfidence;
 begin
   if AContext.Tree = nil then
   begin
     Exit;
   end;
-  Lines := ConditionalLines(AContext);
-  Level := Confidence(AContext);
-  Pairs := TClassCompletion.Pairs(AContext.Tree, AContext.Text);
-  for Method in TClassCompletion.Unmatched(AContext.Tree, AContext.Text) do
+  mLines := ConditionalLines(AContext);
+  mLevel := Confidence(AContext);
+  mPairs := TClassCompletion.Pairs(AContext.Tree, AContext.Text);
+  for mMethod in TClassCompletion.Unmatched(AContext.Tree, AContext.Text) do
   begin
-    if Method.Declared or IsConditional(Lines, Method) or InPair(Pairs, Method) then
+    if mMethod.Declared or IsConditional(mLines, mMethod) or InPair(mPairs, mMethod) then
     begin
       Continue;
     end;
-    Fixes := nil;
-    if TClassCompletion.AddDeclaration(AContext.Tree, AContext.Text, Method, Edit) then
+    mFixes := nil;
+    if TClassCompletion.AddDeclaration(AContext.Tree, AContext.Text, mMethod, mEdit) then
     begin
-      Fixes := [TRuleFix.Create(cTexts[TDeclarationsText.AddDeclaration].Fmt([Method.Symbol.Name,
-        Method.TypeName]), [Edit])];
+      mFixes := [TRuleFix.Create(cTexts[TDeclarationsText.AddDeclaration].Fmt([mMethod.Symbol.Name,
+        mMethod.TypeName]), [mEdit])];
     end;
-    AReport.Add(Method.Symbol.SelectionRange, cTexts[TDeclarationsText.NoDecl].Fmt(
-      [Method.TypeName, Method.Symbol.Name, Method.TypeName]), Level, Fixes);
+    AReport.Add(mMethod.Symbol.SelectionRange, cTexts[TDeclarationsText.NoDecl].Fmt(
+      [mMethod.TypeName, mMethod.Symbol.Name, mMethod.TypeName]), mLevel, mFixes);
   end;
 end;
 
@@ -449,59 +451,59 @@ end;
 /// dem Semikolon.</summary>
 function DelegatedNames(const ATokens: TArray<TPascalToken>; var AIndex: Integer): TArray<string>;
 var
-  Name: string;
+  mName: string;
 begin
   Result := nil;
   Inc(AIndex);
-  Name := '';
+  mName := '';
   while (AIndex <= High(ATokens)) and not ATokens[AIndex].IsSymbol(';') do
   begin
     if ATokens[AIndex].IsSymbol(',') then
     begin
-      Result := Result + [Name];
-      Name := '';
+      Result := Result + [mName];
+      mName := '';
     end
     else if ATokens[AIndex].Kind <> TPascalTokenKind.Comment then
     begin
-      Name := Name + ATokens[AIndex].Text;
+      mName := mName + ATokens[AIndex].Text;
     end;
     Inc(AIndex);
   end;
-  if Name <> '' then
+  if mName <> '' then
   begin
-    Result := Result + [Name];
+    Result := Result + [mName];
   end;
 end;
 
 class function TInterfaceNotImplementedRule.Delegated(const ATokens: TArray<TPascalToken>;
   const ARange: TTextRange): TArray<string>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
-  Index := 0;
-  while Index <= High(ATokens) do
+  mIndex := 0;
+  while mIndex <= High(ATokens) do
   begin
-    if ImplementsAt(ATokens, Index, ARange) then
+    if ImplementsAt(ATokens, mIndex, ARange) then
     begin
-      Result := Result + DelegatedNames(ATokens, Index);
+      Result := Result + DelegatedNames(ATokens, mIndex);
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
 end;
 
 /// <summary>Methode AName der Klasse ATypeName (ohne Zuordnungen); Name leer, wenn es keine gibt.</summary>
 function OwnMethod(const AUnit: TUnitIndex; const ATypeName, AName: string): TIndexSymbol;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
   Result := Default(TIndexSymbol);
-  for Symbol in AUnit.Symbols do
+  for mSymbol in AUnit.Symbols do
   begin
-    if SameText(Symbol.Container, ATypeName) and SameText(Symbol.Name, AName) and
-      (Symbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) then
+    if SameText(mSymbol.Container, ATypeName) and SameText(mSymbol.Name, AName) and
+      (mSymbol.Kind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) then
     begin
-      Exit(Symbol);
+      Exit(mSymbol);
     end;
   end;
 end;
@@ -510,22 +512,22 @@ end;
 /// werden nicht durchlaufen.</summary>
 function ResolutionHeaders(ATree: TSyntaxTree): TArray<TSyntaxNode>;
 var
-  Found: TList<TSyntaxNode>;
+  mFound: TList<TSyntaxNode>;
 begin
-  Found := TList<TSyntaxNode>.Create;
+  mFound := TList<TSyntaxNode>.Create;
   try
     ATree.Root.Walk(
       function(ANode: TSyntaxNode): Boolean
       begin
         if (ANode.Kind = TSyntaxKind.RoutineHeader) and ANode.IsMethodResolution then
         begin
-          Found.Add(ANode);
+          mFound.Add(ANode);
         end;
         Result := not (ANode.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock]);
       end);
-    Result := Found.ToArray;
+    Result := mFound.ToArray;
   finally
-    Found.Free;
+    mFound.Free;
   end;
 end;
 
@@ -578,11 +580,11 @@ end;
 // Klasse mit Vorfahren außerhalb von {$IF…}-Blöcken?
 function TInterfaceCheck.IsCandidate(const AType: TIndexSymbol): Boolean;
 var
-  Line: Integer;
+  mLine: Integer;
 begin
-  Line := AType.SelectionRange.StartPos.Line;
+  mLine := AType.SelectionRange.StartPos.Line;
   Result := (AType.Kind = TIndexSymbolKind.ClassType) and (Length(AType.Ancestors) > 0);
-  Result := Result and not ((Line <= High(FLines)) and FLines[Line]);
+  Result := Result and not ((mLine <= High(FLines)) and FLines[mLine]);
 end;
 
 // Namen der fehlenden Methoden (Interface.Methode, sortiert). Gleichnamige Methode der Klasse mit anderer
@@ -590,92 +592,93 @@ end;
 function TInterfaceCheck.MissingNames(const AMissing: TArray<TResolvedSymbol>; const ATypeName: string;
   out ADiffers: Boolean): TArray<string>;
 var
-  Member: TResolvedSymbol;
-  Own: TIndexSymbol;
-  Names: TList<string>;
-  Name: string;
+  mMember: TResolvedSymbol;
+  mOwn: TIndexSymbol;
+  mNames: TList<string>;
+  mName: string;
 begin
   ADiffers := False;
-  Names := TList<string>.Create;
+  mNames := TList<string>.Create;
   try
-    for Member in AMissing do
+    for mMember in AMissing do
     begin
-      Own := OwnMethod(FOwnUnit, ATypeName, Member.Name);
-      Name := BareName(Member.Container) + '.' + Member.Name;
-      if Own.Name <> '' then
+      mOwn := OwnMethod(FOwnUnit, ATypeName, mMember.Name);
+      mName := BareName(mMember.Container) + '.' + mMember.Name;
+      if mOwn.Name <> '' then
       begin
         ADiffers := True;
-        FReport.Add(Own.SelectionRange, cTexts[TDeclarationsText.Differs].Fmt(
-          [Own.Name, BareName(Member.Container)]), FLevel);
+        FReport.Add(mOwn.SelectionRange, cTexts[TDeclarationsText.Differs].Fmt(
+          [mOwn.Name, BareName(mMember.Container)]), FLevel);
       end
-      else if not Names.Contains(Name) then
+      else if not mNames.Contains(mName) then
       begin
-        Names.Add(Name);
+        mNames.Add(mName);
       end;
     end;
-    Names.Sort;
-    Result := Names.ToArray;
+    mNames.Sort;
+    Result := mNames.ToArray;
   finally
-    Names.Free;
+    mNames.Free;
   end;
 end;
 
 // "Interface implementieren" je Vorfahr, ab dem zweiten als Alternative.
 function TInterfaceCheck.InterfaceFixes(const AType: TIndexSymbol): TArray<TRuleFix>;
 var
-  Ancestor: string;
-  Action: TCodeAction;
+  mAncestor: string;
+  mAction: TCodeAction;
 begin
   Result := nil;
-  for Ancestor in AType.Ancestors do
+  for mAncestor in AType.Ancestors do
   begin
-    if TClassActions.ImplementInterface(FContext.Text, AType.Range.StartPos.Line, Ancestor, FActions, Action) then
+    if TClassActions.ImplementInterface(FContext.Text, AType.Range.StartPos.Line, mAncestor, FActions, mAction) then
     begin
-      Result := Result + [Alternative(TRuleFix.Create(Action.Title, Action.Edits), Length(Result) > 0)];
+      Result := Result + [Alternative(TRuleFix.Create(mAction.Title, mAction.Edits), Length(Result) > 0)];
     end;
   end;
 end;
 
 procedure TInterfaceCheck.CheckMissing(const AType: TIndexSymbol; const ATypeName: string);
 var
-  Missing: TArray<TResolvedSymbol>;
-  Names: TArray<string>;
-  Complete, Differs: Boolean;
-  Fixes: TArray<TRuleFix>;
+  mMissing: TArray<TResolvedSymbol>;
+  mNames: TArray<string>;
+  mComplete, mDiffers: Boolean;
+  mFixes: TArray<TRuleFix>;
 begin
-  Missing := FResolver.Queries.MissingInterfaceMembers(FOwnUnit, ATypeName, nil,
-    TInterfaceNotImplementedRule.Delegated(FContext.Tree.Tokens, AType.Range), Complete);
-  if not Complete or (Length(Missing) = 0) then
+  mMissing := FResolver.Queries.MissingInterfaceMembers(FOwnUnit, ATypeName, nil,
+    TInterfaceNotImplementedRule.Delegated(FContext.Tree.Tokens, AType.Range), mComplete);
+  if not mComplete or (Length(mMissing) = 0) then
   begin
     Exit;
   end;
-  Names := MissingNames(Missing, ATypeName, Differs);
+  mNames := MissingNames(mMissing, ATypeName, mDiffers);
   // Bei abweichenden Köpfen fügte die Korrektur eine zweite gleichnamige Methode ein; dann keine.
-  Fixes := nil;
-  if not Differs then
+  mFixes := nil;
+  if not mDiffers then
   begin
-    Fixes := InterfaceFixes(AType);
+    mFixes := InterfaceFixes(AType);
   end;
-  if Length(Names) = 1 then
+  if Length(mNames) = 1 then
   begin
-    FReport.Add(AType.SelectionRange, cTexts[TDeclarationsText.MissingOne].Fmt([Names[0], AType.Name]), FLevel, Fixes);
+    FReport.Add(AType.SelectionRange, cTexts[TDeclarationsText.MissingOne].Fmt([mNames[0], AType.Name]), FLevel,
+      mFixes);
   end
-  else if Length(Names) > 1 then
+  else if Length(mNames) > 1 then
   begin
-    FReport.Add(AType.SelectionRange, cTexts[TDeclarationsText.MissingMany].Fmt([JoinedList(Names), AType.Name]),
-      FLevel, Fixes);
+    FReport.Add(AType.SelectionRange, cTexts[TDeclarationsText.MissingMany].Fmt([JoinedList(mNames), AType.Name]),
+      FLevel, mFixes);
   end;
 end;
 
 // Nennt die Klasse AType das Interface APrefix?
 function TInterfaceCheck.Listed(const AType: TIndexSymbol; const APrefix: string): Boolean;
 var
-  Ancestor: string;
+  mAncestor: string;
 begin
   Result := False;
-  for Ancestor in AType.Ancestors do
+  for mAncestor in AType.Ancestors do
   begin
-    Result := Result or SameText(BareName(Ancestor), APrefix);
+    Result := Result or SameText(BareName(mAncestor), APrefix);
   end;
 end;
 
@@ -683,83 +686,83 @@ end;
 // Mitglieder (#849), ihre Stelle steht nur im Baum.
 procedure TInterfaceCheck.CheckResolutions(const AType: TIndexSymbol; const ATypeName: string);
 var
-  Header: TSyntaxNode;
-  Prefix: string;
+  mHeader: TSyntaxNode;
+  mPrefix: string;
 begin
-  for Header in FHeaders do
+  for mHeader in FHeaders do
   begin
-    if not SameText(Header.EnclosingTypeName, ATypeName) then
+    if not SameText(mHeader.EnclosingTypeName, ATypeName) then
     begin
       Continue;
     end;
-    Prefix := BareName(Copy(Header.Name, 1, LastDelimiter('.', Header.Name) - 1));
-    if not Listed(AType, Prefix) then
+    mPrefix := BareName(Copy(mHeader.Name, 1, LastDelimiter('.', mHeader.Name) - 1));
+    if not Listed(AType, mPrefix) then
     begin
-      FReport.Add(TTextRange.Create(Header.StartPos, Header.EndPos),
-        cTexts[TDeclarationsText.NotInList].Fmt([Prefix, AType.Name]), FLevel);
+      FReport.Add(TTextRange.Create(mHeader.StartPos, mHeader.EndPos),
+        cTexts[TDeclarationsText.NotInList].Fmt([mPrefix, AType.Name]), FLevel);
     end;
   end;
 end;
 
 procedure TInterfaceCheck.CheckType(const AType: TIndexSymbol);
 var
-  TypeName: string;
+  mTypeName: string;
 begin
   if not IsCandidate(AType) then
   begin
     Exit;
   end;
-  TypeName := AType.Name;
+  mTypeName := AType.Name;
   if AType.Container <> '' then
   begin
-    TypeName := AType.Container + '.' + TypeName;
+    mTypeName := AType.Container + '.' + mTypeName;
   end;
-  CheckMissing(AType, TypeName);
-  CheckResolutions(AType, TypeName);
+  CheckMissing(AType, mTypeName);
+  CheckResolutions(AType, mTypeName);
 end;
 
 procedure TInterfaceCheck.Run;
 var
-  TypeSymbol: TIndexSymbol;
+  mTypeSymbol: TIndexSymbol;
 begin
-  for TypeSymbol in FOwnUnit.Symbols do
+  for mTypeSymbol in FOwnUnit.Symbols do
   begin
-    CheckType(TypeSymbol);
+    CheckType(mTypeSymbol);
   end;
 end;
 
 procedure TInterfaceNotImplementedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Index: ISymbolIndex;
-  Resolver: TNameResolver;
-  Checker: TInterfaceCheck;
+  mIndex: ISymbolIndex;
+  mResolver: TNameResolver;
+  mChecker: TInterfaceCheck;
 begin
   if AContext.Tree = nil then
   begin
     Exit;
   end;
   // Ohne Projektindex prüft die Regel nur, was die Datei selbst kennt; unbekannte Vorfahren halten sie still.
-  Index := AContext.Index;
-  if Index = nil then
+  mIndex := AContext.Index;
+  if mIndex = nil then
   begin
-    Index := TSymbolIndex.Create;
+    mIndex := TSymbolIndex.Create;
   end;
-  Resolver := TNameResolver.Create(Index, AContext.EnsureUnit, AContext.TreeUnits);
+  mResolver := TNameResolver.Create(mIndex, AContext.EnsureUnit, AContext.TreeUnits);
   try
-    Resolver.Namespaces := AContext.Namespaces;
-    Resolver.PinTree(AContext.Tree, AContext.RelativePath);
+    mResolver.Namespaces := AContext.Namespaces;
+    mResolver.PinTree(AContext.Tree, AContext.RelativePath);
     try
-      Checker := TInterfaceCheck.Create(AContext, AReport, Resolver, Index);
+      mChecker := TInterfaceCheck.Create(AContext, AReport, mResolver, mIndex);
       try
-        Checker.Run;
+        mChecker.Run;
       finally
-        Checker.Free;
+        mChecker.Free;
       end;
     finally
-      Resolver.UnpinTree;
+      mResolver.UnpinTree;
     end;
   finally
-    Resolver.Free;
+    mResolver.Free;
   end;
 end;
 
@@ -951,25 +954,25 @@ class function TSignatureMismatchRule.Differences(const ADeclaration, ABody: TSi
   // Abweichungen gleich vieler Parameter: Name, Modifizierer, Typ.
   function ParameterDifferences: TArray<string>;
   var
-    Index: Integer;
-    Decl, Body: TShapeParameter;
+    mIndex: Integer;
+    mDecl, mBody: TShapeParameter;
   begin
     Result := nil;
-    for Index := 0 to High(ABody.Parameters) do
+    for mIndex := 0 to High(ABody.Parameters) do
     begin
-      Decl := ADeclaration.Parameters[Index];
-      Body := ABody.Parameters[Index];
-      if not SameText(Decl.Name, Body.Name) then
+      mDecl := ADeclaration.Parameters[mIndex];
+      mBody := ABody.Parameters[mIndex];
+      if not SameText(mDecl.Name, mBody.Name) then
       begin
-        Result := Result + [cTexts[TDeclarationsText.Instead].Fmt([Body.Name, Decl.Name])];
+        Result := Result + [cTexts[TDeclarationsText.Instead].Fmt([mBody.Name, mDecl.Name])];
       end;
-      if Decl.Modifier <> Body.Modifier then
+      if mDecl.Modifier <> mBody.Modifier then
       begin
-        Result := Result + [ModifierDifference(Decl, Body)];
+        Result := Result + [ModifierDifference(mDecl, mBody)];
       end;
-      if Differs(Decl.TypeName, Body.TypeName) then
+      if Differs(mDecl.TypeName, mBody.TypeName) then
       begin
-        Result := Result + [TypeDifference(Decl, Body)];
+        Result := Result + [TypeDifference(mDecl, mBody)];
       end;
     end;
   end;
@@ -1002,13 +1005,13 @@ end;
 
 procedure TSignatureMismatchRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Lines: TArray<Boolean>;
+  mLines: TArray<Boolean>;
   Pair: TSignaturePair;
-  Changes: TArray<string>;
-  Actions: TArray<TCodeAction>;
-  Fixes: TArray<TRuleFix>;
+  mChanges: TArray<string>;
+  mActions: TArray<TCodeAction>;
+  mFixes: TArray<TRuleFix>;
   Index: Integer;
-  Level: TRuleConfidence;
+  mLevel: TRuleConfidence;
   mTypes: TSignatureTypes;
   mCache: IRuleDerivedCache;
 
@@ -1134,35 +1137,35 @@ begin
   begin
     Exit;
   end;
-  Lines := ConditionalLines(AContext);
-  Level := Confidence(AContext);
+  mLines := ConditionalLines(AContext);
+  mLevel := Confidence(AContext);
   mCache := TRuleDerived.Open(AContext);
   mTypes := TSignatureTypes.Create(AContext);
   try
     for Pair in TClassCompletion.Pairs(AContext.Tree, AContext.Text) + RoutinePairs do
     begin
       // Bedingte Übersetzung im Kopf ({$IFDEF} in der Parameterliste): Welche Parameter gelten, ist offen (#1324).
-      if IsConditional(Lines, Pair.Declaration) or IsConditional(Lines, Pair.Body) or
+      if IsConditional(mLines, Pair.Declaration) or IsConditional(mLines, Pair.Body) or
         Pair.DeclarationShape.Conditional or Pair.BodyShape.Conditional then
       begin
         Continue;
       end;
-      Changes := Differences(Pair.DeclarationShape, Pair.BodyShape, mTypes.Matcher(Pair));
-      if Changes = nil then
+      mChanges := Differences(Pair.DeclarationShape, Pair.BodyShape, mTypes.Matcher(Pair));
+      if mChanges = nil then
       begin
         Continue;
       end;
-      Fixes := nil;
+      mFixes := nil;
       // refactoring.syncSignatures aus (#100): die Meldung bleibt, die Angleich-Aktionen entfallen.
-      if not AContext.NoSignatureSync and TClassCompletion.PairFixes(AContext.Tree, AContext.Text, Pair, Actions) then
+      if not AContext.NoSignatureSync and TClassCompletion.PairFixes(AContext.Tree, AContext.Text, Pair, mActions) then
       begin
-        for Index := 0 to High(Actions) do
+        for Index := 0 to High(mActions) do
         begin
-          Fixes := Fixes + [Alternative(TRuleFix.Create(Actions[Index].Title, Actions[Index].Edits), Index > 0)];
+          mFixes := mFixes + [Alternative(TRuleFix.Create(mActions[Index].Title, mActions[Index].Edits), Index > 0)];
         end;
       end;
       AReport.Add(Pair.Body.Symbol.SelectionRange, cTexts[TDeclarationsText.DiffersFrom].Fmt(
-        [Pair.Body.Symbol.Name, string.Join(', ', Changes)]), Level, Fixes);
+        [Pair.Body.Symbol.Name, string.Join(', ', mChanges)]), mLevel, mFixes);
     end;
   finally
     mTypes.Free;
@@ -1173,35 +1176,35 @@ end;
 
 function TFieldAfterMethodRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(FieldAfterMethodRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cFieldAfterMethodRuleId, TRuleSeverity.Error,
     cTexts[TDeclarationsText.FieldTitle].Text);
 end;
 
 procedure TFieldAfterMethodRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TArray<TPascalToken>;
-  Lines: TArray<string>;
-  LineBreak: string;
-  Paths: TArray<string>;
+  mTokens: TArray<TPascalToken>;
+  mLines: TArray<string>;
+  mLineBreak: string;
+  mPaths: TArray<string>;
 
   function FirstToken(ANode: TSyntaxNode): Integer;
   begin
-    Result := TokenAtOffset(Tokens, ANode.StartOffset);
+    Result := TokenAtOffset(mTokens, ANode.StartOffset);
   end;
 
   function PathOf(ANode: TSyntaxNode): string;
   begin
-    Result := TConditionalBranches.PathAt(Paths, FirstToken(ANode));
+    Result := TConditionalBranches.PathAt(mPaths, FirstToken(ANode));
   end;
 
   function OnlySpaceBefore(const APosition: TTextPosition): Boolean;
   begin
-    Result := BlankBefore(Lines, APosition);
+    Result := BlankBefore(mLines, APosition);
   end;
 
   function OnlyCommentAfter(const APosition: TTextPosition): Boolean;
   begin
-    Result := BlankAfter(Lines, APosition);
+    Result := BlankAfter(mLines, APosition);
   end;
 
   // Erstes Kind des Blocks um ABody[AIndex]: davorstehende Attribute gehören dazu.
@@ -1217,58 +1220,58 @@ var
   // Erste Zeile des Blocks ab ANode samt Kommentarzeilen direkt darüber (XMLDoc).
   function StartLine(ANode: TSyntaxNode): Integer;
   var
-    Index: Integer;
+    mIndex: Integer;
   begin
     Result := ANode.StartPos.Line;
-    Index := FirstToken(ANode) - 1;
-    while (Index >= 0) and (Tokens[Index].Kind = TPascalTokenKind.Comment) and
-      (Tokens[Index].EndPos.Line = Result - 1) and OnlySpaceBefore(Tokens[Index].StartPos) do
+    mIndex := FirstToken(ANode) - 1;
+    while (mIndex >= 0) and (mTokens[mIndex].Kind = TPascalTokenKind.Comment) and
+      (mTokens[mIndex].EndPos.Line = Result - 1) and OnlySpaceBefore(mTokens[mIndex].StartPos) do
     begin
-      Result := Tokens[Index].StartPos.Line;
-      Dec(Index);
+      Result := mTokens[mIndex].StartPos.Line;
+      Dec(mIndex);
     end;
   end;
 
   // Feld samt Attributen und Kommentaren vor das erste Mitglied des Abschnitts; nil, wenn Zeilen nicht passen.
   function MoveFix(ABody: TSyntaxNode; AField, AMember: Integer): TArray<TRuleFix>;
   var
-    Field, Target: TSyntaxNode;
-    FieldStart, FieldEnd, TargetLine, Line: Integer;
-    Moved: string;
+    mField, mTarget: TSyntaxNode;
+    mFieldStart, mFieldEnd, mTargetLine, mLine: Integer;
+    mMoved: string;
   begin
     Result := nil;
-    Field := BlockFirst(ABody, AField);
-    Target := BlockFirst(ABody, AMember);
-    if not OnlySpaceBefore(Field.StartPos) or not OnlySpaceBefore(Target.StartPos) or
+    mField := BlockFirst(ABody, AField);
+    mTarget := BlockFirst(ABody, AMember);
+    if not OnlySpaceBefore(mField.StartPos) or not OnlySpaceBefore(mTarget.StartPos) or
       not OnlyCommentAfter(ABody[AField].EndPos) then
     begin
       Exit;
     end;
-    FieldStart := StartLine(Field);
-    FieldEnd := ABody[AField].EndPos.Line;
-    TargetLine := StartLine(Target);
-    if (TargetLine >= FieldStart) or (FieldEnd + 1 >= Length(Lines)) then
+    mFieldStart := StartLine(mField);
+    mFieldEnd := ABody[AField].EndPos.Line;
+    mTargetLine := StartLine(mTarget);
+    if (mTargetLine >= mFieldStart) or (mFieldEnd + 1 >= Length(mLines)) then
     begin
       Exit;
     end;
-    Moved := '';
-    for Line := FieldStart to FieldEnd do
+    mMoved := '';
+    for mLine := mFieldStart to mFieldEnd do
     begin
-      Moved := Moved + Lines[Line] + LineBreak;
+      mMoved := mMoved + mLines[mLine] + mLineBreak;
     end;
     Result := [TRuleFix.Create(cTexts[TDeclarationsText.MoveField].Text, [
-      TRuleEdit.Create(TTextRange.Create(TargetLine, 0, TargetLine, 0), Moved),
-      TRuleEdit.Create(TTextRange.Create(FieldStart, 0, FieldEnd + 1, 0), '')], True)];
+      TRuleEdit.Create(TTextRange.Create(mTargetLine, 0, mTargetLine, 0), mMoved),
+      TRuleEdit.Create(TTextRange.Create(mFieldStart, 0, mFieldEnd + 1, 0), '')], True)];
   end;
 
   function VarFix(ABody: TSyntaxNode; AField: Integer): TRuleFix;
   var
-    First: TSyntaxNode;
+    mFirst: TSyntaxNode;
   begin
-    First := BlockFirst(ABody, AField);
+    mFirst := BlockFirst(ABody, AField);
     Result := TRuleFix.Create(cTexts[TDeclarationsText.InsertVar].Text,
-      [TRuleEdit.Create(TTextRange.Create(First.StartPos,
-      First.StartPos), 'var ')], True);
+      [TRuleEdit.Create(TTextRange.Create(mFirst.StartPos,
+      mFirst.StartPos), 'var ')], True);
   end;
 
   // Ist ABody[AMember] eine Methode oder Property, die immer mit übersetzt wird, wenn das Feld ABody[AField]
@@ -1282,74 +1285,74 @@ var
   // Gibt es zwischen ABody[AFirst] und dem Feld ABody[AField] eine Methode, die es sicher vor dem Feld gibt?
   function HasGuard(ABody: TSyntaxNode; AFirst, AField: Integer): Boolean;
   var
-    Member: Integer;
+    mMember: Integer;
   begin
-    Member := AFirst;
-    while (Member < AField) and not Guards(ABody, Member, AField) do
+    mMember := AFirst;
+    while (mMember < AField) and not Guards(ABody, mMember, AField) do
     begin
-      Inc(Member);
+      Inc(mMember);
     end;
-    Result := Member < AField;
+    Result := mMember < AField;
   end;
 
   // Meldet das Feld ABody[AField] hinter dem ersten Mitglied ABody[AFirst]; ASamePaths: keine Bedingungen
   // zwischen den Mitgliedern.
   procedure CheckField(ABody: TSyntaxNode; AField, AFirst: Integer; ASamePaths: Boolean);
   var
-    Fixes: TArray<TRuleFix>;
+    mFixes: TArray<TRuleFix>;
   begin
     if not HasGuard(ABody, AFirst, AField) then
     begin
       Exit;
     end;
-    Fixes := nil;
+    mFixes := nil;
     // Verschieben nur ohne Bedingungen dazwischen, sonst landet das Feld in einem anderen Zweig.
     if ASamePaths and (PathOf(ABody[AField]) = PathOf(ABody[AFirst])) then
     begin
-      Fixes := MoveFix(ABody, AField, AFirst);
+      mFixes := MoveFix(ABody, AField, AFirst);
     end;
     if ABody.Kind = TSyntaxKind.RecordType then
     begin
       // In Records verschiebt das Verschieben das Speicherlayout; var zuerst.
-      Fixes := [VarFix(ABody, AField)] + Fixes;
+      mFixes := [VarFix(ABody, AField)] + mFixes;
     end
     else
     begin
-      Fixes := Fixes + [VarFix(ABody, AField)];
+      mFixes := mFixes + [VarFix(ABody, AField)];
     end;
     AReport.Add(TTextRange.Create(ABody[AField].StartPos, ABody[AField].EndPos),
-      cTexts[TDeclarationsText.FieldAfter].Text, TRuleConfidence.High, Fixes);
+      cTexts[TDeclarationsText.FieldAfter].Text, TRuleConfidence.High, mFixes);
   end;
 
   procedure CheckBody(ABody: TSyntaxNode);
   var
-    Index, First: Integer;
-    SamePaths: Boolean;
+    mIndex, mFirst: Integer;
+    mSamePaths: Boolean;
   begin
-    First := -1;
-    SamePaths := True;
-    for Index := 0 to ABody.ChildCount - 1 do
+    mFirst := -1;
+    mSamePaths := True;
+    for mIndex := 0 to ABody.ChildCount - 1 do
     begin
-      case ABody[Index].Kind of
+      case ABody[mIndex].Kind of
         // Ein neuer Abschnitt bzw. var erlaubt wieder Felder.
         TSyntaxKind.Visibility, TSyntaxKind.VarSection, TSyntaxKind.TypeSection, TSyntaxKind.ConstSection:
           begin
-            First := -1;
-            SamePaths := True;
+            mFirst := -1;
+            mSamePaths := True;
           end;
         TSyntaxKind.RoutineHeader, TSyntaxKind.PropertyDecl:
-          if First < 0 then
+          if mFirst < 0 then
           begin
-            First := Index;
+            mFirst := mIndex;
           end
-          else if PathOf(ABody[Index]) <> PathOf(ABody[First]) then
+          else if PathOf(ABody[mIndex]) <> PathOf(ABody[mFirst]) then
           begin
-            SamePaths := False;
+            mSamePaths := False;
           end;
         TSyntaxKind.Field:
-          if First >= 0 then
+          if mFirst >= 0 then
           begin
-            CheckField(ABody, Index, First, SamePaths);
+            CheckField(ABody, mIndex, mFirst, mSamePaths);
           end;
       else
         // Übrige Werte bewusst ohne Wirkung.
@@ -1359,28 +1362,28 @@ var
 
   procedure Visit(ARoot: TSyntaxNode);
   var
-    Index: Integer;
-    Node: TSyntaxNode;
-    Pending: TStack<TSyntaxNode>;
+    mIndex: Integer;
+    mNode: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
   begin
     // Iterativ (Bericht M1).
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ARoot);
-      while Pending.Count > 0 do
+      mPending.Push(ARoot);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if Node.Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType] then
+        mNode := mPending.Pop;
+        if mNode.Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType] then
         begin
-          CheckBody(Node);
+          CheckBody(mNode);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
@@ -1389,9 +1392,9 @@ begin
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
-  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
-  Paths := TConditionalBranches.Paths(Tokens);
+  mTokens := AContext.Tree.Tokens;
+  mLines := TTextLines.SplitLines(AContext.Text, mLineBreak);
+  mPaths := TConditionalBranches.Paths(mTokens);
   Visit(AContext.Tree.Root);
 end;
 

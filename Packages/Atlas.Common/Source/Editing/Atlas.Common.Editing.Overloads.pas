@@ -224,12 +224,12 @@ end;
 
 procedure TInsertBuilder.Add(const AText: string; ANumber: Integer);
 var
-  Field: TInsertField;
+  mField: TInsertField;
 begin
-  Field.Number := ANumber;
-  Field.Start := System.Length(Text);
-  Field.Length := System.Length(AText);
-  Fields := Fields + [Field];
+  mField.Number := ANumber;
+  mField.Start := System.Length(Text);
+  mField.Length := System.Length(AText);
+  Fields := Fields + [mField];
   Text := Text + AText;
 end;
 
@@ -295,20 +295,20 @@ end;
 /// <summary>Token des Namens im Kopf AHeader: das erste Bezeichner-Token mit dem Kurznamen.</summary>
 function NameToken(const ATokens: TArray<TPascalToken>; AHeader: TSyntaxNode): Integer;
 var
-  Index: Integer;
-  Name: string;
+  mIndex: Integer;
+  mName: string;
 begin
-  Name := ShortName(AHeader.Name);
-  for Index := 0 to High(ATokens) do
+  mName := ShortName(AHeader.Name);
+  for mIndex := 0 to High(ATokens) do
   begin
-    if ATokens[Index].Offset >= AHeader.EndOffset then
+    if ATokens[mIndex].Offset >= AHeader.EndOffset then
     begin
       Break;
     end;
-    if (ATokens[Index].Offset >= AHeader.StartOffset) and (ATokens[Index].Kind = TPascalTokenKind.Identifier) and
-      SameText(ATokens[Index].Text, Name) then
+    if (ATokens[mIndex].Offset >= AHeader.StartOffset) and (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and
+      SameText(ATokens[mIndex].Text, mName) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -323,15 +323,15 @@ end;
 
 function SameTypes(const A, B: TArray<string>): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := Length(A) = Length(B);
   if Result then
   begin
-    for Index := 0 to High(A) do
+    for mIndex := 0 to High(A) do
     begin
-      if not SameText(StringReplace(A[Index], ' ', '', [rfReplaceAll]),
-        StringReplace(B[Index], ' ', '', [rfReplaceAll])) then
+      if not SameText(StringReplace(A[mIndex], ' ', '', [rfReplaceAll]),
+        StringReplace(B[mIndex], ' ', '', [rfReplaceAll])) then
       begin
         Exit(False);
       end;
@@ -342,27 +342,27 @@ end;
 /// <summary>Klasse bzw. Record AName der Datei; nil ohne.</summary>
 function FindType(ARoot: TSyntaxNode; const AName: string): TSyntaxNode;
 var
-  Found: TSyntaxNode;
+  mFound: TSyntaxNode;
 begin
-  Found := nil;
+  mFound := nil;
   ARoot.Walk(
     function(ANode: TSyntaxNode): Boolean
     var
       Index: Integer;
     begin
-      Result := Found = nil;
+      Result := mFound = nil;
       if Result and (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(ANode.Name, AName) then
       begin
         for Index := 0 to ANode.ChildCount - 1 do
         begin
           if ANode[Index].Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType, TSyntaxKind.ObjectType] then
           begin
-            Found := ANode[Index];
+            mFound := ANode[Index];
           end;
         end;
       end;
     end);
-  Result := Found;
+  Result := mFound;
 end;
 
 /// <summary>Köpfe der Routinen namens AName direkt in ASection; nil ohne Abschnitt.</summary>
@@ -424,43 +424,43 @@ end;
 function FindBody(ATree: TSyntaxTree; const AText, AQualified: string; const ADecl: TSignatureHeader;
   out ABody: TSignatureHeader): TSyntaxNode;
 var
-  Section: TSyntaxNode;
-  Index, Count: Integer;
-  Header: TSignatureHeader;
-  Single: TSyntaxNode;
-  SingleHeader: TSignatureHeader;
+  mSection: TSyntaxNode;
+  mIndex, mCount: Integer;
+  mHeader: TSignatureHeader;
+  mSingle: TSyntaxNode;
+  mSingleHeader: TSignatureHeader;
 begin
   Result := nil;
   ABody := Default(TSignatureHeader);
-  Section := ATree.Root.FindChild(TSyntaxKind.ImplementationSection);
-  if Section = nil then
+  mSection := ATree.Root.FindChild(TSyntaxKind.ImplementationSection);
+  if mSection = nil then
   begin
     Exit;
   end;
-  Count := 0;
-  Single := nil;
-  SingleHeader := Default(TSignatureHeader);
-  for Index := 0 to Section.ChildCount - 1 do
+  mCount := 0;
+  mSingle := nil;
+  mSingleHeader := Default(TSignatureHeader);
+  for mIndex := 0 to mSection.ChildCount - 1 do
   begin
-    if (Section[Index].Kind = TSyntaxKind.RoutineDecl) and SameText(Section[Index].Name, AQualified) and
-      (Section[Index].FindChild(TSyntaxKind.Block) <> nil) and
-      ReadNode(AText, ATree, TRoutineParts.HeaderOf(Section[Index]), Header) then
+    if (mSection[mIndex].Kind = TSyntaxKind.RoutineDecl) and SameText(mSection[mIndex].Name, AQualified) and
+      (mSection[mIndex].FindChild(TSyntaxKind.Block) <> nil) and
+      ReadNode(AText, ATree, TRoutineParts.HeaderOf(mSection[mIndex]), mHeader) then
     begin
-      Inc(Count);
-      Single := Section[Index];
-      SingleHeader := Header;
-      if SameTypes(Header.ParamTypes, ADecl.ParamTypes) then
+      Inc(mCount);
+      mSingle := mSection[mIndex];
+      mSingleHeader := mHeader;
+      if SameTypes(mHeader.ParamTypes, ADecl.ParamTypes) then
       begin
-        ABody := Header;
-        Exit(Section[Index]);
+        ABody := mHeader;
+        Exit(mSection[mIndex]);
       end;
     end;
   end;
   // Ohne Überladung darf die Implementierung die Parameter weglassen.
-  if (Count = 1) and (SingleHeader.OpenToken < 0) then
+  if (mCount = 1) and (mSingleHeader.OpenToken < 0) then
   begin
-    ABody := SingleHeader;
-    Result := Single;
+    ABody := mSingleHeader;
+    Result := mSingle;
   end;
 end;
 
@@ -498,54 +498,54 @@ end;
 /// <summary>Anfang des Typs des letzten Parameters im Kopf AHeader; -1 ohne.</summary>
 function LastTypeOffset(AHeader: TSyntaxNode): Integer;
 var
-  Parameters, Parameter: TSyntaxNode;
+  mParameters, mParameter: TSyntaxNode;
 begin
   Result := -1;
   if AHeader = nil then
   begin
     Exit;
   end;
-  Parameters := AHeader.FindChild(TSyntaxKind.Parameters);
-  if (Parameters = nil) or (Parameters.ChildCount = 0) then
+  mParameters := AHeader.FindChild(TSyntaxKind.Parameters);
+  if (mParameters = nil) or (mParameters.ChildCount = 0) then
   begin
     Exit;
   end;
-  Parameter := Parameters[Parameters.ChildCount - 1];
-  if (Parameter.ChildCount > 0) and (Parameter[Parameter.ChildCount - 1].Kind = TSyntaxKind.TypeReference) then
+  mParameter := mParameters[mParameters.ChildCount - 1];
+  if (mParameter.ChildCount > 0) and (mParameter[mParameter.ChildCount - 1].Kind = TSyntaxKind.TypeReference) then
   begin
-    Result := Parameter[Parameter.ChildCount - 1].StartOffset;
+    Result := mParameter[mParameter.ChildCount - 1].StartOffset;
   end
-  else if Parameter.ChildCount > 0 then
+  else if mParameter.ChildCount > 0 then
   begin
-    Result := Parameter[0].StartOffset;
+    Result := mParameter[0].StartOffset;
   end;
 end;
 
 /// <summary>Innerster Kopf (RoutineHeader), der AOffset enthält; nil ohne.</summary>
 function HeaderNodeAt(ATree: TSyntaxTree; AOffset: Integer): TSyntaxNode;
 var
-  Found: TSyntaxNode;
+  mFound: TSyntaxNode;
 begin
-  Found := nil;
+  mFound := nil;
   ATree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
       Result := TRoutineParts.Encloses(ANode, AOffset);
       if Result and (ANode.Kind = TSyntaxKind.RoutineHeader) then
       begin
-        Found := ANode;
+        mFound := ANode;
       end;
     end);
-  Result := Found;
+  Result := mFound;
 end;
 
 function IsModifier(const AModifier, AWord: string): Boolean;
 var
-  Part: string;
+  mPart: string;
 begin
-  for Part in AModifier.Split([' ']) do
+  for mPart in AModifier.Split([' ']) do
   begin
-    if SameText(Part, AWord) then
+    if SameText(mPart, AWord) then
     begin
       Exit(True);
     end;
@@ -557,9 +557,9 @@ end;
 /// </summary>
 function MemberHeaderAt(ATree: TSyntaxTree; AOffset: Integer): TSyntaxNode;
 var
-  Found: TSyntaxNode;
+  mFound: TSyntaxNode;
 begin
-  Found := nil;
+  mFound := nil;
   ATree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
@@ -567,10 +567,10 @@ begin
       if Result and (ANode.Kind = TSyntaxKind.RoutineHeader) and (ANode.Parent <> nil) and
         (ANode.Parent.Kind in [TSyntaxKind.ClassType, TSyntaxKind.RecordType, TSyntaxKind.ObjectType]) then
       begin
-        Found := ANode;
+        mFound := ANode;
       end;
     end);
-  Result := Found;
+  Result := mFound;
 end;
 
 type
@@ -854,44 +854,44 @@ end;
 
 class function TOverloads.DefaultValue(const ATypeName: string): string;
 const
-  Numbers: array[0..27] of string = ('integer', 'cardinal', 'int64', 'uint64', 'byte', 'word', 'shortint',
+  cNumbers: array[0..27] of string = ('integer', 'cardinal', 'int64', 'uint64', 'byte', 'word', 'shortint',
     'smallint', 'longint', 'longword', 'nativeint', 'nativeuint', 'int8', 'int16', 'int32', 'uint8', 'uint16',
     'uint32', 'single', 'double', 'extended', 'real', 'currency', 'comp', 'tdatetime', 'tdate', 'ttime', 'fixedint');
-  Strings: array[0..6] of string = ('string', 'ansistring', 'unicodestring', 'widestring', 'rawbytestring',
+  cStrings: array[0..6] of string = ('string', 'ansistring', 'unicodestring', 'widestring', 'rawbytestring',
     'utf8string', 'shortstring');
-  Chars: array[0..2] of string = ('char', 'ansichar', 'widechar');
-  Booleans: array[0..3] of string = ('boolean', 'bytebool', 'wordbool', 'longbool');
-  Pointers: array[0..8] of string = ('pointer', 'tobject', 'tclass', 'iinterface', 'iunknown', 'pchar', 'pansichar',
+  cChars: array[0..2] of string = ('char', 'ansichar', 'widechar');
+  cBooleans: array[0..3] of string = ('boolean', 'bytebool', 'wordbool', 'longbool');
+  cPointers: array[0..8] of string = ('pointer', 'tobject', 'tclass', 'iinterface', 'iunknown', 'pchar', 'pansichar',
     'pwidechar', 'tprocedure');
 var
-  Name: string;
+  mName: string;
 begin
-  Name := LowerCase(Trim(ATypeName));
-  if StartsText('system.', Name) then
+  mName := LowerCase(Trim(ATypeName));
+  if StartsText('system.', mName) then
   begin
-    Name := Copy(Name, Length('system.') + 1, MaxInt);
+    mName := Copy(mName, Length('system.') + 1, MaxInt);
   end;
-  if StartsText('array of ', Name) then
+  if StartsText('array of ', mName) then
   begin
     Result := '[]';
   end
-  else if IndexText(Name, Numbers) >= 0 then
+  else if IndexText(mName, cNumbers) >= 0 then
   begin
     Result := '0';
   end
-  else if IndexText(Name, Strings) >= 0 then
+  else if IndexText(mName, cStrings) >= 0 then
   begin
     Result := '''''';
   end
-  else if IndexText(Name, Chars) >= 0 then
+  else if IndexText(mName, cChars) >= 0 then
   begin
     Result := '#0';
   end
-  else if IndexText(Name, Booleans) >= 0 then
+  else if IndexText(mName, cBooleans) >= 0 then
   begin
     Result := 'False';
   end
-  else if IndexText(Name, Pointers) >= 0 then
+  else if IndexText(mName, cPointers) >= 0 then
   begin
     Result := 'nil';
   end
@@ -905,52 +905,52 @@ end;
 /// ADropped ohne den &lt;param&gt; dieses Namens.</summary>
 function DocLines(const ALines: TArray<string>; ALine: Integer; const ADropped: string): TArray<string>;
 var
-  Line, First: Integer;
-  Inside: Boolean;
-  Text: string;
+  mLine, mFirst: Integer;
+  mInside: Boolean;
+  mText: string;
 begin
   Result := nil;
-  Line := ALine - 1;
-  while (Line >= 0) and StartsStr('[', Trim(ALines[Line])) do
+  mLine := ALine - 1;
+  while (mLine >= 0) and StartsStr('[', Trim(ALines[mLine])) do
   begin
-    Dec(Line);
+    Dec(mLine);
   end;
-  First := Line + 1;
-  while (Line >= 0) and StartsStr('///', Trim(ALines[Line])) do
+  mFirst := mLine + 1;
+  while (mLine >= 0) and StartsStr('///', Trim(ALines[mLine])) do
   begin
-    First := Line;
-    Dec(Line);
+    mFirst := mLine;
+    Dec(mLine);
   end;
-  Inside := False;
-  for Line := First to ALine - 1 do
+  mInside := False;
+  for mLine := mFirst to ALine - 1 do
   begin
-    Text := Trim(ALines[Line]);
-    if not StartsStr('///', Text) then
+    mText := Trim(ALines[mLine]);
+    if not StartsStr('///', mText) then
     begin
       Continue;
     end;
-    if (ADropped <> '') and not Inside and ContainsText(Text, '<param name="' + ADropped + '"') then
+    if (ADropped <> '') and not mInside and ContainsText(mText, '<param name="' + ADropped + '"') then
     begin
-      Inside := not ContainsText(Text, '</param>');
+      mInside := not ContainsText(mText, '</param>');
       Continue;
     end;
-    if Inside then
+    if mInside then
     begin
-      Inside := not ContainsText(Text, '</param>');
+      mInside := not ContainsText(mText, '</param>');
       Continue;
     end;
-    Result := Result + [Text];
+    Result := Result + [mText];
   end;
 end;
 
 function DocBlock(const ADoc: TArray<string>; const AIndent, ALineBreak: string): string;
 var
-  Line: string;
+  mLine: string;
 begin
   Result := '';
-  for Line in ADoc do
+  for mLine in ADoc do
   begin
-    Result := Result + AIndent + Line + ALineBreak;
+    Result := Result + AIndent + mLine + ALineBreak;
   end;
 end;
 
@@ -958,18 +958,18 @@ end;
 function ParameterText(const AText: string; const ATokens: TArray<TPascalToken>;
   const AHeader: TSignatureHeader): string;
 var
-  Parameter: TSignatureParameter;
-  HasDefault: Boolean;
+  mParameter: TSignatureParameter;
+  mHasDefault: Boolean;
 begin
-  HasDefault := False;
-  for Parameter in AHeader.Parameters do
+  mHasDefault := False;
+  for mParameter in AHeader.Parameters do
   begin
-    if Parameter.DefaultValue <> '' then
+    if mParameter.DefaultValue <> '' then
     begin
-      HasDefault := True;
+      mHasDefault := True;
     end;
   end;
-  if HasDefault or (AHeader.OpenToken < 0) then
+  if mHasDefault or (AHeader.OpenToken < 0) then
   begin
     Result := TChangeSignature.ParameterList(AHeader.Parameters, False);
     if Result <> '' then
@@ -994,17 +994,17 @@ end;
 /// <summary>Hinter den Klammern bis einschließlich ";" (": string;") wie im Text.</summary>
 function TailText(const AText: string; const ATokens: TArray<TPascalToken>; const AHeader: TSignatureHeader): string;
 var
-  From: Integer;
+  mFrom: Integer;
 begin
   if AHeader.CloseToken >= 0 then
   begin
-    From := TokenEnd(ATokens, AHeader.CloseToken);
+    mFrom := TokenEnd(ATokens, AHeader.CloseToken);
   end
   else
   begin
-    From := TokenEnd(ATokens, AHeader.NameToken);
+    mFrom := TokenEnd(ATokens, AHeader.NameToken);
   end;
-  Result := Copy(AText, From + 1, TokenEnd(ATokens, AHeader.EndToken) - From);
+  Result := Copy(AText, mFrom + 1, TokenEnd(ATokens, AHeader.EndToken) - mFrom);
 end;
 
 /// <summary>Kopf der neuen Überladung mit der Parameterliste AParameters als Platzhalter 1.</summary>
@@ -1029,12 +1029,12 @@ end;
 
 function MergeInserts(const AInserts: TArray<TInsert>): TArray<TInsert>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := Copy(AInserts);
-  for Index := 0 to High(Result) do
+  for mIndex := 0 to High(Result) do
   begin
-    Result[Index].Sequence := Index;
+    Result[mIndex].Sequence := mIndex;
   end;
   TArray.Sort<TInsert>(Result, TComparer<TInsert>.Construct(
     function(const A, B: TInsert): Integer

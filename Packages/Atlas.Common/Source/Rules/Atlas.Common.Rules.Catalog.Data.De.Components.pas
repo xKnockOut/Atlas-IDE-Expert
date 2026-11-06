@@ -6,7 +6,7 @@
 interface
 
 const
-  CatalogLinesDeComponents: array[0..39] of string = (
+  cCatalogLinesDeComponents: array[0..39] of string = (
     '{',
     '      "id": "component-create-without-override",',
     '      "name": "Komponentenkonstruktor ohne override",',

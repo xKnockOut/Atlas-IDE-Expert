@@ -542,12 +542,12 @@ end;
 
 procedure TConstantExpressionErrorTests.RuleIsRegistered;
 begin
-  Assert.IsTrue(IsBuiltin(ConstantExpressionErrorRuleId), ConstantExpressionErrorRuleId);
-  Assert.IsTrue(IsBuiltin(DefaultParameterInvalidRuleId), DefaultParameterInvalidRuleId);
-  Assert.IsTrue(IsBuiltin(SignedUnsignedMixRuleId), SignedUnsignedMixRuleId);
-  Assert.IsTrue(IsBuiltin(NarrowingAssignmentRuleId), NarrowingAssignmentRuleId);
-  Assert.IsTrue(IsBuiltin(TypedConstantModifiedRuleId), TypedConstantModifiedRuleId);
-  Assert.IsTrue(IsBuiltin(StringLengthLimitRuleId), StringLengthLimitRuleId);
+  Assert.IsTrue(IsBuiltin(cConstantExpressionErrorRuleId), cConstantExpressionErrorRuleId);
+  Assert.IsTrue(IsBuiltin(cDefaultParameterInvalidRuleId), cDefaultParameterInvalidRuleId);
+  Assert.IsTrue(IsBuiltin(cSignedUnsignedMixRuleId), cSignedUnsignedMixRuleId);
+  Assert.IsTrue(IsBuiltin(cNarrowingAssignmentRuleId), cNarrowingAssignmentRuleId);
+  Assert.IsTrue(IsBuiltin(cTypedConstantModifiedRuleId), cTypedConstantModifiedRuleId);
+  Assert.IsTrue(IsBuiltin(cStringLengthLimitRuleId), cStringLengthLimitRuleId);
 end;
 
 /// <summary>Offset von APosition in AText mit Zeilen aus #10.</summary>

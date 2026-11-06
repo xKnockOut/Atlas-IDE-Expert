@@ -267,7 +267,7 @@ begin
   Response := DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":3,"method":"gibtsnicht"}');
   try
     Assert.AreEqual(3, Response.GetValue<Integer>('id'));
-    Assert.AreEqual(TJsonRpcErrorCode.MethodNotFound, Response.GetValue<Integer>('error.code'));
+    Assert.AreEqual(TJsonRpcErrorCode.cMethodNotFound, Response.GetValue<Integer>('error.code'));
     Assert.IsNull(Response.GetValue('result'));
   finally
     Response.Free;
@@ -299,11 +299,11 @@ begin
   FDispatcher.RegisterRequest('strict',
     function(const AParams: TJSONValue): TJSONValue
     begin
-      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'Parameter fehlen');
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, 'Parameter fehlen');
     end);
   Response := DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":4,"method":"strict"}');
   try
-    Assert.AreEqual(TJsonRpcErrorCode.InvalidParams, Response.GetValue<Integer>('error.code'));
+    Assert.AreEqual(TJsonRpcErrorCode.cInvalidParams, Response.GetValue<Integer>('error.code'));
     Assert.AreEqual('Parameter fehlen', Response.GetValue<string>('error.message'));
   finally
     Response.Free;
@@ -321,7 +321,7 @@ begin
     end);
   Response := DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":5,"method":"broken"}');
   try
-    Assert.AreEqual(TJsonRpcErrorCode.InternalError, Response.GetValue<Integer>('error.code'));
+    Assert.AreEqual(TJsonRpcErrorCode.cInternalError, Response.GetValue<Integer>('error.code'));
     Assert.Contains(Response.GetValue<string>('error.message'), 'kaputt');
   finally
     Response.Free;
@@ -348,7 +348,7 @@ var
 begin
   Response := DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":6}');
   try
-    Assert.AreEqual(TJsonRpcErrorCode.InvalidRequest, Response.GetValue<Integer>('error.code'));
+    Assert.AreEqual(TJsonRpcErrorCode.cInvalidRequest, Response.GetValue<Integer>('error.code'));
   finally
     Response.Free;
   end;
@@ -481,7 +481,7 @@ begin
     Assert.IsFalse(HandlerCalled);
     Assert.AreEqual<NativeInt>(1, Scheduling.Responses.Count);
     Assert.AreEqual('a', Scheduling.Responses[0].GetValue<string>('id'));
-    Assert.AreEqual(TJsonRpcErrorCode.RequestCancelled, Scheduling.Responses[0].GetValue<Integer>('error.code'));
+    Assert.AreEqual(TJsonRpcErrorCode.cRequestCancelled, Scheduling.Responses[0].GetValue<Integer>('error.code'));
   finally
     Scheduling.Free;
   end;
@@ -503,7 +503,7 @@ begin
     Response := FDispatcher.DispatchMessage(Request);
     try
       Assert.AreEqual(9, Response.GetValue<Integer>('id'));
-      Assert.AreEqual(TJsonRpcErrorCode.RequestCancelled, Response.GetValue<Integer>('error.code'));
+      Assert.AreEqual(TJsonRpcErrorCode.cRequestCancelled, Response.GetValue<Integer>('error.code'));
     finally
       Response.Free;
     end;
@@ -573,7 +573,7 @@ begin
   FDispatcher.RegisterRequest('invalid',
     function(const AParams: TJSONValue): TJSONValue
     begin
-      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, 'falsch');
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, 'falsch');
     end);
   Response := DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":6,"method":"invalid"}');
   Response.Free;
@@ -618,7 +618,7 @@ begin
       end);
     Response := DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":8,"method":"slow"}');
     try
-      Assert.AreEqual(TJsonRpcErrorCode.RequestCancelled, Response.GetValue<Integer>('error.code'));
+      Assert.AreEqual(TJsonRpcErrorCode.cRequestCancelled, Response.GetValue<Integer>('error.code'));
       Assert.AreEqual('slow', TimedOut);
     finally
       Response.Free;
@@ -763,12 +763,12 @@ begin
     procedure(const AMethod: string; const AParams: TJSONValue)
     begin
       mSeen := AMethod + ' ' + AParams.ToJSON;
-      raise EJsonRpcError.Create(TJsonRpcErrorCode.RequestFailed, 'übersprungen');
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, 'übersprungen');
     end;
   mResponse := DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":3,"method":"probe","params":{"a":1}}');
   try
     mCode := mResponse.GetValue<Integer>('error.code');
-    Assert.AreEqual(TJsonRpcErrorCode.RequestFailed, mCode);
+    Assert.AreEqual(TJsonRpcErrorCode.cRequestFailed, mCode);
     Assert.IsFalse(mCalled);
     Assert.AreEqual('probe {"a":1}', mSeen);
   finally
@@ -817,7 +817,7 @@ begin
     mResponse := DispatchJson(FDispatcher, '{"jsonrpc":"2.0","id":5,"method":"deep"}');
     try
       mCode := mResponse.GetValue<Integer>('error.code');
-      Assert.AreEqual(TJsonRpcErrorCode.InternalError, mCode);
+      Assert.AreEqual(TJsonRpcErrorCode.cInternalError, mCode);
     finally
       mResponse.Free;
     end;

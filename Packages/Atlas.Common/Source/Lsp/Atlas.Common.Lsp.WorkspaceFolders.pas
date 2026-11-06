@@ -43,7 +43,7 @@ type
 
   TLspWorkspaceFolders = class
   public const
-    DidChangeMethod = 'workspace/didChangeWorkspaceFolders';
+    cDidChangeMethod = 'workspace/didChangeWorkspaceFolders';
   private
     FOnChanged: TWorkspaceFoldersChangedEvent;
     procedure HandleDidChange(const AParams: TJSONValue);
@@ -61,7 +61,8 @@ type
     class function IsUsableRoot(const APath: string): Boolean; static;
     /// <summary>Nächster Ordner ab dem Ordner von AFileName aufwärts, für den AHasProjectFile
     /// True liefert; Laufwerkswurzeln ausgenommen. '' wenn keiner.</summary>
-    class function ProjectFolderFor(const AFileName: string; const AHasProjectFile: THasProjectFileFunc): string; static;
+    class function ProjectFolderFor(const AFileName: string;
+      const AHasProjectFile: THasProjectFileFunc): string; static;
     /// <summary>Capability workspace.workspaceFolders. Der Aufrufer übernimmt das Objekt.</summary>
     class function Capability: TJSONObject; static;
     property OnChanged: TWorkspaceFoldersChangedEvent read FOnChanged write FOnChanged;
@@ -75,43 +76,43 @@ uses
 
 function ReadFolders(const AValue: TJSONValue): TArray<TWorkspaceFolder>;
 var
-  Item: TJSONValue;
-  Uri, Name, Path, ProjectFile: string;
+  mItem: TJSONValue;
+  mUri, mName, mPath, mProjectFile: string;
 begin
   Result := nil;
   if not (AValue is TJSONArray) then
   begin
     Exit;
   end;
-  for Item in TJSONArray(AValue) do
+  for mItem in TJSONArray(AValue) do
   begin
-    if not Item.TryGetValue<string>('uri', Uri) then
+    if not mItem.TryGetValue<string>('uri', mUri) then
     begin
       Continue;
     end;
-    Path := TDocumentUris.ToPath(Uri);
-    ProjectFile := '';
-    if TLspWorkspaceFolders.IsProjectFile(Path) then
+    mPath := TDocumentUris.ToPath(mUri);
+    mProjectFile := '';
+    if TLspWorkspaceFolders.IsProjectFile(mPath) then
     begin
-      ProjectFile := Path;
-      Path := ExtractFileDir(ProjectFile);
+      mProjectFile := mPath;
+      mPath := ExtractFileDir(mProjectFile);
     end;
-    if not TLspWorkspaceFolders.IsUsableRoot(Path) then
+    if not TLspWorkspaceFolders.IsUsableRoot(mPath) then
     begin
       Continue;
     end;
-    if not Item.TryGetValue<string>('name', Name) then
+    if not mItem.TryGetValue<string>('name', mName) then
     begin
-      if ProjectFile <> '' then
+      if mProjectFile <> '' then
       begin
-        Name := ChangeFileExt(ExtractFileName(ProjectFile), '');
+        mName := ChangeFileExt(ExtractFileName(mProjectFile), '');
       end
       else
       begin
-        Name := ExtractFileName(ExcludeTrailingPathDelimiter(Path));
+        mName := ExtractFileName(ExcludeTrailingPathDelimiter(mPath));
       end;
     end;
-    Result := Result + [TWorkspaceFolder.Create(Path, Name, ProjectFile)];
+    Result := Result + [TWorkspaceFolder.Create(mPath, mName, mProjectFile)];
   end;
 end;
 
@@ -154,13 +155,13 @@ end;
 
 procedure TLspWorkspaceFolders.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterNotification(DidChangeMethod, HandleDidChange);
+  ADispatcher.RegisterNotification(cDidChangeMethod, HandleDidChange);
 end;
 
 class function TLspWorkspaceFolders.FromInitialize(const AParams: TJSONObject): TArray<TWorkspaceFolder>;
 var
-  Value: TJSONValue;
-  Path: string;
+  mValue: TJSONValue;
+  mPath: string;
 begin
   Result := nil;
   if AParams = nil then
@@ -173,30 +174,30 @@ begin
     Exit;
   end;
   // Ältere Clients: nur ein Wurzelordner.
-  Path := '';
-  Value := AParams.GetValue('rootUri');
-  if (Value is TJSONString) and (Value.Value <> '') then
+  mPath := '';
+  mValue := AParams.GetValue('rootUri');
+  if (mValue is TJSONString) and (mValue.Value <> '') then
   begin
-    Path := TDocumentUris.ToPath(Value.Value);
+    mPath := TDocumentUris.ToPath(mValue.Value);
   end
   else
   begin
-    Value := AParams.GetValue('rootPath');
-    if Value is TJSONString then
+    mValue := AParams.GetValue('rootPath');
+    if mValue is TJSONString then
     begin
-      Path := Value.Value;
+      mPath := mValue.Value;
     end;
   end;
-  if IsUsableRoot(Path) then
+  if IsUsableRoot(mPath) then
   begin
-    Result := [TWorkspaceFolder.Create(Path, ExtractFileName(ExcludeTrailingPathDelimiter(Path)))];
+    Result := [TWorkspaceFolder.Create(mPath, ExtractFileName(ExcludeTrailingPathDelimiter(mPath)))];
   end;
 end;
 
 class procedure TLspWorkspaceFolders.ParseChange(const AParams: TJSONValue;
   out AAdded, ARemoved: TArray<TWorkspaceFolder>);
 var
-  Event: TJSONValue;
+  mEvent: TJSONValue;
 begin
   AAdded := nil;
   ARemoved := nil;
@@ -204,31 +205,31 @@ begin
   begin
     Exit;
   end;
-  Event := TJSONObject(AParams).GetValue('event');
-  if not (Event is TJSONObject) then
+  mEvent := TJSONObject(AParams).GetValue('event');
+  if not (mEvent is TJSONObject) then
   begin
     Exit;
   end;
-  AAdded := ReadFolders(TJSONObject(Event).GetValue('added'));
-  ARemoved := ReadFolders(TJSONObject(Event).GetValue('removed'));
+  AAdded := ReadFolders(TJSONObject(mEvent).GetValue('added'));
+  ARemoved := ReadFolders(TJSONObject(mEvent).GetValue('removed'));
 end;
 
 class function TLspWorkspaceFolders.FolderOf(const AFolders: TArray<TWorkspaceFolder>;
   const AFileName: string): Integer;
 var
-  Index, BestLength: Integer;
-  FileName, Folder: string;
+  mIndex, mBestLength: Integer;
+  mFileName, mFolder: string;
 begin
   Result := -1;
-  BestLength := -1;
-  FileName := StringReplace(AFileName, '/', '\', [rfReplaceAll]);
-  for Index := 0 to High(AFolders) do
+  mBestLength := -1;
+  mFileName := StringReplace(AFileName, '/', '\', [rfReplaceAll]);
+  for mIndex := 0 to High(AFolders) do
   begin
-    Folder := WithSeparator(AFolders[Index].Path);
-    if (Length(Folder) > BestLength) and SameText(Copy(FileName, 1, Length(Folder)), Folder) then
+    mFolder := WithSeparator(AFolders[mIndex].Path);
+    if (Length(mFolder) > mBestLength) and SameText(Copy(mFileName, 1, Length(mFolder)), mFolder) then
     begin
-      Result := Index;
-      BestLength := Length(Folder);
+      Result := mIndex;
+      mBestLength := Length(mFolder);
     end;
   end;
 end;
@@ -240,58 +241,58 @@ end;
 
 class function TLspWorkspaceFolders.IsUsableRoot(const APath: string): Boolean;
 var
-  Path: string;
+  mPath: string;
 begin
-  Path := StringReplace(Trim(APath), '/', '\', [rfReplaceAll]);
-  while (Path <> '') and (Path[Length(Path)] = '\') do
+  mPath := StringReplace(Trim(APath), '/', '\', [rfReplaceAll]);
+  while (mPath <> '') and (mPath[Length(mPath)] = '\') do
   begin
-    SetLength(Path, Length(Path) - 1);
+    SetLength(mPath, Length(mPath) - 1);
   end;
   // Übrig bleibt bei "/" nichts, bei "C:\" nur "C:".
-  Result := (Path <> '') and not ((Length(Path) = 2) and (Path[2] = ':'));
+  Result := (mPath <> '') and not ((Length(mPath) = 2) and (mPath[2] = ':'));
 end;
 
 class function TLspWorkspaceFolders.ProjectFolderFor(const AFileName: string;
   const AHasProjectFile: THasProjectFileFunc): string;
 var
-  Folder, Parent: string;
+  mFolder, mParent: string;
 begin
   Result := '';
-  Folder := ExcludeTrailingPathDelimiter(ExtractFileDir(StringReplace(AFileName, '/', '\', [rfReplaceAll])));
-  while IsUsableRoot(Folder) do
+  mFolder := ExcludeTrailingPathDelimiter(ExtractFileDir(StringReplace(AFileName, '/', '\', [rfReplaceAll])));
+  while IsUsableRoot(mFolder) do
   begin
-    if AHasProjectFile(Folder) then
+    if AHasProjectFile(mFolder) then
     begin
-      Exit(Folder);
+      Exit(mFolder);
     end;
-    Parent := ExcludeTrailingPathDelimiter(ExtractFileDir(Folder));
-    if SameText(Parent, Folder) then
+    mParent := ExcludeTrailingPathDelimiter(ExtractFileDir(mFolder));
+    if SameText(mParent, mFolder) then
     begin
       Break;
     end;
-    Folder := Parent;
+    mFolder := mParent;
   end;
 end;
 
 class function TLspWorkspaceFolders.Capability: TJSONObject;
 var
-  Folders: TJSONObject;
+  mFolders: TJSONObject;
 begin
-  Folders := TJSONObject.Create;
-  Folders.AddPair('supported', TJSONBool.Create(True));
-  Folders.AddPair('changeNotifications', TJSONBool.Create(True));
+  mFolders := TJSONObject.Create;
+  mFolders.AddPair('supported', TJSONBool.Create(True));
+  mFolders.AddPair('changeNotifications', TJSONBool.Create(True));
   Result := TJSONObject.Create;
-  Result.AddPair('workspaceFolders', Folders);
+  Result.AddPair('workspaceFolders', mFolders);
 end;
 
 procedure TLspWorkspaceFolders.HandleDidChange(const AParams: TJSONValue);
 var
-  Added, Removed: TArray<TWorkspaceFolder>;
+  mAdded, mRemoved: TArray<TWorkspaceFolder>;
 begin
-  ParseChange(AParams, Added, Removed);
-  if ((Length(Added) > 0) or (Length(Removed) > 0)) and Assigned(FOnChanged) then
+  ParseChange(AParams, mAdded, mRemoved);
+  if ((Length(mAdded) > 0) or (Length(mRemoved) > 0)) and Assigned(FOnChanged) then
   begin
-    FOnChanged(Added, Removed);
+    FOnChanged(mAdded, mRemoved);
   end;
 end;
 

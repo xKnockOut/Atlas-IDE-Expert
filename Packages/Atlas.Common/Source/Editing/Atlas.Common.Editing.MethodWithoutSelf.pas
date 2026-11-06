@@ -112,7 +112,7 @@ type
   TMethodWithoutSelf = class
   public const
     /// <summary>Text der Marke für Clients; das Plugin beschriftet sie selbst in der Sprache der IDE.</summary>
-    MarkerText = 'Self unused';
+    cMarkerText = 'Self unused';
   public
     class function ClassMethodTitle: string; static;
     class function ClassMethodCallsTitle: string; static;
@@ -266,12 +266,12 @@ begin
 end;
 
 const
-  SimpleTypes: array[0..27] of string = ('string', 'UnicodeString', 'AnsiString', 'WideString', 'Char',
+  cSimpleTypes: array[0..27] of string = ('string', 'UnicodeString', 'AnsiString', 'WideString', 'Char',
     'WideChar', 'AnsiChar', 'Integer', 'Cardinal', 'Int64', 'UInt64', 'NativeInt', 'NativeUInt', 'Byte', 'Word',
     'ShortInt', 'SmallInt', 'LongInt', 'LongWord', 'Double', 'Single', 'Extended', 'Currency', 'Boolean',
     'TDateTime', 'TDate', 'TTime', 'TGUID');
   // Direktiven, die an einer freien Routine bzw. einem Helper nicht passen.
-  DroppedDirectives: array[0..8] of string = ('overload', 'reintroduce', 'final', 'static', 'virtual', 'dynamic',
+  cDroppedDirectives: array[0..8] of string = ('overload', 'reintroduce', 'final', 'static', 'virtual', 'dynamic',
     'override', 'abstract', 'message');
 
 function Fail(const AReason: string; out AOut: string): Boolean;
@@ -880,48 +880,48 @@ end;
 
 function TMethodPlan.FirstParameterNodes: TArray<TSyntaxNode>;
 var
-  Nodes: TList<TSyntaxNode>;
-  Node: TSyntaxNode;
+  mNodes: TList<TSyntaxNode>;
+  mNode: TSyntaxNode;
 begin
   Result := nil;
   if Parameters = nil then
   begin
     Exit;
   end;
-  Nodes := TList<TSyntaxNode>.Create;
+  mNodes := TList<TSyntaxNode>.Create;
   try
-    TRoutineLocals.CollectKind(Body, TSyntaxKind.Identifier, Nodes);
-    for Node in Nodes do
+    TRoutineLocals.CollectKind(Body, TSyntaxKind.Identifier, mNodes);
+    for mNode in mNodes do
     begin
-      if SameText(Node.Name, Parameters[0].Name) and not TRoutineParts.Shadowed(Cache, Node, Routine,
+      if SameText(mNode.Name, Parameters[0].Name) and not TRoutineParts.Shadowed(Cache, mNode, Routine,
         Parameters[0].Name, False) then
       begin
-        Result := Result + [Node];
+        Result := Result + [mNode];
       end;
     end;
   finally
-    Nodes.Free;
+    mNodes.Free;
   end;
 end;
 
 function TMethodPlan.FirstParameterUses(out AReason: string): Boolean;
 var
-  Node: TSyntaxNode;
+  mNode: TSyntaxNode;
 begin
   Result := False;
   AReason := '';
-  for Node in FirstParameterNodes do
+  for mNode in FirstParameterNodes do
   begin
     // const schreibt der Compiler ohnehin nicht; ein Wertparameter würde als Self den Wert des Aufrufers ändern.
-    if (Parameters[0].Modifier = '') and (TRoutineLocals.AccessOf(Node, Lookup.Flow) <> TLocalAccess.Read) then
+    if (Parameters[0].Modifier = '') and (TRoutineLocals.AccessOf(mNode, Lookup.Flow) <> TLocalAccess.Read) then
     begin
       Exit(not Fail(Parameters[0].Name + cTexts[TEditingMethodWithoutSelfText.IsWritten].Text, AReason));
     end;
-    if (Node.Parent <> nil) and (Node.Parent.Kind = TSyntaxKind.AddressOf) then
+    if (mNode.Parent <> nil) and (mNode.Parent.Kind = TSyntaxKind.AddressOf) then
     begin
       Exit(not Fail('@' + Parameters[0].Name, AReason));
     end;
-    if TRoutineParts.InAnonymous(Node, Routine) then
+    if TRoutineParts.InAnonymous(mNode, Routine) then
     begin
       Exit(not Fail(Parameters[0].Name + cTexts[TEditingMethodWithoutSelfText.InAnAnonymousMethod].Text, AReason));
     end;
@@ -1016,18 +1016,18 @@ end;
 /// <summary>Bearbeitung, die ANode samt Zeile entfernt, wenn die Zeile sonst leer ist; sonst nur den Bereich.</summary>
 function RemoveLine(const AText: string; const ALines: TLineTable; ANode: TSyntaxNode): TOffsetEdit;
 var
-  LineStart, NextStart: Integer;
+  mLineStart, mNextStart: Integer;
 begin
-  LineStart := ALines.LineStart(ANode.StartPos.Line);
-  NextStart := ALines.LineStart(ANode.EndPos.Line + 1);
+  mLineStart := ALines.LineStart(ANode.StartPos.Line);
+  mNextStart := ALines.LineStart(ANode.EndPos.Line + 1);
   if ANode.EndPos.Line + 1 >= ALines.LineCount then
   begin
-    NextStart := Length(AText);
+    mNextStart := Length(AText);
   end;
-  if (Trim(Copy(AText, LineStart + 1, ANode.StartOffset - LineStart)) = '') and
-    (Trim(Copy(AText, ANode.EndOffset + 1, NextStart - ANode.EndOffset)) = '') then
+  if (Trim(Copy(AText, mLineStart + 1, ANode.StartOffset - mLineStart)) = '') and
+    (Trim(Copy(AText, ANode.EndOffset + 1, mNextStart - ANode.EndOffset)) = '') then
   begin
-    Result := TOffsetEdit.Create(LineStart, NextStart, '');
+    Result := TOffsetEdit.Create(mLineStart, mNextStart, '');
   end
   else
   begin
@@ -1038,16 +1038,16 @@ end;
 /// <summary>Direktiven der Deklaration, die mitkommen ("inline; stdcall;"), mit führendem Leerzeichen.</summary>
 function KeptDirectives(const AText: string; ADeclaration: TSyntaxNode): string;
 var
-  Index: Integer;
-  Child: TSyntaxNode;
+  mIndex: Integer;
+  mChild: TSyntaxNode;
 begin
   Result := '';
-  for Index := 0 to ADeclaration.ChildCount - 1 do
+  for mIndex := 0 to ADeclaration.ChildCount - 1 do
   begin
-    Child := ADeclaration[Index];
-    if (Child.Kind = TSyntaxKind.Directive) and (IndexText(Child.Name, DroppedDirectives) < 0) then
+    mChild := ADeclaration[mIndex];
+    if (mChild.Kind = TSyntaxKind.Directive) and (IndexText(mChild.Name, cDroppedDirectives) < 0) then
     begin
-      Result := Result + ' ' + TRoutineBody.TextOf(AText, Child) + ';';
+      Result := Result + ' ' + TRoutineBody.TextOf(AText, mChild) + ';';
     end;
   end;
 end;
@@ -1321,32 +1321,32 @@ end;
 
 function TMethodBuild.QualifyStatics: TArray<TOffsetEdit>;
 var
-  Node: TSyntaxNode;
+  mNode: TSyntaxNode;
 begin
   Result := nil;
-  for Node in Plan.Statics do
+  for mNode in Plan.Statics do
   begin
-    Result := Result + [TOffsetEdit.Create(Node.StartOffset, Node.StartOffset, Plan.Target.ClassName + '.')];
+    Result := Result + [TOffsetEdit.Create(mNode.StartOffset, mNode.StartOffset, Plan.Target.ClassName + '.')];
   end;
 end;
 
 procedure TMethodBuild.ClassMethodEdits;
 var
-  Work: TFileWork;
-  WithStatic: Boolean;
+  mWork: TFileWork;
+  mWithStatic: Boolean;
 begin
-  Work := Works[0];
-  WithStatic := StaticWanted or Plan.Target.IsRecord;
-  if WithStatic and Plan.UsesClassLevel and not Plan.Target.IsRecord then
+  mWork := Works[0];
+  mWithStatic := StaticWanted or Plan.Target.IsRecord;
+  if mWithStatic and Plan.UsesClassLevel and not Plan.Target.IsRecord then
   begin
-    WithStatic := False;
+    mWithStatic := False;
     Warn(cTexts[TEditingMethodWithoutSelfText.StaysWithoutStaticTheBody].Fmt([Plan.Target.Name]));
   end;
-  Work.Edits := Work.Edits + [TOffsetEdit.Create(Plan.Declaration.StartOffset, Plan.Declaration.StartOffset,
+  mWork.Edits := mWork.Edits + [TOffsetEdit.Create(Plan.Declaration.StartOffset, Plan.Declaration.StartOffset,
     'class '), TOffsetEdit.Create(Plan.Header.StartOffset, Plan.Header.StartOffset, 'class ')];
-  if WithStatic then
+  if mWithStatic then
   begin
-    Work.Edits := Work.Edits + [TOffsetEdit.Create(Plan.Declaration.EndOffset, Plan.Declaration.EndOffset,
+    mWork.Edits := mWork.Edits + [TOffsetEdit.Create(Plan.Declaration.EndOffset, Plan.Declaration.EndOffset,
       ' static;')];
   end;
 end;
@@ -1355,37 +1355,37 @@ end;
 /// bleiben in AEdits.</summary>
 function SplitEdits(var AEdits: TArray<TOffsetEdit>; AStart, AStop: Integer): TArray<TOffsetEdit>;
 var
-  Kept: TArray<TOffsetEdit>;
-  Edit: TOffsetEdit;
+  mKept: TArray<TOffsetEdit>;
+  mEdit: TOffsetEdit;
 begin
   Result := nil;
-  Kept := nil;
-  for Edit in AEdits do
+  mKept := nil;
+  for mEdit in AEdits do
   begin
-    if (Edit.Start >= AStart) and (Edit.Stop <= AStop) then
+    if (mEdit.Start >= AStart) and (mEdit.Stop <= AStop) then
     begin
-      Result := Result + [Edit];
+      Result := Result + [mEdit];
     end
     else
     begin
-      Kept := Kept + [Edit];
+      mKept := mKept + [mEdit];
     end;
   end;
-  AEdits := Kept;
+  AEdits := mKept;
 end;
 
 /// <summary>Oberste Routine der Implementierung, die AOffset enthält; nil ohne.</summary>
 function TopLevelAt(AImplementation: TSyntaxNode; AOffset: Integer): TSyntaxNode;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
-  for Index := 0 to AImplementation.ChildCount - 1 do
+  for mIndex := 0 to AImplementation.ChildCount - 1 do
   begin
-    if (AImplementation[Index].Kind = TSyntaxKind.RoutineDecl) and
-      TRoutineParts.Encloses(AImplementation[Index], AOffset) then
+    if (AImplementation[mIndex].Kind = TSyntaxKind.RoutineDecl) and
+      TRoutineParts.Encloses(AImplementation[mIndex], AOffset) then
     begin
-      Exit(AImplementation[Index]);
+      Exit(AImplementation[mIndex]);
     end;
   end;
 end;
@@ -1395,68 +1395,69 @@ end;
 procedure RoutineSpan(const AText: string; const ALines: TLineTable; ARoutine: TSyntaxNode; out AStart,
   AStop: Integer);
 var
-  Next: Integer;
+  mNext: Integer;
 begin
   AStart := ALines.LineStart(TRoutineBody.RoutineInsertLine(AText, ARoutine));
-  Next := ARoutine.EndPos.Line + 1;
-  AStop := ALines.LineStart(Next);
-  if Next >= ALines.LineCount then
+  mNext := ARoutine.EndPos.Line + 1;
+  AStop := ALines.LineStart(mNext);
+  if mNext >= ALines.LineCount then
   begin
     AStop := Length(AText);
   end
-  else if Trim(LineText(AText, ALines, Next)) = '' then
+  else if Trim(LineText(AText, ALines, mNext)) = '' then
   begin
-    AStop := ALines.LineStart(Next + 1);
+    AStop := ALines.LineStart(mNext + 1);
   end;
 end;
 
 function TMethodBuild.RoutineEdits(out AReason: string): Boolean;
 var
-  Work: TFileWork;
-  Head, Moved: string;
-  Implementation_, First: TSyntaxNode;
-  Start, Stop, InsertAt, Line: Integer;
-  Inner: TArray<TOffsetEdit>;
+  mWork: TFileWork;
+  mHead, mMoved: string;
+  mImplementation_, mFirst: TSyntaxNode;
+  mStart, mStop, mInsertAt, mLine: Integer;
+  mInner: TArray<TOffsetEdit>;
 begin
-  Work := Works[0];
+  mWork := Works[0];
   if CalledOutside and not Plan.ClassInInterface then
   begin
     Exit(Fail(cTexts[TEditingMethodWithoutSelfText.OtherUnitsCallItBut].Text, AReason));
   end;
-  Head := TRoutineParts.HeadText(Plan.Text, Plan.Declaration, Plan.Target.Name, Plan.Parameters, False);
-  Work.Edits := Work.Edits + [RemoveLine(Plan.Text, Plan.Lines, Plan.Declaration)];
+  mHead := TRoutineParts.HeadText(Plan.Text, Plan.Declaration, Plan.Target.Name, Plan.Parameters, False);
+  mWork.Edits := mWork.Edits + [RemoveLine(Plan.Text, Plan.Lines, Plan.Declaration)];
   if CalledOutside then
   begin
     // Vor implementation, mit Leerzeile.
-    Line := Plan.Routine.Parent.StartPos.Line;
-    Work.Edits := Work.Edits + [TOffsetEdit.Create(Plan.Lines.LineStart(Line), Plan.Lines.LineStart(Line),
-      Head + KeptDirectives(Plan.Text, Plan.Declaration) + LineBreak + LineBreak)];
-    Work.Edits := Work.Edits + [TOffsetEdit.Create(Plan.Header.StartOffset, Plan.Header.EndOffset, Head)];
+    mLine := Plan.Routine.Parent.StartPos.Line;
+    mWork.Edits := mWork.Edits + [TOffsetEdit.Create(Plan.Lines.LineStart(mLine), Plan.Lines.LineStart(mLine),
+      mHead + KeptDirectives(Plan.Text, Plan.Declaration) + LineBreak + LineBreak)];
+    mWork.Edits := mWork.Edits + [TOffsetEdit.Create(Plan.Header.StartOffset, Plan.Header.EndOffset, mHead)];
   end
   else
   begin
-    Work.Edits := Work.Edits + [TOffsetEdit.Create(Plan.Header.StartOffset, Plan.Header.EndOffset,
-      Head + KeptDirectives(Plan.Text, Plan.Declaration))];
+    mWork.Edits := mWork.Edits + [TOffsetEdit.Create(Plan.Header.StartOffset, Plan.Header.EndOffset,
+      mHead + KeptDirectives(Plan.Text, Plan.Declaration))];
   end;
-  Work.Edits := Work.Edits + QualifyStatics;
+  mWork.Edits := mWork.Edits + QualifyStatics;
   // Ohne Deklaration im interface muss die Routine vor ihrer ersten Verwendung stehen.
   if not CalledOutside and (FirstUse < Plan.Routine.StartOffset) then
   begin
-    Implementation_ := Plan.Routine.Parent;
-    First := TopLevelAt(Implementation_, FirstUse);
-    if First = nil then
+    mImplementation_ := Plan.Routine.Parent;
+    mFirst := TopLevelAt(mImplementation_, FirstUse);
+    if mFirst = nil then
     begin
       Exit(Fail(cTexts[TEditingMethodWithoutSelfText.FirstUseNotInA].Text, AReason));
     end;
-    RoutineSpan(Plan.Text, Plan.Lines, Plan.Routine, Start, Stop);
-    Inner := SplitEdits(Work.Edits, Start, Stop);
-    Moved := TRoutineParts.ApplyEdits(Copy(Plan.Text, Start + 1, Stop - Start), Start, Inner);
-    if not EndsStr(LineBreak + LineBreak, Moved) then
+    RoutineSpan(Plan.Text, Plan.Lines, Plan.Routine, mStart, mStop);
+    mInner := SplitEdits(mWork.Edits, mStart, mStop);
+    mMoved := TRoutineParts.ApplyEdits(Copy(Plan.Text, mStart + 1, mStop - mStart), mStart, mInner);
+    if not EndsStr(LineBreak + LineBreak, mMoved) then
     begin
-      Moved := Moved + LineBreak;
+      mMoved := mMoved + LineBreak;
     end;
-    InsertAt := Plan.Lines.LineStart(TRoutineBody.RoutineInsertLine(Plan.Text, First));
-    Work.Edits := Work.Edits + [TOffsetEdit.Create(Start, Stop, ''), TOffsetEdit.Create(InsertAt, InsertAt, Moved)];
+    mInsertAt := Plan.Lines.LineStart(TRoutineBody.RoutineInsertLine(Plan.Text, mFirst));
+    mWork.Edits := mWork.Edits + [TOffsetEdit.Create(mStart, mStop, ''), TOffsetEdit.Create(mInsertAt, mInsertAt,
+      mMoved)];
   end;
   Result := True;
 end;
@@ -1682,13 +1683,13 @@ end;
 /// <summary>Überschneiden sich zwei Bearbeitungen (gleiche Einfügestelle zählt nicht)?</summary>
 function Overlapping(const AEdits: TArray<TOffsetEdit>): Boolean;
 var
-  Index, Other: Integer;
+  mIndex, mOther: Integer;
 begin
-  for Index := 0 to High(AEdits) do
+  for mIndex := 0 to High(AEdits) do
   begin
-    for Other := Index + 1 to High(AEdits) do
+    for mOther := mIndex + 1 to High(AEdits) do
     begin
-      if (AEdits[Index].Start < AEdits[Other].Stop) and (AEdits[Other].Start < AEdits[Index].Stop) then
+      if (AEdits[mIndex].Start < AEdits[mOther].Stop) and (AEdits[mOther].Start < AEdits[mIndex].Stop) then
       begin
         Exit(True);
       end;
@@ -1800,7 +1801,7 @@ end;
 class function TMethodWithoutSelf.Target(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
   const ALookup: TMethodLookup; out ATarget: TMethodTarget; out AReason: string): Boolean;
 var
-  Plan: TMethodPlan;
+  mPlan: TMethodPlan;
 begin
   ATarget := Default(TMethodTarget);
   AReason := '';
@@ -1808,47 +1809,47 @@ begin
   begin
     Exit(Fail(cTexts[TEditingMethodWithoutSelfText.NoTree].Text, AReason));
   end;
-  Plan := TMethodPlan.Create(AText, ATree, ALookup);
+  mPlan := TMethodPlan.Create(AText, ATree, ALookup);
   try
-    Result := Plan.Analyze(Plan.Lines.OffsetAt(APosition), AReason);
+    Result := mPlan.Analyze(mPlan.Lines.OffsetAt(APosition), AReason);
     if Result then
     begin
-      ATarget := Plan.Target;
+      ATarget := mPlan.Target;
     end;
   finally
-    Plan.Free;
+    mPlan.Free;
   end;
 end;
 
 class function TMethodWithoutSelf.Candidates(const AText: string; ATree: TSyntaxTree;
   const ALookup: TMethodLookup): TArray<TMethodTarget>;
 var
-  Implementation_, Routine, Header: TSyntaxNode;
-  Index: Integer;
-  Found: TMethodTarget;
-  Reason: string;
+  mImplementation_, mRoutine, mHeader: TSyntaxNode;
+  mIndex: Integer;
+  mFound: TMethodTarget;
+  mReason: string;
 begin
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) then
   begin
     Exit;
   end;
-  Implementation_ := ATree.Root.FindChild(TSyntaxKind.ImplementationSection);
-  if Implementation_ = nil then
+  mImplementation_ := ATree.Root.FindChild(TSyntaxKind.ImplementationSection);
+  if mImplementation_ = nil then
   begin
     Exit;
   end;
-  for Index := 0 to Implementation_.ChildCount - 1 do
+  for mIndex := 0 to mImplementation_.ChildCount - 1 do
   begin
-    Routine := Implementation_[Index];
-    if (Routine.Kind <> TSyntaxKind.RoutineDecl) or (TRoutineBody.QualifierOf(Routine.Name) = '') then
+    mRoutine := mImplementation_[mIndex];
+    if (mRoutine.Kind <> TSyntaxKind.RoutineDecl) or (TRoutineBody.QualifierOf(mRoutine.Name) = '') then
     begin
       Continue;
     end;
-    Header := TRoutineParts.HeaderOf(Routine);
-    if (Header <> nil) and Target(AText, ATree, Header.EndPos, ALookup, Found, Reason) then
+    mHeader := TRoutineParts.HeaderOf(mRoutine);
+    if (mHeader <> nil) and Target(AText, ATree, mHeader.EndPos, ALookup, mFound, mReason) then
     begin
-      Result := Result + [Found];
+      Result := Result + [mFound];
     end;
   end;
 end;
@@ -2070,13 +2071,13 @@ end;
 
 class function TMethodWithoutSelf.ConversionOf(const AName: string; out AConversion: TMethodConversion): Boolean;
 var
-  Item: TMethodConversion;
+  mItem: TMethodConversion;
 begin
-  for Item := Low(TMethodConversion) to High(TMethodConversion) do
+  for mItem := Low(TMethodConversion) to High(TMethodConversion) do
   begin
-    if SameText(ConversionName(Item), AName) then
+    if SameText(ConversionName(mItem), AName) then
     begin
-      AConversion := Item;
+      AConversion := mItem;
       Exit(True);
     end;
   end;
@@ -2086,23 +2087,23 @@ end;
 
 class function TMethodWithoutSelf.IsSimpleType(const ATypeName: string): Boolean;
 begin
-  Result := IndexText(Trim(ATypeName), SimpleTypes) >= 0;
+  Result := IndexText(Trim(ATypeName), cSimpleTypes) >= 0;
 end;
 
 class function TMethodWithoutSelf.HelperNameFor(const ATypeName: string): string;
 var
-  Name: string;
+  mName: string;
 begin
-  Name := Trim(ATypeName);
-  if (Length(Name) > 1) and (Name[1] = 'T') and CharInSet(Name[2], ['A'..'Z']) then
+  mName := Trim(ATypeName);
+  if (Length(mName) > 1) and (mName[1] = 'T') and CharInSet(mName[2], ['A'..'Z']) then
   begin
-    Name := Copy(Name, 2, MaxInt);
+    mName := Copy(mName, 2, MaxInt);
   end;
-  if SameText(Name, 'UnicodeString') then
+  if SameText(mName, 'UnicodeString') then
   begin
-    Name := 'String';
+    mName := 'String';
   end;
-  Result := 'T' + Capitalized(Name) + 'Helper';
+  Result := 'T' + Capitalized(mName) + 'Helper';
 end;
 
 initialization

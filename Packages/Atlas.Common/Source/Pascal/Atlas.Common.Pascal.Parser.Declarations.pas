@@ -66,9 +66,9 @@ type
 
 const
 
-  CallingConventions: array[0..6] of string = ('stdcall', 'cdecl', 'pascal', 'register', 'safecall', 'winapi',
+  cCallingConventions: array[0..6] of string = ('stdcall', 'cdecl', 'pascal', 'register', 'safecall', 'winapi',
     'varargs');
-  VisibilityWords: array[0..5] of string = ('private', 'protected', 'public', 'published', 'automated', 'strict');
+  cVisibilityWords: array[0..5] of string = ('private', 'protected', 'public', 'published', 'automated', 'strict');
 
 implementation
 
@@ -82,8 +82,8 @@ uses
 const
 
   // Reservierte Wörter, die als Name hinter operator stehen dürfen (class operator In, #1140).
-  OperatorKeywords: array[0..8] of string = ('in', 'and', 'or', 'xor', 'not', 'div', 'mod', 'shl', 'shr');
-  HintWords: array[0..3] of string = ('deprecated', 'platform', 'library', 'experimental');
+  cOperatorKeywords: array[0..8] of string = ('in', 'and', 'or', 'xor', 'not', 'div', 'mod', 'shl', 'shr');
+  cHintWords: array[0..3] of string = ('deprecated', 'platform', 'library', 'experimental');
 
 { TDeclarationParser }
 
@@ -137,73 +137,73 @@ end;
 
 procedure TDeclarationParser.ParseAttributes(AParent: TSyntaxNode);
 var
-  Start: Integer;
-  Node: TSyntaxNode;
+  mStart: Integer;
+  mNode: TSyntaxNode;
 begin
   // [Attr], [Attr(1, 'x')], [A, B]
   while IsSym('[') do
   begin
-    Start := NodeStart;
-    Node := StartNode(TSyntaxKind.Attribute);
-    AParent.Add(Node);
+    mStart := NodeStart;
+    mNode := StartNode(TSyntaxKind.Attribute);
+    AParent.Add(mNode);
     Advance;
     if not IsSym(']') then
     begin
-      ParseArguments(Node, ']');
+      ParseArguments(mNode, ']');
     end
     else
     begin
       Advance;
     end;
-    if Node.ChildCount > 0 then
+    if mNode.ChildCount > 0 then
     begin
-      Node.Name := Node.Children[0].Name;
+      mNode.Name := mNode.Children[0].Name;
     end;
-    FinishNode(Node, Start);
+    FinishNode(mNode, mStart);
   end;
 end;
 
 procedure TDeclarationParser.ParseTypeSection(AParent: TSyntaxNode);
 var
-  Start: Integer;
-  Node: TSyntaxNode;
+  mStart: Integer;
+  mNode: TSyntaxNode;
 begin
-  Start := NodeStart;
-  Node := StartNode(TSyntaxKind.TypeSection);
-  AParent.Add(Node);
+  mStart := NodeStart;
+  mNode := StartNode(TSyntaxKind.TypeSection);
+  AParent.Add(mNode);
   Advance; // type
   while IsDeclStart do
   begin
     if IsSym('[') then
     begin
-      ParseAttributes(Node);
+      ParseAttributes(mNode);
     end
     else
     begin
-      ParseTypeDecl(Node);
+      ParseTypeDecl(mNode);
     end;
   end;
-  FinishNode(Node, Start);
+  FinishNode(mNode, mStart);
 end;
 
 procedure TDeclarationParser.ParseTypeDecl(AParent: TSyntaxNode);
 var
-  Start: Integer;
-  Node: TSyntaxNode;
+  mStart: Integer;
+  mNode: TSyntaxNode;
 begin
-  Start := NodeStart;
-  Node := StartNode(TSyntaxKind.TypeDecl);
-  AParent.Add(Node);
-  Node.Name := ExpectIdent;
-  if not (IsSym('<') and ParseGenericParams(Node)) then
+  mStart := NodeStart;
+  mNode := StartNode(TSyntaxKind.TypeDecl);
+  AParent.Add(mNode);
+  mNode.Name := ExpectIdent;
+  if not (IsSym('<') and ParseGenericParams(mNode)) then
   begin
     ExpectSym('=');
   end;
   AcceptKw('type'); // type TNeu = type Integer;
-  ParseType(Node);
+  ParseType(mNode);
   ParseHints;
   ExpectSym(';');
-  FinishNode(Node, Start);
+  FinishNode(mNode, mStart);
 end;
 
 function TDeclarationParser.ParseGenericParams(AParent: TSyntaxNode): Boolean;
@@ -285,104 +285,104 @@ end;
 
 function TDeclarationParser.AttributesBeforeName: Boolean;
 var
-  Delta, Depth: Integer;
-  Token: TPascalToken;
+  mDelta, mDepth: Integer;
+  mToken: TPascalToken;
 begin
-  Delta := 0;
-  while PeekIsSym(Delta, '[') do
+  mDelta := 0;
+  while PeekIsSym(mDelta, '[') do
   begin
-    Depth := 0;
+    mDepth := 0;
     repeat
-      if FIndex + Delta >= Length(FTokens) then
+      if FIndex + mDelta >= Length(FTokens) then
       begin
         Exit(False);
       end;
-      Token := PeekToken(Delta);
-      if Token.IsSymbol('[') then
+      mToken := PeekToken(mDelta);
+      if mToken.IsSymbol('[') then
       begin
-        Inc(Depth);
+        Inc(mDepth);
       end
-      else if Token.IsSymbol(']') then
+      else if mToken.IsSymbol(']') then
       begin
-        Dec(Depth);
+        Dec(mDepth);
       end;
-      Inc(Delta);
-    until Depth = 0;
+      Inc(mDelta);
+    until mDepth = 0;
   end;
-  Token := PeekToken(Delta);
-  Result := (Token.Kind = TPascalTokenKind.Identifier) and not InWords(Token.Text, VisibilityWords);
+  mToken := PeekToken(mDelta);
+  Result := (mToken.Kind = TPascalTokenKind.Identifier) and not InWords(mToken.Text, cVisibilityWords);
 end;
 
 function TDeclarationParser.IsDeclStart: Boolean;
 begin
   // Sichtbarkeit beendet einen var- oder const-Abschnitt in Klassen, ebenso ein Attribut vor einer Methode.
-  Result := (IsSym('[') and AttributesBeforeName) or (IsIdent and not (InWords(Current.Text, VisibilityWords) and
+  Result := (IsSym('[') and AttributesBeforeName) or (IsIdent and not (InWords(Current.Text, cVisibilityWords) and
     not PeekIsSym(1, ':') and not PeekIsSym(1, ',') and not PeekIsSym(1, '=')));
 end;
 
 procedure TDeclarationParser.ParseConstSection(AParent: TSyntaxNode);
 var
-  Start: Integer;
-  Node: TSyntaxNode;
+  mStart: Integer;
+  mNode: TSyntaxNode;
 begin
-  Start := NodeStart;
-  Node := StartNode(TSyntaxKind.ConstSection);
-  Node.Name := LowerCase(Current.Text); // const oder resourcestring
-  AParent.Add(Node);
+  mStart := NodeStart;
+  mNode := StartNode(TSyntaxKind.ConstSection);
+  mNode.Name := LowerCase(Current.Text); // const oder resourcestring
+  AParent.Add(mNode);
   Advance;
   while IsDeclStart do
   begin
     if IsSym('[') then
     begin
-      ParseAttributes(Node);
+      ParseAttributes(mNode);
     end
     else
     begin
-      ParseConstDecl(Node);
+      ParseConstDecl(mNode);
     end;
   end;
-  FinishNode(Node, Start);
+  FinishNode(mNode, mStart);
 end;
 
 procedure TDeclarationParser.ParseConstDecl(AParent: TSyntaxNode);
 var
-  Start: Integer;
-  Node: TSyntaxNode;
+  mStart: Integer;
+  mNode: TSyntaxNode;
 begin
   // Name = Wert; Name: Typ = Wert;
-  Start := NodeStart;
-  Node := StartNode(TSyntaxKind.ConstDecl);
-  AParent.Add(Node);
-  Node.Name := ExpectIdent;
+  mStart := NodeStart;
+  mNode := StartNode(TSyntaxKind.ConstDecl);
+  AParent.Add(mNode);
+  mNode.Name := ExpectIdent;
   if AcceptSym(':') then
   begin
-    ParseType(Node);
+    ParseType(mNode);
     ExpectSym('=');
-    ParseInitializer(Node);
+    ParseInitializer(mNode);
   end
   else
   begin
     ExpectSym('=');
-    ParseExpression(Node);
+    ParseExpression(mNode);
   end;
   ParseHints;
   ExpectSym(';');
-  FinishNode(Node, Start);
+  FinishNode(mNode, mStart);
 end;
 
 procedure TDeclarationParser.ParseInitializer(AParent: TSyntaxNode);
 var
-  Start: Integer;
-  Node: TSyntaxNode;
+  mStart: Integer;
+  mNode: TSyntaxNode;
 begin
   if IsSym('(') and PeekToken(1).IsSymbol(')') then
   begin
-    Start := NodeStart;
-    Node := StartNode(TSyntaxKind.ParenExpr);
-    AParent.Add(Node);
+    mStart := NodeStart;
+    mNode := StartNode(TSyntaxKind.ParenExpr);
+    AParent.Add(mNode);
     Advance;
     Advance;
-    FinishNode(Node, Start);
+    FinishNode(mNode, mStart);
   end
   else
   begin
@@ -392,46 +392,46 @@ end;
 
 procedure TDeclarationParser.ParseVarSection(AParent: TSyntaxNode);
 var
-  Start: Integer;
-  Node: TSyntaxNode;
+  mStart: Integer;
+  mNode: TSyntaxNode;
 begin
-  Start := NodeStart;
-  Node := StartNode(TSyntaxKind.VarSection);
-  Node.Name := LowerCase(Current.Text); // var oder threadvar
-  AParent.Add(Node);
+  mStart := NodeStart;
+  mNode := StartNode(TSyntaxKind.VarSection);
+  mNode.Name := LowerCase(Current.Text); // var oder threadvar
+  AParent.Add(mNode);
   Advance;
   while IsDeclStart do
   begin
     if IsSym('[') then
     begin
-      ParseAttributes(Node);
+      ParseAttributes(mNode);
     end
     else
     begin
-      ParseVarDecl(Node);
+      ParseVarDecl(mNode);
     end;
   end;
-  FinishNode(Node, Start);
+  FinishNode(mNode, mStart);
 end;
 
 procedure TDeclarationParser.ParseVarDecl(AParent: TSyntaxNode);
 var
-  Start: Integer;
-  Node: TSyntaxNode;
-  Names: string;
+  mStart: Integer;
+  mNode: TSyntaxNode;
+  mNames: string;
 begin
   // A, B: Typ; X: Typ = Wert; Y: Typ absolute Z;
-  Start := NodeStart;
-  Node := StartNode(TSyntaxKind.VarDecl);
-  AParent.Add(Node);
-  Names := ExpectIdent;
+  mStart := NodeStart;
+  mNode := StartNode(TSyntaxKind.VarDecl);
+  AParent.Add(mNode);
+  mNames := ExpectIdent;
   while AcceptSym(',') do
   begin
-    Names := Names + ',' + ExpectIdent;
+    mNames := mNames + ',' + ExpectIdent;
   end;
-  Node.Name := Names;
+  mNode.Name := mNames;
   ExpectSym(':');
-  ParseType(Node);
+  ParseType(mNode);
   // X: Boolean platform = False (System.NoErrMsg): Das Hinweiswort darf vor dem Startwert stehen.
   ParseHints;
   if IsIdentText('absolute') then
@@ -439,7 +439,7 @@ begin
     Advance;
     if IsIdent then
     begin
-      ParseExpression(Node);
+      ParseExpression(mNode);
     end
     else
     begin
@@ -454,55 +454,55 @@ begin
   end
   else if AcceptSym('=') then
   begin
-    ParseInitializer(Node);
+    ParseInitializer(mNode);
   end;
   ParseHints;
   ExpectSym(';');
-  FinishNode(Node, Start);
+  FinishNode(mNode, mStart);
 end;
 
 procedure TDeclarationParser.ParseLabelSection(AParent: TSyntaxNode);
 var
-  Start: Integer;
-  Node: TSyntaxNode;
+  mStart: Integer;
+  mNode: TSyntaxNode;
 begin
-  Start := NodeStart;
-  Node := StartNode(TSyntaxKind.LabelSection);
-  AParent.Add(Node);
+  mStart := NodeStart;
+  mNode := StartNode(TSyntaxKind.LabelSection);
+  AParent.Add(mNode);
   Advance; // label
   while not AtEnd and not IsSym(';') and not IsSectionEnd do
   begin
     Advance;
   end;
   ExpectSym(';');
-  FinishNode(Node, Start);
+  FinishNode(mNode, mStart);
 end;
 
 procedure TDeclarationParser.ParseExports(AParent: TSyntaxNode);
 var
-  Start, Depth: Integer;
-  Node: TSyntaxNode;
+  mStart, mDepth: Integer;
+  mNode: TSyntaxNode;
 begin
-  Start := NodeStart;
-  Node := StartNode(TSyntaxKind.ExportsClause);
-  AParent.Add(Node);
+  mStart := NodeStart;
+  mNode := StartNode(TSyntaxKind.ExportsClause);
+  AParent.Add(mNode);
   Advance; // exports
   // Parameterlisten überladener Routinen, z. B. Setze(const A: string; var B: TBytes), enthalten ";" (#973).
-  Depth := 0;
-  while not AtEnd and ((Depth > 0) or (not IsSym(';') and not IsSectionEnd)) do
+  mDepth := 0;
+  while not AtEnd and ((mDepth > 0) or (not IsSym(';') and not IsSectionEnd)) do
   begin
     if IsSym('(') then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if IsSym(')') and (Depth > 0) then
+    else if IsSym(')') and (mDepth > 0) then
     begin
-      Dec(Depth);
+      Dec(mDepth);
     end;
     Advance;
   end;
   ExpectSym(';');
-  FinishNode(Node, Start);
+  FinishNode(mNode, mStart);
 end;
 
 function TDeclarationParser.ParseRoutineHeader(AParent: TSyntaxNode; AKind: TSyntaxKind): TSyntaxNode;
@@ -551,7 +551,7 @@ begin
   mIsOperator := SameWord(Current.Text, 'operator');
   Advance; // procedure, function, constructor, destructor, operator
   // Operatornamen dürfen reservierte Wörter sein: class operator In, And, Or, Xor, Not, Div, Mod, Shl, Shr (#1140).
-  if mIsOperator and (Current.Kind = TPascalTokenKind.Keyword) and InWords(Current.Text, OperatorKeywords) then
+  if mIsOperator and (Current.Kind = TPascalTokenKind.Keyword) and InWords(Current.Text, cOperatorKeywords) then
   begin
     Result := Current.Text;
     Advance;
@@ -700,20 +700,20 @@ end;
 
 procedure TDeclarationParser.ParseDirectives(AParent: TSyntaxNode);
 var
-  Start: Integer;
-  Node: TSyntaxNode;
-  Word: string;
+  mStart: Integer;
+  mNode: TSyntaxNode;
+  mWord: string;
 begin
   // overload; virtual; abstract; external 'dll' name 'x'; message WM_X; ...
   // Ein anderes Wort mit ';' dahinter kann an dieser Stelle nur eine Direktive sein, meist ein Tippfehler
   // (overide;): Es wird ein Directive-Knoten mit dem Wort, die Regel directive-typo meldet es (#1068).
   while IsDirectiveStart or (IsIdent and PeekIsSym(1, ';')) do
   begin
-    Start := NodeStart;
-    Word := LowerCase(Current.Text);
-    Node := StartNode(TSyntaxKind.Directive);
-    Node.Name := Word;
-    AParent.Add(Node);
+    mStart := NodeStart;
+    mWord := LowerCase(Current.Text);
+    mNode := StartNode(TSyntaxKind.Directive);
+    mNode.Name := mWord;
+    AParent.Add(mNode);
     Advance;
     // Argumente der Direktive bis zum Semikolon; "assembler asm" ohne Semikolon (#849).
     while not AtEnd and not IsSym(';') and not IsKw(['begin', 'asm', 'var', 'const', 'type', 'end', 'label']) and
@@ -721,7 +721,7 @@ begin
     begin
       Advance;
     end;
-    FinishNode(Node, Start);
+    FinishNode(mNode, mStart);
     AcceptSym(';');
   end;
 end;
@@ -729,7 +729,7 @@ end;
 procedure TDeclarationParser.ParseHints;
 begin
   // deprecated 'Grund', platform, library, experimental
-  while (IsIdent and InWords(Current.Text, HintWords)) or IsKw('library') do
+  while (IsIdent and InWords(Current.Text, cHintWords)) or IsKw('library') do
   begin
     Advance;
     if Current.Kind = TPascalTokenKind.StringLiteral then

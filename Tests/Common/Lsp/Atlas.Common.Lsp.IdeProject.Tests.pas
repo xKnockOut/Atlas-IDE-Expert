@@ -117,7 +117,7 @@ procedure Notify(ADispatcher: TJsonRpcDispatcher; const AParams: string);
 var
   Message: TJSONObject;
 begin
-  Message := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","method":"' + TLspIdeProject.Method + '","params":' +
+  Message := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","method":"' + TLspIdeProject.cMethod + '","params":' +
     AParams + '}') as TJSONObject;
   try
     ADispatcher.DispatchMessage(Message).Free;

@@ -249,7 +249,7 @@ end;
 procedure ReadAffectedDepth(AReader: TConfigurationReader; AValue: TJsonNode; const AKey: string;
   var ASettings: TServerSettings);
 begin
-  AReader.ExpectInteger(AValue, TTestsSettings.MinAffectedDepth, TTestsSettings.MaxAffectedDepth,
+  AReader.ExpectInteger(AValue, TTestsSettings.cMinAffectedDepth, TTestsSettings.cMaxAffectedDepth,
     cTexts[TProjectOptionsText.AffectedDepthMustBeAWhole].Text, ASettings.Tests.AffectedDepth);
 end;
 

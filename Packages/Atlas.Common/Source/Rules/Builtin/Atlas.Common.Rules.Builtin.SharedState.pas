@@ -139,9 +139,9 @@ type
   end;
 
 const
-  MutatingMethods: array[0..12] of string = ('Add', 'AddObject', 'AddPair', 'AddOrSetValue', 'AddRange', 'Append',
+  cMutatingMethods: array[0..12] of string = ('Add', 'AddObject', 'AddPair', 'AddOrSetValue', 'AddRange', 'Append',
     'Insert', 'Delete', 'Remove', 'Clear', 'Push', 'Enqueue', 'Exchange');
-  LockNames: array[0..6] of string = ('TMonitor', 'Enter', 'Acquire', 'Lock', 'LockList', 'BeginWrite',
+  cLockNames: array[0..6] of string = ('TMonitor', 'Enter', 'Acquire', 'Lock', 'LockList', 'BeginWrite',
     'TInterlocked');
 
 function ShortName(const AName: string): string;
@@ -169,47 +169,47 @@ end;
 
 procedure TSharedState.CollectNames(ANode: TSyntaxNode; var ANames: TArray<string>);
 var
-  Index: Integer;
-  Name: string;
-  Child: TSyntaxNode;
-  Pending: TStack<TSyntaxNode>;
+  mIndex: Integer;
+  mName: string;
+  mChild: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
 begin
   // Iterativ (Bericht M1).
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    for Index := ANode.ChildCount - 1 downto 0 do
+    for mIndex := ANode.ChildCount - 1 downto 0 do
     begin
-      Pending.Push(ANode[Index]);
+      mPending.Push(ANode[mIndex]);
     end;
-    while Pending.Count > 0 do
+    while mPending.Count > 0 do
     begin
-      Child := Pending.Pop;
-      case Child.Kind of
+      mChild := mPending.Pop;
+      case mChild.Kind of
         TSyntaxKind.Parameter, TSyntaxKind.VarDecl, TSyntaxKind.InlineVar, TSyntaxKind.ConstDecl,
         TSyntaxKind.InlineConst:
-          for Name in SplitString(Child.Name, ',') do
+          for mName in SplitString(mChild.Name, ',') do
           begin
-            ANames := ANames + [Trim(Name)];
+            ANames := ANames + [Trim(mName)];
           end;
         TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement:
           // for var I := …
-          if ContainsText(Copy(SourceText(Child), 1, 8), ' var ') then
+          if ContainsText(Copy(SourceText(mChild), 1, 8), ' var ') then
           begin
-            ANames := ANames + [Child.Name];
+            ANames := ANames + [mChild.Name];
           end;
       else
         // Übrige Werte bewusst ohne Wirkung.
       end;
-      if not (Child.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl]) then
+      if not (mChild.Kind in [TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl]) then
       begin
-        for Index := Child.ChildCount - 1 downto 0 do
+        for mIndex := mChild.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Child[Index]);
+          mPending.Push(mChild[mIndex]);
         end;
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
@@ -221,84 +221,84 @@ end;
 
 function TSharedState.Mentions(ANode: TSyntaxNode; const AName: string): Boolean;
 var
-  Index: Integer;
-  Node: TSyntaxNode;
-  Pending: TStack<TSyntaxNode>;
+  mIndex: Integer;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
 begin
   // Iterativ (Bericht M1).
   Result := False;
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ANode);
-    while Pending.Count > 0 do
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      if (Node.Kind = TSyntaxKind.Identifier) and SameText(Node.Name, AName) then
+      mNode := mPending.Pop;
+      if (mNode.Kind = TSyntaxKind.Identifier) and SameText(mNode.Name, AName) then
       begin
         Exit(True);
       end;
-      for Index := Node.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(Node[Index]);
+        mPending.Push(mNode[mIndex]);
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
 function TSharedState.HasLock(ANode: TSyntaxNode): Boolean;
 var
-  Index: Integer;
-  Node: TSyntaxNode;
-  Pending: TStack<TSyntaxNode>;
+  mIndex: Integer;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
 begin
   // Iterativ (Bericht M1).
   Result := False;
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ANode);
-    while Pending.Count > 0 do
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      if (Node.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and MatchText(Node.Name, LockNames) then
+      mNode := mPending.Pop;
+      if (mNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and MatchText(mNode.Name, cLockNames) then
       begin
         Exit(True);
       end;
-      for Index := Node.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        if Node[Index].Kind <> TSyntaxKind.AnonymousMethod then
+        if mNode[mIndex].Kind <> TSyntaxKind.AnonymousMethod then
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
 function TSharedState.Writes(AMethod: TSyntaxNode; ACollections: Boolean): TArray<TSharedWrite>;
 var
-  Own: TArray<string>;
-  Writes_: TArray<TSharedWrite>;
+  mOwn: TArray<string>;
+  mWrites_: TArray<TSharedWrite>;
 
   function Outside(ANode: TSyntaxNode): Boolean;
   begin
     Result := (ANode.Kind = TSyntaxKind.Identifier) and (Pos('.', ANode.Name) = 0) and
-      not MatchText(ANode.Name, Own);
+      not MatchText(ANode.Name, mOwn);
   end;
 
   procedure Add(AKind: TWriteKind; AStatement: TSyntaxNode; const AName, AOperation, AAmount: string);
   var
-    Write: TSharedWrite;
+    mWrite: TSharedWrite;
   begin
-    Write.Kind := AKind;
-    Write.Statement := AStatement;
-    Write.Name := AName;
-    Write.Operation := AOperation;
-    Write.Amount := AAmount;
-    Writes_ := Writes_ + [Write];
+    mWrite.Kind := AKind;
+    mWrite.Statement := AStatement;
+    mWrite.Name := AName;
+    mWrite.Operation := AOperation;
+    mWrite.Amount := AAmount;
+    mWrites_ := mWrites_ + [mWrite];
   end;
 
   /// <summary>AValue ist X op E mit X = AName an Stelle ASelf und E ohne AName.</summary>
@@ -347,7 +347,7 @@ var
   function IsCollectionCall(ACall: TSyntaxNode): Boolean;
   begin
     Result := ACollections and (ACall[0].Kind = TSyntaxKind.MemberAccess) and (ACall[0].ChildCount = 1);
-    Result := Result and MatchText(ACall[0].Name, MutatingMethods) and Outside(ACall[0][0]);
+    Result := Result and MatchText(ACall[0].Name, cMutatingMethods) and Outside(ACall[0][0]);
   end;
 
   procedure VisitCall(ANode: TSyntaxNode);
@@ -388,45 +388,45 @@ var
 
   procedure Visit(ARoot: TSyntaxNode);
   var
-    Index: Integer;
-    Node: TSyntaxNode;
-    Pending: TStack<TSyntaxNode>;
+    mIndex: Integer;
+    mNode: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
   begin
     // Iterativ (Bericht M1).
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ARoot);
-      while Pending.Count > 0 do
+      mPending.Push(ARoot);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        VisitNode(Node);
-        for Index := Node.ChildCount - 1 downto 0 do
+        mNode := mPending.Pop;
+        VisitNode(mNode);
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
           // Verschachtelte anonyme Methoden (Synchronize, Queue) laufen woanders.
-          if Node[Index].Kind <> TSyntaxKind.AnonymousMethod then
+          if mNode[mIndex].Kind <> TSyntaxKind.AnonymousMethod then
           begin
-            Pending.Push(Node[Index]);
+            mPending.Push(mNode[mIndex]);
           end;
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
 var
-  Body: TSyntaxNode;
+  mBody: TSyntaxNode;
 begin
   Result := nil;
-  Body := AMethod.FindChild(TSyntaxKind.Block);
-  if (Body = nil) or HasLock(Body) then
+  mBody := AMethod.FindChild(TSyntaxKind.Block);
+  if (mBody = nil) or HasLock(mBody) then
   begin
     Exit;
   end;
-  Own := OwnNames(AMethod);
-  Writes_ := nil;
-  Visit(Body);
-  Result := Writes_;
+  mOwn := OwnNames(AMethod);
+  mWrites_ := nil;
+  Visit(mBody);
+  Result := mWrites_;
 end;
 
 function TSharedState.DeclaresName(ADecl: TSyntaxNode; const AName: string; var ATypeName: string): Boolean;
@@ -576,100 +576,100 @@ end;
 
 function TSharedState.InterlockedFix(const AWrite: TSharedWrite; const ATypeName: string): TArray<TRuleFix>;
 var
-  Call, LineBreak: string;
-  Edits: TArray<TRuleEdit>;
-  UsesEdit: TRuleEdit;
+  mCall, mLineBreak: string;
+  mEdits: TArray<TRuleEdit>;
+  mUsesEdit: TRuleEdit;
 begin
   Result := nil;
   if not MatchText(ShortName(ATypeName), ['Integer', 'Int64', 'Cardinal', 'LongInt', 'UInt64']) then
   begin
     Exit;
   end;
-  Call := InterlockedCall(AWrite);
-  if Call = '' then
+  mCall := InterlockedCall(AWrite);
+  if mCall = '' then
   begin
     Exit;
   end;
-  Edits := [TRuleEdit.Create(TTextRange.Create(AWrite.Statement.StartPos, AWrite.Statement.EndPos), Call)];
-  LineBreak := TTextLines.LineBreakOf(FContext.Text);
+  mEdits := [TRuleEdit.Create(TTextRange.Create(AWrite.Statement.StartPos, AWrite.Statement.EndPos), mCall)];
+  mLineBreak := TTextLines.LineBreakOf(FContext.Text);
   if not TUsesClauses.IsUsed(TUsesClauses.UsedUnits(FContext.Tree.Tokens), 'System.SyncObjs', FContext.Namespaces) and
-    TUsesClauses.AddUnit(FContext.Tree.Tokens, AWrite.Statement.StartOffset, 'System.SyncObjs', LineBreak, UsesEdit) then
+    TUsesClauses.AddUnit(FContext.Tree.Tokens, AWrite.Statement.StartOffset, 'System.SyncObjs', mLineBreak, mUsesEdit) then
   begin
-    Edits := [UsesEdit] + Edits;
+    mEdits := [mUsesEdit] + mEdits;
   end;
-  Result := [TRuleFix.Create(cTexts[TSharedStateText.UseCall].Fmt([Call]), Edits)];
+  Result := [TRuleFix.Create(cTexts[TSharedStateText.UseCall].Fmt([mCall]), mEdits)];
 end;
 
 function TSharedState.LockFix(const AWrite: TSharedWrite): TArray<TRuleFix>;
 var
-  Lines: TArray<string>;
-  LineBreak, Line, Indent, Inner, Text: string;
-  Statement: TSyntaxNode;
+  mLines: TArray<string>;
+  mLineBreak, mLine, mIndent, mInner, mText: string;
+  mStatement: TSyntaxNode;
 begin
   Result := nil;
-  Statement := AWrite.Statement;
-  Lines := TTextLines.SplitLines(FContext.Text, LineBreak);
-  if (Statement.StartPos.Line <> Statement.EndPos.Line) or (Statement.StartPos.Line > High(Lines)) then
+  mStatement := AWrite.Statement;
+  mLines := TTextLines.SplitLines(FContext.Text, mLineBreak);
+  if (mStatement.StartPos.Line <> mStatement.EndPos.Line) or (mStatement.StartPos.Line > High(mLines)) then
   begin
     Exit;
   end;
-  Line := Lines[Statement.StartPos.Line];
-  if (Trim(Copy(Line, 1, Statement.StartPos.Character)) <> '') or
-    not MatchStr(Trim(Copy(Line, Statement.EndPos.Character + 1, MaxInt)), ['', ';']) then
+  mLine := mLines[mStatement.StartPos.Line];
+  if (Trim(Copy(mLine, 1, mStatement.StartPos.Character)) <> '') or
+    not MatchStr(Trim(Copy(mLine, mStatement.EndPos.Character + 1, MaxInt)), ['', ';']) then
   begin
     Exit;
   end;
-  Indent := TTextLines.IndentOf(Line);
+  mIndent := TTextLines.IndentOf(mLine);
   // Als Zweig von if, while, for, with oder case braucht die Folge ein begin … end.
-  Inner := Indent;
-  if (Statement.Parent <> nil) and not (Statement.Parent.Kind in [TSyntaxKind.Block, TSyntaxKind.TryStatement,
+  mInner := mIndent;
+  if (mStatement.Parent <> nil) and not (mStatement.Parent.Kind in [TSyntaxKind.Block, TSyntaxKind.TryStatement,
     TSyntaxKind.FinallyBlock, TSyntaxKind.RepeatStatement]) then
   begin
-    Inner := Indent + '  ';
+    mInner := mIndent + '  ';
   end;
-  Text := 'System.TMonitor.Enter(' + AWrite.Name + ');' + LineBreak +
-    Inner + 'try' + LineBreak +
-    Inner + '  ' + SourceText(Statement) + ';' + LineBreak +
-    Inner + 'finally' + LineBreak +
-    Inner + '  System.TMonitor.Exit(' + AWrite.Name + ');' + LineBreak +
-    Inner + 'end';
-  if Inner <> Indent then
+  mText := 'System.TMonitor.Enter(' + AWrite.Name + ');' + mLineBreak +
+    mInner + 'try' + mLineBreak +
+    mInner + '  ' + SourceText(mStatement) + ';' + mLineBreak +
+    mInner + 'finally' + mLineBreak +
+    mInner + '  System.TMonitor.Exit(' + AWrite.Name + ');' + mLineBreak +
+    mInner + 'end';
+  if mInner <> mIndent then
   begin
-    Text := 'begin' + LineBreak + Inner + Text + ';' + LineBreak + Indent + 'end';
+    mText := 'begin' + mLineBreak + mInner + mText + ';' + mLineBreak + mIndent + 'end';
   end;
   Result := [TRuleFix.Create(cTexts[TSharedStateText.LockFix].Fmt([AWrite.Name, AWrite.Operation]),
-    [TRuleEdit.Create(TTextRange.Create(Statement.StartPos, Statement.EndPos), Text)])];
+    [TRuleEdit.Create(TTextRange.Create(mStatement.StartPos, mStatement.EndPos), mText)])];
 end;
 
 /// <summary>Ist ANode ein Aufruf AType.AMethod(…) (auch AType.&amp;AMethod und AType.AMethod&lt;T&gt;)?</summary>
 function IsCallOf(ANode: TSyntaxNode; const AType: string; const AMethods: array of string): Boolean;
 var
-  Method: string;
-  Access: TSyntaxNode;
+  mMethod: string;
+  mAccess: TSyntaxNode;
 begin
   Result := False;
   if (ANode.Kind <> TSyntaxKind.Call) or (ANode.ChildCount < 2) then
   begin
     Exit;
   end;
-  Access := ANode[0];
+  mAccess := ANode[0];
   // TTask.Future<Integer>: MemberAccess mit GenericArgs um den eigentlichen Zugriff.
-  if (Access.Kind = TSyntaxKind.MemberAccess) and (Access.ChildCount = 2) and
-    (Access[1].Kind = TSyntaxKind.GenericArgs) then
+  if (mAccess.Kind = TSyntaxKind.MemberAccess) and (mAccess.ChildCount = 2) and
+    (mAccess[1].Kind = TSyntaxKind.GenericArgs) then
   begin
-    Access := Access[0];
+    mAccess := mAccess[0];
   end;
-  if (Access.Kind <> TSyntaxKind.MemberAccess) or (Access.ChildCount = 0) or
-    (Access[0].Kind <> TSyntaxKind.Identifier) then
+  if (mAccess.Kind <> TSyntaxKind.MemberAccess) or (mAccess.ChildCount = 0) or
+    (mAccess[0].Kind <> TSyntaxKind.Identifier) then
   begin
     Exit;
   end;
-  Method := Access.Name;
-  if StartsStr('&', Method) then
+  mMethod := mAccess.Name;
+  if StartsStr('&', mMethod) then
   begin
-    Method := Copy(Method, 2, MaxInt);
+    mMethod := Copy(mMethod, 2, MaxInt);
   end;
-  Result := SameText(ShortName(Access[0].Name), AType) and MatchText(Method, AMethods);
+  Result := SameText(ShortName(mAccess[0].Name), AType) and MatchText(mMethod, AMethods);
 end;
 
 /// <summary>Letztes Argument als anonyme Methode, sonst nil.</summary>
@@ -697,99 +697,99 @@ end;
 
 procedure TParallelForSharedWriteRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  State: TSharedState;
-  SafeTypes: TArray<string>;
+  mState: TSharedState;
+  mSafeTypes: TArray<string>;
 
   procedure Report(AMethod, ARoutine: TSyntaxNode);
   var
-    Write: TSharedWrite;
-    TypeName, Message: string;
-    Fixes: TArray<TRuleFix>;
+    mWrite: TSharedWrite;
+    mTypeName, mMessage: string;
+    mFixes: TArray<TRuleFix>;
   begin
-    for Write in State.Writes(AMethod, True) do
+    for mWrite in mState.Writes(AMethod, True) do
     begin
       // Nur Namen, deren Herkunft sicher ist: Variable der umgebenden Routine, Feld oder globale Variable.
-      if State.Resolve(ARoutine, Write.Name, TypeName) = TNameScope.Unknown then
+      if mState.Resolve(ARoutine, mWrite.Name, mTypeName) = TNameScope.Unknown then
       begin
         Continue;
       end;
-      if Write.Kind = TWriteKind.Collection then
+      if mWrite.Kind = TWriteKind.Collection then
       begin
-        if (TypeName <> '') and MatchText(ShortName(TypeName), SafeTypes) then
+        if (mTypeName <> '') and MatchText(ShortName(mTypeName), mSafeTypes) then
         begin
           Continue;
         end;
-        Message := cTexts[TSharedStateText.ParallelCollection].Fmt([Write.Name, Write.Operation]);
-        Fixes := State.LockFix(Write);
+        mMessage := cTexts[TSharedStateText.ParallelCollection].Fmt([mWrite.Name, mWrite.Operation]);
+        mFixes := mState.LockFix(mWrite);
       end
       else
       begin
-        if MatchStr(Write.Operation, ['+', 'Inc']) then
+        if MatchStr(mWrite.Operation, ['+', 'Inc']) then
         begin
-          Message := cTexts[TSharedStateText.ParallelAdd].Fmt([Write.Name]);
+          mMessage := cTexts[TSharedStateText.ParallelAdd].Fmt([mWrite.Name]);
         end
         else
         begin
-          Message := cTexts[TSharedStateText.ParallelWrite].Fmt([Write.Name]);
+          mMessage := cTexts[TSharedStateText.ParallelWrite].Fmt([mWrite.Name]);
         end;
-        Fixes := State.InterlockedFix(Write, TypeName);
+        mFixes := mState.InterlockedFix(mWrite, mTypeName);
       end;
-      AReport.Add(TTextRange.Create(Write.Statement.StartPos, Write.Statement.EndPos), Message,
-        TRuleConfidence.Medium, Fixes);
+      AReport.Add(TTextRange.Create(mWrite.Statement.StartPos, mWrite.Statement.EndPos), mMessage,
+        TRuleConfidence.Medium, mFixes);
     end;
   end;
 
   procedure Visit(ARoot: TSyntaxNode);
   var
-    Index: Integer;
-    Node, Routine, Method: TSyntaxNode;
-    InLoop: Boolean;
-    Pending, Routines: TStack<TSyntaxNode>;
-    InLoops: TStack<Boolean>;
+    mIndex: Integer;
+    mNode, mRoutine, mMethod: TSyntaxNode;
+    mInLoop: Boolean;
+    mPending, mRoutines: TStack<TSyntaxNode>;
+    mInLoops: TStack<Boolean>;
   begin
     // Iterativ (Bericht M1): zu jedem Knoten auf dem Stapel die umgebende Routine und ob er in einer Schleife liegt.
-    Pending := TStack<TSyntaxNode>.Create;
-    Routines := TStack<TSyntaxNode>.Create;
-    InLoops := TStack<Boolean>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
+    mRoutines := TStack<TSyntaxNode>.Create;
+    mInLoops := TStack<Boolean>.Create;
     try
-      Pending.Push(ARoot);
-      Routines.Push(nil);
-      InLoops.Push(False);
-      while Pending.Count > 0 do
+      mPending.Push(ARoot);
+      mRoutines.Push(nil);
+      mInLoops.Push(False);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        Routine := Routines.Pop;
-        InLoop := InLoops.Pop;
-        if Node.Kind = TSyntaxKind.RoutineDecl then
+        mNode := mPending.Pop;
+        mRoutine := mRoutines.Pop;
+        mInLoop := mInLoops.Pop;
+        if mNode.Kind = TSyntaxKind.RoutineDecl then
         begin
-          Routine := Node;
-          InLoop := False;
+          mRoutine := mNode;
+          mInLoop := False;
         end
-        else if Node.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
+        else if mNode.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
           TSyntaxKind.RepeatStatement] then
         begin
-          InLoop := True;
+          mInLoop := True;
         end
-        else if Node.Kind = TSyntaxKind.Call then
+        else if mNode.Kind = TSyntaxKind.Call then
         begin
-          Method := AnonymousArgument(Node);
-          if (Method <> nil) and (IsCallOf(Node, 'TParallel', ['For']) or
-            (InLoop and IsCallOf(Node, 'TTask', ['Run', 'Create', 'Future']))) then
+          mMethod := AnonymousArgument(mNode);
+          if (mMethod <> nil) and (IsCallOf(mNode, 'TParallel', ['For']) or
+            (mInLoop and IsCallOf(mNode, 'TTask', ['Run', 'Create', 'Future']))) then
           begin
-            Report(Method, Routine);
+            Report(mMethod, mRoutine);
           end;
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
-          Routines.Push(Routine);
-          InLoops.Push(InLoop and (Node.Kind <> TSyntaxKind.AnonymousMethod));
+          mPending.Push(mNode[mIndex]);
+          mRoutines.Push(mRoutine);
+          mInLoops.Push(mInLoop and (mNode.Kind <> TSyntaxKind.AnonymousMethod));
         end;
       end;
     finally
-      InLoops.Free;
-      Routines.Free;
-      Pending.Free;
+      mInLoops.Free;
+      mRoutines.Free;
+      mPending.Free;
     end;
   end;
 
@@ -799,12 +799,12 @@ begin
   begin
     Exit;
   end;
-  SafeTypes := TRuleOptions.Strings(AContext.Options, 'threadSafeTypes', DefaultThreadSafeTypes);
-  State := TSharedState.Create(AContext);
+  mSafeTypes := TRuleOptions.Strings(AContext.Options, 'threadSafeTypes', DefaultThreadSafeTypes);
+  mState := TSharedState.Create(AContext);
   try
     Visit(AContext.Tree.Root);
   finally
-    State.Free;
+    mState.Free;
   end;
 end;
 
@@ -825,59 +825,59 @@ end;
 
 procedure TThreadUnsafeIncrementRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  State: TSharedState;
-  Ancestry: TAncestry;
-  Classes: TArray<string>;
+  mState: TSharedState;
+  mAncestry: TAncestry;
+  mClasses: TArray<string>;
 
   /// <summary>Erbt AOwner von TThread (über Klassen der Unit oder über den Index)?</summary>
   function IsThreadClass(const AOwner: string): Boolean;
   begin
-    Result := MatchText(AOwner, Classes);
+    Result := MatchText(AOwner, mClasses);
     if not Result and (AContext.Index <> nil) then
     begin
-      if Ancestry = nil then
+      if mAncestry = nil then
       begin
-        Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(TRuleDerived.Open(AContext), AContext));
+        mAncestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(TRuleDerived.Open(AContext), AContext));
       end;
-      Result := Ancestry.DescendsFrom(AOwner, 'TThread');
+      Result := mAncestry.DescendsFrom(AOwner, 'TThread');
     end;
   end;
 
   procedure Report(AMethod, ARoutine: TSyntaxNode; AScopes: TNameScopes);
   var
-    Write: TSharedWrite;
-    What, TypeName: string;
-    Verb: TSharedStateText;
+    mWrite: TSharedWrite;
+    mWhat, mTypeName: string;
+    mVerb: TSharedStateText;
   begin
-    for Write in State.Writes(AMethod, False) do
+    for mWrite in mState.Writes(AMethod, False) do
     begin
-      if not (State.Resolve(ARoutine, Write.Name, TypeName) in AScopes) then
+      if not (mState.Resolve(ARoutine, mWrite.Name, mTypeName) in AScopes) then
       begin
         Continue;
       end;
       // Nur Zähler: Inc/Dec und X := X ± 1.
-      if (Write.Kind = TWriteKind.Assign) and not ((Write.Operation <> '') and (Trim(Write.Amount) = '1')) then
+      if (mWrite.Kind = TWriteKind.Assign) and not ((mWrite.Operation <> '') and (Trim(mWrite.Amount) = '1')) then
       begin
         Continue;
       end;
-      Verb := TSharedStateText.CounterUp;
-      if MatchText(Write.Operation, ['Dec', '-']) then
+      mVerb := TSharedStateText.CounterUp;
+      if MatchText(mWrite.Operation, ['Dec', '-']) then
       begin
-        Verb := TSharedStateText.CounterDown;
+        mVerb := TSharedStateText.CounterDown;
       end;
-      What := cTexts[TSharedStateText.IncNotAtomic].Text;
-      if SameText(Write.Operation, 'Dec') then
+      mWhat := cTexts[TSharedStateText.IncNotAtomic].Text;
+      if SameText(mWrite.Operation, 'Dec') then
       begin
-        What := cTexts[TSharedStateText.DecNotAtomic].Text;
+        mWhat := cTexts[TSharedStateText.DecNotAtomic].Text;
       end
-      else if Write.Kind = TWriteKind.Assign then
+      else if mWrite.Kind = TWriteKind.Assign then
       begin
-        What := cTexts[TSharedStateText.NotAtomic].Fmt([Write.Name + ' := ' + Write.Name + ' ' + Write.Operation +
+        mWhat := cTexts[TSharedStateText.NotAtomic].Fmt([mWrite.Name + ' := ' + mWrite.Name + ' ' + mWrite.Operation +
           ' 1']);
       end;
-      AReport.Add(TTextRange.Create(Write.Statement.StartPos, Write.Statement.EndPos),
-        cTexts[Verb].Fmt([Write.Name, What]), TRuleConfidence.Medium,
-        State.InterlockedFix(Write, TypeName));
+      AReport.Add(TTextRange.Create(mWrite.Statement.StartPos, mWrite.Statement.EndPos),
+        cTexts[mVerb].Fmt([mWrite.Name, mWhat]), TRuleConfidence.Medium,
+        mState.InterlockedFix(mWrite, mTypeName));
     end;
   end;
 
@@ -916,51 +916,51 @@ var
 
   procedure Visit(ARoot: TSyntaxNode);
   var
-    Index: Integer;
-    Node, Routine: TSyntaxNode;
-    InLoop: Boolean;
-    Pending, Routines: TStack<TSyntaxNode>;
-    InLoops: TStack<Boolean>;
+    mIndex: Integer;
+    mNode, mRoutine: TSyntaxNode;
+    mInLoop: Boolean;
+    mPending, mRoutines: TStack<TSyntaxNode>;
+    mInLoops: TStack<Boolean>;
   begin
     // Iterativ (Bericht M1): zu jedem Knoten auf dem Stapel die umgebende Routine und ob er in einer Schleife liegt.
-    Pending := TStack<TSyntaxNode>.Create;
-    Routines := TStack<TSyntaxNode>.Create;
-    InLoops := TStack<Boolean>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
+    mRoutines := TStack<TSyntaxNode>.Create;
+    mInLoops := TStack<Boolean>.Create;
     try
-      Pending.Push(ARoot);
-      Routines.Push(nil);
-      InLoops.Push(False);
-      while Pending.Count > 0 do
+      mPending.Push(ARoot);
+      mRoutines.Push(nil);
+      mInLoops.Push(False);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        Routine := Routines.Pop;
-        InLoop := InLoops.Pop;
-        if Node.Kind = TSyntaxKind.RoutineDecl then
+        mNode := mPending.Pop;
+        mRoutine := mRoutines.Pop;
+        mInLoop := mInLoops.Pop;
+        if mNode.Kind = TSyntaxKind.RoutineDecl then
         begin
-          Routine := Node;
-          InLoop := False;
-          VisitRoutine(Node);
+          mRoutine := mNode;
+          mInLoop := False;
+          VisitRoutine(mNode);
         end
-        else if Node.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
+        else if mNode.Kind in [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
           TSyntaxKind.RepeatStatement] then
         begin
-          InLoop := True;
+          mInLoop := True;
         end
-        else if Node.Kind = TSyntaxKind.Call then
+        else if mNode.Kind = TSyntaxKind.Call then
         begin
-          VisitCall(Node, Routine, InLoop);
+          VisitCall(mNode, mRoutine, mInLoop);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
-          Routines.Push(Routine);
-          InLoops.Push(InLoop and (Node.Kind <> TSyntaxKind.AnonymousMethod));
+          mPending.Push(mNode[mIndex]);
+          mRoutines.Push(mRoutine);
+          mInLoops.Push(mInLoop and (mNode.Kind <> TSyntaxKind.AnonymousMethod));
         end;
       end;
     finally
-      InLoops.Free;
-      Routines.Free;
-      Pending.Free;
+      mInLoops.Free;
+      mRoutines.Free;
+      mPending.Free;
     end;
   end;
 
@@ -969,14 +969,14 @@ begin
   begin
     Exit;
   end;
-  Classes := ThreadClasses(AContext.Tree.Root);
-  Ancestry := nil;
-  State := TSharedState.Create(AContext);
+  mClasses := ThreadClasses(AContext.Tree.Root);
+  mAncestry := nil;
+  mState := TSharedState.Create(AContext);
   try
     Visit(AContext.Tree.Root);
   finally
-    State.Free;
-    Ancestry.Free;
+    mState.Free;
+    mAncestry.Free;
   end;
 end;
 

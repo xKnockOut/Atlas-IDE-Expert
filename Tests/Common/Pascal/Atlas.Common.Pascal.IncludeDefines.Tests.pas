@@ -200,7 +200,7 @@ const
     Result := 0;
     for Finding in TFileChecker.CheckText(nil, TServerSettings.Default, 'Ziel.pas', AText, ASource) do
     begin
-      if Finding.RuleId = SyntaxRuleId then
+      if Finding.RuleId = cSyntaxRuleId then
       begin
         Inc(Result);
       end;

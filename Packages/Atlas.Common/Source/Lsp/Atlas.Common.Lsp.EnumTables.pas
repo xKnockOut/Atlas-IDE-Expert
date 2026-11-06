@@ -52,15 +52,15 @@ type
 
   TLspEnumTables = class
   public const
-    ClientCommand = 'atlas.enumTable';
-    ApplyCommand = 'atlas.server.enumTable';
-    SyncClientCommand = 'atlas.enumTablesSync';
-    SyncApplyCommand = 'atlas.server.enumTablesSync';
-    CreateKind = 'refactor.rewrite';
-    RepairKind = 'quickfix';
-    AnnotationId = 'enumTables';
-    AfterTypeName = 'afterType';
-    ImplementationName = 'implementation';
+    cClientCommand = 'atlas.enumTable';
+    cApplyCommand = 'atlas.server.enumTable';
+    cSyncClientCommand = 'atlas.enumTablesSync';
+    cSyncApplyCommand = 'atlas.server.enumTablesSync';
+    cCreateKind = 'refactor.rewrite';
+    cRepairKind = 'quickfix';
+    cAnnotationId = 'enumTables';
+    cAfterTypeName = 'afterType';
+    cImplementationName = 'implementation';
   public
     /// <summary>Die Code-Aktionen an APosition; AResolver hat ATree gepinnt. Der Aufrufer übernimmt die Objekte.
     /// </summary>
@@ -114,7 +114,7 @@ const
 
 const
   /// <summary>Anweisung eines case-Zweigs; die Kinder davor sind Marken.</summary>
-  StatementKinds = [TSyntaxKind.Block, TSyntaxKind.AsmBlock, TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement,
+  cStatementKinds = [TSyntaxKind.Block, TSyntaxKind.AsmBlock, TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement,
     TSyntaxKind.IfStatement, TSyntaxKind.CaseStatement, TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement,
     TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement, TSyntaxKind.WithStatement, TSyntaxKind.TryStatement,
     TSyntaxKind.RaiseStatement, TSyntaxKind.GotoStatement, TSyntaxKind.LabeledStatement, TSyntaxKind.InlineVar,
@@ -122,34 +122,34 @@ const
 
 function Fail(const AMessage: string): EJsonRpcError;
 begin
-  Result := EJsonRpcError.Create(TLspErrorCode.RequestFailed, AMessage);
+  Result := EJsonRpcError.Create(TLspErrorCode.cRequestFailed, AMessage);
 end;
 
 function CommandAction(const ATitle, AKind, ACommand: string; AArguments: TJSONArray): TJSONObject;
 var
-  Command: TJSONObject;
+  mCommand: TJSONObject;
 begin
-  Command := TJSONObject.Create;
-  Command.AddPair('title', ATitle);
-  Command.AddPair('command', ACommand);
-  Command.AddPair('arguments', AArguments);
+  mCommand := TJSONObject.Create;
+  mCommand.AddPair('title', ATitle);
+  mCommand.AddPair('command', ACommand);
+  mCommand.AddPair('arguments', AArguments);
   Result := TJSONObject.Create;
   Result.AddPair('title', ATitle);
   Result.AddPair('kind', AKind);
-  Result.AddPair('command', Command);
+  Result.AddPair('command', mCommand);
 end;
 
 function CreateAction(const ATitle, AUri: string; const ATarget: TEnumTarget; const APlacement: string): TJSONObject;
 var
-  Arguments: TJSONArray;
+  mArguments: TJSONArray;
 begin
-  Arguments := TJSONArray.Create;
-  Arguments.Add(AUri);
-  Arguments.AddElement(TLspPositions.PositionToJson(ATarget.NamePosition));
-  Arguments.Add(TEnumTables.TableName(ATarget.TypeName));
-  Arguments.Add(APlacement);
-  Result := CommandAction(Format(ATitle, [ATarget.TypeName]), TLspEnumTables.CreateKind,
-    TLspEnumTables.ClientCommand, Arguments);
+  mArguments := TJSONArray.Create;
+  mArguments.Add(AUri);
+  mArguments.AddElement(TLspPositions.PositionToJson(ATarget.NamePosition));
+  mArguments.Add(TEnumTables.TableName(ATarget.TypeName));
+  mArguments.Add(APlacement);
+  Result := CommandAction(Format(ATitle, [ATarget.TypeName]), TLspEnumTables.cCreateKind,
+    TLspEnumTables.cClientCommand, mArguments);
 end;
 
 type
@@ -236,65 +236,65 @@ end;
 class function TLspEnumTables.Actions(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
   const AText, AUri: string; const APosition: TTextPosition): TArray<TJSONObject>;
 var
-  Target: TEnumTarget;
-  Table: TEnumTable;
-  Reason, FileName, UnitName: string;
-  Names: TArray<string>;
-  Repair: TEnumTableRepair;
-  Arguments: TJSONArray;
-  Action: TJSONObject;
-  Source: TEnumSource;
+  mTarget: TEnumTarget;
+  mTable: TEnumTable;
+  mReason, mFileName, mUnitName: string;
+  mNames: TArray<string>;
+  mRepair: TEnumTableRepair;
+  mArguments: TJSONArray;
+  mAction: TJSONObject;
+  mSource: TEnumSource;
 begin
   Result := nil;
-  FileName := TDocumentUris.ToPath(AUri);
-  if TEnumTables.Target(ATree, APosition, Target, Reason) then
+  mFileName := TDocumentUris.ToPath(AUri);
+  if TEnumTables.Target(ATree, APosition, mTarget, mReason) then
   begin
-    Result := Result + [CreateAction(TEnumTables.CreateTitle, AUri, Target, AfterTypeName)];
-    if Target.InInterface then
+    Result := Result + [CreateAction(TEnumTables.CreateTitle, AUri, mTarget, cAfterTypeName)];
+    if mTarget.InInterface then
     begin
-      Result := Result + [CreateAction(TEnumTables.CreateImplementationTitle, AUri, Target, ImplementationName)];
+      Result := Result + [CreateAction(TEnumTables.CreateImplementationTitle, AUri, mTarget, cImplementationName)];
     end;
-    Arguments := TJSONArray.Create;
-    Arguments.Add(AUri);
-    Arguments.AddElement(TLspPositions.PositionToJson(Target.NamePosition));
-    Result := Result + [CommandAction(Format(TEnumTables.SyncTitle, [Target.TypeName]), CreateKind,
-      SyncClientCommand, Arguments)];
+    mArguments := TJSONArray.Create;
+    mArguments.Add(AUri);
+    mArguments.AddElement(TLspPositions.PositionToJson(mTarget.NamePosition));
+    Result := Result + [CommandAction(Format(TEnumTables.SyncTitle, [mTarget.TypeName]), cCreateKind,
+      cSyncClientCommand, mArguments)];
     Exit;
   end;
-  Source := TEnumSource.Create(AResolver, ATree, FileName);
-  if not TEnumTables.TableAt(ATree, APosition, Table) or not IndexNames(Source, AIndex, Table, Names, UnitName) or
-    not TEnumTables.Repair(AText, ATree, Table.Value, Names, ValuesOf(Source, Table), Repair) then
+  mSource := TEnumSource.Create(AResolver, ATree, mFileName);
+  if not TEnumTables.TableAt(ATree, APosition, mTable) or not IndexNames(mSource, AIndex, mTable, mNames, mUnitName) or
+    not TEnumTables.Repair(AText, ATree, mTable.Value, mNames, ValuesOf(mSource, mTable), mRepair) then
   begin
     Exit;
   end;
-  Action := TJSONObject.Create;
-  Action.AddPair('title', Repair.Title);
-  Action.AddPair('kind', RepairKind);
-  Action.AddPair('edit', TLspCodeActions.WorkspaceEditJson(AUri, Repair.Edits));
-  Result := Result + [Action];
+  mAction := TJSONObject.Create;
+  mAction.AddPair('title', mRepair.Title);
+  mAction.AddPair('kind', cRepairKind);
+  mAction.AddPair('edit', TLspCodeActions.WorkspaceEditJson(AUri, mRepair.Edits));
+  Result := Result + [mAction];
 end;
 
 function EditsJson(const AUri: string; const AEdits: TArray<TTextEdit>): TJSONObject;
 var
-  Document, Item: TJSONObject;
-  Items: TJSONArray;
-  Edit: TTextEdit;
+  mDocument, mItem: TJSONObject;
+  mItems: TJSONArray;
+  mEdit: TTextEdit;
 begin
-  Document := TJSONObject.Create;
-  Document.AddPair('uri', AUri);
-  Document.AddPair('version', TJSONNull.Create);
-  Items := TJSONArray.Create;
-  for Edit in AEdits do
+  mDocument := TJSONObject.Create;
+  mDocument.AddPair('uri', AUri);
+  mDocument.AddPair('version', TJSONNull.Create);
+  mItems := TJSONArray.Create;
+  for mEdit in AEdits do
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
-    Item.AddPair('newText', Edit.NewText);
-    Item.AddPair('annotationId', TLspEnumTables.AnnotationId);
-    Items.AddElement(Item);
+    mItem := TJSONObject.Create;
+    mItem.AddPair('range', TLspPositions.RangeToJson(mEdit.Range));
+    mItem.AddPair('newText', mEdit.NewText);
+    mItem.AddPair('annotationId', TLspEnumTables.cAnnotationId);
+    mItems.AddElement(mItem);
   end;
   Result := TJSONObject.Create;
-  Result.AddPair('textDocument', Document);
-  Result.AddPair('edits', Items);
+  Result.AddPair('textDocument', mDocument);
+  Result.AddPair('edits', mItems);
 end;
 
 type
@@ -306,33 +306,33 @@ type
 function AnswerJson(const AFiles: TArray<TFileEdits>; const AWarnings: TArray<string>; APlaces: Integer;
   const ALabel, APreview: string): TJSONObject;
 var
-  Item: TFileEdits;
-  Changes, Warnings: TJSONArray;
-  Edit, Annotation, Annotations: TJSONObject;
-  Warning: string;
+  mItem: TFileEdits;
+  mChanges, mWarnings: TJSONArray;
+  mEdit, mAnnotation, mAnnotations: TJSONObject;
+  mWarning: string;
 begin
-  Changes := TJSONArray.Create;
-  for Item in AFiles do
+  mChanges := TJSONArray.Create;
+  for mItem in AFiles do
   begin
-    Changes.AddElement(EditsJson(TDocumentUris.FromPath(Item.FileName), Item.Edits));
+    mChanges.AddElement(EditsJson(TDocumentUris.FromPath(mItem.FileName), mItem.Edits));
   end;
-  Annotation := TJSONObject.Create;
-  Annotation.AddPair('label', ALabel);
-  Annotation.AddPair('needsConfirmation', TJSONBool.Create(True));
-  Annotation.AddPair('description', cTexts[TLspEnumTablesText.PlacesInFiles].Fmt([APlaces, Length(AFiles)]));
-  Annotations := TJSONObject.Create;
-  Annotations.AddPair(TLspEnumTables.AnnotationId, Annotation);
-  Edit := TJSONObject.Create;
-  Edit.AddPair('documentChanges', Changes);
-  Edit.AddPair('changeAnnotations', Annotations);
-  Warnings := TJSONArray.Create;
-  for Warning in AWarnings do
+  mAnnotation := TJSONObject.Create;
+  mAnnotation.AddPair('label', ALabel);
+  mAnnotation.AddPair('needsConfirmation', TJSONBool.Create(True));
+  mAnnotation.AddPair('description', cTexts[TLspEnumTablesText.PlacesInFiles].Fmt([APlaces, Length(AFiles)]));
+  mAnnotations := TJSONObject.Create;
+  mAnnotations.AddPair(TLspEnumTables.cAnnotationId, mAnnotation);
+  mEdit := TJSONObject.Create;
+  mEdit.AddPair('documentChanges', mChanges);
+  mEdit.AddPair('changeAnnotations', mAnnotations);
+  mWarnings := TJSONArray.Create;
+  for mWarning in AWarnings do
   begin
-    Warnings.Add(Warning);
+    mWarnings.Add(mWarning);
   end;
   Result := TJSONObject.Create;
-  Result.AddPair('edit', Edit);
-  Result.AddPair('warnings', Warnings);
+  Result.AddPair('edit', mEdit);
+  Result.AddPair('warnings', mWarnings);
   Result.AddPair('places', TJSONNumber.Create(APlaces));
   Result.AddPair('files', TJSONNumber.Create(Length(AFiles)));
   Result.AddPair('preview', APreview);
@@ -341,13 +341,13 @@ end;
 /// <summary>Stelle der neuen Tabelle zum Namen APlacement; EJsonRpcError bei unbekanntem Namen.</summary>
 function PlacementOf(const APlacement: string): TEnumTablePlacement;
 begin
-  if SameText(APlacement, TLspEnumTables.AfterTypeName) then
+  if SameText(APlacement, TLspEnumTables.cAfterTypeName) then
   begin
     Exit(TEnumTablePlacement.AfterType);
   end;
-  if not SameText(APlacement, TLspEnumTables.ImplementationName) then
+  if not SameText(APlacement, TLspEnumTables.cImplementationName) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TLspEnumTablesText.UnknownPlace].Fmt([
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TLspEnumTablesText.UnknownPlace].Fmt([
       APlacement]));
   end;
   Result := TEnumTablePlacement.InImplementation;
@@ -459,7 +459,7 @@ begin
     begin
       CheckRange(AItem[mLabel]);
     end
-    else if not (AItem[mLabel].Kind in StatementKinds) then
+    else if not (AItem[mLabel].Kind in cStatementKinds) then
     begin
       Check(AItem[mLabel]);
     end;

@@ -119,9 +119,9 @@ type
 
   TBulkFix = class
   public const
-    MaxPasses = 3;
+    cMaxPasses = 3;
     /// <summary>Kontextzeilen im vereinigten Diff.</summary>
-    DiffContext = 3;
+    cDiffContext = 3;
   public
     /// <summary>Die eine sichere Korrektur von AFinding; sonst False und der Grund in ASkip.</summary>
     class function SafeFixOf(const AFinding: TRuleFinding; const AOptions: TBulkFixOptions; out AFix: TRuleFix;
@@ -704,7 +704,7 @@ begin
   Result.Lines := TBulkFixLineMap.Identity;
   mText := AText;
   mLines := TBulkFixLineMap.Identity;
-  for mPass := 1 to MaxPasses do
+  for mPass := 1 to cMaxPasses do
   begin
     mCandidates := CandidatesOf(ACheck(mText, mLines), AOptions, mPass = 1, Result.Skipped);
     if mCandidates = nil then
@@ -715,7 +715,7 @@ begin
     mLines := mLines.After(TLineTable.Build(mText).LineCount, mTaken);
     mText := TTextChanges.Apply(mText, mTaken);
     Result.Passes := mPass;
-    if (mDeferred > 0) and (mPass = MaxPasses) then
+    if (mDeferred > 0) and (mPass = cMaxPasses) then
     begin
       Inc(Result.Skipped[TBulkFixSkip.Conflict], mDeferred);
     end;
@@ -743,7 +743,7 @@ begin
     Exit('');
   end;
   Result := string.Join(sLineBreak, TTextDiff.Unified('a/' + ADisplayName, 'b/' + ADisplayName,
-    TTextLines.SplitLines(AFile.OldText), TTextLines.SplitLines(AFile.NewText), DiffContext)) + sLineBreak;
+    TTextLines.SplitLines(AFile.OldText), TTextLines.SplitLines(AFile.NewText), cDiffContext)) + sLineBreak;
 end;
 
 /// <summary>Zeile "Übersprungen: …"; '' ohne übersprungene Treffer.</summary>

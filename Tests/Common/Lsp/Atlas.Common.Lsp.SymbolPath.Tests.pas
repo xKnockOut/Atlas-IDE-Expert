@@ -151,9 +151,9 @@ begin
   Params := ParamsOf('{"from":"uA","to":"uC"}');
   try
     Request := TLspSymbolPath.ReadRequest(Params);
-    Assert.IsTrue(Request.Via = AllSymbolPathEdges);
+    Assert.IsTrue(Request.Via = cAllSymbolPathEdges);
     Assert.IsFalse(Request.ThroughLibrary);
-    Assert.AreEqual(TSymbolPathRequest.DefaultSteps, Request.MaxSteps);
+    Assert.AreEqual(TSymbolPathRequest.cDefaultSteps, Request.MaxSteps);
     Assert.IsFalse(Request.All);
   finally
     Params.Free;

@@ -64,10 +64,10 @@ type
   TPublishedMembers = class
   public const
     /// <summary>Ab so vielen Einträgen werden nur noch Namen je Klasse gezeigt.</summary>
-    CompactLimit = 40;
-    MaxDepth = 32;
+    cCompactLimit = 40;
+    cMaxDepth = 32;
     /// <summary>Signatur, wenn der Ereignistyp nicht im Index steht.</summary>
-    NotifyTail = '(Sender: TObject)';
+    cNotifyTail = '(Sender: TObject)';
     /// <summary>Alle published-Mitglieder, abgeleitete Klassen zuerst.</summary>
     class function Collect(const AIndex: ISymbolIndex; const AClassName: string;
       const AReadText: TMemberReadText): TArray<TPublishedMember>; static;
@@ -123,11 +123,11 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  BooleanTypes: array[0..3] of string = ('Boolean', 'ByteBool', 'WordBool', 'LongBool');
-  IntegerTypes: array[0..15] of string = ('Integer', 'Cardinal', 'ShortInt', 'SmallInt', 'LongInt', 'Int64', 'Byte',
+  cBooleanTypes: array[0..3] of string = ('Boolean', 'ByteBool', 'WordBool', 'LongBool');
+  cIntegerTypes: array[0..15] of string = ('Integer', 'Cardinal', 'ShortInt', 'SmallInt', 'LongInt', 'Int64', 'Byte',
     'Word', 'LongWord', 'UInt64', 'NativeInt', 'NativeUInt', 'Int8', 'Int16', 'Int32', 'UInt32');
   /// <summary>Höchstens so viele Aliase folgt die Ereigniserkennung.</summary>
-  MaxAliases = 8;
+  cMaxAliases = 8;
 
 function ShortName(const AName: string): string;
 begin
@@ -141,13 +141,13 @@ end;
 
 function FindClass(const AIndex: ISymbolIndex; const AName: string; out ALocation: TSymbolLocation): Boolean;
 var
-  Location: TSymbolLocation;
+  mLocation: TSymbolLocation;
 begin
-  for Location in AIndex.FindSymbols(ShortName(AName)) do
+  for mLocation in AIndex.FindSymbols(ShortName(AName)) do
   begin
-    if (Location.Symbol.Kind = TIndexSymbolKind.ClassType) and (Location.Symbol.Container = '') then
+    if (mLocation.Symbol.Kind = TIndexSymbolKind.ClassType) and (mLocation.Symbol.Container = '') then
     begin
-      ALocation := Location;
+      ALocation := mLocation;
       Exit(True);
     end;
   end;
@@ -156,20 +156,20 @@ end;
 
 function FindTypeDecl(ANode: TSyntaxNode; const AName: string): TSyntaxNode;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(ANode.Name, AName) and
     (ANode.FindChild(TSyntaxKind.ClassType) <> nil) then
   begin
     Exit(ANode);
   end;
-  for Index := 0 to ANode.ChildCount - 1 do
+  for mIndex := 0 to ANode.ChildCount - 1 do
   begin
-    if ANode.Children[Index].Kind in [TSyntaxKind.UnitFile, TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile,
+    if ANode.Children[mIndex].Kind in [TSyntaxKind.UnitFile, TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile,
       TSyntaxKind.PackageFile, TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection,
       TSyntaxKind.TypeSection, TSyntaxKind.TypeDecl] then
     begin
-      Result := FindTypeDecl(ANode.Children[Index], AName);
+      Result := FindTypeDecl(ANode.Children[mIndex], AName);
       if Result <> nil then
       begin
         Exit;
@@ -182,19 +182,19 @@ end;
 /// <summary>Index des passenden ";" auf oberster Klammerebene ab AStart.</summary>
 function DeclarationEnd(const AText: string; AStart: Integer): Integer;
 var
-  Depth: Integer;
+  mDepth: Integer;
 begin
-  Depth := 0;
+  mDepth := 0;
   Result := AStart;
   while Result <= Length(AText) do
   begin
     case AText[Result] of
       '(', '[':
-        Inc(Depth);
+        Inc(mDepth);
       ')', ']':
-        Dec(Depth);
+        Dec(mDepth);
       ';':
-        if Depth = 0 then
+        if mDepth = 0 then
         begin
           Exit;
         end;
@@ -221,44 +221,44 @@ type
 /// <summary>Bezeichner auf oberster Klammerebene ab AStart, ohne Strings.</summary>
 function TopWords(const AText: string; AStart: Integer): TArray<TWord>;
 var
-  Index, Depth, First: Integer;
-  Item: TWord;
+  mIndex, mDepth, mFirst: Integer;
+  mItem: TWord;
 begin
   Result := nil;
-  Depth := 0;
-  Index := AStart;
-  while Index <= Length(AText) do
+  mDepth := 0;
+  mIndex := AStart;
+  while mIndex <= Length(AText) do
   begin
-    case AText[Index] of
+    case AText[mIndex] of
       '(', '[':
-        Inc(Depth);
+        Inc(mDepth);
       ')', ']':
-        Dec(Depth);
+        Dec(mDepth);
       '''':
         begin
-          Inc(Index);
-          while (Index <= Length(AText)) and (AText[Index] <> '''') do
+          Inc(mIndex);
+          while (mIndex <= Length(AText)) and (AText[mIndex] <> '''') do
           begin
-            Inc(Index);
+            Inc(mIndex);
           end;
         end;
       'A'..'Z', 'a'..'z', '_':
         begin
-          First := Index;
-          while (Index < Length(AText)) and CharInSet(AText[Index + 1], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+          mFirst := mIndex;
+          while (mIndex < Length(AText)) and CharInSet(AText[mIndex + 1], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
           begin
-            Inc(Index);
+            Inc(mIndex);
           end;
-          if Depth = 0 then
+          if mDepth = 0 then
           begin
-            Item.Text := Copy(AText, First, Index - First + 1);
-            Item.Start := First;
-            Item.Stop := Index + 1;
-            Result := Result + [Item];
+            mItem.Text := Copy(AText, mFirst, mIndex - mFirst + 1);
+            mItem.Start := mFirst;
+            mItem.Stop := mIndex + 1;
+            Result := Result + [mItem];
           end;
         end;
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
 end;
 
@@ -272,71 +272,71 @@ type
   end;
 
 const
-  SpecifierWords: array[0..9] of string = ('read', 'write', 'stored', 'default', 'nodefault', 'implements', 'index',
+  cSpecifierWords: array[0..9] of string = ('read', 'write', 'stored', 'default', 'nodefault', 'implements', 'index',
     'readonly', 'writeonly', 'dispid');
 
 /// <summary>default, nodefault und stored aus "property Name…: Typ read … stored … default …; default;".</summary>
 function ReadSpecifiers(const ADeclaration, AName: string): TSpecifiers;
 var
-  Words: TArray<TWord>;
-  Index, Next, Stop, Start, Finish: Integer;
-  Keyword, Value: string;
+  mWords: TArray<TWord>;
+  mIndex, mNext, mStop, mStart, mFinish: Integer;
+  mKeyword, mValue: string;
 begin
   Result := Default(TSpecifiers);
   // Ab dem Namen: "Default" als Property-Name zählt nicht als Angabe.
-  Start := Pos(LowerCase(AName), LowerCase(ADeclaration));
-  if Start = 0 then
+  mStart := Pos(LowerCase(AName), LowerCase(ADeclaration));
+  if mStart = 0 then
   begin
-    Start := 1;
+    mStart := 1;
   end;
-  Inc(Start, Length(AName));
-  Stop := DeclarationEnd(ADeclaration, Start);
-  Words := TopWords(Copy(ADeclaration, 1, Stop - 1), Start);
-  for Index := 0 to High(Words) do
+  Inc(mStart, Length(AName));
+  mStop := DeclarationEnd(ADeclaration, mStart);
+  mWords := TopWords(Copy(ADeclaration, 1, mStop - 1), mStart);
+  for mIndex := 0 to High(mWords) do
   begin
-    Keyword := LowerCase(Words[Index].Text);
-    if Keyword = 'nodefault' then
+    mKeyword := LowerCase(mWords[mIndex].Text);
+    if mKeyword = 'nodefault' then
     begin
       Result.DefaultKind := TPublishedDefaultKind.NoDefault;
       Continue;
     end;
-    if (Keyword <> 'default') and (Keyword <> 'stored') then
+    if (mKeyword <> 'default') and (mKeyword <> 'stored') then
     begin
       Continue;
     end;
     // Wert bis zur nächsten Angabe oder zum Ende.
-    Next := Index + 1;
-    while (Next <= High(Words)) and (IndexText(Words[Next].Text, SpecifierWords) < 0) do
+    mNext := mIndex + 1;
+    while (mNext <= High(mWords)) and (IndexText(mWords[mNext].Text, cSpecifierWords) < 0) do
     begin
-      Inc(Next);
+      Inc(mNext);
     end;
-    Finish := Stop;
-    if Next <= High(Words) then
+    mFinish := mStop;
+    if mNext <= High(mWords) then
     begin
-      Finish := Words[Next].Start;
+      mFinish := mWords[mNext].Start;
     end;
-    Value := Trim(Copy(ADeclaration, Words[Index].Stop, Finish - Words[Index].Stop));
-    if Keyword = 'stored' then
+    mValue := Trim(Copy(ADeclaration, mWords[mIndex].Stop, mFinish - mWords[mIndex].Stop));
+    if mKeyword = 'stored' then
     begin
-      Result.Stored := Value;
+      Result.Stored := mValue;
     end
     else
     begin
       Result.DefaultKind := TPublishedDefaultKind.Explicit;
-      Result.DefaultValue := Value;
+      Result.DefaultValue := mValue;
     end;
   end;
-  Value := Trim(Copy(ADeclaration, Stop + 1, MaxInt));
-  Result.ArrayDefault := SameText(Value, 'default;') or SameText(Value, 'default');
+  mValue := Trim(Copy(ADeclaration, mStop + 1, MaxInt));
+  Result.ArrayDefault := SameText(mValue, 'default;') or SameText(mValue, 'default');
 end;
 
 /// <summary>Text der Typdeklaration nach dem Namen bis zum ";" ("= procedure(Sender: TObject) of object").</summary>
 function TypeDeclaration(const AIndex: ISymbolIndex; const AReadText: TMemberReadText; const ATypeName: string;
   out AKind: TIndexSymbolKind; out ADeclaration: string): Boolean;
 var
-  Location: TSymbolLocation;
-  Text: string;
-  Start: Integer;
+  mLocation: TSymbolLocation;
+  mText: string;
+  mStart: Integer;
 begin
   ADeclaration := '';
   AKind := TIndexSymbolKind.TypeAlias;
@@ -344,16 +344,16 @@ begin
   begin
     Exit(False);
   end;
-  for Location in AIndex.FindSymbols(ShortName(ATypeName)) do
+  for mLocation in AIndex.FindSymbols(ShortName(ATypeName)) do
   begin
-    if (Location.Symbol.Container = '') and (Location.Symbol.Kind in [TIndexSymbolKind.TypeAlias,
+    if (mLocation.Symbol.Container = '') and (mLocation.Symbol.Kind in [TIndexSymbolKind.TypeAlias,
       TIndexSymbolKind.EnumType, TIndexSymbolKind.ClassType, TIndexSymbolKind.RecordType,
-      TIndexSymbolKind.InterfaceType, TIndexSymbolKind.ObjectType]) and AReadText(Location.FileName, Text) then
+      TIndexSymbolKind.InterfaceType, TIndexSymbolKind.ObjectType]) and AReadText(mLocation.FileName, mText) then
     begin
       // 1-basierter Index im Text; Zeichen hinter dem Zeilenende zählen als Zeilenende.
-      Start := TLineTable.Build(Text).OffsetAt(Location.Symbol.SelectionRange.EndPos) + 1;
-      ADeclaration := Trim(Copy(Text, Start, DeclarationEnd(Text, Start) - Start));
-      AKind := Location.Symbol.Kind;
+      mStart := TLineTable.Build(mText).OffsetAt(mLocation.Symbol.SelectionRange.EndPos) + 1;
+      ADeclaration := Trim(Copy(mText, mStart, DeclarationEnd(mText, mStart) - mStart));
+      AKind := mLocation.Symbol.Kind;
       Exit(True);
     end;
   end;
@@ -363,68 +363,68 @@ end;
 /// <summary>"= TNotifyEvent" bzw. "= type Vcl.Controls.TNotifyEvent" → Zielname; '' bei anderem Text.</summary>
 function AliasTarget(const ADeclaration: string): string;
 var
-  Text: string;
-  Index: Integer;
+  mText: string;
+  mIndex: Integer;
 begin
   Result := '';
-  Text := Trim(ADeclaration);
-  if not StartsText('=', Text) then
+  mText := Trim(ADeclaration);
+  if not StartsText('=', mText) then
   begin
     Exit;
   end;
-  Text := Trim(Copy(Text, 2, MaxInt));
-  if StartsText('type ', Text) then
+  mText := Trim(Copy(mText, 2, MaxInt));
+  if StartsText('type ', mText) then
   begin
-    Text := Trim(Copy(Text, 6, MaxInt));
+    mText := Trim(Copy(mText, 6, MaxInt));
   end;
-  for Index := 1 to Length(Text) do
+  for mIndex := 1 to Length(mText) do
   begin
-    if not CharInSet(Text[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_', '.']) then
+    if not CharInSet(mText[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '_', '.']) then
     begin
       Exit;
     end;
   end;
-  Result := Text;
+  Result := mText;
 end;
 
 class function TPublishedMembers.IsEventType(const AIndex: ISymbolIndex; const AReadText: TMemberReadText;
   const ATypeName: string): Boolean;
 var
-  Name, Declaration, Lower: string;
-  Kind: TIndexSymbolKind;
-  Step: Integer;
+  mName, mDeclaration, mLower: string;
+  mKind: TIndexSymbolKind;
+  mStep: Integer;
 begin
-  Name := ATypeName;
-  for Step := 1 to MaxAliases do
+  mName := ATypeName;
+  for mStep := 1 to cMaxAliases do
   begin
-    if (Name = '') or not TypeDeclaration(AIndex, AReadText, Name, Kind, Declaration) then
+    if (mName = '') or not TypeDeclaration(AIndex, AReadText, mName, mKind, mDeclaration) then
     begin
       Break;
     end;
-    if Kind <> TIndexSymbolKind.TypeAlias then
+    if mKind <> TIndexSymbolKind.TypeAlias then
     begin
       Exit(False);
     end;
-    Lower := LowerCase(Declaration);
-    if EndsText('of object', Lower) or StartsText('reference to', Trim(Copy(Lower, 2, MaxInt))) then
+    mLower := LowerCase(mDeclaration);
+    if EndsText('of object', mLower) or StartsText('reference to', Trim(Copy(mLower, 2, MaxInt))) then
     begin
       Exit(True);
     end;
-    Name := AliasTarget(Declaration);
+    mName := AliasTarget(mDeclaration);
   end;
   // Typ nicht im Index (VCL ohne Quellen): nur das bekannte TNotifyEvent.
-  Result := (Name <> '') and SameText(ShortName(Name), 'TNotifyEvent');
+  Result := (mName <> '') and SameText(ShortName(mName), 'TNotifyEvent');
 end;
 
 /// <summary>Anfangswert eines eingebauten Typs: False oder 0; '' sonst.</summary>
 function BuiltinDefault(const AName: string): string;
 begin
   Result := '';
-  if IndexText(ShortName(AName), BooleanTypes) >= 0 then
+  if IndexText(ShortName(AName), cBooleanTypes) >= 0 then
   begin
     Result := 'False';
   end
-  else if IndexText(ShortName(AName), IntegerTypes) >= 0 then
+  else if IndexText(ShortName(AName), cIntegerTypes) >= 0 then
   begin
     Result := '0';
   end;
@@ -453,7 +453,7 @@ var
 begin
   Result := '';
   mName := ATypeName;
-  for mStep := 0 to MaxAliases do
+  for mStep := 0 to cMaxAliases do
   begin
     Result := BuiltinDefault(mName);
     if (Result <> '') or (mName = '') or not TypeDeclaration(AIndex, AReadText, mName, mKind, mDeclaration) then
@@ -483,42 +483,42 @@ type
 procedure ReadProperties(AClass: TSyntaxNode; const AText: string; AArrays: Boolean; ANames: TList<string>;
   AInfos: TDictionary<string, TPropertyInfo>; ADeclarations: TDictionary<string, string>);
 var
-  Index: Integer;
-  Child, TypeNode: TSyntaxNode;
-  InPublished: Boolean;
-  Info: TPropertyInfo;
-  Key, Declaration: string;
+  mIndex: Integer;
+  mChild, mTypeNode: TSyntaxNode;
+  mInPublished: Boolean;
+  mInfo: TPropertyInfo;
+  mKey, mDeclaration: string;
 begin
-  InPublished := True;
-  for Index := 0 to AClass.ChildCount - 1 do
+  mInPublished := True;
+  for mIndex := 0 to AClass.ChildCount - 1 do
   begin
-    Child := AClass.Children[Index];
-    if Child.Kind = TSyntaxKind.Visibility then
+    mChild := AClass.Children[mIndex];
+    if mChild.Kind = TSyntaxKind.Visibility then
     begin
-      InPublished := SameText(Child.Name, 'published');
+      mInPublished := SameText(mChild.Name, 'published');
     end
-    else if (Child.Kind = TSyntaxKind.PropertyDecl) and
-      ((Child.FindChild(TSyntaxKind.Parameters) = nil) = not AArrays) then
+    else if (mChild.Kind = TSyntaxKind.PropertyDecl) and
+      ((mChild.FindChild(TSyntaxKind.Parameters) = nil) = not AArrays) then
     begin
-      Key := LowerCase(Child.Name);
-      if AInfos.ContainsKey(Key) then
+      mKey := LowerCase(mChild.Name);
+      if AInfos.ContainsKey(mKey) then
       begin
         Continue;
       end;
-      TypeNode := Child.FindChild(TSyntaxKind.TypeReference);
-      Info.TypeName := '';
-      if TypeNode <> nil then
+      mTypeNode := mChild.FindChild(TSyntaxKind.TypeReference);
+      mInfo.TypeName := '';
+      if mTypeNode <> nil then
       begin
-        Info.TypeName := TypeNode.Name;
+        mInfo.TypeName := mTypeNode.Name;
       end;
-      Declaration := Copy(AText, Child.StartOffset + 1, Child.EndOffset - Child.StartOffset);
-      Info.Specifiers := ReadSpecifiers(Declaration, Child.Name);
-      Info.IsPublished := InPublished;
-      ANames.Add(Child.Name);
-      AInfos.Add(Key, Info);
+      mDeclaration := Copy(AText, mChild.StartOffset + 1, mChild.EndOffset - mChild.StartOffset);
+      mInfo.Specifiers := ReadSpecifiers(mDeclaration, mChild.Name);
+      mInfo.IsPublished := mInPublished;
+      ANames.Add(mChild.Name);
+      AInfos.Add(mKey, mInfo);
       if ADeclarations <> nil then
       begin
-        ADeclarations.AddOrSetValue(Key, Declaration);
+        ADeclarations.AddOrSetValue(mKey, mDeclaration);
       end;
     end;
   end;
@@ -694,7 +694,7 @@ var
 begin
   mClassName := AClassName;
   mDepth := 0;
-  while (mClassName <> '') and (mDepth < TPublishedMembers.MaxDepth) and
+  while (mClassName <> '') and (mDepth < TPublishedMembers.cMaxDepth) and
     FindClass(FIndex, mClassName, mLocation) and Assigned(FReadText) and FReadText(mLocation.FileName, mText) do
   begin
     Inc(mDepth);
@@ -727,112 +727,113 @@ begin
   end;
 end;
 
-/// <summary>"property Strings[Index: Integer]: string read Get; default;" → "Strings[Index: Integer]: string".</summary>
+/// <summary>"property Strings[Index: Integer]: string read Get; default;" → "Strings[Index: Integer]:
+/// string".</summary>
 function DefaultPropertyText(const ADeclaration: string): string;
 var
-  Words: TArray<TWord>;
-  Item: TWord;
-  Stop: Integer;
+  mWords: TArray<TWord>;
+  mItem: TWord;
+  mStop: Integer;
 begin
   Result := Trim(ADeclaration);
   if StartsText('property', Result) then
   begin
     Result := Trim(Copy(Result, Length('property') + 1, MaxInt));
   end;
-  Stop := DeclarationEnd(Result, 1);
-  Words := TopWords(Copy(Result, 1, Stop - 1), 1);
-  for Item in Words do
+  mStop := DeclarationEnd(Result, 1);
+  mWords := TopWords(Copy(Result, 1, mStop - 1), 1);
+  for mItem in mWords do
   begin
-    if IndexText(Item.Text, SpecifierWords) >= 0 then
+    if IndexText(mItem.Text, cSpecifierWords) >= 0 then
     begin
-      Stop := Item.Start;
+      mStop := mItem.Start;
       Break;
     end;
   end;
-  Result := Trim(Copy(Result, 1, Stop - 1));
+  Result := Trim(Copy(Result, 1, mStop - 1));
 end;
 
 class function TPublishedMembers.DefaultProperty(const AIndex: ISymbolIndex; const AClassName: string;
   const AReadText: TMemberReadText): string;
 var
-  Location: TSymbolLocation;
-  ClassName, Text, Name: string;
-  Depth: Integer;
-  Tree: TSyntaxTree;
-  Decl: TSyntaxNode;
-  Names: TList<string>;
-  Infos: TDictionary<string, TPropertyInfo>;
-  Declarations: TDictionary<string, string>;
+  mLocation: TSymbolLocation;
+  mClassName, mText, mName: string;
+  mDepth: Integer;
+  mTree: TSyntaxTree;
+  mDecl: TSyntaxNode;
+  mNames: TList<string>;
+  mInfos: TDictionary<string, TPropertyInfo>;
+  mDeclarations: TDictionary<string, string>;
 begin
   Result := '';
-  Names := TList<string>.Create;
-  Infos := TDictionary<string, TPropertyInfo>.Create;
-  Declarations := TDictionary<string, string>.Create;
+  mNames := TList<string>.Create;
+  mInfos := TDictionary<string, TPropertyInfo>.Create;
+  mDeclarations := TDictionary<string, string>.Create;
   try
-    ClassName := AClassName;
-    Depth := 0;
-    while (ClassName <> '') and (Depth < MaxDepth) and FindClass(AIndex, ClassName, Location) and
-      Assigned(AReadText) and AReadText(Location.FileName, Text) do
+    mClassName := AClassName;
+    mDepth := 0;
+    while (mClassName <> '') and (mDepth < cMaxDepth) and FindClass(AIndex, mClassName, mLocation) and
+      Assigned(AReadText) and AReadText(mLocation.FileName, mText) do
     begin
-      Inc(Depth);
-      Tree := TSyntaxTreeCache.Parse(Text);
+      Inc(mDepth);
+      mTree := TSyntaxTreeCache.Parse(mText);
       try
-        Decl := FindTypeDecl(Tree.Root, Location.Symbol.Name);
-        if Decl = nil then
+        mDecl := FindTypeDecl(mTree.Root, mLocation.Symbol.Name);
+        if mDecl = nil then
         begin
           Break;
         end;
-        Names.Clear;
-        Infos.Clear;
-        Declarations.Clear;
-        ReadProperties(Decl.FindChild(TSyntaxKind.ClassType), Text, True, Names, Infos, Declarations);
+        mNames.Clear;
+        mInfos.Clear;
+        mDeclarations.Clear;
+        ReadProperties(mDecl.FindChild(TSyntaxKind.ClassType), mText, True, mNames, mInfos, mDeclarations);
       finally
-        Tree.Free;
+        mTree.Free;
       end;
-      for Name in Names do
+      for mName in mNames do
       begin
-        if Infos[LowerCase(Name)].Specifiers.ArrayDefault then
+        if mInfos[LowerCase(mName)].Specifiers.ArrayDefault then
         begin
-          Exit(DefaultPropertyText(Declarations[LowerCase(Name)]));
+          Exit(DefaultPropertyText(mDeclarations[LowerCase(mName)]));
         end;
       end;
-      if Length(Location.Symbol.Ancestors) = 0 then
+      if Length(mLocation.Symbol.Ancestors) = 0 then
       begin
         Break;
       end;
-      ClassName := Location.Symbol.Ancestors[0];
+      mClassName := mLocation.Symbol.Ancestors[0];
     end;
   finally
-    Declarations.Free;
-    Infos.Free;
-    Names.Free;
+    mDeclarations.Free;
+    mInfos.Free;
+    mNames.Free;
   end;
 end;
 
 /// <summary>"procedure(Sender: TObject) of object" → "(Sender: TObject)".</summary>
 function TailOfType(const ADeclaration: string): string;
 var
-  Lower: string;
-  Start, Stop: Integer;
+  mLower: string;
+  mStart, mStop: Integer;
 begin
   Result := '';
-  Lower := LowerCase(ADeclaration);
-  Start := Pos('procedure', Lower);
-  if Start > 0 then
+  mLower := LowerCase(ADeclaration);
+  mStart := Pos('procedure', mLower);
+  if mStart > 0 then
   begin
-    Inc(Start, Length('procedure'));
+    Inc(mStart, Length('procedure'));
   end
   else
   begin
-    Start := Pos('function', Lower);
-    if Start = 0 then
+    mStart := Pos('function', mLower);
+    if mStart = 0 then
     begin
       Exit;
     end;
-    Inc(Start, Length('function'));
+    Inc(mStart, Length('function'));
   end;
-  Stop := DeclarationEnd(ADeclaration, Start);
-  Result := Trim(Copy(ADeclaration, Start, Stop - Start));
+  mStop := DeclarationEnd(ADeclaration, mStart);
+  Result := Trim(Copy(ADeclaration, mStart, mStop - mStart));
   if EndsText('of object', Result) then
   begin
     Result := Trim(Copy(Result, 1, Length(Result) - Length('of object')));
@@ -842,38 +843,38 @@ end;
 class function TPublishedMembers.EventTail(const AIndex: ISymbolIndex; const AReadText: TMemberReadText;
   const AComponentClass, AEventName: string; out ATail: string): Boolean;
 var
-  Member: TPublishedMember;
-  TypeName, Declaration: string;
-  Kind: TIndexSymbolKind;
+  mMember: TPublishedMember;
+  mTypeName, mDeclaration: string;
+  mKind: TIndexSymbolKind;
 begin
   ATail := '';
-  TypeName := '';
+  mTypeName := '';
   if AIndex <> nil then
   begin
-    for Member in Collect(AIndex, AComponentClass, AReadText) do
+    for mMember in Collect(AIndex, AComponentClass, AReadText) do
     begin
-      if SameText(Member.Name, AEventName) then
+      if SameText(mMember.Name, AEventName) then
       begin
-        TypeName := Member.TypeName;
+        mTypeName := mMember.TypeName;
         Break;
       end;
     end;
   end;
-  if TypeName = '' then
+  if mTypeName = '' then
   begin
     Exit(False);
   end;
-  if TypeDeclaration(AIndex, AReadText, TypeName, Kind, Declaration) then
+  if TypeDeclaration(AIndex, AReadText, mTypeName, mKind, mDeclaration) then
   begin
-    ATail := TailOfType(Declaration + ';');
+    ATail := TailOfType(mDeclaration + ';');
     if ATail <> '' then
     begin
       Exit(True);
     end;
   end;
-  if SameText(ShortName(TypeName), 'TNotifyEvent') then
+  if SameText(ShortName(mTypeName), 'TNotifyEvent') then
   begin
-    ATail := NotifyTail;
+    ATail := cNotifyTail;
   end;
   Result := ATail <> '';
 end;
@@ -1014,32 +1015,32 @@ end;
 class function TPublishedMembers.ToMarkdown(const AMembers: TArray<TPublishedMember>;
   const ADefaultProperty: string): string;
 var
-  Compact: Boolean;
-  Properties, Events, Part: string;
+  mCompact: Boolean;
+  mProperties, mEvents, mPart: string;
 begin
-  Compact := Length(AMembers) > CompactLimit;
-  Properties := Section('Published-Properties', AMembers, False, Compact);
-  Events := Section(cTexts[TPublishedMembersText.Events].Text, AMembers, True, Compact);
+  mCompact := Length(AMembers) > cCompactLimit;
+  mProperties := Section('Published-Properties', AMembers, False, mCompact);
+  mEvents := Section(cTexts[TPublishedMembersText.Events].Text, AMembers, True, mCompact);
   Result := '';
   if ADefaultProperty <> '' then
   begin
     Result := '**Standard-Property:** `' + ADefaultProperty + '`';
   end;
-  for Part in TArray<string>.Create(Properties, Events) do
+  for mPart in TArray<string>.Create(mProperties, mEvents) do
   begin
-    if Part <> '' then
+    if mPart <> '' then
     begin
       if Result <> '' then
       begin
         Result := Result + #10#10;
       end;
-      Result := Result + Part;
+      Result := Result + mPart;
     end;
   end;
 end;
 
 const
-  KindNames: array[TPublishedDefaultKind] of string = ('', 'explicit', 'implicit', 'nodefault');
+  cKindNames: array[TPublishedDefaultKind] of string = ('', 'explicit', 'implicit', 'nodefault');
 
 /// <summary>Setzt AKey auf AValue, wenn AValue nicht leer ist.</summary>
 procedure AddText(AItem: TJSONObject; const AKey, AValue: string);
@@ -1056,7 +1057,7 @@ begin
   Result.AddPair('name', AMember.Name);
   AddText(Result, 'type', AMember.TypeName);
   AddText(Result, 'default', AMember.DefaultValue);
-  AddText(Result, 'defaultKind', KindNames[AMember.DefaultKind]);
+  AddText(Result, 'defaultKind', cKindNames[AMember.DefaultKind]);
   AddText(Result, 'stored', AMember.Stored);
   AddText(Result, 'declaringClass', AMember.DeclaringClass);
   AddText(Result, 'publishedIn', AMember.PublishedIn);

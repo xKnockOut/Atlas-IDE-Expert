@@ -335,11 +335,11 @@ var
   mProfile, mVersion, mBase: string;
   mIndex: Integer;
 begin
-  for mProfile in ARegistry.SubKeys(TUpdateIdes.EmbarcaderoKey) do
+  for mProfile in ARegistry.SubKeys(TUpdateIdes.cEmbarcaderoKey) do
   begin
-    for mVersion in ARegistry.SubKeys(TUpdateIdes.EmbarcaderoKey + '\' + mProfile) do
+    for mVersion in ARegistry.SubKeys(TUpdateIdes.cEmbarcaderoKey + '\' + mProfile) do
     begin
-      mBase := TUpdateIdes.EmbarcaderoKey + '\' + mProfile + '\' + mVersion;
+      mBase := TUpdateIdes.cEmbarcaderoKey + '\' + mProfile + '\' + mVersion;
       // Nur „Known Packages“ und „Known Packages x64“ laden ein Package.
       for mIndex := 0 to 1 do
       begin

@@ -390,16 +390,16 @@ class function TFormatOutput.ExitCode(const AFiles: TArray<TFormattedFile>; AWri
 var
   mFile: TFormattedFile;
 begin
-  Result := TFindingsOutput.ExitClean;
+  Result := TFindingsOutput.cExitClean;
   for mFile in AFiles do
   begin
     if mFile.Error <> '' then
     begin
-      Exit(TFindingsOutput.ExitFailure);
+      Exit(TFindingsOutput.cExitFailure);
     end;
     if mFile.Outcome.HasSyntaxError or not mFile.Outcome.Stable or (not AWrite and mFile.Outcome.Changed) then
     begin
-      Result := TFindingsOutput.ExitFindings;
+      Result := TFindingsOutput.cExitFindings;
     end;
   end;
 end;

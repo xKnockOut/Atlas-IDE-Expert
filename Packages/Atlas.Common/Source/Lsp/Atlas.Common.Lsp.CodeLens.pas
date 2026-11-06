@@ -66,9 +66,9 @@ type
 
   TLspCodeLens = class
   public const
-    LensMethod = 'textDocument/codeLens';
-    ResolveMethod = 'codeLens/resolve';
-    ShowLocationsCommand = 'atlas.showLocations';
+    cLensMethod = 'textDocument/codeLens';
+    cResolveMethod = 'codeLens/resolve';
+    cShowLocationsCommand = 'atlas.showLocations';
   private
     FStore: IDocumentStore;
     FIndex: ISymbolIndex;
@@ -114,7 +114,8 @@ type
     /// <summary>Wie oben ohne Abbruch (ACancellation = nil).</summary>
     class function ResolveReferences(const ASource: TCodeLensSource; const AEntry: TCodeLensEntry;
       const AFiles: TArray<string>): TCodeLensEntry; overload; static;
-    /// <summary>CodeLens des LSP; ohne Titel mit data für codeLens/resolve. Der Aufrufer übernimmt das Objekt.</summary>
+    /// <summary>CodeLens des LSP; ohne Titel mit data für codeLens/resolve. Der Aufrufer übernimmt das
+    /// Objekt.</summary>
     class function ToJson(const AEntry: TCodeLensEntry; const AFileName: string): TJSONObject; static;
     property Namespaces: TArray<string> read GetNamespaces write SetNamespaces;
     /// <summary>Einstellung und Grenzwerte der Metrik-Linsen; nil = keine.</summary>
@@ -154,10 +155,10 @@ const
     (De: 'Referenzen'; En: 'references'));
 
 const
-  RoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
-  LensTypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+  cRoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
+  cLensTypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
     TIndexSymbolKind.InterfaceType];
-  MaxDepth = 32;
+  cMaxDepth = 32;
 
 function PositionKey(const APosition: TTextPosition): string;
 begin
@@ -197,40 +198,40 @@ end;
 function FindOverridden(AResolver: TNameResolver; const AIndex: ISymbolIndex; const ACurrent: TUnitIndex;
   const AType: TIndexSymbol; const AName: string; out AFound: TCodeLensOverride): Boolean;
 var
-  Ancestors: TArray<string>;
-  FromUnit, OwnerUnit: TUnitIndex;
-  Ancestor: TResolvedSymbol;
-  Symbol: TIndexSymbol;
-  Depth: Integer;
-  Name: string;
+  mAncestors: TArray<string>;
+  mFromUnit, mOwnerUnit: TUnitIndex;
+  mAncestor: TResolvedSymbol;
+  mSymbol: TIndexSymbol;
+  mDepth: Integer;
+  mName: string;
 begin
   Result := False;
-  FromUnit := ACurrent;
-  Ancestors := AType.Ancestors;
-  for Depth := 1 to MaxDepth do
+  mFromUnit := ACurrent;
+  mAncestors := AType.Ancestors;
+  for mDepth := 1 to cMaxDepth do
   begin
-    if Length(Ancestors) = 0 then
+    if Length(mAncestors) = 0 then
     begin
       Exit;
     end;
-    Name := Ancestors[0];
-    if (Pos('<', Name) > 0) or not AResolver.ResolveTypeFrom(FromUnit, Name, Ancestor) or
-      not UnitOf(AIndex, ACurrent, Ancestor.FileName, OwnerUnit) then
+    mName := mAncestors[0];
+    if (Pos('<', mName) > 0) or not AResolver.ResolveTypeFrom(mFromUnit, mName, mAncestor) or
+      not UnitOf(AIndex, ACurrent, mAncestor.FileName, mOwnerUnit) then
     begin
       Exit;
     end;
-    for Symbol in OwnerUnit.Symbols do
+    for mSymbol in mOwnerUnit.Symbols do
     begin
-      if (Symbol.Kind in RoutineKinds) and SameText(Symbol.Container, Ancestor.QualifiedName) and
-        SameText(Symbol.Name, AName) then
+      if (mSymbol.Kind in cRoutineKinds) and SameText(mSymbol.Container, mAncestor.QualifiedName) and
+        SameText(mSymbol.Name, AName) then
       begin
-        AFound.Owner := Ancestor.Name;
-        AFound.Target := Location(OwnerUnit.FileName, Symbol.SelectionRange);
+        AFound.Owner := mAncestor.Name;
+        AFound.Target := Location(mOwnerUnit.FileName, mSymbol.SelectionRange);
         Exit(True);
       end;
     end;
-    FromUnit := OwnerUnit;
-    Ancestors := Ancestor.Ancestors;
+    mFromUnit := mOwnerUnit;
+    mAncestors := mAncestor.Ancestors;
   end;
 end;
 
@@ -253,25 +254,26 @@ end;
 /// <summary>Namen in Köpfen von Implementierungen (procedure TFoo.Bar): keine Verwendungen.</summary>
 function HeaderNames(ATree: TSyntaxTree): TDictionary<string, Boolean>;
 var
-  Tokens: TArray<TPascalToken>;
-  Index, Back: Integer;
+  mTokens: TArray<TPascalToken>;
+  mIndex, mBack: Integer;
 begin
   Result := TDictionary<string, Boolean>.Create;
-  Tokens := ATree.Tokens;
-  for Index := 2 to High(Tokens) do
+  mTokens := ATree.Tokens;
+  for mIndex := 2 to High(mTokens) do
   begin
-    if not (Tokens[Index - 1].IsSymbol('.') and (Tokens[Index].Kind = TPascalTokenKind.Identifier)) then
+    if not (mTokens[mIndex - 1].IsSymbol('.') and (mTokens[mIndex].Kind = TPascalTokenKind.Identifier)) then
     begin
       Continue;
     end;
-    Back := Index - 2;
-    while (Back >= 2) and (Tokens[Back].Kind = TPascalTokenKind.Identifier) and Tokens[Back - 1].IsSymbol('.') do
+    mBack := mIndex - 2;
+    while (mBack >= 2) and (mTokens[mBack].Kind = TPascalTokenKind.Identifier) and mTokens[mBack - 1].IsSymbol('.') do
     begin
-      Dec(Back, 2);
+      Dec(mBack, 2);
     end;
-    if (Back >= 1) and (Tokens[Back].Kind = TPascalTokenKind.Identifier) and IsRoutineKeyword(Tokens[Back - 1]) then
+    if (mBack >= 1) and (mTokens[mBack].Kind = TPascalTokenKind.Identifier) and
+      IsRoutineKeyword(mTokens[mBack - 1]) then
     begin
-      Result.AddOrSetValue(PositionKey(Tokens[Index].StartPos), True);
+      Result.AddOrSetValue(PositionKey(mTokens[mIndex].StartPos), True);
     end;
   end;
 end;
@@ -307,8 +309,8 @@ end;
 
 procedure TLspCodeLens.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterConcurrentRequest(LensMethod, HandleLens);
-  ADispatcher.RegisterConcurrentRequest(ResolveMethod, HandleResolve);
+  ADispatcher.RegisterConcurrentRequest(cLensMethod, HandleLens);
+  ADispatcher.RegisterConcurrentRequest(cResolveMethod, HandleResolve);
 end;
 
 class function TLspCodeLens.Capability: TJSONObject;
@@ -409,7 +411,7 @@ begin
   Result := TDictionary<string, TIndexSymbol>.Create;
   for mSymbol in ACurrent.Symbols do
   begin
-    if mSymbol.Kind in LensTypeKinds then
+    if mSymbol.Kind in cLensTypeKinds then
     begin
       Result.AddOrSetValue(UpperCase(mSymbol.QualifiedName), mSymbol);
     end;
@@ -436,11 +438,11 @@ begin
       begin
         Continue;
       end;
-      if mSymbol.Kind in LensTypeKinds then
+      if mSymbol.Kind in cLensTypeKinds then
       begin
         AddTypeLenses(ASource, mSymbol, mList);
       end
-      else if (mSymbol.Kind in RoutineKinds) and (mSymbol.Container <> '') and
+      else if (mSymbol.Kind in cRoutineKinds) and (mSymbol.Container <> '') and
         mTypes.TryGetValue(UpperCase(mSymbol.Container), mTypeSymbol) then
       begin
         AddRoutineLenses(ASource, mCurrent, mTypeSymbol, mSymbol, mList);
@@ -463,43 +465,43 @@ end;
 
 class function TLspCodeLens.MetricLenses(ATree: TSyntaxTree; const ALimits: TMetricLimits): TArray<TCodeLensEntry>;
 var
-  Routine: TRoutineMetrics;
-  Item: TStructureMetrics;
-  Entry: TCodeLensEntry;
+  mRoutine: TRoutineMetrics;
+  mItem: TStructureMetrics;
+  mEntry: TCodeLensEntry;
 begin
   Result := nil;
-  for Item in TMetricsCalculator.Structure(ATree) do
+  for mItem in TMetricsCalculator.Structure(ATree) do
   begin
-    Entry := Default(TCodeLensEntry);
-    Entry.Kind := TCodeLensKind.Metrics;
-    Entry.Range := Item.NameRange;
-    Entry.Title := TMetricsReport.StructureLensPart(Item.Kind, Item.Value, ALimits);
-    Result := Result + [Entry];
+    mEntry := Default(TCodeLensEntry);
+    mEntry.Kind := TCodeLensKind.Metrics;
+    mEntry.Range := mItem.NameRange;
+    mEntry.Title := TMetricsReport.StructureLensPart(mItem.Kind, mItem.Value, ALimits);
+    Result := Result + [mEntry];
   end;
-  for Routine in TMetricsCalculator.Routines(ATree) do
+  for mRoutine in TMetricsCalculator.Routines(ATree) do
   begin
-    Entry := Default(TCodeLensEntry);
-    Entry.Kind := TCodeLensKind.Metrics;
-    Entry.Range := Routine.NameRange;
-    Entry.Title := TMetricsReport.LensTitle(Routine.Values, ALimits);
-    Result := Result + [Entry];
+    mEntry := Default(TCodeLensEntry);
+    mEntry.Kind := TCodeLensKind.Metrics;
+    mEntry.Range := mRoutine.NameRange;
+    mEntry.Title := TMetricsReport.LensTitle(mRoutine.Values, ALimits);
+    Result := Result + [mEntry];
   end;
 end;
 
 class function TLspCodeLens.MetricLenses(ATree: TSyntaxTree; const ALimits: TMetricLimits;
   const AIndex: ISymbolIndex; const AFileName: string): TArray<TCodeLensEntry>;
 var
-  Item: TStructureMetrics;
-  Entry: TCodeLensEntry;
+  mItem: TStructureMetrics;
+  mEntry: TCodeLensEntry;
 begin
   Result := MetricLenses(ATree, ALimits);
-  for Item in TMetricRules.InheritanceDepths(ATree, AIndex, TIndexExtractor.Extract(ATree, AFileName)) do
+  for mItem in TMetricRules.InheritanceDepths(ATree, AIndex, TIndexExtractor.Extract(ATree, AFileName)) do
   begin
-    Entry := Default(TCodeLensEntry);
-    Entry.Kind := TCodeLensKind.Metrics;
-    Entry.Range := Item.NameRange;
-    Entry.Title := TMetricsReport.StructureLensPart(Item, ALimits);
-    Result := Result + [Entry];
+    mEntry := Default(TCodeLensEntry);
+    mEntry.Kind := TCodeLensKind.Metrics;
+    mEntry.Range := mItem.NameRange;
+    mEntry.Title := TMetricsReport.StructureLensPart(mItem, ALimits);
+    Result := Result + [mEntry];
   end;
 end;
 
@@ -538,50 +540,50 @@ end;
 
 class function TLspCodeLens.ToJson(const AEntry: TCodeLensEntry; const AFileName: string): TJSONObject;
 var
-  Command, Data: TJSONObject;
-  Arguments, Locations: TJSONArray;
-  Target: TCodeLensLocation;
-  Item: TJSONObject;
+  mCommand, mData: TJSONObject;
+  mArguments, mLocations: TJSONArray;
+  mTarget: TCodeLensLocation;
+  mItem: TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('range', TLspPositions.RangeToJson(AEntry.Range));
   if AEntry.Kind = TCodeLensKind.Metrics then
   begin
     // Nur Anzeige: ein leerer Befehl macht die Linse in VS Code zu reinem Text.
-    Command := TJSONObject.Create;
-    Command.AddPair('title', AEntry.Title);
-    Command.AddPair('command', '');
-    Result.AddPair('command', Command);
+    mCommand := TJSONObject.Create;
+    mCommand.AddPair('title', AEntry.Title);
+    mCommand.AddPair('command', '');
+    Result.AddPair('command', mCommand);
     Exit;
   end;
   if AEntry.Title = '' then
   begin
-    Data := TJSONObject.Create;
-    Data.AddPair('uri', TDocumentUris.FromPath(AFileName));
-    Data.AddPair('line', TJSONNumber.Create(AEntry.Range.StartPos.Line));
-    Data.AddPair('character', TJSONNumber.Create(AEntry.Range.StartPos.Character));
-    Data.AddPair('endLine', TJSONNumber.Create(AEntry.Range.EndPos.Line));
-    Data.AddPair('endCharacter', TJSONNumber.Create(AEntry.Range.EndPos.Character));
-    Result.AddPair('data', Data);
+    mData := TJSONObject.Create;
+    mData.AddPair('uri', TDocumentUris.FromPath(AFileName));
+    mData.AddPair('line', TJSONNumber.Create(AEntry.Range.StartPos.Line));
+    mData.AddPair('character', TJSONNumber.Create(AEntry.Range.StartPos.Character));
+    mData.AddPair('endLine', TJSONNumber.Create(AEntry.Range.EndPos.Line));
+    mData.AddPair('endCharacter', TJSONNumber.Create(AEntry.Range.EndPos.Character));
+    Result.AddPair('data', mData);
     Exit;
   end;
-  Locations := TJSONArray.Create;
-  for Target in AEntry.Targets do
+  mLocations := TJSONArray.Create;
+  for mTarget in AEntry.Targets do
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('uri', TDocumentUris.FromPath(Target.FileName));
-    Item.AddPair('range', TLspPositions.RangeToJson(Target.Range));
-    Locations.AddElement(Item);
+    mItem := TJSONObject.Create;
+    mItem.AddPair('uri', TDocumentUris.FromPath(mTarget.FileName));
+    mItem.AddPair('range', TLspPositions.RangeToJson(mTarget.Range));
+    mLocations.AddElement(mItem);
   end;
-  Arguments := TJSONArray.Create;
-  Arguments.Add(TDocumentUris.FromPath(AFileName));
-  Arguments.AddElement(TLspPositions.PositionToJson(AEntry.Range.StartPos));
-  Arguments.AddElement(Locations);
-  Command := TJSONObject.Create;
-  Command.AddPair('title', AEntry.Title);
-  Command.AddPair('command', ShowLocationsCommand);
-  Command.AddPair('arguments', Arguments);
-  Result.AddPair('command', Command);
+  mArguments := TJSONArray.Create;
+  mArguments.Add(TDocumentUris.FromPath(AFileName));
+  mArguments.AddElement(TLspPositions.PositionToJson(AEntry.Range.StartPos));
+  mArguments.AddElement(mLocations);
+  mCommand := TJSONObject.Create;
+  mCommand.AddPair('title', AEntry.Title);
+  mCommand.AddPair('command', cShowLocationsCommand);
+  mCommand.AddPair('arguments', mArguments);
+  Result.AddPair('command', mCommand);
 end;
 
 function TLspCodeLens.NewResolver: TNameResolver;
@@ -602,7 +604,7 @@ var
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TCodeLensText.FieldTextDocumentUriMissing].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TCodeLensText.FieldTextDocumentUriMissing].Text);
   end;
   if not FStore.TryGet(mUri, mDocument) then
   begin
@@ -655,12 +657,13 @@ begin
     DataPosition(TJSONObject(AParams), 'data.line', 'data.character', mStart) and
     DataPosition(TJSONObject(AParams), 'data.endLine', 'data.endCharacter', mEnd)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TCodeLensText.FieldDataOfTheLens].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TCodeLensText.FieldDataOfTheLens].Text);
   end;
   Result := NewEntry(TCodeLensKind.References, TTextRange.Create(mStart, mEnd), '');
 end;
 
-function TLspCodeLens.HandleResolve(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+function TLspCodeLens.HandleResolve(const AParams: TJSONValue;
+  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
   mCancellation: IPascalCancellation;
   mUri: string;

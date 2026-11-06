@@ -353,7 +353,7 @@ begin
     try
       Assert.AreEqual(1, Integer(Length(Actions)));
       Assert.AreEqual('Bedeutung umkehren (FHidden → FVisible)', Actions[0].GetValue('title').Value);
-      Assert.AreEqual(TLspInvertBoolean.ClientCommand,
+      Assert.AreEqual(TLspInvertBoolean.cClientCommand,
         (Actions[0].GetValue('command') as TJSONObject).GetValue('command').Value);
     finally
       for Action in Actions do

@@ -172,8 +172,8 @@ type
   end;
 
 const
-  AllUsesSections: TUsesSections = [TUsesSection.Interface_, TUsesSection.Implementation_];
-  InterfaceUsesOnly: TUsesSections = [TUsesSection.Interface_];
+  cAllUsesSections: TUsesSections = [TUsesSection.Interface_, TUsesSection.Implementation_];
+  cInterfaceUsesOnly: TUsesSections = [TUsesSection.Interface_];
 
 implementation
 
@@ -189,31 +189,31 @@ end;
 
 function RelativeTo(const ARoot, AFileName: string): string;
 var
-  Root, FileName: string;
+  mRoot, mFileName: string;
 begin
-  FileName := StringReplace(AFileName, '\', '/', [rfReplaceAll]);
-  Root := StringReplace(ARoot, '\', '/', [rfReplaceAll]);
-  if (Root <> '') and (Root[Length(Root)] <> '/') then
+  mFileName := StringReplace(AFileName, '\', '/', [rfReplaceAll]);
+  mRoot := StringReplace(ARoot, '\', '/', [rfReplaceAll]);
+  if (mRoot <> '') and (mRoot[Length(mRoot)] <> '/') then
   begin
-    Root := Root + '/';
+    mRoot := mRoot + '/';
   end;
-  if (Root <> '') and StartsText(Root, FileName) then
+  if (mRoot <> '') and StartsText(mRoot, mFileName) then
   begin
-    Result := Copy(FileName, Length(Root) + 1, MaxInt);
+    Result := Copy(mFileName, Length(mRoot) + 1, MaxInt);
   end
   else
   begin
-    Result := FileName;
+    Result := mFileName;
   end;
 end;
 
 function ContainsNode(const ANodes: TArray<Integer>; ANode: Integer): Boolean;
 var
-  Item: Integer;
+  mItem: Integer;
 begin
-  for Item in ANodes do
+  for mItem in ANodes do
   begin
-    if Item = ANode then
+    if mItem = ANode then
     begin
       Exit(True);
     end;
@@ -223,10 +223,10 @@ end;
 
 function IsProgramFile(const AFileName: string): Boolean;
 var
-  Extension: string;
+  mExtension: string;
 begin
-  Extension := LowerCase(ExtractFileExt(AFileName));
-  Result := (Extension = '.dpr') or (Extension = '.dpk');
+  mExtension := LowerCase(ExtractFileExt(AFileName));
+  Result := (mExtension = '.dpr') or (mExtension = '.dpk');
 end;
 
 { TUsesGraphOptions }
@@ -272,7 +272,7 @@ end;
 
 function TUsesGraph.Accepts(const AUnit: TUnitIndex): Boolean;
 var
-  Pattern, Relative: string;
+  mPattern, mRelative: string;
 begin
   if AUnit.UnitName = '' then
   begin
@@ -282,10 +282,10 @@ begin
   begin
     Exit(False);
   end;
-  Relative := RelativeTo(FOptions.Root, AUnit.FileName);
-  for Pattern in FOptions.Exclude do
+  mRelative := RelativeTo(FOptions.Root, AUnit.FileName);
+  for mPattern in FOptions.Exclude do
   begin
-    if MatchesGlob(Pattern, AUnit.UnitName) or MatchesGlob(Pattern, Relative) then
+    if MatchesGlob(mPattern, AUnit.UnitName) or MatchesGlob(mPattern, mRelative) then
     begin
       Exit(False);
     end;
@@ -295,15 +295,15 @@ end;
 
 function TUsesGraph.Resolve(const AName: string): Integer;
 var
-  Namespace: string;
+  mNamespace: string;
 begin
   if FByName.TryGetValue(LowerCase(AName), Result) then
   begin
     Exit;
   end;
-  for Namespace in FOptions.Namespaces do
+  for mNamespace in FOptions.Namespaces do
   begin
-    if FByName.TryGetValue(LowerCase(Namespace + '.' + AName), Result) then
+    if FByName.TryGetValue(LowerCase(mNamespace + '.' + AName), Result) then
     begin
       Exit;
     end;
@@ -318,17 +318,17 @@ end;
 
 procedure TUsesGraph.ForgetUnresolved(ANode: Integer);
 var
-  Name: string;
-  Users: TList<Integer>;
+  mName: string;
+  mUsers: TList<Integer>;
 begin
-  for Name in NamesOf(ANode) do
+  for mName in NamesOf(ANode) do
   begin
-    if FUnresolved.TryGetValue(LowerCase(Name), Users) then
+    if FUnresolved.TryGetValue(LowerCase(mName), mUsers) then
     begin
-      Users.Remove(ANode);
-      if Users.Count = 0 then
+      mUsers.Remove(ANode);
+      if mUsers.Count = 0 then
       begin
-        FUnresolved.Remove(LowerCase(Name));
+        FUnresolved.Remove(LowerCase(mName));
       end;
     end;
   end;
@@ -400,28 +400,28 @@ end;
 
 procedure TUsesGraph.Unlink(ANode: Integer);
 var
-  Item, Target: TUsesNode;
-  Edge: TUsesEdge;
-  Kept: TArray<TUsesEdgeRef>;
-  Ref: TUsesEdgeRef;
+  mItem, mTarget: TUsesNode;
+  mEdge: TUsesEdge;
+  mKept: TArray<TUsesEdgeRef>;
+  mRef: TUsesEdgeRef;
 begin
-  Item := FNodes[ANode];
-  for Edge in Item.Outgoing do
+  mItem := FNodes[ANode];
+  for mEdge in mItem.Outgoing do
   begin
-    Target := FNodes[Edge.Target];
-    Kept := nil;
-    for Ref in Target.Incoming do
+    mTarget := FNodes[mEdge.Target];
+    mKept := nil;
+    for mRef in mTarget.Incoming do
     begin
-      if Ref.Source <> ANode then
+      if mRef.Source <> ANode then
       begin
-        Kept := Kept + [Ref];
+        mKept := mKept + [mRef];
       end;
     end;
-    Target.Incoming := Kept;
-    FNodes[Edge.Target] := Target;
+    mTarget.Incoming := mKept;
+    FNodes[mEdge.Target] := mTarget;
   end;
-  Item.Outgoing := nil;
-  FNodes[ANode] := Item;
+  mItem.Outgoing := nil;
+  FNodes[ANode] := mItem;
   ForgetUnresolved(ANode);
 end;
 
@@ -467,9 +467,9 @@ end;
 
 function TUsesGraph.Update(const AUnit: TUnitIndex): Boolean;
 var
-  Index_: Integer;
-  Item: TUsesNode;
-  Key, Namespace: string;
+  mIndex_: Integer;
+  mItem: TUsesNode;
+  mKey, mNamespace: string;
 begin
   if not Accepts(AUnit) then
   begin
@@ -477,150 +477,151 @@ begin
     Exit(False);
   end;
   Result := True;
-  if FByFile.TryGetValue(NormalizedPath(AUnit.FileName), Index_) then
+  if FByFile.TryGetValue(NormalizedPath(AUnit.FileName), mIndex_) then
   begin
-    Item := FNodes[Index_];
-    if (Item.Hash = AUnit.Hash) and (Item.Stamp = AUnit.Stamp) and SameText(Item.UnitName, AUnit.UnitName) then
+    mItem := FNodes[mIndex_];
+    if (mItem.Hash = AUnit.Hash) and (mItem.Stamp = AUnit.Stamp) and SameText(mItem.UnitName, AUnit.UnitName) then
     begin
       Exit;
     end;
-    if not SameText(Item.UnitName, AUnit.UnitName) then
+    if not SameText(mItem.UnitName, AUnit.UnitName) then
     begin
       // Unit umbenannt: wie Entfernen und neu Anlegen.
       Remove(AUnit.FileName);
       Exit(Update(AUnit));
     end;
-    Unlink(Index_);
+    Unlink(mIndex_);
   end
   else
   begin
-    Index_ := FNodes.Count;
-    Item := Default(TUsesNode);
-    FNodes.Add(Item);
+    mIndex_ := FNodes.Count;
+    mItem := Default(TUsesNode);
+    FNodes.Add(mItem);
     FInterfaceNames.Add(nil);
     FImplementationNames.Add(nil);
-    FByFile.Add(NormalizedPath(AUnit.FileName), Index_);
-    FByName.AddOrSetValue(LowerCase(AUnit.UnitName), Index_);
+    FByFile.Add(NormalizedPath(AUnit.FileName), mIndex_);
+    FByName.AddOrSetValue(LowerCase(AUnit.UnitName), mIndex_);
   end;
-  Item := FNodes[Index_];
-  Item.UnitName := AUnit.UnitName;
-  Item.FileName := AUnit.FileName;
-  Item.Library_ := AUnit.Library_;
-  Item.IsProgram := IsProgramFile(AUnit.FileName);
-  Item.HasInitialization := AUnit.HasInitialization;
-  Item.Hash := AUnit.Hash;
-  Item.Stamp := AUnit.Stamp;
-  Item.Active := True;
-  FNodes[Index_] := Item;
-  FInterfaceNames[Index_] := AUnit.InterfaceUses;
-  FImplementationNames[Index_] := AUnit.ImplementationUses;
-  Link(Index_);
+  mItem := FNodes[mIndex_];
+  mItem.UnitName := AUnit.UnitName;
+  mItem.FileName := AUnit.FileName;
+  mItem.Library_ := AUnit.Library_;
+  mItem.IsProgram := IsProgramFile(AUnit.FileName);
+  mItem.HasInitialization := AUnit.HasInitialization;
+  mItem.Hash := AUnit.Hash;
+  mItem.Stamp := AUnit.Stamp;
+  mItem.Active := True;
+  FNodes[mIndex_] := mItem;
+  FInterfaceNames[mIndex_] := AUnit.InterfaceUses;
+  FImplementationNames[mIndex_] := AUnit.ImplementationUses;
+  Link(mIndex_);
   // Units, die diesen Namen schon verwenden (auch ohne Namensraum), bekommen ihre Kante.
-  Key := AUnit.UnitName;
-  Relink([Key]);
-  for Namespace in FOptions.Namespaces do
+  mKey := AUnit.UnitName;
+  Relink([mKey]);
+  for mNamespace in FOptions.Namespaces do
   begin
-    if StartsText(Namespace + '.', Key) then
+    if StartsText(mNamespace + '.', mKey) then
     begin
-      Relink([Copy(Key, Length(Namespace) + 2, MaxInt)]);
+      Relink([Copy(mKey, Length(mNamespace) + 2, MaxInt)]);
     end;
   end;
 end;
 
 procedure TUsesGraph.Remove(const AFileName: string);
 var
-  Index_, Name_: Integer;
-  Item: TUsesNode;
-  Users: TArray<Integer>;
-  Ref: TUsesEdgeRef;
-  Key, Namespace: string;
+  mIndex_, mName_: Integer;
+  mItem: TUsesNode;
+  mUsers: TArray<Integer>;
+  mRef: TUsesEdgeRef;
+  mKey, mNamespace: string;
 begin
-  if not FByFile.TryGetValue(NormalizedPath(AFileName), Index_) then
+  if not FByFile.TryGetValue(NormalizedPath(AFileName), mIndex_) then
   begin
     Exit;
   end;
-  Unlink(Index_);
-  Item := FNodes[Index_];
+  Unlink(mIndex_);
+  mItem := FNodes[mIndex_];
   // Wer die Unit verwendet, verliert die Kante; der Name gilt dort wieder als offen.
-  Users := nil;
-  for Ref in Item.Incoming do
+  mUsers := nil;
+  for mRef in mItem.Incoming do
   begin
-    if not ContainsNode(Users, Ref.Source) then
+    if not ContainsNode(mUsers, mRef.Source) then
     begin
-      Users := Users + [Ref.Source];
+      mUsers := mUsers + [mRef.Source];
     end;
   end;
-  Item.Active := False;
-  Item.Incoming := nil;
-  FNodes[Index_] := Item;
+  mItem.Active := False;
+  mItem.Incoming := nil;
+  FNodes[mIndex_] := mItem;
   FByFile.Remove(NormalizedPath(AFileName));
-  Key := LowerCase(Item.UnitName);
-  if FByName.TryGetValue(Key, Name_) and (Name_ = Index_) then
+  mKey := LowerCase(mItem.UnitName);
+  if FByName.TryGetValue(mKey, mName_) and (mName_ = mIndex_) then
   begin
-    FByName.Remove(Key);
+    FByName.Remove(mKey);
   end;
-  for Name_ in Users do
+  for mName_ in mUsers do
   begin
-    if FNodes[Name_].Active then
+    if FNodes[mName_].Active then
     begin
-      Unlink(Name_);
-      Link(Name_);
+      Unlink(mName_);
+      Link(mName_);
     end;
   end;
-  for Namespace in FOptions.Namespaces do
+  for mNamespace in FOptions.Namespaces do
   begin
-    if StartsText(Namespace + '.', Item.UnitName) then
+    if StartsText(mNamespace + '.', mItem.UnitName) then
     begin
-      Relink([Copy(Item.UnitName, Length(Namespace) + 2, MaxInt)]);
+      Relink([Copy(mItem.UnitName, Length(mNamespace) + 2, MaxInt)]);
     end;
   end;
 end;
 
 function TUsesGraph.Synchronize(const AUnits: TArray<TUnitIndex>): Integer;
 var
-  Seen: TDictionary<string, Boolean>;
-  Unit_: TUnitIndex;
-  Index_: Integer;
-  Item: TUsesNode;
-  Gone: TArray<string>;
-  FileName: string;
+  mSeen: TDictionary<string, Boolean>;
+  mUnit_: TUnitIndex;
+  mIndex_: Integer;
+  mItem: TUsesNode;
+  mGone: TArray<string>;
+  mFileName: string;
 begin
   Result := 0;
-  Seen := TDictionary<string, Boolean>.Create;
+  mSeen := TDictionary<string, Boolean>.Create;
   try
-    for Unit_ in AUnits do
+    for mUnit_ in AUnits do
     begin
-      if not Accepts(Unit_) then
+      if not Accepts(mUnit_) then
       begin
         Continue;
       end;
-      Seen.AddOrSetValue(NormalizedPath(Unit_.FileName), True);
-      if FByFile.TryGetValue(NormalizedPath(Unit_.FileName), Index_) then
+      mSeen.AddOrSetValue(NormalizedPath(mUnit_.FileName), True);
+      if FByFile.TryGetValue(NormalizedPath(mUnit_.FileName), mIndex_) then
       begin
-        Item := FNodes[Index_];
-        if (Item.Hash = Unit_.Hash) and (Item.Stamp = Unit_.Stamp) and SameText(Item.UnitName, Unit_.UnitName) then
+        mItem := FNodes[mIndex_];
+        if (mItem.Hash = mUnit_.Hash) and (mItem.Stamp = mUnit_.Stamp) and
+          SameText(mItem.UnitName, mUnit_.UnitName) then
         begin
           Continue;
         end;
       end;
-      Update(Unit_);
+      Update(mUnit_);
       Inc(Result);
     end;
-    Gone := nil;
-    for Index_ := 0 to FNodes.Count - 1 do
+    mGone := nil;
+    for mIndex_ := 0 to FNodes.Count - 1 do
     begin
-      if FNodes[Index_].Active and not Seen.ContainsKey(NormalizedPath(FNodes[Index_].FileName)) then
+      if FNodes[mIndex_].Active and not mSeen.ContainsKey(NormalizedPath(FNodes[mIndex_].FileName)) then
       begin
-        Gone := Gone + [FNodes[Index_].FileName];
+        mGone := mGone + [FNodes[mIndex_].FileName];
       end;
     end;
-    for FileName in Gone do
+    for mFileName in mGone do
     begin
-      Remove(FileName);
+      Remove(mFileName);
       Inc(Result);
     end;
   finally
-    Seen.Free;
+    mSeen.Free;
   end;
 end;
 
@@ -631,12 +632,12 @@ end;
 
 function TUsesGraph.ActiveCount: Integer;
 var
-  Index_: Integer;
+  mIndex_: Integer;
 begin
   Result := 0;
-  for Index_ := 0 to FNodes.Count - 1 do
+  for mIndex_ := 0 to FNodes.Count - 1 do
   begin
-    if FNodes[Index_].Active then
+    if FNodes[mIndex_].Active then
     begin
       Inc(Result);
     end;
@@ -645,14 +646,14 @@ end;
 
 function TUsesGraph.EdgeCount: Integer;
 var
-  Index_: Integer;
+  mIndex_: Integer;
 begin
   Result := 0;
-  for Index_ := 0 to FNodes.Count - 1 do
+  for mIndex_ := 0 to FNodes.Count - 1 do
   begin
-    if FNodes[Index_].Active then
+    if FNodes[mIndex_].Active then
     begin
-      Inc(Result, Length(FNodes[Index_].Outgoing));
+      Inc(Result, Length(FNodes[mIndex_].Outgoing));
     end;
   end;
 end;
@@ -677,19 +678,19 @@ end;
 
 function TUsesGraph.SortedNodes: TArray<Integer>;
 var
-  Index_: Integer;
-  List: TList<Integer>;
+  mIndex_: Integer;
+  mList: TList<Integer>;
 begin
-  List := TList<Integer>.Create;
+  mList := TList<Integer>.Create;
   try
-    for Index_ := 0 to FNodes.Count - 1 do
+    for mIndex_ := 0 to FNodes.Count - 1 do
     begin
-      if FNodes[Index_].Active then
+      if FNodes[mIndex_].Active then
       begin
-        List.Add(Index_);
+        mList.Add(mIndex_);
       end;
     end;
-    List.Sort(TComparer<Integer>.Construct(
+    mList.Sort(TComparer<Integer>.Construct(
       function(const ALeft, ARight: Integer): Integer
       begin
         Result := CompareText(FNodes[ALeft].UnitName, FNodes[ARight].UnitName);
@@ -698,9 +699,9 @@ begin
           Result := ALeft - ARight;
         end;
       end));
-    Result := List.ToArray;
+    Result := mList.ToArray;
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 
@@ -726,31 +727,31 @@ end;
 
 function TUsesGraph.DirectDependencies(ANode: Integer; ASections: TUsesSections): TArray<Integer>;
 var
-  Edge: TUsesEdge;
+  mEdge: TUsesEdge;
 begin
   Result := nil;
-  for Edge in FNodes[ANode].Outgoing do
+  for mEdge in FNodes[ANode].Outgoing do
   begin
-    if EdgeAllowed(Self, Edge, ASections) and not ContainsNode(Result, Edge.Target) then
+    if EdgeAllowed(Self, mEdge, ASections) and not ContainsNode(Result, mEdge.Target) then
     begin
-      Result := Result + [Edge.Target];
+      Result := Result + [mEdge.Target];
     end;
   end;
 end;
 
 function TUsesGraph.DirectDependents(ANode: Integer; ASections: TUsesSections): TArray<Integer>;
 var
-  Ref: TUsesEdgeRef;
-  Edge: TUsesEdge;
+  mRef: TUsesEdgeRef;
+  mEdge: TUsesEdge;
 begin
   Result := nil;
-  for Ref in FNodes[ANode].Incoming do
+  for mRef in FNodes[ANode].Incoming do
   begin
-    Edge := FNodes[Ref.Source].Outgoing[Ref.Item];
-    if (Edge.Section in ASections) and FNodes[Ref.Source].Active and
-      not ContainsNode(Result, Ref.Source) then
+    mEdge := FNodes[mRef.Source].Outgoing[mRef.Item];
+    if (mEdge.Section in ASections) and FNodes[mRef.Source].Active and
+      not ContainsNode(Result, mRef.Source) then
     begin
-      Result := Result + [Ref.Source];
+      Result := Result + [mRef.Source];
     end;
   end;
   SortByName(Self, Result);
@@ -758,79 +759,79 @@ end;
 
 function TUsesGraph.Dependencies(ANode: Integer; ASections: TUsesSections): TArray<Integer>;
 var
-  Seen: TArray<Boolean>;
-  Stack: TStack<Integer>;
-  Found: TList<Integer>;
-  Current, Next: Integer;
+  mSeen: TArray<Boolean>;
+  mStack: TStack<Integer>;
+  mFound: TList<Integer>;
+  mCurrent, mNext: Integer;
 begin
-  SetLength(Seen, FNodes.Count);
-  Seen[ANode] := True;
-  Stack := TStack<Integer>.Create;
-  Found := TList<Integer>.Create;
+  SetLength(mSeen, FNodes.Count);
+  mSeen[ANode] := True;
+  mStack := TStack<Integer>.Create;
+  mFound := TList<Integer>.Create;
   try
-    Stack.Push(ANode);
-    while Stack.Count > 0 do
+    mStack.Push(ANode);
+    while mStack.Count > 0 do
     begin
-      Current := Stack.Pop;
-      for Next in DirectDependencies(Current, ASections) do
+      mCurrent := mStack.Pop;
+      for mNext in DirectDependencies(mCurrent, ASections) do
       begin
-        if not Seen[Next] then
+        if not mSeen[mNext] then
         begin
-          Seen[Next] := True;
-          Found.Add(Next);
-          Stack.Push(Next);
+          mSeen[mNext] := True;
+          mFound.Add(mNext);
+          mStack.Push(mNext);
         end;
       end;
     end;
-    Result := Found.ToArray;
+    Result := mFound.ToArray;
   finally
-    Found.Free;
-    Stack.Free;
+    mFound.Free;
+    mStack.Free;
   end;
   SortByName(Self, Result);
 end;
 
 function TUsesGraph.Dependents(ANode: Integer; ASections: TUsesSections): TArray<Integer>;
 var
-  Seen: TArray<Boolean>;
-  Stack: TStack<Integer>;
-  Found: TList<Integer>;
-  Current, Next: Integer;
+  mSeen: TArray<Boolean>;
+  mStack: TStack<Integer>;
+  mFound: TList<Integer>;
+  mCurrent, mNext: Integer;
 begin
-  SetLength(Seen, FNodes.Count);
-  Seen[ANode] := True;
-  Stack := TStack<Integer>.Create;
-  Found := TList<Integer>.Create;
+  SetLength(mSeen, FNodes.Count);
+  mSeen[ANode] := True;
+  mStack := TStack<Integer>.Create;
+  mFound := TList<Integer>.Create;
   try
-    Stack.Push(ANode);
-    while Stack.Count > 0 do
+    mStack.Push(ANode);
+    while mStack.Count > 0 do
     begin
-      Current := Stack.Pop;
-      for Next in DirectDependents(Current, ASections) do
+      mCurrent := mStack.Pop;
+      for mNext in DirectDependents(mCurrent, ASections) do
       begin
-        if not Seen[Next] then
+        if not mSeen[mNext] then
         begin
-          Seen[Next] := True;
-          Found.Add(Next);
-          Stack.Push(Next);
+          mSeen[mNext] := True;
+          mFound.Add(mNext);
+          mStack.Push(mNext);
         end;
       end;
     end;
-    Result := Found.ToArray;
+    Result := mFound.ToArray;
   finally
-    Found.Free;
-    Stack.Free;
+    mFound.Free;
+    mStack.Free;
   end;
   SortByName(Self, Result);
 end;
 
 function TUsesGraph.RecompileMarks(ANode: Integer; out ACount: Integer): TArray<Boolean>;
 var
-  Spreads: TArray<Boolean>;
-  Queue: TQueue<Integer>;
-  Current: Integer;
-  Ref: TUsesEdgeRef;
-  Source: TUsesNode;
+  mSpreads: TArray<Boolean>;
+  mQueue: TQueue<Integer>;
+  mCurrent: Integer;
+  mRef: TUsesEdgeRef;
+  mSource: TUsesNode;
 begin
   // Ändert sich das interface von X, übersetzt der Compiler jeden Verwender von X neu. Verwendet ein Verwender X
   // im interface, ändert sich dadurch auch seine Schnittstelle, und seine Verwender folgen.
@@ -838,52 +839,52 @@ begin
   // Result kann auf ein altes Feld des Aufrufers zeigen: frisch anlegen.
   Result := nil;
   SetLength(Result, FNodes.Count);
-  SetLength(Spreads, FNodes.Count);
-  Spreads[ANode] := True;
-  Queue := TQueue<Integer>.Create;
+  SetLength(mSpreads, FNodes.Count);
+  mSpreads[ANode] := True;
+  mQueue := TQueue<Integer>.Create;
   try
-    Queue.Enqueue(ANode);
-    while Queue.Count > 0 do
+    mQueue.Enqueue(ANode);
+    while mQueue.Count > 0 do
     begin
-      Current := Queue.Dequeue;
-      for Ref in FNodes[Current].Incoming do
+      mCurrent := mQueue.Dequeue;
+      for mRef in FNodes[mCurrent].Incoming do
       begin
-        Source := FNodes[Ref.Source];
-        if not Source.Active then
+        mSource := FNodes[mRef.Source];
+        if not mSource.Active then
         begin
           Continue;
         end;
-        if (Ref.Source <> ANode) and not Result[Ref.Source] then
+        if (mRef.Source <> ANode) and not Result[mRef.Source] then
         begin
-          Result[Ref.Source] := True;
+          Result[mRef.Source] := True;
           Inc(ACount);
         end;
-        if (Source.Outgoing[Ref.Item].Section = TUsesSection.Interface_) and not Spreads[Ref.Source] then
+        if (mSource.Outgoing[mRef.Item].Section = TUsesSection.Interface_) and not mSpreads[mRef.Source] then
         begin
-          Spreads[Ref.Source] := True;
-          Queue.Enqueue(Ref.Source);
+          mSpreads[mRef.Source] := True;
+          mQueue.Enqueue(mRef.Source);
         end;
       end;
     end;
   finally
-    Queue.Free;
+    mQueue.Free;
   end;
 end;
 
 function TUsesGraph.RecompileSet(ANode: Integer): TArray<Integer>;
 var
-  Marks: TArray<Boolean>;
-  Count, Node_: Integer;
+  mMarks: TArray<Boolean>;
+  mCount, mNode_: Integer;
 begin
-  Marks := RecompileMarks(ANode, Count);
-  SetLength(Result, Count);
-  Count := 0;
-  for Node_ := 0 to High(Marks) do
+  mMarks := RecompileMarks(ANode, mCount);
+  SetLength(Result, mCount);
+  mCount := 0;
+  for mNode_ := 0 to High(mMarks) do
   begin
-    if Marks[Node_] then
+    if mMarks[mNode_] then
     begin
-      Result[Count] := Node_;
-      Inc(Count);
+      Result[mCount] := mNode_;
+      Inc(mCount);
     end;
   end;
   SortByName(Self, Result);
@@ -896,54 +897,54 @@ end;
 
 function TUsesGraph.Path(AFrom, ATo: Integer; ASections: TUsesSections): TUsesEdges;
 var
-  Via: TArray<Integer>;
-  ViaItem: TArray<Integer>;
-  Queue: TQueue<Integer>;
-  Current, Item, Step: Integer;
-  Edge: TUsesEdge;
+  mVia: TArray<Integer>;
+  mViaItem: TArray<Integer>;
+  mQueue: TQueue<Integer>;
+  mCurrent, mItem, mStep: Integer;
+  mEdge: TUsesEdge;
 begin
   Result := nil;
   if (AFrom = ATo) or (AFrom < 0) or (ATo < 0) or not FNodes[AFrom].Active or not FNodes[ATo].Active then
   begin
     Exit;
   end;
-  SetLength(Via, FNodes.Count);
-  SetLength(ViaItem, FNodes.Count);
-  for Item := 0 to High(Via) do
+  SetLength(mVia, FNodes.Count);
+  SetLength(mViaItem, FNodes.Count);
+  for mItem := 0 to High(mVia) do
   begin
-    Via[Item] := -1;
+    mVia[mItem] := -1;
   end;
-  Via[AFrom] := AFrom;
-  Queue := TQueue<Integer>.Create;
+  mVia[AFrom] := AFrom;
+  mQueue := TQueue<Integer>.Create;
   try
-    Queue.Enqueue(AFrom);
-    while (Queue.Count > 0) and (Via[ATo] < 0) do
+    mQueue.Enqueue(AFrom);
+    while (mQueue.Count > 0) and (mVia[ATo] < 0) do
     begin
-      Current := Queue.Dequeue;
-      for Item := 0 to High(FNodes[Current].Outgoing) do
+      mCurrent := mQueue.Dequeue;
+      for mItem := 0 to High(FNodes[mCurrent].Outgoing) do
       begin
-        Edge := FNodes[Current].Outgoing[Item];
-        if not EdgeAllowed(Self, Edge, ASections) or (Via[Edge.Target] >= 0) then
+        mEdge := FNodes[mCurrent].Outgoing[mItem];
+        if not EdgeAllowed(Self, mEdge, ASections) or (mVia[mEdge.Target] >= 0) then
         begin
           Continue;
         end;
-        Via[Edge.Target] := Current;
-        ViaItem[Edge.Target] := Item;
-        Queue.Enqueue(Edge.Target);
+        mVia[mEdge.Target] := mCurrent;
+        mViaItem[mEdge.Target] := mItem;
+        mQueue.Enqueue(mEdge.Target);
       end;
     end;
   finally
-    Queue.Free;
+    mQueue.Free;
   end;
-  if Via[ATo] < 0 then
+  if mVia[ATo] < 0 then
   begin
     Exit;
   end;
-  Step := ATo;
-  while Step <> AFrom do
+  mStep := ATo;
+  while mStep <> AFrom do
   begin
-    Result := [FNodes[Via[Step]].Outgoing[ViaItem[Step]]] + Result;
-    Step := Via[Step];
+    Result := [FNodes[mVia[mStep]].Outgoing[mViaItem[mStep]]] + Result;
+    mStep := mVia[mStep];
   end;
 end;
 
@@ -1272,48 +1273,48 @@ end;
 
 function TUsesGraph.AllCycles: TArray<TUsesCycle>;
 var
-  Errors, Wider: TArray<TUsesCycle>;
-  Cycle, Error: TUsesCycle;
-  Covered: Boolean;
-  Member: Integer;
-  InError: TArray<Boolean>;
+  mErrors, mWider: TArray<TUsesCycle>;
+  mCycle, mError: TUsesCycle;
+  mCovered: Boolean;
+  mMember: Integer;
+  mInError: TArray<Boolean>;
 begin
-  Errors := CyclesOf(Self, InterfaceUsesOnly);
-  Wider := CyclesOf(Self, AllUsesSections);
-  Result := Errors;
-  SetLength(InError, FNodes.Count);
-  for Error in Errors do
+  mErrors := CyclesOf(Self, cInterfaceUsesOnly);
+  mWider := CyclesOf(Self, cAllUsesSections);
+  Result := mErrors;
+  SetLength(mInError, FNodes.Count);
+  for mError in mErrors do
   begin
-    for Member in Error.Component do
+    for mMember in mError.Component do
     begin
-      InError[Member] := True;
+      mInError[mMember] := True;
     end;
   end;
   // Eine Komponente über alle Kanten, die nur aus Units eines interface-Zyklus besteht, zeigt nichts Neues.
-  for Cycle in Wider do
+  for mCycle in mWider do
   begin
-    Covered := True;
-    for Member in Cycle.Component do
+    mCovered := True;
+    for mMember in mCycle.Component do
     begin
-      if not InError[Member] then
+      if not mInError[mMember] then
       begin
-        Covered := False;
+        mCovered := False;
       end;
     end;
-    if not Covered then
+    if not mCovered then
     begin
-      Result := Result + [Cycle];
+      Result := Result + [mCycle];
     end;
   end;
 end;
 
 function TUsesGraph.InitializationOrder(ARoot: Integer; AOnlyWithInitialization: Boolean): TArray<Integer>;
 var
-  Seen: TArray<Boolean>;
-  Frames: TStack<TTarjanFrame>;
-  Frame, Child: TTarjanFrame;
-  Edge: TUsesEdge;
-  Advanced: Boolean;
+  mSeen: TArray<Boolean>;
+  mFrames: TStack<TTarjanFrame>;
+  mFrame, mChild: TTarjanFrame;
+  mEdge: TUsesEdge;
+  mAdvanced: Boolean;
 begin
   // Der Compiler initialisiert eine Unit, nachdem alle Units ihrer uses (in deren Reihenfolge, zuerst interface)
   // initialisiert sind: Nachordnung einer Tiefensuche.
@@ -1322,50 +1323,50 @@ begin
   begin
     Exit;
   end;
-  SetLength(Seen, FNodes.Count);
-  Frames := TStack<TTarjanFrame>.Create;
+  SetLength(mSeen, FNodes.Count);
+  mFrames := TStack<TTarjanFrame>.Create;
   try
-    Frame.Node := ARoot;
-    Frame.Next := 0;
-    Seen[ARoot] := True;
-    Frames.Push(Frame);
-    while Frames.Count > 0 do
+    mFrame.Node := ARoot;
+    mFrame.Next := 0;
+    mSeen[ARoot] := True;
+    mFrames.Push(mFrame);
+    while mFrames.Count > 0 do
     begin
-      Frame := Frames.Pop;
-      Advanced := False;
-      while Frame.Next <= High(FNodes[Frame.Node].Outgoing) do
+      mFrame := mFrames.Pop;
+      mAdvanced := False;
+      while mFrame.Next <= High(FNodes[mFrame.Node].Outgoing) do
       begin
-        Edge := FNodes[Frame.Node].Outgoing[Frame.Next];
-        Inc(Frame.Next);
-        if not FNodes[Edge.Target].Active or Seen[Edge.Target] then
+        mEdge := FNodes[mFrame.Node].Outgoing[mFrame.Next];
+        Inc(mFrame.Next);
+        if not FNodes[mEdge.Target].Active or mSeen[mEdge.Target] then
         begin
           Continue;
         end;
-        Seen[Edge.Target] := True;
-        Frames.Push(Frame);
-        Child.Node := Edge.Target;
-        Child.Next := 0;
-        Frames.Push(Child);
-        Advanced := True;
+        mSeen[mEdge.Target] := True;
+        mFrames.Push(mFrame);
+        mChild.Node := mEdge.Target;
+        mChild.Next := 0;
+        mFrames.Push(mChild);
+        mAdvanced := True;
         Break;
       end;
-      if Advanced then
+      if mAdvanced then
       begin
         Continue;
       end;
-      if not AOnlyWithInitialization or FNodes[Frame.Node].HasInitialization then
+      if not AOnlyWithInitialization or FNodes[mFrame.Node].HasInitialization then
       begin
-        Result := Result + [Frame.Node];
+        Result := Result + [mFrame.Node];
       end;
     end;
   finally
-    Frames.Free;
+    mFrames.Free;
   end;
 end;
 
 function TUsesGraph.Describe(const AEdges: TUsesEdges): string;
 var
-  Edge: TUsesEdge;
+  mEdge: TUsesEdge;
 begin
   Result := '';
   if AEdges = nil then
@@ -1373,9 +1374,9 @@ begin
     Exit;
   end;
   Result := FNodes[AEdges[0].Source].UnitName;
-  for Edge in AEdges do
+  for mEdge in AEdges do
   begin
-    Result := Result + ' → ' + FNodes[Edge.Target].UnitName;
+    Result := Result + ' → ' + FNodes[mEdge.Target].UnitName;
   end;
 end;
 

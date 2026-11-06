@@ -524,12 +524,12 @@ begin
     SecondRef := Second;
     Assert.AreEqual(0, Second.BeginRun);
     First.WriteLine('line one');
-    Files := TDirectory.GetFiles(Folder, TDiagnosticLogFolder.FilePattern);
+    Files := TDirectory.GetFiles(Folder, TDiagnosticLogFolder.cFilePattern);
     Assert.AreEqual<NativeInt>(1, Length(Files));
     Assert.Contains(ExtractFileName(Files[0]), '-222.log');
     First.EndRun;
     Second.EndRun;
-    Assert.AreEqual<NativeInt>(0, Length(TDirectory.GetFiles(Folder, TDiagnosticLogFolder.MarkerPattern)));
+    Assert.AreEqual<NativeInt>(0, Length(TDirectory.GetFiles(Folder, TDiagnosticLogFolder.cMarkerPattern)));
     FirstRef := nil;
     SecondRef := nil;
     Assert.AreEqual('line one', Trim(TFile.ReadAllText(Files[0], TEncoding.UTF8)));

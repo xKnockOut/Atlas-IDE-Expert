@@ -102,14 +102,14 @@ end;
 /// </summary>
 class function TFlagExpressions.Compared(ANode: TSyntaxNode; out AFlag: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := False;
-  for Index := 0 to 1 do
+  for mIndex := 0 to 1 do
   begin
-    if not Result and IsFalseValue(ANode[1 - Index]) and (ANode[Index].Kind = TSyntaxKind.Identifier) then
+    if not Result and IsFalseValue(ANode[1 - mIndex]) and (ANode[mIndex].Kind = TSyntaxKind.Identifier) then
     begin
-      AFlag := ANode[Index].Name;
+      AFlag := ANode[mIndex].Name;
       Result := True;
     end;
   end;
@@ -197,19 +197,19 @@ end;
 /// <summary>Aufruf von Exit, Break, Continue, Abort oder Halt als Anweisung.</summary>
 function IsLeavingCall(AStatement: TSyntaxNode): Boolean;
 var
-  Callee: TSyntaxNode;
+  mCallee: TSyntaxNode;
 begin
   Result := False;
   if AStatement.ChildCount = 0 then
   begin
     Exit;
   end;
-  Callee := AStatement[0];
-  if (Callee.Kind = TSyntaxKind.Call) and (Callee.ChildCount > 0) then
+  mCallee := AStatement[0];
+  if (mCallee.Kind = TSyntaxKind.Call) and (mCallee.ChildCount > 0) then
   begin
-    Callee := Callee[0];
+    mCallee := mCallee[0];
   end;
-  Result := (Callee.Kind = TSyntaxKind.Identifier) and MatchText(Callee.Name,
+  Result := (mCallee.Kind = TSyntaxKind.Identifier) and MatchText(mCallee.Name,
     ['Exit', 'Break', 'Continue', 'Abort', 'Halt']);
 end;
 
@@ -238,16 +238,16 @@ end;
 /// <summary>Weist AStatement (als begin … end) AName zu und verlässt die Liste danach?</summary>
 function AssignsAndLeaves(AStatement: TSyntaxNode; const AName: string): Boolean;
 var
-  Child: Integer;
+  mChild: Integer;
 begin
   Result := False;
   if (AStatement.Kind <> TSyntaxKind.Block) or not Leaves(AStatement) then
   begin
     Exit;
   end;
-  for Child := 0 to AStatement.ChildCount - 1 do
+  for mChild := 0 to AStatement.ChildCount - 1 do
   begin
-    Result := Result or IsAssignTo(AStatement[Child], AName);
+    Result := Result or IsAssignTo(AStatement[mChild], AName);
   end;
 end;
 
@@ -261,15 +261,15 @@ end;
 /// <summary>In der Liste AList folgt hinter AChild ein IsFlagCommit.</summary>
 function CommitsInList(AList, AChild: TSyntaxNode; const AFlag, AName: string): Boolean;
 var
-  Index: Integer;
-  Seen: Boolean;
+  mIndex: Integer;
+  mSeen: Boolean;
 begin
   Result := False;
-  Seen := False;
-  for Index := 0 to AList.ChildCount - 1 do
+  mSeen := False;
+  for mIndex := 0 to AList.ChildCount - 1 do
   begin
-    Result := Result or (Seen and IsFlagCommit(AList[Index], AFlag, AName));
-    Seen := Seen or (AList[Index] = AChild);
+    Result := Result or (mSeen and IsFlagCommit(AList[mIndex], AFlag, AName));
+    mSeen := mSeen or (AList[mIndex] = AChild);
   end;
 end;
 
@@ -278,48 +278,48 @@ end;
 /// (Found := …; if Found then begin Hidden := S; Break; end; #1109).</summary>
 function CommittedAfter(ABlock, ANode: TSyntaxNode; const AFlag, AName: string): Boolean;
 var
-  Child, Parent: TSyntaxNode;
+  mChild, mParent: TSyntaxNode;
 begin
   Result := False;
-  Child := ANode;
-  Parent := ANode.Parent;
-  while not Result and (Parent <> nil) and (Child <> ABlock) do
+  mChild := ANode;
+  mParent := ANode.Parent;
+  while not Result and (mParent <> nil) and (mChild <> ABlock) do
   begin
-    Result := IsStatementList(Parent) and CommitsInList(Parent, Child, AFlag, AName);
-    Child := Parent;
-    Parent := Parent.Parent;
+    Result := IsStatementList(mParent) and CommitsInList(mParent, mChild, AFlag, AName);
+    mChild := mParent;
+    mParent := mParent.Parent;
   end;
 end;
 
 /// <summary>Neben der Zuweisung ANode steht in derselben Anweisungsliste eine Zuweisung an AName.</summary>
 function PairedInList(ANode: TSyntaxNode; const AName: string): Boolean;
 var
-  Child: Integer;
-  Sibling: TSyntaxNode;
+  mChild: Integer;
+  mSibling: TSyntaxNode;
 begin
   Result := False;
   if (ANode.Parent = nil) or not IsStatementList(ANode.Parent) then
   begin
     Exit;
   end;
-  for Child := 0 to ANode.Parent.ChildCount - 1 do
+  for mChild := 0 to ANode.Parent.ChildCount - 1 do
   begin
-    Sibling := ANode.Parent[Child];
-    Result := Result or ((Sibling <> ANode) and IsAssignTo(Sibling, AName));
+    mSibling := ANode.Parent[mChild];
+    Result := Result or ((mSibling <> ANode) and IsAssignTo(mSibling, AName));
   end;
 end;
 
 /// <summary>Nennt ANode irgendwo den Bezeichner AName?</summary>
 function MentionsName(ANode: TSyntaxNode; const AName: string): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
-  Name := AName;
+  mName := AName;
   Result := ANode.Search(
     function(AVisited: TSyntaxNode): TSyntaxSearchStep
     begin
       Result := TSyntaxSearchStep.Descend;
-      if IsName(AVisited, Name) then
+      if IsName(AVisited, mName) then
       begin
         Result := TSyntaxSearchStep.Found;
       end;
@@ -330,21 +330,21 @@ end;
 /// sie laufen (Finish; setzt AfterName); der Fluss der Routine sieht das nicht (#1109).</summary>
 function UsedInNested(ARoutine: TSyntaxNode; const AName: string): Boolean;
 var
-  Child: Integer;
-  Name: string;
+  mChild: Integer;
+  mName: string;
 begin
-  Name := AName;
+  mName := AName;
   Result := False;
-  for Child := 0 to ARoutine.ChildCount - 1 do
+  for mChild := 0 to ARoutine.ChildCount - 1 do
   begin
-    Result := Result or (ARoutine[Child].Search(
+    Result := Result or (ARoutine[mChild].Search(
       function(AVisited: TSyntaxNode): TSyntaxSearchStep
       begin
         Result := TSyntaxSearchStep.Descend;
         if AVisited.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
         begin
           Result := TSyntaxSearchStep.Skip;
-          if MentionsName(AVisited, Name) then
+          if MentionsName(AVisited, mName) then
           begin
             Result := TSyntaxSearchStep.Found;
           end;
@@ -356,14 +356,14 @@ end;
 /// <summary>Namen der Methoden im Record-Rumpf ABody.</summary>
 function RecordHeaderNames(ABody: TSyntaxNode): TArray<string>;
 var
-  Child: Integer;
+  mChild: Integer;
 begin
   Result := nil;
-  for Child := 0 to ABody.ChildCount - 1 do
+  for mChild := 0 to ABody.ChildCount - 1 do
   begin
-    if (ABody[Child].Kind = TSyntaxKind.RoutineHeader) and (ABody[Child].Name <> '') then
+    if (ABody[mChild].Kind = TSyntaxKind.RoutineHeader) and (ABody[mChild].Name <> '') then
     begin
-      Result := Result + [ABody[Child].Name];
+      Result := Result + [ABody[mChild].Name];
     end;
   end;
 end;
@@ -371,12 +371,12 @@ end;
 /// <summary>Methoden eines Record-Typs ATypeName aus dieser Unit; nil für andere Typen.</summary>
 function RecordMethods(ARoot: TSyntaxNode; const ATypeName: string): TArray<string>;
 var
-  TypeName: string;
-  Decl, Body: TSyntaxNode;
+  mTypeName: string;
+  mDecl, mBody: TSyntaxNode;
 begin
   Result := nil;
-  TypeName := ATypeName;
-  Decl := ARoot.Search(
+  mTypeName := ATypeName;
+  mDecl := ARoot.Search(
     function(AVisited: TSyntaxNode): TSyntaxSearchStep
     begin
       Result := TSyntaxSearchStep.Descend;
@@ -384,19 +384,19 @@ begin
       begin
         Result := TSyntaxSearchStep.Skip;
       end
-      else if (AVisited.Kind = TSyntaxKind.TypeDecl) and SameText(AVisited.Name, TypeName) then
+      else if (AVisited.Kind = TSyntaxKind.TypeDecl) and SameText(AVisited.Name, mTypeName) then
       begin
         Result := TSyntaxSearchStep.Found;
       end;
     end);
-  if Decl = nil then
+  if mDecl = nil then
   begin
     Exit;
   end;
-  Body := Decl.FindChild(TSyntaxKind.RecordType);
-  if Body <> nil then
+  mBody := mDecl.FindChild(TSyntaxKind.RecordType);
+  if mBody <> nil then
   begin
-    Result := RecordHeaderNames(Body);
+    Result := RecordHeaderNames(mBody);
   end;
 end;
 
@@ -404,21 +404,21 @@ end;
 /// bekommt den Record als var-Self und legt ihn an.</summary>
 function CallsRecordMethod(ABlock: TSyntaxNode; const AName: string; const AMethods: TArray<string>): Boolean;
 var
-  Name: string;
-  Methods: TArray<string>;
+  mName: string;
+  mMethods: TArray<string>;
 begin
   if AMethods = nil then
   begin
     Exit(False);
   end;
-  Name := AName;
-  Methods := AMethods;
+  mName := AName;
+  mMethods := AMethods;
   Result := ABlock.Search(
     function(AVisited: TSyntaxNode): TSyntaxSearchStep
     begin
       Result := TSyntaxSearchStep.Descend;
-      if (AVisited.Kind = TSyntaxKind.MemberAccess) and (AVisited.ChildCount = 1) and IsName(AVisited[0], Name) and
-        MatchText(AVisited.Name, Methods) then
+      if (AVisited.Kind = TSyntaxKind.MemberAccess) and (AVisited.ChildCount = 1) and IsName(AVisited[0], mName) and
+        MatchText(AVisited.Name, mMethods) then
       begin
         Result := TSyntaxSearchStep.Found;
       end;
@@ -429,25 +429,25 @@ end;
 /// Typen, vorbelegte (var X: Integer = 0) und generische.</summary>
 function DeclConfidence(ADecl: TSyntaxNode; out ATypeName: string; out AConfidence: TRuleConfidence): Boolean;
 var
-  TypeNode: TSyntaxNode;
+  mTypeNode: TSyntaxNode;
 begin
   ATypeName := '';
   AConfidence := TRuleConfidence.Medium;
-  TypeNode := ADecl.FindChild(TSyntaxKind.TypeReference);
-  Result := (ADecl.Kind = TSyntaxKind.VarDecl) and (TypeNode <> nil) and (ADecl.ChildCount = 1);
-  Result := Result and (TypeNode.FindChild(TSyntaxKind.GenericArgs) = nil);
+  mTypeNode := ADecl.FindChild(TSyntaxKind.TypeReference);
+  Result := (ADecl.Kind = TSyntaxKind.VarDecl) and (mTypeNode <> nil) and (ADecl.ChildCount = 1);
+  Result := Result and (mTypeNode.FindChild(TSyntaxKind.GenericArgs) = nil);
   if not Result then
   begin
     Exit;
   end;
-  ATypeName := TypeNode.Name;
-  if MatchText(ATypeName, SimpleTypes) then
+  ATypeName := mTypeNode.Name;
+  if MatchText(ATypeName, cSimpleTypes) then
   begin
     AConfidence := TRuleConfidence.High;
   end
   else
   begin
-    Result := StartsText('T', ATypeName) and (Length(ATypeName) > 1) and not MatchText(ATypeName, ManagedTypes);
+    Result := StartsText('T', ATypeName) and (Length(ATypeName) > 1) and not MatchText(ATypeName, cManagedTypes);
   end;
 end;
 
@@ -461,17 +461,17 @@ end;
 
 procedure TPossiblyUninitializedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Check: TUninitializedCheck;
+  mCheck: TUninitializedCheck;
 begin
   if AContext.Tree = nil then
   begin
     Exit;
   end;
-  Check := TUninitializedCheck.Create(AContext, AReport);
+  mCheck := TUninitializedCheck.Create(AContext, AReport);
   try
-    Check.Run;
+    mCheck.Run;
   finally
-    Check.Free;
+    mCheck.Free;
   end;
 end;
 
@@ -520,78 +520,78 @@ end;
 /// Dann heißt ein gesetzter Merker, dass sie einen Wert hat (#1109).</summary>
 function TUninitializedCheck.IsFlagFor(ABlock: TSyntaxNode; const AFlag: string): Boolean;
 var
-  Pending: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Any: Boolean;
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mAny: Boolean;
 begin
   if SameText(AFlag, FName) or HasOpaqueUse(ABlock, AFlag) then
   begin
     Exit(False);
   end;
   Result := True;
-  Any := False;
-  Pending := TStack<TSyntaxNode>.Create;
+  mAny := False;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ABlock);
-    while Result and (Pending.Count > 0) do
+    mPending.Push(ABlock);
+    while Result and (mPending.Count > 0) do
     begin
-      Node := Pending.Pop;
-      if Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
+      mNode := mPending.Pop;
+      if mNode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
       begin
         Continue;
       end;
-      if IsAssignTo(Node, AFlag) and not TFlagExpressions.IsFalseValue(Node[1]) then
+      if IsAssignTo(mNode, AFlag) and not TFlagExpressions.IsFalseValue(mNode[1]) then
       begin
-        Result := PairedInList(Node, FName) or CommittedAfter(ABlock, Node, AFlag, FName);
-        Any := True;
+        Result := PairedInList(mNode, FName) or CommittedAfter(ABlock, mNode, AFlag, FName);
+        mAny := True;
       end;
-      PushChildren(Pending, Node);
+      PushChildren(mPending, mNode);
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
-  Result := Result and Any;
+  Result := Result and mAny;
 end;
 
 /// <summary>AChild ist der then-Zweig von "if F then" mit Merker F.</summary>
 function TUninitializedCheck.ThenGuard(ABlock, AParent, AChild: TSyntaxNode): Boolean;
 var
-  Flag: string;
+  mFlag: string;
 begin
   Result := (AParent.Kind = TSyntaxKind.IfStatement) and (AParent.ChildCount >= 2) and (AParent[1] = AChild) and
-    TFlagExpressions.Positive(AParent[0], Flag) and IsFlagFor(ABlock, Flag);
+    TFlagExpressions.Positive(AParent[0], mFlag) and IsFlagFor(ABlock, mFlag);
 end;
 
 /// <summary>AChild steht rechts von "F and …" bzw. "not F or …" mit Merker F.</summary>
 function TUninitializedCheck.OperandGuard(ABlock, AParent, AChild: TSyntaxNode): Boolean;
 var
-  Flag: string;
+  mFlag: string;
 begin
   Result := (AParent.Kind = TSyntaxKind.BinaryExpr) and (AParent.ChildCount = 2) and (AParent[1] = AChild);
-  Result := Result and ((SameText(AParent.Name, 'and') and TFlagExpressions.Positive(AParent[0], Flag)) or
-    (SameText(AParent.Name, 'or') and TFlagExpressions.Negative(AParent[0], Flag)));
-  Result := Result and IsFlagFor(ABlock, Flag);
+  Result := Result and ((SameText(AParent.Name, 'and') and TFlagExpressions.Positive(AParent[0], mFlag)) or
+    (SameText(AParent.Name, 'or') and TFlagExpressions.Negative(AParent[0], mFlag)));
+  Result := Result and IsFlagFor(ABlock, mFlag);
 end;
 
 /// <summary>Vor AChild steht in der Anweisungsliste AParent "if not F then Exit" mit Merker F.</summary>
 function TUninitializedCheck.ExitGuard(ABlock, AParent, AChild: TSyntaxNode): Boolean;
 var
-  Index: Integer;
-  Statement: TSyntaxNode;
-  Flag: string;
+  mIndex: Integer;
+  mStatement: TSyntaxNode;
+  mFlag: string;
 begin
   Result := False;
   if not IsStatementList(AParent) then
   begin
     Exit;
   end;
-  Index := 0;
-  while not Result and (Index < AParent.ChildCount) and (AParent[Index] <> AChild) do
+  mIndex := 0;
+  while not Result and (mIndex < AParent.ChildCount) and (AParent[mIndex] <> AChild) do
   begin
-    Statement := AParent[Index];
-    Result := (Statement.Kind = TSyntaxKind.IfStatement) and (Statement.ChildCount = 2) and
-      TFlagExpressions.Negative(Statement[0], Flag) and Leaves(Statement[1]) and IsFlagFor(ABlock, Flag);
-    Inc(Index);
+    mStatement := AParent[mIndex];
+    Result := (mStatement.Kind = TSyntaxKind.IfStatement) and (mStatement.ChildCount = 2) and
+      TFlagExpressions.Negative(mStatement[0], mFlag) and Leaves(mStatement[1]) and IsFlagFor(ABlock, mFlag);
+    Inc(mIndex);
   end;
 end;
 
@@ -599,86 +599,86 @@ end;
 /// bzw. not F or …, oder nach if not F then Exit in einer umgebenden Anweisungsliste?</summary>
 function TUninitializedCheck.GuardedByFlag(ABlock, ANode: TSyntaxNode): Boolean;
 var
-  Child, Parent: TSyntaxNode;
+  mChild, mParent: TSyntaxNode;
 begin
   Result := False;
-  Child := ANode;
-  Parent := ANode.Parent;
-  while not Result and (Parent <> nil) and (Child <> ABlock) do
+  mChild := ANode;
+  mParent := ANode.Parent;
+  while not Result and (mParent <> nil) and (mChild <> ABlock) do
   begin
-    Result := ThenGuard(ABlock, Parent, Child) or OperandGuard(ABlock, Parent, Child) or
-      ExitGuard(ABlock, Parent, Child);
-    Child := Parent;
-    Parent := Parent.Parent;
+    Result := ThenGuard(ABlock, mParent, mChild) or OperandGuard(ABlock, mParent, mChild) or
+      ExitGuard(ABlock, mParent, mChild);
+    mChild := mParent;
+    mParent := mParent.Parent;
   end;
 end;
 
 /// <summary>ANode liest die Variable (nicht links einer Zuweisung).</summary>
 function TUninitializedCheck.IsRead(ANode: TSyntaxNode): Boolean;
 var
-  Parent: TSyntaxNode;
+  mParent: TSyntaxNode;
 begin
-  Parent := ANode.Parent;
-  Result := IsName(ANode, FName) and not ((Parent <> nil) and (Parent.Kind = TSyntaxKind.AssignStatement) and
-    (Parent.ChildCount > 0) and (Parent[0] = ANode));
+  mParent := ANode.Parent;
+  Result := IsName(ANode, FName) and not ((mParent <> nil) and (mParent.Kind = TSyntaxKind.AssignStatement) and
+    (mParent.ChildCount > 0) and (mParent[0] = ANode));
 end;
 
 /// <summary>Der Lesezugriff ANode ist erreichbar, ohne dass vorher ein Wert zugewiesen wurde.</summary>
 function TUninitializedCheck.ReadsUninitialized(ARoot, ANode: TSyntaxNode): Boolean;
 var
-  Flow: TFlowNode;
+  mFlow: TFlowNode;
 begin
-  Flow := FlowNodeOf(ANode);
-  Result := (Flow <> nil) and (FGraph.IsReachable(Flow) = TFlowAnswer.Yes);
-  Result := Result and FGraph.ReachingDefinitions(Flow, FName).FromEntry and not GuardedByFlag(ARoot, ANode);
+  mFlow := FlowNodeOf(ANode);
+  Result := (mFlow <> nil) and (FGraph.IsReachable(mFlow) = TFlowAnswer.Yes);
+  Result := Result and FGraph.ReachingDefinitions(mFlow, FName).FromEntry and not GuardedByFlag(ARoot, ANode);
 end;
 
 /// <summary>Erster Lesezugriff auf die Variable, der ohne vorherige Zuweisung erreichbar ist.</summary>
 procedure TUninitializedCheck.Visit(ARoot: TSyntaxNode);
 var
-  Pending: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
 begin
   // Iterativ mit eigenem Stapel (Bericht M1); die Kinder rückwärts darauf, damit der erste Treffer derselbe bleibt.
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ARoot);
-    while not FReported and (Pending.Count > 0) do
+    mPending.Push(ARoot);
+    while not FReported and (mPending.Count > 0) do
     begin
-      Node := Pending.Pop;
-      if Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
+      mNode := mPending.Pop;
+      if mNode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
       begin
         Continue;
       end;
-      if IsRead(Node) and ReadsUninitialized(ARoot, Node) then
+      if IsRead(mNode) and ReadsUninitialized(ARoot, mNode) then
       begin
-        FReport.Add(NodeRange(Node),
+        FReport.Add(NodeRange(mNode),
           cTexts[TFlowUninitializedText.MaybeRead].Fmt([FName]), FConfidence);
         FReported := True;
       end
       else
       begin
-        PushChildren(Pending, Node);
+        PushChildren(mPending, mNode);
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
 procedure TUninitializedCheck.CheckDecl(ARoutine, ABlock, ADecl: TSyntaxNode);
 var
-  TypeName, Name: string;
+  mTypeName, mName: string;
 begin
-  if not DeclConfidence(ADecl, TypeName, FConfidence) then
+  if not DeclConfidence(ADecl, mTypeName, FConfidence) then
   begin
     Exit;
   end;
-  for Name in ADecl.Name.Split([',']) do
+  for mName in ADecl.Name.Split([',']) do
   begin
-    FName := Name;
-    if HasOpaqueUse(ABlock, Name.Trim) or UsedInNested(ARoutine, Name) or
-      CallsRecordMethod(ABlock, Name, MethodsOfRecord(TypeName)) then
+    FName := mName;
+    if HasOpaqueUse(ABlock, mName.Trim) or UsedInNested(ARoutine, mName) or
+      CallsRecordMethod(ABlock, mName, MethodsOfRecord(mTypeName)) then
     begin
       Continue;
     end;
@@ -697,32 +697,32 @@ end;
 
 procedure TUninitializedCheck.CheckRoutine(ARoutine: TSyntaxNode);
 var
-  Block, Section: TSyntaxNode;
-  Index, Inner: Integer;
+  mBlock, mSection: TSyntaxNode;
+  mIndex, mInner: Integer;
 begin
-  Block := ARoutine.FindChild(TSyntaxKind.Block);
+  mBlock := ARoutine.FindChild(TSyntaxKind.Block);
   FGraph := nil;
-  for Index := 0 to ARoutine.ChildCount - 1 do
+  for mIndex := 0 to ARoutine.ChildCount - 1 do
   begin
-    Section := ARoutine[Index];
-    if Section.Kind <> TSyntaxKind.VarSection then
+    mSection := ARoutine[mIndex];
+    if mSection.Kind <> TSyntaxKind.VarSection then
     begin
       Continue;
     end;
-    for Inner := 0 to Section.ChildCount - 1 do
+    for mInner := 0 to mSection.ChildCount - 1 do
     begin
-      CheckDecl(ARoutine, Block, Section[Inner]);
+      CheckDecl(ARoutine, mBlock, mSection[mInner]);
     end;
   end;
 end;
 
 procedure TUninitializedCheck.Run;
 var
-  Routine: TSyntaxNode;
+  mRoutine: TSyntaxNode;
 begin
-  for Routine in TRuleDerived.Routines(FCache, FContext) do
+  for mRoutine in TRuleDerived.Routines(FCache, FContext) do
   begin
-    CheckRoutine(Routine);
+    CheckRoutine(mRoutine);
   end;
 end;
 

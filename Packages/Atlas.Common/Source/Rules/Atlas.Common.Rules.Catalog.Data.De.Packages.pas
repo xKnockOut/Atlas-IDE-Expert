@@ -6,7 +6,7 @@
 interface
 
 const
-  CatalogLinesDePackages: array[0..26] of string = (
+  cCatalogLinesDePackages: array[0..26] of string = (
     '{',
     '      "id": "implicit-package-import",',
     '      "name": "Implizit eingebundene Unit",',

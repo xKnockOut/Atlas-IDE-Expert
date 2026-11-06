@@ -340,7 +340,7 @@ begin
       Diagnostics.RefreshLater;
     end;
     Assert.AreEqual(0, TInterlocked.CompareExchange(Calls, 0, 0), 'erst nach der Pause');
-    Sleep(TLspSyntaxDiagnostics.RefreshDelayMs + 500);
+    Sleep(TLspSyntaxDiagnostics.cRefreshDelayMs + 500);
     Assert.AreEqual(1, TInterlocked.CompareExchange(Calls, 0, 0));
   finally
     Diagnostics.Free;
@@ -368,7 +368,7 @@ begin
     Assert.IsTrue(FCapture.WaitForCount(1, 1000), 'Keine Diagnose gemeldet');
     Assert.IsTrue(Watch.ElapsedMilliseconds < 200,
       Format('Diagnose nach %d ms', [Watch.ElapsedMilliseconds]));
-    Sleep(TLspSyntaxDiagnostics.DefaultDelayMs * 2);
+    Sleep(TLspSyntaxDiagnostics.cDefaultDelayMs * 2);
     Assert.AreEqual(1, Integer(FCapture.Count), 'Nur der letzte Stand wird ausgewertet');
     Message := FCapture.MessageAt(0);
     try

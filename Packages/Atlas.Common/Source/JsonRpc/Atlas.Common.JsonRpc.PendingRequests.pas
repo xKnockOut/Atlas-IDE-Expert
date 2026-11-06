@@ -142,23 +142,23 @@ implementation
 /// <summary>params.textDocument.uri oder ''.</summary>
 function DocumentUri(const AMessage: TJSONObject): string;
 var
-  Params, Document, Uri: TJSONValue;
+  mParams, mDocument, mUri: TJSONValue;
 begin
   Result := '';
-  Params := AMessage.GetValue('params');
-  if not (Params is TJSONObject) then
+  mParams := AMessage.GetValue('params');
+  if not (mParams is TJSONObject) then
   begin
     Exit;
   end;
-  Document := TJSONObject(Params).GetValue('textDocument');
-  if not (Document is TJSONObject) then
+  mDocument := TJSONObject(mParams).GetValue('textDocument');
+  if not (mDocument is TJSONObject) then
   begin
     Exit;
   end;
-  Uri := TJSONObject(Document).GetValue('uri');
-  if Uri is TJSONString then
+  mUri := TJSONObject(mDocument).GetValue('uri');
+  if mUri is TJSONString then
   begin
-    Result := Uri.Value;
+    Result := mUri.Value;
   end;
 end;
 
@@ -342,12 +342,12 @@ begin
   begin
     ObserveRequest(AMessage, mId);
   end
-  else if mMethod.Value = JsonRpcCancelRequestMethod then
+  else if mMethod.Value = cJsonRpcCancelRequestMethod then
   begin
     CancelById(CancelledId(AMessage, 'id'));
     Result := True;
   end
-  else if mMethod.Value = McpCancelledMethod then
+  else if mMethod.Value = cMcpCancelledMethod then
   begin
     CancelById(CancelledId(AMessage, 'requestId'));
     Result := True;
@@ -364,36 +364,36 @@ end;
 
 function TJsonRpcPendingRequests.Acquire(const AId: TJSONValue): IJsonRpcCancellationToken;
 var
-  Key: string;
-  Source: IJsonRpcCancellationSource;
+  mKey: string;
+  mSource: IJsonRpcCancellationSource;
 begin
-  Key := KeyOf(AId);
+  mKey := KeyOf(AId);
   FLock.Enter;
   try
-    if not FRequests.TryGetValue(Key, Source) then
+    if not FRequests.TryGetValue(mKey, mSource) then
     begin
-      Source := TJsonRpcCancellation.Create;
-      FRequests.Add(Key, Source);
+      mSource := TJsonRpcCancellation.Create;
+      FRequests.Add(mKey, mSource);
     end;
   finally
     FLock.Leave;
   end;
-  Result := Source;
+  Result := mSource;
 end;
 
 procedure TJsonRpcPendingRequests.Release(const AId: TJSONValue; const AToken: IJsonRpcCancellationToken);
 var
-  Key: string;
-  Source: IJsonRpcCancellationSource;
+  mKey: string;
+  mSource: IJsonRpcCancellationSource;
 begin
-  Key := KeyOf(AId);
+  mKey := KeyOf(AId);
   FLock.Enter;
   try
     // Nur den eigenen Eintrag entfernen, falls die Gegenseite eine id doppelt vergibt.
-    if FRequests.TryGetValue(Key, Source) and ((Source as IInterface) = (AToken as IInterface)) then
+    if FRequests.TryGetValue(mKey, mSource) and ((mSource as IInterface) = (AToken as IInterface)) then
     begin
-      FRequests.Remove(Key);
-      FUris.Remove(Key);
+      FRequests.Remove(mKey);
+      FUris.Remove(mKey);
     end;
   finally
     FLock.Leave;
@@ -402,13 +402,13 @@ end;
 
 procedure TJsonRpcPendingRequests.Cancel(const AId: TJSONValue);
 var
-  Source: IJsonRpcCancellationSource;
+  mSource: IJsonRpcCancellationSource;
 begin
   FLock.Enter;
   try
-    if FRequests.TryGetValue(KeyOf(AId), Source) then
+    if FRequests.TryGetValue(KeyOf(AId), mSource) then
     begin
-      Source.Cancel;
+      mSource.Cancel;
     end;
   finally
     FLock.Leave;
@@ -417,13 +417,13 @@ end;
 
 procedure TJsonRpcPendingRequests.CancelAll;
 var
-  Source: IJsonRpcCancellationSource;
+  mSource: IJsonRpcCancellationSource;
 begin
   FLock.Enter;
   try
-    for Source in FRequests.Values do
+    for mSource in FRequests.Values do
     begin
-      Source.Cancel;
+      mSource.Cancel;
     end;
   finally
     FLock.Leave;
@@ -432,26 +432,26 @@ end;
 
 function TJsonRpcPendingRequests.Expire(const AToken: IJsonRpcCancellationToken): Boolean;
 var
-  Source: IJsonRpcCancellationSource;
+  mSource: IJsonRpcCancellationSource;
 begin
-  if not Supports(AToken, IJsonRpcCancellationSource, Source) then
+  if not Supports(AToken, IJsonRpcCancellationSource, mSource) then
   begin
     Exit(False);
   end;
-  Source.Expire;
-  Result := Source.TryAnswer;
+  mSource.Expire;
+  Result := mSource.TryAnswer;
 end;
 
 function TJsonRpcPendingRequests.TryAnswer(const AToken: IJsonRpcCancellationToken): Boolean;
 var
-  Source: IJsonRpcCancellationSource;
+  mSource: IJsonRpcCancellationSource;
 begin
   // Fremde Token (Tests, eigene Implementierungen) kennen keine Antwortsperre.
-  if not Supports(AToken, IJsonRpcCancellationSource, Source) then
+  if not Supports(AToken, IJsonRpcCancellationSource, mSource) then
   begin
     Exit(True);
   end;
-  Result := Source.TryAnswer;
+  Result := mSource.TryAnswer;
 end;
 
 procedure TJsonRpcPendingRequests.AddContentChangeMethod(const AMethod: string);
@@ -466,16 +466,16 @@ end;
 
 procedure TJsonRpcPendingRequests.CancelForUri(const AUri: string);
 var
-  Pair: TPair<string, string>;
-  Source: IJsonRpcCancellationSource;
+  mPair: TPair<string, string>;
+  mSource: IJsonRpcCancellationSource;
 begin
   FLock.Enter;
   try
-    for Pair in FUris do
+    for mPair in FUris do
     begin
-      if (Pair.Value = AUri) and FRequests.TryGetValue(Pair.Key, Source) then
+      if (mPair.Value = AUri) and FRequests.TryGetValue(mPair.Key, mSource) then
       begin
-        Source.CancelModified;
+        mSource.CancelModified;
       end;
     end;
   finally

@@ -19,8 +19,8 @@ uses
 type
   TStringLiteralCommands = class
   public const
-    PlainTextCommand = 'atlas.server.plainText';
-    ToLiteralCommand = 'atlas.server.textToLiteral';
+    cPlainTextCommand = 'atlas.server.plainText';
+    cToLiteralCommand = 'atlas.server.textToLiteral';
   public
     class function ExecutePlainText(const AStore: IDocumentStore; const AArguments: TJSONArray): TJSONValue; static;
     class function ExecuteToLiteral(const AStore: IDocumentStore; const ASettings: TStringLiteralSettings;
@@ -60,12 +60,12 @@ begin
   if (AArguments = nil) or (AArguments.Count < ACount) or not (AArguments.Items[0] is TJSONString) or
     (AArguments.Items[0] is TJSONNumber) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TStringLiteralCommandsText.URIAndPositionExpected].Text);
   end;
   if not AStore.TryGet(AArguments.Items[0].Value, Result) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TStringLiteralCommandsText.DocumentIsNotOpen].Text +
       AArguments.Items[0].Value);
   end;
@@ -75,51 +75,51 @@ end;
 class function TStringLiteralCommands.ExecutePlainText(const AStore: IDocumentStore;
   const AArguments: TJSONArray): TJSONValue;
 var
-  Document: ITextDocument;
-  Position: TTextPosition;
-  Range: TTextRange;
-  Text: string;
+  mDocument: ITextDocument;
+  mPosition: TTextPosition;
+  mRange: TTextRange;
+  mText: string;
 begin
-  Document := DocumentOf(AStore, AArguments, 2, Position);
-  if not (TStringLiterals.LiteralAt(Document.Text, Position, Range) and
-    TStringLiterals.PlainText(TStringLiterals.TextOf(Document.Text, Range), Text)) then
+  mDocument := DocumentOf(AStore, AArguments, 2, mPosition);
+  if not (TStringLiterals.LiteralAt(mDocument.Text, mPosition, mRange) and
+    TStringLiterals.PlainText(TStringLiterals.TextOf(mDocument.Text, mRange), mText)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TStringLiteralCommandsText.ThereIsNoStringLiteral].Text);
   end;
-  Result := TJSONString.Create(Text);
+  Result := TJSONString.Create(mText);
 end;
 
 class function TStringLiteralCommands.ExecuteToLiteral(const AStore: IDocumentStore;
   const ASettings: TStringLiteralSettings; AMultiline: Boolean; const AArguments: TJSONArray): TJSONValue;
 var
-  Document: ITextDocument;
-  Position: TTextPosition;
-  Lines: TArray<string>;
-  Line, Indent, LineEnd: string;
-  Index: Integer;
+  mDocument: ITextDocument;
+  mPosition: TTextPosition;
+  mLines: TArray<string>;
+  mLine, mIndent, mLineEnd: string;
+  mIndex: Integer;
 begin
-  Document := DocumentOf(AStore, AArguments, 3, Position);
+  mDocument := DocumentOf(AStore, AArguments, 3, mPosition);
   if not (AArguments.Items[2] is TJSONString) or (AArguments.Items[2] is TJSONNumber) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TStringLiteralCommandsText.TheTextIsExpectedAs].Text);
   end;
-  Lines := Document.Text.Split([#10]);
-  Line := '';
-  if (Position.Line >= 0) and (Position.Line <= High(Lines)) then
+  mLines := mDocument.Text.Split([#10]);
+  mLine := '';
+  if (mPosition.Line >= 0) and (mPosition.Line <= High(mLines)) then
   begin
-    Line := Lines[Position.Line];
+    mLine := mLines[mPosition.Line];
   end;
-  Index := 1;
-  while (Index <= Length(Line)) and CharInSet(Line[Index], [' ', #9]) do
+  mIndex := 1;
+  while (mIndex <= Length(mLine)) and CharInSet(mLine[mIndex], [' ', #9]) do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Indent := Copy(Line, 1, Index - 1);
-  LineEnd := TTextLines.LineBreakOf(Document.Text);
-  Result := TJSONString.Create(TStringLiterals.ToLiteral(AArguments.Items[2].Value, Indent, False, AMultiline,
-    ASettings, LineEnd));
+  mIndent := Copy(mLine, 1, mIndex - 1);
+  mLineEnd := TTextLines.LineBreakOf(mDocument.Text);
+  Result := TJSONString.Create(TStringLiterals.ToLiteral(AArguments.Items[2].Value, mIndent, False, AMultiline,
+    ASettings, mLineEnd));
 end;
 
 initialization

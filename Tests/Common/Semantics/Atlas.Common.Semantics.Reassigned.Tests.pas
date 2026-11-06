@@ -82,7 +82,7 @@ begin
   try
     for Symbol in TReassigned.Analyze(ASource, Tree, ALookup) do
     begin
-      Items.Add(Format('%s=%s:%d/%d/%d', [Symbol.Name, TReassigned.KindNames[Symbol.Kind], Symbol.Writes,
+      Items.Add(Format('%s=%s:%d/%d/%d', [Symbol.Name, TReassigned.cKindNames[Symbol.Kind], Symbol.Writes,
         Symbol.LoopWrites, Symbol.MaybeWrites]));
     end;
     Items.Sort;
@@ -174,7 +174,7 @@ const
     'end;';
 begin
   Assert.AreEqual('A=local:2/0/0 B=local:1/0/0 C=local:2/0/0 D=local:1/0/0', Counts(Wrap(Source)));
-  Assert.AreEqual('A C', Marked(Wrap(Source), TReassigned.DefaultTargets));
+  Assert.AreEqual('A C', Marked(Wrap(Source), TReassigned.cDefaultTargets));
 end;
 
 procedure TReassignedTests.VarAndOutArguments;
@@ -195,7 +195,7 @@ begin
   // N: Zuweisung und var-Argument; S: out-Argument; M nur gelesen (Wertparameter).
   Assert.AreEqual('ACount=valueParameter:0/0/0 AText=varParameter:0/0/0 AValue=varParameter:0/0/0 ' +
     'M=local:0/0/0 N=local:2/0/0 S=local:1/0/0', Counts(Wrap(Source)));
-  Assert.AreEqual('N', Marked(Wrap(Source), TReassigned.DefaultTargets));
+  Assert.AreEqual('N', Marked(Wrap(Source), TReassigned.cDefaultTargets));
 end;
 
 procedure TReassignedTests.IncludeExcludeAndRead;
@@ -217,7 +217,7 @@ const
     'end;';
 begin
   Assert.AreEqual('F=local:2/0/0 Flags=local:3/0/0 I=local:1/0/0 Line=local:2/0/0', Counts(Wrap(Source)));
-  Assert.AreEqual('F Flags Line', Marked(Wrap(Source), TReassigned.DefaultTargets));
+  Assert.AreEqual('F Flags Line', Marked(Wrap(Source), TReassigned.cDefaultTargets));
 end;
 
 procedure TReassignedTests.PossibleWritesDoNotCount;
@@ -239,7 +239,7 @@ const
 begin
   // Adresse, Teilzuweisung und unbekannte Signatur: womöglich, nicht gezählt; Methodenaufruf liest.
   Assert.AreEqual('A=local:1/0/1 B=local:1/0/1 C=local:1/0/1 D=local:1/0/0', Counts(Wrap(Source)));
-  Assert.AreEqual('', Marked(Wrap(Source), TReassigned.DefaultTargets));
+  Assert.AreEqual('', Marked(Wrap(Source), TReassigned.cDefaultTargets));
 end;
 
 procedure TReassignedTests.ResolvedSignaturesFromLookup;
@@ -370,7 +370,7 @@ begin
     Counts(Source));
   // FName schreibt auch der Konstruktor, FTwice zwei Methoden, FRead niemand.
   Assert.AreEqual('FCount FSelf', Marked(Source, [TReassignedTarget.Fields]));
-  Assert.AreEqual('', Marked(Source, TReassigned.DefaultTargets));
+  Assert.AreEqual('', Marked(Source, TReassigned.cDefaultTargets));
   Assert.AreEqual('7:4 23:7w 23:16', Places(Source, 'FSelf'));
 end;
 
@@ -400,7 +400,7 @@ begin
   // A schreibt die verschachtelte Routine mit; ihr B ist ein eigener Name. Die anonyme Methode schreibt das
   // äußere B und ihren Parameter X.
   Assert.AreEqual('A=local:2/0/0 B=local:1/0/0 B=local:2/0/0 X=valueParameter:1/0/0', Counts(Wrap(Source)));
-  Assert.AreEqual('A B X', Marked(Wrap(Source), TReassigned.DefaultTargets));
+  Assert.AreEqual('A B X', Marked(Wrap(Source), TReassigned.cDefaultTargets));
 end;
 
 procedure TReassignedTests.EveryTargetCombination;

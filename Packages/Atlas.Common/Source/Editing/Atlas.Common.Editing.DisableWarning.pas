@@ -134,9 +134,9 @@ end;
 
 class function TDisableWarning.RoutineAt(ATree: TSyntaxTree; ALine: Integer): TSyntaxNode;
 var
-  Node: TSyntaxNode;
-  Index: Integer;
-  Descended: Boolean;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
+  mDescended: Boolean;
 begin
   // Von oben nach unten absteigen; die tiefste Routine mit Rumpf (verschachtelte Routinen) gewinnt.
   Result := nil;
@@ -144,56 +144,56 @@ begin
   begin
     Exit;
   end;
-  Node := ATree.Root;
+  mNode := ATree.Root;
   repeat
-    Descended := False;
-    for Index := 0 to Node.ChildCount - 1 do
+    mDescended := False;
+    for mIndex := 0 to mNode.ChildCount - 1 do
     begin
-      if (Node[Index].StartPos.Line <= ALine) and (ALine <= Node[Index].EndPos.Line) then
+      if (mNode[mIndex].StartPos.Line <= ALine) and (ALine <= mNode[mIndex].EndPos.Line) then
       begin
-        Node := Node[Index];
-        if (Node.Kind = TSyntaxKind.RoutineDecl) and (Node.FindChild(TSyntaxKind.Block) <> nil) then
+        mNode := mNode[mIndex];
+        if (mNode.Kind = TSyntaxKind.RoutineDecl) and (mNode.FindChild(TSyntaxKind.Block) <> nil) then
         begin
-          Result := Node;
+          Result := mNode;
         end;
-        Descended := True;
+        mDescended := True;
         Break;
       end;
     end;
-  until not Descended;
+  until not mDescended;
 end;
 
 class function TDisableWarning.HeaderEndLine(ATree: TSyntaxTree): Integer;
 var
-  Tokens: TArray<TPascalToken>;
-  Index: Integer;
-  Started: Boolean;
+  mTokens: TArray<TPascalToken>;
+  mIndex: Integer;
+  mStarted: Boolean;
 begin
   Result := -1;
   if ATree = nil then
   begin
     Exit;
   end;
-  Tokens := ATree.Tokens;
-  Started := False;
-  for Index := 0 to High(Tokens) do
+  mTokens := ATree.Tokens;
+  mStarted := False;
+  for mIndex := 0 to High(mTokens) do
   begin
-    if Tokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+    if mTokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
     begin
       Continue;
     end;
-    if not Started then
+    if not mStarted then
     begin
       // Der Kopf muss das erste Wort sein; sonst (Include-Datei, Ausschnitt) gibt es keinen.
-      if not MatchText(Tokens[Index].Text, ['unit', 'program', 'library', 'package']) then
+      if not MatchText(mTokens[mIndex].Text, ['unit', 'program', 'library', 'package']) then
       begin
         Exit;
       end;
-      Started := True;
+      mStarted := True;
     end
-    else if Tokens[Index].IsSymbol(';') then
+    else if mTokens[mIndex].IsSymbol(';') then
     begin
-      Exit(Tokens[Index].EndPos.Line);
+      Exit(mTokens[mIndex].EndPos.Line);
     end;
   end;
 end;
@@ -233,14 +233,14 @@ end;
 class function TDisableWarning.Edits(const AText: string; ATree: TSyntaxTree; ALine: Integer;
   const ARequest: TDisableWarningRequest; out AEdits: TArray<TTextEdit>): Boolean;
 var
-  Lines: TArray<string>;
-  LineBreak, Indent: string;
-  Routine: TSyntaxNode;
-  First, Last: Integer;
+  mLines: TArray<string>;
+  mLineBreak, mIndent: string;
+  mRoutine: TSyntaxNode;
+  mFirst, mLast: Integer;
 begin
   AEdits := nil;
-  Lines := TTextLines.SplitLines(AText, LineBreak);
-  Result := (ALine >= 0) and (ALine <= High(Lines));
+  mLines := TTextLines.SplitLines(AText, mLineBreak);
+  Result := (ALine >= 0) and (ALine <= High(mLines));
   if not Result then
   begin
     Exit;
@@ -248,38 +248,38 @@ begin
   case ARequest.Scope of
     TDisableWarningScope.UnitWide:
       begin
-        First := HeaderEndLine(ATree);
-        Result := (First >= 0) and (First <= High(Lines));
+        mFirst := HeaderEndLine(ATree);
+        Result := (mFirst >= 0) and (mFirst <= High(mLines));
         if Result then
         begin
-          AEdits := [After(First, Length(Lines[First]), ARequest.Switch.OffText + ReasonComment(ARequest.Reason),
-            LineBreak)];
+          AEdits := [After(mFirst, Length(mLines[mFirst]), ARequest.Switch.OffText + ReasonComment(ARequest.Reason),
+            mLineBreak)];
         end;
         Exit;
       end;
     TDisableWarningScope.Routine:
       begin
-        Routine := RoutineAt(ATree, ALine);
-        Result := Routine <> nil;
+        mRoutine := RoutineAt(ATree, ALine);
+        Result := mRoutine <> nil;
         if not Result then
         begin
           Exit;
         end;
-        First := Routine.StartPos.Line;
-        Last := Routine.EndPos.Line;
+        mFirst := mRoutine.StartPos.Line;
+        mLast := mRoutine.EndPos.Line;
       end;
   else
-    First := ALine;
-    Last := ALine;
+    mFirst := ALine;
+    mLast := ALine;
   end;
-  Result := Last <= High(Lines);
+  Result := mLast <= High(mLines);
   if not Result then
   begin
     Exit;
   end;
-  Indent := TTextLines.IndentOf(Lines[First]);
-  AEdits := [Before(First, Indent + ARequest.Switch.OffText + ReasonComment(ARequest.Reason), LineBreak),
-    After(Last, Length(Lines[Last]), Indent + ARequest.Switch.OnText, LineBreak)];
+  mIndent := TTextLines.IndentOf(mLines[mFirst]);
+  AEdits := [Before(mFirst, mIndent + ARequest.Switch.OffText + ReasonComment(ARequest.Reason), mLineBreak),
+    After(mLast, Length(mLines[mLast]), mIndent + ARequest.Switch.OnText, mLineBreak)];
 end;
 
 end.

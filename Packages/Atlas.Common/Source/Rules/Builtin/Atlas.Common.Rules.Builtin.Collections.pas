@@ -33,8 +33,8 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  LegacyTListRuleId = 'legacy-tlist';
-  LegacyStackQueueRuleId = 'legacy-stack-queue';
+  cLegacyTListRuleId = 'legacy-tlist';
+  cLegacyStackQueueRuleId = 'legacy-stack-queue';
 
 type
   /// <summary>Ungenerische Sammlung der RTL: Unit (mit und ohne Namespace) und Klassenname.</summary>
@@ -215,12 +215,12 @@ end;
 
 function IsMember(const AName: string; const AMembers: TArray<string>): Boolean;
 var
-  Member: string;
+  mMember: string;
 begin
   Result := False;
-  for Member in AMembers do
+  for mMember in AMembers do
   begin
-    if SameText(Member, AName) then
+    if SameText(mMember, AName) then
     begin
       Exit(True);
     end;
@@ -237,13 +237,13 @@ class function TLegacyCollections.Reads(ATree: TSyntaxTree; const AFileName: str
   const ATypes: TArray<TLegacyCollectionType>; const AMembers: TArray<string>;
   AIndexed: Boolean): TArray<TLegacyCollectionRead>;
 var
-  Found: TList<TLegacyCollectionRead>;
+  mFound: TList<TLegacyCollectionRead>;
 
   /// <summary>Ist ANode sicher eine Sammlung der gesuchten Typen? Dann Deklaration und Typ.</summary>
   function IsLegacyCollection(ANode: TSyntaxNode; out ASymbol, AType: TResolvedSymbol): Boolean;
   var
-    TypeFound: Boolean;
-    Wanted: TLegacyCollectionType;
+    mTypeFound: Boolean;
+    mWanted: TLegacyCollectionType;
   begin
     Result := False;
     if (ANode = nil) or not (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess,
@@ -251,7 +251,7 @@ var
     begin
       Exit;
     end;
-    if not AResolver.NodeType(ATree, AFileName, ANode, ASymbol, AType, TypeFound) or not TypeFound or
+    if not AResolver.NodeType(ATree, AFileName, ANode, ASymbol, AType, mTypeFound) or not mTypeFound or
       ASymbol.IsType or not AType.IsType then
     begin
       Exit;
@@ -260,10 +260,10 @@ var
     begin
       Exit;
     end;
-    for Wanted in ATypes do
+    for mWanted in ATypes do
     begin
-      Result := Result or SameText(AType.Name, Wanted.TypeName) and (SameText(AType.UnitName, Wanted.UnitName) or
-        SameText(AType.UnitName, Wanted.ShortUnitName));
+      Result := Result or SameText(AType.Name, mWanted.TypeName) and (SameText(AType.UnitName, mWanted.UnitName) or
+        SameText(AType.UnitName, mWanted.ShortUnitName));
     end;
   end;
 
@@ -271,7 +271,7 @@ var
   function IndexedRead(AValue: TSyntaxNode; out ACollection: TSyntaxNode; out ASymbol,
     AType: TResolvedSymbol): Boolean;
   var
-    Base: TSyntaxNode;
+    mBase: TSyntaxNode;
   begin
     Result := False;
     ACollection := nil;
@@ -279,15 +279,15 @@ var
     begin
       Exit;
     end;
-    Base := AValue[0];
-    if (Base.Kind = TSyntaxKind.MemberAccess) and SameText(Base.Name, 'Items') and (Base.ChildCount = 1) and
-      IsLegacyCollection(Base[0], ASymbol, AType) then
+    mBase := AValue[0];
+    if (mBase.Kind = TSyntaxKind.MemberAccess) and SameText(mBase.Name, 'Items') and (mBase.ChildCount = 1) and
+      IsLegacyCollection(mBase[0], ASymbol, AType) then
     begin
-      ACollection := Base[0];
+      ACollection := mBase[0];
     end
-    else if IsLegacyCollection(Base, ASymbol, AType) then
+    else if IsLegacyCollection(mBase, ASymbol, AType) then
     begin
-      ACollection := Base;
+      ACollection := mBase;
     end;
     Result := ACollection <> nil;
   end;
@@ -334,65 +334,65 @@ var
   /// <summary>Bezeichnet ANode sicher einen Typ, der als Element taugt?</summary>
   function IsCastType(ANode: TSyntaxNode; out AType: TResolvedSymbol): Boolean;
   var
-    Symbol: TResolvedSymbol;
-    TypeFound: Boolean;
+    mSymbol: TResolvedSymbol;
+    mTypeFound: Boolean;
   begin
     Result := False;
     if (ANode = nil) or (ANode.Kind <> TSyntaxKind.Identifier) or SameText(ANode.Name, 'Pointer') then
     begin
       Exit;
     end;
-    if not AResolver.NodeType(ATree, AFileName, ANode, Symbol, AType, TypeFound) or not Symbol.IsType then
+    if not AResolver.NodeType(ATree, AFileName, ANode, mSymbol, AType, mTypeFound) or not mSymbol.IsType then
     begin
       Exit;
     end;
-    AType := Symbol;
-    Result := not SameText(Symbol.Name, 'Pointer');
+    AType := mSymbol;
+    Result := not SameText(mSymbol.Name, 'Pointer');
   end;
 
   procedure Add(ACast, AValue, ATypeNode: TSyntaxNode);
   var
-    Read: TLegacyCollectionRead;
+    mRead: TLegacyCollectionRead;
   begin
-    if not ElementRead(AValue, Read.Collection, Read.Symbol, Read.CollectionType) or
-      not IsCastType(ATypeNode, Read.CastType) then
+    if not ElementRead(AValue, mRead.Collection, mRead.Symbol, mRead.CollectionType) or
+      not IsCastType(ATypeNode, mRead.CastType) then
     begin
       Exit;
     end;
-    Read.Cast := ACast;
-    Found.Add(Read);
+    mRead.Cast := ACast;
+    mFound.Add(mRead);
   end;
 
   // Iterativ (Bericht M1).
   procedure Visit(ARoot: TSyntaxNode);
   var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
-    Index: Integer;
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
+    mIndex: Integer;
   begin
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ARoot);
-      while Pending.Count > 0 do
+      mPending.Push(ARoot);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
+        mNode := mPending.Pop;
         // T(Wert): Aufruf mit einem Argument, dessen Name ein Typ ist.
-        if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount = 2) and (Node[0].Kind = TSyntaxKind.Identifier) then
+        if (mNode.Kind = TSyntaxKind.Call) and (mNode.ChildCount = 2) and (mNode[0].Kind = TSyntaxKind.Identifier) then
         begin
-          Add(Node, Node[1], Node[0]);
+          Add(mNode, mNode[1], mNode[0]);
         end
         // Wert as T
-        else if (Node.Kind = TSyntaxKind.BinaryExpr) and SameText(Node.Name, 'as') and (Node.ChildCount = 2) then
+        else if (mNode.Kind = TSyntaxKind.BinaryExpr) and SameText(mNode.Name, 'as') and (mNode.ChildCount = 2) then
         begin
-          Add(Node, Node[0], Unparenthesized(Node[1]));
+          Add(mNode, mNode[0], Unparenthesized(mNode[1]));
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
@@ -402,12 +402,12 @@ begin
   begin
     Exit;
   end;
-  Found := TList<TLegacyCollectionRead>.Create;
+  mFound := TList<TLegacyCollectionRead>.Create;
   try
     Visit(ATree.Root);
-    Result := Found.ToArray;
+    Result := mFound.ToArray;
   finally
-    Found.Free;
+    mFound.Free;
   end;
 end;
 
@@ -415,11 +415,11 @@ end;
 function NamesIn(const AFiles: IRuleProjectFiles; const AFileName: string;
   const ANames: TArray<string>): TRuleNameAnswer;
 var
-  Name: string;
+  mName: string;
 begin
   Result := TRuleNameAnswer.Absent;
-  for Name in ANames do
-    case AFiles.NameIn(AFileName, Name) of
+  for mName in ANames do
+    case AFiles.NameIn(AFileName, mName) of
       TRuleNameAnswer.Present:
         Exit(TRuleNameAnswer.Present);
       TRuleNameAnswer.Unknown:
@@ -430,15 +430,15 @@ end;
 /// <summary>Gehört AFileName zu einem Projekt der Gruppe?</summary>
 function InProjects(const AProjects: TArray<TRuleProject>; const AFileName: string): Boolean;
 var
-  Project: TRuleProject;
-  Source: string;
+  mProject: TRuleProject;
+  mSource: string;
 begin
   Result := False;
-  for Project in AProjects do
+  for mProject in AProjects do
   begin
-    for Source in Project.Sources do
+    for mSource in mProject.Sources do
     begin
-      if SameText(Source, AFileName) then
+      if SameText(mSource, AFileName) then
       begin
         Exit(True);
       end;
@@ -451,16 +451,16 @@ end;
 function OtherUnitsCheckable(const AContext: TRuleContext; const ANames: TArray<string>;
   AConversion: TGenericListConversion): Boolean;
 var
-  Reason: string;
+  mReason: string;
 begin
   Result := False;
   if AContext.ProjectFiles = nil then
   begin
     AConversion.Reject(cTexts[TCollectionsText.VisibleNoProject].Fmt([ANames[0]]));
   end
-  else if not AContext.ProjectFiles.Complete(Reason) then
+  else if not AContext.ProjectFiles.Complete(mReason) then
   begin
-    AConversion.Reject(cTexts[TCollectionsText.VisibleNotReady].Fmt([ANames[0], Reason]));
+    AConversion.Reject(cTexts[TCollectionsText.VisibleNotReady].Fmt([ANames[0], mReason]));
   end
   else
   begin
@@ -473,7 +473,7 @@ end;
 function AddOtherUnit(const AContext: TRuleContext; const AFileName, ASource: string; const ANames: TArray<string>;
   AConversion: TGenericListConversion): Boolean;
 var
-  Text: string;
+  mText: string;
 begin
   Result := True;
   case NamesIn(AContext.ProjectFiles, ASource, ANames) of
@@ -485,16 +485,16 @@ begin
     // Die geprüfte Unit mit dem Text des Editors, alle anderen über die Projektdateien.
     if SameText(ASource, AFileName) then
     begin
-      Text := AContext.Text;
+      mText := AContext.Text;
     end
     else
     begin
-      Result := AContext.ProjectFiles.ReadText(ASource, Text);
+      Result := AContext.ProjectFiles.ReadText(ASource, mText);
     end;
   end;
   if Result then
   begin
-    AConversion.AddFile(Text, ASource);
+    AConversion.AddFile(mText, ASource);
   end
   else
   begin
@@ -507,36 +507,36 @@ end;
 procedure AddOtherUnits(const AContext: TRuleContext; const AFileName, ADeclarationFile: string;
   AConversion: TGenericListConversion);
 var
-  Names: TArray<string>;
-  Seen: TList<string>;
-  Project: TRuleProject;
-  Source: string;
+  mNames: TArray<string>;
+  mSeen: TList<string>;
+  mProject: TRuleProject;
+  mSource: string;
 begin
-  Names := AConversion.ExternalNames;
-  if (Names = nil) or not OtherUnitsCheckable(AContext, Names, AConversion) then
+  mNames := AConversion.ExternalNames;
+  if (mNames = nil) or not OtherUnitsCheckable(AContext, mNames, AConversion) then
   begin
     Exit;
   end;
-  Seen := TList<string>.Create;
+  mSeen := TList<string>.Create;
   try
-    Seen.Add(LowerCase(ADeclarationFile));
-    for Project in AContext.ProjectFiles.ProjectsOf(ADeclarationFile, True) do
+    mSeen.Add(LowerCase(ADeclarationFile));
+    for mProject in AContext.ProjectFiles.ProjectsOf(ADeclarationFile, True) do
     begin
-      for Source in Project.Sources do
+      for mSource in mProject.Sources do
       begin
-        if Seen.Contains(LowerCase(Source)) then
+        if mSeen.Contains(LowerCase(mSource)) then
         begin
           Continue;
         end;
-        Seen.Add(LowerCase(Source));
-        if not AddOtherUnit(AContext, AFileName, Source, Names, AConversion) then
+        mSeen.Add(LowerCase(mSource));
+        if not AddOtherUnit(AContext, AFileName, mSource, mNames, AConversion) then
         begin
           Exit;
         end;
       end;
     end;
   finally
-    Seen.Free;
+    mSeen.Free;
   end;
 end;
 
@@ -544,38 +544,38 @@ end;
 /// OtherFiles.</summary>
 function FixFromPlan(const APlan: TGenericListPlan; const AFileName, ADeclarationFile: string): TRuleFix;
 var
-  Others: TArray<TFileTextEdits>;
-  FileEdits: TFileTextEdits;
-  Other: TRuleFileEdits;
+  mOthers: TArray<TFileTextEdits>;
+  mFileEdits: TFileTextEdits;
+  mOther: TRuleFileEdits;
 begin
   if SameText(ADeclarationFile, AFileName) then
   begin
     Result := TRuleFix.Create(APlan.Title, APlan.Edits, APlan.Safe);
-    Others := APlan.FileEdits;
+    mOthers := APlan.FileEdits;
   end
   else
   begin
     Result := TRuleFix.Create(APlan.Title, nil, False);
-    FileEdits.FileName := ADeclarationFile;
-    FileEdits.Edits := APlan.Edits;
-    Others := [FileEdits];
-    for FileEdits in APlan.FileEdits do
+    mFileEdits.FileName := ADeclarationFile;
+    mFileEdits.Edits := APlan.Edits;
+    mOthers := [mFileEdits];
+    for mFileEdits in APlan.FileEdits do
     begin
-      if SameText(FileEdits.FileName, AFileName) then
+      if SameText(mFileEdits.FileName, AFileName) then
       begin
-        Result.Edits := FileEdits.Edits;
+        Result.Edits := mFileEdits.Edits;
       end
       else
       begin
-        Others := Others + [FileEdits];
+        mOthers := mOthers + [mFileEdits];
       end;
     end;
   end;
-  for FileEdits in Others do
+  for mFileEdits in mOthers do
   begin
-    Other.FileName := FileEdits.FileName;
-    Other.Edits := FileEdits.Edits;
-    Result.OtherFiles := Result.OtherFiles + [Other];
+    mOther.FileName := mFileEdits.FileName;
+    mOther.Edits := mFileEdits.Edits;
+    Result.OtherFiles := Result.OtherFiles + [mOther];
   end;
 end;
 
@@ -594,7 +594,7 @@ type
 function ForeignDeclarationText(const AContext: TRuleContext; const AFileName: string;
   const ARead: TLegacyCollectionRead; const AFile: string; out AText, AReason: string): Boolean;
 var
-  Reason: string;
+  mReason: string;
 begin
   Result := False;
   AText := '';
@@ -602,9 +602,9 @@ begin
   begin
     AReason := cTexts[TCollectionsText.DeclaredNoProject].Fmt([ARead.Symbol.Name, ARead.Symbol.UnitName]);
   end
-  else if not AContext.ProjectFiles.Complete(Reason) then
+  else if not AContext.ProjectFiles.Complete(mReason) then
   begin
-    AReason := cTexts[TCollectionsText.DeclaredNotLoaded].Fmt([ARead.Symbol.Name, ARead.Symbol.UnitName, Reason]);
+    AReason := cTexts[TCollectionsText.DeclaredNotLoaded].Fmt([ARead.Symbol.Name, ARead.Symbol.UnitName, mReason]);
   end
   else if not InProjects(AContext.ProjectFiles.ProjectsOf(AFileName, True), AFile) then
   begin
@@ -648,18 +648,18 @@ end;
 function PlanConversion(const AContext: TRuleContext; const AFileName: string; const ARead: TLegacyCollectionRead;
   const ASource: TLegacyDeclarationSource; AConversion: TGenericListConversion; out APlan: TGenericListPlan): string;
 var
-  Name: string;
-  Declaration: TSyntaxNode;
+  mName: string;
+  mDeclaration: TSyntaxNode;
 begin
   Result := '';
   APlan := Default(TGenericListPlan);
-  Name := ARead.Symbol.Name;
-  Declaration := TGenericListConversion.DeclarationAt(ASource.Tree, ARead.Symbol.SelectionRange.StartPos, Name);
-  if Declaration = nil then
+  mName := ARead.Symbol.Name;
+  mDeclaration := TGenericListConversion.DeclarationAt(ASource.Tree, ARead.Symbol.SelectionRange.StartPos, mName);
+  if mDeclaration = nil then
   begin
     Exit(cTexts[TCollectionsText.NotFieldOrVariable].Fmt([ARead.Symbol.Name]));
   end;
-  if AConversion.Start(ASource.Tree, ASource.Text, ASource.FileName, Declaration, Name) then
+  if AConversion.Start(ASource.Tree, ASource.Text, ASource.FileName, mDeclaration, mName) then
   begin
     AddOtherUnits(AContext, AFileName, ASource.FileName, AConversion);
   end;
@@ -672,40 +672,40 @@ end;
 class function TLegacyCollections.ConversionFix(const AContext: TRuleContext; const AFileName: string;
   const ARead: TLegacyCollectionRead; AResolver: TNameResolver; out AFix: TRuleFix; out AReason: string): Boolean;
 var
-  Kind: TLegacyListKind;
-  Source: TLegacyDeclarationSource;
-  Conversion: TGenericListConversion;
-  Plan: TGenericListPlan;
+  mKind: TLegacyListKind;
+  mSource: TLegacyDeclarationSource;
+  mConversion: TGenericListConversion;
+  mPlan: TGenericListPlan;
 begin
   Result := False;
   AFix := Default(TRuleFix);
   AReason := '';
-  if not TLegacyListKind.Find(ARead.CollectionType.Name, Kind) then
+  if not TLegacyListKind.Find(ARead.CollectionType.Name, mKind) then
   begin
     AReason := cTexts[TCollectionsText.NoGeneric].Fmt([ARead.CollectionType.Name]);
     Exit;
   end;
-  if not DeclarationSource(AContext, AFileName, ARead, Source, AReason) then
+  if not DeclarationSource(AContext, AFileName, ARead, mSource, AReason) then
   begin
     Exit;
   end;
   try
-    Conversion := TGenericListConversion.Create(Kind, AResolver);
+    mConversion := TGenericListConversion.Create(mKind, AResolver);
     try
-      AReason := PlanConversion(AContext, AFileName, ARead, Source, Conversion, Plan);
+      AReason := PlanConversion(AContext, AFileName, ARead, mSource, mConversion, mPlan);
       Result := AReason = '';
     finally
-      Conversion.Free;
+      mConversion.Free;
     end;
   finally
-    if Source.OwnsTree then
+    if mSource.OwnsTree then
     begin
-      Source.Tree.Free;
+      mSource.Tree.Free;
     end;
   end;
   if Result then
   begin
-    AFix := FixFromPlan(Plan, AFileName, Source.FileName);
+    AFix := FixFromPlan(mPlan, AFileName, mSource.FileName);
   end;
 end;
 
@@ -728,21 +728,21 @@ end;
 /// <summary>Namen der Zieltypen aller Casts auf die Sammlung mit dem Schlüssel AKey, ohne Doppelte.</summary>
 function CastTypeNames(const AReads: TArray<TLegacyCollectionRead>; const AKey: string): TArray<string>;
 var
-  Names: TList<string>;
-  Read: TLegacyCollectionRead;
+  mNames: TList<string>;
+  mRead: TLegacyCollectionRead;
 begin
-  Names := TList<string>.Create;
+  mNames := TList<string>.Create;
   try
-    for Read in AReads do
+    for mRead in AReads do
     begin
-      if (Read.Key = AKey) and not Names.Contains(Read.CastType.Name) then
+      if (mRead.Key = AKey) and not mNames.Contains(mRead.CastType.Name) then
       begin
-        Names.Add(Read.CastType.Name);
+        mNames.Add(mRead.CastType.Name);
       end;
     end;
-    Result := Names.ToArray;
+    Result := mNames.ToArray;
   finally
-    Names.Free;
+    mNames.Free;
   end;
 end;
 
@@ -750,67 +750,67 @@ procedure TLegacyCollectionRule.ReportCollection(const AContext: TRuleContext; c
   const AFileName: string; const AFirst: TLegacyCollectionRead; const ACastTypes: TArray<string>;
   AResolver: TNameResolver);
 var
-  Range: TTextRange;
-  Fix: TRuleFix;
-  Reason: string;
+  mRange: TTextRange;
+  mFix: TRuleFix;
+  mReason: string;
 begin
   if TLegacyCollections.DeclaredIn(AFirst.Symbol, AFileName) then
   begin
-    Range := AFirst.Symbol.SelectionRange;
+    mRange := AFirst.Symbol.SelectionRange;
   end
   else
   begin
-    Range := TTextRange.Create(AFirst.Cast.StartPos, AFirst.Cast.EndPos);
+    mRange := TTextRange.Create(AFirst.Cast.StartPos, AFirst.Cast.EndPos);
   end;
-  if TLegacyCollections.ConversionFix(AContext, AFileName, AFirst, AResolver, Fix, Reason) then
+  if TLegacyCollections.ConversionFix(AContext, AFileName, AFirst, AResolver, mFix, mReason) then
   begin
-    AReport.Add(Range, FindingMessage(AFirst.CollectionType.Name, ACastTypes), TRuleConfidence.High, [Fix]);
+    AReport.Add(mRange, FindingMessage(AFirst.CollectionType.Name, ACastTypes), TRuleConfidence.High, [mFix]);
   end
   else
   begin
-    AReport.AddWithDetails(Range, FindingMessage(AFirst.CollectionType.Name, ACastTypes),
-      cTexts[TCollectionsText.NoQuickFix].Text + Reason + '.', TRuleConfidence.High, nil);
+    AReport.AddWithDetails(mRange, FindingMessage(AFirst.CollectionType.Name, ACastTypes),
+      cTexts[TCollectionsText.NoQuickFix].Text + mReason + '.', TRuleConfidence.High, nil);
   end;
 end;
 
 procedure TLegacyCollectionRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Resolver: TNameResolver;
+  mResolver: TNameResolver;
   mCache: IRuleDerivedCache;
-  FileName: string;
-  Reads: TArray<TLegacyCollectionRead>;
-  Read: TLegacyCollectionRead;
-  Keys: TList<string>;
+  mFileName: string;
+  mReads: TArray<TLegacyCollectionRead>;
+  mRead: TLegacyCollectionRead;
+  mKeys: TList<string>;
 begin
   // Kein Vorfilter über den Text: Die Liste kann in einer anderen Unit deklariert sein (Objekt.Liste[I]).
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or (AContext.Index = nil) then
   begin
     Exit;
   end;
-  FileName := CheckedFileName(AContext);
+  mFileName := CheckedFileName(AContext);
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
-  Resolver := TRuleDerived.Resolver(mCache, AContext);
-  Resolver.PinTree(AContext.Tree, FileName);
+  mResolver := TRuleDerived.Resolver(mCache, AContext);
+  mResolver.PinTree(AContext.Tree, mFileName);
   try
-    Reads := TLegacyCollections.Reads(AContext.Tree, FileName, Resolver, CollectionTypes, ReadMembers,
+    mReads := TLegacyCollections.Reads(AContext.Tree, mFileName, mResolver, CollectionTypes, ReadMembers,
       IndexedReads);
   finally
-    Resolver.UnpinTree;
+    mResolver.UnpinTree;
   end;
-  Keys := TList<string>.Create;
+  mKeys := TList<string>.Create;
   try
     // Je Sammlung ein Treffer mit allen Zieltypen ihrer Casts.
-    for Read in Reads do
+    for mRead in mReads do
     begin
-      if not Keys.Contains(Read.Key) then
+      if not mKeys.Contains(mRead.Key) then
       begin
-        Keys.Add(Read.Key);
-        ReportCollection(AContext, AReport, FileName, Read, CastTypeNames(Reads, Read.Key), Resolver);
+        mKeys.Add(mRead.Key);
+        ReportCollection(AContext, AReport, mFileName, mRead, CastTypeNames(mReads, mRead.Key), mResolver);
       end;
     end;
   finally
-    Keys.Free;
+    mKeys.Free;
   end;
 end;
 
@@ -818,7 +818,7 @@ end;
 
 function TLegacyTListRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(LegacyTListRuleId, TRuleSeverity.Information,
+  Result := TRuleDescriptor.Create(cLegacyTListRuleId, TRuleSeverity.Information,
     cTexts[TCollectionsText.ListTitle].Text,
     True);
 end;
@@ -855,7 +855,7 @@ end;
 
 function TLegacyStackQueueRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(LegacyStackQueueRuleId, TRuleSeverity.Information,
+  Result := TRuleDescriptor.Create(cLegacyStackQueueRuleId, TRuleSeverity.Information,
     cTexts[TCollectionsText.StackTitle].Text, True);
 end;
 
@@ -881,29 +881,29 @@ end;
 function TLegacyStackQueueRule.FindingMessage(const ACollectionType: string;
   const ACastTypes: TArray<string>): string;
 var
-  Stack: Boolean;
-  Adjective, Generic: string;
+  mStack: Boolean;
+  mAdjective, mGeneric: string;
 begin
   // Der Stapel, die Warteschlange.
-  Stack := EndsText('Stack', ACollectionType);
-  if Stack then
+  mStack := EndsText('Stack', ACollectionType);
+  if mStack then
   begin
-    Adjective := cTexts[TCollectionsText.NonGeneric].Text;
-    Generic := cTexts[TCollectionsText.GenericStack].Text;
+    mAdjective := cTexts[TCollectionsText.NonGeneric].Text;
+    mGeneric := cTexts[TCollectionsText.GenericStack].Text;
   end
   else
   begin
-    Adjective := cTexts[TCollectionsText.NonGenericFem].Text;
-    Generic := cTexts[TCollectionsText.GenericQueue].Text;
+    mAdjective := cTexts[TCollectionsText.NonGenericFem].Text;
+    mGeneric := cTexts[TCollectionsText.GenericQueue].Text;
   end;
   if Length(ACastTypes) = 1 then
   begin
-    Result := cTexts[TCollectionsText.StackCast].Fmt([Adjective, ACollectionType, ACollectionType, ACastTypes[0]]);
+    Result := cTexts[TCollectionsText.StackCast].Fmt([mAdjective, ACollectionType, ACollectionType, ACastTypes[0]]);
   end
   else
   begin
     Result := cTexts[TCollectionsText.StackCasts].Fmt(
-      [Adjective, ACollectionType, string.Join(', ', ACastTypes), Generic]);
+      [mAdjective, ACollectionType, string.Join(', ', ACastTypes), mGeneric]);
   end;
 end;
 

@@ -16,8 +16,8 @@ uses
 type
   TFormInfo = class
   public const
-    MaxValueLength = 60;
-    MaxListLines = 10;
+    cMaxValueLength = 60;
+    cMaxListLines = 10;
   public
     /// <summary>Wert einer Property für die Anzeige, einzeilig außer bei gekürzten Listen.</summary>
     class function ValueText(const AProperty: TDfmProperty): string; static;
@@ -62,12 +62,12 @@ const
 
 function CountHexBytes(const AValue: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := 0;
-  for Index := 1 to Length(AValue) do
+  for mIndex := 1 to Length(AValue) do
   begin
-    if CharInSet(AValue[Index], ['0'..'9', 'A'..'F', 'a'..'f']) then
+    if CharInSet(AValue[mIndex], ['0'..'9', 'A'..'F', 'a'..'f']) then
     begin
       Inc(Result);
     end;
@@ -81,7 +81,7 @@ begin
     EndsText('Icon.Data', AName);
 end;
 
-/// <summary>Liste "( … )": je Zeile ein Eintrag; nach TFormInfo.MaxListLines gekürzt.</summary>
+/// <summary>Liste "( … )": je Zeile ein Eintrag; nach TFormInfo.cMaxListLines gekürzt.</summary>
 function ListText(const AValue: string): string;
 var
   mLine: string;
@@ -97,7 +97,7 @@ begin
     end;
   end;
   Result := '(';
-  for mIndex := 0 to Min(Length(mItems), TFormInfo.MaxListLines) - 1 do
+  for mIndex := 0 to Min(Length(mItems), TFormInfo.cMaxListLines) - 1 do
   begin
     if mIndex > 0 then
     begin
@@ -105,9 +105,9 @@ begin
     end;
     Result := Result + mItems[mIndex];
   end;
-  if Length(mItems) > TFormInfo.MaxListLines then
+  if Length(mItems) > TFormInfo.cMaxListLines then
   begin
-    Result := Result + cTexts[TFormInfoText.More].Fmt([Length(mItems) - TFormInfo.MaxListLines]);
+    Result := Result + cTexts[TFormInfoText.More].Fmt([Length(mItems) - TFormInfo.cMaxListLines]);
   end;
   Result := Result + ')';
 end;
@@ -132,111 +132,111 @@ begin
   else
   begin
     Result := Trim(StringReplace(StringReplace(mValue, #13, '', [rfReplaceAll]), #10, ' ', [rfReplaceAll]));
-    if Length(Result) > MaxValueLength then
+    if Length(Result) > cMaxValueLength then
     begin
-      Result := Copy(Result, 1, MaxValueLength - 3) + '...';
+      Result := Copy(Result, 1, cMaxValueLength - 3) + '...';
     end;
   end;
 end;
 
 procedure AddObject(ALines: TStrings; AObject: TDfmObject; ADepth: Integer);
 var
-  Indent, Events: string;
-  Prop: TDfmProperty;
-  Child: TDfmObject;
+  mIndent, mEvents: string;
+  mProp: TDfmProperty;
+  mChild: TDfmObject;
 begin
-  Indent := StringOfChar(' ', ADepth * 2);
+  mIndent := StringOfChar(' ', ADepth * 2);
   if AObject.Kind = TDfmObjectKind.Item then
   begin
-    ALines.Add(Indent + '- item');
+    ALines.Add(mIndent + '- item');
   end
   else
   begin
-    ALines.Add(Format('%s- %s: %s%s', [Indent, IfThen(AObject.Name <> '', AObject.Name,
+    ALines.Add(Format('%s- %s: %s%s', [mIndent, IfThen(AObject.Name <> '', AObject.Name,
       cTexts[TFormInfoText.WithoutName].Text),
       AObject.TypeName, IfThen(AObject.Kind = TDfmObjectKind.Inherited_, cTexts[TFormInfoText.InheritedText].Text,
         '')]));
   end;
-  Events := '';
-  for Prop in AObject.Properties do
+  mEvents := '';
+  for mProp in AObject.Properties do
   begin
-    if Prop.IsEvent then
+    if mProp.IsEvent then
     begin
-      Events := Events + IfThen(Events <> '', ', ', '') + Prop.Name + ' → ' + Prop.Value;
+      mEvents := mEvents + IfThen(mEvents <> '', ', ', '') + mProp.Name + ' → ' + mProp.Value;
     end
     else
     begin
-      ALines.Add(Format('%s    %s = %s', [Indent, Prop.Name, TFormInfo.ValueText(Prop)]));
+      ALines.Add(Format('%s    %s = %s', [mIndent, mProp.Name, TFormInfo.ValueText(mProp)]));
     end;
   end;
-  if Events <> '' then
+  if mEvents <> '' then
   begin
-    ALines.Add(Indent + cTexts[TFormInfoText.Events].Text + Events);
+    ALines.Add(mIndent + cTexts[TFormInfoText.Events].Text + mEvents);
   end;
-  for Child in AObject.Children do
+  for mChild in AObject.Children do
   begin
-    AddObject(ALines, Child, ADepth + 1);
+    AddObject(ALines, mChild, ADepth + 1);
   end;
 end;
 
 class function TFormInfo.Describe(const AFormText: string): string;
 var
-  Document: TDfmDocument;
-  Lines: TStringList;
-  Error: TDfmError;
+  mDocument: TDfmDocument;
+  mLines: TStringList;
+  mError: TDfmError;
 begin
-  Document := TDfmParser.Parse(AFormText);
-  Lines := TStringList.Create;
+  mDocument := TDfmParser.Parse(AFormText);
+  mLines := TStringList.Create;
   try
-    if Document.Root = nil then
+    if mDocument.Root = nil then
     begin
-      Lines.Add(cTexts[TFormInfoText.NoFormFound].Text);
+      mLines.Add(cTexts[TFormInfoText.NoFormFound].Text);
     end
     else
     begin
-      AddObject(Lines, Document.Root, 0);
+      AddObject(mLines, mDocument.Root, 0);
     end;
-    for Error in Document.Errors do
+    for mError in mDocument.Errors do
     begin
-      Lines.Add(cTexts[TFormInfoText.ErrorLine].Fmt([Error.Position.Line + 1, Error.Message]));
+      mLines.Add(cTexts[TFormInfoText.ErrorLine].Fmt([mError.Position.Line + 1, mError.Message]));
     end;
-    Result := TrimRight(Lines.Text);
+    Result := TrimRight(mLines.Text);
   finally
-    Lines.Free;
-    Document.Free;
+    mLines.Free;
+    mDocument.Free;
   end;
 end;
 
 
 class function TFormInfo.ComponentMarkdown(AObject: TDfmObject; const AFormFile: string): string;
 var
-  Prop: TDfmProperty;
+  mProp: TDfmProperty;
 begin
   Result := cTexts[TFormInfoText.InLineL].Fmt([ExtractFileName(AFormFile), AObject.Range.StartPos.Line + 1,
     TDocumentUris.FromPath(AFormFile), AObject.Range.StartPos.Line + 1]);
-  for Prop in AObject.Properties do
+  for mProp in AObject.Properties do
   begin
-    if Prop.IsEvent then
+    if mProp.IsEvent then
     begin
-      Result := Result + #10 + Format('- %s → `%s`', [Prop.Name, Prop.Value]);
+      Result := Result + #10 + Format('- %s → `%s`', [mProp.Name, mProp.Value]);
     end
     else
     begin
-      Result := Result + #10 + Format('- %s = `%s`', [Prop.Name, ValueText(Prop)]);
+      Result := Result + #10 + Format('- %s = `%s`', [mProp.Name, ValueText(mProp)]);
     end;
   end;
 end;
 function SearchByName(AObject: TDfmObject; const AName: string): TDfmObject;
 var
-  Child: TDfmObject;
+  mChild: TDfmObject;
 begin
   if SameText(AObject.Name, AName) then
   begin
     Exit(AObject);
   end;
-  for Child in AObject.Children do
+  for mChild in AObject.Children do
   begin
-    Result := SearchByName(Child, AName);
+    Result := SearchByName(mChild, AName);
     if Result <> nil then
     begin
       Exit;

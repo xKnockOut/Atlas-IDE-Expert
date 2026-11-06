@@ -19,7 +19,7 @@ uses
 type
   TRotatingFileStream = class(TStream)
   public const
-    DefaultMaxBytes = 10 * 1024 * 1024;
+    cDefaultMaxBytes = 10 * 1024 * 1024;
   private
     FFileName: string;
     FMaxBytes: Int64;
@@ -85,21 +85,21 @@ end;
 
 constructor TRotatingFileStream.Create(const AFileName: string; AAppend: Boolean; const AFallbackTag: string);
 begin
-  Create(AFileName, AAppend, AFallbackTag, DefaultMaxBytes);
+  Create(AFileName, AAppend, AFallbackTag, cDefaultMaxBytes);
 end;
 
 constructor TRotatingFileStream.Create(const AFileName: string; AAppend: Boolean; const AFallbackTag: string;
   AMaxBytes: Int64);
 var
-  Directory: string;
+  mDirectory: string;
 begin
   inherited Create;
   FMaxBytes := AMaxBytes;
   FFileName := AFileName;
-  Directory := TPath.GetDirectoryName(TPath.GetFullPath(AFileName));
-  if Directory <> '' then
+  mDirectory := TPath.GetDirectoryName(TPath.GetFullPath(AFileName));
+  if mDirectory <> '' then
   begin
-    ForceDirectories(Directory);
+    ForceDirectories(mDirectory);
   end;
   try
     FStream := OpenFile(FFileName, AAppend);
@@ -134,16 +134,16 @@ end;
 
 procedure TRotatingFileStream.Rotate;
 var
-  Previous: string;
+  mPrevious: string;
 begin
-  Previous := FFileName + '.1';
+  mPrevious := FFileName + '.1';
   FreeAndNil(FStream);
-  if FileExists(Previous) then
+  if FileExists(mPrevious) then
   begin
-    System.SysUtils.DeleteFile(Previous);
+    System.SysUtils.DeleteFile(mPrevious);
   end;
   // Klappt das Umbenennen nicht, beginnt die Datei eben von vorn.
-  RenameFile(FFileName, Previous); // lsp-ignore: inline-not-expanded -- Common ohne Winapi
+  RenameFile(FFileName, mPrevious); // lsp-ignore: inline-not-expanded -- Common ohne Winapi
   FStream := TFileStream.Create(FFileName, fmCreate or fmShareDenyWrite);
 end;
 

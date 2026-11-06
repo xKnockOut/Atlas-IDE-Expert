@@ -60,26 +60,26 @@ end;
 
 class function TDfmNavigation.ObjectAt(ADocument: TDfmDocument; const APosition: TTextPosition): TDfmObject;
 var
-  Current: TDfmObject;
-  Child: TDfmObject;
-  Found: Boolean;
+  mCurrent: TDfmObject;
+  mChild: TDfmObject;
+  mFound: Boolean;
 begin
   Result := nil;
-  Current := ADocument.Root;
-  while (Current <> nil) and Contains(Current.Range, APosition) do
+  mCurrent := ADocument.Root;
+  while (mCurrent <> nil) and Contains(mCurrent.Range, APosition) do
   begin
-    Result := Current;
-    Found := False;
-    for Child in Current.Children do
+    Result := mCurrent;
+    mFound := False;
+    for mChild in mCurrent.Children do
     begin
-      if Contains(Child.Range, APosition) then
+      if Contains(mChild.Range, APosition) then
       begin
-        Current := Child;
-        Found := True;
+        mCurrent := mChild;
+        mFound := True;
         Break;
       end;
     end;
-    if not Found then
+    if not mFound then
     begin
       Break;
     end;

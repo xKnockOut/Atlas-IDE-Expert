@@ -43,7 +43,8 @@ type
     class function IsTrivia(const AToken: TPascalToken): Boolean; static;
     /// <summary>Nächste Routine um ANode; nil außerhalb.</summary>
     class function EnclosingRoutine(ANode: TSyntaxNode): TSyntaxNode; static;
-    /// <summary>VarDecl im var-Abschnitt der Routine selbst; Parameter, Felder und globale Variablen zählen nicht.</summary>
+    /// <summary>VarDecl im var-Abschnitt der Routine selbst; Parameter, Felder und globale Variablen zählen
+    /// nicht.</summary>
     class function LocalDeclaration(ARoutine: TSyntaxNode; const AName: string): TSyntaxNode; static;
     /// <summary>Letzter Sichtbarkeitsabschnitt vor AMember in Kleinbuchstaben; ohne Angabe public.</summary>
     class function VisibilityOf(AMember: TSyntaxNode): string; static;

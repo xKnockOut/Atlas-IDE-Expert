@@ -23,12 +23,12 @@ uses
 type
   TLspDiagnosticItems = class
   public const
-    Source = 'Atlas';
-    CompilerSource = 'dcc';
+    cSource = 'Atlas';
+    cCompilerSource = 'dcc';
     /// <summary>DiagnosticTag.Unnecessary: Der Editor blendet ab.</summary>
-    TagUnnecessary = 1;
+    cTagUnnecessary = 1;
     /// <summary>DiagnosticTag.Deprecated: Der Editor streicht durch.</summary>
-    TagDeprecated = 2;
+    cTagDeprecated = 2;
   public
     class function InactiveMessage: string; static;
     class function InactiveConditionMessage: string; static;
@@ -143,13 +143,13 @@ function SeverityOf(ASeverity: TRuleSeverity): Integer;
 begin
   case ASeverity of
     TRuleSeverity.Error:
-      Result := TLspDiagnosticSeverity.Error;
+      Result := TLspDiagnosticSeverity.cError;
     TRuleSeverity.Warning:
-      Result := TLspDiagnosticSeverity.Warning;
+      Result := TLspDiagnosticSeverity.cWarning;
     TRuleSeverity.Information:
-      Result := TLspDiagnosticSeverity.Information;
+      Result := TLspDiagnosticSeverity.cInformation;
   else
-    Result := TLspDiagnosticSeverity.Hint;
+    Result := TLspDiagnosticSeverity.cHint;
   end;
 end;
 
@@ -273,11 +273,11 @@ function CompilerSeverityOf(ASeverity: TCompilerSeverity): Integer;
 begin
   case ASeverity of
     TCompilerSeverity.Hint:
-      Result := TLspDiagnosticSeverity.Hint;
+      Result := TLspDiagnosticSeverity.cHint;
     TCompilerSeverity.Warning:
-      Result := TLspDiagnosticSeverity.Warning;
+      Result := TLspDiagnosticSeverity.cWarning;
   else
-    Result := TLspDiagnosticSeverity.Error;
+    Result := TLspDiagnosticSeverity.cError;
   end;
 end;
 
@@ -305,7 +305,7 @@ begin
   Result.AddPair('code', AFinding.RuleId);
   Result.AddPair('codeDescription', TJSONObject.Create(
     TJSONPair.Create('href', TRuleCatalog.HelpUri(AFinding.RuleId))));
-  Result.AddPair('source', Source);
+  Result.AddPair('source', cSource);
   // Konfidenz als eigenes Feld, der Meldungstext bleibt unverändert (#144).
   Result.AddPair('message', AFinding.Message);
   Result.AddPair('data', FindingData(AFinding));
@@ -314,9 +314,9 @@ begin
     Result.AddPair('relatedInformation', RelatedJson(AFinding.Related));
   end;
   // Veraltete Symbole durchgestrichen (#38), aber nicht platform, library oder experimental (#1018).
-  if (AFinding.RuleId = DeprecatedSymbolRuleId) and TDeprecatedSymbolRule.IsDeprecation(AFinding.Message) then
+  if (AFinding.RuleId = cDeprecatedSymbolRuleId) and TDeprecatedSymbolRule.IsDeprecation(AFinding.Message) then
   begin
-    Result.AddPair('tags', TagsOf(TagDeprecated));
+    Result.AddPair('tags', TagsOf(cTagDeprecated));
   end;
 end;
 
@@ -330,7 +330,7 @@ begin
   begin
     Result.AddPair('code', AMessage.Code);
   end;
-  Result.AddPair('source', CompilerSource);
+  Result.AddPair('source', cCompilerSource);
   Result.AddPair('message', AMessage.Text);
 end;
 
@@ -367,10 +367,10 @@ var
 begin
   Result := TJSONObject.Create;
   Result.AddPair('range', TLspPositions.RangeToJson(ARegion.Range));
-  Result.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Hint));
-  Result.AddPair('source', Source);
+  Result.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.cHint));
+  Result.AddPair('source', cSource);
   Result.AddPair('message', InactiveMessageOf(ARegion.Condition, APlatform, AConfig));
-  Result.AddPair('tags', TagsOf(TagUnnecessary));
+  Result.AddPair('tags', TagsOf(cTagUnnecessary));
   // Einzeln für Clients, die den Hinweis selbst setzen (Plugin, übersetzt).
   mData := TJSONObject.Create;
   mData.AddPair('condition', ARegion.Condition);
@@ -385,13 +385,13 @@ begin
   Result.AddPair('range', TLspPositions.RangeToJson(AIssue.Range));
   if AIssue.Kind = TPreprocessorIssueKind.IncludeCycle then
   begin
-    Result.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Warning));
+    Result.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.cWarning));
   end
   else
   begin
-    Result.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Hint));
+    Result.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.cHint));
   end;
-  Result.AddPair('source', Source);
+  Result.AddPair('source', cSource);
   Result.AddPair('message', AIssue.Message);
 end;
 
@@ -418,19 +418,19 @@ begin
   for mEntry in TUsesActions.Entries(TPascalLexer.Tokenize(AText), AInactive, AContext.Info, AContext.Keep) do
   begin
     if (mEntry.State = TUsesEntryState.Unused) and (ASuppressions <> nil) and
-      ASuppressions.IsSuppressed(UnusedUsesRuleId, mEntry.Range.StartPos.Line) then
+      ASuppressions.IsSuppressed(cUnusedUsesRuleId, mEntry.Range.StartPos.Line) then
     begin
       Continue;
     end;
     mItem := TJSONObject.Create;
     mItem.AddPair('range', TLspPositions.RangeToJson(mEntry.Range));
-    mItem.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.Hint));
-    mItem.AddPair('source', Source);
+    mItem.AddPair('severity', TJSONNumber.Create(TLspDiagnosticSeverity.cHint));
+    mItem.AddPair('source', cSource);
     mItem.AddPair('message', Format(UsesMessage(mEntry.State), [mEntry.Name]));
     // Nur ungenutzte blendet der Editor ab.
     if mEntry.State = TUsesEntryState.Unused then
     begin
-      mItem.AddPair('tags', TagsOf(TagUnnecessary));
+      mItem.AddPair('tags', TagsOf(cTagUnnecessary));
     end;
     mData := TJSONObject.Create;
     mData.AddPair('unit', mEntry.Name);

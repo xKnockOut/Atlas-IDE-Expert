@@ -67,7 +67,7 @@ type
 
   TVarBlock = class
   public const
-    SortNames: array[TVarBlockSort] of string = ('usage', 'alpha', 'none');
+    cSortNames: array[TVarBlockSort] of string = ('usage', 'alpha', 'none');
   public
     /// <summary>Sortierung zum Namen der Einstellung; usage bei unbekanntem.</summary>
     class function SortOf(const AName: string): TVarBlockSort; static;
@@ -106,12 +106,12 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  LoopKinds = [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
+  cLoopKinds = [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
     TSyntaxKind.RepeatStatement];
-  ConditionalWords: array[0..7] of string = ('IF', 'IFDEF', 'IFNDEF', 'IFOPT', 'ELSE', 'ELSEIF', 'ENDIF', 'IFEND');
+  cConditionalWords: array[0..7] of string = ('IF', 'IFDEF', 'IFNDEF', 'IFOPT', 'ELSE', 'ELSEIF', 'ENDIF', 'IFEND');
   /// <summary>Typen, die ein Inline-Eintrag übernehmen kann; Records, Aufzählungen usw. bleiben im Abschnitt.
   /// </summary>
-  InlineTypeKinds = [TSyntaxKind.TypeReference, TSyntaxKind.ArrayType, TSyntaxKind.SetType,
+  cInlineTypeKinds = [TSyntaxKind.TypeReference, TSyntaxKind.ArrayType, TSyntaxKind.SetType,
     TSyntaxKind.PointerType, TSyntaxKind.ProcedureType];
 
 type
@@ -187,25 +187,25 @@ end;
 /// <summary>Liegt ANode unterhalb von ABody in einer Schleife?</summary>
 function InLoop(ANode, ABody: TSyntaxNode): Boolean;
 var
-  Node: TSyntaxNode;
+  mNode: TSyntaxNode;
 begin
   Result := False;
-  Node := ANode.Parent;
-  while (Node <> nil) and (Node <> ABody) do
+  mNode := ANode.Parent;
+  while (mNode <> nil) and (mNode <> ABody) do
   begin
-    if Node.Kind in LoopKinds then
+    if mNode.Kind in cLoopKinds then
     begin
       Exit(True);
     end;
-    Node := Node.Parent;
+    mNode := mNode.Parent;
   end;
 end;
 
 /// <summary>Bedingte Übersetzung ({$IFDEF …}, {$ELSE}, {$ENDIF} …) im Bereich [AFrom, ATo).</summary>
 function HasConditional(const ATokens: TArray<TPascalToken>; AFrom, ATo: Integer): Boolean;
 var
-  Text: string;
-  Stop: Integer;
+  mText: string;
+  mStop: Integer;
   mIndex: Integer;
 begin
   Result := False;
@@ -215,21 +215,21 @@ begin
   begin
     if ATokens[mIndex].Kind = TPascalTokenKind.Directive then
     begin
-      Text := ATokens[mIndex].Text;
-      if StartsStr('{$', Text) then
+      mText := ATokens[mIndex].Text;
+      if StartsStr('{$', mText) then
       begin
-        Text := Copy(Text, 3, MaxInt);
+        mText := Copy(mText, 3, MaxInt);
       end
       else
       begin
-        Text := Copy(Text, 4, MaxInt);
+        mText := Copy(mText, 4, MaxInt);
       end;
-      Stop := 1;
-      while (Stop <= Length(Text)) and CharInSet(Text[Stop], ['A'..'Z', 'a'..'z']) do
+      mStop := 1;
+      while (mStop <= Length(mText)) and CharInSet(mText[mStop], ['A'..'Z', 'a'..'z']) do
       begin
-        Inc(Stop);
+        Inc(mStop);
       end;
-      if MatchText(Copy(Text, 1, Stop - 1), ConditionalWords) then
+      if MatchText(Copy(mText, 1, mStop - 1), cConditionalWords) then
       begin
         Exit(True);
       end;
@@ -242,18 +242,18 @@ end;
 /// Groß-/Kleinschreibung egal); -1 ohne.</summary>
 function FindToken(const ATokens: TArray<TPascalToken>; AFrom, ATo: Integer; const AWord: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := -1;
-  Index := TRoutineBody.TokenAt(ATokens, AFrom);
-  while (Index <= High(ATokens)) and (ATokens[Index].Offset < ATo) do
+  mIndex := TRoutineBody.TokenAt(ATokens, AFrom);
+  while (mIndex <= High(ATokens)) and (ATokens[mIndex].Offset < ATo) do
   begin
-    if (ATokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword, TPascalTokenKind.Symbol]) and
-      SameText(ATokens[Index].Text, AWord) then
+    if (ATokens[mIndex].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword, TPascalTokenKind.Symbol]) and
+      SameText(ATokens[mIndex].Text, AWord) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
 end;
 
@@ -262,22 +262,22 @@ end;
 function WordOffset(const ATokens: TArray<TPascalToken>; const AName: string; AFrom, ATo, ASkipFrom,
   ASkipTo: Integer): Integer;
 var
-  Index, Previous: Integer;
+  mIndex, mPrevious: Integer;
 begin
   Result := -1;
-  Index := TRoutineBody.TokenAt(ATokens, AFrom);
-  while (Index <= High(ATokens)) and (ATokens[Index].Offset < ATo) do
+  mIndex := TRoutineBody.TokenAt(ATokens, AFrom);
+  while (mIndex <= High(ATokens)) and (ATokens[mIndex].Offset < ATo) do
   begin
-    if (ATokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(CleanName(ATokens[Index].Text), AName) and
-      ((ATokens[Index].Offset < ASkipFrom) or (ATokens[Index].Offset >= ASkipTo)) then
+    if (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(CleanName(ATokens[mIndex].Text), AName) and
+      ((ATokens[mIndex].Offset < ASkipFrom) or (ATokens[mIndex].Offset >= ASkipTo)) then
     begin
-      Previous := TRoutineBody.PreviousToken(ATokens, Index);
-      if (Previous < 0) or not ATokens[Previous].IsSymbol('.') then
+      mPrevious := TRoutineBody.PreviousToken(ATokens, mIndex);
+      if (mPrevious < 0) or not ATokens[mPrevious].IsSymbol('.') then
       begin
-        Exit(ATokens[Index].Offset);
+        Exit(ATokens[mIndex].Offset);
       end;
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
 end;
 
@@ -328,21 +328,21 @@ end;
 /// Leerzeile beendet die Suche.</summary>
 function CommentStart(const AInfo: TLineInfo; ALine, AAfter: Integer; AStrict: Boolean): Integer;
 var
-  Line: Integer;
+  mLine: Integer;
 begin
   Result := ALine;
-  Line := ALine - 1;
-  while (Line > AAfter) and (Line >= 0) and not AInfo.Code[Line] do
+  mLine := ALine - 1;
+  while (mLine > AAfter) and (mLine >= 0) and not AInfo.Code[mLine] do
   begin
-    if AInfo.Comment[Line] then
+    if AInfo.Comment[mLine] then
     begin
-      Result := Line;
+      Result := mLine;
     end
     else if AStrict then
     begin
       Break;
     end;
-    Dec(Line);
+    Dec(mLine);
   end;
   // Nicht mitten in einem Kommentar beginnen, der zu Code darüber gehört.
   while (Result < ALine) and not AInfo.CommentStarts[Result] do
@@ -355,31 +355,31 @@ end;
 /// ersten.</summary>
 function CommentLines(const AInfo: TLineInfo; AFirst, ALast: Integer): TArray<string>;
 var
-  Line: Integer;
-  Indent, Text: string;
+  mLine: Integer;
+  mIndent, mText: string;
 begin
   Result := nil;
   if AFirst >= ALast then
   begin
     Exit;
   end;
-  Indent := TTextLines.IndentOf(AInfo.Lines[AFirst]);
-  for Line := AFirst to ALast - 1 do
+  mIndent := TTextLines.IndentOf(AInfo.Lines[AFirst]);
+  for mLine := AFirst to ALast - 1 do
   begin
-    if not AInfo.Comment[Line] then
+    if not AInfo.Comment[mLine] then
     begin
       Continue;
     end;
-    Text := TrimRight(AInfo.Lines[Line]);
-    if StartsStr(Indent, Text) then
+    mText := TrimRight(AInfo.Lines[mLine]);
+    if StartsStr(mIndent, mText) then
     begin
-      Text := Copy(Text, Length(Indent) + 1, MaxInt);
+      mText := Copy(mText, Length(mIndent) + 1, MaxInt);
     end
     else
     begin
-      Text := TrimLeft(Text);
+      mText := TrimLeft(mText);
     end;
-    Result := Result + [Text];
+    Result := Result + [mText];
   end;
 end;
 
@@ -388,30 +388,30 @@ end;
 function TrailingComment(const AText: string; const ATokens: TArray<TPascalToken>; AIndex: Integer;
   out AEnd: TTextPosition): string;
 var
-  First, Last: Integer;
+  mFirst, mLast: Integer;
 begin
   Result := '';
   AEnd := ATokens[AIndex].EndPos;
-  First := AIndex + 1;
-  if (First > High(ATokens)) or (ATokens[First].Kind <> TPascalTokenKind.Comment) or
-    (ATokens[First].StartPos.Line <> ATokens[AIndex].EndPos.Line) then
+  mFirst := AIndex + 1;
+  if (mFirst > High(ATokens)) or (ATokens[mFirst].Kind <> TPascalTokenKind.Comment) or
+    (ATokens[mFirst].StartPos.Line <> ATokens[AIndex].EndPos.Line) then
   begin
     Exit;
   end;
-  Last := First;
-  while (Last < High(ATokens)) and (ATokens[Last + 1].Kind = TPascalTokenKind.Comment) and
-    (ATokens[Last + 1].StartPos.Line = ATokens[Last].EndPos.Line) do
+  mLast := mFirst;
+  while (mLast < High(ATokens)) and (ATokens[mLast + 1].Kind = TPascalTokenKind.Comment) and
+    (ATokens[mLast + 1].StartPos.Line = ATokens[mLast].EndPos.Line) do
   begin
-    Inc(Last);
+    Inc(mLast);
   end;
-  if (Last < High(ATokens)) and (ATokens[Last + 1].Text <> '') and
-    (ATokens[Last + 1].StartPos.Line = ATokens[Last].EndPos.Line) then
+  if (mLast < High(ATokens)) and (ATokens[mLast + 1].Text <> '') and
+    (ATokens[mLast + 1].StartPos.Line = ATokens[mLast].EndPos.Line) then
   begin
     Exit;
   end;
-  AEnd := ATokens[Last].EndPos;
-  Result := Copy(AText, ATokens[First].Offset + 1, ATokens[Last].Offset + Length(ATokens[Last].Text) -
-    ATokens[First].Offset);
+  AEnd := ATokens[mLast].EndPos;
+  Result := Copy(AText, ATokens[mFirst].Offset + 1, ATokens[mLast].Offset + Length(ATokens[mLast].Text) -
+    ATokens[mFirst].Offset);
 end;
 
 /// <summary>Index des letzten Tokens von ANode (Ende ausschließlich).</summary>
@@ -429,14 +429,14 @@ end;
 function CodeOnLines(const ATokens: TArray<TPascalToken>; AFirstLine, ALastLine, ASkipFrom,
   ASkipTo: Integer): Boolean;
 var
-  Token: TPascalToken;
+  mToken: TPascalToken;
 begin
   Result := False;
-  for Token in ATokens do
+  for mToken in ATokens do
   begin
-    if (Token.Kind <> TPascalTokenKind.Comment) and (Token.Text <> '') and
-      InRange(Token.StartPos.Line, AFirstLine, ALastLine) and
-      ((Token.Offset < ASkipFrom) or (Token.Offset >= ASkipTo)) then
+    if (mToken.Kind <> TPascalTokenKind.Comment) and (mToken.Text <> '') and
+      InRange(mToken.StartPos.Line, AFirstLine, ALastLine) and
+      ((mToken.Offset < ASkipFrom) or (mToken.Offset >= ASkipTo)) then
     begin
       Exit(True);
     end;
@@ -449,39 +449,39 @@ end;
 /// T.Create)?</summary>
 function ObviousType(const ATokens: TArray<TPascalToken>; AExpression: TSyntaxNode; const ATypeText: string): Boolean;
 var
-  First, Last, Next: Integer;
-  Text: string;
+  mFirst, mLast, mNext: Integer;
+  mText: string;
 begin
   Result := False;
-  First := TRoutineBody.TokenAt(ATokens, AExpression.StartOffset);
-  Last := LastTokenOf(ATokens, AExpression);
-  if (First > High(ATokens)) or (Last < First) then
+  mFirst := TRoutineBody.TokenAt(ATokens, AExpression.StartOffset);
+  mLast := LastTokenOf(ATokens, AExpression);
+  if (mFirst > High(ATokens)) or (mLast < mFirst) then
   begin
     Exit;
   end;
-  Text := ATokens[First].Text;
-  if First = Last then
-    case ATokens[First].Kind of
+  mText := ATokens[mFirst].Text;
+  if mFirst = mLast then
+    case ATokens[mFirst].Kind of
       TPascalTokenKind.Number:
-        Result := SameText(ATypeText, 'Integer') and CharInSet(Text[1], ['0'..'9']) and
-          (LastDelimiter('.eE', Text) = 0) and (Length(Text) < 10);
+        Result := SameText(ATypeText, 'Integer') and CharInSet(mText[1], ['0'..'9']) and
+          (LastDelimiter('.eE', mText) = 0) and (Length(mText) < 10);
       TPascalTokenKind.StringLiteral:
-        Result := SameText(ATypeText, 'string') and (Length(Text) <> 3) and (Text <> '''''''''');
+        Result := SameText(ATypeText, 'string') and (Length(mText) <> 3) and (mText <> '''''''''');
       TPascalTokenKind.Identifier:
-        Result := SameText(ATypeText, 'Boolean') and (SameText(Text, 'True') or SameText(Text, 'False'));
+        Result := SameText(ATypeText, 'Boolean') and (SameText(mText, 'True') or SameText(mText, 'False'));
     end
-  else if (ATokens[First].Kind = TPascalTokenKind.Identifier) and SameText(Text, ATypeText) then
+  else if (ATokens[mFirst].Kind = TPascalTokenKind.Identifier) and SameText(mText, ATypeText) then
   begin
     // T.Create bzw. T.Create(…)
-    Next := TRoutineBody.NextToken(ATokens, First);
-    if (Next <= Last) and ATokens[Next].IsSymbol('.') then
+    mNext := TRoutineBody.NextToken(ATokens, mFirst);
+    if (mNext <= mLast) and ATokens[mNext].IsSymbol('.') then
     begin
-      Next := TRoutineBody.NextToken(ATokens, Next);
-      Result := (Next <= Last) and SameText(ATokens[Next].Text, 'Create') and
-        ((Next = Last) or ATokens[TRoutineBody.NextToken(ATokens, Next)].IsSymbol('('));
-      if Result and (Next < Last) then
+      mNext := TRoutineBody.NextToken(ATokens, mNext);
+      Result := (mNext <= mLast) and SameText(ATokens[mNext].Text, 'Create') and
+        ((mNext = mLast) or ATokens[TRoutineBody.NextToken(ATokens, mNext)].IsSymbol('('));
+      if Result and (mNext < mLast) then
       begin
-        Result := ATokens[Last].IsSymbol(')');
+        Result := ATokens[mLast].IsSymbol(')');
       end;
     end;
   end;
@@ -501,29 +501,29 @@ end;
 /// Liste, deren Rest ab dort alle Verwendungen bis ALast enthält; nil ohne.</summary>
 function AnchorStatement(AFirst, ABody: TSyntaxNode; ALast: Integer): TSyntaxNode;
 var
-  Node, ListEnd: TSyntaxNode;
-  Index: Integer;
+  mNode, mListEnd: TSyntaxNode;
+  mIndex: Integer;
 begin
   Result := nil;
-  Node := AFirst;
-  while (Node <> nil) and (Node <> ABody) do
+  mNode := AFirst;
+  while (mNode <> nil) and (mNode <> ABody) do
   begin
-    if TRoutineBody.InList(Node) then
+    if TRoutineBody.InList(mNode) then
     begin
       // Die Liste endet vor finally/except bzw. vor der Bedingung von repeat.
-      ListEnd := Node;
-      Index := ChildIndex(Node) + 1;
-      while (Index < Node.Parent.ChildCount) and TRoutineBody.InList(Node.Parent[Index]) do
+      mListEnd := mNode;
+      mIndex := ChildIndex(mNode) + 1;
+      while (mIndex < mNode.Parent.ChildCount) and TRoutineBody.InList(mNode.Parent[mIndex]) do
       begin
-        ListEnd := Node.Parent[Index];
-        Inc(Index);
+        mListEnd := mNode.Parent[mIndex];
+        Inc(mIndex);
       end;
-      if ALast < ListEnd.EndOffset then
+      if ALast < mListEnd.EndOffset then
       begin
-        Exit(Node);
+        Exit(mNode);
       end;
     end;
-    Node := Node.Parent;
+    mNode := mNode.Parent;
   end;
 end;
 
@@ -591,7 +591,7 @@ begin
   Section := Symbol.Decl.Parent;
   Body := TRoutineBody.BodyOf(Routine);
   Result := (Section <> nil) and (Section.Parent = Routine) and (Body <> nil) and (Symbol.Decl.ChildCount > 0) and
-    (Symbol.Decl[0].Kind in InlineTypeKinds);
+    (Symbol.Decl[0].Kind in cInlineTypeKinds);
   // Zwei Namen eines Typs ohne Namen sind ein Typ; getrennt wären es zwei.
   Result := Result and ((Pos(',', Symbol.Decl.Name) = 0) or (Symbol.Decl[0].Kind = TSyntaxKind.TypeReference));
 end;
@@ -780,7 +780,7 @@ begin
     mMove.CollectComments(AInfo);
     AAction := Default(TCodeAction);
     AAction.Title := cTexts[TVarBlockText.ConvertToInlineVariableVar].Fmt([ASymbol.Name]);
-    AAction.Kind := RewriteKind;
+    AAction.Kind := cRewriteKind;
     AAction.Edits := mMove.Edits;
   end;
 end;
@@ -986,7 +986,7 @@ begin
   begin
     AAction := Default(TCodeAction);
     AAction.Title := cTexts[TVarBlockText.MoveToVarBlock].Fmt([ASymbol.Name]);
-    AAction.Kind := RewriteKind;
+    AAction.Kind := cRewriteKind;
     AAction.Edits := mEdits;
   end;
 end;
@@ -996,14 +996,14 @@ end;
 /// <summary>Typtext ohne Leerraum und in Kleinbuchstaben: Vergleich beim Zusammenfassen.</summary>
 function TypeKey(const ATypeText: string): string;
 var
-  Character: Char;
+  mCharacter: Char;
 begin
   Result := '';
-  for Character in LowerCase(ATypeText) do
+  for mCharacter in LowerCase(ATypeText) do
   begin
-    if not CharInSet(Character, [' ', #9, #10, #13]) then
+    if not CharInSet(mCharacter, [' ', #9, #10, #13]) then
     begin
-      Result := Result + Character;
+      Result := Result + mCharacter;
     end;
   end;
 end;
@@ -1011,7 +1011,7 @@ end;
 /// <summary>Kommt AItem vor ACandidate? Stabil über Order.</summary>
 function Before(const AItem, ACandidate: TVarItem; ASort: TVarBlockSort): Boolean;
 var
-  Compared: Integer;
+  mCompared: Integer;
 begin
   case ASort of
     TVarBlockSort.Usage:
@@ -1021,10 +1021,10 @@ begin
       end;
     TVarBlockSort.Alpha:
       begin
-        Compared := CompareText(AItem.Names[0], ACandidate.Names[0]);
-        if Compared <> 0 then
+        mCompared := CompareText(AItem.Names[0], ACandidate.Names[0]);
+        if mCompared <> 0 then
         begin
-          Exit(Compared < 0);
+          Exit(mCompared < 0);
         end;
       end;
     TVarBlockSort.None: ;
@@ -1452,7 +1452,7 @@ begin
   begin
     AAction.Title := AAction.Title + cTexts[TVarBlockText.Unused].Fmt([Removed]);
   end;
-  AAction.Kind := RewriteKind;
+  AAction.Kind := cRewriteKind;
   AAction.Edits := TArray<TTextEdit>.Create(TTextEdit.Create(TTextRange.Create(RangeStart, RangeEnd), mNewText));
 end;
 
@@ -1460,13 +1460,13 @@ end;
 
 class function TVarBlock.SortOf(const AName: string): TVarBlockSort;
 var
-  Sort: TVarBlockSort;
+  mSort: TVarBlockSort;
 begin
-  for Sort := Low(TVarBlockSort) to High(TVarBlockSort) do
+  for mSort := Low(TVarBlockSort) to High(TVarBlockSort) do
   begin
-    if SameText(SortNames[Sort], AName) then
+    if SameText(cSortNames[mSort], AName) then
     begin
-      Exit(Sort);
+      Exit(mSort);
     end;
   end;
   Result := TVarBlockSort.Usage;
@@ -1476,14 +1476,14 @@ end;
 /// nil sonst.</summary>
 function SectionAt(ATree: TSyntaxTree; AOffset: Integer): TSyntaxNode;
 var
-  Found: TSyntaxNode;
-  Offset: Integer;
+  mFound: TSyntaxNode;
+  mOffset: Integer;
 begin
-  Offset := AOffset;
-  Found := ATree.Root.Search(
+  mOffset := AOffset;
+  mFound := ATree.Root.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
-      if (Offset < ANode.StartOffset) or (Offset > ANode.EndOffset) then
+      if (mOffset < ANode.StartOffset) or (mOffset > ANode.EndOffset) then
       begin
         Exit(TSyntaxSearchStep.Skip);
       end;
@@ -1494,13 +1494,13 @@ begin
       end;
       Result := TSyntaxSearchStep.Descend;
     end);
-  Result := Found;
+  Result := mFound;
 end;
 
 /// <summary>Offset der Position im Text; -1 außerhalb.</summary>
 function OffsetOf(const AInfo: TLineInfo; const APosition: TTextPosition; const ALineBreak: string): Integer;
 var
-  Line: Integer;
+  mLine: Integer;
 begin
   Result := -1;
   if (APosition.Line < 0) or (APosition.Line > High(AInfo.Lines)) then
@@ -1508,9 +1508,9 @@ begin
     Exit;
   end;
   Result := 0;
-  for Line := 0 to APosition.Line - 1 do
+  for mLine := 0 to APosition.Line - 1 do
   begin
-    Result := Result + Length(AInfo.Lines[Line]) + Length(ALineBreak);
+    Result := Result + Length(AInfo.Lines[mLine]) + Length(ALineBreak);
   end;
   Result := Result + APosition.Character;
 end;
@@ -1518,46 +1518,46 @@ end;
 class function TVarBlock.Actions(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
   const AOptions: TVarBlockOptions): TArray<TCodeAction>;
 var
-  Symbols: TArray<TReassignedSymbol>;
-  Symbol: TReassignedSymbol;
-  Info: TLineInfo;
-  Section: TSyntaxNode;
-  Action: TCodeAction;
-  Offset: Integer;
-  Cleanup: TCleanup;
+  mSymbols: TArray<TReassignedSymbol>;
+  mSymbol: TReassignedSymbol;
+  mInfo: TLineInfo;
+  mSection: TSyntaxNode;
+  mAction: TCodeAction;
+  mOffset: Integer;
+  mCleanup: TCleanup;
 begin
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) then
   begin
     Exit;
   end;
-  Info := LineInfoOf(AText, ATree.Tokens);
-  Symbols := TReassigned.Analyze(AText, ATree, AOptions.Lookup);
-  if TReassigned.SymbolAt(Symbols, APosition, Symbol) then
+  mInfo := LineInfoOf(AText, ATree.Tokens);
+  mSymbols := TReassigned.Analyze(AText, ATree, AOptions.Lookup);
+  if TReassigned.SymbolAt(mSymbols, APosition, mSymbol) then
   begin
-    if AOptions.InlineVariables and InlineAction(AText, ATree, Info, Symbol, Action) then
+    if AOptions.InlineVariables and InlineAction(AText, ATree, mInfo, mSymbol, mAction) then
     begin
-      Result := Result + [Action];
+      Result := Result + [mAction];
     end;
-    if SectionAction(AText, ATree, Info, Symbol, AOptions, Action) then
+    if SectionAction(AText, ATree, mInfo, mSymbol, AOptions, mAction) then
     begin
-      Result := Result + [Action];
+      Result := Result + [mAction];
     end;
   end;
-  Offset := OffsetOf(Info, APosition, TTextLines.LineBreakOf(AText));
-  if Offset < 0 then
+  mOffset := OffsetOf(mInfo, APosition, TTextLines.LineBreakOf(AText));
+  if mOffset < 0 then
   begin
     Exit;
   end;
-  Section := SectionAt(ATree, Offset);
-  if Section = nil then
+  mSection := SectionAt(ATree, mOffset);
+  if mSection = nil then
   begin
     Exit;
   end;
-  Cleanup := TCleanup.Create(AText, ATree, Info, Symbols, Section);
-  if Cleanup.Action(AOptions, Action) then
+  mCleanup := TCleanup.Create(AText, ATree, mInfo, mSymbols, mSection);
+  if mCleanup.Action(AOptions, mAction) then
   begin
-    Result := Result + [Action];
+    Result := Result + [mAction];
   end;
 end;
 

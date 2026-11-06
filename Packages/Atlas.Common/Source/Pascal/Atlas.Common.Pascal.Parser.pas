@@ -128,7 +128,8 @@ const
 {$SCOPEDENUMS OFF}
 
 type
-  /// <summary>Ganze Datei, Abschnitte und Anweisungen; Spitze der Kette Cursor, Ausdrücke, Deklarationen, Typen.</summary>
+  /// <summary>Ganze Datei, Abschnitte und Anweisungen; Spitze der Kette Cursor, Ausdrücke, Deklarationen,
+  /// Typen.</summary>
   TParser = class(TTypeParser)
   private
     /// <summary>Die Anweisung gehört direkt zu einem case-Zweig bzw. einem on-Handler: Dort beginnt
@@ -181,18 +182,18 @@ type
 
 function TParser.Run: TSyntaxTree;
 var
-  Root: TSyntaxNode;
+  mRoot: TSyntaxNode;
 begin
-  Root := ParseFile;
-  CheckTokensAndTree(Root);
-  Result := TSyntaxTree.Create(Root, FAllTokens, FDiagnostics.ToArray);
+  mRoot := ParseFile;
+  CheckTokensAndTree(mRoot);
+  Result := TSyntaxTree.Create(mRoot, FAllTokens, FDiagnostics.ToArray);
 end;
 
 function TParser.ParseFile: TSyntaxNode;
 var
-  Start: Integer;
+  mStart: Integer;
 begin
-  Start := NodeStart;
+  mStart := NodeStart;
   if IsKw('unit') then
   begin
     Result := StartNode(TSyntaxKind.UnitFile);
@@ -216,7 +217,7 @@ begin
   end;
   // Alles nach dem abschließenden Punkt ignoriert der Compiler.
   FIndex := Length(FTokens);
-  FinishNode(Result, Start);
+  FinishNode(Result, mStart);
 end;
 
 procedure TParser.ParseUnit(ANode: TSyntaxNode);
@@ -297,19 +298,19 @@ end;
 
 procedure TParser.ParseUses(AParent: TSyntaxNode);
 var
-  Start: Integer;
-  ItemStart: Integer;
-  Node: TSyntaxNode;
-  Item: TSyntaxNode;
+  mStart: Integer;
+  mItemStart: Integer;
+  mNode: TSyntaxNode;
+  mItem: TSyntaxNode;
 begin
-  Start := NodeStart;
-  Node := StartNode(TSyntaxKind.UsesClause);
-  AParent.Add(Node);
+  mStart := NodeStart;
+  mNode := StartNode(TSyntaxKind.UsesClause);
+  AParent.Add(mNode);
   Advance; // uses, contains oder requires
   repeat
-    ItemStart := NodeStart;
-    Item := StartNode(TSyntaxKind.UsedUnit);
-    Item.Name := ParseQualifiedName;
+    mItemStart := NodeStart;
+    mItem := StartNode(TSyntaxKind.UsedUnit);
+    mItem.Name := ParseQualifiedName;
     if AcceptKw('in') then
     begin
       if Current.Kind = TPascalTokenKind.StringLiteral then
@@ -321,104 +322,104 @@ begin
         DiagnoseUnexpected(cTexts[TPascalParserText.FileName].Text);
       end;
     end;
-    FinishNode(Item, ItemStart);
-    Node.Add(Item);
-    if Item.Name = '' then
+    FinishNode(mItem, mItemStart);
+    mNode.Add(mItem);
+    if mItem.Name = '' then
     begin
       Break;
     end;
   until not AcceptSym(',');
   ExpectSym(';');
-  FinishNode(Node, Start);
+  FinishNode(mNode, mStart);
 end;
 
 procedure TParser.ParseInterfaceSection(AParent: TSyntaxNode);
 var
-  Start: Integer;
-  Node: TSyntaxNode;
+  mStart: Integer;
+  mNode: TSyntaxNode;
 begin
-  Start := NodeStart;
-  Node := StartNode(TSyntaxKind.InterfaceSection);
-  AParent.Add(Node);
+  mStart := NodeStart;
+  mNode := StartNode(TSyntaxKind.InterfaceSection);
+  AParent.Add(mNode);
   ExpectKw('interface');
   FInImplementation := False;
   if IsKw('uses') then
   begin
-    ParseUses(Node);
+    ParseUses(mNode);
   end;
-  ParseDeclarations(Node);
-  FinishNode(Node, Start);
+  ParseDeclarations(mNode);
+  FinishNode(mNode, mStart);
 end;
 
 procedure TParser.ParseImplementationSection(AParent: TSyntaxNode);
 var
-  Start: Integer;
-  Node: TSyntaxNode;
+  mStart: Integer;
+  mNode: TSyntaxNode;
 begin
-  Start := NodeStart;
-  Node := StartNode(TSyntaxKind.ImplementationSection);
-  AParent.Add(Node);
+  mStart := NodeStart;
+  mNode := StartNode(TSyntaxKind.ImplementationSection);
+  AParent.Add(mNode);
   ExpectKw('implementation');
   FInImplementation := True;
   if IsKw('uses') then
   begin
-    ParseUses(Node);
+    ParseUses(mNode);
   end;
-  ParseDeclarations(Node);
-  FinishNode(Node, Start);
+  ParseDeclarations(mNode);
+  FinishNode(mNode, mStart);
 end;
 
 procedure TParser.ParseStatementSection(AParent: TSyntaxNode; AKind: TSyntaxKind);
 var
-  Start: Integer;
-  Node: TSyntaxNode;
+  mStart: Integer;
+  mNode: TSyntaxNode;
 begin
-  Start := NodeStart;
-  Node := StartNode(AKind);
-  AParent.Add(Node);
+  mStart := NodeStart;
+  mNode := StartNode(AKind);
+  AParent.Add(mNode);
   Advance; // initialization, finalization oder begin
-  ParseStatementList(Node, ['finalization', 'end']);
-  FinishNode(Node, Start);
+  ParseStatementList(mNode, ['finalization', 'end']);
+  FinishNode(mNode, mStart);
 end;
 
 procedure TParser.ParseRoutineBody(AParent: TSyntaxNode; AWithBody: Boolean);
 var
-  Start: Integer;
-  Node: TSyntaxNode;
-  Header: TSyntaxNode;
-  Index: Integer;
-  NoBody: Boolean;
+  mStart: Integer;
+  mNode: TSyntaxNode;
+  mHeader: TSyntaxNode;
+  mIndex: Integer;
+  mNoBody: Boolean;
 begin
-  Start := NodeStart;
-  Node := StartNode(TSyntaxKind.RoutineDecl);
-  AParent.Add(Node);
-  Header := ParseRoutineHeader(Node, TSyntaxKind.RoutineHeader);
-  Node.Name := Header.Name;
-  NoBody := False;
-  for Index := 0 to Header.ChildCount - 1 do
+  mStart := NodeStart;
+  mNode := StartNode(TSyntaxKind.RoutineDecl);
+  AParent.Add(mNode);
+  mHeader := ParseRoutineHeader(mNode, TSyntaxKind.RoutineHeader);
+  mNode.Name := mHeader.Name;
+  mNoBody := False;
+  for mIndex := 0 to mHeader.ChildCount - 1 do
   begin
-    if (Header.Children[Index].Kind = TSyntaxKind.Directive) and
-      ((Header.Children[Index].Name = 'forward') or (Header.Children[Index].Name = 'external')) then
+    if (mHeader.Children[mIndex].Kind = TSyntaxKind.Directive) and
+      ((mHeader.Children[mIndex].Name = 'forward') or (mHeader.Children[mIndex].Name = 'external')) then
     begin
-      NoBody := True;
+      mNoBody := True;
     end;
   end;
-  if AWithBody and not NoBody then
+  if AWithBody and not mNoBody then
   begin
     // Lokale Deklarationen, dann der Rumpf. exports ist hier ein Fehler des Compilers (E2191), aber kein
     // Syntaxfehler: Der Baum behält die Klausel, damit exports-invalid sie melden kann.
     while not AtEnd and (IsKw(['type', 'const', 'resourcestring', 'var', 'threadvar', 'label', 'exports']) or
       IsRoutineStart or IsSym('[')) do
     begin
-      ParseDeclaration(Node);
+      ParseDeclaration(mNode);
     end;
     if IsKw('asm') then
     begin
-      ParseAsm(Node);
+      ParseAsm(mNode);
     end
     else if IsKw('begin') then
     begin
-      ParseBlock(Node);
+      ParseBlock(mNode);
     end
     else
     begin
@@ -426,76 +427,76 @@ begin
     end;
     ExpectSym(';');
   end;
-  FinishNode(Node, Start);
+  FinishNode(mNode, mStart);
 end;
 
 procedure TParser.ParseBlock(AParent: TSyntaxNode);
 var
-  Start: Integer;
-  Node: TSyntaxNode;
+  mStart: Integer;
+  mNode: TSyntaxNode;
 begin
   if IsKw('asm') then
   begin
     ParseAsm(AParent);
     Exit;
   end;
-  Start := NodeStart;
-  Node := StartNode(TSyntaxKind.Block);
-  AParent.Add(Node);
+  mStart := NodeStart;
+  mNode := StartNode(TSyntaxKind.Block);
+  AParent.Add(mNode);
   ExpectKw('begin');
-  ParseStatementList(Node, ['end']);
+  ParseStatementList(mNode, ['end']);
   ExpectKw('end');
-  FinishNode(Node, Start);
+  FinishNode(mNode, mStart);
 end;
 
 procedure TParser.ParseAsm(AParent: TSyntaxNode);
 var
-  Start: Integer;
-  Node: TSyntaxNode;
+  mStart: Integer;
+  mNode: TSyntaxNode;
 begin
   // Assembler wird nicht ausgewertet: bis zum nächsten end überspringen.
   // Sprungmarken wie @@End liefert der Lexer als Bezeichner (#861).
-  Start := NodeStart;
-  Node := StartNode(TSyntaxKind.AsmBlock);
-  AParent.Add(Node);
+  mStart := NodeStart;
+  mNode := StartNode(TSyntaxKind.AsmBlock);
+  AParent.Add(mNode);
   Advance; // asm
   while not AtEnd and not IsKw('end') do
   begin
     Advance;
   end;
   ExpectKw('end');
-  FinishNode(Node, Start);
+  FinishNode(mNode, mStart);
 end;
 
 procedure TParser.ParseStatementList(AParent: TSyntaxNode; const ATerminators: array of string);
 var
-  Saved: TArray<string>;
-  Index: Integer;
-  SavedInCase: Boolean;
+  mSaved: TArray<string>;
+  mIndex: Integer;
+  mSavedInCase: Boolean;
 begin
-  Saved := FTerminators;
-  SavedInCase := FInCaseItem;
+  mSaved := FTerminators;
+  mSavedInCase := FInCaseItem;
   FInCaseItem := False;
   SetLength(FTerminators, Length(ATerminators));
-  for Index := 0 to High(ATerminators) do
+  for mIndex := 0 to High(ATerminators) do
   begin
-    FTerminators[Index] := ATerminators[Index];
+    FTerminators[mIndex] := ATerminators[mIndex];
   end;
   try
     ParseStatementsUntil(AParent);
   finally
-    FTerminators := Saved;
-    FInCaseItem := SavedInCase;
+    FTerminators := mSaved;
+    FInCaseItem := mSavedInCase;
   end;
 end;
 
 procedure TParser.ParseStatementsUntil(AParent: TSyntaxNode);
 var
-  Before: Integer;
+  mBefore: Integer;
 begin
   while not AtEnd and not IsKw(FTerminators) do
   begin
-    Before := FIndex;
+    mBefore := FIndex;
     ParseStatement(AParent);
     if AcceptSym(';') then
     begin
@@ -505,7 +506,7 @@ begin
     begin
       Break;
     end;
-    if FIndex = Before then
+    if FIndex = mBefore then
     begin
       // Die Anweisung hat nichts verbraucht: Token überspringen.
       SkipError(AParent, TRecovery.Statements);
@@ -673,27 +674,27 @@ end;
 
 procedure TParser.ParseIf(AParent: TSyntaxNode);
 var
-  Parent: TSyntaxNode;
-  Nodes: TList<TSyntaxNode>;
-  Starts: TList<Integer>;
-  Index, Before: Integer;
-  Empty: TSyntaxNode;
+  mParent: TSyntaxNode;
+  mNodes: TList<TSyntaxNode>;
+  mStarts: TList<Integer>;
+  mIndex, mBefore: Integer;
+  mEmpty: TSyntaxNode;
 begin
   // else if-Ketten in einer Schleife statt rekursiv (#849): Jedes "else if" wird wie bisher ein
   // IfStatement im else-Zweig des vorigen, zählt aber nicht als weitere Ebene für MaxNesting.
-  Nodes := TList<TSyntaxNode>.Create;
-  Starts := TList<Integer>.Create;
+  mNodes := TList<TSyntaxNode>.Create;
+  mStarts := TList<Integer>.Create;
   try
-    Parent := AParent;
+    mParent := AParent;
     repeat
-      Starts.Add(NodeStart);
-      Nodes.Add(StartNode(TSyntaxKind.IfStatement));
-      Parent.Add(Nodes.Last);
+      mStarts.Add(NodeStart);
+      mNodes.Add(StartNode(TSyntaxKind.IfStatement));
+      mParent.Add(mNodes.Last);
       Advance; // if
-      ParseExpression(Nodes.Last);
+      ParseExpression(mNodes.Last);
       ExpectKw('then');
-      Before := Nodes.Last.ChildCount;
-      ParseStatement(Nodes.Last);
+      mBefore := mNodes.Last.ChildCount;
+      ParseStatement(mNodes.Last);
       // if A then B; else C – außer in case- und on-Zweigen, wo "; else" deren else-Teil beginnt (#1022).
       if IsSym(';') and PeekIsKw(1, 'else') and not FInCaseItem then
       begin
@@ -703,11 +704,11 @@ begin
       end;
       // Leerer then-Zweig vor else (if A then else B): eine leere Anweisung hält seinen Platz, sonst stünde der
       // else-Zweig als then-Zweig im Baum.
-      if IsKw('else') and (Nodes.Last.ChildCount = Before) then
+      if IsKw('else') and (mNodes.Last.ChildCount = mBefore) then
       begin
-        Empty := StartNode(TSyntaxKind.EmptyStatement);
-        Nodes.Last.Add(Empty);
-        FinishNode(Empty, FIndex);
+        mEmpty := StartNode(TSyntaxKind.EmptyStatement);
+        mNodes.Last.Add(mEmpty);
+        FinishNode(mEmpty, FIndex);
       end;
       if not AcceptKw('else') then
       begin
@@ -715,18 +716,18 @@ begin
       end;
       if not IsKw('if') then
       begin
-        ParseStatement(Nodes.Last);
+        ParseStatement(mNodes.Last);
         Break;
       end;
-      Parent := Nodes.Last;
+      mParent := mNodes.Last;
     until False;
-    for Index := Nodes.Count - 1 downto 0 do
+    for mIndex := mNodes.Count - 1 downto 0 do
     begin
-      FinishNode(Nodes[Index], Starts[Index]);
+      FinishNode(mNodes[mIndex], mStarts[mIndex]);
     end;
   finally
-    Starts.Free;
-    Nodes.Free;
+    mStarts.Free;
+    mNodes.Free;
   end;
 end;
 
@@ -812,18 +813,18 @@ end;
 
 procedure TParser.ParseFor(AParent: TSyntaxNode);
 var
-  Start: Integer;
-  Node: TSyntaxNode;
+  mStart: Integer;
+  mNode: TSyntaxNode;
 begin
   // for [var] I [: Typ] := A to|downto B do ...; for [var] X in Liste do ...
-  Start := NodeStart;
-  Node := StartNode(TSyntaxKind.ForStatement);
-  AParent.Add(Node);
+  mStart := NodeStart;
+  mNode := StartNode(TSyntaxKind.ForStatement);
+  AParent.Add(mNode);
   Advance; // for
   AcceptKw('var');
   if IsIdent then
   begin
-    Node.Name := ExpectIdent;
+    mNode.Name := ExpectIdent;
   end
   else
   begin
@@ -831,124 +832,124 @@ begin
   end;
   if AcceptSym(':') then
   begin
-    ParseTypeReference(Node);
+    ParseTypeReference(mNode);
   end;
   if AcceptKw('in') then
   begin
-    Node.Kind := TSyntaxKind.ForInStatement;
-    ParseExpression(Node);
+    mNode.Kind := TSyntaxKind.ForInStatement;
+    ParseExpression(mNode);
   end
   else
   begin
     ExpectSym(':=');
-    ParseExpression(Node);
+    ParseExpression(mNode);
     if not AcceptKw('to') then
     begin
       ExpectKw('downto');
-      Node.Descending := True;
+      mNode.Descending := True;
     end;
-    ParseExpression(Node);
+    ParseExpression(mNode);
   end;
   ExpectKw('do');
-  ParseStatement(Node);
-  FinishNode(Node, Start);
+  ParseStatement(mNode);
+  FinishNode(mNode, mStart);
 end;
 
 procedure TParser.ParseWhile(AParent: TSyntaxNode);
 var
-  Start: Integer;
-  Node: TSyntaxNode;
+  mStart: Integer;
+  mNode: TSyntaxNode;
 begin
-  Start := NodeStart;
-  Node := StartNode(TSyntaxKind.WhileStatement);
-  AParent.Add(Node);
+  mStart := NodeStart;
+  mNode := StartNode(TSyntaxKind.WhileStatement);
+  AParent.Add(mNode);
   Advance; // while
-  ParseExpression(Node);
+  ParseExpression(mNode);
   ExpectKw('do');
-  ParseStatement(Node);
-  FinishNode(Node, Start);
+  ParseStatement(mNode);
+  FinishNode(mNode, mStart);
 end;
 
 procedure TParser.ParseRepeat(AParent: TSyntaxNode);
 var
-  Start: Integer;
-  Node: TSyntaxNode;
+  mStart: Integer;
+  mNode: TSyntaxNode;
 begin
-  Start := NodeStart;
-  Node := StartNode(TSyntaxKind.RepeatStatement);
-  AParent.Add(Node);
+  mStart := NodeStart;
+  mNode := StartNode(TSyntaxKind.RepeatStatement);
+  AParent.Add(mNode);
   Advance; // repeat
-  ParseStatementList(Node, ['until', 'end']);
+  ParseStatementList(mNode, ['until', 'end']);
   ExpectKw('until');
-  ParseExpression(Node);
-  FinishNode(Node, Start);
+  ParseExpression(mNode);
+  FinishNode(mNode, mStart);
 end;
 
 procedure TParser.ParseWith(AParent: TSyntaxNode);
 var
-  Start: Integer;
-  Node: TSyntaxNode;
+  mStart: Integer;
+  mNode: TSyntaxNode;
 begin
-  Start := NodeStart;
-  Node := StartNode(TSyntaxKind.WithStatement);
-  AParent.Add(Node);
+  mStart := NodeStart;
+  mNode := StartNode(TSyntaxKind.WithStatement);
+  AParent.Add(mNode);
   Advance; // with
   repeat
-    ParseExpression(Node);
+    ParseExpression(mNode);
   until not AcceptSym(',');
   ExpectKw('do');
-  ParseStatement(Node);
-  FinishNode(Node, Start);
+  ParseStatement(mNode);
+  FinishNode(mNode, mStart);
 end;
 
 procedure TParser.ParseTry(AParent: TSyntaxNode);
 var
-  Start: Integer;
-  Node: TSyntaxNode;
-  PartStart: Integer;
-  Part: TSyntaxNode;
+  mStart: Integer;
+  mNode: TSyntaxNode;
+  mPartStart: Integer;
+  mPart: TSyntaxNode;
 begin
-  Start := NodeStart;
-  Node := StartNode(TSyntaxKind.TryStatement);
-  AParent.Add(Node);
+  mStart := NodeStart;
+  mNode := StartNode(TSyntaxKind.TryStatement);
+  AParent.Add(mNode);
   Advance; // try
-  ParseStatementList(Node, ['except', 'finally', 'end']);
-  PartStart := NodeStart;
+  ParseStatementList(mNode, ['except', 'finally', 'end']);
+  mPartStart := NodeStart;
   if AcceptKw('finally') then
   begin
-    Part := StartNode(TSyntaxKind.FinallyBlock);
-    Node.Add(Part);
-    ParseStatementList(Part, ['end']);
-    FinishNode(Part, PartStart);
+    mPart := StartNode(TSyntaxKind.FinallyBlock);
+    mNode.Add(mPart);
+    ParseStatementList(mPart, ['end']);
+    FinishNode(mPart, mPartStart);
   end
   else if AcceptKw('except') then
   begin
-    Part := StartNode(TSyntaxKind.ExceptBlock);
-    Node.Add(Part);
+    mPart := StartNode(TSyntaxKind.ExceptBlock);
+    mNode.Add(mPart);
     if IsIdentText('on') then
     begin
       // on E: Exception do ...; on EFoo do ...; else ...
       while IsIdentText('on') do
       begin
-        ParseExceptionHandler(Part);
+        ParseExceptionHandler(mPart);
       end;
       if AcceptKw('else') then
       begin
-        ParseStatementList(Part, ['end']);
+        ParseStatementList(mPart, ['end']);
       end;
     end
     else
     begin
-      ParseStatementList(Part, ['end']);
+      ParseStatementList(mPart, ['end']);
     end;
-    FinishNode(Part, PartStart);
+    FinishNode(mPart, mPartStart);
   end
   else
   begin
     DiagnoseUnexpected('E2125', cTexts[TPascalParserText.ExceptOrFinally].Text);
   end;
   ExpectKw('end');
-  FinishNode(Node, Start);
+  FinishNode(mNode, mStart);
 end;
 
 procedure TParser.ParseExceptionHandler(APart: TSyntaxNode);
@@ -979,42 +980,42 @@ end;
 
 procedure TParser.ParseRaise(AParent: TSyntaxNode);
 var
-  Start: Integer;
-  Node: TSyntaxNode;
+  mStart: Integer;
+  mNode: TSyntaxNode;
 begin
-  Start := NodeStart;
-  Node := StartNode(TSyntaxKind.RaiseStatement);
-  AParent.Add(Node);
+  mStart := NodeStart;
+  mNode := StartNode(TSyntaxKind.RaiseStatement);
+  AParent.Add(mNode);
   Advance; // raise
   if not AtEnd and not IsSym(';') and not IsKw(['end', 'else', 'until', 'except', 'finally']) then
   begin
-    ParseExpression(Node);
+    ParseExpression(mNode);
     if IsIdentText('at') then
     begin
       Advance;
-      ParseExpression(Node);
+      ParseExpression(mNode);
     end;
   end;
-  FinishNode(Node, Start);
+  FinishNode(mNode, mStart);
 end;
 
 procedure TParser.ParseInlineDecl(AParent: TSyntaxNode);
 var
-  Start: Integer;
-  Node, mAttributes: TSyntaxNode;
-  Names: string;
+  mStart: Integer;
+  mNode, mAttributes: TSyntaxNode;
+  mNames: string;
 begin
   // var X: Integer := 1; var A, B: string; const C = 5; var Y := Ausdruck;
-  Start := NodeStart;
+  mStart := NodeStart;
   if IsKw('const') then
   begin
-    Node := StartNode(TSyntaxKind.InlineConst);
+    mNode := StartNode(TSyntaxKind.InlineConst);
   end
   else
   begin
-    Node := StartNode(TSyntaxKind.InlineVar);
+    mNode := StartNode(TSyntaxKind.InlineVar);
   end;
-  AParent.Add(Node);
+  AParent.Add(mNode);
   Advance;
   // var [Weak] Obj: IInterface := nil; (#1167): Die Kinder der Inline-Variablen bleiben Typ und Wert, die
   // Attribute fallen weg; untyped-pointer-refcount liest [Weak]/[Unsafe] aus den Token.
@@ -1027,29 +1028,29 @@ begin
       mAttributes.Free;
     end;
   end;
-  Names := ExpectIdent;
+  mNames := ExpectIdent;
   while AcceptSym(',') do
   begin
-    Names := Names + ',' + ExpectIdent;
+    mNames := mNames + ',' + ExpectIdent;
   end;
-  Node.Name := Names;
+  mNode.Name := mNames;
   if AcceptSym(':') then
   begin
-    ParseType(Node);
+    ParseType(mNode);
   end;
   if AcceptSym(':=') or AcceptSym('=') then
   begin
-    ParseExpression(Node);
+    ParseExpression(mNode);
   end;
-  FinishNode(Node, Start);
+  FinishNode(mNode, mStart);
 end;
 
 function TParser.ParseAnonymousMethod: TSyntaxNode;
 var
-  Start: Integer;
+  mStart: Integer;
 begin
   // procedure(A: Integer) begin ... end; function: Integer begin ... end
-  Start := NodeStart;
+  mStart := NodeStart;
   Result := StartNode(TSyntaxKind.AnonymousMethod);
   Result.Name := LowerCase(Current.Text);
   Advance;
@@ -1062,7 +1063,7 @@ begin
     ParseTypeReference(Result);
   end;
   // Aufrufkonvention: function(const S: string): Boolean register begin … end (#1167).
-  while IsIdent and InWords(Current.Text, CallingConventions) do
+  while IsIdent and InWords(Current.Text, cCallingConventions) do
   begin
     Advance;
   end;
@@ -1079,7 +1080,7 @@ begin
     end;
   end;
   ParseBlock(Result);
-  FinishNode(Result, Start);
+  FinishNode(Result, mStart);
 end;
 
 { TPascalParser }
@@ -1097,13 +1098,13 @@ end;
 
 class function TPascalParser.Parse(const AText: string; const ACancellation: IPascalCancellation): TSyntaxTree;
 var
-  Parser: TParser;
+  mParser: TParser;
 begin
-  Parser := TParser.Create(AText, ACancellation);
+  mParser := TParser.Create(AText, ACancellation);
   try
-    Result := Parser.Run;
+    Result := mParser.Run;
   finally
-    Parser.Free;
+    mParser.Free;
   end;
 end;
 
@@ -1111,16 +1112,16 @@ end;
 class function TPascalParser.ParseActive(const AText: string; const ADefines: TArray<string>;
   const ACancellation: IPascalCancellation; out AConditionals: TArray<TConditionalRange>): TSyntaxTree;
 var
-  Processed: TPreprocessorResult;
+  mProcessed: TPreprocessorResult;
 begin
-  Result := ParseActive(AText, TPascalPreprocessor.EditorOptions(ADefines), ACancellation, Processed);
-  AConditionals := TPascalPreprocessor.MainConditionals(Processed);
+  Result := ParseActive(AText, TPascalPreprocessor.EditorOptions(ADefines), ACancellation, mProcessed);
+  AConditionals := TPascalPreprocessor.MainConditionals(mProcessed);
 end;
 
 class function TPascalParser.ParseActive(const AText: string; const AOptions: TPreprocessorOptions;
   const ACancellation: IPascalCancellation; out AProcessed: TPreprocessorResult): TSyntaxTree;
 var
-  Parser: TParser;
+  mParser: TParser;
 begin
   AProcessed := Default(TPreprocessorResult);
   // Schnell: ohne bedingte Direktive und ohne $I gibt es nichts zu überspringen und zu melden.
@@ -1132,11 +1133,11 @@ begin
   else
   begin
     AProcessed := TPascalPreprocessor.Process(AText, AOptions);
-    Parser := TParser.Create(AText, ACancellation, TPascalPreprocessor.MainInactive(AProcessed));
+    mParser := TParser.Create(AText, ACancellation, TPascalPreprocessor.MainInactive(AProcessed));
     try
-      Result := Parser.Run;
+      Result := mParser.Run;
     finally
-      Parser.Free;
+      mParser.Free;
     end;
   end;
   Result.Platform := TPascalPreprocessor.PlatformOf(AOptions.Defines);
@@ -1144,9 +1145,9 @@ end;
 
 class function TPascalParser.ParseActive(const AText: string; const ADefines: TArray<string>): TSyntaxTree;
 var
-  Conditionals: TArray<TConditionalRange>;
+  mConditionals: TArray<TConditionalRange>;
 begin
-  Result := ParseActive(AText, ADefines, nil, Conditionals);
+  Result := ParseActive(AText, ADefines, nil, mConditionals);
 end;
 
 class function TPascalParser.ActiveDiagnostics(const AText: string; const ADefines: TArray<string>;
@@ -1158,30 +1159,30 @@ end;
 class function TPascalParser.ActiveDiagnostics(const AText: string; const AOptions: TPreprocessorOptions;
   out ADiagnostics: TArray<TSyntaxDiagnostic>): Boolean;
 var
-  Skip: TArray<TTextRange>;
-  Parser: TParser;
-  Tree: TSyntaxTree;
+  mSkip: TArray<TTextRange>;
+  mParser: TParser;
+  mTree: TSyntaxTree;
 begin
   ADiagnostics := nil;
   if not TPascalPreprocessor.HasConditionals(AText) then
   begin
     Exit(False);
   end;
-  Skip := TPascalPreprocessor.MainInactive(TPascalPreprocessor.Process(AText, AOptions));
-  if Skip = nil then
+  mSkip := TPascalPreprocessor.MainInactive(TPascalPreprocessor.Process(AText, AOptions));
+  if mSkip = nil then
   begin
     Exit(False);
   end;
-  Parser := TParser.Create(AText, nil, Skip);
+  mParser := TParser.Create(AText, nil, mSkip);
   try
-    Tree := Parser.Run;
+    mTree := mParser.Run;
     try
-      ADiagnostics := Tree.Diagnostics;
+      ADiagnostics := mTree.Diagnostics;
     finally
-      Tree.Free;
+      mTree.Free;
     end;
   finally
-    Parser.Free;
+    mParser.Free;
   end;
   Result := True;
 end;

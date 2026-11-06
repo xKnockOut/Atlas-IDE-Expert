@@ -94,17 +94,17 @@ end;
 procedure TShellUnitSearch.RegisterCommands(ACommands: TLspCommands);
 begin
   // Closures: Free Pascal bricht ab, wenn eine Methode einer Klasse aus einer anderen Unit als Referenz geht.
-  ACommands.Register(TUnitSearch.UnitsCommand,
+  ACommands.Register(TUnitSearch.cUnitsCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FUnitSearch.ExecuteUnits(AArguments);
     end);
-  ACommands.Register(TUnitSearch.PreviewCommand,
+  ACommands.Register(TUnitSearch.cPreviewCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FUnitSearch.ExecutePreview(AArguments);
     end);
-  ACommands.Register(TUnitSearch.AddUsesCommand,
+  ACommands.Register(TUnitSearch.cAddUsesCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FUnitSearch.ExecuteAddUses(AArguments);

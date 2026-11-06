@@ -132,7 +132,7 @@ begin
   mFound := TRuleAssert.Findings(TForbiddenSymbolRule.Create, mSource,
     Config('[{"name": "System.Write*", "kind": "routine", "message": "Nur über ILogger"}]'), 'Import.pas');
   Assert.AreEqual(1, Integer(Length(mFound)));
-  Assert.AreEqual(ForbiddenSymbolRuleId, mFound[0].RuleId);
+  Assert.AreEqual(cForbiddenSymbolRuleId, mFound[0].RuleId);
   Assert.AreEqual('Writeln ist in diesem Projekt verboten: Nur über ILogger (atlas.json › forbidden-symbol).',
     mFound[0].Message);
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(mFound[0].Severity));

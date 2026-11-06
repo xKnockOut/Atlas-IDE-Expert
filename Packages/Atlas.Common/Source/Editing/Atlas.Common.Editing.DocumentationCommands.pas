@@ -17,7 +17,7 @@ uses
 
 const
   /// <summary>Vorlage, wenn weder slashCommands.headerTemplate noch die Regel file-header eine vorgibt.</summary>
-  DefaultHeaderTemplate = '{ {unit}' + #13#10 + '  Copyright (c) {jahr} {autor} }';
+  cDefaultHeaderTemplate = '{ {unit}' + #13#10 + '  Copyright (c) {jahr} {autor} }';
 
 /// <summary>Trägt /header, /deprecated und /region-all über ARegister ein.</summary>
 procedure RegisterDocumentationCommands(const ARegister: TSlashRegister);
@@ -67,9 +67,9 @@ type
   TTokens = TArray<TPascalToken>;
 
 const
-  RoutineKeywords: array[0..5] of string = ('procedure', 'function', 'constructor', 'destructor', 'operator',
+  cRoutineKeywords: array[0..5] of string = ('procedure', 'function', 'constructor', 'destructor', 'operator',
     'class');
-  Directives: array[0..29] of string = ('abstract', 'assembler', 'cdecl', 'deprecated', 'dispid', 'dynamic',
+  cDirectives: array[0..29] of string = ('abstract', 'assembler', 'cdecl', 'deprecated', 'dispid', 'dynamic',
     'experimental', 'export', 'external', 'far', 'final', 'forward', 'inline', 'library', 'local', 'message',
     'near', 'overload', 'override', 'pascal', 'platform', 'register', 'reintroduce', 'safecall', 'static',
     'stdcall', 'unsafe', 'varargs', 'virtual', 'winapi');
@@ -231,7 +231,7 @@ begin
   end;
   if mTemplate = '' then
   begin
-    mTemplate := DefaultHeaderTemplate;
+    mTemplate := cDefaultHeaderTemplate;
   end;
   mHeader := ExpandHeader(mTemplate, ASource.Tree.Root.Name, ASource.LineBreak) + ASource.LineBreak;
   if ASource.Line = 0 then
@@ -325,7 +325,7 @@ begin
   end;
   mNext := NextCode(ATokens, Result);
   mStop := Result;
-  while (mStop <= High(ATokens)) and (mNext <= High(ATokens)) and MatchText(ATokens[mNext].Text, Directives) do
+  while (mStop <= High(ATokens)) and (mNext <= High(ATokens)) and MatchText(ATokens[mNext].Text, cDirectives) do
   begin
     ADeprecated := ADeprecated or SameText(ATokens[mNext].Text, 'deprecated');
     mStop := NextSymbol(ATokens, mNext, ';');
@@ -340,13 +340,13 @@ end;
 /// <summary>Erstes Token einer Routinendeklaration in Zeile ALine; -1 ohne.</summary>
 function RoutineTokenAt(const ATokens: TTokens; ALine: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(ATokens) do
+  for mIndex := 0 to High(ATokens) do
   begin
-    if (ATokens[Index].StartPos.Line = ALine) and MatchText(ATokens[Index].Text, RoutineKeywords) then
+    if (ATokens[mIndex].StartPos.Line = ALine) and MatchText(ATokens[mIndex].Text, cRoutineKeywords) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -355,24 +355,24 @@ end;
 /// <summary>Name hinter procedure/function usw. ab AStart, mit Punkten.</summary>
 function RoutineName(const ATokens: TTokens; AStart: Integer): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := AStart;
-  while (Index <= High(ATokens)) and MatchText(ATokens[Index].Text, RoutineKeywords) do
+  mIndex := AStart;
+  while (mIndex <= High(ATokens)) and MatchText(ATokens[mIndex].Text, cRoutineKeywords) do
   begin
-    Index := NextCode(ATokens, Index);
+    mIndex := NextCode(ATokens, mIndex);
   end;
   Result := '';
-  while Index <= High(ATokens) do
+  while mIndex <= High(ATokens) do
   begin
-    Result := Result + ATokens[Index].Text;
-    Index := NextCode(ATokens, Index);
-    if (Index > High(ATokens)) or not ATokens[Index].IsSymbol('.') then
+    Result := Result + ATokens[mIndex].Text;
+    mIndex := NextCode(ATokens, mIndex);
+    if (mIndex > High(ATokens)) or not ATokens[mIndex].IsSymbol('.') then
     begin
       Break;
     end;
     Result := Result + '.';
-    Index := NextCode(ATokens, Index);
+    mIndex := NextCode(ATokens, mIndex);
   end;
 end;
 
@@ -411,21 +411,21 @@ end;
 
 function FindTypeDecl(ANode: TSyntaxNode; ALine: Integer): TSyntaxNode;
 var
-  Root: TSyntaxNode;
-  Line: Integer;
+  mRoot: TSyntaxNode;
+  mLine: Integer;
 begin
-  Root := ANode;
-  Line := ALine;
+  mRoot := ANode;
+  mLine := ALine;
   // Search statt Rekursion (Bericht M1); unter ANode nur Knoten, die ALine überdecken.
   Result := ANode.Search(
     function(ACandidate: TSyntaxNode): TSyntaxSearchStep
     begin
-      if (ACandidate <> Root) and ((ACandidate.StartPos.Line > Line) or (ACandidate.EndPos.Line < Line)) then
+      if (ACandidate <> mRoot) and ((ACandidate.StartPos.Line > mLine) or (ACandidate.EndPos.Line < mLine)) then
       begin
         Exit(TSyntaxSearchStep.Skip);
       end;
       Result := TSyntaxSearchStep.Descend;
-      if (ACandidate.Kind = TSyntaxKind.TypeDecl) and (ACandidate.StartPos.Line = Line) then
+      if (ACandidate.Kind = TSyntaxKind.TypeDecl) and (ACandidate.StartPos.Line = mLine) then
       begin
         Result := TSyntaxSearchStep.Found;
       end;
@@ -499,7 +499,7 @@ function TDeprecationPlan.Plan(ASource: TCommandSource): Boolean;
 begin
   Error := cTexts[TDocumentationCommandsText.DeprecatedBelongsAboveARoutine].Text;
   Result := Target >= 0;
-  if Result and MatchText(Tokens[Target].Text, RoutineKeywords) then
+  if Result and MatchText(Tokens[Target].Text, cRoutineKeywords) then
   begin
     Result := PlanRoutine(ASource);
   end
@@ -640,7 +640,7 @@ type
   TBodies = TArray<TBody>;
 
 const
-  GroupNames: array[0..5] of string = ('Ereignis-Handler', 'Published', 'Public', 'Protected', 'Private',
+  cGroupNames: array[0..5] of string = ('Ereignis-Handler', 'Published', 'Public', 'Protected', 'Private',
     'Getter und Setter');
 
 /// <summary>Die ersten drei Zeilen der Routine, für die Erkennung von Ereignis-Handlern.</summary>
@@ -837,7 +837,7 @@ var
   mBlock: string;
 begin
   Result := '';
-  for mGroup := 0 to High(GroupNames) do
+  for mGroup := 0 to High(cGroupNames) do
   begin
     mBlock := GroupBlock(ASource, ABodies, mGroup);
     if mBlock = '' then
@@ -848,7 +848,7 @@ begin
     begin
       Result := Result + ASource.LineBreak;
     end;
-    Result := Result + Format('{$REGION ''%s''}', [GroupNames[mGroup]]) + ASource.LineBreak + mBlock +
+    Result := Result + Format('{$REGION ''%s''}', [cGroupNames[mGroup]]) + ASource.LineBreak + mBlock +
       '{$ENDREGION}' + ASource.LineBreak;
   end;
 end;

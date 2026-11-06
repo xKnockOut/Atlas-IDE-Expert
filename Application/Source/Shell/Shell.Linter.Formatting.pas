@@ -261,7 +261,7 @@ begin
   TLinterOutput.Warnings(AOptions);
   if not KindOf(AOptions, mKind) or not TLinterTarget.Resolve(AOptions.CheckTarget, mTarget) then
   begin
-    Exit(TFindingsOutput.ExitFailure);
+    Exit(TFindingsOutput.cExitFailure);
   end;
   try
     mSettings := TLinterSettings.Load(mTarget.ConfigRoot);
@@ -271,7 +271,7 @@ begin
     on E: Exception do
     begin
       TLinterOutput.Error(Format('%s: %s', [E.ClassName, E.Message]));
-      Result := TFindingsOutput.ExitFailure;
+      Result := TFindingsOutput.cExitFailure;
     end;
   end;
 end;

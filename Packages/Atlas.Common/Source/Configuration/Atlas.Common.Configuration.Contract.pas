@@ -23,7 +23,7 @@ uses
 
 const
   /// <summary>Eingebaute Regelprofile (#146).</summary>
-  BuiltinProfileNames: array[0..4] of string = ('standard', 'fast', 'strict', 'security', 'style');
+  cBuiltinProfileNames: array[0..4] of string = ('standard', 'fast', 'strict', 'security', 'style');
 
 type
   /// <summary>Schweregrad einer Prüfregel; Default = Vorgabe der Regel.</summary>
@@ -36,8 +36,8 @@ type
   /// früheren Kennung wirken weiter auf die Regel unter ihrer neuen.</summary>
   TRuleIdAliases = record
   public const
-    FormerIds: array[0..1] of string = ('recursive-property-accessor', 'owned-field-not-freed');
-    CurrentIds: array[0..1] of string = ('setter-recursion', 'field-not-freed');
+    cFormerIds: array[0..1] of string = ('recursive-property-accessor', 'owned-field-not-freed');
+    cCurrentIds: array[0..1] of string = ('setter-recursion', 'field-not-freed');
   public
     /// <summary>Heutige Kennung zu AId; AId selbst, wenn sie nicht umbenannt wurde.</summary>
     class function Current(const AId: string): string; static;
@@ -152,10 +152,10 @@ type
   /// immer vollständig auf und gibt die Werte nur weiter.</summary>
   THintSettings = record
   public const
-    MaxXmlDocLines = 50;
-    ExpandCollapsed = 'collapsed';
-    ExpandLast = 'last';
-    ExpandExpanded = 'expanded';
+    cMaxXmlDocLines = 50;
+    cExpandCollapsed = 'collapsed';
+    cExpandLast = 'last';
+    cExpandExpanded = 'expanded';
   public
     /// <summary>XMLDoc beim Öffnen (#770): ExpandCollapsed nur Summary mit „Mehr anzeigen“, ExpandLast wie
     /// zuletzt in der Sitzung, ExpandExpanded alle Abschnitte. Ersetzt xmlDocFull aus #654.</summary>
@@ -169,7 +169,7 @@ type
     /// <summary>Marken der Begründungen; nil = Vorgabe (TRationale.DefaultMarkers).</summary>
     RationaleMarkers: TArray<string>;
     /// <summary>Ordner der Architekturentscheidungen für ADR-Verweise, relativ zum Projekt; '' = Vorgabe
-    /// (TRationale.DefaultAdrFolder).</summary>
+    /// (TRationale.cDefaultAdrFolder).</summary>
     AdrFolder: string;
     class function Default: THintSettings; static;
   end;
@@ -247,8 +247,8 @@ type
   /// get_affected_tests und den Plugin-Befehl „Betroffene Tests ausführen“.</summary>
   TTestsSettings = record
   public const
-    MinAffectedDepth = 1;
-    MaxAffectedDepth = 5;
+    cMinAffectedDepth = 1;
+    cMaxAffectedDepth = 5;
   public
     /// <summary>tests.affected: Befehl, MCP-Werkzeug und --affected-tests.</summary>
     Affected: Boolean;
@@ -608,7 +608,8 @@ type
 
   TServerSettings = record
     /// <summary>Delphi-Version als BDS-Version der Registry, z. B. "37.0" (Produktnummern wie "12" werden
-    /// beim Lesen umgerechnet, siehe BdsVersionOf); '' = passend zur ProjectVersion der .dproj, sonst neueste installierte (#47).</summary>
+    /// beim Lesen umgerechnet, siehe BdsVersionOf); '' = passend zur ProjectVersion der .dproj, sonst neueste
+    /// installierte (#47).</summary>
     DelphiVersion: string;
     /// <summary>Stelle des Werts von "delphiVersion" in der gelesenen Datei, für die Warnung, wenn diese
     /// Version nicht installiert ist (#47); leer ohne Angabe.</summary>
@@ -772,7 +773,8 @@ type
     IndexLibraryPaths: Boolean;
     /// <summary>Verwendungen der Bezeichner in Projekt-Units mit indizieren (#492, für #470).</summary>
     IndexUsages: Boolean;
-    /// <summary>Glob-Muster gegen den vollen Pfad ("/" oder ""), die nicht indiziert werden, z. B. **/Demos/**.</summary>
+    /// <summary>Glob-Muster gegen den vollen Pfad ("/" oder ""), die nicht indiziert werden, z. B.
+    /// **/Demos/**.</summary>
     IndexExclude: TArray<string>;
     /// <summary>Aufräumen des Cache-Ordners (#905): Caches gelöschter Projekte löschen, Caches nach so vielen
     /// Tagen ohne Benutzung löschen (0 = aus) und Höchstgröße in MB (0 = ohne Grenze).</summary>
@@ -866,9 +868,9 @@ type
   TConfigurationChangedEvent = reference to procedure(const ASettings: TServerSettings);
 
 const
-  ConfigurationFileName = 'atlas.json';
+  cConfigurationFileName = 'atlas.json';
   /// <summary>Name vor der Umbenennung in Atlas (#403); gilt, solange atlas.json fehlt.</summary>
-  LegacyConfigurationFileName = 'delphi-lsp.json';
+  cLegacyConfigurationFileName = 'delphi-lsp.json';
 
 /// <summary>True für atlas.json und den früheren Namen (ohne Pfad, ohne Groß-/Kleinschreibung).</summary>
 function IsConfigurationFileName(const AFileName: string): Boolean;
@@ -892,13 +894,13 @@ implementation
 
 class function TRuleIdAliases.Current(const AId: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := Low(FormerIds) to High(FormerIds) do
+  for mIndex := Low(cFormerIds) to High(cFormerIds) do
   begin
-    if SameText(AId, FormerIds[Index]) then
+    if SameText(AId, cFormerIds[mIndex]) then
     begin
-      Exit(CurrentIds[Index]);
+      Exit(cCurrentIds[mIndex]);
     end;
   end;
   Result := AId;
@@ -906,70 +908,70 @@ end;
 
 function IsConfigurationFileName(const AFileName: string): Boolean;
 begin
-  Result := SameText(AFileName, ConfigurationFileName) or SameText(AFileName, LegacyConfigurationFileName);
+  Result := SameText(AFileName, cConfigurationFileName) or SameText(AFileName, cLegacyConfigurationFileName);
 end;
 
 function ExistingOrLegacyFile(const ADirectory, AFileName, ALegacyFileName: string): string;
 var
-  Legacy: string;
+  mLegacy: string;
 begin
   Result := IncludeTrailingPathDelimiter(ADirectory) + AFileName;
   if FileExists(Result) then
   begin
     Exit;
   end;
-  Legacy := IncludeTrailingPathDelimiter(ADirectory) + ALegacyFileName;
-  if FileExists(Legacy) then
+  mLegacy := IncludeTrailingPathDelimiter(ADirectory) + ALegacyFileName;
+  if FileExists(mLegacy) then
   begin
-    Result := Legacy;
+    Result := mLegacy;
   end;
 end;
 
 function BdsVersionOf(const AText: string): string;
 const
   // Produktnummer -> BDS-Version; 10.x über die Nachkommastelle.
-  Products: array[0..7] of array[0..1] of string = (
+  cProducts: array[0..7] of array[0..1] of string = (
     ('10', '17.0'), ('10.1', '18.0'), ('10.2', '19.0'), ('10.3', '20.0'), ('10.4', '21.0'),
     ('11', '22.0'), ('12', '23.0'), ('13', '37.0'));
 var
-  Text: string;
-  Value: Double;
-  Index: Integer;
+  mText: string;
+  mValue: Double;
+  mIndex: Integer;
 begin
   Result := '';
-  Text := Trim(AText);
-  if not TryStrToFloat(Text, Value, TFormatSettings.Invariant) or (Value <= 0) then
+  mText := Trim(AText);
+  if not TryStrToFloat(mText, mValue, TFormatSettings.Invariant) or (mValue <= 0) then
   begin
     Exit;
   end;
   // BDS-Nummern nur bekannter Versionen: 14.0 (XE6) bis 23.0 (Delphi 12) und 37.0 (Delphi 13).
   // Andere Werte wie "99" sind ein Tippfehler und erzeugen eine Konfigurationswarnung (#109).
-  if Value >= 14 then
+  if mValue >= 14 then
   begin
-    if ((Trunc(Value) >= 14) and (Trunc(Value) <= 23)) or (Trunc(Value) = 37) then
+    if ((Trunc(mValue) >= 14) and (Trunc(mValue) <= 23)) or (Trunc(mValue) = 37) then
     begin
-      Result := Text;
+      Result := mText;
     end;
     Exit;
   end;
   // "12.0", "12.3" usw. meinen Delphi 12; nur bei 10 zählt die Nachkommastelle.
-  if Trunc(Value) <> 10 then
+  if Trunc(mValue) <> 10 then
   begin
-    Text := IntToStr(Trunc(Value));
+    mText := IntToStr(Trunc(mValue));
   end
-  else if Pos('.', Text) > 0 then
+  else if Pos('.', mText) > 0 then
   begin
-    Text := '10.' + Copy(Text, Pos('.', Text) + 1, 1);
+    mText := '10.' + Copy(mText, Pos('.', mText) + 1, 1);
   end;
-  if Text = '10.0' then
+  if mText = '10.0' then
   begin
-    Text := '10';
+    mText := '10';
   end;
-  for Index := Low(Products) to High(Products) do
+  for mIndex := Low(cProducts) to High(cProducts) do
   begin
-    if Products[Index][0] = Text then
+    if cProducts[mIndex][0] = mText then
     begin
-      Exit(Products[Index][1]);
+      Exit(cProducts[mIndex][1]);
     end;
   end;
 end;
@@ -1071,16 +1073,16 @@ end;
 
 function MatchesGlob(const APattern, APath: string): Boolean;
 var
-  Pattern: string;
+  mPattern: string;
 begin
-  Pattern := NormalizeSlashes(APattern);
+  mPattern := NormalizeSlashes(APattern);
   // Ein Ordnername ohne Platzhalter schließt alles darunter aus.
-  if (Pattern <> '') and (Pattern[Length(Pattern)] = '/') then
+  if (mPattern <> '') and (mPattern[Length(mPattern)] = '/') then
   begin
-    Pattern := Pattern + '**';
+    mPattern := mPattern + '**';
   end;
-  Result := MatchAt(Pattern, 1, NormalizeSlashes(APath), 1) or
-    ((Pos('*', Pattern) = 0) and (Pos('?', Pattern) = 0) and MatchAt(Pattern + '/**', 1, NormalizeSlashes(APath), 1));
+  Result := MatchAt(mPattern, 1, NormalizeSlashes(APath), 1) or
+    ((Pos('*', mPattern) = 0) and (Pos('?', mPattern) = 0) and MatchAt(mPattern + '/**', 1, NormalizeSlashes(APath), 1));
 end;
 
 { TMcpCustomPrompt }
@@ -1215,7 +1217,7 @@ end;
 
 class function THintSettings.Default: THintSettings;
 begin
-  Result.XmlDocExpand := ExpandLast;
+  Result.XmlDocExpand := cExpandLast;
   Result.XmlDocMaxLines := 0;
   Result.PublishedMembers := True;
   Result.Rationale := True;
@@ -1524,13 +1526,13 @@ end;
 
 function TServerSettings.IsRuleEnabledExplicitly(const ARuleId: string): Boolean;
 var
-  Rule: TRuleSetting;
+  mRule: TRuleSetting;
 begin
-  for Rule in Rules do
+  for mRule in Rules do
   begin
-    if SameText(Rule.Id, ARuleId) then
+    if SameText(mRule.Id, ARuleId) then
     begin
-      Exit(Rule.Severity <> TRuleSeverity.Off);
+      Exit(mRule.Severity <> TRuleSeverity.Off);
     end;
   end;
   Result := False;
@@ -1538,13 +1540,13 @@ end;
 
 function TServerSettings.RuleSeverity(const ARuleId: string; ADefault: TRuleSeverity): TRuleSeverity;
 var
-  Rule: TRuleSetting;
+  mRule: TRuleSetting;
 begin
-  for Rule in Rules do
+  for mRule in Rules do
   begin
-    if SameText(Rule.Id, ARuleId) and (Rule.Severity <> TRuleSeverity.Default) then
+    if SameText(mRule.Id, ARuleId) and (mRule.Severity <> TRuleSeverity.Default) then
     begin
-      Exit(Rule.Severity);
+      Exit(mRule.Severity);
     end;
   end;
   Result := ADefault;
@@ -1552,13 +1554,13 @@ end;
 
 function TServerSettings.TryFindProfile(const AName: string; out AProfile: TRuleProfile): Boolean;
 var
-  Profile: TRuleProfile;
+  mProfile: TRuleProfile;
 begin
-  for Profile in Profiles do
+  for mProfile in Profiles do
   begin
-    if SameText(Profile.Name, AName) then
+    if SameText(mProfile.Name, AName) then
     begin
-      AProfile := Profile;
+      AProfile := mProfile;
       Exit(True);
     end;
   end;
@@ -1572,30 +1574,30 @@ end;
 
 function TServerSettings.IsKnownProfile(const AName: string): Boolean;
 var
-  Name: string;
-  Profile: TRuleProfile;
+  mName: string;
+  mProfile: TRuleProfile;
 begin
   if AName = '' then
   begin
     Exit(True);
   end;
-  for Name in BuiltinProfileNames do
+  for mName in cBuiltinProfileNames do
   begin
-    if SameText(Name, AName) then
+    if SameText(mName, AName) then
     begin
       Exit(True);
     end;
   end;
-  Result := TryFindProfile(AName, Profile);
+  Result := TryFindProfile(AName, mProfile);
 end;
 
 function TServerSettings.IsIndexExcluded(const AFileName: string): Boolean;
 var
-  Pattern: string;
+  mPattern: string;
 begin
-  for Pattern in IndexExclude do
+  for mPattern in IndexExclude do
   begin
-    if MatchesGlob(Pattern, AFileName) then
+    if MatchesGlob(mPattern, AFileName) then
     begin
       Exit(True);
     end;
@@ -1605,11 +1607,11 @@ end;
 
 function TServerSettings.IsExcluded(const ARelativePath: string): Boolean;
 var
-  Pattern: string;
+  mPattern: string;
 begin
-  for Pattern in Exclude do
+  for mPattern in Exclude do
   begin
-    if MatchesGlob(Pattern, ARelativePath) then
+    if MatchesGlob(mPattern, ARelativePath) then
     begin
       Exit(True);
     end;

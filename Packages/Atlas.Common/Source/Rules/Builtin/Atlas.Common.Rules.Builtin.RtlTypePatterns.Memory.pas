@@ -1,6 +1,7 @@
 ﻿unit Atlas.Common.Rules.Builtin.RtlTypePatterns.Memory;
 
-// Regeln für Speicher und Lebensdauer verwalteter Typen aus Atlas.Common.Rules.Builtin.RtlTypePatterns (Stufe 2 aus #153, angemeldet in
+// Regeln für Speicher und Lebensdauer verwalteter Typen aus Atlas.Common.Rules.Builtin.RtlTypePatterns (Stufe 2 aus
+// #153, angemeldet in
 // RegisterRtlTypePatternRules):
 //   managed-type-raw-memory  FillChar, ZeroMemory, Move, CopyMemory, GetMem oder FreeMem auf Variablen,
 //                            deren Typ Strings, Interfaces, dynamische Arrays oder Variants enthält
@@ -194,30 +195,30 @@ end;
 // Argumente auf oberster Ebene: Start- und Endtoken.
 procedure TRawMemoryScan.SplitArguments;
 var
-  Inner, Depth, First: Integer;
+  mInner, mDepth, mFirst: Integer;
 begin
   FStarts := nil;
   FStops := nil;
-  Depth := 0;
-  First := NextCode(FTokens, FOpen + 1);
-  for Inner := FOpen + 1 to FClose do
+  mDepth := 0;
+  mFirst := NextCode(FTokens, FOpen + 1);
+  for mInner := FOpen + 1 to FClose do
   begin
-    if (Inner = FClose) or ((Depth = 0) and FTokens[Inner].IsSymbol(',')) then
+    if (mInner = FClose) or ((mDepth = 0) and FTokens[mInner].IsSymbol(',')) then
     begin
-      if First < Inner then
+      if mFirst < mInner then
       begin
-        FStarts := FStarts + [First];
-        FStops := FStops + [PreviousCode(FTokens, Inner)];
+        FStarts := FStarts + [mFirst];
+        FStops := FStops + [PreviousCode(FTokens, mInner)];
       end;
-      First := NextCode(FTokens, Inner + 1);
+      mFirst := NextCode(FTokens, mInner + 1);
     end
-    else if FTokens[Inner].IsSymbol('(') or FTokens[Inner].IsSymbol('[') then
+    else if FTokens[mInner].IsSymbol('(') or FTokens[mInner].IsSymbol('[') then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if FTokens[Inner].IsSymbol(')') or FTokens[Inner].IsSymbol(']') then
+    else if FTokens[mInner].IsSymbol(')') or FTokens[mInner].IsSymbol(']') then
     begin
-      Dec(Depth);
+      Dec(mDepth);
     end;
   end;
 end;
@@ -225,7 +226,7 @@ end;
 // Argument AIndex als X, @X oder X^: Name (Tokenindex) und ob dereferenziert; -1 sonst.
 function TRawMemoryScan.Target(AArgument: Integer; out ADeref: Boolean): Integer;
 var
-  First, Last: Integer;
+  mFirst, mLast: Integer;
 begin
   Result := -1;
   ADeref := False;
@@ -233,20 +234,20 @@ begin
   begin
     Exit;
   end;
-  First := FStarts[AArgument];
-  Last := FStops[AArgument];
-  if FTokens[First].IsSymbol('@') then
+  mFirst := FStarts[AArgument];
+  mLast := FStops[AArgument];
+  if FTokens[mFirst].IsSymbol('@') then
   begin
-    First := NextCode(FTokens, First + 1);
+    mFirst := NextCode(FTokens, mFirst + 1);
   end;
-  if (Last > First) and FTokens[Last].IsSymbol('^') and (NextCode(FTokens, First + 1) = Last) then
+  if (mLast > mFirst) and FTokens[mLast].IsSymbol('^') and (NextCode(FTokens, mFirst + 1) = mLast) then
   begin
     ADeref := True;
-    Last := First;
+    mLast := mFirst;
   end;
-  if (First = Last) and (FTokens[First].Kind = TPascalTokenKind.Identifier) then
+  if (mFirst = mLast) and (FTokens[mFirst].Kind = TPascalTokenKind.Identifier) then
   begin
-    Result := First;
+    Result := mFirst;
   end;
 end;
 
@@ -275,32 +276,33 @@ end;
 // Anweisung: davor ;, begin, then, else, do, try, finally, except oder repeat; danach ;, end oder else.
 function TRawMemoryScan.IsStatement: Boolean;
 var
-  Before, After: Integer;
+  mBefore, mAfter: Integer;
 begin
-  Before := PreviousCode(FTokens, FCall);
-  After := NextCode(FTokens, FClose + 1);
-  Result := (Before >= 0) and (FTokens[Before].IsSymbol(';') or FTokens[Before].IsKeyword('begin') or
-    FTokens[Before].IsKeyword('then') or FTokens[Before].IsKeyword('else') or FTokens[Before].IsKeyword('do') or
-    FTokens[Before].IsKeyword('try') or FTokens[Before].IsKeyword('finally') or FTokens[Before].IsKeyword('except') or
-    FTokens[Before].IsKeyword('repeat')) and (After <= High(FTokens)) and (FTokens[After].IsSymbol(';') or
-    FTokens[After].IsKeyword('end') or FTokens[After].IsKeyword('else'));
+  mBefore := PreviousCode(FTokens, FCall);
+  mAfter := NextCode(FTokens, FClose + 1);
+  Result := (mBefore >= 0) and (FTokens[mBefore].IsSymbol(';') or FTokens[mBefore].IsKeyword('begin') or
+    FTokens[mBefore].IsKeyword('then') or FTokens[mBefore].IsKeyword('else') or FTokens[mBefore].IsKeyword('do') or
+    FTokens[mBefore].IsKeyword('try') or FTokens[mBefore].IsKeyword('finally') or FTokens[mBefore].IsKeyword('except') or
+    FTokens[mBefore].IsKeyword('repeat')) and (mAfter <= High(FTokens)) and (FTokens[mAfter].IsSymbol(';') or
+    FTokens[mAfter].IsKeyword('end') or FTokens[mAfter].IsKeyword('else'));
 end;
 
 // Argument ist SizeOf(X) oder SizeOf(T) mit X bzw. T wie angegeben.
 function TRawMemoryScan.IsSizeOf(AArgument: Integer; const AName, ATypeName: string): Boolean;
 var
-  First, Inner, Last: Integer;
+  mFirst, mInner, mLast: Integer;
 begin
   Result := False;
   if AArgument > High(FStarts) then
   begin
     Exit;
   end;
-  First := FStarts[AArgument];
-  Inner := NextCode(FTokens, NextCode(FTokens, First + 1) + 1);
-  Last := FStops[AArgument];
-  Result := SameText(FTokens[First].Text, 'SizeOf') and (NextCode(FTokens, Inner + 1) = Last) and
-    FTokens[Last].IsSymbol(')') and (SameText(FTokens[Inner].Text, AName) or SameText(FTokens[Inner].Text, ATypeName));
+  mFirst := FStarts[AArgument];
+  mInner := NextCode(FTokens, NextCode(FTokens, mFirst + 1) + 1);
+  mLast := FStops[AArgument];
+  Result := SameText(FTokens[mFirst].Text, 'SizeOf') and (NextCode(FTokens, mInner + 1) = mLast) and
+    FTokens[mLast].IsSymbol(')') and (SameText(FTokens[mInner].Text, AName) or SameText(FTokens[mInner].Text,
+      ATypeName));
 end;
 
 function TRawMemoryScan.IsZero(AArgument: Integer): Boolean;
@@ -317,118 +319,118 @@ end;
 
 procedure TRawMemoryScan.CheckOverwrite;
 var
-  Name: Integer;
-  Deref: Boolean;
-  TypeName, Kind: string;
-  Fixes: TArray<TRuleFix>;
+  mName: Integer;
+  mDeref: Boolean;
+  mTypeName, mKind: string;
+  mFixes: TArray<TRuleFix>;
 begin
-  Name := Target(0, Deref);
-  if Name < 0 then
+  mName := Target(0, mDeref);
+  if mName < 0 then
   begin
     Exit;
   end;
-  TypeName := DataType(Name, Deref);
-  Kind := FManaged.Managed(TypeName, 0);
-  if Kind = '' then
+  mTypeName := DataType(mName, mDeref);
+  mKind := FManaged.Managed(mTypeName, 0);
+  if mKind = '' then
   begin
     Exit;
   end;
-  Fixes := nil;
+  mFixes := nil;
   // FillChar(X, SizeOf(X), 0) bzw. ZeroMemory(@X, SizeOf(X)): X := Default(T).
-  if IsStatement and not Deref and IsSizeOf(1, FTokens[Name].Text, TypeName) and
+  if IsStatement and not mDeref and IsSizeOf(1, FTokens[mName].Text, mTypeName) and
     (SameText(FRoutine, 'ZeroMemory') or IsZero(2)) then
   begin
-    Fixes := [TRuleFix.Create(Format('%s := Default(%s)', [FTokens[Name].Text, TypeName]),
-      [TRuleEdit.Create(RangeOf(FTokens, FCall, FClose), Format('%s := Default(%s)', [FTokens[Name].Text,
-      TypeName]))], True)];
+    mFixes := [TRuleFix.Create(Format('%s := Default(%s)', [FTokens[mName].Text, mTypeName]),
+      [TRuleEdit.Create(RangeOf(FTokens, FCall, FClose), Format('%s := Default(%s)', [FTokens[mName].Text,
+      mTypeName]))], True)];
   end;
-  Report(TypeName, Kind, cTexts[TRtlTypePatternsMemoryText.Overwrites].Text,
-    Fixes);
+  Report(mTypeName, mKind, cTexts[TRtlTypePatternsMemoryText.Overwrites].Text,
+    mFixes);
 end;
 
 procedure TRawMemoryScan.CheckCopy(ASource, ADestination: Integer);
 var
-  Source, Destination: Integer;
-  SourceDeref, DestinationDeref: Boolean;
-  SourceType, DestinationType, Kind, TypeName: string;
-  Fixes: TArray<TRuleFix>;
+  mSource, mDestination: Integer;
+  mSourceDeref, mDestinationDeref: Boolean;
+  mSourceType, mDestinationType, mKind, mTypeName: string;
+  mFixes: TArray<TRuleFix>;
   mPlain: Boolean;
 begin
-  Source := Target(ASource, SourceDeref);
-  Destination := Target(ADestination, DestinationDeref);
-  SourceType := '';
-  DestinationType := '';
-  if Source >= 0 then
+  mSource := Target(ASource, mSourceDeref);
+  mDestination := Target(ADestination, mDestinationDeref);
+  mSourceType := '';
+  mDestinationType := '';
+  if mSource >= 0 then
   begin
-    SourceType := DataType(Source, SourceDeref);
+    mSourceType := DataType(mSource, mSourceDeref);
   end;
-  if Destination >= 0 then
+  if mDestination >= 0 then
   begin
-    DestinationType := DataType(Destination, DestinationDeref);
+    mDestinationType := DataType(mDestination, mDestinationDeref);
   end;
-  TypeName := DestinationType;
-  Kind := FManaged.Managed(DestinationType, 0);
-  if Kind = '' then
+  mTypeName := mDestinationType;
+  mKind := FManaged.Managed(mDestinationType, 0);
+  if mKind = '' then
   begin
-    TypeName := SourceType;
-    Kind := FManaged.Managed(SourceType, 0);
+    mTypeName := mSourceType;
+    mKind := FManaged.Managed(mSourceType, 0);
   end;
-  if Kind = '' then
+  if mKind = '' then
   begin
     Exit;
   end;
-  Fixes := nil;
+  mFixes := nil;
   // Move(A, B, SizeOf(T)) mit gleichem Typ: B := A.
-  mPlain := (Source >= 0) and (Destination >= 0) and not SourceDeref and not DestinationDeref;
-  if mPlain and IsStatement and SameText(SourceType, DestinationType) and
-    IsSizeOf(2, FTokens[Source].Text, SourceType) then
+  mPlain := (mSource >= 0) and (mDestination >= 0) and not mSourceDeref and not mDestinationDeref;
+  if mPlain and IsStatement and SameText(mSourceType, mDestinationType) and
+    IsSizeOf(2, FTokens[mSource].Text, mSourceType) then
   begin
-    Fixes := [TRuleFix.Create(Format('%s := %s', [FTokens[Destination].Text, FTokens[Source].Text]),
-      [TRuleEdit.Create(RangeOf(FTokens, FCall, FClose), Format('%s := %s', [FTokens[Destination].Text,
-      FTokens[Source].Text]))], True)];
+    mFixes := [TRuleFix.Create(Format('%s := %s', [FTokens[mDestination].Text, FTokens[mSource].Text]),
+      [TRuleEdit.Create(RangeOf(FTokens, FCall, FClose), Format('%s := %s', [FTokens[mDestination].Text,
+      FTokens[mSource].Text]))], True)];
   end;
-  Report(TypeName, Kind, cTexts[TRtlTypePatternsMemoryText.CopiesRefs].Text, Fixes);
+  Report(mTypeName, mKind, cTexts[TRtlTypePatternsMemoryText.CopiesRefs].Text, mFixes);
 end;
 
 procedure TRawMemoryScan.CheckMemory(AAllocate: Boolean);
 var
-  Name: Integer;
-  Deref: Boolean;
-  TypeName, Kind, Replacement: string;
-  Fixes: TArray<TRuleFix>;
+  mName: Integer;
+  mDeref: Boolean;
+  mTypeName, mKind, mReplacement: string;
+  mFixes: TArray<TRuleFix>;
 begin
-  Name := Target(0, Deref);
-  if (Name < 0) or Deref then
+  mName := Target(0, mDeref);
+  if (mName < 0) or mDeref then
   begin
     Exit;
   end;
-  TypeName := DataType(Name, True);
-  Kind := FManaged.Managed(TypeName, 0);
-  if Kind = '' then
+  mTypeName := DataType(mName, True);
+  mKind := FManaged.Managed(mTypeName, 0);
+  if mKind = '' then
   begin
     Exit;
   end;
-  Fixes := nil;
+  mFixes := nil;
   if AAllocate then
   begin
-    Replacement := Format('New(%s)', [FTokens[Name].Text]);
+    mReplacement := Format('New(%s)', [FTokens[mName].Text]);
   end
   else
   begin
-    Replacement := Format('Dispose(%s)', [FTokens[Name].Text]);
+    mReplacement := Format('Dispose(%s)', [FTokens[mName].Text]);
   end;
   // GetMem(P, SizeOf(T)) bzw. FreeMem(P) oder FreeMem(P, SizeOf(T)): New bzw. Dispose.
-  if IsStatement and ((Length(FStarts) = 1) and not AAllocate or IsSizeOf(1, '', TypeName)) then
+  if IsStatement and ((Length(FStarts) = 1) and not AAllocate or IsSizeOf(1, '', mTypeName)) then
   begin
-    Fixes := [TRuleFix.Create(Replacement, [TRuleEdit.Create(RangeOf(FTokens, FCall, FClose), Replacement)], True)];
+    mFixes := [TRuleFix.Create(mReplacement, [TRuleEdit.Create(RangeOf(FTokens, FCall, FClose), mReplacement)], True)];
   end;
   if AAllocate then
   begin
-    Report(TypeName, Kind, cTexts[TRtlTypePatternsMemoryText.Uninitialized].Text, Fixes);
+    Report(mTypeName, mKind, cTexts[TRtlTypePatternsMemoryText.Uninitialized].Text, mFixes);
   end
   else
   begin
-    Report(TypeName, Kind, cTexts[TRtlTypePatternsMemoryText.NotReleased].Text, Fixes);
+    Report(mTypeName, mKind, cTexts[TRtlTypePatternsMemoryText.NotReleased].Text, mFixes);
   end;
 end;
 
@@ -515,37 +517,37 @@ end;
 
 procedure TThreadvarManagedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TTokens;
-  Managed: TManagedTypes;
+  mTokens: TTokens;
+  mManaged: TManagedTypes;
 
   procedure CheckDecl(ADecl: TSyntaxNode);
   var
-    TypeName, Kind, Name, Shown: string;
-    Index: Integer;
+    mTypeName, mKind, mName, mShown: string;
+    mIndex: Integer;
   begin
-    TypeName := Managed.NodeTypeText(ADecl);
-    Kind := Managed.Managed(TypeName, 0);
-    if Kind = '' then
+    mTypeName := mManaged.NodeTypeText(ADecl);
+    mKind := mManaged.Managed(mTypeName, 0);
+    if mKind = '' then
     begin
       Exit;
     end;
-    Shown := TypeName;
-    if not Managed.IsPrimitive(TypeName) then
+    mShown := mTypeName;
+    if not mManaged.IsPrimitive(mTypeName) then
     begin
-      Shown := cTexts[TRtlTypePatternsMemoryText.ContainsParen].Fmt([TypeName, Kind]);
+      mShown := cTexts[TRtlTypePatternsMemoryText.ContainsParen].Fmt([mTypeName, mKind]);
     end;
-    for Name in SplitString(ADecl.Name, ',') do
+    for mName in SplitString(ADecl.Name, ',') do
     begin
-      for Index := TSyntaxTree.FirstTokenOf(Tokens, ADecl.StartOffset) to High(Tokens) do
+      for mIndex := TSyntaxTree.FirstTokenOf(mTokens, ADecl.StartOffset) to High(mTokens) do
       begin
-        if Tokens[Index].Offset >= ADecl.EndOffset then
+        if mTokens[mIndex].Offset >= ADecl.EndOffset then
         begin
           Break;
         end;
-        if (Tokens[Index].Offset >= ADecl.StartOffset) and (Tokens[Index].Kind = TPascalTokenKind.Identifier) and
-          SameText(Tokens[Index].Text, Trim(Name)) then
+        if (mTokens[mIndex].Offset >= ADecl.StartOffset) and (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and
+          SameText(mTokens[mIndex].Text, Trim(mName)) then
         begin
-          AReport.Add(RangeOf(Tokens, Index, Index), cTexts[TRtlTypePatternsMemoryText.ThreadvarLeak].Fmt([Shown]),
+          AReport.Add(RangeOf(mTokens, mIndex, mIndex), cTexts[TRtlTypePatternsMemoryText.ThreadvarLeak].Fmt([mShown]),
             TRuleConfidence.High);
           Break;
         end;
@@ -568,29 +570,29 @@ var
 
   procedure Visit(ANode: TSyntaxNode);
   var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
-    Index: Integer;
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
+    mIndex: Integer;
   begin
     // Iterativ (Bericht M1).
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ANode);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if (Node.Kind = TSyntaxKind.VarSection) and SameText(Node.Name, 'threadvar') then
+        mNode := mPending.Pop;
+        if (mNode.Kind = TSyntaxKind.VarSection) and SameText(mNode.Name, 'threadvar') then
         begin
-          CheckSection(Node);
+          CheckSection(mNode);
           Continue;
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
@@ -599,25 +601,25 @@ begin
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
-  Managed := TManagedTypes.Create(AContext.Tree, AContext.Text, AContext.Index);
+  mTokens := AContext.Tree.Tokens;
+  mManaged := TManagedTypes.Create(AContext.Tree, AContext.Text, AContext.Index);
   try
     Visit(AContext.Tree.Root);
   finally
-    Managed.Free;
+    mManaged.Free;
   end;
 end;
 
 { TPCharOfTemporaryRule }
 
 const
-  PCharCasts: array[0..2] of string = ('PChar', 'PWideChar', 'PAnsiChar');
+  cPCharCasts: array[0..2] of string = ('PChar', 'PWideChar', 'PAnsiChar');
   // Umwandlungen, durch die die Regel hindurchsieht: LPARAM(PChar(…)).
-  PassThroughCasts: array[0..9] of string = ('LPARAM', 'WPARAM', 'NativeInt', 'NativeUInt', 'Pointer', 'Integer',
+  cPassThroughCasts: array[0..9] of string = ('LPARAM', 'WPARAM', 'NativeInt', 'NativeUInt', 'Pointer', 'Integer',
     'Cardinal', 'Int64', 'UInt64', 'IntPtr');
-  StringCasts: array[0..4] of string = ('string', 'UnicodeString', 'AnsiString', 'WideString', 'RawByteString');
+  cStringCasts: array[0..4] of string = ('string', 'UnicodeString', 'AnsiString', 'WideString', 'RawByteString');
   // Asynchrone Nachrichten: der Empfänger liest den Zeiger erst nach der Anweisung.
-  AsyncMessages: array[0..3] of string = ('PostMessage', 'PostThreadMessage', 'SendNotifyMessage',
+  cAsyncMessages: array[0..3] of string = ('PostMessage', 'PostThreadMessage', 'SendNotifyMessage',
     'SendMessageCallback');
 
 function TPCharOfTemporaryRule.Descriptor: TRuleDescriptor;
@@ -634,9 +636,9 @@ begin
     TSyntaxKind.Literal:
       Result := (ANode.Name <> '') and CharInSet(ANode.Name[1], ['''', '#']);
     TSyntaxKind.Identifier:
-      Result := MatchText(ATypes.DeclaredType(ANode.Name, ANode.StartPos), StringCasts);
+      Result := MatchText(ATypes.DeclaredType(ANode.Name, ANode.StartPos), cStringCasts);
     TSyntaxKind.Call:
-      Result := not MatchText(ANode.Name, PCharCasts) and not MatchText(ANode.Name, PassThroughCasts);
+      Result := not MatchText(ANode.Name, cPCharCasts) and not MatchText(ANode.Name, cPassThroughCasts);
   else
     Result := False;
   end;
@@ -689,9 +691,9 @@ end;
 
 procedure TPCharOfTemporaryRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Types: TDeclaredTypes;
-  Tokens: TTokens;
-  LineBreak: string;
+  mTypes: TDeclaredTypes;
+  mTokens: TTokens;
+  mLineBreak: string;
 
   function Text(ANode: TSyntaxNode): string;
   begin
@@ -702,21 +704,21 @@ var
   // Oder-Verknüpfung, die Reihenfolge bleibt links vor rechts.
   function IsStringValue(ANode: TSyntaxNode): Boolean;
   var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
   begin
     Result := False;
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ANode);
-      while not Result and (Pending.Count > 0) do
+      mPending.Push(ANode);
+      while not Result and (mPending.Count > 0) do
       begin
-        Node := Pending.Pop;
-        Result := IsStringLeaf(Types, Node);
-        PushStringParts(Pending, Node);
+        mNode := mPending.Pop;
+        Result := IsStringLeaf(mTypes, mNode);
+        PushStringParts(mPending, mNode);
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
@@ -724,33 +726,33 @@ var
   // Klammern und zweistellige Ausdrücke.
   function IsConstant(ANode: TSyntaxNode): Boolean;
   var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
   begin
     Result := True;
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ANode);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        case Node.Kind of
+        mNode := mPending.Pop;
+        case mNode.Kind of
           TSyntaxKind.Literal:
             ;
           TSyntaxKind.ParenExpr:
-            if Node.ChildCount = 1 then
+            if mNode.ChildCount = 1 then
             begin
-              Pending.Push(Node[0]);
+              mPending.Push(mNode[0]);
             end
             else
             begin
               Exit(False);
             end;
           TSyntaxKind.BinaryExpr:
-            if Node.ChildCount = 2 then
+            if mNode.ChildCount = 2 then
             begin
-              Pending.Push(Node[1]);
-              Pending.Push(Node[0]);
+              mPending.Push(mNode[1]);
+              mPending.Push(mNode[0]);
             end
             else
             begin
@@ -761,76 +763,76 @@ var
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
   // Temporärer String: Verkettung mit einem String oder Ergebnis eines Funktionsaufrufs.
   function IsTemporary(ANode: TSyntaxNode): Boolean;
   var
-    Node: TSyntaxNode;
+    mNode: TSyntaxNode;
   begin
     // Iterativ (Bericht M1): durch String-Umwandlungen und Klammern hindurch.
-    Node := ANode;
+    mNode := ANode;
     while True do
     begin
-      if (Node.Kind = TSyntaxKind.Call) and MatchText(Node.Name, StringCasts) and (Node.ChildCount = 2) then
+      if (mNode.Kind = TSyntaxKind.Call) and MatchText(mNode.Name, cStringCasts) and (mNode.ChildCount = 2) then
       begin
-        Node := Node[1];
+        mNode := mNode[1];
       end
-      else if Node.Kind = TSyntaxKind.ParenExpr then
+      else if mNode.Kind = TSyntaxKind.ParenExpr then
       begin
-        if Node.ChildCount <> 1 then
+        if mNode.ChildCount <> 1 then
         begin
           Exit(False);
         end;
-        Node := Node[0];
+        mNode := mNode[0];
       end
       else
       begin
         Break;
       end;
     end;
-    Result := not IsConstant(Node) and (((Node.Kind = TSyntaxKind.BinaryExpr) and IsStringValue(Node)) or
-      ((Node.Kind = TSyntaxKind.Call) and IsStringValue(Node)));
+    Result := not IsConstant(mNode) and (((mNode.Kind = TSyntaxKind.BinaryExpr) and IsStringValue(mNode)) or
+      ((mNode.Kind = TSyntaxKind.Call) and IsStringValue(mNode)));
   end;
 
   // PChar(temporär) in AValue, auch hinter LPARAM(…) und ähnlichen Umwandlungen; sonst nil.
   function TemporaryPChar(AValue: TSyntaxNode): TSyntaxNode;
   var
-    Value: TSyntaxNode;
+    mValue: TSyntaxNode;
   begin
     // Iterativ (Bericht M1): durch die Umwandlungen hindurch.
     Result := nil;
-    Value := AValue;
-    while (Value <> nil) and (Value.Kind = TSyntaxKind.Call) and (Value.ChildCount = 2) do
+    mValue := AValue;
+    while (mValue <> nil) and (mValue.Kind = TSyntaxKind.Call) and (mValue.ChildCount = 2) do
     begin
-      if MatchText(Value.Name, PCharCasts) and IsTemporary(Value[1]) then
+      if MatchText(mValue.Name, cPCharCasts) and IsTemporary(mValue[1]) then
       begin
-        Exit(Value[1]);
+        Exit(mValue[1]);
       end;
-      if not MatchText(Value.Name, PassThroughCasts) then
+      if not MatchText(mValue.Name, cPassThroughCasts) then
       begin
         Exit;
       end;
-      Value := Value[1];
+      mValue := mValue[1];
     end;
   end;
 
   // Neuer Name AName + 'Text', der in der Routine noch nicht vorkommt.
   function FreshName(ARoutine: TSyntaxNode; const ABase: string): string;
   var
-    Number: Integer;
+    mNumber: Integer;
 
     function Used(const AName: string): Boolean;
     var
       mIndex: Integer;
     begin
       // Binär zum ersten Token der Routine statt ab Dateianfang (#1323).
-      mIndex := TRoutineBody.TokenAt(Tokens, ARoutine.StartOffset);
-      while (mIndex <= High(Tokens)) and (Tokens[mIndex].Offset < ARoutine.EndOffset) do
+      mIndex := TRoutineBody.TokenAt(mTokens, ARoutine.StartOffset);
+      while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < ARoutine.EndOffset) do
       begin
-        if (Tokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[mIndex].Text, AName) then
+        if (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(mTokens[mIndex].Text, AName) then
         begin
           Exit(True);
         end;
@@ -841,55 +843,55 @@ var
 
   begin
     Result := ABase + 'Text';
-    Number := 2;
+    mNumber := 2;
     while Used(Result) do
     begin
-      Result := ABase + 'Text' + IntToStr(Number);
-      Inc(Number);
+      Result := ABase + 'Text' + IntToStr(mNumber);
+      Inc(mNumber);
     end;
   end;
 
   procedure CheckAssign(AStatement, ARoutine, AParent: TSyntaxNode);
   var
-    Expression: TSyntaxNode;
-    Target, Name, Indent: string;
-    Fixes: TArray<TRuleFix>;
+    mExpression: TSyntaxNode;
+    mTarget, mName, mIndent: string;
+    mFixes: TArray<TRuleFix>;
   begin
-    Expression := TemporaryPChar(AStatement[1]);
-    if Expression = nil then
+    mExpression := TemporaryPChar(AStatement[1]);
+    if mExpression = nil then
     begin
       Exit;
     end;
-    Target := Trim(Text(AStatement[0]));
-    Fixes := nil;
+    mTarget := Trim(Text(AStatement[0]));
+    mFixes := nil;
     // Lokale Variable direkt in einem Block: das Zwischenergebnis in eine Inline-Variable legen.
     if (AStatement[0].Kind = TSyntaxKind.Identifier) and (AParent <> nil) and (AParent.Kind = TSyntaxKind.Block) and
-      IsLocalVariable(ARoutine, Target) then
+      IsLocalVariable(ARoutine, mTarget) then
     begin
-      Name := FreshName(ARoutine, Target);
-      Indent := StringOfChar(' ', AStatement.StartPos.Character);
-      Fixes := [TRuleFix.Create(cTexts[TRtlTypePatternsMemoryText.StoreIntermediate].Fmt([Name]),
+      mName := FreshName(ARoutine, mTarget);
+      mIndent := StringOfChar(' ', AStatement.StartPos.Character);
+      mFixes := [TRuleFix.Create(cTexts[TRtlTypePatternsMemoryText.StoreIntermediate].Fmt([mName]),
         [TRuleEdit.Create(TTextRange.Create(AStatement.StartPos, AStatement.StartPos),
-        Format('var %s: string := %s;', [Name, Trim(Text(Expression))]) + LineBreak + Indent),
-        TRuleEdit.Create(TTextRange.Create(Expression.StartPos, Expression.EndPos), Name)])];
+        Format('var %s: string := %s;', [mName, Trim(Text(mExpression))]) + mLineBreak + mIndent),
+        TRuleEdit.Create(TTextRange.Create(mExpression.StartPos, mExpression.EndPos), mName)])];
     end;
-    AReport.Add(TTextRange.Create(Expression.StartPos, Expression.EndPos),
-      cTexts[TRtlTypePatternsMemoryText.TemporaryNow].Fmt([Trim(Text(Expression)), Target]),
-      TRuleConfidence.High, Fixes);
+    AReport.Add(TTextRange.Create(mExpression.StartPos, mExpression.EndPos),
+      cTexts[TRtlTypePatternsMemoryText.TemporaryNow].Fmt([Trim(Text(mExpression)), mTarget]),
+      TRuleConfidence.High, mFixes);
   end;
 
   procedure CheckAsync(ACall: TSyntaxNode);
   var
-    Index: Integer;
-    Expression: TSyntaxNode;
+    mIndex: Integer;
+    mExpression: TSyntaxNode;
   begin
-    for Index := 1 to ACall.ChildCount - 1 do
+    for mIndex := 1 to ACall.ChildCount - 1 do
     begin
-      Expression := TemporaryPChar(ACall[Index]);
-      if Expression <> nil then
+      mExpression := TemporaryPChar(ACall[mIndex]);
+      if mExpression <> nil then
       begin
-        AReport.Add(TTextRange.Create(Expression.StartPos, Expression.EndPos),
-          cTexts[TRtlTypePatternsMemoryText.TemporaryLater].Fmt([Trim(Text(Expression)),
+        AReport.Add(TTextRange.Create(mExpression.StartPos, mExpression.EndPos),
+          cTexts[TRtlTypePatternsMemoryText.TemporaryLater].Fmt([Trim(Text(mExpression)),
           ACall.Name]), TRuleConfidence.High);
       end;
     end;
@@ -897,46 +899,46 @@ var
 
   procedure Visit(ANode, ARoutine, AParent: TSyntaxNode);
   var
-    Pending, RoutineStack, Parents: TStack<TSyntaxNode>;
-    Node, Routine, Parent: TSyntaxNode;
-    Index: Integer;
+    mPending, mRoutineStack, mParents: TStack<TSyntaxNode>;
+    mNode, mRoutine, mParent: TSyntaxNode;
+    mIndex: Integer;
   begin
     // Iterativ (Bericht M1); parallele Stapel führen ARoutine und AParent je Knoten mit.
-    Pending := TStack<TSyntaxNode>.Create;
-    RoutineStack := TStack<TSyntaxNode>.Create;
-    Parents := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
+    mRoutineStack := TStack<TSyntaxNode>.Create;
+    mParents := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ANode);
-      RoutineStack.Push(ARoutine);
-      Parents.Push(AParent);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      mRoutineStack.Push(ARoutine);
+      mParents.Push(AParent);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        Routine := RoutineStack.Pop;
-        Parent := Parents.Pop;
-        if Node.Kind = TSyntaxKind.RoutineDecl then
+        mNode := mPending.Pop;
+        mRoutine := mRoutineStack.Pop;
+        mParent := mParents.Pop;
+        if mNode.Kind = TSyntaxKind.RoutineDecl then
         begin
-          Routine := Node;
+          mRoutine := mNode;
         end;
-        if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount = 2) then
+        if (mNode.Kind = TSyntaxKind.AssignStatement) and (mNode.ChildCount = 2) then
         begin
-          CheckAssign(Node, Routine, Parent);
+          CheckAssign(mNode, mRoutine, mParent);
         end
-        else if (Node.Kind = TSyntaxKind.Call) and MatchText(Node.Name, AsyncMessages) then
+        else if (mNode.Kind = TSyntaxKind.Call) and MatchText(mNode.Name, cAsyncMessages) then
         begin
-          CheckAsync(Node);
+          CheckAsync(mNode);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
-          RoutineStack.Push(Routine);
-          Parents.Push(Node);
+          mPending.Push(mNode[mIndex]);
+          mRoutineStack.Push(mRoutine);
+          mParents.Push(mNode);
         end;
       end;
     finally
-      Parents.Free;
-      RoutineStack.Free;
-      Pending.Free;
+      mParents.Free;
+      mRoutineStack.Free;
+      mPending.Free;
     end;
   end;
 
@@ -945,13 +947,13 @@ begin
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
-  LineBreak := TTextLines.LineBreakOf(AContext.Text);
-  Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+  mTokens := AContext.Tree.Tokens;
+  mLineBreak := TTextLines.LineBreakOf(AContext.Text);
+  mTypes := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
   try
     Visit(AContext.Tree.Root, nil, nil);
   finally
-    Types.Free;
+    mTypes.Free;
   end;
 end;
 
@@ -988,9 +990,9 @@ end;
 
 procedure TCreateProcessReadonlyCommandLineRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Types: TDeclaredTypes;
-  Local: TUnitIndex;
-  LineBreak: string;
+  mTypes: TDeclaredTypes;
+  mLocal: TUnitIndex;
+  mLineBreak: string;
 
   function Text(ANode: TSyntaxNode): string;
   begin
@@ -1010,25 +1012,25 @@ var
   // Konstante (auch typisierte) aus Datei oder Index; eine gleichnamige Variable der Datei verdeckt sie.
   function IsConstant(ANode: TSyntaxNode): Boolean;
   var
-    Symbol: TIndexSymbol;
-    Location: TSymbolLocation;
+    mSymbol: TIndexSymbol;
+    mLocation: TSymbolLocation;
   begin
-    for Symbol in Local.Symbols do
+    for mSymbol in mLocal.Symbols do
     begin
-      if (Symbol.Kind = TIndexSymbolKind.Constant) and SameText(Symbol.Name, ANode.Name) then
+      if (mSymbol.Kind = TIndexSymbolKind.Constant) and SameText(mSymbol.Name, ANode.Name) then
       begin
         Exit(True);
       end;
     end;
-    if Types.DeclaredType(ANode.Name, ANode.StartPos) <> '' then
+    if mTypes.DeclaredType(ANode.Name, ANode.StartPos) <> '' then
     begin
       Exit(False);
     end;
     if AContext.Index <> nil then
     begin
-      for Location in AContext.Index.FindSymbols(ANode.Name) do
+      for mLocation in AContext.Index.FindSymbols(ANode.Name) do
       begin
-        if Location.Symbol.Kind = TIndexSymbolKind.Constant then
+        if mLocation.Symbol.Kind = TIndexSymbolKind.Constant then
         begin
           Exit(True);
         end;
@@ -1049,39 +1051,39 @@ var
 
   procedure Operands(ANode: TSyntaxNode; var AList: TArray<TSyntaxNode>);
   var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
   begin
     // Iterativ (Bericht M1): die Glieder der Verkettung von links nach rechts.
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ANode);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if (Node.Kind = TSyntaxKind.BinaryExpr) and (Node.Name = '+') and (Node.ChildCount = 2) then
+        mNode := mPending.Pop;
+        if (mNode.Kind = TSyntaxKind.BinaryExpr) and (mNode.Name = '+') and (mNode.ChildCount = 2) then
         begin
-          Pending.Push(Node[1]);
-          Pending.Push(Node[0]);
+          mPending.Push(mNode[1]);
+          mPending.Push(mNode[0]);
         end
         else
         begin
-          AList := AList + [Node];
+          AList := AList + [mNode];
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
   // 'notepad.exe ' + Datei: Ist Datei leer, liefert die Verkettung das Literal selbst zurück.
   function IsLiteralConcatenation(ANode: TSyntaxNode): Boolean;
   var
-    List: TArray<TSyntaxNode>;
+    mList: TArray<TSyntaxNode>;
   begin
-    List := nil;
-    Operands(ANode, List);
-    Result := (Length(List) = 2) and (IsReadonly(List[0]) <> IsReadonly(List[1]));
+    mList := nil;
+    Operands(ANode, mList);
+    Result := (Length(mList) = 2) and (IsReadonly(mList[0]) <> IsReadonly(mList[1]));
   end;
 
   function Classify(ANode: TSyntaxNode): TCommandLineKind;
@@ -1103,28 +1105,28 @@ var
   // Parameter AName der Routine (Name, Modifizierer)?
   function FindParameter(ARoutine: TSyntaxNode; const AName: string): TSyntaxNode;
   var
-    Header, Params: TSyntaxNode;
-    Index: Integer;
-    Name: string;
+    mHeader, mParams: TSyntaxNode;
+    mIndex: Integer;
+    mName: string;
   begin
     Result := nil;
-    Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
-    if Header = nil then
+    mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+    if mHeader = nil then
     begin
       Exit;
     end;
-    Params := Header.FindChild(TSyntaxKind.Parameters);
-    if Params = nil then
+    mParams := mHeader.FindChild(TSyntaxKind.Parameters);
+    if mParams = nil then
     begin
       Exit;
     end;
-    for Index := 0 to Params.ChildCount - 1 do
+    for mIndex := 0 to mParams.ChildCount - 1 do
     begin
-      for Name in SplitString(Params[Index].Name, ',') do
+      for mName in SplitString(mParams[mIndex].Name, ',') do
       begin
-        if SameText(Trim(Name), AName) then
+        if SameText(Trim(mName), AName) then
         begin
-          Exit(Params[Index]);
+          Exit(mParams[mIndex]);
         end;
       end;
     end;
@@ -1134,62 +1136,62 @@ var
   procedure Assignments(ANode: TSyntaxNode; const AName: string; AOffset: Integer; var ALast: TSyntaxNode;
     var AUnique: Integer);
   var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
-    Index: Integer;
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
+    mIndex: Integer;
   begin
     // Iterativ (Bericht M1), Baumreihenfolge wie die frühere Rekursion (die letzte Zuweisung zählt).
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ANode);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if Node.StartOffset >= AOffset then
+        mNode := mPending.Pop;
+        if mNode.StartOffset >= AOffset then
         begin
           Continue;
         end;
-        if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount = 2) and
-          (Node[0].Kind = TSyntaxKind.Identifier) and SameText(Node[0].Name, AName) then
+        if (mNode.Kind = TSyntaxKind.AssignStatement) and (mNode.ChildCount = 2) and
+          (mNode[0].Kind = TSyntaxKind.Identifier) and SameText(mNode[0].Name, AName) then
         begin
-          ALast := Node;
+          ALast := mNode;
         end;
-        if (Node.Kind = TSyntaxKind.Call) and SameText(Node.Name, 'UniqueString') and (Node.ChildCount = 2) and
-          (Node[1].Kind = TSyntaxKind.Identifier) and SameText(Node[1].Name, AName) then
+        if (mNode.Kind = TSyntaxKind.Call) and SameText(mNode.Name, 'UniqueString') and (mNode.ChildCount = 2) and
+          (mNode[1].Kind = TSyntaxKind.Identifier) and SameText(mNode[1].Name, AName) then
         begin
-          AUnique := Node.StartOffset;
+          AUnique := mNode.StartOffset;
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
   function ClassifyIdentifier(ARoutine, ANode: TSyntaxNode; AOffset: Integer): TCommandLineKind;
   var
-    Last: TSyntaxNode;
-    Unique: Integer;
+    mLast: TSyntaxNode;
+    mUnique: Integer;
   begin
     Result := TCommandLineKind.None;
-    if not IsUnicodeString(Types.DeclaredType(ANode.Name, ANode.StartPos)) then
+    if not IsUnicodeString(mTypes.DeclaredType(ANode.Name, ANode.StartPos)) then
     begin
       Exit;
     end;
-    Last := nil;
-    Unique := -1;
-    Assignments(ARoutine, ANode.Name, AOffset, Last, Unique);
-    if Last <> nil then
+    mLast := nil;
+    mUnique := -1;
+    Assignments(ARoutine, ANode.Name, AOffset, mLast, mUnique);
+    if mLast <> nil then
     begin
-      if (Unique < Last.StartOffset) and (Classify(Last[1]) <> TCommandLineKind.None) then
+      if (mUnique < mLast.StartOffset) and (Classify(mLast[1]) <> TCommandLineKind.None) then
       begin
         Result := TCommandLineKind.Variable;
       end;
     end
-    else if (Unique < 0) and (FindParameter(ARoutine, ANode.Name) <> nil) then
+    else if (mUnique < 0) and (FindParameter(ARoutine, ANode.Name) <> nil) then
     begin
       Result := TCommandLineKind.Parameter;
     end;
@@ -1217,125 +1219,125 @@ var
 
   function Fixes(ARoutine, AValue: TSyntaxNode; AKind: TCommandLineKind): TArray<TRuleFix>;
   var
-    Statement: TSyntaxNode;
-    Name, Indent: string;
+    mStatement: TSyntaxNode;
+    mName, mIndent: string;
   begin
     Result := nil;
-    Statement := StatementOf(AValue);
-    if Statement = nil then
+    mStatement := StatementOf(AValue);
+    if mStatement = nil then
     begin
       Exit;
     end;
     if AKind = TCommandLineKind.Variable then
     begin
       Result := [TRuleFix.Create(cTexts[TRtlTypePatternsMemoryText.CallUniqueString].Fmt([AValue.Name]),
-        [TRoutineBody.InsertBefore(AContext.Text, Statement, 'UniqueString(' + AValue.Name + ');')])];
+        [TRoutineBody.InsertBefore(AContext.Text, mStatement, 'UniqueString(' + AValue.Name + ');')])];
       Exit;
     end;
-    Name := TRoutineBody.UniqueName(AContext.Tree.Tokens, AContext.NewNames.Local('Befehl'));
-    Indent := TTextLines.IndentOf(AContext.Text, Statement.StartPos.Line);
+    mName := TRoutineBody.UniqueName(AContext.Tree.Tokens, AContext.NewNames.Local('Befehl'));
+    mIndent := TTextLines.IndentOf(AContext.Text, mStatement.StartPos.Line);
     Result := [TRuleFix.Create(cTexts[TRtlTypePatternsMemoryText.CopyCommandLine].Text,
-      [TRoutineBody.AddVariable(AContext.Text, ARoutine, Name, 'string', AContext.Formatting),
-      TRoutineBody.InsertBefore(AContext.Text, Statement, Name + ' := ' + Text(AValue) + ';' + LineBreak + Indent +
-      'UniqueString(' + Name + ');'),
-      TTextEdit.Create(TTextRange.Create(AValue.StartPos, AValue.EndPos), Name)])];
+      [TRoutineBody.AddVariable(AContext.Text, ARoutine, mName, 'string', AContext.Formatting),
+      TRoutineBody.InsertBefore(AContext.Text, mStatement, mName + ' := ' + Text(AValue) + ';' + mLineBreak + mIndent +
+      'UniqueString(' + mName + ');'),
+      TTextEdit.Create(TTextRange.Create(AValue.StartPos, AValue.EndPos), mName)])];
   end;
 
   procedure CheckCall(ACall: TSyntaxNode);
   var
-    Index: Integer;
-    Argument, Value, Routine: TSyntaxNode;
-    Kind: TCommandLineKind;
-    Message: string;
-    Confidence: TRuleConfidence;
+    mIndex: Integer;
+    mArgument, mValue, mRoutine: TSyntaxNode;
+    mKind: TCommandLineKind;
+    mMessage: string;
+    mConfidence: TRuleConfidence;
   begin
-    Index := CommandLineIndex(ACall.Name);
-    if (Index < 0) or (ACall.ChildCount <= Index + 1) then
+    mIndex := CommandLineIndex(ACall.Name);
+    if (mIndex < 0) or (ACall.ChildCount <= mIndex + 1) then
     begin
       Exit;
     end;
-    Argument := ACall[Index + 1];
-    if (Argument.Kind <> TSyntaxKind.Call) or not MatchText(Argument.Name, ['PChar', 'PWideChar']) or
-      (Argument.ChildCount <> 2) then
+    mArgument := ACall[mIndex + 1];
+    if (mArgument.Kind <> TSyntaxKind.Call) or not MatchText(mArgument.Name, ['PChar', 'PWideChar']) or
+      (mArgument.ChildCount <> 2) then
     begin
       Exit;
     end;
-    Value := Argument[1];
-    Routine := TRoutineBody.RoutineAt(AContext.Tree, ACall.StartOffset);
-    Kind := Classify(Value);
-    if (Kind = TCommandLineKind.None) and (Value.Kind = TSyntaxKind.Identifier) and (Routine <> nil) then
+    mValue := mArgument[1];
+    mRoutine := TRoutineBody.RoutineAt(AContext.Tree, ACall.StartOffset);
+    mKind := Classify(mValue);
+    if (mKind = TCommandLineKind.None) and (mValue.Kind = TSyntaxKind.Identifier) and (mRoutine <> nil) then
     begin
-      Kind := ClassifyIdentifier(Routine, Value, ACall.StartOffset);
+      mKind := ClassifyIdentifier(mRoutine, mValue, ACall.StartOffset);
     end;
-    Confidence := TRuleConfidence.High;
-    case Kind of
+    mConfidence := TRuleConfidence.High;
+    case mKind of
       TCommandLineKind.Constant:
-        Message := cTexts[TRtlTypePatternsMemoryText.ConstantCommandLine].Fmt([ACall.Name]);
+        mMessage := cTexts[TRtlTypePatternsMemoryText.ConstantCommandLine].Fmt([ACall.Name]);
       TCommandLineKind.Concatenation:
-        Message := cTexts[TRtlTypePatternsMemoryText.ConcatCommandLine].Fmt([ACall.Name]);
+        mMessage := cTexts[TRtlTypePatternsMemoryText.ConcatCommandLine].Fmt([ACall.Name]);
       TCommandLineKind.Variable:
-        Message := cTexts[TRtlTypePatternsMemoryText.MayBeConstant].Fmt([ACall.Name, Value.Name]);
+        mMessage := cTexts[TRtlTypePatternsMemoryText.MayBeConstant].Fmt([ACall.Name, mValue.Name]);
       TCommandLineKind.Parameter:
         begin
-          Message := cTexts[TRtlTypePatternsMemoryText.ParamConstant].Fmt([ACall.Name, Value.Name]);
-          Confidence := TRuleConfidence.Medium;
+          mMessage := cTexts[TRtlTypePatternsMemoryText.ParamConstant].Fmt([ACall.Name, mValue.Name]);
+          mConfidence := TRuleConfidence.Medium;
         end;
     else
       Exit;
     end;
-    if Routine = nil then
+    if mRoutine = nil then
     begin
-      AReport.Add(TTextRange.Create(Value.StartPos, Value.EndPos), Message, Confidence);
+      AReport.Add(TTextRange.Create(mValue.StartPos, mValue.EndPos), mMessage, mConfidence);
     end
     else
     begin
-      AReport.Add(TTextRange.Create(Value.StartPos, Value.EndPos), Message, Confidence,
-        Fixes(Routine, Value, Kind));
+      AReport.Add(TTextRange.Create(mValue.StartPos, mValue.EndPos), mMessage, mConfidence,
+        Fixes(mRoutine, mValue, mKind));
     end;
   end;
 
   procedure Visit(ANode: TSyntaxNode);
   var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
-    Index: Integer;
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
+    mIndex: Integer;
   begin
     // Iterativ (Bericht M1).
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ANode);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if Node.Kind = TSyntaxKind.Call then
+        mNode := mPending.Pop;
+        if mNode.Kind = TSyntaxKind.Call then
         begin
-          CheckCall(Node);
+          CheckCall(mNode);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
 var
-  Cache: IRuleDerivedCache;
+  mCache: IRuleDerivedCache;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or not ContainsText(AContext.Text, 'CreateProcess') then
   begin
     Exit;
   end;
-  LineBreak := TTextLines.LineBreakOf(AContext.Text);
-  Cache := TRuleDerived.Open(AContext);
-  Local := TRuleDerived.UnitIndex(Cache, AContext);
-  Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+  mLineBreak := TTextLines.LineBreakOf(AContext.Text);
+  mCache := TRuleDerived.Open(AContext);
+  mLocal := TRuleDerived.UnitIndex(mCache, AContext);
+  mTypes := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
   try
     Visit(AContext.Tree.Root);
   finally
-    Types.Free;
+    mTypes.Free;
   end;
 end;
 

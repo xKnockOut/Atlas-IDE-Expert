@@ -28,9 +28,9 @@ type
 
   TLspSmartIndent = class
   public const
-    Command = 'atlas.server.smartIndent';
+    cCommand = 'atlas.server.smartIndent';
     /// <summary>Viertes Argument: nur die Spalte.</summary>
-    ColumnMode = 'column';
+    cColumnMode = 'column';
   public
     /// <summary>Optionen aus den Einstellungen ASettings und dem Formatstil AStyle; False bei abgeschaltetem
     /// Hauptschalter.</summary>
@@ -134,7 +134,7 @@ begin
   begin
     Exit(TJSONNull.Create);
   end;
-  if (AArguments.Count > 3) and (AArguments.Items[3].Value = ColumnMode) then
+  if (AArguments.Count > 3) and (AArguments.Items[3].Value = cColumnMode) then
   begin
     Exit(ColumnJson(mDocument.Text, mLine, mOptions));
   end;

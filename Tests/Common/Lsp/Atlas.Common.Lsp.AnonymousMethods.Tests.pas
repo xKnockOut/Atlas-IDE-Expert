@@ -191,9 +191,9 @@ begin
   Actions := ActionsAt(FIndex, 25, 18);
   try
     Assert.AreEqual(1, Integer(Length(Actions)));
-    Assert.AreEqual(TLspAnonymousMethods.Kind, Actions[0].GetValue<string>('kind'));
+    Assert.AreEqual(TLspAnonymousMethods.cKind, Actions[0].GetValue<string>('kind'));
     Assert.AreEqual('In Methode umwandeln (ProcessItem)', Actions[0].GetValue<string>('title'));
-    Assert.AreEqual(TLspAnonymousMethods.ClientCommand, Actions[0].GetValue<string>('command.command'));
+    Assert.AreEqual(TLspAnonymousMethods.cClientCommand, Actions[0].GetValue<string>('command.command'));
     Arguments := Actions[0].GetValue<TJSONArray>('command.arguments');
     Assert.AreEqual(3, Arguments.Count);
     Assert.AreEqual(TDocumentUris.FromPath(FileName), Arguments.Items[0].Value);

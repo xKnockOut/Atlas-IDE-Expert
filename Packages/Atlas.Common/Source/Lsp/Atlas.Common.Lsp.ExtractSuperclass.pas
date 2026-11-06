@@ -54,10 +54,10 @@ type
 
   TLspExtractSuperclass = class
   public const
-    ClientCommand = 'atlas.extractSuperclass';
-    PrepareCommand = 'atlas.server.extractSuperclass.prepare';
-    ApplyCommand = 'atlas.server.extractSuperclass';
-    AnnotationId = 'extractSuperclass';
+    cClientCommand = 'atlas.extractSuperclass';
+    cPrepareCommand = 'atlas.server.extractSuperclass.prepare';
+    cApplyCommand = 'atlas.server.extractSuperclass';
+    cAnnotationId = 'extractSuperclass';
   public
     /// <summary>Die Code-Aktion an APosition, wenn eingeschaltet und die Klasse dort Kandidaten hat; sonst nil.
     /// Der Aufrufer übernimmt die Objekte.</summary>
@@ -68,7 +68,8 @@ type
     class function Prepare(ATree: TSyntaxTree; const AText: string; const APosition: TTextPosition;
       const AContext: TExtractSuperclassContext): TJSONObject; static;
     /// <summary>{"edit": WorkspaceEdit, "warnings": [...], "file": URI der Unit mit der Basisklasse, "line":
-    /// Zeile dort (0-basiert), "name", "moved"}; EJsonRpcError bei ungültiger Anfrage. Der Aufrufer übernimmt das Objekt.</summary>
+    /// Zeile dort (0-basiert), "name", "moved"}; EJsonRpcError bei ungültiger Anfrage. Der Aufrufer übernimmt das
+    /// Objekt.</summary>
     class function Execute(ATree: TSyntaxTree; const AFileName, AText: string; const APosition: TTextPosition;
       ARequest: TJSONValue; const AContext: TExtractSuperclassContext): TJSONObject; static;
   end;
@@ -124,7 +125,7 @@ const
 
 function Failed(const AMessage: string): EJsonRpcError;
 begin
-  Result := EJsonRpcError.Create(TLspErrorCode.RequestFailed,
+  Result := EJsonRpcError.Create(TLspErrorCode.cRequestFailed,
     cTexts[TLspExtractSuperclassText.ExtractSuperclass].Text + AMessage);
 end;
 
@@ -212,34 +213,34 @@ end;
 class function TLspExtractSuperclass.Actions(AEnabled: Boolean; ATree: TSyntaxTree; const AText, AUri: string;
   const APosition: TTextPosition): TArray<TJSONObject>;
 var
-  Info: TSuperclassInfo;
-  Reason, Title: string;
-  Arguments: TJSONArray;
-  Command, Action: TJSONObject;
+  mInfo: TSuperclassInfo;
+  mReason, mTitle: string;
+  mArguments: TJSONArray;
+  mCommand, mAction: TJSONObject;
 begin
   Result := nil;
   if not AEnabled or (ATree = nil) or (TExtractSuperclass.ClassAt(ATree, APosition.Line) = nil) then
   begin
     Exit;
   end;
-  if not TExtractSuperclass.Prepare(TClassSource.Create(ATree, AText, APosition.Line), 'Base', nil, Info,
-    Reason) then
+  if not TExtractSuperclass.Prepare(TClassSource.Create(ATree, AText, APosition.Line), 'Base', nil, mInfo,
+    mReason) then
   begin
     Exit;
   end;
-  Title := cTexts[TLspExtractSuperclassText.ExtractSuperclassFrom].Fmt([Info.ClassName]);
-  Arguments := TJSONArray.Create;
-  Arguments.Add(AUri);
-  Arguments.AddElement(TLspPositions.PositionToJson(APosition));
-  Command := TJSONObject.Create;
-  Command.AddPair('title', Title);
-  Command.AddPair('command', ClientCommand);
-  Command.AddPair('arguments', Arguments);
-  Action := TJSONObject.Create;
-  Action.AddPair('title', Title);
-  Action.AddPair('kind', TExtractSuperclass.Kind);
-  Action.AddPair('command', Command);
-  Result := [Action];
+  mTitle := cTexts[TLspExtractSuperclassText.ExtractSuperclassFrom].Fmt([mInfo.ClassName]);
+  mArguments := TJSONArray.Create;
+  mArguments.Add(AUri);
+  mArguments.AddElement(TLspPositions.PositionToJson(APosition));
+  mCommand := TJSONObject.Create;
+  mCommand.AddPair('title', mTitle);
+  mCommand.AddPair('command', cClientCommand);
+  mCommand.AddPair('arguments', mArguments);
+  mAction := TJSONObject.Create;
+  mAction.AddPair('title', mTitle);
+  mAction.AddPair('kind', TExtractSuperclass.cKind);
+  mAction.AddPair('command', mCommand);
+  Result := [mAction];
 end;
 
 /// <summary>Ein Kandidat für prepare; abstract nach refactoring.extractSuperclassMethodMode (AMethodMode).</summary>
@@ -270,41 +271,41 @@ end;
 class function TLspExtractSuperclass.Prepare(ATree: TSyntaxTree; const AText: string;
   const APosition: TTextPosition; const AContext: TExtractSuperclassContext): TJSONObject;
 var
-  Info: TSuperclassInfo;
-  Reason, Note, NewUnit: string;
-  Item: TTransferCandidate;
-  List, Notes, Units: TJSONArray;
+  mInfo: TSuperclassInfo;
+  mReason, mNote, mNewUnit: string;
+  mItem: TTransferCandidate;
+  mList, mNotes, mUnits: TJSONArray;
 begin
   if not TExtractSuperclass.Prepare(TClassSource.Create(ATree, AText, APosition.Line), AContext.NameSuffix,
-    NameCheck(ATree, AContext.Index), Info, Reason) then
+    NameCheck(ATree, AContext.Index), mInfo, mReason) then
   begin
-    raise Failed(Reason);
+    raise Failed(mReason);
   end;
   Result := TJSONObject.Create;
-  Result.AddPair('className', Info.ClassName);
+  Result.AddPair('className', mInfo.ClassName);
   Result.AddPair('ownUnit', TUsesClauses.OwnName(ATree.Tokens));
-  Result.AddPair('name', Info.SuggestedName);
-  Result.AddPair('ancestor', Info.Ancestor);
-  List := TJSONArray.Create;
-  for Item in Info.Candidates do
+  Result.AddPair('name', mInfo.SuggestedName);
+  Result.AddPair('ancestor', mInfo.Ancestor);
+  mList := TJSONArray.Create;
+  for mItem in mInfo.Candidates do
   begin
-    List.AddElement(CandidateJson(Item, AContext.MethodMode));
+    mList.AddElement(CandidateJson(mItem, AContext.MethodMode));
   end;
-  Result.AddPair('candidates', List);
-  Notes := TJSONArray.Create;
-  for Note in Info.Notes do
+  Result.AddPair('candidates', mList);
+  mNotes := TJSONArray.Create;
+  for mNote in mInfo.Notes do
   begin
-    Notes.Add(Note);
+    mNotes.Add(mNote);
   end;
-  Result.AddPair('notes', Notes);
+  Result.AddPair('notes', mNotes);
   // Ziele: dieselbe Unit oder eine neue mit dem Namen der Basisklasse ohne T.
-  NewUnit := TMoveClass.DefaultUnitName(Info.SuggestedName);
-  Units := TJSONArray.Create;
-  Units.Add(NewUnit);
-  Result.AddPair('units', Units);
+  mNewUnit := TMoveClass.DefaultUnitName(mInfo.SuggestedName);
+  mUnits := TJSONArray.Create;
+  mUnits.Add(mNewUnit);
+  Result.AddPair('units', mUnits);
   if SameText(AContext.Target, 'newUnit') then
   begin
-    Result.AddPair('unit', NewUnit);
+    Result.AddPair('unit', mNewUnit);
   end
   else
   begin
@@ -314,17 +315,17 @@ end;
 
 function Ids(AObject: TJSONObject; const AKey: string): TArray<Integer>;
 var
-  Value, Item: TJSONValue;
+  mValue, mItem: TJSONValue;
 begin
   Result := nil;
-  Value := AObject.GetValue(AKey);
-  if Value is TJSONArray then
+  mValue := AObject.GetValue(AKey);
+  if mValue is TJSONArray then
   begin
-    for Item in TJSONArray(Value) do
+    for mItem in TJSONArray(mValue) do
     begin
-      if Item is TJSONNumber then
+      if mItem is TJSONNumber then
       begin
-        Result := Result + [TJSONNumber(Item).AsInt];
+        Result := Result + [TJSONNumber(mItem).AsInt];
       end;
     end;
   end;
@@ -342,17 +343,17 @@ end;
 /// <summary>Fehlerfrei parsen wie vorher; sonst EJsonRpcError mit der ersten Meldung.</summary>
 procedure CheckParses(const AFileName, ANewText: string; ABefore: Integer);
 var
-  Check: TSyntaxTree;
+  mCheck: TSyntaxTree;
 begin
-  Check := TSyntaxTreeCache.Parse(ANewText);
+  mCheck := TSyntaxTreeCache.Parse(ANewText);
   try
-    if Length(Check.Diagnostics) > ABefore then
+    if Length(mCheck.Diagnostics) > ABefore then
     begin
       raise Failed(cTexts[TLspExtractSuperclassText.AfterTheChangeNoLonger].Fmt([ExtractFileName(AFileName),
-        Check.Diagnostics[0].StartPos.Line + 1, Check.Diagnostics[0].Message]));
+        mCheck.Diagnostics[0].StartPos.Line + 1, mCheck.Diagnostics[0].Message]));
     end;
   finally
-    Check.Free;
+    mCheck.Free;
   end;
 end;
 
@@ -420,7 +421,7 @@ var
 begin
   if not (ARequest is TJSONObject) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TLspExtractSuperclassText.RequestWithNameUnitAnd].Text);
   end;
   mBody := TJSONObject(ARequest);
@@ -516,7 +517,7 @@ begin
   mMoved := Length(FPlan.Moved) + Length(FPlan.Abstracts);
   mDescription := cTexts[TLspExtractSuperclassText.WithMembersFiles].Fmt([FPlan.BaseName, mMoved, FChanges.FileCount]);
   Result := TJSONObject.Create;
-  Result.AddPair('edit', FChanges.ToJson(TLspExtractSuperclass.AnnotationId,
+  Result.AddPair('edit', FChanges.ToJson(TLspExtractSuperclass.cAnnotationId,
     cTexts[TLspExtractSuperclassText.ExtractSuperclass2].Text,
     mDescription));
   Result.AddPair('warnings', FChanges.WarningsJson);

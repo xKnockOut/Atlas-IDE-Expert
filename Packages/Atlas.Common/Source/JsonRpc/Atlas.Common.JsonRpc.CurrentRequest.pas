@@ -51,12 +51,12 @@ end;
 
 class procedure TJsonRpcCurrentRequest.ThrowIfCancellationRequested;
 var
-  Active: IJsonRpcCancellationToken;
+  mActive: IJsonRpcCancellationToken;
 begin
-  Active := Token;
-  if Active <> nil then
+  mActive := Token;
+  if mActive <> nil then
   begin
-    Active.ThrowIfCancellationRequested;
+    mActive.ThrowIfCancellationRequested;
   end;
 end;
 

@@ -52,7 +52,7 @@ type
 
 const
   // Since: BDS-Nummer der ersten Version mit dem Bezeichner; '' = schon vor Delphi 2009 (BDS 6.0).
-  Table: array[0..76] of TWarningCode = (
+  cTable: array[0..76] of TWarningCode = (
     (Code: 'W1000'; Identifier: 'SYMBOL_DEPRECATED'; Since: ''),
     (Code: 'W1001'; Identifier: 'SYMBOL_LIBRARY'; Since: ''),
     (Code: 'W1002'; Identifier: 'SYMBOL_PLATFORM'; Since: ''),
@@ -138,17 +138,17 @@ const
   // Ablaufanalyse am Ende der Routine: Wert nie benutzt (H2077), Schleife läuft nie (H2135), Variable nie
   // verwendet (H2164), Funktion ohne Ergebnis (W1035), Variable vielleicht nicht initialisiert (W1036),
   // Schleifenvariable danach undefiniert (W1037).
-  RoutineWideCodes: array[0..5] of string = ('H2077', 'H2135', 'H2164', 'W1035', 'W1036', 'W1037');
+  cRoutineWideCodes: array[0..5] of string = ('H2077', 'H2135', 'H2164', 'W1035', 'W1036', 'W1037');
 
 function IndexOf(const ACode: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(Table) do
+  for mIndex := 0 to High(cTable) do
   begin
-    if SameText(Table[Index].Code, Trim(ACode)) then
+    if SameText(cTable[mIndex].Code, Trim(ACode)) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -156,14 +156,14 @@ end;
 
 function IsNumbered(const ACode: string; ALetter: Char): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := (Length(ACode) = 5) and (UpCase(ACode[1]) = ALetter);
   if Result then
   begin
-    for Index := 2 to 5 do
+    for mIndex := 2 to 5 do
     begin
-      if not CharInSet(ACode[Index], ['0'..'9']) then
+      if not CharInSet(ACode[mIndex], ['0'..'9']) then
       begin
         Exit(False);
       end;
@@ -186,49 +186,49 @@ end;
 
 class function TWarningCodes.Identifier(const ACode, AVersion: string): string;
 var
-  Index, Version: Integer;
+  mIndex, mVersion: Integer;
 begin
   Result := '';
-  Index := IndexOf(ACode);
-  if Index < 0 then
+  mIndex := IndexOf(ACode);
+  if mIndex < 0 then
   begin
     Exit;
   end;
-  Version := TLanguageFeatures.ParseVersion(AVersion);
+  mVersion := TLanguageFeatures.ParseVersion(AVersion);
   // Ohne gültige Version gilt die aktuelle: Dort kennt Delphi alle Bezeichner der Tabelle.
-  if (Table[Index].Since <> '') and (Version >= 0) and
-    (Version < TLanguageFeatures.ParseVersion(Table[Index].Since)) then
+  if (cTable[mIndex].Since <> '') and (mVersion >= 0) and
+    (mVersion < TLanguageFeatures.ParseVersion(cTable[mIndex].Since)) then
   begin
     Exit;
   end;
-  Result := Table[Index].Identifier;
+  Result := cTable[mIndex].Identifier;
 end;
 
 class function TWarningCodes.Since(const ACode: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  Index := IndexOf(ACode);
-  if Index >= 0 then
+  mIndex := IndexOf(ACode);
+  if mIndex >= 0 then
   begin
-    Result := Table[Index].Since;
+    Result := cTable[mIndex].Since;
   end;
 end;
 
 class function TWarningCodes.IsRoutineWide(const ACode: string): Boolean;
 begin
-  Result := MatchText(Trim(ACode), RoutineWideCodes);
+  Result := MatchText(Trim(ACode), cRoutineWideCodes);
 end;
 
 class function TWarningCodes.Codes: TArray<string>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  SetLength(Result, Length(Table));
-  for Index := 0 to High(Table) do
+  SetLength(Result, Length(cTable));
+  for mIndex := 0 to High(cTable) do
   begin
-    Result[Index] := Table[Index].Code;
+    Result[mIndex] := cTable[mIndex].Code;
   end;
 end;
 

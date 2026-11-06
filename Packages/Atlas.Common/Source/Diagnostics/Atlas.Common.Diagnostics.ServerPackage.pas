@@ -49,12 +49,12 @@ type
   TServerPackage = class
   public const
     /// <summary>Befehl des Servers; Argument optional {"anonymize": true, "traceMinutes": 5}.</summary>
-    Command = 'atlas.server.diagnosticPackage';
-    StatusName = 'server/status.json';
-    LogName = 'server/protokoll.txt';
-    TraceName = 'server/trace.txt';
-    SecretLabel = '<geheim>';
-    DefaultTraceMinutes = 5;
+    cCommand = 'atlas.server.diagnosticPackage';
+    cStatusName = 'server/status.json';
+    cLogName = 'server/protokoll.txt';
+    cTraceName = 'server/trace.txt';
+    cSecretLabel = '<geheim>';
+    cDefaultTraceMinutes = 5;
   public
     class function Build(const AInput: TServerPackageInput): TArray<TServerPackageFile>; static;
     /// <summary>{"files": [{"name": …, "content": …}]}; der Aufrufer übernimmt das Objekt.</summary>
@@ -169,7 +169,7 @@ procedure ScrubPair(APair: TJSONPair; AAll: Boolean);
 begin
   if TServerPackage.IsSecretKey(APair.JsonString.Value) and not (APair.JsonValue is TJSONNull) then
   begin
-    ReplaceValue(APair, TServerPackage.SecretLabel);
+    ReplaceValue(APair, TServerPackage.cSecretLabel);
   end
   else if IsText(APair.JsonValue) then
   begin
@@ -370,10 +370,10 @@ end;
 
 class function TServerPackage.Build(const AInput: TServerPackageInput): TArray<TServerPackageFile>;
 begin
-  Result := [PackageFile(StatusName, StatusText(AInput)), PackageFile(LogName, LogText(AInput))];
+  Result := [PackageFile(cStatusName, StatusText(AInput)), PackageFile(cLogName, LogText(AInput))];
   if AInput.Tracing then
   begin
-    Result := Result + [PackageFile(TraceName, TraceText(AInput))];
+    Result := Result + [PackageFile(cTraceName, TraceText(AInput))];
   end;
 end;
 

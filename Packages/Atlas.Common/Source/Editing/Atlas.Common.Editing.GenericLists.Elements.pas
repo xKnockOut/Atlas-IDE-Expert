@@ -28,7 +28,8 @@ type
     FProblem: string;
     function CheckDescendant(const AElement: TGenericListElement): TGenericListElementFit;
   public
-    /// <summary>AListName ist der Name der Liste für die Meldung, AItemType der Elementtyp wie im ersten Cast.</summary>
+    /// <summary>AListName ist der Name der Liste für die Meldung, AItemType der Elementtyp wie im ersten
+    /// Cast.</summary>
     constructor Create(AResolver: TNameResolver; AFiles: TObjectList<TGenericListSource>; const AListName,
       AItemType: string);
     /// <summary>Ordnet AElement ein; bei Wrong nennt Problem den Grund.</summary>

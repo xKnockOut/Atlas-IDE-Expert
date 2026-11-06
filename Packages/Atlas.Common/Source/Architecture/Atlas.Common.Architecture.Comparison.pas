@@ -120,8 +120,8 @@ type
   TArchitectureComparer = class
   public const
     /// <summary>„gesamt abhängig“ muss um mehr als so viel Prozent und mindestens GrowthMinimum steigen.</summary>
-    GrowthPercent = 10;
-    GrowthMinimum = 5;
+    cGrowthPercent = 10;
+    cGrowthMinimum = 5;
   public
     /// <summary>Vorgabe von architecture.failOn: [NewCycle].</summary>
     class function DefaultFailOn: TArchitectureFailKinds; static;
@@ -212,8 +212,8 @@ const
     (De: '%s: gesamt abhängig %s → %s (+%s, +%s %%)'; En: '%s: total dependents %s → %s (+%s, +%s %%)'));
 
 const
-  LineBreak = #13#10;
-  KindNameList: array[TArchitectureFailKind] of string = ('newCycle', 'newCrossLink', 'subsystemChange',
+  cLineBreak = #13#10;
+  cKindNameList: array[TArchitectureFailKind] of string = ('newCycle', 'newCrossLink', 'subsystemChange',
     'centralGrowth');
 
 function CompareNames(const ALeft, ARight: string): Integer;
@@ -285,13 +285,13 @@ end;
 
 function TArchitectureComparison.MatchOf(const ANewName: string): string;
 var
-  Match: TComparisonMatch;
+  mMatch: TComparisonMatch;
 begin
-  for Match in Matches do
+  for mMatch in Matches do
   begin
-    if SameText(Match.NewName, ANewName) then
+    if SameText(mMatch.NewName, ANewName) then
     begin
-      Exit(Match.OldName);
+      Exit(mMatch.OldName);
     end;
   end;
   Result := '';
@@ -306,19 +306,19 @@ end;
 
 class function TArchitectureComparer.KindName(AKind: TArchitectureFailKind): string;
 begin
-  Result := KindNameList[AKind];
+  Result := cKindNameList[AKind];
 end;
 
 class function TArchitectureComparer.KindNames(AKinds: TArchitectureFailKinds): TArray<string>;
 var
-  Kind: TArchitectureFailKind;
+  mKind: TArchitectureFailKind;
 begin
   Result := nil;
-  for Kind := Low(TArchitectureFailKind) to High(TArchitectureFailKind) do
+  for mKind := Low(TArchitectureFailKind) to High(TArchitectureFailKind) do
   begin
-    if Kind in AKinds then
+    if mKind in AKinds then
     begin
-      Result := Result + [KindName(Kind)];
+      Result := Result + [KindName(mKind)];
     end;
   end;
 end;
@@ -326,26 +326,26 @@ end;
 class function TArchitectureComparer.ParseKinds(const ANames: TArray<string>; out AKinds: TArchitectureFailKinds;
   out AError: string): Boolean;
 var
-  Name: string;
-  Kind: TArchitectureFailKind;
-  Found: Boolean;
+  mName: string;
+  mKind: TArchitectureFailKind;
+  mFound: Boolean;
 begin
   AKinds := [];
   AError := '';
-  for Name in ANames do
+  for mName in ANames do
   begin
-    Found := False;
-    for Kind := Low(TArchitectureFailKind) to High(TArchitectureFailKind) do
+    mFound := False;
+    for mKind := Low(TArchitectureFailKind) to High(TArchitectureFailKind) do
     begin
-      if SameText(Trim(Name), KindName(Kind)) then
+      if SameText(Trim(mName), KindName(mKind)) then
       begin
-        Include(AKinds, Kind);
-        Found := True;
+        Include(AKinds, mKind);
+        mFound := True;
       end;
     end;
-    if not Found then
+    if not mFound then
     begin
-      AError := cTexts[TComparisonText.UnknownDeviationAllowed].Fmt([Name, string.Join(', ', KindNameList)]);
+      AError := cTexts[TComparisonText.UnknownDeviationAllowed].Fmt([mName, string.Join(', ', cKindNameList)]);
       Exit(False);
     end;
   end;
@@ -366,34 +366,34 @@ end;
 
 function UnitMap(const ASnapshot: TArchitectureSnapshot): TDictionary<string, Integer>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := TDictionary<string, Integer>.Create;
-  for Index := 0 to High(ASnapshot.Units) do
+  for mIndex := 0 to High(ASnapshot.Units) do
   begin
-    Result.AddOrSetValue(LowerCase(ASnapshot.Units[Index].Name), Index);
+    Result.AddOrSetValue(LowerCase(ASnapshot.Units[mIndex].Name), mIndex);
   end;
 end;
 
 function EdgeKeys(const AEdges: TArray<TSnapshotEdge>): TDictionary<string, Boolean>;
 var
-  Edge: TSnapshotEdge;
+  mEdge: TSnapshotEdge;
 begin
   Result := TDictionary<string, Boolean>.Create;
-  for Edge in AEdges do
+  for mEdge in AEdges do
   begin
-    Result.AddOrSetValue(Edge.Key, True);
+    Result.AddOrSetValue(mEdge.Key, True);
   end;
 end;
 
 function SubsystemOfUnit(const ASnapshot: TArchitectureSnapshot; AUnits: TDictionary<string, Integer>;
   const AName: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  if AUnits.TryGetValue(LowerCase(AName), Index) then
+  if AUnits.TryGetValue(LowerCase(AName), mIndex) then
   begin
-    Result := ASnapshot.Units[Index].Subsystem;
+    Result := ASnapshot.Units[mIndex].Subsystem;
   end
   else
   begin
@@ -431,11 +431,11 @@ end;
 
 function InList(const AName: string; const AList: TArray<string>): Boolean;
 var
-  Item: string;
+  mItem: string;
 begin
-  for Item in AList do
+  for mItem in AList do
   begin
-    if SameText(Item, AName) then
+    if SameText(mItem, AName) then
     begin
       Exit(True);
     end;
@@ -529,8 +529,8 @@ var
 begin
   mGrow := ANewUnit.Total - AOldUnit.Total;
   Result := (InList(ANewUnit.Name, ANew.Central) or InList(ANewUnit.Name, AOld.Central)) and
-    (mGrow >= TArchitectureComparer.GrowthMinimum) and
-    (mGrow * 100 > AOldUnit.Total * TArchitectureComparer.GrowthPercent);
+    (mGrow >= TArchitectureComparer.cGrowthMinimum) and
+    (mGrow * 100 > AOldUnit.Total * TArchitectureComparer.cGrowthPercent);
 end;
 
 /// <summary>Eine Unit, die es in beiden Ständen gibt: Teilsystemwechsel und Wachstum.</summary>
@@ -624,26 +624,26 @@ end;
 class function TArchitectureComparer.CompareWithFile(const AFileName: string; const AOverview: TArchitectureOverview;
   out AComparison: TArchitectureComparison; out AError: string): Boolean;
 var
-  Baseline: TArchitectureSnapshot;
+  mBaseline: TArchitectureSnapshot;
 begin
   AComparison := Default(TArchitectureComparison);
-  Result := TArchitectureSnapshots.Load(AFileName, Baseline, AError);
+  Result := TArchitectureSnapshots.Load(AFileName, mBaseline, AError);
   if Result then
   begin
-    AComparison := Compare(Baseline, TArchitectureSnapshots.FromOverview(AOverview));
+    AComparison := Compare(mBaseline, TArchitectureSnapshots.FromOverview(AOverview));
   end;
 end;
 
 class function TArchitectureComparer.ResolvePath(const ARoot, APath: string): string;
 var
-  Path: string;
+  mPath: string;
 begin
-  Path := Trim(APath);
-  if (Path = '') or (ARoot = '') or TPath.IsPathRooted(Path) then
+  mPath := Trim(APath);
+  if (mPath = '') or (ARoot = '') or TPath.IsPathRooted(mPath) then
   begin
-    Exit(Path);
+    Exit(mPath);
   end;
-  Result := TPath.GetFullPath(TPath.Combine(ARoot, Path));
+  Result := TPath.GetFullPath(TPath.Combine(ARoot, mPath));
 end;
 
 class function TArchitectureComparer.CyclePath(const ACycle: TComparisonCycle): string;
@@ -690,18 +690,18 @@ end;
 
 function GrowthText(const AGrowth: TComparisonGrowth): string;
 var
-  Percent: Integer;
+  mPercent: Integer;
 begin
   if AGrowth.Before > 0 then
   begin
-    Percent := Round((AGrowth.After - AGrowth.Before) * 100 / AGrowth.Before);
+    mPercent := Round((AGrowth.After - AGrowth.Before) * 100 / AGrowth.Before);
   end
   else
   begin
-    Percent := 100;
+    mPercent := 100;
   end;
   Result := cTexts[TComparisonText.GrowthLine].Fmt([AGrowth.Unit_, IntToStr(AGrowth.Before),
-    IntToStr(AGrowth.After), IntToStr(AGrowth.After - AGrowth.Before), IntToStr(Percent)]);
+    IntToStr(AGrowth.After), IntToStr(AGrowth.After - AGrowth.Before), IntToStr(mPercent)]);
 end;
 
 function SubsystemPair(const AEdge: TComparisonEdge): string;
@@ -713,85 +713,85 @@ end;
 /// </summary>
 function Section(const ATitle: string; const ALines: TArray<string>; ALimit: Integer): string;
 var
-  Index, Count: Integer;
+  mIndex, mCount: Integer;
 begin
-  Result := ATitle + ': ' + IntToStr(Length(ALines)) + LineBreak;
-  Count := Length(ALines);
-  if (ALimit > 0) and (Count > ALimit) then
+  Result := ATitle + ': ' + IntToStr(Length(ALines)) + cLineBreak;
+  mCount := Length(ALines);
+  if (ALimit > 0) and (mCount > ALimit) then
   begin
-    Count := ALimit;
+    mCount := ALimit;
   end;
-  for Index := 0 to Count - 1 do
+  for mIndex := 0 to mCount - 1 do
   begin
-    Result := Result + '  ' + ALines[Index] + LineBreak;
+    Result := Result + '  ' + ALines[mIndex] + cLineBreak;
   end;
-  if Count < Length(ALines) then
+  if mCount < Length(ALines) then
   begin
-    Result := Result + cTexts[TComparisonText.More].Fmt([IntToStr(Length(ALines) - Count)]) + LineBreak;
+    Result := Result + cTexts[TComparisonText.More].Fmt([IntToStr(Length(ALines) - mCount)]) + cLineBreak;
   end;
 end;
 
 function CycleLines(const ACycles: TArray<TComparisonCycle>): TArray<string>;
 var
-  Cycle: TComparisonCycle;
+  mCycle: TComparisonCycle;
 begin
   Result := nil;
-  for Cycle in ACycles do
+  for mCycle in ACycles do
   begin
-    Result := Result + [TArchitectureComparer.CyclePath(Cycle) + ' (' + CycleCaption(Cycle) + ')'];
+    Result := Result + [TArchitectureComparer.CyclePath(mCycle) + ' (' + CycleCaption(mCycle) + ')'];
   end;
 end;
 
 function LinkLines(const ALinks: TArray<TComparisonEdge>; AReason: Boolean): TArray<string>;
 var
-  Link: TComparisonEdge;
-  Line: string;
+  mLink: TComparisonEdge;
+  mLine: string;
 begin
   Result := nil;
-  for Link in ALinks do
+  for mLink in ALinks do
   begin
-    Line := TArchitectureComparer.EdgeText(Link) + ' ' + SubsystemPair(Link);
-    if AReason and (Link.Reason <> '') then
+    mLine := TArchitectureComparer.EdgeText(mLink) + ' ' + SubsystemPair(mLink);
+    if AReason and (mLink.Reason <> '') then
     begin
-      Line := Line + ', ' + ReasonCaption(Link.Reason);
+      mLine := mLine + ', ' + ReasonCaption(mLink.Reason);
     end;
-    Result := Result + [Line];
+    Result := Result + [mLine];
   end;
 end;
 
 function MoveLines(const AMoves: TArray<TComparisonMove>): TArray<string>;
 var
-  Moved: TComparisonMove;
+  mMoved: TComparisonMove;
 begin
   Result := nil;
-  for Moved in AMoves do
+  for mMoved in AMoves do
   begin
-    Result := Result + [Moved.Unit_ + ': ' + Moved.FromSubsystem + ' → ' + Moved.ToSubsystem];
+    Result := Result + [mMoved.Unit_ + ': ' + mMoved.FromSubsystem + ' → ' + mMoved.ToSubsystem];
   end;
 end;
 
 function GrowthLines(const AGrowth: TArray<TComparisonGrowth>): TArray<string>;
 var
-  Growth: TComparisonGrowth;
+  mGrowth: TComparisonGrowth;
 begin
   Result := nil;
-  for Growth in AGrowth do
+  for mGrowth in AGrowth do
   begin
-    Result := Result + [GrowthText(Growth)];
+    Result := Result + [GrowthText(mGrowth)];
   end;
 end;
 
 class function TArchitectureComparer.Text(const AComparison: TArchitectureComparison; AFailOn: TArchitectureFailKinds;
   ALimit: Integer): string;
 var
-  Failed: TArchitectureFailKinds;
+  mFailed: TArchitectureFailKinds;
 begin
   Result := cTexts[TComparisonText.ArchitectureComparisonWithTheState].Fmt([AComparison.BaselineTitle,
     IntToStr(AComparison.BaselineUnits), IntToStr(AComparison.BaselineEdges)]) +
-    LineBreak;
+    cLineBreak;
   if AComparison.GroupingNote <> '' then
   begin
-    Result := Result + AComparison.GroupingNote + LineBreak;
+    Result := Result + AComparison.GroupingNote + cLineBreak;
   end;
   Result := Result + Section(cTexts[TComparisonText.NewCycles].Text, CycleLines(AComparison.NewCycles), ALimit) +
     Section(cTexts[TComparisonText.RemovedCycles].Text, CycleLines(AComparison.RemovedCycles), ALimit) +
@@ -805,18 +805,18 @@ begin
     Section(cTexts[TComparisonText.GrownCentralUnits].Text, GrowthLines(AComparison.Growth), ALimit) +
     Section(cTexts[TComparisonText.NewUnits].Text, AComparison.NewUnits, ALimit) +
     Section(cTexts[TComparisonText.RemovedUnits].Text, AComparison.RemovedUnits, ALimit);
-  Failed := AComparison.Kinds * AFailOn;
+  mFailed := AComparison.Kinds * AFailOn;
   if AFailOn = [] then
   begin
     Result := Result + cTexts[TComparisonText.ResultNoChangeCountsAs].Text;
   end
-  else if Failed = [] then
+  else if mFailed = [] then
   begin
     Result := Result + cTexts[TComparisonText.ResultNoChangeOfThe].Text + string.Join(', ', KindNames(AFailOn));
   end
   else
   begin
-    Result := Result + cTexts[TComparisonText.ResultChangeFailOn].Fmt([string.Join(', ', KindNames(Failed)),
+    Result := Result + cTexts[TComparisonText.ResultChangeFailOn].Fmt([string.Join(', ', KindNames(mFailed)),
       string.Join(', ', KindNames(AFailOn))]);
   end;
 end;
@@ -833,31 +833,31 @@ end;
 
 function MarkdownList(const ATitle: string; const ALines: TArray<string>): string;
 var
-  Line: string;
+  mLine: string;
 begin
-  Result := '### ' + ATitle + ' (' + IntToStr(Length(ALines)) + ')' + LineBreak + LineBreak;
+  Result := '### ' + ATitle + ' (' + IntToStr(Length(ALines)) + ')' + cLineBreak + cLineBreak;
   if Length(ALines) = 0 then
   begin
-    Exit(Result + 'Keine.' + LineBreak + LineBreak);
+    Exit(Result + 'Keine.' + cLineBreak + cLineBreak);
   end;
-  for Line in ALines do
+  for mLine in ALines do
   begin
-    Result := Result + '- ' + Cell(Line) + LineBreak;
+    Result := Result + '- ' + Cell(mLine) + cLineBreak;
   end;
-  Result := Result + LineBreak;
+  Result := Result + cLineBreak;
 end;
 
 class function TArchitectureComparer.Markdown(const AComparison: TArchitectureComparison): string;
 begin
-  Result := cTexts[TComparisonText.ComparisonSWithTheSavedState].Fmt([LineBreak, LineBreak, AComparison.BaselineTitle,
-    IntToStr(AComparison.BaselineUnits), IntToStr(AComparison.BaselineEdges)]) + LineBreak + LineBreak;
+  Result := cTexts[TComparisonText.ComparisonSWithTheSavedState].Fmt([cLineBreak, cLineBreak, AComparison.BaselineTitle,
+    IntToStr(AComparison.BaselineUnits), IntToStr(AComparison.BaselineEdges)]) + cLineBreak + cLineBreak;
   if AComparison.GroupingNote <> '' then
   begin
-    Result := Result + AComparison.GroupingNote + LineBreak + LineBreak;
+    Result := Result + AComparison.GroupingNote + cLineBreak + cLineBreak;
   end;
   if AComparison.IsEmpty then
   begin
-    Result := Result + cTexts[TComparisonText.NoChanges].Text + LineBreak + LineBreak;
+    Result := Result + cTexts[TComparisonText.NoChanges].Text + cLineBreak + cLineBreak;
   end;
   Result := Result + MarkdownList(cTexts[TComparisonText.NewCycles].Text, CycleLines(AComparison.NewCycles)) +
     MarkdownList(cTexts[TComparisonText.RemovedCycles].Text, CycleLines(AComparison.RemovedCycles)) +
@@ -879,56 +879,56 @@ end;
 
 function JsonNames(const ANames: TArray<string>): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '[';
-  for Index := 0 to High(ANames) do
+  for mIndex := 0 to High(ANames) do
   begin
-    if Index > 0 then
+    if mIndex > 0 then
     begin
       Result := Result + ',';
     end;
-    Result := Result + JsonText(ANames[Index]);
+    Result := Result + JsonText(ANames[mIndex]);
   end;
   Result := Result + ']';
 end;
 
 function CyclesJson(const ACycles: TArray<TComparisonCycle>): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '[';
-  for Index := 0 to High(ACycles) do
+  for mIndex := 0 to High(ACycles) do
   begin
-    if Index > 0 then
+    if mIndex > 0 then
     begin
       Result := Result + ',';
     end;
-    Result := Result + '{"interfaceOnly":' + LowerCase(BoolToStr(ACycles[Index].InterfaceOnly, True)) +
-      ',"units":' + JsonNames(ACycles[Index].Units) + '}';
+    Result := Result + '{"interfaceOnly":' + LowerCase(BoolToStr(ACycles[mIndex].InterfaceOnly, True)) +
+      ',"units":' + JsonNames(ACycles[mIndex].Units) + '}';
   end;
   Result := Result + ']';
 end;
 
 function EdgesJson(const AEdges: TArray<TComparisonEdge>; AReason: Boolean): string;
 var
-  Index: Integer;
-  Edge: TComparisonEdge;
+  mIndex: Integer;
+  mEdge: TComparisonEdge;
 begin
   Result := '[';
-  for Index := 0 to High(AEdges) do
+  for mIndex := 0 to High(AEdges) do
   begin
-    Edge := AEdges[Index];
-    if Index > 0 then
+    mEdge := AEdges[mIndex];
+    if mIndex > 0 then
     begin
       Result := Result + ',';
     end;
-    Result := Result + '{"source":' + JsonText(Edge.Source) + ',"target":' + JsonText(Edge.Target) + ',"section":' +
-      JsonText(SectionText(Edge.Interface_)) + ',"from":' + JsonText(Edge.FromSubsystem) + ',"to":' +
-      JsonText(Edge.ToSubsystem);
+    Result := Result + '{"source":' + JsonText(mEdge.Source) + ',"target":' + JsonText(mEdge.Target) + ',"section":' +
+      JsonText(SectionText(mEdge.Interface_)) + ',"from":' + JsonText(mEdge.FromSubsystem) + ',"to":' +
+      JsonText(mEdge.ToSubsystem);
     if AReason then
     begin
-      Result := Result + ',"reason":' + JsonText(Edge.Reason);
+      Result := Result + ',"reason":' + JsonText(mEdge.Reason);
     end;
     Result := Result + '}';
   end;
@@ -937,85 +937,85 @@ end;
 
 function MapEdgesJson(const AEdges: TArray<TComparisonEdge>): string;
 var
-  Builder: TStringBuilder;
-  Index: Integer;
+  mBuilder: TStringBuilder;
+  mIndex: Integer;
 begin
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    Builder.Append('[');
-    for Index := 0 to High(AEdges) do
+    mBuilder.Append('[');
+    for mIndex := 0 to High(AEdges) do
     begin
-      if Index > 0 then
+      if mIndex > 0 then
       begin
-        Builder.Append(',');
+        mBuilder.Append(',');
       end;
       // Höchstens 20 Kanten je Zeile: Zeilen über 1023 Zeichen machen erzeugte Dateien unhandlich.
-      if (Index > 0) and (Index mod 20 = 0) then
+      if (mIndex > 0) and (mIndex mod 20 = 0) then
       begin
-        Builder.Append(LineBreak);
+        mBuilder.Append(cLineBreak);
       end;
-      Builder.Append('[').Append(JsonText(AEdges[Index].Source)).Append(',').Append(JsonText(AEdges[Index].Target));
-      if AEdges[Index].Interface_ then
+      mBuilder.Append('[').Append(JsonText(AEdges[mIndex].Source)).Append(',').Append(JsonText(AEdges[mIndex].Target));
+      if AEdges[mIndex].Interface_ then
       begin
-        Builder.Append(',"i"]');
+        mBuilder.Append(',"i"]');
       end
       else
       begin
-        Builder.Append(',"m"]');
+        mBuilder.Append(',"m"]');
       end;
     end;
-    Builder.Append(']');
-    Result := Builder.ToString;
+    mBuilder.Append(']');
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
 class function TArchitectureComparer.Json(const AComparison: TArchitectureComparison;
   AFailOn: TArchitectureFailKinds): string;
 var
-  Moves, Growth: string;
-  Index: Integer;
+  mMoves, mGrowth: string;
+  mIndex: Integer;
 begin
-  Moves := '[';
-  for Index := 0 to High(AComparison.Moves) do
+  mMoves := '[';
+  for mIndex := 0 to High(AComparison.Moves) do
   begin
-    if Index > 0 then
+    if mIndex > 0 then
     begin
-      Moves := Moves + ',';
+      mMoves := mMoves + ',';
     end;
-    Moves := Moves + '{"unit":' + JsonText(AComparison.Moves[Index].Unit_) + ',"from":' +
-      JsonText(AComparison.Moves[Index].FromSubsystem) + ',"to":' + JsonText(AComparison.Moves[Index].ToSubsystem) +
+    mMoves := mMoves + '{"unit":' + JsonText(AComparison.Moves[mIndex].Unit_) + ',"from":' +
+      JsonText(AComparison.Moves[mIndex].FromSubsystem) + ',"to":' + JsonText(AComparison.Moves[mIndex].ToSubsystem) +
       '}';
   end;
-  Moves := Moves + ']';
-  Growth := '[';
-  for Index := 0 to High(AComparison.Growth) do
+  mMoves := mMoves + ']';
+  mGrowth := '[';
+  for mIndex := 0 to High(AComparison.Growth) do
   begin
-    if Index > 0 then
+    if mIndex > 0 then
     begin
-      Growth := Growth + ',';
+      mGrowth := mGrowth + ',';
     end;
-    Growth := Growth + '{"unit":' + JsonText(AComparison.Growth[Index].Unit_) + ',"before":' +
-      IntToStr(AComparison.Growth[Index].Before) + ',"after":' + IntToStr(AComparison.Growth[Index].After) + '}';
+    mGrowth := mGrowth + '{"unit":' + JsonText(AComparison.Growth[mIndex].Unit_) + ',"before":' +
+      IntToStr(AComparison.Growth[mIndex].Before) + ',"after":' + IntToStr(AComparison.Growth[mIndex].After) + '}';
   end;
-  Growth := Growth + ']';
+  mGrowth := mGrowth + ']';
   Result := '{"baseline":{"title":' + JsonText(AComparison.BaselineTitle) + ',"units":' +
     IntToStr(AComparison.BaselineUnits) + ',"edges":' + IntToStr(AComparison.BaselineEdges) + ',"resolution":' +
-    ResolutionJson(AComparison.BaselineGrouping) + '}' + LineBreak + ',"resolution":' +
-    ResolutionJson(AComparison.Grouping) + LineBreak +
+    ResolutionJson(AComparison.BaselineGrouping) + '}' + cLineBreak + ',"resolution":' +
+    ResolutionJson(AComparison.Grouping) + cLineBreak +
     ',"kinds":' + JsonNames(KindNames(AComparison.Kinds)) + ',"failOn":' + JsonNames(KindNames(AFailOn)) +
-    ',"failed":' + JsonNames(KindNames(AComparison.Kinds * AFailOn)) + LineBreak +
-    ',"newCycles":' + CyclesJson(AComparison.NewCycles) + LineBreak +
-    ',"removedCycles":' + CyclesJson(AComparison.RemovedCycles) + LineBreak +
-    ',"newCrossLinks":' + EdgesJson(AComparison.NewCrossLinks, True) + LineBreak +
-    ',"removedCrossLinks":' + EdgesJson(AComparison.RemovedCrossLinks, True) + LineBreak +
-    ',"newEdges":' + EdgesJson(AComparison.NewEdges, False) + LineBreak +
-    ',"removedEdges":' + EdgesJson(AComparison.RemovedEdges, False) + LineBreak +
-    ',"moves":' + Moves + LineBreak + ',"growth":' + Growth + LineBreak +
-    ',"newUnits":' + JsonNames(AComparison.NewUnits) + LineBreak +
-    ',"removedUnits":' + JsonNames(AComparison.RemovedUnits) + LineBreak +
-    ',"addedEdges":' + MapEdgesJson(AComparison.AddedEdges) + LineBreak +
+    ',"failed":' + JsonNames(KindNames(AComparison.Kinds * AFailOn)) + cLineBreak +
+    ',"newCycles":' + CyclesJson(AComparison.NewCycles) + cLineBreak +
+    ',"removedCycles":' + CyclesJson(AComparison.RemovedCycles) + cLineBreak +
+    ',"newCrossLinks":' + EdgesJson(AComparison.NewCrossLinks, True) + cLineBreak +
+    ',"removedCrossLinks":' + EdgesJson(AComparison.RemovedCrossLinks, True) + cLineBreak +
+    ',"newEdges":' + EdgesJson(AComparison.NewEdges, False) + cLineBreak +
+    ',"removedEdges":' + EdgesJson(AComparison.RemovedEdges, False) + cLineBreak +
+    ',"moves":' + mMoves + cLineBreak + ',"growth":' + mGrowth + cLineBreak +
+    ',"newUnits":' + JsonNames(AComparison.NewUnits) + cLineBreak +
+    ',"removedUnits":' + JsonNames(AComparison.RemovedUnits) + cLineBreak +
+    ',"addedEdges":' + MapEdgesJson(AComparison.AddedEdges) + cLineBreak +
     ',"droppedEdges":' + MapEdgesJson(AComparison.DroppedEdges) + '}';
 end;
 

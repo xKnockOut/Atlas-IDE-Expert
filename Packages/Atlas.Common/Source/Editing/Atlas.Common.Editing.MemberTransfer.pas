@@ -170,8 +170,8 @@ const
 
 const
   /// <summary>Direktiven, die eine neu geschriebene Deklaration behält.</summary>
-  KeptDirectives: array[0..5] of string = ('overload', 'stdcall', 'safecall', 'cdecl', 'register', 'pascal');
-  HintDirectives: array[0..3] of string = ('deprecated', 'platform', 'library', 'experimental');
+  cKeptDirectives: array[0..5] of string = ('overload', 'stdcall', 'safecall', 'cdecl', 'register', 'pascal');
+  cHintDirectives: array[0..3] of string = ('deprecated', 'platform', 'library', 'experimental');
 
 function LinesRange(AFirstLine, ALastLine: Integer): TTextRange;
 begin
@@ -192,11 +192,11 @@ end;
 
 class function TMemberTransfer.Has(const AList: TArray<Integer>; AValue: Integer): Boolean;
 var
-  Item: Integer;
+  mItem: Integer;
 begin
-  for Item in AList do
+  for mItem in AList do
   begin
-    if Item = AValue then
+    if mItem = AValue then
     begin
       Exit(True);
     end;
@@ -206,11 +206,11 @@ end;
 
 class function TMemberTransfer.HasAll(const AItems, AList: TArray<Integer>): Boolean;
 var
-  Item: Integer;
+  mItem: Integer;
 begin
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    if not Has(AList, Item) then
+    if not Has(AList, mItem) then
     begin
       Exit(False);
     end;
@@ -268,63 +268,63 @@ end;
 
 class function TMemberTransfer.Candidates(ALayout: TClassLayout): TArray<TTransferCandidate>;
 var
-  Index, Need: Integer;
-  Member: TClassMember;
-  Item: TTransferCandidate;
-  Kind, NeedKind: TTransferKind;
+  mIndex, mNeed: Integer;
+  mMember: TClassMember;
+  mItem: TTransferCandidate;
+  mKind, mNeedKind: TTransferKind;
 begin
   Result := nil;
-  for Index := 0 to High(ALayout.Members) do
+  for mIndex := 0 to High(ALayout.Members) do
   begin
-    Member := ALayout.Members[Index];
-    if not KindOf(Member, Kind) then
+    mMember := ALayout.Members[mIndex];
+    if not KindOf(mMember, mKind) then
     begin
       Continue;
     end;
-    Item := Default(TTransferCandidate);
-    Item.Id := Index;
-    Item.Name := Member.Name;
-    Item.Kind := Kind;
-    Item.Visibility := Member.Visibility;
-    Item.Enabled := True;
-    if Kind = TTransferKind.Method then
+    mItem := Default(TTransferCandidate);
+    mItem.Id := mIndex;
+    mItem.Name := mMember.Name;
+    mItem.Kind := mKind;
+    mItem.Visibility := mMember.Visibility;
+    mItem.Enabled := True;
+    if mKind = TTransferKind.Method then
     begin
-      Item.Display := ALayout.Head(Index);
+      mItem.Display := ALayout.Head(mIndex);
     end
     else
     begin
-      Item.Display := ALayout.Declaration(Index);
+      mItem.Display := ALayout.Declaration(mIndex);
     end;
-    if Member.IsRedeclaration then
+    if mMember.IsRedeclaration then
     begin
-      Item.Enabled := False;
-      Item.Reason := cTexts[TMemberTransferText.OnlyChangesTheVisibilityOf].Text;
+      mItem.Enabled := False;
+      mItem.Reason := cTexts[TMemberTransferText.OnlyChangesTheVisibilityOf].Text;
     end
-    else if Kind = TTransferKind.Method then
+    else if mKind = TTransferKind.Method then
     begin
-      Item.Reason := AbstractBlocker(Member);
-      Item.CanAbstract := Item.Reason = '';
+      mItem.Reason := AbstractBlocker(mMember);
+      mItem.CanAbstract := mItem.Reason = '';
     end;
-    for Need in ALayout.UsedBy(Index) do
+    for mNeed in ALayout.UsedBy(mIndex) do
     begin
-      if KindOf(ALayout.Members[Need], NeedKind) then
+      if KindOf(ALayout.Members[mNeed], mNeedKind) then
       begin
-        Item.Needs := Item.Needs + [Need];
+        mItem.Needs := mItem.Needs + [mNeed];
       end;
     end;
-    Result := Result + [Item];
+    Result := Result + [mItem];
   end;
 end;
 
 class function TMemberTransfer.IndexOf(const ACandidates: TArray<TTransferCandidate>; AId: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(ACandidates) do
+  for mIndex := 0 to High(ACandidates) do
   begin
-    if ACandidates[Index].Id = AId then
+    if ACandidates[mIndex].Id = AId then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -333,21 +333,21 @@ end;
 class function TMemberTransfer.MissingNeeds(ALayout: TClassLayout; const AMoved,
   AChosen: TArray<Integer>): TArray<string>;
 var
-  Id, Need: Integer;
-  Kind: TTransferKind;
-  Text: string;
+  mId, mNeed: Integer;
+  mKind: TTransferKind;
+  mText: string;
 begin
   Result := nil;
-  for Id in AMoved do
+  for mId in AMoved do
   begin
-    for Need in ALayout.UsedBy(Id) do
+    for mNeed in ALayout.UsedBy(mId) do
     begin
-      if not Has(AChosen, Need) and KindOf(ALayout.Members[Need], Kind) then
+      if not Has(AChosen, mNeed) and KindOf(ALayout.Members[mNeed], mKind) then
       begin
-        Text := cTexts[TMemberTransferText.Needs].Fmt([ALayout.Members[Id].Name, ALayout.Members[Need].Name]);
-        if IndexText(Text, Result) < 0 then
+        mText := cTexts[TMemberTransferText.Needs].Fmt([ALayout.Members[mId].Name, ALayout.Members[mNeed].Name]);
+        if IndexText(mText, Result) < 0 then
         begin
-          Result := Result + [Text];
+          Result := Result + [mText];
         end;
       end;
     end;
@@ -400,14 +400,14 @@ end;
 
 class function TMemberTransfer.DirectiveTexts(ALayout: TClassLayout; AHeader: TSyntaxNode): TArray<string>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
-  for Index := 0 to AHeader.ChildCount - 1 do
+  for mIndex := 0 to AHeader.ChildCount - 1 do
   begin
-    if AHeader[Index].Kind = TSyntaxKind.Directive then
+    if AHeader[mIndex].Kind = TSyntaxKind.Directive then
     begin
-      Result := Result + [CollapseSpace(ALayout.TextOf(AHeader[Index]))];
+      Result := Result + [CollapseSpace(ALayout.TextOf(AHeader[mIndex]))];
     end;
   end;
 end;
@@ -475,7 +475,7 @@ begin
     begin
       Result := Result + [DirectiveRemoval(ALayout, mLines, mDirective)];
     end
-    else if MatchText(mDirective.Name, HintDirectives) and (mHint = nil) then
+    else if MatchText(mDirective.Name, cHintDirectives) and (mHint = nil) then
     begin
       mHint := mDirective;
     end;
@@ -489,29 +489,29 @@ end;
 /// <summary>Kopf, behaltene Direktiven, AMiddle (z. B. "virtual;"), Hinweisdirektiven.</summary>
 function Rewritten(ALayout: TClassLayout; AIndex: Integer; const AMiddle: string): string;
 var
-  Directive: string;
+  mDirective: string;
 begin
   Result := ALayout.Head(AIndex);
-  for Directive in ALayout.Members[AIndex].Directives do
+  for mDirective in ALayout.Members[AIndex].Directives do
   begin
-    if MatchText(Directive, KeptDirectives) then
+    if MatchText(mDirective, cKeptDirectives) then
     begin
-      Result := Result + ' ' + Directive + ';';
+      Result := Result + ' ' + mDirective + ';';
     end;
   end;
   Result := Result + ' ' + AMiddle;
-  for Directive in TMemberTransfer.DirectiveTexts(ALayout, ALayout.Members[AIndex].Node) do
+  for mDirective in TMemberTransfer.DirectiveTexts(ALayout, ALayout.Members[AIndex].Node) do
   begin
-    if MatchText(Directive.Split([' '])[0], HintDirectives) then
+    if MatchText(mDirective.Split([' '])[0], cHintDirectives) then
     begin
-      Result := Result + ' ' + Directive + ';';
+      Result := Result + ' ' + mDirective + ';';
     end;
   end;
 end;
 
 class function TMemberTransfer.AbstractDeclaration(ALayout: TClassLayout; AIndex: Integer): string;
 var
-  Directive: string;
+  mDirective: string;
 begin
   Result := ALayout.Head(AIndex);
   // reintroduce bleibt: Die Basisklasse verdeckt dann die Methode des alten Vorfahren (sonst W1010).
@@ -519,11 +519,11 @@ begin
   begin
     Result := Result + ' reintroduce;';
   end;
-  for Directive in ALayout.Members[AIndex].Directives do
+  for mDirective in ALayout.Members[AIndex].Directives do
   begin
-    if MatchText(Directive, KeptDirectives) then
+    if MatchText(mDirective, cKeptDirectives) then
     begin
-      Result := Result + ' ' + Directive + ';';
+      Result := Result + ' ' + mDirective + ';';
     end;
   end;
   Result := Result + ' virtual; abstract;';
@@ -541,27 +541,27 @@ end;
 
 class function TMemberTransfer.MemberLines(ALayout: TClassLayout; AIndex: Integer): TArray<string>;
 var
-  Member: TClassMember;
-  Line: Integer;
-  Doc: string;
+  mMember: TClassMember;
+  mLine: Integer;
+  mDoc: string;
 begin
   Result := nil;
-  Member := ALayout.Members[AIndex];
-  if Member.IsFieldGroup then
+  mMember := ALayout.Members[AIndex];
+  if mMember.IsFieldGroup then
   begin
-    for Doc in ALayout.DocLines(AIndex) do
+    for mDoc in ALayout.DocLines(AIndex) do
     begin
-      Result := Result + [ALayout.MemberIndent + Doc];
+      Result := Result + [ALayout.MemberIndent + mDoc];
     end;
     Result := Result + [ALayout.MemberIndent + ALayout.Declaration(AIndex)];
     Exit;
   end;
-  for Line := Member.FirstLine to Member.LastLine do
+  for mLine := mMember.FirstLine to mMember.LastLine do
   begin
-    Result := Result + [ALayout.Lines[Line]];
+    Result := Result + [ALayout.Lines[mLine]];
   end;
   // Aus einem class-var-Abschnitt: am Ziel ohne den Abschnitt, also mit class var davor.
-  if (Member.Kind = TClassMemberKind.ClassVar) and not StartsText('class', TrimLeft(Result[High(Result)])) then
+  if (mMember.Kind = TClassMemberKind.ClassVar) and not StartsText('class', TrimLeft(Result[High(Result)])) then
   begin
     Result[High(Result)] := ALayout.MemberIndent + 'class var ' + TrimLeft(Result[High(Result)]);
   end;
@@ -569,34 +569,34 @@ end;
 
 class function TMemberTransfer.MemberText(ALayout: TClassLayout; AIndex: Integer): string;
 var
-  Line: string;
+  mLine: string;
 begin
   Result := '';
-  for Line in MemberLines(ALayout, AIndex) do
+  for mLine in MemberLines(ALayout, AIndex) do
   begin
     if Result <> '' then
     begin
       Result := Result + #10;
     end;
-    if StartsStr(ALayout.MemberIndent, Line) then
+    if StartsStr(ALayout.MemberIndent, mLine) then
     begin
-      Result := Result + Copy(Line, Length(ALayout.MemberIndent) + 1, MaxInt);
+      Result := Result + Copy(mLine, Length(ALayout.MemberIndent) + 1, MaxInt);
     end
     else
     begin
-      Result := Result + TrimLeft(Line);
+      Result := Result + TrimLeft(mLine);
     end;
   end;
 end;
 
 class function TMemberTransfer.WithDoc(ALayout: TClassLayout; AIndex: Integer; const ADeclaration: string): string;
 var
-  Doc: string;
+  mDoc: string;
 begin
   Result := '';
-  for Doc in ALayout.DocLines(AIndex) do
+  for mDoc in ALayout.DocLines(AIndex) do
   begin
-    Result := Result + Doc + #10;
+    Result := Result + mDoc + #10;
   end;
   Result := Result + ADeclaration;
 end;
@@ -652,14 +652,14 @@ end;
 
 class function TMemberTransfer.Same(ALayout: TClassLayout; const AOld: TClassMember): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index in ALayout.Find(AOld.Name) do
+  for mIndex in ALayout.Find(AOld.Name) do
   begin
-    if (ALayout.Members[Index].Kind = AOld.Kind) and
-      (string.Join(',', ALayout.Members[Index].ParameterTypes) = string.Join(',', AOld.ParameterTypes)) then
+    if (ALayout.Members[mIndex].Kind = AOld.Kind) and
+      (string.Join(',', ALayout.Members[mIndex].ParameterTypes) = string.Join(',', AOld.ParameterTypes)) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -667,31 +667,31 @@ end;
 
 class function TMemberTransfer.ParseLayout(const AText, AName: string; out ATree: TSyntaxTree): TClassLayout;
 var
-  Decl: TSyntaxNode;
+  mDecl: TSyntaxNode;
 begin
   ATree := TSyntaxTreeCache.Parse(AText);
-  Decl := TClassLayout.DeclNamed(ATree, AName);
-  if Decl = nil then
+  mDecl := TClassLayout.DeclNamed(ATree, AName);
+  if mDecl = nil then
   begin
     FreeAndNil(ATree);
     Exit(nil);
   end;
-  Result := TClassLayout.Read(ATree, AText, Decl);
+  Result := TClassLayout.Read(ATree, AText, mDecl);
 end;
 
 class function TMemberTransfer.EmptiedSections(ALayout: TClassLayout;
   const ARemoved: TArray<Integer>): TArray<TTextEdit>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
-  for Index := 0 to High(ALayout.Sections) do
+  for mIndex := 0 to High(ALayout.Sections) do
   begin
-    if (ALayout.Sections[Index].HeadLine >= 0) and (ALayout.Sections[Index].Members <> nil) and
-      HasAll(ALayout.Sections[Index].Members, ARemoved) then
+    if (ALayout.Sections[mIndex].HeadLine >= 0) and (ALayout.Sections[mIndex].Members <> nil) and
+      HasAll(ALayout.Sections[mIndex].Members, ARemoved) then
     begin
-      Result := Result + [TTextEdit.Create(LinesRange(ALayout.Sections[Index].HeadLine,
-        ALayout.Sections[Index].HeadLine), '')];
+      Result := Result + [TTextEdit.Create(LinesRange(ALayout.Sections[mIndex].HeadLine,
+        ALayout.Sections[mIndex].HeadLine), '')];
     end;
   end;
 end;
@@ -699,51 +699,51 @@ end;
 class function TMemberTransfer.Relocate(var AText: string; const AClassName: string;
   const AMembers: TArray<TClassMember>; AVisibility: TClassVisibility): Boolean;
 var
-  Layout: TClassLayout;
-  Tree: TSyntaxTree;
-  Old: TClassMember;
-  Index: Integer;
-  Chosen: TArray<Integer>;
-  Edits: TArray<TTextEdit>;
-  Declarations: TArray<TTransferDeclaration>;
-  Reason: string;
+  mLayout: TClassLayout;
+  mTree: TSyntaxTree;
+  mOld: TClassMember;
+  mIndex: Integer;
+  mChosen: TArray<Integer>;
+  mEdits: TArray<TTextEdit>;
+  mDeclarations: TArray<TTransferDeclaration>;
+  mReason: string;
 begin
   if AMembers = nil then
   begin
     Exit(True);
   end;
-  Layout := ParseLayout(AText, AClassName, Tree);
-  if Layout = nil then
+  mLayout := ParseLayout(AText, AClassName, mTree);
+  if mLayout = nil then
   begin
     Exit(False);
   end;
   try
-    Edits := nil;
-    Declarations := nil;
-    Chosen := nil;
-    for Old in AMembers do
+    mEdits := nil;
+    mDeclarations := nil;
+    mChosen := nil;
+    for mOld in AMembers do
     begin
-      Index := Same(Layout, Old);
-      if (Index < 0) or (Layout.Members[Index].Visibility = AVisibility) then
+      mIndex := Same(mLayout, mOld);
+      if (mIndex < 0) or (mLayout.Members[mIndex].Visibility = AVisibility) then
       begin
         Continue;
       end;
-      Chosen := Chosen + [Index];
-      Declarations := Declarations + [TTransferDeclaration.Create(MemberText(Layout, Index), AVisibility,
-        Layout.Members[Index].Kind in [TClassMemberKind.Field, TClassMemberKind.ClassVar])];
+      mChosen := mChosen + [mIndex];
+      mDeclarations := mDeclarations + [TTransferDeclaration.Create(MemberText(mLayout, mIndex), AVisibility,
+        mLayout.Members[mIndex].Kind in [TClassMemberKind.Field, TClassMemberKind.ClassVar])];
     end;
-    if Declarations = nil then
+    if mDeclarations = nil then
     begin
       Exit(True);
     end;
-    Edits := TClassEdits.DeleteMembers(Layout, Chosen, False) + EmptiedSections(Layout, Chosen);
-    AText := TTextChanges.Apply(AText, Edits);
+    mEdits := TClassEdits.DeleteMembers(mLayout, mChosen, False) + EmptiedSections(mLayout, mChosen);
+    AText := TTextChanges.Apply(AText, mEdits);
   finally
-    Layout.Free;
-    Tree.Free;
+    mLayout.Free;
+    mTree.Free;
   end;
   // Felder vor Methoden, je Abschnitt neu geparst.
-  Result := InsertInto(AText, AClassName, Declarations, nil, Reason);
+  Result := InsertInto(AText, AClassName, mDeclarations, nil, mReason);
 end;
 
 /// <summary>Texte der Deklarationen mit Sichtbarkeit AVisibility, getrennt nach Feldern und übrigen.</summary>

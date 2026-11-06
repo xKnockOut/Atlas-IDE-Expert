@@ -53,9 +53,9 @@ type
 
   TRecursionAnalysis = class
   public const
-    DefaultDepth = 4;
-    MinDepth = 1;
-    MaxDepth = 16;
+    cDefaultDepth = 4;
+    cMinDepth = 1;
+    cMaxDepth = 16;
   public
     /// <summary>Aufrufstellen auf Kreisen aus höchstens AMaxDepth Routinen (auf MinDepth..MaxDepth begrenzt).</summary>
     class function Calls(ATree: TSyntaxTree; AMaxDepth: Integer): TArray<TRecursiveCall>; static;
@@ -139,28 +139,28 @@ type
   end;
 
 const
-  TypeBodies = [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType, TSyntaxKind.HelperType];
+  cTypeBodies = [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType, TSyntaxKind.HelperType];
 
 /// <summary>Name ohne generische Parameter: "TFoo&lt;T&gt;.Bar" → "TFoo.Bar".</summary>
 function PlainName(const AName: string): string;
 var
-  Index, Depth: Integer;
+  mIndex, mDepth: Integer;
 begin
   Result := '';
-  Depth := 0;
-  for Index := 1 to Length(AName) do
+  mDepth := 0;
+  for mIndex := 1 to Length(AName) do
   begin
-    if AName[Index] = '<' then
+    if AName[mIndex] = '<' then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if AName[Index] = '>' then
+    else if AName[mIndex] = '>' then
     begin
-      Dec(Depth);
+      Dec(mDepth);
     end
-    else if (Depth <= 0) and (AName[Index] <> ' ') then
+    else if (mDepth <= 0) and (AName[mIndex] <> ' ') then
     begin
-      Result := Result + AName[Index];
+      Result := Result + AName[mIndex];
     end;
   end;
 end;
@@ -168,14 +168,14 @@ end;
 /// <summary>Teil vor dem letzten Punkt, '' ohne Punkt.</summary>
 function OwnerPart(const AName: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := Length(AName) downto 1 do
+  for mIndex := Length(AName) downto 1 do
   begin
-    if AName[Index] = '.' then
+    if AName[mIndex] = '.' then
     begin
-      Exit(Copy(AName, 1, Index - 1));
+      Exit(Copy(AName, 1, mIndex - 1));
     end;
   end;
 end;
@@ -183,14 +183,14 @@ end;
 /// <summary>Teil hinter dem letzten Punkt.</summary>
 function LastPart(const AName: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := AName;
-  for Index := Length(AName) downto 1 do
+  for mIndex := Length(AName) downto 1 do
   begin
-    if AName[Index] = '.' then
+    if AName[mIndex] = '.' then
     begin
-      Exit(Copy(AName, Index + 1, MaxInt));
+      Exit(Copy(AName, mIndex + 1, MaxInt));
     end;
   end;
 end;
@@ -198,14 +198,14 @@ end;
 /// <summary>Namen einer Deklaration mit Komma-Liste ("A, B") einzeln.</summary>
 function NamesOf(const ANames: string): TArray<string>;
 var
-  Part: string;
+  mPart: string;
 begin
   Result := nil;
-  for Part in ANames.Split([',']) do
+  for mPart in ANames.Split([',']) do
   begin
-    if Trim(Part) <> '' then
+    if Trim(mPart) <> '' then
     begin
-      Result := Result + [UpperCase(Trim(Part))];
+      Result := Result + [UpperCase(Trim(mPart))];
     end;
   end;
 end;
@@ -213,70 +213,70 @@ end;
 /// <summary>Qualifizierter Name der Typen um ANode, z. B. "TFoo.TInner".</summary>
 function TypeOwner(ANode: TSyntaxNode): string;
 var
-  Parent: TSyntaxNode;
+  mParent: TSyntaxNode;
 begin
   Result := '';
-  Parent := ANode.Parent;
-  while Parent <> nil do
+  mParent := ANode.Parent;
+  while mParent <> nil do
   begin
-    if Parent.Kind = TSyntaxKind.TypeDecl then
+    if mParent.Kind = TSyntaxKind.TypeDecl then
     begin
       if Result = '' then
       begin
-        Result := PlainName(Parent.Name);
+        Result := PlainName(mParent.Name);
       end
       else
       begin
-        Result := PlainName(Parent.Name) + '.' + Result;
+        Result := PlainName(mParent.Name) + '.' + Result;
       end;
     end;
-    Parent := Parent.Parent;
+    mParent := mParent.Parent;
   end;
 end;
 
 function FirstToken(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
 var
-  Left, Right, Middle: Integer;
+  mLeft, mRight, mMiddle: Integer;
 begin
-  Left := 0;
-  Right := Length(ATokens);
-  while Left < Right do
+  mLeft := 0;
+  mRight := Length(ATokens);
+  while mLeft < mRight do
   begin
-    Middle := (Left + Right) div 2;
-    if ATokens[Middle].Offset < AOffset then
+    mMiddle := (mLeft + mRight) div 2;
+    if ATokens[mMiddle].Offset < AOffset then
     begin
-      Left := Middle + 1;
+      mLeft := mMiddle + 1;
     end
     else
     begin
-      Right := Middle;
+      mRight := mMiddle;
     end;
   end;
-  Result := Left;
+  Result := mLeft;
 end;
 
 /// <summary>Bereich des Namens im Kopf (letzter Bezeichner der Punktkette vor der Parameterliste).</summary>
 function HeaderNameRange(const ATokens: TArray<TPascalToken>; AHeader: TSyntaxNode): TTextRange;
 var
-  Index: Integer;
-  Seen: Boolean;
+  mIndex: Integer;
+  mSeen: Boolean;
 begin
   Result := TTextRange.Create(AHeader.StartPos, AHeader.StartPos);
-  Seen := False;
-  Index := FirstToken(ATokens, AHeader.StartOffset);
-  while (Index < Length(ATokens)) and (ATokens[Index].Offset < AHeader.EndOffset) do
+  mSeen := False;
+  mIndex := FirstToken(ATokens, AHeader.StartOffset);
+  while (mIndex < Length(ATokens)) and (ATokens[mIndex].Offset < AHeader.EndOffset) do
   begin
-    if ATokens[Index].Kind = TPascalTokenKind.Identifier then
+    if ATokens[mIndex].Kind = TPascalTokenKind.Identifier then
     begin
-      Result := TTextRange.Create(ATokens[Index].StartPos, ATokens[Index].EndPos);
-      Seen := True;
+      Result := TTextRange.Create(ATokens[mIndex].StartPos, ATokens[mIndex].EndPos);
+      mSeen := True;
     end
-    else if Seen and (ATokens[Index].IsSymbol('(') or ATokens[Index].IsSymbol(':') or
-      ATokens[Index].IsSymbol(';')) then
+    else if mSeen and (ATokens[mIndex].IsSymbol('(') or ATokens[mIndex].IsSymbol(':') or
+      ATokens[mIndex].IsSymbol(';')) then
     begin
       Break;
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
 end;
 
@@ -298,7 +298,7 @@ end;
 
 constructor TGraph.Create(ATree: TSyntaxTree);
 var
-  Routine: TRoutineInfo;
+  mRoutine: TRoutineInfo;
 begin
   inherited Create;
   FTree := ATree;
@@ -308,9 +308,9 @@ begin
   FFields := TDictionary<string, string>.Create;
   CollectTypes;
   CollectRoutines;
-  for Routine in FRoutines do
+  for mRoutine in FRoutines do
   begin
-    CollectEdges(Routine);
+    CollectEdges(mRoutine);
   end;
 end;
 
@@ -392,7 +392,7 @@ end;
 /// <summary>ANode ist eine Deklaration der Art AKind in einem Klassen-, Record- oder Helper-Rumpf.</summary>
 function IsTypeMember(ANode: TSyntaxNode; AKind: TSyntaxKind): Boolean;
 begin
-  Result := (ANode.Kind = AKind) and (ANode.Parent <> nil) and (ANode.Parent.Kind in TypeBodies);
+  Result := (ANode.Kind = AKind) and (ANode.Parent <> nil) and (ANode.Parent.Kind in cTypeBodies);
 end;
 
 procedure TGraph.CollectTypes;
@@ -431,32 +431,32 @@ end;
 
 procedure TGraph.CollectRoutines;
 var
-  Stack: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Index: Integer;
+  mStack: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
 begin
-  Stack := TStack<TSyntaxNode>.Create;
+  mStack := TStack<TSyntaxNode>.Create;
   try
-    Stack.Push(FTree.Root);
-    while Stack.Count > 0 do
+    mStack.Push(FTree.Root);
+    while mStack.Count > 0 do
     begin
-      Node := Stack.Pop;
-      if Node.Kind = TSyntaxKind.RoutineDecl then
+      mNode := mStack.Pop;
+      if mNode.Kind = TSyntaxKind.RoutineDecl then
       begin
-        AddRoutine(Node, nil);
+        AddRoutine(mNode, nil);
         Continue;
       end;
-      if Node.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock] + TypeBodies then
+      if mNode.Kind in [TSyntaxKind.Block, TSyntaxKind.AsmBlock] + cTypeBodies then
       begin
         Continue;
       end;
-      for Index := Node.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        Stack.Push(Node[Index]);
+        mStack.Push(mNode[mIndex]);
       end;
     end;
   finally
-    Stack.Free;
+    mStack.Free;
   end;
 end;
 
@@ -568,62 +568,62 @@ end;
 
 function TGraph.Hides(ARoutine: TRoutineInfo; const AName: string): Boolean;
 var
-  Routine: TRoutineInfo;
-  Name: string;
+  mRoutine: TRoutineInfo;
+  mName: string;
 begin
   if SameText(AName, 'Result') or SameText(AName, 'Self') then
   begin
     Exit(True);
   end;
-  Routine := ARoutine;
-  while Routine <> nil do
+  mRoutine := ARoutine;
+  while mRoutine <> nil do
   begin
-    for Name in Routine.Hidden do
+    for mName in mRoutine.Hidden do
     begin
-      if Name = UpperCase(AName) then
+      if mName = UpperCase(AName) then
       begin
         Exit(True);
       end;
     end;
-    Routine := Routine.Parent;
+    mRoutine := mRoutine.Parent;
   end;
   Result := False;
 end;
 
 function TGraph.LocalRoutine(ARoutine: TRoutineInfo; const AName: string): TRoutineInfo;
 var
-  Routine, Local: TRoutineInfo;
+  mRoutine, mLocal: TRoutineInfo;
 begin
   // Die Routine selbst, ihre lokalen Routinen und die der umgebenden.
-  Routine := ARoutine;
-  while Routine <> nil do
+  mRoutine := ARoutine;
+  while mRoutine <> nil do
   begin
-    if (Routine.Parent <> nil) and SameText(LastPart(Routine.Name), AName) then
+    if (mRoutine.Parent <> nil) and SameText(LastPart(mRoutine.Name), AName) then
     begin
-      Exit(Routine);
+      Exit(mRoutine);
     end;
-    for Local in Routine.Locals do
+    for mLocal in mRoutine.Locals do
     begin
-      if SameText(LastPart(Local.Name), AName) then
+      if SameText(LastPart(mLocal.Name), AName) then
       begin
-        Exit(Local);
+        Exit(mLocal);
       end;
     end;
-    Routine := Routine.Parent;
+    mRoutine := mRoutine.Parent;
   end;
   Result := nil;
 end;
 
 function TGraph.Member(const AOwner, AName: string): TRoutineInfo;
 var
-  Key: string;
+  mKey: string;
 begin
-  Key := UpperCase(AName);
+  mKey := UpperCase(AName);
   if AOwner <> '' then
   begin
-    Key := UpperCase(AOwner) + '.' + Key;
+    mKey := UpperCase(AOwner) + '.' + mKey;
   end;
-  if (AName = '') or not FByKey.TryGetValue(Key, Result) then
+  if (AName = '') or not FByKey.TryGetValue(mKey, Result) then
   begin
     Result := nil;
   end;
@@ -640,21 +640,21 @@ end;
 /// <summary>Steht ANode an einer Aufrufstelle (Anweisung oder Funktor eines Aufrufs)?</summary>
 function AtCallSite(ANode: TSyntaxNode): Boolean;
 var
-  Parent: TSyntaxNode;
+  mParent: TSyntaxNode;
 begin
-  Parent := ANode.Parent;
-  Result := (Parent <> nil) and ((Parent.Kind = TSyntaxKind.CallStatement) or
-    ((Parent.Kind = TSyntaxKind.Call) and (Parent.ChildCount > 0) and (Parent[0] = ANode)));
+  mParent := ANode.Parent;
+  Result := (mParent <> nil) and ((mParent.Kind = TSyntaxKind.CallStatement) or
+    ((mParent.Kind = TSyntaxKind.Call) and (mParent.ChildCount > 0) and (mParent[0] = ANode)));
 end;
 
 /// <summary>Ist ANode das Ziel einer Zuweisung?</summary>
 function IsAssigned(ANode: TSyntaxNode): Boolean;
 var
-  Parent: TSyntaxNode;
+  mParent: TSyntaxNode;
 begin
-  Parent := ANode.Parent;
-  Result := (Parent <> nil) and (Parent.Kind = TSyntaxKind.AssignStatement) and (Parent.ChildCount > 0) and
-    (Parent[0] = ANode);
+  mParent := ANode.Parent;
+  Result := (mParent <> nil) and (mParent.Kind = TSyntaxKind.AssignStatement) and (mParent.ChildCount > 0) and
+    (mParent[0] = ANode);
 end;
 
 function TGraph.OwnerTarget(const AOwner, AName: string; AWritten: Boolean;
@@ -737,52 +737,52 @@ end;
 
 procedure TGraph.CollectEdges(ARoutine: TRoutineInfo);
 var
-  Stack: TStack<TSyntaxNode>;
-  Node, Body: TSyntaxNode;
-  Declaration: TSyntaxNode;
-  Index: Integer;
+  mStack: TStack<TSyntaxNode>;
+  mNode, mBody: TSyntaxNode;
+  mDeclaration: TSyntaxNode;
+  mIndex: Integer;
 begin
-  Stack := TStack<TSyntaxNode>.Create;
+  mStack := TStack<TSyntaxNode>.Create;
   try
-    for Declaration in ARoutine.Nodes do
+    for mDeclaration in ARoutine.Nodes do
     begin
-      Body := Declaration.FindChild(TSyntaxKind.Block);
-      if Body <> nil then
+      mBody := mDeclaration.FindChild(TSyntaxKind.Block);
+      if mBody <> nil then
       begin
-        Stack.Push(Body);
+        mStack.Push(mBody);
       end;
     end;
-    while Stack.Count > 0 do
+    while mStack.Count > 0 do
     begin
-      Node := Stack.Pop;
-      case Node.Kind of
+      mNode := mStack.Pop;
+      case mNode.Kind of
         // Nicht verfolgt: Vorfahr, spätere Ausführung, unklare Bindung.
         TSyntaxKind.InheritedExpr, TSyntaxKind.AnonymousMethod, TSyntaxKind.WithStatement, TSyntaxKind.AsmBlock,
           TSyntaxKind.RoutineDecl:
           Continue;
         TSyntaxKind.InlineVar, TSyntaxKind.InlineConst:
-          ARoutine.Hidden := ARoutine.Hidden + NamesOf(Node.Name);
+          ARoutine.Hidden := ARoutine.Hidden + NamesOf(mNode.Name);
         TSyntaxKind.Identifier:
-          Resolve(ARoutine, Node, Node.Name, False, TTextRange.Create(Node.StartPos, Node.EndPos));
+          Resolve(ARoutine, mNode, mNode.Name, False, TTextRange.Create(mNode.StartPos, mNode.EndPos));
         TSyntaxKind.MemberAccess:
           begin
             // Self.X: Mitglied der eigenen Klasse; andere Empfänger nur durchsuchen.
-            if (Node.ChildCount > 0) and (Node[0].Kind = TSyntaxKind.Identifier) and SameText(Node[0].Name, 'Self') then
+            if (mNode.ChildCount > 0) and (mNode[0].Kind = TSyntaxKind.Identifier) and SameText(mNode[0].Name, 'Self') then
             begin
-              Resolve(ARoutine, Node, Node.Name, True, TailRange(Node, Node.Name));
+              Resolve(ARoutine, mNode, mNode.Name, True, TailRange(mNode, mNode.Name));
               Continue;
             end;
           end;
       else
         // Übrige Werte bewusst ohne Wirkung.
       end;
-      for Index := Node.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        Stack.Push(Node[Index]);
+        mStack.Push(mNode[mIndex]);
       end;
     end;
   finally
-    Stack.Free;
+    mStack.Free;
   end;
 end;
 
@@ -898,109 +898,109 @@ end;
 
 class function TRecursionAnalysis.Calls(ATree: TSyntaxTree; AMaxDepth: Integer): TArray<TRecursiveCall>;
 var
-  Graph: TGraph;
-  Routine, Step: TRoutineInfo;
-  Edge: TEdge;
-  Path: TArray<TRoutineInfo>;
-  Call: TRecursiveCall;
-  Depth: Integer;
+  mGraph: TGraph;
+  mRoutine, mStep: TRoutineInfo;
+  mEdge: TEdge;
+  mPath: TArray<TRoutineInfo>;
+  mCall: TRecursiveCall;
+  mDepth: Integer;
 begin
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) then
   begin
     Exit;
   end;
-  Depth := AMaxDepth;
-  if Depth < MinDepth then
+  mDepth := AMaxDepth;
+  if mDepth < cMinDepth then
   begin
-    Depth := MinDepth;
+    mDepth := cMinDepth;
   end;
-  if Depth > MaxDepth then
+  if mDepth > cMaxDepth then
   begin
-    Depth := MaxDepth;
+    mDepth := cMaxDepth;
   end;
-  Graph := TGraph.Create(ATree);
+  mGraph := TGraph.Create(ATree);
   try
-    for Routine in Graph.Routines do
+    for mRoutine in mGraph.Routines do
     begin
-      for Edge in Routine.Edges do
+      for mEdge in mRoutine.Edges do
       begin
         // Kreis Routine → Ziel → … → Routine aus höchstens Depth Routinen.
-        Path := PathTo(Edge.Target, Routine, Depth - 1);
-        if Path = nil then
+        mPath := PathTo(mEdge.Target, mRoutine, mDepth - 1);
+        if mPath = nil then
         begin
           Continue;
         end;
-        Call := Default(TRecursiveCall);
-        Call.Range := Edge.Range;
-        Call.Chain := [StepOf(Routine)];
-        for Step in Path do
+        mCall := Default(TRecursiveCall);
+        mCall.Range := mEdge.Range;
+        mCall.Chain := [StepOf(mRoutine)];
+        for mStep in mPath do
         begin
-          Call.Chain := Call.Chain + [StepOf(Step)];
+          mCall.Chain := mCall.Chain + [StepOf(mStep)];
         end;
-        Result := Result + [Call];
+        Result := Result + [mCall];
       end;
     end;
   finally
-    Graph.Free;
+    mGraph.Free;
   end;
 end;
 
 class function TRecursionAnalysis.AccessorTraps(ATree: TSyntaxTree): TArray<TAccessorTrap>;
 var
-  Graph: TGraph;
-  Routine: TRoutineInfo;
-  Edge: TEdge;
-  Trap: TAccessorTrap;
-  Prop: TPropertyInfo;
+  mGraph: TGraph;
+  mRoutine: TRoutineInfo;
+  mEdge: TEdge;
+  mTrap: TAccessorTrap;
+  mProp: TPropertyInfo;
 begin
   Result := nil;
   if (ATree = nil) or (ATree.Root = nil) then
   begin
     Exit;
   end;
-  Graph := TGraph.Create(ATree);
+  mGraph := TGraph.Create(ATree);
   try
-    for Routine in Graph.Routines do
+    for mRoutine in mGraph.Routines do
     begin
-      for Edge in Routine.Edges do
+      for mEdge in mRoutine.Edges do
       begin
         // Zugriff auf eine Property, deren Accessor die Routine selbst ist.
-        if (Edge.PropertyName = '') or (Edge.Target <> Routine) then
+        if (mEdge.PropertyName = '') or (mEdge.Target <> mRoutine) then
         begin
           Continue;
         end;
-        Prop := Graph.PropertyOf(Routine.Owner, Edge.PropertyName);
-        if Prop = nil then
+        mProp := mGraph.PropertyOf(mRoutine.Owner, mEdge.PropertyName);
+        if mProp = nil then
         begin
           Continue;
         end;
-        Trap := Default(TAccessorTrap);
-        Trap.Range := Edge.Range;
-        Trap.PropertyName := Prop.Name;
-        Trap.Accessor := LastPart(Routine.Name);
-        Trap.IsSetter := Edge.Write;
-        Trap.Field := Prop.Field;
-        Result := Result + [Trap];
+        mTrap := Default(TAccessorTrap);
+        mTrap.Range := mEdge.Range;
+        mTrap.PropertyName := mProp.Name;
+        mTrap.Accessor := LastPart(mRoutine.Name);
+        mTrap.IsSetter := mEdge.Write;
+        mTrap.Field := mProp.Field;
+        Result := Result + [mTrap];
       end;
     end;
   finally
-    Graph.Free;
+    mGraph.Free;
   end;
 end;
 
 class function TRecursionAnalysis.ChainText(const ACall: TRecursiveCall): string;
 var
-  Step: TRecursionStep;
+  mStep: TRecursionStep;
 begin
   Result := '';
-  for Step in ACall.Chain do
+  for mStep in ACall.Chain do
   begin
     if Result <> '' then
     begin
       Result := Result + ' → ';
     end;
-    Result := Result + LastPart(Step.Name);
+    Result := Result + LastPart(mStep.Name);
   end;
 end;
 

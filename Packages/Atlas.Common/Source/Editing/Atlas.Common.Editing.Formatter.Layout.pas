@@ -132,15 +132,15 @@ end;
 /// <summary>Tokens je Zeile (Zeile des Anfangs).</summary>
 function TokensByLine(const ATokens: TArray<TPascalToken>; ACount: Integer): TArray<TArray<Integer>>;
 var
-  Index, Line: Integer;
+  mIndex, mLine: Integer;
 begin
   SetLength(Result, ACount);
-  for Index := 0 to High(ATokens) do
+  for mIndex := 0 to High(ATokens) do
   begin
-    Line := ATokens[Index].StartPos.Line;
-    if (Line >= 0) and (Line < ACount) then
+    mLine := ATokens[mIndex].StartPos.Line;
+    if (mLine >= 0) and (mLine < ACount) then
     begin
-      Result[Line] := Result[Line] + [Index];
+      Result[mLine] := Result[mLine] + [mIndex];
     end;
   end;
 end;
@@ -628,29 +628,29 @@ end;
 
 class function TFormatLayout.FrozenLines(const ATokens: TArray<TPascalToken>; ACount: Integer): TArray<Boolean>;
 var
-  Index, Line, AsmDepth: Integer;
-  Token: TPascalToken;
+  mIndex, mLine, mAsmDepth: Integer;
+  mToken: TPascalToken;
 begin
   SetLength(Result, ACount);
-  AsmDepth := 0;
-  for Index := 0 to High(ATokens) do
+  mAsmDepth := 0;
+  for mIndex := 0 to High(ATokens) do
   begin
-    Token := ATokens[Index];
-    for Line := Token.StartPos.Line + 1 to Min(Token.EndPos.Line, ACount - 1) do
+    mToken := ATokens[mIndex];
+    for mLine := mToken.StartPos.Line + 1 to Min(mToken.EndPos.Line, ACount - 1) do
     begin
-      Result[Line] := True;
+      Result[mLine] := True;
     end;
-    if (Token.Kind = TPascalTokenKind.Keyword) and Token.IsKeyword('asm') then
+    if (mToken.Kind = TPascalTokenKind.Keyword) and mToken.IsKeyword('asm') then
     begin
-      Inc(AsmDepth);
+      Inc(mAsmDepth);
     end
-    else if (AsmDepth > 0) and (Token.Kind = TPascalTokenKind.Keyword) and Token.IsKeyword('end') then
+    else if (mAsmDepth > 0) and (mToken.Kind = TPascalTokenKind.Keyword) and mToken.IsKeyword('end') then
     begin
-      Dec(AsmDepth);
+      Dec(mAsmDepth);
     end
-    else if (AsmDepth > 0) and (Token.StartPos.Line < ACount) then
+    else if (mAsmDepth > 0) and (mToken.StartPos.Line < ACount) then
     begin
-      Result[Token.StartPos.Line] := True;
+      Result[mToken.StartPos.Line] := True;
     end;
   end;
 end;

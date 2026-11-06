@@ -38,8 +38,8 @@ type
 
   TLspSymbolPath = class
   public const
-    Method = 'atlas/symbolPath';
-    Command = 'atlas.symbolPath';
+    cMethod = 'atlas/symbolPath';
+    cCommand = 'atlas.symbolPath';
   private
     FIndex: ISymbolIndex;
     FGraphs: TUsesGraphService;
@@ -89,17 +89,17 @@ const
 
 function StringOf(const AObject: TJSONObject; const AName: string): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := '';
   if AObject = nil then
   begin
     Exit;
   end;
-  Value := AObject.GetValue(AName);
-  if Value is TJSONString then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONString then
   begin
-    Result := Trim(Value.Value);
+    Result := Trim(mValue.Value);
   end;
 end;
 
@@ -129,7 +129,7 @@ end;
 constructor TLspSymbolPath.Create(const AIndex: ISymbolIndex; const AReadText: TSymbolPathReadText;
   const ADefines: TUsesDefinesFunc; const AEnsureUnit: TEnsureUnitFunc; const ASourceFor: TLspSymbolPathSourceFunc);
 var
-  ReadText: TSymbolPathReadText;
+  mReadText: TSymbolPathReadText;
 begin
   inherited Create;
   FIndex := AIndex;
@@ -137,11 +137,11 @@ begin
   FEnsureUnit := AEnsureUnit;
   FSourceFor := ASourceFor;
   FGraphs := TUsesGraphService.Create(AIndex, GraphOptions(nil));
-  ReadText := AReadText;
+  mReadText := AReadText;
   FLocator := TUsesLocator.Create(
     function(const AFileName: string; out AText: string): Boolean
     begin
-      Result := Assigned(ReadText) and ReadText(AFileName, AText);
+      Result := Assigned(mReadText) and mReadText(AFileName, AText);
     end, ADefines);
 end;
 
@@ -154,7 +154,7 @@ end;
 
 procedure TLspSymbolPath.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterConcurrentRequest(Method,
+  ADispatcher.RegisterConcurrentRequest(cMethod,
     function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
     begin
       Result := Request(AParams, ACancellation);
@@ -183,7 +183,7 @@ begin
   begin
     if not (mItem is TJSONString) or not TSymbolPathSearch.TryParseEdge(mItem.Value, mKind, mLibrary) then
     begin
-      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
         cTexts[TLspSymbolPathText.ViaKnowsUsesInheritsImplements].Text);
     end;
     if mLibrary then
@@ -198,18 +198,18 @@ begin
   // Nur "library": alle Kantenarten, Bibliothek als Durchgang.
   if ARequest.Via = [] then
   begin
-    ARequest.Via := AllSymbolPathEdges;
+    ARequest.Via := cAllSymbolPathEdges;
   end;
 end;
 
-/// <summary>"maxSteps" zwischen 1 und TSymbolPathRequest.MaxStepsLimit.</summary>
+/// <summary>"maxSteps" zwischen 1 und TSymbolPathRequest.cMaxStepsLimit.</summary>
 function ReadMaxSteps(AValue: TJSONNumber): Integer;
 begin
   Result := AValue.AsInt;
-  if (Result < 1) or (Result > TSymbolPathRequest.MaxStepsLimit) then
+  if (Result < 1) or (Result > TSymbolPathRequest.cMaxStepsLimit) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      cTexts[TLspSymbolPathText.MaxStepsLiesBetween1And].Fmt([TSymbolPathRequest.MaxStepsLimit]));
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TLspSymbolPathText.MaxStepsLiesBetween1And].Fmt([TSymbolPathRequest.cMaxStepsLimit]));
   end;
 end;
 
@@ -222,7 +222,7 @@ begin
   Result.To_ := StringOf(AParams, 'to');
   if (Result.From = '') or (Result.To_ = '') then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TLspSymbolPathText.FromAndToAreRequired].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TLspSymbolPathText.FromAndToAreRequired].Text);
   end;
   mValue := ParamValue(AParams, 'via');
   if mValue is TJSONArray then
@@ -257,90 +257,90 @@ end;
 
 function TLspSymbolPath.Request(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
-  Params, Answer: TJSONObject;
-  Settings: TServerSettings;
-  Namespaces: TArray<string>;
-  Search: TSymbolPathRequest;
-  Found: TSymbolPathResult;
-  Pair: TJSONPair;
-  Data: TJSONObject;
-  Token: IJsonRpcCancellationToken;
+  mParams, mAnswer: TJSONObject;
+  mSettings: TServerSettings;
+  mNamespaces: TArray<string>;
+  mSearch: TSymbolPathRequest;
+  mFound: TSymbolPathResult;
+  mPair: TJSONPair;
+  mData: TJSONObject;
+  mToken: IJsonRpcCancellationToken;
 begin
   if AParams is TJSONObject then
   begin
-    Params := TJSONObject(AParams);
+    mParams := TJSONObject(AParams);
   end
   else
   begin
-    Params := nil;
+    mParams := nil;
   end;
-  if not (Assigned(FSourceFor) and FSourceFor(PathOf(StringOf(Params, 'uri')), Settings, Namespaces)) then
+  if not (Assigned(FSourceFor) and FSourceFor(PathOf(StringOf(mParams, 'uri')), mSettings, mNamespaces)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TLspSymbolPathText.NoProjectLoaded].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TLspSymbolPathText.NoProjectLoaded].Text);
   end;
-  Answer := TJSONObject.Create;
+  mAnswer := TJSONObject.Create;
   try
-    Answer.AddPair('enabled', TJSONBool.Create(Settings.Navigation.SymbolPath));
-    if Settings.Navigation.SymbolPath then
+    mAnswer.AddPair('enabled', TJSONBool.Create(mSettings.Navigation.SymbolPath));
+    if mSettings.Navigation.SymbolPath then
     begin
-      Search := ReadRequest(Params);
-      Search.TimeoutMs := Settings.RequestTimeoutMs div 5 * 4;
+      mSearch := ReadRequest(mParams);
+      mSearch.TimeoutMs := mSettings.RequestTimeoutMs div 5 * 4;
       // Namensräume des Projekts: neuer Graph nur, wenn sie sich ändern.
-      if string.Join(',', FGraphs.Options.Namespaces) <> string.Join(',', Namespaces) then
+      if string.Join(',', FGraphs.Options.Namespaces) <> string.Join(',', mNamespaces) then
       begin
-        FGraphs.SetOptions(GraphOptions(Namespaces));
+        FGraphs.SetOptions(GraphOptions(mNamespaces));
       end;
-      Token := ACancellation;
-      Found := TSymbolPathSearch.Run(SourcesOf(FIndex, FGraphs, FLocator, FReadText, FEnsureUnit, Namespaces),
-        Search,
+      mToken := ACancellation;
+      mFound := TSymbolPathSearch.Run(SourcesOf(FIndex, FGraphs, FLocator, FReadText, FEnsureUnit, mNamespaces),
+        mSearch,
         function: Boolean
         begin
-          Result := (Token <> nil) and Token.IsCancellationRequested;
+          Result := (mToken <> nil) and mToken.IsCancellationRequested;
         end);
-      Data := TSymbolPathSearch.ToJson(Found);
+      mData := TSymbolPathSearch.ToJson(mFound);
       try
-        for Pair in Data do
+        for mPair in mData do
         begin
-          Answer.AddPair(Pair.JsonString.Value, TJSONValue(Pair.JsonValue.Clone));
+          mAnswer.AddPair(mPair.JsonString.Value, TJSONValue(mPair.JsonValue.Clone));
         end;
       finally
-        Data.Free;
+        mData.Free;
       end;
     end;
-    Result := Answer;
-    Answer := nil;
+    Result := mAnswer;
+    mAnswer := nil;
   finally
-    Answer.Free;
+    mAnswer.Free;
   end;
 end;
 
 function TLspSymbolPath.Execute(const AArguments: TJSONArray): TJSONValue;
 var
-  Params: TJSONObject;
-  Options: TJSONObject;
-  Pair: TJSONPair;
+  mParams: TJSONObject;
+  mOptions: TJSONObject;
+  mPair: TJSONPair;
 begin
-  Params := TJSONObject.Create;
+  mParams := TJSONObject.Create;
   try
     if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
     begin
-      Params.AddPair('uri', AArguments.Items[0].Value);
+      mParams.AddPair('uri', AArguments.Items[0].Value);
     end;
     if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONObject) then
     begin
-      Options := TJSONObject(AArguments.Items[1]);
-      for Pair in Options do
+      mOptions := TJSONObject(AArguments.Items[1]);
+      for mPair in mOptions do
       begin
-        if Pair.JsonString.Value <> 'uri' then
+        if mPair.JsonString.Value <> 'uri' then
         begin
-          Params.AddPair(Pair.JsonString.Value, TJSONValue(Pair.JsonValue.Clone));
+          mParams.AddPair(mPair.JsonString.Value, TJSONValue(mPair.JsonValue.Clone));
         end;
       end;
     end;
     // Befehle laufen ohne eigenes Token-Argument: Abbruch über die laufende Anfrage (A-06).
-    Result := Request(Params, TJsonRpcCurrentRequest.Token);
+    Result := Request(mParams, TJsonRpcCurrentRequest.Token);
   finally
-    Params.Free;
+    mParams.Free;
   end;
 end;
 

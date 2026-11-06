@@ -329,7 +329,7 @@ begin
     on E: EJsonRpcError do
       mCode := E.Code;
   end;
-  Assert.AreEqual(TJsonRpcErrorCode.InvalidParams, mCode);
+  Assert.AreEqual(TJsonRpcErrorCode.cInvalidParams, mCode);
 end;
 
 procedure TMcpPromptsTests.UnitOutsideWorkspaceIsErrorWithReason;

@@ -24,20 +24,20 @@ uses
 
 const
   // Ansichten des FMX-Designers; iPhone…, iPad…, Android… über das Präfix.
-  ViewNames: array[0..10] of string = ('Windows', 'Macintosh', 'Mac', 'Linux', 'Surface', 'LgXhdpiPh',
+  cViewNames: array[0..10] of string = ('Windows', 'Macintosh', 'Mac', 'Linux', 'Surface', 'LgXhdpiPh',
     'LgXhdpiTb', 'SmXhdpiPh', 'NmXhdpiPh', 'XLgXhdpiTb', 'GoogleGlass');
-  ViewPrefixes: array[0..3] of string = ('iPhone', 'iPad', 'iOS', 'Android');
+  cViewPrefixes: array[0..3] of string = ('iPhone', 'iPad', 'iOS', 'Android');
 
 function IsView(const ASegment: string): Boolean;
 var
-  Prefix: string;
+  mPrefix: string;
 begin
-  Result := IndexText(ASegment, ViewNames) >= 0;
+  Result := IndexText(ASegment, cViewNames) >= 0;
   if not Result then
   begin
-    for Prefix in ViewPrefixes do
+    for mPrefix in cViewPrefixes do
     begin
-      if StartsText(Prefix, ASegment) then
+      if StartsText(mPrefix, ASegment) then
       begin
         Exit(True);
       end;
@@ -47,18 +47,18 @@ end;
 
 class function TFormFiles.UnitFile(const AFormFile: string): string;
 var
-  Base, Segment: string;
+  mBase, mSegment: string;
 begin
-  Base := ChangeFileExt(AFormFile, '');
+  mBase := ChangeFileExt(AFormFile, '');
   if SameText(ExtractFileExt(AFormFile), '.fmx') then
   begin
-    Segment := ExtractFileExt(Base);
-    if (Segment <> '') and IsView(Copy(Segment, 2, MaxInt)) then
+    mSegment := ExtractFileExt(mBase);
+    if (mSegment <> '') and IsView(Copy(mSegment, 2, MaxInt)) then
     begin
-      Base := ChangeFileExt(Base, '');
+      mBase := ChangeFileExt(mBase, '');
     end;
   end;
-  Result := Base + '.pas';
+  Result := mBase + '.pas';
 end;
 
 class function TFormFiles.FormFiles(const AUnitFile, AUnitText: string): TArray<string>;
@@ -72,41 +72,41 @@ class function TFormFiles.FormFiles(const AUnitFile, AUnitText: string): TArray<
   end;
 
 var
-  At, Stop: Integer;
-  Text, Name, Folder, Upper: string;
+  mAt, mStop: Integer;
+  mText, mName, mFolder, mUpper: string;
 begin
   Result := nil;
   Add(ChangeFileExt(AUnitFile, '.dfm'));
   Add(ChangeFileExt(AUnitFile, '.fmx'));
-  Folder := ExtractFilePath(AUnitFile);
-  Upper := UpperCase(AUnitText);
-  At := Pos('{$R ', Upper);
-  while At > 0 do
+  mFolder := ExtractFilePath(AUnitFile);
+  mUpper := UpperCase(AUnitText);
+  mAt := Pos('{$R ', mUpper);
+  while mAt > 0 do
   begin
-    Stop := PosEx('}', AUnitText, At);
-    if Stop = 0 then
+    mStop := PosEx('}', AUnitText, mAt);
+    if mStop = 0 then
     begin
       Break;
     end;
-    Text := Trim(Copy(AUnitText, At + 4, Stop - At - 4));
-    if Pos(' ', Text) > 0 then
+    mText := Trim(Copy(AUnitText, mAt + 4, mStop - mAt - 4));
+    if Pos(' ', mText) > 0 then
     begin
-      Text := Copy(Text, 1, Pos(' ', Text) - 1);
+      mText := Copy(mText, 1, Pos(' ', mText) - 1);
     end;
-    Text := StringReplace(Text, '''', '', [rfReplaceAll]);
-    if EndsText('.fmx', Text) then
+    mText := StringReplace(mText, '''', '', [rfReplaceAll]);
+    if EndsText('.fmx', mText) then
     begin
-      if StartsText('*', Text) then
+      if StartsText('*', mText) then
       begin
-        Name := ChangeFileExt(AUnitFile, '') + Copy(Text, 2, MaxInt);
+        mName := ChangeFileExt(AUnitFile, '') + Copy(mText, 2, MaxInt);
       end
       else
       begin
-        Name := Folder + Text;
+        mName := mFolder + mText;
       end;
-      Add(Name);
+      Add(mName);
     end;
-    At := PosEx('{$R ', Upper, Stop);
+    mAt := PosEx('{$R ', mUpper, mStop);
   end;
 end;
 

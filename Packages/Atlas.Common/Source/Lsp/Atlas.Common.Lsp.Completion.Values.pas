@@ -344,7 +344,7 @@ function EnumItem(const AEnum: TEnumType; AIndex: Integer): TCompletionItem;
 begin
   Result := Default(TCompletionItem);
   Result.Name := AEnum.Values[AIndex];
-  Result.Kind := KindEnumMember;
+  Result.Kind := cKindEnumMember;
   Result.Detail := AEnum.Name;
   Result.Container := AEnum.Name;
   Result.Ordinal := AIndex + 1;
@@ -387,7 +387,7 @@ begin
     AItem.Name := cTexts[TValuesText.InsertAll].Text;
     AItem.Count := Length(mMissing);
   end;
-  AItem.Kind := KindSnippet;
+  AItem.Kind := cKindSnippet;
   AItem.Detail := AEnum.Name;
   AItem.Fits := True;
   AItem.Pinned := True;
@@ -542,7 +542,7 @@ begin
   FDeclType := FTypeName;
   if FDeclType = '' then
   begin
-    FDeclType := TDeclareUnknown.TypePlaceholder;
+    FDeclType := TDeclareUnknown.cTypePlaceholder;
   end;
   FBase := Default(TCompletionItem);
   FBase.Action := 'declare';
@@ -562,7 +562,7 @@ begin
   // Lokale Variable im var-Abschnitt; der Cursor bleibt im Namen.
   mItem := FBase;
   mItem.Name := cTexts[TValuesText.CreateALocalVariable].Text;
-  mItem.Kind := KindVariable;
+  mItem.Kind := cKindVariable;
   mItem.Detail := Format('%s: %s', [FSlot.Name, FDeclType]);
   mItem.TextEdit := TRuleEdit.Create(FSlot.NameRange, TDeclareUnknown.WithCaret(FSlot.Name, FSlot.CursorOffset));
   mItem.AdditionalEdits := [Atlas.Common.Editing.CommandSource.AddLocal(FSource, FRoutine, TSyntaxKind.VarSection,
@@ -573,7 +573,7 @@ begin
   begin
     mItem := FBase;
     mItem.Name := cTexts[TValuesText.CreateInlineVariable].Text;
-    mItem.Kind := KindVariable;
+    mItem.Kind := cKindVariable;
     mItem.Detail := Format('var %s := …', [FSlot.Name]);
     mItem.TextEdit := TRuleEdit.Create(FSlot.NameRange, TDeclareUnknown.WithCaret('var ' + FSlot.Name,
       FSlot.CursorOffset + 4));
@@ -632,7 +632,7 @@ begin
   end;
   mItem := FBase;
   mItem.Name := cTexts[TValuesText.CreateField].Fmt([mField]);
-  mItem.Kind := KindField;
+  mItem.Kind := cKindField;
   mItem.Detail := Format('%s: %s', [mField, FDeclType]);
   // Die Verwendung heißt danach wie das Feld; der Cursor bleibt an derselben Stelle im Namen.
   mItem.TextEdit := TRuleEdit.Create(FSlot.NameRange, TDeclareUnknown.WithCaret(mField,
@@ -680,7 +680,7 @@ begin
   end;
   mItem := FBase;
   mItem.Name := cTexts[TValuesText.CreateConstant].Text;
-  mItem.Kind := KindConstant;
+  mItem.Kind := cKindConstant;
   mItem.Detail := Format('%s = %s;', [FSlot.Name, TDeclareUnknown.DefaultValue(FTypeName)]);
   mItem.TextEdit := TRuleEdit.Create(FSlot.NameRange, TDeclareUnknown.WithCaret(FSlot.Name, FSlot.CursorOffset));
   mItem.AdditionalEdits := [ConstantEdit(mItem.Detail)];
@@ -793,7 +793,7 @@ begin
   end;
   for mIndex := 0 to High(mEnum.Values) do
   begin
-    if MatchScore(mEnum.Values[mIndex], mContext.Prefix, ARequest.Matching) <> TFuzzyMatch.NoMatch then
+    if MatchScore(mEnum.Values[mIndex], mContext.Prefix, ARequest.Matching) <> TFuzzyMatch.cNoMatch then
     begin
       mItem := EnumItem(mEnum, mIndex);
       mItem.Expected := mExpected;
@@ -1076,7 +1076,7 @@ var
   mField: TAssignField;
   mAssignment: TCompletionAssignment;
 begin
-  if Length(AFields) > TAssignFields.ListThreshold then
+  if Length(AFields) > TAssignFields.cListThreshold then
   begin
     // Zuerst die Liste mit Kontrollkästchen: je Zeile die Zuweisung samt Umbruch für die nächste.
     AItem.TextEdit.NewText := AExpr + '.';
@@ -1241,7 +1241,7 @@ begin
     Exit;
   end;
   AItem.Name := TAssignFields.Title(Length(mFields));
-  AItem.Kind := KindSnippet;
+  AItem.Kind := cKindSnippet;
   AItem.Detail := mType.Name;
   AItem.Fits := True;
   AItem.Pinned := True;

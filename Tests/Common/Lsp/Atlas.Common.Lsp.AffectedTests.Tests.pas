@@ -433,7 +433,7 @@ begin
   mRequest.Files := ProjectFiles;
   mRequest.TestPrograms := APrograms;
   mRequest.Options := TImpactOptions.Default;
-  mRequest.Options.Depth := TAffectedTests.DefaultDepth;
+  mRequest.Options.Depth := TAffectedTests.cDefaultDepth;
   mRequest.Options.Tests := TImpactTestScope.FromProgram('{unit}.Tests', ProgramTests);
   mRequest.Base := 'main';
   Result := TAffectedTests.Determine(FResolver, FIndex, AInputs, mRequest,
@@ -844,7 +844,7 @@ begin
   mRequest := Default(TAffectedRequest);
   mRequest.Files := mFiles;
   mRequest.Options := TImpactOptions.Default;
-  mRequest.Options.Depth := TAffectedTests.DefaultDepth;
+  mRequest.Options.Depth := TAffectedTests.cDefaultDepth;
   mRequest.Options.Tests := TImpactTestScope.FromProgram('{unit}.Tests', '');
   mResolver := TNameResolver.Create(mBig);
   try

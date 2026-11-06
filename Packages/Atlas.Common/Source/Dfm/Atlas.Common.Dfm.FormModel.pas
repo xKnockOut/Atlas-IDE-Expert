@@ -90,7 +90,8 @@ type
     property Document: TDfmDocument read FDocument;
     /// <summary>Klasse des Formulars, z. B. TForm1; '' ohne Wurzelobjekt.</summary>
     property FormClass: string read GetFormClass;
-    /// <summary>Vorfahr der Formularklasse laut Unit (z. B. TBasisForm bei geerbten Formularen); '' ohne Unit.</summary>
+    /// <summary>Vorfahr der Formularklasse laut Unit (z. B. TBasisForm bei geerbten Formularen); '' ohne
+    /// Unit.</summary>
     property Ancestor: string read FAncestor;
     /// <summary>Alle Objekte außer dem Formular selbst und Collection-Einträgen.</summary>
     property Components: TArray<TFormComponent> read FComponents;
@@ -119,7 +120,7 @@ end;
 
 constructor TFormModel.Create(const AFormText, AUnitText, AUnitFile: string);
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
   inherited Create;
   // Binäre Formulare liest der Parser über die Umwandlung in Text (#122).
@@ -129,12 +130,12 @@ begin
   begin
     FUnit := TIndexExtractor.ExtractText(AUnitText, AUnitFile, nil);
     FHasUnit := True;
-    for Symbol in FUnit.Symbols do
+    for mSymbol in FUnit.Symbols do
     begin
-      if (Symbol.Kind = TIndexSymbolKind.ClassType) and (Symbol.Container = '') and
-        SameText(Symbol.Name, FormClass) and (Length(Symbol.Ancestors) > 0) then
+      if (mSymbol.Kind = TIndexSymbolKind.ClassType) and (mSymbol.Container = '') and
+        SameText(mSymbol.Name, FormClass) and (Length(mSymbol.Ancestors) > 0) then
       begin
-        FAncestor := Symbol.Ancestors[0];
+        FAncestor := mSymbol.Ancestors[0];
       end;
     end;
   end;
@@ -170,18 +171,18 @@ end;
 
 function TFormModel.FindMember(const AName: string; AKinds: TIndexSymbolKinds; out ASymbol: TIndexSymbol): Boolean;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
   Result := False;
   if not FHasUnit then
   begin
     Exit;
   end;
-  for Symbol in FUnit.Symbols do
+  for mSymbol in FUnit.Symbols do
   begin
-    if (Symbol.Kind in AKinds) and SameText(Symbol.Container, FormClass) and SameText(Symbol.Name, AName) then
+    if (mSymbol.Kind in AKinds) and SameText(mSymbol.Container, FormClass) and SameText(mSymbol.Name, AName) then
     begin
-      ASymbol := Symbol;
+      ASymbol := mSymbol;
       // Die Deklaration in der Klasse kommt vor dem Rumpf; sie zählt.
       Exit(True);
     end;
@@ -191,79 +192,79 @@ end;
 /// <summary>Wert der Form Modul.Komponente (zwei Bezeichner mit Punkt)?</summary>
 function SplitModuleReference(const AValue: string; out AModule, AComponent: string): Boolean;
 var
-  Dot, Index: Integer;
+  mDot, mIndex: Integer;
 begin
   Result := False;
-  Dot := Pos('.', AValue);
-  if (Dot < 2) or (Dot = Length(AValue)) or (PosEx('.', AValue, Dot + 1) > 0) then
+  mDot := Pos('.', AValue);
+  if (mDot < 2) or (mDot = Length(AValue)) or (PosEx('.', AValue, mDot + 1) > 0) then
   begin
     Exit;
   end;
-  for Index := 1 to Length(AValue) do
+  for mIndex := 1 to Length(AValue) do
   begin
-    if not CharInSet(AValue[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_', '.']) then
+    if not CharInSet(AValue[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '_', '.']) then
     begin
       Exit;
     end;
   end;
   if not CharInSet(AValue[1], ['A'..'Z', 'a'..'z', '_']) or
-    not CharInSet(AValue[Dot + 1], ['A'..'Z', 'a'..'z', '_']) then
+    not CharInSet(AValue[mDot + 1], ['A'..'Z', 'a'..'z', '_']) then
   begin
     Exit;
   end;
-  AModule := Copy(AValue, 1, Dot - 1);
-  AComponent := Copy(AValue, Dot + 1, MaxInt);
+  AModule := Copy(AValue, 1, mDot - 1);
+  AComponent := Copy(AValue, mDot + 1, MaxInt);
   Result := True;
 end;
 
 procedure TFormModel.Collect(AObject: TDfmObject);
 var
-  Component: TFormComponent;
-  Event: TFormEvent;
-  Reference: TFormModuleReference;
-  Item: TDfmProperty;
-  Child: TDfmObject;
+  mComponent: TFormComponent;
+  mEvent: TFormEvent;
+  mReference: TFormModuleReference;
+  mItem: TDfmProperty;
+  mChild: TDfmObject;
 begin
   if (AObject <> FDocument.Root) and (AObject.Kind <> TDfmObjectKind.Item) and (AObject.Name <> '') then
   begin
-    Component := Default(TFormComponent);
-    Component.Obj := AObject;
-    Component.IsInherited := AObject.Kind = TDfmObjectKind.Inherited_;
-    Component.HasField := FindMember(AObject.Name, [TIndexSymbolKind.Field], Component.Field);
-    FComponents := FComponents + [Component];
+    mComponent := Default(TFormComponent);
+    mComponent.Obj := AObject;
+    mComponent.IsInherited := AObject.Kind = TDfmObjectKind.Inherited_;
+    mComponent.HasField := FindMember(AObject.Name, [TIndexSymbolKind.Field], mComponent.Field);
+    FComponents := FComponents + [mComponent];
   end;
-  for Item in AObject.Properties do
+  for mItem in AObject.Properties do
   begin
-    if Item.IsEvent then
+    if mItem.IsEvent then
     begin
-      Event := Default(TFormEvent);
-      Event.Obj := AObject;
-      Event.Event := Item;
-      Event.HasMethod := FindMember(Item.Value, [TIndexSymbolKind.Method], Event.Method);
-      FEvents := FEvents + [Event];
+      mEvent := Default(TFormEvent);
+      mEvent.Obj := AObject;
+      mEvent.Event := mItem;
+      mEvent.HasMethod := FindMember(mItem.Value, [TIndexSymbolKind.Method], mEvent.Method);
+      FEvents := FEvents + [mEvent];
     end
-    else if SplitModuleReference(Item.Value, Reference.ModuleName, Reference.ComponentName) then
+    else if SplitModuleReference(mItem.Value, mReference.ModuleName, mReference.ComponentName) then
     begin
-      Reference.Obj := AObject;
-      Reference.Reference := Item;
-      FReferences := FReferences + [Reference];
+      mReference.Obj := AObject;
+      mReference.Reference := mItem;
+      FReferences := FReferences + [mReference];
     end;
   end;
-  for Child in AObject.Children do
+  for mChild in AObject.Children do
   begin
-    Collect(Child);
+    Collect(mChild);
   end;
 end;
 
 function TFormModel.FindComponent(const AName: string): TDfmObject;
 var
-  Component: TFormComponent;
+  mComponent: TFormComponent;
 begin
-  for Component in FComponents do
+  for mComponent in FComponents do
   begin
-    if SameText(Component.Obj.Name, AName) then
+    if SameText(mComponent.Obj.Name, AName) then
     begin
-      Exit(Component.Obj);
+      Exit(mComponent.Obj);
     end;
   end;
   Result := nil;
@@ -307,29 +308,29 @@ end;
 
 procedure SortByPosition(var ARanges: TArray<TTextRange>);
 var
-  Index, Inner: Integer;
-  Swap: TTextRange;
+  mIndex, mInner: Integer;
+  mSwap: TTextRange;
 begin
   // Wenige Einträge: Einfügesortierung genügt.
-  for Index := 1 to High(ARanges) do
+  for mIndex := 1 to High(ARanges) do
   begin
-    Inner := Index;
-    while (Inner > 0) and ((ARanges[Inner - 1].StartPos.Line > ARanges[Inner].StartPos.Line) or
-      ((ARanges[Inner - 1].StartPos.Line = ARanges[Inner].StartPos.Line) and
-      (ARanges[Inner - 1].StartPos.Character > ARanges[Inner].StartPos.Character))) do
+    mInner := mIndex;
+    while (mInner > 0) and ((ARanges[mInner - 1].StartPos.Line > ARanges[mInner].StartPos.Line) or
+      ((ARanges[mInner - 1].StartPos.Line = ARanges[mInner].StartPos.Line) and
+      (ARanges[mInner - 1].StartPos.Character > ARanges[mInner].StartPos.Character))) do
     begin
-      Swap := ARanges[Inner - 1];
-      ARanges[Inner - 1] := ARanges[Inner];
-      ARanges[Inner] := Swap;
-      Dec(Inner);
+      mSwap := ARanges[mInner - 1];
+      ARanges[mInner - 1] := ARanges[mInner];
+      ARanges[mInner] := mSwap;
+      Dec(mInner);
     end;
   end;
 end;
 
 function TFormModel.Occurrences(const AName: string): TArray<TTextRange>;
 var
-  Component: TFormComponent;
-  Event: TFormEvent;
+  mComponent: TFormComponent;
+  mEvent: TFormEvent;
 begin
   Result := nil;
   if FBinary or (FDocument = nil) then
@@ -341,18 +342,18 @@ begin
   begin
     Result := Result + [FDocument.Root.NameRange];
   end;
-  for Component in FComponents do
+  for mComponent in FComponents do
   begin
-    if SameText(Component.Obj.Name, AName) then
+    if SameText(mComponent.Obj.Name, AName) then
     begin
-      Result := Result + [Component.Obj.NameRange];
+      Result := Result + [mComponent.Obj.NameRange];
     end;
   end;
-  for Event in FEvents do
+  for mEvent in FEvents do
   begin
-    if SameText(Event.Event.Value, AName) then
+    if SameText(mEvent.Event.Value, AName) then
     begin
-      Result := Result + [Event.Event.ValueRange];
+      Result := Result + [mEvent.Event.ValueRange];
     end;
   end;
   SortByPosition(Result);

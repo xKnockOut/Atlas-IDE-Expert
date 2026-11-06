@@ -25,8 +25,8 @@ uses
   Atlas.Common.Rules.Contract;
 
 const
-  CaseMissingEnumValueRuleId = 'case-missing-enum-value';
-  DuplicateCaseLabelRuleId = 'duplicate-case-label';
+  cCaseMissingEnumValueRuleId = 'case-missing-enum-value';
+  cDuplicateCaseLabelRuleId = 'duplicate-case-label';
 
 type
   TCaseMissingEnumValueRule = class(TInterfacedObject, IRule)
@@ -88,7 +88,7 @@ const
 
 function TCaseMissingEnumValueRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(CaseMissingEnumValueRuleId, TRuleSeverity.Warning,
+  Result := TRuleDescriptor.Create(cCaseMissingEnumValueRuleId, TRuleSeverity.Warning,
     cTexts[TStatementsCasesText.Title].Text);
 end;
 
@@ -109,47 +109,47 @@ end;
 
 procedure TCaseMissingEnumValueRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Resolver: TNameResolver;
+  mResolver: TNameResolver;
   mCache: IRuleDerivedCache;
-  FileName: string;
-  RequireElse: Boolean;
+  mFileName: string;
+  mRequireElse: Boolean;
 
   // Kette A.B.C aus Bezeichnern; False bei Aufrufen, Indizes und Ausdrücken.
   function Chain(ANode: TSyntaxNode; var ANames: TArray<string>): Boolean;
   var
-    Node: TSyntaxNode;
-    Members: TArray<string>;
-    Index: Integer;
+    mNode: TSyntaxNode;
+    mMembers: TArray<string>;
+    mIndex: Integer;
   begin
     // Iterativ (Bericht M1): von rechts nach links an der Kette entlang; die Namen der Zugriffe kommen erst nach
     // dem Bezeichner ganz links dazu.
-    Members := nil;
-    Node := ANode;
-    while (Node.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.ParenExpr]) and (Node.ChildCount = 1) do
+    mMembers := nil;
+    mNode := ANode;
+    while (mNode.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.ParenExpr]) and (mNode.ChildCount = 1) do
     begin
-      if Node.Kind = TSyntaxKind.MemberAccess then
+      if mNode.Kind = TSyntaxKind.MemberAccess then
       begin
-        Members := Members + [Node.Name];
+        mMembers := mMembers + [mNode.Name];
       end;
-      Node := Node[0];
+      mNode := mNode[0];
     end;
-    Result := Node.Kind = TSyntaxKind.Identifier;
+    Result := mNode.Kind = TSyntaxKind.Identifier;
     if not Result then
     begin
       Exit;
     end;
-    ANames := ANames + [Node.Name];
-    for Index := High(Members) downto 0 do
+    ANames := ANames + [mNode.Name];
+    for mIndex := High(mMembers) downto 0 do
     begin
-      ANames := ANames + [Members[Index]];
+      ANames := ANames + [mMembers[mIndex]];
     end;
   end;
 
   function OwnerUnit(const AType: TResolvedSymbol; out AUnit: TUnitIndex): Boolean;
   begin
-    if SameText(AType.FileName, FileName) then
+    if SameText(AType.FileName, mFileName) then
     begin
-      AUnit := Resolver.ExtractedUnit(AContext.Tree, FileName);
+      AUnit := mResolver.ExtractedUnit(AContext.Tree, mFileName);
       Exit(True);
     end;
     Result := (AContext.Index <> nil) and AContext.Index.FindFile(AType.FileName, AUnit);
@@ -158,24 +158,24 @@ var
   // Werte des Aufzählungstyps in Deklarationsreihenfolge; Aliase werden verfolgt.
   function EnumValues(AType: TResolvedSymbol; out ATypeName: string): TArray<string>;
   var
-    Owner: TUnitIndex;
-    Step: Integer;
+    mOwner: TUnitIndex;
+    mStep: Integer;
   begin
     Result := nil;
     ATypeName := '';
-    for Step := 1 to 4 do
+    for mStep := 1 to 4 do
     begin
-      if not AType.Found or not AType.IsType or not OwnerUnit(AType, Owner) then
+      if not AType.Found or not AType.IsType or not OwnerUnit(AType, mOwner) then
       begin
         Exit;
       end;
       if AType.SymbolKind = TIndexSymbolKind.EnumType then
       begin
         ATypeName := AType.Name;
-        Exit(EnumMembers(Owner, AType.QualifiedName));
+        Exit(EnumMembers(mOwner, AType.QualifiedName));
       end;
       if (AType.SymbolKind <> TIndexSymbolKind.TypeAlias) or (AType.TypeName = '') or
-        not Resolver.ResolveTypeFrom(Owner, AType.TypeName, AType) then
+        not mResolver.ResolveTypeFrom(mOwner, AType.TypeName, AType) then
       begin
         Exit;
       end;
@@ -194,7 +194,7 @@ var
     AType := Default(TResolvedSymbol);
     Result := Chain(ACase[0], mNames) and TCaseCompletion.OfPosition(AContext.Tree, ACase, mOfPos) and
       TCaseCompletion.BranchSlot(AContext.Text, AContext.Tree.Tokens, mOfPos, ASlot);
-    Result := Result and Resolver.ChainType(AContext.Tree, FileName, mNames, ACase[0].EndOffset, mChain) and
+    Result := Result and mResolver.ChainType(AContext.Tree, mFileName, mNames, ACase[0].EndOffset, mChain) and
       mChain.TypeFound;
     if Result then
     begin
@@ -238,7 +238,7 @@ var
     mTypeName: string;
   begin
     mHasElse := (ACase.ChildCount > 0) and (ACase.FindChild(TSyntaxKind.CaseElse) <> nil);
-    if (ACase.ChildCount = 0) or (mHasElse and not RequireElse) or not SelectorType(ACase, mSlot, mTypeSymbol) then
+    if (ACase.ChildCount = 0) or (mHasElse and not mRequireElse) or not SelectorType(ACase, mSlot, mTypeSymbol) then
     begin
       Exit;
     end;
@@ -254,28 +254,28 @@ var
 
   procedure Visit(ARoot: TSyntaxNode);
   var
-    Index: Integer;
-    Node: TSyntaxNode;
-    Pending: TStack<TSyntaxNode>;
+    mIndex: Integer;
+    mNode: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
   begin
     // Iterativ (Bericht M1).
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ARoot);
-      while Pending.Count > 0 do
+      mPending.Push(ARoot);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if Node.Kind = TSyntaxKind.CaseStatement then
+        mNode := mPending.Pop;
+        if mNode.Kind = TSyntaxKind.CaseStatement then
         begin
-          CheckCase(Node);
+          CheckCase(mNode);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
@@ -284,23 +284,24 @@ begin
   begin
     Exit;
   end;
-  RequireElse := TRuleOptions.Bool(AContext.Options, 'requireElse', False);
-  FileName := ContextFileName(AContext);
+  mRequireElse := TRuleOptions.Bool(AContext.Options, 'requireElse', False);
+  mFileName := ContextFileName(AContext);
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
-  Resolver := TRuleDerived.Resolver(mCache, AContext);
-  Resolver.PinTree(AContext.Tree, FileName);
+  mResolver := TRuleDerived.Resolver(mCache, AContext);
+  mResolver.PinTree(AContext.Tree, mFileName);
   try
     Visit(AContext.Tree.Root);
   finally
-    Resolver.UnpinTree;
+    mResolver.UnpinTree;
   end;
 end;
 
 { TDuplicateCaseLabelRule }
 
 type
-  /// <summary>Eine Marke: Token AFirst..ALast, ausgewertet als Bereich Low..High (Known) oder nur über den Text.</summary>
+  /// <summary>Eine Marke: Token AFirst..ALast, ausgewertet als Bereich Low..High (Known) oder nur über den
+  /// Text.</summary>
   TCaseLabel = record
     Item: TSyntaxNode;
     First: Integer;
@@ -317,36 +318,36 @@ type
 
 function TDuplicateCaseLabelRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(DuplicateCaseLabelRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cDuplicateCaseLabelRuleId, TRuleSeverity.Error,
     cTexts[TStatementsCasesText.DuplicateTitle].Text);
 end;
 
 procedure TDuplicateCaseLabelRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TTokens;
-  Values: TConstantValues;
-  Paths: TArray<string>;
+  mTokens: TTokens;
+  mValues: TConstantValues;
+  mPaths: TArray<string>;
 
   function LabelText(const ALabel: TCaseLabel): string;
   begin
-    Result := SourceText(AContext.Text, Tokens, ALabel.First, ALabel.Last);
+    Result := SourceText(AContext.Text, mTokens, ALabel.First, ALabel.Last);
   end;
 
   // Vergleichstext: Bezeichner ohne Groß-/Kleinschreibung, Literale wie geschrieben ('a' <> 'A').
   function LabelKey(AFirst, ALast: Integer): string;
   var
-    Index: Integer;
+    mIndex: Integer;
   begin
     Result := '';
-    for Index := AFirst to ALast do
+    for mIndex := AFirst to ALast do
     begin
-      if Tokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword] then
+      if mTokens[mIndex].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword] then
       begin
-        Result := Result + LowerCase(Tokens[Index].Text) + ' ';
+        Result := Result + LowerCase(mTokens[mIndex].Text) + ' ';
       end
-      else if not IsTrivia(Tokens[Index]) then
+      else if not IsTrivia(mTokens[mIndex]) then
       begin
-        Result := Result + Tokens[Index].Text + ' ';
+        Result := Result + mTokens[mIndex].Text + ' ';
       end;
     end;
   end;
@@ -359,29 +360,29 @@ var
     mItem: TCaseLabel;
   begin
     AParts := nil;
-    mFirst := NextCode(Tokens, TokenFrom(Tokens, AItem.StartOffset));
-    mColon := DepthZero(Tokens, mFirst, TokenFrom(Tokens, AItem.EndOffset), ':', False);
+    mFirst := NextCode(mTokens, TokenFrom(mTokens, AItem.StartOffset));
+    mColon := DepthZero(mTokens, mFirst, TokenFrom(mTokens, AItem.EndOffset), ':', False);
     Result := mColon >= 0;
     mStart := mFirst;
     mIndex := mFirst;
     while Result and (mIndex <= mColon) do
     begin
-      if (mIndex = mColon) or Tokens[mIndex].IsSymbol(',') then
+      if (mIndex = mColon) or mTokens[mIndex].IsSymbol(',') then
       begin
         mItem := Default(TCaseLabel);
         mItem.Item := AItem;
-        mItem.First := NextCode(Tokens, mStart);
-        mItem.Last := PreviousCode(Tokens, mIndex);
+        mItem.First := NextCode(mTokens, mStart);
+        mItem.Last := PreviousCode(mTokens, mIndex);
         if mItem.Last >= mItem.First then
         begin
           AParts := AParts + [mItem];
         end;
         mStart := mIndex + 1;
       end
-      else if Tokens[mIndex].IsSymbol('(') or Tokens[mIndex].IsSymbol('[') then
+      else if mTokens[mIndex].IsSymbol('(') or mTokens[mIndex].IsSymbol('[') then
       begin
         // Klammern überspringen, damit "," darin nicht trennt.
-        mIndex := Closing(Tokens, mIndex, mColon);
+        mIndex := Closing(mTokens, mIndex, mColon);
         Result := mIndex >= 0;
       end;
       Inc(mIndex);
@@ -395,16 +396,16 @@ var
     mLow, mHigh: Int64;
   begin
     AItem.Key := LabelKey(AItem.First, AItem.Last);
-    mRange := DepthZero(Tokens, AItem.First, AItem.Last + 1, '..', False);
+    mRange := DepthZero(mTokens, AItem.First, AItem.Last + 1, '..', False);
     AItem.IsRange := mRange >= 0;
     if AItem.IsRange then
     begin
-      AItem.Known := Values.Evaluate(AItem.First, mRange - 1, mLow) and
-        Values.Evaluate(mRange + 1, AItem.Last, mHigh) and (mLow <= mHigh);
+      AItem.Known := mValues.Evaluate(AItem.First, mRange - 1, mLow) and
+        mValues.Evaluate(mRange + 1, AItem.Last, mHigh) and (mLow <= mHigh);
     end
     else
     begin
-      AItem.Known := Values.Evaluate(AItem.First, AItem.Last, mLow);
+      AItem.Known := mValues.Evaluate(AItem.First, AItem.Last, mLow);
       mHigh := mLow;
     end;
     AItem.Lowest := mLow;
@@ -436,8 +437,8 @@ var
   begin
     // Nur wenn A immer mit übersetzt wird, sobald B übersetzt wird: {$IFDEF X} 1: … {$ELSE} 1: …
     // {$ENDIF} stößt nie zusammen, 1: … {$IFDEF X} 1: … {$ENDIF} dagegen unter X immer.
-    if not TConditionalBranches.Implies(TConditionalBranches.PathAt(Paths, B.First),
-      TConditionalBranches.PathAt(Paths, A.First)) then
+    if not TConditionalBranches.Implies(TConditionalBranches.PathAt(mPaths, B.First),
+      TConditionalBranches.PathAt(mPaths, A.First)) then
     begin
       Exit(False);
     end;
@@ -466,40 +467,40 @@ var
   // Löscht die Marke ALabel bzw. den ganzen Zweig, wenn sie seine einzige ist.
   function RemovalFix(const ALabels: TArray<TCaseLabel>; ALabel: Integer): TRuleFix;
   var
-    Current: TCaseLabel;
-    Neighbour, Before, ItemLast, After: Integer;
-    Range: TTextRange;
+    mCurrent: TCaseLabel;
+    mNeighbour, mBefore, mItemLast, mAfter: Integer;
+    mRange: TTextRange;
   begin
-    Current := ALabels[ALabel];
-    if Current.Count > 1 then
+    mCurrent := ALabels[ALabel];
+    if mCurrent.Count > 1 then
     begin
-      if Current.Position < Current.Count - 1 then
+      if mCurrent.Position < mCurrent.Count - 1 then
       begin
-        Neighbour := ALabel + 1;
-        Range := TTextRange.Create(Tokens[Current.First].StartPos, Tokens[ALabels[Neighbour].First].StartPos);
+        mNeighbour := ALabel + 1;
+        mRange := TTextRange.Create(mTokens[mCurrent.First].StartPos, mTokens[ALabels[mNeighbour].First].StartPos);
       end
       else
       begin
-        Neighbour := ALabel - 1;
-        Range := TTextRange.Create(Tokens[ALabels[Neighbour].Last].EndPos, Tokens[Current.Last].EndPos);
+        mNeighbour := ALabel - 1;
+        mRange := TTextRange.Create(mTokens[ALabels[mNeighbour].Last].EndPos, mTokens[mCurrent.Last].EndPos);
       end;
-      Exit(TRuleFix.Create(cTexts[TStatementsCasesText.RemoveLater].Text, [TRuleEdit.Create(Range, '')],
+      Exit(TRuleFix.Create(cTexts[TStatementsCasesText.RemoveLater].Text, [TRuleEdit.Create(mRange, '')],
         True));
     end;
     // Ganzer Zweig samt Semikolon, ab dem Ende des Codes davor.
-    Before := PreviousCode(Tokens, Current.First);
-    ItemLast := PreviousCode(Tokens, TokenFrom(Tokens, Current.Item.EndOffset));
-    if (Before < 0) or (ItemLast < Current.First) then
+    mBefore := PreviousCode(mTokens, mCurrent.First);
+    mItemLast := PreviousCode(mTokens, TokenFrom(mTokens, mCurrent.Item.EndOffset));
+    if (mBefore < 0) or (mItemLast < mCurrent.First) then
     begin
       Exit(Default(TRuleFix));
     end;
-    After := NextCode(Tokens, ItemLast + 1);
-    if (After <= High(Tokens)) and Tokens[After].IsSymbol(';') then
+    mAfter := NextCode(mTokens, mItemLast + 1);
+    if (mAfter <= High(mTokens)) and mTokens[mAfter].IsSymbol(';') then
     begin
-      ItemLast := After;
+      mItemLast := mAfter;
     end;
-    Range := TTextRange.Create(Tokens[Before].EndPos, Tokens[ItemLast].EndPos);
-    Result := TRuleFix.Create(cTexts[TStatementsCasesText.RemoveBranch].Text, [TRuleEdit.Create(Range, '')], False);
+    mRange := TTextRange.Create(mTokens[mBefore].EndPos, mTokens[mItemLast].EndPos);
+    Result := TRuleFix.Create(cTexts[TStatementsCasesText.RemoveBranch].Text, [TRuleEdit.Create(mRange, '')], False);
   end;
 
   function OverlapMessage(const AEarlier, ALabel: TCaseLabel; const ACode: string): string;
@@ -509,7 +510,7 @@ var
   begin
     mText := LabelText(ALabel);
     mOther := LabelText(AEarlier);
-    mLine := Tokens[AEarlier.First].StartPos.Line + 1;
+    mLine := mTokens[AEarlier.First].StartPos.Line + 1;
     if AEarlier.Key = ALabel.Key then
     begin
       Result := cTexts[TStatementsCasesText.SameLine].Fmt([mText, mLine, ACode]);
@@ -542,7 +543,7 @@ var
         mFixes := [mFix];
       end;
     end;
-    AReport.Add(TTextRange.Create(Tokens[ALabels[AIndex].First].StartPos, Tokens[ALabels[AIndex].Last].EndPos),
+    AReport.Add(TTextRange.Create(mTokens[ALabels[AIndex].First].StartPos, mTokens[ALabels[AIndex].Last].EndPos),
       OverlapMessage(ALabels[AEarlier], ALabels[AIndex], ACode), TRuleConfidence.High, mFixes);
   end;
 
@@ -586,60 +587,60 @@ var
 
   procedure Visit(ARoot: TSyntaxNode);
   var
-    Index: Integer;
-    Node: TSyntaxNode;
-    Pending: TStack<TSyntaxNode>;
+    mIndex: Integer;
+    mNode: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
   begin
     // Iterativ (Bericht M1).
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ARoot);
-      while Pending.Count > 0 do
+      mPending.Push(ARoot);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if Node.Kind = TSyntaxKind.CaseStatement then
+        mNode := mPending.Pop;
+        if mNode.Kind = TSyntaxKind.CaseStatement then
         begin
-          CheckLabels(Node, 'E2030');
+          CheckLabels(mNode, 'E2030');
         end
-        else if Node.Kind = TSyntaxKind.VariantPart then
+        else if mNode.Kind = TSyntaxKind.VariantPart then
         begin
-          CheckLabels(Node, 'E2027');
+          CheckLabels(mNode, 'E2027');
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
 var
-  Resolver: TNameResolver;
+  mResolver: TNameResolver;
   mCache: IRuleDerivedCache;
-  FileName: string;
+  mFileName: string;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
-  Paths := TConditionalBranches.Paths(Tokens);
-  FileName := ContextFileName(AContext);
+  mTokens := AContext.Tree.Tokens;
+  mPaths := TConditionalBranches.Paths(mTokens);
+  mFileName := ContextFileName(AContext);
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
-  Resolver := TRuleDerived.Resolver(mCache, AContext);
-  Resolver.PinTree(AContext.Tree, FileName);
+  mResolver := TRuleDerived.Resolver(mCache, AContext);
+  mResolver.PinTree(AContext.Tree, mFileName);
   try
-    Values := TConstantValues.Create(AContext.Tree, FileName, AContext.Index, Resolver);
+    mValues := TConstantValues.Create(AContext.Tree, mFileName, AContext.Index, mResolver);
     try
       Visit(AContext.Tree.Root);
     finally
-      Values.Free;
+      mValues.Free;
     end;
   finally
-    Resolver.UnpinTree;
+    mResolver.UnpinTree;
   end;
 end;
 

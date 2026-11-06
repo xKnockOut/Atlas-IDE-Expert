@@ -726,7 +726,7 @@ begin
   Assert.IsTrue(TVarBlock.SortOf('NONE') = TVarBlockSort.None);
   Assert.IsTrue(TVarBlock.SortOf('usage') = TVarBlockSort.Usage);
   Assert.IsTrue(TVarBlock.SortOf('quer') = TVarBlockSort.Usage);
-  Assert.AreEqual('alpha', TVarBlock.SortNames[TVarBlockSort.Alpha]);
+  Assert.AreEqual('alpha', TVarBlock.cSortNames[TVarBlockSort.Alpha]);
 end;
 
 initialization

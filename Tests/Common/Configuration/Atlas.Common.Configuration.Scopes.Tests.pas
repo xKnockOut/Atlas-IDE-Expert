@@ -73,9 +73,9 @@ procedure TConfigurationScopesTests.ListsAreDisjoint;
 var
   GlobalPath, ProjectPath: string;
 begin
-  for GlobalPath in GlobalSettingPaths do
+  for GlobalPath in cGlobalSettingPaths do
   begin
-    for ProjectPath in ProjectSettingPaths do
+    for ProjectPath in cProjectSettingPaths do
     begin
       // rules, tasks (#900) und excludeTests (x-scope "both") stehen absichtlich in beiden Listen.
       if (GlobalPath = ProjectPath) and ((GlobalPath = 'rules') or (GlobalPath = 'tasks') or

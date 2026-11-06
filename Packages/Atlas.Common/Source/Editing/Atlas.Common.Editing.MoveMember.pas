@@ -113,7 +113,7 @@ type
 
   TMoveMember = class
   public const
-    Kind = 'refactor.move';
+    cKind = 'refactor.move';
   public
     /// <summary>Kandidaten der Klasse an ALine und das Mitglied dort; False mit Grund ohne Mitglied.</summary>
     class function Prepare(ATree: TSyntaxTree; const AText: string; ALine: Integer; out AInfo: TMoveMemberInfo;
@@ -202,51 +202,51 @@ end;
 /// <summary>Ruft der Rumpf inherited auf?</summary>
 function CallsInherited(ABody: TSyntaxNode): Boolean;
 var
-  Found: Boolean;
+  mFound: Boolean;
 begin
   if ABody = nil then
   begin
     Exit(False);
   end;
-  Found := False;
+  mFound := False;
   ABody.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
       if ANode.Kind = TSyntaxKind.InheritedExpr then
       begin
-        Found := True;
+        mFound := True;
       end;
-      Result := not Found;
+      Result := not mFound;
     end);
-  Result := Found;
+  Result := mFound;
 end;
 
 /// <summary>Gewählte Ids prüfen: Kandidat, wählbar, ohne Doppelte.</summary>
 function Chosen(const ACandidates: TArray<TTransferCandidate>; const AIds: TArray<Integer>;
   out AChosen: TArray<Integer>; out AReason: string): Boolean;
 var
-  Id, Index: Integer;
+  mId, mIndex: Integer;
 begin
   AChosen := nil;
   if AIds = nil then
   begin
     Exit(Fail(cTexts[TEditingMoveMemberText.PleaseSelectAtLeastOne].Text, AReason));
   end;
-  for Id in AIds do
+  for mId in AIds do
   begin
-    Index := TMemberTransfer.IndexOf(ACandidates, Id);
-    if Index < 0 then
+    mIndex := TMemberTransfer.IndexOf(ACandidates, mId);
+    if mIndex < 0 then
     begin
-      Exit(Fail(cTexts[TEditingMoveMemberText.MemberIsNotACandidate].Fmt([Id]), AReason));
+      Exit(Fail(cTexts[TEditingMoveMemberText.MemberIsNotACandidate].Fmt([mId]), AReason));
     end;
-    if not ACandidates[Index].Enabled then
+    if not ACandidates[mIndex].Enabled then
     begin
-      Exit(Fail(cTexts[TEditingMoveMemberText.CannotMove].Fmt([ACandidates[Index].Name, ACandidates[Index].Reason]),
+      Exit(Fail(cTexts[TEditingMoveMemberText.CannotMove].Fmt([ACandidates[mIndex].Name, ACandidates[mIndex].Reason]),
         AReason));
     end;
-    if not TMemberTransfer.Has(AChosen, Id) then
+    if not TMemberTransfer.Has(AChosen, mId) then
     begin
-      AChosen := AChosen + [Id];
+      AChosen := AChosen + [mId];
     end;
   end;
   AReason := '';
@@ -257,13 +257,13 @@ end;
 
 function TMemberFiles.IndexOf(const AFileName: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(FNames) do
+  for mIndex := 0 to High(FNames) do
   begin
-    if SameText(FNames[Index], AFileName) then
+    if SameText(FNames[mIndex], AFileName) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -287,49 +287,49 @@ end;
 
 function TMemberFiles.Text(const AFileName: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := IndexOf(AFileName);
-  if Index < 0 then
+  mIndex := IndexOf(AFileName);
+  if mIndex < 0 then
   begin
     Exit('');
   end;
-  Result := FTexts[Index];
+  Result := FTexts[mIndex];
 end;
 
 procedure TMemberFiles.Put(const AFileName, AText: string);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := IndexOf(AFileName);
-  if Index < 0 then
+  mIndex := IndexOf(AFileName);
+  if mIndex < 0 then
   begin
     Add(AFileName, AText);
   end
   else
   begin
-    FTexts[Index] := AText;
+    FTexts[mIndex] := AText;
   end;
 end;
 
 function TMemberFiles.Original(const AFileName: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := IndexOf(AFileName);
-  if Index < 0 then
+  mIndex := IndexOf(AFileName);
+  if mIndex < 0 then
   begin
     Exit('');
   end;
-  Result := FOriginals[Index];
+  Result := FOriginals[mIndex];
 end;
 
 function TMemberFiles.Changed(const AFileName: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := IndexOf(AFileName);
-  Result := (Index >= 0) and (FTexts[Index] <> FOriginals[Index]);
+  mIndex := IndexOf(AFileName);
+  Result := (mIndex >= 0) and (FTexts[mIndex] <> FOriginals[mIndex]);
 end;
 
 function TMemberFiles.Files: TArray<string>;
@@ -358,40 +358,40 @@ end;
 class function TMoveMember.Prepare(ATree: TSyntaxTree; const AText: string; ALine: Integer;
   out AInfo: TMoveMemberInfo; out AReason: string): Boolean;
 var
-  Decl: TSyntaxNode;
-  Layout: TClassLayout;
-  Member: Integer;
+  mDecl: TSyntaxNode;
+  mLayout: TClassLayout;
+  mMember: Integer;
 begin
   AInfo := Default(TMoveMemberInfo);
   AInfo.Selected := -1;
   AReason := '';
-  Decl := TClassLayout.DeclAt(ATree, ALine, True);
-  if Decl = nil then
+  mDecl := TClassLayout.DeclAt(ATree, ALine, True);
+  if mDecl = nil then
   begin
     Exit(Fail(cTexts[TEditingMoveMemberText.ThereIsNoClassAt].Text, AReason));
   end;
-  Layout := TClassLayout.Read(ATree, AText, Decl);
+  mLayout := TClassLayout.Read(ATree, AText, mDecl);
   try
-    AInfo.ClassName := Layout.Name;
-    if Layout.Ancestors <> nil then
+    AInfo.ClassName := mLayout.Name;
+    if mLayout.Ancestors <> nil then
     begin
-      AInfo.Ancestor := Layout.Ancestors[0];
+      AInfo.Ancestor := mLayout.Ancestors[0];
     end;
-    AInfo.Candidates := TMemberTransfer.Candidates(Layout);
-    Member := Layout.MemberAtLine(ALine);
-    if (Member < 0) or (TMemberTransfer.IndexOf(AInfo.Candidates, Member) < 0) then
+    AInfo.Candidates := TMemberTransfer.Candidates(mLayout);
+    mMember := mLayout.MemberAtLine(ALine);
+    if (mMember < 0) or (TMemberTransfer.IndexOf(AInfo.Candidates, mMember) < 0) then
     begin
       Exit(Fail(cTexts[TEditingMoveMemberText.ThereIsNoFieldMethod].Text, AReason));
     end;
-    if not AInfo.Candidates[TMemberTransfer.IndexOf(AInfo.Candidates, Member)].Enabled then
+    if not AInfo.Candidates[TMemberTransfer.IndexOf(AInfo.Candidates, mMember)].Enabled then
     begin
-      Exit(Fail(cTexts[TEditingMoveMemberText.CannotMove].Fmt([Layout.Members[Member].Name,
-        AInfo.Candidates[TMemberTransfer.IndexOf(AInfo.Candidates, Member)].Reason]), AReason));
+      Exit(Fail(cTexts[TEditingMoveMemberText.CannotMove].Fmt([mLayout.Members[mMember].Name,
+        AInfo.Candidates[TMemberTransfer.IndexOf(AInfo.Candidates, mMember)].Reason]), AReason));
     end;
-    AInfo.Selected := Member;
-    AInfo.SelectedName := Layout.Members[Member].Name;
+    AInfo.Selected := mMember;
+    AInfo.SelectedName := mLayout.Members[mMember].Name;
   finally
-    Layout.Free;
+    mLayout.Free;
   end;
   Result := True;
 end;

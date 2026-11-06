@@ -29,9 +29,9 @@ type
   TJsonRpcConnection = class
   public const
     /// <summary>So lange wartet Run beim Beenden auf laufende nebenläufige Anfragen.</summary>
-    DefaultWorkTimeout = 5000;
+    cDefaultWorkTimeout = 5000;
     /// <summary>So lange wartet Run beim Beenden auf den Lese-Thread.</summary>
-    DefaultReaderTimeout = 2000;
+    cDefaultReaderTimeout = 2000;
   private
     FTransport: IJsonRpcTransport;
     FDispatcher: TJsonRpcDispatcher;
@@ -113,7 +113,7 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  WaitForever = Cardinal($FFFFFFFF);
+  cWaitForever = Cardinal($FFFFFFFF);
 
 type
   TJsonRpcInboxKind = (ikMessage, ikInvalid, ikClosed, ikFailed, ikWakeUp, ikWork);
@@ -216,41 +216,41 @@ end;
 
 procedure TJsonRpcInbox.Put(const AItem: TJsonRpcInboxItem);
 var
-  Item: TJsonRpcInboxItem;
+  mItem: TJsonRpcInboxItem;
 begin
-  Item := AItem;
+  mItem := AItem;
   TMonitor.Enter(FQueue);
   try
     if not FClosed then
     begin
-      FQueue.Enqueue(Item);
+      FQueue.Enqueue(mItem);
       TMonitor.Pulse(FQueue);
       Exit;
     end;
   finally
     TMonitor.Exit(FQueue);
   end;
-  Item.Release;
+  mItem.Release;
 end;
 
 function TJsonRpcInbox.PutFirst(const AItem: TJsonRpcInboxItem): Boolean;
 var
-  Item: TJsonRpcInboxItem;
+  mItem: TJsonRpcInboxItem;
 begin
-  Item := AItem;
+  mItem := AItem;
   TMonitor.Enter(FQueue);
   try
     Result := not FClosed;
     if Result then
     begin
-      FFirst.Enqueue(Item);
+      FFirst.Enqueue(mItem);
       TMonitor.Pulse(FQueue);
       Exit;
     end;
   finally
     TMonitor.Exit(FQueue);
   end;
-  Item.Release;
+  mItem.Release;
 end;
 
 function TJsonRpcInbox.Take: TJsonRpcInboxItem;
@@ -259,7 +259,7 @@ begin
   try
     while (FQueue.Count = 0) and (FFirst.Count = 0) and not FClosed do
     begin
-      TMonitor.Wait(FQueue, WaitForever);
+      TMonitor.Wait(FQueue, cWaitForever);
     end;
     if FFirst.Count > 0 then
     begin
@@ -280,20 +280,20 @@ end;
 
 procedure TJsonRpcInbox.Close;
 var
-  Item: TJsonRpcInboxItem;
+  mItem: TJsonRpcInboxItem;
 begin
   TMonitor.Enter(FQueue);
   try
     FClosed := True;
     while FFirst.Count > 0 do
     begin
-      Item := FFirst.Dequeue;
-      Item.Release;
+      mItem := FFirst.Dequeue;
+      mItem.Release;
     end;
     while FQueue.Count > 0 do
     begin
-      Item := FQueue.Dequeue;
-      Item.Release;
+      mItem := FQueue.Dequeue;
+      mItem.Release;
     end;
     TMonitor.PulseAll(FQueue);
   finally
@@ -444,7 +444,7 @@ begin
   inherited Create;
   FTransport := ATransport;
   FDispatcher := ADispatcher;
-  FWorkTimeout := DefaultWorkTimeout;
+  FWorkTimeout := cDefaultWorkTimeout;
   FInboxLock := TObject.Create;
 end;
 
@@ -495,13 +495,13 @@ end;
 
 procedure TJsonRpcConnection.ReportProblem(const AText: string);
 var
-  Problem: Exception;
+  mProblem: Exception;
 begin
-  Problem := EJsonRpcTransportError.Create(AText);
+  mProblem := EJsonRpcTransportError.Create(AText);
   try
-    ReportError(Problem);
+    ReportError(mProblem);
   finally
-    Problem.Free;
+    mProblem.Free;
   end;
 end;
 
@@ -516,19 +516,19 @@ end;
 
 function TJsonRpcConnection.CreateResponder: TJsonRpcResponder;
 var
-  Transport: IJsonRpcTransport;
+  mTransport: IJsonRpcTransport;
   mOnError: TJsonRpcErrorEvent;
 begin
   // Ohne Self: ein Worker kann die Verbindung überleben, wenn er beim Beenden
   // nicht rechtzeitig fertig wird.
-  Transport := FTransport;
+  mTransport := FTransport;
   mOnError := FOnError;
   Result :=
     procedure(const AResponse: TJSONObject)
     begin
       try
         try
-          Transport.WriteMessage(AResponse);
+          mTransport.WriteMessage(AResponse);
         finally
           AResponse.Free;
         end;
@@ -546,11 +546,11 @@ end;
 
 procedure TJsonRpcConnection.Process(const AMessage: TJSONObject; AQueueMs: Int64);
 var
-  Response: TJSONObject;
+  mResponse: TJSONObject;
 begin
   try
     // Wartezeit im Posteingang mitgeben: Sie steht sonst nicht im Diagnoselog (#874).
-    Response := FDispatcher.DispatchMessage(AMessage, AQueueMs);
+    mResponse := FDispatcher.DispatchMessage(AMessage, AQueueMs);
   except
     // Fehler eines Benachrichtigungs-Handlers: melden und weiterarbeiten.
     on E: Exception do
@@ -559,9 +559,9 @@ begin
       Exit;
     end;
   end;
-  if Response <> nil then
+  if mResponse <> nil then
   begin
-    Send(Response);
+    Send(mResponse);
   end;
 end;
 
@@ -669,7 +669,7 @@ begin
     end;
   finally
     FinishRun;
-    ReleaseReader(mReader, mInbox, DefaultReaderTimeout);
+    ReleaseReader(mReader, mInbox, cDefaultReaderTimeout);
   end;
 
   if mFailure <> nil then
@@ -680,48 +680,48 @@ end;
 
 function TJsonRpcConnection.Post(AMessage: TJSONObject): Boolean;
 var
-  Inbox: IJsonRpcInbox;
-  Item: TJsonRpcInboxItem;
+  mInbox: IJsonRpcInbox;
+  mItem: TJsonRpcInboxItem;
 begin
-  Item := InboxItem(ikMessage);
-  Item.Message := AMessage;
-  if Supports(LockedInbox, IJsonRpcInbox, Inbox) then
+  mItem := InboxItem(ikMessage);
+  mItem.Message := AMessage;
+  if Supports(LockedInbox, IJsonRpcInbox, mInbox) then
   begin
-    Result := Inbox.PutFirst(Item);
+    Result := mInbox.PutFirst(mItem);
   end
   else
   begin
-    Item.Release;
+    mItem.Release;
     Result := False;
   end;
 end;
 
 function TJsonRpcConnection.Queue(const AWork: TProc): Boolean;
 var
-  Inbox: IJsonRpcInbox;
-  Item: TJsonRpcInboxItem;
+  mInbox: IJsonRpcInbox;
+  mItem: TJsonRpcInboxItem;
 begin
-  Item := InboxItem(ikWork);
-  Item.Work := AWork;
-  if Supports(LockedInbox, IJsonRpcInbox, Inbox) then
+  mItem := InboxItem(ikWork);
+  mItem.Work := AWork;
+  if Supports(LockedInbox, IJsonRpcInbox, mInbox) then
   begin
-    Result := Inbox.PutFirst(Item);
+    Result := mInbox.PutFirst(mItem);
   end
   else
   begin
-    Item.Release;
+    mItem.Release;
     Result := False;
   end;
 end;
 
 procedure TJsonRpcConnection.Stop;
 var
-  Inbox: IJsonRpcInbox;
+  mInbox: IJsonRpcInbox;
 begin
   FStopped := True;
-  if Supports(LockedInbox, IJsonRpcInbox, Inbox) then
+  if Supports(LockedInbox, IJsonRpcInbox, mInbox) then
   begin
-    Inbox.Put(InboxItem(ikWakeUp));
+    mInbox.Put(InboxItem(ikWakeUp));
   end;
 end;
 

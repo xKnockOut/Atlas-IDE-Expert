@@ -85,7 +85,7 @@ end;
 
 function PlatformCaption(const APlatform: string): string;
 begin
-  if SameText(APlatform, TUpdateIdes.Win64) then
+  if SameText(APlatform, TUpdateIdes.cWin64) then
   begin
     Result := cTexts[TInstallText.Ide64].Text;
   end
@@ -190,7 +190,7 @@ begin
   TShellUpdateSystem.Say(cTexts[TInstallText.Building].Text);
   mArgs := AArgs;
   mArgs.Command := 'prepare';
-  mArgs.Version := TProductVersion.Version;
+  mArgs.Version := TProductVersion.cVersion;
   if mArgs.ManifestUrl = '' then
   begin
     // Die eigene Version steht nur in der Versionsdatei ihres Kanals.
@@ -218,14 +218,14 @@ begin
   mInput.FilesDir := AFilesDir;
   mInput.WorkDir := AArgs.Staging;
   mInput.RootDir := TShellUpdateSystem.UpdatesRoot;
-  mInput.Version := TProductVersion.Version;
+  mInput.Version := TProductVersion.cVersion;
   mInput.Candidates := ACandidates;
   mInstallation := TUpdateInstallation.Create(ASystem, AArgs, mInput);
   try
     Result := mInstallation.Run;
     if Result = 0 then
     begin
-      TShellUpdateSystem.Say(cTexts[TInstallText.Installed].Fmt([TProductVersion.Version]));
+      TShellUpdateSystem.Say(cTexts[TInstallText.Installed].Fmt([TProductVersion.cVersion]));
     end
     else
     begin
@@ -281,7 +281,7 @@ begin
   mArgs.Staging := TUpdateLayout.Join(TShellUpdateSystem.UpdatesRoot, 'install');
   mArgs.NewModules := TUpdateNewModules.Install;
   mSystem := TShellUpdateSystem.NewSystem(TUpdateLayout.Join(mArgs.Staging, TUpdateLayout.LogFile));
-  TShellUpdateSystem.Say(cTexts[TInstallText.Welcome].Fmt([TProductVersion.Version]));
+  TShellUpdateSystem.Say(cTexts[TInstallText.Welcome].Fmt([TProductVersion.cVersion]));
   try
     Result := Install(mSystem, mArgs);
   except

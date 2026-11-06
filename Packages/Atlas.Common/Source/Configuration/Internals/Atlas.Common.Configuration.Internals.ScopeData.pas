@@ -9,7 +9,7 @@ interface
 
 const
   /// <summary>Schlüssel für alle Projekte (settings.json).</summary>
-  GlobalSettingPaths: array[0..70] of string = (
+  cGlobalSettingPaths: array[0..70] of string = (
     'delphiVersion',
     'language',
     'rules',
@@ -82,7 +82,7 @@ const
     'logFile',
     'traceFile');
   /// <summary>Schlüssel des Projekts (atlas.json).</summary>
-  ProjectSettingPaths: array[0..38] of string = (
+  cProjectSettingPaths: array[0..38] of string = (
     'minDelphiVersion',
     'encoding',
     'project',

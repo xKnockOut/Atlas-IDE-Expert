@@ -279,7 +279,7 @@ var
   Settings: TServerSettings;
 begin
   // language gehört in die globale Datei und wirkt in atlas.json nicht.
-  Write(ConfigurationFileName, '{"mcp": {"globalSettings": false}, "language": "en"}');
+  Write(cConfigurationFileName, '{"mcp": {"globalSettings": false}, "language": "en"}');
   Settings := TShellBootstrap.ProjectSettings(FFolder);
   Assert.IsFalse(Settings.McpGlobalSettings);
   Assert.AreEqual(TServerSettings.Default.Language, Settings.Language);

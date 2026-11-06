@@ -54,8 +54,8 @@ type
   TImportNames = class
   public const
     /// <summary>Ab so vielen Einträgen wird höchstens alle RebuildMs neu aufgebaut.</summary>
-    LargeCount = 50000;
-    RebuildMs = 1000;
+    cLargeCount = 50000;
+    cRebuildMs = 1000;
   public
     /// <summary>Aktueller Namensindex zu AIndex; threadsicher.</summary>
     class function Current(const AIndex: ISymbolIndex): TImportNameIndex; static;
@@ -79,17 +79,17 @@ var
 
 class function TImportNameIndex.MaskOf(const AName: string): UInt64;
 var
-  Ch: Char;
+  mCh: Char;
 begin
   Result := 0;
-  for Ch in AName do
-    case Ch of
+  for mCh in AName do
+    case mCh of
       'a'..'z':
-        Result := Result or (UInt64(1) shl (Ord(Ch) - Ord('a')));
+        Result := Result or (UInt64(1) shl (Ord(mCh) - Ord('a')));
       'A'..'Z':
-        Result := Result or (UInt64(1) shl (Ord(Ch) - Ord('A')));
+        Result := Result or (UInt64(1) shl (Ord(mCh) - Ord('A')));
       '0'..'9':
-        Result := Result or (UInt64(1) shl (26 + Ord(Ch) - Ord('0')));
+        Result := Result or (UInt64(1) shl (26 + Ord(mCh) - Ord('0')));
       '_':
         Result := Result or (UInt64(1) shl 36);
     else
@@ -183,17 +183,17 @@ end;
 
 class function TImportNames.Current(const AIndex: ISymbolIndex): TImportNameIndex;
 var
-  Fresh: Boolean;
+  mFresh: Boolean;
 begin
   TMonitor.Enter(CacheLock);
   try
-    Fresh := (CacheOwner = Pointer(AIndex as TObject)) and (CacheNames.Generation = AIndex.Generation);
-    if not Fresh and (CacheOwner = Pointer(AIndex as TObject)) and (CacheNames.Count >= LargeCount) and
-      (CacheWatch.ElapsedMilliseconds < RebuildMs) then
+    mFresh := (CacheOwner = Pointer(AIndex as TObject)) and (CacheNames.Generation = AIndex.Generation);
+    if not mFresh and (CacheOwner = Pointer(AIndex as TObject)) and (CacheNames.Count >= cLargeCount) and
+      (CacheWatch.ElapsedMilliseconds < cRebuildMs) then
     begin
-      Fresh := True;
+      mFresh := True;
     end;
-    if not Fresh then
+    if not mFresh then
     begin
       CacheNames := TImportNameIndex.Build(AIndex);
       CacheOwner := Pointer(AIndex as TObject);

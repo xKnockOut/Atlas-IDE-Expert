@@ -44,7 +44,7 @@ var
 begin
   mFindings := TRuleAssert.Findings(TUseAfterFreeRule.Create, Routine('  L.Free;'#10'  L.Clear;'));
   Assert.AreEqual(1, Integer(Length(mFindings)));
-  Assert.AreEqual(UseAfterFreeRuleId, mFindings[0].RuleId);
+  Assert.AreEqual(cUseAfterFreeRuleId, mFindings[0].RuleId);
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(mFindings[0].Confidence));
 end;
 

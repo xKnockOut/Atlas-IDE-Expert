@@ -43,9 +43,9 @@ type
 
   TLspAnonymousMethods = class
   public const
-    ClientCommand = 'atlas.anonymousMethod';
-    ApplyCommand = 'atlas.server.anonymousMethod';
-    Kind = 'refactor.rewrite';
+    cClientCommand = 'atlas.anonymousMethod';
+    cApplyCommand = 'atlas.server.anonymousMethod';
+    cKind = 'refactor.rewrite';
   public
     /// <summary>Typen, Mitglieder, Formular und Zieltypen über AResolver für ATree der Datei AFileName.</summary>
     class function Lookup(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
@@ -91,43 +91,43 @@ const
 
 const
   // Alias auf Alias: so tief wird verfolgt.
-  MaxAliasDepth = 4;
+  cMaxAliasDepth = 4;
 
 /// <summary>Art des Typs ATypeText an AOffset, Aliase über AResolver verfolgt.</summary>
 function KindOfType(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName, ATypeText: string;
   AOffset: Integer): TProcTypeKind;
 var
-  Name: string;
-  Resolved: TResolvedSymbol;
-  Depth: Integer;
+  mName: string;
+  mResolved: TResolvedSymbol;
+  mDepth: Integer;
 begin
-  Name := Trim(ATypeText);
-  for Depth := 0 to MaxAliasDepth do
+  mName := Trim(ATypeText);
+  for mDepth := 0 to cMaxAliasDepth do
   begin
-    Result := TAnonymousMethods.KindOfTypeText(Name);
-    if (Result <> TProcTypeKind.Unknown) or (Name = '') then
+    Result := TAnonymousMethods.KindOfTypeText(mName);
+    if (Result <> TProcTypeKind.Unknown) or (mName = '') then
     begin
       Exit;
     end;
-    if Pos('<', Name) > 0 then
+    if Pos('<', mName) > 0 then
     begin
-      Name := Copy(Name, 1, Pos('<', Name) - 1);
+      mName := Copy(mName, 1, Pos('<', mName) - 1);
     end;
-    if (Pos(' ', Trim(Name)) > 0) or (Pos('^', Name) > 0) then
+    if (Pos(' ', Trim(mName)) > 0) or (Pos('^', mName) > 0) then
     begin
       Exit;
     end;
-    Resolved := AResolver.ResolveChain(ATree, AFileName, Trim(Name).Split(['.']), AOffset);
-    if not Resolved.Found or (Resolved.SymbolKind <> TIndexSymbolKind.TypeAlias) or (Pos('=', Resolved.Signature) = 0)
+    mResolved := AResolver.ResolveChain(ATree, AFileName, Trim(mName).Split(['.']), AOffset);
+    if not mResolved.Found or (mResolved.SymbolKind <> TIndexSymbolKind.TypeAlias) or (Pos('=', mResolved.Signature) = 0)
     then
     begin
       Exit;
     end;
     // "TAktion = reference to procedure(…)": der Teil hinter '='.
-    Name := Trim(Copy(Resolved.Signature, Pos('=', Resolved.Signature) + 1, MaxInt));
-    if EndsStr(';', Name) then
+    mName := Trim(Copy(mResolved.Signature, Pos('=', mResolved.Signature) + 1, MaxInt));
+    if EndsStr(';', mName) then
     begin
-      Name := Trim(Copy(Name, 1, Length(Name) - 1));
+      mName := Trim(Copy(mName, 1, Length(mName) - 1));
     end;
   end;
   Result := TProcTypeKind.Unknown;
@@ -136,22 +136,22 @@ end;
 /// <summary>Art des prozeduralen Typs ANode (reference to …, … of object, procedure …) aus den Token.</summary>
 function KindOfProcedureType(const ATokens: TArray<TPascalToken>; ANode: TSyntaxNode): TProcTypeKind;
 var
-  Index, Next: Integer;
+  mIndex, mNext: Integer;
 begin
-  Index := TRoutineBody.TokenAt(ATokens, ANode.StartOffset);
-  if (Index <= High(ATokens)) and SameText(ATokens[Index].Text, 'reference') then
+  mIndex := TRoutineBody.TokenAt(ATokens, ANode.StartOffset);
+  if (mIndex <= High(ATokens)) and SameText(ATokens[mIndex].Text, 'reference') then
   begin
     Exit(TProcTypeKind.Reference);
   end;
   Result := TProcTypeKind.Plain;
-  while (Index <= High(ATokens)) and (ATokens[Index].Offset < ANode.EndOffset) do
+  while (mIndex <= High(ATokens)) and (ATokens[mIndex].Offset < ANode.EndOffset) do
   begin
-    Next := TRoutineBody.NextToken(ATokens, Index);
-    if SameText(ATokens[Index].Text, 'of') and (Next <= High(ATokens)) and SameText(ATokens[Next].Text, 'object') then
+    mNext := TRoutineBody.NextToken(ATokens, mIndex);
+    if SameText(ATokens[mIndex].Text, 'of') and (mNext <= High(ATokens)) and SameText(ATokens[mNext].Text, 'object') then
     begin
       Exit(TProcTypeKind.MethodPointer);
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
 end;
 
@@ -275,22 +275,22 @@ end;
 class function TLspAnonymousMethods.Lookup(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   const AReadText: TReferenceReadText): TAnonymousLookup;
 var
-  Promote: TPromoteLookup;
-  Nested: TNestedRoutineLookup;
-  FileName: string;
+  mPromote: TPromoteLookup;
+  mNested: TNestedRoutineLookup;
+  mFileName: string;
 begin
   Result := TAnonymousLookup.FromTree(ATree);
-  Promote := TLspPromoteVariable.Lookup(AResolver, ATree, AFileName, AReadText);
-  Nested := TNestedRoutineLookup.FromResolver(AResolver, ATree, AFileName);
-  Result.InlineType := Promote.InlineType;
-  Result.MemberExists := Promote.MemberExists;
-  Result.InForm := Promote.InForm;
-  Result.ConstType := Nested.ConstType;
-  FileName := AFileName;
+  mPromote := TLspPromoteVariable.Lookup(AResolver, ATree, AFileName, AReadText);
+  mNested := TNestedRoutineLookup.FromResolver(AResolver, ATree, AFileName);
+  Result.InlineType := mPromote.InlineType;
+  Result.MemberExists := mPromote.MemberExists;
+  Result.InForm := mPromote.InForm;
+  Result.ConstType := mNested.ConstType;
+  mFileName := AFileName;
   Result.TargetType :=
     function(AValue: TSyntaxNode): TProcTypeKind
     begin
-      Result := TargetKind(AResolver, ATree, FileName, AValue);
+      Result := TargetKind(AResolver, ATree, mFileName, AValue);
     end;
 end;
 
@@ -316,57 +316,57 @@ end;
 
 class function TLspAnonymousMethods.Actions(const ARequest: TAnonymousMethodRequest): TArray<TJSONObject>;
 var
-  Target: TAnonymousTarget;
-  Reason: string;
-  Arguments: TJSONArray;
-  Command, Action: TJSONObject;
-  Embedded: TCodeAction;
+  mTarget: TAnonymousTarget;
+  mReason: string;
+  mArguments: TJSONArray;
+  mCommand, mAction: TJSONObject;
+  mEmbedded: TCodeAction;
 begin
   Result := nil;
-  if TAnonymousMethods.Target(InputOf(ARequest), Target, Reason) then
+  if TAnonymousMethods.Target(InputOf(ARequest), mTarget, mReason) then
   begin
-    Arguments := TJSONArray.Create;
-    Arguments.Add(ARequest.Uri);
-    Arguments.AddElement(TLspPositions.PositionToJson(ARequest.Position));
-    Arguments.Add(Target.Suggested);
-    Command := TJSONObject.Create;
-    Command.AddPair('title', Target.Title);
-    Command.AddPair('command', ClientCommand);
-    Command.AddPair('arguments', Arguments);
-    Action := TJSONObject.Create;
-    Action.AddPair('title', Target.Title);
-    Action.AddPair('kind', Kind);
-    Action.AddPair('command', Command);
-    Result := Result + [Action];
+    mArguments := TJSONArray.Create;
+    mArguments.Add(ARequest.Uri);
+    mArguments.AddElement(TLspPositions.PositionToJson(ARequest.Position));
+    mArguments.Add(mTarget.Suggested);
+    mCommand := TJSONObject.Create;
+    mCommand.AddPair('title', mTarget.Title);
+    mCommand.AddPair('command', cClientCommand);
+    mCommand.AddPair('arguments', mArguments);
+    mAction := TJSONObject.Create;
+    mAction.AddPair('title', mTarget.Title);
+    mAction.AddPair('kind', cKind);
+    mAction.AddPair('command', mCommand);
+    Result := Result + [mAction];
   end;
-  if TAnonymousMethods.Embed(InputOf(ARequest), Embedded, Reason) then
+  if TAnonymousMethods.Embed(InputOf(ARequest), mEmbedded, mReason) then
   begin
-    Result := Result + [TLspCodeActions.ActionToJson(ARequest.Uri, Embedded)];
+    Result := Result + [TLspCodeActions.ActionToJson(ARequest.Uri, mEmbedded)];
   end;
 end;
 
 class function TLspAnonymousMethods.Execute(const ARequest: TAnonymousMethodRequest; const AName: string): TJSONObject;
 var
-  Converted: TAnonymousResult;
-  Reason, Warning: string;
-  Warnings: TJSONArray;
+  mConverted: TAnonymousResult;
+  mReason, mWarning: string;
+  mWarnings: TJSONArray;
 begin
-  if not TAnonymousMethods.Execute(InputOf(ARequest), AName, Converted, Reason) then
+  if not TAnonymousMethods.Execute(InputOf(ARequest), AName, mConverted, mReason) then
   begin
-    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
-      cTexts[TLspAnonymousMethodsText.ConversionNotPossible].Text + Reason);
+    raise EJsonRpcError.Create(TLspErrorCode.cRequestFailed,
+      cTexts[TLspAnonymousMethodsText.ConversionNotPossible].Text + mReason);
   end;
-  Warnings := TJSONArray.Create;
-  for Warning in Converted.Warnings do
+  mWarnings := TJSONArray.Create;
+  for mWarning in mConverted.Warnings do
   begin
-    Warnings.Add(Warning);
+    mWarnings.Add(mWarning);
   end;
   Result := TJSONObject.Create;
-  Result.AddPair('edit', TLspCodeActions.WorkspaceEditJson(ARequest.Uri, Converted.Edits));
-  Result.AddPair('warnings', Warnings);
-  Result.AddPair('places', TJSONNumber.Create(Length(Converted.Edits)));
+  Result.AddPair('edit', TLspCodeActions.WorkspaceEditJson(ARequest.Uri, mConverted.Edits));
+  Result.AddPair('warnings', mWarnings);
+  Result.AddPair('places', TJSONNumber.Create(Length(mConverted.Edits)));
   Result.AddPair('files', TJSONNumber.Create(1));
-  Result.AddPair('preview', Converted.Preview);
+  Result.AddPair('preview', mConverted.Preview);
 end;
 
 initialization

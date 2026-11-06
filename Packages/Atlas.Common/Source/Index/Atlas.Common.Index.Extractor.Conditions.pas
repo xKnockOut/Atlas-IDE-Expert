@@ -39,7 +39,7 @@ uses
   Atlas.Text.Lines;
 
 const
-  RoutinePattern = '^(procedure|function)\s+([A-Za-z_]\w*)\s*[(:;]';
+  cRoutinePattern = '^(procedure|function)\s+([A-Za-z_]\w*)\s*[(:;]';
 
 type
   /// <summary>Sucht Deklarationen in nicht geltenden Zweigen einer Datei (#476).</summary>
@@ -500,7 +500,7 @@ function TConditionAnnotator.AddRoutine(const ACode: string; ALine: Integer; con
 var
   mMatch: TMatch;
 begin
-  mMatch := TRegEx.Match(ACode, RoutinePattern, [roIgnoreCase]);
+  mMatch := TRegEx.Match(ACode, cRoutinePattern, [roIgnoreCase]);
   Result := mMatch.Success;
   if Result then
   begin

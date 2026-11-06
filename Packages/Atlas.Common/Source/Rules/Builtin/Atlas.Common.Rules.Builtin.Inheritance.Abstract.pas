@@ -114,51 +114,51 @@ type
 /// sonst AIndex.</summary>
 function SkipTypeArgs(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 var
-  Depth: Integer;
+  mDepth: Integer;
 begin
   Result := AIndex;
   if (Result < 0) or (ATokens[Result].Text <> '>') then
   begin
     Exit;
   end;
-  Depth := 0;
+  mDepth := 0;
   repeat
     if ATokens[Result].Text = '>' then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
     else if ATokens[Result].Text = '<' then
     begin
-      Dec(Depth);
+      Dec(mDepth);
     end;
     Dec(Result);
-  until (Result < 0) or (Depth = 0);
+  until (Result < 0) or (mDepth = 0);
 end;
 
 /// <summary>Namen der offenen Methoden für die Meldung, höchstens cMaxNamed, geerbte mit Klasse davor.</summary>
 function OpenNames(const ALocation: TSymbolLocation; const AOpen: TArray<TIndexSymbol>;
   const AOwners: TArray<string>): string;
 var
-  Names: TArray<string>;
-  Index: Integer;
+  mNames: TArray<string>;
+  mIndex: Integer;
 begin
-  Names := nil;
-  for Index := 0 to High(AOpen) do
+  mNames := nil;
+  for mIndex := 0 to High(AOpen) do
   begin
-    if Length(Names) >= cMaxNamed then
+    if Length(mNames) >= cMaxNamed then
     begin
       Break;
     end;
-    if SameText(AOwners[Index], ALocation.Symbol.Name) then
+    if SameText(AOwners[mIndex], ALocation.Symbol.Name) then
     begin
-      Names := Names + [AOpen[Index].Name];
+      mNames := mNames + [AOpen[mIndex].Name];
     end
     else
     begin
-      Names := Names + [AOwners[Index] + '.' + AOpen[Index].Name];
+      mNames := mNames + [AOwners[mIndex] + '.' + AOpen[mIndex].Name];
     end;
   end;
-  Result := string.Join(', ', Names);
+  Result := string.Join(', ', mNames);
   if Length(AOpen) > cMaxNamed then
   begin
     Result := Result + cTexts[TInheritanceAbstractText.AndMore].Fmt([Length(AOpen) - cMaxNamed]);
@@ -175,17 +175,17 @@ end;
 
 procedure TAbstractClassInstantiatedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Check: TAbstractInstanceCheck;
+  mCheck: TAbstractInstanceCheck;
 begin
   if AContext.Tree = nil then
   begin
     Exit;
   end;
-  Check := TAbstractInstanceCheck.Create(AContext, AReport);
+  mCheck := TAbstractInstanceCheck.Create(AContext, AReport);
   try
-    Check.Run;
+    mCheck.Run;
   finally
-    Check.Free;
+    mCheck.Free;
   end;
 end;
 
@@ -215,34 +215,34 @@ end;
 /// <summary>Klassenname vor ".Create" an Token ADot (dem Punkt); -1 ohne.</summary>
 function TAbstractInstanceCheck.ClassBefore(ADot: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   // TListe<T>.Create
-  Index := SkipTypeArgs(FTokens, ADot - 1);
+  mIndex := SkipTypeArgs(FTokens, ADot - 1);
   Result := -1;
-  if (Index < 0) or (FTokens[Index].Kind <> TPascalTokenKind.Identifier) then
+  if (mIndex < 0) or (FTokens[mIndex].Kind <> TPascalTokenKind.Identifier) then
   begin
     Exit;
   end;
   // constructor TForm.Create: der Kopf eines Rumpfs.
-  if (Index > 0) and (FTokens[Index - 1].Kind = TPascalTokenKind.Keyword) and MatchText(FTokens[Index - 1].Text,
+  if (mIndex > 0) and (FTokens[mIndex - 1].Kind = TPascalTokenKind.Keyword) and MatchText(FTokens[mIndex - 1].Text,
     ['constructor', 'procedure', 'function', 'destructor']) then
   begin
     Exit;
   end;
-  Result := Index;
+  Result := mIndex;
 end;
 
 /// <summary>Create als Klassenfunktion (THTTPClient.Create liefert eine Instanz einer passenden Unterklasse): keine
 /// Instanz der abstrakten Klasse selbst.</summary>
 function TAbstractInstanceCheck.CreatesSubclass(const ALocation: TSymbolLocation): Boolean;
 var
-  Member: TIndexSymbol;
+  mMember: TIndexSymbol;
 begin
   Result := False;
-  for Member in FAncestry.Members(ALocation) do
+  for mMember in FAncestry.Members(ALocation) do
   begin
-    Result := Result or (SameText(Member.Name, 'Create') and (Member.Kind <> TIndexSymbolKind.Constructor_));
+    Result := Result or (SameText(mMember.Name, 'Create') and (mMember.Kind <> TIndexSymbolKind.Constructor_));
   end;
 end;
 
@@ -251,21 +251,21 @@ end;
 function TAbstractInstanceCheck.OverrideFixes(const ALocation: TSymbolLocation; const AOpen: TArray<TIndexSymbol>;
   const AOwners: TArray<string>): TArray<TRuleFix>;
 var
-  Index: Integer;
-  Action: TCodeAction;
+  mIndex: Integer;
+  mAction: TCodeAction;
 begin
   Result := nil;
   if ALocation.FileName <> '' then
   begin
     Exit;
   end;
-  for Index := 0 to High(AOpen) do
+  for mIndex := 0 to High(AOpen) do
   begin
-    if not SameText(AOwners[Index], ALocation.Symbol.Name) and TClassActions.OverrideMethod(FContext.Text,
-      ALocation.Symbol.Range.StartPos.Line, AOpen[Index].Name, FActions, Action) then
+    if not SameText(AOwners[mIndex], ALocation.Symbol.Name) and TClassActions.OverrideMethod(FContext.Text,
+      ALocation.Symbol.Range.StartPos.Line, AOpen[mIndex].Name, FActions, mAction) then
     begin
-      Result := Result + [TRuleFix.Create(cTexts[TInheritanceAbstractText.OverrideIn].Fmt([AOpen[Index].Name,
-        ALocation.Symbol.Name]), Action.Edits)];
+      Result := Result + [TRuleFix.Create(cTexts[TInheritanceAbstractText.OverrideIn].Fmt([AOpen[mIndex].Name,
+        ALocation.Symbol.Name]), mAction.Edits)];
       Result[High(Result)].Alternative := Length(Result) > 1;
     end;
   end;
@@ -276,38 +276,38 @@ const
   cMessage: array[Boolean] of TInheritanceAbstractText = (TInheritanceAbstractText.AbstractMany,
     TInheritanceAbstractText.AbstractOne);
 var
-  Location: TSymbolLocation;
-  Open: TArray<TIndexSymbol>;
-  Owners: TArray<string>;
+  mLocation: TSymbolLocation;
+  mOpen: TArray<TIndexSymbol>;
+  mOwners: TArray<string>;
 begin
-  if not FAncestry.FindClass(FTokens[AName].Text, Location) or CreatesSubclass(Location) then
+  if not FAncestry.FindClass(FTokens[AName].Text, mLocation) or CreatesSubclass(mLocation) then
   begin
     Exit;
   end;
-  Open := FAncestry.OpenAbstractMethods(Location, Owners);
-  if Open <> nil then
+  mOpen := FAncestry.OpenAbstractMethods(mLocation, mOwners);
+  if mOpen <> nil then
   begin
     FReport.Add(TTextRange.Create(FTokens[AName].StartPos, FTokens[ACreate].EndPos),
-      cTexts[cMessage[Length(Open) = 1]].Fmt([Location.Symbol.Name, OpenNames(Location, Open, Owners)]),
-      TRuleConfidence.High, OverrideFixes(Location, Open, Owners));
+      cTexts[cMessage[Length(mOpen) = 1]].Fmt([mLocation.Symbol.Name, OpenNames(mLocation, mOpen, mOwners)]),
+      TRuleConfidence.High, OverrideFixes(mLocation, mOpen, mOwners));
   end;
 end;
 
 procedure TAbstractInstanceCheck.Run;
 var
-  Index, Name: Integer;
+  mIndex, mName: Integer;
 begin
-  for Index := 1 to High(FTokens) do
+  for mIndex := 1 to High(FTokens) do
   begin
-    if (FTokens[Index].Kind <> TPascalTokenKind.Identifier) or not SameText(FTokens[Index].Text, 'Create') or
-      (FTokens[Index - 1].Text <> '.') then
+    if (FTokens[mIndex].Kind <> TPascalTokenKind.Identifier) or not SameText(FTokens[mIndex].Text, 'Create') or
+      (FTokens[mIndex - 1].Text <> '.') then
     begin
       Continue;
     end;
-    Name := ClassBefore(Index - 1);
-    if Name >= 0 then
+    mName := ClassBefore(mIndex - 1);
+    if mName >= 0 then
     begin
-      CheckCall(Name, Index);
+      CheckCall(mName, mIndex);
     end;
   end;
 end;
@@ -323,54 +323,54 @@ end;
 /// <summary>ASignature ohne Parameterliste: ein Parameter "abstract: Boolean" wäre keine Direktive.</summary>
 function WithoutParameters(const ASignature: string): string;
 var
-  Depth, Position: Integer;
+  mDepth, mPosition: Integer;
 begin
   Result := '';
-  Depth := 0;
-  for Position := 1 to Length(ASignature) do
+  mDepth := 0;
+  for mPosition := 1 to Length(ASignature) do
   begin
-    if ASignature[Position] = '(' then
+    if ASignature[mPosition] = '(' then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if ASignature[Position] = ')' then
+    else if ASignature[mPosition] = ')' then
     begin
-      Dec(Depth);
+      Dec(mDepth);
     end
-    else if Depth = 0 then
+    else if mDepth = 0 then
     begin
-      Result := Result + ASignature[Position];
+      Result := Result + ASignature[mPosition];
     end;
   end;
 end;
 
 class function TInheritedAbstractCallRule.IsAbstractSignature(const ASignature: string): Boolean;
 var
-  Parts: TArray<string>;
-  Index: Integer;
+  mParts: TArray<string>;
+  mIndex: Integer;
 begin
-  Parts := WithoutParameters(ASignature).Split([';']);
+  mParts := WithoutParameters(ASignature).Split([';']);
   // Der erste Teil ist der Kopf selbst, die Direktiven folgen hinter Semikolons.
   Result := False;
-  for Index := 1 to High(Parts) do
+  for mIndex := 1 to High(mParts) do
   begin
-    Result := Result or SameText(Trim(Parts[Index]), 'abstract');
+    Result := Result or SameText(Trim(mParts[mIndex]), 'abstract');
   end;
 end;
 
 procedure TInheritedAbstractCallRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Check: TInheritedAbstractCheck;
+  mCheck: TInheritedAbstractCheck;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
   begin
     Exit;
   end;
-  Check := TInheritedAbstractCheck.Create(AContext, AReport);
+  mCheck := TInheritedAbstractCheck.Create(AContext, AReport);
   try
-    Check.Run;
+    mCheck.Run;
   finally
-    Check.Free;
+    mCheck.Free;
   end;
 end;
 
@@ -378,31 +378,31 @@ end;
 /// </summary>
 function OwnStatement(AExpr: TSyntaxNode): TSyntaxNode;
 var
-  Node: TSyntaxNode;
+  mNode: TSyntaxNode;
 begin
   Result := nil;
-  Node := AExpr.Parent;
-  if (Node <> nil) and (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount > 0) and (Node[0] = AExpr) then
+  mNode := AExpr.Parent;
+  if (mNode <> nil) and (mNode.Kind = TSyntaxKind.Call) and (mNode.ChildCount > 0) and (mNode[0] = AExpr) then
   begin
-    Node := Node.Parent;
+    mNode := mNode.Parent;
   end;
-  if (Node <> nil) and (Node.Kind = TSyntaxKind.CallStatement) and (Node.Parent <> nil) and
-    (Node.Parent.Kind = TSyntaxKind.Block) then
+  if (mNode <> nil) and (mNode.Kind = TSyntaxKind.CallStatement) and (mNode.Parent <> nil) and
+    (mNode.Parent.Kind = TSyntaxKind.Block) then
   begin
-    Result := Node;
+    Result := mNode;
   end;
 end;
 
 /// <summary>Jede passende Überladung ist abstrakt; sonst wählt der Compiler womöglich eine andere.</summary>
 function AllAbstract(const ACandidates: TArray<TResolvedSymbol>): Boolean;
 var
-  Candidate: TResolvedSymbol;
+  mCandidate: TResolvedSymbol;
 begin
   Result := ACandidates <> nil;
-  for Candidate in ACandidates do
+  for mCandidate in ACandidates do
   begin
-    Result := Result and (Candidate.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) and
-      (Candidate.Condition = '') and TInheritedAbstractCallRule.IsAbstractSignature(Candidate.Signature);
+    Result := Result and (mCandidate.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_]) and
+      (mCandidate.Condition = '') and TInheritedAbstractCallRule.IsAbstractSignature(mCandidate.Signature);
   end;
 end;
 
@@ -428,15 +428,15 @@ end;
 /// </summary>
 procedure TInheritedAbstractCheck.CollectCalls;
 var
-  Calls: TDictionary<Integer, TSyntaxNode>;
+  mCalls: TDictionary<Integer, TSyntaxNode>;
 begin
-  Calls := FCalls;
+  mCalls := FCalls;
   FContext.Tree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
       if (ANode.Kind = TSyntaxKind.InheritedExpr) and (ANode.Name <> '') then
       begin
-        Calls.AddOrSetValue(ANode.StartOffset, ANode);
+        mCalls.AddOrSetValue(ANode.StartOffset, ANode);
       end;
       Result := True;
     end);
@@ -444,37 +444,37 @@ end;
 
 procedure TInheritedAbstractCheck.CheckCall(AExpr: TSyntaxNode; ANameToken: Integer);
 var
-  Candidates: TArray<TResolvedSymbol>;
-  Statement: TSyntaxNode;
-  Fixes: TArray<TRuleFix>;
+  mCandidates: TArray<TResolvedSymbol>;
+  mStatement: TSyntaxNode;
+  mFixes: TArray<TRuleFix>;
 begin
-  Candidates := FResolver.ResolveAll(FContext.Tree, FFileName, FTokens[ANameToken].StartPos);
-  if not AllAbstract(Candidates) then
+  mCandidates := FResolver.ResolveAll(FContext.Tree, FFileName, FTokens[ANameToken].StartPos);
+  if not AllAbstract(mCandidates) then
   begin
     Exit;
   end;
-  Fixes := nil;
-  Statement := OwnStatement(AExpr);
-  if Statement <> nil then
+  mFixes := nil;
+  mStatement := OwnStatement(AExpr);
+  if mStatement <> nil then
   begin
-    Fixes := [RemoveStatementFix(FCache, FContext, Statement, cTexts[TInheritanceAbstractText.RemoveCall].Text)];
+    mFixes := [RemoveStatementFix(FCache, FContext, mStatement, cTexts[TInheritanceAbstractText.RemoveCall].Text)];
   end;
   FReport.Add(TTextRange.Create(AExpr.StartPos, AExpr.EndPos),
-    cTexts[TInheritanceAbstractText.InheritedAbstract].Fmt([Candidates[0].Container, Candidates[0].Name]),
-    TRuleConfidence.High, Fixes);
+    cTexts[TInheritanceAbstractText.InheritedAbstract].Fmt([mCandidates[0].Container, mCandidates[0].Name]),
+    TRuleConfidence.High, mFixes);
 end;
 
 procedure TInheritedAbstractCheck.CheckCalls;
 var
-  Index: Integer;
-  Node: TSyntaxNode;
+  mIndex: Integer;
+  mNode: TSyntaxNode;
 begin
-  for Index := 0 to High(FTokens) - 1 do
+  for mIndex := 0 to High(FTokens) - 1 do
   begin
-    if FCalls.TryGetValue(FTokens[Index].Offset, Node) and
-      (FTokens[Index + 1].Kind = TPascalTokenKind.Identifier) then
+    if FCalls.TryGetValue(FTokens[mIndex].Offset, mNode) and
+      (FTokens[mIndex + 1].Kind = TPascalTokenKind.Identifier) then
     begin
-      CheckCall(Node, Index + 1);
+      CheckCall(mNode, mIndex + 1);
     end;
   end;
 end;

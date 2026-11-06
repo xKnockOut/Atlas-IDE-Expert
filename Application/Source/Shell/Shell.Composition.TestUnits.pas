@@ -98,7 +98,7 @@ end;
 procedure TShellTestUnits.RegisterCommand(ACommands: TLspCommands);
 begin
   // Closure: Free Pascal bricht ab, wenn eine Methode einer Klasse aus einer anderen Unit als Referenz geht.
-  ACommands.Register(TLspTestUnits.Command,
+  ACommands.Register(TLspTestUnits.cCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FTestUnits.Execute(AArguments);

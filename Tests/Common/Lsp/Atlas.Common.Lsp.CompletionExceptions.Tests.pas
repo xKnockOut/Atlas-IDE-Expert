@@ -277,10 +277,10 @@ begin
   Assert.IsTrue(Find(Items, 'EAppError', Item));
   Assert.AreEqual('EAppError.Create(''$0'')', Item.InsertText);
   Assert.IsTrue(Item.Snippet);
-  Assert.AreEqual(TCompletionExceptions.GroupRaise, Item.ExceptionGroup);
+  Assert.AreEqual(TCompletionExceptions.cGroupRaise, Item.ExceptionGroup);
   Assert.IsTrue(Find(Items, 'EAppError.CreateFmt', Item), 'eigener Eintrag fuer CreateFmt');
   Assert.AreEqual('EAppError.CreateFmt(''$1'', [$2])$0', Item.InsertText);
-  Assert.AreEqual(KindConstructor, Item.Kind);
+  Assert.AreEqual(cKindConstructor, Item.Kind);
   Assert.AreEqual('EAppError', Item.FilterText);
   Assert.AreEqual(IndexOf(Items, 'EAppError') + 1, IndexOf(Items, 'EAppError.CreateFmt'), 'direkt dahinter');
 end;
@@ -307,10 +307,10 @@ begin
   Items := ItemsAt('try'#10'    Value := StrToInt(''1'');'#10'  except'#10'    on E: |');
   Assert.IsTrue(Length(Items.Items) > 0);
   Assert.AreEqual('EConvertError', Items.Items[0].Name);
-  Assert.AreEqual(TCompletionExceptions.GroupTry, Items.Items[0].ExceptionGroup);
+  Assert.AreEqual(TCompletionExceptions.cGroupTry, Items.Items[0].ExceptionGroup);
   Assert.IsTrue(Items.Items[0].Fits);
   Assert.IsTrue(Find(Items, 'EAppError', Item));
-  Assert.AreEqual(TCompletionExceptions.GroupGeneral, Item.ExceptionGroup);
+  Assert.AreEqual(TCompletionExceptions.cGroupGeneral, Item.ExceptionGroup);
   Assert.IsFalse(Item.Fits);
   Assert.AreEqual(-1, IndexOf(Items, 'TWorker'));
 end;
@@ -323,7 +323,7 @@ begin
   Assert.IsTrue(Length(Items.Items) > 1);
   Assert.AreEqual('ELoadError', Items.Items[0].Name, 'Reihenfolge der Aufrufe');
   Assert.AreEqual('EConvertError', Items.Items[1].Name);
-  Assert.AreEqual(TCompletionExceptions.GroupTry, Items.Items[1].ExceptionGroup);
+  Assert.AreEqual(TCompletionExceptions.cGroupTry, Items.Items[1].ExceptionGroup);
 end;
 
 procedure TCompletionExceptionsTests.HandlerAddsUsesForTryClasses;
@@ -334,7 +334,7 @@ begin
   Items := ItemsAt('try'#10'    Lines.LoadFromFile(''a.txt'');'#10'  except'#10'    on E: |');
   Assert.IsTrue(Length(Items.Items) > 0);
   Assert.AreEqual('EFOpenError', Items.Items[0].Name);
-  Assert.AreEqual(TCompletionExceptions.GroupTry, Items.Items[0].ExceptionGroup);
+  Assert.AreEqual(TCompletionExceptions.cGroupTry, Items.Items[0].ExceptionGroup);
   Assert.AreEqual(1, Integer(Length(Items.Items[0].AdditionalEdits)), 'uses ergaenzen');
   Assert.IsTrue(Items.Items[0].AdditionalEdits[0].NewText.Contains('System.Classes'));
 end;

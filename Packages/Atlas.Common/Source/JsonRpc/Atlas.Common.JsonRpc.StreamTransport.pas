@@ -16,10 +16,10 @@ uses
 type
   TJsonRpcStreamTransport = class(TInterfacedObject, IJsonRpcTransport)
   private const
-    BufferSize = 64 * 1024;
-    MaxHeaderLineLength = 8 * 1024;
-    MaxContentLength = 256 * 1024 * 1024;
-    ContentLengthHeader = 'Content-Length:';
+    cBufferSize = 64 * 1024;
+    cMaxHeaderLineLength = 8 * 1024;
+    cMaxContentLength = 256 * 1024 * 1024;
+    cContentLengthHeader = 'Content-Length:';
   private
     FInput: TStream;
     FOutput: TStream;
@@ -79,7 +79,7 @@ begin
   FInput := AInput;
   FOutput := AOutput;
   FOwnsStreams := AOwnsStreams;
-  SetLength(FBuffer, BufferSize);
+  SetLength(FBuffer, cBufferSize);
   FWriteLock := TCriticalSection.Create;
 end;
 
@@ -96,12 +96,12 @@ end;
 
 function TJsonRpcStreamTransport.FillBuffer: Boolean;
 var
-  Count: Integer;
+  mCount: Integer;
 begin
   // Bei Pipes liefert Read, sobald Daten anliegen, auch weniger als angefordert.
-  Count := FInput.Read(FBuffer[0], BufferSize);
+  mCount := FInput.Read(FBuffer[0], cBufferSize);
   FBufferPos := 0;
-  FBufferLen := Max(Count, 0);
+  FBufferLen := Max(mCount, 0);
   Result := FBufferLen > 0;
 end;
 
@@ -118,17 +118,17 @@ end;
 
 function TJsonRpcStreamTransport.ReadHeaderLine(AAtMessageStart: Boolean): string;
 var
-  Line: TBytes;
-  Len: Integer;
+  mLine: TBytes;
+  mLen: Integer;
   B: Byte;
 begin
-  SetLength(Line, 64);
-  Len := 0;
+  SetLength(mLine, 64);
+  mLen := 0;
   while True do
   begin
     if not TryReadByte(B) then
     begin
-      if AAtMessageStart and (Len = 0) then
+      if AAtMessageStart and (mLen = 0) then
       begin
         raise EJsonRpcTransportClosed.Create(cTexts[TStreamTransportText.InputClosed].Text);
       end;
@@ -142,46 +142,46 @@ begin
     begin
       Continue;
     end;
-    if Len >= MaxHeaderLineLength then
+    if mLen >= cMaxHeaderLineLength then
     begin
       raise EJsonRpcTransportError.Create(cTexts[TStreamTransportText.HeaderLineTooLong].Text);
     end;
-    if Len = Length(Line) then
+    if mLen = Length(mLine) then
     begin
-      SetLength(Line, Len * 2);
+      SetLength(mLine, mLen * 2);
     end;
-    Line[Len] := B;
-    Inc(Len);
+    mLine[mLen] := B;
+    Inc(mLen);
   end;
-  Result := TEncoding.ASCII.GetString(Line, 0, Len);
+  Result := TEncoding.ASCII.GetString(mLine, 0, mLen);
 end;
 
 function TJsonRpcStreamTransport.ReadContentLength: Integer;
 var
-  Line: string;
-  HeaderSeen: Boolean;
+  mLine: string;
+  mHeaderSeen: Boolean;
 begin
   Result := -1;
-  HeaderSeen := False;
+  mHeaderSeen := False;
   while True do
   begin
-    Line := ReadHeaderLine(not HeaderSeen);
-    if Line = '' then
+    mLine := ReadHeaderLine(not mHeaderSeen);
+    if mLine = '' then
     begin
       // Leerzeilen vor dem ersten Header werden übersprungen.
-      if HeaderSeen then
+      if mHeaderSeen then
       begin
         Break;
       end;
       Continue;
     end;
-    HeaderSeen := True;
-    if Line.StartsWith(ContentLengthHeader, True) then
+    mHeaderSeen := True;
+    if mLine.StartsWith(cContentLengthHeader, True) then
     begin
-      if not TryStrToInt(Line.Substring(Length(ContentLengthHeader)).Trim, Result)
-        or (Result < 0) or (Result > MaxContentLength) then
+      if not TryStrToInt(mLine.Substring(Length(cContentLengthHeader)).Trim, Result)
+        or (Result < 0) or (Result > cMaxContentLength) then
       begin
-        raise EJsonRpcTransportError.CreateFmt(cTexts[TStreamTransportText.InvalidHeader].Text, [Line]);
+        raise EJsonRpcTransportError.CreateFmt(cTexts[TStreamTransportText.InvalidHeader].Text, [mLine]);
       end;
     end;
     // Weitere Header (z. B. Content-Type) werden ignoriert.
@@ -194,59 +194,59 @@ end;
 
 function TJsonRpcStreamTransport.ReadBody(ACount: Integer): TBytes;
 var
-  Offset: Integer;
-  Count: Integer;
+  mOffset: Integer;
+  mCount: Integer;
 begin
   SetLength(Result, ACount);
-  Offset := 0;
-  while Offset < ACount do
+  mOffset := 0;
+  while mOffset < ACount do
   begin
     if (FBufferPos >= FBufferLen) and not FillBuffer then
     begin
       raise EJsonRpcTransportError.Create(cTexts[TStreamTransportText.InputClosedWithinAMessage].Text);
     end;
-    Count := Min(ACount - Offset, FBufferLen - FBufferPos);
-    Move(FBuffer[FBufferPos], Result[Offset], Count);
-    Inc(FBufferPos, Count);
-    Inc(Offset, Count);
+    mCount := Min(ACount - mOffset, FBufferLen - FBufferPos);
+    Move(FBuffer[FBufferPos], Result[mOffset], mCount);
+    Inc(FBufferPos, mCount);
+    Inc(mOffset, mCount);
   end;
 end;
 
 function TJsonRpcStreamTransport.ReadMessage: TJSONObject;
 var
-  Body: TBytes;
-  Value: TJSONValue;
+  mBody: TBytes;
+  mValue: TJSONValue;
 begin
-  Body := ReadBody(ReadContentLength);
-  if Length(Body) = 0 then
+  mBody := ReadBody(ReadContentLength);
+  if Length(mBody) = 0 then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.ParseError, cTexts[TStreamTransportText.EmptyMessage].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cParseError, cTexts[TStreamTransportText.EmptyMessage].Text);
   end;
 
-  Value := TJSONObject.ParseJSONValue(Body, 0, True);
-  if Value = nil then
+  mValue := TJSONObject.ParseJSONValue(mBody, 0, True);
+  if mValue = nil then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.ParseError, cTexts[TStreamTransportText.MessageIsNotValidJSON].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cParseError, cTexts[TStreamTransportText.MessageIsNotValidJSON].Text);
   end;
-  if not (Value is TJSONObject) then
+  if not (mValue is TJSONObject) then
   begin
-    Value.Free;
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidRequest, cTexts[TStreamTransportText.MessageIsNotAJSON].Text);
+    mValue.Free;
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidRequest, cTexts[TStreamTransportText.MessageIsNotAJSON].Text);
   end;
-  Result := TJSONObject(Value);
+  Result := TJSONObject(mValue);
 end;
 
 procedure TJsonRpcStreamTransport.WriteMessage(const AMessage: TJSONObject);
 var
-  Body: TBytes;
-  Data: TBytes;
+  mBody: TBytes;
+  mData: TBytes;
 begin
-  Body := TEncoding.UTF8.GetBytes(AMessage.ToJSON);
-  Data := TEncoding.ASCII.GetBytes(Format('Content-Length: %d'#13#10#13#10, [Length(Body)])) + Body;
+  mBody := TEncoding.UTF8.GetBytes(AMessage.ToJSON);
+  mData := TEncoding.ASCII.GetBytes(Format('Content-Length: %d'#13#10#13#10, [Length(mBody)])) + mBody;
   // Header und Inhalt in einem Stück, damit sich Nachrichten mehrerer Threads nicht mischen.
   FWriteLock.Enter;
   try
-    FOutput.WriteBuffer(Data, Length(Data));
+    FOutput.WriteBuffer(mData, Length(mData));
   finally
     FWriteLock.Leave;
   end;

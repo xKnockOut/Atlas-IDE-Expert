@@ -71,10 +71,10 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  UsesCycleRuleId = 'uses-cycle';
-  UnusedDeclarationRuleId = 'unused-declaration';
-  UnusedUnitRuleId = 'unused-unit';
-  UnusedUsesRuleId = 'unused-uses';
+  cUsesCycleRuleId = 'uses-cycle';
+  cUnusedDeclarationRuleId = 'unused-declaration';
+  cUnusedUnitRuleId = 'unused-unit';
+  cUnusedUsesRuleId = 'unused-uses';
 
 type
   TUsesCycleRule = class(TInterfacedObject, IRule, IRuleCondition)
@@ -208,11 +208,11 @@ end;
 
 function Inside(const APosition: TTextPosition; const ARanges: TArray<TTextRange>): Boolean;
 var
-  Range: TTextRange;
+  mRange: TTextRange;
 begin
-  for Range in ARanges do
+  for mRange in ARanges do
   begin
-    if NotBefore(APosition, Range.StartPos) and NotBefore(Range.EndPos, APosition) then
+    if NotBefore(APosition, mRange.StartPos) and NotBefore(mRange.EndPos, APosition) then
     begin
       Exit(True);
     end;
@@ -222,15 +222,15 @@ end;
 
 function HasIncludes(const ATree: TSyntaxTree): Boolean;
 var
-  Token: TPascalToken;
-  Name: string;
+  mToken: TPascalToken;
+  mName: string;
 begin
-  for Token in ATree.Tokens do
+  for mToken in ATree.Tokens do
   begin
-    if Token.Kind = TPascalTokenKind.Directive then
+    if mToken.Kind = TPascalTokenKind.Directive then
     begin
-      Name := TDirectiveNames.LeadingName(TDirectiveNames.Body(Token.Text));
-      if SameText(Name, 'I') or SameText(Name, 'INCLUDE') then
+      mName := TDirectiveNames.LeadingName(TDirectiveNames.Body(mToken.Text));
+      if SameText(mName, 'I') or SameText(mName, 'INCLUDE') then
       begin
         Exit(True);
       end;
@@ -270,23 +270,23 @@ end;
 /// <summary>Name ohne Typparameter: TListe&lt;T&gt;.Add -> TListe.Add.</summary>
 function WithoutTypeParams(const AName: string): string;
 var
-  Index, Depth: Integer;
+  mIndex, mDepth: Integer;
 begin
   Result := '';
-  Depth := 0;
-  for Index := 1 to Length(AName) do
+  mDepth := 0;
+  for mIndex := 1 to Length(AName) do
   begin
-    if AName[Index] = '<' then
+    if AName[mIndex] = '<' then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if AName[Index] = '>' then
+    else if AName[mIndex] = '>' then
     begin
-      Dec(Depth);
+      Dec(mDepth);
     end
-    else if Depth = 0 then
+    else if mDepth = 0 then
     begin
-      Result := Result + AName[Index];
+      Result := Result + AName[mIndex];
     end;
   end;
 end;
@@ -308,30 +308,30 @@ end;
 /// <summary>Bereich des Unit-Namens im Kopf (unit A.B.C;); leer, wenn die Datei keine Unit ist.</summary>
 function UnitNameRange(const ATokens: TArray<TPascalToken>; out ARange: TTextRange): Boolean;
 var
-  Index, Last: Integer;
+  mIndex, mLast: Integer;
 begin
   Result := False;
-  for Index := 0 to High(ATokens) do
+  for mIndex := 0 to High(ATokens) do
   begin
-    if ATokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
+    if ATokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive] then
     begin
       Continue;
     end;
-    if not SameText(ATokens[Index].Text, 'unit') then
+    if not SameText(ATokens[mIndex].Text, 'unit') then
     begin
       Exit;
     end;
-    Last := Index + 1;
-    while (Last + 2 <= High(ATokens)) and ATokens[Last + 1].IsSymbol('.') and
-      (ATokens[Last + 2].Kind = TPascalTokenKind.Identifier) do
+    mLast := mIndex + 1;
+    while (mLast + 2 <= High(ATokens)) and ATokens[mLast + 1].IsSymbol('.') and
+      (ATokens[mLast + 2].Kind = TPascalTokenKind.Identifier) do
     begin
-      Inc(Last, 2);
+      Inc(mLast, 2);
     end;
-    if (Last > High(ATokens)) or (ATokens[Index + 1].Kind <> TPascalTokenKind.Identifier) then
+    if (mLast > High(ATokens)) or (ATokens[mIndex + 1].Kind <> TPascalTokenKind.Identifier) then
     begin
       Exit;
     end;
-    ARange := TTextRange.Create(ATokens[Index + 1].StartPos, ATokens[Last].EndPos);
+    ARange := TTextRange.Create(ATokens[mIndex + 1].StartPos, ATokens[mLast].EndPos);
     Exit(True);
   end;
 end;
@@ -339,23 +339,23 @@ end;
 /// <summary>Kleinste Ersetzung, die AOld in ANew verwandelt (gemeinsamer Anfang und Schluss bleiben).</summary>
 function SmallestEdit(const AOld, ANew: string): TTextEdit;
 var
-  Prefix, Suffix: Integer;
-  Lines: TLineTable;
+  mPrefix, mSuffix: Integer;
+  mLines: TLineTable;
 begin
-  Prefix := 0;
-  while (Prefix < Length(AOld)) and (Prefix < Length(ANew)) and (AOld[Prefix + 1] = ANew[Prefix + 1]) do
+  mPrefix := 0;
+  while (mPrefix < Length(AOld)) and (mPrefix < Length(ANew)) and (AOld[mPrefix + 1] = ANew[mPrefix + 1]) do
   begin
-    Inc(Prefix);
+    Inc(mPrefix);
   end;
-  Suffix := 0;
-  while (Suffix < Length(AOld) - Prefix) and (Suffix < Length(ANew) - Prefix) and
-    (AOld[Length(AOld) - Suffix] = ANew[Length(ANew) - Suffix]) do
+  mSuffix := 0;
+  while (mSuffix < Length(AOld) - mPrefix) and (mSuffix < Length(ANew) - mPrefix) and
+    (AOld[Length(AOld) - mSuffix] = ANew[Length(ANew) - mSuffix]) do
   begin
-    Inc(Suffix);
+    Inc(mSuffix);
   end;
-  Lines := TLineTable.Build(AOld);
-  Result := TTextEdit.Create(TTextRange.Create(Lines.PositionAt(Prefix), Lines.PositionAt(Length(AOld) - Suffix)),
-    Copy(ANew, Prefix + 1, Length(ANew) - Prefix - Suffix));
+  mLines := TLineTable.Build(AOld);
+  Result := TTextEdit.Create(TTextRange.Create(mLines.PositionAt(mPrefix), mLines.PositionAt(Length(AOld) - mSuffix)),
+    Copy(ANew, mPrefix + 1, Length(ANew) - mPrefix - mSuffix));
 end;
 
 { TUsesCycleCheck }
@@ -716,7 +716,7 @@ begin
   end;
   if Assigned(FContext.Cancelled) and FContext.Cancelled() then
   begin
-    raise ERuleCheckCancelled.Create(UsesCycleRuleId);
+    raise ERuleCheckCancelled.Create(cUsesCycleRuleId);
   end;
   mSteps := CycleSteps(AReference, mAllInterface);
   if mSteps <> nil then
@@ -752,7 +752,7 @@ end;
 
 function TUsesCycleRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(UsesCycleRuleId, TRuleSeverity.Warning, cTexts[TDeadCodeText.CycleTitle].Text);
+  Result := TRuleDescriptor.Create(cUsesCycleRuleId, TRuleSeverity.Warning, cTexts[TDeadCodeText.CycleTitle].Text);
 end;
 
 function TUsesCycleRule.Applies(const AContext: TRuleContext): Boolean;
@@ -976,7 +976,7 @@ begin
   end;
   Result := TRuleFix.Create(cTexts[TDeadCodeText.MarkIntended].Text,
     [TTextEdit.Create(TTextRange.Create(mLine, 0, mLine, 0), mIndent + '// lsp-ignore: ' +
-    UnusedDeclarationRuleId + FLineBreak)]);
+    cUnusedDeclarationRuleId + FLineBreak)]);
   Result.Alternative := True;
 end;
 
@@ -1052,7 +1052,7 @@ end;
 
 function TUnusedDeclarationRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(UnusedDeclarationRuleId, TRuleSeverity.Hint,
+  Result := TRuleDescriptor.Create(cUnusedDeclarationRuleId, TRuleSeverity.Hint,
     cTexts[TDeadCodeText.UnusedTitle].Text);
 end;
 
@@ -1177,7 +1177,7 @@ end;
 
 function TUnusedUnitRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(UnusedUnitRuleId, TRuleSeverity.Hint,
+  Result := TRuleDescriptor.Create(cUnusedUnitRuleId, TRuleSeverity.Hint,
     cTexts[TDeadCodeText.UnitTitle].Text);
 end;
 
@@ -1249,7 +1249,7 @@ end;
 
 function TUnusedUsesRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(UnusedUsesRuleId, TRuleSeverity.Hint, cTexts[TDeadCodeText.UsesTitle].Text);
+  Result := TRuleDescriptor.Create(cUnusedUsesRuleId, TRuleSeverity.Hint, cTexts[TDeadCodeText.UsesTitle].Text);
 end;
 
 class function TUnusedUsesRule.Keep(const AOptions: string; const AUsesKeep: TArray<string>): TArray<string>;

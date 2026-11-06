@@ -55,9 +55,9 @@ end;
 
 procedure TShellEditingRefactorings.Register(ACommands: TLspCommands);
 begin
-  ACommands.Register(TLspUnwrap.Command, Unwrap);
-  ACommands.Register(TLspUnitRename.Command, UnitRenamed);
-  ACommands.Register(TLspSmartPaste.Command, PasteUses);
+  ACommands.Register(TLspUnwrap.cCommand, Unwrap);
+  ACommands.Register(TLspUnitRename.cCommand, UnitRenamed);
+  ACommands.Register(TLspSmartPaste.cCommand, PasteUses);
 end;
 
 function TShellEditingRefactorings.Actions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
@@ -120,7 +120,7 @@ begin
   // Argumente: alte URI, neue URI, URIs der Dateien des Bereichs (#512).
   if (AArguments = nil) or (AArguments.Count < 3) or not (AArguments.Items[2] is TJSONArray) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, TShellTexts.Missing(['old', 'new', 'files']));
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, TShellTexts.Missing(['old', 'new', 'files']));
   end;
   if not Settings(AArguments.Items[1].Value).UnitRenameFollowUp then
   begin
@@ -168,7 +168,7 @@ begin
       mContext, InterfaceUses);
   except
     on E: EArgumentException do
-      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, E.Message);
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, E.Message);
   end;
   if mAnswer.GetValue('units') is TJSONArray then
   begin

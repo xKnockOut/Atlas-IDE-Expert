@@ -54,31 +54,31 @@ type
   end;
 
 const
-  Visibilities: array[0..6] of string = ('strict private', 'private', 'strict protected', 'protected', 'public',
+  cVisibilities: array[0..6] of string = ('strict private', 'private', 'strict protected', 'protected', 'public',
     'published', 'automated');
-  MemberKinds = [TSyntaxKind.Field, TSyntaxKind.RoutineHeader, TSyntaxKind.RoutineDecl, TSyntaxKind.PropertyDecl];
-  IgnoredKinds = [TSyntaxKind.Visibility, TSyntaxKind.Attribute, TSyntaxKind.TypeReference,
+  cMemberKinds = [TSyntaxKind.Field, TSyntaxKind.RoutineHeader, TSyntaxKind.RoutineDecl, TSyntaxKind.PropertyDecl];
+  cIgnoredKinds = [TSyntaxKind.Visibility, TSyntaxKind.Attribute, TSyntaxKind.TypeReference,
     TSyntaxKind.GenericParams];
 
 function SplitText(const AText: string): TArray<string>;
 var
-  Index, Start: Integer;
+  mIndex, mStart: Integer;
 begin
   Result := nil;
-  Start := 1;
-  for Index := 1 to Length(AText) + 1 do
+  mStart := 1;
+  for mIndex := 1 to Length(AText) + 1 do
   begin
-    if (Index > Length(AText)) or (AText[Index] = #10) then
+    if (mIndex > Length(AText)) or (AText[mIndex] = #10) then
     begin
-      Result := Result + [Copy(AText, Start, Index - Start)];
-      Start := Index + 1;
+      Result := Result + [Copy(AText, mStart, mIndex - mStart)];
+      mStart := mIndex + 1;
     end;
   end;
-  for Index := 0 to High(Result) do
+  for mIndex := 0 to High(Result) do
   begin
-    if EndsStr(#13, Result[Index]) then
+    if EndsStr(#13, Result[mIndex]) then
     begin
-      Result[Index] := Copy(Result[Index], 1, Length(Result[Index]) - 1);
+      Result[mIndex] := Copy(Result[mIndex], 1, Length(Result[mIndex]) - 1);
     end;
   end;
 end;
@@ -94,54 +94,54 @@ end;
 
 function FindClass(ANode: TSyntaxNode; ALine: Integer): TSyntaxNode;
 var
-  Pending: TStack<TSyntaxPostOrderEntry>;
-  Entry: TSyntaxPostOrderEntry;
-  Index: Integer;
+  mPending: TStack<TSyntaxPostOrderEntry>;
+  mEntry: TSyntaxPostOrderEntry;
+  mIndex: Integer;
 begin
   // Eigener Stapel statt Rekursion (Bericht M1); die innerste Klasse gewinnt, also die Kinder vor dem Knoten.
   Result := nil;
-  Pending := TStack<TSyntaxPostOrderEntry>.Create;
+  mPending := TStack<TSyntaxPostOrderEntry>.Create;
   try
-    Pending.Push(TSyntaxPostOrderEntry.Create(ANode, False));
-    while Pending.Count > 0 do
+    mPending.Push(TSyntaxPostOrderEntry.Create(ANode, False));
+    while mPending.Count > 0 do
     begin
-      Entry := Pending.Pop;
-      if Entry.Done then
+      mEntry := mPending.Pop;
+      if mEntry.Done then
       begin
-        if Entry.Node.Kind = TSyntaxKind.ClassType then
+        if mEntry.Node.Kind = TSyntaxKind.ClassType then
         begin
-          Exit(Entry.Node);
+          Exit(mEntry.Node);
         end;
         Continue;
       end;
-      if (Entry.Node.StartPos.Line > ALine) or (Entry.Node.EndPos.Line < ALine) then
+      if (mEntry.Node.StartPos.Line > ALine) or (mEntry.Node.EndPos.Line < ALine) then
       begin
         Continue;
       end;
-      Pending.Push(TSyntaxPostOrderEntry.Create(Entry.Node, True));
-      for Index := Entry.Node.ChildCount - 1 downto 0 do
+      mPending.Push(TSyntaxPostOrderEntry.Create(mEntry.Node, True));
+      for mIndex := mEntry.Node.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(TSyntaxPostOrderEntry.Create(Entry.Node[Index], False));
+        mPending.Push(TSyntaxPostOrderEntry.Create(mEntry.Node[mIndex], False));
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
 /// <summary>-1 öffnet, +1 schließt, 0 sonst; AOther bei {$ELSE}.</summary>
 function DirectiveStep(const ALine: string; out AOther: Boolean): Integer;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := UpperCase(TrimLeft(ALine));
-  AOther := StartsStr('{$ELSE', Text);
-  if StartsStr('{$IFDEF', Text) or StartsStr('{$IFNDEF', Text) or StartsStr('{$IFOPT', Text) or
-    StartsStr('{$IF ', Text) or StartsStr('{$IF(', Text) then
+  mText := UpperCase(TrimLeft(ALine));
+  AOther := StartsStr('{$ELSE', mText);
+  if StartsStr('{$IFDEF', mText) or StartsStr('{$IFNDEF', mText) or StartsStr('{$IFOPT', mText) or
+    StartsStr('{$IF ', mText) or StartsStr('{$IF(', mText) then
   begin
     Result := -1;
   end
-  else if StartsStr('{$ENDIF', Text) or StartsStr('{$IFEND', Text) then
+  else if StartsStr('{$ENDIF', mText) or StartsStr('{$IFEND', mText) then
   begin
     Result := 1;
   end
@@ -153,34 +153,34 @@ end;
 
 function KindRank(const ALine: string; ANodeKind: TSyntaxKind; const AOrder: TArray<string>): Integer;
 var
-  Text, Kind: string;
+  mText, mKind: string;
 begin
-  Text := NormalizedWords(ALine);
-  if StartsStr('class ', Text) then
+  mText := NormalizedWords(ALine);
+  if StartsStr('class ', mText) then
   begin
-    Text := Copy(Text, 7, MaxInt);
+    mText := Copy(mText, 7, MaxInt);
   end;
-  if StartsStr('constructor', Text) then
+  if StartsStr('constructor', mText) then
   begin
-    Kind := 'constructor';
+    mKind := 'constructor';
   end
-  else if StartsStr('destructor', Text) then
+  else if StartsStr('destructor', mText) then
   begin
-    Kind := 'destructor';
+    mKind := 'destructor';
   end
-  else if StartsStr('property', Text) then
+  else if StartsStr('property', mText) then
   begin
-    Kind := 'property';
+    mKind := 'property';
   end
   else if ANodeKind = TSyntaxKind.Field then
   begin
-    Kind := 'field';
+    mKind := 'field';
   end
   else
   begin
-    Kind := 'method';
+    mKind := 'method';
   end;
-  Result := IndexText(Kind, AOrder);
+  Result := IndexText(mKind, AOrder);
   if Result < 0 then
   begin
     Result := Length(AOrder);
@@ -190,115 +190,115 @@ end;
 procedure SortItems(var AItems: TArray<TItem>);
 var
   I, J: Integer;
-  Item: TItem;
+  mItem: TItem;
 begin
   // Einfügesortierung: stabil, die Listen sind kurz.
   for I := 1 to High(AItems) do
   begin
-    Item := AItems[I];
+    mItem := AItems[I];
     J := I - 1;
-    while (J >= 0) and ((AItems[J].Rank > Item.Rank) or
-      ((AItems[J].Rank = Item.Rank) and (AItems[J].Position > Item.Position))) do
+    while (J >= 0) and ((AItems[J].Rank > mItem.Rank) or
+      ((AItems[J].Rank = mItem.Rank) and (AItems[J].Position > mItem.Position))) do
     begin
       AItems[J + 1] := AItems[J];
       Dec(J);
     end;
-    AItems[J + 1] := Item;
+    AItems[J + 1] := mItem;
   end;
 end;
 
 procedure SortSections(var ASections: TArray<TSection>);
 var
   I, J: Integer;
-  Section: TSection;
+  mSection: TSection;
 begin
   for I := 1 to High(ASections) do
   begin
-    Section := ASections[I];
+    mSection := ASections[I];
     J := I - 1;
-    while (J >= 0) and (ASections[J].Position > Section.Position) do
+    while (J >= 0) and (ASections[J].Position > mSection.Position) do
     begin
       ASections[J + 1] := ASections[J];
       Dec(J);
     end;
-    ASections[J + 1] := Section;
+    ASections[J + 1] := mSection;
   end;
 end;
 
 /// <summary>{$A-}, {$A1}, {$ALIGN OFF} oder {$ALIGN 1} irgendwo in der Datei.</summary>
 function HasPackedAlignment(const AText: string): Boolean;
 var
-  Upper: string;
+  mUpper: string;
 begin
-  Upper := UpperCase(AText);
-  Result := ContainsStr(Upper, '{$A-}') or ContainsStr(Upper, '{$A1}') or ContainsStr(Upper, '{$ALIGN OFF}') or
-    ContainsStr(Upper, '{$ALIGN 1}');
+  mUpper := UpperCase(AText);
+  Result := ContainsStr(mUpper, '{$A-}') or ContainsStr(mUpper, '{$A1}') or ContainsStr(mUpper, '{$ALIGN OFF}') or
+    ContainsStr(mUpper, '{$ALIGN 1}');
 end;
 
 /// <summary>Abschnitte über die Schlüsselwortzeilen zwischen AHeader und AStop.</summary>
 function CollectSections(const ALines: TArray<string>; AHeader, AStop: Integer): TArray<TSection>;
 var
-  Sections: TList<TSection>;
-  Section: TSection;
-  Line: Integer;
-  Words: string;
+  mSections: TList<TSection>;
+  mSection: TSection;
+  mLine: Integer;
+  mWords: string;
 begin
   Result := nil;
-  Sections := TList<TSection>.Create;
+  mSections := TList<TSection>.Create;
   try
-    Section := Default(TSection);
-    Section.Header := -1;
-    Section.First := AHeader + 1;
-    for Line := AHeader + 1 to AStop - 1 do
+    mSection := Default(TSection);
+    mSection.Header := -1;
+    mSection.First := AHeader + 1;
+    for mLine := AHeader + 1 to AStop - 1 do
     begin
-      Words := NormalizedWords(ALines[Line]);
-      if IndexText(Words, Visibilities) >= 0 then
+      mWords := NormalizedWords(ALines[mLine]);
+      if IndexText(mWords, cVisibilities) >= 0 then
       begin
-        Section.Last := Line - 1;
-        Sections.Add(Section);
-        Section := Default(TSection);
-        Section.Keyword := Words;
-        Section.Header := Line;
-        Section.First := Line + 1;
+        mSection.Last := mLine - 1;
+        mSections.Add(mSection);
+        mSection := Default(TSection);
+        mSection.Keyword := mWords;
+        mSection.Header := mLine;
+        mSection.First := mLine + 1;
       end
-      else if MatchText(Words, ['type', 'const', 'var', 'class var', 'threadvar', 'resourcestring']) or
-        StartsText('class var ', Words) then
+      else if MatchText(mWords, ['type', 'const', 'var', 'class var', 'threadvar', 'resourcestring']) or
+        StartsText('class var ', mWords) then
       begin
-        Section.Nested := True;
+        mSection.Nested := True;
       end;
     end;
-    Section.Last := AStop - 1;
-    Sections.Add(Section);
-    Result := Sections.ToArray;
+    mSection.Last := AStop - 1;
+    mSections.Add(mSection);
+    Result := mSections.ToArray;
   finally
-    Sections.Free;
+    mSections.Free;
   end;
 end;
 
 /// <summary>Markiert Abschnitte mit {$IF…}; False, wenn ein Block quer zu Abschnitten liegt.</summary>
 function MarkDirectives(var ASections: TArray<TSection>; const ALines: TArray<string>): Boolean;
 var
-  SectionIndex, Line, Depth, Step: Integer;
-  Other: Boolean;
+  mSectionIndex, mLine, mDepth, mStep: Integer;
+  mOther: Boolean;
 begin
   Result := False;
-  for SectionIndex := 0 to High(ASections) do
+  for mSectionIndex := 0 to High(ASections) do
   begin
-    Depth := 0;
-    for Line := ASections[SectionIndex].First to ASections[SectionIndex].Last do
+    mDepth := 0;
+    for mLine := ASections[mSectionIndex].First to ASections[mSectionIndex].Last do
     begin
-      Step := DirectiveStep(ALines[Line], Other);
-      if (Step <> 0) or Other then
+      mStep := DirectiveStep(ALines[mLine], mOther);
+      if (mStep <> 0) or mOther then
       begin
-        ASections[SectionIndex].Directives := True;
+        ASections[mSectionIndex].Directives := True;
       end;
-      Inc(Depth, -Step);
-      if Depth < 0 then
+      Inc(mDepth, -mStep);
+      if mDepth < 0 then
       begin
         Exit;
       end;
     end;
-    if Depth <> 0 then
+    if mDepth <> 0 then
     begin
       Exit;
     end;
@@ -315,7 +315,7 @@ begin
   begin
     Exit;
   end;
-  if not (AChild.Kind in MemberKinds) then
+  if not (AChild.Kind in cMemberKinds) then
   begin
     ASection.Nested := True;
   end
@@ -337,7 +337,7 @@ begin
   for mIndex := 0 to AClass.ChildCount - 1 do
   begin
     mChild := AClass[mIndex];
-    if (mChild.Kind in IgnoredKinds) or (mChild.StartPos.Line <= AHeader) then
+    if (mChild.Kind in cIgnoredKinds) or (mChild.StartPos.Line <= AHeader) then
     begin
       Continue;
     end;
@@ -355,23 +355,23 @@ end;
 /// mehreren Abschnitten ohne sortFields (sonst änderte sich das Speicherlayout).</summary>
 function CanMoveSections(const ASections: TArray<TSection>; const ASettings: TMemberOrderSettings): Boolean;
 var
-  Section: TSection;
-  FieldSections: Integer;
+  mSection: TSection;
+  mFieldSections: Integer;
 begin
   Result := True;
-  FieldSections := 0;
-  for Section in ASections do
+  mFieldSections := 0;
+  for mSection in ASections do
   begin
-    if Section.Nested then
+    if mSection.Nested then
     begin
       Result := False;
     end;
-    if Section.HasFields then
+    if mSection.HasFields then
     begin
-      Inc(FieldSections);
+      Inc(mFieldSections);
     end;
   end;
-  if (FieldSections > 1) and not ASettings.SortFields then
+  if (mFieldSections > 1) and not ASettings.SortFields then
   begin
     Result := False;
   end;
@@ -380,28 +380,28 @@ end;
 /// <summary>Position je Abschnitt setzen und stabil sortieren; der Abschnitt ohne Schlüsselwort bleibt vorn.</summary>
 procedure OrderSections(var ASections: TArray<TSection>; const ASettings: TMemberOrderSettings);
 var
-  SectionIndex, Rank: Integer;
-  MayMove: Boolean;
+  mSectionIndex, mRank: Integer;
+  mMayMove: Boolean;
 begin
-  MayMove := CanMoveSections(ASections, ASettings);
-  for SectionIndex := 0 to High(ASections) do
+  mMayMove := CanMoveSections(ASections, ASettings);
+  for mSectionIndex := 0 to High(ASections) do
   begin
-    Rank := IndexText(ASections[SectionIndex].Keyword, ASettings.Sections);
-    if Rank < 0 then
+    mRank := IndexText(ASections[mSectionIndex].Keyword, ASettings.Sections);
+    if mRank < 0 then
     begin
-      Rank := Length(ASettings.Sections);
+      mRank := Length(ASettings.Sections);
     end;
-    if ASections[SectionIndex].Header < 0 then
+    if ASections[mSectionIndex].Header < 0 then
     begin
-      ASections[SectionIndex].Position := -1;
+      ASections[mSectionIndex].Position := -1;
     end
-    else if MayMove then
+    else if mMayMove then
     begin
-      ASections[SectionIndex].Position := Rank * 1000 + SectionIndex;
+      ASections[mSectionIndex].Position := mRank * 1000 + mSectionIndex;
     end
     else
     begin
-      ASections[SectionIndex].Position := SectionIndex;
+      ASections[mSectionIndex].Position := mSectionIndex;
     end;
   end;
   SortSections(ASections);
@@ -418,46 +418,46 @@ end;
 function CollectItems(const ASection: TSection; AClass: TSyntaxNode; const ALines: TArray<string>;
   const AOrder: TArray<string>; out ANext: Integer): TArray<TItem>;
 var
-  Items: TList<TItem>;
-  Item: TItem;
-  Child: TSyntaxNode;
-  Index: Integer;
+  mItems: TList<TItem>;
+  mItem: TItem;
+  mChild: TSyntaxNode;
+  mIndex: Integer;
 begin
   Result := nil;
   ANext := ASection.First;
-  Items := TList<TItem>.Create;
+  mItems := TList<TItem>.Create;
   try
-    for Index := 0 to AClass.ChildCount - 1 do
+    for mIndex := 0 to AClass.ChildCount - 1 do
     begin
-      Child := AClass[Index];
-      if not (Child.Kind in MemberKinds) or (Child.StartPos.Line < ASection.First) or
-        (Child.StartPos.Line > ASection.Last) then
+      mChild := AClass[mIndex];
+      if not (mChild.Kind in cMemberKinds) or (mChild.StartPos.Line < ASection.First) or
+        (mChild.StartPos.Line > ASection.Last) then
       begin
         Continue;
       end;
       // Mehrere Knoten in einer Zeile (A, B: Integer) gehören zusammen.
-      if (Items.Count > 0) and (Child.StartPos.Line <= Items[Items.Count - 1].Last) then
+      if (mItems.Count > 0) and (mChild.StartPos.Line <= mItems[mItems.Count - 1].Last) then
       begin
-        if Child.EndPos.Line > Items[Items.Count - 1].Last then
+        if mChild.EndPos.Line > mItems[mItems.Count - 1].Last then
         begin
-          Item := Items[Items.Count - 1];
-          Item.Last := Child.EndPos.Line;
-          Items[Items.Count - 1] := Item;
-          ANext := Item.Last + 1;
+          mItem := mItems[mItems.Count - 1];
+          mItem.Last := mChild.EndPos.Line;
+          mItems[mItems.Count - 1] := mItem;
+          ANext := mItem.Last + 1;
         end;
         Continue;
       end;
-      Item := Default(TItem);
-      Item.First := ANext;
-      Item.Last := Child.EndPos.Line;
-      Item.Rank := KindRank(ALines[Child.StartPos.Line], Child.Kind, AOrder);
-      Item.Position := Items.Count;
-      Items.Add(Item);
-      ANext := Item.Last + 1;
+      mItem := Default(TItem);
+      mItem.First := ANext;
+      mItem.Last := mChild.EndPos.Line;
+      mItem.Rank := KindRank(ALines[mChild.StartPos.Line], mChild.Kind, AOrder);
+      mItem.Position := mItems.Count;
+      mItems.Add(mItem);
+      ANext := mItem.Last + 1;
     end;
-    Result := Items.ToArray;
+    Result := mItems.ToArray;
   finally
-    Items.Free;
+    mItems.Free;
   end;
 end;
 
@@ -465,38 +465,38 @@ end;
 procedure EmitSections(const ALines: TArray<string>; const ASections: TArray<TSection>; AClass: TSyntaxNode;
   const ASettings: TMemberOrderSettings; AOutput: TList<string>);
 var
-  Section: TSection;
-  Items: TArray<TItem>;
-  Item: TItem;
-  Line, Next: Integer;
+  mSection: TSection;
+  mItems: TArray<TItem>;
+  mItem: TItem;
+  mLine, mNext: Integer;
 begin
-  for Section in ASections do
+  for mSection in ASections do
   begin
-    if Section.Header >= 0 then
+    if mSection.Header >= 0 then
     begin
-      AOutput.Add(ALines[Section.Header]);
+      AOutput.Add(ALines[mSection.Header]);
     end;
-    if not SectionSortable(Section, ASettings) then
+    if not SectionSortable(mSection, ASettings) then
     begin
-      for Line := Section.First to Section.Last do
+      for mLine := mSection.First to mSection.Last do
       begin
-        AOutput.Add(ALines[Line]);
+        AOutput.Add(ALines[mLine]);
       end;
       Continue;
     end;
-    Items := CollectItems(Section, AClass, ALines, ASettings.Members, Next);
-    SortItems(Items);
-    for Item in Items do
+    mItems := CollectItems(mSection, AClass, ALines, ASettings.Members, mNext);
+    SortItems(mItems);
+    for mItem in mItems do
     begin
-      for Line := Item.First to Item.Last do
+      for mLine := mItem.First to mItem.Last do
       begin
-        AOutput.Add(ALines[Line]);
+        AOutput.Add(ALines[mLine]);
       end;
     end;
     // Was nach dem letzten Mitglied kommt, bleibt am Ende.
-    for Line := Next to Section.Last do
+    for mLine := mNext to mSection.Last do
     begin
-      AOutput.Add(ALines[Line]);
+      AOutput.Add(ALines[mLine]);
     end;
   end;
 end;
@@ -504,15 +504,15 @@ end;
 /// <summary>Weicht AOutput von den Zeilen AHeader+1..AStop-1 ab?</summary>
 function Changed(const ALines: TArray<string>; AOutput: TList<string>; AHeader, AStop: Integer): Boolean;
 var
-  Line: Integer;
+  mLine: Integer;
 begin
   if AOutput.Count <> AStop - AHeader - 1 then
   begin
     Exit(True);
   end;
-  for Line := AHeader + 1 to AStop - 1 do
+  for mLine := AHeader + 1 to AStop - 1 do
   begin
-    if ALines[Line] <> AOutput[Line - AHeader - 1] then
+    if ALines[mLine] <> AOutput[mLine - AHeader - 1] then
     begin
       Exit(True);
     end;
@@ -522,18 +522,18 @@ end;
 
 function JoinLines(AOutput: TList<string>; const ALineBreak: string): string;
 var
-  Builder: TStringBuilder;
-  Line: string;
+  mBuilder: TStringBuilder;
+  mLine: string;
 begin
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    for Line in AOutput do
+    for mLine in AOutput do
     begin
-      Builder.Append(Line).Append(ALineBreak);
+      mBuilder.Append(mLine).Append(ALineBreak);
     end;
-    Result := Builder.ToString;
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
@@ -550,46 +550,46 @@ end;
 class function TMemberOrder.Sort(const AText: string; ATree: TSyntaxTree; ALine: Integer;
   const ASettings: TMemberOrderSettings; out AEdit: TTextEdit): Boolean;
 var
-  Lines: TArray<string>;
-  ClassNode: TSyntaxNode;
-  Header, Stop: Integer;
-  Sections: TArray<TSection>;
-  Output: TList<string>;
+  mLines: TArray<string>;
+  mClassNode: TSyntaxNode;
+  mHeader, mStop: Integer;
+  mSections: TArray<TSection>;
+  mOutput: TList<string>;
 begin
   Result := False;
-  ClassNode := SortableClass(AText, ATree, ALine);
-  if ClassNode = nil then
+  mClassNode := SortableClass(AText, ATree, ALine);
+  if mClassNode = nil then
   begin
     Exit;
   end;
-  Lines := SplitText(AText);
-  Header := ClassNode.StartPos.Line;
-  Stop := ClassNode.EndPos.Line;
-  if (Stop - Header < 2) or (Stop > High(Lines)) or ContainsText(Lines[Header], 'packed') or
-    not StartsText('end', TrimLeft(Lines[Stop])) then
+  mLines := SplitText(AText);
+  mHeader := mClassNode.StartPos.Line;
+  mStop := mClassNode.EndPos.Line;
+  if (mStop - mHeader < 2) or (mStop > High(mLines)) or ContainsText(mLines[mHeader], 'packed') or
+    not StartsText('end', TrimLeft(mLines[mStop])) then
   begin
     Exit;
   end;
-  Sections := CollectSections(Lines, Header, Stop);
+  mSections := CollectSections(mLines, mHeader, mStop);
   // {$IF…}: innerhalb eines Abschnitts nur Einheit, quer dazu keine Aktion.
-  if not MarkDirectives(Sections, Lines) or not ClassifyMembers(Sections, ClassNode, Header) then
+  if not MarkDirectives(mSections, mLines) or not ClassifyMembers(mSections, mClassNode, mHeader) then
   begin
     Exit;
   end;
-  OrderSections(Sections, ASettings);
-  Output := TList<string>.Create;
+  OrderSections(mSections, ASettings);
+  mOutput := TList<string>.Create;
   try
-    EmitSections(Lines, Sections, ClassNode, ASettings, Output);
+    EmitSections(mLines, mSections, mClassNode, ASettings, mOutput);
     // Unverändert: keine Aktion.
-    if not Changed(Lines, Output, Header, Stop) then
+    if not Changed(mLines, mOutput, mHeader, mStop) then
     begin
       Exit;
     end;
-    AEdit := TTextEdit.Create(TTextRange.Create(Header + 1, 0, Stop, 0),
-      JoinLines(Output, TTextLines.LineBreakOf(AText)));
+    AEdit := TTextEdit.Create(TTextRange.Create(mHeader + 1, 0, mStop, 0),
+      JoinLines(mOutput, TTextLines.LineBreakOf(AText)));
     Result := True;
   finally
-    Output.Free;
+    mOutput.Free;
   end;
 end;
 

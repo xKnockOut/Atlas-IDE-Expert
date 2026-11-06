@@ -95,7 +95,7 @@ begin
   try
     Assert.AreEqual('client/registerCapability', Request.GetValue<string>('method'));
     Assert.AreEqual('workspace/didChangeWatchedFiles', Request.GetValue<string>('params.registrations[0].method'));
-    Assert.AreEqual(TLspWatchedFiles.GlobPattern,
+    Assert.AreEqual(TLspWatchedFiles.cGlobPattern,
       Request.GetValue<string>('params.registrations[0].registerOptions.watchers[0].globPattern'));
   finally
     Request.Free;
@@ -118,7 +118,7 @@ begin
   // Eigener Beobachter des Servers (#227): dieselbe Notification wie vom Client.
   Message := TLspWatchedFiles.Notification(['c:\Projekt\atlas.json', 'c:\Benutzer\settings.json']);
   try
-    Assert.AreEqual(TLspWatchedFiles.Method, Message.GetValue<string>('method'));
+    Assert.AreEqual(TLspWatchedFiles.cMethod, Message.GetValue<string>('method'));
     Assert.IsNull(Message.GetValue('id'));
     Changes := TLspWatchedFiles.ParseChanges(Message.GetValue('params'));
   finally

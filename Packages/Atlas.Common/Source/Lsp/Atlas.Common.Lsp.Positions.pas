@@ -46,11 +46,11 @@ function ReadInteger(const AValue: TJSONValue; const AName, AContext: string): I
 begin
   if not (AValue is TJSONObject) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, AContext + cTexts[TPositionsText.IsNotAnObject].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, AContext + cTexts[TPositionsText.IsNotAnObject].Text);
   end;
   if not TJSONObject(AValue).TryGetValue<Integer>(AName, Result) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TPositionsText.FieldMissingOrNotA].Fmt([AName]) + AContext);
   end;
 end;
@@ -64,7 +64,7 @@ begin
   end;
   if Result = nil then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TPositionsText.FieldMissingIn].Fmt([AName]) + AContext);
   end;
 end;

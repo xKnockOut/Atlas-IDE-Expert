@@ -124,29 +124,29 @@ type
   TSlashSettings = record
   public const
     /// <summary>Protokollaufruf für /log, /except und /measure (#304); '' = OutputDebugString.</summary>
-    LogCall = 'logCall';
+    cLogCall = 'logCall';
     /// <summary>Palettenseite für /component (#299).</summary>
-    ComponentPalette = 'componentPalette';
-    DefaultPalette = 'Eigene';
+    cComponentPalette = 'componentPalette';
+    cDefaultPalette = 'Eigene';
     /// <summary>completion.interfaceSection (#466) für /intf: private, protected oder public.</summary>
-    InterfaceSection = 'interfaceSection';
+    cInterfaceSection = 'interfaceSection';
     /// <summary>Name hinter -o für /todo (#297); '' = git config user.name.</summary>
-    TodoOwner = 'todoOwner';
+    cTodoOwner = 'todoOwner';
     /// <summary>Kategorie hinter -c für /todo (#297); '' = keine.</summary>
-    TodoCategory = 'todoCategory';
+    cTodoCategory = 'todoCategory';
     /// <summary>/sortuses streicht ungenutzte Units (#297, #284); 'false' = nur sortieren.</summary>
-    SortUsesRemoveUnused = 'sortUsesRemoveUnused';
+    cSortUsesRemoveUnused = 'sortUsesRemoveUnused';
     /// <summary>/helper für Aufzählungen mit cNames, ToString und FromString (#875); 'false' = leerer
     /// Helper.</summary>
-    EnumHelper = 'enumHelper';
+    cEnumHelper = 'enumHelper';
     /// <summary>/helper für Mengen mit Contains, ToText, Toggle und All (#875); 'false' = leerer Helper.</summary>
-    SetHelper = 'setHelper';
+    cSetHelper = 'setHelper';
     /// <summary>classCompletion.typeComment (#1835): brace, line, summary, region oder off.</summary>
-    TypeComment = 'typeComment';
+    cTypeComment = 'typeComment';
     /// <summary>classCompletion.bodyStubs (#1837); 'false' = leere Rümpfe.</summary>
-    BodyStubs = 'bodyStubs';
+    cBodyStubs = 'bodyStubs';
     /// <summary>classCompletion.lifecycleFirst (#1836); 'false' = Konstruktoren nicht vorziehen.</summary>
-    LifecycleFirst = 'lifecycleFirst';
+    cLifecycleFirst = 'lifecycleFirst';
   end;
 
   /// <summary>Ort und Inhalt der Befehlszeile.</summary>

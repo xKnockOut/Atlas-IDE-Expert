@@ -45,7 +45,7 @@ type
   TLspDocumentation = class
   public const
     /// <summary>Höchstens so viele Stufen inheritdoc hintereinander.</summary>
-    MaxInheritDepth = 8;
+    cMaxInheritDepth = 8;
   private type
     TLoader = class
     private
@@ -76,7 +76,8 @@ type
     class function ToJson(const ADoc: TXmlDoc; const ATargets: TArray<TDocTarget>): TJSONObject; static;
     /// <summary>Anzeige-Einstellungen für das Plugin: {"full": …, "maxLines": …} (#654).</summary>
     class function HintsJson(const AHints: THintSettings): TJSONObject; static;
-    /// <summary>Liest AOwnFile aus AOwnText (Editorinhalt, auch ungespeichert), andere Dateien über AReadText.</summary>
+    /// <summary>Liest AOwnFile aus AOwnText (Editorinhalt, auch ungespeichert), andere Dateien über
+    /// AReadText.</summary>
     class function Reader(const AOwnFile, AOwnText: string; const AReadText: TDocReadText): TDocReadText; static;
     /// <summary>Text in Zeilen (CRLF, LF oder CR); wie TTextLines.SplitLines.</summary>
     class function SplitLines(const AText: string): TArray<string>; static;
@@ -105,31 +106,31 @@ end;
 
 function TLspDocumentation.TLoader.LinesOf(const AFileName: string; out ALines: TArray<string>): Boolean;
 var
-  Text: string;
+  mText: string;
 begin
   if FLines.TryGetValue(UpperCase(AFileName), ALines) then
   begin
     Exit(True);
   end;
-  Result := Assigned(FReadText) and FReadText(AFileName, Text);
+  Result := Assigned(FReadText) and FReadText(AFileName, mText);
   if not Result then
   begin
     Exit;
   end;
-  ALines := TLspDocumentation.SplitLines(Text);
+  ALines := TLspDocumentation.SplitLines(mText);
   FLines.AddOrSetValue(UpperCase(AFileName), ALines);
 end;
 
 function TLspDocumentation.TLoader.DocOf(const ASymbol: TResolvedSymbol; ADepth: Integer): TXmlDoc;
 var
-  Lines: TArray<string>;
+  mLines: TArray<string>;
 begin
   Result := Default(TXmlDoc);
-  if (ASymbol.FileName = '') or not LinesOf(ASymbol.FileName, Lines) then
+  if (ASymbol.FileName = '') or not LinesOf(ASymbol.FileName, mLines) then
   begin
     Exit;
   end;
-  Result := TXmlDoc.Parse(TXmlDoc.CommentAbove(Lines, ASymbol.Range.StartPos.Line));
+  Result := TXmlDoc.Parse(TXmlDoc.CommentAbove(mLines, ASymbol.Range.StartPos.Line));
   if Result.InheritDoc then
   begin
     Result := Resolve(ASymbol, Result, ADepth);
@@ -192,7 +193,7 @@ var
   mOwner, mBase, mCandidate: TResolvedSymbol;
 begin
   Result := Default(TXmlDoc);
-  if (ADepth > TLspDocumentation.MaxInheritDepth) or not OwnerOf(ASymbol, mOwner) then
+  if (ADepth > TLspDocumentation.cMaxInheritDepth) or not OwnerOf(ASymbol, mOwner) then
   begin
     Exit;
   end;
@@ -219,27 +220,27 @@ end;
 function TLspDocumentation.TLoader.Resolve(const ASymbol: TResolvedSymbol; const ADoc: TXmlDoc;
   ADepth: Integer): TXmlDoc;
 var
-  FromUnit: TUnitIndex;
-  Target: TResolvedSymbol;
-  Base: TXmlDoc;
+  mFromUnit: TUnitIndex;
+  mTarget: TResolvedSymbol;
+  mBase: TXmlDoc;
 begin
-  Base := Default(TXmlDoc);
-  if ADepth <= TLspDocumentation.MaxInheritDepth then
+  mBase := Default(TXmlDoc);
+  if ADepth <= TLspDocumentation.cMaxInheritDepth then
   begin
     if ADoc.InheritCref <> '' then
     begin
-      if FResolver.DeclaringUnit(ASymbol, FromUnit) and
-        FResolver.LocateCref(FromUnit, ASymbol.Container, ADoc.InheritCref, Target) then
+      if FResolver.DeclaringUnit(ASymbol, mFromUnit) and
+        FResolver.LocateCref(mFromUnit, ASymbol.Container, ADoc.InheritCref, mTarget) then
       begin
-        Base := DocOf(Target, ADepth + 1);
+        mBase := DocOf(mTarget, ADepth + 1);
       end;
     end
     else
     begin
-      Base := AncestorDoc(ASymbol, ADepth);
+      mBase := AncestorDoc(ASymbol, ADepth);
     end;
   end;
-  Result := ADoc.Inherit(Base);
+  Result := ADoc.Inherit(mBase);
 end;
 
 { TLspDocumentation }
@@ -274,49 +275,49 @@ end;
 class function TLspDocumentation.Load(AResolver: TNameResolver; const ASymbol: TResolvedSymbol;
   const ALines: TArray<string>; ALine: Integer; const AReadText: TDocReadText): TXmlDoc;
 var
-  Loader: TLoader;
+  mLoader: TLoader;
 begin
   Result := TXmlDoc.Parse(TXmlDoc.CommentAbove(ALines, ALine));
   if not Result.InheritDoc or (AResolver = nil) or not ASymbol.Found then
   begin
     Exit;
   end;
-  Loader := TLoader.Create(AResolver, AReadText);
+  mLoader := TLoader.Create(AResolver, AReadText);
   try
-    Result := Loader.Resolve(ASymbol, Result, 0);
+    Result := mLoader.Resolve(ASymbol, Result, 0);
   finally
-    Loader.Free;
+    mLoader.Free;
   end;
 end;
 
 class function TLspDocumentation.Targets(AResolver: TNameResolver; const AFromUnit: TUnitIndex;
   const AContainer: string; const ADoc: TXmlDoc): TArray<TDocTarget>;
 var
-  Seen: TDictionary<string, Boolean>;
-  Section: TXmlDocSection;
-  Run: TXmlDocRun;
+  mSeen: TDictionary<string, Boolean>;
+  mSection: TXmlDocSection;
+  mRun: TXmlDocRun;
 
   procedure Add(const ACref: string);
   var
-    Symbol: TResolvedSymbol;
-    Target: TDocTarget;
+    mSymbol: TResolvedSymbol;
+    mTarget: TDocTarget;
   begin
-    if (ACref = '') or Seen.ContainsKey(ACref) then
+    if (ACref = '') or mSeen.ContainsKey(ACref) then
     begin
       Exit;
     end;
-    Seen.Add(ACref, True);
-    if not AResolver.LocateCref(AFromUnit, AContainer, ACref, Symbol) then
+    mSeen.Add(ACref, True);
+    if not AResolver.LocateCref(AFromUnit, AContainer, ACref, mSymbol) then
     begin
       Exit;
     end;
-    Target.Cref := ACref;
-    Target.Name := Symbol.Name;
-    Target.UnitName := Symbol.UnitName;
-    Target.FileName := Symbol.FileName;
-    Target.Line := Symbol.SelectionRange.StartPos.Line;
-    Target.Character := Symbol.SelectionRange.StartPos.Character;
-    Result := Result + [Target];
+    mTarget.Cref := ACref;
+    mTarget.Name := mSymbol.Name;
+    mTarget.UnitName := mSymbol.UnitName;
+    mTarget.FileName := mSymbol.FileName;
+    mTarget.Line := mSymbol.SelectionRange.StartPos.Line;
+    mTarget.Character := mSymbol.SelectionRange.StartPos.Character;
+    Result := Result + [mTarget];
   end;
 
 begin
@@ -325,36 +326,36 @@ begin
   begin
     Exit;
   end;
-  Seen := TDictionary<string, Boolean>.Create;
+  mSeen := TDictionary<string, Boolean>.Create;
   try
-    for Section in ADoc.Sections do
+    for mSection in ADoc.Sections do
     begin
-      if Section.Kind = TXmlDocSectionKind.Exception then
+      if mSection.Kind = TXmlDocSectionKind.Exception then
       begin
-        Add(Section.Name);
+        Add(mSection.Name);
       end;
-      for Run in Section.Runs do
+      for mRun in mSection.Runs do
       begin
-        if Run.Kind = TXmlDocRunKind.Ref then
+        if mRun.Kind = TXmlDocRunKind.Ref then
         begin
-          Add(Run.Target);
+          Add(mRun.Target);
         end;
       end;
     end;
   finally
-    Seen.Free;
+    mSeen.Free;
   end;
 end;
 
 function FindTarget(const ATargets: TArray<TDocTarget>; const ACref: string; out ATarget: TDocTarget): Boolean;
 var
-  Target: TDocTarget;
+  mTarget: TDocTarget;
 begin
-  for Target in ATargets do
+  for mTarget in ATargets do
   begin
-    if Target.Cref = ACref then
+    if mTarget.Cref = ACref then
     begin
-      ATarget := Target;
+      ATarget := mTarget;
       Exit(True);
     end;
   end;

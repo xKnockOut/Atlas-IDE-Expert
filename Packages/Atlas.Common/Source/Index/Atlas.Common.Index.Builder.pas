@@ -528,22 +528,22 @@ end;
 
 procedure TIndexBuilder.UseCache(const AUnits: TArray<TUnitIndex>);
 var
-  UnitIndex: TUnitIndex;
+  mUnitIndex: TUnitIndex;
 begin
   // Ob ein kompakter Eintrag taugt, entscheidet CacheFits beim Einlesen.
-  for UnitIndex in AUnits do
+  for mUnitIndex in AUnits do
   begin
-    FCache.Add(UnitIndex.FileName, TIndexCacheEntry.FromUnit(UnitIndex));
+    FCache.Add(mUnitIndex.FileName, TIndexCacheEntry.FromUnit(mUnitIndex));
   end;
 end;
 
 procedure TIndexBuilder.UseCache(const AEntries: TArray<TIndexCacheEntry>);
 var
-  Entry: TIndexCacheEntry;
+  mEntry: TIndexCacheEntry;
 begin
-  for Entry in AEntries do
+  for mEntry in AEntries do
   begin
-    FCache.Add(Entry.Header.FileName, Entry);
+    FCache.Add(mEntry.Header.FileName, mEntry);
   end;
 end;
 
@@ -559,19 +559,19 @@ end;
 
 function TIndexBuilder.IncludeResolver: TIncludeResolver;
 var
-  FileSystem: IIndexFileSystem;
+  mFileSystem: IIndexFileSystem;
 begin
-  FileSystem := FFileSystem;
+  mFileSystem := FFileSystem;
   Result := TIncludeFiles.Resolver(FIncludePaths,
     function(const AFileName: string): Boolean
     var
       Stamp: Int64;
     begin
-      Result := FileSystem.FileStamp(AFileName, Stamp);
+      Result := mFileSystem.FileStamp(AFileName, Stamp);
     end,
     function(const AFileName: string; out AText: string): Boolean
     begin
-      Result := FileSystem.ReadText(AFileName, AText);
+      Result := mFileSystem.ReadText(AFileName, AText);
     end);
 end;
 
@@ -624,13 +624,13 @@ end;
 
 function TIndexBuilder.ReadUsages(const AFileName: string; out AUsages: TArray<TIndexUsage>): Boolean;
 var
-  Text: string;
+  mText: string;
 begin
   AUsages := nil;
-  Result := FFileSystem.ReadText(AFileName, Text);
+  Result := FFileSystem.ReadText(AFileName, mText);
   if Result then
   begin
-    AUsages := TIndexExtractor.ExtractText(Text, AFileName, FDefines.DefinesOf(AFileName), IncludeResolver(),
+    AUsages := TIndexExtractor.ExtractText(mText, AFileName, FDefines.DefinesOf(AFileName), IncludeResolver(),
       True).Usages;
   end;
 end;
@@ -664,57 +664,57 @@ end;
 function TIndexBuilder.IndexFileNow(const AFileName: string; ALibrary: Boolean;
   var AResult: TIndexBuildResult): Boolean;
 var
-  Stamp: Int64;
-  Text, Hash: string;
-  Entry: TIndexCacheEntry;
-  Cached: TUnitIndex;
-  HasCache, Taken: Boolean;
-  Miss: TIndexCacheMiss;
+  mStamp: Int64;
+  mText, mHash: string;
+  mEntry: TIndexCacheEntry;
+  mCached: TUnitIndex;
+  mHasCache, mTaken: Boolean;
+  mMiss: TIndexCacheMiss;
 begin
-  if not FFileSystem.FileStamp(AFileName, Stamp) then
+  if not FFileSystem.FileStamp(AFileName, mStamp) then
   begin
     Inc(AResult.Missing);
     Exit(False);
   end;
-  if AlreadyIndexed(AFileName, Stamp, ALibrary) then
+  if AlreadyIndexed(AFileName, mStamp, ALibrary) then
   begin
     Inc(AResult.FromCache);
     Exit(True);
   end;
-  Miss := TIndexCacheMiss.NoEntry;
-  HasCache := FCache.TryGet(AFileName, Entry) and CacheFits(Entry, ALibrary, Miss);
+  mMiss := TIndexCacheMiss.NoEntry;
+  mHasCache := FCache.TryGet(AFileName, mEntry) and CacheFits(mEntry, ALibrary, mMiss);
   // Zeitstempel oder Inhalt passen: erst jetzt die Symbole dekodieren; ein beschädigter Block
   // zählt wie ein fehlender Cache-Eintrag.
-  Taken := HasCache and (Entry.Header.Stamp = Stamp) and FromCache(Entry, ALibrary, Cached);
-  if not Taken then
+  mTaken := mHasCache and (mEntry.Header.Stamp = mStamp) and FromCache(mEntry, ALibrary, mCached);
+  if not mTaken then
   begin
-    if not FFileSystem.ReadText(AFileName, Text) then
+    if not FFileSystem.ReadText(AFileName, mText) then
     begin
       Inc(AResult.Missing);
       Exit(False);
     end;
-    Hash := TIndexCache.HashOf(Text);
-    if HasCache and (Entry.Header.Hash = Hash) then
+    mHash := TIndexCache.HashOf(mText);
+    if mHasCache and (mEntry.Header.Hash = mHash) then
     begin
-      Taken := FromCache(Entry, ALibrary, Cached);
-      Miss := TIndexCacheMiss.Damaged;
+      mTaken := FromCache(mEntry, ALibrary, mCached);
+      mMiss := TIndexCacheMiss.Damaged;
     end
-    else if HasCache then
+    else if mHasCache then
     begin
-      Miss := TIndexCacheMiss.Changed;
+      mMiss := TIndexCacheMiss.Changed;
     end;
   end;
-  if Taken then
+  if mTaken then
   begin
-    Cached.Stamp := Stamp;
-    Cached.Library_ := ALibrary;
-    Cached.DefinesKey := FDefines.KeyOf(AFileName);
-    FIndex.AddUnit(Cached);
+    mCached.Stamp := mStamp;
+    mCached.Library_ := ALibrary;
+    mCached.DefinesKey := FDefines.KeyOf(AFileName);
+    FIndex.AddUnit(mCached);
     Inc(AResult.FromCache);
     Exit(True);
   end;
-  ParseFile(AFileName, Text, Hash, Stamp, ALibrary, AResult);
-  Inc(AResult.Misses[Miss]);
+  ParseFile(AFileName, mText, mHash, mStamp, ALibrary, AResult);
+  Inc(AResult.Misses[mMiss]);
   Result := True;
 end;
 
@@ -778,35 +778,35 @@ end;
 
 procedure TIndexBuilder.IndexReferenced(var AResult: TIndexBuildResult; const ARun: TIndexStageRun);
 var
-  Pending: TQueue<string>;
-  Seen: TDictionary<string, Boolean>;
-  Name: string;
-  Uses_: TArray<string>;
+  mPending: TQueue<string>;
+  mSeen: TDictionary<string, Boolean>;
+  mName: string;
+  mUses_: TArray<string>;
 begin
   if not Assigned(FResolveUnit) then
   begin
     Exit;
   end;
-  Pending := TQueue<string>.Create;
-  Seen := TDictionary<string, Boolean>.Create;
+  mPending := TQueue<string>.Create;
+  mSeen := TDictionary<string, Boolean>.Create;
   try
-    SeedReferenced(FIndex, Pending, Seen);
-    while (Pending.Count > 0) and not AResult.Cancelled do
+    SeedReferenced(FIndex, mPending, mSeen);
+    while (mPending.Count > 0) and not AResult.Cancelled do
     begin
       AResult.Cancelled := IsCancelled(ARun.Cancelled);
-      Name := Pending.Dequeue;
-      if not AResult.Cancelled and not Seen.ContainsKey(UpperCase(Name)) then
+      mName := mPending.Dequeue;
+      if not AResult.Cancelled and not mSeen.ContainsKey(UpperCase(mName)) then
       begin
-        Seen.Add(UpperCase(Name), True);
-        if NextReferenced(Name, AResult, ARun.Progress, Uses_) then
+        mSeen.Add(UpperCase(mName), True);
+        if NextReferenced(mName, AResult, ARun.Progress, mUses_) then
         begin
-          EnqueueAll(Pending, Uses_);
+          EnqueueAll(mPending, mUses_);
         end;
       end;
     end;
   finally
-    Seen.Free;
-    Pending.Free;
+    mSeen.Free;
+    mPending.Free;
   end;
 end;
 
@@ -908,11 +908,11 @@ end;
 
 function TIndexBuilder.EnsureUnit(const AUnitName: string): Boolean;
 var
-  Existing: TUnitIndex;
-  FileName: string;
-  Ignored: TIndexBuildResult;
+  mExisting: TUnitIndex;
+  mFileName: string;
+  mIgnored: TIndexBuildResult;
 begin
-  if FIndex.FindUnit(AUnitName, Existing) then
+  if FIndex.FindUnit(AUnitName, mExisting) then
   begin
     Exit(True);
   end;
@@ -924,9 +924,9 @@ begin
   begin
     Exit(False);
   end;
-  FileName := FResolveUnit(AUnitName);
-  Ignored := Default(TIndexBuildResult);
-  Result := (FileName <> '') and IndexFile(FileName, True, Ignored);
+  mFileName := FResolveUnit(AUnitName);
+  mIgnored := Default(TIndexBuildResult);
+  Result := (mFileName <> '') and IndexFile(mFileName, True, mIgnored);
   if not Result then
   begin
     FFailedUnits.Add(AUnitName);
@@ -935,28 +935,28 @@ end;
 
 function TIndexBuilder.ApplyText(const AFileName, AText: string): Boolean;
 var
-  Existing, UnitIndex: TUnitIndex;
-  Hash: string;
+  mExisting, mUnitIndex: TUnitIndex;
+  mHash: string;
 begin
   Result := False;
   // Nur Units, die der Index kennt; neue Dateien kommen wie bisher beim Speichern dazu.
-  if not FIndex.FindFile(AFileName, Existing) then
+  if not FIndex.FindFile(AFileName, mExisting) then
   begin
     Exit;
   end;
-  Hash := TIndexCache.HashOf(AText);
-  if Hash = Existing.Hash then
+  mHash := TIndexCache.HashOf(AText);
+  if mHash = mExisting.Hash then
   begin
     Exit;
   end;
-  UnitIndex := TIndexExtractor.ExtractText(AText, AFileName, FDefines.DefinesOf(AFileName), IncludeResolver(),
-    WantsUsages(Existing.Library_));
+  mUnitIndex := TIndexExtractor.ExtractText(AText, AFileName, FDefines.DefinesOf(AFileName), IncludeResolver(),
+    WantsUsages(mExisting.Library_));
   // Zeitstempel bleibt der der Datei: Beim Speichern liest IndexFile sie dann neu von der Platte.
-  UnitIndex.Stamp := Existing.Stamp;
-  UnitIndex.Hash := Hash;
-  UnitIndex.IncludeStamps := IncludeStampsOf(FFileSystem, UnitIndex.Includes);
-  UnitIndex.Library_ := Existing.Library_;
-  FIndex.AddUnit(UnitIndex);
+  mUnitIndex.Stamp := mExisting.Stamp;
+  mUnitIndex.Hash := mHash;
+  mUnitIndex.IncludeStamps := IncludeStampsOf(FFileSystem, mUnitIndex.Includes);
+  mUnitIndex.Library_ := mExisting.Library_;
+  FIndex.AddUnit(mUnitIndex);
   Result := True;
 end;
 

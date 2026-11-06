@@ -324,7 +324,7 @@ begin
   Result.ServerPath := FInfo.ServerPath;
   if FRecent <> nil then
   begin
-    Result.Recent := FRecent.Last(TJsonRpcRecentMessages.ReportCount);
+    Result.Recent := FRecent.Last(TJsonRpcRecentMessages.cReportCount);
   end;
   if Assigned(FInfo.Initialize) then
   begin
@@ -603,7 +603,7 @@ begin
   begin
     FLogger.Warning(Format('Sicherheitsnetz: %s an %s übersprungen nach Absturz; Fall %s', [AMethod,
       TLogMarks.Path(ExtractFileName(TDocumentUris.ToPath(mUri))), TLogMarks.Path(mEntry.CaseFolder)]));
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.RequestFailed, SkipText(mEntry));
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, SkipText(mEntry));
   end;
   if mChanged then
   begin

@@ -132,11 +132,11 @@ end;
 function CacheKindOf(const AFileName, AProject, ALibrary, ASearch: string): string;
 begin
   Result := AProject;
-  if Pos(PathDelim + TIndexCacheDirectory.LibraryFolder + PathDelim, AFileName) > 0 then
+  if Pos(PathDelim + TIndexCacheDirectory.cLibraryFolder + PathDelim, AFileName) > 0 then
   begin
     Result := ALibrary;
   end
-  else if Pos(PathDelim + TIndexCacheDirectory.SearchFolder + PathDelim, AFileName) > 0 then
+  else if Pos(PathDelim + TIndexCacheDirectory.cSearchFolder + PathDelim, AFileName) > 0 then
   begin
     Result := ASearch;
   end;
@@ -255,12 +255,12 @@ begin
   // Prozesse am Projekt (#62): Der Schreiber hat gespeichert, ein Leser den Stand übernommen.
   if FParts.Cache.Writes then
   begin
-    FParts.Cache.Report(TIndexProcessInfo.StateReady, True, Format('Index gespeichert (%d Units)',
+    FParts.Cache.Report(TIndexProcessInfo.cStateReady, True, Format('Index gespeichert (%d Units)',
       [AResult.Parsed + AResult.FromCache]));
   end
   else
   begin
-    FParts.Cache.Report(TIndexProcessInfo.StateReady, False,
+    FParts.Cache.Report(TIndexProcessInfo.cStateReady, False,
       cTexts[TWorkspaceIndexingText.FromCache].Fmt([AResult.FromCache]));
   end;
   FEncodings.Report(FParts.State.ProjectFiles);
@@ -286,7 +286,7 @@ begin
   FParts.Logger.Info(Format('Index-Cache verworfen (%s); wird neu aufgebaut', [AReason]));
   IndexEvent(Format('index project#%d cache rejected %s reason %s', [FParts.Setup.Priority,
     CacheKindOf(AFileName, 'project', 'library', 'search'), AReason]));
-  FParts.Cache.Report(TIndexProcessInfo.StateBuilding, FParts.Cache.Writes, Format('Cache verworfen (%s)', [AReason]));
+  FParts.Cache.Report(TIndexProcessInfo.cStateBuilding, FParts.Cache.Writes, Format('Cache verworfen (%s)', [AReason]));
 end;
 
 procedure TShellWorkspaceIndexing.CacheNotWritten(const AFileName, AReason: string);

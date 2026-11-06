@@ -135,7 +135,7 @@ begin
   // Cm.E2010.
   mFound := Findings(Body(cVars, '  mZahl := ''abc'';'#10));
   Assert.AreEqual(1, Integer(Length(mFound)));
-  Assert.AreEqual(TypeMismatchRuleId, mFound[0].RuleId);
+  Assert.AreEqual(cTypeMismatchRuleId, mFound[0].RuleId);
   Assert.AreEqual('Inkompatible Typen: ''Integer'' und ''string'' (wie E2010).', mFound[0].Message);
   Assert.AreEqual(17, mFound[0].Range.StartPos.Line);
   Assert.AreEqual(11, mFound[0].Range.StartPos.Character);
@@ -422,7 +422,7 @@ begin
   mFound := False;
   for mRule in BuiltinRules do
   begin
-    if mRule.Descriptor.Id = TypeMismatchRuleId then
+    if mRule.Descriptor.Id = cTypeMismatchRuleId then
     begin
       mFound := True;
     end;

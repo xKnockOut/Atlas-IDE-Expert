@@ -39,7 +39,8 @@ type
       ADirectives: string): Boolean; static;
     /// <summary>Ergebnistyp aus "Name(A: T): R" bzw. "Name: R"; '' bei Prozeduren.</summary>
     class function ReturnType(const AHead: string): string; static;
-    /// <summary>Stub für eine Interface-Methode mit der Deklaration ADeclaration; False, wenn sie keine Methode ist.</summary>
+    /// <summary>Stub für eine Interface-Methode mit der Deklaration ADeclaration; False, wenn sie keine Methode
+    /// ist.</summary>
     class function Make(const AInterfaceName, ATypeName, ADeclaration, ALineBreak: string;
       out AStub: TInterfaceStub): Boolean; static;
     /// <summary>Letzter Sichtbarkeitsabschnitt in einer Klassendeklaration zwischen den Zeilen AFirstLine und
@@ -74,23 +75,23 @@ uses
 class function TInterfaceStubs.Split(const ADeclaration: string; out AIsClass: Boolean; out AKind, AHead,
   ADirectives: string): Boolean;
 var
-  Text: string;
-  Index, Depth: Integer;
+  mText: string;
+  mIndex, mDepth: Integer;
 begin
   AKind := '';
   AHead := '';
   ADirectives := '';
-  Text := Trim(ADeclaration);
-  AIsClass := StartsText('class ', Text);
+  mText := Trim(ADeclaration);
+  AIsClass := StartsText('class ', mText);
   if AIsClass then
   begin
-    Text := TrimLeft(Copy(Text, 7, MaxInt));
+    mText := TrimLeft(Copy(mText, 7, MaxInt));
   end;
-  if StartsText('procedure ', Text) then
+  if StartsText('procedure ', mText) then
   begin
     AKind := 'procedure';
   end
-  else if StartsText('function ', Text) then
+  else if StartsText('function ', mText) then
   begin
     AKind := 'function';
   end
@@ -98,18 +99,18 @@ begin
   begin
     Exit(False);
   end;
-  Text := TrimLeft(Copy(Text, Length(AKind) + 1, MaxInt));
+  mText := TrimLeft(Copy(mText, Length(AKind) + 1, MaxInt));
   // Ende des Kopfs: erstes ";" außerhalb von Klammern.
-  Depth := 0;
-  for Index := 1 to Length(Text) do
-    case Text[Index] of
-      '(': Inc(Depth);
-      ')': Dec(Depth);
+  mDepth := 0;
+  for mIndex := 1 to Length(mText) do
+    case mText[mIndex] of
+      '(': Inc(mDepth);
+      ')': Dec(mDepth);
       ';':
-        if Depth = 0 then
+        if mDepth = 0 then
         begin
-          AHead := Trim(Copy(Text, 1, Index - 1));
-          ADirectives := ' ' + LowerCase(Copy(Text, Index + 1, MaxInt)).Replace(';', ' ') + ' ';
+          AHead := Trim(Copy(mText, 1, mIndex - 1));
+          ADirectives := ' ' + LowerCase(Copy(mText, mIndex + 1, MaxInt)).Replace(';', ' ') + ' ';
           Exit(AHead <> '');
         end;
     end;
@@ -118,18 +119,18 @@ end;
 
 class function TInterfaceStubs.ReturnType(const AHead: string): string;
 var
-  Index, Depth: Integer;
+  mIndex, mDepth: Integer;
 begin
   // Erster ":" außerhalb von Parameter- und Typparameterklammern.
-  Depth := 0;
-  for Index := 1 to Length(AHead) do
-    case AHead[Index] of
-      '(', '<': Inc(Depth);
-      ')', '>': Dec(Depth);
+  mDepth := 0;
+  for mIndex := 1 to Length(AHead) do
+    case AHead[mIndex] of
+      '(', '<': Inc(mDepth);
+      ')', '>': Dec(mDepth);
       ':':
-        if Depth = 0 then
+        if mDepth = 0 then
         begin
-          Exit(Trim(Copy(AHead, Index + 1, MaxInt)));
+          Exit(Trim(Copy(AHead, mIndex + 1, MaxInt)));
         end;
     end;
   Result := '';
@@ -139,48 +140,48 @@ class function TInterfaceStubs.Make(const AInterfaceName, ATypeName, ADeclaratio
   out AStub: TInterfaceStub): Boolean;
 const
   // Bleiben in der Deklaration der Klasse; die Aufrufkonvention muss zu der des Interfaces passen.
-  Kept: array[0..5] of string = ('overload', 'stdcall', 'safecall', 'cdecl', 'register', 'pascal');
+  cKept: array[0..5] of string = ('overload', 'stdcall', 'safecall', 'cdecl', 'register', 'pascal');
 var
-  IsClass: Boolean;
-  Kind, Head, Directives, Directive, ResultType, Name: string;
+  mIsClass: Boolean;
+  mKind, mHead, mDirectives, mDirective, mResultType, mName: string;
 begin
   AStub := Default(TInterfaceStub);
-  Result := Split(ADeclaration, IsClass, Kind, Head, Directives) and not IsClass;
+  Result := Split(ADeclaration, mIsClass, mKind, mHead, mDirectives) and not mIsClass;
   if not Result then
   begin
     Exit;
   end;
   // "Name(…): T", "Name: T", "Name<T>(…)": bis zum ersten Trennzeichen.
-  Name := Head;
-  if Pos('(', Name) > 0 then
+  mName := mHead;
+  if Pos('(', mName) > 0 then
   begin
-    Name := Copy(Name, 1, Pos('(', Name) - 1);
+    mName := Copy(mName, 1, Pos('(', mName) - 1);
   end;
-  if Pos(':', Name) > 0 then
+  if Pos(':', mName) > 0 then
   begin
-    Name := Copy(Name, 1, Pos(':', Name) - 1);
+    mName := Copy(mName, 1, Pos(':', mName) - 1);
   end;
-  if Pos('<', Name) > 0 then
+  if Pos('<', mName) > 0 then
   begin
-    Name := Copy(Name, 1, Pos('<', Name) - 1);
+    mName := Copy(mName, 1, Pos('<', mName) - 1);
   end;
   AStub.InterfaceName := AInterfaceName;
-  AStub.Name := Trim(Name);
-  AStub.Declaration := Kind + ' ' + Head + ';';
-  for Directive in Kept do
+  AStub.Name := Trim(mName);
+  AStub.Declaration := mKind + ' ' + mHead + ';';
+  for mDirective in cKept do
   begin
-    if Directives.Contains(' ' + Directive + ' ') then
+    if mDirectives.Contains(' ' + mDirective + ' ') then
     begin
-      AStub.Declaration := AStub.Declaration + ' ' + Directive + ';';
+      AStub.Declaration := AStub.Declaration + ' ' + mDirective + ';';
     end;
   end;
   // Rumpf: Standardwerte stehen nur in der Deklaration.
-  AStub.Body := Kind + ' ' + ATypeName + '.' + TRegEx.Replace(Head, '\s*=\s*[^;)]+', '') + ';' + ALineBreak +
+  AStub.Body := mKind + ' ' + ATypeName + '.' + TRegEx.Replace(mHead, '\s*=\s*[^;)]+', '') + ';' + ALineBreak +
     'begin' + ALineBreak;
-  ResultType := ReturnType(Head);
-  if (Kind = 'function') and (ResultType <> '') then
+  mResultType := ReturnType(mHead);
+  if (mKind = 'function') and (mResultType <> '') then
   begin
-    AStub.Body := AStub.Body + '  Result := Default(' + ResultType + ');' + ALineBreak;
+    AStub.Body := AStub.Body + '  Result := Default(' + mResultType + ');' + ALineBreak;
   end
   else
   begin
@@ -192,55 +193,55 @@ end;
 class function TInterfaceStubs.LastSection(const ATokens: TArray<TPascalToken>; AFirstLine,
   ALastLine: Integer): string;
 var
-  Index, Previous: Integer;
-  Word: string;
+  mIndex, mPrevious: Integer;
+  mWord: string;
 begin
   Result := '';
-  for Index := 0 to High(ATokens) do
+  for mIndex := 0 to High(ATokens) do
   begin
-    if ATokens[Index].StartPos.Line <= AFirstLine then
+    if ATokens[mIndex].StartPos.Line <= AFirstLine then
     begin
       Continue;
     end;
-    if ATokens[Index].StartPos.Line >= ALastLine then
+    if ATokens[mIndex].StartPos.Line >= ALastLine then
     begin
       Break;
     end;
-    if not (ATokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) then
+    if not (ATokens[mIndex].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) then
     begin
       Continue;
     end;
-    Word := LowerCase(ATokens[Index].Text);
-    if not MatchStr(Word, ['private', 'protected', 'public', 'published']) then
+    mWord := LowerCase(ATokens[mIndex].Text);
+    if not MatchStr(mWord, ['private', 'protected', 'public', 'published']) then
     begin
       Continue;
     end;
-    Previous := Index - 1;
-    while (Previous >= 0) and (ATokens[Previous].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+    mPrevious := mIndex - 1;
+    while (mPrevious >= 0) and (ATokens[mPrevious].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
     begin
-      Dec(Previous);
+      Dec(mPrevious);
     end;
-    if (Previous >= 0) and SameText(ATokens[Previous].Text, 'strict') then
+    if (mPrevious >= 0) and SameText(ATokens[mPrevious].Text, 'strict') then
     begin
-      Word := 'strict ' + Word;
+      mWord := 'strict ' + mWord;
     end;
-    Result := Word;
+    Result := mWord;
   end;
 end;
 
 class function TInterfaceStubs.ClassEdits(const AStub: TInterfaceStub; AEndLine: Integer; const AIndent,
   ASection: string; AHeader: Boolean; const ALineBreak: string): TArray<TTextEdit>;
 var
-  Range: TTextRange;
+  mRange: TTextRange;
 begin
   Result := nil;
-  Range := TTextRange.Create(AEndLine, 0, AEndLine, 0);
+  mRange := TTextRange.Create(AEndLine, 0, AEndLine, 0);
   if AHeader then
   begin
-    Result := Result + [TTextEdit.Create(Range, AIndent + ASection + ALineBreak)];
+    Result := Result + [TTextEdit.Create(mRange, AIndent + ASection + ALineBreak)];
   end;
-  Result := Result + [TTextEdit.Create(Range, AIndent + '  { ' + AStub.InterfaceName + ' }' + ALineBreak),
-    TTextEdit.Create(Range, AIndent + '  ' + AStub.Declaration + ALineBreak)];
+  Result := Result + [TTextEdit.Create(mRange, AIndent + '  { ' + AStub.InterfaceName + ' }' + ALineBreak),
+    TTextEdit.Create(mRange, AIndent + '  ' + AStub.Declaration + ALineBreak)];
 end;
 
 function SameRange(const A, B: TTextRange): Boolean;
@@ -251,156 +252,156 @@ end;
 
 class function TInterfaceStubs.Merge(const AEdits: TArray<TTextEdit>): TArray<TTextEdit>;
 var
-  Edit: TTextEdit;
-  Index, Found: Integer;
+  mEdit: TTextEdit;
+  mIndex, mFound: Integer;
   // Je Bereich die schon übernommenen Texte, mit #0 umschlossen.
-  Seen: TArray<string>;
+  mSeen: TArray<string>;
 begin
   Result := nil;
-  Seen := nil;
-  for Edit in AEdits do
+  mSeen := nil;
+  for mEdit in AEdits do
   begin
-    Found := -1;
-    for Index := 0 to High(Result) do
+    mFound := -1;
+    for mIndex := 0 to High(Result) do
     begin
-      if SameRange(Result[Index].Range, Edit.Range) then
+      if SameRange(Result[mIndex].Range, mEdit.Range) then
       begin
-        Found := Index;
+        mFound := mIndex;
         Break;
       end;
     end;
-    if Found < 0 then
+    if mFound < 0 then
     begin
-      Result := Result + [Edit];
-      Seen := Seen + [#0 + Edit.NewText + #0];
+      Result := Result + [mEdit];
+      mSeen := mSeen + [#0 + mEdit.NewText + #0];
       Continue;
     end;
-    if Pos(#0 + Edit.NewText + #0, Seen[Found]) > 0 then
+    if Pos(#0 + mEdit.NewText + #0, mSeen[mFound]) > 0 then
     begin
       Continue;
     end;
-    Seen[Found] := Seen[Found] + Edit.NewText + #0;
-    Result[Found].NewText := Result[Found].NewText + Edit.NewText;
+    mSeen[mFound] := mSeen[mFound] + mEdit.NewText + #0;
+    Result[mFound].NewText := Result[mFound].NewText + mEdit.NewText;
   end;
 end;
 
 class function TInterfaceStubs.DeclarationOf(const ALines: TArray<string>; const ARange: TTextRange): string;
 const
-  MaxLines = 6;
-  MaxLength = 600;
+  cMaxLines = 6;
+  cMaxLength = 600;
 var
-  Line, Last: Integer;
+  mLine, mLast: Integer;
 begin
   Result := '';
-  Last := ARange.EndPos.Line;
-  if Last - ARange.StartPos.Line >= MaxLines then
+  mLast := ARange.EndPos.Line;
+  if mLast - ARange.StartPos.Line >= cMaxLines then
   begin
-    Last := ARange.StartPos.Line;
+    mLast := ARange.StartPos.Line;
   end;
-  for Line := ARange.StartPos.Line to Last do
+  for mLine := ARange.StartPos.Line to mLast do
   begin
-    if (Line < 0) or (Line > High(ALines)) then
+    if (mLine < 0) or (mLine > High(ALines)) then
     begin
       Break;
     end;
-    if Line = ARange.StartPos.Line then
+    if mLine = ARange.StartPos.Line then
     begin
-      Result := Trim(Copy(ALines[Line], ARange.StartPos.Character + 1, MaxInt));
+      Result := Trim(Copy(ALines[mLine], ARange.StartPos.Character + 1, MaxInt));
     end
     else
     begin
-      Result := Result + ' ' + Trim(ALines[Line]);
+      Result := Result + ' ' + Trim(ALines[mLine]);
     end;
   end;
   while Pos('  ', Result) > 0 do
   begin
     Result := StringReplace(Result, '  ', ' ', [rfReplaceAll]);
   end;
-  if Length(Result) > MaxLength then
+  if Length(Result) > cMaxLength then
   begin
-    Result := Copy(Result, 1, MaxLength) + ' …';
+    Result := Copy(Result, 1, cMaxLength) + ' …';
   end;
 end;
 
 class function TInterfaceStubs.HeaderAncestors(const ALines: TArray<string>; AStartLine: Integer): TArray<string>;
 var
-  Text, Part: string;
-  Line, Index, Depth: Integer;
-  Match: TMatch;
+  mText, mPart: string;
+  mLine, mIndex, mDepth: Integer;
+  mMatch: TMatch;
 begin
   Result := nil;
-  Text := '';
-  for Line := AStartLine to Min(AStartLine + 5, High(ALines)) do
+  mText := '';
+  for mLine := AStartLine to Min(AStartLine + 5, High(ALines)) do
   begin
-    Text := Text + ' ' + ALines[Line];
+    mText := mText + ' ' + ALines[mLine];
   end;
-  Match := TRegEx.Match(Text, '=\s*class\s*(?:sealed\s*|abstract\s*)?\(', [roIgnoreCase]);
-  if not Match.Success then
+  mMatch := TRegEx.Match(mText, '=\s*class\s*(?:sealed\s*|abstract\s*)?\(', [roIgnoreCase]);
+  if not mMatch.Success then
   begin
     Exit;
   end;
-  Depth := 0;
-  Part := '';
-  for Index := Match.Index + Match.Length to Length(Text) do
+  mDepth := 0;
+  mPart := '';
+  for mIndex := mMatch.Index + mMatch.Length to Length(mText) do
   begin
-    case Text[Index] of
+    case mText[mIndex] of
       '(', '<':
-        Inc(Depth);
+        Inc(mDepth);
       ')', '>':
         begin
-          if Depth = 0 then
+          if mDepth = 0 then
           begin
-            if Trim(Part) <> '' then
+            if Trim(mPart) <> '' then
             begin
-              Result := Result + [StringReplace(Trim(Part), ' ', '', [rfReplaceAll])];
+              Result := Result + [StringReplace(Trim(mPart), ' ', '', [rfReplaceAll])];
             end;
             Exit;
           end;
-          Dec(Depth);
+          Dec(mDepth);
         end;
       ',':
-        if Depth = 0 then
+        if mDepth = 0 then
         begin
-          Result := Result + [StringReplace(Trim(Part), ' ', '', [rfReplaceAll])];
-          Part := '';
+          Result := Result + [StringReplace(Trim(mPart), ' ', '', [rfReplaceAll])];
+          mPart := '';
           Continue;
         end;
     end;
-    Part := Part + Text[Index];
+    mPart := mPart + mText[mIndex];
   end;
   Result := nil;
 end;
 
 class function TInterfaceStubs.SubstituteWords(const AText: string; const ABindings: TArray<string>): string;
 var
-  Binding: string;
-  Equal: Integer;
+  mBinding: string;
+  mEqual: Integer;
 begin
   Result := AText;
-  for Binding in ABindings do
+  for mBinding in ABindings do
   begin
-    Equal := Pos('=', Binding);
-    Result := TRegEx.Replace(Result, '(?<![\w.])' + TRegEx.Escape(Copy(Binding, 1, Equal - 1)) + '(?![\w])',
-      Copy(Binding, Equal + 1, MaxInt).Replace('$', '$$'));
+    mEqual := Pos('=', mBinding);
+    Result := TRegEx.Replace(Result, '(?<![\w.])' + TRegEx.Escape(Copy(mBinding, 1, mEqual - 1)) + '(?![\w])',
+      Copy(mBinding, mEqual + 1, MaxInt).Replace('$', '$$'));
   end;
 end;
 
 class function TInterfaceStubs.GenericName(const AContainer: string; const ABindings: TArray<string>): string;
 var
-  Binding: string;
-  Values: TArray<string>;
+  mBinding: string;
+  mValues: TArray<string>;
 begin
   Result := AContainer;
   if Length(ABindings) = 0 then
   begin
     Exit;
   end;
-  Values := nil;
-  for Binding in ABindings do
+  mValues := nil;
+  for mBinding in ABindings do
   begin
-    Values := Values + [Copy(Binding, Pos('=', Binding) + 1, MaxInt)];
+    mValues := mValues + [Copy(mBinding, Pos('=', mBinding) + 1, MaxInt)];
   end;
-  Result := Result + '<' + string.Join(', ', Values) + '>';
+  Result := Result + '<' + string.Join(', ', mValues) + '>';
 end;
 
 end.

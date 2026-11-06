@@ -89,7 +89,7 @@ begin
   // Sicherheitsnetz (#1355): eine Anfrage, die an derselben unveränderten Datei zweimal abstürzte, überspringen.
   FDispatcher.RequestGuard := GuardRequest;
   FDispatcher.OnRequestFailed := RequestFailed;
-  FLifecycle := TLspLifecycle.Create(TProductVersion.Name, TProductVersion.Version, FServices.Capabilities);
+  FLifecycle := TLspLifecycle.Create(TProductVersion.cName, TProductVersion.cVersion, FServices.Capabilities);
   FLifecycle.Attach(FDispatcher);
   // Ändert der Client ein Dokument, sind laufende Anfragen dazu überholt (#283).
   FDispatcher.PendingRequests.AddContentChangeMethod('textDocument/didChange');
@@ -108,7 +108,7 @@ procedure TShellProtocol.CreateCrashCases(const ADocuments: IDocumentStore;
   const ASettingsFiles: TShellCrashSettingsFunc; const ANotify: TShellCrashNotify);
 begin
   FCrashCases := TShellCrashCases.Create('', FServices.Logger, ADocuments, FRecent);
-  FCrashCases.AtlasVersion := TProductVersion.Version;
+  FCrashCases.AtlasVersion := TProductVersion.cVersion;
   FCrashCases.ServerPath := ParamStr(0);
   FCrashCases.Initialize := InitializeText;
   FCrashCases.SettingsFiles := ASettingsFiles;

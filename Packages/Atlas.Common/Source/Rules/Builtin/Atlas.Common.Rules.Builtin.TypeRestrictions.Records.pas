@@ -39,7 +39,7 @@ uses
   Atlas.Common.Rules.Contract;
 
 const
-  TypeRestrictionViolatedRuleId = 'type-restriction-violated';
+  cTypeRestrictionViolatedRuleId = 'type-restriction-violated';
 
 type
   TTypeRestrictionViolatedRule = class(TInterfacedObject, IRule)
@@ -159,50 +159,50 @@ const
 
 const
   // Direktiven, die Records und Record-Helfer nicht kennen (E2379, E2463, E2598, E2475).
-  RecordForbiddenDirectives: array[0..6] of string = ('virtual', 'dynamic', 'override', 'abstract', 'reintroduce',
+  cRecordForbiddenDirectives: array[0..6] of string = ('virtual', 'dynamic', 'override', 'abstract', 'reintroduce',
     'message', 'final');
   // Davon die, die eine Methode virtuell machen (E2379, E2598).
-  RecordVirtualDirectives: array[0..1] of string = ('virtual', 'dynamic');
+  cRecordVirtualDirectives: array[0..1] of string = ('virtual', 'dynamic');
   // Direktiven, die ein Klassenkonstruktor nicht tragen darf (E2534).
-  ClassConstructorDirectives: array[0..2] of string = ('virtual', 'dynamic', 'message');
+  cClassConstructorDirectives: array[0..2] of string = ('virtual', 'dynamic', 'message');
   // Elterntypen eines Typverweises, die eine Deklaration mit diesem Typ sind (E2527).
-  DeclarationParents = [TSyntaxKind.Field, TSyntaxKind.VarDecl, TSyntaxKind.Parameter, TSyntaxKind.RoutineHeader,
+  cDeclarationParents = [TSyntaxKind.Field, TSyntaxKind.VarDecl, TSyntaxKind.Parameter, TSyntaxKind.RoutineHeader,
     TSyntaxKind.PropertyDecl, TSyntaxKind.ConstDecl, TSyntaxKind.InlineVar, TSyntaxKind.ArrayType,
     TSyntaxKind.PointerType];
 
 /// <summary>Steht vor ANode das Wort class (class var, class property)?</summary>
 function PrecededByClass(const ATokens: TArray<TPascalToken>; ANode: TSyntaxNode): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := TRoutineBody.PreviousToken(ATokens, TRoutineBody.TokenAt(ATokens, ANode.StartOffset));
-  Result := (Index >= 0) and (Index < Length(ATokens)) and SameText(ATokens[Index].Text, 'class');
+  mIndex := TRoutineBody.PreviousToken(ATokens, TRoutineBody.TokenAt(ATokens, ANode.StartOffset));
+  Result := (mIndex >= 0) and (mIndex < Length(ATokens)) and SameText(ATokens[mIndex].Text, 'class');
 end;
 
 /// <summary>Gibt es zwischen AFrom und ATo (Offsets) auf oberster Klammerebene das Token AText?</summary>
 function HasTopLevelToken(const ATokens: TArray<TPascalToken>; AFrom, ATo: Integer; const AText: string): Boolean;
 var
-  Index, Depth: Integer;
+  mIndex, mDepth: Integer;
 begin
   Result := False;
-  Depth := 0;
-  Index := TRoutineBody.TokenAt(ATokens, AFrom);
-  while (Index >= 0) and (Index < Length(ATokens)) and (ATokens[Index].Offset < ATo) do
+  mDepth := 0;
+  mIndex := TRoutineBody.TokenAt(ATokens, AFrom);
+  while (mIndex >= 0) and (mIndex < Length(ATokens)) and (ATokens[mIndex].Offset < ATo) do
   begin
-    if ATokens[Index].IsSymbol('(') or ATokens[Index].IsSymbol('[') then
+    if ATokens[mIndex].IsSymbol('(') or ATokens[mIndex].IsSymbol('[') then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if ATokens[Index].IsSymbol(')') or ATokens[Index].IsSymbol(']') then
+    else if ATokens[mIndex].IsSymbol(')') or ATokens[mIndex].IsSymbol(']') then
     begin
-      Dec(Depth);
+      Dec(mDepth);
     end
-    else if (Depth = 0) and not (ATokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) and
-      SameText(ATokens[Index].Text, AText) then
+    else if (mDepth = 0) and not (ATokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) and
+      SameText(ATokens[mIndex].Text, AText) then
     begin
       Exit(True);
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
 end;
 
@@ -210,25 +210,25 @@ end;
 function DirectiveRemoval(const ATokens: TArray<TPascalToken>; ADirective: TSyntaxNode; out AEdit: TRuleEdit):
   Boolean;
 var
-  Index, Before, After: Integer;
+  mIndex, mBefore, mAfter: Integer;
 begin
   Result := False;
-  Index := TRoutineBody.TokenAt(ATokens, ADirective.StartOffset);
-  Before := TRoutineBody.PreviousToken(ATokens, Index);
-  if (Index < 0) or (Index >= Length(ATokens)) or (Before < 0) then
+  mIndex := TRoutineBody.TokenAt(ATokens, ADirective.StartOffset);
+  mBefore := TRoutineBody.PreviousToken(ATokens, mIndex);
+  if (mIndex < 0) or (mIndex >= Length(ATokens)) or (mBefore < 0) then
   begin
     Exit;
   end;
-  After := Index;
-  while (After >= 0) and (After < Length(ATokens)) and not ATokens[After].IsSymbol(';') do
+  mAfter := mIndex;
+  while (mAfter >= 0) and (mAfter < Length(ATokens)) and not ATokens[mAfter].IsSymbol(';') do
   begin
-    After := TRoutineBody.NextToken(ATokens, After);
+    mAfter := TRoutineBody.NextToken(ATokens, mAfter);
   end;
-  if (After < 0) or (After >= Length(ATokens)) then
+  if (mAfter < 0) or (mAfter >= Length(ATokens)) then
   begin
     Exit;
   end;
-  AEdit := TRuleEdit.Create(TTextRange.Create(ATokens[Before].EndPos, ATokens[After].EndPos), '');
+  AEdit := TRuleEdit.Create(TTextRange.Create(ATokens[mBefore].EndPos, ATokens[mAfter].EndPos), '');
   Result := True;
 end;
 
@@ -236,21 +236,21 @@ end;
 /// der zweite.</summary>
 function HelperTarget(AHelper: TSyntaxNode; out AAncestor: TSyntaxNode): TSyntaxNode;
 var
-  Count: Integer;
+  mCount: Integer;
 begin
-  Count := 0;
-  while (Count < AHelper.ChildCount) and (AHelper[Count].Kind = TSyntaxKind.TypeReference) do
+  mCount := 0;
+  while (mCount < AHelper.ChildCount) and (AHelper[mCount].Kind = TSyntaxKind.TypeReference) do
   begin
-    Inc(Count);
+    Inc(mCount);
   end;
   AAncestor := nil;
   Result := nil;
-  if Count >= 2 then
+  if mCount >= 2 then
   begin
     AAncestor := AHelper[0];
     Result := AHelper[1];
   end
-  else if Count = 1 then
+  else if mCount = 1 then
   begin
     Result := AHelper[0];
   end;
@@ -259,12 +259,12 @@ end;
 /// <summary>Hat jeder Parameter des Kopfs einen Vorgabewert (und gibt es mindestens einen)?</summary>
 function AllParametersDefaulted(const ATokens: TArray<TPascalToken>; const AHead: TRoutineHead): Boolean;
 var
-  Parameter: TSyntaxNode;
+  mParameter: TSyntaxNode;
 begin
   Result := AHead.Parameters <> nil;
-  for Parameter in AHead.Parameters do
+  for mParameter in AHead.Parameters do
   begin
-    if not HasTopLevelToken(ATokens, Parameter.StartOffset, Parameter.EndOffset, '=') then
+    if not HasTopLevelToken(ATokens, mParameter.StartOffset, mParameter.EndOffset, '=') then
     begin
       Exit(False);
     end;
@@ -274,11 +274,11 @@ end;
 /// <summary>Hat der Kopf einen offenen Array-Parameter (array of T, array of const)?</summary>
 function HasOpenArrayParameter(const AHead: TRoutineHead): Boolean;
 var
-  Parameter: TSyntaxNode;
+  mParameter: TSyntaxNode;
 begin
-  for Parameter in AHead.Parameters do
+  for mParameter in AHead.Parameters do
   begin
-    if Parameter.FindChild(TSyntaxKind.ArrayType) <> nil then
+    if mParameter.FindChild(TSyntaxKind.ArrayType) <> nil then
     begin
       Exit(True);
     end;
@@ -289,20 +289,20 @@ end;
 /// <summary>Ist der Record ARecord lokal (in einer Routine) oder anonym (ohne eigene Typdeklaration)?</summary>
 function IsLocalOrAnonymousRecord(ARecord: TSyntaxNode): Boolean;
 var
-  Node: TSyntaxNode;
+  mNode: TSyntaxNode;
 begin
   if (ARecord.Parent = nil) or (ARecord.Parent.Kind <> TSyntaxKind.TypeDecl) then
   begin
     Exit(True);
   end;
-  Node := ARecord.Parent.Parent;
-  while Node <> nil do
+  mNode := ARecord.Parent.Parent;
+  while mNode <> nil do
   begin
-    if Node.Kind = TSyntaxKind.RoutineDecl then
+    if mNode.Kind = TSyntaxKind.RoutineDecl then
     begin
       Exit(True);
     end;
-    Node := Node.Parent;
+    mNode := mNode.Parent;
   end;
   Result := False;
 end;
@@ -310,11 +310,11 @@ end;
 /// <summary>Steht AName in der Vorfahrenkette AChain?</summary>
 function ChainContains(const AChain: TArray<TSymbolLocation>; const AName: string): Boolean;
 var
-  Location: TSymbolLocation;
+  mLocation: TSymbolLocation;
 begin
-  for Location in AChain do
+  for mLocation in AChain do
   begin
-    if SameText(Location.Symbol.Name, AName) then
+    if SameText(mLocation.Symbol.Name, AName) then
     begin
       Exit(True);
     end;
@@ -324,24 +324,24 @@ end;
 
 function TTypeRestrictionViolatedRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(TypeRestrictionViolatedRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cTypeRestrictionViolatedRuleId, TRuleSeverity.Error,
     cTexts[TTypeRestrictionsRecordsText.Title].Text);
 end;
 
 procedure TTypeRestrictionViolatedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TArray<TPascalToken>;
-  Types: TFileTypes;
-  Root: TSyntaxNode;
-  Disabled, Paths: TArray<string>;
-  Nodes: TList<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Ancestry: TAncestry;
+  mTokens: TArray<TPascalToken>;
+  mTypes: TFileTypes;
+  mRoot: TSyntaxNode;
+  mDisabled, mPaths: TArray<string>;
+  mNodes: TList<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mAncestry: TAncestry;
 
   procedure Report(const ACode: string; const ARange: TTextRange; const AMessage: string;
     const AFixes: TArray<TRuleFix>);
   begin
-    if not MatchText(ACode, Disabled) then
+    if not MatchText(ACode, mDisabled) then
     begin
       AReport.Add(ARange, AMessage, TRuleConfidence.High, AFixes);
     end;
@@ -349,12 +349,12 @@ var
 
   function NameRange(AHeader: TSyntaxNode): TTextRange;
   var
-    At: Integer;
+    mAt: Integer;
   begin
-    At := NameToken(Tokens, AHeader);
-    if At >= 0 then
+    mAt := NameToken(mTokens, AHeader);
+    if mAt >= 0 then
     begin
-      Result := TokenRange(Tokens[At]);
+      Result := TokenRange(mTokens[mAt]);
     end
     else
     begin
@@ -364,12 +364,12 @@ var
 
   function KeywordRange(ANode: TSyntaxNode): TTextRange;
   var
-    At: Integer;
+    mAt: Integer;
   begin
-    At := TRoutineBody.TokenAt(Tokens, ANode.StartOffset);
-    if (At >= 0) and (At < Length(Tokens)) then
+    mAt := TRoutineBody.TokenAt(mTokens, ANode.StartOffset);
+    if (mAt >= 0) and (mAt < Length(mTokens)) then
     begin
-      Result := TokenRange(Tokens[At]);
+      Result := TokenRange(mTokens[mAt]);
     end
     else
     begin
@@ -381,36 +381,36 @@ var
   function RemoveFix(const AHead: TRoutineHead; const ANames: array of string; const ATitle: string):
     TArray<TRuleFix>;
   var
-    Edits: TArray<TRuleEdit>;
-    Edit: TRuleEdit;
-    Child: Integer;
+    mEdits: TArray<TRuleEdit>;
+    mEdit: TRuleEdit;
+    mChild: Integer;
   begin
-    Edits := nil;
-    for Child := 0 to AHead.Header.ChildCount - 1 do
+    mEdits := nil;
+    for mChild := 0 to AHead.Header.ChildCount - 1 do
     begin
-      if (AHead.Header[Child].Kind = TSyntaxKind.Directive) and MatchText(AHead.Header[Child].Name, ANames) and
-        DirectiveRemoval(Tokens, AHead.Header[Child], Edit) then
+      if (AHead.Header[mChild].Kind = TSyntaxKind.Directive) and MatchText(AHead.Header[mChild].Name, ANames) and
+        DirectiveRemoval(mTokens, AHead.Header[mChild], mEdit) then
       begin
-        Edits := Edits + [Edit];
+        mEdits := mEdits + [mEdit];
       end;
     end;
     Result := nil;
-    if Edits <> nil then
+    if mEdits <> nil then
     begin
-      Result := [TRuleFix.Create(ATitle, Edits)];
+      Result := [TRuleFix.Create(ATitle, mEdits)];
     end;
   end;
 
   /// <summary>Erste Direktive des Kopfs aus ANames oder nil.</summary>
   function FirstDirective(const AHead: TRoutineHead; const ANames: array of string): TSyntaxNode;
   var
-    Child: Integer;
+    mChild: Integer;
   begin
-    for Child := 0 to AHead.Header.ChildCount - 1 do
+    for mChild := 0 to AHead.Header.ChildCount - 1 do
     begin
-      if (AHead.Header[Child].Kind = TSyntaxKind.Directive) and MatchText(AHead.Header[Child].Name, ANames) then
+      if (AHead.Header[mChild].Kind = TSyntaxKind.Directive) and MatchText(AHead.Header[mChild].Name, ANames) then
       begin
-        Exit(AHead.Header[Child]);
+        Exit(AHead.Header[mChild]);
       end;
     end;
     Result := nil;
@@ -420,20 +420,20 @@ var
   /// </summary>
   function DeclarationHolder(ARoutine: TSyntaxNode): TSyntaxNode;
   var
-    Decl: TSyntaxNode;
+    mDecl: TSyntaxNode;
   begin
     Result := nil;
     if Pos('.', ARoutine.Name) > 0 then
     begin
-      Decl := FindStructDecl(Root, LastPart(Copy(ARoutine.Name, 1, LastDelimiter('.', ARoutine.Name) - 1)));
-      if Decl <> nil then
+      mDecl := FindStructDecl(mRoot, LastPart(Copy(ARoutine.Name, 1, LastDelimiter('.', ARoutine.Name) - 1)));
+      if mDecl <> nil then
       begin
-        Result := TypeOfDecl(Decl);
+        Result := TypeOfDecl(mDecl);
       end;
     end
     else if (ARoutine.Parent <> nil) and (ARoutine.Parent.Kind = TSyntaxKind.ImplementationSection) then
     begin
-      Result := Root.FindChild(TSyntaxKind.InterfaceSection);
+      Result := mRoot.FindChild(TSyntaxKind.InterfaceSection);
     end;
   end;
 
@@ -455,29 +455,29 @@ var
   /// Namens. nil ohne bzw. bei mehrdeutigen.</summary>
   function MatchingHeader(AHolder: TSyntaxNode; const AName, AParams: string): TSyntaxNode;
   var
-    Candidate: TSyntaxNode;
-    Child, Found: Integer;
+    mCandidate: TSyntaxNode;
+    mChild, mFound: Integer;
   begin
     Result := nil;
-    Found := 0;
-    for Child := 0 to AHolder.ChildCount - 1 do
+    mFound := 0;
+    for mChild := 0 to AHolder.ChildCount - 1 do
     begin
-      Candidate := HeaderCandidate(AHolder[Child], AName);
-      if Candidate = nil then
+      mCandidate := HeaderCandidate(AHolder[mChild], AName);
+      if mCandidate = nil then
       begin
         Continue;
       end;
-      Inc(Found);
-      if Squeezed(AContext.Text, Candidate.FindChild(TSyntaxKind.Parameters)) = AParams then
+      Inc(mFound);
+      if Squeezed(AContext.Text, mCandidate.FindChild(TSyntaxKind.Parameters)) = AParams then
       begin
-        Exit(Candidate);
+        Exit(mCandidate);
       end;
-      if (AParams = '') and (Found = 1) then
+      if (AParams = '') and (mFound = 1) then
       begin
-        Result := Candidate;
+        Result := mCandidate;
       end;
     end;
-    if Found > 1 then
+    if mFound > 1 then
     begin
       Result := nil;
     end;
@@ -486,19 +486,19 @@ var
   /// <summary>Deklaration (Kopf in Typ bzw. interface-Teil) zum Rumpf ARoutine, nil ohne.</summary>
   function DeclarationOf(ARoutine: TSyntaxNode): TSyntaxNode;
   var
-    Header, Holder: TSyntaxNode;
+    mHeader, mHolder: TSyntaxNode;
   begin
     Result := nil;
-    Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
-    Holder := nil;
-    if Header <> nil then
+    mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+    mHolder := nil;
+    if mHeader <> nil then
     begin
-      Holder := DeclarationHolder(ARoutine);
+      mHolder := DeclarationHolder(ARoutine);
     end;
-    if Holder <> nil then
+    if mHolder <> nil then
     begin
-      Result := MatchingHeader(Holder, LastPart(ARoutine.Name), Squeezed(AContext.Text,
-        Header.FindChild(TSyntaxKind.Parameters)));
+      Result := MatchingHeader(mHolder, LastPart(ARoutine.Name), Squeezed(AContext.Text,
+        mHeader.FindChild(TSyntaxKind.Parameters)));
     end;
   end;
 
@@ -507,46 +507,46 @@ var
   procedure CheckForbiddenDirectives(const AHead: TRoutineHead; const AVirtualCode, AVirtualMessage, AOtherCode,
     AOtherFormat: string);
   var
-    Directive: TSyntaxNode;
+    mDirective: TSyntaxNode;
   begin
-    Directive := FirstDirective(AHead, RecordVirtualDirectives);
-    if Directive <> nil then
+    mDirective := FirstDirective(AHead, cRecordVirtualDirectives);
+    if mDirective <> nil then
     begin
-      Report(AVirtualCode, NodeRange(Directive), AVirtualMessage, RemoveFix(AHead, RecordForbiddenDirectives,
-        cTexts[TTypeRestrictionsRecordsText.RemoveDirective].Fmt([Directive.Name])));
+      Report(AVirtualCode, NodeRange(mDirective), AVirtualMessage, RemoveFix(AHead, cRecordForbiddenDirectives,
+        cTexts[TTypeRestrictionsRecordsText.RemoveDirective].Fmt([mDirective.Name])));
       Exit;
     end;
-    Directive := FirstDirective(AHead, RecordForbiddenDirectives);
-    if Directive <> nil then
+    mDirective := FirstDirective(AHead, cRecordForbiddenDirectives);
+    if mDirective <> nil then
     begin
-      Report(AOtherCode, NodeRange(Directive), Format(AOtherFormat, [Directive.Name]), RemoveFix(AHead,
-        RecordForbiddenDirectives, cTexts[TTypeRestrictionsRecordsText.RemoveDirective].Fmt([Directive.Name])));
+      Report(AOtherCode, NodeRange(mDirective), Format(AOtherFormat, [mDirective.Name]), RemoveFix(AHead,
+        cRecordForbiddenDirectives, cTexts[TTypeRestrictionsRecordsText.RemoveDirective].Fmt([mDirective.Name])));
     end;
   end;
 
   // Lokale und anonyme Records: E2433–E2437.
   procedure CheckLocalRecord(ARecord: TSyntaxNode);
   var
-    Child: Integer;
-    Member: TSyntaxNode;
+    mChild: Integer;
+    mMember: TSyntaxNode;
   begin
-    for Child := 0 to ARecord.ChildCount - 1 do
+    for mChild := 0 to ARecord.ChildCount - 1 do
     begin
-      Member := ARecord[Child];
-      case Member.Kind of
+      mMember := ARecord[mChild];
+      case mMember.Kind of
         TSyntaxKind.RoutineHeader:
-          Report('E2433', NameRange(Member), cTexts[TTypeRestrictionsRecordsText.LocalMethods].Text, nil);
+          Report('E2433', NameRange(mMember), cTexts[TTypeRestrictionsRecordsText.LocalMethods].Text, nil);
         TSyntaxKind.PropertyDecl:
-          Report('E2434', KeywordRange(Member), cTexts[TTypeRestrictionsRecordsText.LocalProperties].Text, nil);
+          Report('E2434', KeywordRange(mMember), cTexts[TTypeRestrictionsRecordsText.LocalProperties].Text, nil);
         TSyntaxKind.VarSection:
-          if PrecededByClass(Tokens, Member) then
+          if PrecededByClass(mTokens, mMember) then
           begin
-            Report('E2435', KeywordRange(Member), cTexts[TTypeRestrictionsRecordsText.LocalClassMembers].Text, nil);
+            Report('E2435', KeywordRange(mMember), cTexts[TTypeRestrictionsRecordsText.LocalClassMembers].Text, nil);
           end;
         TSyntaxKind.TypeSection:
-          Report('E2436', KeywordRange(Member), cTexts[TTypeRestrictionsRecordsText.LocalTypes].Text, nil);
+          Report('E2436', KeywordRange(mMember), cTexts[TTypeRestrictionsRecordsText.LocalTypes].Text, nil);
         TSyntaxKind.ConstSection:
-          Report('E2437', KeywordRange(Member), cTexts[TTypeRestrictionsRecordsText.LocalConstants].Text, nil);
+          Report('E2437', KeywordRange(mMember), cTexts[TTypeRestrictionsRecordsText.LocalConstants].Text, nil);
       else
         // Übrige Werte bewusst ohne Wirkung.
       end;
@@ -562,7 +562,7 @@ var
       begin
         Report('E2394', NameRange(AMember), cTexts[TTypeRestrictionsRecordsText.ParameterlessCtor].Text, nil);
       end
-      else if AllParametersDefaulted(Tokens, AHead) then
+      else if AllParametersDefaulted(mTokens, AHead) then
       begin
         Report('E2471', NameRange(AMember), cTexts[TTypeRestrictionsRecordsText.DefaultCtor].Text, nil);
       end;
@@ -584,32 +584,32 @@ var
   // Methoden in Records: E2379, E2463 und CheckRecordMethodKind.
   procedure CheckRecordMethod(AMember: TSyntaxNode);
   var
-    Head: TRoutineHead;
+    mHead: TRoutineHead;
   begin
-    Head := TRoutineHead.Read(Tokens, AMember);
-    if (Head.Keyword = 'operator') or (Head.IsClass and MatchText(Head.Keyword, ['constructor', 'destructor'])) then
+    mHead := TRoutineHead.Read(mTokens, AMember);
+    if (mHead.Keyword = 'operator') or (mHead.IsClass and MatchText(mHead.Keyword, ['constructor', 'destructor'])) then
     begin
       Exit;
     end;
-    CheckForbiddenDirectives(Head, 'E2379', cTexts[TTypeRestrictionsRecordsText.VirtualMethods].Text, 'E2463',
+    CheckForbiddenDirectives(mHead, 'E2379', cTexts[TTypeRestrictionsRecordsText.VirtualMethods].Text, 'E2463',
       cTexts[TTypeRestrictionsRecordsText.Directive].Text);
-    CheckRecordMethodKind(Head, AMember);
+    CheckRecordMethodKind(mHead, AMember);
   end;
 
   procedure CheckRecord(ARecord: TSyntaxNode);
   var
-    Child: Integer;
+    mChild: Integer;
   begin
     if IsLocalOrAnonymousRecord(ARecord) then
     begin
       CheckLocalRecord(ARecord);
       Exit;
     end;
-    for Child := 0 to ARecord.ChildCount - 1 do
+    for mChild := 0 to ARecord.ChildCount - 1 do
     begin
-      if ARecord[Child].Kind = TSyntaxKind.RoutineHeader then
+      if ARecord[mChild].Kind = TSyntaxKind.RoutineHeader then
       begin
-        CheckRecordMethod(ARecord[Child]);
+        CheckRecordMethod(ARecord[mChild]);
       end;
     end;
   end;
@@ -617,8 +617,8 @@ var
   /// <summary>Stammt der Typ AName sicher nicht von AAncestor ab? False, wenn die Kette nicht bekannt ist.</summary>
   function CertainlyNotDescendant(const AName, AAncestor: string): Boolean;
   var
-    Chain: TArray<TSymbolLocation>;
-    Complete, ObjectMissing: Boolean;
+    mChain: TArray<TSymbolLocation>;
+    mComplete, mObjectMissing: Boolean;
   begin
     Result := False;
     if SameText(AName, AAncestor) then
@@ -629,27 +629,27 @@ var
     begin
       Exit(True);
     end;
-    if Ancestry = nil then
+    if mAncestry = nil then
     begin
-      Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(TRuleDerived.Open(AContext), AContext));
+      mAncestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(TRuleDerived.Open(AContext), AContext));
     end;
-    Chain := Ancestry.Ancestors(AName, Complete, ObjectMissing);
-    Result := Complete and not ChainContains(Chain, AAncestor);
-    Result := Result and not (ObjectMissing and SameText(AAncestor, 'TObject'));
+    mChain := mAncestry.Ancestors(AName, mComplete, mObjectMissing);
+    Result := mComplete and not ChainContains(mChain, AAncestor);
+    Result := Result and not (mObjectMissing and SameText(AAncestor, 'TObject'));
   end;
 
   // Methoden in Helfern: E2598, E2475, E2295.
   procedure CheckHelperMethod(AMember: TSyntaxNode; AIsRecordHelper: Boolean);
   var
-    Head: TRoutineHead;
+    mHead: TRoutineHead;
   begin
-    Head := TRoutineHead.Read(Tokens, AMember);
+    mHead := TRoutineHead.Read(mTokens, AMember);
     if AIsRecordHelper then
     begin
-      CheckForbiddenDirectives(Head, 'E2598', cTexts[TTypeRestrictionsRecordsText.HelperVirtual].Text,
+      CheckForbiddenDirectives(mHead, 'E2598', cTexts[TTypeRestrictionsRecordsText.HelperVirtual].Text,
         'E2475', cTexts[TTypeRestrictionsRecordsText.HelperDirective].Text);
     end
-    else if (Head.Keyword = 'destructor') and not Head.IsClass then
+    else if (mHead.Keyword = 'destructor') and not mHead.IsClass then
     begin
       Report('E2295', NameRange(AMember), cTexts[TTypeRestrictionsRecordsText.HelperDestructor].Text, nil);
     end;
@@ -658,17 +658,17 @@ var
   // Mitglieder von Helfern: Felder (E2599) und Methoden.
   procedure CheckHelperMember(AMember: TSyntaxNode; AIsRecordHelper: Boolean);
   var
-    Inner: Integer;
+    mInner: Integer;
   begin
     case AMember.Kind of
       TSyntaxKind.Field:
         Report('E2599', KeywordRange(AMember), cTexts[TTypeRestrictionsRecordsText.HelperFields].Text, nil);
       TSyntaxKind.VarSection:
-        if not PrecededByClass(Tokens, AMember) then
+        if not PrecededByClass(mTokens, AMember) then
         begin
-          for Inner := 0 to AMember.ChildCount - 1 do
+          for mInner := 0 to AMember.ChildCount - 1 do
           begin
-            Report('E2599', KeywordRange(AMember[Inner]), cTexts[TTypeRestrictionsRecordsText.HelperFields].Text,
+            Report('E2599', KeywordRange(AMember[mInner]), cTexts[TTypeRestrictionsRecordsText.HelperFields].Text,
               nil);
           end;
         end;
@@ -682,47 +682,47 @@ var
   // Vorfahr-Helfer: nur Nachfahren seines Typs (E2294).
   procedure CheckAncestorHelper(ATarget, AAncestorRef: TSyntaxNode);
   var
-    AncestorName, Wanted: string;
-    TypeIndex: Integer;
-    AncestorTarget, Dummy: TSyntaxNode;
+    mAncestorName, mWanted: string;
+    mTypeIndex: Integer;
+    mAncestorTarget, mDummy: TSyntaxNode;
   begin
-    AncestorName := BareTypeName(AAncestorRef.Name);
-    TypeIndex := Types.IndexOf(AncestorName);
-    if (TypeIndex < 0) or (Types.DeclaredKind(AncestorName) <> TSyntaxKind.HelperType) then
+    mAncestorName := BareTypeName(AAncestorRef.Name);
+    mTypeIndex := mTypes.IndexOf(mAncestorName);
+    if (mTypeIndex < 0) or (mTypes.DeclaredKind(mAncestorName) <> TSyntaxKind.HelperType) then
     begin
       Exit;
     end;
-    AncestorTarget := HelperTarget(Types.Types[TypeIndex], Dummy);
-    if AncestorTarget = nil then
+    mAncestorTarget := HelperTarget(mTypes.Types[mTypeIndex], mDummy);
+    if mAncestorTarget = nil then
     begin
       Exit;
     end;
-    Wanted := BareTypeName(AncestorTarget.Name);
-    if CertainlyNotDescendant(BareTypeName(ATarget.Name), Wanted) then
+    mWanted := BareTypeName(mAncestorTarget.Name);
+    if CertainlyNotDescendant(BareTypeName(ATarget.Name), mWanted) then
     begin
-      Report('E2294', NodeRange(ATarget), cTexts[TTypeRestrictionsRecordsText.HelperDescendants].Fmt([AncestorName,
-        Wanted]), nil);
+      Report('E2294', NodeRange(ATarget), cTexts[TTypeRestrictionsRecordsText.HelperDescendants].Fmt([mAncestorName,
+        mWanted]), nil);
     end;
   end;
 
   // Helfer im Kontext eines parametrisierten Typs (E2589).
   procedure CheckHelperContext(AHelper: TSyntaxNode);
   var
-    Outer: TSyntaxNode;
+    mOuter: TSyntaxNode;
   begin
-    Outer := AHelper.Parent;
-    if Outer <> nil then
+    mOuter := AHelper.Parent;
+    if mOuter <> nil then
     begin
-      Outer := Outer.Parent;
+      mOuter := mOuter.Parent;
     end;
-    while Outer <> nil do
+    while mOuter <> nil do
     begin
-      if (Outer.Kind = TSyntaxKind.TypeDecl) and (Outer.FindChild(TSyntaxKind.GenericParams) <> nil) then
+      if (mOuter.Kind = TSyntaxKind.TypeDecl) and (mOuter.FindChild(TSyntaxKind.GenericParams) <> nil) then
       begin
         Report('E2589', KeywordRange(AHelper.Parent), cTexts[TTypeRestrictionsRecordsText.HelperGeneric].Text, nil);
         Break;
       end;
-      Outer := Outer.Parent;
+      mOuter := mOuter.Parent;
     end;
   end;
 
@@ -731,19 +731,19 @@ var
   // TSkPixmapHelper.Create, FMX.Skia TSkBitmapHelper; TR6, TR7, #1328); die Prüfungen sind entfallen.
   procedure CheckHelper(AHelper: TSyntaxNode);
   var
-    Child: Integer;
-    Target, AncestorRef: TSyntaxNode;
-    IsRecordHelper: Boolean;
+    mChild: Integer;
+    mTarget, mAncestorRef: TSyntaxNode;
+    mIsRecordHelper: Boolean;
   begin
-    IsRecordHelper := SameText(AHelper.Name, 'record');
-    Target := HelperTarget(AHelper, AncestorRef);
-    for Child := 0 to AHelper.ChildCount - 1 do
+    mIsRecordHelper := SameText(AHelper.Name, 'record');
+    mTarget := HelperTarget(AHelper, mAncestorRef);
+    for mChild := 0 to AHelper.ChildCount - 1 do
     begin
-      CheckHelperMember(AHelper[Child], IsRecordHelper);
+      CheckHelperMember(AHelper[mChild], mIsRecordHelper);
     end;
-    if not IsRecordHelper and (AncestorRef <> nil) and (Target <> nil) and (BareTypeName(Target.Name) <> '') then
+    if not mIsRecordHelper and (mAncestorRef <> nil) and (mTarget <> nil) and (BareTypeName(mTarget.Name) <> '') then
     begin
-      CheckAncestorHelper(Target, AncestorRef);
+      CheckAncestorHelper(mTarget, mAncestorRef);
     end;
     CheckHelperContext(AHelper);
   end;
@@ -751,43 +751,43 @@ var
   // Klassenkonstruktoren: E2360, E2534, E2359.
   procedure CheckClassConstructors(AType: TSyntaxNode);
   var
-    Child: Integer;
-    Head: TRoutineHead;
-    Directive, First: TSyntaxNode;
+    mChild: Integer;
+    mHead: TRoutineHead;
+    mDirective, mFirst: TSyntaxNode;
   begin
-    First := nil;
-    for Child := 0 to AType.ChildCount - 1 do
+    mFirst := nil;
+    for mChild := 0 to AType.ChildCount - 1 do
     begin
-      if AType[Child].Kind <> TSyntaxKind.RoutineHeader then
+      if AType[mChild].Kind <> TSyntaxKind.RoutineHeader then
       begin
         Continue;
       end;
-      Head := TRoutineHead.Read(Tokens, AType[Child]);
-      if not Head.IsClass or (Head.Keyword <> 'constructor') then
+      mHead := TRoutineHead.Read(mTokens, AType[mChild]);
+      if not mHead.IsClass or (mHead.Keyword <> 'constructor') then
       begin
         Continue;
       end;
-      if Head.ParameterCount > 0 then
+      if mHead.ParameterCount > 0 then
       begin
-        Report('E2360', NameRange(Head.Header), cTexts[TTypeRestrictionsRecordsText.ClassCtorParams].Text, nil);
+        Report('E2360', NameRange(mHead.Header), cTexts[TTypeRestrictionsRecordsText.ClassCtorParams].Text, nil);
       end;
-      Directive := FirstDirective(Head, ClassConstructorDirectives);
-      if Directive <> nil then
+      mDirective := FirstDirective(mHead, cClassConstructorDirectives);
+      if mDirective <> nil then
       begin
-        Report('E2534', NodeRange(Directive), cTexts[TTypeRestrictionsRecordsText.ClassCtorVirtual].Text,
-          RemoveFix(Head, ClassConstructorDirectives,
-            cTexts[TTypeRestrictionsRecordsText.RemoveDirective].Fmt([Directive.Name])));
+        Report('E2534', NodeRange(mDirective), cTexts[TTypeRestrictionsRecordsText.ClassCtorVirtual].Text,
+          RemoveFix(mHead, cClassConstructorDirectives,
+            cTexts[TTypeRestrictionsRecordsText.RemoveDirective].Fmt([mDirective.Name])));
       end;
-      if First = nil then
+      if mFirst = nil then
       begin
-        First := Head.Header;
+        mFirst := mHead.Header;
       end
       else if not TConditionalBranches.Exclusive(
-        TConditionalBranches.PathAt(Paths, TRoutineBody.TokenAt(Tokens, First.StartOffset)),
-        TConditionalBranches.PathAt(Paths, TRoutineBody.TokenAt(Tokens, Head.Header.StartOffset))) then
+        TConditionalBranches.PathAt(mPaths, TRoutineBody.TokenAt(mTokens, mFirst.StartOffset)),
+        TConditionalBranches.PathAt(mPaths, TRoutineBody.TokenAt(mTokens, mHead.Header.StartOffset))) then
       begin
-        Report('E2359', NameRange(Head.Header), cTexts[TTypeRestrictionsRecordsText.ClassCtorMany].Fmt(
-          [AType.Parent.Name, First.Name, Head.Header.Name]), nil);
+        Report('E2359', NameRange(mHead.Header), cTexts[TTypeRestrictionsRecordsText.ClassCtorMany].Fmt(
+          [AType.Parent.Name, mFirst.Name, mHead.Header.Name]), nil);
       end;
     end;
   end;
@@ -795,76 +795,77 @@ var
   // inline an Köpfen: E2425, E2442, E2439.
   procedure CheckInlineHeader(AHeader: TSyntaxNode);
   var
-    Head: TRoutineHead;
-    InlineHead, Decl: TSyntaxNode;
+    mHead: TRoutineHead;
+    mInlineHead, mDecl: TSyntaxNode;
   begin
-    Head := TRoutineHead.Read(Tokens, AHeader);
-    InlineHead := Head.Directive('inline');
-    if InlineHead = nil then
+    mHead := TRoutineHead.Read(mTokens, AHeader);
+    mInlineHead := mHead.Directive('inline');
+    if mInlineHead = nil then
     begin
       Exit;
     end;
     if (AHeader.Parent <> nil) and (AHeader.Parent.Kind = TSyntaxKind.RoutineDecl) then
     begin
-      Decl := DeclarationOf(AHeader.Parent);
-      if (Decl <> nil) and (Decl <> AHeader) and TRoutineHead.Read(Tokens, Decl).HasDirective('inline') then
+      mDecl := DeclarationOf(AHeader.Parent);
+      if (mDecl <> nil) and (mDecl <> AHeader) and TRoutineHead.Read(mTokens, mDecl).HasDirective('inline') then
       begin
         Exit;
       end;
     end;
-    if FirstDirective(Head, RecordVirtualDirectives) <> nil then
+    if FirstDirective(mHead, cRecordVirtualDirectives) <> nil then
     begin
-      Report('E2425', NodeRange(InlineHead), cTexts[TTypeRestrictionsRecordsText.InlineVirtual].Text,
-        RemoveFix(Head, ['inline'], cTexts[TTypeRestrictionsRecordsText.RemoveInline].Text));
+      Report('E2425', NodeRange(mInlineHead), cTexts[TTypeRestrictionsRecordsText.InlineVirtual].Text,
+        RemoveFix(mHead, ['inline'], cTexts[TTypeRestrictionsRecordsText.RemoveInline].Text));
     end
-    else if MatchText(Head.Keyword, ['constructor', 'destructor']) then
+    else if MatchText(mHead.Keyword, ['constructor', 'destructor']) then
     begin
-      Report('E2442', NodeRange(InlineHead), cTexts[TTypeRestrictionsRecordsText.InlineCtor].Text,
-        RemoveFix(Head, ['inline'], cTexts[TTypeRestrictionsRecordsText.RemoveInline].Text));
+      Report('E2442', NodeRange(mInlineHead), cTexts[TTypeRestrictionsRecordsText.InlineCtor].Text,
+        RemoveFix(mHead, ['inline'], cTexts[TTypeRestrictionsRecordsText.RemoveInline].Text));
     end;
-    if HasOpenArrayParameter(Head) then
+    if HasOpenArrayParameter(mHead) then
     begin
-      Report('E2439', NodeRange(InlineHead), cTexts[TTypeRestrictionsRecordsText.InlineOpenArray].Text,
-        RemoveFix(Head, ['inline'], cTexts[TTypeRestrictionsRecordsText.RemoveInline].Text));
+      Report('E2439', NodeRange(mInlineHead), cTexts[TTypeRestrictionsRecordsText.InlineOpenArray].Text,
+        RemoveFix(mHead, ['inline'], cTexts[TTypeRestrictionsRecordsText.RemoveInline].Text));
     end;
   end;
 
   /// <summary>Kopf mit inline zum Rumpf ARoutine (eigener Kopf oder Deklaration), nil ohne.</summary>
   function InlineHeader(ARoutine: TSyntaxNode): TSyntaxNode;
   var
-    Header: TSyntaxNode;
+    mHeader: TSyntaxNode;
   begin
-    Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
-    if (Header <> nil) and TRoutineHead.Read(Tokens, Header).HasDirective('inline') then
+    mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+    if (mHeader <> nil) and TRoutineHead.Read(mTokens, mHeader).HasDirective('inline') then
     begin
-      Exit(Header);
+      Exit(mHeader);
     end;
     Result := DeclarationOf(ARoutine);
-    if (Result <> nil) and not TRoutineHead.Read(Tokens, Result).HasDirective('inline') then
+    if (Result <> nil) and not TRoutineHead.Read(mTokens, Result).HasDirective('inline') then
     begin
       Result := nil;
     end;
   end;
 
-  /// <summary>Namen, die ARoutine selbst als Parameter und Variablen deklariert (ohne verschachtelte Routinen).</summary>
+  /// <summary>Namen, die ARoutine selbst als Parameter und Variablen deklariert (ohne verschachtelte
+  /// Routinen).</summary>
   function OwnVariables(ARoutine: TSyntaxNode): TArray<string>;
   var
-    Child, Inner: Integer;
-    Header: TSyntaxNode;
+    mChild, mInner: Integer;
+    mHeader: TSyntaxNode;
   begin
     Result := nil;
-    Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
-    if (Header <> nil) and (Header.FindChild(TSyntaxKind.Parameters) <> nil) then
+    mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+    if (mHeader <> nil) and (mHeader.FindChild(TSyntaxKind.Parameters) <> nil) then
     begin
-      Result := NamesBelow(Header.FindChild(TSyntaxKind.Parameters));
+      Result := NamesBelow(mHeader.FindChild(TSyntaxKind.Parameters));
     end;
-    for Child := 0 to ARoutine.ChildCount - 1 do
+    for mChild := 0 to ARoutine.ChildCount - 1 do
     begin
-      if ARoutine[Child].Kind = TSyntaxKind.VarSection then
+      if ARoutine[mChild].Kind = TSyntaxKind.VarSection then
       begin
-        for Inner := 0 to ARoutine[Child].ChildCount - 1 do
+        for mInner := 0 to ARoutine[mChild].ChildCount - 1 do
         begin
-          Result := Result + DeclaredNames(ARoutine[Child][Inner]);
+          Result := Result + DeclaredNames(ARoutine[mChild][mInner]);
         end;
       end;
     end;
@@ -873,9 +874,9 @@ var
   /// <summary>Bezeichner im Rumpf ABody, die nicht in with stehen.</summary>
   function IdentifiersIn(ABody: TSyntaxNode; ASkipNested: Boolean): TArray<TSyntaxNode>;
   var
-    Found: TArray<TSyntaxNode>;
+    mFound: TArray<TSyntaxNode>;
   begin
-    Found := nil;
+    mFound := nil;
     ABody.Walk(
       function(ANode: TSyntaxNode): Boolean
       begin
@@ -883,39 +884,39 @@ var
           not (ASkipNested and (ANode <> ABody) and (ANode.Kind = TSyntaxKind.RoutineDecl));
         if Result and (ANode.Kind = TSyntaxKind.Identifier) then
         begin
-          Found := Found + [ANode];
+          mFound := mFound + [ANode];
         end;
       end);
-    Result := Found;
+    Result := mFound;
   end;
 
   // Aufruf eigener lokaler Routinen aus einer inline-Routine: E2501.
   procedure CheckNestedCalls(ARoutine, ABody: TSyntaxNode; const AFix: TArray<TRuleFix>);
   var
-    Nested, Used: TArray<string>;
-    Child: Integer;
-    Ident: TSyntaxNode;
+    mNested, mUsed: TArray<string>;
+    mChild: Integer;
+    mIdent: TSyntaxNode;
   begin
-    Nested := nil;
-    for Child := 0 to ARoutine.ChildCount - 1 do
+    mNested := nil;
+    for mChild := 0 to ARoutine.ChildCount - 1 do
     begin
-      if ARoutine[Child].Kind = TSyntaxKind.RoutineDecl then
+      if ARoutine[mChild].Kind = TSyntaxKind.RoutineDecl then
       begin
-        Nested := Nested + [ARoutine[Child].Name];
+        mNested := mNested + [ARoutine[mChild].Name];
       end;
     end;
-    if Nested = nil then
+    if mNested = nil then
     begin
       Exit;
     end;
-    Used := nil;
-    for Ident in IdentifiersIn(ABody, True) do
+    mUsed := nil;
+    for mIdent in IdentifiersIn(ABody, True) do
     begin
-      if MatchText(Ident.Name, Nested) and not MatchText(Ident.Name, Used) then
+      if MatchText(mIdent.Name, mNested) and not MatchText(mIdent.Name, mUsed) then
       begin
-        Used := Used + [Ident.Name];
-        Report('E2501', NodeRange(Ident), cTexts[TTypeRestrictionsRecordsText.InlineLocalCall].Fmt([ARoutine.Name,
-          Ident.Name]), AFix);
+        mUsed := mUsed + [mIdent.Name];
+        Report('E2501', NodeRange(mIdent), cTexts[TTypeRestrictionsRecordsText.InlineLocalCall].Fmt([ARoutine.Name,
+          mIdent.Name]), AFix);
       end;
     end;
   end;
@@ -923,29 +924,30 @@ var
   /// <summary>Ist ARoutine eine lokale Routine mit eigenem inline-Kopf?</summary>
   function IsLocalInline(ARoutine: TSyntaxNode): Boolean;
   var
-    Head: TSyntaxNode;
+    mHead: TSyntaxNode;
   begin
-    Head := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
-    Result := (ARoutine.Parent <> nil) and (ARoutine.Parent.Kind = TSyntaxKind.RoutineDecl) and (Head <> nil);
-    Result := Result and TRoutineHead.Read(Tokens, Head).HasDirective('inline');
+    mHead := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+    Result := (ARoutine.Parent <> nil) and (ARoutine.Parent.Kind = TSyntaxKind.RoutineDecl) and (mHead <> nil);
+    Result := Result and TRoutineHead.Read(mTokens, mHead).HasDirective('inline');
   end;
 
   // Lokale inline-Routine mit Zugriff auf Variablen der umgebenden Routine: E2449.
   procedure CheckOuterAccess(ARoutine, ABody: TSyntaxNode; const AFix: TArray<TRuleFix>);
   var
-    Outside, Own, Used: TArray<string>;
-    Ident: TSyntaxNode;
+    mOutside, mOwn, mUsed: TArray<string>;
+    mIdent: TSyntaxNode;
   begin
-    Outside := OwnVariables(ARoutine.Parent);
-    Own := NamesBelow(ARoutine);
-    Used := nil;
-    for Ident in IdentifiersIn(ABody, False) do
+    mOutside := OwnVariables(ARoutine.Parent);
+    mOwn := NamesBelow(ARoutine);
+    mUsed := nil;
+    for mIdent in IdentifiersIn(ABody, False) do
     begin
-      if MatchText(Ident.Name, Outside) and not MatchText(Ident.Name, Own) and not MatchText(Ident.Name, Used) then
+      if MatchText(mIdent.Name, mOutside) and not MatchText(mIdent.Name, mOwn) and
+        not MatchText(mIdent.Name, mUsed) then
       begin
-        Used := Used + [Ident.Name];
-        Report('E2449', NodeRange(Ident), cTexts[TTypeRestrictionsRecordsText.InlineLocalAccess].Fmt([ARoutine.Name,
-          Ident.Name]), AFix);
+        mUsed := mUsed + [mIdent.Name];
+        Report('E2449', NodeRange(mIdent), cTexts[TTypeRestrictionsRecordsText.InlineLocalAccess].Fmt([ARoutine.Name,
+          mIdent.Name]), AFix);
       end;
     end;
   end;
@@ -953,30 +955,30 @@ var
   // Rümpfe von inline-Routinen: E2426, E2501, E2449.
   procedure CheckInlineBody(ARoutine: TSyntaxNode);
   var
-    InlineHead, Body: TSyntaxNode;
-    Head: TRoutineHead;
-    Fix: TArray<TRuleFix>;
+    mInlineHead, mBody: TSyntaxNode;
+    mHead: TRoutineHead;
+    mFix: TArray<TRuleFix>;
   begin
-    InlineHead := InlineHeader(ARoutine);
-    if InlineHead = nil then
+    mInlineHead := InlineHeader(ARoutine);
+    if mInlineHead = nil then
     begin
       Exit;
     end;
-    Head := TRoutineHead.Read(Tokens, InlineHead);
-    Fix := RemoveFix(Head, ['inline'], cTexts[TTypeRestrictionsRecordsText.RemoveInline].Text);
+    mHead := TRoutineHead.Read(mTokens, mInlineHead);
+    mFix := RemoveFix(mHead, ['inline'], cTexts[TTypeRestrictionsRecordsText.RemoveInline].Text);
     if ARoutine.FindChild(TSyntaxKind.AsmBlock) <> nil then
     begin
-      Report('E2426', NodeRange(Head.Directive('inline')), cTexts[TTypeRestrictionsRecordsText.InlineAsm].Text, Fix);
+      Report('E2426', NodeRange(mHead.Directive('inline')), cTexts[TTypeRestrictionsRecordsText.InlineAsm].Text, mFix);
     end;
-    Body := ARoutine.FindChild(TSyntaxKind.Block);
-    if Body = nil then
+    mBody := ARoutine.FindChild(TSyntaxKind.Block);
+    if mBody = nil then
     begin
       Exit;
     end;
-    CheckNestedCalls(ARoutine, Body, Fix);
+    CheckNestedCalls(ARoutine, mBody, mFix);
     if IsLocalInline(ARoutine) then
     begin
-      CheckOuterAccess(ARoutine, Body, Fix);
+      CheckOuterAccess(ARoutine, mBody, mFix);
     end;
   end;
 
@@ -987,7 +989,7 @@ var
     mDeclaration: TSyntaxNode;
   begin
     mDeclaration := DeclarationOf(ARoutine);
-    Result := (mDeclaration <> nil) and TRoutineHead.Read(Tokens, mDeclaration).HasDirective('inline');
+    Result := (mDeclaration <> nil) and TRoutineHead.Read(mTokens, mDeclaration).HasDirective('inline');
     if not Result then
     begin
       Exit;
@@ -1005,64 +1007,64 @@ var
   // inline-Routinen aus dem interface-Teil mit Symbolen des implementation-Teils: E2441.
   procedure CheckInlineLocalSymbols;
   var
-    Symbols: TImplementationSymbols;
-    Routine, Use: TSyntaxNode;
+    mSymbols: TImplementationSymbols;
+    mRoutine, mUse: TSyntaxNode;
     mUsable: TArray<string>;
   begin
-    Symbols := TImplementationSymbols.Create(AContext);
+    mSymbols := TImplementationSymbols.Create(AContext);
     try
-      mUsable := InlineUsableNames(Root.FindChild(TSyntaxKind.ImplementationSection));
-      for Routine in Symbols.Routines do
+      mUsable := InlineUsableNames(mRoot.FindChild(TSyntaxKind.ImplementationSection));
+      for mRoutine in mSymbols.Routines do
       begin
-        if not InterfaceInline(Symbols, Routine) then
+        if not InterfaceInline(mSymbols, mRoutine) then
         begin
           Continue;
         end;
-        for Use in Symbols.UsesIn(Routine, Symbols.OwnerType(Routine)) do
+        for mUse in mSymbols.UsesIn(mRoutine, mSymbols.OwnerType(mRoutine)) do
         begin
-          if not MatchText(Use.Name, mUsable) then
+          if not MatchText(mUse.Name, mUsable) then
           begin
-            Report('E2441', NodeRange(Use), cTexts[TTypeRestrictionsRecordsText.InlineImplementation].Fmt([Routine.Name,
-              Use.Name]), nil);
+            Report('E2441', NodeRange(mUse), cTexts[TTypeRestrictionsRecordsText.InlineImplementation].Fmt([mRoutine.Name,
+              mUse.Name]), nil);
           end;
         end;
       end;
     finally
-      Symbols.Free;
+      mSymbols.Free;
     end;
   end;
 
   // threadvar: E2189, E2190, E2194.
   procedure CheckThreadVars(ASection: TSyntaxNode);
   var
-    Outer: TSyntaxNode;
-    Child: Integer;
-    Decl: TSyntaxNode;
+    mOuter: TSyntaxNode;
+    mChild: Integer;
+    mDecl: TSyntaxNode;
   begin
-    Outer := ASection.Parent;
-    while Outer <> nil do
+    mOuter := ASection.Parent;
+    while mOuter <> nil do
     begin
-      if Outer.Kind = TSyntaxKind.RoutineDecl then
+      if mOuter.Kind = TSyntaxKind.RoutineDecl then
       begin
         Report('E2189', KeywordRange(ASection), cTexts[TTypeRestrictionsRecordsText.ThreadvarLocal].Text, nil);
         Break;
       end;
-      Outer := Outer.Parent;
+      mOuter := mOuter.Parent;
     end;
-    for Child := 0 to ASection.ChildCount - 1 do
+    for mChild := 0 to ASection.ChildCount - 1 do
     begin
-      Decl := ASection[Child];
-      if Decl.Kind <> TSyntaxKind.VarDecl then
+      mDecl := ASection[mChild];
+      if mDecl.Kind <> TSyntaxKind.VarDecl then
       begin
         Continue;
       end;
-      if HasTopLevelToken(Tokens, Decl.StartOffset, Decl.EndOffset, 'absolute') then
+      if HasTopLevelToken(mTokens, mDecl.StartOffset, mDecl.EndOffset, 'absolute') then
       begin
-        Report('E2190', KeywordRange(Decl), cTexts[TTypeRestrictionsRecordsText.ThreadvarAbsolute].Text, nil);
+        Report('E2190', KeywordRange(mDecl), cTexts[TTypeRestrictionsRecordsText.ThreadvarAbsolute].Text, nil);
       end
-      else if HasTopLevelToken(Tokens, Decl.StartOffset, Decl.EndOffset, '=') then
+      else if HasTopLevelToken(mTokens, mDecl.StartOffset, mDecl.EndOffset, '=') then
       begin
-        Report('E2194', KeywordRange(Decl), cTexts[TTypeRestrictionsRecordsText.ThreadvarInit].Text, nil);
+        Report('E2194', KeywordRange(mDecl), cTexts[TTypeRestrictionsRecordsText.ThreadvarInit].Text, nil);
       end;
     end;
   end;
@@ -1070,17 +1072,17 @@ var
   // Helfer als Typ einer Deklaration: E2527.
   procedure CheckHelperReference(AReference: TSyntaxNode);
   var
-    Name: string;
+    mName: string;
   begin
-    if (AReference.Parent = nil) or not (AReference.Parent.Kind in DeclarationParents) or
+    if (AReference.Parent = nil) or not (AReference.Parent.Kind in cDeclarationParents) or
       (Pos('.', AReference.Name) > 0) or (AReference.FindChild(TSyntaxKind.GenericArgs) <> nil) then
     begin
       Exit;
     end;
-    Name := AReference.Name;
-    if Types.DeclaredKind(Name) = TSyntaxKind.HelperType then
+    mName := AReference.Name;
+    if mTypes.DeclaredKind(mName) = TSyntaxKind.HelperType then
     begin
-      Report('E2527', NodeRange(AReference), cTexts[TTypeRestrictionsRecordsText.HelperAsType].Fmt([Name]), nil);
+      Report('E2527', NodeRange(AReference), cTexts[TTypeRestrictionsRecordsText.HelperAsType].Fmt([mName]), nil);
     end;
   end;
 
@@ -1120,15 +1122,15 @@ begin
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
-  Root := AContext.Tree.Root;
-  Types := TFileTypes.Collect(Root);
-  Disabled := TRuleOptions.Strings(AContext.Options, 'disabledChecks', nil);
-  Paths := TConditionalBranches.Paths(Tokens);
-  Ancestry := nil;
-  Nodes := TList<TSyntaxNode>.Create;
+  mTokens := AContext.Tree.Tokens;
+  mRoot := AContext.Tree.Root;
+  mTypes := TFileTypes.Collect(mRoot);
+  mDisabled := TRuleOptions.Strings(AContext.Options, 'disabledChecks', nil);
+  mPaths := TConditionalBranches.Paths(mTokens);
+  mAncestry := nil;
+  mNodes := TList<TSyntaxNode>.Create;
   try
-    Root.Walk(
+    mRoot.Walk(
       function(ANode: TSyntaxNode): Boolean
       begin
         Result := True;
@@ -1136,17 +1138,17 @@ begin
           TSyntaxKind.HelperType, TSyntaxKind.RoutineHeader, TSyntaxKind.RoutineDecl, TSyntaxKind.VarSection,
           TSyntaxKind.TypeReference] then
         begin
-          Nodes.Add(ANode);
+          mNodes.Add(ANode);
         end;
       end);
-    for Node in Nodes do
+    for mNode in mNodes do
     begin
-      CheckNode(Node);
+      CheckNode(mNode);
     end;
     CheckInlineLocalSymbols;
   finally
-    Nodes.Free;
-    Ancestry.Free;
+    mNodes.Free;
+    mAncestry.Free;
   end;
 end;
 

@@ -51,7 +51,7 @@ type
 
   TLspBulkFix = class
   public const
-    Command = 'atlas.server.fixFindings';
+    cCommand = 'atlas.server.fixFindings';
   private
     FInputFor: TLspBulkFixInputFunc;
     /// <summary>Korrigiert AFileName; False, wenn die Datei nicht lesbar ist.</summary>
@@ -192,7 +192,7 @@ begin
   end;
   if not TBulkFix.MinConfidenceOf(mInput.Settings.FixMinConfidence, ARequested, mConfidence, mError) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, mError);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, mError);
   end;
   mOptions := TBulkFixOptions.Create(AFixRules, mConfidence, TRuleCatalog.Shared.Entries);
   AResult := TBulkFix.Run(AFileName, mInput.Text, mOptions, TBulkFix.CheckWith(TBulkFix.RulesFor(mInput.Rules,
@@ -210,14 +210,14 @@ var
 begin
   if (AArguments = nil) or (AArguments.Count < 1) or not (AArguments.Items[0] is TJSONObject) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TBulkFixText.ArgumentsRulesFilesMinConfidenceHigh].Text);
   end;
   mArguments := TJSONObject(AArguments.Items[0]);
   mFixRules := StringsOf(mArguments.GetValue('rules'));
   if mFixRules = nil then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TBulkFixText.RulesMissingRuleIdsOr].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TBulkFixText.RulesMissingRuleIdsOr].Text);
   end;
   mRequested := '';
   if mArguments.GetValue('minConfidence') is TJSONString then

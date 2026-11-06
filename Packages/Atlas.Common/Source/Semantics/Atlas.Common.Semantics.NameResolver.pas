@@ -91,11 +91,13 @@ type
     /// <summary>Typ eines aufgelösten Namens, Aliase verfolgt (Typen sind ihr eigener Typ, TFoo.Create ein TFoo);
     /// im Rahmen der zuletzt vorbereiteten Stelle (#689 nutzt es für den Grundtyp eines Alias).</summary>
     function TypeOf(const AResolved: TResolvedSymbol; out AType: TResolvedSymbol): Boolean;
-    /// <summary>Direkter Vorfahr eines Typs (ohne Angabe TObject bzw. IInterface); False ohne oder bei Helfern.</summary>
+    /// <summary>Direkter Vorfahr eines Typs (ohne Angabe TObject bzw. IInterface); False ohne oder bei
+    /// Helfern.</summary>
     function AncestorOf(const AType: TResolvedSymbol; out AAncestor: TResolvedSymbol): Boolean;
     /// <summary>Löst den Bezeichner an APosition auf; bei gleich guten Überladungen die erste.</summary>
     function Resolve(ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition): TResolvedSymbol;
-    /// <summary>Wie Resolve, aber alle gleich guten Kandidaten, wenn die Überladung nicht eindeutig ist (#263).</summary>
+    /// <summary>Wie Resolve, aber alle gleich guten Kandidaten, wenn die Überladung nicht eindeutig ist
+    /// (#263).</summary>
     function ResolveAll(ATree: TSyntaxTree; const AFileName: string;
       const APosition: TTextPosition): TArray<TResolvedSymbol>;
     /// <summary>Löst die Kette ANames (A.B.C) so auf, wie sie an AOffset stünde.</summary>
@@ -132,7 +134,8 @@ type
     function VisibleHelper(ATree: TSyntaxTree; const AFileName, ATypeName: string; AOffset: Integer;
       out AHelper: TResolvedSymbol): Boolean;
     /// <summary>Löst ATypeName so auf, wie er in AFromUnit stünde (z. B. Vorfahren aus dem Index).</summary>
-    function ResolveTypeFrom(const AFromUnit: TUnitIndex; const ATypeName: string; out AResult: TResolvedSymbol): Boolean;
+    function ResolveTypeFrom(const AFromUnit: TUnitIndex; const ATypeName: string;
+      out AResult: TResolvedSymbol): Boolean;
     /// <summary>Wie ResolveTypeFrom, aber für einen Typtext mit Typargumenten (TFabrik&lt;Integer&gt;): wählt den
     /// generischen Typ mit passender Zahl von Typparametern und bindet die Argumente; eingebaute Typen ohne
     /// Deklaration liefert es mit Builtin (#1028).

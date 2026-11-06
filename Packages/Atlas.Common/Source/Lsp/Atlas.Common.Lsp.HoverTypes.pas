@@ -34,8 +34,8 @@ type
   TLspHoverTypes = class
   public const
     /// <summary>Höchstzahl der Glieder einer Vererbungskette.</summary>
-    MaxChain = 32;
-    KindClassRef = 'classref';
+    cMaxChain = 32;
+    cKindClassRef = 'classref';
   public
     /// <summary>Typnamen in ADeclaration (eine Zeile) außer ASelf, aufgelöst aus AUnit.</summary>
     class function Links(AResolver: TNameResolver; const AUnit: TUnitIndex; const ADeclaration,
@@ -94,51 +94,51 @@ end;
 class function TLspHoverTypes.Links(AResolver: TNameResolver; const AUnit: TUnitIndex; const ADeclaration,
   ASelf: string): TArray<THoverLink>;
 var
-  Tokens: TArray<TPascalToken>;
-  Index, Last: Integer;
-  Name: string;
-  Resolved: TResolvedSymbol;
-  Link: THoverLink;
+  mTokens: TArray<TPascalToken>;
+  mIndex, mLast: Integer;
+  mName: string;
+  mResolved: TResolvedSymbol;
+  mLink: THoverLink;
 begin
   Result := nil;
-  Tokens := TPascalLexer.Tokenize(ADeclaration);
-  Index := 0;
-  while Index <= High(Tokens) do
+  mTokens := TPascalLexer.Tokenize(ADeclaration);
+  mIndex := 0;
+  while mIndex <= High(mTokens) do
   begin
-    if Tokens[Index].Kind <> TPascalTokenKind.Identifier then
+    if mTokens[mIndex].Kind <> TPascalTokenKind.Identifier then
     begin
-      Inc(Index);
+      Inc(mIndex);
       Continue;
     end;
     // Punktketten wie Vcl.Forms.TFrame als ein Name.
-    Last := Index;
-    Name := Tokens[Index].Text;
-    while (Last + 2 <= High(Tokens)) and Tokens[Last + 1].IsSymbol('.') and
-      (Tokens[Last + 2].Kind = TPascalTokenKind.Identifier) do
+    mLast := mIndex;
+    mName := mTokens[mIndex].Text;
+    while (mLast + 2 <= High(mTokens)) and mTokens[mLast + 1].IsSymbol('.') and
+      (mTokens[mLast + 2].Kind = TPascalTokenKind.Identifier) do
     begin
-      Name := Name + '.' + Tokens[Last + 2].Text;
-      Inc(Last, 2);
+      mName := mName + '.' + mTokens[mLast + 2].Text;
+      Inc(mLast, 2);
     end;
-    if MayReferType(Tokens, Index, Name, ASelf) and ResolvesToSourceType(AResolver, AUnit, Name, Resolved) then
+    if MayReferType(mTokens, mIndex, mName, ASelf) and ResolvesToSourceType(AResolver, AUnit, mName, mResolved) then
     begin
-      Link.Start := Tokens[Index].StartPos.Character;
-      Link.Length := Tokens[Last].EndPos.Character - Tokens[Index].StartPos.Character;
-      Link.Target := FromResolved(Resolved);
-      Result := Result + [Link];
+      mLink.Start := mTokens[mIndex].StartPos.Character;
+      mLink.Length := mTokens[mLast].EndPos.Character - mTokens[mIndex].StartPos.Character;
+      mLink.Target := FromResolved(mResolved);
+      Result := Result + [mLink];
     end;
-    Index := Last + 1;
+    mIndex := mLast + 1;
   end;
 end;
 
 class function TLspHoverTypes.Chain(AResolver: TNameResolver; const AType: TResolvedSymbol): TArray<THoverTypeRef>;
 var
-  Current, Next: TResolvedSymbol;
-  Seen: TArray<string>;
-  Key: string;
+  mCurrent, mNext: TResolvedSymbol;
+  mSeen: TArray<string>;
+  mKey: string;
 begin
   Result := nil;
   // Helfer nur mit Vorfahr-Helfer (#848); der Zieltyp ist kein Vorfahr.
-  if (AType.SymbolKind = TIndexSymbolKind.HelperType) and not AResolver.Queries.HelperParent(AType, Next) then
+  if (AType.SymbolKind = TIndexSymbolKind.HelperType) and not AResolver.Queries.HelperParent(AType, mNext) then
   begin
     Exit;
   end;
@@ -147,40 +147,40 @@ begin
   begin
     Exit;
   end;
-  Current := AType;
-  Seen := nil;
-  while Length(Result) < MaxChain do
+  mCurrent := AType;
+  mSeen := nil;
+  while Length(Result) < cMaxChain do
   begin
-    Key := UpperCase(Current.QualifiedName);
-    if MatchStr(Key, Seen) then
+    mKey := UpperCase(mCurrent.QualifiedName);
+    if MatchStr(mKey, mSeen) then
     begin
       Break;
     end;
-    Seen := Seen + [Key];
-    Result := Result + [FromResolved(Current)];
-    if Current.SymbolKind = TIndexSymbolKind.HelperType then
+    mSeen := mSeen + [mKey];
+    Result := Result + [FromResolved(mCurrent)];
+    if mCurrent.SymbolKind = TIndexSymbolKind.HelperType then
     begin
-      if not AResolver.Queries.HelperParent(Current, Next) then
+      if not AResolver.Queries.HelperParent(mCurrent, mNext) then
       begin
         Break;
       end;
     end
-    else if not AResolver.AncestorOf(Current, Next) then
+    else if not AResolver.AncestorOf(mCurrent, mNext) then
     begin
       Break;
     end;
-    Current := Next;
+    mCurrent := mNext;
   end;
 end;
 
 class function TLspHoverTypes.ClassRefTarget(const ADeclaration: string): string;
 var
-  Match: TMatch;
+  mMatch: TMatch;
 begin
-  Match := TRegEx.Match(ADeclaration, '=\s*class\s+of\s+([A-Za-z_&][\w.]*)', [roIgnoreCase]);
-  if Match.Success then
+  mMatch := TRegEx.Match(ADeclaration, '=\s*class\s+of\s+([A-Za-z_&][\w.]*)', [roIgnoreCase]);
+  if mMatch.Success then
   begin
-    Result := Match.Groups[1].Value;
+    Result := mMatch.Groups[1].Value;
   end
   else
   begin
@@ -192,7 +192,7 @@ class function TLspHoverTypes.KindOf(AKind: TIndexSymbolKind; const ADeclaration
 begin
   if (AKind = TIndexSymbolKind.ClassType) and (ClassRefTarget(ADeclaration) <> '') then
   begin
-    Result := KindClassRef;
+    Result := cKindClassRef;
   end
   else
   begin

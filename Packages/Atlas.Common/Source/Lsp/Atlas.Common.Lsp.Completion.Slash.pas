@@ -133,7 +133,7 @@ begin
     begin
       mItem := Default(TCompletionItem);
       mItem.Name := mChoice;
-      mItem.Kind := KindField;
+      mItem.Kind := cKindField;
       mItem.Detail := '/' + AName;
       if mLookup.Resolver <> nil then
       begin
@@ -173,7 +173,7 @@ begin
   begin
     mItem := Default(TCompletionItem);
     mItem.Name := mCommand.Name;
-    mItem.Kind := KindKeyword;
+    mItem.Kind := cKindKeyword;
     mItem.Detail := mCommand.Summary + ' – ' + mCommand.Example;
     mItem.InsertText := mCommand.Name + ' ';
     Result := Result + [mItem];
@@ -225,7 +225,7 @@ begin
   begin
     mItem := Default(TCompletionItem);
     mItem.Name := mSymbol.Name;
-    mItem.Kind := KindConstant;
+    mItem.Kind := cKindConstant;
     mItem.Detail := mSymbol.Detail;
     mItem.Unavailable := not mSymbol.Active;
     AItems.Items := AItems.Items + [mItem];
@@ -250,7 +250,7 @@ begin
   begin
     mItem := Default(TCompletionItem);
     mItem.Name := mName;
-    mItem.Kind := KindKeyword;
+    mItem.Kind := cKindKeyword;
     if mIsWarning then
     begin
       mItem.Detail := cTexts[TSlashText.CompilerWarning].Text;

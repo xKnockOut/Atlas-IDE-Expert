@@ -65,7 +65,7 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  StringListObjectsLeakRuleId = 'stringlist-objects-leak';
+  cStringListObjectsLeakRuleId = 'stringlist-objects-leak';
 
 { TStringListObjectsLeakRule }
 
@@ -85,28 +85,28 @@ type
 
 const
   // Klassen, deren OwnsObjects die Objekte freigibt.
-  StringListClasses: array[0..1] of string = ('TStringList', 'THashedStringList');
+  cStringListClasses: array[0..1] of string = ('TStringList', 'THashedStringList');
   // Steuerelemente, deren Items Objekte halten, aber nie freigeben.
-  ObjectItemControls: array[0..4] of string = ('TListBox', 'TComboBox', 'TCheckListBox', 'TComboBoxEx',
+  cObjectItemControls: array[0..4] of string = ('TListBox', 'TComboBox', 'TCheckListBox', 'TComboBoxEx',
     'TColorListBox');
-  FreeWords: array[0..3] of string = ('Free', 'FreeAndNil', 'DisposeOf', 'Destroy');
+  cFreeWords: array[0..3] of string = ('Free', 'FreeAndNil', 'DisposeOf', 'Destroy');
 
 function TStringListObjectsLeakRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(StringListObjectsLeakRuleId, TRuleSeverity.Warning,
+  Result := TRuleDescriptor.Create(cStringListObjectsLeakRuleId, TRuleSeverity.Warning,
     cTexts[TOwnershipStringListObjectsText.Title].Text);
 end;
 
 class function TStringListObjectsLeakRule.KeyOf(const AText: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := 1 to Length(AText) do
+  for mIndex := 1 to Length(AText) do
   begin
-    if not CharInSet(AText[Index], [' ', #9, #10, #13]) then
+    if not CharInSet(AText[mIndex], [' ', #9, #10, #13]) then
     begin
-      Result := Result + AText[Index];
+      Result := Result + AText[mIndex];
     end;
   end;
   Result := LowerCase(Result);
@@ -159,7 +159,8 @@ begin
     (AAccess.ChildCount = 1) and (AAccess[0].Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]);
 end;
 
-/// <summary>Die Liste ANode als Argument (FreeObjects(Liste)), auf der rechten Seite einer Zuweisung oder mit @.</summary>
+/// <summary>Die Liste ANode als Argument (FreeObjects(Liste)), auf der rechten Seite einer Zuweisung oder mit
+/// @.</summary>
 function IsPassedOn(ANode: TSyntaxNode): Boolean;
 var
   mParent: TSyntaxNode;
@@ -314,32 +315,32 @@ end;
 
 procedure TStringListObjectsScan.AddHost(const AText: string; ACreation: TSyntaxNode);
 var
-  Host: TObjectsHost;
-  Index: Integer;
+  mHost: TObjectsHost;
+  mIndex: Integer;
 begin
-  Host.Key := TStringListObjectsLeakRule.KeyOf(AText);
-  Host.Text := AText;
-  Host.Creation := ACreation;
-  Host.Owning := False;
-  Host.Handled := False;
+  mHost.Key := TStringListObjectsLeakRule.KeyOf(AText);
+  mHost.Text := AText;
+  mHost.Creation := ACreation;
+  mHost.Owning := False;
+  mHost.Handled := False;
   if ACreation <> nil then
   begin
     // Create(True) besitzt; andere Konstruktoren (QuoteChar, Duplicates) nicht.
-    Host.Owning := (ACreation.Kind = TSyntaxKind.Call) and (ACreation.ChildCount = 2) and
+    mHost.Owning := (ACreation.Kind = TSyntaxKind.Call) and (ACreation.ChildCount = 2) and
       SameText(TextOf(ACreation[1]), 'True');
   end;
-  Index := HostIndex(Host.Key);
-  if Index < 0 then
+  mIndex := HostIndex(mHost.Key);
+  if mIndex < 0 then
   begin
-    FHosts := FHosts + [Host];
+    FHosts := FHosts + [mHost];
   end
   else if ACreation <> nil then
   begin
     // Mehrfach erzeugt: besitzend, sobald eine Erzeugung besitzt; die erste bleibt Ziel der Korrektur.
-    FHosts[Index].Owning := FHosts[Index].Owning or Host.Owning;
-    if FHosts[Index].Creation = nil then
+    FHosts[mIndex].Owning := FHosts[mIndex].Owning or mHost.Owning;
+    if FHosts[mIndex].Creation = nil then
     begin
-      FHosts[Index].Creation := ACreation;
+      FHosts[mIndex].Creation := ACreation;
     end;
   end;
 end;
@@ -347,98 +348,98 @@ end;
 // Erzeugungen, OwnsObjects := True und Felder vom Typ eines Steuerelements.
 procedure TStringListObjectsScan.CollectHosts(ANode: TSyntaxNode);
 var
-  Pending: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Index: Integer;
-  Name: string;
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
+  mName: string;
 begin
   // Iterativ (Bericht M1), Reihenfolge wie die frühere Rekursion.
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ANode);
-    while Pending.Count > 0 do
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount = 2) and
-        (StringListCreate(Node[1], StringListClasses) <> nil) then
+      mNode := mPending.Pop;
+      if (mNode.Kind = TSyntaxKind.AssignStatement) and (mNode.ChildCount = 2) and
+        (StringListCreate(mNode[1], cStringListClasses) <> nil) then
       begin
-        AddHost(TextOf(Node[0]), Node[1]);
+        AddHost(TextOf(mNode[0]), mNode[1]);
       end;
-      if (Node.Kind = TSyntaxKind.Field) and (Node.ChildCount > 0) and
-        (Node[0].Kind = TSyntaxKind.TypeReference) and MatchText(Node[0].Name, ObjectItemControls) then
+      if (mNode.Kind = TSyntaxKind.Field) and (mNode.ChildCount > 0) and
+        (mNode[0].Kind = TSyntaxKind.TypeReference) and MatchText(mNode[0].Name, cObjectItemControls) then
       begin
-        for Name in Node.Name.Split([',']) do
+        for mName in mNode.Name.Split([',']) do
         begin
-          AddHost(Trim(Name) + '.Items', nil);
+          AddHost(Trim(mName) + '.Items', nil);
         end;
       end;
-      for Index := Node.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(Node[Index]);
+        mPending.Push(mNode[mIndex]);
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
 procedure TStringListObjectsScan.CollectOwning(ANode: TSyntaxNode);
 var
-  Pending: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Index, Host: Integer;
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex, mHost: Integer;
 begin
   // Iterativ (Bericht M1).
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ANode);
-    while Pending.Count > 0 do
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      if IsOwnsObjectsAssign(Node) and SameText(TextOf(Node[1]), 'True') then
+      mNode := mPending.Pop;
+      if IsOwnsObjectsAssign(mNode) and SameText(TextOf(mNode[1]), 'True') then
       begin
-        Host := HostIndex(TStringListObjectsLeakRule.KeyOf(TextOf(Node[0][0])));
-        if Host >= 0 then
+        mHost := HostIndex(TStringListObjectsLeakRule.KeyOf(TextOf(mNode[0][0])));
+        if mHost >= 0 then
         begin
-          FHosts[Host].Owning := True;
+          FHosts[mHost].Owning := True;
         end;
       end;
-      for Index := Node.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(Node[Index]);
+        mPending.Push(mNode[mIndex]);
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
 function TStringListObjectsScan.ContainsFree(ANode: TSyntaxNode): Boolean;
 var
-  Pending: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Index: Integer;
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
 begin
   // Iterativ (Bericht M1).
   Result := False;
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ANode);
-    while Pending.Count > 0 do
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      if (Node.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.Call]) and
-        MatchText(Node.Name, FreeWords) then
+      mNode := mPending.Pop;
+      if (mNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess, TSyntaxKind.Call]) and
+        MatchText(mNode.Name, cFreeWords) then
       begin
         Exit(True);
       end;
-      for Index := Node.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(Node[Index]);
+        mPending.Push(mNode[mIndex]);
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
@@ -490,28 +491,28 @@ end;
 
 procedure TStringListObjectsScan.VisitRoutines(ANode: TSyntaxNode);
 var
-  Pending: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Index: Integer;
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
 begin
   // Iterativ (Bericht M1).
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ANode);
-    while Pending.Count > 0 do
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      if Node.Kind = TSyntaxKind.RoutineDecl then
+      mNode := mPending.Pop;
+      if mNode.Kind = TSyntaxKind.RoutineDecl then
       begin
-        MarkReleases(Node, Node);
+        MarkReleases(mNode, mNode);
       end;
-      for Index := Node.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(Node[Index]);
+        mPending.Push(mNode[mIndex]);
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
@@ -590,7 +591,7 @@ begin
   end
   // V.Name liest nur; alles andere außer dem AddObject-Argument gibt V weiter oder frei.
   else if not ((mParent.Kind = TSyntaxKind.MemberAccess) and (mParent[0] = ANode) and
-    not MatchText(mParent.Name, FreeWords)) and (mParent <> AAdd) then
+    not MatchText(mParent.Name, cFreeWords)) and (mParent <> AAdd) then
   begin
     Result := False;
   end;
@@ -706,30 +707,30 @@ end;
 // Prüft jeden Knoten nach seinen Kindern (Nachordnung) mit CheckAdd.
 procedure TStringListObjectsScan.CheckAdds(ANode: TSyntaxNode);
 var
-  Pending: TStack<TSyntaxPostOrderEntry>;
-  Entry: TSyntaxPostOrderEntry;
-  Index: Integer;
+  mPending: TStack<TSyntaxPostOrderEntry>;
+  mEntry: TSyntaxPostOrderEntry;
+  mIndex: Integer;
 begin
   // Iterativ (Bericht M1): Done = die Kinder sind schon geprüft.
-  Pending := TStack<TSyntaxPostOrderEntry>.Create;
+  mPending := TStack<TSyntaxPostOrderEntry>.Create;
   try
-    Pending.Push(TSyntaxPostOrderEntry.Create(ANode, False));
-    while Pending.Count > 0 do
+    mPending.Push(TSyntaxPostOrderEntry.Create(ANode, False));
+    while mPending.Count > 0 do
     begin
-      Entry := Pending.Pop;
-      if Entry.Done then
+      mEntry := mPending.Pop;
+      if mEntry.Done then
       begin
-        CheckAdd(Entry.Node);
+        CheckAdd(mEntry.Node);
         Continue;
       end;
-      Pending.Push(TSyntaxPostOrderEntry.Create(Entry.Node, True));
-      for Index := Entry.Node.ChildCount - 1 downto 0 do
+      mPending.Push(TSyntaxPostOrderEntry.Create(mEntry.Node, True));
+      for mIndex := mEntry.Node.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(TSyntaxPostOrderEntry.Create(Entry.Node[Index], False));
+        mPending.Push(TSyntaxPostOrderEntry.Create(mEntry.Node[mIndex], False));
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 

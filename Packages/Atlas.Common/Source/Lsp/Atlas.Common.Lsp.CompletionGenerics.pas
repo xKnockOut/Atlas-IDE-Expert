@@ -46,11 +46,11 @@ type
   TCompletionGenerics = class
   public const
     /// <summary>Grundtypen mit Wertsemantik (record-Constraint).</summary>
-    ValueTypes: array[0..18] of string = ('Integer', 'Cardinal', 'Int64', 'UInt64', 'NativeInt', 'NativeUInt',
+    cValueTypes: array[0..18] of string = ('Integer', 'Cardinal', 'Int64', 'UInt64', 'NativeInt', 'NativeUInt',
       'Byte', 'Word', 'ShortInt', 'SmallInt', 'Double', 'Single', 'Extended', 'Currency', 'Char', 'AnsiChar',
       'WideChar', 'Boolean', 'TDateTime');
     /// <summary>Weitere Grundtypen ohne Constraint.</summary>
-    OtherBasicTypes: array[0..2] of string = ('string', 'Variant', 'Pointer');
+    cOtherBasicTypes: array[0..2] of string = ('string', 'Variant', 'Pointer');
   public
     /// <summary>Offenes "&lt;" eines Typnamens vor dem Token ALast (das letzte vor dem angefangenen Namen).
     /// </summary>
@@ -84,7 +84,7 @@ uses
   Atlas.Common.Lsp.FuzzyMatch;
 
 const
-  MaxAncestorDepth = 32;
+  cMaxAncestorDepth = 32;
 
 function IsTrivia(const AToken: TPascalToken): Boolean;
 begin
@@ -353,27 +353,27 @@ end;
 class function TCompletionGenerics.Allowed(AKind: TTypeArgKind; const AConstraints: TArray<string>;
   const ASatisfiesType: TFunc<string, Boolean>; const AConstructible: TFunc<Boolean>): Boolean;
 var
-  Constraint: string;
+  mConstraint: string;
 begin
   Result := True;
-  for Constraint in AConstraints do
+  for mConstraint in AConstraints do
   begin
-    if SameText(Constraint, 'class') then
+    if SameText(mConstraint, 'class') then
     begin
       Result := Result and (AKind = TTypeArgKind.Class_);
     end
-    else if SameText(Constraint, 'record') then
+    else if SameText(mConstraint, 'record') then
     begin
       Result := Result and (AKind in [TTypeArgKind.Record_, TTypeArgKind.Enum, TTypeArgKind.Basic]);
     end
-    else if SameText(Constraint, 'constructor') then
+    else if SameText(mConstraint, 'constructor') then
     begin
       Result := Result and (AKind = TTypeArgKind.Class_) and AConstructible();
     end
     else
     begin
       // Typ-Constraint: Klassen, Interfaces (und Records bei Interfaces nicht) prüft die Namensauflösung.
-      Result := Result and (AKind in [TTypeArgKind.Class_, TTypeArgKind.Interface_]) and ASatisfiesType(Constraint);
+      Result := Result and (AKind in [TTypeArgKind.Class_, TTypeArgKind.Interface_]) and ASatisfiesType(mConstraint);
     end;
   end;
 end;
@@ -419,7 +419,7 @@ var
   mNext: TResolvedSymbol;
   mInner: Integer;
 begin
-  for mInner := 0 to MaxAncestorDepth do
+  for mInner := 0 to cMaxAncestorDepth do
   begin
     if SameText(PlainName(AListed.Name), PlainName(AName)) then
     begin
@@ -461,7 +461,7 @@ var
 begin
   Result := False;
   mCurrent := AType;
-  for mDepth := 0 to MaxAncestorDepth do
+  for mDepth := 0 to cMaxAncestorDepth do
   begin
     if SameText(PlainName(mCurrent.Name), PlainName(AName)) then
     begin
@@ -486,17 +486,17 @@ end;
 /// Parameter; ohne eigenen gilt TObject.Create.</summary>
 function Constructible(AResolver: TNameResolver; const AType: TResolvedSymbol): Boolean;
 var
-  Ctor: TResolvedSymbol;
-  Params: string;
+  mCtor: TResolvedSymbol;
+  mParams: string;
 begin
-  if not AResolver.DeclaredMember(AType, 'Create', Ctor) or (Ctor.MinArgs = 0) then
+  if not AResolver.DeclaredMember(AType, 'Create', mCtor) or (mCtor.MinArgs = 0) then
   begin
     Exit(True);
   end;
   Result := False;
-  for Params in Ctor.VariantParams do
+  for mParams in mCtor.VariantParams do
   begin
-    if Params = '' then
+    if mParams = '' then
     begin
       Exit(True);
     end;
@@ -506,8 +506,8 @@ end;
 class function TCompletionGenerics.ItemSymbol(ARequest: TCompletionRequest; AUnits: TDictionary<string, TUnitIndex>;
   const AItem: TCompletionItem; out ASymbol: TResolvedSymbol): Boolean;
 var
-  UnitInfo: TUnitIndex;
-  Symbol: TIndexSymbol;
+  mUnitInfo: TUnitIndex;
+  mSymbol: TIndexSymbol;
 begin
   Result := False;
   ASymbol := Default(TResolvedSymbol);
@@ -515,26 +515,26 @@ begin
   begin
     Exit;
   end;
-  if not AUnits.TryGetValue(UpperCase(AItem.SourceFile), UnitInfo) then
+  if not AUnits.TryGetValue(UpperCase(AItem.SourceFile), mUnitInfo) then
   begin
     // Die eigene Unit aus dem Baum, sie steht vielleicht noch nicht (aktuell) im Index.
     if SameText(AItem.SourceFile, ARequest.FileName) and (ARequest.Tree <> nil) then
     begin
-      UnitInfo := ARequest.UnitIndex;
+      mUnitInfo := ARequest.UnitIndex;
     end
-    else if (ARequest.Index = nil) or not TIndexFiles.UnitOf(ARequest.Index, AItem.SourceFile, UnitInfo) then
+    else if (ARequest.Index = nil) or not TIndexFiles.UnitOf(ARequest.Index, AItem.SourceFile, mUnitInfo) then
     begin
-      UnitInfo := Default(TUnitIndex);
+      mUnitInfo := Default(TUnitIndex);
     end;
-    AUnits.Add(UpperCase(AItem.SourceFile), UnitInfo);
+    AUnits.Add(UpperCase(AItem.SourceFile), mUnitInfo);
   end;
-  for Symbol in UnitInfo.Symbols do
+  for mSymbol in mUnitInfo.Symbols do
   begin
-    if (Symbol.SelectionRange.StartPos.Line = AItem.SourcePosition.Line) and
-      (Symbol.SelectionRange.StartPos.Character = AItem.SourcePosition.Character) and
-      SameText(Symbol.Name, AItem.Name) then
+    if (mSymbol.SelectionRange.StartPos.Line = AItem.SourcePosition.Line) and
+      (mSymbol.SelectionRange.StartPos.Character = AItem.SourcePosition.Character) and
+      SameText(mSymbol.Name, AItem.Name) then
     begin
-      ASymbol := TResolvedSymbol.FromIndex(UnitInfo, Symbol);
+      ASymbol := TResolvedSymbol.FromIndex(mUnitInfo, mSymbol);
       Exit(True);
     end;
   end;
@@ -608,7 +608,7 @@ begin
   begin
     Result := KindOfSymbol(AResolved);
   end
-  else if MatchText(AItem.Name, TCompletionGenerics.ValueTypes) then
+  else if MatchText(AItem.Name, TCompletionGenerics.cValueTypes) then
   begin
     Result := TTypeArgKind.Basic;
   end
@@ -642,7 +642,7 @@ procedure TGenericFilter.AddBasic(const AName: string);
 var
   mBasic: TCompletionItem;
 begin
-  if Names.ContainsKey(UpperCase(AName)) or (MatchScore(AName, Prefix, Request.Matching) = TFuzzyMatch.NoMatch) or
+  if Names.ContainsKey(UpperCase(AName)) or (MatchScore(AName, Prefix, Request.Matching) = TFuzzyMatch.cNoMatch) or
     not Admit(TTypeArgKind.Basic, Default(TResolvedSymbol)) then
   begin
     Exit;
@@ -650,7 +650,7 @@ begin
   mBasic := Default(TCompletionItem);
   mBasic.Name := AName;
   mBasic.Detail := 'System';
-  mBasic.Kind := KindStruct;
+  mBasic.Kind := cKindStruct;
   Keep(mBasic);
 end;
 
@@ -727,13 +727,13 @@ begin
     begin
       mFilter.AddItem(mItem, mUnits);
     end;
-    for mName in ValueTypes do
+    for mName in cValueTypes do
     begin
       mFilter.AddBasic(mName);
     end;
     if Length(mFilter.Param.Constraints) = 0 then
     begin
-      for mName in OtherBasicTypes do
+      for mName in cOtherBasicTypes do
       begin
         mFilter.AddBasic(mName);
       end;

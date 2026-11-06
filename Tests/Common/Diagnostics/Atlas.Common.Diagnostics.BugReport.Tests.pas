@@ -69,12 +69,12 @@ var
 begin
   Statistics := TJsonRpcStatistics.Create;
   Assert.AreEqual(0, Integer(Length(Statistics.Recent)));
-  for Index := 1 to TJsonRpcStatistics.RecentCapacity + 7 do
+  for Index := 1 to TJsonRpcStatistics.cRecentCapacity + 7 do
   begin
     Statistics.Add('m' + IntToStr(Index), Index, Index mod 2 = 0);
   end;
   Recent := Statistics.Recent;
-  Assert.AreEqual(TJsonRpcStatistics.RecentCapacity, Integer(Length(Recent)));
+  Assert.AreEqual(TJsonRpcStatistics.cRecentCapacity, Integer(Length(Recent)));
   // Die ältesten sieben sind verdrängt, Reihenfolge älteste zuerst.
   Assert.AreEqual('m8', Recent[0].Method);
   Assert.AreEqual('m57', Recent[High(Recent)].Method);
@@ -98,7 +98,7 @@ begin
   Assert.AreEqual(3, Integer(Length(Lines.Lines)));
   Assert.EndsWith('Zeile 3', Lines.Lines[0]);
   Assert.EndsWith('Zeile 5', Lines.Lines[2]);
-  Assert.AreEqual(TRecentLogSink.DefaultCapacity, 200);
+  Assert.AreEqual(TRecentLogSink.cDefaultCapacity, 200);
 end;
 
 procedure TBugReportTests.ReportHasNoDocumentContent;

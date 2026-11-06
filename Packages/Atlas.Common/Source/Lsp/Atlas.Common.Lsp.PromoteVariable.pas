@@ -35,9 +35,9 @@ type
 
   TLspPromoteVariable = class
   public const
-    ClientCommand = 'atlas.promoteVariable';
-    ApplyCommand = 'atlas.server.promoteVariable';
-    Kind = 'refactor.rewrite';
+    cClientCommand = 'atlas.promoteVariable';
+    cApplyCommand = 'atlas.server.promoteVariable';
+    cKind = 'refactor.rewrite';
   public
     /// <summary>Typen, Vorfahren und Formular über AResolver für ATree der Datei AFileName.</summary>
     class function Lookup(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
@@ -79,17 +79,17 @@ const
 class function TLspPromoteVariable.Lookup(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string;
   const AReadText: TReferenceReadText): TPromoteLookup;
 var
-  FileName: string;
+  mFileName: string;
 begin
   Result := TPromoteLookup.FromTree(ATree);
-  FileName := AFileName;
+  mFileName := AFileName;
   Result.InlineType :=
     function(const ALocal: TRoutineLocal): string
     var
       Found: TInferredType;
     begin
       Result := '';
-      for Found in TLspInlayHints.Inferred(AResolver, ATree, FileName, TTextRange.Create(ALocal.Decl.StartPos,
+      for Found in TLspInlayHints.Inferred(AResolver, ATree, mFileName, TTextRange.Create(ALocal.Decl.StartPos,
         ALocal.Decl.EndPos)) do
       begin
         if SameText(Found.Name, ALocal.Name) and not Found.ForIn then
@@ -101,7 +101,7 @@ begin
   Result.MemberExists :=
     function(const AClassName, AName: string; AOffset: Integer): Boolean
     begin
-      Result := AResolver.ResolveChain(ATree, FileName, (AClassName + '.' + AName).Split(['.']), AOffset).Found;
+      Result := AResolver.ResolveChain(ATree, mFileName, (AClassName + '.' + AName).Split(['.']), AOffset).Found;
     end;
   Result.InForm := TLspFormMentions.Lookup(AFileName, AReadText);
 end;
@@ -109,53 +109,53 @@ end;
 class function TLspPromoteVariable.Actions(ATree: TSyntaxTree; const AText, AUri: string;
   const APosition: TTextPosition; const ALookup: TPromoteLookup): TArray<TJSONObject>;
 var
-  Target: TPromoteTarget;
-  Reason: string;
-  Arguments: TJSONArray;
-  Command, Action: TJSONObject;
+  mTarget: TPromoteTarget;
+  mReason: string;
+  mArguments: TJSONArray;
+  mCommand, mAction: TJSONObject;
 begin
   Result := nil;
-  if not TPromoteVariable.Target(AText, ATree, APosition, ALookup, Target, Reason) then
+  if not TPromoteVariable.Target(AText, ATree, APosition, ALookup, mTarget, mReason) then
   begin
     Exit;
   end;
-  Arguments := TJSONArray.Create;
-  Arguments.Add(AUri);
-  Arguments.AddElement(TLspPositions.PositionToJson(APosition));
-  Arguments.Add(Target.Suggested);
-  Command := TJSONObject.Create;
-  Command.AddPair('title', Target.Title);
-  Command.AddPair('command', ClientCommand);
-  Command.AddPair('arguments', Arguments);
-  Action := TJSONObject.Create;
-  Action.AddPair('title', Target.Title);
-  Action.AddPair('kind', Kind);
-  Action.AddPair('command', Command);
-  Result := [Action];
+  mArguments := TJSONArray.Create;
+  mArguments.Add(AUri);
+  mArguments.AddElement(TLspPositions.PositionToJson(APosition));
+  mArguments.Add(mTarget.Suggested);
+  mCommand := TJSONObject.Create;
+  mCommand.AddPair('title', mTarget.Title);
+  mCommand.AddPair('command', cClientCommand);
+  mCommand.AddPair('arguments', mArguments);
+  mAction := TJSONObject.Create;
+  mAction.AddPair('title', mTarget.Title);
+  mAction.AddPair('kind', cKind);
+  mAction.AddPair('command', mCommand);
+  Result := [mAction];
 end;
 
 class function TLspPromoteVariable.Execute(ATree: TSyntaxTree; const AText, AUri: string;
   const APosition: TTextPosition; const AContext: TPromoteVariableContext): TJSONObject;
 var
-  Promoted: TPromoteResult;
-  Reason, Warning: string;
-  Warnings: TJSONArray;
+  mPromoted: TPromoteResult;
+  mReason, mWarning: string;
+  mWarnings: TJSONArray;
 begin
   if not TPromoteVariable.Execute(AText, ATree, TPromoteRequest.Create(APosition, AContext.Lookup, AContext.Style,
-    AContext.NewName), Promoted, Reason) then
+    AContext.NewName), mPromoted, mReason) then
   begin
-    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed,
-      cTexts[TLspPromoteVariableText.ConversionNotPossible].Text + Reason);
+    raise EJsonRpcError.Create(TLspErrorCode.cRequestFailed,
+      cTexts[TLspPromoteVariableText.ConversionNotPossible].Text + mReason);
   end;
-  Warnings := TJSONArray.Create;
-  for Warning in Promoted.Warnings do
+  mWarnings := TJSONArray.Create;
+  for mWarning in mPromoted.Warnings do
   begin
-    Warnings.Add(Warning);
+    mWarnings.Add(mWarning);
   end;
   Result := TJSONObject.Create;
-  Result.AddPair('edit', TLspCodeActions.WorkspaceEditJson(AUri, Promoted.Edits));
-  Result.AddPair('warnings', Warnings);
-  Result.AddPair('places', TJSONNumber.Create(Promoted.Places));
+  Result.AddPair('edit', TLspCodeActions.WorkspaceEditJson(AUri, mPromoted.Edits));
+  Result.AddPair('warnings', mWarnings);
+  Result.AddPair('places', TJSONNumber.Create(mPromoted.Places));
   Result.AddPair('files', TJSONNumber.Create(1));
 end;
 

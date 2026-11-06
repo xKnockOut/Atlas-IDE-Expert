@@ -289,7 +289,7 @@ var
   Action: TCodeAction;
 begin
   Assert.IsTrue(TCodeActions.TryFinally(Body, 4, Action));
-  Assert.AreEqual(RewriteKind, Action.Kind);
+  Assert.AreEqual(cRewriteKind, Action.Kind);
   Assert.AreEqual(1, Integer(Length(Action.Edits)));
   Assert.AreEqual(4, Action.Edits[0].Range.StartPos.Line);
   Assert.AreEqual(Integer(Length('  L := TStringList.Create;')), Action.Edits[0].Range.StartPos.Character);
@@ -333,7 +333,7 @@ var
 begin
   Assert.IsTrue(TCodeActions.OrganizeImports('unit A;' + LB + 'interface' + LB + 'uses B, B;' + LB +
     'implementation' + LB + 'end.', False, Action));
-  Assert.AreEqual(OrganizeImportsKind, Action.Kind);
+  Assert.AreEqual(cOrganizeImportsKind, Action.Kind);
   Assert.AreEqual('B', Action.Edits[0].NewText);
   Assert.IsFalse(TCodeActions.OrganizeImports('unit A;' + LB + 'interface' + LB + 'uses B, C;' + LB +
     'implementation' + LB + 'end.', True, Action));
@@ -341,11 +341,11 @@ end;
 
 procedure TCodeActionTests.MatchesRequestedKinds;
 begin
-  Assert.IsTrue(TCodeActions.KindRequested(FixAllKind, nil));
-  Assert.IsTrue(TCodeActions.KindRequested(FixAllKind, ['source']));
-  Assert.IsTrue(TCodeActions.KindRequested(OrganizeImportsKind, ['source.organizeImports']));
-  Assert.IsFalse(TCodeActions.KindRequested(FixAllKind, ['source.organizeImports']));
-  Assert.IsFalse(TCodeActions.KindRequested(QuickFixKind, ['source']));
+  Assert.IsTrue(TCodeActions.KindRequested(cFixAllKind, nil));
+  Assert.IsTrue(TCodeActions.KindRequested(cFixAllKind, ['source']));
+  Assert.IsTrue(TCodeActions.KindRequested(cOrganizeImportsKind, ['source.organizeImports']));
+  Assert.IsFalse(TCodeActions.KindRequested(cFixAllKind, ['source.organizeImports']));
+  Assert.IsFalse(TCodeActions.KindRequested(cQuickFixKind, ['source']));
   Assert.IsFalse(TCodeActions.KindRequested('sourceX', ['source']));
 end;
 
@@ -539,7 +539,7 @@ begin
   Findings := TRuleAssert.Findings(TMarkerRule.Create,
     'unit U; interface implementation' + LB + '  // lsp-ignore: marker' + LB + 'var X: Integer;' + LB + 'end.');
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(UnusedSuppressionRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cUnusedSuppressionRuleId, Findings[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
   Assert.AreEqual(1, Integer(Length(Findings[0].Fixes)));
   // Eigene Zeile: Die ganze Zeile entfällt.
@@ -568,7 +568,7 @@ var
   Action: TCodeAction;
 begin
   Assert.IsTrue(TCodeActions.SwapAssignments('  A := B;', TTextRange.Create(0, 0, 0, 0), nil, Action));
-  Assert.AreEqual(RewriteKind, Action.Kind);
+  Assert.AreEqual(cRewriteKind, Action.Kind);
   Assert.AreEqual('  B := A;', Action.Edits[0].NewText);
   Assert.IsFalse(TCodeActions.SwapAssignments('  A := F(B);', TTextRange.Create(0, 0, 0, 0), nil, Action));
 end;

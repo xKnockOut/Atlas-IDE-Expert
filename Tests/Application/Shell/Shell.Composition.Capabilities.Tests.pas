@@ -62,7 +62,7 @@ begin
   finally
     mCapabilities.Free;
   end;
-  Assert.IsTrue(string.Join(';', mNames).Contains(StatusCommand), 'Status');
+  Assert.IsTrue(string.Join(';', mNames).Contains(cStatusCommand), 'Status');
   Assert.IsTrue(string.Join(';', mNames).Contains(TShellCrashCases.RetryCommand), 'Neuversuch');
 end;
 

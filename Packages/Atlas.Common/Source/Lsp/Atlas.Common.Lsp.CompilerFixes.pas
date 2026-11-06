@@ -49,42 +49,42 @@ uses
 
 class function TLspCompilerFixes.FixMessages(const AMessages: TArray<TCompilerMessage>): TArray<TFixMessage>;
 var
-  Message: TCompilerMessage;
+  mMessage: TCompilerMessage;
 begin
   Result := nil;
-  for Message in AMessages do
+  for mMessage in AMessages do
   begin
-    if Message.Line >= 0 then
+    if mMessage.Line >= 0 then
     begin
-      Result := Result + [TFixMessage.Create(Message.Code, Message.Line, Message.Column, Message.Text)];
+      Result := Result + [TFixMessage.Create(mMessage.Code, mMessage.Line, mMessage.Column, mMessage.Text)];
     end;
   end;
 end;
 
 function ToAction(const AUri: string; const AFix: TCompilerFix): TJSONObject;
 var
-  Action: TCodeAction;
+  mAction: TCodeAction;
 begin
-  Action := Default(TCodeAction);
-  Action.Title := AFix.Title;
-  Action.Kind := QuickFixKind;
-  Action.Edits := AFix.Edits;
-  Action.IsPreferred := AFix.Preferred;
-  Result := TLspCodeActions.ActionToJson(AUri, Action);
+  mAction := Default(TCodeAction);
+  mAction.Title := AFix.Title;
+  mAction.Kind := cQuickFixKind;
+  mAction.Edits := AFix.Edits;
+  mAction.IsPreferred := AFix.Preferred;
+  Result := TLspCodeActions.ActionToJson(AUri, mAction);
 end;
 
 /// <summary>Steht APosition auf dem Bezeichner AName? Dann bietet die uses-Aktion (#284) die Units schon an.
 /// </summary>
 function OnName(ATree: TSyntaxTree; const APosition: TTextPosition; const AName: string): Boolean;
 var
-  Token: TPascalToken;
+  mToken: TPascalToken;
 begin
-  for Token in ATree.Tokens do
+  for mToken in ATree.Tokens do
   begin
-    if (Token.Kind = TPascalTokenKind.Identifier) and (Token.StartPos.Line = APosition.Line) and
-      (Token.StartPos.Character <= APosition.Character) and (APosition.Character <= Token.EndPos.Character) then
+    if (mToken.Kind = TPascalTokenKind.Identifier) and (mToken.StartPos.Line = APosition.Line) and
+      (mToken.StartPos.Character <= APosition.Character) and (APosition.Character <= mToken.EndPos.Character) then
     begin
-      Exit(SameText(Token.Text, AName));
+      Exit(SameText(mToken.Text, AName));
     end;
   end;
   Result := False;

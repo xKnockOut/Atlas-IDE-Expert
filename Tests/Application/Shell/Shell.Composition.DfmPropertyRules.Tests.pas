@@ -101,7 +101,7 @@ begin
       on E: EJsonRpcError do
         mCode := E.Code;
     end;
-    Assert.AreEqual(TJsonRpcErrorCode.InvalidParams, mCode);
+    Assert.AreEqual(TJsonRpcErrorCode.cInvalidParams, mCode);
   finally
     mArguments.Free;
   end;
@@ -111,7 +111,7 @@ procedure TShellDfmPropertyRulesTests.UnitsByScope;
 var
   mUnits: TArray<string>;
 begin
-  mUnits := TShellDfmPropertyRules.UnitsFor(FServices, cUnit, TLspDfmPropertyRules.ScopeForm);
+  mUnits := TShellDfmPropertyRules.UnitsFor(FServices, cUnit, TLspDfmPropertyRules.cScopeForm);
   Assert.AreEqual(1, Integer(Length(mUnits)));
   Assert.AreEqual(cUnit, mUnits[0]);
   mUnits := TShellDfmPropertyRules.UnitsFor(FServices, cUnit, 'project');
@@ -122,9 +122,9 @@ procedure TShellDfmPropertyRulesTests.OnlyDfmPropertyRule;
 var
   mRules: TArray<IRule>;
 begin
-  mRules := TShellDfmPropertyRules.RulesWithId(BuiltinRules, TLspDfmPropertyRules.RuleId);
+  mRules := TShellDfmPropertyRules.RulesWithId(BuiltinRules, TLspDfmPropertyRules.cRuleId);
   Assert.AreEqual(1, Integer(Length(mRules)));
-  Assert.AreEqual(TLspDfmPropertyRules.RuleId, mRules[0].Descriptor.Id);
+  Assert.AreEqual(TLspDfmPropertyRules.cRuleId, mRules[0].Descriptor.Id);
 end;
 
 procedure TShellDfmPropertyRulesTests.NoFindingsOutsidePas;

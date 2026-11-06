@@ -383,9 +383,9 @@ procedure TFileEncodingDefaultTests.Utf8DefaultBehavesLikeDecode;
 var
   Format: TFileFormat;
 begin
-  TFileEncoding.DecodeWithCodePage(Bytes([$61, $62]), Format, TFileEncoding.Utf8CodePage);
+  TFileEncoding.DecodeWithCodePage(Bytes([$61, $62]), Format, TFileEncoding.cUtf8CodePage);
   Assert.IsTrue(Format.Encoding = TFileEncodingKind.Utf8);
-  Assert.AreEqual(#$00E4, TFileEncoding.DecodeWithCodePage(Bytes([$E4]), Format, TFileEncoding.Utf8CodePage));
+  Assert.AreEqual(#$00E4, TFileEncoding.DecodeWithCodePage(Bytes([$E4]), Format, TFileEncoding.cUtf8CodePage));
   Assert.AreEqual(1252, Format.CodePage);
 end;
 
@@ -560,7 +560,7 @@ begin
   Assert.AreEqual(0, Survey.Ansi + Survey.Utf8 + Survey.Ascii);
   Survey.Add(Bytes([$61, $E4]));
   Assert.AreEqual('1 Datei in Windows-1250', Survey.Describe);
-  Survey.AnsiCodePage := TFileEncoding.Utf8CodePage;
+  Survey.AnsiCodePage := TFileEncoding.cUtf8CodePage;
   Assert.AreEqual('1 Datei in Windows-1252', Survey.Describe);
 end;
 

@@ -1,6 +1,7 @@
 ﻿unit Atlas.Common.Rules.Builtin.RtlTypePatterns.Conversions;
 
-// Regeln für Umwandlungen und Formateinstellungen aus Atlas.Common.Rules.Builtin.RtlTypePatterns (Stufe 2 aus #153, angemeldet in
+// Regeln für Umwandlungen und Formateinstellungen aus Atlas.Common.Rules.Builtin.RtlTypePatterns (Stufe 2 aus #153,
+// angemeldet in
 // RegisterRtlTypePatternRules):
 //   format-without-settings  Format mit %f/%n/%m/%g/%e, FloatToStr, StrToDate … ohne TFormatSettings
 //                            (FormatDateTime/FormatFloat mit festem Bild nur, wenn es Trennzeichen
@@ -48,9 +49,9 @@ type
 
   TUncheckedConversionRule = class(TInterfacedObject, IRule)
   public const
-    DefaultFunctions: array[0..5] of string = ('StrToInt', 'StrToInt64', 'StrToFloat', 'StrToDate', 'StrToDateTime',
+    cDefaultFunctions: array[0..5] of string = ('StrToInt', 'StrToInt64', 'StrToFloat', 'StrToDate', 'StrToDateTime',
       'StrToCurr');
-    DefaultSources: array[0..2] of string = ('Text', 'Cells', 'Lines');
+    cDefaultSources: array[0..2] of string = ('Text', 'Cells', 'Lines');
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -68,7 +69,7 @@ type
   public const
     /// <summary>Veraltete globale Variablen aus System.SysUtils (bis XE5), gleichnamig mit den Feldern von
     /// TFormatSettings.</summary>
-    DeprecatedGlobals: array[0..19] of string = ('CurrencyString', 'CurrencyFormat', 'NegCurrFormat',
+    cDeprecatedGlobals: array[0..19] of string = ('CurrencyString', 'CurrencyFormat', 'NegCurrFormat',
       'ThousandSeparator', 'DecimalSeparator', 'CurrencyDecimals', 'DateSeparator', 'ShortDateFormat',
       'LongDateFormat', 'TimeSeparator', 'TimeAMString', 'TimePMString', 'ShortTimeFormat', 'LongTimeFormat',
       'ShortMonthNames', 'LongMonthNames', 'ShortDayNames', 'LongDayNames', 'ListSeparator',
@@ -200,33 +201,33 @@ end;
 
 class function TFormatWithoutSettingsRule.PictureDependsOnLocale(const AFunction, APicture: string): Boolean;
 var
-  Index: Integer;
-  Quote: Char;
-  Separators: TSysCharSet;
+  mIndex: Integer;
+  mQuote: Char;
+  mSeparators: TSysCharSet;
 begin
   if SameText(AFunction, 'FormatDateTime') then
   begin
-    Separators := [':', '/'];
+    mSeparators := [':', '/'];
   end
   else
   begin
-    Separators := ['.', ','];
+    mSeparators := ['.', ','];
   end;
-  Quote := #0;
-  for Index := 1 to Length(APicture) do
+  mQuote := #0;
+  for mIndex := 1 to Length(APicture) do
   begin
-    if Quote <> #0 then
+    if mQuote <> #0 then
     begin
-      if APicture[Index] = Quote then
+      if APicture[mIndex] = mQuote then
       begin
-        Quote := #0;
+        mQuote := #0;
       end;
     end
-    else if CharInSet(APicture[Index], ['"', '''']) then
+    else if CharInSet(APicture[mIndex], ['"', '''']) then
     begin
-      Quote := APicture[Index];
+      mQuote := APicture[mIndex];
     end
-    else if CharInSet(APicture[Index], Separators) then
+    else if CharInSet(APicture[mIndex], mSeparators) then
     begin
       Exit(True);
     end;
@@ -237,16 +238,16 @@ end;
 /// <summary>Zahl der Argumente ohne TFormatSettings; 0, wenn AName keine solche Funktion ist.</summary>
 function PlainArgumentCount(const AName: string): Integer;
 const
-  One: array[0..10] of string = ('FloatToStr', 'StrToFloat', 'DateToStr', 'StrToDate', 'DateTimeToStr',
+  cOne: array[0..10] of string = ('FloatToStr', 'StrToFloat', 'DateToStr', 'StrToDate', 'DateTimeToStr',
     'StrToDateTime', 'TimeToStr', 'StrToTime', 'CurrToStr', 'StrToCurr', 'TextToFloat');
-  Two: array[0..8] of string = ('FormatFloat', 'FormatDateTime', 'TryStrToFloat', 'StrToFloatDef',
+  cTwo: array[0..8] of string = ('FormatFloat', 'FormatDateTime', 'TryStrToFloat', 'StrToFloatDef',
     'TryStrToDate', 'StrToDateDef', 'TryStrToDateTime', 'StrToDateTimeDef', 'FormatCurr');
 begin
-  if MatchText(AName, One) then
+  if MatchText(AName, cOne) then
   begin
     Result := 1;
   end
-  else if MatchText(AName, Two) then
+  else if MatchText(AName, cTwo) then
   begin
     Result := 2;
   end
@@ -278,7 +279,7 @@ end;
 /// …); AClose ist dann die schließende Klammer.</summary>
 function IsLocaleCall(const ATokens: TTokens; AIndex: Integer; out AClose: Integer): Boolean;
 var
-  Open, First, Prev: Integer;
+  mOpen, mFirst, mPrev: Integer;
 begin
   Result := False;
   AClose := -1;
@@ -286,37 +287,37 @@ begin
   begin
     Exit;
   end;
-  Prev := PreviousCode(ATokens, AIndex);
-  Open := NextCode(ATokens, AIndex + 1);
+  mPrev := PreviousCode(ATokens, AIndex);
+  mOpen := NextCode(ATokens, AIndex + 1);
   // Methoden wie Writer.Format bleiben außen vor; SysUtils.Format zählt.
-  if (Open > High(ATokens)) or not ATokens[Open].IsSymbol('(') or IsForeignMember(ATokens, Prev) then
+  if (mOpen > High(ATokens)) or not ATokens[mOpen].IsSymbol('(') or IsForeignMember(ATokens, mPrev) then
   begin
     Exit;
   end;
-  AClose := Closing(ATokens, Open);
+  AClose := Closing(ATokens, mOpen);
   if AClose < 0 then
   begin
     Exit;
   end;
   if SameText(ATokens[AIndex].Text, 'Format') then
   begin
-    First := NextCode(ATokens, Open + 1);
-    Result := (ArgumentCount(ATokens, Open, AClose) = 2) and
-      (ATokens[First].Kind = TPascalTokenKind.StringLiteral) and
-      TFormatWithoutSettingsRule.HasLocaleSpecifier(ATokens[First].Text);
+    mFirst := NextCode(ATokens, mOpen + 1);
+    Result := (ArgumentCount(ATokens, mOpen, AClose) = 2) and
+      (ATokens[mFirst].Kind = TPascalTokenKind.StringLiteral) and
+      TFormatWithoutSettingsRule.HasLocaleSpecifier(ATokens[mFirst].Text);
   end
   else
   begin
     Result := (PlainArgumentCount(ATokens[AIndex].Text) > 0) and
-      (ArgumentCount(ATokens, Open, AClose) = PlainArgumentCount(ATokens[AIndex].Text));
+      (ArgumentCount(ATokens, mOpen, AClose) = PlainArgumentCount(ATokens[AIndex].Text));
     // Festes Bild als einzelnes Literal: nur seine Trennzeichen hängen vom Gebietsschema ab.
-    First := NextCode(ATokens, Open + 1);
+    mFirst := NextCode(ATokens, mOpen + 1);
     if Result and MatchText(ATokens[AIndex].Text, ['FormatDateTime', 'FormatFloat', 'FormatCurr']) and
-      (ATokens[First].Kind = TPascalTokenKind.StringLiteral) and ATokens[NextCode(ATokens, First + 1)].IsSymbol(',')
+      (ATokens[mFirst].Kind = TPascalTokenKind.StringLiteral) and ATokens[NextCode(ATokens, mFirst + 1)].IsSymbol(',')
       then
     begin
       Result := TFormatWithoutSettingsRule.PictureDependsOnLocale(ATokens[AIndex].Text,
-        StringReplace(Copy(ATokens[First].Text, 2, Length(ATokens[First].Text) - 2), '''''', '''', [rfReplaceAll]));
+        StringReplace(Copy(ATokens[mFirst].Text, 2, Length(ATokens[mFirst].Text) - 2), '''''', '''', [rfReplaceAll]));
     end;
   end;
 end;
@@ -389,8 +390,8 @@ end;
 
 procedure TFormatWithoutSettingsRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TTokens;
-  Index, Close: Integer;
+  mTokens: TTokens;
+  mIndex, mClose: Integer;
   mCache: IRuleDerivedCache;
 begin
   if AContext.Tree = nil then
@@ -398,18 +399,18 @@ begin
     Exit;
   end;
   mCache := nil;
-  Tokens := AContext.Tree.Tokens;
-  for Index := 0 to High(Tokens) do
+  mTokens := AContext.Tree.Tokens;
+  for mIndex := 0 to High(mTokens) do
   begin
     // Erst das Muster, dann die Auflösung: Eine eigene Routine gleichen Namens (auch aus einer anderen Unit) ist
     // nicht die aus System.SysUtils. SysUtils.Format ist ausdrücklich die RTL.
-    if IsLocaleCall(Tokens, Index, Close) and (IsQualified(Tokens, Index) or
-      not CallsOwnRoutine(AContext, mCache, Tokens[Index])) then
+    if IsLocaleCall(mTokens, mIndex, mClose) and (IsQualified(mTokens, mIndex) or
+      not CallsOwnRoutine(AContext, mCache, mTokens[mIndex])) then
     begin
-      AReport.Add(RangeOf(Tokens, Index, Close), cTexts[TRtlTypePatternsConversionsText.Locale].Fmt(
-        [Tokens[Index].Text]), TRuleConfidence.Medium,
+      AReport.Add(RangeOf(mTokens, mIndex, mClose), cTexts[TRtlTypePatternsConversionsText.Locale].Fmt(
+        [mTokens[mIndex].Text]), TRuleConfidence.Medium,
           [TRuleFix.Create(cTexts[TRtlTypePatternsConversionsText.PassFormatSettings].Text,
-        [TRuleEdit.Create(TTextRange.Create(Tokens[Close].StartPos, Tokens[Close].StartPos),
+        [TRuleEdit.Create(TTextRange.Create(mTokens[mClose].StartPos, mTokens[mClose].StartPos),
         ', FormatSettings')])]);
     end;
   end;
@@ -426,7 +427,7 @@ type
   end;
 
 const
-  CheckedConversions: array[0..8] of TCheckedConversion = (
+  cCheckedConversions: array[0..8] of TCheckedConversion = (
     (Name: 'StrToInt'; Types: ',integer,longint,'; Problem: TRtlTypePatternsConversionsText.NotNumber),
     (Name: 'StrToInt64'; Types: ',int64,'; Problem: TRtlTypePatternsConversionsText.NotNumber),
     (Name: 'StrToFloat'; Types: ',double,extended,single,'; Problem: TRtlTypePatternsConversionsText.NotNumber),
@@ -437,7 +438,7 @@ const
     (Name: 'StrToBool'; Types: ',boolean,'; Problem: TRtlTypePatternsConversionsText.NotBoolean),
     (Name: 'StrToUInt'; Types: ',cardinal,longword,'; Problem: TRtlTypePatternsConversionsText.NotNumber));
   // Hüllen, durch die die Eingabe unverändert geprüft wird: StrToInt(Trim(Edit.Text)).
-  TransparentCalls: array[0..3] of string = ('Trim', 'TrimLeft', 'TrimRight', 'Copy');
+  cTransparentCalls: array[0..3] of string = ('Trim', 'TrimLeft', 'TrimRight', 'Copy');
 
 function TUncheckedConversionRule.Descriptor: TRuleDescriptor;
 begin
@@ -458,7 +459,7 @@ end;
 /// <summary>Hülle wie Trim(…), durch die die Eingabe unverändert geprüft wird?</summary>
 function IsTransparentCall(ANode: TSyntaxNode): Boolean;
 begin
-  Result := (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 1) and MatchText(ANode.Name, TransparentCalls);
+  Result := (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 1) and MatchText(ANode.Name, cTransparentCalls);
 end;
 
 /// <summary>Eingabe aus einer der Quellen ASources: Edit.Text, Grid.Cells[C, R], Memo.Lines[I]?</summary>
@@ -477,9 +478,9 @@ end;
 
 procedure TUncheckedConversionRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Functions, Sources: TArray<string>;
-  Types: TDeclaredTypes;
-  LineBreak: string;
+  mFunctions, mSources: TArray<string>;
+  mTypes: TDeclaredTypes;
+  mLineBreak: string;
 
   function Text(ANode: TSyntaxNode): string;
   begin
@@ -498,7 +499,7 @@ var
       mNode := WithoutParentheses(mNode[1]);
     end;
     Result := nil;
-    if IsInputNode(mNode, Sources) then
+    if IsInputNode(mNode, mSources) then
     begin
       Result := mNode;
     end;
@@ -507,32 +508,32 @@ var
   // Im try-Teil eines try/except: die Fehleingabe wird abgefangen.
   function Caught(ANode: TSyntaxNode): Boolean;
   var
-    Child, Parent: TSyntaxNode;
+    mChild, mParent: TSyntaxNode;
   begin
-    Child := ANode;
-    Parent := ANode.Parent;
-    while (Parent <> nil) and not (Parent.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) do
+    mChild := ANode;
+    mParent := ANode.Parent;
+    while (mParent <> nil) and not (mParent.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]) do
     begin
-      if (Parent.Kind = TSyntaxKind.TryStatement) and not (Child.Kind in [TSyntaxKind.ExceptBlock,
-        TSyntaxKind.FinallyBlock]) and (Parent.FindChild(TSyntaxKind.ExceptBlock) <> nil) then
+      if (mParent.Kind = TSyntaxKind.TryStatement) and not (mChild.Kind in [TSyntaxKind.ExceptBlock,
+        TSyntaxKind.FinallyBlock]) and (mParent.FindChild(TSyntaxKind.ExceptBlock) <> nil) then
       begin
         Exit(True);
       end;
-      Child := Parent;
-      Parent := Parent.Parent;
+      mChild := mParent;
+      mParent := mParent.Parent;
     end;
     Result := False;
   end;
 
   function ConversionOf(const AName: string; out AConversion: TCheckedConversion): Boolean;
   var
-    Conversion: TCheckedConversion;
+    mConversion: TCheckedConversion;
   begin
-    for Conversion in CheckedConversions do
+    for mConversion in cCheckedConversions do
     begin
-      if SameText(Conversion.Name, AName) then
+      if SameText(mConversion.Name, AName) then
       begin
-        AConversion := Conversion;
+        AConversion := mConversion;
         Exit(True);
       end;
     end;
@@ -543,102 +544,102 @@ var
   // passenden Typs: if not TryStrToInt(Edit.Text, X) then raise EConvertError.Create('X ist keine Zahl').
   function Fixes(ACall, AArgument: TSyntaxNode): TArray<TRuleFix>;
   var
-    Statement, Target: TSyntaxNode;
-    Conversion: TCheckedConversion;
-    TypeName, Indent: string;
+    mStatement, mTarget: TSyntaxNode;
+    mConversion: TCheckedConversion;
+    mTypeName, mIndent: string;
   begin
     Result := nil;
-    Statement := ACall.Parent;
-    if not IsListedAssignment(Statement, ACall) then
+    mStatement := ACall.Parent;
+    if not IsListedAssignment(mStatement, ACall) then
     begin
       Exit;
     end;
-    Target := Statement[0];
-    if (Target.Kind <> TSyntaxKind.Identifier) or not ConversionOf(ACall.Name, Conversion) then
+    mTarget := mStatement[0];
+    if (mTarget.Kind <> TSyntaxKind.Identifier) or not ConversionOf(ACall.Name, mConversion) then
     begin
       Exit;
     end;
-    TypeName := LowerCase(Types.DeclaredType(Target.Name, Target.StartPos));
-    if (TypeName = '') or (Pos(',' + TypeName + ',', Conversion.Types) = 0) then
+    mTypeName := LowerCase(mTypes.DeclaredType(mTarget.Name, mTarget.StartPos));
+    if (mTypeName = '') or (Pos(',' + mTypeName + ',', mConversion.Types) = 0) then
     begin
       Exit;
     end;
-    Indent := StringOfChar(' ', Statement.StartPos.Character);
-    Result := [TRuleFix.Create(cTexts[TRtlTypePatternsConversionsText.RewriteTry].Fmt([Conversion.Name]),
-      [TRuleEdit.Create(TTextRange.Create(Statement.StartPos, Statement.EndPos), 'if not Try' + Conversion.Name +
-      '(' + Text(AArgument) + ', ' + Target.Name + ') then' + LineBreak + Indent + '  raise EConvertError.Create(''' +
-      Target.Name + ' ' + cTexts[Conversion.Problem].Text + ''')')])];
+    mIndent := StringOfChar(' ', mStatement.StartPos.Character);
+    Result := [TRuleFix.Create(cTexts[TRtlTypePatternsConversionsText.RewriteTry].Fmt([mConversion.Name]),
+      [TRuleEdit.Create(TTextRange.Create(mStatement.StartPos, mStatement.EndPos), 'if not Try' + mConversion.Name +
+      '(' + Text(AArgument) + ', ' + mTarget.Name + ') then' + mLineBreak + mIndent + '  raise EConvertError.Create(''' +
+      mTarget.Name + ' ' + cTexts[mConversion.Problem].Text + ''')')])];
   end;
 
   procedure Visit(ANode: TSyntaxNode);
   var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
-    Index: Integer;
-    Source: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
+    mIndex: Integer;
+    mSource: TSyntaxNode;
   begin
     // Iterativ (Bericht M1).
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ANode);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if (Node.Kind = TSyntaxKind.Call) and (Node.ChildCount = 2) and MatchText(Node.Name, Functions) then
+        mNode := mPending.Pop;
+        if (mNode.Kind = TSyntaxKind.Call) and (mNode.ChildCount = 2) and MatchText(mNode.Name, mFunctions) then
         begin
-          Source := InputSource(Node[1]);
-          if (Source <> nil) and not Caught(Node) then
+          mSource := InputSource(mNode[1]);
+          if (mSource <> nil) and not Caught(mNode) then
           begin
-            AReport.Add(TTextRange.Create(Node.StartPos, Node.EndPos),
-              cTexts[TRtlTypePatternsConversionsText.Unchecked].Fmt([Text(Source)]), TRuleConfidence.Medium,
-              Fixes(Node, Node[1]));
+            AReport.Add(TTextRange.Create(mNode.StartPos, mNode.EndPos),
+              cTexts[TRtlTypePatternsConversionsText.Unchecked].Fmt([Text(mSource)]), TRuleConfidence.Medium,
+              Fixes(mNode, mNode[1]));
           end;
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
 var
-  Defaults: TArray<string>;
-  Name: string;
+  mDefaults: TArray<string>;
+  mName: string;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
   begin
     Exit;
   end;
-  Defaults := nil;
-  for Name in DefaultFunctions do
+  mDefaults := nil;
+  for mName in cDefaultFunctions do
   begin
-    Defaults := Defaults + [Name];
+    mDefaults := mDefaults + [mName];
   end;
-  Functions := TRuleOptions.Strings(AContext.Options, 'functions', Defaults);
-  Defaults := nil;
-  for Name in DefaultSources do
+  mFunctions := TRuleOptions.Strings(AContext.Options, 'functions', mDefaults);
+  mDefaults := nil;
+  for mName in cDefaultSources do
   begin
-    Defaults := Defaults + [Name];
+    mDefaults := mDefaults + [mName];
   end;
-  Sources := TRuleOptions.Strings(AContext.Options, 'sources', Defaults);
-  LineBreak := TTextLines.LineBreakOf(AContext.Text);
-  Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+  mSources := TRuleOptions.Strings(AContext.Options, 'sources', mDefaults);
+  mLineBreak := TTextLines.LineBreakOf(AContext.Text);
+  mTypes := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
   try
     Visit(AContext.Tree.Root);
   finally
-    Types.Free;
+    mTypes.Free;
   end;
 end;
 
 { TUncheckedEnumCastRule }
 
 const
-  DefaultEnumSources: array[0..3] of string = ('FieldByName', 'ReadInteger', 'AsInteger', 'StrToInt');
+  cDefaultEnumSources: array[0..3] of string = ('FieldByName', 'ReadInteger', 'AsInteger', 'StrToInt');
   // Aufrufe, die den Wert schon begrenzen: TStatus(EnsureRange(…)).
-  EnumGuards: array[0..2] of string = ('EnsureRange', 'Min', 'Max');
+  cEnumGuards: array[0..2] of string = ('EnsureRange', 'Min', 'Max');
 
 function TUncheckedEnumCastRule.Descriptor: TRuleDescriptor;
 begin
@@ -669,25 +670,25 @@ end;
 
 procedure TUncheckedEnumCastRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TTokens;
-  Code: TArray<Integer>;
-  Sources: TArray<string>;
-  LineBreak: string;
-  Local: TUnitIndex;
+  mTokens: TTokens;
+  mCode: TArray<Integer>;
+  mSources: TArray<string>;
+  mLineBreak: string;
+  mLocal: TUnitIndex;
 
   function Token(APosition: Integer): TPascalToken;
   begin
-    Result := Tokens[Code[APosition]];
+    Result := mTokens[mCode[APosition]];
   end;
 
   function IsSym(APosition: Integer; const ASymbol: string): Boolean;
   begin
-    Result := (APosition >= 0) and (APosition <= High(Code)) and Token(APosition).IsSymbol(ASymbol);
+    Result := (APosition >= 0) and (APosition <= High(mCode)) and Token(APosition).IsSymbol(ASymbol);
   end;
 
   function IsWord(APosition: Integer): Boolean;
   begin
-    Result := (APosition >= 0) and (APosition <= High(Code)) and
+    Result := (APosition >= 0) and (APosition <= High(mCode)) and
       (Token(APosition).Kind = TPascalTokenKind.Identifier);
   end;
 
@@ -699,19 +700,19 @@ var
 
   function Closing(AOpen: Integer): Integer;
   var
-    Depth: Integer;
+    mDepth: Integer;
   begin
-    Depth := 0;
-    for Result := AOpen to High(Code) do
+    mDepth := 0;
+    for Result := AOpen to High(mCode) do
     begin
       if Token(Result).IsSymbol('(') or Token(Result).IsSymbol('[') then
       begin
-        Inc(Depth);
+        Inc(mDepth);
       end
       else if Token(Result).IsSymbol(')') or Token(Result).IsSymbol(']') then
       begin
-        Dec(Depth);
-        if Depth = 0 then
+        Dec(mDepth);
+        if mDepth = 0 then
         begin
           Exit;
         end;
@@ -726,11 +727,11 @@ var
   begin
     // Binär statt ab Dateianfang mit einer Kopie je Token: Code steht nach Offset sortiert (#1342).
     Result := 0;
-    mHigh := Length(Code);
+    mHigh := Length(mCode);
     while Result < mHigh do
     begin
       mMiddle := (Result + mHigh) div 2;
-      if Tokens[Code[mMiddle]].Offset < AOffset then
+      if mTokens[mCode[mMiddle]].Offset < AOffset then
       begin
         Result := mMiddle + 1;
       end
@@ -745,18 +746,18 @@ var
   function EnumIn(const AUnit: TUnitIndex; const AName: string; out ACount: Integer;
     out AExplicit: Boolean): Boolean;
   var
-    Symbol: TIndexSymbol;
-    Signature: string;
+    mSymbol: TIndexSymbol;
+    mSignature: string;
   begin
     Result := False;
     ACount := 0;
     AExplicit := False;
-    for Symbol in AUnit.Symbols do
+    for mSymbol in AUnit.Symbols do
     begin
-      if (Symbol.Kind = TIndexSymbolKind.EnumType) and (Symbol.Container = '') and SameText(Symbol.Name, AName) then
+      if (mSymbol.Kind = TIndexSymbolKind.EnumType) and (mSymbol.Container = '') and SameText(mSymbol.Name, AName) then
       begin
-        Signature := Symbol.Signature;
-        AExplicit := (Pos('(', Signature) > 0) and (Pos('=', Copy(Signature, Pos('(', Signature), MaxInt)) > 0);
+        mSignature := mSymbol.Signature;
+        AExplicit := (Pos('(', mSignature) > 0) and (Pos('=', Copy(mSignature, Pos('(', mSignature), MaxInt)) > 0);
         Result := True;
       end;
     end;
@@ -764,9 +765,9 @@ var
     begin
       Exit;
     end;
-    for Symbol in AUnit.Symbols do
+    for mSymbol in AUnit.Symbols do
     begin
-      if (Symbol.Kind = TIndexSymbolKind.EnumMember) and SameText(Symbol.Container, AName) then
+      if (mSymbol.Kind = TIndexSymbolKind.EnumMember) and SameText(mSymbol.Container, AName) then
       begin
         Inc(ACount);
       end;
@@ -775,10 +776,10 @@ var
 
   function EnumInfo(const AName: string; out ACount: Integer; out AExplicit: Boolean): Boolean;
   var
-    Location: TSymbolLocation;
-    Owner: TUnitIndex;
+    mLocation: TSymbolLocation;
+    mOwner: TUnitIndex;
   begin
-    if EnumIn(Local, AName, ACount, AExplicit) then
+    if EnumIn(mLocal, AName, ACount, AExplicit) then
     begin
       Exit(True);
     end;
@@ -787,10 +788,10 @@ var
     begin
       Exit;
     end;
-    for Location in AContext.Index.FindSymbols(AName) do
+    for mLocation in AContext.Index.FindSymbols(AName) do
     begin
-      if (Location.Symbol.Kind = TIndexSymbolKind.EnumType) and (Location.Symbol.Container = '') and
-        AContext.Index.FindFile(Location.FileName, Owner) and EnumIn(Owner, AName, ACount, AExplicit) then
+      if (mLocation.Symbol.Kind = TIndexSymbolKind.EnumType) and (mLocation.Symbol.Container = '') and
+        AContext.Index.FindFile(mLocation.FileName, mOwner) and EnumIn(mOwner, AName, ACount, AExplicit) then
       begin
         Exit(True);
       end;
@@ -800,13 +801,13 @@ var
   // Erste Quelle (aus "sources") zwischen AFirst und ALast; '' ohne.
   function SourceIn(AFirst, ALast: Integer): string;
   var
-    Position: Integer;
+    mPosition: Integer;
   begin
-    for Position := AFirst to ALast do
+    for mPosition := AFirst to ALast do
     begin
-      if IsWord(Position) and MatchText(Token(Position).Text, Sources) then
+      if IsWord(mPosition) and MatchText(Token(mPosition).Text, mSources) then
       begin
-        Exit(Token(Position).Text);
+        Exit(Token(mPosition).Text);
       end;
     end;
     Result := '';
@@ -815,37 +816,37 @@ var
   // V := Ausdruck mit Quelle vor ACast in der Routine, ohne dass V danach noch gelesen wird (Prüfung).
   function VariableSource(ARoutine: TSyntaxNode; AVariable, ACast: Integer): string;
   var
-    Position, Assigned, Ending: Integer;
+    mPosition, mAssigned, mEnding: Integer;
   begin
     Result := '';
-    Assigned := -1;
-    for Position := CodeAt(ARoutine.StartOffset) to ACast - 1 do
+    mAssigned := -1;
+    for mPosition := CodeAt(ARoutine.StartOffset) to ACast - 1 do
     begin
-      if IsWord(Position) and SameText(Token(Position).Text, Token(AVariable).Text) and
-        not IsSym(Position - 1, '.') then
+      if IsWord(mPosition) and SameText(Token(mPosition).Text, Token(AVariable).Text) and
+        not IsSym(mPosition - 1, '.') then
       begin
-        if IsSym(Position + 1, ':=') then
+        if IsSym(mPosition + 1, ':=') then
         begin
-          Assigned := Position;
+          mAssigned := mPosition;
         end
-        else if Assigned >= 0 then
+        else if mAssigned >= 0 then
         begin
           // Gelesen zwischen Zuweisung und Umwandlung: als geprüft ansehen (InRange, Vergleich, case …).
           Exit('');
         end;
       end;
     end;
-    if Assigned < 0 then
+    if mAssigned < 0 then
     begin
       Exit;
     end;
-    Ending := Assigned + 2;
-    while (Ending <= High(Code)) and not Token(Ending).IsSymbol(';') and not Token(Ending).IsKeyword('end') do
+    mEnding := mAssigned + 2;
+    while (mEnding <= High(mCode)) and not Token(mEnding).IsSymbol(';') and not Token(mEnding).IsKeyword('end') do
     begin
-      Inc(Ending);
+      Inc(mEnding);
     end;
-    Result := SourceIn(Assigned + 2, Ending - 1);
-    if (Result <> '') and IsWord(Assigned + 2) and MatchText(Token(Assigned + 2).Text, EnumGuards) then
+    Result := SourceIn(mAssigned + 2, mEnding - 1);
+    if (Result <> '') and IsWord(mAssigned + 2) and MatchText(Token(mAssigned + 2).Text, cEnumGuards) then
     begin
       Result := '';
     end;
@@ -854,145 +855,145 @@ var
   // Korrektur bei TStatus(Quelle) in einer eigenen Anweisung: Hilfsvariable, InRange-Prüfung mit raise davor.
   function Fixes(ARoutine: TSyntaxNode; const ATypeName: string; AFirst, ALast: Integer): TArray<TRuleFix>;
   var
-    Statement: TSyntaxNode;
-    Name, Indent, Prefix: string;
-    Edits: TArray<TTextEdit>;
-    UsesEdit: TTextEdit;
-    Used: TArray<string>;
+    mStatement: TSyntaxNode;
+    mName, mIndent, mPrefix: string;
+    mEdits: TArray<TTextEdit>;
+    mUsesEdit: TTextEdit;
+    mUsed: TArray<string>;
   begin
     Result := nil;
-    Statement := TRoutineBody.Enclosing(ARoutine, Token(AFirst).Offset, Token(ALast).Offset);
-    while (Statement <> nil) and (Statement <> ARoutine) and not TRoutineBody.IsStatement(Statement) do
+    mStatement := TRoutineBody.Enclosing(ARoutine, Token(AFirst).Offset, Token(ALast).Offset);
+    while (mStatement <> nil) and (mStatement <> ARoutine) and not TRoutineBody.IsStatement(mStatement) do
     begin
-      Statement := Statement.Parent;
+      mStatement := mStatement.Parent;
     end;
-    if (Statement = nil) or (Statement = ARoutine) or not TRoutineBody.InList(Statement) or
-      (Statement.Kind in [TSyntaxKind.Block, TSyntaxKind.IfStatement, TSyntaxKind.CaseStatement,
+    if (mStatement = nil) or (mStatement = ARoutine) or not TRoutineBody.InList(mStatement) or
+      (mStatement.Kind in [TSyntaxKind.Block, TSyntaxKind.IfStatement, TSyntaxKind.CaseStatement,
       TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement, TSyntaxKind.ForStatement]) then
     begin
       Exit;
     end;
-    Name := TRoutineBody.UniqueName(Tokens, AContext.NewNames.Local('Wert'));
-    Indent := TTextLines.IndentOf(AContext.Text, Statement.StartPos.Line);
-    Edits := [TRoutineBody.AddVariable(AContext.Text, ARoutine, Name, 'Integer', AContext.Formatting),
-      TRoutineBody.InsertBefore(AContext.Text, Statement, Name + ' := ' + TextOf(AFirst, ALast) + ';' +
-      LineBreak + Indent + 'if not InRange(' + Name + ', Ord(Low(' + ATypeName + ')), Ord(High(' + ATypeName +
-      '))) then' + LineBreak + Indent + TRoutineBody.IndentUnit(AContext.Formatting) +
-      cTexts[TRtlTypePatternsConversionsText.InvalidValueCode].Text + ATypeName + ''', [' + Name + ']);'),
-      TTextEdit.Create(TTextRange.Create(Token(AFirst).StartPos, Token(ALast).EndPos), Name)];
+    mName := TRoutineBody.UniqueName(mTokens, AContext.NewNames.Local('Wert'));
+    mIndent := TTextLines.IndentOf(AContext.Text, mStatement.StartPos.Line);
+    mEdits := [TRoutineBody.AddVariable(AContext.Text, ARoutine, mName, 'Integer', AContext.Formatting),
+      TRoutineBody.InsertBefore(AContext.Text, mStatement, mName + ' := ' + TextOf(AFirst, ALast) + ';' +
+      mLineBreak + mIndent + 'if not InRange(' + mName + ', Ord(Low(' + ATypeName + ')), Ord(High(' + ATypeName +
+      '))) then' + mLineBreak + mIndent + TRoutineBody.IndentUnit(AContext.Formatting) +
+      cTexts[TRtlTypePatternsConversionsText.InvalidValueCode].Text + ATypeName + ''', [' + mName + ']);'),
+      TTextEdit.Create(TTextRange.Create(Token(AFirst).StartPos, Token(ALast).EndPos), mName)];
     // InRange steht in System.Math.
-    Used := TUsesClauses.UsedUnits(Tokens);
-    if not MatchText('System.Math', Used) and not MatchText('Math', Used) then
+    mUsed := TUsesClauses.UsedUnits(mTokens);
+    if not MatchText('System.Math', mUsed) and not MatchText('Math', mUsed) then
     begin
-      Prefix := 'System.';
-      if (Length(Used) > 0) and not MatchText('System.SysUtils', Used) and MatchText('SysUtils', Used) then
+      mPrefix := 'System.';
+      if (Length(mUsed) > 0) and not MatchText('System.SysUtils', mUsed) and MatchText('SysUtils', mUsed) then
       begin
-        Prefix := '';
+        mPrefix := '';
       end;
-      if not TUsesClauses.AddUnit(Tokens, Token(AFirst).Offset, Prefix + 'Math', LineBreak, UsesEdit) then
+      if not TUsesClauses.AddUnit(mTokens, Token(AFirst).Offset, mPrefix + 'Math', mLineBreak, mUsesEdit) then
       begin
         Exit;
       end;
-      Edits := [UsesEdit] + Edits;
+      mEdits := [mUsesEdit] + mEdits;
     end;
-    Result := [TRuleFix.Create(cTexts[TRtlTypePatternsConversionsText.InsertInRange].Text, Edits)];
+    Result := [TRuleFix.Create(cTexts[TRtlTypePatternsConversionsText.InsertInRange].Text, mEdits)];
   end;
 
   procedure CheckCast(APosition: Integer);
   var
-    Close, Count: Integer;
-    Explicit: Boolean;
-    TypeName, Source, Range: string;
-    Routine: TSyntaxNode;
-    Direct: Boolean;
+    mClose, mCount: Integer;
+    mExplicit: Boolean;
+    mTypeName, mSource, mRange: string;
+    mRoutine: TSyntaxNode;
+    mDirect: Boolean;
   begin
-    Close := Closing(APosition + 1);
-    if (Close < 0) or (Close = APosition + 2) then
+    mClose := Closing(APosition + 1);
+    if (mClose < 0) or (mClose = APosition + 2) then
     begin
       Exit;
     end;
-    TypeName := Token(APosition).Text;
-    if not EnumInfo(TypeName, Count, Explicit) then
+    mTypeName := Token(APosition).Text;
+    if not EnumInfo(mTypeName, mCount, mExplicit) then
     begin
       Exit;
     end;
-    Routine := TRoutineBody.RoutineAt(AContext.Tree, Token(APosition).Offset);
-    if Routine = nil then
+    mRoutine := TRoutineBody.RoutineAt(AContext.Tree, Token(APosition).Offset);
+    if mRoutine = nil then
     begin
       Exit;
     end;
     // Direkt: TStatus(qry.FieldByName('Status').AsInteger); über eine Variable: TStatus(Wert).
-    Direct := not (IsWord(APosition + 2) and MatchText(Token(APosition + 2).Text, EnumGuards));
-    Source := '';
-    if Direct then
+    mDirect := not (IsWord(APosition + 2) and MatchText(Token(APosition + 2).Text, cEnumGuards));
+    mSource := '';
+    if mDirect then
     begin
-      Source := SourceIn(APosition + 2, Close - 1);
+      mSource := SourceIn(APosition + 2, mClose - 1);
     end;
-    if (Source = '') and (Close = APosition + 3) and IsWord(APosition + 2) then
+    if (mSource = '') and (mClose = APosition + 3) and IsWord(APosition + 2) then
     begin
-      Source := VariableSource(Routine, APosition + 2, APosition);
-      Direct := False;
+      mSource := VariableSource(mRoutine, APosition + 2, APosition);
+      mDirect := False;
     end;
-    if Source = '' then
+    if mSource = '' then
     begin
       Exit;
     end;
-    if Explicit or (Count = 0) then
+    if mExplicit or (mCount = 0) then
     begin
-      Range := Format('Ord(Low(%s))..Ord(High(%s))', [TypeName, TypeName]);
+      mRange := Format('Ord(Low(%s))..Ord(High(%s))', [mTypeName, mTypeName]);
     end
     else
     begin
-      Range := Format('0..%d', [Count - 1]);
+      mRange := Format('0..%d', [mCount - 1]);
     end;
-    if Direct then
+    if mDirect then
     begin
-      AReport.Add(TTextRange.Create(Token(APosition).StartPos, Token(Close).EndPos),
+      AReport.Add(TTextRange.Create(Token(APosition).StartPos, Token(mClose).EndPos),
         cTexts[TRtlTypePatternsConversionsText.EnumCast].Fmt(
-        [Origin(Source), TypeName, Range, TypeName]), TRuleConfidence.Medium,
-        Fixes(Routine, TypeName, APosition + 2, Close - 1));
+        [Origin(mSource), mTypeName, mRange, mTypeName]), TRuleConfidence.Medium,
+        Fixes(mRoutine, mTypeName, APosition + 2, mClose - 1));
     end
     else
     begin
-      AReport.Add(TTextRange.Create(Token(APosition).StartPos, Token(Close).EndPos),
+      AReport.Add(TTextRange.Create(Token(APosition).StartPos, Token(mClose).EndPos),
         cTexts[TRtlTypePatternsConversionsText.EnumCast].Fmt(
-        [Origin(Source), TypeName, Range, TypeName]), TRuleConfidence.Medium);
+        [Origin(mSource), mTypeName, mRange, mTypeName]), TRuleConfidence.Medium);
     end;
   end;
 
 var
-  Index, Position: Integer;
-  Defaults: TArray<string>;
+  mIndex, Position: Integer;
+  mDefaults: TArray<string>;
   Name: string;
-  Cache: IRuleDerivedCache;
+  mCache: IRuleDerivedCache;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
   begin
     Exit;
   end;
-  Defaults := nil;
-  for Name in DefaultEnumSources do
+  mDefaults := nil;
+  for Name in cDefaultEnumSources do
   begin
-    Defaults := Defaults + [Name];
+    mDefaults := mDefaults + [Name];
   end;
-  Sources := TRuleOptions.Strings(AContext.Options, 'sources', Defaults);
-  if Length(Sources) = 0 then
+  mSources := TRuleOptions.Strings(AContext.Options, 'sources', mDefaults);
+  if Length(mSources) = 0 then
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
-  Code := nil;
-  for Index := 0 to High(Tokens) do
+  mTokens := AContext.Tree.Tokens;
+  mCode := nil;
+  for mIndex := 0 to High(mTokens) do
   begin
-    if not IsTrivia(Tokens[Index]) then
+    if not IsTrivia(mTokens[mIndex]) then
     begin
-      Code := Code + [Index];
+      mCode := mCode + [mIndex];
     end;
   end;
-  LineBreak := TTextLines.LineBreakOf(AContext.Text);
-  Cache := TRuleDerived.Open(AContext);
-  Local := TRuleDerived.UnitIndex(Cache, AContext);
-  for Position := 0 to High(Code) - 2 do
+  mLineBreak := TTextLines.LineBreakOf(AContext.Text);
+  mCache := TRuleDerived.Open(AContext);
+  mLocal := TRuleDerived.UnitIndex(mCache, AContext);
+  for Position := 0 to High(mCode) - 2 do
   begin
     // TName( … ) als Ausdruck: kein Punkt davor (X.TName), kein Typ in einer Deklaration.
     if IsWord(Position) and (Token(Position).Text[1] = 'T') and IsSym(Position + 1, '(') and
@@ -1026,17 +1027,17 @@ const
     TRtlTypePatternsConversionsText.LongDayNames, TRtlTypePatternsConversionsText.ListSeparator,
     TRtlTypePatternsConversionsText.TwoDigitYearCenturyWindow);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if AField = '' then
   begin
     Exit(cTexts[TRtlTypePatternsConversionsText.AllSettings].Text);
   end;
-  for Index := 0 to High(DeprecatedGlobals) do
+  for mIndex := 0 to High(cDeprecatedGlobals) do
   begin
-    if SameText(DeprecatedGlobals[Index], AField) then
+    if SameText(cDeprecatedGlobals[mIndex], AField) then
     begin
-      Exit(cTexts[Texts[Index]].Text);
+      Exit(cTexts[Texts[mIndex]].Text);
     end;
   end;
   Result := cTexts[TRtlTypePatternsConversionsText.TheSetting].Fmt([AField]);
@@ -1085,20 +1086,20 @@ procedure TGlobalFormatSettingsModifiedRule.Check(const AContext: TRuleContext; 
 const
   // RTL- und VCL-Basisklassen ohne Mitglieder namens FormatSettings, DecimalSeparator …: Bricht die Kette der
   // Vorfahren ohne Index an einer von ihnen ab, ist der Name trotzdem sicher die globale Variable.
-  SafeBases: array[0..18] of string = ('TObject', 'TInterfacedObject', 'TAggregatedObject', 'TContainedObject',
+  cSafeBases: array[0..18] of string = ('TObject', 'TInterfacedObject', 'TAggregatedObject', 'TContainedObject',
     'TPersistent', 'TInterfacedPersistent', 'TComponent', 'TThread', 'TCustomAttribute', 'TControl', 'TWinControl',
     'TCustomControl', 'TGraphicControl', 'TScrollingWinControl', 'TCustomForm', 'TForm', 'TCustomFrame', 'TFrame',
     'TDataModule');
 var
-  Tokens: TTokens;
-  Resolver: TNameResolver;
+  mTokens: TTokens;
+  mResolver: TNameResolver;
   mCache: IRuleDerivedCache;
-  FileName, LineBreak: string;
-  Used, Lines: TArray<string>;
-  Found: TArray<TFormatSettingsModification>;
-  Item: TFormatSettingsModification;
-  Fixes: TArray<TRuleFix>;
-  Fix: TRuleFix;
+  mFileName, mLineBreak: string;
+  mUsed, mLines: TArray<string>;
+  mFound: TArray<TFormatSettingsModification>;
+  mItem: TFormatSettingsModification;
+  mFixes: TArray<TRuleFix>;
+  mFix: TRuleFix;
 
   function NodeText(ANode: TSyntaxNode): string;
   begin
@@ -1107,28 +1108,28 @@ var
 
   function ChainOf(ANode: TSyntaxNode; out ANames: TArray<string>): Boolean;
   var
-    Node: TSyntaxNode;
-    Members: TArray<string>;
-    Index: Integer;
+    mNode: TSyntaxNode;
+    mMembers: TArray<string>;
+    mIndex: Integer;
   begin
     // Iterativ (Bericht M1): am Empfänger entlang nach innen, die Namen dann von innen nach außen.
     ANames := nil;
-    Members := nil;
-    Node := ANode;
-    while (Node.Kind = TSyntaxKind.MemberAccess) and (Node.ChildCount > 0) do
+    mMembers := nil;
+    mNode := ANode;
+    while (mNode.Kind = TSyntaxKind.MemberAccess) and (mNode.ChildCount > 0) do
     begin
-      Members := Members + [Node.Name];
-      Node := Node[0];
+      mMembers := mMembers + [mNode.Name];
+      mNode := mNode[0];
     end;
-    Result := Node.Kind = TSyntaxKind.Identifier;
+    Result := mNode.Kind = TSyntaxKind.Identifier;
     if not Result then
     begin
       Exit;
     end;
-    ANames := [Node.Name];
-    for Index := High(Members) downto 0 do
+    ANames := [mNode.Name];
+    for mIndex := High(mMembers) downto 0 do
     begin
-      ANames := ANames + [Members[Index]];
+      ANames := ANames + [mMembers[mIndex]];
     end;
   end;
 
@@ -1149,60 +1150,60 @@ var
   /// die Kette an einem unbekannten Vorfahren abbricht, der nicht in SafeBases steht.</summary>
   function UnknownAncestor(AOffset: Integer): Boolean;
   var
-    Current, Next: TResolvedSymbol;
-    Expected: string;
-    Depth: Integer;
+    mCurrent, mNext: TResolvedSymbol;
+    mExpected: string;
+    mDepth: Integer;
   begin
     Result := False;
-    Current := Resolver.ResolveChain(AContext.Tree, FileName, ['Self'], AOffset);
-    if Current.Kind <> TResolvedKind.Symbol then
+    mCurrent := mResolver.ResolveChain(AContext.Tree, mFileName, ['Self'], AOffset);
+    if mCurrent.Kind <> TResolvedKind.Symbol then
     begin
       Exit;
     end;
-    for Depth := 1 to 64 do
+    for mDepth := 1 to 64 do
     begin
-      if Resolver.AncestorOf(Current, Next) then
+      if mResolver.AncestorOf(mCurrent, mNext) then
       begin
-        Current := Next;
+        mCurrent := mNext;
         Continue;
       end;
-      Expected := '';
-      if Length(Current.Ancestors) > 0 then
+      mExpected := '';
+      if Length(mCurrent.Ancestors) > 0 then
       begin
-        Expected := Current.Ancestors[0];
+        mExpected := mCurrent.Ancestors[0];
       end
-      else if (Current.SymbolKind = TIndexSymbolKind.ClassType) and not SameText(Current.Name, 'TObject') then
+      else if (mCurrent.SymbolKind = TIndexSymbolKind.ClassType) and not SameText(mCurrent.Name, 'TObject') then
       begin
-        Expected := 'TObject';
+        mExpected := 'TObject';
       end;
-      if Pos('.', Expected) > 0 then
+      if Pos('.', mExpected) > 0 then
       begin
-        Expected := Copy(Expected, LastDelimiter('.', Expected) + 1, MaxInt);
+        mExpected := Copy(mExpected, LastDelimiter('.', mExpected) + 1, MaxInt);
       end;
-      Exit((Expected <> '') and not MatchText(Expected, SafeBases));
+      Exit((mExpected <> '') and not MatchText(mExpected, cSafeBases));
     end;
   end;
 
   /// <summary>Ist AName an der Stelle sicher die globale Variable aus System.SysUtils?</summary>
   function IsGlobal(AStatement: TSyntaxNode; const AName: string; AQualified: Boolean): Boolean;
   var
-    Resolved: TResolvedSymbol;
+    mResolved: TResolvedSymbol;
   begin
     if AQualified then
     begin
       Exit(True);
     end;
     Result := False;
-    if InWith(AStatement) or not (MatchText('System.SysUtils', Used) or MatchText('SysUtils', Used)) then
+    if InWith(AStatement) or not (MatchText('System.SysUtils', mUsed) or MatchText('SysUtils', mUsed)) then
     begin
       Exit;
     end;
-    Resolved := Resolver.ResolveChain(AContext.Tree, FileName, [AName], AStatement.StartOffset);
-    case Resolved.Kind of
+    mResolved := mResolver.ResolveChain(AContext.Tree, mFileName, [AName], AStatement.StartOffset);
+    case mResolved.Kind of
       TResolvedKind.Local, TResolvedKind.UnitName:
         Exit;
       TResolvedKind.Symbol:
-        if not MatchText(Resolved.UnitName, ['System.SysUtils', 'SysUtils']) then
+        if not MatchText(mResolved.UnitName, ['System.SysUtils', 'SysUtils']) then
         begin
           Exit;
         end;
@@ -1214,79 +1215,79 @@ var
 
   procedure Inspect(AStatement: TSyntaxNode);
   var
-    Target: TSyntaxNode;
-    Names: TArray<string>;
-    First: Integer;
-    Modification: TFormatSettingsModification;
+    mTarget: TSyntaxNode;
+    mNames: TArray<string>;
+    mFirst: Integer;
+    mModification: TFormatSettingsModification;
   begin
-    Target := AStatement[0];
-    while (Target.Kind = TSyntaxKind.IndexAccess) and (Target.ChildCount > 0) do
+    mTarget := AStatement[0];
+    while (mTarget.Kind = TSyntaxKind.IndexAccess) and (mTarget.ChildCount > 0) do
     begin
-      Target := Target[0];
+      mTarget := mTarget[0];
     end;
-    if not ChainOf(Target, Names) then
+    if not ChainOf(mTarget, mNames) then
     begin
       Exit;
     end;
-    First := 0;
-    if (Length(Names) >= 3) and SameText(Names[0], 'System') and SameText(Names[1], 'SysUtils') then
+    mFirst := 0;
+    if (Length(mNames) >= 3) and SameText(mNames[0], 'System') and SameText(mNames[1], 'SysUtils') then
     begin
-      First := 2;
+      mFirst := 2;
     end
-    else if (Length(Names) >= 2) and SameText(Names[0], 'SysUtils') then
+    else if (Length(mNames) >= 2) and SameText(mNames[0], 'SysUtils') then
     begin
-      First := 1;
+      mFirst := 1;
     end;
-    Modification.Field := '';
-    if SameText(Names[First], 'FormatSettings') and (Length(Names) - First <= 2) then
+    mModification.Field := '';
+    if SameText(mNames[mFirst], 'FormatSettings') and (Length(mNames) - mFirst <= 2) then
     begin
-      if Length(Names) - First = 2 then
+      if Length(mNames) - mFirst = 2 then
       begin
-        Modification.Field := Names[First + 1];
+        mModification.Field := mNames[mFirst + 1];
       end;
     end
-    else if (Length(Names) - First = 1) and MatchText(Names[First], DeprecatedGlobals) then
+    else if (Length(mNames) - mFirst = 1) and MatchText(mNames[mFirst], cDeprecatedGlobals) then
     begin
-      Modification.Field := Names[First];
+      mModification.Field := mNames[mFirst];
     end
     else
     begin
       Exit;
     end;
-    if not IsGlobal(AStatement, Names[First], First > 0) then
+    if not IsGlobal(AStatement, mNames[mFirst], mFirst > 0) then
     begin
       Exit;
     end;
-    Modification.Statement := AStatement;
-    Modification.Target := AStatement[0];
-    Modification.Routine := TRoutineBody.RoutineAt(AContext.Tree, AStatement.StartOffset);
-    Found := Found + [Modification];
+    mModification.Statement := AStatement;
+    mModification.Target := AStatement[0];
+    mModification.Routine := TRoutineBody.RoutineAt(AContext.Tree, AStatement.StartOffset);
+    mFound := mFound + [mModification];
   end;
 
   procedure Visit(ANode: TSyntaxNode);
   var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
-    Child: Integer;
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
+    mChild: Integer;
   begin
     // Iterativ (Bericht M1).
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ANode);
-      while Pending.Count > 0 do
+      mPending.Push(ANode);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if (Node.Kind = TSyntaxKind.AssignStatement) and (Node.ChildCount >= 2) then
+        mNode := mPending.Pop;
+        if (mNode.Kind = TSyntaxKind.AssignStatement) and (mNode.ChildCount >= 2) then
         begin
-          Inspect(Node);
+          Inspect(mNode);
         end;
-        for Child := Node.ChildCount - 1 downto 0 do
+        for mChild := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Child]);
+          mPending.Push(mNode[mChild]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
@@ -1297,12 +1298,12 @@ var
     mPosition, mClose: Integer;
   begin
     Result := nil;
-    mPosition := TRoutineBody.TokenAt(Tokens, AItem.Statement.EndOffset);
-    while (mPosition <= High(Tokens)) and (Tokens[mPosition].Offset < ABody.EndOffset) do
+    mPosition := TRoutineBody.TokenAt(mTokens, AItem.Statement.EndOffset);
+    while (mPosition <= High(mTokens)) and (mTokens[mPosition].Offset < ABody.EndOffset) do
     begin
-      if IsLocaleCall(Tokens, mPosition, mClose) then
+      if IsLocaleCall(mTokens, mPosition, mClose) then
       begin
-        Result := Result + [TRuleEdit.Create(TTextRange.Create(Tokens[mClose].StartPos, Tokens[mClose].StartPos),
+        Result := Result + [TRuleEdit.Create(TTextRange.Create(mTokens[mClose].StartPos, mTokens[mClose].StartPos),
           ', ' + AName)];
       end;
       Inc(mPosition);
@@ -1316,15 +1317,15 @@ var
     mField: Integer;
   begin
     Result := '';
-    mField := TRoutineBody.TokenAt(Tokens, AItem.Target.StartOffset);
-    while (mField <= High(Tokens)) and (Tokens[mField].Offset < AItem.Target.EndOffset) and
-      not IsIdentifierNamed(Tokens[mField], AItem.Field) do
+    mField := TRoutineBody.TokenAt(mTokens, AItem.Target.StartOffset);
+    while (mField <= High(mTokens)) and (mTokens[mField].Offset < AItem.Target.EndOffset) and
+      not IsIdentifierNamed(mTokens[mField], AItem.Field) do
     begin
       Inc(mField);
     end;
-    if (mField <= High(Tokens)) and (Tokens[mField].Offset < AItem.Target.EndOffset) then
+    if (mField <= High(mTokens)) and (mTokens[mField].Offset < AItem.Target.EndOffset) then
     begin
-      Result := Copy(AContext.Text, Tokens[mField].Offset + 1, AItem.Target.EndOffset - Tokens[mField].Offset);
+      Result := Copy(AContext.Text, mTokens[mField].Offset + 1, AItem.Target.EndOffset - mTokens[mField].Offset);
     end;
   end;
 
@@ -1348,7 +1349,7 @@ var
     begin
       mTail := FieldTail(AItem);
       Result := mTail <> '';
-      AText := AName + ' := FormatSettings;' + LineBreak + TTextLines.IndentOf(Lines[AItem.Statement.StartPos.Line]) +
+      AText := AName + ' := FormatSettings;' + mLineBreak + TTextLines.IndentOf(mLines[AItem.Statement.StartPos.Line]) +
         AName + '.' + mTail + ' := ' + mValue;
     end;
   end;
@@ -1357,7 +1358,7 @@ var
   function IsSingleLineStatement(const AItem: TFormatSettingsModification): Boolean;
   begin
     Result := TRoutineBody.InList(AItem.Statement) and (AItem.Statement.StartPos.Line = AItem.Statement.EndPos.Line) and
-      (AItem.Statement.StartPos.Line <= High(Lines));
+      (AItem.Statement.StartPos.Line <= High(mLines));
   end;
 
   /// <summary>Lokale TFormatSettings anlegen, statt der Zuweisung belegen und an die Formatierungsaufrufe danach
@@ -1375,7 +1376,7 @@ var
     begin
       Exit;
     end;
-    mName := TRoutineBody.UniqueName(Tokens, AContext.NewNames.Local('FS'));
+    mName := TRoutineBody.UniqueName(mTokens, AContext.NewNames.Local('FS'));
     mCalls := CallEdits(mBody, AItem, mName);
     if (mCalls = nil) or not AssignmentText(AItem, mName, mText) then
     begin
@@ -1398,27 +1399,27 @@ begin
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
-  Used := TUsesClauses.UsedUnits(Tokens);
-  FileName := RuleFileName(AContext);
-  Lines := TTextLines.SplitLines(AContext.Text);
-  LineBreak := TTextLines.LineBreakOf(AContext.Text);
-  Found := nil;
+  mTokens := AContext.Tree.Tokens;
+  mUsed := TUsesClauses.UsedUnits(mTokens);
+  mFileName := RuleFileName(AContext);
+  mLines := TTextLines.SplitLines(AContext.Text);
+  mLineBreak := TTextLines.LineBreakOf(AContext.Text);
+  mFound := nil;
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
-  Resolver := TRuleDerived.Resolver(mCache, AContext);
+  mResolver := TRuleDerived.Resolver(mCache, AContext);
   Visit(AContext.Tree.Root);
-  for Item in Found do
+  for mItem in mFound do
   begin
     // Die Korrektur nur bei genau einer Änderung in der Routine; sonst stellt sie etwa ein Zurücksetzen im
     // finally nicht sinnvoll um.
-    Fixes := nil;
-    if (Item.Routine <> nil) and (ModificationCount(Found, Item.Routine) = 1) and LocalFix(Item, Fix) then
+    mFixes := nil;
+    if (mItem.Routine <> nil) and (ModificationCount(mFound, mItem.Routine) = 1) and LocalFix(mItem, mFix) then
     begin
-      Fixes := [Fix];
+      mFixes := [mFix];
     end;
-    AReport.Add(TTextRange.Create(Item.Statement.StartPos, Item.Statement.EndPos),
-      cTexts[TRtlTypePatternsConversionsText.Global].Fmt([Subject(Item.Field)]), TRuleConfidence.High, Fixes);
+    AReport.Add(TTextRange.Create(mItem.Statement.StartPos, mItem.Statement.EndPos),
+      cTexts[TRtlTypePatternsConversionsText.Global].Fmt([Subject(mItem.Field)]), TRuleConfidence.High, mFixes);
   end;
 end;
 

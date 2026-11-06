@@ -25,7 +25,7 @@ uses
 type
   TLspSmartPaste = class
   public const
-    Command = 'atlas.server.pasteUses';
+    cCommand = 'atlas.server.pasteUses';
   public
     /// <summary>Antwort auf AArguments für die Datei AUri mit Text AText und Baum ATree. Der Aufrufer übernimmt
     /// das Objekt; ungültige Argumente ergeben EArgumentException.</summary>
@@ -57,12 +57,12 @@ const
 
 function NamesJson(const ANames: TArray<string>): TJSONArray;
 var
-  Name: string;
+  mName: string;
 begin
   Result := TJSONArray.Create;
-  for Name in ANames do
+  for mName in ANames do
   begin
-    Result.Add(Name);
+    Result.Add(mName);
   end;
 end;
 

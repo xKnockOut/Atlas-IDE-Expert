@@ -43,7 +43,7 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  UnusedPublicMemberRuleId = 'unused-public-member';
+  cUnusedPublicMemberRuleId = 'unused-public-member';
 
 type
   TUnusedPublicMemberRule = class(TInterfacedObject, IRule)
@@ -115,7 +115,7 @@ const
 
 const
   /// <summary>Aufrufe, die Klassen für Streaming und Objektinspektor bekannt machen.</summary>
-  RegisterCalls: array[0..2] of string = ('RegisterComponents', 'RegisterClass', 'RegisterClasses');
+  cRegisterCalls: array[0..2] of string = ('RegisterComponents', 'RegisterClass', 'RegisterClasses');
 
 type
 {$SCOPEDENUMS ON}
@@ -134,8 +134,8 @@ type
 /// <summary>"Öffentliche Methode", "Published-Property", "Geschütztes Feld" …</summary>
 function KindText(const ASymbol: TIndexSymbol): string;
 var
-  Noun: string;
-  Neuter: Boolean;
+  mNoun: string;
+  mNeuter: Boolean;
 begin
   // Unit-Ebene (#64): Typen und globale Variablen.
   if ASymbol.Container = '' then
@@ -148,42 +148,42 @@ begin
     else
       // Übrige Arten: nichts zu tun.
     end;
-  Neuter := ASymbol.Kind = TIndexSymbolKind.Field;
+  mNeuter := ASymbol.Kind = TIndexSymbolKind.Field;
   case ASymbol.Kind of
     TIndexSymbolKind.Field:
-      Noun := cTexts[TPublicMembersText.FieldNoun].Text;
+      mNoun := cTexts[TPublicMembersText.FieldNoun].Text;
     TIndexSymbolKind.Constant:
-      Noun := cTexts[TPublicMembersText.ConstantNoun].Text;
+      mNoun := cTexts[TPublicMembersText.ConstantNoun].Text;
     TIndexSymbolKind.Property_:
-      Noun := cTexts[TPublicMembersText.PropertyNoun].Text;
+      mNoun := cTexts[TPublicMembersText.PropertyNoun].Text;
     TIndexSymbolKind.Variable:
-      Noun := cTexts[TPublicMembersText.ClassVariableNoun].Text;
+      mNoun := cTexts[TPublicMembersText.ClassVariableNoun].Text;
     TIndexSymbolKind.Routine:
-      Noun := cTexts[TPublicMembersText.RoutineNoun].Text;
+      mNoun := cTexts[TPublicMembersText.RoutineNoun].Text;
   else
-    Noun := cTexts[TPublicMembersText.MethodNoun].Text;
+    mNoun := cTexts[TPublicMembersText.MethodNoun].Text;
   end;
   // Das Geschlecht des Nomens zählt nur im Deutschen; die englischen Texte sind gleich.
   case ASymbol.Visibility of
     TIndexVisibility.Published:
-      Result := cTexts[TPublicMembersText.PublishedKind].Fmt([Noun]);
+      Result := cTexts[TPublicMembersText.PublishedKind].Fmt([mNoun]);
     TIndexVisibility.Protected, TIndexVisibility.StrictProtected:
-      if Neuter then
+      if mNeuter then
       begin
-        Result := cTexts[TPublicMembersText.ProtectedNeuter].Fmt([Noun]);
+        Result := cTexts[TPublicMembersText.ProtectedNeuter].Fmt([mNoun]);
       end
       else
       begin
-        Result := cTexts[TPublicMembersText.ProtectedKind].Fmt([Noun]);
+        Result := cTexts[TPublicMembersText.ProtectedKind].Fmt([mNoun]);
       end;
   else
-    if Neuter then
+    if mNeuter then
     begin
-      Result := cTexts[TPublicMembersText.PublicNeuter].Fmt([Noun]);
+      Result := cTexts[TPublicMembersText.PublicNeuter].Fmt([mNoun]);
     end
     else
     begin
-      Result := cTexts[TPublicMembersText.PublicKind].Fmt([Noun]);
+      Result := cTexts[TPublicMembersText.PublicKind].Fmt([mNoun]);
     end;
   end;
 end;
@@ -247,23 +247,23 @@ end;
 /// <summary>Name ohne Typparameter: TListe&lt;T&gt;.Add -> TListe.Add.</summary>
 function WithoutTypeParams(const AName: string): string;
 var
-  Index, Depth: Integer;
+  mIndex, mDepth: Integer;
 begin
   Result := '';
-  Depth := 0;
-  for Index := 1 to Length(AName) do
+  mDepth := 0;
+  for mIndex := 1 to Length(AName) do
   begin
-    if AName[Index] = '<' then
+    if AName[mIndex] = '<' then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if AName[Index] = '>' then
+    else if AName[mIndex] = '>' then
     begin
-      Dec(Depth);
+      Dec(mDepth);
     end
-    else if Depth = 0 then
+    else if mDepth = 0 then
     begin
-      Result := Result + AName[Index];
+      Result := Result + AName[mIndex];
     end;
   end;
 end;
@@ -372,7 +372,7 @@ end;
 function IsRegisterCall(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
 begin
   Result := (ATokens[AIndex].Kind = TPascalTokenKind.Identifier) and
-    (IndexText(CleanName(ATokens[AIndex].Text), RegisterCalls) >= 0) and ATokens[AIndex + 1].IsSymbol('(');
+    (IndexText(CleanName(ATokens[AIndex].Text), cRegisterCalls) >= 0) and ATokens[AIndex + 1].IsSymbol('(');
 end;
 
 /// <summary>Nennen die Argumente ab der öffnenden Klammer bei AOpen bis zur schließenden die Klasse AClass?
@@ -802,7 +802,7 @@ var
 begin
   Result := False;
   AUnknown := False;
-  for mCall in RegisterCalls do
+  for mCall in cRegisterCalls do
   begin
     case FContext.ProjectFiles.NameIn(AFile, mCall) of
       TRuleNameAnswer.Present:
@@ -1019,7 +1019,7 @@ var
 begin
   if Assigned(FContext.Cancelled) and FContext.Cancelled() then
   begin
-    raise ERuleCheckCancelled.Create(UnusedPublicMemberRuleId);
+    raise ERuleCheckCancelled.Create(cUnusedPublicMemberRuleId);
   end;
   mResults := FResolver.ResolveAll(ATree, AFile, APosition);
   if (mResults = nil) or not mResults[0].Found then
@@ -1186,7 +1186,7 @@ begin
   end;
   Result := TRuleFix.Create(cTexts[TPublicMembersText.MarkPublic].Text,
     [TTextEdit.Create(TTextRange.Create(mLine, 0, mLine, 0), mIndent + '// lsp-ignore: ' +
-    UnusedPublicMemberRuleId + FLineBreak)]);
+    cUnusedPublicMemberRuleId + FLineBreak)]);
   Result.Alternative := True;
 end;
 
@@ -1251,7 +1251,7 @@ end;
 
 function TUnusedPublicMemberRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(UnusedPublicMemberRuleId, TRuleSeverity.Hint,
+  Result := TRuleDescriptor.Create(cUnusedPublicMemberRuleId, TRuleSeverity.Hint,
     cTexts[TPublicMembersText.Title].Text);
 end;
 

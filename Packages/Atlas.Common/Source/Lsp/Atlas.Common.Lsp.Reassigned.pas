@@ -31,7 +31,7 @@ uses
 type
   TLspReassigned = class
   public const
-    Command = 'atlas.server.reassigned';
+    cCommand = 'atlas.server.reassigned';
   public
     /// <summary>Alle Namen der Datei mit ihren Stellen; Argumente über AResolver (nil: nur die Datei). Heftet den
     /// Baum für die Dauer an den Auflöser.</summary>
@@ -94,39 +94,39 @@ end;
 
 class function TLspReassigned.Json(const ASymbols: TArray<TReassignedSymbol>): TJSONObject;
 var
-  Symbols, Uses_, Lines: TJSONArray;
-  Item, Use: TJSONObject;
-  Symbol: TReassignedSymbol;
-  Occurrence: TReassignedOccurrence;
-  Line: Integer;
+  mSymbols, mUses_, mLines: TJSONArray;
+  mItem, mUse: TJSONObject;
+  mSymbol: TReassignedSymbol;
+  mOccurrence: TReassignedOccurrence;
+  mLine: Integer;
 begin
   Result := TJSONObject.Create;
-  Symbols := TJSONArray.Create;
-  Result.AddPair('symbols', Symbols);
-  for Symbol in ASymbols do
+  mSymbols := TJSONArray.Create;
+  Result.AddPair('symbols', mSymbols);
+  for mSymbol in ASymbols do
   begin
-    Item := TJSONObject.Create;
-    Symbols.AddElement(Item);
-    Item.AddPair('name', Symbol.Name);
-    Item.AddPair('kind', TReassigned.KindNames[Symbol.Kind]);
-    Item.AddPair('writes', TJSONNumber.Create(Symbol.WriteCount));
-    Item.AddPair('routine', Symbol.RoutineName);
-    Lines := TJSONArray.Create;
-    Item.AddPair('writeLines', Lines);
-    for Line in Symbol.WriteLines do
+    mItem := TJSONObject.Create;
+    mSymbols.AddElement(mItem);
+    mItem.AddPair('name', mSymbol.Name);
+    mItem.AddPair('kind', TReassigned.cKindNames[mSymbol.Kind]);
+    mItem.AddPair('writes', TJSONNumber.Create(mSymbol.WriteCount));
+    mItem.AddPair('routine', mSymbol.RoutineName);
+    mLines := TJSONArray.Create;
+    mItem.AddPair('writeLines', mLines);
+    for mLine in mSymbol.WriteLines do
     begin
-      Lines.Add(Line);
+      mLines.Add(mLine);
     end;
-    Uses_ := TJSONArray.Create;
-    Item.AddPair('uses', Uses_);
-    for Occurrence in Symbol.Occurrences do
+    mUses_ := TJSONArray.Create;
+    mItem.AddPair('uses', mUses_);
+    for mOccurrence in mSymbol.Occurrences do
     begin
-      Use := TJSONObject.Create;
-      Uses_.AddElement(Use);
-      Use.AddPair('line', TJSONNumber.Create(Occurrence.Range.StartPos.Line));
-      Use.AddPair('character', TJSONNumber.Create(Occurrence.Range.StartPos.Character));
-      Use.AddPair('endCharacter', TJSONNumber.Create(Occurrence.Range.EndPos.Character));
-      Use.AddPair('write', TJSONBool.Create(Occurrence.Write in [TReassignedWrite.Write,
+      mUse := TJSONObject.Create;
+      mUses_.AddElement(mUse);
+      mUse.AddPair('line', TJSONNumber.Create(mOccurrence.Range.StartPos.Line));
+      mUse.AddPair('character', TJSONNumber.Create(mOccurrence.Range.StartPos.Character));
+      mUse.AddPair('endCharacter', TJSONNumber.Create(mOccurrence.Range.EndPos.Character));
+      mUse.AddPair('write', TJSONBool.Create(mOccurrence.Write in [TReassignedWrite.Write,
         TReassignedWrite.LoopWrite]));
     end;
   end;
@@ -134,70 +134,70 @@ end;
 
 class function TLspReassigned.ReadTargets(const AArguments: TJSONArray): TReassignedTargets;
 var
-  Settings: TJSONObject;
-  Value, Item: TJSONValue;
-  Names: TArray<string>;
+  mSettings: TJSONObject;
+  mValue, mItem: TJSONValue;
+  mNames: TArray<string>;
 begin
-  Result := TReassigned.DefaultTargets;
+  Result := TReassigned.cDefaultTargets;
   if (AArguments = nil) or (AArguments.Count < 2) or not (AArguments.Items[1] is TJSONObject) then
   begin
     Exit;
   end;
-  Settings := TJSONObject(AArguments.Items[1]);
-  Value := Settings.GetValue('targets');
-  if not (Value is TJSONArray) then
+  mSettings := TJSONObject(AArguments.Items[1]);
+  mValue := mSettings.GetValue('targets');
+  if not (mValue is TJSONArray) then
   begin
     Exit;
   end;
-  Names := nil;
-  for Item in TJSONArray(Value) do
+  mNames := nil;
+  for mItem in TJSONArray(mValue) do
   begin
-    if Item is TJSONString then
+    if mItem is TJSONString then
     begin
-      Names := Names + [Item.Value];
+      mNames := mNames + [mItem.Value];
     end;
   end;
-  Result := TReassigned.TargetsOf(Names);
+  Result := TReassigned.TargetsOf(mNames);
 end;
 
 class function TLspReassigned.Execute(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AEnsureUnit: TEnsureUnitFunc; const ANamespaces: TArray<string>; const AArguments: TJSONArray): TJSONValue;
 var
-  Uri: string;
-  Document: ITextDocument;
-  Shared: ISharedSyntaxTree;
-  Resolver: TNameResolver;
-  Targets: TReassignedTargets;
-  Symbols: TArray<TReassignedSymbol>;
+  mUri: string;
+  mDocument: ITextDocument;
+  mShared: ISharedSyntaxTree;
+  mResolver: TNameResolver;
+  mTargets: TReassignedTargets;
+  mSymbols: TArray<TReassignedSymbol>;
 begin
   if (AArguments = nil) or (AArguments.Count < 1) or not (AArguments.Items[0] is TJSONString) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TReassignedText.TheURIIsExpected].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TReassignedText.TheURIIsExpected].Text);
   end;
-  Uri := AArguments.Items[0].Value;
-  if not AStore.TryGet(Uri, Document) then
+  mUri := AArguments.Items[0].Value;
+  if not AStore.TryGet(mUri, mDocument) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TReassignedText.DocumentIsNotOpen].Text + Uri);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TReassignedText.DocumentIsNotOpen].Text + mUri);
   end;
-  Targets := ReadTargets(AArguments);
-  Symbols := nil;
-  if Targets <> [] then
+  mTargets := ReadTargets(AArguments);
+  mSymbols := nil;
+  if mTargets <> [] then
   begin
-    Shared := TSyntaxTreeCache.Get(Document);
-    Resolver := nil;
+    mShared := TSyntaxTreeCache.Get(mDocument);
+    mResolver := nil;
     if AIndex <> nil then
     begin
-      Resolver := TNameResolver.Create(AIndex, AEnsureUnit);
-      Resolver.Namespaces := ANamespaces;
+      mResolver := TNameResolver.Create(AIndex, AEnsureUnit);
+      mResolver.Namespaces := ANamespaces;
     end;
     try
-      Symbols := TReassigned.Filter(Analyze(Resolver, Shared.Tree, TDocumentUris.ToPath(Uri), Document.Text),
-        Targets);
+      mSymbols := TReassigned.Filter(Analyze(mResolver, mShared.Tree, TDocumentUris.ToPath(mUri), mDocument.Text),
+        mTargets);
     finally
-      Resolver.Free;
+      mResolver.Free;
     end;
   end;
-  Result := Json(Symbols);
+  Result := Json(mSymbols);
 end;
 
 initialization

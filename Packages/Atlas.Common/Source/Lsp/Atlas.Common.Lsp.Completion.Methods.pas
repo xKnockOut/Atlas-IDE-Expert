@@ -23,7 +23,7 @@ type
     /// und leerem Rumpf. False außerhalb dieses Kontexts.</summary>
     class function EventItems(ARequest: TCompletionRequest; out AItems: TCompletionItems): Boolean; static;
     /// <summary>Methodenreferenztyp ATypeText, so aufgelöst, wie er in AFromUnit stünde (#468): Deklaration aus
-    /// dem Index, Aliase bis TCompletionAnonymous.MaxAliasDepth verfolgt, Typparameter durch die Typargumente
+    /// dem Index, Aliase bis TCompletionAnonymous.cMaxAliasDepth verfolgt, Typparameter durch die Typargumente
     /// ersetzt; ohne Deklaration im Index die von System.SysUtils (TProc, TFunc, TPredicate). False, wenn
     /// ATypeText kein "reference to procedure/function" ist.</summary>
     class function MethodRefOf(AResolver: TNameResolver; const AFromUnit: TUnitIndex; const ATypeText: string;
@@ -253,7 +253,7 @@ function FittingItem(const ACandidate: TResolvedSymbol; const AExpected: string)
 begin
   Result := Default(TCompletionItem);
   Result.Name := ACandidate.Name;
-  Result.Kind := KindMethod;
+  Result.Kind := cKindMethod;
   Result.Detail := ACandidate.Container;
   Result.Container := ACandidate.Container;
   Result.Depth := ACandidate.Depth;
@@ -345,7 +345,7 @@ begin
   mHeader := NewMethodHeader(ASignature, ATypeName, AName);
   Result := Default(TCompletionItem);
   Result.Name := cTexts[TMethodsText.NewMethod].Fmt([AName]);
-  Result.Kind := KindMethod;
+  Result.Kind := cKindMethod;
   Result.Detail := Copy(mHeader, Length(ASignature.Kind) + 2, MaxInt);
   Result.InsertText := AName;
   // Immer sichtbar, auch wenn das Getippte nicht zum Namen passt.
@@ -450,7 +450,7 @@ begin
   Result := False;
   mTypeText := ATypeText;
   mFromUnit := AFromUnit;
-  for mDepth := 0 to TCompletionAnonymous.MaxAliasDepth do
+  for mDepth := 0 to TCompletionAnonymous.cMaxAliasDepth do
   begin
     mSignature := RefSignature(AResolver, mFromUnit, mTypeText, mResolved, mArgs);
     if mSignature = '' then
@@ -552,7 +552,7 @@ begin
   begin
     AItem.FilterText := 'function';
   end;
-  AItem.Kind := KindSnippet;
+  AItem.Kind := cKindSnippet;
   // Den Typ zeigt Atlas als Tag (MethodRef); rechts steht, was der Eintrag ist.
   AItem.Detail := cTexts[TMethodsText.AnonymousMethod].Text;
   AItem.MethodRef := mExpected;

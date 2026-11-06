@@ -267,9 +267,9 @@ end;
 
 procedure TUnresolvedIdentifierRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Resolver: TNameResolver;
+  mResolver: TNameResolver;
   mCache: IRuleDerivedCache;
-  Name: TUnresolvedName;
+  mName: TUnresolvedName;
   mUsed: TArray<string>;
 begin
   if (AContext.Tree = nil) or not TUnresolvedNames.Available(AContext.Index) then
@@ -278,28 +278,28 @@ begin
   end;
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
-  Resolver := TRuleDerived.Resolver(mCache, AContext);
+  mResolver := TRuleDerived.Resolver(mCache, AContext);
   mUsed := TUsesClauses.UsedUnits(AContext.Tree.Tokens);
-  for Name in TUnresolvedNames.Find(Resolver, AContext.Tree, AContext.RelativePath) do
+  for mName in TUnresolvedNames.Find(mResolver, AContext.Tree, AContext.RelativePath) do
   begin
     // Typ aus einem Package der IDE, dessen Unit im uses steht (TFoo.Create).
-    if (Name.Code = '') and IdeDeclares(AContext.IdeTypes, TArray<string>.Create(Name.Name), mUsed,
+    if (mName.Code = '') and IdeDeclares(AContext.IdeTypes, TArray<string>.Create(mName.Name), mUsed,
       AContext.Namespaces) then
     begin
       Continue;
     end;
-    if Name.Code <> '' then
+    if mName.Code <> '' then
     begin
-      AReport.Add(Name.Range, TUnresolvedNames.Describe(Name), TRuleConfidence.Medium);
+      AReport.Add(mName.Range, TUnresolvedNames.Describe(mName), TRuleConfidence.Medium);
     end
-    else if Name.Suggestion <> '' then
+    else if mName.Suggestion <> '' then
     begin
-      AReport.Add(Name.Range, cTexts[TUnresolvedText.UndeclaredMeant].Fmt(
-        [Name.Name, Name.Suggestion]), TRuleConfidence.Medium);
+      AReport.Add(mName.Range, cTexts[TUnresolvedText.UndeclaredMeant].Fmt(
+        [mName.Name, mName.Suggestion]), TRuleConfidence.Medium);
     end
     else
     begin
-      AReport.Add(Name.Range, cTexts[TUnresolvedText.Undeclared].Fmt([Name.Name]), TRuleConfidence.Medium);
+      AReport.Add(mName.Range, cTexts[TUnresolvedText.Undeclared].Fmt([mName.Name]), TRuleConfidence.Medium);
     end;
   end;
 end;
@@ -614,12 +614,12 @@ end;
 /// <summary>Position des Zeichens AOffset (ab 0) in AText.</summary>
 function PositionOf(const AText: string; AOffset: Integer): TTextPosition;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := TTextPosition.Create(0, 0);
-  for Index := 1 to AOffset do
+  for mIndex := 1 to AOffset do
   begin
-    if AText[Index] = #10 then
+    if AText[mIndex] = #10 then
     begin
       Result := TTextPosition.Create(Result.Line + 1, 0);
     end
@@ -632,42 +632,42 @@ end;
 
 class function TUsesUnitNotFoundRule.DiffEdit(const AOld, ANew: string): TTextEdit;
 var
-  Prefix, Suffix: Integer;
+  mPrefix, mSuffix: Integer;
 begin
-  Prefix := 0;
-  while (Prefix < Length(AOld)) and (Prefix < Length(ANew)) and (AOld[Prefix + 1] = ANew[Prefix + 1]) do
+  mPrefix := 0;
+  while (mPrefix < Length(AOld)) and (mPrefix < Length(ANew)) and (AOld[mPrefix + 1] = ANew[mPrefix + 1]) do
   begin
-    Inc(Prefix);
+    Inc(mPrefix);
   end;
-  Suffix := 0;
-  while (Suffix < Length(AOld) - Prefix) and (Suffix < Length(ANew) - Prefix) and
-    (AOld[Length(AOld) - Suffix] = ANew[Length(ANew) - Suffix]) do
+  mSuffix := 0;
+  while (mSuffix < Length(AOld) - mPrefix) and (mSuffix < Length(ANew) - mPrefix) and
+    (AOld[Length(AOld) - mSuffix] = ANew[Length(ANew) - mSuffix]) do
   begin
-    Inc(Suffix);
+    Inc(mSuffix);
   end;
-  Result := TTextEdit.Create(TTextRange.Create(PositionOf(AOld, Prefix), PositionOf(AOld, Length(AOld) - Suffix)),
-    Copy(ANew, Prefix + 1, Length(ANew) - Prefix - Suffix));
+  Result := TTextEdit.Create(TTextRange.Create(PositionOf(AOld, mPrefix), PositionOf(AOld, Length(AOld) - mSuffix)),
+    Copy(ANew, mPrefix + 1, Length(ANew) - mPrefix - mSuffix));
 end;
 
 /// <summary>"A", "A, B", "A, B oder C".</summary>
 function Alternatives(const AItems: TArray<string>): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := 0 to High(AItems) do
+  for mIndex := 0 to High(AItems) do
   begin
-    if Index = 0 then
+    if mIndex = 0 then
     begin
-      Result := AItems[Index];
+      Result := AItems[mIndex];
     end
-    else if Index = High(AItems) then
+    else if mIndex = High(AItems) then
     begin
-      Result := Result + cTexts[TUnresolvedText.OrSep].Text + AItems[Index];
+      Result := Result + cTexts[TUnresolvedText.OrSep].Text + AItems[mIndex];
     end
     else
     begin
-      Result := Result + ', ' + AItems[Index];
+      Result := Result + ', ' + AItems[mIndex];
     end;
   end;
 end;
@@ -833,14 +833,14 @@ end;
 /// <summary>Quelle der Suche aus der Option searchPaths: project (Vorgabe), atlas oder both.</summary>
 function SourcesOf(const AOptions: string): TRuleUnitSources;
 var
-  Value: string;
+  mValue: string;
 begin
-  Value := TRuleOptions.Text(AOptions, 'searchPaths', 'project');
-  if SameText(Value, 'atlas') then
+  mValue := TRuleOptions.Text(AOptions, 'searchPaths', 'project');
+  if SameText(mValue, 'atlas') then
   begin
     Result := [TRuleUnitSource.Atlas];
   end
-  else if SameText(Value, 'both') then
+  else if SameText(mValue, 'both') then
   begin
     Result := [TRuleUnitSource.Project, TRuleUnitSource.Atlas];
   end
@@ -1064,13 +1064,13 @@ end;
 
 const
   // Attribute, die der Compiler selbst kennt (System); sie fehlen in einem unvollständigen Index.
-  CompilerAttributes: array[0..8] of string = ('Weak', 'Unsafe', 'Ref', 'Volatile', 'Align', 'HPPGEN', 'HFA',
+  cCompilerAttributes: array[0..8] of string = ('Weak', 'Unsafe', 'Ref', 'Volatile', 'Align', 'HPPGEN', 'HFA',
     'Stored', 'Result');
   // DUnitX-Attribute: ohne sie laufen die Tests nicht. Unit, falls DUnitX nicht im Index steht.
-  DUnitXAttributes: array[0..16] of string = ('TestFixture', 'Test', 'TestCase', 'Setup', 'TearDown',
+  cDUnitXAttributes: array[0..16] of string = ('TestFixture', 'Test', 'TestCase', 'Setup', 'TearDown',
     'SetupFixture', 'TearDownFixture', 'Ignore', 'Category', 'WillRaise', 'WillRaiseAny', 'RepeatTest', 'MaxTime',
     'TestCaseProvider', 'TestInOwnThread', 'IgnoreMemoryLeaks', 'AutoNameTestCase');
-  DUnitXUnit = 'DUnitX.TestFramework';
+  cDUnitXUnit = 'DUnitX.TestFramework';
 
 function TUnresolvedAttributeRule.Descriptor: TRuleDescriptor;
 begin
@@ -1117,13 +1117,13 @@ end;
 /// <summary>Offset ab 0 des ersten Tokens an APosition; 0 ohne.</summary>
 function OffsetAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
 var
-  Token: TPascalToken;
+  mToken: TPascalToken;
 begin
-  for Token in ATokens do
+  for mToken in ATokens do
   begin
-    if (Token.StartPos.Line = APosition.Line) and (Token.StartPos.Character = APosition.Character) then
+    if (mToken.StartPos.Line = APosition.Line) and (mToken.StartPos.Character = APosition.Character) then
     begin
-      Exit(Token.Offset);
+      Exit(mToken.Offset);
     end;
   end;
   Result := 0;
@@ -1132,7 +1132,7 @@ end;
 /// <summary>Kennt der Compiler das Attribut ABare (oder ABareAttribute) selbst?</summary>
 function CompilerAttribute(const ABare: string): Boolean;
 begin
-  Result := MatchText(ABare, CompilerAttributes) or MatchText(ABare + 'Attribute', CompilerAttributes);
+  Result := MatchText(ABare, cCompilerAttributes) or MatchText(ABare + 'Attribute', cCompilerAttributes);
 end;
 
 /// <summary>Knoten mit dem Namen eines Attributs (bei Test(1) der Name vor der Klammer).</summary>
@@ -1150,9 +1150,9 @@ end;
 function AttributeUnits(const AIndex: ISymbolIndex; const ABare: string): TArray<string>;
 begin
   Result := TUnresolvedAttributeRule.DeclaringUnits(AIndex, ABare);
-  if (Length(Result) = 0) and MatchText(ABare, DUnitXAttributes) then
+  if (Length(Result) = 0) and MatchText(ABare, cDUnitXAttributes) then
   begin
-    Result := [DUnitXUnit];
+    Result := [cDUnitXUnit];
   end;
 end;
 
@@ -1160,7 +1160,7 @@ end;
 function AttributeMessage(const AName, ABare, ACode: string; const AUnits: TArray<string>): string;
 begin
   Result := cTexts[TUnresolvedText.AttributeIgnored].Fmt([AName]);
-  if MatchText(ABare, DUnitXAttributes) or ((Length(AUnits) > 0) and StartsText('DUnitX', AUnits[0])) then
+  if MatchText(ABare, cDUnitXAttributes) or ((Length(AUnits) > 0) and StartsText('DUnitX', AUnits[0])) then
   begin
     Result := Result + cTexts[TUnresolvedText.TestsDontRun].Text;
   end;
@@ -1373,7 +1373,7 @@ end;
 { TUnresolvedTypeRule }
 
 const
-  TypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+  cTypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
     TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType, TIndexSymbolKind.EnumType,
     TIndexSymbolKind.TypeAlias];
 
@@ -1416,7 +1416,7 @@ end;
 /// <summary>Ist ALocation ein Typ im interface einer anderen Unit als AOwnUnit mit AArity Typparametern?</summary>
 function IsForeignType(const ALocation: TSymbolLocation; const AOwnUnit: string; AArity: Integer): Boolean;
 begin
-  Result := (ALocation.Symbol.Container = '') and (ALocation.Symbol.Kind in TypeKinds) and
+  Result := (ALocation.Symbol.Container = '') and (ALocation.Symbol.Kind in cTypeKinds) and
     ALocation.Symbol.InInterface;
   Result := Result and not SameText(ALocation.UnitName, AOwnUnit) and (TypeArity(ALocation.Symbol) = AArity);
 end;
@@ -1603,7 +1603,7 @@ var
 begin
   for mLocation in FContext.Index.FindSymbols(AName) do
   begin
-    if (mLocation.Symbol.Container <> '') and (mLocation.Symbol.Kind in TypeKinds) then
+    if (mLocation.Symbol.Container <> '') and (mLocation.Symbol.Kind in cTypeKinds) then
     begin
       Exit(True);
     end;

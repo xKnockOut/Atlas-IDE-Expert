@@ -62,11 +62,11 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  MethodWithoutSelfRuleId = 'method-without-self';
+  cMethodWithoutSelfRuleId = 'method-without-self';
 
 function TMethodWithoutSelfRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(MethodWithoutSelfRuleId, TRuleSeverity.Hint,
+  Result := TRuleDescriptor.Create(cMethodWithoutSelfRuleId, TRuleSeverity.Hint,
     cTexts[TMethodWithoutSelfText.Title].Text,
     True);
 end;
@@ -88,29 +88,29 @@ end;
 /// <summary>Steht AName als ganzes Wort (ohne Groß-/Kleinschreibung) in AText?</summary>
 function MentionsWord(const AText, AName: string): Boolean;
 var
-  Position: Integer;
-  Before, After: Char;
+  mPosition: Integer;
+  mBefore, mAfter: Char;
 begin
   Result := False;
-  Position := Pos(UpperCase(AName), UpperCase(AText));
-  while Position > 0 do
+  mPosition := Pos(UpperCase(AName), UpperCase(AText));
+  while mPosition > 0 do
   begin
-    Before := ' ';
-    After := ' ';
-    if Position > 1 then
+    mBefore := ' ';
+    mAfter := ' ';
+    if mPosition > 1 then
     begin
-      Before := AText[Position - 1];
+      mBefore := AText[mPosition - 1];
     end;
-    if Position + Length(AName) <= Length(AText) then
+    if mPosition + Length(AName) <= Length(AText) then
     begin
-      After := AText[Position + Length(AName)];
+      mAfter := AText[mPosition + Length(AName)];
     end;
-    if not CharInSet(Before, ['A'..'Z', 'a'..'z', '0'..'9', '_']) and
-      not CharInSet(After, ['A'..'Z', 'a'..'z', '0'..'9', '_']) then
+    if not CharInSet(mBefore, ['A'..'Z', 'a'..'z', '0'..'9', '_']) and
+      not CharInSet(mAfter, ['A'..'Z', 'a'..'z', '0'..'9', '_']) then
     begin
       Exit(True);
     end;
-    Position := Pos(UpperCase(AName), UpperCase(AText), Position + 1);
+    mPosition := Pos(UpperCase(AName), UpperCase(AText), mPosition + 1);
   end;
 end;
 
@@ -118,17 +118,17 @@ end;
 /// procedure/function. Lieber zu viele: Eine fremde Verwendung macht die Umwandlung höchstens unmöglich.</summary>
 function NameOffsets(ATree: TSyntaxTree; const AName: string): TArray<Integer>;
 var
-  Tokens: TArray<TPascalToken>;
-  Index: Integer;
+  mTokens: TArray<TPascalToken>;
+  mIndex: Integer;
 begin
   Result := nil;
-  Tokens := ATree.Tokens;
-  for Index := 0 to High(Tokens) do
+  mTokens := ATree.Tokens;
+  for mIndex := 0 to High(mTokens) do
   begin
-    if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Index].Text, AName) and
-      not ((Index > 0) and (Tokens[Index - 1].IsKeyword('function') or Tokens[Index - 1].IsKeyword('procedure'))) then
+    if (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(mTokens[mIndex].Text, AName) and
+      not ((mIndex > 0) and (mTokens[mIndex - 1].IsKeyword('function') or mTokens[mIndex - 1].IsKeyword('procedure'))) then
     begin
-      Result := Result + [Tokens[Index].Offset];
+      Result := Result + [mTokens[mIndex].Offset];
     end;
   end;
 end;
@@ -174,38 +174,38 @@ end;
 
 procedure TMethodWithoutSelfRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Resolver: TNameResolver;
+  mResolver: TNameResolver;
   mCache: IRuleDerivedCache;
-  FileName, FormText: string;
-  Lookup: TMethodLookup;
-  Target: TMethodTarget;
-  Fixes: TArray<TRuleFix>;
+  mFileName, mFormText: string;
+  mLookup: TMethodLookup;
+  mTarget: TMethodTarget;
+  mFixes: TArray<TRuleFix>;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) or AContext.NoMethodKind then
   begin
     Exit;
   end;
-  FileName := RuleFileName(AContext);
-  FormText := AContext.FormText;
+  mFileName := RuleFileName(AContext);
+  mFormText := AContext.FormText;
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
-  Resolver := TRuleDerived.Resolver(mCache, AContext);
-  Resolver.PinTree(AContext.Tree, FileName);
+  mResolver := TRuleDerived.Resolver(mCache, AContext);
+  mResolver.PinTree(AContext.Tree, mFileName);
   try
-    Lookup := TMethodLookup.FromResolver(Resolver, AContext.Tree, FileName);
+    mLookup := TMethodLookup.FromResolver(mResolver, AContext.Tree, mFileName);
     // Ereignisse der Formulardatei und im Code zugewiesene Ereignisse brauchen eine Methode des Objekts.
-    Lookup.InForm := EventCheck(FormText, AContext.Tree);
-    for Target in TMethodWithoutSelf.Candidates(AContext.Text, AContext.Tree, Lookup) do
+    mLookup.InForm := EventCheck(mFormText, AContext.Tree);
+    for mTarget in TMethodWithoutSelf.Candidates(AContext.Text, AContext.Tree, mLookup) do
     begin
-      Fixes := ClassMethodFixes(AContext, FileName, Target, Lookup);
+      mFixes := ClassMethodFixes(AContext, mFileName, mTarget, mLookup);
       // Mittel: Aufrufe über Methodenzeiger in anderen Units sieht die Regel nicht.
-      AReport.Add(TTextRange.Create(Target.NamePosition, TTextPosition.Create(Target.NamePosition.Line,
-        Target.NamePosition.Character + Length(Target.Name))),
-          cTexts[TMethodWithoutSelfText.NoSelf].Fmt([Target.ClassName, Target.Name]),
-        TRuleConfidence.Medium, Fixes);
+      AReport.Add(TTextRange.Create(mTarget.NamePosition, TTextPosition.Create(mTarget.NamePosition.Line,
+        mTarget.NamePosition.Character + Length(mTarget.Name))),
+          cTexts[TMethodWithoutSelfText.NoSelf].Fmt([mTarget.ClassName, mTarget.Name]),
+        TRuleConfidence.Medium, mFixes);
     end;
   finally
-    Resolver.UnpinTree;
+    mResolver.UnpinTree;
   end;
 end;
 

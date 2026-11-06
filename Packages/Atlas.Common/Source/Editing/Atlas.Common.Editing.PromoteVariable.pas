@@ -260,74 +260,74 @@ end;
 /// <summary>Äußerste Routine über ANode (die der Unit); nil außerhalb.</summary>
 function TopRoutineOf(ANode: TSyntaxNode): TSyntaxNode;
 var
-  Node: TSyntaxNode;
+  mNode: TSyntaxNode;
 begin
   Result := nil;
-  Node := ANode;
-  while Node <> nil do
+  mNode := ANode;
+  while mNode <> nil do
   begin
-    if Node.Kind = TSyntaxKind.RoutineDecl then
+    if mNode.Kind = TSyntaxKind.RoutineDecl then
     begin
-      Result := Node;
+      Result := mNode;
     end;
-    Node := Node.Parent;
+    mNode := mNode.Parent;
   end;
 end;
 
 /// <summary>Innerste Routine, die AOffset enthält; nil außerhalb.</summary>
 function RoutineAtOffset(ATree: TSyntaxTree; AOffset: Integer): TSyntaxNode;
 var
-  Found: TSyntaxNode;
-  Offset: Integer;
+  mFound: TSyntaxNode;
+  mOffset: Integer;
 begin
-  Found := nil;
-  Offset := AOffset;
+  mFound := nil;
+  mOffset := AOffset;
   ATree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
-      Result := Encloses(ANode, Offset);
+      Result := Encloses(ANode, mOffset);
       if Result and (ANode.Kind = TSyntaxKind.RoutineDecl) then
       begin
-        Found := ANode;
+        mFound := ANode;
       end;
     end);
-  Result := Found;
+  Result := mFound;
 end;
 
 /// <summary>Innerster Knoten der Art AKind, der AOffset enthält; nil ohne.</summary>
 function NodeAtOffset(ATree: TSyntaxTree; AOffset: Integer; AKind: TSyntaxKind): TSyntaxNode;
 var
-  Found: TSyntaxNode;
-  Offset: Integer;
-  Kind: TSyntaxKind;
+  mFound: TSyntaxNode;
+  mOffset: Integer;
+  mKind: TSyntaxKind;
 begin
-  Found := nil;
-  Offset := AOffset;
-  Kind := AKind;
+  mFound := nil;
+  mOffset := AOffset;
+  mKind := AKind;
   ATree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
-      Result := Encloses(ANode, Offset);
-      if Result and (ANode.Kind = Kind) then
+      Result := Encloses(ANode, mOffset);
+      if Result and (ANode.Kind = mKind) then
       begin
-        Found := ANode;
+        mFound := ANode;
       end;
     end);
-  Result := Found;
+  Result := mFound;
 end;
 
 /// <summary>Bezeichner-Token an AOffset (auch direkt dahinter); '' ohne.</summary>
 function WordAt(const ATokens: TArray<TPascalToken>; AOffset: Integer): string;
 var
-  Token: TPascalToken;
+  mToken: TPascalToken;
 begin
   Result := '';
-  for Token in ATokens do
+  for mToken in ATokens do
   begin
-    if (Token.Kind = TPascalTokenKind.Identifier) and (Token.Offset <= AOffset) and
-      (AOffset <= Token.Offset + Length(Token.Text)) then
+    if (mToken.Kind = TPascalTokenKind.Identifier) and (mToken.Offset <= AOffset) and
+      (AOffset <= mToken.Offset + Length(mToken.Text)) then
     begin
-      Exit(Token.Text);
+      Exit(mToken.Text);
     end;
   end;
 end;
@@ -336,13 +336,13 @@ end;
 /// </summary>
 function LocalAt(const ALocals: TArray<TRoutineLocal>; const AName: string; AOffset: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(ALocals) do
+  for mIndex := 0 to High(ALocals) do
   begin
-    if SameText(ALocals[Index].Name, AName) and Encloses(ALocals[Index].Decl, AOffset) then
+    if SameText(ALocals[mIndex].Name, AName) and Encloses(ALocals[mIndex].Decl, AOffset) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := TRoutineLocals.IndexOf(ALocals, AName, AOffset);
@@ -352,22 +352,22 @@ end;
 function DeclaresAnywhere(const AText: string; ATree: TSyntaxTree; ARoutine: TSyntaxNode;
   const AName: string): Boolean;
 var
-  Local: TRoutineLocal;
-  Index: Integer;
+  mLocal: TRoutineLocal;
+  mIndex: Integer;
 begin
   if TRoutineBody.BodyOf(ARoutine) <> nil then
   begin
-    for Local in TRoutineLocals.Collect(AText, ATree, ARoutine) do
+    for mLocal in TRoutineLocals.Collect(AText, ATree, ARoutine) do
     begin
-      if SameText(Local.Name, AName) then
+      if SameText(mLocal.Name, AName) then
       begin
         Exit(True);
       end;
     end;
   end;
-  for Index := 0 to ARoutine.ChildCount - 1 do
+  for mIndex := 0 to ARoutine.ChildCount - 1 do
   begin
-    if (ARoutine[Index].Kind = TSyntaxKind.RoutineDecl) and SameText(ARoutine[Index].Name, AName) then
+    if (ARoutine[mIndex].Kind = TSyntaxKind.RoutineDecl) and SameText(ARoutine[mIndex].Name, AName) then
     begin
       Exit(True);
     end;
@@ -380,17 +380,17 @@ end;
 function ShadowedBelow(const AText: string; ATree: TSyntaxTree; ANode, AStop: TSyntaxNode;
   const AName: string): Boolean;
 var
-  Routine: TSyntaxNode;
+  mRoutine: TSyntaxNode;
 begin
-  Routine := RoutineOf(ANode);
-  while (Routine <> nil) and (Routine <> AStop) do
+  mRoutine := RoutineOf(ANode);
+  while (mRoutine <> nil) and (mRoutine <> AStop) do
   begin
-    if (TRoutineBody.BodyOf(Routine) <> nil) and (LocalAt(TRoutineLocals.Collect(AText, ATree, Routine), AName,
+    if (TRoutineBody.BodyOf(mRoutine) <> nil) and (LocalAt(TRoutineLocals.Collect(AText, ATree, mRoutine), AName,
       ANode.StartOffset) >= 0) then
     begin
       Exit(True);
     end;
-    Routine := RoutineOf(Routine);
+    mRoutine := RoutineOf(mRoutine);
   end;
   Result := False;
 end;
@@ -398,43 +398,43 @@ end;
 /// <summary>Alle Knoten der Art AKind unter ANode.</summary>
 function NodesOf(ANode: TSyntaxNode; AKind: TSyntaxKind): TArray<TSyntaxNode>;
 var
-  List: TList<TSyntaxNode>;
+  mList: TList<TSyntaxNode>;
 begin
-  List := TList<TSyntaxNode>.Create;
+  mList := TList<TSyntaxNode>.Create;
   try
-    TRoutineLocals.CollectKind(ANode, AKind, List);
-    Result := List.ToArray;
+    TRoutineLocals.CollectKind(ANode, AKind, mList);
+    Result := mList.ToArray;
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 
 /// <summary>Klassenmethode (class procedure, class function)?</summary>
 function IsClassMethod(const ATokens: TArray<TPascalToken>; AMethod: TSyntaxNode): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := TRoutineBody.TokenAt(ATokens, AMethod.StartOffset);
-  Result := (Index <= High(ATokens)) and ATokens[Index].IsKeyword('class');
+  mIndex := TRoutineBody.TokenAt(ATokens, AMethod.StartOffset);
+  Result := (mIndex <= High(ATokens)) and ATokens[mIndex].IsKeyword('class');
 end;
 
 /// <summary>Ruft die Methode sich selbst auf (Bezeichner mit ihrem Namen im Rumpf)?</summary>
 function IsRecursive(AMethod: TSyntaxNode): Boolean;
 var
-  Node: TSyntaxNode;
-  Short: string;
+  mNode: TSyntaxNode;
+  mShort: string;
 begin
-  Short := TRoutineBody.ShortNameOf(AMethod.Name);
-  for Node in NodesOf(TRoutineBody.BodyOf(AMethod), TSyntaxKind.Identifier) do
+  mShort := TRoutineBody.ShortNameOf(AMethod.Name);
+  for mNode in NodesOf(TRoutineBody.BodyOf(AMethod), TSyntaxKind.Identifier) do
   begin
-    if SameText(Node.Name, Short) then
+    if SameText(mNode.Name, mShort) then
     begin
       Exit(True);
     end;
   end;
-  for Node in NodesOf(TRoutineBody.BodyOf(AMethod), TSyntaxKind.MemberAccess) do
+  for mNode in NodesOf(TRoutineBody.BodyOf(AMethod), TSyntaxKind.MemberAccess) do
   begin
-    if SameText(Node.Name, Short) and (Node[0].Kind = TSyntaxKind.Identifier) and SameText(Node[0].Name, 'Self') then
+    if SameText(mNode.Name, mShort) and (mNode[0].Kind = TSyntaxKind.Identifier) and SameText(mNode[0].Name, 'Self') then
     begin
       Exit(True);
     end;
@@ -447,7 +447,7 @@ function InitializerOf(ADecl: TSyntaxNode): TSyntaxNode;
 begin
   Result := nil;
   if (ADecl.Kind = TSyntaxKind.InlineVar) and (ADecl.ChildCount > 0) and
-    not (ADecl[ADecl.ChildCount - 1].Kind in TRoutineLocals.TypeKinds) then
+    not (ADecl[ADecl.ChildCount - 1].Kind in TRoutineLocals.cTypeKinds) then
   begin
     Result := ADecl[ADecl.ChildCount - 1];
   end;
@@ -853,7 +853,7 @@ end;
 
 function TPromotePlan.Analyze(const APosition: TTextPosition; out AReason: string): Boolean;
 var
-  Offset: Integer;
+  mOffset: Integer;
 begin
   AReason := '';
   if (Tree = nil) or (Tree.Root = nil) then
@@ -862,22 +862,22 @@ begin
   end;
   Lines := TLineTable.Build(Text);
   Tokens := Tree.Tokens;
-  Offset := Lines.OffsetAt(APosition);
-  Name := WordAt(Tokens, Offset);
+  mOffset := Lines.OffsetAt(APosition);
+  Name := WordAt(Tokens, mOffset);
   if Name = '' then
   begin
     Exit(Fail(cTexts[TEditingPromoteVariableText.NoName].Text, AReason));
   end;
   // Feld in der Klasse oder lokale Variable bzw. Feld in einer Methode.
-  if NodeAtOffset(Tree, Offset, TSyntaxKind.Field) <> nil then
+  if NodeAtOffset(Tree, mOffset, TSyntaxKind.Field) <> nil then
   begin
     Direction := TPromoteDirection.ToLocal;
-    Exit(AnalyzeField(Offset, AReason));
+    Exit(AnalyzeField(mOffset, AReason));
   end;
-  Result := AnalyzeLocal(Offset, AReason);
+  Result := AnalyzeLocal(mOffset, AReason);
   if not Result and (Direction = TPromoteDirection.ToLocal) then
   begin
-    Result := AnalyzeField(Offset, AReason);
+    Result := AnalyzeField(mOffset, AReason);
   end;
 end;
 
@@ -1316,57 +1316,57 @@ end;
 
 function TPromotePlan.WrittenFirst(const AResultText, ANewName: string; out AReason: string): Boolean;
 var
-  Check: TSyntaxTree;
-  Index: Integer;
-  Section, Routine: TSyntaxNode;
-  Graph: TControlFlowGraph;
-  Answer: TFlowAnswer;
+  mCheck: TSyntaxTree;
+  mIndex: Integer;
+  mSection, mRoutine: TSyntaxNode;
+  mGraph: TControlFlowGraph;
+  mAnswer: TFlowAnswer;
 begin
   // Am umgewandelten Text: Die lokale Variable muss auf jedem Weg geschrieben werden, bevor sie gelesen wird.
-  Check := TSyntaxTreeCache.Parse(AResultText);
+  mCheck := TSyntaxTreeCache.Parse(AResultText);
   try
-    Section := Check.Root.FindChild(TSyntaxKind.ImplementationSection);
-    Routine := nil;
-    if Section <> nil then
+    mSection := mCheck.Root.FindChild(TSyntaxKind.ImplementationSection);
+    mRoutine := nil;
+    if mSection <> nil then
     begin
-      for Index := 0 to Section.ChildCount - 1 do
+      for mIndex := 0 to mSection.ChildCount - 1 do
       begin
-        if (Section[Index].Kind = TSyntaxKind.RoutineDecl) and SameText(Section[Index].Name, Method.Name) then
+        if (mSection[mIndex].Kind = TSyntaxKind.RoutineDecl) and SameText(mSection[mIndex].Name, Method.Name) then
         begin
-          Routine := Section[Index];
+          mRoutine := mSection[mIndex];
         end;
       end;
     end;
-    if Routine = nil then
+    if mRoutine = nil then
     begin
       Exit(Fail(cTexts[TEditingPromoteVariableText.MethodNotFoundAfterThe].Text, AReason));
     end;
-    Graph := TControlFlowGraph.Build(Routine, TFlowSignatures.FromTree(Check.Root));
+    mGraph := TControlFlowGraph.Build(mRoutine, TFlowSignatures.FromTree(mCheck.Root));
     try
-      Answer := TFlowAnswer.Unknown;
-      if Graph.Complete then
+      mAnswer := TFlowAnswer.Unknown;
+      if mGraph.Complete then
       begin
-        Answer := Graph.MayReadBeforeWrite(ANewName);
+        mAnswer := mGraph.MayReadBeforeWrite(ANewName);
       end;
     finally
-      Graph.Free;
+      mGraph.Free;
     end;
-    if Answer <> TFlowAnswer.No then
+    if mAnswer <> TFlowAnswer.No then
     begin
       Exit(Fail(cTexts[TEditingPromoteVariableText.IsNotWrittenFirstOn].Fmt([Name, Method.Name]), AReason));
     end;
     Result := True;
   finally
-    Check.Free;
+    mCheck.Free;
   end;
 end;
 
 function TPromotePlan.Build(const ANewName: string; const AStyle: TFormatStyle; ACheckName: Boolean;
   out AResult: TPromoteResult; out AReason: string): Boolean;
 var
-  Edits: TArray<TTextEdit>;
-  Done: string;
-  Check: TSyntaxTree;
+  mEdits: TArray<TTextEdit>;
+  mDone: string;
+  mCheck: TSyntaxTree;
 begin
   AResult := Default(TPromoteResult);
   if not IsValidName(ANewName) then
@@ -1375,31 +1375,31 @@ begin
   end;
   if Direction = TPromoteDirection.ToField then
   begin
-    Result := BuildField(ANewName, AStyle, ACheckName, Edits, AReason);
+    Result := BuildField(ANewName, AStyle, ACheckName, mEdits, AReason);
   end
   else
   begin
-    Result := BuildLocal(ANewName, AStyle, ACheckName, Edits, AReason);
+    Result := BuildLocal(ANewName, AStyle, ACheckName, mEdits, AReason);
   end;
   if not Result then
   begin
     Exit;
   end;
-  Done := TChangeSignature.ApplyEdits(Text, Edits);
-  Check := TSyntaxTreeCache.Parse(Done);
+  mDone := TChangeSignature.ApplyEdits(Text, mEdits);
+  mCheck := TSyntaxTreeCache.Parse(mDone);
   try
-    if Length(Check.Diagnostics) > 0 then
+    if Length(mCheck.Diagnostics) > 0 then
     begin
       Exit(Fail(cTexts[TEditingPromoteVariableText.ResultDoesNotParse].Text, AReason));
     end;
   finally
-    Check.Free;
+    mCheck.Free;
   end;
-  if (Direction = TPromoteDirection.ToLocal) and not WrittenFirst(Done, ANewName, AReason) then
+  if (Direction = TPromoteDirection.ToLocal) and not WrittenFirst(mDone, ANewName, AReason) then
   begin
     Exit(False);
   end;
-  AResult.Edits := Edits;
+  AResult.Edits := mEdits;
   AResult.Warnings := Warnings;
   AResult.Places := Length(References) + 2;
 end;
@@ -1437,53 +1437,53 @@ end;
 class function TPromoteVariable.Target(const AText: string; ATree: TSyntaxTree; const APosition: TTextPosition;
   const ALookup: TPromoteLookup; out ATarget: TPromoteTarget; out AReason: string): Boolean;
 var
-  Plan: TPromotePlan;
-  Probe: TPromoteResult;
+  mPlan: TPromotePlan;
+  mProbe: TPromoteResult;
 begin
   ATarget := Default(TPromoteTarget);
-  Plan := TPromotePlan.Create;
+  mPlan := TPromotePlan.Create;
   try
-    Plan.Text := AText;
-    Plan.Tree := ATree;
-    Plan.Lookup := ALookup;
-    Result := Plan.Analyze(APosition, AReason);
+    mPlan.Text := AText;
+    mPlan.Tree := ATree;
+    mPlan.Lookup := ALookup;
+    Result := mPlan.Analyze(APosition, AReason);
     if not Result then
     begin
       Exit;
     end;
-    ATarget.Direction := Plan.Direction;
-    ATarget.Name := Plan.Name;
-    if Plan.Direction = TPromoteDirection.ToField then
+    ATarget.Direction := mPlan.Direction;
+    ATarget.Name := mPlan.Name;
+    if mPlan.Direction = TPromoteDirection.ToField then
     begin
-      ATarget.Suggested := FieldName(Plan.Name);
+      ATarget.Suggested := FieldName(mPlan.Name);
     end
     else
     begin
-      ATarget.Suggested := LocalName(Plan.Name);
+      ATarget.Suggested := LocalName(mPlan.Name);
       // Datenfluss mit einem Namen, den es sicher nicht gibt.
-      Result := Plan.Build(TRoutineBody.UniqueName(Plan.Tokens, 'AtlasPromoteProbe'), TFormatStyle.Default, False,
-        Probe, AReason);
+      Result := mPlan.Build(TRoutineBody.UniqueName(mPlan.Tokens, 'AtlasPromoteProbe'), TFormatStyle.Default, False,
+        mProbe, AReason);
     end;
   finally
-    Plan.Free;
+    mPlan.Free;
   end;
 end;
 
 class function TPromoteVariable.Execute(const AText: string; ATree: TSyntaxTree; const ARequest: TPromoteRequest;
   out AResult: TPromoteResult; out AReason: string): Boolean;
 var
-  Plan: TPromotePlan;
+  mPlan: TPromotePlan;
 begin
   AResult := Default(TPromoteResult);
-  Plan := TPromotePlan.Create;
+  mPlan := TPromotePlan.Create;
   try
-    Plan.Text := AText;
-    Plan.Tree := ATree;
-    Plan.Lookup := ARequest.Lookup;
-    Result := Plan.Analyze(ARequest.Position, AReason) and Plan.Build(Trim(ARequest.Name), ARequest.Style, True,
+    mPlan.Text := AText;
+    mPlan.Tree := ATree;
+    mPlan.Lookup := ARequest.Lookup;
+    Result := mPlan.Analyze(ARequest.Position, AReason) and mPlan.Build(Trim(ARequest.Name), ARequest.Style, True,
       AResult, AReason);
   finally
-    Plan.Free;
+    mPlan.Free;
   end;
 end;
 

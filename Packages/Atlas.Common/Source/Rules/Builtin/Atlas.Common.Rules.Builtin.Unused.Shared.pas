@@ -70,15 +70,15 @@ uses
 
 function MatchesWildcard(const AName, APattern: string): Boolean;
 var
-  Name, Pattern: string;
+  mName, mPattern: string;
 
   function Match(ANameIndex, APatternIndex: Integer): Boolean;
   begin
-    while APatternIndex <= Length(Pattern) do
+    while APatternIndex <= Length(mPattern) do
     begin
-      if Pattern[APatternIndex] = '*' then
+      if mPattern[APatternIndex] = '*' then
       begin
-        while ANameIndex <= Length(Name) + 1 do
+        while ANameIndex <= Length(mName) + 1 do
         begin
           if Match(ANameIndex, APatternIndex + 1) then
           begin
@@ -88,61 +88,61 @@ var
         end;
         Exit(False);
       end;
-      if (ANameIndex > Length(Name)) or ((Pattern[APatternIndex] <> '?') and
-        (Pattern[APatternIndex] <> Name[ANameIndex])) then
+      if (ANameIndex > Length(mName)) or ((mPattern[APatternIndex] <> '?') and
+        (mPattern[APatternIndex] <> mName[ANameIndex])) then
       begin
         Exit(False);
       end;
       Inc(ANameIndex);
       Inc(APatternIndex);
     end;
-    Result := ANameIndex > Length(Name);
+    Result := ANameIndex > Length(mName);
   end;
 
 begin
-  Name := LowerCase(AName);
-  Pattern := LowerCase(APattern);
+  mName := LowerCase(AName);
+  mPattern := LowerCase(APattern);
   Result := Match(1, 1);
 end;
 
 function IgnorePatterns(const AOptions: string): TArray<string>;
 var
-  Value, Items, Item: TJSONValue;
+  mValue, mItems, mItem: TJSONValue;
 begin
   Result := nil;
   if AOptions = '' then
   begin
     Exit;
   end;
-  Value := TJSONObject.ParseJSONValue(AOptions);
+  mValue := TJSONObject.ParseJSONValue(AOptions);
   try
-    if not (Value is TJSONObject) then
+    if not (mValue is TJSONObject) then
     begin
       Exit;
     end;
-    Items := TJSONObject(Value).GetValue('ignore');
-    if Items is TJSONArray then
+    mItems := TJSONObject(mValue).GetValue('ignore');
+    if mItems is TJSONArray then
     begin
-      for Item in TJSONArray(Items) do
+      for mItem in TJSONArray(mItems) do
       begin
-        if Item is TJSONString then
+        if mItem is TJSONString then
         begin
-          Result := Result + [Item.Value];
+          Result := Result + [mItem.Value];
         end;
       end;
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 function IsIgnored(const AName: string; const APatterns: TArray<string>): Boolean;
 var
-  Pattern: string;
+  mPattern: string;
 begin
-  for Pattern in APatterns do
+  for mPattern in APatterns do
   begin
-    if MatchesWildcard(AName, Pattern) then
+    if MatchesWildcard(AName, mPattern) then
     begin
       Exit(True);
     end;
@@ -152,14 +152,14 @@ end;
 
 function SplitNames(const ANames: string): TArray<string>;
 var
-  Name: string;
+  mName: string;
 begin
   Result := nil;
-  for Name in SplitString(ANames, ',') do
+  for mName in SplitString(ANames, ',') do
   begin
-    if Trim(Name) <> '' then
+    if Trim(mName) <> '' then
     begin
-      Result := Result + [Trim(Name)];
+      Result := Result + [Trim(mName)];
     end;
   end;
 end;
@@ -171,14 +171,14 @@ end;
 
 function MentionsName(ANode: TSyntaxNode; const AName: string): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
-  Name := AName;
+  mName := AName;
   // Iterativ (Bericht M1).
   Result := ANode.Search(
     function(AVisited: TSyntaxNode): TSyntaxSearchStep
     begin
-      if (AVisited.Kind = TSyntaxKind.Identifier) and SameText(AVisited.Name, Name) then
+      if (AVisited.Kind = TSyntaxKind.Identifier) and SameText(AVisited.Name, mName) then
       begin
         Exit(TSyntaxSearchStep.Found);
       end;
@@ -237,11 +237,11 @@ end;
 
 function NameRange(const AContext: TRuleContext; ANode: TSyntaxNode; const AName: string): TTextRange;
 var
-  Token: TPascalToken;
+  mToken: TPascalToken;
 begin
-  if FindToken(AContext, ANode.StartOffset, ANode.EndOffset, AName, Token) then
+  if FindToken(AContext, ANode.StartOffset, ANode.EndOffset, AName, mToken) then
   begin
-    Result := TTextRange.Create(Token.StartPos, Token.EndPos);
+    Result := TTextRange.Create(mToken.StartPos, mToken.EndPos);
   end
   else
   begin
@@ -251,33 +251,33 @@ end;
 
 procedure CollectInlineVars(ANode: TSyntaxNode; var AVars: TArray<TSyntaxNode>);
 var
-  Vars: TArray<TSyntaxNode>;
+  mVars: TArray<TSyntaxNode>;
 begin
   // Iterativ (Bericht M1); var-Parameter lassen sich nicht in der anonymen Methode verwenden.
-  Vars := AVars;
+  mVars := AVars;
   ANode.Walk(
     function(AVisited: TSyntaxNode): Boolean
     begin
       Result := not (AVisited.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod]);
       if Result and (AVisited.Kind = TSyntaxKind.InlineVar) then
       begin
-        Vars := Vars + [AVisited];
+        mVars := mVars + [AVisited];
       end;
     end);
-  AVars := Vars;
+  AVars := mVars;
 end;
 
 /// <summary>Rumpf (Klasse, Record, Objekt, Helfer) einer Typdeklaration, sonst nil.</summary>
 function TypeBodyOf(ADecl: TSyntaxNode): TSyntaxNode;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to ADecl.ChildCount - 1 do
+  for mIndex := 0 to ADecl.ChildCount - 1 do
   begin
-    if ADecl[Index].Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType,
+    if ADecl[mIndex].Kind in [TSyntaxKind.ClassType, TSyntaxKind.ObjectType, TSyntaxKind.RecordType,
       TSyntaxKind.HelperType] then
     begin
-      Exit(ADecl[Index]);
+      Exit(ADecl[mIndex]);
     end;
   end;
   Result := nil;
@@ -285,28 +285,28 @@ end;
 
 function FindTypeBody(ANode: TSyntaxNode; const ATypeName: string): TSyntaxNode;
 var
-  TypeName: string;
-  Decl: TSyntaxNode;
+  mTypeName: string;
+  mDecl: TSyntaxNode;
 begin
-  TypeName := ATypeName;
+  mTypeName := ATypeName;
   // Iterativ (Bericht M1).
-  Decl := ANode.Search(
+  mDecl := ANode.Search(
     function(AVisited: TSyntaxNode): TSyntaxSearchStep
     begin
-      if (AVisited.Kind = TSyntaxKind.TypeDecl) and SameText(AVisited.Name, TypeName) and
+      if (AVisited.Kind = TSyntaxKind.TypeDecl) and SameText(AVisited.Name, mTypeName) and
         (TypeBodyOf(AVisited) <> nil) then
       begin
         Exit(TSyntaxSearchStep.Found);
       end;
       Result := TSyntaxSearchStep.Descend;
     end);
-  if Decl = nil then
+  if mDecl = nil then
   begin
     Result := nil;
   end
   else
   begin
-    Result := TypeBodyOf(Decl);
+    Result := TypeBodyOf(mDecl);
   end;
 end;
 
@@ -346,13 +346,13 @@ end;
 
 function HasDirectiveIn(AHeader: TSyntaxNode; const ANames: array of string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if AHeader <> nil then
   begin
-    for Index := 0 to AHeader.ChildCount - 1 do
+    for mIndex := 0 to AHeader.ChildCount - 1 do
     begin
-      if (AHeader[Index].Kind = TSyntaxKind.Directive) and MatchText(AHeader[Index].Name, ANames) then
+      if (AHeader[mIndex].Kind = TSyntaxKind.Directive) and MatchText(AHeader[mIndex].Name, ANames) then
       begin
         Exit(True);
       end;

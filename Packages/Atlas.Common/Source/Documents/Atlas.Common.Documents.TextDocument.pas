@@ -22,7 +22,8 @@ type
     FText: string;
     /// <summary>Zeilenanfänge und -enden; immer mindestens eine Zeile.</summary>
     FLines: TLineTable;
-    /// <summary>Abgeleitete Daten (Derived), erst beim ersten Zugriff angelegt; geschützt über TMonitor(Self).</summary>
+    /// <summary>Abgeleitete Daten (Derived), erst beim ersten Zugriff angelegt; geschützt über
+    /// TMonitor(Self).</summary>
     FDerived: TDictionary<string, IInterface>;
   public
     constructor Create(const AUri, ALanguageId: string; AVersion: Integer; const AText: string);
@@ -144,47 +145,47 @@ end;
 
 function TTextDocument.ApplyChanges(const AChanges: TArray<TTextChange>; AVersion: Integer): ITextDocument;
 var
-  Intermediate: ITextDocument;
-  Change: TTextChange;
-  Text: string;
-  StartOffset: Integer;
-  EndOffset: Integer;
+  mIntermediate: ITextDocument;
+  mChange: TTextChange;
+  mText: string;
+  mStartOffset: Integer;
+  mEndOffset: Integer;
 begin
   // Jede Änderung bezieht sich auf den Stand nach der vorigen. Für die erste
   // dient dieses Objekt selbst als Zeilenindex.
-  Text := FText;
-  Intermediate := nil;
-  for Change in AChanges do
+  mText := FText;
+  mIntermediate := nil;
+  for mChange in AChanges do
   begin
-    if Change.HasRange then
+    if mChange.HasRange then
     begin
-      if Intermediate = nil then
+      if mIntermediate = nil then
       begin
-        StartOffset := OffsetAt(Change.Range.StartPos);
-        EndOffset := OffsetAt(Change.Range.EndPos);
+        mStartOffset := OffsetAt(mChange.Range.StartPos);
+        mEndOffset := OffsetAt(mChange.Range.EndPos);
       end
       else
       begin
-        StartOffset := Intermediate.OffsetAt(Change.Range.StartPos);
-        EndOffset := Intermediate.OffsetAt(Change.Range.EndPos);
+        mStartOffset := mIntermediate.OffsetAt(mChange.Range.StartPos);
+        mEndOffset := mIntermediate.OffsetAt(mChange.Range.EndPos);
       end;
-      if EndOffset < StartOffset then
+      if mEndOffset < mStartOffset then
       begin
         raise EDocumentError.CreateFmt(cTexts[TTextDocumentText.InvalidRangeInEndLies].Text, [FUri]);
       end;
-      Text := Copy(Text, 1, StartOffset) + Change.Text + Copy(Text, EndOffset + 1, MaxInt);
+      mText := Copy(mText, 1, mStartOffset) + mChange.Text + Copy(mText, mEndOffset + 1, MaxInt);
     end
     else
     begin
-      Text := Change.Text;
+      mText := mChange.Text;
     end;
-    Intermediate := TTextDocument.Create(FUri, FLanguageId, AVersion, Text);
+    mIntermediate := TTextDocument.Create(FUri, FLanguageId, AVersion, mText);
   end;
-  if Intermediate = nil then
+  if mIntermediate = nil then
   begin
-    Intermediate := TTextDocument.Create(FUri, FLanguageId, AVersion, Text);
+    mIntermediate := TTextDocument.Create(FUri, FLanguageId, AVersion, mText);
   end;
-  Result := Intermediate;
+  Result := mIntermediate;
 end;
 
 initialization

@@ -17,7 +17,7 @@ type
 
   TEditorConfig = class
   public const
-    FileName = '.editorconfig';
+    cFileName = '.editorconfig';
   public
     /// <summary>Wendet die Werte einer .editorconfig-Datei für AFileName auf ASettings an.
     /// ARoot meldet "root = true".</summary>
@@ -38,13 +38,13 @@ uses
 
 function MatchWildcard(const APattern, AText: string): Boolean;
 var
-  P, T, Star, Mark: Integer;
+  P, T, mStar, mMark: Integer;
 begin
   // * und ? ohne Groß-/Kleinschreibung.
   P := 1;
   T := 1;
-  Star := 0;
-  Mark := 0;
+  mStar := 0;
+  mMark := 0;
   while T <= Length(AText) do
   begin
     if (P <= Length(APattern)) and ((APattern[P] = '?') or SameText(APattern[P], AText[T])) then
@@ -54,15 +54,15 @@ begin
     end
     else if (P <= Length(APattern)) and (APattern[P] = '*') then
     begin
-      Star := P;
-      Mark := T;
+      mStar := P;
+      mMark := T;
       Inc(P);
     end
-    else if Star > 0 then
+    else if mStar > 0 then
     begin
-      P := Star + 1;
-      Inc(Mark);
-      T := Mark;
+      P := mStar + 1;
+      Inc(mMark);
+      T := mMark;
     end
     else
     begin
@@ -80,33 +80,33 @@ end;
 
 class function TEditorConfig.Matches(const APattern, AFileName: string): Boolean;
 var
-  Open, Close: Integer;
-  Prefix, Suffix: string;
-  Alternative: string;
-  Pattern: string;
+  mOpen, mClose: Integer;
+  mPrefix, mSuffix: string;
+  mAlternative: string;
+  mPattern: string;
 begin
-  Pattern := APattern;
+  mPattern := APattern;
   // Muster mit Pfad ("src/*.pas") gelten ab dem Ordner der .editorconfig; hier zählt nur der Name.
-  if LastDelimiter('/', Pattern) > 0 then
+  if LastDelimiter('/', mPattern) > 0 then
   begin
-    Pattern := Copy(Pattern, LastDelimiter('/', Pattern) + 1, MaxInt);
+    mPattern := Copy(mPattern, LastDelimiter('/', mPattern) + 1, MaxInt);
   end;
-  Open := Pos('{', Pattern);
-  Close := Pos('}', Pattern);
-  if (Open > 0) and (Close > Open) then
+  mOpen := Pos('{', mPattern);
+  mClose := Pos('}', mPattern);
+  if (mOpen > 0) and (mClose > mOpen) then
   begin
-    Prefix := Copy(Pattern, 1, Open - 1);
-    Suffix := Copy(Pattern, Close + 1, MaxInt);
-    for Alternative in Copy(Pattern, Open + 1, Close - Open - 1).Split([',']) do
+    mPrefix := Copy(mPattern, 1, mOpen - 1);
+    mSuffix := Copy(mPattern, mClose + 1, MaxInt);
+    for mAlternative in Copy(mPattern, mOpen + 1, mClose - mOpen - 1).Split([',']) do
     begin
-      if MatchWildcard(Prefix + Trim(Alternative) + Suffix, AFileName) then
+      if MatchWildcard(mPrefix + Trim(mAlternative) + mSuffix, AFileName) then
       begin
         Exit(True);
       end;
     end;
     Exit(False);
   end;
-  Result := MatchWildcard(Pattern, AFileName);
+  Result := MatchWildcard(mPattern, AFileName);
 end;
 
 type
@@ -257,42 +257,42 @@ end;
 class function TEditorConfig.ForFile(const AFileName: string; const AReadFile: TEditorConfigReadFile;
   const ABase: TFormatStyle): TFormatStyle;
 var
-  Directory, Parent, Text: string;
-  Texts: TList<string>;
-  Root: Boolean;
-  Index: Integer;
-  Probe: TFormatStyle;
+  mDirectory, mParent, mText: string;
+  mTexts: TList<string>;
+  mRoot: Boolean;
+  mIndex: Integer;
+  mProbe: TFormatStyle;
 begin
   Result := ABase;
-  Texts := TList<string>.Create;
+  mTexts := TList<string>.Create;
   try
-    Directory := TProjectPaths.DirectoryOf(AFileName);
-    while Directory <> '' do
+    mDirectory := TProjectPaths.DirectoryOf(AFileName);
+    while mDirectory <> '' do
     begin
-      if AReadFile(TProjectPaths.Combine(Directory, FileName), Text) then
+      if AReadFile(TProjectPaths.Combine(mDirectory, cFileName), mText) then
       begin
-        Texts.Add(Text);
-        Probe := ABase;
-        Apply(Text, AFileName, Probe, Root);
-        if Root then
+        mTexts.Add(mText);
+        mProbe := ABase;
+        Apply(mText, AFileName, mProbe, mRoot);
+        if mRoot then
         begin
           Break;
         end;
       end;
-      Parent := TProjectPaths.DirectoryOf(Directory);
-      if (Parent = '') or SameText(Parent, Directory) then
+      mParent := TProjectPaths.DirectoryOf(mDirectory);
+      if (mParent = '') or SameText(mParent, mDirectory) then
       begin
         Break;
       end;
-      Directory := Parent;
+      mDirectory := mParent;
     end;
     // Die fernste Datei zuerst, damit nähere sie überschreiben.
-    for Index := Texts.Count - 1 downto 0 do
+    for mIndex := mTexts.Count - 1 downto 0 do
     begin
-      Apply(Texts[Index], AFileName, Result, Root);
+      Apply(mTexts[mIndex], AFileName, Result, mRoot);
     end;
   finally
-    Texts.Free;
+    mTexts.Free;
   end;
 end;
 

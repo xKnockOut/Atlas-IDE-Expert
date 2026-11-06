@@ -108,12 +108,12 @@ begin
     Rank('destructor Destroy; override;', 'Destroy'));
   Assert.IsTrue(Rank('destructor Destroy; override;', 'Destroy') <
     Rank('procedure AfterConstruction; override;', 'AfterConstruction'));
-  Assert.AreEqual(TClassBodies.GroupAccessor * 100, Rank('function GetName: string;', 'GetName'));
-  Assert.AreEqual(TClassBodies.GroupAccessor * 100 + 1, Rank('procedure SetName(const AValue: string);',
+  Assert.AreEqual(TClassBodies.cGroupAccessor * 100, Rank('function GetName: string;', 'GetName'));
+  Assert.AreEqual(TClassBodies.cGroupAccessor * 100 + 1, Rank('procedure SetName(const AValue: string);',
     'SetName'), 'Setter direkt hinter seinem Getter');
-  Assert.AreEqual(TClassBodies.GroupAccessor * 100 + 2, Rank('function GetAlter: Integer;', 'GetAlter'));
-  Assert.AreEqual(TClassBodies.GroupOverride * 100, Rank('procedure Loaded; override;', 'Loaded'));
-  Assert.AreEqual(TClassBodies.GroupOther * 100, Rank('procedure Zeichnen;', 'Zeichnen'));
+  Assert.AreEqual(TClassBodies.cGroupAccessor * 100 + 2, Rank('function GetAlter: Integer;', 'GetAlter'));
+  Assert.AreEqual(TClassBodies.cGroupOverride * 100, Rank('procedure Loaded; override;', 'Loaded'));
+  Assert.AreEqual(TClassBodies.cGroupOther * 100, Rank('procedure Zeichnen;', 'Zeichnen'));
 end;
 
 procedure TClassBodiesTests.ReadsParameterNames;

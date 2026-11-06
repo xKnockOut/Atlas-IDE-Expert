@@ -88,46 +88,46 @@ end;
 /// <summary>Ungenutzte Units laut Index (#284); nil ohne Host, Index oder bei abgeschalteter Einstellung.</summary>
 function UnusedUnitsOf(const AContext: TSlashContext; const ATokens: TArray<TPascalToken>): TArray<string>;
 var
-  Uses_: TUsesContext;
+  mUses_: TUsesContext;
 begin
   Result := nil;
   if (AContext.Host = nil) or
-    SameText(AContext.Host.Setting(AContext.Uri, TSlashSettings.SortUsesRemoveUnused), 'false') then
+    SameText(AContext.Host.Setting(AContext.Uri, TSlashSettings.cSortUsesRemoveUnused), 'false') then
   begin
     Exit;
   end;
-  if AContext.Host.UsesContext(AContext.Uri, Uses_) and Assigned(Uses_.Info) then
+  if AContext.Host.UsesContext(AContext.Uri, mUses_) and Assigned(mUses_.Info) then
   begin
-    Result := TUsesActions.UnusedUnits(ATokens, Uses_.Info, Uses_.Keep);
+    Result := TUsesActions.UnusedUnits(ATokens, mUses_.Info, mUses_.Keep);
   end;
 end;
 
 function ExecuteSortUses(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  Text: string;
-  Tokens: TArray<TPascalToken>;
-  Options: TUsesRewrite;
-  Edits: TArray<TTextEdit>;
+  mSource: TCommandSource;
+  mText: string;
+  mTokens: TArray<TPascalToken>;
+  mOptions: TUsesRewrite;
+  mEdits: TArray<TTextEdit>;
 begin
   AEdits := nil;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    Text := Source.Text;
-    Tokens := TPascalLexer.Tokenize(Text);
+    mText := mSource.Text;
+    mTokens := TPascalLexer.Tokenize(mText);
     // Sortieren, doppelte und ungenutzte streichen in einem Durchgang.
-    Options := Default(TUsesRewrite);
-    Options.Dedupe := True;
-    Options.Sort := True;
-    Options.Drop := UnusedUnitsOf(AContext, Tokens);
-    if not TUsesClauses.Rewrite(Tokens, Text, Options, Source.LineBreak, Edits) then
+    mOptions := Default(TUsesRewrite);
+    mOptions.Dedupe := True;
+    mOptions.Sort := True;
+    mOptions.Drop := UnusedUnitsOf(AContext, mTokens);
+    if not TUsesClauses.Rewrite(mTokens, mText, mOptions, mSource.LineBreak, mEdits) then
     begin
-      Edits := nil;
+      mEdits := nil;
     end;
-    AEdits := Edits + [Source.RemoveCommand];
+    AEdits := mEdits + [mSource.RemoveCommand];
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -135,31 +135,31 @@ end;
 
 function ExecuteCleanUses(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  Text: string;
-  Tokens: TArray<TPascalToken>;
-  Uses_: TUsesContext;
-  Edits: TArray<TTextEdit>;
+  mSource: TCommandSource;
+  mText: string;
+  mTokens: TArray<TPascalToken>;
+  mUses_: TUsesContext;
+  mEdits: TArray<TTextEdit>;
 begin
   AEdits := nil;
-  if (AContext.Host = nil) or not AContext.Host.UsesContext(AContext.Uri, Uses_) or not Assigned(Uses_.Info) then
+  if (AContext.Host = nil) or not AContext.Host.UsesContext(AContext.Uri, mUses_) or not Assigned(mUses_.Info) then
   begin
     Exit(Fail(CleanUsesNoIndexHint, AReason));
   end;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    Text := Source.Text;
-    Tokens := TPascalLexer.Tokenize(Text);
+    mText := mSource.Text;
+    mTokens := TPascalLexer.Tokenize(mText);
     // Nur streichen, nicht sortieren: Die gewählte Reihenfolge bleibt.
-    if not TUsesActions.RemoveUnits(Tokens, Text, TUsesActions.UnusedUnits(Tokens, Uses_.Info, Uses_.Keep),
-      Source.LineBreak, Edits) then
+    if not TUsesActions.RemoveUnits(mTokens, mText, TUsesActions.UnusedUnits(mTokens, mUses_.Info, mUses_.Keep),
+      mSource.LineBreak, mEdits) then
     begin
-      Edits := nil;
+      mEdits := nil;
     end;
-    AEdits := Edits + [Source.RemoveCommand];
+    AEdits := mEdits + [mSource.RemoveCommand];
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -167,12 +167,12 @@ end;
 
 function IsRuleId(const AId: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := AId <> '';
-  for Index := 1 to Length(AId) do
+  for mIndex := 1 to Length(AId) do
   begin
-    if not CharInSet(AId[Index], ['a'..'z', 'A'..'Z', '0'..'9', '-', '_', '*']) then
+    if not CharInSet(AId[mIndex], ['a'..'z', 'A'..'Z', '0'..'9', '-', '_', '*']) then
     begin
       Exit(False);
     end;
@@ -181,44 +181,44 @@ end;
 
 function ExecuteIgnore(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  Id, Reason, Comment: string;
-  Space: Integer;
-  Ids: TArray<string>;
+  mSource: TCommandSource;
+  mId, mReason, mComment: string;
+  mSpace: Integer;
+  mIds: TArray<string>;
 begin
   AEdits := nil;
-  Space := Pos(' ', AContext.Arguments);
-  if Space = 0 then
+  mSpace := Pos(' ', AContext.Arguments);
+  if mSpace = 0 then
   begin
-    Space := Length(AContext.Arguments) + 1;
+    mSpace := Length(AContext.Arguments) + 1;
   end;
-  Id := LowerCase(Copy(AContext.Arguments, 1, Space - 1));
-  Reason := Trim(Copy(AContext.Arguments, Space + 1, MaxInt));
-  if not IsRuleId(Id) then
+  mId := LowerCase(Copy(AContext.Arguments, 1, mSpace - 1));
+  mReason := Trim(Copy(AContext.Arguments, mSpace + 1, MaxInt));
+  if not IsRuleId(mId) then
   begin
     Exit(Fail(cTexts[TMaintenanceCommandsText.ExpectedIsIgnoreRuleReason].Text, AReason));
   end;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    if (Source.Line >= High(Source.Lines)) or (Trim(Source.Lines[Source.Line + 1]) = '') then
+    if (mSource.Line >= High(mSource.Lines)) or (Trim(mSource.Lines[mSource.Line + 1]) = '') then
     begin
       Exit(Fail(cTexts[TMaintenanceCommandsText.BelowIgnoreThereIsNo].Text, AReason));
     end;
     // Nur Regeln, die dort treffen; Muster mit * prüfen wir nicht.
-    if (AContext.Host <> nil) and (Pos('*', Id) = 0) and
-      AContext.Host.RuleIdsAt(AContext.Uri, Source.Text, Source.Line + 1, Ids) and not MatchText(Id, Ids) then
+    if (AContext.Host <> nil) and (Pos('*', mId) = 0) and
+      AContext.Host.RuleIdsAt(AContext.Uri, mSource.Text, mSource.Line + 1, mIds) and not MatchText(mId, mIds) then
     begin
-      Exit(Fail(Format(IgnoreNoHitHint, [Id]), AReason));
+      Exit(Fail(Format(IgnoreNoHitHint, [mId]), AReason));
     end;
-    Comment := '// lsp-ignore: ' + Id;
-    if Reason <> '' then
+    mComment := '// lsp-ignore: ' + mId;
+    if mReason <> '' then
     begin
-      Comment := Comment + ' -- ' + Reason;
+      mComment := mComment + ' -- ' + mReason;
     end;
-    AEdits := [Source.ReplaceWithIndentedLines([Comment])];
+    AEdits := [mSource.ReplaceWithIndentedLines([mComment])];
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -227,24 +227,24 @@ end;
 /// <summary>Name für -o ohne Angabe: Einstellung todoOwner, git config user.name, dann der Anmeldename.</summary>
 function DefaultOwner(const AContext: TSlashContext): string;
 var
-  Host: ISlashHost;
-  Folder: string;
+  mHost: ISlashHost;
+  mFolder: string;
 begin
-  Host := AContext.Host;
-  Result := Trim(Host.Setting(AContext.Uri, TSlashSettings.TodoOwner));
+  mHost := AContext.Host;
+  Result := Trim(mHost.Setting(AContext.Uri, TSlashSettings.cTodoOwner));
   if Result <> '' then
   begin
     Exit;
   end;
-  Folder := '';
+  mFolder := '';
   if AContext.Uri <> '' then
   begin
-    Folder := ExtractFileDir(TDocumentUris.ToPath(AContext.Uri));
+    mFolder := ExtractFileDir(TDocumentUris.ToPath(AContext.Uri));
   end;
-  Result := TGitUser.NameFor(Folder, TGitUser.HomeFolder,
+  Result := TGitUser.NameFor(mFolder, TGitUser.HomeFolder,
     function(const AFileName: string; out AText: string): Boolean
     begin
-      Result := Host.ReadFile(AFileName, AText);
+      Result := mHost.ReadFile(AFileName, AText);
     end);
   if Result = '' then
   begin
@@ -260,75 +260,75 @@ end;
 /// -c ohne Kategorie lässt die Kategorie weg (AHasCategory).</summary>
 procedure SplitTodo(const AArguments: string; out AOwner, ACategory, AText: string; out AHasCategory: Boolean);
 var
-  Rest, Word: string;
-  Space: Integer;
+  mRest, mWord: string;
+  mSpace: Integer;
 begin
   AOwner := '';
   ACategory := '';
   AHasCategory := False;
-  Rest := Trim(AArguments);
-  while (Length(Rest) >= 2) and (Rest[1] = '-') and CharInSet(Rest[2], ['o', 'O', 'c', 'C']) do
+  mRest := Trim(AArguments);
+  while (Length(mRest) >= 2) and (mRest[1] = '-') and CharInSet(mRest[2], ['o', 'O', 'c', 'C']) do
   begin
-    Space := Pos(' ', Rest);
-    if Space = 0 then
+    mSpace := Pos(' ', mRest);
+    if mSpace = 0 then
     begin
-      Space := Length(Rest) + 1;
+      mSpace := Length(mRest) + 1;
     end;
-    Word := Copy(Rest, 3, Space - 3);
-    if CharInSet(Rest[2], ['o', 'O']) then
+    mWord := Copy(mRest, 3, mSpace - 3);
+    if CharInSet(mRest[2], ['o', 'O']) then
     begin
-      AOwner := Word;
+      AOwner := mWord;
     end
     else
     begin
-      ACategory := Word;
+      ACategory := mWord;
       AHasCategory := True;
     end;
-    Rest := Trim(Copy(Rest, Space + 1, MaxInt));
+    mRest := Trim(Copy(mRest, mSpace + 1, MaxInt));
   end;
-  AText := Rest;
+  AText := mRest;
 end;
 
 function ExecuteTodo(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  Owner, Category, Text, Comment: string;
-  HasCategory: Boolean;
+  mSource: TCommandSource;
+  mOwner, mCategory, mText, mComment: string;
+  mHasCategory: Boolean;
 begin
   AEdits := nil;
-  SplitTodo(AContext.Arguments, Owner, Category, Text, HasCategory);
-  if Text = '' then
+  SplitTodo(AContext.Arguments, mOwner, mCategory, mText, mHasCategory);
+  if mText = '' then
   begin
     Exit(Fail(cTexts[TMaintenanceCommandsText.ExpectedIsTodoText].Text, AReason));
   end;
   // Ohne Host (Prüfung stehen gebliebener Zeilen) nur die Angaben aus der Zeile.
   if AContext.Host <> nil then
   begin
-    if Owner = '' then
+    if mOwner = '' then
     begin
-      Owner := DefaultOwner(AContext);
+      mOwner := DefaultOwner(AContext);
     end;
-    if not HasCategory then
+    if not mHasCategory then
     begin
-      Category := Trim(AContext.Host.Setting(AContext.Uri, TSlashSettings.TodoCategory));
+      mCategory := Trim(AContext.Host.Setting(AContext.Uri, TSlashSettings.cTodoCategory));
     end;
   end;
-  Comment := '// TODO';
-  if Owner <> '' then
+  mComment := '// TODO';
+  if mOwner <> '' then
   begin
-    Comment := Comment + ' -o' + Owner;
+    mComment := mComment + ' -o' + mOwner;
   end;
-  if Category <> '' then
+  if mCategory <> '' then
   begin
-    Comment := Comment + ' -c' + Category;
+    mComment := mComment + ' -c' + mCategory;
   end;
-  Comment := Comment + ' : ' + Text;
-  Source := TCommandSource.Create(AContext);
+  mComment := mComment + ' : ' + mText;
+  mSource := TCommandSource.Create(AContext);
   try
-    AEdits := [Source.ReplaceWithIndentedLines([Comment])];
+    AEdits := [mSource.ReplaceWithIndentedLines([mComment])];
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -336,15 +336,15 @@ end;
 
 function IsRoutineStart(const ALine: string): Boolean;
 var
-  Line: string;
+  mLine: string;
 begin
-  Line := LowerCase(Trim(ALine));
-  if StartsStr('class ', Line) then
+  mLine := LowerCase(Trim(ALine));
+  if StartsStr('class ', mLine) then
   begin
-    Line := Trim(Copy(Line, 7, MaxInt));
+    mLine := Trim(Copy(mLine, 7, MaxInt));
   end;
-  Result := StartsStr('procedure ', Line) or StartsStr('function ', Line) or StartsStr('constructor ', Line) or
-    StartsStr('destructor ', Line) or StartsStr('operator ', Line);
+  Result := StartsStr('procedure ', mLine) or StartsStr('function ', mLine) or StartsStr('constructor ', mLine) or
+    StartsStr('destructor ', mLine) or StartsStr('operator ', mLine);
 end;
 
 /// <summary>Signatur des Routinenkopfs ab Zeile AFirst; der Kopf kann über mehrere Zeilen gehen.</summary>
@@ -390,25 +390,25 @@ end;
 
 function ExecuteDoc(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  Next: Integer;
+  mSource: TCommandSource;
+  mNext: Integer;
 begin
   AEdits := nil;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    Next := Source.Line + 1;
-    while (Next <= High(Source.Lines)) and (Trim(Source.Lines[Next]) = '') do
+    mNext := mSource.Line + 1;
+    while (mNext <= High(mSource.Lines)) and (Trim(mSource.Lines[mNext]) = '') do
     begin
-      Inc(Next);
+      Inc(mNext);
     end;
-    if (Next > High(Source.Lines)) or not IsRoutineStart(Source.Lines[Next]) then
+    if (mNext > High(mSource.Lines)) or not IsRoutineStart(mSource.Lines[mNext]) then
     begin
       Exit(Fail(cTexts[TMaintenanceCommandsText.DocOnlyAppliesAboveA].Text, AReason));
     end;
-    AEdits := [Source.ReplaceWithIndentedLines(DocCommentLines(RoutineSignatureFrom(Source.Lines, Next)))];
+    AEdits := [mSource.ReplaceWithIndentedLines(DocCommentLines(RoutineSignatureFrom(mSource.Lines, mNext)))];
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -416,31 +416,31 @@ end;
 
 function ExecuteLog(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  Routine: TSyntaxNode;
-  Name: string;
+  mSource: TCommandSource;
+  mRoutine: TSyntaxNode;
+  mName: string;
 begin
   AEdits := nil;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    Routine := Source.RoutineAt;
-    if Routine = nil then
+    mRoutine := mSource.RoutineAt;
+    if mRoutine = nil then
     begin
       Exit(Fail(cTexts[TMaintenanceCommandsText.LogOnlyAppliesInThe].Text, AReason));
     end;
-    Name := Routine.Name;
-    if Source.Tree.Root.Name <> '' then
+    mName := mRoutine.Name;
+    if mSource.Tree.Root.Name <> '' then
     begin
-      Name := Source.Tree.Root.Name + '.' + Name;
+      mName := mSource.Tree.Root.Name + '.' + mName;
     end;
     if AContext.Arguments <> '' then
     begin
-      Name := Name + ': ' + AContext.Arguments;
+      mName := mName + ': ' + AContext.Arguments;
     end;
-    AEdits := [Source.ReplaceWithIndentedLines([LogStatement(AContext, QuotedStr(Name))])];
+    AEdits := [mSource.ReplaceWithIndentedLines([LogStatement(AContext, QuotedStr(mName))])];
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 

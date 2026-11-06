@@ -26,7 +26,7 @@ type
 
   TLspRecursion = class
   public const
-    Command = 'atlas.server.recursion';
+    cCommand = 'atlas.server.recursion';
   private
     FReadText: TLspRecursionReadText;
   public
@@ -54,61 +54,61 @@ end;
 
 class function TLspRecursion.Json(ATree: TSyntaxTree; ADepth: Integer): TJSONObject;
 var
-  Calls, Chain: TJSONArray;
-  Item, Step: TJSONObject;
-  Call: TRecursiveCall;
-  Link: TRecursionStep;
+  mCalls, mChain: TJSONArray;
+  mItem, mStep: TJSONObject;
+  mCall: TRecursiveCall;
+  mLink: TRecursionStep;
 begin
   Result := TJSONObject.Create;
-  Calls := TJSONArray.Create;
-  Result.AddPair('calls', Calls);
-  for Call in TRecursionAnalysis.Calls(ATree, ADepth) do
+  mCalls := TJSONArray.Create;
+  Result.AddPair('calls', mCalls);
+  for mCall in TRecursionAnalysis.Calls(ATree, ADepth) do
   begin
-    Item := TJSONObject.Create;
-    Calls.AddElement(Item);
-    Item.AddPair('line', TJSONNumber.Create(Call.Range.StartPos.Line));
-    Item.AddPair('character', TJSONNumber.Create(Call.Range.StartPos.Character));
-    Item.AddPair('endCharacter', TJSONNumber.Create(Call.Range.EndPos.Character));
-    Item.AddPair('text', TRecursionAnalysis.ChainText(Call));
-    Chain := TJSONArray.Create;
-    Item.AddPair('chain', Chain);
-    for Link in Call.Chain do
+    mItem := TJSONObject.Create;
+    mCalls.AddElement(mItem);
+    mItem.AddPair('line', TJSONNumber.Create(mCall.Range.StartPos.Line));
+    mItem.AddPair('character', TJSONNumber.Create(mCall.Range.StartPos.Character));
+    mItem.AddPair('endCharacter', TJSONNumber.Create(mCall.Range.EndPos.Character));
+    mItem.AddPair('text', TRecursionAnalysis.ChainText(mCall));
+    mChain := TJSONArray.Create;
+    mItem.AddPair('chain', mChain);
+    for mLink in mCall.Chain do
     begin
-      Step := TJSONObject.Create;
-      Chain.AddElement(Step);
-      Step.AddPair('name', Link.Name);
-      Step.AddPair('line', TJSONNumber.Create(Link.Range.StartPos.Line));
-      Step.AddPair('character', TJSONNumber.Create(Link.Range.StartPos.Character));
+      mStep := TJSONObject.Create;
+      mChain.AddElement(mStep);
+      mStep.AddPair('name', mLink.Name);
+      mStep.AddPair('line', TJSONNumber.Create(mLink.Range.StartPos.Line));
+      mStep.AddPair('character', TJSONNumber.Create(mLink.Range.StartPos.Character));
     end;
   end;
 end;
 
 function TLspRecursion.Execute(const AArguments: TJSONArray): TJSONValue;
 var
-  FileName, Text: string;
-  Depth: Integer;
-  Tree: TSyntaxTree;
+  mFileName, mText: string;
+  mDepth: Integer;
+  mTree: TSyntaxTree;
 begin
-  FileName := '';
-  Depth := TRecursionAnalysis.DefaultDepth;
+  mFileName := '';
+  mDepth := TRecursionAnalysis.cDefaultDepth;
   if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
   begin
-    FileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
+    mFileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
   end;
   if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONNumber) then
   begin
-    Depth := TJSONNumber(AArguments.Items[1]).AsInt;
+    mDepth := TJSONNumber(AArguments.Items[1]).AsInt;
   end;
-  if (FileName = '') or not Assigned(FReadText) or not FReadText(FileName, Text) then
+  if (mFileName = '') or not Assigned(FReadText) or not FReadText(mFileName, mText) then
   begin
     Result := TJSONObject.Create(TJSONPair.Create('calls', TJSONArray.Create));
     Exit;
   end;
-  Tree := TSyntaxTreeCache.Parse(Text);
+  mTree := TSyntaxTreeCache.Parse(mText);
   try
-    Result := Json(Tree, Depth);
+    Result := Json(mTree, mDepth);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 

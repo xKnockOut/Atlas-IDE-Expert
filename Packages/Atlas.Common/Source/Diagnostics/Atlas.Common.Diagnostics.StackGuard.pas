@@ -45,18 +45,18 @@ end;
 
 class procedure TStackGuard.AfterError(const AError: Exception);
 var
-  Action: TStackGuardRestore;
+  mAction: TStackGuardRestore;
 begin
   if not IsOverflow(AError) then
   begin
     Exit;
   end;
-  Action := FRestore;
-  if not Assigned(Action) then
+  mAction := FRestore;
+  if not Assigned(mAction) then
   begin
     Exit;
   end;
-  Action();
+  mAction();
   AtomicIncrement(FRestored);
 end;
 

@@ -41,11 +41,11 @@ type
 
   TLspSlashMenu = class
   public const
-    MenuCommand = 'atlas.server.slashMenu';
-    ChoicesCommand = 'atlas.server.slashChoices';
-    RunCommand = 'atlas.server.slashRun';
+    cMenuCommand = 'atlas.server.slashMenu';
+    cChoicesCommand = 'atlas.server.slashChoices';
+    cRunCommand = 'atlas.server.slashRun';
     /// <summary>Menübefehl „Interface implementieren“ (#466) ohne Schnellbefehl.</summary>
-    ImplementName = 'implement';
+    cImplementName = 'implement';
   private
     FStore: IDocumentStore;
     FSlashCommandsFor: TSlashCommandsProvider;
@@ -120,25 +120,25 @@ const
 function ReadSpot(const AStore: IDocumentStore; const AArguments: TJSONArray; ACount: Integer; out AUri: string;
   out ASpot: TSlashSpot): ITextDocument;
 var
-  Position: TTextPosition;
-  EndLine: Integer;
+  mPosition: TTextPosition;
+  mEndLine: Integer;
 begin
   if (AArguments = nil) or (AArguments.Count < ACount) or not (AArguments.Items[0] is TJSONString) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TLspSlashMenuText.URIPositionAndLastLine].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TLspSlashMenuText.URIPositionAndLastLine].Text);
   end;
   AUri := AArguments.Items[0].Value;
   if not AStore.TryGet(AUri, Result) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TLspSlashMenuText.DocumentIsNotOpen].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TLspSlashMenuText.DocumentIsNotOpen].Text);
   end;
-  Position := TLspPositions.ReadPosition(AArguments.Items[1]);
-  EndLine := -1;
+  mPosition := TLspPositions.ReadPosition(AArguments.Items[1]);
+  mEndLine := -1;
   if AArguments.Items[2] is TJSONNumber then
   begin
-    EndLine := TJSONNumber(AArguments.Items[2]).AsInt;
+    mEndLine := TJSONNumber(AArguments.Items[2]).AsInt;
   end;
-  ASpot := TSlashSpot.Create(Position.Line, Position.Character, EndLine);
+  ASpot := TSlashSpot.Create(mPosition.Line, mPosition.Character, mEndLine);
 end;
 
 function StringAt(const AArguments: TJSONArray; AIndex: Integer): string;
@@ -152,12 +152,12 @@ end;
 
 function Contains(const AList: TArray<string>; const AName: string): Boolean;
 var
-  Item: string;
+  mItem: string;
 begin
   Result := False;
-  for Item in AList do
+  for mItem in AList do
   begin
-    if SameText(Trim(Item), Trim(AName)) then
+    if SameText(Trim(mItem), Trim(AName)) then
     begin
       Exit(True);
     end;
@@ -166,12 +166,12 @@ end;
 
 function NamesToJson(const ANames: TArray<string>): TJSONArray;
 var
-  Name: string;
+  mName: string;
 begin
   Result := TJSONArray.Create;
-  for Name in ANames do
+  for mName in ANames do
   begin
-    Result.Add(Name);
+    Result.Add(mName);
   end;
 end;
 
@@ -196,13 +196,13 @@ end;
 function TLspSlashMenu.MissingInterfaceMethods(const AUri, AText: string; const ASpot: TSlashSpot;
   out AItems: TArray<TCompletionItem>; out ACommandLine: Integer): Boolean;
 var
-  Virtual, Line: string;
-  WrapUntil: Integer;
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
-  Settings: TCompletionSettings;
-  Batch: Boolean;
-  Request: TCompletionRequest;
+  mVirtual, mLine: string;
+  mWrapUntil: Integer;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mSettings: TCompletionSettings;
+  mBatch: Boolean;
+  mRequest: TCompletionRequest;
 begin
   AItems := nil;
   ACommandLine := -1;
@@ -212,35 +212,35 @@ begin
     Exit;
   end;
   // Gedachte leere Zeile wie für einen Schnellbefehl; dort bietet die Vervollständigung alle fehlenden Methoden an.
-  if not TSlashMenu.Prepare(AText, TSlashSpot.Create(ASpot.Line, ASpot.Character, -1), '', Virtual, ACommandLine,
-    WrapUntil) then
+  if not TSlashMenu.Prepare(AText, TSlashSpot.Create(ASpot.Line, ASpot.Character, -1), '', mVirtual, ACommandLine,
+    mWrapUntil) then
   begin
     Exit;
   end;
-  Line := TTextLines.SplitLines(Virtual)[ACommandLine];
-  Settings := TCompletionSettings.Default;
+  mLine := TTextLines.SplitLines(mVirtual)[ACommandLine];
+  mSettings := TCompletionSettings.Default;
   if Assigned(FCompletion.Hooks.SettingsFor) then
   begin
-    Settings := FCompletion.Hooks.SettingsFor(AUri);
+    mSettings := FCompletion.Hooks.SettingsFor(AUri);
   end;
   // Über den Cache: TSyntaxTreeCacheTests.NoParserCallsOutsideCache.
-  Tree := TSyntaxTreeCache.Parse(Virtual);
-  Resolver := nil;
-  Request := nil;
+  mTree := TSyntaxTreeCache.Parse(mVirtual);
+  mResolver := nil;
+  mRequest := nil;
   try
-    Resolver := TNameResolver.Create(FIndex);
-    Resolver.Namespaces := FCompletion.Hooks.Namespaces;
-    Request := TCompletionRequest.Create(Virtual, TDocumentUris.ToPath(AUri),
-      TTextPosition.Create(ACommandLine, Length(Line)));
-    Request.Tree := Tree;
-    Request.Resolver := Resolver;
-    Request.ReadText := FCompletion.Hooks.ReadText;
-    Request.Settings := Settings;
-    Result := TCompletionDeclarations.InterfaceItems(Request, AItems, Batch) and Batch;
+    mResolver := TNameResolver.Create(FIndex);
+    mResolver.Namespaces := FCompletion.Hooks.Namespaces;
+    mRequest := TCompletionRequest.Create(mVirtual, TDocumentUris.ToPath(AUri),
+      TTextPosition.Create(ACommandLine, Length(mLine)));
+    mRequest.Tree := mTree;
+    mRequest.Resolver := mResolver;
+    mRequest.ReadText := FCompletion.Hooks.ReadText;
+    mRequest.Settings := mSettings;
+    Result := TCompletionDeclarations.InterfaceItems(mRequest, AItems, mBatch) and mBatch;
   finally
-    Request.Free;
-    Resolver.Free;
-    Tree.Free;
+    mRequest.Free;
+    mResolver.Free;
+    mTree.Free;
   end;
   if not Result then
   begin
@@ -251,102 +251,103 @@ end;
 function TLspSlashMenu.RunImplement(const AUri, AText: string; const ASpot: TSlashSpot; const AArguments: string;
   out AEdits: TArray<TRuleEdit>; out AReason: string): Boolean;
 var
-  Items: TArray<TCompletionItem>;
-  Item: TCompletionItem;
-  CommandLine: Integer;
-  Chosen: TArray<string>;
-  Edits: TArray<TRuleEdit>;
-  LineBreak: string;
+  mItems: TArray<TCompletionItem>;
+  mItem: TCompletionItem;
+  mCommandLine: Integer;
+  mChosen: TArray<string>;
+  mEdits: TArray<TRuleEdit>;
+  mLineBreak: string;
 begin
   AEdits := nil;
   AReason := '';
-  if not MissingInterfaceMethods(AUri, AText, ASpot, Items, CommandLine) then
+  if not MissingInterfaceMethods(AUri, AText, ASpot, mItems, mCommandLine) then
   begin
     AReason := cTexts[TLspSlashMenuText.NoMethodsOfAnInterface].Text;
     Exit(False);
   end;
-  Chosen := AArguments.Split([',', ';'], TStringSplitOptions.ExcludeEmpty);
-  Edits := nil;
-  for Item in Items do
+  mChosen := AArguments.Split([',', ';'], TStringSplitOptions.ExcludeEmpty);
+  mEdits := nil;
+  for mItem in mItems do
   begin
-    if (Length(Chosen) = 0) or Contains(Chosen, Item.Container + '.' + Item.Name) or Contains(Chosen, Item.Name) then
+    if (Length(mChosen) = 0) or Contains(mChosen, mItem.Container + '.' + mItem.Name) or
+      Contains(mChosen, mItem.Name) then
     begin
-      Edits := Edits + Item.AdditionalEdits;
+      mEdits := mEdits + mItem.AdditionalEdits;
     end;
   end;
-  if Length(Edits) = 0 then
+  if Length(mEdits) = 0 then
   begin
     AReason := cTexts[TLspSlashMenuText.NoneOfTheChosenMethods].Text + AArguments;
     Exit(False);
   end;
-  LineBreak := TTextLines.LineBreakOf(AText);
-  AEdits := TSlashMenu.MapEdits(TInterfaceStubs.Merge(Edits), CommandLine, '', LineBreak);
+  mLineBreak := TTextLines.LineBreakOf(AText);
+  AEdits := TSlashMenu.MapEdits(TInterfaceStubs.Merge(mEdits), mCommandLine, '', mLineBreak);
   Result := True;
 end;
 
 function TLspSlashMenu.ExecuteMenu(const AArguments: TJSONArray): TJSONValue;
 var
-  Uri: string;
-  Spot: TSlashSpot;
-  Document: ITextDocument;
-  Disabled: TArray<string>;
-  IsEnabled: Boolean;
-  Places: TSlashPlaces;
-  Entry: TSlashMenuEntry;
-  Command: TSlashCommand;
-  Commands: TJSONArray;
-  Item: TJSONObject;
-  Missing: TArray<TCompletionItem>;
-  CommandLine: Integer;
+  mUri: string;
+  mSpot: TSlashSpot;
+  mDocument: ITextDocument;
+  mDisabled: TArray<string>;
+  mIsEnabled: Boolean;
+  mPlaces: TSlashPlaces;
+  mEntry: TSlashMenuEntry;
+  mCommand: TSlashCommand;
+  mCommands: TJSONArray;
+  mItem: TJSONObject;
+  mMissing: TArray<TCompletionItem>;
+  mCommandLine: Integer;
 
   procedure AddImplement;
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('name', ImplementName);
-    Item.AddPair('summary', cTexts[TLspSlashMenuText.CreateMissingMethodsOfThe].Text);
-    Item.AddPair('example', '');
-    Item.AddPair('group', TSlashMenu.GroupName(TSlashGroup.Generate));
-    Item.AddPair('argument', TSlashMenu.ArgumentName(TSlashArgument.Optional));
-    Item.AddPair('choices', TJSONBool.Create(True));
-    Item.AddPair('multi', TJSONBool.Create(True));
-    Item.AddPair('separator', ', ');
-    Commands.AddElement(Item);
+    mItem := TJSONObject.Create;
+    mItem.AddPair('name', cImplementName);
+    mItem.AddPair('summary', cTexts[TLspSlashMenuText.CreateMissingMethodsOfThe].Text);
+    mItem.AddPair('example', '');
+    mItem.AddPair('group', TSlashMenu.GroupName(TSlashGroup.Generate));
+    mItem.AddPair('argument', TSlashMenu.ArgumentName(TSlashArgument.Optional));
+    mItem.AddPair('choices', TJSONBool.Create(True));
+    mItem.AddPair('multi', TJSONBool.Create(True));
+    mItem.AddPair('separator', ', ');
+    mCommands.AddElement(mItem);
   end;
 
 begin
-  Document := ReadSpot(FStore, AArguments, 3, Uri, Spot);
-  IsEnabled := Enabled(Uri, Disabled);
-  Places := TSlashMenu.PlacesAt(Document.Text, Spot);
+  mDocument := ReadSpot(FStore, AArguments, 3, mUri, mSpot);
+  mIsEnabled := Enabled(mUri, mDisabled);
+  mPlaces := TSlashMenu.PlacesAt(mDocument.Text, mSpot);
   Result := TJSONObject.Create;
   try
-    TJSONObject(Result).AddPair('enabled', TJSONBool.Create(IsEnabled));
-    TJSONObject(Result).AddPair('places', NamesToJson(TSlashMenu.PlaceNames(Places)));
-    Commands := TJSONArray.Create;
-    TJSONObject(Result).AddPair('commands', Commands);
-    if not IsEnabled then
+    TJSONObject(Result).AddPair('enabled', TJSONBool.Create(mIsEnabled));
+    TJSONObject(Result).AddPair('places', NamesToJson(TSlashMenu.PlaceNames(mPlaces)));
+    mCommands := TJSONArray.Create;
+    TJSONObject(Result).AddPair('commands', mCommands);
+    if not mIsEnabled then
     begin
       Exit;
     end;
-    for Entry in TSlashMenu.Catalog do
+    for mEntry in TSlashMenu.Catalog do
     begin
-      if Contains(Disabled, Entry.Name) or not TSlashMenu.Fits(Entry, Places, Spot.HasSelection) or
-        not TSlashCommandRegistry.Shared.Find(Entry.Name, Command) then
+      if Contains(mDisabled, mEntry.Name) or not TSlashMenu.Fits(mEntry, mPlaces, mSpot.HasSelection) or
+        not TSlashCommandRegistry.Shared.Find(mEntry.Name, mCommand) then
       begin
         Continue;
       end;
-      Item := TJSONObject.Create;
-      Item.AddPair('name', Entry.Name);
-      Item.AddPair('summary', Command.Summary);
-      Item.AddPair('example', Command.Example);
-      Item.AddPair('group', TSlashMenu.GroupName(Entry.Group));
-      Item.AddPair('argument', TSlashMenu.ArgumentName(Entry.Argument));
-      Item.AddPair('choices', TJSONBool.Create(Entry.HasChoices));
-      Item.AddPair('multi', TJSONBool.Create(Entry.Multi));
-      Item.AddPair('separator', Entry.Separator);
-      Commands.AddElement(Item);
+      mItem := TJSONObject.Create;
+      mItem.AddPair('name', mEntry.Name);
+      mItem.AddPair('summary', mCommand.Summary);
+      mItem.AddPair('example', mCommand.Example);
+      mItem.AddPair('group', TSlashMenu.GroupName(mEntry.Group));
+      mItem.AddPair('argument', TSlashMenu.ArgumentName(mEntry.Argument));
+      mItem.AddPair('choices', TJSONBool.Create(mEntry.HasChoices));
+      mItem.AddPair('multi', TJSONBool.Create(mEntry.Multi));
+      mItem.AddPair('separator', mEntry.Separator);
+      mCommands.AddElement(mItem);
       // „Interface implementieren“ (#466) nach /override, wie im Mockup.
-      if SameText(Entry.Name, 'override') and MissingInterfaceMethods(Uri, Document.Text, Spot, Missing,
-        CommandLine) then
+      if SameText(mEntry.Name, 'override') and MissingInterfaceMethods(mUri, mDocument.Text, mSpot, mMissing,
+        mCommandLine) then
       begin
         AddImplement;
       end;
@@ -359,83 +360,84 @@ end;
 
 function TLspSlashMenu.ExecuteChoices(const AArguments: TJSONArray): TJSONValue;
 var
-  Uri: string;
-  Spot: TSlashSpot;
-  Document: ITextDocument;
-  Missing: TArray<TCompletionItem>;
-  Item: TCompletionItem;
-  CommandLine: Integer;
-  Names: TArray<string>;
+  mUri: string;
+  mSpot: TSlashSpot;
+  mDocument: ITextDocument;
+  mMissing: TArray<TCompletionItem>;
+  mItem: TCompletionItem;
+  mCommandLine: Integer;
+  mNames: TArray<string>;
 begin
-  Document := ReadSpot(FStore, AArguments, 4, Uri, Spot);
-  if SameText(StringAt(AArguments, 3), ImplementName) then
+  mDocument := ReadSpot(FStore, AArguments, 4, mUri, mSpot);
+  if SameText(StringAt(AArguments, 3), cImplementName) then
   begin
-    Names := nil;
-    if MissingInterfaceMethods(Uri, Document.Text, Spot, Missing, CommandLine) then
+    mNames := nil;
+    if MissingInterfaceMethods(mUri, mDocument.Text, mSpot, mMissing, mCommandLine) then
     begin
-      for Item in Missing do
+      for mItem in mMissing do
       begin
-        Names := Names + [Item.Container + '.' + Item.Name];
+        mNames := mNames + [mItem.Container + '.' + mItem.Name];
       end;
     end;
-    Exit(NamesToJson(Names));
+    Exit(NamesToJson(mNames));
   end;
-  Result := NamesToJson(TSlashMenu.Choices(Document.Text, Spot, StringAt(AArguments, 3), FIndex));
+  Result := NamesToJson(TSlashMenu.Choices(mDocument.Text, mSpot, StringAt(AArguments, 3), FIndex));
 end;
 
 function TLspSlashMenu.ExecuteRun(const AArguments: TJSONArray): TJSONValue;
 var
-  Uri, Version, Reason: string;
-  Style: TFormatStyle;
-  Spot: TSlashSpot;
-  Document: ITextDocument;
-  Disabled: TArray<string>;
-  Edits: TArray<TRuleEdit>;
-  Edit: TRuleEdit;
-  List: TJSONArray;
-  Item: TJSONObject;
+  mUri, mVersion, mReason: string;
+  mStyle: TFormatStyle;
+  mSpot: TSlashSpot;
+  mDocument: ITextDocument;
+  mDisabled: TArray<string>;
+  mEdits: TArray<TRuleEdit>;
+  mEdit: TRuleEdit;
+  mList: TJSONArray;
+  mItem: TJSONObject;
 begin
-  Document := ReadSpot(FStore, AArguments, 4, Uri, Spot);
-  Edits := nil;
-  if not Enabled(Uri, Disabled) then
+  mDocument := ReadSpot(FStore, AArguments, 4, mUri, mSpot);
+  mEdits := nil;
+  if not Enabled(mUri, mDisabled) then
   begin
-    Reason := cTexts[TLspSlashMenuText.SlashCommandsAreSwitchedOff].Text;
+    mReason := cTexts[TLspSlashMenuText.SlashCommandsAreSwitchedOff].Text;
   end
   else
   begin
-    Version := '';
+    mVersion := '';
     if Assigned(FDelphiVersionFor) then
     begin
-      Version := FDelphiVersionFor(Uri);
+      mVersion := FDelphiVersionFor(mUri);
     end;
-    Style := TFormatStyle.Default;
+    mStyle := TFormatStyle.Default;
     if Assigned(FFormatStyleFor) then
     begin
-      Style := FFormatStyleFor(Uri);
+      mStyle := FFormatStyleFor(mUri);
     end;
-    if SameText(StringAt(AArguments, 3), ImplementName) then
+    if SameText(StringAt(AArguments, 3), cImplementName) then
     begin
-      RunImplement(Uri, Document.Text, Spot, StringAt(AArguments, 4), Edits, Reason);
+      RunImplement(mUri, mDocument.Text, mSpot, StringAt(AArguments, 4), mEdits, mReason);
     end
     else
     begin
-      TSlashMenu.Run(TSlashCommandRegistry.Shared, Document.Text, Spot,
+      TSlashMenu.Run(TSlashCommandRegistry.Shared, mDocument.Text, mSpot,
         TSlashMenuCall.Create(StringAt(AArguments, 3), StringAt(AArguments, 4),
-        TSlashEnvironment.Create(nil, Disabled, FIndex, Version, Uri, FSlashHost).WithStyle(Style)), Edits, Reason);
+        TSlashEnvironment.Create(nil, mDisabled, FIndex, mVersion, mUri, FSlashHost).WithStyle(mStyle)), mEdits,
+          mReason);
     end;
   end;
   Result := TJSONObject.Create;
   try
-    List := TJSONArray.Create;
-    TJSONObject(Result).AddPair('edits', List);
-    for Edit in Edits do
+    mList := TJSONArray.Create;
+    TJSONObject(Result).AddPair('edits', mList);
+    for mEdit in mEdits do
     begin
-      Item := TJSONObject.Create;
-      Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
-      Item.AddPair('newText', Edit.NewText);
-      List.AddElement(Item);
+      mItem := TJSONObject.Create;
+      mItem.AddPair('range', TLspPositions.RangeToJson(mEdit.Range));
+      mItem.AddPair('newText', mEdit.NewText);
+      mList.AddElement(mItem);
     end;
-    TJSONObject(Result).AddPair('reason', Reason);
+    TJSONObject(Result).AddPair('reason', mReason);
   except
     Result.Free;
     raise;

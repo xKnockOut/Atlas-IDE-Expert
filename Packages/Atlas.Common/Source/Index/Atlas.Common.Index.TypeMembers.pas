@@ -28,13 +28,13 @@ type
 
   TTypeMembers = class
   public const
-    MaxDepth = 32;
-    RuleKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType];
-    ClassKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType];
-    MemberKinds = [TIndexSymbolKind.Field, TIndexSymbolKind.Property_, TIndexSymbolKind.Method,
+    cMaxDepth = 32;
+    cRuleKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType];
+    cClassKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType];
+    cMemberKinds = [TIndexSymbolKind.Field, TIndexSymbolKind.Property_, TIndexSymbolKind.Method,
       TIndexSymbolKind.Constructor_, TIndexSymbolKind.Constant, TIndexSymbolKind.Variable];
     /// <summary>Mitglieder von TObject, falls System nicht im Index steht.</summary>
-    ObjectMembers: array[0..10] of string = ('ClassName', 'ClassType', 'ClassParent', 'ClassInfo', 'InstanceSize',
+    cObjectMembers: array[0..10] of string = ('ClassName', 'ClassType', 'ClassParent', 'ClassInfo', 'InstanceSize',
       'UnitName', 'UnitScope', 'QualifiedClassName', 'ToString', 'GetHashCode', 'Equals');
   public
     /// <summary>Mitglieder von AType (aus ALocal) und seinen Vorfahren; False, wenn ein Vorfahr unbekannt ist
@@ -54,28 +54,28 @@ uses
 
 class function TTypeMembers.ShortName(const ATypeName: string): string;
 var
-  Angle, Dot: Integer;
+  mAngle, mDot: Integer;
 begin
   Result := Trim(ATypeName);
-  Angle := Pos('<', Result);
-  if Angle > 0 then
+  mAngle := Pos('<', Result);
+  if mAngle > 0 then
   begin
-    Result := Copy(Result, 1, Angle - 1);
+    Result := Copy(Result, 1, mAngle - 1);
   end;
-  Dot := LastDelimiter('.', Result);
-  if Dot > 0 then
+  mDot := LastDelimiter('.', Result);
+  if mDot > 0 then
   begin
-    Result := Copy(Result, Dot + 1, MaxInt);
+    Result := Copy(Result, mDot + 1, MaxInt);
   end;
 end;
 
 class function TTypeMembers.Contains(const AMembers: TArray<TTypeMember>; const AName: string): Boolean;
 var
-  Member: TTypeMember;
+  mMember: TTypeMember;
 begin
-  for Member in AMembers do
+  for mMember in AMembers do
   begin
-    if SameText(Member.Name, AName) then
+    if SameText(mMember.Name, AName) then
     begin
       Exit(True);
     end;
@@ -87,15 +87,15 @@ end;
 function FindClass(const ALocal: TUnitIndex; const AIndex: ISymbolIndex; const AName: string;
   out AUnit: TUnitIndex; out ASymbol: TIndexSymbol): Boolean;
 var
-  Symbol: TIndexSymbol;
-  Location: TSymbolLocation;
+  mSymbol: TIndexSymbol;
+  mLocation: TSymbolLocation;
 begin
-  for Symbol in ALocal.Symbols do
+  for mSymbol in ALocal.Symbols do
   begin
-    if (Symbol.Kind in TTypeMembers.ClassKinds) and SameText(Symbol.Name, AName) then
+    if (mSymbol.Kind in TTypeMembers.cClassKinds) and SameText(mSymbol.Name, AName) then
     begin
       AUnit := ALocal;
-      ASymbol := Symbol;
+      ASymbol := mSymbol;
       Exit(True);
     end;
   end;
@@ -104,11 +104,11 @@ begin
   begin
     Exit;
   end;
-  for Location in AIndex.FindSymbols(AName) do
+  for mLocation in AIndex.FindSymbols(AName) do
   begin
-    if (Location.Symbol.Kind in TTypeMembers.ClassKinds) and AIndex.FindUnit(Location.UnitName, AUnit) then
+    if (mLocation.Symbol.Kind in TTypeMembers.cClassKinds) and AIndex.FindUnit(mLocation.UnitName, AUnit) then
     begin
-      ASymbol := Location.Symbol;
+      ASymbol := mLocation.Symbol;
       Exit(True);
     end;
   end;
@@ -117,77 +117,77 @@ end;
 class function TTypeMembers.Collect(const ALocal: TUnitIndex; const AIndex: ISymbolIndex; const AType: TIndexSymbol;
   out AMembers: TArray<TTypeMember>): Boolean;
 var
-  Seen: TDictionary<string, Boolean>;
-  Current: TIndexSymbol;
-  Owner: TUnitIndex;
-  Ancestor, Name: string;
-  Depth: Integer;
+  mSeen: TDictionary<string, Boolean>;
+  mCurrent: TIndexSymbol;
+  mOwner: TUnitIndex;
+  mAncestor, mName: string;
+  mDepth: Integer;
 
   procedure AddMember(const AName, AContainer: string; AKind: TIndexSymbolKind; const ATypeName: string;
     ADepth: Integer);
   var
-    Member: TTypeMember;
+    mMember: TTypeMember;
   begin
-    if Seen.ContainsKey(LowerCase(AName)) then
+    if mSeen.ContainsKey(LowerCase(AName)) then
     begin
       Exit;
     end;
-    Seen.Add(LowerCase(AName), True);
-    Member.Name := AName;
-    Member.Kind := AKind;
-    Member.TypeName := ATypeName;
-    Member.Container := AContainer;
-    Member.Depth := ADepth;
-    AMembers := AMembers + [Member];
+    mSeen.Add(LowerCase(AName), True);
+    mMember.Name := AName;
+    mMember.Kind := AKind;
+    mMember.TypeName := ATypeName;
+    mMember.Container := AContainer;
+    mMember.Depth := ADepth;
+    AMembers := AMembers + [mMember];
   end;
 
   procedure AddOf(const AUnit: TUnitIndex; const AQualified: string; ADepth: Integer);
   var
-    Symbol: TIndexSymbol;
+    mSymbol: TIndexSymbol;
   begin
-    for Symbol in AUnit.Symbols do
+    for mSymbol in AUnit.Symbols do
     begin
-      if (Symbol.Kind in MemberKinds) and SameText(Symbol.Container, AQualified) then
+      if (mSymbol.Kind in cMemberKinds) and SameText(mSymbol.Container, AQualified) then
       begin
-        AddMember(Symbol.Name, AQualified, Symbol.Kind, Symbol.TypeName, ADepth);
+        AddMember(mSymbol.Name, AQualified, mSymbol.Kind, mSymbol.TypeName, ADepth);
       end;
     end;
   end;
 
 begin
   AMembers := nil;
-  Seen := TDictionary<string, Boolean>.Create;
+  mSeen := TDictionary<string, Boolean>.Create;
   try
     AddOf(ALocal, AType.QualifiedName, 0);
-    if not (AType.Kind in ClassKinds) then
+    if not (AType.Kind in cClassKinds) then
     begin
       Exit(True);
     end;
-    Current := AType;
-    for Depth := 1 to MaxDepth do
+    mCurrent := AType;
+    for mDepth := 1 to cMaxDepth do
     begin
-      Ancestor := '';
-      if Length(Current.Ancestors) > 0 then
+      mAncestor := '';
+      if Length(mCurrent.Ancestors) > 0 then
       begin
-        Ancestor := ShortName(Current.Ancestors[0]);
+        mAncestor := ShortName(mCurrent.Ancestors[0]);
       end;
-      if (Ancestor = '') or SameText(Ancestor, 'TObject') then
+      if (mAncestor = '') or SameText(mAncestor, 'TObject') then
       begin
-        for Name in ObjectMembers do
+        for mName in cObjectMembers do
         begin
-          AddMember(Name, 'TObject', TIndexSymbolKind.Method, '', Depth);
+          AddMember(mName, 'TObject', TIndexSymbolKind.Method, '', mDepth);
         end;
         Exit(True);
       end;
-      if not FindClass(ALocal, AIndex, Ancestor, Owner, Current) then
+      if not FindClass(ALocal, AIndex, mAncestor, mOwner, mCurrent) then
       begin
         Exit(False);
       end;
-      AddOf(Owner, Current.QualifiedName, Depth);
+      AddOf(mOwner, mCurrent.QualifiedName, mDepth);
     end;
     Result := False;
   finally
-    Seen.Free;
+    mSeen.Free;
   end;
 end;
 
