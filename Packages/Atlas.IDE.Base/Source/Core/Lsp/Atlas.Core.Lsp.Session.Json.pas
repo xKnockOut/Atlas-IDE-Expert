@@ -116,9 +116,9 @@ type
   /// <summary>window/showMessage des Servers (#121); läuft im Lese-Thread. AType: 1 Fehler, 2 Warnung,
   /// 3 Information, 4 Protokoll.</summary>
   TLspShowMessageProc = reference to procedure(AType: Integer; const AMessage: string);
-  /// <summary>atlas/crashCase bzw. atlas/crashSkip des Servers (#1355); läuft im Lese-Thread, AParams gehört dem
-  /// Aufrufer.</summary>
-  TLspCrashNotificationProc = reference to procedure(const AMethod: string; const AParams: TJSONValue);
+  /// <summary>Eigene Benachrichtigungen des Servers (atlas/…, etwa atlas/crashCase #1355, atlas/ideMembersWanted);
+  /// läuft im Lese-Thread, AParams gehört dem Aufrufer.</summary>
+  TLspAtlasNotificationProc = reference to procedure(const AMethod: string; const AParams: TJSONValue);
 
   /// <summary>Einrückung für onTypeFormatting und formatting (FormattingOptions).</summary>
   TLspFormatOptions = record

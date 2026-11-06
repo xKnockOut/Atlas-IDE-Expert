@@ -96,7 +96,8 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   System.RegularExpressions,
-  Atlas.Common.Lsp.Rationale;
+  Atlas.Common.Lsp.Rationale,
+  Atlas.Common.Lsp.IdeUnits;
 
 // Entfernt nur die Auszeichnung, die der Hover selbst erzeugt: **fett** (Veraltet,
 // Überschriften), *Name*: am Absatzanfang (Parameter) und `Code`. Andere Zeichen aus
@@ -108,6 +109,17 @@ begin
   Result := TRegEx.Replace(Result, '`([^`\n]*)`', '$1');
 end;
 
+/// <summary>AFileName für das Plugin; '' für Ersatz-Units der IDE (atlas-ide:…), die es nicht als Datei gibt:
+/// kein Sprungziel.</summary>
+function LocationFile(const AFileName: string): string;
+begin
+  Result := AFileName;
+  if TIdeUnits.IsIdePath(AFileName) then
+  begin
+    Result := '';
+  end;
+end;
+
 function TypeRefJson(const ARef: THoverTypeRef): TJSONObject;
 begin
   Result := TJSONObject.Create;
@@ -116,7 +128,7 @@ begin
   begin
     Result.AddPair('unit', ARef.UnitName);
   end;
-  Result.AddPair('file', ARef.FileName);
+  Result.AddPair('file', LocationFile(ARef.FileName));
   Result.AddPair('line', TJSONNumber.Create(ARef.Line));
   Result.AddPair('character', TJSONNumber.Create(ARef.Character));
 end;
@@ -163,7 +175,7 @@ end;
 /// <summary>Fundort der Deklaration, wenn bekannt.</summary>
 procedure AddLocation(AObject: TJSONObject; const AInfo: THoverInfo);
 begin
-  if AInfo.FileName <> '' then
+  if LocationFile(AInfo.FileName) <> '' then
   begin
     AObject.AddPair('file', AInfo.FileName);
     AObject.AddPair('line', TJSONNumber.Create(AInfo.Line));
