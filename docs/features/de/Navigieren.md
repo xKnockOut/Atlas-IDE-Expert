@@ -130,6 +130,12 @@ Weiter:
 
 - Sie wandern mit dem Code mit und übernehmen die IDE-Lesezeichen, sobald die Spalte gezeichnet ist.
 
+## Regionen
+
+- **Regionen beim Öffnen** (Optionen › Editor): `{$REGION}`-Blöcke beim ersten Anzeigen einer Datei „unverändert lassen“ (Vorgabe), „alle zuklappen“ oder „alle aufklappen“; die Region mit der Schreibmarke bleibt offen
+- **Alle Regionen zuklappen** / **Alle Regionen aufklappen** im Menü Atlas (Navigation), im Kontextmenü des Editors und in der Befehlspalette
+- „aus (auch keine Befehle)“ blendet auch die Befehle aus
+
 ## TODO-Übersicht
 
 - **TODO-Übersicht** des Projekts aus `// TODO`, `// FIXME` und dem To-do-Format der IDE

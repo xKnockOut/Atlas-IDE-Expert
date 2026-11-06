@@ -133,15 +133,21 @@ function Get-BdsRoot {
 }
 
 # Startet bds.exe mit eigenem Profil. CLAUDE_COMPILE_OWNED erbt nur dieser Prozess; ohne die Marke beendet
-# cc.ps1 quit die IDE nicht. Liefert die pid, sobald das Plugin seinen Briefkasten angelegt hat.
+# cc.ps1 quit die IDE nicht. ATLAS_NO_SESSION_MARKER: Atlas schreibt in dieser IDE keine Sitzungsmarke und wertet
+# keine fremden aus, ein Abwürgen zählt also nicht als Absturz. Liefert die pid, sobald das Plugin seinen
+# Briefkasten angelegt hat.
 function Start-ProfileIde([string] $Group) {
     $bds = Join-Path (Get-BdsRoot) 'bin\bds.exe'
     if (-not (Test-Path "HKCU:\Software\Embarcadero\$IdeProfile\$BdsVersion\Known Packages")) {
         throw "Registry-Profil $IdeProfile fehlt (HKCU\Software\Embarcadero\$IdeProfile\$BdsVersion)"
     }
     $env:CLAUDE_COMPILE_OWNED = '1'
+    $env:ATLAS_NO_SESSION_MARKER = '1'
     try { $proc = Start-Process -FilePath $bds -ArgumentList @('-r', $IdeProfile) -PassThru }
-    finally { Remove-Item Env:\CLAUDE_COMPILE_OWNED -ErrorAction SilentlyContinue }
+    finally {
+        Remove-Item Env:\CLAUDE_COMPILE_OWNED -ErrorAction SilentlyContinue
+        Remove-Item Env:\ATLAS_NO_SESSION_MARKER -ErrorAction SilentlyContinue
+    }
     Write-Host "bds.exe -r $IdeProfile gestartet (pid $($proc.Id))"
     $status = Join-Path $env:LOCALAPPDATA "ClaudeCompile\instances\$($proc.Id)\status.json"
     $t0 = Get-Date

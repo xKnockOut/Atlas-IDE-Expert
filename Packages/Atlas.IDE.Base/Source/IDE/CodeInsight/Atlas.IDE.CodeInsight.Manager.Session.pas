@@ -6,7 +6,8 @@
 // Ordner der Projekte (Git-Arbeitsverzeichnis, sonst Projektordner) werden beobachtet; gesammelte Änderungen gehen
 // bei der nächsten Anfrage als workspace/didChangeWatchedFiles an den Server. Projektkontext (#396): Konfiguration,
 // Plattform und Optionen der Projekte gehen in initialize mit; Änderungen prüft die Sitzung höchstens einmal je
-// Sekunde. workspace/applyEdit (#397) und window/showMessage (#121) übernimmt der Hauptthread.
+// Sekunde. workspace/applyEdit (#397) und window/showMessage (#121) übernimmt der Hauptthread. Typen der IDE: Beim
+// Start jeder Sitzung gehen die Typen der geladenen Packages als atlas/ideTypes an den Server (auch ohne .pas).
 
 interface
 
@@ -51,6 +52,8 @@ type
     procedure RefreshProjects;
     /// <summary>Meldet geänderte Projektkontexte (#396); höchstens einmal je Sekunde (Hauptthread).</summary>
     procedure RefreshContexts;
+    /// <summary>Typen der geladenen Packages an die Sitzung (atlas/ideTypes, Hauptthread).</summary>
+    procedure SendIdeTypes;
     /// <summary>Beobachtet die Ordner dieser Projekte (#395).</summary>
     procedure WatchProjects(const AProjects: TArray<string>);
     /// <summary>Gesammelte Änderungen außerhalb der IDE an den Server (Hauptthread, #395).</summary>
@@ -105,6 +108,9 @@ uses
   Atlas.UI.Strings,
   Atlas.IDE.CodeInsight.Manager.Paths,
   Atlas.IDE.CodeInsight.Manager.Handlers,
+  Atlas.IDE.CodeInsight.IdeTypes,
+  Atlas.Core.Lsp.IdeTypes,
+  System.Diagnostics,
   Atlas.Core.Localization.Language;
 
 {$SCOPEDENUMS ON}
@@ -377,6 +383,7 @@ begin
     end);
   FProjectsChecked := GetTickCount;
   FSession.Initialize;
+  SendIdeTypes;
   if ADocuments <> nil then
   begin
     FSession.Reopen(ADocuments);
@@ -555,6 +562,27 @@ begin
     on E: Exception do
     begin
       Diagnose('Projektkontext nicht gemeldet: ' + E.Message);
+    end;
+  end;
+end;
+
+procedure TAtlasCodeInsightSession.SendIdeTypes;
+var
+  mWatch: TStopwatch;
+  mTypes: TArray<TAtlasIdeType>;
+  mFailed: Integer;
+begin
+  try
+    mWatch := TStopwatch.StartNew;
+    mTypes := TAtlasIdeTypeCollector.Collect(mFailed);
+    // Nach Initialize: Der Server ersetzt mit jeder Meldung den ganzen Stand und prüft offene Dateien neu.
+    FSession.Notify(TAtlasIdeTypes.Method, TAtlasIdeTypes.ToJson(mTypes));
+    Diagnose(Format('IDE-Typen: %d, %d ms, RTTI unlesbar: %d', [Length(mTypes), mWatch.ElapsedMilliseconds,
+      mFailed]));
+  except
+    on E: Exception do
+    begin
+      Diagnose('IDE-Typen: ' + E.Message);
     end;
   end;
 end;

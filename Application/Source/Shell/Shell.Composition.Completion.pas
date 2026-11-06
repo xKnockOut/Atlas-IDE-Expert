@@ -16,12 +16,16 @@ uses
   Atlas.Common.Lsp.ConditionalSymbols,
   Atlas.Common.Lsp.Refactorings,
   Atlas.Common.Lsp.Completion,
+  Atlas.Common.Lsp.Completion.Hooks,
   Atlas.Common.Lsp.ExpressionCompletion;
 
 type
   TShellCompletionRefactoringFunc = reference to function(const AUri: string): TRefactoringSettings;
   TShellLanguageLevelFunc = reference to function(const AUri: string): string;
   TShellRefactoringContextFunc = reference to function(const AUri: string): TRefactoringContext;
+
+  /// <summary>Typen aus der IDE (atlas/ideTypes); derselbe Typ wie in den Hooks, nur ohne deren Unit.</summary>
+  TShellCompletionIdeTypesFunc = TCompletionIdeTypesFunc;
 
   /// <summary>Was die Vervollständigung von der Komposition braucht.</summary>
   TShellCompletionServices = record
@@ -49,6 +53,8 @@ type
     Notify: TCompletionNotifyProc;
     /// <summary>Zeiten je Anfrage im Debug-Protokoll.</summary>
     Log: TCompletionLogProc;
+    /// <summary>Typen aus den Packages der IDE (atlas/ideTypes).</summary>
+    IdeTypesFor: TCompletionIdeTypesFunc;
   end;
 
   /// <summary>Vervollständigung im Editor und in den Debug-Dialogen.</summary>
@@ -102,6 +108,7 @@ begin
   // Methode aus Aufruf anlegen nach "(" bzw. mit Strg+Leer (#472), abschaltbar mit refactoring.createMethod.
   FCompletion.Hooks.CreateFor := CreateMethod;
   FCompletion.Hooks.NamingFor := FServices.NamingFor;
+  FCompletion.Hooks.IdeTypesFor := FServices.IdeTypesFor;
   FCompletion.Hooks.HintsFor := FServices.HintsFor;
   FCompletion.Hooks.DocCommentsFor := FServices.DocCommentsFor;
   FCompletion.Hooks.SymbolsFor := FServices.SymbolsFor;

@@ -24,6 +24,8 @@ type
     FReassignedStyle: TAtlasChoiceBox;
     FReassignedColor: TEdit;
     FMethodPlacement: TAtlasChoiceBox;
+    /// <summary>Regionen beim Öffnen (#1814): unverändert, zu, auf oder aus.</summary>
+    FRegionFolds: TAtlasChoiceBox;
     FOverviewKinds: array[TAtlasOverviewKind] of TCheckBox;
     FContinueCommentsBlockPrefix: TEdit;
     FCompleteStatementBeginEnd: TAtlasChoiceBox;
@@ -49,6 +51,8 @@ type
     property ReassignedColorEdit: TEdit read FReassignedColor;
     /// <summary>Zum Testen: Methodenrümpfe in Deklarationsreihenfolge (#660).</summary>
     property MethodPlacementBox: TAtlasChoiceBox read FMethodPlacement;
+    /// <summary>Zum Testen: Regionen beim Öffnen (#1814).</summary>
+    property RegionFoldsBox: TAtlasChoiceBox read FRegionFolds;
     /// <summary>Zum Testen: Fehlertext am Zeilenende, Zähler und Sprungtasten (#509).</summary>
     property InlineDiagnostics: TAtlasChoiceBox read FInlineDiagnostics;
   end;
@@ -60,6 +64,7 @@ uses
   System.Math,
   System.StrUtils,
   Atlas.UI.Strings,
+  Atlas.UI.Editor.RegionFolds,
   Atlas.Core.Settings.Plugin.Store,
   Atlas.Core.Problems.InlineHints;
 
@@ -99,6 +104,8 @@ begin
     [TAtlasStrings.Text(TAtlasTextId.SettingsMethodPlacementDeclaration),
     TAtlasStrings.Text(TAtlasTextId.SettingsMethodPlacementAlphabetical),
     TAtlasStrings.Text(TAtlasTextId.SettingsMethodPlacementOff)]);
+  // Regionen beim Öffnen (#1814).
+  FRegionFolds := AddChoice(TAtlasRegionFoldsTexts.Text(TAtlasRegionFoldsText.Setting), TAtlasRegionFoldsTexts.Choices);
   // Übersichtsleiste (#519): an/aus und je Art ein Häkchen.
   BindCheck('OverviewRuler', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsOverviewRuler)));
   FOverviewKinds[TAtlasOverviewKind.Diagnostics] :=
@@ -191,6 +198,7 @@ begin
   FPage.Marks.Bind(FReassignedStyle, ['ReassignedStyle']);
   FPage.Marks.Bind(FReassignedColor, ['ReassignedColor']);
   FPage.Marks.Bind(FMethodPlacement, ['MethodPlacement']);
+  FPage.Marks.Bind(FRegionFolds, ['RegionFolds']);
   for Kind := Low(TAtlasOverviewKind) to High(TAtlasOverviewKind) do
   begin
     FPage.Marks.Bind(FOverviewKinds[Kind], ['OverviewRulerKinds']);
@@ -218,6 +226,7 @@ begin
   FReassignedStyle.Choice := Ord(TAtlasReassignedNames.StyleOf(ASettings.ReassignedStyle));
   FReassignedColor.Text := ASettings.ReassignedColor;
   FMethodPlacement.Choice := Max(0, IndexText(ASettings.MethodPlacement, AtlasMethodPlacements));
+  FRegionFolds.Choice := Max(0, IndexText(ASettings.RegionFolds, AtlasRegionFoldModes));
   Kinds := TAtlasOverview.Kinds(ASettings.OverviewRulerKinds);
   for Kind := Low(TAtlasOverviewKind) to High(TAtlasOverviewKind) do
   begin
@@ -314,6 +323,7 @@ end;
 
 procedure TAtlasSettingsEditorCodePart.Save2(var ASettings: TAtlasPluginSettings);
 begin
+  ASettings.RegionFolds := AtlasRegionFoldModes[EnsureRange(FRegionFolds.Choice, 0, High(AtlasRegionFoldModes))];
   ASettings.MultiCursorModifier := TAtlasPluginSettings.MultiCursorModifierAlt;
   if FMultiCursorModifier.Choice = 1 then
   begin

@@ -98,6 +98,9 @@ type
     /// <summary>Methodenrümpfe in Deklarationsreihenfolge (#660, editor.methodPlacement): off, declaration oder
     /// alphabetical; off schaltet Verschieben und Befehl ab.</summary>
     MethodPlacement: string;
+    /// <summary>Regionen beim Öffnen (#1814, editor.regionFolds): keep, collapse, expand oder off; off schaltet auch
+    /// die Befehle „Alle Regionen zu-/aufklappen“ ab.</summary>
+    RegionFolds: string;
     /// <summary>Kommentar beim Enter fortsetzen (#696, editor.continueComments).</summary>
     ContinueComments: Boolean;
     /// <summary>Auch //-Zeilen fortsetzen, nicht nur /// (#696, editor.continueComments.lineComments).</summary>
@@ -537,6 +540,7 @@ begin
   Result.GitGutter := True;
   Result.GitBlame := False;
   Result.MethodPlacement := 'declaration';
+  Result.RegionFolds := 'keep';
   Result.ContinueComments := True;
   Result.ContinueCommentsLineComments := True;
   Result.ContinueCommentsLists := True;
@@ -562,6 +566,7 @@ begin
   RecursionMarkersDepth := EnsureRange(RecursionMarkersDepth, MinRecursionDepth, MaxRecursionDepth);
   ContinuePatternMinLines := EnsureRange(ContinuePatternMinLines, MinPatternLines, MaxPatternLines);
   MethodPlacement := Choice(MethodPlacement, AtlasMethodPlacements);
+  RegionFolds := Choice(RegionFolds, AtlasRegionFoldModes);
   ContinueCommentsBlockPrefix := NormalizedBlockPrefix(ContinueCommentsBlockPrefix);
   CompleteStatementBeginEnd := Choice(CompleteStatementBeginEnd, [BeginEndMultiLine, BeginEndAlways, BeginEndNever]);
   CompleteStatementTryKind := Choice(CompleteStatementTryKind, [TryKindFinally, TryKindExcept, TryKindAsk]);
@@ -584,6 +589,7 @@ begin
   AIo.Flag('GitGutter', GitGutter);
   AIo.Flag('GitBlame', GitBlame);
   AIo.Text('MethodPlacement', MethodPlacement);
+  AIo.Text('RegionFolds', RegionFolds);
   AIo.Flag('ContinueComments', ContinueComments);
   AIo.Flag('ContinueCommentsLineComments', ContinueCommentsLineComments);
   AIo.Flag('ContinueCommentsLists', ContinueCommentsLists);

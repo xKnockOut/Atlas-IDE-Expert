@@ -3,8 +3,8 @@
 // Tests für die Namensauflösung von „Methode ohne Self“ (#686) ohne
 // TNameResolver: Art der Namen im Rumpf (Feld, class var, class-Methode mit und
 // ohne static, Konstante, Name der Unit, unbekannter Name bei fremdem
-// Vorfahren), Sichtbarkeit, Mitglieder eines Interfaces, Helper der RTL und
-// der erste Teil eines Namens.
+// Vorfahren), Sichtbarkeit, Mitglieder eines Interfaces (auch geerbt, aus
+// System und unbekannt), Helper der RTL und der erste Teil eines Namens.
 
 interface
 
@@ -21,6 +21,8 @@ type
     procedure UnknownAncestorMakesNamesUnknown;
     [Test]
     procedure InterfaceMemberFromFile;
+    [Test]
+    procedure InheritedBaseAndUnknownInterfaces;
     [Test]
     procedure RtlHelperNeedsSysUtils;
     [Test]
@@ -151,7 +153,52 @@ begin
     mLookup := TMethodLookup.FromTree(mTree);
     Assert.IsTrue(mLookup.InterfaceMember('IZaehler', 'Anzahl', 0));
     Assert.IsFalse(mLookup.InterfaceMember('IZaehler', 'Fuelle', 0));
-    Assert.IsFalse(mLookup.InterfaceMember('IAnderes', 'Anzahl', 0));
+    // Unbekannt, aber wie ein Interface benannt: Die Methode kann dazugehören.
+    Assert.IsTrue(mLookup.InterfaceMember('IAnderes', 'Anzahl', 0));
+    // Klasse der Datei bzw. unbekannter erster Vorfahr ohne I-Namen: bindet nicht.
+    Assert.IsFalse(mLookup.InterfaceMember('TLager', 'Fuelle', 0));
+    Assert.IsFalse(mLookup.InterfaceMember('TFremd', 'Fuelle', 0));
+  finally
+    mTree.Free;
+  end;
+end;
+
+procedure TMethodLookupTests.InheritedBaseAndUnknownInterfaces;
+const
+  cSource =
+    'unit Erbe;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  IBasis = interface'#10 +
+    '    procedure Zeige;'#10 +
+    '  end;'#10 +
+    '  IKind = interface(IBasis)'#10 +
+    '  end;'#10 +
+    '  IFremdKind = interface(IFremd)'#10 +
+    '  end;'#10 +
+    '  TA = class(TFremd, XFremd)'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'end.';
+var
+  mTree: TSyntaxTree;
+  mLookup: TMethodLookup;
+begin
+  mTree := TPascalParser.Parse(cSource);
+  try
+    mLookup := TMethodLookup.FromTree(mTree);
+    Assert.IsTrue(mLookup.InterfaceMember('IKind', 'Zeige', 0));
+    Assert.IsFalse(mLookup.InterfaceMember('IKind', 'Verberge', 0));
+    // Vorfahr unbekannt: Zeige könnte von dort stammen.
+    Assert.IsTrue(mLookup.InterfaceMember('IFremdKind', 'Zeige', 0));
+    // IInterface ohne Index.
+    Assert.IsTrue(mLookup.InterfaceMember('IInterface', '_AddRef', 0));
+    Assert.IsFalse(mLookup.InterfaceMember('System.IInterface', 'Zeige', 0));
+    // Zweiter Eintrag der Vorfahrenliste ist immer ein Interface, erster nicht.
+    Assert.IsTrue(mLookup.InterfaceMember('XFremd', 'Zeige', Pos('XFremd', cSource) - 1));
+    Assert.IsFalse(mLookup.InterfaceMember('TFremd', 'Zeige', Pos('TFremd,', cSource) - 1));
+    Assert.IsTrue(TMethodLookup.IsInterfaceName('Unit.IComparer<T>'));
+    Assert.IsFalse(TMethodLookup.IsInterfaceName('Index'));
   finally
     mTree.Free;
   end;
