@@ -13,6 +13,7 @@ uses
   System.Types,
   Atlas.Core.Hover.Contract,
   Atlas.Core.Hover.History,
+  Atlas.Core.Hover.Items,
   Atlas.Core.Hover.Layout,
   Atlas.Core.Hover.Texts;
 
@@ -86,6 +87,13 @@ type
     /// <summary>#110: published-Mitglieder als Tabellen mit Schaltern.</summary>
     [Test]
     procedure PublishedMembersAsTables;
+    /// <summary>#1841: Tabellen der published-Mitglieder scrollen ab hover.membersMaxLines bzw. Bildschirmhöhe.
+    /// </summary>
+    [Test]
+    procedure PublishedMembersScroll;
+    /// <summary>#1841: Klickflächen außerhalb des sichtbaren Rollbereichs entfallen.</summary>
+    [Test]
+    procedure ScrolledMembersDropHiddenHits;
   end;
 
 implementation
@@ -1120,6 +1128,100 @@ begin
   // Ohne Mitglieder kein Abschnitt.
   Layout := Build(ActionsView, 460);
   Assert.AreEqual('', PublishedCodes(Layout));
+end;
+
+/// <summary>Komponente mit 40 Properties, alle gezeigt.</summary>
+function ManyMembersInput(AMaxLines, ALimit, AScroll: Integer): TAtlasHoverInput;
+var
+  mView: TAtlasHoverView;
+  mIndex: Integer;
+begin
+  mView := ActionsView;
+  mView.Data.Members := nil;
+  SetLength(mView.Data.Members, 40);
+  for mIndex := 0 to 39 do
+  begin
+    mView.Data.Members[mIndex] := Member('P' + IntToStr(mIndex), 'Integer', 'TControl', hdNone, '');
+  end;
+  mView.AllProperties := True;
+  Result := Default(TAtlasHoverInput);
+  Result.View := mView;
+  Result.Width := 460;
+  Result.PPI := 96;
+  Result.Colors := TAtlasColors.Light;
+  Result.Texts.PublishedSummary := 'published: %d Properties · %d Ereignisse';
+  Result.Texts.PublishedProperties := 'Properties';
+  Result.Members.MaxLines := AMaxLines;
+  Result.Members.Limit := ALimit;
+  Result.Members.Scroll := AScroll;
+end;
+
+/// <summary>Obere Kante des Bausteins mit Text AText; -1 ohne.</summary>
+function ItemTop(const ALayout: TAtlasHoverLayout; const AText: string): Integer;
+var
+  mItem: TAtlasHoverItem;
+begin
+  for mItem in ALayout.Items do
+  begin
+    if mItem.Text = AText then
+    begin
+      Exit(mItem.Rect.Top);
+    end;
+  end;
+  Result := -1;
+end;
+
+procedure THoverLayoutTests.PublishedMembersScroll;
+var
+  mFull, mLayout: TAtlasHoverLayout;
+begin
+  // Ohne Grenze: kein Rollbereich, alles sichtbar.
+  mFull := BuildLayout(ManyMembersInput(0, 0, 0));
+  Assert.IsFalse(mFull.Members.Scrollable);
+  Assert.AreEqual(-1, mFull.Members.ClipFrom);
+  Assert.AreEqual(mFull.Members.Content, mFull.Members.View.Height);
+  // Fünf Zeilen zu je 16 + 3 Pixeln.
+  mLayout := BuildLayout(ManyMembersInput(5, 0, 0));
+  Assert.IsTrue(mLayout.Members.Scrollable);
+  Assert.AreEqual(95, mLayout.Members.View.Height);
+  Assert.AreEqual(19, mLayout.Members.Row);
+  Assert.AreEqual(mFull.Members.Content, mLayout.Members.Content);
+  Assert.AreEqual(mFull.Height - mFull.Members.Content + 95, mLayout.Height);
+  Assert.IsTrue((mLayout.Members.ClipFrom >= 0) and (mLayout.Members.ClipTill > mLayout.Members.ClipFrom));
+  // Daumen nach dem beschnittenen Bereich am rechten Rand.
+  Assert.AreEqual(Ord(TAtlasHoverItemKind.RoundFill), Ord(mLayout.Items[mLayout.Members.ClipTill].Kind));
+  Assert.AreEqual(453, mLayout.Items[mLayout.Members.ClipTill].Rect.Left);
+  Assert.AreEqual(mLayout.Members.View.Top, mLayout.Items[mLayout.Members.ClipTill].Rect.Top);
+  // Bildschirm enger als die Zeilen: die kleinere Grenze, mindestens drei Zeilen.
+  Assert.AreEqual(60, BuildLayout(ManyMembersInput(5, 60, 0)).Members.View.Height);
+  Assert.AreEqual(57, BuildLayout(ManyMembersInput(5, 20, 0)).Members.View.Height);
+  Assert.AreEqual(57, BuildLayout(ManyMembersInput(0, 20, 0)).Members.View.Height);
+  // Versatz verschiebt die Zeilen, zu großer Versatz wird begrenzt.
+  mLayout := BuildLayout(ManyMembersInput(5, 0, 38));
+  Assert.AreEqual(38, mLayout.Members.Scroll);
+  Assert.AreEqual(ItemTop(mFull, 'P5') - 38, ItemTop(mLayout, 'P5'));
+  mLayout := BuildLayout(ManyMembersInput(5, 0, 100000));
+  Assert.AreEqual(mLayout.Members.MaxScroll, mLayout.Members.Scroll);
+  Assert.AreEqual(mLayout.Members.View.Bottom, mLayout.Items[mLayout.Members.ClipTill].Rect.Bottom);
+end;
+
+procedure THoverLayoutTests.ScrolledMembersDropHiddenHits;
+var
+  mLayout: TAtlasHoverLayout;
+  mHit: TAtlasHoverHit;
+begin
+  // Oben: Schalter (0, 1) und Abschnittstitel (2); ganz unten gescrollt ist der Titel verschwunden.
+  mLayout := BuildLayout(ManyMembersInput(5, 0, 0));
+  Assert.AreEqual('012', PublishedCodes(mLayout));
+  mLayout := BuildLayout(ManyMembersInput(5, 0, 100000));
+  Assert.AreEqual('01', PublishedCodes(mLayout));
+  for mHit in mLayout.Hits do
+  begin
+    if (mHit.Kind = TAtlasHoverHitKind.Published) and (mHit.Rect.Top >= mLayout.Members.View.Top) then
+    begin
+      Assert.IsTrue(mHit.Rect.Bottom <= mLayout.Members.View.Bottom);
+    end;
+  end;
 end;
 
 initialization

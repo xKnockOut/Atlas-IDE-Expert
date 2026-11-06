@@ -8,8 +8,8 @@ interface
 const
   /// <summary>Werte von bookmarks.quick.scope (#1104) in der Reihenfolge der Optionsseite.</summary>
   AtlasQuickBookmarkScopes: array[0..1] of string = ('project', 'file');
-  /// <summary>Werte von editor.methodPlacement (#660).</summary>
-  AtlasMethodPlacements: array[0..2] of string = ('declaration', 'alphabetical', 'off');
+  /// <summary>Werte von editor.methodPlacement (#660, grouped #1834) in der Reihenfolge der Auswahl.</summary>
+  AtlasMethodPlacements: array[0..3] of string = ('grouped', 'declaration', 'alphabetical', 'off');
   /// <summary>Werte von editor.regionFolds (#1814) in der Reihenfolge der Auswahl auf der Optionsseite und von
   /// TAtlasRegionFoldMode (Atlas.Core.Editor.RegionFolds).</summary>
   AtlasRegionFoldModes: array[0..3] of string = ('keep', 'collapse', 'expand', 'off');

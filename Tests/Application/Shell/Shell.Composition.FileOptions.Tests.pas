@@ -35,19 +35,25 @@ type
     /// <summary>Präfixe neuer Namen ohne Arbeitsbereich: wie die Vorgaben der Namensregel.</summary>
     [Test]
     procedure NewNamesWithoutWorkspace;
+    /// <summary>Einrückung beim Tippen (#1827): Schalter aus den Einstellungen, Ebene aus den Editor-Optionen.
+    /// </summary>
+    [Test]
+    procedure SmartIndentFollowsSettingsAndEditor;
   end;
 
 implementation
 
 uses
   System.SysUtils,
+  System.JSON,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Pascal.Contract,
   Atlas.Common.Pascal.LanguageFeatures,
   Atlas.Common.Rules.Contract,
   Atlas.Common.Rules.Engine,
   Atlas.Common.Rules.Builtin,
-  Atlas.Common.Logging.Providers.Logger;
+  Atlas.Common.Logging.Providers.Logger,
+  Atlas.Common.Editing.SmartIndent;
 
 const
   cUri = 'file:///C:/Projekt/A.pas';
@@ -130,6 +136,24 @@ begin
   mActual := FOptions.NewNamesFor(cUri);
   Assert.AreEqual(mExpected.LocalPrefix, mActual.LocalPrefix);
   Assert.AreEqual(mExpected.FieldPrefix, mActual.FieldPrefix);
+end;
+
+procedure TShellFileOptionsTests.SmartIndentFollowsSettingsAndEditor;
+var
+  mOptions: TSmartIndentOptions;
+  mEditor: TJSONValue;
+begin
+  mEditor := TJSONObject.ParseJSONValue('{"tabSize":4,"insertSpaces":true}');
+  try
+    Assert.IsTrue(FOptions.SmartIndentFor(cUri, mEditor, mOptions));
+    Assert.AreEqual(4, mOptions.IndentSize);
+    Assert.IsTrue(FOptions.SmartIndentFor(cUri, nil, mOptions));
+    Assert.AreEqual(TServerSettings.Default.Formatting.IndentSize, mOptions.IndentSize);
+    FSettings.SetEditorSettings('{"smartIndent":{"enabled":false}}');
+    Assert.IsFalse(FOptions.SmartIndentFor(cUri, mEditor, mOptions));
+  finally
+    mEditor.Free;
+  end;
 end;
 
 initialization

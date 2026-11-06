@@ -1,9 +1,10 @@
 ﻿unit Atlas.IDE.CodeInsight.Composition.Editing;
 
 // Bearbeitungshilfen im Editor: Änderungsmarken (#507), Zeilen verschieben (#634), Blockkommentar (#703),
-// Anweisung vervollständigen (#697), Kommentar und Muster fortsetzen (#696, #671), mehrere Einfügemarken (#589),
-// Bezeichner mitziehen (#658), Markierung umschließen (#672), Einfügen mit uses (#515), Umschließung entfernen
-// (#657), Ausdruckstyp (#689) und Methodenrümpfe in Deklarationsreihenfolge (#660). Teil „Commands“.
+// Anweisung vervollständigen (#697), Kommentar und Muster fortsetzen (#696, #671), Einrückung beim Tippen (#1827),
+// mehrere Einfügemarken (#589), Bezeichner mitziehen (#658), Markierung umschließen (#672), Einfügen mit uses
+// (#515), Umschließung entfernen (#657), Ausdruckstyp (#689) und Methodenrümpfe in Deklarationsreihenfolge (#660).
+// Teil „Commands“.
 
 interface
 
@@ -22,6 +23,7 @@ uses
   Atlas.IDE.Editor.BlockComment,
   Atlas.IDE.Editor.StatementCompletion,
   Atlas.IDE.Editor.CommentContinuation,
+  Atlas.IDE.Editor.SmartIndent,
   Atlas.IDE.Editor.PatternContinuation,
   Atlas.IDE.Editor.MultiCursor,
   Atlas.IDE.Editor.LinkedEditing,
@@ -82,7 +84,7 @@ begin
 end;
 
 /// <summary>Änderungsmarken (#507), Zeilen verschieben (#634), Blockkommentar (#703), Anweisung (#697), Kommentar
-/// (#696) und Muster (#671) fortsetzen.</summary>
+/// (#696) fortsetzen, Einrückung beim Tippen (#1827), Muster (#671) fortsetzen.</summary>
 procedure InstallLineHelpers;
 begin
   // Änderungsmarken und Zeilenhistorie (#507).
@@ -95,6 +97,9 @@ begin
   TAtlasIdeStatementCompletion.Install(ActiveSession, Warnings());
   // Kommentar beim Enter fortsetzen (#696): beobachtet Enter, ohne die Taste zu binden.
   TAtlasIdeCommentContinuation.Install;
+  // Einrückung beim Tippen (#1827): nach dem Kommentar, übernimmt die Zeile nie; nie neben Vervollständigung,
+  // Platzhaltern, mehreren Einfügemarken und dem Mitziehen von Bezeichnern.
+  TAtlasIdeSmartIndent.Install(RunningSession, TypingBusy);
   // Muster fortsetzen (#671): nach dem Kommentar, nie bei offener Vervollständigung.
   TAtlasIdePatternContinuation.Install(RunningSession, CompletionVisible);
 end;
@@ -131,6 +136,7 @@ begin
   TAtlasIdeLinkedEditing.Uninstall;
   TAtlasIdeMultiCursor.Uninstall;
   TAtlasIdePatternContinuation.Uninstall;
+  TAtlasIdeSmartIndent.Uninstall;
   TAtlasIdeCommentContinuation.Uninstall;
   TAtlasIdeStatementCompletion.Uninstall;
 end;

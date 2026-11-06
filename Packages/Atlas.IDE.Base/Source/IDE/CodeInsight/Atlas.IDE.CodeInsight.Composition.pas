@@ -16,6 +16,7 @@ uses
   System.Classes,
   Vcl.Forms,
   Atlas.UI.Strings,
+  Atlas.Core.Localization.Language,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.Shutdown,
   Atlas.Core.Diagnostics.MainThread,
@@ -44,6 +45,17 @@ uses
   Atlas.IDE.CodeInsight.Composition.Services,
   Atlas.IDE.CodeInsight.Composition.Leftovers;
 
+/// <summary>Sprache der Oberfläche nach der IDE (#446); sie geht auch als locale an den Server (#1458). Die Zeile
+/// in atlas.log nennt Quelle und Wert, damit eine falsch erkannte Sprache nachvollziehbar ist.</summary>
+procedure InstallLanguage;
+var
+  mLanguage: TAtlasIdeLanguage;
+begin
+  mLanguage := IdeLanguage;
+  TAtlasStrings.Language := mLanguage.Language;
+  TAtlasGuard.Log('Sprache der Oberfläche: ' + mLanguage.Describe);
+end;
+
 /// <summary>Sicherung, Protokoll, Stacktraces, Sprache, Versionsverwaltung und Atlas-Symbol: vor allen Teilen.
 /// </summary>
 procedure InstallFoundation;
@@ -56,7 +68,7 @@ begin
   TAtlasGuard.RotatingLog.OnError := LogError;
   // Stacktraces für jede Fehlerzeile der Sicherung: ohne sie lässt sich kein Fehler bis zur Codezeile verfolgen.
   TAtlasIdeStackCapture.Install;
-  TAtlasStrings.Language := IdeLanguage;
+  InstallLanguage;
   // Versionsverwaltung (#571): Aufrufe im Hintergrund; fehlt git bzw. svn, einmal eine Zeile.
   TAtlasIdeVcs.Start(MessageLine, VcsBackend);
   // Atlas-Symbol (#751): Startbildschirm, Info-Dialog und Bildliste immer, auch abgesichert.
@@ -261,7 +273,25 @@ begin
   end;
 end;
 
+/// <summary>Einträge in den Hauptthread verfallen mit ihrem Modul: Die Registry meldet Ab- und Anmelden mit dem
+/// Handle des Packages an TAtlasMainThread. Schon in der Initialisierung: Module können sich anmelden, bevor die
+/// IDE Register von Base ruft (Regel 1).</summary>
+procedure ConnectModuleQueue;
+begin
+  TAtlasModuleRegistry.OnModuleClosing :=
+    procedure(AHandle: NativeUInt)
+    begin
+      TAtlasMainThread.CloseModule(AHandle);
+    end;
+  TAtlasModuleRegistry.OnModuleOpened :=
+    procedure(AHandle: NativeUInt)
+    begin
+      TAtlasMainThread.OpenModule(AHandle);
+    end;
+end;
+
 initialization
+  ConnectModuleQueue;
 
 finalization
   Unregister;

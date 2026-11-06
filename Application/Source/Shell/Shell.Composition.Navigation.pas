@@ -32,6 +32,9 @@ type
   TShellNavigationServices = record
     Documents: IDocumentStore;
     Index: ISymbolIndex;
+    /// <summary>Index für Hover und Parameterhilfe: der gemeinsame samt Ersatz-Units der IDE; nil = Index.
+    /// </summary>
+    EditorIndex: ISymbolIndex;
     ReadText: TShellNavigationReadText;
     ProjectFiles: TReferenceFilesProvider;
     EnsureUnit: TEnsureUnitFunc;
@@ -43,6 +46,8 @@ type
     HighlightSettingsFor: THighlightSettingsProvider;
     CompilerSwitchContextFor: TCompilerSwitchContextFunc;
     ReferenceSettingsFor: TReferenceSettingsProvider;
+    /// <summary>Typkommentare beim Umbenennen anpassen (#1838).</summary>
+    RenameTypeCommentsFor: TRenameTypeCommentsFunc;
   end;
 
   /// <summary>Navigation mit ihren Anfragen.</summary>
@@ -101,7 +106,7 @@ procedure TShellNavigation.CreateSymbolViews;
 begin
   FDefinition := TLspDefinition.Create(FServices.Documents, FServices.Index, FServices.EnsureUnit);
   FDefinition.ReadText := ReadText;
-  FHover := TLspHover.Create(FServices.Documents, FServices.Index, ReadText, FServices.EnsureUnit);
+  FHover := TLspHover.Create(FServices.Documents, FServices.EditorIndex, ReadText, FServices.EnsureUnit);
   FHover.VersionProvider := FServices.DelphiVersionFor;
   FHover.HintsFor := FServices.HintSettingsFor;
   FHover.RationaleFor := FServices.RationaleOptionsFor;
@@ -114,6 +119,7 @@ begin
   FReferences.SettingsFor := FServices.ReferenceSettingsFor;
   FRename := TLspRename.Create(FServices.Documents, FServices.Index, ReadText, ProjectFiles, FServices.EnsureUnit);
   FRename.SettingsFor := FServices.ReferenceSettingsFor;
+  FRename.TypeCommentsFor := FServices.RenameTypeCommentsFor;
 end;
 
 procedure TShellNavigation.CreateEditorViews;

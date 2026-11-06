@@ -1,4 +1,4 @@
-﻿# ADR 0017: Zuordnung der Units zu Packages
+# ADR 0017: Zuordnung der Units zu Packages
 
 - Stand: 2026-11-01, Branch `Pilot-2.0.0-beta.1` (6364e487), nachgezogen auf ef9b9d95 (#1455), Quellen unter `Packages/Atlas.IDE.Base/Source`
 - Bezug: [ADR 0017](0017-funktions-packages.md), Abschnitt „Fortschreibung: Laden, Entladen, Versionen“; #1455, #1456
@@ -195,6 +195,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Editor.Selection` | `Core/Editor/Atlas.Core.Editor.Selection.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.SelectionMatches` | `Core/Editor/Atlas.Core.Editor.SelectionMatches.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.SlashTrigger` | `Core/Editor/Atlas.Core.Editor.SlashTrigger.pas` | Ordner `Core/Editor` |
+| `Atlas.Core.Editor.SmartIndent` | `Core/Editor/Atlas.Core.Editor.SmartIndent.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.SmartPaste` | `Core/Editor/Atlas.Core.Editor.SmartPaste.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.SnapshotPolicy` | `Core/Editor/Atlas.Core.Editor.SnapshotPolicy.pas` | Ordner `Core/Editor` |
 | `Atlas.Core.Editor.StatementCompletion` | `Core/Editor/Atlas.Core.Editor.StatementCompletion.pas` | Ordner `Core/Editor` |
@@ -227,6 +228,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Hover.DebugValue` | `Core/Hover/Atlas.Core.Hover.DebugValue.pas` | Ordner `Core/Hover` |
 | `Atlas.Core.Hover.Declaration` | `Core/Hover/Atlas.Core.Hover.Declaration.pas` | Ordner `Core/Hover`; Typ aus der Hover-Deklaration, bis #1455 im Debugger-Kern |
 | `Atlas.Core.Hover.History` | `Core/Hover/Atlas.Core.Hover.History.pas` | Ordner `Core/Hover` |
+| `Atlas.Core.Hover.Items` | `Core/Hover/Atlas.Core.Hover.Items.pas` | Ordner `Core/Hover`; Bausteine, Klickflächen und Rollbereich des Hover-Satzes (#1841) |
 | `Atlas.Core.Hover.Layout` | `Core/Hover/Atlas.Core.Hover.Layout.pas` | Ordner `Core/Hover` |
 | `Atlas.Core.Hover.Texts` | `Core/Hover/Atlas.Core.Hover.Texts.pas` | Ordner `Core/Hover` |
 | `Atlas.Core.InlayHints.Store` | `Core/InlayHints/Atlas.Core.InlayHints.Store.pas` | Ordner `Core/InlayHints` |
@@ -241,6 +243,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Lsp.DataFlow` | `Core/Lsp/Atlas.Core.Lsp.DataFlow.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Lsp.Progress` | `Core/Lsp/Atlas.Core.Lsp.Progress.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Lsp.Session.Json` | `Core/Lsp/Atlas.Core.Lsp.Session.Json.pas` | Ordner `Core/Lsp` |
+| `Atlas.Core.Lsp.IdeMembers` | `Core/Lsp/Atlas.Core.Lsp.IdeMembers.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Lsp.IdeTypes` | `Core/Lsp/Atlas.Core.Lsp.IdeTypes.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Lsp.Session.Base` | `Core/Lsp/Atlas.Core.Lsp.Session.Base.pas` | Ordner `Core/Lsp` |
 | `Atlas.Core.Lsp.Session.Requests` | `Core/Lsp/Atlas.Core.Lsp.Session.Requests.pas` | Ordner `Core/Lsp` |
@@ -276,6 +279,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.Core.Problems.Contract` | `Core/Problems/Atlas.Core.Problems.Contract.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.Explanation` | `Core/Problems/Atlas.Core.Problems.Explanation.pas` | Ordner `Core/Problems`: Katalogtext für „Regel erklären“ (#1755) |
 | `Atlas.Core.Problems.Findings` | `Core/Problems/Atlas.Core.Problems.Findings.pas` | Ordner `Core/Problems` |
+| `Atlas.Core.Problems.ScopeProjects` | `Core/Problems/Atlas.Core.Problems.ScopeProjects.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.FindingsCache` | `Core/Problems/Atlas.Core.Problems.FindingsCache.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.InlineHints` | `Core/Problems/Atlas.Core.Problems.InlineHints.pas` | Ordner `Core/Problems` |
 | `Atlas.Core.Problems.Refresh` | `Core/Problems/Atlas.Core.Problems.Refresh.pas` | Ordner `Core/Problems` |
@@ -441,6 +445,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.CodeInsight.Manager.Handlers` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Manager.Handlers.pas` | Ordner `IDE/CodeInsight` |
 | `Atlas.IDE.CodeInsight.Manager.Paths` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Manager.Paths.pas` | Ordner `IDE/CodeInsight` |
 | `Atlas.IDE.CodeInsight.Manager.Queries` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Manager.Queries.pas` | Ordner `IDE/CodeInsight` |
+| `Atlas.IDE.CodeInsight.IdeMembers` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.IdeMembers.pas` | Ordner `IDE/CodeInsight` |
 | `Atlas.IDE.CodeInsight.IdeTypes` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.IdeTypes.pas` | Ordner `IDE/CodeInsight` |
 | `Atlas.IDE.CodeInsight.Manager.Session` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Manager.Session.pas` | Ordner `IDE/CodeInsight` |
 | `Atlas.IDE.CodeInsight.Manager.State` | `IDE/CodeInsight/Atlas.IDE.CodeInsight.Manager.State.pas` | Ordner `IDE/CodeInsight` |
@@ -536,6 +541,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Editor.SafeDelete` | `IDE/Editor/Atlas.IDE.Editor.SafeDelete.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.SelectionMatches` | `IDE/Editor/Atlas.IDE.Editor.SelectionMatches.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.ServerEdit` | `IDE/Editor/Atlas.IDE.Editor.ServerEdit.pas` | Ordner `IDE/Editor` |
+| `Atlas.IDE.Editor.SmartIndent` | `IDE/Editor/Atlas.IDE.Editor.SmartIndent.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.SmartPaste` | `IDE/Editor/Atlas.IDE.Editor.SmartPaste.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.StatementCompletion` | `IDE/Editor/Atlas.IDE.Editor.StatementCompletion.pas` | Ordner `IDE/Editor` |
 | `Atlas.IDE.Editor.TestUnitLens` | `IDE/Editor/Atlas.IDE.Editor.TestUnitLens.pas` | Ordner `IDE/Editor` |
@@ -588,6 +594,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.IDE.Problems.MessageList` | `IDE/Problems/Atlas.IDE.Problems.MessageList.pas` | Ordner `IDE/Problems` |
 | `Atlas.IDE.Problems.Painter` | `IDE/Problems/Atlas.IDE.Problems.Painter.pas` | Ordner `IDE/Problems` |
 | `Atlas.IDE.Problems.RuleActions` | `IDE/Problems/Atlas.IDE.Problems.RuleActions.pas` | Ordner `IDE/Problems`: fragt das Modul Prüfregeln nach `IAtlasRuleActions` (#1755) |
+| `Atlas.IDE.Problems.Files` | `IDE/Problems/Atlas.IDE.Problems.Files.pas` | Ordner `IDE/Problems` |
 | `Atlas.IDE.Problems.Service` | `IDE/Problems/Atlas.IDE.Problems.Service.pas` | Ordner `IDE/Problems` |
 | `Atlas.IDE.Problems.Window` | `IDE/Problems/Atlas.IDE.Problems.Window.pas` | Ordner `IDE/Problems` |
 | `Atlas.IDE.Projects.Context` | `IDE/Projects/Atlas.IDE.Projects.Context.pas` | Ordner `IDE/Projects` |
@@ -671,6 +678,7 @@ Stand der Summen: 6364e487, vor den Units von #1454/#1455.
 | `Atlas.UI.Popup.Window` | `UI/Popup/Atlas.UI.Popup.Window.pas` | Ordner `UI/Popup` |
 | `Atlas.UI.Problems.Explain` | `UI/Problems/Atlas.UI.Problems.Explain.pas` | „Regel erklären“ in „Atlas-Prüfung“ (Base), #1455 |
 | `Atlas.UI.Problems.Frame` | `UI/Problems/Atlas.UI.Problems.Frame.pas` | Ordner `UI/Problems` |
+| `Atlas.UI.Problems.ScopeBox` | `UI/Problems/Atlas.UI.Problems.ScopeBox.pas` | Ordner `UI/Problems` |
 | `Atlas.UI.Problems.KindIcon` | `UI/Problems/Atlas.UI.Problems.KindIcon.pas` | Ordner `UI/Problems` |
 | `Atlas.UI.Results.CallDiagram` | `UI/Results/Atlas.UI.Results.CallDiagram.pas` | Ordner `UI/Results` |
 | `Atlas.UI.Results.Changes` | `UI/Results/Atlas.UI.Results.Changes.pas` | Ordner `UI/Results`; Teil des Ergebnisfensters |

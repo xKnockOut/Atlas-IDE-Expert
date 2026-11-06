@@ -318,6 +318,8 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.ExpressionType.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.MethodOrder.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.MethodOrder.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.TypeComments.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.ClassBodies.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.OverrideMarks.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Baseline.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.BulkFix.pas"/>
@@ -555,6 +557,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.FormFiles.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.EditorConfig.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Formatter.Indent.pas"/>
+        <DCCReference Include="Source\Editing\Atlas.Common.Editing.SmartIndent.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Formatter.Layout.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.Formatter.pas"/>
         <DCCReference Include="Source\Editing\Atlas.Common.Editing.FormatCheck.pas"/>
@@ -616,6 +619,7 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.LinkedEditing.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.InlineValues.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.Formatting.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.SmartIndent.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.FuzzyMatch.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.WorkspaceSymbols.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.DocumentHighlights.pas"/>
@@ -625,6 +629,9 @@
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeBuild.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeProject.pas"/>
         <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeTypes.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeUnits.Source.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeUnits.pas"/>
+        <DCCReference Include="Source\Lsp\Atlas.Common.Lsp.IdeIndex.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.BuildTools.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Paths.pas"/>
         <DCCReference Include="Source\Mcp\Atlas.Common.Mcp.Freshness.pas"/>

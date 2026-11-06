@@ -28,6 +28,7 @@ type
 implementation
 
 uses
+  Atlas.Core.Localization.Language,
   Atlas.IDE.Settings.Project,
   Atlas.IDE.Settings.ServerTool,
   Atlas.UI.Strings;
@@ -50,8 +51,10 @@ var
   mResult: TAtlasServerToolResult;
 begin
   Result := '';
-  mCall := TAtlasServerToolCall.Create(ServerExe, AArguments, ExtractFileDir(TAtlasProjectSettings.ActiveProject),
-    ATimeoutMs);
+  // Ausgabe des Werkzeugs in der Sprache der Oberfläche (#1458): Ohne --locale nähme es language aus
+  // settings.json und sonst Englisch.
+  mCall := TAtlasServerToolCall.Create(ServerExe, AArguments + ' --locale ' + TAtlasTextLanguage.Code,
+    ExtractFileDir(TAtlasProjectSettings.ActiveProject), ATimeoutMs);
   if not TAtlasServerTool.Run(mCall, mResult) then
   begin
     Result := TAtlasStrings.Fmt(TAtlasTextId.ServerPageToolFailed, [mResult.Error]);

@@ -1,4 +1,4 @@
-# Atlas IDE Expert
+﻿# Atlas IDE Expert
 
 [![Donate with PayPal](https://img.shields.io/badge/Donate-PayPal-00457C?logo=paypal)](https://www.paypal.com/paypalme/xKnockOut288)
 
@@ -41,9 +41,11 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Templates:** code, postfix and class-aware templates, your own snippets, slash commands like `/uses` and `/extract`
 - **Generate menu** (Alt+Ins) and editing helpers: surround, move lines, toggle comments, tidy `var` blocks
 - **Formatter** (Ctrl+Shift+Alt+L), also without the IDE
+- **Class completion:** `{ TCustomer }` above the bodies (or a separator line, doc sentence, region), constructors and destructor first, then get/set pairs; new bodies prefilled with `inherited` and `Result := FName`
+- **Indentation while typing:** after Enter the caret lands where the block structure puts it, `end`, `until`, `finally` and `else` move to their counterpart, and a string is split with `' +` when you break the line
 
 ### [Understanding](docs/features/en/Understanding.md)
-- **Hover** with declaration, XMLDoc, inheritance, constant values and debugger values
+- **Hover** with declaration, XMLDoc, inheritance, constant values and debugger values; the expanded published members of large components scroll with the mouse wheel (`hover.membersMaxLines`, default 15 rows)
 - **Type hints, code metrics and recursion marks** in the editor; inactive `{$IFDEF}` branches dimmed
 - **Pair colours and block lines** by depth; local routines stand out (one level deeper or their own colour, optionally shaded)
 - **Architecture overview:** subsystems, central units, cycles, comparison with a saved state
@@ -61,9 +63,10 @@ Short overview; each heading links to the full description. Features marked *(ex
 ### [Code analysis](docs/features/en/Code-analysis.md)
 - **313 check rules** while you type: 204 bugs, 99 code smells, 10 security rules
 - **"Compiler ahead":** dcc errors and warnings before you build, with quick fixes; Atlas finds units like dcc, including namespaces and unit aliases (`WinTypes`, `WinProcs`)
-- **Window "Atlas Findings"** for file, project or group, with bulk fixes
+- **Window "Atlas Findings"** for file, project or group, with bulk fixes; with a group open, the scope list also offers each project of the group
 - **Profiles, confidence, baseline and suppressions** for legacy projects
 - **Types from installed packages:** the IDE tells Atlas the types of its packages (even without .pas). "Type is not declared" stays silent for them, the quick fix suggests their unit, completion offers them with a `uses` entry
+- **Members of types from installed packages:** for units without source, Atlas asks the IDE for the members it knows via RTTI (properties, methods with parameter types, fields, interfaces, enum values). Hover, member completion after `.`, parameter hints and enum values for parameters then work for these types too, without "go to declaration".
 - **Linter for CI** with text, JSON or SARIF output. All rules: [docs/Regeln.md](docs/Regeln.md)
 
 ### [Refactorings and code actions](docs/features/en/Refactorings.md)
@@ -96,7 +99,7 @@ Short overview; each heading links to the full description. Features marked *(ex
 - **Module switches** for whole areas such as debugging, tests or the issue tracker; each module brings its own settings, which are absent while the module is not installed
 - **Export, import, profiles and reset**
 - **Team-wide values** in `.atlas` and `atlas.json`
-- **Language follows the IDE** (German or English), including issue tracker, welcome page and debugger; unchanged default texts such as comment snippets follow it too; messages, status lines, completion tags, code templates, server crash notes and the call diagram as well; also the notes on invalid project tasks, the answers of IDE builds for Claude Code and the questions of the pre-commit hook for affected tests; the messages and quick fixes of all rules too; and the server answers: messages, code actions, hovers, MCP answers, reports, the architecture map, the messages of `--check` and the MCP tool descriptions
+- **Language follows the IDE** (German or English), including issue tracker, welcome page and debugger; unchanged default texts such as comment snippets follow it too; messages, status lines, completion tags, code templates, server crash notes and the call diagram as well; also the notes on invalid project tasks, the answers of IDE builds for Claude Code and the questions of the pre-commit hook for affected tests; the messages and quick fixes of all rules too; and the server answers: messages, code actions, hovers, MCP answers, reports, the architecture map, the messages of `--check` and the MCP tool descriptions; without `language` in settings.json the server follows the language the IDE actually shows (its loaded resource files, then `Locales` in the registry, then Windows), and `atlas.log` names the detected language and its source
 
 ### [Claude Code and MCP](docs/features/en/Claude-Code.md)
 - **32 MCP tools** to read, check, build, test, rename and fix Delphi code
@@ -185,6 +188,10 @@ All are design-time packages, built for Win32 (classic IDE) and Win64 (64-bit ID
 | `Atlas.IDE.Designer` | Designer bar | `designer.enabled` |
 | `Atlas.IDE.Tracker` | Issue tracker: issue ids in code, line history, board, "Attach to issue", tiles "My issues" and sprint | `issues.enabled` |
 | `Atlas.IDE.Welcome` | Welcome page and "Atlas Start" | `welcomePage.enabled` |
+
+`TAtlasMainThread` tracks queued main thread entries per module: when a module unregisters or its package is unloaded, its waiting entries are dropped instead of running later in unloaded code.
+
+The main thread does not wait for the server while you type or click: slash commands, `///` scaffolds and "Switch to test unit" (also from the code lens) ask in the background. The diagnostics window does not count open modal dialogs as main thread load, and for a slow call it names the server request the main thread waited for.
 
 How a module registers, which contracts it uses and the rules for loading and unloading: [docs/Architektur.md](docs/Architektur.md) (German, section "Module und Verträge des Plugins") and [ADR 0017](docs/adr/0017-funktions-packages.md); each unit's package is listed in [docs/adr/0017-unit-zuordnung.md](docs/adr/0017-unit-zuordnung.md). Roles, naming and import rules: [docs/Architektur.md](docs/Architektur.md).
 

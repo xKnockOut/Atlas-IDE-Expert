@@ -40,6 +40,9 @@ type
     Dispatcher: TJsonRpcDispatcher;
     Documents: IDocumentStore;
     Index: ISymbolIndex;
+    /// <summary>Gemeinsamer Index samt Ersatz-Units der IDE für Hover, Vervollständigung und Parameterhilfe.
+    /// </summary>
+    EditorIndex: ISymbolIndex;
     /// <summary>Editor: Host der Schnellbefehle und „Interface implementieren“ im Erzeugen-Menü.</summary>
     Editing: TShellEditing;
     RuleIdsFor: TSlashRuleIdsFunc;
@@ -198,6 +201,7 @@ begin
   Result := Default(TShellNavigationServices);
   Result.Documents := FServices.Documents;
   Result.Index := FServices.Index;
+  Result.EditorIndex := FServices.EditorIndex;
   Result.ReadText := ReadText;
   Result.ProjectFiles := ProjectFiles;
   Result.EnsureUnit := mCore.Folders.EnsureUnitFunc();
@@ -224,6 +228,11 @@ begin
     begin
       Result := mCore.Settings.References(AUri);
     end;
+  Result.RenameTypeCommentsFor :=
+    function(const AUri: string): Boolean
+    begin
+      Result := not SameText(mCore.Settings.SettingsFor(AUri).ClassCompletion.TypeComment, 'off');
+    end;
 end;
 
 function TShellCodeArea.RefactoringServices: TShellRefactoringServices;
@@ -248,6 +257,11 @@ begin
     function(const AUri: string): TFormatStyle
     begin
       Result := mCore.FileOptions.ResolvedFormatStyleFor(AUri);
+    end;
+  Result.TypeCommentFor :=
+    function(const AUri: string): string
+    begin
+      Result := mCore.Settings.SettingsFor(AUri).ClassCompletion.TypeComment;
     end;
   Result.LanguageLevelFor :=
     function(const AUri: string): string
@@ -278,7 +292,8 @@ begin
   mCore := FCore;
   Result := Default(TShellCompletionServices);
   Result.Documents := FServices.Documents;
-  Result.Index := FServices.Index;
+  // Mit den Ersatz-Units der IDE: Mitglieder von Typen aus Packages ohne Quelltext.
+  Result.Index := FServices.EditorIndex;
   Result.EnsureUnit := mCore.Folders.EnsureUnitFunc();
   Result.ReadText := ReadText;
   Result.CompletionSettingsFor :=

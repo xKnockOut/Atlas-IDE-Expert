@@ -2,8 +2,8 @@
 
 // Internals-Rolle Shell: Befehle des Plugins am Editor. Austrittspunkte (#698), neu zugewiesene Variablen (#712),
 // Typ des markierten Ausdrucks (#689), Methodenrümpfe in Deklarationsreihenfolge (#660), Überschreibungen (#768),
-// qualifizierte Namen, Aufzählungswerte, resourcestring (#473) und Zeichenkettenliterale. Die Komposition reicht
-// Dokumente, Index, Quelltext, Namensräume und Einstellungen als Dienste herein.
+// qualifizierte Namen, Aufzählungswerte, resourcestring (#473), Zeichenkettenliterale und die Einrückung beim Tippen
+// (#1827). Die Komposition reicht Dokumente, Index, Quelltext, Namensräume und Einstellungen als Dienste herein.
 
 interface
 
@@ -15,7 +15,9 @@ uses
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.DocumentHighlights,
-  Atlas.Common.Lsp.ResourceStringCommands;
+  Atlas.Common.Lsp.ResourceStringCommands,
+  Atlas.Common.Lsp.SmartIndent,
+  Atlas.Common.Lsp.MethodOrder;
 
 type
   TShellEditorReadText = reference to function(const AFileName: string; out AText: string): Boolean;
@@ -34,6 +36,10 @@ type
     StringLiteralFor: TShellStringLiteralFunc;
     /// <summary>Schreibt einen resourcestring in eine andere Unit (#473); über den Host der Schnellbefehle.</summary>
     ResourceStringWrite: TResourceStringWrite;
+    /// <summary>Einrückung beim Tippen (#1827) je Datei.</summary>
+    SmartIndentFor: TSmartIndentOptionsFunc;
+    /// <summary>Einstellungen zum Ordnen der Methodenrümpfe (#1834) je Datei.</summary>
+    MethodOrderFor: TMethodOrderOptionsFunc;
   end;
 
   /// <summary>Befehle des Plugins am Editor.</summary>
@@ -51,22 +57,25 @@ type
     function RunAddResourceString(const AArguments: TJSONArray): TJSONValue;
     function RunPlainText(const AArguments: TJSONArray): TJSONValue;
     function RunToLiteral(const AArguments: TJSONArray): TJSONValue;
+    function RunSmartIndent(const AArguments: TJSONArray): TJSONValue;
   public
     constructor Create(const AServices: TShellEditorCommandServices);
     /// <summary>Markierungen im Plugin: Austrittspunkte, neu zugewiesene Variablen, Ausdruckstyp,
     /// Methodenreihenfolge, Überschreibungen.</summary>
     procedure RegisterMarkCommands(ACommands: TLspCommands);
-    /// <summary>Textbefehle: qualifizierte Namen, Aufzählungswerte, resourcestring, Zeichenkettenliterale.</summary>
+    /// <summary>Textbefehle: qualifizierte Namen, Aufzählungswerte, resourcestring, Zeichenkettenliterale,
+    /// Einrückung beim Tippen.</summary>
     procedure RegisterTextCommands(ACommands: TLspCommands);
   end;
 
 implementation
 
 uses
+  System.SysUtils,
+  Atlas.Common.JsonRpc.Contract,
   Atlas.Common.Lsp.ExitPoints,
   Atlas.Common.Lsp.Reassigned,
   Atlas.Common.Lsp.ExpressionType,
-  Atlas.Common.Lsp.MethodOrder,
   Atlas.Common.Lsp.OverrideMarks,
   Atlas.Common.Lsp.QualifiedNames,
   Atlas.Common.Lsp.EnumValueCommands,
@@ -104,6 +113,7 @@ begin
   ACommands.Register(TResourceStringCommands.AddCommand, RunAddResourceString);
   ACommands.Register(TStringLiteralCommands.PlainTextCommand, RunPlainText);
   ACommands.Register(TStringLiteralCommands.ToLiteralCommand, RunToLiteral);
+  ACommands.Register(TLspSmartIndent.Command, RunSmartIndent);
 end;
 
 function TShellEditorCommands.RunExitPoints(const AArguments: TJSONArray): TJSONValue;
@@ -126,7 +136,7 @@ end;
 
 function TShellEditorCommands.RunMethodOrder(const AArguments: TJSONArray): TJSONValue;
 begin
-  Result := TLspMethodOrder.Execute(FServices.Documents, AArguments);
+  Result := TLspMethodOrder.Execute(FServices.Documents, FServices.MethodOrderFor, AArguments);
 end;
 
 function TShellEditorCommands.RunOverrideMarks(const AArguments: TJSONArray): TJSONValue;
@@ -169,6 +179,16 @@ begin
     mSettings := FServices.StringLiteralFor(AArguments.Items[0].Value, mMultiline);
   end;
   Result := TStringLiteralCommands.ExecuteToLiteral(FServices.Documents, mSettings, mMultiline, AArguments);
+end;
+
+function TShellEditorCommands.RunSmartIndent(const AArguments: TJSONArray): TJSONValue;
+begin
+  try
+    Result := TLspSmartIndent.Execute(FServices.Documents, FServices.SmartIndentFor, AArguments);
+  except
+    on E: EArgumentException do
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, E.Message);
+  end;
 end;
 
 end.
