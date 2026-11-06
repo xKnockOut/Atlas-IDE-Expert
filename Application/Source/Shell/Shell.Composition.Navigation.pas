@@ -32,6 +32,9 @@ type
   TShellNavigationServices = record
     Documents: IDocumentStore;
     Index: ISymbolIndex;
+    /// <summary>Index für Hover und Parameterhilfe: der gemeinsame samt Ersatz-Units der IDE; nil = Index.
+    /// </summary>
+    EditorIndex: ISymbolIndex;
     ReadText: TShellNavigationReadText;
     ProjectFiles: TReferenceFilesProvider;
     EnsureUnit: TEnsureUnitFunc;
@@ -101,7 +104,7 @@ procedure TShellNavigation.CreateSymbolViews;
 begin
   FDefinition := TLspDefinition.Create(FServices.Documents, FServices.Index, FServices.EnsureUnit);
   FDefinition.ReadText := ReadText;
-  FHover := TLspHover.Create(FServices.Documents, FServices.Index, ReadText, FServices.EnsureUnit);
+  FHover := TLspHover.Create(FServices.Documents, FServices.EditorIndex, ReadText, FServices.EnsureUnit);
   FHover.VersionProvider := FServices.DelphiVersionFor;
   FHover.HintsFor := FServices.HintSettingsFor;
   FHover.RationaleFor := FServices.RationaleOptionsFor;
