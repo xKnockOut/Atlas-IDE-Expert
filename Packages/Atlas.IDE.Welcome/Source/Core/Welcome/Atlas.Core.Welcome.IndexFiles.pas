@@ -50,7 +50,7 @@ type
     // Strings (#1140), 28: Begründungen (#1123), 29: Prozedurtypen vollständig (#1326). 19 (#1001) fehlte hier,
     // die Willkommensseite fand deshalb keinen Cache. 30: inline-Routinen ohne Verweise (#1381).
     // 31: Typargumente je Vorfahr.
-    FormatVersion = 31;
+    FormatVersion = 32;
     IndexFolder = 'Index';
     LibraryFolder = 'Bibliothek';
   private

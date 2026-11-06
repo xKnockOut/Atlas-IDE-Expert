@@ -192,11 +192,13 @@ begin
   // Ohne Tastatur-Ereignisse des Editors: andere Tasten schließen nach der Verarbeitung (wie EditorKeyDown).
   if not Result and (AKey <> VK_SHIFT) and (AKey <> VK_CONTROL) and (AKey <> VK_MENU) and
     not FOwner.FHistory.Pinned then
+  begin
     TAtlasMainThread.ForceQueue(TAtlasFeature.Hover,
       procedure
       begin
         FOwner.Hide;
       end);
+  end;
   {$ENDIF}
 end;
 

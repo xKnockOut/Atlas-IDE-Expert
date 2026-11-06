@@ -99,21 +99,26 @@ var
 begin
   // Die Liste braucht ein Fenster, bevor sie Einträge und Häkchen annimmt.
   FList.HandleNeeded;
-  FList.Items.Clear;
-  for mCandidate in FCandidates do
-  begin
-    mCaption := mCandidate.Name;
-    if mCandidate.Required then
+  FList.Items.BeginUpdate;
+  try
+    FList.Items.Clear;
+    for mCandidate in FCandidates do
     begin
-      mCaption := TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesSelectionRequired, [mCandidate.Name]);
-    end
-    else if mCandidate.IsNew then
-    begin
-      mCaption := TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesSelectionNew, [mCandidate.Name]);
+      mCaption := mCandidate.Name;
+      if mCandidate.Required then
+      begin
+        mCaption := TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesSelectionRequired, [mCandidate.Name]);
+      end
+      else if mCandidate.IsNew then
+      begin
+        mCaption := TAtlasUpdatesStrings.Fmt(TAtlasUpdatesTextId.UpdatesSelectionNew, [mCandidate.Name]);
+      end;
+      mIndex := FList.Items.Add(mCaption);
+      FList.Checked[mIndex] := mCandidate.Selected or mCandidate.Required;
+      FList.ItemEnabled[mIndex] := not mCandidate.Required;
     end;
-    mIndex := FList.Items.Add(mCaption);
-    FList.Checked[mIndex] := mCandidate.Selected or mCandidate.Required;
-    FList.ItemEnabled[mIndex] := not mCandidate.Required;
+  finally
+    FList.Items.EndUpdate;
   end;
 end;
 

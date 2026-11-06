@@ -1,6 +1,6 @@
 ﻿# Handtests für Atlas 2.0.0-beta.1
 
-Stand: 06.11.2026 (Pilot-2.0.0-beta.1 mit #1846). Sammelliste aller Handtests, die seit 1.2.0 für 2.0 dazugekommen sind (Marco, 01.11.2026: erst alles umbauen, dann eine Liste). Quellen: `docs/Atlas-Testfaelle.md`, die Sammelliste des Modulumbaus (`planung/v2/handtests-v2.md` im Projektordner), die Übergabe und die PR-Beschreibungen. Die IDs sind dieselben wie dort, damit Rückmeldungen im Issue oder PR zuzuordnen sind. Erzeugt mit `werkzeuge/handtests-v2.py` im Projektordner.
+Stand: 06.11.2026 (Pilot-2.0.0-beta.1 mit #1848). Sammelliste aller Handtests, die seit 1.2.0 für 2.0 dazugekommen sind (Marco, 01.11.2026: erst alles umbauen, dann eine Liste). Quellen: `docs/Atlas-Testfaelle.md`, die Sammelliste des Modulumbaus (`planung/v2/handtests-v2.md` im Projektordner), die Übergabe und die PR-Beschreibungen. Die IDs sind dieselben wie dort, damit Rückmeldungen im Issue oder PR zuzuordnen sind. Erzeugt mit `werkzeuge/handtests-v2.py` im Projektordner.
 
 **So abarbeiten:** Teil 1 zuerst; scheitert dort etwas, lohnt der Rest nicht. Danach Teil 2: die Tests, deren Ergebnis eine offene Ursache klärt oder eine Funktion abnimmt, in der angegebenen Reihenfolge. Dann Teil 3 (Umstieg) und die übrigen Teile in beliebiger Reihenfolge. In die Spalte „Ergebnis“ ✓, ✗ mit Stichwort oder „–“ (nicht anwendbar) eintragen. Zeilen mit **Abnahme** entscheiden, ob eine Funktion als fertig gilt; sie sollten vor dem Tag `v2.0.0-beta.1` grün sein. Alle Tests in einem eigenen Registry-Profil (`bds -r Atlas20`), nicht im Standardprofil.
 
@@ -471,6 +471,22 @@ Vorbereitung: Plugin und Server mit diesem Stand gebaut; Testprojekt mit eigener
 | FPR6 | Klasse mit Feld `FPos: TPos;`, wobei `TPos = Atlas.Text.Lines.TTextPosition` (Alias anderen Namens in einer anderen Unit des Projekts), im Konstruktor `FPos := TPos.Create(1, 2);` | Kein `field-not-freed` an `FPos` |  |
 | FPR7 | In einer Unit ohne `Winapi.Windows` im uses `RenameFile(A, B); // lsp-ignore: inline-not-expanded`, Datei speichern | Kein Hinweis `unused-suppression`, der Kommentar bleibt beim Speichern stehen; bitte zusätzlich melden, ob ohne den Kommentar `inline-not-expanded` (H2443, Winapi.Windows fehlt) erscheint |  |
 | FPR8 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; `TMethodLookupTests`, `TMethodWithoutSelfRuleTests.InterfaceMethodsAreSilent`, `TFlowHandleLeakTests`, `TFreeFieldTypesTests.FollowsAliasesOfOtherUnits`, `TRuleEngineTests.UndecidedLineKeepsSuppression`, `TInliningRulesTests.UnknownCallKeepsSuppression` grün |  |
+
+### Fehlalarme der Stilregeln aus Marcos Lauf (06.11.2026)
+
+Vorbereitung: Plugin und Server mit diesem Stand gebaut. In der `atlas.json` von Atlas `"minConfidence": "low"` und die Regeln `naming-prefix`, `magic-number`, `hardcoded-string`, `public-field`, `method-without-self`, `string-concat-in-loop`, `loop-invariant-call`, `missing-begin-update` auf `"info"`; dann im Fenster „Atlas-Prüfung“ die Projektgruppe Atlas prüfen.
+
+| Nr. | Schritte | Erwartet | Ergebnis |
+|---|---|---|---|
+| RFP1 | Befunde mit der Liste vom 06.11. vergleichen (`hardcoded-string`) | Keine Meldung mehr für `TAtlasGuard.Log(…)`, `Diagnose(…)`, `Assert(…)`, `FormatDateTime`-Masken, `'<tr …>'`, `'## …'`, `Font.Name := 'Segoe UI'`; Texte wie `'nur https'` bleiben (**Abnahme**) |  |
+| RFP2 | `magic-number` bei `EnsureRange(…, 0, $FFFF)`, `MulDiv(…, 96)`, Vektor-Icons `[P(3.5, 1.5), …]` | Still; `SetBounds(12, 9, 360, 23)` im Tastenkürzel-Fenster bleibt gemeldet |  |
+| RFP3 | `naming-prefix` in Vergleichern `function(const A, B: …)` und in Handlern, die der Code zuweist (`FEvents.OnEditorPaintLine := PaintLine`) | Still für `A`, `B` und die Parameter der Handler |  |
+| RFP4 | `public-field` in `Atlas.Core.Problems.Store` (`protected type TEntry`) | Still; Felder öffentlicher Klassen bleiben gemeldet |  |
+| RFP5 | `method-without-self`: `TAtlasKeyMapForm.FormClose`, `TStopTicker.Tick` (`OnTimer := TStopTicker(FTicker).Tick`) | Still |  |
+| RFP6 | `uses-unit-not-found` in `Atlas.Common.dpk` (`requires Atlas.Text`) ohne gebaute `Atlas.Text.dcp` | Still, weil Atlas.Text in derselben Projektgruppe steht |  |
+| RFP7 | Atlas.Windows.Console.StdStreams öffnen | Kein „NoErrMsg ist nicht deklariert“ (Index neu aufgebaut, Version 32) |  |
+| RFP8 | Atlas.Common.Lsp.PullDiagnostics Zeile mit `raise FErrorClass.Create` | Weder `class-reference-nonvirtual-constructor` noch `unused-suppression` |  |
+| RFP9 | `Atlas.Tests` bauen und ausführen | 0 Fehler, 0 Warnungen, 0 Hinweise; neue Tests in Style, Performance, Naming, General, MemberHides, ClassReferences, ControlFlow, EventAssignments, UnitLookup grün |  |
 
 ### Typen aus den Packages der IDE (atlas/ideTypes, PR #1816)
 

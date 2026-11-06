@@ -20,6 +20,8 @@
 //   4. bei Packages die Units der requires-Packages (.dpk bzw. .dcp), auch über
 //      deren requires: dcc lädt mit Atlas.Common.dcp auch das davon verlangte
 //      Atlas.Text.dcp, dessen Units damit ebenso sichtbar sind
+// requires (FindPackage): ein Projekt der Projektgruppe gleichen Namens gilt
+// als vorhanden, die Gruppe baut es vor diesem
 // Quelle Atlas: Units im Index und in den Quellpfaden (Browsing Path).
 //
 // Dateien aus {$I} und {$R} (FindFile, #1379): Ordner der einbindenden Datei,
@@ -46,6 +48,8 @@ type
 
   /// <summary>Anderes Projekt der Gruppe: Ordner, in den es übersetzt, und seine Units.</summary>
   TUnitLookupGroupOutput = record
+    /// <summary>Name des Projekts ohne Endung (Atlas.Text): requires dieses Namens baut die Gruppe selbst.</summary>
+    ProjectName: string;
     /// <summary>DCU-Ausgabeordner, absolut, mit eingesetzter Plattform und Konfiguration.</summary>
     DcuFolder: string;
     Units: TArray<string>;
@@ -119,6 +123,8 @@ type
     function FindInProject(const AUnitName, AFromFile: string; out AUnsure: Boolean): Boolean;
     function FindInAtlas(const AUnitName: string): Boolean;
     function BuiltByGroup(const ANames: TArray<string>): Boolean;
+    /// <summary>Ist APackage ein Projekt der Gruppe (requires eines Packages derselben Projektgruppe)?</summary>
+    function PackageInGroup(const APackage: string): Boolean;
     function InFolderAny(const AFolder: string; const ANames: TArray<string>): Boolean;
     /// <summary>Gibt es die Datei neben AFromFile oder in einem der Ordner für FindFile?</summary>
     function ExistsInFileFolders(const AFileName, AFromFile: string): Boolean;
@@ -630,8 +636,33 @@ begin
   end;
 end;
 
+function TUnitLookup.PackageInGroup(const APackage: string): Boolean;
+var
+  mOutputs: TArray<TUnitLookupGroupOutput>;
+  mOutput: TUnitLookupGroupOutput;
+begin
+  mOutputs := FSetup.GroupOutputs;
+  if Assigned(FSetup.GroupOutputsOf) then
+  begin
+    mOutputs := mOutputs + FSetup.GroupOutputsOf();
+  end;
+  for mOutput in mOutputs do
+  begin
+    if (mOutput.ProjectName <> '') and SameText(mOutput.ProjectName, APackage) then
+    begin
+      Exit(True);
+    end;
+  end;
+  Result := False;
+end;
+
 function TUnitLookup.FindPackage(const APackage: string): TRuleUnitAnswer;
 begin
+  // Ein Package derselben Projektgruppe entsteht beim Bauen der Gruppe, auch wenn seine .dcp noch fehlt.
+  if PackageInGroup(APackage) then
+  begin
+    Exit(TRuleUnitAnswer.Found);
+  end;
   if not Assigned(FSetup.PackageExists) or not FSetup.LibraryKnown or FUncertain then
   begin
     Exit(TRuleUnitAnswer.Unknown);

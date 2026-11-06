@@ -724,9 +724,14 @@ begin
   mCombo := TComboBox.Create(Box);
   mCombo.Parent := Box;
   mCombo.Style := csDropDown;
-  for mChoice := 0 to High(AChoices) do
-  begin
-    mCombo.Items.Add(AChoices[mChoice].Caption);
+  mCombo.Items.BeginUpdate;
+  try
+    for mChoice := 0 to High(AChoices) do
+    begin
+      mCombo.Items.Add(AChoices[mChoice].Caption);
+    end;
+  finally
+    mCombo.Items.EndUpdate;
   end;
   mChoice := TAtlasSettingChoices.IndexOf(AChoices, Dialog.FModel.Current(Index));
   if mChoice >= 0 then
