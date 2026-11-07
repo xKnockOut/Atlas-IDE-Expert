@@ -1,67 +1,52 @@
-# Roadmap (Entwurf)
+# Roadmap
 
-Stand 06.11.2026, nach Atlas 2.0.0. Entwurf zur Abstimmung: Reihenfolge und Zuschnitt sind Vorschläge, keine Zusagen.
-Grundlage sind die offenen Issues (mehr als 300) und die Erfahrungen aus dem 2.0-Release. Leitlinie: Fehler und
-Alltag vor neuen Funktionen, zuerst das RAD-Studio-Plugin.
+Stand 07.11.2026, Aufteilung von Marco festgelegt. Grundlage sind die 494 offenen Issues; etwa 178 davon sind umgesetzt
+und warten nur auf den Delphi-Build und den Handtest. Übersicht mit allen Issues je Version: `planung/roadmap-2026-11-07/`
+im Projektordner. Atlas bleibt beim RAD-Studio-Plugin, andere Editoren sind nicht geplant.
 
-## 2.0.x: Stabilisieren (laufend)
+## 2.0.0: Umbau abschließen
 
-Nur Fehlerbehebungen, kurze Abstände.
+Keine neuen Funktionen mehr.
 
-- Rückmeldungen zu 2.0.0 aufnehmen, vor allem Update von 1.x und Delphi 12 aus dem Quelltext.
-- Bau und Tests dauerhaft sauber: Leckmeldungen, 0/0/0 auf dem Beta-Stand.
-- Inhalte aus dem früheren `main` prüfen und bei Bedarf zurückholen: Speicher bei Projektgruppen (.dcp je Prozess,
-  gemeinsamer Suchpfad-Cache), Atlas-Suche unter Delphi 12, Schalter „Atlas-Probleme“, GetIt-Logo.
-- Offene Fehler: #1440 (Willkommensseiten scrollen), #1477 (declared-not-implemented), #1480 (--timings),
-  #1751 (TRegEx unter Linux).
-- Sprache ohne `language`-Eintrag: Das Plugin soll die IDE-Sprache zuverlässig an den Server geben.
-- Serverlast: lesende Befehle nebenläufig (PR #1847).
+- `main-merging` mit Delphi bauen (0/0/0, Tests grün) und nach `main` bringen; Handtests aus `docs/Handtests-2.0.md`.
+- Vor dem Release, weil sie Namen, Einstellungen oder Module ändern: #1883 (KI-neutrale Benennung), #1891 (Modul
+  Versionsverwaltung), #1888 (Modul KI-Assistenten). Optional #1885 (AtlasUpdate entfernen und reparieren).
+- Fehler: #1477, #1480, #1751; Serverlast über PR #1847.
+- Nach Build und Handtest schließen: #1454, #1455, #1456, #1755, #1756, #1458, #1440, #1442.
 
-## 2.1: Prüfen und Compiler
+## 2.1: Editor, Navigation und Formular-Designer
 
-Thema: Atlas meldet dasselbe wie Delphi, nur früher.
+- Lernende Schattentext-Vorschläge aus dem eigenen Code (#1890).
+- Brotkrumen: #1759, #1760, #1763 bis #1769, #1784 bis #1787.
+- Bedienung und IDE-Einbindung: #1884 (Einstellungen durchsuchen), #1889 (Maustasten Zurück/Vor), #1886 (F1-Hilfe),
+  #1817, #1818, #1819, #1821, #1822.
+- Formular-Designer: zuerst die Machbarkeit von Rückgängig (#1887), dann #603, #539, #606 bis #608, #729, #731, #738,
+  #745, #748, #750; die übrige Designer-Reihe #726 bis #749 als zweite Welle.
 
-- Compilerregeln angleichen: #1382, #1383, #1380, #1381.
-- Prüfregeln für die Klassenordnung: #1840, #1839.
-- Klassenvervollständigung abrunden: #1838 (Umbenennen und Verschieben nehmen den Kommentar mit).
-- Compilermeldungen, die als Prüfregel fehlen, nachziehen (z. B. E2010, H2443, E2035 durch verdeckte Windows-Funktionen).
+## 2.2: Debuggen, Testen und Lecks
 
-## 2.2: Testen
+- Debuggen: #1878, #1820 und aus Epic #614 #577, #583, #584, #843, #851, #853, #863, #864, #869, #872, #895.
+- Testen: #1873 (Test aus dem Debug-Halt), #1776, #1771, #1770, #1778, Prüfregeln #1780, #1781, #1882, #1879.
+- Lecks: #1774, #1875, #1876, #1877, #1880.
+- Zweite Welle: #1772, #1773, #1775, #1777, #1779, #1782, #1783, #1881, #1226, #275, #1460, #154, #305.
 
-Thema: Tests direkt in der IDE. Baut auf Stufe 7 auf.
+## 2.3: KI-Debugger, Team, Versionsverwaltung, CI
 
-- Fenster „Atlas-Tests“ (#1776), Fehler an der Assert-Zeile (#1771), veraltete Ergebnisse (#1770).
-- Marke „getestet von“ (#1778), Lecks je Test (#1774).
-- Prüfregeln für Tests: #1780, #1781.
-- Später: betroffene Tests im Hintergrund (#1775), wackelnde Tests (#1773), Mutationstests (#1460).
-
-## 2.3: Navigation und Editor
-
-Thema: Brotkrumenleiste und Editorleiste ausbauen.
-
-- Brotkrumen: #1759, #1763 bis #1769, #1784 bis #1787.
-- Smarte Einrückung abschließen (#1827 ff.).
-- IDE-Einbindung: #1817 (Projektverwaltung), #1818 (Marken folgen der Zeile), #1819 (Error Insight), #1821 (Objektgalerie).
-
-## 2.4: Team und CI
-
-Thema: Atlas außerhalb der IDE.
-
-- GitHub Action `setup-atlas` (#1431), Ausgabe `--format github` (#1432), weitere Formate (#1433).
-- Atlas prüft sich in der eigenen CI (#1434), weitere CI-Anbieter (#1435).
-- Release-Ablauf: Delphi-Runner oder weiter lokales Paket; `-WhatIf` in `Publish-ReleasePackage.ps1`.
+- KI-Assistenten debuggen in der laufenden IDE (#1874, braucht #1888).
+- Versionsverwaltung: Merge-Konflikte (#1892, braucht #1891), #898, #513.
+- CI: #1431 bis #1435, #107.
 
 ## 3.0: Plattform
 
-Thema: Größere Schritte, die Schnittstellen ändern dürfen.
+Größere Schritte, die Schnittstellen ändern dürfen: Atlas-SDK (#1459), Komponenten-Werkbank (#1463), eigene Prüfregeln
+(#73, #279, #280).
 
-- Atlas-SDK für eigene Add-ons (#1459), aufbauend auf den Modulen aus 2.0.
-- Komponenten-Werkbank (#1463).
-- Andere Editoren (VS Code): erst nach Abschluss der Delphi-Schwerpunkte.
+## Laufend
 
-## Zu entscheiden
+- Prüfregeln in jeder Version: #1345, #1126, #1112, #1136, #624, #1839, #1840, #145.
+- Alles Übrige bleibt ohne Milestone und wird bei jeder Release-Planung neu gesichtet, dazu die Sammlung #1274.
 
-- Wie oft soll eine Version erscheinen, und bleibt es bei Vorabversionen vor jedem Release?
-- Welches Thema zuerst: Prüfen (2.1) oder Testen (2.2)?
-- Lohnt ein Delphi-Runner, damit Releases nicht mehr lokal gebaut werden müssen?
-- Bereinigung der Issues: Viele sind in 2.0 erledigt, aber noch offen (z. B. #1454, #1455, #1478, #1519, #1755).
+## Aufräumen
+
+- Alte Milestones v1.1.1, v1.2.0 und v1.2.1 schließen; ihre umgesetzten Issues kommen nach v2.0.0 zum Handtest.
+- Label `handtest-offen` für umgesetzte Issues, die nur noch auf Build und Handtest warten.
