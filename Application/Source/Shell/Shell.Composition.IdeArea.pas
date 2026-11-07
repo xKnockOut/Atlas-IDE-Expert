@@ -66,7 +66,7 @@ type
 
 const
   /// <summary>Längste Pause der Projektprüfung für einen Compile, falls sein Ende nie ankommt (#1247).</summary>
-  CompilePauseLimitMs = 10 * 60 * 1000;
+  cCompilePauseLimitMs = 10 * 60 * 1000;
 
 implementation
 
@@ -211,7 +211,7 @@ begin
     procedure(ARunning: Boolean)
     begin
       // Die Frist ist ein Sicherheitsnetz für ein verlorenes Ende, keine Steuerung.
-      mServices.Diagnostics().Pull.Check.Pause(TLspWorkspaceCheck.cPauseCompile, ARunning, CompilePauseLimitMs);
+      mServices.Diagnostics().Pull.Check.Pause(TLspWorkspaceCheck.cPauseCompile, ARunning, cCompilePauseLimitMs);
     end;
   Result.NamingChanged := RefreshLater;
   Result.TypesChanged := RefreshLater;
