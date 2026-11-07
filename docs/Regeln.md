@@ -2461,7 +2461,7 @@ end;
 
 **Teurer Aufruf in der Schleifenbedingung** · Code Smell · Hinweis · Gruppe Performance
 
-Die Bedingung von while und until wird bei jedem Durchlauf ausgewertet. Aufrufe wie Trim, Format oder FileExists und Eigenschaften wie Lines.Text werden dort jedes Mal neu berechnet; besser einmal vor der Schleife. Die Grenzen von for werden nur einmal ausgewertet und nicht gemeldet, ebenso .Text als Feld eines Typs derselben Datei (Record-Feld) und Aufrufe, deren Argument die Schleife ändert (Zuweisung, Inc, Dec, Delete, SetLength, Include, Exclude). Standardmäßig aus.
+Die Bedingung von while und until wird bei jedem Durchlauf ausgewertet. Aufrufe wie Trim oder Format und Eigenschaften wie Lines.Text werden dort jedes Mal neu berechnet; besser einmal vor der Schleife. Die Grenzen von for werden nur einmal ausgewertet und nicht gemeldet, ebenso .Text als Feld (Record-Feld eines Typs derselben Datei oder laut Namensauflösung ein Feld bzw. eine Property, die ein Feld liest), eine Property, deren Empfänger die Schleife ändert (Items[I].Text), FileExists und DirectoryExists (Warten auf eine Datei) und Aufrufe, deren Argument die Schleife ändert (Zuweisung, Inc, Dec, Delete, SetLength, Include, Exclude). Standardmäßig aus.
 
 Mit Treffer:
 
@@ -8740,7 +8740,7 @@ Nimm(Round(1.5));
 
 **Methode braucht Self nicht** · Code Smell · Hinweis · Gruppe Stil und Metriken
 
-Eine Methode einer Klasse oder eines Records nutzt weder Self noch Instanzmitglieder (Felder, Properties, Instanzmethoden, inherited). Sie ist nicht virtuell, kein Ereignis der Formulardatei, implementiert kein Interface und wird nicht als Methodenzeiger verwendet. Experimentell: nur aktiv, wenn in atlas.json eingeschaltet; schweigt mit refactoring.methodKind aus. Schnellkorrektur: in eine class-Methode umwandeln (class … static mit refactoring.methodKindStatic); die Code-Aktionen bieten außerdem Aufrufe über die Klasse, eine freie Routine und einen Record-Helper für den Typ des ersten Parameters, jeweils mit Vorschau aller geänderten Aufrufe.
+Eine Methode einer Klasse oder eines Records nutzt weder Self noch Instanzmitglieder (Felder, Properties, Instanzmethoden, inherited). Sie ist nicht virtuell, hat kein Attribut und ist nicht published (DUnitX-Tests und RTTI rufen sie an der Instanz auf), ist kein Ereignis der Formulardatei, implementiert kein Interface und wird nicht als Methodenzeiger verwendet. Experimentell: nur aktiv, wenn in atlas.json eingeschaltet; schweigt mit refactoring.methodKind aus. Schnellkorrektur: in eine class-Methode umwandeln (class … static mit refactoring.methodKindStatic); die Code-Aktionen bieten außerdem Aufrufe über die Klasse, eine freie Routine und einen Record-Helper für den Typ des ersten Parameters, jeweils mit Vorschau aller geänderten Aufrufe.
 
 Mit Treffer:
 

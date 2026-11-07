@@ -32,6 +32,10 @@ type
     procedure ForBoundsAndCheapConditionSilent;
     [Test]
     procedure FieldTextAndDeleteInLoopSilent;
+    /// <summary>Empfänger mit Index, den die Schleife ändert, Feld aus einer anderen Unit, Warten auf eine
+    /// Datei.</summary>
+    [Test]
+    procedure ChangingReceiverForeignFieldAndPollingSilent;
     [Test]
     procedure MissingBeginUpdateReported;
     [Test]
@@ -164,7 +168,7 @@ begin
   Assert.AreEqual(2, Integer(Length(Findings)));
   Assert.AreEqual(Ord(TRuleConfidence.Medium), Ord(Findings[0].Confidence));
   Assert.AreEqual(1, Count(TLoopInvariantCallRule.Create, InRoutine('  I: Integer;',
-    '  repeat'#10'    Inc(I);'#10'  until FileExists(Name);')));
+    '  repeat'#10'    Inc(I);'#10'  until UpperCase(Name) = ''X'';')));
 end;
 
 procedure TPerformanceRulesTests.ArgumentChangedInLoopSilent;
@@ -197,6 +201,30 @@ begin
   Assert.AreEqual(1, Count(TLoopInvariantCallRule.Create, Source));
   Assert.AreEqual(0, Count(TLoopInvariantCallRule.Create, InRoutine('  S: string;',
     '  while Copy(S, 1, 2) = ''./'' do'#10'    Delete(S, 1, 2);')));
+end;
+
+procedure TPerformanceRulesTests.ChangingReceiverForeignFieldAndPollingSilent;
+var
+  mIndex: ISymbolIndex;
+  mSource: string;
+begin
+  // Der Index ändert sich in der Schleife: jede Prüfung liest ein anderes Element.
+  Assert.AreEqual(0, Count(TLoopInvariantCallRule.Create, InRoutine('  I: Integer;'#10'  L: TArray<TStrings>;',
+    '  while (I < 10) and (L[I].Text = '''') do'#10'    Inc(I);')));
+  Assert.AreEqual(1, Count(TLoopInvariantCallRule.Create, InRoutine('  I: Integer;'#10'  L: TArray<TStrings>;',
+    '  while (I < 10) and (L[0].Text = '''') do'#10'    Inc(I);')));
+  // FileExists ohne geänderte Argumente: Warten auf eine Datei, das Ergebnis ändert sich von außen.
+  Assert.AreEqual(0, Count(TLoopInvariantCallRule.Create, InRoutine('  I: Integer;',
+    '  while not FileExists(Name) do'#10'    Sleep(10);')));
+  // Text ist ein Feld des Records TToken aus der Unit Woerter (Index): lesen baut keinen String auf.
+  mIndex := TSymbolIndex.Create;
+  mIndex.AddUnit(TIndexExtractor.ExtractText('unit Woerter;'#10'interface'#10'type'#10'  TToken = record'#10 +
+    '    Text: string;'#10'  end;'#10'implementation'#10'end.', 'C:\Projekt\Woerter.pas', nil));
+  mSource := 'unit U;'#10'interface'#10'uses'#10'  Woerter;'#10'function P(const AToken: TToken): Integer;'#10 +
+    'implementation'#10'function P(const AToken: TToken): Integer;'#10'begin'#10'  Result := 0;'#10 +
+    '  while Result < Length(AToken.Text) do'#10'    Inc(Result);'#10'end;'#10'end.';
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.IndexFindings(TLoopInvariantCallRule.Create, mSource, mIndex, AllOn,
+    ''))));
 end;
 
 procedure TPerformanceRulesTests.MissingBeginUpdateReported;

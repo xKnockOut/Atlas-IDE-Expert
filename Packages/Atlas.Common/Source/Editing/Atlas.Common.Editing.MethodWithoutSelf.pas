@@ -166,7 +166,7 @@ type
   TEditingMethodWithoutSelfText = (NoMethod, MethodOfAGenericOr, NoTree, NoMethodWithABody,
     ConstructorDestructorOrOperator, AlreadyAClassMethod, UnsupportedForm, ClassNotInTheFile, Overloaded,
     DeclarationMissing, UnsupportedParameters, NameNotFoundInThe, BelongsToTheInterface, AccessorOfTheProperty,
-    VirtualOverrideOrMessage, IsAnEventInThe, NamesCannotBeResolved, IsUnknown, IsUsedAsAMethod, TheHeaderNamesAType,
+    VirtualOverrideOrMessage, CalledViaRtti, IsAnEventInThe, NamesCannotBeResolved, IsUnknown, IsUsedAsAMethod, TheHeaderNamesAType,
     AlreadyExistsInTheUnit, IsWritten, InAnAnonymousMethod, FirstParameterIs, FirstParameterWithoutTypeOr,
     FirstParameterHasNoSimple, IsNoLongerEvaluated, AccessorOfAProperty, UseNotRecognized, StaysWithoutStaticTheBody,
     OtherUnitsCallItBut, FirstUseNotInA, TheHelperIsInThe, IsAlreadyVisibleFor, EndOfTheHelperNot, EndOfTheHelperIs,
@@ -192,6 +192,7 @@ const
     (De: 'gehört zum Interface '; En: 'belongs to the interface '),
     (De: 'Zugriffsmethode der Property '; En: 'accessor of the property '),
     (De: 'virtuell, override oder Botschaft'; En: 'virtual, override or message'),
+    (De: 'mit Attribut oder published, Aufruf über RTTI'; En: 'with attribute or published, called via RTTI'),
     (De: 'steht als Ereignis in der Formulardatei'; En: 'is an event in the form file'),
     (De: 'Namen nicht auflösbar'; En: 'names cannot be resolved'),
     (De: '%s ist unbekannt (%s)'; En: '%s is unknown (%s)'),
@@ -390,6 +391,8 @@ type
     function Analyze(AOffset: Integer; out AReason: string): Boolean;
     /// <summary>Virtuell, Teil eines Interfaces, Zugriffsmethode oder Ereignis der Formulardatei?</summary>
     function DeclarationIssue: string;
+    /// <summary>Stehen Attribute ([Test]) direkt vor der Deklaration?</summary>
+    function HasAttributes: Boolean;
     /// <summary>Namen im Rumpf: Self, inherited, with und Instanzmitglieder verhindern die Umwandlung.</summary>
     function NamesIssue: string;
     function NameIssue(ANode: TSyntaxNode): string;
@@ -655,6 +658,14 @@ begin
   end;
 end;
 
+function TMethodPlan.HasAttributes: Boolean;
+var
+  mIndex: Integer;
+begin
+  mIndex := TRoutineBody.PreviousToken(Tokens, TRoutineBody.TokenAt(Tokens, Declaration.StartOffset));
+  Result := (mIndex >= 0) and Tokens[mIndex].IsSymbol(']');
+end;
+
 function TMethodPlan.DeclarationIssue: string;
 var
   mIndex: Integer;
@@ -663,6 +674,11 @@ begin
     'reintroduce', 'final']) then
   begin
     Exit(cTexts[TEditingMethodWithoutSelfText.VirtualOverrideOrMessage].Text);
+  end;
+  // Attribute ([Test], [Setup] …) und published: Aufruf über RTTI an der Instanz (DUnitX, MethodAddress).
+  if HasAttributes or SameText(Visibility, 'published') then
+  begin
+    Exit(cTexts[TEditingMethodWithoutSelfText.CalledViaRtti].Text);
   end;
   for mIndex := 0 to TypeBody.ChildCount - 1 do
   begin

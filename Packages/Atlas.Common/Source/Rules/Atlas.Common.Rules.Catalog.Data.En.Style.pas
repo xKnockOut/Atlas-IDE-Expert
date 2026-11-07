@@ -1145,10 +1145,10 @@ const
     '      "category": "code-smell",',
     '      "severity": "hint",',
     '      "group": "style",',
-    '      "description": "A method of a class or record uses neither Self nor instance members (fields, properties, instance methods, inherited). It is not virtual, not an event of the form file, does not' +
-    ' implement an interface and is not used as a method pointer. Experimental: only active when switched on in atlas.json; silent with refactoring.methodKind off. Quick fix: turn into a class method (clas' +
-    's … static with refactoring.methodKindStatic); the code actions also offer calls via the class, a free routine and a record helper for the type of the first parameter, each with a preview of all chang' +
-    'ed calls.",',
+    '      "description": "A method of a class or record uses neither Self nor instance members (fields, properties, instance methods, inherited). It is not virtual, has no attribute and is not published (' +
+    'DUnitX tests and RTTI call it on the instance), is not an event of the form file, does not implement an interface and is not used as a method pointer. Experimental: only active when switched on in atl' +
+    'as.json; silent with refactoring.methodKind off. Quick fix: turn into a class method (class … static with refactoring.methodKindStatic); the code actions also offer calls via the class, a free routine' +
+    ' and a record helper for the type of the first parameter, each with a preview of all changed calls.",',
     '      "bad": "function TRechner.Doppelt(A: Integer): Integer;\nbegin\n  Result := A * 2;  // no field, no Self\nend;",',
     '      "good": "class function TRechner.Doppelt(A: Integer): Integer; static;\nbegin\n  Result := A * 2;\nend;"',
     '    }');

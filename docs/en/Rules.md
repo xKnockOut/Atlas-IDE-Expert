@@ -2461,7 +2461,7 @@ end;
 
 **Expensive call in a loop condition** · Code smell · Hint · Group Performance
 
-The condition of while and until is evaluated on every iteration. Calls like Trim, Format or FileExists and properties like Lines.Text there are recomputed each time; compute them once before the loop. Bounds of for loops are evaluated only once and are not reported, nor is .Text when it is a field of a type in the same file (record field), nor calls whose argument the loop changes (assignment, Inc, Dec, Delete, SetLength, Include, Exclude). Off by default.
+The condition of while and until is evaluated on every iteration. Calls like Trim or Format and properties like Lines.Text there are recomputed each time; compute them once before the loop. Bounds of for loops are evaluated only once and are not reported, nor is .Text when it is a field (record field of a type in the same file, or a field or a property reading a field according to the name resolution), nor a property whose receiver the loop changes (Items[I].Text), nor FileExists and DirectoryExists (waiting for a file), nor calls whose argument the loop changes (assignment, Inc, Dec, Delete, SetLength, Include, Exclude). Off by default.
 
 Flagged:
 
@@ -8740,7 +8740,7 @@ Nimm(Round(1.5));
 
 **Method does not need Self** · Code smell · Hint · Group Style and metrics
 
-A method of a class or record uses neither Self nor instance members (fields, properties, instance methods, inherited). It is not virtual, not an event of the form file, does not implement an interface and is not used as a method pointer. Experimental: only active when switched on in atlas.json; silent with refactoring.methodKind off. Quick fix: turn into a class method (class … static with refactoring.methodKindStatic); the code actions also offer calls via the class, a free routine and a record helper for the type of the first parameter, each with a preview of all changed calls.
+A method of a class or record uses neither Self nor instance members (fields, properties, instance methods, inherited). It is not virtual, has no attribute and is not published (DUnitX tests and RTTI call it on the instance), is not an event of the form file, does not implement an interface and is not used as a method pointer. Experimental: only active when switched on in atlas.json; silent with refactoring.methodKind off. Quick fix: turn into a class method (class … static with refactoring.methodKindStatic); the code actions also offer calls via the class, a free routine and a record helper for the type of the first parameter, each with a preview of all changed calls.
 
 Flagged:
 
