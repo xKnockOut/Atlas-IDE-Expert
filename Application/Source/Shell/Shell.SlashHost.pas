@@ -174,10 +174,10 @@ end;
 
 function TShellSlashHost.Project(const AUri: string; out AProject: TProjectInfo): Boolean;
 var
-  Workspace: TShellWorkspace;
+  mWorkspace: TShellWorkspace;
 begin
-  Workspace := FSources.WorkspaceOf(AUri);
-  Result := (Workspace <> nil) and Workspace.State.Project(AProject);
+  mWorkspace := FSources.WorkspaceOf(AUri);
+  Result := (mWorkspace <> nil) and mWorkspace.State.Project(AProject);
 end;
 
 function TShellSlashHost.ReadFile(const AFileName: string; out AText: string): Boolean;
@@ -197,21 +197,21 @@ var
 procedure SendShowDocument(const ATransport: IJsonRpcTransport; const AFileName: string;
   const ASelection: TTextRange);
 var
-  Request, Params: TJSONObject;
+  mRequest, mParams: TJSONObject;
 begin
-  Params := TJSONObject.Create;
-  Params.AddPair('uri', TDocumentUris.FromPath(AFileName));
-  Params.AddPair('takeFocus', TJSONBool.Create(True));
-  Params.AddPair('selection', TLspPositions.RangeToJson(ASelection));
-  Request := TJSONObject.Create;
+  mParams := TJSONObject.Create;
+  mParams.AddPair('uri', TDocumentUris.FromPath(AFileName));
+  mParams.AddPair('takeFocus', TJSONBool.Create(True));
+  mParams.AddPair('selection', TLspPositions.RangeToJson(ASelection));
+  mRequest := TJSONObject.Create;
   try
-    Request.AddPair('jsonrpc', '2.0');
-    Request.AddPair('id', Format('atlas/showDocument/%d', [AtomicIncrement(ShowRequests)]));
-    Request.AddPair('method', 'window/showDocument');
-    Request.AddPair('params', Params);
-    ATransport.WriteMessage(Request);
+    mRequest.AddPair('jsonrpc', '2.0');
+    mRequest.AddPair('id', Format('atlas/showDocument/%d', [AtomicIncrement(ShowRequests)]));
+    mRequest.AddPair('method', 'window/showDocument');
+    mRequest.AddPair('params', mParams);
+    ATransport.WriteMessage(mRequest);
   finally
-    Request.Free;
+    mRequest.Free;
   end;
 end;
 
@@ -325,29 +325,29 @@ end;
 
 function TShellSlashHost.WriteThroughClient(const AUri, AFileName, AText: string): Boolean;
 var
-  OldText: string;
-  FileFormat: TFileFormat;
+  mOldText: string;
+  mFileFormat: TFileFormat;
 begin
   Result := ClientWrites;
   if not Result then
   begin
     Exit;
   end;
-  OldText := TFileEncoding.LoadFromFile(AFileName, FileFormat);
-  SendEdit(AUri, ExtractFileName(AFileName), TLspApplyEdit.ReplaceAll(AFileName, OldText, AText), nil);
+  mOldText := TFileEncoding.LoadFromFile(AFileName, mFileFormat);
+  SendEdit(AUri, ExtractFileName(AFileName), TLspApplyEdit.ReplaceAll(AFileName, mOldText, AText), nil);
 end;
 
 procedure TShellSlashHost.EditFile(const AUri, AFileName, ANewText: string; const AEdit: TTextEdit);
 var
-  FileFormat: TFileFormat;
+  mFileFormat: TFileFormat;
 begin
   if ClientWrites then
   begin
     SendEdit(AUri, cTexts[TSlashHostText.ResourceUnit].Text, TLspApplyEdit.TextEdits(AFileName, [AEdit]), nil, False);
     Exit;
   end;
-  TFileEncoding.LoadFromFile(AFileName, FileFormat);
-  TFileEncoding.SaveToFile(AFileName, ANewText, FileFormat);
+  TFileEncoding.LoadFromFile(AFileName, mFileFormat);
+  TFileEncoding.SaveToFile(AFileName, ANewText, mFileFormat);
   FLogger.Info('resourcestring eingetragen');
 end;
 
@@ -365,45 +365,45 @@ end;
 
 procedure TShellSlashHost.WriteProject(const AUri, AText: string);
 var
-  Workspace: TShellWorkspace;
-  Info: TProjectInfo;
-  FileFormat: TFileFormat;
-  WorkspaceOf: TWorkspaceOfFunc;
-  Uri: string;
+  mWorkspace: TShellWorkspace;
+  mInfo: TProjectInfo;
+  mFileFormat: TFileFormat;
+  mWorkspaceOf: TWorkspaceOfFunc;
+  mUri: string;
 begin
-  Workspace := FSources.WorkspaceOf(AUri);
-  if (Workspace = nil) or not Workspace.State.Project(Info) then
+  mWorkspace := FSources.WorkspaceOf(AUri);
+  if (mWorkspace = nil) or not mWorkspace.State.Project(mInfo) then
   begin
     Exit;
   end;
   try
     // In der IDE über das Plugin, nicht auf die Platte (#397).
-    if WriteThroughClient(AUri, Info.FileName, AText) then
+    if WriteThroughClient(AUri, mInfo.FileName, AText) then
     begin
       Exit;
     end;
     // Kodierung und Zeilenumbrüche der vorhandenen Datei beibehalten.
-    TFileEncoding.LoadFromFile(Info.FileName, FileFormat);
-    TFileEncoding.SaveToFile(Info.FileName, AText, FileFormat);
-    FLogger.Info(Format('%s geändert (Schnellbefehl)', [TLogMarks.Path(Info.FileName)]));
+    TFileEncoding.LoadFromFile(mInfo.FileName, mFileFormat);
+    TFileEncoding.SaveToFile(mInfo.FileName, AText, mFileFormat);
+    FLogger.Info(Format('%s geändert (Schnellbefehl)', [TLogMarks.Path(mInfo.FileName)]));
   except
     on E: Exception do
     begin
-      FLogger.Error(Format('%s ließ sich nicht schreiben: %s', [TLogMarks.Path(Info.FileName),
+      FLogger.Error(Format('%s ließ sich nicht schreiben: %s', [TLogMarks.Path(mInfo.FileName),
         TLogMarks.Text(E.Message)]));
       Exit;
     end;
   end;
   // const-Parameter lassen sich nicht einfangen.
-  WorkspaceOf := FSources.WorkspaceOf;
-  Uri := AUri;
+  mWorkspaceOf := FSources.WorkspaceOf;
+  mUri := AUri;
   InLoop(
     procedure
     var
       Target: TShellWorkspace;
     begin
       // In der Schleife neu suchen: Bis dahin kann der Ordner geschlossen worden sein.
-      Target := WorkspaceOf(Uri);
+      Target := mWorkspaceOf(mUri);
       if Target <> nil then
       begin
         Target.Reload;
@@ -413,16 +413,16 @@ end;
 
 procedure TShellSlashHost.SelectBuild(const AUri, AConfig, APlatform: string);
 var
-  WorkspaceOf: TWorkspaceOfFunc;
-  Logger: ILogger;
-  Uri, Config, PlatformName: string;
+  mWorkspaceOf: TWorkspaceOfFunc;
+  mLogger: ILogger;
+  mUri, mConfig, mPlatformName: string;
 begin
   // const-Parameter lassen sich nicht einfangen; Self auch nicht (der Host kann vorher frei werden).
-  WorkspaceOf := FSources.WorkspaceOf;
-  Logger := FLogger;
-  Uri := AUri;
-  Config := AConfig;
-  PlatformName := APlatform;
+  mWorkspaceOf := FSources.WorkspaceOf;
+  mLogger := FLogger;
+  mUri := AUri;
+  mConfig := AConfig;
+  mPlatformName := APlatform;
   InLoop(
     procedure
     var
@@ -430,10 +430,10 @@ begin
       Error: string;
     begin
       // Wählt Konfiguration und Plattform und lädt neu: nur in der Schleife (A-03).
-      Workspace := WorkspaceOf(Uri);
-      if (Workspace <> nil) and not Workspace.SelectBuild(Config, PlatformName, Error) then
+      Workspace := mWorkspaceOf(mUri);
+      if (Workspace <> nil) and not Workspace.SelectBuild(mConfig, mPlatformName, Error) then
       begin
-        Logger.Warning(Error);
+        mLogger.Warning(Error);
       end;
     end);
 end;
@@ -489,12 +489,12 @@ end;
 
 procedure TShellSlashHost.Notify(const AUri, AMessage: string);
 var
-  Transport: IJsonRpcTransport;
-  Text: string;
+  mTransport: IJsonRpcTransport;
+  mText: string;
 begin
   // Erst nach der Antwort mit den Änderungen (Nachrichtenschleife), damit der Hinweis zu ihnen passt.
-  Transport := FTransport;
-  Text := 'Atlas: ' + AMessage;
+  mTransport := FTransport;
+  mText := 'Atlas: ' + AMessage;
   InLoop(
     procedure
     var
@@ -504,8 +504,8 @@ begin
       try
         Message.AddPair('jsonrpc', '2.0');
         Message.AddPair('method', 'window/showMessage');
-        Message.AddPair('params', TJSONObject.Create.AddPair('type', TJSONNumber.Create(3)).AddPair('message', Text));
-        Transport.WriteMessage(Message);
+        Message.AddPair('params', TJSONObject.Create.AddPair('type', TJSONNumber.Create(3)).AddPair('message', mText));
+        mTransport.WriteMessage(Message);
       finally
         Message.Free;
       end;
@@ -514,18 +514,18 @@ end;
 
 procedure TShellSlashHost.MoveCursor(const AUri: string; const APosition: TTextPosition);
 var
-  Transport: IJsonRpcTransport;
-  FileName: string;
-  Target: TTextRange;
+  mTransport: IJsonRpcTransport;
+  mFileName: string;
+  mTarget: TTextRange;
 begin
   // Wie Notify erst nach der Antwort: Die Position gilt im Text mit den Änderungen.
-  Transport := FTransport;
-  FileName := TDocumentUris.ToPath(AUri);
-  Target := TTextRange.Create(APosition, APosition);
+  mTransport := FTransport;
+  mFileName := TDocumentUris.ToPath(AUri);
+  mTarget := TTextRange.Create(APosition, APosition);
   InLoop(
     procedure
     begin
-      SendShowDocument(Transport, FileName, Target);
+      SendShowDocument(mTransport, mFileName, mTarget);
     end);
 end;
 
@@ -533,17 +533,17 @@ end;
 /// wie in AText.</summary>
 function NewFileFormat(const AUri, AText: string): TFileFormat;
 var
-  Sibling: string;
+  mSibling: string;
 begin
   Result := TFileFormat.Create(TFileEncodingKind.Utf8Bom, TLineBreakStyle.CRLF);
-  Sibling := '';
+  mSibling := '';
   if AUri <> '' then
   begin
-    Sibling := TDocumentUris.ToPath(AUri);
+    mSibling := TDocumentUris.ToPath(AUri);
   end;
-  if (Sibling <> '') and FileExists(Sibling) then
+  if (mSibling <> '') and FileExists(mSibling) then
     try
-      TFileEncoding.LoadFromFile(Sibling, Result);
+      TFileEncoding.LoadFromFile(mSibling, Result);
     except
       on EFileEncodingError do
         Result := TFileFormat.Create(TFileEncodingKind.Utf8Bom, TLineBreakStyle.CRLF);

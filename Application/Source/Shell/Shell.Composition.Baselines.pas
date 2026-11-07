@@ -62,7 +62,8 @@ type
     property CompilerBaseline: TLspCompilerBaseline read FCompilerBaseline;
   end;
 
-/// <summary>Dateizugriffe der Baselines: lesen mit erkannter Kodierung, atomar schreiben, defekte beiseitelegen.</summary>
+/// <summary>Dateizugriffe der Baselines: lesen mit erkannter Kodierung, atomar schreiben, defekte
+/// beiseitelegen.</summary>
 function BaselineFiles: TLspBaselineFiles;
 
 implementation
