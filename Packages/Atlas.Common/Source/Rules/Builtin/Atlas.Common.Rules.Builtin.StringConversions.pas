@@ -47,7 +47,7 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  StringConversionRuleId = 'string-conversion';
+  cStringConversionRuleId = 'string-conversion';
 
 type
 {$SCOPEDENUMS ON}
@@ -139,7 +139,7 @@ const
 
 function TStringConversionRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(StringConversionRuleId, TRuleSeverity.Warning,
+  Result := TRuleDescriptor.Create(cStringConversionRuleId, TRuleSeverity.Warning,
     cTexts[TStringConversionsText.Title].Text);
 end;
 

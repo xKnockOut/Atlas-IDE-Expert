@@ -35,8 +35,8 @@ type
   TDeclareUnknown = class
   public const
     /// <summary>Platzhalter, wenn sich der Typ nicht ableiten lässt; als Kommentar meldet ihn der Compiler.</summary>
-    TypePlaceholder = '{Typ}';
-    ValuePlaceholder = '{Wert}';
+    cTypePlaceholder = '{Typ}';
+    cValuePlaceholder = '{Wert}';
   public
     /// <summary>Name am Cursor, der deklariert werden könnte; False sonst.</summary>
     class function Slot(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition;
@@ -99,16 +99,16 @@ end;
 
 function IsKeywordIn(const AToken: TPascalToken; const AWords: array of string): Boolean;
 var
-  Word: string;
+  mWord: string;
 begin
   Result := False;
   if AToken.Kind <> TPascalTokenKind.Keyword then
   begin
     Exit;
   end;
-  for Word in AWords do
+  for mWord in AWords do
   begin
-    if AToken.IsKeyword(Word) then
+    if AToken.IsKeyword(mWord) then
     begin
       Exit(True);
     end;
@@ -117,12 +117,12 @@ end;
 
 function IsSymbolIn(const AToken: TPascalToken; const ASymbols: array of string): Boolean;
 var
-  Symbol: string;
+  mSymbol: string;
 begin
   Result := False;
-  for Symbol in ASymbols do
+  for mSymbol in ASymbols do
   begin
-    if AToken.IsSymbol(Symbol) then
+    if AToken.IsSymbol(mSymbol) then
     begin
       Exit(True);
     end;
@@ -192,7 +192,8 @@ begin
   end;
 end;
 
-/// <summary>Ende der rechten Seite: schließende Klammer auf Tiefe 0 oder Ende der Anweisung; führt ADepth nach.</summary>
+/// <summary>Ende der rechten Seite: schließende Klammer auf Tiefe 0 oder Ende der Anweisung; führt ADepth
+/// nach.</summary>
 function EndsValue(const AToken: TPascalToken; var ADepth: Integer): Boolean;
 begin
   Result := False;
@@ -270,20 +271,20 @@ end;
 /// <summary>Index der schließenden Klammer zu AIndex ("(" oder "["); ALast, wenn sie fehlt.</summary>
 function Closing(const ATokens: TArray<TPascalToken>; AIndex, ALast: Integer): Integer;
 var
-  Depth: Integer;
+  mDepth: Integer;
 begin
-  Depth := 0;
+  mDepth := 0;
   Result := AIndex;
   while Result <= ALast do
   begin
     if IsSymbolIn(ATokens[Result], ['(', '[']) then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
     else if IsSymbolIn(ATokens[Result], [')', ']']) then
     begin
-      Dec(Depth);
-      if Depth = 0 then
+      Dec(mDepth);
+      if mDepth = 0 then
       begin
         Exit;
       end;
@@ -489,7 +490,7 @@ end;
 
 class function TDeclareUnknown.TermName(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer): Integer;
 var
-  Depth: Integer;
+  mDepth: Integer;
 begin
   Result := -1;
   if (AFirst < 0) or (ALast < AFirst) then
@@ -499,17 +500,17 @@ begin
   // Aufruf am Ende überspringen: "F(x)" hat den Typ von F.
   if ATokens[ALast].IsSymbol(')') then
   begin
-    Depth := 0;
+    mDepth := 0;
     while ALast >= AFirst do
     begin
       if ATokens[ALast].IsSymbol(')') then
       begin
-        Inc(Depth);
+        Inc(mDepth);
       end
       else if ATokens[ALast].IsSymbol('(') then
       begin
-        Dec(Depth);
-        if Depth = 0 then
+        Dec(mDepth);
+        if mDepth = 0 then
         begin
           Break;
         end;
@@ -526,18 +527,18 @@ end;
 
 class function TDeclareUnknown.UsesFieldPrefix(const AFieldNames: TArray<string>): Boolean;
 var
-  Name: string;
-  Prefixed: Integer;
+  mName: string;
+  mPrefixed: Integer;
 begin
-  Prefixed := 0;
-  for Name in AFieldNames do
+  mPrefixed := 0;
+  for mName in AFieldNames do
   begin
-    if (Length(Name) >= 2) and (Name[1] = 'F') and CharInSet(Name[2], ['A'..'Z']) then
+    if (Length(mName) >= 2) and (mName[1] = 'F') and CharInSet(mName[2], ['A'..'Z']) then
     begin
-      Inc(Prefixed);
+      Inc(mPrefixed);
     end;
   end;
-  Result := 2 * Prefixed >= Length(AFieldNames);
+  Result := 2 * mPrefixed >= Length(AFieldNames);
 end;
 
 class function TDeclareUnknown.FieldName(const AName: string; APrefix: Boolean): string;
@@ -556,22 +557,22 @@ end;
 
 class function TDeclareUnknown.DefaultValue(const ATypeName: string): string;
 const
-  Integers: array[0..12] of string = ('Integer', 'Cardinal', 'Int64', 'UInt64', 'NativeInt', 'NativeUInt',
+  cIntegers: array[0..12] of string = ('Integer', 'Cardinal', 'Int64', 'UInt64', 'NativeInt', 'NativeUInt',
     'Byte', 'Word', 'LongInt', 'LongWord', 'ShortInt', 'SmallInt', 'Int32');
-  Floats: array[0..4] of string = ('Extended', 'Double', 'Single', 'Currency', 'Real');
+  cFloats: array[0..4] of string = ('Extended', 'Double', 'Single', 'Currency', 'Real');
 var
-  Name: string;
+  mName: string;
 begin
-  for Name in Integers do
+  for mName in cIntegers do
   begin
-    if SameText(Name, ATypeName) then
+    if SameText(mName, ATypeName) then
     begin
       Exit('0');
     end;
   end;
-  for Name in Floats do
+  for mName in cFloats do
   begin
-    if SameText(Name, ATypeName) then
+    if SameText(mName, ATypeName) then
     begin
       Exit('0.0');
     end;
@@ -584,7 +585,7 @@ begin
   begin
     Exit('False');
   end;
-  Result := ValuePlaceholder;
+  Result := cValuePlaceholder;
 end;
 
 class function TDeclareUnknown.WithCaret(const AText: string; AOffset: Integer): string;

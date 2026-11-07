@@ -38,7 +38,7 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  DeprecatedSymbolRuleId = 'deprecated-symbol';
+  cDeprecatedSymbolRuleId = 'deprecated-symbol';
 
 type
   TDeprecatedSymbolRule = class(TInterfacedObject, IRule)
@@ -93,20 +93,20 @@ const
 
 const
   // Je Art: Direktive, Code bei Symbolen, Code bei Units, Schalter für Symbole und für Units.
-  KindWords: array[0..3] of string = ('deprecated', 'experimental', 'platform', 'library');
-  SymbolCodes: array[0..3] of string = ('W1000', 'W1003', 'W1002', 'W1001');
-  UnitCodes: array[0..3] of string = ('W1006', 'W1007', 'W1005', 'W1004');
-  SymbolSwitches: array[0..3] of string = ('SYMBOL_DEPRECATED', 'SYMBOL_EXPERIMENTAL', 'SYMBOL_PLATFORM',
+  cKindWords: array[0..3] of string = ('deprecated', 'experimental', 'platform', 'library');
+  cSymbolCodes: array[0..3] of string = ('W1000', 'W1003', 'W1002', 'W1001');
+  cUnitCodes: array[0..3] of string = ('W1006', 'W1007', 'W1005', 'W1004');
+  cSymbolSwitches: array[0..3] of string = ('SYMBOL_DEPRECATED', 'SYMBOL_EXPERIMENTAL', 'SYMBOL_PLATFORM',
     'SYMBOL_LIBRARY');
-  UnitSwitches: array[0..3] of string = ('UNIT_DEPRECATED', 'UNIT_EXPERIMENTAL', 'UNIT_PLATFORM', 'UNIT_LIBRARY');
+  cUnitSwitches: array[0..3] of string = ('UNIT_DEPRECATED', 'UNIT_EXPERIMENTAL', 'UNIT_PLATFORM', 'UNIT_LIBRARY');
   // Index von platform in KindWords.
   cPlatformKind = 2;
   // Direktiven, die es nur für .NET gab; dcc für Windows meldet sie als plattformspezifisch (W1002).
   cNetDirectives: array[0..0] of string = ('UNSAFECODE');
   // platform-Routinen der RTL ohne Grund im Quelltext und ihr plattformunabhängiger Ersatz.
-  KnownOld: array[0..1] of string = ('IncludeTrailingBackslash', 'ExcludeTrailingBackslash');
-  KnownNew: array[0..1] of string = ('IncludeTrailingPathDelimiter', 'ExcludeTrailingPathDelimiter');
-  KnownUnits: array[0..1] of string = ('System.SysUtils', 'SysUtils');
+  cKnownOld: array[0..1] of string = ('IncludeTrailingBackslash', 'ExcludeTrailingBackslash');
+  cKnownNew: array[0..1] of string = ('IncludeTrailingPathDelimiter', 'ExcludeTrailingPathDelimiter');
+  cKnownUnits: array[0..1] of string = ('System.SysUtils', 'SysUtils');
 
 type
   /// <summary>Hinweis an einem verwendeten Symbol bzw. einer Unit: Direktiven, Grund aus deprecated '…' und
@@ -165,11 +165,11 @@ type
 
 function HasHint(const ADirectives: TArray<string>): Boolean;
 var
-  Word: string;
+  mWord: string;
 begin
-  for Word in KindWords do
+  for mWord in cKindWords do
   begin
-    if IndexText(Word, ADirectives) >= 0 then
+    if IndexText(mWord, ADirectives) >= 0 then
     begin
       Exit(True);
     end;
@@ -266,7 +266,7 @@ end;
 /// Verwendung eines veralteten Release anderswo; die Auflösung an der Deklaration kann aber dort landen.</summary>
 function DeclarationNameOffsets(ATree: TSyntaxTree): TDictionary<Integer, Boolean>;
 const
-  NamedKinds = [TSyntaxKind.RoutineHeader, TSyntaxKind.VarDecl, TSyntaxKind.Field, TSyntaxKind.ConstDecl,
+  cNamedKinds = [TSyntaxKind.RoutineHeader, TSyntaxKind.VarDecl, TSyntaxKind.Field, TSyntaxKind.ConstDecl,
     TSyntaxKind.TypeDecl, TSyntaxKind.Parameter, TSyntaxKind.PropertyDecl, TSyntaxKind.InlineVar,
     TSyntaxKind.InlineConst];
 var
@@ -283,7 +283,7 @@ begin
       begin
         AddEnumNames(mTokens, FirstTokenAt(mTokens, ANode.StartOffset), ANode, mOffsets);
       end
-      else if ANode.Kind in NamedKinds then
+      else if ANode.Kind in cNamedKinds then
       begin
         AddDeclaredNames(mTokens, FirstTokenAt(mTokens, ANode.StartOffset), ANode, mOffsets);
       end;
@@ -348,17 +348,17 @@ function TDeprecatedCheck.StateAt(AKind: Integer; AUnitLevel: Boolean; ATokenInd
 var
   mKey: string;
 begin
-  if IndexText(KindWords[AKind], FKinds) < 0 then
+  if IndexText(cKindWords[AKind], FKinds) < 0 then
   begin
     Exit(TRuleWarnState.Disabled);
   end;
   if AUnitLevel then
   begin
-    mKey := UnitSwitches[AKind];
+    mKey := cUnitSwitches[AKind];
   end
   else
   begin
-    mKey := SymbolSwitches[AKind];
+    mKey := cSymbolSwitches[AKind];
   end;
   // dcc meldet alle acht Warnungen ab Werk.
   Result := FSwitches.StateAt(mKey, True, ATokenIndex);
@@ -366,15 +366,15 @@ end;
 
 function TDeprecatedCheck.FindIndexedUnit(const AName: string; out AUnit: TUnitIndex): Boolean;
 var
-  Namespace: string;
+  mNamespace: string;
 begin
   if FIndex.FindUnit(AName, AUnit) then
   begin
     Exit(True);
   end;
-  for Namespace in FContext.Namespaces do
+  for mNamespace in FContext.Namespaces do
   begin
-    if FIndex.FindUnit(Namespace + '.' + AName, AUnit) then
+    if FIndex.FindUnit(mNamespace + '.' + AName, AUnit) then
     begin
       Exit(True);
     end;
@@ -385,7 +385,7 @@ end;
 function TDeprecatedCheck.SymbolOf(const AResolved: TResolvedSymbol; out AOwner: TUnitIndex;
   out ASymbol: TIndexSymbol): Boolean;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
   Result := False;
   if not AResolved.Found or (AResolved.Kind <> TResolvedKind.Symbol) then
@@ -401,12 +401,12 @@ begin
   begin
     Exit;
   end;
-  for Symbol in AOwner.Symbols do
+  for mSymbol in AOwner.Symbols do
   begin
-    if (Symbol.SelectionRange.StartPos = AResolved.SelectionRange.StartPos) and SameText(Symbol.Name, AResolved.Name)
-      and SameText(Symbol.Container, AResolved.Container) then
+    if (mSymbol.SelectionRange.StartPos = AResolved.SelectionRange.StartPos) and SameText(mSymbol.Name, AResolved.Name)
+      and SameText(mSymbol.Container, AResolved.Container) then
     begin
-      ASymbol := Symbol;
+      ASymbol := mSymbol;
       Exit(True);
     end;
   end;
@@ -415,83 +415,83 @@ end;
 function TDeprecatedCheck.Fits(const ASymbol: TIndexSymbol; const AOwner: TUnitIndex; const ACandidate: string;
   AQualified: Boolean): Boolean;
 var
-  Group, Dot: Integer;
-  OwnerType, TypeSymbol, Found: TResolvedSymbol;
+  mGroup, mDot: Integer;
+  mOwnerType, mTypeSymbol, mFound: TResolvedSymbol;
 begin
   Result := False;
-  Group := KindGroup(ASymbol.Kind);
-  if (Group = 0) or SameText(ACandidate, ASymbol.Name) then
+  mGroup := KindGroup(ASymbol.Kind);
+  if (mGroup = 0) or SameText(ACandidate, ASymbol.Name) then
   begin
     Exit;
   end;
-  Dot := Pos('.', ACandidate);
+  mDot := Pos('.', ACandidate);
   if ASymbol.Container <> '' then
   begin
     // Mitglied: Ersatz im selben Typ (oder seinen Vorfahren).
-    if (Dot > 0) or not FScope.ResolveTypeFrom(AOwner, ASymbol.Container, OwnerType) or
-      not FScope.DeclaredMember(OwnerType, ACandidate, Found) then
+    if (mDot > 0) or not FScope.ResolveTypeFrom(AOwner, ASymbol.Container, mOwnerType) or
+      not FScope.DeclaredMember(mOwnerType, ACandidate, mFound) then
     begin
       Exit;
     end;
   end
-  else if Dot > 0 then
+  else if mDot > 0 then
   begin
     // TPath.Combine: nur ohne Qualifizierung an der Stelle, Typ aus Sicht der Datei, Mitglied darin.
-    if AQualified or (Pos('.', Copy(ACandidate, Dot + 1, MaxInt)) > 0) or
-      not FScope.ResolveNameFrom(FOwn, Copy(ACandidate, 1, Dot - 1), TypeSymbol) or
-      (KindGroup(TypeSymbol.SymbolKind) <> 2) or
-      not FScope.DeclaredMember(TypeSymbol, Copy(ACandidate, Dot + 1, MaxInt), Found) then
+    if AQualified or (Pos('.', Copy(ACandidate, mDot + 1, MaxInt)) > 0) or
+      not FScope.ResolveNameFrom(FOwn, Copy(ACandidate, 1, mDot - 1), mTypeSymbol) or
+      (KindGroup(mTypeSymbol.SymbolKind) <> 2) or
+      not FScope.DeclaredMember(mTypeSymbol, Copy(ACandidate, mDot + 1, MaxInt), mFound) then
     begin
       Exit;
     end;
   end
-  else if AQualified or not FScope.ResolveNameFrom(FOwn, ACandidate, Found) then
+  else if AQualified or not FScope.ResolveNameFrom(FOwn, ACandidate, mFound) then
   begin
     Exit;
   end;
-  Result := Found.Found and (Found.Kind = TResolvedKind.Symbol) and (KindGroup(Found.SymbolKind) = Group);
+  Result := mFound.Found and (mFound.Kind = TResolvedKind.Symbol) and (KindGroup(mFound.SymbolKind) = mGroup);
 end;
 
 function TDeprecatedCheck.ReplacementOf(const ASymbol: TIndexSymbol; const AOwner: TUnitIndex;
   AQualified: Boolean): string;
 var
-  Candidates: TList<string>;
-  Match: TMatch;
-  Index: Integer;
-  Name: string;
+  mCandidates: TList<string>;
+  mMatch: TMatch;
+  mIndex: Integer;
+  mName: string;
 begin
   Result := '';
-  Candidates := TList<string>.Create;
+  mCandidates := TList<string>.Create;
   try
     if ASymbol.DeprecatedText <> '' then
     begin
-      for Match in TRegEx.Matches(ASymbol.DeprecatedText, '[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*') do
+      for mMatch in TRegEx.Matches(ASymbol.DeprecatedText, '[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*') do
       begin
-        if (Candidates.IndexOf(Match.Value) < 0) and Fits(ASymbol, AOwner, Match.Value, AQualified) then
+        if (mCandidates.IndexOf(mMatch.Value) < 0) and Fits(ASymbol, AOwner, mMatch.Value, AQualified) then
         begin
-          Candidates.Add(Match.Value);
+          mCandidates.Add(mMatch.Value);
         end;
       end;
     end
-    else if IndexText(AOwner.UnitName, KnownUnits) >= 0 then
+    else if IndexText(AOwner.UnitName, cKnownUnits) >= 0 then
     begin
-      Index := IndexText(ASymbol.Name, KnownOld);
-      if Index >= 0 then
+      mIndex := IndexText(ASymbol.Name, cKnownOld);
+      if mIndex >= 0 then
       begin
-        Name := KnownNew[Index];
-        if Fits(ASymbol, AOwner, Name, AQualified) then
+        mName := cKnownNew[mIndex];
+        if Fits(ASymbol, AOwner, mName, AQualified) then
         begin
-          Candidates.Add(Name);
+          mCandidates.Add(mName);
         end;
       end;
     end;
     // Eindeutig heißt: genau ein Name aus dem Text passt.
-    if Candidates.Count = 1 then
+    if mCandidates.Count = 1 then
     begin
-      Result := Candidates[0];
+      Result := mCandidates[0];
     end;
   finally
-    Candidates.Free;
+    mCandidates.Free;
   end;
 end;
 
@@ -501,13 +501,13 @@ var
   mPrefix, mCode: string;
 begin
   mPrefix := '';
-  mCode := SymbolCodes[AKind];
+  mCode := cSymbolCodes[AKind];
   if AUnitLevel then
   begin
     mPrefix := 'Unit ';
-    mCode := UnitCodes[AKind];
+    mCode := cUnitCodes[AKind];
   end;
-  Result := cTexts[TDeprecatedText.IsKind].Fmt([mPrefix, AName, KindWords[AKind]]);
+  Result := cTexts[TDeprecatedText.IsKind].Fmt([mPrefix, AName, cKindWords[AKind]]);
   if (AKind = 0) and (AHint.Reason <> '') then
   begin
     Result := Result + ': ' + AHint.Reason;
@@ -533,9 +533,9 @@ begin
     mFixes := [TRuleFix.Create(cTexts[TDeprecatedText.ReplaceWith].Fmt([AHint.Replacement]),
       [TTextEdit.Create(ARange, AHint.Replacement)])];
   end;
-  for mKind := Low(KindWords) to High(KindWords) do
+  for mKind := Low(cKindWords) to High(cKindWords) do
   begin
-    if IndexText(KindWords[mKind], AHint.Directives) < 0 then
+    if IndexText(cKindWords[mKind], AHint.Directives) < 0 then
     begin
       Continue;
     end;
@@ -556,14 +556,14 @@ end;
 
 procedure TDeprecatedCheck.CheckUses;
 var
-  Items: TList<TSyntaxNode>;
-  Item: TSyntaxNode;
-  Tokens: TArray<TPascalToken>;
-  First, Last: Integer;
-  UnitIndex: TUnitIndex;
+  mItems: TList<TSyntaxNode>;
+  mItem: TSyntaxNode;
+  mTokens: TArray<TPascalToken>;
+  mFirst, mLast: Integer;
+  mUnitIndex: TUnitIndex;
 begin
-  Tokens := FContext.Tree.Tokens;
-  Items := TList<TSyntaxNode>.Create;
+  mTokens := FContext.Tree.Tokens;
+  mItems := TList<TSyntaxNode>.Create;
   try
     FContext.Tree.Root.Walk(
       function(ANode: TSyntaxNode): Boolean
@@ -571,28 +571,29 @@ begin
         Result := True;
         if ANode.Kind = TSyntaxKind.UsedUnit then
         begin
-          Items.Add(ANode);
+          mItems.Add(ANode);
         end;
       end);
-    for Item in Items do
+    for mItem in mItems do
     begin
-      if (Item.Name = '') or SameText(Item.Name, FOwn.UnitName) or not FTokenIndex.TryGetValue(Item.StartOffset, First)
-        or not FindIndexedUnit(Item.Name, UnitIndex) or not HasHint(UnitIndex.Directives) then
+      if (mItem.Name = '') or SameText(mItem.Name, FOwn.UnitName) or
+        not FTokenIndex.TryGetValue(mItem.StartOffset, mFirst)
+        or not FindIndexedUnit(mItem.Name, mUnitIndex) or not HasHint(mUnitIndex.Directives) then
       begin
         Continue;
       end;
       // Name samt Punkten, ohne "in '…'".
-      Last := First;
-      while (Last + 2 <= High(Tokens)) and Tokens[Last + 1].IsSymbol('.') and
-        (Tokens[Last + 2].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) do
+      mLast := mFirst;
+      while (mLast + 2 <= High(mTokens)) and mTokens[mLast + 1].IsSymbol('.') and
+        (mTokens[mLast + 2].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) do
       begin
-        Inc(Last, 2);
+        Inc(mLast, 2);
       end;
-      ReportKinds(TTextRange.Create(Tokens[First].StartPos, Tokens[Last].EndPos), First, Item.Name,
-        TDeprecatedHint.Create(UnitIndex.Directives, UnitIndex.DeprecatedText, ''), True);
+      ReportKinds(TTextRange.Create(mTokens[mFirst].StartPos, mTokens[mLast].EndPos), mFirst, mItem.Name,
+        TDeprecatedHint.Create(mUnitIndex.Directives, mUnitIndex.DeprecatedText, ''), True);
     end;
   finally
-    Items.Free;
+    mItems.Free;
   end;
 end;
 
@@ -785,7 +786,7 @@ end;
 
 function TDeprecatedSymbolRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(DeprecatedSymbolRuleId, TRuleSeverity.Warning,
+  Result := TRuleDescriptor.Create(cDeprecatedSymbolRuleId, TRuleSeverity.Warning,
     cTexts[TDeprecatedText.Title].Text);
 end;
 
@@ -797,17 +798,17 @@ end;
 
 procedure TDeprecatedSymbolRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Check: TDeprecatedCheck;
+  mCheck: TDeprecatedCheck;
 begin
   if AContext.Tree = nil then
   begin
     Exit;
   end;
-  Check := TDeprecatedCheck.Create(AContext, AReport);
+  mCheck := TDeprecatedCheck.Create(AContext, AReport);
   try
-    Check.Run;
+    mCheck.Run;
   finally
-    Check.Free;
+    mCheck.Free;
   end;
 end;
 

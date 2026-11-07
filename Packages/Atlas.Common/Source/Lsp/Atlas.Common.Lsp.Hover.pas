@@ -60,7 +60,7 @@ type
 
   TLspHover = class
   public const
-    Method = 'textDocument/hover';
+    cMethod = 'textDocument/hover';
   private
     FStore: IDocumentStore;
     FIndex: ISymbolIndex;
@@ -106,7 +106,8 @@ type
     /// <summary>„Feld nicht gefunden in qryOrders“ (#461), wenn APosition im Namen eines FieldByName-, FindField-
     /// oder ParamByName-Aufrufs steht, die Formulardatei Namen für die Datenmenge kennt und dieser nicht dabei ist.
     /// </summary>
-    class function DataNameHint(const AIndex: ISymbolIndex; const AText, AFileName: string; const APosition: TTextPosition;
+    class function DataNameHint(const AIndex: ISymbolIndex; const AText, AFileName: string;
+      const APosition: TTextPosition;
       const AReadText: THoverReadText; out AHint: string): Boolean; static;
     /// <summary>Teile des Hovers für den Atlas-Tooltip (#442): Doku strukturiert in documentation (#654) und
     /// als Klartext in documentationText, Hinweis als Klartext.</summary>
@@ -206,8 +207,8 @@ begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', AUri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPosition)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      cTexts[THoverText.FieldsTextDocumentUriAndPosition].Text + TLspHover.Method);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[THoverText.FieldsTextDocumentUriAndPosition].Text + TLspHover.cMethod);
   end;
   APosition := TLspPositions.ReadPosition(mPosition);
 end;
@@ -243,7 +244,7 @@ end;
 
 procedure TLspHover.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterConcurrentRequest(Method, HandleHover);
+  ADispatcher.RegisterConcurrentRequest(cMethod, HandleHover);
 end;
 
 class function TLspHover.ClientSupportsMarkdown(const AInitializeParams: TJSONObject): Boolean;
@@ -295,7 +296,7 @@ begin
   begin
     Exit;
   end;
-  AInfo.ReassignedTarget := TReassigned.TargetNames[mSymbol.Target];
+  AInfo.ReassignedTarget := TReassigned.cTargetNames[mSymbol.Target];
   AInfo.ReassignedWrites := mSymbol.WriteCount;
   AInfo.ReassignedLines := mSymbol.WriteLines;
 end;

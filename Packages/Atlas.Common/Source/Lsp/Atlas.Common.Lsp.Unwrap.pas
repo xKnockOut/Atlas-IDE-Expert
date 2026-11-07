@@ -25,7 +25,7 @@ uses
 type
   TLspUnwrap = class
   public const
-    Command = 'atlas.server.unwrap';
+    cCommand = 'atlas.server.unwrap';
   public
     /// <summary>Konstrukte an APosition als JSON; AIndentWidth &lt;= 0 = Breite aus dem Formatierstil. Der
     /// Aufrufer übernimmt das Objekt.</summary>
@@ -45,59 +45,59 @@ uses
 
 function RangesToJson(const ARanges: TArray<TTextRange>): TJSONArray;
 var
-  Range: TTextRange;
+  mRange: TTextRange;
 begin
   Result := TJSONArray.Create;
-  for Range in ARanges do
+  for mRange in ARanges do
   begin
-    Result.AddElement(TLspPositions.RangeToJson(Range));
+    Result.AddElement(TLspPositions.RangeToJson(mRange));
   end;
 end;
 
 function EditsToJson(const AEdits: TArray<TTextEdit>): TJSONArray;
 var
-  Edit: TTextEdit;
-  Item: TJSONObject;
+  mEdit: TTextEdit;
+  mItem: TJSONObject;
 begin
   Result := TJSONArray.Create;
-  for Edit in AEdits do
+  for mEdit in AEdits do
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
-    Item.AddPair('newText', Edit.NewText);
-    Result.AddElement(Item);
+    mItem := TJSONObject.Create;
+    mItem.AddPair('range', TLspPositions.RangeToJson(mEdit.Range));
+    mItem.AddPair('newText', mEdit.NewText);
+    Result.AddElement(mItem);
   end;
 end;
 
 class function TLspUnwrap.ToJson(const ACandidates: TArray<TUnwrapCandidate>): TJSONObject;
 var
-  Candidates, Variants: TJSONArray;
-  Candidate: TUnwrapCandidate;
-  Choice: TUnwrapVariant;
-  Item, VariantItem: TJSONObject;
+  mCandidates, mVariants: TJSONArray;
+  mCandidate: TUnwrapCandidate;
+  mChoice: TUnwrapVariant;
+  mItem, mVariantItem: TJSONObject;
 begin
   Result := TJSONObject.Create;
-  Candidates := TJSONArray.Create;
-  Result.AddPair('candidates', Candidates);
-  for Candidate in ACandidates do
+  mCandidates := TJSONArray.Create;
+  Result.AddPair('candidates', mCandidates);
+  for mCandidate in ACandidates do
   begin
-    Item := TJSONObject.Create;
-    Candidates.AddElement(Item);
-    Item.AddPair('kind', TUnwrap.KindName(Candidate.Kind));
-    Item.AddPair('range', TLspPositions.RangeToJson(Candidate.Range));
-    Item.AddPair('note', TUnwrap.NoteName(Candidate.Note));
-    Item.AddPair('noteText', Candidate.NoteText);
-    Variants := TJSONArray.Create;
-    Item.AddPair('variants', Variants);
-    for Choice in Candidate.Variants do
+    mItem := TJSONObject.Create;
+    mCandidates.AddElement(mItem);
+    mItem.AddPair('kind', TUnwrap.KindName(mCandidate.Kind));
+    mItem.AddPair('range', TLspPositions.RangeToJson(mCandidate.Range));
+    mItem.AddPair('note', TUnwrap.NoteName(mCandidate.Note));
+    mItem.AddPair('noteText', mCandidate.NoteText);
+    mVariants := TJSONArray.Create;
+    mItem.AddPair('variants', mVariants);
+    for mChoice in mCandidate.Variants do
     begin
-      VariantItem := TJSONObject.Create;
-      Variants.AddElement(VariantItem);
-      VariantItem.AddPair('kind', TUnwrap.VariantName(Choice.Kind));
-      VariantItem.AddPair('branch', TJSONNumber.Create(Choice.Branch));
-      VariantItem.AddPair('edits', EditsToJson(Choice.Edits));
-      VariantItem.AddPair('keep', RangesToJson(Choice.Keep));
-      VariantItem.AddPair('remove', RangesToJson(Choice.Remove));
+      mVariantItem := TJSONObject.Create;
+      mVariants.AddElement(mVariantItem);
+      mVariantItem.AddPair('kind', TUnwrap.VariantName(mChoice.Kind));
+      mVariantItem.AddPair('branch', TJSONNumber.Create(mChoice.Branch));
+      mVariantItem.AddPair('edits', EditsToJson(mChoice.Edits));
+      mVariantItem.AddPair('keep', RangesToJson(mChoice.Keep));
+      mVariantItem.AddPair('remove', RangesToJson(mChoice.Remove));
     end;
   end;
 end;
@@ -105,36 +105,36 @@ end;
 class function TLspUnwrap.Execute(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
   const APosition: TTextPosition; const AContext: TRefactoringContext; AIndentWidth: Integer): TJSONObject;
 var
-  Options: TUnwrapOptions;
-  Text: string;
-  Tree: TSyntaxTree;
-  Resolver: TNameResolver;
-  Context: TRefactoringContext;
+  mOptions: TUnwrapOptions;
+  mText: string;
+  mTree: TSyntaxTree;
+  mResolver: TNameResolver;
+  mContext: TRefactoringContext;
 begin
-  Options := TUnwrapOptions.Default;
-  Options.IndentWidth := AIndentWidth;
-  if Options.IndentWidth <= 0 then
+  mOptions := TUnwrapOptions.Default;
+  mOptions.IndentWidth := AIndentWidth;
+  if mOptions.IndentWidth <= 0 then
   begin
-    Options.IndentWidth := AContext.Style.IndentSize;
+    mOptions.IndentWidth := AContext.Style.IndentSize;
   end;
-  Text := AText;
-  Tree := ATree;
-  Resolver := AResolver;
-  Context := AContext;
-  if Resolver <> nil then
+  mText := AText;
+  mTree := ATree;
+  mResolver := AResolver;
+  mContext := AContext;
+  if mResolver <> nil then
   begin
-    Options.ResolveWith :=
+    mOptions.ResolveWith :=
       function(AWith: TSyntaxNode; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean
       var
         Resolved: TWithResolved;
       begin
-        Result := TWithResolution.Resolve(Text, Tree, AWith, TLspRefactorings.WithLookup(Resolver, Tree,
-          Context.FileName), TLspRefactorings.ExtractOptions(Context), Resolved);
+        Result := TWithResolution.Resolve(mText, mTree, AWith, TLspRefactorings.WithLookup(mResolver, mTree,
+          mContext.FileName), TLspRefactorings.ExtractOptions(mContext), Resolved);
         AEdits := Resolved.Action.Edits;
         AReason := Resolved.Reason;
       end;
   end;
-  Result := ToJson(TUnwrap.Candidates(AText, ATree, APosition, Options));
+  Result := ToJson(TUnwrap.Candidates(AText, ATree, APosition, mOptions));
 end;
 
 end.

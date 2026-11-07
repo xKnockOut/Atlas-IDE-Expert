@@ -168,7 +168,7 @@ const
 
 const
   /// <summary>Plattformen für die Compiler-Symbole, die hier nicht gelten.</summary>
-  OtherPlatforms: array[0..8] of string = ('Win32', 'Win64', 'Linux64', 'OSX64', 'OSXARM64', 'Android',
+  cOtherPlatforms: array[0..8] of string = ('Win32', 'Win64', 'Linux64', 'OSX64', 'OSXARM64', 'Android',
     'Android64', 'iOSDevice64', 'iOSSimARM64');
 
 { TConditionalContext }
@@ -196,53 +196,53 @@ class function TConditionalSymbols.SourcesOf(const AProjectDefines: TArray<strin
   const AOrigins: TArray<TPair<string, string>>; const APredefined: TArray<string>;
   const APlatform: string): TArray<TSymbolSource>;
 var
-  Source: TSymbolSource;
-  Origin: TPair<string, string>;
-  Name: string;
+  mSource: TSymbolSource;
+  mOrigin: TPair<string, string>;
+  mName: string;
 begin
   Result := nil;
-  for Name in AProjectDefines do
+  for mName in AProjectDefines do
   begin
     // Schalterstände für $IFOPT ("$R+", #847) sind keine Symbole.
-    if TPascalPreprocessor.IsSwitchEntry(Name) then
+    if TPascalPreprocessor.IsSwitchEntry(mName) then
     begin
       Continue;
     end;
-    Source.Name := UpperCase(Name);
-    Source.Origin := cTexts[TConditionalSymbolsText.ProjectOptionsOfTheIDE].Text;
-    for Origin in AOrigins do
+    mSource.Name := UpperCase(mName);
+    mSource.Origin := cTexts[TConditionalSymbolsText.ProjectOptionsOfTheIDE].Text;
+    for mOrigin in AOrigins do
     begin
-      if SameText(Origin.Key, Name) then
+      if SameText(mOrigin.Key, mName) then
       begin
-        Source.Origin := Origin.Value + ' (.dproj)';
+        mSource.Origin := mOrigin.Value + ' (.dproj)';
         Break;
       end;
     end;
-    Result := Result + [Source];
+    Result := Result + [mSource];
   end;
-  for Name in APredefined do
+  for mName in APredefined do
   begin
-    Source.Name := UpperCase(Name);
-    Source.Origin := cTexts[TConditionalSymbolsText.CompilerDefault].Text;
+    mSource.Name := UpperCase(mName);
+    mSource.Origin := cTexts[TConditionalSymbolsText.CompilerDefault].Text;
     if APlatform <> '' then
     begin
-      Source.Origin := Source.Origin + cTexts[TConditionalSymbolsText.Platform].Fmt([APlatform]);
+      mSource.Origin := mSource.Origin + cTexts[TConditionalSymbolsText.Platform].Fmt([APlatform]);
     end;
-    Result := Result + [Source];
+    Result := Result + [mSource];
   end;
 end;
 
 /// <summary>Direktive an APosition; False, wenn dort keine steht.</summary>
 function DirectiveAt(const AText: string; const APosition: TTextPosition; out AToken: TPascalToken): Boolean;
 var
-  Token: TPascalToken;
+  mToken: TPascalToken;
 begin
-  for Token in TPascalLexer.Tokenize(AText) do
+  for mToken in TPascalLexer.Tokenize(AText) do
   begin
-    if (Token.Kind = TPascalTokenKind.Directive) and not Before(APosition, Token.StartPos) and
-      Before(APosition, Token.EndPos) then
+    if (mToken.Kind = TPascalTokenKind.Directive) and not Before(APosition, mToken.StartPos) and
+      Before(APosition, mToken.EndPos) then
     begin
-      AToken := Token;
+      AToken := mToken;
       Exit(True);
     end;
   end;
@@ -322,42 +322,42 @@ end;
 procedure SplitSymbols(const AToken: string; out ADirective: string; out ANames: TArray<string>;
   out AStarts: TArray<Integer>);
 var
-  Body: string;
-  Offset, Index, Start: Integer;
-  Found: TPair<Integer, string>;
+  mBody: string;
+  mOffset, mIndex, mStart: Integer;
+  mFound: TPair<Integer, string>;
 begin
   ANames := nil;
   AStarts := nil;
-  Body := DirectiveBody(AToken, Offset);
-  Index := 1;
-  while (Index <= Length(Body)) and IsNameChar(Body[Index]) do
+  mBody := DirectiveBody(AToken, mOffset);
+  mIndex := 1;
+  while (mIndex <= Length(mBody)) and IsNameChar(mBody[mIndex]) do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  ADirective := UpperCase(Copy(Body, 1, Index - 1));
+  ADirective := UpperCase(Copy(mBody, 1, mIndex - 1));
   if MatchStr(ADirective, ['IFDEF', 'IFNDEF', 'DEFINE', 'UNDEF']) then
   begin
-    while (Index <= Length(Body)) and (Body[Index] = ' ') do
+    while (mIndex <= Length(mBody)) and (mBody[mIndex] = ' ') do
     begin
-      Inc(Index);
+      Inc(mIndex);
     end;
-    Start := Index;
-    while (Index <= Length(Body)) and IsNameChar(Body[Index]) do
+    mStart := mIndex;
+    while (mIndex <= Length(mBody)) and IsNameChar(mBody[mIndex]) do
     begin
-      Inc(Index);
+      Inc(mIndex);
     end;
-    if Index > Start then
+    if mIndex > mStart then
     begin
-      ANames := [Copy(Body, Start, Index - Start)];
-      AStarts := [Start + Offset - 1];
+      ANames := [Copy(mBody, mStart, mIndex - mStart)];
+      AStarts := [mStart + mOffset - 1];
     end;
   end
   else if MatchStr(ADirective, ['IF', 'ELSEIF']) then
   begin
-    for Found in DefinedNames(Copy(Body, Index, MaxInt)) do
+    for mFound in DefinedNames(Copy(mBody, mIndex, MaxInt)) do
     begin
-      ANames := ANames + [Found.Value];
-      AStarts := AStarts + [Found.Key + Index - 1 + Offset - 1];
+      ANames := ANames + [mFound.Value];
+      AStarts := AStarts + [mFound.Key + mIndex - 1 + mOffset - 1];
     end;
   end;
 end;
@@ -365,37 +365,37 @@ end;
 class function TConditionalSymbols.SymbolAt(const AText: string; const APosition: TTextPosition;
   out AName, ADirective: string; out AStart: TTextPosition): Boolean;
 var
-  Token: TPascalToken;
-  Names: TArray<string>;
-  Starts: TArray<Integer>;
-  Index, Column: Integer;
+  mToken: TPascalToken;
+  mNames: TArray<string>;
+  mStarts: TArray<Integer>;
+  mIndex, mColumn: Integer;
 begin
   AName := '';
   ADirective := '';
   AStart := APosition;
-  if not DirectiveAt(AText, APosition, Token) then
+  if not DirectiveAt(AText, APosition, mToken) then
   begin
     Exit(False);
   end;
-  AStart := Token.StartPos;
-  SplitSymbols(Token.Text, ADirective, Names, Starts);
-  if Names = nil then
+  AStart := mToken.StartPos;
+  SplitSymbols(mToken.Text, ADirective, mNames, mStarts);
+  if mNames = nil then
   begin
     Exit(False);
   end;
-  if Length(Names) = 1 then
+  if Length(mNames) = 1 then
   begin
-    AName := Names[0];
+    AName := mNames[0];
   end
-  else if Token.StartPos.Line = APosition.Line then
+  else if mToken.StartPos.Line = APosition.Line then
   begin
     // Mehrere Defined(…): das unter dem Cursor (1-basiert im Token).
-    Column := APosition.Character - Token.StartPos.Character + 1;
-    for Index := 0 to High(Names) do
+    mColumn := APosition.Character - mToken.StartPos.Character + 1;
+    for mIndex := 0 to High(mNames) do
     begin
-      if (Column >= Starts[Index]) and (Column <= Starts[Index] + Length(Names[Index])) then
+      if (mColumn >= mStarts[mIndex]) and (mColumn <= mStarts[mIndex] + Length(mNames[mIndex])) then
       begin
-        AName := Names[Index];
+        AName := mNames[mIndex];
       end;
     end;
   end;
@@ -415,15 +415,15 @@ end;
 /// <summary>"in Zeile 12" bzw. "in [Defs.inc](file:///…), Zeile 3".</summary>
 function SiteText(const AProcessed: TPreprocessorResult; const ASite: TDefineSite): string;
 var
-  FileName: string;
+  mFileName: string;
 begin
   if ASite.FileIndex = 0 then
   begin
     Exit(cTexts[TConditionalSymbolsText.InLineText].Fmt([ASite.Range.StartPos.Line + 1]));
   end;
-  FileName := AProcessed.Files[ASite.FileIndex];
-  Result := cTexts[TConditionalSymbolsText.InLineText2].Fmt([ExtractFileName(FileName),
-    TDocumentUris.FromPath(FileName),
+  mFileName := AProcessed.Files[ASite.FileIndex];
+  Result := cTexts[TConditionalSymbolsText.InLineText2].Fmt([ExtractFileName(mFileName),
+    TDocumentUris.FromPath(mFileName),
     ASite.Range.StartPos.Line + 1]);
 end;
 
@@ -443,12 +443,12 @@ end;
 
 function InInactiveRange(const AProcessed: TPreprocessorResult; const APosition: TTextPosition): Boolean;
 var
-  Inactive: TInactiveRange;
+  mInactive: TInactiveRange;
 begin
-  for Inactive in AProcessed.InactiveRanges do
+  for mInactive in AProcessed.InactiveRanges do
   begin
-    if (Inactive.FileIndex = 0) and not Before(APosition, Inactive.Range.StartPos) and
-      Before(APosition, Inactive.Range.EndPos) then
+    if (mInactive.FileIndex = 0) and not Before(APosition, mInactive.Range.StartPos) and
+      Before(APosition, mInactive.Range.EndPos) then
     begin
       Exit(True);
     end;
@@ -579,16 +579,16 @@ end;
 
 function DirectiveName(const AToken: string): string;
 var
-  Body: string;
-  Offset, Index: Integer;
+  mBody: string;
+  mOffset, mIndex: Integer;
 begin
-  Body := DirectiveBody(AToken, Offset);
-  Index := 1;
-  while (Index <= Length(Body)) and IsNameChar(Body[Index]) do
+  mBody := DirectiveBody(AToken, mOffset);
+  mIndex := 1;
+  while (mIndex <= Length(mBody)) and IsNameChar(mBody[mIndex]) do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Result := UpperCase(Copy(Body, 1, Index - 1));
+  Result := UpperCase(Copy(mBody, 1, mIndex - 1));
 end;
 
 function ValueText(AValue: TConditionValue): string;
@@ -843,111 +843,111 @@ end;
 
 class function TConditionalSymbols.IsSymbolContext(const ALineBefore: string; out APrefix: string): Boolean;
 var
-  Open, Index, Offset: Integer;
-  Body, Directive, Rest: string;
+  mOpen, mIndex, mOffset: Integer;
+  mBody, mDirective, mRest: string;
 begin
   APrefix := '';
-  Open := 0;
-  while PosEx('{$', ALineBefore, Open + 1) > 0 do
+  mOpen := 0;
+  while PosEx('{$', ALineBefore, mOpen + 1) > 0 do
   begin
-    Open := PosEx('{$', ALineBefore, Open + 1);
+    mOpen := PosEx('{$', ALineBefore, mOpen + 1);
   end;
-  if (Open = 0) or (PosEx('}', ALineBefore, Open) > 0) then
+  if (mOpen = 0) or (PosEx('}', ALineBefore, mOpen) > 0) then
   begin
     Exit(False);
   end;
-  Body := DirectiveBody(Copy(ALineBefore, Open, MaxInt), Offset);
+  mBody := DirectiveBody(Copy(ALineBefore, mOpen, MaxInt), mOffset);
   // Getippten Teil des Namens abtrennen.
-  Index := Length(Body);
-  while (Index > 0) and IsNameChar(Body[Index]) do
+  mIndex := Length(mBody);
+  while (mIndex > 0) and IsNameChar(mBody[mIndex]) do
   begin
-    Dec(Index);
+    Dec(mIndex);
   end;
-  APrefix := Copy(Body, Index + 1, MaxInt);
-  Rest := Copy(Body, 1, Index);
-  Index := 1;
-  while (Index <= Length(Rest)) and IsNameChar(Rest[Index]) do
+  APrefix := Copy(mBody, mIndex + 1, MaxInt);
+  mRest := Copy(mBody, 1, mIndex);
+  mIndex := 1;
+  while (mIndex <= Length(mRest)) and IsNameChar(mRest[mIndex]) do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Directive := UpperCase(Copy(Rest, 1, Index - 1));
-  if MatchStr(Directive, ['IFDEF', 'IFNDEF', 'DEFINE', 'UNDEF']) then
+  mDirective := UpperCase(Copy(mRest, 1, mIndex - 1));
+  if MatchStr(mDirective, ['IFDEF', 'IFNDEF', 'DEFINE', 'UNDEF']) then
   begin
-    Exit(Trim(Copy(Rest, Index, MaxInt)) = '');
+    Exit(Trim(Copy(mRest, mIndex, MaxInt)) = '');
   end;
   // {$IF Defined( bzw. {$ELSEIF … or Defined(
-  Result := MatchStr(Directive, ['IF', 'ELSEIF']) and EndsText('DEFINED(', StringReplace(UpperCase(TrimRight(Rest)),
+  Result := MatchStr(mDirective, ['IF', 'ELSEIF']) and EndsText('DEFINED(', StringReplace(UpperCase(TrimRight(mRest)),
     ' ', '', [rfReplaceAll]));
 end;
 
 class function TConditionalSymbols.Candidates(const AText: string;
   const AContext: TConditionalContext): TArray<TConditionalSymbol>;
 var
-  Seen: TDictionary<string, Boolean>;
-  Found: TList<TConditionalSymbol>;
-  Processed: TPreprocessorResult;
-  Source: TSymbolSource;
-  Site: TDefineSite;
-  Token: TPascalToken;
-  Directive, Name, Platform: string;
-  Names: TArray<string>;
-  Starts: TArray<Integer>;
+  mSeen: TDictionary<string, Boolean>;
+  mFound: TList<TConditionalSymbol>;
+  mProcessed: TPreprocessorResult;
+  mSource: TSymbolSource;
+  mSite: TDefineSite;
+  mToken: TPascalToken;
+  mDirective, mName, mPlatform: string;
+  mNames: TArray<string>;
+  mStarts: TArray<Integer>;
 
   procedure Add(const AName, ADetail: string; AActive: Boolean);
   var
-    Item: TConditionalSymbol;
+    mItem: TConditionalSymbol;
   begin
-    if (AName = '') or Seen.ContainsKey(UpperCase(AName)) then
+    if (AName = '') or mSeen.ContainsKey(UpperCase(AName)) then
     begin
       Exit;
     end;
-    Seen.Add(UpperCase(AName), True);
-    Item.Name := UpperCase(AName);
-    Item.Detail := ADetail;
-    Item.Active := AActive;
-    Found.Add(Item);
+    mSeen.Add(UpperCase(AName), True);
+    mItem.Name := UpperCase(AName);
+    mItem.Detail := ADetail;
+    mItem.Active := AActive;
+    mFound.Add(mItem);
   end;
 
 begin
-  Seen := TDictionary<string, Boolean>.Create;
-  Found := TList<TConditionalSymbol>.Create;
+  mSeen := TDictionary<string, Boolean>.Create;
+  mFound := TList<TConditionalSymbol>.Create;
   try
-    for Source in AContext.Sources do
+    for mSource in AContext.Sources do
     begin
-      Add(Source.Name, Source.Origin, True);
+      Add(mSource.Name, mSource.Origin, True);
     end;
-    Processed := TPascalPreprocessor.Process(AText, OptionsFor(AContext));
-    for Site in Processed.DefineSites do
+    mProcessed := TPascalPreprocessor.Process(AText, OptionsFor(AContext));
+    for mSite in mProcessed.DefineSites do
     begin
-      if not Site.Undefine then
+      if not mSite.Undefine then
       begin
-        Add(Site.Name, '{$DEFINE} ' + StringReplace(SiteText(Processed, Site), 'in ', '', []),
-          IndexText(Site.Name, Processed.Defines) >= 0);
+        Add(mSite.Name, '{$DEFINE} ' + StringReplace(SiteText(mProcessed, mSite), 'in ', '', []),
+          IndexText(mSite.Name, mProcessed.Defines) >= 0);
       end;
     end;
-    for Token in TPascalLexer.Tokenize(AText) do
+    for mToken in TPascalLexer.Tokenize(AText) do
     begin
-      if Token.Kind = TPascalTokenKind.Directive then
+      if mToken.Kind = TPascalTokenKind.Directive then
       begin
-        SplitSymbols(Token.Text, Directive, Names, Starts);
-        for Name in Names do
+        SplitSymbols(mToken.Text, mDirective, mNames, mStarts);
+        for mName in mNames do
         begin
-          Add(Name, cTexts[TConditionalSymbolsText.UsedInTheFileLine].Fmt([Token.StartPos.Line + 1]),
-            IndexText(Name, Processed.Defines) >= 0);
+          Add(mName, cTexts[TConditionalSymbolsText.UsedInTheFileLine].Fmt([mToken.StartPos.Line + 1]),
+            IndexText(mName, mProcessed.Defines) >= 0);
         end;
       end;
     end;
-    for Platform in OtherPlatforms do
+    for mPlatform in cOtherPlatforms do
     begin
-      for Name in TTextDefines.Predefined(Platform, 0) do
+      for mName in TTextDefines.Predefined(mPlatform, 0) do
       begin
-        Add(Name, cTexts[TConditionalSymbolsText.CompilerDefaultOn].Text + Platform, False);
+        Add(mName, cTexts[TConditionalSymbolsText.CompilerDefaultOn].Text + mPlatform, False);
       end;
     end;
-    Result := Found.ToArray;
+    Result := mFound.ToArray;
   finally
-    Found.Free;
-    Seen.Free;
+    mFound.Free;
+    mSeen.Free;
   end;
 end;
 

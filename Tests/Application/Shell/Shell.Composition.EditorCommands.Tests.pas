@@ -89,10 +89,10 @@ begin
     finally
       mCapability.Free;
     end;
-    for mName in TArray<string>.Create(TLspExitPoints.Command, TLspReassigned.Command, TLspExpressionType.Command,
-      TLspMethodOrder.Command, TLspOverrideMarks.Command, TQualifiedNames.Command, TEnumValueCommands.Command,
-      TResourceStringCommands.AddCommand, TStringLiteralCommands.PlainTextCommand,
-      TStringLiteralCommands.ToLiteralCommand, TLspSmartIndent.Command) do
+    for mName in TArray<string>.Create(TLspExitPoints.cCommand, TLspReassigned.cCommand, TLspExpressionType.cCommand,
+      TLspMethodOrder.cCommand, TLspOverrideMarks.cCommand, TQualifiedNames.cCommand, TEnumValueCommands.cCommand,
+      TResourceStringCommands.cAddCommand, TStringLiteralCommands.cPlainTextCommand,
+      TStringLiteralCommands.cToLiteralCommand, TLspSmartIndent.cCommand) do
     begin
       Assert.IsTrue(Pos('"' + mName + '"', mText) > 0, mName);
     end;
@@ -119,7 +119,7 @@ begin
     Assert.WillRaise(
       procedure
       begin
-        mResult := mCommands.Execute(TStringLiteralCommands.ToLiteralCommand, mArguments);
+        mResult := mCommands.Execute(TStringLiteralCommands.cToLiteralCommand, mArguments);
         mResult.Free;
       end, EJsonRpcError);
     Assert.AreEqual(1, FLiteralCalls);
@@ -146,7 +146,7 @@ begin
     Assert.WillRaise(
       procedure
       begin
-        mResult := mCommands.Execute(TLspSmartIndent.Command, mArguments);
+        mResult := mCommands.Execute(TLspSmartIndent.cCommand, mArguments);
         mResult.Free;
       end, EJsonRpcError);
   finally

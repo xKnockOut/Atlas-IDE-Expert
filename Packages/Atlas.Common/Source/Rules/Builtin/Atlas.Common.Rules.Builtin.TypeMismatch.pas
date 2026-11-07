@@ -39,7 +39,7 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  TypeMismatchRuleId = 'type-mismatch';
+  cTypeMismatchRuleId = 'type-mismatch';
 
 type
   TTypeMismatchRule = class(TInterfacedObject, IRule)
@@ -608,9 +608,9 @@ end;
 function TTypeMismatchCheck.NodeText(ANode: TSyntaxNode): string;
 begin
   Result := FScope.Text(ANode);
-  if Length(Result) > TExpressionTypes.MaxExpressionLength then
+  if Length(Result) > TExpressionTypes.cMaxExpressionLength then
   begin
-    Result := Copy(Result, 1, TExpressionTypes.MaxExpressionLength - 1) + #$2026;
+    Result := Copy(Result, 1, TExpressionTypes.cMaxExpressionLength - 1) + #$2026;
   end;
 end;
 
@@ -1714,7 +1714,7 @@ end;
 
 function TTypeMismatchRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(TypeMismatchRuleId, TRuleSeverity.Error, cTexts[TTypeMismatchText.Title].Text);
+  Result := TRuleDescriptor.Create(cTypeMismatchRuleId, TRuleSeverity.Error, cTexts[TTypeMismatchText.Title].Text);
 end;
 
 procedure TTypeMismatchRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);

@@ -134,7 +134,7 @@ end;
 
 function ConfigFileIn(const AFolder: string): string;
 begin
-  Result := ExistingOrLegacyFile(AFolder, ConfigurationFileName, LegacyConfigurationFileName);
+  Result := ExistingOrLegacyFile(AFolder, cConfigurationFileName, cLegacyConfigurationFileName);
 end;
 
 /// <summary>Ist AFolder (mit Trenner am Ende) der Stamm eines Repositorys?</summary>

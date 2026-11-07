@@ -570,7 +570,7 @@ begin
     mLineBreak + MovedText(mLineBreak))];
   Result := Default(TCodeAction);
   Result.Title := EmbedTitle;
-  Result.Kind := RewriteKind;
+  Result.Kind := cRewriteKind;
   Result.Edits := mEdits;
   Result.Preview := cTexts[TEmbedText.IsPassedAsAnAnonymous].Fmt([FShort, FCaller.Name]) + mLineBreak + mHead;
 end;

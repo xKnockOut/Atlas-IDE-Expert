@@ -46,10 +46,10 @@ type
   TCompletionSyntax = class
   public const
     /// <summary>Kopf bzw. Ende der leeren Unit, in die der Bereich gestellt wird.</summary>
-    RoutineHead = 'unit AtlasScope; implementation';
-    TypeHead = 'unit AtlasScope; interface type';
-    RoutineTail = 'end.';
-    TypeTail = 'implementation end.';
+    cRoutineHead = 'unit AtlasScope; implementation';
+    cTypeHead = 'unit AtlasScope; interface type';
+    cRoutineTail = 'end.';
+    cTypeTail = 'implementation end.';
   public
     /// <summary>Bereich um APosition; Kind None außerhalb einer Routine bzw. Klassendeklaration.</summary>
     class function ScopeAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): TCompletionScope;
@@ -115,48 +115,48 @@ end;
 /// und keine Vorwärtsdeklaration "class;".</summary>
 function StartsTypeDecl(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := False;
   if ATokens[AIndex].Kind <> TPascalTokenKind.Identifier then
   begin
     Exit;
   end;
-  Index := NextSignificant(ATokens, AIndex);
+  mIndex := NextSignificant(ATokens, AIndex);
   // Generische Parameter überspringen: TFoo<T> = class.
-  if (Index <= High(ATokens)) and ATokens[Index].IsSymbol('<') then
+  if (mIndex <= High(ATokens)) and ATokens[mIndex].IsSymbol('<') then
   begin
-    while (Index <= High(ATokens)) and not ATokens[Index].IsSymbol('>') do
+    while (mIndex <= High(ATokens)) and not ATokens[mIndex].IsSymbol('>') do
     begin
-      Index := NextSignificant(ATokens, Index);
+      mIndex := NextSignificant(ATokens, mIndex);
     end;
   end;
-  if (Index <= High(ATokens)) and ATokens[Index].IsSymbol('>') then
+  if (mIndex <= High(ATokens)) and ATokens[mIndex].IsSymbol('>') then
   begin
-    Index := NextSignificant(ATokens, Index);
+    mIndex := NextSignificant(ATokens, mIndex);
   end;
-  if (Index > High(ATokens)) or not ATokens[Index].IsSymbol('=') then
+  if (mIndex > High(ATokens)) or not ATokens[mIndex].IsSymbol('=') then
   begin
     Exit;
   end;
-  Index := NextSignificant(ATokens, Index);
-  if (Index <= High(ATokens)) and IsWord(ATokens[Index], 'packed') then
+  mIndex := NextSignificant(ATokens, mIndex);
+  if (mIndex <= High(ATokens)) and IsWord(ATokens[mIndex], 'packed') then
   begin
-    Index := NextSignificant(ATokens, Index);
+    mIndex := NextSignificant(ATokens, mIndex);
   end;
-  if Index > High(ATokens) then
+  if mIndex > High(ATokens) then
   begin
     Exit;
   end;
-  if IsWord(ATokens[Index], 'class') then
+  if IsWord(ATokens[mIndex], 'class') then
   begin
-    Index := NextSignificant(ATokens, Index);
-    Result := (Index > High(ATokens)) or not (IsWord(ATokens[Index], 'of') or ATokens[Index].IsSymbol(';'));
+    mIndex := NextSignificant(ATokens, mIndex);
+    Result := (mIndex > High(ATokens)) or not (IsWord(ATokens[mIndex], 'of') or ATokens[mIndex].IsSymbol(';'));
   end
   else
   begin
-    Result := IsWord(ATokens[Index], 'record') or IsWord(ATokens[Index], 'interface') or
-      IsWord(ATokens[Index], 'dispinterface') or IsWord(ATokens[Index], 'object');
+    Result := IsWord(ATokens[mIndex], 'record') or IsWord(ATokens[mIndex], 'interface') or
+      IsWord(ATokens[mIndex], 'dispinterface') or IsWord(ATokens[mIndex], 'object');
   end;
 end;
 
@@ -350,68 +350,68 @@ end;
 
 class function TCompletionSyntax.ScopeText(const AText: string; const AScope: TCompletionScope): string;
 var
-  Lines: TArray<string>;
-  Builder: TStringBuilder;
-  Index: Integer;
+  mLines: TArray<string>;
+  mBuilder: TStringBuilder;
+  mIndex: Integer;
 begin
-  Lines := AText.Split([#10]);
-  Builder := TStringBuilder.Create;
+  mLines := AText.Split([#10]);
+  mBuilder := TStringBuilder.Create;
   try
     if AScope.Kind = TCompletionScopeKind.Routine then
     begin
-      Builder.Append(RoutineHead);
+      mBuilder.Append(cRoutineHead);
     end
     else
     begin
-      Builder.Append(TypeHead);
+      mBuilder.Append(cTypeHead);
     end;
     // Zeilen davor leer, damit Positionen gleich bleiben; Zeile 0 trägt den Kopf.
-    for Index := 1 to High(Lines) do
+    for mIndex := 1 to High(mLines) do
     begin
-      Builder.Append(#10);
-      if (Index >= AScope.FirstLine) and (Index <= AScope.LastLine) then
+      mBuilder.Append(#10);
+      if (mIndex >= AScope.FirstLine) and (mIndex <= AScope.LastLine) then
       begin
-        Builder.Append(Lines[Index].TrimRight([#13]));
+        mBuilder.Append(mLines[mIndex].TrimRight([#13]));
       end;
     end;
-    Builder.Append(#10);
+    mBuilder.Append(#10);
     if AScope.Kind = TCompletionScopeKind.Routine then
     begin
-      Builder.Append(RoutineTail);
+      mBuilder.Append(cRoutineTail);
     end
     else
     begin
-      Builder.Append(TypeTail);
+      mBuilder.Append(cTypeTail);
     end;
-    Result := Builder.ToString;
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
 class function TCompletionSyntax.WordStart(const AText: string; const APosition: TTextPosition): TTextPosition;
 var
-  Lines: TArray<string>;
-  Line: string;
-  Character: Integer;
+  mLines: TArray<string>;
+  mLine: string;
+  mCharacter: Integer;
 begin
   Result := APosition;
-  Lines := AText.Split([#10]);
-  if (APosition.Line < 0) or (APosition.Line > High(Lines)) then
+  mLines := AText.Split([#10]);
+  if (APosition.Line < 0) or (APosition.Line > High(mLines)) then
   begin
     Exit;
   end;
-  Line := Lines[APosition.Line];
-  Character := APosition.Character;
-  if Character > Length(Line) then
+  mLine := mLines[APosition.Line];
+  mCharacter := APosition.Character;
+  if mCharacter > Length(mLine) then
   begin
-    Character := Length(Line);
+    mCharacter := Length(mLine);
   end;
-  while (Character > 0) and CharInSet(Line[Character], ['A'..'Z', 'a'..'z', '0'..'9', '_', '&']) do
+  while (mCharacter > 0) and CharInSet(mLine[mCharacter], ['A'..'Z', 'a'..'z', '0'..'9', '_', '&']) do
   begin
-    Dec(Character);
+    Dec(mCharacter);
   end;
-  Result := TTextPosition.Create(APosition.Line, Character);
+  Result := TTextPosition.Create(APosition.Line, mCharacter);
 end;
 
 function Before(const A, B: TTextPosition): Boolean;
@@ -422,11 +422,11 @@ end;
 class function TCompletionSyntax.Assess(ATree: TSyntaxTree; const AText: string; const APosition: TTextPosition;
   ACount: Integer): TCompletionSyntaxNotice;
 var
-  Diagnostic: TSyntaxDiagnostic;
-  Broken: Boolean;
-  Scope: TCompletionScope;
-  Tree: TSyntaxTree;
-  Limit: TTextPosition;
+  mDiagnostic: TSyntaxDiagnostic;
+  mBroken: Boolean;
+  mScope: TCompletionScope;
+  mTree: TSyntaxTree;
+  mLimit: TTextPosition;
 begin
   Result := Default(TCompletionSyntaxNotice);
   Result.Line := -1;
@@ -436,34 +436,34 @@ begin
     Exit;
   end;
   // Ohne Fehler im ganzen Baum keine eigene Prüfung.
-  Broken := False;
-  for Diagnostic in ATree.Diagnostics do
+  mBroken := False;
+  for mDiagnostic in ATree.Diagnostics do
   begin
-    if not Diagnostic.TreeIntact then
+    if not mDiagnostic.TreeIntact then
     begin
-      Broken := True;
+      mBroken := True;
     end;
   end;
-  if not Broken then
+  if not mBroken then
   begin
     Exit;
   end;
-  Scope := ScopeAt(ATree.Tokens, APosition);
-  if (Scope.Kind = TCompletionScopeKind.None) or (Scope.FirstLine < 1) then
+  mScope := ScopeAt(ATree.Tokens, APosition);
+  if (mScope.Kind = TCompletionScopeKind.None) or (mScope.FirstLine < 1) then
   begin
     Exit;
   end;
-  Limit := WordStart(AText, APosition);
-  Tree := TSyntaxTreeCache.Parse(ScopeText(AText, Scope));
+  mLimit := WordStart(AText, APosition);
+  mTree := TSyntaxTreeCache.Parse(ScopeText(AText, mScope));
   try
-    for Diagnostic in Tree.Diagnostics do
+    for mDiagnostic in mTree.Diagnostics do
     begin
-      if not Diagnostic.TreeIntact and (Diagnostic.StartPos.Line >= Scope.FirstLine) and
-        Before(Diagnostic.StartPos, Limit) then
+      if not mDiagnostic.TreeIntact and (mDiagnostic.StartPos.Line >= mScope.FirstLine) and
+        Before(mDiagnostic.StartPos, mLimit) then
       begin
-        Result.Line := Diagnostic.StartPos.Line;
-        Result.Character := Diagnostic.StartPos.Character;
-        Result.Message := Diagnostic.Message;
+        Result.Line := mDiagnostic.StartPos.Line;
+        Result.Character := mDiagnostic.StartPos.Character;
+        Result.Message := mDiagnostic.Message;
         if ACount = 0 then
         begin
           Result.Trust := TCompletionTrust.Unknown;
@@ -476,7 +476,7 @@ begin
       end;
     end;
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -492,18 +492,18 @@ end;
 
 class procedure TCompletionSyntax.WriteJson(AList: TJSONObject; const ANotice: TCompletionSyntaxNotice);
 var
-  Notice: TJSONObject;
+  mNotice: TJSONObject;
 begin
   if ANotice.Trust = TCompletionTrust.Sure then
   begin
     Exit;
   end;
-  Notice := TJSONObject.Create;
-  Notice.AddPair('trust', TrustName(ANotice.Trust));
-  Notice.AddPair('line', TJSONNumber.Create(ANotice.Line));
-  Notice.AddPair('character', TJSONNumber.Create(ANotice.Character));
-  Notice.AddPair('message', ANotice.Message);
-  AList.AddPair('syntaxNotice', Notice);
+  mNotice := TJSONObject.Create;
+  mNotice.AddPair('trust', TrustName(ANotice.Trust));
+  mNotice.AddPair('line', TJSONNumber.Create(ANotice.Line));
+  mNotice.AddPair('character', TJSONNumber.Create(ANotice.Character));
+  mNotice.AddPair('message', ANotice.Message);
+  AList.AddPair('syntaxNotice', mNotice);
 end;
 
 end.

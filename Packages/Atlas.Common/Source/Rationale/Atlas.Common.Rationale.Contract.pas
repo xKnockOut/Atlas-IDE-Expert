@@ -28,7 +28,7 @@ type
   TRationaleEntry = record
     /// <summary>Marke in Großbuchstaben, z. B. WHY.</summary>
     Marker: string;
-    /// <summary>Text nach der Marke, Leerraum zusammengefasst, höchstens TRationale.MaxText Zeichen.</summary>
+    /// <summary>Text nach der Marke, Leerraum zusammengefasst, höchstens TRationale.cMaxText Zeichen.</summary>
     Text: string;
     /// <summary>Zeile des Kommentars (0-basiert).</summary>
     Line: Integer;
@@ -52,11 +52,11 @@ type
   // Record statt Klasse: ein Contract enthält nur Werttypen und Interfaces (Konzept 7.1, Code-Review A-12).
   TRationale = record
   public const
-    MaxText = 300;
+    cMaxText = 300;
     /// <summary>Höchstens so viele Einträge je Symbol bzw. Unit im Index.</summary>
-    MaxEntries = 20;
+    cMaxEntries = 20;
     /// <summary>Ordner der Architekturentscheidungen, wenn hints.adrFolder fehlt.</summary>
-    DefaultAdrFolder = 'docs/adr';
+    cDefaultAdrFolder = 'docs/adr';
   public
     /// <summary>NOTE, WHY, HACK, IMPORTANT, RATIONALE.</summary>
     class function DefaultMarkers: TArray<string>; static;

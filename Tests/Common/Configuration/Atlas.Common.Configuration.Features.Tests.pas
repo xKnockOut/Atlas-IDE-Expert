@@ -1233,7 +1233,7 @@ var
   Issues: TArray<TConfigurationIssue>;
 begin
   Settings := Parse('{}', Issues);
-  Assert.AreEqual(THintSettings.ExpandLast, Settings.Hints.XmlDocExpand);
+  Assert.AreEqual(THintSettings.cExpandLast, Settings.Hints.XmlDocExpand);
   Assert.AreEqual(0, Settings.Hints.XmlDocMaxLines);
   // published-Mitglieder im Hover (#110).
   Assert.IsTrue(Settings.Hints.PublishedMembers);
@@ -1242,13 +1242,13 @@ begin
   Parse('{"hints": {"publishedMembers": 0}}', Issues);
   Assert.AreEqual(1, Integer(Length(Issues)));
   Settings := Parse('{"hints": {"xmlDocExpand": "collapsed", "xmlDocMaxLines": 10}}', Issues);
-  Assert.AreEqual(THintSettings.ExpandCollapsed, Settings.Hints.XmlDocExpand);
+  Assert.AreEqual(THintSettings.cExpandCollapsed, Settings.Hints.XmlDocExpand);
   Assert.AreEqual(10, Settings.Hints.XmlDocMaxLines);
   Assert.AreEqual(0, Integer(Length(Issues)));
   // Außerhalb 0–50 bzw. falsch getypt (Fehler), unbekannter Schlüssel (Warnung); Vorgaben bleiben.
   Settings := Parse('{"hints": {"xmlDocMaxLines": 51, "xmlDocExpand": "auf", "x": 1}}', Issues);
   Assert.AreEqual(0, Settings.Hints.XmlDocMaxLines);
-  Assert.AreEqual(THintSettings.ExpandLast, Settings.Hints.XmlDocExpand);
+  Assert.AreEqual(THintSettings.cExpandLast, Settings.Hints.XmlDocExpand);
   Assert.AreEqual(3, Integer(Length(Issues)));
   Assert.IsTrue(Issues[0].IsError);
   Assert.IsTrue(Issues[1].IsError);
@@ -1257,17 +1257,17 @@ begin
   Assert.AreEqual(1, Integer(Length(Issues)));
   // Veraltetes xmlDocFull (#770): true = expanded, false = collapsed, mit Warnung; xmlDocExpand gewinnt.
   Settings := Parse('{"hints": {"xmlDocFull": false}}', Issues);
-  Assert.AreEqual(THintSettings.ExpandCollapsed, Settings.Hints.XmlDocExpand);
+  Assert.AreEqual(THintSettings.cExpandCollapsed, Settings.Hints.XmlDocExpand);
   Assert.AreEqual(1, Integer(Length(Issues)));
   Assert.IsFalse(Issues[0].IsError);
   Settings := Parse('{"hints": {"xmlDocFull": true}}', Issues);
-  Assert.AreEqual(THintSettings.ExpandExpanded, Settings.Hints.XmlDocExpand);
+  Assert.AreEqual(THintSettings.cExpandExpanded, Settings.Hints.XmlDocExpand);
   Settings := Parse('{"hints": {"xmlDocExpand": "last", "xmlDocFull": false}}', Issues);
-  Assert.AreEqual(THintSettings.ExpandLast, Settings.Hints.XmlDocExpand);
+  Assert.AreEqual(THintSettings.cExpandLast, Settings.Hints.XmlDocExpand);
   // Die Datei ersetzt den Block aus dem Editor (IDE-Plugin).
   Settings := TConfigurationParser.ParseLayered('{"hints": {"xmlDocExpand": "collapsed"}}',
     '{"hints": {"xmlDocMaxLines": 5}}', Issues);
-  Assert.AreEqual(THintSettings.ExpandLast, Settings.Hints.XmlDocExpand);
+  Assert.AreEqual(THintSettings.cExpandLast, Settings.Hints.XmlDocExpand);
   Assert.AreEqual(5, Settings.Hints.XmlDocMaxLines);
   // Begründungen (#1123): Schalter, Marken, ADR-Ordner.
   Settings := Parse('{}', Issues);

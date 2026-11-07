@@ -93,7 +93,8 @@ type
     /// <summary>Direktive oder Token aus einem anderen Zweig als das asm.</summary>
     procedure VisitForeign(const AToken: TPascalToken);
     procedure VisitCode(AIndex: Integer);
-    /// <summary>Gehört das Token AIndex sicher zum asm-Block (keine Direktive, gleicher oder umschließender Zweig)?</summary>
+    /// <summary>Gehört das Token AIndex sicher zum asm-Block (keine Direktive, gleicher oder umschließender
+    /// Zweig)?</summary>
     function Belongs(AIndex: Integer): Boolean;
   public
     constructor Create(const ATokens: TArray<TPascalToken>; const APaths: TArray<string>; AAsm: Integer);

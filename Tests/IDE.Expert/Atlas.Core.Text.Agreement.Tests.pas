@@ -171,7 +171,7 @@ var
 begin
   for Index := Low(Pairs) to High(Pairs) do
   begin
-    ServerMatches := TFuzzyMatch.CompletionScore(Pairs[Index, 1], Pairs[Index, 0]) <> TFuzzyMatch.NoMatch;
+    ServerMatches := TFuzzyMatch.CompletionScore(Pairs[Index, 1], Pairs[Index, 0]) <> TFuzzyMatch.cNoMatch;
     PluginMatches := TAtlasCompletionMatcher.Score(Pairs[Index, 0], Pairs[Index, 1]) <>
       TAtlasCompletionMatcher.NoMatch;
     Assert.AreEqual(ServerMatches, PluginMatches, Pairs[Index, 0] + ' / ' + Pairs[Index, 1]);

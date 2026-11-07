@@ -103,7 +103,7 @@ end;
 
 procedure TShellFixRefactorings.Register(ACommands: TLspCommands);
 begin
-  ACommands.Register(TLspDisableWarning.ApplyCommand, DisableWarning);
+  ACommands.Register(TLspDisableWarning.cApplyCommand, DisableWarning);
 end;
 
 function TShellFixRefactorings.Actions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;

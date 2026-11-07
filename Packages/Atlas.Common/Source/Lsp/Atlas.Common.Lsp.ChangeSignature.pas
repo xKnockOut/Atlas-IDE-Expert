@@ -109,9 +109,9 @@ type
 
   TLspChangeSignature = class
   public const
-    ClientCommand = 'atlas.changeSignature';
-    PrepareCommand = 'atlas.server.changeSignature.prepare';
-    ApplyCommand = 'atlas.server.changeSignature';
+    cClientCommand = 'atlas.changeSignature';
+    cPrepareCommand = 'atlas.server.changeSignature.prepare';
+    cApplyCommand = 'atlas.server.changeSignature';
   public
     class function Title: string; static;
     /// <summary>Steht an APosition der Name einer Routine (Deklaration, Rumpf oder Aufruf)?</summary>
@@ -137,7 +137,8 @@ type
     /// <summary>Drittes Argument von ApplyCommand: {"parameters": [...], "newParameter", "virtualOverload"}.</summary>
     class function ReadRequest(const AValue: TJSONValue; ADefaultMode: TNewParameterMode;
       ADefaultVirtual: Boolean): TChangeSignatureRequest; static;
-    /// <summary>{"edit": WorkspaceEdit, "warnings": [...], "newParameter": ...}. Der Aufrufer übernimmt das Objekt.</summary>
+    /// <summary>{"edit": WorkspaceEdit, "warnings": [...], "newParameter": ...}. Der Aufrufer übernimmt das
+    /// Objekt.</summary>
     class function OutcomeToJson(const AOutcome: TChangeSignatureOutcome): TJSONObject; static;
     class function ModeName(AMode: TNewParameterMode): string; static;
     class function ModeOf(const AName: string; ADefault: TNewParameterMode): TNewParameterMode; static;
@@ -589,7 +590,8 @@ begin
 end;
 
 /// <summary>Position des Namens je Parameter zwischen den Klammern; Line -1, wenn nicht gefunden.</summary>
-function ParameterPositions(const ATokens: TArray<TPascalToken>; const AHeader: TSignatureHeader): TArray<TTextPosition>;
+function ParameterPositions(const ATokens: TArray<TPascalToken>;
+  const AHeader: TSignatureHeader): TArray<TTextPosition>;
 var
   mIndex, mToken: Integer;
   mPosition: TTextPosition;
@@ -749,7 +751,7 @@ begin
     True));
   for mSymbol in FCollector.Source(FRoot.FileName).Symbols do
   begin
-    if (mSymbol.Kind in SignatureRoutineKinds) and SameText(mSymbol.Container, FRoot.Container) and
+    if (mSymbol.Kind in cSignatureRoutineKinds) and SameText(mSymbol.Container, FRoot.Container) and
       SameText(mSymbol.Name, FRoot.Name) and SameParamTypes(mSymbol.ParamTypes, mNewTypes) and
       not SameParamTypes(mSymbol.ParamTypes, FRoot.Decl.ParamTypes) then
     begin
@@ -1137,25 +1139,25 @@ begin
     Exit(True);
   end;
   mResolved := AResolver.Resolve(ATree, AFileName, APosition);
-  Result := (mResolved.Kind = TResolvedKind.Symbol) and (mResolved.SymbolKind in SignatureRoutineKinds);
+  Result := (mResolved.Kind = TResolvedKind.Symbol) and (mResolved.SymbolKind in cSignatureRoutineKinds);
 end;
 
 class function TLspChangeSignature.ActionJson(const AUri: string; const APosition: TTextPosition): TJSONObject;
 var
-  Command: TJSONObject;
-  Arguments: TJSONArray;
+  mCommand: TJSONObject;
+  mArguments: TJSONArray;
 begin
-  Arguments := TJSONArray.Create;
-  Arguments.Add(AUri);
-  Arguments.AddElement(TLspPositions.PositionToJson(APosition));
-  Command := TJSONObject.Create;
-  Command.AddPair('title', Title);
-  Command.AddPair('command', ClientCommand);
-  Command.AddPair('arguments', Arguments);
+  mArguments := TJSONArray.Create;
+  mArguments.Add(AUri);
+  mArguments.AddElement(TLspPositions.PositionToJson(APosition));
+  mCommand := TJSONObject.Create;
+  mCommand.AddPair('title', Title);
+  mCommand.AddPair('command', cClientCommand);
+  mCommand.AddPair('arguments', mArguments);
   Result := TJSONObject.Create;
   Result.AddPair('title', Title);
   Result.AddPair('kind', 'refactor.rewrite');
-  Result.AddPair('command', Command);
+  Result.AddPair('command', mCommand);
 end;
 
 class function TLspChangeSignature.Actions(AEnabled: Boolean; AResolver: TNameResolver; ATree: TSyntaxTree;
@@ -1263,26 +1265,26 @@ end;
 class function TLspChangeSignature.InfoToJson(const AInfo: TChangeSignatureInfo; AMode: TNewParameterMode;
   AVirtualOverload: Boolean): TJSONObject;
 var
-  Parameters, Warnings: TJSONArray;
-  Parameter: TSignatureParameter;
-  Item: TJSONObject;
-  Warning: string;
+  mParameters, mWarnings: TJSONArray;
+  mParameter: TSignatureParameter;
+  mItem: TJSONObject;
+  mWarning: string;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('name', AInfo.Name);
   Result.AddPair('container', AInfo.Container);
   Result.AddPair('kind', AInfo.Keyword);
   Result.AddPair('resultType', AInfo.ResultType);
-  Parameters := TJSONArray.Create;
-  Result.AddPair('parameters', Parameters);
-  for Parameter in AInfo.Parameters do
+  mParameters := TJSONArray.Create;
+  Result.AddPair('parameters', mParameters);
+  for mParameter in AInfo.Parameters do
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('name', Parameter.Name);
-    Item.AddPair('type', Parameter.TypeName);
-    Item.AddPair('modifier', Parameter.Modifier);
-    Item.AddPair('default', Parameter.DefaultValue);
-    Parameters.AddElement(Item);
+    mItem := TJSONObject.Create;
+    mItem.AddPair('name', mParameter.Name);
+    mItem.AddPair('type', mParameter.TypeName);
+    mItem.AddPair('modifier', mParameter.Modifier);
+    mItem.AddPair('default', mParameter.DefaultValue);
+    mParameters.AddElement(mItem);
   end;
   Result.AddPair('members', TJSONNumber.Create(AInfo.Members));
   Result.AddPair('interfaceMethod', TJSONBool.Create(AInfo.InterfaceMethod));
@@ -1292,94 +1294,94 @@ begin
   Result.AddPair('overloadPossible', TJSONBool.Create(not AInfo.InterfaceMethod and (AInfo.BoundEvent = '')));
   Result.AddPair('newParameter', ModeName(AMode));
   Result.AddPair('virtualOverload', TJSONBool.Create(AVirtualOverload));
-  Warnings := TJSONArray.Create;
-  Result.AddPair('warnings', Warnings);
-  for Warning in AInfo.Warnings do
+  mWarnings := TJSONArray.Create;
+  Result.AddPair('warnings', mWarnings);
+  for mWarning in AInfo.Warnings do
   begin
-    Warnings.Add(Warning);
+    mWarnings.Add(mWarning);
   end;
 end;
 
 class function TLspChangeSignature.ReadRequest(const AValue: TJSONValue; ADefaultMode: TNewParameterMode;
   ADefaultVirtual: Boolean): TChangeSignatureRequest;
 var
-  Item: TJSONValue;
-  Items: TJSONArray;
-  Change: TParameterChange;
-  Text: string;
-  Flag: Boolean;
+  mItem: TJSONValue;
+  mItems: TJSONArray;
+  mChange: TParameterChange;
+  mText: string;
+  mFlag: Boolean;
 begin
   Result := Default(TChangeSignatureRequest);
   Result.Mode := ADefaultMode;
   Result.VirtualOverload := ADefaultVirtual;
   if not (AValue is TJSONObject) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TLspChangeSignatureText.TheNewSignatureIsMissing].Text);
   end;
-  if TJSONObject(AValue).TryGetValue<string>('newParameter', Text) then
+  if TJSONObject(AValue).TryGetValue<string>('newParameter', mText) then
   begin
-    Result.Mode := ModeOf(Text, ADefaultMode);
+    Result.Mode := ModeOf(mText, ADefaultMode);
   end;
   // TryGetValue setzt den Ausgabewert unter Delphi auch ohne Feld zurück: nur bei Erfolg übernehmen.
-  if TJSONObject(AValue).TryGetValue<Boolean>('virtualOverload', Flag) then
+  if TJSONObject(AValue).TryGetValue<Boolean>('virtualOverload', mFlag) then
   begin
-    Result.VirtualOverload := Flag;
+    Result.VirtualOverload := mFlag;
   end;
-  Items := TJSONObject(AValue).GetValue('parameters') as TJSONArray;
-  if Items = nil then
+  mItems := TJSONObject(AValue).GetValue('parameters') as TJSONArray;
+  if mItems = nil then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TLspChangeSignatureText.FieldParametersMissing].Text);
   end;
-  for Item in Items do
+  for mItem in mItems do
   begin
-    if not (Item is TJSONObject) then
+    if not (mItem is TJSONObject) then
     begin
       Continue;
     end;
-    Change := Default(TParameterChange);
-    Change.Origin := TJSONObject(Item).GetValue<Integer>('origin', -1);
-    Change.Name := Trim(TJSONObject(Item).GetValue<string>('name', ''));
-    Change.TypeName := Trim(TJSONObject(Item).GetValue<string>('type', ''));
-    Change.Modifier := Trim(TJSONObject(Item).GetValue<string>('modifier', ''));
-    Change.Value := Trim(TJSONObject(Item).GetValue<string>('value', ''));
-    Result.Changes := Result.Changes + [Change];
+    mChange := Default(TParameterChange);
+    mChange.Origin := TJSONObject(mItem).GetValue<Integer>('origin', -1);
+    mChange.Name := Trim(TJSONObject(mItem).GetValue<string>('name', ''));
+    mChange.TypeName := Trim(TJSONObject(mItem).GetValue<string>('type', ''));
+    mChange.Modifier := Trim(TJSONObject(mItem).GetValue<string>('modifier', ''));
+    mChange.Value := Trim(TJSONObject(mItem).GetValue<string>('value', ''));
+    Result.Changes := Result.Changes + [mChange];
   end;
 end;
 
 class function TLspChangeSignature.OutcomeToJson(const AOutcome: TChangeSignatureOutcome): TJSONObject;
 var
-  Changes, Edit: TJSONObject;
-  List, Warnings: TJSONArray;
-  Item: TJSONObject;
-  Change: TRenameEdit;
-  Uri, Warning: string;
+  mChanges, mEdit: TJSONObject;
+  mList, mWarnings: TJSONArray;
+  mItem: TJSONObject;
+  mChange: TRenameEdit;
+  mUri, mWarning: string;
 begin
-  Changes := TJSONObject.Create;
-  for Change in AOutcome.Edits do
+  mChanges := TJSONObject.Create;
+  for mChange in AOutcome.Edits do
   begin
-    Uri := TDocumentUris.FromPath(Change.FileName);
-    List := Changes.GetValue(Uri) as TJSONArray;
-    if List = nil then
+    mUri := TDocumentUris.FromPath(mChange.FileName);
+    mList := mChanges.GetValue(mUri) as TJSONArray;
+    if mList = nil then
     begin
-      List := TJSONArray.Create;
-      Changes.AddPair(Uri, List);
+      mList := TJSONArray.Create;
+      mChanges.AddPair(mUri, mList);
     end;
-    Item := TJSONObject.Create;
-    Item.AddPair('range', TLspPositions.RangeToJson(Change.Range));
-    Item.AddPair('newText', Change.NewText);
-    List.AddElement(Item);
+    mItem := TJSONObject.Create;
+    mItem.AddPair('range', TLspPositions.RangeToJson(mChange.Range));
+    mItem.AddPair('newText', mChange.NewText);
+    mList.AddElement(mItem);
   end;
-  Edit := TJSONObject.Create;
-  Edit.AddPair('changes', Changes);
+  mEdit := TJSONObject.Create;
+  mEdit.AddPair('changes', mChanges);
   Result := TJSONObject.Create;
-  Result.AddPair('edit', Edit);
-  Warnings := TJSONArray.Create;
-  Result.AddPair('warnings', Warnings);
-  for Warning in AOutcome.Warnings do
+  Result.AddPair('edit', mEdit);
+  mWarnings := TJSONArray.Create;
+  Result.AddPair('warnings', mWarnings);
+  for mWarning in AOutcome.Warnings do
   begin
-    Warnings.Add(Warning);
+    mWarnings.Add(mWarning);
   end;
   Result.AddPair('newParameter', ModeName(AOutcome.Mode));
 end;

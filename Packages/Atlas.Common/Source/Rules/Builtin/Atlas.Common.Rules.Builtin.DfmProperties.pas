@@ -97,24 +97,24 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  MaxDepth = 30;
+  cMaxDepth = 30;
   // Typ der ersten Property-Deklaration, auch mit Index: property Items[I: Integer]: string.
-  PropertyTypePattern = '\bproperty\s+\w+\s*(?:\[[^\]]*\])?\s*:\s*([\w.]+)';
-  DefaultPattern = '\bdefault\s+([^;]+?)\s*;';
-  StoredPattern = '\bstored\s+([\w.]+)';
-  StringTypes: array[0..6] of string = ('string', 'UnicodeString', 'WideString', 'AnsiString', 'TCaption',
+  cPropertyTypePattern = '\bproperty\s+\w+\s*(?:\[[^\]]*\])?\s*:\s*([\w.]+)';
+  cDefaultPattern = '\bdefault\s+([^;]+?)\s*;';
+  cStoredPattern = '\bstored\s+([\w.]+)';
+  cStringTypes: array[0..6] of string = ('string', 'UnicodeString', 'WideString', 'AnsiString', 'TCaption',
     'TFontName', 'TFileName');
 
 /// <summary>Wert nach "default" in ADeclaration über das kompilierte Muster ARegEx.</summary>
 function DefaultOf(const ARegEx: TRegEx; const ADeclaration: string; out AValue: string): Boolean;
 var
-  Match: TMatch;
+  mMatch: TMatch;
 begin
-  Match := ARegEx.Match(ADeclaration);
-  Result := Match.Success;
+  mMatch := ARegEx.Match(ADeclaration);
+  Result := mMatch.Success;
   if Result then
   begin
-    AValue := Trim(Match.Groups[1].Value);
+    AValue := Trim(mMatch.Groups[1].Value);
   end
   else
   begin
@@ -163,7 +163,8 @@ type
     /// </summary>
     function PathInfo(const AClassName: string; const AParts: TArray<string>; out AInfo: TPropertyInfo): Boolean;
   public
-    /// <summary>AUnit: die geprüfte Unit; ihre Klassen (z. B. die Formularklasse) stehen evtl. nicht im Index.</summary>
+    /// <summary>AUnit: die geprüfte Unit; ihre Klassen (z. B. die Formularklasse) stehen evtl. nicht im
+    /// Index.</summary>
     constructor Create(const AContext: TRuleContext; const AUnit: TUnitIndex);
     destructor Destroy; override;
     function FindClass(const AName: string; out ALocation: TSymbolLocation): Boolean;
@@ -183,9 +184,9 @@ begin
   FContext := AContext;
   FUnit := AUnit;
   FLines := TDictionary<string, TArray<string>>.Create;
-  FPropertyType := TRegEx.Create(PropertyTypePattern, [roIgnoreCase, roCompiled]);
-  FDefault := TRegEx.Create(DefaultPattern, [roIgnoreCase, roCompiled]);
-  FStored := TRegEx.Create(StoredPattern, [roIgnoreCase, roCompiled]);
+  FPropertyType := TRegEx.Create(cPropertyTypePattern, [roIgnoreCase, roCompiled]);
+  FDefault := TRegEx.Create(cDefaultPattern, [roIgnoreCase, roCompiled]);
+  FStored := TRegEx.Create(cStoredPattern, [roIgnoreCase, roCompiled]);
 end;
 
 destructor TPropertyChecker.Destroy;
@@ -196,8 +197,8 @@ end;
 
 function TPropertyChecker.FileLines(const AFileName: string): TArray<string>;
 var
-  Data: TBytes;
-  Text: string;
+  mData: TBytes;
+  mText: string;
   mFormat: TFileFormat;
 begin
   if FLines.TryGetValue(UpperCase(AFileName), Result) then
@@ -210,27 +211,27 @@ begin
   begin
     Result := FContext.Text.Replace(#13#10, #10).Split([#10]);
   end
-  else if Assigned(FContext.ReadFile) and FContext.ReadFile(AFileName, Data) then
+  else if Assigned(FContext.ReadFile) and FContext.ReadFile(AFileName, mData) then
   begin
     // Dieselbe Erkennung wie überall (#1327): BOM, sonst nur ganz gültiges UTF-8 als UTF-8, sonst ANSI.
-    Text := TFileEncoding.Decode(Data, mFormat);
-    Result := Text.Replace(#13#10, #10).Split([#10]);
+    mText := TFileEncoding.Decode(mData, mFormat);
+    Result := mText.Replace(#13#10, #10).Split([#10]);
   end;
   FLines.Add(UpperCase(AFileName), Result);
 end;
 
 function TPropertyChecker.FindClass(const AName: string; out ALocation: TSymbolLocation): Boolean;
 var
-  Location: TSymbolLocation;
-  Symbol: TIndexSymbol;
+  mLocation: TSymbolLocation;
+  mSymbol: TIndexSymbol;
 begin
-  for Symbol in FUnit.Symbols do
+  for mSymbol in FUnit.Symbols do
   begin
-    if (Symbol.Kind = TIndexSymbolKind.ClassType) and (Symbol.Container = '') and SameText(Symbol.Name, AName) then
+    if (mSymbol.Kind = TIndexSymbolKind.ClassType) and (mSymbol.Container = '') and SameText(mSymbol.Name, AName) then
     begin
       ALocation.UnitName := FUnit.UnitName;
       ALocation.FileName := '';
-      ALocation.Symbol := Symbol;
+      ALocation.Symbol := mSymbol;
       Exit(True);
     end;
   end;
@@ -238,11 +239,11 @@ begin
   begin
     Exit(False);
   end;
-  for Location in FContext.Index.FindSymbols(AName) do
+  for mLocation in FContext.Index.FindSymbols(AName) do
   begin
-    if (Location.Symbol.Kind = TIndexSymbolKind.ClassType) and (Location.Symbol.Container = '') then
+    if (mLocation.Symbol.Kind = TIndexSymbolKind.ClassType) and (mLocation.Symbol.Container = '') then
     begin
-      ALocation := Location;
+      ALocation := mLocation;
       Exit(True);
     end;
   end;
@@ -251,9 +252,9 @@ end;
 
 function TPropertyChecker.IsClassOrDescendant(const AClassName, ABase: string; ADescendants: Boolean): Boolean;
 var
-  Name: string;
-  Location: TSymbolLocation;
-  Depth: Integer;
+  mName: string;
+  mLocation: TSymbolLocation;
+  mDepth: Integer;
 begin
   if SameText(AClassName, ABase) then
   begin
@@ -264,15 +265,15 @@ begin
   begin
     Exit;
   end;
-  Name := AClassName;
-  for Depth := 1 to MaxDepth do
+  mName := AClassName;
+  for mDepth := 1 to cMaxDepth do
   begin
-    if not FindClass(Name, Location) or (Length(Location.Symbol.Ancestors) = 0) then
+    if not FindClass(mName, mLocation) or (Length(mLocation.Symbol.Ancestors) = 0) then
     begin
       Exit;
     end;
-    Name := Location.Symbol.Ancestors[0];
-    if SameText(Name, ABase) then
+    mName := mLocation.Symbol.Ancestors[0];
+    if SameText(mName, ABase) then
     begin
       Exit(True);
     end;
@@ -281,18 +282,18 @@ end;
 
 function TPropertyChecker.Members(const AName: string): TArray<TSymbolLocation>;
 var
-  Symbol: TIndexSymbol;
-  Location: TSymbolLocation;
+  mSymbol: TIndexSymbol;
+  mLocation: TSymbolLocation;
 begin
   Result := nil;
-  for Symbol in FUnit.Symbols do
+  for mSymbol in FUnit.Symbols do
   begin
-    if SameText(Symbol.Name, AName) then
+    if SameText(mSymbol.Name, AName) then
     begin
-      Location.UnitName := FUnit.UnitName;
-      Location.FileName := '';
-      Location.Symbol := Symbol;
-      Result := Result + [Location];
+      mLocation.UnitName := FUnit.UnitName;
+      mLocation.FileName := '';
+      mLocation.Symbol := mSymbol;
+      Result := Result + [mLocation];
     end;
   end;
   if FContext.Index <> nil then
@@ -303,16 +304,16 @@ end;
 
 function TPropertyChecker.DeclarationText(const ALocation: TSymbolLocation): string;
 var
-  Lines: TArray<string>;
-  Line: Integer;
+  mLines: TArray<string>;
+  mLine: Integer;
 begin
   Result := '';
-  Lines := FileLines(ALocation.FileName);
-  for Line := ALocation.Symbol.Range.StartPos.Line to ALocation.Symbol.Range.EndPos.Line do
+  mLines := FileLines(ALocation.FileName);
+  for mLine := ALocation.Symbol.Range.StartPos.Line to ALocation.Symbol.Range.EndPos.Line do
   begin
-    if (Line >= 0) and (Line <= High(Lines)) then
+    if (mLine >= 0) and (mLine <= High(mLines)) then
     begin
-      Result := Result + ' ' + Trim(Lines[Line]);
+      Result := Result + ' ' + Trim(mLines[mLine]);
     end;
   end;
   Result := Trim(Result);
@@ -367,7 +368,7 @@ begin
   Result := Default(TPropertyInfo);
   mDecided := False;
   mName := AClassName;
-  for mDepth := 1 to MaxDepth do
+  for mDepth := 1 to cMaxDepth do
   begin
     if not FindClass(mName, mLocation) then
     begin
@@ -436,7 +437,7 @@ begin
   end
   else
   begin
-    Result := MatchText(ATypeName, StringTypes);
+    Result := MatchText(ATypeName, cStringTypes);
   end;
 end;
 
@@ -471,27 +472,27 @@ end;
 
 function TPropertyChecker.HasProperty(const AClassName, APath: string; out AMissing: string): Boolean;
 var
-  Name, Part: string;
-  Info: TPropertyInfo;
-  Location: TSymbolLocation;
+  mName, mPart: string;
+  mInfo: TPropertyInfo;
+  mLocation: TSymbolLocation;
 begin
   AMissing := '';
-  Name := AClassName;
-  for Part in APath.Split(['.']) do
+  mName := AClassName;
+  for mPart in APath.Split(['.']) do
   begin
     // Typ ohne Klasse im Index (z. B. ein Aufzählungstyp vor dem letzten Teil): nicht weiter prüfbar.
-    if not FindClass(Name, Location) then
+    if not FindClass(mName, mLocation) then
     begin
       Exit(True);
     end;
-    Info := PropertyInfo(Name, Part);
-    if not Info.Found then
+    mInfo := PropertyInfo(mName, mPart);
+    if not mInfo.Found then
     begin
-      AMissing := Part;
+      AMissing := mPart;
       Exit(False);
     end;
-    Name := Info.TypeName;
-    if Name = '' then
+    mName := mInfo.TypeName;
+    if mName = '' then
     begin
       Exit(True);
     end;
@@ -509,7 +510,7 @@ end;
 
 class function TDfmPropertyCheckRule.DeclaredDefault(const ADeclaration: string; out AValue: string): Boolean;
 begin
-  Result := DefaultOf(TRegEx.Create(DefaultPattern, [roIgnoreCase]), ADeclaration, AValue);
+  Result := DefaultOf(TRegEx.Create(cDefaultPattern, [roIgnoreCase]), ADeclaration, AValue);
 end;
 
 function Unquote(const AValue: string): string;
@@ -528,16 +529,16 @@ end;
 
 function SetElements(const AValue: string): TArray<string>;
 var
-  Inner, Element: string;
+  mInner, mElement: string;
 begin
   Result := nil;
-  Inner := Trim(AValue);
-  Inner := Copy(Inner, 2, Length(Inner) - 2);
-  for Element in Inner.Split([',']) do
+  mInner := Trim(AValue);
+  mInner := Copy(mInner, 2, Length(mInner) - 2);
+  for mElement in mInner.Split([',']) do
   begin
-    if Trim(Element) <> '' then
+    if Trim(mElement) <> '' then
     begin
-      Result := Result + [Trim(Element)];
+      Result := Result + [Trim(mElement)];
     end;
   end;
 end;
@@ -549,20 +550,20 @@ end;
 
 function SameValue(const AActual, AExpected: string): Boolean;
 var
-  Element: string;
-  Actual, Expected: TArray<string>;
+  mElement: string;
+  mActual, mExpected: TArray<string>;
 begin
   if IsSet(AActual) and IsSet(AExpected) then
   begin
-    Actual := SetElements(AActual);
-    Expected := SetElements(AExpected);
-    if Length(Actual) <> Length(Expected) then
+    mActual := SetElements(AActual);
+    mExpected := SetElements(AExpected);
+    if Length(mActual) <> Length(mExpected) then
     begin
       Exit(False);
     end;
-    for Element in Expected do
+    for mElement in mExpected do
     begin
-      if not MatchText(Element, Actual) then
+      if not MatchText(mElement, mActual) then
       begin
         Exit(False);
       end;
@@ -604,24 +605,24 @@ end;
 
 function DefaultMessage(const ARule: TDfmPropertyRule; const AObject: TDfmObject; const AActual: string): string;
 var
-  Actual: string;
+  mActual: string;
 begin
-  Actual := AActual;
-  if Actual = '' then
+  mActual := AActual;
+  if mActual = '' then
   begin
-    Actual := '''''';
+    mActual := '''''';
   end;
   case ARule.Condition of
     TDfmCondition.Equal:
-      Result := cTexts[TDfmPropertiesText.ShouldBe].Fmt([ARule.PropertyPath, ARule.Value, Actual]);
+      Result := cTexts[TDfmPropertiesText.ShouldBe].Fmt([ARule.PropertyPath, ARule.Value, mActual]);
     TDfmCondition.NotEqual:
       Result := cTexts[TDfmPropertiesText.MustNotBe].Fmt([ARule.PropertyPath, ARule.Value]);
     TDfmCondition.Contains:
-      Result := cTexts[TDfmPropertiesText.ShouldContain].Fmt([ARule.PropertyPath, ARule.Value, Actual]);
+      Result := cTexts[TDfmPropertiesText.ShouldContain].Fmt([ARule.PropertyPath, ARule.Value, mActual]);
     TDfmCondition.NotContains:
       Result := cTexts[TDfmPropertiesText.MustNotContain].Fmt([ARule.PropertyPath, ARule.Value]);
     TDfmCondition.Empty:
-      Result := cTexts[TDfmPropertiesText.ShouldBeEmpty].Fmt([ARule.PropertyPath, Actual]);
+      Result := cTexts[TDfmPropertiesText.ShouldBeEmpty].Fmt([ARule.PropertyPath, mActual]);
   else
     Result := cTexts[TDfmPropertiesText.MustNotBeEmpty].Fmt([ARule.PropertyPath]);
   end;
@@ -630,16 +631,16 @@ end;
 
 function IsExcluded(const ARule: TDfmPropertyRule; const ARelativePath: string): Boolean;
 var
-  Pattern: string;
+  mPattern: string;
 begin
   if ARelativePath = '' then
   begin
     Exit(False);
   end;
-  for Pattern in ARule.Exclude do
+  for mPattern in ARule.Exclude do
   begin
-    if MatchesGlob(Pattern, ARelativePath) or MatchesGlob(Pattern, ChangeFileExt(ARelativePath, '.dfm')) or
-      MatchesGlob(Pattern, ChangeFileExt(ARelativePath, '.fmx')) then
+    if MatchesGlob(mPattern, ARelativePath) or MatchesGlob(mPattern, ChangeFileExt(ARelativePath, '.dfm')) or
+      MatchesGlob(mPattern, ChangeFileExt(ARelativePath, '.fmx')) then
     begin
       Exit(True);
     end;
@@ -649,15 +650,15 @@ end;
 
 procedure CollectObjects(AObject: TDfmObject; var AObjects: TArray<TDfmObject>);
 var
-  Child: TDfmObject;
+  mChild: TDfmObject;
 begin
   if (AObject.Kind <> TDfmObjectKind.Item) and (AObject.TypeName <> '') then
   begin
     AObjects := AObjects + [AObject];
   end;
-  for Child in AObject.Children do
+  for mChild in AObject.Children do
   begin
-    CollectObjects(Child, AObjects);
+    CollectObjects(mChild, AObjects);
   end;
 end;
 
@@ -715,12 +716,12 @@ end;
 
 function IsIdentifierLike(const AValue: string): Boolean;
 var
-  Ch: Char;
+  mCh: Char;
 begin
   Result := AValue <> '';
-  for Ch in AValue do
+  for mCh in AValue do
   begin
-    if not CharInSet(Ch, ['A'..'Z', 'a'..'z', '0'..'9', '_', '-', '.', '$']) then
+    if not CharInSet(mCh, ['A'..'Z', 'a'..'z', '0'..'9', '_', '-', '.', '$']) then
     begin
       Exit(False);
     end;
@@ -821,14 +822,14 @@ end;
 
 function LeadingSpaces(const ALine: string): string;
 var
-  Count: Integer;
+  mCount: Integer;
 begin
-  Count := 0;
-  while (Count < Length(ALine)) and CharInSet(ALine[Count + 1], [' ', #9]) do
+  mCount := 0;
+  while (mCount < Length(ALine)) and CharInSet(ALine[mCount + 1], [' ', #9]) do
   begin
-    Inc(Count);
+    Inc(mCount);
   end;
-  Result := Copy(ALine, 1, Count);
+  Result := Copy(ALine, 1, mCount);
 end;
 
 /// <summary>Edit in der Formulardatei: eine Zeile AName = AValue nach den Properties des Objekts einfügen.
@@ -991,7 +992,7 @@ begin
   end
   else
   begin
-    mStringType := MatchText(AActual.TypeName, StringTypes);
+    mStringType := MatchText(AActual.TypeName, cStringTypes);
   end;
   if not TargetValue(ARule, AActual.Value, mStringType, mTarget, mTitle) then
   begin
@@ -1085,48 +1086,49 @@ end;
 class function TDfmPropertyCheckRule.ConfigurationIssues(const ARules: TArray<TDfmPropertyRule>;
   const AIndex: ISymbolIndex; const AReadFile: TRuleFileReader): TArray<TConfigurationIssue>;
 var
-  Context: TRuleContext;
-  Checker: TPropertyChecker;
-  Rule: TDfmPropertyRule;
-  Location: TSymbolLocation;
-  Missing: string;
-  Issue: TConfigurationIssue;
+  mContext: TRuleContext;
+  mChecker: TPropertyChecker;
+  mRule: TDfmPropertyRule;
+  mLocation: TSymbolLocation;
+  mMissing: string;
+  mIssue: TConfigurationIssue;
 begin
   Result := nil;
   if (AIndex = nil) or (Length(ARules) = 0) then
   begin
     Exit;
   end;
-  Context := Default(TRuleContext);
-  Context.Index := AIndex;
-  Context.ReadFile := AReadFile;
-  Checker := TPropertyChecker.Create(Context, Default(TUnitIndex));
+  mContext := Default(TRuleContext);
+  mContext.Index := AIndex;
+  mContext.ReadFile := AReadFile;
+  mChecker := TPropertyChecker.Create(mContext, Default(TUnitIndex));
   try
-    for Rule in ARules do
+    for mRule in ARules do
     begin
-      if Rule.ClassName = '' then
+      if mRule.ClassName = '' then
       begin
         Continue;
       end;
-      Issue := Default(TConfigurationIssue);
-      if not Checker.FindClass(Rule.ClassName, Location) then
+      mIssue := Default(TConfigurationIssue);
+      if not mChecker.FindClass(mRule.ClassName, mLocation) then
       begin
-        Issue.Range := Rule.ClassRange;
-        Issue.Message := cTexts[TDfmPropertiesText.UnknownClass].Fmt([Rule.ClassName]);
+        mIssue.Range := mRule.ClassRange;
+        mIssue.Message := cTexts[TDfmPropertiesText.UnknownClass].Fmt([mRule.ClassName]);
       end
-      else if (Rule.PropertyPath <> '') and not Checker.HasProperty(Rule.ClassName, Rule.PropertyPath, Missing) then
+      else if (mRule.PropertyPath <> '') and not mChecker.HasProperty(mRule.ClassName, mRule.PropertyPath,
+        mMissing) then
       begin
-        Issue.Range := Rule.PropertyRange;
-        Issue.Message := cTexts[TDfmPropertiesText.NoProperty].Fmt([Rule.ClassName, Missing]);
+        mIssue.Range := mRule.PropertyRange;
+        mIssue.Message := cTexts[TDfmPropertiesText.NoProperty].Fmt([mRule.ClassName, mMissing]);
       end
       else
       begin
         Continue;
       end;
-      Result := Result + [Issue];
+      Result := Result + [mIssue];
     end;
   finally
-    Checker.Free;
+    mChecker.Free;
   end;
 end;
 

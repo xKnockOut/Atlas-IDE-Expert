@@ -98,12 +98,12 @@ uses
 /// <summary>Klasse aus Klasse.Methode (alles vor dem letzten Punkt); '' ohne Punkt.</summary>
 function ContainerOf(const AQualified: string): string;
 var
-  Dot: Integer;
+  mDot: Integer;
 begin
-  Dot := LastDelimiter('.', AQualified);
-  if Dot > 1 then
+  mDot := LastDelimiter('.', AQualified);
+  if mDot > 1 then
   begin
-    Result := Copy(AQualified, 1, Dot - 1);
+    Result := Copy(AQualified, 1, mDot - 1);
   end
   else
   begin
@@ -113,14 +113,14 @@ end;
 
 function IntervalOf(AObject: TDfmObject): Integer;
 var
-  Item: TDfmProperty;
+  mItem: TDfmProperty;
 begin
   Result := -1;
-  for Item in AObject.Properties do
+  for mItem in AObject.Properties do
   begin
-    if SameText(Item.Name, 'Interval') then
+    if SameText(mItem.Name, 'Interval') then
     begin
-      Exit(StrToIntDef(Trim(Item.Value), -1));
+      Exit(StrToIntDef(Trim(mItem.Value), -1));
     end;
   end;
 end;
@@ -129,27 +129,27 @@ end;
 
 class function TEventHandlers.MayAssignHandlers(const AText: string): Boolean;
 var
-  Position, Index: Integer;
+  mPosition, mIndex: Integer;
 begin
   // Schneller Vorfilter ohne Parser: ":=" nach einem Bezeichner, der mit On/Before/After beginnt.
   Result := False;
-  Position := Pos(':=', AText);
-  while Position > 0 do
+  mPosition := Pos(':=', AText);
+  while mPosition > 0 do
   begin
-    Index := Position - 1;
-    while (Index > 0) and CharInSet(AText[Index], [' ', #9]) do
+    mIndex := mPosition - 1;
+    while (mIndex > 0) and CharInSet(AText[mIndex], [' ', #9]) do
     begin
-      Dec(Index);
+      Dec(mIndex);
     end;
-    while (Index > 0) and CharInSet(AText[Index], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+    while (mIndex > 0) and CharInSet(AText[mIndex], ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
     begin
-      Dec(Index);
+      Dec(mIndex);
     end;
-    if TDfmProperty.IsEventName(Copy(AText, Index + 1, Position - Index - 1).Trim) then
+    if TDfmProperty.IsEventName(Copy(AText, mIndex + 1, mPosition - mIndex - 1).Trim) then
     begin
       Exit(True);
     end;
-    Position := PosEx(':=', AText, Position + 2);
+    mPosition := PosEx(':=', AText, mPosition + 2);
   end;
 end;
 
@@ -194,48 +194,48 @@ end;
 class function TEventHandlers.Resolve(var AHandler: TEventHandler; const AFileName: string;
   ABodies: TDictionary<string, TEventHandlerBody>): Boolean;
 var
-  Body: TEventHandlerBody;
+  mBody: TEventHandlerBody;
 begin
-  Result := (ABodies <> nil) and ABodies.TryGetValue(LowerCase(AHandler.Container + '.' + AHandler.Handler), Body);
+  Result := (ABodies <> nil) and ABodies.TryGetValue(LowerCase(AHandler.Container + '.' + AHandler.Handler), mBody);
   if not Result then
   begin
     Exit;
   end;
   AHandler.FileName := AFileName;
-  AHandler.Line := Body.Line;
-  AHandler.BodyLine := Body.BodyLine;
+  AHandler.Line := mBody.Line;
+  AHandler.BodyLine := mBody.BodyLine;
 end;
 
 class function TEventHandlers.FromForm(const AForm: TEventHandlerForm; const AUnitFile: string;
   ABodies: TDictionary<string, TEventHandlerBody>): TArray<TEventHandler>;
 var
-  Model: TFormModel;
-  Event: TFormEvent;
-  Handler: TEventHandler;
+  mModel: TFormModel;
+  mEvent: TFormEvent;
+  mHandler: TEventHandler;
 begin
   Result := nil;
-  Model := TFormModel.Create(AForm.Text);
+  mModel := TFormModel.Create(AForm.Text);
   try
-    for Event in Model.Events do
+    for mEvent in mModel.Events do
     begin
-      Handler := Default(TEventHandler);
-      Handler.Origin := TEventHandlerOrigin.Form;
-      Handler.FormClass := Model.FormClass;
-      Handler.Component := Event.Obj.Name;
-      Handler.ComponentClass := Event.Obj.TypeName;
-      Handler.Event := Event.Event.Name;
-      Handler.Handler := Event.Event.Value;
-      Handler.Container := Model.FormClass;
-      Handler.Line := -1;
-      Handler.BodyLine := -1;
-      Handler.SourceFile := AForm.FileName;
-      Handler.SourceLine := Event.Event.NameRange.StartPos.Line;
-      Handler.Interval := IntervalOf(Event.Obj);
-      Resolve(Handler, AUnitFile, ABodies);
-      Result := Result + [Handler];
+      mHandler := Default(TEventHandler);
+      mHandler.Origin := TEventHandlerOrigin.Form;
+      mHandler.FormClass := mModel.FormClass;
+      mHandler.Component := mEvent.Obj.Name;
+      mHandler.ComponentClass := mEvent.Obj.TypeName;
+      mHandler.Event := mEvent.Event.Name;
+      mHandler.Handler := mEvent.Event.Value;
+      mHandler.Container := mModel.FormClass;
+      mHandler.Line := -1;
+      mHandler.BodyLine := -1;
+      mHandler.SourceFile := AForm.FileName;
+      mHandler.SourceLine := mEvent.Event.NameRange.StartPos.Line;
+      mHandler.Interval := IntervalOf(mEvent.Obj);
+      Resolve(mHandler, AUnitFile, ABodies);
+      Result := Result + [mHandler];
     end;
   finally
-    Model.Free;
+    mModel.Free;
   end;
 end;
 
@@ -356,30 +356,30 @@ end;
 class function TEventHandlers.Collect(const AUnitFile, AUnitText: string;
   const AForms: TArray<TEventHandlerForm>): TArray<TEventHandler>;
 var
-  Tree: TSyntaxTree;
-  Bodies: TDictionary<string, TEventHandlerBody>;
-  Form: TEventHandlerForm;
+  mTree: TSyntaxTree;
+  mBodies: TDictionary<string, TEventHandlerBody>;
+  mForm: TEventHandlerForm;
 begin
   Result := nil;
   if (Length(AForms) = 0) and not MayAssignHandlers(AUnitText) then
   begin
     Exit;
   end;
-  Bodies := TDictionary<string, TEventHandlerBody>.Create;
-  Tree := TSyntaxTreeCache.Parse(AUnitText, nil);
+  mBodies := TDictionary<string, TEventHandlerBody>.Create;
+  mTree := TSyntaxTreeCache.Parse(AUnitText, nil);
   try
-    TEventHandlers.Bodies(Tree, Bodies);
-    for Form in AForms do
+    TEventHandlers.Bodies(mTree, mBodies);
+    for mForm in AForms do
     begin
-      Result := Result + FromForm(Form, AUnitFile, Bodies);
+      Result := Result + FromForm(mForm, AUnitFile, mBodies);
     end;
     if MayAssignHandlers(AUnitText) then
     begin
-      Result := Result + FromCode(Tree, AUnitFile, AUnitText, Bodies);
+      Result := Result + FromCode(mTree, AUnitFile, AUnitText, mBodies);
     end;
   finally
-    Tree.Free;
-    Bodies.Free;
+    mTree.Free;
+    mBodies.Free;
   end;
 end;
 

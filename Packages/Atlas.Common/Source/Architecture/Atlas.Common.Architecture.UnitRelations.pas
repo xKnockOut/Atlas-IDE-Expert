@@ -184,11 +184,11 @@ uses
 
 function ContainsNode(ANode: Integer; const ANodes: TArray<Integer>): Boolean;
 var
-  Item: Integer;
+  mItem: Integer;
 begin
-  for Item in ANodes do
+  for mItem in ANodes do
   begin
-    if Item = ANode then
+    if mItem = ANode then
     begin
       Exit(True);
     end;
@@ -199,14 +199,14 @@ end;
 /// <summary>Dateiname ohne Pfad und Endung, für \ und / gleich.</summary>
 function BareName(const AFileName: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := AFileName;
-  for Index := Length(Result) downto 1 do
+  for mIndex := Length(Result) downto 1 do
   begin
-    if (Result[Index] = '\') or (Result[Index] = '/') then
+    if (Result[mIndex] = '\') or (Result[mIndex] = '/') then
     begin
-      Result := Copy(Result, Index + 1, MaxInt);
+      Result := Copy(Result, mIndex + 1, MaxInt);
       Break;
     end;
   end;
@@ -216,11 +216,11 @@ end;
 /// <summary>Steht AName (auch mit oder ohne Namensraum geschrieben) in ANames?</summary>
 function NamedIn(const AName: string; const ANames: TArray<string>): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
-  for Name in ANames do
+  for mName in ANames do
   begin
-    if SameText(Name, AName) or EndsText('.' + Name, AName) or EndsText('.' + AName, Name) then
+    if SameText(mName, AName) or EndsText('.' + mName, AName) or EndsText('.' + AName, mName) then
     begin
       Exit(True);
     end;
@@ -261,13 +261,13 @@ end;
 function TUnitRelationsBuilder.EdgeBetween(ASource, ATarget: Integer; ASection: TUsesSection;
   out AEdge: TUsesEdge): Boolean;
 var
-  Edge: TUsesEdge;
+  mEdge: TUsesEdge;
 begin
-  for Edge in FGraph.Node(ASource).Outgoing do
+  for mEdge in FGraph.Node(ASource).Outgoing do
   begin
-    if (Edge.Target = ATarget) and (Edge.Section = ASection) then
+    if (mEdge.Target = ATarget) and (mEdge.Section = ASection) then
     begin
-      AEdge := Edge;
+      AEdge := mEdge;
       Exit(True);
     end;
   end;
@@ -277,98 +277,98 @@ end;
 
 function TUnitRelationsBuilder.UsesCyclePath(ATarget: Integer): string;
 var
-  First: TUsesEdge;
-  Back: TUsesEdges;
+  mFirst: TUsesEdge;
+  mBack: TUsesEdges;
 begin
   Result := '';
-  if not EdgeBetween(FNode, ATarget, TUsesSection.Interface_, First) then
+  if not EdgeBetween(FNode, ATarget, TUsesSection.Interface_, mFirst) then
   begin
     Exit;
   end;
   if ATarget = FNode then
   begin
-    Back := nil;
+    mBack := nil;
   end
   else
   begin
-    Back := FGraph.Path(ATarget, FNode, InterfaceUsesOnly);
-    if Back = nil then
+    mBack := FGraph.Path(ATarget, FNode, cInterfaceUsesOnly);
+    if mBack = nil then
     begin
       Exit;
     end;
   end;
-  Result := FGraph.Describe(TUsesEdges.Create(First) + Back);
+  Result := FGraph.Describe(TUsesEdges.Create(mFirst) + mBack);
 end;
 
 function TUnitRelationsBuilder.UsedByCyclePath(ASource: Integer): string;
 var
-  Last: TUsesEdge;
-  Forth: TUsesEdges;
+  mLast: TUsesEdge;
+  mForth: TUsesEdges;
 begin
   Result := '';
-  if not EdgeBetween(ASource, FNode, TUsesSection.Interface_, Last) then
+  if not EdgeBetween(ASource, FNode, TUsesSection.Interface_, mLast) then
   begin
     Exit;
   end;
   if ASource = FNode then
   begin
-    Forth := nil;
+    mForth := nil;
   end
   else
   begin
-    Forth := FGraph.Path(FNode, ASource, InterfaceUsesOnly);
-    if Forth = nil then
+    mForth := FGraph.Path(FNode, ASource, cInterfaceUsesOnly);
+    if mForth = nil then
     begin
       Exit;
     end;
   end;
-  Result := FGraph.Describe(Forth + TUsesEdges.Create(Last));
+  Result := FGraph.Describe(mForth + TUsesEdges.Create(mLast));
 end;
 
 procedure TUnitRelationsBuilder.Locate(const AEdge: TUsesEdge; var ARelation: TUnitRelation);
 var
-  Location: TUsesLocation;
+  mLocation: TUsesLocation;
 begin
   ARelation.Line := -1;
   ARelation.Character := -1;
   ARelation.LocationFile := '';
-  if (FLocator <> nil) and FLocator.Locate(FGraph, AEdge, Location) then
+  if (FLocator <> nil) and FLocator.Locate(FGraph, AEdge, mLocation) then
   begin
-    ARelation.LocationFile := Location.FileName;
-    ARelation.Line := Location.Range.StartPos.Line;
-    ARelation.Character := Location.Range.StartPos.Character;
+    ARelation.LocationFile := mLocation.FileName;
+    ARelation.Line := mLocation.Range.StartPos.Line;
+    ARelation.Character := mLocation.Range.StartPos.Character;
   end;
 end;
 
 function TUnitRelationsBuilder.FromEdge(const AEdge: TUsesEdge; AOutgoing: Boolean): TUnitRelation;
 var
-  Other: Integer;
-  Node: TUsesNode;
+  mOther: Integer;
+  mNode: TUsesNode;
 begin
   Result := Default(TUnitRelation);
   if AOutgoing then
   begin
-    Other := AEdge.Target;
+    mOther := AEdge.Target;
   end
   else
   begin
-    Other := AEdge.Source;
+    mOther := AEdge.Source;
   end;
-  Node := FGraph.Node(Other);
-  Result.Name := Node.UnitName;
-  Result.FileName := Node.FileName;
+  mNode := FGraph.Node(mOther);
+  Result.Name := mNode.UnitName;
+  Result.FileName := mNode.FileName;
   Result.Section := AEdge.Section;
-  Result.Library_ := Node.Library_;
+  Result.Library_ := mNode.Library_;
   Locate(AEdge, Result);
 end;
 
 function TUnitRelationsBuilder.Distances(AStart: Integer; AOutgoing: Boolean): TArray<Integer>;
 var
-  Queue: TQueue<Integer>;
-  Current: Integer;
-  Edge: TUsesEdge;
-  Ref: TUsesEdgeRef;
-  Node: TUsesNode;
+  mQueue: TQueue<Integer>;
+  mCurrent: Integer;
+  mEdge: TUsesEdge;
+  mRef: TUsesEdgeRef;
+  mNode: TUsesNode;
 
   procedure Visit(ANext: Integer);
   begin
@@ -376,41 +376,41 @@ var
     begin
       Exit;
     end;
-    Result[ANext] := Result[Current] + 1;
-    Queue.Enqueue(ANext);
+    Result[ANext] := Result[mCurrent] + 1;
+    mQueue.Enqueue(ANext);
   end;
 
 begin
   SetLength(Result, FGraph.NodeCount);
-  for Current := 0 to High(Result) do
+  for mCurrent := 0 to High(Result) do
   begin
-    Result[Current] := -1;
+    Result[mCurrent] := -1;
   end;
   Result[AStart] := 0;
-  Queue := TQueue<Integer>.Create;
+  mQueue := TQueue<Integer>.Create;
   try
-    Queue.Enqueue(AStart);
-    while Queue.Count > 0 do
+    mQueue.Enqueue(AStart);
+    while mQueue.Count > 0 do
     begin
-      Current := Queue.Dequeue;
-      Node := FGraph.Node(Current);
+      mCurrent := mQueue.Dequeue;
+      mNode := FGraph.Node(mCurrent);
       if AOutgoing then
       begin
-        for Edge in Node.Outgoing do
+        for mEdge in mNode.Outgoing do
         begin
-          Visit(Edge.Target);
+          Visit(mEdge.Target);
         end;
       end
       else
       begin
-        for Ref in Node.Incoming do
+        for mRef in mNode.Incoming do
         begin
-          Visit(Ref.Source);
+          Visit(mRef.Source);
         end;
       end;
     end;
   finally
-    Queue.Free;
+    mQueue.Free;
   end;
 end;
 
@@ -532,48 +532,48 @@ end;
 
 function TUnitRelationsBuilder.TextUses(const AFileName: string): TArray<TUnitRelation>;
 var
-  Text: string;
-  Defines: TArray<string>;
-  Reference: TUsesReference;
-  Relation: TUnitRelation;
-  Target: Integer;
-  Node: TUsesNode;
+  mText: string;
+  mDefines: TArray<string>;
+  mReference: TUsesReference;
+  mRelation: TUnitRelation;
+  mTarget: Integer;
+  mNode: TUsesNode;
 begin
   Result := nil;
-  if not (Assigned(FReader) and FReader(AFileName, Text)) then
+  if not (Assigned(FReader) and FReader(AFileName, mText)) then
   begin
     Exit;
   end;
-  Defines := nil;
+  mDefines := nil;
   if Assigned(FDefines) then
   begin
-    Defines := FDefines(AFileName);
+    mDefines := FDefines(AFileName);
   end;
-  for Reference in TUsesLocator.UsesReferences(Text, Defines) do
+  for mReference in TUsesLocator.UsesReferences(mText, mDefines) do
   begin
-    Relation := Default(TUnitRelation);
-    Relation.Name := Reference.Name;
-    if Reference.InInterface then
+    mRelation := Default(TUnitRelation);
+    mRelation.Name := mReference.Name;
+    if mReference.InInterface then
     begin
-      Relation.Section := TUsesSection.Interface_;
+      mRelation.Section := TUsesSection.Interface_;
     end
     else
     begin
-      Relation.Section := TUsesSection.Implementation_;
+      mRelation.Section := TUsesSection.Implementation_;
     end;
-    Relation.LocationFile := AFileName;
-    Relation.Line := Reference.Range.StartPos.Line;
-    Relation.Character := Reference.Range.StartPos.Character;
-    Relation.Library_ := True;
-    Target := FGraph.IndexOf(Reference.Name);
-    if Target >= 0 then
+    mRelation.LocationFile := AFileName;
+    mRelation.Line := mReference.Range.StartPos.Line;
+    mRelation.Character := mReference.Range.StartPos.Character;
+    mRelation.Library_ := True;
+    mTarget := FGraph.IndexOf(mReference.Name);
+    if mTarget >= 0 then
     begin
-      Node := FGraph.Node(Target);
-      Relation.Name := Node.UnitName;
-      Relation.FileName := Node.FileName;
-      Relation.Library_ := Node.Library_;
+      mNode := FGraph.Node(mTarget);
+      mRelation.Name := mNode.UnitName;
+      mRelation.FileName := mNode.FileName;
+      mRelation.Library_ := mNode.Library_;
     end;
-    Result := Result + [Relation];
+    Result := Result + [mRelation];
   end;
 end;
 
@@ -588,7 +588,7 @@ var
   mCycle: TUsesCycle;
   mMember: Integer;
 begin
-  for mCycle in FGraph.Cycles(InterfaceUsesOnly) do
+  for mCycle in FGraph.Cycles(cInterfaceUsesOnly) do
   begin
     if ContainsNode(FNode, mCycle.Component) then
     begin
@@ -669,8 +669,8 @@ begin
   AResult.FileName := mNode.FileName;
   MarkComponent(AResult);
   AResult.RecompileCount := FGraph.RecompileCount(FNode);
-  AResult.DependencyCount := Length(FGraph.Dependencies(FNode, AllUsesSections));
-  AResult.DependentCount := Length(FGraph.Dependents(FNode, AllUsesSections));
+  AResult.DependencyCount := Length(FGraph.Dependencies(FNode, cAllUsesSections));
+  AResult.DependentCount := Length(FGraph.Dependents(FNode, cAllUsesSections));
   // Ohne lesbaren Text: die Kanten des Graphen.
   if (AResult.Uses_ = nil) and (mNode.Outgoing <> nil) then
   begin
@@ -726,93 +726,93 @@ end;
 class function TUnitRelationsBuilder.InterfaceCost(AGraph: TUsesGraph; const AFileName: string;
   ALimit: Integer): TUnitInterfaceCost;
 var
-  Node, Index: Integer;
-  Units: TArray<Integer>;
+  mNode, mIndex: Integer;
+  mUnits: TArray<Integer>;
 begin
   Result := Default(TUnitInterfaceCost);
   Result.FileName := AFileName;
   Result.UnitName := BareName(AFileName);
-  Node := AGraph.IndexOfFile(AFileName);
-  if Node < 0 then
+  mNode := AGraph.IndexOfFile(AFileName);
+  if mNode < 0 then
   begin
     Exit;
   end;
   Result.Found := True;
-  Result.UnitName := AGraph.Node(Node).UnitName;
-  Result.FileName := AGraph.Node(Node).FileName;
+  Result.UnitName := AGraph.Node(mNode).UnitName;
+  Result.FileName := AGraph.Node(mNode).FileName;
   // RecompileSet ist schon nach Name sortiert.
-  Units := AGraph.RecompileSet(Node);
-  Result.RecompileCount := Length(Units);
-  SetLength(Result.Units, Min(Max(ALimit, 0), Length(Units)));
-  for Index := 0 to High(Result.Units) do
+  mUnits := AGraph.RecompileSet(mNode);
+  Result.RecompileCount := Length(mUnits);
+  SetLength(Result.Units, Min(Max(ALimit, 0), Length(mUnits)));
+  for mIndex := 0 to High(Result.Units) do
   begin
-    Result.Units[Index] := AGraph.Node(Units[Index]).UnitName;
+    Result.Units[mIndex] := AGraph.Node(mUnits[mIndex]).UnitName;
   end;
 end;
 
 class function TUnitRelationsBuilder.CostToJson(const ACost: TUnitInterfaceCost): TJSONObject;
 var
-  List: TJSONArray;
-  Name: string;
+  mList: TJSONArray;
+  mName: string;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('found', TJSONBool.Create(ACost.Found));
   Result.AddPair('unit', ACost.UnitName);
   Result.AddPair('file', ACost.FileName);
   Result.AddPair('recompileCount', TJSONNumber.Create(ACost.RecompileCount));
-  List := TJSONArray.Create;
-  for Name in ACost.Units do
+  mList := TJSONArray.Create;
+  for mName in ACost.Units do
   begin
-    List.Add(Name);
+    mList.Add(mName);
   end;
-  Result.AddPair('units', List);
+  Result.AddPair('units', mList);
 end;
 
 /// <summary>Nächster Schritt zur Unit ATarget je Knoten (Rückwärtssuche über die eingehenden Kanten); -1 =
 /// erreicht ATarget nicht, ATarget selbst trägt sich ein.</summary>
 function NextTowards(AGraph: TUsesGraph; ATarget: Integer; AInterfaceOnly: Boolean): TArray<Integer>;
 var
-  Queue: TQueue<Integer>;
-  Current: Integer;
-  Ref: TUsesEdgeRef;
-  Source: TUsesNode;
+  mQueue: TQueue<Integer>;
+  mCurrent: Integer;
+  mRef: TUsesEdgeRef;
+  mSource: TUsesNode;
 begin
   SetLength(Result, AGraph.NodeCount);
-  for Current := 0 to High(Result) do
+  for mCurrent := 0 to High(Result) do
   begin
-    Result[Current] := -1;
+    Result[mCurrent] := -1;
   end;
   Result[ATarget] := ATarget;
-  Queue := TQueue<Integer>.Create;
+  mQueue := TQueue<Integer>.Create;
   try
-    Queue.Enqueue(ATarget);
-    while Queue.Count > 0 do
+    mQueue.Enqueue(ATarget);
+    while mQueue.Count > 0 do
     begin
-      Current := Queue.Dequeue;
-      for Ref in AGraph.Node(Current).Incoming do
+      mCurrent := mQueue.Dequeue;
+      for mRef in AGraph.Node(mCurrent).Incoming do
       begin
-        Source := AGraph.Node(Ref.Source);
-        if not Source.Active or (Result[Ref.Source] >= 0) then
+        mSource := AGraph.Node(mRef.Source);
+        if not mSource.Active or (Result[mRef.Source] >= 0) then
         begin
           Continue;
         end;
-        if AInterfaceOnly and (Source.Outgoing[Ref.Item].Section <> TUsesSection.Interface_) then
+        if AInterfaceOnly and (mSource.Outgoing[mRef.Item].Section <> TUsesSection.Interface_) then
         begin
           Continue;
         end;
-        Result[Ref.Source] := Current;
-        Queue.Enqueue(Ref.Source);
+        Result[mRef.Source] := mCurrent;
+        mQueue.Enqueue(mRef.Source);
       end;
     end;
   finally
-    Queue.Free;
+    mQueue.Free;
   end;
 end;
 
 /// <summary>"Ziel → X → … → Ziel" über die Schritte ANext; '' ohne Weg.</summary>
 function CirclePath(AGraph: TUsesGraph; ATarget, AStart: Integer; const ANext: TArray<Integer>): string;
 var
-  Node: Integer;
+  mNode: Integer;
 begin
   Result := '';
   if (AStart = ATarget) or (ANext[AStart] < 0) then
@@ -820,85 +820,85 @@ begin
     Exit;
   end;
   Result := AGraph.Node(ATarget).UnitName;
-  Node := AStart;
-  while Node <> ATarget do
+  mNode := AStart;
+  while mNode <> ATarget do
   begin
-    Result := Result + ' → ' + AGraph.Node(Node).UnitName;
-    Node := ANext[Node];
+    Result := Result + ' → ' + AGraph.Node(mNode).UnitName;
+    mNode := ANext[mNode];
   end;
   Result := Result + ' → ' + AGraph.Node(ATarget).UnitName;
 end;
 
 class function TUnitRelationsBuilder.UseCandidates(AGraph: TUsesGraph; const AFileName: string): TUnitUseInfo;
 var
-  Target, Node: Integer;
-  ByInterface, ByAny, Order: TArray<Integer>;
-  Candidate: TUnitUseCandidate;
+  mTarget, mNode: Integer;
+  mByInterface, mByAny, mOrder: TArray<Integer>;
+  mCandidate: TUnitUseCandidate;
 begin
   Result := Default(TUnitUseInfo);
   Result.FileName := AFileName;
   Result.UnitName := BareName(AFileName);
-  Target := AGraph.IndexOfFile(AFileName);
-  if Target < 0 then
+  mTarget := AGraph.IndexOfFile(AFileName);
+  if mTarget < 0 then
   begin
     Exit;
   end;
   Result.Found := True;
-  Result.UnitName := AGraph.Node(Target).UnitName;
-  Result.FileName := AGraph.Node(Target).FileName;
-  ByInterface := NextTowards(AGraph, Target, True);
-  ByAny := NextTowards(AGraph, Target, False);
+  Result.UnitName := AGraph.Node(mTarget).UnitName;
+  Result.FileName := AGraph.Node(mTarget).FileName;
+  mByInterface := NextTowards(AGraph, mTarget, True);
+  mByAny := NextTowards(AGraph, mTarget, False);
   // Nach Name: dieselbe Reihenfolge wie die übrigen Listen des Graphen.
-  Order := AGraph.Dependents(Target, AllUsesSections);
-  for Node in Order do
+  mOrder := AGraph.Dependents(mTarget, cAllUsesSections);
+  for mNode in mOrder do
   begin
-    if ByAny[Node] < 0 then
+    if mByAny[mNode] < 0 then
     begin
       Continue;
     end;
-    Candidate := Default(TUnitUseCandidate);
-    Candidate.Name := AGraph.Node(Node).UnitName;
-    Candidate.FileName := AGraph.Node(Node).FileName;
-    Candidate.InterfacePath := CirclePath(AGraph, Target, Node, ByInterface);
-    Candidate.Path := CirclePath(AGraph, Target, Node, ByAny);
-    Result.Candidates := Result.Candidates + [Candidate];
+    mCandidate := Default(TUnitUseCandidate);
+    mCandidate.Name := AGraph.Node(mNode).UnitName;
+    mCandidate.FileName := AGraph.Node(mNode).FileName;
+    mCandidate.InterfacePath := CirclePath(AGraph, mTarget, mNode, mByInterface);
+    mCandidate.Path := CirclePath(AGraph, mTarget, mNode, mByAny);
+    Result.Candidates := Result.Candidates + [mCandidate];
   end;
 end;
 
 class function TUnitRelationsBuilder.UseInfoToJson(const AInfo: TUnitUseInfo): TJSONObject;
 var
-  List: TJSONArray;
-  Candidate: TUnitUseCandidate;
-  Item: TJSONObject;
+  mList: TJSONArray;
+  mCandidate: TUnitUseCandidate;
+  mItem: TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('found', TJSONBool.Create(AInfo.Found));
   Result.AddPair('unit', AInfo.UnitName);
   Result.AddPair('file', AInfo.FileName);
-  List := TJSONArray.Create;
-  for Candidate in AInfo.Candidates do
+  mList := TJSONArray.Create;
+  for mCandidate in AInfo.Candidates do
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('name', Candidate.Name);
-    if Candidate.FileName <> '' then
+    mItem := TJSONObject.Create;
+    mItem.AddPair('name', mCandidate.Name);
+    if mCandidate.FileName <> '' then
     begin
-      Item.AddPair('file', Candidate.FileName);
+      mItem.AddPair('file', mCandidate.FileName);
     end;
-    if Candidate.InterfacePath <> '' then
+    if mCandidate.InterfacePath <> '' then
     begin
-      Item.AddPair('interfacePath', Candidate.InterfacePath);
+      mItem.AddPair('interfacePath', mCandidate.InterfacePath);
     end;
-    Item.AddPair('path', Candidate.Path);
-    List.AddElement(Item);
+    mItem.AddPair('path', mCandidate.Path);
+    mList.AddElement(mItem);
   end;
-  Result.AddPair('cycles', List);
+  Result.AddPair('cycles', mList);
 end;
 
 function RelationJson(const ARelation: TUnitRelation): TJSONObject;
 var
-  Children: TJSONArray;
-  Child: TUnitRelation;
-  Location: TJSONObject;
+  mChildren: TJSONArray;
+  mChild: TUnitRelation;
+  mLocation: TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('name', ARelation.Name);
@@ -930,27 +930,27 @@ begin
   end;
   if ARelation.Line >= 0 then
   begin
-    Location := TJSONObject.Create;
-    Location.AddPair('file', ARelation.LocationFile);
-    Location.AddPair('line', TJSONNumber.Create(ARelation.Line));
-    Location.AddPair('character', TJSONNumber.Create(ARelation.Character));
-    Result.AddPair('location', Location);
+    mLocation := TJSONObject.Create;
+    mLocation.AddPair('file', ARelation.LocationFile);
+    mLocation.AddPair('line', TJSONNumber.Create(ARelation.Line));
+    mLocation.AddPair('character', TJSONNumber.Create(ARelation.Character));
+    Result.AddPair('location', mLocation);
   end;
   if ARelation.Children <> nil then
   begin
-    Children := TJSONArray.Create;
-    for Child in ARelation.Children do
+    mChildren := TJSONArray.Create;
+    for mChild in ARelation.Children do
     begin
-      Children.AddElement(RelationJson(Child));
+      mChildren.AddElement(RelationJson(mChild));
     end;
-    Result.AddPair('children', Children);
+    Result.AddPair('children', mChildren);
   end;
 end;
 
 class function TUnitRelationsBuilder.ToJson(const ARelations: TUnitRelations): TJSONObject;
 var
-  List: TJSONArray;
-  Relation: TUnitRelation;
+  mList: TJSONArray;
+  mRelation: TUnitRelation;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('found', TJSONBool.Create(ARelations.Found));
@@ -964,18 +964,18 @@ begin
   begin
     Result.AddPair('cyclePath', ARelations.CyclePath);
   end;
-  List := TJSONArray.Create;
-  for Relation in ARelations.Uses_ do
+  mList := TJSONArray.Create;
+  for mRelation in ARelations.Uses_ do
   begin
-    List.AddElement(RelationJson(Relation));
+    mList.AddElement(RelationJson(mRelation));
   end;
-  Result.AddPair('uses', List);
-  List := TJSONArray.Create;
-  for Relation in ARelations.UsedBy do
+  Result.AddPair('uses', mList);
+  mList := TJSONArray.Create;
+  for mRelation in ARelations.UsedBy do
   begin
-    List.AddElement(RelationJson(Relation));
+    mList.AddElement(RelationJson(mRelation));
   end;
-  Result.AddPair('usedBy', List);
+  Result.AddPair('usedBy', mList);
 end;
 
 end.

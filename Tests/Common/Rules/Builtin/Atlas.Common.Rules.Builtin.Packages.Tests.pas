@@ -182,7 +182,7 @@ begin
   Assert.IsFalse(Text.Contains('System.Classes'), Text);
   Assert.IsFalse(Text.Contains('uBasis'), Text);
   Finding := Findings[0];
-  Assert.AreEqual(ImplicitPackageImportRuleId, Finding.RuleId);
+  Assert.AreEqual(cImplicitPackageImportRuleId, Finding.RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Finding.Severity));
   Assert.AreEqual(1, Integer(Length(Finding.Fixes)));
   Assert.AreEqual('"uRunden" in contains aufnehmen', Finding.Fixes[0].Title);
@@ -250,7 +250,7 @@ begin
   Found := False;
   for Rule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = ImplicitPackageImportRuleId then
+    if Rule.Descriptor.Id = cImplicitPackageImportRuleId then
     begin
       Found := True;
     end;

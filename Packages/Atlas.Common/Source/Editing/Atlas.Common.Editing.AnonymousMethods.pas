@@ -178,12 +178,12 @@ const
 
 const
   // Rufen die anonyme Methode, solange der Aufruf läuft.
-  SyncCalls: array[0..5] of string = ('Sort', 'ForEach', 'For', 'Synchronize', 'BinarySearch', 'TryFind');
-  MainThreadCalls: array[0..2] of string = ('Synchronize', 'Queue', 'ForceQueue');
-  BackgroundCalls: array[0..4] of string = ('Run', 'Future', 'CreateAnonymousThread', 'Start', 'StartFuture');
-  ReferenceTypes: array[0..7] of string = ('TProc', 'TFunc', 'TPredicate', 'TComparison', 'TThreadProcedure',
+  cSyncCalls: array[0..5] of string = ('Sort', 'ForEach', 'For', 'Synchronize', 'BinarySearch', 'TryFind');
+  cMainThreadCalls: array[0..2] of string = ('Synchronize', 'Queue', 'ForceQueue');
+  cBackgroundCalls: array[0..4] of string = ('Run', 'Future', 'CreateAnonymousThread', 'Start', 'StartFuture');
+  cReferenceTypes: array[0..7] of string = ('TProc', 'TFunc', 'TPredicate', 'TComparison', 'TThreadProcedure',
     'TEqualityComparison', 'THasher', 'TListSortCompareFunc');
-  MethodPointerTypes: array[0..9] of string = ('TNotifyEvent', 'TThreadMethod', 'TKeyEvent', 'TKeyPressEvent',
+  cMethodPointerTypes: array[0..9] of string = ('TNotifyEvent', 'TThreadMethod', 'TKeyEvent', 'TKeyPressEvent',
     'TMouseEvent', 'TMouseMoveEvent', 'TCloseEvent', 'TCloseQueryEvent', 'TGetStrProc', 'THelpEvent');
 
 
@@ -486,11 +486,11 @@ begin
     mName := Copy(mName, 1, Pos('<', mName) - 1);
   end;
   mName := Trim(Copy(mName, LastDelimiter('.', mName) + 1, MaxInt));
-  if MatchText(mName, ReferenceTypes) then
+  if MatchText(mName, cReferenceTypes) then
   begin
     Result := TProcTypeKind.Reference;
   end
-  else if MatchText(mName, MethodPointerTypes) then
+  else if MatchText(mName, cMethodPointerTypes) then
   begin
     Result := TProcTypeKind.MethodPointer;
   end
@@ -898,8 +898,8 @@ begin
   begin
     FSite.CallName := CalleeName(mParent);
     // TComparer<T>.Construct(…) direkt als Argument von Sort: läuft mit der Sortierung.
-    FSite.Synchronous := MatchText(FSite.CallName, SyncCalls) or (SameText(FSite.CallName, 'Construct') and
-      TAnonymousSyntax.IsArgument(mParent, mParent.Parent) and MatchText(CalleeName(mParent.Parent), SyncCalls));
+    FSite.Synchronous := MatchText(FSite.CallName, cSyncCalls) or (SameText(FSite.CallName, 'Construct') and
+      TAnonymousSyntax.IsArgument(mParent, mParent.Parent) and MatchText(CalleeName(mParent.Parent), cSyncCalls));
   end;
 end;
 
@@ -1042,11 +1042,11 @@ begin
   begin
     Result := 'ProcessIndex';
   end
-  else if MatchText(mCall, MainThreadCalls) then
+  else if MatchText(mCall, cMainThreadCalls) then
   begin
     Result := 'UpdateInMainThread';
   end
-  else if MatchText(mCall, BackgroundCalls) then
+  else if MatchText(mCall, cBackgroundCalls) then
   begin
     Result := 'RunInBackground';
   end

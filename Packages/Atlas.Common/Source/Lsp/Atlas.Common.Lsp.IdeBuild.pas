@@ -42,9 +42,9 @@ type
 
   TLspIdeBuild = class
   public const
-    StartedMethod = 'atlas/compileStarted';
-    FinishedMethod = 'atlas/compileFinished';
-    MessagesMethod = 'atlas/compilerMessages';
+    cStartedMethod = 'atlas/compileStarted';
+    cFinishedMethod = 'atlas/compileFinished';
+    cMessagesMethod = 'atlas/compilerMessages';
   private
     FLock: TObject;
     FLast: TIdeBuild;
@@ -67,7 +67,8 @@ type
     /// <summary>Letzter Build aus der IDE; Known = False ohne.</summary>
     function LastBuild: TIdeBuild;
     property OnMessages: TIdeBuildMessagesEvent read FOnMessages write FOnMessages;
-    /// <summary>Der letzte Build hat sich geändert (nicht bei Hintergrundprüfungen, #548), z. B. zum Speichern (#556).</summary>
+    /// <summary>Der letzte Build hat sich geändert (nicht bei Hintergrundprüfungen, #548), z. B. zum Speichern
+    /// (#556).</summary>
     property OnChanged: TIdeBuildChangedEvent read FOnChanged write FOnChanged;
     /// <summary>Läuft gerade ein Compile in der IDE (auch im Hintergrund)?</summary>
     function Compiling: Boolean;
@@ -96,13 +97,13 @@ end;
 procedure TLspIdeBuild.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   // Der Beginn zählt nur für Compiling (#1247); das Ende und die Meldungen tragen alles Nötige.
-  ADispatcher.RegisterNotification(StartedMethod,
+  ADispatcher.RegisterNotification(cStartedMethod,
     procedure(const AParams: TJSONValue)
     begin
       Track(AParams, True);
     end);
-  ADispatcher.RegisterNotification(FinishedMethod, HandleFinished);
-  ADispatcher.RegisterNotification(MessagesMethod, HandleMessages);
+  ADispatcher.RegisterNotification(cFinishedMethod, HandleFinished);
+  ADispatcher.RegisterNotification(cMessagesMethod, HandleMessages);
 end;
 
 function SeverityOf(const AText: string): TCompilerSeverity;
@@ -127,49 +128,49 @@ end;
 
 class function TLspIdeBuild.ParseMessages(const AParams: TJSONValue): TArray<TCompilerMessage>;
 var
-  Items: TJSONArray;
-  Value: TJSONValue;
-  Item: TJSONObject;
-  Message: TCompilerMessage;
+  mItems: TJSONArray;
+  mValue: TJSONValue;
+  mItem: TJSONObject;
+  mMessage: TCompilerMessage;
 begin
   Result := nil;
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<TJSONArray>('messages', Items)) then
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<TJSONArray>('messages', mItems)) then
   begin
     Exit;
   end;
-  for Value in Items do
+  for mValue in mItems do
   begin
-    if not (Value is TJSONObject) then
+    if not (mValue is TJSONObject) then
     begin
       Continue;
     end;
-    Item := TJSONObject(Value);
-    Message := Default(TCompilerMessage);
-    Message.FileName := Item.GetValue<string>('file', '');
-    Message.Line := Item.GetValue<Integer>('line', 0) - 1;
-    Message.Column := Item.GetValue<Integer>('column', 0) - 1;
-    if Message.Line < 0 then
+    mItem := TJSONObject(mValue);
+    mMessage := Default(TCompilerMessage);
+    mMessage.FileName := mItem.GetValue<string>('file', '');
+    mMessage.Line := mItem.GetValue<Integer>('line', 0) - 1;
+    mMessage.Column := mItem.GetValue<Integer>('column', 0) - 1;
+    if mMessage.Line < 0 then
     begin
-      Message.Column := -1;
+      mMessage.Column := -1;
     end;
-    Message.Severity := SeverityOf(Item.GetValue<string>('severity', ''));
-    Message.Code := Item.GetValue<string>('code', '');
-    Message.Text := Item.GetValue<string>('text', '');
-    Result := Result + [Message];
+    mMessage.Severity := SeverityOf(mItem.GetValue<string>('severity', ''));
+    mMessage.Code := mItem.GetValue<string>('code', '');
+    mMessage.Text := mItem.GetValue<string>('text', '');
+    Result := Result + [mMessage];
   end;
 end;
 
 procedure TLspIdeBuild.HandleFinished(const AParams: TJSONValue);
 var
-  Params: TJSONObject;
+  mParams: TJSONObject;
 begin
   if not (AParams is TJSONObject) then
   begin
     Exit;
   end;
   Track(AParams, False);
-  Params := TJSONObject(AParams);
-  if Params.GetValue<Boolean>('background', False) then
+  mParams := TJSONObject(AParams);
+  if mParams.GetValue<Boolean>('background', False) then
   begin
     Exit;
   end;
@@ -177,16 +178,16 @@ begin
   TMonitor.Enter(FLock);
   try
     FLast.Known := True;
-    if Params.GetValue<string>('project', '') <> '' then
+    if mParams.GetValue<string>('project', '') <> '' then
     begin
-      FLast.Project := Params.GetValue<string>('project', '');
-      FLast.Configuration := Params.GetValue<string>('configuration', '');
-      FLast.Platform := Params.GetValue<string>('platform', '');
-      FLast.RequestedBy := Params.GetValue<string>('requestedBy', '');
+      FLast.Project := mParams.GetValue<string>('project', '');
+      FLast.Configuration := mParams.GetValue<string>('configuration', '');
+      FLast.Platform := mParams.GetValue<string>('platform', '');
+      FLast.RequestedBy := mParams.GetValue<string>('requestedBy', '');
     end;
-    FLast.Kind := Params.GetValue<string>('kind', FLast.Kind);
-    FLast.Success := Params.GetValue<Boolean>('success', False);
-    FLast.DurationMs := Params.GetValue<Int64>('durationMs', 0);
+    FLast.Kind := mParams.GetValue<string>('kind', FLast.Kind);
+    FLast.Success := mParams.GetValue<Boolean>('success', False);
+    FLast.DurationMs := mParams.GetValue<Int64>('durationMs', 0);
     FLast.FinishedAt := Now;
   finally
     TMonitor.Exit(FLock);
@@ -204,21 +205,21 @@ end;
 
 procedure TLspIdeBuild.HandleMessages(const AParams: TJSONValue);
 var
-  Messages: TArray<TCompilerMessage>;
+  mMessages: TArray<TCompilerMessage>;
 begin
-  Messages := ParseMessages(AParams);
+  mMessages := ParseMessages(AParams);
   if (AParams is TJSONObject) and TJSONObject(AParams).GetValue<Boolean>('background', False) then
   begin
     if Assigned(FOnMessages) then
     begin
-      FOnMessages(Messages);
+      FOnMessages(mMessages);
     end;
     Exit;
   end;
   TMonitor.Enter(FLock);
   try
     FLast.Known := True;
-    FLast.Messages := Messages;
+    FLast.Messages := mMessages;
     if AParams is TJSONObject then
     begin
       if TJSONObject(AParams).GetValue<string>('project', '') <> '' then
@@ -237,7 +238,7 @@ begin
   end;
   if Assigned(FOnMessages) then
   begin
-    FOnMessages(Messages);
+    FOnMessages(mMessages);
   end;
   Changed;
 end;

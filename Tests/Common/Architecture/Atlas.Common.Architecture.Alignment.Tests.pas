@@ -114,7 +114,7 @@ begin
   Assert.IsFalse(mAfter.IsAligned);
   mAligned := mAfter;
   Assert.AreEqual(3, TArchitectureAlignment.Align(mAligned, TArchitectureSnapshots.FromOverview(mBefore),
-    TArchitectureAnalyzer.AlignedLast, EncodeDate(2026, 10, 29)));
+    TArchitectureAnalyzer.cAlignedLast, EncodeDate(2026, 10, 29)));
   Assert.AreEqual('Index', SubsystemWith(mAligned, 'Index.A1').Name);
   Assert.AreEqual('Index 2', SubsystemWith(mAligned, 'Index.B1').Name);
   Assert.AreEqual(0, SubsystemWith(mAligned, 'Index.A1').ColorSlot);
@@ -123,13 +123,13 @@ begin
   // Reihenfolge bleibt nach Größe: die größere Gruppe zuerst.
   Assert.AreEqual('Index 2', mAligned.Subsystems[0].Name);
   Assert.IsTrue(mAligned.IsAligned);
-  Assert.AreEqual(TArchitectureAnalyzer.AlignedLast, mAligned.AlignedSource);
+  Assert.AreEqual(TArchitectureAnalyzer.cAlignedLast, mAligned.AlignedSource);
   Assert.AreEqual(3, mAligned.AlignedKept);
   // Die Zuordnungen nennen die angeglichenen Teilsysteme (#1368).
   Assert.AreEqual(Integer(Length(mAligned.Units)), Integer(Length(mAligned.Assignments)));
   // Deterministisch: derselbe vorige Stand ergibt dasselbe.
   mAfter := ArchitectureOverviewOf(AlignmentSample(True));
-  TArchitectureAlignment.Align(mAfter, TArchitectureSnapshots.FromOverview(mBefore), TArchitectureAnalyzer.AlignedLast,
+  TArchitectureAlignment.Align(mAfter, TArchitectureSnapshots.FromOverview(mBefore), TArchitectureAnalyzer.cAlignedLast,
     EncodeDate(2026, 10, 29));
   Assert.AreEqual(TArchitectureSnapshots.Json(TArchitectureSnapshots.FromOverview(mAligned)),
     TArchitectureSnapshots.Json(TArchitectureSnapshots.FromOverview(mAfter)));
@@ -156,7 +156,7 @@ begin
   mAfter := ArchitectureOverviewOf(AlignmentCluster('Kern', 'K', 4) + AlignmentCluster('Kern', 'L', 2) +
     AlignmentCluster('Ui', 'X', 3));
   Assert.AreEqual(3, Integer(Length(mAfter.Subsystems)));
-  Assert.AreEqual(2, TArchitectureAlignment.Align(mAfter, mPrevious, TArchitectureAnalyzer.AlignedBaseline, Now));
+  Assert.AreEqual(2, TArchitectureAlignment.Align(mAfter, mPrevious, TArchitectureAnalyzer.cAlignedBaseline, Now));
   Assert.AreEqual('Kern', SubsystemWith(mAfter, 'Kern.K1').Name);
   Assert.AreEqual(5, SubsystemWith(mAfter, 'Kern.K1').ColorSlot);
   Assert.AreEqual('Ui', SubsystemWith(mAfter, 'Ui.X1').Name);
@@ -164,7 +164,7 @@ begin
   Assert.AreEqual('Kern 2', SubsystemWith(mAfter, 'Kern.L1').Name);
   Assert.AreNotEqual(5, SubsystemWith(mAfter, 'Kern.L1').ColorSlot);
   Assert.AreNotEqual(SubsystemWith(mAfter, 'Ui.X1').ColorSlot, SubsystemWith(mAfter, 'Kern.L1').ColorSlot);
-  Assert.AreEqual(TArchitectureAnalyzer.AlignedBaseline, mAfter.AlignedSource);
+  Assert.AreEqual(TArchitectureAnalyzer.cAlignedBaseline, mAfter.AlignedSource);
 end;
 
 procedure TArchitectureAlignmentTests.MergeKeepsLargestOld;
@@ -180,7 +180,7 @@ begin
   mAfter := ArchitectureOverviewOf(mUnits);
   Assert.AreEqual(SubsystemWith(mAfter, 'Kern.K1').Name, SubsystemWith(mAfter, 'Daten.D1').Name,
     'Testgraph: Kern und Daten verschmolzen');
-  TArchitectureAlignment.Align(mAfter, TArchitectureSnapshots.FromOverview(mBefore), TArchitectureAnalyzer.AlignedLast,
+  TArchitectureAlignment.Align(mAfter, TArchitectureSnapshots.FromOverview(mBefore), TArchitectureAnalyzer.cAlignedLast,
     Now);
   Assert.AreEqual(SubsystemWith(mBefore, 'Kern.K1').Name, SubsystemWith(mAfter, 'Kern.K1').Name);
   Assert.AreEqual(SubsystemWith(mBefore, 'Kern.K1').ColorSlot, SubsystemWith(mAfter, 'Kern.K1').ColorSlot);
@@ -196,13 +196,13 @@ begin
   mAligned := mOverview;
   // Ein Stand ganz anderer Units: nichts zugeordnet, nichts angeglichen.
   mPrevious := TArchitectureSnapshots.FromOverview(ArchitectureOverviewOf(AlignmentCluster('Alt', 'Z', 3)));
-  Assert.AreEqual(0, TArchitectureAlignment.Align(mAligned, mPrevious, TArchitectureAnalyzer.AlignedLast, Now));
+  Assert.AreEqual(0, TArchitectureAlignment.Align(mAligned, mPrevious, TArchitectureAnalyzer.cAlignedLast, Now));
   Assert.IsFalse(mAligned.IsAligned);
   Assert.AreEqual(TArchitectureSnapshots.Json(TArchitectureSnapshots.FromOverview(mOverview)),
     TArchitectureSnapshots.Json(TArchitectureSnapshots.FromOverview(mAligned)));
   // Leerer Stand ebenso.
   Assert.AreEqual(0, TArchitectureAlignment.Align(mAligned, Default(TArchitectureSnapshot),
-    TArchitectureAnalyzer.AlignedLast, Now));
+    TArchitectureAnalyzer.cAlignedLast, Now));
 end;
 
 procedure TArchitectureAlignmentTests.UniqueNames;
@@ -238,7 +238,7 @@ begin
   end;
   // … die Angleichung dieselbe im Modus Mehrheit: Der Teil Kern 2 (2 von 6) bekommt nichts.
   Assert.AreEqual('Kern', TArchitectureComparer.Compare(mOld, mNew).MatchOf('Kern'));
-  TArchitectureAlignment.Align(mAfter, mOld, TArchitectureAnalyzer.AlignedLast, Now);
+  TArchitectureAlignment.Align(mAfter, mOld, TArchitectureAnalyzer.cAlignedLast, Now);
   Assert.AreEqual('Kern', SubsystemWith(mAfter, 'Kern.K1').Name);
   // Nach der Angleichung meldet der Vergleich für die Units des Kerns keinen Wechsel.
   Assert.AreEqual('Kern', TArchitectureComparer.Compare(mOld, TArchitectureSnapshots.FromOverview(mAfter))
@@ -273,7 +273,7 @@ begin
   Assert.AreEqual('', TArchitectureReport.AlignedText(mOverview));
   Assert.DoesNotContain(TArchitectureReport.Json(mOverview, TArchitectureLayouter.Compute(mOverview)), '"aligned"');
   TArchitectureAlignment.Align(mOverview, TArchitectureSnapshots.FromOverview(ArchitectureOverviewOf(
-    AlignmentSample(False))), TArchitectureAnalyzer.AlignedBaseline, EncodeDate(2026, 10, 29) + EncodeTime(14, 23, 0,
+    AlignmentSample(False))), TArchitectureAnalyzer.cAlignedBaseline, EncodeDate(2026, 10, 29) + EncodeTime(14, 23, 0,
     0));
   Assert.AreEqual('Teilsysteme an Stand vom 2026-10-29 14:23 angeglichen (architecture.baseline; 3 Teilsysteme ' +
     'behalten Farbe und Namen)', TArchitectureReport.AlignedText(mOverview));

@@ -42,17 +42,17 @@ var
 begin
   Lsp := Default(TIndexProcessInfo);
   Lsp.Pid := 4711;
-  Lsp.Kind := TIndexProcessInfo.KindLsp;
+  Lsp.Kind := TIndexProcessInfo.cKindLsp;
   Lsp.Client := 'Atlas IDE Expert';
-  Lsp.State := TIndexProcessInfo.StateBuilding;
+  Lsp.State := TIndexProcessInfo.cStateBuilding;
   Lsp.Writer := True;
   Event.Time := IncSecond(ANow, -30);
   Event.Text := 'Cache-Sperre erhalten, Index wird aufgebaut';
   Lsp.Events := [Event];
   Mcp := Default(TIndexProcessInfo);
   Mcp.Pid := 5000;
-  Mcp.Kind := TIndexProcessInfo.KindMcp;
-  Mcp.State := TIndexProcessInfo.StateReading;
+  Mcp.Kind := TIndexProcessInfo.cKindMcp;
+  Mcp.State := TIndexProcessInfo.cStateReading;
   Event.Time := IncSecond(ANow, -25);
   Event.Text := 'Sperre belegt, lade Cache nur lesend';
   Mcp.Events := [Event];

@@ -28,23 +28,23 @@ uses
   System.SysUtils;
 
 const
-  MaxLevels = 32;
+  cMaxLevels = 32;
 
 function StripComment(const ALine: string): string;
 var
-  Index: Integer;
-  Quoted: Boolean;
+  mIndex: Integer;
+  mQuoted: Boolean;
 begin
-  Quoted := False;
-  for Index := 1 to Length(ALine) do
+  mQuoted := False;
+  for mIndex := 1 to Length(ALine) do
   begin
-    if ALine[Index] = '"' then
+    if ALine[mIndex] = '"' then
     begin
-      Quoted := not Quoted;
+      mQuoted := not mQuoted;
     end
-    else if not Quoted and CharInSet(ALine[Index], [';', '#']) then
+    else if not mQuoted and CharInSet(ALine[mIndex], [';', '#']) then
     begin
-      Exit(Copy(ALine, 1, Index - 1));
+      Exit(Copy(ALine, 1, mIndex - 1));
     end;
   end;
   Result := ALine;
@@ -61,28 +61,28 @@ end;
 
 class function TGitUser.NameIn(const AConfig: string): string;
 var
-  Line, Key: string;
-  InUser: Boolean;
-  Equal: Integer;
+  mLine, mKey: string;
+  mInUser: Boolean;
+  mEqual: Integer;
 begin
   Result := '';
-  InUser := False;
-  for Line in AConfig.Replace(#13, '').Split([#10]) do
+  mInUser := False;
+  for mLine in AConfig.Replace(#13, '').Split([#10]) do
   begin
-    Key := Trim(StripComment(Line));
-    if Key = '' then
+    mKey := Trim(StripComment(mLine));
+    if mKey = '' then
     begin
       Continue;
     end;
-    if Key[1] = '[' then
+    if mKey[1] = '[' then
     begin
-      InUser := SameText(Key, '[user]');
+      mInUser := SameText(mKey, '[user]');
       Continue;
     end;
-    Equal := Pos('=', Key);
-    if InUser and (Equal > 0) and SameText(Trim(Copy(Key, 1, Equal - 1)), 'name') then
+    mEqual := Pos('=', mKey);
+    if mInUser and (mEqual > 0) and SameText(Trim(Copy(mKey, 1, mEqual - 1)), 'name') then
     begin
-      Result := Unquote(Trim(Copy(Key, Equal + 1, MaxInt)));
+      Result := Unquote(Trim(Copy(mKey, mEqual + 1, MaxInt)));
     end;
   end;
 end;
@@ -117,24 +117,24 @@ end;
 /// <summary>Übergeordneter Ordner; '' am Wurzelordner.</summary>
 function ParentOf(const AFolder: string): string;
 var
-  Folder: string;
-  Index: Integer;
+  mFolder: string;
+  mIndex: Integer;
 begin
-  Folder := AFolder;
-  while (Length(Folder) > 1) and CharInSet(Folder[Length(Folder)], ['/', '\']) do
+  mFolder := AFolder;
+  while (Length(mFolder) > 1) and CharInSet(mFolder[Length(mFolder)], ['/', '\']) do
   begin
-    Delete(Folder, Length(Folder), 1);
+    Delete(mFolder, Length(mFolder), 1);
   end;
   Result := '';
-  for Index := Length(Folder) downto 1 do
+  for mIndex := Length(mFolder) downto 1 do
   begin
-    if CharInSet(Folder[Index], ['/', '\']) then
+    if CharInSet(mFolder[mIndex], ['/', '\']) then
     begin
-      Result := Copy(Folder, 1, Index - 1);
+      Result := Copy(mFolder, 1, mIndex - 1);
       // "C:" bzw. "/" bleiben als Wurzel stehen.
       if (Result = '') or ((Length(Result) = 2) and (Result[2] = ':')) then
       begin
-        Result := Copy(Folder, 1, Index);
+        Result := Copy(mFolder, 1, mIndex);
       end;
       Break;
     end;
@@ -147,17 +147,17 @@ end;
 
 class function TGitUser.NameFor(const AFolder, AHome: string; const AReadFile: TGitReadFile): string;
 var
-  Folder, Text: string;
-  Level: Integer;
+  mFolder, mText: string;
+  mLevel: Integer;
 begin
   Result := '';
-  Folder := AFolder;
-  Level := 0;
-  while (Folder <> '') and (Level < MaxLevels) do
+  mFolder := AFolder;
+  mLevel := 0;
+  while (mFolder <> '') and (mLevel < cMaxLevels) do
   begin
-    if AReadFile(Join(Join(Folder, '.git'), 'config'), Text) then
+    if AReadFile(Join(Join(mFolder, '.git'), 'config'), mText) then
     begin
-      Result := NameIn(Text);
+      Result := NameIn(mText);
       if Result <> '' then
       begin
         Exit;
@@ -165,12 +165,12 @@ begin
       // Das Repository gefunden, aber ohne Namen: dann gilt die globale Angabe.
       Break;
     end;
-    Folder := ParentOf(Folder);
-    Inc(Level);
+    mFolder := ParentOf(mFolder);
+    Inc(mLevel);
   end;
-  if (AHome <> '') and AReadFile(Join(AHome, '.gitconfig'), Text) then
+  if (AHome <> '') and AReadFile(Join(AHome, '.gitconfig'), mText) then
   begin
-    Result := NameIn(Text);
+    Result := NameIn(mText);
   end;
 end;
 

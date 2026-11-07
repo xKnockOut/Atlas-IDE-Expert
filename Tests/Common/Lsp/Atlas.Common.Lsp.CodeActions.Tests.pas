@@ -212,7 +212,7 @@ var
 begin
   Action := Default(TCodeAction);
   Action.Title := 'Umwandeln';
-  Action.Kind := RewriteKind;
+  Action.Kind := cRewriteKind;
   Action.Preview := 'Neue Signatur: procedure A;';
   Json := TLspCodeActions.ActionToJson(TDocumentUris.FromPath(FileName), Action);
   try

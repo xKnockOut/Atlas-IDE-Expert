@@ -30,9 +30,9 @@ type
 
   TMcpIndexTools = class
   public const
-    MaxResults = 50;
-    MaxDeclarations = 5;
-    MaxDepth = 12;
+    cMaxResults = 50;
+    cMaxDeclarations = 5;
+    cMaxDepth = 12;
   private
     FIndex: ISymbolIndex;
     FReadText: TMcpReadText;
@@ -153,7 +153,7 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  TypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+  cTypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
     TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType, TIndexSymbolKind.EnumType,
     TIndexSymbolKind.TypeAlias];
 
@@ -214,58 +214,58 @@ end;
 
 function TMcpIndexTools.Matches(const AName: string): TArray<TSymbolLocation>;
 var
-  Query, Container, Name: string;
-  Dot: Integer;
-  Found: TList<TSymbolLocation>;
-  Location: TSymbolLocation;
+  mQuery, mContainer, mName: string;
+  mDot: Integer;
+  mFound: TList<TSymbolLocation>;
+  mLocation: TSymbolLocation;
 begin
-  Query := Trim(AName);
-  Name := Query;
-  Container := '';
-  Dot := LastDelimiter('.', Name);
-  if Dot > 0 then
+  mQuery := Trim(AName);
+  mName := mQuery;
+  mContainer := '';
+  mDot := LastDelimiter('.', mName);
+  if mDot > 0 then
   begin
-    Container := Copy(Name, 1, Dot - 1);
+    mContainer := Copy(mName, 1, mDot - 1);
     // Unit-Präfix (System.SysUtils.TFoo.Bar) zählt nicht zum Container.
-    if LastDelimiter('.', Container) > 0 then
+    if LastDelimiter('.', mContainer) > 0 then
     begin
-      Container := Copy(Container, LastDelimiter('.', Container) + 1, MaxInt);
+      mContainer := Copy(mContainer, LastDelimiter('.', mContainer) + 1, MaxInt);
     end;
-    Name := Copy(Name, Dot + 1, MaxInt);
+    mName := Copy(mName, mDot + 1, MaxInt);
   end;
-  Found := TList<TSymbolLocation>.Create;
+  mFound := TList<TSymbolLocation>.Create;
   try
-    for Location in FIndex.FindSymbols(Name) do
+    for mLocation in FIndex.FindSymbols(mName) do
     begin
-      if (Container = '') or SameText(Location.Symbol.Container, Container) or
-        ((Dot > 0) and SameText(Location.UnitName, Copy(Query, 1, Dot - 1))) then
+      if (mContainer = '') or SameText(mLocation.Symbol.Container, mContainer) or
+        ((mDot > 0) and SameText(mLocation.UnitName, Copy(mQuery, 1, mDot - 1))) then
       begin
-        Found.Add(Location);
+        mFound.Add(mLocation);
       end;
     end;
-    Result := Found.ToArray;
+    Result := mFound.ToArray;
   finally
-    Found.Free;
+    mFound.Free;
   end;
 end;
 
 function TMcpIndexTools.TypeMatches(const AName: string): TArray<TSymbolLocation>;
 var
-  Location: TSymbolLocation;
-  Found: TList<TSymbolLocation>;
+  mLocation: TSymbolLocation;
+  mFound: TList<TSymbolLocation>;
 begin
-  Found := TList<TSymbolLocation>.Create;
+  mFound := TList<TSymbolLocation>.Create;
   try
-    for Location in Matches(AName) do
+    for mLocation in Matches(AName) do
     begin
-      if Location.Symbol.Kind in TypeKinds then
+      if mLocation.Symbol.Kind in cTypeKinds then
       begin
-        Found.Add(Location);
+        mFound.Add(mLocation);
       end;
     end;
-    Result := Found.ToArray;
+    Result := mFound.ToArray;
   finally
-    Found.Free;
+    mFound.Free;
   end;
 end;
 
@@ -276,7 +276,7 @@ var
 begin
   for mIndex := 0 to High(AFound) do
   begin
-    if mIndex >= TMcpIndexTools.MaxResults then
+    if mIndex >= TMcpIndexTools.cMaxResults then
     begin
       ALines.Add(cTexts[TIndexToolsText.More].Fmt([Length(AFound) - mIndex]));
       Break;
@@ -300,7 +300,7 @@ begin
       begin
         Continue;
       end;
-      if ALines.Count >= MaxResults then
+      if ALines.Count >= cMaxResults then
       begin
         ALines.Add(cTexts[TIndexToolsText.MoreMatchesNarrowTheSearch].Text);
         Exit(False);
@@ -423,7 +423,7 @@ begin
     mCount := 0;
     for mLocation in Matches(AQuery) do
     begin
-      if mCount >= MaxDeclarations then
+      if mCount >= cMaxDeclarations then
       begin
         mLines.Add(cTexts[TIndexToolsText.MoreDeclarationsNarrowTheName].Text);
         Break;
@@ -459,7 +459,7 @@ begin
       begin
         Continue;
       end;
-      if mCount >= MaxDeclarations then
+      if mCount >= cMaxDeclarations then
       begin
         mLines.Add(cTexts[TIndexToolsText.MoreSymbolsNarrowTheName].Text);
         Break;
@@ -558,94 +558,94 @@ end;
 procedure TMcpIndexTools.AddDescendants(ALines: TStrings; const ATypeName: string; ADepth: Integer;
   AVisited: TDictionary<string, Boolean>);
 var
-  Location: TSymbolLocation;
-  Key: string;
+  mLocation: TSymbolLocation;
+  mKey: string;
 begin
-  if ADepth > MaxDepth then
+  if ADepth > cMaxDepth then
   begin
     Exit;
   end;
-  for Location in FIndex.Descendants(ATypeName) do
+  for mLocation in FIndex.Descendants(ATypeName) do
   begin
-    Key := LowerCase(Location.UnitName + '.' + Location.Symbol.QualifiedName);
-    if AVisited.ContainsKey(Key) then
+    mKey := LowerCase(mLocation.UnitName + '.' + mLocation.Symbol.QualifiedName);
+    if AVisited.ContainsKey(mKey) then
     begin
       Continue;
     end;
-    AVisited.Add(Key, True);
-    ALines.Add(StringOfChar(' ', ADepth * 2) + '- ' + Describe(Location));
-    AddDescendants(ALines, Location.Symbol.Name, ADepth + 1, AVisited);
+    AVisited.Add(mKey, True);
+    ALines.Add(StringOfChar(' ', ADepth * 2) + '- ' + Describe(mLocation));
+    AddDescendants(ALines, mLocation.Symbol.Name, ADepth + 1, AVisited);
   end;
 end;
 
 class function TMcpIndexTools.Registrations(const AText: string): TArray<TComponentRegistration>;
 const
-  Call = 'registercomponents';
+  cCall = 'registercomponents';
 var
-  Lower, Page, Name: string;
-  Start, Index, Close: Integer;
-  Entry: TComponentRegistration;
+  mLower, mPage, mName: string;
+  mStart, mIndex, mClose: Integer;
+  mEntry: TComponentRegistration;
 begin
   Result := nil;
-  Lower := LowerCase(AText);
-  Start := Pos(Call, Lower);
-  while Start > 0 do
+  mLower := LowerCase(AText);
+  mStart := Pos(cCall, mLower);
+  while mStart > 0 do
   begin
     // RegisterComponents('Seite', [TA, TB]);
-    Index := PosEx('''', AText, Start + Length(Call));
-    Close := PosEx('''', AText, Index + 1);
-    if (Index = 0) or (Close = 0) then
+    mIndex := PosEx('''', AText, mStart + Length(cCall));
+    mClose := PosEx('''', AText, mIndex + 1);
+    if (mIndex = 0) or (mClose = 0) then
     begin
       Break;
     end;
-    Page := Copy(AText, Index + 1, Close - Index - 1);
-    Index := PosEx('[', AText, Close);
-    Close := PosEx(']', AText, Index + 1);
-    if (Index = 0) or (Close = 0) then
+    mPage := Copy(AText, mIndex + 1, mClose - mIndex - 1);
+    mIndex := PosEx('[', AText, mClose);
+    mClose := PosEx(']', AText, mIndex + 1);
+    if (mIndex = 0) or (mClose = 0) then
     begin
       Break;
     end;
-    for Name in Copy(AText, Index + 1, Close - Index - 1).Split([',']) do
+    for mName in Copy(AText, mIndex + 1, mClose - mIndex - 1).Split([',']) do
     begin
-      if Trim(Name) <> '' then
+      if Trim(mName) <> '' then
       begin
-        Entry.Page := Page;
-        Entry.ClassName := Trim(Name);
-        Result := Result + [Entry];
+        mEntry.Page := mPage;
+        mEntry.ClassName := Trim(mName);
+        Result := Result + [mEntry];
       end;
     end;
-    Start := PosEx(Call, Lower, Close);
+    mStart := PosEx(cCall, mLower, mClose);
   end;
 end;
 
 class function TMcpIndexTools.PackageContains(const ADpkText, AUnitName: string): Boolean;
 var
-  Lower, Name: string;
-  Start, Stop: Integer;
-  Entry: string;
+  mLower, mName: string;
+  mStart, mStop: Integer;
+  mEntry: string;
 begin
   Result := False;
-  Lower := LowerCase(ADpkText);
-  Start := Pos('contains', Lower);
-  while (Start > 0) and (((Start > 1) and CharInSet(Lower[Start - 1], ['a'..'z', '0'..'9', '_', '.'])) or
-    ((Start + 8 <= Length(Lower)) and CharInSet(Lower[Start + 8], ['a'..'z', '0'..'9', '_']))) do
+  mLower := LowerCase(ADpkText);
+  mStart := Pos('contains', mLower);
+  while (mStart > 0) and (((mStart > 1) and CharInSet(mLower[mStart - 1], ['a'..'z', '0'..'9', '_', '.'])) or
+    ((mStart + 8 <= Length(mLower)) and CharInSet(mLower[mStart + 8], ['a'..'z', '0'..'9', '_']))) do
   begin
-    Start := PosEx('contains', Lower, Start + 1);
+    mStart := PosEx('contains', mLower, mStart + 1);
   end;
-  if Start = 0 then
+  if mStart = 0 then
   begin
     Exit;
   end;
-  Stop := PosEx(';', Lower, Start);
-  if Stop = 0 then
+  mStop := PosEx(';', mLower, mStart);
+  if mStop = 0 then
   begin
-    Stop := Length(Lower) + 1;
+    mStop := Length(mLower) + 1;
   end;
-  Name := LowerCase(AUnitName);
+  mName := LowerCase(AUnitName);
   // Einträge: "Unit" oder "Unit in 'Pfad'", durch Kommas getrennt.
-  for Entry in Copy(Lower, Start + 8, Stop - Start - 8).Split([',']) do
+  for mEntry in Copy(mLower, mStart + 8, mStop - mStart - 8).Split([',']) do
   begin
-    if SameText(Trim(Copy(Trim(Entry), 1, Pos(' ', Trim(Entry) + ' ') - 1)), Name) then
+    if SameText(Trim(Copy(Trim(mEntry), 1, Pos(' ', Trim(mEntry) + ' ') - 1)), mName) then
     begin
       Exit(True);
     end;
@@ -673,7 +673,7 @@ begin
   mCurrent := AFound;
   mChain := TList<string>.Create;
   try
-    while (Length(mCurrent.Symbol.Ancestors) > 0) and (mChain.Count < MaxDepth) and
+    while (Length(mCurrent.Symbol.Ancestors) > 0) and (mChain.Count < cMaxDepth) and
       not mChain.Contains(LowerCase(mCurrent.Symbol.Ancestors[0])) do
     begin
       mChain.Add(LowerCase(mCurrent.Symbol.Ancestors[0]));
@@ -835,7 +835,7 @@ begin
   mCurrent := AFound;
   mChain := TList<string>.Create;
   try
-    while (Length(mCurrent.Symbol.Ancestors) > 0) and (mChain.Count < MaxDepth) do
+    while (Length(mCurrent.Symbol.Ancestors) > 0) and (mChain.Count < cMaxDepth) do
     begin
       mName := mCurrent.Symbol.Ancestors[0];
       if mChain.Contains(LowerCase(mName)) then
@@ -902,47 +902,47 @@ end;
 
 function TMcpIndexTools.UnitOutline(const AUnitOrFile: string): string;
 var
-  UnitIndex: TUnitIndex;
-  Lines: TStringList;
-  Symbol: TIndexSymbol;
-  Indent, Section: string;
-  InInterface: Boolean;
+  mUnitIndex: TUnitIndex;
+  mLines: TStringList;
+  mSymbol: TIndexSymbol;
+  mIndent, mSection: string;
+  mInInterface: Boolean;
 begin
-  if not FIndex.FindUnit(AUnitOrFile, UnitIndex) and not FIndex.FindFile(AUnitOrFile, UnitIndex) then
+  if not FIndex.FindUnit(AUnitOrFile, mUnitIndex) and not FIndex.FindFile(AUnitOrFile, mUnitIndex) then
   begin
     Exit(cTexts[TIndexToolsText.UnitNotInTheIndex].Fmt([AUnitOrFile]));
   end;
-  Lines := TStringList.Create;
+  mLines := TStringList.Create;
   try
-    Lines.Add(Format('unit %s – %s', [UnitIndex.UnitName, UnitIndex.FileName]));
-    if Length(UnitIndex.InterfaceUses) > 0 then
+    mLines.Add(Format('unit %s – %s', [mUnitIndex.UnitName, mUnitIndex.FileName]));
+    if Length(mUnitIndex.InterfaceUses) > 0 then
     begin
-      Lines.Add('uses (interface): ' + string.Join(', ', UnitIndex.InterfaceUses));
+      mLines.Add('uses (interface): ' + string.Join(', ', mUnitIndex.InterfaceUses));
     end;
-    if Length(UnitIndex.ImplementationUses) > 0 then
+    if Length(mUnitIndex.ImplementationUses) > 0 then
     begin
-      Lines.Add('uses (implementation): ' + string.Join(', ', UnitIndex.ImplementationUses));
+      mLines.Add('uses (implementation): ' + string.Join(', ', mUnitIndex.ImplementationUses));
     end;
-    InInterface := False;
-    Section := '';
-    for Symbol in UnitIndex.Symbols do
+    mInInterface := False;
+    mSection := '';
+    for mSymbol in mUnitIndex.Symbols do
     begin
-      if (Section = '') or (Symbol.InInterface <> InInterface) then
+      if (mSection = '') or (mSymbol.InInterface <> mInInterface) then
       begin
-        InInterface := Symbol.InInterface;
-        Section := IfThen(InInterface, 'interface', 'implementation');
-        Lines.Add(Section + ':');
+        mInInterface := mSymbol.InInterface;
+        mSection := IfThen(mInInterface, 'interface', 'implementation');
+        mLines.Add(mSection + ':');
       end;
-      Indent := IfThen(Symbol.Container = '', '  ', '    ');
-      Lines.Add(cTexts[TIndexToolsText.Line2].Fmt([Indent, KindName(Symbol.Kind),
-        IfThen(Symbol.Container = '', Symbol.Name, Symbol.QualifiedName),
-        IfThen(Symbol.TypeName <> '', ': ' + Symbol.TypeName, '') +
-        IfThen(Length(Symbol.Ancestors) > 0, '(' + string.Join(', ', Symbol.Ancestors) + ')', ''),
-        Symbol.SelectionRange.StartPos.Line + 1]));
+      mIndent := IfThen(mSymbol.Container = '', '  ', '    ');
+      mLines.Add(cTexts[TIndexToolsText.Line2].Fmt([mIndent, KindName(mSymbol.Kind),
+        IfThen(mSymbol.Container = '', mSymbol.Name, mSymbol.QualifiedName),
+        IfThen(mSymbol.TypeName <> '', ': ' + mSymbol.TypeName, '') +
+        IfThen(Length(mSymbol.Ancestors) > 0, '(' + string.Join(', ', mSymbol.Ancestors) + ')', ''),
+        mSymbol.SelectionRange.StartPos.Line + 1]));
     end;
-    Result := JoinLines(Lines);
+    Result := JoinLines(mLines);
   finally
-    Lines.Free;
+    mLines.Free;
   end;
 end;
 

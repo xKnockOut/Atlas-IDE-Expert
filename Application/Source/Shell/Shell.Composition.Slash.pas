@@ -121,15 +121,15 @@ end;
 function ClassCompletionValue(const ASettings: TClassCompletionSettings; const AName: string): string;
 begin
   Result := '';
-  if AName = TSlashSettings.TypeComment then
+  if AName = TSlashSettings.cTypeComment then
   begin
     Result := ASettings.TypeComment;
   end
-  else if AName = TSlashSettings.BodyStubs then
+  else if AName = TSlashSettings.cBodyStubs then
   begin
     Result := LowerCase(BoolToStr(ASettings.BodyStubs, True));
   end
-  else if AName = TSlashSettings.LifecycleFirst then
+  else if AName = TSlashSettings.cLifecycleFirst then
   begin
     Result := LowerCase(BoolToStr(ASettings.LifecycleFirst, True));
   end;
@@ -139,35 +139,35 @@ end;
 function SlashSettingValue(const ASettings: TServerSettings; const AName: string): string;
 begin
   Result := '';
-  if AName = TSlashSettings.LogCall then
+  if AName = TSlashSettings.cLogCall then
   begin
     Result := ASettings.SlashLogCall;
   end
-  else if AName = TSlashSettings.TodoOwner then
+  else if AName = TSlashSettings.cTodoOwner then
   begin
     Result := ASettings.SlashTodoOwner;
   end
-  else if AName = TSlashSettings.TodoCategory then
+  else if AName = TSlashSettings.cTodoCategory then
   begin
     Result := ASettings.SlashTodoCategory;
   end
-  else if AName = TSlashSettings.SortUsesRemoveUnused then
+  else if AName = TSlashSettings.cSortUsesRemoveUnused then
   begin
     Result := LowerCase(BoolToStr(ASettings.SlashSortUsesRemoveUnused, True));
   end
-  else if AName = TSlashSettings.EnumHelper then
+  else if AName = TSlashSettings.cEnumHelper then
   begin
     Result := LowerCase(BoolToStr(ASettings.SlashEnumHelper, True));
   end
-  else if AName = TSlashSettings.SetHelper then
+  else if AName = TSlashSettings.cSetHelper then
   begin
     Result := LowerCase(BoolToStr(ASettings.SlashSetHelper, True));
   end
-  else if AName = TSlashSettings.ComponentPalette then
+  else if AName = TSlashSettings.cComponentPalette then
   begin
     Result := ASettings.SlashComponentPalette;
   end
-  else if AName = TSlashSettings.InterfaceSection then
+  else if AName = TSlashSettings.cInterfaceSection then
   begin
     Result := InterfaceSectionText(ASettings.Completion.InterfaceSection);
   end

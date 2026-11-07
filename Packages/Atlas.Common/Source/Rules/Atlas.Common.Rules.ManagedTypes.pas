@@ -67,9 +67,9 @@ const
 
 const
   // RTL-Records mit verwalteten Feldern, auch ohne Index.
-  ManagedStringRecords: array[0..2] of string = ('TFormatSettings', 'TSearchRec', 'TWin32FindData');
-  ManagedInterfaceRecords: array[0..1] of string = ('TValue', 'TRttiContext');
-  DynamicArrayNames: array[0..5] of string = ('TBytes', 'TStringDynArray', 'TIntegerDynArray', 'TStringArray',
+  cManagedStringRecords: array[0..2] of string = ('TFormatSettings', 'TSearchRec', 'TWin32FindData');
+  cManagedInterfaceRecords: array[0..1] of string = ('TValue', 'TRttiContext');
+  cDynamicArrayNames: array[0..5] of string = ('TBytes', 'TStringDynArray', 'TIntegerDynArray', 'TStringArray',
     'TArray', 'TObjectDynArray');
 
 
@@ -83,37 +83,37 @@ end;
 
 function TManagedTypes.TypeDecl(const AName: string): TSyntaxNode;
 var
-  Found: TSyntaxNode;
-  Name: string;
+  mFound: TSyntaxNode;
+  mName: string;
 begin
-  Found := nil;
-  Name := AName;
+  mFound := nil;
+  mName := AName;
   FTree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
-      Result := Found = nil;
-      if Result and (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(ANode.Name, Name) then
+      Result := mFound = nil;
+      if Result and (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(ANode.Name, mName) then
       begin
-        Found := ANode;
+        mFound := ANode;
       end;
     end);
-  Result := Found;
+  Result := mFound;
 end;
 
 function TManagedTypes.NodeTypeText(ANode: TSyntaxNode): string;
 var
-  Index: Integer;
-  Child: TSyntaxNode;
+  mIndex: Integer;
+  mChild: TSyntaxNode;
 begin
   Result := '';
-  for Index := 0 to ANode.ChildCount - 1 do
+  for mIndex := 0 to ANode.ChildCount - 1 do
   begin
-    Child := ANode[Index];
-    if Child.Kind in [TSyntaxKind.TypeReference, TSyntaxKind.ArrayType, TSyntaxKind.PointerType,
+    mChild := ANode[mIndex];
+    if mChild.Kind in [TSyntaxKind.TypeReference, TSyntaxKind.ArrayType, TSyntaxKind.PointerType,
       TSyntaxKind.RecordType, TSyntaxKind.ClassType, TSyntaxKind.InterfaceType, TSyntaxKind.ClassOfType,
       TSyntaxKind.SetType, TSyntaxKind.EnumType, TSyntaxKind.ProcedureType, TSyntaxKind.SubrangeType] then
     begin
-      Exit(Trim(Copy(FText, Child.StartOffset + 1, Child.EndOffset - Child.StartOffset)));
+      Exit(Trim(Copy(FText, mChild.StartOffset + 1, mChild.EndOffset - mChild.StartOffset)));
     end;
   end;
 end;
@@ -121,43 +121,43 @@ end;
 // Iterativ (Bericht M1).
 function TManagedTypes.FieldsManaged(ARecord: TSyntaxNode; ADepth: Integer): string;
 var
-  Pending: TStack<TSyntaxNode>;
-  Index: Integer;
-  Child: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
+  mIndex: Integer;
+  mChild: TSyntaxNode;
 begin
   Result := '';
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    for Index := ARecord.ChildCount - 1 downto 0 do
+    for mIndex := ARecord.ChildCount - 1 downto 0 do
     begin
-      Pending.Push(ARecord[Index]);
+      mPending.Push(ARecord[mIndex]);
     end;
-    while Pending.Count > 0 do
+    while mPending.Count > 0 do
     begin
-      Child := Pending.Pop;
+      mChild := mPending.Pop;
       // Verschachtelte Typdeklarationen sind keine Felder.
-      if Child.Kind = TSyntaxKind.TypeDecl then
+      if mChild.Kind = TSyntaxKind.TypeDecl then
       begin
         Continue;
       end;
-      if Child.Kind = TSyntaxKind.Field then
+      if mChild.Kind = TSyntaxKind.Field then
       begin
-        Result := Managed(NodeTypeText(Child), ADepth + 1);
+        Result := Managed(NodeTypeText(mChild), ADepth + 1);
         if Result <> '' then
         begin
           Exit;
         end;
       end
-      else if not (Child.Kind in [TSyntaxKind.RoutineHeader, TSyntaxKind.PropertyDecl]) then
+      else if not (mChild.Kind in [TSyntaxKind.RoutineHeader, TSyntaxKind.PropertyDecl]) then
       begin
-        for Index := Child.ChildCount - 1 downto 0 do
+        for mIndex := mChild.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Child[Index]);
+          mPending.Push(mChild[mIndex]);
         end;
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
@@ -237,12 +237,12 @@ end;
 
 function TManagedTypes.IsPrimitive(const ATypeName: string): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
-  Name := Trim(ATypeName);
-  Result := MatchText(Name, ['string', 'UnicodeString', 'AnsiString', 'WideString', 'RawByteString', 'UTF8String',
-    'Variant', 'OleVariant', 'IInterface', 'IUnknown', 'IDispatch']) or MatchText(Name, DynamicArrayNames) or
-    StartsText('array of', Name) or StartsText('TArray<', Name);
+  mName := Trim(ATypeName);
+  Result := MatchText(mName, ['string', 'UnicodeString', 'AnsiString', 'WideString', 'RawByteString', 'UTF8String',
+    'Variant', 'OleVariant', 'IInterface', 'IUnknown', 'IDispatch']) or MatchText(mName, cDynamicArrayNames) or
+    StartsText('array of', mName) or StartsText('TArray<', mName);
 end;
 
 /// <summary>Art verwalteter Daten, die schon der Name verrät (Strings, Variants, Interfaces, Methodenreferenzen,
@@ -251,7 +251,7 @@ function NamedKind(const AName: string): string;
 begin
   Result := '';
   if MatchText(AName, ['string', 'UnicodeString', 'AnsiString', 'WideString', 'RawByteString', 'UTF8String']) or
-    MatchText(AName, ManagedStringRecords) then
+    MatchText(AName, cManagedStringRecords) then
   begin
     Result := 'Strings';
   end
@@ -259,7 +259,7 @@ begin
   begin
     Result := 'Variants';
   end
-  else if MatchText(AName, ['IInterface', 'IUnknown', 'IDispatch']) or MatchText(AName, ManagedInterfaceRecords) then
+  else if MatchText(AName, ['IInterface', 'IUnknown', 'IDispatch']) or MatchText(AName, cManagedInterfaceRecords) then
   begin
     Result := 'Interfaces';
   end
@@ -267,7 +267,7 @@ begin
   begin
     Result := cTexts[TManagedTypesText.MethodReferences].Text;
   end
-  else if StartsText('array of', AName) or StartsText('TArray<', AName) or MatchText(AName, DynamicArrayNames) then
+  else if StartsText('array of', AName) or StartsText('TArray<', AName) or MatchText(AName, cDynamicArrayNames) then
   begin
     Result := cTexts[TManagedTypesText.DynamicArrays].Text;
   end;
@@ -336,23 +336,23 @@ end;
 
 function TManagedTypes.Pointee(const ATypeName: string): string;
 var
-  Name: string;
-  Decl: TSyntaxNode;
+  mName: string;
+  mDecl: TSyntaxNode;
 begin
   Result := '';
-  Name := Trim(ATypeName);
-  if StartsText('^', Name) then
+  mName := Trim(ATypeName);
+  if StartsText('^', mName) then
   begin
-    Exit(Trim(Copy(Name, 2, MaxInt)));
+    Exit(Trim(Copy(mName, 2, MaxInt)));
   end;
-  if (Name = '') or (Pos('<', Name) > 0) then
+  if (mName = '') or (Pos('<', mName) > 0) then
   begin
     Exit;
   end;
-  Decl := TypeDecl(Name);
-  if (Decl <> nil) and (Decl.FindChild(TSyntaxKind.PointerType) <> nil) then
+  mDecl := TypeDecl(mName);
+  if (mDecl <> nil) and (mDecl.FindChild(TSyntaxKind.PointerType) <> nil) then
   begin
-    Result := NodeTypeText(Decl);
+    Result := NodeTypeText(mDecl);
     if StartsText('^', Result) then
     begin
       Result := Trim(Copy(Result, 2, MaxInt));
@@ -367,39 +367,39 @@ end;
 // Iterativ (Bericht M1).
 function TManagedTypes.FieldsCustomManaged(ARecord: TSyntaxNode; ADepth: Integer): Boolean;
 var
-  Pending: TStack<TSyntaxNode>;
-  Index: Integer;
-  Child: TSyntaxNode;
-  Head: string;
+  mPending: TStack<TSyntaxNode>;
+  mIndex: Integer;
+  mChild: TSyntaxNode;
+  mHead: string;
 begin
   Result := False;
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    for Index := ARecord.ChildCount - 1 downto 0 do
+    for mIndex := ARecord.ChildCount - 1 downto 0 do
     begin
-      Pending.Push(ARecord[Index]);
+      mPending.Push(ARecord[mIndex]);
     end;
-    while Pending.Count > 0 do
+    while mPending.Count > 0 do
     begin
-      Child := Pending.Pop;
-      if Child.Kind in [TSyntaxKind.TypeDecl, TSyntaxKind.PropertyDecl] then
+      mChild := mPending.Pop;
+      if mChild.Kind in [TSyntaxKind.TypeDecl, TSyntaxKind.PropertyDecl] then
       begin
         Continue;
       end;
-      if Child.Kind = TSyntaxKind.RoutineHeader then
+      if mChild.Kind = TSyntaxKind.RoutineHeader then
       begin
-        Head := Copy(FText, Child.StartOffset + 1, Child.EndOffset - Child.StartOffset);
-        Result := MatchText(Child.Name, ['Initialize', 'Finalize']) and ContainsText(Head, 'operator');
+        mHead := Copy(FText, mChild.StartOffset + 1, mChild.EndOffset - mChild.StartOffset);
+        Result := MatchText(mChild.Name, ['Initialize', 'Finalize']) and ContainsText(mHead, 'operator');
       end
-      else if Child.Kind = TSyntaxKind.Field then
+      else if mChild.Kind = TSyntaxKind.Field then
       begin
-        Result := CustomManaged(NodeTypeText(Child), ADepth + 1);
+        Result := CustomManaged(NodeTypeText(mChild), ADepth + 1);
       end
       else
       begin
-        for Index := Child.ChildCount - 1 downto 0 do
+        for mIndex := mChild.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Child[Index]);
+          mPending.Push(mChild[mIndex]);
         end;
       end;
       if Result then
@@ -408,7 +408,7 @@ begin
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
@@ -455,38 +455,38 @@ end;
 
 function TManagedTypes.CustomManaged(const ATypeName: string; ADepth: Integer): Boolean;
 var
-  Name: string;
-  Decl, Body: TSyntaxNode;
-  Index: Integer;
+  mName: string;
+  mDecl, mBody: TSyntaxNode;
+  mIndex: Integer;
 begin
   Result := False;
-  Name := Trim(ATypeName);
-  if (Name = '') or (ADepth > 16) or (Pos('<', Name) > 0) or StartsText('array of', Name) then
+  mName := Trim(ATypeName);
+  if (mName = '') or (ADepth > 16) or (Pos('<', mName) > 0) or StartsText('array of', mName) then
   begin
     Exit;
   end;
-  if StartsText('array', Name) then
+  if StartsText('array', mName) then
   begin
-    Index := Pos(' of ', LowerCase(Name));
-    if Index > 0 then
+    mIndex := Pos(' of ', LowerCase(mName));
+    if mIndex > 0 then
     begin
-      Result := CustomManaged(Copy(Name, Index + 4, MaxInt), ADepth + 1);
+      Result := CustomManaged(Copy(mName, mIndex + 4, MaxInt), ADepth + 1);
     end;
     Exit;
   end;
-  Decl := TypeDecl(Name);
-  if Decl = nil then
+  mDecl := TypeDecl(mName);
+  if mDecl = nil then
   begin
-    Exit(IndexCustomManaged(Name, ADepth));
+    Exit(IndexCustomManaged(mName, ADepth));
   end;
-  Body := Decl.FindChild(TSyntaxKind.RecordType);
-  if Body <> nil then
+  mBody := mDecl.FindChild(TSyntaxKind.RecordType);
+  if mBody <> nil then
   begin
-    Exit(FieldsCustomManaged(Body, ADepth));
+    Exit(FieldsCustomManaged(mBody, ADepth));
   end;
-  if (Decl.FindChild(TSyntaxKind.TypeReference) <> nil) or (Decl.FindChild(TSyntaxKind.ArrayType) <> nil) then
+  if (mDecl.FindChild(TSyntaxKind.TypeReference) <> nil) or (mDecl.FindChild(TSyntaxKind.ArrayType) <> nil) then
   begin
-    Result := CustomManaged(NodeTypeText(Decl), ADepth + 1);
+    Result := CustomManaged(NodeTypeText(mDecl), ADepth + 1);
   end;
 end;
 

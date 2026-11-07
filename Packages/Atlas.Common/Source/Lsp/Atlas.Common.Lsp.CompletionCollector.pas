@@ -29,37 +29,37 @@ uses
 
 const
   // CompletionItemKind
-  KindMethod = 2;
-  KindFunction = 3;
-  KindConstructor = 4;
-  KindField = 5;
-  KindVariable = 6;
-  KindClass = 7;
-  KindInterface = 8;
-  KindModule = 9;
-  KindProperty = 10;
-  KindEnum = 13;
-  KindEnumMember = 20;
-  KindConstant = 21;
-  KindStruct = 22;
-  KindKeyword = 14;
-  KindSnippet = 15;
+  cKindMethod = 2;
+  cKindFunction = 3;
+  cKindConstructor = 4;
+  cKindField = 5;
+  cKindVariable = 6;
+  cKindClass = 7;
+  cKindInterface = 8;
+  cKindModule = 9;
+  cKindProperty = 10;
+  cKindEnum = 13;
+  cKindEnumMember = 20;
+  cKindConstant = 21;
+  cKindStruct = 22;
+  cKindKeyword = 14;
+  cKindSnippet = 15;
   /// <summary>Abzüge vom Trefferwert, die die Gruppenreihenfolge festlegen (Code-Review S-07): eingebunden vor
   /// Schlüsselwörtern vor Projekt-Import vor Bibliotheks-Import vor nicht verfügbaren Einträgen.</summary>
-  PenaltyKeyword = 50;
-  PenaltyProjectImport = 100;
-  PenaltyLibraryImport = 200;
-  PenaltyUnavailable = 500;
+  cPenaltyKeyword = 50;
+  cPenaltyProjectImport = 100;
+  cPenaltyLibraryImport = 200;
+  cPenaltyUnavailable = 500;
   /// <summary>Typen im Index (#31: Filter nach "class(", ":", "is", "as").</summary>
-  IndexTypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+  cIndexTypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
     TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType, TIndexSymbolKind.EnumType,
     TIndexSymbolKind.TypeAlias];
-  /// <summary>Höchstzahl der Einträge einer Antwort (TLspCompletion.MaxItems).</summary>
-  CompletionMaxItems = 1000;
-  /// <summary>Höchstzahl der Vorschläge aus nicht eingebundenen Units (TLspCompletion.MaxImportItems).</summary>
-  CompletionMaxImportItems = 200;
+  /// <summary>Höchstzahl der Einträge einer Antwort (TLspCompletion.cMaxItems).</summary>
+  cCompletionMaxItems = 1000;
+  /// <summary>Höchstzahl der Vorschläge aus nicht eingebundenen Units (TLspCompletion.cMaxImportItems).</summary>
+  cCompletionMaxImportItems = 200;
   /// <summary>So viele Zeichen muss der Name haben, bevor nicht eingebundene Units mitsuchen.</summary>
-  CompletionMinImportPrefix = 2;
+  cCompletionMinImportPrefix = 2;
 
 type
   /// <summary>Vorfilter für Kandidaten und Symbole aus anderen Units (#465: nur Attributklassen).</summary>
@@ -189,7 +189,7 @@ function TypeFits(const AActual, AExpected: string; out ACheckDescent: Boolean):
 /// Gleitkomma. AHelper: Helper-Stil (X.ToString), wo es ihn gibt. False ohne Umwandlung und ohne Hinweis.</summary>
 function TypeConversion(const AActual, AExpected, AEnumType, AExpression: string; AHelper: Boolean;
   out AResult: TTypeConversion): Boolean;
-/// <summary>Punktzahl von AName; TFuzzyMatch.NoMatch, wenn er nicht passt.</summary>
+/// <summary>Punktzahl von AName; TFuzzyMatch.cNoMatch, wenn er nicht passt.</summary>
 function MatchScore(const AName, APrefix: string; AMatching: TCompletionMatching): Integer;
 /// <summary>Vorfilter des Resolvers (#616): nur Namen, die zu APrefix passen. GetEnumerator bleibt, weil die
 /// Postfix-Vorlagen daran erkennen, ob der Typ aufzählbar ist; Add verwirft ihn ohne Treffer wieder.</summary>
@@ -220,35 +220,35 @@ const
 const
   // Kürzel über Wortanfänge (#882): zwischen Anfang (TFuzzyMatch, ab etwa 3000) und Teilwort (höchstens
   // 2499 mit Wortanfang-Zuschlag), wie im Plugin (TAtlasCompletionMatcher: Anfang vor Kürzel vor Teilwort).
-  WordStartsScore = 2600;
+  cWordStartsScore = 2600;
 
 function CompletionKindOf(AKind: TIndexSymbolKind): Integer;
 begin
   case AKind of
     TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.HelperType, TIndexSymbolKind.TypeAlias:
-      Result := KindClass;
+      Result := cKindClass;
     TIndexSymbolKind.RecordType:
-      Result := KindStruct;
+      Result := cKindStruct;
     TIndexSymbolKind.InterfaceType:
-      Result := KindInterface;
+      Result := cKindInterface;
     TIndexSymbolKind.EnumType:
-      Result := KindEnum;
+      Result := cKindEnum;
     TIndexSymbolKind.EnumMember:
-      Result := KindEnumMember;
+      Result := cKindEnumMember;
     TIndexSymbolKind.Constant:
-      Result := KindConstant;
+      Result := cKindConstant;
     TIndexSymbolKind.Field:
-      Result := KindField;
+      Result := cKindField;
     TIndexSymbolKind.Property_:
-      Result := KindProperty;
+      Result := cKindProperty;
     TIndexSymbolKind.Method:
-      Result := KindMethod;
+      Result := cKindMethod;
     TIndexSymbolKind.Constructor_:
-      Result := KindConstructor;
+      Result := cKindConstructor;
     TIndexSymbolKind.Routine:
-      Result := KindFunction;
+      Result := cKindFunction;
   else
-    Result := KindVariable;
+    Result := cKindVariable;
   end;
 end;
 
@@ -312,7 +312,7 @@ end;
 
 function TypeFits(const AActual, AExpected: string; out ACheckDescent: Boolean): Boolean;
 var
-  Actual, Expected: TTypeFamily;
+  mActual, mExpected: TTypeFamily;
 begin
   ACheckDescent := False;
   if (AActual = '') or (AExpected = '') then
@@ -323,14 +323,14 @@ begin
   begin
     Exit(True);
   end;
-  Actual := TypeFamily(PlainType(AActual));
-  Expected := TypeFamily(PlainType(AExpected));
-  if Expected <> TTypeFamily.None then
+  mActual := TypeFamily(PlainType(AActual));
+  mExpected := TypeFamily(PlainType(AExpected));
+  if mExpected <> TTypeFamily.None then
   begin
-    Exit((Actual = Expected) or (Expected = TTypeFamily.Float) and (Actual = TTypeFamily.Integer_) or
-      (Expected = TTypeFamily.String_) and (Actual = TTypeFamily.Char_));
+    Exit((mActual = mExpected) or (mExpected = TTypeFamily.Float) and (mActual = TTypeFamily.Integer_) or
+      (mExpected = TTypeFamily.String_) and (mActual = TTypeFamily.Char_));
   end;
-  ACheckDescent := Actual = TTypeFamily.None;
+  ACheckDescent := mActual = TTypeFamily.None;
   Result := False;
 end;
 
@@ -454,15 +454,15 @@ begin
     begin
       Exit(0);
     end;
-    Exit(TFuzzyMatch.NoMatch);
+    Exit(TFuzzyMatch.cNoMatch);
   end;
   Result := TFuzzyMatch.CompletionScore(AName, APrefix);
   // Kürzel ("bs" → btnSave) vor Teilwort und Teilfolge (#882): Sonst fielen sie beim Kürzen auf MaxItems
   // hinter bloße Teilwörter zurück und erschienen erst mit passendem Anfang.
-  if (Result <> TFuzzyMatch.NoMatch) and not AName.StartsWith(APrefix, True) and
+  if (Result <> TFuzzyMatch.cNoMatch) and not AName.StartsWith(APrefix, True) and
     TTextFuzzy.MatchesWordStarts(APrefix, AName) then
   begin
-    Result := WordStartsScore - Min(Length(AName) - Length(APrefix), 99);
+    Result := cWordStartsScore - Min(Length(AName) - Length(APrefix), 99);
   end;
 end;
 
@@ -471,7 +471,7 @@ begin
   Result :=
     function(const AName: string): Boolean
     begin
-      Result := (MatchScore(AName, APrefix, AMatching) <> TFuzzyMatch.NoMatch) or SameText(AName, 'GetEnumerator');
+      Result := (MatchScore(AName, APrefix, AMatching) <> TFuzzyMatch.cNoMatch) or SameText(AName, 'GetEnumerator');
     end;
 end;
 
@@ -508,13 +508,13 @@ end;
 
 function TCompletionCollector.MemberFits(const AMember: TResolvedSymbol): Boolean;
 var
-  TypeText: string;
-  CheckDescent: Boolean;
+  mTypeText: string;
+  mCheckDescent: Boolean;
 begin
   // Typ des Werts: Variablen, Felder, Eigenschaften, Funktionsergebnis; Aufzählungswerte über ihren Typ.
   if AMember.SymbolKind = TIndexSymbolKind.EnumMember then
   begin
-    TypeText := AMember.Container;
+    mTypeText := AMember.Container;
   end
   else if AMember.IsType then
   begin
@@ -522,19 +522,19 @@ begin
   end
   else
   begin
-    TypeText := AMember.TypeName;
+    mTypeText := AMember.TypeName;
   end;
-  Result := TypeFits(TypeText, FExpected, CheckDescent);
-  if Result or not CheckDescent then
+  Result := TypeFits(mTypeText, FExpected, mCheckDescent);
+  if Result or not mCheckDescent then
   begin
     Exit;
   end;
   // Klassen: Nachfahr des erwarteten Typs; je Typname einmal auflösen.
-  if not FDescends.TryGetValue(LowerCase(TypeText), Result) then
+  if not FDescends.TryGetValue(LowerCase(mTypeText), Result) then
   begin
-    Result := FRequest.Resolver.Queries.TypeDescendsFrom(FRequest.Tree, FRequest.FileName, FContext.Offset, TypeText,
+    Result := FRequest.Resolver.Queries.TypeDescendsFrom(FRequest.Tree, FRequest.FileName, FContext.Offset, mTypeText,
       FExpected);
-    FDescends.Add(LowerCase(TypeText), Result);
+    FDescends.Add(LowerCase(mTypeText), Result);
   end;
 end;
 
@@ -830,7 +830,7 @@ begin
   // (im Plugin löschte das alles bis zum Wort).
   mScored := Default(TScoredItem);
   mScored.Score := MatchScore(AName, FContext.Prefix, FRequest.Matching);
-  if mScored.Score = TFuzzyMatch.NoMatch then
+  if mScored.Score = TFuzzyMatch.cNoMatch then
   begin
     Exit(False);
   end;
@@ -871,26 +871,26 @@ end;
 
 procedure TCompletionCollector.AddItem(const AItem: TCompletionItem; AScore: Integer);
 var
-  Scored: TScoredItem;
+  mScored: TScoredItem;
 begin
-  Scored := Default(TScoredItem);
-  Scored.Item := AItem;
-  Scored.Score := AScore;
-  Scored.Order := FList.Count;
-  FList.Add(Scored);
+  mScored := Default(TScoredItem);
+  mScored.Item := AItem;
+  mScored.Score := AScore;
+  mScored.Order := FList.Count;
+  FList.Add(mScored);
 end;
 
 procedure TCompletionCollector.MarkLastUnavailable;
 var
-  Scored: TScoredItem;
+  mScored: TScoredItem;
 begin
   if FList.Count = 0 then
   begin
     Exit;
   end;
-  Scored := FList[FList.Count - 1];
-  Scored.Item.Unavailable := True;
-  FList[FList.Count - 1] := Scored;
+  mScored := FList[FList.Count - 1];
+  mScored.Item.Unavailable := True;
+  FList[FList.Count - 1] := mScored;
 end;
 
 /// <summary>Bedingungen (AConditions) und nicht geltende Deklarationen (AMissing) der obersten Ebene von AOwn,
@@ -927,7 +927,7 @@ begin
     AScored.Item.Condition := mCondition;
     AScored.Item.Unavailable := True;
     // Wie die übrigen nicht verfügbaren Einträge ans Ende.
-    Dec(AScored.Score, PenaltyUnavailable);
+    Dec(AScored.Score, cPenaltyUnavailable);
   end
   else if AConditions.TryGetValue(UpperCase(AScored.Item.Name), mCondition) then
   begin
@@ -1004,7 +1004,7 @@ end;
 /// <summary>Passt die Symbolart AKind zum Filter der Anfrage (an Typpositionen nur Typen)?</summary>
 function KindAllowed(ACollector: TCompletionCollector; AKind: TIndexSymbolKind): Boolean;
 begin
-  Result := (ACollector.FContext.Filter <> TCompletionFilter.Types) or (AKind in IndexTypeKinds);
+  Result := (ACollector.FContext.Filter <> TCompletionFilter.Types) or (AKind in cIndexTypeKinds);
 end;
 
 /// <summary>Gehört ASymbol nicht zu AddUnavailable? Mitglieder nicht geltender Zweige zeigt AddUnavailableMembers
@@ -1034,7 +1034,7 @@ begin
     mMember.Condition := mSymbol.Condition;
     mMember.FileName := AUnitInfo.FileName;
     mMember.SelectionRange.StartPos := mSymbol.SelectionRange.StartPos;
-    if ACollector.Add(mSymbol.Name, AUnitInfo.UnitName, CompletionKindOf(mSymbol.Kind), PenaltyUnavailable,
+    if ACollector.Add(mSymbol.Name, AUnitInfo.UnitName, CompletionKindOf(mSymbol.Kind), cPenaltyUnavailable,
       mMember) then
     begin
       ACollector.MarkLastUnavailable;
@@ -1094,7 +1094,7 @@ function SymbolAdmitted(ACollector: TCompletionCollector; const AUnitInfo: TUnit
   const ASymbol: TIndexSymbol): Boolean;
 begin
   Result := (MatchScore(ASymbol.Name, ACollector.FContext.Prefix, ACollector.FRequest.Matching) <>
-    TFuzzyMatch.NoMatch) and (not Assigned(ACollector.FAdmit) or
+    TFuzzyMatch.cNoMatch) and (not Assigned(ACollector.FAdmit) or
     ACollector.FAdmit(TResolvedSymbol.FromIndex(AUnitInfo, ASymbol)));
 end;
 
@@ -1131,10 +1131,10 @@ end;
 /// Bibliotheken.</summary>
 function ImportPenalty(const AUnitInfo: TUnitIndex): Integer;
 begin
-  Result := PenaltyProjectImport;
+  Result := cPenaltyProjectImport;
   if AUnitInfo.Library_ then
   begin
-    Result := PenaltyLibraryImport;
+    Result := cPenaltyLibraryImport;
   end;
 end;
 
@@ -1204,7 +1204,7 @@ begin
       if AddImport(ACollector, mUnitInfo, mSymbol, mEdit) then
       begin
         Inc(mAdded);
-        if mAdded >= CompletionMaxImportItems then
+        if mAdded >= cCompletionMaxImportItems then
         begin
           ACollector.FImportsCapped := True;
           Exit;
@@ -1246,12 +1246,12 @@ var
 begin
   if AUsed then
   begin
-    Exit(ACollector.Add(AType.Name, AType.UnitName, KindClass, Default(TResolvedSymbol)));
+    Exit(ACollector.Add(AType.Name, AType.UnitName, cKindClass, Default(TResolvedSymbol)));
   end;
   // Fest #13#10 wie bei AddImports.
   Result := TUsesClauses.AddUnit(ACollector.FRequest.Tree.Tokens, ACollector.FContext.Offset, AType.UnitName,
     #13#10, mEdit) and ACollector.Add(AType.Name, AType.UnitName + cTexts[TCompletionCollectorText.AddToUses].Text,
-    KindClass, PenaltyLibraryImport, Default(TResolvedSymbol), [mEdit]);
+    cKindClass, cPenaltyLibraryImport, Default(TResolvedSymbol), [mEdit]);
 end;
 
 procedure TCompletionCollector.AddIdeTypes;
@@ -1280,7 +1280,7 @@ begin
       end;
       mKnown.AddOrSetValue(UpperCase(mType.Name), True);
       Inc(mAdded);
-      if mAdded >= CompletionMaxImportItems then
+      if mAdded >= cCompletionMaxImportItems then
       begin
         FImportsCapped := True;
         Exit;
@@ -1429,11 +1429,11 @@ begin
   AMode := TCompletionSameNames.InsertMode(ACollector.FRequest.Settings.SameNameInsert, mIsUsed, mMovable);
   AEdits := nil;
   Result := True;
-  if AMode = TCompletionSameNames.InsertMove then
+  if AMode = TCompletionSameNames.cInsertMove then
   begin
     AEdits := mMoved;
   end
-  else if (AMode = TCompletionSameNames.InsertAdd) or (AMode = TCompletionSameNames.InsertPrefixAdd) then
+  else if (AMode = TCompletionSameNames.cInsertAdd) or (AMode = TCompletionSameNames.cInsertPrefixAdd) then
   begin
     Result := TUsesClauses.AddUnit(ACollector.FRequest.Tree.Tokens, ACollector.FContext.Offset,
       AVariant.UnitInfo.UnitName, ACollector.FRequest.LineBreak, mEdit);
@@ -1486,7 +1486,7 @@ begin
   begin
     mScored.Item.FilterText := AVariant.Symbol.Name;
   end;
-  if (mMode = TCompletionSameNames.InsertPrefix) or (mMode = TCompletionSameNames.InsertPrefixAdd) then
+  if (mMode = TCompletionSameNames.cInsertPrefix) or (mMode = TCompletionSameNames.cInsertPrefixAdd) then
   begin
     mScored.Item.HasTextEdit := True;
     mScored.Item.TextEdit := TRuleEdit.Create(ARange, AVariant.UnitInfo.UnitName + '.' + AVariant.Symbol.Name);
@@ -1588,7 +1588,7 @@ begin
   Result := SameText(AMember.Container, AHelperName) and
     (AMember.Visibility in [TIndexVisibility.Public, TIndexVisibility.Published]) and
     not AKnown.ContainsKey(UpperCase(AMember.Name)) and ((ACollector.FContext.Prefix = '') or
-    (MatchScore(AMember.Name, ACollector.FContext.Prefix, ACollector.FRequest.Matching) <> TFuzzyMatch.NoMatch));
+    (MatchScore(AMember.Name, ACollector.FContext.Prefix, ACollector.FRequest.Matching) <> TFuzzyMatch.cNoMatch));
 end;
 
 /// <summary>Mitglieder des Helpers AHelperName aus AUnitInfo mit dem uses-Eintrag AEdit, Stufe ADepth.</summary>
@@ -1674,9 +1674,9 @@ begin
     AList[mIndex] := mScored;
   end;
   AList.Sort(TComparer<TScoredItem>.Construct(
-    function(const Left, Right: TScoredItem): Integer
+    function(const ALeft, ARight: TScoredItem): Integer
     begin
-      Result := Left.Order - Right.Order;
+      Result := ALeft.Order - ARight.Order;
     end));
 end;
 
@@ -1754,7 +1754,7 @@ begin
   begin
     ClearExpected(FList);
   end;
-  mRoom := Max(0, CompletionMaxItems - FSent);
+  mRoom := Max(0, cCompletionMaxItems - FSent);
   if FList.Count > mRoom then
   begin
     FTruncated := True;
@@ -1773,16 +1773,16 @@ end;
 
 procedure TCompletionCollector.SendStage;
 var
-  Items: TArray<TCompletionItem>;
+  mItems: TArray<TCompletionItem>;
 begin
   if not Assigned(FOnPartial) or (FList.Count = 0) then
   begin
     Exit;
   end;
-  Items := TakeStage(True);
-  if Length(Items) > 0 then
+  mItems := TakeStage(True);
+  if Length(mItems) > 0 then
   begin
-    FOnPartial(Items);
+    FOnPartial(mItems);
   end;
 end;
 
@@ -1800,115 +1800,115 @@ end;
 
 procedure TCompletionCollector.MarkUsedShadows;
 var
-  Names: TDictionary<string, Integer>;
-  Shadows: TArray<TResolvedSymbol>;
-  Shadow: TResolvedSymbol;
-  Index: Integer;
-  Text: string;
-  Scored: TScoredItem;
+  mNames: TDictionary<string, Integer>;
+  mShadows: TArray<TResolvedSymbol>;
+  mShadow: TResolvedSymbol;
+  mIndex: Integer;
+  mText: string;
+  mScored: TScoredItem;
 begin
-  Names := TDictionary<string, Integer>.Create;
+  mNames := TDictionary<string, Integer>.Create;
   try
-    for Index := 0 to FList.Count - 1 do
+    for mIndex := 0 to FList.Count - 1 do
     begin
-      if ((FList[Index].Item.Scope >= 1) and (FList[Index].Item.Scope <= 4)) or (FList[Index].Item.Scope = 6) then
+      if ((FList[mIndex].Item.Scope >= 1) and (FList[mIndex].Item.Scope <= 4)) or (FList[mIndex].Item.Scope = 6) then
       begin
-        Names.AddOrSetValue(UpperCase(FList[Index].Item.Name), Index);
+        mNames.AddOrSetValue(UpperCase(FList[mIndex].Item.Name), mIndex);
       end;
     end;
-    if Names.Count = 0 then
+    if mNames.Count = 0 then
     begin
       Exit;
     end;
     FRequest.Resolver.Candidates.NameFilter :=
       function(const AName: string): Boolean
       begin
-        Result := Names.ContainsKey(UpperCase(AName));
+        Result := mNames.ContainsKey(UpperCase(AName));
       end;
     try
-      Shadows := FRequest.Resolver.Candidates.UsedScopeShadows;
+      mShadows := FRequest.Resolver.Candidates.UsedScopeShadows;
     finally
       FRequest.Resolver.Candidates.NameFilter := nil;
     end;
-    for Shadow in Shadows do
+    for mShadow in mShadows do
     begin
-      if Names.TryGetValue(UpperCase(Shadow.Name), Index) then
+      if mNames.TryGetValue(UpperCase(mShadow.Name), mIndex) then
       begin
-        Scored := FList[Index];
-        Text := Shadow.ShadowText;
-        if not MatchText(Text, Scored.Item.Hides) then
+        mScored := FList[mIndex];
+        mText := mShadow.ShadowText;
+        if not MatchText(mText, mScored.Item.Hides) then
         begin
-          Scored.Item.Hides := Scored.Item.Hides + [Text];
-          FList[Index] := Scored;
+          mScored.Item.Hides := mScored.Item.Hides + [mText];
+          FList[mIndex] := mScored;
         end;
       end;
     end;
   finally
-    Names.Free;
+    mNames.Free;
   end;
 end;
 
 procedure TCompletionCollector.AddKeywords(const AWords: TArray<string>);
 var
-  Word: string;
+  mWord: string;
 begin
-  for Word in AWords do
+  for mWord in AWords do
   begin
-    Add(Word, '', KindKeyword, PenaltyKeyword, Default(TResolvedSymbol));
+    Add(mWord, '', cKindKeyword, cPenaltyKeyword, Default(TResolvedSymbol));
   end;
 end;
 
 procedure TCompletionCollector.AddUnavailableMembers(const AMembers: TArray<TResolvedSymbol>);
 var
-  Containers, Known: TDictionary<string, Boolean>;
-  Candidate, Member: TResolvedSymbol;
-  UnitInfo: TUnitIndex;
-  Symbol: TIndexSymbol;
-  Existing: TScoredItem;
+  mContainers, mKnown: TDictionary<string, Boolean>;
+  mCandidate, mMember: TResolvedSymbol;
+  mUnitInfo: TUnitIndex;
+  mSymbol: TIndexSymbol;
+  mExisting: TScoredItem;
 begin
-  Containers := TDictionary<string, Boolean>.Create;
-  Known := TDictionary<string, Boolean>.Create;
+  mContainers := TDictionary<string, Boolean>.Create;
+  mKnown := TDictionary<string, Boolean>.Create;
   try
-    for Candidate in AMembers do
+    for mCandidate in AMembers do
     begin
-      if Candidate.Container <> '' then
+      if mCandidate.Container <> '' then
       begin
-        Containers.AddOrSetValue(UpperCase(Candidate.Container), True);
+        mContainers.AddOrSetValue(UpperCase(mCandidate.Container), True);
       end;
     end;
-    if Containers.Count = 0 then
+    if mContainers.Count = 0 then
     begin
       Exit;
     end;
-    for Existing in FList do
+    for mExisting in FList do
     begin
-      Known.AddOrSetValue(UpperCase(Existing.Item.Name), True);
+      mKnown.AddOrSetValue(UpperCase(mExisting.Item.Name), True);
     end;
-    for UnitInfo in FRequest.Index.UnavailableUnits do
+    for mUnitInfo in FRequest.Index.UnavailableUnits do
     begin
-      for Symbol in UnitInfo.Unavailable do
+      for mSymbol in mUnitInfo.Unavailable do
       begin
-        if (Symbol.Container = '') or not Containers.ContainsKey(UpperCase(Symbol.Container)) or
-          Known.ContainsKey(UpperCase(Symbol.Name)) then
+        if (mSymbol.Container = '') or not mContainers.ContainsKey(UpperCase(mSymbol.Container)) or
+          mKnown.ContainsKey(UpperCase(mSymbol.Name)) then
         begin
           Continue;
         end;
-        Member := Default(TResolvedSymbol);
-        Member.Name := Symbol.Name;
-        Member.Container := Symbol.Container;
-        Member.Condition := Symbol.Condition;
-        Member.FileName := UnitInfo.FileName;
-        Member.SelectionRange.StartPos := Symbol.SelectionRange.StartPos;
-        if Add(Symbol.Name, Symbol.Container, CompletionKindOf(Symbol.Kind), PenaltyUnavailable, Member) then
+        mMember := Default(TResolvedSymbol);
+        mMember.Name := mSymbol.Name;
+        mMember.Container := mSymbol.Container;
+        mMember.Condition := mSymbol.Condition;
+        mMember.FileName := mUnitInfo.FileName;
+        mMember.SelectionRange.StartPos := mSymbol.SelectionRange.StartPos;
+        if Add(mSymbol.Name, mSymbol.Container, CompletionKindOf(mSymbol.Kind), cPenaltyUnavailable, mMember) then
         begin
           MarkLastUnavailable;
-          Known.AddOrSetValue(UpperCase(Symbol.Name), True);
+          mKnown.AddOrSetValue(UpperCase(mSymbol.Name), True);
         end;
       end;
     end;
   finally
-    Known.Free;
-    Containers.Free;
+    mKnown.Free;
+    mContainers.Free;
   end;
 end;
 
@@ -1919,30 +1919,30 @@ end;
 
 procedure TCompletionCollector.AddCandidates(const ACandidates: TArray<TResolvedSymbol>);
 var
-  Candidate: TResolvedSymbol;
+  mCandidate: TResolvedSymbol;
 begin
-  for Candidate in ACandidates do
+  for mCandidate in ACandidates do
   begin
     // Typposition (#31): nur Typen.
-    if (FContext.Filter = TCompletionFilter.Types) and not Candidate.IsType then
+    if (FContext.Filter = TCompletionFilter.Types) and not mCandidate.IsType then
     begin
       Continue;
     end;
-    if Assigned(FAdmit) and not FAdmit(Candidate) then
+    if Assigned(FAdmit) and not FAdmit(mCandidate) then
     begin
       Continue;
     end;
-    if Candidate.TypeName <> '' then
+    if mCandidate.TypeName <> '' then
     begin
-      Add(Candidate.Name, Candidate.TypeName, CompletionKindOf(Candidate.SymbolKind), Candidate);
+      Add(mCandidate.Name, mCandidate.TypeName, CompletionKindOf(mCandidate.SymbolKind), mCandidate);
     end
-    else if Candidate.Container <> '' then
+    else if mCandidate.Container <> '' then
     begin
-      Add(Candidate.Name, Candidate.Container, CompletionKindOf(Candidate.SymbolKind), Candidate);
+      Add(mCandidate.Name, mCandidate.Container, CompletionKindOf(mCandidate.SymbolKind), mCandidate);
     end
     else
     begin
-      Add(Candidate.Name, Candidate.UnitName, CompletionKindOf(Candidate.SymbolKind), Candidate);
+      Add(mCandidate.Name, mCandidate.UnitName, CompletionKindOf(mCandidate.SymbolKind), mCandidate);
     end;
   end;
 end;
@@ -1951,7 +1951,7 @@ function TCompletionCollector.Finish(out AIncomplete: Boolean): TArray<TCompleti
 begin
   Result := TakeStage(FSent > 0);
   AIncomplete := FTruncated or FImportsCapped or
-    ((FContext.Kind = TCompletionContextKind.Scope) and (Length(FContext.Prefix) < CompletionMinImportPrefix));
+    ((FContext.Kind = TCompletionContextKind.Scope) and (Length(FContext.Prefix) < cCompletionMinImportPrefix));
 end;
 
 initialization

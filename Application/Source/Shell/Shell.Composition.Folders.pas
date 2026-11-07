@@ -288,7 +288,7 @@ begin
   // Anmeldung am Index-Cache für „Prozesse am Projekt“ (#62).
   mIdentity := Default(TIndexProcessInfo);
   mIdentity.Pid := TShellPlatform.CurrentProcessId;
-  mIdentity.Kind := TIndexProcessInfo.KindLsp;
+  mIdentity.Kind := TIndexProcessInfo.cKindLsp;
   mIdentity.Client := FServices.ClientName();
   Result.Setup.ProcessIdentity := mIdentity;
   // Ordner entstehen in der Nachrichtenschleife (initialized, didChangeWorkspaceFolders, didOpen):

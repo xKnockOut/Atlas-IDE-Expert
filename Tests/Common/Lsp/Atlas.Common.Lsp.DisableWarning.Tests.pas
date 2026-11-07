@@ -119,10 +119,10 @@ begin
       'W1000 in der ganzen Unit abschalten ({$WARN SYMBOL_DEPRECATED OFF})|' +
       'W1000 im ganzen Projekt abschalten (Projektoptionen)|', Summary(Actions));
     Arguments := Actions[0].GetValue<TJSONObject>('command').GetValue<TJSONArray>('arguments');
-    Assert.AreEqual(TLspDisableWarning.ClientCommand, Actions[0].GetValue<TJSONObject>('command').GetValue<string>(
+    Assert.AreEqual(TLspDisableWarning.cClientCommand, Actions[0].GetValue<TJSONObject>('command').GetValue<string>(
       'command', ''));
     Assert.AreEqual('["file:///C:/Projekt/A.pas",7,"W1000","line",true]', Arguments.ToJSON);
-    Assert.AreEqual(TLspDisableWarning.ProjectCommand, Actions[3].GetValue<TJSONObject>('command').GetValue<string>(
+    Assert.AreEqual(TLspDisableWarning.cProjectCommand, Actions[3].GetValue<TJSONObject>('command').GetValue<string>(
       'command', ''));
     Assert.AreEqual('["file:///C:/Projekt/A.pas","W1000","SYMBOL_DEPRECATED"]',
       Actions[3].GetValue<TJSONObject>('command').GetValue<TJSONArray>('arguments').ToJSON);

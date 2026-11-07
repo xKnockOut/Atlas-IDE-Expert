@@ -111,7 +111,7 @@ begin
   Result := False;
   for mFinding in AFindings do
   begin
-    if SameText(mFinding.RuleId, UnusedSuppressionRuleId) and (mFinding.Range.StartPos.Line = ALine) then
+    if SameText(mFinding.RuleId, cUnusedSuppressionRuleId) and (mFinding.Range.StartPos.Line = ALine) then
     begin
       Exit(True);
     end;
@@ -181,57 +181,57 @@ end;
 
 function TSuppressionStats.Counts: TArray<TSuppressionCount>;
 var
-  List: TList<TSuppressionCount>;
+  mList: TList<TSuppressionCount>;
 begin
-  List := TList<TSuppressionCount>.Create(TComparer<TSuppressionCount>.Construct(CompareCounts));
+  mList := TList<TSuppressionCount>.Create(TComparer<TSuppressionCount>.Construct(CompareCounts));
   try
-    List.AddRange(FCounts.Values);
-    List.Sort;
-    Result := List.ToArray;
+    mList.AddRange(FCounts.Values);
+    mList.Sort;
+    Result := mList.ToArray;
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 
 function TSuppressionStats.Render(AFormat: TFindingsFormat): string;
 var
-  Builder: TStringBuilder;
-  Count: TSuppressionCount;
-  First: Boolean;
+  mBuilder: TStringBuilder;
+  mCount: TSuppressionCount;
+  mFirst: Boolean;
 begin
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
     if AFormat = TFindingsFormat.Text then
     begin
-      for Count in Counts do
+      for mCount in Counts do
       begin
-        Builder.Append(cTexts[TSuppressionStatsText.Row].Fmt(
-          [Count.RuleId, Count.Total, Count.LineCount, Count.FileCount, Count.UnusedCount, Count.Files]))
+        mBuilder.Append(cTexts[TSuppressionStatsText.Row].Fmt(
+          [mCount.RuleId, mCount.Total, mCount.LineCount, mCount.FileCount, mCount.UnusedCount, mCount.Files]))
           .Append(sLineBreak);
       end;
-      Builder.Append(cTexts[TSuppressionStatsText.Summary].Fmt([FFiles, FCounts.Count]))
+      mBuilder.Append(cTexts[TSuppressionStatsText.Summary].Fmt([FFiles, FCounts.Count]))
         .Append(sLineBreak);
     end
     else
     begin
-      Builder.Append('{"suppressions":[');
-      First := True;
-      for Count in Counts do
+      mBuilder.Append('{"suppressions":[');
+      mFirst := True;
+      for mCount in Counts do
       begin
-        if not First then
+        if not mFirst then
         begin
-          Builder.Append(',');
+          mBuilder.Append(',');
         end;
-        First := False;
-        Builder.Append('{"rule":').Append(TFindingsOutput.JsonString(Count.RuleId));
-        Builder.Append(Format(',"total":%d,"line":%d,"file":%d,"unused":%d,"files":%d}',
-          [Count.Total, Count.LineCount, Count.FileCount, Count.UnusedCount, Count.Files]));
+        mFirst := False;
+        mBuilder.Append('{"rule":').Append(TFindingsOutput.JsonString(mCount.RuleId));
+        mBuilder.Append(Format(',"total":%d,"line":%d,"file":%d,"unused":%d,"files":%d}',
+          [mCount.Total, mCount.LineCount, mCount.FileCount, mCount.UnusedCount, mCount.Files]));
       end;
-      Builder.Append(Format('],"files":%d}', [FFiles]));
+      mBuilder.Append(Format('],"files":%d}', [FFiles]));
     end;
-    Result := Builder.ToString;
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 

@@ -76,10 +76,10 @@ type
 
   TClassBodies = class
   public const
-    GroupLifecycle = 0;
-    GroupAccessor = 1;
-    GroupOverride = 2;
-    GroupOther = 3;
+    cGroupLifecycle = 0;
+    cGroupAccessor = 1;
+    cGroupOverride = 2;
+    cGroupOther = 3;
   public
     /// <summary>Deklaration ARange als eine Zeile (Zeilen mit Leerzeichen verbunden).</summary>
     class function DeclarationText(const ALines: TArray<string>; const ARange: TTextRange): string; static;
@@ -111,7 +111,7 @@ uses
   Atlas.Common.Editing.RoutineBody;
 
 const
-  TypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+  cTypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
     TIndexSymbolKind.HelperType];
 
 function HasWord(const AText, AWord: string): Boolean;
@@ -197,9 +197,9 @@ begin
   mSettings := TClassCompletionSettings.Default;
   if AHost <> nil then
   begin
-    mSettings.TypeComment := AHost.Setting(AUri, TSlashSettings.TypeComment);
-    mSettings.BodyStubs := not SameText(AHost.Setting(AUri, TSlashSettings.BodyStubs), 'false');
-    mSettings.LifecycleFirst := not SameText(AHost.Setting(AUri, TSlashSettings.LifecycleFirst), 'false');
+    mSettings.TypeComment := AHost.Setting(AUri, TSlashSettings.cTypeComment);
+    mSettings.BodyStubs := not SameText(AHost.Setting(AUri, TSlashSettings.cBodyStubs), 'false');
+    mSettings.LifecycleFirst := not SameText(AHost.Setting(AUri, TSlashSettings.cLifecycleFirst), 'false');
   end;
   Result := FromSettings(mSettings, AStyle);
 end;
@@ -232,7 +232,7 @@ begin
   mType := Default(TIndexSymbol);
   for mSymbol in AUnit.Symbols do
   begin
-    if not mFound and (mSymbol.Kind in TypeKinds) and SameText(TypeNameOf(mSymbol), ATypeName) then
+    if not mFound and (mSymbol.Kind in cTypeKinds) and SameText(TypeNameOf(mSymbol), ATypeName) then
     begin
       mType := mSymbol;
       mFound := True;
@@ -354,20 +354,20 @@ begin
   Result.Sub := LifecycleSub(mLower, AName);
   if Result.Sub >= 0 then
   begin
-    Result.Group := GroupLifecycle;
+    Result.Group := cGroupLifecycle;
     Exit;
   end;
   Result.Sub := AccessorSub(AShape, AName);
   if Result.Sub >= 0 then
   begin
-    Result.Group := GroupAccessor;
+    Result.Group := cGroupAccessor;
     Exit;
   end;
   Result.Sub := 0;
-  Result.Group := GroupOther;
+  Result.Group := cGroupOther;
   if HasWord(mLower, 'override') then
   begin
-    Result.Group := GroupOverride;
+    Result.Group := cGroupOverride;
   end;
 end;
 
@@ -573,7 +573,7 @@ begin
   end;
   if AOptions.TypeComment = TTypeCommentStyle.Region then
   begin
-    Result := mHeader[0] + ALineBreak + ABodies + ALineBreak + TTypeComments.RegionEndText;
+    Result := mHeader[0] + ALineBreak + ABodies + ALineBreak + TTypeComments.cRegionEndText;
   end
   else
   begin

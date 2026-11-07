@@ -39,7 +39,7 @@ type
 
   TLspCompilerSwitches = class
   public const
-    Method = 'atlas/compilerSwitches';
+    cMethod = 'atlas/compilerSwitches';
   private
     FStore: IDocumentStore;
     FContextFor: TCompilerSwitchContextFunc;
@@ -78,12 +78,12 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  OriginKinds: array[TSwitchOriginKind] of string = ('default', 'project', 'directive', 'include');
+  cOriginKinds: array[TSwitchOriginKind] of string = ('default', 'project', 'directive', 'include');
 
 function OriginJson(const AOrigin: TSwitchOrigin): TJSONObject;
 begin
   Result := TJSONObject.Create;
-  Result.AddPair('kind', OriginKinds[AOrigin.Kind]);
+  Result.AddPair('kind', cOriginKinds[AOrigin.Kind]);
   Result.AddPair('text', AOrigin.Text);
   if AOrigin.FileName <> '' then
   begin
@@ -111,12 +111,12 @@ end;
 
 function EntriesJson(const AEntries: TSwitchEntries; AWithValue: Boolean): TJSONArray;
 var
-  Entry: TSwitchEntry;
+  mEntry: TSwitchEntry;
 begin
   Result := TJSONArray.Create;
-  for Entry in AEntries do
+  for mEntry in AEntries do
   begin
-    Result.AddElement(EntryJson(Entry, AWithValue));
+    Result.AddElement(EntryJson(mEntry, AWithValue));
   end;
 end;
 
@@ -131,19 +131,19 @@ end;
 
 procedure TLspCompilerSwitches.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterConcurrentRequest(Method, Handle);
+  ADispatcher.RegisterConcurrentRequest(cMethod, Handle);
 end;
 
 class function TLspCompilerSwitches.StateAt(const AText: string; const APosition: TTextPosition;
   const AContext: TCompilerSwitchContext): TCompilerSwitchState;
 var
-  Options: TPreprocessorOptions;
+  mOptions: TPreprocessorOptions;
 begin
-  Options := TPreprocessorOptions.Default;
-  Options.Defines := AContext.Input.Defines;
-  Options.FileName := AContext.FileName;
-  Options.ResolveInclude := AContext.ResolveInclude;
-  Result := TCompilerSwitches.At(TPascalPreprocessor.Process(AText, Options), APosition, AContext.Input);
+  mOptions := TPreprocessorOptions.Default;
+  mOptions.Defines := AContext.Input.Defines;
+  mOptions.FileName := AContext.FileName;
+  mOptions.ResolveInclude := AContext.ResolveInclude;
+  Result := TCompilerSwitches.At(TPascalPreprocessor.Process(AText, mOptions), APosition, AContext.Input);
 end;
 
 class function TLspCompilerSwitches.ToJson(const AState: TCompilerSwitchState;
@@ -169,28 +169,28 @@ end;
 function TLspCompilerSwitches.Handle(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
-  Uri: string;
-  PositionValue: TJSONValue;
-  Document: ITextDocument;
-  Context: TCompilerSwitchContext;
+  mUri: string;
+  mPositionValue: TJSONValue;
+  mDocument: ITextDocument;
+  mContext: TCompilerSwitchContext;
 begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
-    TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
+    TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPositionValue)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      cTexts[TCompilerSwitchesText.FieldsTextDocumentUriAndPosition].Text + Method);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TCompilerSwitchesText.FieldsTextDocumentUriAndPosition].Text + cMethod);
   end;
-  if not FStore.TryGet(Uri, Document) then
+  if not FStore.TryGet(mUri, mDocument) then
   begin
     Exit(TJSONNull.Create);
   end;
-  Context := Default(TCompilerSwitchContext);
+  mContext := Default(TCompilerSwitchContext);
   if Assigned(FContextFor) then
   begin
-    Context := FContextFor(Uri);
+    mContext := FContextFor(mUri);
   end;
   ACancellation.ThrowIfCancellationRequested;
-  Result := ToJson(StateAt(Document.Text, TLspPositions.ReadPosition(PositionValue), Context), Context);
+  Result := ToJson(StateAt(mDocument.Text, TLspPositions.ReadPosition(mPositionValue), mContext), mContext);
 end;
 
 initialization

@@ -47,11 +47,11 @@ end;
 
 function Contains(const AList: TArray<string>; const AName: string): Boolean;
 var
-  Item: string;
+  mItem: string;
 begin
-  for Item in AList do
+  for mItem in AList do
   begin
-    if SameText(Item, AName) then
+    if SameText(mItem, AName) then
     begin
       Exit(True);
     end;
@@ -62,9 +62,9 @@ end;
 /// <summary>Deklariert die Datei einen Namen AName (Typ, Variable, Feld, Parameter, Routine …)?</summary>
 function Declares(ANode: TSyntaxNode; const AName: string): Boolean;
 var
-  Wanted: string;
+  mWanted: string;
 begin
-  Wanted := AName;
+  mWanted := AName;
   // Search statt Rekursion (Bericht M1).
   Result := ANode.Search(
     function(ACandidate: TSyntaxNode): TSyntaxSearchStep
@@ -78,7 +78,7 @@ begin
       begin
         for Name in ACandidate.Name.Split([',']) do
         begin
-          if SameText(CleanName(Trim(Name)), Wanted) then
+          if SameText(CleanName(Trim(Name)), mWanted) then
           begin
             Exit(TSyntaxSearchStep.Found);
           end;
@@ -91,29 +91,29 @@ end;
 function Matches(const ATokens: TArray<TPascalToken>; AIndex: Integer; const AParts: TArray<string>;
   out AEnd: Integer): Boolean;
 var
-  Part, Index: Integer;
+  mPart, mIndex: Integer;
 begin
   Result := False;
-  Index := AIndex;
+  mIndex := AIndex;
   AEnd := -1;
-  for Part := 0 to High(AParts) do
+  for mPart := 0 to High(AParts) do
   begin
-    if Part > 0 then
+    if mPart > 0 then
     begin
-      Index := TRoutineBody.NextToken(ATokens, Index);
-      if (Index > High(ATokens)) or not ATokens[Index].IsSymbol('.') then
+      mIndex := TRoutineBody.NextToken(ATokens, mIndex);
+      if (mIndex > High(ATokens)) or not ATokens[mIndex].IsSymbol('.') then
       begin
         Exit;
       end;
-      Index := TRoutineBody.NextToken(ATokens, Index);
+      mIndex := TRoutineBody.NextToken(ATokens, mIndex);
     end;
-    if (Index > High(ATokens)) or (ATokens[Index].Kind <> TPascalTokenKind.Identifier) or
-      not SameText(CleanName(ATokens[Index].Text), AParts[Part]) then
+    if (mIndex > High(ATokens)) or (ATokens[mIndex].Kind <> TPascalTokenKind.Identifier) or
+      not SameText(CleanName(ATokens[mIndex].Text), AParts[mPart]) then
     begin
       Exit;
     end;
   end;
-  AEnd := Index;
+  AEnd := mIndex;
   Result := True;
 end;
 

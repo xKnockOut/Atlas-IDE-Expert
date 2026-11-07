@@ -324,7 +324,7 @@ var
 begin
   if not Prepare(AConfigRoot) then
   begin
-    Exit(TFindingsOutput.ExitFailure);
+    Exit(TFindingsOutput.cExitFailure);
   end;
   for mFileName in Candidates(AConfigRoot, mSources) do
   begin
@@ -343,11 +343,11 @@ begin
   if AOptions.Metrics or AOptions.Todos or AOptions.SuppressionStats or AOptions.UpdateBaseline then
   begin
     TLinterOutput.Error(cTexts[TLinterFixText.Conflicts].Text);
-    Exit(TFindingsOutput.ExitFailure);
+    Exit(TFindingsOutput.cExitFailure);
   end;
   if not TLinterTarget.Resolve(AOptions.CheckTarget, mTarget) then
   begin
-    Exit(TFindingsOutput.ExitFailure);
+    Exit(TFindingsOutput.cExitFailure);
   end;
   try
     mFix := TLinterFix.Create(AOptions);
@@ -360,7 +360,7 @@ begin
     on E: Exception do
     begin
       TLinterOutput.Error(Format('%s: %s', [E.ClassName, E.Message]));
-      Result := TFindingsOutput.ExitFailure;
+      Result := TFindingsOutput.cExitFailure;
     end;
   end;
 end;

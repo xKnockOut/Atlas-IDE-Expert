@@ -78,11 +78,11 @@ uses
 
 function TChangedLines.Contains(ALine: Integer): Boolean;
 var
-  Span: TLineSpan;
+  mSpan: TLineSpan;
 begin
-  for Span in Spans do
+  for mSpan in Spans do
   begin
-    if (ALine >= Span.First) and (ALine <= Span.Last) then
+    if (ALine >= mSpan.First) and (ALine <= mSpan.Last) then
     begin
       Exit(True);
     end;
@@ -159,31 +159,31 @@ end;
 
 class function TChangedFiles.ParseNameStatus(const ALines: TArray<string>): TArray<string>;
 var
-  Line, Status, Rest: string;
-  Tab: Integer;
+  mLine, mStatus, mRest: string;
+  mTab: Integer;
 begin
   Result := nil;
-  for Line in ALines do
+  for mLine in ALines do
   begin
     // "M<Tab>Pfad", "R087<Tab>Alt<Tab>Neu"
-    Tab := Pos(#9, Line);
-    if Tab < 2 then
+    mTab := Pos(#9, mLine);
+    if mTab < 2 then
     begin
       Continue;
     end;
-    Status := UpperCase(Copy(Line, 1, 1));
-    Rest := Copy(Line, Tab + 1, MaxInt);
-    if (Status = 'R') or (Status = 'C') then
+    mStatus := UpperCase(Copy(mLine, 1, 1));
+    mRest := Copy(mLine, mTab + 1, MaxInt);
+    if (mStatus = 'R') or (mStatus = 'C') then
     begin
-      Tab := Pos(#9, Rest);
-      if Tab > 0 then
+      mTab := Pos(#9, mRest);
+      if mTab > 0 then
       begin
-        Result := Result + [UnquotePath(Copy(Rest, Tab + 1, MaxInt))];
+        Result := Result + [UnquotePath(Copy(mRest, mTab + 1, MaxInt))];
       end;
     end
-    else if ((Status = 'A') or (Status = 'M') or (Status = 'T')) and (Rest <> '') then
+    else if ((mStatus = 'A') or (mStatus = 'M') or (mStatus = 'T')) and (mRest <> '') then
     begin
-      Result := Result + [UnquotePath(Rest)];
+      Result := Result + [UnquotePath(mRest)];
     end;
   end;
 end;
@@ -279,35 +279,35 @@ end;
 
 class function TChangedFiles.ParseSvnStatus(const ALines: TArray<string>; AUnversioned: Boolean): TArray<string>;
 var
-  Line, States, Path: string;
+  mLine, mStates, mPath: string;
 begin
   Result := nil;
-  States := 'AMR';
+  mStates := 'AMR';
   if AUnversioned then
   begin
-    States := States + '?';
+    mStates := mStates + '?';
   end;
-  for Line in ALines do
+  for mLine in ALines do
   begin
-    Path := SvnPath(Line, States);
-    if Path <> '' then
+    mPath := SvnPath(mLine, mStates);
+    if mPath <> '' then
     begin
-      Result := Result + [Path];
+      Result := Result + [mPath];
     end;
   end;
 end;
 
 class function TChangedFiles.ParseSvnSummarize(const ALines: TArray<string>): TArray<string>;
 var
-  Line, Path: string;
+  mLine, mPath: string;
 begin
   Result := nil;
-  for Line in ALines do
+  for mLine in ALines do
   begin
-    Path := SvnPath(Line, 'AMR');
-    if Path <> '' then
+    mPath := SvnPath(mLine, 'AMR');
+    if mPath <> '' then
     begin
-      Result := Result + [Path];
+      Result := Result + [mPath];
     end;
   end;
 end;
@@ -595,23 +595,23 @@ end;
 
 function BaseName(const APath: string): string;
 var
-  Path: string;
+  mPath: string;
 begin
-  Path := StringReplace(APath, '\', '/', [rfReplaceAll]);
-  Result := Copy(Path, LastDelimiter('/', Path) + 1, MaxInt);
+  mPath := StringReplace(APath, '\', '/', [rfReplaceAll]);
+  Result := Copy(mPath, LastDelimiter('/', mPath) + 1, MaxInt);
 end;
 
 function IncludeMatches(const AIncludeName, AIncludeFile: string): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
   // Abgleich über den Dateinamen; Suchpfade sind hier nicht bekannt.
-  Name := BaseName(AIncludeName);
-  if Pos('.', Name) = 0 then
+  mName := BaseName(AIncludeName);
+  if Pos('.', mName) = 0 then
   begin
-    Name := Name + '.inc';
+    mName := mName + '.inc';
   end;
-  Result := SameText(Name, BaseName(AIncludeFile));
+  Result := SameText(mName, BaseName(AIncludeFile));
 end;
 
 /// <summary>Wählt eine Änderung an AChanged alle Dateien? Projekt- und Konfigurationsdateien.</summary>
@@ -700,13 +700,13 @@ end;
 class function TChangedFiles.LinesOf(const AChanges: TArray<TChangedLines>; const ARepoRoot, AFullPath: string;
   out ALines: TChangedLines): Boolean;
 var
-  Item: TChangedLines;
+  mItem: TChangedLines;
 begin
-  for Item in AChanges do
+  for mItem in AChanges do
   begin
-    if Normalize(FullPath(ARepoRoot, Item.Path)) = Normalize(AFullPath) then
+    if Normalize(FullPath(ARepoRoot, mItem.Path)) = Normalize(AFullPath) then
     begin
-      ALines := Item;
+      ALines := mItem;
       Exit(True);
     end;
   end;

@@ -115,8 +115,8 @@ begin
   try
     Assert.IsTrue(mModel.IsComponent('TCustomControl'));
     Assert.IsFalse(mModel.IsComponent('TObject'));
-    Assert.IsTrue(IsIn('tpanel', ComponentBases));
-    Assert.IsFalse(IsIn('TStringList', ComponentBases));
+    Assert.IsTrue(IsIn('tpanel', cComponentBases));
+    Assert.IsFalse(IsIn('TStringList', cComponentBases));
   finally
     mModel.Free;
     mTree.Free;

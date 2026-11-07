@@ -188,9 +188,9 @@ type
     MultiLine: Boolean;
   end;
 
-function IsBidiControl(C: Integer): Boolean;
+function IsBidiControl(AC: Integer): Boolean;
 begin
-  case C of
+  case AC of
     $061C, $200E, $200F, $202A..$202E, $2066..$2069:
       Result := True;
   else
@@ -199,14 +199,14 @@ begin
 end;
 
 /// <summary>Richtungsmarke ohne Einbettung: legitim in RTL-Text.</summary>
-function IsBidiMark(C: Integer): Boolean;
+function IsBidiMark(AC: Integer): Boolean;
 begin
-  Result := (C = $061C) or (C = $200E) or (C = $200F);
+  Result := (AC = $061C) or (AC = $200E) or (AC = $200F);
 end;
 
-function IsInvisible(C: Integer): Boolean;
+function IsInvisible(AC: Integer): Boolean;
 begin
-  case C of
+  case AC of
     $00AD, $180E, $200B..$200D, $2060..$2064, $FEFF:
       Result := True;
   else
@@ -214,9 +214,9 @@ begin
   end;
 end;
 
-function IsBadControl(C: Integer): Boolean;
+function IsBadControl(AC: Integer): Boolean;
 begin
-  case C of
+  case AC of
     0..8, 11, 14..31, $7F, $FFFD:
       Result := True;
   else
@@ -224,9 +224,9 @@ begin
   end;
 end;
 
-function IsRtlLetter(C: Char): Boolean;
+function IsRtlLetter(AC: Char): Boolean;
 begin
-  case Ord(C) of
+  case Ord(AC) of
     $0590..$08FF, $FB1D..$FDFF, $FE70..$FEFC:
       Result := True;
   else
@@ -254,34 +254,34 @@ end;
 /// <summary>"U+200B" bzw. "50 Zeichen U+200B, U+200C" für einen Bereich.</summary>
 function RunCodes(const ARun: TRun): string;
 var
-  Codes: TList<Integer>;
-  Hit: THit;
-  Code: Integer;
+  mCodes: TList<Integer>;
+  mHit: THit;
+  mCode: Integer;
 begin
-  Codes := TList<Integer>.Create;
+  mCodes := TList<Integer>.Create;
   try
-    for Hit in ARun.Hits do
+    for mHit in ARun.Hits do
     begin
-      if not Codes.Contains(Hit.Code) then
+      if not mCodes.Contains(mHit.Code) then
       begin
-        Codes.Add(Hit.Code);
+        mCodes.Add(mHit.Code);
       end;
     end;
     Result := '';
-    for Code in Codes do
+    for mCode in mCodes do
     begin
       if Result <> '' then
       begin
         Result := Result + ', ';
       end;
-      Result := Result + CodeName(Code);
+      Result := Result + CodeName(mCode);
     end;
     if Length(ARun.Hits) > 1 then
     begin
       Result := cTexts[TUnicodeText.CharCount].Fmt([Length(ARun.Hits), Result]);
     end;
   finally
-    Codes.Free;
+    mCodes.Free;
   end;
 end;
 
@@ -289,45 +289,45 @@ end;
 function PlacesOf(const AContext: TRuleContext; out AMultiLine: TArray<Boolean>;
   out ATokenStart, ATokenEnd: TArray<Integer>): TArray<TCharPlace>;
 var
-  Token: TPascalToken;
-  Index, Last: Integer;
-  Place: TCharPlace;
+  mToken: TPascalToken;
+  mIndex, mLast: Integer;
+  mPlace: TCharPlace;
 begin
   SetLength(Result, Length(AContext.Text) + 1);
   SetLength(AMultiLine, Length(AContext.Text) + 1);
   SetLength(ATokenStart, Length(AContext.Text) + 1);
   SetLength(ATokenEnd, Length(AContext.Text) + 1);
-  for Index := 0 to High(Result) do
+  for mIndex := 0 to High(Result) do
   begin
-    Result[Index] := TCharPlace.Code;
-    ATokenStart[Index] := Index;
-    ATokenEnd[Index] := Index + 1;
+    Result[mIndex] := TCharPlace.Code;
+    ATokenStart[mIndex] := mIndex;
+    ATokenEnd[mIndex] := mIndex + 1;
   end;
   if AContext.Tree = nil then
   begin
     Exit;
   end;
-  for Token in AContext.Tree.Tokens do
+  for mToken in AContext.Tree.Tokens do
   begin
-    case Token.Kind of
+    case mToken.Kind of
       TPascalTokenKind.StringLiteral:
-        Place := TCharPlace.StringLiteral;
+        mPlace := TCharPlace.StringLiteral;
       TPascalTokenKind.Comment, TPascalTokenKind.Directive:
-        Place := TCharPlace.Comment;
+        mPlace := TCharPlace.Comment;
     else
       Continue;
     end;
-    Last := Token.Offset + Length(Token.Text);
-    if Last > Length(AContext.Text) then
+    mLast := mToken.Offset + Length(mToken.Text);
+    if mLast > Length(AContext.Text) then
     begin
-      Last := Length(AContext.Text);
+      mLast := Length(AContext.Text);
     end;
-    for Index := Token.Offset + 1 to Last do
+    for mIndex := mToken.Offset + 1 to mLast do
     begin
-      Result[Index] := Place;
-      AMultiLine[Index] := StartsStr('''''''', Token.Text);
-      ATokenStart[Index] := Token.Offset + 1;
-      ATokenEnd[Index] := Last + 1;
+      Result[mIndex] := mPlace;
+      AMultiLine[mIndex] := StartsStr('''''''', mToken.Text);
+      ATokenStart[mIndex] := mToken.Offset + 1;
+      ATokenEnd[mIndex] := mLast + 1;
     end;
   end;
 end;
@@ -335,41 +335,41 @@ end;
 /// <summary>Stehen alle Einbettungen eines Tokens paarweise geschlossen, und enthält es RTL-Schrift?</summary>
 function BalancedRtl(const AText: string; AStart, AStop: Integer): Boolean;
 var
-  Index, Embeddings, Isolates: Integer;
-  Rtl: Boolean;
+  mIndex, mEmbeddings, mIsolates: Integer;
+  mRtl: Boolean;
 begin
-  Embeddings := 0;
-  Isolates := 0;
-  Rtl := False;
-  for Index := AStart to AStop - 1 do
-    case Ord(AText[Index]) of
+  mEmbeddings := 0;
+  mIsolates := 0;
+  mRtl := False;
+  for mIndex := AStart to AStop - 1 do
+    case Ord(AText[mIndex]) of
       $202A, $202B, $202D, $202E:
-        Inc(Embeddings);
+        Inc(mEmbeddings);
       $202C:
         begin
-          Dec(Embeddings);
-          if Embeddings < 0 then
+          Dec(mEmbeddings);
+          if mEmbeddings < 0 then
           begin
             Exit(False);
           end;
         end;
       $2066..$2068:
-        Inc(Isolates);
+        Inc(mIsolates);
       $2069:
         begin
-          Dec(Isolates);
-          if Isolates < 0 then
+          Dec(mIsolates);
+          if mIsolates < 0 then
           begin
             Exit(False);
           end;
         end;
     else
-      if IsRtlLetter(AText[Index]) then
+      if IsRtlLetter(AText[mIndex]) then
       begin
-        Rtl := True;
+        mRtl := True;
       end;
     end;
-  Result := Rtl and (Embeddings = 0) and (Isolates = 0);
+  Result := mRtl and (mEmbeddings = 0) and (mIsolates = 0);
 end;
 
 function ConfidenceOf(ARule: TCharRule; ACode: Integer; APlace: TCharPlace; ABalancedRtl: Boolean): TRuleConfidence;
@@ -512,14 +512,14 @@ end;
 /// <summary>Höchste Konfidenz eines Bereichs: ein gefährliches Zeichen macht den ganzen Bereich gefährlich.</summary>
 function RunConfidence(const ARun: TRun): TRuleConfidence;
 var
-  Hit: THit;
+  mHit: THit;
 begin
   Result := TRuleConfidence.Low;
-  for Hit in ARun.Hits do
+  for mHit in ARun.Hits do
   begin
-    if Ord(Hit.Confidence) > Ord(Result) then
+    if Ord(mHit.Confidence) > Ord(Result) then
     begin
-      Result := Hit.Confidence;
+      Result := mHit.Confidence;
     end;
   end;
 end;
@@ -527,18 +527,18 @@ end;
 /// <summary>"#$200B#$200B" für die Zeichen eines Bereichs.</summary>
 function CharLiterals(const ARun: TRun; ADecimal: Boolean): string;
 var
-  Hit: THit;
+  mHit: THit;
 begin
   Result := '';
-  for Hit in ARun.Hits do
+  for mHit in ARun.Hits do
   begin
     if ADecimal then
     begin
-      Result := Result + '#' + IntToStr(Hit.Code);
+      Result := Result + '#' + IntToStr(mHit.Code);
     end
     else
     begin
-      Result := Result + '#$' + IntToHex(Hit.Code, 4);
+      Result := Result + '#$' + IntToHex(mHit.Code, 4);
     end;
   end;
 end;
@@ -546,22 +546,22 @@ end;
 /// <summary>Korrektur eines Bereichs in der geprüften Datei; nil ohne passende.</summary>
 function RunFixes(const ARun: TRun): TArray<TRuleFix>;
 var
-  Range: TTextRange;
+  mRange: TTextRange;
 begin
   Result := nil;
-  Range := TTextRange.Create(ARun.Hits[0].Pos, ARun.EndPos);
+  mRange := TTextRange.Create(ARun.Hits[0].Pos, ARun.EndPos);
   if ARun.Place = TCharPlace.StringLiteral then
   begin
     // 'a<ZWSP>b' → 'a'#$200B'b': gleicher Wert, sichtbar. Mehrzeilige Strings lassen sich nicht teilen.
     if not ARun.MultiLine then
     begin
       Result := [TRuleFix.Create(cTexts[TUnicodeText.ReplaceWith].Fmt([CharLiterals(ARun, False)]),
-        [TRuleEdit.Create(Range, '''' + CharLiterals(ARun, False) + '''')], True)];
+        [TRuleEdit.Create(mRange, '''' + CharLiterals(ARun, False) + '''')], True)];
     end;
   end
   else
   begin
-    Result := [TRuleFix.Create(cTexts[TUnicodeText.RemoveChar].Text, [TRuleEdit.Create(Range, '')])];
+    Result := [TRuleFix.Create(cTexts[TUnicodeText.RemoveChar].Text, [TRuleEdit.Create(mRange, '')])];
   end;
 end;
 
@@ -766,8 +766,8 @@ procedure TFormScan.Locate(const APos: TTextPosition; out AObject: TDfmObject; o
 
   procedure Visit(AObj: TDfmObject);
   var
-    Child: TDfmObject;
-    Prop: TDfmProperty;
+    mChild: TDfmObject;
+    mProp: TDfmProperty;
   begin
     if not Contains(AObj.Range, APos) then
     begin
@@ -775,16 +775,16 @@ procedure TFormScan.Locate(const APos: TTextPosition; out AObject: TDfmObject; o
     end;
     AObject := AObj;
     AProperty := '';
-    for Prop in AObj.Properties do
+    for mProp in AObj.Properties do
     begin
-      if Contains(Prop.ValueRange, APos) or Contains(Prop.NameRange, APos) then
+      if Contains(mProp.ValueRange, APos) or Contains(mProp.NameRange, APos) then
       begin
-        AProperty := Prop.Name;
+        AProperty := mProp.Name;
       end;
     end;
-    for Child in AObj.Children do
+    for mChild in AObj.Children do
     begin
-      Visit(Child);
+      Visit(mChild);
     end;
   end;
 
@@ -799,11 +799,11 @@ end;
 
 function OnlyReplacement(const ARun: TRun): Boolean;
 var
-  Hit: THit;
+  mHit: THit;
 begin
-  for Hit in ARun.Hits do
+  for mHit in ARun.Hits do
   begin
-    if Hit.Code <> $FFFD then
+    if mHit.Code <> $FFFD then
     begin
       Exit(False);
     end;
@@ -856,14 +856,15 @@ end;
 /// <summary>Name der Formularklasse in der Unit; Default(TTextRange) ohne.</summary>
 function FormClassRange(const AUnitIndex: TUnitIndex; const AFormClass: string): TTextRange;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
   Result := Default(TTextRange);
-  for Symbol in AUnitIndex.Symbols do
+  for mSymbol in AUnitIndex.Symbols do
   begin
-    if (Symbol.Kind = TIndexSymbolKind.ClassType) and (Symbol.Container = '') and SameText(Symbol.Name, AFormClass) then
+    if (mSymbol.Kind = TIndexSymbolKind.ClassType) and (mSymbol.Container = '') and
+      SameText(mSymbol.Name, AFormClass) then
     begin
-      Exit(Symbol.SelectionRange);
+      Exit(mSymbol.SelectionRange);
     end;
   end;
 end;
@@ -1035,11 +1036,11 @@ end;
 procedure CheckText(ARule: TCharRule; const AContext: TRuleContext; const AReport: IRuleReport;
   const AWhat: string);
 var
-  Run: TRun;
+  mRun: TRun;
 begin
-  for Run in RunsOf(ARule, AContext) do
+  for mRun in RunsOf(ARule, AContext) do
   begin
-    AReport.Add(RunRange(Run), AWhat + ' ' + RunCodes(Run), RunConfidence(Run), RunFixes(Run));
+    AReport.Add(RunRange(mRun), AWhat + ' ' + RunCodes(mRun), RunConfidence(mRun), RunFixes(mRun));
   end;
   CheckForm(ARule, AContext, AReport, AWhat, False);
 end;
@@ -1096,37 +1097,37 @@ end;
 /// <summary>Fehlstellen in den Bytes von AFileName, wenn ihr Text AText ist; sonst nil.</summary>
 function InvalidBytes(const AContext: TRuleContext; const AFileName, AText: string): TArray<TInvalidUtf8>;
 var
-  Bytes: TBytes;
-  Format: TFileFormat;
+  mBytes: TBytes;
+  mFormat: TFileFormat;
 begin
   Result := nil;
-  if not ReadBytes(AContext, AFileName, Bytes) then
+  if not ReadBytes(AContext, AFileName, mBytes) then
   begin
     Exit;
   end;
-  if TFileEncoding.IsBinaryForm(Bytes) then
+  if TFileEncoding.IsBinaryForm(mBytes) then
   begin
     Exit;
   end;
   // Nur, wenn der geprüfte Text der Inhalt der Datei ist: sonst passen die Stellen nicht.
-  if WithoutCr(TFileEncoding.Decode(Bytes, Format)) <> WithoutCr(AText) then
+  if WithoutCr(TFileEncoding.Decode(mBytes, mFormat)) <> WithoutCr(AText) then
   begin
     Exit;
   end;
-  Result := TFileEncoding.InvalidUtf8(Bytes, Format);
+  Result := TFileEncoding.InvalidUtf8(mBytes, mFormat);
 end;
 
 /// <summary>Liegen alle Fehlstellen im Text? Sonst zählt der Dekodierer anders als InvalidUtf8, und keine
 /// Stelle gilt.</summary>
 function Verified(const AInvalid: TArray<TInvalidUtf8>; const AText: string): Boolean;
 var
-  Lines: TArray<string>;
-  Item: TInvalidUtf8;
+  mLines: TArray<string>;
+  mItem: TInvalidUtf8;
 begin
-  Lines := WithoutCr(AText).Split([#10]);
-  for Item in AInvalid do
+  mLines := WithoutCr(AText).Split([#10]);
+  for mItem in AInvalid do
   begin
-    if (Item.Position.Line > High(Lines)) or (Item.Position.Character >= Length(Lines[Item.Position.Line])) then
+    if (mItem.Position.Line > High(mLines)) or (mItem.Position.Character >= Length(mLines[mItem.Position.Line])) then
     begin
       Exit(False);
     end;
@@ -1137,17 +1138,17 @@ end;
 /// <summary>Klasse des Wurzelobjekts der Formulardatei; '' ohne.</summary>
 function FormClassOf(const AFormText: string): string;
 var
-  Document: TDfmDocument;
+  mDocument: TDfmDocument;
 begin
   Result := '';
-  Document := TDfmParser.Parse(AFormText);
+  mDocument := TDfmParser.Parse(AFormText);
   try
-    if Document.Root <> nil then
+    if mDocument.Root <> nil then
     begin
-      Result := Document.Root.TypeName;
+      Result := mDocument.Root.TypeName;
     end;
   finally
-    Document.Free;
+    mDocument.Free;
   end;
 end;
 
@@ -1289,7 +1290,7 @@ end;
 /// <summary>Code des Zeichens an AIndex (ab 1), Ersatzpaare zusammengefasst; ASize = 1 oder 2.</summary>
 function CodeAt(const AText: string; AIndex: Integer; out ASize: Integer): Integer;
 var
-  Trail: Integer;
+  mTrail: Integer;
 begin
   Result := Ord(AText[AIndex]);
   ASize := 1;
@@ -1297,27 +1298,27 @@ begin
   begin
     Exit;
   end;
-  Trail := Ord(AText[AIndex + 1]);
-  if (Trail < $DC00) or (Trail > $DFFF) then
+  mTrail := Ord(AText[AIndex + 1]);
+  if (mTrail < $DC00) or (mTrail > $DFFF) then
   begin
     Exit;
   end;
-  Result := $10000 + ((Result - $D800) shl 10) + (Trail - $DC00);
+  Result := $10000 + ((Result - $D800) shl 10) + (mTrail - $DC00);
   ASize := 2;
 end;
 
 function HasIllegalChar(const AText: string): Boolean;
 var
-  Index, Size: Integer;
+  mIndex, mSize: Integer;
 begin
-  Index := 1;
-  while Index <= Length(AText) do
+  mIndex := 1;
+  while mIndex <= Length(AText) do
   begin
-    if TFileEncodingUnsupportedRule.IsIllegal(CodeAt(AText, Index, Size)) then
+    if TFileEncodingUnsupportedRule.IsIllegal(CodeAt(AText, mIndex, mSize)) then
     begin
       Exit(True);
     end;
-    Inc(Index, Size);
+    Inc(mIndex, mSize);
   end;
   Result := False;
 end;
@@ -1458,11 +1459,11 @@ end;
 /// oder Kommentar, und die Korrektur änderte seine Bedeutung.</summary>
 function OnlyCodeBetween(const ATokens: TArray<TPascalToken>; AFirst, ALast: Integer): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := AFirst + 1 to ALast - 1 do
+  for mIndex := AFirst + 1 to ALast - 1 do
   begin
-    if not (ATokens[Index].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword,
+    if not (ATokens[mIndex].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword,
       TPascalTokenKind.Number, TPascalTokenKind.Symbol, TPascalTokenKind.Unknown]) then
     begin
       Exit(False);
@@ -1475,19 +1476,19 @@ end;
 function ClosingQuote(const AChars: TArray<TIllegalChar>; AOpen: Integer;
   const ATokens: TArray<TPascalToken>): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := AOpen + 1 to High(AChars) do
+  for mIndex := AOpen + 1 to High(AChars) do
   begin
-    if AChars[Index].Pos.Line <> AChars[AOpen].Pos.Line then
+    if AChars[mIndex].Pos.Line <> AChars[AOpen].Pos.Line then
     begin
       Break;
     end;
-    if Closes(AChars[AOpen].Code, AChars[Index].Code) then
+    if Closes(AChars[AOpen].Code, AChars[mIndex].Code) then
     begin
-      if OnlyCodeBetween(ATokens, AChars[AOpen].Token, AChars[Index].Token) then
+      if OnlyCodeBetween(ATokens, AChars[AOpen].Token, AChars[mIndex].Token) then
       begin
-        Exit(Index);
+        Exit(mIndex);
       end;
       Break;
     end;
@@ -1593,9 +1594,9 @@ end;
 type
   TScript = (Other, Latin, Greek, Cyrillic);
 
-function ScriptOf(C: Char): TScript;
+function ScriptOf(AC: Char): TScript;
 begin
-  case Ord(C) of
+  case Ord(AC) of
     Ord('A')..Ord('Z'), Ord('a')..Ord('z'), $00C0..$024F:
       Result := TScript.Latin;
     $0370..$03FF:

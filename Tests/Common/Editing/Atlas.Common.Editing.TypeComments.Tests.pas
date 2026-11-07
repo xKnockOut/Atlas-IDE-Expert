@@ -62,7 +62,7 @@ begin
   Assert.AreEqual(3, Integer(Length(Header)));
   Assert.AreEqual(40, Integer(Length(Header[0])), 'Breite nach maxLineLength');
   Assert.AreEqual('// TKunde', Header[1]);
-  Assert.AreEqual(TTypeComments.DefaultLineLength,
+  Assert.AreEqual(TTypeComments.cDefaultLineLength,
     Integer(Length(TTypeComments.Header(TTypeCommentStyle.Line, 'TKunde', '', 0)[2])), 'ohne Vorgabe 80');
   Assert.AreEqual('{ TKunde: Kunde mit Adresse. }',
     TTypeComments.Header(TTypeCommentStyle.Summary, 'TKunde', 'Kunde mit Adresse.', 0)[0]);

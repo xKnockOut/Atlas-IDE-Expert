@@ -39,11 +39,11 @@ type
 
   TLspLinkedEditing = class
   public const
-    Method = 'textDocument/linkedEditingRange';
+    cMethod = 'textDocument/linkedEditingRange';
     /// <summary>Gültige Bezeichner, damit der Client die Verknüpfung bei anderen Zeichen löst.</summary>
-    WordPattern = '[A-Za-z_][A-Za-z0-9_]*';
+    cWordPattern = '[A-Za-z_][A-Za-z0-9_]*';
     /// <summary>So viele Stellen (Deklaration und Vorkommen) prüft LocalRanges auf sichtbare Namen.</summary>
-    ConflictProbes = 6;
+    cConflictProbes = 6;
   private
     FStore: IDocumentStore;
     FIndex: ISymbolIndex;
@@ -105,7 +105,7 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  RoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
+  cRoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
 
 function Contains(const ARange: TTextRange; const APosition: TTextPosition): Boolean;
 begin
@@ -121,20 +121,20 @@ end;
 /// <summary>Bezeichner, auf oder direkt hinter dem APosition steht; -1 ohne.</summary>
 function IdentifierAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
 var
-  Index: Integer;
-  Token: TPascalToken;
+  mIndex: Integer;
+  mToken: TPascalToken;
 begin
-  for Index := 0 to High(ATokens) do
+  for mIndex := 0 to High(ATokens) do
   begin
-    Token := ATokens[Index];
-    if Before(APosition, Token.StartPos) then
+    mToken := ATokens[mIndex];
+    if Before(APosition, mToken.StartPos) then
     begin
       Break;
     end;
-    if (Token.Kind = TPascalTokenKind.Identifier) and (Token.EndPos.Line = APosition.Line) and
-      not Before(Token.EndPos, APosition) then
+    if (mToken.Kind = TPascalTokenKind.Identifier) and (mToken.EndPos.Line = APosition.Line) and
+      not Before(mToken.EndPos, APosition) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -143,15 +143,15 @@ end;
 /// <summary>Token, das an APosition beginnt; -1 ohne.</summary>
 function TokenStartingAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(ATokens) do
+  for mIndex := 0 to High(ATokens) do
   begin
-    if ATokens[Index].StartPos = APosition then
+    if ATokens[mIndex].StartPos = APosition then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
-    if Before(APosition, ATokens[Index].StartPos) then
+    if Before(APosition, ATokens[mIndex].StartPos) then
     begin
       Break;
     end;
@@ -162,29 +162,29 @@ end;
 /// <summary>Innerste benannte oder anonyme Routine, die AOffset enthält; nil außerhalb.</summary>
 function InnermostRoutine(ARoot: TSyntaxNode; AOffset: Integer): TSyntaxNode;
 var
-  Node, Child: TSyntaxNode;
-  Index: Integer;
-  Descended: Boolean;
+  mNode, mChild: TSyntaxNode;
+  mIndex: Integer;
+  mDescended: Boolean;
 begin
   Result := nil;
-  Node := ARoot;
+  mNode := ARoot;
   repeat
-    Descended := False;
-    for Index := 0 to Node.ChildCount - 1 do
+    mDescended := False;
+    for mIndex := 0 to mNode.ChildCount - 1 do
     begin
-      Child := Node[Index];
-      if (Child.StartOffset <= AOffset) and (AOffset < Child.EndOffset) then
+      mChild := mNode[mIndex];
+      if (mChild.StartOffset <= AOffset) and (AOffset < mChild.EndOffset) then
       begin
-        Node := Child;
-        if Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
+        mNode := mChild;
+        if mNode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.AnonymousMethod] then
         begin
-          Result := Node;
+          Result := mNode;
         end;
-        Descended := True;
+        mDescended := True;
         Break;
       end;
     end;
-  until not Descended;
+  until not mDescended;
 end;
 
 { TLspLinkedEditing }
@@ -215,36 +215,36 @@ end;
 
 procedure TLspLinkedEditing.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterConcurrentRequest(Method, HandleLinkedEditing);
+  ADispatcher.RegisterConcurrentRequest(cMethod, HandleLinkedEditing);
 end;
 
 class function TLspLinkedEditing.Ranges(ATree: TSyntaxTree; const AFileName: string;
   const APosition: TTextPosition): TArray<TTextRange>;
 var
-  UnitIndex: TUnitIndex;
-  Symbol, Target: TIndexSymbol;
+  mUnitIndex: TUnitIndex;
+  mSymbol, mTarget: TIndexSymbol;
 begin
   Result := nil;
-  UnitIndex := TIndexExtractor.Extract(ATree, AFileName);
-  Target := Default(TIndexSymbol);
-  for Symbol in UnitIndex.Symbols do
+  mUnitIndex := TIndexExtractor.Extract(ATree, AFileName);
+  mTarget := Default(TIndexSymbol);
+  for mSymbol in mUnitIndex.Symbols do
   begin
-    if (Symbol.Kind in RoutineKinds) and Contains(Symbol.SelectionRange, APosition) then
+    if (mSymbol.Kind in cRoutineKinds) and Contains(mSymbol.SelectionRange, APosition) then
     begin
-      Target := Symbol;
+      mTarget := mSymbol;
       Break;
     end;
   end;
-  if Target.Name = '' then
+  if mTarget.Name = '' then
   begin
     Exit;
   end;
-  for Symbol in UnitIndex.Symbols do
+  for mSymbol in mUnitIndex.Symbols do
   begin
-    if (Symbol.Kind = Target.Kind) and SameText(Symbol.Name, Target.Name) and
-      SameText(Symbol.Container, Target.Container) then
+    if (mSymbol.Kind = mTarget.Kind) and SameText(mSymbol.Name, mTarget.Name) and
+      SameText(mSymbol.Container, mTarget.Container) then
     begin
-      Result := Result + [Symbol.SelectionRange];
+      Result := Result + [mSymbol.SelectionRange];
     end;
   end;
   if Length(Result) <> 2 then
@@ -278,15 +278,15 @@ end;
 /// <summary>Stellen aus AHighlights innerhalb von ARoutine.</summary>
 function RangesIn(const AHighlights: TArray<TDocumentHighlight>; ARoutine: TSyntaxNode): TArray<TTextRange>;
 var
-  Highlight: TDocumentHighlight;
+  mHighlight: TDocumentHighlight;
 begin
   Result := nil;
-  for Highlight in AHighlights do
+  for mHighlight in AHighlights do
   begin
-    if not Before(Highlight.Range.StartPos, ARoutine.StartPos) and not Before(ARoutine.EndPos, Highlight.Range.EndPos)
+    if not Before(mHighlight.Range.StartPos, ARoutine.StartPos) and not Before(ARoutine.EndPos, mHighlight.Range.EndPos)
     then
     begin
-      Result := Result + [Highlight.Range];
+      Result := Result + [mHighlight.Range];
     end;
   end;
 end;
@@ -296,16 +296,16 @@ end;
 function ProbeOffsets(const ATokens: TArray<TPascalToken>; const ARanges: TArray<TTextRange>;
   ADeclaration: Integer): TArray<Integer>;
 var
-  Range: TTextRange;
-  Probe: Integer;
+  mRange: TTextRange;
+  mProbe: Integer;
 begin
   Result := [ATokens[ADeclaration].Offset];
-  for Range in ARanges do
+  for mRange in ARanges do
   begin
-    Probe := TokenStartingAt(ATokens, Range.StartPos);
-    if (Probe >= 0) and (Length(Result) < TLspLinkedEditing.ConflictProbes) and (Probe <> ADeclaration) then
+    mProbe := TokenStartingAt(ATokens, mRange.StartPos);
+    if (mProbe >= 0) and (Length(Result) < TLspLinkedEditing.cConflictProbes) and (mProbe <> ADeclaration) then
     begin
-      Result := Result + [ATokens[Probe].Offset];
+      Result := Result + [ATokens[mProbe].Offset];
     end;
   end;
 end;
@@ -315,30 +315,30 @@ end;
 function ScopeConflicts(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName, AName: string;
   const AOffsets: TArray<Integer>): TArray<TLinkedConflict>;
 var
-  Seen: TDictionary<string, Boolean>;
-  Candidate: TResolvedSymbol;
-  Conflict: TLinkedConflict;
-  Probe: Integer;
+  mSeen: TDictionary<string, Boolean>;
+  mCandidate: TResolvedSymbol;
+  mConflict: TLinkedConflict;
+  mProbe: Integer;
 begin
   Result := nil;
-  Seen := TDictionary<string, Boolean>.Create;
+  mSeen := TDictionary<string, Boolean>.Create;
   try
-    Seen.Add(LowerCase(AName), True);
-    for Probe in AOffsets do
+    mSeen.Add(LowerCase(AName), True);
+    for mProbe in AOffsets do
     begin
-      for Candidate in AResolver.Candidates.OwnScopeCandidates(ATree, AFileName, Probe) do
+      for mCandidate in AResolver.Candidates.OwnScopeCandidates(ATree, AFileName, mProbe) do
       begin
-        if not Seen.ContainsKey(LowerCase(Candidate.Name)) then
+        if not mSeen.ContainsKey(LowerCase(mCandidate.Name)) then
         begin
-          Seen.Add(LowerCase(Candidate.Name), True);
-          Conflict.Name := Candidate.Name;
-          Conflict.Detail := Candidate.ShadowText;
-          Result := Result + [Conflict];
+          mSeen.Add(LowerCase(mCandidate.Name), True);
+          mConflict.Name := mCandidate.Name;
+          mConflict.Detail := mCandidate.ShadowText;
+          Result := Result + [mConflict];
         end;
       end;
     end;
   finally
-    Seen.Free;
+    mSeen.Free;
   end;
 end;
 
@@ -346,29 +346,29 @@ class function TLspLinkedEditing.LocalRanges(AResolver: TNameResolver; const AIn
   ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition;
   out AConflicts: TArray<TLinkedConflict>): TArray<TTextRange>;
 var
-  Index, Declaration: Integer;
-  Symbol: TResolvedSymbol;
-  Routine: TSyntaxNode;
+  mIndex, mDeclaration: Integer;
+  mSymbol: TResolvedSymbol;
+  mRoutine: TSyntaxNode;
 begin
   Result := nil;
   AConflicts := nil;
-  Index := IdentifierAt(ATree.Tokens, APosition);
-  if Index < 0 then
+  mIndex := IdentifierAt(ATree.Tokens, APosition);
+  if mIndex < 0 then
   begin
     Exit;
   end;
   AResolver.PinTree(ATree, AFileName);
   try
-    Symbol := AResolver.Resolve(ATree, AFileName, ATree.Tokens[Index].StartPos);
-    if IsLinkableLocal(Symbol, AFileName) and DeclarationRoutine(ATree, Symbol, Declaration, Routine) then
+    mSymbol := AResolver.Resolve(ATree, AFileName, ATree.Tokens[mIndex].StartPos);
+    if IsLinkableLocal(mSymbol, AFileName) and DeclarationRoutine(ATree, mSymbol, mDeclaration, mRoutine) then
     begin
       Result := RangesIn(TLspDocumentHighlights.Highlights(AResolver, AIndex, ATree, AFileName,
-        ATree.Tokens[Index].StartPos), Routine);
+        ATree.Tokens[mIndex].StartPos), mRoutine);
     end;
     if Result <> nil then
     begin
-      AConflicts := ScopeConflicts(AResolver, ATree, AFileName, Symbol.Name, ProbeOffsets(ATree.Tokens, Result,
-        Declaration));
+      AConflicts := ScopeConflicts(AResolver, ATree, AFileName, mSymbol.Name, ProbeOffsets(ATree.Tokens, Result,
+        mDeclaration));
     end;
   finally
     AResolver.UnpinTree;
@@ -377,104 +377,104 @@ end;
 
 class function TLspLinkedEditing.ToJson(const ARanges: TArray<TTextRange>): TJSONValue;
 var
-  Items: TJSONArray;
-  Range: TTextRange;
-  Answer: TJSONObject;
+  mItems: TJSONArray;
+  mRange: TTextRange;
+  mAnswer: TJSONObject;
 begin
   if Length(ARanges) = 0 then
   begin
     Exit(TJSONNull.Create);
   end;
-  Answer := TJSONObject.Create;
-  Items := TJSONArray.Create;
-  Answer.AddPair('ranges', Items);
-  for Range in ARanges do
+  mAnswer := TJSONObject.Create;
+  mItems := TJSONArray.Create;
+  mAnswer.AddPair('ranges', mItems);
+  for mRange in ARanges do
   begin
-    Items.AddElement(TLspPositions.RangeToJson(Range));
+    mItems.AddElement(TLspPositions.RangeToJson(mRange));
   end;
-  Answer.AddPair('wordPattern', WordPattern);
-  Result := Answer;
+  mAnswer.AddPair('wordPattern', cWordPattern);
+  Result := mAnswer;
 end;
 
 class function TLspLinkedEditing.ToJson(const ARanges: TArray<TTextRange>;
   const AConflicts: TArray<TLinkedConflict>): TJSONValue;
 var
-  Items: TJSONArray;
-  Item: TJSONObject;
-  Conflict: TLinkedConflict;
+  mItems: TJSONArray;
+  mItem: TJSONObject;
+  mConflict: TLinkedConflict;
 begin
   Result := ToJson(ARanges);
   if not (Result is TJSONObject) then
   begin
     Exit;
   end;
-  Items := TJSONArray.Create;
-  TJSONObject(Result).AddPair('atlasConflicts', Items);
-  for Conflict in AConflicts do
+  mItems := TJSONArray.Create;
+  TJSONObject(Result).AddPair('atlasConflicts', mItems);
+  for mConflict in AConflicts do
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('name', Conflict.Name);
-    Item.AddPair('detail', Conflict.Detail);
-    Items.AddElement(Item);
+    mItem := TJSONObject.Create;
+    mItem.AddPair('name', mConflict.Name);
+    mItem.AddPair('detail', mConflict.Detail);
+    mItems.AddElement(mItem);
   end;
 end;
 
 function TLspLinkedEditing.HandleLinkedEditing(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
-  Cancellation: IPascalCancellation;
-  Uri: string;
-  PositionValue: TJSONValue;
-  Document: ITextDocument;
-  Tree: TSyntaxTree;
-  Shared: ISharedSyntaxTree;
-  Found: TArray<TTextRange>;
-  Conflicts: TArray<TLinkedConflict>;
-  Resolver: TNameResolver;
-  LocalsOnly: Boolean;
-  Position: TTextPosition;
+  mCancellation: IPascalCancellation;
+  mUri: string;
+  mPositionValue: TJSONValue;
+  mDocument: ITextDocument;
+  mTree: TSyntaxTree;
+  mShared: ISharedSyntaxTree;
+  mFound: TArray<TTextRange>;
+  mConflicts: TArray<TLinkedConflict>;
+  mResolver: TNameResolver;
+  mLocalsOnly: Boolean;
+  mPosition: TTextPosition;
 begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
-    TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
+    TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPositionValue)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      cTexts[TLinkedEditingText.FieldsTextDocumentUriAndPosition].Text + Method);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TLinkedEditingText.FieldsTextDocumentUriAndPosition].Text + cMethod);
   end;
-  if not FStore.TryGet(Uri, Document) then
+  if not FStore.TryGet(mUri, mDocument) then
   begin
     Exit(TJSONNull.Create);
   end;
   // Erst in einer Variablen halten: Bei Übergabe als const würde das Objekt nie freigegeben.
-  Cancellation := TRequestCancellation.Create(ACancellation);
-  Shared := TSyntaxTreeCache.Get(Document, Cancellation);
-  Tree := Shared.Tree;
+  mCancellation := TRequestCancellation.Create(ACancellation);
+  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
+  mTree := mShared.Tree;
   ACancellation.ThrowIfCancellationRequested;
-  Position := TLspPositions.ReadPosition(PositionValue);
-  if not TJSONObject(AParams).TryGetValue<Boolean>('atlasLocals', LocalsOnly) then
+  mPosition := TLspPositions.ReadPosition(mPositionValue);
+  if not TJSONObject(AParams).TryGetValue<Boolean>('atlasLocals', mLocalsOnly) then
   begin
-    LocalsOnly := False;
+    mLocalsOnly := False;
   end;
   // Erst lokale Bezeichner (#658), dann Methoden und Routinen (#39).
   if FIndex <> nil then
   begin
-    Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
+    mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
     try
-      Resolver.Namespaces := Namespaces;
-      Found := LocalRanges(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri), Position, Conflicts);
+      mResolver.Namespaces := Namespaces;
+      mFound := LocalRanges(mResolver, FIndex, mTree, TDocumentUris.ToPath(mUri), mPosition, mConflicts);
     finally
-      Resolver.Free;
+      mResolver.Free;
     end;
-    if Length(Found) > 0 then
+    if Length(mFound) > 0 then
     begin
-      Exit(ToJson(Found, Conflicts));
+      Exit(ToJson(mFound, mConflicts));
     end;
   end;
-  if LocalsOnly then
+  if mLocalsOnly then
   begin
     Exit(TJSONNull.Create);
   end;
-  Found := Ranges(Tree, TDocumentUris.ToPath(Uri), Position);
-  Result := ToJson(Found);
+  mFound := Ranges(mTree, TDocumentUris.ToPath(mUri), mPosition);
+  Result := ToJson(mFound);
 end;
 
 initialization

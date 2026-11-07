@@ -93,10 +93,10 @@ begin
     finally
       mCapability.Free;
     end;
-    for mName in TArray<string>.Create(TLspArchitecture.Command, TLspArchitecture.SaveCommand, TLspQuery.Command,
-      TLspHotspots.Command, TLspHotspots.SaveCommand, TLspUnitRelations.Command, TLspUnitRelations.MoveCommand,
-      TLspUnitRelations.RemoveCommand, TLspUnitRelations.CostCommand, TLspUnitRelations.UseUnitCommand,
-      TLspSymbolPath.Command, TLspDebugDisplay.Command, TLspEventHandlers.Command, TLspRecursion.Command) do
+    for mName in TArray<string>.Create(TLspArchitecture.cCommand, TLspArchitecture.cSaveCommand, TLspQuery.cCommand,
+      TLspHotspots.cCommand, TLspHotspots.cSaveCommand, TLspUnitRelations.cCommand, TLspUnitRelations.cMoveCommand,
+      TLspUnitRelations.cRemoveCommand, TLspUnitRelations.cCostCommand, TLspUnitRelations.cUseUnitCommand,
+      TLspSymbolPath.cCommand, TLspDebugDisplay.cCommand, TLspEventHandlers.cCommand, TLspRecursion.cCommand) do
     begin
       Assert.IsTrue(Pos('"' + mName + '"', mText) > 0, mName);
     end;
@@ -116,13 +116,13 @@ begin
   mCommands := TLspCommands.Create;
   try
     mOverviews.RegisterReportCommands(mCommands);
-    mParams := CommandParams(TLspHotspots.Command);
+    mParams := CommandParams(TLspHotspots.cCommand);
     try
       Assert.IsTrue(mCommands.IsConcurrent(mParams));
     finally
       mParams.Free;
     end;
-    mParams := CommandParams(TLspArchitecture.Command);
+    mParams := CommandParams(TLspArchitecture.cCommand);
     try
       Assert.IsFalse(mCommands.IsConcurrent(mParams));
     finally
@@ -147,7 +147,7 @@ begin
   try
     mOverviews.RegisterUnitCommands(mCommands);
     mArguments.Add('file:///tmp/u.pas');
-    mResult := mCommands.Execute(TLspRecursion.Command, mArguments);
+    mResult := mCommands.Execute(TLspRecursion.cCommand, mArguments);
     try
       Assert.AreEqual(1, FReads);
       Assert.IsTrue(mResult is TJSONObject);

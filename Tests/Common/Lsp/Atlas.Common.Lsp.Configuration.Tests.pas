@@ -91,11 +91,11 @@ begin
   FConfiguration := TLspConfiguration.Create(FStore, FTransport,
     function(const AFileName: string; out AText: string): Boolean
     begin
-      if SameText(AFileName, Root + '\' + LegacyConfigurationFileName) then
+      if SameText(AFileName, Root + '\' + cLegacyConfigurationFileName) then
       begin
         AText := FLegacyText;
       end
-      else if SameText(AFileName, Root + '\' + ConfigurationFileName) then
+      else if SameText(AFileName, Root + '\' + cConfigurationFileName) then
       begin
         AText := FDiskText;
       end
@@ -417,7 +417,7 @@ begin
   FConfiguration.LoadWorkspace(Root);
   // Von außen geändert (Dialog des Plugins, #227): ohne Neustart neu gelesen.
   FDiskText := '{"platform": "Win32"}';
-  Assert.IsTrue(FConfiguration.FileChanged(Root + '\' + ConfigurationFileName));
+  Assert.IsTrue(FConfiguration.FileChanged(Root + '\' + cConfigurationFileName));
   Assert.AreEqual('Win32', FConfiguration.Settings.Platform);
   // Andere Dateien lassen die Einstellungen in Ruhe.
   Before := FChanges;
@@ -427,7 +427,7 @@ begin
   // Im Editor geöffnet: Der Text des Editors gilt.
   FStore.Open(ConfigUri, 'json', 1, '{"platform": "Linux64"}');
   FDiskText := '{"platform": "Win32"}';
-  Assert.IsFalse(FConfiguration.FileChanged(Root + '\' + ConfigurationFileName));
+  Assert.IsFalse(FConfiguration.FileChanged(Root + '\' + cConfigurationFileName));
   Assert.AreEqual('Linux64', FConfiguration.Settings.Platform);
 end;
 

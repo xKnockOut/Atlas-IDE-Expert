@@ -46,7 +46,7 @@ uses
 const
   // Wörter, die der Index nicht als Verwendung erfasst (Atlas.Common.Index.Extractor, CollectUsages):
   // Direktiven nach Routinenköpfen sowie Self und Result.
-  UncountedWords: array[0..34] of string = (
+  cUncountedWords: array[0..34] of string = (
     'abstract', 'assembler', 'cdecl', 'deprecated', 'dispid', 'dynamic', 'experimental',
     'export', 'external', 'far', 'final', 'forward', 'inline', 'library', 'local',
     'near', 'noreturn', 'overload', 'override', 'pascal', 'platform',
@@ -57,28 +57,28 @@ const
 
 class function TIndexUsages.Has(const AUsages: TArray<TIndexUsage>; const AName: string): Boolean;
 var
-  Low, High_, Middle, Order: Integer;
-  Key: string;
+  mLow, mHigh_, mMiddle, mOrder: Integer;
+  mKey: string;
 begin
   // Sortiert nach UpperCase(Name), ordinal (TIndexExtractor.CollectUsages).
-  Key := UpperCase(AName);
-  Low := 0;
-  High_ := High(AUsages);
-  while Low <= High_ do
+  mKey := UpperCase(AName);
+  mLow := 0;
+  mHigh_ := High(AUsages);
+  while mLow <= mHigh_ do
   begin
-    Middle := (Low + High_) div 2;
-    Order := CompareStr(UpperCase(AUsages[Middle].Name), Key);
-    if Order = 0 then
+    mMiddle := (mLow + mHigh_) div 2;
+    mOrder := CompareStr(UpperCase(AUsages[mMiddle].Name), mKey);
+    if mOrder = 0 then
     begin
       Exit(True);
     end;
-    if Order < 0 then
+    if mOrder < 0 then
     begin
-      Low := Middle + 1;
+      mLow := mMiddle + 1;
     end
     else
     begin
-      High_ := Middle - 1;
+      mHigh_ := mMiddle - 1;
     end;
   end;
   Result := False;
@@ -86,7 +86,7 @@ end;
 
 class function TIndexUsages.Counted(const AName: string): Boolean;
 begin
-  Result := IndexText(AName, UncountedWords) < 0;
+  Result := IndexText(AName, cUncountedWords) < 0;
 end;
 
 class function TIndexUsages.Lookup(const AUnit: TUnitIndex; const AName: string): TIndexUsageAnswer;
@@ -107,13 +107,13 @@ end;
 
 class function TIndexUsages.Lookup(const AIndex: ISymbolIndex; const AFileName, AName: string): TIndexUsageAnswer;
 var
-  Indexed: TUnitIndex;
+  mIndexed: TUnitIndex;
 begin
-  if (AIndex = nil) or not AIndex.FindFile(AFileName, Indexed) then
+  if (AIndex = nil) or not AIndex.FindFile(AFileName, mIndexed) then
   begin
     Exit(TIndexUsageAnswer.Unknown);
   end;
-  Result := Lookup(Indexed, AName);
+  Result := Lookup(mIndexed, AName);
 end;
 
 end.

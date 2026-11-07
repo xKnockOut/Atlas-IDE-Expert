@@ -42,7 +42,7 @@ type
 
   TUnresolvedNames = class
   public const
-    MaxNames = 100;
+    cMaxNames = 100;
   public
     /// <summary>True, wenn der Index die Unit System kennt und die Prüfung damit aussagekräftig ist.</summary>
     class function Available(const AIndex: ISymbolIndex): Boolean; static;
@@ -51,7 +51,8 @@ type
     class function UsesKnown(const AIndex: ISymbolIndex; const AUnits, ANamespaces: TArray<string>;
       const AEnsureUnit: TEnsureUnitFunc): Boolean; static;
     /// <summary>Nicht auflösbare Namen in ATree, höchstens MaxNames.</summary>
-    class function Find(AResolver: TNameResolver; ATree: TSyntaxTree; const AFileName: string): TArray<TUnresolvedName>; static;
+    class function Find(AResolver: TNameResolver; ATree: TSyntaxTree;
+      const AFileName: string): TArray<TUnresolvedName>; static;
     /// <summary>Vom Compiler eingebaute Routinen und Konstanten ohne Deklaration in System.pas.</summary>
     class function IsIntrinsic(const AName: string): Boolean; static;
     /// <summary>Meldung zu einem Eintrag mit Code (E2601, E2602, E2078); '' ohne Code.</summary>
@@ -81,7 +82,7 @@ const
 
 const
   // Sonderfälle zusätzlich zu TSystemIntrinsics (dort die Bezeichner von System ohne Quelltext, #880).
-  Intrinsics: array[0..63] of string = (
+  cIntrinsics: array[0..63] of string = (
     'Abs', 'Addr', 'Assert', 'Assigned', 'AtomicCmpExchange', 'AtomicDecrement', 'AtomicExchange',
     'AtomicIncrement', 'Break', 'Chr', 'Concat', 'Continue', 'Copy', 'Dec', 'Default',
     'Delete', 'Dispose', 'Exclude', 'Exit', 'False', 'FillChar', 'Finalize', 'GetTypeKind', 'Halt', 'HasWeakRef',
@@ -96,16 +97,16 @@ const
 
 class function TUnresolvedNames.IsIntrinsic(const AName: string): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
   // Dieselbe Liste wie Hover und Namensauflösung: Sqr, Pi, Int … fehlten hier und galten als nicht deklariert.
   if TSystemIntrinsics.IsKnown(AName) then
   begin
     Exit(True);
   end;
-  for Name in Intrinsics do
+  for mName in cIntrinsics do
   begin
-    if SameText(Name, AName) then
+    if SameText(mName, AName) then
     begin
       Exit(True);
     end;
@@ -215,9 +216,9 @@ end;
 
 class function TUnresolvedNames.Available(const AIndex: ISymbolIndex): Boolean;
 var
-  SystemUnit: TUnitIndex;
+  mSystemUnit: TUnitIndex;
 begin
-  Result := (AIndex <> nil) and AIndex.FindUnit('System', SystemUnit);
+  Result := (AIndex <> nil) and AIndex.FindUnit('System', mSystemUnit);
 end;
 
 type
@@ -236,25 +237,25 @@ end;
 class function TUnresolvedNames.UsesKnown(const AIndex: ISymbolIndex; const AUnits, ANamespaces: TArray<string>;
   const AEnsureUnit: TEnsureUnitFunc): Boolean;
 var
-  Name, Namespace: string;
-  Found: TUnitIndex;
-  Known: Boolean;
+  mName, mNamespace: string;
+  mFound: TUnitIndex;
+  mKnown: Boolean;
 begin
-  for Name in AUnits do
+  for mName in AUnits do
   begin
-    Known := AIndex.FindUnit(Name, Found);
-    for Namespace in ANamespaces do
+    mKnown := AIndex.FindUnit(mName, mFound);
+    for mNamespace in ANamespaces do
     begin
-      if not Known then
+      if not mKnown then
       begin
-        Known := AIndex.FindUnit(Namespace + '.' + Name, Found);
+        mKnown := AIndex.FindUnit(mNamespace + '.' + mName, mFound);
       end;
     end;
-    if not Known and Assigned(AEnsureUnit) then
+    if not mKnown and Assigned(AEnsureUnit) then
     begin
-      Known := AEnsureUnit(Name);
+      mKnown := AEnsureUnit(mName);
     end;
-    if not Known then
+    if not mKnown then
     begin
       Exit(False);
     end;
@@ -266,41 +267,41 @@ class function TUnresolvedNames.Find(AResolver: TNameResolver; ATree: TSyntaxTre
   const AFileName: string): TArray<TUnresolvedName>;
 var
   // Nachschlagen statt Liste: bei vielen Inline-Variablen sonst ein Lauf je Bezeichner (Diagnoselog 15.10.2026).
-  Declared: TDictionary<string, Boolean>;
+  mDeclared: TDictionary<string, Boolean>;
   // Konstruktor- und Destruktornamen in New/Dispose (#1382): keine eigenen Bezeichner.
   mMembers: TDictionary<TSyntaxNode, Boolean>;
 
   function IsDeclared(const AName: string): Boolean;
   begin
-    Result := Declared.ContainsKey(UpperCase(AName));
+    Result := mDeclared.ContainsKey(UpperCase(AName));
   end;
 
   // Namen, die die Grundstufe nicht sicher als lokal kennt: Ausnahmevariablen und Inline-Variablen.
   procedure CollectDeclared(ARoot: TSyntaxNode);
   var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
-    Index: Integer;
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
+    mIndex: Integer;
   begin
     // Iterativ mit eigenem Stapel (Bericht M1).
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ARoot);
-      while Pending.Count > 0 do
+      mPending.Push(ARoot);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if (Node.Kind in [TSyntaxKind.ExceptionHandler, TSyntaxKind.InlineVar, TSyntaxKind.InlineConst,
-          TSyntaxKind.LabeledStatement, TSyntaxKind.GotoStatement]) and (Node.Name <> '') then
+        mNode := mPending.Pop;
+        if (mNode.Kind in [TSyntaxKind.ExceptionHandler, TSyntaxKind.InlineVar, TSyntaxKind.InlineConst,
+          TSyntaxKind.LabeledStatement, TSyntaxKind.GotoStatement]) and (mNode.Name <> '') then
         begin
-          Declared.AddOrSetValue(UpperCase(Node.Name), True);
+          mDeclared.AddOrSetValue(UpperCase(mNode.Name), True);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
@@ -456,7 +457,7 @@ var
     mPending := TStack<TUnresolvedEntry>.Create;
     try
       mPending.Push(UnresolvedEntry(ARoot, False));
-      while (mPending.Count > 0) and (Length(Result) < MaxNames) do
+      while (mPending.Count > 0) and (Length(Result) < cMaxNames) do
       begin
         mEntry := mPending.Pop;
         if mEntry.Node.Kind in [TSyntaxKind.WithStatement, TSyntaxKind.AsmBlock, TSyntaxKind.AnonymousMethod,
@@ -485,7 +486,7 @@ begin
   begin
     Exit;
   end;
-  Declared := TDictionary<string, Boolean>.Create;
+  mDeclared := TDictionary<string, Boolean>.Create;
   mMembers := TDictionary<TSyntaxNode, Boolean>.Create;
   try
     CollectDeclared(ATree.Root);
@@ -497,7 +498,7 @@ begin
     end;
   finally
     mMembers.Free;
-    Declared.Free;
+    mDeclared.Free;
   end;
 end;
 

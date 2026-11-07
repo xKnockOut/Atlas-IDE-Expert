@@ -59,7 +59,7 @@ type
 
   TLspReferences = class
   public const
-    Method = 'textDocument/references';
+    cMethod = 'textDocument/references';
   private
     FStore: IDocumentStore;
     FIndex: ISymbolIndex;
@@ -145,22 +145,22 @@ end;
 
 function TokenAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
 var
-  Index: Integer;
-  Token: TPascalToken;
+  mIndex: Integer;
+  mToken: TPascalToken;
 begin
-  for Index := 0 to High(ATokens) do
+  for mIndex := 0 to High(ATokens) do
   begin
-    Token := ATokens[Index];
-    if (Token.StartPos.Line > APosition.Line) or
-      ((Token.StartPos.Line = APosition.Line) and (Token.StartPos.Character > APosition.Character)) then
+    mToken := ATokens[mIndex];
+    if (mToken.StartPos.Line > APosition.Line) or
+      ((mToken.StartPos.Line = APosition.Line) and (mToken.StartPos.Character > APosition.Character)) then
     begin
       Break;
     end;
     // Cursor auf oder direkt hinter dem Bezeichner.
-    if (Token.Kind = TPascalTokenKind.Identifier) and (Token.EndPos.Line = APosition.Line) and
-      (APosition.Character <= Token.EndPos.Character) then
+    if (mToken.Kind = TPascalTokenKind.Identifier) and (mToken.EndPos.Line = APosition.Line) and
+      (APosition.Character <= mToken.EndPos.Character) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -183,13 +183,13 @@ end;
 /// Formularmodell (#267).</summary>
 function InForm(const AFormText, AName: string): TArray<TTextRange>;
 var
-  Model: TFormModel;
+  mModel: TFormModel;
 begin
-  Model := TFormModel.Create(AFormText);
+  mModel := TFormModel.Create(AFormText);
   try
-    Result := Model.Occurrences(AName);
+    Result := mModel.Occurrences(AName);
   finally
-    Model.Free;
+    mModel.Free;
   end;
 end;
 
@@ -224,7 +224,7 @@ end;
 
 procedure TLspReferences.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterConcurrentRequest(Method, HandleReferences);
+  ADispatcher.RegisterConcurrentRequest(cMethod, HandleReferences);
 end;
 
 /// <summary>Stellen in ATree mit dem Namen AName, je eingestuft (#1119): Bezeichner über AClassifier.Classify,
@@ -233,37 +233,37 @@ function HitsInTree(AClassifier: TReferenceClassifier; ATree: TSyntaxTree; const
   const AInactive: TArray<TLspInactiveRegion>; const ACancellation: IJsonRpcCancellationToken):
   TArray<TReferenceHit>;
 var
-  Index: Integer;
-  Alternative: string;
-  Hit: TReferenceHit;
-  Hits: TList<TReferenceHit>;
+  mIndex: Integer;
+  mAlternative: string;
+  mHit: TReferenceHit;
+  mHits: TList<TReferenceHit>;
 begin
   Result := nil;
-  Alternative := AlternativeName(AName);
-  Hits := TList<TReferenceHit>.Create;
+  mAlternative := AlternativeName(AName);
+  mHits := TList<TReferenceHit>.Create;
   // Den Baum einmal auswerten statt je Treffer (Code-Review P-01); verschachtelt zulässig, wenn der
   // Aufrufer ihn schon gepinnt hat.
   AClassifier.Resolver.PinTree(ATree, AFileName);
   try
     // Über den Index statt for-in: keine Kopie des Token-Records je Token.
-    for Index := 0 to High(ATree.Tokens) do
+    for mIndex := 0 to High(ATree.Tokens) do
     begin
-      if ATree.Tokens[Index].Kind = TPascalTokenKind.StringLiteral then
+      if ATree.Tokens[mIndex].Kind = TPascalTokenKind.StringLiteral then
       begin
         // Nur der Name zwischen den Hochkommas, damit die Markierung genau ihn trifft.
-        if AClassifier.TextMatch(ATree.Tokens[Index], Hit.Confidence) then
+        if AClassifier.TextMatch(ATree.Tokens[mIndex], mHit.Confidence) then
         begin
-          Hit.Range := TTextRange.Create(
-            TTextPosition.Create(ATree.Tokens[Index].StartPos.Line, ATree.Tokens[Index].StartPos.Character + 1),
-            TTextPosition.Create(ATree.Tokens[Index].EndPos.Line, ATree.Tokens[Index].EndPos.Character - 1));
-          Hits.Add(Hit);
+          mHit.Range := TTextRange.Create(
+            TTextPosition.Create(ATree.Tokens[mIndex].StartPos.Line, ATree.Tokens[mIndex].StartPos.Character + 1),
+            TTextPosition.Create(ATree.Tokens[mIndex].EndPos.Line, ATree.Tokens[mIndex].EndPos.Character - 1));
+          mHits.Add(mHit);
         end;
         Continue;
       end;
       // Attribute (#119): [TestFixture] verwendet TestFixtureAttribute.
-      if (ATree.Tokens[Index].Kind <> TPascalTokenKind.Identifier) or
-        not (SameText(CleanName(ATree.Tokens[Index].Text), AName) or
-        SameText(CleanName(ATree.Tokens[Index].Text), Alternative)) then
+      if (ATree.Tokens[mIndex].Kind <> TPascalTokenKind.Identifier) or
+        not (SameText(CleanName(ATree.Tokens[mIndex].Text), AName) or
+        SameText(CleanName(ATree.Tokens[mIndex].Text), mAlternative)) then
       begin
         Continue;
       end;
@@ -271,16 +271,16 @@ begin
       begin
         ACancellation.ThrowIfCancellationRequested;
       end;
-      if AClassifier.Classify(ATree, AFileName, Index, AInactive, Hit.Confidence) then
+      if AClassifier.Classify(ATree, AFileName, mIndex, AInactive, mHit.Confidence) then
       begin
-        Hit.Range := TTextRange.Create(ATree.Tokens[Index].StartPos, ATree.Tokens[Index].EndPos);
-        Hits.Add(Hit);
+        mHit.Range := TTextRange.Create(ATree.Tokens[mIndex].StartPos, ATree.Tokens[mIndex].EndPos);
+        mHits.Add(mHit);
       end;
     end;
-    Result := Hits.ToArray;
+    Result := mHits.ToArray;
   finally
     AClassifier.Resolver.UnpinTree;
-    Hits.Free;
+    mHits.Free;
   end;
 end;
 
@@ -605,8 +605,8 @@ begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPositionValue)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      cTexts[TReferencesText.FieldsTextDocumentUriAndPosition].Text + Method);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TReferencesText.FieldsTextDocumentUriAndPosition].Text + cMethod);
   end;
   if not TJSONObject(AParams).TryGetValue<Boolean>('context.includeDeclaration', mIncludeDeclaration) then
   begin

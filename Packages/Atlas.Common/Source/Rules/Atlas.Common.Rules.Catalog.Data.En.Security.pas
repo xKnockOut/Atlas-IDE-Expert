@@ -8,7 +8,7 @@
 interface
 
 const
-  CatalogLinesEnSecurity: array[0..109] of string = (
+  cCatalogLinesEnSecurity: array[0..109] of string = (
     '{',
     '      "id": "bidi-control",',
     '      "name": "Bidirectional control character",',

@@ -36,7 +36,7 @@ type
 
   TQualifiedNames = class
   public const
-    Command = 'atlas.server.qualifiedName';
+    cCommand = 'atlas.server.qualifiedName';
   public
     /// <summary>Qualifizierter Name von ASymbol. ATree und AFileName gehören zur Datei, in der gesucht wurde;
     /// sie liefern die umgebenden Routinen lokaler Symbole.</summary>
@@ -87,59 +87,59 @@ end;
 /// <summary>Namen der Routinen mit Rumpf, in denen APosition liegt, von außen nach innen.</summary>
 function EnclosingRoutines(ANode: TSyntaxNode; const APosition: TTextPosition): TArray<string>;
 var
-  Index: Integer;
-  Node, Child: TSyntaxNode;
+  mIndex: Integer;
+  mNode, mChild: TSyntaxNode;
 begin
   // Schleife statt Rekursion (Bericht M1): dem ersten Kind folgen, das APosition enthält.
   Result := nil;
-  Node := ANode;
-  while Node <> nil do
+  mNode := ANode;
+  while mNode <> nil do
   begin
-    Child := nil;
-    for Index := 0 to Node.ChildCount - 1 do
+    mChild := nil;
+    for mIndex := 0 to mNode.ChildCount - 1 do
     begin
-      if not Before(APosition, Node[Index].StartPos) and Before(APosition, Node[Index].EndPos) then
+      if not Before(APosition, mNode[mIndex].StartPos) and Before(APosition, mNode[mIndex].EndPos) then
       begin
-        Child := Node[Index];
+        mChild := mNode[mIndex];
         Break;
       end;
     end;
     // Der Name der Routine selbst gehört nicht zu ihrem Inhalt: erst ab dem Rumpf bzw. den Deklarationen.
-    if (Child <> nil) and (Child.Kind = TSyntaxKind.RoutineDecl) and (Child.FindChild(TSyntaxKind.Block) <> nil) and
-      (APosition.Line > Child.StartPos.Line) then
+    if (mChild <> nil) and (mChild.Kind = TSyntaxKind.RoutineDecl) and (mChild.FindChild(TSyntaxKind.Block) <> nil) and
+      (APosition.Line > mChild.StartPos.Line) then
     begin
-      Result := Result + [Child.Name];
+      Result := Result + [mChild.Name];
     end;
-    Node := Child;
+    mNode := mChild;
   end;
 end;
 
 /// <summary>ATypeName mit &lt;Typparametern&gt;, wenn der Typ im Container AContainer der Unit generisch ist.</summary>
 function WithTypeParams(const AUnit: TUnitIndex; AFound: Boolean; const AContainer, ATypeName: string): string;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
   Result := ATypeName;
   if not AFound then
   begin
     Exit;
   end;
-  for Symbol in AUnit.Symbols do
+  for mSymbol in AUnit.Symbols do
   begin
-    if SameText(Symbol.Name, ATypeName) and SameText(Symbol.Container, AContainer) and (Symbol.TypeParams <> '') and
-      (Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+    if SameText(mSymbol.Name, ATypeName) and SameText(mSymbol.Container, AContainer) and (mSymbol.TypeParams <> '') and
+      (mSymbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
       TIndexSymbolKind.InterfaceType, TIndexSymbolKind.TypeAlias]) then
     begin
-      Exit(ATypeName + '<' + StringReplace(Symbol.TypeParams, ',', ', ', [rfReplaceAll]) + '>');
+      Exit(ATypeName + '<' + StringReplace(mSymbol.TypeParams, ',', ', ', [rfReplaceAll]) + '>');
     end;
   end;
 end;
 
 function InUses(ANode: TSyntaxNode; const APosition: TTextPosition): Boolean;
 var
-  Position: TTextPosition;
+  mPosition: TTextPosition;
 begin
-  Position := APosition;
+  mPosition := APosition;
   // Search statt Rekursion (Bericht M1); in eine uses-Liste geht die Suche nicht weiter hinein.
   Result := ANode.Search(
     function(ACandidate: TSyntaxNode): TSyntaxSearchStep
@@ -150,7 +150,7 @@ begin
         Exit;
       end;
       Result := TSyntaxSearchStep.Skip;
-      if not Before(Position, ACandidate.StartPos) and Before(Position, ACandidate.EndPos) then
+      if not Before(mPosition, ACandidate.StartPos) and Before(mPosition, ACandidate.EndPos) then
       begin
         Result := TSyntaxSearchStep.Found;
       end;
@@ -377,38 +377,38 @@ end;
 class function TQualifiedNames.Execute(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AEnsureUnit: TEnsureUnitFunc; const ANamespaces: TArray<string>; const AArguments: TJSONArray): TJSONValue;
 var
-  Uri, Name, Error: string;
-  Document: ITextDocument;
-  Shared: ISharedSyntaxTree;
-  Resolver: TNameResolver;
-  WithParameters: Boolean;
+  mUri, mName, mError: string;
+  mDocument: ITextDocument;
+  mShared: ISharedSyntaxTree;
+  mResolver: TNameResolver;
+  mWithParameters: Boolean;
 begin
   if (AArguments = nil) or (AArguments.Count < 2) or not (AArguments.Items[0] is TJSONString) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TQualifiedNamesText.URIAndPositionExpected].Text);
   end;
-  Uri := AArguments.Items[0].Value;
-  WithParameters := (AArguments.Count > 2) and (AArguments.Items[2] is TJSONBool) and
+  mUri := AArguments.Items[0].Value;
+  mWithParameters := (AArguments.Count > 2) and (AArguments.Items[2] is TJSONBool) and
     TJSONBool(AArguments.Items[2]).AsBoolean;
-  if not AStore.TryGet(Uri, Document) then
+  if not AStore.TryGet(mUri, mDocument) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TQualifiedNamesText.DocumentIsNotOpen].Text +
-      Uri);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TQualifiedNamesText.DocumentIsNotOpen].Text +
+      mUri);
   end;
-  Shared := TSyntaxTreeCache.Get(Document);
-  Resolver := TNameResolver.Create(AIndex, AEnsureUnit);
+  mShared := TSyntaxTreeCache.Get(mDocument);
+  mResolver := TNameResolver.Create(AIndex, AEnsureUnit);
   try
-    Resolver.Namespaces := ANamespaces;
-    if not At(Resolver, AIndex, Shared.Tree, TQualifiedNameRequest.Create(TDocumentUris.ToPath(Uri),
-      TLspPositions.ReadPosition(AArguments.Items[1]), WithParameters), Name, Error) then
+    mResolver.Namespaces := ANamespaces;
+    if not At(mResolver, AIndex, mShared.Tree, TQualifiedNameRequest.Create(TDocumentUris.ToPath(mUri),
+      TLspPositions.ReadPosition(AArguments.Items[1]), mWithParameters), mName, mError) then
     begin
-      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, Error);
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, mError);
     end;
   finally
-    Resolver.Free;
+    mResolver.Free;
   end;
-  Result := TJSONString.Create(Name);
+  Result := TJSONString.Create(mName);
 end;
 
 initialization

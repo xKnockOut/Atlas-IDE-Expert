@@ -43,7 +43,7 @@ uses
   System.StrUtils;
 
 const
-  DirectiveNames: array[0..100] of string = (
+  cDirectiveNames: array[0..100] of string = (
     'ALIGN', 'APPTYPE', 'ASSERTIONS', 'BOOLEVAL', 'CODEALIGN', 'CODEPAGE', 'DEBUGINFO', 'DEFINE', 'DEFINITIONINFO',
     'DENYPACKAGEUNIT', 'DESCRIPTION', 'DESIGNONLY', 'DYNAMICBASE', 'ELSE', 'ELSEIF', 'ENDIF', 'ENDREGION',
     'EXCESSPRECISION', 'EXTENDEDCOMPATIBILITY', 'EXTENDEDSYNTAX', 'EXTENSION', 'EXTERNALSYM', 'FINITEFLOAT',
@@ -60,14 +60,14 @@ const
     'WRITEABLECONST', 'YD', 'ZEROBASEDSTRINGS');
 
   // Direktiven nach Routinenköpfen, ohne Groß-/Kleinschreibung; library und inline sind auch Schlüsselwörter.
-  RoutineDirectiveNames: array[0..31] of string = (
+  cRoutineDirectiveNames: array[0..31] of string = (
     'abstract', 'assembler', 'cdecl', 'deprecated', 'dispid', 'dynamic', 'experimental',
     'export', 'external', 'far', 'final', 'forward', 'inline', 'library', 'local',
     'message', 'near', 'noreturn', 'overload', 'override', 'pascal', 'platform',
     'register', 'reintroduce', 'safecall', 'static', 'stdcall', 'unsafe', 'varargs',
     'virtual', 'winapi', 'delayed');
 
-  WarningNames: array[0..82] of string = (
+  cWarningNames: array[0..82] of string = (
     'ASG_TO_TYPED_CONST', 'BAD_GLOBAL_SYMBOL', 'BOUNDS_ERROR', 'CASE_LABEL_RANGE', 'COMBINING_SIGNED_UNSIGNED',
     'COMBINING_SIGNED_UNSIGNED64', 'COMPARING_SIGNED_UNSIGNED', 'COMPARING_SIGNED_UNSIGNED64', 'COMPARISON_FALSE',
     'COMPARISON_TRUE', 'CONSTRUCTING_ABSTRACT', 'CVT_ACHAR_TO_WCHAR', 'CVT_NARROWING_STRING_LOST',
@@ -110,24 +110,24 @@ end;
 
 class function TDirectiveNames.LeadingName(const AText: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := 1;
-  while (Index <= Length(AText)) and CharInSet(AText[Index], ['A'..'Z', 'a'..'z', '_']) do
+  mIndex := 1;
+  while (mIndex <= Length(AText)) and CharInSet(AText[mIndex], ['A'..'Z', 'a'..'z', '_']) do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Result := Copy(AText, 1, Index - 1);
+  Result := Copy(AText, 1, mIndex - 1);
 end;
 
 class function TDirectiveNames.Directives: TArray<string>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  SetLength(Result, Length(DirectiveNames));
-  for Index := 0 to High(DirectiveNames) do
+  SetLength(Result, Length(cDirectiveNames));
+  for mIndex := 0 to High(cDirectiveNames) do
   begin
-    Result[Index] := DirectiveNames[Index];
+    Result[mIndex] := cDirectiveNames[mIndex];
   end;
 end;
 
@@ -136,40 +136,40 @@ begin
   Result := (Length(AName) = 1) and CharInSet(AName[1], ['A'..'Z', 'a'..'z']);
   if not Result then
   begin
-    Result := MatchText(AName, DirectiveNames);
+    Result := MatchText(AName, cDirectiveNames);
   end;
 end;
 
 class function TDirectiveNames.Warnings: TArray<string>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  SetLength(Result, Length(WarningNames));
-  for Index := 0 to High(WarningNames) do
+  SetLength(Result, Length(cWarningNames));
+  for mIndex := 0 to High(cWarningNames) do
   begin
-    Result[Index] := WarningNames[Index];
+    Result[mIndex] := cWarningNames[mIndex];
   end;
 end;
 
 class function TDirectiveNames.IsWarning(const AName: string): Boolean;
 begin
-  Result := MatchText(AName, WarningNames);
+  Result := MatchText(AName, cWarningNames);
 end;
 
 class function TDirectiveNames.RoutineDirectives: TArray<string>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  SetLength(Result, Length(RoutineDirectiveNames));
-  for Index := 0 to High(RoutineDirectiveNames) do
+  SetLength(Result, Length(cRoutineDirectiveNames));
+  for mIndex := 0 to High(cRoutineDirectiveNames) do
   begin
-    Result[Index] := RoutineDirectiveNames[Index];
+    Result[mIndex] := cRoutineDirectiveNames[mIndex];
   end;
 end;
 
 class function TDirectiveNames.IsRoutineDirective(const AName: string): Boolean;
 begin
-  Result := MatchText(AName, RoutineDirectiveNames);
+  Result := MatchText(AName, cRoutineDirectiveNames);
 end;
 
 end.

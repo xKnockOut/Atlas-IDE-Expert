@@ -31,8 +31,8 @@ uses
   Atlas.Common.Projects.PackageReader;
 
 const
-  SyntaxRuleId = 'syntax';
-  LanguageFeatureRuleId = 'language-feature';
+  cSyntaxRuleId = 'syntax';
+  cLanguageFeatureRuleId = 'language-feature';
 
 type
   /// <summary>Treffer einer geprüften Datei.</summary>
@@ -274,72 +274,72 @@ end;
 
 class function TFileChecker.SyntaxDescriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(SyntaxRuleId, TRuleSeverity.Error, cTexts[TCheckerText.SyntaxTitle].Text);
+  Result := TRuleDescriptor.Create(cSyntaxRuleId, TRuleSeverity.Error, cTexts[TCheckerText.SyntaxTitle].Text);
 end;
 
 class function TFileChecker.SyntaxFindings(const ADiagnostics: TArray<TSyntaxDiagnostic>;
   const ASettings: TServerSettings): TArray<TRuleFinding>;
 var
-  Diagnostic: TSyntaxDiagnostic;
-  Finding: TRuleFinding;
-  Severity: TRuleSeverity;
+  mDiagnostic: TSyntaxDiagnostic;
+  mFinding: TRuleFinding;
+  mSeverity: TRuleSeverity;
 begin
   Result := nil;
-  Severity := ASettings.RuleSeverity(SyntaxRuleId, TRuleSeverity.Error);
+  mSeverity := ASettings.RuleSeverity(cSyntaxRuleId, TRuleSeverity.Error);
   // Auch Syntaxfehler gehören zu einer Gruppe (#909, seit #1022 „Compiler vorab“).
-  if (Severity = TRuleSeverity.Off) or TRuleEngine.GroupOff(SyntaxRuleId, ASettings) then
+  if (mSeverity = TRuleSeverity.Off) or TRuleEngine.GroupOff(cSyntaxRuleId, ASettings) then
   begin
     Exit;
   end;
-  for Diagnostic in ADiagnostics do
+  for mDiagnostic in ADiagnostics do
   begin
-    Finding := Default(TRuleFinding);
-    Finding.RuleId := SyntaxRuleId;
-    Finding.Range := TTextRange.Create(Diagnostic.StartPos, Diagnostic.EndPos);
-    Finding.Message := Diagnostic.Message;
-    Finding.Severity := Severity;
-    Finding.Confidence := TRuleConfidence.High;
-    if Diagnostic.FixTitle <> '' then
+    mFinding := Default(TRuleFinding);
+    mFinding.RuleId := cSyntaxRuleId;
+    mFinding.Range := TTextRange.Create(mDiagnostic.StartPos, mDiagnostic.EndPos);
+    mFinding.Message := mDiagnostic.Message;
+    mFinding.Severity := mSeverity;
+    mFinding.Confidence := TRuleConfidence.High;
+    if mDiagnostic.FixTitle <> '' then
     begin
-      Finding.Fixes := [TRuleFix.Create(Diagnostic.FixTitle, Diagnostic.FixEdits, Diagnostic.FixSafe)];
+      mFinding.Fixes := [TRuleFix.Create(mDiagnostic.FixTitle, mDiagnostic.FixEdits, mDiagnostic.FixSafe)];
     end;
-    Result := Result + [Finding];
+    Result := Result + [mFinding];
   end;
 end;
 
 class function TFileChecker.LanguageFeatureDescriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(LanguageFeatureRuleId, TRuleSeverity.Warning,
+  Result := TRuleDescriptor.Create(cLanguageFeatureRuleId, TRuleSeverity.Warning,
     cTexts[TCheckerText.NewerFeatureTitle].Text);
 end;
 
 class function TFileChecker.LanguageFeatureFindings(ATree: TSyntaxTree; const ASettings: TServerSettings;
   const ALanguageLevel: string; const AInactive: TArray<TTextRange>): TArray<TRuleFinding>;
 var
-  Feature: TLanguageFeatureFinding;
-  Finding: TRuleFinding;
-  Severity: TRuleSeverity;
+  mFeature: TLanguageFeatureFinding;
+  mFinding: TRuleFinding;
+  mSeverity: TRuleSeverity;
 begin
   Result := nil;
-  Severity := ASettings.RuleSeverity(LanguageFeatureRuleId, TRuleSeverity.Warning);
-  if (Severity = TRuleSeverity.Off) or TRuleEngine.GroupOff(LanguageFeatureRuleId, ASettings) then
+  mSeverity := ASettings.RuleSeverity(cLanguageFeatureRuleId, TRuleSeverity.Warning);
+  if (mSeverity = TRuleSeverity.Off) or TRuleEngine.GroupOff(cLanguageFeatureRuleId, ASettings) then
   begin
     Exit;
   end;
-  for Feature in TLanguageFeatures.Check(ATree, ALanguageLevel, AInactive) do
+  for mFeature in TLanguageFeatures.Check(ATree, ALanguageLevel, AInactive) do
   begin
     // Bedingungsausdrücke meldet die Regel conditional-expression-version (#684) als Fehler mit Korrektur.
-    if Feature.Feature = TLanguageFeature.IfExpression then
+    if mFeature.Feature = TLanguageFeature.IfExpression then
     begin
       Continue;
     end;
-    Finding := Default(TRuleFinding);
-    Finding.RuleId := LanguageFeatureRuleId;
-    Finding.Range := TTextRange.Create(Feature.StartPos, Feature.EndPos);
-    Finding.Message := Feature.Message;
-    Finding.Severity := Severity;
-    Finding.Confidence := TRuleConfidence.High;
-    Result := Result + [Finding];
+    mFinding := Default(TRuleFinding);
+    mFinding.RuleId := cLanguageFeatureRuleId;
+    mFinding.Range := TTextRange.Create(mFeature.StartPos, mFeature.EndPos);
+    mFinding.Message := mFeature.Message;
+    mFinding.Severity := mSeverity;
+    mFinding.Confidence := TRuleConfidence.High;
+    Result := Result + [mFinding];
   end;
 end;
 
@@ -351,9 +351,9 @@ end;
 class function TFileChecker.CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
   const ARelativePath, AText: string): TArray<TRuleFinding>;
 var
-  Scopes: TFindingScopes;
+  mScopes: TFindingScopes;
 begin
-  Result := CheckText(ARules, ASettings, ARelativePath, AText, TCheckSource.Default, Scopes);
+  Result := CheckText(ARules, ASettings, ARelativePath, AText, TCheckSource.Default, mScopes);
 end;
 
 class function TFileChecker.CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
@@ -366,10 +366,10 @@ end;
 class function TFileChecker.CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
   const ARelativePath, AText: string; const AProject: TCheckProject): TArray<TRuleFinding>;
 var
-  Scopes: TFindingScopes;
+  mScopes: TFindingScopes;
 begin
   Result := CheckText(ARules, ASettings, ARelativePath, AText,
-    TCheckOrigin.Make(AProject, TCheckSource.Default), Scopes);
+    TCheckOrigin.Make(AProject, TCheckSource.Default), mScopes);
 end;
 
 class function TFileChecker.CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
@@ -383,10 +383,10 @@ end;
 class function TFileChecker.CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
   const ARelativePath, AText: string; const ASource: TCheckSource): TArray<TRuleFinding>;
 var
-  Scopes: TFindingScopes;
+  mScopes: TFindingScopes;
 begin
   Result := CheckText(ARules, ASettings, ARelativePath, AText,
-    TCheckOrigin.Make(Default(TCheckProject), ASource), Scopes);
+    TCheckOrigin.Make(Default(TCheckProject), ASource), mScopes);
 end;
 
 class function TFileChecker.CheckText(const ARules: TArray<IRule>; const ASettings: TServerSettings;
@@ -425,15 +425,15 @@ end;
 class function TFileChecker.PackageOf(const APackages: TArray<TPackageSource>; const AUnitName: string):
   TCheckProject;
 var
-  Source: TPackageSource;
+  mSource: TPackageSource;
 begin
   Result := Default(TCheckProject);
-  for Source in APackages do
+  for mSource in APackages do
   begin
-    if Source.IsPackage and (Source.ContainsIndex(AUnitName) >= 0) then
+    if mSource.IsPackage and (mSource.ContainsIndex(AUnitName) >= 0) then
     begin
       Result.Application := TRuleApplicationKind.Package;
-      Result.Name := Source.Name;
+      Result.Name := mSource.Name;
       Exit;
     end;
   end;
@@ -443,11 +443,11 @@ class function TFileChecker.CheckText(const ARules: TArray<IRule>; const ASettin
   const ARelativePath, AText: string; const AOrigin: TCheckOrigin; out AScopes: TFindingScopes):
   TArray<TRuleFinding>;
 var
-  Tree: TSyntaxTree;
-  Processed: TPreprocessorResult;
-  Context: TRuleContext;
-  Syntax: TArray<TRuleFinding>;
-  FileName: string;
+  mTree: TSyntaxTree;
+  mProcessed: TPreprocessorResult;
+  mContext: TRuleContext;
+  mSyntax: TArray<TRuleFinding>;
+  mFileName: string;
 begin
   AScopes := TFindingScopes.FromTree(nil);
   if (ARelativePath <> '') and ASettings.IsExcluded(ARelativePath) then
@@ -456,38 +456,38 @@ begin
   end;
   // Baum nur aus den aktiven Zweigen wie im Editor: Inaktive Zweige erzeugen keine Syntaxfehler und keine
   // Regeltreffer.
-  Tree := TSyntaxTreeCache.ParseActive(AText, AOrigin.Source.Options, nil, Processed);
+  mTree := TSyntaxTreeCache.ParseActive(AText, AOrigin.Source.Options, nil, mProcessed);
   try
-    AScopes := TFindingScopes.FromTree(Tree);
+    AScopes := TFindingScopes.FromTree(mTree);
     // Der Baum enthält nur die aktiven Zweige: Inaktive erzeugen keine Syntaxfehler.
-    Syntax := SyntaxFindings(Tree.Diagnostics, ASettings) +
-      LanguageFeatureFindings(Tree, ASettings, LanguageLevelOf(ASettings), nil);
-    Context := Default(TRuleContext);
-    Context.RelativePath := ARelativePath;
-    Context.UnitName := ChangeFileExt(ExtractFileName(StringReplace(ARelativePath, '/', '\', [rfReplaceAll])), '');
-    Context.Text := AText;
-    Context.Tree := Tree;
+    mSyntax := SyntaxFindings(mTree.Diagnostics, ASettings) +
+      LanguageFeatureFindings(mTree, ASettings, LanguageLevelOf(ASettings), nil);
+    mContext := Default(TRuleContext);
+    mContext.RelativePath := ARelativePath;
+    mContext.UnitName := ChangeFileExt(ExtractFileName(StringReplace(ARelativePath, '/', '\', [rfReplaceAll])), '');
+    mContext.Text := AText;
+    mContext.Tree := mTree;
     // Inaktive Zweige für Regeln, die selbst über die Token gehen (unused-uses, #1352).
-    Context.InactiveRanges := TPascalPreprocessor.MainInactive(Processed);
-    Context.Application := AOrigin.Project.Application;
-    Context.ProjectName := AOrigin.Project.Name;
-    Context.AutoCreateForms := AOrigin.Project.AutoCreateForms;
-    Context.ProjectMainSource := AOrigin.Project.ProjectMainSource;
+    mContext.InactiveRanges := TPascalPreprocessor.MainInactive(mProcessed);
+    mContext.Application := AOrigin.Project.Application;
+    mContext.ProjectName := AOrigin.Project.Name;
+    mContext.AutoCreateForms := AOrigin.Project.AutoCreateForms;
+    mContext.ProjectMainSource := AOrigin.Project.ProjectMainSource;
     // Index und Projektdienste auf demselben Weg wie im Server (#1112).
-    AOrigin.Project.Services.ApplyTo(Context);
+    AOrigin.Project.Services.ApplyTo(mContext);
     // Pfad aus dem Projekt (#1054), sonst aus der Symbolquelle (#860): Formulardatei und Nachbardateien.
-    FileName := AOrigin.Project.FileName;
-    if FileName = '' then
+    mFileName := AOrigin.Project.FileName;
+    if mFileName = '' then
     begin
-      FileName := AOrigin.Source.FileName;
+      mFileName := AOrigin.Source.FileName;
     end;
-    if FileName <> '' then
+    if mFileName <> '' then
     begin
-      SetFiles(Context, FileName);
+      SetFiles(mContext, mFileName);
     end;
-    Result := Syntax + TRuleEngine.Run(ARules, ASettings, Context);
+    Result := mSyntax + TRuleEngine.Run(ARules, ASettings, mContext);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 

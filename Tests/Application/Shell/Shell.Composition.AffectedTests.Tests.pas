@@ -128,7 +128,7 @@ begin
       on E: EJsonRpcError do
         mCode := E.Code;
     end;
-    Assert.AreEqual(TJsonRpcErrorCode.InvalidParams, mCode);
+    Assert.AreEqual(TJsonRpcErrorCode.cInvalidParams, mCode);
   finally
     mParams.Free;
   end;
@@ -148,7 +148,7 @@ begin
       on E: EJsonRpcError do
         mCode := E.Code;
     end;
-    Assert.AreEqual(TJsonRpcErrorCode.RequestFailed, mCode);
+    Assert.AreEqual(TJsonRpcErrorCode.cRequestFailed, mCode);
   finally
     mParams.Free;
   end;

@@ -105,54 +105,54 @@ end;
 
 function ExecuteExtract(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  Name, Why: string;
-  First, Last, Indent: Integer;
-  Options: TExtractOptions;
-  Action: TCodeAction;
-  Edit: TTextEdit;
+  mSource: TCommandSource;
+  mName, mWhy: string;
+  mFirst, mLast, mIndent: Integer;
+  mOptions: TExtractOptions;
+  mAction: TCodeAction;
+  mEdit: TTextEdit;
 begin
   AEdits := nil;
-  Name := Trim(AContext.Arguments);
-  if not IsValidIdent(Name) then
+  mName := Trim(AContext.Arguments);
+  if not IsValidIdent(mName) then
   begin
     Exit(Fail(cTexts[TRefactoringCommandsText.ExpectedIsExtractName].Text, AReason));
   end;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    if Source.RoutineAt = nil then
+    if mSource.RoutineAt = nil then
     begin
       Exit(Fail(cTexts[TRefactoringCommandsText.ExtractOnlyAppliesInThe].Text, AReason));
     end;
-    First := Source.Line + 1;
-    if (First > High(Source.Lines)) or (Trim(Source.Lines[First]) = '') then
+    mFirst := mSource.Line + 1;
+    if (mFirst > High(mSource.Lines)) or (Trim(mSource.Lines[mFirst]) = '') then
     begin
       Exit(Fail(cTexts[TRefactoringCommandsText.BelowExtractThereAreNo].Text, AReason));
     end;
     // Bis zur nächsten Leerzeile; eine weniger eingerückte Zeile (end des Blocks) beendet die Auswahl.
-    Indent := LeadingOf(Source.Lines[First]);
-    Last := First;
-    while (Last < High(Source.Lines)) and (Trim(Source.Lines[Last + 1]) <> '') and
-      (LeadingOf(Source.Lines[Last + 1]) >= Indent) do
+    mIndent := LeadingOf(mSource.Lines[mFirst]);
+    mLast := mFirst;
+    while (mLast < High(mSource.Lines)) and (Trim(mSource.Lines[mLast + 1]) <> '') and
+      (LeadingOf(mSource.Lines[mLast + 1]) >= mIndent) do
     begin
-      Inc(Last);
+      Inc(mLast);
     end;
-    Options := TExtractOptions.Default;
-    Options.Style := AContext.Style;
-    if not TExtractRefactoring.ExtractMethod(Source.Text, Source.Tree, TTextRange.Create(First, Indent, Last,
-      Length(Source.Lines[Last])), Options, Action, Why) then
+    mOptions := TExtractOptions.Default;
+    mOptions.Style := AContext.Style;
+    if not TExtractRefactoring.ExtractMethod(mSource.Text, mSource.Tree, TTextRange.Create(mFirst, mIndent, mLast,
+      Length(mSource.Lines[mLast])), mOptions, mAction, mWhy) then
     begin
-      Exit(Fail('/extract: ' + Why, AReason));
+      Exit(Fail('/extract: ' + mWhy, AReason));
     end;
-    for Edit in Action.Edits do
+    for mEdit in mAction.Edits do
     begin
-      AEdits := AEdits + [TTextEdit.Create(Edit.Range, TRegEx.Replace(Edit.NewText,
-        '\b' + TExtractRefactoring.MethodName + '\b', Name))];
+      AEdits := AEdits + [TTextEdit.Create(mEdit.Range, TRegEx.Replace(mEdit.NewText,
+        '\b' + TExtractRefactoring.cMethodName + '\b', mName))];
     end;
-    AEdits := AEdits + [Source.RemoveCommand];
+    AEdits := AEdits + [mSource.RemoveCommand];
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -248,31 +248,31 @@ end;
 
 function ExecuteInline(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  Action: TCodeAction;
-  Why: string;
-  Next: Integer;
+  mSource: TCommandSource;
+  mAction: TCodeAction;
+  mWhy: string;
+  mNext: Integer;
 begin
   AEdits := nil;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    if Source.RoutineAt = nil then
+    if mSource.RoutineAt = nil then
     begin
       Exit(Fail(cTexts[TRefactoringCommandsText.InlineOnlyAppliesInThe].Text, AReason));
     end;
-    Next := Source.Line + 1;
-    if (Next > High(Source.Lines)) or (Trim(Source.Lines[Next]) = '') then
+    mNext := mSource.Line + 1;
+    if (mNext > High(mSource.Lines)) or (Trim(mSource.Lines[mNext]) = '') then
     begin
       Exit(Fail(cTexts[TRefactoringCommandsText.BelowInlineThereIsNo].Text, AReason));
     end;
-    if not InlineOnLine(AContext, Source, Next, Action, Why) then
+    if not InlineOnLine(AContext, mSource, mNext, mAction, mWhy) then
     begin
-      Exit(Fail('/inline: ' + Why, AReason));
+      Exit(Fail('/inline: ' + mWhy, AReason));
     end;
-    AEdits := Action.Edits + [Source.RemoveCommand];
+    AEdits := mAction.Edits + [mSource.RemoveCommand];
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -304,72 +304,72 @@ end;
 
 function ExecuteFix(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  Findings: TArray<TSlashFinding>;
-  Finding: TSlashFinding;
+  mSource: TCommandSource;
+  mFindings: TArray<TSlashFinding>;
+  mFinding: TSlashFinding;
 begin
   AEdits := nil;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    if not FindingsBelow(AContext, Source, Findings, AReason) then
+    if not FindingsBelow(AContext, mSource, mFindings, AReason) then
     begin
       Exit(False);
     end;
-    for Finding in Findings do
+    for mFinding in mFindings do
     begin
-      AEdits := AEdits + Finding.SafeFix;
+      AEdits := AEdits + mFinding.SafeFix;
     end;
     if AEdits = nil then
     begin
       Exit(Fail(NoSafeFixHint, AReason));
     end;
-    AEdits := AEdits + [Source.RemoveCommand];
+    AEdits := AEdits + [mSource.RemoveCommand];
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
 function ExecuteExplain(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  Findings: TArray<TSlashFinding>;
-  Finding: TSlashFinding;
-  Host: ISlashHost;
-  Uri, Text: string;
+  mSource: TCommandSource;
+  mFindings: TArray<TSlashFinding>;
+  mFinding: TSlashFinding;
+  mHost: ISlashHost;
+  mUri, mText: string;
 begin
   AEdits := nil;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    if not FindingsBelow(AContext, Source, Findings, AReason) then
+    if not FindingsBelow(AContext, mSource, mFindings, AReason) then
     begin
       Exit(False);
     end;
-    Text := '';
-    for Finding in Findings do
+    mText := '';
+    for mFinding in mFindings do
     begin
-      if Text <> '' then
+      if mText <> '' then
       begin
-        Text := Text + #10#10;
+        mText := mText + #10#10;
       end;
-      Text := Text + Finding.Message;
-      if Finding.Explanation <> '' then
+      mText := mText + mFinding.Message;
+      if mFinding.Explanation <> '' then
       begin
-        Text := Text + #10 + Finding.Explanation;
+        mText := mText + #10 + mFinding.Explanation;
       end;
     end;
     // Der Code bleibt; nur die Befehlszeile geht. Die Erklärung kommt nach den Änderungen.
-    Host := AContext.Host;
-    Uri := AContext.Uri;
+    mHost := AContext.Host;
+    mUri := AContext.Uri;
     AContext.Defer(
       procedure
       begin
-        Host.Notify(Uri, Text);
+        mHost.Notify(mUri, mText);
       end);
-    AEdits := [Source.RemoveCommand];
+    AEdits := [mSource.RemoveCommand];
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -377,33 +377,33 @@ end;
 
 function ExecuteFmt(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  Routine: TSyntaxNode;
-  Edit: TTextEdit;
-  Text: string;
+  mSource: TCommandSource;
+  mRoutine: TSyntaxNode;
+  mEdit: TTextEdit;
+  mText: string;
 begin
   AEdits := nil;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    Routine := Source.RoutineAt;
-    if Routine = nil then
+    mRoutine := mSource.RoutineAt;
+    if mRoutine = nil then
     begin
       Exit(Fail(cTexts[TRefactoringCommandsText.FmtOnlyAppliesInThe].Text, AReason));
     end;
     // Formatiert wird der Text ohne Befehlszeile; deren Zeile entfernt RemoveCommand.
-    Text := Source.Text;
-    for Edit in TFormatter.Edits(Text, TPascalLexer.Tokenize(Text), AContext.Style, Routine.StartPos.Line,
-      Routine.EndPos.Line) do
+    mText := mSource.Text;
+    for mEdit in TFormatter.Edits(mText, TPascalLexer.Tokenize(mText), AContext.Style, mRoutine.StartPos.Line,
+      mRoutine.EndPos.Line) do
     begin
-      if (Edit.Range.StartPos.Line <> Source.Line) and (Edit.Range.EndPos.Line <> Source.Line) then
+      if (mEdit.Range.StartPos.Line <> mSource.Line) and (mEdit.Range.EndPos.Line <> mSource.Line) then
       begin
-        AEdits := AEdits + [Edit];
+        AEdits := AEdits + [mEdit];
       end;
     end;
-    AEdits := AEdits + [Source.RemoveCommand];
+    AEdits := AEdits + [mSource.RemoveCommand];
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -411,37 +411,37 @@ end;
 
 function ExecuteMeasure(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  Routine: TSyntaxNode;
-  Name: string;
+  mSource: TCommandSource;
+  mRoutine: TSyntaxNode;
+  mName: string;
 begin
   AEdits := nil;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    Routine := Source.RoutineAt;
-    if Routine = nil then
+    mRoutine := mSource.RoutineAt;
+    if mRoutine = nil then
     begin
       Exit(Fail(cTexts[TRefactoringCommandsText.MeasureOnlyAppliesInThe].Text, AReason));
     end;
-    Name := Routine.Name;
-    if Source.Tree.Root.Name <> '' then
+    mName := mRoutine.Name;
+    if mSource.Tree.Root.Name <> '' then
     begin
-      Name := Source.Tree.Root.Name + '.' + Name;
+      mName := mSource.Tree.Root.Name + '.' + mName;
     end;
     if AContext.Arguments <> '' then
     begin
-      Name := Name + ' ' + AContext.Arguments;
+      mName := mName + ' ' + AContext.Arguments;
     end;
     // Name als Format-Argument: Prozentzeichen im Namen stören so nicht.
-    Result := Wrap(Source, 'measure', TWrapFrame.Create(['var SW := TStopwatch.StartNew;', 'try'],
+    Result := Wrap(mSource, 'measure', TWrapFrame.Create(['var SW := TStopwatch.StartNew;', 'try'],
       ['finally', '  ' + LogStatement(AContext, Format('Format(''%%s: %%d ms'', [%s, SW.ElapsedMilliseconds])',
-      [QuotedStr(Name)])), 'end;'], '  '), AEdits, AReason);
+      [QuotedStr(mName)])), 'end;'], '  '), AEdits, AReason);
     if Result then
     begin
-      AddUses(Source, AContext, Source.Line, ['System.Diagnostics'], AEdits);
+      AddUses(mSource, AContext, mSource.Line, ['System.Diagnostics'], AEdits);
     end;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 

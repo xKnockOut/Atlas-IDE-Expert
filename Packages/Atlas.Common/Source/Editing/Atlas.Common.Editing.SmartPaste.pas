@@ -90,11 +90,11 @@ end;
 
 function Contains(const ANames: TArray<string>; const AName: string): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
-  for Name in ANames do
+  for mName in ANames do
   begin
-    if SameText(Name, AName) then
+    if SameText(mName, AName) then
     begin
       Exit(True);
     end;
@@ -108,84 +108,84 @@ class function TSmartPaste.Missing(const ATokens: TArray<TPascalToken>; ATree: T
   const ARange: TTextRange; const ADeclaring: TUnitsDeclaringFunc;
   const ANamespaces: TArray<string>): TArray<TSmartPasteName>;
 var
-  Clauses: TArray<TUsesClauseInfo>;
-  Index: Integer;
-  Token: TPascalToken;
-  Seen: TArray<string>;
-  Name: string;
-  Item: TSmartPasteName;
+  mClauses: TArray<TUsesClauseInfo>;
+  mIndex: Integer;
+  mToken: TPascalToken;
+  mSeen: TArray<string>;
+  mName: string;
+  mItem: TSmartPasteName;
 begin
   Result := nil;
   if not Assigned(ADeclaring) then
   begin
     Exit;
   end;
-  Clauses := TUsesClauses.Clauses(ATokens);
-  Seen := nil;
-  for Index := 0 to High(ATokens) do
+  mClauses := TUsesClauses.Clauses(ATokens);
+  mSeen := nil;
+  for mIndex := 0 to High(ATokens) do
   begin
-    Token := ATokens[Index];
-    if (Token.Kind <> TPascalTokenKind.Identifier) or Before(Token.StartPos, ARange.StartPos) or
-      Before(ARange.EndPos, Token.EndPos) then
+    mToken := ATokens[mIndex];
+    if (mToken.Kind <> TPascalTokenKind.Identifier) or Before(mToken.StartPos, ARange.StartPos) or
+      Before(ARange.EndPos, mToken.EndPos) then
     begin
       Continue;
     end;
-    Name := Bare(Token.Text);
-    if Contains(Seen, Name) then
+    mName := Bare(mToken.Text);
+    if Contains(mSeen, mName) then
     begin
       Continue;
     end;
-    Seen := Seen + [Name];
+    mSeen := mSeen + [mName];
     // Eingefügte uses-Einträge sind keine Bezeichner, die fehlen.
-    if TUsesClauses.InClause(ATokens, Clauses, Token.Offset) then
+    if TUsesClauses.InClause(ATokens, mClauses, mToken.Offset) then
     begin
       Continue;
     end;
-    Item.Name := Name;
-    Item.Units := TUsesActions.MissingUnits(ATokens, ATree, Token.StartPos, ADeclaring, ANamespaces);
-    if Item.Units <> nil then
+    mItem.Name := mName;
+    mItem.Units := TUsesActions.MissingUnits(ATokens, ATree, mToken.StartPos, ADeclaring, ANamespaces);
+    if mItem.Units <> nil then
     begin
-      Result := Result + [Item];
+      Result := Result + [mItem];
     end;
   end;
 end;
 
 class function TSmartPaste.Certain(const ANames: TArray<TSmartPasteName>): TArray<string>;
 var
-  Item: TSmartPasteName;
+  mItem: TSmartPasteName;
 begin
   Result := nil;
-  for Item in ANames do
+  for mItem in ANames do
   begin
-    if (Length(Item.Units) = 1) and not Contains(Result, Item.Units[0]) then
+    if (Length(mItem.Units) = 1) and not Contains(Result, mItem.Units[0]) then
     begin
-      Result := Result + [Item.Units[0]];
+      Result := Result + [mItem.Units[0]];
     end;
   end;
 end;
 
 class function TSmartPaste.InInterface(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Boolean;
 var
-  Token: TPascalToken;
-  Seen: Boolean;
+  mToken: TPascalToken;
+  mSeen: Boolean;
 begin
-  Seen := False;
-  for Token in ATokens do
+  mSeen := False;
+  for mToken in ATokens do
   begin
-    if Before(APosition, Token.StartPos) then
+    if Before(APosition, mToken.StartPos) then
     begin
       Break;
     end;
-    if Token.IsKeyword('interface') then
+    if mToken.IsKeyword('interface') then
     begin
-      Seen := True;
+      mSeen := True;
     end
-    else if Token.IsKeyword('implementation') then
+    else if mToken.IsKeyword('implementation') then
     begin
       Exit(False);
     end;
   end;
-  Result := Seen;
+  Result := mSeen;
 end;
 
 /// <summary>Offsets von interface und implementation; -1, wo das Wort fehlt.</summary>

@@ -23,8 +23,8 @@ type
   end;
 
 const
-  OverrideOnlyInheritedRuleId = 'override-only-inherited';
-  InheritedWithoutAncestorRuleId = 'inherited-without-ancestor';
+  cOverrideOnlyInheritedRuleId = 'override-only-inherited';
+  cInheritedWithoutAncestorRuleId = 'inherited-without-ancestor';
 
 implementation
 
@@ -69,7 +69,7 @@ const
 
 const
   // Öffentliche Methoden von TObject, falls System nicht im Index steht (#1144).
-  ObjectMethodNames: array[0..21] of string = ('Create', 'Free', 'DisposeOf', 'ClassType', 'ClassName',
+  cObjectMethodNames: array[0..21] of string = ('Create', 'Free', 'DisposeOf', 'ClassType', 'ClassName',
     'ClassNameIs', 'ClassParent', 'ClassInfo', 'InstanceSize', 'InheritsFrom', 'MethodAddress', 'MethodName',
     'QualifiedClassName', 'FieldAddress', 'GetInterface', 'GetInterfaceEntry', 'GetInterfaceTable', 'UnitName',
     'UnitScope', 'CleanupInstance', 'InitInstance', 'NewInstance');
@@ -286,7 +286,7 @@ end;
 
 function TOverrideOnlyInheritedRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(OverrideOnlyInheritedRuleId, TRuleSeverity.Hint,
+  Result := TRuleDescriptor.Create(cOverrideOnlyInheritedRuleId, TRuleSeverity.Hint,
     cTexts[TInheritanceInheritedCallsText.OnlyInheritedTitle].Text);
 end;
 
@@ -428,7 +428,7 @@ begin
   end
   else
   begin
-    Result := MatchText(AMethod.Symbol.Name, ObjectVirtualNames) and
+    Result := MatchText(AMethod.Symbol.Name, cObjectVirtualNames) and
       (AMethod.Symbol.Visibility = TIndexVisibility.Public);
   end;
 end;
@@ -493,7 +493,7 @@ end;
 
 function TInheritedWithoutAncestorRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(InheritedWithoutAncestorRuleId, TRuleSeverity.Hint,
+  Result := TRuleDescriptor.Create(cInheritedWithoutAncestorRuleId, TRuleSeverity.Hint,
     cTexts[TInheritanceInheritedCallsText.NoAncestorTitle].Text);
 end;
 
@@ -585,7 +585,7 @@ var
         end;
       end;
     end;
-    Result := mObjectMissing and (MatchText(AName, ObjectMethodNames) or MatchText(AName, ObjectVirtualNames));
+    Result := mObjectMissing and (MatchText(AName, cObjectMethodNames) or MatchText(AName, cObjectVirtualNames));
   end;
 
   procedure ReportStatements(const AMethod: TMethodDecl; const AStatements: TArray<TSyntaxNode>);

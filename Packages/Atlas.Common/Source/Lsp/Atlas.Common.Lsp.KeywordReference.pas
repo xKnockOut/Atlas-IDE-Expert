@@ -36,7 +36,7 @@ type
   TKeywordReference = class
   public const
     /// <summary>Wörter, die so alltäglich sind, dass ein Hover nur stört.</summary>
-    CommonWords: array[0..43] of string = (
+    cCommonWords: array[0..43] of string = (
       'and', 'array', 'as', 'begin', 'case', 'class', 'const', 'div', 'do', 'downto', 'else', 'end',
       'except', 'finally', 'for', 'function', 'if', 'implementation', 'in', 'interface', 'is', 'mod',
       'nil', 'not', 'of', 'or', 'procedure', 'program', 'raise', 'record', 'repeat', 'set', 'string',
@@ -210,13 +210,13 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  Delphi13 = '37.0';
-  Methods = 'Methods_(Delphi)';
-  Properties = 'Properties_(Delphi)';
-  Classes = 'Classes_and_Objects_(Delphi)';
-  Routines = 'Procedures_and_Functions_(Delphi)';
-  Hints = 'Declarations_and_Statements_(Delphi)#Hinting_Directives';
-  Expressions = 'Expressions_(Delphi)';
+  cDelphi13 = '37.0';
+  cMethods = 'Methods_(Delphi)';
+  cProperties = 'Properties_(Delphi)';
+  cClasses = 'Classes_and_Objects_(Delphi)';
+  cRoutines = 'Procedures_and_Functions_(Delphi)';
+  cHints = 'Declarations_and_Statements_(Delphi)#Hinting_Directives';
+  cExpressions = 'Expressions_(Delphi)';
 
 function K(const AName, AKind, AText, ATopic, AMinVersion: string): TKeywordInfo; overload;
 begin
@@ -243,62 +243,62 @@ function RoutineKeywords(ALanguage: TTextLanguage): TArray<TKeywordInfo>;
 begin
   Result := [
     K('reintroduce', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
-      cTexts[TKeywordReferenceText.DeliberatelyHidesAVirtualMethod].TextIn(ALanguage), Methods),
+      cTexts[TKeywordReferenceText.DeliberatelyHidesAVirtualMethod].TextIn(ALanguage), cMethods),
     K('overload', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
       cTexts[TKeywordReferenceText.AllowsSeveralRoutinesOfThe].TextIn(ALanguage),
-      Routines + '#Overloading_Procedures_and_Functions'),
+      cRoutines + '#Overloading_Procedures_and_Functions'),
     K('override', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
-      cTexts[TKeywordReferenceText.OverridesAVirtualOrDynamic].TextIn(ALanguage), Methods),
+      cTexts[TKeywordReferenceText.OverridesAVirtualOrDynamic].TextIn(ALanguage), cMethods),
     K('virtual', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
-      cTexts[TKeywordReferenceText.MethodCanBeOverriddenIn].TextIn(ALanguage), Methods),
+      cTexts[TKeywordReferenceText.MethodCanBeOverriddenIn].TextIn(ALanguage), cMethods),
     K('dynamic', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
-      cTexts[TKeywordReferenceText.LikeVirtualButMoreCompact].TextIn(ALanguage), Methods),
+      cTexts[TKeywordReferenceText.LikeVirtualButMoreCompact].TextIn(ALanguage), cMethods),
     K('abstract', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
-      cTexts[TKeywordReferenceText.MethodWithoutImplementationDescendantsMust].TextIn(ALanguage), Methods),
+      cTexts[TKeywordReferenceText.MethodWithoutImplementationDescendantsMust].TextIn(ALanguage), cMethods),
     K('final', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
-      cTexts[TKeywordReferenceText.MethodMustNotBeOverridden].TextIn(ALanguage), Methods),
+      cTexts[TKeywordReferenceText.MethodMustNotBeOverridden].TextIn(ALanguage), cMethods),
     K('static', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
-      cTexts[TKeywordReferenceText.ClassMethodWithoutSelfNot].TextIn(ALanguage), Methods),
+      cTexts[TKeywordReferenceText.ClassMethodWithoutSelfNot].TextIn(ALanguage), cMethods),
     K('message', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
       cTexts[TKeywordReferenceText.MessageHandlerTheMethodIs].TextIn(ALanguage),
-      Methods + '#Message_Methods'),
+      cMethods + '#Message_Methods'),
     K('inline', cTexts[TKeywordReferenceText.ReservedWord].TextIn(ALanguage),
       cTexts[TKeywordReferenceText.AsksTheCompilerToInsert].TextIn(ALanguage),
       'Calling_Procedures_and_Functions_(Delphi)#Using_the_inline_Directive'),
     K('forward', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
       cTexts[TKeywordReferenceText.ForwardDeclarationOfARoutine].TextIn(ALanguage),
-      Routines + '#Forward_and_Interface_Declarations'),
+      cRoutines + '#Forward_and_Interface_Declarations'),
     K('external', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
       cTexts[TKeywordReferenceText.RoutineFromADLLOr].TextIn(ALanguage),
-      Routines + '#External_Declarations'),
+      cRoutines + '#External_Declarations'),
     K('assembler', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
       cTexts[TKeywordReferenceText.RoutineInAssemblerObsoleteOnly].TextIn(ALanguage),
       'Inline_Assembly_Code'),
     K('varargs', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
-      cTexts[TKeywordReferenceText.VariableParameterListForExternal].TextIn(ALanguage), Routines + '#Varargs'),
+      cTexts[TKeywordReferenceText.VariableParameterListForExternal].TextIn(ALanguage), cRoutines + '#Varargs'),
     K('noreturn', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
-      cTexts[TKeywordReferenceText.RoutineDoesNotReturnE].TextIn(ALanguage), Routines),
+      cTexts[TKeywordReferenceText.RoutineDoesNotReturnE].TextIn(ALanguage), cRoutines),
     K('delayed', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
       cTexts[TKeywordReferenceText.TheDLLIsLoadedOnly].TextIn(ALanguage),
       'Libraries_and_Packages_(Delphi)'),
     K('cdecl', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
       cTexts[TKeywordReferenceText.CallingConventionOfCParameters].TextIn(ALanguage),
-      Routines + '#Calling_Conventions'),
+      cRoutines + '#Calling_Conventions'),
     K('stdcall', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
-      cTexts[TKeywordReferenceText.CallingConventionOfTheWindows].TextIn(ALanguage), Routines +
+      cTexts[TKeywordReferenceText.CallingConventionOfTheWindows].TextIn(ALanguage), cRoutines +
       '#Calling_Conventions'),
     K('safecall', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
       cTexts[TKeywordReferenceText.CallingConventionForCOMExceptions].TextIn(ALanguage),
-      Routines + '#Calling_Conventions'),
+      cRoutines + '#Calling_Conventions'),
     K('register', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
       cTexts[TKeywordReferenceText.DefaultCallingConventionOfDelphi].TextIn(ALanguage),
-      Routines + '#Calling_Conventions'),
+      cRoutines + '#Calling_Conventions'),
     K('pascal', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
       cTexts[TKeywordReferenceText.OlderCallingConventionParametersFrom].TextIn(ALanguage),
-      Routines + '#Calling_Conventions'),
+      cRoutines + '#Calling_Conventions'),
     K('winapi', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
       cTexts[TKeywordReferenceText.CallingConventionOfThePlatform].TextIn(ALanguage),
-      Routines + '#Calling_Conventions'),
+      cRoutines + '#Calling_Conventions'),
     K('dispid', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
       cTexts[TKeywordReferenceText.NumberOfAMemberIn].TextIn(ALanguage),
       'Automation_Objects_(Delphi)')];
@@ -309,35 +309,35 @@ function ClassKeywords(ALanguage: TTextLanguage): TArray<TKeywordInfo>;
 begin
   Result := [
     K('deprecated', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
-      cTexts[TKeywordReferenceText.UseProducesAWarningOptionally].TextIn(ALanguage), Hints),
+      cTexts[TKeywordReferenceText.UseProducesAWarningOptionally].TextIn(ALanguage), cHints),
     K('platform', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
-      cTexts[TKeywordReferenceText.OnlyAvailableOnCertainPlatforms].TextIn(ALanguage), Hints),
+      cTexts[TKeywordReferenceText.OnlyAvailableOnCertainPlatforms].TextIn(ALanguage), cHints),
     K('experimental', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
-      cTexts[TKeywordReferenceText.NotStableYetUseProduces].TextIn(ALanguage), Hints),
+      cTexts[TKeywordReferenceText.NotStableYetUseProduces].TextIn(ALanguage), cHints),
     K('library', cTexts[TKeywordReferenceText.ReservedWord].TextIn(ALanguage),
-      cTexts[TKeywordReferenceText.HeaderOfADLLProject].TextIn(ALanguage), Hints),
+      cTexts[TKeywordReferenceText.HeaderOfADLLProject].TextIn(ALanguage), cHints),
     // Sichtbarkeit und Klassen
     K('strict private', cTexts[TKeywordReferenceText.Visibility].TextIn(ALanguage),
-      cTexts[TKeywordReferenceText.VisibleOnlyInsideTheClass].TextIn(ALanguage), Classes +
+      cTexts[TKeywordReferenceText.VisibleOnlyInsideTheClass].TextIn(ALanguage), cClasses +
       '#Strict_Visibility_Specifiers'),
     K('strict protected', cTexts[TKeywordReferenceText.Visibility].TextIn(ALanguage),
-      cTexts[TKeywordReferenceText.VisibleOnlyInTheClass].TextIn(ALanguage), Classes +
+      cTexts[TKeywordReferenceText.VisibleOnlyInTheClass].TextIn(ALanguage), cClasses +
       '#Strict_Visibility_Specifiers'),
     K('protected', cTexts[TKeywordReferenceText.Visibility].TextIn(ALanguage),
-      cTexts[TKeywordReferenceText.VisibleInTheClassIts].TextIn(ALanguage), Classes),
+      cTexts[TKeywordReferenceText.VisibleInTheClassIts].TextIn(ALanguage), cClasses),
     K('public', cTexts[TKeywordReferenceText.Visibility].TextIn(ALanguage),
       cTexts[TKeywordReferenceText.VisibleEverywhere].TextIn(ALanguage),
-      Classes),
+      cClasses),
     K('published', cTexts[TKeywordReferenceText.Visibility].TextIn(ALanguage),
       cTexts[TKeywordReferenceText.VisibleEverywhereWithRTTIFor].TextIn(ALanguage),
-      Classes + '#Published_Members'),
+      cClasses + '#Published_Members'),
     K('automated', cTexts[TKeywordReferenceText.Visibility].TextIn(ALanguage),
-      cTexts[TKeywordReferenceText.ObsoleteLikePublicWithAutomation].TextIn(ALanguage), Classes),
+      cTexts[TKeywordReferenceText.ObsoleteLikePublicWithAutomation].TextIn(ALanguage), cClasses),
     K('class var', 'Deklaration', cTexts[TKeywordReferenceText.ClassFieldOneValueFor].TextIn(ALanguage),
       'Fields_(Delphi)#Class_Fields'),
     K('sealed', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
       cTexts[TKeywordReferenceText.TheClassMustNotBe].TextIn(ALanguage),
-      Classes),
+      cClasses),
     K('helper', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
       cTexts[TKeywordReferenceText.ClassHelperOrRecordHelper].TextIn(ALanguage),
       'Class_and_Record_Helpers_(Delphi)'),
@@ -357,22 +357,22 @@ function PropertyKeywords(ALanguage: TTextLanguage): TArray<TKeywordInfo>;
 begin
   Result := [
     K('property', cTexts[TKeywordReferenceText.ReservedWord].TextIn(ALanguage),
-      cTexts[TKeywordReferenceText.PropertyWithReadAndWrite].TextIn(ALanguage), Properties),
+      cTexts[TKeywordReferenceText.PropertyWithReadAndWrite].TextIn(ALanguage), cProperties),
     K('implements', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
       cTexts[TKeywordReferenceText.DelegatesTheImplementationOfAn].TextIn(ALanguage),
       'Using_Implements_for_Delegation'),
     K('stored', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
       cTexts[TKeywordReferenceText.WhetherTheValueOfThe].TextIn(ALanguage),
-      Properties + '#Storage_Specifiers'),
+      cProperties + '#Storage_Specifiers'),
     K('default', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
       cTexts[TKeywordReferenceText.DefaultValueOfAProperty].TextIn(ALanguage),
-      Properties + '#Storage_Specifiers'),
+      cProperties + '#Storage_Specifiers'),
     K('nodefault', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
       cTexts[TKeywordReferenceText.RemovesAnInheritedDefaultValue].TextIn(ALanguage),
-      Properties + '#Storage_Specifiers'),
+      cProperties + '#Storage_Specifiers'),
     K('index', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
       cTexts[TKeywordReferenceText.IndexThatSeveralPropertiesPass].TextIn(ALanguage),
-      Properties + '#Index_Specifiers'),
+      cProperties + '#Index_Specifiers'),
     K('readonly', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
       cTexts[TKeywordReferenceText.DispatchPropertyReadOnly].TextIn(ALanguage),
       'Automation_Objects_(Delphi)'),
@@ -407,7 +407,7 @@ begin
       cTexts[TKeywordReferenceText.DeclaresLabelsForGoto].TextIn(ALanguage),
       'Declarations_and_Statements_(Delphi)#Goto_Statements'),
     K('inherited', cTexts[TKeywordReferenceText.ReservedWord].TextIn(ALanguage),
-      cTexts[TKeywordReferenceText.CallsTheMethodOfThe].TextIn(ALanguage), Methods + '#Inherited'),
+      cTexts[TKeywordReferenceText.CallsTheMethodOfThe].TextIn(ALanguage), cMethods + '#Inherited'),
     K('asm', cTexts[TKeywordReferenceText.ReservedWord].TextIn(ALanguage),
       cTexts[TKeywordReferenceText.BlockWithInlineAssembler].TextIn(ALanguage), 'Inline_Assembly_Code'),
     K('exports', cTexts[TKeywordReferenceText.ReservedWord].TextIn(ALanguage),
@@ -423,25 +423,25 @@ begin
       cTexts[TKeywordReferenceText.CodeThatRunsWhenThe2].TextIn(ALanguage),
       'Programs_and_Units_(Delphi)#The_Finalization_Section'),
     K('constructor', cTexts[TKeywordReferenceText.ReservedWord].TextIn(ALanguage),
-      cTexts[TKeywordReferenceText.MethodThatCreatesAndInitializes].TextIn(ALanguage), Methods +
+      cTexts[TKeywordReferenceText.MethodThatCreatesAndInitializes].TextIn(ALanguage), cMethods +
       '#Constructors'),
     K('destructor', cTexts[TKeywordReferenceText.ReservedWord].TextIn(ALanguage),
       cTexts[TKeywordReferenceText.MethodThatFreesAnInstance].TextIn(ALanguage),
-      Methods + '#Destructors'),
+      cMethods + '#Destructors'),
     K('shl', cTexts[TKeywordReferenceText.ReservedWord].TextIn(ALanguage),
       cTexts[TKeywordReferenceText.ShiftBitsToTheLeft].TextIn(ALanguage),
-      Expressions + '#Bitwise_Operators'),
+      cExpressions + '#Bitwise_Operators'),
     K('shr', cTexts[TKeywordReferenceText.ReservedWord].TextIn(ALanguage),
       cTexts[TKeywordReferenceText.ShiftBitsToTheRight].TextIn(ALanguage),
-      Expressions + '#Bitwise_Operators'),
+      cExpressions + '#Bitwise_Operators'),
     K('operator', cTexts[TKeywordReferenceText.Directive].TextIn(ALanguage),
       cTexts[TKeywordReferenceText.OverloadedOperatorOfARecord].TextIn(ALanguage),
       'Operator_Overloading_(Delphi)'),
     // Delphi 13
     K('if expression', cTexts[TKeywordReferenceText.Expression].TextIn(ALanguage),
-      cTexts[TKeywordReferenceText.ConditionalExpressionXIfA].TextIn(ALanguage), Expressions, Delphi13),
-    K('is not', 'Operator', cTexts[TKeywordReferenceText.NegatedTypeTestXIs].TextIn(ALanguage), Expressions, Delphi13),
-    K('not in', 'Operator', cTexts[TKeywordReferenceText.NegatedSetTestXNot].TextIn(ALanguage), Expressions, Delphi13)];
+      cTexts[TKeywordReferenceText.ConditionalExpressionXIfA].TextIn(ALanguage), cExpressions, cDelphi13),
+    K('is not', 'Operator', cTexts[TKeywordReferenceText.NegatedTypeTestXIs].TextIn(ALanguage), cExpressions, cDelphi13),
+    K('not in', 'Operator', cTexts[TKeywordReferenceText.NegatedSetTestXNot].TextIn(ALanguage), cExpressions, cDelphi13)];
 end;
 
 procedure InitKeywords;
@@ -464,13 +464,13 @@ end;
 
 class function TKeywordReference.Find(const AName: string; out AInfo: TKeywordInfo): Boolean;
 var
-  Info: TKeywordInfo;
+  mInfo: TKeywordInfo;
 begin
-  for Info in Keywords[TAtlasLocale.Language] do
+  for mInfo in Keywords[TAtlasLocale.Language] do
   begin
-    if SameText(Info.Name, AName) then
+    if SameText(mInfo.Name, AName) then
     begin
-      AInfo := Info;
+      AInfo := mInfo;
       Exit(True);
     end;
   end;
@@ -479,7 +479,7 @@ end;
 
 function VersionLabel(const AVersion: string): string;
 begin
-  if AVersion = Delphi13 then
+  if AVersion = cDelphi13 then
   begin
     Result := 'Delphi 13';
   end
@@ -491,17 +491,17 @@ end;
 
 class function TKeywordReference.Describe(const AInfo: TKeywordInfo; const ADelphiVersion: string): string;
 var
-  Title: string;
+  mTitle: string;
 begin
   if AInfo.Name = 'if expression' then
   begin
-    Title := 'if … then … else';
+    mTitle := 'if … then … else';
   end
   else
   begin
-    Title := AInfo.Name;
+    mTitle := AInfo.Name;
   end;
-  Result := '**' + Title + '** (' + AInfo.Kind + ')' + #10#10 + AInfo.Text;
+  Result := '**' + mTitle + '** (' + AInfo.Kind + ')' + #10#10 + AInfo.Text;
   if AInfo.MinVersion <> '' then
   begin
     Result := Result + #10#10 + 'Ab ' + VersionLabel(AInfo.MinVersion) + '.';
@@ -551,14 +551,14 @@ end;
 /// <summary>Index des Schlüsselworts bzw. Bezeichners an APosition; -1 ohne.</summary>
 function WordAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(ATokens) do
+  for mIndex := 0 to High(ATokens) do
   begin
-    if (ATokens[Index].Kind in [TPascalTokenKind.Keyword, TPascalTokenKind.Identifier]) and
-      Contains(ATokens[Index].StartPos, ATokens[Index].EndPos, APosition) then
+    if (ATokens[mIndex].Kind in [TPascalTokenKind.Keyword, TPascalTokenKind.Identifier]) and
+      Contains(ATokens[mIndex].StartPos, ATokens[mIndex].EndPos, APosition) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -566,20 +566,20 @@ end;
 
 const
   // Zweiwortige Elemente, in dieser Reihenfolge geprüft (is not vor not in).
-  PairFirst: array[0..4] of string = ('strict', 'strict', 'class', 'is', 'not');
-  PairSecond: array[0..4] of string = ('private', 'protected', 'var', 'not', 'in');
+  cPairFirst: array[0..4] of string = ('strict', 'strict', 'class', 'is', 'not');
+  cPairSecond: array[0..4] of string = ('private', 'protected', 'var', 'not', 'in');
 
 /// <summary>Zweiwortiges Element aus AWord und seinem Vorgänger bzw. Nachfolger; '' ohne.</summary>
 function PairName(const APrevWord, AWord, ANextWord: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := Low(PairFirst) to High(PairFirst) do
+  for mIndex := Low(cPairFirst) to High(cPairFirst) do
   begin
-    if ((AWord = PairFirst[Index]) and (ANextWord = PairSecond[Index])) or
-      ((APrevWord = PairFirst[Index]) and (AWord = PairSecond[Index])) then
+    if ((AWord = cPairFirst[mIndex]) and (ANextWord = cPairSecond[mIndex])) or
+      ((APrevWord = cPairFirst[mIndex]) and (AWord = cPairSecond[mIndex])) then
     begin
-      Exit(PairFirst[Index] + ' ' + PairSecond[Index]);
+      Exit(cPairFirst[mIndex] + ' ' + cPairSecond[mIndex]);
     end;
   end;
   Result := '';
@@ -588,42 +588,42 @@ end;
 /// <summary>Name des Eintrags zum Token AHit; '' bei alltäglichen Wörtern.</summary>
 function EntryName(const ATokens: TArray<TPascalToken>; AHit: Integer): string;
 var
-  Word: string;
-  Prev: Integer;
+  mWord: string;
+  mPrev: Integer;
 begin
-  Word := WordOf(ATokens, AHit);
-  Prev := Neighbour(ATokens, AHit, -1);
-  Result := PairName(WordOf(ATokens, Prev), Word, WordOf(ATokens, Neighbour(ATokens, AHit, 1)));
+  mWord := WordOf(ATokens, AHit);
+  mPrev := Neighbour(ATokens, AHit, -1);
+  Result := PairName(WordOf(ATokens, mPrev), mWord, WordOf(ATokens, Neighbour(ATokens, AHit, 1)));
   if Result <> '' then
   begin
     Exit;
   end;
   // Hinter :=, (, , usw. ist if ein Ausdruck, keine Anweisung.
-  if (Word = 'if') and (Prev >= 0) and (ATokens[Prev].Kind = TPascalTokenKind.Symbol) and
-    (ATokens[Prev].Text <> ';') then
+  if (mWord = 'if') and (mPrev >= 0) and (ATokens[mPrev].Kind = TPascalTokenKind.Symbol) and
+    (ATokens[mPrev].Text <> ';') then
   begin
     Result := 'if expression';
   end
-  else if not MatchText(Word, TKeywordReference.CommonWords) then
+  else if not MatchText(mWord, TKeywordReference.cCommonWords) then
   begin
-    Result := Word;
+    Result := mWord;
   end;
 end;
 
 class function TKeywordReference.HoverAt(const AText: string; const APosition: TTextPosition;
   const ADelphiVersion: string; out AMarkdown: string): Boolean;
 var
-  Tokens: TArray<TPascalToken>;
-  Hit: Integer;
-  Info: TKeywordInfo;
+  mTokens: TArray<TPascalToken>;
+  mHit: Integer;
+  mInfo: TKeywordInfo;
 begin
   AMarkdown := '';
-  Tokens := TPascalLexer.Tokenize(AText);
-  Hit := WordAt(Tokens, APosition);
-  Result := (Hit >= 0) and Find(EntryName(Tokens, Hit), Info);
+  mTokens := TPascalLexer.Tokenize(AText);
+  mHit := WordAt(mTokens, APosition);
+  Result := (mHit >= 0) and Find(EntryName(mTokens, mHit), mInfo);
   if Result then
   begin
-    AMarkdown := Describe(Info, ADelphiVersion);
+    AMarkdown := Describe(mInfo, ADelphiVersion);
   end;
 end;
 

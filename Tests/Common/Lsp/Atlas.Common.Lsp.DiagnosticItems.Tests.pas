@@ -61,7 +61,7 @@ begin
     Assert.AreEqual(7, mItem.GetValue<Integer>('range.end.character'));
     Assert.AreEqual(2, mItem.GetValue<Integer>('severity'));
     Assert.AreEqual('W1000', mItem.GetValue<string>('code'));
-    Assert.AreEqual(TLspDiagnosticItems.CompilerSource, mItem.GetValue<string>('source'));
+    Assert.AreEqual(TLspDiagnosticItems.cCompilerSource, mItem.GetValue<string>('source'));
   finally
     mItem.Free;
   end;

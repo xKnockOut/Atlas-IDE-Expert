@@ -6,7 +6,7 @@
 interface
 
 const
-  CatalogLinesDeSecurity: array[0..54] of string = (
+  cCatalogLinesDeSecurity: array[0..54] of string = (
     '{',
     '      "id": "bidi-control",',
     '      "name": "Bidirektionales Steuerzeichen",',

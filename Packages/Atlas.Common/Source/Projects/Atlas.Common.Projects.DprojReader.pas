@@ -72,47 +72,47 @@ const
 
 function UniqueUpper(const AItems: TArray<string>): TArray<string>;
 var
-  Items: TList<string>;
-  Item: string;
+  mItems: TList<string>;
+  mItem: string;
 begin
-  Items := TList<string>.Create;
+  mItems := TList<string>.Create;
   try
-    for Item in AItems do
+    for mItem in AItems do
     begin
-      if not Items.Contains(UpperCase(Item)) then
+      if not mItems.Contains(UpperCase(mItem)) then
       begin
-        Items.Add(UpperCase(Item));
+        mItems.Add(UpperCase(mItem));
       end;
     end;
-    Result := Items.ToArray;
+    Result := mItems.ToArray;
   finally
-    Items.Free;
+    mItems.Free;
   end;
 end;
 
 function UniquePaths(const ABase: string; const AItems: TArray<string>): TArray<string>;
 var
-  Items: TList<string>;
-  Item: string;
-  Path: string;
-  Known: TList<string>;
+  mItems: TList<string>;
+  mItem: string;
+  mPath: string;
+  mKnown: TList<string>;
 begin
-  Items := TList<string>.Create;
-  Known := TList<string>.Create;
+  mItems := TList<string>.Create;
+  mKnown := TList<string>.Create;
   try
-    for Item in AItems do
+    for mItem in AItems do
     begin
-      Path := TProjectPaths.Combine(ABase, Item);
-      if not Known.Contains(LowerCase(Path)) then
+      mPath := TProjectPaths.Combine(ABase, mItem);
+      if not mKnown.Contains(LowerCase(mPath)) then
       begin
-        Known.Add(LowerCase(Path));
-        Items.Add(Path);
+        mKnown.Add(LowerCase(mPath));
+        mItems.Add(mPath);
       end;
     end;
-    Result := Items.ToArray;
+    Result := mItems.ToArray;
   finally
-    Known.Free;
-    Items.Free;
+    mKnown.Free;
+    mItems.Free;
   end;
 end;
 
@@ -120,35 +120,35 @@ end;
 /// "Konfiguration Debug, Plattform Win64"; ohne Ebene "Projekt".</summary>
 function LevelOf(const ACondition, AConfig: string): string;
 var
-  Start, Stop: Integer;
-  Name, Platform: string;
+  mStart, mStop: Integer;
+  mName, mPlatform: string;
 begin
   Result := cTexts[TDprojReaderText.Project].Text;
-  Start := Pos('$(Base', ACondition);
-  if Start = 0 then
+  mStart := Pos('$(Base', ACondition);
+  if mStart = 0 then
   begin
-    Start := Pos('$(Cfg_', ACondition);
+    mStart := Pos('$(Cfg_', ACondition);
   end;
-  if Start = 0 then
+  if mStart = 0 then
   begin
     Exit;
   end;
-  Stop := PosEx(')', ACondition, Start);
-  if Stop = 0 then
+  mStop := PosEx(')', ACondition, mStart);
+  if mStop = 0 then
   begin
     Exit;
   end;
-  Name := Copy(ACondition, Start + 2, Stop - Start - 2);
-  Platform := '';
-  if StartsText('Base_', Name) then
+  mName := Copy(ACondition, mStart + 2, mStop - mStart - 2);
+  mPlatform := '';
+  if StartsText('Base_', mName) then
   begin
-    Platform := Copy(Name, 6, MaxInt);
+    mPlatform := Copy(mName, 6, MaxInt);
   end
-  else if StartsText('Cfg_', Name) and (PosEx('_', Name, 5) > 0) then
+  else if StartsText('Cfg_', mName) and (PosEx('_', mName, 5) > 0) then
   begin
-    Platform := Copy(Name, PosEx('_', Name, 5) + 1, MaxInt);
+    mPlatform := Copy(mName, PosEx('_', mName, 5) + 1, MaxInt);
   end;
-  if StartsText('Cfg_', Name) then
+  if StartsText('Cfg_', mName) then
   begin
     Result := cTexts[TDprojReaderText.Configuration].Text;
     if AConfig <> '' then
@@ -156,37 +156,37 @@ begin
       Result := Result + ' ' + AConfig;
     end;
   end;
-  if Platform <> '' then
+  if mPlatform <> '' then
   begin
-    Result := Result + cTexts[TDprojReaderText.Platform].Text + Platform;
+    Result := Result + cTexts[TDprojReaderText.Platform].Text + mPlatform;
   end;
 end;
 
 /// <summary>Sammelt Konfigurationen und aktivierte Plattformen aus dem ganzen Baum.</summary>
 procedure CollectTargets(AElement: TXmlElement; var AConfigs, APlatforms: TArray<string>);
 var
-  Index: Integer;
-  Value: string;
+  mIndex: Integer;
+  mValue: string;
 begin
   if AElement.Name = 'BuildConfiguration' then
   begin
-    Value := Trim(AElement.Attribute('Include'));
-    if (Value <> '') and not SameText(Value, 'Base') and (IndexText(Value, AConfigs) < 0) then
+    mValue := Trim(AElement.Attribute('Include'));
+    if (mValue <> '') and not SameText(mValue, 'Base') and (IndexText(mValue, AConfigs) < 0) then
     begin
-      AConfigs := AConfigs + [Value];
+      AConfigs := AConfigs + [mValue];
     end;
   end
   else if (AElement.Name = 'Platform') and AElement.HasAttribute('value') then
   begin
-    Value := Trim(AElement.Attribute('value'));
-    if SameText(Trim(AElement.Text), 'True') and (Value <> '') and (IndexText(Value, APlatforms) < 0) then
+    mValue := Trim(AElement.Attribute('value'));
+    if SameText(Trim(AElement.Text), 'True') and (mValue <> '') and (IndexText(mValue, APlatforms) < 0) then
     begin
-      APlatforms := APlatforms + [Value];
+      APlatforms := APlatforms + [mValue];
     end;
   end;
-  for Index := 0 to AElement.ChildCount - 1 do
+  for mIndex := 0 to AElement.ChildCount - 1 do
   begin
-    CollectTargets(AElement[Index], AConfigs, APlatforms);
+    CollectTargets(AElement[mIndex], AConfigs, APlatforms);
   end;
 end;
 
@@ -370,9 +370,9 @@ end;
 
 class function TDprojReader.Load(const AFileName: string; const AOptions: TDprojOptions): TProjectInfo;
 var
-  FileFormat: TFileFormat;
+  mFileFormat: TFileFormat;
 begin
-  Result := Read(AFileName, TFileEncoding.LoadFromFile(AFileName, FileFormat), AOptions);
+  Result := Read(AFileName, TFileEncoding.LoadFromFile(AFileName, mFileFormat), AOptions);
 end;
 
 class function TDprojReader.CheckTarget(const AProject: TProjectInfo; const AConfig, APlatform: string): string;

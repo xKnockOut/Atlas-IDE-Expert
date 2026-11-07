@@ -139,8 +139,8 @@ type
 
   TArchitectureSnapshots = class
   public const
-    FormatVersion = 2;
-    Kind = 'atlas.architecture';
+    cFormatVersion = 2;
+    cKind = 'atlas.architecture';
   public
     /// <summary>Stand der Übersicht; Pfade relativ zu ihrem Root, sortiert wie im Kopf der Unit.</summary>
     class function FromOverview(const AOverview: TArchitectureOverview): TArchitectureSnapshot; static;
@@ -219,7 +219,7 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  LineBreak = #10;
+  cLineBreak = #10;
 
 function CompareNames(const ALeft, ARight: string): Integer;
 begin
@@ -265,29 +265,29 @@ end;
 
 function TSnapshotCycle.Key: string;
 var
-  Names: TArray<string>;
-  Index: Integer;
+  mNames: TArray<string>;
+  mIndex: Integer;
 begin
-  SetLength(Names, Length(Units));
-  for Index := 0 to High(Units) do
+  SetLength(mNames, Length(Units));
+  for mIndex := 0 to High(Units) do
   begin
-    Names[Index] := LowerCase(Units[Index]);
+    mNames[mIndex] := LowerCase(Units[mIndex]);
   end;
-  TArray.Sort<string>(Names);
-  Result := string.Join(#1, Names);
+  TArray.Sort<string>(mNames);
+  Result := string.Join(#1, mNames);
 end;
 
 { TArchitectureSnapshot }
 
 function TArchitectureSnapshot.IndexOf(const AName: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(Units) do
+  for mIndex := 0 to High(Units) do
   begin
-    if SameText(Units[Index].Name, AName) then
+    if SameText(Units[mIndex].Name, AName) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -295,12 +295,12 @@ end;
 
 function TArchitectureSnapshot.InterfaceCycleCount: Integer;
 var
-  Cycle: TSnapshotCycle;
+  mCycle: TSnapshotCycle;
 begin
   Result := 0;
-  for Cycle in Cycles do
+  for mCycle in Cycles do
   begin
-    if Cycle.InterfaceOnly then
+    if mCycle.InterfaceOnly then
     begin
       Inc(Result);
     end;
@@ -428,7 +428,7 @@ var
   mIndex: Integer;
 begin
   Result := Default(TArchitectureSnapshot);
-  Result.FormatVersion := FormatVersion;
+  Result.FormatVersion := cFormatVersion;
   Result.Title := AOverview.Title;
   Result.Scope := AOverview.Scope;
   Result.IncludeLibrary := AOverview.IncludeLibrary;
@@ -498,7 +498,7 @@ end;
 
 class procedure TArchitectureSnapshots.Normalize(var ASnapshot: TArchitectureSnapshot);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   TArray.Sort<TSnapshotUnit>(ASnapshot.Units, TComparer<TSnapshotUnit>.Construct(
     function(const ALeft, ARight: TSnapshotUnit): Integer
@@ -510,9 +510,9 @@ begin
     begin
       Result := CompareEdges(ALeft, ARight);
     end));
-  for Index := 0 to High(ASnapshot.Subsystems) do
+  for mIndex := 0 to High(ASnapshot.Subsystems) do
   begin
-    TArray.Sort<string>(ASnapshot.Subsystems[Index].Units, TComparer<string>.Construct(
+    TArray.Sort<string>(ASnapshot.Subsystems[mIndex].Units, TComparer<string>.Construct(
       function(const ALeft, ARight: string): Integer
       begin
         Result := CompareNames(ALeft, ARight);
@@ -559,16 +559,16 @@ end;
 
 function Names(const AValues: TArray<string>): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '[';
-  for Index := 0 to High(AValues) do
+  for mIndex := 0 to High(AValues) do
   begin
-    if Index > 0 then
+    if mIndex > 0 then
     begin
       Result := Result + ', ';
     end;
-    Result := Result + Text(AValues[Index]);
+    Result := Result + Text(AValues[mIndex]);
   end;
   Result := Result + ']';
 end;
@@ -586,27 +586,27 @@ begin
   begin
     ABuilder.Append(',');
   end;
-  ABuilder.Append(LineBreak).Append('  ');
+  ABuilder.Append(cLineBreak).Append('  ');
 end;
 
 procedure AppendHeader(ABuilder: TStringBuilder; const ASnapshot: TArchitectureSnapshot);
 begin
-  ABuilder.Append('{').Append(LineBreak)
-    .Append('"format": ').Append(TArchitectureSnapshots.FormatVersion).Append(',').Append(LineBreak)
-    .Append('"kind": ').Append(Text(TArchitectureSnapshots.Kind)).Append(',').Append(LineBreak)
-    .Append('"title": ').Append(Text(ASnapshot.Title)).Append(',').Append(LineBreak)
-    .Append('"scope": ').Append(Text(ASnapshot.Scope)).Append(',').Append(LineBreak)
-    .Append('"includeLibrary": ').Append(Bool(ASnapshot.IncludeLibrary)).Append(',').Append(LineBreak)
-    .Append('"excludes": ').Append(Names(ASnapshot.Excludes)).Append(',').Append(LineBreak)
+  ABuilder.Append('{').Append(cLineBreak)
+    .Append('"format": ').Append(TArchitectureSnapshots.cFormatVersion).Append(',').Append(cLineBreak)
+    .Append('"kind": ').Append(Text(TArchitectureSnapshots.cKind)).Append(',').Append(cLineBreak)
+    .Append('"title": ').Append(Text(ASnapshot.Title)).Append(',').Append(cLineBreak)
+    .Append('"scope": ').Append(Text(ASnapshot.Scope)).Append(',').Append(cLineBreak)
+    .Append('"includeLibrary": ').Append(Bool(ASnapshot.IncludeLibrary)).Append(',').Append(cLineBreak)
+    .Append('"excludes": ').Append(Names(ASnapshot.Excludes)).Append(',').Append(cLineBreak)
     .Append('"grouping": {"resolution": ').Append(Number(ASnapshot.Grouping.Clamped.Resolution)).Append('},')
-    .Append(LineBreak)
+    .Append(cLineBreak)
     .Append('"summary": {"units": ').Append(Length(ASnapshot.Units))
     .Append(', "edges": ').Append(Length(ASnapshot.Edges))
     .Append(', "subsystems": ').Append(Length(ASnapshot.Subsystems))
     .Append(', "cycles": ').Append(Length(ASnapshot.Cycles))
     .Append(', "interfaceCycles": ').Append(ASnapshot.InterfaceCycleCount)
     .Append(', "crossLinks": ').Append(Length(ASnapshot.CrossLinks))
-    .Append(', "outliers": ').Append(Length(ASnapshot.Outliers)).Append('},').Append(LineBreak);
+    .Append(', "outliers": ').Append(Length(ASnapshot.Outliers)).Append('},').Append(cLineBreak);
 end;
 
 procedure AppendUnits(ABuilder: TStringBuilder; const ASnapshot: TArchitectureSnapshot);
@@ -628,14 +628,14 @@ begin
       .Append(', "role": ').Append(Text(mItem.Role))
       .Append(', "library": ').Append(Bool(mItem.Library_)).Append('}');
   end;
-  ABuilder.Append(LineBreak).Append('],').Append(LineBreak).Append('"edges": [');
+  ABuilder.Append(cLineBreak).Append('],').Append(cLineBreak).Append('"edges": [');
   for mIndex := 0 to High(ASnapshot.Edges) do
   begin
     Separate(ABuilder, mIndex);
     ABuilder.Append(EdgeJson(ASnapshot.Edges[mIndex]));
   end;
-  ABuilder.Append(LineBreak).Append('],').Append(LineBreak)
-    .Append('"central": ').Append(Names(ASnapshot.Central)).Append(',').Append(LineBreak);
+  ABuilder.Append(cLineBreak).Append('],').Append(cLineBreak)
+    .Append('"central": ').Append(Names(ASnapshot.Central)).Append(',').Append(cLineBreak);
 end;
 
 procedure AppendSubsystem(ABuilder: TStringBuilder; const ASubsystem: TSnapshotSubsystem);
@@ -674,7 +674,7 @@ begin
     Separate(ABuilder, mIndex);
     AppendSubsystem(ABuilder, ASnapshot.Subsystems[mIndex]);
   end;
-  ABuilder.Append(LineBreak).Append('],').Append(LineBreak).Append('"outliers": [');
+  ABuilder.Append(cLineBreak).Append('],').Append(cLineBreak).Append('"outliers": [');
   for mIndex := 0 to High(ASnapshot.Outliers) do
   begin
     Separate(ABuilder, mIndex);
@@ -682,7 +682,7 @@ begin
       .Append(', "suggested": ').Append(Text(ASnapshot.Outliers[mIndex].Suggested))
       .Append(', "reason": ').Append(Text(ASnapshot.Outliers[mIndex].Reason)).Append('}');
   end;
-  ABuilder.Append(LineBreak).Append('],').Append(LineBreak);
+  ABuilder.Append(cLineBreak).Append('],').Append(cLineBreak);
 end;
 
 procedure AppendCycles(ABuilder: TStringBuilder; const ASnapshot: TArchitectureSnapshot);
@@ -708,7 +708,7 @@ begin
     end;
     ABuilder.Append(']}');
   end;
-  ABuilder.Append(LineBreak).Append('],').Append(LineBreak);
+  ABuilder.Append(cLineBreak).Append('],').Append(cLineBreak);
 end;
 
 procedure AppendCrossLinks(ABuilder: TStringBuilder; const ASnapshot: TArchitectureSnapshot);
@@ -730,7 +730,7 @@ begin
       .Append(', "forward": ').Append(mLink.Forward)
       .Append(', "backward": ').Append(mLink.Backward).Append('}');
   end;
-  ABuilder.Append(LineBreak).Append(']').Append(LineBreak);
+  ABuilder.Append(cLineBreak).Append(']').Append(cLineBreak);
 end;
 
 class function TArchitectureSnapshots.Json(const ASnapshot: TArchitectureSnapshot): string;
@@ -744,7 +744,7 @@ begin
     AppendSubsystemsAndOutliers(mBuilder, ASnapshot);
     AppendCycles(mBuilder, ASnapshot);
     AppendCrossLinks(mBuilder, ASnapshot);
-    mBuilder.Append('}').Append(LineBreak);
+    mBuilder.Append('}').Append(cLineBreak);
     Result := mBuilder.ToString;
   finally
     mBuilder.Free;
@@ -817,12 +817,12 @@ end;
 
 function TSnapshotReader.TextOf(AObject: TJSONObject; const AName: string): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := Field(AObject, AName);
-  if (Value is TJSONString) and not (Value is TJSONNumber) then
+  mValue := Field(AObject, AName);
+  if (mValue is TJSONString) and not (mValue is TJSONNumber) then
   begin
-    Result := Value.Value;
+    Result := mValue.Value;
   end
   else
   begin
@@ -832,12 +832,12 @@ end;
 
 function TSnapshotReader.IntOf(AObject: TJSONObject; const AName: string): Integer;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := Field(AObject, AName);
-  if Value is TJSONNumber then
+  mValue := Field(AObject, AName);
+  if mValue is TJSONNumber then
   begin
-    Result := TJSONNumber(Value).AsInt;
+    Result := TJSONNumber(mValue).AsInt;
   end
   else
   begin
@@ -847,12 +847,12 @@ end;
 
 function TSnapshotReader.FloatOf(AObject: TJSONObject; const AName: string): Double;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := Field(AObject, AName);
-  if Value is TJSONNumber then
+  mValue := Field(AObject, AName);
+  if mValue is TJSONNumber then
   begin
-    Result := TJSONNumber(Value).AsDouble;
+    Result := TJSONNumber(mValue).AsDouble;
   end
   else
   begin
@@ -862,26 +862,26 @@ end;
 
 function TSnapshotReader.FlagOf(AObject: TJSONObject; const AName: string): Boolean;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := Field(AObject, AName);
-  Result := (Value is TJSONBool) and TJSONBool(Value).AsBoolean;
+  mValue := Field(AObject, AName);
+  Result := (mValue is TJSONBool) and TJSONBool(mValue).AsBoolean;
 end;
 
 function TSnapshotReader.ArrayOf(AObject: TJSONObject; const AName: string): TJSONArray;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := Field(AObject, AName);
-  if Value = nil then
+  mValue := Field(AObject, AName);
+  if mValue = nil then
   begin
     Exit(nil);
   end;
-  if not (Value is TJSONArray) then
+  if not (mValue is TJSONArray) then
   begin
     Fail(cTexts[TSnapshotText.IsNotAList].Fmt([AName]));
   end;
-  Result := TJSONArray(Value);
+  Result := TJSONArray(mValue);
 end;
 
 function TSnapshotReader.ObjectAt(AItems: TJSONArray; AIndex: Integer; const AWhat: string): TJSONObject;
@@ -895,7 +895,7 @@ end;
 
 function TSnapshotReader.UnitName(AValue: TJSONValue; const AWhat: string): string;
 var
-  Number: Integer;
+  mNumber: Integer;
 begin
   if FFormat = 1 then
   begin
@@ -903,12 +903,12 @@ begin
     begin
       Fail(AWhat + cTexts[TSnapshotText.NumberOfAUnitExpected].Text);
     end;
-    Number := TJSONNumber(AValue).AsInt;
-    if (Number < 0) or (Number > High(FUnitNames)) then
+    mNumber := TJSONNumber(AValue).AsInt;
+    if (mNumber < 0) or (mNumber > High(FUnitNames)) then
     begin
-      Fail(AWhat + cTexts[TSnapshotText.UnitMissing].Fmt([IntToStr(Number)]));
+      Fail(AWhat + cTexts[TSnapshotText.UnitMissing].Fmt([IntToStr(mNumber)]));
     end;
-    Exit(FUnitNames[Number]);
+    Exit(FUnitNames[mNumber]);
   end;
   if not (AValue is TJSONString) or (AValue is TJSONNumber) or (AValue.Value = '') then
   begin
@@ -919,7 +919,7 @@ end;
 
 function TSnapshotReader.SubsystemName(AValue: TJSONValue; const AWhat: string): string;
 var
-  Number: Integer;
+  mNumber: Integer;
 begin
   if FFormat = 1 then
   begin
@@ -927,17 +927,17 @@ begin
     begin
       Fail(AWhat + cTexts[TSnapshotText.NumberOfASubsystemExpected].Text);
     end;
-    Number := TJSONNumber(AValue).AsInt;
+    mNumber := TJSONNumber(AValue).AsInt;
     // -1: ohne Teilsystem (z. B. Ausreißer ohne Vorschlag).
-    if Number < 0 then
+    if mNumber < 0 then
     begin
       Exit('');
     end;
-    if Number > High(FSubsystemNames) then
+    if mNumber > High(FSubsystemNames) then
     begin
-      Fail(AWhat + cTexts[TSnapshotText.SubsystemMissing].Fmt([IntToStr(Number)]));
+      Fail(AWhat + cTexts[TSnapshotText.SubsystemMissing].Fmt([IntToStr(mNumber)]));
     end;
-    Exit(FSubsystemNames[Number]);
+    Exit(FSubsystemNames[mNumber]);
   end;
   if (AValue is TJSONString) and not (AValue is TJSONNumber) then
   begin
@@ -951,7 +951,7 @@ end;
 
 function TSnapshotReader.UnitNames(AItems: TJSONArray; const AWhat: string): TArray<string>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
   if AItems = nil then
@@ -959,40 +959,40 @@ begin
     Exit;
   end;
   SetLength(Result, AItems.Count);
-  for Index := 0 to AItems.Count - 1 do
+  for mIndex := 0 to AItems.Count - 1 do
   begin
-    Result[Index] := UnitName(AItems.Items[Index], AWhat);
+    Result[mIndex] := UnitName(AItems.Items[mIndex], AWhat);
   end;
 end;
 
 function TSnapshotReader.EdgeOf(AValue: TJSONValue; const AWhat: string): TSnapshotEdge;
 var
-  Items: TJSONArray;
-  Section: string;
+  mItems: TJSONArray;
+  mSection: string;
 begin
   Result := Default(TSnapshotEdge);
   if AValue is TJSONArray then
   begin
-    Items := TJSONArray(AValue);
-    if Items.Count < 3 then
+    mItems := TJSONArray(AValue);
+    if mItems.Count < 3 then
     begin
       Fail(AWhat + cTexts[TSnapshotText.SourceTargetSectionExpected].Text);
     end;
-    Result.Source := UnitName(Items.Items[0], AWhat);
-    Result.Target := UnitName(Items.Items[1], AWhat);
-    Section := Items.Items[2].Value;
+    Result.Source := UnitName(mItems.Items[0], AWhat);
+    Result.Target := UnitName(mItems.Items[1], AWhat);
+    mSection := mItems.Items[2].Value;
   end
   else if AValue is TJSONObject then
   begin
     Result.Source := UnitName(Field(TJSONObject(AValue), 'source'), AWhat);
     Result.Target := UnitName(Field(TJSONObject(AValue), 'target'), AWhat);
-    Section := TextOf(TJSONObject(AValue), 'section');
+    mSection := TextOf(TJSONObject(AValue), 'section');
   end
   else
   begin
     Fail(AWhat + cTexts[TSnapshotText.EdgeExpected].Text);
   end;
-  Result.Interface_ := (Section = 'interface') or (Section = 'i');
+  Result.Interface_ := (mSection = 'interface') or (mSection = 'i');
 end;
 
 procedure TSnapshotReader.ReadHeader(var ASnapshot: TArchitectureSnapshot);
@@ -1274,12 +1274,12 @@ begin
   else
   begin
     AFormat := TJSONNumber(mVersion).AsInt;
-    if (AFormat < 1) or (AFormat > TArchitectureSnapshots.FormatVersion) then
+    if (AFormat < 1) or (AFormat > TArchitectureSnapshots.cFormatVersion) then
     begin
-      AError := cTexts[TSnapshotText.ArchitectureStateInFormatIs].Fmt([AFormat, TArchitectureSnapshots.FormatVersion]);
+      AError := cTexts[TSnapshotText.ArchitectureStateInFormatIs].Fmt([AFormat, TArchitectureSnapshots.cFormatVersion]);
     end
     else if (AFormat = 2) and (AData.GetValue('kind') is TJSONString) and
-      (AData.GetValue('kind').Value <> TArchitectureSnapshots.Kind) then
+      (AData.GetValue('kind').Value <> TArchitectureSnapshots.cKind) then
     begin
       AError := cTexts[TSnapshotText.FileIsNotAnArchitecture].Fmt([AData.GetValue('kind').Value]);
     end;
@@ -1345,8 +1345,8 @@ end;
 class function TArchitectureSnapshots.Load(const AFileName: string; out ASnapshot: TArchitectureSnapshot;
   out AError: string): Boolean;
 var
-  Bytes: TBytes;
-  Text: string;
+  mBytes: TBytes;
+  mText: string;
 begin
   ASnapshot := Default(TArchitectureSnapshot);
   if not TFile.Exists(AFileName) then
@@ -1355,15 +1355,15 @@ begin
     Exit(False);
   end;
   try
-    Bytes := TFile.ReadAllBytes(AFileName);
+    mBytes := TFile.ReadAllBytes(AFileName);
     // UTF-8, ein BOM fällt weg.
-    if (Length(Bytes) >= 3) and (Bytes[0] = $EF) and (Bytes[1] = $BB) and (Bytes[2] = $BF) then
+    if (Length(mBytes) >= 3) and (mBytes[0] = $EF) and (mBytes[1] = $BB) and (mBytes[2] = $BF) then
     begin
-      Text := TEncoding.UTF8.GetString(Bytes, 3, Length(Bytes) - 3);
+      mText := TEncoding.UTF8.GetString(mBytes, 3, Length(mBytes) - 3);
     end
     else
     begin
-      Text := TEncoding.UTF8.GetString(Bytes);
+      mText := TEncoding.UTF8.GetString(mBytes);
     end;
   except
     on E: Exception do
@@ -1372,7 +1372,7 @@ begin
       Exit(False);
     end;
   end;
-  Result := Parse(Text, ASnapshot, AError);
+  Result := Parse(mText, ASnapshot, AError);
   if not Result then
   begin
     AError := AFileName + ': ' + AError;
@@ -1381,12 +1381,12 @@ end;
 
 class procedure TArchitectureSnapshots.Save(const AFileName: string; const ASnapshot: TArchitectureSnapshot);
 var
-  Folder: string;
+  mFolder: string;
 begin
-  Folder := ExtractFileDir(TPath.GetFullPath(AFileName));
-  if Folder <> '' then
+  mFolder := ExtractFileDir(TPath.GetFullPath(AFileName));
+  if mFolder <> '' then
   begin
-    ForceDirectories(Folder);
+    ForceDirectories(mFolder);
   end;
   TFile.WriteAllBytes(AFileName, TEncoding.UTF8.GetBytes(Json(ASnapshot)));
 end;

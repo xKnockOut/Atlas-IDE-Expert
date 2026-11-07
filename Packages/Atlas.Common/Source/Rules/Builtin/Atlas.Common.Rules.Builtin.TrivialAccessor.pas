@@ -67,36 +67,36 @@ end;
 
 procedure TTrivialAccessorRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Options: TInlineAccessorOptions;
-  Interfaces: TInterfaceDeclares;
-  Decl: TSyntaxNode;
-  Layout: TClassLayout;
-  Accessor: TTrivialAccessor;
-  Verb: TTrivialAccessorText;
+  mOptions: TInlineAccessorOptions;
+  mInterfaces: TInterfaceDeclares;
+  mDecl: TSyntaxNode;
+  mLayout: TClassLayout;
+  mAccessor: TTrivialAccessor;
+  mVerb: TTrivialAccessorText;
 begin
   if (AContext.Tree = nil) or not AContext.InlineAccessorDiagnostic then
   begin
     Exit;
   end;
-  Options := TInlineAccessorOptions.Default;
-  Options.EqualityCheck := not AContext.NoAccessorEqualityCheck;
-  Interfaces := TInlineAccessor.IndexInterfaces(AContext.Index);
-  for Decl in TClassLayout.AllDecls(AContext.Tree) do
+  mOptions := TInlineAccessorOptions.Default;
+  mOptions.EqualityCheck := not AContext.NoAccessorEqualityCheck;
+  mInterfaces := TInlineAccessor.IndexInterfaces(AContext.Index);
+  for mDecl in TClassLayout.AllDecls(AContext.Tree) do
   begin
-    Layout := TClassLayout.Read(AContext.Tree, AContext.Text, Decl);
+    mLayout := TClassLayout.Read(AContext.Tree, AContext.Text, mDecl);
     try
-      for Accessor in TInlineAccessor.InClass(Layout, Options, Interfaces) do
+      for mAccessor in TInlineAccessor.InClass(mLayout, mOptions, mInterfaces) do
       begin
-        Verb := TTrivialAccessorText.Setter;
-        if Accessor.IsGetter then
+        mVerb := TTrivialAccessorText.Setter;
+        if mAccessor.IsGetter then
         begin
-          Verb := TTrivialAccessorText.Getter;
+          mVerb := TTrivialAccessorText.Getter;
         end;
         // Mittel: Aufrufe in anderen Units sieht die Regel nicht.
-        AReport.Add(Accessor.NameRange, cTexts[Verb].Fmt([Accessor.Name, Accessor.Field]), TRuleConfidence.Medium);
+        AReport.Add(mAccessor.NameRange, cTexts[mVerb].Fmt([mAccessor.Name, mAccessor.Field]), TRuleConfidence.Medium);
       end;
     finally
-      Layout.Free;
+      mLayout.Free;
     end;
   end;
 end;

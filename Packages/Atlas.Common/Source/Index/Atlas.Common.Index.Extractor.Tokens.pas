@@ -84,9 +84,9 @@ uses
   Atlas.Common.Index.Extractor.TypeText;
 
 const
-  HintDirectives: array[0..3] of string = ('deprecated', 'platform', 'library', 'experimental');
-  NoSpaceBefore: array[0..9] of string = (';', ',', ')', ']', ':', '.', '(', '[', '^', '>');
-  NoSpaceAfter: array[0..4] of string = ('(', '[', '.', '<', '@');
+  cHintDirectives: array[0..3] of string = ('deprecated', 'platform', 'library', 'experimental');
+  cNoSpaceBefore: array[0..9] of string = (';', ',', ')', ']', ':', '.', '(', '[', '^', '>');
+  cNoSpaceAfter: array[0..4] of string = ('(', '[', '.', '<', '@');
 
 /// <summary>Gehört AToken in den Text einer Signatur? Kommentare und Direktiven nicht, {$I datei.inc} als Wert
 /// (#849) schon: AddIncluded setzt den Inhalt ein.</summary>
@@ -102,8 +102,8 @@ end;
 procedure AppendTokenText(ABuilder: TStringBuilder; const AToken: TPascalToken; const APrevious: string);
 begin
   if (ABuilder.Length > 0) and (AToken.Text <> '') and
-    not ((AToken.Kind = TPascalTokenKind.Symbol) and (IndexStr(AToken.Text, NoSpaceBefore) >= 0)) and
-    (IndexStr(APrevious, NoSpaceAfter) < 0) then
+    not ((AToken.Kind = TPascalTokenKind.Symbol) and (IndexStr(AToken.Text, cNoSpaceBefore) >= 0)) and
+    (IndexStr(APrevious, cNoSpaceAfter) < 0) then
   begin
     ABuilder.Append(' ');
   end;
@@ -350,7 +350,7 @@ begin
       AppendTokenText(mBuilder, mToken, mPrevious);
       mDepth := DepthAfter(mToken, mDepth);
       mPrevious := mToken.Text;
-      if mBuilder.Length > TIndexSymbol.MaxSignature then
+      if mBuilder.Length > TIndexSymbol.cMaxSignature then
       begin
         Break;
       end;
@@ -359,7 +359,7 @@ begin
   finally
     mBuilder.Free;
   end;
-  Result := Shortened(Result, TIndexSymbol.MaxSignature);
+  Result := Shortened(Result, TIndexSymbol.cMaxSignature);
 end;
 
 function TIndexTokenReader.StringLengthSuffix(ANode: TSyntaxNode): string;
@@ -447,7 +447,7 @@ function TIndexTokenReader.IsHintAt(APos: Integer): Boolean;
 begin
   Result := (APos >= 0) and (APos < Length(FTokens)) and
     (FTokens[APos].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Keyword]) and
-    (IndexText(FTokens[APos].Text, HintDirectives) >= 0);
+    (IndexText(FTokens[APos].Text, cHintDirectives) >= 0);
 end;
 
 function TIndexTokenReader.EndsHint(APos: Integer): Boolean;
@@ -590,7 +590,7 @@ begin
   end;
   mDoc := TXmlDoc.Parse(String.Join(#10, mLines));
   // Eine Zeile, Leerraum zusammengefasst.
-  Result := Shortened(TRegEx.Replace(mDoc.Summary, '\s+', ' ').Trim, TIndexSymbol.MaxSummary);
+  Result := Shortened(TRegEx.Replace(mDoc.Summary, '\s+', ' ').Trim, TIndexSymbol.cMaxSummary);
 end;
 
 function TIndexTokenReader.AfterUnitName(AIndex: Integer): Integer;

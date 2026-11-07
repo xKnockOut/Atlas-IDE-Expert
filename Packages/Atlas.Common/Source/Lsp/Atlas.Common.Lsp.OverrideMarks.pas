@@ -45,9 +45,9 @@ type
 
   TLspOverrideMarks = class
   public const
-    Command = 'atlas.server.overrideMarks';
+    cCommand = 'atlas.server.overrideMarks';
     /// <summary>Höchstens so viele Nachfahren je Methode; mehr bremsen nur das Zeichnen.</summary>
-    MaxTargets = 100;
+    cMaxTargets = 100;
   public
     /// <summary>Marken der Datei AFileName mit dem Baum ATree, nach Zeilen sortiert.</summary>
     class function Marks(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
@@ -72,8 +72,8 @@ uses
   Atlas.Common.Lsp.Implementations;
 
 const
-  RoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
-  TypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+  cRoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
+  cTypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
     TIndexSymbolKind.InterfaceType];
 
 function MarkTarget(const AName, AFileName: string; const ARange: TTextRange): TOverrideMarkTarget;
@@ -97,7 +97,7 @@ end;
 
 function IsRoutineOf(const ASymbol: TIndexSymbol; const AContainer, AName: string): Boolean;
 begin
-  Result := (ASymbol.Kind in RoutineKinds) and SameText(ASymbol.Container, AContainer) and
+  Result := (ASymbol.Kind in cRoutineKinds) and SameText(ASymbol.Container, AContainer) and
     SameText(ASymbol.Name, AName);
 end;
 
@@ -105,17 +105,17 @@ end;
 /// trägt.</summary>
 function OverridingBody(const AOwner: TUnitIndex; const AContainer, AName: string; out ABody: TIndexSymbol): Boolean;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
   Result := False;
   ABody := Default(TIndexSymbol);
-  for Symbol in AOwner.Symbols do
+  for mSymbol in AOwner.Symbols do
   begin
-    if IsRoutineOf(Symbol, AContainer, AName) then
+    if IsRoutineOf(mSymbol, AContainer, AName) then
     begin
       // Die erste Fundstelle ist die Deklaration, die letzte bei mehreren der Rumpf.
-      ABody := Symbol;
-      Result := Result or Symbol.HasDirective('override');
+      ABody := mSymbol;
+      Result := Result or mSymbol.HasDirective('override');
     end;
   end;
 end;
@@ -124,21 +124,21 @@ end;
 function OverridingIn(const AIndex: ISymbolIndex; const ACurrent: TUnitIndex; const ATypeName,
   AName: string): TArray<TOverrideMarkTarget>;
 var
-  Location: TSymbolLocation;
-  Owner: TUnitIndex;
-  Body: TIndexSymbol;
+  mLocation: TSymbolLocation;
+  mOwner: TUnitIndex;
+  mBody: TIndexSymbol;
 begin
   Result := nil;
-  for Location in TLspImplementations.AllDescendantsOf(AIndex, ATypeName) do
+  for mLocation in TLspImplementations.AllDescendantsOf(AIndex, ATypeName) do
   begin
-    if Length(Result) >= TLspOverrideMarks.MaxTargets then
+    if Length(Result) >= TLspOverrideMarks.cMaxTargets then
     begin
       Break;
     end;
-    if UnitOf(AIndex, ACurrent, Location.FileName, Owner) and
-      OverridingBody(Owner, Location.Symbol.QualifiedName, AName, Body) then
+    if UnitOf(AIndex, ACurrent, mLocation.FileName, mOwner) and
+      OverridingBody(mOwner, mLocation.Symbol.QualifiedName, AName, mBody) then
     begin
-      Result := Result + [MarkTarget(Location.Symbol.Name + '.' + AName, Owner.FileName, Body.SelectionRange)];
+      Result := Result + [MarkTarget(mLocation.Symbol.Name + '.' + AName, mOwner.FileName, mBody.SelectionRange)];
     end;
   end;
 end;
@@ -176,7 +176,7 @@ begin
   FLines := TDictionary<Integer, TOverrideMark>.Create;
   for mSymbol in FCurrent.Symbols do
   begin
-    if mSymbol.Kind in TypeKinds then
+    if mSymbol.Kind in cTypeKinds then
     begin
       FTypes.AddOrSetValue(UpperCase(mSymbol.QualifiedName), mSymbol);
     end;
@@ -238,7 +238,7 @@ var
   mOverrides, mOverridden: TArray<TOverrideMarkTarget>;
   mHasOverride, mHasVirtual: Boolean;
 begin
-  if not (ASymbol.Kind in RoutineKinds) or (ASymbol.Container = '') or
+  if not (ASymbol.Kind in cRoutineKinds) or (ASymbol.Container = '') or
     not FTypes.TryGetValue(UpperCase(ASymbol.Container), mTypeSymbol) then
   begin
     Exit;
@@ -320,64 +320,64 @@ end;
 
 function TargetsJson(const ATargets: TArray<TOverrideMarkTarget>): TJSONArray;
 var
-  Target: TOverrideMarkTarget;
-  Item: TJSONObject;
+  mTarget: TOverrideMarkTarget;
+  mItem: TJSONObject;
 begin
   Result := TJSONArray.Create;
-  for Target in ATargets do
+  for mTarget in ATargets do
   begin
-    Item := TJSONObject.Create;
-    Result.AddElement(Item);
-    Item.AddPair('name', Target.Name);
-    Item.AddPair('uri', TDocumentUris.FromPath(Target.FileName));
-    Item.AddPair('line', TJSONNumber.Create(Target.Range.StartPos.Line));
-    Item.AddPair('character', TJSONNumber.Create(Target.Range.StartPos.Character));
+    mItem := TJSONObject.Create;
+    Result.AddElement(mItem);
+    mItem.AddPair('name', mTarget.Name);
+    mItem.AddPair('uri', TDocumentUris.FromPath(mTarget.FileName));
+    mItem.AddPair('line', TJSONNumber.Create(mTarget.Range.StartPos.Line));
+    mItem.AddPair('character', TJSONNumber.Create(mTarget.Range.StartPos.Character));
   end;
 end;
 
 class function TLspOverrideMarks.Json(const AMarks: TArray<TOverrideMark>): TJSONObject;
 var
-  Lines: TJSONArray;
-  Item: TJSONObject;
-  Mark: TOverrideMark;
+  mLines: TJSONArray;
+  mItem: TJSONObject;
+  mMark: TOverrideMark;
 begin
   Result := TJSONObject.Create;
-  Lines := TJSONArray.Create;
-  Result.AddPair('lines', Lines);
-  for Mark in AMarks do
+  mLines := TJSONArray.Create;
+  Result.AddPair('lines', mLines);
+  for mMark in AMarks do
   begin
-    Item := TJSONObject.Create;
-    Lines.AddElement(Item);
-    Item.AddPair('line', TJSONNumber.Create(Mark.Line));
-    Item.AddPair('overrides', TargetsJson(Mark.Overrides));
-    Item.AddPair('overridden', TargetsJson(Mark.Overridden));
+    mItem := TJSONObject.Create;
+    mLines.AddElement(mItem);
+    mItem.AddPair('line', TJSONNumber.Create(mMark.Line));
+    mItem.AddPair('overrides', TargetsJson(mMark.Overrides));
+    mItem.AddPair('overridden', TargetsJson(mMark.Overridden));
   end;
 end;
 
 class function TLspOverrideMarks.Execute(const AStore: IDocumentStore; const AIndex: ISymbolIndex;
   const AEnsureUnit: TEnsureUnitFunc; const ANamespaces: TArray<string>; const AArguments: TJSONArray): TJSONValue;
 var
-  Uri: string;
-  Document: ITextDocument;
-  Shared: ISharedSyntaxTree;
-  Resolver: TNameResolver;
+  mUri: string;
+  mDocument: ITextDocument;
+  mShared: ISharedSyntaxTree;
+  mResolver: TNameResolver;
 begin
   if (AArguments = nil) or (AArguments.Count < 1) or not (AArguments.Items[0] is TJSONString) then
   begin
     Exit(Json(nil));
   end;
-  Uri := AArguments.Items[0].Value;
-  if not AStore.TryGet(Uri, Document) then
+  mUri := AArguments.Items[0].Value;
+  if not AStore.TryGet(mUri, mDocument) then
   begin
     Exit(Json(nil));
   end;
-  Shared := TSyntaxTreeCache.Get(Document);
-  Resolver := TNameResolver.Create(AIndex, AEnsureUnit);
+  mShared := TSyntaxTreeCache.Get(mDocument);
+  mResolver := TNameResolver.Create(AIndex, AEnsureUnit);
   try
-    Resolver.Namespaces := ANamespaces;
-    Result := Json(Marks(Resolver, AIndex, Shared.Tree, TDocumentUris.ToPath(Uri)));
+    mResolver.Namespaces := ANamespaces;
+    Result := Json(Marks(mResolver, AIndex, mShared.Tree, TDocumentUris.ToPath(mUri)));
   finally
-    Resolver.Free;
+    mResolver.Free;
   end;
 end;
 

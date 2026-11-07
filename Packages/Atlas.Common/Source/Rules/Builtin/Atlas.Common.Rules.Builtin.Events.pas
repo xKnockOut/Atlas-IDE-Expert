@@ -63,18 +63,18 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  EventCallWithoutAssignedRuleId = 'event-call-without-assigned';
-  KnownEventTypes: array[0..9] of string = ('TNotifyEvent', 'TProc', 'TFunc', 'TPredicate', 'TThreadProcedure',
+  cEventCallWithoutAssignedRuleId = 'event-call-without-assigned';
+  cKnownEventTypes: array[0..9] of string = ('TNotifyEvent', 'TProc', 'TFunc', 'TPredicate', 'TThreadProcedure',
     'TThreadMethod', 'TGetStrProc', 'TWndMethod', 'TMethod', 'TCallback');
-  ProceduralPattern = '^\s*(reference\s+to\s+)?(procedure|function)\b';
-  StatementStarts: array[0..8] of string = (';', 'begin', 'then', 'do', 'else', 'try', 'finally', 'except',
+  cProceduralPattern = '^\s*(reference\s+to\s+)?(procedure|function)\b';
+  cStatementStarts: array[0..8] of string = (';', 'begin', 'then', 'do', 'else', 'try', 'finally', 'except',
     'repeat');
 
 { TEventCallWithoutAssignedRule }
 
 function TEventCallWithoutAssignedRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(EventCallWithoutAssignedRuleId, TRuleSeverity.Warning,
+  Result := TRuleDescriptor.Create(cEventCallWithoutAssignedRuleId, TRuleSeverity.Warning,
     cTexts[TEventsText.Title].Text);
 end;
 
@@ -91,29 +91,29 @@ end;
 
 class function TEventCallWithoutAssignedRule.IsKnownEventType(const ATypeName: string): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
-  if TRegEx.IsMatch(ATypeName, ProceduralPattern, [roIgnoreCase]) then
+  if TRegEx.IsMatch(ATypeName, cProceduralPattern, [roIgnoreCase]) then
   begin
     Exit(True);
   end;
-  Name := ShortTypeName(ATypeName);
-  Result := (IndexText(Name, KnownEventTypes) >= 0) or
-    ((Length(Name) > 6) and StartsStr('T', Name) and EndsStr('Event', Name));
+  mName := ShortTypeName(ATypeName);
+  Result := (IndexText(mName, cKnownEventTypes) >= 0) or
+    ((Length(mName) > 6) and StartsStr('T', mName) and EndsStr('Event', mName));
 end;
 
 procedure TEventCallWithoutAssignedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TArray<TPascalToken>;
-  Code: TArray<Integer>;
-  Lines: TArray<string>;
-  LineBreak: string;
-  UnitTypes: TArray<TSyntaxNode>;
-  Routines: TArray<TSyntaxNode>;
+  mTokens: TArray<TPascalToken>;
+  mCode: TArray<Integer>;
+  mLines: TArray<string>;
+  mLineBreak: string;
+  mUnitTypes: TArray<TSyntaxNode>;
+  mRoutines: TArray<TSyntaxNode>;
 
   function Token(APosition: Integer): TPascalToken;
   begin
-    Result := Tokens[Code[APosition]];
+    Result := mTokens[mCode[APosition]];
   end;
 
   // Erste Position in Code, deren Token bei oder hinter AOffset beginnt; Length(Code), wenn keines (#1323).
@@ -122,11 +122,11 @@ var
     mLow, mHigh, mMiddle: Integer;
   begin
     mLow := 0;
-    mHigh := Length(Code);
+    mHigh := Length(mCode);
     while mLow < mHigh do
     begin
       mMiddle := (mLow + mHigh) div 2;
-      if Tokens[Code[mMiddle]].Offset < AOffset then
+      if mTokens[mCode[mMiddle]].Offset < AOffset then
       begin
         mLow := mMiddle + 1;
       end
@@ -146,14 +146,14 @@ var
   // Ohne Leerraum, klein und ohne "self.", für den Vergleich von Bedingungen.
   function Normalized(const AText: string): string;
   var
-    Index: Integer;
+    mIndex: Integer;
   begin
     Result := '';
-    for Index := 1 to Length(AText) do
+    for mIndex := 1 to Length(AText) do
     begin
-      if not CharInSet(AText[Index], [' ', #9, #10, #13]) then
+      if not CharInSet(AText[mIndex], [' ', #9, #10, #13]) then
       begin
-        Result := Result + AText[Index];
+        Result := Result + AText[mIndex];
       end;
     end;
     Result := StringReplace(LowerCase(Result), 'self.', '', [rfReplaceAll]);
@@ -161,67 +161,67 @@ var
 
   procedure CollectTypes(ARoot: TSyntaxNode);
   var
-    Index: Integer;
-    Node: TSyntaxNode;
-    Pending: TStack<TSyntaxNode>;
+    mIndex: Integer;
+    mNode: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
   begin
     // Iterativ (Bericht M1).
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ARoot);
-      while Pending.Count > 0 do
+      mPending.Push(ARoot);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if Node.Kind = TSyntaxKind.TypeDecl then
+        mNode := mPending.Pop;
+        if mNode.Kind = TSyntaxKind.TypeDecl then
         begin
-          UnitTypes := UnitTypes + [Node];
+          mUnitTypes := mUnitTypes + [mNode];
         end;
-        if Node.Kind = TSyntaxKind.RoutineDecl then
+        if mNode.Kind = TSyntaxKind.RoutineDecl then
         begin
-          Routines := Routines + [Node];
+          mRoutines := mRoutines + [mNode];
         end;
-        if Node.Kind in [TSyntaxKind.Block, TSyntaxKind.RoutineDecl] then
+        if mNode.Kind in [TSyntaxKind.Block, TSyntaxKind.RoutineDecl] then
         begin
           Continue;
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
   // Ereignistyp: bekannt, als Methodenzeiger in der Unit deklariert oder im Index.
   function IsEventType(const ATypeName: string): Boolean;
   var
-    Decl: TSyntaxNode;
-    Name, Text: string;
-    Location: TSymbolLocation;
+    mDecl: TSyntaxNode;
+    mName, mText: string;
+    mLocation: TSymbolLocation;
   begin
     if IsKnownEventType(ATypeName) then
     begin
       Exit(True);
     end;
-    Name := ShortTypeName(ATypeName);
-    for Decl in UnitTypes do
+    mName := ShortTypeName(ATypeName);
+    for mDecl in mUnitTypes do
     begin
-      if SameText(Decl.Name, Name) then
+      if SameText(mDecl.Name, mName) then
       begin
-        Text := NodeText(Decl);
-        Text := Copy(Text, Pos('=', Text) + 1, MaxInt);
-        Exit(TRegEx.IsMatch(Text, ProceduralPattern, [roIgnoreCase]));
+        mText := NodeText(mDecl);
+        mText := Copy(mText, Pos('=', mText) + 1, MaxInt);
+        Exit(TRegEx.IsMatch(mText, cProceduralPattern, [roIgnoreCase]));
       end;
     end;
     if AContext.Index <> nil then
     begin
-      for Location in AContext.Index.FindSymbols(Name) do
+      for mLocation in AContext.Index.FindSymbols(mName) do
       begin
-        if (Location.Symbol.Container = '') and (Location.Symbol.Kind = TIndexSymbolKind.TypeAlias) and
-          (ContainsText(Location.Symbol.Signature, 'of object') or
-          ContainsText(Location.Symbol.Signature, 'reference to')) then
+        if (mLocation.Symbol.Container = '') and (mLocation.Symbol.Kind = TIndexSymbolKind.TypeAlias) and
+          (ContainsText(mLocation.Symbol.Signature, 'of object') or
+          ContainsText(mLocation.Symbol.Signature, 'reference to')) then
         begin
           Exit(True);
         end;
@@ -238,11 +238,11 @@ var
   begin
     Result := False;
     mPosition := FirstCodeAt(ABlock.StartOffset);
-    while not Result and (mPosition <= High(Code) - 2) and (Tokens[Code[mPosition]].Offset < ABlock.EndOffset) do
+    while not Result and (mPosition <= High(mCode) - 2) and (mTokens[mCode[mPosition]].Offset < ABlock.EndOffset) do
     begin
-      Result := (Tokens[Code[mPosition]].Kind = TPascalTokenKind.Identifier) and
-        SameText(Tokens[Code[mPosition]].Text, AName) and Tokens[Code[mPosition + 1]].IsSymbol(':=') and
-        not Tokens[Code[mPosition + 2]].IsKeyword('nil');
+      Result := (mTokens[mCode[mPosition]].Kind = TPascalTokenKind.Identifier) and
+        SameText(mTokens[mCode[mPosition]].Text, AName) and mTokens[mCode[mPosition + 1]].IsSymbol(':=') and
+        not mTokens[mCode[mPosition + 2]].IsKeyword('nil');
       Inc(mPosition);
     end;
   end;
@@ -417,35 +417,35 @@ var
   // Innerster Knoten unter ANode, der AOffset enthält.
   function NodeAt(ANode: TSyntaxNode; AOffset: Integer): TSyntaxNode;
   var
-    Index: Integer;
-    Found: Boolean;
+    mIndex: Integer;
+    mFound: Boolean;
   begin
     // Iterativ (Bericht M1).
     Result := ANode;
     repeat
-      Found := False;
-      for Index := 0 to Result.ChildCount - 1 do
+      mFound := False;
+      for mIndex := 0 to Result.ChildCount - 1 do
       begin
-        if (AOffset >= Result[Index].StartOffset) and (AOffset < Result[Index].EndOffset) then
+        if (AOffset >= Result[mIndex].StartOffset) and (AOffset < Result[mIndex].EndOffset) then
         begin
-          Result := Result[Index];
-          Found := True;
+          Result := Result[mIndex];
+          mFound := True;
           Break;
         end;
       end;
-    until not Found;
+    until not mFound;
   end;
 
   function Positive(const ACondition, AName: string): Boolean;
   var
-    Start: Integer;
+    mStart: Integer;
   begin
     Result := ContainsStr(ACondition, AName + '<>nil') or ContainsStr(ACondition, 'nil<>' + AName);
-    Start := Pos('assigned(' + AName + ')', ACondition);
-    while not Result and (Start > 0) do
+    mStart := Pos('assigned(' + AName + ')', ACondition);
+    while not Result and (mStart > 0) do
     begin
-      Result := (Start < 4) or (Copy(ACondition, Start - 3, 3) <> 'not');
-      Start := PosEx('assigned(' + AName + ')', ACondition, Start + 1);
+      Result := (mStart < 4) or (Copy(ACondition, mStart - 3, 3) <> 'not');
+      mStart := PosEx('assigned(' + AName + ')', ACondition, mStart + 1);
     end;
   end;
 
@@ -465,27 +465,27 @@ var
   // "Ok := … and Assigned(F);" vor AOffset: Ok steht für die Prüfung.
   function AssignedFlag(ARoutine: TSyntaxNode; AOffset: Integer; const AFlag, AName: string): Boolean;
   var
-    Index: Integer;
-    Node: TSyntaxNode;
-    Value: string;
+    mIndex: Integer;
+    mNode: TSyntaxNode;
+    mValue: string;
   begin
     Result := False;
-    for Index := 0 to High(Code) - 1 do
+    for mIndex := 0 to High(mCode) - 1 do
     begin
-      if (Token(Index).Offset > ARoutine.StartOffset) and (Token(Index).Offset < AOffset) and
-        SameText(Token(Index).Text, AFlag) and Token(Index + 1).IsSymbol(':=') then
+      if (Token(mIndex).Offset > ARoutine.StartOffset) and (Token(mIndex).Offset < AOffset) and
+        SameText(Token(mIndex).Text, AFlag) and Token(mIndex + 1).IsSymbol(':=') then
       begin
-        Node := NodeAt(ARoutine, Token(Index).Offset);
-        while (Node <> nil) and (Node.Kind <> TSyntaxKind.AssignStatement) and (Node <> ARoutine) do
+        mNode := NodeAt(ARoutine, Token(mIndex).Offset);
+        while (mNode <> nil) and (mNode.Kind <> TSyntaxKind.AssignStatement) and (mNode <> ARoutine) do
         begin
-          Node := Node.Parent;
+          mNode := mNode.Parent;
         end;
-        if (Node = nil) or (Node.Kind <> TSyntaxKind.AssignStatement) then
+        if (mNode = nil) or (mNode.Kind <> TSyntaxKind.AssignStatement) then
         begin
           Continue;
         end;
-        Value := Copy(AContext.Text, Token(Index + 1).Offset + 3, Node.EndOffset - Token(Index + 1).Offset - 2);
-        Result := Positive(Normalized(Value), AName) and not TRegEx.IsMatch(Value, '\bor\b', [roIgnoreCase]);
+        mValue := Copy(AContext.Text, Token(mIndex + 1).Offset + 3, mNode.EndOffset - Token(mIndex + 1).Offset - 2);
+        Result := Positive(Normalized(mValue), AName) and not TRegEx.IsMatch(mValue, '\bor\b', [roIgnoreCase]);
       end;
     end;
   end;
@@ -494,8 +494,8 @@ var
   // "Result := … and Assigned(F)" (CanEnterCredentials)?
   function FlagFor(ARoutine: TSyntaxNode; AOffset: Integer; const AFlag, AName: string): Boolean;
   var
-    ClassName: string;
-    Callee: TSyntaxNode;
+    mClassName: string;
+    mCallee: TSyntaxNode;
   begin
     if not TRegEx.IsMatch(AFlag, '^\w+$') then
     begin
@@ -506,17 +506,17 @@ var
       Exit(True);
     end;
     Result := False;
-    ClassName := Copy(ARoutine.Name, 1, LastDelimiter('.', ARoutine.Name) - 1);
-    if ClassName = '' then
+    mClassName := Copy(ARoutine.Name, 1, LastDelimiter('.', ARoutine.Name) - 1);
+    if mClassName = '' then
     begin
       Exit;
     end;
-    for Callee in Routines do
+    for mCallee in mRoutines do
     begin
-      if SameText(Callee.Name, ClassName + '.' + AFlag) and
-        (Pos('(', Copy(NodeText(Callee), 1, Pos(';', NodeText(Callee)))) = 0) then
+      if SameText(mCallee.Name, mClassName + '.' + AFlag) and
+        (Pos('(', Copy(NodeText(mCallee), 1, Pos(';', NodeText(mCallee)))) = 0) then
       begin
-        Exit(AssignedFlag(Callee, Callee.EndOffset, 'Result', AName));
+        Exit(AssignedFlag(mCallee, mCallee.EndOffset, 'Result', AName));
       end;
     end;
   end;
@@ -524,16 +524,16 @@ var
   // Steht ATerm in APrefix als eigenes Glied einer and-Kette ("(a)and", "xand(a)and")?
   function Conjunct(const APrefix, ATerm: string): Boolean;
   var
-    Start, After: Integer;
+    mStart, mAfter: Integer;
   begin
     Result := False;
-    Start := Pos(ATerm, APrefix);
-    while not Result and (Start > 0) do
+    mStart := Pos(ATerm, APrefix);
+    while not Result and (mStart > 0) do
     begin
-      After := Start + Length(ATerm);
-      Result := ((Start = 1) or (APrefix[Start - 1] = '(') or ((Start > 3) and (Copy(APrefix, Start - 3, 3) = 'and')))
-        and ((Copy(APrefix, After, 3) = 'and') or (Copy(APrefix, After, 1) = ')'));
-      Start := PosEx(ATerm, APrefix, Start + 1);
+      mAfter := mStart + Length(ATerm);
+      Result := ((mStart = 1) or (APrefix[mStart - 1] = '(') or ((mStart > 3) and (Copy(APrefix, mStart - 3, 3) = 'and')))
+        and ((Copy(APrefix, mAfter, 3) = 'and') or (Copy(APrefix, mAfter, 1) = ')'));
+      mStart := PosEx(ATerm, APrefix, mStart + 1);
     end;
   end;
 
@@ -541,7 +541,7 @@ var
   // "not Fehler and F(…)": Der Merker ist nur leer bzw. False, wenn F zugewiesen ist (#1109).
   function MarkedUnassigned(ABranch: TSyntaxNode; const APrefix: string): Boolean;
   var
-    Flag, Value: string;
+    mFlag, mValue: string;
   begin
     Result := False;
     if (ABranch.Kind <> TSyntaxKind.AssignStatement) or (ABranch.ChildCount <> 2) or
@@ -549,13 +549,13 @@ var
     begin
       Exit;
     end;
-    Flag := LowerCase(ABranch[0].Name);
-    Value := Normalized(NodeText(ABranch[1]));
-    if (Value = '''''') or (Value = 'false') or (Value = 'nil') then
+    mFlag := LowerCase(ABranch[0].Name);
+    mValue := Normalized(NodeText(ABranch[1]));
+    if (mValue = '''''') or (mValue = 'false') or (mValue = 'nil') then
     begin
       Exit;
     end;
-    Result := Conjunct(APrefix, Flag + '=''''') or ((Value = 'true') and Conjunct(APrefix, 'not' + Flag));
+    Result := Conjunct(APrefix, mFlag + '=''''') or ((mValue = 'true') and Conjunct(APrefix, 'not' + mFlag));
   end;
 
   // Anweisung oder Bedingung um ANode, in der ein Kurzschluss den Aufruf schützen kann; nil auf Ebene der Routine.
@@ -700,7 +700,7 @@ var
   begin
     Result := False;
     mIndex := 0;
-    while not Result and (mIndex <= High(Code)) do
+    while not Result and (mIndex <= High(mCode)) do
     begin
       mIf := IfBefore(ARoutine, mIndex, AOffset);
       Result := (mIf <> nil) and ExitGuard(ARoutine, mIf, AName, APrefix);
@@ -729,31 +729,31 @@ var
   // "if Assigned(F) then" vor die Anweisung; nur in Blöcken und wenn die Anweisung allein am Zeilenanfang steht.
   function WrapFix(ARoutine: TSyntaxNode; AFirst: Integer; const AName: string; out AFix: TRuleFix): Boolean;
   var
-    Statement: TSyntaxNode;
-    Line: Integer;
-    Indent: string;
+    mStatement: TSyntaxNode;
+    mLine: Integer;
+    mIndent: string;
   begin
     Result := False;
-    Statement := NodeAt(ARoutine, Token(AFirst).Offset);
-    while (Statement <> nil) and (Statement.Kind <> TSyntaxKind.CallStatement) and (Statement <> ARoutine) do
+    mStatement := NodeAt(ARoutine, Token(AFirst).Offset);
+    while (mStatement <> nil) and (mStatement.Kind <> TSyntaxKind.CallStatement) and (mStatement <> ARoutine) do
     begin
-      Statement := Statement.Parent;
+      mStatement := mStatement.Parent;
     end;
-    if (Statement = nil) or (Statement.Kind <> TSyntaxKind.CallStatement) or (Statement.Parent = nil) or
-      not (Statement.Parent.Kind in [TSyntaxKind.Block, TSyntaxKind.TryStatement, TSyntaxKind.FinallyBlock,
-      TSyntaxKind.ExceptBlock, TSyntaxKind.RepeatStatement]) or (Statement.StartOffset <> Token(AFirst).Offset) then
-    begin
-      Exit;
-    end;
-    Line := Statement.StartPos.Line;
-    if (Line > High(Lines)) or (Trim(Copy(Lines[Line], 1, Statement.StartPos.Character)) <> '') then
+    if (mStatement = nil) or (mStatement.Kind <> TSyntaxKind.CallStatement) or (mStatement.Parent = nil) or
+      not (mStatement.Parent.Kind in [TSyntaxKind.Block, TSyntaxKind.TryStatement, TSyntaxKind.FinallyBlock,
+      TSyntaxKind.ExceptBlock, TSyntaxKind.RepeatStatement]) or (mStatement.StartOffset <> Token(AFirst).Offset) then
     begin
       Exit;
     end;
-    Indent := Copy(Lines[Line], 1, Statement.StartPos.Character);
+    mLine := mStatement.StartPos.Line;
+    if (mLine > High(mLines)) or (Trim(Copy(mLines[mLine], 1, mStatement.StartPos.Character)) <> '') then
+    begin
+      Exit;
+    end;
+    mIndent := Copy(mLines[mLine], 1, mStatement.StartPos.Character);
     AFix := TRuleFix.Create(cTexts[TEventsText.WrapInAssigned].Fmt([AName]),
-      [TTextEdit.Create(TTextRange.Create(Statement.StartPos, Statement.StartPos), 'if Assigned(' + AName +
-      ') then' + LineBreak + Indent + '  ')]);
+      [TTextEdit.Create(TTextRange.Create(mStatement.StartPos, mStatement.StartPos), 'if Assigned(' + AName +
+      ') then' + mLineBreak + mIndent + '  ')]);
     Result := True;
   end;
 
@@ -781,7 +781,7 @@ var
   function IsCalled(AFirst, APosition: Integer): Boolean;
   begin
     Result := Token(APosition + 1).IsSymbol('(');
-    if not Result and ((AFirst = 0) or MatchText(Token(AFirst - 1).Text, StatementStarts)) then
+    if not Result and ((AFirst = 0) or MatchText(Token(AFirst - 1).Text, cStatementStarts)) then
     begin
       Result := Token(APosition + 1).IsSymbol(';') or Token(APosition + 1).IsKeyword('end') or
         Token(APosition + 1).IsKeyword('else');
@@ -824,7 +824,7 @@ var
     begin
       Exit;
     end;
-    for mPosition := 0 to High(Code) - 1 do
+    for mPosition := 0 to High(mCode) - 1 do
     begin
       if IsEventToken(mBlock, mPosition, AEvents) and AccessStart(mPosition, mFirst) and
         IsCalled(mFirst, mPosition) and not SafeCall(ARoutine, mFirst, mPosition) then
@@ -836,72 +836,72 @@ var
 
   procedure CheckRoutines(ARoot: TSyntaxNode; const AClassName: string; const AEvents: TArray<string>);
   var
-    Index: Integer;
-    Node: TSyntaxNode;
-    Pending: TStack<TSyntaxNode>;
+    mIndex: Integer;
+    mNode: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
   begin
     // Iterativ (Bericht M1).
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ARoot);
-      while Pending.Count > 0 do
+      mPending.Push(ARoot);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if Node.Kind = TSyntaxKind.RoutineDecl then
+        mNode := mPending.Pop;
+        if mNode.Kind = TSyntaxKind.RoutineDecl then
         begin
-          if StartsText(AClassName + '.', Node.Name) then
+          if StartsText(AClassName + '.', mNode.Name) then
           begin
-            CheckRoutine(Node, AEvents);
+            CheckRoutine(mNode, AEvents);
           end;
           Continue;
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
 var
   Index: Integer;
-  Decl, ClassNode: TSyntaxNode;
-  Events: TArray<string>;
+  Decl, mClassNode: TSyntaxNode;
+  mEvents: TArray<string>;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
-  Code := nil;
-  for Index := 0 to High(Tokens) do
+  mTokens := AContext.Tree.Tokens;
+  mCode := nil;
+  for Index := 0 to High(mTokens) do
   begin
-    if not (Tokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+    if not (mTokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
     begin
-      Code := Code + [Index];
+      mCode := mCode + [Index];
     end;
   end;
-  Lines := TTextLines.SplitLines(AContext.Text, LineBreak);
-  UnitTypes := nil;
-  Routines := nil;
+  mLines := TTextLines.SplitLines(AContext.Text, mLineBreak);
+  mUnitTypes := nil;
+  mRoutines := nil;
   CollectTypes(AContext.Tree.Root);
-  for Decl in UnitTypes do
+  for Decl in mUnitTypes do
   begin
-    ClassNode := Decl.FindChild(TSyntaxKind.ClassType);
-    if ClassNode = nil then
+    mClassNode := Decl.FindChild(TSyntaxKind.ClassType);
+    if mClassNode = nil then
     begin
-      ClassNode := Decl.FindChild(TSyntaxKind.RecordType);
+      mClassNode := Decl.FindChild(TSyntaxKind.RecordType);
     end;
-    if ClassNode = nil then
+    if mClassNode = nil then
     begin
       Continue;
     end;
-    Events := EventsOf(Decl.Name, ClassNode);
-    if Events <> nil then
+    mEvents := EventsOf(Decl.Name, mClassNode);
+    if mEvents <> nil then
     begin
-      CheckRoutines(AContext.Tree.Root, Decl.Name, Events);
+      CheckRoutines(AContext.Tree.Root, Decl.Name, mEvents);
     end;
   end;
 end;

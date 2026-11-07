@@ -198,7 +198,7 @@ var
   mIndex: Integer;
 begin
   mMemo := TRuleFindingsMemo.Create;
-  for mIndex := 1 to TRuleFindingsMemo.MaxEntries do
+  for mIndex := 1 to TRuleFindingsMemo.cMaxEntries do
   begin
     mMemo.Put(Format('C:\P\U%d.pas', [mIndex]), cText, nil);
   end;

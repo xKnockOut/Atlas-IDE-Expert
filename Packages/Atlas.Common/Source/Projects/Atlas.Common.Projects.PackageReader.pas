@@ -177,13 +177,13 @@ end;
 
 function TPackageSource.ContainsIndex(const AName: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(Contains) do
+  for mIndex := 0 to High(Contains) do
   begin
-    if SameText(Contains[Index].Name, AName) then
+    if SameText(Contains[mIndex].Name, AName) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -191,11 +191,11 @@ end;
 
 function TPackageSource.RequiresPackage(const AName: string): Boolean;
 var
-  Entry: TPackageEntry;
+  mEntry: TPackageEntry;
 begin
-  for Entry in Requires do
+  for mEntry in Requires do
   begin
-    if SameText(Entry.Name, AName) then
+    if SameText(mEntry.Name, AName) then
     begin
       Exit(True);
     end;

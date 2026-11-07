@@ -32,7 +32,7 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  PublishedTypeInvalidRuleId = 'published-type-invalid';
+  cPublishedTypeInvalidRuleId = 'published-type-invalid';
 
 type
   TPublishedTypeInvalidRule = class(TInterfacedObject, IRule)
@@ -113,24 +113,24 @@ type
 
 const
   /// <summary>Eingebaute Typen, die als Property veröffentlicht werden können (Kleinbuchstaben).</summary>
-  SimpleTypes: array[0..41] of string = ('integer', 'cardinal', 'shortint', 'smallint', 'longint', 'longword',
+  cSimpleTypes: array[0..41] of string = ('integer', 'cardinal', 'shortint', 'smallint', 'longint', 'longword',
     'int64', 'uint64', 'byte', 'word', 'nativeint', 'nativeuint', 'fixedint', 'fixeduint', 'boolean', 'bytebool',
     'wordbool', 'longbool', 'char', 'ansichar', 'widechar', 'string', 'ansistring', 'widestring', 'unicodestring',
     'shortstring', 'rawbytestring', 'utf8string', 'single', 'double', 'extended', 'real', 'comp', 'currency',
     'variant', 'olevariant', 'tdatetime', 'tdate', 'ttime', 'uint32', 'int32', 'tcolor');
-  PointerTypes: array[0..4] of string = ('pointer', 'pchar', 'pansichar', 'pwidechar', 'pbyte');
+  cPointerTypes: array[0..4] of string = ('pointer', 'pchar', 'pansichar', 'pwidechar', 'pbyte');
   /// <summary>Records aus System.Types bzw. Winapi.Windows, wenn die Unit sie einbindet und der Index sie nicht
   /// kennt.</summary>
-  TypesRecords: array[0..6] of string = ('tpoint', 'trect', 'tsize', 'tpointf', 'trectf', 'tsizef', 'tsmallpoint');
-  TypesUnits: array[0..3] of string = ('system.types', 'types', 'winapi.windows', 'windows');
+  cTypesRecords: array[0..6] of string = ('tpoint', 'trect', 'tsize', 'tpointf', 'trectf', 'tsizef', 'tsmallpoint');
+  cTypesUnits: array[0..3] of string = ('system.types', 'types', 'winapi.windows', 'windows');
 
 function IsAscii(const AText: string): Boolean;
 var
-  Ch: Char;
+  mCh: Char;
 begin
-  for Ch in AText do
+  for mCh in AText do
   begin
-    if Ord(Ch) > 127 then
+    if Ord(mCh) > 127 then
     begin
       Exit(False);
     end;
@@ -153,23 +153,23 @@ end;
 /// "array of Integer"); ohne führendes "type" und "packed".</summary>
 function AliasTarget(const ASignature: string): string;
 var
-  Index, Depth: Integer;
+  mIndex, mDepth: Integer;
 begin
   Result := '';
-  Depth := 0;
-  for Index := 1 to Length(ASignature) do
+  mDepth := 0;
+  for mIndex := 1 to Length(ASignature) do
   begin
-    if ASignature[Index] = '<' then
+    if ASignature[mIndex] = '<' then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if ASignature[Index] = '>' then
+    else if ASignature[mIndex] = '>' then
     begin
-      Dec(Depth);
+      Dec(mDepth);
     end
-    else if (ASignature[Index] = '=') and (Depth = 0) then
+    else if (ASignature[mIndex] = '=') and (mDepth = 0) then
     begin
-      Result := Trim(Copy(ASignature, Index + 1, MaxInt));
+      Result := Trim(Copy(ASignature, mIndex + 1, MaxInt));
       Break;
     end;
   end;
@@ -187,12 +187,12 @@ end;
 /// Leerzeichen)?</summary>
 function IsTypeName(const AText: string): Boolean;
 var
-  Ch: Char;
+  mCh: Char;
 begin
   Result := (AText <> '') and CharInSet(AText[1], ['A'..'Z', 'a'..'z', '_']);
-  for Ch in AText do
+  for mCh in AText do
   begin
-    if not CharInSet(Ch, ['A'..'Z', 'a'..'z', '0'..'9', '_', '.', '<', '>', ',', ' ']) then
+    if not CharInSet(mCh, ['A'..'Z', 'a'..'z', '0'..'9', '_', '.', '<', '>', ',', ' ']) then
     begin
       Exit(False);
     end;
@@ -202,15 +202,15 @@ end;
 /// <summary>Ordinalwert eines Literals (Zahl oder Zeichen 'a'); False, wenn es keins ist.</summary>
 function OrdinalLiteral(const AText: string; out AValue: Integer): Boolean;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := Trim(AText);
-  if (Length(Text) = 3) and (Text[1] = '''') and (Text[3] = '''') then
+  mText := Trim(AText);
+  if (Length(mText) = 3) and (mText[1] = '''') and (mText[3] = '''') then
   begin
-    AValue := Ord(Text[2]);
+    AValue := Ord(mText[2]);
     Exit(True);
   end;
-  Result := TryStrToInt(Text, AValue) and (AValue >= 0);
+  Result := TryStrToInt(mText, AValue) and (AValue >= 0);
 end;
 
 /// <summary>Beginnt der Aliastext mit dem Wort "array"?</summary>
@@ -286,7 +286,7 @@ end;
 
 function TPublishedTypeInvalidRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(PublishedTypeInvalidRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cPublishedTypeInvalidRuleId, TRuleSeverity.Error,
     cTexts[TPublishedText.Title].Text);
 end;
 
@@ -348,23 +348,23 @@ end;
 /// <summary>Erstes Token ab AOffset (Index); Length(Tokens) ohne.</summary>
 function TPublishedScan.TokenAt(AOffset: Integer): Integer;
 var
-  Low, High, Middle: Integer;
+  mLow, mHigh, mMiddle: Integer;
 begin
-  Low := 0;
-  High := Length(FTokens);
-  while Low < High do
+  mLow := 0;
+  mHigh := Length(FTokens);
+  while mLow < mHigh do
   begin
-    Middle := (Low + High) div 2;
-    if FTokens[Middle].Offset < AOffset then
+    mMiddle := (mLow + mHigh) div 2;
+    if FTokens[mMiddle].Offset < AOffset then
     begin
-      Low := Middle + 1;
+      mLow := mMiddle + 1;
     end
     else
     begin
-      High := Middle;
+      mHigh := mMiddle;
     end;
   end;
-  Result := Low;
+  Result := mLow;
 end;
 
 function TPublishedScan.PathOf(ANode: TSyntaxNode): string;
@@ -385,16 +385,16 @@ end;
 /// <summary>Bereich des Namens AName im Knoten ANode (erstes passendes Token); sonst der ganze Knoten.</summary>
 function TPublishedScan.NameRange(ANode: TSyntaxNode; const AName: string): TTextRange;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := TokenAt(ANode.StartOffset);
-  while (Index < Length(FTokens)) and (FTokens[Index].Offset < ANode.EndOffset) do
+  mIndex := TokenAt(ANode.StartOffset);
+  while (mIndex < Length(FTokens)) and (FTokens[mIndex].Offset < ANode.EndOffset) do
   begin
-    if (FTokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(FTokens[Index].Text, AName) then
+    if (FTokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(FTokens[mIndex].Text, AName) then
     begin
-      Exit(TTextRange.Create(FTokens[Index].StartPos, FTokens[Index].EndPos));
+      Exit(TTextRange.Create(FTokens[mIndex].StartPos, FTokens[mIndex].EndPos));
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
   Result := NodeRange(ANode);
 end;
@@ -403,24 +403,24 @@ end;
 /// bedingter Übersetzung)? Dann ist die Auflösung über FindAnyType nicht sicher.</summary>
 function TPublishedScan.Ambiguous(const AName: string): Boolean;
 var
-  Symbol: TIndexSymbol;
-  Count: Integer;
+  mSymbol: TIndexSymbol;
+  mCount: Integer;
 begin
-  Count := 0;
-  for Symbol in FAncestry.Local.Symbols do
+  mCount := 0;
+  for mSymbol in FAncestry.Local.Symbols do
   begin
-    if (Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+    if (mSymbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
       TIndexSymbolKind.InterfaceType, TIndexSymbolKind.EnumType, TIndexSymbolKind.TypeAlias,
-      TIndexSymbolKind.HelperType]) and SameText(Symbol.Name, AName) then
+      TIndexSymbolKind.HelperType]) and SameText(mSymbol.Name, AName) then
     begin
-      if (Symbol.Container <> '') or Symbol.Unavailable then
+      if (mSymbol.Container <> '') or mSymbol.Unavailable then
       begin
         Exit(True);
       end;
-      Inc(Count);
+      Inc(mCount);
     end;
   end;
-  Result := Count > 1;
+  Result := mCount > 1;
 end;
 
 /// <summary>Art des Typs mit Namen AName (Aliase werden bis ADepth = 8 verfolgt).</summary>
@@ -445,15 +445,16 @@ begin
   end;
 end;
 
-/// <summary>Art eines Typs, den der Index nicht kennt (RTL-Grundtypen); ALower ist der kleingeschriebene Name.</summary>
+/// <summary>Art eines Typs, den der Index nicht kennt (RTL-Grundtypen); ALower ist der kleingeschriebene
+/// Name.</summary>
 function TPublishedScan.UnresolvedKind(const AName, ALower: string): TPublishKind;
 begin
   Result := TPublishKind.Unknown;
-  if MatchText(ALower, SimpleTypes) then
+  if MatchText(ALower, cSimpleTypes) then
   begin
     Result := TPublishKind.Simple;
   end
-  else if MatchText(ALower, PointerTypes) then
+  else if MatchText(ALower, cPointerTypes) then
   begin
     Result := TPublishKind.PointerKind;
   end
@@ -461,7 +462,7 @@ begin
   begin
     Result := TPublishKind.Real48Kind;
   end
-  else if (ALower = 'tguid') or (FUsesTypes and MatchText(ALower, TypesRecords)) then
+  else if (ALower = 'tguid') or (FUsesTypes and MatchText(ALower, cTypesRecords)) then
   begin
     Result := TPublishKind.RecordKind;
   end
@@ -552,7 +553,8 @@ begin
   end;
 end;
 
-/// <summary>Menge über einen benannten Typ: Aufzählung aus dem Index, Alias darauf oder Byte, AnsiChar, ShortInt.</summary>
+/// <summary>Menge über einen benannten Typ: Aufzählung aus dem Index, Alias darauf oder Byte, AnsiChar,
+/// ShortInt.</summary>
 function TPublishedScan.NamedSetKind(const ABase: string; ADepth: Integer): TPublishKind;
 var
   mBare, mTarget: string;
@@ -618,50 +620,50 @@ end;
 /// "public" davor oder ein neues.</summary>
 function TPublishedScan.MoveToPublic(AMember, APublished: TSyntaxNode; APreviousPublic: Boolean): TArray<TRuleFix>;
 var
-  First, Last, Line: Integer;
-  Moved, Insert: string;
+  mFirst, mLast, mLine: Integer;
+  mMoved, mInsert: string;
 begin
   Result := nil;
-  First := AMember.StartPos.Line;
-  Last := AMember.EndPos.Line;
-  if (Last + 1 >= Length(FLines)) or (APublished.StartPos.Line >= First) or
+  mFirst := AMember.StartPos.Line;
+  mLast := AMember.EndPos.Line;
+  if (mLast + 1 >= Length(FLines)) or (APublished.StartPos.Line >= mFirst) or
     not SameText(Trim(FLines[APublished.StartPos.Line]), 'published') or
-    (Trim(Copy(FLines[First], 1, AMember.StartPos.Character)) <> '') or
-    (Trim(Copy(FLines[Last], AMember.EndPos.Character + 1, MaxInt)) <> '') then
+    (Trim(Copy(FLines[mFirst], 1, AMember.StartPos.Character)) <> '') or
+    (Trim(Copy(FLines[mLast], AMember.EndPos.Character + 1, MaxInt)) <> '') then
   begin
     Exit;
   end;
   // Attribute über dem Mitglied gehören dazu: dann lieber keine Korrektur als eine halbe.
-  if StartsStr('[', Trim(FLines[First - 1])) then
+  if StartsStr('[', Trim(FLines[mFirst - 1])) then
   begin
     Exit;
   end;
-  Moved := '';
-  for Line := First to Last do
+  mMoved := '';
+  for mLine := mFirst to mLast do
   begin
-    Moved := Moved + FLines[Line] + FLineBreak;
+    mMoved := mMoved + FLines[mLine] + FLineBreak;
   end;
-  Insert := Moved;
+  mInsert := mMoved;
   if not APreviousPublic then
   begin
-    Insert := TTextLines.IndentOf(FLines[APublished.StartPos.Line]) + 'public' + FLineBreak + Moved;
+    mInsert := TTextLines.IndentOf(FLines[APublished.StartPos.Line]) + 'public' + FLineBreak + mMoved;
   end;
   Result := [TRuleFix.Create(cTexts[TPublishedText.MoveToPublic].Text, [
     TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(APublished.StartPos.Line, 0),
-    TTextPosition.Create(APublished.StartPos.Line, 0)), Insert),
-    TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(First, 0), TTextPosition.Create(Last + 1, 0)), '')])];
+    TTextPosition.Create(APublished.StartPos.Line, 0)), mInsert),
+    TRuleEdit.Create(TTextRange.Create(TTextPosition.Create(mFirst, 0), TTextPosition.Create(mLast + 1, 0)), '')])];
 end;
 
 function TPublishedScan.TypeNodeOf(AMember: TSyntaxNode): TSyntaxNode;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to AMember.ChildCount - 1 do
+  for mIndex := 0 to AMember.ChildCount - 1 do
   begin
-    if not (AMember[Index].Kind in [TSyntaxKind.Parameters, TSyntaxKind.Parameter, TSyntaxKind.Attribute,
+    if not (AMember[mIndex].Kind in [TSyntaxKind.Parameters, TSyntaxKind.Parameter, TSyntaxKind.Attribute,
       TSyntaxKind.Directive, TSyntaxKind.GenericParams]) then
     begin
-      Exit(AMember[Index]);
+      Exit(AMember[mIndex]);
     end;
   end;
   Result := nil;
@@ -797,7 +799,8 @@ var
   mTypeNode: TSyntaxNode;
 begin
   mTypeNode := TypeNodeOf(AMember);
-  if (mTypeNode = nil) or (TypeKind(mTypeNode, AWildcards) in [TPublishKind.Unknown, TPublishKind.ClassOrInterface]) then
+  if (mTypeNode = nil) or (TypeKind(mTypeNode, AWildcards) in [TPublishKind.Unknown,
+    TPublishKind.ClassOrInterface]) then
   begin
     Exit;
   end;
@@ -838,37 +841,37 @@ end;
 // Iterativ (Bericht M1).
 procedure TPublishedScan.Visit(ARoot: TSyntaxNode);
 var
-  Pending: TStack<TSyntaxNode>;
-  Node, Body: TSyntaxNode;
-  Index: Integer;
+  mPending: TStack<TSyntaxNode>;
+  mNode, mBody: TSyntaxNode;
+  mIndex: Integer;
 begin
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ARoot);
-    while Pending.Count > 0 do
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      if Node.Kind = TSyntaxKind.TypeDecl then
+      mNode := mPending.Pop;
+      if mNode.Kind = TSyntaxKind.TypeDecl then
       begin
-        Body := Node.FindChild(TSyntaxKind.ClassType);
-        if Body <> nil then
+        mBody := mNode.FindChild(TSyntaxKind.ClassType);
+        if mBody <> nil then
         begin
-          CheckClass(Node, Body);
-          Node := Body;
+          CheckClass(mNode, mBody);
+          mNode := mBody;
         end;
       end;
       // Nur Deklarationscontainer: Anweisungen und Ausdrücke enthalten keine Klassen (#1094).
-      for Index := Node.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        if Node[Index].Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection,
+        if mNode[mIndex].Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection,
           TSyntaxKind.TypeSection, TSyntaxKind.TypeDecl, TSyntaxKind.RoutineDecl] then
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
@@ -876,16 +879,16 @@ end;
 /// geht nur über Abschnitt, uses und Unit (feste Tiefe) und bleibt deshalb (Bericht M1).</summary>
 function TPublishedScan.FindTypesUnit(ANode: TSyntaxNode): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  if (ANode.Kind = TSyntaxKind.UsedUnit) and MatchText(ANode.Name, TypesUnits) then
+  if (ANode.Kind = TSyntaxKind.UsedUnit) and MatchText(ANode.Name, cTypesUnits) then
   begin
     Exit(True);
   end;
-  for Index := 0 to ANode.ChildCount - 1 do
+  for mIndex := 0 to ANode.ChildCount - 1 do
   begin
-    if (ANode[Index].Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection,
-      TSyntaxKind.UsesClause, TSyntaxKind.UsedUnit]) and FindTypesUnit(ANode[Index]) then
+    if (ANode[mIndex].Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection,
+      TSyntaxKind.UsesClause, TSyntaxKind.UsedUnit]) and FindTypesUnit(ANode[mIndex]) then
     begin
       Exit(True);
     end;

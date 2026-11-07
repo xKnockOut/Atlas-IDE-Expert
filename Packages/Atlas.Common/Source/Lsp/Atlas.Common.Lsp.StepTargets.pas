@@ -73,9 +73,9 @@ type
 
   TLspStepTargets = class
   public const
-    Command = 'atlas.server.stepTargets';
-    MaxText = 80;
-    MaxTargets = 50;
+    cCommand = 'atlas.server.stepTargets';
+    cMaxText = 80;
+    cMaxTargets = 50;
   private
     FResolver: TNameResolver;
     FIndex: ISymbolIndex;
@@ -144,7 +144,7 @@ uses
   Atlas.Common.Semantics.SystemIntrinsics;
 
 const
-  RoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
+  cRoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
 
 function SameParams(const A, B: TArray<string>): Boolean;
 begin
@@ -166,13 +166,13 @@ end;
 
 function LastPart(const AName: string): string;
 var
-  Dot: Integer;
+  mDot: Integer;
 begin
   Result := AName;
-  Dot := LastDelimiter('.', Result);
-  if Dot > 0 then
+  mDot := LastDelimiter('.', Result);
+  if mDot > 0 then
   begin
-    Result := Copy(Result, Dot + 1, MaxInt);
+    Result := Copy(Result, mDot + 1, MaxInt);
   end;
 end;
 
@@ -199,25 +199,25 @@ end;
 
 class function TLspStepTargets.Accessor(const ASignature: string; AWrite: Boolean): string;
 var
-  Words: TArray<string>;
-  Index: Integer;
-  Key: string;
+  mWords: TArray<string>;
+  mIndex: Integer;
+  mKey: string;
 begin
   Result := '';
   if AWrite then
   begin
-    Key := 'write';
+    mKey := 'write';
   end
   else
   begin
-    Key := 'read';
+    mKey := 'read';
   end;
-  Words := ASignature.Replace(';', ' ').Replace(#9, ' ').Split([' '], TStringSplitOptions.ExcludeEmpty);
-  for Index := 0 to High(Words) - 1 do
+  mWords := ASignature.Replace(';', ' ').Replace(#9, ' ').Split([' '], TStringSplitOptions.ExcludeEmpty);
+  for mIndex := 0 to High(mWords) - 1 do
   begin
-    if SameText(Words[Index], Key) then
+    if SameText(mWords[mIndex], mKey) then
     begin
-      Exit(Words[Index + 1]);
+      Exit(mWords[mIndex + 1]);
     end;
   end;
 end;
@@ -242,9 +242,9 @@ begin
   begin
     Result := Result.Replace('  ', ' ');
   end;
-  if Length(Result) > MaxText then
+  if Length(Result) > cMaxText then
   begin
-    Result := Copy(Result, 1, MaxText - 1) + '…';
+    Result := Copy(Result, 1, cMaxText - 1) + '…';
   end;
 end;
 
@@ -270,7 +270,7 @@ end;
 
 function TLspStepTargets.TreeOf(const AFileName: string): TSyntaxTree;
 var
-  Text: string;
+  mText: string;
 begin
   if SameText(AFileName, FFileName) then
   begin
@@ -281,28 +281,28 @@ begin
     Exit;
   end;
   Result := nil;
-  if Assigned(FReadText) and FReadText(AFileName, Text) then
+  if Assigned(FReadText) and FReadText(AFileName, mText) then
   begin
-    Result := TSyntaxTreeCache.Parse(Text, nil);
+    Result := TSyntaxTreeCache.Parse(mText, nil);
   end;
   FTrees.Add(LowerCase(AFileName), Result);
 end;
 
 function TLspStepTargets.BeginLine(const AFileName: string; ANameLine: Integer; out ALine: Integer): Boolean;
 var
-  Tree: TSyntaxTree;
-  Found: Integer;
+  mTree: TSyntaxTree;
+  mFound: Integer;
 begin
   Result := False;
   ALine := -1;
-  Tree := TreeOf(AFileName);
-  if (Tree = nil) or (Tree.Root = nil) then
+  mTree := TreeOf(AFileName);
+  if (mTree = nil) or (mTree.Root = nil) then
   begin
     Exit;
   end;
-  Found := -1;
+  mFound := -1;
   // Die innerste Routine, deren Kopf die Namenszeile enthält: Anfang davor, Rumpf danach.
-  Tree.Root.Walk(
+  mTree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     var
       Body: TSyntaxNode;
@@ -323,58 +323,58 @@ begin
       end;
       if (Body <> nil) and (Body.StartPos.Line >= ANameLine) then
       begin
-        Found := Body.StartPos.Line;
+        mFound := Body.StartPos.Line;
       end;
     end);
-  ALine := Found;
-  Result := Found >= 0;
+  ALine := mFound;
+  Result := mFound >= 0;
 end;
 
 function TLspStepTargets.FindBody(const AUnit: TUnitIndex; const AContainer, AName: string;
   const AParamTypes: TArray<string>; out ABody: TIndexSymbol): Boolean;
 var
-  Symbol: TIndexSymbol;
-  Matches: TList<TIndexSymbol>;
-  Index: Integer;
+  mSymbol: TIndexSymbol;
+  mMatches: TList<TIndexSymbol>;
+  mIndex: Integer;
 begin
   Result := False;
-  Matches := TList<TIndexSymbol>.Create;
+  mMatches := TList<TIndexSymbol>.Create;
   try
-    for Symbol in AUnit.Symbols do
+    for mSymbol in AUnit.Symbols do
     begin
-      if (Symbol.Kind in RoutineKinds) and SameText(Symbol.Container, AContainer) and SameText(Symbol.Name, AName)
+      if (mSymbol.Kind in cRoutineKinds) and SameText(mSymbol.Container, AContainer) and SameText(mSymbol.Name, AName)
       then
       begin
-        Matches.Add(Symbol);
+        mMatches.Add(mSymbol);
       end;
     end;
-    if Matches.Count = 0 then
+    if mMatches.Count = 0 then
     begin
       Exit;
     end;
-    if Matches.Count = 1 then
+    if mMatches.Count = 1 then
     begin
       // Nur ein Eintrag: Rumpf nur bei einer Routine, die allein im implementation-Teil steht.
-      Result := (AContainer = '') and not Matches[0].InInterface;
+      Result := (AContainer = '') and not mMatches[0].InInterface;
       if Result then
       begin
-        ABody := Matches[0];
+        ABody := mMatches[0];
       end;
       Exit;
     end;
     // Deklaration und Rumpf, bei Überladungen der letzte mit denselben Parametern.
-    for Index := Matches.Count - 1 downto 1 do
+    for mIndex := mMatches.Count - 1 downto 1 do
     begin
-      if SameParams(Matches[Index].ParamTypes, AParamTypes) then
+      if SameParams(mMatches[mIndex].ParamTypes, AParamTypes) then
       begin
-        ABody := Matches[Index];
+        ABody := mMatches[mIndex];
         Exit(True);
       end;
     end;
-    ABody := Matches[Matches.Count - 1];
+    ABody := mMatches[mMatches.Count - 1];
     Result := True;
   finally
-    Matches.Free;
+    mMatches.Free;
   end;
 end;
 
@@ -389,16 +389,16 @@ end;
 
 function TLspStepTargets.IsInterface(const AUnit: TUnitIndex; const AContainer: string): Boolean;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
   Result := False;
   if AContainer = '' then
   begin
     Exit;
   end;
-  for Symbol in AUnit.Symbols do
+  for mSymbol in AUnit.Symbols do
   begin
-    if (Symbol.Kind = TIndexSymbolKind.InterfaceType) and SameText(Symbol.QualifiedName, AContainer) then
+    if (mSymbol.Kind = TIndexSymbolKind.InterfaceType) and SameText(mSymbol.QualifiedName, AContainer) then
     begin
       Exit(True);
     end;
@@ -408,34 +408,34 @@ end;
 procedure TLspStepTargets.AddTargets(var ACall: TLspStepCall; const AUnit: TUnitIndex;
   const AParamTypes: TArray<string>);
 var
-  Body: TIndexSymbol;
-  Target: TLspStepTarget;
-  Location: TSymbolLocation;
-  Other: TUnitIndex;
+  mBody: TIndexSymbol;
+  mTarget: TLspStepTarget;
+  mLocation: TSymbolLocation;
+  mOther: TUnitIndex;
 begin
-  if FindBody(AUnit, ACall.Container, ACall.Name, AParamTypes, Body) and TargetOf(AUnit, Body, Target) then
+  if FindBody(AUnit, ACall.Container, ACall.Name, AParamTypes, mBody) and TargetOf(AUnit, mBody, mTarget) then
   begin
-    ACall.Targets := ACall.Targets + [Target];
+    ACall.Targets := ACall.Targets + [mTarget];
   end;
   if not ACall.IsVirtual or (FIndex = nil) then
   begin
     Exit;
   end;
   // Überschreibungen in allen Nachfahren bzw. Klassen, die das Interface implementieren.
-  for Location in TLspImplementations.AllDescendantsOf(FIndex, ACall.Container) do
+  for mLocation in TLspImplementations.AllDescendantsOf(FIndex, ACall.Container) do
   begin
-    if Length(ACall.Targets) >= MaxTargets then
+    if Length(ACall.Targets) >= cMaxTargets then
     begin
       Break;
     end;
-    if not UnitOf(Location.FileName, Other) then
+    if not UnitOf(mLocation.FileName, mOther) then
     begin
       Continue;
     end;
-    if FindBody(Other, Location.Symbol.QualifiedName, ACall.Name, AParamTypes, Body) and
-      TargetOf(Other, Body, Target) then
+    if FindBody(mOther, mLocation.Symbol.QualifiedName, ACall.Name, AParamTypes, mBody) and
+      TargetOf(mOther, mBody, mTarget) then
     begin
-      ACall.Targets := ACall.Targets + [Target];
+      ACall.Targets := ACall.Targets + [mTarget];
     end;
   end;
 end;
@@ -443,34 +443,34 @@ end;
 function TLspStepTargets.ResolveInherited(const APosition: TTextPosition;
   out ACall: TLspStepCall): Boolean;
 var
-  Found: TArray<TDefinitionTarget>;
-  Item: TDefinitionTarget;
-  Owner: TUnitIndex;
-  Symbol: TIndexSymbol;
-  Target: TLspStepTarget;
+  mFound: TArray<TDefinitionTarget>;
+  mItem: TDefinitionTarget;
+  mOwner: TUnitIndex;
+  mSymbol: TIndexSymbol;
+  mTarget: TLspStepTarget;
 begin
   Result := False;
-  Found := TLspImplementations.Targets(FResolver, FIndex, FTree, FFileName, APosition);
-  for Item in Found do
+  mFound := TLspImplementations.Targets(FResolver, FIndex, FTree, FFileName, APosition);
+  for mItem in mFound do
   begin
-    if not UnitOf(Item.FileName, Owner) then
+    if not UnitOf(mItem.FileName, mOwner) then
     begin
       Continue;
     end;
-    for Symbol in Owner.Symbols do
+    for mSymbol in mOwner.Symbols do
     begin
-      if (Symbol.Kind in RoutineKinds) and (Symbol.Range.StartPos.Line = Item.Range.StartPos.Line) and
-        (Symbol.SelectionRange.StartPos.Line = Item.SelectionRange.StartPos.Line) and
-        (Symbol.SelectionRange.StartPos.Character = Item.SelectionRange.StartPos.Character) then
+      if (mSymbol.Kind in cRoutineKinds) and (mSymbol.Range.StartPos.Line = mItem.Range.StartPos.Line) and
+        (mSymbol.SelectionRange.StartPos.Line = mItem.SelectionRange.StartPos.Line) and
+        (mSymbol.SelectionRange.StartPos.Character = mItem.SelectionRange.StartPos.Character) then
       begin
-        ACall.Name := Symbol.Name;
-        ACall.Container := Symbol.Container;
+        ACall.Name := mSymbol.Name;
+        ACall.Container := mSymbol.Container;
         ACall.Kind := 'inherited';
-        ACall.DeclFile := Item.FileName;
-        ACall.DeclLine := Item.SelectionRange.StartPos.Line;
-        if TargetOf(Owner, Symbol, Target) then
+        ACall.DeclFile := mItem.FileName;
+        ACall.DeclLine := mItem.SelectionRange.StartPos.Line;
+        if TargetOf(mOwner, mSymbol, mTarget) then
         begin
-          ACall.Targets := [Target];
+          ACall.Targets := [mTarget];
         end;
         Exit(True);
       end;
@@ -480,7 +480,7 @@ end;
 
 function TLspStepTargets.ResolveUnknown(const ASite: TStepCallSite; out ACall: TLspStepCall): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
   // Aufruf mit Klammern, den die Namensauflösung nicht kennt (RTL nicht indexiert, Zeiger auf Routinen):
   // ausgegraut anbieten, außer Compiler-Intrinsics und Typumwandlungen.
@@ -490,16 +490,16 @@ begin
   begin
     Exit;
   end;
-  Name := LastPart(ASite.Callee.Name);
-  if (Name = '') or TSystemIntrinsics.IsKnown(Name) then
+  mName := LastPart(ASite.Callee.Name);
+  if (mName = '') or TSystemIntrinsics.IsKnown(mName) then
   begin
     Exit;
   end;
-  if (ASite.Node.ChildCount = 2) and LooksLikeCast(Name) then
+  if (ASite.Node.ChildCount = 2) and LooksLikeCast(mName) then
   begin
     Exit;
   end;
-  ACall.Name := Name;
+  ACall.Name := mName;
   ACall.Kind := 'call';
   Result := True;
 end;
@@ -585,7 +585,7 @@ begin
     begin
       Continue;
     end;
-    if not (mSymbol.Kind in RoutineKinds) then
+    if not (mSymbol.Kind in cRoutineKinds) then
     begin
       Exit(False);
     end;
@@ -776,31 +776,31 @@ end;
 
 function TLspStepTargets.Answer(ALine: Integer; out AAnswer: TLspStepAnswer): Boolean;
 var
-  Statement: TStepStatement;
-  Index: Integer;
-  Call: TLspStepCall;
-  CallSites: TArray<Integer>;
+  mStatement: TStepStatement;
+  mIndex: Integer;
+  mCall: TLspStepCall;
+  mCallSites: TArray<Integer>;
 begin
   AAnswer := Default(TLspStepAnswer);
   AAnswer.Line := ALine;
   AAnswer.FollowLine := -1;
-  Result := TStepCalls.Find(FTree, ALine, Statement);
+  Result := TStepCalls.Find(FTree, ALine, mStatement);
   if not Result then
   begin
     Exit;
   end;
-  AAnswer.Line := Statement.Node.StartPos.Line;
-  AAnswer.FollowLine := Statement.FollowLine;
-  CallSites := nil;
-  for Index := 0 to High(Statement.Sites) do
+  AAnswer.Line := mStatement.Node.StartPos.Line;
+  AAnswer.FollowLine := mStatement.FollowLine;
+  mCallSites := nil;
+  for mIndex := 0 to High(mStatement.Sites) do
   begin
-    if ResolveSite(Statement.Sites[Index], Call) then
+    if ResolveSite(mStatement.Sites[mIndex], mCall) then
     begin
-      AAnswer.Calls := AAnswer.Calls + [Call];
-      CallSites := CallSites + [Index];
+      AAnswer.Calls := AAnswer.Calls + [mCall];
+      mCallSites := mCallSites + [mIndex];
     end;
   end;
-  MarkReceivers(AAnswer, Statement.Sites, CallSites);
+  MarkReceivers(AAnswer, mStatement.Sites, mCallSites);
 end;
 
 function TLspStepTargets.Execute(ALine: Integer): TJSONObject;
@@ -813,43 +813,43 @@ end;
 
 class function TLspStepTargets.ToJson(const AAnswer: TLspStepAnswer): TJSONObject;
 var
-  Calls, Targets: TJSONArray;
-  Call: TLspStepCall;
-  Target: TLspStepTarget;
-  Item, TargetItem: TJSONObject;
+  mCalls, mTargets: TJSONArray;
+  mCall: TLspStepCall;
+  mTarget: TLspStepTarget;
+  mItem, mTargetItem: TJSONObject;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('format', TJSONNumber.Create(1));
   Result.AddPair('line', TJSONNumber.Create(AAnswer.Line));
   Result.AddPair('followLine', TJSONNumber.Create(AAnswer.FollowLine));
-  Calls := TJSONArray.Create;
-  Result.AddPair('calls', Calls);
-  for Call in AAnswer.Calls do
+  mCalls := TJSONArray.Create;
+  Result.AddPair('calls', mCalls);
+  for mCall in AAnswer.Calls do
   begin
-    Item := TJSONObject.Create;
-    Calls.AddElement(Item);
-    Item.AddPair('name', Call.Name);
-    Item.AddPair('container', Call.Container);
-    Item.AddPair('kind', Call.Kind);
-    Item.AddPair('text', Call.Text);
-    Item.AddPair('line', TJSONNumber.Create(Call.Position.Line));
-    Item.AddPair('character', TJSONNumber.Create(Call.Position.Character));
-    Item.AddPair('receiver', Call.Receiver);
-    Item.AddPair('receiverSimple', TJSONBool.Create(Call.ReceiverSimple));
-    Item.AddPair('receiverInterface', TJSONBool.Create(Call.ReceiverInterface));
-    Item.AddPair('virtual', TJSONBool.Create(Call.IsVirtual));
-    Item.AddPair('declFile', Call.DeclFile);
-    Item.AddPair('declLine', TJSONNumber.Create(Call.DeclLine));
-    Targets := TJSONArray.Create;
-    Item.AddPair('targets', Targets);
-    for Target in Call.Targets do
+    mItem := TJSONObject.Create;
+    mCalls.AddElement(mItem);
+    mItem.AddPair('name', mCall.Name);
+    mItem.AddPair('container', mCall.Container);
+    mItem.AddPair('kind', mCall.Kind);
+    mItem.AddPair('text', mCall.Text);
+    mItem.AddPair('line', TJSONNumber.Create(mCall.Position.Line));
+    mItem.AddPair('character', TJSONNumber.Create(mCall.Position.Character));
+    mItem.AddPair('receiver', mCall.Receiver);
+    mItem.AddPair('receiverSimple', TJSONBool.Create(mCall.ReceiverSimple));
+    mItem.AddPair('receiverInterface', TJSONBool.Create(mCall.ReceiverInterface));
+    mItem.AddPair('virtual', TJSONBool.Create(mCall.IsVirtual));
+    mItem.AddPair('declFile', mCall.DeclFile);
+    mItem.AddPair('declLine', TJSONNumber.Create(mCall.DeclLine));
+    mTargets := TJSONArray.Create;
+    mItem.AddPair('targets', mTargets);
+    for mTarget in mCall.Targets do
     begin
-      TargetItem := TJSONObject.Create;
-      Targets.AddElement(TargetItem);
-      TargetItem.AddPair('container', Target.Container);
-      TargetItem.AddPair('name', Target.Name);
-      TargetItem.AddPair('file', Target.FileName);
-      TargetItem.AddPair('line', TJSONNumber.Create(Target.Line));
+      mTargetItem := TJSONObject.Create;
+      mTargets.AddElement(mTargetItem);
+      mTargetItem.AddPair('container', mTarget.Container);
+      mTargetItem.AddPair('name', mTarget.Name);
+      mTargetItem.AddPair('file', mTarget.FileName);
+      mTargetItem.AddPair('line', TJSONNumber.Create(mTarget.Line));
     end;
   end;
 end;

@@ -239,8 +239,8 @@ begin
       Actions[1].GetValue<string>('title'));
     Assert.AreEqual('Typ-Alias einführen, im Projekt (TDictionary<string, TKunde>)',
       Actions[2].GetValue<string>('title'));
-    Assert.AreEqual(TLspTypeAlias.IntroduceKind, Actions[0].GetValue<string>('kind'));
-    Assert.AreEqual(TLspTypeAlias.ClientCommand, Actions[0].GetValue<string>('command.command'));
+    Assert.AreEqual(TLspTypeAlias.cIntroduceKind, Actions[0].GetValue<string>('kind'));
+    Assert.AreEqual(TLspTypeAlias.cClientCommand, Actions[0].GetValue<string>('command.command'));
     Arguments := Actions[0].GetValue<TJSONArray>('command.arguments');
     Assert.AreEqual(4, Arguments.Count);
     Assert.AreEqual(TDocumentUris.FromPath(KundenFile), Arguments.Items[0].Value);
@@ -277,8 +277,8 @@ begin
   try
     Assert.AreEqual(1, Integer(Length(Actions)));
     Assert.AreEqual('Alias auflösen (TKundenListe)', Actions[0].GetValue<string>('title'));
-    Assert.AreEqual(TLspTypeAlias.InlineKind, Actions[0].GetValue<string>('kind'));
-    Assert.AreEqual(TLspTypeAlias.InlineClientCommand, Actions[0].GetValue<string>('command.command'));
+    Assert.AreEqual(TLspTypeAlias.cInlineKind, Actions[0].GetValue<string>('kind'));
+    Assert.AreEqual(TLspTypeAlias.cInlineClientCommand, Actions[0].GetValue<string>('command.command'));
     Arguments := Actions[0].GetValue<TJSONArray>('command.arguments');
     Assert.AreEqual(2, Arguments.Count);
     Assert.AreEqual(6, Arguments.Items[1].GetValue<Integer>('line'));

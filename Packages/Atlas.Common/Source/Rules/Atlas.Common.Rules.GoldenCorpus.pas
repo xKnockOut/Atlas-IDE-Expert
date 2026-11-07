@@ -24,9 +24,9 @@ uses
   Atlas.Common.Rules.Contract;
 
 const
-  ExpectedMarker = 'ERWARTET:';
-  NoFindingMarker = 'KEIN-TREFFER:';
-  IndexMarker = 'ERWARTET-INDEX:';
+  cExpectedMarker = 'ERWARTET:';
+  cNoFindingMarker = 'KEIN-TREFFER:';
+  cIndexMarker = 'ERWARTET-INDEX:';
 
 type
   /// <summary>Eine Markierung: Regel und Zeile (0-basiert).</summary>
@@ -91,7 +91,8 @@ type
     class function Markers(const AText: string): TArray<TGoldenMarker>; overload; static;
     /// <summary>Wie oben; mit AWithIndex zählt ERWARTET-INDEX wie ERWARTET (#1112).</summary>
     class function Markers(const AText: string; AWithIndex: Boolean): TArray<TGoldenMarker>; overload; static;
-    /// <summary>Geplante Regel-IDs aus einer Liste "regel-id  # Bemerkung"; leere Zeilen und # werden übersprungen.</summary>
+    /// <summary>Geplante Regel-IDs aus einer Liste "regel-id  # Bemerkung"; leere Zeilen und # werden
+    /// übersprungen.</summary>
     class function PlannedIds(const AText: string): TArray<string>; static;
     /// <summary>Geplante Regel-IDs, deren Bemerkung kein Issue (#Nummer) nennt.</summary>
     class function PlannedWithoutIssue(const AText: string): TArray<string>; static;
@@ -149,12 +150,12 @@ const
 /// <summary>Regel-IDs bestehen aus Kleinbuchstaben, Ziffern und Bindestrichen.</summary>
 function IsRuleId(const AId: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := AId <> '';
-  for Index := 1 to Length(AId) do
+  for mIndex := 1 to Length(AId) do
   begin
-    if not CharInSet(AId[Index], ['a'..'z', '0'..'9', '-']) then
+    if not CharInSet(AId[mIndex], ['a'..'z', '0'..'9', '-']) then
     begin
       Exit(False);
     end;
@@ -163,11 +164,11 @@ end;
 
 function Contains(const AValues: TArray<string>; const AValue: string): Boolean;
 var
-  Value: string;
+  mValue: string;
 begin
-  for Value in AValues do
+  for mValue in AValues do
   begin
-    if SameText(Value, AValue) then
+    if SameText(mValue, AValue) then
     begin
       Exit(True);
     end;
@@ -222,104 +223,104 @@ class function TGoldenCorpus.Markers(const AText: string; AWithIndex: Boolean): 
   procedure ReadMarkers(const ALine: string; ALineIndex: Integer; const AMarker: string; AExpected: Boolean;
     var AMarkers: TArray<TGoldenMarker>);
   var
-    Start: Integer;
-    Id: string;
-    Ids: TArray<string>;
-    Marker: TGoldenMarker;
+    mStart: Integer;
+    mId: string;
+    mIds: TArray<string>;
+    mMarker: TGoldenMarker;
   begin
-    Start := Pos('// ' + AMarker, ALine);
-    if Start = 0 then
+    mStart := Pos('// ' + AMarker, ALine);
+    if mStart = 0 then
     begin
       Exit;
     end;
-    Ids := Copy(ALine, Start + Length(AMarker) + 3, MaxInt).Split([',']);
+    mIds := Copy(ALine, mStart + Length(AMarker) + 3, MaxInt).Split([',']);
     // Erklärende Kommentare wie "// ERWARTET: <regel>" sind keine Markierung.
-    for Id in Ids do
+    for mId in mIds do
     begin
-      if not IsRuleId(Trim(Id)) then
+      if not IsRuleId(Trim(mId)) then
       begin
         Exit;
       end;
     end;
-    for Id in Ids do
+    for mId in mIds do
     begin
-      Marker.Line := ALineIndex;
-      Marker.RuleId := Trim(Id);
-      Marker.Expected := AExpected;
-      AMarkers := AMarkers + [Marker];
+      mMarker.Line := ALineIndex;
+      mMarker.RuleId := Trim(mId);
+      mMarker.Expected := AExpected;
+      AMarkers := AMarkers + [mMarker];
     end;
   end;
 
 var
-  Lines: TArray<string>;
-  Index: Integer;
+  mLines: TArray<string>;
+  mIndex: Integer;
 begin
   Result := nil;
-  Lines := TTextLines.SplitLines(AText);
-  for Index := 0 to High(Lines) do
+  mLines := TTextLines.SplitLines(AText);
+  for mIndex := 0 to High(mLines) do
   begin
-    ReadMarkers(Lines[Index], Index, ExpectedMarker, True, Result);
-    ReadMarkers(Lines[Index], Index, NoFindingMarker, False, Result);
+    ReadMarkers(mLines[mIndex], mIndex, cExpectedMarker, True, Result);
+    ReadMarkers(mLines[mIndex], mIndex, cNoFindingMarker, False, Result);
     if AWithIndex then
     begin
-      ReadMarkers(Lines[Index], Index, IndexMarker, True, Result);
+      ReadMarkers(mLines[mIndex], mIndex, cIndexMarker, True, Result);
     end;
   end;
 end;
 
 class function TGoldenCorpus.PlannedIds(const AText: string): TArray<string>;
 var
-  Line, Id: string;
+  mLine, mId: string;
 begin
   Result := nil;
-  for Line in TTextLines.SplitLines(AText) do
+  for mLine in TTextLines.SplitLines(AText) do
   begin
-    Id := Line;
-    if Pos('#', Id) > 0 then
+    mId := mLine;
+    if Pos('#', mId) > 0 then
     begin
-      Id := Copy(Id, 1, Pos('#', Id) - 1);
+      mId := Copy(mId, 1, Pos('#', mId) - 1);
     end;
-    Id := Trim(Id);
-    if Id <> '' then
+    mId := Trim(mId);
+    if mId <> '' then
     begin
-      Result := Result + [Id];
+      Result := Result + [mId];
     end;
   end;
 end;
 
 class function TGoldenCorpus.PlannedWithoutIssue(const AText: string): TArray<string>;
 var
-  Line, Id, Note: string;
-  Index: Integer;
-  HasIssue: Boolean;
+  mLine, mId, mNote: string;
+  mIndex: Integer;
+  mHasIssue: Boolean;
 begin
   Result := nil;
-  for Line in TTextLines.SplitLines(AText) do
+  for mLine in TTextLines.SplitLines(AText) do
   begin
-    Id := Line;
-    Note := '';
-    if Pos('#', Id) > 0 then
+    mId := mLine;
+    mNote := '';
+    if Pos('#', mId) > 0 then
     begin
-      Note := Copy(Id, Pos('#', Id) + 1, MaxInt);
-      Id := Copy(Id, 1, Pos('#', Id) - 1);
+      mNote := Copy(mId, Pos('#', mId) + 1, MaxInt);
+      mId := Copy(mId, 1, Pos('#', mId) - 1);
     end;
-    Id := Trim(Id);
-    if Id = '' then
+    mId := Trim(mId);
+    if mId = '' then
     begin
       Continue;
     end;
     // Gesucht ist "#" mit mindestens einer Ziffer dahinter, z. B. "# #56".
-    HasIssue := False;
-    for Index := 1 to Length(Note) - 1 do
+    mHasIssue := False;
+    for mIndex := 1 to Length(mNote) - 1 do
     begin
-      if (Note[Index] = '#') and CharInSet(Note[Index + 1], ['0'..'9']) then
+      if (mNote[mIndex] = '#') and CharInSet(mNote[mIndex + 1], ['0'..'9']) then
       begin
-        HasIssue := True;
+        mHasIssue := True;
       end;
     end;
-    if not HasIssue then
+    if not mHasIssue then
     begin
-      Result := Result + [Id];
+      Result := Result + [mId];
     end;
   end;
 end;
@@ -448,124 +449,124 @@ end;
 /// <summary>Teile einer Mutationszeile an " | ", \| bleibt im Teil.</summary>
 function SplitParts(const ALine: string): TArray<string>;
 var
-  Index: Integer;
-  Part: string;
+  mIndex: Integer;
+  mPart: string;
 begin
   Result := nil;
-  Part := '';
-  Index := 1;
-  while Index <= Length(ALine) do
+  mPart := '';
+  mIndex := 1;
+  while mIndex <= Length(ALine) do
   begin
-    if (ALine[Index] = '\') and (Index < Length(ALine)) then
+    if (ALine[mIndex] = '\') and (mIndex < Length(ALine)) then
     begin
       // Escapes bleiben für Unescape stehen.
-      Part := Part + ALine[Index] + ALine[Index + 1];
-      Inc(Index, 2);
+      mPart := mPart + ALine[mIndex] + ALine[mIndex + 1];
+      Inc(mIndex, 2);
       Continue;
     end;
-    if ALine[Index] = '|' then
+    if ALine[mIndex] = '|' then
     begin
-      Result := Result + [Trim(Part)];
-      Part := '';
+      Result := Result + [Trim(mPart)];
+      mPart := '';
     end
     else
     begin
-      Part := Part + ALine[Index];
+      mPart := mPart + ALine[mIndex];
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Result := Result + [Trim(Part)];
+  Result := Result + [Trim(mPart)];
 end;
 
 /// <summary>\n, \uXXXX, \| und \\ auflösen; ALineBreak für \n.</summary>
 function Unescape(const AText, ALineBreak: string): string;
 var
-  Index, Code: Integer;
+  mIndex, mCode: Integer;
 begin
   Result := '';
-  Index := 1;
-  while Index <= Length(AText) do
+  mIndex := 1;
+  while mIndex <= Length(AText) do
   begin
-    if (AText[Index] = '\') and (Index < Length(AText)) then
+    if (AText[mIndex] = '\') and (mIndex < Length(AText)) then
     begin
-      case AText[Index + 1] of
+      case AText[mIndex + 1] of
         'n':
           begin
             Result := Result + ALineBreak;
-            Inc(Index, 2);
+            Inc(mIndex, 2);
             Continue;
           end;
         'u':
-          if TryStrToInt('$' + Copy(AText, Index + 2, 4), Code) then
+          if TryStrToInt('$' + Copy(AText, mIndex + 2, 4), mCode) then
           begin
-            Result := Result + Char(Code);
-            Inc(Index, 6);
+            Result := Result + Char(mCode);
+            Inc(mIndex, 6);
             Continue;
           end;
         '|', '\':
           begin
-            Result := Result + AText[Index + 1];
-            Inc(Index, 2);
+            Result := Result + AText[mIndex + 1];
+            Inc(mIndex, 2);
             Continue;
           end;
       end;
     end;
-    Result := Result + AText[Index];
-    Inc(Index);
+    Result := Result + AText[mIndex];
+    Inc(mIndex);
   end;
 end;
 
 class function TGoldenCorpus.Mutations(const AText: string; out AErrors: TArray<string>): TArray<TRuleMutation>;
 var
-  Lines, Parts: TArray<string>;
-  Index: Integer;
-  Line: string;
-  Mutation: TRuleMutation;
+  mLines, mParts: TArray<string>;
+  mIndex: Integer;
+  mLine: string;
+  mMutation: TRuleMutation;
 begin
   Result := nil;
   AErrors := nil;
-  Lines := TTextLines.SplitLines(AText);
-  for Index := 0 to High(Lines) do
+  mLines := TTextLines.SplitLines(AText);
+  for mIndex := 0 to High(mLines) do
   begin
-    Line := Trim(Lines[Index]);
-    if (Line = '') or StartsStr('#', Line) then
+    mLine := Trim(mLines[mIndex]);
+    if (mLine = '') or StartsStr('#', mLine) then
     begin
       Continue;
     end;
-    Parts := SplitParts(Line);
-    if (Length(Parts) <> 4) or (Parts[0] = '') or (Parts[1] = '') or (Parts[2] = '') then
+    mParts := SplitParts(mLine);
+    if (Length(mParts) <> 4) or (mParts[0] = '') or (mParts[1] = '') or (mParts[2] = '') then
     begin
-      AErrors := AErrors + [cTexts[TGoldenCorpusText.BadLine].Fmt([Index + 1])];
+      AErrors := AErrors + [cTexts[TGoldenCorpusText.BadLine].Fmt([mIndex + 1])];
       Continue;
     end;
-    Mutation.RuleId := Parts[0];
-    Mutation.FileName := Parts[1];
-    Mutation.Search := Parts[2];
-    Mutation.Replacement := Parts[3];
-    Mutation.Line := Index + 1;
-    Result := Result + [Mutation];
+    mMutation.RuleId := mParts[0];
+    mMutation.FileName := mParts[1];
+    mMutation.Search := mParts[2];
+    mMutation.Replacement := mParts[3];
+    mMutation.Line := mIndex + 1;
+    Result := Result + [mMutation];
   end;
 end;
 
 class function TGoldenCorpus.Mutate(const AText: string; const AMutation: TRuleMutation;
   out AMutated: string): Boolean;
 var
-  LineBreak, Search: string;
-  First: Integer;
+  mLineBreak, mSearch: string;
+  mFirst: Integer;
 begin
   AMutated := AText;
-  LineBreak := #10;
+  mLineBreak := #10;
   if Pos(#13#10, AText) > 0 then
   begin
-    LineBreak := #13#10;
+    mLineBreak := #13#10;
   end;
-  Search := Unescape(AMutation.Search, LineBreak);
-  First := Pos(Search, AText);
-  Result := (First > 0) and (Pos(Search, AText, First + 1) = 0);
+  mSearch := Unescape(AMutation.Search, mLineBreak);
+  mFirst := Pos(mSearch, AText);
+  Result := (mFirst > 0) and (Pos(mSearch, AText, mFirst + 1) = 0);
   if Result then
   begin
-    AMutated := Copy(AText, 1, First - 1) + Unescape(AMutation.Replacement, LineBreak) +
-      Copy(AText, First + Length(Search), MaxInt);
+    AMutated := Copy(AText, 1, mFirst - 1) + Unescape(AMutation.Replacement, mLineBreak) +
+      Copy(AText, mFirst + Length(mSearch), MaxInt);
   end;
 end;
 
@@ -573,12 +574,12 @@ class function TGoldenCorpus.Detected(const ABefore, AAfter: TArray<TRuleFinding
 
   function CountOf(const AFindings: TArray<TRuleFinding>): Integer;
   var
-    Finding: TRuleFinding;
+    mFinding: TRuleFinding;
   begin
     Result := 0;
-    for Finding in AFindings do
+    for mFinding in AFindings do
     begin
-      if SameText(Finding.RuleId, ARuleId) then
+      if SameText(mFinding.RuleId, ARuleId) then
       begin
         Inc(Result);
       end;
@@ -592,65 +593,65 @@ end;
 class function TGoldenCorpus.HitRates(const AMutations: TArray<TRuleMutation>;
   const AFound: TArray<Boolean>): TArray<TRuleHitRate>;
 var
-  Index, Rate, Swap: Integer;
-  Temp: TRuleHitRate;
+  mIndex, mRate, mSwap: Integer;
+  mTemp: TRuleHitRate;
 begin
   Result := nil;
-  for Index := 0 to High(AMutations) do
+  for mIndex := 0 to High(AMutations) do
   begin
-    Rate := -1;
-    for Swap := 0 to High(Result) do
+    mRate := -1;
+    for mSwap := 0 to High(Result) do
     begin
-      if SameText(Result[Swap].RuleId, AMutations[Index].RuleId) then
+      if SameText(Result[mSwap].RuleId, AMutations[mIndex].RuleId) then
       begin
-        Rate := Swap;
+        mRate := mSwap;
       end;
     end;
-    if Rate < 0 then
+    if mRate < 0 then
     begin
-      Temp := Default(TRuleHitRate);
-      Temp.RuleId := AMutations[Index].RuleId;
-      Result := Result + [Temp];
-      Rate := High(Result);
+      mTemp := Default(TRuleHitRate);
+      mTemp.RuleId := AMutations[mIndex].RuleId;
+      Result := Result + [mTemp];
+      mRate := High(Result);
     end;
-    Inc(Result[Rate].Mutations);
-    if (Index <= High(AFound)) and AFound[Index] then
+    Inc(Result[mRate].Mutations);
+    if (mIndex <= High(AFound)) and AFound[mIndex] then
     begin
-      Inc(Result[Rate].Found);
+      Inc(Result[mRate].Found);
     end;
   end;
-  for Index := 1 to High(Result) do
+  for mIndex := 1 to High(Result) do
   begin
-    Temp := Result[Index];
-    Swap := Index - 1;
-    while (Swap >= 0) and (CompareText(Result[Swap].RuleId, Temp.RuleId) > 0) do
+    mTemp := Result[mIndex];
+    mSwap := mIndex - 1;
+    while (mSwap >= 0) and (CompareText(Result[mSwap].RuleId, mTemp.RuleId) > 0) do
     begin
-      Result[Swap + 1] := Result[Swap];
-      Dec(Swap);
+      Result[mSwap + 1] := Result[mSwap];
+      Dec(mSwap);
     end;
-    Result[Swap + 1] := Temp;
+    Result[mSwap + 1] := mTemp;
   end;
 end;
 
 class function TGoldenCorpus.TimeRules(const ARules: TArray<IRule>; const ASettings: TServerSettings;
   const ATexts: TArray<string>): TArray<TRuleTiming>;
 var
-  Rule: IRule;
-  Text: string;
-  Watch: TStopwatch;
-  Timing: TRuleTiming;
+  mRule: IRule;
+  mText: string;
+  mWatch: TStopwatch;
+  mTiming: TRuleTiming;
 begin
   Result := nil;
-  for Rule in ARules do
+  for mRule in ARules do
   begin
-    Watch := TStopwatch.StartNew;
-    for Text in ATexts do
+    mWatch := TStopwatch.StartNew;
+    for mText in ATexts do
     begin
-      TFileChecker.CheckText([Rule], ASettings, '', Text);
+      TFileChecker.CheckText([mRule], ASettings, '', mText);
     end;
-    Timing.RuleId := Rule.Descriptor.Id;
-    Timing.Milliseconds := Watch.Elapsed.TotalMilliseconds;
-    Result := Result + [Timing];
+    mTiming.RuleId := mRule.Descriptor.Id;
+    mTiming.Milliseconds := mWatch.Elapsed.TotalMilliseconds;
+    Result := Result + [mTiming];
   end;
 end;
 

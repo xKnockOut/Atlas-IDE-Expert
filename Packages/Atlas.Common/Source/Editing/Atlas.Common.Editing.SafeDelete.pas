@@ -56,7 +56,7 @@ type
 
   TSafeDelete = class
   public const
-    Kind = 'refactor';
+    cKind = 'refactor';
   public
     /// <summary>Symbol an APosition. Sonst nennt AReason den Grund ('' wenn dort gar kein Symbol steht).
     /// </summary>
@@ -159,19 +159,19 @@ end;
 /// <summary>Bezeichner an APosition; -1 ohne.</summary>
 function IdentifierAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(ATokens) do
+  for mIndex := 0 to High(ATokens) do
   begin
-    if ATokens[Index].StartPos.Line > APosition.Line then
+    if ATokens[mIndex].StartPos.Line > APosition.Line then
     begin
       Break;
     end;
-    if (ATokens[Index].Kind = TPascalTokenKind.Identifier) and (ATokens[Index].StartPos.Line = APosition.Line) and
-      (ATokens[Index].StartPos.Character <= APosition.Character) and
-      (ATokens[Index].EndPos.Character >= APosition.Character) then
+    if (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and (ATokens[mIndex].StartPos.Line = APosition.Line) and
+      (ATokens[mIndex].StartPos.Character <= APosition.Character) and
+      (ATokens[mIndex].EndPos.Character >= APosition.Character) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -180,19 +180,19 @@ end;
 /// <summary>Bereich des ersten Bezeichners AName in ANode (ohne Punkt-Präfix: der letzte Teil zählt).</summary>
 function NameRangeIn(ATree: TSyntaxTree; ANode: TSyntaxNode; const AName: string; out ARange: TTextRange): Boolean;
 var
-  Tokens: TArray<TPascalToken>;
-  Index: Integer;
+  mTokens: TArray<TPascalToken>;
+  mIndex: Integer;
 begin
-  Tokens := ATree.Tokens;
-  Index := TokenIndexAt(Tokens, ANode.StartOffset);
-  while (Index <= High(Tokens)) and (Tokens[Index].Offset < ANode.EndOffset) do
+  mTokens := ATree.Tokens;
+  mIndex := TokenIndexAt(mTokens, ANode.StartOffset);
+  while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < ANode.EndOffset) do
   begin
-    if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Index].Text, AName) then
+    if (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(mTokens[mIndex].Text, AName) then
     begin
-      ARange := TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].EndPos);
+      ARange := TTextRange.Create(mTokens[mIndex].StartPos, mTokens[mIndex].EndPos);
       Exit(True);
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
   Result := False;
 end;
@@ -209,23 +209,23 @@ end;
 /// <summary>Erste Zeile von ANode samt Attributen (Geschwister davor) und Doku-Kommentar darüber.</summary>
 function FirstLineOf(ANode: TSyntaxNode; const ALines: TArray<string>): Integer;
 var
-  Parent: TSyntaxNode;
-  Index: Integer;
+  mParent: TSyntaxNode;
+  mIndex: Integer;
 begin
   Result := ANode.StartPos.Line;
-  Parent := ANode.Parent;
-  if Parent <> nil then
+  mParent := ANode.Parent;
+  if mParent <> nil then
   begin
-    Index := 0;
-    while (Index < Parent.ChildCount) and (Parent[Index] <> ANode) do
+    mIndex := 0;
+    while (mIndex < mParent.ChildCount) and (mParent[mIndex] <> ANode) do
     begin
-      Inc(Index);
+      Inc(mIndex);
     end;
-    Dec(Index);
-    while (Index >= 0) and (Parent[Index].Kind = TSyntaxKind.Attribute) do
+    Dec(mIndex);
+    while (mIndex >= 0) and (mParent[mIndex].Kind = TSyntaxKind.Attribute) do
     begin
-      Result := Parent[Index].StartPos.Line;
-      Dec(Index);
+      Result := mParent[mIndex].StartPos.Line;
+      Dec(mIndex);
     end;
   end;
   while (Result > 0) and StartsText('///', Trim(ALines[Result - 1])) do
@@ -237,60 +237,60 @@ end;
 /// <summary>Steht ANode allein auf seinen Zeilen (davor und dahinter nur Leerraum bzw. Kommentar)?</summary>
 function AloneOnLines(ANode: TSyntaxNode; const ALines: TArray<string>): Boolean;
 var
-  Before, After: string;
+  mBefore, mAfter: string;
 begin
-  Before := Copy(ALines[ANode.StartPos.Line], 1, ANode.StartPos.Character);
-  After := Trim(Copy(ALines[ANode.EndPos.Line], ANode.EndPos.Character + 1, MaxInt));
-  Result := (Trim(Before) = '') and ((After = '') or StartsText('//', After));
+  mBefore := Copy(ALines[ANode.StartPos.Line], 1, ANode.StartPos.Character);
+  mAfter := Trim(Copy(ALines[ANode.EndPos.Line], ANode.EndPos.Character + 1, MaxInt));
+  Result := (Trim(mBefore) = '') and ((mAfter = '') or StartsText('//', mAfter));
 end;
 
 /// <summary>Routinen auf oberster Ebene (interface und implementation) mit Namen AName.</summary>
 function TopRoutines(ATree: TSyntaxTree; const AName: string): TArray<TSyntaxNode>;
 var
-  Found: TArray<TSyntaxNode>;
+  mFound: TArray<TSyntaxNode>;
 begin
-  Found := nil;
+  mFound := nil;
   ATree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
       Result := not (ANode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.TypeDecl]);
       if (ANode.Kind = TSyntaxKind.RoutineDecl) and SameText(ANode.Name, AName) then
       begin
-        Found := Found + [ANode];
+        mFound := mFound + [ANode];
       end;
     end);
-  Result := Found;
+  Result := mFound;
 end;
 
 function ParameterText(const AText: string; ARoutine: TSyntaxNode): string;
 var
-  Header, Parameters: TSyntaxNode;
+  mHeader, mParameters: TSyntaxNode;
 begin
   Result := '';
-  Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
-  if Header = nil then
+  mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+  if mHeader = nil then
   begin
     Exit;
   end;
-  Parameters := Header.FindChild(TSyntaxKind.Parameters);
-  if Parameters <> nil then
+  mParameters := mHeader.FindChild(TSyntaxKind.Parameters);
+  if mParameters <> nil then
   begin
-    Result := CollapseSpace(Copy(AText, Parameters.StartOffset + 1, Parameters.EndOffset - Parameters.StartOffset));
+    Result := CollapseSpace(Copy(AText, mParameters.StartOffset + 1, mParameters.EndOffset - mParameters.StartOffset));
   end;
 end;
 
 function IsInsideRoutine(ANode: TSyntaxNode): Boolean;
 var
-  Parent: TSyntaxNode;
+  mParent: TSyntaxNode;
 begin
-  Parent := ANode.Parent;
-  while Parent <> nil do
+  mParent := ANode.Parent;
+  while mParent <> nil do
   begin
-    if Parent.Kind = TSyntaxKind.RoutineDecl then
+    if mParent.Kind = TSyntaxKind.RoutineDecl then
     begin
       Exit(True);
     end;
-    Parent := Parent.Parent;
+    mParent := mParent.Parent;
   end;
   Result := False;
 end;
@@ -299,14 +299,14 @@ end;
 
 class function TSafeDelete.ForMember(ALayout: TClassLayout; AMember: Integer): TSafeDeleteTarget;
 var
-  Member: TClassMember;
+  mMember: TClassMember;
 begin
-  Member := ALayout.Members[AMember];
+  mMember := ALayout.Members[AMember];
   Result := Default(TSafeDeleteTarget);
   Result.Member := AMember;
   Result.ClassName := ALayout.Name;
-  Result.Name := Member.Name;
-  case Member.Kind of
+  Result.Name := mMember.Name;
+  case mMember.Kind of
     TClassMemberKind.Field, TClassMemberKind.ClassVar:
       Result.Kind := TSafeDeleteKind.Field;
     TClassMemberKind.Property_:
@@ -314,50 +314,50 @@ begin
   else
     Result.Kind := TSafeDeleteKind.Method;
   end;
-  Result.IsPublished := Member.Visibility = TClassVisibility.Published_;
-  Result.IsOverride := Member.HasDirective('override');
-  Result.IsVirtual := Member.IsVirtual and not Result.IsOverride;
-  if not NameRangeIn(ALayout.Tree, Member.Node, Member.Name, Result.NameRange) then
+  Result.IsPublished := mMember.Visibility = TClassVisibility.Published_;
+  Result.IsOverride := mMember.HasDirective('override');
+  Result.IsVirtual := mMember.IsVirtual and not Result.IsOverride;
+  if not NameRangeIn(ALayout.Tree, mMember.Node, mMember.Name, Result.NameRange) then
   begin
-    Result.NameRange := TTextRange.Create(Member.Node.StartPos, Member.Node.StartPos);
+    Result.NameRange := TTextRange.Create(mMember.Node.StartPos, mMember.Node.StartPos);
   end;
 end;
 
 /// <summary>Routine, deren Deklaration auf Zeile ALine beginnt (die innerste); nil ohne.</summary>
 function RoutineAt(ATree: TSyntaxTree; ALine: Integer): TSyntaxNode;
 var
-  Routine: TSyntaxNode;
+  mRoutine: TSyntaxNode;
 begin
-  Routine := nil;
+  mRoutine := nil;
   ATree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
       Result := (ANode.StartPos.Line <= ALine) and (ANode.EndPos.Line >= ALine);
       if Result and (ANode.Kind = TSyntaxKind.RoutineDecl) and (ANode.StartPos.Line = ALine) then
       begin
-        Routine := ANode;
+        mRoutine := ANode;
       end;
     end);
-  Result := Routine;
+  Result := mRoutine;
 end;
 
 /// <summary>Typ, Konstante oder Variable über Zeile ALine; nil ohne.</summary>
 function DeclarationAt(ATree: TSyntaxTree; ALine: Integer): TSyntaxNode;
 var
-  Found: TSyntaxNode;
+  mFound: TSyntaxNode;
 begin
-  Found := nil;
+  mFound := nil;
   ATree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
-      Result := (Found = nil) and (ANode.StartPos.Line <= ALine) and (ANode.EndPos.Line >= ALine);
+      Result := (mFound = nil) and (ANode.StartPos.Line <= ALine) and (ANode.EndPos.Line >= ALine);
       if Result and (ANode.Kind in [TSyntaxKind.TypeDecl, TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl]) then
       begin
-        Found := ANode;
+        mFound := ANode;
         Result := False;
       end;
     end);
-  Result := Found;
+  Result := mFound;
 end;
 
 /// <summary>Mitglieder, die Atlas nicht sicher löschen kann (z. B. Klassenkonstanten).</summary>
@@ -630,22 +630,22 @@ end;
 function TypeLines(ATree: TSyntaxTree; const ATarget: TSafeDeleteTarget; const ALines: TArray<string>):
   TArray<TLineSpan>;
 var
-  Spans: TArray<TLineSpan>;
-  Prefix: string;
+  mSpans: TArray<TLineSpan>;
+  mPrefix: string;
 begin
-  Spans := nil;
-  Spans := Spans + [TLineSpan.Create(FirstLineOf(ATarget.Node, ALines), ATarget.Node.EndPos.Line)];
-  Prefix := ATarget.Name + '.';
+  mSpans := nil;
+  mSpans := mSpans + [TLineSpan.Create(FirstLineOf(ATarget.Node, ALines), ATarget.Node.EndPos.Line)];
+  mPrefix := ATarget.Name + '.';
   ATree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
       Result := ANode.Kind <> TSyntaxKind.RoutineDecl;
-      if not Result and StartsText(Prefix, ANode.Name) then
+      if not Result and StartsText(mPrefix, ANode.Name) then
       begin
-        Spans := Spans + [TLineSpan.Create(FirstLineOf(ANode, ALines), ANode.EndPos.Line)];
+        mSpans := mSpans + [TLineSpan.Create(FirstLineOf(ANode, ALines), ANode.EndPos.Line)];
       end;
     end);
-  Result := Spans;
+  Result := mSpans;
 end;
 
 /// <summary>Zeilen einer Routine der Unit: Deklaration im interface, forward und Rumpf.</summary>
@@ -759,11 +759,11 @@ end;
 
 function HasNode(const AList: TArray<TSyntaxNode>; ANode: TSyntaxNode): Boolean;
 var
-  Item: TSyntaxNode;
+  mItem: TSyntaxNode;
 begin
-  for Item in AList do
+  for mItem in AList do
   begin
-    if Item = ANode then
+    if mItem = ANode then
     begin
       Exit(True);
     end;
@@ -1131,40 +1131,40 @@ end;
 
 class function TSafeDelete.FreedMembers(ALayout: TClassLayout; const ADeleted: TArray<Integer>): TArray<Integer>;
 var
-  Deleted, Users: TArray<Integer>;
-  Index: Integer;
-  Member: TClassMember;
-  Changed: Boolean;
+  mDeleted, mUsers: TArray<Integer>;
+  mIndex: Integer;
+  mMember: TClassMember;
+  mChanged: Boolean;
 begin
   Result := nil;
-  Deleted := ADeleted;
+  mDeleted := ADeleted;
   repeat
-    Changed := False;
-    for Index := 0 to High(ALayout.Members) do
+    mChanged := False;
+    for mIndex := 0 to High(ALayout.Members) do
     begin
-      if TMemberTransfer.Has(Deleted, Index) then
+      if TMemberTransfer.Has(mDeleted, mIndex) then
       begin
         Continue;
       end;
-      Member := ALayout.Members[Index];
-      if not (Member.Visibility in [TClassVisibility.StrictPrivate, TClassVisibility.Private_]) or
-        (Member.Kind in [TClassMemberKind.Constructor_, TClassMemberKind.Destructor_, TClassMemberKind.Other]) or
-        Member.IsVirtual or Member.HasDirective('message') then
+      mMember := ALayout.Members[mIndex];
+      if not (mMember.Visibility in [TClassVisibility.StrictPrivate, TClassVisibility.Private_]) or
+        (mMember.Kind in [TClassMemberKind.Constructor_, TClassMemberKind.Destructor_, TClassMemberKind.Other]) or
+        mMember.IsVirtual or mMember.HasDirective('message') then
       begin
         Continue;
       end;
       // Nur, was gelöschte Mitglieder benutzt haben; was schon vorher unbenutzt war, meldet unused-private-member.
-      Users := ALayout.UsersOf(Index);
-      if (Users = nil) or not TMemberTransfer.HasAll(Users, Deleted) or
-        TMemberTransfer.UsedOutside(ALayout, Member.Name) then
+      mUsers := ALayout.UsersOf(mIndex);
+      if (mUsers = nil) or not TMemberTransfer.HasAll(mUsers, mDeleted) or
+        TMemberTransfer.UsedOutside(ALayout, mMember.Name) then
       begin
         Continue;
       end;
-      Deleted := Deleted + [Index];
-      Result := Result + [Index];
-      Changed := True;
+      mDeleted := mDeleted + [mIndex];
+      Result := Result + [mIndex];
+      mChanged := True;
     end;
-  until not Changed;
+  until not mChanged;
 end;
 
 class function TSafeDelete.Title(const ATarget: TSafeDeleteTarget): string;

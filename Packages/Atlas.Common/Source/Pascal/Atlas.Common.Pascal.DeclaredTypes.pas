@@ -39,7 +39,8 @@ type
     procedure Enter(AFrames: TList<TFrame>; ANode: TSyntaxNode; const AOwnerClass: string);
     /// <summary>Behandelt das Kind AChild des Knotens ANode in Walk.</summary>
     procedure Visit(AFrames: TList<TFrame>; ANode, AChild: TSyntaxNode; const AOwnerClass: string);
-    /// <summary>Felder einer Klasse, eines Records oder Objekts; Sichtbarkeitsabschnitte kommen auf den Stapel.</summary>
+    /// <summary>Felder einer Klasse, eines Records oder Objekts; Sichtbarkeitsabschnitte kommen auf den
+    /// Stapel.</summary>
     procedure VisitClassType(AFrames: TList<TFrame>; AType: TSyntaxNode; const AOwnerClass: string);
     procedure VisitVarSection(ANode, ASection: TSyntaxNode);
     /// <summary>Neuer Gültigkeitsbereich für die Routine ARoutine mit ihren Parametern.</summary>
@@ -112,36 +113,36 @@ end;
 
 function TDeclaredTypes.TypeText(ANode: TSyntaxNode): string;
 var
-  Index: Integer;
-  Child: TSyntaxNode;
+  mIndex: Integer;
+  mChild: TSyntaxNode;
 begin
   Result := '';
-  for Index := 0 to ANode.ChildCount - 1 do
+  for mIndex := 0 to ANode.ChildCount - 1 do
   begin
-    Child := ANode[Index];
-    if Child.Kind in [TSyntaxKind.TypeReference, TSyntaxKind.ArrayType, TSyntaxKind.PointerType,
+    mChild := ANode[mIndex];
+    if mChild.Kind in [TSyntaxKind.TypeReference, TSyntaxKind.ArrayType, TSyntaxKind.PointerType,
       TSyntaxKind.ClassOfType, TSyntaxKind.SetType, TSyntaxKind.RecordType, TSyntaxKind.ProcedureType,
       TSyntaxKind.FileType, TSyntaxKind.EnumType, TSyntaxKind.SubrangeType] then
     begin
-      Exit(Trim(Copy(FText, Child.StartOffset + 1, Child.EndOffset - Child.StartOffset)));
+      Exit(Trim(Copy(FText, mChild.StartOffset + 1, mChild.EndOffset - mChild.StartOffset)));
     end;
   end;
 end;
 
 procedure TDeclaredTypes.AddNames(AScope: TScope; ANode: TSyntaxNode);
 var
-  Name, TypeName: string;
+  mName, mTypeName: string;
 begin
-  TypeName := TypeText(ANode);
-  if TypeName = '' then
+  mTypeName := TypeText(ANode);
+  if mTypeName = '' then
   begin
     Exit;
   end;
-  for Name in SplitString(ANode.Name, ',') do
+  for mName in SplitString(ANode.Name, ',') do
   begin
-    if Trim(Name) <> '' then
+    if Trim(mName) <> '' then
     begin
-      AScope.AddOrSetValue(LowerCase(Trim(Name)), TypeName);
+      AScope.AddOrSetValue(LowerCase(Trim(mName)), mTypeName);
     end;
   end;
 end;
@@ -262,47 +263,47 @@ end;
 
 procedure TDeclaredTypes.Walk(ARoot: TSyntaxNode);
 var
-  Frames: TList<TFrame>;
-  Frame: TFrame;
-  Top: Integer;
+  mFrames: TList<TFrame>;
+  mFrame: TFrame;
+  mTop: Integer;
 begin
   // Früher rekursiv je Kind; lange Ausdrucksketten sprengten so den Stapel (Bericht M1). Der Rahmenstapel geht
   // die Kinder in derselben Reihenfolge durch wie die Rekursion: Routinen stehen in FRoutines in
   // Quelltextreihenfolge, wie RoutineAt es braucht.
-  Frames := TList<TFrame>.Create;
+  mFrames := TList<TFrame>.Create;
   try
-    Enter(Frames, ARoot, '');
-    while Frames.Count > 0 do
+    Enter(mFrames, ARoot, '');
+    while mFrames.Count > 0 do
     begin
-      Top := Frames.Count - 1;
-      Frame := Frames[Top];
-      if Frame.Next >= Frame.Node.ChildCount then
+      mTop := mFrames.Count - 1;
+      mFrame := mFrames[mTop];
+      if mFrame.Next >= mFrame.Node.ChildCount then
       begin
-        Frames.Delete(Top);
+        mFrames.Delete(mTop);
         Continue;
       end;
-      Inc(Frame.Next);
-      Frames[Top] := Frame;
-      Visit(Frames, Frame.Node, Frame.Node[Frame.Next - 1], Frame.OwnerClass);
+      Inc(mFrame.Next);
+      mFrames[mTop] := mFrame;
+      Visit(mFrames, mFrame.Node, mFrame.Node[mFrame.Next - 1], mFrame.OwnerClass);
     end;
   finally
-    Frames.Free;
+    mFrames.Free;
   end;
 end;
 
 function TDeclaredTypes.RoutineAt(const APosition: TTextPosition): TSyntaxNode;
 var
-  Routine: TSyntaxNode;
+  mRoutine: TSyntaxNode;
 begin
   // Innerste Routine: die zuletzt begonnene, die APosition enthält.
   Result := nil;
-  for Routine in FRoutines do
+  for mRoutine in FRoutines do
   begin
-    if not Before(APosition, Routine.StartPos) and Before(APosition, Routine.EndPos) then
+    if not Before(APosition, mRoutine.StartPos) and Before(APosition, mRoutine.EndPos) then
     begin
-      if (Result = nil) or Before(Result.StartPos, Routine.StartPos) then
+      if (Result = nil) or Before(Result.StartPos, mRoutine.StartPos) then
       begin
-        Result := Routine;
+        Result := mRoutine;
       end;
     end;
   end;
@@ -355,31 +356,31 @@ end;
 
 function TDeclaredTypes.DeclaredType(const AName: string; const APosition: TTextPosition): string;
 var
-  Key: string;
-  Routine: TSyntaxNode;
+  mKey: string;
+  mRoutine: TSyntaxNode;
 begin
-  Key := LowerCase(AName);
-  Routine := RoutineAt(APosition);
+  mKey := LowerCase(AName);
+  mRoutine := RoutineAt(APosition);
   // Inline-Variablen vor der Position in derselben Routine; die letzte gewinnt.
-  Result := InlineVarType(AName, APosition, Routine);
+  Result := InlineVarType(AName, APosition, mRoutine);
   if Result <> '' then
   begin
     Exit;
   end;
-  while Routine <> nil do
+  while mRoutine <> nil do
   begin
-    if RoutineScopeType(Routine, Key, Result) then
+    if RoutineScopeType(mRoutine, mKey, Result) then
     begin
       Exit;
     end;
     // Verschachtelte Routinen sehen die Deklarationen der umgebenden.
-    Routine := Routine.Parent;
-    while (Routine <> nil) and (Routine.Kind <> TSyntaxKind.RoutineDecl) do
+    mRoutine := mRoutine.Parent;
+    while (mRoutine <> nil) and (mRoutine.Kind <> TSyntaxKind.RoutineDecl) do
     begin
-      Routine := Routine.Parent;
+      mRoutine := mRoutine.Parent;
     end;
   end;
-  if not FUnitScope.TryGetValue(Key, Result) then
+  if not FUnitScope.TryGetValue(mKey, Result) then
   begin
     Result := '';
   end;

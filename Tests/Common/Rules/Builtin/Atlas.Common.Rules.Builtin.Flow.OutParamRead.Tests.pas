@@ -46,7 +46,7 @@ var
 begin
   mFindings := TRuleAssert.Findings(TOutParamReadRule.Create, Routine('N: Integer', '  N := N + 1;'));
   Assert.AreEqual(1, Integer(Length(mFindings)));
-  Assert.AreEqual(OutParamReadRuleId, mFindings[0].RuleId);
+  Assert.AreEqual(cOutParamReadRuleId, mFindings[0].RuleId);
   Assert.AreEqual('out-Parameter N wird gelesen, bevor er gesetzt ist; sein Wert ist hier undefiniert.',
     mFindings[0].Message);
 end;

@@ -171,7 +171,7 @@ begin
     finally
       Answer.Free;
     end;
-    Assert.IsTrue(Disk.ContainsKey(IncludeTrailingPathDelimiter(Root) + BaselineFileName));
+    Assert.IsTrue(Disk.ContainsKey(IncludeTrailingPathDelimiter(Root) + cBaselineFileName));
     Baselined := Classified(Command, [Msg(FullPath('A.pas'), 6, 'H2164'), Msg(FullPath('A.pas'), 4,
       'W1035')]);
     Assert.IsTrue(Baselined[0], 'dieselbe Meldung zählt nicht mehr');
@@ -202,7 +202,7 @@ var
   Command: TLspCompilerBaseline;
   Baseline: IRuleBaseline;
 begin
-  Disk.Add(IncludeTrailingPathDelimiter(Root) + BaselineFileName,
+  Disk.Add(IncludeTrailingPathDelimiter(Root) + cBaselineFileName,
     '{"version": 1, "findings": [{"path": "A.pas", "rule": "empty-except", "fingerprint": "00000000", ' +
     '"count": 2}]}');
   Command := MakeCommand;
@@ -211,7 +211,7 @@ begin
   finally
     Command.Free;
   end;
-  Baseline := TRuleBaseline.FromJson(Disk[IncludeTrailingPathDelimiter(Root) + BaselineFileName]);
+  Baseline := TRuleBaseline.FromJson(Disk[IncludeTrailingPathDelimiter(Root) + cBaselineFileName]);
   Assert.AreEqual(3, Baseline.Count, 'zwei Regeltreffer und eine Compilermeldung');
 end;
 
@@ -267,7 +267,7 @@ var
   Command: TLspCompilerBaseline;
   Raised: Boolean;
 begin
-  Disk.Add(IncludeTrailingPathDelimiter(Root) + BaselineFileName, '{kaputt');
+  Disk.Add(IncludeTrailingPathDelimiter(Root) + cBaselineFileName, '{kaputt');
   Command := MakeCommand;
   try
     Raised := False;
@@ -278,7 +278,7 @@ begin
         Raised := True;
     end;
     Assert.IsTrue(Raised, 'eine unlesbare Baseline wird nicht still ersetzt');
-    Assert.AreEqual('{kaputt', Disk[IncludeTrailingPathDelimiter(Root) + BaselineFileName]);
+    Assert.AreEqual('{kaputt', Disk[IncludeTrailingPathDelimiter(Root) + cBaselineFileName]);
   finally
     Command.Free;
   end;

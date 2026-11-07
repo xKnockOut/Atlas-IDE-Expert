@@ -210,7 +210,7 @@ begin
       end, 2000));
     TThread.Sleep(50);
     Assert.AreEqual(1, Answers);
-    Assert.AreEqual(TJsonRpcErrorCode.RequestCancelled, Code);
+    Assert.AreEqual(TJsonRpcErrorCode.cRequestCancelled, Code);
     Assert.AreEqual(1, AnswerId);
     Assert.IsTrue(Answered);
     Assert.IsTrue(Token.IsCancellationRequested);

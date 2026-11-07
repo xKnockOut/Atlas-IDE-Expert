@@ -39,9 +39,9 @@ type
 
   TTypeComments = class
   public const
-    RegionEndText = '{$ENDREGION}';
+    cRegionEndText = '{$ENDREGION}';
     /// <summary>Breite der Trennlinie ohne Formatierer-Vorgabe.</summary>
-    DefaultLineLength = 80;
+    cDefaultLineLength = 80;
   public
     /// <summary>brace, line, summary, region, off; unbekannt oder leer: Brace.</summary>
     class function StyleOf(const AName: string): TTypeCommentStyle; static;
@@ -283,7 +283,7 @@ begin
   Result := nil;
   if ALineLength < cMinRule + 2 then
   begin
-    ALineLength := DefaultLineLength;
+    ALineLength := cDefaultLineLength;
   end;
   case AStyle of
     TTypeCommentStyle.Brace:

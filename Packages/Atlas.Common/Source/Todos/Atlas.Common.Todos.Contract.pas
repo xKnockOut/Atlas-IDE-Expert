@@ -74,7 +74,7 @@ type
   TTodos = record
   public const
     /// <summary>Marke erledigter Einträge (IDE-Format).</summary>
-    DoneKeyword = 'DONE';
+    cDoneKeyword = 'DONE';
   public
     /// <summary>TODO und FIXME.</summary>
     class function DefaultKeywords: TArray<string>; static;
@@ -140,21 +140,21 @@ end;
 
 class function TTodos.UnitNameOf(const APath: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := APath;
-  for Index := Length(Result) downto 1 do
+  for mIndex := Length(Result) downto 1 do
   begin
-    if (Result[Index] = '/') or (Result[Index] = '\') then
+    if (Result[mIndex] = '/') or (Result[mIndex] = '\') then
     begin
-      Result := Copy(Result, Index + 1, MaxInt);
+      Result := Copy(Result, mIndex + 1, MaxInt);
       Break;
     end;
   end;
-  Index := LastDelimiter('.', Result);
-  if Index > 1 then
+  mIndex := LastDelimiter('.', Result);
+  if mIndex > 1 then
   begin
-    Result := Copy(Result, 1, Index - 1);
+    Result := Copy(Result, 1, mIndex - 1);
   end;
 end;
 

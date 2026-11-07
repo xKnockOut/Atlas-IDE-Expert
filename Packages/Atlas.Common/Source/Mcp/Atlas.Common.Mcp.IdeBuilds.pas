@@ -57,10 +57,10 @@ type
   TMcpIdeBuilds = class
   public const
     /// <summary>So lange darf das Plugin bis zur Übernahme brauchen.</summary>
-    TakeMs = 5000;
+    cTakeMs = 5000;
     /// <summary>Höchstdauer eines Builds nach der Übernahme.</summary>
-    BuildMs = 30 * 60 * 1000;
-    PollMs = 100;
+    cBuildMs = 30 * 60 * 1000;
+    cPollMs = 100;
   public
     /// <summary>Eingang des IDE-Prozesses APid unter ABase (%LOCALAPPDATA%\Atlas).</summary>
     class function InboxOf(const ABase: string; APid: Cardinal): string; static;
@@ -135,62 +135,62 @@ end;
 
 class function TMcpIdeBuilds.ParseEntry(const AText: string; out AEntry: TMcpIdeEntry): Boolean;
 var
-  Value, Item: TJSONValue;
-  Root: TJSONObject;
-  Items: TJSONArray;
-  Pid: Int64;
+  mValue, mItem: TJSONValue;
+  mRoot: TJSONObject;
+  mItems: TJSONArray;
+  mPid: Int64;
 begin
   AEntry := Default(TMcpIdeEntry);
-  Value := TJSONObject.ParseJSONValue(AText);
+  mValue := TJSONObject.ParseJSONValue(AText);
   try
-    Result := (Value is TJSONObject) and TJSONObject(Value).TryGetValue<Int64>('pid', Pid) and (Pid > 0);
+    Result := (mValue is TJSONObject) and TJSONObject(mValue).TryGetValue<Int64>('pid', mPid) and (mPid > 0);
     if not Result then
     begin
       Exit;
     end;
-    Root := TJSONObject(Value);
-    AEntry.Pid := Cardinal(Pid);
-    AEntry.ActiveProject := Root.GetValue<string>('activeProject', '');
-    if Root.TryGetValue<TJSONArray>('projects', Items) then
+    mRoot := TJSONObject(mValue);
+    AEntry.Pid := Cardinal(mPid);
+    AEntry.ActiveProject := mRoot.GetValue<string>('activeProject', '');
+    if mRoot.TryGetValue<TJSONArray>('projects', mItems) then
     begin
-      for Item in Items do
+      for mItem in mItems do
       begin
-        if Item is TJSONString then
+        if mItem is TJSONString then
         begin
-          AEntry.Projects := AEntry.Projects + [TJSONString(Item).Value];
+          AEntry.Projects := AEntry.Projects + [TJSONString(mItem).Value];
         end;
       end;
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 function Matches(const AProjectFile, AWanted: string): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
-  Name := Copy(AProjectFile, Length(TProjectPaths.DirectoryOf(AProjectFile)) + 1, MaxInt);
-  if (Name <> '') and CharInSet(Name[1], ['\', '/']) then
+  mName := Copy(AProjectFile, Length(TProjectPaths.DirectoryOf(AProjectFile)) + 1, MaxInt);
+  if (mName <> '') and CharInSet(mName[1], ['\', '/']) then
   begin
-    Delete(Name, 1, 1);
+    Delete(mName, 1, 1);
   end;
   Result := SameText(TProjectPaths.Normalize(AProjectFile), TProjectPaths.Normalize(AWanted)) or
-    SameText(Name, AWanted) or SameText(TProjectPaths.BaseName(AProjectFile), AWanted) or
+    SameText(mName, AWanted) or SameText(TProjectPaths.BaseName(AProjectFile), AWanted) or
     SameText(TProjectPaths.BaseName(AProjectFile), TProjectPaths.BaseName(AWanted));
 end;
 
 function Inside(const ARoot, AFileName: string): Boolean;
 var
-  Root: string;
+  mRoot: string;
 begin
   if ARoot = '' then
   begin
     Exit(True);
   end;
-  Root := TProjectPaths.Normalize(ARoot);
-  Result := SameText(Copy(TProjectPaths.Normalize(AFileName), 1, Length(Root) + 1), Root + '\') or
-    SameText(Copy(TProjectPaths.Normalize(AFileName), 1, Length(Root) + 1), Root + '/');
+  mRoot := TProjectPaths.Normalize(ARoot);
+  Result := SameText(Copy(TProjectPaths.Normalize(AFileName), 1, Length(mRoot) + 1), mRoot + '\') or
+    SameText(Copy(TProjectPaths.Normalize(AFileName), 1, Length(mRoot) + 1), mRoot + '/');
 end;
 
 /// <summary>Projekt aus AEntry, das zu AProject passt ('' = aktives Projekt unter ARoot); '' ohne Treffer.</summary>
@@ -251,41 +251,41 @@ end;
 
 class function TMcpIdeBuilds.RequestText(const ARequest: TMcpIdeBuildRequest): string;
 var
-  Json: TJSONObject;
+  mJson: TJSONObject;
 begin
-  Json := TJSONObject.Create;
+  mJson := TJSONObject.Create;
   try
-    Json.AddPair('project', ARequest.Project);
-    Json.AddPair('mode', LowerCase(ARequest.Mode));
-    Json.AddPair('configuration', ARequest.Configuration);
-    Json.AddPair('platform', ARequest.Platform);
-    Result := Json.ToJSON;
+    mJson.AddPair('project', ARequest.Project);
+    mJson.AddPair('mode', LowerCase(ARequest.Mode));
+    mJson.AddPair('configuration', ARequest.Configuration);
+    mJson.AddPair('platform', ARequest.Platform);
+    Result := mJson.ToJSON;
   finally
-    Json.Free;
+    mJson.Free;
   end;
 end;
 
 class function TMcpIdeBuilds.ParseAnswer(const AText: string; out AOk: Boolean;
   out ABuildText, AReason: string): Boolean;
 var
-  Value, Build: TJSONValue;
+  mValue, mBuild: TJSONValue;
 begin
   AOk := False;
   ABuildText := '';
   AReason := '';
-  Value := TJSONObject.ParseJSONValue(AText);
+  mValue := TJSONObject.ParseJSONValue(AText);
   try
-    Result := Value is TJSONObject;
+    Result := mValue is TJSONObject;
     if not Result then
     begin
       Exit;
     end;
-    AOk := TJSONObject(Value).GetValue<Boolean>('ok', False);
-    AReason := TJSONObject(Value).GetValue<string>('reason', '');
-    Build := TJSONObject(Value).GetValue('build');
-    if Build is TJSONObject then
+    AOk := TJSONObject(mValue).GetValue<Boolean>('ok', False);
+    AReason := TJSONObject(mValue).GetValue<string>('reason', '');
+    mBuild := TJSONObject(mValue).GetValue('build');
+    if mBuild is TJSONObject then
     begin
-      ABuildText := Build.ToJSON;
+      ABuildText := mBuild.ToJSON;
     end;
     // Ohne Ergebnis gilt der Auftrag als abgelehnt.
     if AOk and (ABuildText = '') then
@@ -297,7 +297,7 @@ begin
       end;
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
@@ -326,58 +326,58 @@ end;
 class function TMcpIdeBuilds.Send(const AInbox: string; const ARequest: TMcpIdeBuildRequest; const AWait: TProc;
   const AClock: TFunc<Int64>; out ABuildText, AReason: string): TMcpIdeBuildOutcome;
 begin
-  Result := Send(AInbox, ARequest, TMcpIdeBuildWaiting.Make(AWait, AClock, TakeMs, BuildMs), ABuildText, AReason);
+  Result := Send(AInbox, ARequest, TMcpIdeBuildWaiting.Make(AWait, AClock, cTakeMs, cBuildMs), ABuildText, AReason);
 end;
 
 class function TMcpIdeBuilds.Send(const AInbox: string; const ARequest: TMcpIdeBuildRequest;
   const AWaiting: TMcpIdeBuildWaiting; out ABuildText, AReason: string): TMcpIdeBuildOutcome;
 var
-  Id, Request, Answer, Text: string;
-  Started: Int64;
-  Ok: Boolean;
+  mId, mRequest, mAnswer, mText: string;
+  mStarted: Int64;
+  mOk: Boolean;
 begin
   ABuildText := '';
   AReason := '';
-  Id := TGUID.NewGuid.ToString.Replace('{', '').Replace('}', '');
-  Request := TPath.Combine(AInbox, Id + '.json');
-  Answer := TPath.Combine(AInbox, Id + '.result.json');
+  mId := TGUID.NewGuid.ToString.Replace('{', '').Replace('}', '');
+  mRequest := TPath.Combine(AInbox, mId + '.json');
+  mAnswer := TPath.Combine(AInbox, mId + '.result.json');
   ForceDirectories(AInbox);
-  TFile.WriteAllText(Request + '.tmp', RequestText(ARequest), TEncoding.UTF8);
-  TFile.Move(Request + '.tmp', Request);
-  Started := AWaiting.Clock();
+  TFile.WriteAllText(mRequest + '.tmp', RequestText(ARequest), TEncoding.UTF8);
+  TFile.Move(mRequest + '.tmp', mRequest);
+  mStarted := AWaiting.Clock();
   // Warten, bis das Plugin den Auftrag übernimmt (die .json verschwindet) oder schon antwortet.
-  while (AWaiting.Clock() - Started < AWaiting.TakeMs) and FileExists(Request) and not FileExists(Answer) do
+  while (AWaiting.Clock() - mStarted < AWaiting.TakeMs) and FileExists(mRequest) and not FileExists(mAnswer) do
   begin
     AWaiting.Wait();
   end;
-  if FileExists(Request) and not FileExists(Answer) and DeleteFile(Request) then
+  if FileExists(mRequest) and not FileExists(mAnswer) and DeleteFile(mRequest) then
   begin
     AReason := cTexts[TIdeBuildsText.TheIDEDidNotAccept].Text;
     Exit(TMcpIdeBuildOutcome.NotTaken);
   end;
-  Started := AWaiting.Clock();
-  while (AWaiting.Clock() - Started < AWaiting.BuildMs) and not FileExists(Answer) do
+  mStarted := AWaiting.Clock();
+  while (AWaiting.Clock() - mStarted < AWaiting.BuildMs) and not FileExists(mAnswer) do
   begin
     AWaiting.Wait();
   end;
-  if not FileExists(Answer) then
+  if not FileExists(mAnswer) then
   begin
     AReason := cTexts[TIdeBuildsText.TheIDEAcceptedTheBuild].Text;
     Exit(TMcpIdeBuildOutcome.TimedOut);
   end;
   try
-    Text := TFile.ReadAllText(Answer, TEncoding.UTF8);
+    mText := TFile.ReadAllText(mAnswer, TEncoding.UTF8);
   except
     on Exception do
-      Text := '';
+      mText := '';
   end;
-  DeleteQuietly(Answer);
-  if not ParseAnswer(Text, Ok, ABuildText, AReason) then
+  DeleteQuietly(mAnswer);
+  if not ParseAnswer(mText, mOk, ABuildText, AReason) then
   begin
     AReason := cTexts[TIdeBuildsText.AnswerOfTheIDENot].Text;
     Exit(TMcpIdeBuildOutcome.Refused);
   end;
-  if Ok then
+  if mOk then
   begin
     Result := TMcpIdeBuildOutcome.Done;
   end

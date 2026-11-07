@@ -178,7 +178,7 @@ begin
   Crash;
   mFolders := TCrashCases.Folders(FRoot);
   Assert.AreEqual(1, Integer(Length(mFolders)));
-  Assert.IsTrue(TCrashCases.Load(TPath.Combine(mFolders[0], TCrashCases.RequestName), mCase, mError), mError);
+  Assert.IsTrue(TCrashCases.Load(TPath.Combine(mFolders[0], TCrashCases.cRequestName), mCase, mError), mError);
   Assert.AreEqual(cHover, mCase.Method);
   Assert.AreEqual(4, mCase.Line);
   Assert.AreEqual('unit UI.Auftrag;', mCase.Text);
@@ -263,7 +263,7 @@ begin
   FCases.TimedOut('9', cHover, 5000);
   mFolders := TCrashCases.Folders(FRoot);
   Assert.AreEqual(1, Integer(Length(mFolders)));
-  Assert.IsTrue(TCrashCases.Load(TPath.Combine(mFolders[0], TCrashCases.RequestName), mCase, mError), mError);
+  Assert.IsTrue(TCrashCases.Load(TPath.Combine(mFolders[0], TCrashCases.cRequestName), mCase, mError), mError);
   Assert.IsTrue(mCase.Kind = TCrashCaseKind.Timeout);
   Assert.AreEqual(1, mCase.Line);
   Assert.AreEqual(Cardinal(5000), mCase.TimeoutMs);

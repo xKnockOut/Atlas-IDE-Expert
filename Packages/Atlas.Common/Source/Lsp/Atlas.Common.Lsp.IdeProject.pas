@@ -85,7 +85,7 @@ type
 
   TLspIdeProject = class
   public const
-    Method = 'atlas/projectContext';
+    cMethod = 'atlas/projectContext';
   private
     FLock: TObject;
     FContexts: TDictionary<string, TIdeProjectContext>;
@@ -123,24 +123,24 @@ uses
   Atlas.Common.Projects.Paths;
 
 const
-  NamingKeys: array[TNamingKind] of string = ('field', 'parameter', 'local');
+  cNamingKeys: array[TNamingKind] of string = ('field', 'parameter', 'local');
 
 function StringsOf(AObject: TJSONObject; const AName: string; out AFound: Boolean): TArray<string>;
 var
-  Items: TJSONArray;
-  Item: TJSONValue;
+  mItems: TJSONArray;
+  mItem: TJSONValue;
 begin
   Result := nil;
-  AFound := AObject.TryGetValue<TJSONArray>(AName, Items);
+  AFound := AObject.TryGetValue<TJSONArray>(AName, mItems);
   if not AFound then
   begin
     Exit;
   end;
-  for Item in Items do
+  for mItem in mItems do
   begin
-    if (Item is TJSONString) and (Trim(Item.Value) <> '') then
+    if (mItem is TJSONString) and (Trim(mItem.Value) <> '') then
     begin
-      Result := Result + [Trim(Item.Value)];
+      Result := Result + [Trim(mItem.Value)];
     end;
   end;
 end;
@@ -157,30 +157,30 @@ end;
 function UniquePaths(const ABase: string; const AItems: TArray<string>;
   const AVariables: TArray<TPair<string, string>>): TArray<string>;
 var
-  Known: TList<string>;
-  Item, Path: string;
+  mKnown: TList<string>;
+  mItem, mPath: string;
 begin
   Result := nil;
-  Known := TList<string>.Create;
+  mKnown := TList<string>.Create;
   try
-    for Item in AItems do
+    for mItem in AItems do
     begin
-      Path := TProjectPaths.ExpandVariables(Item, AVariables);
+      mPath := TProjectPaths.ExpandVariables(mItem, AVariables);
       // Verweis auf den geerbten Wert, den die IDE nicht aufgelöst hat: kein Pfad.
-      if Pos('$(', Path) > 0 then
+      if Pos('$(', mPath) > 0 then
       begin
         Continue;
       end;
-      Path := TProjectPaths.Combine(ABase, Path);
-      if Known.Contains(LowerCase(Path)) then
+      mPath := TProjectPaths.Combine(ABase, mPath);
+      if mKnown.Contains(LowerCase(mPath)) then
       begin
         Continue;
       end;
-      Known.Add(LowerCase(Path));
-      Result := Result + [Path];
+      mKnown.Add(LowerCase(mPath));
+      Result := Result + [mPath];
     end;
   finally
-    Known.Free;
+    mKnown.Free;
   end;
 end;
 
@@ -210,7 +210,7 @@ begin
   end;
   for mKind := Low(TNamingKind) to High(TNamingKind) do
   begin
-    AContext.HasNaming[mKind] := PrefixOf(mPrefixes.GetValue(NamingKeys[mKind]), AContext.Naming[mKind]);
+    AContext.HasNaming[mKind] := PrefixOf(mPrefixes.GetValue(cNamingKeys[mKind]), AContext.Naming[mKind]);
   end;
   AContext.HasConstantPrefix := PrefixOf(mPrefixes.GetValue('constant'), AContext.ConstantPrefix);
 end;
@@ -271,41 +271,41 @@ end;
 
 function TIdeProjectContext.NamingKey: string;
 var
-  Kind: TNamingKind;
-  Routine: TFormatRoutine;
+  mKind: TNamingKind;
+  mRoutine: TFormatRoutine;
 begin
   Result := '';
-  for Kind := Low(TNamingKind) to High(TNamingKind) do
+  for mKind := Low(TNamingKind) to High(TNamingKind) do
   begin
-    if HasNaming[Kind] then
+    if HasNaming[mKind] then
     begin
-      Result := Result + NamingKeys[Kind] + '=' + Naming[Kind] + '|';
+      Result := Result + cNamingKeys[mKind] + '=' + Naming[mKind] + '|';
     end;
   end;
   if HasConstantPrefix then
   begin
     Result := Result + 'constant=' + ConstantPrefix + '|';
   end;
-  for Routine in FormatFunctions do
+  for mRoutine in FormatFunctions do
   begin
-    Result := Result + 'format=' + Routine.Name + ':' + IntToStr(Routine.FormatIndex) + '|';
+    Result := Result + 'format=' + mRoutine.Name + ':' + IntToStr(mRoutine.FormatIndex) + '|';
   end;
 end;
 
 function TIdeProjectContext.RuleNaming: TRuleNaming;
 const
-  Kinds: array[TNamingKind] of TRuleNamingKind = (TRuleNamingKind.Field, TRuleNamingKind.Parameter,
+  cKinds: array[TNamingKind] of TRuleNamingKind = (TRuleNamingKind.Field, TRuleNamingKind.Parameter,
     TRuleNamingKind.Local);
 var
-  Kind: TNamingKind;
+  mKind: TNamingKind;
 begin
   Result := Default(TRuleNaming);
-  for Kind := Low(TNamingKind) to High(TNamingKind) do
+  for mKind := Low(TNamingKind) to High(TNamingKind) do
   begin
-    if HasNaming[Kind] then
+    if HasNaming[mKind] then
     begin
-      Result.Known[Kinds[Kind]] := True;
-      Result.Prefixes[Kinds[Kind]] := Naming[Kind];
+      Result.Known[cKinds[mKind]] := True;
+      Result.Prefixes[cKinds[mKind]] := Naming[mKind];
     end;
   end;
   if HasConstantPrefix then
@@ -324,33 +324,33 @@ end;
 
 procedure TIdeProjectContext.ApplyTo(var AProject: TProjectInfo; const AVariables: TArray<TPair<string, string>>);
 var
-  Variables: TArray<TPair<string, string>>;
-  Define, Upper: string;
-  Namespace: string;
+  mVariables: TArray<TPair<string, string>>;
+  mDefine, mUpper: string;
+  mNamespace: string;
 begin
   if not HasOptions then
   begin
     Exit;
   end;
-  Variables := WithTarget(AVariables, AProject);
+  mVariables := WithTarget(AVariables, AProject);
   AProject.Defines := nil;
-  for Define in Defines do
+  for mDefine in Defines do
   begin
-    Upper := UpperCase(Trim(TProjectPaths.ExpandVariables(Define, Variables)));
+    mUpper := UpperCase(Trim(TProjectPaths.ExpandVariables(mDefine, mVariables)));
     // Unaufgelöster Verweis wie $(DCC_Define): kein Symbol.
-    if (Upper = '') or (Pos('$(', Upper) > 0) or (IndexStr(Upper, AProject.Defines) >= 0) then
+    if (mUpper = '') or (Pos('$(', mUpper) > 0) or (IndexStr(mUpper, AProject.Defines) >= 0) then
     begin
       Continue;
     end;
-    AProject.Defines := AProject.Defines + [Upper];
+    AProject.Defines := AProject.Defines + [mUpper];
   end;
-  AProject.SearchPaths := UniquePaths(TProjectPaths.DirectoryOf(AProject.FileName), SearchPaths, Variables);
+  AProject.SearchPaths := UniquePaths(TProjectPaths.DirectoryOf(AProject.FileName), SearchPaths, mVariables);
   AProject.Namespaces := nil;
-  for Namespace in Namespaces do
+  for mNamespace in Namespaces do
   begin
-    if (Pos('$(', Namespace) = 0) and (IndexText(Namespace, AProject.Namespaces) < 0) then
+    if (Pos('$(', mNamespace) = 0) and (IndexText(mNamespace, AProject.Namespaces) < 0) then
     begin
-      AProject.Namespaces := AProject.Namespaces + [Namespace];
+      AProject.Namespaces := AProject.Namespaces + [mNamespace];
     end;
   end;
 end;
@@ -379,54 +379,54 @@ end;
 
 procedure TLspIdeProject.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterNotification(Method, HandleNotification);
+  ADispatcher.RegisterNotification(cMethod, HandleNotification);
 end;
 
 procedure TLspIdeProject.LoadInitialize(const AParams: TJSONValue);
 var
-  Options: TJSONObject;
-  Items: TJSONArray;
-  Item: TJSONValue;
-  Context: TIdeProjectContext;
+  mOptions: TJSONObject;
+  mItems: TJSONArray;
+  mItem: TJSONValue;
+  mContext: TIdeProjectContext;
 begin
   if not ((AParams is TJSONObject) and
-    TJSONObject(AParams).TryGetValue<TJSONObject>('initializationOptions', Options) and
-    Options.TryGetValue<TJSONArray>('projectContexts', Items)) then
+    TJSONObject(AParams).TryGetValue<TJSONObject>('initializationOptions', mOptions) and
+    mOptions.TryGetValue<TJSONArray>('projectContexts', mItems)) then
   begin
     Exit;
   end;
-  for Item in Items do
+  for mItem in mItems do
   begin
-    Context := TIdeProjectContext.FromJson(Item);
-    if Context.Project <> '' then
+    mContext := TIdeProjectContext.FromJson(mItem);
+    if mContext.Project <> '' then
     begin
-      Update(Context);
+      Update(mContext);
     end;
   end;
 end;
 
 function TLspIdeProject.Update(const AContext: TIdeProjectContext): Boolean;
 var
-  NamingChanged: Boolean;
+  mNamingChanged: Boolean;
 begin
-  Result := Update(AContext, NamingChanged);
+  Result := Update(AContext, mNamingChanged);
 end;
 
 function TLspIdeProject.Update(const AContext: TIdeProjectContext; out ANamingChanged: Boolean): Boolean;
 var
-  Known: TIdeProjectContext;
-  Key: string;
-  Found: Boolean;
+  mKnown: TIdeProjectContext;
+  mKey: string;
+  mFound: Boolean;
 begin
-  Key := AnsiUpperCase(AContext.Project);
+  mKey := AnsiUpperCase(AContext.Project);
   TMonitor.Enter(FLock);
   try
-    Found := FContexts.TryGetValue(Key, Known);
-    Result := not Found or (Known.Key <> AContext.Key);
-    ANamingChanged := Found and not Result and (Known.NamingKey <> AContext.NamingKey);
-    if Result or ANamingChanged or (Known.Active <> AContext.Active) then
+    mFound := FContexts.TryGetValue(mKey, mKnown);
+    Result := not mFound or (mKnown.Key <> AContext.Key);
+    ANamingChanged := mFound and not Result and (mKnown.NamingKey <> AContext.NamingKey);
+    if Result or ANamingChanged or (mKnown.Active <> AContext.Active) then
     begin
-      FContexts.AddOrSetValue(Key, AContext);
+      FContexts.AddOrSetValue(mKey, AContext);
     end;
     if AContext.HasActive and AContext.Active then
     begin
@@ -463,24 +463,24 @@ end;
 
 procedure TLspIdeProject.HandleNotification(const AParams: TJSONValue);
 var
-  Context: TIdeProjectContext;
-  NamingChanged: Boolean;
+  mContext: TIdeProjectContext;
+  mNamingChanged: Boolean;
 begin
-  Context := TIdeProjectContext.FromJson(AParams);
-  if Context.Project = '' then
+  mContext := TIdeProjectContext.FromJson(AParams);
+  if mContext.Project = '' then
   begin
     Exit;
   end;
-  if Update(Context, NamingChanged) then
+  if Update(mContext, mNamingChanged) then
   begin
     if Assigned(FOnChanged) then
     begin
-      FOnChanged(Context);
+      FOnChanged(mContext);
     end;
   end
-  else if NamingChanged and Assigned(FOnNamingChanged) then
+  else if mNamingChanged and Assigned(FOnNamingChanged) then
   begin
-    FOnNamingChanged(Context);
+    FOnNamingChanged(mContext);
   end;
 end;
 

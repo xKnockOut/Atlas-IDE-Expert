@@ -158,14 +158,14 @@ end;
 
 function TMetricLimits.Exceeded(const AValues: TMetricValues): TArray<TMetricKind>;
 var
-  Kind: TMetricKind;
+  mKind: TMetricKind;
 begin
   Result := nil;
-  for Kind := Low(TMetricKind) to High(TMetricKind) do
+  for mKind := Low(TMetricKind) to High(TMetricKind) do
   begin
-    if Exceeds(Kind, AValues[Kind]) then
+    if Exceeds(mKind, AValues[mKind]) then
     begin
-      Result := Result + [Kind];
+      Result := Result + [mKind];
     end;
   end;
 end;
@@ -204,13 +204,13 @@ end;
 
 class function TMetrics.TryKindOf(const AKey: string; out AKind: TMetricKind): Boolean;
 var
-  Kind: TMetricKind;
+  mKind: TMetricKind;
 begin
-  for Kind := Low(TMetricKind) to High(TMetricKind) do
+  for mKind := Low(TMetricKind) to High(TMetricKind) do
   begin
-    if SameText(Key(Kind), Trim(AKey)) then
+    if SameText(Key(mKind), Trim(AKey)) then
     begin
-      AKind := Kind;
+      AKind := mKind;
       Exit(True);
     end;
   end;

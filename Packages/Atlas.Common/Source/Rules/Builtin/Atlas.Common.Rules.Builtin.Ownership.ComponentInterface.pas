@@ -24,10 +24,10 @@ type
   TComponentInterfaceDanglingRule = class(TInterfacedObject, IRule)
   public const
     /// <summary>Aufrufe, die ein Interface am Empfänger speichern, und ihr Gegenstück ('' = keins).</summary>
-    StoreMethods: array[0..14] of string = ('Add', 'Insert', 'AddOrSetValue', 'Push', 'Enqueue', 'Attach',
+    cStoreMethods: array[0..14] of string = ('Add', 'Insert', 'AddOrSetValue', 'Push', 'Enqueue', 'Attach',
       'Subscribe', 'Register', 'RegisterObserver', 'AddObserver', 'AddListener', 'Anmelden', 'Registrieren',
       'Hinzufuegen', 'AddHandler');
-    RemoveCounterparts: array[0..14] of string = ('Remove', 'Remove', '', '', '', 'Detach', 'Unsubscribe',
+    cRemoveCounterparts: array[0..14] of string = ('Remove', 'Remove', '', '', '', 'Detach', 'Unsubscribe',
       'Unregister', 'UnregisterObserver', 'RemoveObserver', 'RemoveListener', 'Abmelden', 'Abmelden', 'Entfernen',
       'RemoveHandler');
   public
@@ -80,25 +80,25 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  ComponentInterfaceDanglingRuleId = 'component-interface-dangling';
+  cComponentInterfaceDanglingRuleId = 'component-interface-dangling';
 
 { TComponentInterfaceDanglingRule }
 
 function TComponentInterfaceDanglingRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(ComponentInterfaceDanglingRuleId, TRuleSeverity.Warning,
+  Result := TRuleDescriptor.Create(cComponentInterfaceDanglingRuleId, TRuleSeverity.Warning,
     cTexts[TOwnershipComponentInterfaceText.Title].Text);
 end;
 
 class function TComponentInterfaceDanglingRule.Counterpart(const AMethod: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(StoreMethods) do
+  for mIndex := 0 to High(cStoreMethods) do
   begin
-    if SameText(StoreMethods[Index], AMethod) then
+    if SameText(cStoreMethods[mIndex], AMethod) then
     begin
-      Exit(RemoveCounterparts[Index]);
+      Exit(cRemoveCounterparts[mIndex]);
     end;
   end;
   Result := '';
@@ -106,10 +106,10 @@ end;
 
 const
   // VCL- und FMX-Klassen, die von TComponent erben: Ohne Index endet die Kette der Vorfahren oft bei ihnen.
-  KnownComponents: array[0..16] of string = ('TComponent', 'TControl', 'TWinControl', 'TCustomControl',
+  cKnownComponents: array[0..16] of string = ('TComponent', 'TControl', 'TWinControl', 'TCustomControl',
     'TGraphicControl', 'TScrollingWinControl', 'TCustomForm', 'TForm', 'TCustomFrame', 'TFrame', 'TDataModule',
     'TCommonCustomForm', 'TCustomPanel', 'TPanel', 'TStyledControl', 'TFmxObject', 'TCustomDataModule');
-  FreeMethods: array[0..3] of string = ('Free', 'Release', 'DisposeOf', 'Destroy');
+  cFreeMethods: array[0..3] of string = ('Free', 'Release', 'DisposeOf', 'Destroy');
 
 type
   /// <summary>Eine Freigabe in der Datei: Anweisung und freigegebener Ausdruck.</summary>
@@ -245,7 +245,7 @@ end;
 function ReleaseTarget(AExpression: TSyntaxNode): TSyntaxNode;
 begin
   Result := nil;
-  if IsMemberNamed(AExpression, FreeMethods) then
+  if IsMemberNamed(AExpression, cFreeMethods) then
   begin
     Result := AExpression[0];
   end
@@ -271,7 +271,8 @@ begin
   end;
 end;
 
-/// <summary>Kandidat für eine Speicherung: "X as IFoo" oder ein Name als Wert einer Zuweisung bzw. eines Aufrufs.</summary>
+/// <summary>Kandidat für eine Speicherung: "X as IFoo" oder ein Name als Wert einer Zuweisung bzw. eines
+/// Aufrufs.</summary>
 function IsStoreCandidate(ANode: TSyntaxNode): Boolean;
 var
   mParent: TSyntaxNode;
@@ -316,7 +317,7 @@ function IsCallStore(const AStore: TInterfaceStore): Boolean;
 begin
   Result := (AStore.Parent.Kind = TSyntaxKind.Call) and (AStore.Parent.ChildCount >= 2) and
     (AStore.Parent[0] <> AStore.Value) and
-    IsMemberNamed(AStore.Parent[0], TComponentInterfaceDanglingRule.StoreMethods);
+    IsMemberNamed(AStore.Parent[0], TComponentInterfaceDanglingRule.cStoreMethods);
 end;
 
 /// <summary>Dateiname für den Namensauflöser: Datei, relativer Pfad oder Unitname.</summary>
@@ -395,7 +396,7 @@ begin
   begin
     Result := AName;
   end
-  else if MatchText('TComponent', FBases) and MatchText(AName, KnownComponents) then
+  else if MatchText('TComponent', FBases) and MatchText(AName, cKnownComponents) then
   begin
     Result := 'TComponent';
   end
@@ -514,7 +515,8 @@ begin
   end;
 end;
 
-/// <summary>Ein anderer Aufruf am selben Empfänger mit dem Objekt als Argument bzw. Clear (auch ohne Klammern).</summary>
+/// <summary>Ein anderer Aufruf am selben Empfänger mit dem Objekt als Argument bzw. Clear (auch ohne
+/// Klammern).</summary>
 function TComponentInterfaceScan.RemovedFromHolder(const AStore: TInterfaceStore): Boolean;
 var
   mCall, mCallee: TSyntaxNode;

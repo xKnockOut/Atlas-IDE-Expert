@@ -65,36 +65,36 @@ end;
 /// <summary>Leerraum (auch Zeilenumbrüche) zu je einem Leerzeichen, außen ohne.</summary>
 function Collapse(const AText: string): string;
 var
-  Index: Integer;
-  Pending: Boolean;
+  mIndex: Integer;
+  mPending: Boolean;
 begin
   Result := '';
-  Pending := False;
-  for Index := 1 to Length(AText) do
+  mPending := False;
+  for mIndex := 1 to Length(AText) do
   begin
-    if IsSpace(AText[Index]) then
+    if IsSpace(AText[mIndex]) then
     begin
-      Pending := Result <> '';
+      mPending := Result <> '';
     end
     else
     begin
-      if Pending then
+      if mPending then
       begin
         Result := Result + ' ';
       end;
-      Pending := False;
-      Result := Result + AText[Index];
+      mPending := False;
+      Result := Result + AText[mIndex];
     end;
   end;
 end;
 
 function IsKeyword(const AWord: string; const AKeywords: TArray<string>): Boolean;
 var
-  Keyword: string;
+  mKeyword: string;
 begin
-  for Keyword in AKeywords do
+  for mKeyword in AKeywords do
   begin
-    if SameText(Trim(Keyword), AWord) then
+    if SameText(Trim(mKeyword), AWord) then
     begin
       Exit(True);
     end;
@@ -207,7 +207,7 @@ begin
   Result := (mWord <> '') and (AReader.AtEnd or IsSpace(AReader.Current) or (AReader.Current = ':'));
   if Result then
   begin
-    AEntry.Done := mWord = TTodos.DoneKeyword;
+    AEntry.Done := mWord = TTodos.cDoneKeyword;
     Result := AEntry.Done or IsKeyword(mWord, AKeywords);
   end;
   if Result then
@@ -242,35 +242,35 @@ end;
 { TTodoScanner }
 class function TTodoScanner.CommentBody(const AComment: string): string;
 var
-  First, Last: Integer;
+  mFirst, mLast: Integer;
 begin
-  First := 1;
-  Last := Length(AComment);
+  mFirst := 1;
+  mLast := Length(AComment);
   if Copy(AComment, 1, 2) = '//' then
   begin
-    First := 3;
-    while (First <= Last) and (AComment[First] = '/') do
+    mFirst := 3;
+    while (mFirst <= mLast) and (AComment[mFirst] = '/') do
     begin
-      Inc(First);
+      Inc(mFirst);
     end;
   end
   else if Copy(AComment, 1, 2) = '(*' then
   begin
-    First := 3;
-    if (Last >= 4) and (Copy(AComment, Last - 1, 2) = '*)') then
+    mFirst := 3;
+    if (mLast >= 4) and (Copy(AComment, mLast - 1, 2) = '*)') then
     begin
-      Dec(Last, 2);
+      Dec(mLast, 2);
     end;
   end
   else if Copy(AComment, 1, 1) = '{' then
   begin
-    First := 2;
-    if (Last >= 2) and (AComment[Last] = '}') then
+    mFirst := 2;
+    if (mLast >= 2) and (AComment[mLast] = '}') then
     begin
-      Dec(Last);
+      Dec(mLast);
     end;
   end;
-  Result := Copy(AComment, First, Last - First + 1);
+  Result := Copy(AComment, mFirst, mLast - mFirst + 1);
 end;
 
 class function TTodoScanner.ParseBody(const ABody: string; const AKeywords: TArray<string>;
@@ -305,17 +305,17 @@ end;
 class function TTodoScanner.FromTokens(const ATokens: TArray<TPascalToken>;
   const AKeywords: TArray<string>): TArray<TTodoEntry>;
 var
-  Token: TPascalToken;
-  Entry: TTodoEntry;
+  mToken: TPascalToken;
+  mEntry: TTodoEntry;
 begin
   Result := nil;
-  for Token in ATokens do
+  for mToken in ATokens do
   begin
-    if (Token.Kind = TPascalTokenKind.Comment) and ParseBody(CommentBody(Token.Text), AKeywords, Entry) then
+    if (mToken.Kind = TPascalTokenKind.Comment) and ParseBody(CommentBody(mToken.Text), AKeywords, mEntry) then
     begin
-      Entry.Range.StartPos := Token.StartPos;
-      Entry.Range.EndPos := Token.EndPos;
-      Result := Result + [Entry];
+      mEntry.Range.StartPos := mToken.StartPos;
+      mEntry.Range.EndPos := mToken.EndPos;
+      Result := Result + [mEntry];
     end;
   end;
 end;
@@ -333,59 +333,59 @@ end;
 class function TTodoScanner.Collect(const AFiles: TArray<string>; const ARoot: string;
   const AReadText: TTodoReadText; const AKeywords: TArray<string>): TArray<TFileTodos>;
 var
-  Seen: TDictionary<string, Boolean>;
-  List: TList<TFileTodos>;
-  FileName, Text: string;
-  Entries: TArray<TTodoEntry>;
+  mSeen: TDictionary<string, Boolean>;
+  mList: TList<TFileTodos>;
+  mFileName, mText: string;
+  mEntries: TArray<TTodoEntry>;
 begin
-  Seen := TDictionary<string, Boolean>.Create;
-  List := TList<TFileTodos>.Create;
+  mSeen := TDictionary<string, Boolean>.Create;
+  mList := TList<TFileTodos>.Create;
   try
-    for FileName in AFiles do
+    for mFileName in AFiles do
     begin
-      if not TMetricsCollector.IsSource(FileName) or Seen.ContainsKey(UpperCase(FileName)) then
+      if not TMetricsCollector.IsSource(mFileName) or mSeen.ContainsKey(UpperCase(mFileName)) then
       begin
         Continue;
       end;
-      Seen.Add(UpperCase(FileName), True);
-      if not Assigned(AReadText) or not AReadText(FileName, Text) then
+      mSeen.Add(UpperCase(mFileName), True);
+      if not Assigned(AReadText) or not AReadText(mFileName, mText) then
       begin
         Continue;
       end;
-      Entries := ForText(Text, AKeywords);
-      if Length(Entries) > 0 then
+      mEntries := ForText(mText, AKeywords);
+      if Length(mEntries) > 0 then
       begin
-        List.Add(TFileTodos.Create(TMetricsCollector.RelativePath(ARoot, FileName), Entries));
+        mList.Add(TFileTodos.Create(TMetricsCollector.RelativePath(ARoot, mFileName), mEntries));
       end;
     end;
-    Result := List.ToArray;
+    Result := mList.ToArray;
   finally
-    List.Free;
-    Seen.Free;
+    mList.Free;
+    mSeen.Free;
   end;
 end;
 
 class function TTodoScanner.Filter(const AFiles: TArray<TFileTodos>;
   const AFilter: TTodoFilter): TArray<TFileTodos>;
 var
-  FileItem, Kept: TFileTodos;
-  Entry: TTodoEntry;
+  mFileItem, mKept: TFileTodos;
+  mEntry: TTodoEntry;
 begin
   Result := nil;
-  for FileItem in AFiles do
+  for mFileItem in AFiles do
   begin
-    Kept := FileItem;
-    Kept.Entries := nil;
-    for Entry in FileItem.Entries do
+    mKept := mFileItem;
+    mKept.Entries := nil;
+    for mEntry in mFileItem.Entries do
     begin
-      if AFilter.Matches(FileItem, Entry) then
+      if AFilter.Matches(mFileItem, mEntry) then
       begin
-        Kept.Entries := Kept.Entries + [Entry];
+        mKept.Entries := mKept.Entries + [mEntry];
       end;
     end;
-    if Length(Kept.Entries) > 0 then
+    if Length(mKept.Entries) > 0 then
     begin
-      Result := Result + [Kept];
+      Result := Result + [mKept];
     end;
   end;
 end;

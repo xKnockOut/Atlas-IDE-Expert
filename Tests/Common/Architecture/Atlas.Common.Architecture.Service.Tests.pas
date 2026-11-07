@@ -235,7 +235,7 @@ begin
   ARequest.Root := AFolder;
   ARequest.Baseline := 'stand.json';
   mOverview := AService.Overview(ARequest);
-  Assert.AreEqual(TArchitectureAnalyzer.AlignedBaseline, mOverview.AlignedSource);
+  Assert.AreEqual(TArchitectureAnalyzer.cAlignedBaseline, mOverview.AlignedSource);
   Assert.AreEqual('Index 2', SubsystemOf(mOverview, 'Index.B1').Name);
   // keepPrevious aus: wie ohne Angleichung, keine Datei.
   TFile.Delete(APrevious);
@@ -248,7 +248,7 @@ begin
   ARequest.KeepPrevious := True;
   ARequest.PreviousFile := '';
   mOverview := AService.Overview(ARequest);
-  Assert.AreEqual(TArchitectureAnalyzer.AlignedBaseline, mOverview.AlignedSource);
+  Assert.AreEqual(TArchitectureAnalyzer.cAlignedBaseline, mOverview.AlignedSource);
   Assert.IsFalse(FileExists(APrevious));
 end;
 
@@ -281,7 +281,7 @@ begin
     mIndex.AddUnit(UsesUnit('Index.B4', ['Index.B1', 'Index.B2', 'Index.B3'], nil));
     mOverview := mService.Overview(mRequest);
     Assert.IsTrue(mOverview.IsAligned);
-    Assert.AreEqual(TArchitectureAnalyzer.AlignedLast, mOverview.AlignedSource);
+    Assert.AreEqual(TArchitectureAnalyzer.cAlignedLast, mOverview.AlignedSource);
     Assert.AreEqual('Index 2', SubsystemOf(mOverview, 'Index.B1').Name);
     Assert.AreEqual(1, SubsystemOf(mOverview, 'Index.B1').ColorSlot);
     // „Teilsysteme neu benennen“: einmal ohne Angleichung, auch bei gleichem Index; das Ergebnis wird der letzte

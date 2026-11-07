@@ -83,8 +83,8 @@ type
 
   TExpressionTypes = class
   public const
-    MaxConversions = 8;
-    MaxExpressionLength = 60;
+    cMaxConversions = 8;
+    cMaxExpressionLength = 60;
   private type
     TTyped = record
       Name: string;
@@ -180,12 +180,12 @@ type
   end;
 
 const
-  MaxDepth = 64;
-  ExpressionKinds = [TSyntaxKind.Identifier, TSyntaxKind.Literal, TSyntaxKind.MemberAccess, TSyntaxKind.Call,
+  cMaxDepth = 64;
+  cExpressionKinds = [TSyntaxKind.Identifier, TSyntaxKind.Literal, TSyntaxKind.MemberAccess, TSyntaxKind.Call,
     TSyntaxKind.IndexAccess, TSyntaxKind.Dereference, TSyntaxKind.AddressOf, TSyntaxKind.SetConstructor,
     TSyntaxKind.BinaryExpr, TSyntaxKind.UnaryExpr, TSyntaxKind.ParenExpr, TSyntaxKind.InheritedExpr,
     TSyntaxKind.AnonymousMethod, TSyntaxKind.IfExpr];
-  ComparisonOperators: array[0..8] of string = ('=', '<>', '<', '>', '<=', '>=', 'in', 'is', 'not in');
+  cComparisonOperators: array[0..8] of string = ('=', '<>', '<', '>', '<=', '>=', 'in', 'is', 'not in');
   cArithmeticOperators: array[0..9] of string = ('+', '-', '*', 'div', 'mod', 'shl', 'shr', 'and', 'or', 'xor');
   cSectionKeywords: array[0..4] of string = ('begin', 'var', 'const', 'type', 'label');
   cBuiltinCategories: array[0..51] of TBuiltinCategory = (
@@ -274,14 +274,14 @@ end;
 
 function Typed(const AName: string): TExpressionTypes.TTyped;
 var
-  Width: Integer;
-  Signed: Boolean;
+  mWidth: Integer;
+  mSigned: Boolean;
 begin
   Result := Default(TExpressionTypes.TTyped);
   Result.Name := AName;
-  Result.Category := TExpressionTypes.CategoryOf(AName, Width, Signed);
-  Result.Width := Width;
-  Result.Signed := Signed;
+  Result.Category := TExpressionTypes.CategoryOf(AName, mWidth, mSigned);
+  Result.Width := mWidth;
+  Result.Signed := mSigned;
 end;
 
 function Failed(AKind: TExpressionErrorKind; const ADetail: string): TExpressionTypes.TTyped;
@@ -294,33 +294,33 @@ end;
 /// <summary>Ersetzt ganze Wörter nach Bindungen "T=TKunde" (ohne Unit-Präfix).</summary>
 function Substitute(const AText: string; const ABindings: TArray<string>): string;
 var
-  Binding, Name, Value: string;
-  Index, Start: Integer;
+  mBinding, mName, mValue: string;
+  mIndex, mStart: Integer;
 begin
   Result := AText;
-  for Binding in ABindings do
+  for mBinding in ABindings do
   begin
-    Name := Copy(Binding, 1, Pos('=', Binding) - 1);
-    Value := Copy(Binding, Pos('=', Binding) + 1, MaxInt);
-    if Name = '' then
+    mName := Copy(mBinding, 1, Pos('=', mBinding) - 1);
+    mValue := Copy(mBinding, Pos('=', mBinding) + 1, MaxInt);
+    if mName = '' then
     begin
       Continue;
     end;
-    Index := 1;
-    while Index <= Length(Result) - Length(Name) + 1 do
+    mIndex := 1;
+    while mIndex <= Length(Result) - Length(mName) + 1 do
     begin
-      Start := Index;
-      if SameText(Copy(Result, Start, Length(Name)), Name) and
-        ((Start = 1) or not CharInSet(Result[Start - 1], ['A'..'Z', 'a'..'z', '0'..'9', '_', '.'])) and
-        ((Start + Length(Name) > Length(Result)) or
-        not CharInSet(Result[Start + Length(Name)], ['A'..'Z', 'a'..'z', '0'..'9', '_'])) then
+      mStart := mIndex;
+      if SameText(Copy(Result, mStart, Length(mName)), mName) and
+        ((mStart = 1) or not CharInSet(Result[mStart - 1], ['A'..'Z', 'a'..'z', '0'..'9', '_', '.'])) and
+        ((mStart + Length(mName) > Length(Result)) or
+        not CharInSet(Result[mStart + Length(mName)], ['A'..'Z', 'a'..'z', '0'..'9', '_'])) then
       begin
-        Result := Copy(Result, 1, Start - 1) + Value + Copy(Result, Start + Length(Name), MaxInt);
-        Inc(Index, Length(Value));
+        Result := Copy(Result, 1, mStart - 1) + mValue + Copy(Result, mStart + Length(mName), MaxInt);
+        Inc(mIndex, Length(mValue));
       end
       else
       begin
-        Inc(Index);
+        Inc(mIndex);
       end;
     end;
   end;
@@ -330,31 +330,31 @@ end;
 /// </summary>
 function WithArguments(AResolver: TNameResolver; const AName: string; const ABindings: TArray<string>): string;
 var
-  Binding: string;
-  Values: TArray<string>;
+  mBinding: string;
+  mValues: TArray<string>;
 begin
   Result := AName;
   if (Length(ABindings) = 0) or (Pos('<', AName) > 0) then
   begin
     Exit;
   end;
-  Values := nil;
-  for Binding in ABindings do
+  mValues := nil;
+  for mBinding in ABindings do
   begin
-    Values := Values + [AResolver.Queries.UnqualifyType(Copy(Binding, Pos('=', Binding) + 1, MaxInt))];
+    mValues := mValues + [AResolver.Queries.UnqualifyType(Copy(mBinding, Pos('=', mBinding) + 1, MaxInt))];
   end;
-  Result := Result + '<' + string.Join(', ', Values) + '>';
+  Result := Result + '<' + string.Join(', ', mValues) + '>';
 end;
 
 function Unqualified(AResolver: TNameResolver; const ABindings: TArray<string>): TArray<string>;
 var
-  Binding: string;
+  mBinding: string;
 begin
   Result := nil;
-  for Binding in ABindings do
+  for mBinding in ABindings do
   begin
-    Result := Result + [Copy(Binding, 1, Pos('=', Binding)) +
-      AResolver.Queries.UnqualifyType(Copy(Binding, Pos('=', Binding) + 1, MaxInt))];
+    Result := Result + [Copy(mBinding, 1, Pos('=', mBinding)) +
+      AResolver.Queries.UnqualifyType(Copy(mBinding, Pos('=', mBinding) + 1, MaxInt))];
   end;
 end;
 
@@ -702,9 +702,9 @@ begin
     Result := StringReplace(Result, '  ', ' ', [rfReplaceAll]);
   end;
   Result := Trim(Result);
-  if Length(Result) > TExpressionTypes.MaxExpressionLength then
+  if Length(Result) > TExpressionTypes.cMaxExpressionLength then
   begin
-    Result := Copy(Result, 1, TExpressionTypes.MaxExpressionLength - 1) + #$2026;
+    Result := Copy(Result, 1, TExpressionTypes.cMaxExpressionLength - 1) + #$2026;
   end;
 end;
 
@@ -1211,33 +1211,33 @@ end;
 /// Stelle von ASymbol steht; '' sonst (lokale Variablen tragen keinen Typtext im Index).</summary>
 function LocalArrayText(ATree: TSyntaxTree; const AText: string; const ASymbol: TResolvedSymbol): string;
 var
-  Found, Node: TSyntaxNode;
-  Offset: Integer;
+  mFound, mNode: TSyntaxNode;
+  mOffset: Integer;
 begin
   Result := '';
-  Offset := TLineTable.Build(AText).OffsetAt(ASymbol.SelectionRange.StartPos);
-  Found := nil;
+  mOffset := TLineTable.Build(AText).OffsetAt(ASymbol.SelectionRange.StartPos);
+  mFound := nil;
   ATree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
-      Result := (Found = nil) and (ANode.StartOffset <= Offset) and (ANode.EndOffset >= Offset);
+      Result := (mFound = nil) and (ANode.StartOffset <= mOffset) and (ANode.EndOffset >= mOffset);
       if Result and (ANode.Kind in [TSyntaxKind.VarDecl, TSyntaxKind.Field, TSyntaxKind.Parameter]) then
       begin
-        Found := ANode;
+        mFound := ANode;
       end;
     end);
-  if Found = nil then
+  if mFound = nil then
   begin
     Exit;
   end;
-  Node := Found.FindChild(TSyntaxKind.ArrayType);
-  while (Node <> nil) and (Node.ChildCount > 0) do
+  mNode := mFound.FindChild(TSyntaxKind.ArrayType);
+  while (mNode <> nil) and (mNode.ChildCount > 0) do
   begin
     Result := Result + 'array of ';
-    Node := Node[Node.ChildCount - 1];
-    if Node.Kind <> TSyntaxKind.ArrayType then
+    mNode := mNode[mNode.ChildCount - 1];
+    if mNode.Kind <> TSyntaxKind.ArrayType then
     begin
-      Result := Result + TIndexExtractor.TypeText(Node);
+      Result := Result + TIndexExtractor.TypeText(mNode);
       Exit;
     end;
   end;
@@ -1260,17 +1260,17 @@ end;
 
 class function TExpressionTypes.IsExpression(ANode: TSyntaxNode): Boolean;
 var
-  Parent: TSyntaxNode;
+  mParent: TSyntaxNode;
 begin
-  Result := (ANode <> nil) and (ANode.Kind in ExpressionKinds);
+  Result := (ANode <> nil) and (ANode.Kind in cExpressionKinds);
   if not Result then
   begin
     Exit;
   end;
   // Teile einer Kette sind keine eigenen Ausdrücke: das Mitglied hinter dem Punkt ist der MemberAccess selbst;
   // Typargumente und Bereiche (1..3) nicht.
-  Parent := ANode.Parent;
-  if (Parent <> nil) and (Parent.Kind in [TSyntaxKind.GenericArgs, TSyntaxKind.TypeReference]) then
+  mParent := ANode.Parent;
+  if (mParent <> nil) and (mParent.Kind in [TSyntaxKind.GenericArgs, TSyntaxKind.TypeReference]) then
   begin
     Result := False;
   end;
@@ -1279,9 +1279,9 @@ end;
 class function TExpressionTypes.FindExpression(ATree: TSyntaxTree; AStart, AEnd: Integer;
   AExpand: Boolean): TSyntaxNode;
 var
-  Best: TSyntaxNode;
+  mBest: TSyntaxNode;
 begin
-  Best := nil;
+  mBest := nil;
   if (ATree = nil) or (ATree.Root = nil) then
   begin
     Exit(nil);
@@ -1302,12 +1302,12 @@ begin
       begin
         Covers := (ANode.StartOffset < AStart) or (ANode.EndOffset > AEnd);
       end;
-      if Covers and ((Best = nil) or (ANode.EndOffset - ANode.StartOffset <= Best.EndOffset - Best.StartOffset)) then
+      if Covers and ((mBest = nil) or (ANode.EndOffset - ANode.StartOffset <= mBest.EndOffset - mBest.StartOffset)) then
       begin
-        Best := ANode;
+        mBest := ANode;
       end;
     end);
-  Result := Best;
+  Result := mBest;
 end;
 
 class function TExpressionTypes.CategoryOf(const ATypeName: string; out AWidth: Integer;
@@ -1414,7 +1414,7 @@ begin
   begin
     Exit;
   end;
-  if FDepth > MaxDepth then
+  if FDepth > cMaxDepth then
   begin
     Exit(Failed(TExpressionErrorKind.Unknown, ''));
   end;
@@ -1640,7 +1640,7 @@ begin
     Exit;
   end;
   mOperator := LowerCase(ANode.Name);
-  if MatchText(mOperator, ComparisonOperators) then
+  if MatchText(mOperator, cComparisonOperators) then
   begin
     Result := TypeComparison(ANode, mOperator);
   end
@@ -1707,7 +1707,7 @@ var
   mConversion: TExpressionConversion;
 begin
   mConversion := Default(TExpressionConversion);
-  if FOptions.Conversions and (Length(FConversions) < MaxConversions) and OperandShown(ANode, AWhole) and
+  if FOptions.Conversions and (Length(FConversions) < cMaxConversions) and OperandShown(ANode, AWhole) and
     not IsAliasOf(AOperand, AResult) and ConversionKind(AOperand, AResult, mConversion.Kind) then
   begin
     mConversion.Expression := ShortText(FText, ANode);
@@ -1719,13 +1719,13 @@ end;
 
 procedure TExpressionTypes.NoteArguments(ANode: TSyntaxNode; const ARoutine: TResolvedSymbol);
 var
-  Candidates: TArray<TResolvedSymbol>;
-  Index: Integer;
-  Argument, Parameter: TTyped;
-  Saved: TArray<TExpressionConversion>;
+  mCandidates: TArray<TResolvedSymbol>;
+  mIndex: Integer;
+  mArgument, mParameter: TTyped;
+  mSaved: TArray<TExpressionConversion>;
 begin
-  Candidates := FResolver.CallCandidates(FTree, FFileName, ANode[0]);
-  if (Length(Candidates) > 1) and (FOverload = '') then
+  mCandidates := FResolver.CallCandidates(FTree, FFileName, ANode[0]);
+  if (Length(mCandidates) > 1) and (FOverload = '') then
   begin
     FOverload := ARoutine.Signature;
   end;
@@ -1733,25 +1733,25 @@ begin
   begin
     Exit;
   end;
-  for Index := 1 to ANode.ChildCount - 1 do
+  for mIndex := 1 to ANode.ChildCount - 1 do
   begin
-    if Index - 1 > High(ARoutine.ParamTypes) then
+    if mIndex - 1 > High(ARoutine.ParamTypes) then
     begin
       Break;
     end;
-    if ARoutine.ParamTypes[Index - 1] = '' then
+    if ARoutine.ParamTypes[mIndex - 1] = '' then
     begin
       Continue;
     end;
     // Typen der Argumente ohne deren eigene Umwandlungen: die gehören zu Teilausdrücken.
-    Saved := FConversions;
-    Argument := TypeNode(ANode[Index]);
-    FConversions := Saved;
-    Parameter := FromText(Substitute(ARoutine.ParamTypes[Index - 1], Unqualified(FResolver, ARoutine.Bindings)),
+    mSaved := FConversions;
+    mArgument := TypeNode(ANode[mIndex]);
+    FConversions := mSaved;
+    mParameter := FromText(Substitute(ARoutine.ParamTypes[mIndex - 1], Unqualified(FResolver, ARoutine.Bindings)),
       ARoutine);
-    if Argument.Known and Parameter.Known then
+    if mArgument.Known and mParameter.Known then
     begin
-      NoteOperand(ANode[Index], Argument, Parameter, False);
+      NoteOperand(ANode[mIndex], mArgument, mParameter, False);
     end;
   end;
 end;
@@ -1774,29 +1774,29 @@ end;
 
 function TExpressionTypes.TypeSet(ANode: TSyntaxNode): TTyped;
 var
-  Element: TTyped;
-  First: TSyntaxNode;
+  mElement: TTyped;
+  mFirst: TSyntaxNode;
 begin
   if ANode.ChildCount = 0 then
   begin
     Exit(Typed('set of ()'));
   end;
-  First := ANode[0];
-  if (First.Kind = TSyntaxKind.RangeExpr) and (First.ChildCount > 0) then
+  mFirst := ANode[0];
+  if (mFirst.Kind = TSyntaxKind.RangeExpr) and (mFirst.ChildCount > 0) then
   begin
-    First := First[0];
+    mFirst := mFirst[0];
   end;
-  Element := TypeNode(First);
-  if not Element.Known then
+  mElement := TypeNode(mFirst);
+  if not mElement.Known then
   begin
-    Exit(Element);
+    Exit(mElement);
   end;
   // Zahlen in einer Menge sind Byte-Werte.
-  if Element.Category = TExpressionCategory.Integer_ then
+  if mElement.Category = TExpressionCategory.Integer_ then
   begin
-    Element := Typed('Byte');
+    mElement := Typed('Byte');
   end;
-  Result := Typed('set of ' + Element.Name);
+  Result := Typed('set of ' + mElement.Name);
   Result.Category := TExpressionCategory.Set_;
 end;
 
@@ -1817,7 +1817,7 @@ var
 begin
   Result := False;
   AValue := 0;
-  if (ANode = nil) or (FDepth > MaxDepth) then
+  if (ANode = nil) or (FDepth > cMaxDepth) then
   begin
     Exit;
   end;

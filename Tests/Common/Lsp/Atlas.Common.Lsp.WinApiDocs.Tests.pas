@@ -42,13 +42,13 @@ end;
 procedure TWinApiDocsTests.KnownFunctionLinksWideVariant;
 begin
   Assert.IsTrue(TWinApiDocs.IsKnown('SendMessage'));
-  Assert.AreEqual(TWinApiDocs.ApiBase + 'winuser/nf-winuser-sendmessagew', TWinApiDocs.Url('SendMessage'));
+  Assert.AreEqual(TWinApiDocs.cApiBase + 'winuser/nf-winuser-sendmessagew', TWinApiDocs.Url('SendMessage'));
 end;
 
 procedure TWinApiDocsTests.UnknownNameUsesSearch;
 begin
   Assert.IsFalse(TWinApiDocs.IsKnown('GibtEsNicht'));
-  Assert.AreEqual(TWinApiDocs.SearchBase + 'GibtEsNicht', TWinApiDocs.Url('GibtEsNicht'));
+  Assert.AreEqual(TWinApiDocs.cSearchBase + 'GibtEsNicht', TWinApiDocs.Url('GibtEsNicht'));
 end;
 
 procedure TWinApiDocsTests.PtrVariantForSetWindowLong;
@@ -75,7 +75,7 @@ begin
   Assert.IsTrue(Length(TWinApiDocs.KnownUrls) > 0);
   for Url in TWinApiDocs.KnownUrls do
   begin
-    Assert.IsTrue(StartsStr(TWinApiDocs.ApiBase, Url), Url);
+    Assert.IsTrue(StartsStr(TWinApiDocs.cApiBase, Url), Url);
     Assert.IsTrue(Pos(' ', Url) = 0, Url);
     Assert.AreEqual(LowerCase(Url), Url);
     Assert.IsTrue(ContainsStr(Url, '/nf-') or ContainsStr(Url, '/ns-'), Url);

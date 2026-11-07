@@ -58,7 +58,8 @@ type
     /// dem Rumpf.</summary>
     class function AddVariable(const AText: string; ARoutine: TSyntaxNode; const AName, AType: string;
       const AStyle: TFormatStyle): TTextEdit; static;
-    /// <summary>Eintrag "AName = AValue;" im const-Abschnitt der Routine bzw. ein neuer Abschnitt vor dem Rumpf.</summary>
+    /// <summary>Eintrag "AName = AValue;" im const-Abschnitt der Routine bzw. ein neuer Abschnitt vor dem
+    /// Rumpf.</summary>
     class function AddConstant(const AText: string; ARoutine: TSyntaxNode; const AName, AValue: string;
       const AStyle: TFormatStyle): TTextEdit; static;
     /// <summary>Text, dessen Zeilen ab der zweiten um ARemove gekürzt (soweit vorhanden) und um AAdd ergänzt
@@ -67,7 +68,8 @@ type
     /// <summary>Rumpf (class, record oder object) des Typs AName in der Datei; nil ohne.</summary>
     class function TypeBody(ARoot: TSyntaxNode; const AName: string): TSyntaxNode; static;
     /// <summary>Deklaration AMember.Declaration am Ende des Abschnitts AMember.Section ("private", "protected",
-    /// "public") der Klasse ABody; bei private zählt auch strict private. Ohne Abschnitt ein neuer vor end, das dann allein am
+    /// "public") der Klasse ABody; bei private zählt auch strict private. Ohne Abschnitt ein neuer vor end, das dann
+    /// allein am
     /// Zeilenanfang stehen muss.</summary>
     class function MemberDeclaration(const AText: string; ATree: TSyntaxTree; ABody: TSyntaxNode;
       const AMember: TMemberEntry; const AStyle: TFormatStyle; out AEdit: TTextEdit): Boolean; static;
@@ -102,7 +104,7 @@ uses
   Atlas.Text.Lines;
 
 const
-  StatementKinds = [TSyntaxKind.Block, TSyntaxKind.AsmBlock, TSyntaxKind.AssignStatement,
+  cStatementKinds = [TSyntaxKind.Block, TSyntaxKind.AsmBlock, TSyntaxKind.AssignStatement,
     TSyntaxKind.CallStatement, TSyntaxKind.IfStatement, TSyntaxKind.CaseStatement, TSyntaxKind.ForStatement,
     TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement,
     TSyntaxKind.WithStatement, TSyntaxKind.TryStatement, TSyntaxKind.RaiseStatement, TSyntaxKind.GotoStatement,
@@ -125,7 +127,7 @@ end;
 
 class function TRoutineBody.IsStatement(ANode: TSyntaxNode): Boolean;
 begin
-  Result := (ANode <> nil) and (ANode.Kind in StatementKinds);
+  Result := (ANode <> nil) and (ANode.Kind in cStatementKinds);
 end;
 
 class function TRoutineBody.BodyOf(ARoutine: TSyntaxNode): TSyntaxNode;
@@ -183,38 +185,38 @@ end;
 
 class function TRoutineBody.Enclosing(ARoot: TSyntaxNode; AFirst, ALast: Integer): TSyntaxNode;
 var
-  Node: TSyntaxNode;
-  Index: Integer;
-  Descended: Boolean;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
+  mDescended: Boolean;
 begin
   Result := ARoot;
-  Node := ARoot;
+  mNode := ARoot;
   repeat
-    Descended := False;
-    for Index := 0 to Node.ChildCount - 1 do
+    mDescended := False;
+    for mIndex := 0 to mNode.ChildCount - 1 do
     begin
-      if (Node[Index].StartOffset <= AFirst) and (ALast <= Node[Index].EndOffset) then
+      if (mNode[mIndex].StartOffset <= AFirst) and (ALast <= mNode[mIndex].EndOffset) then
       begin
-        Node := Node[Index];
-        Result := Node;
-        Descended := True;
+        mNode := mNode[mIndex];
+        Result := mNode;
+        mDescended := True;
         Break;
       end;
     end;
-  until not Descended;
+  until not mDescended;
 end;
 
 class function TRoutineBody.InList(AStatement: TSyntaxNode): Boolean;
 var
-  Parent: TSyntaxNode;
+  mParent: TSyntaxNode;
 begin
   Result := False;
   if (AStatement = nil) or (AStatement.Parent = nil) then
   begin
     Exit;
   end;
-  Parent := AStatement.Parent;
-  case Parent.Kind of
+  mParent := AStatement.Parent;
+  case mParent.Kind of
     TSyntaxKind.Block, TSyntaxKind.FinallyBlock, TSyntaxKind.CaseElse:
       Result := True;
     TSyntaxKind.ExceptBlock:
@@ -223,7 +225,7 @@ begin
       Result := not (AStatement.Kind in [TSyntaxKind.FinallyBlock, TSyntaxKind.ExceptBlock]);
     TSyntaxKind.RepeatStatement:
       // Das letzte Kind ist die Bedingung hinter until.
-      Result := Parent[Parent.ChildCount - 1] <> AStatement;
+      Result := mParent[mParent.ChildCount - 1] <> AStatement;
   else
     // Übrige Werte bewusst ohne Wirkung.
   end;
@@ -268,15 +270,15 @@ class function TRoutineBody.UniqueName(const ATokens: TArray<TPascalToken>; cons
 
   function Taken(const AName: string): Boolean;
   var
-    Index, Before: Integer;
+    mIndex, mBefore: Integer;
   begin
     // Namen hinter einem Punkt (Liste.Count) sind Mitglieder und kollidieren nicht.
-    for Index := 0 to High(ATokens) do
+    for mIndex := 0 to High(ATokens) do
     begin
-      if (ATokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(ATokens[Index].Text, AName) then
+      if (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(ATokens[mIndex].Text, AName) then
       begin
-        Before := PreviousToken(ATokens, Index);
-        if (Before < 0) or not ATokens[Before].IsSymbol('.') then
+        mBefore := PreviousToken(ATokens, mIndex);
+        if (mBefore < 0) or not ATokens[mBefore].IsSymbol('.') then
         begin
           Exit(True);
         end;
@@ -286,14 +288,14 @@ class function TRoutineBody.UniqueName(const ATokens: TArray<TPascalToken>; cons
   end;
 
 var
-  Number: Integer;
+  mNumber: Integer;
 begin
   Result := ABase;
-  Number := 1;
+  mNumber := 1;
   while Taken(Result) do
   begin
-    Inc(Number);
-    Result := ABase + IntToStr(Number);
+    Inc(mNumber);
+    Result := ABase + IntToStr(mNumber);
   end;
 end;
 
@@ -323,22 +325,22 @@ end;
 class function TRoutineBody.InsertBefore(const AText: string; AStatement: TSyntaxNode;
   const ALine: string): TTextEdit;
 var
-  Indent: string;
+  mIndent: string;
 begin
-  Indent := TTextLines.IndentOf(AText, AStatement.StartPos.Line);
+  mIndent := TTextLines.IndentOf(AText, AStatement.StartPos.Line);
   // Steht die Anweisung nicht am Zeilenanfang (begin X := 1;), bekommt die neue Zeile dieselbe Einrückung
   // wie die Zeile; die Anweisung rückt in die nächste.
   Result := TTextEdit.Create(TTextRange.Create(AStatement.StartPos, AStatement.StartPos),
-    ALine + TTextLines.LineBreakOf(AText) + Indent);
+    ALine + TTextLines.LineBreakOf(AText) + mIndent);
 end;
 
 /// <summary>Einfügestelle für einen neuen Abschnitt vor dem Rumpf: Anfang der Zeile mit begin.</summary>
 function BeforeBody(ARoutine: TSyntaxNode): TTextPosition;
 var
-  Body: TSyntaxNode;
+  mBody: TSyntaxNode;
 begin
-  Body := TRoutineBody.BodyOf(ARoutine);
-  Result := TTextPosition.Create(Body.StartPos.Line, 0);
+  mBody := TRoutineBody.BodyOf(ARoutine);
+  Result := TTextPosition.Create(mBody.StartPos.Line, 0);
 end;
 
 type
@@ -430,30 +432,30 @@ end;
 
 class function TRoutineBody.Reindent(const ABlock, ARemove, AAdd, ALineBreak: string): string;
 var
-  Lines: TArray<string>;
-  Index: Integer;
-  Line: string;
+  mLines: TArray<string>;
+  mIndex: Integer;
+  mLine: string;
 begin
-  Lines := TTextLines.SplitLines(ABlock);
+  mLines := TTextLines.SplitLines(ABlock);
   Result := '';
-  for Index := 0 to High(Lines) do
+  for mIndex := 0 to High(mLines) do
   begin
-    Line := Lines[Index];
-    if Index > 0 then
+    mLine := mLines[mIndex];
+    if mIndex > 0 then
     begin
       Result := Result + ALineBreak;
-      if StartsStr(ARemove, Line) then
+      if StartsStr(ARemove, mLine) then
       begin
-        Line := Copy(Line, Length(ARemove) + 1, MaxInt);
+        mLine := Copy(mLine, Length(ARemove) + 1, MaxInt);
       end
       else
       begin
-        Line := TrimLeft(Line);
+        mLine := TrimLeft(mLine);
       end;
     end;
-    if Trim(Line) <> '' then
+    if Trim(mLine) <> '' then
     begin
-      Result := Result + AAdd + Line;
+      Result := Result + AAdd + mLine;
     end;
   end;
 end;
@@ -474,29 +476,29 @@ end;
 
 class function TRoutineBody.TypeBody(ARoot: TSyntaxNode; const AName: string): TSyntaxNode;
 var
-  Name: string;
-  Found: TSyntaxNode;
+  mName: string;
+  mFound: TSyntaxNode;
 begin
   Result := nil;
   if ARoot = nil then
   begin
     Exit;
   end;
-  Name := AName;
+  mName := AName;
   // Search statt Rekursion (Bericht M1).
-  Found := ARoot.Search(
+  mFound := ARoot.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
       Result := TSyntaxSearchStep.Descend;
-      if (ANode.Kind = TSyntaxKind.TypeDecl) and (SameText(ANode.Name, Name) or StartsText(Name + '<', ANode.Name)) and
+      if (ANode.Kind = TSyntaxKind.TypeDecl) and (SameText(ANode.Name, mName) or StartsText(mName + '<', ANode.Name)) and
         (BodyOfType(ANode) <> nil) then
       begin
         Result := TSyntaxSearchStep.Found;
       end;
     end);
-  if Found <> nil then
+  if mFound <> nil then
   begin
-    Result := BodyOfType(Found);
+    Result := BodyOfType(mFound);
   end;
 end;
 
@@ -572,68 +574,68 @@ end;
 class function TRoutineBody.FieldDeclaration(const AText: string; ATree: TSyntaxTree; ABody: TSyntaxNode;
   const ADecl: string; const AStyle: TFormatStyle; out AEdit: TTextEdit): Boolean;
 var
-  Index: Integer;
-  Visibility, LastField: TSyntaxNode;
-  Position: TTextPosition;
-  Indent: string;
+  mIndex: Integer;
+  mVisibility, mLastField: TSyntaxNode;
+  mPosition: TTextPosition;
+  mIndent: string;
 begin
   AEdit := Default(TTextEdit);
-  Visibility := nil;
-  LastField := nil;
-  for Index := 0 to ABody.ChildCount - 1 do
+  mVisibility := nil;
+  mLastField := nil;
+  for mIndex := 0 to ABody.ChildCount - 1 do
   begin
-    if ABody[Index].Kind = TSyntaxKind.Visibility then
+    if ABody[mIndex].Kind = TSyntaxKind.Visibility then
     begin
-      if Visibility <> nil then
+      if mVisibility <> nil then
       begin
         Break;
       end;
-      if MatchText(ABody[Index].Name, ['private', 'strict private']) then
+      if MatchText(ABody[mIndex].Name, ['private', 'strict private']) then
       begin
-        Visibility := ABody[Index];
+        mVisibility := ABody[mIndex];
       end;
     end
-    else if (Visibility <> nil) and (ABody[Index].Kind = TSyntaxKind.Field) then
+    else if (mVisibility <> nil) and (ABody[mIndex].Kind = TSyntaxKind.Field) then
     begin
-      LastField := ABody[Index];
+      mLastField := ABody[mIndex];
     end
-    else if Visibility <> nil then
+    else if mVisibility <> nil then
     begin
       // Felder stehen vor Methoden und Properties (E2169).
       Break;
     end;
   end;
-  if Visibility = nil then
+  if mVisibility = nil then
   begin
     Exit(MemberDeclaration(AText, ATree, ABody, TMemberEntry.Create('private', ADecl), AStyle, AEdit));
   end;
-  if LastField <> nil then
+  if mLastField <> nil then
   begin
-    Indent := TTextLines.IndentOf(AText, LastField.StartPos.Line);
-    Position := TTextPosition.Create(LastField.EndPos.Line + 1, 0);
+    mIndent := TTextLines.IndentOf(AText, mLastField.StartPos.Line);
+    mPosition := TTextPosition.Create(mLastField.EndPos.Line + 1, 0);
   end
   else
   begin
-    Indent := TTextLines.IndentOf(AText, Visibility.StartPos.Line) + IndentUnit(AStyle);
-    Position := TTextPosition.Create(Visibility.EndPos.Line + 1, 0);
+    mIndent := TTextLines.IndentOf(AText, mVisibility.StartPos.Line) + IndentUnit(AStyle);
+    mPosition := TTextPosition.Create(mVisibility.EndPos.Line + 1, 0);
   end;
-  AEdit := TTextEdit.Create(TTextRange.Create(Position, Position), Indent + ADecl + TTextLines.LineBreakOf(AText));
+  AEdit := TTextEdit.Create(TTextRange.Create(mPosition, mPosition), mIndent + ADecl + TTextLines.LineBreakOf(AText));
   Result := True;
 end;
 
 class function TRoutineBody.MemberNames(ABody: TSyntaxNode): TArray<string>;
 var
-  Index: Integer;
-  Name: string;
+  mIndex: Integer;
+  mName: string;
 begin
   Result := nil;
-  for Index := 0 to ABody.ChildCount - 1 do
+  for mIndex := 0 to ABody.ChildCount - 1 do
   begin
-    if ABody[Index].Kind in [TSyntaxKind.RoutineHeader, TSyntaxKind.Field, TSyntaxKind.PropertyDecl] then
+    if ABody[mIndex].Kind in [TSyntaxKind.RoutineHeader, TSyntaxKind.Field, TSyntaxKind.PropertyDecl] then
     begin
-      for Name in ABody[Index].Name.Split([',']) do
+      for mName in ABody[mIndex].Name.Split([',']) do
       begin
-        Result := Result + [Trim(Name)];
+        Result := Result + [Trim(mName)];
       end;
     end;
   end;
@@ -641,18 +643,18 @@ end;
 
 class function TRoutineBody.VisibilityOf(ABody, AMember: TSyntaxNode): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := 0 to ABody.ChildCount - 1 do
+  for mIndex := 0 to ABody.ChildCount - 1 do
   begin
-    if ABody[Index] = AMember then
+    if ABody[mIndex] = AMember then
     begin
       Exit;
     end;
-    if ABody[Index].Kind = TSyntaxKind.Visibility then
+    if ABody[mIndex].Kind = TSyntaxKind.Visibility then
     begin
-      Result := LowerCase(ABody[Index].Name);
+      Result := LowerCase(ABody[mIndex].Name);
     end;
   end;
 end;
@@ -688,15 +690,15 @@ end;
 
 class function TRoutineBody.RoutineInsertLine(const AText: string; ARoutine: TSyntaxNode): Integer;
 var
-  Lines: TArray<string>;
-  Line: string;
+  mLines: TArray<string>;
+  mLine: string;
 begin
-  Lines := TTextLines.SplitLines(AText);
+  mLines := TTextLines.SplitLines(AText);
   Result := ARoutine.StartPos.Line;
   while Result > 0 do
   begin
-    Line := Trim(Lines[Result - 1]);
-    if IsCommentLine(Line) then
+    mLine := Trim(mLines[Result - 1]);
+    if IsCommentLine(mLine) then
     begin
       Dec(Result);
     end
@@ -709,15 +711,15 @@ end;
 
 class function TRoutineBody.IsVariableChain(ANode: TSyntaxNode): Boolean;
 var
-  Node: TSyntaxNode;
+  mNode: TSyntaxNode;
 begin
   // Schleife statt Rekursion (Bericht M1).
-  Node := ANode;
-  while Node.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.Dereference, TSyntaxKind.IndexAccess] do
+  mNode := ANode;
+  while mNode.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.Dereference, TSyntaxKind.IndexAccess] do
   begin
-    Node := Node[0];
+    mNode := mNode[0];
   end;
-  Result := Node.Kind = TSyntaxKind.Identifier;
+  Result := mNode.Kind = TSyntaxKind.Identifier;
 end;
 
 /// <summary>Hängt bei ANode der rechte Teil vom linken ab (and, or, if-Ausdruck)?</summary>

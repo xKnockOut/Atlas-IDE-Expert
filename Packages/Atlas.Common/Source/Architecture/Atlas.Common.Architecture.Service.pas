@@ -116,11 +116,11 @@ var
 begin
   if TryLoad(TArchitectureComparer.ResolvePath(ARequest.Root, ARequest.Baseline), mPrevious, mAt) then
   begin
-    TArchitectureAlignment.Align(AOverview, mPrevious, TArchitectureAnalyzer.AlignedBaseline, mAt);
+    TArchitectureAlignment.Align(AOverview, mPrevious, TArchitectureAnalyzer.cAlignedBaseline, mAt);
   end
   else if TryLoad(ARequest.PreviousFile, mPrevious, mAt) then
   begin
-    TArchitectureAlignment.Align(AOverview, mPrevious, TArchitectureAnalyzer.AlignedLast, mAt);
+    TArchitectureAlignment.Align(AOverview, mPrevious, TArchitectureAnalyzer.cAlignedLast, mAt);
   end;
 end;
 
@@ -185,12 +185,12 @@ end;
 
 function TArchitectureRequest.Key: string;
 var
-  Files: TArray<string>;
+  mFiles: TArray<string>;
 begin
-  Files := Copy(Self.Files);
-  TArray.Sort<string>(Files);
+  mFiles := Copy(Self.Files);
+  TArray.Sort<string>(mFiles);
   Result := Title + #1 + Root + #1 + Scope + #1 + BoolToStr(IncludeLibrary, True) + #1 + IntToStr(CentralUnits) + #1 +
-    string.Join(#2, Exclude) + #1 + string.Join(#2, Namespaces) + #1 + LowerCase(string.Join(#2, Files)) + #1 +
+    string.Join(#2, Exclude) + #1 + string.Join(#2, Namespaces) + #1 + LowerCase(string.Join(#2, mFiles)) + #1 +
     Grouping.Key + #1 + BoolToStr(KeepPrevious, True) + #1 + Baseline + #1 + PreviousFile;
 end;
 
@@ -258,28 +258,28 @@ end;
 
 function TArchitectureService.Compute(const ARequest: TArchitectureRequest; AGeneration: Int64): TArchitectureOverview;
 var
-  Selected: TArray<TUnitIndex>;
-  Options: TUsesGraphOptions;
-  Graph: TUsesGraph;
+  mSelected: TArray<TUnitIndex>;
+  mOptions: TUsesGraphOptions;
+  mGraph: TUsesGraph;
 begin
-  Selected := SelectUnits(FIndex.Units, ARequest.Files);
-  Options := TUsesGraphOptions.Default;
-  Options.IncludeLibrary := ARequest.IncludeLibrary;
-  Options.Exclude := ARequest.Exclude;
-  Options.Root := ARequest.Root;
-  Options.Namespaces := ARequest.Namespaces;
-  Graph := TUsesGraph.Create(Selected, Options);
+  mSelected := SelectUnits(FIndex.Units, ARequest.Files);
+  mOptions := TUsesGraphOptions.Default;
+  mOptions.IncludeLibrary := ARequest.IncludeLibrary;
+  mOptions.Exclude := ARequest.Exclude;
+  mOptions.Root := ARequest.Root;
+  mOptions.Namespaces := ARequest.Namespaces;
+  mGraph := TUsesGraph.Create(mSelected, mOptions);
   try
     if ARequest.CentralUnits > 0 then
     begin
-      Result := TArchitectureAnalyzer.Analyze(Graph, FLocator, ARequest.CentralUnits, ARequest.Grouping);
+      Result := TArchitectureAnalyzer.Analyze(mGraph, FLocator, ARequest.CentralUnits, ARequest.Grouping);
     end
     else
     begin
-      Result := TArchitectureAnalyzer.Analyze(Graph, FLocator, 15, ARequest.Grouping);
+      Result := TArchitectureAnalyzer.Analyze(mGraph, FLocator, 15, ARequest.Grouping);
     end;
   finally
-    Graph.Free;
+    mGraph.Free;
   end;
   Result.Title := ARequest.Title;
   Result.Scope := ARequest.Scope;
@@ -299,19 +299,19 @@ end;
 
 function TArchitectureService.Overview(const ARequest: TArchitectureRequest): TArchitectureOverview;
 var
-  Generation: Int64;
-  Key: string;
+  mGeneration: Int64;
+  mKey: string;
 begin
   System.TMonitor.Enter(FLock);
   try
-    Generation := FIndex.Generation;
-    Key := ARequest.Key + #1 + BaselineStamp(ARequest);
+    mGeneration := FIndex.Generation;
+    mKey := ARequest.Key + #1 + BaselineStamp(ARequest);
     // Rename rechnet auf Wunsch neu, auch bei gleichem Index (#1367).
-    if not FHasResult or (FGeneration <> Generation) or (FKey <> Key) or ARequest.Rename then
+    if not FHasResult or (FGeneration <> mGeneration) or (FKey <> mKey) or ARequest.Rename then
     begin
-      FResult := Compute(ARequest, Generation);
-      FGeneration := Generation;
-      FKey := Key;
+      FResult := Compute(ARequest, mGeneration);
+      FGeneration := mGeneration;
+      FKey := mKey;
       FHasResult := True;
       Inc(FComputations);
     end;

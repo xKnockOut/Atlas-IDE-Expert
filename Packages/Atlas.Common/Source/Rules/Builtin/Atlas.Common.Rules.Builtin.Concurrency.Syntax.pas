@@ -24,10 +24,10 @@ type
   end;
 
 const
-  BuiltinLockPairs: array[0..5, 0..1] of string = (('Enter', 'Leave'), ('Enter', 'Exit'), ('Acquire', 'Release'),
+  cBuiltinLockPairs: array[0..5, 0..1] of string = (('Enter', 'Leave'), ('Enter', 'Exit'), ('Acquire', 'Release'),
     ('BeginRead', 'EndRead'), ('BeginWrite', 'EndWrite'), ('EnterCriticalSection', 'LeaveCriticalSection'));
-  VclGlobals: array[0..1] of string = ('Application', 'Screen');
-  VclDialogs: array[0..4] of string = ('ShowMessage', 'ShowMessageFmt', 'ShowMessagePos', 'MessageDlg',
+  cVclGlobals: array[0..1] of string = ('Application', 'Screen');
+  cVclDialogs: array[0..4] of string = ('ShowMessage', 'ShowMessageFmt', 'ShowMessagePos', 'MessageDlg',
     'InputBox');
 
 function InList(const AItems: array of string; const AText: string): Boolean;
@@ -66,7 +66,8 @@ function ThreadClasses(ARoot: TSyntaxNode): TArray<string>;
 /// <summary>ThreadClasses der geprüften Datei, je Lauf einmal berechnet (Review P-03).</summary>
 function SharedThreadClasses(const AContext: TRuleContext): TArray<string>;
 
-/// <summary>Bereich einer ganzen Anweisung samt Semikolon und Zeilenende, wenn sie allein in ihrer Zeile steht.</summary>
+/// <summary>Bereich einer ganzen Anweisung samt Semikolon und Zeilenende, wenn sie allein in ihrer Zeile
+/// steht.</summary>
 function StatementRemoval(const AText: string; AStatement: TSyntaxNode): TTextRange;
 
 implementation
@@ -86,11 +87,11 @@ uses
 
 function InList(const AItems: array of string; const AText: string): Boolean;
 var
-  Item: string;
+  mItem: string;
 begin
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    if SameText(Item, AText) then
+    if SameText(mItem, AText) then
     begin
       Exit(True);
     end;
@@ -110,7 +111,7 @@ end;
 
 function TryMethodCall(AStatement: TSyntaxNode; out ACall: TMethodCall): Boolean;
 var
-  Target: TSyntaxNode;
+  mTarget: TSyntaxNode;
 begin
   Result := False;
   ACall := Default(TMethodCall);
@@ -118,22 +119,22 @@ begin
   begin
     Exit;
   end;
-  Target := AStatement[0];
-  if (Target.Kind = TSyntaxKind.Call) and (Target.ChildCount > 0) then
+  mTarget := AStatement[0];
+  if (mTarget.Kind = TSyntaxKind.Call) and (mTarget.ChildCount > 0) then
   begin
-    ACall.Call := Target;
-    Target := Target[0];
+    ACall.Call := mTarget;
+    mTarget := mTarget[0];
   end;
-  if (Target.Kind = TSyntaxKind.MemberAccess) and (Target.ChildCount > 0) then
+  if (mTarget.Kind = TSyntaxKind.MemberAccess) and (mTarget.ChildCount > 0) then
   begin
-    ACall.Receiver := Target[0];
+    ACall.Receiver := mTarget[0];
   end
-  else if (Target.Kind <> TSyntaxKind.Identifier) or (ACall.Call = nil) then
+  else if (mTarget.Kind <> TSyntaxKind.Identifier) or (ACall.Call = nil) then
   begin
     Exit;
   end;
-  ACall.Method := Target.Name;
-  ACall.Member := Target;
+  ACall.Method := mTarget.Name;
+  ACall.Member := mTarget;
   Result := True;
 end;
 
@@ -177,35 +178,35 @@ end;
 
 function StatementLists(ARoot: TSyntaxNode): TArray<TSyntaxNode>;
 var
-  Found: TList<TSyntaxNode>;
+  mFound: TList<TSyntaxNode>;
 begin
-  Found := TList<TSyntaxNode>.Create;
+  mFound := TList<TSyntaxNode>.Create;
   try
     ARoot.Walk(
       function(ANode: TSyntaxNode): Boolean
       begin
         if IsStatementList(ANode) then
         begin
-          Found.Add(ANode);
+          mFound.Add(ANode);
         end;
         Result := True;
       end);
-    Result := Found.ToArray;
+    Result := mFound.ToArray;
   finally
-    Found.Free;
+    mFound.Free;
   end;
 end;
 
 function Mentions(ANode: TSyntaxNode; const AName: string): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
-  Name := AName;
+  mName := AName;
   // Iterativ (Bericht M1).
   Result := ANode.Search(
     function(AVisited: TSyntaxNode): TSyntaxSearchStep
     begin
-      if (AVisited.Kind = TSyntaxKind.Identifier) and SameText(AVisited.Name, Name) then
+      if (AVisited.Kind = TSyntaxKind.Identifier) and SameText(AVisited.Name, mName) then
       begin
         Exit(TSyntaxSearchStep.Found);
       end;
@@ -215,12 +216,12 @@ end;
 
 function ClassPart(const ARoutineName: string): string;
 var
-  Dot: Integer;
+  mDot: Integer;
 begin
-  Dot := LastDelimiter('.', ARoutineName);
-  if Dot > 0 then
+  mDot := LastDelimiter('.', ARoutineName);
+  if mDot > 0 then
   begin
-    Result := Copy(ARoutineName, 1, Dot - 1);
+    Result := Copy(ARoutineName, 1, mDot - 1);
   end
   else
   begin
@@ -235,13 +236,13 @@ end;
 
 function ThreadClasses(ARoot: TSyntaxNode): TArray<string>;
 var
-  Names, Parents: TArray<string>;
-  Index: Integer;
-  Changed: Boolean;
+  mNames, mParents: TArray<string>;
+  mIndex: Integer;
+  mChanged: Boolean;
 begin
   Result := nil;
-  Names := nil;
-  Parents := nil;
+  mNames := nil;
+  mParents := nil;
   if ARoot = nil then
   begin
     Exit;
@@ -267,68 +268,68 @@ begin
       begin
         Exit;
       end;
-      Names := Names + [ANode.Name];
-      Parents := Parents + [Ancestor.Name];
+      mNames := mNames + [ANode.Name];
+      mParents := mParents + [Ancestor.Name];
     end);
   // Fixpunkt über Zwischenklassen der Unit.
   repeat
-    Changed := False;
-    for Index := 0 to High(Names) do
+    mChanged := False;
+    for mIndex := 0 to High(mNames) do
     begin
-      if not InList(Result, Names[Index]) and
-        (SameText(Parents[Index], 'TThread') or SameText(Parents[Index], 'System.Classes.TThread') or
-        InList(Result, Parents[Index])) then
+      if not InList(Result, mNames[mIndex]) and
+        (SameText(mParents[mIndex], 'TThread') or SameText(mParents[mIndex], 'System.Classes.TThread') or
+        InList(Result, mParents[mIndex])) then
       begin
-        Result := Result + [Names[Index]];
-        Changed := True;
+        Result := Result + [mNames[mIndex]];
+        mChanged := True;
       end;
     end;
-  until not Changed;
+  until not mChanged;
 end;
 
 function SharedThreadClasses(const AContext: TRuleContext): TArray<string>;
 var
-  Cache: IRuleDerivedCache;
-  Root: TSyntaxNode;
+  mCache: IRuleDerivedCache;
+  mRoot: TSyntaxNode;
 begin
-  Cache := TRuleDerived.Open(AContext);
-  Root := AContext.Tree.Root;
-  Result := TRuleDerived.Get<TRuleDerivedValue<TArray<string>>>(Cache, 'concurrency.threadClasses',
+  mCache := TRuleDerived.Open(AContext);
+  mRoot := AContext.Tree.Root;
+  Result := TRuleDerived.Get<TRuleDerivedValue<TArray<string>>>(mCache, 'concurrency.threadClasses',
     function: TRuleDerivedValue<TArray<string>>
     begin
-      Result := TRuleDerivedValue<TArray<string>>.Create(ThreadClasses(Root));
+      Result := TRuleDerivedValue<TArray<string>>.Create(ThreadClasses(mRoot));
     end).Value;
 end;
 
 function StatementRemoval(const AText: string; AStatement: TSyntaxNode): TTextRange;
 var
-  Index: Integer;
-  Alone: Boolean;
+  mIndex: Integer;
+  mAlone: Boolean;
 begin
-  Alone := True;
-  Index := AStatement.StartOffset;
-  while (Index > 0) and (AText[Index] <> #10) do
+  mAlone := True;
+  mIndex := AStatement.StartOffset;
+  while (mIndex > 0) and (AText[mIndex] <> #10) do
   begin
-    if not CharInSet(AText[Index], [' ', #9]) then
+    if not CharInSet(AText[mIndex], [' ', #9]) then
     begin
-      Alone := False;
+      mAlone := False;
     end;
-    Dec(Index);
+    Dec(mIndex);
   end;
-  Index := AStatement.EndOffset + 1;
-  if (Index <= Length(AText)) and (AText[Index] = ';') then
+  mIndex := AStatement.EndOffset + 1;
+  if (mIndex <= Length(AText)) and (AText[mIndex] = ';') then
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  while (Index <= Length(AText)) and not CharInSet(AText[Index], [#10, #13]) do
+  while (mIndex <= Length(AText)) and not CharInSet(AText[mIndex], [#10, #13]) do
   begin
-    if not CharInSet(AText[Index], [' ', #9]) then
+    if not CharInSet(AText[mIndex], [' ', #9]) then
     begin
-      Alone := False;
+      mAlone := False;
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
-  if Alone then
+  if mAlone then
   begin
     Result := TTextRange.Create(AStatement.StartPos.Line, 0, AStatement.EndPos.Line + 1, 0);
   end

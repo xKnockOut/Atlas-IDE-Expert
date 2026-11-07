@@ -55,16 +55,16 @@ function LineOf(const AArguments: TJSONArray): Integer;
 begin
   if (AArguments = nil) or (AArguments.Count < 2) or not (AArguments.Items[1] is TJSONNumber) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, TShellTexts.Missing(['uri', 'line']));
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, TShellTexts.Missing(['uri', 'line']));
   end;
   Result := TJSONNumber(AArguments.Items[1]).AsInt;
 end;
 
 procedure TShellStepping.Register(ACommands: TLspCommands);
 begin
-  ACommands.Register(TLspStepTargets.Command, StepTargets);
-  ACommands.Register(TLspStepFilter.Command, StepFilter);
-  ACommands.Register(TLspStepFilter.CountsCommand, StepFilterCounts);
+  ACommands.Register(TLspStepTargets.cCommand, StepTargets);
+  ACommands.Register(TLspStepFilter.cCommand, StepFilter);
+  ACommands.Register(TLspStepFilter.cCountsCommand, StepFilterCounts);
 end;
 
 function TShellStepping.Actions(const AUri: string; const ARange: TTextRange): TArray<TJSONObject>;
@@ -136,7 +136,7 @@ begin
   // Nach F7 steht der Halt oft in einer Datei, die der Editor erst jetzt öffnet: selbst lesen.
   if not ReadText(TDocumentUris.ToPath(AUri), mText) then
   begin
-    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, cTexts[TSteppingText.Unreadable].Text);
+    raise EJsonRpcError.Create(TLspErrorCode.cRequestFailed, cTexts[TSteppingText.Unreadable].Text);
   end;
   mTree := TSyntaxTreeCache.Parse(mText);
   try
@@ -163,7 +163,7 @@ begin
     begin
       Continue;
     end;
-    if mCounts.Files >= TLspStepFilter.MaxFiles then
+    if mCounts.Files >= TLspStepFilter.cMaxFiles then
     begin
       mCounts.Truncated := True;
       Break;

@@ -18,7 +18,8 @@ uses
 /// <summary>Trägt die Sammlungsbefehle über ARegister ein.</summary>
 procedure RegisterCollectionCommands(const ARegister: TSlashRegister);
 
-/// <summary>Vergleichsfunktion für zwei Werte vom Typ ATypeName, z. B. CompareText; AUnit ist die nötige Unit.</summary>
+/// <summary>Vergleichsfunktion für zwei Werte vom Typ ATypeName, z. B. CompareText; AUnit ist die nötige
+/// Unit.</summary>
 function CompareFunction(const ATypeName: string; out AUnit: string): string;
 
 /// <summary>Argumente für /sort und /filter (#319): ohne ACollection die Sammlungen im Gültigkeitsbereich der
@@ -79,25 +80,25 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  StringTypes: array[0..6] of string = ('string', 'UnicodeString', 'AnsiString', 'WideString', 'Char', 'TCaption',
+  cStringTypes: array[0..6] of string = ('string', 'UnicodeString', 'AnsiString', 'WideString', 'Char', 'TCaption',
     'TFileName');
-  NumberTypes: array[0..16] of string = ('Integer', 'Cardinal', 'Int64', 'UInt64', 'Byte', 'Word', 'SmallInt',
+  cNumberTypes: array[0..16] of string = ('Integer', 'Cardinal', 'Int64', 'UInt64', 'Byte', 'Word', 'SmallInt',
     'ShortInt', 'LongInt', 'NativeInt', 'NativeUInt', 'Double', 'Single', 'Extended', 'Currency', 'Real', 'TColor');
-  DateTypes: array[0..2] of string = ('TDateTime', 'TDate', 'TTime');
+  cDateTypes: array[0..2] of string = ('TDateTime', 'TDate', 'TTime');
 
 function CompareFunction(const ATypeName: string; out AUnit: string): string;
 begin
   AUnit := '';
-  if MatchText(ATypeName, StringTypes) then
+  if MatchText(ATypeName, cStringTypes) then
   begin
     Result := 'CompareText(%s, %s)';
   end
-  else if MatchText(ATypeName, DateTypes) then
+  else if MatchText(ATypeName, cDateTypes) then
   begin
     AUnit := 'System.DateUtils';
     Result := 'CompareDateTime(%s, %s)';
   end
-  else if MatchText(ATypeName, NumberTypes) then
+  else if MatchText(ATypeName, cNumberTypes) then
   begin
     AUnit := 'System.Math';
     Result := 'CompareValue(%s, %s)';
@@ -112,21 +113,22 @@ end;
 /// <summary>Implementierung von AClassName.AMethod in der Datei; nil ohne.</summary>
 function MethodNode(ASource: TCommandSource; const AClassName, AMethod: string): TSyntaxNode;
 var
-  Section: TSyntaxNode;
-  Index: Integer;
+  mSection: TSyntaxNode;
+  mIndex: Integer;
 begin
   Result := nil;
-  Section := ASource.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
-  if Section = nil then
+  mSection := ASource.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
+  if mSection = nil then
   begin
     Exit;
   end;
-  for Index := 0 to Section.ChildCount - 1 do
+  for mIndex := 0 to mSection.ChildCount - 1 do
   begin
-    if (Section[Index].Kind = TSyntaxKind.RoutineDecl) and SameText(Section[Index].Name, AClassName + '.' + AMethod) and
-      (Section[Index].FindChild(TSyntaxKind.Block) <> nil) then
+    if (mSection[mIndex].Kind = TSyntaxKind.RoutineDecl) and
+      SameText(mSection[mIndex].Name, AClassName + '.' + AMethod) and
+      (mSection[mIndex].FindChild(TSyntaxKind.Block) <> nil) then
     begin
-      Exit(Section[Index]);
+      Exit(mSection[mIndex]);
     end;
   end;
 end;
@@ -134,15 +136,15 @@ end;
 /// <summary>Zeile mit "inherited" im Rumpf von ARoutine; -1 ohne.</summary>
 function InheritedLine(ASource: TCommandSource; ARoutine: TSyntaxNode): Integer;
 var
-  Block: TSyntaxNode;
-  Index: Integer;
+  mBlock: TSyntaxNode;
+  mIndex: Integer;
 begin
-  Block := ARoutine.FindChild(TSyntaxKind.Block);
-  for Index := Block.StartPos.Line to Block.EndPos.Line do
+  mBlock := ARoutine.FindChild(TSyntaxKind.Block);
+  for mIndex := mBlock.StartPos.Line to mBlock.EndPos.Line do
   begin
-    if StartsText('inherited', Trim(ASource.Lines[Index])) then
+    if StartsText('inherited', Trim(ASource.Lines[mIndex])) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -353,49 +355,49 @@ end;
 function AddCollection(const AContext: TSlashContext; const ASpec: TCollectionSpec; const AUnits: array of string;
   out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  Routine: TSyntaxNode;
-  ClassSymbol: TIndexSymbol;
-  Edits: TArray<TTextEdit>;
+  mSource: TCommandSource;
+  mRoutine: TSyntaxNode;
+  mClassSymbol: TIndexSymbol;
+  mEdits: TArray<TTextEdit>;
 begin
   AEdits := nil;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    Routine := Source.RoutineAt;
-    if Routine <> nil then
+    mRoutine := mSource.RoutineAt;
+    if mRoutine <> nil then
     begin
-      if not AddOwnedLocal(Source, Routine, ASpec, Edits, AReason) then
+      if not AddOwnedLocal(mSource, mRoutine, ASpec, mEdits, AReason) then
       begin
         Exit(False);
       end;
-      AddUses(Source, AContext, Source.Line, AUnits, Edits);
+      AddUses(mSource, AContext, mSource.Line, AUnits, mEdits);
     end
-    else if Source.ClassAt(ClassSymbol) then
+    else if mSource.ClassAt(mClassSymbol) then
     begin
-      Edits := AddOwnedField(Source, ClassSymbol, ASpec) + [Source.RemoveCommand];
-      AddUses(Source, AContext, ClassSymbol.Range.StartPos.Line, AUnits, Edits);
+      mEdits := AddOwnedField(mSource, mClassSymbol, ASpec) + [mSource.RemoveCommand];
+      AddUses(mSource, AContext, mClassSymbol.Range.StartPos.Line, AUnits, mEdits);
     end
     else
     begin
       Exit(Fail(cTexts[TCollectionCommandsText.OnlyAppliesInAClass].Fmt([AContext.Name]), AReason));
     end;
-    AEdits := Edits;
+    AEdits := mEdits;
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
 /// <summary>Ist ATypeName eine Klasse? Liest dafür die Datei.</summary>
 function IsClass(const AContext: TSlashContext; const ATypeName: string): Boolean;
 var
-  Source: TCommandSource;
+  mSource: TCommandSource;
 begin
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    Result := IsClassType(Source, AContext.Index, ATypeName);
+    Result := IsClassType(mSource, AContext.Index, ATypeName);
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -403,22 +405,22 @@ end;
 
 function ExecuteList(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Name, ElementType, TypeName: string;
+  mName, mElementType, mTypeName: string;
 begin
   AEdits := nil;
-  if not SplitDeclaration(AContext.Arguments, ':', Name, ElementType) or not IsValidIdent(ElementType, True) then
+  if not SplitDeclaration(AContext.Arguments, ':', mName, mElementType) or not IsValidIdent(mElementType, True) then
   begin
     Exit(Fail(cTexts[TCollectionCommandsText.ExpectedIsListNameTType].Text, AReason));
   end;
-  if IsClass(AContext, ElementType) then
+  if IsClass(AContext, mElementType) then
   begin
-    TypeName := 'TObjectList<' + ElementType + '>';
+    mTypeName := 'TObjectList<' + mElementType + '>';
   end
   else
   begin
-    TypeName := 'TList<' + ElementType + '>';
+    mTypeName := 'TList<' + mElementType + '>';
   end;
-  Result := AddCollection(AContext, TCollectionSpec.Create(Name, TypeName, TypeName + '.Create'),
+  Result := AddCollection(AContext, TCollectionSpec.Create(mName, mTypeName, mTypeName + '.Create'),
     ['System.Generics.Collections'], AEdits, AReason);
 end;
 
@@ -427,60 +429,60 @@ end;
 function ExecuteDict(const AContext: TSlashContext; AIgnoreCase: Boolean; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 var
-  Name, Types, KeyType, ValueType, TypeName, Arguments: string;
-  Comma: Integer;
-  Owned: Boolean;
+  mName, mTypes, mKeyType, mValueType, mTypeName, mArguments: string;
+  mComma: Integer;
+  mOwned: Boolean;
 begin
   AEdits := nil;
-  if not SplitDeclaration(AContext.Arguments, ':', Name, Types) then
+  if not SplitDeclaration(AContext.Arguments, ':', mName, mTypes) then
   begin
     Exit(Fail(cTexts[TCollectionCommandsText.ExpectedIsNameTKeyTValue].Fmt([AContext.Name]), AReason));
   end;
-  Comma := Pos(',', Types);
-  KeyType := Trim(Copy(Types, 1, Comma - 1));
-  ValueType := Trim(Copy(Types, Comma + 1, MaxInt));
-  if (Comma = 0) or not IsValidIdent(KeyType, True) or not IsValidIdent(ValueType, True) then
+  mComma := Pos(',', mTypes);
+  mKeyType := Trim(Copy(mTypes, 1, mComma - 1));
+  mValueType := Trim(Copy(mTypes, mComma + 1, MaxInt));
+  if (mComma = 0) or not IsValidIdent(mKeyType, True) or not IsValidIdent(mValueType, True) then
   begin
     Exit(Fail(cTexts[TCollectionCommandsText.ExpectedIsNameTKeyTValue].Fmt([AContext.Name]), AReason));
   end;
-  if AIgnoreCase and not MatchText(KeyType, StringTypes) then
+  if AIgnoreCase and not MatchText(mKeyType, cStringTypes) then
   begin
     Exit(Fail(cTexts[TCollectionCommandsText.DictNeedsAStringAs].Text, AReason));
   end;
-  Owned := IsClass(AContext, ValueType);
-  if Owned then
+  mOwned := IsClass(AContext, mValueType);
+  if mOwned then
   begin
-    TypeName := Format('TObjectDictionary<%s, %s>', [KeyType, ValueType]);
+    mTypeName := Format('TObjectDictionary<%s, %s>', [mKeyType, mValueType]);
   end
   else
   begin
-    TypeName := Format('TDictionary<%s, %s>', [KeyType, ValueType]);
+    mTypeName := Format('TDictionary<%s, %s>', [mKeyType, mValueType]);
   end;
-  Arguments := '';
-  if Owned then
+  mArguments := '';
+  if mOwned then
   begin
-    Arguments := '[doOwnsValues]';
+    mArguments := '[doOwnsValues]';
   end;
   if AIgnoreCase then
   begin
-    if Arguments <> '' then
+    if mArguments <> '' then
     begin
-      Arguments := Arguments + ', ';
+      mArguments := mArguments + ', ';
     end;
-    Arguments := Arguments + 'TIStringComparer.Ordinal';
+    mArguments := mArguments + 'TIStringComparer.Ordinal';
   end;
-  if Arguments <> '' then
+  if mArguments <> '' then
   begin
-    Arguments := '(' + Arguments + ')';
+    mArguments := '(' + mArguments + ')';
   end;
   if AIgnoreCase then
   begin
-    Result := AddCollection(AContext, TCollectionSpec.Create(Name, TypeName, TypeName + '.Create' + Arguments),
+    Result := AddCollection(AContext, TCollectionSpec.Create(mName, mTypeName, mTypeName + '.Create' + mArguments),
       ['System.Generics.Collections', 'System.Generics.Defaults'], AEdits, AReason);
   end
   else
   begin
-    Result := AddCollection(AContext, TCollectionSpec.Create(Name, TypeName, TypeName + '.Create' + Arguments),
+    Result := AddCollection(AContext, TCollectionSpec.Create(mName, mTypeName, mTypeName + '.Create' + mArguments),
       ['System.Generics.Collections'], AEdits, AReason);
   end;
 end;
@@ -490,39 +492,39 @@ end;
 /// <summary>Elementtyp der Sammlung AName: Typargument des Felds oder der lokalen Deklaration; '' ohne.</summary>
 function ElementType(ASource: TCommandSource; const AName: string): string;
 var
-  Symbol: TIndexSymbol;
-  Routine: TSyntaxNode;
-  Index, Start, Open, Close: Integer;
-  Line: string;
+  mSymbol: TIndexSymbol;
+  mRoutine: TSyntaxNode;
+  mIndex, mStart, mOpen, mClose: Integer;
+  mLine: string;
 begin
-  for Symbol in ASource.UnitIndex.Symbols do
+  for mSymbol in ASource.UnitIndex.Symbols do
   begin
-    if (Symbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_, TIndexSymbolKind.Variable]) and
-      SameText(Symbol.Name, AName) and (Symbol.TypeArgs <> '') then
+    if (mSymbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_, TIndexSymbolKind.Variable]) and
+      SameText(mSymbol.Name, AName) and (mSymbol.TypeArgs <> '') then
     begin
-      Exit(Trim(Copy(Symbol.TypeArgs, LastDelimiter(',', Symbol.TypeArgs) + 1, MaxInt)));
+      Exit(Trim(Copy(mSymbol.TypeArgs, LastDelimiter(',', mSymbol.TypeArgs) + 1, MaxInt)));
     end;
   end;
   // Lokale Variable: "Name: TList<T>" bzw. "var Name := TList<T>.Create".
   Result := '';
-  Routine := ASource.RoutineAt;
-  if Routine = nil then
+  mRoutine := ASource.RoutineAt;
+  if mRoutine = nil then
   begin
     Exit;
   end;
-  for Index := Routine.StartPos.Line to ASource.Line - 1 do
+  for mIndex := mRoutine.StartPos.Line to ASource.Line - 1 do
   begin
-    Line := ASource.Lines[Index];
-    Start := Pos(LowerCase(AName), LowerCase(Line));
-    if Start = 0 then
+    mLine := ASource.Lines[mIndex];
+    mStart := Pos(LowerCase(AName), LowerCase(mLine));
+    if mStart = 0 then
     begin
       Continue;
     end;
-    Open := PosEx('<', Line, Start);
-    Close := PosEx('>', Line, Open);
-    if (Open > 0) and (Close > Open) then
+    mOpen := PosEx('<', mLine, mStart);
+    mClose := PosEx('>', mLine, mOpen);
+    if (mOpen > 0) and (mClose > mOpen) then
     begin
-      Result := Copy(Line, Open + 1, Close - Open - 1);
+      Result := Copy(mLine, mOpen + 1, mClose - mOpen - 1);
       Exit(Trim(Copy(Result, LastDelimiter(',', Result) + 1, MaxInt)));
     end;
   end;
@@ -531,25 +533,25 @@ end;
 /// <summary>Typ des Felds oder der Property AMember von AType in der Datei oder im Index; '' ohne.</summary>
 function MemberType(ASource: TCommandSource; const AIndex: ISymbolIndex; const AType, AMember: string): string;
 var
-  Symbol: TIndexSymbol;
-  Location: TSymbolLocation;
+  mSymbol: TIndexSymbol;
+  mLocation: TSymbolLocation;
 begin
-  for Symbol in ASource.UnitIndex.Symbols do
+  for mSymbol in ASource.UnitIndex.Symbols do
   begin
-    if (Symbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) and SameText(Symbol.Container, AType) and
-      SameText(Symbol.Name, AMember) then
+    if (mSymbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) and SameText(mSymbol.Container, AType) and
+      SameText(mSymbol.Name, AMember) then
     begin
-      Exit(Symbol.TypeName);
+      Exit(mSymbol.TypeName);
     end;
   end;
   if AIndex <> nil then
   begin
-    for Location in AIndex.FindSymbols(AMember) do
+    for mLocation in AIndex.FindSymbols(AMember) do
     begin
-      if (Location.Symbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) and
-        SameText(Location.Symbol.Container, AType) then
+      if (mLocation.Symbol.Kind in [TIndexSymbolKind.Field, TIndexSymbolKind.Property_]) and
+        SameText(mLocation.Symbol.Container, AType) then
       begin
-        Exit(Location.Symbol.TypeName);
+        Exit(mLocation.Symbol.TypeName);
       end;
     end;
   end;
@@ -638,21 +640,21 @@ end;
 /// <summary>Ist AName ein Feld, eine Property oder Methode von AType (Datei oder Index)?</summary>
 function IsMember(ASource: TCommandSource; const AIndex: ISymbolIndex; const AType, AName: string): Boolean;
 var
-  Symbol: TIndexSymbol;
-  Location: TSymbolLocation;
+  mSymbol: TIndexSymbol;
+  mLocation: TSymbolLocation;
 begin
-  for Symbol in ASource.UnitIndex.Symbols do
+  for mSymbol in ASource.UnitIndex.Symbols do
   begin
-    if SameText(Symbol.Container, AType) and SameText(Symbol.Name, AName) then
+    if SameText(mSymbol.Container, AType) and SameText(mSymbol.Name, AName) then
     begin
       Exit(True);
     end;
   end;
   if AIndex <> nil then
   begin
-    for Location in AIndex.FindSymbols(AName) do
+    for mLocation in AIndex.FindSymbols(AName) do
     begin
-      if SameText(Location.Symbol.Container, AType) then
+      if SameText(mLocation.Symbol.Container, AType) then
       begin
         Exit(True);
       end;
@@ -683,44 +685,44 @@ end;
 function ElementCondition(ASource: TCommandSource; const AIndex: ISymbolIndex; const AElement, AVariable,
   ACondition: string): string;
 var
-  Tokens: TArray<TPascalToken>;
-  Index, Last, Start: Integer;
-  AfterDot, Known, Prefix, First: Boolean;
+  mTokens: TArray<TPascalToken>;
+  mIndex, mLast, mStart: Integer;
+  mAfterDot, mKnown, mPrefix, mFirst: Boolean;
 begin
-  Tokens := TPascalLexer.Tokenize(ACondition);
-  Known := KnowsMembers(ASource, AIndex, AElement, Tokens);
+  mTokens := TPascalLexer.Tokenize(ACondition);
+  mKnown := KnowsMembers(ASource, AIndex, AElement, mTokens);
   Result := '';
-  Last := 0;
-  AfterDot := False;
-  First := True;
-  for Index := 0 to High(Tokens) do
+  mLast := 0;
+  mAfterDot := False;
+  mFirst := True;
+  for mIndex := 0 to High(mTokens) do
   begin
-    if Tokens[Index].Kind = TPascalTokenKind.Comment then
+    if mTokens[mIndex].Kind = TPascalTokenKind.Comment then
     begin
       Continue;
     end;
-    Prefix := False;
-    if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and not AfterDot then
+    mPrefix := False;
+    if (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and not mAfterDot then
     begin
-      if Known then
+      if mKnown then
       begin
-        Prefix := IsMember(ASource, AIndex, AElement, Tokens[Index].Text);
+        mPrefix := IsMember(ASource, AIndex, AElement, mTokens[mIndex].Text);
       end
       else
       begin
-        Prefix := First and not SameText(Tokens[Index].Text, AVariable);
+        mPrefix := mFirst and not SameText(mTokens[mIndex].Text, AVariable);
       end;
-      First := False;
+      mFirst := False;
     end;
-    if Prefix then
+    if mPrefix then
     begin
-      Start := Tokens[Index].StartPos.Character;
-      Result := Result + Copy(ACondition, Last + 1, Start - Last) + AVariable + '.';
-      Last := Start;
+      mStart := mTokens[mIndex].StartPos.Character;
+      Result := Result + Copy(ACondition, mLast + 1, mStart - mLast) + AVariable + '.';
+      mLast := mStart;
     end;
-    AfterDot := Tokens[Index].IsSymbol('.');
+    mAfterDot := mTokens[mIndex].IsSymbol('.');
   end;
-  Result := Result + Copy(ACondition, Last + 1, MaxInt);
+  Result := Result + Copy(ACondition, mLast + 1, MaxInt);
 end;
 
 /// <summary>"/filter Liste Bedingung" zerlegen; False bei falscher Form.</summary>

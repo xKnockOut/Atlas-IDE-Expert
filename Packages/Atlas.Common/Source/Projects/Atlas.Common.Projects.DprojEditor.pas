@@ -50,51 +50,51 @@ end;
 /// <summary>Position (ab 1) von ANeedle in AText ab AFrom, ohne Groß-/Kleinschreibung; 0 wenn nicht da.</summary>
 function FindText(const ANeedle, AText: string; AFrom: Integer): Integer;
 var
-  Upper: string;
+  mUpper: string;
 begin
-  Upper := UpperCase(AText);
-  Result := Pos(UpperCase(ANeedle), Upper, AFrom);
+  mUpper := UpperCase(AText);
+  Result := Pos(UpperCase(ANeedle), mUpper, AFrom);
 end;
 
 /// <summary>Wert des Attributs AName im Tag ATag; '' ohne.</summary>
 function Attribute(const ATag, AName: string): string;
 var
-  Start, Stop: Integer;
-  Quote: Char;
+  mStart, mStop: Integer;
+  mQuote: Char;
 begin
   Result := '';
-  Start := FindText(AName + '=', ATag, 1);
-  if Start = 0 then
+  mStart := FindText(AName + '=', ATag, 1);
+  if mStart = 0 then
   begin
     Exit;
   end;
-  Start := Start + Length(AName) + 1;
-  if Start > Length(ATag) then
+  mStart := mStart + Length(AName) + 1;
+  if mStart > Length(ATag) then
   begin
     Exit;
   end;
-  Quote := ATag[Start];
-  if (Quote <> '"') and (Quote <> '''') then
+  mQuote := ATag[mStart];
+  if (mQuote <> '"') and (mQuote <> '''') then
   begin
     Exit;
   end;
-  Stop := Pos(Quote, ATag, Start + 1);
-  if Stop > 0 then
+  mStop := Pos(mQuote, ATag, mStart + 1);
+  if mStop > 0 then
   begin
-    Result := Copy(ATag, Start + 1, Stop - Start - 1);
+    Result := Copy(ATag, mStart + 1, mStop - mStart - 1);
   end;
 end;
 
 function WithoutSpaces(const AText: string): string;
 var
-  Ch: Char;
+  mCh: Char;
 begin
   Result := '';
-  for Ch in AText do
+  for mCh in AText do
   begin
-    if Ch > ' ' then
+    if mCh > ' ' then
     begin
-      Result := Result + Ch;
+      Result := Result + mCh;
     end;
   end;
 end;
@@ -102,19 +102,19 @@ end;
 /// <summary>Einrückung der Zeile, in der Position APos (ab 1) steht.</summary>
 function IndentAt(const AText: string; APos: Integer): string;
 var
-  Start, Index: Integer;
+  mStart, mIndex: Integer;
 begin
-  Start := APos;
-  while (Start > 1) and (AText[Start - 1] <> #10) do
+  mStart := APos;
+  while (mStart > 1) and (AText[mStart - 1] <> #10) do
   begin
-    Dec(Start);
+    Dec(mStart);
   end;
-  Index := Start;
-  while (Index <= Length(AText)) and ((AText[Index] = ' ') or (AText[Index] = #9)) do
+  mIndex := mStart;
+  while (mIndex <= Length(AText)) and ((AText[mIndex] = ' ') or (AText[mIndex] = #9)) do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Result := Copy(AText, Start, Index - Start);
+  Result := Copy(AText, mStart, mIndex - mStart);
 end;
 
 /// <summary>Ohne Leerraum und abschließenden Pfadtrenner (Pfade in der .dproj nutzen \ oder /).</summary>
@@ -131,51 +131,51 @@ end;
 
 class function TDprojEditor.ConfigKey(const AText, AConfig: string): string;
 var
-  Start, TagEnd, Stop, KeyStart, KeyEnd: Integer;
+  mStart, mTagEnd, mStop, mKeyStart, mKeyEnd: Integer;
 begin
   if SameText(AConfig, 'Base') then
   begin
     Exit('Base');
   end;
   Result := '';
-  Start := FindText('<BuildConfiguration', AText, 1);
-  while Start > 0 do
+  mStart := FindText('<BuildConfiguration', AText, 1);
+  while mStart > 0 do
   begin
-    TagEnd := Pos('>', AText, Start);
-    if TagEnd = 0 then
+    mTagEnd := Pos('>', AText, mStart);
+    if mTagEnd = 0 then
     begin
       Exit;
     end;
-    Stop := FindText('</BuildConfiguration>', AText, TagEnd);
-    if (Stop > 0) and SameText(Attribute(Copy(AText, Start, TagEnd - Start + 1), 'Include'), AConfig) then
+    mStop := FindText('</BuildConfiguration>', AText, mTagEnd);
+    if (mStop > 0) and SameText(Attribute(Copy(AText, mStart, mTagEnd - mStart + 1), 'Include'), AConfig) then
     begin
-      KeyStart := FindText('<Key>', AText, TagEnd);
-      KeyEnd := FindText('</Key>', AText, KeyStart);
-      if (KeyStart > 0) and (KeyStart < Stop) and (KeyEnd > 0) then
+      mKeyStart := FindText('<Key>', AText, mTagEnd);
+      mKeyEnd := FindText('</Key>', AText, mKeyStart);
+      if (mKeyStart > 0) and (mKeyStart < mStop) and (mKeyEnd > 0) then
       begin
-        Result := Trim(Copy(AText, KeyStart + 5, KeyEnd - KeyStart - 5));
+        Result := Trim(Copy(AText, mKeyStart + 5, mKeyEnd - mKeyStart - 5));
       end;
       Exit;
     end;
-    Start := FindText('<BuildConfiguration', AText, TagEnd);
+    mStart := FindText('<BuildConfiguration', AText, mTagEnd);
   end;
 end;
 
 class function TDprojEditor.ListContains(const AList, AValue: string): Boolean;
 var
-  Rest: string;
-  Separator: Integer;
+  mRest: string;
+  mSeparator: Integer;
 begin
-  Rest := UnescapeXml(AList) + ';';
-  Separator := Pos(';', Rest);
-  while Separator > 0 do
+  mRest := UnescapeXml(AList) + ';';
+  mSeparator := Pos(';', mRest);
+  while mSeparator > 0 do
   begin
-    if SameText(ListItem(Copy(Rest, 1, Separator - 1)), ListItem(AValue)) then
+    if SameText(ListItem(Copy(mRest, 1, mSeparator - 1)), ListItem(AValue)) then
     begin
       Exit(True);
     end;
-    Delete(Rest, 1, Separator);
-    Separator := Pos(';', Rest);
+    Delete(mRest, 1, mSeparator);
+    mSeparator := Pos(';', mRest);
   end;
   Result := False;
 end;

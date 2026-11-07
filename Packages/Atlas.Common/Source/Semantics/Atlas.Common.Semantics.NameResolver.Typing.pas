@@ -59,7 +59,8 @@ type
     /// <summary>Typ eines aufgelösten Namens, Aliase verfolgt (Typen sind ihr eigener Typ, TFoo.Create ein TFoo).
     /// </summary>
     function TypeOf(const AResolved: TResolvedSymbol; out AType: TResolvedSymbol): Boolean;
-    /// <summary>Direkter Vorfahr eines Typs (ohne Angabe TObject bzw. IInterface); False ohne oder bei Helfern.</summary>
+    /// <summary>Direkter Vorfahr eines Typs (ohne Angabe TObject bzw. IInterface); False ohne oder bei
+    /// Helfern.</summary>
     function AncestorOf(const AType: TResolvedSymbol; out AAncestor: TResolvedSymbol): Boolean;
     /// <summary>Klasse, auf die die Klassenreferenz AType zeigt (class of …), aufgelöst in der Unit von AType.
     /// </summary>
@@ -77,7 +78,8 @@ type
     function HelperFor(const AType: TResolvedSymbol; out AHelper: TResolvedSymbol): Boolean;
     /// <summary>Vorfahr-Helfer eines Helfers (class helper (TBaseHelper) for T, #848); False ohne.</summary>
     function HelperParent(const AHelper: TResolvedSymbol; out AParent: TResolvedSymbol): Boolean;
-    /// <summary>Im Typ AOuter selbst deklarierter Typ AName, ohne Sichtbarkeitsprüfung (Pfad im Methodenkopf).</summary>
+    /// <summary>Im Typ AOuter selbst deklarierter Typ AName, ohne Sichtbarkeitsprüfung (Pfad im
+    /// Methodenkopf).</summary>
     function NestedType(const AOuter: TResolvedSymbol; const AName: string; out AResult: TResolvedSymbol): Boolean;
     /// <summary>Innerster Typ aus MethodClasses.</summary>
     function MethodClass(out AType: TResolvedSymbol): Boolean;
@@ -324,7 +326,8 @@ begin
   mCurrent := AType;
   for mDepth := 0 to cMaxDepth do
   begin
-    if SameText(mCurrent.QualifiedName, AAncestor.QualifiedName) and SameText(mCurrent.UnitName, AAncestor.UnitName) then
+    if SameText(mCurrent.QualifiedName, AAncestor.QualifiedName) and
+      SameText(mCurrent.UnitName, AAncestor.UnitName) then
     begin
       Exit(True);
     end;

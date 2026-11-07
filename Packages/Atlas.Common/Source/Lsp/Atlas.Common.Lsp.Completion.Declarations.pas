@@ -317,10 +317,10 @@ function AccessorItem(ARequest: TCompletionRequest; const ASite: TPropertySite; 
 begin
   Result := Default(TCompletionItem);
   Result.Name := cTexts[cAccessorTitles[APlan.Kind]].Fmt([APlan.Name]);
-  Result.Kind := KindMethod;
+  Result.Kind := cKindMethod;
   if APlan.Kind = TAccessorKind.Field then
   begin
-    Result.Kind := KindField;
+    Result.Kind := cKindField;
   end;
   Result.Detail := TAccessorCreation.Declaration(APlan);
   Result.Fits := True;
@@ -390,7 +390,7 @@ begin
   for mCandidate in ARequest.Resolver.Queries.AccessorCandidates(ARequest.UnitIndex, mSite.TypeName) do
   begin
     if AccessorFits(mCandidate, mSite, mIndexCount) and
-      (MatchScore(mCandidate.Name, mSite.Prefix, ARequest.Matching) <> TFuzzyMatch.NoMatch) then
+      (MatchScore(mCandidate.Name, mSite.Prefix, ARequest.Matching) <> TFuzzyMatch.cNoMatch) then
     begin
       AItems.Items := AItems.Items + [AccessorCandidateItem(mCandidate, mSite.Prefix, ARequest.Matching)];
     end;
@@ -484,7 +484,7 @@ function ExistingResourceItem(const ATarget: TResourceTarget): TCompletionItem;
 begin
   Result := Default(TCompletionItem);
   Result.Name := cTexts[TDeclarationText.UseExisting].Fmt([ATarget.Existing.Name]);
-  Result.Kind := KindConstant;
+  Result.Kind := cKindConstant;
   Result.Detail := Format('%s = %s', [ATarget.Existing.Name, ATarget.Existing.Value]);
   Result.Fits := True;
   Result.Pinned := True;
@@ -566,7 +566,7 @@ begin
   mName := TResourceStrings.UniqueName(TResourceStrings.NameFor(mLiteral.Text), mTarget.Taken);
   mItem := Default(TCompletionItem);
   mItem.Name := cTexts[TDeclarationText.ExtractResource].Text;
-  mItem.Kind := KindConstant;
+  mItem.Kind := cKindConstant;
   mItem.Fits := True;
   mItem.Pinned := True;
   mItem.Action := 'create';
@@ -732,7 +732,7 @@ var
 begin
   Result := Default(TCompletionItem);
   Result.Name := ACandidate.Name;
-  Result.Kind := KindMethod;
+  Result.Kind := cKindMethod;
   Result.Detail := ADecl.Declaration;
   Result.InsertText := OverrideInsert(ADecl);
   Result.Action := 'override';
@@ -879,7 +879,7 @@ begin
     mHint.Name := cTexts[TDeclarationText.MissingMethod].Fmt([mInterface]);
   end;
   mHint.Detail := cTexts[TDeclarationText.ImplementInterface].Text;
-  mHint.Kind := KindSnippet;
+  mHint.Kind := cKindSnippet;
   mHint.Hint := True;
   mHint.Action := 'implement';
   mHint.Container := mInterface;
@@ -897,7 +897,7 @@ var
 begin
   mItem := Default(TCompletionItem);
   mItem.Name := AStub.Name;
-  mItem.Kind := KindMethod;
+  mItem.Kind := cKindMethod;
   mItem.Detail := AStub.Declaration;
   mItem.Container := AStub.InterfaceName;
   mItem.Action := 'implement';

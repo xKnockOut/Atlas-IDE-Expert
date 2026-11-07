@@ -37,9 +37,9 @@ type
 
   TLspFormatting = class
   public const
-    Method = 'textDocument/formatting';
-    RangeMethod = 'textDocument/rangeFormatting';
-    OnTypeMethod = 'textDocument/onTypeFormatting';
+    cMethod = 'textDocument/formatting';
+    cRangeMethod = 'textDocument/rangeFormatting';
+    cOnTypeMethod = 'textDocument/onTypeFormatting';
   private
     FStore: IDocumentStore;
     FSettingsProvider: TFormatStyleProvider;
@@ -127,9 +127,9 @@ end;
 
 procedure TLspFormatting.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterConcurrentRequest(Method, HandleFormatting);
-  ADispatcher.RegisterConcurrentRequest(RangeMethod, HandleRangeFormatting);
-  ADispatcher.RegisterConcurrentRequest(OnTypeMethod, HandleOnType);
+  ADispatcher.RegisterConcurrentRequest(cMethod, HandleFormatting);
+  ADispatcher.RegisterConcurrentRequest(cRangeMethod, HandleRangeFormatting);
+  ADispatcher.RegisterConcurrentRequest(cOnTypeMethod, HandleOnType);
 end;
 
 class function TLspFormatting.OnTypeCapability: TJSONObject;
@@ -233,7 +233,7 @@ begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPositionValue)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TFormattingText.FieldsTextDocumentUriAndPosition].Text);
   end;
   Result := TJSONArray.Create;
@@ -362,8 +362,8 @@ var
 begin
   if not AParams.TryGetValue<TJSONValue>('range', mRangeValue) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TFormattingText.FieldRangeMissingIn].Text +
-      TLspFormatting.RangeMethod);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TFormattingText.FieldRangeMissingIn].Text +
+      TLspFormatting.cRangeMethod);
   end;
   mRange := TLspPositions.ReadRange(mRangeValue);
   AFirstLine := mRange.StartPos.Line;
@@ -384,7 +384,7 @@ var
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TFormattingText.FieldTextDocumentUriMissing].Text);
   end;
   if not FStore.TryGet(mUri, mDocument) then

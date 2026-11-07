@@ -63,8 +63,8 @@ uses
 
 constructor TProjectSelection.Create(const AFileName: string);
 var
-  Data: TBytes;
-  FileFormat: TFileFormat;
+  mData: TBytes;
+  mFileFormat: TFileFormat;
 begin
   inherited Create;
   FFileName := AFileName;
@@ -75,8 +75,8 @@ begin
   FScopeKeys := TDictionary<string, string>.Create;
   if (AFileName <> '') and TFile.Exists(AFileName) then
     try
-      Data := TFile.ReadAllBytes(AFileName);
-      LoadText(TFileEncoding.Decode(Data, FileFormat));
+      mData := TFile.ReadAllBytes(AFileName);
+      LoadText(TFileEncoding.Decode(mData, mFileFormat));
     except
       // Nicht lesbar: mit leerer Auswahl weiter, die nächste Wahl schreibt die Datei neu.
       on Exception do
@@ -171,48 +171,48 @@ end;
 
 function TProjectSelection.ToText: string;
 var
-  Root, Builds, Projects, Item: TJSONObject;
-  Key: string;
-  Keys: TArray<string>;
-  Choice: TProjectBuildChoice;
+  mRoot, mBuilds, mProjects, mItem: TJSONObject;
+  mKey: string;
+  mKeys: TArray<string>;
+  mChoice: TProjectBuildChoice;
 begin
-  Root := TJSONObject.Create;
+  mRoot := TJSONObject.Create;
   try
-    Builds := TJSONObject.Create;
-    Root.AddPair('builds', Builds);
-    Projects := TJSONObject.Create;
-    Root.AddPair('projects', Projects);
+    mBuilds := TJSONObject.Create;
+    mRoot.AddPair('builds', mBuilds);
+    mProjects := TJSONObject.Create;
+    mRoot.AddPair('projects', mProjects);
     TMonitor.Enter(FLock);
     try
       // Feste Reihenfolge, damit die Datei bei gleicher Auswahl gleich bleibt.
-      Keys := FBuilds.Keys.ToArray;
-      TArray.Sort<string>(Keys);
-      for Key in Keys do
+      mKeys := FBuilds.Keys.ToArray;
+      TArray.Sort<string>(mKeys);
+      for mKey in mKeys do
       begin
-        Choice := FBuilds[Key];
-        Item := TJSONObject.Create;
-        if Choice.Config <> '' then
+        mChoice := FBuilds[mKey];
+        mItem := TJSONObject.Create;
+        if mChoice.Config <> '' then
         begin
-          Item.AddPair('config', Choice.Config);
+          mItem.AddPair('config', mChoice.Config);
         end;
-        if Choice.Platform <> '' then
+        if mChoice.Platform <> '' then
         begin
-          Item.AddPair('platform', Choice.Platform);
+          mItem.AddPair('platform', mChoice.Platform);
         end;
-        Builds.AddPair(FBuildKeys[Key], Item);
+        mBuilds.AddPair(FBuildKeys[mKey], mItem);
       end;
-      Keys := FProjects.Keys.ToArray;
-      TArray.Sort<string>(Keys);
-      for Key in Keys do
+      mKeys := FProjects.Keys.ToArray;
+      TArray.Sort<string>(mKeys);
+      for mKey in mKeys do
       begin
-        Projects.AddPair(FScopeKeys[Key], FProjects[Key]);
+        mProjects.AddPair(FScopeKeys[mKey], FProjects[mKey]);
       end;
     finally
       TMonitor.Exit(FLock);
     end;
-    Result := Root.ToJSON;
+    Result := mRoot.ToJSON;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
@@ -244,37 +244,37 @@ end;
 
 procedure TProjectSelection.SetBuild(const AProject, AConfig, APlatform: string);
 var
-  Choice: TProjectBuildChoice;
-  Key: string;
+  mChoice: TProjectBuildChoice;
+  mKey: string;
 begin
   if AProject = '' then
   begin
     Exit;
   end;
-  Key := AnsiUpperCase(AProject);
+  mKey := AnsiUpperCase(AProject);
   TMonitor.Enter(FLock);
   try
-    if not FBuilds.TryGetValue(Key, Choice) then
+    if not FBuilds.TryGetValue(mKey, mChoice) then
     begin
-      Choice := Default(TProjectBuildChoice);
+      mChoice := Default(TProjectBuildChoice);
     end;
     if AConfig <> '' then
     begin
-      Choice.Config := AConfig;
+      mChoice.Config := AConfig;
     end;
     if APlatform <> '' then
     begin
-      Choice.Platform := APlatform;
+      mChoice.Platform := APlatform;
     end;
     if (AConfig = '') and (APlatform = '') then
     begin
-      FBuilds.Remove(Key);
-      FBuildKeys.Remove(Key);
+      FBuilds.Remove(mKey);
+      FBuildKeys.Remove(mKey);
     end
     else
     begin
-      FBuilds.AddOrSetValue(Key, Choice);
-      FBuildKeys.AddOrSetValue(Key, AProject);
+      FBuilds.AddOrSetValue(mKey, mChoice);
+      FBuildKeys.AddOrSetValue(mKey, AProject);
     end;
   finally
     TMonitor.Exit(FLock);
@@ -297,20 +297,20 @@ end;
 
 procedure TProjectSelection.SetProject(const AScope, AProject: string);
 var
-  Key: string;
+  mKey: string;
 begin
-  Key := AnsiUpperCase(AScope);
+  mKey := AnsiUpperCase(AScope);
   TMonitor.Enter(FLock);
   try
     if AProject = '' then
     begin
-      FProjects.Remove(Key);
-      FScopeKeys.Remove(Key);
+      FProjects.Remove(mKey);
+      FScopeKeys.Remove(mKey);
     end
     else
     begin
-      FProjects.AddOrSetValue(Key, AProject);
-      FScopeKeys.AddOrSetValue(Key, AScope);
+      FProjects.AddOrSetValue(mKey, AProject);
+      FScopeKeys.AddOrSetValue(mKey, AScope);
     end;
   finally
     TMonitor.Exit(FLock);

@@ -18,7 +18,7 @@ uses
 type
   TLspUnitRename = class
   public const
-    Command = 'atlas.server.unitRenamed';
+    cCommand = 'atlas.server.unitRenamed';
   public
     /// <summary>Änderungen in AFiles für AOldFile → ANewFile (Pfade). Der Aufrufer übernimmt das Objekt.</summary>
     class function Execute(const AOldFile, ANewFile: string; const AFiles: TArray<string>;
@@ -40,79 +40,79 @@ uses
 /// <summary>Änderungen einer Datei als TextDocumentEdit.</summary>
 function DocumentJson(const AFileName: string; const AEdits: TArray<TTextEdit>): TJSONObject;
 var
-  Edit: TTextEdit;
-  List: TJSONArray;
-  Item, Identifier: TJSONObject;
+  mEdit: TTextEdit;
+  mList: TJSONArray;
+  mItem, mIdentifier: TJSONObject;
 begin
-  Identifier := TJSONObject.Create;
-  Identifier.AddPair('uri', TDocumentUris.FromPath(AFileName));
-  Identifier.AddPair('version', TJSONNull.Create);
-  List := TJSONArray.Create;
-  for Edit in AEdits do
+  mIdentifier := TJSONObject.Create;
+  mIdentifier.AddPair('uri', TDocumentUris.FromPath(AFileName));
+  mIdentifier.AddPair('version', TJSONNull.Create);
+  mList := TJSONArray.Create;
+  for mEdit in AEdits do
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
-    Item.AddPair('newText', Edit.NewText);
-    List.AddElement(Item);
+    mItem := TJSONObject.Create;
+    mItem.AddPair('range', TLspPositions.RangeToJson(mEdit.Range));
+    mItem.AddPair('newText', mEdit.NewText);
+    mList.AddElement(mItem);
   end;
   Result := TJSONObject.Create;
-  Result.AddPair('textDocument', Identifier);
-  Result.AddPair('edits', List);
+  Result.AddPair('textDocument', mIdentifier);
+  Result.AddPair('edits', mList);
 end;
 
 /// <summary>Umbenennungen von AOldName in der Datei AFileName; False, wenn sie ihn nicht verwendet.</summary>
 function FileEdits(const AFileName, AOldName, ANewName: string; const AReadText: TReferenceReadText;
   out AEdits: TArray<TTextEdit>): Boolean;
 var
-  Text: string;
-  Tree: TSyntaxTree;
+  mText: string;
+  mTree: TSyntaxTree;
 begin
   Result := MatchText(ExtractFileExt(AFileName), ['.pas', '.dpr', '.dpk', '.inc']) and Assigned(AReadText) and
-    AReadText(AFileName, Text) and (Pos(LowerCase(AOldName), LowerCase(Text)) > 0);
+    AReadText(AFileName, mText) and (Pos(LowerCase(AOldName), LowerCase(mText)) > 0);
   if not Result then
   begin
     Exit;
   end;
-  Tree := TSyntaxTreeCache.Parse(Text);
+  mTree := TSyntaxTreeCache.Parse(mText);
   try
-    Result := TUnitRename.Edits(AFileName, Text, Tree, AOldName, ANewName, AEdits);
+    Result := TUnitRename.Edits(AFileName, mText, mTree, AOldName, ANewName, AEdits);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 class function TLspUnitRename.Execute(const AOldFile, ANewFile: string; const AFiles: TArray<string>;
   const AReadText: TReferenceReadText): TJSONObject;
 var
-  OldName, NewName, FileName: string;
-  Edits: TArray<TTextEdit>;
-  Changes: TJSONArray;
-  WorkspaceEdit: TJSONObject;
-  Count: Integer;
+  mOldName, mNewName, mFileName: string;
+  mEdits: TArray<TTextEdit>;
+  mChanges: TJSONArray;
+  mWorkspaceEdit: TJSONObject;
+  mCount: Integer;
 begin
-  OldName := TUnitRename.UnitNameOf(AOldFile);
-  NewName := TUnitRename.UnitNameOf(ANewFile);
-  Changes := TJSONArray.Create;
-  Count := 0;
-  if (OldName <> '') and (NewName <> '') and not SameText(OldName, NewName) then
+  mOldName := TUnitRename.UnitNameOf(AOldFile);
+  mNewName := TUnitRename.UnitNameOf(ANewFile);
+  mChanges := TJSONArray.Create;
+  mCount := 0;
+  if (mOldName <> '') and (mNewName <> '') and not SameText(mOldName, mNewName) then
   begin
-    for FileName in AFiles do
+    for mFileName in AFiles do
     begin
-      if FileEdits(FileName, OldName, NewName, AReadText, Edits) then
+      if FileEdits(mFileName, mOldName, mNewName, AReadText, mEdits) then
       begin
-        Inc(Count);
-        Changes.AddElement(DocumentJson(FileName, Edits));
+        Inc(mCount);
+        mChanges.AddElement(DocumentJson(mFileName, mEdits));
       end;
     end;
   end;
-  WorkspaceEdit := TJSONObject.Create;
-  WorkspaceEdit.AddPair('documentChanges', Changes);
+  mWorkspaceEdit := TJSONObject.Create;
+  mWorkspaceEdit.AddPair('documentChanges', mChanges);
   Result := TJSONObject.Create;
   Result.AddPair('enabled', TJSONBool.Create(True));
-  Result.AddPair('old', OldName);
-  Result.AddPair('new', NewName);
-  Result.AddPair('count', TJSONNumber.Create(Count));
-  Result.AddPair('edit', WorkspaceEdit);
+  Result.AddPair('old', mOldName);
+  Result.AddPair('new', mNewName);
+  Result.AddPair('count', TJSONNumber.Create(mCount));
+  Result.AddPair('edit', mWorkspaceEdit);
 end;
 
 end.

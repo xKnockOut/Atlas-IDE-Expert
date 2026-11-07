@@ -87,10 +87,10 @@ end;
 
 procedure TLspLifecycle.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterRequest(TLspLifecycleMethod.InitializeRequest, HandleInitialize);
-  ADispatcher.RegisterNotification(TLspLifecycleMethod.InitializedNotification, HandleInitialized);
-  ADispatcher.RegisterRequest(TLspLifecycleMethod.ShutdownRequest, HandleShutdown);
-  ADispatcher.RegisterNotification(TLspLifecycleMethod.ExitNotification, HandleExit);
+  ADispatcher.RegisterRequest(TLspLifecycleMethod.cInitializeRequest, HandleInitialize);
+  ADispatcher.RegisterNotification(TLspLifecycleMethod.cInitializedNotification, HandleInitialized);
+  ADispatcher.RegisterRequest(TLspLifecycleMethod.cShutdownRequest, HandleShutdown);
+  ADispatcher.RegisterNotification(TLspLifecycleMethod.cExitNotification, HandleExit);
   ADispatcher.Guard := CheckState;
 end;
 
@@ -98,20 +98,20 @@ end;
 function StateError(AState: TLspServerState; const AMethod: string; out ACode: Integer): string;
 begin
   Result := '';
-  ACode := TJsonRpcErrorCode.InvalidRequest;
-  if AMethod = TLspLifecycleMethod.ExitNotification then
+  ACode := TJsonRpcErrorCode.cInvalidRequest;
+  if AMethod = TLspLifecycleMethod.cExitNotification then
   begin
     Exit;
   end;
   case AState of
     TLspServerState.Uninitialized:
-      if AMethod <> TLspLifecycleMethod.InitializeRequest then
+      if AMethod <> TLspLifecycleMethod.cInitializeRequest then
       begin
-        ACode := TLspErrorCode.ServerNotInitialized;
+        ACode := TLspErrorCode.cServerNotInitialized;
         Result := cTexts[TLifecycleText.ServerIsNotInitializedYet].Text;
       end;
     TLspServerState.Running:
-      if AMethod = TLspLifecycleMethod.InitializeRequest then
+      if AMethod = TLspLifecycleMethod.cInitializeRequest then
       begin
         Result := cTexts[TLifecycleText.ServerIsAlreadyInitialized].Text;
       end;
@@ -136,9 +136,9 @@ end;
 
 function TLspLifecycle.HandleInitialize(const AParams: TJSONValue): TJSONValue;
 var
-  InitializeResult: TJSONObject;
-  Capabilities: TJSONObject;
-  ServerInfo: TJSONObject;
+  mInitializeResult: TJSONObject;
+  mCapabilities: TJSONObject;
+  mServerInfo: TJSONObject;
 begin
   FreeAndNil(FInitializeParams);
   if AParams is TJSONObject then
@@ -146,26 +146,26 @@ begin
     FInitializeParams := TJSONObject(AParams.Clone);
   end;
 
-  Capabilities := nil;
+  mCapabilities := nil;
   if Assigned(FCapabilities) then
   begin
-    Capabilities := FCapabilities();
+    mCapabilities := FCapabilities();
   end;
-  if Capabilities = nil then
+  if mCapabilities = nil then
   begin
-    Capabilities := TJSONObject.Create;
+    mCapabilities := TJSONObject.Create;
   end;
 
-  ServerInfo := TJSONObject.Create;
-  ServerInfo.AddPair('name', FServerName);
-  ServerInfo.AddPair('version', FServerVersion);
+  mServerInfo := TJSONObject.Create;
+  mServerInfo.AddPair('name', FServerName);
+  mServerInfo.AddPair('version', FServerVersion);
 
-  InitializeResult := TJSONObject.Create;
-  InitializeResult.AddPair('capabilities', Capabilities);
-  InitializeResult.AddPair('serverInfo', ServerInfo);
+  mInitializeResult := TJSONObject.Create;
+  mInitializeResult.AddPair('capabilities', mCapabilities);
+  mInitializeResult.AddPair('serverInfo', mServerInfo);
 
   FState := TLspServerState.Running;
-  Result := InitializeResult;
+  Result := mInitializeResult;
 end;
 
 procedure TLspLifecycle.HandleInitialized(const AParams: TJSONValue);

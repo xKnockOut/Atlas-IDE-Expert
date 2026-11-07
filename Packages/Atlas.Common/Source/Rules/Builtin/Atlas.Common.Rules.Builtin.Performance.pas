@@ -260,24 +260,24 @@ end;
 /// <summary>Index von do bzw. until ab AFirst auf gleicher Klammerebene; -1 ohne.</summary>
 function FindKeyword(const ATokens: TTokens; AFirst: Integer; const AKeyword: string): Integer;
 var
-  Index, Depth: Integer;
+  mIndex, mDepth: Integer;
 begin
-  Depth := 0;
-  for Index := AFirst to High(ATokens) do
+  mDepth := 0;
+  for mIndex := AFirst to High(ATokens) do
   begin
-    if (Depth = 0) and ATokens[Index].IsKeyword(AKeyword) then
+    if (mDepth = 0) and ATokens[mIndex].IsKeyword(AKeyword) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end
-    else if (AKeyword = 'until') and ATokens[Index].IsKeyword('repeat') then
+    else if (AKeyword = 'until') and ATokens[mIndex].IsKeyword('repeat') then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if (AKeyword = 'until') and ATokens[Index].IsKeyword('until') then
+    else if (AKeyword = 'until') and ATokens[mIndex].IsKeyword('until') then
     begin
-      Dec(Depth);
+      Dec(mDepth);
     end
-    else if (AKeyword = 'do') and ATokens[Index].IsSymbol(';') then
+    else if (AKeyword = 'do') and ATokens[mIndex].IsSymbol(';') then
     begin
       Exit(-1);
     end;
@@ -367,11 +367,11 @@ end;
 /// <summary>Liegt Token AIndex im Rumpf einer der Schleifen?</summary>
 function InLoopBody(const ALoops: TArray<TLoop>; AIndex: Integer): Boolean;
 var
-  Loop: TLoop;
+  mLoop: TLoop;
 begin
-  for Loop in ALoops do
+  for mLoop in ALoops do
   begin
-    if (AIndex >= Loop.BodyFirst) and (AIndex <= Loop.BodyLast) then
+    if (AIndex >= mLoop.BodyFirst) and (AIndex <= mLoop.BodyLast) then
     begin
       Exit(True);
     end;
@@ -483,17 +483,17 @@ end;
 /// <summary>Punktkette ab AIndex (A.B.C) als Text in Kleinbuchstaben; ALast = letztes Token.</summary>
 function Chain(const ATokens: TTokens; AIndex: Integer; out ALast: Integer): string;
 var
-  Dot: Integer;
+  mDot: Integer;
 begin
   Result := LowerCase(ATokens[AIndex].Text);
   ALast := AIndex;
-  Dot := NextCode(ATokens, ALast + 1);
-  while (Dot < High(ATokens)) and ATokens[Dot].IsSymbol('.') and
-    (ATokens[NextCode(ATokens, Dot + 1)].Kind = TPascalTokenKind.Identifier) do
+  mDot := NextCode(ATokens, ALast + 1);
+  while (mDot < High(ATokens)) and ATokens[mDot].IsSymbol('.') and
+    (ATokens[NextCode(ATokens, mDot + 1)].Kind = TPascalTokenKind.Identifier) do
   begin
-    ALast := NextCode(ATokens, Dot + 1);
+    ALast := NextCode(ATokens, mDot + 1);
     Result := Result + '.' + LowerCase(ATokens[ALast].Text);
-    Dot := NextCode(ATokens, ALast + 1);
+    mDot := NextCode(ATokens, ALast + 1);
   end;
 end;
 
@@ -507,51 +507,51 @@ end;
 
 procedure TStringConcatInLoopRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TTokens;
-  Found: TArray<TLoop>;
-  Types: TDeclaredTypes;
-  Index, Assign, Same, Plus, Last: Integer;
-  TypeName: string;
+  mTokens: TTokens;
+  mFound: TArray<TLoop>;
+  mTypes: TDeclaredTypes;
+  mIndex, mAssign, mSame, mPlus, mLast: Integer;
+  mTypeName: string;
 begin
   if AContext.Tree = nil then
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
-  Found := Loops(Tokens);
-  if Found = nil then
+  mTokens := AContext.Tree.Tokens;
+  mFound := Loops(mTokens);
+  if mFound = nil then
   begin
     Exit;
   end;
-  Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+  mTypes := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
   try
-    for Index := 0 to High(Tokens) do
+    for mIndex := 0 to High(mTokens) do
     begin
       // S := S + …
-      if not StartsDesignator(Tokens, Index) or not InLoopBody(Found, Index) then
+      if not StartsDesignator(mTokens, mIndex) or not InLoopBody(mFound, mIndex) then
       begin
         Continue;
       end;
-      Assign := NextCode(Tokens, Index + 1);
-      Same := NextCode(Tokens, Assign + 1);
-      Plus := NextCode(Tokens, Same + 1);
-      if (Plus > High(Tokens)) or not Tokens[Assign].IsSymbol(':=') or
-        not SameText(Tokens[Same].Text, Tokens[Index].Text) or not Tokens[Plus].IsSymbol('+') then
+      mAssign := NextCode(mTokens, mIndex + 1);
+      mSame := NextCode(mTokens, mAssign + 1);
+      mPlus := NextCode(mTokens, mSame + 1);
+      if (mPlus > High(mTokens)) or not mTokens[mAssign].IsSymbol(':=') or
+        not SameText(mTokens[mSame].Text, mTokens[mIndex].Text) or not mTokens[mPlus].IsSymbol('+') then
       begin
         Continue;
       end;
-      TypeName := Types.DeclaredType(Tokens[Index].Text, Tokens[Index].StartPos);
-      if not MatchText(TypeName, ['string', 'UnicodeString', 'AnsiString', 'WideString', 'UTF8String',
-        'RawByteString']) or ResetInLoop(Tokens, Found, Index, Tokens[Index].Text) then
+      mTypeName := mTypes.DeclaredType(mTokens[mIndex].Text, mTokens[mIndex].StartPos);
+      if not MatchText(mTypeName, ['string', 'UnicodeString', 'AnsiString', 'WideString', 'UTF8String',
+        'RawByteString']) or ResetInLoop(mTokens, mFound, mIndex, mTokens[mIndex].Text) then
       begin
         Continue;
       end;
-      Last := StatementEnd(Tokens, Index);
-      AReport.Add(RangeOf(Tokens, Index, Last), cTexts[TPerformanceText.Concat].Fmt([Tokens[Index].Text]),
+      mLast := StatementEnd(mTokens, mIndex);
+      AReport.Add(RangeOf(mTokens, mIndex, mLast), cTexts[TPerformanceText.Concat].Fmt([mTokens[mIndex].Text]),
         TRuleConfidence.Low);
     end;
   finally
-    Types.Free;
+    mTypes.Free;
   end;
 end;
 
@@ -559,7 +559,7 @@ end;
 
 const
   /// <summary>Routinen, die ihr erstes Argument ändern (Delete(Result, 1, 2) in while Copy(Result, …)).</summary>
-  VarParamRoutines: array[0..5] of string = ('Inc', 'Dec', 'Delete', 'SetLength', 'Include', 'Exclude');
+  cVarParamRoutines: array[0..5] of string = ('Inc', 'Dec', 'Delete', 'SetLength', 'Include', 'Exclude');
 
 /// <summary>Wird der Bezeichner AName im Rumpf von ALoop zugewiesen oder über VarParamRoutines geändert?</summary>
 function ChangedInLoop(const ATokens: TTokens; const ALoop: TLoop; const AName: string): Boolean;
@@ -577,7 +577,7 @@ begin
       end;
       mPrevious := PreviousCode(ATokens, mIndex);
       if (mPrevious > 0) and ATokens[mPrevious].IsSymbol('(') and
-        MatchText(ATokens[PreviousCode(ATokens, mPrevious)].Text, VarParamRoutines) then
+        MatchText(ATokens[PreviousCode(ATokens, mPrevious)].Text, cVarParamRoutines) then
       begin
         Exit(True);
       end;
@@ -586,7 +586,8 @@ begin
   Result := False;
 end;
 
-/// <summary>Hängt der Aufruf ab AIndex an einem Bezeichner, den die Schleife ändert? Dann ist er nicht invariant.</summary>
+/// <summary>Hängt der Aufruf ab AIndex an einem Bezeichner, den die Schleife ändert? Dann ist er nicht
+/// invariant.</summary>
 function ArgumentsChange(const ATokens: TTokens; const ALoop: TLoop; AIndex: Integer): Boolean;
 var
   mIndex, mDepth: Integer;
@@ -622,10 +623,10 @@ begin
 end;
 
 const
-  ExpensiveCalls: array[0..17] of string = ('Trim', 'TrimLeft', 'TrimRight', 'LowerCase', 'UpperCase',
+  cExpensiveCalls: array[0..17] of string = ('Trim', 'TrimLeft', 'TrimRight', 'LowerCase', 'UpperCase',
     'AnsiLowerCase', 'AnsiUpperCase', 'Format', 'StrToInt', 'StrToFloat', 'IntToStr', 'FileExists',
     'DirectoryExists', 'ExtractFileName', 'ExtractFilePath', 'StringReplace', 'Copy', 'ComponentCount');
-  ExpensiveProperties: array[0..2] of string = ('Text', 'CommaText', 'DelimitedText');
+  cExpensiveProperties: array[0..2] of string = ('Text', 'CommaText', 'DelimitedText');
 
 function TLoopInvariantCallRule.Descriptor: TRuleDescriptor;
 begin
@@ -680,7 +681,7 @@ var
 begin
   mName := ATokens[AIndex].Text;
   mPrevious := PreviousCode(ATokens, AIndex);
-  if MatchText(mName, ExpensiveProperties) and (mPrevious >= 0) and ATokens[mPrevious].IsSymbol('.') then
+  if MatchText(mName, cExpensiveProperties) and (mPrevious >= 0) and ATokens[mPrevious].IsSymbol('.') then
   begin
     if not IsDeclaredField(ATypes, ATokens, mPrevious, mName) then
     begin
@@ -688,7 +689,7 @@ begin
         TRuleConfidence.Medium);
     end;
   end
-  else if MatchText(mName, ExpensiveCalls) and StartsDesignator(ATokens, AIndex) and
+  else if MatchText(mName, cExpensiveCalls) and StartsDesignator(ATokens, AIndex) and
     not ArgumentsChange(ATokens, ALoop, AIndex) then
   begin
     AReport.Add(RangeOf(ATokens, AIndex, AIndex), cTexts[TPerformanceText.ConditionCall].Fmt([mName]),
@@ -698,30 +699,30 @@ end;
 
 procedure TLoopInvariantCallRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TTokens;
-  Loop: TLoop;
-  Index: Integer;
-  Types: TDeclaredTypes;
+  mTokens: TTokens;
+  mLoop: TLoop;
+  mIndex: Integer;
+  mTypes: TDeclaredTypes;
 begin
   if AContext.Tree = nil then
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
-  Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+  mTokens := AContext.Tree.Tokens;
+  mTypes := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
   try
-    for Loop in Loops(Tokens) do
+    for mLoop in Loops(mTokens) do
     begin
-      for Index := Loop.CondFirst to Loop.CondLast do
+      for mIndex := mLoop.CondFirst to mLoop.CondLast do
       begin
-        if Tokens[Index].Kind = TPascalTokenKind.Identifier then
+        if mTokens[mIndex].Kind = TPascalTokenKind.Identifier then
         begin
-          CheckConditionToken(Types, Tokens, Loop, Index, AReport);
+          CheckConditionToken(mTypes, mTokens, mLoop, mIndex, AReport);
         end;
       end;
     end;
   finally
-    Types.Free;
+    mTypes.Free;
   end;
 end;
 
@@ -729,14 +730,14 @@ end;
 
 const
   /// <summary>Bis zu so vielen Durchläufen lohnt BeginUpdate nicht.</summary>
-  FewIterations = 10;
+  cFewIterations = 10;
   /// <summary>Menüs: Items ist ein TMenuItem, das kein BeginUpdate kennt.</summary>
-  MenuTypes: array[0..3] of string = ('TMenu', 'TMainMenu', 'TPopupMenu', 'TMenuItem');
+  cMenuTypes: array[0..3] of string = ('TMenu', 'TMainMenu', 'TPopupMenu', 'TMenuItem');
 
 /// <summary>Ganzzahl ab AIndex (mit Vorzeichen -); ALast = letztes Token.</summary>
 function IntegerAt(const ATokens: TTokens; AIndex: Integer; out AValue: Int64; out ALast: Integer): Boolean;
 var
-  Negative: Boolean;
+  mNegative: Boolean;
 begin
   Result := False;
   AValue := 0;
@@ -745,8 +746,8 @@ begin
   begin
     Exit;
   end;
-  Negative := ATokens[AIndex].IsSymbol('-');
-  if Negative then
+  mNegative := ATokens[AIndex].IsSymbol('-');
+  if mNegative then
   begin
     ALast := NextCode(ATokens, AIndex + 1);
   end;
@@ -755,7 +756,7 @@ begin
   begin
     Exit;
   end;
-  if Negative then
+  if mNegative then
   begin
     AValue := -AValue;
   end;
@@ -946,21 +947,21 @@ end;
 /// <summary>Durchlaufen alle Schleifen um AIndex zusammen höchstens FewIterations Mal?</summary>
 function FewInLoops(const ATokens: TTokens; const ALoops: TArray<TLoop>; AIndex: Integer): Boolean;
 var
-  Loop: TLoop;
-  Total, Count: Int64;
+  mLoop: TLoop;
+  mTotal, mCount: Int64;
 begin
-  Total := 1;
-  for Loop in ALoops do
+  mTotal := 1;
+  for mLoop in ALoops do
   begin
-    if (AIndex >= Loop.BodyFirst) and (AIndex <= Loop.BodyLast) then
+    if (AIndex >= mLoop.BodyFirst) and (AIndex <= mLoop.BodyLast) then
     begin
-      Count := FixedIterations(ATokens, Loop);
-      if Count < 0 then
+      mCount := FixedIterations(ATokens, mLoop);
+      if mCount < 0 then
       begin
         Exit(False);
       end;
-      Total := Total * Count;
-      if Total > FewIterations then
+      mTotal := mTotal * mCount;
+      if mTotal > cFewIterations then
       begin
         Exit(False);
       end;
@@ -1014,7 +1015,7 @@ end;
 /// <summary>Menu.Items ist ein TMenuItem ohne BeginUpdate; auch über Felder (FParts.Menu.Items).</summary>
 function IsMenuItems(const ATypes: TDeclaredTypes; const AReceiver: string; const APosition: TTextPosition): Boolean;
 begin
-  Result := MatchText(ATypes.ChainType(OwnerOf(AReceiver), APosition), MenuTypes);
+  Result := MatchText(ATypes.ChainType(OwnerOf(AReceiver), APosition), cMenuTypes);
 end;
 
 /// <summary>Steht für den Empfänger schon BeginUpdate in der Datei bzw. ist er schon gemeldet?</summary>
@@ -1103,9 +1104,9 @@ end;
 /// <summary>Ganzzahliges Literal ab 1?</summary>
 function IsPositiveLiteral(ANode: TSyntaxNode): Boolean;
 var
-  Value: Integer;
+  mValue: Integer;
 begin
-  Result := (ANode.Kind = TSyntaxKind.Literal) and TryStrToInt(ANode.Name, Value) and (Value >= 1);
+  Result := (ANode.Kind = TSyntaxKind.Literal) and TryStrToInt(ANode.Name, mValue) and (mValue >= 1);
 end;
 
 /// <summary>Vergrößert ALength die Länge von ATarget um einen festen Schritt: Length(A) + n, n + Length(A),
@@ -1177,42 +1178,44 @@ end;
 /// <summary>Steht AStatement direkt im Rumpf von ALoop, wird es also bei jedem Durchlauf ausgeführt?</summary>
 function RunsEveryIteration(ALoop, AStatement: TSyntaxNode): Boolean;
 var
-  Body: TSyntaxNode;
+  mBody: TSyntaxNode;
 begin
   if ALoop.Kind = TSyntaxKind.RepeatStatement then
   begin
     Exit(AStatement.Parent = ALoop);
   end;
-  Body := LoopBody(ALoop);
-  Result := (Body = AStatement) or ((Body <> nil) and (Body.Kind = TSyntaxKind.Block) and (AStatement.Parent = Body));
+  mBody := LoopBody(ALoop);
+  Result := (mBody = AStatement) or ((mBody <> nil) and (mBody.Kind = TSyntaxKind.Block) and
+    (AStatement.Parent = mBody));
 end;
 
 /// <summary>Ergebnistyp der Funktion um ANode als Quelltext; '' ohne.</summary>
 function ResultType(const AText: string; ANode: TSyntaxNode): string;
 var
-  Routine, Header: TSyntaxNode;
+  mRoutine, mHeader: TSyntaxNode;
 begin
   Result := '';
-  Routine := ANode.Parent;
-  while (Routine <> nil) and (Routine.Kind <> TSyntaxKind.RoutineDecl) do
+  mRoutine := ANode.Parent;
+  while (mRoutine <> nil) and (mRoutine.Kind <> TSyntaxKind.RoutineDecl) do
   begin
-    if Routine.Kind = TSyntaxKind.AnonymousMethod then
+    if mRoutine.Kind = TSyntaxKind.AnonymousMethod then
     begin
       Exit;
     end;
-    Routine := Routine.Parent;
+    mRoutine := mRoutine.Parent;
   end;
-  if Routine = nil then
+  if mRoutine = nil then
   begin
     Exit;
   end;
-  Header := Routine.FindChild(TSyntaxKind.RoutineHeader);
-  if (Header <> nil) and (Header.ChildCount > 0) and (Header[Header.ChildCount - 1].Kind <> TSyntaxKind.Parameters) then
+  mHeader := mRoutine.FindChild(TSyntaxKind.RoutineHeader);
+  if (mHeader <> nil) and (mHeader.ChildCount > 0) and
+    (mHeader[mHeader.ChildCount - 1].Kind <> TSyntaxKind.Parameters) then
   begin
-    Header := Header.FindChild(TSyntaxKind.TypeReference);
-    if Header <> nil then
+    mHeader := mHeader.FindChild(TSyntaxKind.TypeReference);
+    if mHeader <> nil then
     begin
-      Result := NodeText(AText, Header);
+      Result := NodeText(AText, mHeader);
     end;
   end;
 end;
@@ -1221,8 +1224,8 @@ end;
 /// ALoopIndex: Ausdruck für den Index des I-ten Elements (I bzw. I - Start).</summary>
 function ForCount(const AText: string; ALoop: TSyntaxNode; out ALoopIndex: string): string;
 var
-  First, Last: TSyntaxNode;
-  LowText, HighText: string;
+  mFirst, mLast: TSyntaxNode;
+  mLowText, mHighText: string;
 begin
   Result := '';
   ALoopIndex := '';
@@ -1230,36 +1233,36 @@ begin
   begin
     Exit;
   end;
-  First := ALoop[ALoop.ChildCount - 3];
-  Last := ALoop[ALoop.ChildCount - 2];
-  if ContainsText(Copy(AText, First.EndOffset + 1, Last.StartOffset - First.EndOffset), 'downto') then
+  mFirst := ALoop[ALoop.ChildCount - 3];
+  mLast := ALoop[ALoop.ChildCount - 2];
+  if ContainsText(Copy(AText, mFirst.EndOffset + 1, mLast.StartOffset - mFirst.EndOffset), 'downto') then
   begin
     Exit;
   end;
-  LowText := Trim(NodeText(AText, First));
-  HighText := Trim(NodeText(AText, Last));
-  if LowText = '0' then
+  mLowText := Trim(NodeText(AText, mFirst));
+  mHighText := Trim(NodeText(AText, mLast));
+  if mLowText = '0' then
   begin
     ALoopIndex := ALoop.Name;
-    if (Last.Kind = TSyntaxKind.BinaryExpr) and (Last.Name = '-') and (Last.ChildCount = 2) and
-      (Last[1].Kind = TSyntaxKind.Literal) and (Last[1].Name = '1') then
+    if (mLast.Kind = TSyntaxKind.BinaryExpr) and (mLast.Name = '-') and (mLast.ChildCount = 2) and
+      (mLast[1].Kind = TSyntaxKind.Literal) and (mLast[1].Name = '1') then
     begin
-      Result := Trim(NodeText(AText, Last[0]));
+      Result := Trim(NodeText(AText, mLast[0]));
     end
     else
     begin
-      Result := HighText + ' + 1';
+      Result := mHighText + ' + 1';
     end;
   end
-  else if LowText = '1' then
+  else if mLowText = '1' then
   begin
-    Result := HighText;
+    Result := mHighText;
     ALoopIndex := ALoop.Name + ' - 1';
   end
   else
   begin
-    Result := Format('%s - %s + 1', [HighText, LowText]);
-    ALoopIndex := Format('%s - %s', [ALoop.Name, LowText]);
+    Result := Format('%s - %s + 1', [mHighText, mLowText]);
+    ALoopIndex := Format('%s - %s', [ALoop.Name, mLowText]);
   end;
 end;
 

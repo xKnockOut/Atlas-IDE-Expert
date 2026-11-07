@@ -141,14 +141,14 @@ begin
   Result.Name := ACall.Text;
   Result.FilterText := ACall.Name;
   Result.Detail := ACall.Container;
-  Result.Kind := KindMethod;
+  Result.Kind := cKindMethod;
   if ASite.Current.Kind = 'constructor' then
   begin
-    Result.Kind := KindConstructor;
+    Result.Kind := cKindConstructor;
   end;
   Result.Container := ACall.Container;
   Result.Depth := ACall.Depth;
-  Result.InheritedMatch := TCompletionInherited.MatchNames[ACall.Match];
+  Result.InheritedMatch := TCompletionInherited.cMatchNames[ACall.Match];
   Result.InheritedAbstract := ASite.Abstracts;
   mText := ACall.Text;
   if ASite.Semicolon then
@@ -184,7 +184,7 @@ begin
   for mIndex := 0 to High(mSite.Calls) do
   begin
     mScore := MatchScore(mSite.Calls[mIndex].Name, AContext.Prefix, ARequest.Matching);
-    if mScore <> TFuzzyMatch.NoMatch then
+    if mScore <> TFuzzyMatch.cNoMatch then
     begin
       ACollector.AddItem(CallItem(ARequest, AContext, mSite, mSite.Calls[mIndex]), mScore + cCallBonus - mIndex);
     end;

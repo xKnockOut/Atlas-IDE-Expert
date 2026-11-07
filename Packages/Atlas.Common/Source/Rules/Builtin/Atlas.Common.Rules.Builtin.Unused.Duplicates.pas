@@ -14,7 +14,8 @@ type
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
-    /// <summary>Ziel als Schlüssel ("Panel.Font.Size", "P^.X", Self. entfällt); '' bei Index, Aufruf und anderem.</summary>
+    /// <summary>Ziel als Schlüssel ("Panel.Font.Size", "P^.X", Self. entfällt); '' bei Index, Aufruf und
+    /// anderem.</summary>
     class function TargetKey(ANode: TSyntaxNode): string; static;
     /// <summary>Gegenstück für den Hinweis (Left zu Top, Height zu Width …); '' ohne.</summary>
     class function Counterpart(const AName: string): string; static;
@@ -53,11 +54,11 @@ const
 
 const
   // Gegenstücke für den Hinweis "gemeint ist vermutlich …" (Left/Top vertauscht beim Kopieren).
-  CounterpartPairs: array[0..9, 0..1] of string = (('Left', 'Top'), ('Width', 'Height'), ('Right', 'Bottom'),
+  cCounterpartPairs: array[0..9, 0..1] of string = (('Left', 'Top'), ('Width', 'Height'), ('Right', 'Bottom'),
     ('X', 'Y'), ('Min', 'Max'), ('MinValue', 'MaxValue'), ('ClientWidth', 'ClientHeight'), ('Row', 'Col'),
     ('MinWidth', 'MinHeight'), ('MaxWidth', 'MaxHeight'));
   // Knoten, deren Kinder nacheinander ausgeführte Anweisungen sind.
-  StatementLists = [TSyntaxKind.Block, TSyntaxKind.RepeatStatement, TSyntaxKind.TryStatement, TSyntaxKind.ExceptBlock,
+  cStatementLists = [TSyntaxKind.Block, TSyntaxKind.RepeatStatement, TSyntaxKind.TryStatement, TSyntaxKind.ExceptBlock,
     TSyntaxKind.FinallyBlock, TSyntaxKind.CaseElse, TSyntaxKind.InitializationSection, TSyntaxKind.FinalizationSection];
 
 function TDuplicateAssignmentRule.Descriptor: TRuleDescriptor;
@@ -69,62 +70,62 @@ end;
 // Iterativ (Bericht M1): erst die Kette aus Punkten und ^ hinab, dann den Schlüssel von innen nach außen bauen.
 class function TDuplicateAssignmentRule.TargetKey(ANode: TSyntaxNode): string;
 var
-  Chain: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Base: string;
+  mChain: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mBase: string;
 begin
-  Chain := TStack<TSyntaxNode>.Create;
+  mChain := TStack<TSyntaxNode>.Create;
   try
-    Node := ANode;
-    while (Node.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.Dereference]) and (Node.ChildCount = 1) do
+    mNode := ANode;
+    while (mNode.Kind in [TSyntaxKind.MemberAccess, TSyntaxKind.Dereference]) and (mNode.ChildCount = 1) do
     begin
-      Chain.Push(Node);
-      Node := Node[0];
+      mChain.Push(mNode);
+      mNode := mNode[0];
     end;
     Result := '';
-    if Node.Kind = TSyntaxKind.Identifier then
+    if mNode.Kind = TSyntaxKind.Identifier then
     begin
-      Result := Node.Name;
+      Result := mNode.Name;
     end;
-    while Chain.Count > 0 do
+    while mChain.Count > 0 do
     begin
-      Node := Chain.Pop;
-      Base := Result;
+      mNode := mChain.Pop;
+      mBase := Result;
       Result := '';
-      if Node.Kind = TSyntaxKind.MemberAccess then
+      if mNode.Kind = TSyntaxKind.MemberAccess then
       begin
-        if SameText(Base, 'Self') then
+        if SameText(mBase, 'Self') then
         begin
-          Result := Node.Name;
+          Result := mNode.Name;
         end
-        else if Base <> '' then
+        else if mBase <> '' then
         begin
-          Result := Base + '.' + Node.Name;
+          Result := mBase + '.' + mNode.Name;
         end;
       end
-      else if Base <> '' then
+      else if mBase <> '' then
       begin
-        Result := Base + '^';
+        Result := mBase + '^';
       end;
     end;
   finally
-    Chain.Free;
+    mChain.Free;
   end;
 end;
 
 class function TDuplicateAssignmentRule.Counterpart(const AName: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := Low(CounterpartPairs) to High(CounterpartPairs) do
+  for mIndex := Low(cCounterpartPairs) to High(cCounterpartPairs) do
   begin
-    if SameText(CounterpartPairs[Index, 0], AName) then
+    if SameText(cCounterpartPairs[mIndex, 0], AName) then
     begin
-      Exit(CounterpartPairs[Index, 1]);
+      Exit(cCounterpartPairs[mIndex, 1]);
     end
-    else if SameText(CounterpartPairs[Index, 1], AName) then
+    else if SameText(cCounterpartPairs[mIndex, 1], AName) then
     begin
-      Exit(CounterpartPairs[Index, 0]);
+      Exit(cCounterpartPairs[mIndex, 0]);
     end;
   end;
   Result := '';
@@ -165,32 +166,32 @@ end;
 // Iterativ (Bericht M1).
 function MayRead(ANode: TSyntaxNode; const AParts: TArray<string>): Boolean;
 var
-  Pending: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Index: Integer;
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
 begin
   Result := False;
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ANode);
-    while Pending.Count > 0 do
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      if Node.Kind in [TSyntaxKind.Call, TSyntaxKind.InheritedExpr, TSyntaxKind.AnonymousMethod] then
+      mNode := mPending.Pop;
+      if mNode.Kind in [TSyntaxKind.Call, TSyntaxKind.InheritedExpr, TSyntaxKind.AnonymousMethod] then
       begin
         Exit(True);
       end;
-      if (Node.Kind = TSyntaxKind.Identifier) and MatchText(Node.Name, AParts) then
+      if (mNode.Kind = TSyntaxKind.Identifier) and MatchText(mNode.Name, AParts) then
       begin
         Exit(True);
       end;
-      for Index := Node.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(Node[Index]);
+        mPending.Push(mNode[mIndex]);
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
@@ -231,7 +232,8 @@ begin
   end;
 end;
 
-/// <summary>Lokale Namen von ARoutine und umschließenden Routinen: Variablen, Parameter, Result, Routinenname.</summary>
+/// <summary>Lokale Namen von ARoutine und umschließenden Routinen: Variablen, Parameter, Result,
+/// Routinenname.</summary>
 function LocalNames(ANode: TSyntaxNode): TArray<string>;
 begin
   Result := nil;
@@ -427,7 +429,7 @@ procedure TDuplicateAssignmentCheck.CheckChild(AParent: TSyntaxNode; AIndex: Int
 var
   mKey: string;
 begin
-  if not (AParent.Kind in StatementLists) then
+  if not (AParent.Kind in cStatementLists) then
   begin
     Exit;
   end;

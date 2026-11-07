@@ -112,7 +112,7 @@ type
   end;
 
 const
-  MaxDepth = 64;
+  cMaxDepth = 64;
 
 { EJsonTreeError }
 
@@ -183,12 +183,12 @@ end;
 
 procedure TReader.SkipSpace;
 var
-  OpenComment: Integer;
+  mOpenComment: Integer;
 begin
   // Gleiche Regeln wie im Plugin (TJsoncScanner, ADR 0012); ein offener Blockkommentar ist hier ein Fehler.
-  if not TJsoncScanner.SkipSpace(FText, FPos, OpenComment) then
+  if not TJsoncScanner.SkipSpace(FText, FPos, mOpenComment) then
   begin
-    FPos := OpenComment;
+    FPos := mOpenComment;
     Fail(cTexts[TJsonTreeText.CommentNotClosed].Text);
   end;
 end;
@@ -382,7 +382,7 @@ var
   mStart: Integer;
   mText: string;
 begin
-  if ADepth > MaxDepth then
+  if ADepth > cMaxDepth then
   begin
     Fail(cTexts[TJsonTreeText.NestedTooDeeply].Text);
   end;
@@ -428,13 +428,13 @@ end;
 
 class function TJsonTree.Parse(const AText: string): TJsonNode;
 var
-  Reader: TReader;
+  mReader: TReader;
 begin
-  Reader := TReader.Create(AText);
+  mReader := TReader.Create(AText);
   try
-    Result := Reader.Run;
+    Result := mReader.Run;
   finally
-    Reader.Free;
+    mReader.Free;
   end;
 end;
 

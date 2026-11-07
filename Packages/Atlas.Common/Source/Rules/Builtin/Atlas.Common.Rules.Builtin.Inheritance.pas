@@ -128,10 +128,10 @@ type
   TInheritedWithoutAncestorRule = Atlas.Common.Rules.Builtin.Inheritance.InheritedCalls.TInheritedWithoutAncestorRule;
 
 const
-  MemberHidesAncestorRuleId = Atlas.Common.Rules.Builtin.Inheritance.MemberHides.MemberHidesAncestorRuleId;
-  OverrideCaseMismatchRuleId = Atlas.Common.Rules.Builtin.Inheritance.OverrideCase.OverrideCaseMismatchRuleId;
-  OverrideOnlyInheritedRuleId = Atlas.Common.Rules.Builtin.Inheritance.InheritedCalls.OverrideOnlyInheritedRuleId;
-  InheritedWithoutAncestorRuleId = Atlas.Common.Rules.Builtin.Inheritance.InheritedCalls.InheritedWithoutAncestorRuleId;
+  cMemberHidesAncestorRuleId = Atlas.Common.Rules.Builtin.Inheritance.MemberHides.cMemberHidesAncestorRuleId;
+  cOverrideCaseMismatchRuleId = Atlas.Common.Rules.Builtin.Inheritance.OverrideCase.cOverrideCaseMismatchRuleId;
+  cOverrideOnlyInheritedRuleId = Atlas.Common.Rules.Builtin.Inheritance.InheritedCalls.cOverrideOnlyInheritedRuleId;
+  cInheritedWithoutAncestorRuleId = Atlas.Common.Rules.Builtin.Inheritance.InheritedCalls.cInheritedWithoutAncestorRuleId;
 
 procedure RegisterInheritanceRules(const ARegistry: TRuleRegistry);
 
@@ -186,34 +186,34 @@ end;
 
 procedure TDestroyWithoutOverrideRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Ancestry: TAncestry;
-  Methods: TArray<TMethodDecl>;
-  Method: TMethodDecl;
-  Fix: TRuleFix;
+  mAncestry: TAncestry;
+  mMethods: TArray<TMethodDecl>;
+  mMethod: TMethodDecl;
+  mFix: TRuleFix;
 begin
-  if not Prepare(AContext, Ancestry, Methods) then
+  if not Prepare(AContext, mAncestry, mMethods) then
   begin
     Exit;
   end;
   try
-    for Method in Methods do
+    for mMethod in mMethods do
     begin
       // Mit virtual meldet virtual-instead-of-override.
-      if not IsDestroy(Method) or Method.Has('virtual') or Method.Has('dynamic') then
+      if not IsDestroy(mMethod) or mMethod.Has('virtual') or mMethod.Has('dynamic') then
       begin
         Continue;
       end;
-      if AppendDirective(AContext, Method, 'override', Fix) then
+      if AppendDirective(AContext, mMethod, 'override', mFix) then
       begin
-        AReport.Add(Method.Symbol.SelectionRange, cTexts[TInheritanceText.DestroyNoOverride].Text, [Fix]);
+        AReport.Add(mMethod.Symbol.SelectionRange, cTexts[TInheritanceText.DestroyNoOverride].Text, [mFix]);
       end
       else
       begin
-        AReport.Add(Method.Symbol.SelectionRange, cTexts[TInheritanceText.DestroyNoOverride].Text);
+        AReport.Add(mMethod.Symbol.SelectionRange, cTexts[TInheritanceText.DestroyNoOverride].Text);
       end;
     end;
   finally
-    Ancestry.Free;
+    mAncestry.Free;
   end;
 end;
 
@@ -227,34 +227,34 @@ end;
 
 procedure TComponentCreateWithoutOverrideRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Ancestry: TAncestry;
-  Methods: TArray<TMethodDecl>;
-  Method: TMethodDecl;
-  Fix: TRuleFix;
+  mAncestry: TAncestry;
+  mMethods: TArray<TMethodDecl>;
+  mMethod: TMethodDecl;
+  mFix: TRuleFix;
 begin
-  if not Prepare(AContext, Ancestry, Methods) then
+  if not Prepare(AContext, mAncestry, mMethods) then
   begin
     Exit;
   end;
   try
-    for Method in Methods do
+    for mMethod in mMethods do
     begin
-      if not IsComponentCreate(Method) or Method.Has('virtual') or Method.Has('dynamic') or
-        not Ancestry.DescendsFrom(Method.ClassName, 'TComponent') then
+      if not IsComponentCreate(mMethod) or mMethod.Has('virtual') or mMethod.Has('dynamic') or
+        not mAncestry.DescendsFrom(mMethod.ClassName, 'TComponent') then
       begin
         Continue;
       end;
-      if AppendDirective(AContext, Method, 'override', Fix) then
+      if AppendDirective(AContext, mMethod, 'override', mFix) then
       begin
-        AReport.Add(Method.Symbol.SelectionRange, cTexts[TInheritanceText.CreateNoOverride].Text, [Fix]);
+        AReport.Add(mMethod.Symbol.SelectionRange, cTexts[TInheritanceText.CreateNoOverride].Text, [mFix]);
       end
       else
       begin
-        AReport.Add(Method.Symbol.SelectionRange, cTexts[TInheritanceText.CreateNoOverride].Text);
+        AReport.Add(mMethod.Symbol.SelectionRange, cTexts[TInheritanceText.CreateNoOverride].Text);
       end;
     end;
   finally
-    Ancestry.Free;
+    mAncestry.Free;
   end;
 end;
 
@@ -270,10 +270,10 @@ end;
 /// virtual-instead-of-override; eine Überladung mit anderer Signatur verdeckt nichts.</summary>
 function HidesVirtual(const AMethod: TMethodDecl; const AFound: TInherited): Boolean;
 var
-  IsVirtual: Boolean;
+  mIsVirtual: Boolean;
 begin
-  IsVirtual := AMethod.Has('virtual') or AMethod.Has('dynamic');
-  Result := AFound.Found and not (IsVirtual and AFound.SameSignature);
+  mIsVirtual := AMethod.Has('virtual') or AMethod.Has('dynamic');
+  Result := AFound.Found and not (mIsVirtual and AFound.SameSignature);
   Result := Result and not (AMethod.Has('overload') and not AFound.SameSignature);
 end;
 
@@ -281,57 +281,57 @@ end;
 procedure ReportHidesVirtual(const AContext: TRuleContext; const AReport: IRuleReport; const AMethod: TMethodDecl;
   const AFound: TInherited);
 var
-  Fixes: TArray<TRuleFix>;
-  Fix: TRuleFix;
-  Confidence: TRuleConfidence;
+  mFixes: TArray<TRuleFix>;
+  mFix: TRuleFix;
+  mConfidence: TRuleConfidence;
 begin
-  Fixes := nil;
-  if AFound.SameSignature and AppendDirective(AContext, AMethod, 'override', Fix) then
+  mFixes := nil;
+  if AFound.SameSignature and AppendDirective(AContext, AMethod, 'override', mFix) then
   begin
-    Fix.Alternative := True;
-    Fixes := Fixes + [Fix];
+    mFix.Alternative := True;
+    mFixes := mFixes + [mFix];
   end;
-  if AppendDirective(AContext, AMethod, 'reintroduce', Fix) then
+  if AppendDirective(AContext, AMethod, 'reintroduce', mFix) then
   begin
-    Fix.Alternative := True;
-    Fixes := Fixes + [Fix];
+    mFix.Alternative := True;
+    mFixes := mFixes + [mFix];
   end;
-  Confidence := TRuleConfidence.Medium;
+  mConfidence := TRuleConfidence.Medium;
   if AFound.SameSignature then
   begin
-    Confidence := TRuleConfidence.High;
+    mConfidence := TRuleConfidence.High;
   end;
   AReport.Add(AMethod.Symbol.SelectionRange, cTexts[TInheritanceText.Hides].Fmt([AMethod.Symbol.Name, AFound.TypeName,
-    AFound.Symbol.Name]), Confidence, Fixes);
+    AFound.Symbol.Name]), mConfidence, mFixes);
 end;
 
 procedure THidesVirtualRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Ancestry: TAncestry;
-  Methods: TArray<TMethodDecl>;
-  Method: TMethodDecl;
-  Found: TInherited;
+  mAncestry: TAncestry;
+  mMethods: TArray<TMethodDecl>;
+  mMethod: TMethodDecl;
+  mFound: TInherited;
 begin
-  if not Prepare(AContext, Ancestry, Methods) then
+  if not Prepare(AContext, mAncestry, mMethods) then
   begin
     Exit;
   end;
   try
-    for Method in Methods do
+    for mMethod in mMethods do
     begin
       // Destroy und Create(TComponent) haben eigene Regeln.
-      if IsDestroy(Method) or IsComponentCreate(Method) then
+      if IsDestroy(mMethod) or IsComponentCreate(mMethod) then
       begin
         Continue;
       end;
-      Found := Ancestry.InheritedVirtual(Method);
-      if HidesVirtual(Method, Found) then
+      mFound := mAncestry.InheritedVirtual(mMethod);
+      if HidesVirtual(mMethod, mFound) then
       begin
-        ReportHidesVirtual(AContext, AReport, Method, Found);
+        ReportHidesVirtual(AContext, AReport, mMethod, mFound);
       end;
     end;
   finally
-    Ancestry.Free;
+    mAncestry.Free;
   end;
 end;
 
@@ -346,14 +346,14 @@ end;
 /// <summary>Token der Direktive virtual bzw. dynamic im Kopf.</summary>
 function VirtualToken(const AContext: TRuleContext; const AMethod: TMethodDecl; out AToken: TPascalToken): Boolean;
 var
-  Index: Integer;
-  Directive: TSyntaxNode;
+  mIndex: Integer;
+  mDirective: TSyntaxNode;
 begin
-  for Index := 0 to AMethod.Header.ChildCount - 1 do
+  for mIndex := 0 to AMethod.Header.ChildCount - 1 do
   begin
-    Directive := AMethod.Header[Index];
-    if (Directive.Kind = TSyntaxKind.Directive) and MatchText(Directive.Name, ['virtual', 'dynamic']) and
-      TokenAt(AContext, Directive.StartOffset, AToken) then
+    mDirective := AMethod.Header[mIndex];
+    if (mDirective.Kind = TSyntaxKind.Directive) and MatchText(mDirective.Name, ['virtual', 'dynamic']) and
+      TokenAt(AContext, mDirective.StartOffset, AToken) then
     begin
       Exit(True);
     end;
@@ -363,48 +363,48 @@ end;
 
 procedure TVirtualInsteadOfOverrideRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Ancestry: TAncestry;
-  Methods: TArray<TMethodDecl>;
-  Method: TMethodDecl;
-  Found: TInherited;
-  Token: TPascalToken;
-  Message: string;
+  mAncestry: TAncestry;
+  mMethods: TArray<TMethodDecl>;
+  mMethod: TMethodDecl;
+  mFound: TInherited;
+  mToken: TPascalToken;
+  mMessage: string;
 begin
-  if not Prepare(AContext, Ancestry, Methods) then
+  if not Prepare(AContext, mAncestry, mMethods) then
   begin
     Exit;
   end;
   try
-    for Method in Methods do
+    for mMethod in mMethods do
     begin
-      if not Method.Has('virtual') and not Method.Has('dynamic') then
+      if not mMethod.Has('virtual') and not mMethod.Has('dynamic') then
       begin
         Continue;
       end;
       // TObject.Destroy ist immer virtuell, auch wenn TObject nicht im Index steht.
-      if not IsDestroy(Method) then
+      if not IsDestroy(mMethod) then
       begin
-        Found := Ancestry.InheritedVirtual(Method);
-        if not Found.Found or not Found.SameSignature then
+        mFound := mAncestry.InheritedVirtual(mMethod);
+        if not mFound.Found or not mFound.SameSignature then
         begin
           Continue;
         end;
       end;
-      Message := cTexts[TInheritanceText.Virtual].Fmt(
-        [Method.Symbol.Name, IfThen(Method.Has('virtual'), 'virtual', 'dynamic')]);
-      if VirtualToken(AContext, Method, Token) then
+      mMessage := cTexts[TInheritanceText.Virtual].Fmt(
+        [mMethod.Symbol.Name, IfThen(mMethod.Has('virtual'), 'virtual', 'dynamic')]);
+      if VirtualToken(AContext, mMethod, mToken) then
       begin
-        AReport.Add(Method.Symbol.SelectionRange, Message,
+        AReport.Add(mMethod.Symbol.SelectionRange, mMessage,
           [TRuleFix.Create(cTexts[TInheritanceText.ReplaceByOverride].Fmt(
-          [Token.Text]), [TRuleEdit.Create(TTextRange.Create(Token.StartPos, Token.EndPos), 'override')])]);
+          [mToken.Text]), [TRuleEdit.Create(TTextRange.Create(mToken.StartPos, mToken.EndPos), 'override')])]);
       end
       else
       begin
-        AReport.Add(Method.Symbol.SelectionRange, Message);
+        AReport.Add(mMethod.Symbol.SelectionRange, mMessage);
       end;
     end;
   finally
-    Ancestry.Free;
+    mAncestry.Free;
   end;
 end;
 

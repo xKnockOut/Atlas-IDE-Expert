@@ -74,7 +74,8 @@ uses
   Atlas.Common.Lsp.DataFlow.Syntax;
 
 type
-  /// <summary>Sammelt die Quellen eines Ausdrucks in eine Stelle; eigener Stapel statt Rekursion (Bericht M1).</summary>
+  /// <summary>Sammelt die Quellen eines Ausdrucks in eine Stelle; eigener Stapel statt Rekursion (Bericht
+  /// M1).</summary>
   TValueCollector = class
   private
     FRun: TDataFlowBase;

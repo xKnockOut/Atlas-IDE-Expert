@@ -74,9 +74,9 @@ type
 
   TLspHotspots = class
   public const
-    Method = 'atlas/hotspots';
-    Command = 'atlas.hotspots';
-    SaveCommand = 'atlas.hotspots.saveReport';
+    cMethod = 'atlas/hotspots';
+    cCommand = 'atlas.hotspots';
+    cSaveCommand = 'atlas.hotspots.saveReport';
   private
     FService: THotspotService;
     FSourceFor: TLspHotspotSourceFunc;
@@ -308,7 +308,7 @@ end;
 procedure TLspHotspots.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   // git log über ein Jahr und git log -L je Methode dauern Sekunden: nebenläufig, damit Editoranfragen nicht warten.
-  ADispatcher.RegisterConcurrentRequest(Method,
+  ADispatcher.RegisterConcurrentRequest(cMethod,
     function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
     begin
       Result := Request(AParams);
@@ -406,7 +406,7 @@ begin
   if not (Assigned(FSourceFor) and FSourceFor(PathOf(StringOf(AParams, 'uri')), ARequest, mSettings, AVcs,
     AOutcome.VcsError)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[THotspotsText.NoProjectLoaded].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[THotspotsText.NoProjectLoaded].Text);
   end;
   AOutcome.Enabled := mSettings.HotspotsEnabled;
   Result := False;
@@ -414,7 +414,7 @@ begin
   begin
     if not ApplyOptions(AParams, ARequest, mError) then
     begin
-      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, mError);
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, mError);
     end;
     Result := AVcs <> nil;
     if not Result and (AOutcome.VcsError = '') then
@@ -447,7 +447,7 @@ begin
       end;
       if mError <> '' then
       begin
-        raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, mError);
+        raise EJsonRpcError.Create(TJsonRpcErrorCode.cInternalError, mError);
       end;
     end
     else if not FRunning then
@@ -480,20 +480,20 @@ function ViewOf(const AParams: TJSONObject): TLspHotspotView;
 begin
   if not TLspHotspots.TryParseFormat(StringOf(AParams, 'format'), Result.Format) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[THotspotsText.FormatIsJsonMarkdownHtml].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[THotspotsText.FormatIsJsonMarkdownHtml].Text);
   end;
   if not THotspotReport.ParseSection(StringOf(AParams, 'section'), Result.Section) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[THotspotsText.SectionIsHotspotsOrCoupling].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[THotspotsText.SectionIsHotspotsOrCoupling].Text);
   end;
   Result.Limit := 0;
   if Result.Format = TLspHotspotFormat.Text then
   begin
-    Result.Limit := THotspotReport.TextLimit;
+    Result.Limit := THotspotReport.cTextLimit;
   end;
   if not IntegerOf(AParams, 'limit', Result.Limit, Result.Limit) or (Result.Limit < 0) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[THotspotsText.LimitIsAWholeNumber].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[THotspotsText.LimitIsAWholeNumber].Text);
   end;
 end;
 
@@ -508,7 +508,7 @@ begin
         mValue := TJSONObject.ParseJSONValue(THotspotReport.Json(AResult));
         if mValue = nil then
         begin
-          raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, cTexts[THotspotsText.HotspotDataIsNotValid].Text);
+          raise EJsonRpcError.Create(TJsonRpcErrorCode.cInternalError, cTexts[THotspotsText.HotspotDataIsNotValid].Text);
         end;
         AAnswer.AddPair('format', 'json');
         AAnswer.AddPair('data', mValue);
@@ -637,21 +637,22 @@ begin
   end;
   if Result = '' then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[THotspotsText.TargetFileMissingMdHtml].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[THotspotsText.TargetFileMissingMdHtml].Text);
   end;
 end;
 
-/// <summary>Fehler der Anfrage, wenn sich kein Bericht schreiben lässt (ausgeschaltet, ohne Versionsverwaltung).</summary>
+/// <summary>Fehler der Anfrage, wenn sich kein Bericht schreiben lässt (ausgeschaltet, ohne
+/// Versionsverwaltung).</summary>
 procedure CheckSavable(const AOutcome: TLspHotspotOutcome);
 begin
   if not AOutcome.Enabled then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidRequest,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidRequest,
       cTexts[THotspotsText.HotspotsAreSwitchedOffHotspots].Text);
   end;
   if AOutcome.VcsError <> '' then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidRequest, AOutcome.VcsError);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidRequest, AOutcome.VcsError);
   end;
 end;
 
@@ -667,7 +668,7 @@ begin
   try
     if not THotspots.TryLevelOf(StringOf(mParams, 'level'), mLevel) then
     begin
-      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[THotspotsText.LevelIsUnitOrMethod].Text);
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[THotspotsText.LevelIsUnitOrMethod].Text);
     end;
     // Dieselbe Rechnung wie das Fenster (Methodenebene enthält die Units); gezeigt wird die gewählte Ebene.
     mParams.RemovePair('level').Free;

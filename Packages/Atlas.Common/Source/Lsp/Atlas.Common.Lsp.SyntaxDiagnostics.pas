@@ -54,7 +54,8 @@ type
   TDefinesProvider = reference to function(const AUri: string; out ADefines: TArray<string>): Boolean;
   /// <summary>Eingestellte Delphi-Version für AUri; '' = unbekannt. Hintergrund-Thread.</summary>
   TDelphiVersionProvider = reference to function(const AUri: string): string;
-  /// <summary>Gewählte Zielplattform und Konfiguration für AUri (#615); False = unbekannt. Hintergrund-Thread.</summary>
+  /// <summary>Gewählte Zielplattform und Konfiguration für AUri (#615); False = unbekannt.
+  /// Hintergrund-Thread.</summary>
   TBuildTargetProvider = reference to function(const AUri: string; out APlatform, AConfig: string): Boolean;
 
   /// <summary>Was die Prüfregeln für ein Dokument brauchen.</summary>
@@ -137,11 +138,11 @@ type
   TLspSyntaxDiagnostics = class
   public const
     /// <summary>Verzögerung nach dem letzten Tastendruck; mit Parsen bleibt es unter 200 ms.</summary>
-    DefaultDelayMs = 100;
+    cDefaultDelayMs = 100;
     /// <summary>Bündelt RefreshLater: In einer Projektgruppe melden sich viele Indexstufen kurz
     /// hintereinander, und jede Neuprüfung holt alle offenen Dokumente neu (#647).</summary>
-    RefreshDelayMs = 2000;
-    Source = TLspDiagnosticItems.Source;
+    cRefreshDelayMs = 2000;
+    cSource = TLspDiagnosticItems.cSource;
   private
     FStore: IDocumentStore;
     FTransport: IJsonRpcTransport;
@@ -242,13 +243,13 @@ uses
 // Übernimmt AParams.
 procedure Send(const ATransport: IJsonRpcTransport; AParams: TJSONObject);
 var
-  Notification: TJSONObject;
+  mNotification: TJSONObject;
 begin
-  Notification := TJsonRpcMessages.Notification(TLspTextDocumentMethod.PublishDiagnostics, AParams);
+  mNotification := TJsonRpcMessages.Notification(TLspTextDocumentMethod.cPublishDiagnostics, AParams);
   try
-    ATransport.WriteMessage(Notification);
+    ATransport.WriteMessage(mNotification);
   finally
-    Notification.Free;
+    mNotification.Free;
   end;
 end;
 
@@ -329,14 +330,14 @@ begin
   end
   else
   begin
-    FRefreshDebouncer := TDebouncer.Create(RefreshDelayMs);
+    FRefreshDebouncer := TDebouncer.Create(cRefreshDelayMs);
   end;
 end;
 
 constructor TLspSyntaxDiagnostics.Create(const AStore: IDocumentStore; const ATransport: IJsonRpcTransport;
   const AProviders: TSyntaxDiagnosticsProviders);
 begin
-  Create(AStore, ATransport, AProviders, DefaultDelayMs);
+  Create(AStore, ATransport, AProviders, cDefaultDelayMs);
 end;
 
 destructor TLspSyntaxDiagnostics.Destroy;
@@ -366,21 +367,21 @@ end;
 
 function TLspSyntaxDiagnostics.CurrentDefines(const AUri: string; out ADefines: TArray<string>): Boolean;
 var
-  Provider: TDefinesProvider;
+  mProvider: TDefinesProvider;
 begin
-  Provider := FProviders.Defines;
+  mProvider := FProviders.Defines;
   ADefines := nil;
-  Result := Assigned(Provider) and Provider(AUri, ADefines);
+  Result := Assigned(mProvider) and mProvider(AUri, ADefines);
 end;
 
 function TLspSyntaxDiagnostics.CurrentVersion(const AUri: string): string;
 var
-  Provider: TDelphiVersionProvider;
+  mProvider: TDelphiVersionProvider;
 begin
-  Provider := FProviders.Version;
-  if Assigned(Provider) then
+  mProvider := FProviders.Version;
+  if Assigned(mProvider) then
   begin
-    Result := Provider(AUri);
+    Result := mProvider(AUri);
   end
   else
   begin
@@ -390,12 +391,12 @@ end;
 
 function TLspSyntaxDiagnostics.CurrentTarget(const AUri: string; out APlatform, AConfig: string): Boolean;
 var
-  Provider: TBuildTargetProvider;
+  mProvider: TBuildTargetProvider;
 begin
-  Provider := FProviders.BuildTarget;
+  mProvider := FProviders.BuildTarget;
   APlatform := '';
   AConfig := '';
-  Result := Assigned(Provider) and Provider(AUri, APlatform, AConfig);
+  Result := Assigned(mProvider) and mProvider(AUri, APlatform, AConfig);
   if not Result then
   begin
     APlatform := '';
@@ -405,30 +406,30 @@ end;
 
 function TLspSyntaxDiagnostics.CurrentRules(const AUri: string; out AContext: TRuleCheckContext): Boolean;
 var
-  Provider: TRuleContextProvider;
+  mProvider: TRuleContextProvider;
 begin
-  Provider := FProviders.Rules;
+  mProvider := FProviders.Rules;
   AContext := Default(TRuleCheckContext);
-  Result := Assigned(Provider) and Provider(AUri, AContext);
+  Result := Assigned(mProvider) and mProvider(AUri, AContext);
 end;
 
 function TLspSyntaxDiagnostics.CurrentUses(const AUri: string; out AContext: TUsesContext): Boolean;
 var
-  Provider: TUsesContextProvider;
+  mProvider: TUsesContextProvider;
 begin
-  Provider := FProviders.UsesContext;
+  mProvider := FProviders.UsesContext;
   AContext := Default(TUsesContext);
-  Result := Assigned(Provider) and Provider(AUri, AContext);
+  Result := Assigned(mProvider) and mProvider(AUri, AContext);
 end;
 
 function TLspSyntaxDiagnostics.CurrentCompilerMessages(const AFileName: string): TArray<TCompilerMessage>;
 var
-  Provider: TCompilerMessagesProvider;
+  mProvider: TCompilerMessagesProvider;
 begin
-  Provider := FProviders.CompilerMessages;
-  if Assigned(Provider) then
+  mProvider := FProviders.CompilerMessages;
+  if Assigned(mProvider) then
   begin
-    Result := Provider(AFileName);
+    Result := mProvider(AFileName);
   end
   else
   begin
@@ -438,11 +439,11 @@ end;
 
 procedure TLspSyntaxDiagnostics.RefreshFiles(const AFileNames: TArray<string>);
 var
-  FileName, Uri: string;
-  Document: ITextDocument;
-  Item: TCompilerMessage;
-  Items: TJSONArray;
-  Params: TJSONObject;
+  mFileName, mUri: string;
+  mDocument: ITextDocument;
+  mItem: TCompilerMessage;
+  mItems: TJSONArray;
+  mParams: TJSONObject;
 begin
   if FPullMode then
   begin
@@ -456,33 +457,33 @@ begin
     end;
     Exit;
   end;
-  for FileName in AFileNames do
+  for mFileName in AFileNames do
   begin
-    Uri := TDocumentUris.FromPath(FileName);
-    if FStore.TryGet(Uri, Document) then
+    mUri := TDocumentUris.FromPath(mFileName);
+    if FStore.TryGet(mUri, mDocument) then
     begin
-      ScheduleParse(Document);
+      ScheduleParse(mDocument);
       Continue;
     end;
-    Items := TJSONArray.Create;
-    for Item in CurrentCompilerMessages(FileName) do
+    mItems := TJSONArray.Create;
+    for mItem in CurrentCompilerMessages(mFileName) do
     begin
-      Items.AddElement(TLspDiagnosticItems.CompilerMessageToJson(Item, '', False));
+      mItems.AddElement(TLspDiagnosticItems.CompilerMessageToJson(mItem, '', False));
     end;
-    Params := TJSONObject.Create;
-    Params.AddPair('uri', Uri);
-    Params.AddPair('diagnostics', Items);
+    mParams := TJSONObject.Create;
+    mParams.AddPair('uri', mUri);
+    mParams.AddPair('diagnostics', mItems);
     TMonitor.Enter(FSendLock);
     try
       // Inzwischen geöffnet: Das Dokument meldet selbst, mit Zeilentext.
-      if FStore.TryGet(Uri, Document) then
+      if FStore.TryGet(mUri, mDocument) then
       begin
-        Params.Free;
-        ScheduleParse(Document);
+        mParams.Free;
+        ScheduleParse(mDocument);
       end
       else
       begin
-        Send(FTransport, Params);
+        Send(FTransport, mParams);
       end;
     finally
       TMonitor.Exit(FSendLock);
@@ -492,7 +493,7 @@ end;
 
 procedure TLspSyntaxDiagnostics.Refresh;
 var
-  Document: ITextDocument;
+  mDocument: ITextDocument;
 begin
   if FPullMode then
   begin
@@ -502,11 +503,11 @@ begin
     end;
     Exit;
   end;
-  for Document in FStore.Documents do
+  for mDocument in FStore.Documents do
   begin
-    if not SameText(ExtractFileExt(Document.Uri), '.json') then
+    if not SameText(ExtractFileExt(mDocument.Uri), '.json') then
     begin
-      ScheduleParse(Document);
+      ScheduleParse(mDocument);
     end;
   end;
 end;
@@ -558,9 +559,9 @@ end;
 
 function TLspSyntaxDiagnostics.IsCurrent(const ADocument: ITextDocument): Boolean;
 var
-  Current: ITextDocument;
+  mCurrent: ITextDocument;
 begin
-  Result := FStore.TryGet(ADocument.Uri, Current) and (Current.Version = ADocument.Version);
+  Result := FStore.TryGet(ADocument.Uri, mCurrent) and (mCurrent.Version = ADocument.Version);
 end;
 
 function TLspSyntaxDiagnostics.Compute(const ADocument: ITextDocument): TJSONObject;
@@ -613,7 +614,7 @@ var
 begin
   // Das Abblenden ist die Darstellung von unused-uses im Editor (#1135): Mit der Regel aus, für ausgeschlossene
   // Dateien und unter lsp-ignore bleibt es weg wie ihre Treffer. Ohne Regelkontext gelten die Vorgaben (an).
-  if not CurrentUses(ADocument.Uri, mUses) or (AHasRules and not TRuleEngine.RuleOn(UnusedUsesRuleId,
+  if not CurrentUses(ADocument.Uri, mUses) or (AHasRules and not TRuleEngine.RuleOn(cUnusedUsesRuleId,
     AInput.Rules.Settings, AInput.Rules.RelativePath, ChangeFileExt(ExtractFileName(AInput.Rules.FileName), '')))
     then
   begin
@@ -637,11 +638,11 @@ end;
 
 procedure TLspSyntaxDiagnostics.Publish(const ADocument: ITextDocument);
 var
-  Params: TJSONObject;
+  mParams: TJSONObject;
 begin
   // Überholte Stände nicht zu Ende prüfen: Der neuere meldet selbst.
   try
-    Params := Compute(ADocument,
+    mParams := Compute(ADocument,
       function: Boolean
       begin
         Result := not IsCurrent(ADocument);
@@ -655,11 +656,11 @@ begin
     // Inzwischen geändert oder geschlossen: Der neuere Stand meldet selbst.
     if IsCurrent(ADocument) then
     begin
-      Send(FTransport, Params);
+      Send(FTransport, mParams);
     end
     else
     begin
-      Params.Free;
+      mParams.Free;
     end;
   finally
     TMonitor.Exit(FSendLock);
@@ -751,30 +752,30 @@ end;
 class function TLspSyntaxDiagnostics.RuleFindings(const AText: string; ATree: TSyntaxTree;
   const ARules: TRuleCheckContext): TArray<TRuleFinding>;
 var
-  Context: TRuleContext;
+  mContext: TRuleContext;
 begin
   if Length(ARules.Rules) = 0 then
   begin
     Exit(nil);
   end;
-  Context := Default(TRuleContext);
-  Context.RelativePath := ARules.RelativePath;
-  Context.UnitName := ChangeFileExt(ExtractFileName(StringReplace(ARules.RelativePath, '/', '\', [rfReplaceAll])), '');
-  Context.Text := AText;
-  Context.Tree := ATree;
-  ARules.Services.ApplyTo(Context);
-  Context.FormText := ARules.FormText;
-  Context.FormFile := ARules.FormFile;
-  Context.ReadFile := ARules.ReadFile;
-  Context.FileExists := ARules.FileExists;
-  Context.FileName := ARules.FileName;
-  Context.Application := ARules.Application;
-  Context.ProjectName := ARules.ProjectName;
-  Context.AutoCreateForms := ARules.AutoCreateForms;
-  Context.ProjectMainSource := ARules.ProjectMainSource;
-  Context.Cancelled := ARules.Cancelled;
-  Context.Live := ARules.Live;
-  Result := TRuleEngine.Run(ARules.Rules, ARules.Settings, Context);
+  mContext := Default(TRuleContext);
+  mContext.RelativePath := ARules.RelativePath;
+  mContext.UnitName := ChangeFileExt(ExtractFileName(StringReplace(ARules.RelativePath, '/', '\', [rfReplaceAll])), '');
+  mContext.Text := AText;
+  mContext.Tree := ATree;
+  ARules.Services.ApplyTo(mContext);
+  mContext.FormText := ARules.FormText;
+  mContext.FormFile := ARules.FormFile;
+  mContext.ReadFile := ARules.ReadFile;
+  mContext.FileExists := ARules.FileExists;
+  mContext.FileName := ARules.FileName;
+  mContext.Application := ARules.Application;
+  mContext.ProjectName := ARules.ProjectName;
+  mContext.AutoCreateForms := ARules.AutoCreateForms;
+  mContext.ProjectMainSource := ARules.ProjectMainSource;
+  mContext.Cancelled := ARules.Cancelled;
+  mContext.Live := ARules.Live;
+  Result := TRuleEngine.Run(ARules.Rules, ARules.Settings, mContext);
 end;
 
 end.

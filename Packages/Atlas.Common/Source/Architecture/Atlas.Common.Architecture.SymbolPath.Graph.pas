@@ -176,7 +176,7 @@ begin
   try
     for mLocation in AIndex.FindSymbols(mName) do
     begin
-      if not (mLocation.Symbol.Kind in SymbolPathTypeKinds) or ((mQualifier <> '') and
+      if not (mLocation.Symbol.Kind in cSymbolPathTypeKinds) or ((mQualifier <> '') and
         not SameText(mLocation.Symbol.Container, TSymbolPathNames.LastSegment(mQualifier)) and
         not TSymbolPathNames.UsesMatches(mQualifier, mLocation.UnitName)) then
       begin
@@ -568,16 +568,16 @@ begin
     end
     else
     begin
-      if mNode.Symbol.Kind in SymbolPathStructKinds then
+      if mNode.Symbol.Kind in cSymbolPathStructKinds then
       begin
         StructEdges(ANode, mData, mList);
       end;
-      if mNode.Symbol.Kind in SymbolPathValueKinds then
+      if mNode.Symbol.Kind in cSymbolPathValueKinds then
       begin
         AddTypeEdges(mList, mData, mNode.Symbol.TypeName + ' ' + mNode.Symbol.TypeArgs, TSymbolPathEdgeKind.HasField,
           mNode);
       end;
-      if mNode.Symbol.Kind in SymbolPathRoutineKinds then
+      if mNode.Symbol.Kind in cSymbolPathRoutineKinds then
       begin
         RoutineEdges(ANode, mData, mList);
       end;
@@ -632,7 +632,7 @@ end;
 function TypeTexts(const ASymbol: TIndexSymbol): TArray<string>;
 begin
   Result := [ASymbol.TypeName + ' ' + ASymbol.TypeArgs];
-  if ASymbol.Kind in SymbolPathRoutineKinds then
+  if ASymbol.Kind in cSymbolPathRoutineKinds then
   begin
     Result := Result + ASymbol.ParamTypes;
   end;
@@ -645,7 +645,7 @@ var
 begin
   for mIndex := 0 to High(AItem.Symbols) do
   begin
-    if not (AItem.Symbols[mIndex].Kind in SymbolPathValueKinds + SymbolPathRoutineKinds) then
+    if not (AItem.Symbols[mIndex].Kind in cSymbolPathValueKinds + cSymbolPathRoutineKinds) then
     begin
       Continue;
     end;
@@ -698,7 +698,7 @@ begin
   begin
     Exit;
   end;
-  for mSource in FGraph.DirectDependents(mGraphNode, AllUsesSections) do
+  for mSource in FGraph.DirectDependents(mGraphNode, cAllUsesSections) do
   begin
     ACandidates.Add(FTable.UnitNode(FGraph.Node(mSource).UnitName));
   end;
@@ -796,15 +796,15 @@ begin
   begin
     ACandidates.Add(FTable.ContainerNode(AData, mNode.Symbol));
   end;
-  if mNode.Symbol.Kind in SymbolPathStructKinds then
+  if mNode.Symbol.Kind in cSymbolPathStructKinds then
   begin
     StructPredecessors(mNode, AData, ACandidates);
   end;
-  if mNode.Symbol.Kind in SymbolPathTypeKinds then
+  if mNode.Symbol.Kind in cSymbolPathTypeKinds then
   begin
     TypeRefPredecessors(mNode, ACandidates);
   end;
-  if mNode.Symbol.Kind in SymbolPathRoutineKinds then
+  if mNode.Symbol.Kind in cSymbolPathRoutineKinds then
   begin
     RoutinePredecessors(ANode, AData, ACandidates);
   end;

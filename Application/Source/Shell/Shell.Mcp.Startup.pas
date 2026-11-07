@@ -98,7 +98,7 @@ var
 begin
   mRoot := ARoot;
   Result := TShellCrashCases.Create('', ALogger, nil, ARecent);
-  Result.AtlasVersion := TProductVersion.Version;
+  Result.AtlasVersion := TProductVersion.cVersion;
   Result.ServerPath := ParamStr(0);
   Result.Client := 'Claude Code (MCP)';
   Result.SkipEnabled := False;
@@ -106,7 +106,7 @@ begin
     function(const AUri: string): TArray<string>
     begin
       Result := TArray<string>.Create(TShellBootstrap.GlobalSettingsFile,
-        ExistingOrLegacyFile(mRoot, ConfigurationFileName, LegacyConfigurationFileName));
+        ExistingOrLegacyFile(mRoot, cConfigurationFileName, cLegacyConfigurationFileName));
     end;
 end;
 

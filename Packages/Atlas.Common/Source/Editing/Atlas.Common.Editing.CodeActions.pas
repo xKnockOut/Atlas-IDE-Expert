@@ -31,37 +31,37 @@ uses
   Atlas.Common.Editing.AssignmentSwap;
 
 const
-  QuickFixKind = 'quickfix';
-  RewriteKind = 'refactor.rewrite';
+  cQuickFixKind = 'quickfix';
+  cRewriteKind = 'refactor.rewrite';
   // Für editor.codeActionsOnSave (#182).
-  OrganizeImportsKind = 'source.organizeImports';
-  FixAllKind = 'source.fixAll';
+  cOrganizeImportsKind = 'source.organizeImports';
+  cFixAllKind = 'source.fixAll';
   /// <summary>Ungenutzte uses entfernen (#284).</summary>
-  RemoveUnusedKind = 'source.removeUnusedImports';
+  cRemoveUnusedKind = 'source.removeUnusedImports';
   /// <summary>Client-Befehl, der das erste Argument in die Zwischenablage legt (#312).</summary>
-  CopyTextCommand = 'atlas.copyText';
+  cCopyTextCommand = 'atlas.copyText';
   /// <summary>Client-Befehl, der den Cursor im Dokument der Aktion auf Zeile (erstes Argument) und Zeichen
   /// (zweites Argument, beide 0-basiert) setzt (#915).</summary>
-  GoToPositionCommand = 'atlas.goToPosition';
+  cGoToPositionCommand = 'atlas.goToPosition';
   /// <summary>Wie GoToPositionCommand; danach öffnet der Client den Parameter-Hint an der Stelle (#1007).</summary>
-  ShowSignatureHelpCommand = 'atlas.showSignatureHelp';
+  cShowSignatureHelpCommand = 'atlas.showSignatureHelp';
   /// <summary>Client-Befehl, der die Unit-Beziehungen (#593) der Datei der Aktion zeigt, z. B. „Graph zeigen“ an
   /// einem Unit-Zyklus (#896).</summary>
-  ShowUnitRelationsCommand = 'atlas.showUnitRelations';
+  cShowUnitRelationsCommand = 'atlas.showUnitRelations';
   /// <summary>Kennungen der uses-Aktionen für den Hover des Plugins (#621), in data.tag.</summary>
-  UsesRemoveTag = 'uses.remove';
-  UsesRemoveAllTag = 'uses.removeAll';
-  UsesMoveTag = 'uses.move';
+  cUsesRemoveTag = 'uses.remove';
+  cUsesRemoveAllTag = 'uses.removeAll';
+  cUsesMoveTag = 'uses.move';
   /// <summary>Fehlende Methodenrümpfe (#42) und fehlende case-Zweige (#50); „Anweisung vervollständigen“ des
   /// Plugins sucht sie (#697).</summary>
-  ClassBodiesTag = 'class.bodies';
-  CaseCompleteTag = 'case.complete';
+  cClassBodiesTag = 'class.bodies';
+  cCaseCompleteTag = 'case.complete';
   /// <summary>Schnellkorrektur eines Regeltreffers und „für diese Zeile/Datei unterdrücken“ (#909); das Fenster
   /// „Atlas-Prüfung“ und der Befund-Hover wählen damit die Aktion zum Treffer (Regel in diagnostics[0].code).
   /// </summary>
-  RuleFixTag = 'rule.fix';
-  RuleSuppressLineTag = 'rule.suppressLine';
-  RuleSuppressFileTag = 'rule.suppressFile';
+  cRuleFixTag = 'rule.fix';
+  cRuleSuppressLineTag = 'rule.suppressLine';
+  cRuleSuppressFileTag = 'rule.suppressFile';
 
 type
   /// <summary>Edits in einer anderen Datei als dem Dokument der Aktion, z. B. der Formulardatei (#309).</summary>
@@ -174,14 +174,14 @@ const
 /// <summary>Offset des ersten Tokens ab APosition (für die Wahl des uses-Abschnitts).</summary>
 function OffsetNear(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
 var
-  Token: TPascalToken;
+  mToken: TPascalToken;
 begin
   Result := 0;
-  for Token in ATokens do
+  for mToken in ATokens do
   begin
-    Result := Token.Offset;
-    if (Token.EndPos.Line > APosition.Line) or
-      ((Token.EndPos.Line = APosition.Line) and (Token.EndPos.Character >= APosition.Character)) then
+    Result := mToken.Offset;
+    if (mToken.EndPos.Line > APosition.Line) or
+      ((mToken.EndPos.Line = APosition.Line) and (mToken.EndPos.Character >= APosition.Character)) then
     begin
       Exit;
     end;
@@ -206,39 +206,40 @@ begin
     TSyntaxKind.ExceptBlock, TSyntaxKind.RepeatStatement, TSyntaxKind.CaseElse];
 end;
 
-/// <summary>Zuweisung oder Inline-Variable, die in Zeile ALine beginnt und direkt in einer Anweisungsfolge steht.</summary>
+/// <summary>Zuweisung oder Inline-Variable, die in Zeile ALine beginnt und direkt in einer Anweisungsfolge
+/// steht.</summary>
 function CreateStatementAt(ATree: TSyntaxTree; ALine: Integer): TSyntaxNode;
 var
-  Found: TSyntaxNode;
+  mFound: TSyntaxNode;
 begin
-  Found := nil;
+  mFound := nil;
   ATree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
-      if (Found <> nil) or (ANode.StartPos.Line > ALine) or (ANode.EndPos.Line < ALine) then
+      if (mFound <> nil) or (ANode.StartPos.Line > ALine) or (ANode.EndPos.Line < ALine) then
       begin
         Exit(False);
       end;
       if (ANode.StartPos.Line = ALine) and (ANode.Kind in [TSyntaxKind.AssignStatement, TSyntaxKind.InlineVar]) and
         (ANode.Parent <> nil) and IsStatementList(ANode.Parent.Kind) then
       begin
-        Found := ANode;
+        mFound := ANode;
         Exit(False);
       end;
       Result := True;
     end);
-  Result := Found;
+  Result := mFound;
 end;
 
 function IndexInParent(ANode: TSyntaxNode): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to ANode.Parent.ChildCount - 1 do
+  for mIndex := 0 to ANode.Parent.ChildCount - 1 do
   begin
-    if ANode.Parent[Index] = ANode then
+    if ANode.Parent[mIndex] = ANode then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -247,25 +248,25 @@ end;
 /// <summary>Leerraum und Zeilenumbrüche zu je einem Leerzeichen zusammengefasst.</summary>
 function CollapseSpace(const AText: string): string;
 var
-  Index: Integer;
-  Space: Boolean;
+  mIndex: Integer;
+  mSpace: Boolean;
 begin
   Result := '';
-  Space := False;
-  for Index := 1 to Length(AText) do
+  mSpace := False;
+  for mIndex := 1 to Length(AText) do
   begin
-    if CharInSet(AText[Index], [' ', #9, #10, #13]) then
+    if CharInSet(AText[mIndex], [' ', #9, #10, #13]) then
     begin
-      Space := True;
+      mSpace := True;
     end
     else
     begin
-      if Space and (Result <> '') then
+      if mSpace and (Result <> '') then
       begin
         Result := Result + ' ';
       end;
-      Space := False;
-      Result := Result + AText[Index];
+      mSpace := False;
+      Result := Result + AText[mIndex];
     end;
   end;
 end;
@@ -275,10 +276,11 @@ begin
   Result := Copy(AText, ANode.StartOffset + 1, ANode.EndOffset - ANode.StartOffset);
 end;
 
-/// <summary>Steht ANode allein auf seinen Zeilen: davor nur Leerraum, danach höchstens ";" und ein //-Kommentar?</summary>
+/// <summary>Steht ANode allein auf seinen Zeilen: davor nur Leerraum, danach höchstens ";" und ein
+/// //-Kommentar?</summary>
 function OwnsLines(const ALines: TArray<string>; ANode: TSyntaxNode): Boolean;
 var
-  After: string;
+  mAfter: string;
 begin
   Result := False;
   if (ANode.StartPos.Line > High(ALines)) or (ANode.EndPos.Line > High(ALines)) then
@@ -289,21 +291,21 @@ begin
   begin
     Exit;
   end;
-  After := Trim(Copy(ALines[ANode.EndPos.Line], ANode.EndPos.Character + 1, MaxInt));
-  if StartsStr(';', After) then
+  mAfter := Trim(Copy(ALines[ANode.EndPos.Line], ANode.EndPos.Character + 1, MaxInt));
+  if StartsStr(';', mAfter) then
   begin
-    After := Trim(Copy(After, 2, MaxInt));
+    mAfter := Trim(Copy(mAfter, 2, MaxInt));
   end;
-  Result := (After = '') or StartsStr('//', After);
+  Result := (mAfter = '') or StartsStr('//', mAfter);
 end;
 
 /// <summary>Gibt die Anweisung AVariable frei (X.Free, X.DisposeOf, FreeAndNil(X))?</summary>
 function IsRelease(const ASource, AVariable: string): Boolean;
 var
-  Escaped: string;
+  mEscaped: string;
 begin
-  Escaped := TRegEx.Escape(AVariable);
-  Result := TRegEx.IsMatch(ASource, '^\s*(' + Escaped + '\s*\.\s*(Free|DisposeOf)|FreeAndNil\s*\(\s*' + Escaped +
+  mEscaped := TRegEx.Escape(AVariable);
+  Result := TRegEx.IsMatch(ASource, '^\s*(' + mEscaped + '\s*\.\s*(Free|DisposeOf)|FreeAndNil\s*\(\s*' + mEscaped +
     '\s*\))\s*;?\s*$', [roIgnoreCase]);
 end;
 
@@ -311,15 +313,15 @@ end;
 /// in ein finally.</summary>
 function EscapesOrFrees(const ASource, AVariable: string): Boolean;
 var
-  Escaped: string;
+  mEscaped: string;
 begin
-  Escaped := TRegEx.Escape(AVariable);
-  Result := TRegEx.IsMatch(ASource, '\b' + Escaped + '\s*\.\s*(Free|DisposeOf|Destroy)\b', [roIgnoreCase]) or
-    TRegEx.IsMatch(ASource, '\bFreeAndNil\s*\(\s*' + Escaped + '\s*\)', [roIgnoreCase]) or
-    TRegEx.IsMatch(ASource, ':=\s*' + Escaped + '\s*[;)]', [roIgnoreCase]) or
-    TRegEx.IsMatch(ASource, '\bExit\s*\(\s*' + Escaped + '\s*\)', [roIgnoreCase]) or
+  mEscaped := TRegEx.Escape(AVariable);
+  Result := TRegEx.IsMatch(ASource, '\b' + mEscaped + '\s*\.\s*(Free|DisposeOf|Destroy)\b', [roIgnoreCase]) or
+    TRegEx.IsMatch(ASource, '\bFreeAndNil\s*\(\s*' + mEscaped + '\s*\)', [roIgnoreCase]) or
+    TRegEx.IsMatch(ASource, ':=\s*' + mEscaped + '\s*[;)]', [roIgnoreCase]) or
+    TRegEx.IsMatch(ASource, '\bExit\s*\(\s*' + mEscaped + '\s*\)', [roIgnoreCase]) or
     TRegEx.IsMatch(ASource, '\.\s*(Add|Insert|Push|Enqueue|AddObject|AddPair|AddOrSetValue)\s*\(([^;]*[^\w.])?' +
-      Escaped + '\s*[,)]', [roIgnoreCase]);
+      mEscaped + '\s*[,)]', [roIgnoreCase]);
 end;
 
 function IndentUnit(const AStyle: TFormatStyle): string;
@@ -342,28 +344,28 @@ end;
 
 class function TCodeActions.SuppressLine(const AText: string; ALine: Integer; const ARuleId: string): TTextEdit;
 var
-  Lines: TArray<string>;
-  Above, Line: string;
+  mLines: TArray<string>;
+  mAbove, mLine: string;
 begin
-  Lines := TTextLines.SplitLines(AText);
-  if (ALine > 0) and (ALine <= High(Lines)) then
+  mLines := TTextLines.SplitLines(AText);
+  if (ALine > 0) and (ALine <= High(mLines)) then
   begin
-    Above := Lines[ALine - 1];
-    if StartsText('// lsp-ignore:', TrimLeft(Above)) then
+    mAbove := mLines[ALine - 1];
+    if StartsText('// lsp-ignore:', TrimLeft(mAbove)) then
     begin
-      Exit(TTextEdit.Create(TTextRange.Create(ALine - 1, Length(Above), ALine - 1, Length(Above)), ', ' + ARuleId));
+      Exit(TTextEdit.Create(TTextRange.Create(ALine - 1, Length(mAbove), ALine - 1, Length(mAbove)), ', ' + ARuleId));
     end;
   end;
-  if (ALine >= 0) and (ALine <= High(Lines)) then
+  if (ALine >= 0) and (ALine <= High(mLines)) then
   begin
-    Line := Lines[ALine];
+    mLine := mLines[ALine];
   end
   else
   begin
-    Line := '';
+    mLine := '';
   end;
   Result := TTextEdit.Create(TTextRange.Create(ALine, 0, ALine, 0),
-    TTextLines.IndentOf(Line) + '// lsp-ignore: ' + ARuleId + TTextLines.LineBreakOf(AText));
+    TTextLines.IndentOf(mLine) + '// lsp-ignore: ' + ARuleId + TTextLines.LineBreakOf(AText));
 end;
 
 class function TCodeActions.SuppressFile(const AText, ARuleId: string): TTextEdit;
@@ -374,13 +376,13 @@ end;
 
 class function TCodeActions.TryFinally(const AText: string; ALine: Integer; out AAction: TCodeAction): Boolean;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TSyntaxTreeCache.Parse(AText);
+  mTree := TSyntaxTreeCache.Parse(AText);
   try
-    Result := TryFinally(AText, Tree, TTextRange.Create(ALine, 0, ALine, 0), TFormatStyle.Default, AAction);
+    Result := TryFinally(AText, mTree, TTextRange.Create(ALine, 0, ALine, 0), TFormatStyle.Default, AAction);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
@@ -609,7 +611,7 @@ begin
   mStep := IndentUnit(AStyle);
   mLineBreak := TTextLines.LineBreakOf(FText);
   mBody := Body(mStep, mLineBreak);
-  Result.Kind := RewriteKind;
+  Result.Kind := cRewriteKind;
   if FIsResult then
   begin
     Result.Title := cTexts[TEditingCodeActionsText.AddTryExceptFreeResult].Text;
@@ -660,7 +662,7 @@ begin
   if Result then
   begin
     AAction.Title := cTexts[TEditingCodeActionsText.CleanUpUses].Text;
-    AAction.Kind := OrganizeImportsKind;
+    AAction.Kind := cOrganizeImportsKind;
     AAction.Edits := mEdits;
   end;
 end;
@@ -668,9 +670,9 @@ end;
 /// <summary>Überschneiden sich die Bereiche? Enden zählen mit, damit ein Cursor am Namen trifft.</summary>
 function Touches(const A, B: TTextRange): Boolean;
 
-  function Before(const X, Y: TTextPosition): Boolean;
+  function Before(const AX, AY: TTextPosition): Boolean;
   begin
-    Result := (X.Line < Y.Line) or ((X.Line = Y.Line) and (X.Character < Y.Character));
+    Result := (AX.Line < AY.Line) or ((AX.Line = AY.Line) and (AX.Character < AY.Character));
   end;
 
 begin
@@ -766,7 +768,7 @@ begin
   begin
     if TUsesClauses.AddUnit(FTokens, OffsetNear(FTokens, FRange.StartPos), mUnitName, FLineBreak, mEdit) then
     begin
-      Add(NewAction(cTexts[TEditingCodeActionsText.AddToUses].Fmt([mUnitName]), QuickFixKind, [mEdit], ''));
+      Add(NewAction(cTexts[TEditingCodeActionsText.AddToUses].Fmt([mUnitName]), cQuickFixKind, [mEdit], ''));
     end;
   end;
 end;
@@ -778,7 +780,7 @@ begin
   FMovable := TUsesActions.MovableUnits(FTokens, FContext.Info);
   if TUsesActions.MoveUnits(FTokens, FText, FMovable, FLineBreak, mEdits) then
   begin
-    Add(NewAction(MoveTitle(FMovable), RewriteKind, mEdits, ''));
+    Add(NewAction(MoveTitle(FMovable), cRewriteKind, mEdits, ''));
   end;
 end;
 
@@ -790,7 +792,7 @@ begin
   mUnits := TUsesActions.UnusedUnits(FTokens, FContext.Info, FContext.Keep);
   if TUsesActions.RemoveUnits(FTokens, FText, mUnits, FLineBreak, mEdits) then
   begin
-    Add(NewAction(cTexts[TEditingCodeActionsText.RemoveUnusedUses].Fmt([string.Join(', ', mUnits)]), RemoveUnusedKind,
+    Add(NewAction(cTexts[TEditingCodeActionsText.RemoveUnusedUses].Fmt([string.Join(', ', mUnits)]), cRemoveUnusedKind,
       mEdits, ''));
   end;
 end;
@@ -802,15 +804,15 @@ var
 begin
   if TUsesActions.RemoveEntries(FText, [AEntry.Range], mEdit) then
   begin
-    mAction := NewAction(cTexts[TEditingCodeActionsText.Remove].Fmt([AEntry.Name]), QuickFixKind, [mEdit],
-      UsesRemoveTag);
+    mAction := NewAction(cTexts[TEditingCodeActionsText.Remove].Fmt([AEntry.Name]), cQuickFixKind, [mEdit],
+      cUsesRemoveTag);
     mAction.IsPreferred := True;
     Add(mAction);
   end;
   if (Length(AUnused) > 1) and TUsesActions.RemoveEntries(FText, AUnused, mEdit) then
   begin
-    Add(NewAction(cTexts[TEditingCodeActionsText.RemoveAllUnusedUses].Fmt([Length(AUnused)]), QuickFixKind, [mEdit],
-      UsesRemoveAllTag));
+    Add(NewAction(cTexts[TEditingCodeActionsText.RemoveAllUnusedUses].Fmt([Length(AUnused)]), cQuickFixKind, [mEdit],
+      cUsesRemoveAllTag));
   end;
 end;
 
@@ -820,9 +822,9 @@ var
 begin
   for mIndex := 0 to High(FActions) do
   begin
-    if (FActions[mIndex].Kind = RewriteKind) and SameText(FActions[mIndex].Title, MoveTitle([AUnitName])) then
+    if (FActions[mIndex].Kind = cRewriteKind) and SameText(FActions[mIndex].Title, MoveTitle([AUnitName])) then
     begin
-      FActions[mIndex].Tag := UsesMoveTag;
+      FActions[mIndex].Tag := cUsesMoveTag;
     end;
   end;
 end;
@@ -838,7 +840,7 @@ begin
   end
   else if TUsesActions.MoveUnits(FTokens, FText, [AEntry.Name], FLineBreak, mEdits) then
   begin
-    Add(NewAction(MoveTitle([AEntry.Name]), RewriteKind, mEdits, UsesMoveTag));
+    Add(NewAction(MoveTitle([AEntry.Name]), cRewriteKind, mEdits, cUsesMoveTag));
   end;
 end;
 
@@ -928,7 +930,7 @@ begin
   if Result then
   begin
     AAction.Title := cTexts[TEditingCodeActionsText.SwapAssignments].Text;
-    AAction.Kind := RewriteKind;
+    AAction.Kind := cRewriteKind;
   end;
 end;
 
@@ -945,8 +947,8 @@ begin
   if Result then
   begin
     AAction.Title := cTexts[TEditingCodeActionsText.CopyAsPlainText].Text;
-    AAction.Kind := RewriteKind;
-    AAction.Command := CopyTextCommand;
+    AAction.Kind := cRewriteKind;
+    AAction.Command := cCopyTextCommand;
     AAction.CommandArguments := [mPlain];
   end;
 end;
@@ -1026,7 +1028,7 @@ begin
   end;
   mAction := Default(TCodeAction);
   mAction.Title := cTexts[TEditingCodeActionsText.AsStringLiteral].Text;
-  mAction.Kind := RewriteKind;
+  mAction.Kind := cRewriteKind;
   mAction.Edits := [TTextEdit.Create(TTextRange.Create(mFirst, 0, mLast, Length(mLines[mLast])),
     TStringLiterals.ToLiteral(Dedented(mLines, mFirst, mLast, mCommon), TTextLines.IndentOf(mLines[mFirst]), True,
     AMultiline, ASettings, TTextLines.LineBreakOf(AText)))];

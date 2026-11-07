@@ -48,13 +48,13 @@ type
   TCompletionExceptions = class
   public const
     /// <summary>Exception-Klassen, die schon ohne Eingabe aus nicht eingebundenen Units kommen.</summary>
-    CommonNames: array[0..6] of string = ('Exception', 'EConvertError', 'EArgumentException',
+    cCommonNames: array[0..6] of string = ('Exception', 'EConvertError', 'EArgumentException',
       'EArgumentOutOfRangeException', 'EInvalidOperation', 'EAbort', 'ENotSupportedException');
     /// <summary>Höchstzahl der Bezeichner im try-Block, die aufgelöst werden.</summary>
-    MaxCallees = 200;
-    GroupTry = 'try';
-    GroupGeneral = 'general';
-    GroupRaise = 'raise';
+    cMaxCallees = 200;
+    cGroupTry = 'try';
+    cGroupGeneral = 'general';
+    cGroupRaise = 'raise';
   public
     /// <summary>Stelle hinter dem Token ALast (raise bzw. ":" in "on E:"); False sonst.</summary>
     class function SiteAt(const ATokens: TArray<TPascalToken>; ALast: Integer; out ASite: TExceptionSite): Boolean;
@@ -86,7 +86,7 @@ uses
   Atlas.Common.Lsp.CompletionGenerics;
 
 const
-  KnownRaiseTable: array[0..19] of TKnownRaise = (
+  cKnownRaiseTable: array[0..19] of TKnownRaise = (
     (Routine: 'StrToInt'; ClassName: 'EConvertError'; UnitName: 'System.SysUtils'),
     (Routine: 'StrToInt64'; ClassName: 'EConvertError'; UnitName: 'System.SysUtils'),
     (Routine: 'StrToUInt'; ClassName: 'EConvertError'; UnitName: 'System.SysUtils'),
@@ -147,27 +147,27 @@ end;
 /// ein Block der Ebene beginnt.</summary>
 function BackTo(const ATokens: TArray<TPascalToken>; AFrom: Integer; const AWord: string): Integer;
 var
-  Depth: Integer;
+  mDepth: Integer;
 begin
-  Depth := 0;
+  mDepth := 0;
   Result := PreviousSignificant(ATokens, AFrom);
   while Result >= 0 do
   begin
     if ATokens[Result].IsKeyword('end') then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if (Depth = 0) and ATokens[Result].IsKeyword(AWord) then
+    else if (mDepth = 0) and ATokens[Result].IsKeyword(AWord) then
     begin
       Exit;
     end
     else if OpensBlock(ATokens[Result]) then
     begin
-      if Depth = 0 then
+      if mDepth = 0 then
       begin
         Exit(-1);
       end;
-      Dec(Depth);
+      Dec(mDepth);
     end;
     Result := PreviousSignificant(ATokens, Result);
   end;
@@ -176,26 +176,26 @@ end;
 /// <summary>Klasse eines Zweigs "on [E:] A.B do" ab dem Token on an AOn (ohne Unit); '' ohne.</summary>
 function HandlerClass(const ATokens: TArray<TPascalToken>; AOn: Integer): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  Index := NextSignificant(ATokens, AOn);
-  if (Index <= High(ATokens)) and (ATokens[Index].Kind = TPascalTokenKind.Identifier) and
-    (NextSignificant(ATokens, Index) <= High(ATokens)) and ATokens[NextSignificant(ATokens, Index)].IsSymbol(':') then
+  mIndex := NextSignificant(ATokens, AOn);
+  if (mIndex <= High(ATokens)) and (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and
+    (NextSignificant(ATokens, mIndex) <= High(ATokens)) and ATokens[NextSignificant(ATokens, mIndex)].IsSymbol(':') then
   begin
-    Index := NextSignificant(ATokens, NextSignificant(ATokens, Index));
+    mIndex := NextSignificant(ATokens, NextSignificant(ATokens, mIndex));
   end;
-  while (Index <= High(ATokens)) and (ATokens[Index].Kind = TPascalTokenKind.Identifier) do
+  while (mIndex <= High(ATokens)) and (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) do
   begin
-    Result := ATokens[Index].Text;
-    Index := NextSignificant(ATokens, Index);
-    if (Index > High(ATokens)) or not ATokens[Index].IsSymbol('.') then
+    Result := ATokens[mIndex].Text;
+    mIndex := NextSignificant(ATokens, mIndex);
+    if (mIndex > High(ATokens)) or not ATokens[mIndex].IsSymbol('.') then
     begin
       Break;
     end;
-    Index := NextSignificant(ATokens, Index);
+    mIndex := NextSignificant(ATokens, mIndex);
   end;
-  if (Index > High(ATokens)) or not ATokens[Index].IsKeyword('do') then
+  if (mIndex > High(ATokens)) or not ATokens[mIndex].IsKeyword('do') then
   begin
     Result := '';
   end;
@@ -312,14 +312,14 @@ end;
 
 class function TCompletionExceptions.KnownRaises(const AName: string): TArray<TKnownRaise>;
 var
-  Known: TKnownRaise;
+  mKnown: TKnownRaise;
 begin
   Result := nil;
-  for Known in KnownRaiseTable do
+  for mKnown in cKnownRaiseTable do
   begin
-    if SameText(Known.Routine, AName) then
+    if SameText(mKnown.Routine, AName) then
     begin
-      Result := Result + [Known];
+      Result := Result + [mKnown];
     end;
   end;
 end;
@@ -467,7 +467,7 @@ begin
         Continue;
       end;
       Inc(mCount);
-      if mCount > MaxCallees then
+      if mCount > cMaxCallees then
       begin
         Break;
       end;
@@ -509,13 +509,13 @@ type
 
 function IndexOfText(const AName: string; const AList: TArray<string>): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(AList) do
+  for mIndex := 0 to High(AList) do
   begin
-    if SameText(AList[Index], AName) then
+    if SameText(AList[mIndex], AName) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -545,7 +545,7 @@ var
 begin
   mEntry := Default(TExceptionEntry);
   mEntry.Item.Name := AName;
-  mEntry.Item.Kind := KindClass;
+  mEntry.Item.Kind := cKindClass;
   mEntry.Item.Detail := AUnit;
   mEntry.Library_ := True;
   mEntry.TryRank := ARank;
@@ -613,7 +613,8 @@ var
 begin
   AEntry := Default(TExceptionEntry);
   Result := TCompletionGenerics.ItemSymbol(ARequest, AUnits, AItem, mSymbol) and
-    ARequest.Resolver.Queries.ExceptionClassOf(mSymbol, mExceptionClass) and (IndexOfText(AItem.Name, ASite.Handled) < 0);
+    ARequest.Resolver.Queries.ExceptionClassOf(mSymbol, mExceptionClass) and
+      (IndexOfText(AItem.Name, ASite.Handled) < 0);
   if not Result then
   begin
     Exit;
@@ -668,13 +669,13 @@ var
   mItem, mFmt: TCompletionItem;
 begin
   mItem := AItem;
-  mItem.ExceptionGroup := TCompletionExceptions.GroupRaise;
+  mItem.ExceptionGroup := TCompletionExceptions.cGroupRaise;
   mItem.FilterText := mItem.Name;
   mFmt := mItem;
   mItem.Snippet := ASnippets;
   mFmt.Snippet := ASnippets;
   mFmt.Name := mItem.Name + '.CreateFmt';
-  mFmt.Kind := KindConstructor;
+  mFmt.Kind := cKindConstructor;
   if ASnippets then
   begin
     mItem.InsertText := mItem.Name + '.Create(''$0'')';
@@ -698,10 +699,10 @@ begin
   end;
   Result.Expected := 'Exception';
   Result.Fits := AEntry.TryRank >= 0;
-  Result.ExceptionGroup := TCompletionExceptions.GroupGeneral;
+  Result.ExceptionGroup := TCompletionExceptions.cGroupGeneral;
   if Result.Fits then
   begin
-    Result.ExceptionGroup := TCompletionExceptions.GroupTry;
+    Result.ExceptionGroup := TCompletionExceptions.cGroupTry;
   end;
 end;
 
@@ -768,7 +769,7 @@ begin
     for mRank := 0 to High(mTryNames) do
     begin
       if not mEntries.HasName(mTryNames[mRank]) and (IndexOfText(mTryNames[mRank], mSite.Handled) < 0) and
-        (MatchScore(mTryNames[mRank], AContext.Prefix, ARequest.Matching) <> TFuzzyMatch.NoMatch) then
+        (MatchScore(mTryNames[mRank], AContext.Prefix, ARequest.Matching) <> TFuzzyMatch.cNoMatch) then
       begin
         mEntries.AddTryClass(mTryNames[mRank], mTryUnits[mRank], mRank);
       end;

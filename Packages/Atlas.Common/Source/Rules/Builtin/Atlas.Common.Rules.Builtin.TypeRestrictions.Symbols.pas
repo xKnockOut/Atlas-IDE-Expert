@@ -14,7 +14,7 @@ uses
 
 const
   // Mitglieder von TObject, die im Rumpf einer Methode ohne Self sichtbar sind (E2506).
-  ObjectMemberNames: array[0..33] of string = ('Create', 'Destroy', 'Free', 'DisposeOf', 'Disposed', 'ClassName',
+  cObjectMemberNames: array[0..33] of string = ('Create', 'Destroy', 'Free', 'DisposeOf', 'Disposed', 'ClassName',
     'ClassNameIs', 'ClassType', 'ClassParent', 'ClassInfo', 'InstanceSize', 'InheritsFrom', 'MethodAddress',
     'MethodName', 'FieldAddress', 'GetInterface', 'GetInterfaceEntry', 'GetInterfaceTable', 'Dispatch',
     'DefaultHandler', 'NewInstance', 'FreeInstance', 'InitInstance', 'CleanupInstance', 'AfterConstruction',
@@ -38,7 +38,8 @@ type
     destructor Destroy; override;
     /// <summary>Rümpfe auf oberster Ebene des implementation-Teils; leer ohne Symbole des Teils.</summary>
     function Routines: TArray<TSyntaxNode>;
-    /// <summary>Klasse, Record oder object aus dem interface-Teil, zu dem der Rumpf ARoutine gehört; nil ohne.</summary>
+    /// <summary>Klasse, Record oder object aus dem interface-Teil, zu dem der Rumpf ARoutine gehört; nil
+    /// ohne.</summary>
     function OwnerType(ARoutine: TSyntaxNode): TSyntaxNode;
     /// <summary>Erste Verwendung je Symbol des implementation-Teils im Rumpf ARoutine (ohne eigenen Kopf, with
     /// und Typparameter). ADecl ist der Typ der Methode oder nil; leer, wenn dessen Mitglieder samt Vorfahren
@@ -98,13 +99,13 @@ uses
 /// <summary>Typknoten einer Typdeklaration (das erste Kind außer den Typparametern), nil ohne.</summary>
 function TypeOfDecl(ADecl: TSyntaxNode): TSyntaxNode;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to ADecl.ChildCount - 1 do
+  for mIndex := 0 to ADecl.ChildCount - 1 do
   begin
-    if ADecl[Index].Kind <> TSyntaxKind.GenericParams then
+    if ADecl[mIndex].Kind <> TSyntaxKind.GenericParams then
     begin
-      Exit(ADecl[Index]);
+      Exit(ADecl[mIndex]);
     end;
   end;
   Result := nil;
@@ -113,18 +114,18 @@ end;
 /// <summary>Namen, die ein Knoten deklariert ("A,B" ergibt beide); leer bei Knoten ohne Deklaration.</summary>
 function DeclaredNames(ANode: TSyntaxNode): TArray<string>;
 var
-  Name: string;
+  mName: string;
 begin
   Result := nil;
   case ANode.Kind of
     TSyntaxKind.Parameter, TSyntaxKind.VarDecl, TSyntaxKind.ConstDecl, TSyntaxKind.TypeDecl, TSyntaxKind.Field,
     TSyntaxKind.PropertyDecl, TSyntaxKind.InlineVar, TSyntaxKind.InlineConst, TSyntaxKind.ForStatement,
     TSyntaxKind.ForInStatement, TSyntaxKind.ExceptionHandler, TSyntaxKind.RoutineHeader:
-      for Name in SplitString(ANode.Name, ',') do
+      for mName in SplitString(ANode.Name, ',') do
       begin
-        if Trim(Name) <> '' then
+        if Trim(mName) <> '' then
         begin
-          Result := Result + [Trim(Name)];
+          Result := Result + [Trim(mName)];
         end;
       end;
     TSyntaxKind.Identifier:
@@ -140,49 +141,49 @@ end;
 /// <summary>Alle Namen, die unterhalb von ANode deklariert sind.</summary>
 function NamesBelow(ANode: TSyntaxNode): TArray<string>;
 var
-  Names: TArray<string>;
+  mNames: TArray<string>;
 begin
-  Names := nil;
+  mNames := nil;
   ANode.Walk(
     function(AChild: TSyntaxNode): Boolean
     begin
       Result := True;
-      Names := Names + DeclaredNames(AChild);
+      mNames := mNames + DeclaredNames(AChild);
     end);
-  Result := Names;
+  Result := mNames;
 end;
 
 /// <summary>Namen, die der Abschnitt ASection auf oberster Ebene deklariert (Typen, Werte der Aufzählungen,
 /// Konstanten, Variablen, Routinen ohne Punkt).</summary>
 function SectionNames(ASection: TSyntaxNode): TArray<string>;
 var
-  Index, Inner: Integer;
-  Child, Decl: TSyntaxNode;
+  mIndex, mInner: Integer;
+  mChild, mDecl: TSyntaxNode;
 begin
   Result := nil;
   if ASection = nil then
   begin
     Exit;
   end;
-  for Index := 0 to ASection.ChildCount - 1 do
+  for mIndex := 0 to ASection.ChildCount - 1 do
   begin
-    Child := ASection[Index];
-    case Child.Kind of
+    mChild := ASection[mIndex];
+    case mChild.Kind of
       TSyntaxKind.TypeSection, TSyntaxKind.ConstSection, TSyntaxKind.VarSection:
-        for Inner := 0 to Child.ChildCount - 1 do
+        for mInner := 0 to mChild.ChildCount - 1 do
         begin
-          Decl := Child[Inner];
-          Result := Result + DeclaredNames(Decl);
-          if (Decl.Kind = TSyntaxKind.TypeDecl) and (TypeOfDecl(Decl) <> nil) and
-            (TypeOfDecl(Decl).Kind = TSyntaxKind.EnumType) then
+          mDecl := mChild[mInner];
+          Result := Result + DeclaredNames(mDecl);
+          if (mDecl.Kind = TSyntaxKind.TypeDecl) and (TypeOfDecl(mDecl) <> nil) and
+            (TypeOfDecl(mDecl).Kind = TSyntaxKind.EnumType) then
           begin
-            Result := Result + NamesBelow(TypeOfDecl(Decl));
+            Result := Result + NamesBelow(TypeOfDecl(mDecl));
           end;
         end;
       TSyntaxKind.RoutineDecl:
-        if Pos('.', Child.Name) = 0 then
+        if Pos('.', mChild.Name) = 0 then
         begin
-          Result := Result + [Child.Name];
+          Result := Result + [mChild.Name];
         end;
     else
       // Übrige Werte bewusst ohne Wirkung.
@@ -263,24 +264,24 @@ end;
 /// <summary>Erste Typdeklaration AName (Klasse, Record, object) unterhalb von ASection, nil ohne.</summary>
 function FindStructDecl(ASection: TSyntaxNode; const AName: string): TSyntaxNode;
 var
-  Found: TSyntaxNode;
+  mFound: TSyntaxNode;
 begin
-  Found := nil;
+  mFound := nil;
   if ASection <> nil then
   begin
     ASection.Walk(
       function(ANode: TSyntaxNode): Boolean
       begin
-        Result := Found = nil;
+        Result := mFound = nil;
         if Result and (ANode.Kind = TSyntaxKind.TypeDecl) and SameText(ANode.Name, AName) and
           (TypeOfDecl(ANode) <> nil) and (TypeOfDecl(ANode).Kind in [TSyntaxKind.ClassType,
           TSyntaxKind.RecordType, TSyntaxKind.ObjectType]) then
         begin
-          Found := ANode;
+          mFound := ANode;
         end;
       end);
   end;
-  Result := Found;
+  Result := mFound;
 end;
 
 /// <summary>Letzter Teil eines Namens mit Punkten: "TAussen.TInnen" ergibt "TInnen".</summary>
@@ -293,8 +294,8 @@ end;
 
 constructor TImplementationSymbols.Create(const AContext: TRuleContext);
 var
-  Known: TArray<string>;
-  Name: string;
+  mKnown: TArray<string>;
+  mName: string;
 begin
   inherited Create;
   FContext := AContext;
@@ -305,12 +306,12 @@ begin
   begin
     Exit;
   end;
-  Known := SectionNames(FInterface);
-  for Name in SectionNames(FImplementation) do
+  mKnown := SectionNames(FInterface);
+  for mName in SectionNames(FImplementation) do
   begin
-    if not MatchText(Name, Known) then
+    if not MatchText(mName, mKnown) then
     begin
-      FLocal := FLocal + [Name];
+      FLocal := FLocal + [mName];
     end;
   end;
 end;
@@ -323,19 +324,19 @@ end;
 
 function TImplementationSymbols.Routines: TArray<TSyntaxNode>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
   if FLocal = nil then
   begin
     Exit;
   end;
-  for Index := 0 to FImplementation.ChildCount - 1 do
+  for mIndex := 0 to FImplementation.ChildCount - 1 do
   begin
-    if (FImplementation[Index].Kind = TSyntaxKind.RoutineDecl) and
-      (FImplementation[Index].FindChild(TSyntaxKind.RoutineHeader) <> nil) then
+    if (FImplementation[mIndex].Kind = TSyntaxKind.RoutineDecl) and
+      (FImplementation[mIndex].FindChild(TSyntaxKind.RoutineHeader) <> nil) then
     begin
-      Result := Result + [FImplementation[Index]];
+      Result := Result + [FImplementation[mIndex]];
     end;
   end;
 end;
@@ -351,22 +352,22 @@ end;
 
 function TImplementationSymbols.VisibleMembers(ADecl: TSyntaxNode; out ANames: TArray<string>): Boolean;
 var
-  Outer: TSyntaxNode;
-  Location: TSymbolLocation;
-  Chain: TArray<TSymbolLocation>;
-  Member: TIndexSymbol;
-  Complete, ObjectMissing: Boolean;
-  Name: string;
+  mOuter: TSyntaxNode;
+  mLocation: TSymbolLocation;
+  mChain: TArray<TSymbolLocation>;
+  mMember: TIndexSymbol;
+  mComplete, mObjectMissing: Boolean;
+  mName: string;
 begin
   ANames := nil;
-  Outer := ADecl;
-  while Outer <> nil do
+  mOuter := ADecl;
+  while mOuter <> nil do
   begin
-    if Outer.Kind = TSyntaxKind.TypeDecl then
+    if mOuter.Kind = TSyntaxKind.TypeDecl then
     begin
-      ANames := ANames + NamesBelow(Outer);
+      ANames := ANames + NamesBelow(mOuter);
     end;
-    Outer := Outer.Parent;
+    mOuter := mOuter.Parent;
   end;
   if TypeOfDecl(ADecl).Kind <> TSyntaxKind.ClassType then
   begin
@@ -377,121 +378,121 @@ begin
   begin
     FAncestry := TAncestry.Create(FContext.Index, TRuleDerived.UnitIndex(TRuleDerived.Open(FContext), FContext));
   end;
-  Chain := FAncestry.Ancestors(ADecl.Name, Complete, ObjectMissing);
-  if not Complete then
+  mChain := FAncestry.Ancestors(ADecl.Name, mComplete, mObjectMissing);
+  if not mComplete then
   begin
     Exit;
   end;
-  for Location in Chain do
+  for mLocation in mChain do
   begin
-    for Member in FAncestry.Members(Location) do
+    for mMember in FAncestry.Members(mLocation) do
     begin
-      ANames := ANames + [Member.Name];
+      ANames := ANames + [mMember.Name];
     end;
   end;
-  for Name in ObjectMemberNames do
+  for mName in cObjectMemberNames do
   begin
-    ANames := ANames + [Name];
+    ANames := ANames + [mName];
   end;
   Result := True;
 end;
 
 function TImplementationSymbols.UsesIn(ARoutine, ADecl: TSyntaxNode): TArray<TSyntaxNode>;
 var
-  Known, Used: TArray<string>;
-  Header: TSyntaxNode;
-  Candidates: TList<TSyntaxNode>;
-  Candidate: TSyntaxNode;
+  mKnown, mUsed: TArray<string>;
+  mHeader: TSyntaxNode;
+  mCandidates: TList<TSyntaxNode>;
+  mCandidate: TSyntaxNode;
 begin
   Result := nil;
-  Known := nil;
-  if (FLocal = nil) or ((ADecl <> nil) and not VisibleMembers(ADecl, Known)) then
+  mKnown := nil;
+  if (FLocal = nil) or ((ADecl <> nil) and not VisibleMembers(ADecl, mKnown)) then
   begin
     Exit;
   end;
-  Known := Known + NamesBelow(ARoutine);
-  Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
-  Candidates := TList<TSyntaxNode>.Create;
+  mKnown := mKnown + NamesBelow(ARoutine);
+  mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+  mCandidates := TList<TSyntaxNode>.Create;
   try
     ARoutine.Walk(
       function(ANode: TSyntaxNode): Boolean
       begin
-        Result := not (ANode.Kind in [TSyntaxKind.WithStatement, TSyntaxKind.GenericParams]) and (ANode <> Header);
+        Result := not (ANode.Kind in [TSyntaxKind.WithStatement, TSyntaxKind.GenericParams]) and (ANode <> mHeader);
         if Result and (ANode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.TypeReference]) and
           (Pos('.', ANode.Name) = 0) then
         begin
-          Candidates.Add(ANode);
+          mCandidates.Add(ANode);
         end;
       end);
-    Used := nil;
-    for Candidate in Candidates do
+    mUsed := nil;
+    for mCandidate in mCandidates do
     begin
-      if MatchText(Candidate.Name, FLocal) and not MatchText(Candidate.Name, Known) and
-        not MatchText(Candidate.Name, Used) then
+      if MatchText(mCandidate.Name, FLocal) and not MatchText(mCandidate.Name, mKnown) and
+        not MatchText(mCandidate.Name, mUsed) then
       begin
-        Used := Used + [Candidate.Name];
-        Result := Result + [Candidate];
+        mUsed := mUsed + [mCandidate.Name];
+        Result := Result + [mCandidate];
       end;
     end;
   finally
-    Candidates.Free;
+    mCandidates.Free;
   end;
 end;
 
 
 constructor TDeclarationNames.Create(ARoot: TSyntaxNode);
 var
-  Nodes: TList<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Name: string;
-  Index: Integer;
+  mNodes: TList<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mName: string;
+  mIndex: Integer;
 begin
   inherited Create;
   FVariables := TObjectDictionary<string, TList<TSyntaxNode>>.Create([doOwnsValues]);
   FOthers := TDictionary<string, Boolean>.Create;
-  Nodes := TList<TSyntaxNode>.Create;
+  mNodes := TList<TSyntaxNode>.Create;
   try
     ARoot.Walk(
       function(ANode: TSyntaxNode): Boolean
       begin
         Result := True;
-        Nodes.Add(ANode);
+        mNodes.Add(ANode);
       end);
-    for Node in Nodes do
-      case Node.Kind of
+    for mNode in mNodes do
+      case mNode.Kind of
         TSyntaxKind.VarDecl, TSyntaxKind.Field:
-          AddNames(Node.Name, Node, True);
+          AddNames(mNode.Name, mNode, True);
         TSyntaxKind.RoutineHeader:
           begin
-            Name := Node.Name;
-            if LastDelimiter('.', Name) > 0 then
+            mName := mNode.Name;
+            if LastDelimiter('.', mName) > 0 then
             begin
-              Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
+              mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
             end;
             // Nur Routinen der Unit selbst gelten als sicher; Methoden und lokale Routinen zählen als andere Art.
-            AddNames(Name, Node, (Pos('.', Node.Name) = 0) and (Node.Parent <> nil) and
-              (Node.Parent.Kind = TSyntaxKind.RoutineDecl) and (Node.Parent.Parent <> nil) and
-              (Node.Parent.Parent.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection]));
+            AddNames(mName, mNode, (Pos('.', mNode.Name) = 0) and (mNode.Parent <> nil) and
+              (mNode.Parent.Kind = TSyntaxKind.RoutineDecl) and (mNode.Parent.Parent <> nil) and
+              (mNode.Parent.Parent.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection]));
           end;
         TSyntaxKind.ConstDecl, TSyntaxKind.TypeDecl, TSyntaxKind.Parameter, TSyntaxKind.PropertyDecl,
         TSyntaxKind.InlineVar, TSyntaxKind.InlineConst, TSyntaxKind.UsedUnit, TSyntaxKind.ForStatement,
         TSyntaxKind.ForInStatement:
-          AddNames(Node.Name, Node, False);
+          AddNames(mNode.Name, mNode, False);
         TSyntaxKind.EnumType:
-          for Index := 0 to Node.ChildCount - 1 do
+          for mIndex := 0 to mNode.ChildCount - 1 do
           begin
-            AddOther(Node[Index].Name);
+            AddOther(mNode[mIndex].Name);
           end;
         TSyntaxKind.GenericParams:
-          for Index := 0 to Node.ChildCount - 1 do
+          for mIndex := 0 to mNode.ChildCount - 1 do
           begin
-            AddOther(Node[Index].Name);
+            AddOther(mNode[mIndex].Name);
           end;
       else
         // Übrige Werte bewusst ohne Wirkung.
       end;
   finally
-    Nodes.Free;
+    mNodes.Free;
   end;
 end;
 
@@ -504,14 +505,14 @@ end;
 
 procedure TDeclarationNames.AddVariable(const AName: string; ANode: TSyntaxNode);
 var
-  List: TList<TSyntaxNode>;
+  mList: TList<TSyntaxNode>;
 begin
-  if not FVariables.TryGetValue(LowerCase(AName), List) then
+  if not FVariables.TryGetValue(LowerCase(AName), mList) then
   begin
-    List := TList<TSyntaxNode>.Create;
-    FVariables.Add(LowerCase(AName), List);
+    mList := TList<TSyntaxNode>.Create;
+    FVariables.Add(LowerCase(AName), mList);
   end;
-  List.Add(ANode);
+  mList.Add(ANode);
 end;
 
 procedure TDeclarationNames.AddOther(const AName: string);
@@ -524,21 +525,21 @@ end;
 
 procedure TDeclarationNames.AddNames(const ANames: string; ANode: TSyntaxNode; AVariable: Boolean);
 var
-  Name: string;
+  mName: string;
 begin
-  for Name in SplitString(ANames, ',') do
+  for mName in SplitString(ANames, ',') do
   begin
-    if Trim(Name) = '' then
+    if Trim(mName) = '' then
     begin
       Continue;
     end
     else if AVariable then
     begin
-      AddVariable(Trim(Name), ANode);
+      AddVariable(Trim(mName), ANode);
     end
     else
     begin
-      AddOther(Name);
+      AddOther(mName);
     end;
   end;
 end;

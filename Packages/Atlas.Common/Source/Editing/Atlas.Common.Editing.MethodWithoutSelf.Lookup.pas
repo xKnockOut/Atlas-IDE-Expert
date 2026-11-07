@@ -95,9 +95,9 @@ const
   /// <summary>Tiefe der Interface-Vererbung, bis zu der gesucht wird.</summary>
   cInterfaceDepth = 8;
   // Helper der RTL (System.SysUtils, System.Character), falls der Index sie nicht kennt.
-  RtlHelpedTypes: array[0..14] of string = ('string', 'UnicodeString', 'Integer', 'Cardinal', 'Int64', 'UInt64',
+  cRtlHelpedTypes: array[0..14] of string = ('string', 'UnicodeString', 'Integer', 'Cardinal', 'Int64', 'UInt64',
     'NativeInt', 'NativeUInt', 'Byte', 'Word', 'ShortInt', 'SmallInt', 'Double', 'Single', 'Boolean');
-  RtlHelpers: array[0..14] of string = ('TStringHelper', 'TStringHelper', 'TIntegerHelper', 'TCardinalHelper',
+  cRtlHelpers: array[0..14] of string = ('TStringHelper', 'TStringHelper', 'TIntegerHelper', 'TCardinalHelper',
     'TInt64Helper', 'TUInt64Helper', 'TNativeIntHelper', 'TNativeUIntHelper', 'TByteHelper', 'TWordHelper',
     'TShortIntHelper', 'TSmallIntHelper', 'TDoubleHelper', 'TSingleHelper', 'TBooleanHelper');
 
@@ -487,10 +487,10 @@ var
   mIndex: Integer;
 begin
   Result := '';
-  mIndex := IndexText(ATypeName, RtlHelpedTypes);
+  mIndex := IndexText(ATypeName, cRtlHelpedTypes);
   if (mIndex >= 0) and UsesSysUtils(ATree) then
   begin
-    Result := RtlHelpers[mIndex];
+    Result := cRtlHelpers[mIndex];
   end;
 end;
 

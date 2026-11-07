@@ -117,37 +117,37 @@ end;
 // Iterativ (Bericht M1): neben jedem Knoten liegt der Name der umschließenden Routine auf dem Stapel.
 procedure Collect(ARoot: TSyntaxNode; var ARoutines, ASections: TArray<TFindingScope>);
 var
-  Pending: TStack<TSyntaxNode>;
-  PendingOuter: TStack<string>;
-  Index: Integer;
-  Child: TSyntaxNode;
-  Name: string;
+  mPending: TStack<TSyntaxNode>;
+  mPendingOuter: TStack<string>;
+  mIndex: Integer;
+  mChild: TSyntaxNode;
+  mName: string;
 begin
-  Pending := TStack<TSyntaxNode>.Create;
-  PendingOuter := TStack<string>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
+  mPendingOuter := TStack<string>.Create;
   try
-    for Index := ARoot.ChildCount - 1 downto 0 do
+    for mIndex := ARoot.ChildCount - 1 downto 0 do
     begin
-      Pending.Push(ARoot[Index]);
-      PendingOuter.Push('');
+      mPending.Push(ARoot[mIndex]);
+      mPendingOuter.Push('');
     end;
-    while Pending.Count > 0 do
+    while mPending.Count > 0 do
     begin
-      Child := Pending.Pop;
-      Name := AddScope(Child, PendingOuter.Pop, ARoutines, ASections);
+      mChild := mPending.Pop;
+      mName := AddScope(mChild, mPendingOuter.Pop, ARoutines, ASections);
       // Routinen stehen nie in Anweisungen und Ausdrücken; dort nicht absteigen (#1094).
-      if not (Child.Kind in [TSyntaxKind.Block .. TSyntaxKind.IfExpr]) then
+      if not (mChild.Kind in [TSyntaxKind.Block .. TSyntaxKind.IfExpr]) then
       begin
-        for Index := Child.ChildCount - 1 downto 0 do
+        for mIndex := mChild.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Child[Index]);
-          PendingOuter.Push(Name);
+          mPending.Push(mChild[mIndex]);
+          mPendingOuter.Push(mName);
         end;
       end;
     end;
   finally
-    PendingOuter.Free;
-    Pending.Free;
+    mPendingOuter.Free;
+    mPending.Free;
   end;
 end;
 
@@ -155,7 +155,7 @@ end;
 
 class function TFindingScopes.FromTree(ATree: TSyntaxTree): TFindingScopes;
 var
-  Section: string;
+  mSection: string;
 begin
   Result.FRoutines := nil;
   Result.FSections := nil;
@@ -163,43 +163,43 @@ begin
   begin
     Exit;
   end;
-  Section := SectionName(ATree.Root.Kind);
-  if Section <> '' then
+  mSection := SectionName(ATree.Root.Kind);
+  if mSection <> '' then
   begin
-    Result.FSections := [Scope(Section, ATree.Root)];
+    Result.FSections := [Scope(mSection, ATree.Root)];
   end;
   Collect(ATree.Root, Result.FRoutines, Result.FSections);
 end;
 
 class function TFindingScopes.FromText(const AText: string): TFindingScopes;
 var
-  Tree: TSyntaxTree;
+  mTree: TSyntaxTree;
 begin
-  Tree := TSyntaxTreeCache.Parse(AText);
+  mTree := TSyntaxTreeCache.Parse(AText);
   try
-    Result := FromTree(Tree);
+    Result := FromTree(mTree);
   finally
-    Tree.Free;
+    mTree.Free;
   end;
 end;
 
 function TFindingScopes.At(ALine: Integer): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   // Die letzte passende Routine ist die innerste: innere stehen hinter ihrer äußeren.
-  for Index := High(FRoutines) downto 0 do
+  for mIndex := High(FRoutines) downto 0 do
   begin
-    if (FRoutines[Index].FirstLine <= ALine) and (ALine <= FRoutines[Index].LastLine) then
+    if (FRoutines[mIndex].FirstLine <= ALine) and (ALine <= FRoutines[mIndex].LastLine) then
     begin
-      Exit(FRoutines[Index].Name);
+      Exit(FRoutines[mIndex].Name);
     end;
   end;
-  for Index := High(FSections) downto 0 do
+  for mIndex := High(FSections) downto 0 do
   begin
-    if (FSections[Index].FirstLine <= ALine) and (ALine <= FSections[Index].LastLine) then
+    if (FSections[mIndex].FirstLine <= ALine) and (ALine <= FSections[mIndex].LastLine) then
     begin
-      Exit(FSections[Index].Name);
+      Exit(FSections[mIndex].Name);
     end;
   end;
   // Hinter dem Ende des Baums (z. B. Text nach "end."): die Datei.
@@ -215,13 +215,13 @@ end;
 
 function TFindingScopes.HeaderLine(ALine: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := High(FRoutines) downto 0 do
+  for mIndex := High(FRoutines) downto 0 do
   begin
-    if (FRoutines[Index].FirstLine <= ALine) and (ALine <= FRoutines[Index].LastLine) then
+    if (FRoutines[mIndex].FirstLine <= ALine) and (ALine <= FRoutines[mIndex].LastLine) then
     begin
-      Exit(FRoutines[Index].FirstLine);
+      Exit(FRoutines[mIndex].FirstLine);
     end;
   end;
   Result := -1;
@@ -229,11 +229,11 @@ end;
 
 function TFindingScopes.HasRoutine(const AName: string): Boolean;
 var
-  Item: TFindingScope;
+  mItem: TFindingScope;
 begin
-  for Item in FRoutines do
+  for mItem in FRoutines do
   begin
-    if SameText(Item.Name, AName) then
+    if SameText(mItem.Name, AName) then
     begin
       Exit(True);
     end;

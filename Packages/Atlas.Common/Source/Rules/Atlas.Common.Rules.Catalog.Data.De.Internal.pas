@@ -6,7 +6,7 @@
 interface
 
 const
-  CatalogLinesDeInternal: array[0..19] of string = (
+  cCatalogLinesDeInternal: array[0..19] of string = (
     '{',
     '      "id": "unused-suppression",',
     '      "name": "Ungenutzte Unterdrückung",',

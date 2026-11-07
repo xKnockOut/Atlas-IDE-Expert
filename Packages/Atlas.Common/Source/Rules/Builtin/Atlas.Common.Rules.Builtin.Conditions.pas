@@ -72,11 +72,11 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  ConstantConditionRuleId = 'constant-condition';
-  InfiniteLoopRuleId = 'infinite-loop';
-  LoopConditionUnchangedRuleId = 'loop-condition-unchanged';
-  RedundantJumpRuleId = 'redundant-jump';
-  LoopRunsAtMostOnceRuleId = 'loop-runs-at-most-once';
+  cConstantConditionRuleId = 'constant-condition';
+  cInfiniteLoopRuleId = 'infinite-loop';
+  cLoopConditionUnchangedRuleId = 'loop-condition-unchanged';
+  cRedundantJumpRuleId = 'redundant-jump';
+  cLoopRunsAtMostOnceRuleId = 'loop-runs-at-most-once';
 
 type
   TConstantConditionRule = class(TInterfacedObject, IRule)
@@ -215,69 +215,70 @@ end;
 
 function TConstantConditionRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(ConstantConditionRuleId, TRuleSeverity.Warning,
+  Result := TRuleDescriptor.Create(cConstantConditionRuleId, TRuleSeverity.Warning,
     cTexts[TConditionsText.ConstantTitle].Text);
 end;
 
 /// <summary>Text des Knotens; Folgezeilen um die Spalte des Knotens gegenüber AColumn ausgerückt.</summary>
 function Outdented(const AText: string; ANode: TSyntaxNode; AColumn: Integer): string;
 var
-  Lines: TArray<string>;
-  LineBreak: string;
-  Index, Shift, Remove: Integer;
+  mLines: TArray<string>;
+  mLineBreak: string;
+  mIndex, mShift, mRemove: Integer;
 begin
-  Lines := TTextLines.SplitLines(NodeText(AText, ANode), LineBreak);
-  Shift := ANode.StartPos.Character - AColumn;
-  if Shift > 0 then
+  mLines := TTextLines.SplitLines(NodeText(AText, ANode), mLineBreak);
+  mShift := ANode.StartPos.Character - AColumn;
+  if mShift > 0 then
   begin
-    for Index := 1 to High(Lines) do
+    for mIndex := 1 to High(mLines) do
     begin
-      Remove := TTextLines.IndentLength(Lines[Index]);
-      if Remove > Shift then
+      mRemove := TTextLines.IndentLength(mLines[mIndex]);
+      if mRemove > mShift then
       begin
-        Remove := Shift;
+        mRemove := mShift;
       end;
-      Lines[Index] := Copy(Lines[Index], Remove + 1, MaxInt);
+      mLines[mIndex] := Copy(mLines[mIndex], mRemove + 1, MaxInt);
     end;
   end;
-  Result := TTextLines.JoinLines(Lines, LineBreak);
+  Result := TTextLines.JoinLines(mLines, mLineBreak);
 end;
 
 /// <summary>Bereich, der eine ganze Anweisung entfernt: mit folgendem Semikolon und, wenn sie allein auf ihren
 /// Zeilen steht, mit den Zeilen.</summary>
 function StatementRemoval(const AText: string; ANode: TSyntaxNode): TTextRange;
 var
-  Lines: TLineTable;
-  First, Last, Probe: Integer;
+  mLines: TLineTable;
+  mFirst, mLast, mProbe: Integer;
 begin
-  Lines := TLineTable.Build(AText);
-  First := ANode.StartOffset;
-  Last := ANode.EndOffset;
-  Probe := Last;
-  while (Probe < Length(AText)) and CharInSet(AText[Probe + 1], [' ', #9]) do
+  mLines := TLineTable.Build(AText);
+  mFirst := ANode.StartOffset;
+  mLast := ANode.EndOffset;
+  mProbe := mLast;
+  while (mProbe < Length(AText)) and CharInSet(AText[mProbe + 1], [' ', #9]) do
   begin
-    Inc(Probe);
+    Inc(mProbe);
   end;
-  if (Probe < Length(AText)) and (AText[Probe + 1] = ';') then
+  if (mProbe < Length(AText)) and (AText[mProbe + 1] = ';') then
   begin
-    Last := Probe + 1;
+    mLast := mProbe + 1;
   end;
-  Probe := Last;
-  while (Probe < Length(AText)) and CharInSet(AText[Probe + 1], [' ', #9]) do
+  mProbe := mLast;
+  while (mProbe < Length(AText)) and CharInSet(AText[mProbe + 1], [' ', #9]) do
   begin
-    Inc(Probe);
+    Inc(mProbe);
   end;
-  if ((Probe = Length(AText)) or CharInSet(AText[Probe + 1], [#13, #10])) and
-    (Trim(Copy(AText, Lines.LineStart(ANode.StartPos.Line) + 1, First - Lines.LineStart(ANode.StartPos.Line))) = '') then
+  if ((mProbe = Length(AText)) or CharInSet(AText[mProbe + 1], [#13, #10])) and
+    (Trim(Copy(AText, mLines.LineStart(ANode.StartPos.Line) + 1, mFirst -
+      mLines.LineStart(ANode.StartPos.Line))) = '') then
   begin
-    First := Lines.LineStart(ANode.StartPos.Line);
-    Last := Lines.LineStart(Lines.PositionAt(Probe).Line + 1);
-    if Last <= Probe then
+    mFirst := mLines.LineStart(ANode.StartPos.Line);
+    mLast := mLines.LineStart(mLines.PositionAt(mProbe).Line + 1);
+    if mLast <= mProbe then
     begin
-      Last := Probe;
+      mLast := mProbe;
     end;
   end;
-  Result := TTextRange.Create(Lines.PositionAt(First), Lines.PositionAt(Last));
+  Result := TTextRange.Create(mLines.PositionAt(mFirst), mLines.PositionAt(mLast));
 end;
 
 /// <summary>Bedingung einer if-, while- oder repeat-Anweisung; nil bei anderen Knoten.</summary>
@@ -320,55 +321,55 @@ end;
 
 procedure TConstantConditionRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Values: TConditionValues;
-  Resolver: TNameResolver;
+  mValues: TConditionValues;
+  mResolver: TNameResolver;
   mCache: IRuleDerivedCache;
-  FileName: string;
+  mFileName: string;
 
   procedure ReportIf(ANode: TSyntaxNode; const AValue: TConstantValue);
   var
-    Message: string;
-    Fixes: TArray<TRuleFix>;
-    Branch: TSyntaxNode;
+    mMessage: string;
+    mFixes: TArray<TRuleFix>;
+    mBranch: TSyntaxNode;
   begin
-    Message := ConstantMessage(AValue);
-    Fixes := nil;
-    Branch := nil;
+    mMessage := ConstantMessage(AValue);
+    mFixes := nil;
+    mBranch := nil;
     if AValue.Bool and (ANode.ChildCount >= 2) then
     begin
-      Branch := ANode[1];
+      mBranch := ANode[1];
     end
     else if not AValue.Bool and (ANode.ChildCount >= 3) then
     begin
-      Branch := ANode[2];
+      mBranch := ANode[2];
     end;
-    if (Branch <> nil) and (Branch.Kind <> TSyntaxKind.EmptyStatement) then
+    if (mBranch <> nil) and (mBranch.Kind <> TSyntaxKind.EmptyStatement) then
     begin
       if AValue.Bool then
       begin
-        Fixes := [TRuleFix.Create(cTexts[TConditionsText.RemoveCondition].Text, [TRuleEdit.Create(NodeRange(ANode),
-          Outdented(AContext.Text, Branch, ANode.StartPos.Character))])];
+        mFixes := [TRuleFix.Create(cTexts[TConditionsText.RemoveCondition].Text, [TRuleEdit.Create(NodeRange(ANode),
+          Outdented(AContext.Text, mBranch, ANode.StartPos.Character))])];
       end
       else
       begin
-        Fixes := [TRuleFix.Create(cTexts[TConditionsText.RemoveDeadBranch].Text, [TRuleEdit.Create(NodeRange(ANode),
-          Outdented(AContext.Text, Branch, ANode.StartPos.Character))])];
+        mFixes := [TRuleFix.Create(cTexts[TConditionsText.RemoveDeadBranch].Text, [TRuleEdit.Create(NodeRange(ANode),
+          Outdented(AContext.Text, mBranch, ANode.StartPos.Character))])];
       end;
     end
     else if not AValue.Bool then
     begin
-      Fixes := [TRuleFix.Create(cTexts[TConditionsText.RemoveDeadBranch].Text,
+      mFixes := [TRuleFix.Create(cTexts[TConditionsText.RemoveDeadBranch].Text,
         [TRuleEdit.Create(StatementRemoval(AContext.Text, ANode),
         '')])];
     end;
-    AReport.Add(NodeRange(ANode[0]), Message, TRuleConfidence.High, Fixes);
+    AReport.Add(NodeRange(ANode[0]), mMessage, TRuleConfidence.High, mFixes);
   end;
 
   procedure CheckCondition(ANode, ACondition: TSyntaxNode);
   var
     mValue: TConstantValue;
   begin
-    mValue := Values.Evaluate(ACondition);
+    mValue := mValues.Evaluate(ACondition);
     if (mValue.Kind <> TConstantKind.Bool) or WantedEndless(ANode, ACondition) then
     begin
       Exit;
@@ -397,7 +398,7 @@ var
       begin
         mNode := mPending.Pop;
         mCondition := ConditionOf(mNode);
-        if (mCondition <> nil) and not Values.Conditional(mCondition) then
+        if (mCondition <> nil) and not mValues.Conditional(mCondition) then
         begin
           CheckCondition(mNode, mCondition);
         end;
@@ -416,18 +417,18 @@ begin
   begin
     Exit;
   end;
-  FileName := RuleFileName(AContext);
+  mFileName := RuleFileName(AContext);
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
-  Resolver := TRuleDerived.Resolver(mCache, AContext);
-  Resolver.PinTree(AContext.Tree, FileName);
-  Values := TConditionValues.Create(AContext.Tree, AContext.Text, FileName, Resolver,
+  mResolver := TRuleDerived.Resolver(mCache, AContext);
+  mResolver.PinTree(AContext.Tree, mFileName);
+  mValues := TConditionValues.Create(AContext.Tree, AContext.Text, mFileName, mResolver,
     TRuleOptions.Strings(AContext.Options, 'switchConstants', []));
   try
     Visit(AContext.Tree.Root);
   finally
-    Values.Free;
-    Resolver.UnpinTree;
+    mValues.Free;
+    mResolver.UnpinTree;
   end;
 end;
 
@@ -435,21 +436,21 @@ end;
 
 function TInfiniteLoopRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(InfiniteLoopRuleId, TRuleSeverity.Error, cTexts[TConditionsText.InfiniteTitle].Text);
+  Result := TRuleDescriptor.Create(cInfiniteLoopRuleId, TRuleSeverity.Error, cTexts[TConditionsText.InfiniteTitle].Text);
 end;
 
 procedure TInfiniteLoopRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Values: TConditionValues;
-  Resolver: TNameResolver;
+  mValues: TConditionValues;
+  mResolver: TNameResolver;
   mCache: IRuleDerivedCache;
-  Raising: TDictionary<string, Boolean>;
-  FileName: string;
+  mRaising: TDictionary<string, Boolean>;
+  mFileName: string;
 
   function Endless(ALoop: TSyntaxNode): Boolean;
   var
-    Index, First, Last: Integer;
-    Value: TConstantValue;
+    mIndex, mFirst, mLast: Integer;
+    mValue: TConstantValue;
   begin
     Result := False;
     if ALoop.ChildCount = 0 then
@@ -458,27 +459,27 @@ var
     end;
     if ALoop.Kind = TSyntaxKind.WhileStatement then
     begin
-      Value := Values.Evaluate(ALoop[0]);
-      if (Value.Kind <> TConstantKind.Bool) or not Value.Bool or Values.Conditional(ALoop[0]) then
+      mValue := mValues.Evaluate(ALoop[0]);
+      if (mValue.Kind <> TConstantKind.Bool) or not mValue.Bool or mValues.Conditional(ALoop[0]) then
       begin
         Exit;
       end;
-      First := 1;
-      Last := ALoop.ChildCount - 1;
+      mFirst := 1;
+      mLast := ALoop.ChildCount - 1;
     end
     else
     begin
-      Value := Values.Evaluate(ALoop[ALoop.ChildCount - 1]);
-      if (Value.Kind <> TConstantKind.Bool) or Value.Bool or Values.Conditional(ALoop[ALoop.ChildCount - 1]) then
+      mValue := mValues.Evaluate(ALoop[ALoop.ChildCount - 1]);
+      if (mValue.Kind <> TConstantKind.Bool) or mValue.Bool or mValues.Conditional(ALoop[ALoop.ChildCount - 1]) then
       begin
         Exit;
       end;
-      First := 0;
-      Last := ALoop.ChildCount - 2;
+      mFirst := 0;
+      mLast := ALoop.ChildCount - 2;
     end;
-    for Index := First to Last do
+    for mIndex := mFirst to mLast do
     begin
-      if HasExit(ALoop[Index], False, Raising) then
+      if HasExit(ALoop[mIndex], False, mRaising) then
       begin
         Exit;
       end;
@@ -488,38 +489,38 @@ var
 
   procedure Visit(ARoot: TSyntaxNode);
   var
-    Index: Integer;
-    Node, Condition: TSyntaxNode;
-    Pending: TStack<TSyntaxNode>;
+    mIndex: Integer;
+    mNode, mCondition: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
   begin
     // Iterativ (Bericht M1).
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ARoot);
-      while Pending.Count > 0 do
+      mPending.Push(ARoot);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if (Node.Kind in [TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement]) and Endless(Node) then
+        mNode := mPending.Pop;
+        if (mNode.Kind in [TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement]) and Endless(mNode) then
         begin
-          if Node.Kind = TSyntaxKind.WhileStatement then
+          if mNode.Kind = TSyntaxKind.WhileStatement then
           begin
-            AReport.Add(TTextRange.Create(Node.StartPos, Node[0].EndPos),
+            AReport.Add(TTextRange.Create(mNode.StartPos, mNode[0].EndPos),
               cTexts[TConditionsText.NoExit].Text, TRuleConfidence.High);
           end
           else
           begin
-            Condition := Node[Node.ChildCount - 1];
-            AReport.Add(NodeRange(Condition), cTexts[TConditionsText.NoExit].Text,
-              TRuleConfidence.High, [TRuleFix.Jump(cTexts[TConditionsText.JumpToHead].Text, Node.StartPos)]);
+            mCondition := mNode[mNode.ChildCount - 1];
+            AReport.Add(NodeRange(mCondition), cTexts[TConditionsText.NoExit].Text,
+              TRuleConfidence.High, [TRuleFix.Jump(cTexts[TConditionsText.JumpToHead].Text, mNode.StartPos)]);
           end;
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
@@ -528,19 +529,19 @@ begin
   begin
     Exit;
   end;
-  FileName := RuleFileName(AContext);
+  mFileName := RuleFileName(AContext);
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
-  Resolver := TRuleDerived.Resolver(mCache, AContext);
-  Resolver.PinTree(AContext.Tree, FileName);
-  Values := TConditionValues.Create(AContext.Tree, AContext.Text, FileName, Resolver, nil);
-  Raising := RaisingRoutines(AContext.Tree);
+  mResolver := TRuleDerived.Resolver(mCache, AContext);
+  mResolver.PinTree(AContext.Tree, mFileName);
+  mValues := TConditionValues.Create(AContext.Tree, AContext.Text, mFileName, mResolver, nil);
+  mRaising := RaisingRoutines(AContext.Tree);
   try
     Visit(AContext.Tree.Root);
   finally
-    Raising.Free;
-    Values.Free;
-    Resolver.UnpinTree;
+    mRaising.Free;
+    mValues.Free;
+    mResolver.UnpinTree;
   end;
 end;
 
@@ -548,7 +549,7 @@ end;
 
 const
   // Warteschleifen: Ein anderer Thread oder eine Nachricht ändert den Zustand.
-  WaitingCalls: array[0..8] of string = ('Sleep', 'ProcessMessages', 'WaitFor', 'Yield', 'SpinWait',
+  cWaitingCalls: array[0..8] of string = ('Sleep', 'ProcessMessages', 'WaitFor', 'Yield', 'SpinWait',
     'WaitForSingleObject', 'WaitForMultipleObjects', 'CheckSynchronize', 'HandleMessage');
 
 type
@@ -562,7 +563,7 @@ type
 
 function TLoopConditionUnchangedRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(LoopConditionUnchangedRuleId, TRuleSeverity.Warning,
+  Result := TRuleDescriptor.Create(cLoopConditionUnchangedRuleId, TRuleSeverity.Warning,
     cTexts[TConditionsText.UnchangedTitle].Text);
 end;
 
@@ -575,80 +576,80 @@ end;
 /// beginnt. AViaIndex: direkt auf den Bezeichner folgt [ ].</summary>
 function ChainRoot(ANode: TSyntaxNode; out AViaIndex: Boolean): TSyntaxNode;
 var
-  Previous: TSyntaxNode;
+  mPrevious: TSyntaxNode;
 begin
   AViaIndex := False;
-  Previous := nil;
+  mPrevious := nil;
   Result := ANode;
   while (Result <> nil) and (Result.ChildCount > 0) and ((Result.Kind in [TSyntaxKind.MemberAccess,
     TSyntaxKind.IndexAccess, TSyntaxKind.Call, TSyntaxKind.Dereference]) or
     ((Result.Kind = TSyntaxKind.ParenExpr) and (Result.ChildCount = 1))) do
   begin
-    Previous := Result;
+    mPrevious := Result;
     Result := Result[0];
   end;
   if (Result = nil) or (Result.Kind <> TSyntaxKind.Identifier) then
   begin
     Exit(nil);
   end;
-  AViaIndex := (Previous <> nil) and (Previous.Kind = TSyntaxKind.IndexAccess);
+  AViaIndex := (mPrevious <> nil) and (mPrevious.Kind = TSyntaxKind.IndexAccess);
 end;
 
 /// <summary>Enthält der Teilbaum einen Knoten der Art AKind?</summary>
 function Contains(ANode: TSyntaxNode; AKind: TSyntaxKind): Boolean;
 var
-  Index: Integer;
-  Node: TSyntaxNode;
-  Pending: TStack<TSyntaxNode>;
+  mIndex: Integer;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
 begin
   // Iterativ (Bericht M1).
   Result := False;
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ANode);
-    while Pending.Count > 0 do
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      if Node.Kind = AKind then
+      mNode := mPending.Pop;
+      if mNode.Kind = AKind then
       begin
         Exit(True);
       end;
-      for Index := Node.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(Node[Index]);
+        mPending.Push(mNode[mIndex]);
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
 /// <summary>Kommt im Teilbaum ein Bezeichner aus ANames vor (auch als Aufruf)?</summary>
 function Mentions(ANode: TSyntaxNode; const ANames: array of string): Boolean;
 var
-  Index: Integer;
-  Node: TSyntaxNode;
-  Pending: TStack<TSyntaxNode>;
+  mIndex: Integer;
+  mNode: TSyntaxNode;
+  mPending: TStack<TSyntaxNode>;
 begin
   // Iterativ (Bericht M1).
   Result := False;
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ANode);
-    while Pending.Count > 0 do
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      if (Node.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and MatchText(Node.Name, ANames) then
+      mNode := mPending.Pop;
+      if (mNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and MatchText(mNode.Name, ANames) then
       begin
         Exit(True);
       end;
-      for Index := Node.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(Node[Index]);
+        mPending.Push(mNode[mIndex]);
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
@@ -929,7 +930,7 @@ begin
   Result := False;
   for mStatement in ABody do
   begin
-    Result := Result or HasExit(mStatement, False, ARaising) or Mentions(mStatement, WaitingCalls) or
+    Result := Result or HasExit(mStatement, False, ARaising) or Mentions(mStatement, cWaitingCalls) or
       Mentions(mStatement, NestedRoutines(AOwner)) or Contains(mStatement, TSyntaxKind.WithStatement);
     for mVariable in AVariables do
     begin
@@ -940,10 +941,10 @@ end;
 
 procedure TLoopConditionUnchangedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Resolver: TNameResolver;
+  mResolver: TNameResolver;
   mCache: IRuleDerivedCache;
-  Raising: TDictionary<string, Boolean>;
-  FileName: string;
+  mRaising: TDictionary<string, Boolean>;
+  mFileName: string;
 
   /// <summary>Beurteilbarer Bezeichner der Bedingung: AIgnore bei True, False, nil, Konstanten und
   /// Aufzählungswerten; sonst eine Variable der Routine. False, wenn die Regel ihn nicht beurteilt.</summary>
@@ -960,7 +961,7 @@ var
     begin
       Exit(False);
     end;
-    mResolved := Resolver.ResolveChain(AContext.Tree, FileName, [ANode.Name], ANode.StartOffset);
+    mResolved := mResolver.ResolveChain(AContext.Tree, mFileName, [ANode.Name], ANode.StartOffset);
     AIgnore := mResolved.Found and (mResolved.SymbolKind in [TIndexSymbolKind.Constant,
       TIndexSymbolKind.EnumMember]);
     Result := mResolved.Found and (AIgnore or IsRoutineVariable(mResolved, ARoutine));
@@ -1014,7 +1015,7 @@ var
     end;
     LoopParts(ALoop, mCondition, mBody);
     if ConditionVariables(mCondition, mOwner, mVariables) and PlainNames(mVariables, mNames) and
-      not Captured(mOwner, mNames) and not BodyMayEnd(mBody, mOwner, mVariables, Raising) then
+      not Captured(mOwner, mNames) and not BodyMayEnd(mBody, mOwner, mVariables, mRaising) then
     begin
       AReport.Add(NodeRange(mCondition), LoopMessage(mVariables), TRuleConfidence.Medium);
     end;
@@ -1052,17 +1053,17 @@ begin
   begin
     Exit;
   end;
-  FileName := RuleFileName(AContext);
+  mFileName := RuleFileName(AContext);
   // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
   mCache := TRuleDerived.Open(AContext);
-  Resolver := TRuleDerived.Resolver(mCache, AContext);
-  Resolver.PinTree(AContext.Tree, FileName);
-  Raising := RaisingRoutines(AContext.Tree);
+  mResolver := TRuleDerived.Resolver(mCache, AContext);
+  mResolver.PinTree(AContext.Tree, mFileName);
+  mRaising := RaisingRoutines(AContext.Tree);
   try
     Visit(AContext.Tree.Root);
   finally
-    Raising.Free;
-    Resolver.UnpinTree;
+    mRaising.Free;
+    mResolver.UnpinTree;
   end;
 end;
 
@@ -1070,7 +1071,7 @@ end;
 
 function TRedundantJumpRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(RedundantJumpRuleId, TRuleSeverity.Hint,
+  Result := TRuleDescriptor.Create(cRedundantJumpRuleId, TRuleSeverity.Hint,
     cTexts[TConditionsText.RedundantTitle].Text);
 end;
 
@@ -1235,7 +1236,7 @@ end;
 
 function TLoopRunsAtMostOnceRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(LoopRunsAtMostOnceRuleId, TRuleSeverity.Warning,
+  Result := TRuleDescriptor.Create(cLoopRunsAtMostOnceRuleId, TRuleSeverity.Warning,
     cTexts[TConditionsText.OnceTitle].Text);
 end;
 
@@ -1554,7 +1555,7 @@ begin
   end;
   mName := CalledName(ANode[0]);
   mJump := JumpName(ANode[0]);
-  if MatchText(mJump, RaisingCalls) or (mName <> '') and FRaising.ContainsKey(LowerCase(mName)) or
+  if MatchText(mJump, cRaisingCalls) or (mName <> '') and FRaising.ContainsKey(LowerCase(mName)) or
     not FRaisingOnly and MatchText(mJump, ['Exit', 'Break']) then
   begin
     Result := mName;

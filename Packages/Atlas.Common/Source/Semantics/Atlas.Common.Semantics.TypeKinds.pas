@@ -38,7 +38,8 @@ type
     class function OfType(const AType: TResolvedSymbol): TResolvedTypeKind; overload; static;
     /// <summary>Wie oben; ADeclaredText ist der Typtext hinter "=" für Aliase, deren Kopf fehlt (lokale Typen).
     /// </summary>
-    class function OfType(const AType: TResolvedSymbol; const ADeclaredText: string): TResolvedTypeKind; overload; static;
+    class function OfType(const AType: TResolvedSymbol;
+      const ADeclaredText: string): TResolvedTypeKind; overload; static;
     /// <summary>Einfacher Wert ohne Mitglieder, Index und Dereferenzierung: Ganzzahl, Gleitkomma, Currency,
     /// Boolean, Zeichen oder Aufzählung.</summary>
     class function IsSimpleValue(AKind: TResolvedTypeKind): Boolean; static;
@@ -236,7 +237,8 @@ end;
 
 class function TResolvedTypeKinds.IsSimpleValue(AKind: TResolvedTypeKind): Boolean;
 begin
-  Result := AKind in [TResolvedTypeKind.Integer_, TResolvedTypeKind.Float, TResolvedTypeKind.Currency_, TResolvedTypeKind.Boolean_, TResolvedTypeKind.Char_,
+  Result := AKind in [TResolvedTypeKind.Integer_, TResolvedTypeKind.Float, TResolvedTypeKind.Currency_,
+    TResolvedTypeKind.Boolean_, TResolvedTypeKind.Char_,
     TResolvedTypeKind.Enumeration];
 end;
 

@@ -41,9 +41,9 @@ type
 
   TLspRationale = class
   public const
-    SectionKind = 'rationale';
+    cSectionKind = 'rationale';
     /// <summary>Ziel eines Issue-Links: issue:312.</summary>
-    IssuePrefix = 'issue:';
+    cIssuePrefix = 'issue:';
   public
     /// <summary>Einträge von ASymbol aus AUnit samt denen der Implementierung bzw. Deklaration derselben
     /// Routine, nach Zeile; ohne Doppelte.</summary>
@@ -58,7 +58,7 @@ type
     /// <summary>Wie ByMarkers; leer, wenn hints.rationale aus ist (Hover, get_declaration).</summary>
     class function Select(const AEntries: TArray<TRationaleEntry>; const AOptions: TRationaleOptions):
       TArray<TRationaleEntry>; static;
-    /// <summary>Ordner der ADR-Dateien: AFolder (hints.adrFolder, '' = TRationale.DefaultAdrFolder) relativ zu
+    /// <summary>Ordner der ADR-Dateien: AFolder (hints.adrFolder, '' = TRationale.cDefaultAdrFolder) relativ zu
     /// ARoot; absolute Pfade bleiben. '' für einen relativen Ordner ohne ARoot.</summary>
     class function AdrFolder(const AFolder, ARoot: string): string; static;
     /// <summary>Dateien (voller Pfad) im Ordner AFolder; leer, wenn er fehlt oder nicht lesbar ist.</summary>
@@ -272,7 +272,7 @@ begin
   Result := Trim(AFolder);
   if Result = '' then
   begin
-    Result := TRationale.DefaultAdrFolder;
+    Result := TRationale.cDefaultAdrFolder;
   end;
   Result := StringReplace(StringReplace(Result, '/', PathDelim, [rfReplaceAll]), '\', PathDelim, [rfReplaceAll]);
   if TPath.IsPathRooted(Result) then
@@ -341,7 +341,7 @@ begin
         Result := TJSONObject.Create;
         Result.AddPair('kind', 'link');
         Result.AddPair('text', AText);
-        Result.AddPair('target', TLspRationale.IssuePrefix + ALink.Key);
+        Result.AddPair('target', TLspRationale.cIssuePrefix + ALink.Key);
       end;
   else
     Result := TJSONObject.Create;
@@ -363,7 +363,7 @@ begin
   for mEntry in AEntries do
   begin
     mSection := TJSONObject.Create;
-    mSection.AddPair('kind', SectionKind);
+    mSection.AddPair('kind', cSectionKind);
     mSection.AddPair('name', mEntry.Marker);
     mSection.AddPair('line', TJSONNumber.Create(mEntry.Line));
     mRuns := TJSONArray.Create;

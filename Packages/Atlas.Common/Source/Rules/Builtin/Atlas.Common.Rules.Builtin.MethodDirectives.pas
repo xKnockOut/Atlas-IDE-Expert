@@ -36,7 +36,7 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  AbstractDeclarationInvalidRuleId = 'abstract-declaration-invalid';
+  cAbstractDeclarationInvalidRuleId = 'abstract-declaration-invalid';
 
 type
   TAbstractDeclarationInvalidRule = class(TInterfacedObject, IRule)
@@ -122,45 +122,45 @@ end;
 
 function TAbstractDeclarationInvalidRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(AbstractDeclarationInvalidRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cAbstractDeclarationInvalidRuleId, TRuleSeverity.Error,
     cTexts[TMethodDirectivesText.Title].Text);
 end;
 
 procedure TAbstractDeclarationInvalidRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TArray<TPascalToken>;
-  Paths: TArray<string>;
+  mTokens: TArray<TPascalToken>;
+  mPaths: TArray<string>;
   // Deklarierte Methoden je Klasse.Name (Großbuchstaben): Lookup suchte je Rumpf über alle (quadratisch).
-  Declared: TDictionary<string, TArray<TDeclaredMethod>>;
-  Lines: TArray<string>;
-  Cache: IRuleDerivedCache;
-  Ancestry: TAncestry;
+  mDeclared: TDictionary<string, TArray<TDeclaredMethod>>;
+  mLines: TArray<string>;
+  mCache: IRuleDerivedCache;
+  mAncestry: TAncestry;
 
   /// <summary>Erstes Token ab AOffset (Index); Length(Tokens) ohne.</summary>
   function TokenAt(AOffset: Integer): Integer;
   var
-    Low, High, Middle: Integer;
+    mLow, mHigh, mMiddle: Integer;
   begin
-    Low := 0;
-    High := Length(Tokens);
-    while Low < High do
+    mLow := 0;
+    mHigh := Length(mTokens);
+    while mLow < mHigh do
     begin
-      Middle := (Low + High) div 2;
-      if Tokens[Middle].Offset < AOffset then
+      mMiddle := (mLow + mHigh) div 2;
+      if mTokens[mMiddle].Offset < AOffset then
       begin
-        Low := Middle + 1;
+        mLow := mMiddle + 1;
       end
       else
       begin
-        High := Middle;
+        mHigh := mMiddle;
       end;
     end;
-    Result := Low;
+    Result := mLow;
   end;
 
   function TokenRange(AIndex: Integer): TTextRange;
   begin
-    Result := TTextRange.Create(Tokens[AIndex].StartPos, Tokens[AIndex].EndPos);
+    Result := TTextRange.Create(mTokens[AIndex].StartPos, mTokens[AIndex].EndPos);
   end;
 
   function DeclaredKey(const AClassName, AName: string): string;
@@ -174,24 +174,24 @@ var
     mGroup: TArray<TDeclaredMethod>;
   begin
     mKey := DeclaredKey(AMethod.ClassName, AMethod.Name);
-    if not Declared.TryGetValue(mKey, mGroup) then
+    if not mDeclared.TryGetValue(mKey, mGroup) then
     begin
       mGroup := nil;
     end;
-    Declared.AddOrSetValue(mKey, mGroup + [AMethod]);
+    mDeclared.AddOrSetValue(mKey, mGroup + [AMethod]);
   end;
 
   /// <summary>Token der Direktive ADirective im Kopf AHeader; -1 ohne.</summary>
   function DirectiveToken(AHeader: TSyntaxNode; const ADirective: string): Integer;
   var
-    Index: Integer;
+    mIndex: Integer;
   begin
-    for Index := 0 to AHeader.ChildCount - 1 do
+    for mIndex := 0 to AHeader.ChildCount - 1 do
     begin
-      if (AHeader[Index].Kind = TSyntaxKind.Directive) and SameText(AHeader[Index].Name, ADirective) then
+      if (AHeader[mIndex].Kind = TSyntaxKind.Directive) and SameText(AHeader[mIndex].Name, ADirective) then
       begin
-        Result := TokenAt(AHeader[Index].StartOffset);
-        if Result < Length(Tokens) then
+        Result := TokenAt(AHeader[mIndex].StartOffset);
+        if Result < Length(mTokens) then
         begin
           Exit;
         end;
@@ -207,100 +207,100 @@ var
 
   procedure CheckHeader(const AClassName: string; AHeader: TSyntaxNode);
   var
-    First, Abstract_, Final, Static: Integer;
-    IsVirtual, IsClassMethod: Boolean;
-    Method: TDeclaredMethod;
+    mFirst, mAbstract_, mFinal, mStatic: Integer;
+    mIsVirtual, mIsClassMethod: Boolean;
+    mMethod: TDeclaredMethod;
   begin
-    First := TokenAt(AHeader.StartOffset);
-    if First >= Length(Tokens) then
+    mFirst := TokenAt(AHeader.StartOffset);
+    if mFirst >= Length(mTokens) then
     begin
       Exit;
     end;
-    IsClassMethod := Tokens[First].IsKeyword('class');
-    IsVirtual := HasDirective(AHeader, 'virtual') or HasDirective(AHeader, 'dynamic') or
+    mIsClassMethod := mTokens[mFirst].IsKeyword('class');
+    mIsVirtual := HasDirective(AHeader, 'virtual') or HasDirective(AHeader, 'dynamic') or
       HasDirective(AHeader, 'override') or HasDirective(AHeader, 'message');
-    Abstract_ := DirectiveToken(AHeader, 'abstract');
-    Final := DirectiveToken(AHeader, 'final');
-    Static := DirectiveToken(AHeader, 'static');
-    if (Abstract_ >= 0) and not IsVirtual then
+    mAbstract_ := DirectiveToken(AHeader, 'abstract');
+    mFinal := DirectiveToken(AHeader, 'final');
+    mStatic := DirectiveToken(AHeader, 'static');
+    if (mAbstract_ >= 0) and not mIsVirtual then
     begin
-      AReport.Add(TokenRange(Abstract_), cTexts[TMethodDirectivesText.AbstractVirtual].Text,
+      AReport.Add(TokenRange(mAbstract_), cTexts[TMethodDirectivesText.AbstractVirtual].Text,
         TRuleConfidence.High, [TRuleFix.Create(cTexts[TMethodDirectivesText.InsertVirtual].Text,
-        [TRuleEdit.Create(TTextRange.Create(Tokens[Abstract_].StartPos, Tokens[Abstract_].StartPos), 'virtual; ')])]);
+        [TRuleEdit.Create(TTextRange.Create(mTokens[mAbstract_].StartPos, mTokens[mAbstract_].StartPos), 'virtual; ')])]);
     end;
-    if (Abstract_ >= 0) and (Final >= 0) then
+    if (mAbstract_ >= 0) and (mFinal >= 0) then
     begin
-      AReport.Add(TokenRange(Final), cTexts[TMethodDirectivesText.AbstractFinal].Fmt([AHeader.Name]),
+      AReport.Add(TokenRange(mFinal), cTexts[TMethodDirectivesText.AbstractFinal].Fmt([AHeader.Name]),
         TRuleConfidence.High);
     end
-    else if (Final >= 0) and not IsVirtual then
+    else if (mFinal >= 0) and not mIsVirtual then
     begin
-      AReport.Add(TokenRange(Final), cTexts[TMethodDirectivesText.FinalVirtual].Fmt([AHeader.Name]),
+      AReport.Add(TokenRange(mFinal), cTexts[TMethodDirectivesText.FinalVirtual].Fmt([AHeader.Name]),
         TRuleConfidence.High);
     end;
-    if Static >= 0 then
+    if mStatic >= 0 then
     begin
-      if not IsClassMethod then
+      if not mIsClassMethod then
       begin
-        AReport.Add(TokenRange(Static), cTexts[TMethodDirectivesText.StaticInstance].Fmt([AHeader.Name]),
+        AReport.Add(TokenRange(mStatic), cTexts[TMethodDirectivesText.StaticInstance].Fmt([AHeader.Name]),
           TRuleConfidence.High);
       end
-      else if IsVirtual or (Abstract_ >= 0) then
+      else if mIsVirtual or (mAbstract_ >= 0) then
       begin
-        AReport.Add(TokenRange(Static), cTexts[TMethodDirectivesText.StaticVirtual].Fmt([AHeader.Name]),
+        AReport.Add(TokenRange(mStatic), cTexts[TMethodDirectivesText.StaticVirtual].Fmt([AHeader.Name]),
           TRuleConfidence.High);
       end;
     end;
-    Method.ClassName := AClassName;
-    Method.Name := AHeader.Name;
-    Method.IsAbstract := Abstract_ >= 0;
-    Method.Path := TConditionalBranches.PathAt(Paths, First);
-    AddDeclared(Method);
+    mMethod.ClassName := AClassName;
+    mMethod.Name := AHeader.Name;
+    mMethod.IsAbstract := mAbstract_ >= 0;
+    mMethod.Path := TConditionalBranches.PathAt(mPaths, mFirst);
+    AddDeclared(mMethod);
   end;
 
   /// <summary>E2383: "class abstract sealed" bzw. "class sealed abstract". ASealed: die Klasse ist sealed,
   /// AAbstract: abstract.</summary>
   procedure CheckClassHeader(ABody: TSyntaxNode; out AAbstract, ASealed: Boolean);
   var
-    Index: Integer;
-    Abstract_, Sealed: Boolean;
+    mIndex: Integer;
+    mAbstract_, mSealed: Boolean;
   begin
     AAbstract := False;
     ASealed := False;
-    Index := TokenAt(ABody.StartOffset);
-    if (Index >= Length(Tokens)) or not Tokens[Index].IsKeyword('class') then
+    mIndex := TokenAt(ABody.StartOffset);
+    if (mIndex >= Length(mTokens)) or not mTokens[mIndex].IsKeyword('class') then
     begin
       Exit;
     end;
-    Abstract_ := False;
-    Sealed := False;
-    Inc(Index);
-    while (Index < Length(Tokens)) and (Tokens[Index].Kind in [TPascalTokenKind.Identifier,
+    mAbstract_ := False;
+    mSealed := False;
+    Inc(mIndex);
+    while (mIndex < Length(mTokens)) and (mTokens[mIndex].Kind in [TPascalTokenKind.Identifier,
       TPascalTokenKind.Keyword, TPascalTokenKind.Comment]) do
     begin
-      if Tokens[Index].Kind <> TPascalTokenKind.Comment then
+      if mTokens[mIndex].Kind <> TPascalTokenKind.Comment then
       begin
-        if SameText(Tokens[Index].Text, 'abstract') then
+        if SameText(mTokens[mIndex].Text, 'abstract') then
         begin
-          Abstract_ := True;
+          mAbstract_ := True;
         end
-        else if SameText(Tokens[Index].Text, 'sealed') then
+        else if SameText(mTokens[mIndex].Text, 'sealed') then
         begin
-          Sealed := True;
+          mSealed := True;
         end
         else
         begin
           Break;
         end;
-        AAbstract := Abstract_;
-        ASealed := Sealed;
-        if Abstract_ and Sealed then
+        AAbstract := mAbstract_;
+        ASealed := mSealed;
+        if mAbstract_ and mSealed then
         begin
-          AReport.Add(TokenRange(Index), cTexts[TMethodDirectivesText.AbstractSealedTitle].Text, TRuleConfidence.High);
+          AReport.Add(TokenRange(mIndex), cTexts[TMethodDirectivesText.AbstractSealedTitle].Text, TRuleConfidence.High);
           Exit;
         end;
       end;
-      Inc(Index);
+      Inc(mIndex);
     end;
   end;
 
@@ -309,9 +309,9 @@ var
   function NameToken(AFrom, AEnd: Integer; const AName: string): Integer;
   begin
     Result := AFrom;
-    while (Result < Length(Tokens)) and (Tokens[Result].Offset < AEnd) do
+    while (Result < Length(mTokens)) and (mTokens[Result].Offset < AEnd) do
     begin
-      if (Tokens[Result].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Result].Text, AName) then
+      if (mTokens[Result].Kind = TPascalTokenKind.Identifier) and SameText(mTokens[Result].Text, AName) then
       begin
         Exit;
       end;
@@ -358,9 +358,9 @@ var
     ReportOwnAbstract(ABody, mName);
     mOpen := nil;
     mOwners := nil;
-    if Ancestry.FindClass(mName, mLocation) and (mLocation.FileName = '') then
+    if mAncestry.FindClass(mName, mLocation) and (mLocation.FileName = '') then
     begin
-      mOpen := Ancestry.OpenAbstractMethods(mLocation, mOwners);
+      mOpen := mAncestry.OpenAbstractMethods(mLocation, mOwners);
     end;
     for mIndex := 0 to High(mOpen) do
     begin
@@ -456,20 +456,20 @@ var
   /// eine abstrakte (AAbstract)?</summary>
   procedure Lookup(const AClassName, AName, APath: string; out AAbstract, AConcrete: Boolean);
   var
-    Method: TDeclaredMethod;
+    mMethod: TDeclaredMethod;
     mGroup: TArray<TDeclaredMethod>;
   begin
     AAbstract := False;
     AConcrete := False;
-    if not Declared.TryGetValue(DeclaredKey(AClassName, AName), mGroup) then
+    if not mDeclared.TryGetValue(DeclaredKey(AClassName, AName), mGroup) then
     begin
       Exit;
     end;
-    for Method in mGroup do
+    for mMethod in mGroup do
     begin
-      if not TConditionalBranches.Exclusive(Method.Path, APath) then
+      if not TConditionalBranches.Exclusive(mMethod.Path, APath) then
       begin
-        if Method.IsAbstract then
+        if mMethod.IsAbstract then
         begin
           AAbstract := True;
         end
@@ -484,37 +484,37 @@ var
   /// <summary>Korrektur: den Rumpf mit seinen Zeilen und einer folgenden Leerzeile entfernen.</summary>
   function RemoveBody(ARoutine: TSyntaxNode): TArray<TRuleFix>;
   var
-    StartPos, EndPos: TTextPosition;
+    mStartPos, mEndPos: TTextPosition;
   begin
     Result := nil;
-    StartPos := ARoutine.StartPos;
-    EndPos := ARoutine.EndPos;
-    if (StartPos.Line >= Length(Lines)) or (EndPos.Line >= Length(Lines)) or
-      (Trim(Copy(Lines[StartPos.Line], 1, StartPos.Character)) <> '') or
-      (Trim(Copy(Lines[EndPos.Line], EndPos.Character + 1, MaxInt)) <> '') then
+    mStartPos := ARoutine.StartPos;
+    mEndPos := ARoutine.EndPos;
+    if (mStartPos.Line >= Length(mLines)) or (mEndPos.Line >= Length(mLines)) or
+      (Trim(Copy(mLines[mStartPos.Line], 1, mStartPos.Character)) <> '') or
+      (Trim(Copy(mLines[mEndPos.Line], mEndPos.Character + 1, MaxInt)) <> '') then
     begin
       Exit;
     end;
-    StartPos.Character := 0;
-    EndPos.Line := EndPos.Line + 1;
-    EndPos.Character := 0;
-    if (EndPos.Line < Length(Lines)) and (Trim(Lines[EndPos.Line]) = '') and (StartPos.Line > 0) and
-      (Trim(Lines[StartPos.Line - 1]) = '') then
+    mStartPos.Character := 0;
+    mEndPos.Line := mEndPos.Line + 1;
+    mEndPos.Character := 0;
+    if (mEndPos.Line < Length(mLines)) and (Trim(mLines[mEndPos.Line]) = '') and (mStartPos.Line > 0) and
+      (Trim(mLines[mStartPos.Line - 1]) = '') then
     begin
-      EndPos.Line := EndPos.Line + 1;
+      mEndPos.Line := mEndPos.Line + 1;
     end;
     Result := [TRuleFix.Create(cTexts[TMethodDirectivesText.RemoveBody].Text,
-      [TRuleEdit.Create(TTextRange.Create(StartPos, EndPos), '')])];
+      [TRuleEdit.Create(TTextRange.Create(mStartPos, mEndPos), '')])];
   end;
 
   /// <summary>Token des Methodennamens AName hinter dem Klassennamen im Kopf AHeader; -1 ohne.</summary>
   function QualifiedNameToken(AHeader: TSyntaxNode; const AName: string): Integer;
   begin
     Result := TokenAt(AHeader.StartOffset);
-    while (Result < Length(Tokens)) and (Tokens[Result].Offset < AHeader.EndOffset) do
+    while (Result < Length(mTokens)) and (mTokens[Result].Offset < AHeader.EndOffset) do
     begin
-      if (Result > 0) and Tokens[Result - 1].IsSymbol('.') and
-        (Tokens[Result].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Result].Text, AName) then
+      if (Result > 0) and mTokens[Result - 1].IsSymbol('.') and
+        (mTokens[Result].Kind = TPascalTokenKind.Identifier) and SameText(mTokens[Result].Text, AName) then
       begin
         Exit;
       end;
@@ -535,7 +535,7 @@ var
   var
     mAbstract, mConcrete: Boolean;
   begin
-    Lookup(AClassName, AName, TConditionalBranches.PathAt(Paths, TokenAt(ARoutine.StartOffset)), mAbstract,
+    Lookup(AClassName, AName, TConditionalBranches.PathAt(mPaths, TokenAt(ARoutine.StartOffset)), mAbstract,
       mConcrete);
     Result := mAbstract and not mConcrete;
   end;
@@ -571,17 +571,17 @@ var
   // Rekursion nur in den implementation-Abschnitt (höchstens zwei Ebenen, unabhängig von der Ausdruckstiefe).
   procedure VisitBodies(ANode: TSyntaxNode);
   var
-    Index: Integer;
+    mIndex: Integer;
   begin
-    for Index := 0 to ANode.ChildCount - 1 do
+    for mIndex := 0 to ANode.ChildCount - 1 do
     begin
-      if ANode[Index].Kind = TSyntaxKind.RoutineDecl then
+      if ANode[mIndex].Kind = TSyntaxKind.RoutineDecl then
       begin
-        CheckBody(ANode[Index]);
+        CheckBody(ANode[mIndex]);
       end
-      else if ANode[Index].Kind = TSyntaxKind.ImplementationSection then
+      else if ANode[mIndex].Kind = TSyntaxKind.ImplementationSection then
       begin
-        VisitBodies(ANode[Index]);
+        VisitBodies(ANode[mIndex]);
       end;
     end;
   end;
@@ -591,24 +591,24 @@ begin
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
-  Paths := TConditionalBranches.Paths(Tokens);
-  Lines := TTextLines.SplitLines(AContext.Text);
-  Cache := TRuleDerived.Open(AContext);
-  Declared := TDictionary<string, TArray<TDeclaredMethod>>.Create;
+  mTokens := AContext.Tree.Tokens;
+  mPaths := TConditionalBranches.Paths(mTokens);
+  mLines := TTextLines.SplitLines(AContext.Text);
+  mCache := TRuleDerived.Open(AContext);
+  mDeclared := TDictionary<string, TArray<TDeclaredMethod>>.Create;
   try
-    Ancestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(Cache, AContext));
+    mAncestry := TAncestry.Create(AContext.Index, TRuleDerived.UnitIndex(mCache, AContext));
     try
       Visit(AContext.Tree.Root);
     finally
-      Ancestry.Free;
+      mAncestry.Free;
     end;
-    if Declared.Count > 0 then
+    if mDeclared.Count > 0 then
     begin
       VisitBodies(AContext.Tree.Root);
     end;
   finally
-    Declared.Free;
+    mDeclared.Free;
   end;
 end;
 

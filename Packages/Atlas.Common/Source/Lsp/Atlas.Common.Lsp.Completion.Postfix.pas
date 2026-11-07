@@ -307,7 +307,7 @@ function TPostfixBuilder.Fits(const ATemplate: TPostfixTemplate): Boolean;
 begin
   Result := TPostfixTemplates.Applies(ATemplate, FTraits, FPostfix.InlineVar, FDescends) and
     not (ATemplate.Statement and (Trim(FLine.Before) <> '')) and
-    (MatchScore(ATemplate.Key, FContext.Prefix, FRequest.Matching) <> TFuzzyMatch.NoMatch);
+    (MatchScore(ATemplate.Key, FContext.Prefix, FRequest.Matching) <> TFuzzyMatch.cNoMatch);
 end;
 
 function TPostfixBuilder.DeclarationEdit(const ADeclaration: string; out AEdit: TRuleEdit): Boolean;
@@ -344,7 +344,7 @@ begin
   AItem := Default(TCompletionItem);
   AItem.Name := ATemplate.Key;
   AItem.Detail := ATemplate.Description;
-  AItem.Kind := KindSnippet;
+  AItem.Kind := cKindSnippet;
   // Der Editor filtert über "Ausdruck.Kürzel"; Atlas kennzeichnet den Eintrag als Postfix.
   AItem.FilterText := FLine.Expr + '.' + ATemplate.Key;
   AItem.Action := 'postfix';

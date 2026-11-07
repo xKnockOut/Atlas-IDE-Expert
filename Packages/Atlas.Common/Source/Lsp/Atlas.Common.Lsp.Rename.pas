@@ -67,8 +67,8 @@ type
 
   TLspRename = class
   public const
-    PrepareMethod = 'textDocument/prepareRename';
-    RenameMethod = 'textDocument/rename';
+    cPrepareMethod = 'textDocument/prepareRename';
+    cRenameMethod = 'textDocument/rename';
   private
     FStore: IDocumentStore;
     FIndex: ISymbolIndex;
@@ -182,21 +182,21 @@ const
 
 function TokenAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
 var
-  Index: Integer;
-  Token: TPascalToken;
+  mIndex: Integer;
+  mToken: TPascalToken;
 begin
-  for Index := 0 to High(ATokens) do
+  for mIndex := 0 to High(ATokens) do
   begin
-    Token := ATokens[Index];
-    if (Token.StartPos.Line > APosition.Line) or
-      ((Token.StartPos.Line = APosition.Line) and (Token.StartPos.Character > APosition.Character)) then
+    mToken := ATokens[mIndex];
+    if (mToken.StartPos.Line > APosition.Line) or
+      ((mToken.StartPos.Line = APosition.Line) and (mToken.StartPos.Character > APosition.Character)) then
     begin
       Break;
     end;
-    if (Token.Kind = TPascalTokenKind.Identifier) and (Token.EndPos.Line = APosition.Line) and
-      (APosition.Character <= Token.EndPos.Character) then
+    if (mToken.Kind = TPascalTokenKind.Identifier) and (mToken.EndPos.Line = APosition.Line) and
+      (APosition.Character <= mToken.EndPos.Character) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -234,8 +234,8 @@ end;
 
 procedure TLspRename.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterConcurrentRequest(PrepareMethod, HandlePrepare);
-  ADispatcher.RegisterConcurrentRequest(RenameMethod, HandleRename);
+  ADispatcher.RegisterConcurrentRequest(cPrepareMethod, HandlePrepare);
+  ADispatcher.RegisterConcurrentRequest(cRenameMethod, HandleRename);
 end;
 
 class function TLspRename.Capability: TJSONObject;
@@ -246,49 +246,49 @@ end;
 
 class function TLspRename.IsValidName(const AName: string): Boolean;
 var
-  Tokens: TArray<TPascalToken>;
+  mTokens: TArray<TPascalToken>;
 begin
-  Tokens := TPascalLexer.Tokenize(AName);
+  mTokens := TPascalLexer.Tokenize(AName);
   // Genau ein Bezeichner ohne &-Escape; reservierte Wörter liefert der Lexer als Keyword.
-  Result := (Length(Tokens) = 1) and (Tokens[0].Kind = TPascalTokenKind.Identifier) and
-    (Tokens[0].Text = AName) and (AName[1] <> '&');
+  Result := (Length(mTokens) = 1) and (mTokens[0].Kind = TPascalTokenKind.Identifier) and
+    (mTokens[0].Text = AName) and (AName[1] <> '&');
 end;
 
 class function TLspRename.Check(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
   const AFileName: string; const APosition: TTextPosition; const AFiles: TArray<string>): TRenameCheck;
 var
-  Index: Integer;
-  Targets: TArray<TDefinitionTarget>;
+  mIndex: Integer;
+  mTargets: TArray<TDefinitionTarget>;
 begin
   Result := Default(TRenameCheck);
-  Index := TokenAt(ATree.Tokens, APosition);
-  if Index < 0 then
+  mIndex := TokenAt(ATree.Tokens, APosition);
+  if mIndex < 0 then
   begin
     Result.Error := cTexts[TRenameText.ThereIsNoIdentifierHere].Text;
     Exit;
   end;
-  Result.Range := TTextRange.Create(ATree.Tokens[Index].StartPos, ATree.Tokens[Index].EndPos);
-  Result.Name := ATree.Tokens[Index].Text;
+  Result.Range := TTextRange.Create(ATree.Tokens[mIndex].StartPos, ATree.Tokens[mIndex].EndPos);
+  Result.Name := ATree.Tokens[mIndex].Text;
   if StartsStr('&', Result.Name) then
   begin
     Result.Name := Copy(Result.Name, 2, MaxInt);
   end;
-  Targets := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, APosition, True);
-  if Length(Targets) > 0 then
+  mTargets := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, APosition, True);
+  if Length(mTargets) > 0 then
   begin
-    Result.DeclarationFile := Targets[0].FileName;
+    Result.DeclarationFile := mTargets[0].FileName;
   end;
-  if Length(Targets) = 0 then
+  if Length(mTargets) = 0 then
   begin
     Result.Error := cTexts[TRenameText.IsNotKnown].Fmt([Result.Name]);
   end
-  else if not SameText(Targets[0].FileName, AFileName) and (IndexText(Targets[0].FileName, AFiles) < 0) then
+  else if not SameText(mTargets[0].FileName, AFileName) and (IndexText(mTargets[0].FileName, AFiles) < 0) then
   begin
     Result.Error := cTexts[TRenameText.IsDeclaredOutsideTheProject].Fmt([Result.Name,
-      ExtractFileName(Targets[0].FileName)]);
+      ExtractFileName(mTargets[0].FileName)]);
   end
-  else if (Targets[0].Range.StartPos.Line = 0) and (Targets[0].Range.StartPos.Character = 0) and
-    (Targets[0].Range.EndPos = Targets[0].Range.StartPos) then
+  else if (mTargets[0].Range.StartPos.Line = 0) and (mTargets[0].Range.StartPos.Character = 0) and
+    (mTargets[0].Range.EndPos = mTargets[0].Range.StartPos) then
   begin
     // Unit-Namen hängen am Dateinamen; das ist eine Dateioperation.
     Result.Error := cTexts[TRenameText.UnitsAreRenamedViaThe].Text;
@@ -332,32 +332,32 @@ end;
 /// bei globalen Namen aus verschiedenen Units (dort entscheidet die uses-Reihenfolge wie bisher).</summary>
 function Hides(const AWinner, ALoser: TResolvedSymbol): Boolean;
 var
-  Winner, Loser: Integer;
+  mWinner, mLoser: Integer;
 begin
-  Winner := ScopeRank(AWinner);
-  Loser := ScopeRank(ALoser);
-  if (Winner = 0) or (Loser = 0) then
+  mWinner := ScopeRank(AWinner);
+  mLoser := ScopeRank(ALoser);
+  if (mWinner = 0) or (mLoser = 0) then
   begin
     Exit(False);
   end;
-  if Winner <> Loser then
+  if mWinner <> mLoser then
   begin
-    Exit(Winner < Loser);
+    Exit(mWinner < mLoser);
   end;
-  Result := (Winner <> 3) or SameText(AWinner.FileName, ALoser.FileName);
+  Result := (mWinner <> 3) or SameText(AWinner.FileName, ALoser.FileName);
 end;
 
 /// <summary>Bezeichner ohne Punkt davor (Self.Name, Liste.Name bleiben unberührt).</summary>
 function IsUnqualified(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
 var
-  Before: Integer;
+  mBefore: Integer;
 begin
-  Before := AIndex - 1;
-  while (Before >= 0) and (ATokens[Before].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+  mBefore := AIndex - 1;
+  while (mBefore >= 0) and (ATokens[mBefore].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
   begin
-    Dec(Before);
+    Dec(mBefore);
   end;
-  Result := (Before < 0) or not ATokens[Before].IsSymbol('.');
+  Result := (mBefore < 0) or not ATokens[mBefore].IsSymbol('.');
 end;
 
 function ConflictText(const AFileName: string; const AToken: TPascalToken; const ANewName: string;
@@ -532,11 +532,11 @@ end;
 
 function HasHandler(const ARenames: TArray<THandlerRename>; const AOldName: string): Boolean;
 var
-  Rename: THandlerRename;
+  mRename: THandlerRename;
 begin
-  for Rename in ARenames do
+  for mRename in ARenames do
   begin
-    if SameText(Rename.OldName, AOldName) then
+    if SameText(mRename.OldName, AOldName) then
     begin
       Exit(True);
     end;
@@ -738,7 +738,7 @@ begin
   begin
     if not SameText(ExtractFileExt(mEdit.FileName), '.pas') and TFileEncoding.IsBinaryFormFile(mEdit.FileName) then
     begin
-      raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, cTexts[TRenameText.IsAFormStoredAs].Fmt([
+      raise EJsonRpcError.Create(TLspErrorCode.cRequestFailed, cTexts[TRenameText.IsAFormStoredAs].Fmt([
         ExtractFileName(mEdit.FileName)]));
     end;
   end;
@@ -788,13 +788,13 @@ begin
   AUnchanged := nil;
   if not IsValidName(ARequest.NewName) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TRenameText.IsNotAValidIdentifier].Fmt([
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TRenameText.IsNotAValidIdentifier].Fmt([
       ARequest.NewName]));
   end;
   mChecked := Check(AResolver, AIndex, ATree, ASearch.FileName, ASearch.Position, ASearch.Files);
   if mChecked.Error <> '' then
   begin
-    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, mChecked.Error);
+    raise EJsonRpcError.Create(TLspErrorCode.cRequestFailed, mChecked.Error);
   end;
   mScope.Resolver := AResolver;
   mScope.Index := AIndex;
@@ -807,7 +807,7 @@ begin
   mReason := Conflict(AResolver, ATree, mScope.Search, ARequest.NewName, mLocations);
   if mReason <> '' then
   begin
-    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, mReason);
+    raise EJsonRpcError.Create(TLspErrorCode.cRequestFailed, mReason);
   end;
   Result := LocationEdits(mLocations, ARequest.NewName) + TypeCommentEdits(mScope, mChecked);
   if ARequest.RenameHandlers and Assigned(ASearch.ReadText) then
@@ -832,46 +832,46 @@ end;
 function TLspRename.HandlePrepare(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
-  Cancellation: IPascalCancellation;
-  Uri: string;
-  PositionValue: TJSONValue;
-  Document: ITextDocument;
-  Tree: TSyntaxTree;
-  Shared: ISharedSyntaxTree;
-  Resolver: TNameResolver;
-  Checked: TRenameCheck;
-  Files: TArray<string>;
+  mCancellation: IPascalCancellation;
+  mUri: string;
+  mPositionValue: TJSONValue;
+  mDocument: ITextDocument;
+  mTree: TSyntaxTree;
+  mShared: ISharedSyntaxTree;
+  mResolver: TNameResolver;
+  mChecked: TRenameCheck;
+  mFiles: TArray<string>;
 begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
-    TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
+    TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPositionValue)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      cTexts[TRenameText.FieldsTextDocumentUriAndPosition].Text + PrepareMethod);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TRenameText.FieldsTextDocumentUriAndPosition].Text + cPrepareMethod);
   end;
-  if not FStore.TryGet(Uri, Document) then
+  if not FStore.TryGet(mUri, mDocument) then
   begin
     Exit(TJSONNull.Create);
   end;
-  Files := ProjectFiles;
-  Cancellation := TRequestCancellation.Create(ACancellation);
-  Shared := TSyntaxTreeCache.Get(Document, Cancellation);
-  Tree := Shared.Tree;
-  Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
+  mFiles := ProjectFiles;
+  mCancellation := TRequestCancellation.Create(ACancellation);
+  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
+  mTree := mShared.Tree;
+  mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
-    Resolver.Namespaces := Namespaces;
-    Checked := Check(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri), TLspPositions.ReadPosition(PositionValue),
-      Files);
+    mResolver.Namespaces := Namespaces;
+    mChecked := Check(mResolver, FIndex, mTree, TDocumentUris.ToPath(mUri), TLspPositions.ReadPosition(mPositionValue),
+      mFiles);
   finally
-    Resolver.Free;
+    mResolver.Free;
   end;
   // Der Editor zeigt die Fehlermeldung an.
-  if Checked.Error <> '' then
+  if mChecked.Error <> '' then
   begin
-    raise EJsonRpcError.Create(TLspErrorCode.RequestFailed, Checked.Error);
+    raise EJsonRpcError.Create(TLspErrorCode.cRequestFailed, mChecked.Error);
   end;
   Result := TJSONObject.Create;
-  TJSONObject(Result).AddPair('range', TLspPositions.RangeToJson(Checked.Range));
-  TJSONObject(Result).AddPair('placeholder', Checked.Name);
+  TJSONObject(Result).AddPair('range', TLspPositions.RangeToJson(mChecked.Range));
+  TJSONObject(Result).AddPair('placeholder', mChecked.Name);
 end;
 
 /// <summary>Ersetzungen je Datei als "changes" einer WorkspaceEdit.</summary>
@@ -950,8 +950,8 @@ begin
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPosition) and
     TJSONObject(AParams).TryGetValue<string>('newName', mNewName)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      cTexts[TRenameText.FieldsTextDocumentUriPositionAnd].Text + RenameMethod);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TRenameText.FieldsTextDocumentUriPositionAnd].Text + cRenameMethod);
   end;
   if not FStore.TryGet(mUri, mDocument) then
   begin

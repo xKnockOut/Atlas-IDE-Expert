@@ -25,27 +25,27 @@ implementation
 class function TMcpFreshness.Changes(const AIndex: ISymbolIndex; const AFileSystem: IIndexFileSystem;
   const AFiles: TArray<string>): TArray<TFileChange>;
 var
-  FileName: string;
-  UnitIndex: TUnitIndex;
-  Stamp: Int64;
-  Indexed, Exists: Boolean;
+  mFileName: string;
+  mUnitIndex: TUnitIndex;
+  mStamp: Int64;
+  mIndexed, mExists: Boolean;
 begin
   Result := nil;
-  for FileName in AFiles do
+  for mFileName in AFiles do
   begin
-    Indexed := AIndex.FindFile(FileName, UnitIndex);
-    Exists := AFileSystem.FileStamp(FileName, Stamp);
-    if Indexed and not Exists then
+    mIndexed := AIndex.FindFile(mFileName, mUnitIndex);
+    mExists := AFileSystem.FileStamp(mFileName, mStamp);
+    if mIndexed and not mExists then
     begin
-      Result := Result + [TFileChange.Create(FileName, TFileChangeKind.Deleted)];
+      Result := Result + [TFileChange.Create(mFileName, TFileChangeKind.Deleted)];
     end
-    else if Indexed and (Stamp <> UnitIndex.Stamp) then
+    else if mIndexed and (mStamp <> mUnitIndex.Stamp) then
     begin
-      Result := Result + [TFileChange.Create(FileName, TFileChangeKind.Changed)];
+      Result := Result + [TFileChange.Create(mFileName, TFileChangeKind.Changed)];
     end
-    else if not Indexed and Exists then
+    else if not mIndexed and mExists then
     begin
-      Result := Result + [TFileChange.Create(FileName, TFileChangeKind.Created)];
+      Result := Result + [TFileChange.Create(mFileName, TFileChangeKind.Created)];
     end;
   end;
 end;

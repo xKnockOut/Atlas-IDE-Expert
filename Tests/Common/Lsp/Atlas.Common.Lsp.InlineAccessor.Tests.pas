@@ -279,7 +279,7 @@ var
   Answer: TJSONObject;
   Text: string;
 begin
-  Answer := Run(FIndex, 14, TLspInlineAccessor.ScopeHere);
+  Answer := Run(FIndex, 14, TLspInlineAccessor.cScopeHere);
   try
     Assert.AreEqual(2, (Answer.GetValue('accessors') as TJSONNumber).AsInt);
     Assert.AreEqual('', Warnings(Answer));
@@ -298,7 +298,7 @@ var
   Answer: TJSONObject;
   Text: string;
 begin
-  Answer := Run(FIndex, 15, TLspInlineAccessor.ScopeHere);
+  Answer := Run(FIndex, 15, TLspInlineAccessor.cScopeHere);
   try
     Assert.AreEqual(1, (Answer.GetValue('accessors') as TJSONNumber).AsInt);
     Assert.AreEqual('TFoo.GetCount bleibt: Es wird noch aufgerufen (Use.pas:9).|', Warnings(Answer));
@@ -315,12 +315,12 @@ begin
   Assert.WillRaiseWithMessage(
     procedure
     begin
-      Run(FIndex, 12, TLspInlineAccessor.ScopeHere).Free;
+      Run(FIndex, 12, TLspInlineAccessor.cScopeHere).Free;
     end, EJsonRpcError, 'TFoo.GetCount bleibt: Es wird noch aufgerufen (Use.pas:9).');
   Assert.WillRaiseWithMessage(
     procedure
     begin
-      Run(FIndex, 20, TLspInlineAccessor.ScopeHere).Free;
+      Run(FIndex, 20, TLspInlineAccessor.cScopeHere).Free;
     end, EJsonRpcError, 'GetTitle implementiert eine Methode von ITitled.');
 end;
 
@@ -329,7 +329,7 @@ var
   Answer: TJSONObject;
   Text: string;
 begin
-  Answer := Run(FIndex, 5, TLspInlineAccessor.ScopeUnit);
+  Answer := Run(FIndex, 5, TLspInlineAccessor.cScopeUnit);
   try
     Assert.AreEqual(3, (Answer.GetValue('accessors') as TJSONNumber).AsInt);
     Assert.AreEqual(1, (Answer.GetValue('files') as TJSONNumber).AsInt);
@@ -347,7 +347,7 @@ var
   Answer: TJSONObject;
   Text: string;
 begin
-  Answer := Run(FIndex, 5, TLspInlineAccessor.ScopeProject);
+  Answer := Run(FIndex, 5, TLspInlineAccessor.cScopeProject);
   try
     Assert.AreEqual(4, (Answer.GetValue('accessors') as TJSONNumber).AsInt);
     Assert.AreEqual(2, (Answer.GetValue('files') as TJSONNumber).AsInt);

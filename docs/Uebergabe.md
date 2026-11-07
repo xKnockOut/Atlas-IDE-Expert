@@ -1,3 +1,10 @@
+﻿## Präfixe und Zeilenlänge in Atlas.Common (06./07.11.2026, Branch `claude/project-thread-i9dwl9` auf `Pilot-2.0.0-beta.1`)
+- Wunsch Marco: naming-prefix und line-length im Code beheben, je Package ein PR; öffentliche Konstanten bekommen auch `c` (Marco 06.11. 18:48), mit allen Verwendungen in allen Packages.
+- Lokale Namen über die Umbenennen-Korrektur der Regel (`--fix naming-prefix` mit einem Server, dessen Korrektur als safeFix markiert ist, nur lokal gebaut), der Rest über MCP `rename_symbol` als Vorschau und gesammelt angewendet; lange Zeilen mit eigenem Umbrecher. Werkzeuge und Fallen: `/mnt/project-files/werkzeuge/naming/ANLEITUNG.md`.
+- Falle: rename_symbol lässt Stellen aus, die es nicht sicher zuordnen kann (Array-Grenzen, `Unit.Name`, unbekannte Ausdruckstypen, Unit-Konstanten in anderen Units); nachgezogen per Übersetzen und Grep. Parallele schreibende rename_symbol-Aufrufe überschreiben sich.
+- `Tools/Update-RuleCatalog.ps1` erzeugt jetzt `cCatalogLines*`.
+- Geprüft (Cloud): AtlasServer übersetzt; FPC-Tests aller Common-Testunits wie auf Pilot (gleiche Fehlschläge, keine neuen); Check-Skripte grün. IDE-Packages nicht übersetzbar in der Cloud: Delphi-Build nötig.
+- Offen: Atlas.IDE.Base (dieser Thread), danach je Modul ein Thread über den Koordinator.
 ## IDE-Start 60 s mit Willkommensseite (06.11.2026, Branch `claude/project-thread-a48wa8` auf `Pilot-2.0.0-beta.1`)
 
 - **Befund:** Nach der Installation von 2.0.0-beta.1 aus dem Release-Paket dauerte Marcos IDE-Start 60 s (vorher 0,7–6,5 s), `atlas.log`: „davon Atlas 9563 ms: Welcome 9091 ms“. Ohne „Neu in Atlas“ und „Atlas entdecken“ wieder 4,8 s.

@@ -22,10 +22,10 @@ uses
 type
   TCompletionSameNames = class
   public const
-    InsertPrefix = 'prefix';
-    InsertPrefixAdd = 'prefixAdd';
-    InsertMove = 'move';
-    InsertAdd = 'add';
+    cInsertPrefix = 'prefix';
+    cInsertPrefixAdd = 'prefixAdd';
+    cInsertMove = 'move';
+    cInsertAdd = 'add';
   public
     /// <summary>FireMonkey-Unit (FMX oder FMX.*)?</summary>
     class function IsFmx(const AUnitName: string): Boolean; static;
@@ -56,20 +56,20 @@ begin
   begin
     if AInsert = TCompletionSameNameInsert.Uses_ then
     begin
-      Result := InsertAdd;
+      Result := cInsertAdd;
     end
     else
     begin
-      Result := InsertPrefixAdd;
+      Result := cInsertPrefixAdd;
     end;
   end
   else if (AInsert = TCompletionSameNameInsert.Uses_) and AMovable then
   begin
-    Result := InsertMove;
+    Result := cInsertMove;
   end
   else
   begin
-    Result := InsertPrefix;
+    Result := cInsertPrefix;
   end;
 end;
 

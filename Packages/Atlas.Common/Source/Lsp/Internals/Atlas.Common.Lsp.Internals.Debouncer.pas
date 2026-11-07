@@ -49,7 +49,7 @@ type
 implementation
 
 const
-  WaitForever = Cardinal($FFFFFFFF);
+  cWaitForever = Cardinal($FFFFFFFF);
 
 { TDebouncer }
 
@@ -87,18 +87,18 @@ end;
 
 procedure TDebouncer.Schedule(const AKey: string; const AAction: TProc);
 var
-  Pending: TPending;
+  mPending: TPending;
 begin
   if FThread = nil then
   begin
     RunAction(AAction);
     Exit;
   end;
-  Pending.Due := TThread.GetTickCount64 + FDelay;
-  Pending.Action := AAction;
+  mPending.Due := TThread.GetTickCount64 + FDelay;
+  mPending.Action := AAction;
   TMonitor.Enter(FPending);
   try
-    FPending.AddOrSetValue(AKey, Pending);
+    FPending.AddOrSetValue(AKey, mPending);
     TMonitor.PulseAll(FPending);
   finally
     TMonitor.Exit(FPending);
@@ -118,19 +118,19 @@ end;
 
 function TDebouncer.WaitIdle(ATimeoutMs: Cardinal): Boolean;
 var
-  Deadline, Ticks: UInt64;
+  mDeadline, mTicks: UInt64;
 begin
-  Deadline := TThread.GetTickCount64 + ATimeoutMs;
+  mDeadline := TThread.GetTickCount64 + ATimeoutMs;
   TMonitor.Enter(FPending);
   try
     while (FPending.Count > 0) or FRunning do
     begin
-      Ticks := TThread.GetTickCount64;
-      if Ticks >= Deadline then
+      mTicks := TThread.GetTickCount64;
+      if mTicks >= mDeadline then
       begin
         Exit(False);
       end;
-      TMonitor.Wait(FPending, Cardinal(Deadline - Ticks));
+      TMonitor.Wait(FPending, Cardinal(mDeadline - mTicks));
     end;
     Result := True;
   finally
@@ -140,38 +140,38 @@ end;
 
 function TDebouncer.TakeDue(out AAction: TProc): Boolean;
 var
-  Pair: TPair<string, TPending>;
-  FirstKey: string;
-  FirstDue: UInt64;
-  Ticks: UInt64;
+  mPair: TPair<string, TPending>;
+  mFirstKey: string;
+  mFirstDue: UInt64;
+  mTicks: UInt64;
 begin
   // Wartet unter der Sperre, bis eine Aktion fällig ist; False beim Beenden.
   AAction := nil;
   while not FStopping do
   begin
-    FirstKey := '';
-    FirstDue := High(UInt64);
-    for Pair in FPending do
+    mFirstKey := '';
+    mFirstDue := High(UInt64);
+    for mPair in FPending do
     begin
-      if Pair.Value.Due < FirstDue then
+      if mPair.Value.Due < mFirstDue then
       begin
-        FirstKey := Pair.Key;
-        FirstDue := Pair.Value.Due;
+        mFirstKey := mPair.Key;
+        mFirstDue := mPair.Value.Due;
       end;
     end;
-    Ticks := TThread.GetTickCount64;
-    if FirstDue = High(UInt64) then
+    mTicks := TThread.GetTickCount64;
+    if mFirstDue = High(UInt64) then
     begin
-      TMonitor.Wait(FPending, WaitForever);
+      TMonitor.Wait(FPending, cWaitForever);
     end
-    else if FirstDue > Ticks then
+    else if mFirstDue > mTicks then
     begin
-      TMonitor.Wait(FPending, Cardinal(FirstDue - Ticks));
+      TMonitor.Wait(FPending, Cardinal(mFirstDue - mTicks));
     end
     else
     begin
-      AAction := FPending[FirstKey].Action;
-      FPending.Remove(FirstKey);
+      AAction := FPending[mFirstKey].Action;
+      FPending.Remove(mFirstKey);
       FRunning := True;
       Exit(True);
     end;
@@ -181,21 +181,21 @@ end;
 
 procedure TDebouncer.Execute;
 var
-  Action: TProc;
-  Found: Boolean;
+  mAction: TProc;
+  mFound: Boolean;
 begin
   repeat
     TMonitor.Enter(FPending);
     try
-      Found := TakeDue(Action);
+      mFound := TakeDue(mAction);
     finally
       TMonitor.Exit(FPending);
     end;
-    if Found then
+    if mFound then
     begin
-      RunAction(Action);
+      RunAction(mAction);
       // Die Aktion samt eingefangener Variablen erst freigeben, dann Ruhe melden.
-      Action := nil;
+      mAction := nil;
       TMonitor.Enter(FPending);
       try
         FRunning := False;
@@ -204,7 +204,7 @@ begin
         TMonitor.Exit(FPending);
       end;
     end;
-  until not Found;
+  until not mFound;
 end;
 
 procedure TDebouncer.RunAction(const AAction: TProc);

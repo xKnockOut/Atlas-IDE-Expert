@@ -50,8 +50,8 @@ type
 
   TLspDebugDisplay = class
   public const
-    Command = 'atlas.server.debugDisplayRules';
-    MaxDepth = 32;
+    cCommand = 'atlas.server.debugDisplayRules';
+    cMaxDepth = 32;
   private
     FSourceFor: TLspMetricsSourceFunc;
     FReadText: TMetricsReadText;
@@ -89,9 +89,9 @@ uses
   Atlas.Common.Documents.Uris;
 
 const
-  RuleKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType];
-  ClassKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType];
-  OriginNames: array[TDebugDisplayOrigin] of string = ('comment', 'attribute', 'project');
+  cRuleKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType];
+  cClassKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType];
+  cOriginNames: array[TDebugDisplayOrigin] of string = ('comment', 'attribute', 'project');
 
 { TLspDebugDisplay }
 
@@ -109,49 +109,49 @@ end;
 
 class function TLspDebugDisplay.ShortName(const ATypeName: string): string;
 var
-  Angle, Dot: Integer;
+  mAngle, mDot: Integer;
 begin
   Result := Trim(ATypeName);
-  Angle := Pos('<', Result);
-  if Angle > 0 then
+  mAngle := Pos('<', Result);
+  if mAngle > 0 then
   begin
-    Result := Copy(Result, 1, Angle - 1);
+    Result := Copy(Result, 1, mAngle - 1);
   end;
-  Dot := LastDelimiter('.', Result);
-  if Dot > 0 then
+  mDot := LastDelimiter('.', Result);
+  if mDot > 0 then
   begin
-    Result := Copy(Result, Dot + 1, MaxInt);
+    Result := Copy(Result, mDot + 1, MaxInt);
   end;
 end;
 
 class function TLspDebugDisplay.RulesOfUnit(const AUnit: TUnitIndex;
   const AText: string): TArray<TLspDebugDisplayRule>;
 var
-  Lines: TArray<string>;
-  Symbol: TIndexSymbol;
-  Rule: TLspDebugDisplayRule;
+  mLines: TArray<string>;
+  mSymbol: TIndexSymbol;
+  mRule: TLspDebugDisplayRule;
 begin
   Result := nil;
   if not MayContainRules(AText) then
   begin
     Exit;
   end;
-  Lines := TTextLines.SplitLines(AText);
-  for Symbol in AUnit.Symbols do
+  mLines := TTextLines.SplitLines(AText);
+  for mSymbol in AUnit.Symbols do
   begin
-    if not (Symbol.Kind in RuleKinds) or (Symbol.FileName <> '') then
+    if not (mSymbol.Kind in cRuleKinds) or (mSymbol.FileName <> '') then
     begin
       Continue;
     end;
-    Rule := Default(TLspDebugDisplayRule);
-    if not TDebugDisplayText.RuleAbove(Lines, Symbol.Range.StartPos.Line, Rule.Source) then
+    mRule := Default(TLspDebugDisplayRule);
+    if not TDebugDisplayText.RuleAbove(mLines, mSymbol.Range.StartPos.Line, mRule.Source) then
     begin
       Continue;
     end;
-    Rule.Name := Symbol.QualifiedName;
-    Rule.TypeName := AUnit.UnitName + '.' + Rule.Name;
-    Rule.FileName := AUnit.FileName;
-    Result := Result + [Rule];
+    mRule.Name := mSymbol.QualifiedName;
+    mRule.TypeName := AUnit.UnitName + '.' + mRule.Name;
+    mRule.FileName := AUnit.FileName;
+    Result := Result + [mRule];
   end;
 end;
 
@@ -198,7 +198,7 @@ begin
   end;
   for mLocation in AIndex.FindSymbols(AName) do
   begin
-    if mLocation.Symbol.Kind in ClassKinds then
+    if mLocation.Symbol.Kind in cClassKinds then
     begin
       Exit(FirstAncestor(mLocation.Symbol));
     end;
@@ -215,7 +215,7 @@ begin
   Result := '';
   mAncestor := FirstAncestor(ASymbol);
   mDepth := 0;
-  while (mAncestor <> '') and (mDepth < TLspDebugDisplay.MaxDepth) do
+  while (mAncestor <> '') and (mDepth < TLspDebugDisplay.cMaxDepth) do
   begin
     if AOwners.TryGetValue(LowerCase(mAncestor), Result) then
     begin
@@ -246,7 +246,7 @@ begin
     begin
       for mSymbol in mUnit.Symbols do
       begin
-        if not (mSymbol.Kind in ClassKinds) or mOwners.ContainsKey(LowerCase(mSymbol.Name)) then
+        if not (mSymbol.Kind in cClassKinds) or mOwners.ContainsKey(LowerCase(mSymbol.Name)) then
         begin
           Continue;
         end;
@@ -319,87 +319,87 @@ end;
 class function TLspDebugDisplay.ToJson(const ARules: TArray<TLspDebugDisplayRule>;
   const AInherits: TArray<TLspDebugDisplayInherit>): string;
 var
-  Root, Item: TJSONObject;
-  List, Children: TJSONArray;
-  Rule: TLspDebugDisplayRule;
-  Inherit: TLspDebugDisplayInherit;
-  Name: string;
+  mRoot, mItem: TJSONObject;
+  mList, mChildren: TJSONArray;
+  mRule: TLspDebugDisplayRule;
+  mInherit: TLspDebugDisplayInherit;
+  mName: string;
 begin
-  Root := TJSONObject.Create;
+  mRoot := TJSONObject.Create;
   try
-    Root.AddPair('format', TJSONNumber.Create(1));
-    List := TJSONArray.Create;
-    Root.AddPair('rules', List);
-    for Rule in ARules do
+    mRoot.AddPair('format', TJSONNumber.Create(1));
+    mList := TJSONArray.Create;
+    mRoot.AddPair('rules', mList);
+    for mRule in ARules do
     begin
-      Item := TJSONObject.Create;
-      List.AddElement(Item);
-      Item.AddPair('type', Rule.TypeName);
-      Item.AddPair('name', Rule.Name);
-      if Rule.Source.HasTemplate then
+      mItem := TJSONObject.Create;
+      mList.AddElement(mItem);
+      mItem.AddPair('type', mRule.TypeName);
+      mItem.AddPair('name', mRule.Name);
+      if mRule.Source.HasTemplate then
       begin
-        Item.AddPair('template', Rule.Source.Template);
+        mItem.AddPair('template', mRule.Source.Template);
       end;
-      if Rule.Source.Children <> nil then
+      if mRule.Source.Children <> nil then
       begin
-        Children := TJSONArray.Create;
-        for Name in Rule.Source.Children do
+        mChildren := TJSONArray.Create;
+        for mName in mRule.Source.Children do
         begin
-          Children.Add(Name);
+          mChildren.Add(mName);
         end;
-        Item.AddPair('children', Children);
+        mItem.AddPair('children', mChildren);
       end;
-      Item.AddPair('origin', OriginNames[Rule.Source.Origin]);
-      Item.AddPair('file', Rule.FileName);
-      Item.AddPair('line', TJSONNumber.Create(Rule.Source.TemplateLine));
+      mItem.AddPair('origin', cOriginNames[mRule.Source.Origin]);
+      mItem.AddPair('file', mRule.FileName);
+      mItem.AddPair('line', TJSONNumber.Create(mRule.Source.TemplateLine));
     end;
-    List := TJSONArray.Create;
-    Root.AddPair('inherits', List);
-    for Inherit in AInherits do
+    mList := TJSONArray.Create;
+    mRoot.AddPair('inherits', mList);
+    for mInherit in AInherits do
     begin
-      Item := TJSONObject.Create;
-      List.AddElement(Item);
-      Item.AddPair('type', Inherit.TypeName);
-      Item.AddPair('name', Inherit.Name);
-      Item.AddPair('from', Inherit.From);
+      mItem := TJSONObject.Create;
+      mList.AddElement(mItem);
+      mItem.AddPair('type', mInherit.TypeName);
+      mItem.AddPair('name', mInherit.Name);
+      mItem.AddPair('from', mInherit.From);
     end;
-    Result := Root.ToJSON;
+    Result := mRoot.ToJSON;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 function TLspDebugDisplay.Execute(const AArguments: TJSONArray): TJSONValue;
 var
-  FileName: string;
-  Source: TLspMetricsSource;
-  Foreign: TArray<string>;
-  Item: Integer;
-  Rules: TArray<TLspDebugDisplayRule>;
-  Inherits: TArray<TLspDebugDisplayInherit>;
+  mFileName: string;
+  mSource: TLspMetricsSource;
+  mForeign: TArray<string>;
+  mItem: Integer;
+  mRules: TArray<TLspDebugDisplayRule>;
+  mInherits: TArray<TLspDebugDisplayInherit>;
 begin
-  FileName := '';
-  Foreign := nil;
+  mFileName := '';
+  mForeign := nil;
   if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
   begin
-    FileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
+    mFileName := TDocumentUris.ToPath(AArguments.Items[0].Value);
   end;
   if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONArray) then
   begin
-    for Item := 0 to TJSONArray(AArguments.Items[1]).Count - 1 do
+    for mItem := 0 to TJSONArray(AArguments.Items[1]).Count - 1 do
     begin
-      if TJSONArray(AArguments.Items[1]).Items[Item] is TJSONString then
+      if TJSONArray(AArguments.Items[1]).Items[mItem] is TJSONString then
       begin
-        Foreign := Foreign + [TJSONArray(AArguments.Items[1]).Items[Item].Value];
+        mForeign := mForeign + [TJSONArray(AArguments.Items[1]).Items[mItem].Value];
       end;
     end;
   end;
-  if not (Assigned(FSourceFor) and FSourceFor(FileName, True, Source)) then
+  if not (Assigned(FSourceFor) and FSourceFor(mFileName, True, mSource)) then
   begin
-    Source := Default(TLspMetricsSource);
+    mSource := Default(TLspMetricsSource);
   end;
-  Rules := Collect(Source.Files, Foreign, Inherits);
-  Result := TJSONObject.ParseJSONValue(ToJson(Rules, Inherits));
+  mRules := Collect(mSource.Files, mForeign, mInherits);
+  Result := TJSONObject.ParseJSONValue(ToJson(mRules, mInherits));
 end;
 
 end.

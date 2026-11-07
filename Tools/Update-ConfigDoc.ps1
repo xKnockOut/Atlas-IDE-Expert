@@ -1141,9 +1141,9 @@ $ScopeLines = @(
     '// Projekt = atlas.json. Gemischte Objekte stehen je Glied als "objekt.glied" da.',
     '// Schlüssel mit x-scope "both" stehen in beiden Listen.', '',
     'interface', '', 'const', '  /// <summary>Schlüssel für alle Projekte (settings.json).</summary>') +
-    (Pascal-List 'GlobalSettingPaths' $GlobalPaths) +
+    (Pascal-List 'cGlobalSettingPaths' $GlobalPaths) +
     @('  /// <summary>Schlüssel des Projekts (atlas.json).</summary>') +
-    (Pascal-List 'ProjectSettingPaths' $ProjectPaths) +
+    (Pascal-List 'cProjectSettingPaths' $ProjectPaths) +
     @('', '/// <summary>Experimentelle Schlüssel (x-experimental, #834): wirken nur mit experimental.enabled.</summary>',
       'function ExperimentalSettingPaths: TArray<string>;', '', 'implementation', '',
       'function ExperimentalSettingPaths: TArray<string>;', 'begin')

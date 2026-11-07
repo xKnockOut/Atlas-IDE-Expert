@@ -79,9 +79,9 @@ var
 begin
   mSlash := TShellSlash.Create(NewServices);
   try
-    Assert.AreEqual('Log.Info', mSlash.Host.Setting('file:///tmp/A.pas', TSlashSettings.LogCall));
-    Assert.AreEqual('true', mSlash.Host.Setting('file:///tmp/A.pas', TSlashSettings.EnumHelper));
-    Assert.AreEqual('protected', mSlash.Host.Setting('file:///tmp/A.pas', TSlashSettings.InterfaceSection));
+    Assert.AreEqual('Log.Info', mSlash.Host.Setting('file:///tmp/A.pas', TSlashSettings.cLogCall));
+    Assert.AreEqual('true', mSlash.Host.Setting('file:///tmp/A.pas', TSlashSettings.cEnumHelper));
+    Assert.AreEqual('protected', mSlash.Host.Setting('file:///tmp/A.pas', TSlashSettings.cInterfaceSection));
     Assert.AreEqual('', mSlash.Host.Setting('file:///tmp/A.pas', 'unbekannt'));
   finally
     mSlash.Free;

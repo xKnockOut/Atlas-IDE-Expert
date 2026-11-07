@@ -25,10 +25,10 @@ type
   /// <summary>Ersatz-Units aus atlas/ideMembers; threadsicher.</summary>
   TIdeUnits = class
   public const
-    WantedMethod = 'atlas/ideMembersWanted';
-    Method = 'atlas/ideMembers';
+    cWantedMethod = 'atlas/ideMembersWanted';
+    cMethod = 'atlas/ideMembers';
     /// <summary>Anfang der Pfade der Ersatz-Units.</summary>
-    PathPrefix = 'atlas-ide:';
+    cPathPrefix = 'atlas-ide:';
   private
     FLock: TObject;
     FIndex: ISymbolIndex;
@@ -86,7 +86,7 @@ end;
 
 procedure TIdeUnits.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterNotification(Method, HandleNotification);
+  ADispatcher.RegisterNotification(cMethod, HandleNotification);
 end;
 
 procedure TIdeUnits.HandleNotification(const AParams: TJSONValue);
@@ -102,12 +102,12 @@ end;
 
 class function TIdeUnits.PathOf(const AUnit: string): string;
 begin
-  Result := PathPrefix + AUnit + '.pas';
+  Result := cPathPrefix + AUnit + '.pas';
 end;
 
 class function TIdeUnits.IsIdePath(const AFileName: string): Boolean;
 begin
-  Result := AFileName.StartsWith(PathPrefix, True);
+  Result := AFileName.StartsWith(cPathPrefix, True);
 end;
 
 function TIdeUnits.Wanted(const ACandidates: TArray<string>; const AIndex: ISymbolIndex): TArray<string>;

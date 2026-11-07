@@ -31,8 +31,8 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  SetterRecursionRuleId = 'setter-recursion';
-  UnconditionalRecursionRuleId = 'unconditional-recursion';
+  cSetterRecursionRuleId = 'setter-recursion';
+  cUnconditionalRecursionRuleId = 'unconditional-recursion';
 
 type
   TSetterRecursionRule = class(TInterfacedObject, IRule)
@@ -90,7 +90,7 @@ const
 
 function TSetterRecursionRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(SetterRecursionRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cSetterRecursionRuleId, TRuleSeverity.Error,
     cTexts[TRecursionText.AccessorTitle].Text);
 end;
 
@@ -108,22 +108,22 @@ end;
 
 procedure TSetterRecursionRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Trap: TAccessorTrap;
+  mTrap: TAccessorTrap;
 begin
   if AContext.Tree = nil then
   begin
     Exit;
   end;
-  for Trap in TRecursionAnalysis.AccessorTraps(AContext.Tree) do
+  for mTrap in TRecursionAnalysis.AccessorTraps(AContext.Tree) do
   begin
-    if Trap.Field <> '' then
+    if mTrap.Field <> '' then
     begin
-      AReport.Add(Trap.Range, Message(Trap), [TRuleFix.Create(cTexts[TRecursionText.UseField].Fmt([Trap.Field]),
-        [TRuleEdit.Create(Trap.Range, Trap.Field)])]);
+      AReport.Add(mTrap.Range, Message(mTrap), [TRuleFix.Create(cTexts[TRecursionText.UseField].Fmt([mTrap.Field]),
+        [TRuleEdit.Create(mTrap.Range, mTrap.Field)])]);
     end
     else
     begin
-      AReport.Add(Trap.Range, Message(Trap));
+      AReport.Add(mTrap.Range, Message(mTrap));
     end;
   end;
 end;
@@ -132,13 +132,13 @@ end;
 
 const
   // Aufrufe, die die Routine verlassen.
-  LeavingCalls: array[0..4] of string = ('Exit', 'Halt', 'Abort', 'RunError', 'ExitProcess');
-  LoopKinds = [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
+  cLeavingCalls: array[0..4] of string = ('Exit', 'Halt', 'Abort', 'RunError', 'ExitProcess');
+  cLoopKinds = [TSyntaxKind.ForStatement, TSyntaxKind.ForInStatement, TSyntaxKind.WhileStatement,
     TSyntaxKind.RepeatStatement];
 
 function TUnconditionalRecursionRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(UnconditionalRecursionRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cUnconditionalRecursionRuleId, TRuleSeverity.Error,
     cTexts[TRecursionText.Title].Text);
 end;
 
@@ -188,9 +188,11 @@ type
     function Leaves(ANode: TSyntaxNode; ALoop: Boolean): Boolean;
     /// <summary>Prüft einen Ausdrucksknoten und legt die auf jedem Weg ausgewerteten Kinder auf APending.</summary>
     function CallsAt(ANode: TSyntaxNode; APending: TStack<TSyntaxNode>): Boolean;
-    /// <summary>Wertet einer der Ausdrücke ANode[0..ChildCount-2] (Kopf von for bzw. with) einen Selbstaufruf aus?</summary>
+    /// <summary>Wertet einer der Ausdrücke ANode[0..ChildCount-2] (Kopf von for bzw. with) einen Selbstaufruf
+    /// aus?</summary>
     function InHead(ANode: TSyntaxNode): Boolean;
-    /// <summary>Ein Durchlauf von Always für den Knoten ANode; ANext: als Nächstes zu prüfender Knoten oder nil.</summary>
+    /// <summary>Ein Durchlauf von Always für den Knoten ANode; ANext: als Nächstes zu prüfender Knoten oder
+    /// nil.</summary>
     function Step(ANode: TSyntaxNode; ALoop: Boolean; out ANext: TSyntaxNode): Boolean;
     function IfAlways(ANode: TSyntaxNode; ALoop: Boolean; out ANext: TSyntaxNode): Boolean;
     function CaseAlways(ANode: TSyntaxNode; ALoop: Boolean): Boolean;
@@ -282,33 +284,33 @@ end;
 
 function TSelfCalls.Leaves(ANode: TSyntaxNode; ALoop: Boolean): Boolean;
 var
-  Pending: TStack<TSyntaxNode>;
-  Loops: TStack<Boolean>;
-  Node: TSyntaxNode;
-  Loop, ChildLoop: Boolean;
-  Index: Integer;
-  Name: string;
+  mPending: TStack<TSyntaxNode>;
+  mLoops: TStack<Boolean>;
+  mNode: TSyntaxNode;
+  mLoop, mChildLoop: Boolean;
+  mIndex: Integer;
+  mName: string;
 begin
   // Iterativ (Bericht M1); Loops führt ALoop je Knoten mit.
   Result := False;
-  Pending := TStack<TSyntaxNode>.Create;
-  Loops := TStack<Boolean>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
+  mLoops := TStack<Boolean>.Create;
   try
-    Pending.Push(ANode);
-    Loops.Push(ALoop);
-    while Pending.Count > 0 do
+    mPending.Push(ANode);
+    mLoops.Push(ALoop);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      Loop := Loops.Pop;
-      case Node.Kind of
+      mNode := mPending.Pop;
+      mLoop := mLoops.Pop;
+      case mNode.Kind of
         TSyntaxKind.AnonymousMethod:
           Continue;
         TSyntaxKind.RaiseStatement, TSyntaxKind.GotoStatement:
           Exit(True);
         TSyntaxKind.Identifier, TSyntaxKind.Call:
           begin
-            Name := Node.Name;
-            if MatchText(Name, LeavingCalls) or (Loop and MatchText(Name, ['Break', 'Continue'])) then
+            mName := mNode.Name;
+            if MatchText(mName, cLeavingCalls) or (mLoop and MatchText(mName, ['Break', 'Continue'])) then
             begin
               Exit(True);
             end;
@@ -316,30 +318,30 @@ begin
       else
         // Übrige Werte bewusst ohne Wirkung.
       end;
-      ChildLoop := Loop and not (Node.Kind in LoopKinds);
-      for Index := Node.ChildCount - 1 downto 0 do
+      mChildLoop := mLoop and not (mNode.Kind in cLoopKinds);
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(Node[Index]);
-        Loops.Push(ChildLoop);
+        mPending.Push(mNode[mIndex]);
+        mLoops.Push(mChildLoop);
       end;
     end;
   finally
-    Loops.Free;
-    Pending.Free;
+    mLoops.Free;
+    mPending.Free;
   end;
 end;
 
 function TSelfCalls.AlwaysList(AParent: TSyntaxNode; AFirst, ALast: Integer; ALoop: Boolean): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := AFirst to ALast do
+  for mIndex := AFirst to ALast do
   begin
-    if Always(AParent[Index], ALoop) then
+    if Always(AParent[mIndex], ALoop) then
     begin
       Exit(True);
     end;
-    if Leaves(AParent[Index], ALoop) then
+    if Leaves(AParent[mIndex], ALoop) then
     begin
       Exit(False);
     end;
@@ -486,49 +488,49 @@ end;
 /// <summary>Hinweis auf den fehlenden Abbruch am ersten Parameter, z. B. "K = nil".</summary>
 function StopHint(ARoutine: TSyntaxNode): string;
 var
-  Header, Parameters, Parameter, TypeNode: TSyntaxNode;
-  Name, TypeName: string;
+  mHeader, mParameters, mParameter, mTypeNode: TSyntaxNode;
+  mName, mTypeName: string;
 begin
   Result := '';
-  Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
-  if Header = nil then
+  mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+  if mHeader = nil then
   begin
     Exit;
   end;
-  Parameters := Header.FindChild(TSyntaxKind.Parameters);
-  if (Parameters = nil) or (Parameters.ChildCount = 0) then
+  mParameters := mHeader.FindChild(TSyntaxKind.Parameters);
+  if (mParameters = nil) or (mParameters.ChildCount = 0) then
   begin
     Exit;
   end;
-  Parameter := Parameters[0];
-  Name := Parameter.Name.Split([','])[0];
-  TypeNode := Parameter.FindChild(TSyntaxKind.TypeReference);
-  if TypeNode <> nil then
+  mParameter := mParameters[0];
+  mName := mParameter.Name.Split([','])[0];
+  mTypeNode := mParameter.FindChild(TSyntaxKind.TypeReference);
+  if mTypeNode <> nil then
   begin
-    TypeName := TypeNode.Name;
+    mTypeName := mTypeNode.Name;
   end
   else
   begin
-    TypeName := '';
+    mTypeName := '';
   end;
-  if MatchText(TypeName, ['Integer', 'Cardinal', 'Int64', 'UInt64', 'NativeInt', 'NativeUInt', 'Byte', 'Word',
+  if MatchText(mTypeName, ['Integer', 'Cardinal', 'Int64', 'UInt64', 'NativeInt', 'NativeUInt', 'Byte', 'Word',
     'SmallInt', 'ShortInt', 'LongInt', 'LongWord']) then
   begin
-    Result := Name + ' <= 0';
+    Result := mName + ' <= 0';
   end
-  else if MatchText(TypeName, ['string', 'UnicodeString', 'AnsiString', 'WideString']) then
+  else if MatchText(mTypeName, ['string', 'UnicodeString', 'AnsiString', 'WideString']) then
   begin
-    Result := Name + ' = ''''';
+    Result := mName + ' = ''''';
   end
-  else if SameText(TypeName, 'TArray') or StartsText('TArray<', TypeName) or
-    (Parameter.FindChild(TSyntaxKind.ArrayType) <> nil) then
+  else if SameText(mTypeName, 'TArray') or StartsText('TArray<', mTypeName) or
+    (mParameter.FindChild(TSyntaxKind.ArrayType) <> nil) then
   begin
-    Result := 'Length(' + Name + ') = 0';
+    Result := 'Length(' + mName + ') = 0';
   end
-  else if (Length(TypeName) > 1) and CharInSet(TypeName[1], ['T', 'P', 'I']) and
-    CharInSet(TypeName[2], ['A'..'Z']) then
+  else if (Length(mTypeName) > 1) and CharInSet(mTypeName[1], ['T', 'P', 'I']) and
+    CharInSet(mTypeName[2], ['A'..'Z']) then
   begin
-    Result := Name + ' = nil';
+    Result := mName + ' = nil';
   end;
 end;
 

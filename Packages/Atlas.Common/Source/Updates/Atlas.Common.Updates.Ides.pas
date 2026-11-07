@@ -48,10 +48,10 @@ type
 
   TUpdateIdes = class
   public const
-    EmbarcaderoKey = 'Software\Embarcadero';
-    DefaultProfile = 'BDS';
-    Win32 = 'Win32';
-    Win64 = 'Win64';
+    cEmbarcaderoKey = 'Software\Embarcadero';
+    cDefaultProfile = 'BDS';
+    cWin32 = 'Win32';
+    cWin64 = 'Win64';
   public
     /// <summary>Alle bekannten Versionen, die neueste zuerst.</summary>
     class function Catalog: TArray<TUpdateIdeVersion>; static;
@@ -99,7 +99,7 @@ begin
   begin
     Result := 'RAD Studio ' + BdsVersion;
   end;
-  if not SameText(Profile, TUpdateIdes.DefaultProfile) then
+  if not SameText(Profile, TUpdateIdes.cDefaultProfile) then
   begin
     Result := Result + ' (' + Profile + ')';
   end;
@@ -140,10 +140,10 @@ begin
     end;
     for mProfile in Profiles(ARegistry, mVersion.BdsVersion) do
     begin
-      Result := Result + [Choice(mVersion, mProfile, Win32)];
+      Result := Result + [Choice(mVersion, mProfile, cWin32)];
       if AFiles.FileExists(mRoot + '\bin64\bds.exe') then
       begin
-        Result := Result + [Choice(mVersion, mProfile, Win64)];
+        Result := Result + [Choice(mVersion, mProfile, cWin64)];
       end;
     end;
   end;
@@ -209,7 +209,7 @@ end;
 class function TUpdateIdes.KnownPackagesKey(const ARegistryKey, APlatform: string): string;
 begin
   Result := ARegistryKey + '\Known Packages';
-  if SameText(APlatform, Win64) then
+  if SameText(APlatform, cWin64) then
   begin
     Result := Result + ' x64';
   end;
@@ -218,7 +218,7 @@ end;
 class function TUpdateIdes.DisabledPackagesKey(const ARegistryKey, APlatform: string): string;
 begin
   Result := ARegistryKey + '\Disabled Packages';
-  if SameText(APlatform, Win64) then
+  if SameText(APlatform, cWin64) then
   begin
     Result := Result + ' x64';
   end;
@@ -233,9 +233,9 @@ var
 begin
   mList := TList<TUpdateIdeProfile>.Create;
   try
-    for mName in ARegistry.SubKeys(EmbarcaderoKey) do
+    for mName in ARegistry.SubKeys(cEmbarcaderoKey) do
     begin
-      for mVersion in ARegistry.SubKeys(EmbarcaderoKey + '\' + mName) do
+      for mVersion in ARegistry.SubKeys(cEmbarcaderoKey + '\' + mName) do
       begin
         if mVersion <> ABdsVersion then
         begin
@@ -244,8 +244,8 @@ begin
         mProfile := Default(TUpdateIdeProfile);
         mProfile.Profile := mName;
         mProfile.BdsVersion := mVersion;
-        mProfile.RegistryKey := EmbarcaderoKey + '\' + mName + '\' + mVersion;
-        if SameText(mName, DefaultProfile) then
+        mProfile.RegistryKey := cEmbarcaderoKey + '\' + mName + '\' + mVersion;
+        if SameText(mName, cDefaultProfile) then
         begin
           mList.Insert(0, mProfile);
         end
@@ -277,7 +277,7 @@ end;
 
 class function TUpdateIdes.IsPlatform(const APlatform: string): Boolean;
 begin
-  Result := SameText(APlatform, Win32) or SameText(APlatform, Win64);
+  Result := SameText(APlatform, cWin32) or SameText(APlatform, cWin64);
 end;
 
 end.

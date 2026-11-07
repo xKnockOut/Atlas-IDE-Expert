@@ -113,33 +113,33 @@ const
 
 const
   /// <summary>Optionen von Prüfregeln, die true oder false sein müssen (#909).</summary>
-  BooleanRuleOptions: array[0..24] of string = ('allowCommented', 'requireElse', 'ignoreStrings', 'ignoreComments',
+  cBooleanRuleOptions: array[0..24] of string = ('allowCommented', 'requireElse', 'ignoreStrings', 'ignoreComments',
     'includeRecords', 'includeFormVariables', 'checkUses', 'allowLazyInit', 'checkRound', 'includeFields',
     'allowSingleLineExit', 'allowSameLine', 'allowComments', 'onlyAfterRaisingCode', 'allowInProgram', 'unitLevel',
     'testsCountAsUse', 'stringLiteralsCountAsUse', 'allowShareMem', 'ignoreOverrides', 'requirePublic',
     'checkReturns', 'checkFree', 'allowFirstElement', 'implementation');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Texten sein müssen (#909).</summary>
-  StringListRuleOptions: array[0..34] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
+  cStringListRuleOptions: array[0..34] of string = ('countNames', 'mutatingMethods', 'ignoreMethods', 'ignoreTypes',
     'methods', 'allowIn', 'functions', 'sources', 'ignore', 'assertPatterns', 'selfRegistering', 'swallow', 'calls',
     'allowTables', 'types', 'allowProperties', 'threadSafeTypes', 'switchConstants', 'namePatterns', 'kinds',
     'statements', 'disabledChecks', 'componentClasses', 'visibilities', 'memberKinds', 'projectKinds',
     'keepAttributes', 'keepPatterns', 'allowUnits', 'allow', 'allowAttributes', 'allowTypes',
     'formatMethods', 'unitKinds', 'keep');
   /// <summary>Erlaubte Einträge von kinds bei deprecated-symbol (#1018).</summary>
-  DeprecationKinds: array[0..3] of string = ('deprecated', 'experimental', 'platform', 'library');
+  cDeprecationKinds: array[0..3] of string = ('deprecated', 'experimental', 'platform', 'library');
   /// <summary>Erlaubte Arten in symbols von forbidden-symbol (#1133); wie TForbiddenSymbolRule.TryParseKind.</summary>
-  ForbiddenSymbolKinds: array[0..6] of string = ('routine', 'type', 'constant', 'field', 'property', 'enumValue',
+  cForbiddenSymbolKinds: array[0..6] of string = ('routine', 'type', 'constant', 'field', 'property', 'enumValue',
     'identifier');
   /// <summary>Optionen von Prüfregeln, die eine Liste von Zahlen sein müssen (#937).</summary>
-  NumberListRuleOptions: array[0..0] of string = ('allowed');
+  cNumberListRuleOptions: array[0..0] of string = ('allowed');
   /// <summary>Optionen von Prüfregeln, die ein Text sein müssen (#926).</summary>
-  StringRuleOptions: array[0..10] of string = ('template', 'replacement', 'wrapper', 'okMarker', 'searchPaths',
+  cStringRuleOptions: array[0..10] of string = ('template', 'replacement', 'wrapper', 'okMarker', 'searchPaths',
     'defaultEncoding', 'scope', 'local', 'field', 'parameter', 'constant');
   /// <summary>Kodierungen der Korrektur von load-without-encoding (#1061).</summary>
-  LoadEncodings: array[0..6] of string = ('UTF8', 'Unicode', 'BigEndianUnicode', 'ANSI', 'ASCII', 'UTF7',
+  cLoadEncodings: array[0..6] of string = ('UTF8', 'Unicode', 'BigEndianUnicode', 'ANSI', 'ASCII', 'UTF7',
     'Default');
   /// <summary>Glieder eines Eintrags von symbols (forbidden-symbol), die eine Liste von Texten sind.</summary>
-  SymbolListMembers: array[0..2] of string = ('units', 'firstArgument', 'allowFirstArgument');
+  cSymbolListMembers: array[0..2] of string = ('units', 'firstArgument', 'allowFirstArgument');
 
 type
   /// <summary>Ganzzahlige Option einer Regel mit Untergrenze.</summary>
@@ -152,7 +152,7 @@ const
   /// <summary>max: Grenzwert der Metrik-Regeln (#66); minLines: commented-out-code (#942); min: string-if-chain
   /// (#1066) und prefer-case (#646); minRecordSize: managed-param-without-const (#975); maxSleepMs:
   /// blocking-call-in-main-thread (#959); maxLiteralLength: pos-arguments-swapped (#1045).</summary>
-  LimitOptions: array[0..5] of TLimitOption = ((Key: 'max'; Min: 1), (Key: 'minLines'; Min: 1),
+  cLimitOptions: array[0..5] of TLimitOption = ((Key: 'max'; Min: 1), (Key: 'minLines'; Min: 1),
     (Key: 'min'; Min: 2), (Key: 'minRecordSize'; Min: 1), (Key: 'maxSleepMs'; Min: 0),
     (Key: 'maxLiteralLength'; Min: 1));
 
@@ -331,7 +331,7 @@ begin
   Result := True;
   if AKey = 'kind' then
   begin
-    mValid := (AValue.Kind = TJsonKind.String_) and (IndexText(AValue.Value, ForbiddenSymbolKinds) >= 0);
+    mValid := (AValue.Kind = TJsonKind.String_) and (IndexText(AValue.Value, cForbiddenSymbolKinds) >= 0);
     mMessage := cTexts[TRuleOptionsText.KindMustBeRoutineType].Text;
   end
   else if MatchStr(AKey, ['message', 'replacement']) then
@@ -346,7 +346,7 @@ begin
   end
   else
   begin
-    Result := MatchStr(AKey, SymbolListMembers);
+    Result := MatchStr(AKey, cSymbolListMembers);
     mValid := not Result or IsStringList(AValue);
     mMessage := cTexts[TRuleOptionsText.MustBeAListOf].Fmt([AKey]);
   end;
@@ -418,7 +418,7 @@ function CheckLimit(AReader: TConfigurationReader; const ARuleId, AKey: string; 
 var
   mLimit: TLimitOption;
 begin
-  for mLimit in LimitOptions do
+  for mLimit in cLimitOptions do
   begin
     if mLimit.Key = AKey then
     begin
@@ -445,7 +445,7 @@ end;
 function CheckBooleanOption(AReader: TConfigurationReader; const ARuleId, AKey: string;
   AValue: TJsonNode): Boolean;
 begin
-  Result := (IndexStr(AKey, BooleanRuleOptions) >= 0) and (AValue.Kind <> TJsonKind.Boolean_);
+  Result := (IndexStr(AKey, cBooleanRuleOptions) >= 0) and (AValue.Kind <> TJsonKind.Boolean_);
   if Result then
   begin
     AReader.ReportNode(AValue, cTexts[TRuleOptionsText.MustBeTrueOrFalse].Fmt([AKey]));
@@ -455,7 +455,7 @@ end;
 function CheckStringListOption(AReader: TConfigurationReader; const ARuleId, AKey: string;
   AValue: TJsonNode): Boolean;
 begin
-  Result := (IndexStr(AKey, StringListRuleOptions) >= 0) and not IsStringList(AValue);
+  Result := (IndexStr(AKey, cStringListRuleOptions) >= 0) and not IsStringList(AValue);
   if Result then
   begin
     AReader.ReportNode(AValue, cTexts[TRuleOptionsText.MustBeAListOf].Fmt([AKey]));
@@ -476,7 +476,7 @@ end;
 function CheckNumberListOption(AReader: TConfigurationReader; const ARuleId, AKey: string;
   AValue: TJsonNode): Boolean;
 begin
-  Result := (IndexStr(AKey, NumberListRuleOptions) >= 0) and not IsListOf(AValue, TJsonKind.Number);
+  Result := (IndexStr(AKey, cNumberListRuleOptions) >= 0) and not IsListOf(AValue, TJsonKind.Number);
   if Result then
   begin
     AReader.ReportNode(AValue, cTexts[TRuleOptionsText.MustBeAListOf2].Fmt([AKey]));
@@ -486,7 +486,7 @@ end;
 function CheckStringOption(AReader: TConfigurationReader; const ARuleId, AKey: string;
   AValue: TJsonNode): Boolean;
 begin
-  Result := (IndexStr(AKey, StringRuleOptions) >= 0) and (AValue.Kind <> TJsonKind.String_);
+  Result := (IndexStr(AKey, cStringRuleOptions) >= 0) and (AValue.Kind <> TJsonKind.String_);
   if Result then
   begin
     AReader.ReportNode(AValue, cTexts[TRuleOptionsText.MustBeAText].Fmt([AKey]));
@@ -508,7 +508,7 @@ end;
 function CheckDeprecationKinds(AReader: TConfigurationReader; const ARuleId, AKey: string;
   AValue: TJsonNode): Boolean;
 begin
-  Result := (AKey = 'kinds') and (ARuleId = 'deprecated-symbol') and not IsStringListOf(AValue, DeprecationKinds);
+  Result := (AKey = 'kinds') and (ARuleId = 'deprecated-symbol') and not IsStringListOf(AValue, cDeprecationKinds);
   if Result then
   begin
     AReader.ReportNode(AValue, cTexts[TRuleOptionsText.KindsMayOnlyContainDeprecated].Text);
@@ -539,7 +539,7 @@ end;
 function CheckDefaultEncoding(AReader: TConfigurationReader; const ARuleId, AKey: string;
   AValue: TJsonNode): Boolean;
 begin
-  Result := (AKey = 'defaultEncoding') and (IndexText(AValue.Value, LoadEncodings) < 0);
+  Result := (AKey = 'defaultEncoding') and (IndexText(AValue.Value, cLoadEncodings) < 0);
   if Result then
   begin
     AReader.ReportNode(AValue,

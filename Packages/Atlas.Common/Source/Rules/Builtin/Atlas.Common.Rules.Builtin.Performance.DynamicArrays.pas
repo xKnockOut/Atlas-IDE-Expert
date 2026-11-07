@@ -12,7 +12,7 @@ type
   TDynamicArrayTypes = class
   public const
     /// <summary>Dynamische Arrays der RTL, die nicht in der Datei deklariert sind.</summary>
-    RtlDynamicArrays: array[0..13] of string = ('TBytes', 'TStringDynArray', 'TIntegerDynArray',
+    cRtlDynamicArrays: array[0..13] of string = ('TBytes', 'TStringDynArray', 'TIntegerDynArray',
       'TInt64DynArray', 'TCardinalDynArray', 'TDoubleDynArray', 'TSingleDynArray', 'TByteDynArray',
       'TWordDynArray', 'TBooleanDynArray', 'TShortIntDynArray', 'TSmallIntDynArray', 'TLongWordDynArray',
       'TExtendedDynArray');
@@ -44,7 +44,7 @@ var
   mText: string;
 begin
   mText := Trim(ATypeText);
-  Result := StartsText('array of ', mText) or StartsText('TArray<', mText) or MatchText(mText, RtlDynamicArrays) or
+  Result := StartsText('array of ', mText) or StartsText('TArray<', mText) or MatchText(mText, cRtlDynamicArrays) or
     MatchText(mText, ADeclared);
 end;
 

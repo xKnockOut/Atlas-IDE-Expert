@@ -96,7 +96,7 @@ end;
 
 function TMcpPathGuard.Resolve(const APath: string): string;
 var
-  Folder: string;
+  mFolder: string;
 begin
   if Trim(APath) = '' then
   begin
@@ -116,9 +116,9 @@ begin
   end;
   if Assigned(FExtraRoots) then
   begin
-    for Folder in FExtraRoots() do
+    for mFolder in FExtraRoots() do
     begin
-      if (Trim(Folder) <> '') and IsInside(Normalize(Folder), Result) then
+      if (Trim(mFolder) <> '') and IsInside(Normalize(mFolder), Result) then
       begin
         Exit;
       end;

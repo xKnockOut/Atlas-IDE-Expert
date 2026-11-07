@@ -33,7 +33,8 @@ type
     FileName: string;
     Symbol: TIndexSymbol;
     Library_: Boolean;
-    /// <summary>Unit-Name bzw. qualifizierter Name; Felder, Properties und Variablen mit Typ ("TFoo.FDb: TDb").</summary>
+    /// <summary>Unit-Name bzw. qualifizierter Name; Felder, Properties und Variablen mit Typ ("TFoo.FDb:
+    /// TDb").</summary>
     function Caption: string;
     /// <summary>Stelle des Namens, Zeile und Spalte ab 0; bei Units der Anfang der Datei.</summary>
     function Position: TTextPosition;
@@ -162,14 +163,14 @@ type
   end;
 
 const
-  SymbolPathTypeKinds: TSymbolPathKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType,
+  cSymbolPathTypeKinds: TSymbolPathKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType,
     TIndexSymbolKind.RecordType, TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType,
     TIndexSymbolKind.EnumType, TIndexSymbolKind.TypeAlias];
-  SymbolPathStructKinds: TSymbolPathKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType,
+  cSymbolPathStructKinds: TSymbolPathKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType,
     TIndexSymbolKind.RecordType, TIndexSymbolKind.InterfaceType];
-  SymbolPathRoutineKinds: TSymbolPathKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_,
+  cSymbolPathRoutineKinds: TSymbolPathKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_,
     TIndexSymbolKind.Routine];
-  SymbolPathValueKinds: TSymbolPathKinds = [TIndexSymbolKind.Constant, TIndexSymbolKind.Variable,
+  cSymbolPathValueKinds: TSymbolPathKinds = [TIndexSymbolKind.Constant, TIndexSymbolKind.Variable,
     TIndexSymbolKind.Field, TIndexSymbolKind.Property_];
 
 implementation
@@ -193,7 +194,7 @@ begin
     Exit(UnitName);
   end;
   Result := Symbol.QualifiedName;
-  if (Symbol.Kind in SymbolPathValueKinds) and (Symbol.TypeName <> '') then
+  if (Symbol.Kind in cSymbolPathValueKinds) and (Symbol.TypeName <> '') then
   begin
     Result := Result + ': ' + Symbol.TypeName;
   end;
@@ -428,7 +429,7 @@ begin
   Result := -1;
   for mIndex in AUnit.Data.SymbolsNamed(AName) do
   begin
-    if AUnit.Data.Symbols[mIndex].Kind in SymbolPathStructKinds + [TIndexSymbolKind.HelperType] then
+    if AUnit.Data.Symbols[mIndex].Kind in cSymbolPathStructKinds + [TIndexSymbolKind.HelperType] then
     begin
       Result := mIndex;
     end;
@@ -452,7 +453,7 @@ begin
   for mIndex in AUnit.MembersOf(mSymbol.Container) do
   begin
     mOther := AUnit.Data.Symbols[mIndex];
-    if (mIndex <> AIndex) and (mOther.Kind in SymbolPathRoutineKinds) and SameText(mOther.Name, mSymbol.Name) and
+    if (mIndex <> AIndex) and (mOther.Kind in cSymbolPathRoutineKinds) and SameText(mOther.Name, mSymbol.Name) and
       SameParameters(mOther, mSymbol) and Encloses(AUnit.Data.Symbols[mOwner].Range, mOther.SelectionRange.StartPos)
     then
     begin
@@ -472,7 +473,7 @@ begin
   for mIndex in AUnit.Data.SymbolsNamed(mSymbol.Name) do
   begin
     mOther := AUnit.Data.Symbols[mIndex];
-    if (mIndex <> AIndex) and (mOther.Kind in SymbolPathRoutineKinds) and (mOther.Container = '') and
+    if (mIndex <> AIndex) and (mOther.Kind in cSymbolPathRoutineKinds) and (mOther.Container = '') and
       mOther.InInterface and SameParameters(mOther, mSymbol) then
     begin
       Exit(mIndex);
@@ -488,7 +489,7 @@ begin
   // implementation-Teil. Knoten ist immer die Deklaration.
   Result := AIndex;
   mSymbol := AUnit.Data.Symbols[AIndex];
-  if not (mSymbol.Kind in SymbolPathRoutineKinds) then
+  if not (mSymbol.Kind in cSymbolPathRoutineKinds) then
   begin
     Exit;
   end;
@@ -599,7 +600,7 @@ begin
   for mIndex in mData.MembersOf(FNodes[ATypeNode].Symbol.Name) do
   begin
     if SameText(mData.Data.Symbols[mIndex].Name, AName) and
-      (mData.Data.Symbols[mIndex].Kind in SymbolPathRoutineKinds) then
+      (mData.Data.Symbols[mIndex].Kind in cSymbolPathRoutineKinds) then
     begin
       Exit(SymbolNode(mData, mIndex));
     end;
@@ -625,7 +626,7 @@ begin
       Result := Result + [SymbolNode(mData, mIndex)];
     end;
   end
-  else if FNodes[ANode].Symbol.Kind in SymbolPathStructKinds then
+  else if FNodes[ANode].Symbol.Kind in cSymbolPathStructKinds then
   begin
     for mIndex in mData.MembersOf(FNodes[ANode].Symbol.Name) do
     begin

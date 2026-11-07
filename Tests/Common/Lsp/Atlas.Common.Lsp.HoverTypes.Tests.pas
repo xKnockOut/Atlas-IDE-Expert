@@ -241,7 +241,7 @@ var
 begin
   Info := InfoAt('TBlattKlasse;');
   Assert.AreEqual('TBlattKlasse = class of TBlatt;', Info.Declaration);
-  Assert.AreEqual(TLspHoverTypes.KindClassRef, Info.Kind);
+  Assert.AreEqual(TLspHoverTypes.cKindClassRef, Info.Kind);
   Assert.AreEqual('TBlatt', Info.ChainOf);
   Assert.AreEqual('TBlatt', Info.Ancestors[0].Name);
   Assert.AreEqual('TObject', Info.Ancestors[High(Info.Ancestors)].Name);

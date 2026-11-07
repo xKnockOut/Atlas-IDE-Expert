@@ -24,7 +24,7 @@ type
 
   TResourceStringCommands = class
   public const
-    AddCommand = 'atlas.server.addResourceString';
+    cAddCommand = 'atlas.server.addResourceString';
   public
     /// <summary>Änderung für "AName = AValue;" im interface-Teil von AText. False ohne Änderung (gleicher Eintrag
     /// schon da); Ausnahme EJsonRpcError, wenn es AName mit anderem Text gibt oder implementation fehlt.</summary>
@@ -64,33 +64,33 @@ const
 
 class function TResourceStringCommands.AddEdit(const AText, AName, AValue: string; out AEdit: TTextEdit): Boolean;
 var
-  Entry: TResourceEntry;
-  LineBreak: string;
-  Tokens: TArray<TPascalToken>;
+  mEntry: TResourceEntry;
+  mLineBreak: string;
+  mTokens: TArray<TPascalToken>;
 begin
   AEdit := Default(TTextEdit);
-  Tokens := TPascalLexer.Tokenize(AText);
-  for Entry in TResourceStrings.Entries(AText, Tokens) do
+  mTokens := TPascalLexer.Tokenize(AText);
+  for mEntry in TResourceStrings.Entries(AText, mTokens) do
   begin
-    if SameText(Entry.Name, AName) then
+    if SameText(mEntry.Name, AName) then
     begin
-      if Entry.Value = AValue then
+      if mEntry.Value = AValue then
       begin
         Exit(False);
       end;
-      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
         cTexts[TResourceStringCommandsText.AlreadyExistsThereWithA].Fmt([AName]));
     end;
   end;
-  LineBreak := #10;
+  mLineBreak := #10;
   if Pos(#13#10, AText) > 0 then
   begin
-    LineBreak := #13#10;
+    mLineBreak := #13#10;
   end;
-  if not TResourceStrings.Insertion(AText, Tokens, TResourcePlace.Create(True, -1), Format('%s = %s;', [AName, AValue]),
-    LineBreak, AEdit) then
+  if not TResourceStrings.Insertion(AText, mTokens, TResourcePlace.Create(True, -1), Format('%s = %s;', [AName, AValue]),
+    mLineBreak, AEdit) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TResourceStringCommandsText.TheUnitHasNoImplementation].Text);
   end;
   Result := True;
@@ -100,57 +100,57 @@ class function TResourceStringCommands.Applied(const AText: string; const AEdit:
 
   function OffsetOf(const APosition: TTextPosition): Integer;
   var
-    Line, Index: Integer;
+    mLine, mIndex: Integer;
   begin
-    Line := 0;
-    Index := 1;
-    while (Line < APosition.Line) and (Index <= Length(AText)) do
+    mLine := 0;
+    mIndex := 1;
+    while (mLine < APosition.Line) and (mIndex <= Length(AText)) do
     begin
-      if AText[Index] = #10 then
+      if AText[mIndex] = #10 then
       begin
-        Inc(Line);
+        Inc(mLine);
       end;
-      Inc(Index);
+      Inc(mIndex);
     end;
-    Result := Index - 1 + APosition.Character;
+    Result := mIndex - 1 + APosition.Character;
   end;
 
 var
-  Start, Stop: Integer;
+  mStart, mStop: Integer;
 begin
-  Start := OffsetOf(AEdit.Range.StartPos);
-  Stop := OffsetOf(AEdit.Range.EndPos);
-  Result := Copy(AText, 1, Start) + AEdit.NewText + Copy(AText, Stop + 1, MaxInt);
+  mStart := OffsetOf(AEdit.Range.StartPos);
+  mStop := OffsetOf(AEdit.Range.EndPos);
+  Result := Copy(AText, 1, mStart) + AEdit.NewText + Copy(AText, mStop + 1, MaxInt);
 end;
 
 class function TResourceStringCommands.ExecuteAdd(const ARead: TResourceStringRead;
   const AWrite: TResourceStringWrite; const AArguments: TJSONArray): TJSONValue;
 var
-  FileName, Name, Value, Text: string;
-  Edit: TTextEdit;
+  mFileName, mName, mValue, mText: string;
+  mEdit: TTextEdit;
 begin
   if (AArguments = nil) or (AArguments.Count < 3) or not (AArguments.Items[0] is TJSONString) or
     not (AArguments.Items[1] is TJSONString) or not (AArguments.Items[2] is TJSONString) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TResourceStringCommandsText.FileNameAndValueExpected].Text);
   end;
-  FileName := AArguments.Items[0].Value;
-  Name := AArguments.Items[1].Value;
-  Value := AArguments.Items[2].Value;
-  if not IsValidIdent(Name) or (Value = '') then
+  mFileName := AArguments.Items[0].Value;
+  mName := AArguments.Items[1].Value;
+  mValue := AArguments.Items[2].Value;
+  if not IsValidIdent(mName) or (mValue = '') then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TResourceStringCommandsText.InvalidNameOrEmptyValue].Text);
   end;
-  if not ARead(FileName, Text) then
+  if not ARead(mFileName, mText) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      cTexts[TResourceStringCommandsText.FileNotReadable].Text + ExtractFileName(FileName));
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TResourceStringCommandsText.FileNotReadable].Text + ExtractFileName(mFileName));
   end;
-  if AddEdit(Text, Name, Value, Edit) then
+  if AddEdit(mText, mName, mValue, mEdit) then
   begin
-    AWrite(FileName, Applied(Text, Edit), Edit);
+    AWrite(mFileName, Applied(mText, mEdit), mEdit);
     Exit(TJSONBool.Create(True));
   end;
   Result := TJSONBool.Create(False);

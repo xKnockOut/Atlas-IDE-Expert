@@ -52,7 +52,7 @@ const
 function Unused(ALine: Integer): TRuleFinding;
 begin
   Result := Default(TRuleFinding);
-  Result.RuleId := UnusedSuppressionRuleId;
+  Result.RuleId := cUnusedSuppressionRuleId;
   Result.Range := TTextRange.Create(TTextPosition.Create(ALine, 0), TTextPosition.Create(ALine + 1, 0));
 end;
 

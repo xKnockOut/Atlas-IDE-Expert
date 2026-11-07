@@ -111,7 +111,7 @@ begin
     Assert.AreEqual('A,B,C', Names(Graph, Cycles[0].Component));
     Assert.IsFalse(Cycles[0].InterfaceOnly, 'B → C steht im implementation');
     Assert.AreEqual(Ord(TUsesSection.Implementation_), Ord(Cycles[0].Edges[1].Section));
-    Assert.AreEqual(0, Integer(Length(Graph.Cycles(InterfaceUsesOnly))), 'kein Compilerfehler');
+    Assert.AreEqual(0, Integer(Length(Graph.Cycles(cInterfaceUsesOnly))), 'kein Compilerfehler');
   finally
     Graph.Free;
   end;
@@ -124,7 +124,7 @@ var
 begin
   Graph := NewGraph([UsesUnit('X', ['Y'], nil), UsesUnit('Y', ['X'], nil)]);
   try
-    Cycles := Graph.Cycles(InterfaceUsesOnly);
+    Cycles := Graph.Cycles(cInterfaceUsesOnly);
     Assert.AreEqual(1, Integer(Length(Cycles)));
     Assert.IsTrue(Cycles[0].InterfaceOnly);
     Assert.AreEqual('X,Y', Names(Graph, Cycles[0].Units));
@@ -177,9 +177,9 @@ begin
   Graph := NewGraph([UsesUnit('A', ['E', 'B'], ['C']), UsesUnit('B', ['D'], nil), UsesUnit('C', ['D'], nil),
     UsesUnit('D', nil, nil), UsesUnit('E', ['F'], nil), UsesUnit('F', ['D'], nil)]);
   try
-    Path := Graph.Path(Graph.IndexOf('A'), Graph.IndexOf('D'), AllUsesSections);
+    Path := Graph.Path(Graph.IndexOf('A'), Graph.IndexOf('D'), cAllUsesSections);
     Assert.AreEqual('A → B → D', Graph.Describe(Path));
-    Path := Graph.Path(Graph.IndexOf('A'), Graph.IndexOf('C'), InterfaceUsesOnly);
+    Path := Graph.Path(Graph.IndexOf('A'), Graph.IndexOf('C'), cInterfaceUsesOnly);
     Assert.AreEqual(0, Integer(Length(Path)), 'A → C nur über implementation');
   finally
     Graph.Free;
@@ -192,9 +192,9 @@ var
 begin
   Graph := NewGraph([UsesUnit('A', ['B'], nil), UsesUnit('B', nil, nil)]);
   try
-    Assert.AreEqual(0, Integer(Length(Graph.Path(Graph.IndexOf('B'), Graph.IndexOf('A'), AllUsesSections))));
-    Assert.AreEqual(0, Integer(Length(Graph.Path(Graph.IndexOf('A'), Graph.IndexOf('A'), AllUsesSections))));
-    Assert.AreEqual(0, Integer(Length(Graph.Path(Graph.IndexOf('A'), -1, AllUsesSections))));
+    Assert.AreEqual(0, Integer(Length(Graph.Path(Graph.IndexOf('B'), Graph.IndexOf('A'), cAllUsesSections))));
+    Assert.AreEqual(0, Integer(Length(Graph.Path(Graph.IndexOf('A'), Graph.IndexOf('A'), cAllUsesSections))));
+    Assert.AreEqual(0, Integer(Length(Graph.Path(Graph.IndexOf('A'), -1, cAllUsesSections))));
   finally
     Graph.Free;
   end;
@@ -207,11 +207,11 @@ begin
   Graph := NewGraph([UsesUnit('App', ['Ui'], ['Data']), UsesUnit('Ui', ['Core'], nil), UsesUnit('Data', nil, ['Core']),
     UsesUnit('Core', nil, nil)]);
   try
-    Assert.AreEqual('Core,Data,Ui', Names(Graph, Graph.Dependencies(Graph.IndexOf('App'), AllUsesSections)));
-    Assert.AreEqual('Core,Ui', Names(Graph, Graph.Dependencies(Graph.IndexOf('App'), InterfaceUsesOnly)));
-    Assert.AreEqual('App,Data,Ui', Names(Graph, Graph.Dependents(Graph.IndexOf('Core'), AllUsesSections)));
-    Assert.AreEqual('Data,Ui', Names(Graph, Graph.DirectDependents(Graph.IndexOf('Core'), AllUsesSections)));
-    Assert.AreEqual('Ui', Names(Graph, Graph.DirectDependencies(Graph.IndexOf('App'), InterfaceUsesOnly)));
+    Assert.AreEqual('Core,Data,Ui', Names(Graph, Graph.Dependencies(Graph.IndexOf('App'), cAllUsesSections)));
+    Assert.AreEqual('Core,Ui', Names(Graph, Graph.Dependencies(Graph.IndexOf('App'), cInterfaceUsesOnly)));
+    Assert.AreEqual('App,Data,Ui', Names(Graph, Graph.Dependents(Graph.IndexOf('Core'), cAllUsesSections)));
+    Assert.AreEqual('Data,Ui', Names(Graph, Graph.DirectDependents(Graph.IndexOf('Core'), cAllUsesSections)));
+    Assert.AreEqual('Ui', Names(Graph, Graph.DirectDependencies(Graph.IndexOf('App'), cInterfaceUsesOnly)));
   finally
     Graph.Free;
   end;
@@ -265,7 +265,7 @@ begin
     UsesUnit('Vcl.Forms', nil, nil)], Options);
   try
     Assert.AreEqual('System.SysUtils,Vcl.Forms',
-      Names(Graph, Graph.DirectDependencies(Graph.IndexOf('Main'), AllUsesSections)));
+      Names(Graph, Graph.DirectDependencies(Graph.IndexOf('Main'), cAllUsesSections)));
     Assert.AreEqual(Graph.IndexOf('Vcl.Forms'), Graph.IndexOf('Forms'));
     Assert.AreEqual('SysUtils', Graph.Node(Graph.IndexOf('Main')).Outgoing[0].Name, 'Name wie im uses');
   finally
@@ -315,7 +315,7 @@ begin
   Graph := TUsesGraph.Create(Units, Options);
   try
     Assert.AreEqual('Kern,Main', Names(Graph, Graph.SortedNodes));
-    Assert.AreEqual('Main', Names(Graph, Graph.DirectDependents(Graph.IndexOf('Kern'), AllUsesSections)));
+    Assert.AreEqual('Main', Names(Graph, Graph.DirectDependents(Graph.IndexOf('Kern'), cAllUsesSections)));
   finally
     Graph.Free;
   end;
@@ -330,9 +330,9 @@ begin
   try
     Changed := UsesUnit('A', nil, ['C']);
     Assert.IsTrue(Graph.Update(Changed));
-    Assert.AreEqual('C', Names(Graph, Graph.DirectDependencies(Graph.IndexOf('A'), AllUsesSections)));
-    Assert.AreEqual('', Names(Graph, Graph.DirectDependents(Graph.IndexOf('B'), AllUsesSections)));
-    Assert.AreEqual('A', Names(Graph, Graph.DirectDependents(Graph.IndexOf('C'), AllUsesSections)));
+    Assert.AreEqual('C', Names(Graph, Graph.DirectDependencies(Graph.IndexOf('A'), cAllUsesSections)));
+    Assert.AreEqual('', Names(Graph, Graph.DirectDependents(Graph.IndexOf('B'), cAllUsesSections)));
+    Assert.AreEqual('A', Names(Graph, Graph.DirectDependents(Graph.IndexOf('C'), cAllUsesSections)));
     Assert.AreEqual(3, Graph.NodeCount, 'gleiche Knotennummern');
   finally
     Graph.Free;
@@ -348,7 +348,7 @@ begin
     Assert.AreEqual(0, Graph.EdgeCount, 'B fehlt noch');
     Graph.Update(UsesUnit('B', nil, nil));
     Assert.AreEqual(1, Graph.EdgeCount);
-    Assert.AreEqual('A', Names(Graph, Graph.DirectDependents(Graph.IndexOf('B'), AllUsesSections)));
+    Assert.AreEqual('A', Names(Graph, Graph.DirectDependents(Graph.IndexOf('B'), cAllUsesSections)));
   finally
     Graph.Free;
   end;
@@ -384,7 +384,7 @@ begin
     Assert.AreEqual(3, Graph.Synchronize([UsesUnit('A', ['B', 'D'], nil), UsesUnit('B', nil, nil),
       UsesUnit('D', nil, nil)]));
     Assert.AreEqual('A,B,D', Names(Graph, Graph.SortedNodes));
-    Assert.AreEqual('B,D', Names(Graph, Graph.DirectDependencies(Graph.IndexOf('A'), AllUsesSections)));
+    Assert.AreEqual('B,D', Names(Graph, Graph.DirectDependencies(Graph.IndexOf('A'), cAllUsesSections)));
   finally
     Graph.Free;
   end;

@@ -171,7 +171,7 @@ end;
 function LacksInherited(AModel: TComponentModel; const AClass: TClassInfo; const AMethod: TMethodImpl;
   out AToken: TPascalToken): Boolean;
 begin
-  Result := SameText(AMethod.ClassName, AClass.Name) and IsIn(AMethod.MethodName, InheritedMethods) and
+  Result := SameText(AMethod.ClassName, AClass.Name) and IsIn(AMethod.MethodName, cInheritedMethods) and
     AModel.DeclaredWith(AClass, AMethod.MethodName, 'override') and not AModel.HasToken(AMethod.Block,
     ['inherited']);
   Result := Result and AModel.NameToken(AMethod, AToken);
@@ -274,18 +274,18 @@ end;
 /// <summary>Zuweisung an AField im Block (Feld oder Self.Feld); der zugewiesene Ausdruck.</summary>
 function FindAssignment(ANode: TSyntaxNode; const AField: string; out AValue: TSyntaxNode): Boolean;
 var
-  Field: string;
-  Found: TSyntaxNode;
+  mField: string;
+  mFound: TSyntaxNode;
 begin
-  Field := AField;
+  mField := AField;
   // Iterativ (Bericht M1); out-Parameter lassen sich nicht in der anonymen Methode verwenden.
-  Found := ANode.Search(
+  mFound := ANode.Search(
     function(AVisited: TSyntaxNode): TSyntaxSearchStep
     var
       Target: TSyntaxNode;
     begin
       if (AVisited.Kind = TSyntaxKind.AssignStatement) and (AVisited.ChildCount = 2) and
-        SameText(AVisited.Name, Field) then
+        SameText(AVisited.Name, mField) then
       begin
         Target := AVisited[0];
         if (Target.Kind = TSyntaxKind.Identifier) or ((Target.Kind = TSyntaxKind.MemberAccess) and
@@ -301,21 +301,21 @@ begin
       end;
       Result := TSyntaxSearchStep.Descend;
     end);
-  Result := Found <> nil;
+  Result := mFound <> nil;
   if Result then
   begin
-    AValue := Found[1];
+    AValue := mFound[1];
   end;
 end;
 
 /// <summary>Gleicher Wert? Zahlen werden verglichen ($-Hex wie dezimal), sonst der Text.</summary>
 function SameValue(const A, B: string): Boolean;
 var
-  NumberA, NumberB: Int64;
+  mNumberA, mNumberB: Int64;
 begin
-  if TryStrToInt64(A, NumberA) and TryStrToInt64(B, NumberB) then
+  if TryStrToInt64(A, mNumberA) and TryStrToInt64(B, mNumberB) then
   begin
-    Result := NumberA = NumberB;
+    Result := mNumberA = mNumberB;
   end
   else
   begin
@@ -388,18 +388,18 @@ end;
 /// <summary>Name des letzten Parameters der Implementierung.</summary>
 function LastParameter(const AMethod: TMethodImpl): string;
 var
-  Header, Params: TSyntaxNode;
+  mHeader, mParams: TSyntaxNode;
 begin
   Result := '';
-  Header := AMethod.Decl.FindChild(TSyntaxKind.RoutineHeader);
-  if Header = nil then
+  mHeader := AMethod.Decl.FindChild(TSyntaxKind.RoutineHeader);
+  if mHeader = nil then
   begin
     Exit;
   end;
-  Params := Header.FindChild(TSyntaxKind.Parameters);
-  if (Params <> nil) and (Params.ChildCount > 0) then
+  mParams := mHeader.FindChild(TSyntaxKind.Parameters);
+  if (mParams <> nil) and (mParams.ChildCount > 0) then
   begin
-    Result := Params[Params.ChildCount - 1].Name;
+    Result := mParams[mParams.ChildCount - 1].Name;
   end;
 end;
 
@@ -500,46 +500,46 @@ var
 begin
   Result := (AProp.ReadName <> '') and AModel.FindMethod(AInfo.Name, AProp.WriteName, ASetter) and
     FindAssignment(ASetter.Block, AProp.ReadName, mValue) and
-    AModel.HasToken(APaint.Block, [AProp.ReadName, AProp.Name]) and not AModel.HasToken(ASetter.Block, RepaintCalls);
+    AModel.HasToken(APaint.Block, [AProp.ReadName, AProp.Name]) and not AModel.HasToken(ASetter.Block, cRepaintCalls);
 end;
 
 procedure TComponentSetterWithoutInvalidateRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Model: TComponentModel;
-  Cache: IRuleDerivedCache;
-  Info: TClassInfo;
-  Prop: TPropertyInfo;
-  Setter, Paint: TMethodImpl;
-  Token: TPascalToken;
-  Edit: TRuleEdit;
-  Message: string;
+  mModel: TComponentModel;
+  mCache: IRuleDerivedCache;
+  mInfo: TClassInfo;
+  mProp: TPropertyInfo;
+  mSetter, mPaint: TMethodImpl;
+  mToken: TPascalToken;
+  mEdit: TRuleEdit;
+  mMessage: string;
 begin
-  Cache := TRuleDerived.Open(AContext);
-  if not PrepareModel(Cache, AContext, Model) then
+  mCache := TRuleDerived.Open(AContext);
+  if not PrepareModel(mCache, AContext, mModel) then
   begin
     Exit;
   end;
-  for Info in Model.Classes do
+  for mInfo in mModel.Classes do
   begin
-    if not Model.IsComponent(Info.Name) or not Model.FindMethod(Info.Name, 'Paint', Paint) then
+    if not mModel.IsComponent(mInfo.Name) or not mModel.FindMethod(mInfo.Name, 'Paint', mPaint) then
     begin
       Continue;
     end;
-    for Prop in Model.Properties(Info) do
+    for mProp in mModel.Properties(mInfo) do
     begin
-      if not SetterMissesRepaint(Model, Info, Prop, Paint, Setter) or not Model.NameToken(Setter, Token) then
+      if not SetterMissesRepaint(mModel, mInfo, mProp, mPaint, mSetter) or not mModel.NameToken(mSetter, mToken) then
       begin
         Continue;
       end;
-      Message := cTexts[TComponentsText.NoInvalidate].Fmt([Setter.MethodName, Prop.ReadName]);
-      if Model.InsertBeforeEnd(Setter.Block, 'Invalidate;', Edit) then
+      mMessage := cTexts[TComponentsText.NoInvalidate].Fmt([mSetter.MethodName, mProp.ReadName]);
+      if mModel.InsertBeforeEnd(mSetter.Block, 'Invalidate;', mEdit) then
       begin
-        AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos), Message, TRuleConfidence.Medium,
-          [TRuleFix.Create(cTexts[TComponentsText.InsertInvalidate].Text, [Edit])]);
+        AReport.Add(TTextRange.Create(mToken.StartPos, mToken.EndPos), mMessage, TRuleConfidence.Medium,
+          [TRuleFix.Create(cTexts[TComponentsText.InsertInvalidate].Text, [mEdit])]);
       end
       else
       begin
-        AReport.Add(TTextRange.Create(Token.StartPos, Token.EndPos), Message, TRuleConfidence.Medium);
+        AReport.Add(TTextRange.Create(mToken.StartPos, mToken.EndPos), mMessage, TRuleConfidence.Medium);
       end;
     end;
   end;
@@ -562,23 +562,23 @@ end;
 /// <summary>Ganze Dezimalzahl außer 0, 1 und -1?</summary>
 function IsPixelLiteral(ANode: TSyntaxNode): Boolean;
 var
-  Value: Integer;
+  mValue: Integer;
 begin
-  Result := IsNumberLiteral(ANode, ['0'..'9']) and TryStrToInt(ANode.Name, Value) and (Value > 1);
+  Result := IsNumberLiteral(ANode, ['0'..'9']) and TryStrToInt(ANode.Name, mValue) and (mValue > 1);
 end;
 
 /// <summary>Skaliert der Aufruf seinen Wert? Neben ScaleValue &amp; Co. auch eigene Helfer wie Scale(3) oder
 /// ScaleDpi(3), deren Name mit Scale beginnt (#647).</summary>
 function IsScaleCall(const AName: string): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
-  Name := AName;
-  if LastDelimiter('.', Name) > 0 then
+  mName := AName;
+  if LastDelimiter('.', mName) > 0 then
   begin
-    Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
+    mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
   end;
-  Result := IsIn(Name, ScaleCalls) or StartsText('Scale', Name);
+  Result := IsIn(mName, cScaleCalls) or StartsText('Scale', mName);
 end;
 
 /// <summary>Methoden der Datei, die selbst skalieren: Ihr Rumpf ruft ScaleValue, MulDiv oder einen Scale…-Helfer
@@ -590,7 +590,7 @@ begin
   Result := nil;
   for mMethod in AModel.Methods do
   begin
-    if (mMethod.Block <> nil) and (AModel.HasToken(mMethod.Block, ScaleCalls) or
+    if (mMethod.Block <> nil) and (AModel.HasToken(mMethod.Block, cScaleCalls) or
       AModel.HasTokenStarting(mMethod.Block, 'Scale')) then
     begin
       Result := Result + [mMethod.MethodName];
@@ -616,42 +616,42 @@ end;
 /// Methoden, die skalieren (ScalingHelpers).</summary>
 function Excluded(ANode: TSyntaxNode; const AHelpers: TArray<string>): Boolean;
 var
-  Parent, Child: TSyntaxNode;
+  mParent, mChild: TSyntaxNode;
   mDone: Boolean;
 begin
   Result := False;
   mDone := False;
-  Child := ANode;
-  Parent := ANode.Parent;
-  while (Parent <> nil) and not mDone do
+  mChild := ANode;
+  mParent := ANode.Parent;
+  while (mParent <> nil) and not mDone do
   begin
     mDone := True;
-    case Parent.Kind of
+    case mParent.Kind of
       TSyntaxKind.Call:
         begin
-          Result := IsScaleCall(Parent.Name) or IsIn(Parent.Name, AHelpers) or
-            IsIn(Parent.Name, ['RGB', 'TColor', 'Sleep', 'Inc', 'Dec']);
+          Result := IsScaleCall(mParent.Name) or IsIn(mParent.Name, AHelpers) or
+            IsIn(mParent.Name, ['RGB', 'TColor', 'Sleep', 'Inc', 'Dec']);
           mDone := Result;
         end;
       TSyntaxKind.AssignStatement:
-        Result := IsIn(Parent.Name, NonPixelTargets);
+        Result := IsIn(mParent.Name, cNonPixelTargets);
       TSyntaxKind.Block, TSyntaxKind.RoutineDecl:
         Result := False;
     else
-      Result := (Child = ANode) and DirectExclusion(Parent);
+      Result := (mChild = ANode) and DirectExclusion(mParent);
       mDone := Result;
     end;
-    Child := Parent;
-    Parent := Parent.Parent;
+    mChild := mParent;
+    mParent := mParent.Parent;
   end;
 end;
 
 procedure CollectPixels(ANode: TSyntaxNode; AList: TList<TSyntaxNode>; const AHelpers: TArray<string>);
 var
-  List: TList<TSyntaxNode>;
+  mList: TList<TSyntaxNode>;
   mHelpers: TArray<string>;
 begin
-  List := AList;
+  mList := AList;
   mHelpers := AHelpers;
   // Iterativ (Bericht M1).
   ANode.Walk(
@@ -660,63 +660,63 @@ begin
       Result := AVisited.Kind <> TSyntaxKind.AnonymousMethod;
       if Result and IsPixelLiteral(AVisited) and not Excluded(AVisited, mHelpers) then
       begin
-        List.Add(AVisited);
+        mList.Add(AVisited);
       end;
     end);
 end;
 
 procedure TComponentFixedPixelsRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Model: TComponentModel;
-  Cache: IRuleDerivedCache;
-  Method: TMethodImpl;
-  Literals: TList<TSyntaxNode>;
-  Index, Last: Integer;
-  Edits: TArray<TRuleEdit>;
-  Literal: TSyntaxNode;
+  mModel: TComponentModel;
+  mCache: IRuleDerivedCache;
+  mMethod: TMethodImpl;
+  mLiterals: TList<TSyntaxNode>;
+  mIndex, mLast: Integer;
+  mEdits: TArray<TRuleEdit>;
+  mLiteral: TSyntaxNode;
   mHelpers: TArray<string>;
 begin
-  Cache := TRuleDerived.Open(AContext);
-  if not PrepareModel(Cache, AContext, Model) then
+  mCache := TRuleDerived.Open(AContext);
+  if not PrepareModel(mCache, AContext, mModel) then
   begin
     Exit;
   end;
-  mHelpers := ScalingHelpers(Model);
-  Literals := TList<TSyntaxNode>.Create;
+  mHelpers := ScalingHelpers(mModel);
+  mLiterals := TList<TSyntaxNode>.Create;
   try
-    for Method in Model.Methods do
+    for mMethod in mModel.Methods do
     begin
-      if not IsIn(Method.MethodName, PaintMethods) or not Model.IsComponent(Method.ClassName) then
+      if not IsIn(mMethod.MethodName, cPaintMethods) or not mModel.IsComponent(mMethod.ClassName) then
       begin
         Continue;
       end;
-      Literals.Clear;
-      CollectPixels(Method.Block, Literals, mHelpers);
+      mLiterals.Clear;
+      CollectPixels(mMethod.Block, mLiterals, mHelpers);
       // Ein Treffer je Ausdruck (z. B. Rect(0, 0, 16, 16)), nicht je Zahl.
-      Index := 0;
-      while Index < Literals.Count do
+      mIndex := 0;
+      while mIndex < mLiterals.Count do
       begin
-        Last := Index;
-        while (Last + 1 < Literals.Count) and (Literals[Last + 1].Parent = Literals[Index].Parent) do
+        mLast := mIndex;
+        while (mLast + 1 < mLiterals.Count) and (mLiterals[mLast + 1].Parent = mLiterals[mIndex].Parent) do
         begin
-          Inc(Last);
+          Inc(mLast);
         end;
-        Edits := nil;
-        while Index <= Last do
+        mEdits := nil;
+        while mIndex <= mLast do
         begin
-          Literal := Literals[Index];
-          Edits := Edits + [TRuleEdit.Create(TTextRange.Create(Literal.StartPos, Literal.EndPos),
-            'ScaleValue(' + Literal.Name + ')')];
-          Inc(Index);
+          mLiteral := mLiterals[mIndex];
+          mEdits := mEdits + [TRuleEdit.Create(TTextRange.Create(mLiteral.StartPos, mLiteral.EndPos),
+            'ScaleValue(' + mLiteral.Name + ')')];
+          Inc(mIndex);
         end;
-        AReport.Add(TTextRange.Create(Literals[Last - Length(Edits) + 1].StartPos, Literals[Last].EndPos),
+        AReport.Add(TTextRange.Create(mLiterals[mLast - Length(mEdits) + 1].StartPos, mLiterals[mLast].EndPos),
           cTexts[TComponentsText.FixedPixel].Fmt(
-          [Method.MethodName]), TRuleConfidence.Medium, [TRuleFix.Create(cTexts[TComponentsText.ScaleWith].Text,
-            Edits)]);
+          [mMethod.MethodName]), TRuleConfidence.Medium, [TRuleFix.Create(cTexts[TComponentsText.ScaleWith].Text,
+            mEdits)]);
       end;
     end;
   finally
-    Literals.Free;
+    mLiterals.Free;
   end;
 end;
 
@@ -731,14 +731,14 @@ end;
 /// <summary>Sind alle Argumente des Aufrufs ACall Zahlenliterale (RGB(255, 0, 0), TColor($00FF00))?</summary>
 function LiteralArguments(ACall: TSyntaxNode): Boolean;
 var
-  Index: Integer;
-  Argument: TSyntaxNode;
+  mIndex: Integer;
+  mArgument: TSyntaxNode;
 begin
   Result := ACall.ChildCount > 1;
-  for Index := 1 to ACall.ChildCount - 1 do
+  for mIndex := 1 to ACall.ChildCount - 1 do
   begin
-    Argument := ACall[Index];
-    if not IsNumberLiteral(Argument, ['$', '0'..'9']) then
+    mArgument := ACall[mIndex];
+    if not IsNumberLiteral(mArgument, ['$', '0'..'9']) then
     begin
       Exit(False);
     end;
@@ -747,9 +747,9 @@ end;
 
 procedure CollectColors(ANode: TSyntaxNode; AList: TList<TSyntaxNode>);
 var
-  List: TList<TSyntaxNode>;
+  mList: TList<TSyntaxNode>;
 begin
-  List := AList;
+  mList := AList;
   // Iterativ (Bericht M1).
   ANode.Walk(
     function(AVisited: TSyntaxNode): Boolean
@@ -764,7 +764,7 @@ begin
       begin
         if LiteralArguments(AVisited) then
         begin
-          List.Add(AVisited);
+          mList.Add(AVisited);
         end;
         Exit(False);
       end;
@@ -772,42 +772,42 @@ begin
       if IsNumberLiteral(AVisited, ['$', '0'..'9']) and (AVisited.Parent <> nil) and
         (AVisited.Parent.Kind = TSyntaxKind.AssignStatement) and EndsText('Color', AVisited.Parent.Name) then
       begin
-        List.Add(AVisited);
+        mList.Add(AVisited);
       end;
     end);
 end;
 
 procedure TComponentHardcodedColorRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Model: TComponentModel;
-  Cache: IRuleDerivedCache;
-  Method: TMethodImpl;
-  Colors: TList<TSyntaxNode>;
-  Node: TSyntaxNode;
+  mModel: TComponentModel;
+  mCache: IRuleDerivedCache;
+  mMethod: TMethodImpl;
+  mColors: TList<TSyntaxNode>;
+  mNode: TSyntaxNode;
 begin
-  Cache := TRuleDerived.Open(AContext);
-  if not PrepareModel(Cache, AContext, Model) then
+  mCache := TRuleDerived.Open(AContext);
+  if not PrepareModel(mCache, AContext, mModel) then
   begin
     Exit;
   end;
-  Colors := TList<TSyntaxNode>.Create;
+  mColors := TList<TSyntaxNode>.Create;
   try
-    for Method in Model.Methods do
+    for mMethod in mModel.Methods do
     begin
-      if not SameText(Method.MethodName, 'Paint') or not Model.IsComponent(Method.ClassName) then
+      if not SameText(mMethod.MethodName, 'Paint') or not mModel.IsComponent(mMethod.ClassName) then
       begin
         Continue;
       end;
-      Colors.Clear;
-      CollectColors(Method.Block, Colors);
-      for Node in Colors do
+      mColors.Clear;
+      CollectColors(mMethod.Block, mColors);
+      for mNode in mColors do
       begin
-        AReport.Add(TTextRange.Create(Node.StartPos, Node.EndPos), cTexts[TComponentsText.FixedColor].Text,
+        AReport.Add(TTextRange.Create(mNode.StartPos, mNode.EndPos), cTexts[TComponentsText.FixedColor].Text,
           TRuleConfidence.Medium);
       end;
     end;
   finally
-    Colors.Free;
+    mColors.Free;
   end;
 end;
 procedure RegisterComponentRules(const ARegistry: TRuleRegistry);

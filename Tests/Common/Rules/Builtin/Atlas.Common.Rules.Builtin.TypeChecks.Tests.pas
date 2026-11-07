@@ -188,7 +188,7 @@ begin
   Source := Werte('  Dispose(Werte);'#10);
   Found := ArrayFindings(Source);
   Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(DynamicArrayMisuseRuleId, Found[0].RuleId);
+  Assert.AreEqual(cDynamicArrayMisuseRuleId, Found[0].RuleId);
   Assert.AreEqual('Dispose ist für dynamische Arrays nicht erlaubt und nicht nötig (wie E2008).', Found[0].Message);
   Assert.AreEqual(17, Found[0].Range.StartPos.Line);
   Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
@@ -297,12 +297,12 @@ end;
 
 procedure TDynamicArrayMisuseTests.RuleIsRegistered;
 begin
-  Assert.IsTrue(IsBuiltin(DynamicArrayMisuseRuleId), DynamicArrayMisuseRuleId);
-  Assert.IsTrue(IsBuiltin(LocalRoutineAsCallbackRuleId), LocalRoutineAsCallbackRuleId);
-  Assert.IsTrue(IsBuiltin(HresultIntegerMixRuleId), HresultIntegerMixRuleId);
-  Assert.IsTrue(IsBuiltin(InvalidVarArgumentRuleId), InvalidVarArgumentRuleId);
-  Assert.IsTrue(IsBuiltin(ConditionNotBooleanRuleId), ConditionNotBooleanRuleId);
-  Assert.IsTrue(IsBuiltin(ForInNotEnumerableRuleId), ForInNotEnumerableRuleId);
+  Assert.IsTrue(IsBuiltin(cDynamicArrayMisuseRuleId), cDynamicArrayMisuseRuleId);
+  Assert.IsTrue(IsBuiltin(cLocalRoutineAsCallbackRuleId), cLocalRoutineAsCallbackRuleId);
+  Assert.IsTrue(IsBuiltin(cHresultIntegerMixRuleId), cHresultIntegerMixRuleId);
+  Assert.IsTrue(IsBuiltin(cInvalidVarArgumentRuleId), cInvalidVarArgumentRuleId);
+  Assert.IsTrue(IsBuiltin(cConditionNotBooleanRuleId), cConditionNotBooleanRuleId);
+  Assert.IsTrue(IsBuiltin(cForInNotEnumerableRuleId), cForInNotEnumerableRuleId);
 end;
 
 { THresultIntegerMixTests }
@@ -341,7 +341,7 @@ begin
   Source := Export('Integer');
   Found := MixFindings(Source);
   Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(HresultIntegerMixRuleId, Found[0].RuleId);
+  Assert.AreEqual(cHresultIntegerMixRuleId, Found[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Found[0].Severity));
   Assert.AreEqual('IExport.Schreiben liefert HRESULT, die Implementierung Integer (wie W1008).', Found[0].Message);
   Assert.AreEqual(7, Found[0].Range.StartPos.Line);
@@ -453,7 +453,7 @@ begin
   Source := Liste(Vergleich, '  Sort(Vergleich);'#10);
   Found := CallbackFindings(Source);
   Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(LocalRoutineAsCallbackRuleId, Found[0].RuleId);
+  Assert.AreEqual(cLocalRoutineAsCallbackRuleId, Found[0].RuleId);
   Assert.AreEqual('Die lokale Funktion Vergleich kann nicht als Prozedurvariable übergeben werden (wie E2094).',
     Found[0].Message);
   Assert.AreEqual(30, Found[0].Range.StartPos.Line);
@@ -574,7 +574,7 @@ begin
   Source := Zeilen('  Zaehlen(Doppelt(2));'#10);
   Found := VarFindings(Source);
   Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(InvalidVarArgumentRuleId, Found[0].RuleId);
+  Assert.AreEqual(cInvalidVarArgumentRuleId, Found[0].RuleId);
   Assert.AreEqual(43, Found[0].Range.StartPos.Line);
   Assert.AreEqual(10, Found[0].Range.StartPos.Character);
   Assert.AreEqual(1, Integer(Length(Found[0].Fixes)));
@@ -739,7 +739,7 @@ begin
   Source := Bedingungen('  if Liste.Count then'#10'    Verarbeiten;'#10);
   Found := ConditionFindings(Source);
   Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(ConditionNotBooleanRuleId, Found[0].RuleId);
+  Assert.AreEqual(cConditionNotBooleanRuleId, Found[0].RuleId);
   Assert.AreEqual('Die Bedingung ist Integer, nicht Boolean (wie E2012).', Found[0].Message);
   Assert.AreEqual(24, Found[0].Range.StartPos.Line);
   Assert.AreEqual(5, Found[0].Range.StartPos.Character);
@@ -874,7 +874,7 @@ var
 begin
   Found := ForInFindings(Schleifen('  for O in Felder.Dataset do'#10'    O.Free;'#10));
   Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(ForInNotEnumerableRuleId, Found[0].RuleId);
+  Assert.AreEqual(cForInNotEnumerableRuleId, Found[0].RuleId);
   Assert.AreEqual('TDataSet hat keinen Enumerator; for-in ist hier nicht möglich (wie E2430).', Found[0].Message);
   Assert.AreEqual(45, Found[0].Range.StartPos.Line);
   Assert.AreEqual(11, Found[0].Range.StartPos.Character);

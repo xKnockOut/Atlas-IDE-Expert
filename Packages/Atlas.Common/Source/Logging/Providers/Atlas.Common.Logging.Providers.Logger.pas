@@ -55,13 +55,13 @@ end;
 
 procedure TLogger.AddSink(const ASink: ILogSink; AMinLevel: TLogLevel);
 var
-  Entry: TSinkEntry;
+  mEntry: TSinkEntry;
 begin
-  Entry.Sink := ASink;
-  Entry.MinLevel := AMinLevel;
+  mEntry.Sink := ASink;
+  mEntry.MinLevel := AMinLevel;
   FLock.Enter;
   try
-    FSinks.Add(Entry);
+    FSinks.Add(mEntry);
   finally
     FLock.Leave;
   end;
@@ -69,19 +69,19 @@ end;
 
 procedure TLogger.Log(ALevel: TLogLevel; const AText: string);
 var
-  LogEntry: TLogEntry;
-  SinkEntry: TSinkEntry;
+  mLogEntry: TLogEntry;
+  mSinkEntry: TSinkEntry;
 begin
-  LogEntry := TLogEntry.Create(Now, ALevel, AText);
+  mLogEntry := TLogEntry.Create(Now, ALevel, AText);
   // Die Sperre hält auch die Ausgabe zusammen, damit Zeilen mehrerer Threads
   // sich in Datei und stderr nicht mischen.
   FLock.Enter;
   try
-    for SinkEntry in FSinks do
+    for mSinkEntry in FSinks do
     begin
-      if ALevel >= SinkEntry.MinLevel then
+      if ALevel >= mSinkEntry.MinLevel then
         try
-          SinkEntry.Sink.Write(LogEntry);
+          mSinkEntry.Sink.Write(mLogEntry);
         except
           // Fehler einer Senke dürfen weder andere Senken noch den Aufrufer stören.
         end;

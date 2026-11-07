@@ -143,9 +143,9 @@ uses
   Atlas.Text.Lines;
 
 const
-  VirtualDirectives: array[0..5] of string = ('virtual', 'dynamic', 'override', 'abstract', 'reintroduce', 'message');
-  StatementStarts: array[0..8] of string = (';', 'begin', 'then', 'else', 'do', 'try', 'finally', 'except', 'repeat');
-  StatementEnds: array[0..5] of string = (';', 'end', 'else', 'until', 'except', 'finally');
+  cVirtualDirectives: array[0..5] of string = ('virtual', 'dynamic', 'override', 'abstract', 'reintroduce', 'message');
+  cStatementStarts: array[0..8] of string = (';', 'begin', 'then', 'else', 'do', 'try', 'finally', 'except', 'repeat');
+  cStatementEnds: array[0..5] of string = (';', 'end', 'else', 'until', 'except', 'finally');
 
 { Tokens }
 
@@ -191,20 +191,20 @@ end;
 /// <summary>Schließende Klammer zu AOpen ("(" oder "["); -1 ohne.</summary>
 function Closing(const ATokens: TArray<TPascalToken>; AOpen: Integer): Integer;
 var
-  Depth: Integer;
+  mDepth: Integer;
 begin
-  Depth := 0;
+  mDepth := 0;
   Result := AOpen;
   while Result <= High(ATokens) do
   begin
     if IsSymbolAt(ATokens, Result, '(') or IsSymbolAt(ATokens, Result, '[') then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
     else if IsSymbolAt(ATokens, Result, ')') or IsSymbolAt(ATokens, Result, ']') then
     begin
-      Dec(Depth);
-      if Depth = 0 then
+      Dec(mDepth);
+      if mDepth = 0 then
       begin
         Exit;
       end;
@@ -217,20 +217,20 @@ end;
 /// <summary>Öffnende Klammer zu AClose (")" oder "]"); -1 ohne.</summary>
 function Opening(const ATokens: TArray<TPascalToken>; AClose: Integer): Integer;
 var
-  Depth: Integer;
+  mDepth: Integer;
 begin
-  Depth := 0;
+  mDepth := 0;
   Result := AClose;
   while Result >= 0 do
   begin
     if IsSymbolAt(ATokens, Result, ')') or IsSymbolAt(ATokens, Result, ']') then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
     else if IsSymbolAt(ATokens, Result, '(') or IsSymbolAt(ATokens, Result, '[') then
     begin
-      Dec(Depth);
-      if Depth = 0 then
+      Dec(mDepth);
+      if mDepth = 0 then
       begin
         Exit;
       end;
@@ -242,24 +242,24 @@ end;
 /// <summary>Hinter einem generischen Namen (Foo&lt;T&gt;) das Token nach "&gt;"; sonst AIndex.</summary>
 function SkipGenericArgs(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 var
-  Depth: Integer;
+  mDepth: Integer;
 begin
   Result := AIndex;
   if not IsSymbolAt(ATokens, AIndex, '<') then
   begin
     Exit;
   end;
-  Depth := 0;
+  mDepth := 0;
   while Result <= High(ATokens) do
   begin
     if IsSymbolAt(ATokens, Result, '<') then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
     else if IsSymbolAt(ATokens, Result, '>') then
     begin
-      Dec(Depth);
-      if Depth = 0 then
+      Dec(mDepth);
+      if mDepth = 0 then
       begin
         Exit(NextToken(ATokens, Result));
       end;
@@ -322,26 +322,26 @@ end;
 /// <summary>Kommas der obersten Ebene zwischen AOpen und AClose.</summary>
 function TopLevelCommas(const ATokens: TArray<TPascalToken>; AOpen, AClose: Integer): TArray<Integer>;
 var
-  Index, Depth: Integer;
+  mIndex, mDepth: Integer;
 begin
   Result := nil;
-  Depth := 0;
-  Index := NextToken(ATokens, AOpen);
-  while (Index >= 0) and (Index < AClose) do
+  mDepth := 0;
+  mIndex := NextToken(ATokens, AOpen);
+  while (mIndex >= 0) and (mIndex < AClose) do
   begin
-    if IsSymbolAt(ATokens, Index, '(') or IsSymbolAt(ATokens, Index, '[') then
+    if IsSymbolAt(ATokens, mIndex, '(') or IsSymbolAt(ATokens, mIndex, '[') then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if IsSymbolAt(ATokens, Index, ')') or IsSymbolAt(ATokens, Index, ']') then
+    else if IsSymbolAt(ATokens, mIndex, ')') or IsSymbolAt(ATokens, mIndex, ']') then
     begin
-      Dec(Depth);
+      Dec(mDepth);
     end
-    else if (Depth = 0) and IsSymbolAt(ATokens, Index, ',') then
+    else if (mDepth = 0) and IsSymbolAt(ATokens, mIndex, ',') then
     begin
-      Result := Result + [Index];
+      Result := Result + [mIndex];
     end;
-    Index := NextToken(ATokens, Index);
+    mIndex := NextToken(ATokens, mIndex);
   end;
 end;
 
@@ -568,7 +568,7 @@ begin
     begin
       AInfo.ResultType := Collapse(NodeText(AText, mChild));
     end
-    else if (mChild.Kind = TSyntaxKind.Directive) and (IndexText(mChild.Name, VirtualDirectives) >= 0) then
+    else if (mChild.Kind = TSyntaxKind.Directive) and (IndexText(mChild.Name, cVirtualDirectives) >= 0) then
     begin
       AInfo.Virtual_ := True;
     end;
@@ -776,21 +776,22 @@ end;
 
 function TClassReader.Method(const ARoutine: TRoutineInfo): TAccessorMethod;
 var
-  Token: Integer;
-  Tokens: TArray<TPascalToken>;
+  mToken: Integer;
+  mTokens: TArray<TPascalToken>;
 begin
   Result := Default(TAccessorMethod);
   Result.Name := ARoutine.Name;
   Result.Section := ARoutine.Section;
   Result.Virtual_ := ARoutine.Virtual_;
   Result.NamePos := ARoutine.Node.StartPos;
-  Tokens := FTree.Tokens;
-  for Token := TSyntaxTree.FirstTokenOf(Tokens, ARoutine.Node.StartOffset) to High(Tokens) do
+  mTokens := FTree.Tokens;
+  for mToken := TSyntaxTree.FirstTokenOf(mTokens, ARoutine.Node.StartOffset) to High(mTokens) do
   begin
-    if (Tokens[Token].Offset >= ARoutine.Node.StartOffset) and (Tokens[Token].Kind = TPascalTokenKind.Identifier) and
-      SameText(Tokens[Token].Text, ARoutine.Name) then
+    if (mTokens[mToken].Offset >= ARoutine.Node.StartOffset) and
+      (mTokens[mToken].Kind = TPascalTokenKind.Identifier) and
+      SameText(mTokens[mToken].Text, ARoutine.Name) then
     begin
-      Result.NamePos := Tokens[Token].StartPos;
+      Result.NamePos := mTokens[mToken].StartPos;
       Break;
     end;
   end;
@@ -804,42 +805,42 @@ end;
 
 function TClassReader.TrivialGetter(const AGetter, AField: string): Boolean;
 var
-  Qualified: string;
-  Found: TSyntaxNode;
+  mQualified: string;
+  mFound: TSyntaxNode;
 begin
-  Qualified := FDecl.Name + '.' + AGetter;
-  Found := nil;
+  mQualified := FDecl.Name + '.' + AGetter;
+  mFound := nil;
   FTree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
-      if (Found = nil) and (ANode.Kind = TSyntaxKind.RoutineDecl) and SameText(ANode.Name, Qualified) then
+      if (mFound = nil) and (ANode.Kind = TSyntaxKind.RoutineDecl) and SameText(ANode.Name, mQualified) then
       begin
-        Found := ANode;
+        mFound := ANode;
       end;
-      Result := Found = nil;
+      Result := mFound = nil;
     end);
   Result := False;
   // Nur Kopf und Rumpf, im Rumpf genau "Result := FX;".
-  if (Found = nil) or (Found.ChildCount <> 2) or (Found[1].Kind <> TSyntaxKind.Block) or
-    (Found[1].ChildCount <> 1) then
+  if (mFound = nil) or (mFound.ChildCount <> 2) or (mFound[1].Kind <> TSyntaxKind.Block) or
+    (mFound[1].ChildCount <> 1) then
   begin
     Exit;
   end;
-  Found := Found[1][0];
-  Result := (Found.Kind = TSyntaxKind.AssignStatement) and SameText(Found.Name, 'Result') and
-    (Found.ChildCount = 2) and (Found[1].Kind = TSyntaxKind.Identifier) and SameText(Found[1].Name, AField);
+  mFound := mFound[1][0];
+  Result := (mFound.Kind = TSyntaxKind.AssignStatement) and SameText(mFound.Name, 'Result') and
+    (mFound.ChildCount = 2) and (mFound[1].Kind = TSyntaxKind.Identifier) and SameText(mFound[1].Name, AField);
 end;
 
 function SameTypes(const A, B: TArray<string>): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := Length(A) = Length(B);
   if Result then
   begin
-    for Index := 0 to High(A) do
+    for mIndex := 0 to High(A) do
     begin
-      if not SameText(A[Index], B[Index]) then
+      if not SameText(A[mIndex], B[mIndex]) then
       begin
         Exit(False);
       end;
@@ -1031,9 +1032,9 @@ end;
 /// <summary>Typdeklarationen mit Klasse (auch geschachtelt), in Reihenfolge.</summary>
 function ClassDecls(ATree: TSyntaxTree): TArray<TSyntaxNode>;
 var
-  Found: TArray<TSyntaxNode>;
+  mFound: TArray<TSyntaxNode>;
 begin
-  Found := nil;
+  mFound := nil;
   if (ATree <> nil) and (ATree.Root <> nil) then
   begin
     ATree.Root.Walk(
@@ -1041,21 +1042,21 @@ begin
       begin
         if IsClassDecl(ANode) then
         begin
-          Found := Found + [ANode];
+          mFound := mFound + [ANode];
         end;
         Result := True;
       end);
   end;
-  Result := Found;
+  Result := mFound;
 end;
 
 /// <summary>Klassendeklarationen, die ALine enthalten; steigt nur in Knoten ab, die die Zeile abdecken
 /// (große Units: nicht jede Klasse je Cursorbewegung lesen).</summary>
 function ClassDeclsAt(ATree: TSyntaxTree; ALine: Integer): TArray<TSyntaxNode>;
 var
-  Found: TArray<TSyntaxNode>;
+  mFound: TArray<TSyntaxNode>;
 begin
-  Found := nil;
+  mFound := nil;
   if (ATree <> nil) and (ATree.Root <> nil) then
   begin
     ATree.Root.Walk(
@@ -1064,11 +1065,11 @@ begin
         Result := (ANode = ATree.Root) or ((ANode.StartPos.Line <= ALine) and (ANode.EndPos.Line >= ALine));
         if Result and IsClassDecl(ANode) then
         begin
-          Found := Found + [ANode];
+          mFound := mFound + [ANode];
         end;
       end);
   end;
-  Result := Found;
+  Result := mFound;
 end;
 
 /// <summary>Property-Kandidaten der Klassen ADecls.</summary>
@@ -1114,20 +1115,20 @@ end;
 
 class function TPropertyFromAccessors.Plural(const AName: string): string;
 var
-  Last: Char;
+  mLast: Char;
 begin
   Result := AName;
   if AName = '' then
   begin
     Exit;
   end;
-  Last := AName[Length(AName)];
-  if CharInSet(Last, ['y', 'Y']) and (Length(AName) > 1) and not CharInSet(AName[Length(AName) - 1],
+  mLast := AName[Length(AName)];
+  if CharInSet(mLast, ['y', 'Y']) and (Length(AName) > 1) and not CharInSet(AName[Length(AName) - 1],
     ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U']) then
   begin
     Result := Copy(AName, 1, Length(AName) - 1) + 'ies';
   end
-  else if CharInSet(Last, ['s', 'x', 'z', 'S', 'X', 'Z']) or EndsText('ch', AName) or EndsText('sh', AName) then
+  else if CharInSet(mLast, ['s', 'x', 'z', 'S', 'X', 'Z']) or EndsText('ch', AName) or EndsText('sh', AName) then
   begin
     Result := AName + 'es';
   end
@@ -1152,21 +1153,21 @@ end;
 class function TPropertyFromAccessors.At(ATree: TSyntaxTree; const AText: string; ALine: Integer;
   const AOptions: TPropertyFromAccessorsOptions; out AWholeClass: Boolean): TArray<TAccessorProperty>;
 var
-  Item: TAccessorProperty;
+  mItem: TAccessorProperty;
 begin
   Result := nil;
   AWholeClass := False;
   // Getter und Setter stehen in der Klassendeklaration: Nur Klassen, die die Zeile enthalten, kommen infrage.
-  for Item in PropertiesOf(ATree, AText, ClassDeclsAt(ATree, ALine), AOptions) do
+  for mItem in PropertiesOf(ATree, AText, ClassDeclsAt(ATree, ALine), AOptions) do
   begin
-    if Item.ClassLine = ALine then
+    if mItem.ClassLine = ALine then
     begin
       AWholeClass := True;
-      Result := Result + [Item];
+      Result := Result + [mItem];
     end
-    else if CoversLine(Item.Getter, ALine) or CoversLine(Item.Setter, ALine) then
+    else if CoversLine(mItem.Getter, ALine) or CoversLine(mItem.Setter, ALine) then
     begin
-      Result := [Item];
+      Result := [mItem];
       Exit;
     end;
   end;
@@ -1175,19 +1176,19 @@ end;
 class function TPropertyFromAccessors.CanHide(const AMethod: TAccessorMethod;
   const AOptions: TPropertyFromAccessorsOptions): Boolean;
 var
-  Target: TMemberSection;
+  mTarget: TMemberSection;
 begin
   Result := False;
   if not AMethod.Exists or AMethod.Virtual_ or (AOptions.Hiding = TAccessorHiding.Off) then
   begin
     Exit;
   end;
-  Target := TMemberSection.Private_;
+  mTarget := TMemberSection.Private_;
   if AOptions.Hiding = TAccessorHiding.Protected_ then
   begin
-    Target := TMemberSection.Protected_;
+    mTarget := TMemberSection.Protected_;
   end;
-  Result := AMethod.Section > Target;
+  Result := AMethod.Section > mTarget;
 end;
 
 function Accessors(const AProperty: TAccessorProperty): TArray<TAccessorMethod>;
@@ -1211,20 +1212,20 @@ type
 
 procedure AddInsertion(var AInsertions: TArray<TInsertion>; const APosition: TTextPosition; const AText: string);
 var
-  Index: Integer;
-  Item: TInsertion;
+  mIndex: Integer;
+  mItem: TInsertion;
 begin
-  for Index := 0 to High(AInsertions) do
+  for mIndex := 0 to High(AInsertions) do
   begin
-    if AInsertions[Index].Position = APosition then
+    if AInsertions[mIndex].Position = APosition then
     begin
-      AInsertions[Index].Text := AInsertions[Index].Text + AText;
+      AInsertions[mIndex].Text := AInsertions[mIndex].Text + AText;
       Exit;
     end;
   end;
-  Item.Position := APosition;
-  Item.Text := AText;
-  AInsertions := AInsertions + [Item];
+  mItem.Position := APosition;
+  mItem.Text := AText;
+  AInsertions := AInsertions + [mItem];
 end;
 
 function LastLineOf(const ASection: TClassSection): Integer;
@@ -1567,22 +1568,22 @@ end;
 
 class function TPropertyFromAccessors.IsHeaderName(const ATokens: TArray<TPascalToken>; ANameToken: Integer): Boolean;
 var
-  Before: Integer;
+  mBefore: Integer;
 begin
-  Before := PreviousToken(ATokens, ChainStart(ATokens, ANameToken));
-  Result := IsWordAt(ATokens, Before, ['function', 'procedure', 'constructor', 'destructor']);
+  mBefore := PreviousToken(ATokens, ChainStart(ATokens, ANameToken));
+  Result := IsWordAt(ATokens, mBefore, ['function', 'procedure', 'constructor', 'destructor']);
 end;
 
 /// <summary>Beginnt hinter ABefore eine Anweisung (bzw. steht dort ":" eines case-Zweigs)?</summary>
 function StartsStatement(const ATokens: TArray<TPascalToken>; ABefore: Integer): Boolean;
 begin
-  Result := (ABefore < 0) or IsWordAt(ATokens, ABefore, StatementStarts) or IsSymbolAt(ATokens, ABefore, ':');
+  Result := (ABefore < 0) or IsWordAt(ATokens, ABefore, cStatementStarts) or IsSymbolAt(ATokens, ABefore, ':');
 end;
 
 /// <summary>Endet vor AIndex eine Anweisung?</summary>
 function EndsStatement(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
 begin
-  Result := (AIndex < 0) or IsWordAt(ATokens, AIndex, StatementEnds);
+  Result := (AIndex < 0) or IsWordAt(ATokens, AIndex, cStatementEnds);
 end;
 
 function GetterUse(const ATokens: TArray<TPascalToken>; ANameToken, ABefore: Integer): TAccessorUse;
@@ -1599,8 +1600,8 @@ begin
     Result := TAccessorUse.Keep;
   end
   // Als Anweisung (X.GetCaption;) gibt es keine Property-Form.
-  else if ((ABefore < 0) or IsWordAt(ATokens, ABefore, StatementStarts)) and
-    IsWordAt(ATokens, mAfter, StatementEnds) then
+  else if ((ABefore < 0) or IsWordAt(ATokens, ABefore, cStatementStarts)) and
+    IsWordAt(ATokens, mAfter, cStatementEnds) then
   begin
     Result := TAccessorUse.Keep;
   end

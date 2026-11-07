@@ -44,7 +44,7 @@ type
   TAssignFields = class
   public const
     /// <summary>Mehr Felder als so viele: zuerst die Liste mit Kontrollkästchen.</summary>
-    ListThreshold = 15;
+    cListThreshold = 15;
   public
     /// <summary>Mitglieder in Reihenfolge; eine Property ohne Typ ersetzt Sichtbarkeit und Signaturkopf der
     /// gleichnamigen geerbten an deren Stelle, gleichnamige spätere Einträge ersetzen frühere.</summary>
@@ -90,32 +90,32 @@ const
     (De: 'Alle Felder zuweisen (%d)'; En: 'Assign all fields (%d)'));
 
 const
-  NumberTypes: array[0..27] of string = ('integer', 'cardinal', 'int64', 'uint64', 'byte', 'word', 'longint',
+  cNumberTypes: array[0..27] of string = ('integer', 'cardinal', 'int64', 'uint64', 'byte', 'word', 'longint',
     'longword', 'shortint', 'smallint', 'nativeint', 'nativeuint', 'int8', 'int16', 'int32', 'uint8', 'uint16',
     'uint32', 'fixedint', 'fixeduint', 'single', 'double', 'extended', 'real', 'currency', 'comp', 'tdatetime',
     'tdate');
-  TextTypes: array[0..6] of string = ('string', 'unicodestring', 'ansistring', 'widestring', 'shortstring',
+  cTextTypes: array[0..6] of string = ('string', 'unicodestring', 'ansistring', 'widestring', 'shortstring',
     'rawbytestring', 'utf8string');
-  CharTypes: array[0..2] of string = ('char', 'ansichar', 'widechar');
-  BooleanTypes: array[0..3] of string = ('boolean', 'bytebool', 'wordbool', 'longbool');
-  ReferenceTypes: array[0..11] of string = ('pointer', 'pchar', 'pansichar', 'pwidechar', 'tobject', 'iinterface',
+  cCharTypes: array[0..2] of string = ('char', 'ansichar', 'widechar');
+  cBooleanTypes: array[0..3] of string = ('boolean', 'bytebool', 'wordbool', 'longbool');
+  cReferenceTypes: array[0..11] of string = ('pointer', 'pchar', 'pansichar', 'pwidechar', 'tobject', 'iinterface',
     'iunknown', 'tclass', 'tarray', 'tproc', 'tfunc', 'tpredicate');
 
 /// <summary>Typtext ohne Unit-Präfix und Typargumente, klein.</summary>
 function BareName(const ATypeName: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := LowerCase(Trim(ATypeName));
-  Index := Pos('<', Result);
-  if Index > 0 then
+  mIndex := Pos('<', Result);
+  if mIndex > 0 then
   begin
-    Result := Trim(Copy(Result, 1, Index - 1));
+    Result := Trim(Copy(Result, 1, mIndex - 1));
   end;
-  Index := LastDelimiter('.', Result);
-  if Index > 0 then
+  mIndex := LastDelimiter('.', Result);
+  if mIndex > 0 then
   begin
-    Result := Copy(Result, Index + 1, MaxInt);
+    Result := Copy(Result, mIndex + 1, MaxInt);
   end;
 end;
 
@@ -129,54 +129,54 @@ end;
 /// <summary>Teil der Signatur nach dem Namen: ab dem ersten ":" außerhalb von Klammern; '' ohne Typ.</summary>
 function AfterName(const ASignature: string): string;
 var
-  Index, Depth: Integer;
+  mIndex, mDepth: Integer;
 begin
   Result := '';
-  Depth := 0;
-  for Index := 1 to Length(ASignature) do
-    case ASignature[Index] of
+  mDepth := 0;
+  for mIndex := 1 to Length(ASignature) do
+    case ASignature[mIndex] of
       '(', '[':
-        Inc(Depth);
+        Inc(mDepth);
       ')', ']':
-        Dec(Depth);
+        Dec(mDepth);
       ':':
-        if Depth = 0 then
+        if mDepth = 0 then
         begin
-          Exit(Copy(ASignature, Index + 1, MaxInt));
+          Exit(Copy(ASignature, mIndex + 1, MaxInt));
         end;
     end;
 end;
 
 class function TAssignFields.Merge(const AMembers: TArray<TAssignMember>): TArray<TAssignMember>;
 var
-  Member: TAssignMember;
-  Index, Found: Integer;
+  mMember: TAssignMember;
+  mIndex, mFound: Integer;
 begin
   Result := nil;
-  for Member in AMembers do
+  for mMember in AMembers do
   begin
-    Found := -1;
-    for Index := 0 to High(Result) do
+    mFound := -1;
+    for mIndex := 0 to High(Result) do
     begin
-      if SameText(Result[Index].Name, Member.Name) then
+      if SameText(Result[mIndex].Name, mMember.Name) then
       begin
-        Found := Index;
+        mFound := mIndex;
         Break;
       end;
     end;
-    if Found < 0 then
+    if mFound < 0 then
     begin
-      Result := Result + [Member];
+      Result := Result + [mMember];
     end
-    else if (Member.Kind = TIndexSymbolKind.Property_) and (Member.TypeName = '') and
-      (Result[Found].Kind = TIndexSymbolKind.Property_) then
+    else if (mMember.Kind = TIndexSymbolKind.Property_) and (mMember.TypeName = '') and
+      (Result[mFound].Kind = TIndexSymbolKind.Property_) then
     begin
       // "property Caption;" im published-Abschnitt: Typ und Zugriff bleiben die geerbten.
-      Result[Found].Visibility := Member.Visibility;
+      Result[mFound].Visibility := mMember.Visibility;
     end
     else
     begin
-      Result[Found] := Member;
+      Result[mFound] := mMember;
     end;
   end;
 end;
@@ -237,23 +237,23 @@ end;
 function KindOfName(const ABare: string; out AKind: TAssignValueKind): Boolean;
 begin
   AKind := TAssignValueKind.Other;
-  if IndexText(ABare, TextTypes) >= 0 then
+  if IndexText(ABare, cTextTypes) >= 0 then
   begin
     AKind := TAssignValueKind.Text;
   end
-  else if (IndexText(ABare, NumberTypes) >= 0) or SameText(ABare, 'ttime') then
+  else if (IndexText(ABare, cNumberTypes) >= 0) or SameText(ABare, 'ttime') then
   begin
     AKind := TAssignValueKind.Number;
   end
-  else if IndexText(ABare, CharTypes) >= 0 then
+  else if IndexText(ABare, cCharTypes) >= 0 then
   begin
     AKind := TAssignValueKind.Character;
   end
-  else if IndexText(ABare, BooleanTypes) >= 0 then
+  else if IndexText(ABare, cBooleanTypes) >= 0 then
   begin
     AKind := TAssignValueKind.Boolean_;
   end
-  else if IndexText(ABare, ReferenceTypes) >= 0 then
+  else if IndexText(ABare, cReferenceTypes) >= 0 then
   begin
     AKind := TAssignValueKind.Reference;
   end;
@@ -303,45 +303,45 @@ end;
 class function TAssignFields.AssignedAfter(const ALines: TArray<string>; ALine: Integer;
   const AExpression: string): TArray<string>;
 var
-  Pattern: string;
-  Parts: TArray<string>;
-  Index: Integer;
-  Found: TMatch;
+  mPattern: string;
+  mParts: TArray<string>;
+  mIndex: Integer;
+  mFound: TMatch;
 begin
   Result := nil;
   // "Opts . Inner" steht auch mit Leerzeichen um den Punkt da.
-  Parts := AExpression.Split(['.']);
-  for Index := 0 to High(Parts) do
+  mParts := AExpression.Split(['.']);
+  for mIndex := 0 to High(mParts) do
   begin
-    Parts[Index] := TRegEx.Escape(Trim(Parts[Index]));
+    mParts[mIndex] := TRegEx.Escape(Trim(mParts[mIndex]));
   end;
-  Pattern := '^\s*' + string.Join('\s*\.\s*', Parts) + '\s*\.\s*([A-Za-z_][A-Za-z0-9_]*)\s*:=';
-  for Index := ALine + 1 to High(ALines) do
+  mPattern := '^\s*' + string.Join('\s*\.\s*', mParts) + '\s*\.\s*([A-Za-z_][A-Za-z0-9_]*)\s*:=';
+  for mIndex := ALine + 1 to High(ALines) do
   begin
-    if Trim(ALines[Index]) = '' then
+    if Trim(ALines[mIndex]) = '' then
     begin
       Continue;
     end;
-    Found := TRegEx.Match(ALines[Index], Pattern, [roIgnoreCase]);
-    if not Found.Success then
+    mFound := TRegEx.Match(ALines[mIndex], mPattern, [roIgnoreCase]);
+    if not mFound.Success then
     begin
       Break;
     end;
-    Result := Result + [Found.Groups[1].Value];
+    Result := Result + [mFound.Groups[1].Value];
   end;
 end;
 
 class function TAssignFields.Without(const AFields: TArray<TAssignField>;
   const ANames: TArray<string>): TArray<TAssignField>;
 var
-  Field: TAssignField;
+  mField: TAssignField;
 begin
   Result := nil;
-  for Field in AFields do
+  for mField in AFields do
   begin
-    if IndexText(Field.Name, ANames) < 0 then
+    if IndexText(mField.Name, ANames) < 0 then
     begin
-      Result := Result + [Field];
+      Result := Result + [mField];
     end;
   end;
 end;
@@ -354,48 +354,48 @@ end;
 /// <summary>Text für einen Platzhalter: "$", "}" und "\" mit "\" davor.</summary>
 function Escaped(const AText: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := 1 to Length(AText) do
+  for mIndex := 1 to Length(AText) do
   begin
-    if CharInSet(AText[Index], ['$', '}', '\']) then
+    if CharInSet(AText[mIndex], ['$', '}', '\']) then
     begin
       Result := Result + '\';
     end;
-    Result := Result + AText[Index];
+    Result := Result + AText[mIndex];
   end;
 end;
 
 class function TAssignFields.Snippet(const AExpression: string; const AFields: TArray<TAssignField>): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := 0 to High(AFields) do
+  for mIndex := 0 to High(AFields) do
   begin
-    if Index > 0 then
+    if mIndex > 0 then
     begin
       Result := Result + #10;
     end;
-    Result := Result + Escaped(AExpression) + '.' + Escaped(AFields[Index].Name) + ' := ${' +
-      IntToStr(Index + 1) + ':' + Escaped(AFields[Index].Value) + '};';
+    Result := Result + Escaped(AExpression) + '.' + Escaped(AFields[mIndex].Name) + ' := ${' +
+      IntToStr(mIndex + 1) + ':' + Escaped(AFields[mIndex].Value) + '};';
   end;
 end;
 
 class function TAssignFields.Plain(const AExpression, AIndent, ALineBreak: string;
   const AFields: TArray<TAssignField>): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := 0 to High(AFields) do
+  for mIndex := 0 to High(AFields) do
   begin
-    if Index > 0 then
+    if mIndex > 0 then
     begin
       Result := Result + ALineBreak + AIndent;
     end;
-    Result := Result + Line(AExpression, AFields[Index]);
+    Result := Result + Line(AExpression, AFields[mIndex]);
   end;
 end;
 

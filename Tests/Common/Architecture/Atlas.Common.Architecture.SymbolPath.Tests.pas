@@ -364,11 +364,11 @@ begin
   // uKundenService verwendet uDatenbank nicht: über uses allein gibt es keinen Weg, wie im Uses-Graphen.
   Assert.AreEqual(Ord(TSymbolPathStatus.NoPath), Ord(Found.Status));
   Assert.AreEqual(0, Integer(Length(FGraph.Path(FGraph.IndexOf('uKundenForm'), FGraph.IndexOf('uDatenbank'),
-    AllUsesSections))));
+    cAllUsesSections))));
   Search := Request('uKundenRepo', 'uDatenbank');
   Search.Via := [TSymbolPathEdgeKind.Uses_];
   Found := Find(Search);
-  Edges := FGraph.Path(FGraph.IndexOf('uKundenRepo'), FGraph.IndexOf('uDatenbank'), AllUsesSections);
+  Edges := FGraph.Path(FGraph.IndexOf('uKundenRepo'), FGraph.IndexOf('uDatenbank'), cAllUsesSections);
   Expected := StringReplace(FGraph.Describe(Edges), ' → ', ' > ', [rfReplaceAll]);
   Assert.AreEqual(Expected, Captions(Found.Routes[0]));
 end;
@@ -457,7 +457,7 @@ begin
   Assert.AreEqual(11, Found.Routes[0].Steps[0].Position.Line);
   // Ohne calls in via kein Weg.
   Search := Request('TKundenRepo.Laden', 'TDatenbank.Abfrage');
-  Search.Via := AllSymbolPathEdges - [TSymbolPathEdgeKind.Calls];
+  Search.Via := cAllSymbolPathEdges - [TSymbolPathEdgeKind.Calls];
   Assert.AreEqual(Ord(TSymbolPathStatus.NoPath), Ord(Find(Search).Status));
   // Rückwärts über den Verwendungsindex: Wer ruft Abfrage auf?
   Found := Find('uKundenRepo', 'TDatenbank.Abfrage');
@@ -555,7 +555,7 @@ begin
   Assert.AreEqual(Ord(TSymbolPathStatus.Found), Ord(Find(Search).Status));
   // Höchstens 16.
   Search.MaxSteps := 99;
-  Assert.AreEqual(TSymbolPathRequest.MaxStepsLimit, Find(Search).MaxSteps);
+  Assert.AreEqual(TSymbolPathRequest.cMaxStepsLimit, Find(Search).MaxSteps);
 end;
 
 procedure TSymbolPathTests.AllReturnsEqualRoutesInOrder;
