@@ -75,17 +75,17 @@ end;
 
 function TAtlasInlineValuesTests.EvaluateAll(const ASuffix: string): string;
 var
-  Name: string;
+  mName: string;
 begin
   Result := '';
-  while FValues.NextPending(Name) do
+  while FValues.NextPending(mName) do
   begin
     if Result <> '' then
     begin
       Result := Result + ' ';
     end;
-    Result := Result + Name;
-    FValues.Put(Name, Name + ASuffix, True);
+    Result := Result + mName;
+    FValues.Put(mName, mName + ASuffix, True);
   end;
 end;
 
@@ -128,14 +128,14 @@ end;
 
 procedure TAtlasInlineValuesTests.FailedValuesAreHidden;
 var
-  Name: string;
+  mName: string;
 begin
   FValues.Start('C:\P\A.pas', 'x', 12, Refs, 5);
-  Assert.IsTrue(FValues.NextPending(Name));
-  Assert.AreEqual('Name', Name);
+  Assert.IsTrue(FValues.NextPending(mName));
+  Assert.AreEqual('Name', mName);
   FValues.Put('Name', 'Symbol wurde wegoptimiert', False);
-  Assert.IsTrue(FValues.NextPending(Name));
-  Assert.AreEqual('Count', Name, 'Schreibweise der ersten Stelle im Text (Zeile 10)');
+  Assert.IsTrue(FValues.NextPending(mName));
+  Assert.AreEqual('Count', mName, 'Schreibweise der ersten Stelle im Text (Zeile 10)');
   Assert.AreEqual(0, Integer(Length(FValues.Line('C:\P\A.pas', 12))), 'Count steht noch aus, Name fehlt');
   FValues.Put('COUNT', '3', True);
   Assert.AreEqual('Count = 3', TAtlasInlineValues.LineText(FValues.Line('C:\P\A.pas', 12)));
@@ -143,17 +143,17 @@ end;
 
 procedure TAtlasInlineValuesTests.UnavailableValuesShowCaption;
 var
-  Items: TAtlasInlineValueItems;
+  mItems: TAtlasInlineValueItems;
 begin
   FValues.SetUnavailable('<kein Zugriff>', TArray<string>.Create('nicht lesbar'));
   FValues.Start('C:\P\A.pas', 'x', 12, Refs, 5);
   FValues.Put('Name', 'Inaccessible value', False);
   FValues.Put('Count', 'Wert nicht lesbar', False);
-  Items := FValues.Line('C:\P\A.pas', 12);
-  Assert.AreEqual('Name = <kein Zugriff>, Count = <kein Zugriff>', TAtlasInlineValues.LineText(Items),
+  mItems := FValues.Line('C:\P\A.pas', 12);
+  Assert.AreEqual('Name = <kein Zugriff>, Count = <kein Zugriff>', TAtlasInlineValues.LineText(mItems),
     'bekannter Text und Ergänzung');
-  Assert.AreEqual(Ord(TAtlasInlineValueState.Unavailable), Ord(Items[0].State));
-  Assert.IsFalse(Items[0].Changed);
+  Assert.AreEqual(Ord(TAtlasInlineValueState.Unavailable), Ord(mItems[0].State));
+  Assert.IsFalse(mItems[0].Changed);
   // Andere Fehler und ohne Beschriftung bleibt der Name weg.
   FValues.Put('Name', 'Zugriffsverletzung', False);
   Assert.AreEqual('Count = <kein Zugriff>', TAtlasInlineValues.LineText(FValues.Line('C:\P\A.pas', 12)));
@@ -164,7 +164,7 @@ end;
 
 procedure TAtlasInlineValuesTests.ShowsDatesAndShortensLongValues;
 var
-  Long: string;
+  mLong: string;
 begin
   Assert.AreEqual('2026-10-23', TAtlasInlineValues.Display('TDateTime', '46318'));
   Assert.AreEqual('2026-10-23 12:00:00', TAtlasInlineValues.Display('TDateTime', '46318.5'));
@@ -176,27 +176,27 @@ begin
   Assert.AreEqual('[fsBold, fsItalic]', TAtlasInlineValues.Display('TFontStyles', '[fsBold, fsItalic]'));
   Assert.AreEqual('nil', TAtlasInlineValues.Display('TObject', ' nil '));
   Assert.AreEqual('''a b''', TAtlasInlineValues.Display('string', '''a'#13#10'b'''), 'eine Zeile');
-  Long := StringOfChar('x', 100);
-  Assert.AreEqual(StringOfChar('x', TAtlasInlineValues.MaxValueLength) + ' …',
-    TAtlasInlineValues.Display('string', Long));
+  mLong := StringOfChar('x', 100);
+  Assert.AreEqual(StringOfChar('x', TAtlasInlineValues.cMaxValueLength) + ' …',
+    TAtlasInlineValues.Display('string', mLong));
 end;
 
 procedure TAtlasInlineValuesTests.HighlightsChangedValuesInSameRoutine;
 var
-  Items: TAtlasInlineValueItems;
+  mItems: TAtlasInlineValueItems;
 begin
   FValues.Start('C:\P\A.pas', 'C:\P\A.pas|TA.Lauf', 14, Refs, 5);
   EvaluateAll('1');
-  Items := FValues.Line('C:\P\A.pas', 14);
-  Assert.IsFalse(Items[0].Changed, 'erster Halt: nichts hervorgehoben');
+  mItems := FValues.Line('C:\P\A.pas', 14);
+  Assert.IsFalse(mItems[0].Changed, 'erster Halt: nichts hervorgehoben');
   FValues.Clear;
   FValues.Start('C:\P\A.pas', 'C:\P\A.pas|TA.Lauf', 14, Refs, 5);
   FValues.Put('I', 'I2', True);
   FValues.Put('Count', 'Count1', True);
-  Items := FValues.Line('C:\P\A.pas', 14);
-  Assert.AreEqual('I = I2, Count = Count1', TAtlasInlineValues.LineText(Items));
-  Assert.IsTrue(Items[0].Changed, 'nach F8 geändert');
-  Assert.IsFalse(Items[1].Changed, 'gleich geblieben');
+  mItems := FValues.Line('C:\P\A.pas', 14);
+  Assert.AreEqual('I = I2, Count = Count1', TAtlasInlineValues.LineText(mItems));
+  Assert.IsTrue(mItems[0].Changed, 'nach F8 geändert');
+  Assert.IsFalse(mItems[1].Changed, 'gleich geblieben');
   // Ohne Clear (Halt ohne Fortsetzen dazwischen) zählt der letzte Stand ebenso.
   FValues.Start('C:\P\A.pas', 'C:\P\A.pas|TA.Lauf', 14, Refs, 5);
   FValues.Put('I', 'I2', True);
@@ -213,13 +213,13 @@ end;
 
 procedure TAtlasInlineValuesTests.ClearHidesValues;
 var
-  Name: string;
+  mName: string;
 begin
   FValues.Start('C:\P\A.pas', 'x', 14, Refs, 5);
   EvaluateAll('1');
   FValues.Clear;
   Assert.IsFalse(FValues.Active);
-  Assert.IsFalse(FValues.NextPending(Name));
+  Assert.IsFalse(FValues.NextPending(mName));
   Assert.AreEqual(0, Integer(Length(FValues.Line('C:\P\A.pas', 14))));
   Assert.AreEqual('', FValues.FileName);
 end;

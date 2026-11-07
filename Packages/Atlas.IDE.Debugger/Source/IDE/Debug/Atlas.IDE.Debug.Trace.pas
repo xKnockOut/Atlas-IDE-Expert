@@ -34,7 +34,7 @@ type
   TAtlasIdeDebugTrace = class
   public const
     /// <summary>Namen der Aktionen in der Aktionsliste der IDE.</summary>
-    ActionNames: array[TAtlasTraceKind] of string = ('RunTraceIntoCommand', 'RunTraceToSourceCommand');
+    cActionNames: array[TAtlasTraceKind] of string = ('RunTraceIntoCommand', 'RunTraceToSourceCommand');
   private type
     /// <summary>Hängt an einer Aktion: meldet den Schritt, dann die Aktion wie bisher.</summary>
     THook = class(TComponent)
@@ -160,7 +160,7 @@ begin
   for mIndex := 0 to mServices.ActionList.ActionCount - 1 do
   begin
     mAction := mServices.ActionList.Actions[mIndex];
-    if SameText(mAction.Name, ActionNames[AKind]) then
+    if SameText(mAction.Name, cActionNames[AKind]) then
     begin
       Exit(mAction);
     end;
@@ -203,7 +203,7 @@ begin
     else
     begin
       TAtlasGuard.Log(Format('Debugger: Aktion %s nicht gefunden; der Schritt bleibt unverändert',
-        [ActionNames[mKind]]));
+        [cActionNames[mKind]]));
     end;
   end;
 end;
