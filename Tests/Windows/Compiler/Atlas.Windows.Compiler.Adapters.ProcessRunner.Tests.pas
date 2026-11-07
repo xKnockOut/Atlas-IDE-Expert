@@ -44,80 +44,80 @@ end;
 
 procedure TProcessRunnerTests.ReadsOutputLinesAndExitCode;
 var
-  Runner: ICompilerProcess;
-  Request: TCompilerRequest;
-  Lines: TList<string>;
-  Code: Integer;
+  mRunner: ICompilerProcess;
+  mRequest: TCompilerRequest;
+  mLines: TList<string>;
+  mCode: Integer;
 begin
-  Runner := TProcessRunner.Create;
-  Request := Default(TCompilerRequest);
-  Request.Executable := GetEnvironmentVariable('ComSpec');
-  Request.Arguments := ['/c', 'echo eins&echo zwei&exit 3'];
-  Lines := TList<string>.Create;
+  mRunner := TProcessRunner.Create;
+  mRequest := Default(TCompilerRequest);
+  mRequest.Executable := GetEnvironmentVariable('ComSpec');
+  mRequest.Arguments := ['/c', 'echo eins&echo zwei&exit 3'];
+  mLines := TList<string>.Create;
   try
-    Code := Runner.Run(Request,
+    mCode := mRunner.Run(mRequest,
       procedure(const ALine: string)
       begin
-        Lines.Add(ALine);
+        mLines.Add(ALine);
       end);
-    Assert.AreEqual(3, Code);
-    Assert.AreEqual(2, Integer(Lines.Count));
-    Assert.AreEqual('eins', Lines[0]);
-    Assert.AreEqual('zwei', Lines[1]);
+    Assert.AreEqual(3, mCode);
+    Assert.AreEqual(2, Integer(mLines.Count));
+    Assert.AreEqual('eins', mLines[0]);
+    Assert.AreEqual('zwei', mLines[1]);
   finally
-    Lines.Free;
+    mLines.Free;
   end;
 end;
 
 procedure TProcessRunnerTests.CancelEndsRunningProcess;
 var
-  Runner: ICompilerProcess;
-  Request: TCompilerRequest;
-  Canceller: TThread;
-  Watch: TStopwatch;
+  mRunner: ICompilerProcess;
+  mRequest: TCompilerRequest;
+  mCanceller: TThread;
+  mWatch: TStopwatch;
 begin
-  Runner := TProcessRunner.Create;
-  Request := Default(TCompilerRequest);
+  mRunner := TProcessRunner.Create;
+  mRequest := Default(TCompilerRequest);
   // Direkt starten, nicht über cmd /c: Sonst erbte ping das Schreibende der Pipe, und ReadFile
   // bliebe bis zum Ende von ping blockiert.
-  Request.Executable := TPath.Combine(GetEnvironmentVariable('SystemRoot'), 'System32\PING.EXE');
-  Request.Arguments := ['-n', '30', '127.0.0.1'];
-  Canceller := TThread.CreateAnonymousThread(
+  mRequest.Executable := TPath.Combine(GetEnvironmentVariable('SystemRoot'), 'System32\PING.EXE');
+  mRequest.Arguments := ['-n', '30', '127.0.0.1'];
+  mCanceller := TThread.CreateAnonymousThread(
     procedure
     begin
       Sleep(300);
-      Runner.Cancel;
+      mRunner.Cancel;
     end);
-  Canceller.FreeOnTerminate := False;
+  mCanceller.FreeOnTerminate := False;
   try
-    Watch := TStopwatch.StartNew;
-    Canceller.Start;
+    mWatch := TStopwatch.StartNew;
+    mCanceller.Start;
     Assert.WillRaise(
       procedure
       begin
-        Runner.Run(Request, nil);
+        mRunner.Run(mRequest, nil);
       end, ECompilerCancelled);
-    Assert.IsTrue(Watch.ElapsedMilliseconds < 5000, IntToStr(Watch.ElapsedMilliseconds));
+    Assert.IsTrue(mWatch.ElapsedMilliseconds < 5000, IntToStr(mWatch.ElapsedMilliseconds));
   finally
-    Canceller.WaitFor;
-    Canceller.Free;
+    mCanceller.WaitFor;
+    mCanceller.Free;
   end;
 end;
 
 procedure TProcessRunnerTests.RunAfterCancelRaises;
 var
-  Runner: ICompilerProcess;
-  Request: TCompilerRequest;
+  mRunner: ICompilerProcess;
+  mRequest: TCompilerRequest;
 begin
-  Runner := TProcessRunner.Create;
-  Request := Default(TCompilerRequest);
-  Request.Executable := GetEnvironmentVariable('ComSpec');
-  Request.Arguments := ['/c', 'exit 0'];
-  Runner.Cancel;
+  mRunner := TProcessRunner.Create;
+  mRequest := Default(TCompilerRequest);
+  mRequest.Executable := GetEnvironmentVariable('ComSpec');
+  mRequest.Arguments := ['/c', 'exit 0'];
+  mRunner.Cancel;
   Assert.WillRaise(
     procedure
     begin
-      Runner.Run(Request, nil);
+      mRunner.Run(mRequest, nil);
     end, ECompilerCancelled);
 end;
 
