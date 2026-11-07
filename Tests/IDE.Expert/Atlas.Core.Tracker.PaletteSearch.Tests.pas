@@ -250,7 +250,7 @@ var
   mDebounce: TAtlasIssueSearchDebounce;
   mText: string;
 begin
-  mDebounce := TAtlasIssueSearchDebounce.Create(TAtlasIssuePaletteSearch.DelayMs);
+  mDebounce := TAtlasIssueSearchDebounce.Create(TAtlasIssuePaletteSearch.cDelayMs);
   try
     mDebounce.Input('S', 1000);
     Assert.IsFalse(mDebounce.Take(1100, mText));
@@ -527,14 +527,14 @@ begin
     Assert.AreEqual(0, Integer(Length(mRecent.Items(GitHubTarget)[0].Labels)));
     Assert.AreEqual(0, mRecent.Items(GitHubTarget)[0].PullRequest.Number);
     // Höchstens MaxRecent je Tracker, MaxStored insgesamt.
-    for mIndex := 1 to TAtlasRecentIssues.MaxStored + 5 do
+    for mIndex := 1 to TAtlasRecentIssues.cMaxStored + 5 do
     begin
       mRecent.Add(YouTrackTarget, Issue('ATL-' + IntToStr(100 + mIndex), 'Nr. ' + IntToStr(mIndex)));
     end;
-    Assert.AreEqual(TAtlasRecentIssues.MaxStored, mRecent.Count);
+    Assert.AreEqual(TAtlasRecentIssues.cMaxStored, mRecent.Count);
     mItems := mRecent.Items(YouTrackTarget);
-    Assert.AreEqual(TAtlasRecentIssues.MaxRecent, Integer(Length(mItems)));
-    Assert.AreEqual('ATL-' + IntToStr(100 + TAtlasRecentIssues.MaxStored + 5), mItems[0].Key);
+    Assert.AreEqual(TAtlasRecentIssues.cMaxRecent, Integer(Length(mItems)));
+    Assert.AreEqual('ATL-' + IntToStr(100 + TAtlasRecentIssues.cMaxStored + 5), mItems[0].Key);
     Assert.AreEqual(0, Integer(Length(mRecent.Items(GitHubTarget))), 'älteste verdrängt');
     mRecent.Clear;
     Assert.AreEqual(0, mRecent.Count);

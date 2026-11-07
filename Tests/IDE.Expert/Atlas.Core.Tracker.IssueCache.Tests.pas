@@ -196,14 +196,14 @@ begin
   // Neue Sitzung: nur von der Platte.
   mCache := TAtlasTrackerIssueCache.Create(FFolder);
   try
-    Assert.IsTrue(mCache.Get(Target, 'ATL-123', cNow + TAtlasTrackerIssueCache.MaxAgeDays - 0.1, mDetails));
+    Assert.IsTrue(mCache.Get(Target, 'ATL-123', cNow + TAtlasTrackerIssueCache.cMaxAgeDays - 0.1, mDetails));
     Assert.AreEqual('Tracker im Plugin', mDetails.Title);
   finally
     mCache.Free;
   end;
   mCache := TAtlasTrackerIssueCache.Create(FFolder);
   try
-    Assert.IsFalse(mCache.Get(Target, 'ATL-123', cNow + TAtlasTrackerIssueCache.MaxAgeDays + 0.1, mDetails));
+    Assert.IsFalse(mCache.Get(Target, 'ATL-123', cNow + TAtlasTrackerIssueCache.cMaxAgeDays + 0.1, mDetails));
     Assert.AreEqual('', mDetails.Key);
     Assert.IsFalse(mCache.Get(Target, 'ATL-999', cNow, mDetails), 'unbekannt');
   finally
@@ -218,7 +218,7 @@ var
 begin
   mCache := TAtlasTrackerIssueCache.Create(FFolder);
   try
-    mCache.Put(Target, Sample('ATL-1', cNow - TAtlasTrackerIssueCache.MaxAgeDays - 1));
+    mCache.Put(Target, Sample('ATL-1', cNow - TAtlasTrackerIssueCache.cMaxAgeDays - 1));
     mCache.Put(Target, Sample('ATL-2', cNow));
     mFolder := TPath.Combine(FFolder, TAtlasTrackerIssueCache.TrackerId(Target));
     TFile.WriteAllText(TPath.Combine(mFolder, 'kaputt.json'), '{');
@@ -226,7 +226,7 @@ begin
     Assert.IsFalse(TFile.Exists(TPath.Combine(mFolder, 'ATL-1.json')), 'alt');
     Assert.IsFalse(TFile.Exists(TPath.Combine(mFolder, 'kaputt.json')), 'kaputt');
     Assert.IsTrue(TFile.Exists(TPath.Combine(mFolder, 'ATL-2.json')), 'frisch');
-    mCache.Prune(cNow + TAtlasTrackerIssueCache.MaxAgeDays + 1);
+    mCache.Prune(cNow + TAtlasTrackerIssueCache.cMaxAgeDays + 1);
     Assert.IsFalse(TDirectory.Exists(mFolder), 'leerer Ordner entfällt');
   finally
     mCache.Free;
@@ -241,14 +241,14 @@ var
 begin
   mCache := TAtlasTrackerIssueCache.Create('');
   try
-    for mIndex := 1 to TAtlasTrackerIssueCache.MaxMemory do
+    for mIndex := 1 to TAtlasTrackerIssueCache.cMaxMemory do
     begin
       mCache.Put(Target, Sample('ATL-' + IntToStr(mIndex), cNow));
     end;
     // ATL-1 benutzen: danach fällt ATL-2 als ältestes heraus.
     Assert.IsTrue(mCache.Get(Target, 'ATL-1', cNow, mDetails));
     mCache.Put(Target, Sample('ATL-999', cNow));
-    Assert.AreEqual(Integer(TAtlasTrackerIssueCache.MaxMemory), mCache.Count);
+    Assert.AreEqual(Integer(TAtlasTrackerIssueCache.cMaxMemory), mCache.Count);
     Assert.IsTrue(mCache.Get(Target, 'ATL-1', cNow, mDetails));
     Assert.IsFalse(mCache.Get(Target, 'ATL-2', cNow, mDetails));
     Assert.IsTrue(mCache.Get(Target, 'atl-999', cNow, mDetails), 'Kennung ohne Groß-/Kleinschreibung');

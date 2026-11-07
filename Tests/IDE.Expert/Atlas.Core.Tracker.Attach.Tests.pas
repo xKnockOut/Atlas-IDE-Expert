@@ -290,7 +290,7 @@ procedure TAtlasAttachTests.LastLinesOfLog;
 var
   mText: string;
 begin
-  mText := TAtlasAttachLog.LastLines(NumberedLines(1, 500), TAtlasAttachLog.DefaultLines);
+  mText := TAtlasAttachLog.LastLines(NumberedLines(1, 500), TAtlasAttachLog.cDefaultLines);
   Assert.AreEqual(NumberedLines(301, 500).TrimRight, mText);
   // Weniger Zeilen als verlangt, ohne Umbruch am Ende, 0 = alle.
   Assert.AreEqual('a'#13#10'b', TAtlasAttachLog.LastLines('a'#10'b', 200));
@@ -377,7 +377,7 @@ begin
   Assert.AreEqual(720, mHeight);
   // Grenzen: unter MinWidth gilt MinWidth.
   Assert.IsTrue(TAtlasAttachImage.ScaledSize(1000, 500, 10, mWidth, mHeight));
-  Assert.AreEqual(TAtlasAttachImage.MinWidth, mWidth);
+  Assert.AreEqual(TAtlasAttachImage.cMinWidth, mWidth);
   Assert.AreEqual(160, mHeight);
 end;
 
@@ -399,7 +399,7 @@ var
 begin
   mNote := TAtlasAttachFile.CreateText(TAtlasAttachKind.DebugNote, 'notiz.md', '# Debug-Notiz'#13#10'- Ort');
   mText := TAtlasAttachComment.WithTexts('Siehe unten.', [Png('bild.png'), LogFile('app.log', 'a'#13#10'```b'),
-    mNote], TAtlasAttachComment.MaxTextsLength);
+    mNote], TAtlasAttachComment.cMaxTextsLength);
   Assert.AreEqual('Siehe unten.'#13#10#13#10 +
     '**app.log**'#13#10#13#10'```text'#13#10'a'#13#10'` ` `b'#13#10'```'#13#10#13#10 +
     '**notiz.md**'#13#10#13#10'# Debug-Notiz'#13#10'- Ort', mText);
@@ -438,7 +438,8 @@ begin
   mRequest.Files := [Png('bildschirmfoto.png'), LogFile('app.log', 'Zeile')];
   mRequest.Comment := 'Fehlerbild';
   mRequest.WithComment := True;
-  mOutcome := TAtlasAttachSender.Send(TAtlasYouTrackTracker.Create as IAtlasTrackerProvider, mTransport, mRequest, 1000);
+  mOutcome := TAtlasAttachSender.Send(TAtlasYouTrackTracker.Create as IAtlasTrackerProvider, mTransport, mRequest,
+    1000);
   Assert.IsTrue(mOutcome.Succeeded);
   Assert.IsFalse(mOutcome.Fallback);
   Assert.AreEqual(2, mOutcome.Uploaded);
@@ -469,13 +470,15 @@ begin
   mRequest.Key := 'ATL-123';
   mRequest.Files := [Png('a.png')];
   mRequest.WithComment := True;
-  mOutcome := TAtlasAttachSender.Send(TAtlasYouTrackTracker.Create as IAtlasTrackerProvider, mTransport, mRequest, 1000);
+  mOutcome := TAtlasAttachSender.Send(TAtlasYouTrackTracker.Create as IAtlasTrackerProvider, mTransport, mRequest,
+    1000);
   Assert.IsFalse(mOutcome.Succeeded);
   Assert.AreEqual(TAtlasCiBuild.ErrorKey(TAtlasCiFetchError.Unauthorized), TAtlasCiBuild.ErrorKey(mOutcome.Error));
   Assert.AreEqual(1, Integer(Length(mSend.Urls)), 'kein Kommentar nach abgelehntem Hochladen');
   // Ungültige Kennung: nichts geht ins Netz.
   mRequest.Key := 'ATL 1/../x';
-  mOutcome := TAtlasAttachSender.Send(TAtlasYouTrackTracker.Create as IAtlasTrackerProvider, mTransport, mRequest, 1000);
+  mOutcome := TAtlasAttachSender.Send(TAtlasYouTrackTracker.Create as IAtlasTrackerProvider, mTransport, mRequest,
+    1000);
   Assert.AreEqual(TAtlasCiBuild.ErrorKey(TAtlasCiFetchError.NotConfigured), TAtlasCiBuild.ErrorKey(mOutcome.Error));
   Assert.AreEqual(1, Integer(Length(mSend.Urls)));
   mRequest.Files := nil;
@@ -544,7 +547,8 @@ begin
   mRequest := Default(TAtlasAttachRequest);
   mRequest.Target := TAtlasTrackerTarget.Create('youtrack', 'https://beispiel.youtrack.cloud', 'ATL', '');
   mRequest.Key := 'ATL-1';
-  mOutcome := TAtlasAttachSender.Send(TAtlasYouTrackTracker.Create as IAtlasTrackerProvider, TFakeGetOnly.Create as IAtlasCiTransport, mRequest, 1000);
+  mOutcome := TAtlasAttachSender.Send(TAtlasYouTrackTracker.Create as IAtlasTrackerProvider,
+    TFakeGetOnly.Create as IAtlasCiTransport, mRequest, 1000);
   Assert.AreEqual(TAtlasCiBuild.ErrorKey(TAtlasCiFetchError.NotConfigured), TAtlasCiBuild.ErrorKey(mOutcome.Error));
   mOutcome := TAtlasAttachSender.Send(nil, TFakeSend.Create as IAtlasCiTransport, mRequest, 1000);
   Assert.AreEqual(TAtlasCiBuild.ErrorKey(TAtlasCiFetchError.NotConfigured), TAtlasCiBuild.ErrorKey(mOutcome.Error));
@@ -581,9 +585,9 @@ begin
   mRun := TPath.Combine(FDir, 'alt');
   ForceDirectories(mRun);
   TFile.WriteAllText(TPath.Combine(mRun, 'a.png'), 'x');
-  TAtlasAttachTemp.PruneStale(FDir, Now, TAtlasAttachTemp.StaleHours);
+  TAtlasAttachTemp.PruneStale(FDir, Now, TAtlasAttachTemp.cStaleHours);
   Assert.IsTrue(TDirectory.Exists(mRun), 'frisch: bleibt');
-  TAtlasAttachTemp.PruneStale(FDir, Now + 2, TAtlasAttachTemp.StaleHours);
+  TAtlasAttachTemp.PruneStale(FDir, Now + 2, TAtlasAttachTemp.cStaleHours);
   Assert.IsFalse(TDirectory.Exists(mRun), 'älter als StaleHours: weg');
   // Fehlender Ordner: nichts zu tun.
   TAtlasAttachTemp.PruneStale(TPath.Combine(FDir, 'fehlt'), Now, 1);
