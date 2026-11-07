@@ -54,21 +54,21 @@ end;
 
 class function TStackTrace.Current: string;
 var
-  Frames: array[0..63] of CodePointer;
-  Count, Index: Integer;
+  mFrames: array[0..63] of CodePointer;
+  mCount, mIndex: Integer;
 begin
   Result := '';
-  Count := CaptureBacktrace(1, Length(Frames), @Frames[0]);
-  for Index := 0 to Count - 1 do
+  mCount := CaptureBacktrace(1, Length(mFrames), @mFrames[0]);
+  for mIndex := 0 to mCount - 1 do
   begin
-    Result := Result + DescribeAddress(Frames[Index]) + sLineBreak;
+    Result := Result + DescribeAddress(mFrames[mIndex]) + sLineBreak;
   end;
 end;
 
 class function TStackTrace.OfException(AError: Exception): string;
 var
-  Frames: PCodePointer;
-  Index: Integer;
+  mFrames: PCodePointer;
+  mIndex: Integer;
 begin
   Result := '';
   if (AError = nil) or (ExceptObject <> AError) then
@@ -76,10 +76,10 @@ begin
     Exit;
   end;
   Result := DescribeAddress(ExceptAddr) + sLineBreak;
-  Frames := ExceptFrames;
-  for Index := 0 to ExceptFrameCount - 1 do
+  mFrames := ExceptFrames;
+  for mIndex := 0 to ExceptFrameCount - 1 do
   begin
-    Result := Result + DescribeAddress(Frames[Index]) + sLineBreak;
+    Result := Result + DescribeAddress(mFrames[mIndex]) + sLineBreak;
   end;
 end;
 
