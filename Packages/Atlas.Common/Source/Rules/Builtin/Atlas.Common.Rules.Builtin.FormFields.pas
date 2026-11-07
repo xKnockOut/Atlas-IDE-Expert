@@ -552,7 +552,7 @@ var
 begin
   for mMain in APrograms do
   begin
-    if MatchText(AUnitName, TUsesClauses.UsedUnits(TPascalLexer.Tokenize(mMain))) then
+    if MatchText(AUnitName, TUsesClauses.UsedUnitsOf(mMain)) then
     begin
       Exit(AutoCreatedForms(mMain));
     end;

@@ -861,7 +861,7 @@ var
       Exit;
     end;
     mText := TFileEncoding.Decode(mData, mFormat_);
-    AUnits := TUsesClauses.UsedUnits(TPascalLexer.Tokenize(mText));
+    AUnits := TUsesClauses.UsedUnitsOf(mText);
     mMatch := TRegEx.Match(mText, '\b' + AClassName + '\s*=\s*class\s*\(\s*([\w.]+)', [roIgnoreCase]);
     if mMatch.Success then
     begin

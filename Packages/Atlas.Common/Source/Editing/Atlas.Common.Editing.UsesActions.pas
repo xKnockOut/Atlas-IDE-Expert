@@ -145,6 +145,8 @@ uses
 const
   cInInterfacePart = 1;
   cInImplementationPart = 2;
+  // Vorsilbe für Bezeichner mit Punkt dahinter (Qualifizierer); kein Bezeichner beginnt mit einem Punkt.
+  cQualifierKey = '.';
 
 function Bare(const AIdentifier: string): string;
 begin
@@ -172,7 +174,21 @@ begin
   Result := False;
 end;
 
-/// <summary>Bezeichner außerhalb der uses-Listen mit Bitmaske des Teils (interface/implementation).</summary>
+/// <summary>Folgt auf das Token AIndex (Kommentare übersprungen) ein Punkt?</summary>
+function DotFollows(const ATokens: TArray<TPascalToken>; AIndex: Integer): Boolean;
+var
+  mNext: Integer;
+begin
+  mNext := AIndex + 1;
+  while (mNext <= High(ATokens)) and (ATokens[mNext].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+  begin
+    Inc(mNext);
+  end;
+  Result := (mNext <= High(ATokens)) and ATokens[mNext].IsSymbol('.');
+end;
+
+/// <summary>Bezeichner außerhalb der uses-Listen mit Bitmaske des Teils (interface/implementation). Steht ein
+/// Punkt dahinter (Qualifizierer wie SysUtils.Format), zählt er zusätzlich unter "." + Name.</summary>
 function CollectIdentifiers(const ATokens: TArray<TPascalToken>;
   const AClauses: TArray<TUsesClauseInfo>): TDictionary<string, Integer>;
 var
@@ -220,6 +236,15 @@ begin
         mMask := 0;
       end;
       Result.AddOrSetValue(mKey, mMask or mPart);
+      if DotFollows(ATokens, mIndex) then
+      begin
+        mKey := cQualifierKey + mKey;
+        if not Result.TryGetValue(mKey, mMask) then
+        begin
+          mMask := 0;
+        end;
+        Result.AddOrSetValue(mKey, mMask or mPart);
+      end;
     end;
     Inc(mIndex);
   end;
@@ -238,8 +263,10 @@ begin
   begin
     Result := cInImplementationPart;
   end;
-  // Qualifizierter Zugriff wie SysUtils.Format oder System.SysUtils.Format.
-  if AIdentifiers.TryGetValue(LowerCase(Copy(AUnitName, LastDelimiter('.', AUnitName) + 1, MaxInt)), mMask) then
+  // Qualifizierter Zugriff wie SysUtils.Format oder System.SysUtils.Format. Nur mit Punkt dahinter: Eine
+  // Methode, die wie die Unit heißt (UsesActions in Atlas.Common.Lsp.CodeActions), benutzt sie nicht.
+  if AIdentifiers.TryGetValue(cQualifierKey + LowerCase(Copy(AUnitName, LastDelimiter('.', AUnitName) + 1, MaxInt)),
+    mMask) then
   begin
     Result := Result or mMask;
   end;
@@ -1120,7 +1147,7 @@ begin
   try
     for mPair in mIdentifiers do
     begin
-      if mPair.Value and cInInterfacePart <> 0 then
+      if (mPair.Value and cInInterfacePart <> 0) and not mPair.Key.StartsWith(cQualifierKey) then
       begin
         AddNeeded(Result, ADeclaring(mPair.Key), AUnits);
       end;
