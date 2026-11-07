@@ -25,6 +25,10 @@ type
     /// <summary>Ohne Arbeitsbereich gibt es kein Umfeld; gefragt wird mit dem Pfad der Datei.</summary>
     [Test]
     procedure NoContextWithoutWorkspace;
+    /// <summary>Lesende Befehle laufen nebenläufig, schreibende in der Reihenfolge der Nachrichten (Diagnose
+    /// 06.11.2026).</summary>
+    [Test]
+    procedure ReadingCommandsRunConcurrently;
     /// <summary>Der Befehl atlas.server.testUnit ist angemeldet, ohne Ordner gibt es keine Code-Aktionen.</summary>
     [Test]
     procedure RegistersCommandWithoutActions;
@@ -106,6 +110,26 @@ begin
     end;
     Assert.IsTrue(Pos('"' + TLspTestUnits.cCommand + '"', mText) > 0);
     Assert.AreEqual(0, Integer(Length(mTestUnits.Actions('file:///tmp/A.pas', 0))));
+  finally
+    mCommands.Free;
+    mTestUnits.Free;
+  end;
+end;
+
+procedure TShellTestUnitsTests.ReadingCommandsRunConcurrently;
+var
+  mTestUnits: TShellTestUnits;
+  mCommands: TLspCommands;
+  mName: string;
+begin
+  mTestUnits := TShellTestUnits.Create(NewServices);
+  mCommands := TLspCommands.Create;
+  try
+    mTestUnits.RegisterCommand(mCommands);
+    for mName in TArray<string>.Create(TLspTestUnits.cCommand) do
+    begin
+      Assert.IsTrue(mCommands.IsConcurrentCommand(mName), mName);
+    end;
   finally
     mCommands.Free;
     mTestUnits.Free;

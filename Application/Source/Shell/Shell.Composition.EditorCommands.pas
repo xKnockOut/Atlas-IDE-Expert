@@ -94,26 +94,28 @@ end;
 
 procedure TShellEditorCommands.RegisterMarkCommands(ACommands: TLspCommands);
 begin
+  // Alle Markierungen lesen nur Dokumente und Index wie Hover und Hervorhebung: nebenläufig.
   // Austrittspunkte am Cursor für die Hervorhebung im Plugin (#698).
-  ACommands.Register(TLspExitPoints.cCommand, RunExitPoints);
+  ACommands.RegisterConcurrent(TLspExitPoints.cCommand, RunExitPoints);
   // Neu zugewiesene Variablen für die Unterstreichung im Plugin (#712).
-  ACommands.Register(TLspReassigned.cCommand, RunReassigned);
+  ACommands.RegisterConcurrent(TLspReassigned.cCommand, RunReassigned);
   // Typ des markierten Ausdrucks für das Tastenkürzel im Plugin (#689).
-  ACommands.Register(TLspExpressionType.cCommand, RunExpressionType);
+  ACommands.RegisterConcurrent(TLspExpressionType.cCommand, RunExpressionType);
   // Methodenrümpfe in Deklarationsreihenfolge für Befehl und Einfügen im Plugin (#660).
-  ACommands.Register(TLspMethodOrder.cCommand, RunMethodOrder);
+  ACommands.RegisterConcurrent(TLspMethodOrder.cCommand, RunMethodOrder);
   // Überschreibungen für die Atlas-Spalte der Zeilenleiste (#768).
-  ACommands.Register(TLspOverrideMarks.cCommand, RunOverrideMarks);
+  ACommands.RegisterConcurrent(TLspOverrideMarks.cCommand, RunOverrideMarks);
 end;
 
 procedure TShellEditorCommands.RegisterTextCommands(ACommands: TLspCommands);
 begin
-  ACommands.Register(TQualifiedNames.cCommand, RunQualifiedNames);
-  ACommands.Register(TEnumValueCommands.cCommand, RunEnumValue);
+  // Nebenläufig bis auf den Ressourcenstring, der die Datei schreibt.
+  ACommands.RegisterConcurrent(TQualifiedNames.cCommand, RunQualifiedNames);
+  ACommands.RegisterConcurrent(TEnumValueCommands.cCommand, RunEnumValue);
   ACommands.Register(TResourceStringCommands.cAddCommand, RunAddResourceString);
-  ACommands.Register(TStringLiteralCommands.cPlainTextCommand, RunPlainText);
-  ACommands.Register(TStringLiteralCommands.cToLiteralCommand, RunToLiteral);
-  ACommands.Register(TLspSmartIndent.cCommand, RunSmartIndent);
+  ACommands.RegisterConcurrent(TStringLiteralCommands.cPlainTextCommand, RunPlainText);
+  ACommands.RegisterConcurrent(TStringLiteralCommands.cToLiteralCommand, RunToLiteral);
+  ACommands.RegisterConcurrent(TLspSmartIndent.cCommand, RunSmartIndent);
 end;
 
 function TShellEditorCommands.RunExitPoints(const AArguments: TJSONArray): TJSONValue;

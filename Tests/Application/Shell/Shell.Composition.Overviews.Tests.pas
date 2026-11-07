@@ -1,6 +1,6 @@
 ﻿unit Shell.Composition.Overviews.Tests;
 
-// Übersichten des Servers: Befehle werden angemeldet (Hotspots nebenläufig), Quelltext kommt über die Dienste der
+// Übersichten des Servers: Befehle werden angemeldet (lesende nebenläufig), Quelltext kommt über die Dienste der
 // Komposition, die Abfragen stehen für die Regeln query:<name> bereit.
 
 interface
@@ -22,9 +22,10 @@ type
     /// <summary>Alle Befehle der Übersichten stehen in executeCommandProvider.</summary>
     [Test]
     procedure RegistersAllCommands;
-    /// <summary>Die Hotspots laufen nebenläufig, die Architektur nicht.</summary>
+    /// <summary>Lesende Befehle laufen nebenläufig (Diagnose 06.11.2026), Berichte speichern und uses ändern in der
+    /// Reihenfolge der Nachrichten.</summary>
     [Test]
-    procedure HotspotsRunConcurrently;
+    procedure ReadingCommandsRunConcurrently;
     /// <summary>Die Rekursionssymbole lesen den Quelltext über den Dienst der Komposition.</summary>
     [Test]
     procedure RecursionReadsThroughServices;
@@ -69,11 +70,6 @@ begin
   Result.ReadText := CountRead;
 end;
 
-function CommandParams(const ACommand: string): TJSONObject;
-begin
-  Result := TJSONObject.Create(TJSONPair.Create('command', ACommand));
-end;
-
 procedure TShellOverviewsTests.RegistersAllCommands;
 var
   mOverviews: TShellOverviews;
@@ -106,27 +102,27 @@ begin
   end;
 end;
 
-procedure TShellOverviewsTests.HotspotsRunConcurrently;
+procedure TShellOverviewsTests.ReadingCommandsRunConcurrently;
 var
   mOverviews: TShellOverviews;
   mCommands: TLspCommands;
-  mParams: TJSONObject;
+  mName: string;
 begin
   mOverviews := TShellOverviews.Create(NewServices);
   mCommands := TLspCommands.Create;
   try
     mOverviews.RegisterReportCommands(mCommands);
-    mParams := CommandParams(TLspHotspots.cCommand);
-    try
-      Assert.IsTrue(mCommands.IsConcurrent(mParams));
-    finally
-      mParams.Free;
+    mOverviews.RegisterUnitCommands(mCommands);
+    for mName in TArray<string>.Create(TLspArchitecture.cCommand, TLspQuery.cCommand, TLspHotspots.cCommand,
+      TLspHotspots.cSaveCommand, TLspUnitRelations.cCommand, TLspUnitRelations.cCostCommand,
+      TLspUnitRelations.cUseUnitCommand, TLspSymbolPath.cCommand, TLspRecursion.cCommand) do
+    begin
+      Assert.IsTrue(mCommands.IsConcurrentCommand(mName), mName);
     end;
-    mParams := CommandParams(TLspArchitecture.cCommand);
-    try
-      Assert.IsFalse(mCommands.IsConcurrent(mParams));
-    finally
-      mParams.Free;
+    for mName in TArray<string>.Create(TLspArchitecture.cSaveCommand, TLspUnitRelations.cMoveCommand,
+      TLspUnitRelations.cRemoveCommand, TLspDebugDisplay.cCommand, TLspEventHandlers.cCommand) do
+    begin
+      Assert.IsFalse(mCommands.IsConcurrentCommand(mName), mName);
     end;
   finally
     mCommands.Free;

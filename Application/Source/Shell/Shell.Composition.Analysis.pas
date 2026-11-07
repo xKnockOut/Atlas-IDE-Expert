@@ -171,12 +171,13 @@ end;
 
 procedure TShellAnalysis.RegisterReportCommands(ACommands: TLspCommands);
 begin
-  ACommands.Register(TLspMetrics.cCommand,
+  // Nebenläufig: Quelle unter der Sperre der Arbeitsbereiche, Zwischenspeicher des Sammlers threadsicher.
+  ACommands.RegisterConcurrent(TLspMetrics.cCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FMetrics.Execute(AArguments);
     end);
-  ACommands.Register(TLspTodos.cCommand,
+  ACommands.RegisterConcurrent(TLspTodos.cCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FTodos.Execute(AArguments);

@@ -170,7 +170,9 @@ end;
 
 procedure TShellOverviews.RegisterReportCommands(ACommands: TLspCommands);
 begin
-  ACommands.Register(TLspArchitecture.cCommand,
+  // Lesende Befehle laufen nebenläufig wie die gleichnamigen Anfragen (Diagnose 06.11.2026: Stau hinter langen
+  // Befehlen); Berichte speichern und uses ändern bleiben in der Reihenfolge der Nachrichten.
+  ACommands.RegisterConcurrent(TLspArchitecture.cCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FArchitecture.Execute(AArguments);
@@ -180,7 +182,7 @@ begin
     begin
       Result := FArchitecture.SaveReport(AArguments);
     end);
-  ACommands.Register(TLspQuery.cCommand,
+  ACommands.RegisterConcurrent(TLspQuery.cCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FQuery.Execute(AArguments);
@@ -200,7 +202,8 @@ end;
 
 procedure TShellOverviews.RegisterUnitCommands(ACommands: TLspCommands);
 begin
-  ACommands.Register(TLspUnitRelations.cCommand,
+  // Lesend und threadsicher wie die Anfragen atlas/unitRelations und atlas/symbolPath: nebenläufig.
+  ACommands.RegisterConcurrent(TLspUnitRelations.cCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FUnitRelations.Execute(AArguments);
@@ -215,17 +218,17 @@ begin
     begin
       Result := FUnitRelations.Remove(AArguments);
     end);
-  ACommands.Register(TLspUnitRelations.cCostCommand,
+  ACommands.RegisterConcurrent(TLspUnitRelations.cCostCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FUnitRelations.Cost(AArguments);
     end);
-  ACommands.Register(TLspUnitRelations.cUseUnitCommand,
+  ACommands.RegisterConcurrent(TLspUnitRelations.cUseUnitCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FUnitRelations.UseUnitInfo(AArguments);
     end);
-  ACommands.Register(TLspSymbolPath.cCommand,
+  ACommands.RegisterConcurrent(TLspSymbolPath.cCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FSymbolPath.Execute(AArguments);
@@ -240,7 +243,7 @@ begin
     begin
       Result := FEventHandlers.Execute(AArguments);
     end);
-  ACommands.Register(TLspRecursion.cCommand,
+  ACommands.RegisterConcurrent(TLspRecursion.cCommand,
     function(const AArguments: TJSONArray): TJSONValue
     begin
       Result := FRecursion.Execute(AArguments);

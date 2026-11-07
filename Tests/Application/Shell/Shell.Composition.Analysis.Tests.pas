@@ -16,6 +16,10 @@ type
     /// <summary>Metriken und TODO-Übersicht stehen in executeCommandProvider.</summary>
     [Test]
     procedure RegistersReportCommands;
+    /// <summary>Lesende Befehle laufen nebenläufig, schreibende in der Reihenfolge der Nachrichten (Diagnose
+    /// 06.11.2026).</summary>
+    [Test]
+    procedure ReadingCommandsRunConcurrently;
     /// <summary>Gesetzte Namensräume liest die Analyse unverändert zurück.</summary>
     [Test]
     procedure SetNamespacesReachesAnalyses;
@@ -68,6 +72,26 @@ begin
     Assert.AreEqual('System', mNamespaces[0]);
     Assert.AreEqual('Vcl', mNamespaces[1]);
   finally
+    mAnalysis.Free;
+  end;
+end;
+
+procedure TShellAnalysisTests.ReadingCommandsRunConcurrently;
+var
+  mAnalysis: TShellAnalysis;
+  mCommands: TLspCommands;
+  mName: string;
+begin
+  mAnalysis := TShellAnalysis.Create(Default(TShellAnalysisServices));
+  mCommands := TLspCommands.Create;
+  try
+    mAnalysis.RegisterReportCommands(mCommands);
+    for mName in TArray<string>.Create(TLspMetrics.cCommand, TLspTodos.cCommand) do
+    begin
+      Assert.IsTrue(mCommands.IsConcurrentCommand(mName), mName);
+    end;
+  finally
+    mCommands.Free;
     mAnalysis.Free;
   end;
 end;
