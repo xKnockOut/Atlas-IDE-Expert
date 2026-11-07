@@ -490,8 +490,8 @@ var
 begin
   mPrefix := Copy(TAtlasEditorBuffer.LineText(AView, AStartLine + 1), 1, AStartCharacter);
   if not TAtlasSmartPaste.Reindent(mPrefix, LineAbove(AView, AStartLine), FClipLines,
-    TAtlasEditorBuffer.TabWidth(AView.Buffer), TAtlasEditorBuffer.BlockIndent(AView.Buffer),
-    ServerColumn(AView, AStartLine, mPrefix), mEdits) then
+    TAtlasPasteIndent.Create(TAtlasEditorBuffer.TabWidth(AView.Buffer), TAtlasEditorBuffer.BlockIndent(AView.Buffer),
+    ServerColumn(AView, AStartLine, mPrefix)), mEdits) then
   begin
     Exit;
   end;

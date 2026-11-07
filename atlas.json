@@ -16,7 +16,7 @@
     "metric-unit-length": "off",
     "metric-uses-count": "off",
     "metric-inheritance-depth": "off",
-    "catch-all-without-raise": "off",
+    "catch-all-without-raise": {"severity": "warning", "exclude": ["Tests/**", "Tools/**", "Application/**", "Packages/Atlas.IDE.*/**"]},
     "narrowing-assignment": "off",
     "generic-exception-raised": {"exclude": ["Tests/**"]},
     "format-without-settings": {"exclude": ["Tests/**"]},

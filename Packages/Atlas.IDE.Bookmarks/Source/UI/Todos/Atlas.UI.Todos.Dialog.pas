@@ -143,9 +143,14 @@ begin
   Result.AutoComplete := True;
   Result.SetBounds(ScaleValue(cGap + cLabelWidth), FNextTop, ClientWidth - ScaleValue(2 * cGap + cLabelWidth),
     ScaleValue(23));
-  for mItem in AItems do
-  begin
-    Result.Items.Add(mItem);
+  Result.Items.BeginUpdate;
+  try
+    for mItem in AItems do
+    begin
+      Result.Items.Add(mItem);
+    end;
+  finally
+    Result.Items.EndUpdate;
   end;
   Result.Text := AText;
   mPrompt.FocusControl := Result;

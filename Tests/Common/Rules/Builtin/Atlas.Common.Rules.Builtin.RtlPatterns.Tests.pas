@@ -301,6 +301,10 @@ begin
   // Eigener Aufzählungswert Random (TTexts = (Title, Random)) ist kein Aufruf von System.Random.
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TRandomWithoutRandomizeRule.Create,
     'unit U;'#10'interface'#10'type'#10'  TTexts = (Title, Random);'#10'implementation'#10'end.', Config))));
+  // Auch unter SCOPEDENUMS, wo der Wert nur als TTexts.Random sichtbar ist (Gesamtlauf 07.11.).
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TRandomWithoutRandomizeRule.Create,
+    'unit U;'#10'interface'#10'{$SCOPEDENUMS ON}'#10'type'#10'  TTexts = (Title, Random);'#10'implementation'#10 +
+    'end.', Config))));
 end;
 
 initialization

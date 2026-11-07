@@ -211,6 +211,7 @@ begin
   try
     AAction();
   except
+    // lsp-ignore: catch-all-without-raise -- Fehlergrenze des Timers; FOnError meldet
     on E: Exception do
       if Assigned(FOnError) then
       begin

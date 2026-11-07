@@ -521,8 +521,7 @@ begin
   begin
     Result := 2;
   end
-  else if SameText(mText, 'Byte') or SameText(mText, 'ShortInt') or SameText(mText, 'AnsiChar') or
-    SameText(mText, 'Char') or SameText(mText, 'UInt8') or SameText(mText, 'Int8') then
+  else if MatchText(mText, ['Byte', 'ShortInt', 'AnsiChar', 'Char', 'UInt8', 'Int8']) then
   begin
     // set of Char gilt als set of AnsiChar (Warnung W1050).
     Result := 256;

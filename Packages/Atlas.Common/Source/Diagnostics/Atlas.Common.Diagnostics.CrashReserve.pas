@@ -107,6 +107,7 @@ begin
         mWork();
       end;
     except
+      // lsp-ignore: catch-all-without-raise -- Absturzvorsorge darf nie werfen; Fehler steht in FFailure
       on E: Exception do
         FOwner.FFailure := E.ClassName + ': ' + E.Message;
     end;

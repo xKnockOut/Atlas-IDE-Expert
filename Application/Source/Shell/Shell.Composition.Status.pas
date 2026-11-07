@@ -7,59 +7,15 @@
 interface
 
 uses
-  System.Generics.Collections,
   System.JSON,
   System.Diagnostics,
-  Atlas.Common.Logging.Contract,
-  Atlas.Common.Logging.Providers.RecentSink,
-  Atlas.Common.Documents.Contract,
-  Atlas.Common.Index.Contract,
-  Atlas.Common.Index.Scheduler,
-  Atlas.Common.JsonRpc.Statistics,
-  Atlas.Common.JsonRpc.TracingTransport,
-  Atlas.Common.Diagnostics.Anonymizer,
   Atlas.Common.Lsp.Commands,
   Atlas.Common.Lsp.Status,
-  Atlas.Common.Lsp.WorkspaceCheck,
   Atlas.Text.LogMarks,
   Shell.Workspace,
-  Shell.Composition.Contract;
+  Shell.Composition.Status.Contract;
 
 type
-  TShellStatusTextFunc = reference to function: string;
-  TShellStatusSelectedFunc = reference to function(AWorkspace: TShellWorkspace): Boolean;
-  TShellStatusRecentLogFunc = reference to function: IRecentLogLines;
-  TShellStatusTracingFunc = reference to function: TJsonRpcTracingTransport;
-  TShellStatusAnonymizerFunc = reference to function: ILogAnonymizer;
-  TShellStatusCompilerProc = reference to procedure(var AStatus: TServerStatus);
-  TShellStatusCheckProc = reference to procedure(var AStatus: TServerStatus; out AQueue: TWorkspaceCheckQueue);
-  TShellStatusIndexQueueFunc = reference to function: TIndexSchedulerQueue;
-
-  /// <summary>Was Status, Fehlerbericht und Diagnosepaket von der Komposition brauchen.</summary>
-  TShellStatusServices = record
-    Logger: ILogger;
-    Index: ISymbolIndex;
-    Documents: IDocumentStore;
-    Statistics: IJsonRpcStatistics;
-    /// <summary>Ruft AVisit mit allen Arbeitsbereichen unter deren Sperre auf.</summary>
-    VisitWorkspaces: TShellVisitWorkspacesProc;
-    /// <summary>Einstellungen des Editors (Text der Schichtung).</summary>
-    EditorSettings: TShellStatusTextFunc;
-    /// <summary>Aktives Projekt der IDE.</summary>
-    ActiveProject: TShellStatusTextFunc;
-    IsSelectedProject: TShellStatusSelectedFunc;
-    /// <summary>Letzte Logzeilen; nil ohne Protokoll im Speicher.</summary>
-    RecentLog: TShellStatusRecentLogFunc;
-    /// <summary>Mitschnitt der Nachrichten; nil ohne.</summary>
-    Tracing: TShellStatusTracingFunc;
-    /// <summary>Anonymisierung von Namen; nil ohne.</summary>
-    Anonymizer: TShellStatusAnonymizerFunc;
-    CompilerStatus: TShellStatusCompilerProc;
-    /// <summary>Profil des Prüflaufs in AStatus und dessen Warteschlange.</summary>
-    CheckStatus: TShellStatusCheckProc;
-    IndexQueue: TShellStatusIndexQueueFunc;
-  end;
-
   /// <summary>Status, Prozesse, Fehlerbericht und Diagnosepaket.</summary>
   TShellStatusReports = class
   private
@@ -93,6 +49,13 @@ uses
   System.IOUtils,
   System.Math,
   Atlas.Common.Product.Version,
+  Atlas.Common.Logging.Providers.RecentSink,
+  Atlas.Common.Documents.Contract,
+  Atlas.Common.Index.Contract,
+  Atlas.Common.Index.Scheduler,
+  Atlas.Common.JsonRpc.TracingTransport,
+  Atlas.Common.Diagnostics.Anonymizer,
+  Atlas.Common.Lsp.WorkspaceCheck,
   Atlas.Common.Configuration.Contract,
   Atlas.Common.Diagnostics.ShutdownLeaks,
   Atlas.Common.Diagnostics.BugReport,

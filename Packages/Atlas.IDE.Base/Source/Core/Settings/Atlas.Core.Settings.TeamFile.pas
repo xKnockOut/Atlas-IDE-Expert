@@ -1495,9 +1495,9 @@ begin
   end;
 end;
 
-class function TAtlasTeamFile.Skeleton: string;
 const
-  cLines: array[TAtlasLanguage, 0..33] of string = (
+  /// <summary>Gerüst der Teamdatei (TAtlasTeamFile.Skeleton) je Sprache.</summary>
+  cSkeletonLines: array[TAtlasLanguage, 0..33] of string = (
     ('{',
      '  // Projekteinstellungen von Atlas für alle im Team (eingecheckt). Persönliche',
      '  // Einstellungen stehen unter Tools > Optionen > Atlas; ein Wert aus dieser',
@@ -1566,14 +1566,10 @@ const
      '  // Value display while debugging for foreign classes (own ones: // atlas-debug: above the type, #854):',
      '  // "debugDisplayRules": {"FireDAC.Comp.Client.TFDConnection": "{ConnectionName} ({DriverName})"},',
      '}'));
-var
-  mIndex: Integer;
+
+class function TAtlasTeamFile.Skeleton: string;
 begin
-  Result := '';
-  for mIndex := Low(cLines[TAtlasLanguage.German]) to High(cLines[TAtlasLanguage.German]) do
-  begin
-    Result := Result + cLines[TAtlasTextLanguage.Current, mIndex] + #13#10;
-  end;
+  Result := string.Join(#13#10, cSkeletonLines[TAtlasTextLanguage.Current]) + #13#10;
 end;
 
 class function TAtlasTeamFile.Prefix(const ATeam: TAtlasTeamSettings; AKind: TAtlasNamingKind;

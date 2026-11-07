@@ -1122,7 +1122,8 @@ begin
   if mName = 'exit' then
   begin
     // Exit(Wert) setzt Result.
-    if (AStatement.ChildCount > 0) and (AStatement.Children[0].Kind = TSyntaxKind.Call) and (AStatement.Children[0].ChildCount > 1) then
+    if (AStatement.ChildCount > 0) and (AStatement.Children[0].Kind = TSyntaxKind.Call) and
+      (AStatement.Children[0].ChildCount > 1) then
     begin
       mNode.FDefines := 'Result';
     end;
@@ -1444,32 +1445,33 @@ end;
 
 procedure TFlowAnalyzer.Run;
 var
-  AStatement, mChild: TSyntaxNode;
+  mStatement, mChild: TSyntaxNode;
   mIndex: Integer;
   mAllChildren: Boolean;
 begin
-  AStatement := FNode.Syntax;
-  if (AStatement = nil) or (AStatement.Kind in [TSyntaxKind.AsmBlock, TSyntaxKind.GotoStatement, TSyntaxKind.EmptyStatement]) then
+  mStatement := FNode.Syntax;
+  if (mStatement = nil) or
+    (mStatement.Kind in [TSyntaxKind.AsmBlock, TSyntaxKind.GotoStatement, TSyntaxKind.EmptyStatement]) then
   begin
     Exit;
   end;
-  mAllChildren := (FNode.Kind = TFlowNodeKind.Statement) and (AStatement.Kind in [TSyntaxKind.AssignStatement,
+  mAllChildren := (FNode.Kind = TFlowNodeKind.Statement) and (mStatement.Kind in [TSyntaxKind.AssignStatement,
     TSyntaxKind.CallStatement, TSyntaxKind.RaiseStatement, TSyntaxKind.InlineVar, TSyntaxKind.InlineConst,
     TSyntaxKind.Error]);
-  for mIndex := 0 to AStatement.ChildCount - 1 do
+  for mIndex := 0 to mStatement.ChildCount - 1 do
   begin
-    mChild := AStatement.Children[mIndex];
+    mChild := mStatement.Children[mIndex];
     if not mAllChildren and IsNestedPart(mChild) then
     begin
       Continue;
     end;
-    if (mIndex = 0) and (AStatement.Kind = TSyntaxKind.AssignStatement) then
+    if (mIndex = 0) and (mStatement.Kind = TSyntaxKind.AssignStatement) then
     begin
       VisitTarget(mChild);
       Continue;
     end;
     Visit(mChild, False);
-    if ChangesReceiver(AStatement, mChild) then
+    if ChangesReceiver(mStatement, mChild) then
     begin
       Touch(RootName(mChild), True);
     end;

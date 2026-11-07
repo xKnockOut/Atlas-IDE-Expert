@@ -34,6 +34,8 @@ type
     FBusy: TFunc<Boolean>;
   private
     class function Session: TLspSession; static;
+    /// <summary>Keine eigene Anfrage läuft und der Aufrufer meldet nichts Laufendes (ABusy von Install).</summary>
+    class function Idle: Boolean; static;
     /// <summary>Stand der Zeile ALine (0-basiert) in AView.</summary>
     class function AskedOf(const AView: IOTAEditView; ALine: Integer): TAtlasSmartIndentAsked; static;
     /// <summary>Nach Enter; False: Atlas übernimmt die Zeile nicht.</summary>
@@ -155,6 +157,11 @@ begin
   end;
 end;
 
+class function TAtlasIdeSmartIndent.Idle: Boolean;
+begin
+  Result := (FRequest <> nil) and not FRequest.Busy and not (Assigned(FBusy) and FBusy());
+end;
+
 class function TAtlasIdeSmartIndent.AskedOf(const AView: IOTAEditView; ALine: Integer): TAtlasSmartIndentAsked;
 begin
   Result := TAtlasSmartIndentAsked.Create(AView.Buffer.FileName, ALine, TAtlasEditorBuffer.LineText(AView, ALine + 1),
@@ -171,8 +178,8 @@ var
 begin
   Result := False;
   mSession := Session;
-  if (mSession = nil) or (FRequest = nil) or FRequest.Busy or (Assigned(FBusy) and FBusy()) or
-    AView.Buffer.IsReadOnly or not TAtlasSmartIndent.IsSource(AView.Buffer.FileName) then
+  if (mSession = nil) or not Idle or AView.Buffer.IsReadOnly or
+    not TAtlasSmartIndent.IsSource(AView.Buffer.FileName) then
   begin
     Exit;
   end;

@@ -220,8 +220,8 @@ begin
     FPoll.Fetched;
     Exit;
   end;
-  FPoll.AskAsync(FSession(), FRun, TAtlasFeature.CodeLens, cTestUnitCommand, FPoll.UriLineArguments(mLine), cRetryMs,
-    cTimeoutMs, Answer(mLine));
+  FPoll.AskAsync(FSession(), FRun, TAtlasFeature.CodeLens,
+    TAtlasLensRequest.Create(cTestUnitCommand, FPoll.UriLineArguments(mLine), cTimeoutMs), cRetryMs, Answer(mLine));
 end;
 
 function TAtlasEditorTestUnitLens.Answer(ALine: Integer): TProc<TJSONValue>;

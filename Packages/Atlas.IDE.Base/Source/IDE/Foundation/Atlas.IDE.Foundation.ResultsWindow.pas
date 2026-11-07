@@ -65,11 +65,9 @@ type
     class procedure ShowEntries(const ATitle: string; const AEntries: TArray<TAtlasResultEntry>); static;
     /// <summary>Verwendungen getrennt nach Treffersicherheit (#1119): „Sicher“ und „Erschlossen“.</summary>
     class procedure ShowReferences(const ATitle: string; const AEntries: TArray<TAtlasResultEntry>); static;
+    /// <summary>Aufrufhierarchie zeigen; AAsDiagram: gleich als Aufrufdiagramm (#1122), sofern erlaubt.</summary>
     class procedure ShowHierarchy(const ATitle: string; ADirection: TAtlasHierarchyDirection;
-      const ARoots: TArray<TAtlasHierarchyItem>); overload; static;
-    /// <summary>Wie oben; AAsDiagram: gleich als Aufrufdiagramm (#1122), sofern erlaubt.</summary>
-    class procedure ShowHierarchy(const ATitle: string; ADirection: TAtlasHierarchyDirection;
-      const ARoots: TArray<TAtlasHierarchyItem>; AAsDiagram: Boolean); overload; static;
+      const ARoots: TArray<TAtlasHierarchyItem>; AAsDiagram: Boolean); static;
     /// <summary>Nach geänderten Einstellungen: Diagramm erlauben oder abschalten (#1122).</summary>
     class procedure ApplySettings; static;
     /// <summary>Liste „Atlas-Änderungen“ (#721), neueste Sätze zuerst.</summary>
@@ -389,12 +387,6 @@ begin
     mTarget.Entries.ShowRated(ATitle, AEntries, TAtlasStrings.Text(TAtlasTextId.ResultsSureGroup),
       TAtlasStrings.Text(TAtlasTextId.ResultsInferredGroup));
   end;
-end;
-
-class procedure TAtlasIdeResultsWindow.ShowHierarchy(const ATitle: string; ADirection: TAtlasHierarchyDirection;
-  const ARoots: TArray<TAtlasHierarchyItem>);
-begin
-  ShowHierarchy(ATitle, ADirection, ARoots, False);
 end;
 
 class procedure TAtlasIdeResultsWindow.ShowHierarchy(const ATitle: string; ADirection: TAtlasHierarchyDirection;

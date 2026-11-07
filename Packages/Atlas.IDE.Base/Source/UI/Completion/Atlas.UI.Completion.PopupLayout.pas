@@ -86,7 +86,8 @@ uses
   Atlas.Core.Completion.Sets,
   Atlas.Core.Completion.Favorites,
   Atlas.UI.Popup.Draw,
-  Atlas.UI.Strings;
+  Atlas.UI.Strings,
+  Atlas.UI.Completion.Details;
 
 { TAtlasCompletionPopupLayout }
 
@@ -157,7 +158,8 @@ begin
     Exit(0);
   end;
   FDetailView.MaxHeight := PanelCap;
-  Result := FDetailView.Render(Canvas, Colors, Font, UIFont, Rect(0, 0, PanelWidth, 0), PPI, False);
+  Result := FDetailView.Render(TAtlasDetailSurface.Create(Canvas, Colors, Font, UIFont, PPI),
+    Rect(0, 0, PanelWidth, 0), False);
   Canvas.Font := Font;
 end;
 

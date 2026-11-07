@@ -90,6 +90,7 @@ begin
       Break;
     except
       // Belegt (eigener zweiter Arbeitsbereich) oder ohne Schreibrecht: nächste Nummer.
+      // lsp-ignore: catch-all-without-raise -- Prozessdateien anderer Prozesse nach Kräften lesen
       on Exception do
         FStream := nil;
     end;
@@ -109,6 +110,7 @@ begin
       TFile.Delete(FFileName);
     except
       // Liest gerade ein anderer Prozess: Er löscht die Datei beim nächsten Mal selbst.
+      // lsp-ignore: catch-all-without-raise -- Prozessdateien anderer Prozesse nach Kräften lesen
       on Exception do
         FFileName := '';
     end;
@@ -140,6 +142,7 @@ begin
     end;
   except
     // Platte voll oder Netzlaufwerk weg: Die Anzeige ist nur Diagnose.
+    // lsp-ignore: catch-all-without-raise -- Prozessdateien anderer Prozesse nach Kräften lesen
     on Exception do
       Exit;
   end;
@@ -216,6 +219,7 @@ begin
     AText := TEncoding.UTF8.GetString(mBytes);
     Result := True;
   except
+    // lsp-ignore: catch-all-without-raise -- Prozessdateien anderer Prozesse nach Kräften lesen
     on Exception do
       Result := False;
   end;
@@ -231,6 +235,7 @@ begin
     mStream.Free;
     Result := True;
   except
+    // lsp-ignore: catch-all-without-raise -- Prozessdateien anderer Prozesse nach Kräften lesen
     on Exception do
       Result := False;
   end;
@@ -251,6 +256,7 @@ begin
     end;
     mFiles := TDirectory.GetFiles(mFolder, '*.json');
   except
+    // lsp-ignore: catch-all-without-raise -- Prozessdateien anderer Prozesse nach Kräften lesen
     on Exception do
       Exit;
   end;
@@ -261,6 +267,7 @@ begin
       try
         TFile.Delete(mFileName);
       except
+        // lsp-ignore: catch-all-without-raise -- Prozessdateien anderer Prozesse nach Kräften lesen
         on Exception do
           Continue;
       end;
