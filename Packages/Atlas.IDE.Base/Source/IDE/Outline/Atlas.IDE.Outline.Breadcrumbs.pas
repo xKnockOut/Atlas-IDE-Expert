@@ -215,23 +215,11 @@ begin
   end;
 end;
 
-function BarColors: TAtlasColors;
-begin
-  if TAtlasIdeSettings.Current.BreadcrumbsIdeColors then
-  begin
-    Result := TAtlasIdeStyle.ChromeColors;
-  end
-  else
-  begin
-    Result := TAtlasIdeStyle.Colors;
-  end;
-end;
-
 procedure TBreadcrumbsState.ApplyTheme;
 var
   mColors: TAtlasColors;
 begin
-  mColors := BarColors;
+  mColors := TAtlasIdeStyle.BarColors;
   FHost.ForEach(
     procedure(ABar: TControl)
     begin
@@ -280,7 +268,7 @@ var
 begin
   mBar := TAtlasBreadcrumbBar.Create(nil);
   mHost := FHost;
-  mBar.SetColors(BarColors);
+  mBar.SetColors(TAtlasIdeStyle.BarColors);
   mBar.EmptyText := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsEmpty);
   mBar.CrumbHint := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsCrumbHint);
   mBar.SeparatorHint := TAtlasStrings.Text(TAtlasTextId.BreadcrumbsChildrenHint);

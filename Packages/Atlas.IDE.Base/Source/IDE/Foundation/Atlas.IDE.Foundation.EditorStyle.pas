@@ -25,6 +25,9 @@ type
     /// <summary>Farben für Leisten im Rahmen der IDE (Brotkrumenleiste): Fläche und Schrift wie die
     /// Werkzeugleisten des IDE-Themas (clBtnFace/clBtnText), ohne Thema die von Windows.</summary>
     class function ChromeColors: TAtlasColors; static;
+    /// <summary>Farben der Leisten im Editorfenster (Brotkrumen, Werkzeugleiste, Designer): ChromeColors mit
+    /// breadcrumbs.ideColors, sonst Colors.</summary>
+    class function BarColors: TAtlasColors; static;
     /// <summary>Farben, Editorschrift und Skalierung auf AWindow übertragen. ACaret: Caret-Rechteck in
     /// Bildschirmkoordinaten (Monitor und Zoom). Liefert eine Zeile für das Diagnoseprotokoll.</summary>
     class function Apply(AWindow: TAtlasPopupWindow; const ACaret: TRect): string; static;
@@ -42,7 +45,8 @@ uses
   System.SysUtils,
   System.Win.Registry,
   ToolsAPI,
-  Atlas.Core.Style.Scaling;
+  Atlas.Core.Style.Scaling,
+  Atlas.IDE.Foundation.Settings;
 
 function WindowsUsesLightApps: Boolean;
 var
@@ -151,6 +155,18 @@ begin
       TAtlasColor(ColorToRGB(mTheming.StyleServices.GetSystemColor(clBtnText)))));
   end;
   Result := TAtlasColors.ForChrome(TAtlasColor(ColorToRGB(clBtnFace)), TAtlasColor(ColorToRGB(clBtnText)));
+end;
+
+class function TAtlasIdeStyle.BarColors: TAtlasColors;
+begin
+  if TAtlasIdeSettings.Current.BreadcrumbsIdeColors then
+  begin
+    Result := ChromeColors;
+  end
+  else
+  begin
+    Result := Colors;
+  end;
 end;
 
 class function TAtlasIdeStyle.BaseTextHeight: Integer;

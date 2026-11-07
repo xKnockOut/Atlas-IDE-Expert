@@ -6,7 +6,6 @@
 interface
 
 uses
-  Atlas.Core.Localization.Language,
   Atlas.Core.Modules.Contract,
   Atlas.Core.Diagnostics.StartTimes,
   Atlas.IDE.Diagnostics.SafeMode;
@@ -27,9 +26,9 @@ procedure StartStartTimes;
 procedure FreeStartTimes;
 /// <summary>Zeitpunkt des Ladens (TAtlasWatchdog.Timestamp) für Ladezeit und Startanteile.</summary>
 function LoadedAt: Int64;
-/// <summary>Sprache der IDE (#446) wie TAtlasIdeLanguage.Decide: geladene Ressourcen-DLLs der IDE, Eintrag für
-/// bds.exe unter Software\Embarcadero\Locales, Sprache der Windows-Oberfläche; Rückfall Englisch.</summary>
-function IdeLanguage: TAtlasIdeLanguage;
+/// <summary>Sprache der Oberfläche nach der IDE (#446); sie geht auch als locale an den Server (#1458). Die Zeile
+/// in atlas.log nennt Quelle und Wert, damit eine falsch erkannte Sprache nachvollziehbar ist.</summary>
+procedure InstallLanguage;
 
 implementation
 
@@ -39,6 +38,8 @@ uses
   System.SysUtils,
   System.Classes,
   System.Win.Registry,
+  Atlas.UI.Strings,
+  Atlas.Core.Localization.Language,
   Atlas.Core.Diagnostics.Guard,
   Atlas.IDE.Diagnostics.Watchdog,
   Atlas.IDE.Diagnostics.Export,
@@ -129,6 +130,34 @@ begin
   Result := LoadedAtStamp;
 end;
 
+/// <summary>Sprache für bds.exe unter ARoot\Software\Embarcadero\Locales; '' ohne Eintrag.</summary>
+function LocaleUnder(ARegistry: TRegistry; ARoot: HKEY): string;
+var
+  mNames: TStringList;
+  mName: string;
+begin
+  Result := '';
+  ARegistry.RootKey := ARoot;
+  if not ARegistry.OpenKeyReadOnly('Software\Embarcadero\Locales') then
+  begin
+    Exit;
+  end;
+  mNames := TStringList.Create;
+  try
+    ARegistry.GetValueNames(mNames);
+    for mName in mNames do
+    begin
+      if SameText(mName, ParamStr(0)) and (ARegistry.GetDataType(mName) = rdString) then
+      begin
+        Result := ARegistry.ReadString(mName);
+      end;
+    end;
+  finally
+    mNames.Free;
+    ARegistry.CloseKey;
+  end;
+end;
+
 /// <summary>Sprachkennung für bds.exe unter Software\Embarcadero\Locales; '' ohne Eintrag. Wie die RTL beim
 /// Laden der Ressourcen: zuerst HKCU, dann HKLM.</summary>
 function RegisteredLanguage: string;
@@ -136,39 +165,23 @@ const
   cRoots: array[0..1] of HKEY = (HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE);
 var
   mRegistry: TRegistry;
-  mNames: TStringList;
-  mName: string;
   mRoot: HKEY;
 begin
   Result := '';
   mRegistry := TRegistry.Create(KEY_READ);
-  mNames := TStringList.Create;
   try
     for mRoot in cRoots do
     begin
-      mRegistry.RootKey := mRoot;
-      if mRegistry.OpenKeyReadOnly('Software\Embarcadero\Locales') then
-      begin
-        mNames.Clear;
-        mRegistry.GetValueNames(mNames);
-        for mName in mNames do
-        begin
-          if SameText(mName, ParamStr(0)) and (mRegistry.GetDataType(mName) = rdString) then
-          begin
-            Result := mRegistry.ReadString(mName);
-          end;
-        end;
-        mRegistry.CloseKey;
-      end;
+      Result := LocaleUnder(mRegistry, mRoot);
       if Result <> '' then
       begin
         Exit;
       end;
     end;
   finally
-    mNames.Free;
     mRegistry.Free;
   end;
+end;
 end;
 
 /// <summary>Datei einer Ressourcen-DLL. Die RTL lädt sie als Datendatei (LOAD_LIBRARY_AS_DATAFILE); für solche
@@ -211,10 +224,21 @@ begin
   end;
 end;
 
+/// <summary>Sprache der IDE wie TAtlasIdeLanguage.Decide: geladene Ressourcen-DLLs der IDE, Eintrag für bds.exe
+/// unter Software\Embarcadero\Locales, Sprache der Windows-Oberfläche; Rückfall Englisch.</summary>
 function IdeLanguage: TAtlasIdeLanguage;
 begin
   Result := TAtlasIdeLanguage.Decide(ResourceCodes, RegisteredLanguage,
     (GetUserDefaultUILanguage and $3FF) = LANG_GERMAN);
+end;
+
+procedure InstallLanguage;
+var
+  mLanguage: TAtlasIdeLanguage;
+begin
+  mLanguage := IdeLanguage;
+  TAtlasStrings.Language := mLanguage.Language;
+  TAtlasGuard.Log('Sprache der Oberfläche: ' + mLanguage.Describe);
 end;
 
 end.

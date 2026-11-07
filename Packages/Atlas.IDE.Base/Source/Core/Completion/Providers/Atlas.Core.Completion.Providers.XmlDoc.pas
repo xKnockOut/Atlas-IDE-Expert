@@ -130,50 +130,65 @@ begin
   Result := Trim(Result);
 end;
 
-class function TAtlasXmlDoc.ParamNames(const ADeclaration: string): TArray<string>;
+/// <summary>Text zwischen der ersten "(" in ADeclaration und der passenden ")"; '' ohne Klammer.</summary>
+function ParameterList(const ADeclaration: string): string;
 var
-  mOpen, mClose, mIndex: Integer;
-  mInner, mGroup, mNames, mName: string;
+  mOpen, mClose, mDepth: Integer;
 begin
-  Result := nil;
+  Result := '';
   mOpen := Pos('(', ADeclaration);
   if mOpen = 0 then
   begin
     Exit;
   end;
   mClose := mOpen;
-  mIndex := 0;
+  mDepth := 0;
   repeat
     case ADeclaration[mClose] of
-      '(': Inc(mIndex);
-      ')': Dec(mIndex);
+      '(': Inc(mDepth);
+      ')': Dec(mDepth);
     end;
     Inc(mClose);
-  until (mIndex = 0) or (mClose > Length(ADeclaration));
-  mInner := Copy(ADeclaration, mOpen + 1, mClose - mOpen - 2);
-  for mGroup in mInner.Split([';']) do
+  until (mDepth = 0) or (mClose > Length(ADeclaration));
+  Result := Copy(ADeclaration, mOpen + 1, mClose - mOpen - 2);
+end;
+
+/// <summary>Namen einer Parametergruppe: "const A, B: string = ''" → A, B.</summary>
+function GroupNames(const AGroup: string): TArray<string>;
+var
+  mNames, mName: string;
+begin
+  Result := nil;
+  mNames := AGroup;
+  if Pos(':', mNames) > 0 then
   begin
-    // "const A, B: string = ''" → A, B
-    mNames := mGroup;
-    if Pos(':', mNames) > 0 then
+    mNames := Copy(mNames, 1, Pos(':', mNames) - 1);
+  end;
+  mNames := Trim(mNames);
+  for mName in ['const ', 'var ', 'out ', 'constref '] do
+  begin
+    if StartsText(mName, mNames) then
     begin
-      mNames := Copy(mNames, 1, Pos(':', mNames) - 1);
+      mNames := Trim(Copy(mNames, Length(mName) + 1, MaxInt));
     end;
-    mNames := Trim(mNames);
-    for mName in ['const ', 'var ', 'out ', 'constref '] do
+  end;
+  for mName in mNames.Split([',']) do
+  begin
+    if Trim(mName) <> '' then
     begin
-      if StartsText(mName, mNames) then
-      begin
-        mNames := Trim(Copy(mNames, Length(mName) + 1, MaxInt));
-      end;
+      Result := Result + [Trim(mName)];
     end;
-    for mName in mNames.Split([',']) do
-    begin
-      if Trim(mName) <> '' then
-      begin
-        Result := Result + [Trim(mName)];
-      end;
-    end;
+  end;
+end;
+
+class function TAtlasXmlDoc.ParamNames(const ADeclaration: string): TArray<string>;
+var
+  mGroup: string;
+begin
+  Result := nil;
+  for mGroup in ParameterList(ADeclaration).Split([';']) do
+  begin
+    Result := Result + GroupNames(mGroup);
   end;
 end;
 

@@ -138,28 +138,41 @@ begin
 end;
 
 class function TAtlasServerCompletionProvider.KindOf(ALspKind: Integer): TAtlasItemKind;
+const
+  // Index: CompletionItemKind des LSP; nicht abgebildete Arten bleiben Unknown.
+  cLspKinds: array[0..25] of TAtlasItemKind = (
+    TAtlasItemKind.Unknown, // 0
+    TAtlasItemKind.Unknown, // 1
+    TAtlasItemKind.Method, // 2
+    TAtlasItemKind.Function_, // 3
+    TAtlasItemKind.Constructor_, // 4
+    TAtlasItemKind.Field, // 5
+    TAtlasItemKind.Variable, // 6
+    TAtlasItemKind.Class_, // 7
+    TAtlasItemKind.Interface_, // 8
+    TAtlasItemKind.Unit_, // 9
+    TAtlasItemKind.Property_, // 10
+    TAtlasItemKind.Unknown, // 11
+    TAtlasItemKind.Unknown, // 12
+    TAtlasItemKind.Enum, // 13
+    TAtlasItemKind.Keyword, // 14
+    TAtlasItemKind.Snippet, // 15
+    TAtlasItemKind.Unknown, // 16
+    TAtlasItemKind.Unknown, // 17
+    TAtlasItemKind.Unknown, // 18
+    TAtlasItemKind.Unknown, // 19
+    TAtlasItemKind.EnumMember, // 20
+    TAtlasItemKind.Constant, // 21
+    TAtlasItemKind.Record_, // 22
+    TAtlasItemKind.Event, // 23
+    TAtlasItemKind.Unknown, // 24
+    TAtlasItemKind.Type_ // 25);
 begin
-  case ALspKind of
-    2: Result := TAtlasItemKind.Method;
-    3: Result := TAtlasItemKind.Function_;
-    4: Result := TAtlasItemKind.Constructor_;
-    5: Result := TAtlasItemKind.Field;
-    6: Result := TAtlasItemKind.Variable;
-    7: Result := TAtlasItemKind.Class_;
-    8: Result := TAtlasItemKind.Interface_;
-    9: Result := TAtlasItemKind.Unit_;
-    10: Result := TAtlasItemKind.Property_;
-    13: Result := TAtlasItemKind.Enum;
-    14: Result := TAtlasItemKind.Keyword;
-    15: Result := TAtlasItemKind.Snippet;
-    20: Result := TAtlasItemKind.EnumMember;
-    21: Result := TAtlasItemKind.Constant;
-    22: Result := TAtlasItemKind.Record_;
-    23: Result := TAtlasItemKind.Event;
-    25: Result := TAtlasItemKind.Type_;
-  else
-    Result := TAtlasItemKind.Unknown;
+  if (ALspKind < Low(cLspKinds)) or (ALspKind > High(cLspKinds)) then
+  begin
+    Exit(TAtlasItemKind.Unknown);
   end;
+  Result := cLspKinds[ALspKind];
 end;
 
 function EditFromLsp(AEdit: TJSONObject; out AResult: TAtlasTextEdit): Boolean;
@@ -200,13 +213,276 @@ begin
   end;
 end;
 
+/// <summary>documentation (string oder MarkupContent) und data unverändert für completionItem/resolve.</summary>
+procedure ReadDocumentation(AItem: TJSONObject; var AResult: TAtlasCompletionItem);
+var
+  mDocumentation: TJSONValue;
+begin
+  mDocumentation := AItem.GetValue('documentation');
+  if mDocumentation is TJSONString then
+  begin
+    AResult.Documentation := TJSONString(mDocumentation).Value;
+  end
+  else if mDocumentation is TJSONObject then
+  begin
+    AResult.Documentation := TJSONObject(mDocumentation).GetValue<string>('value', '');
+  end;
+  if AItem.GetValue('data') <> nil then
+  begin
+    AResult.ResolveData := AItem.GetValue('data').ToJSON;
+  end;
+end;
+
+/// <summary>Herkunft, Vererbungstiefe, Helper (#419, #425, #456), andere Unit und verdeckte Deklarationen (#488),
+/// Mitglied eines with-Objekts (#481).</summary>
+procedure ReadOrigin(AData: TJSONObject; var AResult: TAtlasCompletionItem);
+begin
+  AResult.DeclaringClass := AData.GetValue<string>('container', '');
+  AResult.Depth := AData.GetValue<Integer>('depth', 0);
+  AResult.IsHelper := AData.GetValue('helper') is TJSONTrue;
+  AResult.Condition := AData.GetValue<string>('condition', '');
+  AResult.VariantBranch := AData.GetValue<string>('variant', '');
+  AResult.Unavailable := AData.GetValue('unavailable') is TJSONTrue;
+  AResult.Scope := AData.GetValue<Integer>('scope', 0);
+  AResult.DeclaringUnit := AData.GetValue<string>('unit', '');
+  AResult.Hides := StringsOf(AData.GetValue('hides'));
+  AResult.WithOrigin := AData.GetValue<string>('withOrigin', '');
+  AResult.WithShadows := StringsOf(AData.GetValue('withShadows'));
+  AResult.HasParameters := AData.GetValue('parameters') is TJSONTrue;
+  AResult.ExpectedType := AData.GetValue<string>('expected', '');
+  AResult.Fits := AData.GetValue('fits') is TJSONTrue;
+end;
+
+/// <summary>Einträge, die Code erzeugen: Aktionen, Postfix-Vorlagen, Aufzählungen und Mengen, case, Interface,
+/// Formular, Sender und Typkonvertierung.</summary>
+procedure ReadActions(AItem, AData: TJSONObject; var AResult: TAtlasCompletionItem);
+begin
+  // Neue Methode (#444), Deklarationen unbekannter Namen (#471) und „Parameter abgleichen“ (#88) erzeugen
+  // Code und stehen am Ende; ihre Zusatzänderungen gelten auch ohne automatische uses-Einträge.
+  AResult.IsAction := MatchText(AData.GetValue<string>('action', ''), ['create', 'declare', 'docParams']);
+  // Postfix-Vorlagen (#188): Der Server filtert über "Ausdruck.Kürzel"; getippt ist hier nur das Wort hinter
+  // dem Punkt, also gilt der Teil nach dem letzten Punkt.
+  AResult.Postfix := AData.GetValue<string>('action', '') = 'postfix';
+  if AResult.Postfix then
+  begin
+    AResult.FilterText := AItem.GetValue<string>('filterText', AResult.Name);
+    AResult.FilterText := Copy(AResult.FilterText, LastDelimiter('.', AResult.FilterText) + 1, MaxInt);
+  end;
+  AResult.Unknown := AData.GetValue<string>('unknown', '');
+  // Aufzählungen und Mengen (#448).
+  AResult.Ordinal := AData.GetValue<Integer>('ordinal', 0);
+  AResult.SetOf := AData.GetValue<string>('setOf', '');
+  AResult.Checked := AData.GetValue('checked') is TJSONTrue;
+  if (AResult.SetOf <> '') and not ((AData.GetValue('setRange') is TJSONObject) and
+    RangeFromLsp(TJSONObject(AData.GetValue('setRange')), AResult.SetRange)) then
+  begin
+    AResult.SetOf := '';
+  end;
+  // case vervollständigen (#449).
+  AResult.Pinned := AData.GetValue('pinned') is TJSONTrue;
+  AResult.Count := AData.GetValue<Integer>('count', 0);
+  // Interface implementieren (#466).
+  AResult.Batch := AData.GetValue('batch') is TJSONTrue;
+  AResult.Hint := AData.GetValue('hint') is TJSONTrue;
+  // Komponenten aus dem Formular (#455).
+  AResult.Form := AData.GetValue<string>('form', '');
+  AResult.ByType := AData.GetValue('byType') is TJSONTrue;
+  // Sender mit Typumwandlung (#480).
+  AResult.Sender := AData.GetValue<string>('sender', '');
+  AResult.SenderOf := AData.GetValue<string>('senderOf', '');
+  // Typkonvertierung (#490): filtert nach dem Namen des Originals, nicht nach dem Ausdruck.
+  AResult.Conversion := AData.GetValue<string>('conversion', '');
+  AResult.ConvertFrom := AData.GetValue<string>('convertFrom', '');
+  if AResult.Conversion <> '' then
+  begin
+    AResult.FilterText := AResult.ConvertFrom;
+  end;
+  AResult.Lossy := AData.GetValue<string>('lossy', '');
+end;
+
+/// <summary>Alle Felder zuweisen (#491): Zeilen für die Liste mit Kontrollkästchen.</summary>
+function AssignmentsOf(AValue: TJSONValue): TArray<TAtlasAssignment>;
+var
+  mValue: TJSONValue;
+  mAssignment: TAtlasAssignment;
+begin
+  Result := nil;
+  if not (AValue is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mValue in TJSONArray(AValue) do
+  begin
+    if mValue is TJSONObject then
+    begin
+      mAssignment.Name := TJSONObject(mValue).GetValue<string>('name', '');
+      mAssignment.Detail := TJSONObject(mValue).GetValue<string>('detail', '');
+      mAssignment.Text := TJSONObject(mValue).GetValue<string>('text', '');
+      if mAssignment.Name <> '' then
+      begin
+        Result := Result + [mAssignment];
+      end;
+    end;
+  end;
+end;
+
+/// <summary>Feld- und Parameternamen (#461), Freigabe (#489), Typargumente (#450), Attribute (#465), anonyme
+/// Methoden (#468), Exception-Klassen (#483).</summary>
+procedure ReadNames(AData: TJSONObject; var AResult: TAtlasCompletionItem);
+begin
+  AResult.DataSet := AData.GetValue<string>('dataSet', '');
+  AResult.DataSource := AData.GetValue<string>('dataSource', '');
+  AResult.Guard := AData.GetValue<string>('guard', '') <> '';
+  AResult.TypeParam := AData.GetValue<string>('typeParam', '');
+  AResult.Constraint := AData.GetValue<string>('constraint', '');
+  AResult.ConstraintHint := AData.GetValue<string>('constraintHint', '');
+  AResult.HiddenKinds := AData.GetValue<string>('hiddenKinds', '');
+  AResult.Attribute := AData.GetValue('attribute') is TJSONTrue;
+  AResult.MethodRef := AData.GetValue<string>('methodRef', '');
+  AResult.ExceptionGroup := AData.GetValue<string>('exceptionGroup', '');
+  AResult.Unreachable := AData.GetValue<string>('unreachable', '');
+end;
+
+/// <summary>uses-Abschnitt (#469), vollständiger inherited-Aufruf (#482), gleichnamige Bezeichner aus
+/// verschiedenen Units (#475) und Platzhalter in weiteren Änderungen (#473).</summary>
+procedure ReadUses(AData: TJSONObject; var AResult: TAtlasCompletionItem);
+begin
+  // Gefiltert wird nach dem Namensteil ab dem Getippten ("Classes" für System.Classes).
+  AResult.UsesGroup := AData.GetValue<string>('usesGroup', '');
+  if AData.GetValue<string>('usesFilter', '') <> '' then
+  begin
+    AResult.FilterText := AData.GetValue<string>('usesFilter', '');
+  end;
+  AResult.UsesElsewhere := AData.GetValue<string>('usesElsewhere', '');
+  AResult.UsesCycle := AData.GetValue<string>('usesCycle', '');
+  AResult.UsesTypes := StringsOf(AData.GetValue('usesTypes'));
+  AResult.UsesTypeCount := AData.GetValue<Integer>('usesTypeCount', 0);
+  AResult.UsesHidden := StringsOf(AData.GetValue('usesHidden'));
+  AResult.InheritedMatch := AData.GetValue<string>('inheritedMatch', '');
+  AResult.InheritedAbstract := StringsOf(AData.GetValue('inheritedAbstract'));
+  AResult.SameNameActive := AData.GetValue<Boolean>('sameNameActive', False);
+  AResult.SameNameOf := AData.GetValue<string>('sameNameOf', '');
+  AResult.SameNameInsert := AData.GetValue<string>('sameNameInsert', '');
+  AResult.SameNameUnits := StringsOf(AData.GetValue('sameNameUnits'));
+  AResult.SameNameHidden := StringsOf(AData.GetValue('sameNameHidden'));
+  AResult.LinkedEdits := AData.GetValue<Boolean>('linkedEdits', False);
+end;
+
+/// <summary>Überladungen (#456): gleiche Datei, andere Position; ein data je Überladung für
+/// completionItem/resolve.</summary>
+function OverloadDataOf(AData: TJSONObject): TArray<string>;
+var
+  mValue: TJSONValue;
+  mTwin: TJSONObject;
+begin
+  Result := nil;
+  if not (AData.GetValue('overloads') is TJSONArray) then
+  begin
+    Exit;
+  end;
+  for mValue in TJSONArray(AData.GetValue('overloads')) do
+  begin
+    if mValue is TJSONObject then
+    begin
+      mTwin := AData.Clone as TJSONObject;
+      try
+        mTwin.RemovePair('overloads').Free;
+        mTwin.RemovePair('line').Free;
+        mTwin.RemovePair('character').Free;
+        mTwin.AddPair('line', TJSONNumber.Create(TJSONObject(mValue).GetValue<Integer>('line', 0)));
+        mTwin.AddPair('character', TJSONNumber.Create(TJSONObject(mValue).GetValue<Integer>('character', 0)));
+        Result := Result + [mTwin.ToJSON];
+      finally
+        mTwin.Free;
+      end;
+    end;
+  end;
+end;
+
+/// <summary>textEdit (#188) und additionalTextEdits; danach, ob die Unit schon eingebunden ist.</summary>
+procedure ReadEdits(AItem: TJSONObject; var AResult: TAtlasCompletionItem);
+var
+  mValue: TJSONValue;
+  mEdit: TAtlasTextEdit;
+begin
+  // textEdit ersetzt mehr als das getippte Wort, etwa den Ausdruck vor dem Punkt.
+  // Ein textEdit ohne Text ersetzt nichts sinnvoll; ignorieren statt den Bereich zu löschen. Ausnahme: Der Hinweis
+  // „Methoden fehlen“ (#466) entfernt das getippte Wort, der Code kommt über die weiteren Änderungen.
+  if (AItem.GetValue('textEdit') is TJSONObject) and EditFromLsp(TJSONObject(AItem.GetValue('textEdit')), mEdit) and
+    ((mEdit.NewText <> '') or AResult.Hint) then
+  begin
+    AResult.HasTextEdit := True;
+    AResult.TextEdit := mEdit;
+  end;
+  if AItem.GetValue('additionalTextEdits') is TJSONArray then
+  begin
+    for mValue in TJSONArray(AItem.GetValue('additionalTextEdits')) do
+    begin
+      if (mValue is TJSONObject) and EditFromLsp(TJSONObject(mValue), mEdit) then
+      begin
+        AResult.AdditionalEdits := AResult.AdditionalEdits + [mEdit];
+      end;
+    end;
+  end;
+  // Bis #405 "Unit eingebunden" liefert: Ein Eintrag mit uses-Ergänzung (#180) kommt aus
+  // einer noch nicht eingebundenen Unit. Einträge mit data.action (override, neue Methode;
+  // #443, #444) ergänzen Code statt uses.
+  AResult.UnitUsed := (Length(AResult.AdditionalEdits) = 0) or
+    ((AItem.GetValue('data') is TJSONObject) and (TJSONObject(AItem.GetValue('data')).GetValue('action') <> nil));
+end;
+
+/// <summary>Kontextabhängige Code-Vorlage des Servers (#51): Platzhalter-Modus wie bei den eigenen Vorlagen.
+/// </summary>
+procedure ReadSnippet(AItem: TJSONObject; var AResult: TAtlasCompletionItem);
+var
+  mIndex: Integer;
+begin
+  if (AItem.GetValue('insertTextFormat') is TJSONNumber) and
+    (TJSONNumber(AItem.GetValue('insertTextFormat')).AsInt = 2) then
+  begin
+    if AResult.HasTextEdit then
+    begin
+      AResult.Snippet := TAtlasSnippets.FromLsp(AResult.TextEdit.NewText);
+    end
+    else if AResult.InsertText <> '' then
+    begin
+      AResult.Snippet := TAtlasSnippets.FromLsp(AResult.InsertText);
+    end
+    else
+    begin
+      AResult.Snippet := TAtlasSnippets.FromLsp(AResult.Name);
+    end;
+  end;
+  if AResult.Snippet = '' then
+  begin
+    AResult.LinkedEdits := False;
+  end;
+  if AResult.LinkedEdits then
+  begin
+    for mIndex := 0 to High(AResult.AdditionalEdits) do
+    begin
+      AResult.AdditionalEdits[mIndex].NewText := TAtlasSnippets.FromLsp(AResult.AdditionalEdits[mIndex].NewText);
+    end;
+  end;
+end;
+
+/// <summary>Befehl nach dem Übernehmen (#473), etwa den resourcestring in eine andere Unit schreiben.</summary>
+procedure ReadCommand(AItem: TJSONObject; var AResult: TAtlasCompletionItem);
+begin
+  if AItem.GetValue('command') is TJSONObject then
+  begin
+    AResult.Command := TJSONObject(AItem.GetValue('command')).GetValue<string>('command', '');
+    AResult.CommandArguments := '[]';
+    if TJSONObject(AItem.GetValue('command')).GetValue('arguments') is TJSONArray then
+    begin
+      AResult.CommandArguments := TJSONObject(AItem.GetValue('command')).GetValue('arguments').ToJSON;
+    end;
+  end;
+end;
+
 class function TAtlasServerCompletionProvider.ItemFromLsp(AItem: TJSONObject; ARank: Integer): TAtlasCompletionItem;
 var
-  mDocumentation, mEdits, mValue, mOverloads: TJSONValue;
-  mEdit: TAtlasTextEdit;
-  mData, mTwin: TJSONObject;
-  mIndex: Integer;
-  mAssignment: TAtlasAssignment;
+  mData: TJSONObject;
 begin
   Result := Default(TAtlasCompletionItem);
   Result.Name := AItem.GetValue<string>('label', '');
@@ -217,244 +493,20 @@ begin
   // Wort, damit VS Code sie nicht verwirft. Atlas filtert selbst gegen den Namen (#409);
   // sonst passt jeder Eintrag genau (in der IDE: "mylist" zeigte ERROR_TOO_MANY_LINKS).
   Result.Rank := ARank;
-  // documentation: string oder MarkupContent.
-  mDocumentation := AItem.GetValue('documentation');
-  if mDocumentation is TJSONString then
-  begin
-    Result.Documentation := TJSONString(mDocumentation).Value;
-  end
-  else if mDocumentation is TJSONObject then
-  begin
-    Result.Documentation := TJSONObject(mDocumentation).GetValue<string>('value', '');
-  end;
-  // data unverändert für completionItem/resolve aufheben.
-  if AItem.GetValue('data') <> nil then
-  begin
-    Result.ResolveData := AItem.GetValue('data').ToJSON;
-  end;
-  // Herkunft, Vererbungstiefe, Helper und Überladungen (#419, #425, #456).
+  ReadDocumentation(AItem, Result);
   if AItem.GetValue('data') is TJSONObject then
   begin
     mData := TJSONObject(AItem.GetValue('data'));
-    Result.DeclaringClass := mData.GetValue<string>('container', '');
-    Result.Depth := mData.GetValue<Integer>('depth', 0);
-    Result.IsHelper := mData.GetValue('helper') is TJSONTrue;
-    Result.Condition := mData.GetValue<string>('condition', '');
-    Result.VariantBranch := mData.GetValue<string>('variant', '');
-    Result.Unavailable := mData.GetValue('unavailable') is TJSONTrue;
-    Result.Scope := mData.GetValue<Integer>('scope', 0);
-    // Herkunft aus einer anderen Unit und verdeckte Deklarationen (#488).
-    Result.DeclaringUnit := mData.GetValue<string>('unit', '');
-    mValue := mData.GetValue('hides');
-    if mValue is TJSONArray then
-    begin
-      for mValue in TJSONArray(mData.GetValue('hides')) do
-      begin
-        if mValue is TJSONString then
-        begin
-          Result.Hides := Result.Hides + [TJSONString(mValue).Value];
-        end;
-      end;
-    end;
-    // Mitglied eines with-Objekts (#481).
-    Result.WithOrigin := mData.GetValue<string>('withOrigin', '');
-    mValue := mData.GetValue('withShadows');
-    if mValue is TJSONArray then
-    begin
-      for mValue in TJSONArray(mData.GetValue('withShadows')) do
-      begin
-        if mValue is TJSONString then
-        begin
-          Result.WithShadows := Result.WithShadows + [TJSONString(mValue).Value];
-        end;
-      end;
-    end;
-    Result.HasParameters := mData.GetValue('parameters') is TJSONTrue;
-    Result.ExpectedType := mData.GetValue<string>('expected', '');
-    Result.Fits := mData.GetValue('fits') is TJSONTrue;
-    // Neue Methode (#444), Deklarationen unbekannter Namen (#471) und „Parameter abgleichen“ (#88) erzeugen
-    // Code und stehen am Ende; ihre Zusatzänderungen gelten auch ohne automatische uses-Einträge.
-    Result.IsAction := MatchText(mData.GetValue<string>('action', ''), ['create', 'declare', 'docParams']);
-    // Postfix-Vorlagen (#188): Der Server filtert über "Ausdruck.Kürzel"; getippt ist hier nur das Wort hinter
-    // dem Punkt, also gilt der Teil nach dem letzten Punkt.
-    Result.Postfix := mData.GetValue<string>('action', '') = 'postfix';
-    if Result.Postfix then
-    begin
-      Result.FilterText := AItem.GetValue<string>('filterText', Result.Name);
-      Result.FilterText := Copy(Result.FilterText, LastDelimiter('.', Result.FilterText) + 1, MaxInt);
-    end;
-    Result.Unknown := mData.GetValue<string>('unknown', '');
-    // Aufzählungen und Mengen (#448).
-    Result.Ordinal := mData.GetValue<Integer>('ordinal', 0);
-    Result.SetOf := mData.GetValue<string>('setOf', '');
-    Result.Checked := mData.GetValue('checked') is TJSONTrue;
-    if (Result.SetOf <> '') and not ((mData.GetValue('setRange') is TJSONObject) and
-      RangeFromLsp(TJSONObject(mData.GetValue('setRange')), Result.SetRange)) then
-    begin
-      Result.SetOf := '';
-    end;
-    // case vervollständigen (#449).
-    Result.Pinned := mData.GetValue('pinned') is TJSONTrue;
-    Result.Count := mData.GetValue<Integer>('count', 0);
-    // Interface implementieren (#466).
-    Result.Batch := mData.GetValue('batch') is TJSONTrue;
-    Result.Hint := mData.GetValue('hint') is TJSONTrue;
-    // Komponenten aus dem Formular (#455).
-    Result.Form := mData.GetValue<string>('form', '');
-    Result.ByType := mData.GetValue('byType') is TJSONTrue;
-    // Sender mit Typumwandlung (#480).
-    Result.Sender := mData.GetValue<string>('sender', '');
-    Result.SenderOf := mData.GetValue<string>('senderOf', '');
-    // Typkonvertierung (#490): filtert nach dem Namen des Originals, nicht nach dem Ausdruck.
-    Result.Conversion := mData.GetValue<string>('conversion', '');
-    Result.ConvertFrom := mData.GetValue<string>('convertFrom', '');
-    if Result.Conversion <> '' then
-    begin
-      Result.FilterText := Result.ConvertFrom;
-    end;
-    Result.Lossy := mData.GetValue<string>('lossy', '');
-    // Alle Felder zuweisen (#491): Zeilen für die Liste mit Kontrollkästchen.
-    if mData.GetValue('assign') is TJSONArray then
-    begin
-      for mValue in TJSONArray(mData.GetValue('assign')) do
-      begin
-        if mValue is TJSONObject then
-        begin
-          mAssignment.Name := TJSONObject(mValue).GetValue<string>('name', '');
-          mAssignment.Detail := TJSONObject(mValue).GetValue<string>('detail', '');
-          mAssignment.Text := TJSONObject(mValue).GetValue<string>('text', '');
-          if mAssignment.Name <> '' then
-          begin
-            Result.Assignments := Result.Assignments + [mAssignment];
-          end;
-        end;
-      end;
-    end;
-    // Feld- und Parameternamen (#461).
-    Result.DataSet := mData.GetValue<string>('dataSet', '');
-    Result.DataSource := mData.GetValue<string>('dataSource', '');
-    // Freigabe absichern (#489).
-    Result.Guard := mData.GetValue<string>('guard', '') <> '';
-    // Typargumente nach den Constraints (#450).
-    Result.TypeParam := mData.GetValue<string>('typeParam', '');
-    Result.Constraint := mData.GetValue<string>('constraint', '');
-    Result.ConstraintHint := mData.GetValue<string>('constraintHint', '');
-    Result.HiddenKinds := mData.GetValue<string>('hiddenKinds', '');
-    // Attribute nach "[" (#465).
-    Result.Attribute := mData.GetValue('attribute') is TJSONTrue;
-    // Anonyme Methoden (#468).
-    Result.MethodRef := mData.GetValue<string>('methodRef', '');
-    // Exception-Klassen (#483).
-    Result.ExceptionGroup := mData.GetValue<string>('exceptionGroup', '');
-    Result.Unreachable := mData.GetValue<string>('unreachable', '');
-    // uses-Abschnitt (#469): gefiltert wird nach dem Namensteil ab dem Getippten ("Classes" für System.Classes).
-    Result.UsesGroup := mData.GetValue<string>('usesGroup', '');
-    if mData.GetValue<string>('usesFilter', '') <> '' then
-    begin
-      Result.FilterText := mData.GetValue<string>('usesFilter', '');
-    end;
-    Result.UsesElsewhere := mData.GetValue<string>('usesElsewhere', '');
-    Result.UsesCycle := mData.GetValue<string>('usesCycle', '');
-    Result.UsesTypes := StringsOf(mData.GetValue('usesTypes'));
-    Result.UsesTypeCount := mData.GetValue<Integer>('usesTypeCount', 0);
-    Result.UsesHidden := StringsOf(mData.GetValue('usesHidden'));
-    // Vollständiger inherited-Aufruf (#482).
-    Result.InheritedMatch := mData.GetValue<string>('inheritedMatch', '');
-    Result.InheritedAbstract := StringsOf(mData.GetValue('inheritedAbstract'));
-    // Gleichnamige Bezeichner aus verschiedenen Units (#475).
-    Result.SameNameActive := mData.GetValue<Boolean>('sameNameActive', False);
-    Result.SameNameOf := mData.GetValue<string>('sameNameOf', '');
-    Result.SameNameInsert := mData.GetValue<string>('sameNameInsert', '');
-    Result.SameNameUnits := StringsOf(mData.GetValue('sameNameUnits'));
-    Result.SameNameHidden := StringsOf(mData.GetValue('sameNameHidden'));
-    // resourcestring auslagern (#473): Platzhalter auch in den weiteren Änderungen.
-    Result.LinkedEdits := mData.GetValue<Boolean>('linkedEdits', False);
-    mOverloads := mData.GetValue('overloads');
-    if mOverloads is TJSONArray then
-    begin
-      for mValue in TJSONArray(mOverloads) do
-      begin
-        if mValue is TJSONObject then
-        begin
-          // Gleiche Datei, andere Position: ein data je Überladung für completionItem/resolve.
-          mTwin := mData.Clone as TJSONObject;
-          try
-            mTwin.RemovePair('overloads').Free;
-            mTwin.RemovePair('line').Free;
-            mTwin.RemovePair('character').Free;
-            mTwin.AddPair('line', TJSONNumber.Create(TJSONObject(mValue).GetValue<Integer>('line', 0)));
-            mTwin.AddPair('character', TJSONNumber.Create(TJSONObject(mValue).GetValue<Integer>('character', 0)));
-            Result.OverloadData := Result.OverloadData + [mTwin.ToJSON];
-          finally
-            mTwin.Free;
-          end;
-        end;
-      end;
-    end;
+    ReadOrigin(mData, Result);
+    ReadActions(AItem, mData, Result);
+    Result.Assignments := AssignmentsOf(mData.GetValue('assign'));
+    ReadNames(mData, Result);
+    ReadUses(mData, Result);
+    Result.OverloadData := OverloadDataOf(mData);
   end;
-  // textEdit (#188): ersetzt mehr als das getippte Wort, etwa den Ausdruck vor dem Punkt.
-  // Ein textEdit ohne Text ersetzt nichts sinnvoll; ignorieren statt den Bereich zu löschen. Ausnahme: Der Hinweis
-  // „Methoden fehlen“ (#466) entfernt das getippte Wort, der Code kommt über die weiteren Änderungen.
-  if (AItem.GetValue('textEdit') is TJSONObject) and EditFromLsp(TJSONObject(AItem.GetValue('textEdit')), mEdit) and
-    ((mEdit.NewText <> '') or Result.Hint) then
-  begin
-    Result.HasTextEdit := True;
-    Result.TextEdit := mEdit;
-  end;
-  mEdits := AItem.GetValue('additionalTextEdits');
-  if mEdits is TJSONArray then
-  begin
-    for mValue in TJSONArray(mEdits) do
-    begin
-      if (mValue is TJSONObject) and EditFromLsp(TJSONObject(mValue), mEdit) then
-      begin
-        Result.AdditionalEdits := Result.AdditionalEdits + [mEdit];
-      end;
-    end;
-  end;
-  // Bis #405 "Unit eingebunden" liefert: Ein Eintrag mit uses-Ergänzung (#180) kommt aus
-  // einer noch nicht eingebundenen Unit. Einträge mit data.action (override, neue Methode;
-  // #443, #444) ergänzen Code statt uses.
-  Result.UnitUsed := (Length(Result.AdditionalEdits) = 0) or
-    ((AItem.GetValue('data') is TJSONObject) and (TJSONObject(AItem.GetValue('data')).GetValue('action') <> nil));
-  // Kontextabhängige Code-Vorlage des Servers (#51): Platzhalter-Modus wie bei den eigenen Vorlagen.
-  if (AItem.GetValue('insertTextFormat') is TJSONNumber) and
-    (TJSONNumber(AItem.GetValue('insertTextFormat')).AsInt = 2) then
-  begin
-    if Result.HasTextEdit then
-    begin
-      Result.Snippet := TAtlasSnippets.FromLsp(Result.TextEdit.NewText);
-    end
-    else if Result.InsertText <> '' then
-    begin
-      Result.Snippet := TAtlasSnippets.FromLsp(Result.InsertText);
-    end
-    else
-    begin
-      Result.Snippet := TAtlasSnippets.FromLsp(Result.Name);
-    end;
-  end;
-  if Result.Snippet = '' then
-  begin
-    Result.LinkedEdits := False;
-  end;
-  if Result.LinkedEdits then
-  begin
-    for mIndex := 0 to High(Result.AdditionalEdits) do
-    begin
-      Result.AdditionalEdits[mIndex].NewText := TAtlasSnippets.FromLsp(Result.AdditionalEdits[mIndex].NewText);
-    end;
-  end;
-  // Befehl nach dem Übernehmen (#473), etwa den resourcestring in eine andere Unit schreiben.
-  if AItem.GetValue('command') is TJSONObject then
-  begin
-    Result.Command := TJSONObject(AItem.GetValue('command')).GetValue<string>('command', '');
-    Result.CommandArguments := '[]';
-    if TJSONObject(AItem.GetValue('command')).GetValue('arguments') is TJSONArray then
-    begin
-      Result.CommandArguments := TJSONObject(AItem.GetValue('command')).GetValue('arguments').ToJSON;
-    end;
-  end;
+  ReadEdits(AItem, Result);
+  ReadSnippet(AItem, Result);
+  ReadCommand(AItem, Result);
 end;
 
 class function TAtlasServerCompletionProvider.Plain(const AItem: TAtlasCompletionItem): TAtlasCompletionItem;
@@ -784,6 +836,36 @@ begin
   end;
 end;
 
+/// <summary>Anfrage für completionItem/resolve: nur label und data, mehr braucht der Server nicht.</summary>
+function ResolveRequest(const AItem: TAtlasCompletionItem): string;
+var
+  mItem: TJSONObject;
+begin
+  mItem := TJSONObject.Create;
+  try
+    mItem.AddPair('label', AItem.Name);
+    mItem.AddPair('data', TJSONObject.ParseJSONValue(AItem.ResolveData));
+    Result := mItem.ToJSON;
+  finally
+    mItem.Free;
+  end;
+end;
+
+/// <summary>ADetails mit dem, was der Eintrag selbst schon weiß: verdeckte Deklarationen, with-Objekt und
+/// verlustbehaftete Konvertierung.</summary>
+function WithItemFacts(const ADetails: TAtlasItemDetails; const AItem: TAtlasCompletionItem): TAtlasItemDetails;
+begin
+  Result := ADetails;
+  Result.Hides := AItem.Hides;
+  Result.WithOrigin := AItem.WithOrigin;
+  Result.LossyFrom := AItem.Lossy;
+  Result.LossyTo := '';
+  if AItem.Lossy <> '' then
+  begin
+    Result.LossyTo := AItem.ExpectedType;
+  end;
+end;
+
 function TAtlasServerCompletionProvider.Resolve(const AItem: TAtlasCompletionItem;
   const ACallback: TAtlasDetailsCallback): Boolean;
 var
@@ -794,22 +876,12 @@ var
   mAliveRef: IInterface;
   mProvider: TAtlasServerCompletionProvider;
   mCallback: TAtlasDetailsCallback;
-  mItem: TJSONObject;
-  mHides: TArray<string>;
-  mWithOrigin, mLossyFrom, mLossyTo: string;
+  mItem: TAtlasCompletionItem;
 begin
   Result := False;
   if AItem.ResolveData = '' then
   begin
     Exit;
-  end;
-  mHides := AItem.Hides;
-  mWithOrigin := AItem.WithOrigin;
-  mLossyFrom := AItem.Lossy;
-  mLossyTo := '';
-  if mLossyFrom <> '' then
-  begin
-    mLossyTo := AItem.ExpectedType;
   end;
   mSession := nil;
   if Assigned(FSession) then
@@ -820,15 +892,8 @@ begin
   begin
     Exit;
   end;
-  // Nur label und data: mehr braucht der Server nicht.
-  mItem := TJSONObject.Create;
-  try
-    mItem.AddPair('label', AItem.Name);
-    mItem.AddPair('data', TJSONObject.ParseJSONValue(AItem.ResolveData));
-    mRequest := mItem.ToJSON;
-  finally
-    mItem.Free;
-  end;
+  mRequest := ResolveRequest(AItem);
+  mItem := AItem;
   mGeneration := TInterlocked.Increment(FResolveGeneration);
   mAliveToken := Token;
   mAliveRef := TokenRef;
@@ -842,14 +907,10 @@ begin
     begin
       Response := mSession.ResolveCompletion(TJSONObject.ParseJSONValue(mRequest) as TJSONObject, FTimeoutMs);
       try
-        Details := DetailsFromLsp(Response);
+        Details := WithItemFacts(DetailsFromLsp(Response), mItem);
       finally
         Response.Free;
       end;
-      Details.Hides := mHides;
-      Details.WithOrigin := mWithOrigin;
-      Details.LossyFrom := mLossyFrom;
-      Details.LossyTo := mLossyTo;
       // Der Rückruf zeigt das Detailpanel; die Hülle zählt seine Fehler für die Vervollständigung (S-05, A-02).
       TAtlasMainThread.Queue(TAtlasFeature.Completion,
         procedure

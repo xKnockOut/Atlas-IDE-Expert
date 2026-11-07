@@ -57,18 +57,30 @@ type
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
   end;
 
+  /// <summary>Verlauf der Belegung: immer 60 Sekunden breit, neueste rechts; 0 % unten, 100 % oben.</summary>
+  TAtlasBusySpark = class(TPaintBox)
+  private
+    FColors: TAtlasColors;
+    FValues: TArray<Double>;
+  protected
+    procedure Paint; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    /// <summary>Belegung je Sekunde in Prozent, älteste zuerst.</summary>
+    procedure SetValues(const AValues: TArray<Double>);
+    procedure SetColors(const AColors: TAtlasColors);
+  end;
+
   TAtlasDiagnosticBar = class(TPanel)
   private
     FButtons: TPanel;
-    FSpark: TPaintBox;
+    FSpark: TAtlasBusySpark;
     FBusy: TLabel;
     FThreshold: TLabel;
     FPause: TButton;
     FReset: TButton;
     FCopy: TButton;
     FNote: TLabel;
-    FColors: TAtlasColors;
-    FValues: TArray<Double>;
     FPaused: Boolean;
     FOnPause: TProc<Boolean>;
     FOnReset: TProc;
@@ -81,7 +93,6 @@ type
     function RowHeight: Integer;
     function InfoWidth: Integer;
     procedure Arrange;
-    procedure SparkPaint(Sender: TObject);
     procedure PauseClick(Sender: TObject);
     procedure ResetClick(Sender: TObject);
     procedure CopyClick(Sender: TObject);
@@ -98,7 +109,7 @@ type
     property Busy: TLabel read FBusy;
     property Threshold: TLabel read FThreshold;
     property Note: TLabel read FNote;
-    property Spark: TPaintBox read FSpark;
+    property Spark: TAtlasBusySpark read FSpark;
     /// <summary>Knöpfe Anhalten, Zurücksetzen, Bericht kopieren; rechts bzw. (schmal) in der zweiten Zeile.</summary>
     property Buttons: TPanel read FButtons;
     property PauseButton: TButton read FPause;
@@ -253,6 +264,55 @@ begin
   end;
 end;
 
+{ TAtlasBusySpark }
+
+constructor TAtlasBusySpark.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  FColors := TAtlasColors.Light;
+end;
+
+procedure TAtlasBusySpark.SetValues(const AValues: TArray<Double>);
+begin
+  FValues := AValues;
+  Invalidate;
+end;
+
+procedure TAtlasBusySpark.SetColors(const AColors: TAtlasColors);
+begin
+  FColors := AColors;
+  Invalidate;
+end;
+
+procedure TAtlasBusySpark.Paint;
+var
+  mIndex, mX, mY, mCount, mSeconds: Integer;
+begin
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := ToColor(FColors.Surface);
+  Canvas.FillRect(ClientRect);
+  mCount := Length(FValues);
+  if mCount = 0 then
+  begin
+    Exit;
+  end;
+  mSeconds := TAtlasBusyMeter.cSeconds;
+  Canvas.Pen.Color := ToColor(FColors.Accent);
+  for mIndex := 0 to mCount - 1 do
+  begin
+    mX := MulDiv(mSeconds - mCount + mIndex, Width - 1, mSeconds - 1);
+    mY := Height - 2 - Round(FValues[mIndex] * (Height - 4) / 100);
+    if mIndex = 0 then
+    begin
+      Canvas.MoveTo(mX, mY);
+    end
+    else
+    begin
+      Canvas.LineTo(mX, mY);
+    end;
+  end;
+end;
+
 { TAtlasDiagnosticBar }
 
 constructor TAtlasDiagnosticBar.Create(AOwner: TComponent);
@@ -261,7 +321,6 @@ begin
   BevelOuter := bvNone;
   ParentBackground := True;
   Height := RowHeight;
-  FColors := TAtlasColors.Light;
   FButtons := TPanel.Create(Self);
   FButtons.Parent := Self;
   FButtons.BevelOuter := bvNone;
@@ -273,13 +332,12 @@ begin
   FPause := NewButton(TAtlasTextId.DiagPause, PauseClick);
   // alLeft in Reihenfolge der Left-Werte: Belegung, Verlauf, Schwelle, Hinweis.
   FBusy := NewLabel;
-  FSpark := TPaintBox.Create(Self);
+  FSpark := TAtlasBusySpark.Create(Self);
   FSpark.Parent := Self;
   FSpark.Align := alLeft;
   FSpark.AlignWithMargins := True;
   FSpark.Width := MulDiv(150, CurrentPPI, 96);
   FSpark.Left := MulDiv(400, CurrentPPI, 96);
-  FSpark.OnPaint := SparkPaint;
   FThreshold := NewLabel;
   FThreshold.Left := MulDiv(600, CurrentPPI, 96);
   FNote := NewLabel;
@@ -379,7 +437,7 @@ end;
 
 procedure TAtlasDiagnosticBar.SetSnapshot(const ASnapshot: TAtlasPluginSnapshot);
 begin
-  FValues := ASnapshot.Busy;
+  FSpark.SetValues(ASnapshot.Busy);
   FPaused := ASnapshot.Paused;
   FBusy.Caption := TAtlasStrings.Fmt(TAtlasTextId.DiagBusy, [Length(ASnapshot.Busy),
     TAtlasPluginRows.Percent(ASnapshot.BusyPercent)]);
@@ -391,51 +449,17 @@ begin
   end;
   // Längere Angaben (Prozent, Sprache) können die zweite Zeile nötig machen.
   Arrange;
-  FSpark.Invalidate;
 end;
 
 procedure TAtlasDiagnosticBar.SetColors(const AColors: TAtlasColors);
 begin
-  FColors := AColors;
-  FSpark.Invalidate;
+  FSpark.SetColors(AColors);
 end;
 
 procedure TAtlasDiagnosticBar.ShowNote(const AText: string);
 begin
   FNote.Caption := AText;
   Arrange;
-end;
-
-procedure TAtlasDiagnosticBar.SparkPaint(Sender: TObject);
-var
-  mCanvas: TCanvas;
-  mIndex, mX, mY, mCount, mSeconds: Integer;
-begin
-  mCanvas := FSpark.Canvas;
-  mCanvas.Brush.Style := bsSolid;
-  mCanvas.Brush.Color := ToColor(FColors.Surface);
-  mCanvas.FillRect(FSpark.ClientRect);
-  mCount := Length(FValues);
-  if mCount = 0 then
-  begin
-    Exit;
-  end;
-  // Immer 60 Sekunden breit, neueste rechts; 0 % unten, 100 % oben.
-  mSeconds := TAtlasBusyMeter.cSeconds;
-  mCanvas.Pen.Color := ToColor(FColors.Accent);
-  for mIndex := 0 to mCount - 1 do
-  begin
-    mX := MulDiv(mSeconds - mCount + mIndex, FSpark.Width - 1, mSeconds - 1);
-    mY := FSpark.Height - 2 - Round(FValues[mIndex] * (FSpark.Height - 4) / 100);
-    if mIndex = 0 then
-    begin
-      mCanvas.MoveTo(mX, mY);
-    end
-    else
-    begin
-      mCanvas.LineTo(mX, mY);
-    end;
-  end;
 end;
 
 procedure TAtlasDiagnosticBar.PauseClick(Sender: TObject);

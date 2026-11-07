@@ -7,7 +7,7 @@
 interface
 
 uses
-  Shell.Composition.Status,
+  Shell.Composition.Status.Contract,
   Shell.Composition.ServerCommands,
   Shell.Composition.Parts;
 

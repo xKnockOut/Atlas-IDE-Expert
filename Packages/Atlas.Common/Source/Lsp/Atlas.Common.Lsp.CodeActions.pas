@@ -134,7 +134,6 @@ uses
   Atlas.Common.Editing.MemberOrder,
   Atlas.Common.Documents.Uris,
   Atlas.Common.Dfm.Parser,
-  Atlas.Common.Index.Contract,
   Atlas.Common.Editing.AssignmentSwap,
   Atlas.Common.Editing.Extract,
   Atlas.Common.Editing.FreeFields,
@@ -304,21 +303,12 @@ end;
 
 /// <summary>Schreibzugriff über den Index prüfen (#313); ohne Index nil.</summary>
 function ReadOnlyCheck(AHasRules: Boolean; const ARules: TRuleCheckContext; const AUri, AText: string): TReadOnlyCheck;
-var
-  mIndex: ISymbolIndex;
-  mFileName: string;
 begin
-  if not AHasRules or (ARules.Services.Index = nil) then
+  if not AHasRules then
   begin
     Exit(nil);
   end;
-  mIndex := ARules.Services.Index;
-  mFileName := TDocumentUris.ToPath(AUri);
-  Result :=
-    function(const AExpression: string): Boolean
-    begin
-      Result := TAssignmentSwap.ReadOnlyByIndex(mIndex, mFileName, AText, AExpression);
-    end;
+  Result := TAssignmentSwap.ReadOnlyCheckOf(ARules.Services.Index, TDocumentUris.ToPath(AUri), AText);
 end;
 
 type
@@ -441,6 +431,10 @@ end;
 procedure TCodeActionBuilder.CollectFindings;
 begin
   FHasRules := Assigned(FOwner.FRuleProvider) and FOwner.FRuleProvider(FUri, FRules);
+  if not FHasRules then
+  begin
+    FRules := Default(TRuleCheckContext);
+  end;
   // Syntaxfehler mit der Korrektur des Parsers (#1022), auch ohne Prüfregeln; Schweregrad und Abschalten wie
   // in den Diagnosen. Die Regeltreffer im selben Regelkontext wie in den Diagnosen (#1112).
   if FHasRules then
@@ -557,16 +551,9 @@ begin
 end;
 
 procedure TCodeActionBuilder.AddFreeFieldActions(const ARefactoring: TRefactoringSettings);
-var
-  mFieldIndex: ISymbolIndex;
 begin
-  mFieldIndex := nil;
-  if FHasRules then
-  begin
-    mFieldIndex := FRules.Services.Index;
-  end;
-  // Die Aktion am Feld bringt die Regel mit, wenn sie läuft.
-  Add(TFreeFields.Actions(FTree, FText, mFieldIndex, FRange.StartPos.Line,
+  // Die Aktion am Feld bringt die Regel mit, wenn sie läuft. Ohne Prüfregeln ist FRules leer, also ohne Index.
+  Add(TFreeFields.Actions(FTree, FText, FRules.Services.Index, FRange.StartPos.Line,
     TFreeFields.StyleOf(ARefactoring.FreeFieldsStyle), not RuleOffersFreeField));
 end;
 
