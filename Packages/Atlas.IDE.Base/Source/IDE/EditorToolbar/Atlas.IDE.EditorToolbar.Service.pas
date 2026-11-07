@@ -101,7 +101,6 @@ uses
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
   Atlas.Core.Settings.Plugin,
-  Atlas.Core.Style.Palette,
   Atlas.Core.Settings.ToolbarItems,
   Atlas.Core.EditorToolbar.Icons,
   Atlas.Core.EditorToolbar.ReturnPoint,
@@ -185,18 +184,6 @@ begin
   if Result.StartsWith(cAtlasPrefix) then
   begin
     Result := Copy(Result, Length(cAtlasPrefix) + 1, MaxInt);
-  end;
-end;
-
-function BarColors: TAtlasColors;
-begin
-  if TAtlasIdeSettings.Current.BreadcrumbsIdeColors then
-  begin
-    Result := TAtlasIdeStyle.ChromeColors;
-  end
-  else
-  begin
-    Result := TAtlasIdeStyle.Colors;
   end;
 end;
 
@@ -376,14 +363,11 @@ begin
 end;
 
 procedure TToolbarState.ApplyTheme;
-var
-  mColors: TAtlasColors;
 begin
-  mColors := BarColors;
   FHost.ForEach(
     procedure(ABar: TControl)
     begin
-      TAtlasEditorToolbar(ABar).SetColors(mColors);
+      TAtlasEditorToolbar(ABar).SetColors(TAtlasIdeStyle.BarColors);
     end);
 end;
 
@@ -409,7 +393,7 @@ var
 begin
   mBar := TAtlasEditorToolbar.Create(nil);
   mHost := FHost;
-  mBar.SetColors(BarColors);
+  mBar.SetColors(TAtlasIdeStyle.BarColors);
   mBar.Labels := TAtlasIdeSettings.Current.EditorToolbarLabels;
   mBar.MoreHint := TAtlasStrings.Text(TAtlasTextId.EditorToolbarMore);
   mBar.GearHint := TAtlasStrings.Text(TAtlasTextId.EditorToolbarCustomizeCommand);

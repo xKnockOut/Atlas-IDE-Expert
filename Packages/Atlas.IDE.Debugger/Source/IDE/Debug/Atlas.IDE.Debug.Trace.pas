@@ -67,8 +67,6 @@ type
     class procedure AddHandler(const AName: string; const AEvent: TAtlasTraceEvent); static;
     /// <summary>Empfänger abmelden; beim letzten hängt Atlas sich von den Aktionen ab.</summary>
     class procedure RemoveHandler(const AName: string); static;
-    /// <summary>Hängt Atlas an der Aktion? (Studie, Diagnose)</summary>
-    class function Hooked(AKind: TAtlasTraceKind): Boolean; static;
     /// <summary>Aus Atlas „Einzelne Anweisung“: Empfänger melden (Origin Atlas), dann fortsetzen; False ohne
     /// angehaltenen Prozess.</summary>
     class function StepInto: Boolean; static;
@@ -273,11 +271,6 @@ begin
         end);
     end;
   end;
-end;
-
-class function TAtlasIdeDebugTrace.Hooked(AKind: TAtlasTraceKind): Boolean;
-begin
-  Result := FHooks[AKind] <> nil;
 end;
 
 class function TAtlasIdeDebugTrace.StepInto: Boolean;

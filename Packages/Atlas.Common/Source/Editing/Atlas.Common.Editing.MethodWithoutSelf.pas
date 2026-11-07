@@ -9,7 +9,8 @@
 //     Konstruktor, Destruktor oder Operator, keine Zugriffsmethode einer
 //     Property, nicht Teil eines Interfaces der Klasse (Vorfahrenliste oder
 //     Methodenzuordnung), nicht in der Formulardatei als Ereignis und in den
-//     Methoden der Klasse nicht als Methodenzeiger benutzt. Ob Namen
+//     Methoden der Datei (auch abgeleiteter Klassen) nicht als Methodenzeiger
+//     benutzt. Ob Namen
 //     Instanzmitglieder sind, sagt TMethodLookup (Namensauflösung, sonst die
 //     Klasse in der Datei); unbekannte Namen verhindern die Erkennung.
 //   In class-Methode umwandeln: class davor, mit refactoring.methodKindStatic
@@ -739,7 +740,7 @@ begin
   end;
 end;
 
-/// <summary>Benutzt die Methode AOther der Klasse die Methode als Methodenzeiger?</summary>
+/// <summary>Benutzt die Methode AOther die Methode als Methodenzeiger?</summary>
 function PointerUseIssue(APlan: TMethodPlan; AOther: TSyntaxNode): string;
 var
   mUses: TList<TSyntaxNode>;
@@ -768,13 +769,14 @@ var
   mIndex: Integer;
   mOther: TSyntaxNode;
 begin
-  // In den Methoden der Klasse: Methodenzeiger ohne Self. davor (OnClick := Name) sieht schon die Datei.
+  // In den Methoden der Datei: Methodenzeiger ohne Self. davor (OnClick := Name) sieht schon die Datei. Auch
+  // Methoden anderer Klassen zählen: Eine abgeleitete Klasse (Fenster aus einem Formular) übergibt geerbte
+  // Ereignisse ohne Self.
   Result := '';
   for mIndex := 0 to Routine.Parent.ChildCount - 1 do
   begin
     mOther := Routine.Parent[mIndex];
-    if (mOther.Kind = TSyntaxKind.RoutineDecl) and SameText(TRoutineBody.QualifierOf(mOther.Name),
-      Target.ClassName) then
+    if (mOther.Kind = TSyntaxKind.RoutineDecl) and (TRoutineBody.QualifierOf(mOther.Name) <> '') then
     begin
       Result := PointerUseIssue(Self, mOther);
       if Result <> '' then

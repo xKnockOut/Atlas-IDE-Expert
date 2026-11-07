@@ -167,7 +167,6 @@ uses
   Vcl.Clipbrd,
   Atlas.Core.Diagnostics.Guard,
   Atlas.Core.Diagnostics.MainThread,
-  Atlas.Core.Settings.Plugin,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.Files,
   Atlas.IDE.Foundation.Settings,
@@ -307,11 +306,8 @@ begin
 end;
 
 class function TAtlasIdeDebugAccessViolation.Enabled: Boolean;
-var
-  mSettings: TAtlasPluginSettings;
 begin
-  mSettings := TAtlasIdeSettings.Current;
-  Result := mSettings.Enabled and mSettings.DebugExplainAccessViolation;
+  Result := TAtlasIdeSettings.Current.Enabled and TAtlasIdeSettings.Current.DebugExplainAccessViolation;
 end;
 
 class procedure TAtlasIdeDebugAccessViolation.SetWhereAssigned(const AProc: TAtlasAvWhereAssignedProc);
@@ -672,12 +668,10 @@ end;
 procedure TAtlasIdeDebugAccessViolation.Finish;
 var
   mVerdict: TAtlasAvVerdict;
-  mSettings: TAtlasPluginSettings;
   mEnd: Integer;
 begin
   FTimer.Enabled := False;
   FProgress.Phase := TPhase.Idle;
-  mSettings := TAtlasIdeSettings.Current;
   mVerdict := FAnalysis.Verdict;
   FOutcome.Culprit := mVerdict.Culprit;
   FOutcome.HasCulprit := mVerdict.HasCulprit;
@@ -696,8 +690,9 @@ begin
     FUnderline.Show(FFacts.FileName, mVerdict.Culprit.StartLine, mVerdict.Culprit.StartCharacter, mEnd,
       FFacts.Lines[mVerdict.Culprit.StartLine]);
   end;
-  Publish(TAtlasAvTexts.FromAnalysis(FAnalysis, Assigned(FHooks.WhereAssigned) and mSettings.DataFlow,
-    Assigned(FHooks.Evaluate) and mSettings.DebugEvaluateWindow, FFacts.Header));
+  Publish(TAtlasAvTexts.FromAnalysis(FAnalysis, Assigned(FHooks.WhereAssigned) and
+    TAtlasIdeSettings.Current.DataFlow, Assigned(FHooks.Evaluate) and TAtlasIdeSettings.Current.DebugEvaluateWindow,
+    FFacts.Header));
 end;
 
 procedure TAtlasIdeDebugAccessViolation.Publish(const AExplanation: TAtlasDebugBannerExplanation);

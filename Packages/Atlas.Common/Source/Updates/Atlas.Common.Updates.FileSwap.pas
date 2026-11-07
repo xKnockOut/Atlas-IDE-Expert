@@ -155,6 +155,7 @@ begin
         FFiles.DeleteFile(TUpdateLayout.Join(FTarget, mStep.Path));
       end;
     except
+      // lsp-ignore: catch-all-without-raise -- Wiederherstellen nach Kräften; ALog protokolliert
       on mError: Exception do
       begin
         ALog(cTexts[TFileSwapText.NotRestored].Fmt([mStep.Path, mError.Message]));

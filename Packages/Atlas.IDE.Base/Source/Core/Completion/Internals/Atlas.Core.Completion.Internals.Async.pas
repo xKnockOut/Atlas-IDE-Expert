@@ -44,6 +44,10 @@ type
     procedure ReapWorkers;
     function IsCurrent(AGeneration: Integer): Boolean;
     procedure Failed(AE: Exception);
+    /// <summary>Arbeit eines Hintergrund-Threads von Query: Fetch mit Teilergebnissen, dann das Ergebnis an
+    /// ASink, solange AGeneration aktuell ist.</summary>
+    procedure RunFetch(const AContext: TAtlasContext; AData: TObject; const ASink: IAtlasCompletionSink;
+      AGeneration: Integer);
   protected
     /// <summary>Zählt E als Fehler der Quelle? Standard: ja.</summary>
     function IsFailure(AE: Exception): Boolean; virtual;
@@ -207,6 +211,62 @@ begin
   TInterlocked.Increment(FGeneration);
 end;
 
+/// <summary>Ergebnis von Fetch an ASink: Einträge, Kürzung, Syntaxhinweis und Ende.</summary>
+procedure Deliver(const ASink: IAtlasCompletionSink; const AItems: TAtlasCompletionItems;
+  const AState: TAtlasFetchState);
+begin
+  ASink.AddItems(AItems);
+  if AState.Incomplete then
+  begin
+    ASink.MarkIncomplete;
+  end;
+  if AState.Syntax.Trust <> TAtlasSyntaxTrust.Sure then
+  begin
+    ASink.MarkSyntax(AState.Syntax);
+  end;
+  ASink.Complete;
+end;
+
+procedure TAtlasAsyncCompletionProvider.RunFetch(const AContext: TAtlasContext; AData: TObject;
+  const ASink: IAtlasCompletionSink; AGeneration: Integer);
+var
+  mSink: IAtlasCompletionSink;
+  mGeneration: Integer;
+  mItems: TAtlasCompletionItems;
+  mState: TAtlasFetchState;
+begin
+  mSink := ASink;
+  mGeneration := AGeneration;
+  mItems := nil;
+  mState := Default(TAtlasFetchState);
+  try
+    mItems := Fetch(AContext, AData,
+      function: Boolean
+      begin
+        Result := not IsCurrent(mGeneration);
+      end,
+      procedure(const AItems: TAtlasCompletionItems)
+      begin
+        if (Length(AItems) > 0) and IsCurrent(mGeneration) then
+        begin
+          mSink.AddItems(AItems);
+        end;
+      end, mState);
+  except
+    // Server weg, Zeitlimit oder unerwartete Antwort: keine Einträge; Fehler zählt die Sicherung (#493).
+    on E: Exception do
+    begin
+      mItems := nil;
+      mState := Default(TAtlasFetchState);
+      Failed(E);
+    end;
+  end;
+  if IsCurrent(mGeneration) then
+  begin
+    Deliver(mSink, mItems, mState);
+  end;
+end;
+
 procedure TAtlasAsyncCompletionProvider.Query(const AContext: TAtlasContext; const ASink: IAtlasCompletionSink);
 var
   mGeneration: Integer;
@@ -234,47 +294,8 @@ begin
     begin
       mWorker := TThread.CreateAnonymousThread(
         procedure
-        var
-          Items: TAtlasCompletionItems;
-          State: TAtlasFetchState;
         begin
-          Items := nil;
-          State := Default(TAtlasFetchState);
-          try
-            Items := Fetch(mContext, mData,
-              function: Boolean
-              begin
-                Result := not IsCurrent(mGeneration);
-              end,
-              procedure(const AItems: TAtlasCompletionItems)
-              begin
-                if (Length(AItems) > 0) and IsCurrent(mGeneration) then
-                begin
-                  mSink.AddItems(AItems);
-                end;
-              end, State);
-          except
-            // Server weg, Zeitlimit oder unerwartete Antwort: keine Einträge; Fehler zählt die Sicherung (#493).
-            on E: Exception do
-            begin
-              Items := nil;
-              State := Default(TAtlasFetchState);
-              Failed(E);
-            end;
-          end;
-          if IsCurrent(mGeneration) then
-          begin
-            mSink.AddItems(Items);
-            if State.Incomplete then
-            begin
-              mSink.MarkIncomplete;
-            end;
-            if State.Syntax.Trust <> TAtlasSyntaxTrust.Sure then
-            begin
-              mSink.MarkSyntax(State.Syntax);
-            end;
-            mSink.Complete;
-          end;
+          RunFetch(mContext, mData, mSink, mGeneration);
         end);
       mWorker.FreeOnTerminate := False;
       FWorkers.Add(mWorker);

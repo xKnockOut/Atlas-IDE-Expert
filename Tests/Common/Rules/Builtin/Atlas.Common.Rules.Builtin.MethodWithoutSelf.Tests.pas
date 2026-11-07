@@ -27,6 +27,10 @@ type
     procedure EventAssignedInCodeIsSilent;
     [Test]
     procedure InterfaceMethodsAreSilent;
+    [Test]
+    procedure InheritedMemberOfUnknownAncestorIsSilent;
+    [Test]
+    procedure PointerInDescendantIsSilent;
   end;
 
 implementation
@@ -134,6 +138,39 @@ begin
     'begin'#10'  OnTick := Self.Tick;'#10'  mWert := Zahl;'#10'end;'#10'end.', Enabled);
   Assert.AreEqual(1, Integer(Length(mFound)));
   Assert.IsTrue(Pos('TRechner.Zahl', mFound[0].Message) > 0, mFound[0].Message);
+end;
+
+/// <summary>Close in einem Formular ist TCustomForm.Close, nicht System.Close: Bei einem Vorfahren außerhalb des
+/// Index (Atlas.UI.Commands.KeyMap) kann ein eingebauter Name ein geerbtes Mitglied sein. Ohne solchen Vorfahren
+/// meldet die Regel weiter.</summary>
+procedure TMethodWithoutSelfRuleTests.InheritedMemberOfUnknownAncestorIsSilent;
+const
+  cBody = 'implementation'#10'procedure TFenster.Schliessen;'#10'begin'#10'  Close;'#10'end;'#10'end.';
+begin
+  Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(Rule, 'unit Fenster;'#10'interface'#10'type'#10 +
+    '  TFenster = class(TForm)'#10'    procedure Schliessen;'#10'  end;'#10 + cBody, Enabled))));
+  Assert.AreEqual(1, Integer(Length(TRuleAssert.Findings(Rule, 'unit Fenster;'#10'interface'#10'type'#10 +
+    '  TFenster = class'#10'    procedure Schliessen;'#10'  end;'#10 + cBody, Enabled))));
+end;
+
+/// <summary>Eine abgeleitete Klasse übergibt das geerbte Ereignis ohne Self (AddButton(…, CloseClick) in
+/// TAtlasKeyMapWindow): Die Methode muss eine Methode des Objekts bleiben.</summary>
+procedure TMethodWithoutSelfRuleTests.PointerInDescendantIsSilent;
+const
+  cSource = 'unit Fenster;'#10'interface'#10'type'#10'  TBasis = class'#10 +
+    '    procedure Klick(Sender: TObject);'#10'  end;'#10'  TFenster = class(TBasis)'#10 +
+    '    FOnKlick: TNotifyEvent;'#10'    procedure Baue;'#10'  end;'#10'implementation'#10 +
+    'procedure TBasis.Klick(Sender: TObject);'#10'begin'#10'end;'#10 +
+    'procedure TFenster.Baue;'#10'begin'#10'  FOnKlick := Klick;'#10'end;'#10'end.';
+var
+  mFound: TArray<TRuleFinding>;
+  mFinding: TRuleFinding;
+begin
+  mFound := TRuleAssert.Findings(Rule, cSource, Enabled);
+  for mFinding in mFound do
+  begin
+    Assert.IsTrue(Pos('TBasis.Klick', mFinding.Message) = 0, mFinding.Message);
+  end;
 end;
 
 procedure TMethodWithoutSelfRuleTests.InterfaceMethodsAreSilent;

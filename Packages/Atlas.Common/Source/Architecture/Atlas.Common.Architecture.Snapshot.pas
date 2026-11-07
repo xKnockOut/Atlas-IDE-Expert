@@ -1366,6 +1366,7 @@ begin
       mText := TEncoding.UTF8.GetString(mBytes);
     end;
   except
+    // lsp-ignore: catch-all-without-raise -- Fehler geht als AError an den Aufrufer
     on E: Exception do
     begin
       AError := cTexts[TSnapshotText.ArchitectureStateNotReadable].Fmt([AFileName]) + E.Message;

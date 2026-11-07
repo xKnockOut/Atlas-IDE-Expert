@@ -79,6 +79,7 @@ begin
       LoadText(TFileEncoding.Decode(mData, mFileFormat));
     except
       // Nicht lesbar: mit leerer Auswahl weiter, die nächste Wahl schreibt die Datei neu.
+      // lsp-ignore: catch-all-without-raise -- Auswahldatei unlesbar heißt keine Auswahl
       on Exception do
         LoadText('');
     end;
@@ -142,6 +143,7 @@ begin
   try
     mRoot := TJSONObject.ParseJSONValue(AText);
   except
+    // lsp-ignore: catch-all-without-raise -- Auswahldatei unlesbar heißt keine Auswahl
     on Exception do
       mRoot := nil;
   end;
@@ -227,6 +229,7 @@ begin
     TFile.WriteAllText(FFileName, ToText, TEncoding.UTF8);
   except
     // Ohne Schreibrecht gilt die Wahl bis zum Neustart.
+    // lsp-ignore: catch-all-without-raise -- Auswahldatei unlesbar heißt keine Auswahl
     on Exception do
       Exit;
   end;

@@ -87,7 +87,8 @@ uses
   Atlas.UI.Popup.Window,
   Atlas.UI.Popup.Draw,
   Atlas.UI.Strings,
-  Atlas.UI.Completion.PopupTexts;
+  Atlas.UI.Completion.PopupTexts,
+  Atlas.UI.Completion.Details;
 
 const
   cTextFlags = DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX;
@@ -748,7 +749,7 @@ begin
   begin
     // Höher als das Popup: nur die Doku scrollt (#654).
     FDetailView.MaxHeight := ClientHeight;
-    FDetailView.Render(Canvas, Colors, Font, UIFont, mPanel, PPI, True);
+    FDetailView.Render(TAtlasDetailSurface.Create(Canvas, Colors, Font, UIFont, PPI), mPanel, True);
   end;
   Canvas.Font := Font;
   Canvas.Brush.Style := bsSolid;

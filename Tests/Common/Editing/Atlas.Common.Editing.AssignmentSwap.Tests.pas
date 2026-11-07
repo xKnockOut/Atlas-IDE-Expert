@@ -140,6 +140,7 @@ const
     '  end;'#10'implementation'#10'end.';
 var
   Index: ISymbolIndex;
+  mCheck: TReadOnlyCheck;
 begin
   Index := TSymbolIndex.Create;
   Index.AddUnit(TIndexExtractor.ExtractText(Source, FileName, nil));
@@ -147,6 +148,11 @@ begin
   Assert.IsFalse(TAssignmentSwap.ReadOnlyByIndex(Index, FileName, Source, 'Kunden[0].Name'));
   Assert.IsFalse(TAssignmentSwap.ReadOnlyByIndex(Index, FileName, Source, 'Unbekannt'));
   Assert.IsFalse(TAssignmentSwap.ReadOnlyByIndex(nil, FileName, Source, 'Liste.Count'));
+  mCheck := TAssignmentSwap.ReadOnlyCheckOf(Index, FileName, Source);
+  Assert.IsTrue(mCheck('Liste.Count'));
+  Assert.IsFalse(mCheck('Kunden[0].Name'));
+  mCheck := TAssignmentSwap.ReadOnlyCheckOf(nil, FileName, Source);
+  Assert.IsFalse(Assigned(mCheck));
 end;
 
 initialization

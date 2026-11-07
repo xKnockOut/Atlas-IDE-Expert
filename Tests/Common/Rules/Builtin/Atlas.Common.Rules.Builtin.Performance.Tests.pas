@@ -161,6 +161,14 @@ begin
   // repeat … until: neu gesetzt am Anfang jedes Durchlaufs.
   Assert.AreEqual(0, Count(TStringConcatInLoopRule.Create, InRoutine('  S: string;'#10'  I: Integer;',
     '  repeat'#10'    S := IntToStr(I);'#10'    S := S + ''x'';'#10'    Inc(I);'#10'  until I > 10;')));
+  // In beiden Zweigen eines if neu gesetzt (Atlas.Core.Debug.Note, Gesamtlauf 07.11.).
+  Assert.AreEqual(0, Count(TStringConcatInLoopRule.Create, InRoutine('  S: string;'#10'  I: Integer;',
+    '  for I := 1 to 10 do'#10'  begin'#10'    if I = 3 then'#10'    begin'#10'      S := ''> '';'#10'    end'#10 +
+    '    else'#10'      S := ''  '';'#10'    S := S + IntToStr(I);'#10'  end;')));
+  // Nur im then-Zweig neu gesetzt: wächst weiter.
+  Assert.AreEqual(1, Count(TStringConcatInLoopRule.Create, InRoutine('  S: string;'#10'  I: Integer;',
+    '  for I := 1 to 10 do'#10'  begin'#10'    if I = 3 then'#10'      S := ''> '';'#10 +
+    '    S := S + IntToStr(I);'#10'  end;')));
 end;
 
 procedure TPerformanceRulesTests.LoopInvariantCallReported;

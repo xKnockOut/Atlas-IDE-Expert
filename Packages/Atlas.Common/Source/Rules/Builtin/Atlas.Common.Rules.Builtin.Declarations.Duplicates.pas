@@ -207,15 +207,16 @@ var
   var
     mParts: TArray<string>;
     mIndex, mToken, mFrom: Integer;
+    mPart: string;
   begin
     mParts := ANode.Name.Split([',']);
     mFrom := TokenAtOffset(mTokens, ANode.StartOffset);
     for mIndex := 0 to High(mParts) do
     begin
       mToken := mFrom;
+      mPart := Trim(mParts[mIndex]);
       while (mToken <= High(mTokens)) and (mTokens[mToken].Offset < ANode.EndOffset) and
-        not ((mTokens[mToken].Kind = TPascalTokenKind.Identifier) and
-          SameText(mTokens[mToken].Text, Trim(mParts[mIndex]))) do
+        not ((mTokens[mToken].Kind = TPascalTokenKind.Identifier) and SameText(mTokens[mToken].Text, mPart)) do
       begin
         Inc(mToken);
       end;
@@ -223,7 +224,7 @@ var
       begin
         Exit;
       end;
-      if AddName(ANode, ASection, Trim(mParts[mIndex]), AKind, mToken, False) then
+      if AddName(ANode, ASection, mPart, AKind, mToken, False) then
       begin
         SetListPlace(mIndex, Length(mParts));
       end;
