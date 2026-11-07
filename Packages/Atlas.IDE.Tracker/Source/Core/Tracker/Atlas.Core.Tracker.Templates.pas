@@ -32,8 +32,8 @@ type
 
   TAtlasTrackerTemplates = class
   public const
-    German = 'de';
-    English = 'en';
+    cGerman = 'de';
+    cEnglish = 'en';
   public
     /// <summary>"de", "de_DE", "de-AT" → "de"; "en…" → "en"; sonst ''.</summary>
     class function NormalLanguage(const AText: string): string; static;
@@ -53,18 +53,18 @@ type
   TQueries = array[TAtlasTrackerTemplateKind] of string;
 
 const
-  YouTrackGerman: TQueries = (
+  cYouTrackGerman: TQueries = (
     'assignee: meine #Ungelöst',
     'assignee: meine #Ungelöst sprint: {Aktueller Sprint}',
     'reporter: meine #Ungelöst',
     'assignee: meine updated: {Letzte Woche}');
-  YouTrackEnglish: TQueries = (
+  cYouTrackEnglish: TQueries = (
     'assignee: me #Unresolved',
     'assignee: me #Unresolved sprint: {Current sprint}',
     'reporter: me #Unresolved',
     'assignee: me updated: {Last week}');
   // Ohne Sprint: GitHub hat keinen.
-  GitHubQueries: TQueries = (
+  cGitHubQueries: TQueries = (
     'assignee:@me state:open',
     '',
     'author:@me state:open',
@@ -77,13 +77,13 @@ var
   mText: string;
 begin
   mText := LowerCase(Trim(AText));
-  if mText.StartsWith(German) then
+  if mText.StartsWith(cGerman) then
   begin
-    Result := German;
+    Result := cGerman;
   end
-  else if mText.StartsWith(English) then
+  else if mText.StartsWith(cEnglish) then
   begin
-    Result := English;
+    Result := cEnglish;
   end
   else
   begin
@@ -121,19 +121,19 @@ begin
   mLanguage := NormalLanguage(ALanguage);
   if mProvider = 'github' then
   begin
-    Exit(Add(Result, mProvider, English, GitHubQueries));
+    Exit(Add(Result, mProvider, cEnglish, cGitHubQueries));
   end;
   if mProvider <> 'youtrack' then
   begin
     Exit;
   end;
-  if mLanguage <> English then
+  if mLanguage <> cEnglish then
   begin
-    Result := Add(Result, mProvider, German, YouTrackGerman);
+    Result := Add(Result, mProvider, cGerman, cYouTrackGerman);
   end;
-  if mLanguage <> German then
+  if mLanguage <> cGerman then
   begin
-    Result := Add(Result, mProvider, English, YouTrackEnglish);
+    Result := Add(Result, mProvider, cEnglish, cYouTrackEnglish);
   end;
 end;
 

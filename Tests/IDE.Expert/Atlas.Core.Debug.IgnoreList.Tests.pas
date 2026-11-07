@@ -38,8 +38,8 @@ uses
   Atlas.Core.Debug.IgnoreList;
 
 const
-  Project = 'C:\Projekte\Demo.dproj';
-  Kunde = 'C:\Projekte\Kunde.pas';
+  cProject = 'C:\Projekte\Demo.dproj';
+  cKunde = 'C:\Projekte\Kunde.pas';
 
 { TAtlasDebugIgnoreListTests }
 
@@ -54,95 +54,95 @@ end;
 
 procedure TAtlasDebugIgnoreListTests.ClassesWithoutCaseAndDuplicates;
 var
-  List: TAtlasDebugIgnoreList;
+  mList: TAtlasDebugIgnoreList;
 begin
-  List := TAtlasDebugIgnoreList.Empty;
-  Assert.IsTrue(List.AddClass('EAbort'));
-  Assert.IsFalse(List.AddClass('eabort'), 'ohne Groß/klein schon da');
-  Assert.IsFalse(List.AddClass('  '));
-  Assert.IsTrue(List.AddClass(' EConvertError '));
-  Assert.AreEqual(2, Integer(Length(List.Classes)));
-  Assert.AreEqual('EConvertError', List.Classes[1], 'getrimmt');
-  Assert.IsTrue(List.IgnoresClass('EABORT'));
-  Assert.IsTrue(List.Ignores(Project, 'EAbort', Kunde, 1));
-  Assert.IsTrue(List.RemoveClass('EAbort'));
-  Assert.IsFalse(List.RemoveClass('EAbort'));
-  Assert.IsFalse(List.IgnoresClass('EAbort'));
+  mList := TAtlasDebugIgnoreList.Empty;
+  Assert.IsTrue(mList.AddClass('EAbort'));
+  Assert.IsFalse(mList.AddClass('eabort'), 'ohne Groß/klein schon da');
+  Assert.IsFalse(mList.AddClass('  '));
+  Assert.IsTrue(mList.AddClass(' EConvertError '));
+  Assert.AreEqual(2, Integer(Length(mList.Classes)));
+  Assert.AreEqual('EConvertError', mList.Classes[1], 'getrimmt');
+  Assert.IsTrue(mList.IgnoresClass('EABORT'));
+  Assert.IsTrue(mList.Ignores(cProject, 'EAbort', cKunde, 1));
+  Assert.IsTrue(mList.RemoveClass('EAbort'));
+  Assert.IsFalse(mList.RemoveClass('EAbort'));
+  Assert.IsFalse(mList.IgnoresClass('EAbort'));
 end;
 
 procedure TAtlasDebugIgnoreListTests.LocationsPerProject;
 var
-  List: TAtlasDebugIgnoreList;
+  mList: TAtlasDebugIgnoreList;
 begin
-  List := TAtlasDebugIgnoreList.Empty;
-  Assert.IsTrue(List.AddLocation(Project, 'EConvertError', Kunde, 42));
-  Assert.IsFalse(List.AddLocation(Project, 'econverterror', 'c:\projekte\KUNDE.pas', 42), 'gleicher Ort');
-  Assert.IsFalse(List.AddLocation(Project, 'EConvertError', Kunde, 0), 'ohne Zeile kein Ort');
-  Assert.IsFalse(List.AddLocation(Project, '', Kunde, 1));
-  Assert.IsTrue(List.Ignores(Project, 'EConvertError', Kunde, 42));
-  Assert.IsFalse(List.Ignores(Project, 'EConvertError', Kunde, 43), 'andere Zeile');
-  Assert.IsFalse(List.Ignores('C:\Anderes.dproj', 'EConvertError', Kunde, 42), 'anderes Projekt');
-  Assert.IsFalse(List.Ignores(Project, 'EAbort', Kunde, 42), 'andere Klasse');
-  Assert.AreEqual(1, Integer(Length(List.LocationsOf(Project))));
-  Assert.AreEqual(0, Integer(Length(List.LocationsOf('C:\Anderes.dproj'))));
-  Assert.IsTrue(List.RemoveLocation(Project, 'EConvertError', Kunde, 42));
-  Assert.IsFalse(List.IgnoresLocation(Project, 'EConvertError', Kunde, 42));
+  mList := TAtlasDebugIgnoreList.Empty;
+  Assert.IsTrue(mList.AddLocation(cProject, 'EConvertError', cKunde, 42));
+  Assert.IsFalse(mList.AddLocation(cProject, 'econverterror', 'c:\projekte\KUNDE.pas', 42), 'gleicher Ort');
+  Assert.IsFalse(mList.AddLocation(cProject, 'EConvertError', cKunde, 0), 'ohne Zeile kein Ort');
+  Assert.IsFalse(mList.AddLocation(cProject, '', cKunde, 1));
+  Assert.IsTrue(mList.Ignores(cProject, 'EConvertError', cKunde, 42));
+  Assert.IsFalse(mList.Ignores(cProject, 'EConvertError', cKunde, 43), 'andere Zeile');
+  Assert.IsFalse(mList.Ignores('C:\Anderes.dproj', 'EConvertError', cKunde, 42), 'anderes Projekt');
+  Assert.IsFalse(mList.Ignores(cProject, 'EAbort', cKunde, 42), 'andere Klasse');
+  Assert.AreEqual(1, Integer(Length(mList.LocationsOf(cProject))));
+  Assert.AreEqual(0, Integer(Length(mList.LocationsOf('C:\Anderes.dproj'))));
+  Assert.IsTrue(mList.RemoveLocation(cProject, 'EConvertError', cKunde, 42));
+  Assert.IsFalse(mList.IgnoresLocation(cProject, 'EConvertError', cKunde, 42));
 end;
 
 procedure TAtlasDebugIgnoreListTests.JsonRoundTrip;
 var
-  List, Loaded: TAtlasDebugIgnoreList;
-  Valid: Boolean;
+  mList, mLoaded: TAtlasDebugIgnoreList;
+  mValid: Boolean;
 begin
-  List := TAtlasDebugIgnoreList.Empty;
-  List.AddClass('EAbort');
-  List.AddLocation(Project, 'EConvertError', Kunde, 42);
-  Loaded := TAtlasDebugIgnoreList.Parse(List.ToJson, Valid);
-  Assert.IsTrue(Valid);
-  Assert.AreEqual(1, Integer(Length(Loaded.Classes)));
-  Assert.AreEqual('EAbort', Loaded.Classes[0]);
-  Assert.AreEqual(1, Integer(Length(Loaded.Locations)));
-  Assert.AreEqual(Project, Loaded.Locations[0].Project);
-  Assert.AreEqual('EConvertError', Loaded.Locations[0].ExceptionClass);
-  Assert.AreEqual(Kunde, Loaded.Locations[0].FileName);
-  Assert.AreEqual(42, Loaded.Locations[0].Line);
-  Assert.IsTrue(Pos('"format": 1', List.ToJson) > 0);
+  mList := TAtlasDebugIgnoreList.Empty;
+  mList.AddClass('EAbort');
+  mList.AddLocation(cProject, 'EConvertError', cKunde, 42);
+  mLoaded := TAtlasDebugIgnoreList.Parse(mList.ToJson, mValid);
+  Assert.IsTrue(mValid);
+  Assert.AreEqual(1, Integer(Length(mLoaded.Classes)));
+  Assert.AreEqual('EAbort', mLoaded.Classes[0]);
+  Assert.AreEqual(1, Integer(Length(mLoaded.Locations)));
+  Assert.AreEqual(cProject, mLoaded.Locations[0].Project);
+  Assert.AreEqual('EConvertError', mLoaded.Locations[0].ExceptionClass);
+  Assert.AreEqual(cKunde, mLoaded.Locations[0].FileName);
+  Assert.AreEqual(42, mLoaded.Locations[0].Line);
+  Assert.IsTrue(Pos('"format": 1', mList.ToJson) > 0);
 end;
 
 procedure TAtlasDebugIgnoreListTests.ParseDropsBrokenEntries;
 var
-  Loaded: TAtlasDebugIgnoreList;
-  Valid: Boolean;
+  mLoaded: TAtlasDebugIgnoreList;
+  mValid: Boolean;
 begin
-  Loaded := TAtlasDebugIgnoreList.Parse('{"classes": ["EAbort", 3, "eabort"], "locations": [{"class": "E", ' +
-    '"file": "a.pas", "line": 0}, 7, {"project": "p", "class": "E", "file": "a.pas", "line": 5}]}', Valid);
-  Assert.IsTrue(Valid);
-  Assert.AreEqual(1, Integer(Length(Loaded.Classes)));
-  Assert.AreEqual(1, Integer(Length(Loaded.Locations)));
-  Assert.AreEqual(5, Loaded.Locations[0].Line);
-  Loaded := TAtlasDebugIgnoreList.Parse('kein JSON', Valid);
-  Assert.IsFalse(Valid);
-  Assert.AreEqual(0, Integer(Length(Loaded.Classes)));
-  TAtlasDebugIgnoreList.Parse('[1, 2]', Valid);
-  Assert.IsFalse(Valid);
+  mLoaded := TAtlasDebugIgnoreList.Parse('{"classes": ["EAbort", 3, "eabort"], "locations": [{"class": "E", ' +
+    '"file": "a.pas", "line": 0}, 7, {"project": "p", "class": "E", "file": "a.pas", "line": 5}]}', mValid);
+  Assert.IsTrue(mValid);
+  Assert.AreEqual(1, Integer(Length(mLoaded.Classes)));
+  Assert.AreEqual(1, Integer(Length(mLoaded.Locations)));
+  Assert.AreEqual(5, mLoaded.Locations[0].Line);
+  mLoaded := TAtlasDebugIgnoreList.Parse('kein JSON', mValid);
+  Assert.IsFalse(mValid);
+  Assert.AreEqual(0, Integer(Length(mLoaded.Classes)));
+  TAtlasDebugIgnoreList.Parse('[1, 2]', mValid);
+  Assert.IsFalse(mValid);
 end;
 
 procedure TAtlasDebugIgnoreListTests.LoadAndSave;
 var
-  List, Loaded: TAtlasDebugIgnoreList;
+  mList, mLoaded: TAtlasDebugIgnoreList;
 begin
   FFolder := TPath.Combine(TPath.GetTempPath, 'AtlasDebugIgnore' + IntToStr(Random(1000000)));
   TDirectory.CreateDirectory(FFolder);
-  Loaded := TAtlasDebugIgnoreList.Load(FFolder);
-  Assert.AreEqual(0, Integer(Length(Loaded.Classes)), 'ohne Datei leer');
-  List := TAtlasDebugIgnoreList.Empty;
-  List.AddClass('EAbort');
-  Assert.IsTrue(TAtlasDebugIgnoreList.Save(FFolder, List));
-  Assert.IsTrue(TFile.Exists(TPath.Combine(FFolder, TAtlasDebugIgnoreList.FileName)));
-  Loaded := TAtlasDebugIgnoreList.Load(FFolder);
-  Assert.AreEqual(1, Integer(Length(Loaded.Classes)));
-  Assert.AreEqual('EAbort', Loaded.Classes[0]);
-  Assert.IsFalse(TAtlasDebugIgnoreList.Save('', List));
+  mLoaded := TAtlasDebugIgnoreList.Load(FFolder);
+  Assert.AreEqual(0, Integer(Length(mLoaded.Classes)), 'ohne Datei leer');
+  mList := TAtlasDebugIgnoreList.Empty;
+  mList.AddClass('EAbort');
+  Assert.IsTrue(TAtlasDebugIgnoreList.Save(FFolder, mList));
+  Assert.IsTrue(TFile.Exists(TPath.Combine(FFolder, TAtlasDebugIgnoreList.cFileName)));
+  mLoaded := TAtlasDebugIgnoreList.Load(FFolder);
+  Assert.AreEqual(1, Integer(Length(mLoaded.Classes)));
+  Assert.AreEqual('EAbort', mLoaded.Classes[0]);
+  Assert.IsFalse(TAtlasDebugIgnoreList.Save('', mList));
   Assert.AreEqual(0, Integer(Length(TAtlasDebugIgnoreList.Load('').Classes)));
 end;
 

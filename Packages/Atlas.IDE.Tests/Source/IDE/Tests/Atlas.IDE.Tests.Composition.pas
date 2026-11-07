@@ -277,7 +277,7 @@ begin
   Result := Default(TAtlasModuleInfo);
   Result.Id := cModuleId;
   Result.Name := 'Tests';
-  Result.Version := TAtlasVersion.Version;
+  Result.Version := TAtlasVersion.cVersion;
   Result.Handle := HInstance;
   // Der Läufer baut und startet Programme: nur im normalen Start.
   Result.MinLevel := TAtlasSafeLevel.Normal;

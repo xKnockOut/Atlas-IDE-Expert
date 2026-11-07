@@ -147,7 +147,7 @@ begin
   mIssue := TAtlasTrackerIssue.Empty;
   mIssue.Key := Trim(TAtlasYouTrackJson.TextOf(AItem, 'idReadable'));
   mIssue.Number := PositiveIntOf(AItem, 'numberInProject');
-  mIssue.Title := TAtlasYouTrackJson.Shorten(TAtlasYouTrackJson.TextOf(AItem, 'summary'), TAtlasTrackerIssue.MaxTitle);
+  mIssue.Title := TAtlasYouTrackJson.Shorten(TAtlasYouTrackJson.TextOf(AItem, 'summary'), TAtlasTrackerIssue.cMaxTitle);
   ForEachField(AItem.Values['customFields'],
     procedure(AName, AText: string)
     begin
@@ -164,31 +164,31 @@ end;
 class function TAtlasYouTrackParse.ParseIssues(const AJson: string; AMax: Integer;
   out AIssues: TArray<TAtlasTrackerIssue>): Boolean;
 var
-  Value, Item: TJSONValue;
-  Issue: TAtlasTrackerIssue;
+  mValue, mItem: TJSONValue;
+  mIssue: TAtlasTrackerIssue;
 begin
   AIssues := nil;
   Result := False;
-  Value := TJSONObject.ParseJSONValue(AJson);
+  mValue := TJSONObject.ParseJSONValue(AJson);
   try
-    if not (Value is TJSONArray) then
+    if not (mValue is TJSONArray) then
     begin
       Exit;
     end;
     Result := True;
-    for Item in TJSONArray(Value) do
+    for mItem in TJSONArray(mValue) do
     begin
       if Length(AIssues) >= AMax then
       begin
         Break;
       end;
-      if (Item is TJSONObject) and IssueOf(TJSONObject(Item), Issue) then
+      if (mItem is TJSONObject) and IssueOf(TJSONObject(mItem), mIssue) then
       begin
-        AIssues := AIssues + [Issue];
+        AIssues := AIssues + [mIssue];
       end;
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
@@ -220,7 +220,8 @@ begin
   end;
   for mField in TJSONArray(mFields) do
   begin
-    if (mField is TJSONObject) and TAtlasYouTrackJson.IsOneOf(TAtlasYouTrackJson.TextOf(TJSONObject(mField), 'name'), ['State', 'Status', 'Zustand']) then
+    if (mField is TJSONObject) and TAtlasYouTrackJson.IsOneOf(TAtlasYouTrackJson.TextOf(TJSONObject(mField), 'name'),
+      ['State', 'Status', 'Zustand']) then
     begin
       Result := TAtlasYouTrackJson.ValueText(TJSONObject(mField).Values['value']);
       if Result <> '' then
@@ -327,7 +328,7 @@ begin
   end;
   for mItem in TJSONArray(AItems) do
   begin
-    if Length(Result) >= TAtlasTrackerDetails.MaxAttachments then
+    if Length(Result) >= TAtlasTrackerDetails.cMaxAttachments then
     begin
       Break;
     end;
@@ -394,7 +395,7 @@ begin
   end;
   for mIssue in TJSONArray(AGroup.Values['issues']) do
   begin
-    if (mIssue is TJSONObject) and (Length(ALinks) < TAtlasTrackerDetails.MaxLinks) then
+    if (mIssue is TJSONObject) and (Length(ALinks) < TAtlasTrackerDetails.cMaxLinks) then
     begin
       mLink := LinkOf(TJSONObject(mIssue), mRelation, mKind);
       if mLink.Key <> '' then
@@ -451,9 +452,9 @@ begin
       Result := Result + [CommentOf(TJSONObject(mItem))];
     end;
   end;
-  if Length(Result) > TAtlasTrackerDetails.MaxComments then
+  if Length(Result) > TAtlasTrackerDetails.cMaxComments then
   begin
-    Result := Copy(Result, Length(Result) - TAtlasTrackerDetails.MaxComments, TAtlasTrackerDetails.MaxComments);
+    Result := Copy(Result, Length(Result) - TAtlasTrackerDetails.cMaxComments, TAtlasTrackerDetails.cMaxComments);
   end;
 end;
 
@@ -531,7 +532,7 @@ procedure AddValue(var AValues: TArray<string>; const AText: string);
 var
   mItem: string;
 begin
-  if (Trim(AText) = '') or (Length(AValues) >= TAtlasYouTrackApi.MaxValues) then
+  if (Trim(AText) = '') or (Length(AValues) >= TAtlasYouTrackApi.cMaxValues) then
   begin
     Exit;
   end;
@@ -688,7 +689,8 @@ begin
       mLogin := Trim(TAtlasYouTrackJson.TextOf(TJSONObject(mItem), 'login'));
       if mLogin <> '' then
       begin
-        AUsers := AUsers + [TAtlasTrackerUser.Create(mLogin, TAtlasYouTrackJson.Shorten(TAtlasYouTrackJson.TextOf(TJSONObject(mItem), 'fullName'), 80))];
+        AUsers := AUsers + [TAtlasTrackerUser.Create(mLogin,
+          TAtlasYouTrackJson.Shorten(TAtlasYouTrackJson.TextOf(TJSONObject(mItem), 'fullName'), 80))];
       end;
     end;
   finally
@@ -764,24 +766,24 @@ end;
 /// für Typen mit bekanntem Namen (Depend, Subtask). False ohne.</summary>
 function LinkTypeId(AType: TJSONObject; AKind: TAtlasTrackerLinkKind; AKnownOnly: Boolean; out AId: string): Boolean;
 const
-  KnownLinkTypes: array[0..3] of string = ('Depend', 'Subtask', 'Abhängigkeit', 'Unteraufgabe');
-  Directions: array[0..1] of string = ('OUTWARD', 'INWARD');
-  Suffixes: array[0..1] of string = ('s', 't');
+  cKnownLinkTypes: array[0..3] of string = ('Depend', 'Subtask', 'Abhängigkeit', 'Unteraufgabe');
+  cDirections: array[0..1] of string = ('OUTWARD', 'INWARD');
+  cSuffixes: array[0..1] of string = ('s', 't');
 var
   mSide: Integer;
 begin
   AId := '';
   Result := False;
   if (TAtlasYouTrackJson.TextOf(AType, 'id') = '') or
-    (AKnownOnly and not TAtlasYouTrackJson.IsOneOf(TAtlasYouTrackJson.TextOf(AType, 'name'), KnownLinkTypes)) then
+    (AKnownOnly and not TAtlasYouTrackJson.IsOneOf(TAtlasYouTrackJson.TextOf(AType, 'name'), cKnownLinkTypes)) then
   begin
     Exit;
   end;
   for mSide := 0 to 1 do
   begin
-    if TypeKind(AType, Directions[mSide]) = AKind then
+    if TypeKind(AType, cDirections[mSide]) = AKind then
     begin
-      AId := TAtlasYouTrackJson.TextOf(AType, 'id') + Suffixes[mSide];
+      AId := TAtlasYouTrackJson.TextOf(AType, 'id') + cSuffixes[mSide];
       Exit(True);
     end;
   end;
@@ -878,7 +880,7 @@ begin
   AChange := Default(TAtlasTrackerVcsChange);
   AChange.Version := Trim(TAtlasYouTrackJson.TextOf(AItem, 'version'));
   AChange.Text := TAtlasYouTrackJson.Shorten(FirstLine(TAtlasYouTrackJson.TextOf(AItem, 'text')),
-    TAtlasTrackerIssue.MaxTitle);
+    TAtlasTrackerIssue.cMaxTitle);
   AChange.Date := TAtlasYouTrackJson.TimeOf(AItem, 'date');
   mUser := AItem.Values['user'];
   if mUser is TJSONObject then
@@ -933,9 +935,9 @@ begin
       end;
     end;
     mList.Sort(NewestFirst());
-    if mList.Count > TAtlasTrackerDevelopment.MaxChanges then
+    if mList.Count > TAtlasTrackerDevelopment.cMaxChanges then
     begin
-      mList.Count := TAtlasTrackerDevelopment.MaxChanges;
+      mList.Count := TAtlasTrackerDevelopment.cMaxChanges;
     end;
     AChanges := mList.ToArray;
   finally
@@ -967,7 +969,8 @@ begin
       end;
       mIssue := TAtlasTrackerChange.Create(Trim(TAtlasYouTrackJson.TextOf(TJSONObject(mItem), 'idReadable')),
         TAtlasTrackerChangeKind.Other, '', TAtlasYouTrackJson.TimeOf(TJSONObject(mItem), 'updated'));
-      mIssue.Title := TAtlasYouTrackJson.Shorten(TAtlasYouTrackJson.TextOf(TJSONObject(mItem), 'summary'), TAtlasTrackerIssue.MaxTitle);
+      mIssue.Title := TAtlasYouTrackJson.Shorten(TAtlasYouTrackJson.TextOf(TJSONObject(mItem), 'summary'),
+        TAtlasTrackerIssue.cMaxTitle);
       if TAtlasYouTrackJson.ValidKey(mIssue.Key) and (mIssue.Time > ASince) then
       begin
         AIssues := AIssues + [mIssue];

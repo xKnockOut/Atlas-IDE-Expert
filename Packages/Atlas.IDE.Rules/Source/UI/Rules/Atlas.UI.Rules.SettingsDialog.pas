@@ -80,10 +80,10 @@ function TAtlasRulesSettingsDialog.RuleGroups: TArray<string>;
 var
   mIndex: Integer;
 begin
-  SetLength(Result, Length(TAtlasRuleTable.GroupIds));
-  for mIndex := 0 to High(TAtlasRuleTable.GroupIds) do
+  SetLength(Result, Length(TAtlasRuleTable.cGroupIds));
+  for mIndex := 0 to High(TAtlasRuleTable.cGroupIds) do
   begin
-    Result[mIndex] := TAtlasRuleTable.GroupIds[mIndex];
+    Result[mIndex] := TAtlasRuleTable.cGroupIds[mIndex];
   end;
 end;
 

@@ -30,7 +30,7 @@ uses
 
 const
   /// <summary>Symbole, die der Compiler je nach Plattform, Projektart oder Option selbst setzt.</summary>
-  CompilerSymbols: array[0..45] of string = ('CONDITIONALEXPRESSIONS', 'UNICODE', 'NATIVECODE', 'ASSEMBLER',
+  cCompilerSymbols: array[0..45] of string = ('CONDITIONALEXPRESSIONS', 'UNICODE', 'NATIVECODE', 'ASSEMBLER',
     'MSWINDOWS', 'WIN32', 'WIN64', 'LINUX', 'LINUX32', 'LINUX64', 'MACOS', 'MACOS32', 'MACOS64', 'IOS', 'IOS32',
     'IOS64', 'IOSSIMULATOR', 'ANDROID', 'ANDROID32', 'ANDROID64', 'POSIX', 'POSIX32', 'POSIX64', 'CPU386', 'CPUX86',
     'CPUX64', 'CPUARM', 'CPUARM32', 'CPUARM64', 'CPU32BITS', 'CPU64BITS', 'LLVM', 'EXTERNALLINKER', 'CONSOLE',
@@ -41,47 +41,47 @@ const
 
 class function TTextDefines.Predefined(const APlatform: string; ACompilerVersion: Double): TArray<string>;
 var
-  Platform: string;
-  Symbols: TArray<string>;
+  mPlatform: string;
+  mSymbols: TArray<string>;
 
   procedure Add(const ASymbols: array of string);
   var
-    Symbol: string;
+    mSymbol: string;
   begin
-    for Symbol in ASymbols do
+    for mSymbol in ASymbols do
     begin
-      Symbols := Symbols + [Symbol];
+      mSymbols := mSymbols + [mSymbol];
     end;
   end;
 
 begin
-  Symbols := nil;
+  mSymbols := nil;
   Add(['CONDITIONALEXPRESSIONS', 'UNICODE', 'NATIVECODE', 'ASSEMBLER']);
   if ACompilerVersion > 0 then
   begin
     Add([Format('VER%d', [Round(ACompilerVersion * 10)])]);
   end;
-  Platform := UpperCase(APlatform);
-  if (Platform = 'WIN32') or (Platform = '') then
+  mPlatform := UpperCase(APlatform);
+  if (mPlatform = 'WIN32') or (mPlatform = '') then
   begin
     Add(['MSWINDOWS', 'WIN32', 'CPUX86', 'CPU386', 'CPU32BITS']);
   end
-  else if Platform = 'WIN64' then
+  else if mPlatform = 'WIN64' then
   begin
     Add(['MSWINDOWS', 'WIN64', 'CPUX64', 'CPU64BITS']);
   end
-  else if Platform = 'WIN64X' then
+  else if mPlatform = 'WIN64X' then
   begin
     Add(['MSWINDOWS', 'WIN64', 'CPUX64', 'CPU64BITS', 'LLVM']);
   end
-  else if Platform = 'LINUX64' then
+  else if mPlatform = 'LINUX64' then
   begin
     Add(['LINUX', 'LINUX64', 'POSIX', 'POSIX64', 'CPUX64', 'CPU64BITS']);
   end
-  else if (Platform = 'OSX64') or (Platform = 'OSXARM64') then
+  else if (mPlatform = 'OSX64') or (mPlatform = 'OSXARM64') then
   begin
     Add(['MACOS', 'MACOS64', 'POSIX', 'POSIX64', 'CPU64BITS']);
-    if Platform = 'OSX64' then
+    if mPlatform = 'OSX64' then
     begin
       Add(['CPUX64']);
     end
@@ -90,23 +90,23 @@ begin
       Add(['CPUARM64']);
     end;
   end
-  else if Platform = 'ANDROID' then
+  else if mPlatform = 'ANDROID' then
   begin
     Add(['ANDROID', 'ANDROID32', 'LINUX', 'POSIX', 'POSIX32', 'CPUARM', 'CPUARM32', 'CPU32BITS']);
   end
-  else if Platform = 'ANDROID64' then
+  else if mPlatform = 'ANDROID64' then
   begin
     Add(['ANDROID', 'ANDROID64', 'LINUX', 'POSIX', 'POSIX64', 'CPUARM', 'CPUARM64', 'CPU64BITS']);
   end
-  else if Platform = 'IOSDEVICE64' then
+  else if mPlatform = 'IOSDEVICE64' then
   begin
     Add(['IOS', 'IOS64', 'MACOS', 'POSIX', 'POSIX64', 'CPUARM', 'CPUARM64', 'CPU64BITS']);
   end
-  else if Platform = 'IOSSIMARM64' then
+  else if mPlatform = 'IOSSIMARM64' then
   begin
     Add(['IOS', 'IOS64', 'IOSSIMULATOR', 'MACOS', 'POSIX', 'POSIX64', 'CPUARM', 'CPUARM64', 'CPU64BITS']);
   end;
-  Result := Symbols;
+  Result := mSymbols;
 end;
 
 class function TTextDefines.CompilerVersionOfBds(ABdsVersion: Double): Double;
@@ -127,27 +127,27 @@ end;
 
 class function TTextDefines.IsCompilerSymbol(const ASymbol: string): Boolean;
 var
-  Name, Digits: string;
-  Number: Integer;
-  Symbol: string;
+  mName, mDigits: string;
+  mNumber: Integer;
+  mSymbol: string;
 begin
-  Name := UpperCase(Trim(ASymbol));
-  if Name = '' then
+  mName := UpperCase(Trim(ASymbol));
+  if mName = '' then
   begin
     Exit(False);
   end;
   // VER80 bis VER370 und künftige Versionen.
-  if (Length(Name) > 3) and (Copy(Name, 1, 3) = 'VER') then
+  if (Length(mName) > 3) and (Copy(mName, 1, 3) = 'VER') then
   begin
-    Digits := Copy(Name, 4, MaxInt);
-    if TryStrToInt(Digits, Number) and (Number > 0) then
+    mDigits := Copy(mName, 4, MaxInt);
+    if TryStrToInt(mDigits, mNumber) and (mNumber > 0) then
     begin
       Exit(True);
     end;
   end;
-  for Symbol in CompilerSymbols do
+  for mSymbol in cCompilerSymbols do
   begin
-    if Symbol = Name then
+    if mSymbol = mName then
     begin
       Exit(True);
     end;

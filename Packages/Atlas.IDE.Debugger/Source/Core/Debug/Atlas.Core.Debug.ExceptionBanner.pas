@@ -83,8 +83,8 @@ type
   TAtlasDebugBannerRules = record
   public const
     /// <summary>CompilerVersion von Delphi 12 und 13; nur dort greift Atlas in den Dialog ein.</summary>
-    Delphi12 = 36;
-    Delphi13 = 37;
+    cDelphi12 = 36;
+    cDelphi13 = 37;
   public
     class function KnownIdeVersion(ACompilerVersion: Double): Boolean; static;
     /// <summary>AEnabled: debug.exceptionBanner. AIdeDialog: Benutzer will in dieser Sitzung den IDE-Dialog.
@@ -151,7 +151,7 @@ end;
 
 class function TAtlasDebugBannerRules.KnownIdeVersion(ACompilerVersion: Double): Boolean;
 begin
-  Result := SameValue(ACompilerVersion, Delphi12) or SameValue(ACompilerVersion, Delphi13);
+  Result := SameValue(ACompilerVersion, cDelphi12) or SameValue(ACompilerVersion, cDelphi13);
 end;
 
 class function TAtlasDebugBannerRules.Mode(AEnabled, AKnownVersion, AIdeDialog: Boolean;
@@ -191,7 +191,7 @@ end;
 class function TAtlasDebugBannerRules.Info(const AException: TAtlasDebugException; AJustMyCode: Boolean;
   const AProject, AMainLabel: string; AIgnoreAtLocation: Boolean): TAtlasDebugBannerInfo;
 var
-  Frames: TAtlasDebugFrames;
+  mFrames: TAtlasDebugFrames;
 begin
   Result := Default(TAtlasDebugBannerInfo);
   Result.ExceptionClass := AException.ExceptionClass;
@@ -201,18 +201,18 @@ begin
   Result.Routine := AException.Routine;
   Result.FileName := AException.FileName;
   Result.Line := AException.Line;
-  Frames := AException.Frames;
-  Result.FrameIndex := TAtlasDebugOwnCode.LocationIndex(Frames, AJustMyCode);
+  mFrames := AException.Frames;
+  Result.FrameIndex := TAtlasDebugOwnCode.LocationIndex(mFrames, AJustMyCode);
   if Result.FrameIndex >= 0 then
   begin
     Result.Hidden := Result.FrameIndex;
-    Result.Routine := Frames[Result.FrameIndex].Routine;
-    Result.FileName := Frames[Result.FrameIndex].FileName;
-    Result.Line := Frames[Result.FrameIndex].Line;
+    Result.Routine := mFrames[Result.FrameIndex].Routine;
+    Result.FileName := mFrames[Result.FrameIndex].FileName;
+    Result.Line := mFrames[Result.FrameIndex].Line;
   end
-  else if (Result.Routine = '') and (Frames <> nil) then
+  else if (Result.Routine = '') and (mFrames <> nil) then
   begin
-    Result.Routine := Frames[0].Routine;
+    Result.Routine := mFrames[0].Routine;
   end;
   Result.CanIgnoreLocation := AIgnoreAtLocation and (AProject <> '') and Result.HasLocation;
 end;

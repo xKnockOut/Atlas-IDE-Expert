@@ -101,7 +101,7 @@ type
   TAtlasIdeVisualizers = class
   public const
     /// <summary>Das Ansichtsfenster darf so viel länger auswerten als der Ersatztext (bis 1000 Zeilen).</summary>
-    ViewBudgetFactor = 25;
+    cViewBudgetFactor = 25;
   private class var
     FRegistered: TList<IOTADebuggerVisualizer>;
     FSignature: string;
@@ -146,21 +146,21 @@ uses
   Atlas.UI.Debug.Strings;
 
 const
-  IdentifierPrefix = 'Atlas.Visualizer.';
+  cIdentifierPrefix = 'Atlas.Visualizer.';
   /// <summary>Arten mit Ansichtsfenster; TGUID und Geometrie haben nur den Ersatztext.</summary>
-  ViewerKinds = [TAtlasVisualizerKind.Lists, TAtlasVisualizerKind.Dictionaries, TAtlasVisualizerKind.DataSets,
+  cViewerKinds = [TAtlasVisualizerKind.Lists, TAtlasVisualizerKind.Dictionaries, TAtlasVisualizerKind.DataSets,
     TAtlasVisualizerKind.Bytes, TAtlasVisualizerKind.Json, TAtlasVisualizerKind.Colors,
     TAtlasVisualizerKind.Graphics];
 
 function KindCaption(AKind: TAtlasVisualizerKind): string;
 const
-  Ids: array[TAtlasVisualizerKind] of TAtlasTextId = (TAtlasTextId.DebugVisualizerKindLists,
+  cIds: array[TAtlasVisualizerKind] of TAtlasTextId = (TAtlasTextId.DebugVisualizerKindLists,
     TAtlasTextId.DebugVisualizerKindDictionaries, TAtlasTextId.DebugVisualizerKindDataSets,
     TAtlasTextId.DebugVisualizerKindBytes, TAtlasTextId.DebugVisualizerKindJson,
     TAtlasTextId.DebugVisualizerKindColors, TAtlasTextId.DebugVisualizerKindGuid,
     TAtlasTextId.DebugVisualizerKindGeometry, TAtlasTextId.DebugVisualizerKindGraphics);
 begin
-  Result := TAtlasStrings.Text(Ids[AKind]);
+  Result := TAtlasStrings.Text(cIds[AKind]);
 end;
 
 { TAtlasIdeVisualizer }
@@ -201,7 +201,7 @@ end;
 
 function TAtlasIdeVisualizer.GetVisualizerIdentifier: string;
 begin
-  Result := IdentifierPrefix + TAtlasVisualizerSettings.KindNames[FKind];
+  Result := cIdentifierPrefix + TAtlasVisualizerSettings.KindNames[FKind];
 end;
 
 function TAtlasIdeVisualizer.GetVisualizerName: string;
@@ -216,22 +216,22 @@ end;
 
 function TAtlasIdeVisualizer.GetReplacementValue(const Expression, TypeName, EvalResult: string): string;
 var
-  Options: TAtlasVisualizerOptions;
-  Text: string;
+  mOptions: TAtlasVisualizerOptions;
+  mText: string;
 begin
   // '' wäre ein leerer Wert in der Liste der IDE: ohne eigenen Text bleibt der der IDE.
   Result := EvalResult;
   try
-    Options := TAtlasIdeVisualizers.Options;
-    if not TAtlasIdeSettings.Current.DebugVisualizers or not (FKind in Options.Kinds) then
+    mOptions := TAtlasIdeVisualizers.Options;
+    if not TAtlasIdeSettings.Current.DebugVisualizers or not (FKind in mOptions.Kinds) then
     begin
       Exit;
     end;
-    Text := TAtlasVisualizers.Replacement(FKind, Expression, TypeName, EvalResult, Options,
+    mText := TAtlasVisualizers.Replacement(FKind, Expression, TypeName, EvalResult, mOptions,
       TAtlasIdeDebugEvaluator.Context(TAtlasIdeSettings.Current.DebugVisualizerTimeoutMs));
-    if Text <> '' then
+    if mText <> '' then
     begin
-      Result := Text;
+      Result := mText;
     end;
   except
     on E: Exception do
@@ -292,16 +292,16 @@ end;
 
 procedure TAtlasIdeViewerUpdater.FormClosed(Sender: TObject);
 var
-  Closed: TOTAVisualizerClosedProcedure;
+  mClosed: TOTAVisualizerClosedProcedure;
 begin
   // Das Fenster gibt sich selbst frei (caFree).
   FForm := nil;
   TAtlasIdeVisualizers.ViewerClosed(Self);
-  Closed := FClosed;
+  mClosed := FClosed;
   FClosed := nil;
-  if Assigned(Closed) then
+  if Assigned(mClosed) then
   begin
-    Closed;
+    mClosed;
   end;
 end;
 
@@ -345,22 +345,22 @@ end;
 
 procedure TAtlasIdeViewerUpdater.Shutdown;
 var
-  Form: TAtlasDebugViewer;
-  Closed: TOTAVisualizerClosedProcedure;
+  mForm: TAtlasDebugViewer;
+  mClosed: TOTAVisualizerClosedProcedure;
 begin
-  Form := FForm;
-  Closed := FClosed;
+  mForm := FForm;
+  mClosed := FClosed;
   FForm := nil;
   FClosed := nil;
   TAtlasIdeVisualizers.ViewerClosed(Self);
-  if Form <> nil then
+  if mForm <> nil then
   begin
-    Form.OnClosed := nil;
-    Form.Free;
+    mForm.OnClosed := nil;
+    mForm.Free;
   end;
-  if Assigned(Closed) then
+  if Assigned(mClosed) then
   begin
-    Closed;
+    mClosed;
   end;
 end;
 
@@ -373,15 +373,15 @@ end;
 
 class function TAtlasIdeVisualizers.Options: TAtlasVisualizerOptions;
 var
-  Settings: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
 begin
-  Settings := TAtlasIdeSettings.Current;
+  mSettings := TAtlasIdeSettings.Current;
   Result := TAtlasVisualizerOptions.Defaults;
-  Result.Kinds := TAtlasVisualizerSettings.ParseKinds(Settings.DebugVisualizerTypes);
-  Result.NameFields := TAtlasVisualizerSettings.ParseNameFields(Settings.DebugVisualizerNameFields);
-  Result.MaxLength := Settings.DebugVisualizerMaxLength;
-  Result.Evaluation := TAtlasVisualizerSettings.ParseEvaluation(Settings.DebugVisualizerEvaluation);
-  Result.MaxImagePixels := Settings.DebugVisualizerMaxImagePixels;
+  Result.Kinds := TAtlasVisualizerSettings.ParseKinds(mSettings.DebugVisualizerTypes);
+  Result.NameFields := TAtlasVisualizerSettings.ParseNameFields(mSettings.DebugVisualizerNameFields);
+  Result.MaxLength := mSettings.DebugVisualizerMaxLength;
+  Result.Evaluation := TAtlasVisualizerSettings.ParseEvaluation(mSettings.DebugVisualizerEvaluation);
+  Result.MaxImagePixels := mSettings.DebugVisualizerMaxImagePixels;
 end;
 
 class function TAtlasIdeVisualizers.SettingsSignature: string;
@@ -398,35 +398,35 @@ end;
 
 class procedure TAtlasIdeVisualizers.Start;
 var
-  Debugger: IOTADebuggerServices;
-  Kind: TAtlasVisualizerKind;
-  Kinds: TAtlasVisualizerKinds;
-  Visualizer: IOTADebuggerVisualizer;
+  mDebugger: IOTADebuggerServices;
+  mKind: TAtlasVisualizerKind;
+  mKinds: TAtlasVisualizerKinds;
+  mVisualizer: IOTADebuggerVisualizer;
 begin
-  if Started or not Supports(BorlandIDEServices, IOTADebuggerServices, Debugger) then
+  if Started or not Supports(BorlandIDEServices, IOTADebuggerServices, mDebugger) then
   begin
     Exit;
   end;
   FRegistered := TList<IOTADebuggerVisualizer>.Create;
   FSignature := SettingsSignature;
-  Kinds := TAtlasVisualizerSettings.ParseKinds(TAtlasIdeSettings.Current.DebugVisualizerTypes);
-  for Kind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
+  mKinds := TAtlasVisualizerSettings.ParseKinds(TAtlasIdeSettings.Current.DebugVisualizerTypes);
+  for mKind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
   begin
-    if not (Kind in Kinds) then
+    if not (mKind in mKinds) then
     begin
       Continue;
     end;
-    if Kind in ViewerKinds then
+    if mKind in cViewerKinds then
     begin
-      Visualizer := TAtlasIdeViewerVisualizer.Create(Kind);
+      mVisualizer := TAtlasIdeViewerVisualizer.Create(mKind);
     end
     else
     begin
-      Visualizer := TAtlasIdeVisualizer.Create(Kind);
+      mVisualizer := TAtlasIdeVisualizer.Create(mKind);
     end;
     try
-      Debugger.RegisterDebugVisualizer(Visualizer);
-      FRegistered.Add(Visualizer);
+      mDebugger.RegisterDebugVisualizer(mVisualizer);
+      FRegistered.Add(mVisualizer);
     except
       on E: Exception do
         TAtlasGuard.Report(TAtlasFeature.Debugger, E);
@@ -436,18 +436,18 @@ end;
 
 class procedure TAtlasIdeVisualizers.Unregister;
 var
-  Debugger: IOTADebuggerServices;
-  Visualizer: IOTADebuggerVisualizer;
+  mDebugger: IOTADebuggerServices;
+  mVisualizer: IOTADebuggerVisualizer;
 begin
   if FRegistered = nil then
   begin
     Exit;
   end;
-  if Supports(BorlandIDEServices, IOTADebuggerServices, Debugger) then
+  if Supports(BorlandIDEServices, IOTADebuggerServices, mDebugger) then
   begin
-    for Visualizer in FRegistered do
+    for mVisualizer in FRegistered do
       try
-        Debugger.UnregisterDebugVisualizer(Visualizer);
+        mDebugger.UnregisterDebugVisualizer(mVisualizer);
       except
         on E: Exception do
           TAtlasGuard.Report(TAtlasFeature.Debugger, E);
@@ -458,8 +458,8 @@ end;
 
 class procedure TAtlasIdeVisualizers.CloseViewers(AGroup: TAtlasViewerGroup);
 var
-  Viewers: TArray<TAtlasIdeViewerUpdater>;
-  Viewer: TAtlasIdeViewerUpdater;
+  mViewers: TArray<TAtlasIdeViewerUpdater>;
+  mViewer: TAtlasIdeViewerUpdater;
 begin
   // Sofort freigeben: Ihr Code liegt im Package, das gleich entladen werden kann; Close gäbe sie erst über eine
   // eingereihte Nachricht frei.
@@ -467,12 +467,12 @@ begin
   begin
     Exit;
   end;
-  Viewers := FViewers.ToArray;
-  for Viewer in Viewers do
+  mViewers := FViewers.ToArray;
+  for mViewer in mViewers do
   begin
-    if Viewer.Group = AGroup then
+    if mViewer.Group = AGroup then
     begin
-      Viewer.Shutdown;
+      mViewer.Shutdown;
     end;
   end;
   if FViewers.Count = 0 then
@@ -515,24 +515,24 @@ end;
 class function TAtlasIdeVisualizers.HoverText(const AExpression: string; const ATypeChain: array of string;
   const AEvalResult: string): string;
 var
-  Wanted: TAtlasVisualizerOptions;
-  Kind: TAtlasVisualizerKind;
-  TypeName: string;
+  mWanted: TAtlasVisualizerOptions;
+  mKind: TAtlasVisualizerKind;
+  mTypeName: string;
 begin
   Result := '';
   if not TAtlasIdeSettings.Current.DebugVisualizers or (Length(ATypeChain) = 0) or
-    not TAtlasVisualizers.KindOfChain(ATypeChain, Kind) then
+    not TAtlasVisualizers.KindOfChain(ATypeChain, mKind) then
   begin
     Exit;
   end;
-  Wanted := Options;
-  if not (Kind in Wanted.Kinds) then
+  mWanted := Options;
+  if not (mKind in mWanted.Kinds) then
   begin
     Exit;
   end;
-  TypeName := ATypeChain[0];
+  mTypeName := ATypeChain[0];
   try
-    Result := TAtlasVisualizers.Replacement(Kind, AExpression, TypeName, AEvalResult, Wanted,
+    Result := TAtlasVisualizers.Replacement(mKind, AExpression, mTypeName, AEvalResult, mWanted,
       TAtlasIdeDebugEvaluator.Context(TAtlasIdeSettings.Current.DebugVisualizerTimeoutMs));
   except
     on E: Exception do
@@ -547,7 +547,7 @@ class function TAtlasIdeVisualizers.ViewOf(AKind: TAtlasVisualizerKind; const AE
   AEvalResult: string): TAtlasVisualizerView;
 begin
   Result := TAtlasVisualizers.View(AKind, AExpression, ATypeName, AEvalResult, Options,
-    TAtlasIdeDebugEvaluator.Context(TAtlasIdeSettings.Current.DebugVisualizerTimeoutMs * ViewBudgetFactor));
+    TAtlasIdeDebugEvaluator.Context(TAtlasIdeSettings.Current.DebugVisualizerTimeoutMs * cViewBudgetFactor));
 end;
 
 class procedure TAtlasIdeVisualizers.ViewerOpened(AViewer: TAtlasIdeViewerUpdater);

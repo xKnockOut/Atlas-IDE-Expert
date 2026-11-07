@@ -115,8 +115,8 @@ type
 
   TCommandLineOptions = record
   public const
-    DefaultLogLevel = TLogLevel.Info;
-    DefaultChangedBase = 'main';
+    cDefaultLogLevel = TLogLevel.Info;
+    cDefaultChangedBase = 'main';
   public
     LogFile: string;
     LogLevel: TLogLevel;
@@ -194,7 +194,8 @@ type
     FormatDiff: Boolean;
     /// <summary>Index-Caches löschen und beenden (#184).</summary>
     ClearCache: Boolean;
-    /// <summary>Nicht vertrauenswürdiger Arbeitsbereich (#186): nichts ausführen, was Code aus dem Projekt startet.</summary>
+    /// <summary>Nicht vertrauenswürdiger Arbeitsbereich (#186): nichts ausführen, was Code aus dem Projekt
+    /// startet.</summary>
     Restricted: Boolean;
     /// <summary>MCP-Modus statt LSP (#48).</summary>
     Mcp: Boolean;
@@ -599,7 +600,7 @@ begin
   begin
     // Basis optional: --changed, --changed=dev oder --changed dev
     AOptions.ChangedMergeBase := True;
-    AOptions.ChangedRef := TCommandLineOptions.DefaultChangedBase;
+    AOptions.ChangedRef := TCommandLineOptions.cDefaultChangedBase;
     if AReader.OptionalValue(mValue) then
     begin
       AOptions.ChangedRef := mValue;
@@ -647,7 +648,7 @@ var
   mTables: TOptionTables;
 begin
   Result := Default(TCommandLineOptions);
-  Result.LogLevel := DefaultLogLevel;
+  Result.LogLevel := cDefaultLogLevel;
   Result.FailOn := TFailOn.Error;
   mTables := OptionTables(Result);
   mReader := Default(TArgReader);
@@ -667,22 +668,22 @@ begin
   if (Result.IncludeUncommitted or Result.ChangedLines) and (Result.ChangedRef = '') and not Result.AffectedTests then
   begin
     // Ohne Ref gilt --changed mit der Standardbasis.
-    Result.ChangedRef := DefaultChangedBase;
+    Result.ChangedRef := cDefaultChangedBase;
     Result.ChangedMergeBase := True;
   end;
 end;
 
 class function TCommandLineOptions.FromProcess: TCommandLineOptions;
 var
-  Args: TArray<string>;
+  mArgs: TArray<string>;
   I: Integer;
 begin
-  SetLength(Args, ParamCount);
+  SetLength(mArgs, ParamCount);
   for I := 1 to ParamCount do
   begin
-    Args[I - 1] := ParamStr(I);
+    mArgs[I - 1] := ParamStr(I);
   end;
-  Result := Parse(Args);
+  Result := Parse(mArgs);
 end;
 
 initialization

@@ -35,28 +35,28 @@ uses
   Atlas.Common.Documents.FileEncoding;
 
 const
-  MaxFrames = 48;
-  ModuleFromAddress = $00000004; // GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
-  ModuleUnchangedRefCount = $00000002; // GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT
+  cMaxFrames = 48;
+  cModuleFromAddress = $00000004; // GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
+  cModuleUnchangedRefCount = $00000002; // GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT
 
 // Winapi.Windows deklariert GetModuleHandleEx nicht.
-function GetModuleHandleEx(dwFlags: DWORD; lpModuleName: LPCWSTR; var phModule: HMODULE): BOOL; stdcall;
+function GetModuleHandleEx(ADwFlags: DWORD; ALpModuleName: LPCWSTR; var APhModule: HMODULE): BOOL; stdcall;
   external kernel32 name 'GetModuleHandleExW';
 
 type
   PStackInfo = ^TStackInfo;
   TStackInfo = record
     Count: Integer;
-    Frames: array[0..MaxFrames - 1] of Pointer;
+    Frames: array[0..cMaxFrames - 1] of Pointer;
   end;
 
 function CaptureStackBackTrace(AFramesToSkip, AFramesToCapture: ULONG; ABackTrace: Pointer;
   ABackTraceHash: PULONG): USHORT; stdcall; external kernel32 name 'RtlCaptureStackBackTrace';
 
 var
-  PreviousGetInfo: function(P: PExceptionRecord): Pointer;
-  PreviousGetString: function(Info: Pointer): string;
-  PreviousCleanUp: procedure(Info: Pointer);
+  PreviousGetInfo: function(AP: PExceptionRecord): Pointer;
+  PreviousGetString: function(AInfo: Pointer): string;
+  PreviousCleanUp: procedure(AInfo: Pointer);
   IsInstalled: Boolean;
   MapLock: TObject;
   MapLoaded: Boolean;
@@ -66,19 +66,19 @@ var
 /// <summary>Map der EXE, beim ersten Aufruf gelesen; nil ohne .map-Datei.</summary>
 function LoadedMap: TMapFile;
 var
-  MapName: string;
+  mMapName: string;
 begin
   TMonitor.Enter(MapLock);
   try
     if not MapLoaded then
     begin
       MapLoaded := True;
-      MapName := ChangeFileExt(ParamStr(0), '.map');
+      mMapName := ChangeFileExt(ParamStr(0), '.map');
       MapModule := ExtractFileName(ParamStr(0));
       try
-        if TFile.Exists(MapName) then
+        if TFile.Exists(mMapName) then
         begin
-          Map := TMapFile.Create(TFileEncoding.LoadText(MapName));
+          Map := TMapFile.Create(TFileEncoding.LoadText(mMapName));
         end;
       except
         // Eine unlesbare Map darf das Absturzprotokoll nicht verhindern.
@@ -94,17 +94,17 @@ end;
 function Capture(ASkip: Integer): PStackInfo;
 begin
   New(Result);
-  Result.Count := CaptureStackBackTrace(ASkip + 1, MaxFrames, @Result.Frames[0], nil);
+  Result.Count := CaptureStackBackTrace(ASkip + 1, cMaxFrames, @Result.Frames[0], nil);
 end;
 
 function Describe(AInfo: PStackInfo): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := 0 to AInfo.Count - 1 do
+  for mIndex := 0 to AInfo.Count - 1 do
   begin
-    Result := Result + TStackTrace.DescribeAddress(AInfo.Frames[Index]) + sLineBreak;
+    Result := Result + TStackTrace.DescribeAddress(AInfo.Frames[mIndex]) + sLineBreak;
   end;
   if LoadedMap <> nil then
   begin
@@ -112,30 +112,30 @@ begin
   end;
 end;
 
-function GetExceptionStackInfo(P: PExceptionRecord): Pointer;
+function GetExceptionStackInfo(AP: PExceptionRecord): Pointer;
 begin
   // Die ersten Rahmen gehören zur RTL (RaisingException); sie bleiben drin,
   // damit nichts Wichtiges fehlt, falls sich die RTL ändert.
   Result := Capture(1);
 end;
 
-function GetStackInfoString(Info: Pointer): string;
+function GetStackInfoString(AInfo: Pointer): string;
 begin
-  if Info = nil then
+  if AInfo = nil then
   begin
     Result := '';
   end
   else
   begin
-    Result := Describe(PStackInfo(Info));
+    Result := Describe(PStackInfo(AInfo));
   end;
 end;
 
-procedure CleanUpStackInfo(Info: Pointer);
+procedure CleanUpStackInfo(AInfo: Pointer);
 begin
-  if Info <> nil then
+  if AInfo <> nil then
   begin
-    Dispose(PStackInfo(Info));
+    Dispose(PStackInfo(AInfo));
   end;
 end;
 
@@ -175,25 +175,25 @@ end;
 
 class function TStackTrace.Current: string;
 var
-  Info: PStackInfo;
+  mInfo: PStackInfo;
 begin
-  Info := Capture(1);
+  mInfo := Capture(1);
   try
-    Result := Describe(Info);
+    Result := Describe(mInfo);
   finally
-    Dispose(Info);
+    Dispose(mInfo);
   end;
 end;
 
 class function TStackTrace.DescribeAddress(AAddress: Pointer): string;
 var
-  Module: HMODULE;
-  FileName: array[0..MAX_PATH] of Char;
+  mModule: HMODULE;
+  mFileName: array[0..MAX_PATH] of Char;
 begin
-  if GetModuleHandleEx(ModuleFromAddress or ModuleUnchangedRefCount, PChar(AAddress), Module) and
-    (GetModuleFileName(Module, FileName, Length(FileName)) > 0) then
+  if GetModuleHandleEx(cModuleFromAddress or cModuleUnchangedRefCount, PChar(AAddress), mModule) and
+    (GetModuleFileName(mModule, mFileName, Length(mFileName)) > 0) then
   begin
-    Result := Format('%s+$%x', [ExtractFileName(FileName), NativeUInt(AAddress) - NativeUInt(Module)]);
+    Result := Format('%s+$%x', [ExtractFileName(mFileName), NativeUInt(AAddress) - NativeUInt(mModule)]);
   end
   else
   begin
