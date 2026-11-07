@@ -40,7 +40,7 @@ type
 
   TAssignmentSwap = class
   public const
-    Marker = 'nicht umkehrbar';
+    cMarker = 'nicht umkehrbar';
   public
     /// <summary>Zerlegt ALine; False, wenn sie keine einzelne Zuweisung ist.</summary>
     class function Parse(const ALine: string; out AAssignment: TAssignmentLine): Boolean; static;
@@ -67,25 +67,25 @@ uses
   Atlas.Text.Lines,
   Atlas.Common.Documents.FileEncoding;
 
-function IsBlank(C: Char): Boolean;
+function IsBlank(AC: Char): Boolean;
 begin
-  Result := CharInSet(C, [' ', #9]);
+  Result := CharInSet(AC, [' ', #9]);
 end;
 
 /// <summary>Beginn des ersten Kommentars außerhalb von Strings; Length + 1 ohne.</summary>
 function CommentStart(const ALine: string): Integer;
 var
   I: Integer;
-  InString: Boolean;
+  mInString: Boolean;
 begin
-  InString := False;
+  mInString := False;
   for I := 1 to Length(ALine) do
   begin
     if ALine[I] = '''' then
     begin
-      InString := not InString;
+      mInString := not mInString;
     end
-    else if not InString and ((ALine[I] = '{') or (Copy(ALine, I, 2) = '//') or (Copy(ALine, I, 2) = '(*')) then
+    else if not mInString and ((ALine[I] = '{') or (Copy(ALine, I, 2) = '//') or (Copy(ALine, I, 2) = '(*')) then
     begin
       Exit(I);
     end;
@@ -97,16 +97,16 @@ end;
 function CodePos(const AWhat, ALine: string; AFrom, ACodeEnd: Integer): Integer;
 var
   I: Integer;
-  InString: Boolean;
+  mInString: Boolean;
 begin
-  InString := False;
+  mInString := False;
   for I := 1 to ACodeEnd - Length(AWhat) do
   begin
     if ALine[I] = '''' then
     begin
-      InString := not InString;
+      mInString := not mInString;
     end
-    else if not InString and (I >= AFrom) and (Copy(ALine, I, Length(AWhat)) = AWhat) then
+    else if not mInString and (I >= AFrom) and (Copy(ALine, I, Length(AWhat)) = AWhat) then
     begin
       Exit(I);
     end;
@@ -118,45 +118,45 @@ end;
 
 class function TAssignmentSwap.Parse(const ALine: string; out AAssignment: TAssignmentLine): Boolean;
 var
-  Assign, Semi, Start, CodeEnd: Integer;
-  Before, After: string;
+  mAssign, mSemi, mStart, mCodeEnd: Integer;
+  mBefore, mAfter: string;
 begin
   AAssignment := Default(TAssignmentLine);
-  CodeEnd := CommentStart(ALine);
-  Assign := CodePos(':=', ALine, 1, CodeEnd);
-  if Assign = 0 then
+  mCodeEnd := CommentStart(ALine);
+  mAssign := CodePos(':=', ALine, 1, mCodeEnd);
+  if mAssign = 0 then
   begin
     Exit(False);
   end;
-  Start := 1;
-  while (Start < Assign) and IsBlank(ALine[Start]) do
+  mStart := 1;
+  while (mStart < mAssign) and IsBlank(ALine[mStart]) do
   begin
-    Inc(Start);
+    Inc(mStart);
   end;
-  AAssignment.Indent := Copy(ALine, 1, Start - 1);
-  Before := Copy(ALine, Start, Assign - Start);
-  AAssignment.Left := TrimRight(Before);
-  AAssignment.GapBefore := Copy(Before, Length(AAssignment.Left) + 1, MaxInt);
-  Semi := CodePos(';', ALine, Assign + 2, CodeEnd);
-  if Semi = 0 then
+  AAssignment.Indent := Copy(ALine, 1, mStart - 1);
+  mBefore := Copy(ALine, mStart, mAssign - mStart);
+  AAssignment.Left := TrimRight(mBefore);
+  AAssignment.GapBefore := Copy(mBefore, Length(AAssignment.Left) + 1, MaxInt);
+  mSemi := CodePos(';', ALine, mAssign + 2, mCodeEnd);
+  if mSemi = 0 then
   begin
-    Semi := CodeEnd;
+    mSemi := mCodeEnd;
   end;
-  After := Copy(ALine, Assign + 2, Semi - Assign - 2);
-  AAssignment.Right := Trim(After);
-  AAssignment.GapAfter := Copy(After, 1, Length(After) - Length(TrimLeft(After)));
-  AAssignment.Semicolon := Copy(After, Length(AAssignment.GapAfter + AAssignment.Right) + 1, MaxInt);
-  if Semi < CodeEnd then
+  mAfter := Copy(ALine, mAssign + 2, mSemi - mAssign - 2);
+  AAssignment.Right := Trim(mAfter);
+  AAssignment.GapAfter := Copy(mAfter, 1, Length(mAfter) - Length(TrimLeft(mAfter)));
+  AAssignment.Semicolon := Copy(mAfter, Length(AAssignment.GapAfter + AAssignment.Right) + 1, MaxInt);
+  if mSemi < mCodeEnd then
   begin
     AAssignment.Semicolon := AAssignment.Semicolon + ';';
   end;
-  if Semi < CodeEnd then
+  if mSemi < mCodeEnd then
   begin
-    AAssignment.Tail := Copy(ALine, Semi + 1, MaxInt);
+    AAssignment.Tail := Copy(ALine, mSemi + 1, MaxInt);
   end
   else
   begin
-    AAssignment.Tail := Copy(ALine, CodeEnd, MaxInt);
+    AAssignment.Tail := Copy(ALine, mCodeEnd, MaxInt);
   end;
   // Hinter dem Semikolon darf nur noch Leerraum und ein Kommentar stehen.
   Result := (AAssignment.Left <> '') and (AAssignment.Right <> '') and
@@ -246,21 +246,21 @@ end;
 /// <summary>Kommentar "nicht umkehrbar" vor einen vorhandenen Zeilenkommentar oder ans Ende.</summary>
 function MarkTail(const ATail: string): string;
 var
-  Rest: string;
+  mRest: string;
 begin
-  Rest := TrimLeft(ATail);
-  if StartsStr('//', Rest) then
+  mRest := TrimLeft(ATail);
+  if StartsStr('//', mRest) then
   begin
-    Result := Copy(ATail, 1, Length(ATail) - Length(Rest)) + '// ' + TAssignmentSwap.Marker + ';' +
-      Copy(Rest, 3, MaxInt);
+    Result := Copy(ATail, 1, Length(ATail) - Length(mRest)) + '// ' + TAssignmentSwap.cMarker + ';' +
+      Copy(mRest, 3, MaxInt);
   end
-  else if Rest = '' then
+  else if mRest = '' then
   begin
-    Result := ' // ' + TAssignmentSwap.Marker;
+    Result := ' // ' + TAssignmentSwap.cMarker;
   end
   else
   begin
-    Result := ' // ' + TAssignmentSwap.Marker + ' ' + Rest;
+    Result := ' // ' + TAssignmentSwap.cMarker + ' ' + mRest;
   end;
 end;
 
@@ -364,7 +364,7 @@ begin
     AText := Parsed[AIndex].Indent + Parsed[AIndex].Right + mGap + ':=' + Parsed[AIndex].GapAfter +
       Parsed[AIndex].Left + Parsed[AIndex].Semicolon + Parsed[AIndex].Tail;
   end
-  else if IsAssignment[AIndex] and not ContainsText(Parsed[AIndex].Tail, TAssignmentSwap.Marker) then
+  else if IsAssignment[AIndex] and not ContainsText(Parsed[AIndex].Tail, TAssignmentSwap.cMarker) then
   begin
     AText := Copy(mOld, 1, Length(mOld) - Length(Parsed[AIndex].Tail)) + MarkTail(Parsed[AIndex].Tail);
   end;
@@ -399,57 +399,57 @@ end;
 /// <summary>Letzter Bezeichner der Kette ohne Indizes und ^ (Kunde.Adressen[0].Ort → Ort).</summary>
 function LastName(const AExpression: string): string;
 var
-  Expression: string;
-  Dot: Integer;
+  mExpression: string;
+  mDot: Integer;
 begin
-  Expression := Trim(AExpression);
-  while (Expression <> '') and CharInSet(Expression[Length(Expression)], [']', '^']) do
+  mExpression := Trim(AExpression);
+  while (mExpression <> '') and CharInSet(mExpression[Length(mExpression)], [']', '^']) do
   begin
-    if Expression[Length(Expression)] = '^' then
+    if mExpression[Length(mExpression)] = '^' then
     begin
-      Expression := Copy(Expression, 1, Length(Expression) - 1);
+      mExpression := Copy(mExpression, 1, Length(mExpression) - 1);
     end
     else
     begin
-      Expression := Copy(Expression, 1, LastDelimiter('[', Expression) - 1);
+      mExpression := Copy(mExpression, 1, LastDelimiter('[', mExpression) - 1);
     end;
   end;
-  Dot := LastDelimiter('.', Expression);
-  Result := Copy(Expression, Dot + 1, MaxInt);
+  mDot := LastDelimiter('.', mExpression);
+  Result := Copy(mExpression, mDot + 1, MaxInt);
 end;
 
 /// <summary>Text des Bereichs ARange in AText.</summary>
 function RangeText(const AText: string; const ARange: TTextRange): string;
 var
-  Lines: TArray<string>;
-  Line: Integer;
+  mLines: TArray<string>;
+  mLine: Integer;
 begin
   Result := '';
-  Lines := TTextLines.SplitLines(AText);
-  for Line := ARange.StartPos.Line to ARange.EndPos.Line do
+  mLines := TTextLines.SplitLines(AText);
+  for mLine := ARange.StartPos.Line to ARange.EndPos.Line do
   begin
-    if (Line >= 0) and (Line <= High(Lines)) then
+    if (mLine >= 0) and (mLine <= High(mLines)) then
     begin
-      Result := Result + ' ' + Lines[Line];
+      Result := Result + ' ' + mLines[mLine];
     end;
   end;
 end;
 
 function HasWord(const AText, AWord: string): Boolean;
 var
-  Lower: string;
-  Start: Integer;
+  mLower: string;
+  mStart: Integer;
 begin
-  Lower := LowerCase(AText);
-  Start := Pos(AWord, Lower);
-  while Start > 0 do
+  mLower := LowerCase(AText);
+  mStart := Pos(AWord, mLower);
+  while mStart > 0 do
   begin
-    if ((Start = 1) or not TTextChars.IsIdentChar(Lower[Start - 1])) and
-      ((Start + Length(AWord) > Length(Lower)) or not TTextChars.IsIdentChar(Lower[Start + Length(AWord)])) then
+    if ((mStart = 1) or not TTextChars.IsIdentChar(mLower[mStart - 1])) and
+      ((mStart + Length(AWord) > Length(mLower)) or not TTextChars.IsIdentChar(mLower[mStart + Length(AWord)])) then
     begin
       Exit(True);
     end;
-    Start := PosEx(AWord, Lower, Start + 1);
+    mStart := PosEx(AWord, mLower, mStart + 1);
   end;
   Result := False;
 end;

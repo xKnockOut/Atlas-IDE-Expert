@@ -196,7 +196,7 @@ begin
       AWarnings := AWarnings + [Item.Value];
     end;
     Assert.IsTrue(((Answer.GetValue('edit') as TJSONObject).GetValue('changeAnnotations') as TJSONObject)
-      .GetValue(TLspPropertyFromAccessors.AnnotationId) <> nil);
+      .GetValue(TLspPropertyFromAccessors.cAnnotationId) <> nil);
   finally
     Answer.Free;
     Resolver.Free;
@@ -293,7 +293,7 @@ begin
     Actions := TLspPropertyFromAccessors.Actions(Tree, UnitPanels, 'file:///C:/P/Panels.pas',
       TTextPosition.Create(8, 14), TPropertyFromAccessorsOptions.Default, TReplaceCalls.Ask);
     Action := Actions[1];
-    Assert.AreEqual(TLspPropertyFromAccessors.ClientCommand,
+    Assert.AreEqual(TLspPropertyFromAccessors.cClientCommand,
       (Action.GetValue('command') as TJSONObject).GetValue('command').Value);
     Assert.AreEqual('Property Caption anlegen|Property Caption anlegen und Aufrufe umstellen|', Titles(Actions));
     Assert.AreEqual('Fehlende Properties anlegen (1) und Aufrufe umstellen|', Titles(

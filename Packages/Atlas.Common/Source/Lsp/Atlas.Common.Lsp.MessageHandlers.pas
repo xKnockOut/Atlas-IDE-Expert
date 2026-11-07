@@ -29,14 +29,15 @@ type
     /// <summary>Je Eintrag in Own der nächste Vorfahr mit derselben Nachricht; TypeName '' = keiner.</summary>
     Inherited_: TArray<TMessageHandler>;
     function Found: Boolean;
-    /// <summary>Kurzfassung für Code Lens, z. B. "behandelt WM_PAINT, WM_SIZE (WM_PAINT auch in TWinControl)".</summary>
+    /// <summary>Kurzfassung für Code Lens, z. B. "behandelt WM_PAINT, WM_SIZE (WM_PAINT auch in
+    /// TWinControl)".</summary>
     function Title: string;
     function ToMarkdown: string;
   end;
 
   TMessageHandlers = class
   public const
-    MaxDepth = 32;
+    cMaxDepth = 32;
   public
     /// <summary>Message-Handler, die ATypeName in ATree selbst deklariert.</summary>
     class function InTree(ATree: TSyntaxTree; const AFileName, ATypeName: string): TArray<TMessageHandler>; static;
@@ -72,41 +73,41 @@ const
 
 function FirstTokenAt(const ATokens: TArray<TPascalToken>; AOffset: Integer): Integer;
 var
-  Low, High, Middle: Integer;
+  mLow, mHigh, mMiddle: Integer;
 begin
-  Low := 0;
-  High := Length(ATokens);
-  while Low < High do
+  mLow := 0;
+  mHigh := Length(ATokens);
+  while mLow < mHigh do
   begin
-    Middle := (Low + High) div 2;
-    if ATokens[Middle].Offset < AOffset then
+    mMiddle := (mLow + mHigh) div 2;
+    if ATokens[mMiddle].Offset < AOffset then
     begin
-      Low := Middle + 1;
+      mLow := mMiddle + 1;
     end
     else
     begin
-      High := Middle;
+      mHigh := mMiddle;
     end;
   end;
-  Result := Low;
+  Result := mLow;
 end;
 
 function FindClassNode(ANode: TSyntaxNode; const ATypeName: string): TSyntaxNode;
 var
-  Root, Found: TSyntaxNode;
-  TypeName: string;
+  mRoot, mFound: TSyntaxNode;
+  mTypeName: string;
 begin
-  Root := ANode;
-  TypeName := ATypeName;
+  mRoot := ANode;
+  mTypeName := ATypeName;
   // Search statt Rekursion (Bericht M1).
-  Found := ANode.Search(
+  mFound := ANode.Search(
     function(ACandidate: TSyntaxNode): TSyntaxSearchStep
     begin
-      if ACandidate = Root then
+      if ACandidate = mRoot then
       begin
         Exit(TSyntaxSearchStep.Descend);
       end;
-      if (ACandidate.Kind = TSyntaxKind.TypeDecl) and SameText(ACandidate.Name, TypeName) and
+      if (ACandidate.Kind = TSyntaxKind.TypeDecl) and SameText(ACandidate.Name, mTypeName) and
         (ACandidate.FindChild(TSyntaxKind.ClassType) <> nil) then
       begin
         Exit(TSyntaxSearchStep.Found);
@@ -119,42 +120,43 @@ begin
       Result := TSyntaxSearchStep.Descend;
     end);
   Result := nil;
-  if Found <> nil then
+  if mFound <> nil then
   begin
-    Result := Found.FindChild(TSyntaxKind.ClassType);
+    Result := mFound.FindChild(TSyntaxKind.ClassType);
   end;
 end;
 
 /// <summary>Argument der Direktive message: alle Tokens der Direktive ADirective hinter "message".</summary>
 function DirectiveArgument(const ATokens: TArray<TPascalToken>; ADirective: TSyntaxNode): string;
 var
-  TokenIndex: Integer;
+  mTokenIndex: Integer;
 begin
   Result := '';
-  TokenIndex := FirstTokenAt(ATokens, ADirective.StartOffset) + 1;
-  while (TokenIndex <= High(ATokens)) and (ATokens[TokenIndex].Offset < ADirective.EndOffset) do
+  mTokenIndex := FirstTokenAt(ATokens, ADirective.StartOffset) + 1;
+  while (mTokenIndex <= High(ATokens)) and (ATokens[mTokenIndex].Offset < ADirective.EndOffset) do
   begin
-    if not (ATokens[TokenIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+    if not (ATokens[mTokenIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
     begin
-      Result := Result + ATokens[TokenIndex].Text;
+      Result := Result + ATokens[mTokenIndex].Text;
     end;
-    Inc(TokenIndex);
+    Inc(mTokenIndex);
   end;
 end;
 
 /// <summary>Bereich des Methodennamens im Kopf AHeader; ohne Fund der ganze Kopf.</summary>
 function NameRange(const ATokens: TArray<TPascalToken>; AHeader: TSyntaxNode): TTextRange;
 var
-  TokenIndex: Integer;
+  mTokenIndex: Integer;
 begin
-  TokenIndex := FirstTokenAt(ATokens, AHeader.StartOffset);
-  while (TokenIndex <= High(ATokens)) and (ATokens[TokenIndex].Offset < AHeader.EndOffset) do
+  mTokenIndex := FirstTokenAt(ATokens, AHeader.StartOffset);
+  while (mTokenIndex <= High(ATokens)) and (ATokens[mTokenIndex].Offset < AHeader.EndOffset) do
   begin
-    if (ATokens[TokenIndex].Kind = TPascalTokenKind.Identifier) and SameText(ATokens[TokenIndex].Text, AHeader.Name) then
+    if (ATokens[mTokenIndex].Kind = TPascalTokenKind.Identifier) and
+      SameText(ATokens[mTokenIndex].Text, AHeader.Name) then
     begin
-      Exit(TTextRange.Create(ATokens[TokenIndex].StartPos, ATokens[TokenIndex].EndPos));
+      Exit(TTextRange.Create(ATokens[mTokenIndex].StartPos, ATokens[mTokenIndex].EndPos));
     end;
-    Inc(TokenIndex);
+    Inc(mTokenIndex);
   end;
   Result := TTextRange.Create(AHeader.StartPos, AHeader.EndPos);
 end;
@@ -163,26 +165,26 @@ end;
 procedure AddHandlers(const ATokens: TArray<TPascalToken>; AHeader: TSyntaxNode; const AFileName, ATypeName: string;
   AList: TList<TMessageHandler>);
 var
-  Inner: Integer;
-  Directive: TSyntaxNode;
-  Handler: TMessageHandler;
+  mInner: Integer;
+  mDirective: TSyntaxNode;
+  mHandler: TMessageHandler;
 begin
-  for Inner := 0 to AHeader.ChildCount - 1 do
+  for mInner := 0 to AHeader.ChildCount - 1 do
   begin
-    Directive := AHeader[Inner];
-    if (Directive.Kind <> TSyntaxKind.Directive) or (Directive.Name <> 'message') then
+    mDirective := AHeader[mInner];
+    if (mDirective.Kind <> TSyntaxKind.Directive) or (mDirective.Name <> 'message') then
     begin
       Continue;
     end;
-    Handler := Default(TMessageHandler);
-    Handler.MethodName := AHeader.Name;
-    Handler.TypeName := ATypeName;
-    Handler.FileName := AFileName;
-    Handler.Message := DirectiveArgument(ATokens, Directive);
-    Handler.SelectionRange := NameRange(ATokens, AHeader);
-    if Handler.Message <> '' then
+    mHandler := Default(TMessageHandler);
+    mHandler.MethodName := AHeader.Name;
+    mHandler.TypeName := ATypeName;
+    mHandler.FileName := AFileName;
+    mHandler.Message := DirectiveArgument(ATokens, mDirective);
+    mHandler.SelectionRange := NameRange(ATokens, AHeader);
+    if mHandler.Message <> '' then
     begin
-      AList.Add(Handler);
+      AList.Add(mHandler);
     end;
   end;
 end;
@@ -190,21 +192,21 @@ end;
 procedure CollectHandlers(ATree: TSyntaxTree; ANode: TSyntaxNode; const AFileName, ATypeName: string;
   AList: TList<TMessageHandler>);
 var
-  Root: TSyntaxNode;
-  Tokens: TArray<TPascalToken>;
-  FileName, TypeName: string;
-  List: TList<TMessageHandler>;
+  mRoot: TSyntaxNode;
+  mTokens: TArray<TPascalToken>;
+  mFileName, mTypeName: string;
+  mList: TList<TMessageHandler>;
 begin
-  Root := ANode;
-  Tokens := ATree.Tokens;
-  FileName := AFileName;
-  TypeName := ATypeName;
-  List := AList;
+  mRoot := ANode;
+  mTokens := ATree.Tokens;
+  mFileName := AFileName;
+  mTypeName := ATypeName;
+  mList := AList;
   // Walk statt Rekursion (Bericht M1); die Reihenfolge der Behandler bleibt die des Quelltexts.
   ANode.Walk(
     function(AChild: TSyntaxNode): Boolean
     begin
-      if AChild = Root then
+      if AChild = mRoot then
       begin
         Exit(True);
       end;
@@ -217,7 +219,7 @@ begin
       begin
         Exit(True);
       end;
-      AddHandlers(Tokens, AChild, FileName, TypeName, List);
+      AddHandlers(mTokens, AChild, mFileName, mTypeName, mList);
       Result := False;
     end);
 end;
@@ -231,37 +233,37 @@ end;
 
 function TMessageOverview.Title: string;
 var
-  Index: Integer;
-  Also: string;
+  mIndex: Integer;
+  mAlso: string;
 begin
   Result := '';
-  Also := '';
-  for Index := 0 to High(Own) do
+  mAlso := '';
+  for mIndex := 0 to High(Own) do
   begin
     if Result <> '' then
     begin
       Result := Result + ', ';
     end;
-    Result := Result + Own[Index].Message;
-    if Inherited_[Index].TypeName <> '' then
+    Result := Result + Own[mIndex].Message;
+    if Inherited_[mIndex].TypeName <> '' then
     begin
-      if Also <> '' then
+      if mAlso <> '' then
       begin
-        Also := Also + ', ';
+        mAlso := mAlso + ', ';
       end;
-      Also := Also + Own[Index].Message + cTexts[TMessageHandlersText.AlsoIn].Text + Inherited_[Index].TypeName;
+      mAlso := mAlso + Own[mIndex].Message + cTexts[TMessageHandlersText.AlsoIn].Text + Inherited_[mIndex].TypeName;
     end;
   end;
   Result := cTexts[TMessageHandlersText.Handles].Text + Result;
-  if Also <> '' then
+  if mAlso <> '' then
   begin
-    Result := Result + ' (' + Also + ')';
+    Result := Result + ' (' + mAlso + ')';
   end;
 end;
 
 function TMessageOverview.ToMarkdown: string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
   if not Found then
@@ -269,13 +271,13 @@ begin
     Exit;
   end;
   Result := cTexts[TMessageHandlersText.Messages].Text;
-  for Index := 0 to High(Own) do
+  for mIndex := 0 to High(Own) do
   begin
-    Result := Result + #10 + '- `' + Own[Index].Message + '` → `' + Own[Index].MethodName + '`';
-    if Inherited_[Index].TypeName <> '' then
+    Result := Result + #10 + '- `' + Own[mIndex].Message + '` → `' + Own[mIndex].MethodName + '`';
+    if Inherited_[mIndex].TypeName <> '' then
     begin
-      Result := Result + cTexts[TMessageHandlersText.AlsoIn2].Fmt([Inherited_[Index].TypeName,
-        Inherited_[Index].MethodName]);
+      Result := Result + cTexts[TMessageHandlersText.AlsoIn2].Fmt([Inherited_[mIndex].TypeName,
+        Inherited_[mIndex].MethodName]);
     end;
   end;
 end;
@@ -284,38 +286,39 @@ end;
 
 class function TMessageHandlers.InTree(ATree: TSyntaxTree; const AFileName, ATypeName: string): TArray<TMessageHandler>;
 var
-  ClassNode: TSyntaxNode;
-  List: TList<TMessageHandler>;
+  mClassNode: TSyntaxNode;
+  mList: TList<TMessageHandler>;
 begin
   Result := nil;
   if ATree = nil then
   begin
     Exit;
   end;
-  ClassNode := FindClassNode(ATree.Root, ATypeName);
-  if ClassNode = nil then
+  mClassNode := FindClassNode(ATree.Root, ATypeName);
+  if mClassNode = nil then
   begin
     Exit;
   end;
-  List := TList<TMessageHandler>.Create;
+  mList := TList<TMessageHandler>.Create;
   try
-    CollectHandlers(ATree, ClassNode, AFileName, ATypeName, List);
-    Result := List.ToArray;
+    CollectHandlers(ATree, mClassNode, AFileName, ATypeName, mList);
+    Result := mList.ToArray;
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 
 /// <summary>Klasse ATypeName (nicht verschachtelt) im Index AUnit.</summary>
 function ClassSymbolOf(const AUnit: TUnitIndex; const ATypeName: string; out ASymbol: TIndexSymbol): Boolean;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
-  for Symbol in AUnit.Symbols do
+  for mSymbol in AUnit.Symbols do
   begin
-    if (Symbol.Kind = TIndexSymbolKind.ClassType) and (Symbol.Container = '') and SameText(Symbol.Name, ATypeName) then
+    if (mSymbol.Kind = TIndexSymbolKind.ClassType) and (mSymbol.Container = '') and
+      SameText(mSymbol.Name, ATypeName) then
     begin
-      ASymbol := Symbol;
+      ASymbol := mSymbol;
       Exit(True);
     end;
   end;
@@ -327,27 +330,27 @@ end;
 function ResolveAncestor(AResolver: TNameResolver; const AUnit: TUnitIndex; const ATypeName: string;
   out AAncestor: TResolvedSymbol): Boolean;
 var
-  ClassSymbol: TIndexSymbol;
-  AncestorName: string;
+  mClassSymbol: TIndexSymbol;
+  mAncestorName: string;
 begin
   Result := False;
-  if not ClassSymbolOf(AUnit, ATypeName, ClassSymbol) then
+  if not ClassSymbolOf(AUnit, ATypeName, mClassSymbol) then
   begin
     Exit;
   end;
-  if Length(ClassSymbol.Ancestors) > 0 then
+  if Length(mClassSymbol.Ancestors) > 0 then
   begin
-    AncestorName := ClassSymbol.Ancestors[0];
+    mAncestorName := mClassSymbol.Ancestors[0];
   end
   else if not SameText(ATypeName, 'TObject') then
   begin
-    AncestorName := 'TObject';
+    mAncestorName := 'TObject';
   end
   else
   begin
     Exit;
   end;
-  Result := (Pos('<', AncestorName) = 0) and AResolver.ResolveTypeFrom(AUnit, AncestorName, AAncestor) and
+  Result := (Pos('<', mAncestorName) = 0) and AResolver.ResolveTypeFrom(AUnit, mAncestorName, AAncestor) and
     (AAncestor.SymbolKind = TIndexSymbolKind.ClassType);
 end;
 
@@ -356,7 +359,7 @@ end;
 function TreeOf(const AFileName, AOwnFile: string; AOwnTree: TSyntaxTree;
   ATrees: TObjectDictionary<string, TSyntaxTree>; const AReadText: TMessageReadText; out ATree: TSyntaxTree): Boolean;
 var
-  Text: string;
+  mText: string;
 begin
   Result := True;
   if SameText(AFileName, AOwnFile) then
@@ -365,10 +368,10 @@ begin
   end
   else if not ATrees.TryGetValue(UpperCase(AFileName), ATree) then
   begin
-    Result := Assigned(AReadText) and AReadText(AFileName, Text);
+    Result := Assigned(AReadText) and AReadText(AFileName, mText);
     if Result then
     begin
-      ATree := TSyntaxTreeCache.Parse(Text);
+      ATree := TSyntaxTreeCache.Parse(mText);
       ATrees.Add(UpperCase(AFileName), ATree);
     end;
   end;
@@ -377,16 +380,16 @@ end;
 /// <summary>Trägt für noch nicht gefundene eigene Behandler den gleichen Behandler aus AHandlers ein.</summary>
 procedure MatchInherited(var AOverview: TMessageOverview; const AHandlers: TArray<TMessageHandler>);
 var
-  Handler: TMessageHandler;
-  Index: Integer;
+  mHandler: TMessageHandler;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(AOverview.Own) do
+  for mIndex := 0 to High(AOverview.Own) do
   begin
-    for Handler in AHandlers do
+    for mHandler in AHandlers do
     begin
-      if (AOverview.Inherited_[Index].TypeName = '') and SameText(Handler.Message, AOverview.Own[Index].Message) then
+      if (AOverview.Inherited_[mIndex].TypeName = '') and SameText(mHandler.Message, AOverview.Own[mIndex].Message) then
       begin
-        AOverview.Inherited_[Index] := Handler;
+        AOverview.Inherited_[mIndex] := mHandler;
       end;
     end;
   end;
@@ -395,12 +398,12 @@ end;
 class function TMessageHandlers.Overview(AResolver: TNameResolver; ATree: TSyntaxTree;
   const AFileName, ATypeName: string; const AReadText: TMessageReadText): TMessageOverview;
 var
-  Trees: TObjectDictionary<string, TSyntaxTree>;
-  CurrentUnit: TUnitIndex;
-  CurrentTree, Tree: TSyntaxTree;
-  CurrentName: string;
-  Ancestor: TResolvedSymbol;
-  Depth: Integer;
+  mTrees: TObjectDictionary<string, TSyntaxTree>;
+  mCurrentUnit: TUnitIndex;
+  mCurrentTree, mTree: TSyntaxTree;
+  mCurrentName: string;
+  mAncestor: TResolvedSymbol;
+  mDepth: Integer;
 begin
   Result := Default(TMessageOverview);
   Result.Own := InTree(ATree, AFileName, ATypeName);
@@ -409,28 +412,28 @@ begin
   begin
     Exit;
   end;
-  Trees := TObjectDictionary<string, TSyntaxTree>.Create([doOwnsValues]);
+  mTrees := TObjectDictionary<string, TSyntaxTree>.Create([doOwnsValues]);
   try
-    CurrentTree := ATree;
-    CurrentUnit := TIndexExtractor.Extract(ATree, AFileName);
-    CurrentName := ATypeName;
-    for Depth := 1 to MaxDepth do
+    mCurrentTree := ATree;
+    mCurrentUnit := TIndexExtractor.Extract(ATree, AFileName);
+    mCurrentName := ATypeName;
+    for mDepth := 1 to cMaxDepth do
     begin
-      if not ResolveAncestor(AResolver, CurrentUnit, CurrentName, Ancestor) or
-        not TreeOf(Ancestor.FileName, AFileName, ATree, Trees, AReadText, Tree) then
+      if not ResolveAncestor(AResolver, mCurrentUnit, mCurrentName, mAncestor) or
+        not TreeOf(mAncestor.FileName, AFileName, ATree, mTrees, AReadText, mTree) then
       begin
         Break;
       end;
-      MatchInherited(Result, InTree(Tree, Ancestor.FileName, Ancestor.Name));
-      if Tree <> CurrentTree then
+      MatchInherited(Result, InTree(mTree, mAncestor.FileName, mAncestor.Name));
+      if mTree <> mCurrentTree then
       begin
-        CurrentUnit := TIndexExtractor.Extract(Tree, Ancestor.FileName);
+        mCurrentUnit := TIndexExtractor.Extract(mTree, mAncestor.FileName);
       end;
-      CurrentTree := Tree;
-      CurrentName := Ancestor.Name;
+      mCurrentTree := mTree;
+      mCurrentName := mAncestor.Name;
     end;
   finally
-    Trees.Free;
+    mTrees.Free;
   end;
 end;
 

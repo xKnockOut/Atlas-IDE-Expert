@@ -51,8 +51,8 @@ function GitRecord(const ARevision: string; ASeconds: Int64; const AAuthor, ASum
 var
   mLine: string;
 begin
-  Result := THotspotHistory.GitRecord + ARevision + THotspotHistory.GitField + IntToStr(ASeconds) +
-    THotspotHistory.GitField + AAuthor + THotspotHistory.GitField + ASummary + #10#10;
+  Result := THotspotHistory.cGitRecord + ARevision + THotspotHistory.cGitField + IntToStr(ASeconds) +
+    THotspotHistory.cGitField + AAuthor + THotspotHistory.cGitField + ASummary + #10#10;
   for mLine in ANumstat do
   begin
     Result := Result + mLine + #10;

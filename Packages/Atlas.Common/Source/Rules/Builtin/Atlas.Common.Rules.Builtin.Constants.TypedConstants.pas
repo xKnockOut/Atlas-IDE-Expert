@@ -10,7 +10,7 @@ uses
   Atlas.Common.Rules.Contract;
 
 const
-  TypedConstantModifiedRuleId = 'typed-constant-modified';
+  cTypedConstantModifiedRuleId = 'typed-constant-modified';
 
 type
   TTypedConstantModifiedRule = class(TInterfacedObject, IRule)
@@ -72,7 +72,7 @@ const
 
 function TTypedConstantModifiedRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(TypedConstantModifiedRuleId, TRuleSeverity.Warning,
+  Result := TRuleDescriptor.Create(cTypedConstantModifiedRuleId, TRuleSeverity.Warning,
     cTexts[TConstantsTypedConstantsText.Title].Text);
 end;
 
@@ -215,31 +215,31 @@ end;
 /// die Signatur hat dann einen Doppelpunkt vor dem Gleichheitszeichen.</summary>
 function IsTypedConstant(const ATypeName, ASignature: string): Boolean;
 var
-  Colon, Equals: Integer;
+  mColon, mEquals: Integer;
 begin
   if ATypeName <> '' then
   begin
     Exit(True);
   end;
-  Colon := Pos(':', ASignature);
-  Equals := Pos('=', ASignature);
-  Result := (Colon > 0) and ((Equals = 0) or (Colon < Equals));
+  mColon := Pos(':', ASignature);
+  mEquals := Pos('=', ASignature);
+  Result := (mColon > 0) and ((mEquals = 0) or (mColon < mEquals));
 end;
 
 /// <summary>Ist der Typname ein eingebauter Zeigertyp (Pointer, PChar …)?</summary>
 function IsPointerName(const ATypeName: string): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
-  Name := LowerCase(Trim(ATypeName));
-  if Name.StartsWith('system.') then
+  mName := LowerCase(Trim(ATypeName));
+  if mName.StartsWith('system.') then
   begin
-    Name := Copy(Name, Length('system.') + 1, MaxInt);
+    mName := Copy(mName, Length('system.') + 1, MaxInt);
   end;
-  Result := (Name = 'pointer') or (Name = 'pchar') or (Name = 'pansichar') or (Name = 'pwidechar') or
-    (Name = 'pbyte') or (Name = 'pword') or (Name = 'pinteger') or (Name = 'pcardinal') or (Name = 'pint64') or
-    (Name = 'puint64') or (Name = 'psingle') or (Name = 'pdouble') or (Name = 'pextended') or
-    (Name = 'pnativeint') or (Name = 'pnativeuint') or (Name = 'pboolean') or (Name = 'pstring');
+  Result := (mName = 'pointer') or (mName = 'pchar') or (mName = 'pansichar') or (mName = 'pwidechar') or
+    (mName = 'pbyte') or (mName = 'pword') or (mName = 'pinteger') or (mName = 'pcardinal') or (mName = 'pint64') or
+    (mName = 'puint64') or (mName = 'psingle') or (mName = 'pdouble') or (mName = 'pextended') or
+    (mName = 'pnativeint') or (mName = 'pnativeuint') or (mName = 'pboolean') or (mName = 'pstring');
 end;
 
 procedure TTypedConstantModifiedRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -247,12 +247,12 @@ type
   // Stand von {$J}/{$WRITEABLECONST} vor einer Stelle der Datei.
   TWriteable = (Unknown, Off, On_);
 var
-  FileName, LineBreak: string;
-  Lines: TArray<string>;
-  Resolver: TNameResolver;
-  Cache: IRuleDerivedCache;
+  mFileName, mLineBreak: string;
+  mLines: TArray<string>;
+  mResolver: TNameResolver;
+  mCache: IRuleDerivedCache;
   // Namen typisierter Konstanten (Vorfilter): aus der Datei und aus dem Index.
-  LocalNames, Suspects: TDictionary<string, Boolean>;
+  mLocalNames, mSuspects: TDictionary<string, Boolean>;
 
   function NodeText(ANode: TSyntaxNode): string;
   begin
@@ -367,59 +367,59 @@ var
   /// eingebundener Include-Dateien.</summary>
   function WriteableAt(const APosition: TTextPosition): TWriteable;
   var
-    Token: TPascalToken;
+    mToken: TPascalToken;
   begin
     Result := TWriteable.Unknown;
-    for Token in AContext.Tree.Tokens do
+    for mToken in AContext.Tree.Tokens do
     begin
-      if not Before(Token.StartPos, APosition) then
+      if not Before(mToken.StartPos, APosition) then
       begin
         Break;
       end;
-      if Token.Kind = TPascalTokenKind.Directive then
+      if mToken.Kind = TPascalTokenKind.Directive then
       begin
-        ApplyDirective(Token.Text, 0, Result);
+        ApplyDirective(mToken.Text, 0, Result);
       end;
     end;
   end;
 
   procedure CollectLocal(ARoot: TSyntaxNode);
   var
-    Index: Integer;
-    Node: TSyntaxNode;
-    Pending: TStack<TSyntaxNode>;
+    mIndex: Integer;
+    mNode: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
   begin
     // Iterativ (Bericht M1).
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ARoot);
-      while Pending.Count > 0 do
+      mPending.Push(ARoot);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if (Node.Kind = TSyntaxKind.ConstDecl) and (Node.ChildCount = 2) then
+        mNode := mPending.Pop;
+        if (mNode.Kind = TSyntaxKind.ConstDecl) and (mNode.ChildCount = 2) then
         begin
-          LocalNames.AddOrSetValue(LowerCase(Node.Name), True);
+          mLocalNames.AddOrSetValue(LowerCase(mNode.Name), True);
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
   function Suspect(const AName: string): Boolean;
   var
-    Key: string;
+    mKey: string;
   begin
-    Key := LowerCase(AName);
-    if (Key = '') or LocalNames.ContainsKey(Key) then
+    mKey := LowerCase(AName);
+    if (mKey = '') or mLocalNames.ContainsKey(mKey) then
     begin
-      Exit(Key <> '');
+      Exit(mKey <> '');
     end;
-    if Suspects.TryGetValue(Key, Result) then
+    if mSuspects.TryGetValue(mKey, Result) then
     begin
       Exit;
     end;
@@ -432,7 +432,7 @@ var
           Result := (ASymbol.Kind = TIndexSymbolKind.Constant) and IsTypedConstant(ASymbol.TypeName, ASymbol.Signature);
         end);
     end;
-    Suspects.Add(Key, Result);
+    mSuspects.Add(mKey, Result);
   end;
 
   /// <summary>Nennt der Zugriff ANode (Name, Feld, Element) einen verdächtigen Namen?</summary>
@@ -455,12 +455,12 @@ var
 
   procedure EnsureResolver;
   begin
-    if Resolver = nil then
+    if mResolver = nil then
     begin
       // Resolver des Laufs (TRuleDerived.Resolver); gehört dem Cache.
-      Cache := TRuleDerived.Open(AContext);
-      Resolver := TRuleDerived.Resolver(Cache, AContext);
-      Resolver.PinTree(AContext.Tree, FileName);
+      mCache := TRuleDerived.Open(AContext);
+      mResolver := TRuleDerived.Resolver(mCache, AContext);
+      mResolver.PinTree(AContext.Tree, mFileName);
     end;
   end;
 
@@ -473,7 +473,7 @@ var
   begin
     Result := nil;
     AFound := False;
-    if not Resolver.NodeType(AContext.Tree, FileName, ANode, ASymbol, mTypeInfo, mTypeFound) then
+    if not mResolver.NodeType(AContext.Tree, mFileName, ANode, ASymbol, mTypeInfo, mTypeFound) then
     begin
       Exit;
     end;
@@ -534,7 +534,7 @@ var
       begin
         Exit(True);
       end;
-      if Resolver.NodeType(AContext.Tree, FileName, AElements[mIndex][0], ASymbol, mTypeInfo, mTypeFound) and
+      if mResolver.NodeType(AContext.Tree, mFileName, AElements[mIndex][0], ASymbol, mTypeInfo, mTypeFound) and
         mTypeFound and (Pos('^', TypeBodyOf(mTypeInfo.Signature)) > 0) then
       begin
         Exit(True);
@@ -554,61 +554,61 @@ var
   /// <summary>Deklaration der Konstante ASymbol in dieser Datei; nil, wenn sie woanders steht.</summary>
   function DeclarationOf(const ASymbol: TResolvedSymbol): TSyntaxNode;
   var
-    Found: TSyntaxNode;
+    mFound: TSyntaxNode;
 
     procedure Search(ARoot: TSyntaxNode);
     var
-      Index: Integer;
-      Node: TSyntaxNode;
-      Pending: TStack<TSyntaxNode>;
+      mIndex: Integer;
+      mNode: TSyntaxNode;
+      mPending: TStack<TSyntaxNode>;
     begin
       // Iterativ (Bericht M1).
-      Pending := TStack<TSyntaxNode>.Create;
+      mPending := TStack<TSyntaxNode>.Create;
       try
-        Pending.Push(ARoot);
-        while Pending.Count > 0 do
+        mPending.Push(ARoot);
+        while mPending.Count > 0 do
         begin
-          Node := Pending.Pop;
-          if (Node.Kind = TSyntaxKind.ConstDecl) and (Node.ChildCount = 2) and SameText(Node.Name, ASymbol.Name) and
-            (Node.StartPos.Line = ASymbol.SelectionRange.StartPos.Line) then
+          mNode := mPending.Pop;
+          if (mNode.Kind = TSyntaxKind.ConstDecl) and (mNode.ChildCount = 2) and SameText(mNode.Name, ASymbol.Name) and
+            (mNode.StartPos.Line = ASymbol.SelectionRange.StartPos.Line) then
           begin
-            Found := Node;
+            mFound := mNode;
             Exit;
           end;
-          for Index := Node.ChildCount - 1 downto 0 do
+          for mIndex := mNode.ChildCount - 1 downto 0 do
           begin
-            Pending.Push(Node[Index]);
+            mPending.Push(mNode[mIndex]);
           end;
         end;
       finally
-        Pending.Free;
+        mPending.Free;
       end;
     end;
 
   begin
-    Found := nil;
-    if (ASymbol.FileName = '') or SameText(ASymbol.FileName, FileName) or
-      SameText(ExtractFileName(ASymbol.FileName), ExtractFileName(FileName)) then
+    mFound := nil;
+    if (ASymbol.FileName = '') or SameText(ASymbol.FileName, mFileName) or
+      SameText(ExtractFileName(ASymbol.FileName), ExtractFileName(mFileName)) then
     begin
       Search(AContext.Tree.Root);
     end;
-    Result := Found;
+    Result := mFound;
   end;
 
   /// <summary>Text vom Zeilenanfang bis APosition, wenn dort nur Leerraum steht; sonst False.</summary>
   function IndentBefore(const APosition: TTextPosition; out AIndent: string): Boolean;
   begin
-    if Lines = nil then
+    if mLines = nil then
     begin
-      Lines := TTextLines.SplitLines(AContext.Text);
+      mLines := TTextLines.SplitLines(AContext.Text);
     end;
     Result := False;
     AIndent := '';
-    if (APosition.Line < 0) or (APosition.Line > High(Lines)) then
+    if (APosition.Line < 0) or (APosition.Line > High(mLines)) then
     begin
       Exit;
     end;
-    AIndent := Copy(Lines[APosition.Line], 1, APosition.Character);
+    AIndent := Copy(mLines[APosition.Line], 1, APosition.Character);
     Result := Trim(AIndent) = '';
   end;
 
@@ -641,7 +641,7 @@ var
     if Result then
     begin
       AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(TTextPosition.Create(ADecl.StartPos.Line, 0),
-        TTextPosition.Create(ADecl.StartPos.Line, 0)), AIndent + 'var' + LineBreak)];
+        TTextPosition.Create(ADecl.StartPos.Line, 0)), AIndent + 'var' + mLineBreak)];
     end;
   end;
 
@@ -663,7 +663,7 @@ var
     if Result then
     begin
       AEdits := AEdits + [TTextEdit.Create(TTextRange.Create(TTextPosition.Create(mNext.StartPos.Line, 0),
-        TTextPosition.Create(mNext.StartPos.Line, 0)), AIndent + 'const' + LineBreak)];
+        TTextPosition.Create(mNext.StartPos.Line, 0)), AIndent + 'const' + mLineBreak)];
     end;
   end;
 
@@ -691,55 +691,55 @@ var
     Result := True;
   end;
 
-  procedure Report(ATarget: TSyntaxNode; AsArgument: Boolean);
+  procedure Report(ATarget: TSyntaxNode; AAsArgument: Boolean);
   var
-    Symbol: TResolvedSymbol;
-    Decl: TSyntaxNode;
-    Fix: TRuleFix;
-    Fixes: TArray<TRuleFix>;
-    Code: string;
+    mSymbol: TResolvedSymbol;
+    mDecl: TSyntaxNode;
+    mFix: TRuleFix;
+    mFixes: TArray<TRuleFix>;
+    mCode: string;
   begin
-    if not ModifiedConstant(ATarget, Symbol) then
+    if not ModifiedConstant(ATarget, mSymbol) then
     begin
       Exit;
     end;
-    Fixes := nil;
-    Decl := DeclarationOf(Symbol);
-    if (Decl <> nil) and VarFix(Decl, Fix) then
+    mFixes := nil;
+    mDecl := DeclarationOf(mSymbol);
+    if (mDecl <> nil) and VarFix(mDecl, mFix) then
     begin
-      Fixes := [Fix];
+      mFixes := [mFix];
     end;
     // Mit {$J-} vor der Deklaration übersetzt Delphi die Änderung nicht.
-    if (Decl <> nil) and (WriteableAt(Decl.StartPos) = TWriteable.Off) then
+    if (mDecl <> nil) and (WriteableAt(mDecl.StartPos) = TWriteable.Off) then
     begin
-      if AsArgument then
+      if AAsArgument then
       begin
-        Code := 'E2197';
+        mCode := 'E2197';
       end
       else
       begin
-        Code := 'E2064';
+        mCode := 'E2064';
       end;
       AReport.AddWithSeverity(TTextRange.Create(ATarget.StartPos, ATarget.EndPos),
-        cTexts[TConstantsTypedConstantsText.NeedsJ].Fmt([Symbol.Name, Code]),
-        TRuleSeverity.Error, Fixes);
+        cTexts[TConstantsTypedConstantsText.NeedsJ].Fmt([mSymbol.Name, mCode]),
+        TRuleSeverity.Error, mFixes);
       Exit;
     end;
     // Mit {$J+} vor der Deklaration meldet dcc nichts (TC1-TC3, dcc-Lauf vom 29.10.2026, #1328).
-    if (Decl <> nil) and (WriteableAt(Decl.StartPos) = TWriteable.On_) then
+    if (mDecl <> nil) and (WriteableAt(mDecl.StartPos) = TWriteable.On_) then
     begin
       Exit;
     end;
-    if AsArgument then
+    if AAsArgument then
     begin
-      Code := 'W1016';
+      mCode := 'W1016';
     end
     else
     begin
-      Code := 'W1017';
+      mCode := 'W1017';
     end;
     AReport.Add(TTextRange.Create(ATarget.StartPos, ATarget.EndPos),
-      cTexts[TConstantsTypedConstantsText.Changed].Fmt([Symbol.Name, Code]), TRuleConfidence.High, Fixes);
+      cTexts[TConstantsTypedConstantsText.Changed].Fmt([mSymbol.Name, mCode]), TRuleConfidence.High, mFixes);
   end;
 
   /// <summary>Nennt eines der Argumente des Aufrufs ANode einen verdächtigen Namen?</summary>
@@ -798,14 +798,14 @@ var
     mCallee := ANode[0];
     EnsureResolver;
     if (mCallee.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
-      Resolver.NodeType(AContext.Tree, FileName, mCallee, mSymbol, mTypeInfo, mTypeFound) then
+      mResolver.NodeType(AContext.Tree, mFileName, mCallee, mSymbol, mTypeInfo, mTypeFound) then
     begin
       // Überladungen können andere Parameter haben: dann keine Aussage. NodeType nennt nur die erste Überladung,
       // bei Methoden fehlen die übrigen in Overloads; CallCandidates zählt alle Deklarationen.
       if (mSymbol.SymbolKind in [TIndexSymbolKind.Method, TIndexSymbolKind.Routine,
         TIndexSymbolKind.Constructor_]) and (Length(mSymbol.Overloads) = 0) and
         (Length(mSymbol.VariantParams) <= 1) and
-        (Length(Resolver.CallCandidates(AContext.Tree, FileName, mCallee)) <= 1) then
+        (Length(mResolver.CallCandidates(AContext.Tree, mFileName, mCallee)) <= 1) then
       begin
         ReportVarArguments(ANode, VarParameters(mSymbol.Signature));
       end;
@@ -819,73 +819,73 @@ var
   /// <summary>0 als Wert einer Zeigerkonstante bzw. initialisierten Zeigervariable (W1013).</summary>
   procedure CheckZeroPointer(ANode: TSyntaxNode);
   var
-    Value, TypeNode: TSyntaxNode;
-    TypeInfo: TResolvedSymbol;
-    IsPointer: Boolean;
+    mValue, mTypeNode: TSyntaxNode;
+    mTypeInfo: TResolvedSymbol;
+    mIsPointer: Boolean;
   begin
     if ANode.ChildCount <> 2 then
     begin
       Exit;
     end;
-    TypeNode := ANode[0];
-    Value := ANode[1];
-    if (Value.Kind <> TSyntaxKind.Literal) or (Trim(NodeText(Value)) <> '0') then
+    mTypeNode := ANode[0];
+    mValue := ANode[1];
+    if (mValue.Kind <> TSyntaxKind.Literal) or (Trim(NodeText(mValue)) <> '0') then
     begin
       Exit;
     end;
-    IsPointer := (TypeNode.Kind = TSyntaxKind.PointerType) or
-      ((TypeNode.Kind = TSyntaxKind.TypeReference) and IsPointerName(NodeText(TypeNode)));
-    if not IsPointer and (TypeNode.Kind = TSyntaxKind.TypeReference) then
+    mIsPointer := (mTypeNode.Kind = TSyntaxKind.PointerType) or
+      ((mTypeNode.Kind = TSyntaxKind.TypeReference) and IsPointerName(NodeText(mTypeNode)));
+    if not mIsPointer and (mTypeNode.Kind = TSyntaxKind.TypeReference) then
     begin
       EnsureResolver;
-      TypeInfo := Resolver.ResolveType(AContext.Tree, FileName, TypeNode.StartPos);
-      IsPointer := TypeInfo.Found and (TypeInfo.SymbolKind = TIndexSymbolKind.TypeAlias) and
-        ((Pos('^', TypeBodyOf(TypeInfo.Signature)) = 1) or IsPointerName(TypeBodyOf(TypeInfo.Signature)));
+      mTypeInfo := mResolver.ResolveType(AContext.Tree, mFileName, mTypeNode.StartPos);
+      mIsPointer := mTypeInfo.Found and (mTypeInfo.SymbolKind = TIndexSymbolKind.TypeAlias) and
+        ((Pos('^', TypeBodyOf(mTypeInfo.Signature)) = 1) or IsPointerName(TypeBodyOf(mTypeInfo.Signature)));
     end;
-    if not IsPointer then
+    if not mIsPointer then
     begin
       Exit;
     end;
-    AReport.Add(TTextRange.Create(Value.StartPos, Value.EndPos),
+    AReport.Add(TTextRange.Create(mValue.StartPos, mValue.EndPos),
       cTexts[TConstantsTypedConstantsText.ZeroNil].Fmt([ANode.Name]), TRuleConfidence.High,
       [TRuleFix.Create(cTexts[TConstantsTypedConstantsText.WriteNil].Text,
-        [TTextEdit.Create(TTextRange.Create(Value.StartPos, Value.EndPos), 'nil')],
+        [TTextEdit.Create(TTextRange.Create(mValue.StartPos, mValue.EndPos), 'nil')],
       True)]);
   end;
 
   procedure Visit(ARoot: TSyntaxNode);
   var
-    Index: Integer;
-    Node: TSyntaxNode;
-    Pending: TStack<TSyntaxNode>;
+    mIndex: Integer;
+    mNode: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
   begin
     // Iterativ (Bericht M1).
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ARoot);
-      while Pending.Count > 0 do
+      mPending.Push(ARoot);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        case Node.Kind of
+        mNode := mPending.Pop;
+        case mNode.Kind of
           TSyntaxKind.AssignStatement:
-            if Node.ChildCount = 2 then
+            if mNode.ChildCount = 2 then
             begin
-              Report(Node[0], False);
+              Report(mNode[0], False);
             end;
           TSyntaxKind.Call:
-            CheckCall(Node);
+            CheckCall(mNode);
           TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl:
-            CheckZeroPointer(Node);
+            CheckZeroPointer(mNode);
         else
           // Übrige Werte bewusst ohne Wirkung.
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
@@ -894,30 +894,30 @@ begin
   begin
     Exit;
   end;
-  FileName := AContext.FileName;
-  if FileName = '' then
+  mFileName := AContext.FileName;
+  if mFileName = '' then
   begin
-    FileName := AContext.RelativePath;
+    mFileName := AContext.RelativePath;
   end;
-  if FileName = '' then
+  if mFileName = '' then
   begin
-    FileName := AContext.UnitName + '.pas';
+    mFileName := AContext.UnitName + '.pas';
   end;
-  LineBreak := TTextLines.LineBreakOf(AContext.Text);
-  Lines := nil;
-  Resolver := nil;
-  LocalNames := TDictionary<string, Boolean>.Create;
-  Suspects := TDictionary<string, Boolean>.Create;
+  mLineBreak := TTextLines.LineBreakOf(AContext.Text);
+  mLines := nil;
+  mResolver := nil;
+  mLocalNames := TDictionary<string, Boolean>.Create;
+  mSuspects := TDictionary<string, Boolean>.Create;
   try
     CollectLocal(AContext.Tree.Root);
     Visit(AContext.Tree.Root);
   finally
-    if Resolver <> nil then
+    if mResolver <> nil then
     begin
-      Resolver.UnpinTree;
+      mResolver.UnpinTree;
     end;
-    Suspects.Free;
-    LocalNames.Free;
+    mSuspects.Free;
+    mLocalNames.Free;
   end;
 end;
 

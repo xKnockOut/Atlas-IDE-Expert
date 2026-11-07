@@ -41,8 +41,8 @@ type
 
   TLspSemanticTokens = class
   public const
-    FullMethod = 'textDocument/semanticTokens/full';
-    RangeMethod = 'textDocument/semanticTokens/range';
+    cFullMethod = 'textDocument/semanticTokens/full';
+    cRangeMethod = 'textDocument/semanticTokens/range';
   private
     FStore: IDocumentStore;
     FIndex: ISymbolIndex;
@@ -107,9 +107,9 @@ const
     (De: 'Feld "range" fehlt'; En: 'Field "range" missing'));
 
 const
-  TypeNames: array[TSemanticTokenType] of string = ('namespace', 'class', 'enum', 'interface', 'struct', 'type',
+  cTypeNames: array[TSemanticTokenType] of string = ('namespace', 'class', 'enum', 'interface', 'struct', 'type',
     'parameter', 'variable', 'field', 'property', 'event', 'enumMember', 'function', 'method');
-  ModifierNames: array[TSemanticTokenModifier] of string = ('declaration', 'readonly', 'defaultLibrary',
+  cModifierNames: array[TSemanticTokenModifier] of string = ('declaration', 'readonly', 'defaultLibrary',
     'reassigned');
 
 function ComparePositions(const A, B: TTextPosition): Integer;
@@ -469,37 +469,37 @@ end;
 
 procedure TLspSemanticTokens.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterConcurrentRequest(FullMethod, HandleFull);
-  ADispatcher.RegisterConcurrentRequest(RangeMethod, HandleRange);
+  ADispatcher.RegisterConcurrentRequest(cFullMethod, HandleFull);
+  ADispatcher.RegisterConcurrentRequest(cRangeMethod, HandleRange);
 end;
 
 class function TLspSemanticTokens.TypeName(AType: TSemanticTokenType): string;
 begin
-  Result := TypeNames[AType];
+  Result := cTypeNames[AType];
 end;
 
 class function TLspSemanticTokens.Capability: TJSONObject;
 var
-  Legend: TJSONObject;
-  Types, Modifiers: TJSONArray;
-  TokenType: TSemanticTokenType;
-  Modifier: TSemanticTokenModifier;
+  mLegend: TJSONObject;
+  mTypes, mModifiers: TJSONArray;
+  mTokenType: TSemanticTokenType;
+  mModifier: TSemanticTokenModifier;
 begin
-  Types := TJSONArray.Create;
-  for TokenType := Low(TSemanticTokenType) to High(TSemanticTokenType) do
+  mTypes := TJSONArray.Create;
+  for mTokenType := Low(TSemanticTokenType) to High(TSemanticTokenType) do
   begin
-    Types.Add(TypeNames[TokenType]);
+    mTypes.Add(cTypeNames[mTokenType]);
   end;
-  Modifiers := TJSONArray.Create;
-  for Modifier := Low(TSemanticTokenModifier) to High(TSemanticTokenModifier) do
+  mModifiers := TJSONArray.Create;
+  for mModifier := Low(TSemanticTokenModifier) to High(TSemanticTokenModifier) do
   begin
-    Modifiers.Add(ModifierNames[Modifier]);
+    mModifiers.Add(cModifierNames[mModifier]);
   end;
-  Legend := TJSONObject.Create;
-  Legend.AddPair('tokenTypes', Types);
-  Legend.AddPair('tokenModifiers', Modifiers);
+  mLegend := TJSONObject.Create;
+  mLegend.AddPair('tokenTypes', mTypes);
+  mLegend.AddPair('tokenModifiers', mModifiers);
   Result := TJSONObject.Create;
-  Result.AddPair('legend', Legend);
+  Result.AddPair('legend', mLegend);
   Result.AddPair('full', TJSONBool.Create(True));
   Result.AddPair('range', TJSONBool.Create(True));
 end;
@@ -539,127 +539,127 @@ end;
 class procedure TLspSemanticTokens.MarkReassigned(var ATokens: TArray<TSemanticToken>;
   const ASymbols: TArray<TReassignedSymbol>);
 var
-  Places: TDictionary<string, Boolean>;
-  Symbol: TReassignedSymbol;
-  Occurrence: TReassignedOccurrence;
-  Index: Integer;
+  mPlaces: TDictionary<string, Boolean>;
+  mSymbol: TReassignedSymbol;
+  mOccurrence: TReassignedOccurrence;
+  mIndex: Integer;
 begin
   if ASymbols = nil then
   begin
     Exit;
   end;
-  Places := TDictionary<string, Boolean>.Create;
+  mPlaces := TDictionary<string, Boolean>.Create;
   try
-    for Symbol in ASymbols do
+    for mSymbol in ASymbols do
     begin
-      for Occurrence in Symbol.Occurrences do
+      for mOccurrence in mSymbol.Occurrences do
       begin
-        Places.AddOrSetValue(IntToStr(Occurrence.Range.StartPos.Line) + ':' +
-          IntToStr(Occurrence.Range.StartPos.Character), True);
+        mPlaces.AddOrSetValue(IntToStr(mOccurrence.Range.StartPos.Line) + ':' +
+          IntToStr(mOccurrence.Range.StartPos.Character), True);
       end;
     end;
-    for Index := 0 to High(ATokens) do
+    for mIndex := 0 to High(ATokens) do
     begin
-      if Places.ContainsKey(IntToStr(ATokens[Index].Position.Line) + ':' +
-        IntToStr(ATokens[Index].Position.Character)) then
+      if mPlaces.ContainsKey(IntToStr(ATokens[mIndex].Position.Line) + ':' +
+        IntToStr(ATokens[mIndex].Position.Character)) then
       begin
-        Include(ATokens[Index].Modifiers, TSemanticTokenModifier.Reassigned);
+        Include(ATokens[mIndex].Modifiers, TSemanticTokenModifier.Reassigned);
       end;
     end;
   finally
-    Places.Free;
+    mPlaces.Free;
   end;
 end;
 
 class function TLspSemanticTokens.Encode(const ATokens: TArray<TSemanticToken>): TArray<Integer>;
 var
-  Index, Line, Character, Bits: Integer;
-  Modifier: TSemanticTokenModifier;
+  mIndex, mLine, mCharacter, mBits: Integer;
+  mModifier: TSemanticTokenModifier;
 begin
   SetLength(Result, Length(ATokens) * 5);
-  Line := 0;
-  Character := 0;
-  for Index := 0 to High(ATokens) do
+  mLine := 0;
+  mCharacter := 0;
+  for mIndex := 0 to High(ATokens) do
   begin
-    Result[Index * 5] := ATokens[Index].Position.Line - Line;
-    if ATokens[Index].Position.Line = Line then
+    Result[mIndex * 5] := ATokens[mIndex].Position.Line - mLine;
+    if ATokens[mIndex].Position.Line = mLine then
     begin
-      Result[Index * 5 + 1] := ATokens[Index].Position.Character - Character;
+      Result[mIndex * 5 + 1] := ATokens[mIndex].Position.Character - mCharacter;
     end
     else
     begin
-      Result[Index * 5 + 1] := ATokens[Index].Position.Character;
+      Result[mIndex * 5 + 1] := ATokens[mIndex].Position.Character;
     end;
-    Result[Index * 5 + 2] := ATokens[Index].Length;
-    Result[Index * 5 + 3] := Ord(ATokens[Index].TokenType);
-    Bits := 0;
-    for Modifier in ATokens[Index].Modifiers do
+    Result[mIndex * 5 + 2] := ATokens[mIndex].Length;
+    Result[mIndex * 5 + 3] := Ord(ATokens[mIndex].TokenType);
+    mBits := 0;
+    for mModifier in ATokens[mIndex].Modifiers do
     begin
-      Bits := Bits or (1 shl Ord(Modifier));
+      mBits := mBits or (1 shl Ord(mModifier));
     end;
-    Result[Index * 5 + 4] := Bits;
-    Line := ATokens[Index].Position.Line;
-    Character := ATokens[Index].Position.Character;
+    Result[mIndex * 5 + 4] := mBits;
+    mLine := ATokens[mIndex].Position.Line;
+    mCharacter := ATokens[mIndex].Position.Character;
   end;
 end;
 
 function TLspSemanticTokens.Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken;
   AWithRange: Boolean): TJSONValue;
 var
-  Cancellation: IPascalCancellation;
-  Uri: string;
-  RangeValue: TJSONValue;
-  Range: TTextRange;
-  Document: ITextDocument;
-  Tree: TSyntaxTree;
-  Shared: ISharedSyntaxTree;
-  Resolver: TNameResolver;
-  Values: TArray<Integer>;
-  Tokens: TArray<TSemanticToken>;
-  Data: TJSONArray;
-  Value: Integer;
+  mCancellation: IPascalCancellation;
+  mUri: string;
+  mRangeValue: TJSONValue;
+  mRange: TTextRange;
+  mDocument: ITextDocument;
+  mTree: TSyntaxTree;
+  mShared: ISharedSyntaxTree;
+  mResolver: TNameResolver;
+  mValues: TArray<Integer>;
+  mTokens: TArray<TSemanticToken>;
+  mData: TJSONArray;
+  mValue: Integer;
 begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri)) then
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TSemanticTokensText.FieldTextDocumentUriMissing].Text);
   end;
-  Range := Default(TTextRange);
+  mRange := Default(TTextRange);
   if AWithRange then
   begin
-    if not TJSONObject(AParams).TryGetValue<TJSONValue>('range', RangeValue) then
+    if not TJSONObject(AParams).TryGetValue<TJSONValue>('range', mRangeValue) then
     begin
-      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TSemanticTokensText.FieldRangeMissing].Text);
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TSemanticTokensText.FieldRangeMissing].Text);
     end;
-    Range := TLspPositions.ReadRange(RangeValue);
+    mRange := TLspPositions.ReadRange(mRangeValue);
   end;
-  if not FStore.TryGet(Uri, Document) then
+  if not FStore.TryGet(mUri, mDocument) then
   begin
     Exit(TJSONNull.Create);
   end;
-  Cancellation := TRequestCancellation.Create(ACancellation);
-  Shared := TSyntaxTreeCache.Get(Document, Cancellation);
-  Tree := Shared.Tree;
+  mCancellation := TRequestCancellation.Create(ACancellation);
+  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
+  mTree := mShared.Tree;
   ACancellation.ThrowIfCancellationRequested;
-  Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
+  mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
-    Resolver.Namespaces := Namespaces;
-    Tokens := CollectFor(Resolver, Tree, TDocumentUris.ToPath(Uri), Range, AWithRange, ACancellation);
+    mResolver.Namespaces := Namespaces;
+    mTokens := CollectFor(mResolver, mTree, TDocumentUris.ToPath(mUri), mRange, AWithRange, ACancellation);
     ACancellation.ThrowIfCancellationRequested;
     // Andere Clients kennen die Ziele des Plugins nicht: Es gilt die Vorgabe (lokale Variablen, Wertparameter).
-    MarkReassigned(Tokens, TReassigned.Filter(TLspReassigned.Analyze(Resolver, Tree, TDocumentUris.ToPath(Uri),
-      Document.Text), TReassigned.DefaultTargets));
-    Values := Encode(Tokens);
+    MarkReassigned(mTokens, TReassigned.Filter(TLspReassigned.Analyze(mResolver, mTree, TDocumentUris.ToPath(mUri),
+      mDocument.Text), TReassigned.cDefaultTargets));
+    mValues := Encode(mTokens);
   finally
-    Resolver.Free;
+    mResolver.Free;
   end;
-  Data := TJSONArray.Create;
-  for Value in Values do
+  mData := TJSONArray.Create;
+  for mValue in mValues do
   begin
-    Data.Add(Value);
+    mData.Add(mValue);
   end;
   Result := TJSONObject.Create;
-  TJSONObject(Result).AddPair('data', Data);
+  TJSONObject(Result).AddPair('data', mData);
 end;
 
 function TLspSemanticTokens.HandleFull(const AParams: TJSONValue;

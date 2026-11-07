@@ -28,8 +28,8 @@ uses
 type
   TLspSettingsCommands = class
   public const
-    CheckCommand = 'atlas.server.checkSettings';
-    CatalogCommand = 'atlas.server.settingsCatalog';
+    cCheckCommand = 'atlas.server.checkSettings';
+    cCatalogCommand = 'atlas.server.settingsCatalog';
   public
     /// <summary>{"valid": Boolean, "issues": [{"line", "character", "message", "error"}]}; Zeilen ab 0. AArguments[1]
     /// = "global" prüft den Text als globale Datei, sonst als atlas.json.</summary>
@@ -90,51 +90,51 @@ end;
 
 class function TLspSettingsCommands.Check(const AArguments: TJSONArray): TJSONObject;
 var
-  Issues, Misplaced: TArray<TConfigurationIssue>;
-  Scope: TConfigurationScope;
-  Issue: TConfigurationIssue;
-  Items: TJSONArray;
-  Item: TJSONObject;
-  Valid: Boolean;
+  mIssues, mMisplaced: TArray<TConfigurationIssue>;
+  mScope: TConfigurationScope;
+  mIssue: TConfigurationIssue;
+  mItems: TJSONArray;
+  mItem: TJSONObject;
+  mValid: Boolean;
 begin
-  TConfigurationParser.Parse(FirstString(AArguments), Issues);
-  Scope := TConfigurationScope.Project;
+  TConfigurationParser.Parse(FirstString(AArguments), mIssues);
+  mScope := TConfigurationScope.Project;
   if (AArguments <> nil) and (AArguments.Count > 1) and (AArguments.Items[1] is TJSONString) and
     SameText(AArguments.Items[1].Value, 'global') then
   begin
-    Scope := TConfigurationScope.Global;
+    mScope := TConfigurationScope.Global;
   end;
-  TConfigurationScopes.Filter(FirstString(AArguments), Scope, Misplaced);
-  Issues := Issues + Misplaced;
-  Items := TJSONArray.Create;
-  Valid := True;
-  for Issue in Issues do
+  TConfigurationScopes.Filter(FirstString(AArguments), mScope, mMisplaced);
+  mIssues := mIssues + mMisplaced;
+  mItems := TJSONArray.Create;
+  mValid := True;
+  for mIssue in mIssues do
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('line', TJSONNumber.Create(Issue.Range.StartPos.Line));
-    Item.AddPair('character', TJSONNumber.Create(Issue.Range.StartPos.Character));
-    Item.AddPair('message', Issue.Message);
-    Item.AddPair('error', TJSONBool.Create(Issue.IsError));
-    Items.AddElement(Item);
-    if Issue.IsError then
+    mItem := TJSONObject.Create;
+    mItem.AddPair('line', TJSONNumber.Create(mIssue.Range.StartPos.Line));
+    mItem.AddPair('character', TJSONNumber.Create(mIssue.Range.StartPos.Character));
+    mItem.AddPair('message', mIssue.Message);
+    mItem.AddPair('error', TJSONBool.Create(mIssue.IsError));
+    mItems.AddElement(mItem);
+    if mIssue.IsError then
     begin
-      Valid := False;
+      mValid := False;
     end;
   end;
   Result := TJSONObject.Create;
-  Result.AddPair('valid', TJSONBool.Create(Valid));
-  Result.AddPair('issues', Items);
+  Result.AddPair('valid', TJSONBool.Create(mValid));
+  Result.AddPair('issues', mItems);
 end;
 
 class function TLspSettingsCommands.CatalogEntries(const AArguments: TJSONArray): TArray<TRuleCatalogEntry>;
 var
-  Catalog: TRuleCatalog;
+  mCatalog: TRuleCatalog;
 begin
-  Catalog := TRuleCatalog.Create(RuleCatalogBaseJson, RuleCatalogOverlayJson(FirstString(AArguments)));
+  mCatalog := TRuleCatalog.Create(RuleCatalogBaseJson, RuleCatalogOverlayJson(FirstString(AArguments)));
   try
-    Result := Catalog.Entries;
+    Result := mCatalog.Entries;
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
 end;
 
@@ -235,7 +235,7 @@ begin
   Result := TJSONObject.Create;
   Result.AddPair('rules', mRules);
   Result.AddPair('globalFile', AGlobalFile);
-  Result.AddPair('version', TProductVersion.Version);
+  Result.AddPair('version', TProductVersion.cVersion);
 end;
 
 end.

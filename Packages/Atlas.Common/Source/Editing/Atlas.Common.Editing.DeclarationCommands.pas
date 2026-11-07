@@ -111,87 +111,87 @@ end;
 
 function ExecuteVar(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  Routine: TSyntaxNode;
-  Name, Value: string;
+  mSource: TCommandSource;
+  mRoutine: TSyntaxNode;
+  mName, mValue: string;
 begin
   AEdits := nil;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    Routine := Source.RoutineAt;
-    if Routine = nil then
+    mRoutine := mSource.RoutineAt;
+    if mRoutine = nil then
     begin
       Exit(Fail(cTexts[TDeclarationCommandsText.VarOnlyAppliesInThe].Text, AReason));
     end;
     if Pos(':=', AContext.Arguments) > 0 then
     begin
-      Exit(InlineVarEdit(Source, AContext, AEdits, AReason));
+      Exit(InlineVarEdit(mSource, AContext, AEdits, AReason));
     end;
-    if not SplitDeclaration(AContext.Arguments, ':', Name, Value) then
+    if not SplitDeclaration(AContext.Arguments, ':', mName, mValue) then
     begin
       Exit(Fail(cTexts[TDeclarationCommandsText.ExpectedIsVarNameType].Text, AReason));
     end;
-    AEdits := [AddLocal(Source, Routine, TSyntaxKind.VarSection, 'var', Format('%s: %s;', [Name, Value])),
-      Source.RemoveCommand];
+    AEdits := [AddLocal(mSource, mRoutine, TSyntaxKind.VarSection, 'var', Format('%s: %s;', [mName, mValue])),
+      mSource.RemoveCommand];
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
 function ExecuteConst(const AContext: TSlashContext; AGlobal: Boolean; out AEdits: TArray<TTextEdit>;
   out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  Routine, Section, Node: TSyntaxNode;
-  Name, Value, Declaration: string;
-  Index: Integer;
+  mSource: TCommandSource;
+  mRoutine, mSection, mNode: TSyntaxNode;
+  mName, mValue, mDeclaration: string;
+  mIndex: Integer;
 begin
   AEdits := nil;
-  if not SplitDeclaration(AContext.Arguments, '=', Name, Value) then
+  if not SplitDeclaration(AContext.Arguments, '=', mName, mValue) then
   begin
     Exit(Fail(cTexts[TDeclarationCommandsText.ExpectedIsConstNameValue].Text, AReason));
   end;
-  Declaration := Format('%s = %s;', [Name, Value]);
-  Source := TCommandSource.Create(AContext);
+  mDeclaration := Format('%s = %s;', [mName, mValue]);
+  mSource := TCommandSource.Create(AContext);
   try
     if not AGlobal then
     begin
-      Routine := Source.RoutineAt;
-      if Routine = nil then
+      mRoutine := mSource.RoutineAt;
+      if mRoutine = nil then
       begin
         Exit(Fail(cTexts[TDeclarationCommandsText.ConstOnlyAppliesInThe].Text, AReason));
       end;
-      AEdits := [AddLocal(Source, Routine, TSyntaxKind.ConstSection, 'const', Declaration), Source.RemoveCommand];
+      AEdits := [AddLocal(mSource, mRoutine, TSyntaxKind.ConstSection, 'const', mDeclaration), mSource.RemoveCommand];
       Exit(True);
     end;
-    if Source.ImplementationStart < 0 then
+    if mSource.ImplementationStart < 0 then
     begin
       Exit(Fail(cTexts[TDeclarationCommandsText.ConstNeedsAnImplementationSection].Text, AReason));
     end;
     // Erster const-Abschnitt direkt in der implementation, sonst ein neuer hinter uses.
-    Section := Source.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
-    Node := nil;
-    for Index := 0 to Section.ChildCount - 1 do
+    mSection := mSource.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
+    mNode := nil;
+    for mIndex := 0 to mSection.ChildCount - 1 do
     begin
-      if (Section[Index].Kind = TSyntaxKind.ConstSection) and (Node = nil) then
+      if (mSection[mIndex].Kind = TSyntaxKind.ConstSection) and (mNode = nil) then
       begin
-        Node := Section[Index];
+        mNode := mSection[mIndex];
       end;
     end;
-    if Node <> nil then
+    if mNode <> nil then
     begin
-      AEdits := [Source.AfterLine(Node.EndPos.Line, '  ' + Declaration)];
+      AEdits := [mSource.AfterLine(mNode.EndPos.Line, '  ' + mDeclaration)];
     end
     else
     begin
-      AEdits := [Source.AfterLine(Source.ImplementationStart, Source.LineBreak + 'const' + Source.LineBreak + '  ' +
-        Declaration)];
+      AEdits := [mSource.AfterLine(mSource.ImplementationStart, mSource.LineBreak + 'const' + mSource.LineBreak + '  ' +
+        mDeclaration)];
     end;
-    AEdits := AEdits + [Source.RemoveCommand];
+    AEdits := AEdits + [mSource.RemoveCommand];
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -199,41 +199,41 @@ end;
 
 function ExecuteField(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  ClassSymbol: TIndexSymbol;
-  Name, TypeName, Indent: string;
-  Line: Integer;
+  mSource: TCommandSource;
+  mClassSymbol: TIndexSymbol;
+  mName, mTypeName, mIndent: string;
+  mLine: Integer;
 begin
   AEdits := nil;
-  if not SplitDeclaration(AContext.Arguments, ':', Name, TypeName) then
+  if not SplitDeclaration(AContext.Arguments, ':', mName, mTypeName) then
   begin
     Exit(Fail(cTexts[TDeclarationCommandsText.ExpectedIsFieldNameType].Text, AReason));
   end;
-  if not StartsText('F', Name) or (Length(Name) < 2) or not CharInSet(Name[2], ['A'..'Z']) then
+  if not StartsText('F', mName) or (Length(mName) < 2) or not CharInSet(mName[2], ['A'..'Z']) then
   begin
-    Name := 'F' + UpperCase(Copy(Name, 1, 1)) + Copy(Name, 2, MaxInt);
+    mName := 'F' + UpperCase(Copy(mName, 1, 1)) + Copy(mName, 2, MaxInt);
   end;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    if not Source.ClassAt(ClassSymbol) then
+    if not mSource.ClassAt(mClassSymbol) then
     begin
       Exit(Fail(cTexts[TDeclarationCommandsText.FieldOnlyAppliesInA].Text, AReason));
     end;
-    Line := Source.PrivateLine(ClassSymbol);
-    if Line >= 0 then
+    mLine := mSource.PrivateLine(mClassSymbol);
+    if mLine >= 0 then
     begin
-      AEdits := [Source.AfterLine(Line, Source.Indent(Line) + '  ' + Format('%s: %s;', [Name, TypeName]))];
+      AEdits := [mSource.AfterLine(mLine, mSource.Indent(mLine) + '  ' + Format('%s: %s;', [mName, mTypeName]))];
     end
     else
     begin
-      Indent := Source.Indent(ClassSymbol.Range.EndPos.Line);
-      AEdits := [Source.BeforeLine(ClassSymbol.Range.EndPos.Line, Indent + 'private' + Source.LineBreak + Indent +
-        '  ' + Format('%s: %s;', [Name, TypeName]))];
+      mIndent := mSource.Indent(mClassSymbol.Range.EndPos.Line);
+      AEdits := [mSource.BeforeLine(mClassSymbol.Range.EndPos.Line, mIndent + 'private' + mSource.LineBreak + mIndent +
+        '  ' + Format('%s: %s;', [mName, mTypeName]))];
     end;
-    AEdits := AEdits + [Source.RemoveCommand];
+    AEdits := AEdits + [mSource.RemoveCommand];
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -442,44 +442,44 @@ end;
 
 function ExecuteGuid(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  Symbol, Target: TIndexSymbol;
-  Found: Boolean;
-  Index: Integer;
-  Guid: TGUID;
+  mSource: TCommandSource;
+  mSymbol, mTarget: TIndexSymbol;
+  mFound: Boolean;
+  mIndex: Integer;
+  mGuid: TGUID;
 begin
   AEdits := nil;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    Found := False;
-    Target := Default(TIndexSymbol);
-    for Symbol in Source.UnitIndex.Symbols do
+    mFound := False;
+    mTarget := Default(TIndexSymbol);
+    for mSymbol in mSource.UnitIndex.Symbols do
     begin
-      if (Symbol.Kind = TIndexSymbolKind.InterfaceType) and (Symbol.Range.StartPos.Line < Source.Line) and
-        (Symbol.Range.EndPos.Line >= Source.Line) then
+      if (mSymbol.Kind = TIndexSymbolKind.InterfaceType) and (mSymbol.Range.StartPos.Line < mSource.Line) and
+        (mSymbol.Range.EndPos.Line >= mSource.Line) then
       begin
-        Target := Symbol;
-        Found := True;
+        mTarget := mSymbol;
+        mFound := True;
         Break;
       end;
     end;
-    if not Found then
+    if not mFound then
     begin
       Exit(Fail(cTexts[TDeclarationCommandsText.GuidOnlyAppliesInThe].Text, AReason));
     end;
-    for Index := Target.Range.StartPos.Line to Target.Range.EndPos.Line do
+    for mIndex := mTarget.Range.StartPos.Line to mTarget.Range.EndPos.Line do
     begin
-      if StartsStr('[''{', Trim(Source.Lines[Index])) then
+      if StartsStr('[''{', Trim(mSource.Lines[mIndex])) then
       begin
         Exit(Fail(cTexts[TDeclarationCommandsText.TheInterfaceAlreadyHasA].Text, AReason));
       end;
     end;
-    CreateGUID(Guid);
-    AEdits := [TTextEdit.Create(TTextRange.Create(Source.Line, 0, Source.Line, Length(AContext.LineText)),
-      Copy(AContext.LineText, 1, Pos('/', AContext.LineText) - 1) + Format('[''%s'']', [GUIDToString(Guid)]))];
+    CreateGUID(mGuid);
+    AEdits := [TTextEdit.Create(TTextRange.Create(mSource.Line, 0, mSource.Line, Length(AContext.LineText)),
+      Copy(AContext.LineText, 1, Pos('/', AContext.LineText) - 1) + Format('[''%s'']', [GUIDToString(mGuid)]))];
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 

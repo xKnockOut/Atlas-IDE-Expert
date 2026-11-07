@@ -53,7 +53,7 @@ begin
   mFindings := TRuleAssert.Findings(THandleLeakRule.Create, Routine('  H := OpenProcess(0, False, 1);'#10 +
     '  WaitForSingleObject(H, 0);'));
   Assert.AreEqual(1, Integer(Length(mFindings)));
-  Assert.AreEqual(HandleLeakRuleId, mFindings[0].RuleId);
+  Assert.AreEqual(cHandleLeakRuleId, mFindings[0].RuleId);
   Assert.AreEqual('H wird nie mit CloseHandle geschlossen (Handle-Leck).', mFindings[0].Message);
 end;
 

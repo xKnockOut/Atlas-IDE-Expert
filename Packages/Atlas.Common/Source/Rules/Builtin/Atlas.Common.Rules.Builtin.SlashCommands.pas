@@ -62,21 +62,21 @@ end;
 
 procedure TSlashCommandRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Problem: TSlashProblem;
+  mProblem: TSlashProblem;
 begin
-  for Problem in TSlashCommandRegistry.Shared.Problems(AContext.Text, nil, AContext.Index, AContext.DelphiVersion) do
+  for mProblem in TSlashCommandRegistry.Shared.Problems(AContext.Text, nil, AContext.Index, AContext.DelphiVersion) do
   begin
-    AReport.Add(Problem.Range, Problem.Message);
+    AReport.Add(mProblem.Range, mProblem.Message);
   end;
 end;
 
 function HitsLine(const AFindings: TArray<TRuleFinding>; const AId: string; ALine: Integer): Boolean;
 var
-  Finding: TRuleFinding;
+  mFinding: TRuleFinding;
 begin
-  for Finding in AFindings do
+  for mFinding in AFindings do
   begin
-    if (Finding.Range.StartPos.Line = ALine) and SameText(Finding.RuleId, AId) then
+    if (mFinding.Range.StartPos.Line = ALine) and SameText(mFinding.RuleId, AId) then
     begin
       Exit(True);
     end;
@@ -100,38 +100,39 @@ end;
 procedure TSlashCommandRule.CheckFindings(const AContext: TRuleContext; const AFindings: TArray<TRuleFinding>;
   const ARanIds: TArray<string>; const AReport: IRuleReport);
 var
-  Lines: TArray<string>;
-  Tokens: TArray<TPascalToken>;
-  Index, Space: Integer;
-  Name, Arguments, Id: string;
+  mLines: TArray<string>;
+  mTokens: TArray<TPascalToken>;
+  mIndex, mSpace: Integer;
+  mName, mArguments, mId: string;
 begin
   if Pos('/ignore', AContext.Text) = 0 then
   begin
     Exit;
   end;
-  Lines := TTextLines.SplitLines(AContext.Text);
-  Tokens := nil;
-  for Index := 0 to High(Lines) - 1 do
+  mLines := TTextLines.SplitLines(AContext.Text);
+  mTokens := nil;
+  for mIndex := 0 to High(mLines) - 1 do
   begin
-    if not TSlashCommandRegistry.Split(Lines[Index], Name, Arguments) or not SameText(Name, 'ignore') or
-      (Trim(Lines[Index + 1]) = '') then
+    if not TSlashCommandRegistry.Split(mLines[mIndex], mName, mArguments) or not SameText(mName, 'ignore') or
+      (Trim(mLines[mIndex + 1]) = '') then
     begin
       Continue;
     end;
-    Space := Pos(' ', Arguments + ' ');
-    Id := LowerCase(Copy(Arguments, 1, Space - 1));
-    if (Id = '') or (Pos('*', Id) > 0) or not MatchText(Id, ARanIds) or HitsLine(AFindings, Id, Index + 1) then
+    mSpace := Pos(' ', mArguments + ' ');
+    mId := LowerCase(Copy(mArguments, 1, mSpace - 1));
+    if (mId = '') or (Pos('*', mId) > 0) or not MatchText(mId, ARanIds) or HitsLine(AFindings, mId, mIndex + 1) then
     begin
       Continue;
     end;
-    if Tokens = nil then
+    if mTokens = nil then
     begin
-      Tokens := ContextTokens(AContext);
+      mTokens := ContextTokens(AContext);
     end;
-    if TSlashCommandRegistry.IsCodeLine(Tokens, Index) then
+    if TSlashCommandRegistry.IsCodeLine(mTokens, mIndex) then
     begin
-      AReport.Add(TTextRange.Create(TTextPosition.Create(Index, 0), TTextPosition.Create(Index, Length(Lines[Index]))),
-        Format(IgnoreNoHitHint, [Id]));
+      AReport.Add(TTextRange.Create(TTextPosition.Create(mIndex, 0),
+        TTextPosition.Create(mIndex, Length(mLines[mIndex]))),
+        Format(IgnoreNoHitHint, [mId]));
     end;
   end;
 end;

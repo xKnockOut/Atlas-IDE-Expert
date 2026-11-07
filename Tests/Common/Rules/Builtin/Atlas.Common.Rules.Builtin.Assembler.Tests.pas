@@ -82,7 +82,7 @@ var
 begin
   mFound := Findings(ASource);
   Assert.AreEqual(1, Integer(Length(mFound)), ASource);
-  Assert.AreEqual(AsmInvalidRuleId, mFound[0].RuleId);
+  Assert.AreEqual(cAsmInvalidRuleId, mFound[0].RuleId);
   Assert.AreEqual(AMessage, mFound[0].Message);
   Assert.AreEqual(ALine, mFound[0].Range.StartPos.Line);
 end;

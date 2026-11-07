@@ -63,7 +63,7 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  RawMemoryLeakRuleId = 'raw-memory-leak';
+  cRawMemoryLeakRuleId = 'raw-memory-leak';
 
 { TRawMemoryLeakRule }
 
@@ -75,18 +75,18 @@ type
 
 const
   // Belegungen mit der Variablen als erstem Argument bzw. als Ziel der Zuweisung.
-  RawAllocCalls: array[0..2] of string = ('GetMem', 'New', 'ReallocMem');
-  RawAllocFunctions: array[0..4] of string = ('AllocMem', 'GetMemory', 'StrAlloc', 'StrNew', 'AnsiStrAlloc');
-  RawReleaseCalls: array[0..4] of string = ('FreeMem', 'Dispose', 'StrDispose', 'FreeMemory', 'FreeMemAndNil');
+  cRawAllocCalls: array[0..2] of string = ('GetMem', 'New', 'ReallocMem');
+  cRawAllocFunctions: array[0..4] of string = ('AllocMem', 'GetMemory', 'StrAlloc', 'StrNew', 'AnsiStrAlloc');
+  cRawReleaseCalls: array[0..4] of string = ('FreeMem', 'Dispose', 'StrDispose', 'FreeMemory', 'FreeMemAndNil');
   // Methoden, die den Zeiger übernehmen (in Listen, Felder anderer Objekte).
-  RawStorePrefixes: array[0..11] of string = ('Add', 'Insert', 'Push', 'Enqueue', 'Put', 'Store', 'Register',
+  cRawStorePrefixes: array[0..11] of string = ('Add', 'Insert', 'Push', 'Enqueue', 'Put', 'Store', 'Register',
     'Attach', 'Append', 'Set', 'Assign', 'TryAdd');
   // Teile eines Routinennamens, die auf eine eigene Freigaberoutine schließen lassen.
-  RawReleaseWords: array[0..5] of string = ('Free', 'Frei', 'Release', 'Dispose', 'Destroy', 'Dealloc');
+  cRawReleaseWords: array[0..5] of string = ('Free', 'Frei', 'Release', 'Dispose', 'Destroy', 'Dealloc');
 
 function TRawMemoryLeakRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(RawMemoryLeakRuleId, TRuleSeverity.Warning,
+  Result := TRuleDescriptor.Create(cRawMemoryLeakRuleId, TRuleSeverity.Warning,
     cTexts[TOwnershipRawMemoryText.Title].Text);
 end;
 
@@ -116,11 +116,11 @@ end;
 
 function StartsWithAny(const AName: string; const APrefixes: array of string): Boolean;
 var
-  Prefix: string;
+  mPrefix: string;
 begin
-  for Prefix in APrefixes do
+  for mPrefix in APrefixes do
   begin
-    if StartsText(Prefix, AName) then
+    if StartsText(mPrefix, AName) then
     begin
       Exit(True);
     end;
@@ -130,11 +130,11 @@ end;
 
 function ContainsAny(const AName: string; const AWords: array of string): Boolean;
 var
-  Word: string;
+  mWord: string;
 begin
-  for Word in AWords do
+  for mWord in AWords do
   begin
-    if ContainsText(AName, Word) then
+    if ContainsText(AName, mWord) then
     begin
       Exit(True);
     end;
@@ -145,17 +145,17 @@ end;
 // Typumwandlung wie PByte(P), PChar(P), Pointer(P): ein Argument, Aufruf über einen Typnamen.
 function IsTypeCast(ACall: TSyntaxNode): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
   Result := False;
   if (ACall.ChildCount <> 2) or (ACall[0].Kind <> TSyntaxKind.Identifier) then
   begin
     Exit;
   end;
-  Name := ACall[0].Name;
-  Result := MatchText(Name, ['Pointer', 'NativeInt', 'NativeUInt', 'IntPtr', 'UIntPtr', 'PChar', 'PAnsiChar',
+  mName := ACall[0].Name;
+  Result := MatchText(mName, ['Pointer', 'NativeInt', 'NativeUInt', 'IntPtr', 'UIntPtr', 'PChar', 'PAnsiChar',
     'PWideChar', 'PByte', 'Integer', 'Cardinal', 'Int64', 'UInt64', 'LongInt', 'LongWord']) or
-    ((Length(Name) > 1) and CharInSet(Name[1], ['P', 'T']) and CharInSet(Name[2], ['A'..'Z']));
+    ((Length(mName) > 1) and CharInSet(mName[1], ['P', 'T']) and CharInSet(mName[2], ['A'..'Z']));
 end;
 
 // Art des Vorkommens ANode (Bezeichner der Variablen) vom Knoten aus nach oben bis zur Anweisung.
@@ -180,11 +180,11 @@ begin
   begin
     AUse := TRawMemoryUse.Use;
   end
-  else if ADirect and (ACall[1] = ACurrent) and MatchText(ACall.Name, RawAllocCalls) then
+  else if ADirect and (ACall[1] = ACurrent) and MatchText(ACall.Name, cRawAllocCalls) then
   begin
     AUse := AllocUse(ACall);
   end
-  else if MatchText(ACall.Name, RawReleaseCalls) or ContainsAny(ACall.Name, RawReleaseWords) then
+  else if MatchText(ACall.Name, cRawReleaseCalls) or ContainsAny(ACall.Name, cRawReleaseWords) then
   begin
     AUse := TRawMemoryUse.Release;
   end
@@ -196,7 +196,7 @@ begin
   begin
     Result := False;
   end
-  else if (ACall[0].Kind = TSyntaxKind.MemberAccess) and StartsWithAny(ACall.Name, RawStorePrefixes) then
+  else if (ACall[0].Kind = TSyntaxKind.MemberAccess) and StartsWithAny(ACall.Name, cRawStorePrefixes) then
   begin
     AUse := TRawMemoryUse.Escape;
   end;
@@ -223,7 +223,7 @@ begin
   end;
   // Neue Zuweisung (P := Q, P := nil): Herkunft unklar.
   Result := TRawMemoryUse.Escape;
-  if (mValue <> nil) and (mValue.Kind = TSyntaxKind.Call) and MatchText(mValue.Name, RawAllocFunctions) then
+  if (mValue <> nil) and (mValue.Kind = TSyntaxKind.Call) and MatchText(mValue.Name, cRawAllocFunctions) then
   begin
     Result := TRawMemoryUse.Alloc;
   end;
@@ -282,74 +282,74 @@ end;
 
 procedure Occurrences(ANode: TSyntaxNode; const AName: string; var AFound: TArray<TSyntaxNode>);
 var
-  Pending: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Index: Integer;
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
 begin
   // Iterativ (Bericht M1), Reihenfolge wie die frühere Rekursion.
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ANode);
-    while Pending.Count > 0 do
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      if (Node.Kind = TSyntaxKind.Identifier) and SameText(Node.Name, AName) and
-        not ((Node.Parent <> nil) and (Node.Parent.Kind = TSyntaxKind.MemberAccess) and (Node.Parent[0] <> Node))
+      mNode := mPending.Pop;
+      if (mNode.Kind = TSyntaxKind.Identifier) and SameText(mNode.Name, AName) and
+        not ((mNode.Parent <> nil) and (mNode.Parent.Kind = TSyntaxKind.MemberAccess) and (mNode.Parent[0] <> mNode))
         then
       begin
-        AFound := AFound + [Node];
+        AFound := AFound + [mNode];
       end;
-      for Index := Node.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(Node[Index]);
+        mPending.Push(mNode[mIndex]);
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
 function HasAsm(ANode: TSyntaxNode): Boolean;
 var
-  Pending: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Index: Integer;
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
 begin
   // Iterativ (Bericht M1).
   Result := False;
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ANode);
-    while Pending.Count > 0 do
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      if Node.Kind = TSyntaxKind.AsmBlock then
+      mNode := mPending.Pop;
+      if mNode.Kind = TSyntaxKind.AsmBlock then
       begin
         Exit(True);
       end;
-      for Index := Node.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(Node[Index]);
+        mPending.Push(mNode[mIndex]);
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
 // Steht ANode in einer anonymen Methode der Routine (die Variable wird eingefangen)?
 function InsideAnonymous(ANode, ARoutine: TSyntaxNode): Boolean;
 var
-  Current: TSyntaxNode;
+  mCurrent: TSyntaxNode;
 begin
-  Current := ANode.Parent;
-  while (Current <> nil) and (Current <> ARoutine) do
+  mCurrent := ANode.Parent;
+  while (mCurrent <> nil) and (mCurrent <> ARoutine) do
   begin
-    if Current.Kind = TSyntaxKind.AnonymousMethod then
+    if mCurrent.Kind = TSyntaxKind.AnonymousMethod then
     begin
       Exit(True);
     end;
-    Current := Current.Parent;
+    mCurrent := mCurrent.Parent;
   end;
   Result := False;
 end;
@@ -460,28 +460,28 @@ end;
 
 procedure TRawMemoryScan.CheckVariable(ARoutine: TSyntaxNode; const AName: string);
 var
-  First, Statement: TSyntaxNode;
-  Allocator, Release: string;
-  Edit: TTextEdit;
-  Fixes: TArray<TRuleFix>;
+  mFirst, mStatement: TSyntaxNode;
+  mAllocator, mRelease: string;
+  mEdit: TTextEdit;
+  mFixes: TArray<TRuleFix>;
 begin
   // Lokale Routinen sehen die Variable ebenfalls: dort könnte sie freigegeben werden.
-  if not KeptAllocation(ARoutine, AName, First) or MentionedInLocalRoutine(ARoutine, AName) then
+  if not KeptAllocation(ARoutine, AName, mFirst) or MentionedInLocalRoutine(ARoutine, AName) then
   begin
     Exit;
   end;
-  Allocator := AllocatorOf(First);
-  Release := TRawMemoryLeakRule.ReleaseFor(Allocator);
-  Statement := StatementOf(First);
-  Fixes := nil;
-  if (Release <> '') and (Statement <> nil) and TTryFinallyWrap.Create(FLines, FLineBreak,
-    FContext.Formatting).Wrap(Statement, '', Release + '(' + AName + ');', Edit) then
+  mAllocator := AllocatorOf(mFirst);
+  mRelease := TRawMemoryLeakRule.ReleaseFor(mAllocator);
+  mStatement := StatementOf(mFirst);
+  mFixes := nil;
+  if (mRelease <> '') and (mStatement <> nil) and TTryFinallyWrap.Create(FLines, FLineBreak,
+    FContext.Formatting).Wrap(mStatement, '', mRelease + '(' + AName + ');', mEdit) then
   begin
-    Fixes := [TRuleFix.Create(cTexts[TOwnershipRawMemoryText.InsertTryFinally].Fmt([Release, AName]), [Edit])];
+    mFixes := [TRuleFix.Create(cTexts[TOwnershipRawMemoryText.InsertTryFinally].Fmt([mRelease, AName]), [mEdit])];
   end;
-  FReport.Add(TTextRange.Create(Statement.StartPos, Statement.EndPos),
-    cTexts[TOwnershipRawMemoryText.NeverReleased].Fmt([AName, Allocator]), TRuleConfidence.Medium,
-    Fixes);
+  FReport.Add(TTextRange.Create(mStatement.StartPos, mStatement.EndPos),
+    cTexts[TOwnershipRawMemoryText.NeverReleased].Fmt([AName, mAllocator]), TRuleConfidence.Medium,
+    mFixes);
 end;
 
 procedure TRawMemoryScan.CheckRoutine(ARoutine: TSyntaxNode);
@@ -503,50 +503,50 @@ end;
 
 procedure TRawMemoryScan.Visit(ANode: TSyntaxNode);
 var
-  Pending: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Index: Integer;
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
 begin
   // Iterativ (Bericht M1).
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ANode);
-    while Pending.Count > 0 do
+    mPending.Push(ANode);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      if Node.Kind = TSyntaxKind.RoutineDecl then
+      mNode := mPending.Pop;
+      if mNode.Kind = TSyntaxKind.RoutineDecl then
       begin
-        CheckRoutine(Node);
+        CheckRoutine(mNode);
       end;
-      for Index := Node.ChildCount - 1 downto 0 do
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(Node[Index]);
+        mPending.Push(mNode[mIndex]);
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
 procedure TRawMemoryScan.Run;
 var
-  Word: string;
-  Any: Boolean;
+  mWord: string;
+  mAny: Boolean;
 begin
   if (FContext.Tree = nil) or (FContext.Tree.Root = nil) then
   begin
     Exit;
   end;
-  Any := False;
-  for Word in RawAllocCalls do
+  mAny := False;
+  for mWord in cRawAllocCalls do
   begin
-    Any := Any or ContainsText(FContext.Text, Word);
+    mAny := mAny or ContainsText(FContext.Text, mWord);
   end;
-  for Word in RawAllocFunctions do
+  for mWord in cRawAllocFunctions do
   begin
-    Any := Any or ContainsText(FContext.Text, Word);
+    mAny := mAny or ContainsText(FContext.Text, mWord);
   end;
-  if not Any then
+  if not mAny then
   begin
     Exit;
   end;

@@ -24,7 +24,7 @@ type
 
   TLspIndexRefresh = class
   public const
-    DefaultDelayMs = 500;
+    cDefaultDelayMs = 500;
   private
     FDebouncer: TDebouncer;
     FApply: TIndexTextApply;
@@ -82,25 +82,25 @@ end;
 
 class function TLspIndexRefresh.Applies(const AFileName: string): Boolean;
 var
-  Extension: string;
+  mExtension: string;
 begin
-  Extension := LowerCase(ExtractFileExt(AFileName));
-  Result := (Extension = '.pas') or (Extension = '.dpr');
+  mExtension := LowerCase(ExtractFileExt(AFileName));
+  Result := (mExtension = '.pas') or (mExtension = '.dpr');
 end;
 
 procedure TLspIndexRefresh.Changed(const AFileName, AText: string);
 var
-  Apply: TIndexTextApply;
+  mApply: TIndexTextApply;
 begin
   if not Applies(AFileName) or not Assigned(FApply) then
   begin
     Exit;
   end;
-  Apply := FApply;
+  mApply := FApply;
   FDebouncer.Schedule(AnsiUpperCase(AFileName),
     procedure
     begin
-      Apply(AFileName, AText);
+      mApply(AFileName, AText);
     end);
 end;
 
@@ -137,16 +137,16 @@ end;
 
 class function TLspUsesChanges.Signature(const AText: string): string;
 var
-  Reference: TUsesReference;
+  mReference: TUsesReference;
 begin
   Result := '';
-  for Reference in TUsesClauses.References(TPascalLexer.Tokenize(AText)) do
+  for mReference in TUsesClauses.References(TPascalLexer.Tokenize(AText)) do
   begin
     if Result <> '' then
     begin
       Result := Result + '|';
     end;
-    if Reference.InInterface then
+    if mReference.InInterface then
     begin
       Result := Result + 'I:';
     end
@@ -154,19 +154,19 @@ begin
     begin
       Result := Result + 'M:';
     end;
-    Result := Result + UpperCase(Reference.Name);
+    Result := Result + UpperCase(mReference.Name);
   end;
 end;
 
 function TLspUsesChanges.Changed(const AFileName, AText: string): Boolean;
 var
-  Current, Previous: string;
+  mCurrent, mPrevious: string;
 begin
-  Current := Signature(AText);
+  mCurrent := Signature(AText);
   System.TMonitor.Enter(FLock);
   try
-    Result := not FSignatures.TryGetValue(UpperCase(AFileName), Previous) or (Previous <> Current);
-    FSignatures.AddOrSetValue(UpperCase(AFileName), Current);
+    Result := not FSignatures.TryGetValue(UpperCase(AFileName), mPrevious) or (mPrevious <> mCurrent);
+    FSignatures.AddOrSetValue(UpperCase(AFileName), mCurrent);
   finally
     System.TMonitor.Exit(FLock);
   end;

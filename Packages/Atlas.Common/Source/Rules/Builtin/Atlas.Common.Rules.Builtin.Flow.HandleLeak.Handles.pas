@@ -62,7 +62,7 @@ const
   /// <summary>Öffnen|Ort|Schließen: Ort r = Ergebnis, Zahlen = out-Argumente (ab 0), Zahl:Feld,Feld = Felder
   /// eines Record-Arguments (CreateProcess). Im Schließen steht %h für das Handle, %0 für das erste Argument
   /// des Öffnens. Namen mit A/W am Ende gelten mit.</summary>
-  BuiltinHandlePairs: array[0..64] of string = (
+  cBuiltinHandlePairs: array[0..64] of string = (
     'CreateFile|r|CloseHandle(%h)', 'CreateEvent|r|CloseHandle(%h)', 'CreateEventEx|r|CloseHandle(%h)',
     'CreateMutex|r|CloseHandle(%h)', 'CreateSemaphore|r|CloseHandle(%h)', 'CreateWaitableTimer|r|CloseHandle(%h)',
     'CreateThread|r|CloseHandle(%h)', 'CreateRemoteThread|r|CloseHandle(%h)', 'OpenProcess|r|CloseHandle(%h)',
@@ -91,7 +91,7 @@ const
     'RegOpenKeyEx|4|RegCloseKey(%h)', 'RegCreateKeyEx|7|RegCloseKey(%h)', 'MapViewOfFile|r|UnmapViewOfFile(%h)');
   /// <summary>Routinen, die ein Handle nur benutzen und es nicht übernehmen; jede andere Übergabe zählt als
   /// Weitergabe.</summary>
-  HandleUsers: array[0..75] of string = ('WaitForSingleObject', 'WaitForSingleObjectEx', 'WaitForInputIdle',
+  cHandleUsers: array[0..75] of string = ('WaitForSingleObject', 'WaitForSingleObjectEx', 'WaitForInputIdle',
     'MsgWaitForMultipleObjects', 'SignalObjectAndWait', 'ReadFile', 'WriteFile', 'ReadFileEx', 'WriteFileEx',
     'GetFileSize', 'GetFileSizeEx', 'SetFilePointer', 'SetFilePointerEx', 'SetEndOfFile', 'FlushFileBuffers',
     'GetFileTime', 'SetFileTime', 'GetFileType', 'GetFileInformationByHandle', 'LockFile', 'UnlockFile',
@@ -107,118 +107,118 @@ const
     'FillRect', 'FrameRect', 'FillRgn', 'PatBlt');
 
   /// <summary>Aufrufe, die ein Handle nur prüfen, umwandeln oder ausgeben.</summary>
-  NeutralCalls: array[0..11] of string = ('Win32Check', 'CheckOSError', 'Assigned', 'Ord', 'Integer', 'Cardinal',
+  cNeutralCalls: array[0..11] of string = ('Win32Check', 'CheckOSError', 'Assigned', 'Ord', 'Integer', 'Cardinal',
     'NativeInt', 'NativeUInt', 'THandle', 'IntToStr', 'IntToHex', 'Format');
   /// <summary>Units, deren Präfix vor einem Aufruf stehen darf.</summary>
-  ApiUnits: array[0..7] of string = ('Windows', 'Winapi.Windows', 'ShellAPI', 'Winapi.ShellAPI', 'TlHelp32',
+  cApiUnits: array[0..7] of string = ('Windows', 'Winapi.Windows', 'ShellAPI', 'Winapi.ShellAPI', 'TlHelp32',
     'Winapi.TlHelp32', 'WinSvc', 'Winapi.WinSvc');
 
 /// <summary>Ein Eintrag der Option pairs als "Öffnen|r|Schließen(%h)"; '' bei ungültigem Eintrag.</summary>
 function OptionPair(AItem: TJSONValue): string;
 var
-  Open, Close: string;
+  mOpen, mClose: string;
 begin
   Result := '';
-  Open := '';
-  Close := '';
+  mOpen := '';
+  mClose := '';
   // "MeinOeffnen>MeinSchliessen" bzw. {"open": "MeinOeffnen", "close": "MeinSchliessen"}.
   if (AItem is TJSONString) and (Pos('>', AItem.Value) > 1) then
   begin
-    Open := Trim(Copy(AItem.Value, 1, Pos('>', AItem.Value) - 1));
-    Close := Trim(Copy(AItem.Value, Pos('>', AItem.Value) + 1, MaxInt));
+    mOpen := Trim(Copy(AItem.Value, 1, Pos('>', AItem.Value) - 1));
+    mClose := Trim(Copy(AItem.Value, Pos('>', AItem.Value) + 1, MaxInt));
   end
-  else if (AItem is TJSONObject) and TJSONObject(AItem).TryGetValue<string>('open', Open) and
-    TJSONObject(AItem).TryGetValue<string>('close', Close) then
+  else if (AItem is TJSONObject) and TJSONObject(AItem).TryGetValue<string>('open', mOpen) and
+    TJSONObject(AItem).TryGetValue<string>('close', mClose) then
   begin
-    Open := Trim(Open);
-    Close := Trim(Close);
+    mOpen := Trim(mOpen);
+    mClose := Trim(mClose);
   end;
-  if (Open <> '') and (Close <> '') and IsValidIdent(Open, True) and IsValidIdent(Close, True) then
+  if (mOpen <> '') and (mClose <> '') and IsValidIdent(mOpen, True) and IsValidIdent(mClose, True) then
   begin
-    Result := Open + '|r|' + Close + '(%h)';
+    Result := mOpen + '|r|' + mClose + '(%h)';
   end;
 end;
 
 /// <summary>Gültige Einträge der Liste AList (TJSONArray); sonst keine.</summary>
 function OptionPairs(AList: TJSONValue): TArray<string>;
 var
-  Item: TJSONValue;
-  Pair: string;
+  mItem: TJSONValue;
+  mPair: string;
 begin
   Result := nil;
   if not (AList is TJSONArray) then
   begin
     Exit;
   end;
-  for Item in TJSONArray(AList) do
+  for mItem in TJSONArray(AList) do
   begin
-    Pair := OptionPair(Item);
-    if Pair <> '' then
+    mPair := OptionPair(mItem);
+    if mPair <> '' then
     begin
-      Result := Result + [Pair];
+      Result := Result + [mPair];
     end;
   end;
 end;
 
 function HandlePairs(const AOptions: string): TArray<string>;
 var
-  Value: TJSONValue;
-  Pair: string;
+  mValue: TJSONValue;
+  mPair: string;
 begin
   Result := nil;
-  for Pair in BuiltinHandlePairs do
+  for mPair in cBuiltinHandlePairs do
   begin
-    Result := Result + [Pair];
+    Result := Result + [mPair];
   end;
   if Trim(AOptions) = '' then
   begin
     Exit;
   end;
-  Value := TJSONObject.ParseJSONValue(AOptions);
+  mValue := TJSONObject.ParseJSONValue(AOptions);
   try
-    if Value is TJSONObject then
+    if mValue is TJSONObject then
     begin
-      Result := Result + OptionPairs(TJSONObject(Value).GetValue('pairs'));
+      Result := Result + OptionPairs(TJSONObject(mValue).GetValue('pairs'));
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 function HandleTable(const APairs: TArray<string>): TArray<THandlePair>;
 var
-  Pair: string;
-  Item: THandlePair;
+  mPair: string;
+  mItem: THandlePair;
 begin
   Result := nil;
-  for Pair in APairs do
+  for mPair in APairs do
   begin
-    Item.Open := Copy(Pair, 1, Pos('|', Pair) - 1);
-    Item.Where := Copy(Pair, Pos('|', Pair) + 1, MaxInt);
-    Item.Close := Copy(Item.Where, Pos('|', Item.Where) + 1, MaxInt);
-    Item.Where := Copy(Item.Where, 1, Pos('|', Item.Where) - 1);
-    Result := Result + [Item];
+    mItem.Open := Copy(mPair, 1, Pos('|', mPair) - 1);
+    mItem.Where := Copy(mPair, Pos('|', mPair) + 1, MaxInt);
+    mItem.Close := Copy(mItem.Where, Pos('|', mItem.Where) + 1, MaxInt);
+    mItem.Where := Copy(mItem.Where, 1, Pos('|', mItem.Where) - 1);
+    Result := Result + [mItem];
   end;
 end;
 
 function CallName(const AText: string; ACall: TSyntaxNode): string;
 var
-  Callee: TSyntaxNode;
+  mCallee: TSyntaxNode;
 begin
   Result := '';
   if (ACall.Kind <> TSyntaxKind.Call) or (ACall.ChildCount = 0) then
   begin
     Exit;
   end;
-  Callee := ACall[0];
-  if Callee.Kind = TSyntaxKind.Identifier then
+  mCallee := ACall[0];
+  if mCallee.Kind = TSyntaxKind.Identifier then
   begin
-    Result := Callee.Name;
+    Result := mCallee.Name;
   end
-  else if (Callee.Kind = TSyntaxKind.MemberAccess) and (Callee.ChildCount = 1) and
-    MatchText(Trim(SourceText(AText, Callee[0])), ApiUnits) then
+  else if (mCallee.Kind = TSyntaxKind.MemberAccess) and (mCallee.ChildCount = 1) and
+    MatchText(Trim(SourceText(AText, mCallee[0])), cApiUnits) then
   begin
-    Result := Callee.Name;
+    Result := mCallee.Name;
   end;
 end;
 
@@ -245,22 +245,22 @@ end;
 /// <summary>Steht APath unter den Argumenten des Aufrufs ACall?</summary>
 function PassesHandlePath(ACall: TSyntaxNode; const APath: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := False;
-  for Index := 1 to ACall.ChildCount - 1 do
+  for mIndex := 1 to ACall.ChildCount - 1 do
   begin
-    Result := Result or SameText(HandlePath(ACall[Index]), APath);
+    Result := Result or SameText(HandlePath(ACall[mIndex]), APath);
   end;
 end;
 
 function ClosesHandle(const AText: string; ARoot: TSyntaxNode; const AHandle: TOpenedHandle): Boolean;
 var
-  Text: string;
-  Handle: TOpenedHandle;
+  mText: string;
+  mHandle: TOpenedHandle;
 begin
-  Text := AText;
-  Handle := AHandle;
+  mText := AText;
+  mHandle := AHandle;
   // Iterativ (Bericht M1).
   Result := ARoot.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
@@ -270,8 +270,8 @@ begin
       begin
         Result := TSyntaxSearchStep.Skip;
       end
-      else if (ANode.Kind = TSyntaxKind.Call) and SameRoutine(CallName(Text, ANode), Handle.CloseName) and
-        PassesHandlePath(ANode, Handle.Path) then
+      else if (ANode.Kind = TSyntaxKind.Call) and SameRoutine(CallName(mText, ANode), mHandle.CloseName) and
+        PassesHandlePath(ANode, mHandle.Path) then
       begin
         Result := TSyntaxSearchStep.Found;
       end;
@@ -294,15 +294,15 @@ end;
 
 function MentionsHandle(ARoot: TSyntaxNode; const AHandle: TOpenedHandle): Boolean;
 var
-  Handle: TOpenedHandle;
+  mHandle: TOpenedHandle;
 begin
-  Handle := AHandle;
+  mHandle := AHandle;
   // Iterativ (Bericht M1).
   Result := ARoot.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
       Result := TSyntaxSearchStep.Descend;
-      if MentionedHere(ANode, Handle) then
+      if MentionedHere(ANode, mHandle) then
       begin
         Result := TSyntaxSearchStep.Found;
       end;
@@ -310,25 +310,26 @@ begin
 end;
 
 /// <summary>Ist E das Handle selbst, seine Wurzel (PI) oder eine Typumwandlung davon (THandle(H), (H))?</summary>
-function IsHandleValue(E: TSyntaxNode; const AHandle: TOpenedHandle): Boolean;
+function IsHandleValue(AE: TSyntaxNode; const AHandle: TOpenedHandle): Boolean;
 begin
   // Iterativ (Bericht M1): an Klammern und Typumwandlungen entlang nach innen.
   Result := False;
   while True do
   begin
-    if SameText(HandlePath(E), AHandle.Path) or ((E.Kind = TSyntaxKind.Identifier) and SameText(E.Name, AHandle.Root)) then
+    if SameText(HandlePath(AE), AHandle.Path) or
+      ((AE.Kind = TSyntaxKind.Identifier) and SameText(AE.Name, AHandle.Root)) then
     begin
       Exit(True);
     end;
-    if (E.Kind = TSyntaxKind.ParenExpr) and (E.ChildCount = 1) then
+    if (AE.Kind = TSyntaxKind.ParenExpr) and (AE.ChildCount = 1) then
     begin
-      E := E[0];
+      AE := AE[0];
     end
-    else if (E.Kind = TSyntaxKind.Call) and (E.ChildCount = 2) and (E[0].Kind = TSyntaxKind.Identifier) and
-      MatchText(E[0].Name, ['THandle', 'HWND', 'HMODULE', 'HKEY', 'HDC', 'HGDIOBJ', 'Integer', 'Cardinal',
+    else if (AE.Kind = TSyntaxKind.Call) and (AE.ChildCount = 2) and (AE[0].Kind = TSyntaxKind.Identifier) and
+      MatchText(AE[0].Name, ['THandle', 'HWND', 'HMODULE', 'HKEY', 'HDC', 'HGDIOBJ', 'Integer', 'Cardinal',
       'NativeInt', 'NativeUInt', 'Pointer', 'UIntPtr', 'IntPtr']) then
     begin
-      E := E[1];
+      AE := AE[1];
     end
     else
     begin
@@ -360,28 +361,28 @@ end;
 /// <summary>Benutzt die Routine AName das Handle nur, ohne es zu übernehmen?</summary>
 function IsHandleUser(const AName: string; const AHandle: TOpenedHandle): Boolean;
 begin
-  Result := MatchText(AName, HandleUsers) or SameRoutine(AName, AHandle.CloseName) or
-    MatchText(AName, NeutralCalls);
+  Result := MatchText(AName, cHandleUsers) or SameRoutine(AName, AHandle.CloseName) or
+    MatchText(AName, cNeutralCalls);
 end;
 
 function MentionedInArguments(ACall: TSyntaxNode; const AHandle: TOpenedHandle): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := False;
-  for Index := 1 to ACall.ChildCount - 1 do
+  for mIndex := 1 to ACall.ChildCount - 1 do
   begin
-    Result := Result or MentionsHandle(ACall[Index], AHandle);
+    Result := Result or MentionsHandle(ACall[mIndex], AHandle);
   end;
 end;
 
 /// <summary>Übergabe an Exit oder an eine Routine, die das Handle übernehmen kann.</summary>
 function HandsToCall(const AText: string; ACall: TSyntaxNode; const AHandle: TOpenedHandle): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
-  Name := CallName(AText, ACall);
-  Result := SameText(Name, 'Exit') or not IsHandleUser(Name, AHandle);
+  mName := CallName(AText, ACall);
+  Result := SameText(mName, 'Exit') or not IsHandleUser(mName, AHandle);
   Result := Result and MentionedInArguments(ACall, AHandle);
 end;
 
@@ -422,20 +423,20 @@ end;
 function PassesOn(const AText: string; ARoot: TSyntaxNode; const AHandle: TOpenedHandle; AOpenCall: TSyntaxNode;
   const ALocals: TArray<string>): Boolean;
 var
-  Text: string;
-  Handle: TOpenedHandle;
-  OpenCall: TSyntaxNode;
-  Locals: TArray<string>;
+  mText: string;
+  mHandle: TOpenedHandle;
+  mOpenCall: TSyntaxNode;
+  mLocals: TArray<string>;
 begin
-  Text := AText;
-  Handle := AHandle;
-  OpenCall := AOpenCall;
-  Locals := ALocals;
+  mText := AText;
+  mHandle := AHandle;
+  mOpenCall := AOpenCall;
+  mLocals := ALocals;
   // Iterativ (Bericht M1).
   Result := ARoot.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
-      Result := PassStep(Text, ANode, Handle, OpenCall, Locals);
+      Result := PassStep(mText, ANode, mHandle, mOpenCall, mLocals);
     end) <> nil;
 end;
 
@@ -483,18 +484,18 @@ end;
 /// <summary>Wert eines Vergleichs mit dem Handle (H &lt;&gt; 0, RegOpenKeyEx(…) = ERROR_SUCCESS); 0 sonst.</summary>
 function ComparisonSuccess(ANode, AOpenCall: TSyntaxNode; const AHandle: TOpenedHandle): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := 0;
   if not MatchText(ANode.Name, ['=', '<>']) then
   begin
     Exit;
   end;
-  for Index := 0 to 1 do
+  for mIndex := 0 to 1 do
   begin
-    if (Result = 0) and IsOpenedValue(ANode[Index], AOpenCall, AHandle) then
+    if (Result = 0) and IsOpenedValue(ANode[mIndex], AOpenCall, AHandle) then
     begin
-      Result := ComparedVerdict(ANode[1 - Index], ANode.Name = '=');
+      Result := ComparedVerdict(ANode[1 - mIndex], ANode.Name = '=');
     end;
   end;
 end;
@@ -516,7 +517,7 @@ end;
 /// <summary>Fasst die Werte der Teile von ANode zusammen; sie liegen oben auf AValues.</summary>
 function CombinedSuccess(ANode: TSyntaxNode; AValues: TStack<Integer>): Integer;
 var
-  Left, Right: Integer;
+  mLeft, mRight: Integer;
 begin
   if ANode.Kind = TSyntaxKind.ParenExpr then
   begin
@@ -528,9 +529,9 @@ begin
   end
   else
   begin
-    Right := AValues.Pop;
-    Left := AValues.Pop;
-    Result := JunctionSuccess(ANode.Name, Left, Right);
+    mRight := AValues.Pop;
+    mLeft := AValues.Pop;
+    Result := JunctionSuccess(ANode.Name, mLeft, mRight);
   end;
 end;
 
@@ -544,7 +545,7 @@ end;
 procedure EnterSuccess(ANode: TSyntaxNode; const AHandle: TOpenedHandle; AOpenCall: TSyntaxNode;
   APending: TStack<TSyntaxPostOrderEntry>; AValues: TStack<Integer>);
 var
-  Value: Integer;
+  mValue: Integer;
 begin
   if IsWrapper(ANode) then
   begin
@@ -552,16 +553,16 @@ begin
     APending.Push(TSyntaxPostOrderEntry.Create(ANode[0], False));
     Exit;
   end;
-  Value := 0;
+  mValue := 0;
   // if CreateProcess(…) then, Win32Check(…)
   if ANode = AOpenCall then
   begin
-    Value := 1;
+    mValue := 1;
   end
   else if (ANode.Kind = TSyntaxKind.BinaryExpr) and (ANode.ChildCount = 2) then
   begin
-    Value := ComparisonSuccess(ANode, AOpenCall, AHandle);
-    if (Value = 0) and MatchText(ANode.Name, ['and', 'or']) then
+    mValue := ComparisonSuccess(ANode, AOpenCall, AHandle);
+    if (mValue = 0) and MatchText(ANode.Name, ['and', 'or']) then
     begin
       APending.Push(TSyntaxPostOrderEntry.Create(ANode, True));
       APending.Push(TSyntaxPostOrderEntry.Create(ANode[1], False));
@@ -569,37 +570,37 @@ begin
       Exit;
     end;
   end;
-  AValues.Push(Value);
+  AValues.Push(mValue);
 end;
 
 function OpenSuccess(ARoot: TSyntaxNode; const AHandle: TOpenedHandle; AOpenCall: TSyntaxNode): Integer;
 var
-  Pending: TStack<TSyntaxPostOrderEntry>;
-  Values: TStack<Integer>;
-  Entry: TSyntaxPostOrderEntry;
+  mPending: TStack<TSyntaxPostOrderEntry>;
+  mValues: TStack<Integer>;
+  mEntry: TSyntaxPostOrderEntry;
 begin
   // Iterativ (Bericht M1): Nachordnung mit Wertestapel; lange and/or-Ketten sind tiefe Bäume. Die Auswertung
   // hat keine Nebenwirkungen, daher darf sie ohne Kurzschluss beide Operanden berechnen.
-  Pending := TStack<TSyntaxPostOrderEntry>.Create;
-  Values := TStack<Integer>.Create;
+  mPending := TStack<TSyntaxPostOrderEntry>.Create;
+  mValues := TStack<Integer>.Create;
   try
-    Pending.Push(TSyntaxPostOrderEntry.Create(ARoot, False));
-    while Pending.Count > 0 do
+    mPending.Push(TSyntaxPostOrderEntry.Create(ARoot, False));
+    while mPending.Count > 0 do
     begin
-      Entry := Pending.Pop;
-      if Entry.Done then
+      mEntry := mPending.Pop;
+      if mEntry.Done then
       begin
-        Values.Push(CombinedSuccess(Entry.Node, Values));
+        mValues.Push(CombinedSuccess(mEntry.Node, mValues));
       end
       else
       begin
-        EnterSuccess(Entry.Node, AHandle, AOpenCall, Pending, Values);
+        EnterSuccess(mEntry.Node, AHandle, AOpenCall, mPending, mValues);
       end;
     end;
-    Result := Values.Pop;
+    Result := mValues.Pop;
   finally
-    Values.Free;
-    Pending.Free;
+    mValues.Free;
+    mPending.Free;
   end;
 end;
 

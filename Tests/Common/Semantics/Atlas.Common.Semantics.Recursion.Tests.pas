@@ -303,7 +303,7 @@ begin
   end;
   try
     Watch := TStopwatch.StartNew;
-    Calls := TRecursionAnalysis.Calls(Tree, TRecursionAnalysis.DefaultDepth);
+    Calls := TRecursionAnalysis.Calls(Tree, TRecursionAnalysis.cDefaultDepth);
     Watch.Stop;
     Assert.IsTrue(Length(Calls) > 0);
     Assert.IsTrue(Watch.ElapsedMilliseconds < 50, Format('%d ms', [Watch.ElapsedMilliseconds]));

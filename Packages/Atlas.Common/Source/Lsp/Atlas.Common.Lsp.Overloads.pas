@@ -29,11 +29,11 @@ uses
 type
   TLspOverloads = class
   public const
-    ClientCommand = 'atlas.createOverload';
-    ApplyCommand = 'atlas.server.createOverload';
-    ActionKind = 'refactor.rewrite';
-    CopyName = 'copy';
-    ForwardName = 'forward';
+    cClientCommand = 'atlas.createOverload';
+    cApplyCommand = 'atlas.server.createOverload';
+    cActionKind = 'refactor.rewrite';
+    cCopyName = 'copy';
+    cForwardName = 'forward';
   public
     class function KindName(AKind: TOverloadKind): string; static;
     class function KindOf(const AName: string; out AKind: TOverloadKind): Boolean; static;
@@ -79,22 +79,22 @@ class function TLspOverloads.KindName(AKind: TOverloadKind): string;
 begin
   if AKind = TOverloadKind.Forward then
   begin
-    Result := ForwardName;
+    Result := cForwardName;
   end
   else
   begin
-    Result := CopyName;
+    Result := cCopyName;
   end;
 end;
 
 class function TLspOverloads.KindOf(const AName: string; out AKind: TOverloadKind): Boolean;
 begin
   Result := True;
-  if SameText(AName, ForwardName) then
+  if SameText(AName, cForwardName) then
   begin
     AKind := TOverloadKind.Forward;
   end
-  else if SameText(AName, CopyName) then
+  else if SameText(AName, cCopyName) then
   begin
     AKind := TOverloadKind.Copy;
   end
@@ -108,70 +108,70 @@ end;
 function NewAction(const AUri: string; const APosition: TTextPosition; const ATarget: TOverloadTarget;
   AKind: TOverloadKind): TJSONObject;
 var
-  Command: TJSONObject;
-  Arguments: TJSONArray;
-  Title, Reason: string;
+  mCommand: TJSONObject;
+  mArguments: TJSONArray;
+  mTitle, mReason: string;
 begin
-  Title := ATarget.Title(AKind);
-  Reason := ATarget.Reason(AKind);
+  mTitle := ATarget.Title(AKind);
+  mReason := ATarget.Reason(AKind);
   Result := TJSONObject.Create;
-  Result.AddPair('title', Title);
-  Result.AddPair('kind', TLspOverloads.ActionKind);
-  if Reason <> '' then
+  Result.AddPair('title', mTitle);
+  Result.AddPair('kind', TLspOverloads.cActionKind);
+  if mReason <> '' then
   begin
-    Result.AddPair('disabled', TJSONObject.Create(TJSONPair.Create('reason', Reason)));
+    Result.AddPair('disabled', TJSONObject.Create(TJSONPair.Create('reason', mReason)));
     Exit;
   end;
-  Arguments := TJSONArray.Create;
-  Arguments.Add(AUri);
-  Arguments.AddElement(TLspPositions.PositionToJson(APosition));
-  Arguments.Add(TLspOverloads.KindName(AKind));
-  Command := TJSONObject.Create;
-  Command.AddPair('title', Title);
-  Command.AddPair('command', TLspOverloads.ClientCommand);
-  Command.AddPair('arguments', Arguments);
-  Result.AddPair('command', Command);
+  mArguments := TJSONArray.Create;
+  mArguments.Add(AUri);
+  mArguments.AddElement(TLspPositions.PositionToJson(APosition));
+  mArguments.Add(TLspOverloads.KindName(AKind));
+  mCommand := TJSONObject.Create;
+  mCommand.AddPair('title', mTitle);
+  mCommand.AddPair('command', TLspOverloads.cClientCommand);
+  mCommand.AddPair('arguments', mArguments);
+  Result.AddPair('command', mCommand);
 end;
 
 class function TLspOverloads.Actions(ATree: TSyntaxTree; const AText, AUri: string;
   const APosition: TTextPosition): TArray<TJSONObject>;
 var
-  Target: TOverloadTarget;
+  mTarget: TOverloadTarget;
 begin
   Result := nil;
-  if not TOverloads.Target(AText, ATree, APosition, Target) then
+  if not TOverloads.Target(AText, ATree, APosition, mTarget) then
   begin
     Exit;
   end;
-  Result := [NewAction(AUri, APosition, Target, TOverloadKind.Forward),
-    NewAction(AUri, APosition, Target, TOverloadKind.Copy)];
+  Result := [NewAction(AUri, APosition, mTarget, TOverloadKind.Forward),
+    NewAction(AUri, APosition, mTarget, TOverloadKind.Copy)];
 end;
 
 /// <summary>Erstes Element der Aufzählung ASymbol; '' ohne.</summary>
 function FirstMember(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
   const AFileName: string; const ASymbol: TResolvedSymbol): string;
 var
-  Values: TConstantValues;
-  Names: TArray<string>;
+  mValues: TConstantValues;
+  mNames: TArray<string>;
 begin
   Result := '';
-  Values := TConstantValues.Create(ATree, AFileName, AIndex, AResolver);
+  mValues := TConstantValues.Create(ATree, AFileName, AIndex, AResolver);
   try
-    if Values.EnumMembers(ASymbol, Names) and (Length(Names) > 0) then
+    if mValues.EnumMembers(ASymbol, mNames) and (Length(mNames) > 0) then
     begin
-      Result := Names[0];
+      Result := mNames[0];
     end;
   finally
-    Values.Free;
+    mValues.Free;
   end;
 end;
 
 class function TLspOverloads.DefaultFunc(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
   const AFileName, AText: string): TOverloadDefaultFunc;
 var
-  Lines: TLineTable;
+  mLines: TLineTable;
 begin
-  Lines := TLineTable.Build(AText);
+  mLines := TLineTable.Build(AText);
   Result :=
     function(const ATypeName: string; ATypeOffset: Integer): string
     var
@@ -182,7 +182,7 @@ begin
       begin
         Exit;
       end;
-      Resolved := AResolver.ResolveType(ATree, AFileName, Lines.PositionAt(ATypeOffset));
+      Resolved := AResolver.ResolveType(ATree, AFileName, mLines.PositionAt(ATypeOffset));
       if not Resolved.Found then
       begin
         Exit;
@@ -200,75 +200,75 @@ end;
 
 function Fail(const AMessage: string): EJsonRpcError;
 begin
-  Result := EJsonRpcError.Create(TLspErrorCode.RequestFailed, AMessage);
+  Result := EJsonRpcError.Create(TLspErrorCode.cRequestFailed, AMessage);
 end;
 
 function AnswerJson(const AUri: string; const AResult: TOverloadResult): TJSONObject;
 var
-  Document, Item, Edit, Change: TJSONObject;
-  Items, Changes, Placeholders, Warnings: TJSONArray;
-  TextEdit: TTextEdit;
-  Placeholder: TOverloadPlaceholder;
-  Warning: string;
+  mDocument, mItem, mEdit, mChange: TJSONObject;
+  mItems, mChanges, mPlaceholders, mWarnings: TJSONArray;
+  mTextEdit: TTextEdit;
+  mPlaceholder: TOverloadPlaceholder;
+  mWarning: string;
 begin
-  Document := TJSONObject.Create;
-  Document.AddPair('uri', AUri);
-  Document.AddPair('version', TJSONNull.Create);
-  Items := TJSONArray.Create;
-  for TextEdit in AResult.Edits do
+  mDocument := TJSONObject.Create;
+  mDocument.AddPair('uri', AUri);
+  mDocument.AddPair('version', TJSONNull.Create);
+  mItems := TJSONArray.Create;
+  for mTextEdit in AResult.Edits do
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('range', TLspPositions.RangeToJson(TextEdit.Range));
-    Item.AddPair('newText', TextEdit.NewText);
-    Items.AddElement(Item);
+    mItem := TJSONObject.Create;
+    mItem.AddPair('range', TLspPositions.RangeToJson(mTextEdit.Range));
+    mItem.AddPair('newText', mTextEdit.NewText);
+    mItems.AddElement(mItem);
   end;
-  Change := TJSONObject.Create;
-  Change.AddPair('textDocument', Document);
-  Change.AddPair('edits', Items);
-  Changes := TJSONArray.Create;
-  Changes.AddElement(Change);
-  Edit := TJSONObject.Create;
-  Edit.AddPair('documentChanges', Changes);
-  Placeholders := TJSONArray.Create;
-  for Placeholder in AResult.Placeholders do
+  mChange := TJSONObject.Create;
+  mChange.AddPair('textDocument', mDocument);
+  mChange.AddPair('edits', mItems);
+  mChanges := TJSONArray.Create;
+  mChanges.AddElement(mChange);
+  mEdit := TJSONObject.Create;
+  mEdit.AddPair('documentChanges', mChanges);
+  mPlaceholders := TJSONArray.Create;
+  for mPlaceholder in AResult.Placeholders do
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('number', TJSONNumber.Create(Placeholder.Number));
-    Item.AddPair('range', TLspPositions.RangeToJson(Placeholder.Range));
-    Placeholders.AddElement(Item);
+    mItem := TJSONObject.Create;
+    mItem.AddPair('number', TJSONNumber.Create(mPlaceholder.Number));
+    mItem.AddPair('range', TLspPositions.RangeToJson(mPlaceholder.Range));
+    mPlaceholders.AddElement(mItem);
   end;
-  Warnings := TJSONArray.Create;
-  for Warning in AResult.Warnings do
+  mWarnings := TJSONArray.Create;
+  for mWarning in AResult.Warnings do
   begin
-    Warnings.Add(Warning);
+    mWarnings.Add(mWarning);
   end;
   Result := TJSONObject.Create;
-  Result.AddPair('edit', Edit);
-  Result.AddPair('placeholders', Placeholders);
-  Result.AddPair('warnings', Warnings);
+  Result.AddPair('edit', mEdit);
+  Result.AddPair('placeholders', mPlaceholders);
+  Result.AddPair('warnings', mWarnings);
 end;
 
 class function TLspOverloads.Execute(ATree: TSyntaxTree; const AFileName, AText: string;
   const APosition: TTextPosition; const AKind: string; const ADefault: TOverloadDefaultFunc): TJSONObject;
 var
-  Kind: TOverloadKind;
-  Target: TOverloadTarget;
-  Outcome: TOverloadResult;
-  Reason: string;
+  mKind: TOverloadKind;
+  mTarget: TOverloadTarget;
+  mOutcome: TOverloadResult;
+  mReason: string;
 begin
-  if not KindOf(AKind, Kind) then
+  if not KindOf(AKind, mKind) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TLspOverloadsText.UnknownKind].Fmt([AKind]));
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TLspOverloadsText.UnknownKind].Fmt([AKind]));
   end;
-  if not TOverloads.Target(AText, ATree, APosition, Target) then
+  if not TOverloads.Target(AText, ATree, APosition, mTarget) then
   begin
     raise Fail(cTexts[TLspOverloadsText.ThereIsNoHeaderOf].Text);
   end;
-  if not TOverloads.Build(AText, ATree, Target, TOverloadRequest.Create(Kind, ADefault), Outcome, Reason) then
+  if not TOverloads.Build(AText, ATree, mTarget, TOverloadRequest.Create(mKind, ADefault), mOutcome, mReason) then
   begin
-    raise Fail(cTexts[TLspOverloadsText.OverloadNotPossible].Text + Reason);
+    raise Fail(cTexts[TLspOverloadsText.OverloadNotPossible].Text + mReason);
   end;
-  Result := AnswerJson(TDocumentUris.FromPath(AFileName), Outcome);
+  Result := AnswerJson(TDocumentUris.FromPath(AFileName), mOutcome);
 end;
 
 initialization

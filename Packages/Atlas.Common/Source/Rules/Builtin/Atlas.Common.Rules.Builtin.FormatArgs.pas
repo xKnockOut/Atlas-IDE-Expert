@@ -30,7 +30,7 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  FormatArgsRuleId = 'format-args';
+  cFormatArgsRuleId = 'format-args';
 
 type
   TFormatArgsRule = class(TInterfacedObject, IRule)
@@ -112,7 +112,7 @@ const
 
 function TFormatArgsRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(FormatArgsRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cFormatArgsRuleId, TRuleSeverity.Error,
     cTexts[TFormatArgsText.Title].Text);
 end;
 

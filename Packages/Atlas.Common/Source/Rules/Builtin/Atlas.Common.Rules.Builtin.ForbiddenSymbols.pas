@@ -30,7 +30,7 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  ForbiddenSymbolRuleId = 'forbidden-symbol';
+  cForbiddenSymbolRuleId = 'forbidden-symbol';
 
 type
   /// <summary>Art eines Eintrags; Any = jede aufgelöste Art.</summary>
@@ -288,7 +288,7 @@ end;
 
 function TForbiddenSymbolRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(ForbiddenSymbolRuleId, TRuleSeverity.Warning,
+  Result := TRuleDescriptor.Create(cForbiddenSymbolRuleId, TRuleSeverity.Warning,
     cTexts[TForbiddenSymbolsText.Title].Text, True);
 end;
 

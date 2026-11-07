@@ -81,19 +81,19 @@ end;
 
 function Closing(const ATokens: TTokens; AOpen: Integer): Integer;
 var
-  Depth: Integer;
+  mDepth: Integer;
 begin
-  Depth := 0;
+  mDepth := 0;
   for Result := AOpen to High(ATokens) do
   begin
     if ATokens[Result].IsSymbol('(') or ATokens[Result].IsSymbol('[') then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
     else if ATokens[Result].IsSymbol(')') or ATokens[Result].IsSymbol(']') then
     begin
-      Dec(Depth);
-      if Depth = 0 then
+      Dec(mDepth);
+      if mDepth = 0 then
       begin
         Exit;
       end;
@@ -105,25 +105,25 @@ end;
 /// <summary>Zahl der Argumente auf oberster Ebene zwischen AOpen und AClose.</summary>
 function ArgumentCount(const ATokens: TTokens; AOpen, AClose: Integer): Integer;
 var
-  Index, Depth: Integer;
+  mIndex, mDepth: Integer;
 begin
   if NextCode(ATokens, AOpen + 1) = AClose then
   begin
     Exit(0);
   end;
   Result := 1;
-  Depth := 0;
-  for Index := AOpen + 1 to AClose - 1 do
+  mDepth := 0;
+  for mIndex := AOpen + 1 to AClose - 1 do
   begin
-    if ATokens[Index].IsSymbol('(') or ATokens[Index].IsSymbol('[') then
+    if ATokens[mIndex].IsSymbol('(') or ATokens[mIndex].IsSymbol('[') then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if ATokens[Index].IsSymbol(')') or ATokens[Index].IsSymbol(']') then
+    else if ATokens[mIndex].IsSymbol(')') or ATokens[mIndex].IsSymbol(']') then
     begin
-      Dec(Depth);
+      Dec(mDepth);
     end
-    else if (Depth = 0) and ATokens[Index].IsSymbol(',') then
+    else if (mDepth = 0) and ATokens[mIndex].IsSymbol(',') then
     begin
       Inc(Result);
     end;
@@ -148,17 +148,17 @@ end;
 /// <summary>Einfacher Bezeichner: kein Teil einer Kette A.B und kein Aufruf.</summary>
 function IsPlainIdentifier(const ATokens: TTokens; AIndex: Integer): Boolean;
 var
-  Prev, Next: Integer;
+  mPrev, mNext: Integer;
 begin
   if (AIndex < 0) or (AIndex > High(ATokens)) or (ATokens[AIndex].Kind <> TPascalTokenKind.Identifier) then
   begin
     Exit(False);
   end;
-  Prev := PreviousCode(ATokens, AIndex);
-  Next := NextCode(ATokens, AIndex + 1);
-  Result := not ((Prev >= 0) and (ATokens[Prev].IsSymbol('.') or ATokens[Prev].IsSymbol('@'))) and
-    not ((Next <= High(ATokens)) and (ATokens[Next].IsSymbol('.') or ATokens[Next].IsSymbol('(') or
-    ATokens[Next].IsSymbol('[') or ATokens[Next].IsSymbol('^')));
+  mPrev := PreviousCode(ATokens, AIndex);
+  mNext := NextCode(ATokens, AIndex + 1);
+  Result := not ((mPrev >= 0) and (ATokens[mPrev].IsSymbol('.') or ATokens[mPrev].IsSymbol('@'))) and
+    not ((mNext <= High(ATokens)) and (ATokens[mNext].IsSymbol('.') or ATokens[mNext].IsSymbol('(') or
+    ATokens[mNext].IsSymbol('[') or ATokens[mNext].IsSymbol('^')));
 end;
 
 function IsListedAssignment(AStatement, ACall: TSyntaxNode): Boolean;

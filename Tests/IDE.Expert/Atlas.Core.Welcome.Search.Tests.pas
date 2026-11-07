@@ -308,7 +308,7 @@ end;
 procedure TAtlasWelcomeIndexFilesTests.FormatVersionMatchesServer;
 begin
   // Code-Review K-05: Plugin und Server lesen dasselbe Cache-Format.
-  Assert.AreEqual(TIndexCache.FormatVersion, TAtlasWelcomeIndexFiles.FormatVersion,
+  Assert.AreEqual(TIndexCache.cFormatVersion, TAtlasWelcomeIndexFiles.FormatVersion,
     'Plugin und Server lesen dasselbe Cache-Format; beide Konstanten zusammen erhöhen.');
 end;
 

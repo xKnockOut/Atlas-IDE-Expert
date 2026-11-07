@@ -102,8 +102,8 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  SettingTexts: array[TCompilerBackendSetting] of string = ('auto', 'dcc', 'ide', 'off');
-  BackendTexts: array[TCompilerBackend] of string = ('dcc', 'ide', 'off');
+  cSettingTexts: array[TCompilerBackendSetting] of string = ('auto', 'dcc', 'ide', 'off');
+  cBackendTexts: array[TCompilerBackend] of string = ('dcc', 'ide', 'off');
 
 { TCompilerBackendChoice }
 
@@ -150,12 +150,12 @@ end;
 
 class function TCompilerBackends.SettingText(ASetting: TCompilerBackendSetting): string;
 begin
-  Result := SettingTexts[ASetting];
+  Result := cSettingTexts[ASetting];
 end;
 
 class function TCompilerBackends.BackendText(ABackend: TCompilerBackend): string;
 begin
-  Result := BackendTexts[ABackend];
+  Result := cBackendTexts[ABackend];
 end;
 
 class function TCompilerBackends.RunsOnSave(ABackend: TCompilerBackend): Boolean;
@@ -196,17 +196,17 @@ end;
 class function TCompilerBackends.Choose(ASetting: TCompilerBackendSetting; AEdition: TCompilerEdition;
   const AIdeCommand: string; AIdeCommandExists: Boolean): TCompilerBackendChoice;
 var
-  ViaIde: TCompilerBackendChoice;
-  DccUsable: Boolean;
+  mViaIde: TCompilerBackendChoice;
+  mDccUsable: Boolean;
 begin
   Result := Default(TCompilerBackendChoice);
-  DccUsable := (AEdition = TCompilerEdition.CommandLine) or (AEdition = TCompilerEdition.Unknown);
+  mDccUsable := (AEdition = TCompilerEdition.CommandLine) or (AEdition = TCompilerEdition.Unknown);
   case ASetting of
     TCompilerBackendSetting.Off:
       Result := Off(cTexts[TBackendText.CompilerBackendIsOff].Text,
         cTexts[TBackendText.InSettingsJsonSetCompiler2].Text, cTexts[TBackendText.Off].Text);
     TCompilerBackendSetting.Dcc:
-      if DccUsable then
+      if mDccUsable then
       begin
         Result.Backend := TCompilerBackend.Dcc;
       end
@@ -218,13 +218,13 @@ begin
     TCompilerBackendSetting.Ide:
       Ide(AIdeCommand, AIdeCommandExists, Result);
   else
-    if DccUsable then
+    if mDccUsable then
     begin
       Result.Backend := TCompilerBackend.Dcc;
     end
-    else if Ide(AIdeCommand, AIdeCommandExists, ViaIde) then
+    else if Ide(AIdeCommand, AIdeCommandExists, mViaIde) then
     begin
-      Result := ViaIde;
+      Result := mViaIde;
     end
     else if Trim(AIdeCommand) = '' then
     begin
@@ -234,7 +234,7 @@ begin
     else
     begin
       // cc.ps1 eingetragen, aber nicht da: beides nennen.
-      Result := Off(TCompilerEditions.Describe(AEdition) + '; ' + ViaIde.Reason, ViaIde.Remedy, 'Starter Edition');
+      Result := Off(TCompilerEditions.Describe(AEdition) + '; ' + mViaIde.Reason, mViaIde.Remedy, 'Starter Edition');
     end;
   end;
 end;

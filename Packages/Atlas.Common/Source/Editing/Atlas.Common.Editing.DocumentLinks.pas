@@ -66,25 +66,25 @@ begin
   Result := TTextRange.Create(PositionIn(AToken, AStart), PositionIn(AToken, AStart + ALength));
 end;
 
-function IsPathChar(C: Char): Boolean;
+function IsPathChar(AC: Char): Boolean;
 begin
-  Result := not CharInSet(C, [#0..' ', '''', '"', '<', '>', '|', '{', '}']);
+  Result := not CharInSet(AC, [#0..' ', '''', '"', '<', '>', '|', '{', '}']);
 end;
 
-function IsUrlChar(C: Char): Boolean;
+function IsUrlChar(AC: Char): Boolean;
 begin
-  Result := not CharInSet(C, [#0..' ', '''', '"', '<', '>', '{', '}', '`']);
+  Result := not CharInSet(AC, [#0..' ', '''', '"', '<', '>', '{', '}', '`']);
 end;
 
 procedure AddLink(var ALinks: TArray<TDocumentLink>; const ARange: TTextRange; const ATarget: string;
   AIsUrl: Boolean);
 var
-  Link: TDocumentLink;
+  mLink: TDocumentLink;
 begin
-  Link.Range := ARange;
-  Link.Target := ATarget;
-  Link.IsUrl := AIsUrl;
-  ALinks := ALinks + [Link];
+  mLink.Range := ARange;
+  mLink.Target := ATarget;
+  mLink.IsUrl := AIsUrl;
+  ALinks := ALinks + [mLink];
 end;
 
 /// <summary>Großgeschriebener Name der Direktive in {$…} bzw. (*$…*); '' bei anderen Kommentaren. AIndex steht
@@ -194,29 +194,29 @@ end;
 
 procedure FindUrls(const AToken: TPascalToken; var ALinks: TArray<TDocumentLink>);
 var
-  Text: string;
-  I, Start, Stop: Integer;
+  mText: string;
+  I, mStart, mStop: Integer;
 begin
-  Text := AToken.Text;
+  mText := AToken.Text;
   I := 1;
-  while I <= Length(Text) do
+  while I <= Length(mText) do
   begin
-    if StartsText('http://', Copy(Text, I, 7)) or StartsText('https://', Copy(Text, I, 8)) or
-      StartsText('file://', Copy(Text, I, 7)) then
+    if StartsText('http://', Copy(mText, I, 7)) or StartsText('https://', Copy(mText, I, 8)) or
+      StartsText('file://', Copy(mText, I, 7)) then
     begin
-      Start := I;
-      Stop := I;
-      while (Stop <= Length(Text)) and IsUrlChar(Text[Stop]) do
+      mStart := I;
+      mStop := I;
+      while (mStop <= Length(mText)) and IsUrlChar(mText[mStop]) do
       begin
-        Inc(Stop);
+        Inc(mStop);
       end;
       // Satzzeichen am Ende gehören selten zur URL.
-      while (Stop > Start) and CharInSet(Text[Stop - 1], ['.', ',', ';', ':', ')', ']', '!', '?', '*']) do
+      while (mStop > mStart) and CharInSet(mText[mStop - 1], ['.', ',', ';', ':', ')', ']', '!', '?', '*']) do
       begin
-        Dec(Stop);
+        Dec(mStop);
       end;
-      AddLink(ALinks, RangeIn(AToken, Start, Stop - Start), Copy(Text, Start, Stop - Start), True);
-      I := Stop;
+      AddLink(ALinks, RangeIn(AToken, mStart, mStop - mStart), Copy(mText, mStart, mStop - mStart), True);
+      I := mStop;
     end
     else
     begin
@@ -228,49 +228,49 @@ end;
 procedure FindStringFile(const AToken: TPascalToken; const AFileName: string;
   const ASearchPaths: TArray<string>; const AFileExists: TFileExistsFunc; var ALinks: TArray<TDocumentLink>);
 var
-  Text, Name, Path: string;
+  mText, mName, mPath: string;
   C: Char;
 begin
-  Text := AToken.Text;
-  if (Length(Text) < 3) or (Text[1] <> '''') or (Text[Length(Text)] <> '''') then
+  mText := AToken.Text;
+  if (Length(mText) < 3) or (mText[1] <> '''') or (mText[Length(mText)] <> '''') then
   begin
     Exit;
   end;
-  Name := Copy(Text, 2, Length(Text) - 2);
+  mName := Copy(mText, 2, Length(mText) - 2);
   // Nur einfache Dateinamen mit Endung; Formatstrings und Sätze fallen heraus.
-  if (ExtractFileExt(Name) = '') or (Pos('''', Name) > 0) or ContainsText(Name, '://') then
+  if (ExtractFileExt(mName) = '') or (Pos('''', mName) > 0) or ContainsText(mName, '://') then
   begin
     Exit;
   end;
-  for C in Name do
+  for C in mName do
   begin
     if not IsPathChar(C) or (C = '*') or (C = '%') then
     begin
       Exit;
     end;
   end;
-  if TIncludeFiles.FindFile(Name, ExtractFileDir(AFileName), ASearchPaths, AFileExists, Path) then
+  if TIncludeFiles.FindFile(mName, ExtractFileDir(AFileName), ASearchPaths, AFileExists, mPath) then
   begin
-    AddLink(ALinks, RangeIn(AToken, 2, Length(Name)), Path, False);
+    AddLink(ALinks, RangeIn(AToken, 2, Length(mName)), mPath, False);
   end;
 end;
 
 class function TDocumentLinks.Find(const AText, AFileName: string; const ASearchPaths: TArray<string>;
   const AFileExists: TFileExistsFunc): TArray<TDocumentLink>;
 var
-  Token: TPascalToken;
+  mToken: TPascalToken;
 begin
   Result := nil;
-  for Token in TPascalLexer.Tokenize(AText) do
-    case Token.Kind of
+  for mToken in TPascalLexer.Tokenize(AText) do
+    case mToken.Kind of
       TPascalTokenKind.Directive:
-        FindDirectiveLink(Token, AFileName, ASearchPaths, AFileExists, Result);
+        FindDirectiveLink(mToken, AFileName, ASearchPaths, AFileExists, Result);
       TPascalTokenKind.Comment:
-        FindUrls(Token, Result);
+        FindUrls(mToken, Result);
       TPascalTokenKind.StringLiteral:
         begin
-          FindUrls(Token, Result);
-          FindStringFile(Token, AFileName, ASearchPaths, AFileExists, Result);
+          FindUrls(mToken, Result);
+          FindStringFile(mToken, AFileName, ASearchPaths, AFileExists, Result);
         end;
     else
       // Übrige Werte bewusst ohne Wirkung.

@@ -239,7 +239,7 @@ begin
     Assert.AreEqual(1, Integer(Length(Actions)));
     Assert.AreEqual('DUnitX-Testunit für TKunde anlegen', Actions[0].GetValue<string>('title'));
     Assert.IsNotNull(Actions[0].GetValue('edit'));
-    Assert.AreEqual(TLspTestUnits.OpenFileCommand, Actions[0].GetValue<string>('command.command'));
+    Assert.AreEqual(TLspTestUnits.cOpenFileCommand, Actions[0].GetValue<string>('command.command'));
   finally
     for Action in Actions do
     begin

@@ -95,33 +95,33 @@ const
 
 procedure TWorkspaceChanges.Add(const AFileName: string; const AEdits: TArray<TTextEdit>);
 var
-  Index: Integer;
-  Item: TWorkspaceFileEdits;
+  mIndex: Integer;
+  mItem: TWorkspaceFileEdits;
 begin
   if AEdits = nil then
   begin
     Exit;
   end;
-  for Index := 0 to High(FFiles) do
+  for mIndex := 0 to High(FFiles) do
   begin
-    if SameText(FFiles[Index].FileName, AFileName) then
+    if SameText(FFiles[mIndex].FileName, AFileName) then
     begin
-      FFiles[Index].Edits := FFiles[Index].Edits + AEdits;
+      FFiles[mIndex].Edits := FFiles[mIndex].Edits + AEdits;
       Exit;
     end;
   end;
-  Item.FileName := AFileName;
-  Item.Edits := AEdits;
-  FFiles := FFiles + [Item];
+  mItem.FileName := AFileName;
+  mItem.Edits := AEdits;
+  FFiles := FFiles + [mItem];
 end;
 
 procedure TWorkspaceChanges.CreateFile(const AFileName, AText: string);
 var
-  Item: TWorkspaceNewFile;
+  mItem: TWorkspaceNewFile;
 begin
-  Item.FileName := AFileName;
-  Item.Text := AText;
-  FCreated := FCreated + [Item];
+  mItem.FileName := AFileName;
+  mItem.Text := AText;
+  FCreated := FCreated + [mItem];
 end;
 
 procedure TWorkspaceChanges.DeleteFile(const AFileName: string);
@@ -136,13 +136,13 @@ end;
 
 function TWorkspaceChanges.EditsOf(const AFileName: string): TArray<TTextEdit>;
 var
-  Item: TWorkspaceFileEdits;
+  mItem: TWorkspaceFileEdits;
 begin
-  for Item in FFiles do
+  for mItem in FFiles do
   begin
-    if SameText(Item.FileName, AFileName) then
+    if SameText(mItem.FileName, AFileName) then
     begin
-      Exit(Item.Edits);
+      Exit(mItem.Edits);
     end;
   end;
   Result := nil;
@@ -150,12 +150,12 @@ end;
 
 function TWorkspaceChanges.EditCount: Integer;
 var
-  Item: TWorkspaceFileEdits;
+  mItem: TWorkspaceFileEdits;
 begin
   Result := Length(FCreated) + Length(FDeleted);
-  for Item in FFiles do
+  for mItem in FFiles do
   begin
-    Inc(Result, Length(Item.Edits));
+    Inc(Result, Length(mItem.Edits));
   end;
 end;
 
@@ -167,120 +167,120 @@ end;
 procedure TWorkspaceChanges.RegisterUnit(AHasProject: Boolean; const AProject: TProjectInfo;
   const AReadText: TReferenceReadText; const ANewFile, AUnitName: string);
 var
-  Text, Relative, ProjectFile: string;
-  Edit: TTextEdit;
+  mText, mRelative, mProjectFile: string;
+  mEdit: TTextEdit;
 begin
   if not AHasProject then
   begin
     Warn(cTexts[TWorkspaceChangesText.NoProjectLoadedTheNew].Text);
     Exit;
   end;
-  if (AProject.MainSource <> '') and Assigned(AReadText) and AReadText(AProject.MainSource, Text) then
+  if (AProject.MainSource <> '') and Assigned(AReadText) and AReadText(AProject.MainSource, mText) then
   begin
-    Relative := TTestUnits.RelativePath(TProjectPaths.DirectoryOf(AProject.MainSource), ANewFile);
-    if TUnitTemplates.UnitProgramEdit(Text, AUnitName, Relative, Edit) then
+    mRelative := TTestUnits.RelativePath(TProjectPaths.DirectoryOf(AProject.MainSource), ANewFile);
+    if TUnitTemplates.UnitProgramEdit(mText, AUnitName, mRelative, mEdit) then
     begin
-      Add(AProject.MainSource, [Edit]);
+      Add(AProject.MainSource, [mEdit]);
     end
     else
     begin
       Warn(cTexts[TWorkspaceChangesText.HasNoUsesOrContains].Fmt([ExtractFileName(AProject.MainSource)]));
     end;
   end;
-  ProjectFile := AProject.FileName;
-  if Assigned(AReadText) and AReadText(ProjectFile, Text) then
+  mProjectFile := AProject.FileName;
+  if Assigned(AReadText) and AReadText(mProjectFile, mText) then
   begin
-    Relative := TTestUnits.RelativePath(TProjectPaths.DirectoryOf(ProjectFile), ANewFile);
-    if (Pos('"' + Relative + '"', Text) = 0) and
-      TUnitTemplates.ProjectEdit(Text, Relative, '', TFormKind.Form, False, Edit) then
+    mRelative := TTestUnits.RelativePath(TProjectPaths.DirectoryOf(mProjectFile), ANewFile);
+    if (Pos('"' + mRelative + '"', mText) = 0) and
+      TUnitTemplates.ProjectEdit(mText, mRelative, '', TFormKind.Form, False, mEdit) then
     begin
-      Add(ProjectFile, [Edit]);
+      Add(mProjectFile, [mEdit]);
     end;
   end;
 end;
 
 function DocumentEdit(const AUri: string; const AEdits: TArray<TTextEdit>; const AAnnotationId: string): TJSONObject;
 var
-  Document, Item: TJSONObject;
-  Edits: TJSONArray;
-  Edit: TTextEdit;
+  mDocument, mItem: TJSONObject;
+  mEdits: TJSONArray;
+  mEdit: TTextEdit;
 begin
-  Document := TJSONObject.Create;
-  Document.AddPair('uri', AUri);
-  Document.AddPair('version', TJSONNull.Create);
-  Edits := TJSONArray.Create;
-  for Edit in AEdits do
+  mDocument := TJSONObject.Create;
+  mDocument.AddPair('uri', AUri);
+  mDocument.AddPair('version', TJSONNull.Create);
+  mEdits := TJSONArray.Create;
+  for mEdit in AEdits do
   begin
-    Item := TJSONObject.Create;
-    Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
-    Item.AddPair('newText', Edit.NewText);
+    mItem := TJSONObject.Create;
+    mItem.AddPair('range', TLspPositions.RangeToJson(mEdit.Range));
+    mItem.AddPair('newText', mEdit.NewText);
     if AAnnotationId <> '' then
     begin
-      Item.AddPair('annotationId', AAnnotationId);
+      mItem.AddPair('annotationId', AAnnotationId);
     end;
-    Edits.AddElement(Item);
+    mEdits.AddElement(mItem);
   end;
   Result := TJSONObject.Create;
-  Result.AddPair('textDocument', Document);
-  Result.AddPair('edits', Edits);
+  Result.AddPair('textDocument', mDocument);
+  Result.AddPair('edits', mEdits);
 end;
 
 function TWorkspaceChanges.ToJson(const AAnnotationId, ALabel, ADescription: string): TJSONObject;
 var
-  Changes: TJSONArray;
-  Creation, Options, Annotation, Annotations: TJSONObject;
-  NewFile: TWorkspaceNewFile;
-  FileEdits: TWorkspaceFileEdits;
-  Uri, mDeleted: string;
+  mChanges: TJSONArray;
+  mCreation, mOptions, mAnnotation, mAnnotations: TJSONObject;
+  mNewFile: TWorkspaceNewFile;
+  mFileEdits: TWorkspaceFileEdits;
+  mUri, mDeleted: string;
 begin
-  Changes := TJSONArray.Create;
-  for NewFile in FCreated do
+  mChanges := TJSONArray.Create;
+  for mNewFile in FCreated do
   begin
-    Uri := TDocumentUris.FromPath(NewFile.FileName);
-    Creation := TJSONObject.Create;
-    Creation.AddPair('kind', 'create');
-    Creation.AddPair('uri', Uri);
-    Options := TJSONObject.Create;
-    Options.AddPair('ignoreIfExists', TJSONBool.Create(False));
-    Creation.AddPair('options', Options);
+    mUri := TDocumentUris.FromPath(mNewFile.FileName);
+    mCreation := TJSONObject.Create;
+    mCreation.AddPair('kind', 'create');
+    mCreation.AddPair('uri', mUri);
+    mOptions := TJSONObject.Create;
+    mOptions.AddPair('ignoreIfExists', TJSONBool.Create(False));
+    mCreation.AddPair('options', mOptions);
     if AAnnotationId <> '' then
     begin
-      Creation.AddPair('annotationId', AAnnotationId);
+      mCreation.AddPair('annotationId', AAnnotationId);
     end;
-    Changes.AddElement(Creation);
-    Changes.AddElement(DocumentEdit(Uri, [TTextEdit.Create(TTextRange.Create(0, 0, 0, 0), NewFile.Text)],
+    mChanges.AddElement(mCreation);
+    mChanges.AddElement(DocumentEdit(mUri, [TTextEdit.Create(TTextRange.Create(0, 0, 0, 0), mNewFile.Text)],
       AAnnotationId));
   end;
-  for FileEdits in FFiles do
+  for mFileEdits in FFiles do
   begin
-    Changes.AddElement(DocumentEdit(TDocumentUris.FromPath(FileEdits.FileName), FileEdits.Edits, AAnnotationId));
+    mChanges.AddElement(DocumentEdit(TDocumentUris.FromPath(mFileEdits.FileName), mFileEdits.Edits, AAnnotationId));
   end;
   // Gelöschte Dateien zuletzt: Änderungen an anderen Dateien (uses) stehen davor.
   for mDeleted in FDeleted do
   begin
-    Creation := TJSONObject.Create;
-    Creation.AddPair('kind', 'delete');
-    Creation.AddPair('uri', TDocumentUris.FromPath(mDeleted));
-    Options := TJSONObject.Create;
-    Options.AddPair('ignoreIfNotExists', TJSONBool.Create(True));
-    Creation.AddPair('options', Options);
+    mCreation := TJSONObject.Create;
+    mCreation.AddPair('kind', 'delete');
+    mCreation.AddPair('uri', TDocumentUris.FromPath(mDeleted));
+    mOptions := TJSONObject.Create;
+    mOptions.AddPair('ignoreIfNotExists', TJSONBool.Create(True));
+    mCreation.AddPair('options', mOptions);
     if AAnnotationId <> '' then
     begin
-      Creation.AddPair('annotationId', AAnnotationId);
+      mCreation.AddPair('annotationId', AAnnotationId);
     end;
-    Changes.AddElement(Creation);
+    mChanges.AddElement(mCreation);
   end;
   Result := TJSONObject.Create;
-  Result.AddPair('documentChanges', Changes);
+  Result.AddPair('documentChanges', mChanges);
   if AAnnotationId <> '' then
   begin
-    Annotation := TJSONObject.Create;
-    Annotation.AddPair('label', ALabel);
-    Annotation.AddPair('needsConfirmation', TJSONBool.Create(True));
-    Annotation.AddPair('description', ADescription);
-    Annotations := TJSONObject.Create;
-    Annotations.AddPair(AAnnotationId, Annotation);
-    Result.AddPair('changeAnnotations', Annotations);
+    mAnnotation := TJSONObject.Create;
+    mAnnotation.AddPair('label', ALabel);
+    mAnnotation.AddPair('needsConfirmation', TJSONBool.Create(True));
+    mAnnotation.AddPair('description', ADescription);
+    mAnnotations := TJSONObject.Create;
+    mAnnotations.AddPair(AAnnotationId, mAnnotation);
+    Result.AddPair('changeAnnotations', mAnnotations);
   end;
 end;
 
@@ -291,12 +291,12 @@ end;
 
 function TWorkspaceChanges.WarningsJson: TJSONArray;
 var
-  Warning: string;
+  mWarning: string;
 begin
   Result := TJSONArray.Create;
-  for Warning in FWarnings do
+  for mWarning in FWarnings do
   begin
-    Result.Add(Warning);
+    Result.Add(mWarning);
   end;
 end;
 

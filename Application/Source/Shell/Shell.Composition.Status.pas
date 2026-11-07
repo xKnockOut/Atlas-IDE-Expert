@@ -209,8 +209,8 @@ end;
 
 procedure TShellStatusReports.RegisterCommands(ACommands: TLspCommands);
 begin
-  ACommands.RegisterConcurrent(TServerPackage.Command, DiagnosticPackage);
-  ACommands.RegisterConcurrent(TBugReport.Command, BugReport);
+  ACommands.RegisterConcurrent(TServerPackage.cCommand, DiagnosticPackage);
+  ACommands.RegisterConcurrent(TBugReport.cCommand, BugReport);
 end;
 
 function TShellStatusReports.Workspaces: TArray<TShellWorkspace>;
@@ -357,7 +357,7 @@ begin
   mInput := Default(TBugReportInput);
   mInput.Anonymize := True;
   ReadBugReportOptions(AArguments, mInput, mTarget);
-  mInput.ServerVersion := TProductVersion.Version;
+  mInput.ServerVersion := TProductVersion.cVersion;
   mInput.Created := Now;
   mInput.Configuration := ConfigurationReport;
   mInput.LogLines := LastLines(SessionLines(mInput.Anonymize), cBugReportLogLines);
@@ -425,7 +425,7 @@ var
 begin
   // Fenster „Atlas-Server“ (#1356): Prozess, Speicher je Bereich, Prüflauf, Warteschlangen, Cache-Treffer.
   AStatus.ProcessId := TShellPlatform.CurrentProcessId;
-  AStatus.Version := TProductVersion.Version;
+  AStatus.Version := TProductVersion.cVersion;
   AStatus.Started := FStartedAt;
   AStatus.UptimeMs := FUptime.ElapsedMilliseconds;
   mParts := FServices.Index.MemoryParts;
@@ -449,16 +449,16 @@ begin
   AStatus.Queue.CheckRunning := mCheckQueue.Running;
   AStatus.Queue.OldestWaitMs := Max(mIndexQueue.OldestWaitMs, mCheckQueue.OldestWaitMs);
   // Zustand: lädt, solange ein Arbeitsbereich seinen Index aufbaut; prüft, solange ein Prüflauf aktiv ist.
-  AStatus.State := TServerStatus.StateReady;
+  AStatus.State := TServerStatus.cStateReady;
   if AStatus.CheckRun.Active then
   begin
-    AStatus.State := TServerStatus.StateChecking;
+    AStatus.State := TServerStatus.cStateChecking;
   end;
   for mWorkspace in AStatus.Workspaces do
   begin
     if mWorkspace.LastIndexMs < 0 then
     begin
-      AStatus.State := TServerStatus.StateLoading;
+      AStatus.State := TServerStatus.cStateLoading;
     end;
   end;
 end;
@@ -492,7 +492,7 @@ var
 begin
   mInput := Default(TServerPackageInput);
   mInput.Anonymize := True;
-  mInput.TraceMinutes := TServerPackage.DefaultTraceMinutes;
+  mInput.TraceMinutes := TServerPackage.cDefaultTraceMinutes;
   ReadPackageOptions(AArguments, mInput);
   mStatus := StatusJson(mInput.Anonymize);
   try

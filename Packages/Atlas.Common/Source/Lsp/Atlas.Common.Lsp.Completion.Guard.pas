@@ -95,7 +95,7 @@ end;
 function GuardItem(ARequest: TCompletionRequest; const AOffer: TGuardOffer; AKind: TGuardText): TCompletionItem;
 begin
   Result := Default(TCompletionItem);
-  Result.Kind := KindSnippet;
+  Result.Kind := cKindSnippet;
   Result.HasTextEdit := True;
   if ARequest.Settings.FreeStyle = TCompletionFreeStyle.FreeAndNil then
   begin

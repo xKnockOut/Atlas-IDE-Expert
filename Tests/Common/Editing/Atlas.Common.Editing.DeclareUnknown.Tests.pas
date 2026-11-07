@@ -170,7 +170,7 @@ begin
   Assert.AreEqual('0', TDeclareUnknown.DefaultValue('Integer'));
   Assert.AreEqual('''''', TDeclareUnknown.DefaultValue('string'));
   Assert.AreEqual('False', TDeclareUnknown.DefaultValue('Boolean'));
-  Assert.AreEqual(TDeclareUnknown.ValuePlaceholder, TDeclareUnknown.DefaultValue('TFoo'));
+  Assert.AreEqual(TDeclareUnknown.cValuePlaceholder, TDeclareUnknown.DefaultValue('TFoo'));
   Assert.AreEqual('Total$0Count', TDeclareUnknown.WithCaret('TotalCount', 5));
   Assert.AreEqual('FTotalCount$0', TDeclareUnknown.WithCaret('FTotalCount', 11));
 end;

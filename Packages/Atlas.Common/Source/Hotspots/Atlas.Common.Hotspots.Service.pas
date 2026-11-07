@@ -396,7 +396,7 @@ begin
     begin
       Continue;
     end;
-    for mTarget in AGraph.DirectDependencies(mNode, AllUsesSections) do
+    for mTarget in AGraph.DirectDependencies(mNode, cAllUsesSections) do
     begin
       if ANodeToUnit.TryGetValue(mTarget, mTargetIndex) then
       begin

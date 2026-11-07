@@ -139,7 +139,8 @@ type
     Pinned: Boolean;
     /// <summary>Zahl als Tag (fehlende Werte, #449); 0 ohne.</summary>
     Count: Integer;
-    /// <summary>Eintrag deklariert diesen unbekannten Namen (#471); Atlas zeigt die Gruppe „Name ist unbekannt“.</summary>
+    /// <summary>Eintrag deklariert diesen unbekannten Namen (#471); Atlas zeigt die Gruppe „Name ist
+    /// unbekannt“.</summary>
     Unknown: string;
     /// <summary>Interface implementieren (#466): Eintrag der Liste mit Kontrollkästchen (SetOf = Interfaces,
     /// SetChecked, SetRange = getipptes Wort). Atlas übernimmt die AdditionalEdits aller angehakten Einträge in
@@ -147,7 +148,8 @@ type
     Batch: Boolean;
     /// <summary>Hinweis „3 Methoden von IExporter fehlen“ (#466): ganz oben, nie vorgewählt.</summary>
     Hint: Boolean;
-    /// <summary>Komponente aus dem Formular (#455): Name des Formulars; Atlas zeigt die Gruppe „Formular …“ oben.</summary>
+    /// <summary>Komponente aus dem Formular (#455): Name des Formulars; Atlas zeigt die Gruppe „Formular …“
+    /// oben.</summary>
     Form: string;
     /// <summary>Komponente passt nur über ihren Typ ("button" → btnSave: TButton), nicht über den Namen.</summary>
     ByType: Boolean;
@@ -383,36 +385,36 @@ end;
 
 function TCompletionRequest.LineBefore: string;
 var
-  Line, Start, Stop: Integer;
+  mLine, mStart, mStop: Integer;
 begin
-  Start := 1;
-  for Line := 1 to FPosition.Line do
+  mStart := 1;
+  for mLine := 1 to FPosition.Line do
   begin
-    Start := PosEx(#10, FText, Start) + 1;
-    if Start = 1 then
+    mStart := PosEx(#10, FText, mStart) + 1;
+    if mStart = 1 then
     begin
       Exit('');
     end;
   end;
-  Stop := Start;
-  while (Stop <= Length(FText)) and (FText[Stop] <> #10) and (FText[Stop] <> #13) do
+  mStop := mStart;
+  while (mStop <= Length(FText)) and (FText[mStop] <> #10) and (FText[mStop] <> #13) do
   begin
-    Inc(Stop);
+    Inc(mStop);
   end;
-  Result := Copy(FText, Start, Min(FPosition.Character, Stop - Start));
+  Result := Copy(FText, mStart, Min(FPosition.Character, mStop - mStart));
 end;
 
 function TCompletionRequest.OffsetAt(const APosition: TTextPosition): Integer;
 var
-  mIndex, Line: Integer;
+  mIndex, mLine: Integer;
 begin
-  Line := 0;
+  mLine := 0;
   mIndex := 1;
-  while (Line < APosition.Line) and (mIndex <= Length(FText)) do
+  while (mLine < APosition.Line) and (mIndex <= Length(FText)) do
   begin
     if FText[mIndex] = #10 then
     begin
-      Inc(Line);
+      Inc(mLine);
     end;
     Inc(mIndex);
   end;

@@ -33,15 +33,15 @@ type
   TJsonRpcRecentMessages = class(TInterfacedObject, IJsonRpcRecentMessages)
   public const
     /// <summary>So viele Nachrichten und Anfragen bleiben gespeichert.</summary>
-    Capacity = 64;
+    cCapacity = 64;
     /// <summary>So viele Nachrichten nennt ein Absturzfall.</summary>
-    ReportCount = 20;
+    cReportCount = 20;
     /// <summary>Längere Zeichenketten werden gekürzt.</summary>
-    MaxString = 200;
+    cMaxString = 200;
     /// <summary>Ab so vielen Zeichen ersetzt ein Platzhalter die übrigen Werte.</summary>
-    MaxMessage = 2000;
+    cMaxMessage = 2000;
     /// <summary>Volle Parameter einer Anfrage höchstens so lang (sonst gekürzt wie im Bericht).</summary>
-    MaxParams = 65536;
+    cMaxParams = 65536;
   private type
     TRequest = record
       Id: string;
@@ -50,10 +50,10 @@ type
     end;
   private
     FLock: TObject;
-    FMessages: array[0..Capacity - 1] of string;
+    FMessages: array[0..cCapacity - 1] of string;
     FMessageCount: Integer;
     FMessageNext: Integer;
-    FRequests: array[0..Capacity - 1] of TRequest;
+    FRequests: array[0..cCapacity - 1] of TRequest;
     FRequestNext: Integer;
   public
     constructor Create;
@@ -227,7 +227,7 @@ begin
   begin
     Exit;
   end;
-  mText := Shortened(AMessage, MaxString, MaxMessage);
+  mText := Shortened(AMessage, cMaxString, cMaxMessage);
   mIdValue := AMessage.GetValue('id');
   mMethodValue := AMessage.GetValue('method');
   mIsRequest := (mIdValue <> nil) and (mMethodValue is TJSONString);
@@ -242,17 +242,17 @@ begin
     if mParamsValue <> nil then
     begin
       mParams := mParamsValue.ToJSON;
-      if Length(mParams) > MaxParams then
+      if Length(mParams) > cMaxParams then
       begin
-        mParams := Shortened(mParamsValue, MaxString, MaxParams);
+        mParams := Shortened(mParamsValue, cMaxString, cMaxParams);
       end;
     end;
   end;
   System.TMonitor.Enter(FLock);
   try
     FMessages[FMessageNext] := mText;
-    FMessageNext := (FMessageNext + 1) mod Capacity;
-    if FMessageCount < Capacity then
+    FMessageNext := (FMessageNext + 1) mod cCapacity;
+    if FMessageCount < cCapacity then
     begin
       Inc(FMessageCount);
     end;
@@ -261,7 +261,7 @@ begin
       FRequests[FRequestNext].Id := mId;
       FRequests[FRequestNext].Method := mMethod;
       FRequests[FRequestNext].Params := mParams;
-      FRequestNext := (FRequestNext + 1) mod Capacity;
+      FRequestNext := (FRequestNext + 1) mod cCapacity;
     end;
   finally
     System.TMonitor.Exit(FLock);
@@ -285,10 +285,10 @@ begin
       Exit;
     end;
     SetLength(Result, mCount);
-    mStart := (FMessageNext - mCount + Capacity) mod Capacity;
+    mStart := (FMessageNext - mCount + cCapacity) mod cCapacity;
     for mIndex := 0 to mCount - 1 do
     begin
-      Result[mIndex] := FMessages[(mStart + mIndex) mod Capacity];
+      Result[mIndex] := FMessages[(mStart + mIndex) mod cCapacity];
     end;
   finally
     System.TMonitor.Exit(FLock);
@@ -309,9 +309,9 @@ begin
   System.TMonitor.Enter(FLock);
   try
     // Die jüngste Anfrage mit dieser id zuerst: Clients vergeben ids nach einem Neustart neu.
-    for mStep := 1 to Capacity do
+    for mStep := 1 to cCapacity do
     begin
-      mIndex := (FRequestNext - mStep + Capacity) mod Capacity;
+      mIndex := (FRequestNext - mStep + cCapacity) mod cCapacity;
       if FRequests[mIndex].Id = AId then
       begin
         AMethod := FRequests[mIndex].Method;

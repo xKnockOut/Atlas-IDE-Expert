@@ -529,11 +529,11 @@ begin
         Result := SameText(AFileName, LibFile);
         AText := LibText;
       end), Tree, MainText, 'C:\P\Haupt.pas', PositionOf(MainText, 'Summe', 1), '23.0');
-    Assert.AreEqual(TDocWiki.BaseUri + 'Athens/en/Vcl.Werkzeug.TRechner.Summe', Info.DocWikiUrl);
+    Assert.AreEqual(TDocWiki.cBaseUri + 'Athens/en/Vcl.Werkzeug.TRechner.Summe', Info.DocWikiUrl);
     Assert.IsTrue(Pos('[DocWiki](' + Info.DocWikiUrl + ')', Info.ToMarkdown) > 0);
     Info := TLspHover.InfoAt(THoverSource.Create(Resolver, Index, nil), Tree, MainText, 'C:\P\Haupt.pas',
       PositionOf(MainText, 'Vcl.Werkzeug;', 1), '');
-    Assert.AreEqual(TDocWiki.BaseUri + 'Florence/en/Vcl.Werkzeug', Info.DocWikiUrl);
+    Assert.AreEqual(TDocWiki.cBaseUri + 'Florence/en/Vcl.Werkzeug', Info.DocWikiUrl);
   finally
     Tree.Free;
     Resolver.Free;

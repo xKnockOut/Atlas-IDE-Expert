@@ -46,14 +46,14 @@ var
   Base: TDateTime;
 begin
   Base := EncodeDateTime(2026, 10, 21, 10, 41, 0, 0);
-  Lsp := Info(1, TIndexProcessInfo.KindLsp);
+  Lsp := Info(1, TIndexProcessInfo.cKindLsp);
   Event.Time := Base;
   Event.Text := 'Cache-Sperre erhalten';
   Lsp.Events := [Event];
   Event.Time := IncSecond(Base, 19);
   Event.Text := 'Index gespeichert';
   Lsp.Events := Lsp.Events + [Event];
-  Mcp := Info(2, TIndexProcessInfo.KindMcp);
+  Mcp := Info(2, TIndexProcessInfo.cKindMcp);
   Event.Time := IncSecond(Base, 5);
   Event.Text := 'Sperre belegt';
   Mcp.Events := [Event];
@@ -67,7 +67,7 @@ begin
   Assert.AreEqual('LSP: Index gespeichert', Events[2].Text);
   Assert.AreEqual('MCP: neuen Stand übernommen', Events[3].Text);
   // Zwei LSP-Prozesse: mit Prozessnummer.
-  Events := TIndexProcessLog.Events([Lsp, Info(3, TIndexProcessInfo.KindLsp), Mcp]);
+  Events := TIndexProcessLog.Events([Lsp, Info(3, TIndexProcessInfo.cKindLsp), Mcp]);
   Assert.AreEqual('LSP 1: Cache-Sperre erhalten', Events[0].Text);
 end;
 
@@ -78,8 +78,8 @@ var
   Event: TIndexProcessEvent;
   Value: TJSONObject;
 begin
-  Source := Info(42, TIndexProcessInfo.KindMcp);
-  Source.State := TIndexProcessInfo.StateReady;
+  Source := Info(42, TIndexProcessInfo.cKindMcp);
+  Source.State := TIndexProcessInfo.cStateReady;
   Source.Writer := True;
   Source.Started := EncodeDateTime(2026, 10, 21, 9, 0, 0, 0);
   Event.Time := Source.Started;

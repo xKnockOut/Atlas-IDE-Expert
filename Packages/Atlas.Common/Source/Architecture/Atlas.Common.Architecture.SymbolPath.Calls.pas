@@ -178,7 +178,7 @@ begin
   Result := nil;
   mNode := FTable.Node(ANode);
   mData := FTable.UnitFor(mNode.UnitName);
-  if not mNode.IsUnit and (mNode.Symbol.Kind in SymbolPathRoutineKinds) and (mData <> nil) and
+  if not mNode.IsUnit and (mNode.Symbol.Kind in cSymbolPathRoutineKinds) and (mData <> nil) and
     Assigned(FReadText) then
   begin
     Result := BuildCalls(ANode, mData);
@@ -244,7 +244,7 @@ var
 begin
   for mIndex := 0 to High(AData.Data.Symbols) do
   begin
-    if not (AData.Data.Symbols[mIndex].Kind in SymbolPathRoutineKinds) then
+    if not (AData.Data.Symbols[mIndex].Kind in cSymbolPathRoutineKinds) then
     begin
       Continue;
     end;
@@ -294,7 +294,7 @@ begin
   Result := nil;
   mNode := FTable.Node(ANode);
   mStopped := False;
-  if not mNode.IsUnit and (mNode.Symbol.Kind in SymbolPathRoutineKinds) then
+  if not mNode.IsUnit and (mNode.Symbol.Kind in cSymbolPathRoutineKinds) then
   begin
     mStopped := ScanCallers(ANode, Result);
   end;

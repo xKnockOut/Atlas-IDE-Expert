@@ -26,10 +26,10 @@ type
   TMemberKinds = set of TIndexSymbolKind;
 
 const
-  ComponentRoots: array[0..13] of string = ('TComponent', 'TControl', 'TWinControl', 'TCustomControl',
+  cComponentRoots: array[0..13] of string = ('TComponent', 'TControl', 'TWinControl', 'TCustomControl',
     'TGraphicControl', 'TForm', 'TCustomForm', 'TFrame', 'TCustomFrame', 'TDataModule', 'TDataSet', 'TCustomPanel',
     'TPanel', 'TCustomConnection');
-  ControlRoots: array[0..9] of string = ('TControl', 'TWinControl', 'TCustomControl', 'TGraphicControl', 'TForm',
+  cControlRoots: array[0..9] of string = ('TControl', 'TWinControl', 'TCustomControl', 'TGraphicControl', 'TForm',
     'TCustomForm', 'TFrame', 'TCustomFrame', 'TCustomPanel', 'TPanel');
 
 /// <summary>Vorfahren von AClassName, soweit Unit und Index sie kennen; der erste ist der direkte.</summary>
@@ -127,11 +127,11 @@ end;
 
 function DescendsFrom(const AChain: TArray<string>; const ARoots: array of string): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
-  for Name in AChain do
+  for mName in AChain do
   begin
-    if MatchText(Name, ARoots) then
+    if MatchText(mName, ARoots) then
     begin
       Exit(True);
     end;
@@ -141,22 +141,22 @@ end;
 
 function IsComponentType(ASource: TCommandSource; const AIndex: ISymbolIndex; const ATypeName: string): Boolean;
 begin
-  Result := MatchText(ATypeName, ComponentRoots) or
-    DescendsFrom(Ancestors(ASource, AIndex, ATypeName), ComponentRoots);
+  Result := MatchText(ATypeName, cComponentRoots) or
+    DescendsFrom(Ancestors(ASource, AIndex, ATypeName), cComponentRoots);
 end;
 
 function FindMember(ASource: TCommandSource; const AClass: TIndexSymbol; const AName: string;
   AKinds: TMemberKinds; out AMember: TIndexSymbol): Boolean;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
-  for Symbol in ASource.UnitIndex.Symbols do
+  for mSymbol in ASource.UnitIndex.Symbols do
   begin
-    if (Symbol.Kind in AKinds) and SameText(Symbol.Name, AName) and SameText(Symbol.Container, AClass.Name) and
-      (Symbol.Range.StartPos.Line >= AClass.Range.StartPos.Line) and
-      (Symbol.Range.EndPos.Line <= AClass.Range.EndPos.Line) then
+    if (mSymbol.Kind in AKinds) and SameText(mSymbol.Name, AName) and SameText(mSymbol.Container, AClass.Name) and
+      (mSymbol.Range.StartPos.Line >= AClass.Range.StartPos.Line) and
+      (mSymbol.Range.EndPos.Line <= AClass.Range.EndPos.Line) then
     begin
-      AMember := Symbol;
+      AMember := mSymbol;
       Exit(True);
     end;
   end;
@@ -165,52 +165,53 @@ end;
 
 function Members(ASource: TCommandSource; const AClass: TIndexSymbol; AKinds: TMemberKinds): TArray<TIndexSymbol>;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
   Result := nil;
-  for Symbol in ASource.UnitIndex.Symbols do
+  for mSymbol in ASource.UnitIndex.Symbols do
   begin
-    if (Symbol.Kind in AKinds) and SameText(Symbol.Container, AClass.Name) and
-      (Symbol.Range.StartPos.Line >= AClass.Range.StartPos.Line) and
-      (Symbol.Range.EndPos.Line <= AClass.Range.EndPos.Line) then
+    if (mSymbol.Kind in AKinds) and SameText(mSymbol.Container, AClass.Name) and
+      (mSymbol.Range.StartPos.Line >= AClass.Range.StartPos.Line) and
+      (mSymbol.Range.EndPos.Line <= AClass.Range.EndPos.Line) then
     begin
-      Result := Result + [Symbol];
+      Result := Result + [mSymbol];
     end;
   end;
 end;
 
 function FindBody(ASource: TCommandSource; const AClassName, AName: string): TSyntaxNode;
 var
-  Section: TSyntaxNode;
-  Index: Integer;
+  mSection: TSyntaxNode;
+  mIndex: Integer;
 begin
   Result := nil;
-  Section := ASource.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
-  if Section = nil then
+  mSection := ASource.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
+  if mSection = nil then
   begin
     Exit;
   end;
-  for Index := 0 to Section.ChildCount - 1 do
+  for mIndex := 0 to mSection.ChildCount - 1 do
   begin
-    if (Section[Index].Kind = TSyntaxKind.RoutineDecl) and SameText(Section[Index].Name, AClassName + '.' + AName) and
-      (Section[Index].FindChild(TSyntaxKind.Block) <> nil) then
+    if (mSection[mIndex].Kind = TSyntaxKind.RoutineDecl) and
+      SameText(mSection[mIndex].Name, AClassName + '.' + AName) and
+      (mSection[mIndex].FindChild(TSyntaxKind.Block) <> nil) then
     begin
-      Exit(Section[Index]);
+      Exit(mSection[mIndex]);
     end;
   end;
 end;
 
 function Accessor(const ADeclaration, AKeyword: string): string;
 var
-  Words: TArray<string>;
-  Index: Integer;
+  mWords: TArray<string>;
+  mIndex: Integer;
 begin
-  Words := ADeclaration.Replace(';', ' ').Split([' ', #9], TStringSplitOptions.ExcludeEmpty);
-  for Index := 0 to High(Words) - 1 do
+  mWords := ADeclaration.Replace(';', ' ').Split([' ', #9], TStringSplitOptions.ExcludeEmpty);
+  for mIndex := 0 to High(mWords) - 1 do
   begin
-    if SameText(Words[Index], AKeyword) then
+    if SameText(mWords[mIndex], AKeyword) then
     begin
-      Exit(Words[Index + 1]);
+      Exit(mWords[mIndex + 1]);
     end;
   end;
   Result := '';
@@ -267,17 +268,17 @@ end;
 class function TSetterGenerator.NotifyCall(ASource: TCommandSource; const AIndex: ISymbolIndex;
   const AClass: TIndexSymbol): string;
 var
-  Member: TIndexSymbol;
+  mMember: TIndexSymbol;
 begin
-  if DescendsFrom(Ancestors(ASource, AIndex, AClass.Name), ControlRoots) then
+  if DescendsFrom(Ancestors(ASource, AIndex, AClass.Name), cControlRoots) then
   begin
     Result := 'Invalidate';
   end
-  else if FindMember(ASource, AClass, 'Changed', [TIndexSymbolKind.Method], Member) then
+  else if FindMember(ASource, AClass, 'Changed', [TIndexSymbolKind.Method], mMember) then
   begin
     Result := 'Changed';
   end
-  else if FindMember(ASource, AClass, 'DoChange', [TIndexSymbolKind.Method], Member) then
+  else if FindMember(ASource, AClass, 'DoChange', [TIndexSymbolKind.Method], mMember) then
   begin
     Result := 'DoChange';
   end
@@ -297,12 +298,12 @@ end;
 
 class function TSetterGenerator.Body(const AField, AValue, ACall, ALineBreak: string): string;
 var
-  Line: string;
+  mLine: string;
 begin
   Result := 'begin';
-  for Line in Statements(AField, AValue, ACall) do
+  for mLine in Statements(AField, AValue, ACall) do
   begin
-    Result := Result + ALineBreak + '  ' + Line;
+    Result := Result + ALineBreak + '  ' + mLine;
   end;
   Result := Result + ALineBreak + 'end;';
 end;

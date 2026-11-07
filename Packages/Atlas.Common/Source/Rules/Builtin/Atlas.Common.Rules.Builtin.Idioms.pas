@@ -46,21 +46,22 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  MoneyAsFloatRuleId = 'money-as-float';
-  StringIfChainRuleId = 'string-if-chain';
-  PreferCaseRuleId = 'prefer-case';
+  cMoneyAsFloatRuleId = 'money-as-float';
+  cStringIfChainRuleId = 'string-if-chain';
+  cPreferCaseRuleId = 'prefer-case';
 
 type
   TMoneyAsFloatRule = class(TInterfacedObject, IRule)
   public const
-    DefaultPatterns: array[0..7] of string = ('Betrag', 'Preis', 'Summe', 'Netto', 'Brutto', 'Steuer', 'Amount',
+    cDefaultPatterns: array[0..7] of string = ('Betrag', 'Preis', 'Summe', 'Netto', 'Brutto', 'Steuer', 'Amount',
       'Price');
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
     /// <summary>Letzter Namensteil in CamelCase bzw. nach _: GesamtPreis → Preis, ABetrag → Betrag.</summary>
     class function HeadOf(const AName: string): string; static;
-    /// <summary>AName bezeichnet nach APatterns einen Geldbetrag (Mehrzahl eingeschlossen, Sätze ausgenommen).</summary>
+    /// <summary>AName bezeichnet nach APatterns einen Geldbetrag (Mehrzahl eingeschlossen, Sätze
+    /// ausgenommen).</summary>
     class function IsMoneyName(const AName: string; const APatterns: TArray<string>): Boolean; static;
     /// <summary>AName ist nur über ein mehrdeutiges Muster (Amount, Summe, Sum, Total) ein Geldname.</summary>
     class function IsAmbiguousName(const AName: string; const APatterns: TArray<string>): Boolean; static;
@@ -68,7 +69,7 @@ type
 
   TStringIfChainRule = class(TInterfacedObject, IRule)
   public const
-    DefaultMin = 4;
+    cDefaultMin = 4;
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -78,7 +79,7 @@ type
 
   TPreferCaseRule = class(TInterfacedObject, IRule)
   public const
-    DefaultMin = 4;
+    cDefaultMin = 4;
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -161,60 +162,60 @@ end;
 /// <summary>Index des ersten Tokens ab AOffset (binäre Suche); Length(ATokens), wenn keiner folgt.</summary>
 function TokenAt(const ATokens: TTokens; AOffset: Integer): Integer;
 var
-  Low, High, Middle: Integer;
+  mLow, mHigh, mMiddle: Integer;
 begin
-  Low := 0;
-  High := Length(ATokens);
-  while Low < High do
+  mLow := 0;
+  mHigh := Length(ATokens);
+  while mLow < mHigh do
   begin
-    Middle := (Low + High) div 2;
-    if ATokens[Middle].Offset < AOffset then
+    mMiddle := (mLow + mHigh) div 2;
+    if ATokens[mMiddle].Offset < AOffset then
     begin
-      Low := Middle + 1;
+      mLow := mMiddle + 1;
     end
     else
     begin
-      High := Middle;
+      mHigh := mMiddle;
     end;
   end;
-  Result := Low;
+  Result := mLow;
 end;
 
 // Iterativ (Bericht M1).
 procedure CollectNodes(ARoot: TSyntaxNode; AList: TList<TSyntaxNode>);
 var
-  Pending: TStack<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Index: Integer;
+  mPending: TStack<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mIndex: Integer;
 begin
-  Pending := TStack<TSyntaxNode>.Create;
+  mPending := TStack<TSyntaxNode>.Create;
   try
-    Pending.Push(ARoot);
-    while Pending.Count > 0 do
+    mPending.Push(ARoot);
+    while mPending.Count > 0 do
     begin
-      Node := Pending.Pop;
-      AList.Add(Node);
-      for Index := Node.ChildCount - 1 downto 0 do
+      mNode := mPending.Pop;
+      AList.Add(mNode);
+      for mIndex := mNode.ChildCount - 1 downto 0 do
       begin
-        Pending.Push(Node[Index]);
+        mPending.Push(mNode[mIndex]);
       end;
     end;
   finally
-    Pending.Free;
+    mPending.Free;
   end;
 end;
 
 /// <summary>ARoot und alle Nachfahren in Dokumentreihenfolge.</summary>
 function NodesOf(ARoot: TSyntaxNode): TArray<TSyntaxNode>;
 var
-  List: TList<TSyntaxNode>;
+  mList: TList<TSyntaxNode>;
 begin
-  List := TList<TSyntaxNode>.Create;
+  mList := TList<TSyntaxNode>.Create;
   try
-    CollectNodes(ARoot, List);
-    Result := List.ToArray;
+    CollectNodes(ARoot, mList);
+    Result := mList.ToArray;
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 
@@ -237,14 +238,14 @@ end;
 /// <summary>Namen einer Deklaration "A,B" einzeln und ohne Leerraum.</summary>
 function NamesOf(ANode: TSyntaxNode): TArray<string>;
 var
-  Name: string;
+  mName: string;
 begin
   Result := nil;
-  for Name in ANode.Name.Split([',']) do
+  for mName in ANode.Name.Split([',']) do
   begin
-    if Trim(Name) <> '' then
+    if Trim(mName) <> '' then
     begin
-      Result := Result + [Trim(Name)];
+      Result := Result + [Trim(mName)];
     end;
   end;
 end;
@@ -252,50 +253,50 @@ end;
 { TMoneyAsFloatRule }
 
 const
-  FloatTypes: array[0..3] of string = ('Double', 'Single', 'Extended', 'Real');
+  cFloatTypes: array[0..3] of string = ('Double', 'Single', 'Extended', 'Real');
   // Mehrzahl und Fugen: Preise, Summen, Steuern, Amounts.
-  PluralEndings: array[0..6] of string = ('', 'e', 'n', 'en', 's', 'es', 'er');
+  cPluralEndings: array[0..6] of string = ('', 'e', 'n', 'en', 's', 'es', 'er');
   // Verhältnisse und Prüfsummen sind keine Beträge, auch wenn ein Geldwort davorsteht.
-  RatioWords: array[0..21] of string = ('Satz', 'Saetze', 'Sätze', 'Faktor', 'Faktoren', 'Rate', 'Raten', 'Rates',
+  cRatioWords: array[0..21] of string = ('Satz', 'Saetze', 'Sätze', 'Faktor', 'Faktoren', 'Rate', 'Raten', 'Rates',
     'Quote', 'Quoten', 'Prozent', 'Anteil', 'Anteile', 'Percent', 'Percentage', 'Ratio', 'Ratios', 'Factor',
     'Factors', 'Pruefsumme', 'Prüfsumme', 'Quersumme');
   // Muster, die auch Mengen und Summen beliebiger Werte bezeichnen (Farbanteil, Messwerte).
-  AmbiguousWords: array[0..3] of string = ('Amount', 'Summe', 'Sum', 'Total');
+  cAmbiguousWords: array[0..3] of string = ('Amount', 'Summe', 'Sum', 'Total');
   // Wörter, die einen Geldbezug herstellen.
-  MoneyContextWords: array[0..30] of string = ('Cent', 'Euro', 'EUR', 'USD', 'Dollar', 'Waehrung', 'Währung',
+  cMoneyContextWords: array[0..30] of string = ('Cent', 'Euro', 'EUR', 'USD', 'Dollar', 'Waehrung', 'Währung',
     'Currency', 'Rabatt', 'Discount', 'Rechnung', 'Invoice', 'Zahlung', 'Payment', 'Kosten', 'Cost', 'Gebuehr',
     'Gebühr', 'Fee', 'Saldo', 'Balance', 'Lohn', 'Gehalt', 'Salary', 'Kasse', 'MwSt', 'Mehrwertsteuer', 'Tax',
     'Konto', 'Umsatz', 'Revenue');
 
 function TMoneyAsFloatRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(MoneyAsFloatRuleId, TRuleSeverity.Hint, cTexts[TIdiomsText.MoneyFloatTitle].Text,
+  Result := TRuleDescriptor.Create(cMoneyAsFloatRuleId, TRuleSeverity.Hint, cTexts[TIdiomsText.MoneyFloatTitle].Text,
     True);
 end;
 
 class function TMoneyAsFloatRule.HeadOf(const AName: string): string;
 var
-  Index, Start: Integer;
+  mIndex, mStart: Integer;
 begin
-  Start := 1;
-  for Index := 2 to Length(AName) do
+  mStart := 1;
+  for mIndex := 2 to Length(AName) do
   begin
-    if AName[Index - 1] = '_' then
+    if AName[mIndex - 1] = '_' then
     begin
-      Start := Index;
+      mStart := mIndex;
     end
-    else if AName[Index].IsUpper and (AName[Index - 1].IsLower or AName[Index - 1].IsDigit) then
+    else if AName[mIndex].IsUpper and (AName[mIndex - 1].IsLower or AName[mIndex - 1].IsDigit) then
     begin
-      Start := Index;
+      mStart := mIndex;
     end
     // ABetrag, FNetto: der letzte Großbuchstabe einer Folge beginnt das nächste Wort.
-    else if AName[Index].IsUpper and AName[Index - 1].IsUpper and (Index < Length(AName)) and
-      AName[Index + 1].IsLower then
+    else if AName[mIndex].IsUpper and AName[mIndex - 1].IsUpper and (mIndex < Length(AName)) and
+      AName[mIndex + 1].IsLower then
     begin
-      Start := Index;
+      mStart := mIndex;
     end;
   end;
-  Result := Copy(AName, Start, MaxInt);
+  Result := Copy(AName, mStart, MaxInt);
   while (Result <> '') and (Result[Length(Result)] = '_') do
   begin
     Delete(Result, Length(Result), 1);
@@ -304,28 +305,28 @@ end;
 
 class function TMoneyAsFloatRule.IsMoneyName(const AName: string; const APatterns: TArray<string>): Boolean;
 var
-  Head, Pattern, Ending, Word: string;
+  mHead, mPattern, mEnding, mWord: string;
 begin
-  Head := HeadOf(AName);
+  mHead := HeadOf(AName);
   // Preis2, Betrag_1: Ziffern am Ende zählen nicht zum Wort.
-  while (Head <> '') and Head[Length(Head)].IsDigit do
+  while (mHead <> '') and mHead[Length(mHead)].IsDigit do
   begin
-    Delete(Head, Length(Head), 1);
+    Delete(mHead, Length(mHead), 1);
   end;
-  for Word in RatioWords do
+  for mWord in cRatioWords do
   begin
-    if EndsText(Word, Head) then
+    if EndsText(mWord, mHead) then
     begin
       Exit(False);
     end;
   end;
-  for Pattern in APatterns do
+  for mPattern in APatterns do
   begin
-    if Trim(Pattern) <> '' then
+    if Trim(mPattern) <> '' then
     begin
-      for Ending in PluralEndings do
+      for mEnding in cPluralEndings do
       begin
-        if EndsText(Trim(Pattern) + Ending, Head) then
+        if EndsText(Trim(mPattern) + mEnding, mHead) then
         begin
           Exit(True);
         end;
@@ -338,14 +339,14 @@ end;
 /// <summary>APatterns ohne die mehrdeutigen Wörter.</summary>
 function UnambiguousPatterns(const APatterns: TArray<string>): TArray<string>;
 var
-  Pattern: string;
+  mPattern: string;
 begin
   Result := nil;
-  for Pattern in APatterns do
+  for mPattern in APatterns do
   begin
-    if not MatchText(Trim(Pattern), AmbiguousWords) then
+    if not MatchText(Trim(mPattern), cAmbiguousWords) then
     begin
-      Result := Result + [Pattern];
+      Result := Result + [mPattern];
     end;
   end;
 end;
@@ -357,69 +358,69 @@ end;
 
 procedure TMoneyAsFloatRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TTokens;
-  Patterns: TArray<string>;
-  Nodes: TArray<TSyntaxNode>;
-  Declared: TDictionary<string, Boolean>;
-  ContextPatterns: TArray<string>;
+  mTokens: TTokens;
+  mPatterns: TArray<string>;
+  mNodes: TArray<TSyntaxNode>;
+  mDeclared: TDictionary<string, Boolean>;
+  mContextPatterns: TArray<string>;
 
   // Geldbezug im Typ bzw. in der Routine um ANode: ein anderer Geldname, Currency oder ein Geldwort.
   function HasMoneyContext(ANode: TSyntaxNode; const AName: string): Boolean;
   var
-    Scope: TSyntaxNode;
-    Index: Integer;
+    mScope: TSyntaxNode;
+    mIndex: Integer;
   begin
-    Scope := AncestorOf(ANode, TSyntaxKind.TypeDecl);
-    if Scope = nil then
+    mScope := AncestorOf(ANode, TSyntaxKind.TypeDecl);
+    if mScope = nil then
     begin
-      Scope := AncestorOf(ANode, TSyntaxKind.RoutineDecl);
+      mScope := AncestorOf(ANode, TSyntaxKind.RoutineDecl);
     end;
-    if Scope = nil then
+    if mScope = nil then
     begin
-      Scope := AContext.Tree.Root;
+      mScope := AContext.Tree.Root;
     end;
-    Index := TokenAt(Tokens, Scope.StartOffset);
-    while (Index <= High(Tokens)) and (Tokens[Index].Offset < Scope.EndOffset) do
+    mIndex := TokenAt(mTokens, mScope.StartOffset);
+    while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < mScope.EndOffset) do
     begin
-      if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and not SameText(Tokens[Index].Text, AName) and
-        IsMoneyName(Tokens[Index].Text, ContextPatterns) then
+      if (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and not SameText(mTokens[mIndex].Text, AName) and
+        IsMoneyName(mTokens[mIndex].Text, mContextPatterns) then
       begin
         Exit(True);
       end;
-      Inc(Index);
+      Inc(mIndex);
     end;
     Result := False;
   end;
 
   function IsMoney(ANode: TSyntaxNode; const AName: string): Boolean;
   begin
-    Result := IsMoneyName(AName, Patterns) and
-      (not IsAmbiguousName(AName, Patterns) or HasMoneyContext(ANode, AName));
+    Result := IsMoneyName(AName, mPatterns) and
+      (not IsAmbiguousName(AName, mPatterns) or HasMoneyContext(ANode, AName));
   end;
 
   function IsFloat(ATypeRef: TSyntaxNode): Boolean;
   var
-    Name: string;
+    mName: string;
   begin
     if (ATypeRef = nil) or (ATypeRef.ChildCount > 0) then
     begin
       Exit(False);
     end;
-    Name := NodeText(AContext, ATypeRef);
-    if StartsText('System.', Name) then
+    mName := NodeText(AContext, ATypeRef);
+    if StartsText('System.', mName) then
     begin
-      Name := Copy(Name, Length('System.') + 1, MaxInt);
+      mName := Copy(mName, Length('System.') + 1, MaxInt);
     end;
-    Result := MatchText(Name, FloatTypes);
+    Result := MatchText(mName, cFloatTypes);
   end;
 
   function AllMoney(ANode: TSyntaxNode): Boolean;
   var
-    Name: string;
+    mName: string;
   begin
-    for Name in NamesOf(ANode) do
+    for mName in NamesOf(ANode) do
     begin
-      if not IsMoney(ANode, Name) then
+      if not IsMoney(ANode, mName) then
       begin
         Exit(False);
       end;
@@ -430,16 +431,16 @@ var
   // Token des Namens AName innerhalb von ANode.
   function NameRange(ANode: TSyntaxNode; const AName: string): TTextRange;
   var
-    Index: Integer;
+    mIndex: Integer;
   begin
-    Index := TokenAt(Tokens, ANode.StartOffset);
-    while (Index <= High(Tokens)) and (Tokens[Index].Offset < ANode.EndOffset) do
+    mIndex := TokenAt(mTokens, ANode.StartOffset);
+    while (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < ANode.EndOffset) do
     begin
-      if (Tokens[Index].Kind = TPascalTokenKind.Identifier) and SameText(Tokens[Index].Text, AName) then
+      if (mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(mTokens[mIndex].Text, AName) then
       begin
-        Exit(TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].EndPos));
+        Exit(TTextRange.Create(mTokens[mIndex].StartPos, mTokens[mIndex].EndPos));
       end;
-      Inc(Index);
+      Inc(mIndex);
     end;
     Result := NodeRange(ANode);
   end;
@@ -452,48 +453,48 @@ var
   // Namen hinter read und write einer Property; '' für fehlende, '?' für Punkte (Record-Feld).
   procedure Accessors(AProperty: TSyntaxNode; out ARead, AWrite: string);
   var
-    Index: Integer;
-    Name: string;
+    mIndex: Integer;
+    mName: string;
   begin
     ARead := '';
     AWrite := '';
-    Index := TokenAt(Tokens, AProperty.StartOffset);
-    while (Index < High(Tokens)) and (Tokens[Index].Offset < AProperty.EndOffset) do
+    mIndex := TokenAt(mTokens, AProperty.StartOffset);
+    while (mIndex < High(mTokens)) and (mTokens[mIndex].Offset < AProperty.EndOffset) do
     begin
-      if MatchText(Tokens[Index].Text, ['read', 'write']) and (Tokens[Index + 1].Kind = TPascalTokenKind.Identifier) then
+      if MatchText(mTokens[mIndex].Text, ['read', 'write']) and (mTokens[mIndex + 1].Kind = TPascalTokenKind.Identifier) then
       begin
-        Name := Tokens[Index + 1].Text;
-        if (Index + 2 <= High(Tokens)) and (Tokens[Index + 2].Text = '.') then
+        mName := mTokens[mIndex + 1].Text;
+        if (mIndex + 2 <= High(mTokens)) and (mTokens[mIndex + 2].Text = '.') then
         begin
-          Name := '?';
+          mName := '?';
         end;
-        if SameText(Tokens[Index].Text, 'read') then
+        if SameText(mTokens[mIndex].Text, 'read') then
         begin
-          ARead := Name;
+          ARead := mName;
         end
         else
         begin
-          AWrite := Name;
+          AWrite := mName;
         end;
       end;
-      Inc(Index);
+      Inc(mIndex);
     end;
   end;
 
   function MemberOf(AType: TSyntaxNode; AKind: TSyntaxKind; const AName: string): TSyntaxNode;
   var
-    Index: Integer;
-    Name: string;
+    mIndex: Integer;
+    mName: string;
   begin
-    for Index := 0 to AType.ChildCount - 1 do
+    for mIndex := 0 to AType.ChildCount - 1 do
     begin
-      if AType[Index].Kind = AKind then
+      if AType[mIndex].Kind = AKind then
       begin
-        for Name in NamesOf(AType[Index]) do
+        for mName in NamesOf(AType[mIndex]) do
         begin
-          if SameText(Name, AName) then
+          if SameText(mName, AName) then
           begin
-            Exit(AType[Index]);
+            Exit(AType[mIndex]);
           end;
         end;
       end;
@@ -504,34 +505,35 @@ var
   // Property: Felder hinter read und write mit ändern; Getter und Setter müssten mitwandern.
   function PropertyEdits(AProperty: TSyntaxNode; out AEdits: TArray<TRuleEdit>): Boolean;
   var
-    Owner, Field: TSyntaxNode;
-    Read, Write, Name: string;
-    Names: TArray<string>;
+    mOwner, mField: TSyntaxNode;
+    mRead, mWrite, mName: string;
+    mNames: TArray<string>;
   begin
     AEdits := [CurrencyEdit(AProperty.FindChild(TSyntaxKind.TypeReference))];
-    Owner := AProperty.Parent;
-    Accessors(AProperty, Read, Write);
-    Names := nil;
-    if Read <> '' then
+    mOwner := AProperty.Parent;
+    Accessors(AProperty, mRead, mWrite);
+    mNames := nil;
+    if mRead <> '' then
     begin
-      Names := Names + [Read];
+      mNames := mNames + [mRead];
     end;
-    if (Write <> '') and not SameText(Write, Read) then
+    if (mWrite <> '') and not SameText(mWrite, mRead) then
     begin
-      Names := Names + [Write];
+      mNames := mNames + [mWrite];
     end;
-    for Name in Names do
+    for mName in mNames do
     begin
-      if (Name = '?') or (Owner = nil) then
+      if (mName = '?') or (mOwner = nil) then
       begin
         Exit(False);
       end;
-      Field := MemberOf(Owner, TSyntaxKind.Field, Name);
-      if (Field = nil) or (Length(NamesOf(Field)) <> 1) or not IsFloat(Field.FindChild(TSyntaxKind.TypeReference)) then
+      mField := MemberOf(mOwner, TSyntaxKind.Field, mName);
+      if (mField = nil) or (Length(NamesOf(mField)) <> 1) or
+        not IsFloat(mField.FindChild(TSyntaxKind.TypeReference)) then
       begin
         Exit(False);
       end;
-      AEdits := AEdits + [CurrencyEdit(Field.FindChild(TSyntaxKind.TypeReference))];
+      AEdits := AEdits + [CurrencyEdit(mField.FindChild(TSyntaxKind.TypeReference))];
     end;
     Result := True;
   end;
@@ -579,18 +581,18 @@ var
 
   function ParametersOf(AHeader: TSyntaxNode): TArray<TSyntaxNode>;
   var
-    List: TSyntaxNode;
-    Index: Integer;
+    mList: TSyntaxNode;
+    mIndex: Integer;
   begin
     Result := nil;
-    List := AHeader.FindChild(TSyntaxKind.Parameters);
-    if List <> nil then
+    mList := AHeader.FindChild(TSyntaxKind.Parameters);
+    if mList <> nil then
     begin
-      for Index := 0 to List.ChildCount - 1 do
+      for mIndex := 0 to mList.ChildCount - 1 do
       begin
-        if List[Index].Kind = TSyntaxKind.Parameter then
+        if mList[mIndex].Kind = TSyntaxKind.Parameter then
         begin
-          Result := Result + [List[Index]];
+          Result := Result + [mList[mIndex]];
         end;
       end;
     end;
@@ -650,7 +652,7 @@ var
       mName := mTypeDecl.Name + '.' + mName;
     end;
     mOwn := ParametersOf(AHeader);
-    for mNode in Nodes do
+    for mNode in mNodes do
     begin
       Result := ImplementingHeader(mNode, mName, mOwn);
       if Result <> nil then
@@ -663,41 +665,41 @@ var
   // Parameter: auch im Kopf der Implementierung ändern.
   function ParameterEdits(AParameter: TSyntaxNode; out AEdits: TArray<TRuleEdit>): Boolean;
   var
-    Header, Implementation_: TSyntaxNode;
-    Index: Integer;
-    Own, Other: TArray<TSyntaxNode>;
-    TypeRef: TSyntaxNode;
+    mHeader, mImplementation_: TSyntaxNode;
+    mIndex: Integer;
+    mOwn, mOther: TArray<TSyntaxNode>;
+    mTypeRef: TSyntaxNode;
   begin
     AEdits := [CurrencyEdit(AParameter.FindChild(TSyntaxKind.TypeReference))];
-    Header := AncestorOf(AParameter, TSyntaxKind.RoutineHeader);
+    mHeader := AncestorOf(AParameter, TSyntaxKind.RoutineHeader);
     // Prozeduraler Typ oder Routine nur mit Rumpf: eine Stelle. Deklaration im Typ, im interface-Teil oder
     // forward: auch der Kopf mit Rumpf.
-    if (Header = nil) or HasBody(Header.Parent) or (Header.Parent = nil) or
-      ((Header.Parent.Kind <> TSyntaxKind.RoutineDecl) and (AncestorOf(Header, TSyntaxKind.TypeDecl) = nil)) then
+    if (mHeader = nil) or HasBody(mHeader.Parent) or (mHeader.Parent = nil) or
+      ((mHeader.Parent.Kind <> TSyntaxKind.RoutineDecl) and (AncestorOf(mHeader, TSyntaxKind.TypeDecl) = nil)) then
     begin
       Exit(True);
     end;
-    Implementation_ := ImplementationOf(Header);
-    if Implementation_ = nil then
+    mImplementation_ := ImplementationOf(mHeader);
+    if mImplementation_ = nil then
     begin
       Exit(False);
     end;
-    Own := ParametersOf(Header);
-    Other := ParametersOf(Implementation_);
-    if Other = nil then
+    mOwn := ParametersOf(mHeader);
+    mOther := ParametersOf(mImplementation_);
+    if mOther = nil then
     begin
       Exit(True);
     end;
-    for Index := 0 to High(Own) do
+    for mIndex := 0 to High(mOwn) do
     begin
-      if Own[Index] = AParameter then
+      if mOwn[mIndex] = AParameter then
       begin
-        TypeRef := Other[Index].FindChild(TSyntaxKind.TypeReference);
-        if not IsFloat(TypeRef) then
+        mTypeRef := mOther[mIndex].FindChild(TSyntaxKind.TypeReference);
+        if not IsFloat(mTypeRef) then
         begin
           Exit(False);
         end;
-        AEdits := AEdits + [CurrencyEdit(TypeRef)];
+        AEdits := AEdits + [CurrencyEdit(mTypeRef)];
       end;
     end;
     Result := True;
@@ -706,23 +708,23 @@ var
   // Parameter der Implementierung, deren Deklaration schon geprüft wird.
   function RepeatsDeclaration(AParameter: TSyntaxNode): Boolean;
   var
-    Header: TSyntaxNode;
+    mHeader: TSyntaxNode;
   begin
-    Header := AncestorOf(AParameter, TSyntaxKind.RoutineHeader);
-    Result := (Header <> nil) and HasBody(Header.Parent) and
-      ((Pos('.', Header.Name) > 0) or Declared.ContainsKey(LowerCase(Header.Name)));
+    mHeader := AncestorOf(AParameter, TSyntaxKind.RoutineHeader);
+    Result := (mHeader <> nil) and HasBody(mHeader.Parent) and
+      ((Pos('.', mHeader.Name) > 0) or mDeclared.ContainsKey(LowerCase(mHeader.Name)));
   end;
 
   procedure CheckDeclaration(ANode: TSyntaxNode);
   var
-    TypeRef: TSyntaxNode;
-    Name: string;
-    Fixes: TArray<TRuleFix>;
-    Edits: TArray<TRuleEdit>;
-    Fixable: Boolean;
+    mTypeRef: TSyntaxNode;
+    mName: string;
+    mFixes: TArray<TRuleFix>;
+    mEdits: TArray<TRuleEdit>;
+    mFixable: Boolean;
   begin
-    TypeRef := ANode.FindChild(TSyntaxKind.TypeReference);
-    if not IsFloat(TypeRef) then
+    mTypeRef := ANode.FindChild(TSyntaxKind.TypeReference);
+    if not IsFloat(mTypeRef) then
     begin
       Exit;
     end;
@@ -730,33 +732,33 @@ var
     begin
       Exit;
     end;
-    Fixes := nil;
+    mFixes := nil;
     if AllMoney(ANode) then
     begin
       case ANode.Kind of
         TSyntaxKind.Parameter:
-          Fixable := ParameterEdits(ANode, Edits);
+          mFixable := ParameterEdits(ANode, mEdits);
         TSyntaxKind.PropertyDecl:
-          Fixable := PropertyEdits(ANode, Edits);
+          mFixable := PropertyEdits(ANode, mEdits);
         TSyntaxKind.Field:
-          Fixable := FieldEdits(ANode, Edits);
+          mFixable := FieldEdits(ANode, mEdits);
       else
         begin
-          Edits := [CurrencyEdit(TypeRef)];
-          Fixable := True;
+          mEdits := [CurrencyEdit(mTypeRef)];
+          mFixable := True;
         end;
       end;
-      if Fixable then
+      if mFixable then
       begin
-        Fixes := [TRuleFix.Create(cTexts[TIdiomsText.ChangeToCurrency].Text, Edits)];
+        mFixes := [TRuleFix.Create(cTexts[TIdiomsText.ChangeToCurrency].Text, mEdits)];
       end;
     end;
-    for Name in NamesOf(ANode) do
+    for mName in NamesOf(ANode) do
     begin
-      if IsMoney(ANode, Name) then
+      if IsMoney(ANode, mName) then
       begin
-        AReport.Add(NameRange(ANode, Name), cTexts[TIdiomsText.MoneyFloat].Fmt(
-          [Name, NodeText(AContext, TypeRef)]), TRuleConfidence.Low, Fixes);
+        AReport.Add(NameRange(ANode, mName), cTexts[TIdiomsText.MoneyFloat].Fmt(
+          [mName, NodeText(AContext, mTypeRef)]), TRuleConfidence.Low, mFixes);
       end;
     end;
   end;
@@ -764,77 +766,77 @@ var
   // Round(Betrag * 100): Banker's Rounding auf einem Geldbetrag.
   procedure CheckRound(ACall: TSyntaxNode);
   var
-    Index: Integer;
-    Node: TSyntaxNode;
-    List: TList<TSyntaxNode>;
+    mIndex: Integer;
+    mNode: TSyntaxNode;
+    mList: TList<TSyntaxNode>;
   begin
     if (ACall[0].Kind <> TSyntaxKind.Identifier) or not SameText(ACall[0].Name, 'Round') then
     begin
       Exit;
     end;
-    List := TList<TSyntaxNode>.Create;
+    mList := TList<TSyntaxNode>.Create;
     try
-      for Index := 1 to ACall.ChildCount - 1 do
+      for mIndex := 1 to ACall.ChildCount - 1 do
       begin
-        CollectNodes(ACall[Index], List);
+        CollectNodes(ACall[mIndex], mList);
       end;
-      for Node in List do
+      for mNode in mList do
       begin
-        if (Node.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
-          not ((Node.Parent <> nil) and (Node.Parent.Kind = TSyntaxKind.Call) and (Node.Parent[0] = Node)) and
-          IsMoney(Node, Node.Name) then
+        if (mNode.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and
+          not ((mNode.Parent <> nil) and (mNode.Parent.Kind = TSyntaxKind.Call) and (mNode.Parent[0] = mNode)) and
+          IsMoney(mNode, mNode.Name) then
         begin
-          AReport.Add(NodeRange(ACall[0]), cTexts[TIdiomsText.BankersRounding].Fmt([Node.Name]), TRuleConfidence.Low);
+          AReport.Add(NodeRange(ACall[0]), cTexts[TIdiomsText.BankersRounding].Fmt([mNode.Name]), TRuleConfidence.Low);
           Exit;
         end;
       end;
     finally
-      List.Free;
+      mList.Free;
     end;
   end;
 
 var
   Node: TSyntaxNode;
-  Defaults: TArray<string>;
-  Pattern: string;
-  RoundCheck: Boolean;
+  mDefaults: TArray<string>;
+  mPattern: string;
+  mRoundCheck: Boolean;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
   begin
     Exit;
   end;
-  Defaults := nil;
-  for Pattern in DefaultPatterns do
+  mDefaults := nil;
+  for mPattern in cDefaultPatterns do
   begin
-    Defaults := Defaults + [Pattern];
+    mDefaults := mDefaults + [mPattern];
   end;
-  Patterns := TRuleOptions.Strings(AContext.Options, 'namePatterns', Defaults);
-  ContextPatterns := UnambiguousPatterns(Patterns);
-  for Pattern in MoneyContextWords do
+  mPatterns := TRuleOptions.Strings(AContext.Options, 'namePatterns', mDefaults);
+  mContextPatterns := UnambiguousPatterns(mPatterns);
+  for mPattern in cMoneyContextWords do
   begin
-    ContextPatterns := ContextPatterns + [Pattern];
+    mContextPatterns := mContextPatterns + [mPattern];
   end;
-  RoundCheck := TRuleOptions.Bool(AContext.Options, 'checkRound', False);
-  Tokens := AContext.Tree.Tokens;
-  Nodes := NodesOf(AContext.Tree.Root);
-  Declared := TDictionary<string, Boolean>.Create;
+  mRoundCheck := TRuleOptions.Bool(AContext.Options, 'checkRound', False);
+  mTokens := AContext.Tree.Tokens;
+  mNodes := NodesOf(AContext.Tree.Root);
+  mDeclared := TDictionary<string, Boolean>.Create;
   try
     // Routinen mit Deklaration im interface-Teil bzw. forward: Parameter dort prüfen.
-    for Node in Nodes do
+    for Node in mNodes do
     begin
       if (Node.Kind = TSyntaxKind.RoutineDecl) and not HasBody(Node) and
         (AncestorOf(Node, TSyntaxKind.TypeDecl) = nil) then
       begin
-        Declared.AddOrSetValue(LowerCase(Node.Name), True);
+        mDeclared.AddOrSetValue(LowerCase(Node.Name), True);
       end;
     end;
-    for Node in Nodes do
+    for Node in mNodes do
       case Node.Kind of
         TSyntaxKind.Field, TSyntaxKind.VarDecl, TSyntaxKind.Parameter, TSyntaxKind.PropertyDecl,
         TSyntaxKind.InlineVar:
           CheckDeclaration(Node);
         TSyntaxKind.Call:
-          if RoundCheck and (Node.ChildCount > 1) then
+          if mRoundCheck and (Node.ChildCount > 1) then
           begin
             CheckRound(Node);
           end;
@@ -842,14 +844,14 @@ begin
         // Übrige Werte bewusst ohne Wirkung.
       end;
   finally
-    Declared.Free;
+    mDeclared.Free;
   end;
 end;
 
 { TStringIfChainRule }
 
 const
-  CountWords: array[2..12] of TIdiomsText = (TIdiomsText.Two, TIdiomsText.Three, TIdiomsText.Four, TIdiomsText.Five,
+  cCountWords: array[2..12] of TIdiomsText = (TIdiomsText.Two, TIdiomsText.Three, TIdiomsText.Four, TIdiomsText.Five,
     TIdiomsText.Six, TIdiomsText.Seven, TIdiomsText.Eight, TIdiomsText.Nine, TIdiomsText.Ten, TIdiomsText.Eleven,
     TIdiomsText.Twelve);
 
@@ -863,15 +865,15 @@ type
 
 function TStringIfChainRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(StringIfChainRuleId, TRuleSeverity.Hint, cTexts[TIdiomsText.StringIfChainTitle].Text,
+  Result := TRuleDescriptor.Create(cStringIfChainRuleId, TRuleSeverity.Hint, cTexts[TIdiomsText.StringIfChainTitle].Text,
     True);
 end;
 
 class function TStringIfChainRule.CountWord(ACount: Integer): string;
 begin
-  if (ACount >= Low(CountWords)) and (ACount <= High(CountWords)) then
+  if (ACount >= Low(cCountWords)) and (ACount <= High(cCountWords)) then
   begin
-    Result := cTexts[CountWords[ACount]].Text;
+    Result := cTexts[cCountWords[ACount]].Text;
   end
   else
   begin
@@ -882,12 +884,12 @@ end;
 function UsesEdit(const AContext: TRuleContext; const ATokens: TTokens; AOffset: Integer;
   const AUnitName: string; out AEdit: TTextEdit): Boolean;
 var
-  Used: TArray<string>;
-  Short: string;
+  mUsed: TArray<string>;
+  mShort: string;
 begin
-  Used := TUsesClauses.UsedUnits(ATokens);
-  Short := Copy(AUnitName, LastDelimiter('.', AUnitName) + 1, MaxInt);
-  if TUsesClauses.IsUsed(Used, AUnitName, AContext.Namespaces) or TUsesClauses.IsUsed(Used, Short, nil) then
+  mUsed := TUsesClauses.UsedUnits(ATokens);
+  mShort := Copy(AUnitName, LastDelimiter('.', AUnitName) + 1, MaxInt);
+  if TUsesClauses.IsUsed(mUsed, AUnitName, AContext.Namespaces) or TUsesClauses.IsUsed(mUsed, mShort, nil) then
   begin
     Exit(False);
   end;
@@ -897,14 +899,14 @@ end;
 /// <summary>Nur Bezeichner und Punkte: S, Self.FBefehl, Edit1.Text. Iterativ (Bericht M1).</summary>
 function IsSubject(ANode: TSyntaxNode): Boolean;
 var
-  Node: TSyntaxNode;
+  mNode: TSyntaxNode;
 begin
-  Node := ANode;
-  while (Node.Kind = TSyntaxKind.MemberAccess) and (Node.ChildCount = 1) do
+  mNode := ANode;
+  while (mNode.Kind = TSyntaxKind.MemberAccess) and (mNode.ChildCount = 1) do
   begin
-    Node := Node[0];
+    mNode := mNode[0];
   end;
-  Result := Node.Kind = TSyntaxKind.Identifier;
+  Result := mNode.Kind = TSyntaxKind.Identifier;
 end;
 
 function IsStringLiteral(const AContext: TRuleContext; ANode: TSyntaxNode): Boolean;
@@ -914,10 +916,10 @@ end;
 
 procedure TStringIfChainRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TTokens;
-  Paths: TArray<string>;
-  LineBreak: string;
-  Lines: TArray<string>;
+  mTokens: TTokens;
+  mPaths: TArray<string>;
+  mLineBreak: string;
+  mLines: TArray<string>;
 
   function Normalized(ANode: TSyntaxNode): string;
   begin
@@ -986,50 +988,50 @@ var
   function Comparisons(ACondition: TSyntaxNode; var ASubject: string; var ALiterals: TArray<string>;
     var ASensitive: Integer): Boolean;
   var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
   begin
     Result := False;
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ACondition);
-      while Pending.Count > 0 do
+      mPending.Push(ACondition);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if Node.Kind = TSyntaxKind.ParenExpr then
+        mNode := mPending.Pop;
+        if mNode.Kind = TSyntaxKind.ParenExpr then
         begin
-          if Node.ChildCount <> 1 then
+          if mNode.ChildCount <> 1 then
           begin
             Exit;
           end;
-          Pending.Push(Node[0]);
+          mPending.Push(mNode[0]);
         end
-        else if (Node.Kind = TSyntaxKind.BinaryExpr) and SameText(Node.Name, 'or') and (Node.ChildCount = 2) then
+        else if (mNode.Kind = TSyntaxKind.BinaryExpr) and SameText(mNode.Name, 'or') and (mNode.ChildCount = 2) then
         begin
-          Pending.Push(Node[1]);
-          Pending.Push(Node[0]);
+          mPending.Push(mNode[1]);
+          mPending.Push(mNode[0]);
         end
-        else if not Comparison(Node, ASubject, ALiterals, ASensitive) then
+        else if not Comparison(mNode, ASubject, ALiterals, ASensitive) then
         begin
           Exit;
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
     Result := True;
   end;
 
   function SubjectOf(AIf: TSyntaxNode): string;
   var
-    Literals: TArray<string>;
-    Sensitive: Integer;
+    mLiterals: TArray<string>;
+    mSensitive: Integer;
   begin
     Result := '';
-    Literals := nil;
-    Sensitive := 0;
+    mLiterals := nil;
+    mSensitive := 0;
     if (AIf.Kind <> TSyntaxKind.IfStatement) or (AIf.ChildCount < 2) or
-      not Comparisons(AIf[0], Result, Literals, Sensitive) then
+      not Comparisons(AIf[0], Result, mLiterals, mSensitive) then
     begin
       Result := '';
     end;
@@ -1037,40 +1039,40 @@ var
 
   function PathOf(ANode: TSyntaxNode): string;
   begin
-    Result := TConditionalBranches.PathAt(Paths, TokenAt(Tokens, ANode.StartOffset));
+    Result := TConditionalBranches.PathAt(mPaths, TokenAt(mTokens, ANode.StartOffset));
   end;
 
   function LineOf(ALine: Integer): string;
   begin
     Result := '';
-    if (ALine >= 0) and (ALine <= High(Lines)) then
+    if (ALine >= 0) and (ALine <= High(mLines)) then
     begin
-      Result := Lines[ALine];
+      Result := mLines[ALine];
     end;
   end;
 
   // Text von ANode, Folgezeilen um die Einrückung seiner ersten Zeile auf AIndent verschoben.
   function Reindented(ANode: TSyntaxNode; const AIndent: string): string;
   var
-    Parts: TArray<string>;
-    Base, Index: Integer;
-    Line: string;
+    mParts: TArray<string>;
+    mBase, mIndex: Integer;
+    mLine: string;
   begin
-    Parts := NodeText(AContext, ANode).Replace(#13#10, #10).Split([#10]);
-    Base := Length(TTextLines.IndentOf(LineOf(ANode.StartPos.Line)));
-    Result := AIndent + Parts[0];
-    for Index := 1 to High(Parts) do
+    mParts := NodeText(AContext, ANode).Replace(#13#10, #10).Split([#10]);
+    mBase := Length(TTextLines.IndentOf(LineOf(ANode.StartPos.Line)));
+    Result := AIndent + mParts[0];
+    for mIndex := 1 to High(mParts) do
     begin
-      Line := Parts[Index];
-      if Length(TTextLines.IndentOf(Line)) >= Base then
+      mLine := mParts[mIndex];
+      if Length(TTextLines.IndentOf(mLine)) >= mBase then
       begin
-        Line := Copy(Line, Base + 1, MaxInt);
+        mLine := Copy(mLine, mBase + 1, MaxInt);
       end
       else
       begin
-        Line := TrimLeft(Line);
+        mLine := TrimLeft(mLine);
       end;
-      Result := Result + LineBreak + AIndent + Line;
+      Result := Result + mLineBreak + AIndent + mLine;
     end;
   end;
 
@@ -1092,11 +1094,11 @@ var
     mIndex: Integer;
   begin
     Result := True;
-    mIndex := TokenAt(Tokens, AHead.StartOffset);
-    while Result and (mIndex <= High(Tokens)) and (Tokens[mIndex].Offset < AHead.EndOffset) do
+    mIndex := TokenAt(mTokens, AHead.StartOffset);
+    while Result and (mIndex <= High(mTokens)) and (mTokens[mIndex].Offset < AHead.EndOffset) do
     begin
-      Result := (Tokens[mIndex].Kind <> TPascalTokenKind.Directive) and
-        ((Tokens[mIndex].Kind <> TPascalTokenKind.Comment) or InBranches(Tokens[mIndex].Offset, ABranches, AElse));
+      Result := (mTokens[mIndex].Kind <> TPascalTokenKind.Directive) and
+        ((mTokens[mIndex].Kind <> TPascalTokenKind.Comment) or InBranches(mTokens[mIndex].Offset, ABranches, AElse));
       Inc(mIndex);
     end;
   end;
@@ -1148,11 +1150,11 @@ var
     mLabels := CaseLabels(ABranch, ANumber);
     if ABranch.Statement.StartPos.Line = ABranch.Statement.EndPos.Line then
     begin
-      Result := LineBreak + AIndent + '  ' + mLabels + ': ' + NodeText(AContext, ABranch.Statement) + ';';
+      Result := mLineBreak + AIndent + '  ' + mLabels + ': ' + NodeText(AContext, ABranch.Statement) + ';';
     end
     else
     begin
-      Result := LineBreak + AIndent + '  ' + mLabels + ':' + LineBreak +
+      Result := mLineBreak + AIndent + '  ' + mLabels + ':' + mLineBreak +
         Reindented(ABranch.Statement, AIndent + '    ') + ';';
     end;
   end;
@@ -1186,11 +1188,11 @@ var
     end;
     if AElse <> nil then
     begin
-      mText := mText + LineBreak + mIndent + 'else' + LineBreak + Reindented(AElse, mIndent + '  ') + ';';
+      mText := mText + mLineBreak + mIndent + 'else' + mLineBreak + Reindented(AElse, mIndent + '  ') + ';';
     end;
-    mText := mText + LineBreak + mIndent + 'end';
+    mText := mText + mLineBreak + mIndent + 'end';
     mEdits := [TRuleEdit.Create(NodeRange(AHead), mText)];
-    if UsesEdit(AContext, Tokens, AHead.StartOffset, 'System.StrUtils', mExtra) then
+    if UsesEdit(AContext, mTokens, AHead.StartOffset, 'System.StrUtils', mExtra) then
     begin
       mEdits := mEdits + [mExtra];
     end;
@@ -1199,63 +1201,63 @@ var
 
   procedure CheckChain(AHead: TSyntaxNode; AMin: Integer);
   var
-    Subject, HeadPath: string;
-    Current: TSyntaxNode;
-    Branches: TArray<TChainBranch>;
-    Branch: TChainBranch;
-    Sensitive, Count: Integer;
-    SamePath: Boolean;
-    Fixes: TArray<TRuleFix>;
-    One: TRuleFix;
+    mSubject, mHeadPath: string;
+    mCurrent: TSyntaxNode;
+    mBranches: TArray<TChainBranch>;
+    mBranch: TChainBranch;
+    mSensitive, mCount: Integer;
+    mSamePath: Boolean;
+    mFixes: TArray<TRuleFix>;
+    mOne: TRuleFix;
   begin
-    Subject := '';
-    Sensitive := 0;
-    Branches := nil;
-    Current := AHead;
-    HeadPath := PathOf(AHead);
-    Count := 0;
-    SamePath := True;
-    while (Current <> nil) and (Current.Kind = TSyntaxKind.IfStatement) and (Current.ChildCount >= 2) do
+    mSubject := '';
+    mSensitive := 0;
+    mBranches := nil;
+    mCurrent := AHead;
+    mHeadPath := PathOf(AHead);
+    mCount := 0;
+    mSamePath := True;
+    while (mCurrent <> nil) and (mCurrent.Kind = TSyntaxKind.IfStatement) and (mCurrent.ChildCount >= 2) do
     begin
-      Branch := Default(TChainBranch);
-      Branch.Condition := Current[0];
-      if not Comparisons(Current[0], Subject, Branch.Literals, Sensitive) then
+      mBranch := Default(TChainBranch);
+      mBranch.Condition := mCurrent[0];
+      if not Comparisons(mCurrent[0], mSubject, mBranch.Literals, mSensitive) then
       begin
         Break;
       end;
-      Branch.Statement := Current[1];
-      Branches := Branches + [Branch];
+      mBranch.Statement := mCurrent[1];
+      mBranches := mBranches + [mBranch];
       // Nur Vergleiche, die immer mit dem Kopf übersetzt werden.
-      if TConditionalBranches.Implies(HeadPath, PathOf(Current[0])) then
+      if TConditionalBranches.Implies(mHeadPath, PathOf(mCurrent[0])) then
       begin
-        Inc(Count, Length(Branch.Literals));
+        Inc(mCount, Length(mBranch.Literals));
       end;
-      if PathOf(Current[0]) <> HeadPath then
+      if PathOf(mCurrent[0]) <> mHeadPath then
       begin
-        SamePath := False;
+        mSamePath := False;
       end;
-      if Current.ChildCount > 2 then
+      if mCurrent.ChildCount > 2 then
       begin
-        Current := Current[2];
+        mCurrent := mCurrent[2];
       end
       else
       begin
-        Current := nil;
+        mCurrent := nil;
       end;
     end;
     // Ein einzelnes if mit or ist keine Kette (dafür MatchStr).
-    if (Count < AMin) or (Length(Branches) < 2) then
+    if (mCount < AMin) or (Length(mBranches) < 2) then
     begin
       Exit;
     end;
-    Fixes := nil;
-    if SamePath and (Sensitive <> 3) and Fix(AHead, Subject, Branches, Current, Sensitive = 1, One) then
+    mFixes := nil;
+    if mSamePath and (mSensitive <> 3) and Fix(AHead, mSubject, mBranches, mCurrent, mSensitive = 1, mOne) then
     begin
-      Fixes := [One];
+      mFixes := [mOne];
     end;
     AReport.Add(TTextRange.Create(AHead.StartPos, AHead[0].EndPos),
-      cTexts[TIdiomsText.StringIfChain].Fmt([CountWord(Count),
-      IfThen(Sensitive = 2, 'IndexText', 'IndexStr'), Subject]), TRuleConfidence.High, Fixes);
+      cTexts[TIdiomsText.StringIfChain].Fmt([CountWord(mCount),
+      IfThen(mSensitive = 2, 'IndexText', 'IndexStr'), mSubject]), TRuleConfidence.High, mFixes);
   end;
 
   // Fortsetzung einer Kette über denselben String: der Kopf meldet sie.
@@ -1268,28 +1270,28 @@ var
 
 var
   Node: TSyntaxNode;
-  Min: Integer;
+  mMin: Integer;
 begin
   if (AContext.Tree = nil) or (AContext.Tree.Root = nil) then
   begin
     Exit;
   end;
-  Min := TRuleOptions.Int(AContext.Options, 'min', DefaultMin);
-  if Min < 2 then
+  mMin := TRuleOptions.Int(AContext.Options, 'min', cDefaultMin);
+  if mMin < 2 then
   begin
-    Min := DefaultMin;
+    mMin := cDefaultMin;
   end;
-  Tokens := AContext.Tree.Tokens;
-  Paths := TConditionalBranches.Paths(Tokens);
-  LineBreak := TTextLines.LineBreakOf(AContext.Text);
-  Lines := TTextLines.SplitLines(AContext.Text);
+  mTokens := AContext.Tree.Tokens;
+  mPaths := TConditionalBranches.Paths(mTokens);
+  mLineBreak := TTextLines.LineBreakOf(AContext.Text);
+  mLines := TTextLines.SplitLines(AContext.Text);
   for Node in NodesOf(AContext.Tree.Root) do
   begin
     if (Node.Kind = TSyntaxKind.IfStatement) and (Node.ChildCount >= 2) then
     begin
       if not ContinuesChain(Node) and (SubjectOf(Node) <> '') then
       begin
-        CheckChain(Node, Min);
+        CheckChain(Node, mMin);
       end;
     end;
   end;
@@ -1299,7 +1301,7 @@ end;
 
 function TPreferCaseRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(PreferCaseRuleId, TRuleSeverity.Hint, cTexts[TIdiomsText.IfChainTitle].Text,
+  Result := TRuleDescriptor.Create(cPreferCaseRuleId, TRuleSeverity.Hint, cTexts[TIdiomsText.IfChainTitle].Text,
     True);
 end;
 
@@ -1394,10 +1396,10 @@ begin
   begin
     Exit;
   end;
-  mMin := TRuleOptions.Int(AContext.Options, 'min', DefaultMin);
+  mMin := TRuleOptions.Int(AContext.Options, 'min', cDefaultMin);
   if mMin < 2 then
   begin
-    mMin := DefaultMin;
+    mMin := cDefaultMin;
   end;
   mFileName := ResolverFileName(AContext);
   mTokens := AContext.Tree.Tokens;

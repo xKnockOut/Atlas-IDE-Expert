@@ -144,7 +144,7 @@ type
   end;
 
 const
-  RoutineWords: array[0..5] of string = ('procedure ', 'function ', 'constructor ', 'destructor ', 'operator ',
+  cRoutineWords: array[0..5] of string = ('procedure ', 'function ', 'constructor ', 'destructor ', 'operator ',
     'class ');
 
 /// <summary>Entscheidet der Rang (#1836) zwischen A und B desselben Typs? AResult: A kommt zuerst.</summary>
@@ -153,8 +153,8 @@ var
   mLifeA, mLifeB: Boolean;
 begin
   AResult := False;
-  mLifeA := A.Group = TClassBodies.GroupLifecycle;
-  mLifeB := B.Group = TClassBodies.GroupLifecycle;
+  mLifeA := A.Group = TClassBodies.cGroupLifecycle;
+  mLifeB := B.Group = TClassBodies.cGroupLifecycle;
   if ARule.Placement = TMethodPlacement.Grouped then
   begin
     Result := (A.Group <> B.Group) or (A.Sub <> B.Sub);
@@ -169,7 +169,7 @@ end;
 
 function Before(const A, B: TBlock; const ARule: TMethodOrderOptions): Boolean;
 var
-  Compared: Integer;
+  mCompared: Integer;
 begin
   if A.TypeOrder <> B.TypeOrder then
   begin
@@ -181,10 +181,10 @@ begin
   end;
   if ARule.Placement = TMethodPlacement.Alphabetical then
   begin
-    Compared := CompareText(A.Name, B.Name);
-    if Compared <> 0 then
+    mCompared := CompareText(A.Name, B.Name);
+    if mCompared <> 0 then
     begin
-      Exit(Compared < 0);
+      Exit(mCompared < 0);
     end;
   end;
   if A.DeclarationOrder <> B.DeclarationOrder then
@@ -198,51 +198,51 @@ end;
 /// <summary>Stabil nach Ordnung (Einfügen; die Zahl der Rümpfe bleibt klein).</summary>
 function Sorted(const ABlocks: TBlocks; const APlacement: TMethodOrderOptions): TBlocks;
 var
-  Index, Target: Integer;
-  Item: TBlock;
+  mIndex, mTarget: Integer;
+  mItem: TBlock;
 begin
   Result := Copy(ABlocks);
-  for Index := 1 to High(Result) do
+  for mIndex := 1 to High(Result) do
   begin
-    Item := Result[Index];
-    Target := Index - 1;
-    while (Target >= 0) and Before(Item, Result[Target], APlacement) do
+    mItem := Result[mIndex];
+    mTarget := mIndex - 1;
+    while (mTarget >= 0) and Before(mItem, Result[mTarget], APlacement) do
     begin
-      Result[Target + 1] := Result[Target];
-      Dec(Target);
+      Result[mTarget + 1] := Result[mTarget];
+      Dec(mTarget);
     end;
-    Result[Target + 1] := Item;
+    Result[mTarget + 1] := mItem;
   end;
 end;
 
 function ByLine(const ABlocks: TBlocks): TBlocks;
 var
-  Index, Target: Integer;
-  Item: TBlock;
+  mIndex, mTarget: Integer;
+  mItem: TBlock;
 begin
   Result := Copy(ABlocks);
-  for Index := 1 to High(Result) do
+  for mIndex := 1 to High(Result) do
   begin
-    Item := Result[Index];
-    Target := Index - 1;
-    while (Target >= 0) and (Item.First < Result[Target].First) do
+    mItem := Result[mIndex];
+    mTarget := mIndex - 1;
+    while (mTarget >= 0) and (mItem.First < Result[mTarget].First) do
     begin
-      Result[Target + 1] := Result[Target];
-      Dec(Target);
+      Result[mTarget + 1] := Result[mTarget];
+      Dec(mTarget);
     end;
-    Result[Target + 1] := Item;
+    Result[mTarget + 1] := mItem;
   end;
 end;
 
 function IndexOfBlock(const ABlocks: TBlocks; const ABlock: TBlock): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(ABlocks) do
+  for mIndex := 0 to High(ABlocks) do
   begin
-    if ABlocks[Index].Header = ABlock.Header then
+    if ABlocks[mIndex].Header = ABlock.Header then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -250,13 +250,13 @@ end;
 
 function IsRoutineHeader(const ALine: string): Boolean;
 var
-  Word: string;
-  Lower: string;
+  mWord: string;
+  mLower: string;
 begin
-  Lower := LowerCase(Trim(ALine));
-  for Word in RoutineWords do
+  mLower := LowerCase(Trim(ALine));
+  for mWord in cRoutineWords do
   begin
-    if StartsStr(Word, Lower) then
+    if StartsStr(mWord, mLower) then
     begin
       Exit(True);
     end;
@@ -849,33 +849,33 @@ end;
 /// </summary>
 function LinesEdit(const AOld, ANew: TArray<string>; const ALineBreak: string; out AEdit: TTextEdit): Boolean;
 var
-  Prefix, Suffix, Index: Integer;
-  Text: string;
+  mPrefix, mSuffix, mIndex: Integer;
+  mText: string;
 begin
   AEdit := Default(TTextEdit);
-  Prefix := 0;
-  while (Prefix < Length(AOld)) and (Prefix < Length(ANew)) and (AOld[Prefix] = ANew[Prefix]) do
+  mPrefix := 0;
+  while (mPrefix < Length(AOld)) and (mPrefix < Length(ANew)) and (AOld[mPrefix] = ANew[mPrefix]) do
   begin
-    Inc(Prefix);
+    Inc(mPrefix);
   end;
-  if (Prefix = Length(AOld)) and (Prefix = Length(ANew)) then
+  if (mPrefix = Length(AOld)) and (mPrefix = Length(ANew)) then
   begin
     Exit(False);
   end;
-  Suffix := 0;
-  while (Suffix < Length(AOld) - Prefix) and (Suffix < Length(ANew) - Prefix) and
-    (AOld[High(AOld) - Suffix] = ANew[High(ANew) - Suffix]) do
+  mSuffix := 0;
+  while (mSuffix < Length(AOld) - mPrefix) and (mSuffix < Length(ANew) - mPrefix) and
+    (AOld[High(AOld) - mSuffix] = ANew[High(ANew) - mSuffix]) do
   begin
-    Inc(Suffix);
+    Inc(mSuffix);
   end;
-  if Suffix > 0 then
+  if mSuffix > 0 then
   begin
-    Text := '';
-    for Index := Prefix to High(ANew) - Suffix do
+    mText := '';
+    for mIndex := mPrefix to High(ANew) - mSuffix do
     begin
-      Text := Text + ANew[Index] + ALineBreak;
+      mText := mText + ANew[mIndex] + ALineBreak;
     end;
-    AEdit := TTextEdit.Create(TTextRange.Create(Prefix, 0, Length(AOld) - Suffix, 0), Text);
+    AEdit := TTextEdit.Create(TTextRange.Create(mPrefix, 0, Length(AOld) - mSuffix, 0), mText);
   end
   else
   begin
@@ -1472,7 +1472,7 @@ begin
   AHeader.GapBefore := False;
   if AOptions.TypeComment = TTypeCommentStyle.Region then
   begin
-    AHeader.EndLine := TTypeComments.RegionEndText;
+    AHeader.EndLine := TTypeComments.cRegionEndText;
   end;
 end;
 

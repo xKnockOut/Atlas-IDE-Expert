@@ -160,7 +160,7 @@ begin
     on E: EJsonRpcError do
       Code := E.Code;
   end;
-  Assert.AreEqual(TJsonRpcErrorCode.InvalidParams, Code);
+  Assert.AreEqual(TJsonRpcErrorCode.cInvalidParams, Code);
 end;
 
 procedure TLspTextDocumentSyncTests.CapabilityAnnouncesIncrementalSync;

@@ -69,7 +69,7 @@ type
   end;
 
 const
-  Epsilon = 1E-12;
+  cEpsilon = 1E-12;
 
 /// <summary>AWeight zum Gewicht des Nachbarn ATo in AMap addieren.</summary>
 procedure AddWeight(AMap: TDictionary<Integer, Double>; ATo: Integer; AWeight: Double);
@@ -240,7 +240,7 @@ begin
       Continue;
     end;
     mGain := FLinks[mCandidate] - FResolution * FTot[mCandidate] * mKi / FGraph.Total;
-    if mGain > mBestGain + Epsilon then
+    if mGain > mBestGain + cEpsilon then
     begin
       mBestGain := mGain;
       Result := mCandidate;
@@ -305,61 +305,61 @@ end;
 /// <summary>Nummeriert die Gruppen fortlaufend in der Reihenfolge des ersten Knotens; liefert die Anzahl.</summary>
 function Renumber(var ACommunity: TArray<Integer>): Integer;
 var
-  Map: TDictionary<Integer, Integer>;
-  Node, Number: Integer;
+  mMap: TDictionary<Integer, Integer>;
+  mNode, mNumber: Integer;
 begin
-  Map := TDictionary<Integer, Integer>.Create;
+  mMap := TDictionary<Integer, Integer>.Create;
   try
-    for Node := 0 to High(ACommunity) do
+    for mNode := 0 to High(ACommunity) do
     begin
-      if not Map.TryGetValue(ACommunity[Node], Number) then
+      if not mMap.TryGetValue(ACommunity[mNode], mNumber) then
       begin
-        Number := Map.Count;
-        Map.Add(ACommunity[Node], Number);
+        mNumber := mMap.Count;
+        mMap.Add(ACommunity[mNode], mNumber);
       end;
-      ACommunity[Node] := Number;
+      ACommunity[mNode] := mNumber;
     end;
-    Result := Map.Count;
+    Result := mMap.Count;
   finally
-    Map.Free;
+    mMap.Free;
   end;
 end;
 
 /// <summary>Stufe 2: jede Gruppe ein Knoten, Kanten summiert, Kanten innerhalb als Schleife.</summary>
 function Aggregate(const AGraph: TLevelGraph; const ACommunity: TArray<Integer>): TArray<TLouvainEdge>;
 var
-  Node: Integer;
-  Neighbor: TNeighbor;
-  Edge: TLouvainEdge;
-  Edges: TList<TLouvainEdge>;
+  mNode: Integer;
+  mNeighbor: TNeighbor;
+  mEdge: TLouvainEdge;
+  mEdges: TList<TLouvainEdge>;
 begin
-  Edges := TList<TLouvainEdge>.Create;
+  mEdges := TList<TLouvainEdge>.Create;
   try
-    for Node := 0 to High(AGraph.Neighbors) do
+    for mNode := 0 to High(AGraph.Neighbors) do
     begin
-      if AGraph.SelfWeight[Node] > 0 then
+      if AGraph.SelfWeight[mNode] > 0 then
       begin
-        Edge.A := ACommunity[Node];
-        Edge.B := ACommunity[Node];
-        Edge.Weight := AGraph.SelfWeight[Node];
-        Edges.Add(Edge);
+        mEdge.A := ACommunity[mNode];
+        mEdge.B := ACommunity[mNode];
+        mEdge.Weight := AGraph.SelfWeight[mNode];
+        mEdges.Add(mEdge);
       end;
-      for Neighbor in AGraph.Neighbors[Node] do
+      for mNeighbor in AGraph.Neighbors[mNode] do
       begin
         // Jede ungerichtete Kante steht zweimal in den Listen; nur einmal übernehmen.
-        if Neighbor.Node < Node then
+        if mNeighbor.Node < mNode then
         begin
           Continue;
         end;
-        Edge.A := ACommunity[Node];
-        Edge.B := ACommunity[Neighbor.Node];
-        Edge.Weight := Neighbor.Weight;
-        Edges.Add(Edge);
+        mEdge.A := ACommunity[mNode];
+        mEdge.B := ACommunity[mNeighbor.Node];
+        mEdge.Weight := mNeighbor.Weight;
+        mEdges.Add(mEdge);
       end;
     end;
-    Result := Edges.ToArray;
+    Result := mEdges.ToArray;
   finally
-    Edges.Free;
+    mEdges.Free;
   end;
 end;
 
@@ -373,43 +373,43 @@ end;
 class function TLouvain.Communities(ANodeCount: Integer; const AEdges: TArray<TLouvainEdge>;
   AResolution: Double): TArray<Integer>;
 var
-  Graph: TLevelGraph;
-  Level: TArray<Integer>;
-  Node, Count, Merged: Integer;
-  Edges: TArray<TLouvainEdge>;
+  mGraph: TLevelGraph;
+  mLevel: TArray<Integer>;
+  mNode, mCount, mMerged: Integer;
+  mEdges: TArray<TLouvainEdge>;
 begin
   SetLength(Result, ANodeCount);
-  for Node := 0 to ANodeCount - 1 do
+  for mNode := 0 to ANodeCount - 1 do
   begin
-    Result[Node] := Node;
+    Result[mNode] := mNode;
   end;
-  Edges := AEdges;
-  Count := ANodeCount;
-  while Count > 0 do
+  mEdges := AEdges;
+  mCount := ANodeCount;
+  while mCount > 0 do
   begin
-    Graph := BuildGraph(Count, Edges);
-    SetLength(Level, Count);
-    for Node := 0 to Count - 1 do
+    mGraph := BuildGraph(mCount, mEdges);
+    SetLength(mLevel, mCount);
+    for mNode := 0 to mCount - 1 do
     begin
-      Level[Node] := Node;
+      mLevel[mNode] := mNode;
     end;
-    if not MoveNodes(Graph, AResolution, Level) then
+    if not MoveNodes(mGraph, AResolution, mLevel) then
     begin
       Break;
     end;
-    Merged := Renumber(Level);
+    mMerged := Renumber(mLevel);
     // Zuordnung der ursprünglichen Knoten nachführen.
-    for Node := 0 to ANodeCount - 1 do
+    for mNode := 0 to ANodeCount - 1 do
     begin
-      Result[Node] := Level[Result[Node]];
+      Result[mNode] := mLevel[Result[mNode]];
     end;
     // Keine Gruppe verschmolzen: weitere Stufen ändern nichts mehr.
-    if Merged >= Count then
+    if mMerged >= mCount then
     begin
       Break;
     end;
-    Edges := Aggregate(Graph, Level);
-    Count := Merged;
+    mEdges := Aggregate(mGraph, mLevel);
+    mCount := mMerged;
   end;
   Renumber(Result);
 end;
@@ -423,43 +423,43 @@ end;
 class function TLouvain.Modularity(ANodeCount: Integer; const AEdges: TArray<TLouvainEdge>;
   const ACommunities: TArray<Integer>; AResolution: Double): Double;
 var
-  Graph: TLevelGraph;
-  Node, Count: Integer;
-  Neighbor: TNeighbor;
-  Inside, Tot: TArray<Double>;
-  Community: Integer;
+  mGraph: TLevelGraph;
+  mNode, mCount: Integer;
+  mNeighbor: TNeighbor;
+  mInside, mTot: TArray<Double>;
+  mCommunity: Integer;
 begin
   Result := 0;
-  Graph := BuildGraph(ANodeCount, AEdges);
-  if Graph.Total <= 0 then
+  mGraph := BuildGraph(ANodeCount, AEdges);
+  if mGraph.Total <= 0 then
   begin
     Exit;
   end;
-  Count := 0;
-  for Community in ACommunities do
+  mCount := 0;
+  for mCommunity in ACommunities do
   begin
-    if Community + 1 > Count then
+    if mCommunity + 1 > mCount then
     begin
-      Count := Community + 1;
+      mCount := mCommunity + 1;
     end;
   end;
-  SetLength(Inside, Count);
-  SetLength(Tot, Count);
-  for Node := 0 to ANodeCount - 1 do
+  SetLength(mInside, mCount);
+  SetLength(mTot, mCount);
+  for mNode := 0 to ANodeCount - 1 do
   begin
-    Tot[ACommunities[Node]] := Tot[ACommunities[Node]] + Graph.Degree[Node];
-    Inside[ACommunities[Node]] := Inside[ACommunities[Node]] + 2 * Graph.SelfWeight[Node];
-    for Neighbor in Graph.Neighbors[Node] do
+    mTot[ACommunities[mNode]] := mTot[ACommunities[mNode]] + mGraph.Degree[mNode];
+    mInside[ACommunities[mNode]] := mInside[ACommunities[mNode]] + 2 * mGraph.SelfWeight[mNode];
+    for mNeighbor in mGraph.Neighbors[mNode] do
     begin
-      if ACommunities[Neighbor.Node] = ACommunities[Node] then
+      if ACommunities[mNeighbor.Node] = ACommunities[mNode] then
       begin
-        Inside[ACommunities[Node]] := Inside[ACommunities[Node]] + Neighbor.Weight;
+        mInside[ACommunities[mNode]] := mInside[ACommunities[mNode]] + mNeighbor.Weight;
       end;
     end;
   end;
-  for Community := 0 to Count - 1 do
+  for mCommunity := 0 to mCount - 1 do
   begin
-    Result := Result + Inside[Community] / Graph.Total - AResolution * Sqr(Tot[Community] / Graph.Total);
+    Result := Result + mInside[mCommunity] / mGraph.Total - AResolution * Sqr(mTot[mCommunity] / mGraph.Total);
   end;
 end;
 

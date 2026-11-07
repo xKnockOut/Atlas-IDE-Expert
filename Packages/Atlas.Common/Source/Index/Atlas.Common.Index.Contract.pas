@@ -39,7 +39,8 @@ type
     InInterface: Boolean;
     /// <summary>Vorfahr und Interfaces bei Klassen und Interfaces, Zieltyp bei Helfern.</summary>
     Ancestors: TArray<string>;
-    /// <summary>Deklarierter Typ bei Variablen, Feldern, Properties, Konstanten und Funktionen (Ergebnis); sonst ''.</summary>
+    /// <summary>Deklarierter Typ bei Variablen, Feldern, Properties, Konstanten und Funktionen (Ergebnis); sonst
+    /// ''.</summary>
     TypeName: string;
     /// <summary>Typargumente zu TypeName, z. B. 'TKunde' bei TList&lt;TKunde&gt; (#263); sonst ''.</summary>
     TypeArgs: string;
@@ -72,7 +73,7 @@ type
     /// Typpräfix (TState.Error), nicht unqualifiziert.</summary>
     ScopedEnum: Boolean;
     /// <summary>Kopf der Deklaration als eine Zeile, z. B. "function Foo(A: Integer): string; overload;"
-    /// oder "TFoo = class(TBase)" (#492); höchstens TIndexSymbol.MaxSignature Zeichen.</summary>
+    /// oder "TFoo = class(TBase)" (#492); höchstens TIndexSymbol.cMaxSignature Zeichen.</summary>
     Signature: string;
     /// <summary>Direktiven in Kleinschreibung und Reihenfolge der Deklaration: virtual, override,
     /// overload, static, inline, deprecated, platform … (#492).</summary>
@@ -92,7 +93,7 @@ type
     /// Interface-Methode (interface-not-implemented, hresult-integer-mix).</summary>
     Resolutions: TArray<string>;
     /// <summary>XMLDoc-Kurztext: Klartext von &lt;summary&gt; aus den ///-Zeilen darüber, eine Zeile,
-    /// höchstens TIndexSymbol.MaxSummary Zeichen; '' ohne Doku (#492).</summary>
+    /// höchstens TIndexSymbol.cMaxSummary Zeichen; '' ohne Doku (#492).</summary>
     Summary: string;
     /// <summary>Begründungen (#1123) über der Deklaration und bei Routinen im Rumpf, je Eintrag
     /// TRationale.Encode (Marke, Zeile, Text); alle möglichen Marken, gefiltert wird bei der Anzeige.</summary>
@@ -101,10 +102,10 @@ type
     /// <summary>Trägt die Direktive ADirective (ohne Groß-/Kleinschreibung)?</summary>
     function HasDirective(const ADirective: string): Boolean;
   public const
-    MaxSignature = 300;
-    MaxSummary = 200;
+    cMaxSignature = 300;
+    cMaxSummary = 200;
     /// <summary>Einziger Eintrag in InlineRefs einer einbettbaren inline-Routine ohne Verweise (#1381).</summary>
-    InlineWithoutRefs = '';
+    cInlineWithoutRefs = '';
   end;
 
   /// <summary>Verwendungen eines Bezeichners in einer Unit (#492, für #470): alle Stellen außer der
@@ -128,7 +129,7 @@ type
 
 const
   /// <summary>Übliche Präfixe je Art (#452): F für Felder, A für Parameter, L für lokale Variablen.</summary>
-  NamingPrefixes: array[TNamingKind] of string = ('F', 'A', 'L');
+  cNamingPrefixes: array[TNamingKind] of string = ('F', 'A', 'L');
 
 type
 
@@ -368,32 +369,32 @@ end;
 
 procedure TUnitNameTable.Build;
 var
-  First: TDictionary<string, Integer>;
-  Position, Head: Integer;
-  Key: string;
+  mFirst: TDictionary<string, Integer>;
+  mPosition, mHead: Integer;
+  mKey: string;
 begin
-  First := TDictionary<string, Integer>.Create;
+  mFirst := TDictionary<string, Integer>.Create;
   SetLength(FNext, Length(FSymbols));
   // Von hinten verketten, damit die Kette aufsteigend läuft; Zugriff über den Index, damit
   // die Symbol-Records nicht kopiert werden.
-  for Position := High(FSymbols) downto 0 do
+  for mPosition := High(FSymbols) downto 0 do
   begin
-    Key := UpperCase(FSymbols[Position].Name);
-    if not First.TryGetValue(Key, Head) then
+    mKey := UpperCase(FSymbols[mPosition].Name);
+    if not mFirst.TryGetValue(mKey, mHead) then
     begin
-      Head := -1;
+      mHead := -1;
     end;
-    FNext[Position] := Head;
-    First.AddOrSetValue(Key, Position);
+    FNext[mPosition] := mHead;
+    mFirst.AddOrSetValue(mKey, mPosition);
   end;
-  First.TrimExcess;
-  FFirst := First;
+  mFirst.TrimExcess;
+  FFirst := mFirst;
 end;
 
 function TUnitNameTable.Positions(const ASymbols: TArray<TIndexSymbol>; const AName: string;
   out APositions: TArray<Integer>): Boolean;
 var
-  Position, Current, Count: Integer;
+  mPosition, mCurrent, mCount: Integer;
 begin
   APositions := nil;
   if Pointer(ASymbols) <> Pointer(FSymbols) then
@@ -413,25 +414,25 @@ begin
     end;
   end;
   Result := True;
-  if not FFirst.TryGetValue(UpperCase(AName), Position) then
+  if not FFirst.TryGetValue(UpperCase(AName), mPosition) then
   begin
     Exit;
   end;
-  Count := 0;
-  Current := Position;
-  while Current >= 0 do
+  mCount := 0;
+  mCurrent := mPosition;
+  while mCurrent >= 0 do
   begin
-    Inc(Count);
-    Current := FNext[Current];
+    Inc(mCount);
+    mCurrent := FNext[mCurrent];
   end;
-  SetLength(APositions, Count);
-  Count := 0;
-  Current := Position;
-  while Current >= 0 do
+  SetLength(APositions, mCount);
+  mCount := 0;
+  mCurrent := mPosition;
+  while mCurrent >= 0 do
   begin
-    APositions[Count] := Current;
-    Inc(Count);
-    Current := FNext[Current];
+    APositions[mCount] := mCurrent;
+    Inc(mCount);
+    mCurrent := FNext[mCurrent];
   end;
 end;
 
@@ -451,11 +452,11 @@ end;
 
 function TIndexSymbol.HasDirective(const ADirective: string): Boolean;
 var
-  Directive: string;
+  mDirective: string;
 begin
-  for Directive in Directives do
+  for mDirective in Directives do
   begin
-    if SameText(Directive, ADirective) then
+    if SameText(mDirective, ADirective) then
     begin
       Exit(True);
     end;
@@ -484,7 +485,7 @@ end;
 
 function TUnitIndex.SymbolsNamed(const AName: string): TArray<Integer>;
 var
-  Position, Count: Integer;
+  mPosition, mCount: Integer;
 begin
   if (NameTable <> nil) and NameTable.Positions(Symbols, AName, Result) then
   begin
@@ -492,20 +493,20 @@ begin
   end;
   // Ohne Tabelle linear; das Ergebnis wächst in Stufen statt je Treffer um eins (Code-Review P-08).
   Result := nil;
-  Count := 0;
-  for Position := 0 to High(Symbols) do
+  mCount := 0;
+  for mPosition := 0 to High(Symbols) do
   begin
-    if SameText(Symbols[Position].Name, AName) then
+    if SameText(Symbols[mPosition].Name, AName) then
     begin
-      if Count = Length(Result) then
+      if mCount = Length(Result) then
       begin
-        SetLength(Result, Count * 2 + 4);
+        SetLength(Result, mCount * 2 + 4);
       end;
-      Result[Count] := Position;
-      Inc(Count);
+      Result[mCount] := mPosition;
+      Inc(mCount);
     end;
   end;
-  SetLength(Result, Count);
+  SetLength(Result, mCount);
 end;
 
 { TFileChange }

@@ -126,7 +126,7 @@ begin
   mMessage := TJSONObject.Create;
   try
     mMessage.AddPair('jsonrpc', '2.0');
-    mMessage.AddPair('method', TLspIdeProject.Method);
+    mMessage.AddPair('method', TLspIdeProject.cMethod);
     mMessage.AddPair('params', mParams);
     mAnswer := FDispatcher.DispatchMessage(mMessage);
     mAnswer.Free;

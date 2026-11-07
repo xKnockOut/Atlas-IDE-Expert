@@ -109,7 +109,7 @@ type
   TSymbolIndex = class(TInterfacedObject, ISymbolIndex)
   public const
     /// <summary>Ab so vielen toten Verweisen (und mehr tot als lebend) werden die Tabellen neu gebaut.</summary>
-    RebuildDeadRefs = 4096;
+    cRebuildDeadRefs = 4096;
   private
     FLock: TCriticalSection;
     // Schützt nur FPool (InternUnit außerhalb von FLock).
@@ -182,19 +182,19 @@ var
 
 function LastPart(const AName: string): string;
 var
-  Dot: Integer;
+  mDot: Integer;
 begin
   // Unit.TFoo und TFoo<T> auf TFoo zurückführen.
   Result := AName;
-  Dot := Pos('<', Result);
-  if Dot > 0 then
+  mDot := Pos('<', Result);
+  if mDot > 0 then
   begin
-    Result := Copy(Result, 1, Dot - 1);
+    Result := Copy(Result, 1, mDot - 1);
   end;
-  Dot := LastDelimiter('.', Result);
-  if Dot > 0 then
+  mDot := LastDelimiter('.', Result);
+  if mDot > 0 then
   begin
-    Result := Copy(Result, Dot + 1, MaxInt);
+    Result := Copy(Result, mDot + 1, MaxInt);
   end;
 end;
 
@@ -232,35 +232,35 @@ end;
 
 procedure TSymbolIndex.RemoveFileLocked(const AFileKey: string);
 var
-  Existing: TUnitIndex;
-  UnitFile: string;
+  mExisting: TUnitIndex;
+  mUnitFile: string;
 begin
-  if not FFiles.TryGetValue(AFileKey, Existing) then
+  if not FFiles.TryGetValue(AFileKey, mExisting) then
   begin
     Exit;
   end;
-  FTotals.Count(Existing, -1);
+  FTotals.Count(mExisting, -1);
   FFiles.Remove(AFileKey);
   FUnitsSnapshot := nil;
   FUnavailable.Remove(AFileKey);
   FShrinkable.Remove(AFileKey);
   FRefs.Drop(AFileKey);
   Inc(FGeneration);
-  if FUnitFiles.TryGetValue(UpperCase(Existing.UnitName), UnitFile) and (UnitFile = AFileKey) then
+  if FUnitFiles.TryGetValue(UpperCase(mExisting.UnitName), mUnitFile) and (mUnitFile = AFileKey) then
   begin
-    FUnitFiles.Remove(UpperCase(Existing.UnitName));
+    FUnitFiles.Remove(UpperCase(mExisting.UnitName));
   end;
 end;
 
 procedure TSymbolIndex.AddLocked(const AKey: string; const AUnit: TUnitIndex);
 var
-  Stored: TUnitIndex;
+  mStored: TUnitIndex;
 begin
   // Jede abgelegte Fassung bekommt ihre eigene Namenstabelle (Diagnoselog 15.10.2026); FindUnit und
   // FindFile geben sie mit, die Namensauflösung sucht darüber statt linear.
-  Stored := AUnit;
-  Stored.PrepareNames;
-  FFiles.Add(AKey, Stored);
+  mStored := AUnit;
+  mStored.PrepareNames;
+  FFiles.Add(AKey, mStored);
   FUnitsSnapshot := nil;
   if Length(AUnit.Unavailable) > 0 then
   begin
@@ -501,7 +501,7 @@ procedure TSymbolIndex.CleanRefsLocked;
 var
   mPair: TPair<string, TUnitIndex>;
 begin
-  if (FRefs.DeadRefs < RebuildDeadRefs) or (FRefs.DeadRefs <= FRefs.LiveRefs) then
+  if (FRefs.DeadRefs < cRebuildDeadRefs) or (FRefs.DeadRefs <= FRefs.LiveRefs) then
   begin
     Exit;
   end;
@@ -546,7 +546,8 @@ var
   mKey: string;
 begin
   // Erst Bibliotheken kompakt halten, dann die Verwendungen der Projekt-Units auslagern (#492), dann
-  // Projekt-Units kompakt halten; jeweils nur bis das Budget wieder reicht. Ohne Überschreitung nichts kopieren: AddUnit ruft
+  // Projekt-Units kompakt halten; jeweils nur bis das Budget wieder reicht. Ohne Überschreitung nichts kopieren:
+  // AddUnit ruft
   // das bei jeder Unit auf.
   if not OverBudgetLocked or (FShrinkable.Count = 0) then
   begin
@@ -567,28 +568,28 @@ end;
 
 procedure TSymbolIndex.AddUnit(const AUnit: TUnitIndex);
 var
-  Key: string;
-  Pooled: TUnitIndex;
+  mKey: string;
+  mPooled: TUnitIndex;
 begin
-  Key := AnsiUpperCase(AUnit.FileName);
-  Pooled := AUnit;
+  mKey := AnsiUpperCase(AUnit.FileName);
+  mPooled := AUnit;
   // Eigene Kopie der Arrays, damit der Pool die Einträge des Aufrufers nicht ändert. Kopieren und Einordnen
   // in den Pool außerhalb von FLock (Code-Review P-13): Leser warten sonst auf jede große Unit. Zwei
   // gleichzeitige Aufrufe für dieselbe Datei können sich dadurch überholen; das Ergebnis ist dann wie bei
   // umgekehrter Aufrufreihenfolge. Der Index-Builder liest jede Datei nur aus einem Thread.
-  Pooled.InterfaceUses := Copy(AUnit.InterfaceUses);
-  Pooled.ImplementationUses := Copy(AUnit.ImplementationUses);
-  Pooled.Symbols := Copy(AUnit.Symbols);
+  mPooled.InterfaceUses := Copy(AUnit.InterfaceUses);
+  mPooled.ImplementationUses := Copy(AUnit.ImplementationUses);
+  mPooled.Symbols := Copy(AUnit.Symbols);
   FPoolLock.Enter;
   try
-    FPool.InternUnit(Pooled);
+    FPool.InternUnit(mPooled);
   finally
     FPoolLock.Leave;
   end;
   FLock.Enter;
   try
-    RemoveFileLocked(Key);
-    AddLocked(Key, Pooled);
+    RemoveFileLocked(mKey);
+    AddLocked(mKey, mPooled);
     ShrinkLocked;
     CleanRefsLocked;
   finally
@@ -667,16 +668,16 @@ end;
 
 function TSymbolIndex.Descendants(const ATypeName: string): TArray<TSymbolLocation>;
 var
-  Key: string;
+  mKey: string;
 begin
-  Key := UpperCase(LastPart(ATypeName));
-  if Key = '' then
+  mKey := UpperCase(LastPart(ATypeName));
+  if mKey = '' then
   begin
     Exit(nil);
   end;
   FLock.Enter;
   try
-    Result := FRefs.ByAncestor(Key);
+    Result := FRefs.ByAncestor(mKey);
   finally
     FLock.Leave;
   end;
@@ -699,27 +700,27 @@ end;
 
 function TSymbolIndex.UnavailableUnits: TArray<TUnitIndex>;
 var
-  Key: string;
-  Found: TList<TUnitIndex>;
-  UnitIndex: TUnitIndex;
+  mKey: string;
+  mFound: TList<TUnitIndex>;
+  mUnitIndex: TUnitIndex;
 begin
-  Found := TList<TUnitIndex>.Create;
+  mFound := TList<TUnitIndex>.Create;
   try
     FLock.Enter;
     try
-      for Key in FUnavailable.Keys do
+      for mKey in FUnavailable.Keys do
       begin
-        if FFiles.TryGetValue(Key, UnitIndex) then
+        if FFiles.TryGetValue(mKey, mUnitIndex) then
         begin
-          Found.Add(UnitIndex);
+          mFound.Add(mUnitIndex);
         end;
       end;
     finally
       FLock.Leave;
     end;
-    Result := Found.ToArray;
+    Result := mFound.ToArray;
   finally
-    Found.Free;
+    mFound.Free;
   end;
 end;
 

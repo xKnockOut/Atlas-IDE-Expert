@@ -37,7 +37,8 @@ type
     /// Ersetzt $(Name) durch Werte aus AVariables (ohne Beachtung der
     /// Groß-/Kleinschreibung); unbekannte Namen bleiben stehen.
     /// </summary>
-    class function ExpandVariables(const AText: string; const AVariables: TArray<TPair<string, string>>): string; static;
+    class function ExpandVariables(const AText: string; const AVariables: TArray<TPair<string,
+      string>>): string; static;
   end;
 
 implementation
@@ -67,13 +68,13 @@ end;
 
 function LastSeparator(const APath: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := Length(APath) downto 1 do
+  for mIndex := Length(APath) downto 1 do
   begin
-    if CharInSet(APath[Index], ['\', '/']) then
+    if CharInSet(APath[mIndex], ['\', '/']) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := 0;
@@ -175,20 +176,20 @@ end;
 
 class function TProjectPaths.DirectoryOf(const AFileName: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := LastSeparator(AFileName);
-  if Index = 0 then
+  mIndex := LastSeparator(AFileName);
+  if mIndex = 0 then
   begin
     Result := '';
   end
-  else if (Index = 3) and (AFileName[2] = ':') then
+  else if (mIndex = 3) and (AFileName[2] = ':') then
   begin
     Result := Copy(AFileName, 1, 3);
   end
   else
   begin
-    Result := Copy(AFileName, 1, Index - 1);
+    Result := Copy(AFileName, 1, mIndex - 1);
   end;
 end;
 
@@ -233,50 +234,50 @@ end;
 
 class function TProjectPaths.BaseName(const AFileName: string): string;
 var
-  Dot: Integer;
+  mDot: Integer;
 begin
   Result := Copy(AFileName, LastSeparator(AFileName) + 1, MaxInt);
-  Dot := LastDelimiter('.', Result);
-  if Dot > 0 then
+  mDot := LastDelimiter('.', Result);
+  if mDot > 0 then
   begin
-    Result := Copy(Result, 1, Dot - 1);
+    Result := Copy(Result, 1, mDot - 1);
   end;
 end;
 
 class function TProjectPaths.Extension(const AFileName: string): string;
 var
-  Name: string;
-  Dot: Integer;
+  mName: string;
+  mDot: Integer;
 begin
-  Name := Copy(AFileName, LastSeparator(AFileName) + 1, MaxInt);
-  Dot := LastDelimiter('.', Name);
-  if Dot = 0 then
+  mName := Copy(AFileName, LastSeparator(AFileName) + 1, MaxInt);
+  mDot := LastDelimiter('.', mName);
+  if mDot = 0 then
   begin
     Result := '';
   end
   else
   begin
-    Result := LowerCase(Copy(Name, Dot, MaxInt));
+    Result := LowerCase(Copy(mName, mDot, MaxInt));
   end;
 end;
 
 class function TProjectPaths.SplitList(const AValue: string): TArray<string>;
 var
-  Items: TList<string>;
-  Item: string;
+  mItems: TList<string>;
+  mItem: string;
 begin
-  Items := TList<string>.Create;
+  mItems := TList<string>.Create;
   try
-    for Item in AValue.Split([';']) do
+    for mItem in AValue.Split([';']) do
     begin
-      if Trim(Item) <> '' then
+      if Trim(mItem) <> '' then
       begin
-        Items.Add(Trim(Item));
+        mItems.Add(Trim(mItem));
       end;
     end;
-    Result := Items.ToArray;
+    Result := mItems.ToArray;
   finally
-    Items.Free;
+    mItems.Free;
   end;
 end;
 

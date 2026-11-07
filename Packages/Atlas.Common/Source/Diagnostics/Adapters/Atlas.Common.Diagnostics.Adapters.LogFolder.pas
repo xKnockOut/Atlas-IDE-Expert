@@ -21,9 +21,9 @@ uses
 type
   TDiagnosticLogFolder = class(TInterfacedObject, IDiagnosticWriter)
   public const
-    FilePattern = 'diag-*.log';
-    MapPattern = 'diag-map-*.txt';
-    MarkerPattern = 'run-*.open';
+    cFilePattern = 'diag-*.log';
+    cMapPattern = 'diag-map-*.txt';
+    cMarkerPattern = 'run-*.open';
   private
     FFolder: string;
     FTag: string;
@@ -77,38 +77,38 @@ end;
 
 procedure TDiagnosticLogFolder.OpenFor(const ADay: string);
 var
-  FileName: string;
+  mFileName: string;
 begin
   FreeAndNil(FStream);
   FDay := ADay;
   ForceDirectories(FFolder);
-  FileName := TPath.Combine(FFolder, Format('diag-%s-%s.log', [ADay, FTag]));
-  if FileExists(FileName) then
+  mFileName := TPath.Combine(FFolder, Format('diag-%s-%s.log', [ADay, FTag]));
+  if FileExists(mFileName) then
   begin
-    FStream := TFileStream.Create(FileName, fmOpenWrite or fmShareDenyWrite);
+    FStream := TFileStream.Create(mFileName, fmOpenWrite or fmShareDenyWrite);
     FStream.Seek(0, soEnd);
   end
   else
   begin
-    FStream := TFileStream.Create(FileName, fmCreate or fmShareDenyWrite);
+    FStream := TFileStream.Create(mFileName, fmCreate or fmShareDenyWrite);
   end;
 end;
 
 procedure TDiagnosticLogFolder.WriteLine(const ALine: string);
 var
-  Day: string;
-  Bytes: TBytes;
+  mDay: string;
+  mBytes: TBytes;
 begin
-  Bytes := TEncoding.UTF8.GetBytes(ALine + #13#10);
+  mBytes := TEncoding.UTF8.GetBytes(ALine + #13#10);
   TMonitor.Enter(FLock);
   try
     try
-      Day := FormatDateTime('yyyymmdd', Now);
-      if (FStream = nil) or (Day <> FDay) then
+      mDay := FormatDateTime('yyyymmdd', Now);
+      if (FStream = nil) or (mDay <> FDay) then
       begin
-        OpenFor(Day);
+        OpenFor(mDay);
       end;
-      FStream.WriteBuffer(Bytes, Length(Bytes));
+      FStream.WriteBuffer(mBytes, Length(mBytes));
     except
       // Das Diagnoselog darf den Server nie stören (Platte voll, Ordner gesperrt).
       on EStreamError do
@@ -123,23 +123,23 @@ end;
 
 function TDiagnosticLogFolder.BeginRun: Integer;
 var
-  FileName, Own: string;
+  mFileName, mOwn: string;
 begin
   Result := 0;
   try
     ForceDirectories(FFolder);
-    Own := TPath.Combine(FFolder, Format('run-%s.open', [FTag]));
+    mOwn := TPath.Combine(FFolder, Format('run-%s.open', [FTag]));
     // Marken anderer, noch laufender Server sind offen und lassen sich nicht löschen.
-    for FileName in TDirectory.GetFiles(FFolder, MarkerPattern) do
+    for mFileName in TDirectory.GetFiles(FFolder, cMarkerPattern) do
     begin
-      if not SameText(FileName, Own) and System.SysUtils.DeleteFile(FileName) then
+      if not SameText(mFileName, mOwn) and System.SysUtils.DeleteFile(mFileName) then
       begin
         Inc(Result);
       end;
     end;
     if FMarker = nil then
     begin
-      FMarker := TFileStream.Create(Own, fmCreate or fmShareExclusive);
+      FMarker := TFileStream.Create(mOwn, fmCreate or fmShareExclusive);
     end;
   except
     on EStreamError do
@@ -151,33 +151,33 @@ end;
 
 procedure TDiagnosticLogFolder.EndRun;
 var
-  FileName: string;
+  mFileName: string;
 begin
   if FMarker = nil then
   begin
     Exit;
   end;
-  FileName := TFileStream(FMarker).FileName;
+  mFileName := TFileStream(FMarker).FileName;
   FreeAndNil(FMarker);
-  System.SysUtils.DeleteFile(FileName);
+  System.SysUtils.DeleteFile(mFileName);
 end;
 
 procedure TDiagnosticLogFolder.Cleanup(ADays: Integer);
 var
-  FileName: string;
-  Limit: TDateTime;
+  mFileName: string;
+  mLimit: TDateTime;
 begin
   if (ADays <= 0) or not TDirectory.Exists(FFolder) then
   begin
     Exit;
   end;
-  Limit := IncDay(Now, -ADays);
+  mLimit := IncDay(Now, -ADays);
   try
-    for FileName in TDirectory.GetFiles(FFolder, FilePattern) + TDirectory.GetFiles(FFolder, MapPattern) do
+    for mFileName in TDirectory.GetFiles(FFolder, cFilePattern) + TDirectory.GetFiles(FFolder, cMapPattern) do
     begin
-      if TFile.GetLastWriteTime(FileName) < Limit then
+      if TFile.GetLastWriteTime(mFileName) < mLimit then
       begin
-        System.SysUtils.DeleteFile(FileName);
+        System.SysUtils.DeleteFile(mFileName);
       end;
     end;
   except

@@ -35,18 +35,18 @@ type
     procedure Add(const AMethod: string; AElapsedMs: Int64; AFailed: Boolean);
     /// <summary>Stand aller Methoden, langsamste im Mittel zuerst.</summary>
     function Snapshot: TArray<TMethodStatistics>;
-    /// <summary>Die letzten Anfragen, älteste zuerst; höchstens TJsonRpcStatistics.RecentCapacity.</summary>
+    /// <summary>Die letzten Anfragen, älteste zuerst; höchstens TJsonRpcStatistics.cRecentCapacity.</summary>
     function Recent: TArray<TRecentRequest>;
   end;
 
   TJsonRpcStatistics = class(TInterfacedObject, IJsonRpcStatistics)
   public const
     /// <summary>Größe des Ringpuffers; ältere Einträge werden verdrängt.</summary>
-    RecentCapacity = 50;
+    cRecentCapacity = 50;
   private
     FLock: TObject;
     FMethods: TDictionary<string, TMethodStatistics>;
-    FRecent: array[0..RecentCapacity - 1] of TRecentRequest;
+    FRecent: array[0..cRecentCapacity - 1] of TRecentRequest;
     /// <summary>Nächster Platz im Ring.</summary>
     FRecentNext: Integer;
     FRecentCount: Integer;
@@ -111,32 +111,32 @@ end;
 
 procedure TJsonRpcStatistics.Add(const AMethod: string; AElapsedMs: Int64; AFailed: Boolean);
 var
-  Entry: TMethodStatistics;
+  mEntry: TMethodStatistics;
 begin
   TMonitor.Enter(FLock);
   try
-    if not FMethods.TryGetValue(AMethod, Entry) then
+    if not FMethods.TryGetValue(AMethod, mEntry) then
     begin
-      Entry := Default(TMethodStatistics);
-      Entry.Method := AMethod;
+      mEntry := Default(TMethodStatistics);
+      mEntry.Method := AMethod;
     end;
-    Inc(Entry.Count);
-    Inc(Entry.TotalMs, AElapsedMs);
-    if AElapsedMs > Entry.MaxMs then
+    Inc(mEntry.Count);
+    Inc(mEntry.TotalMs, AElapsedMs);
+    if AElapsedMs > mEntry.MaxMs then
     begin
-      Entry.MaxMs := AElapsedMs;
+      mEntry.MaxMs := AElapsedMs;
     end;
     if AFailed then
     begin
-      Inc(Entry.Failed);
+      Inc(mEntry.Failed);
     end;
-    FMethods.AddOrSetValue(AMethod, Entry);
+    FMethods.AddOrSetValue(AMethod, mEntry);
     FRecent[FRecentNext].Finished := Now;
     FRecent[FRecentNext].Method := AMethod;
     FRecent[FRecentNext].ElapsedMs := AElapsedMs;
     FRecent[FRecentNext].Failed := AFailed;
-    FRecentNext := (FRecentNext + 1) mod RecentCapacity;
-    if FRecentCount < RecentCapacity then
+    FRecentNext := (FRecentNext + 1) mod cRecentCapacity;
+    if FRecentCount < cRecentCapacity then
     begin
       Inc(FRecentCount);
     end;
@@ -147,35 +147,35 @@ end;
 
 function TJsonRpcStatistics.Snapshot: TArray<TMethodStatistics>;
 var
-  List: TList<TMethodStatistics>;
+  mList: TList<TMethodStatistics>;
 begin
-  List := TList<TMethodStatistics>.Create(TComparer<TMethodStatistics>.Construct(CompareBySlowest));
+  mList := TList<TMethodStatistics>.Create(TComparer<TMethodStatistics>.Construct(CompareBySlowest));
   try
     TMonitor.Enter(FLock);
     try
-      List.AddRange(FMethods.Values);
+      mList.AddRange(FMethods.Values);
     finally
       TMonitor.Exit(FLock);
     end;
-    List.Sort;
-    Result := List.ToArray;
+    mList.Sort;
+    Result := mList.ToArray;
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 
 function TJsonRpcStatistics.Recent: TArray<TRecentRequest>;
 var
-  Index, First: Integer;
+  mIndex, mFirst: Integer;
 begin
   TMonitor.Enter(FLock);
   try
     SetLength(Result, FRecentCount);
     // Ältester Eintrag: bei vollem Ring der nächste Platz, sonst der erste.
-    First := (FRecentNext - FRecentCount + RecentCapacity) mod RecentCapacity;
-    for Index := 0 to FRecentCount - 1 do
+    mFirst := (FRecentNext - FRecentCount + cRecentCapacity) mod cRecentCapacity;
+    for mIndex := 0 to FRecentCount - 1 do
     begin
-      Result[Index] := FRecent[(First + Index) mod RecentCapacity];
+      Result[mIndex] := FRecent[(mFirst + mIndex) mod cRecentCapacity];
     end;
   finally
     TMonitor.Exit(FLock);

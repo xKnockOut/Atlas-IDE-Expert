@@ -50,7 +50,7 @@ type
 
   TWritelnInGuiAppRule = class(TInterfacedObject, IRule)
   public const
-    DefaultReplacement = 'OutputDebugString';
+    cDefaultReplacement = 'OutputDebugString';
   public
     function Descriptor: TRuleDescriptor;
     procedure Check(const AContext: TRuleContext; const AReport: IRuleReport);
@@ -300,41 +300,42 @@ end;
 
 procedure TCharToPCharRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TTokens;
-  Types: TDeclaredTypes;
-  Index, Open, Name, Close: Integer;
+  mTokens: TTokens;
+  mTypes: TDeclaredTypes;
+  mIndex, mOpen, mName, mClose: Integer;
 begin
   if AContext.Tree = nil then
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
-  Types := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
+  mTokens := AContext.Tree.Tokens;
+  mTypes := TDeclaredTypes.Create(AContext.Tree, AContext.Text);
   try
-    for Index := 0 to High(Tokens) do
+    for mIndex := 0 to High(mTokens) do
     begin
-      if not ((Tokens[Index].Kind = TPascalTokenKind.Identifier) and
-        MatchText(Tokens[Index].Text, ['PChar', 'PWideChar', 'PAnsiChar'])) then
+      if not ((mTokens[mIndex].Kind = TPascalTokenKind.Identifier) and
+        MatchText(mTokens[mIndex].Text, ['PChar', 'PWideChar', 'PAnsiChar'])) then
       begin
         Continue;
       end;
-      Open := NextCode(Tokens, Index + 1);
-      Name := NextCode(Tokens, Open + 1);
-      Close := NextCode(Tokens, Name + 1);
-      if (Close > High(Tokens)) or not Tokens[Open].IsSymbol('(') or not Tokens[Close].IsSymbol(')') or
-        (Tokens[Name].Kind <> TPascalTokenKind.Identifier) then
+      mOpen := NextCode(mTokens, mIndex + 1);
+      mName := NextCode(mTokens, mOpen + 1);
+      mClose := NextCode(mTokens, mName + 1);
+      if (mClose > High(mTokens)) or not mTokens[mOpen].IsSymbol('(') or not mTokens[mClose].IsSymbol(')') or
+        (mTokens[mName].Kind <> TPascalTokenKind.Identifier) then
       begin
         Continue;
       end;
-      if TDeclaredTypes.IsChar(Types.DeclaredType(Tokens[Name].Text, Tokens[Name].StartPos)) then
+      if TDeclaredTypes.IsChar(mTypes.DeclaredType(mTokens[mName].Text, mTokens[mName].StartPos)) then
       begin
-        AReport.Add(RangeOf(Tokens, Index, Close), cTexts[TRtlTypePatternsText.CharToPChar].Fmt([Tokens[Index].Text,
-          Tokens[Name].Text,
-          Tokens[Index].Text, Tokens[Name].Text]), TRuleConfidence.High);
+        AReport.Add(RangeOf(mTokens, mIndex, mClose),
+          cTexts[TRtlTypePatternsText.CharToPChar].Fmt([mTokens[mIndex].Text,
+          mTokens[mName].Text,
+          mTokens[mIndex].Text, mTokens[mName].Text]), TRuleConfidence.High);
       end;
     end;
   finally
-    Types.Free;
+    mTypes.Free;
   end;
 end;
 
@@ -461,7 +462,8 @@ end;
 function IsSimpleComparison(const ATokens: TTokens; ALeft, ARight: Integer): Boolean;
 begin
   Result := IsSimpleOperand(ATokens, ALeft) and IsSimpleOperand(ATokens, ARight) and
-    not IsArithmetic(ATokens, PreviousCode(ATokens, ALeft)) and not IsArithmetic(ATokens, NextCode(ATokens, ARight + 1));
+    not IsArithmetic(ATokens, PreviousCode(ATokens, ALeft)) and
+      not IsArithmetic(ATokens, NextCode(ATokens, ARight + 1));
   Result := Result and not IsZero(ATokens[ALeft]) and not IsZero(ATokens[ARight]);
 end;
 
@@ -597,14 +599,14 @@ end;
 { TWritelnInGuiAppRule }
 
 const
-  ConsoleRoutines: array[0..3] of string = ('Write', 'Writeln', 'Read', 'Readln');
-  StandardFiles: array[0..2] of string = ('Output', 'ErrOutput', 'Input');
-  FileTypes: array[0..2] of string = ('Text', 'TextFile', 'File');
-  IntegerTypes: array[0..13] of string = ('Integer', 'Cardinal', 'Int64', 'UInt64', 'NativeInt', 'NativeUInt',
+  cConsoleRoutines: array[0..3] of string = ('Write', 'Writeln', 'Read', 'Readln');
+  cStandardFiles: array[0..2] of string = ('Output', 'ErrOutput', 'Input');
+  cFileTypes: array[0..2] of string = ('Text', 'TextFile', 'File');
+  cIntegerTypes: array[0..13] of string = ('Integer', 'Cardinal', 'Int64', 'UInt64', 'NativeInt', 'NativeUInt',
     'Byte', 'Word', 'ShortInt', 'SmallInt', 'LongInt', 'LongWord', 'Int32', 'UInt32');
-  FloatTypes: array[0..5] of string = ('Double', 'Single', 'Extended', 'Real', 'Currency', 'TDateTime');
+  cFloatTypes: array[0..5] of string = ('Double', 'Single', 'Extended', 'Real', 'Currency', 'TDateTime');
   // Funktionen, die einen String liefern; dazu alle *ToStr und *ToHex.
-  StringFunctions: array[0..14] of string = ('Format', 'Trim', 'TrimLeft', 'TrimRight', 'UpperCase', 'LowerCase',
+  cStringFunctions: array[0..14] of string = ('Format', 'Trim', 'TrimLeft', 'TrimRight', 'UpperCase', 'LowerCase',
     'QuotedStr', 'Copy', 'StringOfChar', 'StringReplace', 'ExtractFileName', 'ExtractFilePath', 'Concat',
     'ParamStr', 'GetCurrentDir');
 
@@ -744,22 +746,22 @@ end;
 
 class function TWritelnInGuiAppRule.Replacement(const AOptions: string): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Result := DefaultReplacement;
+  Result := cDefaultReplacement;
   if Trim(AOptions) = '' then
   begin
     Exit;
   end;
-  Value := TJSONObject.ParseJSONValue(AOptions);
+  mValue := TJSONObject.ParseJSONValue(AOptions);
   try
-    if (Value is TJSONObject) and TJSONObject(Value).TryGetValue<string>('replacement', Result) and
+    if (mValue is TJSONObject) and TJSONObject(mValue).TryGetValue<string>('replacement', Result) and
       (Trim(Result) = '') then
     begin
-      Result := DefaultReplacement;
+      Result := cDefaultReplacement;
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
   Result := Trim(Result);
 end;
@@ -976,11 +978,11 @@ begin
   begin
     Result := ANode.Name;
   end
-  else if MatchText(mTypeName, IntegerTypes) then
+  else if MatchText(mTypeName, cIntegerTypes) then
   begin
     Result := 'IntToStr(' + ANode.Name + ')';
   end
-  else if MatchText(mTypeName, FloatTypes) then
+  else if MatchText(mTypeName, cFloatTypes) then
   begin
     Result := 'FloatToStr(' + ANode.Name + ')';
   end
@@ -995,7 +997,7 @@ end;
 function TConsoleCallScan.CallAsString(ANode: TSyntaxNode): string;
 begin
   Result := '';
-  if EndsText('ToStr', ANode.Name) or EndsText('ToHex', ANode.Name) or MatchText(ANode.Name, StringFunctions) then
+  if EndsText('ToStr', ANode.Name) or EndsText('ToHex', ANode.Name) or MatchText(ANode.Name, cStringFunctions) then
   begin
     Result := Text(ANode);
   end;
@@ -1078,7 +1080,7 @@ begin
   begin
     Result := StringReplace(FReplacementText, '%s', AExpression, []);
   end
-  else if SameText(FReplacementText, TWritelnInGuiAppRule.DefaultReplacement) then
+  else if SameText(FReplacementText, TWritelnInGuiAppRule.cDefaultReplacement) then
   begin
     Result := FReplacementText + '(PChar(' + AExpression + '))';
   end
@@ -1118,7 +1120,7 @@ var
 begin
   Result := nil;
   mUsed := TUsesClauses.UsedUnits(FTokens);
-  if SameText(FReplacementText, TWritelnInGuiAppRule.DefaultReplacement) then
+  if SameText(FReplacementText, TWritelnInGuiAppRule.cDefaultReplacement) then
   begin
     AddUnitEdit(ACall, mUsed, 'Winapi.Windows', Result);
   end;
@@ -1155,7 +1157,7 @@ var
   mName: string;
 begin
   mName := ACallee.Name;
-  Result := MatchText(mName, ConsoleRoutines) and not MatchText(mName, FDeclared) and
+  Result := MatchText(mName, cConsoleRoutines) and not MatchText(mName, FDeclared) and
     not (MatchText(mName, ['Write', 'Read']) and InMethod(ANode));
 end;
 
@@ -1166,7 +1168,7 @@ var
   mTypeName: string;
 begin
   mTypeName := DeclaredTypeOf(ANode[1]);
-  Result := MatchText(mTypeName, FileTypes) or StartsText('file ', mTypeName) or
+  Result := MatchText(mTypeName, cFileTypes) or StartsText('file ', mTypeName) or
     ((ANode[1].Kind = TSyntaxKind.Identifier) and (mTypeName = '') and (ANode.ChildCount > 2));
 end;
 
@@ -1180,7 +1182,7 @@ begin
   begin
     Exit;
   end;
-  if (ANode[1].Kind = TSyntaxKind.Identifier) and MatchText(ANode[1].Name, StandardFiles) then
+  if (ANode[1].Kind = TSyntaxKind.Identifier) and MatchText(ANode[1].Name, cStandardFiles) then
   begin
     AFirst := 2;
   end

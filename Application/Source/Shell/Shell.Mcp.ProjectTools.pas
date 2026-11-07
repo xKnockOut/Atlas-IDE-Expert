@@ -114,10 +114,10 @@ var
 begin
   Result := Default(TServerStatus);
   Result.ProcessId := TShellPlatform.CurrentProcessId;
-  Result.Version := TProductVersion.Version;
+  Result.Version := TProductVersion.cVersion;
   Result.Started := AStarted;
   Result.UptimeMs := MilliSecondsBetween(Now, AStarted);
-  Result.State := TServerStatus.StateReady;
+  Result.State := TServerStatus.cStateReady;
   Result.MemoryBytes := TShutdownLeaks.AllocatedBytes;
   Result.IndexCacheHitPercent := -1;
   mTrees := TSyntaxTreeCache.Stats;
@@ -160,7 +160,7 @@ end;
 
 procedure AddGetServerStatus(const AContext: TMcpToolContext);
 begin
-  AContext.Server.AddTool(TMcpStatusTools.ToolName, cTexts[TMcpProjectText.StatusTool].Text,
+  AContext.Server.AddTool(TMcpStatusTools.cToolName, cTexts[TMcpProjectText.StatusTool].Text,
     SchemaWith('{"type":"object","properties":{' +
       '"format":{"type":"string","enum":["markdown","json"],"description":%s}}}',
       [cTexts[TMcpProjectText.StatusFormat].Text]),

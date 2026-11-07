@@ -173,7 +173,7 @@ var
   Text: string;
   Issues: TArray<TConfigurationIssue>;
 begin
-  if not ReadSourceText(ExistingOrLegacyFile(ARoot, ConfigurationFileName, LegacyConfigurationFileName), Text) then
+  if not ReadSourceText(ExistingOrLegacyFile(ARoot, cConfigurationFileName, cLegacyConfigurationFileName), Text) then
   begin
     Exit(TServerSettings.Default);
   end;

@@ -224,7 +224,7 @@ end;
 
 const
   /// <summary>Ab dieser Länge steht die neue Tabelle je Eintrag auf einer Zeile.</summary>
-  LineLimit = 110;
+  cLineLimit = 110;
 
 function Fail(const AMessage: string; out AReason: string): Boolean;
 begin
@@ -295,8 +295,8 @@ end;
 
 class function TEnumTables.CommonPrefix(const ANames: TArray<string>): string;
 var
-  Name: string;
-  Length_, Index: Integer;
+  mName: string;
+  mLength_, mIndex: Integer;
 begin
   Result := '';
   if ANames = nil then
@@ -304,29 +304,29 @@ begin
     Exit;
   end;
   // Kleinbuchstaben am Anfang des ersten Namens, dann kürzen, bis alle passen.
-  Length_ := 0;
-  while (Length_ < Length(ANames[0])) and ANames[0][Length_ + 1].IsLower do
+  mLength_ := 0;
+  while (mLength_ < Length(ANames[0])) and ANames[0][mLength_ + 1].IsLower do
   begin
-    Inc(Length_);
+    Inc(mLength_);
   end;
-  for Name in ANames do
+  for mName in ANames do
   begin
-    Index := 0;
-    while (Index < Length_) and (Index < Length(Name)) and (Name[Index + 1] = ANames[0][Index + 1]) do
+    mIndex := 0;
+    while (mIndex < mLength_) and (mIndex < Length(mName)) and (mName[mIndex + 1] = ANames[0][mIndex + 1]) do
     begin
-      Inc(Index);
+      Inc(mIndex);
     end;
-    Length_ := Index;
+    mLength_ := mIndex;
   end;
   // Nach dem Präfix muss in jedem Namen noch etwas Großes folgen (osNew, nicht open/other).
-  for Name in ANames do
+  for mName in ANames do
   begin
-    if (Length(Name) <= Length_) or not (Name[Length_ + 1].IsUpper or Name[Length_ + 1].IsDigit) then
+    if (Length(mName) <= mLength_) or not (mName[mLength_ + 1].IsUpper or mName[mLength_ + 1].IsDigit) then
     begin
       Exit;
     end;
   end;
-  Result := Copy(ANames[0], 1, Length_);
+  Result := Copy(ANames[0], 1, mLength_);
 end;
 
 /// <summary>Großbuchstabe an AAt nach Großbuchstaben, vor einem Kleinbuchstaben (HTTPError: E).</summary>
@@ -409,14 +409,14 @@ end;
 
 class function TEnumTables.ResourceName(const ATypeName, AName, APrefix: string): string;
 var
-  Rest: string;
+  mRest: string;
 begin
-  Rest := AName;
-  if (APrefix <> '') and StartsStr(APrefix, Rest) then
+  mRest := AName;
+  if (APrefix <> '') and StartsStr(APrefix, mRest) then
   begin
-    Delete(Rest, 1, Length(APrefix));
+    Delete(mRest, 1, Length(APrefix));
   end;
-  Result := 'S' + Bare(ATypeName) + UpperCase(Copy(Rest, 1, 1)) + Copy(Rest, 2, MaxInt);
+  Result := 'S' + Bare(ATypeName) + UpperCase(Copy(mRest, 1, 1)) + Copy(mRest, 2, MaxInt);
 end;
 
 function Contains(ANode: TSyntaxNode; const APosition: TTextPosition): Boolean;
@@ -429,16 +429,16 @@ end;
 /// <summary>Namen der Elemente; False bei festen Werten (a = 1) oder ohne Elemente.</summary>
 function PlainNames(AEnum: TSyntaxNode; out ANames: TArray<string>): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   ANames := nil;
-  for Index := 0 to AEnum.ChildCount - 1 do
+  for mIndex := 0 to AEnum.ChildCount - 1 do
   begin
-    if (AEnum[Index].Kind <> TSyntaxKind.Identifier) or (AEnum[Index].ChildCount > 0) then
+    if (AEnum[mIndex].Kind <> TSyntaxKind.Identifier) or (AEnum[mIndex].ChildCount > 0) then
     begin
       Exit(False);
     end;
-    ANames := ANames + [AEnum[Index].Name];
+    ANames := ANames + [AEnum[mIndex].Name];
   end;
   Result := ANames <> nil;
 end;
@@ -446,11 +446,11 @@ end;
 class function TEnumTables.Target(ATree: TSyntaxTree; const APosition: TTextPosition; out ATarget: TEnumTarget;
   out AReason: string): Boolean;
 var
-  Decl, Enum: TSyntaxNode;
+  mDecl, mEnum: TSyntaxNode;
 begin
   ATarget := Default(TEnumTarget);
   AReason := '';
-  Decl := ATree.Root.Search(
+  mDecl := ATree.Root.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
       if not Contains(ANode, APosition) then
@@ -463,55 +463,55 @@ begin
       end;
       Result := TSyntaxSearchStep.Descend;
     end);
-  if Decl = nil then
+  if mDecl = nil then
   begin
     Exit(Fail(cTexts[TEditingEnumTablesText.NoEnumerationTypeAtThis].Text, AReason));
   end;
-  Enum := Decl.FindChild(TSyntaxKind.EnumType);
+  mEnum := mDecl.FindChild(TSyntaxKind.EnumType);
   // Nur Typen der Unit: In Klassen und Routinen fehlt der Platz für eine Konstante dahinter.
-  if (Decl.Parent = nil) or (Decl.Parent.Kind <> TSyntaxKind.TypeSection) or (Decl.Parent.Parent = nil) or
-    not (Decl.Parent.Parent.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection,
+  if (mDecl.Parent = nil) or (mDecl.Parent.Kind <> TSyntaxKind.TypeSection) or (mDecl.Parent.Parent = nil) or
+    not (mDecl.Parent.Parent.Kind in [TSyntaxKind.InterfaceSection, TSyntaxKind.ImplementationSection,
     TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile]) then
   begin
-    Exit(Fail(cTexts[TEditingEnumTablesText.IsNotDirectlyInThe].Fmt([Decl.Name]), AReason));
+    Exit(Fail(cTexts[TEditingEnumTablesText.IsNotDirectlyInThe].Fmt([mDecl.Name]), AReason));
   end;
-  if not PlainNames(Enum, ATarget.Names) then
+  if not PlainNames(mEnum, ATarget.Names) then
   begin
-    Exit(Fail(cTexts[TEditingEnumTablesText.HasElementsWithFixedValues].Fmt([Decl.Name]),
+    Exit(Fail(cTexts[TEditingEnumTablesText.HasElementsWithFixedValues].Fmt([mDecl.Name]),
       AReason));
   end;
-  ATarget.TypeName := Decl.Name;
-  ATarget.NamePosition := Decl.StartPos;
-  ATarget.InInterface := Decl.Parent.Parent.Kind = TSyntaxKind.InterfaceSection;
+  ATarget.TypeName := mDecl.Name;
+  ATarget.NamePosition := mDecl.StartPos;
+  ATarget.InInterface := mDecl.Parent.Parent.Kind = TSyntaxKind.InterfaceSection;
   Result := True;
 end;
 
 /// <summary>Auf oberster Ebene der Datei deklarierte Namen.</summary>
 function DeclaredNames(ATree: TSyntaxTree): TArray<string>;
 var
-  Names: TArray<string>;
+  mNames: TArray<string>;
 begin
-  Names := nil;
+  mNames := nil;
   ATree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     begin
       if ANode.Kind in [TSyntaxKind.TypeDecl, TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl] then
       begin
-        Names := Names + [ANode.Name];
+        mNames := mNames + [ANode.Name];
       end;
       Result := not (ANode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.TypeDecl]);
     end);
-  Result := Names;
+  Result := mNames;
 end;
 
 function IsIdentifier(const AName: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := (AName <> '') and (AName[1].IsLetter or (AName[1] = '_')) and not TPascalLexer.IsReservedWord(AName);
-  for Index := 2 to Length(AName) do
+  for mIndex := 2 to Length(AName) do
   begin
-    if not (AName[Index].IsLetterOrDigit or (AName[Index] = '_')) then
+    if not (AName[mIndex].IsLetterOrDigit or (AName[mIndex] = '_')) then
     begin
       Exit(False);
     end;
@@ -520,19 +520,19 @@ end;
 
 function Joined(const AHead: string; const AItems: TArray<string>; const AIndent, ALineBreak: string): string;
 var
-  Line: string;
-  Index: Integer;
+  mLine: string;
+  mIndex: Integer;
 begin
-  Line := AHead + '(' + string.Join(', ', AItems) + ');';
-  if Length(AIndent + Line) <= LineLimit then
+  mLine := AHead + '(' + string.Join(', ', AItems) + ');';
+  if Length(AIndent + mLine) <= cLineLimit then
   begin
-    Exit(AIndent + Line);
+    Exit(AIndent + mLine);
   end;
   Result := AIndent + AHead + '(';
-  for Index := 0 to High(AItems) do
+  for mIndex := 0 to High(AItems) do
   begin
-    Result := Result + ALineBreak + AIndent + '  ' + AItems[Index];
-    if Index < High(AItems) then
+    Result := Result + ALineBreak + AIndent + '  ' + AItems[mIndex];
+    if mIndex < High(AItems) then
     begin
       Result := Result + ',';
     end;
@@ -726,7 +726,7 @@ end;
 
 function TableOf(ANode: TSyntaxNode; out ATable: TEnumTable): Boolean;
 var
-  ArrayNode, Value: TSyntaxNode;
+  mArrayNode, mValue: TSyntaxNode;
 begin
   Result := False;
   ATable := Default(TEnumTable);
@@ -734,26 +734,26 @@ begin
   begin
     Exit;
   end;
-  ArrayNode := ANode.FindChild(TSyntaxKind.ArrayType);
-  Value := ANode.FindChild(TSyntaxKind.ParenExpr);
+  mArrayNode := ANode.FindChild(TSyntaxKind.ArrayType);
+  mValue := ANode.FindChild(TSyntaxKind.ParenExpr);
   // Eine Dimension über einen benannten Typ: array[TTyp] of X.
-  if (ArrayNode = nil) or (Value = nil) or (ArrayNode.ChildCount <> 2) or
-    (ArrayNode[0].Kind <> TSyntaxKind.TypeReference) or (ArrayNode[0].ChildCount > 0) then
+  if (mArrayNode = nil) or (mValue = nil) or (mArrayNode.ChildCount <> 2) or
+    (mArrayNode[0].Kind <> TSyntaxKind.TypeReference) or (mArrayNode[0].ChildCount > 0) then
   begin
     Exit;
   end;
   ATable.Decl := ANode;
-  ATable.IndexType := ArrayNode[0];
-  ATable.ElementType := ArrayNode[1];
-  ATable.Value := Value;
+  ATable.IndexType := mArrayNode[0];
+  ATable.ElementType := mArrayNode[1];
+  ATable.Value := mValue;
   Result := True;
 end;
 
 class function TEnumTables.Tables(ATree: TSyntaxTree): TArray<TEnumTable>;
 var
-  Found: TArray<TEnumTable>;
+  mFound: TArray<TEnumTable>;
 begin
-  Found := nil;
+  mFound := nil;
   ATree.Root.Walk(
     function(ANode: TSyntaxNode): Boolean
     var
@@ -761,24 +761,24 @@ begin
     begin
       if TableOf(ANode, Table) then
       begin
-        Found := Found + [Table];
+        mFound := mFound + [Table];
       end;
       Result := not (ANode.Kind in [TSyntaxKind.ConstDecl, TSyntaxKind.VarDecl]);
     end);
-  Result := Found;
+  Result := mFound;
 end;
 
 class function TEnumTables.TableAt(ATree: TSyntaxTree; const APosition: TTextPosition;
   out ATable: TEnumTable): Boolean;
 var
-  Table: TEnumTable;
+  mTable: TEnumTable;
 begin
   ATable := Default(TEnumTable);
-  for Table in Tables(ATree) do
+  for mTable in Tables(ATree) do
   begin
-    if Contains(Table.Decl, APosition) then
+    if Contains(mTable.Decl, APosition) then
     begin
-      ATable := Table;
+      ATable := mTable;
       Exit(True);
     end;
   end;
@@ -787,36 +787,36 @@ end;
 
 class function TEnumTables.ElementOf(const ATypeName: string): TEnumTableElement;
 var
-  Name: string;
+  mName: string;
 begin
-  Name := LowerCase(ATypeName);
-  if MatchText(Name, ['string', 'unicodestring', 'ansistring', 'widestring', 'shortstring', 'rawbytestring',
+  mName := LowerCase(ATypeName);
+  if MatchText(mName, ['string', 'unicodestring', 'ansistring', 'widestring', 'shortstring', 'rawbytestring',
     'utf8string']) then
   begin
     Result := TEnumTableElement.Text;
   end
-  else if MatchText(Name, ['integer', 'cardinal', 'int64', 'uint64', 'byte', 'word', 'longint', 'longword',
+  else if MatchText(mName, ['integer', 'cardinal', 'int64', 'uint64', 'byte', 'word', 'longint', 'longword',
     'shortint', 'smallint', 'nativeint', 'nativeuint', 'int8', 'int16', 'int32', 'uint8', 'uint16', 'uint32']) then
   begin
     Result := TEnumTableElement.Number;
   end
-  else if MatchText(Name, ['double', 'single', 'extended', 'real', 'currency']) then
+  else if MatchText(mName, ['double', 'single', 'extended', 'real', 'currency']) then
   begin
     Result := TEnumTableElement.Float;
   end
-  else if MatchText(Name, ['boolean', 'bytebool', 'wordbool', 'longbool']) then
+  else if MatchText(mName, ['boolean', 'bytebool', 'wordbool', 'longbool']) then
   begin
     Result := TEnumTableElement.Boolean_;
   end
-  else if MatchText(Name, ['char', 'widechar', 'ansichar']) then
+  else if MatchText(mName, ['char', 'widechar', 'ansichar']) then
   begin
     Result := TEnumTableElement.Char_;
   end
-  else if MatchText(Name, ['pointer', 'tclass', 'pchar', 'pansichar', 'pwidechar']) then
+  else if MatchText(mName, ['pointer', 'tclass', 'pchar', 'pansichar', 'pwidechar']) then
   begin
     Result := TEnumTableElement.Pointer_;
   end
-  else if SameText(Name, 'presstringrec') then
+  else if SameText(mName, 'presstringrec') then
   begin
     Result := TEnumTableElement.ResourceString_;
   end
@@ -1104,56 +1104,56 @@ end;
 /// <summary>Zuordnung Eintrag → Element, nur aufsteigend (längste aufsteigende Folge), sonst -1.</summary>
 function Increasing(const AMatches: TArray<Integer>): TArray<Integer>;
 var
-  Length_, Index, Earlier, Best: Integer;
-  Lengths, Previous: TArray<Integer>;
+  mLength_, mIndex, mEarlier, mBest: Integer;
+  mLengths, mPrevious: TArray<Integer>;
 begin
-  Length_ := Length(AMatches);
-  SetLength(Result, Length_);
-  SetLength(Lengths, Length_);
-  SetLength(Previous, Length_);
-  Best := -1;
-  for Index := 0 to Length_ - 1 do
+  mLength_ := Length(AMatches);
+  SetLength(Result, mLength_);
+  SetLength(mLengths, mLength_);
+  SetLength(mPrevious, mLength_);
+  mBest := -1;
+  for mIndex := 0 to mLength_ - 1 do
   begin
-    Result[Index] := -1;
-    Lengths[Index] := 0;
-    Previous[Index] := -1;
-    if AMatches[Index] < 0 then
+    Result[mIndex] := -1;
+    mLengths[mIndex] := 0;
+    mPrevious[mIndex] := -1;
+    if AMatches[mIndex] < 0 then
     begin
       Continue;
     end;
-    Lengths[Index] := 1;
-    for Earlier := 0 to Index - 1 do
+    mLengths[mIndex] := 1;
+    for mEarlier := 0 to mIndex - 1 do
     begin
-      if (AMatches[Earlier] >= 0) and (AMatches[Earlier] < AMatches[Index]) and
-        (Lengths[Earlier] + 1 > Lengths[Index]) then
+      if (AMatches[mEarlier] >= 0) and (AMatches[mEarlier] < AMatches[mIndex]) and
+        (mLengths[mEarlier] + 1 > mLengths[mIndex]) then
       begin
-        Lengths[Index] := Lengths[Earlier] + 1;
-        Previous[Index] := Earlier;
+        mLengths[mIndex] := mLengths[mEarlier] + 1;
+        mPrevious[mIndex] := mEarlier;
       end;
     end;
-    if (Best < 0) or (Lengths[Index] > Lengths[Best]) then
+    if (mBest < 0) or (mLengths[mIndex] > mLengths[mBest]) then
     begin
-      Best := Index;
+      mBest := mIndex;
     end;
   end;
-  while Best >= 0 do
+  while mBest >= 0 do
   begin
-    Result[Best] := AMatches[Best];
-    Best := Previous[Best];
+    Result[mBest] := AMatches[mBest];
+    mBest := mPrevious[mBest];
   end;
 end;
 
 /// <summary>Beginnt der Eintrag an AOffset seine Zeile?</summary>
 function StartsLine(const AText: string; AOffset: Integer): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := AOffset;
-  while (Index > 0) and CharInSet(AText[Index], [' ', #9]) do
+  mIndex := AOffset;
+  while (mIndex > 0) and CharInSet(AText[mIndex], [' ', #9]) do
   begin
-    Dec(Index);
+    Dec(mIndex);
   end;
-  Result := (Index = 0) or CharInSet(AText[Index], [#13, #10]);
+  Result := (mIndex = 0) or CharInSet(AText[mIndex], [#13, #10]);
 end;
 
 /// <summary>resourcestring-Deklaration namens AName in ATree; nil ohne.</summary>

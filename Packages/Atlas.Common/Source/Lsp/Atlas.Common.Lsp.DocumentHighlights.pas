@@ -38,7 +38,7 @@ type
 
   TLspDocumentHighlights = class
   public const
-    Method = 'textDocument/documentHighlight';
+    cMethod = 'textDocument/documentHighlight';
   private
     FStore: IDocumentStore;
     FIndex: ISymbolIndex;
@@ -114,22 +114,22 @@ end;
 
 function TokenAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
 var
-  Index: Integer;
-  Token: TPascalToken;
+  mIndex: Integer;
+  mToken: TPascalToken;
 begin
-  for Index := 0 to High(ATokens) do
+  for mIndex := 0 to High(ATokens) do
   begin
-    Token := ATokens[Index];
-    if (Token.StartPos.Line > APosition.Line) or
-      ((Token.StartPos.Line = APosition.Line) and (Token.StartPos.Character > APosition.Character)) then
+    mToken := ATokens[mIndex];
+    if (mToken.StartPos.Line > APosition.Line) or
+      ((mToken.StartPos.Line = APosition.Line) and (mToken.StartPos.Character > APosition.Character)) then
     begin
       Break;
     end;
     // Cursor auf oder direkt hinter dem Bezeichner.
-    if (Token.Kind = TPascalTokenKind.Identifier) and (Token.EndPos.Line = APosition.Line) and
-      (APosition.Character <= Token.EndPos.Character) then
+    if (mToken.Kind = TPascalTokenKind.Identifier) and (mToken.EndPos.Line = APosition.Line) and
+      (APosition.Character <= mToken.EndPos.Character) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -144,7 +144,8 @@ end;
 function NextCodeToken(const ATokens: TArray<TPascalToken>; AIndex: Integer): Integer;
 begin
   Result := AIndex + 1;
-  while (Result <= High(ATokens)) and (ATokens[Result].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+  while (Result <= High(ATokens)) and (ATokens[Result].Kind in [TPascalTokenKind.Comment,
+    TPascalTokenKind.Directive]) do
   begin
     Inc(Result);
   end;
@@ -224,7 +225,7 @@ end;
 
 procedure TLspDocumentHighlights.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterConcurrentRequest(Method, HandleHighlight);
+  ADispatcher.RegisterConcurrentRequest(cMethod, HandleHighlight);
 end;
 
 class function TLspDocumentHighlights.Highlights(AResolver: TNameResolver; const AIndex: ISymbolIndex;
@@ -237,33 +238,34 @@ class function TLspDocumentHighlights.Highlights(AResolver: TNameResolver; const
   ATree: TSyntaxTree; const AFileName: string; const APosition: TTextPosition;
   const ACancellation: IJsonRpcCancellationToken): TArray<TDocumentHighlight>;
 var
-  Tokens: TArray<TPascalToken>;
-  Index: Integer;
-  Name: string;
-  Wanted, Candidate: TArray<TDefinitionTarget>;
-  Highlight: TDocumentHighlight;
-  Found: TList<TDocumentHighlight>;
+  mTokens: TArray<TPascalToken>;
+  mIndex: Integer;
+  mName: string;
+  mWanted, mCandidate: TArray<TDefinitionTarget>;
+  mHighlight: TDocumentHighlight;
+  mFound: TList<TDocumentHighlight>;
 begin
   Result := nil;
-  Tokens := ATree.Tokens;
-  Index := TokenAt(Tokens, APosition);
-  if Index < 0 then
+  mTokens := ATree.Tokens;
+  mIndex := TokenAt(mTokens, APosition);
+  if mIndex < 0 then
   begin
     Exit;
   end;
-  Found := TList<TDocumentHighlight>.Create;
+  mFound := TList<TDocumentHighlight>.Create;
   // Den Baum einmal auswerten statt je Vorkommen (Code-Review P-01).
   AResolver.PinTree(ATree, AFileName);
   try
-    Wanted := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, APosition, True);
-    if Length(Wanted) = 0 then
+    mWanted := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, APosition, True);
+    if Length(mWanted) = 0 then
     begin
       Exit;
     end;
-    Name := CleanName(Tokens[Index].Text);
-    for Index := 0 to High(Tokens) do
+    mName := CleanName(mTokens[mIndex].Text);
+    for mIndex := 0 to High(mTokens) do
     begin
-      if (Tokens[Index].Kind <> TPascalTokenKind.Identifier) or not SameText(CleanName(Tokens[Index].Text), Name) then
+      if (mTokens[mIndex].Kind <> TPascalTokenKind.Identifier) or
+        not SameText(CleanName(mTokens[mIndex].Text), mName) then
       begin
         Continue;
       end;
@@ -271,20 +273,20 @@ begin
       begin
         ACancellation.ThrowIfCancellationRequested;
       end;
-      Candidate := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, Tokens[Index].StartPos, True);
-      if (Length(Candidate) = 0) or not SameTarget(Candidate[0], Wanted[0]) then
+      mCandidate := TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, mTokens[mIndex].StartPos, True);
+      if (Length(mCandidate) = 0) or not SameTarget(mCandidate[0], mWanted[0]) then
       begin
         Continue;
       end;
-      Highlight.Range := TTextRange.Create(Tokens[Index].StartPos, Tokens[Index].EndPos);
-      Highlight.Kind := KindAt(Tokens, Index, Wanted[0], AFileName);
+      mHighlight.Range := TTextRange.Create(mTokens[mIndex].StartPos, mTokens[mIndex].EndPos);
+      mHighlight.Kind := KindAt(mTokens, mIndex, mWanted[0], AFileName);
       // Liste statt Result := Result + [...] (Code-Review P-08).
-      Found.Add(Highlight);
+      mFound.Add(mHighlight);
     end;
-    Result := Found.ToArray;
+    Result := mFound.ToArray;
   finally
     AResolver.UnpinTree;
-    Found.Free;
+    mFound.Free;
   end;
 end;
 
@@ -317,8 +319,8 @@ begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
     TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPositionValue)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      cTexts[TDocumentHighlightsText.FieldsTextDocumentUriAndPosition].Text + Method);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TDocumentHighlightsText.FieldsTextDocumentUriAndPosition].Text + cMethod);
   end;
   if not FStore.TryGet(mUri, mDocument) then
   begin

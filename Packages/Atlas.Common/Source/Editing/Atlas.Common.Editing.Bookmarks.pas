@@ -26,7 +26,7 @@ type
 
   TBookmarks = class
   public const
-    Marker = '@bookmark';
+    cMarker = '@bookmark';
   public
     /// <summary>Lesezeichen in AText in Reihenfolge.</summary>
     class function Find(const AText: string): TArray<TBookmark>; static;
@@ -67,49 +67,49 @@ uses
 
 class function TBookmarks.Find(const AText: string): TArray<TBookmark>;
 var
-  Token: TPascalToken;
-  Content: string;
-  Bookmark: TBookmark;
+  mToken: TPascalToken;
+  mContent: string;
+  mBookmark: TBookmark;
 begin
   Result := nil;
-  if Pos(Marker, AText) = 0 then
+  if Pos(cMarker, AText) = 0 then
   begin
     Exit;
   end;
-  for Token in TPascalLexer.Tokenize(AText) do
+  for mToken in TPascalLexer.Tokenize(AText) do
   begin
-    if Token.Kind <> TPascalTokenKind.Comment then
+    if mToken.Kind <> TPascalTokenKind.Comment then
     begin
       Continue;
     end;
-    if StartsStr('//', Token.Text) then
+    if StartsStr('//', mToken.Text) then
     begin
-      Content := Copy(Token.Text, 3, MaxInt);
+      mContent := Copy(mToken.Text, 3, MaxInt);
     end
-    else if StartsStr('{', Token.Text) and not StartsStr('{$', Token.Text) then
+    else if StartsStr('{', mToken.Text) and not StartsStr('{$', mToken.Text) then
     begin
-      Content := Copy(Token.Text, 2, Length(Token.Text) - 2);
+      mContent := Copy(mToken.Text, 2, Length(mToken.Text) - 2);
     end
-    else if StartsStr('(*', Token.Text) then
+    else if StartsStr('(*', mToken.Text) then
     begin
-      Content := Copy(Token.Text, 3, Length(Token.Text) - 4);
+      mContent := Copy(mToken.Text, 3, Length(mToken.Text) - 4);
     end
     else
     begin
       Continue;
     end;
-    Content := Trim(Content);
-    if not StartsText(Marker + ' ', Content) then
+    mContent := Trim(mContent);
+    if not StartsText(cMarker + ' ', mContent) then
     begin
       Continue;
     end;
-    Bookmark.Name := Trim(Copy(Content, Length(Marker) + 2, MaxInt));
-    if Bookmark.Name = '' then
+    mBookmark.Name := Trim(Copy(mContent, Length(cMarker) + 2, MaxInt));
+    if mBookmark.Name = '' then
     begin
       Continue;
     end;
-    Bookmark.Range := TTextRange.Create(Token.StartPos, Token.EndPos);
-    Result := Result + [Bookmark];
+    mBookmark.Range := TTextRange.Create(mToken.StartPos, mToken.EndPos);
+    Result := Result + [mBookmark];
   end;
 end;
 
@@ -131,32 +131,32 @@ end;
 
 procedure TBookmarkStore.Update(const AFileName: string; AStamp: Int64; const AReadText: TBookmarkReadText);
 var
-  Key, Text: string;
-  Entry: TEntry;
+  mKey, mText: string;
+  mEntry: TEntry;
 begin
-  Key := LowerCase(AFileName);
+  mKey := LowerCase(AFileName);
   TMonitor.Enter(FLock);
   try
-    if FEntries.TryGetValue(Key, Entry) and (Entry.Stamp = AStamp) then
+    if FEntries.TryGetValue(mKey, mEntry) and (mEntry.Stamp = AStamp) then
     begin
       Exit;
     end;
   finally
     TMonitor.Exit(FLock);
   end;
-  Entry.FileName := AFileName;
-  Entry.Stamp := AStamp;
-  if AReadText(AFileName, Text) then
+  mEntry.FileName := AFileName;
+  mEntry.Stamp := AStamp;
+  if AReadText(AFileName, mText) then
   begin
-    Entry.Items := TBookmarks.Find(Text);
+    mEntry.Items := TBookmarks.Find(mText);
   end
   else
   begin
-    Entry.Items := nil;
+    mEntry.Items := nil;
   end;
   TMonitor.Enter(FLock);
   try
-    FEntries.AddOrSetValue(Key, Entry);
+    FEntries.AddOrSetValue(mKey, mEntry);
   finally
     TMonitor.Exit(FLock);
   end;
@@ -164,49 +164,49 @@ end;
 
 procedure TBookmarkStore.Retain(const AFileNames: TArray<string>);
 var
-  Keep: TDictionary<string, Boolean>;
-  Name: string;
-  Key: string;
+  mKeep: TDictionary<string, Boolean>;
+  mName: string;
+  mKey: string;
 begin
-  Keep := TDictionary<string, Boolean>.Create;
+  mKeep := TDictionary<string, Boolean>.Create;
   try
-    for Name in AFileNames do
+    for mName in AFileNames do
     begin
-      Keep.AddOrSetValue(LowerCase(Name), True);
+      mKeep.AddOrSetValue(LowerCase(mName), True);
     end;
     TMonitor.Enter(FLock);
     try
-      for Key in FEntries.Keys.ToArray do
+      for mKey in FEntries.Keys.ToArray do
       begin
-        if not Keep.ContainsKey(Key) then
+        if not mKeep.ContainsKey(mKey) then
         begin
-          FEntries.Remove(Key);
+          FEntries.Remove(mKey);
         end;
       end;
     finally
       TMonitor.Exit(FLock);
     end;
   finally
-    Keep.Free;
+    mKeep.Free;
   end;
 end;
 
 function TBookmarkStore.All: TArray<TBookmarkHit>;
 var
-  Pair: TPair<string, TEntry>;
-  Hit: TBookmarkHit;
-  Bookmark: TBookmark;
+  mPair: TPair<string, TEntry>;
+  mHit: TBookmarkHit;
+  mBookmark: TBookmark;
 begin
   Result := nil;
   TMonitor.Enter(FLock);
   try
-    for Pair in FEntries do
+    for mPair in FEntries do
     begin
-      for Bookmark in Pair.Value.Items do
+      for mBookmark in mPair.Value.Items do
       begin
-        Hit.FileName := Pair.Value.FileName;
-        Hit.Bookmark := Bookmark;
-        Result := Result + [Hit];
+        mHit.FileName := mPair.Value.FileName;
+        mHit.Bookmark := mBookmark;
+        Result := Result + [mHit];
       end;
     end;
   finally

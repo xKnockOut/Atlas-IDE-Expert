@@ -356,7 +356,7 @@ var
   Json: TJSONObject;
 begin
   Hints := THintSettings.Default;
-  Hints.XmlDocExpand := THintSettings.ExpandExpanded;
+  Hints.XmlDocExpand := THintSettings.cExpandExpanded;
   Hints.XmlDocMaxLines := 12;
   Json := TLspDocumentation.HintsJson(Hints);
   try
@@ -364,7 +364,7 @@ begin
   finally
     Json.Free;
   end;
-  Hints.XmlDocExpand := THintSettings.ExpandCollapsed;
+  Hints.XmlDocExpand := THintSettings.cExpandCollapsed;
   Hints.XmlDocMaxLines := 0;
   Json := TLspDocumentation.HintsJson(Hints);
   try

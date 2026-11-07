@@ -13,13 +13,14 @@ uses
 type
   TDocWiki = class
   public const
-    BaseUri = 'https://docwiki.embarcadero.com/Libraries/';
+    cBaseUri = 'https://docwiki.embarcadero.com/Libraries/';
   public
     /// <summary>Release-Name der DocWiki, z. B. "Athens" für 23.0.</summary>
     class function ReleaseName(const ADelphiVersion: string): string; static;
     /// <summary>True für Units aus RTL, VCL und den mitgelieferten Bibliotheken.</summary>
     class function IsLibraryUnit(const AUnitName: string): Boolean; static;
-    /// <summary>Link für Unit, Container (Typ, darf leer sein) und Name (leer = die Unit selbst); '' für fremde Units.</summary>
+    /// <summary>Link für Unit, Container (Typ, darf leer sein) und Name (leer = die Unit selbst); '' für fremde
+    /// Units.</summary>
     class function Url(const ADelphiVersion, AUnitName, AContainer, AName: string): string; static;
   end;
 
@@ -35,7 +36,7 @@ type
   end;
 
 const
-  Releases: array[0..10] of TRelease = (
+  cReleases: array[0..10] of TRelease = (
     (Version: '14.0'; Name: 'XE6'), (Version: '15.0'; Name: 'XE7'), (Version: '16.0'; Name: 'XE8'),
     (Version: '17.0'; Name: 'Seattle'), (Version: '18.0'; Name: 'Berlin'), (Version: '19.0'; Name: 'Tokyo'),
     (Version: '20.0'; Name: 'Rio'), (Version: '21.0'; Name: 'Sydney'), (Version: '22.0'; Name: 'Alexandria'),
@@ -44,16 +45,16 @@ const
 
 class function TDocWiki.ReleaseName(const ADelphiVersion: string): string;
 var
-  Release: TRelease;
+  mRelease: TRelease;
 begin
-  for Release in Releases do
+  for mRelease in cReleases do
   begin
-    if SameText(Release.Version, Trim(ADelphiVersion)) then
+    if SameText(mRelease.Version, Trim(ADelphiVersion)) then
     begin
-      Exit(Release.Name);
+      Exit(mRelease.Name);
     end;
   end;
-  Result := Releases[High(Releases)].Name;
+  Result := cReleases[High(cReleases)].Name;
 end;
 
 class function TDocWiki.IsLibraryUnit(const AUnitName: string): Boolean;
@@ -67,7 +68,7 @@ begin
   begin
     Exit('');
   end;
-  Result := BaseUri + ReleaseName(ADelphiVersion) + '/en/' + AUnitName;
+  Result := cBaseUri + ReleaseName(ADelphiVersion) + '/en/' + AUnitName;
   if AContainer <> '' then
   begin
     Result := Result + '.' + AContainer;

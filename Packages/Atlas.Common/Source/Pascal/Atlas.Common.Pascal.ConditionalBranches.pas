@@ -65,27 +65,27 @@ end;
 
 class function TConditionalBranches.Paths(const ATokens: TArray<TPascalToken>): TArray<string>;
 var
-  Stack: TArray<string>;
-  Index, Next: Integer;
-  Path: string;
+  mStack: TArray<string>;
+  mIndex, mNext: Integer;
+  mPath: string;
 begin
   Result := nil;
-  Stack := nil;
-  Next := 0;
-  Path := '';
-  for Index := 0 to High(ATokens) do
+  mStack := nil;
+  mNext := 0;
+  mPath := '';
+  for mIndex := 0 to High(ATokens) do
   begin
-    if ATokens[Index].Kind = TPascalTokenKind.Directive then
+    if ATokens[mIndex].Kind = TPascalTokenKind.Directive then
     begin
-      if ApplyDirective(TPascalLexer.DirectiveName(ATokens[Index].Text), Stack, Next) and (Result = nil) then
+      if ApplyDirective(TPascalLexer.DirectiveName(ATokens[mIndex].Text), mStack, mNext) and (Result = nil) then
       begin
         SetLength(Result, Length(ATokens));
       end;
-      Path := string.Join('/', Stack);
+      mPath := string.Join('/', mStack);
     end;
     if Result <> nil then
     begin
-      Result[Index] := Path;
+      Result[mIndex] := mPath;
     end;
   end;
 end;
@@ -101,21 +101,21 @@ end;
 
 class function TConditionalBranches.Exclusive(const APath, AOther: string): Boolean;
 var
-  Mine, Theirs: TArray<string>;
-  Part, Other: string;
+  mMine, mTheirs: TArray<string>;
+  mPart, mOther: string;
 begin
   Result := False;
   if (APath = '') or (AOther = '') or (APath = AOther) then
   begin
     Exit;
   end;
-  Mine := APath.Split(['/']);
-  Theirs := AOther.Split(['/']);
-  for Part in Mine do
+  mMine := APath.Split(['/']);
+  mTheirs := AOther.Split(['/']);
+  for mPart in mMine do
   begin
-    for Other in Theirs do
+    for mOther in mTheirs do
     begin
-      if (Copy(Part, 1, Pos('.', Part)) = Copy(Other, 1, Pos('.', Other))) and (Part <> Other) then
+      if (Copy(mPart, 1, Pos('.', mPart)) = Copy(mOther, 1, Pos('.', mOther))) and (mPart <> mOther) then
       begin
         Exit(True);
       end;

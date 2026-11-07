@@ -31,10 +31,10 @@ type
 
   TMcpIdeEdits = class
   public const
-    AnswerMs = 3000;
-    TakenMs = 30000;
+    cAnswerMs = 3000;
+    cTakenMs = 30000;
     /// <summary>Takt, in dem der Aufrufer von Send auf Antwort- und Übernahmedatei prüft (Code-Review P-16).</summary>
-    PollMs = 50;
+    cPollMs = 50;
   public
     /// <summary>Eingang des IDE-Prozesses APid unter ABase (%LOCALAPPDATA%\Atlas).</summary>
     class function InboxOf(const ABase: string; APid: Cardinal): string; static;
@@ -72,29 +72,29 @@ end;
 
 function ReadAnswer(const AFileName: string; out AApplied, ANotOpen: Boolean; out AReason: string): Boolean;
 var
-  Text: string;
-  Json: TJSONValue;
+  mText: string;
+  mJson: TJSONValue;
 begin
   AApplied := False;
   ANotOpen := False;
   AReason := '';
   try
-    Text := TFile.ReadAllText(AFileName, TEncoding.UTF8);
+    mText := TFile.ReadAllText(AFileName, TEncoding.UTF8);
   except
     on Exception do
       Exit(False);
   end;
-  Json := TJSONObject.ParseJSONValue(Text);
+  mJson := TJSONObject.ParseJSONValue(mText);
   try
-    Result := Json is TJSONObject;
+    Result := mJson is TJSONObject;
     if Result then
     begin
-      AApplied := TJSONObject(Json).GetValue<Boolean>('applied', False);
-      ANotOpen := TJSONObject(Json).GetValue<Boolean>('notOpen', False);
-      AReason := TJSONObject(Json).GetValue<string>('reason', '');
+      AApplied := TJSONObject(mJson).GetValue<Boolean>('applied', False);
+      ANotOpen := TJSONObject(mJson).GetValue<Boolean>('notOpen', False);
+      AReason := TJSONObject(mJson).GetValue<string>('reason', '');
     end;
   finally
-    Json.Free;
+    mJson.Free;
   end;
   try
     TFile.Delete(AFileName);
@@ -175,7 +175,7 @@ begin
   ForceDirectories(AInbox);
   TFile.WriteAllText(mRequest + '.tmp', RequestText(AEdit), TEncoding.UTF8);
   TFile.Move(mRequest + '.tmp', mRequest);
-  if not AwaitAnswer(mAnswer, AnswerMs, AWait, AClock) then
+  if not AwaitAnswer(mAnswer, cAnswerMs, AWait, AClock) then
   begin
     // Nicht übernommen: zurückziehen und selbst schreiben.
     if DeleteFile(mRequest) then
@@ -183,7 +183,7 @@ begin
       Exit(TMcpIdeEditOutcome.WriteYourself);
     end;
     // Übernommen, aber noch nicht fertig.
-    if not AwaitAnswer(mAnswer, TakenMs, AWait, AClock) then
+    if not AwaitAnswer(mAnswer, cTakenMs, AWait, AClock) then
     begin
       AReason := cTexts[TIdeEditsText.TheIDEAcceptedTheChange].Text;
       Exit(TMcpIdeEditOutcome.Failed);

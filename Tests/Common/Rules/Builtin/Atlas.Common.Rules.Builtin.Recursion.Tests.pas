@@ -131,7 +131,7 @@ begin
   Findings := TRuleAssert.Findings(TSetterRecursionRule.Create, Kunde);
   // Das Lesen von Name ruft den Getter (hier ein Feld) nicht rekursiv auf, nur die Zuweisung.
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(SetterRecursionRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cSetterRecursionRuleId, Findings[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
   Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Findings[0].Confidence));
   Assert.AreEqual('Zuweisung an die Property Name im eigenen Setter: Endlosrekursion.', Findings[0].Message);
@@ -236,7 +236,7 @@ begin
   Found := False;
   for Rule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = SetterRecursionRuleId then
+    if Rule.Descriptor.Id = cSetterRecursionRuleId then
     begin
       Found := True;
     end;
@@ -269,7 +269,7 @@ var
 begin
   Found := RecursionFindings(Baum('  Result := 1 + Max(Tiefe(K.Links), Tiefe(K.Rechts));'#10));
   Assert.AreEqual(1, Integer(Length(Found)));
-  Assert.AreEqual(UnconditionalRecursionRuleId, Found[0].RuleId);
+  Assert.AreEqual(cUnconditionalRecursionRuleId, Found[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Found[0].Severity));
   Assert.AreEqual('Tiefe ruft sich auf jedem Pfad selbst auf; es fehlt der Abbruch (z. B. K = nil).',
     Found[0].Message);

@@ -29,12 +29,12 @@ type
 
   TLspMissingUnit = class
   public const
-    SearchPathCommand = 'atlas.addSearchPath';
-    AddUnitCommand = 'atlas.addUnitToProject';
-    InfoCommand = 'atlas.showInfo';
-    Kind = 'quickfix';
+    cSearchPathCommand = 'atlas.addSearchPath';
+    cAddUnitCommand = 'atlas.addUnitToProject';
+    cInfoCommand = 'atlas.showInfo';
+    cKind = 'quickfix';
     /// <summary>Höchstens so viele Ordner werden angeboten.</summary>
-    MaxFolders = 3;
+    cMaxFolders = 3;
   public
     /// <summary>F2613 oder F1026?</summary>
     class function Handles(const ACode: string): Boolean; static;
@@ -88,36 +88,36 @@ end;
 
 function CommandAction(const ATitle, ACommand: string; AArguments: TJSONArray; APreferred: Boolean): TJSONObject;
 var
-  Command: TJSONObject;
+  mCommand: TJSONObject;
 begin
-  Command := TJSONObject.Create;
-  Command.AddPair('title', ATitle);
-  Command.AddPair('command', ACommand);
-  Command.AddPair('arguments', AArguments);
+  mCommand := TJSONObject.Create;
+  mCommand.AddPair('title', ATitle);
+  mCommand.AddPair('command', ACommand);
+  mCommand.AddPair('arguments', AArguments);
   Result := TJSONObject.Create;
   Result.AddPair('title', ATitle);
-  Result.AddPair('kind', TLspMissingUnit.Kind);
+  Result.AddPair('kind', TLspMissingUnit.cKind);
   if APreferred then
   begin
     Result.AddPair('isPreferred', TJSONBool.Create(True));
   end;
-  Result.AddPair('command', Command);
+  Result.AddPair('command', mCommand);
 end;
 
 function Arguments(const AValues: array of string): TJSONArray;
 var
-  Value: string;
+  mValue: string;
 begin
   Result := TJSONArray.Create;
-  for Value in AValues do
+  for mValue in AValues do
   begin
-    Result.Add(Value);
+    Result.Add(mValue);
   end;
 end;
 
 function InfoAction(const ATitle, AText: string): TJSONObject;
 begin
-  Result := CommandAction(ATitle, TLspMissingUnit.InfoCommand, Arguments([AText]), False);
+  Result := CommandAction(ATitle, TLspMissingUnit.cInfoCommand, Arguments([AText]), False);
 end;
 
 class function TLspMissingUnit.PlatformText(const AUnitName, APlatform: string;
@@ -153,20 +153,20 @@ end;
 function FolderActions(const ASetup: TMissingUnitSetup; const AHit: TMissingUnitHit;
   AFirst: Boolean): TArray<TJSONObject>;
 var
-  Folder, Config: string;
+  mFolder, mConfig: string;
 begin
   Result := nil;
-  Config := ASetup.Project.Config;
-  Folder := TMissingUnitSearch.RelativePath(ASetup.Project.FileName, AHit.Folder);
-  if Config <> '' then
+  mConfig := ASetup.Project.Config;
+  mFolder := TMissingUnitSearch.RelativePath(ASetup.Project.FileName, AHit.Folder);
+  if mConfig <> '' then
   begin
-    Result := Result + [CommandAction(cTexts[TLspMissingUnitText.AddFolderToTheSearch].Fmt([Folder, Config,
-      HitOrigin(AHit)]), TLspMissingUnit.SearchPathCommand,
-      Arguments([ASetup.Project.FileName, Folder, Config]), AFirst)];
+    Result := Result + [CommandAction(cTexts[TLspMissingUnitText.AddFolderToTheSearch].Fmt([mFolder, mConfig,
+      HitOrigin(AHit)]), TLspMissingUnit.cSearchPathCommand,
+      Arguments([ASetup.Project.FileName, mFolder, mConfig]), AFirst)];
   end;
-  Result := Result + [CommandAction(cTexts[TLspMissingUnitText.AddFolderToTheSearch2].Fmt([Folder, HitOrigin(AHit)]),
-    TLspMissingUnit.SearchPathCommand,
-    Arguments([ASetup.Project.FileName, Folder, '']), AFirst and (Config = ''))];
+  Result := Result + [CommandAction(cTexts[TLspMissingUnitText.AddFolderToTheSearch2].Fmt([mFolder, HitOrigin(AHit)]),
+    TLspMissingUnit.cSearchPathCommand,
+    Arguments([ASetup.Project.FileName, mFolder, '']), AFirst and (mConfig = ''))];
 end;
 
 /// <summary>Ohne Ordner: Hinweis auf andere Plattformen bzw. die durchsuchten Orte.</summary>
@@ -188,80 +188,80 @@ end;
 class function TLspMissingUnit.ActionsFor(const ASetup: TMissingUnitSetup; const AHits: TArray<TMissingUnitHit>;
   const ASearched: TArray<string>): TArray<TJSONObject>;
 var
-  Hit: TMissingUnitHit;
-  Platforms: TArray<string>;
-  Offered: Integer;
-  SourceOffered: Boolean;
+  mHit: TMissingUnitHit;
+  mPlatforms: TArray<string>;
+  mOffered: Integer;
+  mSourceOffered: Boolean;
 begin
   Result := nil;
-  Platforms := nil;
-  Offered := 0;
-  SourceOffered := False;
-  for Hit in AHits do
+  mPlatforms := nil;
+  mOffered := 0;
+  mSourceOffered := False;
+  for mHit in AHits do
   begin
     // Nur in der Bibliothek einer anderen Plattform: kein Pfad, sondern der Hinweis.
-    if Hit.Place = TMissingUnitPlace.OtherPlatformLibrary then
+    if mHit.Place = TMissingUnitPlace.OtherPlatformLibrary then
     begin
-      if IndexText(Hit.Detail, Platforms) < 0 then
+      if IndexText(mHit.Detail, mPlatforms) < 0 then
       begin
-        Platforms := Platforms + [Hit.Detail];
+        mPlatforms := mPlatforms + [mHit.Detail];
       end;
     end
-    else if Offered < MaxFolders then
+    else if mOffered < cMaxFolders then
     begin
-      Result := Result + FolderActions(ASetup, Hit, Offered = 0);
-      if not SourceOffered and SameText(ExtractFileExt(Hit.FileName), '.pas') then
+      Result := Result + FolderActions(ASetup, mHit, mOffered = 0);
+      if not mSourceOffered and SameText(ExtractFileExt(mHit.FileName), '.pas') then
       begin
-        SourceOffered := True;
+        mSourceOffered := True;
         Result := Result + [CommandAction(cTexts[TLspMissingUnitText.AddToTheProject].Fmt([
-          ExtractFileName(Hit.FileName)]),
-          AddUnitCommand, Arguments([ASetup.Project.FileName, Hit.FileName]), False)];
+          ExtractFileName(mHit.FileName)]),
+          cAddUnitCommand, Arguments([ASetup.Project.FileName, mHit.FileName]), False)];
       end;
-      Inc(Offered);
+      Inc(mOffered);
     end;
   end;
-  if Offered = 0 then
+  if mOffered = 0 then
   begin
-    Result := FallbackActions(ASetup, Platforms, ASearched);
+    Result := FallbackActions(ASetup, mPlatforms, ASearched);
   end;
 end;
 
 class function TLspMissingUnit.Actions(AEnabled: Boolean; AFirstLine, ALastLine: Integer;
   const AMessages: TArray<TCompilerMessage>; const AResolve: TMissingUnitResolve): TArray<TJSONObject>;
 var
-  Message: TCompilerMessage;
-  UnitName: string;
-  Seen: TArray<string>;
-  Setup: TMissingUnitSetup;
-  Hits: TArray<TMissingUnitHit>;
-  Searched: TArray<string>;
+  mMessage: TCompilerMessage;
+  mUnitName: string;
+  mSeen: TArray<string>;
+  mSetup: TMissingUnitSetup;
+  mHits: TArray<TMissingUnitHit>;
+  mSearched: TArray<string>;
 begin
   Result := nil;
   if not AEnabled or not Assigned(AResolve) then
   begin
     Exit;
   end;
-  Seen := nil;
-  for Message in AMessages do
+  mSeen := nil;
+  for mMessage in AMessages do
   begin
-    if not Handles(Message.Code) or (Message.Line < AFirstLine) or (Message.Line > ALastLine) then
+    if not Handles(mMessage.Code) or (mMessage.Line < AFirstLine) or (mMessage.Line > ALastLine) then
     begin
       Continue;
     end;
-    UnitName := TMissingUnitSearch.UnitOfMessage(Message.Code, Message.Text);
+    mUnitName := TMissingUnitSearch.UnitOfMessage(mMessage.Code, mMessage.Text);
     // Dieselbe Unit kommt bei mehreren Plattformen oder als F2613 und F1026 doppelt.
-    if (UnitName = '') or (IndexText(UnitName, Seen) >= 0) then
+    if (mUnitName = '') or (IndexText(mUnitName, mSeen) >= 0) then
     begin
       Continue;
     end;
-    Seen := Seen + [UnitName];
-    if not AResolve(UnitName, Setup) then
+    mSeen := mSeen + [mUnitName];
+    if not AResolve(mUnitName, mSetup) then
     begin
       Continue;
     end;
-    Setup.UnitName := UnitName;
-    Hits := TMissingUnitSearch.Search(Setup, Searched);
-    Result := Result + ActionsFor(Setup, Hits, Searched);
+    mSetup.UnitName := mUnitName;
+    mHits := TMissingUnitSearch.Search(mSetup, mSearched);
+    Result := Result + ActionsFor(mSetup, mHits, mSearched);
   end;
 end;
 

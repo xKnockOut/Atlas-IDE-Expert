@@ -106,7 +106,7 @@ begin
   mFound := False;
   for mMethod in FDispatcher.Methods do
   begin
-    mFound := mFound or (mMethod = TLspDocumentSymbols.Method);
+    mFound := mFound or (mMethod = TLspDocumentSymbols.cMethod);
   end;
   Assert.IsTrue(mFound);
 end;

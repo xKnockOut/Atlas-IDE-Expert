@@ -6,7 +6,7 @@
 interface
 
 const
-  CatalogLinesEnCompilerNames: array[0..719] of string = (
+  cCatalogLinesEnCompilerNames: array[0..719] of string = (
     '{',
     '      "id": "deprecated-symbol",',
     '      "name": "Deprecated or bound symbol",',

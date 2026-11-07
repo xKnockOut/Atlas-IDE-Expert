@@ -50,8 +50,8 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  InaccessibleMemberRuleId = 'inaccessible-member';
-  UnusedPrivateMemberRuleId = 'unused-private-member';
+  cInaccessibleMemberRuleId = 'inaccessible-member';
+  cUnusedPrivateMemberRuleId = 'unused-private-member';
 
 type
   TInaccessibleMemberRule = class(TInterfacedObject, IRule)
@@ -117,7 +117,7 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  Restricted = [TIndexVisibility.Private, TIndexVisibility.StrictPrivate, TIndexVisibility.Protected,
+  cRestricted = [TIndexVisibility.Private, TIndexVisibility.StrictPrivate, TIndexVisibility.Protected,
     TIndexVisibility.StrictProtected];
 
 function VisibilityText(AVisibility: TIndexVisibility): string;
@@ -139,11 +139,11 @@ end;
 /// <summary>Trägt ADirectives die Direktive ADirective?</summary>
 function HasDirective(const ADirectives: TArray<string>; const ADirective: string): Boolean;
 var
-  Directive: string;
+  mDirective: string;
 begin
-  for Directive in ADirectives do
+  for mDirective in ADirectives do
   begin
-    if SameText(Directive, ADirective) then
+    if SameText(mDirective, ADirective) then
     begin
       Exit(True);
     end;
@@ -393,7 +393,7 @@ begin
   Result := (FContext.Index <> nil) and FContext.Index.HasSymbol(AName,
     function(const ASymbol: TIndexSymbol): Boolean
     begin
-      Result := (ASymbol.Container <> '') and (ASymbol.Visibility in Restricted);
+      Result := (ASymbol.Container <> '') and (ASymbol.Visibility in cRestricted);
     end);
 end;
 
@@ -408,7 +408,7 @@ begin
   Result := False;
   for mSymbol in FLocal.Symbols do
   begin
-    if (mSymbol.Container <> '') and (mSymbol.Visibility in Restricted) and SameText(mSymbol.Name, AName) then
+    if (mSymbol.Container <> '') and (mSymbol.Visibility in cRestricted) and SameText(mSymbol.Name, AName) then
     begin
       Result := True;
     end;
@@ -478,7 +478,7 @@ end;
 /// </summary>
 function TInaccessibleMemberCheck.NestedSomewhere(const AName: string): Boolean;
 const
-  Kinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType];
+  cKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType];
 var
   mLocation: TSymbolLocation;
 begin
@@ -489,7 +489,7 @@ begin
   end;
   for mLocation in FContext.Index.FindSymbols(AName) do
   begin
-    if (mLocation.Symbol.Container <> '') and (mLocation.Symbol.Kind in Kinds) then
+    if (mLocation.Symbol.Container <> '') and (mLocation.Symbol.Kind in cKinds) then
     begin
       Exit(True);
     end;
@@ -523,7 +523,7 @@ begin
   // Sichtbar über Helfer oder Vorfahren: kein Fall für diese Regel.
   Result := Result and not FResolver.FindMember(AReceiverType, ANode.Name, AMember) and
     FResolver.DeclaredMember(AReceiverType, ANode.Name, AMember);
-  Result := Result and (AMember.Visibility in Restricted) and (AMember.Condition = '');
+  Result := Result and (AMember.Visibility in cRestricted) and (AMember.Condition = '');
 end;
 
 /// <summary>Fälle, die dcc trotz unsichtbarem Mitglied übersetzt oder die die Regel nicht sicher beurteilt.
@@ -760,7 +760,7 @@ end;
 
 function TInaccessibleMemberRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(InaccessibleMemberRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cInaccessibleMemberRuleId, TRuleSeverity.Error,
     cTexts[TVisibilityText.AccessTitle].Text);
 end;
 
@@ -1177,7 +1177,7 @@ end;
 
 function TUnusedPrivateMemberRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(UnusedPrivateMemberRuleId, TRuleSeverity.Hint,
+  Result := TRuleDescriptor.Create(cUnusedPrivateMemberRuleId, TRuleSeverity.Hint,
     cTexts[TVisibilityText.Title].Text);
 end;
 

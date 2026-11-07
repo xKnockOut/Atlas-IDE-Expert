@@ -16,8 +16,8 @@ uses
 type
   TJsonRpcLineTransport = class(TInterfacedObject, IJsonRpcTransport)
   private const
-    BufferSize = 64 * 1024;
-    MaxLineLength = 256 * 1024 * 1024;
+    cBufferSize = 64 * 1024;
+    cMaxLineLength = 256 * 1024 * 1024;
   private
     FInput: TStream;
     FOutput: TStream;
@@ -67,7 +67,7 @@ begin
   FInput := AInput;
   FOutput := AOutput;
   FOwnsStreams := AOwnsStreams;
-  SetLength(FBuffer, BufferSize);
+  SetLength(FBuffer, cBufferSize);
   FWriteLock := TCriticalSection.Create;
 end;
 
@@ -85,7 +85,7 @@ end;
 function TJsonRpcLineTransport.FillBuffer: Boolean;
 begin
   FBufferPos := 0;
-  FBufferLen := FInput.Read(FBuffer[0], BufferSize);
+  FBufferLen := FInput.Read(FBuffer[0], cBufferSize);
   Result := FBufferLen > 0;
 end;
 
@@ -123,7 +123,7 @@ begin
       end
       else if not SkipsByte(mValue, mLine.Size) then
       begin
-        if mLine.Size >= MaxLineLength then
+        if mLine.Size >= cMaxLineLength then
         begin
           raise EJsonRpcTransportError.Create(cTexts[TLineTransportText.MessageExceedsTheMaximumLength].Text);
         end;
@@ -142,35 +142,35 @@ end;
 
 function TJsonRpcLineTransport.ReadMessage: TJSONObject;
 var
-  Line: TBytes;
-  Value: TJSONValue;
+  mLine: TBytes;
+  mValue: TJSONValue;
 begin
-  if not ReadLine(Line) then
+  if not ReadLine(mLine) then
   begin
     raise EJsonRpcTransportClosed.Create(cTexts[TLineTransportText.InputClosed].Text);
   end;
-  Value := TJSONObject.ParseJSONValue(Line, 0, True);
-  if Value = nil then
+  mValue := TJSONObject.ParseJSONValue(mLine, 0, True);
+  if mValue = nil then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.ParseError, cTexts[TLineTransportText.MessageIsNotValidJSON].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cParseError, cTexts[TLineTransportText.MessageIsNotValidJSON].Text);
   end;
-  if not (Value is TJSONObject) then
+  if not (mValue is TJSONObject) then
   begin
-    Value.Free;
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidRequest, cTexts[TLineTransportText.MessageIsNotAJSON].Text);
+    mValue.Free;
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidRequest, cTexts[TLineTransportText.MessageIsNotAJSON].Text);
   end;
-  Result := TJSONObject(Value);
+  Result := TJSONObject(mValue);
 end;
 
 procedure TJsonRpcLineTransport.WriteMessage(const AMessage: TJSONObject);
 var
-  Data: TBytes;
+  mData: TBytes;
 begin
   // ToJSON maskiert Zeilenumbrüche in Strings, die Nachricht bleibt einzeilig.
-  Data := TEncoding.UTF8.GetBytes(AMessage.ToJSON + #10);
+  mData := TEncoding.UTF8.GetBytes(AMessage.ToJSON + #10);
   FWriteLock.Enter;
   try
-    FOutput.WriteBuffer(Data, Length(Data));
+    FOutput.WriteBuffer(mData, Length(mData));
   finally
     FWriteLock.Leave;
   end;

@@ -15,7 +15,7 @@ uses
   Atlas.Common.Index.Processes;
 
 const
-  ProcessesCommand = 'atlas.server.processes';
+  cProcessesCommand = 'atlas.server.processes';
 
 type
   TLspProcessWorkspace = record
@@ -102,13 +102,13 @@ end;
 
 function TLspProcessWorkspace.Holder(out AProcess: TIndexProcessInfo): Boolean;
 var
-  Process: TIndexProcessInfo;
+  mProcess: TIndexProcessInfo;
 begin
-  for Process in Processes do
+  for mProcess in Processes do
   begin
-    if Process.Writer then
+    if mProcess.Writer then
     begin
-      AProcess := Process;
+      AProcess := mProcess;
       Exit(True);
     end;
   end;
@@ -118,42 +118,42 @@ end;
 
 function TLspProcessWorkspace.BuiltOnce: Boolean;
 var
-  Process: TIndexProcessInfo;
-  Writers: Integer;
+  mProcess: TIndexProcessInfo;
+  mWriters: Integer;
 begin
-  Writers := 0;
-  for Process in Processes do
+  mWriters := 0;
+  for mProcess in Processes do
   begin
-    if Process.Writer then
+    if mProcess.Writer then
     begin
-      Inc(Writers);
+      Inc(mWriters);
     end;
   end;
-  Result := (Writers = 1) and (Length(Processes) > 1);
+  Result := (mWriters = 1) and (Length(Processes) > 1);
 end;
 
 { TLspProcesses }
 
 class function TLspProcesses.Age(ASaved, ANow: TDateTime): string;
 var
-  Seconds: Int64;
+  mSeconds: Int64;
 begin
   if ASaved = 0 then
   begin
     Exit(cTexts[TProcessesText.NotSavedYet].Text);
   end;
-  Seconds := SecondsBetween(ANow, ASaved);
-  if Seconds < 60 then
+  mSeconds := SecondsBetween(ANow, ASaved);
+  if mSeconds < 60 then
   begin
-    Result := Format('vor %d s', [Seconds]);
+    Result := Format('vor %d s', [mSeconds]);
   end
-  else if Seconds < 3600 then
+  else if mSeconds < 3600 then
   begin
-    Result := Format('vor %d min', [Seconds div 60]);
+    Result := Format('vor %d min', [mSeconds div 60]);
   end
-  else if Seconds < 86400 then
+  else if mSeconds < 86400 then
   begin
-    Result := Format('vor %d h', [Seconds div 3600]);
+    Result := Format('vor %d h', [mSeconds div 3600]);
   end
   else
   begin
@@ -165,15 +165,15 @@ end;
 /// sich mehrere Prozesse teilen.</summary>
 function StateText(const AState: string): string;
 begin
-  if AState = TIndexProcessInfo.StateBuilding then
+  if AState = TIndexProcessInfo.cStateBuilding then
   begin
     Result := cTexts[TProcessesText.StateBuilding].Text;
   end
-  else if AState = TIndexProcessInfo.StateReading then
+  else if AState = TIndexProcessInfo.cStateReading then
   begin
     Result := cTexts[TProcessesText.StateReading].Text;
   end
-  else if AState = TIndexProcessInfo.StateReady then
+  else if AState = TIndexProcessInfo.cStateReady then
   begin
     Result := cTexts[TProcessesText.StateReady].Text;
   end
@@ -185,14 +185,14 @@ end;
 
 class function TLspProcesses.ProcessText(const AProcess: TIndexProcessInfo): string;
 var
-  Client: string;
+  mClient: string;
 begin
-  Client := AProcess.Client;
-  if Client = '' then
+  mClient := AProcess.Client;
+  if mClient = '' then
   begin
-    Client := cTexts[TProcessesText.UnknownClient].Text;
+    mClient := cTexts[TProcessesText.UnknownClient].Text;
   end;
-  Result := Format('%s · %s (pid %d)', [AProcess.Kind, Client, AProcess.Pid]);
+  Result := Format('%s · %s (pid %d)', [AProcess.Kind, mClient, AProcess.Pid]);
 end;
 
 class function TLspProcesses.ToMarkdown(const AWorkspaces: TArray<TLspProcessWorkspace>; AOwnPid: Cardinal;
@@ -204,113 +204,113 @@ end;
 class function TLspProcesses.MarkedMarkdown(const AWorkspaces: TArray<TLspProcessWorkspace>; AOwnPid: Cardinal;
   ANow: TDateTime): string;
 var
-  Builder: TStringBuilder;
-  Workspace: TLspProcessWorkspace;
-  Process, Holder: TIndexProcessInfo;
-  Event: TIndexProcessEvent;
+  mBuilder: TStringBuilder;
+  mWorkspace: TLspProcessWorkspace;
+  mProcess, mHolder: TIndexProcessInfo;
+  mEvent: TIndexProcessEvent;
 begin
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    Builder.Append(cTexts[TProcessesText.ProcessesOnTheProject].Text).Append(#10);
+    mBuilder.Append(cTexts[TProcessesText.ProcessesOnTheProject].Text).Append(#10);
     if Length(AWorkspaces) = 0 then
     begin
-      Builder.Append(#10).Append(cTexts[TProcessesText.NoIndexCacheNoProject].Text).Append(#10);
+      mBuilder.Append(#10).Append(cTexts[TProcessesText.NoIndexCacheNoProject].Text).Append(#10);
     end;
-    for Workspace in AWorkspaces do
+    for mWorkspace in AWorkspaces do
     begin
-      Builder.Append(#10).Append('### ').Append(TLogMarks.Name(Workspace.Name)).Append(#10);
-      Builder.Append('- Index-Cache: ').Append(TLogMarks.Path(Workspace.CacheName)).Append(#10);
-      if Workspace.Holder(Holder) then
+      mBuilder.Append(#10).Append('### ').Append(TLogMarks.Name(mWorkspace.Name)).Append(#10);
+      mBuilder.Append('- Index-Cache: ').Append(TLogMarks.Path(mWorkspace.CacheName)).Append(#10);
+      if mWorkspace.Holder(mHolder) then
       begin
-        Builder.Append(cTexts[TProcessesText.Lock].Text).Append(ProcessText(Holder))
+        mBuilder.Append(cTexts[TProcessesText.Lock].Text).Append(ProcessText(mHolder))
           .Append(cTexts[TProcessesText.Writes].Text).Append(#10);
       end
       else
       begin
-        Builder.Append(cTexts[TProcessesText.LockFree].Text).Append(#10);
+        mBuilder.Append(cTexts[TProcessesText.LockFree].Text).Append(#10);
       end;
-      Builder.Append(cTexts[TProcessesText.StateSavedFormatUnits].Fmt([Age(Workspace.Saved, ANow),
-        Workspace.FormatVersion, Workspace.Units]));
-      Builder.Append(#10);
-      for Process in Workspace.Processes do
+      mBuilder.Append(cTexts[TProcessesText.StateSavedFormatUnits].Fmt([Age(mWorkspace.Saved, ANow),
+        mWorkspace.FormatVersion, mWorkspace.Units]));
+      mBuilder.Append(#10);
+      for mProcess in mWorkspace.Processes do
       begin
-        Builder.Append('- ').Append(ProcessText(Process)).Append(': ').Append(StateText(Process.State));
-        if Process.Pid = AOwnPid then
+        mBuilder.Append('- ').Append(ProcessText(mProcess)).Append(': ').Append(StateText(mProcess.State));
+        if mProcess.Pid = AOwnPid then
         begin
-          Builder.Append(cTexts[TProcessesText.ThisProcess].Text);
+          mBuilder.Append(cTexts[TProcessesText.ThisProcess].Text);
         end;
-        Builder.Append(#10);
+        mBuilder.Append(#10);
       end;
-      if Workspace.BuiltOnce then
+      if mWorkspace.BuiltOnce then
       begin
-        Builder.Append(cTexts[TProcessesText.IndexBuiltOnlyOnceProcesses].Fmt([Length(Workspace.Processes)]))
+        mBuilder.Append(cTexts[TProcessesText.IndexBuiltOnlyOnceProcesses].Fmt([Length(mWorkspace.Processes)]))
           .Append(#10);
       end;
-      for Event in TIndexProcessLog.Events(Workspace.Processes) do
+      for mEvent in TIndexProcessLog.Events(mWorkspace.Processes) do
       begin
-        Builder.Append('  - ').Append(FormatDateTime('hh":"nn":"ss', Event.Time)).Append(' ').Append(Event.Text)
+        mBuilder.Append('  - ').Append(FormatDateTime('hh":"nn":"ss', mEvent.Time)).Append(' ').Append(mEvent.Text)
           .Append(#10);
       end;
     end;
-    Builder.Append(#10).Append(cTexts[TProcessesText.UnsavedStatesStaySeparatePer].Text).Append(#10);
-    Result := Builder.ToString;
+    mBuilder.Append(#10).Append(cTexts[TProcessesText.UnsavedStatesStaySeparatePer].Text).Append(#10);
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
 class function TLspProcesses.ToJson(const AWorkspaces: TArray<TLspProcessWorkspace>; AOwnPid: Cardinal;
   ANow: TDateTime): TJSONObject;
 var
-  Items, Processes, Events: TJSONArray;
-  Item, Entry: TJSONObject;
-  Workspace: TLspProcessWorkspace;
-  Process, Holder: TIndexProcessInfo;
-  Event: TIndexProcessEvent;
+  mItems, mProcesses, mEvents: TJSONArray;
+  mItem, mEntry: TJSONObject;
+  mWorkspace: TLspProcessWorkspace;
+  mProcess, mHolder: TIndexProcessInfo;
+  mEvent: TIndexProcessEvent;
 begin
   Result := TJSONObject.Create;
-  Items := TJSONArray.Create;
-  Result.AddPair('workspaces', Items);
-  for Workspace in AWorkspaces do
+  mItems := TJSONArray.Create;
+  Result.AddPair('workspaces', mItems);
+  for mWorkspace in AWorkspaces do
   begin
-    Item := TJSONObject.Create;
-    Items.AddElement(Item);
-    Item.AddPair('name', Workspace.Name);
-    Item.AddPair('project', Workspace.Project);
-    Item.AddPair('cache', Workspace.CacheName);
-    Item.AddPair('format', TJSONNumber.Create(Workspace.FormatVersion));
-    Item.AddPair('saved', Age(Workspace.Saved, ANow));
-    Item.AddPair('units', TJSONNumber.Create(Workspace.Units));
-    if Workspace.Holder(Holder) then
+    mItem := TJSONObject.Create;
+    mItems.AddElement(mItem);
+    mItem.AddPair('name', mWorkspace.Name);
+    mItem.AddPair('project', mWorkspace.Project);
+    mItem.AddPair('cache', mWorkspace.CacheName);
+    mItem.AddPair('format', TJSONNumber.Create(mWorkspace.FormatVersion));
+    mItem.AddPair('saved', Age(mWorkspace.Saved, ANow));
+    mItem.AddPair('units', TJSONNumber.Create(mWorkspace.Units));
+    if mWorkspace.Holder(mHolder) then
     begin
-      Item.AddPair('lockHolder', ProcessText(Holder));
+      mItem.AddPair('lockHolder', ProcessText(mHolder));
     end
     else
     begin
-      Item.AddPair('lockHolder', '');
+      mItem.AddPair('lockHolder', '');
     end;
-    Item.AddPair('builtOnce', TJSONBool.Create(Workspace.BuiltOnce));
-    Processes := TJSONArray.Create;
-    Item.AddPair('processes', Processes);
-    for Process in Workspace.Processes do
+    mItem.AddPair('builtOnce', TJSONBool.Create(mWorkspace.BuiltOnce));
+    mProcesses := TJSONArray.Create;
+    mItem.AddPair('processes', mProcesses);
+    for mProcess in mWorkspace.Processes do
     begin
-      Entry := TJSONObject.Create;
-      Processes.AddElement(Entry);
-      Entry.AddPair('pid', TJSONNumber.Create(Process.Pid));
-      Entry.AddPair('kind', Process.Kind);
-      Entry.AddPair('client', Process.Client);
-      Entry.AddPair('state', Process.State);
-      Entry.AddPair('writer', TJSONBool.Create(Process.Writer));
-      Entry.AddPair('own', TJSONBool.Create(Process.Pid = AOwnPid));
+      mEntry := TJSONObject.Create;
+      mProcesses.AddElement(mEntry);
+      mEntry.AddPair('pid', TJSONNumber.Create(mProcess.Pid));
+      mEntry.AddPair('kind', mProcess.Kind);
+      mEntry.AddPair('client', mProcess.Client);
+      mEntry.AddPair('state', mProcess.State);
+      mEntry.AddPair('writer', TJSONBool.Create(mProcess.Writer));
+      mEntry.AddPair('own', TJSONBool.Create(mProcess.Pid = AOwnPid));
     end;
-    Events := TJSONArray.Create;
-    Item.AddPair('events', Events);
-    for Event in TIndexProcessLog.Events(Workspace.Processes) do
+    mEvents := TJSONArray.Create;
+    mItem.AddPair('events', mEvents);
+    for mEvent in TIndexProcessLog.Events(mWorkspace.Processes) do
     begin
-      Entry := TJSONObject.Create;
-      Events.AddElement(Entry);
-      Entry.AddPair('time', FormatDateTime('hh":"nn":"ss', Event.Time));
-      Entry.AddPair('text', Event.Text);
+      mEntry := TJSONObject.Create;
+      mEvents.AddElement(mEntry);
+      mEntry.AddPair('time', FormatDateTime('hh":"nn":"ss', mEvent.Time));
+      mEntry.AddPair('text', mEvent.Text);
     end;
   end;
   Result.AddPair('markdown', ToMarkdown(AWorkspaces, AOwnPid, ANow));

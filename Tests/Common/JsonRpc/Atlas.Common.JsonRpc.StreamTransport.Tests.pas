@@ -291,7 +291,7 @@ begin
   Input := TJsonRpcTestSupport.InputOf(['{kein json', '{"method":"x"}']);
   try
     Transport := TransportOn(Input);
-    Assert.AreEqual(TJsonRpcErrorCode.ParseError, ErrorCodeOf(Transport));
+    Assert.AreEqual(TJsonRpcErrorCode.cParseError, ErrorCodeOf(Transport));
     Message := Transport.ReadMessage;
     try
       Assert.AreEqual('x', Message.GetValue<string>('method'));
@@ -312,7 +312,7 @@ begin
   Input := TJsonRpcTestSupport.InputOf(['[1,2,3]']);
   try
     Transport := TransportOn(Input);
-    Assert.AreEqual(TJsonRpcErrorCode.InvalidRequest, ErrorCodeOf(Transport));
+    Assert.AreEqual(TJsonRpcErrorCode.cInvalidRequest, ErrorCodeOf(Transport));
   finally
     Transport := nil;
     Input.Free;

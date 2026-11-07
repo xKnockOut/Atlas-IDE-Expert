@@ -93,9 +93,9 @@ uses
 
 const
   /// <summary>Wörter ohne eigene Bedeutung; sie zählen nur, wenn sonst keins bleibt.</summary>
-  StopWords: array[0..19] of string = ('der', 'die', 'das', 'den', 'dem', 'des', 'ein', 'eine', 'einen', 'einem',
+  cStopWords: array[0..19] of string = ('der', 'die', 'das', 'den', 'dem', 'des', 'ein', 'eine', 'einen', 'einem',
     'einer', 'eines', 'und', 'oder', 'the', 'a', 'an', 'and', 'or', 'of');
-  MaxWords = 4;
+  cMaxWords = 4;
 
 function IsTrivia(const AToken: TPascalToken): Boolean;
 begin
@@ -227,7 +227,7 @@ begin
   Result := nil;
   for mWord in AWords do
   begin
-    if not MatchText(mWord, StopWords) then
+    if not MatchText(mWord, cStopWords) then
     begin
       Result := Result + [mWord];
     end;
@@ -424,7 +424,7 @@ begin
   begin
     Result := Result + UpperCase(Copy(mWord, 1, 1)) + Copy(mWord, 2, MaxInt);
     Inc(mCount);
-    if mCount = MaxWords then
+    if mCount = cMaxWords then
     begin
       Break;
     end;
@@ -437,58 +437,58 @@ end;
 
 class function TResourceStrings.UniqueName(const ABase: string; const ATaken: TArray<string>): string;
 var
-  Number: Integer;
+  mNumber: Integer;
 begin
   Result := ABase;
-  Number := 1;
+  mNumber := 1;
   while MatchText(Result, ATaken) do
   begin
-    Inc(Number);
-    Result := ABase + IntToStr(Number);
+    Inc(mNumber);
+    Result := ABase + IntToStr(mNumber);
   end;
 end;
 
 class function TResourceStrings.LiteralAt(const AText: string; const ATokens: TArray<TPascalToken>;
   const APosition: TTextPosition; out ALiteral: TResourceLiteral): Boolean;
 var
-  Index, First, Last: Integer;
-  Inside: Boolean;
+  mIndex, mFirst, mLast: Integer;
+  mInside: Boolean;
 begin
   ALiteral := Default(TResourceLiteral);
   Result := False;
-  for Index := 0 to High(ATokens) do
+  for mIndex := 0 to High(ATokens) do
   begin
-    if ATokens[Index].Kind <> TPascalTokenKind.StringLiteral then
+    if ATokens[mIndex].Kind <> TPascalTokenKind.StringLiteral then
     begin
       Continue;
     end;
     // Echt innerhalb: hinter dem öffnenden und vor dem schließenden Hochkomma.
-    Inside := (ComparePositions(ATokens[Index].StartPos, APosition) < 0) and
-      ((ComparePositions(APosition, ATokens[Index].EndPos) < 0) or not ATokens[Index].Terminated);
-    if not Inside then
+    mInside := (ComparePositions(ATokens[mIndex].StartPos, APosition) < 0) and
+      ((ComparePositions(APosition, ATokens[mIndex].EndPos) < 0) or not ATokens[mIndex].Terminated);
+    if not mInside then
     begin
       Continue;
     end;
-    if not ATokens[Index].Terminated then
+    if not ATokens[mIndex].Terminated then
     begin
       Exit;
     end;
     // Direkt angehängte Literale und Zeichenkonstanten gehören dazu: 'Zeile'#13#10'Zwei'.
-    First := Index;
-    while (First > 0) and (ATokens[First - 1].Kind in [TPascalTokenKind.StringLiteral,
-      TPascalTokenKind.CharLiteral]) and (TokenEnd(ATokens[First - 1]) = ATokens[First].Offset) do
+    mFirst := mIndex;
+    while (mFirst > 0) and (ATokens[mFirst - 1].Kind in [TPascalTokenKind.StringLiteral,
+      TPascalTokenKind.CharLiteral]) and (TokenEnd(ATokens[mFirst - 1]) = ATokens[mFirst].Offset) do
     begin
-      Dec(First);
+      Dec(mFirst);
     end;
-    Last := Index;
-    while (Last < High(ATokens)) and (ATokens[Last + 1].Kind in [TPascalTokenKind.StringLiteral,
-      TPascalTokenKind.CharLiteral]) and (TokenEnd(ATokens[Last]) = ATokens[Last + 1].Offset) do
+    mLast := mIndex;
+    while (mLast < High(ATokens)) and (ATokens[mLast + 1].Kind in [TPascalTokenKind.StringLiteral,
+      TPascalTokenKind.CharLiteral]) and (TokenEnd(ATokens[mLast]) = ATokens[mLast + 1].Offset) do
     begin
-      Inc(Last);
+      Inc(mLast);
     end;
-    ALiteral.Range := TTextRange.Create(ATokens[First].StartPos, ATokens[Last].EndPos);
-    ALiteral.StartOffset := ATokens[First].Offset;
-    ALiteral.Source := Copy(AText, ATokens[First].Offset + 1, TokenEnd(ATokens[Last]) - ATokens[First].Offset);
+    ALiteral.Range := TTextRange.Create(ATokens[mFirst].StartPos, ATokens[mLast].EndPos);
+    ALiteral.StartOffset := ATokens[mFirst].Offset;
+    ALiteral.Source := Copy(AText, ATokens[mFirst].Offset + 1, TokenEnd(ATokens[mLast]) - ATokens[mFirst].Offset);
     if not TStringLiterals.PlainText(ALiteral.Source, ALiteral.Text) then
     begin
       Exit;
@@ -586,15 +586,15 @@ end;
 class function TResourceStrings.SameText(const AEntries: TArray<TResourceEntry>; const AText: string;
   AInterface: Boolean; ABefore: Integer; out AEntry: TResourceEntry): Boolean;
 var
-  Entry: TResourceEntry;
-  Text: string;
+  mEntry: TResourceEntry;
+  mText: string;
 begin
-  for Entry in AEntries do
+  for mEntry in AEntries do
   begin
-    if (Entry.InInterface = AInterface) and ((ABefore < 0) or (Entry.Line < ABefore)) and
-      TStringLiterals.PlainText(Entry.Value, Text) and (Text = AText) then
+    if (mEntry.InInterface = AInterface) and ((ABefore < 0) or (mEntry.Line < ABefore)) and
+      TStringLiterals.PlainText(mEntry.Value, mText) and (mText = AText) then
     begin
-      AEntry := Entry;
+      AEntry := mEntry;
       Exit(True);
     end;
   end;

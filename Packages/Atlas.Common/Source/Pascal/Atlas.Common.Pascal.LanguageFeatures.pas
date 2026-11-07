@@ -79,9 +79,9 @@ const
     (De: '%s erst ab %s verfügbar (eingestellt: %s)'; En: '%s only available from %s on (set: %s)'));
 
 const
-  Minimums: array[TLanguageFeature] of string = ('20.0', '20.0', '21.0', '23.0', '37.0', '22.0', '22.0', '37.0',
+  cMinimums: array[TLanguageFeature] of string = ('20.0', '20.0', '21.0', '23.0', '37.0', '22.0', '22.0', '37.0',
     '37.0');
-  Names: array[TLanguageFeature] of TAtlasText = (
+  cNames: array[TLanguageFeature] of TAtlasText = (
     (De: 'Inline-Variable'; En: 'inline variable'),
     (De: 'Inline-Konstante'; En: 'inline constant'),
     (De: 'Managed Record (class operator Initialize/Finalize)';
@@ -100,7 +100,7 @@ type
   end;
 
 const
-  Products: array[0..7] of TProduct = (
+  cProducts: array[0..7] of TProduct = (
     (Bds: '17.0'; Name: 'Delphi 10 Seattle'),
     (Bds: '18.0'; Name: 'Delphi 10.1 Berlin'),
     (Bds: '19.0'; Name: 'Delphi 10.2 Tokyo'),
@@ -112,25 +112,25 @@ const
 
 class function TLanguageFeatures.MinimumVersion(AFeature: TLanguageFeature): string;
 begin
-  Result := Minimums[AFeature];
+  Result := cMinimums[AFeature];
 end;
 
 class function TLanguageFeatures.DisplayName(AFeature: TLanguageFeature): string;
 begin
-  Result := Names[AFeature].Text;
+  Result := cNames[AFeature].Text;
 end;
 
 class function TLanguageFeatures.ProductName(const ABdsVersion: string): string;
 var
-  Product: TProduct;
-  Version: Integer;
+  mProduct: TProduct;
+  mVersion: Integer;
 begin
-  Version := ParseVersion(ABdsVersion);
-  for Product in Products do
+  mVersion := ParseVersion(ABdsVersion);
+  for mProduct in cProducts do
   begin
-    if ParseVersion(Product.Bds) = Version then
+    if ParseVersion(mProduct.Bds) = mVersion then
     begin
-      Exit(Product.Name);
+      Exit(mProduct.Name);
     end;
   end;
   Result := 'BDS ' + ABdsVersion;
@@ -138,35 +138,35 @@ end;
 
 class function TLanguageFeatures.ParseVersion(const AVersion: string): Integer;
 var
-  Text, MajorText, MinorText: string;
-  Dot, Major, Minor: Integer;
+  mText, mMajorText, mMinorText: string;
+  mDot, mMajor, mMinor: Integer;
 begin
-  Text := Trim(AVersion);
-  Dot := Pos('.', Text);
-  if Dot > 0 then
+  mText := Trim(AVersion);
+  mDot := Pos('.', mText);
+  if mDot > 0 then
   begin
-    MajorText := Copy(Text, 1, Dot - 1);
-    MinorText := Copy(Text, Dot + 1, MaxInt);
+    mMajorText := Copy(mText, 1, mDot - 1);
+    mMinorText := Copy(mText, mDot + 1, MaxInt);
   end
   else
   begin
-    MajorText := Text;
-    MinorText := '0';
+    mMajorText := mText;
+    mMinorText := '0';
   end;
-  if not TryStrToInt(MajorText, Major) or not TryStrToInt(MinorText, Minor) or
-    (Major < 0) or (Minor < 0) or (Minor > 999) then
+  if not TryStrToInt(mMajorText, mMajor) or not TryStrToInt(mMinorText, mMinor) or
+    (mMajor < 0) or (mMinor < 0) or (mMinor > 999) then
   begin
     Exit(-1);
   end;
-  Result := Major * 1000 + Minor;
+  Result := mMajor * 1000 + mMinor;
 end;
 
 class function TLanguageFeatures.IsAvailable(AFeature: TLanguageFeature; const AVersion: string): Boolean;
 var
-  Version: Integer;
+  mVersion: Integer;
 begin
-  Version := ParseVersion(AVersion);
-  Result := (Version < 0) or (Version >= ParseVersion(Minimums[AFeature]));
+  mVersion := ParseVersion(AVersion);
+  Result := (mVersion < 0) or (mVersion >= ParseVersion(cMinimums[AFeature]));
 end;
 
 class function TLanguageFeatures.IsAtLeast(const AVersion, AMinimum: string): Boolean;
@@ -179,15 +179,15 @@ end;
 
 class function TLanguageFeatures.LanguageLevel(const AVersion, AMinimum: string): string;
 var
-  Version, Minimum: Integer;
+  mVersion, mMinimum: Integer;
 begin
-  Version := ParseVersion(AVersion);
-  Minimum := ParseVersion(AMinimum);
-  if (Minimum >= 0) and ((Version < 0) or (Minimum < Version)) then
+  mVersion := ParseVersion(AVersion);
+  mMinimum := ParseVersion(AMinimum);
+  if (mMinimum >= 0) and ((mVersion < 0) or (mMinimum < mVersion)) then
   begin
     Result := Trim(AMinimum);
   end
-  else if Version >= 0 then
+  else if mVersion >= 0 then
   begin
     Result := Trim(AVersion);
   end
@@ -200,51 +200,51 @@ end;
 procedure AddFinding(AList: TList<TLanguageFeatureFinding>; AFeature: TLanguageFeature;
   const AStartPos, AEndPos: TTextPosition; const AVersion: string);
 var
-  Finding: TLanguageFeatureFinding;
+  mFinding: TLanguageFeatureFinding;
 begin
-  Finding.Feature := AFeature;
-  Finding.StartPos := AStartPos;
-  Finding.EndPos := AEndPos;
-  Finding.Message := cTexts[TLanguageFeaturesText.OnlyAvailableFromOnSet].Fmt([Names[AFeature].Text,
-    TLanguageFeatures.ProductName(Minimums[AFeature]), TLanguageFeatures.ProductName(AVersion)]);
-  AList.Add(Finding);
+  mFinding.Feature := AFeature;
+  mFinding.StartPos := AStartPos;
+  mFinding.EndPos := AEndPos;
+  mFinding.Message := cTexts[TLanguageFeaturesText.OnlyAvailableFromOnSet].Fmt([cNames[AFeature].Text,
+    TLanguageFeatures.ProductName(cMinimums[AFeature]), TLanguageFeatures.ProductName(AVersion)]);
+  AList.Add(mFinding);
 end;
 
 procedure CheckNode(ANode: TSyntaxNode; AList: TList<TLanguageFeatureFinding>; const AVersion: string);
 var
-  Feature: TLanguageFeature;
-  Found: Boolean;
+  mFeature: TLanguageFeature;
+  mFound: Boolean;
 begin
-  Found := True;
-  Feature := TLanguageFeature.InlineVariable;
+  mFound := True;
+  mFeature := TLanguageFeature.InlineVariable;
   case ANode.Kind of
     TSyntaxKind.InlineVar:
-      Feature := TLanguageFeature.InlineVariable;
+      mFeature := TLanguageFeature.InlineVariable;
     TSyntaxKind.InlineConst:
-      Feature := TLanguageFeature.InlineConstant;
+      mFeature := TLanguageFeature.InlineConstant;
     TSyntaxKind.IfExpr:
-      Feature := TLanguageFeature.IfExpression;
+      mFeature := TLanguageFeature.IfExpression;
   else
-    Found := False;
+    mFound := False;
   end;
-  if Found and not TLanguageFeatures.IsAvailable(Feature, AVersion) then
+  if mFound and not TLanguageFeatures.IsAvailable(mFeature, AVersion) then
   begin
-    AddFinding(AList, Feature, ANode.StartPos, ANode.EndPos, AVersion);
+    AddFinding(AList, mFeature, ANode.StartPos, ANode.EndPos, AVersion);
   end;
 end;
 
 procedure WalkNodes(ANode: TSyntaxNode; AList: TList<TLanguageFeatureFinding>; const AVersion: string);
 var
-  List: TList<TLanguageFeatureFinding>;
-  Version: string;
+  mList: TList<TLanguageFeatureFinding>;
+  mVersion: string;
 begin
-  List := AList;
-  Version := AVersion;
+  mList := AList;
+  mVersion := AVersion;
   // Walk statt Rekursion (Bericht M1).
   ANode.Walk(
     function(AChild: TSyntaxNode): Boolean
     begin
-      CheckNode(AChild, List, Version);
+      CheckNode(AChild, mList, mVersion);
       Result := True;
     end);
 end;
@@ -328,22 +328,22 @@ end;
 procedure WalkTokens(const ATokens: TArray<TPascalToken>; AList: TList<TLanguageFeatureFinding>;
   const AVersion: string);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(ATokens) do
+  for mIndex := 0 to High(ATokens) do
   begin
-    if ATokens[Index].Kind = TPascalTokenKind.Number then
+    if ATokens[mIndex].Kind = TPascalTokenKind.Number then
     begin
-      CheckNumber(ATokens, Index, AList, AVersion);
+      CheckNumber(ATokens, mIndex, AList, AVersion);
     end;
-    CheckOperators(ATokens, Index, AList, AVersion);
-    if IsMultilineString(ATokens[Index]) then
+    CheckOperators(ATokens, mIndex, AList, AVersion);
+    if IsMultilineString(ATokens[mIndex]) then
     begin
-      ReportIfMissing(AList, ATokens, TLanguageFeature.MultilineString, Index, Index, AVersion);
+      ReportIfMissing(AList, ATokens, TLanguageFeature.MultilineString, mIndex, mIndex, AVersion);
     end;
-    if IsManagedRecordOperator(ATokens, Index) then
+    if IsManagedRecordOperator(ATokens, mIndex) then
     begin
-      ReportIfMissing(AList, ATokens, TLanguageFeature.ManagedRecord, Index, Index + 2, AVersion);
+      ReportIfMissing(AList, ATokens, TLanguageFeature.ManagedRecord, mIndex, mIndex + 2, AVersion);
     end;
   end;
 end;
@@ -361,11 +361,11 @@ end;
 
 function Inside(const APosition: TTextPosition; const ARanges: TArray<TTextRange>): Boolean;
 var
-  Range: TTextRange;
+  mRange: TTextRange;
 begin
-  for Range in ARanges do
+  for mRange in ARanges do
   begin
-    if NotAfter(Range.StartPos, APosition) and NotAfter(APosition, Range.EndPos) then
+    if NotAfter(mRange.StartPos, APosition) and NotAfter(APosition, mRange.EndPos) then
     begin
       Exit(True);
     end;
@@ -376,34 +376,34 @@ end;
 class function TLanguageFeatures.Check(ATree: TSyntaxTree; const AVersion: string;
   const AInactive: TArray<TTextRange>): TArray<TLanguageFeatureFinding>;
 var
-  Finding: TLanguageFeatureFinding;
-  Active: TList<TLanguageFeatureFinding>;
+  mFinding: TLanguageFeatureFinding;
+  mActive: TList<TLanguageFeatureFinding>;
 var
-  List: TList<TLanguageFeatureFinding>;
+  mList: TList<TLanguageFeatureFinding>;
 begin
   if ParseVersion(AVersion) < 0 then
   begin
     Exit(nil);
   end;
-  List := TList<TLanguageFeatureFinding>.Create;
+  mList := TList<TLanguageFeatureFinding>.Create;
   try
-    WalkNodes(ATree.Root, List, AVersion);
-    WalkTokens(ATree.Tokens, List, AVersion);
-    Active := TList<TLanguageFeatureFinding>.Create;
+    WalkNodes(ATree.Root, mList, AVersion);
+    WalkTokens(ATree.Tokens, mList, AVersion);
+    mActive := TList<TLanguageFeatureFinding>.Create;
     try
-      for Finding in List do
+      for mFinding in mList do
       begin
-        if not Inside(Finding.StartPos, AInactive) then
+        if not Inside(mFinding.StartPos, AInactive) then
         begin
-          Active.Add(Finding);
+          mActive.Add(mFinding);
         end;
       end;
-      Result := Active.ToArray;
+      Result := mActive.ToArray;
     finally
-      Active.Free;
+      mActive.Free;
     end;
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 

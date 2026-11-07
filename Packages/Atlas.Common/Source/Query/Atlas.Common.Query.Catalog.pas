@@ -34,10 +34,10 @@ type
 
   TQueryCatalog = class
   public const
-    TypeEntities = [TQueryEntity.Classes, TQueryEntity.Records, TQueryEntity.Interfaces, TQueryEntity.Forms];
-    RoutineEntities = [TQueryEntity.Methods, TQueryEntity.Routines];
-    MemberEntities = [TQueryEntity.Methods, TQueryEntity.Fields, TQueryEntity.Properties];
-    AllEntities = [Low(TQueryEntity)..High(TQueryEntity)];
+    cTypeEntities = [TQueryEntity.Classes, TQueryEntity.Records, TQueryEntity.Interfaces, TQueryEntity.Forms];
+    cRoutineEntities = [TQueryEntity.Methods, TQueryEntity.Routines];
+    cMemberEntities = [TQueryEntity.Methods, TQueryEntity.Fields, TQueryEntity.Properties];
+    cAllEntities = [Low(TQueryEntity)..High(TQueryEntity)];
   public
     /// <summary>Name der Menge in Kleinschreibung (classes).</summary>
     class function EntityName(AEntity: TQueryEntity): string; static;
@@ -238,45 +238,45 @@ end;
 class function TQueryCatalog.Fields: TArray<TQueryFieldInfo>;
 begin
   Result := nil;
-  Result := Result + [Field('name', TQueryFieldType.Text, AllEntities,
+  Result := Result + [Field('name', TQueryFieldType.Text, cAllEntities,
     cTexts[TQueryCatalogText.NameOfTheElement].Text)];
-  Result := Result + [Field('unit', TQueryFieldType.Text, AllEntities,
+  Result := Result + [Field('unit', TQueryFieldType.Text, cAllEntities,
     cTexts[TQueryCatalogText.UnitOfTheDeclaration].Text)];
-  Result := Result + [Field('path', TQueryFieldType.Text, AllEntities,
+  Result := Result + [Field('path', TQueryFieldType.Text, cAllEntities,
     cTexts[TQueryCatalogText.FileRelativeToTheProject].Text)];
-  Result := Result + [Field('line', TQueryFieldType.Number, AllEntities,
+  Result := Result + [Field('line', TQueryFieldType.Number, cAllEntities,
     cTexts[TQueryCatalogText.LineOfTheDeclarationFrom].Text)];
-  Result := Result + [Field('class', TQueryFieldType.Text, MemberEntities,
+  Result := Result + [Field('class', TQueryFieldType.Text, cMemberEntities,
     cTexts[TQueryCatalogText.TypeThatDeclaresTheMember].Text)];
-  Result := Result + [Field('visibility', TQueryFieldType.Text, AllEntities - [TQueryEntity.Units],
+  Result := Result + [Field('visibility', TQueryFieldType.Text, cAllEntities - [TQueryEntity.Units],
     'Sichtbarkeit: public, published, protected, strict protected, private, strict private')];
   Result := Result + [Field('type', TQueryFieldType.Text, [TQueryEntity.Fields, TQueryEntity.Properties,
     TQueryEntity.Methods, TQueryEntity.Routines], cTexts[TQueryCatalogText.DeclaredTypeOrResultType].Text)];
   Result := Result + [Field('classes', TQueryFieldType.Number, [TQueryEntity.Units],
     cTexts[TQueryCatalogText.ClassesOfTheUnit].Text)];
-  Result := Result + [Field('methods', TQueryFieldType.Number, [TQueryEntity.Units] + TypeEntities,
+  Result := Result + [Field('methods', TQueryFieldType.Number, [TQueryEntity.Units] + cTypeEntities,
     cTexts[TQueryCatalogText.MethodsAndConstructorsUnitIncluding].Text)];
   Result := Result + [Field('fields', TQueryFieldType.Number, [TQueryEntity.Classes, TQueryEntity.Records,
     TQueryEntity.Forms], cTexts[TQueryCatalogText.FieldsOfTheType].Text)];
-  Result := Result + [Field('properties', TQueryFieldType.Number, TypeEntities,
+  Result := Result + [Field('properties', TQueryFieldType.Number, cTypeEntities,
     cTexts[TQueryCatalogText.PropertiesOfTheType].Text)];
-  Result := Result + [Field('lines', TQueryFieldType.Number, AllEntities - [TQueryEntity.Fields,
+  Result := Result + [Field('lines', TQueryFieldType.Number, cAllEntities - [TQueryEntity.Fields,
     TQueryEntity.Properties], cTexts[TQueryCatalogText.LinesUnitLengthDeclarationOf].Text)];
-  Result := Result + [Field('complexity', TQueryFieldType.Number, RoutineEntities,
+  Result := Result + [Field('complexity', TQueryFieldType.Number, cRoutineEntities,
     cTexts[TQueryCatalogText.CyclomaticComplexityMetricLikeGet].Text)];
-  Result := Result + [Field('cognitive', TQueryFieldType.Number, RoutineEntities,
+  Result := Result + [Field('cognitive', TQueryFieldType.Number, cRoutineEntities,
     cTexts[TQueryCatalogText.CognitiveComplexity].Text)];
-  Result := Result + [Field('nesting', TQueryFieldType.Number, RoutineEntities,
+  Result := Result + [Field('nesting', TQueryFieldType.Number, cRoutineEntities,
     cTexts[TQueryCatalogText.NestingDepth].Text)];
-  Result := Result + [Field('params', TQueryFieldType.Number, RoutineEntities,
+  Result := Result + [Field('params', TQueryFieldType.Number, cRoutineEntities,
     cTexts[TQueryCatalogText.NumberOfParameters].Text)];
-  Result := Result + [Field('locals', TQueryFieldType.Number, RoutineEntities,
+  Result := Result + [Field('locals', TQueryFieldType.Number, cRoutineEntities,
     cTexts[TQueryCatalogText.LocalVariables].Text)];
-  Result := Result + [Field('exits', TQueryFieldType.Number, RoutineEntities,
+  Result := Result + [Field('exits', TQueryFieldType.Number, cRoutineEntities,
     cTexts[TQueryCatalogText.ExitsExitRaise].Text)];
-  Result := Result + [Field('callers', TQueryFieldType.Number, RoutineEntities,
+  Result := Result + [Field('callers', TQueryFieldType.Number, cRoutineEntities,
     cTexts[TQueryCatalogText.CallersAccordingToTheCall].Text)];
-  Result := Result + [Field('callees', TQueryFieldType.Number, RoutineEntities,
+  Result := Result + [Field('callees', TQueryFieldType.Number, cRoutineEntities,
     cTexts[TQueryCatalogText.CalledRoutines].Text)];
   Result := Result + [Field('overrides', TQueryFieldType.Number, [TQueryEntity.Methods, TQueryEntity.Classes,
     TQueryEntity.Records, TQueryEntity.Forms], cTexts[TQueryCatalogText.Method1WithOverrideOtherwise].Text)];
@@ -365,13 +365,13 @@ begin
   case AKind of
     TQueryPredicateKind.Inherits, TQueryPredicateKind.Implements:
       // Bei Mitgliedern gilt der Typ, der sie deklariert.
-      Result := TypeEntities + MemberEntities;
+      Result := cTypeEntities + cMemberEntities;
     TQueryPredicateKind.Calls:
-      Result := RoutineEntities;
+      Result := cRoutineEntities;
     TQueryPredicateKind.HasAttribute:
-      Result := AllEntities - [TQueryEntity.Units];
+      Result := cAllEntities - [TQueryEntity.Units];
   else
-    Result := AllEntities;
+    Result := cAllEntities;
   end;
 end;
 

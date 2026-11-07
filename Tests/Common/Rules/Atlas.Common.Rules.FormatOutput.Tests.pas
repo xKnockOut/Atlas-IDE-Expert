@@ -166,16 +166,16 @@ procedure TFormatOutputTests.ExitCodes;
 var
   mFailed: TFormattedFile;
 begin
-  Assert.AreEqual(TFindingsOutput.ExitClean, TFormatOutput.ExitCode([FileOf('a.pas', cClean)], False));
-  Assert.AreEqual(TFindingsOutput.ExitFindings, TFormatOutput.ExitCode([FileOf('a.pas', cClean),
+  Assert.AreEqual(TFindingsOutput.cExitClean, TFormatOutput.ExitCode([FileOf('a.pas', cClean)], False));
+  Assert.AreEqual(TFindingsOutput.cExitFindings, TFormatOutput.ExitCode([FileOf('a.pas', cClean),
     FileOf('b.pas', cIndented)], False));
   // Beim Schreiben ist eine Abweichung erledigt, ein Syntaxfehler nicht.
-  Assert.AreEqual(TFindingsOutput.ExitClean, TFormatOutput.ExitCode([FileOf('b.pas', cIndented)], True));
-  Assert.AreEqual(TFindingsOutput.ExitFindings, TFormatOutput.ExitCode([FileOf('c.pas', cBroken)], True));
-  Assert.AreEqual(TFindingsOutput.ExitFindings, TFormatOutput.ExitCode([FileOf('c.pas', cBroken)], False));
+  Assert.AreEqual(TFindingsOutput.cExitClean, TFormatOutput.ExitCode([FileOf('b.pas', cIndented)], True));
+  Assert.AreEqual(TFindingsOutput.cExitFindings, TFormatOutput.ExitCode([FileOf('c.pas', cBroken)], True));
+  Assert.AreEqual(TFindingsOutput.cExitFindings, TFormatOutput.ExitCode([FileOf('c.pas', cBroken)], False));
   mFailed := FileOf('b.pas', cIndented);
   mFailed.Error := 'gesperrt';
-  Assert.AreEqual(TFindingsOutput.ExitFailure, TFormatOutput.ExitCode([mFailed], True));
+  Assert.AreEqual(TFindingsOutput.cExitFailure, TFormatOutput.ExitCode([mFailed], True));
 end;
 
 procedure TFormatOutputTests.SummaryCountsFiles;

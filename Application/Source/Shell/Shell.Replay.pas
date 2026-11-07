@@ -333,7 +333,7 @@ end;
 function NewMessage(const AId: string; const AMethod: string; AParams: TJSONValue): TJSONObject;
 begin
   Result := TJSONObject.Create;
-  Result.AddPair('jsonrpc', TJsonRpcMessages.Version);
+  Result.AddPair('jsonrpc', TJsonRpcMessages.cVersion);
   if AId <> '' then
   begin
     Result.AddPair('id', AId);
@@ -453,11 +453,11 @@ begin
   ADetail := cTexts[TReplayText.Error].Fmt([mCode, mText]);
   if ACase.Kind = TCrashCaseKind.Timeout then
   begin
-    Result := mCode = TJsonRpcErrorCode.RequestCancelled;
+    Result := mCode = TJsonRpcErrorCode.cRequestCancelled;
   end
   else
   begin
-    Result := (mCode = TJsonRpcErrorCode.InternalError) and
+    Result := (mCode = TJsonRpcErrorCode.cInternalError) and
       ((ACase.ExceptionClass = '') or StartsText(ACase.ExceptionClass + ':', mText));
   end;
 end;
@@ -526,7 +526,7 @@ begin
   mFileName := ACase.SnapshotName;
   if mFileName = '' then
   begin
-    mFileName := TCrashCases.BufferName;
+    mFileName := TCrashCases.cBufferName;
   end;
   mFileName := TPath.Combine(ASetup.Folder, mFileName);
   if ACase.HasText then

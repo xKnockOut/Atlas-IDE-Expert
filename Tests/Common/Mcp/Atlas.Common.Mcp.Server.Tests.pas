@@ -92,7 +92,7 @@ begin
     end;
     Result_ := Server.Initialize(nil);
     try
-      Assert.AreEqual(TMcpServer.DefaultProtocolVersion, Result_.GetValue<string>('protocolVersion'));
+      Assert.AreEqual(TMcpServer.cDefaultProtocolVersion, Result_.GetValue<string>('protocolVersion'));
     finally
       Result_.Free;
     end;
@@ -177,7 +177,7 @@ begin
       on E: EJsonRpcError do
         Code := E.Code;
     end;
-    Assert.AreEqual(TJsonRpcErrorCode.InvalidParams, Code);
+    Assert.AreEqual(TJsonRpcErrorCode.cInvalidParams, Code);
   finally
     Server.Free;
   end;
@@ -324,7 +324,7 @@ begin
         mMessage := E.Message;
       end;
     end;
-    Assert.AreEqual(TJsonRpcErrorCode.InvalidParams, mCode);
+    Assert.AreEqual(TJsonRpcErrorCode.cInvalidParams, mCode);
     Assert.Contains(mMessage, '"who"');
     mCode := 0;
     try
@@ -333,7 +333,7 @@ begin
       on E: EJsonRpcError do
         mCode := E.Code;
     end;
-    Assert.AreEqual(TJsonRpcErrorCode.InvalidParams, mCode);
+    Assert.AreEqual(TJsonRpcErrorCode.cInvalidParams, mCode);
   finally
     mServer.Free;
   end;
@@ -491,7 +491,7 @@ begin
       on E: EJsonRpcError do
         mCode := E.Code;
     end;
-    Assert.AreEqual(TJsonRpcErrorCode.InvalidParams, mCode);
+    Assert.AreEqual(TJsonRpcErrorCode.cInvalidParams, mCode);
     mEnabled := True;
     Assert.AreEqual('B', ReadUri(mServer, 'delphi://build/last'));
     mResult := mServer.ListResources;

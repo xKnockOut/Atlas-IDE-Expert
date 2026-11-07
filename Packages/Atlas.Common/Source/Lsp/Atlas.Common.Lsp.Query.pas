@@ -46,9 +46,9 @@ type
 
   TLspQuery = class
   public const
-    Method = 'atlas/query';
-    CatalogMethod = 'atlas/queryCatalog';
-    Command = 'atlas.query';
+    cMethod = 'atlas/query';
+    cCatalogMethod = 'atlas/queryCatalog';
+    cCommand = 'atlas.query';
   private
     FQueries: ICodeQueries;
     FSettingsFor: TLspQuerySettingsFunc;
@@ -190,12 +190,12 @@ end;
 procedure TLspQuery.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
   // Aufrufer über die Referenzsuche können Sekunden dauern: nebenläufig, abbrechbar.
-  ADispatcher.RegisterConcurrentRequest(Method,
+  ADispatcher.RegisterConcurrentRequest(cMethod,
     function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
     begin
       Result := Request(AParams, ACancellation);
     end);
-  ADispatcher.RegisterConcurrentRequest(CatalogMethod,
+  ADispatcher.RegisterConcurrentRequest(cCatalogMethod,
     function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
     begin
       Result := Catalog(AParams);
@@ -213,7 +213,7 @@ begin
   mQuery := StringOf(AParams, 'query');
   if mQuery = '' then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TQueryText.QueryMissing].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TQueryText.QueryMissing].Text);
   end;
   mLimit := 0;
   if AParams <> nil then
@@ -253,7 +253,7 @@ begin
   mValue := TJSONObject.ParseJSONValue(TQueryOutput.Json(AResult));
   if mValue = nil then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, cTexts[TQueryText.QueryResultIsNotValid].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInternalError, cTexts[TQueryText.QueryResultIsNotValid].Text);
   end;
   AAnswer.AddPair('format', 'json');
   AAnswer.AddPair('data', mValue);
@@ -270,11 +270,11 @@ begin
   mFormatText := StringOf(AParams, 'format');
   if not TQueryOutput.TryParseFormat(mFormatText, TQueryOutputFormat.Json, mFormat) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TQueryText.FormatIsJsonMarkdownCsv].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TQueryText.FormatIsJsonMarkdownCsv].Text);
   end;
   if not (Assigned(FSettingsFor) and FSettingsFor(PathOf(StringOf(AParams, 'uri')), mSettings, mRoot)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, cTexts[TQueryText.NoProjectLoaded].Text);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, cTexts[TQueryText.NoProjectLoaded].Text);
   end;
   mAnswer := TJSONObject.Create;
   try
@@ -320,7 +320,7 @@ begin
       mValue := TJSONObject.ParseJSONValue(TQueryOutput.CatalogJson(mSettings.Queries));
       if mValue = nil then
       begin
-        raise EJsonRpcError.Create(TJsonRpcErrorCode.InternalError, cTexts[TQueryText.CatalogIsNotValidJSON].Text);
+        raise EJsonRpcError.Create(TJsonRpcErrorCode.cInternalError, cTexts[TQueryText.CatalogIsNotValidJSON].Text);
       end;
       mAnswer.AddPair('catalog', mValue);
     end;

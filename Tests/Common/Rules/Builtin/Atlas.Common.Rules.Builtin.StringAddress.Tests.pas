@@ -91,7 +91,7 @@ begin
   mSource := Source('const AText: string', '', '  WriteBuffer(@AText[1], Length(AText) * SizeOf(Char));'#10);
   mFound := Findings(mSource);
   Assert.AreEqual(1, Integer(Length(mFound)));
-  Assert.AreEqual(FirstCharAddressRuleId, mFound[0].RuleId);
+  Assert.AreEqual(cFirstCharAddressRuleId, mFound[0].RuleId);
   Assert.AreEqual('Bei leerem AText löst @AText[1] mit Bereichsprüfung einen Fehler aus. PChar(AText) ist auch ' +
     'für leere Strings sicher.', mFound[0].Message);
   Assert.AreEqual('Durch PChar(AText) ersetzen', mFound[0].Fixes[0].Title);

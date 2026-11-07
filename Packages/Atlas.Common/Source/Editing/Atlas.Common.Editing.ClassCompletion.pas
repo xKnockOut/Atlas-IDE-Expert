@@ -180,9 +180,9 @@ const
   // Bedingte Übersetzung im Kopf einer Methode (#1324).
   cConditionalDirectives: array[0..7] of string = ('IF', 'IFDEF', 'IFNDEF', 'IFOPT', 'ELSE', 'ELSEIF', 'ENDIF',
     'IFEND');
-  TypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+  cTypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
     TIndexSymbolKind.HelperType];
-  MethodKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_];
+  cMethodKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_];
 
 function ContainsLine(const ARange: TTextRange; ALine: Integer): Boolean;
 begin
@@ -192,22 +192,22 @@ end;
 /// <summary>Text von ARange bis zum Ende seiner letzten Zeile, Zeilen mit Leerzeichen verbunden.</summary>
 function RangeText(const ALines: TArray<string>; const ARange: TTextRange): string;
 var
-  Line: Integer;
+  mLine: Integer;
 begin
   Result := '';
-  for Line := ARange.StartPos.Line to ARange.EndPos.Line do
+  for mLine := ARange.StartPos.Line to ARange.EndPos.Line do
   begin
-    if (Line < 0) or (Line > High(ALines)) then
+    if (mLine < 0) or (mLine > High(ALines)) then
     begin
       Break;
     end;
-    if Line = ARange.StartPos.Line then
+    if mLine = ARange.StartPos.Line then
     begin
-      Result := Copy(ALines[Line], ARange.StartPos.Character + 1, MaxInt);
+      Result := Copy(ALines[mLine], ARange.StartPos.Character + 1, MaxInt);
     end
     else
     begin
-      Result := Result + ' ' + Trim(ALines[Line]);
+      Result := Result + ' ' + Trim(ALines[mLine]);
     end;
   end;
 end;
@@ -215,56 +215,56 @@ end;
 /// <summary>Teile von AText an ADelimiter außerhalb von Klammern und Zeichenketten.</summary>
 function SplitTopLevel(const AText: string; ADelimiter: Char): TArray<string>;
 var
-  Index, Depth, Start: Integer;
-  Quoted: Boolean;
+  mIndex, mDepth, mStart: Integer;
+  mQuoted: Boolean;
 begin
   Result := nil;
-  Depth := 0;
-  Quoted := False;
-  Start := 1;
-  for Index := 1 to Length(AText) do
+  mDepth := 0;
+  mQuoted := False;
+  mStart := 1;
+  for mIndex := 1 to Length(AText) do
   begin
-    if AText[Index] = '''' then
+    if AText[mIndex] = '''' then
     begin
-      Quoted := not Quoted;
+      mQuoted := not mQuoted;
     end
-    else if Quoted then
+    else if mQuoted then
     begin
       Continue;
     end
-    else if CharInSet(AText[Index], ['(', '[', '<']) then
+    else if CharInSet(AText[mIndex], ['(', '[', '<']) then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end
-    else if CharInSet(AText[Index], [')', ']', '>']) then
+    else if CharInSet(AText[mIndex], [')', ']', '>']) then
     begin
-      Dec(Depth);
+      Dec(mDepth);
     end
-    else if (Depth = 0) and (AText[Index] = ADelimiter) then
+    else if (mDepth = 0) and (AText[mIndex] = ADelimiter) then
     begin
-      Result := Result + [Copy(AText, Start, Index - Start)];
-      Start := Index + 1;
+      Result := Result + [Copy(AText, mStart, mIndex - mStart)];
+      mStart := mIndex + 1;
     end;
   end;
-  Result := Result + [Copy(AText, Start, MaxInt)];
+  Result := Result + [Copy(AText, mStart, MaxInt)];
 end;
 
 function HasWord(const AText, AWord: string): Boolean;
 var
-  Index: Integer;
-  Lower: string;
+  mIndex: Integer;
+  mLower: string;
 begin
-  Lower := LowerCase(AText);
-  Index := Pos(AWord, Lower);
-  while Index > 0 do
+  mLower := LowerCase(AText);
+  mIndex := Pos(AWord, mLower);
+  while mIndex > 0 do
   begin
-    if ((Index = 1) or not CharInSet(Lower[Index - 1], ['a'..'z', '0'..'9', '_'])) and
-      ((Index + Length(AWord) > Length(Lower)) or
-      not CharInSet(Lower[Index + Length(AWord)], ['a'..'z', '0'..'9', '_'])) then
+    if ((mIndex = 1) or not CharInSet(mLower[mIndex - 1], ['a'..'z', '0'..'9', '_'])) and
+      ((mIndex + Length(AWord) > Length(mLower)) or
+      not CharInSet(mLower[mIndex + Length(AWord)], ['a'..'z', '0'..'9', '_'])) then
     begin
       Exit(True);
     end;
-    Index := PosEx(AWord, Lower, Index + 1);
+    mIndex := PosEx(AWord, mLower, mIndex + 1);
   end;
   Result := False;
 end;
@@ -272,15 +272,15 @@ end;
 /// <summary>Kopf der Implementierung: Typname vor den Methodennamen.</summary>
 function QualifiedHeader(const ASignature, AMethodName, ATypeName: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   // Der Name folgt auf procedure/function/constructor/destructor/operator.
-  Index := Pos(LowerCase(' ' + AMethodName), LowerCase(ASignature));
-  if Index = 0 then
+  mIndex := Pos(LowerCase(' ' + AMethodName), LowerCase(ASignature));
+  if mIndex = 0 then
   begin
     Exit('');
   end;
-  Result := Copy(ASignature, 1, Index) + ATypeName + '.' + Copy(ASignature, Index + 1, MaxInt) + ';';
+  Result := Copy(ASignature, 1, mIndex) + ATypeName + '.' + Copy(ASignature, mIndex + 1, MaxInt) + ';';
 end;
 
 /// <summary>Ist AIndex das "end" vor dem abschließenden "." der Unit (Kommentare dazwischen erlaubt)?</summary>
@@ -594,30 +594,30 @@ end;
 /// <summary>Position des "=" eines Standardwerts in AGroup, 0 ohne.</summary>
 function DefaultPos(const AGroup: string): Integer;
 var
-  Index, Depth: Integer;
-  Quoted: Boolean;
+  mIndex, mDepth: Integer;
+  mQuoted: Boolean;
 begin
-  Depth := 0;
-  Quoted := False;
-  for Index := 1 to Length(AGroup) do
+  mDepth := 0;
+  mQuoted := False;
+  for mIndex := 1 to Length(AGroup) do
   begin
-    if AGroup[Index] = '''' then
+    if AGroup[mIndex] = '''' then
     begin
-      Quoted := not Quoted;
+      mQuoted := not mQuoted;
     end;
-    if Quoted then
+    if mQuoted then
     begin
       Continue;
     end;
-    case AGroup[Index] of
+    case AGroup[mIndex] of
       '(', '[', '<':
-        Inc(Depth);
+        Inc(mDepth);
       ')', ']', '>':
-        Dec(Depth);
+        Dec(mDepth);
       '=':
-        if Depth = 0 then
+        if mDepth = 0 then
         begin
-          Exit(Index);
+          Exit(mIndex);
         end;
     end;
   end;
@@ -627,46 +627,46 @@ end;
 /// <summary>Namen einer Parametergruppe in Kleinbuchstaben ohne const/var/out, z. B. "a,b".</summary>
 function GroupNames(const AGroup: string): string;
 const
-  Modifiers: array[0..3] of string = ('constref', 'const', 'var', 'out');
+  cModifiers: array[0..3] of string = ('constref', 'const', 'var', 'out');
 var
-  Colon, Index: Integer;
-  Names: string;
+  mColon, mIndex: Integer;
+  mNames: string;
 begin
-  Colon := Pos(':', AGroup);
-  if Colon = 0 then
+  mColon := Pos(':', AGroup);
+  if mColon = 0 then
   begin
-    Names := AGroup;
+    mNames := AGroup;
   end
   else
   begin
-    Names := Copy(AGroup, 1, Colon - 1);
+    mNames := Copy(AGroup, 1, mColon - 1);
   end;
-  Names := LowerCase(Trim(Names));
+  mNames := LowerCase(Trim(mNames));
   // Attribute wie [ref] stehen vor den Namen, auch hinter dem Modifizierer: const [ref] A (#1324).
-  Names := WithoutAttributes(Names);
-  for Index := 0 to High(Modifiers) do
+  mNames := WithoutAttributes(mNames);
+  for mIndex := 0 to High(cModifiers) do
   begin
-    if Pos(Modifiers[Index] + ' ', Names) = 1 then
+    if Pos(cModifiers[mIndex] + ' ', mNames) = 1 then
     begin
-      Names := Trim(Copy(Names, Length(Modifiers[Index]) + 1, MaxInt));
+      mNames := Trim(Copy(mNames, Length(cModifiers[mIndex]) + 1, MaxInt));
       Break;
     end;
   end;
-  Result := StringReplace(StringReplace(Names, ' ', '', [rfReplaceAll]), #9, '', [rfReplaceAll]);
+  Result := StringReplace(StringReplace(mNames, ' ', '', [rfReplaceAll]), #9, '', [rfReplaceAll]);
 end;
 
 function JoinGroups(const AGroups: TArray<string>; const AAfter: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '(';
-  for Index := 0 to High(AGroups) do
+  for mIndex := 0 to High(AGroups) do
   begin
-    if Index > 0 then
+    if mIndex > 0 then
     begin
       Result := Result + '; ';
     end;
-    Result := Result + AGroups[Index];
+    Result := Result + AGroups[mIndex];
   end;
   Result := Result + ')' + AAfter;
 end;
@@ -674,107 +674,107 @@ end;
 /// <summary>Kopf der Deklaration für den Rumpf: Standardwerte entfallen.</summary>
 function WithoutDefaults(const ATail: string): string;
 var
-  Groups: TArray<string>;
-  After: string;
-  Index, Equals: Integer;
+  mGroups: TArray<string>;
+  mAfter: string;
+  mIndex, mEquals: Integer;
 begin
-  if not SplitParameters(ATail, Groups, After) then
+  if not SplitParameters(ATail, mGroups, mAfter) then
   begin
     Exit(TrimLeft(ATail));
   end;
-  for Index := 0 to High(Groups) do
+  for mIndex := 0 to High(mGroups) do
   begin
-    Equals := DefaultPos(Groups[Index]);
-    if Equals > 0 then
+    mEquals := DefaultPos(mGroups[mIndex]);
+    if mEquals > 0 then
     begin
-      Groups[Index] := TrimRight(Copy(Groups[Index], 1, Equals - 1));
+      mGroups[mIndex] := TrimRight(Copy(mGroups[mIndex], 1, mEquals - 1));
     end;
   end;
-  Result := JoinGroups(Groups, After);
+  Result := JoinGroups(mGroups, mAfter);
 end;
 
 /// <summary>Kopf des Rumpfs für die Deklaration; Standardwerte der alten Deklaration bleiben
 /// bei gleichnamigen Parametern erhalten.</summary>
 function WithDefaultsOf(const ABodyTail, ADeclTail: string): string;
 var
-  Groups, Old: TArray<string>;
-  After, OldAfter: string;
-  Index, Inner, Equals: Integer;
+  mGroups, mOld: TArray<string>;
+  mAfter, mOldAfter: string;
+  mIndex, mInner, mEquals: Integer;
 begin
-  if not SplitParameters(ABodyTail, Groups, After) then
+  if not SplitParameters(ABodyTail, mGroups, mAfter) then
   begin
     Exit(TrimLeft(ABodyTail));
   end;
-  if SplitParameters(ADeclTail, Old, OldAfter) then
+  if SplitParameters(ADeclTail, mOld, mOldAfter) then
   begin
-    for Index := 0 to High(Groups) do
+    for mIndex := 0 to High(mGroups) do
     begin
-      for Inner := 0 to High(Old) do
+      for mInner := 0 to High(mOld) do
       begin
-        Equals := DefaultPos(Old[Inner]);
-        if (Equals > 0) and (DefaultPos(Groups[Index]) = 0) and
-          (GroupNames(Groups[Index]) = GroupNames(Copy(Old[Inner], 1, Equals - 1))) then
+        mEquals := DefaultPos(mOld[mInner]);
+        if (mEquals > 0) and (DefaultPos(mGroups[mIndex]) = 0) and
+          (GroupNames(mGroups[mIndex]) = GroupNames(Copy(mOld[mInner], 1, mEquals - 1))) then
         begin
-          Groups[Index] := Groups[Index] + ' ' + Trim(Copy(Old[Inner], Equals, MaxInt));
+          mGroups[mIndex] := mGroups[mIndex] + ' ' + Trim(Copy(mOld[mInner], mEquals, MaxInt));
         end;
       end;
     end;
   end;
-  Result := JoinGroups(Groups, After);
+  Result := JoinGroups(mGroups, mAfter);
 end;
 
 const
-  Conventions: array[0..5] of string = ('register', 'pascal', 'cdecl', 'stdcall', 'safecall', 'winapi');
-  Directives: array[0..20] of string = ('overload', 'inline', 'static', 'virtual', 'dynamic', 'override',
+  cConventions: array[0..5] of string = ('register', 'pascal', 'cdecl', 'stdcall', 'safecall', 'winapi');
+  cDirectives: array[0..20] of string = ('overload', 'inline', 'static', 'virtual', 'dynamic', 'override',
     'abstract', 'reintroduce', 'final', 'message', 'deprecated', 'platform', 'experimental', 'library', 'assembler',
     'varargs', 'external', 'forward', 'unsafe', 'dispid', 'export');
-  Modifiers: array[0..3] of string = ('constref', 'const', 'var', 'out');
-  Kinds: array[0..4] of string = ('constructor', 'destructor', 'operator', 'function', 'procedure');
+  cModifiers: array[0..3] of string = ('constref', 'const', 'var', 'out');
+  cKinds: array[0..4] of string = ('constructor', 'destructor', 'operator', 'function', 'procedure');
 
 /// <summary>Parameter einer Gruppe "const A, B: string = ''" einzeln.</summary>
 function GroupParameters(const AGroup: string): TArray<TShapeParameter>;
 var
-  Group, Names, TypeName, Modifier, Name: string;
-  Equals, Colon, Space: Integer;
-  Parameter: TShapeParameter;
+  mGroup, mNames, mTypeName, mModifier, mName: string;
+  mEquals, mColon, mSpace: Integer;
+  mParameter: TShapeParameter;
 begin
   Result := nil;
-  Group := AGroup;
-  Equals := DefaultPos(Group);
-  if Equals > 0 then
+  mGroup := AGroup;
+  mEquals := DefaultPos(mGroup);
+  if mEquals > 0 then
   begin
-    Group := Copy(Group, 1, Equals - 1);
+    mGroup := Copy(mGroup, 1, mEquals - 1);
   end;
-  Colon := Pos(':', Group);
-  if Colon > 0 then
+  mColon := Pos(':', mGroup);
+  if mColon > 0 then
   begin
-    Names := Trim(Copy(Group, 1, Colon - 1));
-    TypeName := Trim(Copy(Group, Colon + 1, MaxInt));
+    mNames := Trim(Copy(mGroup, 1, mColon - 1));
+    mTypeName := Trim(Copy(mGroup, mColon + 1, MaxInt));
   end
   else
   begin
-    Names := Trim(Group);
-    TypeName := '';
+    mNames := Trim(mGroup);
+    mTypeName := '';
   end;
   // Attribute wie [ref] stehen vor den Namen, auch hinter dem Modifizierer: const [ref] A (#1324).
-  Names := WithoutAttributes(Names);
-  Modifier := '';
-  Space := Pos(' ', Names);
-  if (Space > 0) and MatchText(Copy(Names, 1, Space - 1), Modifiers) then
+  mNames := WithoutAttributes(mNames);
+  mModifier := '';
+  mSpace := Pos(' ', mNames);
+  if (mSpace > 0) and MatchText(Copy(mNames, 1, mSpace - 1), cModifiers) then
   begin
-    Modifier := LowerCase(Copy(Names, 1, Space - 1));
-    Names := Trim(Copy(Names, Space + 1, MaxInt));
+    mModifier := LowerCase(Copy(mNames, 1, mSpace - 1));
+    mNames := Trim(Copy(mNames, mSpace + 1, MaxInt));
   end;
-  while Pos('  ', TypeName) > 0 do
+  while Pos('  ', mTypeName) > 0 do
   begin
-    TypeName := StringReplace(TypeName, '  ', ' ', [rfReplaceAll]);
+    mTypeName := StringReplace(mTypeName, '  ', ' ', [rfReplaceAll]);
   end;
-  for Name in SplitTopLevel(Names, ',') do
+  for mName in SplitTopLevel(mNames, ',') do
   begin
-    Parameter.Modifier := Modifier;
-    Parameter.Name := Trim(Name);
-    Parameter.TypeName := TypeName;
-    Result := Result + [Parameter];
+    mParameter.Modifier := mModifier;
+    mParameter.Name := Trim(mName);
+    mParameter.TypeName := mTypeName;
+    Result := Result + [mParameter];
   end;
 end;
 
@@ -786,24 +786,24 @@ end;
 /// <summary>Nähe zweier Köpfe für die Zuordnung bei Überladungen; höher = ähnlicher.</summary>
 function Closeness(const ADeclaration, ABody: TSignatureShape): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := 0;
   if Length(ADeclaration.Parameters) = Length(ABody.Parameters) then
   begin
     Inc(Result, 100);
   end;
-  for Index := 0 to Min(High(ADeclaration.Parameters), High(ABody.Parameters)) do
+  for mIndex := 0 to Min(High(ADeclaration.Parameters), High(ABody.Parameters)) do
   begin
-    if SameTypeName(ADeclaration.Parameters[Index].TypeName, ABody.Parameters[Index].TypeName) then
+    if SameTypeName(ADeclaration.Parameters[mIndex].TypeName, ABody.Parameters[mIndex].TypeName) then
     begin
       Inc(Result, 10);
     end;
-    if SameText(ADeclaration.Parameters[Index].Name, ABody.Parameters[Index].Name) then
+    if SameText(ADeclaration.Parameters[mIndex].Name, ABody.Parameters[mIndex].Name) then
     begin
       Inc(Result, 5);
     end;
-    if ADeclaration.Parameters[Index].Modifier = ABody.Parameters[Index].Modifier then
+    if ADeclaration.Parameters[mIndex].Modifier = ABody.Parameters[mIndex].Modifier then
     begin
       Inc(Result, 1);
     end;
@@ -821,23 +821,23 @@ end;
 /// <summary>Aufrufkonvention aus den Direktiven hinter dem Kopf ("overload; stdcall; …"); '' ohne.</summary>
 function ConventionOfRest(const ARest: string): string;
 var
-  Part, Word: string;
-  Space: Integer;
+  mPart, mWord: string;
+  mSpace: Integer;
 begin
   Result := '';
-  for Part in SplitTopLevel(ARest, ';') do
+  for mPart in SplitTopLevel(ARest, ';') do
   begin
-    Word := LowerCase(Trim(Part));
-    Space := Pos(' ', Word);
-    if Space > 0 then
+    mWord := LowerCase(Trim(mPart));
+    mSpace := Pos(' ', mWord);
+    if mSpace > 0 then
     begin
-      Word := Copy(Word, 1, Space - 1);
+      mWord := Copy(mWord, 1, mSpace - 1);
     end;
-    if MatchText(Word, Conventions) then
+    if MatchText(mWord, cConventions) then
     begin
-      Exit(Word);
+      Exit(mWord);
     end;
-    if not MatchText(Word, Directives) then
+    if not MatchText(mWord, cDirectives) then
     begin
       Exit;
     end;
@@ -847,14 +847,14 @@ end;
 /// <summary>Weicht die ausdrücklich angegebene Konvention des Rumpfs von der Deklaration ab?</summary>
 function ConventionDiffers(const ABody, ADeclaration: string): Boolean;
 var
-  Declaration: string;
+  mDeclaration: string;
 begin
-  Declaration := ADeclaration;
-  if Declaration = '' then
+  mDeclaration := ADeclaration;
+  if mDeclaration = '' then
   begin
-    Declaration := 'register';
+    mDeclaration := 'register';
   end;
-  Result := (ABody <> '') and (ABody <> Declaration);
+  Result := (ABody <> '') and (ABody <> mDeclaration);
 end;
 
 { TClassCompletion }
@@ -907,12 +907,12 @@ begin
   begin
     Inc(mIndex);
     SkipComments(ATokens, mIndex);
-    if (mIndex > High(ATokens)) or not (MatchText(ATokens[mIndex].Text, Conventions) or
-      MatchText(ATokens[mIndex].Text, Directives)) then
+    if (mIndex > High(ATokens)) or not (MatchText(ATokens[mIndex].Text, cConventions) or
+      MatchText(ATokens[mIndex].Text, cDirectives)) then
     begin
       Break;
     end;
-    if MatchText(ATokens[mIndex].Text, Conventions) then
+    if MatchText(ATokens[mIndex].Text, cConventions) then
     begin
       AShape.Convention := LowerCase(ATokens[mIndex].Text);
       AShape.ConventionRange := TTextRange.Create(ATokens[mIndex].StartPos, ATokens[mIndex].EndPos);
@@ -928,7 +928,7 @@ function KindOfHeader(const AHeader: string): string;
 var
   mWord: string;
 begin
-  for mWord in Kinds do
+  for mWord in cKinds do
   begin
     if HasWord(AHeader, mWord) then
     begin
@@ -971,55 +971,55 @@ end;
 
 class function TClassCompletion.Pairs(ATree: TSyntaxTree; const AText: string): TArray<TSignaturePair>;
 var
-  Items: TArray<TUnmatchedMethod>;
-  Shapes: TArray<TSignatureShape>;
-  Valid: TArray<Boolean>;
-  Index, Other: Integer;
-  Pair: TSignaturePair;
+  mItems: TArray<TUnmatchedMethod>;
+  mShapes: TArray<TSignatureShape>;
+  mValid: TArray<Boolean>;
+  mIndex, mOther: Integer;
+  mPair: TSignaturePair;
 
   function Candidate(A, B: Integer): Boolean;
   begin
-    Result := (A <> B) and Valid[A] and Valid[B] and (Items[A].Declared <> Items[B].Declared) and
-      SameText(Items[A].TypeName, Items[B].TypeName) and SameText(Items[A].Symbol.Name, Items[B].Symbol.Name);
+    Result := (A <> B) and mValid[A] and mValid[B] and (mItems[A].Declared <> mItems[B].Declared) and
+      SameText(mItems[A].TypeName, mItems[B].TypeName) and SameText(mItems[A].Symbol.Name, mItems[B].Symbol.Name);
   end;
 
   function Score(A, B: Integer): Integer;
   begin
-    if Items[A].Declared then
+    if mItems[A].Declared then
     begin
-      Result := Closeness(Shapes[A], Shapes[B]);
+      Result := Closeness(mShapes[A], mShapes[B]);
     end
     else
     begin
-      Result := Closeness(Shapes[B], Shapes[A]);
+      Result := Closeness(mShapes[B], mShapes[A]);
     end;
   end;
 
   /// <summary>Eindeutig nächstliegender Partner von A; -1 ohne oder bei Gleichstand.</summary>
   function Best(A: Integer): Integer;
   var
-    B, Top, Count: Integer;
+    B, mTop, mCount: Integer;
   begin
     Result := -1;
-    Top := -1;
-    Count := 0;
-    for B := 0 to High(Items) do
+    mTop := -1;
+    mCount := 0;
+    for B := 0 to High(mItems) do
     begin
       if Candidate(A, B) then
       begin
-        if Score(A, B) > Top then
+        if Score(A, B) > mTop then
         begin
-          Top := Score(A, B);
+          mTop := Score(A, B);
           Result := B;
-          Count := 1;
+          mCount := 1;
         end
-        else if Score(A, B) = Top then
+        else if Score(A, B) = mTop then
         begin
-          Inc(Count);
+          Inc(mCount);
         end;
       end;
     end;
-    if Count <> 1 then
+    if mCount <> 1 then
     begin
       Result := -1;
     end;
@@ -1027,79 +1027,79 @@ var
 
 begin
   Result := nil;
-  Items := Unmatched(ATree, AText);
-  SetLength(Shapes, Length(Items));
-  SetLength(Valid, Length(Items));
-  for Index := 0 to High(Items) do
+  mItems := Unmatched(ATree, AText);
+  SetLength(mShapes, Length(mItems));
+  SetLength(mValid, Length(mItems));
+  for mIndex := 0 to High(mItems) do
   begin
-    Valid[Index] := Shape(ATree, AText, Items[Index].Symbol, Shapes[Index]);
+    mValid[mIndex] := Shape(ATree, AText, mItems[mIndex].Symbol, mShapes[mIndex]);
   end;
-  for Index := 0 to High(Items) do
+  for mIndex := 0 to High(mItems) do
   begin
-    if Items[Index].Declared then
+    if mItems[mIndex].Declared then
     begin
       Continue;
     end;
-    Other := Best(Index);
-    if (Other < 0) or (Best(Other) <> Index) then
+    mOther := Best(mIndex);
+    if (mOther < 0) or (Best(mOther) <> mIndex) then
     begin
       Continue;
     end;
-    Pair.Declaration := Items[Other];
-    Pair.Body := Items[Index];
-    Pair.DeclarationShape := Shapes[Other];
-    Pair.BodyShape := Shapes[Index];
-    Result := Result + [Pair];
+    mPair.Declaration := mItems[mOther];
+    mPair.Body := mItems[mIndex];
+    mPair.DeclarationShape := mShapes[mOther];
+    mPair.BodyShape := mShapes[mIndex];
+    Result := Result + [mPair];
   end;
 end;
 
 class function TClassCompletion.PairFixes(ATree: TSyntaxTree; const AText: string; const APair: TSignaturePair;
   out AFixes: TArray<TCodeAction>): Boolean;
 var
-  DeclRange, BodyRange: TTextRange;
-  DeclTail, BodyTail, DeclTailText, Convention: string;
-  Fix: TCodeAction;
-  Name: string;
+  mDeclRange, mBodyRange: TTextRange;
+  mDeclTail, mBodyTail, mDeclTailText, mConvention: string;
+  mFix: TCodeAction;
+  mName: string;
 begin
   AFixes := nil;
-  Result := SignatureTail(ATree, AText, APair.Declaration.Symbol, DeclRange, DeclTail) and
-    SignatureTail(ATree, AText, APair.Body.Symbol, BodyRange, BodyTail);
+  Result := SignatureTail(ATree, AText, APair.Declaration.Symbol, mDeclRange, mDeclTail) and
+    SignatureTail(ATree, AText, APair.Body.Symbol, mBodyRange, mBodyTail);
   if not Result then
   begin
     Exit;
   end;
-  Name := APair.Body.Symbol.Name;
-  Fix := Default(TCodeAction);
-  Fix.Kind := QuickFixKind;
-  Fix.Title := cTexts[TClassCompletionText.AlignTheImplementationOfWith].Fmt([Name]);
-  Fix.Edits := [TTextEdit.Create(BodyRange, WithoutDefaults(DeclTail))];
+  mName := APair.Body.Symbol.Name;
+  mFix := Default(TCodeAction);
+  mFix.Kind := cQuickFixKind;
+  mFix.Title := cTexts[TClassCompletionText.AlignTheImplementationOfWith].Fmt([mName]);
+  mFix.Edits := [TTextEdit.Create(mBodyRange, WithoutDefaults(mDeclTail))];
   // Eine abweichende Konvention im Rumpf übernimmt die der Deklaration (ohne Angabe register).
   if (APair.BodyShape.Convention <> '') and (APair.BodyShape.Convention <> APair.DeclarationShape.Convention) then
   begin
-    Convention := APair.DeclarationShape.Convention;
-    if Convention = '' then
+    mConvention := APair.DeclarationShape.Convention;
+    if mConvention = '' then
     begin
-      Convention := 'register';
+      mConvention := 'register';
     end;
-    Fix.Edits := Fix.Edits + [TTextEdit.Create(APair.BodyShape.ConventionRange, Convention)];
+    mFix.Edits := mFix.Edits + [TTextEdit.Create(APair.BodyShape.ConventionRange, mConvention)];
   end;
-  AFixes := AFixes + [Fix];
-  Fix.Title := cTexts[TClassCompletionText.AlignTheDeclarationOfWith].Fmt([Name]);
-  DeclTailText := WithDefaultsOf(BodyTail, DeclTail);
-  Fix.Edits := nil;
+  AFixes := AFixes + [mFix];
+  mFix.Title := cTexts[TClassCompletionText.AlignTheDeclarationOfWith].Fmt([mName]);
+  mDeclTailText := WithDefaultsOf(mBodyTail, mDeclTail);
+  mFix.Edits := nil;
   if (APair.BodyShape.Convention <> '') and (APair.BodyShape.Convention <> APair.DeclarationShape.Convention) then
   begin
     if APair.DeclarationShape.Convention <> '' then
     begin
-      Fix.Edits := [TTextEdit.Create(APair.DeclarationShape.ConventionRange, APair.BodyShape.Convention)];
+      mFix.Edits := [TTextEdit.Create(APair.DeclarationShape.ConventionRange, APair.BodyShape.Convention)];
     end
     else
     begin
-      DeclTailText := DeclTailText + '; ' + APair.BodyShape.Convention;
+      mDeclTailText := mDeclTailText + '; ' + APair.BodyShape.Convention;
     end;
   end;
-  Fix.Edits := [TTextEdit.Create(DeclRange, DeclTailText)] + Fix.Edits;
-  AFixes := AFixes + [Fix];
+  mFix.Edits := [TTextEdit.Create(mDeclRange, mDeclTailText)] + mFix.Edits;
+  AFixes := AFixes + [mFix];
 end;
 
 
@@ -1154,7 +1154,7 @@ var
 begin
   for mOuter in UnitIndex.Symbols do
   begin
-    if (mOuter.Kind in TypeKinds) and SameText(TypeNameOf(mOuter), AName) and
+    if (mOuter.Kind in cTypeKinds) and SameText(TypeNameOf(mOuter), AName) and
       ContainsLine(mOuter.Range, AType.Range.StartPos.Line) then
     begin
       Exit(IsGeneric(mOuter));
@@ -1242,7 +1242,7 @@ begin
   mMask := TypeMask(AType);
   for mSymbol in UnitIndex.Symbols do
   begin
-    if not (mSymbol.Kind in MethodKinds) or not SameText(mSymbol.Container, AMatch.TypeName) then
+    if not (mSymbol.Kind in cMethodKinds) or not SameText(mSymbol.Container, AMatch.TypeName) then
     begin
       Continue;
     end;
@@ -1323,7 +1323,7 @@ begin
   mMatcher.UnitIndex := TIndexExtractor.Extract(ATree, '');
   for mType in mMatcher.UnitIndex.Symbols do
   begin
-    if mType.Kind in TypeKinds then
+    if mType.Kind in cTypeKinds then
     begin
       mMatcher.TypeRanges := mMatcher.TypeRanges + [mType.Range];
     end;
@@ -1331,7 +1331,7 @@ begin
   for mType in mMatcher.UnitIndex.Symbols do
   begin
     // Generische Typen brauchen die Typparameter im Kopf; die kennt der Index nicht.
-    if (mType.Kind in TypeKinds) and not mMatcher.IsGeneric(mType) then
+    if (mType.Kind in cTypeKinds) and not mMatcher.IsGeneric(mType) then
     begin
       Result := Result + [mMatcher.MatchType(mType)];
     end;
@@ -1340,34 +1340,34 @@ end;
 
 class function TClassCompletion.Unmatched(ATree: TSyntaxTree; const AText: string): TArray<TUnmatchedMethod>;
 var
-  Match: TTypeMatch;
-  Index: Integer;
-  Item: TUnmatchedMethod;
+  mMatch: TTypeMatch;
+  mIndex: Integer;
+  mItem: TUnmatchedMethod;
 begin
   Result := nil;
-  for Match in MatchMethods(ATree, AText) do
+  for mMatch in MatchMethods(ATree, AText) do
   begin
-    for Index := 0 to High(Match.Declarations) do
+    for mIndex := 0 to High(mMatch.Declarations) do
     begin
-      if Match.BodyOf[Index] = -1 then
+      if mMatch.BodyOf[mIndex] = -1 then
       begin
-        Item := Default(TUnmatchedMethod);
-        Item.TypeName := Match.TypeName;
-        Item.Symbol := Match.Declarations[Index];
-        Item.Declared := True;
-        Item.Header := Match.DeclarationHeaders[Index];
-        Result := Result + [Item];
+        mItem := Default(TUnmatchedMethod);
+        mItem.TypeName := mMatch.TypeName;
+        mItem.Symbol := mMatch.Declarations[mIndex];
+        mItem.Declared := True;
+        mItem.Header := mMatch.DeclarationHeaders[mIndex];
+        Result := Result + [mItem];
       end;
     end;
-    for Index := 0 to High(Match.Bodies) do
+    for mIndex := 0 to High(mMatch.Bodies) do
     begin
-      if not Match.BodyUsed[Index] then
+      if not mMatch.BodyUsed[mIndex] then
       begin
-        Item := Default(TUnmatchedMethod);
-        Item.TypeName := Match.TypeName;
-        Item.Symbol := Match.Bodies[Index];
-        Item.Header := Match.BodyHeaders[Index];
-        Result := Result + [Item];
+        mItem := Default(TUnmatchedMethod);
+        mItem.TypeName := mMatch.TypeName;
+        mItem.Symbol := mMatch.Bodies[mIndex];
+        mItem.Header := mMatch.BodyHeaders[mIndex];
+        Result := Result + [mItem];
       end;
     end;
   end;
@@ -1375,31 +1375,31 @@ end;
 
 class function TClassCompletion.DeclaredMethods(ATree: TSyntaxTree; const AText: string): TArray<TDeclaredMethod>;
 var
-  Matches: TArray<TTypeMatch>;
-  TypeIndex, Index: Integer;
-  Item: TDeclaredMethod;
+  mMatches: TArray<TTypeMatch>;
+  mTypeIndex, mIndex: Integer;
+  mItem: TDeclaredMethod;
 begin
   Result := nil;
-  Matches := MatchMethods(ATree, AText);
-  for TypeIndex := 0 to High(Matches) do
+  mMatches := MatchMethods(ATree, AText);
+  for mTypeIndex := 0 to High(mMatches) do
   begin
-    for Index := 0 to High(Matches[TypeIndex].Declarations) do
+    for mIndex := 0 to High(mMatches[mTypeIndex].Declarations) do
     begin
-      if Matches[TypeIndex].BodyOf[Index] = -2 then
+      if mMatches[mTypeIndex].BodyOf[mIndex] = -2 then
       begin
         Continue;
       end;
-      Item := Default(TDeclaredMethod);
-      Item.TypeName := Matches[TypeIndex].TypeName;
-      Item.TypeOrder := TypeIndex;
-      Item.DeclarationOrder := Index;
-      Item.Declaration := Matches[TypeIndex].Declarations[Index];
-      Item.HasBody := Matches[TypeIndex].BodyOf[Index] >= 0;
-      if Item.HasBody then
+      mItem := Default(TDeclaredMethod);
+      mItem.TypeName := mMatches[mTypeIndex].TypeName;
+      mItem.TypeOrder := mTypeIndex;
+      mItem.DeclarationOrder := mIndex;
+      mItem.Declaration := mMatches[mTypeIndex].Declarations[mIndex];
+      mItem.HasBody := mMatches[mTypeIndex].BodyOf[mIndex] >= 0;
+      if mItem.HasBody then
       begin
-        Item.Body := Matches[TypeIndex].Bodies[Matches[TypeIndex].BodyOf[Index]];
+        mItem.Body := mMatches[mTypeIndex].Bodies[mMatches[mTypeIndex].BodyOf[mIndex]];
       end;
-      Result := Result + [Item];
+      Result := Result + [mItem];
     end;
   end;
 end;
@@ -1411,7 +1411,7 @@ var
 begin
   for mSymbol in AUnit.Symbols do
   begin
-    if (mSymbol.Kind in TypeKinds) and SameText(TypeNameOf(mSymbol), ATypeName) then
+    if (mSymbol.Kind in cTypeKinds) and SameText(TypeNameOf(mSymbol), ATypeName) then
     begin
       AType := mSymbol;
       Exit(True);
@@ -1428,7 +1428,7 @@ var
 begin
   for mSymbol in AUnit.Symbols do
   begin
-    if (mSymbol.Kind in MethodKinds) and SameText(mSymbol.Container, ATypeName) and SameText(mSymbol.Name, AName) and
+    if (mSymbol.Kind in cMethodKinds) and SameText(mSymbol.Container, ATypeName) and SameText(mSymbol.Name, AName) and
       ContainsLine(AType.Range, mSymbol.Range.StartPos.Line) then
     begin
       Exit(True);
@@ -1571,7 +1571,7 @@ begin
   mLastLine := -1;
   for mSymbol in mUnit.Symbols do
   begin
-    if (mSymbol.Kind in MethodKinds) and SameText(mSymbol.Container, ATypeName) and
+    if (mSymbol.Kind in cMethodKinds) and SameText(mSymbol.Container, ATypeName) and
       not ContainsLine(mType.Range, mSymbol.Range.StartPos.Line) and (mSymbol.Range.EndPos.Line > mLastLine) then
     begin
       mLastLine := mSymbol.Range.EndPos.Line;
@@ -1603,7 +1603,7 @@ begin
   AType := Default(TIndexSymbol);
   for mSymbol in AUnit.Symbols do
   begin
-    if (mSymbol.Kind in TypeKinds) and ContainsLine(mSymbol.Range, ALine) and
+    if (mSymbol.Kind in cTypeKinds) and ContainsLine(mSymbol.Range, ALine) and
       (not Result or (mSymbol.Range.StartPos.Line >= AType.Range.StartPos.Line)) then
     begin
       AType := mSymbol;
@@ -1636,7 +1636,7 @@ begin
   APlan.LastLine := -1;
   for mSymbol in AUnit.Symbols do
   begin
-    if not (mSymbol.Kind in MethodKinds) or not SameText(mSymbol.Container, APlan.TypeName) then
+    if not (mSymbol.Kind in cMethodKinds) or not SameText(mSymbol.Container, APlan.TypeName) then
     begin
       Continue;
     end;
@@ -1868,8 +1868,8 @@ begin
   begin
     AAction.Edits := [mEdit];
     AAction.Title := BodiesTitle(mPlan);
-    AAction.Kind := RewriteKind;
-    AAction.Tag := ClassBodiesTag;
+    AAction.Kind := cRewriteKind;
+    AAction.Tag := cClassBodiesTag;
   end;
 end;
 

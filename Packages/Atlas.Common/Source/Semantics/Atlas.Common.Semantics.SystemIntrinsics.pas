@@ -2,7 +2,8 @@
 
 // Bezeichner der Unit System ohne Quelltext (#880): Compiler-Intrinsics (Assigned, Length, SetLength,
 // Inc ...), eingebaute Typen (Integer, Int64, NativeInt ..., auch Text/TextFile und die alten Typen Real48,
-// OpenString, OleVariant, LongInt, #1382), CompilerVersion (nur im Kommentar von System.pas), die Datei-Routinen (AssignFile, Append, Reset, CloseFile, Eof ...),
+// OpenString, OleVariant, LongInt, #1382), CompilerVersion (nur im Kommentar von System.pas), die Datei-Routinen
+// (AssignFile, Append, Reset, CloseFile, Eof ...),
 // Speicher (GetMem, FreeMem, ReallocMem), Mathematik (Sqrt, Sin, Int, Frac ...) und RunError (#1382) sowie
 // True/False. Die Unit System ist immer eingebunden; was in System.pas steht, kommt aus dem Index, sofern
 // die RTL-Quelle indexiert ist. Diese Liste ergänzt nur, was dort fehlt, und gilt deshalb erst nach allen
@@ -54,7 +55,7 @@ uses
 
 const
   // Name|Art (R Routine, T Typ, C Konstante)|Kopf|Beschreibung
-  Entries: array[0..146] of string = (
+  cEntries: array[0..146] of string = (
     'Abs|R|function Abs(X): <Typ von X>;|Betrag einer Zahl.',
     'Addr|R|function Addr(var X): Pointer;|Adresse einer Variablen oder Routine (wie @).',
     'Append|R|procedure Append(var F: Text);|Öffnet eine Textdatei zum Anhängen.',
@@ -205,7 +206,7 @@ const
     'CompilerVersion|C|const CompilerVersion: Extended;|Version des Compilers (Delphi 13: 37.0), für $IF CompilerVersion >= … und im Code.');
 
   // Beschreibungen auf Englisch, in derselben Reihenfolge wie Entries (#1458).
-  EnglishDocumentation: array[0..146] of string = (
+  cEnglishDocumentation: array[0..146] of string = (
     'Absolute value of a number.',
     'Address of a variable or routine (like @).',
     'Opens a text file for appending.',
@@ -362,29 +363,29 @@ var
 /// zur Mindestzahl.</summary>
 procedure CountArgs(const ADeclaration: string; out AMin, AMax: Integer);
 var
-  Open, Close, Count: Integer;
-  Group, Names: string;
+  mOpen, mClose, mCount: Integer;
+  mGroup, mNames: string;
 begin
   AMin := 0;
   AMax := 0;
-  Open := Pos('(', ADeclaration);
-  Close := Pos(')', ADeclaration);
-  if (Open = 0) or (Close < Open) then
+  mOpen := Pos('(', ADeclaration);
+  mClose := Pos(')', ADeclaration);
+  if (mOpen = 0) or (mClose < mOpen) then
   begin
     Exit;
   end;
-  for Group in Copy(ADeclaration, Open + 1, Close - Open - 1).Split([';']) do
+  for mGroup in Copy(ADeclaration, mOpen + 1, mClose - mOpen - 1).Split([';']) do
   begin
-    Names := Group;
-    if Pos(':', Names) > 0 then
+    mNames := mGroup;
+    if Pos(':', mNames) > 0 then
     begin
-      Names := Copy(Names, 1, Pos(':', Names) - 1);
+      mNames := Copy(mNames, 1, Pos(':', mNames) - 1);
     end;
-    Count := Length(Names.Split([',']));
-    Inc(AMax, Count);
-    if Pos('=', Group) = 0 then
+    mCount := Length(mNames.Split([',']));
+    Inc(AMax, mCount);
+    if Pos('=', mGroup) = 0 then
     begin
-      Inc(AMin, Count);
+      Inc(AMin, mCount);
     end;
   end;
 end;
@@ -392,38 +393,38 @@ end;
 /// <summary>Einträge in ALanguage: Beschreibung und Platzhalter „Typ von X“ im Kopf übersetzt.</summary>
 function Build(ALanguage: TTextLanguage): TArray<TSystemIntrinsic>;
 var
-  Index: Integer;
-  Parts: TArray<string>;
+  mIndex: Integer;
+  mParts: TArray<string>;
 begin
-  SetLength(Result, Length(Entries));
-  for Index := 0 to High(Entries) do
+  SetLength(Result, Length(cEntries));
+  for mIndex := 0 to High(cEntries) do
   begin
-    Parts := Entries[Index].Split(['|']);
-    Result[Index].Name := Parts[0];
-    if Parts[1] = 'T' then
+    mParts := cEntries[mIndex].Split(['|']);
+    Result[mIndex].Name := mParts[0];
+    if mParts[1] = 'T' then
     begin
-      Result[Index].Kind := TIndexSymbolKind.RecordType;
+      Result[mIndex].Kind := TIndexSymbolKind.RecordType;
     end
-    else if Parts[1] = 'C' then
+    else if mParts[1] = 'C' then
     begin
-      Result[Index].Kind := TIndexSymbolKind.Constant;
+      Result[mIndex].Kind := TIndexSymbolKind.Constant;
     end
     else
     begin
-      Result[Index].Kind := TIndexSymbolKind.Routine;
+      Result[mIndex].Kind := TIndexSymbolKind.Routine;
     end;
-    Result[Index].Declaration := Parts[2];
-    Result[Index].Documentation := Parts[3];
+    Result[mIndex].Declaration := mParts[2];
+    Result[mIndex].Documentation := mParts[3];
     if ALanguage = TTextLanguage.English then
     begin
-      Result[Index].Declaration := StringReplace(Parts[2], '<Typ von ', '<type of ', []); // german-ok
-      Result[Index].Documentation := EnglishDocumentation[Index];
+      Result[mIndex].Declaration := StringReplace(mParts[2], '<Typ von ', '<type of ', []); // german-ok
+      Result[mIndex].Documentation := cEnglishDocumentation[mIndex];
     end;
-    Result[Index].MinArgs := 0;
-    Result[Index].MaxArgs := 0;
-    if Result[Index].Kind = TIndexSymbolKind.Routine then
+    Result[mIndex].MinArgs := 0;
+    Result[mIndex].MaxArgs := 0;
+    if Result[mIndex].Kind = TIndexSymbolKind.Routine then
     begin
-      CountArgs(Parts[2], Result[Index].MinArgs, Result[Index].MaxArgs);
+      CountArgs(mParts[2], Result[mIndex].MinArgs, Result[mIndex].MaxArgs);
     end;
   end;
 end;
@@ -448,14 +449,14 @@ end;
 
 class function TSystemIntrinsics.Find(const AName: string): TArray<TSystemIntrinsic>;
 var
-  Entry: TSystemIntrinsic;
+  mEntry: TSystemIntrinsic;
 begin
   Result := nil;
-  for Entry in GEntries[TAtlasLocale.Language] do
+  for mEntry in GEntries[TAtlasLocale.Language] do
   begin
-    if SameText(Entry.Name, AName) then
+    if SameText(mEntry.Name, AName) then
     begin
-      Result := Result + [Entry];
+      Result := Result + [mEntry];
     end;
   end;
 end;

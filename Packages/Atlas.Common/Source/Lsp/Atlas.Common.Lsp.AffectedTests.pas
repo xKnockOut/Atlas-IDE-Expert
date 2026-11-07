@@ -135,10 +135,10 @@ type
 
   TAffectedTests = class
   public const
-    Method = 'atlas/affectedTests';
-    DefaultDepth = 3;
+    cMethod = 'atlas/affectedTests';
+    cDefaultDepth = 3;
     /// <summary>Mehr als so viel Prozent der Tests einer Fixture betroffen: die ganze Fixture.</summary>
-    FixturePercent = 80;
+    cFixturePercent = 80;
   public
     /// <summary>Geänderte Stellen einer Pascal-Datei (Text AText, Unit AUnitName) zu den Zeilen ALines.</summary>
     class function MapPascal(const AFileName, AText: string; const ALines: TChangedLines): TArray<TAffectedChange>;
@@ -818,7 +818,7 @@ begin
       // Schon eine ganze Fixture (ganze Unit geändert) oder mehr als FixturePercent Prozent betroffen. Eine Fixture
       // mit nur einem Test bleibt beim Methodennamen: zusammengefasst wäre es derselbe Test, nur ungenauer benannt.
       if (ATests[mMembers[0]].Method = '') or
-        ((mTotal > 1) and (mMembers.Count * 100 > mTotal * FixturePercent)) then
+        ((mTotal > 1) and (mMembers.Count * 100 > mTotal * cFixturePercent)) then
       begin
         Result := Result + [WholeFixture(ATests, mMembers, AFixtureRun)];
         Continue;
@@ -1499,7 +1499,7 @@ begin
   end
   else if TImpactLimit.Count in FResult.Limits then
   begin
-    NeedAll(cTexts[TAffectedTestsText.MoreThanAffectedPlaces].Fmt([TImpactAnalysis.MaxPlaces]));
+    NeedAll(cTexts[TAffectedTestsText.MoreThanAffectedPlaces].Fmt([TImpactAnalysis.cMaxPlaces]));
   end;
 end;
 

@@ -258,7 +258,7 @@ function KnownIds(const ARules: TArray<IRule>): TArray<string>;
 var
   mRule: IRule;
 begin
-  Result := [SyntaxRuleId];
+  Result := [cSyntaxRuleId];
   for mRule in ARules do
   begin
     Result := Result + [mRule.Descriptor.Id];

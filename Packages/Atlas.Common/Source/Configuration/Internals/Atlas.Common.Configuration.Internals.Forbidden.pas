@@ -64,7 +64,7 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  PathSettings: array[0..5] of string = ('project', 'testUnits.folder', 'testUnits.project', 'exclude[]',
+  cPathSettings: array[0..5] of string = ('project', 'testUnits.folder', 'testUnits.project', 'exclude[]',
     'index.exclude[]', 'overrides[].files[]');
 
 type
@@ -91,22 +91,22 @@ type
 
 function QuoteKey(const AKey: string): string;
 var
-  Ch: Char;
+  mCh: Char;
 begin
   Result := '"';
-  for Ch in AKey do
+  for mCh in AKey do
   begin
-    if (Ch = '"') or (Ch = '\') then
+    if (mCh = '"') or (mCh = '\') then
     begin
-      Result := Result + '\' + Ch;
+      Result := Result + '\' + mCh;
     end
-    else if Ord(Ch) < 32 then
+    else if Ord(mCh) < 32 then
     begin
-      Result := Result + Format('\u%.4x', [Ord(Ch)]);
+      Result := Result + Format('\u%.4x', [Ord(mCh)]);
     end
     else
     begin
-      Result := Result + Ch;
+      Result := Result + mCh;
     end;
   end;
   Result := Result + '"';
@@ -132,12 +132,12 @@ end;
 
 procedure TStripper.Report(AStart, AStop: Integer; const AMessage: string);
 var
-  Issue: TConfigurationIssue;
+  mIssue: TConfigurationIssue;
 begin
-  Issue.Range := TTextRange.Create(FLines.PositionAt(AStart), FLines.PositionAt(AStop));
-  Issue.Message := AMessage;
-  Issue.IsError := False;
-  FIssues := FIssues + [Issue];
+  mIssue.Range := TTextRange.Create(FLines.PositionAt(AStart), FLines.PositionAt(AStop));
+  mIssue.Message := AMessage;
+  mIssue.IsError := False;
+  FIssues := FIssues + [mIssue];
 end;
 
 function TStripper.NodeText(ANode: TJsonNode): string;
@@ -147,22 +147,22 @@ end;
 
 function TStripper.Forbidden(ANode: TJsonNode; const APath: string): Boolean;
 var
-  Shown: string;
+  mShown: string;
 begin
   Result := False;
   if ANode.Kind <> TJsonKind.String_ then
   begin
     Exit;
   end;
-  Shown := StringReplace(APath, '[]', '', [rfReplaceAll]);
+  mShown := StringReplace(APath, '[]', '', [rfReplaceAll]);
   if TTextCheckin.HasUrlCredentials(ANode.Value) then
   begin
-    Report(ANode.Start, ANode.Stop, cTexts[TForbiddenText.ContainsCredentialsInTheAddress].Fmt([Shown]));
+    Report(ANode.Start, ANode.Stop, cTexts[TForbiddenText.ContainsCredentialsInTheAddress].Fmt([mShown]));
     Exit(True);
   end;
   if TForbiddenEntries.IsPathSetting(APath) and TTextCheckin.IsMachinePath(ANode.Value) then
   begin
-    Report(ANode.Start, ANode.Stop, cTexts[TForbiddenText.AbsolutePathsDoNotBelong].Fmt([Shown]));
+    Report(ANode.Start, ANode.Stop, cTexts[TForbiddenText.AbsolutePathsDoNotBelong].Fmt([mShown]));
     Exit(True);
   end;
 end;
@@ -254,8 +254,8 @@ end;
 
 function TStripper.Run: string;
 var
-  Root: TJsonNode;
-  Changed: Boolean;
+  mRoot: TJsonNode;
+  mChanged: Boolean;
 begin
   Result := FText;
   if Trim(FText) = '' then
@@ -263,24 +263,24 @@ begin
     Exit;
   end;
   try
-    Root := TJsonTree.Parse(FText);
+    mRoot := TJsonTree.Parse(FText);
   except
     // Syntaxfehler meldet der Parser.
     on EJsonTreeError do
       Exit;
   end;
   try
-    if Root.Kind <> TJsonKind.Object_ then
+    if mRoot.Kind <> TJsonKind.Object_ then
     begin
       Exit;
     end;
-    Result := Rebuild(Root, '', Changed);
-    if not Changed then
+    Result := Rebuild(mRoot, '', mChanged);
+    if not mChanged then
     begin
       Result := FText;
     end;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
@@ -288,11 +288,11 @@ end;
 
 class function TForbiddenEntries.IsPathSetting(const APath: string): Boolean;
 var
-  Item: string;
+  mItem: string;
 begin
-  for Item in PathSettings do
+  for mItem in cPathSettings do
   begin
-    if Item = APath then
+    if mItem = APath then
     begin
       Exit(True);
     end;
@@ -302,14 +302,14 @@ end;
 
 class function TForbiddenEntries.Strip(const AText: string; out AIssues: TArray<TConfigurationIssue>): string;
 var
-  Stripper: TStripper;
+  mStripper: TStripper;
 begin
-  Stripper := TStripper.Create(AText);
+  mStripper := TStripper.Create(AText);
   try
-    Result := Stripper.Run;
-    AIssues := Stripper.Issues;
+    Result := mStripper.Run;
+    AIssues := mStripper.Issues;
   finally
-    Stripper.Free;
+    mStripper.Free;
   end;
 end;
 

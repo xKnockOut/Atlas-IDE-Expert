@@ -6,7 +6,7 @@
 interface
 
 const
-  CatalogLinesEnForms: array[0..152] of string = (
+  cCatalogLinesEnForms: array[0..152] of string = (
     '{',
     '      "id": "form-field-without-object",',
     '      "name": "Form field without object",',

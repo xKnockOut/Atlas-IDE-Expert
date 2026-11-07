@@ -21,7 +21,7 @@ uses
 type
   TMcpCheckTools = class
   public const
-    MaxFindings = 200;
+    cMaxFindings = 200;
   public
     /// <summary>Befunde der Prüfregeln aus AScope und Syntaxfehler je Datei; AScope.Root für relative Pfade.
     /// </summary>
@@ -214,15 +214,15 @@ begin
       for mFinding in FileFindings(AScope, mFileName, mText, ASource, AProject) do
       begin
         Inc(mCount);
-        if mCount <= MaxFindings then
+        if mCount <= cMaxFindings then
         begin
           mLines.Add(mFileName + ':' + FindingLine(mFinding));
         end;
       end;
     end;
-    if mCount > MaxFindings then
+    if mCount > cMaxFindings then
     begin
-      mLines.Add(cTexts[TCheckToolsText.MoreFindings].Fmt([mCount - MaxFindings]));
+      mLines.Add(cTexts[TCheckToolsText.MoreFindings].Fmt([mCount - cMaxFindings]));
     end;
     mLines.Insert(0, cTexts[TCheckToolsText.FindingsInFiles].Fmt([mCount, mChecked]));
     Result := TrimRight(mLines.Text);
@@ -247,16 +247,16 @@ begin
       Continue;
     end;
     Inc(ACount);
-    if ACount <= TMcpCheckTools.MaxFindings then
+    if ACount <= TMcpCheckTools.cMaxFindings then
     begin
       Result := Result + Format('%d:%d: %s [%s] %s', [mFinding.Range.StartPos.Line + 1,
         mFinding.Range.StartPos.Character + 1, TFindingsOutput.SeverityName(mFinding.Severity), mFinding.RuleId,
         mFinding.Message]) + #10;
     end;
   end;
-  if ACount > TMcpCheckTools.MaxFindings then
+  if ACount > TMcpCheckTools.cMaxFindings then
   begin
-    Result := Result + cTexts[TCheckToolsText.MoreFindings].Fmt([ACount - TMcpCheckTools.MaxFindings]) + #10;
+    Result := Result + cTexts[TCheckToolsText.MoreFindings].Fmt([ACount - TMcpCheckTools.cMaxFindings]) + #10;
   end;
   Result := TrimRight(Result);
 end;

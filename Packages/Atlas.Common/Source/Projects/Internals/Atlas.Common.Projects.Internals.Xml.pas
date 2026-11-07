@@ -134,16 +134,16 @@ end;
 
 function TXmlElement.Attribute(const AName: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := FAttributeNames.IndexOf(AName);
-  if Index < 0 then
+  mIndex := FAttributeNames.IndexOf(AName);
+  if mIndex < 0 then
   begin
     Result := '';
   end
   else
   begin
-    Result := FAttributeValues[Index];
+    Result := FAttributeValues[mIndex];
   end;
 end;
 
@@ -154,13 +154,13 @@ end;
 
 function TXmlElement.Find(const AName: string): TXmlElement;
 var
-  Child: TXmlElement;
+  mChild: TXmlElement;
 begin
-  for Child in FChildren do
+  for mChild in FChildren do
   begin
-    if Child.Name = AName then
+    if mChild.Name = AName then
     begin
-      Exit(Child);
+      Exit(mChild);
     end;
   end;
   Result := nil;
@@ -241,30 +241,30 @@ end;
 
 procedure TParser.SkipUntil(const ATerminator: string);
 var
-  Found: Integer;
+  mFound: Integer;
 begin
-  Found := Pos(ATerminator, FText, FPos);
-  if Found = 0 then
+  mFound := Pos(ATerminator, FText, FPos);
+  if mFound = 0 then
   begin
     Fail(cTexts[TXmlText.Missing].Fmt([ATerminator]));
   end;
-  FPos := Found + Length(ATerminator);
+  FPos := mFound + Length(ATerminator);
 end;
 
 function TParser.ReadName: string;
 var
-  Start: Integer;
+  mStart: Integer;
 begin
-  Start := FPos;
+  mStart := FPos;
   while (not AtEnd) and IsNameChar(Peek) do
   begin
     Inc(FPos);
   end;
-  if FPos = Start then
+  if FPos = mStart then
   begin
     Fail(cTexts[TXmlText.NameExpected].Text);
   end;
-  Result := Copy(FText, Start, FPos - Start);
+  Result := Copy(FText, mStart, FPos - mStart);
 end;
 
 function TParser.CharReference(const AEntity: string): string;
@@ -525,13 +525,13 @@ end;
 
 class function TXmlReader.Parse(const AText: string): TXmlElement;
 var
-  Parser: TParser;
+  mParser: TParser;
 begin
-  Parser := TParser.Create(AText);
+  mParser := TParser.Create(AText);
   try
-    Result := Parser.ParseDocument;
+    Result := mParser.ParseDocument;
   finally
-    Parser.Free;
+    mParser.Free;
   end;
 end;
 

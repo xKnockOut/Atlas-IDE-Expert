@@ -72,7 +72,7 @@ type
   TSlashMenu = class
   public const
     /// <summary>Höchstzahl der Vorschläge aus dem Index beim Tippen der Argumente.</summary>
-    MaxChoices = 200;
+    cMaxChoices = 200;
   public
     /// <summary>Alle Befehle des Menüs in Menüreihenfolge.</summary>
     class function Catalog: TArray<TSlashMenuEntry>; static;
@@ -155,7 +155,7 @@ const
 
 const
   /// <summary>Häufige Symbole für /ifdef.</summary>
-  IfdefSymbols: array[0..9] of string = ('DEBUG', 'RELEASE', 'MSWINDOWS', 'WIN32', 'WIN64', 'POSIX', 'LINUX',
+  cIfdefSymbols: array[0..9] of string = ('DEBUG', 'RELEASE', 'MSWINDOWS', 'WIN32', 'WIN64', 'POSIX', 'LINUX',
     'MACOS', 'ANDROID', 'IOS');
 
 { TSlashSpot }
@@ -224,37 +224,37 @@ begin
 end;
 
 const
-  InClass = [TSlashPlace.ClassBody];
-  InRoutine = [TSlashPlace.Routine];
-  InUnit = [TSlashPlace.UnitInterface, TSlashPlace.UnitImplementation];
-  Everywhere = [TSlashPlace.Routine, TSlashPlace.ClassBody, TSlashPlace.RecordBody, TSlashPlace.InterfaceBody,
+  cInClass = [TSlashPlace.ClassBody];
+  cInRoutine = [TSlashPlace.Routine];
+  cInUnit = [TSlashPlace.UnitInterface, TSlashPlace.UnitImplementation];
+  cEverywhere = [TSlashPlace.Routine, TSlashPlace.ClassBody, TSlashPlace.RecordBody, TSlashPlace.InterfaceBody,
     TSlashPlace.UnitInterface, TSlashPlace.UnitImplementation, TSlashPlace.ProgramFile];
 
 /// <summary>Erzeugen in der Klasse (Mockup AC7).</summary>
 function ClassEntries: TArray<TSlashMenuEntry>;
 begin
   Result := [
-    MultiEntry('ctor', InClass, TSlashGroup.Generate, TSlashArgument.Optional, ', '),
-    Entry('dtor', InClass, TSlashGroup.Generate, TSlashArgument.None),
-    Entry('prop', InClass, TSlashGroup.Generate, TSlashArgument.Required),
-    ChoiceEntry('override', InClass, TSlashGroup.Generate, TSlashArgument.Required),
+    MultiEntry('ctor', cInClass, TSlashGroup.Generate, TSlashArgument.Optional, ', '),
+    Entry('dtor', cInClass, TSlashGroup.Generate, TSlashArgument.None),
+    Entry('prop', cInClass, TSlashGroup.Generate, TSlashArgument.Required),
+    ChoiceEntry('override', cInClass, TSlashGroup.Generate, TSlashArgument.Required),
     MultiEntry('equals', [TSlashPlace.ClassBody, TSlashPlace.RecordBody], TSlashGroup.Generate,
       TSlashArgument.Optional, ', '),
     // impl erst nach equals: Reihenfolge wie im Entwurf (AC7); der Server setzt „implement“ hinter override.
-    Entry('impl', InClass, TSlashGroup.Generate, TSlashArgument.None),
-    Entry('field', InClass, TSlashGroup.Generate, TSlashArgument.Required),
-    ChoiceEntry('encapsulate', InClass, TSlashGroup.Generate, TSlashArgument.Required),
-    Entry('clone', InClass, TSlashGroup.Generate, TSlashArgument.None),
-    Entry('assign', InClass, TSlashGroup.Generate, TSlashArgument.None),
-    Entry('json', InClass, TSlashGroup.Generate, TSlashArgument.None),
-    ChoiceEntry('msg', InClass, TSlashGroup.Generate, TSlashArgument.Required),
-    Entry('intf', InClass, TSlashGroup.Generate, TSlashArgument.Required),
+    Entry('impl', cInClass, TSlashGroup.Generate, TSlashArgument.None),
+    Entry('field', cInClass, TSlashGroup.Generate, TSlashArgument.Required),
+    ChoiceEntry('encapsulate', cInClass, TSlashGroup.Generate, TSlashArgument.Required),
+    Entry('clone', cInClass, TSlashGroup.Generate, TSlashArgument.None),
+    Entry('assign', cInClass, TSlashGroup.Generate, TSlashArgument.None),
+    Entry('json', cInClass, TSlashGroup.Generate, TSlashArgument.None),
+    ChoiceEntry('msg', cInClass, TSlashGroup.Generate, TSlashArgument.Required),
+    Entry('intf', cInClass, TSlashGroup.Generate, TSlashArgument.Required),
     Entry('event', [TSlashPlace.ClassBody, TSlashPlace.Routine], TSlashGroup.Generate, TSlashArgument.Required),
-    Entry('notify', InClass, TSlashGroup.Generate, TSlashArgument.Required),
-    Entry('changed', InClass, TSlashGroup.Generate, TSlashArgument.Required),
-    Entry('loaded', InClass, TSlashGroup.Generate, TSlashArgument.None),
-    Entry('notification', InClass, TSlashGroup.Generate, TSlashArgument.Optional),
-    Entry('singleton', InClass, TSlashGroup.Generate, TSlashArgument.None)];
+    Entry('notify', cInClass, TSlashGroup.Generate, TSlashArgument.Required),
+    Entry('changed', cInClass, TSlashGroup.Generate, TSlashArgument.Required),
+    Entry('loaded', cInClass, TSlashGroup.Generate, TSlashArgument.None),
+    Entry('notification', cInClass, TSlashGroup.Generate, TSlashArgument.Optional),
+    Entry('singleton', cInClass, TSlashGroup.Generate, TSlashArgument.None)];
 end;
 
 /// <summary>Erzeugen in Sammlungen, Records, Interfaces und Routinen.</summary>
@@ -264,54 +264,54 @@ begin
     Entry('list', [TSlashPlace.ClassBody, TSlashPlace.Routine], TSlashGroup.Generate, TSlashArgument.Required),
     Entry('dict', [TSlashPlace.ClassBody, TSlashPlace.Routine], TSlashGroup.Generate, TSlashArgument.Required),
     Entry('dict!', [TSlashPlace.ClassBody, TSlashPlace.Routine], TSlashGroup.Generate, TSlashArgument.Required),
-    ChoiceEntry('sort', InRoutine, TSlashGroup.Generate, TSlashArgument.Required),
-    ChoiceEntry('filter', InRoutine, TSlashGroup.Generate, TSlashArgument.Required),
+    ChoiceEntry('sort', cInRoutine, TSlashGroup.Generate, TSlashArgument.Required),
+    ChoiceEntry('filter', cInRoutine, TSlashGroup.Generate, TSlashArgument.Required),
     MultiEntry('operator', [TSlashPlace.RecordBody], TSlashGroup.Generate, TSlashArgument.Required, ' '),
     Entry('guid', [TSlashPlace.InterfaceBody], TSlashGroup.Generate, TSlashArgument.None),
-    Entry('var', InRoutine, TSlashGroup.Generate, TSlashArgument.Required),
-    Entry('const', InRoutine, TSlashGroup.Generate, TSlashArgument.Required),
+    Entry('var', cInRoutine, TSlashGroup.Generate, TSlashArgument.Required),
+    Entry('const', cInRoutine, TSlashGroup.Generate, TSlashArgument.Required),
     Entry('const!', [TSlashPlace.Routine, TSlashPlace.UnitImplementation], TSlashGroup.Generate,
       TSlashArgument.Required),
-    Entry('guard', InRoutine, TSlashGroup.Generate, TSlashArgument.Optional),
-    Entry('raise', InRoutine, TSlashGroup.Generate, TSlashArgument.Required),
-    Entry('log', InRoutine, TSlashGroup.Generate, TSlashArgument.None),
-    Entry('sql', InRoutine, TSlashGroup.Generate, TSlashArgument.Required),
-    Entry('params', InRoutine, TSlashGroup.Generate, TSlashArgument.Required),
-    Entry('case', InRoutine, TSlashGroup.Generate, TSlashArgument.None),
-    Entry('test', InRoutine, TSlashGroup.Generate, TSlashArgument.None)];
+    Entry('guard', cInRoutine, TSlashGroup.Generate, TSlashArgument.Optional),
+    Entry('raise', cInRoutine, TSlashGroup.Generate, TSlashArgument.Required),
+    Entry('log', cInRoutine, TSlashGroup.Generate, TSlashArgument.None),
+    Entry('sql', cInRoutine, TSlashGroup.Generate, TSlashArgument.Required),
+    Entry('params', cInRoutine, TSlashGroup.Generate, TSlashArgument.Required),
+    Entry('case', cInRoutine, TSlashGroup.Generate, TSlashArgument.None),
+    Entry('test', cInRoutine, TSlashGroup.Generate, TSlashArgument.None)];
 end;
 
 /// <summary>Erzeugen auf Unit-Ebene und in der Programmdatei.</summary>
 function UnitEntries: TArray<TSlashMenuEntry>;
 begin
   Result := [
-    Entry('record', InUnit, TSlashGroup.Generate, TSlashArgument.Required),
-    Entry('enum', InUnit, TSlashGroup.Generate, TSlashArgument.Required),
-    Entry('enum!', InUnit, TSlashGroup.Generate, TSlashArgument.Required),
-    Entry('helper', InUnit, TSlashGroup.Generate, TSlashArgument.Required),
-    Entry('exception', InUnit, TSlashGroup.Generate, TSlashArgument.Required),
-    Entry('thread', InUnit, TSlashGroup.Generate, TSlashArgument.Required),
-    Entry('external', InUnit, TSlashGroup.Generate, TSlashArgument.Required),
+    Entry('record', cInUnit, TSlashGroup.Generate, TSlashArgument.Required),
+    Entry('enum', cInUnit, TSlashGroup.Generate, TSlashArgument.Required),
+    Entry('enum!', cInUnit, TSlashGroup.Generate, TSlashArgument.Required),
+    Entry('helper', cInUnit, TSlashGroup.Generate, TSlashArgument.Required),
+    Entry('exception', cInUnit, TSlashGroup.Generate, TSlashArgument.Required),
+    Entry('thread', cInUnit, TSlashGroup.Generate, TSlashArgument.Required),
+    Entry('external', cInUnit, TSlashGroup.Generate, TSlashArgument.Required),
     Entry('exports', [TSlashPlace.ProgramFile], TSlashGroup.Generate, TSlashArgument.None),
-    Entry('todo', Everywhere, TSlashGroup.Generate, TSlashArgument.Required)];
+    Entry('todo', cEverywhere, TSlashGroup.Generate, TSlashArgument.Required)];
 end;
 
 /// <summary>Umschließen (#296, #304, #302, #322): nur mit Markierung im Rumpf einer Routine.</summary>
 function SurroundEntries: TArray<TSlashMenuEntry>;
 begin
   Result := [
-    Entry('try', InRoutine, TSlashGroup.Surround, TSlashArgument.None),
-    Entry('except', InRoutine, TSlashGroup.Surround, TSlashArgument.None),
-    Entry('lock', InRoutine, TSlashGroup.Surround, TSlashArgument.None),
-    Entry('sync', InRoutine, TSlashGroup.Surround, TSlashArgument.None),
-    Entry('sync!', InRoutine, TSlashGroup.Surround, TSlashArgument.None),
-    ChoiceEntry('ifdef', InRoutine, TSlashGroup.Surround, TSlashArgument.Required),
-    Entry('region', InRoutine, TSlashGroup.Surround, TSlashArgument.Required),
-    Entry('measure', InRoutine, TSlashGroup.Surround, TSlashArgument.Optional),
-    Entry('task', InRoutine, TSlashGroup.Surround, TSlashArgument.None),
-    Entry('future', InRoutine, TSlashGroup.Surround, TSlashArgument.Required),
-    Entry('loop', InRoutine, TSlashGroup.Surround, TSlashArgument.Required),
-    Entry('transaction', InRoutine, TSlashGroup.Surround, TSlashArgument.Required)];
+    Entry('try', cInRoutine, TSlashGroup.Surround, TSlashArgument.None),
+    Entry('except', cInRoutine, TSlashGroup.Surround, TSlashArgument.None),
+    Entry('lock', cInRoutine, TSlashGroup.Surround, TSlashArgument.None),
+    Entry('sync', cInRoutine, TSlashGroup.Surround, TSlashArgument.None),
+    Entry('sync!', cInRoutine, TSlashGroup.Surround, TSlashArgument.None),
+    ChoiceEntry('ifdef', cInRoutine, TSlashGroup.Surround, TSlashArgument.Required),
+    Entry('region', cInRoutine, TSlashGroup.Surround, TSlashArgument.Required),
+    Entry('measure', cInRoutine, TSlashGroup.Surround, TSlashArgument.Optional),
+    Entry('task', cInRoutine, TSlashGroup.Surround, TSlashArgument.None),
+    Entry('future', cInRoutine, TSlashGroup.Surround, TSlashArgument.Required),
+    Entry('loop', cInRoutine, TSlashGroup.Surround, TSlashArgument.Required),
+    Entry('transaction', cInRoutine, TSlashGroup.Surround, TSlashArgument.Required)];
 end;
 
 { TSlashMenu }
@@ -324,13 +324,13 @@ end;
 
 class function TSlashMenu.Find(const AName: string; out AEntry: TSlashMenuEntry): Boolean;
 var
-  Item: TSlashMenuEntry;
+  mItem: TSlashMenuEntry;
 begin
-  for Item in Catalog do
+  for mItem in Catalog do
   begin
-    if SameText(Item.Name, AName) then
+    if SameText(mItem.Name, AName) then
     begin
-      AEntry := Item;
+      AEntry := mItem;
       Exit(True);
     end;
   end;
@@ -360,14 +360,14 @@ end;
 
 class function TSlashMenu.PlaceNames(APlaces: TSlashPlaces): TArray<string>;
 var
-  Place: TSlashPlace;
+  mPlace: TSlashPlace;
 begin
   Result := nil;
-  for Place := Low(TSlashPlace) to High(TSlashPlace) do
+  for mPlace := Low(TSlashPlace) to High(TSlashPlace) do
   begin
-    if Place in APlaces then
+    if mPlace in APlaces then
     begin
-      Result := Result + [PlaceName(Place)];
+      Result := Result + [PlaceName(mPlace)];
     end;
   end;
 end;
@@ -627,10 +627,10 @@ end;
 class function TSlashMenu.Choices(const AText: string; const ASpot: TSlashSpot; const AName: string;
   const AIndex: ISymbolIndex): TArray<string>;
 var
-  Virtual: string;
-  CommandLine, WrapUntil: Integer;
-  Context: TSlashContext;
-  Symbol: string;
+  mVirtual: string;
+  mCommandLine, mWrapUntil: Integer;
+  mContext: TSlashContext;
+  mSymbol: string;
 begin
   Result := nil;
   if SameText(AName, 'msg') then
@@ -643,63 +643,63 @@ begin
   end;
   if SameText(AName, 'ifdef') then
   begin
-    for Symbol in IfdefSymbols do
+    for mSymbol in cIfdefSymbols do
     begin
-      Result := Result + [Symbol];
+      Result := Result + [mSymbol];
     end;
     Exit;
   end;
-  if not Prepare(AText, ASpot, '/' + AName, Virtual, CommandLine, WrapUntil) then
+  if not Prepare(AText, ASpot, '/' + AName, mVirtual, mCommandLine, mWrapUntil) then
   begin
     Exit;
   end;
-  Context := Default(TSlashContext);
-  Context.Text := Virtual;
-  Context.Line := CommandLine;
-  Context.Name := AName;
-  Context.Index := AIndex;
+  mContext := Default(TSlashContext);
+  mContext.Text := mVirtual;
+  mContext.Line := mCommandLine;
+  mContext.Name := AName;
+  mContext.Index := AIndex;
   if SameText(AName, 'ctor') then
   begin
-    Result := CtorFields(Context);
+    Result := CtorFields(mContext);
   end
   else if SameText(AName, 'override') then
   begin
-    Result := OverrideCandidates(Context);
+    Result := OverrideCandidates(mContext);
   end
   else if SameText(AName, 'equals') then
   begin
-    Result := EqualsFields(Context);
+    Result := EqualsFields(mContext);
   end
   else if SameText(AName, 'encapsulate') then
   begin
-    Result := EncapsulateFields(Context);
+    Result := EncapsulateFields(mContext);
   end
   else if SameText(AName, 'sort') or SameText(AName, 'filter') then
   begin
-    Result := CollectionChoices(Context, '');
+    Result := CollectionChoices(mContext, '');
   end;
 end;
 
 class function TSlashMenu.CurrentWord(const AArguments: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := Length(AArguments);
-  while (Index > 0) and not CharInSet(AArguments[Index], [' ', ',', ':', #9, '(', ';']) do
+  mIndex := Length(AArguments);
+  while (mIndex > 0) and not CharInSet(AArguments[mIndex], [' ', ',', ':', #9, '(', ';']) do
   begin
-    Dec(Index);
+    Dec(mIndex);
   end;
-  Result := Copy(AArguments, Index + 1, MaxInt);
+  Result := Copy(AArguments, mIndex + 1, MaxInt);
 end;
 
 class function TSlashMenu.ArgumentKind(const AName, AArguments: string): TSlashArgumentKind;
 var
-  Words: Integer;
-  Trimmed: string;
+  mWords: Integer;
+  mTrimmed: string;
 begin
-  Trimmed := TrimLeft(AArguments);
+  mTrimmed := TrimLeft(AArguments);
   // Fertige Wörter vor dem angefangenen.
-  Words := Length(Trim(Copy(Trimmed, 1, Length(Trimmed) - Length(CurrentWord(Trimmed)))).Split([' ', ','],
+  mWords := Length(Trim(Copy(mTrimmed, 1, Length(mTrimmed) - Length(CurrentWord(mTrimmed)))).Split([' ', ','],
     TStringSplitOptions.ExcludeEmpty));
   Result := TSlashArgumentKind.None;
   if MatchText(AName, ['sort', 'filter']) then
@@ -713,12 +713,12 @@ begin
   else if MatchText(AName, ['var', 'field', 'prop', 'list', 'future']) then
   begin
     // Erst der freie Name, hinter dem ":" der Typ.
-    if Pos(':', Trimmed) > 0 then
+    if Pos(':', mTrimmed) > 0 then
     begin
       Result := TSlashArgumentKind.Types;
     end;
   end
-  else if SameText(AName, 'helper') and (Words = 0) then
+  else if SameText(AName, 'helper') and (mWords = 0) then
   begin
     Result := TSlashArgumentKind.Types;
   end
@@ -726,7 +726,7 @@ begin
   begin
     Result := TSlashArgumentKind.Interfaces;
   end
-  else if MatchText(AName, ['raise', 'exception']) and (Words = 0) then
+  else if MatchText(AName, ['raise', 'exception']) and (mWords = 0) then
   begin
     Result := TSlashArgumentKind.Exceptions;
   end
@@ -734,7 +734,7 @@ begin
   begin
     Result := TSlashArgumentKind.Overrides;
   end
-  else if SameText(AName, 'ignore') and (Words = 0) then
+  else if SameText(AName, 'ignore') and (mWords = 0) then
   begin
     Result := TSlashArgumentKind.Rules;
   end;
@@ -793,7 +793,7 @@ begin
   end;
 end;
 
-/// <summary>ANames nach Namen sortiert, ohne doppelte, höchstens TSlashMenu.MaxChoices.</summary>
+/// <summary>ANames nach Namen sortiert, ohne doppelte, höchstens TSlashMenu.cMaxChoices.</summary>
 function SortedChoices(ANames: TList<string>): TArray<string>;
 var
   mIndex: Integer;
@@ -806,7 +806,7 @@ begin
   Result := nil;
   for mIndex := 0 to ANames.Count - 1 do
   begin
-    if Length(Result) >= TSlashMenu.MaxChoices then
+    if Length(Result) >= TSlashMenu.cMaxChoices then
     begin
       Break;
     end;
@@ -818,7 +818,7 @@ begin
 end;
 
 /// <summary>Namen aus AIndex auf Unit-Ebene zu AKind, die mit APrefix beginnen; nach Namen sortiert, ohne
-/// doppelte, höchstens TSlashMenu.MaxChoices.</summary>
+/// doppelte, höchstens TSlashMenu.cMaxChoices.</summary>
 function IndexChoices(const AIndex: ISymbolIndex; AKind: TSlashArgumentKind; const APrefix: string): TArray<string>;
 var
   mNames: TList<string>;
@@ -845,14 +845,14 @@ end;
 
 function Filtered(const AChoices: TArray<string>; const APrefix: string): TArray<string>;
 var
-  Choice: string;
+  mChoice: string;
 begin
   Result := nil;
-  for Choice in AChoices do
+  for mChoice in AChoices do
   begin
-    if StartsText(APrefix, Choice) then
+    if StartsText(APrefix, mChoice) then
     begin
-      Result := Result + [Choice];
+      Result := Result + [mChoice];
     end;
   end;
 end;
@@ -866,46 +866,46 @@ end;
 class function TSlashMenu.ArgumentChoices(const AText: string; ALine: Integer; const AName, AArguments: string;
   const AIndex: ISymbolIndex; const ARuleIds: TArray<string>): TArray<string>;
 var
-  Context: TSlashContext;
-  Space: Integer;
-  Kind: TSlashArgumentKind;
-  Prefix: string;
+  mContext: TSlashContext;
+  mSpace: Integer;
+  mKind: TSlashArgumentKind;
+  mPrefix: string;
 begin
   Result := nil;
-  Kind := ArgumentKind(AName, AArguments);
-  if Kind = TSlashArgumentKind.None then
+  mKind := ArgumentKind(AName, AArguments);
+  if mKind = TSlashArgumentKind.None then
   begin
     Exit;
   end;
-  Context := Default(TSlashContext);
-  Context.Text := AText;
-  Context.Line := ALine;
-  Context.Name := AName;
-  Context.Index := AIndex;
-  Prefix := CurrentWord(AArguments);
-  case Kind of
+  mContext := Default(TSlashContext);
+  mContext.Text := AText;
+  mContext.Line := ALine;
+  mContext.Name := AName;
+  mContext.Index := AIndex;
+  mPrefix := CurrentWord(AArguments);
+  case mKind of
     TSlashArgumentKind.Collection:
       begin
         // Erst die Sammlung, nach dem Leerzeichen die Mitglieder ihres Elementtyps.
-        Space := Pos(' ', TrimLeft(AArguments));
-        if Space = 0 then
+        mSpace := Pos(' ', TrimLeft(AArguments));
+        if mSpace = 0 then
         begin
-          Result := CollectionChoices(Context, '');
+          Result := CollectionChoices(mContext, '');
         end
         else
         begin
-          Result := CollectionChoices(Context, Copy(TrimLeft(AArguments), 1, Space - 1));
+          Result := CollectionChoices(mContext, Copy(TrimLeft(AArguments), 1, mSpace - 1));
         end;
       end;
     TSlashArgumentKind.Overrides:
-      Result := Filtered(OverrideCandidates(Context), Prefix);
+      Result := Filtered(OverrideCandidates(mContext), mPrefix);
     TSlashArgumentKind.Rules:
       begin
-        Result := Filtered(ARuleIds, Prefix);
+        Result := Filtered(ARuleIds, mPrefix);
         TArray.Sort<string>(Result);
       end;
   else
-    Result := IndexChoices(AIndex, Kind, Prefix);
+    Result := IndexChoices(AIndex, mKind, mPrefix);
   end;
 end;
 

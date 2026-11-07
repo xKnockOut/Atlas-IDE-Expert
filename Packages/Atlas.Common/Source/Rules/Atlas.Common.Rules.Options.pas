@@ -31,27 +31,27 @@ uses
 
 function Member(const AOptions, AName: string): TJSONValue;
 var
-  Value: TJSONValue;
-  Pair: TJSONPair;
+  mValue: TJSONValue;
+  mPair: TJSONPair;
 begin
   Result := nil;
   if Trim(AOptions) = '' then
   begin
     Exit;
   end;
-  Value := TJSONObject.ParseJSONValue(AOptions);
+  mValue := TJSONObject.ParseJSONValue(AOptions);
   try
-    if not (Value is TJSONObject) then
+    if not (mValue is TJSONObject) then
     begin
       Exit;
     end;
-    Pair := TJSONObject(Value).Get(AName);
-    if Pair <> nil then
+    mPair := TJSONObject(mValue).Get(AName);
+    if mPair <> nil then
     begin
-      Result := Pair.JsonValue.Clone as TJSONValue;
+      Result := mPair.JsonValue.Clone as TJSONValue;
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
@@ -59,97 +59,97 @@ end;
 
 class function TRuleOptions.Bool(const AOptions, AName: string; ADefault: Boolean): Boolean;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := ADefault;
-  Value := Member(AOptions, AName);
+  mValue := Member(AOptions, AName);
   try
-    if Value is TJSONBool then
+    if mValue is TJSONBool then
     begin
-      Result := TJSONBool(Value).AsBoolean;
+      Result := TJSONBool(mValue).AsBoolean;
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 class function TRuleOptions.Int(const AOptions, AName: string; ADefault: Integer): Integer;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := ADefault;
-  Value := Member(AOptions, AName);
+  mValue := Member(AOptions, AName);
   try
-    if (Value is TJSONNumber) and not TryStrToInt(Value.Value, Result) then
+    if (mValue is TJSONNumber) and not TryStrToInt(mValue.Value, Result) then
     begin
       Result := ADefault;
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 class function TRuleOptions.Strings(const AOptions, AName: string; const ADefault: TArray<string>): TArray<string>;
 var
-  Value, Item: TJSONValue;
+  mValue, mItem: TJSONValue;
 begin
   Result := ADefault;
-  Value := Member(AOptions, AName);
+  mValue := Member(AOptions, AName);
   try
-    if Value is TJSONArray then
+    if mValue is TJSONArray then
     begin
       Result := nil;
-      for Item in TJSONArray(Value) do
+      for mItem in TJSONArray(mValue) do
       begin
         // TJSONNumber erbt von TJSONString: Zahlen gehören nicht in eine Textliste.
-        if (Item is TJSONString) and not (Item is TJSONNumber) then
+        if (mItem is TJSONString) and not (mItem is TJSONNumber) then
         begin
-          Result := Result + [Item.Value];
+          Result := Result + [mItem.Value];
         end;
       end;
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 class function TRuleOptions.Numbers(const AOptions, AName: string; const ADefault: TArray<Double>): TArray<Double>;
 var
-  Value, Item: TJSONValue;
+  mValue, mItem: TJSONValue;
 begin
   Result := ADefault;
-  Value := Member(AOptions, AName);
+  mValue := Member(AOptions, AName);
   try
-    if Value is TJSONArray then
+    if mValue is TJSONArray then
     begin
       Result := nil;
-      for Item in TJSONArray(Value) do
+      for mItem in TJSONArray(mValue) do
       begin
-        if Item is TJSONNumber then
+        if mItem is TJSONNumber then
         begin
-          Result := Result + [TJSONNumber(Item).AsDouble];
+          Result := Result + [TJSONNumber(mItem).AsDouble];
         end;
       end;
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 class function TRuleOptions.Text(const AOptions, AName, ADefault: string): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := ADefault;
-  Value := Member(AOptions, AName);
+  mValue := Member(AOptions, AName);
   try
     // TJSONNumber erbt von TJSONString.
-    if (Value is TJSONString) and not (Value is TJSONNumber) and (Trim(Value.Value) <> '') then
+    if (mValue is TJSONString) and not (mValue is TJSONNumber) and (Trim(mValue.Value) <> '') then
     begin
-      Result := Trim(Value.Value);
+      Result := Trim(mValue.Value);
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 

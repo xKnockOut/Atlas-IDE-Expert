@@ -6,7 +6,7 @@
 interface
 
 const
-  CatalogLinesEnComponents: array[0..79] of string = (
+  cCatalogLinesEnComponents: array[0..79] of string = (
     '{',
     '      "id": "component-create-without-override",',
     '      "name": "Component constructor without override",',

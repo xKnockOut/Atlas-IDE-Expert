@@ -290,16 +290,16 @@ end;
 class function TLspRefactorings.WithLookup(AResolver: TNameResolver; ATree: TSyntaxTree;
   const AFileName: string): TWithOwnerLookup;
 var
-  FileName: string;
+  mFileName: string;
 begin
-  FileName := AFileName;
+  mFileName := AFileName;
   Result :=
     function(AWith, AIdentifier: TSyntaxNode; out AElement: Integer): TWithOwner
     var
       mWith: TResolvedWithMember;
     begin
       AElement := -1;
-      if AResolver.Queries.WithMember(ATree, FileName, AIdentifier.Name, AIdentifier.StartOffset, mWith) then
+      if AResolver.Queries.WithMember(ATree, mFileName, AIdentifier.Name, AIdentifier.StartOffset, mWith) then
       begin
         AElement := mWith.Element;
         if mWith.Statement = AWith then
@@ -337,44 +337,44 @@ end;
 class function TLspRefactorings.CaseAction(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
   const APosition: TTextPosition; const AContext: TRefactoringContext; out AAction: TCodeAction): Boolean;
 var
-  CaseNode: TSyntaxNode;
-  OfPos: TTextPosition;
-  Values: TArray<string>;
-  Prefix: string;
-  Completion: TCaseCompletionEdits;
+  mCaseNode: TSyntaxNode;
+  mOfPos: TTextPosition;
+  mValues: TArray<string>;
+  mPrefix: string;
+  mCompletion: TCaseCompletionEdits;
 begin
   AAction := Default(TCodeAction);
   Result := False;
-  CaseNode := TCaseCompletion.CaseAt(ATree, APosition);
-  if (CaseNode = nil) or not TCaseCompletion.OfPosition(ATree, CaseNode, OfPos) or
-    not TCompletionValues.CaseValues(CaseLookup(AResolver, AContext, ATree, AText), OfPos, Values, Prefix) or
-    not TCaseCompletion.Complete(AText, ATree, CaseNode, Values, Prefix, Completion) then
+  mCaseNode := TCaseCompletion.CaseAt(ATree, APosition);
+  if (mCaseNode = nil) or not TCaseCompletion.OfPosition(ATree, mCaseNode, mOfPos) or
+    not TCompletionValues.CaseValues(CaseLookup(AResolver, AContext, ATree, AText), mOfPos, mValues, mPrefix) or
+    not TCaseCompletion.Complete(AText, ATree, mCaseNode, mValues, mPrefix, mCompletion) then
   begin
     Exit;
   end;
-  if Completion.HasElse then
+  if mCompletion.HasElse then
   begin
     AAction.Title := cTexts[TRefactoringsText.AddMissingValuesBeforeElse].Text;
   end
   else
   begin
-    AAction.Title := cTexts[TRefactoringsText.CompleteCaseMissingValues].Fmt([Completion.Count]);
+    AAction.Title := cTexts[TRefactoringsText.CompleteCaseMissingValues].Fmt([mCompletion.Count]);
     AAction.IsPreferred := True;
   end;
-  AAction.Kind := RewriteKind;
-  AAction.Tag := CaseCompleteTag;
-  AAction.Edits := Completion.Edits;
+  AAction.Kind := cRewriteKind;
+  AAction.Tag := cCaseCompleteTag;
+  AAction.Edits := mCompletion.Edits;
   Result := True;
 end;
 
 class function TLspRefactorings.WithAction(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
   const APosition: TTextPosition; const AContext: TRefactoringContext; out AAction: TCodeAction): Boolean;
 var
-  WithNode: TSyntaxNode;
+  mWithNode: TSyntaxNode;
 begin
   AAction := Default(TCodeAction);
-  WithNode := TWithResolution.WithAt(ATree, APosition);
-  Result := (WithNode <> nil) and TWithResolution.Resolve(AText, ATree, WithNode,
+  mWithNode := TWithResolution.WithAt(ATree, APosition);
+  Result := (mWithNode <> nil) and TWithResolution.Resolve(AText, ATree, mWithNode,
     WithLookup(AResolver, ATree, AContext.FileName), OptionsOf(AContext), AAction);
 end;
 
@@ -430,7 +430,7 @@ begin
   // "var AtlasProbe := Ausdruck; " direkt vor der Anweisung, damit dieselben Namen sichtbar sind.
   mOffset := FTokens[FSite.StatementStart].Offset;
   mPos := FTokens[FSite.StatementStart].StartPos;
-  Result := FProbe(Copy(FText, 1, mOffset) + 'var ' + TExtractRefactoring.ProbeName + ' := ' + AExpression + '; ' +
+  Result := FProbe(Copy(FText, 1, mOffset) + 'var ' + TExtractRefactoring.cProbeName + ' := ' + AExpression + '; ' +
     Copy(FText, mOffset + 1, MaxInt), TTextPosition.Create(mPos.Line, mPos.Character + 4));
 end;
 
@@ -458,7 +458,7 @@ begin
   end;
   if Result.TypeName = '' then
   begin
-    Result.TypeName := TCreateMethod.TypePlaceholder;
+    Result.TypeName := TCreateMethod.cTypePlaceholder;
   end;
   Result.IsConst := FContext.Settings.ConstParameters and TCreateMethod.WantsConst(Result.TypeName,
     mProbed.IsRecord, mProbed.IsInterface);
@@ -506,7 +506,7 @@ begin
     end;
     if Result = '' then
     begin
-      Result := TCreateMethod.TypePlaceholder;
+      Result := TCreateMethod.cTypePlaceholder;
     end;
   end;
 end;
@@ -730,30 +730,30 @@ end;
 /// <summary>Passt der Rumpf ARoutine zu ACount Argumenten (Pflichtparameter bis alle Parameter)?</summary>
 function AcceptsArguments(ARoutine: TSyntaxNode; ACount: Integer): Boolean;
 var
-  Header, Parameters: TSyntaxNode;
-  Index, Total, Required, Names: Integer;
+  mHeader, mParameters: TSyntaxNode;
+  mIndex, mTotal, mRequired, mNames: Integer;
 begin
-  Total := 0;
-  Required := 0;
-  Header := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
-  Parameters := nil;
-  if Header <> nil then
+  mTotal := 0;
+  mRequired := 0;
+  mHeader := ARoutine.FindChild(TSyntaxKind.RoutineHeader);
+  mParameters := nil;
+  if mHeader <> nil then
   begin
-    Parameters := Header.FindChild(TSyntaxKind.Parameters);
+    mParameters := mHeader.FindChild(TSyntaxKind.Parameters);
   end;
-  if Parameters <> nil then
+  if mParameters <> nil then
   begin
-    for Index := 0 to Parameters.ChildCount - 1 do
+    for mIndex := 0 to mParameters.ChildCount - 1 do
     begin
-      Names := Length(Parameters[Index].Name.Split([',']));
-      Inc(Total, Names);
-      if Parameters[Index].ChildCount < 2 then
+      mNames := Length(mParameters[mIndex].Name.Split([',']));
+      Inc(mTotal, mNames);
+      if mParameters[mIndex].ChildCount < 2 then
       begin
-        Inc(Required, Names);
+        Inc(mRequired, mNames);
       end;
     end;
   end;
-  Result := (ACount >= Required) and (ACount <= Total);
+  Result := (ACount >= mRequired) and (ACount <= mTotal);
 end;
 
 /// <summary>Gerufene Routine an ACall, wenn sie zum Projekt gehört; AName mit Klasse davor.</summary>
@@ -857,30 +857,30 @@ end;
 class function TLspRefactorings.IfCaseActions(AResolver: TNameResolver; ATree: TSyntaxTree; const AText: string;
   const APosition: TTextPosition; const AContext: TRefactoringContext): TArray<TCodeAction>;
 var
-  Lookup: TIfCaseLookup;
-  Layout: TStatementLayout;
-  Conversion: TIfCaseConversion;
+  mLookup: TIfCaseLookup;
+  mLayout: TStatementLayout;
+  mConversion: TIfCaseConversion;
 
   procedure Add;
   var
-    Action: TCodeAction;
+    mAction: TCodeAction;
   begin
-    Action := Default(TCodeAction);
-    Action.Title := Conversion.Title;
-    Action.Kind := RewriteKind;
-    Action.Edits := [Conversion.Edit];
-    Result := Result + [Action];
+    mAction := Default(TCodeAction);
+    mAction.Title := mConversion.Title;
+    mAction.Kind := cRewriteKind;
+    mAction.Edits := [mConversion.Edit];
+    Result := Result + [mAction];
   end;
 
 begin
   Result := nil;
-  Lookup := TIfCaseLookup.FromResolver(AResolver, ATree, AContext.FileName);
-  Layout := TStatementLayout.Create('', TRoutineBody.IndentUnit(AContext.Style), TTextLines.LineBreakOf(AText));
-  if TIfCase.ToCase(AText, ATree, APosition, Lookup, Layout, Conversion) then
+  mLookup := TIfCaseLookup.FromResolver(AResolver, ATree, AContext.FileName);
+  mLayout := TStatementLayout.Create('', TRoutineBody.IndentUnit(AContext.Style), TTextLines.LineBreakOf(AText));
+  if TIfCase.ToCase(AText, ATree, APosition, mLookup, mLayout, mConversion) then
   begin
     Add;
   end;
-  if TIfCase.ToIf(AText, ATree, APosition, Lookup, Layout, Conversion) then
+  if TIfCase.ToIf(AText, ATree, APosition, mLookup, mLayout, mConversion) then
   begin
     Add;
   end;
@@ -889,54 +889,54 @@ end;
 class function TLspRefactorings.ConditionActions(ATree: TSyntaxTree; const AText: string;
   const APosition: TTextPosition; const AContext: TRefactoringContext): TArray<TCodeAction>;
 var
-  Rewrite: TStatementRewrite;
-  Action: TCodeAction;
+  mRewrite: TStatementRewrite;
+  mAction: TCodeAction;
 begin
   Result := nil;
-  for Rewrite in TConditions.Actions(AText, ATree, APosition, TStatementLayout.Create('',
+  for mRewrite in TConditions.Actions(AText, ATree, APosition, TStatementLayout.Create('',
     TRoutineBody.IndentUnit(AContext.Style), TTextLines.LineBreakOf(AText))) do
   begin
-    Action := Default(TCodeAction);
-    Action.Title := Rewrite.Title;
-    Action.Kind := RewriteKind;
-    Action.Edits := [Rewrite.Edit];
-    Result := Result + [Action];
+    mAction := Default(TCodeAction);
+    mAction.Title := mRewrite.Title;
+    mAction.Kind := cRewriteKind;
+    mAction.Edits := [mRewrite.Edit];
+    Result := Result + [mAction];
   end;
 end;
 
 class function TLspRefactorings.ConditionalExpressionActions(AResolver: TNameResolver; ATree: TSyntaxTree;
   const AText: string; const APosition: TTextPosition; const AContext: TRefactoringContext): TArray<TCodeAction>;
 var
-  Lookup: TConditionalLookup;
-  Rewrite: TStatementRewrite;
+  mLookup: TConditionalLookup;
+  mRewrite: TStatementRewrite;
 
   procedure Add;
   var
-    Action: TCodeAction;
+    mAction: TCodeAction;
   begin
-    Action := Default(TCodeAction);
-    Action.Title := Rewrite.Title;
-    Action.Kind := RewriteKind;
-    Action.Edits := [Rewrite.Edit];
-    Result := Result + [Action];
+    mAction := Default(TCodeAction);
+    mAction.Title := mRewrite.Title;
+    mAction.Kind := cRewriteKind;
+    mAction.Edits := [mRewrite.Edit];
+    Result := Result + [mAction];
   end;
 
 begin
   Result := nil;
-  Lookup := TConditionalLookup.FromResolver(AResolver, ATree, AContext.FileName);
+  mLookup := TConditionalLookup.FromResolver(AResolver, ATree, AContext.FileName);
   if AContext.IfExpression then
   begin
-    if TConditionalExpression.ToExpression(AText, ATree, APosition, Lookup, Rewrite) then
+    if TConditionalExpression.ToExpression(AText, ATree, APosition, mLookup, mRewrite) then
     begin
       Add;
     end;
-    if TConditionalExpression.ReplaceIfThen(AText, ATree, APosition, Lookup, Rewrite) then
+    if TConditionalExpression.ReplaceIfThen(AText, ATree, APosition, mLookup, mRewrite) then
     begin
       Add;
     end;
   end;
   if TConditionalExpression.ToStatement(AText, ATree, APosition, TStatementLayout.Create('',
-    TRoutineBody.IndentUnit(AContext.Style), TTextLines.LineBreakOf(AText)), Rewrite) then
+    TRoutineBody.IndentUnit(AContext.Style), TTextLines.LineBreakOf(AText)), mRewrite) then
   begin
     Add;
   end;
@@ -964,7 +964,7 @@ function CreatedAction(const ACreated: TCreatedMethod): TCodeAction;
 begin
   Result := Default(TCodeAction);
   Result.Title := ACreated.Title;
-  Result.Kind := QuickFixKind;
+  Result.Kind := cQuickFixKind;
   Result.Edits := ACreated.Edits;
   Result.FileEdits := ACreated.FileEdits;
 end;

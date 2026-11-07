@@ -83,14 +83,14 @@ type
 
   TUnitSearch = class
   public const
-    UnitsCommand = 'atlas.server.units';
-    PreviewCommand = 'atlas.server.unitPreview';
-    AddUsesCommand = 'atlas.server.addUses';
+    cUnitsCommand = 'atlas.server.units';
+    cPreviewCommand = 'atlas.server.unitPreview';
+    cAddUsesCommand = 'atlas.server.addUses';
     /// <summary>Höchstzahl der Komponenten in der Skizze.</summary>
-    MaxSketchItems = 200;
-    MaxHeaderLines = 12;
-    MaxTypes = 40;
-    MaxUsedBy = 12;
+    cMaxSketchItems = 200;
+    cMaxHeaderLines = 12;
+    cMaxTypes = 40;
+    cMaxUsedBy = 12;
   private type
     TCaptionEntry = record
       Modified: TDateTime;
@@ -165,7 +165,7 @@ uses
   Atlas.Text.Lines;
 
 const
-  TypeKinds: set of TIndexSymbolKind = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType,
+  cTypeKinds: set of TIndexSymbolKind = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType,
     TIndexSymbolKind.RecordType, TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType,
     TIndexSymbolKind.EnumType, TIndexSymbolKind.TypeAlias];
 
@@ -185,18 +185,18 @@ end;
 
 function HasUses(const AUnit: TUnitIndex; const AName: string): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
-  for Name in AUnit.InterfaceUses do
+  for mName in AUnit.InterfaceUses do
   begin
-    if SameText(Name, AName) then
+    if SameText(mName, AName) then
     begin
       Exit(True);
     end;
   end;
-  for Name in AUnit.ImplementationUses do
+  for mName in AUnit.ImplementationUses do
   begin
-    if SameText(Name, AName) then
+    if SameText(mName, AName) then
     begin
       Exit(True);
     end;
@@ -329,41 +329,41 @@ end;
 
 function TUnitSearch.CachedCaption(const AContext: TUnitSearchContext; const AFormFile: string): string;
 var
-  Key: string;
-  Modified: TDateTime;
-  Entry: TCaptionEntry;
+  mKey: string;
+  mModified: TDateTime;
+  mEntry: TCaptionEntry;
 begin
   Result := '';
   if (AFormFile = '') or not Assigned(AContext.ReadText) then
   begin
     Exit;
   end;
-  Key := UpperCase(AFormFile);
-  Modified := 0;
+  mKey := UpperCase(AFormFile);
+  mModified := 0;
   if Assigned(AContext.Modified) then
   begin
-    Modified := AContext.Modified(AFormFile);
+    mModified := AContext.Modified(AFormFile);
   end;
   System.TMonitor.Enter(FCaptions);
   try
-    if (Modified <> 0) and FCaptions.TryGetValue(Key, Entry) and (Entry.Modified = Modified) then
+    if (mModified <> 0) and FCaptions.TryGetValue(mKey, mEntry) and (mEntry.Modified = mModified) then
     begin
-      Exit(Entry.Caption);
+      Exit(mEntry.Caption);
     end;
   finally
     System.TMonitor.Exit(FCaptions);
   end;
   Result := FormCaption(AContext.ReadText(AFormFile));
   // Ohne bekannten Zeitpunkt nicht merken: Die Datei könnte sich unbemerkt ändern.
-  if Modified = 0 then
+  if mModified = 0 then
   begin
     Exit;
   end;
-  Entry.Modified := Modified;
-  Entry.Caption := Result;
+  mEntry.Modified := mModified;
+  mEntry.Caption := Result;
   System.TMonitor.Enter(FCaptions);
   try
-    FCaptions.AddOrSetValue(Key, Entry);
+    FCaptions.AddOrSetValue(mKey, mEntry);
   finally
     System.TMonitor.Exit(FCaptions);
   end;
@@ -465,18 +465,18 @@ end;
 
 class function TUnitSearch.FormFileOf(const AFileName: string; const AExists: TFunc<string, Boolean>): string;
 var
-  Extension: string;
+  mExtension: string;
 begin
   Result := '';
   if not Assigned(AExists) then
   begin
     Exit;
   end;
-  for Extension in TArray<string>.Create('.dfm', '.fmx') do
+  for mExtension in TArray<string>.Create('.dfm', '.fmx') do
   begin
-    if AExists(ChangeFileExt(AFileName, Extension)) then
+    if AExists(ChangeFileExt(AFileName, mExtension)) then
     begin
-      Exit(ChangeFileExt(AFileName, Extension));
+      Exit(ChangeFileExt(AFileName, mExtension));
     end;
   end;
 end;
@@ -621,21 +621,21 @@ begin
       // Schalter, Trennlinien und Leerzeilen vor dem ersten Kommentar entfallen.
     end;
   end;
-  Result := JoinHeader(mOutput, MaxHeaderLines);
+  Result := JoinHeader(mOutput, cMaxHeaderLines);
 end;
 
 class function TUnitSearch.LineCount(const AText: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if AText = '' then
   begin
     Exit(0);
   end;
   Result := 1;
-  for Index := 1 to Length(AText) do
+  for mIndex := 1 to Length(AText) do
   begin
-    if AText[Index] = #10 then
+    if AText[mIndex] = #10 then
     begin
       Inc(Result);
     end;
@@ -703,13 +703,13 @@ end;
 
 function PropertyValue(AObject: TDfmObject; const AName: string; out AValue: string): Boolean;
 var
-  Item: TDfmProperty;
+  mItem: TDfmProperty;
 begin
-  for Item in AObject.Properties do
+  for mItem in AObject.Properties do
   begin
-    if SameText(Item.Name, AName) then
+    if SameText(mItem.Name, AName) then
     begin
-      AValue := Item.Value;
+      AValue := mItem.Value;
       Exit(True);
     end;
   end;
@@ -719,9 +719,9 @@ end;
 
 function IntValue(AObject: TDfmObject; const AName: string; ADefault: Integer): Integer;
 var
-  Value: string;
+  mValue: string;
 begin
-  if not PropertyValue(AObject, AName, Value) or not TryStrToInt(Trim(Value), Result) then
+  if not PropertyValue(AObject, AName, mValue) or not TryStrToInt(Trim(mValue), Result) then
   begin
     Result := ADefault;
   end;
@@ -830,7 +830,7 @@ begin
   mRest := AClient;
   for mChild in AParent.Children do
   begin
-    if Length(AItems) >= TUnitSearch.MaxSketchItems then
+    if Length(AItems) >= TUnitSearch.cMaxSketchItems then
     begin
       Exit;
     end;
@@ -857,66 +857,66 @@ end;
 
 class function TUnitSearch.Sketch(const AFormText: string): TUnitSketch;
 var
-  Model: TFormModel;
-  Root: TDfmObject;
+  mModel: TFormModel;
+  mRoot: TDfmObject;
 begin
   Result := Default(TUnitSketch);
   if AFormText = '' then
   begin
     Exit;
   end;
-  Model := TFormModel.Create(AFormText);
+  mModel := TFormModel.Create(AFormText);
   try
-    Root := Model.Document.Root;
-    if Root = nil then
+    mRoot := mModel.Document.Root;
+    if mRoot = nil then
     begin
       Exit;
     end;
-    Result.FormClass := Root.TypeName;
-    Result.Caption := TextValue(Root, 'Caption');
-    Result.Width := IntValue(Root, 'ClientWidth', IntValue(Root, 'Width', 640));
-    Result.Height := IntValue(Root, 'ClientHeight', IntValue(Root, 'Height', 480));
-    AddChildren(Root, Box(0, 0, Result.Width, Result.Height), 1, Result.Items);
+    Result.FormClass := mRoot.TypeName;
+    Result.Caption := TextValue(mRoot, 'Caption');
+    Result.Width := IntValue(mRoot, 'ClientWidth', IntValue(mRoot, 'Width', 640));
+    Result.Height := IntValue(mRoot, 'ClientHeight', IntValue(mRoot, 'Height', 480));
+    AddChildren(mRoot, Box(0, 0, Result.Width, Result.Height), 1, Result.Items);
   finally
-    Model.Free;
+    mModel.Free;
   end;
 end;
 
 class function TUnitSearch.UsedBy(const AUnits: TArray<TUnitIndex>; const AUnitName: string): TArray<string>;
 var
-  Item: TUnitIndex;
-  Names: TList<string>;
+  mItem: TUnitIndex;
+  mNames: TList<string>;
 begin
-  Names := TList<string>.Create;
+  mNames := TList<string>.Create;
   try
-    for Item in AUnits do
+    for mItem in AUnits do
     begin
-      if not Item.Library_ and not SameText(Item.UnitName, AUnitName) and HasUses(Item, AUnitName) and
-        not Names.Contains(Item.UnitName) then
+      if not mItem.Library_ and not SameText(mItem.UnitName, AUnitName) and HasUses(mItem, AUnitName) and
+        not mNames.Contains(mItem.UnitName) then
       begin
-        Names.Add(Item.UnitName);
+        mNames.Add(mItem.UnitName);
       end;
     end;
-    Names.Sort(TComparer<string>.Construct(
+    mNames.Sort(TComparer<string>.Construct(
       function(const A, B: string): Integer
       begin
         Result := CompareText(A, B);
       end));
-    Result := Names.ToArray;
+    Result := mNames.ToArray;
   finally
-    Names.Free;
+    mNames.Free;
   end;
 end;
 
 function TUnitSearch.CaptionsFor(const AContext: TUnitSearchContext): TFunc<string, string>;
 var
-  Context: TUnitSearchContext;
+  mContext: TUnitSearchContext;
 begin
-  Context := AContext;
+  mContext := AContext;
   Result :=
     function(AFormFile: string): string
     begin
-      Result := CachedCaption(Context, AFormFile);
+      Result := CachedCaption(mContext, AFormFile);
     end;
 end;
 
@@ -1234,7 +1234,7 @@ begin
   AResult.AddPair('git', mState);
 end;
 
-/// <summary>Typen im interface, höchstens TUnitSearch.MaxTypes; ACount: alle.</summary>
+/// <summary>Typen im interface, höchstens TUnitSearch.cMaxTypes; ACount: alle.</summary>
 function TypesJson(const AUnit: TUnitIndex; out ACount: Integer): TJSONArray;
 var
   mSymbol: TIndexSymbol;
@@ -1244,12 +1244,12 @@ begin
   ACount := 0;
   for mSymbol in AUnit.Symbols do
   begin
-    if not mSymbol.InInterface or (mSymbol.Container <> '') or not (mSymbol.Kind in TypeKinds) then
+    if not mSymbol.InInterface or (mSymbol.Container <> '') or not (mSymbol.Kind in cTypeKinds) then
     begin
       Continue;
     end;
     Inc(ACount);
-    if Result.Count < TUnitSearch.MaxTypes then
+    if Result.Count < TUnitSearch.cMaxTypes then
     begin
       mEntry := TJSONObject.Create;
       mEntry.AddPair('name', mSymbol.Name);
@@ -1291,7 +1291,7 @@ begin
   mUsed := TJSONArray.Create;
   for mName in mNames do
   begin
-    if mUsed.Count < TUnitSearch.MaxUsedBy then
+    if mUsed.Count < TUnitSearch.cMaxUsedBy then
     begin
       mUsed.Add(mName);
     end;
@@ -1364,48 +1364,48 @@ end;
 
 function TUnitSearch.ExecuteUnits(const AArguments: TJSONArray): TJSONValue;
 var
-  Context: TUnitSearchContext;
-  WithCaptions: Boolean;
+  mContext: TUnitSearchContext;
+  mWithCaptions: Boolean;
 begin
-  WithCaptions := False;
+  mWithCaptions := False;
   if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONObject) then
   begin
-    TJSONObject(AArguments.Items[0]).TryGetValue<Boolean>('captions', WithCaptions);
+    TJSONObject(AArguments.Items[0]).TryGetValue<Boolean>('captions', mWithCaptions);
   end;
-  if not FContextFor(Context) then
+  if not FContextFor(mContext) then
   begin
     Exit(TJSONNull.Create);
   end;
-  if not WithCaptions then
+  if not mWithCaptions then
   begin
-    Exit(UnitsJson(Context));
+    Exit(UnitsJson(mContext));
   end;
-  Result := UnitsJson(Context, CaptionsFor(Context));
+  Result := UnitsJson(mContext, CaptionsFor(mContext));
 end;
 
 function TUnitSearch.ExecutePreview(const AArguments: TJSONArray): TJSONValue;
 var
-  Context: TUnitSearchContext;
-  WithForm, WithUsedBy: Boolean;
-  Options: TJSONObject;
+  mContext: TUnitSearchContext;
+  mWithForm, mWithUsedBy: Boolean;
+  mOptions: TJSONObject;
 begin
   if (AArguments = nil) or (AArguments.Count = 0) or not (AArguments.Items[0] is TJSONString) then
   begin
     Exit(TJSONNull.Create);
   end;
-  WithForm := True;
-  WithUsedBy := True;
+  mWithForm := True;
+  mWithUsedBy := True;
   if (AArguments.Count > 1) and (AArguments.Items[1] is TJSONObject) then
   begin
-    Options := TJSONObject(AArguments.Items[1]);
-    Options.TryGetValue<Boolean>('form', WithForm);
-    Options.TryGetValue<Boolean>('usedBy', WithUsedBy);
+    mOptions := TJSONObject(AArguments.Items[1]);
+    mOptions.TryGetValue<Boolean>('form', mWithForm);
+    mOptions.TryGetValue<Boolean>('usedBy', mWithUsedBy);
   end;
-  if not FContextFor(Context) then
+  if not FContextFor(mContext) then
   begin
     Exit(TJSONNull.Create);
   end;
-  Result := PreviewJson(Context, TDocumentUris.ToPath(AArguments.Items[0].Value), WithForm, WithUsedBy);
+  Result := PreviewJson(mContext, TDocumentUris.ToPath(AArguments.Items[0].Value), mWithForm, mWithUsedBy);
 end;
 
 class function TUnitSearch.AddUsesJson(const AUri, AText: string; const AUnits: TArray<string>;
@@ -1417,42 +1417,43 @@ end;
 class function TUnitSearch.AddUsesJson(const AUri, AText: string; const AUnits: TArray<string>;
   const AUses: TUsesContext; ATarget: TUsesAddTarget): TJSONObject;
 var
-  Edits: TArray<TRuleEdit>;
-  Edit: TRuleEdit;
-  Added: TArray<string>;
-  Name, LineBreak: string;
-  Changes, WorkspaceEdit, Item: TJSONObject;
-  List, AddedList: TJSONArray;
+  mEdits: TArray<TRuleEdit>;
+  mEdit: TRuleEdit;
+  mAdded: TArray<string>;
+  mName, mLineBreak: string;
+  mChanges, mWorkspaceEdit, mItem: TJSONObject;
+  mList, mAddedList: TJSONArray;
 begin
   Result := TJSONObject.Create;
-  LineBreak := TTextLines.LineBreakOf(AText);
-  AddedList := TJSONArray.Create;
+  mLineBreak := TTextLines.LineBreakOf(AText);
+  mAddedList := TJSONArray.Create;
   if (AText <> '') and TUsesActions.AddUnits(TPascalLexer.Tokenize(AText),
-    TUsesAddRequest.Create(AUnits, AUses.Declaring, AUses.Namespaces, LineBreak).WithTarget(ATarget), Edits, Added) then
+    TUsesAddRequest.Create(AUnits, AUses.Declaring, AUses.Namespaces, mLineBreak).WithTarget(ATarget), mEdits,
+      mAdded) then
   begin
-    List := TJSONArray.Create;
-    for Edit in Edits do
+    mList := TJSONArray.Create;
+    for mEdit in mEdits do
     begin
-      Item := TJSONObject.Create;
-      Item.AddPair('range', TLspPositions.RangeToJson(Edit.Range));
-      Item.AddPair('newText', Edit.NewText);
-      List.Add(Item);
+      mItem := TJSONObject.Create;
+      mItem.AddPair('range', TLspPositions.RangeToJson(mEdit.Range));
+      mItem.AddPair('newText', mEdit.NewText);
+      mList.Add(mItem);
     end;
-    Changes := TJSONObject.Create;
-    Changes.AddPair(AUri, List);
-    WorkspaceEdit := TJSONObject.Create;
-    WorkspaceEdit.AddPair('changes', Changes);
-    Result.AddPair('edit', WorkspaceEdit);
-    for Name in Added do
+    mChanges := TJSONObject.Create;
+    mChanges.AddPair(AUri, mList);
+    mWorkspaceEdit := TJSONObject.Create;
+    mWorkspaceEdit.AddPair('changes', mChanges);
+    Result.AddPair('edit', mWorkspaceEdit);
+    for mName in mAdded do
     begin
-      AddedList.Add(Name);
+      mAddedList.Add(mName);
     end;
   end
   else
   begin
     Result.AddPair('edit', TJSONNull.Create);
   end;
-  Result.AddPair('added', AddedList);
+  Result.AddPair('added', mAddedList);
 end;
 
 /// <summary>Namen aus dem Array, nur Zeichenketten.</summary>

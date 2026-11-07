@@ -116,7 +116,7 @@ begin
     Progress.Report('A.pas', 10);
     Assert.AreEqual(2, Integer(Transport.Messages.Count));
     Assert.AreEqual(10, Progress.Percent);
-    Sleep(TLspWorkDoneProgress.MinReportIntervalMs + 50);
+    Sleep(TLspWorkDoneProgress.cMinReportIntervalMs + 50);
     Progress.Report('B.pas', 20);
     Assert.AreEqual(3, Integer(Transport.Messages.Count));
     Assert.Contains(Transport.Messages[2], '"kind":"report"');
@@ -143,7 +143,7 @@ begin
   try
     Progress.Start('Titel');
     Progress.Report('', 40);
-    Sleep(TLspWorkDoneProgress.MinReportIntervalMs + 50);
+    Sleep(TLspWorkDoneProgress.cMinReportIntervalMs + 50);
     Progress.Report('ohne Zahl', -1);
     Assert.AreEqual(3, Integer(Transport.Messages.Count));
     Assert.IsFalse(Pos('percentage', Transport.Messages[2]) > 0, Transport.Messages[2]);
@@ -211,7 +211,7 @@ begin
     Event := Progress.AsIndexProgress();
     Event(TIndexProgressKind.Started, 'Index', 0);
     Assert.IsTrue(Progress.Active);
-    Sleep(TLspWorkDoneProgress.MinReportIntervalMs + 50);
+    Sleep(TLspWorkDoneProgress.cMinReportIntervalMs + 50);
     Event(TIndexProgressKind.Report, 'C:\Projekt\Quellen\Haupt.pas', 25);
     Assert.AreEqual(3, Integer(Transport.Messages.Count));
     Assert.Contains(Transport.Messages[2], '"message":"Haupt.pas"');

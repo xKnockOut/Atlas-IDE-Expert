@@ -406,7 +406,7 @@ begin
   begin
     Result.Title := cTexts[TInliningMethodText.InlineRoutine].Fmt([ShortName]);
   end;
-  Result.Kind := InlineKind;
+  Result.Kind := cInlineKind;
   Result.Edits := Edits;
 end;
 
@@ -741,7 +741,7 @@ begin
   Result := Default(TParameterInfo);
   Result.Name := AName;
   Result.Modifier := ADecl.Modifier;
-  if (ADecl.ChildCount > 0) and (ADecl[0].Kind in TRoutineLocals.TypeKinds) then
+  if (ADecl.ChildCount > 0) and (ADecl[0].Kind in TRoutineLocals.cTypeKinds) then
   begin
     Result.TypeNode := ADecl[0];
     Result.TypeText := TRoutineBody.TextOf(Callee.Text, Result.TypeNode);
@@ -1546,7 +1546,7 @@ end;
 function TMethodInliner.IsUnstableName(ANode: TSyntaxNode): Boolean;
 begin
   Result := (not TInlineSyntax.IsCallee(ANode) and (TRoutineLocals.IndexOf(CallerLocals, ANode.Name,
-    ANode.StartOffset) < 0) and not MatchText(ANode.Name, ConstantNames)) or
+    ANode.StartOffset) < 0) and not MatchText(ANode.Name, cConstantNames)) or
     (IndexText(ANode.Name, ArgumentNames) >= 0);
 end;
 
@@ -1605,7 +1605,7 @@ begin
   begin
     Exit;
   end;
-  ResultName := Unique(ShortName + InlineResultSuffix);
+  ResultName := Unique(ShortName + cInlineResultSuffix);
   mNodes := TList<TSyntaxNode>.Create;
   try
     TRoutineLocals.CollectKind(CalleeBody, TSyntaxKind.Identifier, mNodes);

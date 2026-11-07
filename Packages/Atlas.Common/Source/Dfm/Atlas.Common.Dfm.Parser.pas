@@ -57,7 +57,7 @@ const
 
 const
   /// <summary>Schutz vor Stapelüberlauf bei kaputten Dateien.</summary>
-  MaxDepth = 256;
+  cMaxDepth = 256;
 
 type
   TScanner = class
@@ -162,11 +162,11 @@ end;
 
 procedure TScanner.Error(const AMessage: string);
 var
-  Item: TDfmError;
+  mItem: TDfmError;
 begin
-  Item.Position := Position;
-  Item.Message := AMessage;
-  FErrors.Add(Item);
+  mItem.Position := Position;
+  mItem.Message := AMessage;
+  FErrors.Add(mItem);
 end;
 
 procedure TScanner.SkipLine;
@@ -179,38 +179,38 @@ end;
 
 function TScanner.PeekWord: string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := FIndex;
-  while (Index <= Length(FText)) and TTextChars.IsAsciiIdentChar(FText[Index]) do
+  mIndex := FIndex;
+  while (mIndex <= Length(FText)) and TTextChars.IsAsciiIdentChar(FText[mIndex]) do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Result := LowerCase(Copy(FText, FIndex, Index - FIndex));
+  Result := LowerCase(Copy(FText, FIndex, mIndex - FIndex));
 end;
 
 function TScanner.ReadWord: string;
 var
-  Start: Integer;
+  mStart: Integer;
 begin
-  Start := FIndex;
+  mStart := FIndex;
   while not AtEnd and TTextChars.IsAsciiIdentChar(Current) do
   begin
     Advance;
   end;
-  Result := Copy(FText, Start, FIndex - Start);
+  Result := Copy(FText, mStart, FIndex - mStart);
 end;
 
 function TScanner.ReadQualifiedName: string;
 var
-  Start: Integer;
+  mStart: Integer;
 begin
-  Start := FIndex;
+  mStart := FIndex;
   while not AtEnd and (TTextChars.IsAsciiIdentChar(Current) or (Current = '.')) do
   begin
     Advance;
   end;
-  Result := Copy(FText, Start, FIndex - Start);
+  Result := Copy(FText, mStart, FIndex - mStart);
 end;
 
 procedure TScanner.SkipSpaces;
@@ -309,7 +309,7 @@ end;
 
 procedure TScanner.ReadCollection(AOwner: TDfmObject);
 var
-  Item: TDfmObject;
+  mItem: TDfmObject;
 begin
   // < item ... end item ... end >
   Advance;
@@ -318,14 +318,14 @@ begin
   begin
     if PeekWord = 'item' then
     begin
-      Item := TDfmObject.Create;
-      AOwner.Children.Add(Item);
-      Item.Kind := TDfmObjectKind.Item;
-      Item.Range.StartPos := Position;
-      Item.NameRange.StartPos := Position;
-      Item.Name := ReadWord;
-      Item.NameRange.EndPos := Position;
-      ReadBody(Item, 'end');
+      mItem := TDfmObject.Create;
+      AOwner.Children.Add(mItem);
+      mItem.Kind := TDfmObjectKind.Item;
+      mItem.Range.StartPos := Position;
+      mItem.NameRange.StartPos := Position;
+      mItem.Name := ReadWord;
+      mItem.NameRange.EndPos := Position;
+      ReadBody(mItem, 'end');
     end
     else
     begin
@@ -370,7 +370,7 @@ procedure TScanner.ReadChild(AObject: TDfmObject);
 var
   mChild: TDfmObject;
 begin
-  if FDepth >= MaxDepth then
+  if FDepth >= cMaxDepth then
   begin
     Error(cTexts[TDfmParserText.NestedTooDeeply].Text);
     SkipLine;
@@ -528,39 +528,39 @@ end;
 
 class function TDfmParser.IsFormFile(const AFileName: string): Boolean;
 var
-  Extension: string;
+  mExtension: string;
 begin
-  Extension := LowerCase(ExtractFileExt(AFileName));
-  Result := (Extension = '.dfm') or (Extension = '.fmx') or (Extension = '.lfm');
+  mExtension := LowerCase(ExtractFileExt(AFileName));
+  Result := (mExtension = '.dfm') or (mExtension = '.fmx') or (mExtension = '.lfm');
 end;
 
 class function TDfmParser.Parse(const AText: string): TDfmDocument;
 var
-  Scanner: TScanner;
-  Word, Text: string;
+  mScanner: TScanner;
+  mWord, mText: string;
 begin
   Result := TDfmDocument.Create;
-  Text := AText;
+  mText := AText;
   if (StartsStr('TPF0', AText) or StartsStr(#$FF#$0A#$00, AText)) and
-    not TDfmBinary.FromDecodedText(AText, Text) then
+    not TDfmBinary.FromDecodedText(AText, mText) then
   begin
-    Text := AText;
+    mText := AText;
   end;
-  Scanner := TScanner.Create(Text);
+  mScanner := TScanner.Create(mText);
   try
-    Scanner.SkipBlanks;
-    Word := Scanner.PeekWord;
-    if (Word = 'object') or (Word = 'inherited') or (Word = 'inline') then
+    mScanner.SkipBlanks;
+    mWord := mScanner.PeekWord;
+    if (mWord = 'object') or (mWord = 'inherited') or (mWord = 'inline') then
     begin
-      Result.Root := Scanner.ReadObject;
+      Result.Root := mScanner.ReadObject;
     end
-    else if not Scanner.AtEnd then
+    else if not mScanner.AtEnd then
     begin
-      Scanner.Error(cTexts[TDfmParserText.ObjectExpectedBinaryDFM].Text);
+      mScanner.Error(cTexts[TDfmParserText.ObjectExpectedBinaryDFM].Text);
     end;
-    Result.Errors := Scanner.FErrors.ToArray;
+    Result.Errors := mScanner.FErrors.ToArray;
   finally
-    Scanner.Free;
+    mScanner.Free;
   end;
 end;
 

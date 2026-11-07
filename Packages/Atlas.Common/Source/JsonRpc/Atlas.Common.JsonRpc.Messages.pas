@@ -10,7 +10,7 @@ uses
 type
   TJsonRpcMessages = record
   public const
-    Version = '2.0';
+    cVersion = '2.0';
   public
     /// <summary>
     /// Erfolgsantwort. AId wird kopiert, AResult geht in die Antwort über
@@ -46,29 +46,29 @@ begin
     AResult := TJSONNull.Create;
   end;
   Result := TJSONObject.Create;
-  Result.AddPair('jsonrpc', Version);
+  Result.AddPair('jsonrpc', cVersion);
   Result.AddPair('id', CloneOrNull(AId));
   Result.AddPair('result', AResult);
 end;
 
 class function TJsonRpcMessages.Error(const AId: TJSONValue; ACode: Integer; const AMessage: string): TJSONObject;
 var
-  ErrorObject: TJSONObject;
+  mErrorObject: TJSONObject;
 begin
-  ErrorObject := TJSONObject.Create;
-  ErrorObject.AddPair('code', TJSONNumber.Create(ACode));
-  ErrorObject.AddPair('message', AMessage);
+  mErrorObject := TJSONObject.Create;
+  mErrorObject.AddPair('code', TJSONNumber.Create(ACode));
+  mErrorObject.AddPair('message', AMessage);
 
   Result := TJSONObject.Create;
-  Result.AddPair('jsonrpc', Version);
+  Result.AddPair('jsonrpc', cVersion);
   Result.AddPair('id', CloneOrNull(AId));
-  Result.AddPair('error', ErrorObject);
+  Result.AddPair('error', mErrorObject);
 end;
 
 class function TJsonRpcMessages.Notification(const AMethod: string; AParams: TJSONValue): TJSONObject;
 begin
   Result := TJSONObject.Create;
-  Result.AddPair('jsonrpc', Version);
+  Result.AddPair('jsonrpc', cVersion);
   Result.AddPair('method', AMethod);
   if AParams <> nil then
   begin

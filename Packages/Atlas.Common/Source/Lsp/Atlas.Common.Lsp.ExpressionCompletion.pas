@@ -40,7 +40,7 @@ type
 
   TLspExpressionCompletion = class
   public const
-    Method = 'atlas/expressionCompletion';
+    cMethod = 'atlas/expressionCompletion';
   private
     FStore: IDocumentStore;
     FCompletion: TLspCompletion;
@@ -87,29 +87,29 @@ const
 
 const
   // LSP CompletionItemKind.Keyword und .Snippet; InsertTextFormat.Snippet.
-  KindKeyword = 14;
-  KindSnippet = 15;
-  SnippetFormat = 2;
+  cKindKeyword = 14;
+  cKindSnippet = 15;
+  cSnippetFormat = 2;
 
   // Zeilen, hinter die eine Anweisung gehört: Davor stünde sie außerhalb des Rumpfs oder zerrisse if/else.
-  OpenerWords: array[0..5] of string = ('begin', 'else', 'then', 'do', 'repeat', 'try');
+  cOpenerWords: array[0..5] of string = ('begin', 'else', 'then', 'do', 'repeat', 'try');
 
 /// <summary>True, wenn ALine (ohne Einrückung) mit einem Wort aus OpenerWords beginnt.</summary>
 function StartsWithOpener(const ALine: string): Boolean;
 var
-  Trimmed, Word: string;
-  Index: Integer;
+  mTrimmed, mWord: string;
+  mIndex: Integer;
 begin
-  Trimmed := LowerCase(Trim(ALine));
-  Index := 1;
-  while (Index <= Length(Trimmed)) and TTextChars.IsIdentChar(Trimmed[Index]) do
+  mTrimmed := LowerCase(Trim(ALine));
+  mIndex := 1;
+  while (mIndex <= Length(mTrimmed)) and TTextChars.IsIdentChar(mTrimmed[mIndex]) do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Word := Copy(Trimmed, 1, Index - 1);
-  for Index := Low(OpenerWords) to High(OpenerWords) do
+  mWord := Copy(mTrimmed, 1, mIndex - 1);
+  for mIndex := Low(cOpenerWords) to High(cOpenerWords) do
   begin
-    if Word = OpenerWords[Index] then
+    if mWord = cOpenerWords[mIndex] then
     begin
       Exit(True);
     end;
@@ -120,17 +120,17 @@ end;
 /// <summary>Was insertText ersetzt: textEdit.newText, sonst insertText, sonst label.</summary>
 function InsertTextOf(AItem: TJSONObject; out AText: string): Boolean;
 var
-  Edit: TJSONObject;
+  mEdit: TJSONObject;
 begin
   Result := True;
-  Edit := nil;
+  mEdit := nil;
   if AItem.GetValue('textEdit') is TJSONObject then
   begin
-    Edit := TJSONObject(AItem.GetValue('textEdit'));
+    mEdit := TJSONObject(AItem.GetValue('textEdit'));
   end;
-  if Edit <> nil then
+  if mEdit <> nil then
   begin
-    Exit(Edit.TryGetValue<string>('newText', AText));
+    Exit(mEdit.TryGetValue<string>('newText', AText));
   end;
   if AItem.TryGetValue<string>('insertText', AText) then
   begin
@@ -142,26 +142,26 @@ end;
 /// <summary>True, wenn ein textEdit von AItem genau an AStart beginnt oder keins da ist.</summary>
 function EditStartsAt(AItem: TJSONObject; const AStart: TTextPosition): Boolean;
 var
-  Range: TTextRange;
+  mRange: TTextRange;
 begin
   if not (AItem.GetValue('textEdit') is TJSONObject) then
   begin
     Exit(True);
   end;
-  Range := TLspPositions.ReadRange(TJSONObject(AItem.GetValue('textEdit')).GetValue('range'));
-  Result := Range.StartPos = AStart;
+  mRange := TLspPositions.ReadRange(TJSONObject(AItem.GetValue('textEdit')).GetValue('range'));
+  Result := mRange.StartPos = AStart;
 end;
 
 /// <summary>True, wenn AItem im Feld etwas bedeutet (siehe Kopf).</summary>
 function Usable(AItem: TJSONObject; const AStart: TTextPosition): Boolean;
 var
-  Kind, Format: Integer;
+  mKind, mFormat: Integer;
 begin
-  Kind := 0;
-  AItem.TryGetValue<Integer>('kind', Kind);
-  Format := 0;
-  AItem.TryGetValue<Integer>('insertTextFormat', Format);
-  Result := (Kind <> KindKeyword) and (Kind <> KindSnippet) and (Format <> SnippetFormat) and
+  mKind := 0;
+  AItem.TryGetValue<Integer>('kind', mKind);
+  mFormat := 0;
+  AItem.TryGetValue<Integer>('insertTextFormat', mFormat);
+  Result := (mKind <> cKindKeyword) and (mKind <> cKindSnippet) and (mFormat <> cSnippetFormat) and
     (AItem.GetValue('additionalTextEdits') = nil) and (AItem.GetValue('command') = nil) and
     EditStartsAt(AItem, AStart);
 end;
@@ -177,176 +177,177 @@ end;
 
 procedure TLspExpressionCompletion.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterConcurrentRequest(Method, Handle);
+  ADispatcher.RegisterConcurrentRequest(cMethod, Handle);
 end;
 
 class function TLspExpressionCompletion.Place(const ADocument: ITextDocument; AScopeLine: Integer;
   const AExpression: string): TExpressionPlacement;
 var
-  ScopeText, Indent, LineBreak: string;
-  Line: Integer;
+  mScopeText, mIndent, mLineBreak: string;
+  mLine: Integer;
 begin
-  Line := AScopeLine;
-  if Line >= ADocument.LineCount then
+  mLine := AScopeLine;
+  if mLine >= ADocument.LineCount then
   begin
-    Line := ADocument.LineCount - 1;
+    mLine := ADocument.LineCount - 1;
   end;
-  if Line < 0 then
+  if mLine < 0 then
   begin
-    Line := 0;
+    mLine := 0;
   end;
-  ScopeText := ADocument.LineText(Line);
-  Indent := TTextLines.IndentOf(ScopeText);
-  LineBreak := TTextLines.LineBreakOf(ADocument.Text);
+  mScopeText := ADocument.LineText(mLine);
+  mIndent := TTextLines.IndentOf(mScopeText);
+  mLineBreak := TTextLines.LineBreakOf(ADocument.Text);
   Result := Default(TExpressionPlacement);
   // Mehrzeilige Ausdrücke aus dem Feld bleiben eine Zeile: Die Spalten der Schreibmarke gelten dann weiter.
-  Result.Text := Indent + StringReplace(StringReplace(AExpression, #13, ' ', [rfReplaceAll]), #10, ' ',
-    [rfReplaceAll]) + ';' + LineBreak;
-  Result.Column := Length(Indent);
-  if StartsWithOpener(ScopeText) and (Line + 1 < ADocument.LineCount) then
+  Result.Text := mIndent + StringReplace(StringReplace(AExpression, #13, ' ', [rfReplaceAll]), #10, ' ',
+    [rfReplaceAll]) + ';' + mLineBreak;
+  Result.Column := Length(mIndent);
+  if StartsWithOpener(mScopeText) and (mLine + 1 < ADocument.LineCount) then
   begin
-    Result.Line := Line + 1;
+    Result.Line := mLine + 1;
   end
   else
   begin
-    Result.Line := Line;
+    Result.Line := mLine;
   end;
   Result.Change := TTextChange.Ranged(TTextRange.Create(Result.Line, 0, Result.Line, 0), Result.Text);
 end;
 
 class function TLspExpressionCompletion.PrefixAt(const AExpression: string; ACharacter: Integer): string;
 var
-  Start, Stop: Integer;
+  mStart, mStop: Integer;
 begin
-  Stop := ACharacter;
-  if Stop > Length(AExpression) then
+  mStop := ACharacter;
+  if mStop > Length(AExpression) then
   begin
-    Stop := Length(AExpression);
+    mStop := Length(AExpression);
   end;
-  if Stop < 0 then
+  if mStop < 0 then
   begin
-    Stop := 0;
+    mStop := 0;
   end;
-  Start := Stop;
-  while (Start > 0) and TTextChars.IsIdentChar(AExpression[Start]) do
+  mStart := mStop;
+  while (mStart > 0) and TTextChars.IsIdentChar(AExpression[mStart]) do
   begin
-    Dec(Start);
+    Dec(mStart);
   end;
-  Result := Copy(AExpression, Start + 1, Stop - Start);
+  Result := Copy(AExpression, mStart + 1, mStop - mStart);
 end;
 
 class function TLspExpressionCompletion.Filter(const ACompletion: TJSONValue; const APrefix: string;
   const AStart: TTextPosition): TJSONObject;
 var
-  Source: TJSONArray;
-  Items: TJSONArray;
-  Value: TJSONValue;
-  Item, Entry: TJSONObject;
-  Text, Detail: string;
-  Kind: Integer;
+  mSource: TJSONArray;
+  mItems: TJSONArray;
+  mValue: TJSONValue;
+  mItem, mEntry: TJSONObject;
+  mText, mDetail: string;
+  mKind: Integer;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('prefix', APrefix);
-  Items := TJSONArray.Create;
-  Result.AddPair('items', Items);
-  Source := nil;
+  mItems := TJSONArray.Create;
+  Result.AddPair('items', mItems);
+  mSource := nil;
   if ACompletion is TJSONObject then
   begin
-    TJSONObject(ACompletion).TryGetValue<TJSONArray>('items', Source);
+    TJSONObject(ACompletion).TryGetValue<TJSONArray>('items', mSource);
   end
   else if ACompletion is TJSONArray then
   begin
-    Source := TJSONArray(ACompletion);
+    mSource := TJSONArray(ACompletion);
   end;
-  if Source = nil then
+  if mSource = nil then
   begin
     Exit;
   end;
-  for Value in Source do
+  for mValue in mSource do
   begin
-    if not (Value is TJSONObject) then
+    if not (mValue is TJSONObject) then
     begin
       Continue;
     end;
-    Item := TJSONObject(Value);
-    if not (Usable(Item, AStart) and InsertTextOf(Item, Text)) then
+    mItem := TJSONObject(mValue);
+    if not (Usable(mItem, AStart) and InsertTextOf(mItem, mText)) then
     begin
       Continue;
     end;
-    Entry := TJSONObject.Create;
-    if not Item.TryGetValue<string>('label', Detail) then
+    mEntry := TJSONObject.Create;
+    if not mItem.TryGetValue<string>('label', mDetail) then
     begin
-      Detail := Text;
+      mDetail := mText;
     end;
-    Entry.AddPair('label', Detail);
-    Kind := 0;
-    Item.TryGetValue<Integer>('kind', Kind);
-    Entry.AddPair('kind', TJSONNumber.Create(Kind));
-    Detail := '';
-    if Item.TryGetValue<string>('detail', Detail) then
+    mEntry.AddPair('label', mDetail);
+    mKind := 0;
+    mItem.TryGetValue<Integer>('kind', mKind);
+    mEntry.AddPair('kind', TJSONNumber.Create(mKind));
+    mDetail := '';
+    if mItem.TryGetValue<string>('detail', mDetail) then
     begin
-      Entry.AddPair('detail', Detail);
+      mEntry.AddPair('detail', mDetail);
     end;
-    Entry.AddPair('insertText', Text);
-    Items.AddElement(Entry);
+    mEntry.AddPair('insertText', mText);
+    mItems.AddElement(mEntry);
   end;
 end;
 
 function TLspExpressionCompletion.Complete(const ADocument: ITextDocument; AScopeLine: Integer;
   const AExpression: string; ACharacter: Integer; const ACancellation: IJsonRpcCancellationToken): TJSONObject;
 var
-  Placement: TExpressionPlacement;
-  Snapshot: ITextDocument;
-  Prefix: string;
-  Caret, Start: TTextPosition;
-  Character: Integer;
-  Completion: TJSONValue;
+  mPlacement: TExpressionPlacement;
+  mSnapshot: ITextDocument;
+  mPrefix: string;
+  mCaret, mStart: TTextPosition;
+  mCharacter: Integer;
+  mCompletion: TJSONValue;
 begin
-  Placement := Place(ADocument, AScopeLine, AExpression);
+  mPlacement := Place(ADocument, AScopeLine, AExpression);
   // Eigene Momentaufnahme: Der Dokumentspeicher und der Syntaxbaum des Editors bleiben unberührt.
-  Snapshot := ADocument.ApplyChanges([Placement.Change], ADocument.Version);
-  Character := ACharacter;
-  if Character > Length(AExpression) then
+  mSnapshot := ADocument.ApplyChanges([mPlacement.Change], ADocument.Version);
+  mCharacter := ACharacter;
+  if mCharacter > Length(AExpression) then
   begin
-    Character := Length(AExpression);
+    mCharacter := Length(AExpression);
   end;
-  if Character < 0 then
+  if mCharacter < 0 then
   begin
-    Character := 0;
+    mCharacter := 0;
   end;
-  Prefix := PrefixAt(AExpression, Character);
-  Caret := TTextPosition.Create(Placement.Line, Placement.Column + Character);
-  Start := TTextPosition.Create(Placement.Line, Caret.Character - Length(Prefix));
-  Completion := FCompletion.Complete(Snapshot, ADocument.Uri, Caret, ACancellation);
+  mPrefix := PrefixAt(AExpression, mCharacter);
+  mCaret := TTextPosition.Create(mPlacement.Line, mPlacement.Column + mCharacter);
+  mStart := TTextPosition.Create(mPlacement.Line, mCaret.Character - Length(mPrefix));
+  mCompletion := FCompletion.Complete(mSnapshot, ADocument.Uri, mCaret, ACancellation);
   try
-    Result := Filter(Completion, Prefix, Start);
+    Result := Filter(mCompletion, mPrefix, mStart);
   finally
-    Completion.Free;
+    mCompletion.Free;
   end;
 end;
 
 function TLspExpressionCompletion.Handle(const AParams: TJSONValue;
   const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
-  Uri, Expression: string;
-  PositionValue: TJSONValue;
-  Document: ITextDocument;
-  Character: Integer;
+  mUri, mExpression: string;
+  mPositionValue: TJSONValue;
+  mDocument: ITextDocument;
+  mCharacter: Integer;
 begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
-    TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue) and
-    TJSONObject(AParams).TryGetValue<string>('expression', Expression)) then
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
+    TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPositionValue) and
+    TJSONObject(AParams).TryGetValue<string>('expression', mExpression)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      cTexts[TExpressionCompletionText.FieldsTextDocumentUriPositionAnd].Text + Method);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TExpressionCompletionText.FieldsTextDocumentUriPositionAnd].Text + cMethod);
   end;
-  if not FStore.TryGet(Uri, Document) then
+  if not FStore.TryGet(mUri, mDocument) then
   begin
     Exit(TJSONNull.Create);
   end;
-  Character := Length(Expression);
-  TJSONObject(AParams).TryGetValue<Integer>('character', Character);
-  Result := Complete(Document, TLspPositions.ReadPosition(PositionValue).Line, Expression, Character, ACancellation);
+  mCharacter := Length(mExpression);
+  TJSONObject(AParams).TryGetValue<Integer>('character', mCharacter);
+  Result := Complete(mDocument, TLspPositions.ReadPosition(mPositionValue).Line, mExpression, mCharacter,
+    ACancellation);
 end;
 
 initialization

@@ -20,7 +20,7 @@ type
   end;
 
 const
-  FieldFreeWithoutNilRuleId = 'field-free-without-nil';
+  cFieldFreeWithoutNilRuleId = 'field-free-without-nil';
 
 implementation
 
@@ -52,28 +52,28 @@ const
 /// <summary>Methoden der Klassendeklaration AClass mit [TearDown] oder [TearDownFixture] (DUnitX).</summary>
 function TearDownMethods(AClass: TSyntaxNode): TArray<string>;
 
-  procedure Visit(E: TSyntaxNode);
+  procedure Visit(AE: TSyntaxNode);
   var
-    Index: Integer;
-    Pending: Boolean;
+    mIndex: Integer;
+    mPending: Boolean;
   begin
-    Pending := False;
-    for Index := 0 to E.ChildCount - 1 do
+    mPending := False;
+    for mIndex := 0 to AE.ChildCount - 1 do
     begin
-      if E[Index].Kind = TSyntaxKind.Attribute then
+      if AE[mIndex].Kind = TSyntaxKind.Attribute then
       begin
-        Pending := Pending or MatchText(E[Index].Name, ['TearDown', 'TearDownFixture']);
+        mPending := mPending or MatchText(AE[mIndex].Name, ['TearDown', 'TearDownFixture']);
       end
       else
       begin
-        if Pending and (E[Index].Name <> '') then
+        if mPending and (AE[mIndex].Name <> '') then
         begin
-          Result := Result + [E[Index].Name];
+          Result := Result + [AE[mIndex].Name];
         end;
-        Pending := False;
-        if E[Index].Kind = TSyntaxKind.Visibility then
+        mPending := False;
+        if AE[mIndex].Kind = TSyntaxKind.Visibility then
         begin
-          Visit(E[Index]);
+          Visit(AE[mIndex]);
         end;
       end;
     end;
@@ -90,21 +90,21 @@ end;
 /// <summary>X.Free bzw. X.Free(); liefert X, sonst nil.</summary>
 function FreeTarget(AStatement: TSyntaxNode): TSyntaxNode;
 var
-  Callee: TSyntaxNode;
+  mCallee: TSyntaxNode;
 begin
   Result := nil;
   if (AStatement = nil) or (AStatement.Kind <> TSyntaxKind.CallStatement) or (AStatement.ChildCount = 0) then
   begin
     Exit;
   end;
-  Callee := AStatement[0];
-  if (Callee.Kind = TSyntaxKind.Call) and (Callee.ChildCount = 1) then
+  mCallee := AStatement[0];
+  if (mCallee.Kind = TSyntaxKind.Call) and (mCallee.ChildCount = 1) then
   begin
-    Callee := Callee[0];
+    mCallee := mCallee[0];
   end;
-  if (Callee.Kind = TSyntaxKind.MemberAccess) and (Callee.ChildCount = 1) and SameText(Callee.Name, 'Free') then
+  if (mCallee.Kind = TSyntaxKind.MemberAccess) and (mCallee.ChildCount = 1) and SameText(mCallee.Name, 'Free') then
   begin
-    Result := Callee[0];
+    Result := mCallee[0];
   end;
 end;
 
@@ -163,53 +163,53 @@ end;
 /// </summary>
 function TFieldFreeCheck.OnlyCalledWhileReleasing(ARoutine: TSyntaxNode): Boolean;
 var
-  Other: TSyntaxNode;
-  Callers: Integer;
+  mOther: TSyntaxNode;
+  mCallers: Integer;
 begin
-  Callers := 0;
+  mCallers := 0;
   Result := True;
-  for Other in FRoutines do
+  for mOther in FRoutines do
   begin
-    if Result and (Other <> ARoutine) and CallsMethod(Other, MethodOf(ARoutine)) then
+    if Result and (mOther <> ARoutine) and CallsMethod(mOther, MethodOf(ARoutine)) then
     begin
-      Result := StartsText(FQualifiedClass + '.', Other.Name) and Releasing(Other);
-      Inc(Callers);
+      Result := StartsText(FQualifiedClass + '.', mOther.Name) and Releasing(mOther);
+      Inc(mCallers);
     end;
   end;
-  Result := Result and (Callers > 0);
+  Result := Result and (mCallers > 0);
 end;
 
 /// <summary>Methode derselben Klasse, die APath zuweist.</summary>
 function TFieldFreeCheck.AssignerMethod(const AName, APath: string): Boolean;
 var
-  Other: TSyntaxNode;
+  mOther: TSyntaxNode;
 begin
   Result := False;
-  for Other in FRoutines do
+  for mOther in FRoutines do
   begin
-    Result := Result or (SameText(Other.Name, FQualifiedClass + '.' + AName) and SubtreeAssigns(Other, APath));
+    Result := Result or (SameText(mOther.Name, FQualifiedClass + '.' + AName) and SubtreeAssigns(mOther, APath));
   end;
 end;
 
 function TFieldFreeCheck.IsAssignerCall(ACallee: TSyntaxNode; const APath: string): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
-  Name := FreedPath(ACallee);
-  Result := (Name <> '') and AssignerMethod(Name, APath);
+  mName := FreedPath(ACallee);
+  Result := (mName <> '') and AssignerMethod(mName, APath);
 end;
 
 function TFieldFreeCheck.PartCallsAssigner(ARoot: TSyntaxNode; const APath: string): Boolean;
 var
-  Path: string;
+  mPath: string;
 begin
-  Path := APath;
+  mPath := APath;
   // Iterativ (Bericht M1).
   Result := ARoot.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
       Result := TSyntaxSearchStep.Descend;
-      if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 0) and IsAssignerCall(ANode[0], Path) then
+      if (ANode.Kind = TSyntaxKind.Call) and (ANode.ChildCount > 0) and IsAssignerCall(ANode[0], mPath) then
       begin
         Result := TSyntaxSearchStep.Found;
       end;
@@ -220,7 +220,7 @@ end;
 /// </summary>
 function TFieldFreeCheck.CallsAssigner(ANode: TFlowNode; const APath: string): Boolean;
 var
-  Part: TSyntaxNode;
+  mPart: TSyntaxNode;
 begin
   Result := False;
   if ANode.Syntax = nil then
@@ -232,86 +232,86 @@ begin
   begin
     Result := IsAssignerCall(ANode.Syntax[0], APath);
   end;
-  for Part in OwnParts(ANode.Syntax) do
+  for mPart in OwnParts(ANode.Syntax) do
   begin
-    Result := Result or PartCallsAssigner(Part, APath);
+    Result := Result or PartCallsAssigner(mPart, APath);
   end;
 end;
 
 /// <summary>Erreicht ein Weg vom Free das normale Ende der Methode, ohne das Feld neu zu setzen?</summary>
 function TFieldFreeCheck.ReachesEnd(AFree: TFlowNode; const APath: string): Boolean;
 var
-  Visited: TArray<Boolean>;
-  Queue: TArray<TFlowNode>;
-  Head: Integer;
-  Current: TFlowNode;
+  mVisited: TArray<Boolean>;
+  mQueue: TArray<TFlowNode>;
+  mHead: Integer;
+  mCurrent: TFlowNode;
 begin
   Result := False;
-  SetLength(Visited, FGraph.Nodes.Count);
-  Queue := nil;
-  QueueSuccessors(AFree, Visited, Queue);
-  Head := 0;
-  while not Result and (Head < Length(Queue)) do
+  SetLength(mVisited, FGraph.Nodes.Count);
+  mQueue := nil;
+  QueueSuccessors(AFree, mVisited, mQueue);
+  mHead := 0;
+  while not Result and (mHead < Length(mQueue)) do
   begin
-    Current := Queue[Head];
-    Inc(Head);
-    if Visited[Current.Index] or (Current = AFree) then
+    mCurrent := mQueue[mHead];
+    Inc(mHead);
+    if mVisited[mCurrent.Index] or (mCurrent = AFree) then
     begin
       Continue;
     end;
-    Visited[Current.Index] := True;
-    Result := Current = FGraph.ExitNode;
-    if not Result and not AssignsPath(Current, APath) and not CallsAssigner(Current, APath) then
+    mVisited[mCurrent.Index] := True;
+    Result := mCurrent = FGraph.ExitNode;
+    if not Result and not AssignsPath(mCurrent, APath) and not CallsAssigner(mCurrent, APath) then
     begin
-      QueueSuccessors(Current, Visited, Queue);
+      QueueSuccessors(mCurrent, mVisited, mQueue);
     end;
   end;
 end;
 
 procedure TFieldFreeCheck.CheckStatement(ANode: TFlowNode);
 var
-  Target: TSyntaxNode;
-  Path, Replacement: string;
+  mTarget: TSyntaxNode;
+  mPath, mReplacement: string;
 begin
-  Target := FreeTarget(ANode.Syntax);
-  Path := FreedPath(Target);
-  if (Path = '') or MatchText(Path, FLocals) or not MatchText(Path, FFields) or not ReachesEnd(ANode, Path) then
+  mTarget := FreeTarget(ANode.Syntax);
+  mPath := FreedPath(mTarget);
+  if (mPath = '') or MatchText(mPath, FLocals) or not MatchText(mPath, FFields) or not ReachesEnd(ANode, mPath) then
   begin
     Exit;
   end;
-  Replacement := Format('FreeAndNil(%s)', [Text(Target)]);
-  FReport.Add(NodeRange(ANode.Syntax), cTexts[TFlowFieldFreeWithoutNilText.StaysSet].Fmt([Path]),
+  mReplacement := Format('FreeAndNil(%s)', [Text(mTarget)]);
+  FReport.Add(NodeRange(ANode.Syntax), cTexts[TFlowFieldFreeWithoutNilText.StaysSet].Fmt([mPath]),
     TRuleConfidence.Medium,
-    [TRuleFix.Create(Replacement, [TRuleEdit.Create(NodeRange(ANode.Syntax), Replacement)])]);
+    [TRuleFix.Create(mReplacement, [TRuleEdit.Create(NodeRange(ANode.Syntax), mReplacement)])]);
 end;
 
 /// <summary>Stellt Klasse, Felder und TearDown-Methoden der Methode ARoutine bereit; False, wenn sie nicht zu
 /// prüfen ist.</summary>
 function TFieldFreeCheck.PrepareRoutine(ARoutine: TSyntaxNode): Boolean;
 var
-  Dot: Integer;
-  ClassType: TSyntaxNode;
+  mDot: Integer;
+  mClassType: TSyntaxNode;
 begin
-  Dot := LastDelimiter('.', ARoutine.Name);
-  Result := Dot > 0;
+  mDot := LastDelimiter('.', ARoutine.Name);
+  Result := mDot > 0;
   if not Result then
   begin
     Exit;
   end;
-  FQualifiedClass := Copy(ARoutine.Name, 1, Dot - 1);
-  ClassType := FindClassType(FContext.Tree.Root, DeclaredClassName(FQualifiedClass));
-  FFields := ClassFields(ClassType);
+  FQualifiedClass := Copy(ARoutine.Name, 1, mDot - 1);
+  mClassType := FindClassType(FContext.Tree.Root, DeclaredClassName(FQualifiedClass));
+  FFields := ClassFields(mClassType);
   Result := FFields <> nil;
   if Result then
   begin
-    FTearDowns := TearDownMethods(ClassType);
+    FTearDowns := TearDownMethods(mClassType);
     Result := not Releasing(ARoutine) and not OnlyCalledWhileReleasing(ARoutine);
   end;
 end;
 
 procedure TFieldFreeCheck.CheckRoutine(const ACache: IRuleDerivedCache; ARoutine: TSyntaxNode);
 var
-  Node: TFlowNode;
+  mNode: TFlowNode;
 begin
   if not PrepareRoutine(ARoutine) then
   begin
@@ -323,30 +323,30 @@ begin
   begin
     Exit;
   end;
-  for Node in FGraph.Nodes do
+  for mNode in FGraph.Nodes do
   begin
-    if Node.Kind = TFlowNodeKind.Statement then
+    if mNode.Kind = TFlowNodeKind.Statement then
     begin
-      CheckStatement(Node);
+      CheckStatement(mNode);
     end;
   end;
 end;
 
 procedure TFieldFreeCheck.Run;
 var
-  Cache: IRuleDerivedCache;
-  Routine: TSyntaxNode;
+  mCache: IRuleDerivedCache;
+  mRoutine: TSyntaxNode;
 begin
   if FContext.Tree = nil then
   begin
     Exit;
   end;
   FIgnore := TRuleOptions.Strings(FContext.Options, 'ignoreMethods', TFieldFreeWithoutNilRule.DefaultIgnoreMethods);
-  Cache := TRuleDerived.Open(FContext);
-  FRoutines := TRuleDerived.Routines(Cache, FContext);
-  for Routine in FRoutines do
+  mCache := TRuleDerived.Open(FContext);
+  FRoutines := TRuleDerived.Routines(mCache, FContext);
+  for mRoutine in FRoutines do
   begin
-    CheckRoutine(Cache, Routine);
+    CheckRoutine(mCache, mRoutine);
   end;
 end;
 
@@ -354,7 +354,7 @@ end;
 
 function TFieldFreeWithoutNilRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(FieldFreeWithoutNilRuleId, TRuleSeverity.Warning,
+  Result := TRuleDescriptor.Create(cFieldFreeWithoutNilRuleId, TRuleSeverity.Warning,
     cTexts[TFlowFieldFreeWithoutNilText.Title].Text);
 end;
 
@@ -365,13 +365,13 @@ end;
 
 procedure TFieldFreeWithoutNilRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Check: TFieldFreeCheck;
+  mCheck: TFieldFreeCheck;
 begin
-  Check := TFieldFreeCheck.Create(AContext, AReport);
+  mCheck := TFieldFreeCheck.Create(AContext, AReport);
   try
-    Check.Run;
+    mCheck.Run;
   finally
-    Check.Free;
+    mCheck.Free;
   end;
 end;
 

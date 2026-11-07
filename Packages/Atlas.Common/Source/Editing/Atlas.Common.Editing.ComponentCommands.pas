@@ -101,39 +101,39 @@ const
 function AddToClass(ASource: TCommandSource; const AClass: TIndexSymbol; const AField: string;
   const AMore: array of string): TArray<TTextEdit>;
 var
-  Line, EndLine, Index: Integer;
-  Indent, Body: string;
+  mLine, mEndLine, mIndex: Integer;
+  mIndent, mBody: string;
 begin
   Result := nil;
-  EndLine := AClass.Range.EndPos.Line;
-  Indent := ASource.Indent(EndLine);
-  Body := '';
+  mEndLine := AClass.Range.EndPos.Line;
+  mIndent := ASource.Indent(mEndLine);
+  mBody := '';
   if AField <> '' then
   begin
-    Line := ASource.PrivateLine(AClass);
-    if Line >= 0 then
+    mLine := ASource.PrivateLine(AClass);
+    if mLine >= 0 then
     begin
-      Result := [ASource.AfterLine(Line, ASource.Indent(Line) + '  ' + AField)];
+      Result := [ASource.AfterLine(mLine, ASource.Indent(mLine) + '  ' + AField)];
     end
     else
     begin
-      Body := Indent + 'private' + ASource.LineBreak + Indent + '  ' + AField;
+      mBody := mIndent + 'private' + ASource.LineBreak + mIndent + '  ' + AField;
     end;
   end;
   // AMore: abwechselnd Abschnitt und Deklaration.
-  Index := 0;
-  while Index < High(AMore) do
+  mIndex := 0;
+  while mIndex < High(AMore) do
   begin
-    if Body <> '' then
+    if mBody <> '' then
     begin
-      Body := Body + ASource.LineBreak;
+      mBody := mBody + ASource.LineBreak;
     end;
-    Body := Body + Indent + AMore[Index] + ASource.LineBreak + Indent + '  ' + AMore[Index + 1];
-    Inc(Index, 2);
+    mBody := mBody + mIndent + AMore[mIndex] + ASource.LineBreak + mIndent + '  ' + AMore[mIndex + 1];
+    Inc(mIndex, 2);
   end;
-  if Body <> '' then
+  if mBody <> '' then
   begin
-    Result := Result + [ASource.BeforeLine(EndLine, Body)];
+    Result := Result + [ASource.BeforeLine(mEndLine, mBody)];
   end;
 end;
 
@@ -232,9 +232,9 @@ end;
 function EventParameters(ASource: TCommandSource; const AIndex: ISymbolIndex; const ATypeName: string;
   out AParameters: string): Boolean;
 var
-  Kind, ResultType: string;
+  mKind, mResultType: string;
 begin
-  Result := EventSignature(ASource, AIndex, ATypeName, Kind, AParameters, ResultType);
+  Result := EventSignature(ASource, AIndex, ATypeName, mKind, AParameters, mResultType);
 end;
 
 /// <summary>"/notify OnName[: Typ]" zerlegen; ohne Typ TNotifyEvent. False bei falscher Form.</summary>
@@ -282,7 +282,7 @@ end;
 /// <summary>published bei Komponenten, sonst public.</summary>
 function PropertySection(ASource: TCommandSource; const AIndex: ISymbolIndex; const AClassName: string): string;
 begin
-  if DescendsFrom(Ancestors(ASource, AIndex, AClassName), ComponentRoots) then
+  if DescendsFrom(Ancestors(ASource, AIndex, AClassName), cComponentRoots) then
   begin
     Result := 'published';
   end
@@ -500,33 +500,33 @@ end;
 
 function ExecuteLoaded(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  ClassSymbol, Member: TIndexSymbol;
-  LB: string;
+  mSource: TCommandSource;
+  mClassSymbol, mMember: TIndexSymbol;
+  mLB: string;
 begin
   AEdits := nil;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    if not Source.ClassAt(ClassSymbol) then
+    if not mSource.ClassAt(mClassSymbol) then
     begin
       Exit(Fail(cTexts[TComponentCommandsText.LoadedOnlyAppliesInA].Text, AReason));
     end;
-    if not DescendsFrom(Ancestors(Source, AContext.Index, ClassSymbol.Name), ComponentRoots) then
+    if not DescendsFrom(Ancestors(mSource, AContext.Index, mClassSymbol.Name), cComponentRoots) then
     begin
-      Exit(Fail(cTexts[TComponentCommandsText.DoesNotDescendFromTComponent].Fmt([ClassSymbol.Name]),
+      Exit(Fail(cTexts[TComponentCommandsText.DoesNotDescendFromTComponent].Fmt([mClassSymbol.Name]),
         AReason));
     end;
-    if FindMember(Source, ClassSymbol, 'Loaded', [TIndexSymbolKind.Method], Member) then
+    if FindMember(mSource, mClassSymbol, 'Loaded', [TIndexSymbolKind.Method], mMember) then
     begin
-      Exit(Fail(cTexts[TComponentCommandsText.AlreadyHasLoaded].Fmt([ClassSymbol.Name]), AReason));
+      Exit(Fail(cTexts[TComponentCommandsText.AlreadyHasLoaded].Fmt([mClassSymbol.Name]), AReason));
     end;
-    LB := Source.LineBreak;
-    AEdits := AddToClass(Source, ClassSymbol, '', ['protected', 'procedure Loaded; override;']) +
-      [Source.AddBody(ClassSymbol.Name, Format('procedure %s.Loaded;', [ClassSymbol.Name]) + LB + 'begin' + LB +
-      '  inherited Loaded;' + LB + 'end;'), Source.RemoveCommand];
+    mLB := mSource.LineBreak;
+    AEdits := AddToClass(mSource, mClassSymbol, '', ['protected', 'procedure Loaded; override;']) +
+      [mSource.AddBody(mClassSymbol.Name, Format('procedure %s.Loaded;', [mClassSymbol.Name]) + mLB + 'begin' + mLB +
+      '  inherited Loaded;' + mLB + 'end;'), mSource.RemoveCommand];
     Result := True;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -666,7 +666,7 @@ begin
     begin
       Exit(Fail(cTexts[TComponentCommandsText.NotificationOnlyAppliesInA].Text, AReason));
     end;
-    if not DescendsFrom(Ancestors(mSource, AContext.Index, mClass.Name), ComponentRoots) then
+    if not DescendsFrom(Ancestors(mSource, AContext.Index, mClass.Name), cComponentRoots) then
     begin
       Exit(Fail(cTexts[TComponentCommandsText.DoesNotDescendFromTComponent2].Fmt([mClass.Name]), AReason));
     end;
@@ -700,16 +700,16 @@ end;
 /// Sichtbarkeitszeile, sonst das "end" der Klasse.</summary>
 function HandlerLine(ASource: TCommandSource; const AClass: TIndexSymbol): Integer;
 var
-  Line: Integer;
-  Word: string;
+  mLine: Integer;
+  mWord: string;
 begin
-  for Line := AClass.Range.StartPos.Line + 1 to AClass.Range.EndPos.Line - 1 do
+  for mLine := AClass.Range.StartPos.Line + 1 to AClass.Range.EndPos.Line - 1 do
   begin
-    Word := LowerCase(Trim(ASource.Lines[Line]));
-    if (Word = 'private') or (Word = 'protected') or (Word = 'public') or (Word = 'published') or
-      StartsStr('strict ', Word) then
+    mWord := LowerCase(Trim(ASource.Lines[mLine]));
+    if (mWord = 'private') or (mWord = 'protected') or (mWord = 'public') or (mWord = 'published') or
+      StartsStr('strict ', mWord) then
     begin
-      Exit(Line);
+      Exit(mLine);
     end;
   end;
   Result := AClass.Range.EndPos.Line;
@@ -718,15 +718,15 @@ end;
 /// <summary>Objekt AName in AObject oder darunter; nil ohne.</summary>
 function FindDfmObject(AObject: TDfmObject; const AName: string): TDfmObject;
 var
-  Child: TDfmObject;
+  mChild: TDfmObject;
 begin
   if SameText(AObject.Name, AName) then
   begin
     Exit(AObject);
   end;
-  for Child in AObject.Children do
+  for mChild in AObject.Children do
   begin
-    Result := FindDfmObject(Child, AName);
+    Result := FindDfmObject(mChild, AName);
     if Result <> nil then
     begin
       Exit;

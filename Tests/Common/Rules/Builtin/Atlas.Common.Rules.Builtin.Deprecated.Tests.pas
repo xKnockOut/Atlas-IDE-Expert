@@ -295,7 +295,7 @@ begin
   begin
     if Finding.Message.StartsWith('Alt ') then
     begin
-      Assert.AreEqual(DeprecatedSymbolRuleId, Finding.RuleId);
+      Assert.AreEqual(cDeprecatedSymbolRuleId, Finding.RuleId);
       Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Finding.Severity));
       Assert.AreEqual(Ord(TRuleConfidence.High), Ord(Finding.Confidence));
       Assert.AreEqual(3, Finding.Range.EndPos.Character - Finding.Range.StartPos.Character);
@@ -552,7 +552,7 @@ var
   Item: TJSONObject;
 begin
   Finding := Default(TRuleFinding);
-  Finding.RuleId := DeprecatedSymbolRuleId;
+  Finding.RuleId := cDeprecatedSymbolRuleId;
   Finding.Message := 'Alt ist deprecated: Nutze Neu (wie W1000).';
   Item := TLspDiagnosticItems.FindingToJson(Finding);
   try
@@ -600,7 +600,7 @@ begin
   Found := False;
   for Rule in BuiltinRules do
   begin
-    if Rule.Descriptor.Id = DeprecatedSymbolRuleId then
+    if Rule.Descriptor.Id = cDeprecatedSymbolRuleId then
     begin
       Found := True;
     end;

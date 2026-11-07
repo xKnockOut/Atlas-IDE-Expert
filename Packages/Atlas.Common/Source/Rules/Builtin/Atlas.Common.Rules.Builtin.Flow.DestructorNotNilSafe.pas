@@ -19,7 +19,7 @@ type
   end;
 
 const
-  DestructorNotNilSafeRuleId = 'destructor-not-nil-safe';
+  cDestructorNotNilSafeRuleId = 'destructor-not-nil-safe';
 
 implementation
 
@@ -56,24 +56,24 @@ const
 /// <summary>Methoden in private- und strict-private-Abschnitten der Klassendeklaration.</summary>
 function PrivateOf(AClass: TSyntaxNode): TArray<string>;
 var
-  Index: Integer;
-  IsPrivate: Boolean;
+  mIndex: Integer;
+  mIsPrivate: Boolean;
 begin
   Result := nil;
   if AClass = nil then
   begin
     Exit;
   end;
-  IsPrivate := False;
-  for Index := 0 to AClass.ChildCount - 1 do
+  mIsPrivate := False;
+  for mIndex := 0 to AClass.ChildCount - 1 do
   begin
-    if AClass[Index].Kind = TSyntaxKind.Visibility then
+    if AClass[mIndex].Kind = TSyntaxKind.Visibility then
     begin
-      IsPrivate := MatchText(AClass[Index].Name, ['private', 'strict private']);
+      mIsPrivate := MatchText(AClass[mIndex].Name, ['private', 'strict private']);
     end
-    else if IsPrivate and (AClass[Index].Kind = TSyntaxKind.RoutineHeader) and (AClass[Index].Name <> '') then
+    else if mIsPrivate and (AClass[mIndex].Kind = TSyntaxKind.RoutineHeader) and (AClass[mIndex].Name <> '') then
     begin
-      Result := Result + [AClass[Index].Name];
+      Result := Result + [AClass[mIndex].Name];
     end;
   end;
 end;
@@ -83,7 +83,7 @@ function EnclosingStatement(ANode, ARoot: TSyntaxNode): TSyntaxNode;
 begin
   Result := ANode;
   while (Result <> ARoot) and (Result <> nil) and
-    not (Result.Kind in FlowStatementKinds + [TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement]) do
+    not (Result.Kind in cFlowStatementKinds + [TSyntaxKind.AssignStatement, TSyntaxKind.CallStatement]) do
   begin
     Result := Result.Parent;
   end;
@@ -158,20 +158,20 @@ end;
 /// öffentliche Methoden rufen auch andere Units.</summary>
 function TDestructorCheck.OnlyCalledFromDestructor(ARoutine: TSyntaxNode): Boolean;
 var
-  Other: TSyntaxNode;
-  Callers: Integer;
+  mOther: TSyntaxNode;
+  mCallers: Integer;
 begin
   Result := MatchText(MethodOf(ARoutine), FPrivateMethods);
-  Callers := 0;
-  for Other in FRoutines do
+  mCallers := 0;
+  for mOther in FRoutines do
   begin
-    if Result and (Other <> ARoutine) and CallsMethod(Other, MethodOf(ARoutine)) then
+    if Result and (mOther <> ARoutine) and CallsMethod(mOther, MethodOf(ARoutine)) then
     begin
-      Result := SameText(ClassOf(Other), FQualifiedClass) and StartsWithWord(FContext.Text, Other, 'destructor');
-      Inc(Callers);
+      Result := SameText(ClassOf(mOther), FQualifiedClass) and StartsWithWord(FContext.Text, mOther, 'destructor');
+      Inc(mCallers);
     end;
   end;
-  Result := Result and (Callers > 0);
+  Result := Result and (mCallers > 0);
 end;
 
 /// <summary>Destruktoren und Methoden, die nur sie aufrufen; BeforeDestruction läuft nach einer Exception im
@@ -187,41 +187,41 @@ end;
 /// </summary>
 function TDestructorCheck.GuardFix(AStatement: TSyntaxNode; const AField: string): TArray<TRuleFix>;
 var
-  Outer: string;
+  mOuter: string;
 begin
   Result := nil;
   if (AStatement.Parent = nil) or (AStatement.Parent.Kind <> TSyntaxKind.Block) or
-    (AStatement.StartPos.Line <> AStatement.EndPos.Line) or not LineIndent(FContext.Text, AStatement, Outer) then
+    (AStatement.StartPos.Line <> AStatement.EndPos.Line) or not LineIndent(FContext.Text, AStatement, mOuter) then
   begin
     Exit;
   end;
   Result := [TRuleFix.Create(cTexts[TFlowDestructorNotNilSafeText.WrapInAssigned].Fmt([AField]),
-    [TRuleEdit.Create(NodeRange(AStatement), Format('if Assigned(%s) then', [AField]) + FLineBreak + Outer +
+    [TRuleEdit.Create(NodeRange(AStatement), Format('if Assigned(%s) then', [AField]) + FLineBreak + mOuter +
     '  ' + Trim(Text(AStatement)))])];
 end;
 
 /// <summary>X gilt als geprüft, dazu jedes Feld, das jeder Konstruktor vor X setzt.</summary>
 procedure TDestructorCheck.AddChecked(const AName: string);
 var
-  Item: TGuardImplication;
+  mItem: TGuardImplication;
 begin
   FChecked := FChecked + [AName];
-  for Item in FScan.Implications do
+  for mItem in FScan.Implications do
   begin
-    if SameText(Item.Guard, AName) then
+    if SameText(mItem.Guard, AName) then
     begin
-      FChecked := FChecked + Item.Implied;
+      FChecked := FChecked + mItem.Implied;
     end;
   end;
 end;
 
 procedure TDestructorCheck.AddAllChecked(const ANames: TArray<string>);
 var
-  Name: string;
+  mName: string;
 begin
-  for Name in ANames do
+  for mName in ANames do
   begin
-    AddChecked(Name);
+    AddChecked(mName);
   end;
 end;
 
@@ -259,17 +259,17 @@ end;
 /// <summary>Abfragen und Zuweisungen in ANode, die die folgenden Zugriffe schützen.</summary>
 procedure TDestructorCheck.NoteGuards(ANode: TSyntaxNode);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   // if Assigned(FFeld) then …, while FFeld <> nil do …: die Bedingung schützt alles danach.
   if ANode.Kind in [TSyntaxKind.IfStatement, TSyntaxKind.WhileStatement, TSyntaxKind.RepeatStatement,
     TSyntaxKind.CaseStatement] then
   begin
-    for Index := 0 to ANode.ChildCount - 1 do
+    for mIndex := 0 to ANode.ChildCount - 1 do
     begin
-      if not (ANode[Index].Kind in FlowStatementKinds) then
+      if not (ANode[mIndex].Kind in cFlowStatementKinds) then
       begin
-        CollectChecks(ANode[Index]);
+        CollectChecks(ANode[mIndex]);
       end;
     end;
   end;
@@ -287,39 +287,39 @@ end;
 procedure TDestructorCheck.ReportAccess(AAccess, AStatement: TSyntaxNode; const AField: string;
   const AItem: TNilAtDestroy);
 var
-  Access, Message: string;
+  mAccess, mMessage: string;
 begin
-  Access := Trim(Text(AAccess));
+  mAccess := Trim(Text(AAccess));
   if AItem.Conditional then
   begin
-    Message := cTexts[TFlowDestructorNotNilSafeText.Conditional].Fmt([AField, Access]);
+    mMessage := cTexts[TFlowDestructorNotNilSafeText.Conditional].Fmt([AField, mAccess]);
   end
   else
   begin
-    Message := cTexts[TFlowDestructorNotNilSafeText.Raises].Fmt([AItem.Raiser, AField, Access]);
+    mMessage := cTexts[TFlowDestructorNotNilSafeText.Raises].Fmt([AItem.Raiser, AField, mAccess]);
   end;
-  FReport.Add(NodeRange(AAccess), Message, TRuleConfidence.High, GuardFix(AStatement, AField));
+  FReport.Add(NodeRange(AAccess), mMessage, TRuleConfidence.High, GuardFix(AStatement, AField));
 end;
 
 /// <summary>Zugriff FFeld.X (außer Free und DisposeOf), FFeld[…] oder FFeld^; je Anweisung und Feld ein Befund,
 /// damit jede Korrektur ihre Anweisung schützt.</summary>
 procedure TDestructorCheck.CheckAccess(AAccess, ABody: TSyntaxNode);
 var
-  Field, Key: string;
-  Item: TNilAtDestroy;
-  Statement: TSyntaxNode;
+  mField, mKey: string;
+  mItem: TNilAtDestroy;
+  mStatement: TSyntaxNode;
 begin
-  Field := FreedPath(AAccess[0]);
-  if (Field = '') or IsReleaseCall(AAccess) or MatchText(Field, FChecked) or not FScan.RiskOf(Field, Item) then
+  mField := FreedPath(AAccess[0]);
+  if (mField = '') or IsReleaseCall(AAccess) or MatchText(mField, FChecked) or not FScan.RiskOf(mField, mItem) then
   begin
     Exit;
   end;
-  Statement := EnclosingStatement(AAccess, ABody);
-  Key := Field + '@' + IntToStr(Statement.StartOffset);
-  if not MatchText(Key, FReported) then
+  mStatement := EnclosingStatement(AAccess, ABody);
+  mKey := mField + '@' + IntToStr(mStatement.StartOffset);
+  if not MatchText(mKey, FReported) then
   begin
-    FReported := FReported + [Key];
-    ReportAccess(AAccess, Statement, Field, Item);
+    FReported := FReported + [mKey];
+    ReportAccess(AAccess, mStatement, mField, mItem);
   end;
 end;
 
@@ -341,60 +341,60 @@ end;
 
 procedure TDestructorCheck.CheckBody(ARoutine: TSyntaxNode);
 var
-  Body: TSyntaxNode;
+  mBody: TSyntaxNode;
 begin
-  Body := ARoutine.FindChild(TSyntaxKind.Block);
-  if Body = nil then
+  mBody := ARoutine.FindChild(TSyntaxKind.Block);
+  if mBody = nil then
   begin
     Exit;
   end;
   FChecked := nil;
   FReported := nil;
   // Iterativ (Bericht M1): Vorordnung wie die Rekursion, FChecked wächst in derselben Reihenfolge.
-  Body.Search(
+  mBody.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
-      Result := VisitStep(ANode, Body);
+      Result := VisitStep(ANode, mBody);
     end);
 end;
 
 procedure TDestructorCheck.CheckClass;
 var
-  ClassType, Other: TSyntaxNode;
-  Fields: TArray<string>;
+  mClassType, mOther: TSyntaxNode;
+  mFields: TArray<string>;
 begin
-  ClassType := FindClassType(FContext.Tree.Root, DeclaredClassName(FQualifiedClass));
-  Fields := ClassFields(ClassType);
-  if Fields = nil then
+  mClassType := FindClassType(FContext.Tree.Root, DeclaredClassName(FQualifiedClass));
+  mFields := ClassFields(mClassType);
+  if mFields = nil then
   begin
     Exit;
   end;
-  FPrivateMethods := PrivateOf(ClassType);
-  FScan.Start(Fields);
-  for Other in FRoutines do
+  FPrivateMethods := PrivateOf(mClassType);
+  FScan.Start(mFields);
+  for mOther in FRoutines do
   begin
-    if SameText(ClassOf(Other), FQualifiedClass) and StartsWithWord(FContext.Text, Other, 'constructor') then
+    if SameText(ClassOf(mOther), FQualifiedClass) and StartsWithWord(FContext.Text, mOther, 'constructor') then
     begin
-      FScan.Scan(Other);
+      FScan.Scan(mOther);
     end;
   end;
   if FScan.Risky = nil then
   begin
     Exit;
   end;
-  for Other in FRoutines do
+  for mOther in FRoutines do
   begin
-    if IsReleasing(Other) then
+    if IsReleasing(mOther) then
     begin
-      CheckBody(Other);
+      CheckBody(mOther);
     end;
   end;
 end;
 
 procedure TDestructorCheck.Run;
 var
-  Routine: TSyntaxNode;
-  Classes: TArray<string>;
+  mRoutine: TSyntaxNode;
+  mClasses: TArray<string>;
 begin
   if (FContext.Tree = nil) or not ContainsText(FContext.Text, 'destructor') then
   begin
@@ -403,14 +403,14 @@ begin
   FRoutines := TRuleDerived.Routines(TRuleDerived.Open(FContext), FContext);
   FScan := TConstructorScan.Create(FContext.Text, FContext.Tree.Root, FRoutines,
     TRuleOptions.Bool(FContext.Options, 'onlyAfterRaisingCode', True));
-  Classes := nil;
-  for Routine in FRoutines do
+  mClasses := nil;
+  for mRoutine in FRoutines do
   begin
-    FQualifiedClass := ClassOf(Routine);
-    if (FQualifiedClass <> '') and not MatchText(FQualifiedClass, Classes) and
-      StartsWithWord(FContext.Text, Routine, 'destructor') then
+    FQualifiedClass := ClassOf(mRoutine);
+    if (FQualifiedClass <> '') and not MatchText(FQualifiedClass, mClasses) and
+      StartsWithWord(FContext.Text, mRoutine, 'destructor') then
     begin
-      Classes := Classes + [FQualifiedClass];
+      mClasses := mClasses + [FQualifiedClass];
       CheckClass;
     end;
   end;
@@ -420,19 +420,19 @@ end;
 
 function TDestructorNotNilSafeRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(DestructorNotNilSafeRuleId, TRuleSeverity.Warning,
+  Result := TRuleDescriptor.Create(cDestructorNotNilSafeRuleId, TRuleSeverity.Warning,
     cTexts[TFlowDestructorNotNilSafeText.Title].Text);
 end;
 
 procedure TDestructorNotNilSafeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Check: TDestructorCheck;
+  mCheck: TDestructorCheck;
 begin
-  Check := TDestructorCheck.Create(AContext, AReport);
+  mCheck := TDestructorCheck.Create(AContext, AReport);
   try
-    Check.Run;
+    mCheck.Run;
   finally
-    Check.Free;
+    mCheck.Free;
   end;
 end;
 

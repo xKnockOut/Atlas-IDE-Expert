@@ -22,7 +22,7 @@ uses
   System.StrUtils;
 
 const
-  PureNames: array[0..62] of string = ('Abs', 'Assigned', 'Chr', 'Copy', 'Frac', 'High', 'Int', 'Length', 'Low',
+  cPureNames: array[0..62] of string = ('Abs', 'Assigned', 'Chr', 'Copy', 'Frac', 'High', 'Int', 'Length', 'Low',
     'Max', 'Min', 'Odd', 'Ord', 'Pred', 'Round', 'SizeOf', 'Sqr', 'Sqrt', 'Succ', 'Trunc',
     'IntToStr', 'IntToHex', 'FloatToStr', 'BoolToStr', 'Format', 'QuotedStr', 'Trim', 'TrimLeft', 'TrimRight',
     'LowerCase', 'UpperCase', 'AnsiLowerCase', 'AnsiUpperCase', 'StringReplace', 'StringOfChar', 'Pos', 'PosEx',
@@ -33,18 +33,18 @@ const
 
 class function TPureRoutines.Names: TArray<string>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  SetLength(Result, Length(PureNames));
-  for Index := 0 to High(PureNames) do
+  SetLength(Result, Length(cPureNames));
+  for mIndex := 0 to High(cPureNames) do
   begin
-    Result[Index] := PureNames[Index];
+    Result[mIndex] := cPureNames[mIndex];
   end;
 end;
 
 class function TPureRoutines.IsPure(const AName: string): Boolean;
 begin
-  Result := MatchText(AName, PureNames);
+  Result := MatchText(AName, cPureNames);
 end;
 
 end.

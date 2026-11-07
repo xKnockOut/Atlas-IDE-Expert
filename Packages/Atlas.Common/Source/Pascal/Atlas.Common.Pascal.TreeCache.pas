@@ -125,9 +125,9 @@ uses
   Atlas.Common.Pascal.Parser;
 
 const
-  TreeKey = 'pascal.syntaxtree';
+  cTreeKey = 'pascal.syntaxtree';
   /// <summary>Schlüssel des Vollbaums aus allen Zweigen.</summary>
-  AllKey = 'pascal.syntaxtree.all';
+  cAllKey = 'pascal.syntaxtree.all';
 
 type
   TSharedSyntaxTree = class(TInterfacedObject, ISharedSyntaxTree)
@@ -250,25 +250,25 @@ end;
 
 function TTreeMode.Key(const AText: string): string;
 var
-  Sorted: TArray<string>;
-  Index: Integer;
+  mSorted: TArray<string>;
+  mIndex: Integer;
 begin
   if All then
   begin
-    Exit(AllKey);
+    Exit(cAllKey);
   end;
   // Ohne bedingte Direktive und $I ist der Baum für alle Symbole gleich: kein neuer Parse beim Plattformwechsel.
   if not TPascalPreprocessor.HasConditionals(AText) and not ReadsIncludes(AText) then
   begin
-    Exit(TreeKey);
+    Exit(cTreeKey);
   end;
-  Sorted := Copy(Defines);
-  for Index := 0 to High(Sorted) do
+  mSorted := Copy(Defines);
+  for mIndex := 0 to High(mSorted) do
   begin
-    Sorted[Index] := UpperCase(Trim(Sorted[Index]));
+    mSorted[mIndex] := UpperCase(Trim(mSorted[mIndex]));
   end;
-  TArray.Sort<string>(Sorted);
-  Result := TreeKey + '|' + string.Join(';', Sorted);
+  TArray.Sort<string>(mSorted);
+  Result := cTreeKey + '|' + string.Join(';', mSorted);
   if ReadsIncludes(AText) then
   begin
     Result := Result + '|inc' + IntToStr(TInterlocked.CompareExchange(IncludeGeneration, 0, 0));
@@ -284,91 +284,91 @@ end;
 function ParseFor(const AText: string; const AMode: TTreeMode;
   const ACancellation: IPascalCancellation): ISharedSyntaxTree;
 var
-  Processed: TPreprocessorResult;
-  Tree: TSyntaxTree;
+  mProcessed: TPreprocessorResult;
+  mTree: TSyntaxTree;
 begin
-  Processed := Default(TPreprocessorResult);
+  mProcessed := Default(TPreprocessorResult);
   if AMode.All then
   begin
-    Tree := TPascalParser.Parse(AText, ACancellation);
+    mTree := TPascalParser.Parse(AText, ACancellation);
   end
   else
   begin
-    Tree := TPascalParser.ParseActive(AText, TPascalPreprocessor.EditorOptions(AMode.Defines, AMode.FileName,
-      AMode.Resolver), ACancellation, Processed);
+    mTree := TPascalParser.ParseActive(AText, TPascalPreprocessor.EditorOptions(AMode.Defines, AMode.FileName,
+      AMode.Resolver), ACancellation, mProcessed);
   end;
-  Result := TSharedSyntaxTree.Create(Tree, Processed, AMode.ReadsIncludes(AText));
+  Result := TSharedSyntaxTree.Create(mTree, mProcessed, AMode.ReadsIncludes(AText));
 end;
 
 /// <summary>Parst ADocument als gemeinsamen Lauf; nil, wenn eine neuere Version ihn überholt hat.</summary>
 function ParseShared(const ADocument: ITextDocument; const AMode: TTreeMode; const AKey: string): IInterface;
 var
-  Run: TParseRun;
-  Signal: IPascalCancellation;
-  Previous: IPascalCancellation;
-  Shared: ISharedSyntaxTree;
-  RunKey: string;
+  mRun: TParseRun;
+  mSignal: IPascalCancellation;
+  mPrevious: IPascalCancellation;
+  mShared: ISharedSyntaxTree;
+  mRunKey: string;
 begin
-  RunKey := ADocument.Uri + #0 + AKey;
-  Run := TParseRun.Create(ADocument.Version);
-  Signal := Run;
+  mRunKey := ADocument.Uri + #0 + AKey;
+  mRun := TParseRun.Create(ADocument.Version);
+  mSignal := mRun;
   RunLock.Enter;
   try
-    if not Running.TryGetValue(RunKey, Previous) then
+    if not Running.TryGetValue(mRunKey, mPrevious) then
     begin
-      Running.Add(RunKey, Signal);
+      Running.Add(mRunKey, mSignal);
     end
-    else if (Previous as TParseRun).Version < ADocument.Version then
+    else if (mPrevious as TParseRun).Version < ADocument.Version then
     begin
-      (Previous as TParseRun).Cancel;
-      Running[RunKey] := Signal;
+      (mPrevious as TParseRun).Cancel;
+      Running[mRunKey] := mSignal;
     end;
     // Ist schon eine neuere Version in Arbeit, läuft dieser Parse ohne Eintrag zu Ende.
   finally
     RunLock.Leave;
   end;
-  Shared := ParseFor(ADocument.Text, AMode, Signal);
+  mShared := ParseFor(ADocument.Text, AMode, mSignal);
   TInterlocked.Increment(Parses);
   RunLock.Enter;
   try
-    if Running.TryGetValue(RunKey, Previous) and (Previous = Signal) then
+    if Running.TryGetValue(mRunKey, mPrevious) and (mPrevious = mSignal) then
     begin
-      Running.Remove(RunKey);
+      Running.Remove(mRunKey);
     end;
   finally
     RunLock.Leave;
   end;
-  if Run.IsCancelled then
+  if mRun.IsCancelled then
   begin
     Exit(nil);
   end;
-  Result := Shared;
+  Result := mShared;
 end;
 
 /// <summary>Gemeinsamer Baum der Momentaufnahme nach AMode.</summary>
 function GetShared(const ADocument: ITextDocument; const AMode: TTreeMode;
   const ACancellation: IPascalCancellation): ISharedSyntaxTree;
 var
-  Document: ITextDocument;
-  Mode: TTreeMode;
-  Key: string;
-  Value: IInterface;
+  mDocument: ITextDocument;
+  mMode: TTreeMode;
+  mKey: string;
+  mValue: IInterface;
 begin
-  Document := ADocument;
-  Mode := AMode;
+  mDocument := ADocument;
+  mMode := AMode;
   TInterlocked.Increment(Lookups);
-  Key := Mode.Key(Document.Text);
-  Value := Document.Derived(Key,
+  mKey := mMode.Key(mDocument.Text);
+  mValue := mDocument.Derived(mKey,
     function: IInterface
     begin
-      Result := ParseShared(Document, Mode, Key);
+      Result := ParseShared(mDocument, mMode, mKey);
     end);
-  if Supports(Value, ISharedSyntaxTree, Result) then
+  if Supports(mValue, ISharedSyntaxTree, Result) then
   begin
     Exit;
   end;
   // Von einer neueren Version überholt: für diese (veraltete) Anfrage ohne Cache parsen.
-  Result := ParseFor(Document.Text, Mode, ACancellation);
+  Result := ParseFor(mDocument.Text, mMode, ACancellation);
 end;
 
 { TSyntaxTreeCache }
@@ -403,39 +403,39 @@ end;
 class function TSyntaxTreeCache.GetFor(const ADocument: ITextDocument; const ADefines: TArray<string>;
   const ACancellation: IPascalCancellation): ISharedSyntaxTree;
 var
-  Mode: TTreeMode;
+  mMode: TTreeMode;
 begin
-  Mode.All := False;
-  Mode.Defines := ADefines;
-  Mode.FileName := TDocumentUris.ToPath(ADocument.Uri);
-  Mode.Resolver := IncludeResolverOf(ADocument.Uri);
-  Result := GetShared(ADocument, Mode, ACancellation);
+  mMode.All := False;
+  mMode.Defines := ADefines;
+  mMode.FileName := TDocumentUris.ToPath(ADocument.Uri);
+  mMode.Resolver := IncludeResolverOf(ADocument.Uri);
+  Result := GetShared(ADocument, mMode, ACancellation);
 end;
 
 class function TSyntaxTreeCache.GetAll(const ADocument: ITextDocument;
   const ACancellation: IPascalCancellation): ISharedSyntaxTree;
 var
-  Mode: TTreeMode;
+  mMode: TTreeMode;
 begin
-  Mode.All := True;
-  Mode.Defines := nil;
-  Mode.FileName := '';
-  Mode.Resolver := nil;
-  Result := GetShared(ADocument, Mode, ACancellation);
+  mMode.All := True;
+  mMode.Defines := nil;
+  mMode.FileName := '';
+  mMode.Resolver := nil;
+  Result := GetShared(ADocument, mMode, ACancellation);
 end;
 
 class function TSyntaxTreeCache.DefinesOf(const AUri: string): TArray<string>;
 var
-  Provider: TTreeDefinesProvider;
+  mProvider: TTreeDefinesProvider;
 begin
   RunLock.Enter;
   try
-    Provider := DefinesProvider;
+    mProvider := DefinesProvider;
   finally
     RunLock.Leave;
   end;
   Result := nil;
-  if Assigned(Provider) and not Provider(AUri, Result) then
+  if Assigned(mProvider) and not mProvider(AUri, Result) then
   begin
     Result := nil;
   end;
@@ -463,18 +463,18 @@ end;
 
 class function TSyntaxTreeCache.IncludeResolverOf(const AUri: string): TIncludeResolver;
 var
-  Provider: TTreeIncludeProvider;
+  mProvider: TTreeIncludeProvider;
 begin
   RunLock.Enter;
   try
-    Provider := IncludeProvider;
+    mProvider := IncludeProvider;
   finally
     RunLock.Leave;
   end;
   Result := nil;
-  if Assigned(Provider) then
+  if Assigned(mProvider) then
   begin
-    Result := Provider(AUri);
+    Result := mProvider(AUri);
   end;
 end;
 

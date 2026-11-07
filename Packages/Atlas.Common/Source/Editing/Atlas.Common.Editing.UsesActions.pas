@@ -105,7 +105,8 @@ type
     class function InterfaceUsages(const ATokens: TArray<TPascalToken>; const AUnitName: string;
       const ANames: TArray<string>): TArray<TUsesInterfaceUsage>; static;
     /// <summary>interface-Units, die nur im implementation-Teil gebraucht werden.</summary>
-    class function MovableUnits(const ATokens: TArray<TPascalToken>; const AInfo: TUsesUnitInfoFunc): TArray<string>; static;
+    class function MovableUnits(const ATokens: TArray<TPascalToken>;
+      const AInfo: TUsesUnitInfoFunc): TArray<string>; static;
     /// <summary>Edits, die AUnits aus allen schlichten Listen streichen.</summary>
     class function RemoveUnits(const ATokens: TArray<TPascalToken>; const AText: string;
       const AUnits: TArray<string>; const ALineBreak: string; out AEdits: TArray<TTextEdit>): Boolean; static;
@@ -142,8 +143,8 @@ uses
   Atlas.Text.Lines;
 
 const
-  InInterfacePart = 1;
-  InImplementationPart = 2;
+  cInInterfacePart = 1;
+  cInImplementationPart = 2;
 
 function Bare(const AIdentifier: string): string;
 begin
@@ -159,11 +160,11 @@ end;
 
 function ContainsText_(const ANames: TArray<string>; const AName: string): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
-  for Name in ANames do
+  for mName in ANames do
   begin
-    if SameText(Name, AName) then
+    if SameText(mName, AName) then
     begin
       Exit(True);
     end;
@@ -175,52 +176,52 @@ end;
 function CollectIdentifiers(const ATokens: TArray<TPascalToken>;
   const AClauses: TArray<TUsesClauseInfo>): TDictionary<string, Integer>;
 var
-  Index, ClauseIndex, Part, Mask: Integer;
-  IsUnit: Boolean;
-  Key: string;
+  mIndex, mClauseIndex, mPart, mMask: Integer;
+  mIsUnit: Boolean;
+  mKey: string;
 begin
   Result := TDictionary<string, Integer>.Create;
-  IsUnit := False;
-  for Index := 0 to High(ATokens) do
+  mIsUnit := False;
+  for mIndex := 0 to High(ATokens) do
   begin
-    if not (ATokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+    if not (ATokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
     begin
-      IsUnit := ATokens[Index].IsKeyword('unit');
+      mIsUnit := ATokens[mIndex].IsKeyword('unit');
       Break;
     end;
   end;
-  if IsUnit then
+  if mIsUnit then
   begin
-    Part := InInterfacePart;
+    mPart := cInInterfacePart;
   end
   else
   begin
-    Part := InImplementationPart;
+    mPart := cInImplementationPart;
   end;
-  ClauseIndex := 0;
-  Index := 0;
-  while Index <= High(ATokens) do
+  mClauseIndex := 0;
+  mIndex := 0;
+  while mIndex <= High(ATokens) do
   begin
-    if (ClauseIndex <= High(AClauses)) and (Index = AClauses[ClauseIndex].UsesIndex) then
+    if (mClauseIndex <= High(AClauses)) and (mIndex = AClauses[mClauseIndex].UsesIndex) then
     begin
-      Index := AClauses[ClauseIndex].Semicolon + 1;
-      Inc(ClauseIndex);
+      mIndex := AClauses[mClauseIndex].Semicolon + 1;
+      Inc(mClauseIndex);
       Continue;
     end;
-    if ATokens[Index].IsKeyword('implementation') then
+    if ATokens[mIndex].IsKeyword('implementation') then
     begin
-      Part := InImplementationPart;
+      mPart := cInImplementationPart;
     end
-    else if ATokens[Index].Kind = TPascalTokenKind.Identifier then
+    else if ATokens[mIndex].Kind = TPascalTokenKind.Identifier then
     begin
-      Key := LowerCase(Bare(ATokens[Index].Text));
-      if not Result.TryGetValue(Key, Mask) then
+      mKey := LowerCase(Bare(ATokens[mIndex].Text));
+      if not Result.TryGetValue(mKey, mMask) then
       begin
-        Mask := 0;
+        mMask := 0;
       end;
-      Result.AddOrSetValue(Key, Mask or Part);
+      Result.AddOrSetValue(mKey, mMask or mPart);
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
 end;
 
@@ -228,26 +229,26 @@ end;
 function UsageOf(const AUnitName: string; const AInfo: TUsesUnitInfo;
   AIdentifiers: TDictionary<string, Integer>): Integer;
 var
-  Name: string;
-  Mask: Integer;
+  mName: string;
+  mMask: Integer;
 begin
   Result := 0;
   // Verweis der Formulardatei auf ein Modul der Unit: Die IDE braucht den Eintrag, der Code nennt ihn nicht.
   if AInfo.UsedByForm then
   begin
-    Result := InImplementationPart;
+    Result := cInImplementationPart;
   end;
   // Qualifizierter Zugriff wie SysUtils.Format oder System.SysUtils.Format.
-  if AIdentifiers.TryGetValue(LowerCase(Copy(AUnitName, LastDelimiter('.', AUnitName) + 1, MaxInt)), Mask) then
+  if AIdentifiers.TryGetValue(LowerCase(Copy(AUnitName, LastDelimiter('.', AUnitName) + 1, MaxInt)), mMask) then
   begin
-    Result := Result or Mask;
+    Result := Result or mMask;
   end;
-  for Name in AInfo.Names do
+  for mName in AInfo.Names do
   begin
-    if AIdentifiers.TryGetValue(LowerCase(Name), Mask) then
+    if AIdentifiers.TryGetValue(LowerCase(mName), mMask) then
     begin
-      Result := Result or Mask;
-      if Result = InInterfacePart or InImplementationPart then
+      Result := Result or mMask;
+      if Result = cInInterfacePart or cInImplementationPart then
       begin
         Exit;
       end;
@@ -262,11 +263,11 @@ end;
 
 function InsideAny(const APosition: TTextPosition; const ARanges: TArray<TTextRange>): Boolean;
 var
-  Range: TTextRange;
+  mRange: TTextRange;
 begin
-  for Range in ARanges do
+  for mRange in ARanges do
   begin
-    if not IsBefore(APosition, Range.StartPos) and IsBefore(APosition, Range.EndPos) then
+    if not IsBefore(APosition, mRange.StartPos) and IsBefore(APosition, mRange.EndPos) then
     begin
       Exit(True);
     end;
@@ -327,7 +328,7 @@ begin
   else
   begin
     AState := TUsesEntryState.OnlyImplementation;
-    Result := AInInterface and (AUsage = InImplementationPart) and not AInfo.HasInitialization;
+    Result := AInInterface and (AUsage = cInImplementationPart) and not AInfo.HasInitialization;
   end;
 end;
 
@@ -749,61 +750,61 @@ end;
 class function TUsesActions.InterfaceUsages(const ATokens: TArray<TPascalToken>; const AUnitName: string;
   const ANames: TArray<string>): TArray<TUsesInterfaceUsage>;
 var
-  Usage: TUsesInterfaceUsage;
-  Clauses: TArray<TUsesClauseInfo>;
-  Names: TDictionary<string, Boolean>;
-  Name: string;
-  Index, ClauseIndex: Integer;
-  IsUnit: Boolean;
+  mUsage: TUsesInterfaceUsage;
+  mClauses: TArray<TUsesClauseInfo>;
+  mNames: TDictionary<string, Boolean>;
+  mName: string;
+  mIndex, mClauseIndex: Integer;
+  mIsUnit: Boolean;
 begin
   Result := nil;
-  IsUnit := False;
-  for Index := 0 to High(ATokens) do
+  mIsUnit := False;
+  for mIndex := 0 to High(ATokens) do
   begin
-    if not (ATokens[Index].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+    if not (ATokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
     begin
-      IsUnit := ATokens[Index].IsKeyword('unit');
+      mIsUnit := ATokens[mIndex].IsKeyword('unit');
       Break;
     end;
   end;
-  if not IsUnit then
+  if not mIsUnit then
   begin
     Exit;
   end;
-  Clauses := TUsesClauses.Clauses(ATokens);
-  Names := TDictionary<string, Boolean>.Create;
+  mClauses := TUsesClauses.Clauses(ATokens);
+  mNames := TDictionary<string, Boolean>.Create;
   try
     // Qualifizierter Zugriff wie uKunde.TKunde zählt wie in UsageOf.
-    Names.AddOrSetValue(LowerCase(Copy(AUnitName, LastDelimiter('.', AUnitName) + 1, MaxInt)), True);
-    for Name in ANames do
+    mNames.AddOrSetValue(LowerCase(Copy(AUnitName, LastDelimiter('.', AUnitName) + 1, MaxInt)), True);
+    for mName in ANames do
     begin
-      Names.AddOrSetValue(LowerCase(Bare(Name)), True);
+      mNames.AddOrSetValue(LowerCase(Bare(mName)), True);
     end;
-    ClauseIndex := 0;
-    Index := 0;
-    while Index <= High(ATokens) do
+    mClauseIndex := 0;
+    mIndex := 0;
+    while mIndex <= High(ATokens) do
     begin
-      if (ClauseIndex <= High(Clauses)) and (Index = Clauses[ClauseIndex].UsesIndex) then
+      if (mClauseIndex <= High(mClauses)) and (mIndex = mClauses[mClauseIndex].UsesIndex) then
       begin
-        Index := Clauses[ClauseIndex].Semicolon + 1;
-        Inc(ClauseIndex);
+        mIndex := mClauses[mClauseIndex].Semicolon + 1;
+        Inc(mClauseIndex);
         Continue;
       end;
-      if ATokens[Index].IsKeyword('implementation') then
+      if ATokens[mIndex].IsKeyword('implementation') then
       begin
         Break;
       end;
-      if (ATokens[Index].Kind = TPascalTokenKind.Identifier) and
-        Names.ContainsKey(LowerCase(Bare(ATokens[Index].Text))) then
+      if (ATokens[mIndex].Kind = TPascalTokenKind.Identifier) and
+        mNames.ContainsKey(LowerCase(Bare(ATokens[mIndex].Text))) then
       begin
-        Usage.Name := Bare(ATokens[Index].Text);
-        Usage.Range := TTextRange.Create(ATokens[Index].StartPos, ATokens[Index].EndPos);
-        Result := Result + [Usage];
+        mUsage.Name := Bare(ATokens[mIndex].Text);
+        mUsage.Range := TTextRange.Create(ATokens[mIndex].StartPos, ATokens[mIndex].EndPos);
+        Result := Result + [mUsage];
       end;
-      Inc(Index);
+      Inc(mIndex);
     end;
   finally
-    Names.Free;
+    mNames.Free;
   end;
 end;
 
@@ -840,7 +841,7 @@ begin
     for mName in PlainNames(mClauses, True) do
     begin
       // Initialisierungsreihenfolge kann zählen; solche Units bleiben, wo sie sind.
-      if IsUsedOnlyIn(mName, AInfo(mName), mIdentifiers, InImplementationPart) then
+      if IsUsedOnlyIn(mName, AInfo(mName), mIdentifiers, cInImplementationPart) then
       begin
         Result := Result + [mName];
       end;
@@ -853,77 +854,77 @@ end;
 class function TUsesActions.RemoveUnits(const ATokens: TArray<TPascalToken>; const AText: string;
   const AUnits: TArray<string>; const ALineBreak: string; out AEdits: TArray<TTextEdit>): Boolean;
 var
-  Options: TUsesRewrite;
+  mOptions: TUsesRewrite;
 begin
   AEdits := nil;
   if AUnits = nil then
   begin
     Exit(False);
   end;
-  Options := Default(TUsesRewrite);
-  Options.Drop := AUnits;
-  Result := TUsesClauses.Rewrite(ATokens, AText, Options, ALineBreak, AEdits);
+  mOptions := Default(TUsesRewrite);
+  mOptions.Drop := AUnits;
+  Result := TUsesClauses.Rewrite(ATokens, AText, mOptions, ALineBreak, AEdits);
 end;
 
 class function TUsesActions.MoveUnits(const ATokens: TArray<TPascalToken>; const AText: string;
   const AUnits: TArray<string>; const ALineBreak: string; out AEdits: TArray<TTextEdit>): Boolean;
 var
-  Index, Implementation_: Integer;
-  Added: TTextEdit;
+  mIndex, mImplementation_: Integer;
+  mAdded: TTextEdit;
 begin
   AEdits := nil;
   if AUnits = nil then
   begin
     Exit(False);
   end;
-  Implementation_ := -1;
-  for Index := 0 to High(ATokens) do
+  mImplementation_ := -1;
+  for mIndex := 0 to High(ATokens) do
   begin
-    if ATokens[Index].IsKeyword('implementation') then
+    if ATokens[mIndex].IsKeyword('implementation') then
     begin
-      Implementation_ := Index;
+      mImplementation_ := mIndex;
       Break;
     end;
   end;
-  if (Implementation_ < 0) or not RemoveUnits(ATokens, AText, AUnits, ALineBreak, AEdits) or
-    not TUsesClauses.AddUnit(ATokens, ATokens[Implementation_].Offset + 1, string.Join(', ', AUnits),
-    ALineBreak, Added) then
+  if (mImplementation_ < 0) or not RemoveUnits(ATokens, AText, AUnits, ALineBreak, AEdits) or
+    not TUsesClauses.AddUnit(ATokens, ATokens[mImplementation_].Offset + 1, string.Join(', ', AUnits),
+    ALineBreak, mAdded) then
   begin
     AEdits := nil;
     Exit(False);
   end;
-  AEdits := AEdits + [Added];
+  AEdits := AEdits + [mAdded];
   Result := True;
 end;
 
 class function TUsesActions.MoveUnitsToInterface(const ATokens: TArray<TPascalToken>; const AText: string;
   const AUnits: TArray<string>; const ALineBreak: string; out AEdits: TArray<TTextEdit>): Boolean;
 var
-  Index, Interface_: Integer;
-  Added: TTextEdit;
+  mIndex, mInterface_: Integer;
+  mAdded: TTextEdit;
 begin
   AEdits := nil;
   if AUnits = nil then
   begin
     Exit(False);
   end;
-  Interface_ := -1;
-  for Index := 0 to High(ATokens) do
+  mInterface_ := -1;
+  for mIndex := 0 to High(ATokens) do
   begin
-    if ATokens[Index].IsKeyword('interface') then
+    if ATokens[mIndex].IsKeyword('interface') then
     begin
-      Interface_ := Index;
+      mInterface_ := mIndex;
       Break;
     end;
   end;
-  if (Interface_ < 0) or not RemoveUnits(ATokens, AText, AUnits, ALineBreak, AEdits) or
-    not TUsesClauses.AddUnit(ATokens, ATokens[Interface_].Offset + 1, string.Join(', ', AUnits),
-    ALineBreak, Added) then
+  if (mInterface_ < 0) or not RemoveUnits(ATokens, AText, AUnits, ALineBreak, AEdits) or
+    not TUsesClauses.AddUnit(ATokens, ATokens[mInterface_].Offset + 1, string.Join(', ', AUnits),
+    ALineBreak, mAdded) then
   begin
     AEdits := nil;
     Exit(False);
   end;
-  AEdits := AEdits + [Added];
+  AEdits := AEdits + [mAdded];
   Result := True;
 end;
 
@@ -934,9 +935,9 @@ end;
 
 function IsDeclaredIn(ANode: TSyntaxNode; const AName: string): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
-  Name := AName;
+  mName := AName;
   // Search statt Rekursion (Bericht M1).
   Result := ANode.Search(
     function(ACandidate: TSyntaxNode): TSyntaxSearchStep
@@ -950,7 +951,7 @@ begin
       begin
         for Part in ACandidate.Name.Split([',', '.']) do
         begin
-          if SameText(Bare(Trim(Part)), Name) then
+          if SameText(Bare(Trim(Part)), mName) then
           begin
             Exit(TSyntaxSearchStep.Found);
           end;
@@ -958,7 +959,7 @@ begin
       end;
       // Aufzählungswerte stehen als Bezeichner im EnumType.
       if (ACandidate.Kind = TSyntaxKind.Identifier) and (ACandidate.Parent <> nil) and
-        (ACandidate.Parent.Kind = TSyntaxKind.EnumType) and SameText(ACandidate.Name, Name) then
+        (ACandidate.Parent.Kind = TSyntaxKind.EnumType) and SameText(ACandidate.Name, mName) then
       begin
         Result := TSyntaxSearchStep.Found;
       end;
@@ -1119,7 +1120,7 @@ begin
   try
     for mPair in mIdentifiers do
     begin
-      if mPair.Value and InInterfacePart <> 0 then
+      if mPair.Value and cInInterfacePart <> 0 then
       begin
         AddNeeded(Result, ADeclaring(mPair.Key), AUnits);
       end;

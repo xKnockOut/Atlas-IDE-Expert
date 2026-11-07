@@ -67,8 +67,8 @@ var
 begin
   mFiles := TServerPackage.Build(Input);
   Assert.AreEqual(2, Integer(Length(mFiles)));
-  Assert.AreEqual(TServerPackage.StatusName, mFiles[0].Name);
-  Assert.AreEqual(TServerPackage.LogName, mFiles[1].Name);
+  Assert.AreEqual(TServerPackage.cStatusName, mFiles[0].Name);
+  Assert.AreEqual(TServerPackage.cLogName, mFiles[1].Name);
   Assert.IsTrue(mFiles[0].Content.Contains('"units"'), mFiles[0].Content);
   Assert.IsTrue(mFiles[1].Content.Contains('Server gestartet'), mFiles[1].Content);
 end;
@@ -81,7 +81,7 @@ begin
   mInput := Input;
   mInput.Tracing := True;
   mInput.TraceLines := ['2026-10-29 12:00:00.000 --> {"jsonrpc":"2.0","id":4,"method":"textDocument/hover"}'];
-  mTrace := FileNamed(TServerPackage.Build(mInput), TServerPackage.TraceName);
+  mTrace := FileNamed(TServerPackage.Build(mInput), TServerPackage.cTraceName);
   Assert.IsTrue(mTrace.Contains('letzten 5 Minuten'), mTrace);
   Assert.IsTrue(mTrace.Contains('textDocument/hover'), mTrace);
 end;
@@ -114,7 +114,7 @@ begin
   mInput.Tracing := True;
   mInput.Anonymize := True;
   mInput.TraceLines := ['2026-10-29 12:00:00.000 --> !! EReadError: C:\Kunde'];
-  mTrace := FileNamed(TServerPackage.Build(mInput), TServerPackage.TraceName);
+  mTrace := FileNamed(TServerPackage.Build(mInput), TServerPackage.cTraceName);
   Assert.IsFalse(mTrace.Contains('Kunde'), mTrace);
   Assert.IsTrue(mTrace.Contains('1 Zeilen ohne JSON ausgelassen'), mTrace);
 end;
@@ -129,14 +129,14 @@ begin
   mInput.StatusJson := '{"workspaces":[{"cacheFile":"C:\\Projekte\\Kunde\\x.atlasidx","user":"C:\\Users\\marco"}]}';
   mInput.LogLines := ['12:00:00 INFO Geöffnet: C:\Projekte\Kunde\Haupt.pas "Haupt"'];
   mFiles := TServerPackage.Build(mInput);
-  Assert.IsFalse(FileNamed(mFiles, TServerPackage.StatusName).Contains('Projekte'),
-    FileNamed(mFiles, TServerPackage.StatusName));
-  Assert.IsFalse(FileNamed(mFiles, TServerPackage.StatusName).Contains('marco'),
-    FileNamed(mFiles, TServerPackage.StatusName));
-  Assert.IsFalse(FileNamed(mFiles, TServerPackage.LogName).Contains('Projekte'), FileNamed(mFiles,
-    TServerPackage.LogName));
-  Assert.IsFalse(FileNamed(mFiles, TServerPackage.LogName).Contains('"Haupt"'), FileNamed(mFiles,
-    TServerPackage.LogName));
+  Assert.IsFalse(FileNamed(mFiles, TServerPackage.cStatusName).Contains('Projekte'),
+    FileNamed(mFiles, TServerPackage.cStatusName));
+  Assert.IsFalse(FileNamed(mFiles, TServerPackage.cStatusName).Contains('marco'),
+    FileNamed(mFiles, TServerPackage.cStatusName));
+  Assert.IsFalse(FileNamed(mFiles, TServerPackage.cLogName).Contains('Projekte'), FileNamed(mFiles,
+    TServerPackage.cLogName));
+  Assert.IsFalse(FileNamed(mFiles, TServerPackage.cLogName).Contains('"Haupt"'), FileNamed(mFiles,
+    TServerPackage.cLogName));
 end;
 
 procedure TServerPackageTests.SecretsNeverLeaveEvenWithoutAnonymizing;
@@ -150,19 +150,19 @@ begin
   mInput.StatusJson := '{"tracker":{"apiToken":"abc123","url":"https://example.org"}}';
   mInput.TraceLines := ['2026-10-29 12:00:00.000 --> {"jsonrpc":"2.0","method":"x","params":{"password":"s3cr3t"}}'];
   mFiles := TServerPackage.Build(mInput);
-  Assert.IsFalse(FileNamed(mFiles, TServerPackage.StatusName).Contains('abc123'),
-    FileNamed(mFiles, TServerPackage.StatusName));
-  Assert.IsTrue(FileNamed(mFiles, TServerPackage.StatusName).Contains('https://example.org'),
-    FileNamed(mFiles, TServerPackage.StatusName));
+  Assert.IsFalse(FileNamed(mFiles, TServerPackage.cStatusName).Contains('abc123'),
+    FileNamed(mFiles, TServerPackage.cStatusName));
+  Assert.IsTrue(FileNamed(mFiles, TServerPackage.cStatusName).Contains('https://example.org'),
+    FileNamed(mFiles, TServerPackage.cStatusName));
   Assert.IsTrue(TServerPackage.IsSecretKey('Authorization'));
   Assert.IsFalse(TServerPackage.IsSecretKey('method'));
   // Ohne Anonymisierung bleibt der Trace lesbar, nur die Zugangsdaten werden ersetzt.
-  Assert.IsFalse(FileNamed(mFiles, TServerPackage.TraceName).Contains('s3cr3t'),
-    FileNamed(mFiles, TServerPackage.TraceName));
-  Assert.IsTrue(FileNamed(mFiles, TServerPackage.TraceName).Contains(TServerPackage.SecretLabel),
-    FileNamed(mFiles, TServerPackage.TraceName));
-  Assert.IsTrue(FileNamed(mFiles, TServerPackage.TraceName).Contains('"method":"x"'),
-    FileNamed(mFiles, TServerPackage.TraceName));
+  Assert.IsFalse(FileNamed(mFiles, TServerPackage.cTraceName).Contains('s3cr3t'),
+    FileNamed(mFiles, TServerPackage.cTraceName));
+  Assert.IsTrue(FileNamed(mFiles, TServerPackage.cTraceName).Contains(TServerPackage.cSecretLabel),
+    FileNamed(mFiles, TServerPackage.cTraceName));
+  Assert.IsTrue(FileNamed(mFiles, TServerPackage.cTraceName).Contains('"method":"x"'),
+    FileNamed(mFiles, TServerPackage.cTraceName));
   Assert.AreEqual('kein JSON', TServerPackage.SecretFreeTraceLine('kein JSON'));
 end;
 
@@ -175,7 +175,7 @@ begin
   try
     mFiles := mJson.GetValue('files') as TJSONArray;
     Assert.AreEqual(2, mFiles.Count);
-    Assert.AreEqual(TServerPackage.StatusName, (mFiles.Items[0] as TJSONObject).GetValue('name').Value);
+    Assert.AreEqual(TServerPackage.cStatusName, (mFiles.Items[0] as TJSONObject).GetValue('name').Value);
     Assert.IsTrue((mFiles.Items[1] as TJSONObject).GetValue('content').Value.Contains('Server gestartet'));
   finally
     mJson.Free;

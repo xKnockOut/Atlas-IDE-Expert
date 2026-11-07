@@ -23,8 +23,8 @@ uses
 type
   TLspImplementations = class
   public const
-    Method = 'textDocument/implementation';
-    MaxTargets = 500;
+    cMethod = 'textDocument/implementation';
+    cMaxTargets = 500;
   private
     FStore: IDocumentStore;
     FIndex: ISymbolIndex;
@@ -85,10 +85,10 @@ const
 {$SCOPEDENUMS OFF}
 
 const
-  RoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
-  TypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
+  cRoutineKinds = [TIndexSymbolKind.Method, TIndexSymbolKind.Constructor_, TIndexSymbolKind.Routine];
+  cTypeKinds = [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType, TIndexSymbolKind.RecordType,
     TIndexSymbolKind.InterfaceType, TIndexSymbolKind.HelperType];
-  MaxDepth = 32;
+  cMaxDepth = 32;
 
 function ComparePositions(const A, B: TTextPosition): Integer;
 begin
@@ -129,77 +129,78 @@ end;
 /// <summary>Rumpf der Routine AName in AContainer: die letzte Fundstelle, wenn es mehr als eine gibt.</summary>
 function FindBody(const AUnit: TUnitIndex; const AContainer, AName: string; out ABody: TIndexSymbol): Boolean;
 var
-  Symbol: TIndexSymbol;
-  Count: Integer;
+  mSymbol: TIndexSymbol;
+  mCount: Integer;
 begin
-  Count := 0;
-  for Symbol in AUnit.Symbols do
+  mCount := 0;
+  for mSymbol in AUnit.Symbols do
   begin
-    if (Symbol.Kind in RoutineKinds) and SameText(Symbol.Container, AContainer) and SameText(Symbol.Name, AName) then
+    if (mSymbol.Kind in cRoutineKinds) and SameText(mSymbol.Container, AContainer) and
+      SameText(mSymbol.Name, AName) then
     begin
-      ABody := Symbol;
-      Inc(Count);
+      ABody := mSymbol;
+      Inc(mCount);
     end;
   end;
-  Result := Count >= 2;
+  Result := mCount >= 2;
 end;
 
 /// <summary>Alle Nachfahren von ATypeName, auch über mehrere Stufen; Kreise werden erkannt.</summary>
 function AllDescendants(const AIndex: ISymbolIndex; const ATypeName: string): TArray<TSymbolLocation>;
 var
-  Pending: TQueue<TPair<string, Integer>>;
-  Seen: TDictionary<string, Boolean>;
-  Current: TPair<string, Integer>;
-  Location: TSymbolLocation;
-  Key: string;
+  mPending: TQueue<TPair<string, Integer>>;
+  mSeen: TDictionary<string, Boolean>;
+  mCurrent: TPair<string, Integer>;
+  mLocation: TSymbolLocation;
+  mKey: string;
 begin
   Result := nil;
-  Pending := TQueue<TPair<string, Integer>>.Create;
-  Seen := TDictionary<string, Boolean>.Create;
+  mPending := TQueue<TPair<string, Integer>>.Create;
+  mSeen := TDictionary<string, Boolean>.Create;
   try
-    Pending.Enqueue(TPair<string, Integer>.Create(ATypeName, 0));
-    while Pending.Count > 0 do
+    mPending.Enqueue(TPair<string, Integer>.Create(ATypeName, 0));
+    while mPending.Count > 0 do
     begin
-      Current := Pending.Dequeue;
-      if Current.Value >= MaxDepth then
+      mCurrent := mPending.Dequeue;
+      if mCurrent.Value >= cMaxDepth then
       begin
         Continue;
       end;
-      for Location in AIndex.Descendants(Current.Key) do
+      for mLocation in AIndex.Descendants(mCurrent.Key) do
       begin
-        if not (Location.Symbol.Kind in TypeKinds) then
+        if not (mLocation.Symbol.Kind in cTypeKinds) then
         begin
           Continue;
         end;
-        Key := UpperCase(Location.FileName + '|' + Location.Symbol.QualifiedName);
-        if Seen.ContainsKey(Key) then
+        mKey := UpperCase(mLocation.FileName + '|' + mLocation.Symbol.QualifiedName);
+        if mSeen.ContainsKey(mKey) then
         begin
           Continue;
         end;
-        Seen.Add(Key, True);
-        Result := Result + [Location];
-        Pending.Enqueue(TPair<string, Integer>.Create(Location.Symbol.QualifiedName, Current.Value + 1));
+        mSeen.Add(mKey, True);
+        Result := Result + [mLocation];
+        mPending.Enqueue(TPair<string, Integer>.Create(mLocation.Symbol.QualifiedName, mCurrent.Value + 1));
       end;
     end;
   finally
-    Seen.Free;
-    Pending.Free;
+    mSeen.Free;
+    mPending.Free;
   end;
 end;
 
 function TokenIndexAt(const ATokens: TArray<TPascalToken>; const APosition: TTextPosition): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(ATokens) do
+  for mIndex := 0 to High(ATokens) do
   begin
-    if ComparePositions(ATokens[Index].StartPos, APosition) > 0 then
+    if ComparePositions(ATokens[mIndex].StartPos, APosition) > 0 then
     begin
       Break;
     end;
-    if ComparePositions(APosition, ATokens[Index].EndPos) <= 0 then
+    if ComparePositions(APosition, ATokens[mIndex].EndPos) <= 0 then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -207,28 +208,28 @@ end;
 
 function EnclosingRoutineName(ANode: TSyntaxNode; AOffset: Integer): string;
 var
-  Index: Integer;
-  Node, Child: TSyntaxNode;
+  mIndex: Integer;
+  mNode, mChild: TSyntaxNode;
 begin
   // Äußerste Routine: bei verschachtelten Routinen gilt die Methode. Schleife statt Rekursion (Bericht M1):
   // dem ersten Kind folgen, das AOffset enthält.
-  Node := ANode;
-  while Node <> nil do
+  mNode := ANode;
+  while mNode <> nil do
   begin
-    Child := nil;
-    for Index := 0 to Node.ChildCount - 1 do
+    mChild := nil;
+    for mIndex := 0 to mNode.ChildCount - 1 do
     begin
-      if (Node[Index].StartOffset <= AOffset) and (AOffset <= Node[Index].EndOffset) then
+      if (mNode[mIndex].StartOffset <= AOffset) and (AOffset <= mNode[mIndex].EndOffset) then
       begin
-        Child := Node[Index];
+        mChild := mNode[mIndex];
         Break;
       end;
     end;
-    if (Child <> nil) and (Child.Kind = TSyntaxKind.RoutineDecl) then
+    if (mChild <> nil) and (mChild.Kind = TSyntaxKind.RoutineDecl) then
     begin
-      Exit(Child.Name);
+      Exit(mChild.Name);
     end;
-    Node := Child;
+    mNode := mChild;
   end;
   Result := '';
 end;
@@ -236,42 +237,42 @@ end;
 function InheritedTargets(AResolver: TNameResolver; const AIndex: ISymbolIndex; ATree: TSyntaxTree;
   const AFileName: string; ATokenIndex: Integer): TArray<TDefinitionTarget>;
 var
-  Tokens: TArray<TPascalToken>;
-  Next: Integer;
-  Name: string;
-  Resolved: TResolvedSymbol;
-  OwnerUnit: TUnitIndex;
-  Body: TIndexSymbol;
+  mTokens: TArray<TPascalToken>;
+  mNext: Integer;
+  mName: string;
+  mResolved: TResolvedSymbol;
+  mOwnerUnit: TUnitIndex;
+  mBody: TIndexSymbol;
 begin
   Result := nil;
-  Tokens := ATree.Tokens;
-  Next := ATokenIndex + 1;
-  while (Next <= High(Tokens)) and (Tokens[Next].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
+  mTokens := ATree.Tokens;
+  mNext := ATokenIndex + 1;
+  while (mNext <= High(mTokens)) and (mTokens[mNext].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) do
   begin
-    Inc(Next);
+    Inc(mNext);
   end;
-  if (Next <= High(Tokens)) and (Tokens[Next].Kind = TPascalTokenKind.Identifier) then
+  if (mNext <= High(mTokens)) and (mTokens[mNext].Kind = TPascalTokenKind.Identifier) then
   begin
     // inherited Create(...): wie Gehe zu Definition auf dem Namen.
-    Exit(TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, Tokens[Next].StartPos, False));
+    Exit(TLspDefinition.Targets(AResolver, AIndex, ATree, AFileName, mTokens[mNext].StartPos, False));
   end;
   // inherited; → gleichnamige Methode im Vorfahren.
-  Name := EnclosingRoutineName(ATree.Root, Tokens[ATokenIndex].Offset);
-  if Name = '' then
+  mName := EnclosingRoutineName(ATree.Root, mTokens[ATokenIndex].Offset);
+  if mName = '' then
   begin
     Exit;
   end;
-  Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
-  Resolved := AResolver.ResolveChain(ATree, AFileName, [Name], Tokens[ATokenIndex].Offset, True);
-  if not Resolved.Found then
+  mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
+  mResolved := AResolver.ResolveChain(ATree, AFileName, [mName], mTokens[ATokenIndex].Offset, True);
+  if not mResolved.Found then
   begin
     Exit;
   end;
-  Result := [Target(Resolved.FileName, Resolved.Range, Resolved.SelectionRange)];
-  if OwnerUnitOf(AIndex, ATree, AFileName, Resolved.FileName, OwnerUnit) and
-    FindBody(OwnerUnit, Resolved.Container, Resolved.Name, Body) then
+  Result := [Target(mResolved.FileName, mResolved.Range, mResolved.SelectionRange)];
+  if OwnerUnitOf(AIndex, ATree, AFileName, mResolved.FileName, mOwnerUnit) and
+    FindBody(mOwnerUnit, mResolved.Container, mResolved.Name, mBody) then
   begin
-    Result := [Target(OwnerUnit.FileName, Body.Range, Body.SelectionRange)];
+    Result := [Target(mOwnerUnit.FileName, mBody.Range, mBody.SelectionRange)];
   end;
 end;
 
@@ -309,23 +310,23 @@ end;
 
 class function TLspImplementations.IsInterfaceType(const AIndex: ISymbolIndex; const ATypeName: string): Boolean;
 var
-  Location: TSymbolLocation;
-  Short: string;
+  mLocation: TSymbolLocation;
+  mShort: string;
 begin
   Result := False;
   if AIndex = nil then
   begin
     Exit;
   end;
-  Short := ATypeName;
-  if Short.LastIndexOf('.') >= 0 then
+  mShort := ATypeName;
+  if mShort.LastIndexOf('.') >= 0 then
   begin
-    Short := Copy(Short, Short.LastIndexOf('.') + 2, MaxInt);
+    mShort := Copy(mShort, mShort.LastIndexOf('.') + 2, MaxInt);
   end;
-  for Location in AIndex.FindSymbols(Short) do
+  for mLocation in AIndex.FindSymbols(mShort) do
   begin
-    if (Location.Symbol.Kind = TIndexSymbolKind.InterfaceType) and
-      (SameText(Location.Symbol.QualifiedName, ATypeName) or SameText(Location.Symbol.Name, ATypeName)) then
+    if (mLocation.Symbol.Kind = TIndexSymbolKind.InterfaceType) and
+      (SameText(mLocation.Symbol.QualifiedName, ATypeName) or SameText(mLocation.Symbol.Name, ATypeName)) then
     begin
       Exit(True);
     end;
@@ -335,9 +336,9 @@ end;
 class function TLspImplementations.ImplementationCount(const AIndex: ISymbolIndex; const AContainer, AName: string;
   AInterface: Boolean): Integer;
 var
-  Location: TSymbolLocation;
-  Owner: TUnitIndex;
-  Symbol: TIndexSymbol;
+  mLocation: TSymbolLocation;
+  mOwner: TUnitIndex;
+  mSymbol: TIndexSymbol;
 begin
   Result := 0;
   if AIndex = nil then
@@ -349,9 +350,9 @@ begin
   begin
     Result := 1;
   end;
-  for Location in AllDescendants(AIndex, AContainer) do
+  for mLocation in AllDescendants(AIndex, AContainer) do
   begin
-    if not (Location.Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType]) then
+    if not (mLocation.Symbol.Kind in [TIndexSymbolKind.ClassType, TIndexSymbolKind.ObjectType]) then
     begin
       Continue;
     end;
@@ -360,14 +361,14 @@ begin
       Inc(Result);
       Continue;
     end;
-    if not AIndex.FindFile(Location.FileName, Owner) then
+    if not AIndex.FindFile(mLocation.FileName, mOwner) then
     begin
       Continue;
     end;
-    for Symbol in Owner.Symbols do
+    for mSymbol in mOwner.Symbols do
     begin
-      if (Symbol.Kind in RoutineKinds) and SameText(Symbol.Container, Location.Symbol.QualifiedName) and
-        SameText(Symbol.Name, AName) then
+      if (mSymbol.Kind in cRoutineKinds) and SameText(mSymbol.Container, mLocation.Symbol.QualifiedName) and
+        SameText(mSymbol.Name, AName) then
       begin
         Inc(Result);
         Break;
@@ -378,7 +379,7 @@ end;
 
 procedure TLspImplementations.Attach(ADispatcher: TJsonRpcDispatcher);
 begin
-  ADispatcher.RegisterConcurrentRequest(Method, Handle);
+  ADispatcher.RegisterConcurrentRequest(cMethod, Handle);
 end;
 
 /// <summary>Ist AResolved nicht aufgelöst und steht APosition auf dem Namen einer Deklaration (Methode in der
@@ -415,7 +416,8 @@ var
 begin
   for mSymbol in AUnit.Symbols do
   begin
-    if (mSymbol.Kind in RoutineKinds) and SameText(mSymbol.Container, AContainer) and SameText(mSymbol.Name, AName) then
+    if (mSymbol.Kind in cRoutineKinds) and SameText(mSymbol.Container, AContainer) and
+      SameText(mSymbol.Name, AName) then
     begin
       ASymbol := mSymbol;
       Exit(True);
@@ -453,7 +455,7 @@ begin
   end;
   for mLocation in AllDescendants(AIndex, AResolved.Container) do
   begin
-    if AList.Count >= TLspImplementations.MaxTargets then
+    if AList.Count >= TLspImplementations.cMaxTargets then
     begin
       Break;
     end;
@@ -470,14 +472,14 @@ procedure AddTargets(AList: TList<TDefinitionTarget>; const AIndex: ISymbolIndex
 var
   mLocation: TSymbolLocation;
 begin
-  if AResolved.SymbolKind in TypeKinds then
+  if AResolved.SymbolKind in cTypeKinds then
   begin
     for mLocation in AllDescendants(AIndex, AResolved.QualifiedName) do
     begin
       AList.Add(Target(mLocation.FileName, mLocation.Symbol.Range, mLocation.Symbol.SelectionRange));
     end;
   end
-  else if (AResolved.SymbolKind in RoutineKinds) and (AResolved.Container <> '') then
+  else if (AResolved.SymbolKind in cRoutineKinds) and (AResolved.Container <> '') then
   begin
     AddMethodTargets(AList, AIndex, ATree, AFileName, AResolved);
   end;
@@ -509,9 +511,9 @@ begin
   mList := TList<TDefinitionTarget>.Create;
   try
     AddTargets(mList, AIndex, ATree, AFileName, mResolved);
-    if mList.Count > MaxTargets then
+    if mList.Count > cMaxTargets then
     begin
-      mList.Count := MaxTargets;
+      mList.Count := cMaxTargets;
     end;
     Result := mList.ToArray;
   finally
@@ -519,37 +521,38 @@ begin
   end;
 end;
 
-function TLspImplementations.Handle(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue;
+function TLspImplementations.Handle(const AParams: TJSONValue;
+  const ACancellation: IJsonRpcCancellationToken): TJSONValue;
 var
-  Cancellation: IPascalCancellation;
-  Uri: string;
-  PositionValue: TJSONValue;
-  Document: ITextDocument;
-  Tree: TSyntaxTree;
-  Shared: ISharedSyntaxTree;
-  Resolver: TNameResolver;
+  mCancellation: IPascalCancellation;
+  mUri: string;
+  mPositionValue: TJSONValue;
+  mDocument: ITextDocument;
+  mTree: TSyntaxTree;
+  mShared: ISharedSyntaxTree;
+  mResolver: TNameResolver;
 begin
-  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', Uri) and
-    TJSONObject(AParams).TryGetValue<TJSONValue>('position', PositionValue)) then
+  if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri) and
+    TJSONObject(AParams).TryGetValue<TJSONValue>('position', mPositionValue)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
       cTexts[TImplementationsText.FieldsTextDocumentUriAndPosition].Text);
   end;
-  if not FStore.TryGet(Uri, Document) then
+  if not FStore.TryGet(mUri, mDocument) then
   begin
     Exit(TJSONNull.Create);
   end;
-  Cancellation := TRequestCancellation.Create(ACancellation);
-  Shared := TSyntaxTreeCache.Get(Document, Cancellation);
-  Tree := Shared.Tree;
+  mCancellation := TRequestCancellation.Create(ACancellation);
+  mShared := TSyntaxTreeCache.Get(mDocument, mCancellation);
+  mTree := mShared.Tree;
   ACancellation.ThrowIfCancellationRequested;
-  Resolver := TNameResolver.Create(FIndex, FEnsureUnit);
+  mResolver := TNameResolver.Create(FIndex, FEnsureUnit);
   try
-    Resolver.Namespaces := Namespaces;
-    Result := TLspDefinition.ToJson(Targets(Resolver, FIndex, Tree, TDocumentUris.ToPath(Uri),
-      TLspPositions.ReadPosition(PositionValue)));
+    mResolver.Namespaces := Namespaces;
+    Result := TLspDefinition.ToJson(Targets(mResolver, FIndex, mTree, TDocumentUris.ToPath(mUri),
+      TLspPositions.ReadPosition(mPositionValue)));
   finally
-    Resolver.Free;
+    mResolver.Free;
   end;
 end;
 

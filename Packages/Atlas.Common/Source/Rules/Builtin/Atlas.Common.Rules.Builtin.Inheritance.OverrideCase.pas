@@ -17,7 +17,7 @@ type
   end;
 
 const
-  OverrideCaseMismatchRuleId = 'override-case-mismatch';
+  cOverrideCaseMismatchRuleId = 'override-case-mismatch';
 
 implementation
 
@@ -66,7 +66,7 @@ const
 
 function TOverrideCaseMismatchRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(OverrideCaseMismatchRuleId, TRuleSeverity.Hint,
+  Result := TRuleDescriptor.Create(cOverrideCaseMismatchRuleId, TRuleSeverity.Hint,
     cTexts[TInheritanceOverrideCaseText.Title].Text, True);
 end;
 
@@ -151,23 +151,23 @@ type
 function LookupIn(const AName: string; const ASymbols: TArray<TIndexSymbol>; const ALocation: TSymbolLocation;
   AFilter: Boolean; out AHit: TIndexSymbol): TMemberLookup;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
   AHit := Default(TIndexSymbol);
   Result := TMemberLookup.Missing;
-  for Symbol in ASymbols do
+  for mSymbol in ASymbols do
   begin
-    if not SameText(Symbol.Name, AName) then
+    if not SameText(mSymbol.Name, AName) then
     begin
       Continue;
     end;
-    if Symbol.Unavailable then
+    if mSymbol.Unavailable then
     begin
       Exit(TMemberLookup.Unknown);
     end;
-    if not AFilter or not InvisibleToDescendant(ALocation, Symbol) then
+    if not AFilter or not InvisibleToDescendant(ALocation, mSymbol) then
     begin
-      AHit := Symbol;
+      AHit := mSymbol;
       Exit(TMemberLookup.Found);
     end;
   end;
@@ -184,7 +184,7 @@ end;
 /// <summary>AOwn überschreibt eine virtuelle Methode von TObject aus der Tabelle (System nicht im Index).</summary>
 function ObjectVirtual(const AOwn: TIndexSymbol; out ATarget: TIndexSymbol): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
   ATarget := Default(TIndexSymbol);
   Result := False;
@@ -192,11 +192,11 @@ begin
   begin
     Exit;
   end;
-  for Name in ObjectVirtualNames do
+  for mName in cObjectVirtualNames do
   begin
-    if SameText(Name, AOwn.Name) then
+    if SameText(mName, AOwn.Name) then
     begin
-      ATarget.Name := Name;
+      ATarget.Name := mName;
       ATarget.Visibility := TIndexVisibility.Public;
       Exit(True);
     end;
@@ -216,26 +216,26 @@ end;
 /// AHasWith, wenn sie ein with enthält.</summary>
 procedure CollectLocals(ARoutine: TSyntaxNode; out ALocals: TArray<string>; out AHasWith: Boolean);
 var
-  Stack: TArray<TSyntaxNode>;
-  Node: TSyntaxNode;
-  Child: Integer;
+  mStack: TArray<TSyntaxNode>;
+  mNode: TSyntaxNode;
+  mChild: Integer;
 begin
   ALocals := nil;
   AHasWith := False;
-  Stack := [ARoutine];
-  while Stack <> nil do
+  mStack := [ARoutine];
+  while mStack <> nil do
   begin
-    Node := Stack[High(Stack)];
-    SetLength(Stack, Length(Stack) - 1);
-    if (Node <> ARoutine) and (Node.Kind in [TSyntaxKind.Parameter, TSyntaxKind.VarDecl, TSyntaxKind.ConstDecl,
+    mNode := mStack[High(mStack)];
+    SetLength(mStack, Length(mStack) - 1);
+    if (mNode <> ARoutine) and (mNode.Kind in [TSyntaxKind.Parameter, TSyntaxKind.VarDecl, TSyntaxKind.ConstDecl,
       TSyntaxKind.InlineVar, TSyntaxKind.InlineConst, TSyntaxKind.TypeDecl, TSyntaxKind.RoutineDecl]) then
     begin
-      ALocals := ALocals + Node.Name.Split([',']);
+      ALocals := ALocals + mNode.Name.Split([',']);
     end;
-    AHasWith := AHasWith or (Node.Kind = TSyntaxKind.WithStatement);
-    for Child := 0 to Node.ChildCount - 1 do
+    AHasWith := AHasWith or (mNode.Kind = TSyntaxKind.WithStatement);
+    for mChild := 0 to mNode.ChildCount - 1 do
     begin
-      Stack := Stack + [Node[Child]];
+      mStack := mStack + [mNode[mChild]];
     end;
   end;
 end;
@@ -273,23 +273,23 @@ end;
 /// <summary>Erstes Token ab AOffset; Length(FTokens) ohne.</summary>
 function TOverrideCaseCheck.TokenFrom(AOffset: Integer): Integer;
 var
-  Low, High, Middle: Integer;
+  mLow, mHigh, mMiddle: Integer;
 begin
-  Low := 0;
-  High := Length(FTokens);
-  while Low < High do
+  mLow := 0;
+  mHigh := Length(FTokens);
+  while mLow < mHigh do
   begin
-    Middle := (Low + High) div 2;
-    if FTokens[Middle].Offset < AOffset then
+    mMiddle := (mLow + mHigh) div 2;
+    if FTokens[mMiddle].Offset < AOffset then
     begin
-      Low := Middle + 1;
+      mLow := mMiddle + 1;
     end
     else
     begin
-      High := Middle;
+      mHigh := mMiddle;
     end;
   end;
-  Result := Low;
+  Result := mLow;
 end;
 
 /// <summary>Ab AIndex steht der Rumpfkopf "procedure Klasse.AOld" der geprüften Klasse (AIndex zeigt auf den
@@ -306,14 +306,14 @@ end;
 /// <summary>Edits, die den Namen AOld in den Rumpfköpfen der geprüften Klasse durch ANew ersetzen.</summary>
 function TOverrideCaseCheck.BodyHeadEdits(const AOld, ANew: string): TArray<TRuleEdit>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
-  for Index := 1 to High(FTokens) - 2 do
+  for mIndex := 1 to High(FTokens) - 2 do
   begin
-    if IsBodyHead(Index, AOld) and (FTokens[Index + 2].Text <> ANew) then
+    if IsBodyHead(mIndex, AOld) and (FTokens[mIndex + 2].Text <> ANew) then
     begin
-      Result := Result + [TRuleEdit.Create(TokenRange(Index + 2), ANew)];
+      Result := Result + [TRuleEdit.Create(TokenRange(mIndex + 2), ANew)];
     end;
   end;
 end;
@@ -338,15 +338,15 @@ end;
 /// <summary>Edits, die hinter read/write der Property AProperty den Namen AOld durch ANew ersetzen.</summary>
 function TOverrideCaseCheck.AccessorEdits(const AProperty: TIndexSymbol; const AOld, ANew: string): TArray<TRuleEdit>;
 var
-  Index, First, Last: Integer;
+  mIndex, mFirst, mLast: Integer;
 begin
   Result := nil;
-  PropertyTokens(AProperty, First, Last);
-  for Index := First + 1 to Last - 1 do
+  PropertyTokens(AProperty, mFirst, mLast);
+  for mIndex := mFirst + 1 to mLast - 1 do
   begin
-    if SameText(FTokens[Index].Text, AOld) and MatchText(FTokens[Index - 1].Text, ['read', 'write']) then
+    if SameText(FTokens[mIndex].Text, AOld) and MatchText(FTokens[mIndex - 1].Text, ['read', 'write']) then
     begin
-      Result := Result + [TRuleEdit.Create(TokenRange(Index), ANew)];
+      Result := Result + [TRuleEdit.Create(TokenRange(mIndex), ANew)];
     end;
   end;
 end;
@@ -354,16 +354,16 @@ end;
 /// <summary>Mitglied AName der eigenen Members oder der nächsten Stufe der Kette, die es dort sichtbar gibt.</summary>
 function TOverrideCaseCheck.FindVisibleMember(const AName: string; out AHit: TIndexSymbol): TMemberLookup;
 var
-  Location: TSymbolLocation;
+  mLocation: TSymbolLocation;
 begin
   Result := LookupIn(AName, FMembers, Default(TSymbolLocation), False, AHit);
-  for Location in FChain do
+  for mLocation in FChain do
   begin
     if Result <> TMemberLookup.Missing then
     begin
       Exit;
     end;
-    Result := LookupIn(AName, FAncestry.Members(Location), Location, True, AHit);
+    Result := LookupIn(AName, FAncestry.Members(mLocation), mLocation, True, AHit);
   end;
 end;
 
@@ -372,28 +372,28 @@ end;
 function TOverrideCaseCheck.OverriddenAt(const AOwn: TIndexSymbol; const ALocation: TSymbolLocation;
   out ATarget: TIndexSymbol): TMemberLookup;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
   ATarget := Default(TIndexSymbol);
   Result := TMemberLookup.Missing;
-  for Symbol in FAncestry.Methods(ALocation) do
+  for mSymbol in FAncestry.Methods(ALocation) do
   begin
-    if not SameText(Symbol.Name, AOwn.Name) then
+    if not SameText(mSymbol.Name, AOwn.Name) then
     begin
       Continue;
     end;
-    if Symbol.Unavailable then
+    if mSymbol.Unavailable then
     begin
       Exit(TMemberLookup.Unknown);
     end;
-    if InvisibleToDescendant(ALocation, Symbol) then
+    if InvisibleToDescendant(ALocation, mSymbol) then
     begin
       Continue;
     end;
     Result := TMemberLookup.Unknown;
-    if IsOverrideTarget(Symbol, AOwn) then
+    if IsOverrideTarget(mSymbol, AOwn) then
     begin
-      ATarget := Symbol;
+      ATarget := mSymbol;
       Exit(TMemberLookup.Found);
     end;
   end;
@@ -404,18 +404,18 @@ end;
 function TOverrideCaseCheck.Overridden(const AOwn: TIndexSymbol; out AOwner: string;
   out ATarget: TIndexSymbol): Boolean;
 var
-  Location: TSymbolLocation;
-  State: TMemberLookup;
+  mLocation: TSymbolLocation;
+  mState: TMemberLookup;
 begin
   AOwner := '';
   ATarget := Default(TIndexSymbol);
-  for Location in FChain do
+  for mLocation in FChain do
   begin
-    State := OverriddenAt(AOwn, Location, ATarget);
-    if State <> TMemberLookup.Missing then
+    mState := OverriddenAt(AOwn, mLocation, ATarget);
+    if mState <> TMemberLookup.Missing then
     begin
-      AOwner := Location.Symbol.Name;
-      Exit(State = TMemberLookup.Found);
+      AOwner := mLocation.Symbol.Name;
+      Exit(mState = TMemberLookup.Found);
     end;
   end;
   Result := FObjectMissing and ObjectVirtual(AOwn, ATarget);
@@ -427,25 +427,25 @@ end;
 
 procedure TOverrideCaseCheck.CheckOverride(const AOwn: TIndexSymbol);
 var
-  Owner: string;
-  Target: TIndexSymbol;
+  mOwner: string;
+  mTarget: TIndexSymbol;
 begin
-  if not Overridden(AOwn, Owner, Target) then
+  if not Overridden(AOwn, mOwner, mTarget) then
   begin
     Exit;
   end;
-  if Target.Name <> AOwn.Name then
+  if mTarget.Name <> AOwn.Name then
   begin
-    FReport.Add(AOwn.SelectionRange, cTexts[TInheritanceOverrideCaseText.Spelling].Fmt([Owner, Target.Name]),
+    FReport.Add(AOwn.SelectionRange, cTexts[TInheritanceOverrideCaseText.Spelling].Fmt([mOwner, mTarget.Name]),
       TRuleConfidence.High, [TRuleFix.Create(cTexts[TInheritanceOverrideCaseText.TakeSpelling].Text,
-      [TRuleEdit.Create(AOwn.SelectionRange, Target.Name)] + BodyHeadEdits(AOwn.Name, Target.Name))]);
+      [TRuleEdit.Create(AOwn.SelectionRange, mTarget.Name)] + BodyHeadEdits(AOwn.Name, mTarget.Name))]);
   end;
   // Nur für Klassen im interface-Teil (die Sichtbarkeit sieht man nur dort von außen).
-  if FClass.InInterface and (VisibilityTier(AOwn.Visibility) < VisibilityTier(Target.Visibility)) then
+  if FClass.InInterface and (VisibilityTier(AOwn.Visibility) < VisibilityTier(mTarget.Visibility)) then
   begin
     FReport.Add(AOwn.SelectionRange, cTexts[TInheritanceOverrideCaseText.LessVisible].Fmt(
-      [FClass.Name, AOwn.Name, VisibilityName(AOwn.Visibility), Owner, Target.Name,
-      VisibilityName(Target.Visibility)]), TRuleConfidence.High);
+      [FClass.Name, AOwn.Name, VisibilityName(AOwn.Visibility), mOwner, mTarget.Name,
+      VisibilityName(mTarget.Visibility)]), TRuleConfidence.High);
   end;
 end;
 
@@ -461,16 +461,16 @@ end;
 /// <summary>Methode AName der geprüften Klasse: alle gleichnamigen Mitglieder sind Methoden.</summary>
 function AccessorMethod(const AName: string; const AMembers: TArray<TIndexSymbol>; out AMethod: TIndexSymbol): Boolean;
 var
-  Member: TIndexSymbol;
+  mMember: TIndexSymbol;
 begin
   Result := False;
   AMethod := Default(TIndexSymbol);
-  for Member in AMembers do
+  for mMember in AMembers do
   begin
-    if SameText(Member.Name, AName) then
+    if SameText(mMember.Name, AName) then
     begin
-      Result := Member.Kind = TIndexSymbolKind.Method;
-      AMethod := Member;
+      Result := mMember.Kind = TIndexSymbolKind.Method;
+      AMethod := mMember;
       if not Result then
       begin
         Exit;
@@ -483,21 +483,21 @@ end;
 /// Rumpfköpfen.</summary>
 function TOverrideCaseCheck.RenameEdits(const AName, AExpected: string): TArray<TRuleEdit>;
 var
-  Member: TIndexSymbol;
+  mMember: TIndexSymbol;
 begin
   Result := nil;
-  for Member in FMembers do
+  for mMember in FMembers do
   begin
-    if (Member.Kind = TIndexSymbolKind.Method) and SameText(Member.Name, AName) then
+    if (mMember.Kind = TIndexSymbolKind.Method) and SameText(mMember.Name, AName) then
     begin
-      Result := Result + [TRuleEdit.Create(Member.SelectionRange, AExpected)];
+      Result := Result + [TRuleEdit.Create(mMember.SelectionRange, AExpected)];
     end;
   end;
-  for Member in FMembers do
+  for mMember in FMembers do
   begin
-    if Member.Kind = TIndexSymbolKind.Property_ then
+    if mMember.Kind = TIndexSymbolKind.Property_ then
     begin
-      Result := Result + AccessorEdits(Member, AName, AExpected);
+      Result := Result + AccessorEdits(mMember, AName, AExpected);
     end;
   end;
   Result := Result + BodyHeadEdits(AName, AExpected);
@@ -507,53 +507,53 @@ end;
 /// anders geschrieben.</summary>
 procedure TOverrideCaseCheck.CheckAccessor(const AProperty: TIndexSymbol; AIndex: Integer);
 var
-  Expected, Name: string;
-  Method: TIndexSymbol;
+  mExpected, mName: string;
+  mMethod: TIndexSymbol;
 begin
-  Name := FTokens[AIndex + 1].Text;
+  mName := FTokens[AIndex + 1].Text;
   if SameText(FTokens[AIndex].Text, 'read') then
   begin
-    Expected := 'Get' + AProperty.Name;
+    mExpected := 'Get' + AProperty.Name;
   end
   else
   begin
-    Expected := 'Set' + AProperty.Name;
+    mExpected := 'Set' + AProperty.Name;
   end;
-  if not AccessorMethod(Name, FMembers, Method) or not SameText(Name, Expected) or (Name = Expected) then
+  if not AccessorMethod(mName, FMembers, mMethod) or not SameText(mName, mExpected) or (mName = mExpected) then
   begin
     Exit;
   end;
   FReport.Add(TokenRange(AIndex + 1), cTexts[TInheritanceOverrideCaseText.AccessorName].Fmt(
-    [FClass.Name, Method.Name, FClass.Name, Expected]), TRuleConfidence.High,
-    [TRuleFix.Create(cTexts[TInheritanceOverrideCaseText.RenameTo].Fmt([Expected]), RenameEdits(Name, Expected))]);
+    [FClass.Name, mMethod.Name, FClass.Name, mExpected]), TRuleConfidence.High,
+    [TRuleFix.Create(cTexts[TInheritanceOverrideCaseText.RenameTo].Fmt([mExpected]), RenameEdits(mName, mExpected))]);
 end;
 
 /// <summary>Getter oder Setter heißt Get&lt;Property&gt; bzw. Set&lt;Property&gt;, nur anders geschrieben.
 /// </summary>
 procedure TOverrideCaseCheck.CheckAccessors(const AProperty: TIndexSymbol);
 var
-  Index, Last: Integer;
+  mIndex, mLast: Integer;
 begin
-  PropertyTokens(AProperty, Index, Last);
-  while Index < Last do
+  PropertyTokens(AProperty, mIndex, mLast);
+  while mIndex < mLast do
   begin
-    if IsAccessorAt(Index) then
+    if IsAccessorAt(mIndex) then
     begin
-      CheckAccessor(AProperty, Index);
+      CheckAccessor(AProperty, mIndex);
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
 end;
 
 /// <summary>Alle gleichnamigen Deklarationen von AMethod sind inline und auf derselben Stufe.</summary>
 function TOverrideCaseCheck.InlineBodyKnown(const AMethod: TIndexSymbol): Boolean;
 var
-  Same: TIndexSymbol;
+  mSame: TIndexSymbol;
 begin
   Result := True;
-  for Same in FMembers do
+  for mSame in FMembers do
   begin
-    if SameText(Same.Name, AMethod.Name) and not SameInlineLevel(Same, AMethod) then
+    if SameText(mSame.Name, AMethod.Name) and not SameInlineLevel(mSame, AMethod) then
     begin
       Exit(False);
     end;
@@ -576,57 +576,58 @@ end;
 procedure TOverrideCaseCheck.CheckInlineBody(const AMethod: TIndexSymbol; ARoutine, ABody: TSyntaxNode;
   var AReported: TArray<string>);
 var
-  Locals: TArray<string>;
-  HasWith: Boolean;
-  Level: Integer;
-  Hit: TIndexSymbol;
+  mLocals: TArray<string>;
+  mHasWith: Boolean;
+  mLevel: Integer;
+  mHit: TIndexSymbol;
 begin
-  CollectLocals(ARoutine, Locals, HasWith);
-  if HasWith then
+  CollectLocals(ARoutine, mLocals, mHasWith);
+  if mHasWith then
   begin
     Exit;
   end;
-  Level := TokenFrom(ABody.StartOffset);
-  while (Level <= High(FTokens)) and (FTokens[Level].Offset < ABody.EndOffset) do
+  mLevel := TokenFrom(ABody.StartOffset);
+  while (mLevel <= High(FTokens)) and (FTokens[mLevel].Offset < ABody.EndOffset) do
   begin
-    if IsMemberToken(Level, Locals, AReported) and (FindVisibleMember(FTokens[Level].Text, Hit) = TMemberLookup.Found)
-      and (VisibilityTier(Hit.Visibility) < VisibilityTier(AMethod.Visibility)) then
+    if IsMemberToken(mLevel, mLocals, AReported) and
+      (FindVisibleMember(FTokens[mLevel].Text, mHit) = TMemberLookup.Found)
+      and (VisibilityTier(mHit.Visibility) < VisibilityTier(AMethod.Visibility)) then
     begin
-      AReported := AReported + [FTokens[Level].Text];
-      FReport.Add(TokenRange(Level), cTexts[TInheritanceOverrideCaseText.InlineVisibility].Fmt(
-        [FClass.Name, AMethod.Name, VisibilityName(AMethod.Visibility), Hit.Name, VisibilityName(Hit.Visibility)]),
+      AReported := AReported + [FTokens[mLevel].Text];
+      FReport.Add(TokenRange(mLevel), cTexts[TInheritanceOverrideCaseText.InlineVisibility].Fmt(
+        [FClass.Name, AMethod.Name, VisibilityName(AMethod.Visibility), mHit.Name, VisibilityName(mHit.Visibility)]),
         TRuleConfidence.High);
     end;
-    Inc(Level);
+    Inc(mLevel);
   end;
 end;
 
 /// <summary>Die inline-Methode AMethod greift im Rumpf auf ein weniger sichtbares Mitglied zu.</summary>
 procedure TOverrideCaseCheck.CheckInline(const AMethod: TIndexSymbol);
 var
-  Section, Routine, Body: TSyntaxNode;
-  Index: Integer;
-  Reported: TArray<string>;
+  mSection, mRoutine, mBody: TSyntaxNode;
+  mIndex: Integer;
+  mReported: TArray<string>;
 begin
   if not InlineBodyKnown(AMethod) then
   begin
     Exit;
   end;
-  Section := FContext.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
-  if Section = nil then
+  mSection := FContext.Tree.Root.FindChild(TSyntaxKind.ImplementationSection);
+  if mSection = nil then
   begin
     Exit;
   end;
-  Reported := nil;
-  for Index := 0 to Section.ChildCount - 1 do
+  mReported := nil;
+  for mIndex := 0 to mSection.ChildCount - 1 do
   begin
-    Routine := Section[Index];
-    if (Routine.Kind = TSyntaxKind.RoutineDecl) and SameText(Routine.Name, FClass.Name + '.' + AMethod.Name) then
+    mRoutine := mSection[mIndex];
+    if (mRoutine.Kind = TSyntaxKind.RoutineDecl) and SameText(mRoutine.Name, FClass.Name + '.' + AMethod.Name) then
     begin
-      Body := Routine.FindChild(TSyntaxKind.Block);
-      if Body <> nil then
+      mBody := mRoutine.FindChild(TSyntaxKind.Block);
+      if mBody <> nil then
       begin
-        CheckInlineBody(AMethod, Routine, Body, Reported);
+        CheckInlineBody(AMethod, mRoutine, mBody, mReported);
       end;
     end;
   end;
@@ -651,55 +652,55 @@ end;
 
 procedure TOverrideCaseCheck.CheckClass(const AType: TIndexSymbol);
 var
-  Location: TSymbolLocation;
-  Member: TIndexSymbol;
-  Complete: Boolean;
+  mLocation: TSymbolLocation;
+  mMember: TIndexSymbol;
+  mComplete: Boolean;
 begin
   FClass := AType;
-  Location := Default(TSymbolLocation);
-  Location.Symbol := AType;
-  FMembers := FAncestry.Members(Location);
+  mLocation := Default(TSymbolLocation);
+  mLocation.Symbol := AType;
+  FMembers := FAncestry.Members(mLocation);
   FChain := nil;
   FObjectMissing := False;
   if AType.Kind = TIndexSymbolKind.ClassType then
   begin
-    FChain := FAncestry.Ancestors(AType.Name, Complete, FObjectMissing);
+    FChain := FAncestry.Ancestors(AType.Name, mComplete, FObjectMissing);
   end;
-  for Member in FMembers do
+  for mMember in FMembers do
   begin
-    if not Member.Unavailable then
+    if not mMember.Unavailable then
     begin
-      CheckMember(Member);
+      CheckMember(mMember);
     end;
   end;
 end;
 
 procedure TOverrideCaseCheck.Run;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
-  for Symbol in FAncestry.Local.Symbols do
+  for mSymbol in FAncestry.Local.Symbols do
   begin
-    if IsOwnType(Symbol) then
+    if IsOwnType(mSymbol) then
     begin
-      CheckClass(Symbol);
+      CheckClass(mSymbol);
     end;
   end;
 end;
 
 procedure TOverrideCaseMismatchRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Check: TOverrideCaseCheck;
+  mCheck: TOverrideCaseCheck;
 begin
   if AContext.Tree = nil then
   begin
     Exit;
   end;
-  Check := TOverrideCaseCheck.Create(AContext, AReport);
+  mCheck := TOverrideCaseCheck.Create(AContext, AReport);
   try
-    Check.Run;
+    mCheck.Run;
   finally
-    Check.Free;
+    mCheck.Free;
   end;
 end;
 

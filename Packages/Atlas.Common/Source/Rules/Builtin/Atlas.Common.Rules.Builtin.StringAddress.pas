@@ -24,7 +24,7 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  FirstCharAddressRuleId = 'first-char-address';
+  cFirstCharAddressRuleId = 'first-char-address';
 
 type
   TFirstCharAddressRule = class(TInterfacedObject, IRule)
@@ -74,7 +74,7 @@ const
 
 function TFirstCharAddressRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(FirstCharAddressRuleId, TRuleSeverity.Warning,
+  Result := TRuleDescriptor.Create(cFirstCharAddressRuleId, TRuleSeverity.Warning,
     cTexts[TStringAddressText.Title].Text);
 end;
 

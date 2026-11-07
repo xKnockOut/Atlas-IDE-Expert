@@ -187,7 +187,7 @@ begin
   else if Length(mCandidates) > 1 then
   begin
     FLogger.Info(Format('%d Projektdateien in %s; "project" in %s wählt eine aus',
-      [Length(mCandidates), TLogMarks.Path(FRoot), ConfigurationFileName]));
+      [Length(mCandidates), TLogMarks.Path(FRoot), cConfigurationFileName]));
   end;
 end;
 

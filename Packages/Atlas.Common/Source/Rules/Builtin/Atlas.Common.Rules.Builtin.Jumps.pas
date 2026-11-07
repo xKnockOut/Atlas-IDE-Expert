@@ -35,8 +35,8 @@ uses
   Atlas.Common.Rules.Registry;
 
 const
-  JumpOutsideAllowedScopeRuleId = 'jump-outside-allowed-scope';
-  LabelMisuseRuleId = 'label-misuse';
+  cJumpOutsideAllowedScopeRuleId = 'jump-outside-allowed-scope';
+  cLabelMisuseRuleId = 'label-misuse';
 
 type
   TJumpOutsideAllowedScopeRule = class(TInterfacedObject, IRule)
@@ -117,12 +117,12 @@ type
 /// zählen nicht: Der Baum ist dort vollständig.</summary>
 function ParserBroken(ATree: TSyntaxTree; AScope: TSyntaxNode): Boolean;
 var
-  Diagnostic: TSyntaxDiagnostic;
+  mDiagnostic: TSyntaxDiagnostic;
 begin
-  for Diagnostic in ATree.Diagnostics do
+  for mDiagnostic in ATree.Diagnostics do
   begin
-    if not Diagnostic.TreeIntact and ((AScope = nil) or ((Diagnostic.StartPos.Line >= AScope.StartPos.Line) and
-      (Diagnostic.StartPos.Line <= AScope.EndPos.Line))) then
+    if not mDiagnostic.TreeIntact and ((AScope = nil) or ((mDiagnostic.StartPos.Line >= AScope.StartPos.Line) and
+      (mDiagnostic.StartPos.Line <= AScope.EndPos.Line))) then
     begin
       Exit(True);
     end;
@@ -148,9 +148,9 @@ end;
 /// klein. Ein eigenes Break ist dann kein Sprung.</summary>
 function DeclaredNames(ARoot: TSyntaxNode): TDictionary<string, Boolean>;
 var
-  Names: TDictionary<string, Boolean>;
+  mNames: TDictionary<string, Boolean>;
 begin
-  Names := TDictionary<string, Boolean>.Create;
+  mNames := TDictionary<string, Boolean>.Create;
   ARoot.Walk(
     function(ANode: TSyntaxNode): Boolean
     var
@@ -162,63 +162,63 @@ begin
       begin
         for Part in ANode.Name.Split([',', '.']) do
         begin
-          Names.AddOrSetValue(LowerCase(Trim(Part)), True);
+          mNames.AddOrSetValue(LowerCase(Trim(Part)), True);
         end;
       end;
       Result := True;
     end);
-  Result := Names;
+  Result := mNames;
 end;
 
 { TJumpOutsideAllowedScopeRule }
 
 function TJumpOutsideAllowedScopeRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(JumpOutsideAllowedScopeRuleId, TRuleSeverity.Error,
+  Result := TRuleDescriptor.Create(cJumpOutsideAllowedScopeRuleId, TRuleSeverity.Error,
     cTexts[TJumpsText.Title].Text);
 end;
 
 class function TJumpOutsideAllowedScopeRule.PlainCallName(AStatement: TSyntaxNode): string;
 var
-  Target: TSyntaxNode;
+  mTarget: TSyntaxNode;
 begin
   Result := '';
   if (AStatement = nil) or (AStatement.Kind <> TSyntaxKind.CallStatement) or (AStatement.ChildCount <> 1) then
   begin
     Exit;
   end;
-  Target := AStatement[0];
-  if (Target.Kind = TSyntaxKind.Call) and (Target.ChildCount > 0) then
+  mTarget := AStatement[0];
+  if (mTarget.Kind = TSyntaxKind.Call) and (mTarget.ChildCount > 0) then
   begin
-    Target := Target[0];
+    mTarget := mTarget[0];
   end;
-  if Target.Kind = TSyntaxKind.Identifier then
+  if mTarget.Kind = TSyntaxKind.Identifier then
   begin
-    Result := LowerCase(Target.Name);
+    Result := LowerCase(mTarget.Name);
   end;
 end;
 
 procedure TJumpOutsideAllowedScopeRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Declared: TDictionary<string, Boolean>;
+  mDeclared: TDictionary<string, Boolean>;
 
   procedure Report(AStatement, AScope: TSyntaxNode; const AName, AMessage: string; AWithFix: Boolean);
   var
-    Range: TTextRange;
-    Fixes: TArray<TRuleFix>;
+    mRange: TTextRange;
+    mFixes: TArray<TRuleFix>;
   begin
     if ParserBroken(AContext.Tree, AScope) then
     begin
       Exit;
     end;
-    Range := TTextRange.Create(AStatement.StartPos,
+    mRange := TTextRange.Create(AStatement.StartPos,
       TTextPosition.Create(AStatement.StartPos.Line, AStatement.StartPos.Character + Length(AName)));
-    Fixes := nil;
+    mFixes := nil;
     if AWithFix then
     begin
-      Fixes := [TRuleFix.Create(cTexts[TJumpsText.BreakToExit].Text, [TRuleEdit.Create(Range, 'Exit')])];
+      mFixes := [TRuleFix.Create(cTexts[TJumpsText.BreakToExit].Text, [TRuleEdit.Create(mRange, 'Exit')])];
     end;
-    AReport.Add(Range, AMessage, TRuleConfidence.High, Fixes);
+    AReport.Add(mRange, AMessage, TRuleConfidence.High, mFixes);
   end;
 
   /// <summary>Zustand AEntry für den Knoten ANode nachführen: neue Sprunggrenze, Schleife oder finally.</summary>
@@ -249,7 +249,7 @@ var
     mName, mWritten: string;
   begin
     mName := PlainCallName(ANode);
-    if not MatchStr(mName, ['break', 'continue', 'exit']) or Declared.ContainsKey(mName) then
+    if not MatchStr(mName, ['break', 'continue', 'exit']) or mDeclared.ContainsKey(mName) then
     begin
       Exit;
     end;
@@ -306,11 +306,11 @@ begin
   begin
     Exit;
   end;
-  Declared := DeclaredNames(AContext.Tree.Root);
+  mDeclared := DeclaredNames(AContext.Tree.Root);
   try
     Visit(AContext.Tree.Root);
   finally
-    Declared.Free;
+    mDeclared.Free;
   end;
 end;
 
@@ -318,17 +318,17 @@ end;
 
 function TLabelMisuseRule.Descriptor: TRuleDescriptor;
 begin
-  Result := TRuleDescriptor.Create(LabelMisuseRuleId, TRuleSeverity.Error, cTexts[TJumpsText.LabelTitle].Text);
+  Result := TRuleDescriptor.Create(cLabelMisuseRuleId, TRuleSeverity.Error, cTexts[TJumpsText.LabelTitle].Text);
 end;
 
 class function TLabelMisuseRule.LabelKey(const AName: string): string;
 var
-  Number: Integer;
+  mNumber: Integer;
 begin
   // Ziffernmarken vergleicht Delphi als Zahl: 007 und 7 sind dieselbe Marke.
-  if (AName <> '') and CharInSet(AName[1], ['0'..'9']) and TryStrToInt(AName, Number) then
+  if (AName <> '') and CharInSet(AName[1], ['0'..'9']) and TryStrToInt(AName, mNumber) then
   begin
-    Result := IntToStr(Number);
+    Result := IntToStr(mNumber);
   end
   else
   begin
@@ -338,64 +338,64 @@ end;
 
 procedure TLabelMisuseRule.Check(const AContext: TRuleContext; const AReport: IRuleReport);
 var
-  Tokens: TArray<TPascalToken>;
-  Paths: TArray<string>;
+  mTokens: TArray<TPascalToken>;
+  mPaths: TArray<string>;
 
   function TokenAt(AOffset: Integer): Integer;
   var
-    Low, High, Middle: Integer;
+    mLow, mHigh, mMiddle: Integer;
   begin
-    Low := 0;
-    High := Length(Tokens);
-    while Low < High do
+    mLow := 0;
+    mHigh := Length(mTokens);
+    while mLow < mHigh do
     begin
-      Middle := (Low + High) div 2;
-      if Tokens[Middle].Offset < AOffset then
+      mMiddle := (mLow + mHigh) div 2;
+      if mTokens[mMiddle].Offset < AOffset then
       begin
-        Low := Middle + 1;
+        mLow := mMiddle + 1;
       end
       else
       begin
-        High := Middle;
+        mHigh := mMiddle;
       end;
     end;
-    Result := Low;
+    Result := mLow;
   end;
 
   function PathOf(ANode: TSyntaxNode): string;
   begin
-    Result := TConditionalBranches.PathAt(Paths, TokenAt(ANode.StartOffset));
+    Result := TConditionalBranches.PathAt(mPaths, TokenAt(ANode.StartOffset));
   end;
 
   // try-Anweisungen und ihre Teile von der Routine bis zu ANode, als Kette von Knoten.
   function TryChain(ANode, AScope: TSyntaxNode): TArray<TSyntaxNode>;
   var
-    Node: TSyntaxNode;
+    mNode: TSyntaxNode;
   begin
     Result := nil;
-    Node := ANode.Parent;
-    while (Node <> nil) and (Node <> AScope) do
+    mNode := ANode.Parent;
+    while (mNode <> nil) and (mNode <> AScope) do
     begin
-      if Node.Kind in [TSyntaxKind.TryStatement, TSyntaxKind.ExceptBlock, TSyntaxKind.FinallyBlock] then
+      if mNode.Kind in [TSyntaxKind.TryStatement, TSyntaxKind.ExceptBlock, TSyntaxKind.FinallyBlock] then
       begin
-        Result := [Node] + Result;
+        Result := [mNode] + Result;
       end;
-      Node := Node.Parent;
+      mNode := mNode.Parent;
     end;
   end;
 
   // Ist AOuter ein Anfangsstück von AInner?
   function IsPrefix(const AOuter, AInner: TArray<TSyntaxNode>): Boolean;
   var
-    Index: Integer;
+    mIndex: Integer;
   begin
     if Length(AOuter) > Length(AInner) then
     begin
       Exit(False);
     end;
-    for Index := 0 to High(AOuter) do
+    for mIndex := 0 to High(AOuter) do
     begin
-      if AOuter[Index] <> AInner[Index] then
+      if AOuter[mIndex] <> AInner[mIndex] then
       begin
         Exit(False);
       end;
@@ -429,10 +429,10 @@ var
     mToken: Integer;
   begin
     mToken := TokenAt(ASection.StartOffset) + 1;
-    while (mToken <= High(Tokens)) and (Tokens[mToken].Offset < ASection.EndOffset) and
-      not Tokens[mToken].IsSymbol(';') do
+    while (mToken <= High(mTokens)) and (mTokens[mToken].Offset < ASection.EndOffset) and
+      not mTokens[mToken].IsSymbol(';') do
     begin
-      if (Tokens[mToken].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Number]) and AProc(mToken) then
+      if (mTokens[mToken].Kind in [TPascalTokenKind.Identifier, TPascalTokenKind.Number]) and AProc(mToken) then
       begin
         Exit(True);
       end;
@@ -447,7 +447,7 @@ var
     Result := ForEachLabel(ASection,
       function(AToken: Integer): Boolean
       begin
-        Result := LabelKey(Tokens[AToken].Text) = AKey;
+        Result := LabelKey(mTokens[AToken].Text) = AKey;
       end);
   end;
 
@@ -495,7 +495,7 @@ var
         ForEachLabel(AScope[mIndex],
           function(AToken: Integer): Boolean
           begin
-            ADeclared.AddOrSetValue(LabelKey(Tokens[AToken].Text), AToken);
+            ADeclared.AddOrSetValue(LabelKey(mTokens[AToken].Text), AToken);
             Result := False;
           end);
       end;
@@ -690,8 +690,8 @@ var
     begin
       if not ASets.ContainsKey(mPair.Key) and Jumped(AGotos, mPair.Key) then
       begin
-        AReport.Add(TTextRange.Create(Tokens[mPair.Value].StartPos, Tokens[mPair.Value].EndPos),
-          cTexts[TJumpsText.LabelNeverSet].Fmt([Tokens[mPair.Value].Text]),
+        AReport.Add(TTextRange.Create(mTokens[mPair.Value].StartPos, mTokens[mPair.Value].EndPos),
+          cTexts[TJumpsText.LabelNeverSet].Fmt([mTokens[mPair.Value].Text]),
           TRuleConfidence.High);
       end;
     end;
@@ -730,32 +730,32 @@ var
   // Iterativ (Bericht M1).
   procedure Visit(ARoot: TSyntaxNode);
   var
-    Pending: TStack<TSyntaxNode>;
-    Node: TSyntaxNode;
-    Index: Integer;
-    Body: TSyntaxNode;
+    mPending: TStack<TSyntaxNode>;
+    mNode: TSyntaxNode;
+    mIndex: Integer;
+    mBody: TSyntaxNode;
   begin
-    Pending := TStack<TSyntaxNode>.Create;
+    mPending := TStack<TSyntaxNode>.Create;
     try
-      Pending.Push(ARoot);
-      while Pending.Count > 0 do
+      mPending.Push(ARoot);
+      while mPending.Count > 0 do
       begin
-        Node := Pending.Pop;
-        if Node.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile] then
+        mNode := mPending.Pop;
+        if mNode.Kind in [TSyntaxKind.RoutineDecl, TSyntaxKind.ProgramFile, TSyntaxKind.LibraryFile] then
         begin
-          Body := Node.FindChild(TSyntaxKind.Block);
-          if (Body <> nil) and not ParserBroken(AContext.Tree, Node) then
+          mBody := mNode.FindChild(TSyntaxKind.Block);
+          if (mBody <> nil) and not ParserBroken(AContext.Tree, mNode) then
           begin
-            CheckScope(Node, Body);
+            CheckScope(mNode, mBody);
           end;
         end;
-        for Index := Node.ChildCount - 1 downto 0 do
+        for mIndex := mNode.ChildCount - 1 downto 0 do
         begin
-          Pending.Push(Node[Index]);
+          mPending.Push(mNode[mIndex]);
         end;
       end;
     finally
-      Pending.Free;
+      mPending.Free;
     end;
   end;
 
@@ -765,8 +765,8 @@ begin
   begin
     Exit;
   end;
-  Tokens := AContext.Tree.Tokens;
-  Paths := TConditionalBranches.Paths(Tokens);
+  mTokens := AContext.Tree.Tokens;
+  mPaths := TConditionalBranches.Paths(mTokens);
   Visit(AContext.Tree.Root);
 end;
 

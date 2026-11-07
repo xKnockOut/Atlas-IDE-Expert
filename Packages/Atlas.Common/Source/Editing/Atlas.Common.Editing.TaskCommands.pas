@@ -84,9 +84,9 @@ type
   TTokens = TArray<TPascalToken>;
 
 const
-  VclNames: array[0..6] of string = ('Application', 'Screen', 'Mouse', 'ShowMessage', 'ShowMessageFmt',
+  cVclNames: array[0..6] of string = ('Application', 'Screen', 'Mouse', 'ShowMessage', 'ShowMessageFmt',
     'MessageDlg', 'ShowMessagePos');
-  VclTypes: array[0..31] of string = ('TLabel', 'TEdit', 'TMemo', 'TButton', 'TBitBtn', 'TSpeedButton', 'TListBox',
+  cVclTypes: array[0..31] of string = ('TLabel', 'TEdit', 'TMemo', 'TButton', 'TBitBtn', 'TSpeedButton', 'TListBox',
     'TComboBox', 'TCheckBox', 'TRadioButton', 'TPanel', 'TProgressBar', 'TStatusBar', 'TForm', 'TFrame', 'TImage',
     'TListView', 'TTreeView', 'TStringGrid', 'TDrawGrid', 'TDBGrid', 'TRichEdit', 'TPageControl', 'TTabSheet',
     'TToolBar', 'TTrackBar', 'TScrollBox', 'TGroupBox', 'TMaskEdit', 'TCanvas', 'TControl', 'TWinControl');
@@ -109,7 +109,7 @@ end;
 /// <summary>Ist ATypeName ein bekannter VCL-Typ oder ein TCustom…Control?</summary>
 function IsVclType(const ATypeName: string): Boolean;
 begin
-  Result := MatchText(ATypeName, VclTypes) or (StartsText('TCustom', ATypeName) and EndsText('Control', ATypeName));
+  Result := MatchText(ATypeName, cVclTypes) or (StartsText('TCustom', ATypeName) and EndsText('Control', ATypeName));
 end;
 
 /// <summary>Steht der Bezeichner AName an APosition für ein VCL-Objekt (globaler Name, Variable oder Feld)?</summary>
@@ -118,7 +118,7 @@ function IsVclName(ASource: TCommandSource; ATypes: TDeclaredTypes; const AName:
 var
   mTypeName: string;
 begin
-  if MatchText(AName, VclNames) then
+  if MatchText(AName, cVclNames) then
   begin
     Exit(True);
   end;
@@ -170,25 +170,25 @@ end;
 function FollowingLines(ASource: TCommandSource; const AName: string; out AFirst, ALast: Integer;
   out AReason: string): Boolean;
 var
-  Stop, Index: Integer;
+  mStop, mIndex: Integer;
 begin
   if ASource.RoutineAt = nil then
   begin
     Exit(Fail(cTexts[TTaskCommandsText.OnlyAppliesInTheBody].Fmt([AName]), AReason));
   end;
-  Stop := BlockEnd(ASource, ASource.Line);
+  mStop := BlockEnd(ASource, ASource.Line);
   // Nur Leerzeilen bis zum Blockende zählen nicht als Anweisungen.
-  Index := ASource.Line + 1;
-  while (Stop > 0) and (Index < Stop) and (Trim(ASource.Lines[Index]) = '') do
+  mIndex := ASource.Line + 1;
+  while (mStop > 0) and (mIndex < mStop) and (Trim(ASource.Lines[mIndex]) = '') do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  if (Stop < 0) or (Index >= Stop) then
+  if (mStop < 0) or (mIndex >= mStop) then
   begin
     Exit(Fail(NoStatementsReason(ASource, AName), AReason));
   end;
   AFirst := ASource.Line + 1;
-  ALast := Stop - 1;
+  ALast := mStop - 1;
   Result := True;
 end;
 
@@ -315,12 +315,12 @@ end;
 
 function LinesText(ASource: TCommandSource; AFirst, ALast: Integer): string;
 var
-  Line: Integer;
+  mLine: Integer;
 begin
   Result := '';
-  for Line := AFirst to ALast do
+  for mLine := AFirst to ALast do
   begin
-    Result := Result + ASource.Lines[Line] + #10;
+    Result := Result + ASource.Lines[mLine] + #10;
   end;
 end;
 
@@ -328,31 +328,31 @@ end;
 /// noch gelesen werden (#143): Der Task läuft nebenläufig, das Lesen sieht den Wert nicht sicher.</summary>
 function ReadAfterTask(ASource: TCommandSource; ARoutine: TSyntaxNode; AFirst, ALast: Integer): TArray<string>;
 var
-  Locals, Written: TArray<string>;
-  After: TTokens;
-  Name: string;
-  Index: Integer;
+  mLocals, mWritten: TArray<string>;
+  mAfter: TTokens;
+  mName: string;
+  mIndex: Integer;
 begin
   Result := nil;
-  Locals := LocalNames(ARoutine, ASource.Line);
-  Written := WrittenNames(TPascalLexer.Tokenize(LinesText(ASource, AFirst, ALast)));
+  mLocals := LocalNames(ARoutine, ASource.Line);
+  mWritten := WrittenNames(TPascalLexer.Tokenize(LinesText(ASource, AFirst, ALast)));
   if ALast + 1 > ARoutine.EndPos.Line then
   begin
     Exit;
   end;
-  After := TPascalLexer.Tokenize(LinesText(ASource, ALast + 1, ARoutine.EndPos.Line));
-  for Name in Written do
+  mAfter := TPascalLexer.Tokenize(LinesText(ASource, ALast + 1, ARoutine.EndPos.Line));
+  for mName in mWritten do
   begin
-    if not MatchText(Name, Locals) then
+    if not MatchText(mName, mLocals) then
     begin
       Continue;
     end;
-    for Index := 0 to High(After) do
+    for mIndex := 0 to High(mAfter) do
     begin
-      if (After[Index].Kind = TPascalTokenKind.Identifier) and SameText(After[Index].Text, Name) and
-        ((Index = High(After)) or not After[Index + 1].IsSymbol(':=')) then
+      if (mAfter[mIndex].Kind = TPascalTokenKind.Identifier) and SameText(mAfter[mIndex].Text, mName) and
+        ((mIndex = High(mAfter)) or not mAfter[mIndex + 1].IsSymbol(':=')) then
       begin
-        Result := Result + [Name];
+        Result := Result + [mName];
         Break;
       end;
     end;
@@ -467,21 +467,21 @@ end;
 
 function FindFor(ANode: TSyntaxNode; ALine: Integer): TSyntaxNode;
 var
-  Root: TSyntaxNode;
-  Line: Integer;
+  mRoot: TSyntaxNode;
+  mLine: Integer;
 begin
-  Root := ANode;
-  Line := ALine;
+  mRoot := ANode;
+  mLine := ALine;
   // Search statt Rekursion (Bericht M1); unter ANode nur Knoten, die ALine überdecken.
   Result := ANode.Search(
     function(ACandidate: TSyntaxNode): TSyntaxSearchStep
     begin
-      if (ACandidate <> Root) and ((ACandidate.StartPos.Line > Line) or (ACandidate.EndPos.Line < Line)) then
+      if (ACandidate <> mRoot) and ((ACandidate.StartPos.Line > mLine) or (ACandidate.EndPos.Line < mLine)) then
       begin
         Exit(TSyntaxSearchStep.Skip);
       end;
       Result := TSyntaxSearchStep.Descend;
-      if (ACandidate.Kind = TSyntaxKind.ForStatement) and (ACandidate.StartPos.Line = Line) then
+      if (ACandidate.Kind = TSyntaxKind.ForStatement) and (ACandidate.StartPos.Line = mLine) then
       begin
         Result := TSyntaxSearchStep.Found;
       end;
@@ -491,7 +491,7 @@ end;
 /// <summary>Quelltext von ANode aus ALines.</summary>
 function NodeText(const ALines: TArray<string>; ANode: TSyntaxNode): string;
 var
-  Line: Integer;
+  mLine: Integer;
 begin
   if ANode.StartPos.Line = ANode.EndPos.Line then
   begin
@@ -499,9 +499,9 @@ begin
       ANode.EndPos.Character - ANode.StartPos.Character));
   end;
   Result := Copy(ALines[ANode.StartPos.Line], ANode.StartPos.Character + 1, MaxInt);
-  for Line := ANode.StartPos.Line + 1 to ANode.EndPos.Line - 1 do
+  for mLine := ANode.StartPos.Line + 1 to ANode.EndPos.Line - 1 do
   begin
-    Result := Result + ' ' + Trim(ALines[Line]);
+    Result := Result + ' ' + Trim(ALines[mLine]);
   end;
   Result := Result + ' ' + Trim(Copy(ALines[ANode.EndPos.Line], 1, ANode.EndPos.Character));
 end;
@@ -735,82 +735,82 @@ end;
 /// <summary>Zeilenzahl, um die AEdits den Text vor Zeile ALine verlängern.</summary>
 function LinesAddedBefore(const AEdits: TArray<TTextEdit>; ALine: Integer): Integer;
 var
-  Edit: TTextEdit;
-  Added, Index: Integer;
+  mEdit: TTextEdit;
+  mAdded, mIndex: Integer;
 begin
   Result := 0;
-  for Edit in AEdits do
+  for mEdit in AEdits do
   begin
-    if Edit.Range.EndPos.Line <= ALine then
+    if mEdit.Range.EndPos.Line <= ALine then
     begin
-      Added := 0;
-      for Index := 1 to Length(Edit.NewText) do
+      mAdded := 0;
+      for mIndex := 1 to Length(mEdit.NewText) do
       begin
-        if Edit.NewText[Index] = #10 then
+        if mEdit.NewText[mIndex] = #10 then
         begin
-          Inc(Added);
+          Inc(mAdded);
         end;
       end;
-      Inc(Result, Added - (Edit.Range.EndPos.Line - Edit.Range.StartPos.Line));
+      Inc(Result, mAdded - (mEdit.Range.EndPos.Line - mEdit.Range.StartPos.Line));
     end;
   end;
 end;
 
 function ExecuteFuture(const AContext: TSlashContext; out AEdits: TArray<TTextEdit>; out AReason: string): Boolean;
 var
-  Source: TCommandSource;
-  Name, TypeName, Head, Uri, Indent: string;
-  UseInline: Boolean;
-  Stop: Integer;
-  Host: ISlashHost;
-  Cursor: TTextPosition;
+  mSource: TCommandSource;
+  mName, mTypeName, mHead, mUri, mIndent: string;
+  mUseInline: Boolean;
+  mStop: Integer;
+  mHost: ISlashHost;
+  mCursor: TTextPosition;
 begin
   AEdits := nil;
-  if not SplitDeclaration(AContext.Arguments, ':', Name, TypeName) then
+  if not SplitDeclaration(AContext.Arguments, ':', mName, mTypeName) then
   begin
     Exit(Fail(cTexts[TTaskCommandsText.ExpectedIsFutureNameType].Text, AReason));
   end;
-  Source := TCommandSource.Create(AContext);
+  mSource := TCommandSource.Create(AContext);
   try
-    UseInline := TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, AContext.DelphiVersion);
-    if UseInline then
+    mUseInline := TLanguageFeatures.IsAvailable(TLanguageFeature.InlineVariable, AContext.DelphiVersion);
+    if mUseInline then
     begin
-      Head := Format('var %s := TTask.Future<%s>(', [Name, TypeName]);
+      mHead := Format('var %s := TTask.Future<%s>(', [mName, mTypeName]);
     end
     else
     begin
-      Head := Format('%s := TTask.Future<%s>(', [Name, TypeName]);
+      mHead := Format('%s := TTask.Future<%s>(', [mName, mTypeName]);
     end;
     // Zeile hinter dem Future, an der Name.Value gebraucht wird; dorthin kommt der Cursor.
-    Stop := BlockEnd(Source, Source.Line);
-    Result := Wrap(Source, 'future', TWrapFrame.Create([Head, Format('  function: %s', [TypeName]), '  begin'],
+    mStop := BlockEnd(mSource, mSource.Line);
+    Result := Wrap(mSource, 'future', TWrapFrame.Create([mHead, Format('  function: %s', [mTypeName]), '  begin'],
       ['  end);', ''], '    '), AEdits, AReason);
     if not Result then
     begin
       Exit;
     end;
     // Ohne Inline-Variablen (vor Delphi 10.3) in den var-Abschnitt.
-    if not UseInline then
+    if not mUseInline then
     begin
-      AEdits := AEdits + [AddLocal(Source, Source.RoutineAt, TSyntaxKind.VarSection, 'var',
-        Format('%s: IFuture<%s>;', [Name, TypeName]))];
+      AEdits := AEdits + [AddLocal(mSource, mSource.RoutineAt, TSyntaxKind.VarSection, 'var',
+        Format('%s: IFuture<%s>;', [mName, mTypeName]))];
     end;
-    AddUses(Source, AContext, Source.Line, ['System.Threading'], AEdits);
-    Host := AContext.Host;
-    if (Host <> nil) and (Stop > 0) then
+    AddUses(mSource, AContext, mSource.Line, ['System.Threading'], AEdits);
+    mHost := AContext.Host;
+    if (mHost <> nil) and (mStop > 0) then
     begin
       // Die leere Zeile am Ende des Futures steht im neuen Text vor der Zeile Stop.
-      Indent := Source.Indent(Source.Line);
-      Cursor := TTextPosition.Create(Stop - 1 + LinesAddedBefore(AEdits, Stop), Length(Indent));
-      Uri := AContext.Uri;
+      mIndent := mSource.Indent(mSource.Line);
+      mCursor := TTextPosition.Create(mStop - 1 + LinesAddedBefore(AEdits, mStop), Length(mIndent));
+      mUri := AContext.Uri;
       AContext.Defer(
         procedure
         begin
-          Host.MoveCursor(Uri, Cursor);
+          mHost.MoveCursor(mUri, mCursor);
         end);
     end;
   finally
-    Source.Free;
+    mSource.Free;
   end;
 end;
 
@@ -818,11 +818,11 @@ end;
 
 function IsField(ASource: TCommandSource; const AName: string): Boolean;
 var
-  Symbol: TIndexSymbol;
+  mSymbol: TIndexSymbol;
 begin
-  for Symbol in ASource.UnitIndex.Symbols do
+  for mSymbol in ASource.UnitIndex.Symbols do
   begin
-    if (Symbol.Kind = TIndexSymbolKind.Field) and SameText(Symbol.Name, AName) then
+    if (mSymbol.Kind = TIndexSymbolKind.Field) and SameText(mSymbol.Name, AName) then
     begin
       Exit(True);
     end;

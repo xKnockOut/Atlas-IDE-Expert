@@ -108,7 +108,7 @@ var
 begin
   WriteStatus(11, TPath.Combine(FRoot, 'Projekt'), 42, cBase);
   Assert.IsFalse(TServerStatusFile.Find(FRoot, TPath.Combine(FRoot, 'Projekt'),
-    cBase + (TServerStatusFile.MaxAgeSeconds + 5) * OneSecond, mStatus, mPid, mWritten));
+    cBase + (TServerStatusFile.cMaxAgeSeconds + 5) * OneSecond, mStatus, mPid, mWritten));
 end;
 
 procedure TServerStatusFileTests.PicksNewestServer;

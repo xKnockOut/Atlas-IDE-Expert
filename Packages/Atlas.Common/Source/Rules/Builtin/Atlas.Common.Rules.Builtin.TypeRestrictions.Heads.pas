@@ -13,11 +13,11 @@ uses
 
 const
   // Eingebaute Typen, die sicher für sich stehen (kein Alias eines Typs der Datei).
-  BuiltinTypeNames: array[0..33] of string = ('Integer', 'Cardinal', 'Int64', 'UInt64', 'NativeInt', 'NativeUInt',
+  cBuiltinTypeNames: array[0..33] of string = ('Integer', 'Cardinal', 'Int64', 'UInt64', 'NativeInt', 'NativeUInt',
     'ShortInt', 'SmallInt', 'LongInt', 'Byte', 'Word', 'LongWord', 'Int8', 'Int16', 'Int32', 'UInt8', 'UInt16',
     'UInt32', 'string', 'AnsiString', 'UnicodeString', 'WideString', 'ShortString', 'Char', 'AnsiChar', 'WideChar',
     'Single', 'Double', 'Extended', 'Currency', 'Real', 'Variant', 'Pointer', 'TDateTime');
-  BooleanTypeNames: array[0..3] of string = ('Boolean', 'ByteBool', 'WordBool', 'LongBool');
+  cBooleanTypeNames: array[0..3] of string = ('Boolean', 'ByteBool', 'WordBool', 'LongBool');
 
 type
   /// <summary>Kopf einer Routine aus Syntaxbaum und Token: Schlüsselwort, class, Parameter, Ergebnis.</summary>
@@ -92,18 +92,18 @@ uses
 
 function BareTypeName(const AName: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := Trim(AName);
-  Index := Pos('<', Result);
-  if Index > 0 then
+  mIndex := Pos('<', Result);
+  if mIndex > 0 then
   begin
-    Result := Copy(Result, 1, Index - 1);
+    Result := Copy(Result, 1, mIndex - 1);
   end;
-  Index := LastDelimiter('.', Result);
-  if Index > 0 then
+  mIndex := LastDelimiter('.', Result);
+  if mIndex > 0 then
   begin
-    Result := Copy(Result, Index + 1, MaxInt);
+    Result := Copy(Result, mIndex + 1, MaxInt);
   end;
   Result := Trim(Result);
 end;
@@ -111,14 +111,14 @@ end;
 /// <summary>Kinder vom Typ Parameter unter AParameters in Reihenfolge.</summary>
 function ParameterNodes(AParameters: TSyntaxNode): TArray<TSyntaxNode>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
-  for Index := 0 to AParameters.ChildCount - 1 do
+  for mIndex := 0 to AParameters.ChildCount - 1 do
   begin
-    if AParameters[Index].Kind = TSyntaxKind.Parameter then
+    if AParameters[mIndex].Kind = TSyntaxKind.Parameter then
     begin
-      Result := Result + [AParameters[Index]];
+      Result := Result + [AParameters[mIndex]];
     end;
   end;
 end;
@@ -127,38 +127,38 @@ end;
 
 class function TRoutineHead.Read(const ATokens: TArray<TPascalToken>; AHeader: TSyntaxNode): TRoutineHead;
 var
-  Index: Integer;
-  Child: TSyntaxNode;
+  mIndex: Integer;
+  mChild: TSyntaxNode;
 begin
   Result := Default(TRoutineHead);
   Result.Header := AHeader;
-  Index := TRoutineBody.TokenAt(ATokens, AHeader.StartOffset);
-  while (Index < Length(ATokens)) and (ATokens[Index].Kind in [TPascalTokenKind.Comment,
+  mIndex := TRoutineBody.TokenAt(ATokens, AHeader.StartOffset);
+  while (mIndex < Length(ATokens)) and (ATokens[mIndex].Kind in [TPascalTokenKind.Comment,
     TPascalTokenKind.Directive]) do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  if (Index < Length(ATokens)) and SameText(ATokens[Index].Text, 'class') then
+  if (mIndex < Length(ATokens)) and SameText(ATokens[mIndex].Text, 'class') then
   begin
     Result.IsClass := True;
-    Index := TRoutineBody.NextToken(ATokens, Index);
+    mIndex := TRoutineBody.NextToken(ATokens, mIndex);
   end;
-  if (Index >= 0) and (Index < Length(ATokens)) then
+  if (mIndex >= 0) and (mIndex < Length(ATokens)) then
   begin
-    Result.Keyword := LowerCase(ATokens[Index].Text);
+    Result.Keyword := LowerCase(ATokens[mIndex].Text);
   end;
-  for Index := 0 to AHeader.ChildCount - 1 do
+  for mIndex := 0 to AHeader.ChildCount - 1 do
   begin
-    Child := AHeader[Index];
-    case Child.Kind of
+    mChild := AHeader[mIndex];
+    case mChild.Kind of
       TSyntaxKind.Parameters:
-        Result.Parameters := Result.Parameters + ParameterNodes(Child);
+        Result.Parameters := Result.Parameters + ParameterNodes(mChild);
       TSyntaxKind.TypeReference:
-        Result.ResultType := Child;
+        Result.ResultType := mChild;
       TSyntaxKind.GenericParams:
         if Result.GenericParams = nil then
         begin
-          Result.GenericParams := Child;
+          Result.GenericParams := mChild;
         end;
     else
       // Übrige Werte bewusst ohne Wirkung.
@@ -168,24 +168,24 @@ end;
 
 function TRoutineHead.ParameterCount: Integer;
 var
-  Parameter: TSyntaxNode;
+  mParameter: TSyntaxNode;
 begin
   Result := 0;
-  for Parameter in Parameters do
+  for mParameter in Parameters do
   begin
-    Inc(Result, Length(SplitString(Parameter.Name, ',')));
+    Inc(Result, Length(SplitString(mParameter.Name, ',')));
   end;
 end;
 
 function TRoutineHead.Directive(const AName: string): TSyntaxNode;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to Header.ChildCount - 1 do
+  for mIndex := 0 to Header.ChildCount - 1 do
   begin
-    if (Header[Index].Kind = TSyntaxKind.Directive) and SameText(Header[Index].Name, AName) then
+    if (Header[mIndex].Kind = TSyntaxKind.Directive) and SameText(Header[mIndex].Name, AName) then
     begin
-      Exit(Header[Index]);
+      Exit(Header[mIndex]);
     end;
   end;
   Result := nil;
@@ -200,9 +200,9 @@ end;
 
 class function TFileTypes.Collect(ARoot: TSyntaxNode): TFileTypes;
 var
-  Types: TFileTypes;
+  mTypes: TFileTypes;
 begin
-  Types := Default(TFileTypes);
+  mTypes := Default(TFileTypes);
   ARoot.Walk(
     function(ANode: TSyntaxNode): Boolean
     var
@@ -223,32 +223,32 @@ begin
           begin
             Target := ANode[Index].Name;
           end;
-          Types.Names := Types.Names + [ANode.Name];
-          Types.Types := Types.Types + [ANode[Index]];
-          Types.AliasOf := Types.AliasOf + [Target];
+          mTypes.Names := mTypes.Names + [ANode.Name];
+          mTypes.Types := mTypes.Types + [ANode[Index]];
+          mTypes.AliasOf := mTypes.AliasOf + [Target];
           Break;
         end;
       end;
     end);
-  Result := Types;
+  Result := mTypes;
 end;
 
 function TFileTypes.IndexOf(const AName: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := -1;
-  for Index := 0 to High(Names) do
+  for mIndex := 0 to High(Names) do
   begin
-    if SameText(Names[Index], AName) then
+    if SameText(Names[mIndex], AName) then
     begin
-      if Types[Index].Kind <> TSyntaxKind.ForwardType then
+      if Types[mIndex].Kind <> TSyntaxKind.ForwardType then
       begin
-        Exit(Index);
+        Exit(mIndex);
       end;
       if Result < 0 then
       begin
-        Result := Index;
+        Result := mIndex;
       end;
     end;
   end;
@@ -256,73 +256,73 @@ end;
 
 function TFileTypes.DeclaredKind(const AName: string): TSyntaxKind;
 var
-  Index: Integer;
-  Found: Boolean;
+  mIndex: Integer;
+  mFound: Boolean;
 begin
   Result := TSyntaxKind.Error;
-  Found := False;
-  for Index := 0 to High(Names) do
+  mFound := False;
+  for mIndex := 0 to High(Names) do
   begin
-    if SameText(Names[Index], AName) and (Types[Index].Kind <> TSyntaxKind.ForwardType) then
+    if SameText(Names[mIndex], AName) and (Types[mIndex].Kind <> TSyntaxKind.ForwardType) then
     begin
-      if (AliasOf[Index] <> '') or (Found and (Types[Index].Kind <> Result)) then
+      if (AliasOf[mIndex] <> '') or (mFound and (Types[mIndex].Kind <> Result)) then
       begin
         Exit(TSyntaxKind.Error);
       end;
-      Result := Types[Index].Kind;
-      Found := True;
+      Result := Types[mIndex].Kind;
+      mFound := True;
     end;
   end;
 end;
 
 function TFileTypes.SameNames(const AName: string): TArray<string>;
 var
-  Index: Integer;
-  Changed: Boolean;
+  mIndex: Integer;
+  mChanged: Boolean;
 begin
   Result := [BareTypeName(AName)];
   repeat
-    Changed := False;
-    for Index := 0 to High(Names) do
+    mChanged := False;
+    for mIndex := 0 to High(Names) do
     begin
-      if (AliasOf[Index] <> '') and MatchText(BareTypeName(AliasOf[Index]), Result) and
-        not MatchText(Names[Index], Result) then
+      if (AliasOf[mIndex] <> '') and MatchText(BareTypeName(AliasOf[mIndex]), Result) and
+        not MatchText(Names[mIndex], Result) then
       begin
-        Result := Result + [Names[Index]];
-        Changed := True;
+        Result := Result + [Names[mIndex]];
+        mChanged := True;
       end;
     end;
-  until not Changed;
+  until not mChanged;
 end;
 
 function TFileTypes.CertainlyOther(const AName: string; const AOwn: array of string): Boolean;
 var
-  Bare: string;
-  Index: Integer;
+  mBare: string;
+  mIndex: Integer;
 begin
-  Bare := BareTypeName(AName);
-  if (Bare = '') or MatchText(Bare, AOwn) then
+  mBare := BareTypeName(AName);
+  if (mBare = '') or MatchText(mBare, AOwn) then
   begin
     Exit(False);
   end;
-  Index := IndexOf(Bare);
-  if Index >= 0 then
+  mIndex := IndexOf(mBare);
+  if mIndex >= 0 then
   begin
-    Exit(AliasOf[Index] = '');
+    Exit(AliasOf[mIndex] = '');
   end;
-  Result := MatchText(Bare, BuiltinTypeNames) or MatchText(Bare, BooleanTypeNames);
+  Result := MatchText(mBare, cBuiltinTypeNames) or MatchText(mBare, cBooleanTypeNames);
 end;
 
 function TFileTypes.ParentOf(const AName: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  Index := IndexOf(AName);
-  if (Index >= 0) and (Types[Index].Kind = TSyntaxKind.ClassType) and (Types[Index].ChildCount > 0) and
-    (Types[Index][0].Kind = TSyntaxKind.TypeReference) then
+  mIndex := IndexOf(AName);
+  if (mIndex >= 0) and (Types[mIndex].Kind = TSyntaxKind.ClassType) and (Types[mIndex].ChildCount > 0) and
+    (Types[mIndex][0].Kind = TSyntaxKind.TypeReference) then
   begin
-    Result := BareTypeName(Types[Index][0].Name);
+    Result := BareTypeName(Types[mIndex][0].Name);
   end;
 end;
 
@@ -340,30 +340,30 @@ end;
 /// <summary>Token des Namens im Kopf (bei TFoo.Bar das von Bar); -1 ohne.</summary>
 function NameToken(const ATokens: TArray<TPascalToken>; AHeader: TSyntaxNode): Integer;
 var
-  Index, Last: Integer;
-  Name: string;
+  mIndex, mLast: Integer;
+  mName: string;
 begin
-  Name := AHeader.Name;
-  if LastDelimiter('.', Name) > 0 then
+  mName := AHeader.Name;
+  if LastDelimiter('.', mName) > 0 then
   begin
-    Name := Copy(Name, LastDelimiter('.', Name) + 1, MaxInt);
+    mName := Copy(mName, LastDelimiter('.', mName) + 1, MaxInt);
   end;
-  Last := -1;
-  Index := TRoutineBody.TokenAt(ATokens, AHeader.StartOffset);
-  while (Index < Length(ATokens)) and (ATokens[Index].Offset < AHeader.EndOffset) do
+  mLast := -1;
+  mIndex := TRoutineBody.TokenAt(ATokens, AHeader.StartOffset);
+  while (mIndex < Length(ATokens)) and (ATokens[mIndex].Offset < AHeader.EndOffset) do
   begin
-    if ATokens[Index].IsSymbol('(') or ATokens[Index].IsSymbol(':') or ATokens[Index].IsSymbol(';') or
-      ATokens[Index].IsSymbol('<') then
+    if ATokens[mIndex].IsSymbol('(') or ATokens[mIndex].IsSymbol(':') or ATokens[mIndex].IsSymbol(';') or
+      ATokens[mIndex].IsSymbol('<') then
     begin
       Break;
     end;
-    if SameText(ATokens[Index].Text, Name) then
+    if SameText(ATokens[mIndex].Text, mName) then
     begin
-      Last := Index;
+      mLast := mIndex;
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Result := Last;
+  Result := mLast;
 end;
 
 function TokenRange(const AToken: TPascalToken): TTextRange;
@@ -379,19 +379,19 @@ end;
 /// <summary>Text eines Knotens in einer Zeile, ohne doppelte Leerzeichen, für Meldungen.</summary>
 function OneLine(const AText: string; ANode: TSyntaxNode): string;
 var
-  Text: string;
+  mText: string;
 begin
   if ANode = nil then
   begin
     Exit('');
   end;
-  Text := TRoutineBody.TextOf(AText, ANode);
-  Text := StringReplace(StringReplace(Text, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]);
-  while Pos('  ', Text) > 0 do
+  mText := TRoutineBody.TextOf(AText, ANode);
+  mText := StringReplace(StringReplace(mText, #13, ' ', [rfReplaceAll]), #10, ' ', [rfReplaceAll]);
+  while Pos('  ', mText) > 0 do
   begin
-    Text := StringReplace(Text, '  ', ' ', [rfReplaceAll]);
+    mText := StringReplace(mText, '  ', ' ', [rfReplaceAll]);
   end;
-  Result := Trim(Text);
+  Result := Trim(mText);
 end;
 
 /// <summary>Text eines Knotens ohne Zeilenumbrüche und doppelte Leerzeichen, für Vergleiche.</summary>
@@ -405,12 +405,12 @@ end;
 function ImplementationHeads(const AText: string; const ATokens: TArray<TPascalToken>; ARoot: TSyntaxNode;
   const AQualified: string; const AHead: TRoutineHead): TArray<TRoutineHead>;
 var
-  Found: TArray<TRoutineHead>;
-  Params, ResultText: string;
+  mFound: TArray<TRoutineHead>;
+  mParams, mResultText: string;
 begin
-  Found := nil;
-  Params := Squeezed(AText, AHead.Header.FindChild(TSyntaxKind.Parameters));
-  ResultText := Squeezed(AText, AHead.ResultType);
+  mFound := nil;
+  mParams := Squeezed(AText, AHead.Header.FindChild(TSyntaxKind.Parameters));
+  mResultText := Squeezed(AText, AHead.ResultType);
   ARoot.Walk(
     function(ANode: TSyntaxNode): Boolean
     var
@@ -422,14 +422,14 @@ begin
         EndsText('.' + AQualified, ANode.Name)) then
       begin
         Head := TRoutineHead.Read(ATokens, ANode);
-        if (Squeezed(AText, ANode.FindChild(TSyntaxKind.Parameters)) = Params) and
-          (Squeezed(AText, Head.ResultType) = ResultText) then
+        if (Squeezed(AText, ANode.FindChild(TSyntaxKind.Parameters)) = mParams) and
+          (Squeezed(AText, Head.ResultType) = mResultText) then
         begin
-          Found := Found + [Head];
+          mFound := mFound + [Head];
         end;
       end;
     end);
-  Result := Found;
+  Result := mFound;
 end;
 
 end.

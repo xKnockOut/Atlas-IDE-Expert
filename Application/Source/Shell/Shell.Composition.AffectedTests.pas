@@ -92,7 +92,7 @@ var
   mServices: TShellAffectedTestsServices;
 begin
   mServices := AServices;
-  ADispatcher.RegisterConcurrentRequest(TAffectedTests.Method,
+  ADispatcher.RegisterConcurrentRequest(TAffectedTests.cMethod,
     function(const AParams: TJSONValue; const ACancellation: IJsonRpcCancellationToken): TJSONValue
     begin
       Result := Handle(mServices, AParams, ACancellation);
@@ -112,8 +112,8 @@ var
 begin
   if not ((AParams is TJSONObject) and TJSONObject(AParams).TryGetValue<string>('textDocument.uri', mUri)) then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
-      cTexts[TAffectedRequestText.UriMissing].Fmt([TAffectedTests.Method]));
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
+      cTexts[TAffectedRequestText.UriMissing].Fmt([TAffectedTests.cMethod]));
   end;
   mSettings := AServices.Settings.SettingsFor(mUri);
   mQuery := QueryFor(AServices, TJSONObject(AParams), mUri);
@@ -131,9 +131,9 @@ begin
         TShellAffectedSources.New(mResolver, AServices.Index, DiskSourceText), mRequest, ACancellation);
     except
       on E: EAffectedTestsOff do
-        raise EJsonRpcError.Create(TJsonRpcErrorCode.RequestFailed, E.Message);
+        raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, E.Message);
       on E: EVcsChanges do
-        raise EJsonRpcError.Create(TJsonRpcErrorCode.RequestFailed, E.Message);
+        raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, E.Message);
     end;
   finally
     mResolver.Free;
@@ -152,7 +152,7 @@ begin
     mWorkspace := AServices.Workspaces.Pick(TDocumentUris.ToPath(AUri));
     if mWorkspace = nil then
     begin
-      raise EJsonRpcError.Create(TJsonRpcErrorCode.RequestFailed, cTexts[TAffectedRequestText.NoWorkspace].Fmt([AUri]));
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, cTexts[TAffectedRequestText.NoWorkspace].Fmt([AUri]));
     end;
     Result.WorkingDir := mWorkspace.Root;
   finally

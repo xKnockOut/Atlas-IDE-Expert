@@ -65,17 +65,17 @@ uses
   Atlas.Common.Editing.ClassMembers;
 
 const
-  OwnerNames: array[0..3] of string = ('Self', 'AOwner', 'Owner', 'Application');
+  cOwnerNames: array[0..3] of string = ('Self', 'AOwner', 'Owner', 'Application');
   // Records der RTL mit Create; ohne Index sähen sie wie Klassen aus.
-  KnownRecords: array[0..14] of string = ('TStopwatch', 'TTimeSpan', 'TRect', 'TRectF', 'TPoint', 'TPointF',
+  cKnownRecords: array[0..14] of string = ('TStopwatch', 'TTimeSpan', 'TRect', 'TRectF', 'TPoint', 'TPointF',
     'TSize', 'TSizeF', 'TGUID', 'TFormatSettings', 'TValue', 'TEncodingHelper', 'TRegEx', 'TMatch', 'TRttiContext');
   /// <summary>Häufige VCL-Komponenten ohne einen der ComponentRoots im Namen (#918).</summary>
-  KnownComponents: array[0..21] of string = ('TMenuItem', 'TMenu', 'TPopupMenu', 'TMainMenu', 'TTimer',
+  cKnownComponents: array[0..21] of string = ('TMenuItem', 'TMenu', 'TPopupMenu', 'TMainMenu', 'TTimer',
     'TActionList', 'TAction', 'TBasicAction', 'TImageList', 'TCustomImageList', 'TCommonDialog', 'TOpenDialog',
     'TSaveDialog', 'TApplicationEvents', 'TComboBox', 'TEdit', 'TButton', 'TLabel', 'TListBox', 'TMemo',
     'TCheckBox', 'TScrollBox');
   /// <summary>Häufige Klassen, die sicher keine Komponenten sind.</summary>
-  KnownNonComponents: array[0..9] of string = ('TObject', 'TInterfacedObject', 'TPersistent', 'TThread',
+  cKnownNonComponents: array[0..9] of string = ('TObject', 'TInterfacedObject', 'TPersistent', 'TThread',
     'TStream', 'TStrings', 'TStringList', 'TList', 'TObjectList', 'TDictionary');
 
 class function TFreeFieldTypes.NodeText(const AText: string; ANode: TSyntaxNode): string;
@@ -165,7 +165,7 @@ end;
 function FallbackGuess(const ABase: string): TTypeGuess;
 begin
   Result := tgUnknown;
-  if MatchText(ABase, KnownRecords) then
+  if MatchText(ABase, cKnownRecords) then
   begin
     Result := tgRecord;
   end
@@ -463,8 +463,8 @@ begin
     Result := Result + [mNext];
     mName := mNext;
   end;
-  AEndsKnown := AEndsKnown or DescendsFrom(Result, ComponentRoots) or DescendsFrom(Result, KnownComponents) or
-    DescendsFrom(Result, KnownNonComponents);
+  AEndsKnown := AEndsKnown or DescendsFrom(Result, cComponentRoots) or DescendsFrom(Result, cKnownComponents) or
+    DescendsFrom(Result, cKnownNonComponents);
 end;
 
 function TFreeFieldTypes.IsComponent(const ATypeName: string): Boolean;
@@ -473,7 +473,7 @@ var
   mEndsKnown: Boolean;
 begin
   mChain := ComponentChain(ATypeName, mEndsKnown);
-  Result := DescendsFrom(mChain, ComponentRoots) or DescendsFrom(mChain, KnownComponents);
+  Result := DescendsFrom(mChain, cComponentRoots) or DescendsFrom(mChain, cKnownComponents);
 end;
 
 function TFreeFieldTypes.ComponentKnown(const ATypeName: string): Boolean;
@@ -489,7 +489,7 @@ begin
   end;
   // Unbekannte Vorfahren (z. B. VCL-Klassen ohne Index): Owner am Argument erkennen.
   Result := not ComponentKnown(ATypeName) and
-    (AArgument.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and MatchText(AArgument.Name, OwnerNames);
+    (AArgument.Kind in [TSyntaxKind.Identifier, TSyntaxKind.MemberAccess]) and MatchText(AArgument.Name, cOwnerNames);
 end;
 
 function TFreeFieldTypes.FileFieldTypes(const AClassName: string; out ADeclared: Boolean): TArray<string>;

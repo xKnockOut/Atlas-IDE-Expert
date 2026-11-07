@@ -251,7 +251,8 @@ begin
   end;
 end;
 
-/// <summary>string + Integer: + ist für beide definiert, aber nicht zusammen (wie E2010). Char + Integer bleibt offen.</summary>
+/// <summary>string + Integer: + ist für beide definiert, aber nicht zusammen (wie E2010). Char + Integer bleibt
+/// offen.</summary>
 function StringPlusNumber(const AOperator: string; ALeft, ARight: TExpressionCategory): Boolean;
 begin
   Result := (AOperator = '+') and (((ALeft = TExpressionCategory.String_) and IsNumeric(ARight)) or

@@ -144,7 +144,7 @@ begin
         mReported := ACount;
       end;
     mTypes.Attach(mDispatcher);
-    mMessage := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","method":"' + TLspIdeTypes.Method + '","params":' +
+    mMessage := TJSONObject.ParseJSONValue('{"jsonrpc":"2.0","method":"' + TLspIdeTypes.cMethod + '","params":' +
       cSample + '}') as TJSONObject;
     try
       mDispatcher.DispatchMessage(mMessage).Free;

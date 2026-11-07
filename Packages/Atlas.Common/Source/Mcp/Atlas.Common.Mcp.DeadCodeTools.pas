@@ -32,7 +32,7 @@ type
 
   TMcpDeadCodeTools = class
   public const
-    MaxFindings = 200;
+    cMaxFindings = 200;
   public
     /// <summary>Die Regeln für ungenutzten Code aus ARules, in der Reihenfolge von ARules.</summary>
     class function DeadCodeRules(const ARules: TArray<IRule>): TArray<IRule>; static;
@@ -93,29 +93,29 @@ const
     (De: '## Zyklen'; En: '## Cycles'));
 
 const
-  DeadCodeIds: array[0..3] of string = (UnusedPrivateMemberRuleId, UnusedPublicMemberRuleId,
-    UnusedDeclarationRuleId, UnusedUnitRuleId);
+  cDeadCodeIds: array[0..3] of string = (cUnusedPrivateMemberRuleId, cUnusedPublicMemberRuleId,
+    cUnusedDeclarationRuleId, cUnusedUnitRuleId);
 
 // Pfad relativ zu ARoot; beide Trenner gelten, weil Pfade aus dem Index und
 // vom Client unter Windows wie unter Linux vorkommen.
 function RelativeTo(const ARoot, AFileName: string): string;
 var
-  Prefix: string;
+  mPrefix: string;
 begin
   Result := AFileName;
   if ARoot = '' then
   begin
     Exit;
   end;
-  Prefix := ARoot;
-  while (Prefix <> '') and CharInSet(Prefix[Length(Prefix)], ['\', '/']) do
+  mPrefix := ARoot;
+  while (mPrefix <> '') and CharInSet(mPrefix[Length(mPrefix)], ['\', '/']) do
   begin
-    Delete(Prefix, Length(Prefix), 1);
+    Delete(mPrefix, Length(mPrefix), 1);
   end;
-  if (Length(AFileName) > Length(Prefix) + 1) and StartsText(Prefix, AFileName) and
-    CharInSet(AFileName[Length(Prefix) + 1], ['\', '/']) then
+  if (Length(AFileName) > Length(mPrefix) + 1) and StartsText(mPrefix, AFileName) and
+    CharInSet(AFileName[Length(mPrefix) + 1], ['\', '/']) then
   begin
-    Result := Copy(AFileName, Length(Prefix) + 2, MaxInt);
+    Result := Copy(AFileName, Length(mPrefix) + 2, MaxInt);
   end;
 end;
 
@@ -135,14 +135,14 @@ end;
 
 class function TMcpDeadCodeTools.DeadCodeRules(const ARules: TArray<IRule>): TArray<IRule>;
 var
-  Rule: IRule;
+  mRule: IRule;
 begin
   Result := nil;
-  for Rule in ARules do
+  for mRule in ARules do
   begin
-    if IndexText(Rule.Descriptor.Id, DeadCodeIds) >= 0 then
+    if IndexText(mRule.Descriptor.Id, cDeadCodeIds) >= 0 then
     begin
-      Result := Result + [Rule];
+      Result := Result + [mRule];
     end;
   end;
 end;
@@ -220,7 +220,7 @@ var
   mItem: TJSONObject;
 begin
   Inc(FCount);
-  if FCount > TMcpDeadCodeTools.MaxFindings then
+  if FCount > TMcpDeadCodeTools.cMaxFindings then
   begin
     Exit;
   end;
@@ -268,9 +268,9 @@ end;
 
 procedure TUnusedCollector.AddHeader;
 begin
-  if FCount > TMcpDeadCodeTools.MaxFindings then
+  if FCount > TMcpDeadCodeTools.cMaxFindings then
   begin
-    FLines.Add(cTexts[TDeadCodeToolsText.MoreFindings].Fmt([FCount - TMcpDeadCodeTools.MaxFindings]));
+    FLines.Add(cTexts[TDeadCodeToolsText.MoreFindings].Fmt([FCount - TMcpDeadCodeTools.cMaxFindings]));
   end;
   if not FComplete then
   begin
@@ -280,7 +280,7 @@ begin
   begin
     FLines.Insert(0, cTexts[TDeadCodeToolsText.TheRulesForUnusedCode].Text);
   end;
-  FLines.Insert(0, cTexts[TDeadCodeToolsText.FindingsInFiles].Fmt([FCount, FChecked, string.Join(', ', DeadCodeIds)]));
+  FLines.Insert(0, cTexts[TDeadCodeToolsText.FindingsInFiles].Fmt([FCount, FChecked, string.Join(', ', cDeadCodeIds)]));
   FLines.Insert(0, cTexts[TDeadCodeToolsText.UnusedCode].Text);
 end;
 
@@ -448,7 +448,7 @@ begin
   if ATransitive then
   begin
     AddNames(cTexts[TDeadCodeToolsText.AllDependenciesTransitive].Text, 'transitiveUses', FGraph.Dependencies(FNode,
-      AllUsesSections));
+      cAllUsesSections));
   end;
 end;
 
@@ -484,7 +484,7 @@ begin
   if ATransitive then
   begin
     AddNames(cTexts[TDeadCodeToolsText.AllUsersTransitive].Text, 'transitiveUsedBy', FGraph.Dependents(FNode,
-      AllUsesSections));
+      cAllUsesSections));
   end;
 end;
 
@@ -494,12 +494,12 @@ begin
   AInterfaceOnly := False;
   if AEdge.Section = TUsesSection.Interface_ then
   begin
-    Result := FGraph.Path(AEdge.Target, FNode, InterfaceUsesOnly);
+    Result := FGraph.Path(AEdge.Target, FNode, cInterfaceUsesOnly);
     AInterfaceOnly := Result <> nil;
   end;
   if Result = nil then
   begin
-    Result := FGraph.Path(AEdge.Target, FNode, AllUsesSections);
+    Result := FGraph.Path(AEdge.Target, FNode, cAllUsesSections);
   end;
   if Result <> nil then
   begin

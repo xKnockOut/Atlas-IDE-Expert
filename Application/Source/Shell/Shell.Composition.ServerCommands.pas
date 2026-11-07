@@ -142,29 +142,29 @@ procedure TShellServerCommands.RegisterReadCommands(ACommands: TLspCommands);
 begin
   // Sie warten so nicht hinter einem Neuladen, während das Plugin auf die Antwort wartet.
   // Status (#28); Argument optional {"anonymize": true} (#1356, Fenster „Atlas-Server“ und Diagnosepaket).
-  ACommands.RegisterConcurrent(StatusCommand, RunStatus);
+  ACommands.RegisterConcurrent(cStatusCommand, RunStatus);
   // Prozesse am selben Index-Cache (#62): Sperre, Stand, Prozesse und Ereignisse.
-  ACommands.RegisterConcurrent(ProcessesCommand, RunProcesses);
+  ACommands.RegisterConcurrent(cProcessesCommand, RunProcesses);
   // Einstellungsdialog des Plugins (#227): Prüfung mit dem Parser des Servers und Regelkatalog.
-  ACommands.RegisterConcurrent(TLspSettingsCommands.CheckCommand, RunSettingsCheck);
-  ACommands.RegisterConcurrent(TLspSettingsCommands.CatalogCommand, RunSettingsCatalog);
+  ACommands.RegisterConcurrent(TLspSettingsCommands.cCheckCommand, RunSettingsCheck);
+  ACommands.RegisterConcurrent(TLspSettingsCommands.cCatalogCommand, RunSettingsCatalog);
 end;
 
 procedure TShellServerCommands.RegisterActionCommands(ACommands: TLspCommands);
 begin
   ACommands.Register(CompileCommand, RunCompile);
   ACommands.Register(RebuildIndexCommand, RunRebuildIndex);
-  ACommands.Register(ClearIndexCommand, RunClearIndex);
+  ACommands.Register(cClearIndexCommand, RunClearIndex);
   // „Erneut versuchen“ nach dem Überspringen (#1355): Argument Uri der Datei, ohne alle.
   ACommands.Register(TShellCrashCases.RetryCommand, RunRetryCrashCase);
-  ACommands.Register(TLspPullDiagnostics.RecheckCommand, RunRecheck);
+  ACommands.Register(TLspPullDiagnostics.cRecheckCommand, RunRecheck);
   ACommands.Register(SelectBuildCommand, RunSelectBuild);
   ACommands.Register(SelectProjectCommand, RunSelectProject);
 end;
 
 procedure TShellServerCommands.RegisterConvertCommand(ACommands: TLspCommands);
 begin
-  ACommands.Register(TLspFormFiles.ConvertCommand, RunConvertForms);
+  ACommands.Register(TLspFormFiles.cConvertCommand, RunConvertForms);
 end;
 
 function TShellServerCommands.RunStatus(const AArguments: TJSONArray): TJSONValue;
@@ -203,7 +203,7 @@ begin
     mStatus := mWorkspace.IndexStatus;
     mItem.Name := mWorkspace.Name;
     mItem.Project := mStatus.Project;
-    mItem.FormatVersion := TIndexCache.FormatVersion;
+    mItem.FormatVersion := TIndexCache.cFormatVersion;
     mItem.Units := mStatus.Parsed + mStatus.FromCache;
     if TFile.Exists(mItem.CacheFile) then
     begin
@@ -268,7 +268,7 @@ begin
   // Ohne nutzbaren Compiler antwortet der Befehl immer mit Grund und Ausweg (#261).
   if not mStarted then
   begin
-    raise EJsonRpcError.Create(TJsonRpcErrorCode.RequestFailed, mChoice.MessageText);
+    raise EJsonRpcError.Create(TJsonRpcErrorCode.cRequestFailed, mChoice.MessageText);
   end;
   mAnswer := TJSONObject.Create;
   mAnswer.AddPair('started', TJSONBool.Create(True));
@@ -347,7 +347,7 @@ begin
       if mWorkspace.State.Project(mProject) and
         not mWorkspace.SelectBuild(mArgs.Config, mArgs.Platform, mArgs.Defines, mArgs.HasDefines, mError) then
       begin
-        raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams, mError);
+        raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams, mError);
       end;
     end;
   end;
@@ -408,7 +408,7 @@ begin
     mIndex := TBuildCommands.FindProject(mItems, mArgs.Project);
     if mIndex < 0 then
     begin
-      raise EJsonRpcError.Create(TJsonRpcErrorCode.InvalidParams,
+      raise EJsonRpcError.Create(TJsonRpcErrorCode.cInvalidParams,
         cTexts[TServerCommandText.NotLoaded].Fmt([mArgs.Project]));
     end;
     FServices.SetProject(mTargets[mIndex].Setup.Origin, mItems[mIndex].Project);

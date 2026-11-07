@@ -48,7 +48,8 @@ type
     FileName: string;
     Range: TTextRange;
     NewText: string;
-    class function Create(const AFileName: string; const ARange: TTextRange; const ANewText: string): TMcpFileEdit; static;
+    class function Create(const AFileName: string; const ARange: TTextRange;
+      const ANewText: string): TMcpFileEdit; static;
   end;
 
   /// <summary>Schreibt AText nach AFileName (Kodierung und Zeilenenden erhalten); Fehler als Exception.</summary>
@@ -220,13 +221,13 @@ end;
 
 class function TMcpEditTools.ApplyToText(const AText: string; const AEdits: TArray<TMcpFileEdit>): string;
 var
-  Sorted: TArray<TMcpFileEdit>;
-  Edit: TMcpFileEdit;
-  StartOffset, EndOffset: Integer;
-  Lines: TLineTable;
+  mSorted: TArray<TMcpFileEdit>;
+  mEdit: TMcpFileEdit;
+  mStartOffset, mEndOffset: Integer;
+  mLines: TLineTable;
 begin
-  Sorted := Copy(AEdits);
-  TArray.Sort<TMcpFileEdit>(Sorted, TComparer<TMcpFileEdit>.Construct(
+  mSorted := Copy(AEdits);
+  TArray.Sort<TMcpFileEdit>(mSorted, TComparer<TMcpFileEdit>.Construct(
     function(const A, B: TMcpFileEdit): Integer
     begin
       Result := B.Range.StartPos.Line - A.Range.StartPos.Line;
@@ -236,32 +237,32 @@ begin
       end;
     end));
   Result := AText;
-  for Edit in Sorted do
+  for mEdit in mSorted do
   begin
     // Zeilen wie LSP (CRLF, LF, CR); Zeichen hinter dem Zeilenende zählen als Zeilenende.
-    Lines := TLineTable.Build(Result);
-    StartOffset := Lines.OffsetAt(Edit.Range.StartPos);
-    EndOffset := Lines.OffsetAt(Edit.Range.EndPos);
-    Result := Copy(Result, 1, StartOffset) + Edit.NewText + Copy(Result, EndOffset + 1, MaxInt);
+    mLines := TLineTable.Build(Result);
+    mStartOffset := mLines.OffsetAt(mEdit.Range.StartPos);
+    mEndOffset := mLines.OffsetAt(mEdit.Range.EndPos);
+    Result := Copy(Result, 1, mStartOffset) + mEdit.NewText + Copy(Result, mEndOffset + 1, MaxInt);
   end;
 end;
 
 class function TMcpEditTools.Diff(const AFileName, AOld, ANew: string): string;
 var
-  Line: string;
-  Builder: TStringBuilder;
+  mLine: string;
+  mBuilder: TStringBuilder;
 begin
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    Builder.AppendFormat('--- %s', [AFileName]).AppendLine;
+    mBuilder.AppendFormat('--- %s', [AFileName]).AppendLine;
     // Gleiche Zeilenzahl (z. B. Umbenennen): nur die geänderten Zeilen, sonst der geänderte Block.
-    for Line in TTextDiff.ChangedLines(TTextLines.SplitLines(AOld), TTextLines.SplitLines(ANew)) do
+    for mLine in TTextDiff.ChangedLines(TTextLines.SplitLines(AOld), TTextLines.SplitLines(ANew)) do
     begin
-      Builder.AppendLine(Line);
+      mBuilder.AppendLine(mLine);
     end;
-    Result := TrimRight(Builder.ToString);
+    Result := TrimRight(mBuilder.ToString);
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
@@ -528,7 +529,7 @@ begin
   for mIndex := 0 to High(AActions) do
   begin
     if SameText(AActions[mIndex].Title, ATitle) or (SameText(AActions[mIndex].RuleId, ATitle) and
-      not MatchStr(AActions[mIndex].Tag, [RuleSuppressLineTag, RuleSuppressFileTag])) then
+      not MatchStr(AActions[mIndex].Tag, [cRuleSuppressLineTag, cRuleSuppressFileTag])) then
     begin
       Exit(mIndex);
     end;

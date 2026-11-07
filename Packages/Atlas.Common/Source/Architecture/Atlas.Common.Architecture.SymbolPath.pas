@@ -92,10 +92,10 @@ type
 
   TSymbolPathRequest = record
   public const
-    DefaultSteps = 8;
-    MaxStepsLimit = 16;
-    MaxRoutes = 5;
-    DefaultNodes = 20000;
+    cDefaultSteps = 8;
+    cMaxStepsLimit = 16;
+    cMaxRoutes = 5;
+    cDefaultNodes = 20000;
   public
     From: string;
     To_: string;
@@ -157,7 +157,7 @@ type
   end;
 
 const
-  AllSymbolPathEdges: TSymbolPathEdgeKinds = [Low(TSymbolPathEdgeKind)..High(TSymbolPathEdgeKind)];
+  cAllSymbolPathEdges: TSymbolPathEdgeKinds = [Low(TSymbolPathEdgeKind)..High(TSymbolPathEdgeKind)];
 
 implementation
 
@@ -304,11 +304,11 @@ class function TSymbolPathRequest.Default: TSymbolPathRequest;
 begin
   Result.From := '';
   Result.To_ := '';
-  Result.Via := AllSymbolPathEdges;
+  Result.Via := cAllSymbolPathEdges;
   Result.ThroughLibrary := False;
-  Result.MaxSteps := DefaultSteps;
+  Result.MaxSteps := cDefaultSteps;
   Result.All := False;
-  Result.MaxNodes := DefaultNodes;
+  Result.MaxNodes := cDefaultNodes;
   Result.TimeoutMs := 0;
 end;
 
@@ -636,7 +636,7 @@ function TSymbolPathRun.Collect(ALength, AForwardDepth: Integer; AWithCalls: Boo
 var
   mWalker: TSymbolPathWalker;
 begin
-  mWalker := TSymbolPathWalker.Create(Self, ALength, AForwardDepth, AWithCalls, TSymbolPathRequest.MaxRoutes + 1);
+  mWalker := TSymbolPathWalker.Create(Self, ALength, AForwardDepth, AWithCalls, TSymbolPathRequest.cMaxRoutes + 1);
   try
     Result := mWalker.Walked(FStart);
   finally
@@ -712,8 +712,8 @@ begin
     TSymbolPathOutcome.Found:
       begin
         AResult.Status := TSymbolPathStatus.Found;
-        AResult.RouteCount := Min(Length(APaths), TSymbolPathRequest.MaxRoutes);
-        AResult.MoreRoutes := Length(APaths) > TSymbolPathRequest.MaxRoutes;
+        AResult.RouteCount := Min(Length(APaths), TSymbolPathRequest.cMaxRoutes);
+        AResult.MoreRoutes := Length(APaths) > TSymbolPathRequest.cMaxRoutes;
         mCount := AResult.RouteCount;
         if not AAll then
         begin
@@ -789,13 +789,13 @@ begin
   Result := Default(TSymbolPathResult);
   Result.From := ARequest.From;
   Result.To_ := ARequest.To_;
-  Result.MaxSteps := EnsureRange(ARequest.MaxSteps, 1, TSymbolPathRequest.MaxStepsLimit);
-  Result.Restricted := ARequest.Via <> AllSymbolPathEdges;
+  Result.MaxSteps := EnsureRange(ARequest.MaxSteps, 1, TSymbolPathRequest.cMaxStepsLimit);
+  Result.Restricted := ARequest.Via <> cAllSymbolPathEdges;
   FClock := TStopwatch.GetTimeStamp;
   FMaxNodes := ARequest.MaxNodes;
   if FMaxNodes <= 0 then
   begin
-    FMaxNodes := TSymbolPathRequest.DefaultNodes;
+    FMaxNodes := TSymbolPathRequest.cDefaultNodes;
   end;
   FTimeoutMs := ARequest.TimeoutMs;
   FCancelled := ACancelled;
@@ -936,7 +936,7 @@ begin
       Result := Either(AStep.Reverse, cTexts[TArchitectureSymbolPathText.ImplementedBy].Text,
         cTexts[TArchitectureSymbolPathText.Implements].Text);
     TSymbolPathEdgeKind.HasField:
-      Result := Either(AFrom.IsUnit or (AFrom.Symbol.Kind in SymbolPathValueKinds),
+      Result := Either(AFrom.IsUnit or (AFrom.Symbol.Kind in cSymbolPathValueKinds),
         cTexts[TArchitectureSymbolPathText.OfType].Text, cTexts[TArchitectureSymbolPathText.HasField].Text);
     TSymbolPathEdgeKind.Parameter:
       Result := cTexts[TArchitectureSymbolPathText.ParameterOfType].Text;

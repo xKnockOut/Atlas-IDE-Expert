@@ -6,7 +6,7 @@
 interface
 
 const
-  CatalogLinesEnStyle: array[0..995] of string = (
+  cCatalogLinesEnStyle: array[0..995] of string = (
     '{',
     '      "id": "unused-local",',
     '      "name": "Unused local variable",',

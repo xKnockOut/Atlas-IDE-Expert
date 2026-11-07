@@ -97,7 +97,7 @@ var
 begin
   Findings := TRuleAssert.Findings(TMetricRule.Create(TMetricKind.ParameterCount), InUnit(SevenParameters));
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(ParameterCountRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cParameterCountRuleId, Findings[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
   Assert.AreEqual(3, Findings[0].Range.StartPos.Line);
   Assert.AreEqual(10, Findings[0].Range.StartPos.Character);
@@ -118,7 +118,7 @@ begin
   Findings := TRuleAssert.Findings(TMetricRule.Create(TMetricKind.Cyclomatic), InUnit(ThreeIfs),
     '{"rules": {"metric-cyclomatic-complexity": {"severity": "warning", "max": 3}}}');
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(CyclomaticComplexityRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cCyclomaticComplexityRuleId, Findings[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
   Assert.AreEqual('Methode Run hat zyklomatische Komplexität 4 (Grenzwert 3)', Findings[0].Message);
   Assert.AreEqual(0, Integer(Length(TRuleAssert.Findings(TMetricRule.Create(TMetricKind.Cyclomatic), InUnit(ThreeIfs),
@@ -232,7 +232,7 @@ var
 begin
   Findings := TRuleAssert.Findings(TStructureMetricRule.Create(TStructureKind.ClassSize), FormWith(87));
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(ClassSizeRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cClassSizeRuleId, Findings[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
   Assert.AreEqual('TfrmHaupt hat 87 Member (Grenze 40).', Findings[0].Message);
   Assert.AreEqual(3, Findings[0].Range.StartPos.Line);
@@ -325,7 +325,7 @@ var
 begin
   Findings := TRuleAssert.Findings(TMetricRule.Create(TMetricKind.BooleanOperands), SixOperands);
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(BooleanOperandsRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cBooleanOperandsRuleId, Findings[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Hint), Ord(Findings[0].Severity));
   Assert.AreEqual('Bedingung mit 6 Operanden (Grenze 5).', Findings[0].Message);
   Assert.AreEqual(10, Findings[0].Range.StartPos.Line, 'auf der Bedingung');
@@ -386,7 +386,7 @@ begin
   Findings := TRuleAssert.Findings(TMetricRule.Create(TMetricKind.LocalCount), InUnit(Source),
     '{"rules": {"metric-local-count": {"max": 11}}}');
   Assert.AreEqual(1, Integer(Length(Findings)), 'nur Run, nicht Inner');
-  Assert.AreEqual(LocalCountRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cLocalCountRuleId, Findings[0].RuleId);
   Assert.AreEqual('Methode Run hat 12 lokale Variablen (Grenze 11); Teile in eigene Methoden auslagern',
     Findings[0].Message);
   Assert.AreEqual(3, Findings[0].Range.StartPos.Line, 'auf dem Namen im Kopf');
@@ -409,7 +409,7 @@ begin
   Findings := TRuleAssert.Findings(TMetricRule.Create(TMetricKind.ExitPoints), InUnit(Source),
     '{"rules": {"metric-exit-points": {"max": 3}}}');
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(ExitPointsRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cExitPointsRuleId, Findings[0].RuleId);
   Assert.AreEqual('Methode Run hat 4 Ausstiege mit Exit oder raise (Grenze 3); Ablauf vereinfachen',
     Findings[0].Message);
   TRuleAssert.Reports(TMetricRule.Create(TMetricKind.ExitPoints),
@@ -458,7 +458,7 @@ begin
   Findings := TRuleAssert.IndexFindings(TStructureMetricRule.Create(TStructureKind.InheritanceDepth),
     Chain('TObject', 7), nil, '', '');
   Assert.AreEqual(1, Integer(Length(Findings)), 'nur TStufe7');
-  Assert.AreEqual(InheritanceDepthRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cInheritanceDepthRuleId, Findings[0].RuleId);
   Assert.AreEqual('TStufe7 hat Vererbungstiefe 6 ohne RTL und VCL (Grenze 5).', Findings[0].Message);
   Assert.AreEqual(15, Findings[0].Range.StartPos.Line, 'auf dem Klassennamen');
   Assert.AreEqual(2, Findings[0].Range.StartPos.Character);

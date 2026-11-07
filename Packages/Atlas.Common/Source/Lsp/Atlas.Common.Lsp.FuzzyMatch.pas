@@ -21,7 +21,7 @@ type
   TFuzzyMatch = class
   public const
     /// <summary>Punktzahl für keinen Treffer.</summary>
-    NoMatch = -1;
+    cNoMatch = -1;
   public
     /// <summary>Punktzahl von AName für AQuery, höher ist besser; NoMatch ohne Treffer.
     /// Exakt vor Präfix vor Teilwort vor Teilfolge.</summary>
@@ -38,10 +38,10 @@ uses
   Atlas.Text.Fuzzy;
 
 const
-  ExactScore = 4000;
-  PrefixScore = 3000;
-  SubstringScore = 2000;
-  SubsequenceScore = 1000;
+  cExactScore = 4000;
+  cPrefixScore = 3000;
+  cSubstringScore = 2000;
+  cSubsequenceScore = 1000;
 
 /// <summary>Erste Stelle ab AFrom, an der AChar steht und ein Wort beginnt; 0 ohne Treffer.</summary>
 function WordStartFrom(const AName, ALowerName: string; AChar: Char; AFrom: Integer): Integer;
@@ -98,7 +98,7 @@ function SubsequenceScoreOf(const AName, ALowerName, AQuery: string; APreferWord
 var
   mQueryIndex, mNameIndex, mCandidate, mPrevious: Integer;
 begin
-  Result := SubsequenceScore;
+  Result := cSubsequenceScore;
   mNameIndex := 1;
   mPrevious := 0;
   for mQueryIndex := 1 to Length(AQuery) do
@@ -106,7 +106,7 @@ begin
     mCandidate := NextCandidate(AName, ALowerName, AQuery[mQueryIndex], mNameIndex, mPrevious, APreferWordStarts);
     if mCandidate = 0 then
     begin
-      Exit(TFuzzyMatch.NoMatch);
+      Exit(TFuzzyMatch.cNoMatch);
     end;
     if TTextFuzzy.IsWordStart(AName, mCandidate) then
     begin
@@ -125,7 +125,7 @@ begin
   end;
   // Kürzere Namen bei gleicher Güte zuerst.
   Dec(Result, Length(AName) - Length(AQuery));
-  if Result <= TFuzzyMatch.NoMatch then
+  if Result <= TFuzzyMatch.cNoMatch then
   begin
     Result := 0;
   end;
@@ -135,74 +135,74 @@ end;
 
 class function TFuzzyMatch.Score(const AName, AQuery: string): Integer;
 var
-  LowerName, Query: string;
-  Found, Plain: Integer;
+  mLowerName, mQuery: string;
+  mFound, mPlain: Integer;
 begin
-  Query := LowerCase(AQuery);
-  if Query = '' then
+  mQuery := LowerCase(AQuery);
+  if mQuery = '' then
   begin
-    Exit(NoMatch);
+    Exit(cNoMatch);
   end;
-  LowerName := LowerCase(AName);
-  Found := Pos(Query, LowerName);
-  if Found = 1 then
+  mLowerName := LowerCase(AName);
+  mFound := Pos(mQuery, mLowerName);
+  if mFound = 1 then
   begin
-    if Length(LowerName) = Length(Query) then
+    if Length(mLowerName) = Length(mQuery) then
     begin
-      Exit(ExactScore);
+      Exit(cExactScore);
     end;
-    Exit(PrefixScore - (Length(LowerName) - Length(Query)));
+    Exit(cPrefixScore - (Length(mLowerName) - Length(mQuery)));
   end;
-  if Found > 1 then
+  if mFound > 1 then
   begin
-    Result := SubstringScore - Found;
-    if TTextFuzzy.IsWordStart(AName, Found) then
+    Result := cSubstringScore - mFound;
+    if TTextFuzzy.IsWordStart(AName, mFound) then
     begin
       Inc(Result, 500);
     end;
     Exit;
   end;
-  Result := SubsequenceScoreOf(AName, LowerName, Query, True);
-  Plain := SubsequenceScoreOf(AName, LowerName, Query, False);
-  if Plain > Result then
+  Result := SubsequenceScoreOf(AName, mLowerName, mQuery, True);
+  mPlain := SubsequenceScoreOf(AName, mLowerName, mQuery, False);
+  if mPlain > Result then
   begin
-    Result := Plain;
+    Result := mPlain;
   end;
-  if Result >= SubstringScore then
+  if Result >= cSubstringScore then
   begin
-    Result := SubstringScore - 1;
+    Result := cSubstringScore - 1;
   end;
 end;
 
 class function TFuzzyMatch.CompletionScore(const AName, AQuery: string): Integer;
 var
-  LowerName, Query: string;
-  Found: Integer;
+  mLowerName, mQuery: string;
+  mFound: Integer;
 begin
-  Query := LowerCase(AQuery);
-  if Query = '' then
+  mQuery := LowerCase(AQuery);
+  if mQuery = '' then
   begin
-    Exit(NoMatch);
+    Exit(cNoMatch);
   end;
-  LowerName := LowerCase(AName);
-  Found := Pos(Query, LowerName);
+  mLowerName := LowerCase(AName);
+  mFound := Pos(mQuery, mLowerName);
   // Präfix und Teilwort wie Score: Diese Treffer filtert auch das Plugin nicht weg.
-  if Found > 0 then
+  if mFound > 0 then
   begin
     Exit(Score(AName, AQuery));
   end;
   if not TTextFuzzy.MatchesBoundedSubsequence(AQuery, AName) then
   begin
-    Exit(NoMatch);
+    Exit(cNoMatch);
   end;
-  Result := SubsequenceScoreOf(AName, LowerName, Query, True);
-  if Result = NoMatch then
+  Result := SubsequenceScoreOf(AName, mLowerName, mQuery, True);
+  if Result = cNoMatch then
   begin
     Result := 0;
   end;
-  if Result >= SubstringScore then
+  if Result >= cSubstringScore then
   begin
-    Result := SubstringScore - 1;
+    Result := cSubstringScore - 1;
   end;
 end;
 

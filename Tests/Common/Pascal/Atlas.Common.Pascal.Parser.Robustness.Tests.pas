@@ -612,7 +612,7 @@ begin
   Params := TLspSyntaxDiagnostics.BuildParams(Document);
   Watch.Stop;
   Params.Free;
-  Assert.IsTrue(Watch.ElapsedMilliseconds + TLspSyntaxDiagnostics.DefaultDelayMs < 200,
+  Assert.IsTrue(Watch.ElapsedMilliseconds + TLspSyntaxDiagnostics.cDefaultDelayMs < 200,
     Format('Parsen dauert %d ms', [Watch.ElapsedMilliseconds]));
 end;
 

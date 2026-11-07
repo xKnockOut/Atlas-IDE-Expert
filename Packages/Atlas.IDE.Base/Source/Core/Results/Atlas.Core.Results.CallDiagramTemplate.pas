@@ -11,7 +11,7 @@ function CallDiagramHtml: string;
 implementation
 
 const
-  Lines: array[0..261] of string = (
+  cLines: array[0..261] of string = (
     '<!doctype html>',
     '<html lang="{{LANG}}">',
     '<head>',
@@ -279,12 +279,12 @@ const
 
 function CallDiagramHtml: string;
 var
-  Line: string;
+  mLine: string;
 begin
   Result := '';
-  for Line in Lines do
+  for mLine in cLines do
   begin
-    Result := Result + Line + #10;
+    Result := Result + mLine + #10;
   end;
 end;
 

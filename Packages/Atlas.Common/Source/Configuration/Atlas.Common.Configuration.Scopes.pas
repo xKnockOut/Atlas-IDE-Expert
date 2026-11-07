@@ -40,8 +40,8 @@ type
 
   TConfigurationScopes = class
   public const
-    GlobalFolder = 'Atlas';
-    GlobalName = 'settings.json';
+    cGlobalFolder = 'Atlas';
+    cGlobalName = 'settings.json';
   public
     /// <summary>Ort eines Schlüssels ("index", "index.exclude", "rules"); ein Glied ohne eigenen Eintrag
     /// erbt den Ort seines Objekts.</summary>
@@ -99,11 +99,11 @@ const
 
 function Listed(const APath: string; const AList: array of string): Boolean;
 var
-  Item: string;
+  mItem: string;
 begin
-  for Item in AList do
+  for mItem in AList do
   begin
-    if Item = APath then
+    if mItem = APath then
     begin
       Exit(True);
     end;
@@ -113,22 +113,22 @@ end;
 
 function QuoteKey(const AKey: string): string;
 var
-  Ch: Char;
+  mCh: Char;
 begin
   Result := '"';
-  for Ch in AKey do
+  for mCh in AKey do
   begin
-    if (Ch = '"') or (Ch = '\') then
+    if (mCh = '"') or (mCh = '\') then
     begin
-      Result := Result + '\' + Ch;
+      Result := Result + '\' + mCh;
     end
-    else if Ord(Ch) < 32 then
+    else if Ord(mCh) < 32 then
     begin
-      Result := Result + Format('\u%.4x', [Ord(Ch)]);
+      Result := Result + Format('\u%.4x', [Ord(mCh)]);
     end
     else
     begin
-      Result := Result + Ch;
+      Result := Result + mCh;
     end;
   end;
   Result := Result + '"';
@@ -158,43 +158,43 @@ function FilterScope(const AText: string; AKeep: TConfigurationScope;
 
 class function TConfigurationScopes.ScopeOf(const APath: string): TConfigurationScope;
 var
-  Dot: Integer;
+  mDot: Integer;
 begin
-  if Listed(APath, GlobalSettingPaths) and Listed(APath, ProjectSettingPaths) then
+  if Listed(APath, cGlobalSettingPaths) and Listed(APath, cProjectSettingPaths) then
   begin
     Exit(TConfigurationScope.Both);
   end;
-  if Listed(APath, GlobalSettingPaths) then
+  if Listed(APath, cGlobalSettingPaths) then
   begin
     Exit(TConfigurationScope.Global);
   end;
-  if Listed(APath, ProjectSettingPaths) then
+  if Listed(APath, cProjectSettingPaths) then
   begin
     Exit(TConfigurationScope.Project);
   end;
-  Dot := Pos('.', APath);
-  if Dot > 0 then
+  mDot := Pos('.', APath);
+  if mDot > 0 then
   begin
-    Exit(ScopeOf(Copy(APath, 1, Dot - 1)));
+    Exit(ScopeOf(Copy(APath, 1, mDot - 1)));
   end;
   Result := TConfigurationScope.Unknown;
 end;
 
 class function TConfigurationScopes.IsMixed(const AKey: string): Boolean;
 var
-  Item: string;
+  mItem: string;
 begin
   Result := False;
-  for Item in GlobalSettingPaths do
+  for mItem in cGlobalSettingPaths do
   begin
-    if Item.StartsWith(AKey + '.') then
+    if mItem.StartsWith(AKey + '.') then
     begin
       Result := True;
     end;
   end;
-  for Item in ProjectSettingPaths do
+  for mItem in cProjectSettingPaths do
   begin
-    if Item.StartsWith(AKey + '.') then
+    if mItem.StartsWith(AKey + '.') then
     begin
       Result := True;
     end;
@@ -204,7 +204,7 @@ end;
 class function TConfigurationScopes.Filter(const AText: string; AKeep: TConfigurationScope;
   out AIssues: TArray<TConfigurationIssue>): string;
 var
-  Forbidden, Ignored: TArray<TConfigurationIssue>;
+  mForbidden, mIgnored: TArray<TConfigurationIssue>;
 begin
   if AKeep <> TConfigurationScope.Project then
   begin
@@ -213,8 +213,8 @@ begin
   // atlas.json gilt für alle im Team (#486): ohne Zugangsdaten und absolute Pfade. Die Meldungen zum Ort beziehen
   // sich auf den Originaltext.
   FilterScope(AText, AKeep, AIssues);
-  Result := FilterScope(TForbiddenEntries.Strip(AText, Forbidden), AKeep, Ignored);
-  AIssues := AIssues + Forbidden;
+  Result := FilterScope(TForbiddenEntries.Strip(AText, mForbidden), AKeep, mIgnored);
+  AIssues := AIssues + mForbidden;
 end;
 
 /// <summary>Wurzelobjekt von AText; nil bei leerem Text, Syntaxfehler (meldet der Parser) oder einer Wurzel,
@@ -375,9 +375,9 @@ end;
 
 class function TConfigurationScopes.Filter(const AText: string; AKeep: TConfigurationScope): string;
 var
-  Ignored: TArray<TConfigurationIssue>;
+  mIgnored: TArray<TConfigurationIssue>;
 begin
-  Result := Filter(AText, AKeep, Ignored);
+  Result := Filter(AText, AKeep, mIgnored);
 end;
 
 class function TConfigurationScopes.Effective(const AGlobalText, AEditorText, AProjectText: string): string;
@@ -389,9 +389,9 @@ end;
 
 class function TConfigurationScopes.ExperimentalEnabled(const AText: string): Boolean;
 var
-  Ignored: TArray<TConfigurationIssue>;
+  mIgnored: TArray<TConfigurationIssue>;
 begin
-  Result := (Trim(AText) <> '') and TConfigurationParser.Parse(AText, Ignored).ExperimentalEnabled;
+  Result := (Trim(AText) <> '') and TConfigurationParser.Parse(AText, mIgnored).ExperimentalEnabled;
 end;
 
 /// <summary>Objekt AValue ohne die Glieder aus APaths; ARemoved wird gesetzt, wenn eines fehlt.</summary>
@@ -478,7 +478,7 @@ begin
   Result := '';
   if AAppData <> '' then
   begin
-    Result := IncludeTrailingPathDelimiter(AAppData) + GlobalFolder + PathDelim + GlobalName;
+    Result := IncludeTrailingPathDelimiter(AAppData) + cGlobalFolder + PathDelim + cGlobalName;
   end;
 end;
 

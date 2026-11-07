@@ -100,18 +100,18 @@ const
   /// <summary>Klassen der RTL, deren Konstruktor ohne Argumente höchstens EOutOfMemory wirft; danach gilt
   /// ohnehin nichts mehr.
   /// Dazu Grafik- und Menüobjekte der VCL, die ihr Handle erst bei Bedarf anlegen.</summary>
-  QuietConstructions: array[0..30] of string = ('TObject', 'TInterfacedObject', 'TPersistent', 'TList',
+  cQuietConstructions: array[0..30] of string = ('TObject', 'TInterfacedObject', 'TPersistent', 'TList',
     'TObjectList', 'TDictionary', 'TObjectDictionary', 'TStringList', 'TQueue', 'TObjectQueue', 'TStack',
     'TObjectStack', 'THashSet', 'TMemoryStream', 'TStringBuilder', 'TCriticalSection', 'TMultiReadExclusiveWriteSynchronizer',
     'TBits', 'TThreadList', 'TInterfaceList', 'TStringStream', 'TBytesStream', 'TFont', 'TBrush', 'TPen', 'TBitmap',
     'TIcon', 'TPicture', 'TPopupMenu', 'TMenuItem', 'TApplicationEvents');
   /// <summary>Standardroutinen, die nicht werfen.</summary>
-  QuietRoutines: array[0..22] of string = ('Assigned', 'Length', 'High', 'Low', 'SizeOf', 'Ord', 'Chr', 'Inc',
+  cQuietRoutines: array[0..22] of string = ('Assigned', 'Length', 'High', 'Low', 'SizeOf', 'Ord', 'Chr', 'Inc',
     'Dec', 'Include', 'Exclude', 'Default', 'Supports', 'Max', 'Min', 'TypeInfo', 'Trim', 'SameText', 'LowerCase',
     'UpperCase', 'Exit', 'Break', 'Continue');
 
   /// <summary>Records mit Create, die keine Freigabe brauchen und nie nil sind.</summary>
-  RecordConstructions: array[0..9] of string = ('TStopwatch', 'TTimeSpan', 'TRect', 'TPoint', 'TSize', 'TGUID',
+  cRecordConstructions: array[0..9] of string = ('TStopwatch', 'TTimeSpan', 'TRect', 'TPoint', 'TSize', 'TGUID',
     'TFormatSettings', 'TValue', 'TRegEx', 'TRttiContext');
 
 function LastNamePart(const AName: string): string;
@@ -128,12 +128,12 @@ end;
 
 function FixedArguments(ACall: TSyntaxNode): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := True;
-  for Index := 1 to ACall.ChildCount - 1 do
+  for mIndex := 1 to ACall.ChildCount - 1 do
   begin
-    Result := Result and IsFixedArgument(ACall[Index]);
+    Result := Result and IsFixedArgument(ACall[mIndex]);
   end;
 end;
 
@@ -154,9 +154,9 @@ end;
 /// <summary>Weist eine Anweisung unter ARoot dem Feld AField zu?</summary>
 function AssignsField(ARoot: TSyntaxNode; const AField: string): Boolean;
 var
-  Field: string;
+  mField: string;
 begin
-  Field := AField;
+  mField := AField;
   // Iterativ (Bericht M1).
   Result := ARoot.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
@@ -167,7 +167,7 @@ begin
         Result := TSyntaxSearchStep.Skip;
       end
       else if (ANode.Kind = TSyntaxKind.AssignStatement) and (ANode.ChildCount = 2) and
-        SameText(FreedPath(ANode[0]), Field) then
+        SameText(FreedPath(ANode[0]), mField) then
       begin
         Result := TSyntaxSearchStep.Found;
       end;
@@ -177,22 +177,22 @@ end;
 /// <summary>Kinder, die AssignsAlways für ANode auswertet.</summary>
 function AlwaysParts(ANode: TSyntaxNode): TArray<TSyntaxNode>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
-  for Index := 0 to ANode.ChildCount - 1 do
+  for mIndex := 0 to ANode.ChildCount - 1 do
     case ANode.Kind of
       TSyntaxKind.Block:
-        Result := Result + [ANode[Index]];
+        Result := Result + [ANode[mIndex]];
       TSyntaxKind.IfStatement, TSyntaxKind.CaseItem, TSyntaxKind.CaseElse:
-        if ANode[Index].Kind in FlowStatementKinds then
+        if ANode[mIndex].Kind in cFlowStatementKinds then
         begin
-          Result := Result + [ANode[Index]];
+          Result := Result + [ANode[mIndex]];
         end;
       TSyntaxKind.CaseStatement:
-        if ANode[Index].Kind in [TSyntaxKind.CaseItem, TSyntaxKind.CaseElse] then
+        if ANode[mIndex].Kind in [TSyntaxKind.CaseItem, TSyntaxKind.CaseElse] then
         begin
-          Result := Result + [ANode[Index]];
+          Result := Result + [ANode[mIndex]];
         end;
     else
       // Übrige Werte bewusst ohne Wirkung.
@@ -205,8 +205,8 @@ end;
 procedure EnterAlways(ANode: TSyntaxNode; const AField: string; APending: TStack<TSyntaxPostOrderEntry>;
   AValues: TStack<Boolean>);
 var
-  Parts: TArray<TSyntaxNode>;
-  Index: Integer;
+  mParts: TArray<TSyntaxNode>;
+  mIndex: Integer;
 begin
   if ANode.Kind = TSyntaxKind.AssignStatement then
   begin
@@ -216,10 +216,10 @@ begin
     TSyntaxKind.CaseItem, TSyntaxKind.CaseElse] then
   begin
     APending.Push(TSyntaxPostOrderEntry.Create(ANode, True));
-    Parts := AlwaysParts(ANode);
-    for Index := High(Parts) downto 0 do
+    mParts := AlwaysParts(ANode);
+    for mIndex := High(mParts) downto 0 do
     begin
-      APending.Push(TSyntaxPostOrderEntry.Create(Parts[Index], False));
+      APending.Push(TSyntaxPostOrderEntry.Create(mParts[mIndex], False));
     end;
   end
   else
@@ -231,32 +231,32 @@ end;
 /// <summary>Fasst die Werte der Teile von ANode zusammen; sie liegen oben auf AValues.</summary>
 function CombinedAlways(ANode: TSyntaxNode; AValues: TStack<Boolean>): Boolean;
 var
-  Parts: TArray<TSyntaxNode>;
-  Index: Integer;
-  AnyTrue, AllTrue, HasElse, Value: Boolean;
+  mParts: TArray<TSyntaxNode>;
+  mIndex: Integer;
+  mAnyTrue, mAllTrue, mHasElse, mValue: Boolean;
 begin
-  Parts := AlwaysParts(ANode);
-  AnyTrue := False;
-  AllTrue := True;
-  HasElse := False;
-  for Index := 0 to High(Parts) do
+  mParts := AlwaysParts(ANode);
+  mAnyTrue := False;
+  mAllTrue := True;
+  mHasElse := False;
+  for mIndex := 0 to High(mParts) do
   begin
-    Value := AValues.Pop;
-    AnyTrue := AnyTrue or Value;
-    AllTrue := AllTrue and Value;
-    HasElse := HasElse or (Parts[Index].Kind = TSyntaxKind.CaseElse);
+    mValue := AValues.Pop;
+    mAnyTrue := mAnyTrue or mValue;
+    mAllTrue := mAllTrue and mValue;
+    mHasElse := mHasElse or (mParts[mIndex].Kind = TSyntaxKind.CaseElse);
   end;
   if ANode.Kind = TSyntaxKind.IfStatement then
   begin
-    Result := AllTrue and (Length(Parts) = 2);
+    Result := mAllTrue and (Length(mParts) = 2);
   end
   else if ANode.Kind = TSyntaxKind.CaseStatement then
   begin
-    Result := AllTrue and HasElse;
+    Result := mAllTrue and mHasElse;
   end
   else
   begin
-    Result := AnyTrue;
+    Result := mAnyTrue;
   end;
 end;
 
@@ -264,67 +264,67 @@ end;
 /// </summary>
 function AssignsAlways(ANode: TSyntaxNode; const AField: string): Boolean;
 var
-  Pending: TStack<TSyntaxPostOrderEntry>;
-  Values: TStack<Boolean>;
-  Entry: TSyntaxPostOrderEntry;
+  mPending: TStack<TSyntaxPostOrderEntry>;
+  mValues: TStack<Boolean>;
+  mEntry: TSyntaxPostOrderEntry;
 begin
   // Iterativ (Bericht M1): Nachordnung mit Wertestapel; else-if-Ketten sind tiefe Bäume.
-  Pending := TStack<TSyntaxPostOrderEntry>.Create;
-  Values := TStack<Boolean>.Create;
+  mPending := TStack<TSyntaxPostOrderEntry>.Create;
+  mValues := TStack<Boolean>.Create;
   try
-    Pending.Push(TSyntaxPostOrderEntry.Create(ANode, False));
-    while Pending.Count > 0 do
+    mPending.Push(TSyntaxPostOrderEntry.Create(ANode, False));
+    while mPending.Count > 0 do
     begin
-      Entry := Pending.Pop;
-      if Entry.Done then
+      mEntry := mPending.Pop;
+      if mEntry.Done then
       begin
-        Values.Push(CombinedAlways(Entry.Node, Values));
+        mValues.Push(CombinedAlways(mEntry.Node, mValues));
       end
       else
       begin
-        EnterAlways(Entry.Node, AField, Pending, Values);
+        EnterAlways(mEntry.Node, AField, mPending, mValues);
       end;
     end;
-    Result := Values.Pop;
+    Result := mValues.Pop;
   finally
-    Values.Free;
-    Pending.Free;
+    mValues.Free;
+    mPending.Free;
   end;
 end;
 
 /// <summary>Nimmt eine Klassendeklaration ANode mit ihrem Vorfahren (ohne Angabe TObject) auf.</summary>
 procedure AddClassDecl(ANode: TSyntaxNode; var ANames, AAncestors: TArray<string>);
 var
-  Body, Ancestor: TSyntaxNode;
+  mBody, mAncestor: TSyntaxNode;
 begin
-  Body := ANode.FindChild(TSyntaxKind.ClassType);
-  if Body = nil then
+  mBody := ANode.FindChild(TSyntaxKind.ClassType);
+  if mBody = nil then
   begin
     Exit;
   end;
-  Ancestor := Body.FindChild(TSyntaxKind.TypeReference);
+  mAncestor := mBody.FindChild(TSyntaxKind.TypeReference);
   ANames := ANames + [ANode.Name];
-  if Ancestor = nil then
+  if mAncestor = nil then
   begin
     AAncestors := AAncestors + ['TObject'];
   end
   else
   begin
-    AAncestors := AAncestors + [LastNamePart(Ancestor.Name)];
+    AAncestors := AAncestors + [LastNamePart(mAncestor.Name)];
   end;
 end;
 
 /// <summary>Namen aus AList, die auch in AOther stehen.</summary>
 function Intersection(const AList, AOther: TArray<string>): TArray<string>;
 var
-  Name: string;
+  mName: string;
 begin
   Result := nil;
-  for Name in AList do
+  for mName in AList do
   begin
-    if MatchText(Name, AOther) then
+    if MatchText(mName, AOther) then
     begin
-      Result := Result + [Name];
+      Result := Result + [mName];
     end;
   end;
 end;
@@ -348,7 +348,7 @@ end;
 
 function TConstructorScan.QuietClass(const AName: string): Boolean;
 begin
-  Result := MatchText(AName, QuietConstructions) or MatchText(AName, FQuietLocals);
+  Result := MatchText(AName, cQuietConstructions) or MatchText(AName, FQuietLocals);
 end;
 
 /// <summary>Name der angelegten Klasse ohne Typparameter; bei verschachtelten Klassen (TOwner.TEvents) der letzte
@@ -367,36 +367,36 @@ end;
 /// Nur mit festen Argumenten wie TObjectList&lt;T&gt;.Create(True).</summary>
 function TConstructorScan.QuietCreation(AValue: TSyntaxNode): Boolean;
 var
-  Callee: TSyntaxNode;
+  mCallee: TSyntaxNode;
 begin
-  Callee := AValue;
+  mCallee := AValue;
   Result := True;
-  if (Callee.Kind = TSyntaxKind.Call) and (Callee.ChildCount > 0) then
+  if (mCallee.Kind = TSyntaxKind.Call) and (mCallee.ChildCount > 0) then
   begin
-    Result := FixedArguments(Callee);
-    Callee := Callee[0];
+    Result := FixedArguments(mCallee);
+    mCallee := mCallee[0];
   end;
-  Result := Result and (Callee.Kind = TSyntaxKind.MemberAccess) and SameText(Callee.Name, 'Create') and
-    (Callee.ChildCount > 0);
-  Result := Result and QuietClass(CreatedClassName(Callee[0]));
+  Result := Result and (mCallee.Kind = TSyntaxKind.MemberAccess) and SameText(mCallee.Name, 'Create') and
+    (mCallee.ChildCount > 0);
+  Result := Result and QuietClass(CreatedClassName(mCallee[0]));
 end;
 
 /// <summary>Konstruktoraufruf TKlasse.Create…(…) bzw. TKlasse&lt;T&gt;.Create…; liefert TKlasse.Create….</summary>
 function TConstructorScan.CreationCall(AValue: TSyntaxNode; out ACallee: string): Boolean;
 var
-  Callee: TSyntaxNode;
+  mCallee: TSyntaxNode;
 begin
-  Callee := AValue;
-  if (Callee.Kind = TSyntaxKind.Call) and (Callee.ChildCount > 0) then
+  mCallee := AValue;
+  if (mCallee.Kind = TSyntaxKind.Call) and (mCallee.ChildCount > 0) then
   begin
-    Callee := Callee[0];
+    mCallee := mCallee[0];
   end;
-  Result := (Callee.Kind = TSyntaxKind.MemberAccess) and (Callee.ChildCount > 0) and
-    StartsText('Create', Callee.Name);
-  Result := Result and not MatchText(RootName(Callee[0]), RecordConstructions);
+  Result := (mCallee.Kind = TSyntaxKind.MemberAccess) and (mCallee.ChildCount > 0) and
+    StartsText('Create', mCallee.Name);
+  Result := Result and not MatchText(RootName(mCallee[0]), cRecordConstructions);
   if Result then
   begin
-    ACallee := Trim(Text(Callee));
+    ACallee := Trim(Text(mCallee));
   end;
 end;
 
@@ -414,7 +414,7 @@ end;
 function TConstructorScan.IsQuietCall(ACall, ACallee: TSyntaxNode): Boolean;
 begin
   Result := (ACallee.Kind = TSyntaxKind.InheritedExpr) or QuietCreation(ACall) or
-    ((ACallee.Kind = TSyntaxKind.Identifier) and MatchText(ACallee.Name, QuietRoutines));
+    ((ACallee.Kind = TSyntaxKind.Identifier) and MatchText(ACallee.Name, cQuietRoutines));
 end;
 
 /// <summary>Ruhiger Aufruf: Teilbaum auslassen; sonst ist ACallee der Treffer.</summary>
@@ -456,40 +456,40 @@ end;
 
 function TConstructorScan.RaisingCall(ARoot: TSyntaxNode): string;
 var
-  Raiser: string;
+  mRaiser: string;
 begin
-  Raiser := '';
+  mRaiser := '';
   // Iterativ (Bericht M1): Skip lässt den Teilbaum aus, Found liefert den ersten Treffer.
   ARoot.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
-      Result := RaisingStep(ANode, Raiser);
+      Result := RaisingStep(ANode, mRaiser);
     end);
-  Result := Raiser;
+  Result := mRaiser;
 end;
 
 /// <summary>Konstruktor Create der Klasse AClass ohne Rumpf oder mit werfendem Aufruf?</summary>
 function TConstructorScan.IsRaisingCreate(ARoutine: TSyntaxNode; const AClass: string): Boolean;
 var
-  Body: TSyntaxNode;
+  mBody: TSyntaxNode;
 begin
   Result := SameText(MethodOf(ARoutine), 'Create') and StartsWithWord(FText, ARoutine, 'constructor') and
     SameText(LastNamePart(ClassOf(ARoutine)), AClass);
   if Result then
   begin
-    Body := ARoutine.FindChild(TSyntaxKind.Block);
-    Result := (Body = nil) or (RaisingCall(Body) <> '');
+    mBody := ARoutine.FindChild(TSyntaxKind.Block);
+    Result := (mBody = nil) or (RaisingCall(mBody) <> '');
   end;
 end;
 
 function TConstructorScan.IsNewQuiet(const AName, AAncestor: string): Boolean;
 var
-  Routine: TSyntaxNode;
+  mRoutine: TSyntaxNode;
 begin
   Result := not MatchText(AName, FQuietLocals) and QuietClass(AAncestor);
-  for Routine in FRoutines do
+  for mRoutine in FRoutines do
   begin
-    Result := Result and not IsRaisingCreate(Routine, AName);
+    Result := Result and not IsRaisingCreate(mRoutine, AName);
   end;
 end;
 
@@ -498,13 +498,13 @@ end;
 /// mehr dazukommt, weil eine Klasse auf einer anderen aus der Unit aufbauen kann.</summary>
 procedure TConstructorScan.CollectQuietLocals(ARoot: TSyntaxNode);
 var
-  Names, Ancestors: TArray<string>;
-  Index: Integer;
-  Changed: Boolean;
+  mNames, mAncestors: TArray<string>;
+  mIndex: Integer;
+  mChanged: Boolean;
 begin
   FQuietLocals := nil;
-  Names := nil;
-  Ancestors := nil;
+  mNames := nil;
+  mAncestors := nil;
   ARoot.Search(
     function(ANode: TSyntaxNode): TSyntaxSearchStep
     begin
@@ -515,20 +515,20 @@ begin
       end
       else if ANode.Kind = TSyntaxKind.TypeDecl then
       begin
-        AddClassDecl(ANode, Names, Ancestors);
+        AddClassDecl(ANode, mNames, mAncestors);
       end;
     end);
   repeat
-    Changed := False;
-    for Index := 0 to High(Names) do
+    mChanged := False;
+    for mIndex := 0 to High(mNames) do
     begin
-      if IsNewQuiet(Names[Index], Ancestors[Index]) then
+      if IsNewQuiet(mNames[mIndex], mAncestors[mIndex]) then
       begin
-        FQuietLocals := FQuietLocals + [Names[Index]];
-        Changed := True;
+        FQuietLocals := FQuietLocals + [mNames[mIndex]];
+        mChanged := True;
       end;
     end;
-  until not Changed;
+  until not mChanged;
 end;
 
 procedure TConstructorScan.Start(const AFields: TArray<string>);
@@ -540,14 +540,14 @@ end;
 
 function TConstructorScan.RiskOf(const AField: string; out AItem: TNilAtDestroy): Boolean;
 var
-  Item: TNilAtDestroy;
+  mItem: TNilAtDestroy;
 begin
   Result := False;
-  for Item in FRisky do
+  for mItem in FRisky do
   begin
-    if not Result and SameText(Item.Field, AField) then
+    if not Result and SameText(mItem.Field, AField) then
     begin
-      AItem := Item;
+      AItem := mItem;
       Result := True;
     end;
   end;
@@ -555,41 +555,41 @@ end;
 
 procedure TConstructorScan.AddRisky(const AField, ARaiser: string; AConditional: Boolean);
 var
-  Item: TNilAtDestroy;
+  mItem: TNilAtDestroy;
 begin
-  if RiskOf(AField, Item) then
+  if RiskOf(AField, mItem) then
   begin
     Exit;
   end;
-  Item := Default(TNilAtDestroy);
-  Item.Field := AField;
-  Item.Raiser := ARaiser;
+  mItem := Default(TNilAtDestroy);
+  mItem.Field := AField;
+  mItem.Raiser := ARaiser;
   if not AConditional and (ARaiser = '') then
   begin
-    Item.Raiser := cTexts[TDestructorConstructorsText.TheConstructor].Text;
+    mItem.Raiser := cTexts[TDestructorConstructorsText.TheConstructor].Text;
   end;
-  Item.Conditional := AConditional;
-  FRisky := FRisky + [Item];
+  mItem.Conditional := AConditional;
+  FRisky := FRisky + [mItem];
 end;
 
 /// <summary>AGuard wird erst nach AAlways gesetzt; mit einem anderen Konstruktor gilt nur, was beide vorher setzen.
 /// </summary>
 procedure TConstructorScan.AddImplication(const AGuard: string; const AAlways: TArray<string>);
 var
-  Index: Integer;
-  Item: TGuardImplication;
+  mIndex: Integer;
+  mItem: TGuardImplication;
 begin
-  for Index := 0 to High(FImplications) do
+  for mIndex := 0 to High(FImplications) do
   begin
-    if SameText(FImplications[Index].Guard, AGuard) then
+    if SameText(FImplications[mIndex].Guard, AGuard) then
     begin
-      FImplications[Index].Implied := Intersection(FImplications[Index].Implied, AAlways);
+      FImplications[mIndex].Implied := Intersection(FImplications[mIndex].Implied, AAlways);
       Exit;
     end;
   end;
-  Item.Guard := AGuard;
-  Item.Implied := AAlways;
-  FImplications := FImplications + [Item];
+  mItem.Guard := AGuard;
+  mItem.Implied := AAlways;
+  FImplications := FImplications + [mItem];
 end;
 
 procedure TConstructorScan.NoteSeen(const AField: string);
@@ -605,31 +605,31 @@ end;
 /// Liefert die Felder, die AStatement auf jedem Weg setzt.</summary>
 function TConstructorScan.NoteAssignments(AStatement: TSyntaxNode): TArray<string>;
 var
-  Field: string;
+  mField: string;
 begin
   Result := nil;
   if (AStatement.Kind = TSyntaxKind.AssignStatement) and (AStatement.ChildCount = 2) then
   begin
-    Field := FreedPath(AStatement[0]);
-    if MatchText(Field, FFields) then
+    mField := FreedPath(AStatement[0]);
+    if MatchText(mField, FFields) then
     begin
-      NoteSeen(Field);
-      Result := Result + [Field];
+      NoteSeen(mField);
+      Result := Result + [mField];
     end;
     Exit;
   end;
-  if not (AStatement.Kind in FlowStatementKinds) then
+  if not (AStatement.Kind in cFlowStatementKinds) then
   begin
     Exit;
   end;
-  for Field in FFields do
+  for mField in FFields do
   begin
-    if AssignsField(AStatement, Field) then
+    if AssignsField(AStatement, mField) then
     begin
-      NoteSeen(Field);
-      if AssignsAlways(AStatement, Field) then
+      NoteSeen(mField);
+      if AssignsAlways(AStatement, mField) then
       begin
-        Result := Result + [Field];
+        Result := Result + [mField];
       end;
     end;
   end;
@@ -675,46 +675,46 @@ end;
 /// bedingt.</summary>
 procedure TConstructorScan.ScanCompound(AStatement: TSyntaxNode);
 var
-  Field: string;
+  mField: string;
 begin
-  for Field in FFields do
+  for mField in FFields do
   begin
-    if not MatchText(Field, FDone) and AssignsField(AStatement, Field) then
+    if not MatchText(mField, FDone) and AssignsField(AStatement, mField) then
     begin
-      FDone := FDone + [Field];
-      NoteCompoundRisk(AStatement, Field);
+      FDone := FDone + [mField];
+      NoteCompoundRisk(AStatement, mField);
     end;
   end;
 end;
 
 procedure TConstructorScan.ScanStatement(AStatement: TSyntaxNode);
 var
-  Field, Callee: string;
+  mField, mCallee: string;
 begin
   FAlways := FAlways + NoteAssignments(AStatement);
-  if CreatesField(AStatement, Field, Callee) then
+  if CreatesField(AStatement, mField, mCallee) then
   begin
-    ScanCreation(AStatement, Field, Callee);
+    ScanCreation(AStatement, mField, mCallee);
     Exit;
   end;
-  if (AStatement.Kind in FlowStatementKinds) and (AStatement.Kind <> TSyntaxKind.AssignStatement) then
+  if (AStatement.Kind in cFlowStatementKinds) and (AStatement.Kind <> TSyntaxKind.AssignStatement) then
   begin
     ScanCompound(AStatement);
   end;
-  Callee := RaisingCall(AStatement);
-  if Callee <> '' then
+  mCallee := RaisingCall(AStatement);
+  if mCallee <> '' then
   begin
-    FRaiser := Callee;
+    FRaiser := mCallee;
   end;
 end;
 
 procedure TConstructorScan.Scan(AConstructor: TSyntaxNode);
 var
-  Body: TSyntaxNode;
-  Index: Integer;
+  mBody: TSyntaxNode;
+  mIndex: Integer;
 begin
-  Body := AConstructor.FindChild(TSyntaxKind.Block);
-  if Body = nil then
+  mBody := AConstructor.FindChild(TSyntaxKind.Block);
+  if mBody = nil then
   begin
     Exit;
   end;
@@ -722,9 +722,9 @@ begin
   FDone := nil;
   FAlways := nil;
   FSeen := nil;
-  for Index := 0 to Body.ChildCount - 1 do
+  for mIndex := 0 to mBody.ChildCount - 1 do
   begin
-    ScanStatement(Body[Index]);
+    ScanStatement(mBody[mIndex]);
   end;
 end;
 

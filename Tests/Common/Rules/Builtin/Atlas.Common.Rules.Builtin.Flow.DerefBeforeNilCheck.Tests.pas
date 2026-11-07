@@ -44,7 +44,7 @@ begin
   mFindings := TRuleAssert.Findings(TDerefBeforeNilCheckRule.Create, Routine('  L.Clear;'#10 +
     '  if L <> nil then'#10'    L.Sort;'));
   Assert.AreEqual(1, Integer(Length(mFindings)));
-  Assert.AreEqual(DerefBeforeNilCheckRuleId, mFindings[0].RuleId);
+  Assert.AreEqual(cDerefBeforeNilCheckRuleId, mFindings[0].RuleId);
 end;
 
 procedure TFlowDerefBeforeNilCheckTests.FixMovesCheckBeforeAccess;

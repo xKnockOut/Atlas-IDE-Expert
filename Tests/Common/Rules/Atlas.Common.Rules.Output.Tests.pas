@@ -135,7 +135,7 @@ begin
   Findings := TFileChecker.CheckText(nil, TServerSettings.Default, 'U.pas',
     'unit U; interface implementation procedure P; begin if then end; end.');
   Assert.IsTrue(Length(Findings) > 0);
-  Assert.AreEqual(SyntaxRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cSyntaxRuleId, Findings[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Error), Ord(Findings[0].Severity));
 end;
 
@@ -168,7 +168,7 @@ begin
   Assert.AreEqual(0, Integer(Length(TFileChecker.CheckText(nil, Settings('{}'), 'U.pas', Source))));
   Findings := TFileChecker.CheckText(nil, Settings('{ "minDelphiVersion": "12" }'), 'U.pas', Source);
   Assert.AreEqual(1, Integer(Length(Findings)));
-  Assert.AreEqual(LanguageFeatureRuleId, Findings[0].RuleId);
+  Assert.AreEqual(cLanguageFeatureRuleId, Findings[0].RuleId);
   Assert.AreEqual(Ord(TRuleSeverity.Warning), Ord(Findings[0].Severity));
   Assert.IsTrue(Pos('Delphi 13', Findings[0].Message) > 0, Findings[0].Message);
   Assert.AreEqual(0, Integer(Length(TFileChecker.CheckText(nil, Settings('{ "minDelphiVersion": "13" }'), 'U.pas',
@@ -422,7 +422,7 @@ begin
   Assert.IsTrue(Pos('"startLine":8', Output) > 0, Output);
   // Unverändert und nicht mehr gefunden zählen nicht für den Exit-Code: der zählt nur Findings.
   CheckedFile.Findings := nil;
-  Assert.AreEqual(TFindingsOutput.ExitClean, TFindingsOutput.ExitCode([CheckedFile], TFailOn.Warning));
+  Assert.AreEqual(TFindingsOutput.cExitClean, TFindingsOutput.ExitCode([CheckedFile], TFailOn.Warning));
 end;
 
 procedure TLinterOutputTests.SarifNumbersIdenticalFingerprints;

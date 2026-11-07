@@ -620,7 +620,7 @@ begin
     Analysis.Attach(Dispatcher);
     Position := PositionOf(UnitWerkzeug, 'procedure Ziel;', 'Ziel');
     Message := TJSONObject.ParseJSONValue(Format('{"jsonrpc":"2.0","id":1,"method":"%s","params":{' +
-      '"textDocument":{"uri":"%s"},"position":{"line":%d,"character":%d},"depth":1}}', [TImpactAnalysis.Method,
+      '"textDocument":{"uri":"%s"},"position":{"line":%d,"character":%d},"depth":1}}', [TImpactAnalysis.cMethod,
       TDocumentUris.FromPath(WerkzeugFile), Position.Line, Position.Character])) as TJSONObject;
     try
       Response := Dispatcher.DispatchMessage(Message);
