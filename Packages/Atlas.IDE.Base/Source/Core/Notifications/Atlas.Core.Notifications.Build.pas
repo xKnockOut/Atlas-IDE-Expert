@@ -73,11 +73,11 @@ class function TAtlasBuildNotices.SourceOf(ABackground: Boolean): string;
 begin
   if ABackground then
   begin
-    Result := TAtlasNotificationSources.Check;
+    Result := TAtlasNotificationSources.cCheck;
   end
   else
   begin
-    Result := TAtlasNotificationSources.Build;
+    Result := TAtlasNotificationSources.cBuild;
   end;
 end;
 

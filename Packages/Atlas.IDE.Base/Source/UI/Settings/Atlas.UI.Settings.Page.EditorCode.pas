@@ -227,8 +227,8 @@ begin
   end;
   FReassignedStyle.Choice := Ord(TAtlasReassignedNames.StyleOf(ASettings.ReassignedStyle));
   FReassignedColor.Text := ASettings.ReassignedColor;
-  FMethodPlacement.Choice := Max(0, IndexText(ASettings.MethodPlacement, AtlasMethodPlacements));
-  FRegionFolds.Choice := Max(0, IndexText(ASettings.RegionFolds, AtlasRegionFoldModes));
+  FMethodPlacement.Choice := Max(0, IndexText(ASettings.MethodPlacement, cAtlasMethodPlacements));
+  FRegionFolds.Choice := Max(0, IndexText(ASettings.RegionFolds, cAtlasRegionFoldModes));
   mKinds := TAtlasOverview.Kinds(ASettings.OverviewRulerKinds);
   for mKind := Low(TAtlasOverviewKind) to High(TAtlasOverviewKind) do
   begin
@@ -237,26 +237,26 @@ begin
   FContinueCommentsBlockPrefix.Text := ASettings.ContinueCommentsBlockPrefix;
   // Reihenfolge der Auswahl: always, multiLine, never bzw. finally, except, ask.
   FCompleteStatementBeginEnd.Choice := 1;
-  if ASettings.CompleteStatementBeginEnd = TAtlasPluginSettings.BeginEndAlways then
+  if ASettings.CompleteStatementBeginEnd = TAtlasPluginSettings.cBeginEndAlways then
   begin
     FCompleteStatementBeginEnd.Choice := 0;
   end
-  else if ASettings.CompleteStatementBeginEnd = TAtlasPluginSettings.BeginEndNever then
+  else if ASettings.CompleteStatementBeginEnd = TAtlasPluginSettings.cBeginEndNever then
   begin
     FCompleteStatementBeginEnd.Choice := 2;
   end;
   FCompleteStatementTryKind.Choice := 0;
-  if ASettings.CompleteStatementTryKind = TAtlasPluginSettings.TryKindExcept then
+  if ASettings.CompleteStatementTryKind = TAtlasPluginSettings.cTryKindExcept then
   begin
     FCompleteStatementTryKind.Choice := 1;
   end
-  else if ASettings.CompleteStatementTryKind = TAtlasPluginSettings.TryKindAsk then
+  else if ASettings.CompleteStatementTryKind = TAtlasPluginSettings.cTryKindAsk then
   begin
     FCompleteStatementTryKind.Choice := 2;
   end;
   FSmartPaste.Choice := Max(0, IndexText(ASettings.SmartPaste, ['off', 'uses', 'indent', 'both']));
   FMultiCursorModifier.Choice := 0;
-  if ASettings.MultiCursorModifier = TAtlasPluginSettings.MultiCursorModifierCtrl then
+  if ASettings.MultiCursorModifier = TAtlasPluginSettings.cMultiCursorModifierCtrl then
   begin
     FMultiCursorModifier.Choice := 1;
   end;
@@ -279,11 +279,11 @@ begin
     end;
   end;
   ASettings.ReassignedTargets := TAtlasReassignedNames.TargetsText(mTargets);
-  ASettings.ReassignedStyle := TAtlasReassignedNames.Styles[TAtlasReassignedStyle(EnsureRange(
+  ASettings.ReassignedStyle := TAtlasReassignedNames.cStyles[TAtlasReassignedStyle(EnsureRange(
     FReassignedStyle.Choice, 0, Ord(High(TAtlasReassignedStyle))))];
   ASettings.ReassignedColor := TAtlasReassignedNames.NormalizeColor(FReassignedColor.Text);
-  ASettings.MethodPlacement := AtlasMethodPlacements[EnsureRange(FMethodPlacement.Choice, 0,
-    High(AtlasMethodPlacements))];
+  ASettings.MethodPlacement := cAtlasMethodPlacements[EnsureRange(FMethodPlacement.Choice, 0,
+    High(cAtlasMethodPlacements))];
   mKinds := [];
   for mKind := Low(TAtlasOverviewKind) to High(TAtlasOverviewKind) do
   begin
@@ -297,19 +297,19 @@ begin
   ASettings.ContinueCommentsBlockPrefix := FContinueCommentsBlockPrefix.Text;
   case FCompleteStatementBeginEnd.Choice of
     0:
-      ASettings.CompleteStatementBeginEnd := TAtlasPluginSettings.BeginEndAlways;
+      ASettings.CompleteStatementBeginEnd := TAtlasPluginSettings.cBeginEndAlways;
     2:
-      ASettings.CompleteStatementBeginEnd := TAtlasPluginSettings.BeginEndNever;
+      ASettings.CompleteStatementBeginEnd := TAtlasPluginSettings.cBeginEndNever;
   else
-    ASettings.CompleteStatementBeginEnd := TAtlasPluginSettings.BeginEndMultiLine;
+    ASettings.CompleteStatementBeginEnd := TAtlasPluginSettings.cBeginEndMultiLine;
   end;
   case FCompleteStatementTryKind.Choice of
     1:
-      ASettings.CompleteStatementTryKind := TAtlasPluginSettings.TryKindExcept;
+      ASettings.CompleteStatementTryKind := TAtlasPluginSettings.cTryKindExcept;
     2:
-      ASettings.CompleteStatementTryKind := TAtlasPluginSettings.TryKindAsk;
+      ASettings.CompleteStatementTryKind := TAtlasPluginSettings.cTryKindAsk;
   else
-    ASettings.CompleteStatementTryKind := TAtlasPluginSettings.TryKindFinally;
+    ASettings.CompleteStatementTryKind := TAtlasPluginSettings.cTryKindFinally;
   end;
   ASettings.SmartPaste := 'off';
   case FSmartPaste.Choice of
@@ -325,11 +325,11 @@ end;
 
 procedure TAtlasSettingsEditorCodePart.Save2(var ASettings: TAtlasPluginSettings);
 begin
-  ASettings.RegionFolds := AtlasRegionFoldModes[EnsureRange(FRegionFolds.Choice, 0, High(AtlasRegionFoldModes))];
-  ASettings.MultiCursorModifier := TAtlasPluginSettings.MultiCursorModifierAlt;
+  ASettings.RegionFolds := cAtlasRegionFoldModes[EnsureRange(FRegionFolds.Choice, 0, High(cAtlasRegionFoldModes))];
+  ASettings.MultiCursorModifier := TAtlasPluginSettings.cMultiCursorModifierAlt;
   if FMultiCursorModifier.Choice = 1 then
   begin
-    ASettings.MultiCursorModifier := TAtlasPluginSettings.MultiCursorModifierCtrl;
+    ASettings.MultiCursorModifier := TAtlasPluginSettings.cMultiCursorModifierCtrl;
   end;
   ASettings.InlineDiagnostics := TAtlasInlineDiagnostics.ModeName(
     TAtlasInlineDiagnosticsMode(EnsureRange(FInlineDiagnostics.Choice, 0, Ord(High(TAtlasInlineDiagnosticsMode)))));

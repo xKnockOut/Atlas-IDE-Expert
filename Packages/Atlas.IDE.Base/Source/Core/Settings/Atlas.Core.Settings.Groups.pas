@@ -430,10 +430,10 @@ begin
   begin
     Exit;
   end;
-  if not AExperimentalOn and not SameText(AName, TAtlasExperimental.MasterName) and IsExperimental(AName) then
+  if not AExperimentalOn and not SameText(AName, TAtlasExperimental.cMasterName) and IsExperimental(AName) then
   begin
     Result.Reason := lrExperimental;
-    Result.Master := TAtlasExperimental.MasterName;
+    Result.Master := TAtlasExperimental.cMasterName;
     Exit;
   end;
   // Der äußerste ausgeschaltete Hauptschalter ist der Grund: Erst er muss an.

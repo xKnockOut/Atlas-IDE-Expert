@@ -203,7 +203,7 @@ procedure TAtlasProjectBaselinesTests.ArgumentsAreProjectUri;
 begin
   Assert.AreEqual('["file:///C:/Projekte/Kasse/Kasse.dproj"]',
     TAtlasProjectBaselines.Arguments('file:///C:/Projekte/Kasse/Kasse.dproj'));
-  Assert.AreEqual('atlas.updateBaseline', TAtlasProjectBaselines.Command);
+  Assert.AreEqual('atlas.updateBaseline', TAtlasProjectBaselines.cCommand);
 end;
 
 procedure TAtlasProjectBaselinesTests.ParsesServerAnswer;

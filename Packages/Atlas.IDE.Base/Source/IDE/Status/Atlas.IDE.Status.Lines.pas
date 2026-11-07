@@ -183,12 +183,12 @@ begin
   FTargets := TDictionary<string, TAtlasFileFormat>.Create;
   FIndexFile := TAtlasIndexStore.DefaultFile;
   FTracker := TAtlasIndexTracker.Create(TAtlasIndexStore.Load(FIndexFile));
-  FServer := TAtlasStatusLine.Create(FRegistry, TAtlasStatusLines.ServerId, TAtlasStatusLines.ServerOrder,
+  FServer := TAtlasStatusLine.Create(FRegistry, TAtlasStatusLines.cServerId, TAtlasStatusLines.cServerOrder,
     ASources.ServerAction, ASources.ServerActionEnabled);
   FServerRef := FServer;
-  FIndex := TAtlasStatusLine.Create(FRegistry, TAtlasStatusLines.IndexId, TAtlasStatusLines.IndexOrder);
+  FIndex := TAtlasStatusLine.Create(FRegistry, TAtlasStatusLines.cIndexId, TAtlasStatusLines.cIndexOrder);
   FIndexRef := FIndex;
-  FFile := TAtlasStatusLine.Create(FRegistry, TAtlasStatusLines.FileId, TAtlasStatusLines.FileOrder,
+  FFile := TAtlasStatusLine.Create(FRegistry, TAtlasStatusLines.cFileId, TAtlasStatusLines.cFileOrder,
     procedure
     begin
       ShowFormatMenu;
@@ -201,7 +201,7 @@ begin
   FRegistry.Add(FIndexRef);
   FRegistry.Add(FFileRef);
   FPoll := TTimer.Create(nil);
-  FPoll.Interval := TAtlasStatusLines.PollMs;
+  FPoll.Interval := TAtlasStatusLines.cPollMs;
   FPoll.OnTimer := PollTick;
   FPoll.Enabled := True;
 end;
@@ -221,9 +221,9 @@ begin
   begin
     FFile.Detach;
   end;
-  FRegistry.Remove(TAtlasStatusLines.ServerId);
-  FRegistry.Remove(TAtlasStatusLines.IndexId);
-  FRegistry.Remove(TAtlasStatusLines.FileId);
+  FRegistry.Remove(TAtlasStatusLines.cServerId);
+  FRegistry.Remove(TAtlasStatusLines.cIndexId);
+  FRegistry.Remove(TAtlasStatusLines.cFileId);
   // Lief der Server bis jetzt, gilt sein letzter Stand als „Stand vom …“ beim nächsten Start.
   if FTracker.Observe(False, False, -1, Now) then
   begin

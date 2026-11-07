@@ -126,14 +126,14 @@ begin
     begin
       if TInterlocked.CompareExchange(FOwner.FStarted, 0, 0) = 0 then
       begin
-        FOwner.FWake.WaitFor(PeriodMs);
+        FOwner.FWake.WaitFor(cPeriodMs);
         Continue;
       end;
       Inc(mSeq);
       mSentAt := NowMs;
-      if not PostMessage(FOwner.FWindow, WM_ATLAS_PING, WPARAM(mSeq), 0) then
+      if not PostMessage(FOwner.FWindow, cWM_ATLAS_PING, WPARAM(mSeq), 0) then
       begin
-        FOwner.FWake.WaitFor(PeriodMs);
+        FOwner.FWake.WaitFor(cPeriodMs);
         Continue;
       end;
       mCaptured := AwaitPong(mSeq, mSentAt, mHang);
@@ -146,7 +146,7 @@ begin
         mHang.DurationMs := NowMs - mSentAt;
         Report(mHang, FOwner.TakeAddresses);
       end;
-      FOwner.FWake.WaitFor(PeriodMs);
+      FOwner.FWake.WaitFor(cPeriodMs);
     end;
   except
     // Der Wächter selbst darf die IDE nie stören (#493).

@@ -96,11 +96,11 @@ type
   TAtlasSafeMode = class
   public const
     /// <summary>Zwei Abstürze in dieser Zeit gelten als wiederholt.</summary>
-    RepeatWindowMinutes = 10;
-    EnvironmentName = 'ATLAS_SAFE_MODE';
-    SwitchName = 'AtlasSafeMode';
+    cRepeatWindowMinutes = 10;
+    cEnvironmentName = 'ATLAS_SAFE_MODE';
+    cSwitchName = 'AtlasSafeMode';
     /// <summary>Gesetzt ("1", "true", "yes"): Diese Sitzung führt kein Sitzungsbuch (TAtlasSessionBook).</summary>
-    NoMarkerEnvironmentName = 'ATLAS_NO_SESSION_MARKER';
+    cNoMarkerEnvironmentName = 'ATLAS_NO_SESSION_MARKER';
   public
     /// <summary>Entscheidung beim Start und neuer Zustand. ACrashed: Marken früherer Sitzungen, deren Prozess
     /// nicht mehr läuft; AKeyDown: welche Taste beim Laden gedrückt ist; AForced: Kommandozeile bzw.
@@ -525,7 +525,7 @@ var
 begin
   Result := Default(TAtlasSafeDecision);
   Result.Crashed := Length(ACrashed) > 0;
-  mRepeated := Result.Crashed and RecordCrash(AState, ACrashed, ANow, RepeatWindowMinutes);
+  mRepeated := Result.Crashed and RecordCrash(AState, ACrashed, ANow, cRepeatWindowMinutes);
   if AForced then
   begin
     Result.Level := TAtlasSafeLevel.Minimal;
@@ -573,7 +573,7 @@ begin
   end;
   for mArg in AArgs do
   begin
-    if SameText(mArg, '-' + SwitchName) or SameText(mArg, '/' + SwitchName) or SameText(mArg, '--' + SwitchName) then
+    if SameText(mArg, '-' + cSwitchName) or SameText(mArg, '/' + cSwitchName) or SameText(mArg, '--' + cSwitchName) then
     begin
       Exit(True);
     end;

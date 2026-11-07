@@ -36,13 +36,13 @@ type
 
   TAtlasWatchedChanges = class
   public const
-    QuietMs = 300;
+    cQuietMs = 300;
     /// <summary>Rohe Ereignisse wie FILE_ACTION_* von ReadDirectoryChangesW.</summary>
-    ActionAdded = 1;
-    ActionRemoved = 2;
-    ActionModified = 3;
-    ActionRenamedOld = 4;
-    ActionRenamedNew = 5;
+    cActionAdded = 1;
+    cActionRemoved = 2;
+    cActionModified = 3;
+    cActionRenamedOld = 4;
+    cActionRenamedNew = 5;
   private
     FLock: TCriticalSection;
     FPending: TDictionary<string, TAtlasFileChange>;
@@ -167,11 +167,11 @@ begin
   FLock.Enter;
   try
     case AAction of
-      ActionAdded, ActionRenamedNew:
+      cActionAdded, cActionRenamedNew:
         Merge(AFileName, TAtlasFileChangeKind.Created);
-      ActionRemoved, ActionRenamedOld:
+      cActionRemoved, cActionRenamedOld:
         Merge(AFileName, TAtlasFileChangeKind.Deleted);
-      ActionModified:
+      cActionModified:
         Merge(AFileName, TAtlasFileChangeKind.Changed);
     else
       Exit;
@@ -189,7 +189,7 @@ begin
   Result := nil;
   FLock.Enter;
   try
-    if (FOrder.Count = 0) or (ANow - FLastAdd < QuietMs) then
+    if (FOrder.Count = 0) or (ANow - FLastAdd < cQuietMs) then
     begin
       Exit;
     end;

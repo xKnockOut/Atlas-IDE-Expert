@@ -11,14 +11,14 @@ uses
 
 const
   /// <summary>Grenzen für highlight.selectionMatches.minLength und .maxMatches (#709).</summary>
-  MinSelectionMatchLength = 1;
-  MaxSelectionMatchLength = 100;
-  MinSelectionMatches = 1;
-  MaxSelectionMatches = 100000;
-  MinPairGuideWidth = 1;
-  MaxPairGuideWidth = 3;
-  MinPairGuideOpacity = 10;
-  MaxPairGuideOpacity = 100;
+  cMinSelectionMatchLength = 1;
+  cMaxSelectionMatchLength = 100;
+  cMinSelectionMatches = 1;
+  cMaxSelectionMatches = 100000;
+  cMinPairGuideWidth = 1;
+  cMaxPairGuideWidth = 3;
+  cMinPairGuideOpacity = 10;
+  cMaxPairGuideOpacity = 100;
 
 type
   /// <summary>Plugin-Einstellungen: Hervorhebungen im Editor und Farben.</summary>
@@ -147,25 +147,25 @@ begin
   Result.ExitPointsLoops := True;
   Result.ExitPointsBadge := True;
   Result.Reassigned := True;
-  Result.ReassignedTargets := TAtlasReassignedNames.TargetsText(TAtlasReassignedNames.DefaultTargets);
+  Result.ReassignedTargets := TAtlasReassignedNames.TargetsText(TAtlasReassignedNames.cDefaultTargets);
   Result.ReassignedStyle := 'dotted';
-  Result.ReassignedColor := TAtlasReassignedNames.ThemeColor;
+  Result.ReassignedColor := TAtlasReassignedNames.cThemeColor;
 end;
 
 procedure TAtlasPluginHighlightingSettings.Normalize;
 begin
-  PairGuideWidth := EnsureRange(PairGuideWidth, MinPairGuideWidth, MaxPairGuideWidth);
-  PairGuideOpacity := EnsureRange(PairGuideOpacity, MinPairGuideOpacity, MaxPairGuideOpacity);
+  PairGuideWidth := EnsureRange(PairGuideWidth, cMinPairGuideWidth, cMaxPairGuideWidth);
+  PairGuideOpacity := EnsureRange(PairGuideOpacity, cMinPairGuideOpacity, cMaxPairGuideOpacity);
   PairColorsLight := NormalPairs(PairColorsLight);
   PairColorsDark := NormalPairs(PairColorsDark);
   NestedRoutines := Choice(NestedRoutines, ['deeper', 'outer', 'color']);
   NestedRoutineColorLight := NormalColor(NestedRoutineColorLight);
   NestedRoutineColorDark := NormalColor(NestedRoutineColorDark);
-  SelectionMatchesMinLength := EnsureRange(SelectionMatchesMinLength, MinSelectionMatchLength,
-    MaxSelectionMatchLength);
-  SelectionMatchesMaxMatches := EnsureRange(SelectionMatchesMaxMatches, MinSelectionMatches, MaxSelectionMatches);
+  SelectionMatchesMinLength := EnsureRange(SelectionMatchesMinLength, cMinSelectionMatchLength,
+    cMaxSelectionMatchLength);
+  SelectionMatchesMaxMatches := EnsureRange(SelectionMatchesMaxMatches, cMinSelectionMatches, cMaxSelectionMatches);
   ReassignedTargets := TAtlasReassignedNames.NormalizeTargets(ReassignedTargets);
-  ReassignedStyle := Choice(ReassignedStyle, TAtlasReassignedNames.Styles);
+  ReassignedStyle := Choice(ReassignedStyle, TAtlasReassignedNames.cStyles);
   ReassignedColor := TAtlasReassignedNames.NormalizeColor(ReassignedColor);
 end;
 

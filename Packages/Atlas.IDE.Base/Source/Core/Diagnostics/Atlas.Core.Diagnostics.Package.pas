@@ -73,16 +73,16 @@ type
 
   TAtlasDiagnosticPackage = class
   public const
-    InfoFileName = 'atlas-info.txt';
-    SettingsFileName = 'einstellungen.json';
-    LastDataFileName = 'atlas-diagnosemodus.txt';
-    PluginFolder = 'plugin';
-    ServerFolder = 'server';
+    cInfoFileName = 'atlas-info.txt';
+    cSettingsFileName = 'einstellungen.json';
+    cLastDataFileName = 'atlas-diagnosemodus.txt';
+    cPluginFolder = 'plugin';
+    cServerFolder = 'server';
     /// <summary>So viele Zeilen aus atlas.log.</summary>
-    PluginLogLines = 2000;
-    ZipPrefix = 'Atlas-Diagnose-';
-    PathValue = '<pfad>';
-    AllParts = [TAtlasPackagePart.Logs, TAtlasPackagePart.Versions, TAtlasPackagePart.Settings,
+    cPluginLogLines = 2000;
+    cZipPrefix = 'Atlas-Diagnose-';
+    cPathValue = '<pfad>';
+    cAllParts = [TAtlasPackagePart.Logs, TAtlasPackagePart.Versions, TAtlasPackagePart.Settings,
       TAtlasPackagePart.LastData];
   private
     class function IsDrive(const AValue: string): Boolean; static;
@@ -335,7 +335,7 @@ begin
       // Schlüssel stehen vor einem Doppelpunkt.
       if not ColonFollows(AJson, mStop + 1) and LooksLikePath(mDecoded) then
       begin
-        mBuilder.Append('"').Append(PathValue).Append('"');
+        mBuilder.Append('"').Append(cPathValue).Append('"');
       end
       else
       begin
@@ -377,14 +377,14 @@ begin
   mFiles := nil;
   if TAtlasPackagePart.Versions in AParts then
   begin
-    mFiles := mFiles + [TAtlasPackageFile.Create(InfoFileName, TAtlasPackagePart.Versions,
+    mFiles := mFiles + [TAtlasPackageFile.Create(cInfoFileName, TAtlasPackagePart.Versions,
       Anonymize(Info(AInput), AInput.Roots, AInput.Identity))];
   end;
   if TAtlasPackagePart.Settings in AParts then
   begin
     mText := Anonymize(TTextAnonymizer.AnonymizeJsonValues(SettingsWithoutPaths(AInput.SettingsJson)), AInput.Roots,
       AInput.Identity);
-    mFiles := mFiles + [TAtlasPackageFile.Create(SettingsFileName, TAtlasPackagePart.Settings, mText)];
+    mFiles := mFiles + [TAtlasPackageFile.Create(cSettingsFileName, TAtlasPackagePart.Settings, mText)];
   end;
   if TAtlasPackagePart.Logs in AParts then
   begin
@@ -392,7 +392,7 @@ begin
     begin
       mBuilder := TStringBuilder.Create;
       try
-        for mLine in LastLines(ReadText(AInput.PluginLog), PluginLogLines) do
+        for mLine in LastLines(ReadText(AInput.PluginLog), cPluginLogLines) do
         begin
           mBuilder.Append(AnonymizeLog(mLine, AInput.Roots, AInput.Identity)).Append(sLineBreak);
         end;
@@ -400,21 +400,21 @@ begin
       finally
         mBuilder.Free;
       end;
-      mFiles := mFiles + [TAtlasPackageFile.Create(PluginFolder + '/' + ExtractFileName(AInput.PluginLog),
+      mFiles := mFiles + [TAtlasPackageFile.Create(cPluginFolder + '/' + ExtractFileName(AInput.PluginLog),
         TAtlasPackagePart.Logs, mText)];
     end;
     for mFileName in AInput.ServerLogs do
     begin
       if FileExists(mFileName) then
       begin
-        mFiles := mFiles + [TAtlasPackageFile.Create(ServerFolder + '/' + ExtractFileName(mFileName),
+        mFiles := mFiles + [TAtlasPackageFile.Create(cServerFolder + '/' + ExtractFileName(mFileName),
           TAtlasPackagePart.Logs, Anonymize(ReadText(mFileName), AInput.Roots, AInput.Identity))];
       end;
     end;
   end;
   if (TAtlasPackagePart.LastData in AParts) and FileExists(AInput.LastDataFile) then
   begin
-    mFiles := mFiles + [TAtlasPackageFile.Create(LastDataFileName, TAtlasPackagePart.LastData,
+    mFiles := mFiles + [TAtlasPackageFile.Create(cLastDataFileName, TAtlasPackagePart.LastData,
       Anonymize(ReadText(AInput.LastDataFile), AInput.Roots, AInput.Identity))];
   end;
   Result := mFiles;
@@ -422,7 +422,7 @@ end;
 
 class function TAtlasDiagnosticPackage.ZipName(ANow: TDateTime): string;
 begin
-  Result := ZipPrefix + FormatDateTime('yyyy"-"mm"-"dd', ANow) + '.zip';
+  Result := cZipPrefix + FormatDateTime('yyyy"-"mm"-"dd', ANow) + '.zip';
 end;
 
 class function TAtlasDiagnosticPackage.ZipTarget(const AFolder: string; ANow: TDateTime;
@@ -436,7 +436,7 @@ begin
   mNumber := 2;
   while Assigned(AExists) and AExists(Result) do
   begin
-    Result := mFolder + ZipPrefix + FormatDateTime('yyyy"-"mm"-"dd', ANow) + '-' + IntToStr(mNumber) + '.zip';
+    Result := mFolder + cZipPrefix + FormatDateTime('yyyy"-"mm"-"dd', ANow) + '-' + IntToStr(mNumber) + '.zip';
     Inc(mNumber);
   end;
 end;

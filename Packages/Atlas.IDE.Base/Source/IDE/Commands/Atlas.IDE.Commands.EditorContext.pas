@@ -41,7 +41,7 @@ type
   TAtlasEditorCommandContext = class
   protected const
     // Code-Aktionen und Befehle des Servers; Befehle können projektweit arbeiten.
-    CommandTimeoutMs = 30000;
+    cCommandTimeoutMs = 30000;
   protected class var
     FSessionOf: TFunc<TLspSession>;
     FMessage: TProc<string>;

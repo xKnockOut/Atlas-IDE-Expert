@@ -44,7 +44,7 @@ type
 
   TAtlasIdeReassigned = class
   public const
-    Command = 'atlas.server.reassigned';
+    cCommand = 'atlas.server.reassigned';
   private const
     cTickMs = 250;
     cQuietMs = 700;
@@ -359,7 +359,7 @@ begin
       mFound := Default(TAtlasReassignedSet);
       mFailed := False;
       try
-        mAnswer := ASession.RunCommand(TAtlasIdeReassigned.Command, AArguments, TAtlasIdeReassigned.cTimeoutMs);
+        mAnswer := ASession.RunCommand(TAtlasIdeReassigned.cCommand, AArguments, TAtlasIdeReassigned.cTimeoutMs);
         try
           mFound := TAtlasReassignedSet.FromJson(mAnswer);
         finally

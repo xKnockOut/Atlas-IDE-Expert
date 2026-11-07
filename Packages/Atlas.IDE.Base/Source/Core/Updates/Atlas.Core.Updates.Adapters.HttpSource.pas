@@ -64,7 +64,7 @@ begin
     mAsync.Cancel;
     // Kurz auf das Ende warten, damit der Client danach freigegeben werden darf.
     mWait := TStopwatch.StartNew;
-    while not mAsync.IsCompleted and (mWait.ElapsedMilliseconds < TAtlasShutdown.StopMs div 2) do
+    while not mAsync.IsCompleted and (mWait.ElapsedMilliseconds < TAtlasShutdown.cStopMs div 2) do
     begin
       Sleep(10);
     end;

@@ -76,7 +76,7 @@ begin
   // Atlas-Symbol (#751) links neben dem Text.
   FSymbol := TAtlasSymbolImage.Create(Self);
   FSymbol.Parent := Self;
-  FSymbol.LogicalSize := TAtlasSymbol.HeaderSize;
+  FSymbol.LogicalSize := TAtlasSymbol.cHeaderSize;
   FSymbol.Left := cGap;
   FSymbol.Top := cGap;
   FText := TLabel.Create(Self);

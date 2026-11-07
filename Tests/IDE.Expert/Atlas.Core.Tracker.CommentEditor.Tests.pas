@@ -369,7 +369,7 @@ var
   mSetting, mDefaults: TArray<TAtlasCommentSnippet>;
   mIndex: Integer;
 begin
-  Assert.IsTrue(TAtlasCommentSnippets.Parse(TAtlasPluginSettings.DefaultIssuesCommentSnippets, mSetting));
+  Assert.IsTrue(TAtlasCommentSnippets.Parse(TAtlasPluginSettings.cDefaultIssuesCommentSnippets, mSetting));
   mDefaults := TAtlasCommentSnippets.Defaults(False);
   Assert.AreEqual(Integer(Length(mDefaults)), Integer(Length(mSetting)));
   for mIndex := 0 to High(mDefaults) do
@@ -386,7 +386,7 @@ procedure TAtlasCommentEditorTests.SnippetDefaultsFollowLanguage;
 var
   mRead: TArray<TAtlasCommentSnippet>;
 begin
-  mRead := TAtlasCommentSnippets.Read(TAtlasPluginSettings.DefaultIssuesCommentSnippets, True);
+  mRead := TAtlasCommentSnippets.Read(TAtlasPluginSettings.cDefaultIssuesCommentSnippets, True);
   Assert.AreEqual(2, Integer(Length(mRead)));
   Assert.AreEqual('Please check with the current build', mRead[0].Name, 'deutsche Vorgabe in englischer IDE');
   Assert.AreEqual('Fixed in {commit}.', mRead[1].Text);

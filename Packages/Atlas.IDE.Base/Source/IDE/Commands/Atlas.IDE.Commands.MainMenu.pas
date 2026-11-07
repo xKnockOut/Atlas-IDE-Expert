@@ -720,7 +720,7 @@ end;
 
 procedure TAtlasMainMenu.SetupClick(Sender: TObject);
 begin
-  TAtlasIdeShortcutTips.Invoked(TAtlasSetupChecklist.CommandId);
+  TAtlasIdeShortcutTips.Invoked(TAtlasSetupChecklist.cCommandId);
   if Assigned(FOnSetup) then
   begin
     TAtlasGuard.Run(TAtlasFeature.Menu,
@@ -733,7 +733,7 @@ end;
 
 procedure TAtlasMainMenu.KeyMapClick(Sender: TObject);
 begin
-  TAtlasIdeShortcutTips.Invoked(TAtlasIdeKeyMap.CommandId);
+  TAtlasIdeShortcutTips.Invoked(TAtlasIdeKeyMap.cCommandId);
   if Assigned(FOnKeyMap) then
   begin
     TAtlasGuard.Run(TAtlasFeature.Menu,

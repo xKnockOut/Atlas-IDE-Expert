@@ -37,12 +37,12 @@ type
   /// <summary>Zeitbudget aus #409 je Schritt in Millisekunden.</summary>
   TAtlasTimingBudget = record
   public const
-    ContextMs = 8;
+    cContextMs = 8;
     /// <summary>Eine Quelle darf so lange brauchen wie die ganze Abfrage bis zu den ersten Einträgen.</summary>
-    ProviderMs = 50;
-    FilterSortMs = 12;
-    DrawMs = 10;
-    FirstVisibleMs = 50;
+    cProviderMs = 50;
+    cFilterSortMs = 12;
+    cDrawMs = 10;
+    cFirstVisibleMs = 50;
   public
     class function LimitMs(AStep: TAtlasTimingStep): Double; static;
     /// <summary>Liegt AMs über dem Budget von AStep? Nicht gemessene Werte (&lt; 0) nie.</summary>
@@ -137,7 +137,7 @@ type
   /// <summary>Messpunkte und die letzten Abfragen (#479); eine Instanz je Prozess (Shared).</summary>
   TAtlasQueryTimings = class
   public const
-    Capacity = 50;
+    cCapacity = 50;
   private class var
     FEnabled: Boolean;
     FShared: TAtlasQueryTimings;
@@ -194,7 +194,7 @@ type
   TAtlasTimingReport = record
   public const
     /// <summary>Letzte Diagnosedaten neben den Diagnoselogs (%LOCALAPPDATA%\Atlas\Logs\Diagnose).</summary>
-    FileName = 'atlas-diagnosemodus.txt';
+    cFileName = 'atlas-diagnosemodus.txt';
   public
     /// <summary>Text für „Bericht kopieren“: Versionen, Budgets, letzte Abfrage, Mittelwert und Maximum, die
     /// Abfragen einzeln (neueste zuerst) und die Einstellungen. Kein Quelltext; Dateinamen nur mit
@@ -279,15 +279,15 @@ class function TAtlasTimingBudget.LimitMs(AStep: TAtlasTimingStep): Double;
 begin
   case AStep of
     TAtlasTimingStep.Context:
-      Result := ContextMs;
+      Result := cContextMs;
     TAtlasTimingStep.Provider:
-      Result := ProviderMs;
+      Result := cProviderMs;
     TAtlasTimingStep.FilterSort:
-      Result := FilterSortMs;
+      Result := cFilterSortMs;
     TAtlasTimingStep.Draw:
-      Result := DrawMs;
+      Result := cDrawMs;
   else
-    Result := FirstVisibleMs;
+    Result := cFirstVisibleMs;
   end;
 end;
 
@@ -613,7 +613,7 @@ begin
       FCurrentStart := Stamp;
     end;
     FQueries.Add(mQuery);
-    while FQueries.Count > Capacity do
+    while FQueries.Count > cCapacity do
     begin
       FQueries.Delete(0);
     end;
@@ -864,8 +864,8 @@ begin
     mLines.Add(UiText(TTimingText.Created) + FormatDateTime('yyyy-mm-dd hh":"nn', AInput.Created));
     mLines.Add('Atlas: ' + AInput.AtlasVersion + ', IDE: ' + AInput.IdeVersion + UiText(TTimingText.Platform) + AInput.Platform);
     mLines.Add(Format(UiText(TTimingText.Budget409ContextMsSource),
-      [TAtlasTimingBudget.ContextMs, TAtlasTimingBudget.ProviderMs,
-      TAtlasTimingBudget.FilterSortMs, TAtlasTimingBudget.DrawMs, TAtlasTimingBudget.FirstVisibleMs]));
+      [TAtlasTimingBudget.cContextMs, TAtlasTimingBudget.cProviderMs,
+      TAtlasTimingBudget.cFilterSortMs, TAtlasTimingBudget.cDrawMs, TAtlasTimingBudget.cFirstVisibleMs]));
     mLines.Add(UiText(TTimingText.ContainsNoSourceCodeFile) + BoolToStr(AInput.FileNames, True) + '.');
     mLines.Add('');
     mLines.Add(Format(UiText(TTimingText.TimesInMsLastQuery),

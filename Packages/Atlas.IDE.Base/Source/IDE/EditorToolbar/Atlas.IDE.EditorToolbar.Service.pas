@@ -219,19 +219,19 @@ end;
 function SectionTargetOf(const AId: string; out ATarget: TAtlasSectionTarget): Boolean;
 begin
   Result := True;
-  if SameText(AId, TAtlasToolbarItems.GotoInterface) then
+  if SameText(AId, TAtlasToolbarItems.cGotoInterface) then
   begin
     ATarget := TAtlasSectionTarget.InterfacePart;
   end
-  else if SameText(AId, TAtlasToolbarItems.GotoImplementation) then
+  else if SameText(AId, TAtlasToolbarItems.cGotoImplementation) then
   begin
     ATarget := TAtlasSectionTarget.ImplementationPart;
   end
-  else if SameText(AId, TAtlasToolbarItems.GotoUses) then
+  else if SameText(AId, TAtlasToolbarItems.cGotoUses) then
   begin
     ATarget := TAtlasSectionTarget.UsesClause;
   end
-  else if SameText(AId, TAtlasToolbarItems.GotoInitialization) then
+  else if SameText(AId, TAtlasToolbarItems.cGotoInitialization) then
   begin
     ATarget := TAtlasSectionTarget.Initialization_;
   end
@@ -302,7 +302,7 @@ end;
 /// <summary>Befehl eines Klicks: die Palette selbst oder ein Palettenbefehl.</summary>
 procedure RunToolbarCommand(const AId: string);
 begin
-  if SameText(AId, TAtlasToolbarItems.CommandPalette) then
+  if SameText(AId, TAtlasToolbarItems.cCommandPalette) then
   begin
     if Assigned(TAtlasIdeEditorToolbar.FHooks.ShowPalette) then
     begin
@@ -554,7 +554,7 @@ var
 begin
   Result := True;
   // Die Palette selbst ist kein Palettenbefehl; abgeschaltete Funktionen fehlen in der Palette und in der Leiste.
-  if SameText(AId, TAtlasToolbarItems.CommandPalette) then
+  if SameText(AId, TAtlasToolbarItems.cCommandPalette) then
   begin
     ACaption := TAtlasStrings.Text(TAtlasTextId.CommandPaletteCommand);
   end
@@ -980,7 +980,7 @@ begin
       Result := Result + [TAtlasToolbarCommandInfo.Create(mCommand.Id, PlainCaption(mCommand.Caption))];
     end;
   end;
-  Result := Result + [TAtlasToolbarCommandInfo.Create(TAtlasToolbarItems.CommandPalette,
+  Result := Result + [TAtlasToolbarCommandInfo.Create(TAtlasToolbarItems.cCommandPalette,
     TAtlasStrings.Text(TAtlasTextId.CommandPaletteCommand))];
 end;
 

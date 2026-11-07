@@ -37,7 +37,7 @@ uses
 type
   TAtlasDetailView = class
   public const
-    DefaultWidth = 320;
+    cDefaultWidth = 320;
   private
     FDetails: TAtlasItemDetails;
     FOverloadIndex: Integer;
@@ -242,8 +242,8 @@ begin
   Canvas.Brush.Style := bsClear;
   Canvas.Pen.Style := psSolid;
   Canvas.Pen.Color := ToColor(ALine);
-  Canvas.RoundRect(ARect.Left, ARect.Top, ARect.Right, ARect.Bottom, Scale(2 * TAtlasDraw.ChipRadius),
-    Scale(2 * TAtlasDraw.ChipRadius));
+  Canvas.RoundRect(ARect.Left, ARect.Top, ARect.Right, ARect.Bottom, Scale(2 * TAtlasDraw.cChipRadius),
+    Scale(2 * TAtlasDraw.cChipRadius));
 end;
 
 procedure TDetailRender.Block(const AText: string; AColor: TAtlasColor; AStyle: TFontStyles);
@@ -366,7 +366,7 @@ begin
       Continue;
     end;
     Canvas.Font := UIFont;
-    mBox := Rect(mTagX, Y, mTagX + Canvas.TextWidth(mTag) + Scale(TAtlasDraw.ChipPad), Y + mTagHeight);
+    mBox := Rect(mTagX, Y, mTagX + Canvas.TextWidth(mTag) + Scale(TAtlasDraw.cChipPad), Y + mTagHeight);
     if Draw then
     begin
       Tag(mTag, mBox);

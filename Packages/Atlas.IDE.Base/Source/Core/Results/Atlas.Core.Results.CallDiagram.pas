@@ -83,7 +83,7 @@ type
 
   TAtlasCallDiagram = class
   public const
-    MaxChildren = 8;
+    cMaxChildren = 8;
   private
     FDirection: TAtlasHierarchyDirection;
     FNodes: TArray<TAtlasCallNode>;
@@ -134,13 +134,13 @@ type
   TAtlasCallView = record
   public const
     /// <summary>Lage in Einheiten bei Vergrößerung 1 (Bildpunkte bei 96 dpi).</summary>
-    ColumnWidth = 250;
-    BoxWidth = 200;
-    RowHeight = 56;
-    BoxHeight = 42;
-    Margin = 16;
-    MinScale = 0.2;
-    MaxScale = 4.0;
+    cColumnWidth = 250;
+    cBoxWidth = 200;
+    cRowHeight = 56;
+    cBoxHeight = 42;
+    cMargin = 16;
+    cMinScale = 0.2;
+    cMaxScale = 4.0;
   public
     Scale: Double;
     OffsetX: Double;
@@ -422,12 +422,12 @@ begin
     end;
     mAll := mAll + [mChild];
   end;
-  if FNodes[ANode].ShowAll or (Length(mAll) <= MaxChildren) then
+  if FNodes[ANode].ShowAll or (Length(mAll) <= cMaxChildren) then
   begin
     Exit(mAll);
   end;
-  Result := Copy(mAll, 0, MaxChildren);
-  AMore := Length(mAll) - MaxChildren;
+  Result := Copy(mAll, 0, cMaxChildren);
+  AMore := Length(mAll) - cMaxChildren;
 end;
 
 function TAtlasCallDiagram.BackLinks(ANode: Integer): TArray<Integer>;
@@ -614,7 +614,7 @@ begin
       mRoot.AddPair('direction', 'outgoing');
     end;
     mRoot.AddPair('projectOnly', TJSONBool.Create(FProjectOnly));
-    mRoot.AddPair('maxChildren', TJSONNumber.Create(MaxChildren));
+    mRoot.AddPair('maxChildren', TJSONNumber.Create(cMaxChildren));
     mItems := TJSONArray.Create;
     mRoot.AddPair('nodes', mItems);
     for mIndex := 0 to High(FNodes) do
@@ -680,29 +680,29 @@ end;
 
 class function TAtlasCallView.BoxX(const ABox: TAtlasCallBox): Double;
 begin
-  Result := ABox.Column * ColumnWidth;
+  Result := ABox.Column * cColumnWidth;
 end;
 
 class function TAtlasCallView.BoxY(const ABox: TAtlasCallBox): Double;
 begin
-  Result := ABox.Row * RowHeight;
+  Result := ABox.Row * cRowHeight;
 end;
 
 procedure TAtlasCallView.Fit(const ALayout: TAtlasCallLayout; AWidth, AHeight: Integer);
 var
   mWidth, mHeight: Double;
 begin
-  mWidth := Max(1, ALayout.Columns) * ColumnWidth - (ColumnWidth - BoxWidth);
-  mHeight := Max(1, ALayout.Rows) * RowHeight - (RowHeight - BoxHeight);
+  mWidth := Max(1, ALayout.Columns) * cColumnWidth - (cColumnWidth - cBoxWidth);
+  mHeight := Max(1, ALayout.Rows) * cRowHeight - (cRowHeight - cBoxHeight);
   Scale := 1;
-  if (AWidth > 2 * Margin) and (AHeight > 2 * Margin) then
+  if (AWidth > 2 * cMargin) and (AHeight > 2 * cMargin) then
   begin
-    Scale := Min(1, Min((AWidth - 2 * Margin) / mWidth, (AHeight - 2 * Margin) / mHeight));
+    Scale := Min(1, Min((AWidth - 2 * cMargin) / mWidth, (AHeight - 2 * cMargin) / mHeight));
   end;
-  Scale := Max(MinScale, Scale);
-  OffsetX := Margin;
+  Scale := Max(cMinScale, Scale);
+  OffsetX := cMargin;
   // Kleine Diagramme senkrecht mittig, große oben beginnen.
-  OffsetY := Max(Margin, (AHeight - mHeight * Scale) / 2);
+  OffsetY := Max(cMargin, (AHeight - mHeight * Scale) / 2);
 end;
 
 function TAtlasCallView.ScreenX(AX: Double): Double;
@@ -723,7 +723,7 @@ begin
   begin
     Scale := 1;
   end;
-  mNewScale := EnsureRange(Scale * AFactor, MinScale, MaxScale);
+  mNewScale := EnsureRange(Scale * AFactor, cMinScale, cMaxScale);
   OffsetX := AX - (AX - OffsetX) * mNewScale / Scale;
   OffsetY := AY - (AY - OffsetY) * mNewScale / Scale;
   Scale := mNewScale;
@@ -744,7 +744,7 @@ begin
   begin
     mLeft := ScreenX(BoxX(ALayout.Boxes[mIndex]));
     mTop := ScreenY(BoxY(ALayout.Boxes[mIndex]));
-    if (AX >= mLeft) and (AX <= mLeft + BoxWidth * Scale) and (AY >= mTop) and (AY <= mTop + BoxHeight * Scale) then
+    if (AX >= mLeft) and (AX <= mLeft + cBoxWidth * Scale) and (AY >= mTop) and (AY <= mTop + cBoxHeight * Scale) then
     begin
       Exit(mIndex);
     end;

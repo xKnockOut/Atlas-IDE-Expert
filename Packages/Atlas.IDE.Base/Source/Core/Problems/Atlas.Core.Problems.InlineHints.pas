@@ -41,9 +41,9 @@ type
 
   TAtlasInlineDiagnostics = class
   public const
-    MaxChars = 120;
-    PauseMs = 1000;
-    ModeNames: array[TAtlasInlineDiagnosticsMode] of string = ('off', 'errors', 'errorsAndWarnings', 'all');
+    cMaxChars = 120;
+    cPauseMs = 1000;
+    cModeNames: array[TAtlasInlineDiagnosticsMode] of string = ('off', 'errors', 'errorsAndWarnings', 'all');
   public
     /// <summary>Modus aus dem Namen der Einstellung (ohne Groß-/Kleinschreibung); Unbekanntes = Errors.</summary>
     class function ModeOf(const AName: string): TAtlasInlineDiagnosticsMode; static;
@@ -99,7 +99,7 @@ var
 begin
   for mMode := Low(TAtlasInlineDiagnosticsMode) to High(TAtlasInlineDiagnosticsMode) do
   begin
-    if SameText(Trim(AName), ModeNames[mMode]) then
+    if SameText(Trim(AName), cModeNames[mMode]) then
     begin
       Exit(mMode);
     end;
@@ -109,7 +109,7 @@ end;
 
 class function TAtlasInlineDiagnostics.ModeName(AMode: TAtlasInlineDiagnosticsMode): string;
 begin
-  Result := ModeNames[AMode];
+  Result := cModeNames[AMode];
 end;
 
 class function TAtlasInlineDiagnostics.Shows(AMode: TAtlasInlineDiagnosticsMode;
@@ -168,9 +168,9 @@ begin
     Result := Copy(Result, 1, mCut - 1);
   end;
   Result := Trim(StringReplace(Result, #13, '', [rfReplaceAll]));
-  if Length(Result) > MaxChars then
+  if Length(Result) > cMaxChars then
   begin
-    Result := TrimRight(Copy(Result, 1, MaxChars - 1)) + '…';
+    Result := TrimRight(Copy(Result, 1, cMaxChars - 1)) + '…';
   end;
   if ADiagnostic.More > 0 then
   begin
@@ -254,7 +254,7 @@ end;
 class function TAtlasInlineDiagnostics.PauseOver(ATypedAt, ANow: Cardinal): Boolean;
 begin
   // Cardinal-Arithmetik übersteht den Überlauf von GetTickCount.
-  Result := (ATypedAt = 0) or (Cardinal(ANow - ATypedAt) >= PauseMs);
+  Result := (ATypedAt = 0) or (Cardinal(ANow - ATypedAt) >= cPauseMs);
 end;
 
 end.

@@ -34,9 +34,9 @@ type
 
   TAtlasSearchPaths = class
   public const
-    OptionName = 'DCC_UnitSearchPath';
-    Inherited_ = '$(DCC_UnitSearchPath)';
-    BaseConfig = 'Base';
+    cOptionName = 'DCC_UnitSearchPath';
+    cInherited_ = '$(DCC_UnitSearchPath)';
+    cBaseConfig = 'Base';
   public
     /// <summary>Text des ersten Arguments von atlas.showInfo; False ohne.</summary>
     class function TryParseInfo(const AArgumentsJson: string; out AText: string): Boolean; static;
@@ -91,7 +91,7 @@ begin
     begin
       ARequest.Config := Trim(mArguments.Items[2].Value);
     end;
-    if SameText(ARequest.Config, TAtlasSearchPaths.BaseConfig) then
+    if SameText(ARequest.Config, TAtlasSearchPaths.cBaseConfig) then
     begin
       ARequest.Config := '';
     end;
@@ -178,7 +178,7 @@ begin
   end
   else
   begin
-    Result := AFolder + ';' + Inherited_;
+    Result := AFolder + ';' + cInherited_;
   end;
 end;
 

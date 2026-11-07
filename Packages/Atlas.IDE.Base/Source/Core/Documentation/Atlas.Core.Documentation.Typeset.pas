@@ -275,7 +275,7 @@ var
   mLinkIndex: Integer;
 begin
   mFace := TAtlasDocFace.Create(TAtlasDocFont.UI, ARun.Bold, ARun.Italic);
-  mIsIssue := ARun.Target.StartsWith(TAtlasDocIssueLinks.Prefix, True);
+  mIsIssue := ARun.Target.StartsWith(TAtlasDocIssueLinks.cPrefix, True);
   if mIsIssue and (TAtlasDocIssueLinks.Url(ARun.Target) = '') then
   begin
     ABuilder.AddWords(ARun.Text, mFace, ABaseColor);
@@ -736,7 +736,7 @@ begin
       FMetrics.PillPad));
     mIndex := mStop;
   end;
-  mTermWidth := Min(mColumn, (FWidth - mLeft) * TAtlasDocLayout.TermColumnPercent div 100);
+  mTermWidth := Min(mColumn, (FWidth - mLeft) * TAtlasDocLayout.cTermColumnPercent div 100);
   mTermWidth := Max(mTermWidth, 1);
   while IsTableRow(ARuns, AIndex) do
   begin
@@ -938,7 +938,7 @@ begin
       Exit(True);
     end;
   end;
-  Result := mRationale > TAtlasDocLayout.MaxRationale;
+  Result := mRationale > TAtlasDocLayout.cMaxRationale;
 end;
 
 function SectionsOf(const ADoc: TAtlasDoc; AKind: TAtlasDocSectionKind): TArray<TAtlasDocSection>;
@@ -1060,7 +1060,7 @@ begin
   begin
     Add(ALabels.ItemSeeAlso, TAtlasDocColor.Muted);
   end;
-  mCount := Length(SectionsOf(ADoc, TAtlasDocSectionKind.Rationale)) - TAtlasDocLayout.MaxRationale;
+  mCount := Length(SectionsOf(ADoc, TAtlasDocSectionKind.Rationale)) - TAtlasDocLayout.cMaxRationale;
   if mCount > 0 then
   begin
     Add(Counted(mCount, ALabels.CountRationale, ALabels.CountRationales), TAtlasDocColor.Muted);
@@ -1138,7 +1138,7 @@ begin
   begin
     FBuilder.Columns([TDocCell.OfText(AType, FMono, TAtlasDocColor.Keyword),
       TDocCell.OfRuns(mDocs[0].Runs, TAtlasDocColor.Muted)],
-      [Width(AType, FMono, TAtlasDocLayout.TypeColumnPercent)]);
+      [Width(AType, FMono, TAtlasDocLayout.cTypeColumnPercent)]);
   end
   else if AType <> '' then
   begin
@@ -1171,12 +1171,12 @@ var
 begin
   FThreeColumns := FSignature.Known and FSignature.HasTypes;
   FNameWidth := NameColumn(SectionsOf(FDoc, TAtlasDocSectionKind.Param), MaxInt, FName,
-    TAtlasDocLayout.NameColumnPercent);
+    TAtlasDocLayout.cNameColumnPercent);
   FTypeWidth := 1;
   for mParam in FSignature.Params do
   begin
-    FNameWidth := Max(FNameWidth, Width(mParam.Name, FName, TAtlasDocLayout.NameColumnPercent));
-    FTypeWidth := Max(FTypeWidth, Width(mParam.TypeText, FMono, TAtlasDocLayout.TypeColumnPercent));
+    FNameWidth := Max(FNameWidth, Width(mParam.Name, FName, TAtlasDocLayout.cNameColumnPercent));
+    FTypeWidth := Max(FTypeWidth, Width(mParam.TypeText, FMono, TAtlasDocLayout.cTypeColumnPercent));
   end;
 end;
 
@@ -1245,7 +1245,7 @@ procedure TDocSections.NamedRows(const ASections: TArray<TAtlasDocSection>; ACou
 var
   mNameWidth, mIndex: Integer;
 begin
-  mNameWidth := NameColumn(ASections, ACount, FName, TAtlasDocLayout.NameColumnPercent);
+  mNameWidth := NameColumn(ASections, ACount, FName, TAtlasDocLayout.cNameColumnPercent);
   for mIndex := 0 to Min(ACount, Length(ASections)) - 1 do
   begin
     FBuilder.Columns([TDocCell.OfText(ASections[mIndex].Name, FName, TAtlasDocColor.Accent),
@@ -1377,7 +1377,7 @@ begin
   mShown := Length(mSections);
   if not AExpanded then
   begin
-    mShown := Min(mShown, TAtlasDocLayout.MaxRationale);
+    mShown := Min(mShown, TAtlasDocLayout.cMaxRationale);
   end;
   NamedRows(mSections, mShown);
 end;
@@ -1410,7 +1410,7 @@ begin
   begin
     if mIndex > 0 then
     begin
-      FBuilder.AddWords(TAtlasDocLayout.Separator, FUI, TAtlasDocColor.Muted);
+      FBuilder.AddWords(TAtlasDocLayout.cSeparator, FUI, TAtlasDocColor.Muted);
     end;
     FBuilder.AddWords(mParts[mIndex], FUI, mColors[mIndex]);
   end;

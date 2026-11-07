@@ -404,11 +404,11 @@ end;
 class function TAtlasVisualizerOptions.Defaults: TAtlasVisualizerOptions;
 begin
   Result := Default(TAtlasVisualizerOptions);
-  Result.Kinds := TAtlasVisualizerSettings.AllKinds;
-  Result.NameFields := TAtlasVisualizerSettings.ParseNameFields(TAtlasVisualizerSettings.DefaultNameFields);
-  Result.MaxLength := TAtlasVisualizerSettings.DefaultMaxLength;
+  Result.Kinds := TAtlasVisualizerSettings.cAllKinds;
+  Result.NameFields := TAtlasVisualizerSettings.ParseNameFields(TAtlasVisualizerSettings.cDefaultNameFields);
+  Result.MaxLength := TAtlasVisualizerSettings.cDefaultMaxLength;
   Result.Evaluation := TAtlasVisualizerEvaluation.Properties;
-  Result.MaxImagePixels := TAtlasVisualizerSettings.DefaultMaxImagePixels;
+  Result.MaxImagePixels := TAtlasVisualizerSettings.cDefaultMaxImagePixels;
 end;
 
 { TAtlasVisualizerFormat }

@@ -552,7 +552,7 @@ begin
   List := TJSONArray(Value);
   for Index := 0 to List.Count - 1 do
   begin
-    if (List.Items[Index] is TJSONString) and (Length(Result) < TAtlasLineAnchors.ContextLines) then
+    if (List.Items[Index] is TJSONString) and (Length(Result) < TAtlasLineAnchors.cContextLines) then
     begin
       Result := Result + [TJSONString(List.Items[Index]).Value];
     end;

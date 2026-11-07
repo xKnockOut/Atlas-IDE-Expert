@@ -101,7 +101,7 @@ begin
   Assert.IsFalse(TAtlasSelectionMatches.Term('Kunde'#13#10'Neu', TAtlasSelectionMatchOptions.Defaults, Term),
     'mehrzeilig ohne Wirkung');
   Assert.IsFalse(TAtlasSelectionMatches.Term('', TAtlasSelectionMatchOptions.Defaults, Term));
-  Assert.IsFalse(TAtlasSelectionMatches.Term(StringOfChar('x', TAtlasSelectionMatches.MaxTermLength + 1),
+  Assert.IsFalse(TAtlasSelectionMatches.Term(StringOfChar('x', TAtlasSelectionMatches.cMaxTermLength + 1),
     TAtlasSelectionMatchOptions.Defaults, Term));
   Short := TAtlasSelectionMatchOptions.Defaults;
   Short.MinLength := 1;

@@ -11,7 +11,7 @@
 //   selbst ausführt – gleich, ob Hauptmenü, Kontextmenü, Werkzeugleiste oder
 //   Tastenkürzel sie auslöst. Per Tastatur heißt: Haupttaste und Umschalttasten
 //   eines Kürzels der Aktion sind in diesem Augenblick gedrückt bzw. waren die
-//   letzte Taste (TAtlasShortcutTips.ChordMs); sonst per Maus. Nur bei einer
+//   letzte Taste (TAtlasShortcutTips.cChordMs); sonst per Maus. Nur bei einer
 //   Eingabe des Benutzers in den letzten UserInputMs (GetLastInputInfo), damit
 //   Aufrufe der IDE aus dem Programm heraus nicht zählen. Kürzel und
 //   Beschriftung kommen von der Aktion selbst (auch Aktionen des
@@ -543,7 +543,7 @@ var
   mMode: TAtlasNotificationMode;
 begin
   // Benachrichtigungszentrale (#601): „nur sammeln“ zeigt kein Fenster, „aus“ unterdrückt den Tipp ganz.
-  mMode := TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.ShortcutTips,
+  mMode := TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cShortcutTips,
     TAtlasNotificationSeverity.Info, TAtlasStrings.Fmt(TAtlasTextId.NotificationsTipTitle, [AKeyText]),
     TAtlasStrings.Fmt(TAtlasTextId.NotificationsTipText, [ACaption, AKeyText]), TipActions(AId));
   if mMode = TAtlasNotificationMode.Off then

@@ -437,7 +437,7 @@ begin
   mHeader := NewPanel(AFrame, 22);
   AFrame.FParts.Symbol := TAtlasSymbolImage.Create(AFrame);
   AFrame.FParts.Symbol.Parent := mHeader;
-  AFrame.FParts.Symbol.LogicalSize := TAtlasSymbol.MenuSize;
+  AFrame.FParts.Symbol.LogicalSize := TAtlasSymbol.cMenuSize;
   AFrame.FParts.Symbol.Align := alLeft;
   AFrame.FParts.Symbol.AlignWithMargins := True;
   AFrame.FParts.Title := TLabel.Create(AFrame);

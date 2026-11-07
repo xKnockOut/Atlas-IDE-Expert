@@ -41,7 +41,7 @@ type
 
   TAtlasIdeRecursionGutter = class(TAtlasGutterLayer)
   public const
-    Command = 'atlas.server.recursion';
+    cCommand = 'atlas.server.recursion';
   private const
     cQuietMs = 700;
     // Im Hintergrund: Ein langsamer Server hält nur die Symbole auf, nicht die IDE.
@@ -210,7 +210,7 @@ begin
   finally
     mValues.Free;
   end;
-  FPoll.AskAsync(FSession(), FRun, Feature, Command, mArguments, cRetryMs, cTimeoutMs, Answer(ADepth));
+  FPoll.AskAsync(FSession(), FRun, Feature, cCommand, mArguments, cRetryMs, cTimeoutMs, Answer(ADepth));
 end;
 
 function TAtlasIdeRecursionGutter.Answer(ADepth: Integer): TProc<TJSONValue>;

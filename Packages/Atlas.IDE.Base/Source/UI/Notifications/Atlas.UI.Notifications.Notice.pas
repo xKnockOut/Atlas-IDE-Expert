@@ -27,9 +27,9 @@ uses
 type
   TAtlasNoticeWindow = class(TAtlasPopupWindow)
   public const
-    VisibleMs = 20000;
+    cVisibleMs = 20000;
     /// <summary>Abstand zum Rand des Bereichs, logische Pixel.</summary>
-    Margin = 16;
+    cMargin = 16;
   private
     FTitle: string;
     FText: string;
@@ -96,11 +96,11 @@ constructor TAtlasNoticeWindow.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   GuardFeature := TAtlasFeature.Files;
-  SetAccessible(UiaToolTipControlType, 'Atlas');
+  SetAccessible(cUiaToolTipControlType, 'Atlas');
   FHot := cHitNone;
   FTimer := TTimer.Create(Self);
   FTimer.Enabled := False;
-  FTimer.Interval := VisibleMs;
+  FTimer.Interval := cVisibleMs;
   FTimer.OnTimer := TimerTick;
 end;
 
@@ -226,10 +226,10 @@ begin
   FHot := cHitNone;
   HandleNeeded;
   mSize := Layout(False);
-  ShowAt(PlaceCorner(AArea, mSize.cx, mSize.cy, Scale(Margin), WorkAreaAt(AArea.BottomRight)));
+  ShowAt(PlaceCorner(AArea, mSize.cx, mSize.cy, Scale(cMargin), WorkAreaAt(AArea.BottomRight)));
   Announce(Trim(ATitle + ' ' + AText));
   FTimer.Enabled := False;
-  FTimer.Interval := VisibleMs;
+  FTimer.Interval := cVisibleMs;
   FTimer.Enabled := True;
 end;
 

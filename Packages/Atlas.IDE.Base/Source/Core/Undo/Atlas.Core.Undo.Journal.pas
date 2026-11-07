@@ -31,8 +31,8 @@ uses
 type
   TAtlasUndoOptions = record
   public const
-    MinDepth = 1;
-    MaxDepth = 200;
+    cMinDepth = 1;
+    cMaxDepth = 200;
   public
     /// <summary>undo.multiFile: aus = nichts protokollieren, Zurücknehmen meldet Disabled.</summary>
     Enabled: Boolean;
@@ -163,7 +163,7 @@ end;
 procedure TAtlasUndoJournal.SetOptions(const AValue: TAtlasUndoOptions);
 begin
   FOptions := AValue;
-  FOptions.Depth := EnsureRange(FOptions.Depth, TAtlasUndoOptions.MinDepth, TAtlasUndoOptions.MaxDepth);
+  FOptions.Depth := EnsureRange(FOptions.Depth, TAtlasUndoOptions.cMinDepth, TAtlasUndoOptions.cMaxDepth);
   Trim;
 end;
 

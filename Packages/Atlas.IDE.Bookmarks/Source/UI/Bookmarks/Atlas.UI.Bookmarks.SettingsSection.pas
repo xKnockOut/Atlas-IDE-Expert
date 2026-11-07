@@ -71,7 +71,7 @@ begin
   Number('bookmarks.quick.chordWait', TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.SettingsQuickBookmarkChordWait));
   // Reihenfolge wie AtlasQuickBookmarkScopes.
   mScopes := nil;
-  for mScope in AtlasQuickBookmarkScopes do
+  for mScope in cAtlasQuickBookmarkScopes do
   begin
     mScopes := mScopes + [mScope];
   end;

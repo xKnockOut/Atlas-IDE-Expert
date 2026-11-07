@@ -95,7 +95,7 @@ begin
   inherited Create(AOwner);
   GuardFeature := TAtlasFeature.Debugger;
   FRow := -1;
-  SetAccessible(UiaListControlType, TAtlasStrings.Text(TAtlasTextId.StepIntoTargetCommand));
+  SetAccessible(cUiaListControlType, TAtlasStrings.Text(TAtlasTextId.StepIntoTargetCommand));
 end;
 
 class function TAtlasStepIntoWindow.KindText(const ARow: TAtlasStepRow): string;

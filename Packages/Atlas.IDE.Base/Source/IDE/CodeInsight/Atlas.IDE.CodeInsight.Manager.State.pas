@@ -225,7 +225,7 @@ begin
   end;
   FLastError := AMessage;
   // Benachrichtigungszentrale (#601): bei „nur sammeln“ oder „aus“ keine Zeile im Meldungsfenster.
-  mMode := TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.Server,
+  mMode := TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cServer,
     TAtlasNotificationSeverity.Error, TAtlasStrings.Text(TAtlasTextId.NotificationsServerError), AMessage,
     LogActions);
   if (mMode = TAtlasNotificationMode.Show) and Supports(BorlandIDEServices, IOTAMessageServices, mMessages) then

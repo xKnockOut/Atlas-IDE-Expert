@@ -75,17 +75,17 @@ type
   TAtlasShortcutTips = class
   public const
     /// <summary>Nach so vielen Aufrufen über das Kürzel kein Tipp mehr.</summary>
-    LearnedAfter = 3;
+    cLearnedAfter = 3;
     /// <summary>Mindestabstand zwischen zwei Tipps.</summary>
-    MinGapSeconds = 30;
+    cMinGapSeconds = 30;
     /// <summary>So lange bleibt der Tipp stehen.</summary>
-    VisibleMs = 4000;
-    ScopeAtlas = 'atlas';
-    ScopeAll = 'all';
+    cVisibleMs = 4000;
+    cScopeAtlas = 'atlas';
+    cScopeAll = 'all';
     /// <summary>Höchster Abstand zwischen den Schritten eines Kürzels mit zwei Schritten.</summary>
-    ChordMs = 2000;
+    cChordMs = 2000;
     /// <summary>Befehl der Taste, die die Befehlspalette öffnet (#502); kein Befehl der Palette selbst.</summary>
-    PaletteCommandId = 'Atlas.CommandPalette';
+    cPaletteCommandId = 'Atlas.CommandPalette';
   public
     /// <summary>shortcutTips.scope als Wert; Unbekanntes gilt als all.</summary>
     class function ScopeOf(const AText: string): TAtlasTipScope; static;
@@ -163,7 +163,7 @@ begin
   begin
     Result := TAtlasTipVerdict.Hidden;
   end
-  else if AEntry.Keyboard >= TAtlasShortcutTips.LearnedAfter then
+  else if AEntry.Keyboard >= TAtlasShortcutTips.cLearnedAfter then
   begin
     Result := TAtlasTipVerdict.Learned;
   end
@@ -181,7 +181,7 @@ end;
 function TooSoon(const ASituation: TAtlasTipSituation): Boolean;
 begin
   Result := (ASituation.LastTipAt > 0)
-    and (Abs(ASituation.Now - ASituation.LastTipAt) * SecsPerDay < TAtlasShortcutTips.MinGapSeconds);
+    and (Abs(ASituation.Now - ASituation.LastTipAt) * SecsPerDay < TAtlasShortcutTips.cMinGapSeconds);
 end;
 
 /// <summary>Der Augenblick: Debugger angehalten, modales Fenster, letzter Tipp zu kurz her; Show sonst.</summary>
@@ -238,7 +238,7 @@ end;
 
 class function TAtlasShortcutTips.ScopeOf(const AText: string): TAtlasTipScope;
 begin
-  if SameText(Trim(AText), ScopeAtlas) then
+  if SameText(Trim(AText), cScopeAtlas) then
   begin
     Result := TAtlasTipScope.Atlas;
   end
@@ -252,11 +252,11 @@ class function TAtlasShortcutTips.ScopeName(AScope: TAtlasTipScope): string;
 begin
   if AScope = TAtlasTipScope.Atlas then
   begin
-    Result := ScopeAtlas;
+    Result := cScopeAtlas;
   end
   else
   begin
-    Result := ScopeAll;
+    Result := cScopeAll;
   end;
 end;
 
@@ -412,7 +412,7 @@ begin
   begin
     Exit(False);
   end;
-  Result := ((AShortCut and (TAtlasKeyConflicts.scCtrl or TAtlasKeyConflicts.scAlt)) <> 0) or
+  Result := ((AShortCut and (TAtlasKeyConflicts.cScCtrl or TAtlasKeyConflicts.cScAlt)) <> 0) or
     ((mKey >= $70) and (mKey <= $87));
 end;
 
@@ -425,7 +425,7 @@ begin
   end;
   case AFunc of
     TAtlasKeyFunction.Palette:
-      Result := PaletteCommandId;
+      Result := cPaletteCommandId;
     TAtlasKeyFunction.Completion:
       Result := 'Atlas.Completion';
     TAtlasKeyFunction.Signature:

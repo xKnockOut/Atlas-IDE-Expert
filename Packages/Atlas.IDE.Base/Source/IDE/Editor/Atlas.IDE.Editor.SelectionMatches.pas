@@ -6,7 +6,7 @@
 // - Ein Zeitgeber (100 ms) liest die Markierung der Ansicht vorn. Zählt sie
 //   (einzeilig, Mindestlänge, nicht nur Leerraum), sucht er die Treffer im
 //   Stand des Puffers (TAtlasEditorSnapshots, liest nur bei Änderungen neu),
-//   bei Dateien ab TAtlasSelectionMatches.LargeFileLines Zeilen nur im
+//   bei Dateien ab TAtlasSelectionMatches.cLargeFileLines Zeilen nur im
 //   sichtbaren Bereich. Neu gezeichnet wird nur bei geänderten Treffern.
 // - PaintLine (plsEndPaint) überzieht jeden Treffer außer der Markierung
 //   selbst halb durchsichtig mit der Akzentfarbe; hinter dem Ende der
@@ -283,7 +283,7 @@ begin
   AState.FirstLine := 0;
   AState.LastLine := High(FLines);
   // Sehr große Dateien: nur der sichtbare Bereich.
-  if Length(FLines) > TAtlasSelectionMatches.LargeFileLines then
+  if Length(FLines) > TAtlasSelectionMatches.cLargeFileLines then
   begin
     AState.FirstLine := AView.TopRow - 1;
     AState.LastLine := AView.BottomRow - 1;
@@ -322,7 +322,7 @@ begin
     Exit;
   end;
   FState := mWanted;
-  FVisibleOnly := Length(FLines) > TAtlasSelectionMatches.LargeFileLines;
+  FVisibleOnly := Length(FLines) > TAtlasSelectionMatches.cLargeFileLines;
   FMatches := TAtlasSelectionMatches.Find(FLines, mWanted.Term, mOptions, mWanted.FirstLine, mWanted.LastLine);
   BuildIndex;
   Invalidate;

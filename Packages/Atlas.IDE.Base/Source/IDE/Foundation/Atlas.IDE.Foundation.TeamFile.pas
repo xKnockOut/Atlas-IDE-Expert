@@ -408,7 +408,7 @@ begin
   mFileName := LocateFor(mProject);
   if mFileName = '' then
   begin
-    mFileName := TPath.Combine(ExtractFileDir(mProject), TAtlasTeamFile.FileName);
+    mFileName := TPath.Combine(ExtractFileDir(mProject), TAtlasTeamFile.cFileName);
     mContent := Default(TAtlasTextFileContent);
     mContent.Text := TAtlasTeamFile.Skeleton;
     mContent.Encoding := TAtlasTextEncoding.Utf8;

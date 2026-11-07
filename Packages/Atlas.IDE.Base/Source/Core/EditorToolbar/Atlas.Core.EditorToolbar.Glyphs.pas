@@ -31,9 +31,9 @@ type
   TAtlasGlyphs = class
   public const
     /// <summary>Kantenlänge des Felds in Einheiten.</summary>
-    Size = 16;
+    cSize = 16;
     /// <summary>Linienbreite in Einheiten.</summary>
-    StrokeWidth = 1.4;
+    cStrokeWidth = 1.4;
   public
     class function Shapes(AIcon: TAtlasToolbarIcon): TArray<TAtlasGlyphShape>; static;
   end;

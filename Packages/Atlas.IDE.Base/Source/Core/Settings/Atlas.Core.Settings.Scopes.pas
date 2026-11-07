@@ -44,7 +44,7 @@ type
 
   TAtlasSettingsScopes = class
   public const
-    DelphiVersionPath = 'delphiVersion';
+    cDelphiVersionPath = 'delphiVersion';
   public
     /// <summary>Plugin-Einstellungen, die in settings.json liegen.</summary>
     class function Routed: TArray<TAtlasRoutedSetting>; static;
@@ -189,7 +189,7 @@ class function TAtlasSettingsScopes.IdeManagedPaths: TArray<string>;
 var
   mItem: TAtlasRoutedSetting;
 begin
-  Result := [DelphiVersionPath];
+  Result := [cDelphiVersionPath];
   for mItem in Routed do
   begin
     Result := Result + [mItem.Path];

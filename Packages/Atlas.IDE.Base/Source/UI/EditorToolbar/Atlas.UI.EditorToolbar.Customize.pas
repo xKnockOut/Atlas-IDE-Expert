@@ -99,7 +99,7 @@ type
 
 const
   /// <summary>Werte von editor.toolbar.position in der Reihenfolge der Auswahl.</summary>
-  AtlasToolbarPositions: array[0..2] of string = ('belowBreadcrumbs', 'aboveBreadcrumbs', 'inBreadcrumbs');
+  cAtlasToolbarPositions: array[0..2] of string = ('belowBreadcrumbs', 'aboveBreadcrumbs', 'inBreadcrumbs');
 
 implementation
 
@@ -311,7 +311,7 @@ begin
   mBuilder.BuildHeading;
   ShowHint := True;
   BuildAvailable;
-  for mPosition in AtlasToolbarPositions do
+  for mPosition in cAtlasToolbarPositions do
   begin
     if SameText(mPosition, FConfig.Position) then
     begin
@@ -320,7 +320,7 @@ begin
   end;
   if FConfig.Position = '' then
   begin
-    FConfig.Position := AtlasToolbarPositions[0];
+    FConfig.Position := cAtlasToolbarPositions[0];
   end;
 end;
 
@@ -371,7 +371,7 @@ begin
       begin
         Result := CompareText(A.Caption, B.Caption);
       end));
-    FAvailable := [TAtlasToolbarItems.Separator];
+    FAvailable := [TAtlasToolbarItems.cSeparator];
     for mCommand in mRest do
     begin
       FAvailable := FAvailable + [mCommand.Id];
@@ -426,7 +426,7 @@ procedure TAtlasToolbarCustomizeDialog.RestoreDefault;
 begin
   FConfig.Items := TAtlasToolbarItems.Default;
   FConfig.Labels := False;
-  FConfig.Position := AtlasToolbarPositions[0];
+  FConfig.Position := cAtlasToolbarPositions[0];
   BuildAvailable;
   Fill(-1, -1);
 end;
@@ -444,11 +444,11 @@ procedure TAtlasToolbarCustomizeDialog.SetPosition(const AValue: string);
 var
   mIndex: Integer;
 begin
-  for mIndex := 0 to High(AtlasToolbarPositions) do
+  for mIndex := 0 to High(cAtlasToolbarPositions) do
   begin
-    if SameText(AtlasToolbarPositions[mIndex], AValue) then
+    if SameText(cAtlasToolbarPositions[mIndex], AValue) then
     begin
-      FConfig.Position := AtlasToolbarPositions[mIndex];
+      FConfig.Position := cAtlasToolbarPositions[mIndex];
       if FFilled then
       begin
         FPositionCombo.ItemIndex := mIndex;
@@ -504,9 +504,9 @@ begin
     FPositionCombo.Items.Add(TAtlasStrings.Text(TAtlasTextId.EditorToolbarPositionInline));
   end;
   FPositionCombo.ItemIndex := 0;
-  for mIndex := 0 to High(AtlasToolbarPositions) do
+  for mIndex := 0 to High(cAtlasToolbarPositions) do
   begin
-    if AtlasToolbarPositions[mIndex] = FConfig.Position then
+    if cAtlasToolbarPositions[mIndex] = FConfig.Position then
     begin
       FPositionCombo.ItemIndex := mIndex;
     end;
@@ -583,9 +583,9 @@ end;
 
 procedure TAtlasToolbarCustomizeDialog.PositionChange(Sender: TObject);
 begin
-  if (FPositionCombo.ItemIndex >= 0) and (FPositionCombo.ItemIndex <= High(AtlasToolbarPositions)) then
+  if (FPositionCombo.ItemIndex >= 0) and (FPositionCombo.ItemIndex <= High(cAtlasToolbarPositions)) then
   begin
-    FConfig.Position := AtlasToolbarPositions[FPositionCombo.ItemIndex];
+    FConfig.Position := cAtlasToolbarPositions[FPositionCombo.ItemIndex];
   end;
 end;
 

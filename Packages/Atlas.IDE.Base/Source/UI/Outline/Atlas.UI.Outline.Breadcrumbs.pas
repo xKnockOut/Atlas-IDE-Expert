@@ -225,7 +225,7 @@ begin
   end;
   FCrumbs := ACrumbs;
   FSelected := High(FCrumbs);
-  SetHot(PartNone);
+  SetHot(cPartNone);
   FLaidOut := False;
   Invalidate;
 end;
@@ -611,7 +611,7 @@ begin
   Result := CrumbAt(X, Y);
   if Result < 0 then
   begin
-    Result := PartNone;
+    Result := cPartNone;
   end;
 end;
 

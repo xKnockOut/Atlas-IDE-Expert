@@ -107,8 +107,8 @@ begin
     end;
     Store.SetText('A.pas', Text);
     Assert.IsTrue(Store.Missing('A.pas', 50, 80, From, Till));
-    Assert.AreEqual(50 - TAtlasInlayHintStore.Margin, From);
-    Assert.AreEqual(80 + TAtlasInlayHintStore.Margin, Till);
+    Assert.AreEqual(50 - TAtlasInlayHintStore.cMargin, From);
+    Assert.AreEqual(80 + TAtlasInlayHintStore.cMargin, Till);
     Store.Put('A.pas', Text, From, Till, nil);
     Assert.IsFalse(Store.Missing('A.pas', 50, 80, From, Till));
     // Ein Stück weiter gescrollt: nur der neue Teil.
@@ -204,7 +204,7 @@ begin
     Assert.AreEqual(': Integer', string.Join('|', Store.TypesOnLine('A.pas', 1)), 'einmal');
     Assert.AreEqual(0, Integer(Length(Store.OnLine('A.pas', 1))), 'keine Parameternamen');
     Assert.IsTrue(Store.TypesOnLine('A.pas', 2)[0].EndsWith('…'), 'gekürzt');
-    Assert.AreEqual(Integer(TAtlasInlayHintStore.MaxTypeLength + 2), Integer(Length(Store.TypesOnLine('A.pas', 2)[0])));
+    Assert.AreEqual(Integer(TAtlasInlayHintStore.cMaxTypeLength + 2), Integer(Length(Store.TypesOnLine('A.pas', 2)[0])));
     Assert.AreEqual(0, Integer(Length(Store.TypesOnLine('A.pas', 3))), 'ohne Typ');
     // Neuer Text verwirft auch die Typmarken.
     Store.SetText('A.pas', Text + ' ');
@@ -329,7 +329,7 @@ begin
     Assert.AreEqual(0, Integer(Length(Store.OnLine('A.pas', 1))), 'keine Parameternamen');
     Assert.IsFalse(Store.EndLabelOn('A.pas', 2, Anchor, Caption), 'Kommentar steht schon dahinter');
     Assert.IsTrue(Store.EndLabelOn('A.pas', 3, Anchor, Caption));
-    Assert.AreEqual(Integer(Length('// ') + TAtlasInlayHintStore.MaxEndLabelLength), Integer(Length(Caption)));
+    Assert.AreEqual(Integer(Length('// ') + TAtlasInlayHintStore.cMaxEndLabelLength), Integer(Length(Caption)));
     Assert.IsTrue(Caption.EndsWith('…'));
     Assert.IsFalse(Store.EndLabelOn('A.pas', 4, Anchor, Caption), 'ohne Text');
     Assert.IsFalse(TAtlasInlayHintStore.HasCommentAfter('end; // ''x''', 10));

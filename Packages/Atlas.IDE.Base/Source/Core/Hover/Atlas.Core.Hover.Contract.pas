@@ -66,11 +66,11 @@ type
 
   TAtlasHoverData = record
   public const
-    KindClassRef = 'classref';
+    cKindClassRef = 'classref';
     /// <summary>Bis zu so vielen Gliedern zeigt der Tooltip die ganze Kette.</summary>
-    MaxChainShown = 5;
+    cMaxChainShown = 5;
     /// <summary>So viele Zeilen nennt ReassignedText.</summary>
-    MaxReassignedLines = 5;
+    cMaxReassignedLines = 5;
   public
     Declaration: string;
     UnitName: string;
@@ -218,7 +218,7 @@ begin
     Exit;
   end;
   mLines := '';
-  for mIndex := 0 to Min(High(ReassignedLines), MaxReassignedLines - 1) do
+  for mIndex := 0 to Min(High(ReassignedLines), cMaxReassignedLines - 1) do
   begin
     if mLines <> '' then
     begin
@@ -226,7 +226,7 @@ begin
     end;
     mLines := mLines + IntToStr(ReassignedLines[mIndex] + 1);
   end;
-  if Length(ReassignedLines) > MaxReassignedLines then
+  if Length(ReassignedLines) > cMaxReassignedLines then
   begin
     mLines := mLines + ', …';
   end;
@@ -305,7 +305,7 @@ function TAtlasHoverData.Title: string;
 var
   mIndex: Integer;
 begin
-  if (Length(Ancestors) > 0) and (Kind <> KindClassRef) then
+  if (Length(Ancestors) > 0) and (Kind <> cKindClassRef) then
   begin
     Exit(Ancestors[0].Name);
   end;
@@ -391,7 +391,7 @@ var
   mIndex: Integer;
 begin
   Result := nil;
-  if Length(Ancestors) <= MaxChainShown then
+  if Length(Ancestors) <= cMaxChainShown then
   begin
     for mIndex := 0 to High(Ancestors) do
     begin
@@ -400,7 +400,7 @@ begin
     Exit;
   end;
   // Die ersten vier, dann "…", dann das letzte (meist TObject).
-  for mIndex := 0 to MaxChainShown - 2 do
+  for mIndex := 0 to cMaxChainShown - 2 do
   begin
     Result := Result + [mIndex];
   end;

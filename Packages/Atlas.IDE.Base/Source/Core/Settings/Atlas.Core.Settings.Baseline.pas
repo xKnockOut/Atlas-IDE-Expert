@@ -22,8 +22,8 @@ type
 
   TAtlasBaselineInfo = class
   public const
-    FileName = 'atlas-baseline.json';
-    LegacyFileName = 'delphi-lsp-baseline.json';
+    cFileName = 'atlas-baseline.json';
+    cLegacyFileName = 'delphi-lsp-baseline.json';
   public
     /// <summary>Treffer in der Baseline (Summe von "count", sonst 1 je Eintrag); AEntries: Einträge.
     /// -1 bei ungültigem Inhalt.</summary>

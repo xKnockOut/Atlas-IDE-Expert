@@ -93,7 +93,7 @@ begin
   Result.ProblemsCompilerMerge := 'merge';
   Result.ProblemsShowCompilerCode := True;
   Result.ProblemsUpdate := TAtlasProblemsUpdateSetting.Name(TAtlasProblemsUpdate.Live);
-  Result.ProblemsLiveDelayMs := TAtlasProblemsUpdateSetting.DefaultDelayMs;
+  Result.ProblemsLiveDelayMs := TAtlasProblemsUpdateSetting.cDefaultDelayMs;
   Result.FixBulk := True;
   Result.ProblemsMessageList := False;
   Result.RuleChecksEnabled := True;

@@ -133,10 +133,10 @@ begin
   Assert.AreEqual(4, Settings.RecursionMarkersDepth);
   Settings.RecursionMarkersDepth := 0;
   Settings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MinRecursionDepth, Settings.RecursionMarkersDepth);
+  Assert.AreEqual(TAtlasPluginSettings.cMinRecursionDepth, Settings.RecursionMarkersDepth);
   Settings.RecursionMarkersDepth := 99;
   Settings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MaxRecursionDepth, Settings.RecursionMarkersDepth);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxRecursionDepth, Settings.RecursionMarkersDepth);
   Assert.IsTrue(TAtlasDrawnElements.ForSetting('RecursionMarkers', Element));
   Assert.IsTrue(Element = TAtlasDrawnElement.Recursion);
   Assert.IsTrue(TAtlasDrawnElements.Info(Element).Gutter);

@@ -78,7 +78,7 @@ begin
   FRun := ARun;
   FSessionOf := ASessionOf;
   FLast := Default(TAtlasSymbolPathRequestInput);
-  FLast.MaxSteps := TAtlasSymbolPathCommands.DefaultSteps;
+  FLast.MaxSteps := TAtlasSymbolPathCommands.cDefaultSteps;
   FInstalled := True;
   TAtlasIdeResultsWindow.OnShowRoute :=
     procedure(const AUnits: TArray<string>)
@@ -182,7 +182,7 @@ begin
   TAtlasIdeResultsWindow.ShowSymbolPathMessage(Title,
     TAtlasAnalysisStrings.Fmt(TAtlasAnalysisTextId.SymbolPathSearching,
     [AInput.From, AInput.To_]));
-  if not Assigned(FRun) or not FRun(TAtlasSymbolPathCommands.Command,
+  if not Assigned(FRun) or not FRun(TAtlasSymbolPathCommands.cCommand,
     TAtlasSymbolPathCommands.Arguments(TLspSession.PathToUri(Project.FileName), AInput.From, AInput.To_,
       AInput.MaxSteps, AInput.All), TimeoutMs,
     procedure(AAnswer: string)

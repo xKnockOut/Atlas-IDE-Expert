@@ -251,13 +251,13 @@ begin
     Exit;
   end;
   mNext := TAtlasIdeSettings.Stored;
-  mNext.ProblemsWindowScope := TAtlasFindings.ScopeNames[AFrame.Scope];
+  mNext.ProblemsWindowScope := TAtlasFindings.cScopeNames[AFrame.Scope];
   // Das Einzelprojekt (#1843) bleibt gemerkt, solange ein anderer Bereich gilt.
   if AFrame.Scope = TAtlasFindingScope.Project then
   begin
     mNext.ProblemsWindowScopeProject := AFrame.ScopeProject;
   end;
-  mNext.ProblemsWindowGroupBy := TAtlasFindings.GroupingNames[AFrame.Grouping];
+  mNext.ProblemsWindowGroupBy := TAtlasFindings.cGroupingNames[AFrame.Grouping];
   mNext.ProblemsWindowColumns := AFrame.ColumnsText;
   mNext.ProblemsWindowOpenFirst := AFrame.OpenFirst;
   if (mNext.ProblemsWindowScope = TAtlasIdeSettings.Stored.ProblemsWindowScope) and
@@ -483,7 +483,7 @@ begin
   begin
     mLanguage := 'en';
   end;
-  State.Hooks.Command(TAtlasProjectSettings.CatalogCommand, '["' + mLanguage + '"]',
+  State.Hooks.Command(TAtlasProjectSettings.cCatalogCommand, '["' + mLanguage + '"]',
     procedure(AValue: TJSONValue)
     begin
       if State = nil then

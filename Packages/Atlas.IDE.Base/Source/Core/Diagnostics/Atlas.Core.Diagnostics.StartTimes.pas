@@ -28,9 +28,9 @@ type
   TAtlasStartTimes = class
   public const
     /// <summary>Kürzere Teile fallen aus der Aufzählung (Rauschen).</summary>
-    MinPartMs = 20;
+    cMinPartMs = 20;
     /// <summary>Höchstens so viele Teile in der Aufzählung.</summary>
-    MaxParts = 5;
+    cMaxParts = 5;
   private
     FLock: TCriticalSection;
     FParts: TArray<TAtlasStartPart>;
@@ -168,7 +168,7 @@ begin
   Result := nil;
   for mPart in mParts do
   begin
-    if mPart.Ms < MinPartMs then
+    if mPart.Ms < cMinPartMs then
     begin
       Continue;
     end;
@@ -190,7 +190,7 @@ var
   mPart: TAtlasStartPart;
 begin
   Result := '';
-  for mPart in Slowest(MaxParts) do
+  for mPart in Slowest(cMaxParts) do
   begin
     if Result <> '' then
     begin

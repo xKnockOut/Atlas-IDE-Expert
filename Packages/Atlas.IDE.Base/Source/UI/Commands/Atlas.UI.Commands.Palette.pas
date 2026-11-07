@@ -42,7 +42,7 @@ type
   /// der Zusatzgruppe.</summary>
   TAtlasPaletteDrawing = class(TForm)
   protected const
-    VisibleRows = 12;
+    cVisibleRows = 12;
   protected
     FColors: TAtlasColors;
     function RowHeight: Integer;
@@ -319,7 +319,7 @@ var
 begin
   mWidth_ := Min(ScaleValue(640), AArea.Width - ScaleValue(40));
   SetBounds(AArea.Left + (AArea.Width - mWidth_) div 2, AArea.Top + ScaleValue(60), mWidth_,
-    InputHeight + VisibleRows * RowHeight + ScaleValue(8));
+    InputHeight + cVisibleRows * RowHeight + ScaleValue(8));
   Show;
   SetFocus;
 end;
@@ -330,7 +330,7 @@ var
   mHeight_, mLeft_, mTop_: Integer;
 begin
   mArea := Screen.MonitorFromPoint(APoint).WorkareaRect;
-  mHeight_ := InputHeight + VisibleRows * RowHeight + ScaleValue(8);
+  mHeight_ := InputHeight + cVisibleRows * RowHeight + ScaleValue(8);
   mLeft_ := Max(mArea.Left, Min(APoint.X, mArea.Right - AWidth));
   mTop_ := APoint.Y;
   if mTop_ + mHeight_ > mArea.Bottom then
@@ -439,9 +439,9 @@ begin
   begin
     FTop := FSelected;
   end
-  else if FSelected >= FTop + VisibleRows then
+  else if FSelected >= FTop + cVisibleRows then
   begin
-    FTop := FSelected - VisibleRows + 1;
+    FTop := FSelected - cVisibleRows + 1;
   end;
   Invalidate;
 end;
@@ -560,9 +560,9 @@ begin
     VK_DOWN:
       Step(1);
     VK_PRIOR:
-      Step(-VisibleRows);
+      Step(-cVisibleRows);
     VK_NEXT:
-      Step(VisibleRows);
+      Step(cVisibleRows);
     Ord('C'):
       begin
         // Strg+C auf einem Eintrag der Gruppe: Kennung kopieren (#1270); sonst wie bisher nichts.
@@ -622,7 +622,7 @@ end;
 
 function TAtlasPaletteWindow.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean;
 begin
-  FTop := EnsureRange(FTop - Sign(WheelDelta) * 3, 0, Max(0, RowCount - VisibleRows));
+  FTop := EnsureRange(FTop - Sign(WheelDelta) * 3, 0, Max(0, RowCount - cVisibleRows));
   Invalidate;
   Result := True;
 end;
@@ -806,7 +806,7 @@ begin
   Canvas.Brush.Color := ToColor(FColors.Surface);
   Canvas.FillRect(ClientRect);
   DrawInput(FPattern, FPrompt);
-  for mRow := 0 to VisibleRows - 1 do
+  for mRow := 0 to cVisibleRows - 1 do
   begin
     if FTop + mRow < RowCount then
     begin

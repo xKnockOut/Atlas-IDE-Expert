@@ -368,7 +368,7 @@ begin
   Text := Text + ']}]}';
   Assert.IsTrue(TAtlasJenkinsProvider.ParseTestReport(Text, Build));
   Assert.AreEqual(70, Build.Failed);
-  Assert.AreEqual(TAtlasCiBuild.MaxFailures, Integer(Length(Build.Failures)));
+  Assert.AreEqual(TAtlasCiBuild.cMaxFailures, Integer(Length(Build.Failures)));
   Assert.AreEqual(TAtlasJenkinsProvider.MaxMessage, Integer(Length(Build.Failures[0].Message)));
 end;
 

@@ -31,11 +31,11 @@ uses
 
 class function TAtlasToolbarIcons.IconOf(const AId: string): TAtlasToolbarIcon;
 const
-  cIds: array[0..18] of string = (TAtlasToolbarItems.GotoInterface, TAtlasToolbarItems.GotoImplementation,
-    TAtlasToolbarItems.GotoUses, TAtlasToolbarItems.GotoInitialization, TAtlasToolbarItems.ReturnFromSection,
+  cIds: array[0..18] of string = (TAtlasToolbarItems.cGotoInterface, TAtlasToolbarItems.cGotoImplementation,
+    TAtlasToolbarItems.cGotoUses, TAtlasToolbarItems.cGotoInitialization, TAtlasToolbarItems.cReturnFromSection,
     'Atlas.NavBack', 'Atlas.NavForward', 'Atlas.ToggleMethod', 'Atlas.SwitchTestUnit', 'Atlas.UnitSearch',
-    TAtlasToolbarItems.FindMethod, 'Atlas.QuickOpen', 'Atlas.CodeActions', 'Atlas.FormatCode',
-    'Atlas.ProblemsWindow', 'Atlas.Outline', TAtlasToolbarItems.CommandPalette, TAtlasToolbarItems.Customize,
+    TAtlasToolbarItems.cFindMethod, 'Atlas.QuickOpen', 'Atlas.CodeActions', 'Atlas.FormatCode',
+    'Atlas.ProblemsWindow', 'Atlas.Outline', TAtlasToolbarItems.cCommandPalette, TAtlasToolbarItems.cCustomize,
     'Atlas.SymbolSearch');
   cIcons: array[0..18] of TAtlasToolbarIcon = (TAtlasToolbarIcon.InterfacePart,
     TAtlasToolbarIcon.ImplementationPart, TAtlasToolbarIcon.UsesClause, TAtlasToolbarIcon.Initialization_,

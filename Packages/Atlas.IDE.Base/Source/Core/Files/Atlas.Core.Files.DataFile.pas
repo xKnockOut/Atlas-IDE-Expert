@@ -48,7 +48,7 @@ type
 
   TAtlasDataFile = record
   public const
-    DefectExtension = '.defekt';
+    cDefectExtension = '.defekt';
   public
     /// <summary>Liest AFileName und gibt den Text an AParse. AKind benennt die Ablage im Protokoll
     /// (z. B. 'Favoriten'); Pfade stehen nie darin.</summary>
@@ -214,14 +214,14 @@ class function TAtlasDataFile.SetAside(const AFileName, AKind, AReason: string):
 var
   mTarget: string;
 begin
-  mTarget := AFileName + DefectExtension;
+  mTarget := AFileName + cDefectExtension;
   // Eine ältere beiseitegelegte Datei wird in einem Schritt ersetzt: Die jüngere hat den neueren Stand. Erst
   // löschen, dann umbenennen konnte zwei Lesern die eben beiseitegelegte Datei kosten.
   Result := MoveFileEx(PChar(AFileName), PChar(mTarget), MOVEFILE_REPLACE_EXISTING);
   if Result then
   begin
     TAtlasGuard.Log(Format('Datendatei %s: %s; beiseitegelegt als *%s, Atlas beginnt sie neu',
-      [AKind, AReason, DefectExtension]));
+      [AKind, AReason, cDefectExtension]));
   end
   else if FileExists(AFileName) then
   begin

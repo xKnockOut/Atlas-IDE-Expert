@@ -101,7 +101,7 @@ type
   TAtlasDrawnElements = class
   public const
     /// <summary>Höchstlänge eines Ankers in .atlas.</summary>
-    MaxAnchorLength = 120;
+    cMaxAnchorLength = 120;
   public
     class function Info(AElement: TAtlasDrawnElement): TAtlasDrawnElementInfo; static;
     /// <summary>Alle Elemente in der Reihenfolge der Aufzählung.</summary>
@@ -265,9 +265,9 @@ end;
 class function TAtlasDrawnElements.Anchor(const AText: string): string;
 begin
   Result := TAtlasLineAnchors.Normalize(AText);
-  if Length(Result) > MaxAnchorLength then
+  if Length(Result) > cMaxAnchorLength then
   begin
-    Result := TrimRight(Copy(Result, 1, MaxAnchorLength));
+    Result := TrimRight(Copy(Result, 1, cMaxAnchorLength));
   end;
 end;
 

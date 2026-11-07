@@ -58,9 +58,9 @@ type
 
   TAtlasMethodPlacement = class
   public const
-    Command = 'atlas.server.methodOrder';
+    cCommand = 'atlas.server.methodOrder';
     /// <summary>Ruhezeit nach der letzten Änderung, bevor das Plugin nach neuen Rümpfen sieht.</summary>
-    DelayMs = 400;
+    cDelayMs = 400;
   public
     /// <summary>[uri, {mode, scope, before}]; AAll: ganze Unit ordnen, sonst nur die gegenüber ABefore neuen
     /// Rümpfe.</summary>

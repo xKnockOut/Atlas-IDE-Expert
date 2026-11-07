@@ -471,7 +471,7 @@ begin
     on ELspClientError do
       mSymbols := nil;
   end;
-  for mIndex := 0 to Min(High(mSymbols), TAtlasQuickOpen.MaxResults - 1) do
+  for mIndex := 0 to Min(High(mSymbols), TAtlasQuickOpen.cMaxResults - 1) do
   begin
     Result := Result + [Target(mSymbols[mIndex].FileName, mSymbols[mIndex].Line, mSymbols[mIndex].Character,
       mSymbols[mIndex].Name, SymbolPlace(mSymbols[mIndex]), TAtlasResults.SymbolBadge(mSymbols[mIndex].Kind))];

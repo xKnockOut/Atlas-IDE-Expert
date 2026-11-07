@@ -588,7 +588,7 @@ begin
     mCopy.Free;
     mRecent.Free;
     System.SysUtils.DeleteFile(mFileName);
-    System.SysUtils.DeleteFile(mFileName + TAtlasDataFile.DefectExtension);
+    System.SysUtils.DeleteFile(mFileName + TAtlasDataFile.cDefectExtension);
   end;
   mItems := nil;
   // Gemeldete Datendateien vergessen: Das Register bliebe sonst als Leck stehen.

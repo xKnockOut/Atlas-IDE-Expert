@@ -106,7 +106,7 @@ begin
   begin
     ASwatches[mIndex] := TShape.Create(FPage);
     ASwatches[mIndex].Parent := mPanel;
-    ASwatches[mIndex].SetBounds(FieldLeft + mIndex * 34, 1, 28, 22);
+    ASwatches[mIndex].SetBounds(cFieldLeft + mIndex * 34, 1, 28, 22);
     ASwatches[mIndex].Pen.Color := clGray;
     ASwatches[mIndex].Cursor := crHandPoint;
     ASwatches[mIndex].Hint := IntToStr(mIndex + 1);

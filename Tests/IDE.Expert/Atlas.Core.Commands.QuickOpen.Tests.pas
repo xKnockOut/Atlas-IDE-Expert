@@ -171,7 +171,7 @@ begin
   Assert.AreEqual('FrmHaupt.pas', Files[Order[0]].Name);
   Assert.IsTrue(Watch.ElapsedMilliseconds < 50, 'Dauer ' + IntToStr(Watch.ElapsedMilliseconds) + ' ms');
   // Ohne Eingabe höchstens MaxResults Treffer.
-  Assert.AreEqual(TAtlasQuickOpen.MaxResults, Integer(Length(TAtlasQuickOpen.Order(Files, '', nil, nil))));
+  Assert.AreEqual(TAtlasQuickOpen.cMaxResults, Integer(Length(TAtlasQuickOpen.Order(Files, '', nil, nil))));
 end;
 
 procedure TAtlasQuickOpenTests.OpenThenRecentThenProjectThenRest;

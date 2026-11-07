@@ -106,9 +106,9 @@ type
 
   TAtlasSymbolPathCommands = class
   public const
-    Command = 'atlas.symbolPath';
-    DefaultSteps = 8;
-    MaxSteps = 16;
+    cCommand = 'atlas.symbolPath';
+    cDefaultSteps = 8;
+    cMaxSteps = 16;
   public
     /// <summary>[uri, {"from", "to", "maxSteps", "all"}]; AMaxSteps außerhalb 1–16 entfällt (Vorgabe des Servers).
     /// </summary>
@@ -461,7 +461,7 @@ begin
     mValues.AddElement(mOptions);
     mOptions.AddPair('from', Trim(AFrom));
     mOptions.AddPair('to', Trim(ATo));
-    if (AMaxSteps >= 1) and (AMaxSteps <= MaxSteps) then
+    if (AMaxSteps >= 1) and (AMaxSteps <= cMaxSteps) then
     begin
       mOptions.AddPair('maxSteps', TJSONNumber.Create(AMaxSteps));
     end;

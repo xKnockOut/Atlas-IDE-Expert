@@ -36,7 +36,7 @@ type
   TAtlasProblemsRefresh = record
   public const
     /// <summary>Takt, in dem der Controller den Editor liest, höchstens so lang (ms).</summary>
-    MaxTickMs = 250;
+    cMaxTickMs = 250;
   public
     /// <summary>Takt des Controllers zur Verzögerung: höchstens 250 ms, sonst die Verzögerung selbst.</summary>
     class function TickMs(ADelayMs: Integer): Integer; static;
@@ -71,7 +71,7 @@ uses
 
 class function TAtlasProblemsRefresh.TickMs(ADelayMs: Integer): Integer;
 begin
-  Result := Min(MaxTickMs, TAtlasProblemsUpdateSetting.ClampDelay(ADelayMs));
+  Result := Min(cMaxTickMs, TAtlasProblemsUpdateSetting.ClampDelay(ADelayMs));
 end;
 
 class function TAtlasProblemsRefresh.Due(AMode: TAtlasProblemsUpdate; const AState: TAtlasProblemsRefreshState;

@@ -46,10 +46,10 @@ type
 
   TAtlasNavHistory = class
   public const
-    MaxEntries = 100;
-    JumpLines = 10;
-    EditMergeLines = 3;
-    MaxExcerpt = 80;
+    cMaxEntries = 100;
+    cJumpLines = 10;
+    cEditMergeLines = 3;
+    cMaxExcerpt = 80;
   private
     FBack: TList<TAtlasNavPlace>;
     FForward: TList<TAtlasNavPlace>;
@@ -139,15 +139,15 @@ begin
   begin
     Exit(False);
   end;
-  Result := not SameText(AFrom.FileName, ATo.FileName) or (Abs(ATo.Line - AFrom.Line) > JumpLines);
+  Result := not SameText(AFrom.FileName, ATo.FileName) or (Abs(ATo.Line - AFrom.Line) > cJumpLines);
 end;
 
 class function TAtlasNavHistory.Excerpt(const ALineText: string): string;
 begin
   Result := Trim(ALineText.Replace(#9, ' '));
-  if Length(Result) > MaxExcerpt then
+  if Length(Result) > cMaxExcerpt then
   begin
-    Result := Copy(Result, 1, MaxExcerpt - 1) + '…';
+    Result := Copy(Result, 1, cMaxExcerpt - 1) + '…';
   end;
 end;
 
@@ -161,7 +161,7 @@ begin
   begin
     AList.Add(APlace);
   end;
-  while AList.Count > MaxEntries do
+  while AList.Count > cMaxEntries do
   begin
     AList.Delete(0);
   end;
@@ -211,13 +211,13 @@ procedure TAtlasNavHistory.Edited(const APlace: TAtlasNavPlace);
 begin
   FEditCursor := -1;
   if (FEdits.Count > 0) and SameText(FEdits.Last.FileName, APlace.FileName) and
-    (Abs(FEdits.Last.Line - APlace.Line) <= EditMergeLines) then
+    (Abs(FEdits.Last.Line - APlace.Line) <= cEditMergeLines) then
   begin
     FEdits[FEdits.Count - 1] := APlace;
     Exit;
   end;
   FEdits.Add(APlace);
-  while FEdits.Count > MaxEntries do
+  while FEdits.Count > cMaxEntries do
   begin
     FEdits.Delete(0);
   end;

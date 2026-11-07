@@ -40,11 +40,11 @@ type
   TAtlasProjectContext = record
   public const
     /// <summary>IOTABuildConfiguration.GetValue mit geerbten Werten.</summary>
-    SourceConfiguration = 'Konfiguration';
+    cSourceConfiguration = 'Konfiguration';
     /// <summary>GetValue lieferte noch $(Name); die Elternkonfigurationen hat das Plugin selbst eingesetzt.</summary>
-    SourceResolved = 'Konfiguration, Erbe selbst aufgelöst';
+    cSourceResolved = 'Konfiguration, Erbe selbst aufgelöst';
     /// <summary>Ersatzweg ohne Konfigurationsschnittstelle: IOTAProjectOptions.Values.</summary>
-    SourceOptions = 'Projektoptionen';
+    cSourceOptions = 'Projektoptionen';
   public
     /// <summary>Absoluter Pfad der .dproj.</summary>
     Project: string;

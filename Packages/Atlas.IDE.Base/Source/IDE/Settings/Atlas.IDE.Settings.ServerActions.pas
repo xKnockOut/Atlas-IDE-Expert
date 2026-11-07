@@ -70,7 +70,7 @@ class function TAtlasIdeServerActions.ClearCache: string;
 var
   mOutput: string;
 begin
-  Result := RunTool('--clear-cache', TAtlasServerTool.ShortTimeoutMs, mOutput);
+  Result := RunTool('--clear-cache', TAtlasServerTool.cShortTimeoutMs, mOutput);
   if Result = '' then
   begin
     Result := Trim(mOutput);

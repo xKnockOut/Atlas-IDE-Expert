@@ -72,7 +72,7 @@ type
   TAtlasGutterColumn = class
   public const
     /// <summary>Breite bei 96 DPI und 16 Pixeln Zeilenhöhe.</summary>
-    BaseWidth = 16;
+    cBaseWidth = 16;
   public
     /// <summary>Symbol der Zeile nach Vorrang und Unterschaltern; None ohne.</summary>
     class function Choose(const ALine: TAtlasGutterLine; const AOptions: TAtlasGutterColumnOptions): TAtlasGutterSymbol;

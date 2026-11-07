@@ -315,7 +315,7 @@ begin
           mSeconds := cDefaultTimeoutSeconds;
         end;
         Result.TimeoutMs := Cardinal(mSeconds) * 1000;
-        Result.Projects := TAtlasVcsProjects.Read(TAtlasJsonText.ValueAt(mRoot, TAtlasVcsProjects.Path));
+        Result.Projects := TAtlasVcsProjects.Read(TAtlasJsonText.ValueAt(mRoot, TAtlasVcsProjects.cPath));
       end;
     finally
       mRoot.Free;
@@ -570,7 +570,7 @@ begin
   Message_ := nil;
   if Worker <> nil then
   begin
-    Worker.Stop(TAtlasShutdown.StopMs);
+    Worker.Stop(TAtlasShutdown.cStopMs);
   end;
   FreeAndNil(Worker);
   Runner := nil;
@@ -663,7 +663,7 @@ begin
   if mCopy.Kind = TAtlasVcsKind.None then
   begin
     mCheck := TAtlasVcsServerChecks.Check(mRunner, mCopy.Kind, mExecutable, mCopy.Root,
-      TAtlasVcsServerChecks.TimeoutMs, Now);
+      TAtlasVcsServerChecks.cTimeoutMs, Now);
     ServerStates.AddOrSetValue(mKey, mCheck);
     ADone(mCheck);
     Exit(True);
@@ -673,7 +673,7 @@ begin
     procedure
     begin
       mCheck := TAtlasVcsServerChecks.Check(mRunner, mCopy.Kind, mExecutable, mCopy.Root,
-        TAtlasVcsServerChecks.TimeoutMs, Now);
+        TAtlasVcsServerChecks.cTimeoutMs, Now);
     end,
     procedure
     begin

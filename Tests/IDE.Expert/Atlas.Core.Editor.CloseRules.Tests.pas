@@ -196,7 +196,7 @@ end;
 
 procedure TAtlasCloseRulesTests.TooltipHidesAfter300Ms;
 begin
-  Assert.AreEqual(300, TAtlasCloseRules.TooltipHideDelayMs);
+  Assert.AreEqual(300, TAtlasCloseRules.cTooltipHideDelayMs);
 end;
 
 procedure TAtlasCloseRulesTests.DelayedOpenOnlyWhileTypingIdentifier;

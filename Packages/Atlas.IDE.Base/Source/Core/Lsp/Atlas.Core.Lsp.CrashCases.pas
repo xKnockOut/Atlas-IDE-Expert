@@ -59,16 +59,16 @@ type
 
   TAtlasCrashCases = class
   public const
-    CaseNotification = 'atlas/crashCase';
-    SkipNotification = 'atlas/crashSkip';
-    RetryCommand = 'atlas.crash.retry';
-    RequestName = 'anfrage.json';
-    StackName = 'stapel.txt';
+    cCaseNotification = 'atlas/crashCase';
+    cSkipNotification = 'atlas/crashSkip';
+    cRetryCommand = 'atlas.crash.retry';
+    cRequestName = 'anfrage.json';
+    cStackName = 'stapel.txt';
     /// <summary>Quelle der Einträge im Prüffenster.</summary>
-    ProblemSource = 'Atlas-Server';
-    ProblemCode = 'crash-skip';
+    cProblemSource = 'Atlas-Server';
+    cProblemCode = 'crash-skip';
     /// <summary>Höchstens so lang wird eine Datei des Falls angehängt (Schnappschüsse großer Units).</summary>
-    MaxAttachChars = 2 * 1024 * 1024;
+    cMaxAttachChars = 2 * 1024 * 1024;
   public
     class function ParseCase(const AParams: TJSONValue; out ACase: TAtlasCrashCase): Boolean; static;
     class function ParseSkip(const AParams: TJSONValue; out ASkip: TAtlasCrashSkip): Boolean; static;
@@ -281,7 +281,7 @@ var
 begin
   ACase := TAtlasCrashCase.Empty;
   Result := False;
-  mFile := TPath.Combine(AFolder, RequestName);
+  mFile := TPath.Combine(AFolder, cRequestName);
   if not TFile.Exists(mFile) then
   begin
     Exit;
@@ -342,7 +342,7 @@ begin
   try
     for mFolder in TDirectory.GetDirectories(ARoot) do
     begin
-      mFile := TPath.Combine(mFolder, RequestName);
+      mFile := TPath.Combine(mFolder, cRequestName);
       if TFile.Exists(mFile) and (TFile.GetLastWriteTime(mFile) >= ASince) then
       begin
         mFolders.Add(mFolder);
@@ -387,7 +387,7 @@ var
   mFile: string;
 begin
   mStack := '';
-  mFile := TPath.Combine(ACase.Folder, StackName);
+  mFile := TPath.Combine(ACase.Folder, cStackName);
   try
     if (ACase.Folder <> '') and TFile.Exists(mFile) then
     begin
@@ -452,8 +452,8 @@ begin
     function(const ALeft, ARight: string): Integer
     begin
       // anfrage.json zuerst, dann nach Namen.
-      Result := Ord(not SameText(ExtractFileName(ALeft), RequestName)) -
-        Ord(not SameText(ExtractFileName(ARight), RequestName));
+      Result := Ord(not SameText(ExtractFileName(ALeft), cRequestName)) -
+        Ord(not SameText(ExtractFileName(ARight), cRequestName));
       if Result = 0 then
       begin
         Result := CompareText(ExtractFileName(ALeft), ExtractFileName(ARight));
@@ -469,7 +469,7 @@ begin
     end;
     try
       mText := TFile.ReadAllText(mFile, TEncoding.UTF8);
-      if Length(mText) > MaxAttachChars then
+      if Length(mText) > cMaxAttachChars then
       begin
         Continue;
       end;

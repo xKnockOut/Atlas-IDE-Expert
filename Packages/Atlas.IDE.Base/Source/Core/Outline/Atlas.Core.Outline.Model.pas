@@ -90,7 +90,7 @@ type
   TAtlasOutline = class
   public const
     /// <summary>Sichtbarkeiten, die der Filter anbietet (strict zählt zur einfachen).</summary>
-    FilterVisibilities: array[0..3] of TAtlasOutlineVisibility = (TAtlasOutlineVisibility.Private,
+    cFilterVisibilities: array[0..3] of TAtlasOutlineVisibility = (TAtlasOutlineVisibility.Private,
       TAtlasOutlineVisibility.Protected, TAtlasOutlineVisibility.Public, TAtlasOutlineVisibility.Published);
   public
     class function VisibilityOf(const AText: string): TAtlasOutlineVisibility; static;
@@ -156,7 +156,7 @@ function TAtlasOutlineFilter.AllVisibilities: Boolean;
 var
   mVisibility: TAtlasOutlineVisibility;
 begin
-  for mVisibility in TAtlasOutline.FilterVisibilities do
+  for mVisibility in TAtlasOutline.cFilterVisibilities do
   begin
     if not (mVisibility in Visibilities) then
     begin
@@ -546,7 +546,7 @@ begin
     Exit;
   end;
   Result := (AFilter.Text = '') or (TAtlasCompletionMatcher.Score(AFilter.Text, ANode.Name) <>
-    TAtlasCompletionMatcher.NoMatch);
+    TAtlasCompletionMatcher.cNoMatch);
 end;
 
 /// <summary>Kinder jedes Knotens in AChildren, Knoten ohne Eltern in ARoots.</summary>

@@ -272,11 +272,11 @@ class function TAtlasIdeStatementCompletion.Options(AIndentWidth: Integer;
   ATryKind: TAtlasTryKind): TAtlasStatementOptions;
 begin
   Result := TAtlasStatementOptions.Defaults;
-  if TAtlasIdeSettings.Current.CompleteStatementBeginEnd = TAtlasPluginSettings.BeginEndAlways then
+  if TAtlasIdeSettings.Current.CompleteStatementBeginEnd = TAtlasPluginSettings.cBeginEndAlways then
   begin
     Result.BeginEnd := TAtlasBeginEndMode.Always;
   end
-  else if TAtlasIdeSettings.Current.CompleteStatementBeginEnd = TAtlasPluginSettings.BeginEndNever then
+  else if TAtlasIdeSettings.Current.CompleteStatementBeginEnd = TAtlasPluginSettings.cBeginEndNever then
   begin
     Result.BeginEnd := TAtlasBeginEndMode.Never;
   end;
@@ -294,11 +294,11 @@ begin
   begin
     Exit;
   end;
-  if TAtlasIdeSettings.Current.CompleteStatementTryKind = TAtlasPluginSettings.TryKindExcept then
+  if TAtlasIdeSettings.Current.CompleteStatementTryKind = TAtlasPluginSettings.cTryKindExcept then
   begin
     RunWith(TAtlasTryKind.TryExcept);
   end
-  else if (TAtlasIdeSettings.Current.CompleteStatementTryKind <> TAtlasPluginSettings.TryKindAsk) or
+  else if (TAtlasIdeSettings.Current.CompleteStatementTryKind <> TAtlasPluginSettings.cTryKindAsk) or
     not TAtlasStatementCompleter.NeedsTryKind(TAtlasEditorBuffer.Text(mView.Buffer), mView.CursorPos.Line - 1) then
   begin
     RunWith(TAtlasTryKind.TryFinally);

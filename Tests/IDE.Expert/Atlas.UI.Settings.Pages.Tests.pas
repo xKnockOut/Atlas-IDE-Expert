@@ -123,7 +123,7 @@ begin
   // #751: jede Größe beider Varianten ist als PNG eingebunden und hat genau diese Größe.
   for Variant_ := Low(TAtlasSymbolVariant) to High(TAtlasSymbolVariant) do
   begin
-    for Index := 0 to TAtlasSymbol.SizeCount - 1 do
+    for Index := 0 to TAtlasSymbol.cSizeCount - 1 do
     begin
       Image := TAtlasSymbolImages.Load(Variant_, TAtlasSymbol.Size(Index));
       try
@@ -143,7 +143,7 @@ begin
   Collection := TAtlasSymbolImages.Collection(nil);
   try
     Assert.AreEqual(2, Integer(Collection.Images.Count));
-    Assert.AreEqual(TAtlasSymbol.SizeCount, Collection.Images[1].SourceImages.Count);
+    Assert.AreEqual(TAtlasSymbol.cSizeCount, Collection.Images[1].SourceImages.Count);
   finally
     Collection.Free;
   end;

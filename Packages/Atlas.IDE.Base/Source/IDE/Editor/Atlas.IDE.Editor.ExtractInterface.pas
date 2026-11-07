@@ -22,7 +22,7 @@ uses
 type
   TAtlasIdeExtractInterface = class
   public const
-    ClientCommand = 'atlas.extractInterface';
+    cClientCommand = 'atlas.extractInterface';
   public
     /// <summary>AArgumentsJson: Argumente der Code-Aktion ([uri, position]); ASession: laufende Sitzung oder nil;
     /// AMessage: Zeile für die Meldungsansicht.</summary>

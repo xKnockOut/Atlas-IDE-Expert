@@ -7,18 +7,18 @@ interface
 
 const
   /// <summary>Werte von bookmarks.quick.scope (#1104) in der Reihenfolge der Optionsseite.</summary>
-  AtlasQuickBookmarkScopes: array[0..1] of string = ('project', 'file');
+  cAtlasQuickBookmarkScopes: array[0..1] of string = ('project', 'file');
   /// <summary>Werte von editor.methodPlacement (#660, grouped #1834) in der Reihenfolge der Auswahl.</summary>
-  AtlasMethodPlacements: array[0..3] of string = ('grouped', 'declaration', 'alphabetical', 'off');
+  cAtlasMethodPlacements: array[0..3] of string = ('grouped', 'declaration', 'alphabetical', 'off');
   /// <summary>Werte von editor.regionFolds (#1814) in der Reihenfolge der Auswahl auf der Optionsseite und von
   /// TAtlasRegionFoldMode (Atlas.Core.Editor.RegionFolds).</summary>
-  AtlasRegionFoldModes: array[0..3] of string = ('keep', 'collapse', 'expand', 'off');
+  cAtlasRegionFoldModes: array[0..3] of string = ('keep', 'collapse', 'expand', 'off');
   /// <summary>Höchstlänge der Texte unter issues.* (#765).</summary>
-  MaxIssuesText = 200;
+  cMaxIssuesText = 200;
   /// <summary>Werte von tasks.beforeBuild (#900) wie TAtlasTasks.BeforeBuildNames, in der Reihenfolge der Auswahl
   /// im Optionsdialog; die Einstellungen kennen die Projektaufgaben nicht (A-09, sonst Feature-Zyklus, und Base
   /// nicht das Modul Build, #1455), der Test hält beide gleich.</summary>
-  TasksBeforeBuildNames: array[0..2] of string = ('off', 'warn', 'block');
+  cTasksBeforeBuildNames: array[0..2] of string = ('off', 'warn', 'block');
 
 type
   /// <summary>Ablage für Einstellungen; Werte als ganze Zahlen (Wahrheitswerte 0/1).</summary>
@@ -95,9 +95,9 @@ begin
   begin
     Result := Trim(Result);
   end;
-  if Length(Result) > MaxIssuesText then
+  if Length(Result) > cMaxIssuesText then
   begin
-    Result := Copy(Result, 1, MaxIssuesText);
+    Result := Copy(Result, 1, cMaxIssuesText);
   end;
 end;
 

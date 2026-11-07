@@ -15,7 +15,7 @@ uses
 type
   TAtlasTextDiff = class
   public const
-    MaxLines = 400;
+    cMaxLines = 400;
   public
     /// <summary>Unterschied von AOld (z. B. Puffer) zu ANew (z. B. Platte); leer, wenn gleich.</summary>
     class function Lines(const AOld, ANew: string): TArray<string>; static;
@@ -29,7 +29,7 @@ uses
 
 class function TAtlasTextDiff.Lines(const AOld, ANew: string): TArray<string>;
 begin
-  Result := TTextDiff.ChangedLines(TTextLines.SplitLines(AOld), TTextLines.SplitLines(ANew), MaxLines);
+  Result := TTextDiff.ChangedLines(TTextLines.SplitLines(AOld), TTextLines.SplitLines(ANew), cMaxLines);
 end;
 
 end.

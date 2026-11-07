@@ -166,13 +166,13 @@ type
 
   TAtlasSettingsTransfer = class
   public const
-    FormatName = 'atlas-settings';
-    FormatVersion = 1;
-    FileName = 'atlas-settings.json';
-    SecretPlaceholder = '<secret>';
+    cFormatName = 'atlas-settings';
+    cFormatVersion = 1;
+    cFileName = 'atlas-settings.json';
+    cSecretPlaceholder = '<secret>';
     /// <summary>So viele Sicherungen bleiben in %APPDATA%\Atlas\Backups.</summary>
-    KeepBackups = 10;
-    BackupPrefix = 'atlas-settings-';
+    cKeepBackups = 10;
+    cBackupPrefix = 'atlas-settings-';
   public
     /// <summary>Aktueller Wert als JSON; '' = nicht gesetzt (nur settings.json).</summary>
     class function CurrentJson(ACatalog: TAtlasSettingsCatalog; const AState: TAtlasSettingsState;
@@ -1078,7 +1078,7 @@ begin
     Result := AOptions.Secrets <> smOmit;
     if Result then
     begin
-      ALine := ALine + TAtlasJsonText.Quote(TAtlasSettingsTransfer.SecretPlaceholder);
+      ALine := ALine + TAtlasJsonText.Quote(TAtlasSettingsTransfer.cSecretPlaceholder);
       AResult.Placeholders := AResult.Placeholders + [AEntry.Key];
     end
     else
@@ -1110,10 +1110,10 @@ var
   mIndex: Integer;
 begin
   Result := '{' + #10 +
-    '  "format": ' + TAtlasJsonText.Quote(TAtlasSettingsTransfer.FormatName) + ',' + #10 +
-    '  "formatVersion": ' + IntToStr(TAtlasSettingsTransfer.FormatVersion) + ',' + #10 +
+    '  "format": ' + TAtlasJsonText.Quote(TAtlasSettingsTransfer.cFormatName) + ',' + #10 +
+    '  "formatVersion": ' + IntToStr(TAtlasSettingsTransfer.cFormatVersion) + ',' + #10 +
     '  "schemaVersion": ' + IntToStr(ACatalog.Version) + ',' + #10 +
-    '  "atlasVersion": ' + TAtlasJsonText.Quote(TAtlasPluginVersion.Version) + ',' + #10;
+    '  "atlasVersion": ' + TAtlasJsonText.Quote(TAtlasPluginVersion.cVersion) + ',' + #10;
   if ABackup then
   begin
     Result := Result + '  "backup": true,' + #10;
@@ -1258,7 +1258,7 @@ begin
   begin
     Result := UiText(TTransferText.SettingsIsNotAnObject);
   end
-  else if (ARoot.GetValue('format') <> nil) and (StringField(ARoot, 'format') <> TAtlasSettingsTransfer.FormatName) then
+  else if (ARoot.GetValue('format') <> nil) and (StringField(ARoot, 'format') <> TAtlasSettingsTransfer.cFormatName) then
   begin
     Result := UiText(TTransferText.OtherFormat) + StringField(ARoot, 'format');
   end;
@@ -1351,7 +1351,7 @@ begin
   end
   // issues.query (#765, #1280) war eine einzelne Abfrage; issues.queries (#1262) ist eine Liste, in die sie als
   // „Standard“ kommt.
-  else if (AEntry.Name = TAtlasSettingsQueryMigrations.SettingName) and (AValue is TJSONString) then
+  else if (AEntry.Name = TAtlasSettingsQueryMigrations.cSettingName) and (AValue is TJSONString) then
   begin
     AJson := TAtlasSettingsQueryMigrations.WithLegacy('[]', TJSONString(AValue).Value);
   end
@@ -1440,7 +1440,7 @@ begin
   begin
     AItem.Status := isSkipped;
   end
-  else if TAtlasJsonValues.Same(AItem.NewJson, TAtlasJsonText.Quote(TAtlasSettingsTransfer.SecretPlaceholder)) then
+  else if TAtlasJsonValues.Same(AItem.NewJson, TAtlasJsonText.Quote(TAtlasSettingsTransfer.cSecretPlaceholder)) then
   begin
     AItem.Status := isSecret;
   end
@@ -1646,9 +1646,9 @@ var
   mArea: string;
 begin
   Result := nil;
-  if ASource.FormatVersion <> TAtlasSettingsTransfer.FormatVersion then
+  if ASource.FormatVersion <> TAtlasSettingsTransfer.cFormatVersion then
   begin
-    Result := Result + [UiText(TTransferText.FormatVersionExpected) + IntToStr(TAtlasSettingsTransfer.FormatVersion)];
+    Result := Result + [UiText(TTransferText.FormatVersionExpected) + IntToStr(TAtlasSettingsTransfer.cFormatVersion)];
   end;
   if ASource.SchemaVersion <> ACatalog.Version then
   begin
@@ -1718,7 +1718,7 @@ end;
 
 class function TAtlasSettingsTransfer.BackupFileName(ANow: TDateTime): string;
 begin
-  Result := BackupPrefix + FormatDateTime('yyyymmdd"-"hhnnss', ANow) + '.json';
+  Result := cBackupPrefix + FormatDateTime('yyyymmdd"-"hhnnss', ANow) + '.json';
 end;
 
 class function TAtlasSettingsTransfer.BackupsToDelete(const AFiles: TArray<string>; AKeep: Integer): TArray<string>;
@@ -1732,7 +1732,7 @@ begin
   try
     for mName in AFiles do
     begin
-      if SameText(Copy(mName, 1, Length(BackupPrefix)), BackupPrefix) and SameText(ExtractFileExt(mName), '.json') then
+      if SameText(Copy(mName, 1, Length(cBackupPrefix)), cBackupPrefix) and SameText(ExtractFileExt(mName), '.json') then
       begin
         mBackups.Add(mName);
       end;

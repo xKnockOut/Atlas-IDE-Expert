@@ -11,44 +11,45 @@ uses
 
 const
   /// <summary>Grenzen für welcomePage.maxProjects (#592); wie TAtlasWelcomeProjects.MinMax/MaxMax.</summary>
-  MinWelcomeProjects = 1;
-  MaxWelcomeProjects = 30;
+  cMinWelcomeProjects = 1;
+  cMaxWelcomeProjects = 30;
   /// <summary>Spalten der Willkommensseite (#767, welcomePage.columns).</summary>
-  MinWelcomeColumns = 1;
-  MaxWelcomeColumns = 3;
+  cMinWelcomeColumns = 1;
+  cMaxWelcomeColumns = 3;
   /// <summary>Name des Layouts, das Atlas anlegt (#767, welcomePage.activeLayout).</summary>
-  DefaultWelcomeLayoutName = 'Standard';
+  cDefaultWelcomeLayoutName = 'Standard';
   /// <summary>Grenzen der Stunden für welcomePage.unsaved.* (#762); wie TAtlasWelcomeUnsaved.MaxHours.</summary>
-  MinUnsavedHours = 0;
-  MaxUnsavedHours = 8760;
+  cMinUnsavedHours = 0;
+  cMaxUnsavedHours = 8760;
   /// <summary>Grenzen für welcomePage.continue.count (#755); wie TAtlasWelcomeContinue.MinCount/MaxCount.</summary>
-  MinContinueCount = 1;
-  MaxContinueCount = 20;
-  /// <summary>Grenzen für welcomePage.trends.points (#758); wie TAtlasProjectTrendLog.MinPoints/MaxPoints.</summary>
-  MinTrendPoints = 2;
-  MaxTrendPoints = 100;
+  cMinContinueCount = 1;
+  cMaxContinueCount = 20;
+  /// <summary>Grenzen für welcomePage.trends.points (#758); wie TAtlasProjectTrendLog.cMinPoints/MaxPoints.</summary>
+  cMinTrendPoints = 2;
+  cMaxTrendPoints = 100;
   /// <summary>Grenzen für welcomePage.tests.maxFailures und welcomePage.tests.ci.intervalMinutes (#763); wie
   /// TAtlasTestResults (Test prüft Gleichheit).</summary>
-  MinTestFailures = 1;
-  MaxTestFailures = 50;
-  MinCiIntervalMinutes = 1;
-  MaxCiIntervalMinutes = 1440;
+  cMinTestFailures = 1;
+  cMaxTestFailures = 50;
+  cMinCiIntervalMinutes = 1;
+  cMaxCiIntervalMinutes = 1440;
   /// <summary>Vorgabe für welcomePage.tests.ci.provider (#763).</summary>
-  DefaultCiProvider = 'jenkins';
+  cDefaultCiProvider = 'jenkins';
   /// <summary>Vorgabe für welcomePage.trends.series (#758): alle Reihen, Namen wie
-  /// TAtlasProjectSummaries.TrendKeys.</summary>
-  DefaultTrendSeries = 'warnings,ruleHits,todos,duration,methodLength';
+  /// TAtlasProjectSummaries.cTrendKeys.</summary>
+  cDefaultTrendSeries = 'warnings,ruleHits,todos,duration,methodLength';
   /// <summary>Vorgabe für welcomePage.help.reportUrl (#766): Seite für neue Issues des Atlas-Repositorys.
   /// </summary>
-  DefaultHelpReportUrl = 'https://github.com/xKnockOut/Atlas-IDE-Expert/issues/new';
-  /// <summary>Reihen des Projektverlaufs (#758) wie TAtlasProjectSummaries.TrendKeys (Test prüft Gleichheit).</summary>
-  TrendSeriesNames: array[0..4] of string = ('warnings', 'ruleHits', 'todos', 'duration', 'methodLength');
+  cDefaultHelpReportUrl = 'https://github.com/xKnockOut/Atlas-IDE-Expert/issues/new';
+  /// <summary>Reihen des Projektverlaufs (#758) wie TAtlasProjectSummaries.cTrendKeys
+  /// (Test prüft Gleichheit).</summary>
+  cTrendSeriesNames: array[0..4] of string = ('warnings', 'ruleHits', 'todos', 'duration', 'methodLength');
   // Bekannte CI-Anbieter für welcomePage.tests.ci.provider (#763).
-  CiProviders: array[0..0] of string = ('jenkins');
+  cCiProviders: array[0..0] of string = ('jenkins');
   /// <summary>Knöpfe der Schnellaktionen (#764) wie TAtlasWelcomeQuickActions.Names (Test prüft Gleichheit; die
   /// Einstellungen kennen die Willkommensseite nicht, A-09).</summary>
-  QuickActionNames: array[0..6] of string = ('build', 'tests', 'run', 'pull', 'folder', 'console', 'tasks');
-  QuickActionsDefaultConsole = 'wt.exe';
+  cQuickActionNames: array[0..6] of string = ('build', 'tests', 'run', 'pull', 'folder', 'console', 'tasks');
+  cQuickActionsDefaultConsole = 'wt.exe';
 
 type
   /// <summary>Plugin-Einstellungen: Aufbau und Verhalten der Willkommensseite.</summary>
@@ -218,7 +219,7 @@ function NormalizedQuickActionItems(const AText: string): string;
 var
   mPart: string;
   mIndex: Integer;
-  mWanted: array[Low(QuickActionNames)..High(QuickActionNames)] of Boolean;
+  mWanted: array[Low(cQuickActionNames)..High(cQuickActionNames)] of Boolean;
 begin
   for mIndex := Low(mWanted) to High(mWanted) do
   begin
@@ -226,16 +227,16 @@ begin
   end;
   for mPart in AText.Split([',', ';', ' ']) do
   begin
-    for mIndex := Low(QuickActionNames) to High(QuickActionNames) do
+    for mIndex := Low(cQuickActionNames) to High(cQuickActionNames) do
     begin
-      if SameText(Trim(mPart), QuickActionNames[mIndex]) then
+      if SameText(Trim(mPart), cQuickActionNames[mIndex]) then
       begin
         mWanted[mIndex] := True;
       end;
     end;
   end;
   Result := '';
-  for mIndex := Low(QuickActionNames) to High(QuickActionNames) do
+  for mIndex := Low(cQuickActionNames) to High(cQuickActionNames) do
   begin
     if mWanted[mIndex] then
     begin
@@ -243,7 +244,7 @@ begin
       begin
         Result := Result + ',';
       end;
-      Result := Result + QuickActionNames[mIndex];
+      Result := Result + cQuickActionNames[mIndex];
     end;
   end;
 end;
@@ -254,7 +255,7 @@ begin
   Result := Trim(AText);
   if Result = '' then
   begin
-    Result := QuickActionsDefaultConsole;
+    Result := cQuickActionsDefaultConsole;
   end;
 end;
 
@@ -263,14 +264,14 @@ function NormalizedCiProvider(const AText: string): string;
 var
   mName: string;
 begin
-  for mName in CiProviders do
+  for mName in cCiProviders do
   begin
     if SameText(Trim(AText), mName) then
     begin
       Exit(mName);
     end;
   end;
-  Result := DefaultCiProvider;
+  Result := cDefaultCiProvider;
 end;
 
 /// <summary>Bekannte Reihen aus AText (Komma, Semikolon, Leerzeichen; Groß-/Kleinschreibung egal) in fester
@@ -289,16 +290,16 @@ begin
   mParts := AText.Split([',', ';', ' ']);
   for mPart in mParts do
   begin
-    for mIndex := Low(TrendSeriesNames) to High(TrendSeriesNames) do
+    for mIndex := Low(cTrendSeriesNames) to High(cTrendSeriesNames) do
     begin
-      if SameText(Trim(mPart), TrendSeriesNames[mIndex]) then
+      if SameText(Trim(mPart), cTrendSeriesNames[mIndex]) then
       begin
         mWanted[mIndex] := True;
       end;
     end;
   end;
   Result := '';
-  for mIndex := Low(TrendSeriesNames) to High(TrendSeriesNames) do
+  for mIndex := Low(cTrendSeriesNames) to High(cTrendSeriesNames) do
   begin
     if mWanted[mIndex] then
     begin
@@ -306,7 +307,7 @@ begin
       begin
         Result := Result + ',';
       end;
-      Result := Result + TrendSeriesNames[mIndex];
+      Result := Result + cTrendSeriesNames[mIndex];
     end;
   end;
 end;
@@ -348,17 +349,17 @@ begin
   Result.WelcomePageCustomLayout := True;
   Result.WelcomePageColumns := 2;
   Result.WelcomePageLayouts := '';
-  Result.WelcomePageActiveLayout := DefaultWelcomeLayoutName;
+  Result.WelcomePageActiveLayout := cDefaultWelcomeLayoutName;
 end;
 
 procedure TAtlasPluginWelcomeSettings.Normalize;
 begin
-  WelcomePageColumns := EnsureRange(WelcomePageColumns, MinWelcomeColumns, MaxWelcomeColumns);
+  WelcomePageColumns := EnsureRange(WelcomePageColumns, cMinWelcomeColumns, cMaxWelcomeColumns);
   WelcomePageLayouts := Trim(WelcomePageLayouts);
   WelcomePageActiveLayout := Trim(WelcomePageActiveLayout);
   if WelcomePageActiveLayout = '' then
   begin
-    WelcomePageActiveLayout := DefaultWelcomeLayoutName;
+    WelcomePageActiveLayout := cDefaultWelcomeLayoutName;
   end;
   if SameText(Trim(WelcomePageLayout), 'atlas') then
   begin
@@ -419,7 +420,7 @@ begin
   Result.WelcomePageStatusTileOnlyProblems := False;
   Result.WelcomePageDiscover := True;
   Result.WelcomePageHelp := True;
-  Result.WelcomePageHelpReportUrl := DefaultHelpReportUrl;
+  Result.WelcomePageHelpReportUrl := cDefaultHelpReportUrl;
   Result.WelcomePageHelpReportFolder := '';
   Result.WelcomePageProjectSetup := True;
   Result.WelcomePageNewFromTemplate := True;
@@ -427,17 +428,17 @@ begin
   Result.WelcomePageContinueCount := 5;
   Result.WelcomePageTrends := True;
   Result.WelcomePageTrendsPoints := 30;
-  Result.WelcomePageTrendsSeries := DefaultTrendSeries;
+  Result.WelcomePageTrendsSeries := cDefaultTrendSeries;
   Result.WelcomePageTests := True;
   Result.WelcomePageTestsMaxFailures := 5;
   Result.WelcomePageTestsCi := False;
-  Result.WelcomePageTestsCiProvider := DefaultCiProvider;
+  Result.WelcomePageTestsCiProvider := cDefaultCiProvider;
   Result.WelcomePageTestsCiIntervalMinutes := 10;
   Result.WelcomePageTestsCiNotify := True;
   Result.CiLogin := True;
   Result.WelcomePageQuickActions := True;
-  Result.WelcomePageQuickActionsItems := string.Join(',', QuickActionNames);
-  Result.WelcomePageQuickActionsConsole := QuickActionsDefaultConsole;
+  Result.WelcomePageQuickActionsItems := string.Join(',', cQuickActionNames);
+  Result.WelcomePageQuickActionsConsole := cQuickActionsDefaultConsole;
   Result.WelcomePageIssues := False;
   Result.WelcomePageSprint := True;
   Result.WelcomePageContinueIncoming := True;
@@ -447,18 +448,18 @@ end;
 
 procedure TAtlasPluginWelcomeTilesSettings.Normalize;
 begin
-  WelcomePageMaxProjects := EnsureRange(WelcomePageMaxProjects, MinWelcomeProjects, MaxWelcomeProjects);
-  WelcomePageUnsavedMinAgeHours := EnsureRange(WelcomePageUnsavedMinAgeHours, MinUnsavedHours, MaxUnsavedHours);
-  WelcomePageUnsavedWarnHours := EnsureRange(WelcomePageUnsavedWarnHours, MinUnsavedHours, MaxUnsavedHours);
+  WelcomePageMaxProjects := EnsureRange(WelcomePageMaxProjects, cMinWelcomeProjects, cMaxWelcomeProjects);
+  WelcomePageUnsavedMinAgeHours := EnsureRange(WelcomePageUnsavedMinAgeHours, cMinUnsavedHours, cMaxUnsavedHours);
+  WelcomePageUnsavedWarnHours := EnsureRange(WelcomePageUnsavedWarnHours, cMinUnsavedHours, cMaxUnsavedHours);
   // Rot nie vor gelb.
   WelcomePageUnsavedAlertHours := EnsureRange(WelcomePageUnsavedAlertHours, WelcomePageUnsavedWarnHours,
-    MaxUnsavedHours);
-  WelcomePageContinueCount := EnsureRange(WelcomePageContinueCount, MinContinueCount, MaxContinueCount);
-  WelcomePageTrendsPoints := EnsureRange(WelcomePageTrendsPoints, MinTrendPoints, MaxTrendPoints);
+    cMaxUnsavedHours);
+  WelcomePageContinueCount := EnsureRange(WelcomePageContinueCount, cMinContinueCount, cMaxContinueCount);
+  WelcomePageTrendsPoints := EnsureRange(WelcomePageTrendsPoints, cMinTrendPoints, cMaxTrendPoints);
   WelcomePageTrendsSeries := NormalizedTrendSeries(WelcomePageTrendsSeries);
-  WelcomePageTestsMaxFailures := EnsureRange(WelcomePageTestsMaxFailures, MinTestFailures, MaxTestFailures);
-  WelcomePageTestsCiIntervalMinutes := EnsureRange(WelcomePageTestsCiIntervalMinutes, MinCiIntervalMinutes,
-    MaxCiIntervalMinutes);
+  WelcomePageTestsMaxFailures := EnsureRange(WelcomePageTestsMaxFailures, cMinTestFailures, cMaxTestFailures);
+  WelcomePageTestsCiIntervalMinutes := EnsureRange(WelcomePageTestsCiIntervalMinutes, cMinCiIntervalMinutes,
+    cMaxCiIntervalMinutes);
   WelcomePageTestsCiProvider := NormalizedCiProvider(WelcomePageTestsCiProvider);
   WelcomePageQuickActionsItems := NormalizedQuickActionItems(WelcomePageQuickActionsItems);
   WelcomePageQuickActionsConsole := NormalizedQuickActionConsole(WelcomePageQuickActionsConsole);
@@ -466,7 +467,7 @@ begin
   WelcomePageHelpReportUrl := Trim(WelcomePageHelpReportUrl);
   if not IsWebAddress(WelcomePageHelpReportUrl) then
   begin
-    WelcomePageHelpReportUrl := DefaultHelpReportUrl;
+    WelcomePageHelpReportUrl := cDefaultHelpReportUrl;
   end;
   WelcomePageHelpReportFolder := Trim(WelcomePageHelpReportFolder);
 end;

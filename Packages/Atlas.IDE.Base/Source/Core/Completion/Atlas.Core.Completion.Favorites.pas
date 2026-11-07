@@ -58,8 +58,8 @@ type
 
   TAtlasFavorites = class
   public const
-    MaxPerType = 5;
-    FormatVersion = 1;
+    cMaxPerType = 5;
+    cFormatVersion = 1;
   private
     FItems: TList<TAtlasFavorite>;
     FChanged: Boolean;
@@ -292,7 +292,7 @@ end;
 function TAtlasFavorites.TryAdd(const AFavorite: TAtlasFavorite): Boolean;
 begin
   Result := (Trim(AFavorite.Member) <> '') and (IndexOf(AFavorite.Key) < 0) and
-    (TypeCount(LowerCase(AFavorite.TypeName)) < MaxPerType);
+    (TypeCount(LowerCase(AFavorite.TypeName)) < cMaxPerType);
   if Result then
   begin
     FItems.Add(AFavorite);
@@ -392,7 +392,7 @@ var
 begin
   mRoot := TJSONObject.Create;
   try
-    mRoot.AddPair('version', TJSONNumber.Create(FormatVersion));
+    mRoot.AddPair('version', TJSONNumber.Create(cFormatVersion));
     mList := TJSONArray.Create;
     mRoot.AddPair('favorites', mList);
     for mFavorite in FItems do

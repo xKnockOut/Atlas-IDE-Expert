@@ -17,11 +17,11 @@ type
 
   TAtlasOpenBuildSettings = class
   public const
-    DefaultDelayMs = 3000;
-    MinDelayMs = 500;
-    MaxDelayMs = 60000;
-    KindNames: array[0..2] of string = ('check', 'make', 'build');
-    ScopeNames: array[TAtlasOpenBuildScope] of string = ('all', 'active');
+    cDefaultDelayMs = 3000;
+    cMinDelayMs = 500;
+    cMaxDelayMs = 60000;
+    cKindNames: array[0..2] of string = ('check', 'make', 'build');
+    cScopeNames: array[TAtlasOpenBuildScope] of string = ('all', 'active');
   public
     /// <summary>AFileName ohne Endung .dproj, .dpr, .dpk bzw. .groupproj; andere Endungen bleiben.</summary>
     class function StripProjectExt(const AFileName: string): string; static;
@@ -116,17 +116,17 @@ class function TAtlasOpenBuildSettings.KindName(AKind: TAtlasCompileKind): strin
 begin
   case AKind of
     TAtlasCompileKind.Check:
-      Result := KindNames[0];
+      Result := cKindNames[0];
     TAtlasCompileKind.Build:
-      Result := KindNames[2];
+      Result := cKindNames[2];
   else
-    Result := KindNames[1];
+    Result := cKindNames[1];
   end;
 end;
 
 class function TAtlasOpenBuildSettings.ScopeOf(const AName: string): TAtlasOpenBuildScope;
 begin
-  if SameText(Trim(AName), ScopeNames[TAtlasOpenBuildScope.Active]) then
+  if SameText(Trim(AName), cScopeNames[TAtlasOpenBuildScope.Active]) then
   begin
     Result := TAtlasOpenBuildScope.Active;
   end

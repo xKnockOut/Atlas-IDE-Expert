@@ -90,8 +90,8 @@ type
     property Selected: Integer read FSelected;
     property ProjectOnly: Boolean read GetProjectOnly write SetProjectOnly;
     /// <summary>Gehört die Datei zu einem Projekt der Gruppe? Vor ShowRoots setzen; nil: alle.</summary>
+    // lsp-ignore: write-only-property -- reicht nur an das Diagramm weiter
     property IsProjectFile: TFunc<string, Boolean> write SetIsProjectFile;
-      // lsp-ignore: write-only-property -- reicht nur an das Diagramm weiter
     property OnLoad: TAtlasCallLoad read FHandlers.OnLoad write FHandlers.OnLoad;
     property OnOpen: TAtlasCallOpen read FHandlers.OnOpen write FHandlers.OnOpen;
   end;
@@ -414,8 +414,8 @@ var
 begin
   mLeft := FView.ScreenX(TAtlasCallView.BoxX(FLayout.Boxes[ABox]));
   mTop := FView.ScreenY(TAtlasCallView.BoxY(FLayout.Boxes[ABox]));
-  Result := Rect(Px(mLeft), Px(mTop), Px(mLeft + TAtlasCallView.BoxWidth * FView.Scale),
-    Px(mTop + TAtlasCallView.BoxHeight * FView.Scale));
+  Result := Rect(Px(mLeft), Px(mTop), Px(mLeft + TAtlasCallView.cBoxWidth * FView.Scale),
+    Px(mTop + TAtlasCallView.cBoxHeight * FView.Scale));
 end;
 
 function TAtlasCallDiagramView.GetProjectOnly: Boolean;

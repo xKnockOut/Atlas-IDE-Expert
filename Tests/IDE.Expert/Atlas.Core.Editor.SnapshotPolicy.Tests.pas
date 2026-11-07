@@ -63,7 +63,7 @@ end;
 procedure TSnapshotPolicyTests.CleanSameStateSkips;
 begin
   Assert.IsFalse(TAtlasSnapshotPolicy.MustRead(Clean, 120, True, 10000));
-  Assert.IsFalse(TAtlasSnapshotPolicy.MustRead(Clean, 120, True, 10000 + TAtlasSnapshotPolicy.SafetyMs - 1));
+  Assert.IsFalse(TAtlasSnapshotPolicy.MustRead(Clean, 120, True, 10000 + TAtlasSnapshotPolicy.cSafetyMs - 1));
 end;
 
 procedure TSnapshotPolicyTests.LineCountChangedMustRead;
@@ -78,7 +78,7 @@ end;
 
 procedure TSnapshotPolicyTests.SafetyIntervalMustRead;
 begin
-  Assert.IsTrue(TAtlasSnapshotPolicy.MustRead(Clean, 120, True, 10000 + TAtlasSnapshotPolicy.SafetyMs));
+  Assert.IsTrue(TAtlasSnapshotPolicy.MustRead(Clean, 120, True, 10000 + TAtlasSnapshotPolicy.cSafetyMs));
 end;
 
 procedure TSnapshotPolicyTests.TickWrapAroundMustRead;

@@ -12,7 +12,7 @@ uses
 const
   /// <summary>Höchste Wartezeit in ms auf den zweiten Teil der Faltungsakkorde (#1104,
   /// bookmarks.quick.chordWait).</summary>
-  MaxQuickChordWait = 5000;
+  cMaxQuickChordWait = 5000;
 
 type
   /// <summary>Plugin-Einstellungen: Lesezeichen und Schnell-Lesezeichen.</summary>
@@ -79,8 +79,8 @@ end;
 procedure TAtlasPluginBookmarksSettings.Normalize;
 begin
   QuickBookmarkKey := EnsureRange(QuickBookmarkKey, 0, $FFFF);
-  QuickBookmarkChordWait := EnsureRange(QuickBookmarkChordWait, 0, MaxQuickChordWait);
-  QuickBookmarksScope := Choice(QuickBookmarksScope, AtlasQuickBookmarkScopes);
+  QuickBookmarkChordWait := EnsureRange(QuickBookmarkChordWait, 0, cMaxQuickChordWait);
+  QuickBookmarksScope := Choice(QuickBookmarksScope, cAtlasQuickBookmarkScopes);
 end;
 
 procedure TAtlasPluginBookmarksSettings.Exchange(const AIo: TAtlasSettingsExchange);

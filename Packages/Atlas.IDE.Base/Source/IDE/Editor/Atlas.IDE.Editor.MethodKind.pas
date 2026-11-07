@@ -20,7 +20,7 @@ uses
 type
   TAtlasIdeMethodKind = class
   public const
-    ClientCommand = 'atlas.methodKind';
+    cClientCommand = 'atlas.methodKind';
   public
     /// <summary>AArgumentsJson: Argumente der Code-Aktion ([uri, position, Umwandlung]); ASession: laufende
     /// Sitzung oder nil; AMessage: Zeile für die Meldungsansicht.</summary>

@@ -177,7 +177,7 @@ type
   /// (#765) an und beim Entladen wieder ab. Nur im Hauptthread.</summary>
   TAtlasDocIssueLinks = class
   public const
-    Prefix = 'issue:';
+    cPrefix = 'issue:';
   private class var
     FResolver: TAtlasDocIssueUrl;
   public
@@ -190,13 +190,13 @@ type
   TAtlasDocLayout = record
   public const
     /// <summary>Begründungen, die zugeklappt sichtbar sind.</summary>
-    MaxRationale = 3;
+    cMaxRationale = 3;
     /// <summary>Tabellen: Spalte der Begriffe höchstens so viel Prozent der Breite.</summary>
-    TermColumnPercent = 45;
+    cTermColumnPercent = 45;
     /// <summary>Parameter: Namens- und Typspalte höchstens so viel Prozent der Breite.</summary>
-    NameColumnPercent = 30;
-    TypeColumnPercent = 35;
-    Separator = ' · ';
+    cNameColumnPercent = 30;
+    cTypeColumnPercent = 35;
+    cSeparator = ' · ';
   public
     Lines: TArray<TAtlasDocLine>;
     Links: TArray<TAtlasDocLink>;
@@ -436,11 +436,11 @@ end;
 class function TAtlasDocIssueLinks.Url(const ATarget: string): string;
 begin
   Result := '';
-  if not ATarget.StartsWith(Prefix, True) or not Assigned(FResolver) then
+  if not ATarget.StartsWith(cPrefix, True) or not Assigned(FResolver) then
   begin
     Exit;
   end;
-  Result := FResolver(Copy(ATarget, Length(Prefix) + 1, MaxInt));
+  Result := FResolver(Copy(ATarget, Length(cPrefix) + 1, MaxInt));
   // Nur Web-Adressen, wie beim Öffnen aus „Meine Issues“.
   if not (Result.StartsWith('https://', True) or Result.StartsWith('http://', True)) then
   begin

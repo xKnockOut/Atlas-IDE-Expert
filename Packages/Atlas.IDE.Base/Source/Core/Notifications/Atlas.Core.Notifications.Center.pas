@@ -28,9 +28,9 @@ type
 
   TAtlasNotificationCenter = class(TInterfacedObject, IAtlasNotificationCenter)
   public const
-    DefaultMaxEntries = 200;
-    MinEntries = 10;
-    MaxMaxEntries = 1000;
+    cDefaultMaxEntries = 200;
+    cMinEntries = 10;
+    cMaxMaxEntries = 1000;
   private type
     TEntry = class(TInterfacedObject, IAtlasNotification)
     private
@@ -219,7 +219,7 @@ begin
   FItems := TList<IAtlasNotification>.Create;
   FModes := TDictionary<string, TAtlasNotificationMode>.Create;
   FListeners := TDictionary<Integer, TProc>.Create;
-  FMaxEntries := DefaultMaxEntries;
+  FMaxEntries := cDefaultMaxEntries;
   FEnabled := True;
 end;
 
@@ -678,7 +678,7 @@ begin
   FLock.Enter;
   try
     mBefore := FItems.Count;
-    FMaxEntries := EnsureRange(AValue, MinEntries, MaxMaxEntries);
+    FMaxEntries := EnsureRange(AValue, cMinEntries, cMaxMaxEntries);
     TrimTo(FItems, FMaxEntries);
     if FItems.Count = mBefore then
     begin

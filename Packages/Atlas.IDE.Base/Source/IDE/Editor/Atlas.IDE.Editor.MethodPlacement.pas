@@ -131,7 +131,7 @@ begin
   FPolicy := APolicy;
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
-  FTimer.Interval := TAtlasMethodPlacement.DelayMs;
+  FTimer.Interval := TAtlasMethodPlacement.cDelayMs;
   FTimer.OnTimer := TimerTick;
   Snapshot;
 end;
@@ -307,7 +307,7 @@ var
   mAnswer: TJSONValue;
 begin
   ASession.Sync(AFileName, AText);
-  mAnswer := ASession.RunCommand(TAtlasMethodPlacement.Command, AArguments, ATimeoutMs);
+  mAnswer := ASession.RunCommand(TAtlasMethodPlacement.cCommand, AArguments, ATimeoutMs);
   try
     TAtlasMethodPlacement.Read(mAnswer, Result);
   finally

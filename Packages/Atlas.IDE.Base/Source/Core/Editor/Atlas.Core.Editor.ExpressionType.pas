@@ -117,10 +117,10 @@ type
 
   TAtlasExpressionType = class
   public const
-    Command = 'atlas.server.expressionType';
+    cCommand = 'atlas.server.expressionType';
     /// <summary>Strg+Umschalt+T.</summary>
-    DefaultKey = $6054;
-    ErrorNoExpression = 'noExpression';
+    cDefaultKey = $6054;
+    cErrorNoExpression = 'noExpression';
   public
     /// <summary>[uri, {start, end}, {expand, conversions, constValue}].</summary>
     class function Arguments(const AUri: string; const ARange: TLspRange; AExpand, AConversions,
@@ -280,7 +280,7 @@ begin
   begin
     mDetail := AInfo.Expression;
   end;
-  if AInfo.Error = TAtlasExpressionType.ErrorNoExpression then
+  if AInfo.Error = TAtlasExpressionType.cErrorNoExpression then
   begin
     Result := ATexts.NoExpression;
   end
@@ -422,7 +422,7 @@ begin
     Result := Result + TypeRows(AInfo, ATexts);
   end;
   // Erweitern nur, wo es einen Ausdruck gibt.
-  if (ATexts.Expand <> '') and (AInfo.Error <> ErrorNoExpression) then
+  if (ATexts.Expand <> '') and (AInfo.Error <> cErrorNoExpression) then
   begin
     Result := Result + [Row(TAtlasExpressionTypeRowKind.Hint, ATexts.Expand, False)];
   end;
@@ -445,7 +445,7 @@ end;
 
 class function TAtlasExpressionType.KeepShown(AExpand: Boolean; const AInfo: TAtlasExpressionTypeInfo): Boolean;
 begin
-  Result := AExpand and (AInfo.Error = ErrorNoExpression);
+  Result := AExpand and (AInfo.Error = cErrorNoExpression);
 end;
 
 class function TAtlasExpressionType.SpanOnLine(const ARange: TLspRange; ALine, ALength: Integer;

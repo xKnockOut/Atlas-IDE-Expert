@@ -21,8 +21,8 @@ uses
 type
   TAtlasIdeTypeAlias = class
   public const
-    ClientCommand = 'atlas.typeAlias';
-    InlineClientCommand = 'atlas.inlineTypeAlias';
+    cClientCommand = 'atlas.typeAlias';
+    cInlineClientCommand = 'atlas.inlineTypeAlias';
   public
     /// <summary>AArgumentsJson: Argumente der Code-Aktion ([uri, position, name, reichweite]); ASession: laufende
     /// Sitzung oder nil; AMessage: Zeile für die Meldungsansicht.</summary>

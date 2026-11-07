@@ -17,13 +17,13 @@ uses
 type
   TAtlasCompletionMatcher = class
   public const
-    NoMatch = -1;
-    ScoreExact = 1000;
-    ScorePrefixCase = 900;
-    ScorePrefix = 800;
-    ScoreWordStarts = 600;
-    ScoreSubstring = 400;
-    ScoreSubsequence = 200;
+    cNoMatch = -1;
+    cScoreExact = 1000;
+    cScorePrefixCase = 900;
+    cScorePrefix = 800;
+    cScoreWordStarts = 600;
+    cScoreSubstring = 400;
+    cScoreSubsequence = 200;
   public
     /// <summary>Punktzahl von AName für APattern; NoMatch, wenn er nicht passt. Leeres Muster passt immer.</summary>
     class function Score(const APattern, AName: string): Integer; static;
@@ -140,39 +140,39 @@ class function TAtlasCompletionMatcher.Score(const APattern, AName: string): Int
 begin
   if APattern = '' then
   begin
-    Exit(ScoreSubsequence);
+    Exit(cScoreSubsequence);
   end;
   if Length(APattern) > Length(AName) then
   begin
-    Exit(NoMatch);
+    Exit(cNoMatch);
   end;
   if SameText(APattern, AName) then
   begin
-    Result := ScoreExact;
+    Result := cScoreExact;
   end
   else if AName.StartsWith(APattern) then
   begin
-    Result := ScorePrefixCase;
+    Result := cScorePrefixCase;
   end
   else if AName.StartsWith(APattern, True) then
   begin
-    Result := ScorePrefix;
+    Result := cScorePrefix;
   end
   else if TTextFuzzy.MatchesWordStarts(APattern, AName) then
   begin
-    Result := ScoreWordStarts;
+    Result := cScoreWordStarts;
   end
   else if AName.ToUpper.Contains(APattern.ToUpper) then
   begin
-    Result := ScoreSubstring;
+    Result := cScoreSubstring;
   end
   else if TTextFuzzy.MatchesBoundedSubsequence(APattern, AName) then
   begin
-    Result := ScoreSubsequence;
+    Result := cScoreSubsequence;
   end
   else
   begin
-    Result := NoMatch;
+    Result := cNoMatch;
   end;
 end;
 
@@ -198,7 +198,7 @@ begin
       begin
         mScores[mIndex] := Score(APattern, mItems[mIndex].Name);
       end;
-      if mScores[mIndex] <> NoMatch then
+      if mScores[mIndex] <> cNoMatch then
       begin
         mMatches.Add(mIndex);
       end;

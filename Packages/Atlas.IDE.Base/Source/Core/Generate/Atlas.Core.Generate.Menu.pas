@@ -94,7 +94,7 @@ type
   /// <summary>Zuletzt gewählte Einträge, neueste zuerst (höchstens MaxCount).</summary>
   TAtlasGenerateRecent = class
   public const
-    MaxCount = 20;
+    cMaxCount = 20;
   private
     FIds: TArray<string>;
   public
@@ -120,8 +120,8 @@ type
 
   TAtlasGenerateMenu = class
   public const
-    RecentCount = 3;
-    NoMatch = -1;
+    cRecentCount = 3;
+    cNoMatch = -1;
   public
     /// <summary>Punktzahl von AEntry für APattern (Beschriftung oder Name, "/" vorn egal); NoMatch, wenn nichts
     /// passt. Leeres Muster passt immer.</summary>
@@ -315,9 +315,9 @@ begin
     Delete(FIds, mIndex, 1);
   end;
   Insert(AId, FIds, 0);
-  if Length(FIds) > MaxCount then
+  if Length(FIds) > cMaxCount then
   begin
-    SetLength(FIds, MaxCount);
+    SetLength(FIds, cMaxCount);
   end;
 end;
 
@@ -343,7 +343,7 @@ begin
   FIds := nil;
   for mLine in TTextLines.SplitLines(AText) do
   begin
-    if (Trim(mLine) <> '') and (IndexText(Trim(mLine), FIds) < 0) and (Length(FIds) < MaxCount) then
+    if (Trim(mLine) <> '') and (IndexText(Trim(mLine), FIds) < 0) and (Length(FIds) < cMaxCount) then
     begin
       FIds := FIds + [Trim(mLine)];
     end;
@@ -372,9 +372,9 @@ begin
   end;
   Result := Max(TAtlasCompletionMatcher.Score(mPattern, AEntry.Caption),
     TAtlasCompletionMatcher.Score(mPattern, AEntry.Name));
-  if Result = TAtlasCompletionMatcher.NoMatch then
+  if Result = TAtlasCompletionMatcher.cNoMatch then
   begin
-    Result := NoMatch;
+    Result := cNoMatch;
   end;
 end;
 
@@ -411,7 +411,7 @@ begin
   SetLength(Result.InRecent, Length(AEntries));
   for mIndex := 0 to High(AEntries) do
   begin
-    Result.Scores[mIndex] := TAtlasGenerateMenu.NoMatch;
+    Result.Scores[mIndex] := TAtlasGenerateMenu.cNoMatch;
     if not AOptions.IsHidden(AEntries[mIndex]) and AOptions.HasGroup(AEntries[mIndex].Group) then
     begin
       Result.Scores[mIndex] := TAtlasGenerateMenu.Score(AEntries[mIndex], APattern);
@@ -426,7 +426,7 @@ begin
   Result := nil;
   for mIndex := 0 to High(Entries) do
   begin
-    if (Scores[mIndex] = TAtlasGenerateMenu.NoMatch) or (ARecent.Rank(Entries[mIndex].Id) < 0) then
+    if (Scores[mIndex] = TAtlasGenerateMenu.cNoMatch) or (ARecent.Rank(Entries[mIndex].Id) < 0) then
     begin
       Continue;
     end;
@@ -441,9 +441,9 @@ begin
       Dec(mOther);
     end;
   end;
-  if Length(Result) > TAtlasGenerateMenu.RecentCount then
+  if Length(Result) > TAtlasGenerateMenu.cRecentCount then
   begin
-    SetLength(Result, TAtlasGenerateMenu.RecentCount);
+    SetLength(Result, TAtlasGenerateMenu.cRecentCount);
   end;
   for mIndex in Result do
   begin
@@ -458,7 +458,7 @@ begin
   Result := nil;
   for mIndex := 0 to High(Entries) do
   begin
-    if (Entries[mIndex].Group = AGroup) and (Scores[mIndex] <> TAtlasGenerateMenu.NoMatch) and
+    if (Entries[mIndex].Group = AGroup) and (Scores[mIndex] <> TAtlasGenerateMenu.cNoMatch) and
       not InRecent[mIndex] then
     begin
       Result := Result + [mIndex];
@@ -610,7 +610,7 @@ begin
     begin
       mScores[mIndex] := TAtlasCompletionMatcher.Score(Trim(APattern), AChoices[mIndex]);
     end;
-    if mScores[mIndex] = TAtlasCompletionMatcher.NoMatch then
+    if mScores[mIndex] = TAtlasCompletionMatcher.cNoMatch then
     begin
       Continue;
     end;

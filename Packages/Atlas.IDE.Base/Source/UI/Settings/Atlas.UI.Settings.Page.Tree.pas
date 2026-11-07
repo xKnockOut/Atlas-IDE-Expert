@@ -309,7 +309,7 @@ begin
     mText := FNodePages[mPage].Caption;
     if FMarks.HasMarked(FNodePages[mPage].Box) then
     begin
-      mText := TAtlasSettingsMarks.Dot + mText;
+      mText := TAtlasSettingsMarks.cDot + mText;
     end;
     if mNode.Text <> mText then
     begin

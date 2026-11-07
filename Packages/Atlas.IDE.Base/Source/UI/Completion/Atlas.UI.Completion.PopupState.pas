@@ -115,11 +115,11 @@ type
 
   TAtlasCompletionPopupState = class(TAtlasPopupWindow)
   public const
-    DefaultVisibleRows = 9;
-    MinWidth = TAtlasPopupWidth.MinListWidth;
-    MaxWidth = TAtlasPopupWidth.MaxListWidth;
-    DefaultPanelWidth = 320;
-    CollapsedPanelWidth = 22;
+    cDefaultVisibleRows = 9;
+    cMinWidth = TAtlasPopupWidth.cMinListWidth;
+    cMaxWidth = TAtlasPopupWidth.cMaxListWidth;
+    cDefaultPanelWidth = 320;
+    cCollapsedPanelWidth = 22;
   protected const
     /// <summary>Platz für das Kontrollkästchen im Mengenmodus (#448): Rand 7, Kästchen 13, Abstand 6.</summary>
     cCheckWidth = 19;
@@ -189,8 +189,8 @@ const
 constructor TAtlasCompletionPopupState.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  SetAccessible(UiaListControlType, TAtlasStrings.Text(TAtlasTextId.AccessCompletion));
-  FVisibleRows := DefaultVisibleRows;
+  SetAccessible(cUiaListControlType, TAtlasStrings.Text(TAtlasTextId.AccessCompletion));
+  FVisibleRows := cDefaultVisibleRows;
   FSelected := -1;
   FRestFrom := -1;
   FDetailView := TAtlasDetailView.Create;
@@ -199,7 +199,7 @@ begin
   FTipTimer := TTimer.Create(Self);
   FTipTimer.Enabled := False;
   FTipTimer.Interval := cTipDelayMs;
-  FPanel.Width := DefaultPanelWidth;
+  FPanel.Width := cDefaultPanelWidth;
   FOptions.SelectionMarker := True;
   FOptions.ShowVariantBranch := True;
 end;

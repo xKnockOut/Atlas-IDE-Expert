@@ -10,21 +10,21 @@ uses
   Atlas.Core.Settings.Plugin.Store;
 
 const
-  MinHangThreshold = 100;
-  MaxHangThreshold = 10000;
-  /// <summary>Wie TAtlasTimeLimit.MinMs/MaxMs (#493).</summary>
-  MinProviderTimeLimit = 50;
-  MaxProviderTimeLimit = 5000;
+  cMinHangThreshold = 100;
+  cMaxHangThreshold = 10000;
+  /// <summary>Wie TAtlasTimeLimit.cMinMs/MaxMs (#493).</summary>
+  cMinProviderTimeLimit = 50;
+  cMaxProviderTimeLimit = 5000;
   /// <summary>Speichergrenze des Symbolindex im Server (#492); 0 = unbegrenzt.</summary>
-  MaxMemoryBudgetMb = 65536;
+  cMaxMemoryBudgetMb = 65536;
   /// <summary>Grenzen für safeMode.startupTimeoutMs und safeMode.keepSettingsHistory (#722).</summary>
-  MinSafeStartupTimeout = 1000;
-  MaxSafeStartupTimeout = 120000;
-  MaxSafeSettingsHistory = 50;
-  /// <summary>Grenzen für notifications.maxEntries (#601); wie TAtlasNotificationCenter.MinEntries/MaxMaxEntries
+  cMinSafeStartupTimeout = 1000;
+  cMaxSafeStartupTimeout = 120000;
+  cMaxSafeSettingsHistory = 50;
+  /// <summary>Grenzen für notifications.maxEntries (#601); wie TAtlasNotificationCenter.cMinEntries/MaxMaxEntries
   /// (Test prüft Gleichheit).</summary>
-  MinNotificationEntries = 10;
-  MaxNotificationEntries = 1000;
+  cMinNotificationEntries = 10;
+  cMaxNotificationEntries = 1000;
 
 type
   /// <summary>Plugin-Einstellungen: Server, Index, sicherer Modus, Architektur und Hotspots.</summary>
@@ -252,15 +252,15 @@ end;
 procedure TAtlasPluginGeneralServerSettings.Normalize;
 begin
   DiagnosticSlowMs := EnsureRange(DiagnosticSlowMs, 1, 1000);
-  HangThresholdMs := EnsureRange(HangThresholdMs, MinHangThreshold, MaxHangThreshold);
-  ProviderTimeLimitMs := EnsureRange(ProviderTimeLimitMs, MinProviderTimeLimit, MaxProviderTimeLimit);
-  MemoryBudgetMb := EnsureRange(MemoryBudgetMb, 0, MaxMemoryBudgetMb);
+  HangThresholdMs := EnsureRange(HangThresholdMs, cMinHangThreshold, cMaxHangThreshold);
+  ProviderTimeLimitMs := EnsureRange(ProviderTimeLimitMs, cMinProviderTimeLimit, cMaxProviderTimeLimit);
+  MemoryBudgetMb := EnsureRange(MemoryBudgetMb, 0, cMaxMemoryBudgetMb);
   ArchitectureScope := Choice(ArchitectureScope, ['projectGroup', 'project']);
   ArchitectureCentralUnits := EnsureRange(ArchitectureCentralUnits, 5, 100);
   HotspotsMonths := EnsureRange(HotspotsMonths, 1, 60);
   HotspotsCouplingMinCommits := EnsureRange(HotspotsCouplingMinCommits, 2, 1000);
-  SafeStartupTimeoutMs := EnsureRange(SafeStartupTimeoutMs, MinSafeStartupTimeout, MaxSafeStartupTimeout);
-  SafeKeepSettingsHistory := EnsureRange(SafeKeepSettingsHistory, 0, MaxSafeSettingsHistory);
+  SafeStartupTimeoutMs := EnsureRange(SafeStartupTimeoutMs, cMinSafeStartupTimeout, cMaxSafeStartupTimeout);
+  SafeKeepSettingsHistory := EnsureRange(SafeKeepSettingsHistory, 0, cMaxSafeSettingsHistory);
   SafeStartupKey := LowerCase(Trim(SafeStartupKey));
   if (SafeStartupKey <> 'shift') and (SafeStartupKey <> 'ctrl') and (SafeStartupKey <> 'none') then
   begin
@@ -368,7 +368,7 @@ begin
     ShortcutTipsScope := 'all';
   end;
   NotificationsSources := TAtlasNotificationSources.Normalize(NotificationsSources);
-  NotificationsMaxEntries := EnsureRange(NotificationsMaxEntries, MinNotificationEntries, MaxNotificationEntries);
+  NotificationsMaxEntries := EnsureRange(NotificationsMaxEntries, cMinNotificationEntries, cMaxNotificationEntries);
   SettingsExportSecrets := Choice(SettingsExportSecrets, ['omit', 'placeholder']);
   UpdatesInstall := Choice(UpdatesInstall, ['ask', 'off', 'auto']);
   UpdatesChannel := Choice(UpdatesChannel, ['stable', 'prerelease']);

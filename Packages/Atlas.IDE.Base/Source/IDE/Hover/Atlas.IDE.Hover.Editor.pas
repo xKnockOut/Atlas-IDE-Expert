@@ -95,7 +95,7 @@ type
     end;
   public const
     /// <summary>Nach Vervollständigung (0) und Parameter-Hint (10).</summary>
-    KeyPriority = 20;
+    cKeyPriority = 20;
   private
     FEvents: TEvents;
     FEventsRef: INTACodeEditorEvents;
@@ -182,7 +182,7 @@ end;
 
 constructor TAtlasEditorHover.THoverKeys.Create(AOwner: TAtlasEditorHover);
 begin
-  inherited Create(KeyPriority);
+  inherited Create(cKeyPriority);
   FOwner := AOwner;
 end;
 
@@ -255,11 +255,11 @@ begin
   FWorkers := TList<TThread>.Create;
   FShowTimer := TTimer.Create(nil);
   FShowTimer.Enabled := False;
-  FShowTimer.Interval := TAtlasCloseRules.TooltipShowDelayMs;
+  FShowTimer.Interval := TAtlasCloseRules.cTooltipShowDelayMs;
   FShowTimer.OnTimer := ShowTimerTick;
   FHideTimer := TTimer.Create(nil);
   FHideTimer.Enabled := False;
-  FHideTimer.Interval := TAtlasCloseRules.TooltipHideDelayMs;
+  FHideTimer.Interval := TAtlasCloseRules.cTooltipHideDelayMs;
   FHideTimer.OnTimer := HideTimerTick;
   FWatchTimer := TTimer.Create(nil);
   FWatchTimer.Enabled := False;

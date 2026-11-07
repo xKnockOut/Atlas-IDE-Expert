@@ -103,7 +103,7 @@ type
   public
     /// <summary>So lange wartet Add auf einen anderen Prozess, der gerade schreibt; danach schreibt es trotzdem.
     /// </summary>
-    const LockTimeoutMs = 2000;
+    const cLockTimeoutMs = 2000;
     constructor Create(const AFolder: string; AMaxBytes: Int64; AMaxFiles: Integer); overload;
     /// <summary>Wie oben mit AMaxFiles = 5.</summary>
     constructor Create(const AFolder: string; AMaxBytes: Int64); overload;
@@ -135,12 +135,12 @@ type
 
   TAtlasFuse = class
   public const
-    Limit = 3;
-    WindowMinutes = 5;
+    cLimit = 3;
+    cWindowMinutes = 5;
     /// <summary>Derselbe Fehler eines Features so kurz nach dem zuletzt gezählten zählt nicht erneut.</summary>
-    RepeatMs = 1000;
+    cRepeatMs = 1000;
     /// <summary>Langsame Quelle: höchstens eine Protokollzeile je Quelle in diesem Abstand.</summary>
-    SlowLogSeconds = 60;
+    cSlowLogSeconds = 60;
   private
     FFailures: array[TAtlasFeature] of TArray<TDateTime>;
     // Zuletzt gezählter Fehler je Feature (Schlüssel, Zeit) und übergangene Wiederholungen seitdem.
@@ -222,7 +222,7 @@ type
     class function FailureKey(AE: Exception): string; static;
   public
     /// <summary>Höchstlänge einer Fehlermeldung im Protokoll; mehr könnte Quelltext enthalten.</summary>
-    const MaxMessageLength = 300;
+    const cMaxMessageLength = 300;
     class constructor Create;
     class destructor Destroy;
     /// <summary>Führt AProc geschützt aus; False bei Fehler oder abgeschaltetem Feature.</summary>
@@ -449,7 +449,7 @@ begin
     mLock := TMutex.Create(nil, False, MutexName(FFolder));
     try
       // Abgebrochen heißt: Ein anderer Prozess endete beim Schreiben; die Sperre gehört dann uns.
-      mOwned := mLock.WaitFor(LockTimeoutMs) in [wrSignaled, wrAbandoned];
+      mOwned := mLock.WaitFor(cLockTimeoutMs) in [wrSignaled, wrAbandoned];
       try
         WriteLocked(ALine);
       finally
@@ -547,14 +547,14 @@ begin
   mRecent := nil;
   for mStamp in AStamps do
   begin
-    if MinutesBetween(mTime, mStamp) < WindowMinutes then
+    if MinutesBetween(mTime, mStamp) < cWindowMinutes then
     begin
       mRecent := mRecent + [mStamp];
     end;
   end;
   mRecent := mRecent + [mTime];
   AStamps := mRecent;
-  Result := Length(mRecent) >= Limit;
+  Result := Length(mRecent) >= cLimit;
 end;
 
 function TAtlasFuse.Failed(AFeature: TAtlasFeature): Boolean;
@@ -579,7 +579,7 @@ begin
     // Fester Abstand ab dem zuletzt gezählten, nicht gleitend: Ein Fehler, der bei jedem Zeichnen kommt, zählt so
     // einmal je RepeatMs und löst die Sicherung weiterhin aus.
     if (AKey <> '') and (AKey = FLastKey[AFeature]) and
-      (MilliSecondsBetween(mTime, FLastCounted[AFeature]) < RepeatMs) then
+      (MilliSecondsBetween(mTime, FLastCounted[AFeature]) < cRepeatMs) then
     begin
       ARepeat := True;
       Inc(FRepeats[AFeature]);
@@ -644,7 +644,7 @@ begin
     begin
       ASkipped := 0;
     end;
-    Result := not FSlowLogged.TryGetValue(mKey, mLogged) or (SecondsBetween(mTime, mLogged) >= SlowLogSeconds);
+    Result := not FSlowLogged.TryGetValue(mKey, mLogged) or (SecondsBetween(mTime, mLogged) >= cSlowLogSeconds);
     if Result then
     begin
       FSlowLogged.AddOrSetValue(mKey, mTime);
@@ -864,9 +864,9 @@ begin
   finally
     mBuilder.Free;
   end;
-  if Length(Result) > MaxMessageLength then
+  if Length(Result) > cMaxMessageLength then
   begin
-    Result := Copy(Result, 1, MaxMessageLength) + '…';
+    Result := Copy(Result, 1, cMaxMessageLength) + '…';
   end;
 end;
 
@@ -874,7 +874,7 @@ class function TAtlasGuard.ErrorLine(const AWhere: string; AE: Exception): strin
 var
   mTrace: string;
 begin
-  Result := Format('Atlas %s · Fehler in %s: %s', [TAtlasPluginVersion.Version, AWhere, ErrorText(AE)]);
+  Result := Format('Atlas %s · Fehler in %s: %s', [TAtlasPluginVersion.cVersion, AWhere, ErrorText(AE)]);
   // E.StackTrace nur mit installiertem Anbieter (JCL, madExcept); sonst der Mitschnitt des Plugins.
   mTrace := Trim(AE.StackTrace);
   if (mTrace = '') and Assigned(FStackOf) then
@@ -953,7 +953,7 @@ begin
   begin
     Exit;
   end;
-  Warn(Format(UiText(TGuardText.FeatureTripped), [FeatureName(AFeature), TAtlasFuse.Limit, TAtlasFuse.WindowMinutes,
+  Warn(Format(UiText(TGuardText.FeatureTripped), [FeatureName(AFeature), TAtlasFuse.cLimit, TAtlasFuse.cWindowMinutes,
     TLogMarks.Text(SafeMessage(AE.Message))]));
   mTripped := FOnTripped;
   if Assigned(mTripped) then
@@ -969,7 +969,7 @@ begin
   Log(ErrorLine('Quelle ' + AName, AE));
   if (FFuse <> nil) and FFuse.ProviderFailed(AName) then
   begin
-    Warn(Format(UiText(TGuardText.SourceTripped), [AName, TAtlasFuse.Limit, TAtlasFuse.WindowMinutes,
+    Warn(Format(UiText(TGuardText.SourceTripped), [AName, TAtlasFuse.cLimit, TAtlasFuse.cWindowMinutes,
       TLogMarks.Text(SafeMessage(AE.Message))]));
   end;
 end;

@@ -106,15 +106,15 @@ begin
   FRowsLabel.Top := 5;
   FRows := TEdit.Create(FPage);
   FRows.Parent := mPanel;
-  FRows.Left := FieldLeft;
+  FRows.Left := cFieldLeft;
   FRows.Top := 1;
   FRows.Width := 44;
   FRows.NumbersOnly := True;
   FRowsUpDown := TUpDown.Create(FPage);
   FRowsUpDown.Parent := mPanel;
   FRowsUpDown.Associate := FRows;
-  FRowsUpDown.Min := TAtlasPluginSettings.MinVisibleRows;
-  FRowsUpDown.Max := TAtlasPluginSettings.MaxVisibleRows;
+  FRowsUpDown.Min := TAtlasPluginSettings.cMinVisibleRows;
+  FRowsUpDown.Max := TAtlasPluginSettings.cMaxVisibleRows;
   FAutoWidth := AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsAutoWidth));
   FAutoWidth.OnClick := AutoWidthClick;
   BindText('OpenDelayMs', AddNumber(TAtlasStrings.Text(TAtlasTextId.SettingsOpenDelay)));
@@ -180,11 +180,11 @@ begin
   ASettings.VisibleRows := FRowsUpDown.Position;
   if (FListMode.Choice >= Ord(Low(TAtlasListMode))) and (FListMode.Choice <= Ord(High(TAtlasListMode))) then
   begin
-    ASettings.CompletionListMode := TAtlasListModes.ModeNames[TAtlasListMode(FListMode.Choice)];
+    ASettings.CompletionListMode := TAtlasListModes.cModeNames[TAtlasListMode(FListMode.Choice)];
   end;
   if (FListScope.Choice >= Ord(Low(TAtlasListScope))) and (FListScope.Choice <= Ord(High(TAtlasListScope))) then
   begin
-    ASettings.CompletionListScope := TAtlasListModes.ScopeNames[TAtlasListScope(FListScope.Choice)];
+    ASettings.CompletionListScope := TAtlasListModes.cScopeNames[TAtlasListScope(FListScope.Choice)];
   end;
 end;
 
@@ -197,7 +197,7 @@ begin
   end
   else if FListWidth = 0 then
   begin
-    FListWidth := TAtlasPluginSettings.MinListWidth + 160;
+    FListWidth := TAtlasPluginSettings.cMinListWidth + 160;
   end;
 end;
 

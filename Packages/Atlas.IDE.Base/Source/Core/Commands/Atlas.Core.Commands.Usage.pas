@@ -89,13 +89,13 @@ type
   /// <summary>Dateinamen, Format und Hilfen der Befehlsnutzung; Grundlage von TAtlasCommandUsage.</summary>
   TAtlasCommandUsageFormat = class
   public const
-    FormatVersion = 1;
+    cFormatVersion = 1;
     /// <summary>Zustand der Tipps (#600) und Abschnitte wie "discover" (#757).</summary>
-    FileName = 'shortcut-tips.json';
+    cFileName = 'shortcut-tips.json';
     /// <summary>Zählung je Befehl (#757): nur Kennung, Zähler, Datum.</summary>
-    UsageFileName = 'usage.json';
+    cUsageFileName = 'usage.json';
     /// <summary>Ab so vielen Aufrufen insgesamt gilt „selten per Tastatur“.</summary>
-    RarelyMinUses = 3;
+    cRarelyMinUses = 3;
   public
     /// <summary>Selten per Tastatur: mindestens RarelyMinUses Aufrufe, davon weniger als ein Viertel über das
     /// Kürzel.</summary>
@@ -230,7 +230,7 @@ var
   mTotal: Integer;
 begin
   mTotal := AMouse + AKeyboard;
-  Result := (mTotal >= RarelyMinUses) and (AKeyboard * 4 < mTotal);
+  Result := (mTotal >= cRarelyMinUses) and (AKeyboard * 4 < mTotal);
 end;
 
 { JSON-Helfer }
@@ -328,7 +328,7 @@ begin
   end;
   mRoot := ParseObject(ReadText(AFileName));
   try
-    Result := (mRoot <> nil) and (NumberOf(mRoot, 'format') > TAtlasCommandUsage.FormatVersion);
+    Result := (mRoot <> nil) and (NumberOf(mRoot, 'format') > TAtlasCommandUsage.cFormatVersion);
   finally
     mRoot.Free;
   end;
@@ -370,12 +370,12 @@ end;
 
 class function TAtlasCommandUsageFormat.DefaultFile(const ALocalAppData: string): string;
 begin
-  Result := IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ALocalAppData) + 'Atlas') + FileName;
+  Result := IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ALocalAppData) + 'Atlas') + cFileName;
 end;
 
 class function TAtlasCommandUsageFormat.DefaultUsageFile(const ALocalAppData: string): string;
 begin
-  Result := IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ALocalAppData) + 'Atlas') + UsageFileName;
+  Result := IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ALocalAppData) + 'Atlas') + cUsageFileName;
 end;
 
 class function TAtlasCommandUsageFormat.TimeText(ATime: TDateTime): string;
@@ -539,7 +539,7 @@ begin
     begin
       Exit;
     end;
-    if NumberOf(mRoot, 'format') > FormatVersion then
+    if NumberOf(mRoot, 'format') > cFormatVersion then
     begin
       // Eine neuere Fassung hat geschrieben: nichts lesen, nichts überschreiben.
       FWritable := False;
@@ -587,7 +587,7 @@ var
 begin
   mRoot := TJSONObject.Create;
   try
-    mRoot.AddPair('format', TJSONNumber.Create(FormatVersion));
+    mRoot.AddPair('format', TJSONNumber.Create(cFormatVersion));
     mCommands := TJSONObject.Create;
     mRoot.AddPair('commands', mCommands);
     for mEntry in Entries do
@@ -630,7 +630,7 @@ begin
     begin
       Exit;
     end;
-    if NumberOf(mRoot, 'format') > FormatVersion then
+    if NumberOf(mRoot, 'format') > cFormatVersion then
     begin
       // Neuere Fassung: Zähler nicht lesen und usage.json nicht überschreiben.
       FCountsWritable := False;
@@ -672,7 +672,7 @@ var
 begin
   mRoot := TJSONObject.Create;
   try
-    mRoot.AddPair('format', TJSONNumber.Create(FormatVersion));
+    mRoot.AddPair('format', TJSONNumber.Create(cFormatVersion));
     mCommands := TJSONObject.Create;
     mRoot.AddPair('commands', mCommands);
     // Nur Befehlskennung, Zähler und Datum (#757): keine Dateinamen, kein Code.

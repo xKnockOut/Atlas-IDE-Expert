@@ -17,7 +17,7 @@ uses
 
 const
   // Linke Kante der Eingabefelder; Platz für die längste Beschriftung („Breite der Blocklinien …“).
-  FieldLeft = 280;
+  cFieldLeft = 280;
   /// <summary>Oberkante der Knöpfe in einer Zeile der Seite.</summary>
   cRowButtonTop = 3;
 
@@ -198,7 +198,7 @@ begin
   mCaption.Top := 5;
   Result := TAtlasChoiceBox.Create(Self);
   Result.Parent := mPanel;
-  Result.Left := FieldLeft;
+  Result.Left := cFieldLeft;
   Result.Top := 1;
   Result.Width := 180;
   Result.SetChoices(AItems);
@@ -242,7 +242,7 @@ begin
   // Als Text wie im Menü ("Strg+Umschalt+P"); leer = keine Taste.
   Result := TEdit.Create(Self);
   Result.Parent := mPanel;
-  Result.Left := FieldLeft;
+  Result.Left := cFieldLeft;
   Result.Top := 1;
   Result.Width := 140;
 end;
@@ -260,7 +260,7 @@ begin
   mCaption.Top := 5;
   Result := TEdit.Create(Self);
   Result.Parent := mPanel;
-  Result.Left := FieldLeft;
+  Result.Left := cFieldLeft;
   Result.Top := 1;
   Result.Width := 60;
   Result.NumbersOnly := True;

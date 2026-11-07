@@ -28,7 +28,7 @@ uses
 type
   TAtlasIndexSnapshot = record
   public const
-    FormatVersion = 1;
+    cFormatVersion = 1;
   public
     /// <summary>Units im Index; -1 = unbekannt.</summary>
     Units: Integer;
@@ -64,7 +64,7 @@ type
 
   TAtlasIndexStore = class
   public const
-    FileName = 'index-state.json';
+    cFileName = 'index-state.json';
   public
     /// <summary>%LOCALAPPDATA%\Atlas\index-state.json.</summary>
     class function DefaultFile: string; static;
@@ -138,7 +138,7 @@ var
 begin
   mRoot := TJSONObject.Create;
   try
-    mRoot.AddPair('format', TJSONNumber.Create(FormatVersion));
+    mRoot.AddPair('format', TJSONNumber.Create(cFormatVersion));
     mRoot.AddPair('units', TJSONNumber.Create(Units));
     if FullAt > 0 then
     begin
@@ -173,7 +173,7 @@ begin
       Exit;
     end;
     mRoot := TJSONObject(mValue);
-    if not ReadInteger(mRoot, 'format', mNumber) or (mNumber <> FormatVersion) then
+    if not ReadInteger(mRoot, 'format', mNumber) or (mNumber <> cFormatVersion) then
     begin
       Exit;
     end;
@@ -267,7 +267,7 @@ end;
 
 class function TAtlasIndexStore.DefaultFile: string;
 begin
-  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), FileName);
+  Result := TPath.Combine(TPath.Combine(GetEnvironmentVariable('LOCALAPPDATA'), 'Atlas'), cFileName);
 end;
 
 class function TAtlasIndexStore.Load(const AFileName: string): TAtlasIndexSnapshot;

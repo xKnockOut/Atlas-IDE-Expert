@@ -116,7 +116,7 @@ end;
 class function TAtlasIdeBugReport.Collect: TAtlasBugReportInput;
 begin
   Result := Default(TAtlasBugReportInput);
-  Result.PluginVersion := TAtlasPluginVersion.Version;
+  Result.PluginVersion := TAtlasPluginVersion.cVersion;
   Result.IdeVersion := TAtlasUpdates.IdeVersion;
   {$IFDEF WIN64}
   Result.Platform := 'Win64';
@@ -131,9 +131,9 @@ begin
   Result.Settings := SettingsJson;
   Result.Experimental := TAtlasIdeSettings.ActiveExperimental;
   Result.PluginLog := TAtlasBugReport.Tail(TPath.Combine(TAtlasRotatingLog.DefaultFolder, 'atlas.log'),
-    TAtlasBugReport.LogLines);
+    TAtlasBugReport.cLogLines);
   Result.ServerErrorOutput := TAtlasBugReport.Tail(TAtlasServerExits.StderrFileName(TAtlasRotatingLog.DefaultFolder),
-    TAtlasBugReport.ErrorOutputLines);
+    TAtlasBugReport.cErrorOutputLines);
 end;
 
 class function TAtlasIdeBugReport.ReportText(const AInput: TAtlasBugReportInput; const AAnswer: TJSONValue): string;
@@ -172,7 +172,7 @@ begin
   FBusy := True;
   mMessage(TAtlasStrings.Text(TAtlasTextId.BugReportCollecting));
   try
-    AServer(TAtlasBugReport.ServerCommand, TAtlasBugReport.ServerArguments(mInput),
+    AServer(TAtlasBugReport.cServerCommand, TAtlasBugReport.ServerArguments(mInput),
       procedure(AAnswer: TJSONValue)
       begin
         FBusy := False;
@@ -204,14 +204,14 @@ begin
   end;
   if not TAtlasDiagnosticExportDialog.Execute(TAtlasExportDialogTexts.Create(
     TAtlasStrings.Text(TAtlasTextId.BugReportTitle),
-    TAtlasStrings.Fmt(TAtlasTextId.BugReportHint, [mNote, TAtlasBugReport.IssuesUrl]), mReport,
+    TAtlasStrings.Fmt(TAtlasTextId.BugReportHint, [mNote, TAtlasBugReport.cIssuesUrl]), mReport,
     TAtlasBugReport.DefaultFileName(Now), TAtlasStrings.Text(TAtlasTextId.BugReportFilter), 'md'), mTarget,
     TAtlasIdeDockWindow.ApplyIdeTheme) then
   begin
     Exit;
   end;
   TFile.WriteAllText(mTarget, mReport, TEncoding.UTF8);
-  AMessage(TAtlasStrings.Fmt(TAtlasTextId.BugReportDone, [mTarget, TAtlasBugReport.IssuesUrl]));
+  AMessage(TAtlasStrings.Fmt(TAtlasTextId.BugReportDone, [mTarget, TAtlasBugReport.cIssuesUrl]));
 end;
 
 end.

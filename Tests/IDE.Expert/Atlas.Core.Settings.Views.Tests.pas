@@ -156,13 +156,13 @@ begin
   Assert.AreEqual('errors', Settings.InlineDiagnostics, 'Unbekanntes = Vorgabe');
   Settings.BlockEndLabelsMinLines := 0;
   Settings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MinBlockEndLines, Settings.BlockEndLabelsMinLines, 'unten begrenzt');
+  Assert.AreEqual(TAtlasPluginSettings.cMinBlockEndLines, Settings.BlockEndLabelsMinLines, 'unten begrenzt');
   Settings.BlockEndLabelsMinLines := 5000;
   Settings.DebugInlineValuesPerLine := 0;
   Settings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MinInlineValuesPerLine, Settings.DebugInlineValuesPerLine,
+  Assert.AreEqual(TAtlasPluginSettings.cMinInlineValuesPerLine, Settings.DebugInlineValuesPerLine,
     'debug.inlineValuesPerLine unten begrenzt (#508)');
-  Assert.AreEqual(TAtlasPluginSettings.MaxBlockEndLines, Settings.BlockEndLabelsMinLines, 'oben begrenzt');
+  Assert.AreEqual(TAtlasPluginSettings.cMaxBlockEndLines, Settings.BlockEndLabelsMinLines, 'oben begrenzt');
   SetHideElementOptions(Settings);
   Store := TMemoryStore.Create;
   Settings.Save(Store);
@@ -324,10 +324,10 @@ begin
   Assert.AreEqual($A07B, Settings.PeekReferencesKey);
   Settings.PeekHeightLines := 2;
   Settings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MinPeekLines, Settings.PeekHeightLines);
+  Assert.AreEqual(TAtlasPluginSettings.cMinPeekLines, Settings.PeekHeightLines);
   Settings.PeekHeightLines := 1000;
   Settings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MaxPeekLines, Settings.PeekHeightLines);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxPeekLines, Settings.PeekHeightLines);
   Settings.Peek := False;
   Settings.PeekHeightLines := 20;
   Settings.PeekShowImplementation := False;
@@ -355,10 +355,10 @@ begin
   Assert.IsFalse(Settings.DataFlowExcludeTests);
   Settings.DataFlowMaxDepth := 0;
   Settings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MinDataFlowDepth, Settings.DataFlowMaxDepth);
+  Assert.AreEqual(TAtlasPluginSettings.cMinDataFlowDepth, Settings.DataFlowMaxDepth);
   Settings.DataFlowMaxDepth := 99;
   Settings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MaxDataFlowDepth, Settings.DataFlowMaxDepth);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxDataFlowDepth, Settings.DataFlowMaxDepth);
   Settings.DataFlow := False;
   Settings.DataFlowMaxDepth := 3;
   Settings.DataFlowExcludeTests := True;
@@ -464,10 +464,10 @@ begin
   Assert.AreEqual(5, Loaded.StickyScrollMaxLines);
   Loaded.StickyScrollMaxLines := 0;
   Loaded.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MinStickyLines, Loaded.StickyScrollMaxLines);
+  Assert.AreEqual(TAtlasPluginSettings.cMinStickyLines, Loaded.StickyScrollMaxLines);
   Loaded.StickyScrollMaxLines := 99;
   Loaded.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MaxStickyLines, Loaded.StickyScrollMaxLines);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxStickyLines, Loaded.StickyScrollMaxLines);
   // #1230: if/else-Blöcke an, ab 25 Zeilen; Grenzen 5 bis 1000.
   Assert.IsTrue(Settings.StickyScrollBlocks);
   Assert.AreEqual(25, Settings.StickyScrollBlockMinLines);
@@ -480,7 +480,7 @@ begin
   Assert.AreEqual(40, Loaded.StickyScrollBlockMinLines);
   Loaded.StickyScrollBlockMinLines := 1;
   Loaded.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MinStickyBlockLines, Loaded.StickyScrollBlockMinLines);
+  Assert.AreEqual(TAtlasPluginSettings.cMinStickyBlockLines, Loaded.StickyScrollBlockMinLines);
   // Was der Kopf zeigt: Typen und Routinen an, weitere Anweisungsblöcke aus; jede Art einzeln gespeichert.
   Assert.IsTrue(Settings.StickyScrollTypes and Settings.StickyScrollRoutines);
   Assert.IsFalse(Settings.StickyScrollLoops or Settings.StickyScrollTry or Settings.StickyScrollCase or
@@ -551,9 +551,9 @@ begin
   Assert.AreEqual('characters', Loaded.MinimapRender);
   Assert.AreEqual('right', Loaded.MinimapSide);
   Assert.AreEqual('always', Loaded.MinimapShowSlider);
-  Assert.AreEqual(TAtlasPluginSettings.MinMinimapWidth, Loaded.MinimapWidth);
-  Assert.AreEqual(TAtlasPluginSettings.MaxMinimapScale, Loaded.MinimapScale);
-  Assert.AreEqual(TAtlasPluginSettings.MaxMinimapColumn, Loaded.MinimapMaxColumn);
+  Assert.AreEqual(TAtlasPluginSettings.cMinMinimapWidth, Loaded.MinimapWidth);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxMinimapScale, Loaded.MinimapScale);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxMinimapColumn, Loaded.MinimapMaxColumn);
 end;
 procedure TAtlasViewSettingsTests.GutterColumnOptions;
 var
@@ -614,13 +614,13 @@ begin
   Loaded.SelectionMatchesMinLength := 0;
   Loaded.SelectionMatchesMaxMatches := 0;
   Loaded.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MinSelectionMatchLength, Loaded.SelectionMatchesMinLength);
-  Assert.AreEqual(TAtlasPluginSettings.MinSelectionMatches, Loaded.SelectionMatchesMaxMatches);
+  Assert.AreEqual(TAtlasPluginSettings.cMinSelectionMatchLength, Loaded.SelectionMatchesMinLength);
+  Assert.AreEqual(TAtlasPluginSettings.cMinSelectionMatches, Loaded.SelectionMatchesMaxMatches);
   Loaded.SelectionMatchesMinLength := 500;
   Loaded.SelectionMatchesMaxMatches := 5000000;
   Loaded.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MaxSelectionMatchLength, Loaded.SelectionMatchesMinLength);
-  Assert.AreEqual(TAtlasPluginSettings.MaxSelectionMatches, Loaded.SelectionMatchesMaxMatches);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxSelectionMatchLength, Loaded.SelectionMatchesMinLength);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxSelectionMatches, Loaded.SelectionMatchesMaxMatches);
 end;
 procedure TAtlasViewSettingsTests.ExpressionTypeOptions;
 var
@@ -779,12 +779,12 @@ begin
   Settings := TAtlasPluginSettings.Defaults;
   Assert.IsTrue(Settings.EditorDesignerBar);
   Assert.AreEqual(32988, Settings.DesignerSearchKey, 'Alt+^');
-  Assert.AreEqual(TAtlasPluginSettings.DesignerSearchWindow, Settings.DesignerSearchStyle, 'großes Fenster');
+  Assert.AreEqual(TAtlasPluginSettings.cDesignerSearchWindow, Settings.DesignerSearchStyle, 'großes Fenster');
   Assert.IsFalse(Settings.DesignerTabOrderClick, 'experimentell: aus');
   Assert.IsFalse(Settings.DesignerAlign, 'experimentell: aus');
   Settings.EditorDesignerBar := False;
   Settings.DesignerSearchKey := 0;
-  Settings.DesignerSearchStyle := TAtlasPluginSettings.DesignerSearchPopup;
+  Settings.DesignerSearchStyle := TAtlasPluginSettings.cDesignerSearchPopup;
   Settings.DesignerTabOrderClick := True;
   Settings.DesignerAlign := True;
   Store := TMemoryStore.Create;
@@ -793,12 +793,12 @@ begin
   Loaded.Load(Store);
   Assert.IsFalse(Loaded.EditorDesignerBar);
   Assert.AreEqual(0, Loaded.DesignerSearchKey, 'keine Taste');
-  Assert.AreEqual(TAtlasPluginSettings.DesignerSearchPopup, Loaded.DesignerSearchStyle);
+  Assert.AreEqual(TAtlasPluginSettings.cDesignerSearchPopup, Loaded.DesignerSearchStyle);
   Assert.IsTrue(Loaded.DesignerTabOrderClick);
   Assert.IsTrue(Loaded.DesignerAlign);
   Store.WriteString('DesignerSearchStyle', 'riesig');
   Loaded.Load(Store);
-  Assert.AreEqual(TAtlasPluginSettings.DesignerSearchWindow, Loaded.DesignerSearchStyle, 'Unbekanntes: Vorgabe');
+  Assert.AreEqual(TAtlasPluginSettings.cDesignerSearchWindow, Loaded.DesignerSearchStyle, 'Unbekanntes: Vorgabe');
 end;
 /// <summary>Schnelle Lesezeichen (#1104): Werte von der Vorgabe abweichend setzen.</summary>
 procedure SetQuickBookmarkOptions(var ASettings: TAtlasPluginSettings);
@@ -861,7 +861,7 @@ begin
   Settings.QuickBookmarksScope := 'FILE';
   Settings.QuickBookmarkKey := -1;
   Settings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MaxQuickChordWait, Settings.QuickBookmarkChordWait);
+  Assert.AreEqual(TAtlasPluginSettings.cMaxQuickChordWait, Settings.QuickBookmarkChordWait);
   Assert.AreEqual('file', Settings.QuickBookmarksScope);
   Assert.AreEqual(0, Settings.QuickBookmarkKey);
   Settings.QuickBookmarksScope := 'irgendwo';

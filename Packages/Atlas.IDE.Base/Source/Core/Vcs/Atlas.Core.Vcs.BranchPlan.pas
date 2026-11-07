@@ -98,7 +98,7 @@ type
   /// </summary>
   TAtlasVcsGitBranchOptions = record
   public const
-    DefaultWorktreeFolder = '..\{repo}-{kennung}';
+    cDefaultWorktreeFolder = '..\{repo}-{kennung}';
   public
     Base: TAtlasVcsGitBaseOption;
     /// <summary>vcs.branch.git.push = now: nach dem Anlegen pushen und verfolgen.</summary>
@@ -412,7 +412,7 @@ begin
   Result.PushNow := False;
   Result.Uncommitted := TAtlasVcsGitUncommitted.Carry;
   Result.Worktree := False;
-  Result.WorktreeFolder := DefaultWorktreeFolder;
+  Result.WorktreeFolder := cDefaultWorktreeFolder;
 end;
 
 class function TAtlasVcsGitBranchOptions.FromSettings(const ABase, APush, AUncommitted: string; AWorktree: Boolean;
@@ -441,7 +441,7 @@ begin
   Result.WorktreeFolder := Trim(AWorktreeFolder);
   if Result.WorktreeFolder = '' then
   begin
-    Result.WorktreeFolder := DefaultWorktreeFolder;
+    Result.WorktreeFolder := cDefaultWorktreeFolder;
   end;
 end;
 
@@ -1369,7 +1369,7 @@ begin
   Result := Trim(APattern);
   if Result = '' then
   begin
-    Result := TAtlasVcsGitBranchOptions.DefaultWorktreeFolder;
+    Result := TAtlasVcsGitBranchOptions.cDefaultWorktreeFolder;
   end;
   mKey := FolderPart(AKey);
   // Ohne Issue (Befehl „Branch anlegen …“) steht der Name an Stelle der Kennung.

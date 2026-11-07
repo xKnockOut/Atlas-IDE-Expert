@@ -38,7 +38,7 @@ type
 
   TAtlasTextFile = class
   public const
-    Utf8CodePage = 65001;
+    cUtf8CodePage = 65001;
   public
     /// <summary>Kodierung der Bytes und Text ohne BOM. ADefaultCodePage: Vorgabe aus atlas.json
     /// (0 oder 65001 = UTF-8, sonst eine ANSI-Codepage).</summary>
@@ -287,7 +287,7 @@ end;
 
 function IsAnsiDefault(ACodePage: Integer): Boolean;
 begin
-  Result := (ACodePage > 0) and (ACodePage <> TAtlasTextFile.Utf8CodePage);
+  Result := (ACodePage > 0) and (ACodePage <> TAtlasTextFile.cUtf8CodePage);
 end;
 
 function AnsiText(const ABytes: TBytes; ACodePage: Integer): string;

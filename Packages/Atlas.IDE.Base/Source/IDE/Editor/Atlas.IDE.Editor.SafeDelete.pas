@@ -24,7 +24,7 @@ uses
 type
   TAtlasIdeSafeDelete = class
   public const
-    ClientCommand = 'atlas.safeDelete';
+    cClientCommand = 'atlas.safeDelete';
   public
     /// <summary>AArgumentsJson: [uri, position]; ASession: laufende Sitzung oder nil; AMessage: Zeile für die
     /// Meldungsansicht.</summary>
@@ -155,7 +155,7 @@ begin
   Result := False;
   TAtlasIdeRename.SyncOpenBuffers(ASession);
   try
-    mAnswer := ASession.RunCommand(TAtlasSafeDelete.PrepareCommand, AArgumentsJson, cTimeoutMs);
+    mAnswer := ASession.RunCommand(TAtlasSafeDelete.cPrepareCommand, AArgumentsJson, cTimeoutMs);
     try
       AInfo := TAtlasSafeDeleteInfo.FromJson(mAnswer);
     finally
@@ -234,7 +234,7 @@ begin
     mTitle := TAtlasStrings.Text(TAtlasTextId.SafeDeleteCommand);
   end;
   mDeleted := 0;
-  if not TAtlasIdeServerEdit.Fetch(ASession, TAtlasServerEditCommand.Create(TAtlasSafeDelete.ApplyCommand,
+  if not TAtlasIdeServerEdit.Fetch(ASession, TAtlasServerEditCommand.Create(TAtlasSafeDelete.cApplyCommand,
     TAtlasSafeDelete.ApplyArguments(AArgumentsJson, mOverrides, mCascade, mForced), cTimeoutMs,
     TAtlasTextId.SafeDeleteFailed),
     procedure(const AReply: TJSONObject)

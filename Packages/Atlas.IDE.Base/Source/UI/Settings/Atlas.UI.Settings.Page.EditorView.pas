@@ -217,7 +217,7 @@ end;
 
 procedure TAtlasSettingsEditorViewPart.Load(const ASettings: TAtlasPluginSettings);
 begin
-  FEditorToolbarPosition.Choice := Max(0, IndexText(ASettings.EditorToolbarPosition, AtlasToolbarPositions));
+  FEditorToolbarPosition.Choice := Max(0, IndexText(ASettings.EditorToolbarPosition, cAtlasToolbarPositions));
   FEditorToolbarItems.Text := ASettings.EditorToolbarItems;
   FEditorStatusBarItems.Text := ASettings.EditorStatusBarItems;
   FStickyScrollBlockMinLines.Text := IntToStr(ASettings.StickyScrollBlockMinLines);
@@ -232,8 +232,8 @@ end;
 
 procedure TAtlasSettingsEditorViewPart.Save(var ASettings: TAtlasPluginSettings);
 begin
-  ASettings.EditorToolbarPosition := AtlasToolbarPositions[EnsureRange(FEditorToolbarPosition.Choice, 0,
-    High(AtlasToolbarPositions))];
+  ASettings.EditorToolbarPosition := cAtlasToolbarPositions[EnsureRange(FEditorToolbarPosition.Choice, 0,
+    High(cAtlasToolbarPositions))];
   ASettings.EditorToolbarItems := TAtlasToolbarItems.Normalize(FEditorToolbarItems.Text);
   ASettings.EditorStatusBarItems := TAtlasStatusBarItems.Normalize(FEditorStatusBarItems.Text);
   ASettings.StickyScrollBlockMinLines := StrToIntDef(FStickyScrollBlockMinLines.Text,
@@ -258,7 +258,7 @@ begin
   ASettings.SelectionMatchesMaxMatches := StrToIntDef(FSelectionMatchesMaxMatches.Text,
     ASettings.SelectionMatchesMaxMatches);
   ASettings.XmlDocExpand := TAtlasDocDisplay.ExpandName(TAtlasDocExpand(EnsureRange(FXmlDocExpand.Choice, 0, 2)));
-  ASettings.NestedRoutines := TAtlasRoutineNesting.StyleNames[TAtlasNestedRoutineStyle(EnsureRange(
+  ASettings.NestedRoutines := TAtlasRoutineNesting.cStyleNames[TAtlasNestedRoutineStyle(EnsureRange(
     FNestedRoutines.Choice, Ord(Low(TAtlasNestedRoutineStyle)), Ord(High(TAtlasNestedRoutineStyle))))];
 end;
 
@@ -276,15 +276,15 @@ begin
   end;
   mConfig.Items := TAtlasToolbarItems.Parse(FEditorToolbarItems.Text);
   mConfig.Labels := FEditorToolbarLabels.Checked;
-  mConfig.Position := AtlasToolbarPositions[EnsureRange(FEditorToolbarPosition.Choice, 0,
-    High(AtlasToolbarPositions))];
+  mConfig.Position := cAtlasToolbarPositions[EnsureRange(FEditorToolbarPosition.Choice, 0,
+    High(cAtlasToolbarPositions))];
   if not TAtlasToolbarCustomizeDialog.Execute(mCommands, mConfig) then
   begin
     Exit;
   end;
   FEditorToolbarItems.Text := TAtlasToolbarItems.Format(mConfig.Items);
   FEditorToolbarLabels.Checked := mConfig.Labels;
-  FEditorToolbarPosition.Choice := Max(0, IndexText(mConfig.Position, AtlasToolbarPositions));
+  FEditorToolbarPosition.Choice := Max(0, IndexText(mConfig.Position, cAtlasToolbarPositions));
 end;
 
 end.

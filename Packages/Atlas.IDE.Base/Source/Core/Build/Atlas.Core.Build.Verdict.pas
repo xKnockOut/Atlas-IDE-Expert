@@ -81,11 +81,11 @@ type
 
   TAtlasBuildVerdicts = class
   public const
-    ClassifyCommand = 'atlas.classifyCompilerMessages';
-    AddCommand = 'atlas.baselineCompilerMessages';
+    cClassifyCommand = 'atlas.classifyCompilerMessages';
+    cAddCommand = 'atlas.baselineCompilerMessages';
     /// <summary>Zeitlimit der Frage nach der Basislinie; danach zählt alles.</summary>
-    ClassifyTimeoutMs = 5000;
-    AddTimeoutMs = 30000;
+    cClassifyTimeoutMs = 5000;
+    cAddTimeoutMs = 30000;
   private type
     /// <summary>Erste Meldungen mit Datei je Art; -1 ohne.</summary>
     TFirsts = record

@@ -291,7 +291,7 @@ begin
   end;
   Source[50] := #9'Foo(1);';
   Rows := TAtlasPeek.ReferenceRows(At(50, 1), Source, 4);
-  Assert.AreEqual(TAtlasPeek.ReferenceBefore + TAtlasPeek.ReferenceAfter + 1, Integer(Length(Rows)));
+  Assert.AreEqual(TAtlasPeek.cReferenceBefore + TAtlasPeek.cReferenceAfter + 1, Integer(Length(Rows)));
   Assert.AreEqual(47, Rows[0].Line);
   Assert.IsTrue(Rows[3].Target);
   Assert.AreEqual('    Foo(1);', Rows[3].Text);

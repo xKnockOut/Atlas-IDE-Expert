@@ -52,12 +52,12 @@ type
 
   TAtlasProjectSetups = class
   public const
-    ConfigName = 'atlas.json';
-    LegacyConfigName = 'delphi-lsp.json';
+    cConfigName = 'atlas.json';
+    cLegacyConfigName = 'delphi-lsp.json';
     /// <summary>Ordner der Vorlagen im Release-Paket (Setup/Vorlagen im Repository).</summary>
-    TemplatesFolder = 'Vorlagen';
+    cTemplatesFolder = 'Vorlagen';
     /// <summary>$schema der Vorlagen, wie in docs/Konfiguration.md.</summary>
-    SchemaUrl = 'https://raw.githubusercontent.com/xKnockOut/Atlas/main/schemas/atlas.schema.json';
+    cSchemaUrl = 'https://raw.githubusercontent.com/xKnockOut/Atlas/main/schemas/atlas.schema.json';
   public
     /// <summary>"existing", "strict", "legacy".</summary>
     class function TemplateId(ATemplate: TAtlasSetupTemplate): string; static;
@@ -101,7 +101,7 @@ const
   // Gleich Setup\Vorlagen\atlas-*.json (Atlas.Core.Projects.Setup.Tests vergleicht beide).
   cExistingText =
     '{' + #10 +
-    '  "$schema": "' + TAtlasProjectSetups.SchemaUrl + '",' + #10 +
+    '  "$schema": "' + TAtlasProjectSetups.cSchemaUrl + '",' + #10 +
     '  "profile": "standard",' + #10 +
     '  "minConfidence": "medium",' + #10 +
     '  "testProfile": "fast",' + #10 +
@@ -109,7 +109,7 @@ const
     '}' + #10;
   cStrictText =
     '{' + #10 +
-    '  "$schema": "' + TAtlasProjectSetups.SchemaUrl + '",' + #10 +
+    '  "$schema": "' + TAtlasProjectSetups.cSchemaUrl + '",' + #10 +
     '  "profile": "strict",' + #10 +
     '  "minConfidence": "low",' + #10 +
     '  "testProfile": "standard",' + #10 +
@@ -117,7 +117,7 @@ const
     '}' + #10;
   cLegacyText =
     '{' + #10 +
-    '  "$schema": "' + TAtlasProjectSetups.SchemaUrl + '",' + #10 +
+    '  "$schema": "' + TAtlasProjectSetups.cSchemaUrl + '",' + #10 +
     '  "profile": "standard",' + #10 +
     '  "minConfidence": "high",' + #10 +
     '  "excludeTests": true,' + #10 +
@@ -209,7 +209,7 @@ begin
   begin
     Delete(mFolder, Length(mFolder), 1);
   end;
-  mCandidate := Joined(mFolder, TemplatesFolder);
+  mCandidate := Joined(mFolder, cTemplatesFolder);
   if AExists(Joined(mCandidate, TemplateFile(TAtlasSetupTemplate.Existing))) then
   begin
     Exit(mCandidate);
@@ -220,7 +220,7 @@ begin
   begin
     Exit;
   end;
-  mCandidate := Joined(mParent, TemplatesFolder);
+  mCandidate := Joined(mParent, cTemplatesFolder);
   if AExists(Joined(mCandidate, TemplateFile(TAtlasSetupTemplate.Existing))) then
   begin
     Result := mCandidate;
@@ -250,7 +250,7 @@ begin
   begin
     Exit;
   end;
-  Result := Joined(FolderOf(Trim(AProject)), ConfigName);
+  Result := Joined(FolderOf(Trim(AProject)), cConfigName);
 end;
 
 class function TAtlasProjectSetups.ExistingConfig(const AProject: string;
@@ -264,13 +264,13 @@ begin
     Exit;
   end;
   mFolder := FolderOf(Trim(AProject));
-  if AExists(Joined(mFolder, ConfigName)) then
+  if AExists(Joined(mFolder, cConfigName)) then
   begin
-    Result := Joined(mFolder, ConfigName);
+    Result := Joined(mFolder, cConfigName);
   end
-  else if AExists(Joined(mFolder, LegacyConfigName)) then
+  else if AExists(Joined(mFolder, cLegacyConfigName)) then
   begin
-    Result := Joined(mFolder, LegacyConfigName);
+    Result := Joined(mFolder, cLegacyConfigName);
   end;
 end;
 

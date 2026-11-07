@@ -25,7 +25,7 @@ uses
 type
   TAtlasSvnLayout = class
   public const
-    RootPlaceholder = '{projektwurzel}';
+    cRootPlaceholder = '{projektwurzel}';
   public
     /// <summary>Projektwurzel aus dem Pfad der Arbeitskopie ARelativeUrl ("^/Kasse/trunk" oder "Kasse/trunk"):
     /// das Stück vor dem ersten "trunk" bzw. "branches/&lt;x&gt;" oder "tags/&lt;x&gt;", ohne "^/" ('' = Wurzel des
@@ -112,12 +112,12 @@ end;
 
 class function TAtlasSvnLayout.ValidPattern(const APattern: string): Boolean;
 begin
-  Result := StartsText(RootPlaceholder, Trim(APattern)) or (Copy(Trim(APattern), 1, 2) = '^/');
+  Result := StartsText(cRootPlaceholder, Trim(APattern)) or (Copy(Trim(APattern), 1, 2) = '^/');
 end;
 
 class function TAtlasSvnLayout.NeedsRoot(const APattern: string): Boolean;
 begin
-  Result := StartsText(RootPlaceholder, Trim(APattern));
+  Result := StartsText(cRootPlaceholder, Trim(APattern));
 end;
 
 class function TAtlasSvnLayout.Resolve(const APattern: string; ALayout: Boolean; const ARoot, AName, AKey: string;
@@ -143,7 +143,7 @@ begin
     begin
       Exit;
     end;
-    Delete(mText, 1, Length(RootPlaceholder));
+    Delete(mText, 1, Length(cRootPlaceholder));
     if WithoutCaret(ARoot) = '' then
     begin
       mText := '^' + mText;

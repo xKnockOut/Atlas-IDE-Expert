@@ -245,7 +245,7 @@ begin
   end;
   mPage := AResult.Page;
   mText := TAtlasStrings.Fmt(TAtlasTextId.NewIssueCreated, [AResult.Key]);
-  if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.NewIssue, TAtlasNotificationSeverity.Info,
+  if TAtlasNotificationCenter.Default.Notify(TAtlasNotificationSources.cNewIssue, TAtlasNotificationSeverity.Info,
     TAtlasStrings.Text(TAtlasTextId.NewIssueCreatedTitle), mText,
     [TAtlasNotificationCenter.Action(TAtlasStrings.Text(TAtlasTextId.NewIssueOpen),
     procedure

@@ -55,7 +55,7 @@ type
   /// und Lage. TAtlasSettingsMarks ergänzt Kontextmenü, Filter und Meldungen.</summary>
   TAtlasSettingsBindingList = class(TComponent)
   public const
-    Dot = '● ';
+    cDot = '● ';
   private
     FBindings: TList<TAtlasSettingsBinding>;
     function GetCount: Integer;
@@ -293,7 +293,7 @@ begin
   end;
   if mBinding.Marked then
   begin
-    mText := Dot + mText;
+    mText := cDot + mText;
     mHint := TAtlasStrings.Text(TAtlasTextId.SettingsModifiedHint);
   end;
   if mBinding.Control is TCheckBox then

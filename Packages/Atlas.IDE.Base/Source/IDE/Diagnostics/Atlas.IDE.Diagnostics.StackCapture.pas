@@ -131,7 +131,7 @@ end;
 function Handler(AInfo: PRawExceptionPointers): Integer; stdcall;
 var
   mRaw: PRawExceptionRecord;
-  mCaptured: array[0..TAtlasStackRecord.MaxFrames + 7] of Pointer;
+  mCaptured: array[0..TAtlasStackRecord.cMaxFrames + 7] of Pointer;
   mCount, mFirst, mIndex: Integer;
   mItem: TAtlasStackRecord;
   mOurs: Boolean;
@@ -172,7 +172,7 @@ begin
   mItem.ParamCount := 0;
   for mIndex := 0 to Integer(mRaw^.NumberParameters) - 1 do
   begin
-    if mIndex < TAtlasStackRecord.MaxParams then
+    if mIndex < TAtlasStackRecord.cMaxParams then
     begin
       mItem.Params[mIndex] := mRaw^.ExceptionInformation[mIndex];
       mItem.ParamCount := mIndex + 1;
@@ -181,7 +181,7 @@ begin
   mItem.Count := 0;
   for mIndex := mFirst to mCount - 1 do
   begin
-    if mItem.Count < TAtlasStackRecord.MaxFrames then
+    if mItem.Count < TAtlasStackRecord.cMaxFrames then
     begin
       mItem.Frames[mItem.Count] := NativeUInt(mCaptured[mIndex]);
       Inc(mItem.Count);
@@ -318,7 +318,7 @@ end;
 
 class function TAtlasIdeStackCapture.CurrentStack(ASkip: Integer): string;
 var
-  mFrames: array[0..TAtlasStackRecord.MaxFrames - 1] of Pointer;
+  mFrames: array[0..TAtlasStackRecord.cMaxFrames - 1] of Pointer;
   mCount, mIndex: Integer;
   mAddresses: TArray<UInt64>;
 begin

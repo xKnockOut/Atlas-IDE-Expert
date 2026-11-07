@@ -193,11 +193,11 @@ begin
     Result := True;
     // Ältere Sicherungen aufräumen.
     mFiles := nil;
-    for mOld in TDirectory.GetFiles(BackupFolder, TAtlasSettingsTransfer.BackupPrefix + '*.json') do
+    for mOld in TDirectory.GetFiles(BackupFolder, TAtlasSettingsTransfer.cBackupPrefix + '*.json') do
     begin
       mFiles := mFiles + [ExtractFileName(mOld)];
     end;
-    for mOld in TAtlasSettingsTransfer.BackupsToDelete(mFiles, TAtlasSettingsTransfer.KeepBackups) do
+    for mOld in TAtlasSettingsTransfer.BackupsToDelete(mFiles, TAtlasSettingsTransfer.cKeepBackups) do
     begin
       System.SysUtils.DeleteFile(TPath.Combine(BackupFolder, mOld));
     end;
@@ -231,7 +231,7 @@ begin
   end;
   mDialog := TSaveDialog.Create(nil);
   try
-    mDialog.FileName := TAtlasSettingsTransfer.FileName;
+    mDialog.FileName := TAtlasSettingsTransfer.cFileName;
     mDialog.DefaultExt := 'json';
     mDialog.Filter := TAtlasStrings.Text(TAtlasTextId.SettingsFileFilter);
     mDialog.Options := mDialog.Options + [ofOverwritePrompt, ofPathMustExist];
@@ -280,7 +280,7 @@ begin
   AFileName := '';
   mDialog := TOpenDialog.Create(nil);
   try
-    mDialog.FileName := TAtlasSettingsTransfer.FileName;
+    mDialog.FileName := TAtlasSettingsTransfer.cFileName;
     mDialog.Filter := TAtlasStrings.Text(TAtlasTextId.SettingsFileFilter);
     mDialog.Options := mDialog.Options + [ofFileMustExist];
     Result := mDialog.Execute and ReadText(mDialog.FileName, AText);

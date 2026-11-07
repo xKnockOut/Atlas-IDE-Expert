@@ -84,7 +84,7 @@ begin
   Assert.IsTrue(TAtlasRegionFolds.ModeOf('off') = TAtlasRegionFoldMode.Off);
   Assert.IsTrue(TAtlasRegionFolds.ModeOf('keep') = TAtlasRegionFoldMode.Keep);
   Assert.IsTrue(TAtlasRegionFolds.ModeOf('irgendwie') = TAtlasRegionFoldMode.Keep, 'Unbekanntes wird zur Vorgabe');
-  Assert.AreEqual('keep', AtlasRegionFoldModes[0], 'Vorgabe steht vorn');
+  Assert.AreEqual('keep', cAtlasRegionFoldModes[0], 'Vorgabe steht vorn');
 end;
 
 procedure TAtlasRegionFoldsTests.PascalFilesOnly;

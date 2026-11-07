@@ -550,7 +550,7 @@ begin
   FBlocks := nil;
   FGuidesKey := '';
   mSettings := TAtlasIdeSettings.Current;
-  mKinds := StickyKinds(mSettings) - TAtlasStickyScroll.OutlineKinds;
+  mKinds := StickyKinds(mSettings) - TAtlasStickyScroll.cOutlineKinds;
   if not mSettings.PairColors and (mKinds = []) then
   begin
     Exit;
@@ -604,7 +604,7 @@ begin
   mSettings := TAtlasIdeSettings.Current;
   mBranches := LongBranches(FBranches, mSettings.StickyScrollBlockMinLines);
   FRows := TAtlasStickyScroll.Rows(TAtlasStickySource.Create(FNodes, FLines, mBranches,
-    StickyKinds(mSettings) * TAtlasStickyScroll.OutlineKinds), ATop, FMaxLines,
+    StickyKinds(mSettings) * TAtlasStickyScroll.cOutlineKinds), ATop, FMaxLines,
     TAtlasEditorBuffer.TabWidth(AView.Buffer));
   FRowsTop := ATop;
   FRowsMax := FMaxLines;

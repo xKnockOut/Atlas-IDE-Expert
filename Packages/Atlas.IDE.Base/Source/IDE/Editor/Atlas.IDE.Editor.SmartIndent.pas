@@ -192,7 +192,7 @@ begin
     var
       mValue: TJSONValue;
     begin
-      mValue := mSession.RunCommand(TAtlasSmartIndent.Command, mArguments, TAtlasSmartIndent.TimeoutMs);
+      mValue := mSession.RunCommand(TAtlasSmartIndent.cCommand, mArguments, TAtlasSmartIndent.cTimeoutMs);
       try
         TAtlasSmartIndent.ReadAnswer(mValue, mAnswer);
       finally
@@ -255,7 +255,7 @@ begin
   end;
   mSession.Sync(ABuffer.FileName, AText);
   try
-    mValue := mSession.RunCommand(TAtlasSmartIndent.Command, TAtlasSmartIndent.Arguments(
+    mValue := mSession.RunCommand(TAtlasSmartIndent.cCommand, TAtlasSmartIndent.Arguments(
       TLspSession.PathToUri(ABuffer.FileName), ALine, TAtlasEditorBuffer.BlockIndent(ABuffer), True, True),
       cColumnTimeoutMs);
   except

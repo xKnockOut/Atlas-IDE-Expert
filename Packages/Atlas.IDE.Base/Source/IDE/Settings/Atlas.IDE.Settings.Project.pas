@@ -35,8 +35,8 @@ type
   private
     class procedure ExecuteFile(const AFileName: string; AGlobal: Boolean; const ARuleId: string); static;
   public const
-    CheckCommand = 'atlas.server.checkSettings';
-    CatalogCommand = 'atlas.server.settingsCatalog';
+    cCheckCommand = 'atlas.server.checkSettings';
+    cCatalogCommand = 'atlas.server.settingsCatalog';
   public
     /// <summary>atlas.json des aktiven Projekts; '' ohne Projekt.</summary>
     class function SettingsFile: string; static;
@@ -158,7 +158,7 @@ begin
   mProject := ActiveProject;
   if mProject <> '' then
   begin
-    Result := TPath.Combine(ExtractFileDir(mProject), TAtlasSettingsFiles.ProjectName);
+    Result := TPath.Combine(ExtractFileDir(mProject), TAtlasSettingsFiles.cProjectName);
   end;
 end;
 
@@ -397,11 +397,11 @@ function TAtlasSettingsFileEdit.LoadCatalog: TJSONValue;
 begin
   if TAtlasStrings.Language = TAtlasLanguage.English then
   begin
-    Result := RunCommand(TAtlasProjectSettings.CatalogCommand, '["en"]');
+    Result := RunCommand(TAtlasProjectSettings.cCatalogCommand, '["en"]');
   end
   else
   begin
-    Result := RunCommand(TAtlasProjectSettings.CatalogCommand, '["de"]');
+    Result := RunCommand(TAtlasProjectSettings.cCatalogCommand, '["de"]');
   end;
 end;
 
@@ -456,7 +456,7 @@ var
   mValid: Boolean;
 begin
   // Der Server meldet auch Schlüssel am falschen Ort (#227).
-  mAnswer := RunCommand(TAtlasProjectSettings.CheckCommand, '[' + TAtlasJsonText.Quote(AText) + FCheckScope + ']');
+  mAnswer := RunCommand(TAtlasProjectSettings.cCheckCommand, '[' + TAtlasJsonText.Quote(AText) + FCheckScope + ']');
   try
     AChecked := TAtlasSettingsValidation.FromAnswer(mAnswer, Result, mValid);
   finally

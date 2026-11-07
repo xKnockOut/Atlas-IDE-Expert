@@ -69,9 +69,9 @@ type
 
   TAtlasHideNoticeWindow = class(TAtlasPopupWindow)
   public const
-    VisibleMs = 6000;
+    cVisibleMs = 6000;
     /// <summary>Abstand unter dem Element, logische Pixel.</summary>
-    Gap = 4;
+    cGap = 4;
   private
     FTitle: string;
     FDetail: string;
@@ -298,10 +298,10 @@ constructor TAtlasHideNoticeWindow.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   GuardFeature := TAtlasFeature.Hide;
-  SetAccessible(UiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.HideNotice));
+  SetAccessible(cUiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.HideNotice));
   FTimer := TTimer.Create(Self);
   FTimer.Enabled := False;
-  FTimer.Interval := VisibleMs;
+  FTimer.Interval := cVisibleMs;
   FTimer.OnTimer := TimerTick;
 end;
 
@@ -412,10 +412,10 @@ begin
   FUndoHot := False;
   HandleNeeded;
   mSize := Layout(False);
-  ShowAt(PlaceBelow(APoint, mSize.cx, mSize.cy, Scale(Gap), WorkAreaAt(APoint)));
+  ShowAt(PlaceBelow(APoint, mSize.cx, mSize.cy, Scale(cGap), WorkAreaAt(APoint)));
   Announce(Trim(ATitle + ' ' + ADetail));
   FTimer.Enabled := False;
-  FTimer.Interval := VisibleMs;
+  FTimer.Interval := cVisibleMs;
   FTimer.Enabled := True;
 end;
 

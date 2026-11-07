@@ -131,12 +131,12 @@ begin
   Assert.IsTrue(TAtlasTrackerNotify.ScopeOf(' WATCHED ') = TAtlasTrackerNotifyScope.Watched);
   Assert.IsTrue(TAtlasTrackerNotify.ScopeOf('alles') = TAtlasTrackerNotifyScope.AssignedOrCreated, 'Vorgabe');
   // Die Einstellungen kennen den Kern der Meldungen nicht (A-09): dieselben Werte wie dort.
-  Assert.AreEqual(TAtlasTrackerNotify.ScopeAssigned, TAtlasPluginSettings.IssuesNotifyAssigned);
-  Assert.AreEqual(TAtlasTrackerNotify.ScopeAssignedOrCreated, TAtlasPluginSettings.IssuesNotifyAssignedOrCreated);
-  Assert.AreEqual(TAtlasTrackerNotify.ScopeWatched, TAtlasPluginSettings.IssuesNotifyWatched);
-  Assert.AreEqual(Integer(TAtlasTrackerNotify.MinInterval), Integer(TAtlasPluginSettings.MinIssuesNotifyMinutes));
+  Assert.AreEqual(TAtlasTrackerNotify.ScopeAssigned, TAtlasPluginSettings.cIssuesNotifyAssigned);
+  Assert.AreEqual(TAtlasTrackerNotify.ScopeAssignedOrCreated, TAtlasPluginSettings.cIssuesNotifyAssignedOrCreated);
+  Assert.AreEqual(TAtlasTrackerNotify.ScopeWatched, TAtlasPluginSettings.cIssuesNotifyWatched);
+  Assert.AreEqual(Integer(TAtlasTrackerNotify.MinInterval), Integer(TAtlasPluginSettings.cMinIssuesNotifyMinutes));
   Assert.AreEqual(Integer(TAtlasTrackerNotify.DefaultInterval),
-    Integer(TAtlasPluginSettings.DefaultIssuesNotifyMinutes));
+    Integer(TAtlasPluginSettings.cDefaultIssuesNotifyMinutes));
 end;
 
 procedure TAtlasTrackerNotifyTests.IntervalAndUserActive;

@@ -663,19 +663,19 @@ var
 begin
   Result := nil;
   mScore := TAtlasCompletionMatcher.Score(APattern, AName);
-  if (APattern = '') or (mScore = TAtlasCompletionMatcher.NoMatch) then
+  if (APattern = '') or (mScore = TAtlasCompletionMatcher.cNoMatch) then
   begin
     Exit;
   end;
-  if mScore >= TAtlasCompletionMatcher.ScorePrefix then
+  if mScore >= TAtlasCompletionMatcher.cScorePrefix then
   begin
     Exit(Range(1, Length(APattern)));
   end;
-  if mScore = TAtlasCompletionMatcher.ScoreWordStarts then
+  if mScore = TAtlasCompletionMatcher.cScoreWordStarts then
   begin
     Exit(WordStartPositions(APattern, AName));
   end;
-  if mScore = TAtlasCompletionMatcher.ScoreSubstring then
+  if mScore = TAtlasCompletionMatcher.cScoreSubstring then
   begin
     mFound := Pos(APattern.ToUpper, AName.ToUpper);
     Exit(Range(mFound, Length(APattern)));

@@ -343,7 +343,7 @@ begin
     begin
       mCandidate := mBase + '_' + IntToStr(mNumber);
     end;
-    Result := TPath.Combine(AFolder, mCandidate + TAtlasSnippets.FileExtension);
+    Result := TPath.Combine(AFolder, mCandidate + TAtlasSnippets.cFileExtension);
     mTaken := FileExists(Result) and (FRemovedFiles.IndexOf(Result) < 0);
     for mIndex := 0 to FEntries.Count - 1 do
     begin

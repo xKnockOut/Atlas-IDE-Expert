@@ -79,10 +79,10 @@ procedure TAtlasTaskDefinitionsTests.BeforeBuildNamesMatchSettings;
 var
   mMode: TAtlasTaskBeforeBuild;
 begin
-  Assert.AreEqual(Integer(Length(TasksBeforeBuildNames)), Ord(High(TAtlasTaskBeforeBuild)) + 1);
+  Assert.AreEqual(Integer(Length(cTasksBeforeBuildNames)), Ord(High(TAtlasTaskBeforeBuild)) + 1);
   for mMode := Low(TAtlasTaskBeforeBuild) to High(TAtlasTaskBeforeBuild) do
   begin
-    Assert.AreEqual(TAtlasTasks.BeforeBuildNames[mMode], TasksBeforeBuildNames[Ord(mMode)]);
+    Assert.AreEqual(TAtlasTasks.BeforeBuildNames[mMode], cTasksBeforeBuildNames[Ord(mMode)]);
   end;
 end;
 

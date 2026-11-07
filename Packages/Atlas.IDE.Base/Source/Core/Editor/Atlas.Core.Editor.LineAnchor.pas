@@ -56,7 +56,7 @@ type
   TAtlasLineAnchors = class
   public const
     /// <summary>Gemerkte Nachbarzeilen je Seite.</summary>
-    ContextLines = 2;
+    cContextLines = 2;
   public
     /// <summary>Ohne Leerraum am Rand, Folgen von Leerzeichen und Tabs zu einem Leerzeichen.</summary>
     class function Normalize(const AText: string): string; static;
@@ -152,13 +152,13 @@ begin
   end;
   Result.Text := Normalize(ALines[ALine]);
   mIndex := ALine - 1;
-  while (mIndex >= 0) and (Length(Result.Before) < ContextLines) do
+  while (mIndex >= 0) and (Length(Result.Before) < cContextLines) do
   begin
     Result.Before := Result.Before + [Normalize(ALines[mIndex])];
     Dec(mIndex);
   end;
   mIndex := ALine + 1;
-  while (mIndex <= High(ALines)) and (Length(Result.After) < ContextLines) do
+  while (mIndex <= High(ALines)) and (Length(Result.After) < cContextLines) do
   begin
     Result.After := Result.After + [Normalize(ALines[mIndex])];
     Inc(mIndex);

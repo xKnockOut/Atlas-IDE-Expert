@@ -22,8 +22,8 @@ uses
 type
   TAtlasIdeEnumTables = class
   public const
-    ClientCommand = 'atlas.enumTable';
-    SyncClientCommand = 'atlas.enumTablesSync';
+    cClientCommand = 'atlas.enumTable';
+    cSyncClientCommand = 'atlas.enumTablesSync';
   public
     /// <summary>AArgumentsJson: Argumente der Code-Aktion ([uri, position, name, stelle]); ASession: laufende
     /// Sitzung oder nil; AMessage: Zeile für die Meldungsansicht.</summary>

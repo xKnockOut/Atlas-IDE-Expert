@@ -24,20 +24,20 @@ type
 
   TAtlasVisualizerSettings = class
   public const
-    DefaultMaxLength = 120;
-    MinMaxLength = 20;
-    MaxMaxLength = 2000;
-    DefaultTimeoutMs = 200;
-    MinTimeoutMs = 20;
-    MaxTimeoutMs = 5000;
-    DefaultMaxImagePixels = 4000000;
-    MinMaxImagePixels = 10000;
-    MaxMaxImagePixels = 64000000;
-    AllKinds = [Low(TAtlasVisualizerKind)..High(TAtlasVisualizerKind)];
-    KindNames: array[TAtlasVisualizerKind] of string = ('lists', 'dictionaries', 'dataSets', 'bytes', 'json',
+    cDefaultMaxLength = 120;
+    cMinMaxLength = 20;
+    cMaxMaxLength = 2000;
+    cDefaultTimeoutMs = 200;
+    cMinTimeoutMs = 20;
+    cMaxTimeoutMs = 5000;
+    cDefaultMaxImagePixels = 4000000;
+    cMinMaxImagePixels = 10000;
+    cMaxMaxImagePixels = 64000000;
+    cAllKinds = [Low(TAtlasVisualizerKind)..High(TAtlasVisualizerKind)];
+    cKindNames: array[TAtlasVisualizerKind] of string = ('lists', 'dictionaries', 'dataSets', 'bytes', 'json',
       'colors', 'guid', 'geometry', 'graphics');
-    EvaluationNames: array[TAtlasVisualizerEvaluation] of string = ('fields', 'properties', 'calls');
-    DefaultNameFields = 'Name,Caption,Text';
+    cEvaluationNames: array[TAtlasVisualizerEvaluation] of string = ('fields', 'properties', 'calls');
+    cDefaultNameFields = 'Name,Caption,Text';
   public
     /// <summary>Kommagetrennte Arten wie in debug.visualizers.types; unbekannte fallen weg, '' = keine.</summary>
     class function ParseKinds(const AText: string): TAtlasVisualizerKinds; static;
@@ -64,7 +64,7 @@ begin
   begin
     for mKind := Low(TAtlasVisualizerKind) to High(TAtlasVisualizerKind) do
     begin
-      if SameText(Trim(mPart), KindNames[mKind]) then
+      if SameText(Trim(mPart), cKindNames[mKind]) then
       begin
         Include(Result, mKind);
       end;
@@ -85,7 +85,7 @@ begin
       begin
         Result := Result + ',';
       end;
-      Result := Result + KindNames[mKind];
+      Result := Result + cKindNames[mKind];
     end;
   end;
 end;
@@ -101,7 +101,7 @@ var
 begin
   for mItem := Low(TAtlasVisualizerEvaluation) to High(TAtlasVisualizerEvaluation) do
   begin
-    if SameText(Trim(AText), EvaluationNames[mItem]) then
+    if SameText(Trim(AText), cEvaluationNames[mItem]) then
     begin
       Exit(mItem);
     end;

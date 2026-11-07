@@ -18,9 +18,9 @@ type
   TAtlasShutdown = class
   public const
     /// <summary>So lange dürfen alle Threads zusammen nach dem Signal brauchen.</summary>
-    StopMs = 1000;
+    cStopMs = 1000;
     /// <summary>Takt, in dem Warten auf ein anderes Ereignis das Signal prüft.</summary>
-    SliceMs = 20;
+    cSliceMs = 20;
   private class var
     FEvent: TEvent;
   public
@@ -105,13 +105,13 @@ begin
     begin
       mSlice := 0;
     end
-    else if mLeft < SliceMs then
+    else if mLeft < cSliceMs then
     begin
       mSlice := Cardinal(mLeft);
     end
     else
     begin
-      mSlice := SliceMs;
+      mSlice := cSliceMs;
     end;
     Result := AEvent.WaitFor(mSlice);
     if Result <> wrTimeout then
@@ -124,7 +124,7 @@ end;
 
 class function TAtlasShutdown.WaitForThreads(const AThreads: TArray<TThread>): Boolean;
 begin
-  Result := WaitForThreads(AThreads, StopMs);
+  Result := WaitForThreads(AThreads, cStopMs);
 end;
 
 class function TAtlasShutdown.WaitForThreads(const AThreads: TArray<TThread>; AMs: Cardinal): Boolean;

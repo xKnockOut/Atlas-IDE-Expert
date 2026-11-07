@@ -403,7 +403,7 @@ begin
   inherited Create(AOwner);
   GuardFeature := TAtlasFeature.Debugger;
   FHot := -1;
-  SetAccessible(UiaToolTipControlType, TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakTitle));
+  SetAccessible(cUiaToolTipControlType, TAtlasDebugStrings.Text(TAtlasDebugTextId.EventBreakTitle));
 end;
 
 function TAtlasEventBreakBar.Layout(ADraw: Boolean): TSize;

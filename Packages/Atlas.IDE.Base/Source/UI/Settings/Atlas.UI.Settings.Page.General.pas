@@ -365,7 +365,7 @@ begin
   end;
   FNotificationSource := TAtlasChoiceBox.Create(FPage);
   FNotificationSource.Parent := mPanel;
-  FNotificationSource.Left := FieldLeft;
+  FNotificationSource.Left := cFieldLeft;
   FNotificationSource.Top := 1;
   FNotificationSource.Width := 180;
   FNotificationSource.SetChoices(mNames);
@@ -374,7 +374,7 @@ begin
   // Reihenfolge wie TAtlasNotificationMode: einblenden und sammeln, nur sammeln, aus.
   FNotificationMode := TAtlasChoiceBox.Create(FPage);
   FNotificationMode.Parent := mPanel;
-  FNotificationMode.Left := FieldLeft + 186;
+  FNotificationMode.Left := cFieldLeft + 186;
   FNotificationMode.Top := 1;
   FNotificationMode.Width := 170;
   FNotificationMode.SetChoices([TAtlasStrings.Text(TAtlasTextId.NotificationsModeShow),

@@ -1015,8 +1015,14 @@ function Pascal-Lines([string] $Name, [string] $Source) {
     return $Result
 }
 # Eingebettete Texte (Schemata): mehrere Zeilen je Element, damit die Unit kurz bleibt (metric-unit-length);
-# je Element höchstens 990 Bytes in UTF-8 (Delphi bricht ab 1024 ab, F2069), Teile höchstens 90 Zeichen,
-# jede Zeile der Unit höchstens 120 Zeichen (line-length).
+# je Element höchstens 990 Bytes in UTF-8 (Delphi bricht ab 1024 ab, F2069), Teile höchstens 200 Zeichen.
+# line-length zählt Stringinhalte nicht (ignoreStrings), nur die Anführungszeichen: Eine Zeile wird umbrochen,
+# sobald der Rest ohne Stringinhalte 120 Zeichen oder die Zeile 990 Bytes überschritte.
+# Breite eines Teils für line-length: ein String-Literal zählt nur mit seinen Anführungszeichen.
+function Code-Width([string] $Token) {
+    if ($Token.StartsWith("'")) { return 2 }
+    return $Token.Length
+}
 function Pascal-Chunks([string] $Name, [string] $Source) {
     $Lines = $Source.TrimStart([char]0xFEFF).Replace("`r`n", "`n").TrimEnd("`n").Split("`n")
     $Elements = New-Object System.Collections.Generic.List[object]
@@ -1024,8 +1030,8 @@ function Pascal-Chunks([string] $Name, [string] $Source) {
     $CurrentSize = 0
     foreach ($Line in $Lines) {
         $Tokens = @()
-        for ($At = 0; $At -lt $Line.Length; $At += 90) {
-            $Tokens += "'" + $Line.Substring($At, [Math]::Min(90, $Line.Length - $At)).Replace("'", "''") + "'"
+        for ($At = 0; $At -lt $Line.Length; $At += 200) {
+            $Tokens += "'" + $Line.Substring($At, [Math]::Min(200, $Line.Length - $At)).Replace("'", "''") + "'"
         }
         $Tokens += '#10'
         $Size = [Text.Encoding]::UTF8.GetByteCount($Tokens -join ' + ')
@@ -1042,12 +1048,16 @@ function Pascal-Chunks([string] $Name, [string] $Source) {
         $End = if ($Index -eq $Elements.Count - 1) { ');' } else { ',' }
         $Tokens = $Elements[$Index]
         $Row = '    ' + $Tokens[0]
+        $Width = 4 + (Code-Width $Tokens[0])
         for ($T = 1; $T -lt $Tokens.Count; $T++) {
-            if ($Row.Length + 3 + $Tokens[$T].Length + 2 -gt 120) {
+            $TokenWidth = Code-Width $Tokens[$T]
+            $Bytes = [Text.Encoding]::UTF8.GetByteCount($Row) + 3 + [Text.Encoding]::UTF8.GetByteCount($Tokens[$T]) + 2
+            if (($Width + 3 + $TokenWidth + 2 -gt 120) -or ($Bytes -gt 990)) {
                 $Result += $Row + ' +'
                 $Row = '      ' + $Tokens[$T]
+                $Width = 6 + $TokenWidth
             }
-            else { $Row = $Row + ' + ' + $Tokens[$T] }
+            else { $Row = $Row + ' + ' + $Tokens[$T]; $Width += 3 + $TokenWidth }
         }
         $Result += $Row + $End
     }

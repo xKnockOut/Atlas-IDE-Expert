@@ -201,7 +201,6 @@ uses
   Atlas.Core.Editor.Pairs,
   Atlas.IDE.Foundation.EditorBuffer,
   Atlas.IDE.Foundation.EditorSnapshot,
-  Atlas.IDE.Foundation.EditorStyle,
   Atlas.IDE.Foundation.Settings,
   Atlas.IDE.Foundation.Elements,
   Atlas.IDE.Foundation.Navigation,

@@ -55,17 +55,17 @@ type
 
   TAtlasSmartPaste = class
   public const
-    Command = 'atlas.server.pasteUses';
+    cCommand = 'atlas.server.pasteUses';
     /// <summary>Reindent ohne Spalte vom Server: die Heuristik bestimmt sie.</summary>
-    NoColumn = -1;
-    ModeOff = 'off';
-    ModeUses = 'uses';
-    ModeIndent = 'indent';
-    ModeBoth = 'both';
+    cNoColumn = -1;
+    cModeOff = 'off';
+    cModeUses = 'uses';
+    cModeIndent = 'indent';
+    cModeBoth = 'both';
     /// <summary>Kürzere Einfügungen ohne Zeilenumbruch übergeht Atlas.</summary>
-    MinChars = 20;
+    cMinChars = 20;
     /// <summary>So viele Unit-Namen nennt die Überschrift, dann „…“.</summary>
-    MaxNamed = 3;
+    cMaxNamed = 3;
   public
     class function ModeOf(const AValue: string): TAtlasPasteMode; static;
     class function WantsUses(AMode: TAtlasPasteMode): Boolean; static;
@@ -326,15 +326,15 @@ end;
 
 class function TAtlasSmartPaste.ModeOf(const AValue: string): TAtlasPasteMode;
 begin
-  if SameText(AValue, ModeBoth) then
+  if SameText(AValue, cModeBoth) then
   begin
     Result := TAtlasPasteMode.Both;
   end
-  else if SameText(AValue, ModeUses) then
+  else if SameText(AValue, cModeUses) then
   begin
     Result := TAtlasPasteMode.UsesOnly;
   end
-  else if SameText(AValue, ModeIndent) then
+  else if SameText(AValue, cModeIndent) then
   begin
     Result := TAtlasPasteMode.IndentOnly;
   end
@@ -356,7 +356,7 @@ end;
 
 class function TAtlasSmartPaste.Qualifies(const AText: string): Boolean;
 begin
-  Result := (Pos(#10, AText) > 0) or (Pos(#13, AText) > 0) or (Length(AText) >= MinChars);
+  Result := (Pos(#10, AText) > 0) or (Pos(#13, AText) > 0) or (Length(AText) >= cMinChars);
 end;
 
 class function TAtlasSmartPaste.Match(const ALines: TArray<string>; ACaret: Integer; const APasted: TArray<string>;
@@ -442,7 +442,7 @@ begin
   if mFirst >= 0 then
   begin
     mTarget := AColumn;
-    if mTarget = NoColumn then
+    if mTarget = cNoColumn then
     begin
       mTarget := TargetIndent(APrefix, AAbove, ATabWidth, AStep);
     end;
@@ -527,13 +527,13 @@ end;
 
 class function TAtlasSmartPaste.Named(const AUnits: TArray<string>): string;
 begin
-  if Length(AUnits) <= MaxNamed then
+  if Length(AUnits) <= cMaxNamed then
   begin
     Result := string.Join(', ', AUnits);
   end
   else
   begin
-    Result := string.Join(', ', Copy(AUnits, 0, MaxNamed)) + ', …';
+    Result := string.Join(', ', Copy(AUnits, 0, cMaxNamed)) + ', …';
   end;
 end;
 

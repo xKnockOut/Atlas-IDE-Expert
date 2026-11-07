@@ -125,7 +125,7 @@ begin
   end;
   mBar := Rect(ListLeft + Pad + Scale(4), Pad + ChipsHeight + Scale(2), ListRight - Pad - Scale(4),
     Pad + ChipsHeight + SyntaxHeight - Scale(2));
-  FillRounded(mBar, Colors.WarnSoft, TAtlasDraw.ChipRadius);
+  FillRounded(mBar, Colors.WarnSoft, TAtlasDraw.cChipRadius);
   mLead := TAtlasCompletionTexts.SyntaxLead(FSyntax.Trust);
   mLineText := TAtlasCompletionTexts.SyntaxLineText(FSyntax.Line);
   Canvas.Font := UIFont;
@@ -404,9 +404,9 @@ begin
   // Warnfläche (#481): „verdeckt …“ fällt auch ohne Farbsehen auf.
   if ATag.Filled and (ATag.Kind = TAtlasTagKind.Warn) then
   begin
-    FillRounded(mBox, Colors.WarnSoft, TAtlasDraw.ChipRadius);
+    FillRounded(mBox, Colors.WarnSoft, TAtlasDraw.cChipRadius);
   end;
-  FrameRounded(mBox, mLine, TAtlasDraw.ChipRadius);
+  FrameRounded(mBox, mLine, TAtlasDraw.cChipRadius);
   Canvas.Font.Color := ToColor(mTextColor);
   Canvas.Brush.Style := bsClear;
   mText := mBox;

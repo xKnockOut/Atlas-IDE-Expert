@@ -49,7 +49,7 @@ type
 
 const
   /// <summary>Eingebaute Regelprofile des Servers.</summary>
-  AtlasBuiltInProfiles: array[0..4] of string = ('standard', 'fast', 'strict', 'security', 'style');
+  cAtlasBuiltInProfiles: array[0..4] of string = ('standard', 'fast', 'strict', 'security', 'style');
 
 implementation
 
@@ -264,7 +264,7 @@ var
   mPair: TJSONPair;
 begin
   Result := nil;
-  for mName in AtlasBuiltInProfiles do
+  for mName in cAtlasBuiltInProfiles do
   begin
     AddUnique(Result, mName);
   end;

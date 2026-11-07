@@ -27,7 +27,7 @@ type
     procedure Prune;
   public
     constructor Create;
-    /// <summary>Wartet wie StopAll höchstens TAtlasShutdown.StopMs.</summary>
+    /// <summary>Wartet wie StopAll höchstens TAtlasShutdown.cStopMs.</summary>
     destructor Destroy; override;
     /// <summary>AProc in einem neuen Thread ausführen; der Thread bleibt bis zu seinem Ende in der Liste.</summary>
     function Start(const AProc: TProc): TThread;
@@ -54,7 +54,7 @@ end;
 
 destructor TAtlasThreadList.Destroy;
 begin
-  StopAll(TAtlasShutdown.StopMs);
+  StopAll(TAtlasShutdown.cStopMs);
   FThreads.Free;
   FLock.Free;
   inherited;

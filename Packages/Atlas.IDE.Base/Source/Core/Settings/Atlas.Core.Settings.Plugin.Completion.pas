@@ -10,18 +10,18 @@ uses
   Atlas.Core.Settings.Plugin.Store;
 
 const
-  MinVisibleRows = 5;
-  MaxVisibleRows = 20;
-  MinListWidth = 240;
-  MaxListWidth = 720;
-  MinPanelWidth = 220;
-  MaxPanelWidth = 600;
+  cMinVisibleRows = 5;
+  cMaxVisibleRows = 20;
+  cMinListWidth = 240;
+  cMaxListWidth = 720;
+  cMinPanelWidth = 220;
+  cMaxPanelWidth = 600;
   /// <summary>Verzögerung bis zum automatischen Öffnen der Liste (ARG-046, #227); 0 = sofort.</summary>
-  MaxOpenDelay = 2000;
-  /// <summary>Wie TAtlasListModes.ModeNames bzw. ScopeNames (#497); Settings darf Completion nicht einbinden
+  cMaxOpenDelay = 2000;
+  /// <summary>Wie TAtlasListModes.cModeNames bzw. ScopeNames (#497); Settings darf Completion nicht einbinden
   /// (A-09), der Test prüft Gleichheit.</summary>
-  CompletionListModeNames: array[0..2] of string = ('filter', 'all', 'rest');
-  CompletionListScopeNames: array[0..1] of string = ('members', 'everywhere');
+  cCompletionListModeNames: array[0..2] of string = ('filter', 'all', 'rest');
+  cCompletionListScopeNames: array[0..1] of string = ('members', 'everywhere');
 
 type
   /// <summary>Plugin-Einstellungen: Liste, Einfügen und Vorschau der Vervollständigung.</summary>
@@ -106,22 +106,22 @@ begin
   Result.Favorites := True;
   Result.GroupInherited := True;
   Result.CompletionVariantBranch := True;
-  Result.CompletionListMode := CompletionListModeNames[0];
-  Result.CompletionListScope := CompletionListScopeNames[0];
+  Result.CompletionListMode := cCompletionListModeNames[0];
+  Result.CompletionListScope := cCompletionListScopeNames[0];
   Result.Preview := False;
 end;
 
 procedure TAtlasPluginCompletionSettings.Normalize;
 begin
-  VisibleRows := EnsureRange(VisibleRows, MinVisibleRows, MaxVisibleRows);
+  VisibleRows := EnsureRange(VisibleRows, cMinVisibleRows, cMaxVisibleRows);
   if ListWidth <> 0 then
   begin
-    ListWidth := EnsureRange(ListWidth, MinListWidth, MaxListWidth);
+    ListWidth := EnsureRange(ListWidth, cMinListWidth, cMaxListWidth);
   end;
-  PanelWidth := EnsureRange(PanelWidth, MinPanelWidth, MaxPanelWidth);
-  CompletionListMode := Choice(CompletionListMode, CompletionListModeNames);
-  CompletionListScope := Choice(CompletionListScope, CompletionListScopeNames);
-  OpenDelayMs := EnsureRange(OpenDelayMs, 0, MaxOpenDelay);
+  PanelWidth := EnsureRange(PanelWidth, cMinPanelWidth, cMaxPanelWidth);
+  CompletionListMode := Choice(CompletionListMode, cCompletionListModeNames);
+  CompletionListScope := Choice(CompletionListScope, cCompletionListScopeNames);
+  OpenDelayMs := EnsureRange(OpenDelayMs, 0, cMaxOpenDelay);
 end;
 
 procedure TAtlasPluginCompletionSettings.Exchange(const AIo: TAtlasSettingsExchange);

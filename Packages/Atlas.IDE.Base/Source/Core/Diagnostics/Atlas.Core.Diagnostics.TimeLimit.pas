@@ -24,11 +24,11 @@ type
 
   TAtlasTimeLimit = class
   public const
-    DefaultMs = 200;
-    MinMs = 50;
-    MaxMs = 5000;
+    cDefaultMs = 200;
+    cMinMs = 50;
+    cMaxMs = 5000;
     /// <summary>Nachwarten auf hängende Arbeiter beim Beenden (Code-Review A-13).</summary>
-    HangGraceMs = 2000;
+    cHangGraceMs = 2000;
   private type
     TWorker = class(TThread)
     private
@@ -202,7 +202,7 @@ begin
   FLock := TCriticalSection.Create;
   FIdle := TList<TWorker>.Create;
   FAll := TList<TWorker>.Create;
-  FLimitMs := DefaultMs;
+  FLimitMs := cDefaultMs;
   FReleased := TEvent.Create(nil, False, False, '');
 end;
 
@@ -217,13 +217,13 @@ end;
 
 class procedure TAtlasTimeLimit.SetLimitMs(AValue: Integer);
 begin
-  if AValue < MinMs then
+  if AValue < cMinMs then
   begin
-    AValue := MinMs;
+    AValue := cMinMs;
   end;
-  if AValue > MaxMs then
+  if AValue > cMaxMs then
   begin
-    AValue := MaxMs;
+    AValue := cMaxMs;
   end;
   FLimitMs := AValue;
 end;
@@ -410,8 +410,8 @@ begin
     // Ein Aufruf steckt in nicht abbrechbarem Code (A-13). Kehrt er erst nach dem Entladen zurück, läuft er in
     // nicht mehr geladenem Code: protokollieren und noch etwas warten.
     TAtlasGuard.Log(Format('Zeitlimit: %d Arbeiter beim Beenden noch beschäftigt, warte bis %d ms nach',
-      [mHung, HangGraceMs]));
-    Result := TAtlasShutdown.WaitForThreads(mThreads, HangGraceMs);
+      [mHung, cHangGraceMs]));
+    Result := TAtlasShutdown.WaitForThreads(mThreads, cHangGraceMs);
   end;
   for mWorker in mWorkers do
   begin

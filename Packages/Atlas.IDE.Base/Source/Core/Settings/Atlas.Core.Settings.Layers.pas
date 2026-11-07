@@ -77,9 +77,9 @@ type
 
   TAtlasSettingsFiles = class
   public const
-    GlobalFolder = 'Atlas';
-    GlobalName = 'settings.json';
-    ProjectName = 'atlas.json';
+    cGlobalFolder = 'Atlas';
+    cGlobalName = 'settings.json';
+    cProjectName = 'atlas.json';
   public
     /// <summary>Globale Datei unter AAppData (%APPDATA%); '' ohne AAppData. Wie der Server.</summary>
     class function GlobalFile(const AAppData: string): string; static;
@@ -281,7 +281,7 @@ begin
   Result := '';
   if AAppData <> '' then
   begin
-    Result := TPath.Combine(TPath.Combine(AAppData, GlobalFolder), GlobalName);
+    Result := TPath.Combine(TPath.Combine(AAppData, cGlobalFolder), cGlobalName);
   end;
 end;
 

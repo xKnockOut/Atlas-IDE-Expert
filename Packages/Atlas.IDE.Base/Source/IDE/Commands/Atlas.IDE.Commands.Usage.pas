@@ -28,7 +28,7 @@ type
   TAtlasIdeCommandUsage = class
   public const
     /// <summary>Speichern so lange nach der letzten Änderung.</summary>
-    SaveDelayMs = 5000;
+    cSaveDelayMs = 5000;
   private class var
     FInstance: TAtlasIdeCommandUsage;
   private
@@ -122,7 +122,7 @@ begin
   end;
   FSaveTimer := TTimer.Create(nil);
   FSaveTimer.Enabled := False;
-  FSaveTimer.Interval := SaveDelayMs;
+  FSaveTimer.Interval := cSaveDelayMs;
   FSaveTimer.OnTimer := SaveTick;
   FInstance := Self;
   ApplySettings;
@@ -171,12 +171,12 @@ begin
     Exit;
   end;
   mCandidate := IncludeTrailingPathDelimiter(APluginDir);
-  if FileExists(mCandidate + TAtlasTipCatalog.FileName) then
+  if FileExists(mCandidate + TAtlasTipCatalog.cFileName) then
   begin
     Exit(mCandidate);
   end;
   mCandidate := IncludeTrailingPathDelimiter(ExpandFileName(mCandidate + '..'));
-  if FileExists(mCandidate + TAtlasTipCatalog.FileName) then
+  if FileExists(mCandidate + TAtlasTipCatalog.cFileName) then
   begin
     Result := mCandidate;
   end;
@@ -258,7 +258,7 @@ begin
   FFolder := FindFolder(ExtractFilePath(GetModuleName(HInstance)));
   if FFolder <> '' then
   begin
-    FTips := TAtlasTipCatalog.Parse(ReadText(FFolder + TAtlasTipCatalog.FileName));
+    FTips := TAtlasTipCatalog.Parse(ReadText(FFolder + TAtlasTipCatalog.cFileName));
   end;
   // Anonym: nur die Zahl.
   TAtlasGuard.Log(Format('Tipps (#757): %d aus tips.json', [Length(FTips)]));

@@ -401,7 +401,7 @@ begin
   TFile.WriteAllText(FileName, '{"notes": [');
   Assert.IsFalse(TAtlasNotes.Load(FFolder, Project, Book));
   Assert.AreEqual(Project, Book.Project);
-  Assert.IsTrue(FileExists(FileName + TAtlasDataFile.DefectExtension), 'beiseitegelegt');
+  Assert.IsTrue(FileExists(FileName + TAtlasDataFile.cDefectExtension), 'beiseitegelegt');
   Book.Add(UnitFile, Code, 8, 'Rundung', Now);
   Assert.IsTrue(TAtlasNotes.Save(FFolder, Book));
   Lock := TFileStream.Create(FileName, fmOpenRead or fmShareExclusive);

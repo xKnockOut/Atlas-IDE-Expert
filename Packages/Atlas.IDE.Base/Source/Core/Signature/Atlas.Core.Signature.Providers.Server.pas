@@ -35,7 +35,7 @@ type
 
   TAtlasServerSignatureProvider = class(TInterfacedObject, IAtlasSignatureSource)
   public const
-    DefaultTimeoutMs = 2000;
+    cDefaultTimeoutMs = 2000;
   public
     /// <summary>Name der Quelle für die Sicherung (#493) und ihre Meldungen, in der Sprache der Oberfläche.
     /// </summary>
@@ -112,7 +112,7 @@ end;
 
 constructor TAtlasServerSignatureProvider.Create(const ASession: TAtlasSessionFunc);
 begin
-  Create(ASession, DefaultTimeoutMs);
+  Create(ASession, cDefaultTimeoutMs);
 end;
 
 constructor TAtlasServerSignatureProvider.Create(const ASession: TAtlasSessionFunc; ATimeoutMs: Cardinal);

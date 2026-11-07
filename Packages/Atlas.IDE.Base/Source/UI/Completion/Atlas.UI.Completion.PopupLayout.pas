@@ -330,7 +330,7 @@ end;
 function TAtlasCompletionPopupLayout.TagWidth(const ATag: TAtlasTag): Integer;
 begin
   Canvas.Font := UIFont;
-  Result := Canvas.TextWidth(TAtlasCompletionTexts.TagText(ATag)) + Scale(TAtlasDraw.ChipPad);
+  Result := Canvas.TextWidth(TAtlasCompletionTexts.TagText(ATag)) + Scale(TAtlasDraw.cChipPad);
   Canvas.Font := Font;
 end;
 
@@ -392,7 +392,7 @@ begin
   mWidest := Max(mWidest, Canvas.TextWidth(TAtlasStrings.Text(TAtlasTextId.FooterKeys) + '    ' +
     TAtlasStrings.Fmt(TAtlasTextId.CountFits, [999, 9999])) + Scale(18));
   Canvas.Font := Font;
-  Result := TAtlasPopupWidth.Fit(mWidest, Scale(MinWidth), Scale(MaxWidth));
+  Result := TAtlasPopupWidth.Fit(mWidest, Scale(MinWidth), Scale(cMaxWidth));
 end;
 
 procedure TAtlasCompletionPopupLayout.PlaceAndShow;

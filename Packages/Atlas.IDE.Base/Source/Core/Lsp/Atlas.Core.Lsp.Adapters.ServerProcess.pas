@@ -28,7 +28,7 @@ type
   TLspServerProcess = class(TInterfacedObject, IAtlasLspServer)
   public const
     /// <summary>So lange wartet der Lese-Thread nach dem Ende der Ausgabe auf den Exit-Code.</summary>
-    ExitWaitMs = 1000;
+    cExitWaitMs = 1000;
   private
     FProcess: THandle;
     FInputWrite: THandle;
@@ -333,7 +333,7 @@ begin
     ForceDirectories(mFolder);
     FStderrFile := TAtlasServerExits.StderrFileName(mFolder);
     // Zu groß: beiseitelegen. Hält ein anderer Server sie offen, gelingt das wegen FILE_SHARE_DELETE trotzdem.
-    if TFile.Exists(FStderrFile) and (TFile.GetSize(FStderrFile) > TAtlasServerExits.StderrMaxBytes) then
+    if TFile.Exists(FStderrFile) and (TFile.GetSize(FStderrFile) > TAtlasServerExits.cStderrMaxBytes) then
     begin
       mOld := TAtlasServerExits.StderrOldFileName(mFolder);
       MoveFileEx(PChar(FStderrFile), PChar(mOld), MOVEFILE_REPLACE_EXISTING);
@@ -424,7 +424,7 @@ begin
     Exit;
   end;
   Result.RuntimeMs := Int64(TThread.GetTickCount64 - FStarted);
-  mWaitMs := ExitWaitMs;
+  mWaitMs := cExitWaitMs;
   if TAtlasShutdown.Signalled then
   begin
     mWaitMs := 0;
@@ -491,7 +491,7 @@ begin
     FClient.Close;
   end;
   // Schreib-Thread beenden; hängt er an einem Server, der nicht liest, den Server beenden.
-  // Beim Entladen bzw. Schließen der IDE (#493): alles zusammen unter TAtlasShutdown.StopMs.
+  // Beim Entladen bzw. Schließen der IDE (#493): alles zusammen unter TAtlasShutdown.cStopMs.
   if TAtlasShutdown.Signalled then
   begin
     StopWriter(300, 150);

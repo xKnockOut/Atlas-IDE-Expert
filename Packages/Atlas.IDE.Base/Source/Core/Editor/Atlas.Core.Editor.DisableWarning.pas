@@ -40,7 +40,7 @@ type
 
 const
   /// <summary>Wert der Projektoption für „Warnung aus“.</summary>
-  AtlasWarningOptionOff = 'false';
+  cAtlasWarningOptionOff = 'false';
 
 implementation
 

@@ -22,8 +22,8 @@ uses
 type
   TAtlasUsage = class
   public const
-    MaxEntries = 5000;
-    FrequentCount = 5;
+    cMaxEntries = 5000;
+    cFrequentCount = 5;
   private type
     TEntry = record
       Count: Integer;
@@ -120,7 +120,7 @@ begin
   FEntries.AddOrSetValue(mKey, mEntry);
   FRecent.AddOrSetValue(TypeOf(AItem), LowerCase(AItem.Name));
   FChanged := True;
-  if FEntries.Count > MaxEntries then
+  if FEntries.Count > cMaxEntries then
   begin
     Evict;
   end;
@@ -138,7 +138,7 @@ begin
     begin
       Result := CompareValue(A.Value.Last, B.Value.Last);
     end));
-  for mIndex := 0 to Length(mPairs) - MaxEntries + MaxEntries div 10 - 1 do
+  for mIndex := 0 to Length(mPairs) - cMaxEntries + cMaxEntries div 10 - 1 do
   begin
     FEntries.Remove(mPairs[mIndex].Key);
   end;
@@ -170,7 +170,7 @@ begin
   begin
     Exit(TAtlasUsageMark.Recent);
   end;
-  if FEntries.TryGetValue(KeyOf(AItem), mEntry) and (mEntry.Count >= FrequentCount) then
+  if FEntries.TryGetValue(KeyOf(AItem), mEntry) and (mEntry.Count >= cFrequentCount) then
   begin
     Result := TAtlasUsageMark.Frequent;
   end;

@@ -42,7 +42,7 @@ type
 
   TAtlasUnitRename = class
   public const
-    Command = 'atlas.server.unitRenamed';
+    cCommand = 'atlas.server.unitRenamed';
   public
     /// <summary>Betrifft das Umbenennen eine Unit (.pas vorher und nachher, anderer Name)?</summary>
     class function IsUnitRename(const AOldFile, ANewFile: string): Boolean; static;

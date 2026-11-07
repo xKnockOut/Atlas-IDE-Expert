@@ -105,7 +105,7 @@ begin
   mCaption.Top := 5;
   FSafeKey := TAtlasChoiceBox.Create(FPage);
   FSafeKey.Parent := mPanel;
-  FSafeKey.Left := FieldLeft;
+  FSafeKey.Left := cFieldLeft;
   FSafeKey.Top := 1;
   FSafeKey.Width := 120;
   // Reihenfolge wie TAtlasStartupKey ohne None vorn: Umschalt, Strg, keine.
@@ -149,7 +149,7 @@ begin
   mPanel := AddPanel(20);
   FVersion := TLabel.Create(FPage);
   FVersion.Parent := mPanel;
-  FVersion.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsVersion, [TAtlasPluginVersion.Version,
+  FVersion.Caption := TAtlasStrings.Fmt(TAtlasTextId.SettingsVersion, [TAtlasPluginVersion.cVersion,
     TAtlasUpdates.IdeVersion]);
   FVersion.Left := 0;
   FVersion.Top := 2;

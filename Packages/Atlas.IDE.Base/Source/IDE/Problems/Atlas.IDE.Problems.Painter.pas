@@ -122,7 +122,7 @@ begin
   FFont := TFont.Create;
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
-  FTimer.Interval := TAtlasInlineDiagnostics.PauseMs;
+  FTimer.Interval := TAtlasInlineDiagnostics.cPauseMs;
   FTimer.OnTimer := TimerTick;
   if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin

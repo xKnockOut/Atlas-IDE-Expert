@@ -28,7 +28,7 @@ type
 
   TAtlasIdeOverloads = class
   public const
-    ClientCommand = 'atlas.createOverload';
+    cClientCommand = 'atlas.createOverload';
   public
     /// <summary>AArgumentsJson: Argumente der Code-Aktion ([uri, position, art]); ASession: laufende Sitzung oder
     /// nil; AMessage: Zeile für die Meldungsansicht; APlaceholders: Platzhalter-Modus (nil = nur Cursor).</summary>

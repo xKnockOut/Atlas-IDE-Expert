@@ -19,7 +19,7 @@ uses
 type
   TAtlasIdePromoteVariable = class
   public const
-    ClientCommand = 'atlas.promoteVariable';
+    cClientCommand = 'atlas.promoteVariable';
   public
     /// <summary>AArgumentsJson: Argumente der Code-Aktion ([uri, position, name]); ASession: laufende Sitzung oder
     /// nil; AMessage: Zeile für die Meldungsansicht.</summary>

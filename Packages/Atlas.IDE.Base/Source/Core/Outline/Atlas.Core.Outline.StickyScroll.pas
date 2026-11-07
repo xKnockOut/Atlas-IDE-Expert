@@ -93,13 +93,13 @@ type
 
   TAtlasStickyScroll = class
   public const
-    DefaultMaxLines = 3;
-    MaxMaxLines = 10;
-    Separator = ' › ';
+    cDefaultMaxLines = 3;
+    cMaxMaxLines = 10;
+    cSeparator = ' › ';
     /// <summary>So viele Zeilen sucht Header nach der schließenden Klammer.</summary>
-    HeaderSearchLines = 30;
+    cHeaderSearchLines = 30;
     /// <summary>Arten ohne Auswahl: Typen und Routinen der Gliederung.</summary>
-    OutlineKinds = [TAtlasStickyKind.Types, TAtlasStickyKind.Routines];
+    cOutlineKinds = [TAtlasStickyKind.Types, TAtlasStickyKind.Routines];
   public
     /// <summary>Klasse, Record, Interface oder Objekt; Routine mit Rumpf.</summary>
     class function IsBlock(const ANode: TAtlasOutlineNode): Boolean; overload; static;
@@ -169,7 +169,7 @@ const
 
 class function TAtlasStickyScroll.ClampLines(AMaxLines: Integer): Integer;
 begin
-  Result := EnsureRange(AMaxLines, 1, MaxMaxLines);
+  Result := EnsureRange(AMaxLines, 1, cMaxMaxLines);
 end;
 
 class function TAtlasStickyScroll.IsBlock(const ANode: TAtlasOutlineNode): Boolean;
@@ -345,7 +345,7 @@ begin
   end;
   // Parameterliste über mehrere Zeilen: bis zur offenen Klammer, dann „…“ und der Rest nach der schließenden.
   Result := Copy(mLine, 1, mOpen) + '…';
-  mLast := Min(High(ALines), Min(ANode.EndLine, ANode.NameLine + HeaderSearchLines));
+  mLast := Min(High(ALines), Min(ANode.EndLine, ANode.NameLine + cHeaderSearchLines));
   for mIndex := ANode.NameLine + 1 to mLast do
   begin
     mLine := Trim(ALines[mIndex]);
@@ -773,7 +773,7 @@ end;
 class function TAtlasStickyScroll.Rows(const ANodes: TAtlasOutlineNodes; const ALines: TArray<string>;
   const ABlocks: TArray<TAtlasStickyBlock>; ATopLine, AMaxLines, ATabWidth: Integer): TAtlasStickyRows;
 begin
-  Result := Rows(TAtlasStickySource.Create(ANodes, ALines, ABlocks, OutlineKinds), ATopLine, AMaxLines, ATabWidth);
+  Result := Rows(TAtlasStickySource.Create(ANodes, ALines, ABlocks, cOutlineKinds), ATopLine, AMaxLines, ATabWidth);
 end;
 
 /// <summary>Wie Scopes: Mit Shown Kopfzeilen ist ATopLine + Shown die erste lesbare Zeile; die Kette zur kleinsten
@@ -805,7 +805,7 @@ begin
   begin
     if mIndex > 0 then
     begin
-      Result.Text := Result.Text + TAtlasStickyScroll.Separator;
+      Result.Text := Result.Text + TAtlasStickyScroll.cSeparator;
     end;
     Result.Text := Result.Text + EntryName(ASource.Nodes, ASource.Lines, AEntries[AItems[mIndex]]);
   end;

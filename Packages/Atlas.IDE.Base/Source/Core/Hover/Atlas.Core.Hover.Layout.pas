@@ -617,7 +617,7 @@ var
 begin
   // Schalter als umrandetes Kästchen: an in Akzentfarbe, aus gedämpft.
   mTextFace := Face(TAtlasHoverFont.SmallUi, False);
-  mCell := Rect(AX, FY, AX + Width(mTextFace, ACaption) + Scale(AtlasChipPad), FY + Height(mTextFace) + Scale(2));
+  mCell := Rect(AX, FY, AX + Width(mTextFace, ACaption) + Scale(cAtlasChipPad), FY + Height(mTextFace) + Scale(2));
   if AOn then
   begin
     mLineColor := FColors.Accent;
@@ -630,7 +630,7 @@ begin
   end;
   mItem := NewItem(TAtlasHoverItemKind.Frame, mCell, mLineColor);
   mItem.Back := FColors.Surface;
-  mItem.Radius := AtlasChipRadius;
+  mItem.Radius := cAtlasChipRadius;
   MakeHot(mItem, TAtlasHoverHitKind.Published, Ord(AToggle), FColors.Accent);
   Add(mItem);
   mItem := NewItem(TAtlasHoverItemKind.CenterText, mCell, mTextColor);
@@ -647,11 +647,11 @@ var
   mItem: TAtlasHoverItem;
 begin
   mSmallFace := Face(TAtlasHoverFont.SmallUi, False);
-  Result := Rect(FX, FY + Scale(1), FX + Width(mSmallFace, ACaption) + Scale(AtlasChipPad),
+  Result := Rect(FX, FY + Scale(1), FX + Width(mSmallFace, ACaption) + Scale(cAtlasChipPad),
     FY + Height(mSmallFace) + Scale(3));
   mItem := NewItem(TAtlasHoverItemKind.Frame, Result, ALineColor);
   mItem.Back := FColors.Surface;
-  mItem.Radius := AtlasChipRadius;
+  mItem.Radius := cAtlasChipRadius;
   Add(mItem);
   mItem := NewItem(TAtlasHoverItemKind.CenterText, Result, ATextColor);
   mItem.Text := ACaption;
@@ -869,9 +869,9 @@ begin
   // „published: 38 Properties · 24 Ereignisse“, rechts die Schalter; ohne Platz darunter.
   mSmallFace := Face(TAtlasHoverFont.SmallUi, False);
   mSummary := Format(FInput.Texts.PublishedSummary, [FData.MemberCount(False), FData.MemberCount(True)]);
-  mInheritedWidth := Width(mSmallFace, FInput.Texts.PublishedInherited) + Scale(AtlasChipPad);
+  mInheritedWidth := Width(mSmallFace, FInput.Texts.PublishedInherited) + Scale(cAtlasChipPad);
   mChipsWidth := mInheritedWidth + Scale(6) + Width(mSmallFace, FInput.Texts.PublishedOnlyDefaults) +
-    Scale(AtlasChipPad);
+    Scale(cAtlasChipPad);
   AddText(FLeft, FY + Scale(1), mSummary, mSmallFace, FColors.Muted);
   if FLeft + Width(mSmallFace, mSummary) + Scale(12) + mChipsWidth > FRight then
   begin
@@ -982,16 +982,16 @@ begin
   mTextFace := Face(TAtlasHoverFont.Mono, ACurrent);
   mTextWidth := Width(mTextFace, AText);
   mTextHeight := Height(mTextFace) + Scale(2);
-  if (FX + mTextWidth + Scale(AtlasChipPad) > FRight) and (FX > FLeft) then
+  if (FX + mTextWidth + Scale(cAtlasChipPad) > FRight) and (FX > FLeft) then
   begin
     FX := FLeft;
     Inc(FY, FRowHeight + Scale(4));
     FRowHeight := 0;
   end;
-  mCell := Rect(FX, FY, FX + mTextWidth + Scale(AtlasChipPad), FY + mTextHeight);
+  mCell := Rect(FX, FY, FX + mTextWidth + Scale(cAtlasChipPad), FY + mTextHeight);
   mFrame := NewItem(TAtlasHoverItemKind.Frame, mCell, FColors.Accent);
-  mText := NewItem(TAtlasHoverItemKind.Text, Rect(mCell.Left + Scale(AtlasChipPad div 2), mCell.Top + Scale(1),
-    mCell.Left + Scale(AtlasChipPad div 2), mCell.Top + Scale(1)), FColors.Accent);
+  mText := NewItem(TAtlasHoverItemKind.Text, Rect(mCell.Left + Scale(cAtlasChipPad div 2), mCell.Top + Scale(1),
+    mCell.Left + Scale(cAtlasChipPad div 2), mCell.Top + Scale(1)), FColors.Accent);
   if not ACurrent then
   begin
     mFrame.Color := FColors.Line;
@@ -1001,7 +1001,7 @@ begin
     MakeHot(mText, TAtlasHoverHitKind.Ancestor, AIndex, FColors.Accent);
   end;
   mFrame.Back := FColors.Surface;
-  mFrame.Radius := AtlasChipRadius;
+  mFrame.Radius := cAtlasChipRadius;
   Add(mFrame);
   mText.Text := AText;
   mText.Face := mTextFace;
@@ -1065,7 +1065,7 @@ var
   mCycle: Boolean;
   mSeparator: string;
 begin
-  mCycle := AProblem.Code = TAtlasProblem.UsesCycleCode;
+  mCycle := AProblem.Code = TAtlasProblem.cUsesCycleCode;
   if (AProblem.Related = nil) and not mCycle then
   begin
     Exit;
@@ -1122,7 +1122,7 @@ begin
   end;
   if AProblem.Stale then
   begin
-    mColor := TAtlasColorMath.Mix(mColor, FColors.Surface, AtlasMixFaded);
+    mColor := TAtlasColorMath.Mix(mColor, FColors.Surface, cAtlasMixFaded);
   end;
   // Kleine UI-Schrift statt Badge: Die Badge-Schrift richtet sich beim Zeichnen nach der Höhe des Kästchens, das
   // Kästchen hier nach der gemessenen Schrift; gemessen wurde sie ohne Kästchen (Windows-Standardschrift), das
@@ -1175,7 +1175,7 @@ var
   mOldFont: TAtlasHoverFont;
 begin
   mOldFont := BeginLinkRow;
-  if AProblem.UsesState = TAtlasProblem.UsesUnused then
+  if AProblem.UsesState = TAtlasProblem.cUsesUnused then
   begin
     ProblemLink(FInput.Texts.UsesRemove, AIndex, TAtlasHoverProblemAction.RemoveUses);
     if AProblem.UsesUnusedCount > 1 then
@@ -1201,7 +1201,7 @@ begin
   end;
   if AProblem.Confirmed then
   begin
-    Result := TAtlasProblem.ConfirmedSource;
+    Result := TAtlasProblem.cConfirmedSource;
   end;
   if AProblem.Code <> '' then
   begin
@@ -1287,7 +1287,7 @@ begin
   ProblemDetails(mProblem, AIndex);
   // Weitere Stellen (#896), z. B. die Units eines Zyklus mit Sprung an ihren uses-Eintrag.
   RelatedLinks(mProblem, AIndex);
-  if (mProblem.UsesState = TAtlasProblem.UsesUnused) or (mProblem.UsesState = TAtlasProblem.UsesImplementation) then
+  if (mProblem.UsesState = TAtlasProblem.cUsesUnused) or (mProblem.UsesState = TAtlasProblem.cUsesImplementation) then
   begin
     UsesActions(mProblem, AIndex);
   end
@@ -1320,7 +1320,7 @@ var
   mCaptionFace: TAtlasHoverFace;
 begin
   Inc(FY, Scale(8));
-  if FData.Kind = TAtlasHoverData.KindClassRef then
+  if FData.Kind = TAtlasHoverData.cKindClassRef then
   begin
     mCaption := Format(FInput.Texts.TargetType, [FData.ChainOf]);
   end

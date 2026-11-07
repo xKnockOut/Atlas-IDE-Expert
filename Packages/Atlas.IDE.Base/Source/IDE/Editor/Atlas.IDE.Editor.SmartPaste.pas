@@ -477,7 +477,7 @@ begin
   if (Trim(APrefix) <> '') or not TAtlasIdeSmartIndent.ColumnAt(AView.Buffer, TAtlasEditorBuffer.Text(AView.Buffer),
     AStartLine, Result) then
   begin
-    Result := TAtlasSmartPaste.NoColumn;
+    Result := TAtlasSmartPaste.cNoColumn;
   end;
 end;
 
@@ -548,7 +548,7 @@ begin
     begin
       Analysis := Default(TAtlasPasteAnalysis);
       try
-        Answer := mSession.RunCommand(TAtlasSmartPaste.Command, mArguments, cTimeoutMs);
+        Answer := mSession.RunCommand(TAtlasSmartPaste.cCommand, mArguments, cTimeoutMs);
         try
           Analysis := TAtlasSmartPaste.ReadAnalysis(Answer);
         finally
@@ -631,7 +631,7 @@ begin
   AMoved := nil;
   try
     ASession.Sync(FFileName, FText);
-    mAnswer := ASession.RunCommand(TAtlasSmartPaste.Command, TAtlasSmartPaste.Arguments(
+    mAnswer := ASession.RunCommand(TAtlasSmartPaste.cCommand, TAtlasSmartPaste.Arguments(
       TLspSession.PathToUri(FFileName), FStartLine, FStartCharacter, FEndLine, FEndCharacter, AUnits), cTimeoutMs);
     try
       if mAnswer is TJSONObject then

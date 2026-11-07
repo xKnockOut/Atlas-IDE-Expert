@@ -234,8 +234,8 @@ begin
     begin
       mCount := Length(AMessages);
       mDone := ADone;
-      Result := TAtlasIdeHost.RunServerCommandAsync(GScope, TAtlasFeature.Build, TAtlasBuildVerdicts.ClassifyCommand,
-        TAtlasBuildVerdicts.Arguments(mUri, AMessages), TAtlasBuildVerdicts.ClassifyTimeoutMs,
+      Result := TAtlasIdeHost.RunServerCommandAsync(GScope, TAtlasFeature.Build, TAtlasBuildVerdicts.cClassifyCommand,
+        TAtlasBuildVerdicts.Arguments(mUri, AMessages), TAtlasBuildVerdicts.cClassifyTimeoutMs,
         procedure(AAnswer: string)
         begin
           mDone(BaselinedOfAnswer(AAnswer, mCount));
