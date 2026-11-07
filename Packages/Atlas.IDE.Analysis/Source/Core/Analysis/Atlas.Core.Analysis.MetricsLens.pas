@@ -100,7 +100,8 @@ begin
   end;
 end;
 
-class function TAtlasMetricsLens.Exceeds(const AMethod: TAtlasMethodMetrics; const ALimits: TAtlasMetricValues): Boolean;
+class function TAtlasMetricsLens.Exceeds(const AMethod: TAtlasMethodMetrics;
+  const ALimits: TAtlasMetricValues): Boolean;
 var
   mMetric: TAtlasMetric;
 begin

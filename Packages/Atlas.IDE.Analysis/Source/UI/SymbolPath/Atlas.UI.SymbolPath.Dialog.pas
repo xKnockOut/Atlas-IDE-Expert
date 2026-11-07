@@ -92,10 +92,10 @@ uses
 
 const
   /// <summary>Pause nach dem letzten Tastendruck, bevor Vorschläge geholt werden.</summary>
-  SuggestDelayMs = 250;
-  MaxSuggestions = 12;
-  DefaultSteps = 8;
-  MaxSteps = 16;
+  cSuggestDelayMs = 250;
+  cMaxSuggestions = 12;
+  cDefaultSteps = 8;
+  cMaxSteps = 16;
 
 { TAtlasSymbolPathDialog }
 
@@ -155,8 +155,8 @@ begin
   ADialog.FStepsUpDown.Parent := ADialog;
   ADialog.FStepsUpDown.Associate := ADialog.FSteps;
   ADialog.FStepsUpDown.Min := 1;
-  ADialog.FStepsUpDown.Max := MaxSteps;
-  ADialog.FStepsUpDown.Position := DefaultSteps;
+  ADialog.FStepsUpDown.Max := cMaxSteps;
+  ADialog.FStepsUpDown.Position := cDefaultSteps;
   AddLabel(ADialog, ALayout, TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathMaxSteps), AY,
     ADialog.FSteps);
   Inc(AY, ADialog.FSteps.Height + ALayout.Spacing);
@@ -209,7 +209,7 @@ begin
   ADialog.FList.OnDblClick := ADialog.ListDblClick;
   ADialog.FTimer := TTimer.Create(ADialog);
   ADialog.FTimer.Enabled := False;
-  ADialog.FTimer.Interval := SuggestDelayMs;
+  ADialog.FTimer.Interval := cSuggestDelayMs;
   ADialog.FTimer.OnTimer := ADialog.TimerTick;
 end;
 
@@ -241,23 +241,23 @@ end;
 class function TAtlasSymbolPathDialog.Execute(const ASuggest: TAtlasSymbolPathSuggest;
   var AInput: TAtlasSymbolPathRequestInput): Boolean;
 var
-  Dialog: TAtlasSymbolPathDialog;
+  mDialog: TAtlasSymbolPathDialog;
 begin
-  Dialog := TAtlasSymbolPathDialog.CreateDialog(Application, ASuggest);
+  mDialog := TAtlasSymbolPathDialog.CreateDialog(Application, ASuggest);
   try
-    Dialog.Input := AInput;
+    mDialog.Input := AInput;
     // Von schon gefüllt („Weg von hier nach …“): gleich ins Ziel.
-    if Dialog.FFrom.Text <> '' then
+    if mDialog.FFrom.Text <> '' then
     begin
-      Dialog.ActiveControl := Dialog.FTo;
+      mDialog.ActiveControl := mDialog.FTo;
     end;
-    Result := Dialog.ShowModal = mrOk;
+    Result := mDialog.ShowModal = mrOk;
     if Result then
     begin
-      AInput := Dialog.Input;
+      AInput := mDialog.Input;
     end;
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 
@@ -265,7 +265,7 @@ function TAtlasSymbolPathDialog.GetInput: TAtlasSymbolPathRequestInput;
 begin
   Result.From := Trim(FFrom.Text);
   Result.To_ := Trim(FTo.Text);
-  Result.MaxSteps := EnsureRange(StrToIntDef(FSteps.Text, DefaultSteps), 1, MaxSteps);
+  Result.MaxSteps := EnsureRange(StrToIntDef(FSteps.Text, cDefaultSteps), 1, cMaxSteps);
   Result.All := FAll.Checked;
 end;
 
@@ -278,13 +278,13 @@ begin
   finally
     FFilling := False;
   end;
-  if (AValue.MaxSteps >= 1) and (AValue.MaxSteps <= MaxSteps) then
+  if (AValue.MaxSteps >= 1) and (AValue.MaxSteps <= cMaxSteps) then
   begin
     FStepsUpDown.Position := AValue.MaxSteps;
   end
   else
   begin
-    FStepsUpDown.Position := DefaultSteps;
+    FStepsUpDown.Position := cDefaultSteps;
   end;
   // Ohne Fenster schreibt TUpDown nicht ins verbundene Feld; GetInput liest das Feld.
   FSteps.Text := IntToStr(FStepsUpDown.Position);
@@ -314,27 +314,27 @@ end;
 
 procedure TAtlasSymbolPathDialog.Suggest(AEdit: TEdit);
 var
-  Items: TArray<string>;
-  Item: string;
+  mItems: TArray<string>;
+  mItem: string;
 begin
   FTarget := AEdit;
-  Items := nil;
+  mItems := nil;
   if Assigned(FSuggest) and (Trim(AEdit.Text) <> '') then
   begin
-    Items := FSuggest(Trim(AEdit.Text));
+    mItems := FSuggest(Trim(AEdit.Text));
   end;
   FList.Items.BeginUpdate;
   try
     FList.Items.Clear;
-    for Item in Items do
+    for mItem in mItems do
     begin
-      if FList.Items.Count >= MaxSuggestions then
+      if FList.Items.Count >= cMaxSuggestions then
       begin
         Break;
       end;
-      if FList.Items.IndexOf(Item) < 0 then
+      if FList.Items.IndexOf(mItem) < 0 then
       begin
-        FList.Items.Add(Item);
+        FList.Items.Add(mItem);
       end;
     end;
   finally
