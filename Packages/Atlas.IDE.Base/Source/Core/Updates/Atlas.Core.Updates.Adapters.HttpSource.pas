@@ -30,9 +30,9 @@ uses
 
 const
   // Die Versionsdatei ist ein paar Byte groß; mehr wird nicht gelesen.
-  MaxBytes = 64 * 1024;
-  MaxRedirects = 5;
-  SliceMs = 50;
+  cMaxBytes = 64 * 1024;
+  cMaxRedirects = 5;
+  cSliceMs = 50;
 
 function IsRedirect(AStatus: Integer): Boolean;
 begin
@@ -53,7 +53,7 @@ begin
   Result := True;
   while Result and not mAsync.IsCompleted do
   begin
-    Result := not TAtlasShutdown.Wait(SliceMs) and (AWatch.ElapsedMilliseconds <= ATimeoutMs);
+    Result := not TAtlasShutdown.Wait(cSliceMs) and (AWatch.ElapsedMilliseconds <= ATimeoutMs);
   end;
   if Result then
   begin
@@ -96,7 +96,7 @@ begin
     begin
       Inc(mRedirects);
       mUrl := AResponse.HeaderValue['Location'];
-      if mRedirects > MaxRedirects then
+      if mRedirects > cMaxRedirects then
       begin
         AError := 'zu viele Weiterleitungen';
       end;
@@ -132,7 +132,7 @@ begin
       begin
         AError := Format('HTTP %d', [mResponse.StatusCode]);
       end
-      else if mContent.Size > MaxBytes then
+      else if mContent.Size > cMaxBytes then
       begin
         AError := 'Antwort zu groß';
       end

@@ -42,9 +42,9 @@ type
   TAtlasIdeExpressionType = class
   private const
     /// <summary>Die Namensauflösung kann Units nachladen: etwas länger als eine einfache Anfrage.</summary>
-    TimeoutMs = 10000;
+    cTimeoutMs = 10000;
     /// <summary>Deckkraft der Hervorhebung über dem Text (0–255).</summary>
-    MarkAlpha = 48;
+    cMarkAlpha = 48;
   private type
     TEvents = class(TNTACodeEditorNotifier)
     protected
@@ -67,7 +67,7 @@ type
     FLines: TArray<string>;
     FTabWidth: Integer;
     procedure AppMessage(var Msg: TMsg; var Handled: Boolean);
-    procedure KeyDown(const Msg: TMsg; var Handled: Boolean);
+    procedure KeyDown(const AMsg: TMsg; var AHandled: Boolean);
     procedure Execute;
     function Ready(out AView: IOTAEditView; out ASession: TLspSession): Boolean;
     function Ask(ASession: TLspSession; const AFileName, AText, AArguments: string;
@@ -122,31 +122,31 @@ uses
 
 function IsEditorWindow(AWnd: HWND): Boolean;
 var
-  Control: TWinControl;
+  mControl: TWinControl;
 begin
-  Control := FindControl(AWnd);
-  Result := (Control <> nil) and Control.ClassNameIs('TEditControl');
+  mControl := FindControl(AWnd);
+  Result := (mControl <> nil) and mControl.ClassNameIs('TEditControl');
 end;
 
 function IsPascal(const AFileName: string): Boolean;
 var
-  Ext: string;
+  mExt: string;
 begin
-  Ext := LowerCase(ExtractFileExt(AFileName));
-  Result := (Ext = '.pas') or (Ext = '.dpr') or (Ext = '.dpk') or (Ext = '.inc');
+  mExt := LowerCase(ExtractFileExt(AFileName));
+  Result := (mExt = '.pas') or (mExt = '.dpr') or (mExt = '.dpk') or (mExt = '.inc');
 end;
 
 /// <summary>Schreibmarke in Bildschirmkoordinaten; ohne Schreibmarke eine Zeile an der Maus.</summary>
 function CaretRect: TRect;
 var
-  Info: TGUIThreadInfo;
+  mInfo: TGUIThreadInfo;
 begin
-  FillChar(Info, SizeOf(Info), 0);
-  Info.cbSize := SizeOf(Info);
-  if GetGUIThreadInfo(GetCurrentThreadId, Info) and (Info.hwndCaret <> 0) then
+  FillChar(mInfo, SizeOf(mInfo), 0);
+  mInfo.cbSize := SizeOf(mInfo);
+  if GetGUIThreadInfo(GetCurrentThreadId, mInfo) and (mInfo.hwndCaret <> 0) then
   begin
-    Result := Info.rcCaret;
-    MapWindowPoints(Info.hwndCaret, 0, Result, 2);
+    Result := mInfo.rcCaret;
+    MapWindowPoints(mInfo.hwndCaret, 0, Result, 2);
   end
   else
   begin
@@ -157,22 +157,22 @@ end;
 /// <summary>Gedrückte Taste mit Umschalt, Strg und Alt als TShortCut.</summary>
 function PressedShortCut(AKey: Word): TShortCut;
 var
-  Shift: TShiftState;
+  mShift: TShiftState;
 begin
-  Shift := [];
+  mShift := [];
   if GetKeyState(VK_SHIFT) < 0 then
   begin
-    Include(Shift, ssShift);
+    Include(mShift, ssShift);
   end;
   if GetKeyState(VK_CONTROL) < 0 then
   begin
-    Include(Shift, ssCtrl);
+    Include(mShift, ssCtrl);
   end;
   if GetKeyState(VK_MENU) < 0 then
   begin
-    Include(Shift, ssAlt);
+    Include(mShift, ssAlt);
   end;
-  Result := ShortCut(AKey, Shift);
+  Result := ShortCut(AKey, mShift);
 end;
 
 { TAtlasIdeExpressionType.TEvents }
@@ -192,7 +192,7 @@ end;
 constructor TAtlasIdeExpressionType.Create(const ASession: TAtlasExpressionTypeSessionFunc;
   const AMessage: TProc<string>);
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
   inherited Create;
   FSession := ASession;
@@ -203,31 +203,31 @@ begin
   FEvents := TEvents.Create;
   FEventsRef := FEvents;
   FEvents.OnEditorPaintLine := PaintLine;
-  if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    FIndex := Services.AddEditorEventsNotifier(FEventsRef);
+    FIndex := mServices.AddEditorEventsNotifier(FEventsRef);
   end;
 end;
 
 destructor TAtlasIdeExpressionType.Destroy;
 var
-  Services: INTACodeEditorServices;
-  Painted: Boolean;
+  mServices: INTACodeEditorServices;
+  mPainted: Boolean;
 begin
   FreeAndNil(FMessages);
   // Erst abmelden, dann freigeben (#493).
-  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    Services.RemoveEditorEventsNotifier(FIndex);
+    mServices.RemoveEditorEventsNotifier(FIndex);
   end;
   FEvents.OnEditorPaintLine := nil;
   FEventsRef := nil;
-  Painted := FShown.Active;
+  mPainted := FShown.Active;
   FreeAndNil(FTip);
   FShown := Default(TAtlasExpressionTypeShown);
   FInfo := Default(TAtlasExpressionTypeInfo);
   FLines := nil;
-  if Painted then
+  if mPainted then
   begin
     Invalidate;
   end;
@@ -250,10 +250,10 @@ end;
 
 class function TAtlasIdeExpressionType.Enabled: Boolean;
 var
-  Settings: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
 begin
-  Settings := TAtlasIdeSettings.Current;
-  Result := Settings.Enabled and Settings.ExpressionType;
+  mSettings := TAtlasIdeSettings.Current;
+  Result := mSettings.Enabled and mSettings.ExpressionType;
 end;
 
 class function TAtlasIdeExpressionType.Active: Boolean;
@@ -287,11 +287,11 @@ end;
 
 class procedure TAtlasIdeExpressionType.Invalidate;
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    TAtlasIdeEditorRefresh.InvalidateTop(Services);
+    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
   end;
 end;
 
@@ -310,15 +310,15 @@ end;
 
 procedure TAtlasIdeExpressionType.Close;
 var
-  Painted: Boolean;
+  mPainted: Boolean;
 begin
-  Painted := FShown.Active;
+  mPainted := FShown.Active;
   FShown.Active := False;
   if (FTip <> nil) and FTip.IsShown then
   begin
     FTip.Dismiss;
   end;
-  if Painted then
+  if mPainted then
   begin
     Invalidate;
   end;
@@ -388,7 +388,7 @@ begin
   Result := False;
   try
     ASession.Sync(AFileName, AText);
-    mAnswer := ASession.RunCommand(TAtlasExpressionType.Command, AArguments, TimeoutMs);
+    mAnswer := ASession.RunCommand(TAtlasExpressionType.Command, AArguments, cTimeoutMs);
     try
       TAtlasExpressionType.Read(mAnswer, AInfo);
     finally
@@ -452,7 +452,7 @@ end;
 
 procedure TAtlasIdeExpressionType.Show(const AInfo: TAtlasExpressionTypeInfo);
 var
-  Caret: TRect;
+  mCaret: TRect;
 begin
   FInfo := AInfo;
   if FTip = nil then
@@ -472,43 +472,43 @@ begin
       end;
   end;
   // Farben, Editorschrift und Zoom wie der Editor; unter der Zeile der Schreibmarke.
-  Caret := CaretRect;
-  TAtlasIdeStyle.Apply(FTip, Caret);
+  mCaret := CaretRect;
+  TAtlasIdeStyle.Apply(FTip, mCaret);
   FTip.ShowFor(TAtlasExpressionType.Rows(AInfo, TAtlasExpressionTypeTip.Texts(KeyText)),
-    TPoint.Create(Caret.Left, Caret.Bottom));
+    TPoint.Create(mCaret.Left, mCaret.Bottom));
   FShown.Active := True;
   Invalidate;
 end;
 
 procedure TAtlasIdeExpressionType.Navigate;
 var
-  Target: TAtlasExpressionTypeInfo;
+  mTarget: TAtlasExpressionTypeInfo;
 begin
-  Target := FInfo;
+  mTarget := FInfo;
   Close;
-  if Target.HasLocation then
+  if mTarget.HasLocation then
   begin
-    TAtlasIdeNavigation.GoToLocation(Target.FileName, Target.Line, Target.Character);
+    TAtlasIdeNavigation.GoToLocation(mTarget.FileName, mTarget.Line, mTarget.Character);
   end;
 end;
 
-procedure TAtlasIdeExpressionType.KeyDown(const Msg: TMsg; var Handled: Boolean);
+procedure TAtlasIdeExpressionType.KeyDown(const AMsg: TMsg; var AHandled: Boolean);
 var
-  Key: Word;
+  mKey: Word;
 begin
-  Key := Word(Msg.wParam);
-  if (Key = VK_SHIFT) or (Key = VK_CONTROL) or (Key = VK_MENU) then
+  mKey := Word(AMsg.wParam);
+  if (mKey = VK_SHIFT) or (mKey = VK_CONTROL) or (mKey = VK_MENU) then
   begin
     Exit;
   end;
-  if (Key = VK_ESCAPE) and (GetKeyState(VK_CONTROL) >= 0) and (GetKeyState(VK_MENU) >= 0) then
+  if (mKey = VK_ESCAPE) and (GetKeyState(VK_CONTROL) >= 0) and (GetKeyState(VK_MENU) >= 0) then
   begin
     Close;
-    Handled := True;
+    AHandled := True;
     Exit;
   end;
   // Das eigene Kürzel erweitert (Run); jede andere Taste schließt und geht an den Editor.
-  if PressedShortCut(Key) = TShortCut(TAtlasIdeSettings.Current.ExpressionTypeKey) then
+  if PressedShortCut(mKey) = TShortCut(TAtlasIdeSettings.Current.ExpressionTypeKey) then
   begin
     Exit;
   end;
@@ -567,7 +567,7 @@ begin
     begin
       IntersectClipRect(mDC, mCode.Left, ARect.Top, ARect.Right, ARect.Bottom);
     end;
-    TAtlasIdeStyle.Blend(mDC, mArea, COLORREF(ColorToRGB(TColor(mColors.Accent))), TAtlasIdeExpressionType.MarkAlpha);
+    TAtlasIdeStyle.Blend(mDC, mArea, COLORREF(ColorToRGB(TColor(mColors.Accent))), TAtlasIdeExpressionType.cMarkAlpha);
   finally
     RestoreDC(mDC, mSaved);
   end;

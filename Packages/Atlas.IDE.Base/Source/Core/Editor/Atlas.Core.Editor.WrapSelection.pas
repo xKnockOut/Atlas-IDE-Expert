@@ -106,69 +106,69 @@ type
 
 function LineStarts(const ALines: TArray<string>): TArray<Integer>;
 var
-  Index, Offset: Integer;
+  mIndex, mOffset: Integer;
 begin
   SetLength(Result, Length(ALines));
-  Offset := 0;
-  for Index := 0 to High(ALines) do
+  mOffset := 0;
+  for mIndex := 0 to High(ALines) do
   begin
-    Result[Index] := Offset;
-    Inc(Offset, Length(ALines[Index]) + 1);
+    Result[mIndex] := mOffset;
+    Inc(mOffset, Length(ALines[mIndex]) + 1);
   end;
 end;
 
 function OffsetOf(const ALines: TArray<string>; const AStarts: TArray<Integer>;
   const APos: TLspTextPosition): Integer;
 var
-  Line: Integer;
+  mLine: Integer;
 begin
-  Line := EnsureRange(APos.Line, 0, High(ALines));
-  Result := AStarts[Line] + EnsureRange(APos.Character, 0, Length(ALines[Line]));
+  mLine := EnsureRange(APos.Line, 0, High(ALines));
+  Result := AStarts[mLine] + EnsureRange(APos.Character, 0, Length(ALines[mLine]));
 end;
 
 function PositionOf(const AStarts: TArray<Integer>; AOffset: Integer): TLspTextPosition;
 var
-  First, Last, Middle: Integer;
+  mFirst, mLast, mMiddle: Integer;
 begin
-  First := 0;
-  Last := High(AStarts);
-  while First < Last do
+  mFirst := 0;
+  mLast := High(AStarts);
+  while mFirst < mLast do
   begin
-    Middle := (First + Last + 1) div 2;
-    if AStarts[Middle] <= AOffset then
+    mMiddle := (mFirst + mLast + 1) div 2;
+    if AStarts[mMiddle] <= AOffset then
     begin
-      First := Middle;
+      mFirst := mMiddle;
     end
     else
     begin
-      Last := Middle - 1;
+      mLast := mMiddle - 1;
     end;
   end;
-  Result := TLspTextPosition.Create(First, AOffset - AStarts[First]);
+  Result := TLspTextPosition.Create(mFirst, AOffset - AStarts[mFirst]);
 end;
 
 function LeadingWhitespace(const ALine: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := 1;
-  while (Index <= Length(ALine)) and CharInSet(ALine[Index], [' ', #9]) do
+  mIndex := 1;
+  while (mIndex <= Length(ALine)) and CharInSet(ALine[mIndex], [' ', #9]) do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Result := Copy(ALine, 1, Index - 1);
+  Result := Copy(ALine, 1, mIndex - 1);
 end;
 
 /// <summary>Beginnt APos in einem String (nach dem öffnenden Hochkomma)?</summary>
 function InString(const ASpans: TArray<TAtlasCommentSpan>; const APos: TLspTextPosition): Boolean;
 var
-  Span: TAtlasCommentSpan;
+  mSpan: TAtlasCommentSpan;
 begin
   Result := False;
-  for Span in ASpans do
+  for mSpan in ASpans do
   begin
-    if (Span.Kind = TAtlasCommentSpanKind.StringLiteral) and
-      (TLspTextPosition.Compare(Span.StartPos, APos) < 0) and (TLspTextPosition.Compare(APos, Span.EndPos) < 0) then
+    if (mSpan.Kind = TAtlasCommentSpanKind.StringLiteral) and
+      (TLspTextPosition.Compare(mSpan.StartPos, APos) < 0) and (TLspTextPosition.Compare(APos, mSpan.EndPos) < 0) then
     begin
       Exit(True);
     end;
@@ -179,14 +179,14 @@ end;
 /// </summary>
 function AfterTypeName(const AText: string; AOffset: Integer): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := AOffset;
-  while (Index >= 1) and TTextChars.IsIdentChar(AText[Index]) do
+  mIndex := AOffset;
+  while (mIndex >= 1) and TTextChars.IsIdentChar(AText[mIndex]) do
   begin
-    Dec(Index);
+    Dec(mIndex);
   end;
-  Result := (Index < AOffset) and not CharInSet(AText[Index + 1], ['0'..'9']);
+  Result := (mIndex < AOffset) and not CharInSet(AText[mIndex + 1], ['0'..'9']);
 end;
 
 /// <summary>Ganze Zeilen: Anfang im Einzug der ersten Zeile, Ende am Zeilenende bzw. am Anfang einer späteren
@@ -448,14 +448,14 @@ end;
 
 class function TAtlasWrapSelection.Normalize(const AChars: string): string;
 var
-  Ch: Char;
+  mCh: Char;
 begin
   Result := '';
-  for Ch in AChars do
+  for mCh in AChars do
   begin
-    if (Pos(Ch, AllChars) > 0) and (Pos(Ch, Result) = 0) then
+    if (Pos(mCh, AllChars) > 0) and (Pos(mCh, Result) = 0) then
     begin
-      Result := Result + Ch;
+      Result := Result + mCh;
     end;
   end;
 end;

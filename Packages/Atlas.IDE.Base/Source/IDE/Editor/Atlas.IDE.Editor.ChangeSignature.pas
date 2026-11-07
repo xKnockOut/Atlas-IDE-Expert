@@ -42,10 +42,10 @@ uses
   Atlas.IDE.Editor.ServerEdit;
 
 const
-  PrepareCommand = 'atlas.server.changeSignature.prepare';
-  ApplyCommand = 'atlas.server.changeSignature';
+  cPrepareCommand = 'atlas.server.changeSignature.prepare';
+  cApplyCommand = 'atlas.server.changeSignature';
   // Alle Aufrufer im Projekt suchen dauert; wie beim Umbenennen.
-  TimeoutMs = 60000;
+  cTimeoutMs = 60000;
 
 /// <summary>Modell der Signatur vom Server; False mit Meldung, wenn er scheitert.</summary>
 function FetchModel(ASession: TLspSession; const AArgumentsJson: string; const AMessage: TProc<string>;
@@ -57,7 +57,7 @@ begin
   AModel := nil;
   TAtlasIdeRename.SyncOpenBuffers(ASession);
   try
-    mAnswer := ASession.RunCommand(PrepareCommand, AArgumentsJson, TimeoutMs);
+    mAnswer := ASession.RunCommand(cPrepareCommand, AArgumentsJson, cTimeoutMs);
     try
       AModel := TAtlasSignatureModel.Create(TAtlasIdeServerEdit.AsObject(mAnswer));
     finally
@@ -112,7 +112,7 @@ begin
     Exit;
   end;
   if not ChooseSignature(ASession, AArgumentsJson, AMessage, mApplyArguments) or
-    not TAtlasIdeServerEdit.Fetch(ASession, TAtlasServerEditCommand.Create(ApplyCommand, mApplyArguments, TimeoutMs,
+    not TAtlasIdeServerEdit.Fetch(ASession, TAtlasServerEditCommand.Create(cApplyCommand, mApplyArguments, cTimeoutMs,
     TAtlasTextId.SigFailed), nil, AMessage, mReply) then
   begin
     Exit;

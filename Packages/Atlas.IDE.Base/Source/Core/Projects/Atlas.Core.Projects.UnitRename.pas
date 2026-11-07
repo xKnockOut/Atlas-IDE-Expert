@@ -100,109 +100,109 @@ end;
 
 class function TAtlasUnitRename.IsUnitRename(const AOldFile, ANewFile: string): Boolean;
 var
-  OldName, NewName: string;
+  mOldName, mNewName: string;
 begin
-  OldName := UnitNameOf(AOldFile);
-  NewName := UnitNameOf(ANewFile);
-  Result := (OldName <> '') and (NewName <> '') and not SameText(OldName, NewName);
+  mOldName := UnitNameOf(AOldFile);
+  mNewName := UnitNameOf(ANewFile);
+  Result := (mOldName <> '') and (mNewName <> '') and not SameText(mOldName, mNewName);
 end;
 
 class function TAtlasUnitRename.SourceFiles(const AFiles: TArray<string>): TArray<string>;
 var
-  FileName, Known: string;
-  Seen: Boolean;
+  mFileName, mKnown: string;
+  mSeen: Boolean;
 begin
   Result := nil;
-  for FileName in AFiles do
+  for mFileName in AFiles do
   begin
-    if (FileName = '') or not MatchText(ExtractFileExt(FileName), ['.pas', '.dpr', '.dpk', '.inc']) then
+    if (mFileName = '') or not MatchText(ExtractFileExt(mFileName), ['.pas', '.dpr', '.dpk', '.inc']) then
     begin
       Continue;
     end;
-    Seen := False;
-    for Known in Result do
+    mSeen := False;
+    for mKnown in Result do
     begin
-      if SameText(Known, FileName) then
+      if SameText(mKnown, mFileName) then
       begin
-        Seen := True;
+        mSeen := True;
       end;
     end;
-    if not Seen then
+    if not mSeen then
     begin
-      Result := Result + [FileName];
+      Result := Result + [mFileName];
     end;
   end;
 end;
 
 class function TAtlasUnitRename.Arguments(const AOldFile, ANewFile: string; const AFiles: TArray<string>): string;
 var
-  List, Files: TJSONArray;
-  FileName: string;
+  mList, mFiles: TJSONArray;
+  mFileName: string;
 begin
-  List := TJSONArray.Create;
+  mList := TJSONArray.Create;
   try
-    List.Add(TLspSession.PathToUri(AOldFile));
-    List.Add(TLspSession.PathToUri(ANewFile));
-    Files := TJSONArray.Create;
-    List.AddElement(Files);
-    for FileName in SourceFiles(AFiles) do
+    mList.Add(TLspSession.PathToUri(AOldFile));
+    mList.Add(TLspSession.PathToUri(ANewFile));
+    mFiles := TJSONArray.Create;
+    mList.AddElement(mFiles);
+    for mFileName in SourceFiles(AFiles) do
     begin
-      Files.Add(TLspSession.PathToUri(FileName));
+      mFiles.Add(TLspSession.PathToUri(mFileName));
     end;
-    Result := List.ToJSON;
+    Result := mList.ToJSON;
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 
 class function TAtlasUnitRename.ReadAnswer(AValue: TJSONValue): TAtlasUnitRenameAnswer;
 var
-  Reply, Edit, Document, Identifier: TJSONObject;
-  Item: TJSONValue;
+  mReply, mEdit, mDocument, mIdentifier: TJSONObject;
+  mItem: TJSONValue;
 begin
   Result := Default(TAtlasUnitRenameAnswer);
   if not (AValue is TJSONObject) then
   begin
     Exit;
   end;
-  Reply := TJSONObject(AValue);
-  if not (Reply.GetValue('enabled') is TJSONBool) or not TJSONBool(Reply.GetValue('enabled')).AsBoolean then
+  mReply := TJSONObject(AValue);
+  if not (mReply.GetValue('enabled') is TJSONBool) or not TJSONBool(mReply.GetValue('enabled')).AsBoolean then
   begin
     Exit;
   end;
   Result.Enabled := True;
-  if Reply.GetValue('old') is TJSONString then
+  if mReply.GetValue('old') is TJSONString then
   begin
-    Result.OldName := Reply.GetValue('old').Value;
+    Result.OldName := mReply.GetValue('old').Value;
   end;
-  if Reply.GetValue('new') is TJSONString then
+  if mReply.GetValue('new') is TJSONString then
   begin
-    Result.NewName := Reply.GetValue('new').Value;
+    Result.NewName := mReply.GetValue('new').Value;
   end;
-  if not (Reply.GetValue('edit') is TJSONObject) then
+  if not (mReply.GetValue('edit') is TJSONObject) then
   begin
     Exit;
   end;
-  Edit := TJSONObject(Reply.GetValue('edit'));
-  if not (Edit.GetValue('documentChanges') is TJSONArray) then
+  mEdit := TJSONObject(mReply.GetValue('edit'));
+  if not (mEdit.GetValue('documentChanges') is TJSONArray) then
   begin
     Exit;
   end;
-  for Item in TJSONArray(Edit.GetValue('documentChanges')) do
+  for mItem in TJSONArray(mEdit.GetValue('documentChanges')) do
   begin
-    if not (Item is TJSONObject) then
+    if not (mItem is TJSONObject) then
     begin
       Continue;
     end;
-    Document := TJSONObject(Item);
-    if not (Document.GetValue('textDocument') is TJSONObject) then
+    mDocument := TJSONObject(mItem);
+    if not (mDocument.GetValue('textDocument') is TJSONObject) then
     begin
       Continue;
     end;
-    Identifier := TJSONObject(Document.GetValue('textDocument'));
-    if Identifier.GetValue('uri') is TJSONString then
+    mIdentifier := TJSONObject(mDocument.GetValue('textDocument'));
+    if mIdentifier.GetValue('uri') is TJSONString then
     begin
-      Result.Files := Result.Files + [TLspSession.UriToPath(Identifier.GetValue('uri').Value)];
+      Result.Files := Result.Files + [TLspSession.UriToPath(mIdentifier.GetValue('uri').Value)];
     end;
   end;
 end;
@@ -210,14 +210,14 @@ end;
 class function TAtlasUnitRename.CountIn(const AAnswer: TAtlasUnitRenameAnswer;
   const AScopeFiles: TArray<string>): Integer;
 var
-  FileName, Scope: string;
+  mFileName, mScope: string;
 begin
   Result := 0;
-  for FileName in AAnswer.Files do
+  for mFileName in AAnswer.Files do
   begin
-    for Scope in AScopeFiles do
+    for mScope in AScopeFiles do
     begin
-      if SameText(FileName, Scope) then
+      if SameText(mFileName, mScope) then
       begin
         Inc(Result);
         Break;
@@ -230,16 +230,16 @@ end;
 
 function TAtlasUnitRenameQueue.Add(const AEvent: TAtlasUnitRenameEvent): Boolean;
 var
-  Item: TAtlasUnitRenameEvent;
+  mItem: TAtlasUnitRenameEvent;
 begin
   Result := False;
   if not TAtlasUnitRename.IsUnitRename(AEvent.OldFile, AEvent.NewFile) then
   begin
     Exit;
   end;
-  for Item in FItems do
+  for mItem in FItems do
   begin
-    if SameText(Item.OldFile, AEvent.OldFile) and SameText(Item.NewFile, AEvent.NewFile) then
+    if SameText(mItem.OldFile, AEvent.OldFile) and SameText(mItem.NewFile, AEvent.NewFile) then
     begin
       Exit;
     end;

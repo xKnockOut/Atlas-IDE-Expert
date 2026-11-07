@@ -61,52 +61,52 @@ end;
 function FollowsCallee(const AText: string; AFrom, AIndex: Integer): Boolean;
 const
   // Schlüsselwörter vor einer Klammer: "if (", "and (" usw. sind keine Aufrufe.
-  Keywords: array[0..19] of string = ('if', 'while', 'until', 'and', 'or', 'not', 'xor', 'case', 'of',
+  cKeywords: array[0..19] of string = ('if', 'while', 'until', 'and', 'or', 'not', 'xor', 'case', 'of',
     'then', 'else', 'do', 'to', 'downto', 'in', 'is', 'as', 'div', 'mod', 'repeat');
 var
-  Index, Stop: Integer;
+  mIndex, mStop: Integer;
 begin
-  Index := AIndex - 1;
-  while (Index >= AFrom) and CharInSet(AText[Index], [' ', #9, #13, #10]) do
+  mIndex := AIndex - 1;
+  while (mIndex >= AFrom) and CharInSet(AText[mIndex], [' ', #9, #13, #10]) do
   begin
-    Dec(Index);
+    Dec(mIndex);
   end;
-  if Index < AFrom then
+  if mIndex < AFrom then
   begin
     Exit(False);
   end;
-  if CharInSet(AText[Index], [')', ']']) then
+  if CharInSet(AText[mIndex], [')', ']']) then
   begin
     Exit(True);
   end;
-  if not IsIdentifierChar(AText[Index]) then
+  if not IsIdentifierChar(AText[mIndex]) then
   begin
     Exit(False);
   end;
-  Stop := Index;
-  while (Index >= AFrom) and IsIdentifierChar(AText[Index]) do
+  mStop := mIndex;
+  while (mIndex >= AFrom) and IsIdentifierChar(AText[mIndex]) do
   begin
-    Dec(Index);
+    Dec(mIndex);
   end;
-  Result := not MatchText(Copy(AText, Index + 1, Stop - Index), Keywords);
+  Result := not MatchText(Copy(AText, mIndex + 1, mStop - mIndex), cKeywords);
 end;
 
 /// <summary>Bezeichner direkt vor der Klammer an AIndex (1-basiert); '' ohne.</summary>
 function CalleeName(const AText: string; AFrom, AIndex: Integer): string;
 var
-  Index, Stop: Integer;
+  mIndex, mStop: Integer;
 begin
-  Index := AIndex - 1;
-  while (Index >= AFrom) and CharInSet(AText[Index], [' ', #9, #13, #10]) do
+  mIndex := AIndex - 1;
+  while (mIndex >= AFrom) and CharInSet(AText[mIndex], [' ', #9, #13, #10]) do
   begin
-    Dec(Index);
+    Dec(mIndex);
   end;
-  Stop := Index;
-  while (Index >= AFrom) and IsIdentifierChar(AText[Index]) do
+  mStop := mIndex;
+  while (mIndex >= AFrom) and IsIdentifierChar(AText[mIndex]) do
   begin
-    Dec(Index);
+    Dec(mIndex);
   end;
-  Result := Copy(AText, Index + 1, Stop - Index);
+  Result := Copy(AText, mIndex + 1, mStop - mIndex);
 end;
 
 type
@@ -296,19 +296,19 @@ end;
 
 class function TAtlasCallScanner.RemovedClosingParen(const AOld, ANew: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if Length(AOld) <> Length(ANew) + 1 then
   begin
     Exit(False);
   end;
   // Erste Abweichung; dort muss die Klammer gestanden haben, der Rest ist gleich.
-  Index := 1;
-  while (Index <= Length(ANew)) and (AOld[Index] = ANew[Index]) do
+  mIndex := 1;
+  while (mIndex <= Length(ANew)) and (AOld[mIndex] = ANew[mIndex]) do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Result := (AOld[Index] = ')') and (Copy(AOld, Index + 1, MaxInt) = Copy(ANew, Index, MaxInt));
+  Result := (AOld[mIndex] = ')') and (Copy(AOld, mIndex + 1, MaxInt) = Copy(ANew, mIndex, MaxInt));
 end;
 
 end.

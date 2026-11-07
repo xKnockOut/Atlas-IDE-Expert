@@ -67,8 +67,8 @@ uses
   Atlas.UI.Popup.Accessibility;
 
 const
-  Pad = 10;
-  RowGap = 3;
+  cPad = 10;
+  cRowGap = 3;
 
 { TAtlasExpressionTypeTip }
 
@@ -120,48 +120,48 @@ end;
 
 function TAtlasExpressionTypeTip.LinkIndex: Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := -1;
-  for Index := 0 to High(FRows) do
+  for mIndex := 0 to High(FRows) do
   begin
-    if FRows[Index].Link then
+    if FRows[mIndex].Link then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
 end;
 
 function TAtlasExpressionTypeTip.Layout(ADraw: Boolean): TSize;
 var
-  Index, Y, Width, Height: Integer;
-  Item: TAtlasExpressionTypeRow;
+  mIndex, Y, mWidth, mHeight: Integer;
+  mItem: TAtlasExpressionTypeRow;
 begin
   if ADraw then
   begin
     Canvas.Brush.Style := bsClear;
   end;
-  Y := Scale(Pad);
-  Width := 0;
+  Y := Scale(cPad);
+  mWidth := 0;
   SetLength(FRowRects, Length(FRows));
-  for Index := 0 to High(FRows) do
+  for mIndex := 0 to High(FRows) do
   begin
-    Item := FRows[Index];
-    ApplyFont(Item.Kind);
-    if Item.Link then
+    mItem := FRows[mIndex];
+    ApplyFont(mItem.Kind);
+    if mItem.Link then
     begin
       Canvas.Font.Style := Canvas.Font.Style + [fsUnderline];
     end;
     // Die Erweitern-Zeile setzt sich mit etwas Abstand ab.
-    if (Item.Kind = TAtlasExpressionTypeRowKind.Hint) and (Index > 0) then
+    if (mItem.Kind = TAtlasExpressionTypeRowKind.Hint) and (mIndex > 0) then
     begin
-      Inc(Y, Scale(RowGap));
+      Inc(Y, Scale(cRowGap));
     end;
-    Height := Canvas.TextHeight('Wg');
-    FRowRects[Index] := Rect(Scale(Pad), Y, Scale(Pad) + Canvas.TextWidth(Item.Text), Y + Height);
+    mHeight := Canvas.TextHeight('Wg');
+    FRowRects[mIndex] := Rect(Scale(cPad), Y, Scale(cPad) + Canvas.TextWidth(mItem.Text), Y + mHeight);
     if ADraw then
     begin
-      case Item.Kind of
+      case mItem.Kind of
         TAtlasExpressionTypeRowKind.Expression, TAtlasExpressionTypeRowKind.Hint:
           Canvas.Font.Color := ToColor(Colors.Muted);
         TAtlasExpressionTypeRowKind.TypeName:
@@ -171,50 +171,50 @@ begin
       else
         Canvas.Font.Color := ToColor(Colors.Text);
       end;
-      Canvas.TextOut(FRowRects[Index].Left, Y, Item.Text);
+      Canvas.TextOut(FRowRects[mIndex].Left, Y, mItem.Text);
     end;
-    Width := Max(Width, FRowRects[Index].Right);
-    Y := Y + Height + Scale(RowGap);
+    mWidth := Max(mWidth, FRowRects[mIndex].Right);
+    Y := Y + mHeight + Scale(cRowGap);
   end;
   if ADraw then
   begin
     Canvas.Brush.Style := bsSolid;
   end;
-  Result.cx := Width + Scale(Pad);
-  Result.cy := Y - Scale(RowGap) + Scale(Pad);
+  Result.cx := mWidth + Scale(cPad);
+  Result.cy := Y - Scale(cRowGap) + Scale(cPad);
 end;
 
 procedure TAtlasExpressionTypeTip.ShowFor(const ARows: TArray<TAtlasExpressionTypeRow>; const APoint: TPoint);
 var
-  Size: TSize;
-  Area: TRect;
-  Left, Top: Integer;
-  Row: TAtlasExpressionTypeRow;
-  Spoken: string;
+  mSize: TSize;
+  mArea: TRect;
+  mLeft, mTop: Integer;
+  mRow: TAtlasExpressionTypeRow;
+  mSpoken: string;
 begin
   FRows := ARows;
   HandleNeeded;
-  Size := Layout(False);
-  Area := WorkAreaAt(APoint);
-  Size.cx := Min(Size.cx, Area.Width);
-  Left := Min(APoint.X, Area.Right - Size.cx);
-  Top := APoint.Y + Scale(Gap);
-  if Top + Size.cy > Area.Bottom then
+  mSize := Layout(False);
+  mArea := WorkAreaAt(APoint);
+  mSize.cx := Min(mSize.cx, mArea.Width);
+  mLeft := Min(APoint.X, mArea.Right - mSize.cx);
+  mTop := APoint.Y + Scale(Gap);
+  if mTop + mSize.cy > mArea.Bottom then
   begin
-    Top := APoint.Y - Scale(Gap) - Size.cy;
+    mTop := APoint.Y - Scale(Gap) - mSize.cy;
   end;
-  ShowAt(Rect(Max(Left, Area.Left), Max(Top, Area.Top), Max(Left, Area.Left) + Size.cx,
-    Max(Top, Area.Top) + Size.cy));
+  ShowAt(Rect(Max(mLeft, mArea.Left), Max(mTop, mArea.Top), Max(mLeft, mArea.Left) + mSize.cx,
+    Max(mTop, mArea.Top) + mSize.cy));
   Invalidate;
-  Spoken := '';
-  for Row in FRows do
+  mSpoken := '';
+  for mRow in FRows do
   begin
-    if Row.Kind <> TAtlasExpressionTypeRowKind.Hint then
+    if mRow.Kind <> TAtlasExpressionTypeRowKind.Hint then
     begin
-      Spoken := Spoken + Row.Text + '. ';
+      mSpoken := mSpoken + mRow.Text + '. ';
     end;
   end;
-  Announce(Trim(Spoken));
+  Announce(Trim(mSpoken));
 end;
 
 procedure TAtlasExpressionTypeTip.Dismiss;
@@ -224,13 +224,13 @@ end;
 
 function TAtlasExpressionTypeTip.LinkRect: TRect;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := TRect.Empty;
-  Index := LinkIndex;
-  if (Index >= 0) and (Index <= High(FRowRects)) then
+  mIndex := LinkIndex;
+  if (mIndex >= 0) and (mIndex <= High(FRowRects)) then
   begin
-    Result := FRowRects[Index];
+    Result := FRowRects[mIndex];
   end;
 end;
 
@@ -267,11 +267,11 @@ end;
 
 procedure TAtlasExpressionTypeTip.MouseMove(Shift: TShiftState; X, Y: Integer);
 var
-  Hot: Boolean;
+  mHot: Boolean;
 begin
   inherited;
-  Hot := PtInRect(LinkRect, TPoint.Create(X, Y));
-  if Hot then
+  mHot := PtInRect(LinkRect, TPoint.Create(X, Y));
+  if mHot then
   begin
     Cursor := crHandPoint;
   end

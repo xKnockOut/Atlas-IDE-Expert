@@ -142,101 +142,101 @@ end;
 
 class function TAtlasEditorSnapshots.Get(const AView: IOTAEditView): TAtlasEditorSnapshot;
 var
-  Buffer: IOTAEditBuffer;
-  Key, Text: string;
-  Entry: TEntry;
-  Lines: Integer;
-  Modified: Boolean;
-  Stamp: Cardinal;
+  mBuffer: IOTAEditBuffer;
+  mKey, mText: string;
+  mEntry: TEntry;
+  mLines: Integer;
+  mModified: Boolean;
+  mStamp: Cardinal;
 begin
-  Buffer := AView.Buffer;
-  Result.FileName := Buffer.FileName;
-  Key := KeyOf(Result.FileName);
-  if not EnsureEntries.TryGetValue(Key, Entry) then
+  mBuffer := AView.Buffer;
+  Result.FileName := mBuffer.FileName;
+  mKey := KeyOf(Result.FileName);
+  if not EnsureEntries.TryGetValue(mKey, mEntry) then
   begin
-    Entry := Default(TEntry);
+    mEntry := Default(TEntry);
   end;
-  Lines := Buffer.GetLinesInBuffer;
-  Modified := Buffer.GetModified;
-  Stamp := GetTickCount;
-  if TAtlasSnapshotPolicy.MustRead(Entry.State, Lines, Modified, Stamp) then
+  mLines := mBuffer.GetLinesInBuffer;
+  mModified := mBuffer.GetModified;
+  mStamp := GetTickCount;
+  if TAtlasSnapshotPolicy.MustRead(mEntry.State, mLines, mModified, mStamp) then
   begin
-    Text := TAtlasEditorBuffer.Text(Buffer);
-    if not Entry.State.Known or (Text <> Entry.Text) then
+    mText := TAtlasEditorBuffer.Text(mBuffer);
+    if not mEntry.State.Known or (mText <> mEntry.Text) then
     begin
-      Entry.Text := Text;
+      mEntry.Text := mText;
       Inc(NextVersion);
-      Entry.Version := NextVersion;
+      mEntry.Version := NextVersion;
     end;
-    Entry.State.Known := True;
-    Entry.State.Dirty := False;
-    Entry.State.Lines := Lines;
-    Entry.State.Modified := Modified;
-    Entry.State.ReadAt := Stamp;
-    Entries.AddOrSetValue(Key, Entry);
+    mEntry.State.Known := True;
+    mEntry.State.Dirty := False;
+    mEntry.State.Lines := mLines;
+    mEntry.State.Modified := mModified;
+    mEntry.State.ReadAt := mStamp;
+    Entries.AddOrSetValue(mKey, mEntry);
   end;
-  Result.Text := Entry.Text;
-  Result.Version := Entry.Version;
+  Result.Text := mEntry.Text;
+  Result.Version := mEntry.Version;
 end;
 
 class procedure TAtlasEditorSnapshots.Invalidate(const AFileName: string);
 var
-  Key: string;
-  Entry: TEntry;
+  mKey: string;
+  mEntry: TEntry;
 begin
   if Entries = nil then
   begin
     Exit;
   end;
-  Key := KeyOf(AFileName);
-  if Entries.TryGetValue(Key, Entry) then
+  mKey := KeyOf(AFileName);
+  if Entries.TryGetValue(mKey, mEntry) then
   begin
-    Entry.State.Dirty := True;
-    Entries[Key] := Entry;
+    mEntry.State.Dirty := True;
+    Entries[mKey] := mEntry;
   end;
 end;
 
 class procedure TAtlasEditorSnapshots.Invalidate;
 var
-  Keys: TArray<string>;
-  Key: string;
-  Entry: TEntry;
+  mKeys: TArray<string>;
+  mKey: string;
+  mEntry: TEntry;
 begin
   if Entries = nil then
   begin
     Exit;
   end;
-  Keys := Entries.Keys.ToArray;
-  for Key in Keys do
+  mKeys := Entries.Keys.ToArray;
+  for mKey in mKeys do
   begin
-    Entry := Entries[Key];
-    Entry.State.Dirty := True;
-    Entries[Key] := Entry;
+    mEntry := Entries[mKey];
+    mEntry.State.Dirty := True;
+    Entries[mKey] := mEntry;
   end;
 end;
 
 class procedure TAtlasEditorSnapshots.Install;
 var
-  Editors: IOTAEditorServices;
+  mEditors: IOTAEditorServices;
 begin
   if NotifierIndex >= 0 then
   begin
     Exit;
   end;
-  if Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  if Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
   begin
-    NotifierIndex := Editors.AddNotifier(TSnapshotNotifier.Create);
+    NotifierIndex := mEditors.AddNotifier(TSnapshotNotifier.Create);
   end;
 end;
 
 class procedure TAtlasEditorSnapshots.Uninstall;
 var
-  Editors: IOTAEditorServices;
+  mEditors: IOTAEditorServices;
 begin
   // Erst abmelden, dann freigeben (#493).
-  if (NotifierIndex >= 0) and Supports(BorlandIDEServices, IOTAEditorServices, Editors) then
+  if (NotifierIndex >= 0) and Supports(BorlandIDEServices, IOTAEditorServices, mEditors) then
   begin
-    Editors.RemoveNotifier(NotifierIndex);
+    mEditors.RemoveNotifier(NotifierIndex);
   end;
   NotifierIndex := -1;
   FreeAndNil(Entries);

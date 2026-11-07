@@ -20,7 +20,7 @@ type
   TAtlasIdeMultiCursorState = class
   private const
     /// <summary>So viele eigene Schritte merkt sich Atlas für Rückgängig und Wiederholen.</summary>
-    StepLimit = 20;
+    cStepLimit = 20;
   private type
     /// <summary>Ein eigener Schritt: Text und Marken davor und danach.</summary>
     TStep = record
@@ -340,7 +340,7 @@ begin
   mStep.BeforeCarets := Copy(ABeforeCarets);
   mStep.AfterCarets := Copy(AAfterCarets);
   FSteps := FSteps + [mStep];
-  if Length(FSteps) > StepLimit then
+  if Length(FSteps) > cStepLimit then
   begin
     Delete(FSteps, 0, 1);
   end;

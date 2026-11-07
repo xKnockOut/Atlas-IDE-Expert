@@ -56,7 +56,7 @@ uses
 
 const
   /// <summary>So tief sucht der Hinweis die Minimap der IDE im Editorfenster.</summary>
-  MaxSearchDepth = 6;
+  cMaxSearchDepth = 6;
 
 function FindIn(AControl: TWinControl; ADepth: Integer): TControl;
 var
@@ -64,7 +64,7 @@ var
   mChild: TControl;
 begin
   Result := nil;
-  if ADepth > MaxSearchDepth then
+  if ADepth > cMaxSearchDepth then
   begin
     Exit;
   end;

@@ -60,13 +60,13 @@ type
     class function BaseHeight: Integer; virtual;
     function Scale(AValue: Integer): Integer;
     /// <summary>Element unter dem Punkt (Client); PartNone = keins.</summary>
-    function PartAt(X, Y: Integer): Integer; virtual;
+    function PartAt(AX, AY: Integer): Integer; virtual;
     /// <summary>Tooltip des Elements; '' = keiner.</summary>
     function PartHint(APart: Integer): string; virtual;
     /// <summary>Handzeiger über dem Element?</summary>
     function PartEnabled(APart: Integer): Boolean; virtual;
     /// <summary>Klick auf das Element (beim Loslassen, linke Taste).</summary>
-    procedure PartClicked(APart: Integer; AShift: TShiftState; X, Y: Integer); virtual;
+    procedure PartClicked(APart: Integer; AShift: TShiftState; AX, AY: Integer); virtual;
     /// <summary>Kontextmenü an APoint (Client); APart ist das Element dort.</summary>
     procedure ContextMenu(const APoint: TPoint; APart: Integer); virtual;
     /// <summary>Ort des Kontextmenüs von der Tastatur (Client).</summary>
@@ -188,7 +188,7 @@ begin
   Canvas.LineTo(ClientWidth, mLine);
 end;
 
-function TAtlasEditorBar.PartAt(X, Y: Integer): Integer;
+function TAtlasEditorBar.PartAt(AX, AY: Integer): Integer;
 begin
   Result := PartNone;
 end;
@@ -203,7 +203,7 @@ begin
   Result := APart <> PartNone;
 end;
 
-procedure TAtlasEditorBar.PartClicked(APart: Integer; AShift: TShiftState; X, Y: Integer);
+procedure TAtlasEditorBar.PartClicked(APart: Integer; AShift: TShiftState; AX, AY: Integer);
 begin
   // Ohne Elemente nichts zu tun.
 end;

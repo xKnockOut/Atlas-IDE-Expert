@@ -159,13 +159,13 @@ uses
 /// <summary>tasks.beforeBuild: bekannter Wert klein, sonst „off“.</summary>
 function NormalizedTasksBeforeBuild(const AText: string): string;
 var
-  Name: string;
+  mName: string;
 begin
-  for Name in TasksBeforeBuildNames do
+  for mName in TasksBeforeBuildNames do
   begin
-    if SameText(Trim(AText), Name) then
+    if SameText(Trim(AText), mName) then
     begin
-      Exit(Name);
+      Exit(mName);
     end;
   end;
   Result := TasksBeforeBuildNames[0];

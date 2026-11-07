@@ -139,28 +139,28 @@ end;
 
 class function TAtlasListModes.ModeOf(const AName: string): TAtlasListMode;
 var
-  Mode: TAtlasListMode;
+  mMode: TAtlasListMode;
 begin
   Result := TAtlasListMode.Filter;
-  for Mode := Low(TAtlasListMode) to High(TAtlasListMode) do
+  for mMode := Low(TAtlasListMode) to High(TAtlasListMode) do
   begin
-    if SameText(Trim(AName), ModeNames[Mode]) then
+    if SameText(Trim(AName), ModeNames[mMode]) then
     begin
-      Result := Mode;
+      Result := mMode;
     end;
   end;
 end;
 
 class function TAtlasListModes.ScopeOf(const AName: string): TAtlasListScope;
 var
-  Scope: TAtlasListScope;
+  mScope: TAtlasListScope;
 begin
   Result := TAtlasListScope.Members;
-  for Scope := Low(TAtlasListScope) to High(TAtlasListScope) do
+  for mScope := Low(TAtlasListScope) to High(TAtlasListScope) do
   begin
-    if SameText(Trim(AName), ScopeNames[Scope]) then
+    if SameText(Trim(AName), ScopeNames[mScope]) then
     begin
-      Result := Scope;
+      Result := mScope;
     end;
   end;
 end;
@@ -350,9 +350,9 @@ end;
 class function TAtlasRanking.Order(const AItems: TAtlasCompletionItems; const APattern: string;
   const AOptions: TAtlasRankOptions): TArray<Integer>;
 var
-  RestStart: Integer;
+  mRestStart: Integer;
 begin
-  Result := Order(AItems, APattern, AOptions, RestStart);
+  Result := Order(AItems, APattern, AOptions, mRestStart);
 end;
 
 /// <summary>Weder Hinweis noch angeheftet noch Deklaration eines unbekannten Namens.</summary>
@@ -373,49 +373,49 @@ end;
 function RestOf(const AItems: TAtlasCompletionItems; const AOptions: TAtlasRankOptions;
   const AScores, AShown: TArray<Integer>): TArray<Integer>;
 var
-  Items: TAtlasCompletionItems;
-  Shown: TArray<Boolean>;
-  Rest: TList<Integer>;
-  Index: Integer;
+  mItems: TAtlasCompletionItems;
+  mShown: TArray<Boolean>;
+  mRest: TList<Integer>;
+  mIndex: Integer;
 begin
-  Items := AItems;
-  SetLength(Shown, Length(Items));
-  for Index in AShown do
+  mItems := AItems;
+  SetLength(mShown, Length(mItems));
+  for mIndex in AShown do
   begin
-    if Index >= 0 then
+    if mIndex >= 0 then
     begin
-      Shown[Index] := True;
+      mShown[mIndex] := True;
     end;
   end;
-  Rest := TList<Integer>.Create;
+  mRest := TList<Integer>.Create;
   try
-    for Index := 0 to High(Items) do
+    for mIndex := 0 to High(mItems) do
     begin
-      if not Shown[Index] and IsRestCandidate(Items[Index], AOptions.Chip, AScores[Index]) then
+      if not mShown[mIndex] and IsRestCandidate(mItems[mIndex], AOptions.Chip, AScores[mIndex]) then
       begin
-        Rest.Add(Index);
+        mRest.Add(mIndex);
       end;
     end;
-    Rest.Sort(TComparer<Integer>.Construct(
+    mRest.Sort(TComparer<Integer>.Construct(
       function(const A, B: Integer): Integer
       begin
-        Result := Ord(Items[A].Unavailable) - Ord(Items[B].Unavailable);
+        Result := Ord(mItems[A].Unavailable) - Ord(mItems[B].Unavailable);
         if Result = 0 then
         begin
-          Result := Items[A].Rank - Items[B].Rank;
+          Result := mItems[A].Rank - mItems[B].Rank;
         end;
         if Result = 0 then
         begin
-          Result := CompareText(Items[A].Name, Items[B].Name);
+          Result := CompareText(mItems[A].Name, mItems[B].Name);
         end;
         if Result = 0 then
         begin
           Result := A - B;
         end;
       end));
-    Result := Rest.ToArray;
+    Result := mRest.ToArray;
   finally
-    Rest.Free;
+    mRest.Free;
   end;
 end;
 
@@ -423,41 +423,41 @@ end;
 function WithConversions(const AItems: TAtlasCompletionItems; const AOrder: TArray<Integer>;
   const AOptions: TAtlasRankOptions): TArray<Integer>;
 var
-  Placed: TArray<Boolean>;
-  Index, Conversion: Integer;
-  Any: Boolean;
+  mPlaced: TArray<Boolean>;
+  mIndex, mConversion: Integer;
+  mAny: Boolean;
 begin
-  Any := False;
-  for Index := 0 to High(AItems) do
+  mAny := False;
+  for mIndex := 0 to High(AItems) do
   begin
-    if AItems[Index].Conversion <> '' then
+    if AItems[mIndex].Conversion <> '' then
     begin
-      Any := True;
+      mAny := True;
     end;
   end;
-  if not Any then
+  if not mAny then
   begin
     Exit(AOrder);
   end;
-  SetLength(Placed, Length(AItems));
+  SetLength(mPlaced, Length(AItems));
   Result := nil;
-  for Index in AOrder do
+  for mIndex in AOrder do
   begin
-    if Index >= 0 then
+    if mIndex >= 0 then
     begin
-      for Conversion := 0 to High(AItems) do
+      for mConversion := 0 to High(AItems) do
       begin
-        if not Placed[Conversion] and (AItems[Conversion].Conversion <> '') and
-          SameText(AItems[Conversion].ConvertFrom, AItems[Index].Name) and
-          TAtlasRanking.Matches(AItems[Conversion], AOptions.Chip) then
+        if not mPlaced[mConversion] and (AItems[mConversion].Conversion <> '') and
+          SameText(AItems[mConversion].ConvertFrom, AItems[mIndex].Name) and
+          TAtlasRanking.Matches(AItems[mConversion], AOptions.Chip) then
         begin
-          Placed[Conversion] := True;
-          Result := Result + [Conversion];
+          mPlaced[mConversion] := True;
+          Result := Result + [mConversion];
           Break;
         end;
       end;
     end;
-    Result := Result + [Index];
+    Result := Result + [mIndex];
   end;
 end;
 
@@ -892,80 +892,80 @@ end;
 class function TAtlasRanking.Typos(const AItems: TAtlasCompletionItems; const APattern: string;
   const AOptions: TAtlasRankOptions; const AScores, ABoosts: TArray<Integer>): TArray<Integer>;
 var
-  Items: TAtlasCompletionItems;
-  Distances: TArray<Integer>;
-  Candidates: TList<Integer>;
-  Index, Limit: Integer;
-  Boosts: TArray<Integer>;
+  mItems: TAtlasCompletionItems;
+  mDistances: TArray<Integer>;
+  mCandidates: TList<Integer>;
+  mIndex, mLimit: Integer;
+  mBoosts: TArray<Integer>;
 begin
   Result := nil;
-  Items := AItems;
-  Boosts := ABoosts;
-  Limit := TAtlasCompletionMatcher.TypoLimit(APattern);
-  SetLength(Distances, Length(Items));
-  Candidates := TList<Integer>.Create;
+  mItems := AItems;
+  mBoosts := ABoosts;
+  mLimit := TAtlasCompletionMatcher.TypoLimit(APattern);
+  SetLength(mDistances, Length(mItems));
+  mCandidates := TList<Integer>.Create;
   try
-    for Index := 0 to High(Items) do
+    for mIndex := 0 to High(mItems) do
     begin
       // Nur, was nicht schon regulär passt; keine Aktionen.
-      if Items[Index].IsAction or not Matches(Items[Index], AOptions.Chip) or (Items[Index].Conversion <> '') or
-        (AScores[Index] <> TAtlasCompletionMatcher.NoMatch) then
+      if mItems[mIndex].IsAction or not Matches(mItems[mIndex], AOptions.Chip) or (mItems[mIndex].Conversion <> '') or
+        (AScores[mIndex] <> TAtlasCompletionMatcher.NoMatch) then
       begin
         Continue;
       end;
-      Distances[Index] := TAtlasCompletionMatcher.TypoDistance(APattern, NameOf(Items[Index]));
-      if Distances[Index] <= Limit then
+      mDistances[mIndex] := TAtlasCompletionMatcher.TypoDistance(APattern, NameOf(mItems[mIndex]));
+      if mDistances[mIndex] <= mLimit then
       begin
-        Candidates.Add(Index);
+        mCandidates.Add(mIndex);
       end;
     end;
-    if Candidates.Count = 0 then
+    if mCandidates.Count = 0 then
     begin
       Exit;
     end;
-    Candidates.Sort(TComparer<Integer>.Construct(
+    mCandidates.Sort(TComparer<Integer>.Construct(
       function(const A, B: Integer): Integer
       begin
-        Result := Distances[A] - Distances[B];
+        Result := mDistances[A] - mDistances[B];
         if Result = 0 then
         begin
-          Result := Boosts[B] - Boosts[A];
+          Result := mBoosts[B] - mBoosts[A];
         end;
         if Result = 0 then
         begin
-          Result := CompareText(Items[A].Name, Items[B].Name);
+          Result := CompareText(mItems[A].Name, mItems[B].Name);
         end;
       end));
     Result := [TypoHeader];
-    for Index := 0 to Min(Candidates.Count, MaxTypos) - 1 do
+    for mIndex := 0 to Min(mCandidates.Count, MaxTypos) - 1 do
     begin
-      Result := Result + [Candidates[Index]];
+      Result := Result + [mCandidates[mIndex]];
     end;
   finally
-    Candidates.Free;
+    mCandidates.Free;
   end;
 end;
 
 class function TAtlasRanking.ChipCounts(const AItems: TAtlasCompletionItems;
   const APattern: string): TAtlasChipCounts;
 var
-  Chip: TAtlasChip;
-  Item: TAtlasCompletionItem;
+  mChip: TAtlasChip;
+  mItem: TAtlasCompletionItem;
 begin
-  for Chip := Low(TAtlasChip) to High(TAtlasChip) do
+  for mChip := Low(TAtlasChip) to High(TAtlasChip) do
   begin
-    Result[Chip] := 0;
+    Result[mChip] := 0;
   end;
   // Umwandlungen (#490) zählen nicht doppelt.
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    if (Item.Conversion = '') and (TAtlasCompletionMatcher.Score(APattern, NameOf(Item)) <>
+    if (mItem.Conversion = '') and (TAtlasCompletionMatcher.Score(APattern, NameOf(mItem)) <>
       TAtlasCompletionMatcher.NoMatch) then
     begin
       Inc(Result[TAtlasChip.All]);
-      if ChipOf(Item) <> TAtlasChip.All then
+      if ChipOf(mItem) <> TAtlasChip.All then
       begin
-        Inc(Result[ChipOf(Item)]);
+        Inc(Result[ChipOf(mItem)]);
       end;
     end;
   end;
@@ -973,12 +973,12 @@ end;
 
 class function TAtlasRanking.ItemCount(const AOrder: TArray<Integer>): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := 0;
-  for Index in AOrder do
+  for mIndex in AOrder do
   begin
-    if not IsHeader(Index) then
+    if not IsHeader(mIndex) then
     begin
       Inc(Result);
     end;

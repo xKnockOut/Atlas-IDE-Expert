@@ -574,7 +574,7 @@ procedure TAtlasEditorHoverActions.TipProblemAction(Sender: TObject; AProblem: I
   AAction: TAtlasHoverProblemAction; AItem: Integer);
 const
   // Related und ShowGraph (#896) sind Client-Aktionen: „related:<Stelle>“ springt an Problem.Related[Stelle].
-  Tags: array[TAtlasHoverProblemAction] of string = ('uses.remove', 'uses.removeAll', 'uses.move', 'rule.fix',
+  cTags: array[TAtlasHoverProblemAction] of string = ('uses.remove', 'uses.removeAll', 'uses.move', 'rule.fix',
     'rule.suppressLine', 'rule.configure', 'related:', 'cycle.showGraph');
 var
   mProblem: TAtlasProblem;
@@ -586,7 +586,7 @@ begin
       Exit;
     end;
     mProblem := FTip.View.Problems[AProblem];
-    mTag := Tags[AAction];
+    mTag := cTags[AAction];
     if AAction = TAtlasHoverProblemAction.Related then
     begin
       mTag := mTag + IntToStr(AItem);

@@ -188,21 +188,21 @@ end;
 
 procedure TAtlasSettingsEditorCodePart.BindMarks;
 var
-  Kind: TAtlasOverviewKind;
-  Target: TAtlasReassignedTarget;
+  mKind: TAtlasOverviewKind;
+  mTarget: TAtlasReassignedTarget;
 begin
   FPage.Bind('InlineDiagnostics', FInlineDiagnostics);
-  for Target := Low(TAtlasReassignedTarget) to High(TAtlasReassignedTarget) do
+  for mTarget := Low(TAtlasReassignedTarget) to High(TAtlasReassignedTarget) do
   begin
-    FPage.Marks.Bind(FReassignedTargets[Target], ['ReassignedTargets']);
+    FPage.Marks.Bind(FReassignedTargets[mTarget], ['ReassignedTargets']);
   end;
   FPage.Marks.Bind(FReassignedStyle, ['ReassignedStyle']);
   FPage.Marks.Bind(FReassignedColor, ['ReassignedColor']);
   FPage.Marks.Bind(FMethodPlacement, ['MethodPlacement']);
   FPage.Marks.Bind(FRegionFolds, ['RegionFolds']);
-  for Kind := Low(TAtlasOverviewKind) to High(TAtlasOverviewKind) do
+  for mKind := Low(TAtlasOverviewKind) to High(TAtlasOverviewKind) do
   begin
-    FPage.Marks.Bind(FOverviewKinds[Kind], ['OverviewRulerKinds']);
+    FPage.Marks.Bind(FOverviewKinds[mKind], ['OverviewRulerKinds']);
   end;
   FPage.Marks.Bind(FContinueCommentsBlockPrefix, ['ContinueCommentsBlockPrefix']);
   FPage.Marks.Bind(FCompleteStatementBeginEnd, ['CompleteStatementBeginEnd']);
@@ -214,24 +214,24 @@ end;
 
 procedure TAtlasSettingsEditorCodePart.Load(const ASettings: TAtlasPluginSettings);
 var
-  Kind: TAtlasOverviewKind;
-  Kinds: TAtlasOverviewKinds;
-  Target: TAtlasReassignedTarget;
-  Targets: TAtlasReassignedTargets;
+  mKind: TAtlasOverviewKind;
+  mKinds: TAtlasOverviewKinds;
+  mTarget: TAtlasReassignedTarget;
+  mTargets: TAtlasReassignedTargets;
 begin
-  Targets := TAtlasReassignedNames.ParseTargets(ASettings.ReassignedTargets);
-  for Target := Low(TAtlasReassignedTarget) to High(TAtlasReassignedTarget) do
+  mTargets := TAtlasReassignedNames.ParseTargets(ASettings.ReassignedTargets);
+  for mTarget := Low(TAtlasReassignedTarget) to High(TAtlasReassignedTarget) do
   begin
-    FReassignedTargets[Target].Checked := Target in Targets;
+    FReassignedTargets[mTarget].Checked := mTarget in mTargets;
   end;
   FReassignedStyle.Choice := Ord(TAtlasReassignedNames.StyleOf(ASettings.ReassignedStyle));
   FReassignedColor.Text := ASettings.ReassignedColor;
   FMethodPlacement.Choice := Max(0, IndexText(ASettings.MethodPlacement, AtlasMethodPlacements));
   FRegionFolds.Choice := Max(0, IndexText(ASettings.RegionFolds, AtlasRegionFoldModes));
-  Kinds := TAtlasOverview.Kinds(ASettings.OverviewRulerKinds);
-  for Kind := Low(TAtlasOverviewKind) to High(TAtlasOverviewKind) do
+  mKinds := TAtlasOverview.Kinds(ASettings.OverviewRulerKinds);
+  for mKind := Low(TAtlasOverviewKind) to High(TAtlasOverviewKind) do
   begin
-    FOverviewKinds[Kind].Checked := Kind in Kinds;
+    FOverviewKinds[mKind].Checked := mKind in mKinds;
   end;
   FContinueCommentsBlockPrefix.Text := ASettings.ContinueCommentsBlockPrefix;
   // Reihenfolge der Auswahl: always, multiLine, never bzw. finally, except, ask.
@@ -264,34 +264,34 @@ end;
 
 procedure TAtlasSettingsEditorCodePart.Save(var ASettings: TAtlasPluginSettings);
 var
-  Kind: TAtlasOverviewKind;
-  Kinds: TAtlasOverviewKinds;
-  Target: TAtlasReassignedTarget;
-  Targets: TAtlasReassignedTargets;
+  mKind: TAtlasOverviewKind;
+  mKinds: TAtlasOverviewKinds;
+  mTarget: TAtlasReassignedTarget;
+  mTargets: TAtlasReassignedTargets;
 begin
-  Targets := [];
-  for Target := Low(TAtlasReassignedTarget) to High(TAtlasReassignedTarget) do
+  mTargets := [];
+  for mTarget := Low(TAtlasReassignedTarget) to High(TAtlasReassignedTarget) do
   begin
-    if FReassignedTargets[Target].Checked then
+    if FReassignedTargets[mTarget].Checked then
     begin
-      Include(Targets, Target);
+      Include(mTargets, mTarget);
     end;
   end;
-  ASettings.ReassignedTargets := TAtlasReassignedNames.TargetsText(Targets);
+  ASettings.ReassignedTargets := TAtlasReassignedNames.TargetsText(mTargets);
   ASettings.ReassignedStyle := TAtlasReassignedNames.Styles[TAtlasReassignedStyle(EnsureRange(
     FReassignedStyle.Choice, 0, Ord(High(TAtlasReassignedStyle))))];
   ASettings.ReassignedColor := TAtlasReassignedNames.NormalizeColor(FReassignedColor.Text);
   ASettings.MethodPlacement := AtlasMethodPlacements[EnsureRange(FMethodPlacement.Choice, 0,
     High(AtlasMethodPlacements))];
-  Kinds := [];
-  for Kind := Low(TAtlasOverviewKind) to High(TAtlasOverviewKind) do
+  mKinds := [];
+  for mKind := Low(TAtlasOverviewKind) to High(TAtlasOverviewKind) do
   begin
-    if FOverviewKinds[Kind].Checked then
+    if FOverviewKinds[mKind].Checked then
     begin
-      Include(Kinds, Kind);
+      Include(mKinds, mKind);
     end;
   end;
-  ASettings.OverviewRulerKinds := TAtlasOverview.KindsText(Kinds);
+  ASettings.OverviewRulerKinds := TAtlasOverview.KindsText(mKinds);
   // Leerraum am Rand gehört zum Präfix (' * ').
   ASettings.ContinueCommentsBlockPrefix := FContinueCommentsBlockPrefix.Text;
   case FCompleteStatementBeginEnd.Choice of

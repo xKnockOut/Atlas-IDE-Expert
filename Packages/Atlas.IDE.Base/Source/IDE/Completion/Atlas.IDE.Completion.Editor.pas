@@ -191,24 +191,24 @@ end;
 
 function TCompletionKeys.WantsKey(AKey: Word; AShift: TShiftState): Boolean;
 var
-  Navigation: TAtlasNavigationKey;
+  mNavigation: TAtlasNavigationKey;
 begin
-  Result := ((AShift = []) and NavigationKey(AKey, Navigation) and FOwner.WantsKey(Navigation)) or
+  Result := ((AShift = []) and NavigationKey(AKey, mNavigation) and FOwner.WantsKey(mNavigation)) or
     FOwner.WantsCommand(AKey, AShift);
 end;
 
 procedure TCompletionKeys.HandleKey(AKey: Word; AShift: TShiftState);
 var
-  Navigation: TAtlasNavigationKey;
+  mNavigation: TAtlasNavigationKey;
 begin
   try
     if FOwner.WantsCommand(AKey, AShift) then
     begin
       FOwner.HandleCommand(AKey, AShift);
     end
-    else if NavigationKey(AKey, Navigation) then
+    else if NavigationKey(AKey, mNavigation) then
     begin
-      FOwner.HandleKey(Navigation);
+      FOwner.HandleKey(mNavigation);
     end;
   except
     on E: Exception do

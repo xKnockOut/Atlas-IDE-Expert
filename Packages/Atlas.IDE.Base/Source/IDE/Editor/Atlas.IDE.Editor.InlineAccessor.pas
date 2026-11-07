@@ -37,9 +37,9 @@ uses
   Atlas.IDE.Editor.ServerEdit;
 
 const
-  ApplyCommand = 'atlas.server.inlineAccessor';
+  cApplyCommand = 'atlas.server.inlineAccessor';
   // Aufrufe im Projekt suchen dauert, die Sammelaktion über das Projekt erst recht.
-  TimeoutMs = 120000;
+  cTimeoutMs = 120000;
 
 class procedure TAtlasIdeInlineAccessor.Execute(ASession: TLspSession; const AArgumentsJson: string;
   APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
@@ -57,7 +57,7 @@ begin
   // Die Argumente der Code-Aktion gehen unverändert an den Server.
   mAccessors := 0;
   if not TAtlasIdeServerEdit.Fetch(ASession,
-    TAtlasServerEditCommand.Create(ApplyCommand, AArgumentsJson, TimeoutMs, TAtlasTextId.InlineAccessorFailed),
+    TAtlasServerEditCommand.Create(cApplyCommand, AArgumentsJson, cTimeoutMs, TAtlasTextId.InlineAccessorFailed),
     procedure(const AReply: TJSONObject)
     begin
       mAccessors := TAtlasIdeServerEdit.NumberOf(AReply, 'accessors');

@@ -106,35 +106,35 @@ end;
 
 function TAtlasSettingsGroup.ContentHeight: Integer;
 var
-  Index: Integer;
-  Control: TControl;
+  mIndex: Integer;
+  mControl: TControl;
 begin
   Result := Padding.Top + Padding.Bottom;
-  for Index := 0 to ControlCount - 1 do
+  for mIndex := 0 to ControlCount - 1 do
   begin
-    Control := Controls[Index];
-    if not Control.Visible then
+    mControl := Controls[mIndex];
+    if not mControl.Visible then
     begin
       Continue;
     end;
-    Inc(Result, Control.Height);
-    if Control.AlignWithMargins then
+    Inc(Result, mControl.Height);
+    if mControl.AlignWithMargins then
     begin
-      Inc(Result, Control.Margins.Top + Control.Margins.Bottom);
+      Inc(Result, mControl.Margins.Top + mControl.Margins.Bottom);
     end;
   end;
 end;
 
 procedure TAtlasSettingsGroup.AdjustHeight;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   // Verschachtelte Rahmen zuerst: Ihre Höhe geht in diese ein.
-  for Index := 0 to ControlCount - 1 do
+  for mIndex := 0 to ControlCount - 1 do
   begin
-    if Controls[Index] is TAtlasSettingsGroup then
+    if Controls[mIndex] is TAtlasSettingsGroup then
     begin
-      TAtlasSettingsGroup(Controls[Index]).AdjustHeight;
+      TAtlasSettingsGroup(Controls[mIndex]).AdjustHeight;
     end;
   end;
   FAdjusting := True;
@@ -147,21 +147,21 @@ end;
 
 procedure TAtlasSettingsGroup.AlignControls(AControl: TControl; var Rect: TRect);
 var
-  Needed: Integer;
+  mNeeded: Integer;
 begin
   inherited AlignControls(AControl, Rect);
   if FAdjusting then
   begin
     Exit;
   end;
-  Needed := ContentHeight;
-  if Needed = Height then
+  mNeeded := ContentHeight;
+  if mNeeded = Height then
   begin
     Exit;
   end;
   FAdjusting := True;
   try
-    Height := Needed;
+    Height := mNeeded;
   finally
     FAdjusting := False;
   end;
@@ -169,12 +169,12 @@ end;
 
 procedure TAtlasSettingsGroup.Paint;
 var
-  Radius: Integer;
+  mRadius: Integer;
 begin
   Canvas.Brush.Style := bsClear;
   Canvas.Pen.Color := StyleServices.GetSystemColor(clBtnShadow);
-  Radius := 6 * CurrentPPI div 96;
-  Canvas.RoundRect(0, 0, Width, Height, Radius, Radius);
+  mRadius := 6 * CurrentPPI div 96;
+  Canvas.RoundRect(0, 0, Width, Height, mRadius, mRadius);
 end;
 
 end.

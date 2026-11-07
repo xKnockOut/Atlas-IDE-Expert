@@ -66,15 +66,15 @@ uses
   Atlas.IDE.Foundation.Settings;
 
 const
-  StructureKey = '\Editor\Highlight\Structural Highlighting';
-  StructureMarker = 'IdeStructureDisabled';
-  HelpInsightValue = 'Help Insight';
-  HelpInsightMarker = 'IdeHelpInsightDisabled';
+  cStructureKey = '\Editor\Highlight\Structural Highlighting';
+  cStructureMarker = 'IdeStructureDisabled';
+  cHelpInsightValue = 'Help Insight';
+  cHelpInsightMarker = 'IdeHelpInsightDisabled';
   // Delphi: „Ausdrucksauswertung im Kurzhinweis“ – eigener Wert-Tooltip über dem Atlas-Hover.
-  TooltipWatchesValue = 'ToolTip Watches';
-  TooltipWatchesMarker = 'IdeTooltipWatchesDisabled';
-  ErrorInsightValue = 'Error Insight';
-  ErrorInsightMarker = 'IdeErrorInsightDisabled';
+  cTooltipWatchesValue = 'ToolTip Watches';
+  cTooltipWatchesMarker = 'IdeTooltipWatchesDisabled';
+  cErrorInsightValue = 'Error Insight';
+  cErrorInsightMarker = 'IdeErrorInsightDisabled';
 
 var
   // Wert von Error Insight beim ersten Lesen in dieser Sitzung; so liest ihn die IDE bis zum Neustart.
@@ -186,12 +186,12 @@ end;
 
 function BaseKey: string;
 var
-  Services: IOTAServices;
+  mServices: IOTAServices;
 begin
   Result := '';
-  if Supports(BorlandIDEServices, IOTAServices, Services) then
+  if Supports(BorlandIDEServices, IOTAServices, mServices) then
   begin
-    Result := Services.GetBaseRegistryKey;
+    Result := mServices.GetBaseRegistryKey;
   end;
 end;
 
@@ -266,23 +266,23 @@ end;
 class function TAtlasIdeStructureSwitch.Apply(AOwnGuides: Boolean): Boolean;
 begin
   // Der alte Merker galt für alle Versionen; ab #1246 je Version.
-  Result := ApplySwitch(StructureKey, 'Enabled', TAtlasCodeInsightKeys.Marker(StructureMarker, BaseKey, 'Editor'),
-    StructureMarker, AOwnGuides);
+  Result := ApplySwitch(cStructureKey, 'Enabled', TAtlasCodeInsightKeys.Marker(cStructureMarker, BaseKey, 'Editor'),
+    cStructureMarker, AOwnGuides);
 end;
 
 class function TAtlasIdeStructureSwitch.ApplyHelpInsight(AOwnTooltip: Boolean): Boolean;
 begin
-  Result := ApplyCodeInsight(HelpInsightValue, HelpInsightMarker, AOwnTooltip);
+  Result := ApplyCodeInsight(cHelpInsightValue, cHelpInsightMarker, AOwnTooltip);
 end;
 
 class function TAtlasIdeStructureSwitch.ApplyTooltipWatches(AOwnValues: Boolean): Boolean;
 begin
-  Result := ApplyCodeInsight(TooltipWatchesValue, TooltipWatchesMarker, AOwnValues);
+  Result := ApplyCodeInsight(cTooltipWatchesValue, cTooltipWatchesMarker, AOwnValues);
 end;
 
 function ReadErrorInsight: Boolean;
 var
-  Registry: TRegistry;
+  mRegistry: TRegistry;
 begin
   // Ohne Wert gilt die Vorgabe der IDE: eingeschaltet.
   Result := True;
@@ -290,17 +290,17 @@ begin
   begin
     Exit;
   end;
-  Registry := TRegistry.Create(KEY_READ);
+  mRegistry := TRegistry.Create(KEY_READ);
   try
-    Registry.RootKey := HKEY_CURRENT_USER;
+    mRegistry.RootKey := HKEY_CURRENT_USER;
     // Die IDE liest nur den Ort ihrer Version (#1246); bei unbekannter Version der erste bekannte.
-    if Registry.OpenKeyReadOnly(BaseKey + TAtlasCodeInsightKeys.cRoot + '\' +
-      TAtlasCodeInsightKeys.Targets(BaseKey, nil)[0]) and Registry.ValueExists(ErrorInsightValue) then
+    if mRegistry.OpenKeyReadOnly(BaseKey + TAtlasCodeInsightKeys.cRoot + '\' +
+      TAtlasCodeInsightKeys.Targets(BaseKey, nil)[0]) and mRegistry.ValueExists(cErrorInsightValue) then
     begin
-      Result := not SameText(Registry.ReadString(ErrorInsightValue), 'False');
+      Result := not SameText(mRegistry.ReadString(cErrorInsightValue), 'False');
     end;
   finally
-    Registry.Free;
+    mRegistry.Free;
   end;
 end;
 
@@ -320,7 +320,7 @@ end;
 
 class function TAtlasIdeStructureSwitch.SetErrorInsight(AEnabled: Boolean): Boolean;
 var
-  Registry: TRegistry;
+  mRegistry: TRegistry;
   mSubKey: string;
 begin
   Result := False;
@@ -330,31 +330,31 @@ begin
   end;
   // Stand vor der Änderung merken, falls noch nicht gelesen.
   ErrorInsight;
-  Registry := TRegistry.Create(KEY_READ or KEY_WRITE);
+  mRegistry := TRegistry.Create(KEY_READ or KEY_WRITE);
   try
-    Registry.RootKey := HKEY_CURRENT_USER;
+    mRegistry.RootKey := HKEY_CURRENT_USER;
     try
       // An allen Orten wie Help Insight (#1246): dem der Version und jedem, der den Wert schon trägt.
-      for mSubKey in TAtlasCodeInsightKeys.Targets(BaseKey, KeysWithValue(ErrorInsightValue)) do
+      for mSubKey in TAtlasCodeInsightKeys.Targets(BaseKey, KeysWithValue(cErrorInsightValue)) do
       begin
-        if WriteSwitch(Registry, BaseKey + TAtlasCodeInsightKeys.cRoot + '\' + mSubKey, ErrorInsightValue,
+        if WriteSwitch(mRegistry, BaseKey + TAtlasCodeInsightKeys.cRoot + '\' + mSubKey, cErrorInsightValue,
           AEnabled) then
         begin
           Result := True;
         end;
       end;
-      if Result and Registry.OpenKey(AtlasRegistryKey, True) then
+      if Result and mRegistry.OpenKey(AtlasRegistryKey, True) then
       begin
-        Registry.WriteInteger(ErrorInsightMarker, Ord(not AEnabled));
+        mRegistry.WriteInteger(cErrorInsightMarker, Ord(not AEnabled));
       end;
-      Registry.CloseKey;
+      mRegistry.CloseKey;
     except
       // Ohne Schreibrecht bleibt die IDE, wie sie ist.
       on ERegistryException do
         Result := False;
     end;
   finally
-    Registry.Free;
+    mRegistry.Free;
   end;
 end;
 

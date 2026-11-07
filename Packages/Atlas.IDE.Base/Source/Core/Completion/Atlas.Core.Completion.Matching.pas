@@ -54,42 +54,42 @@ uses
 
 class function TAtlasCompletionMatcher.Distance(const A, B: string): Integer;
 var
-  Left, Right: string;
-  Rows: array of array of Integer;
-  I, J, Cost: Integer;
+  mLeft, mRight: string;
+  mRows: array of array of Integer;
+  I, J, mCost: Integer;
 begin
-  Left := LowerCase(A);
-  Right := LowerCase(B);
-  SetLength(Rows, Length(Left) + 1, Length(Right) + 1);
-  for I := 0 to Length(Left) do
+  mLeft := LowerCase(A);
+  mRight := LowerCase(B);
+  SetLength(mRows, Length(mLeft) + 1, Length(mRight) + 1);
+  for I := 0 to Length(mLeft) do
   begin
-    Rows[I][0] := I;
+    mRows[I][0] := I;
   end;
-  for J := 0 to Length(Right) do
+  for J := 0 to Length(mRight) do
   begin
-    Rows[0][J] := J;
+    mRows[0][J] := J;
   end;
-  for I := 1 to Length(Left) do
+  for I := 1 to Length(mLeft) do
   begin
-    for J := 1 to Length(Right) do
+    for J := 1 to Length(mRight) do
     begin
-      if Left[I] = Right[J] then
+      if mLeft[I] = mRight[J] then
       begin
-        Cost := 0;
+        mCost := 0;
       end
       else
       begin
-        Cost := 1;
+        mCost := 1;
       end;
-      Rows[I][J] := Min(Min(Rows[I - 1][J] + 1, Rows[I][J - 1] + 1), Rows[I - 1][J - 1] + Cost);
+      mRows[I][J] := Min(Min(mRows[I - 1][J] + 1, mRows[I][J - 1] + 1), mRows[I - 1][J - 1] + mCost);
       // Vertauschte Nachbarn ("Lenght" statt "Length").
-      if (I > 1) and (J > 1) and (Left[I] = Right[J - 1]) and (Left[I - 1] = Right[J]) then
+      if (I > 1) and (J > 1) and (mLeft[I] = mRight[J - 1]) and (mLeft[I - 1] = mRight[J]) then
       begin
-        Rows[I][J] := Min(Rows[I][J], Rows[I - 2][J - 2] + 1);
+        mRows[I][J] := Min(mRows[I][J], mRows[I - 2][J - 2] + 1);
       end;
     end;
   end;
-  Result := Rows[Length(Left)][Length(Right)];
+  Result := mRows[Length(mLeft)][Length(mRight)];
 end;
 
 class function TAtlasCompletionMatcher.TypoDistance(const APattern, AName: string): Integer;
@@ -178,55 +178,55 @@ end;
 class function TAtlasCompletionMatcher.Filter(const AItems: TAtlasCompletionItems;
   const APattern: string): TArray<Integer>;
 var
-  Scores: TArray<Integer>;
-  Matches: TList<Integer>;
-  Index: Integer;
-  Items: TAtlasCompletionItems;
+  mScores: TArray<Integer>;
+  mMatches: TList<Integer>;
+  mIndex: Integer;
+  mItems: TAtlasCompletionItems;
 begin
-  Items := AItems;
-  SetLength(Scores, Length(Items));
-  Matches := TList<Integer>.Create;
+  mItems := AItems;
+  SetLength(mScores, Length(mItems));
+  mMatches := TList<Integer>.Create;
   try
-    for Index := 0 to High(Items) do
+    for mIndex := 0 to High(mItems) do
     begin
-      if Items[Index].FilterText <> '' then
+      if mItems[mIndex].FilterText <> '' then
       begin
-        Scores[Index] := Score(APattern, Items[Index].FilterText);
+        mScores[mIndex] := Score(APattern, mItems[mIndex].FilterText);
       end
       else
       begin
-        Scores[Index] := Score(APattern, Items[Index].Name);
+        mScores[mIndex] := Score(APattern, mItems[mIndex].Name);
       end;
-      if Scores[Index] <> NoMatch then
+      if mScores[mIndex] <> NoMatch then
       begin
-        Matches.Add(Index);
+        mMatches.Add(mIndex);
       end;
     end;
-    Matches.Sort(TComparer<Integer>.Construct(
+    mMatches.Sort(TComparer<Integer>.Construct(
       function(const A, B: Integer): Integer
       begin
         // In der aktiven Konfiguration nicht vorhanden: immer ans Ende (#476).
-        Result := Ord(Items[A].Unavailable) - Ord(Items[B].Unavailable);
+        Result := Ord(mItems[A].Unavailable) - Ord(mItems[B].Unavailable);
         if Result = 0 then
         begin
-          Result := Scores[B] - Scores[A];
+          Result := mScores[B] - mScores[A];
         end;
         if Result = 0 then
         begin
-          Result := Items[A].Rank - Items[B].Rank;
+          Result := mItems[A].Rank - mItems[B].Rank;
         end;
         if Result = 0 then
         begin
-          Result := CompareText(Items[A].Name, Items[B].Name);
+          Result := CompareText(mItems[A].Name, mItems[B].Name);
         end;
         if Result = 0 then
         begin
           Result := A - B;
         end;
       end));
-    Result := Matches.ToArray;
+    Result := mMatches.ToArray;
   finally
-    Matches.Free;
+    mMatches.Free;
   end;
 end;
 

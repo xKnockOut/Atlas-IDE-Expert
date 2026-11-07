@@ -77,11 +77,11 @@ uses
 
 procedure AddUnique(var AList: TArray<string>; const AText: string);
 var
-  Item: string;
+  mItem: string;
 begin
-  for Item in AList do
+  for mItem in AList do
   begin
-    if Item = AText then
+    if mItem = AText then
     begin
       Exit;
     end;
@@ -130,25 +130,25 @@ end;
 
 function TAtlasSettingsPageTree.ActiveNode: Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := -1;
   if FPages.ActivePage = nil then
   begin
     Exit;
   end;
-  for Index := 0 to High(FNodePages) do
+  for mIndex := 0 to High(FNodePages) do
   begin
-    if FNodePages[Index].Sheet = FPages.ActivePage then
+    if FNodePages[mIndex].Sheet = FPages.ActivePage then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
 end;
 
 procedure TAtlasSettingsPageTree.SelectPage(AIndex: Integer);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if (AIndex < 0) or (AIndex > High(FNodePages)) then
   begin
@@ -160,11 +160,11 @@ begin
   begin
     Exit;
   end;
-  for Index := 0 to FTree.Items.Count - 1 do
+  for mIndex := 0 to FTree.Items.Count - 1 do
   begin
-    if PageIndexOf(FTree.Items[Index]) = AIndex then
+    if PageIndexOf(FTree.Items[mIndex]) = AIndex then
     begin
-      FTree.Selected := FTree.Items[Index];
+      FTree.Selected := FTree.Items[mIndex];
       Break;
     end;
   end;
@@ -172,7 +172,7 @@ end;
 
 function TAtlasSettingsPageTree.PageShown(AIndex: Integer): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   // Der Filter blendet Unterpunkte ohne Treffer aus; ein Bereich bleibt, solange einer seiner Punkte trifft.
   if (FMarks.Filter = sfAll) or FMarks.HasMatch(FNodePages[AIndex].Box) then
@@ -181,10 +181,10 @@ begin
   end;
   if FNodePages[AIndex].Node = '' then
   begin
-    for Index := 0 to High(FNodePages) do
+    for mIndex := 0 to High(FNodePages) do
     begin
-      if (Index <> AIndex) and (FNodePages[Index].Area = FNodePages[AIndex].Area) and
-        FMarks.HasMatch(FNodePages[Index].Box) then
+      if (mIndex <> AIndex) and (FNodePages[mIndex].Area = FNodePages[AIndex].Area) and
+        FMarks.HasMatch(FNodePages[mIndex].Box) then
       begin
         Exit(True);
       end;
@@ -289,31 +289,31 @@ end;
 
 procedure TAtlasSettingsPageTree.RefreshTree;
 var
-  Index, Page: Integer;
-  Node: TTreeNode;
+  mIndex, mPage: Integer;
+  mNode: TTreeNode;
   mText: string;
 begin
   if not ListReady(FTree) then
   begin
     Exit;
   end;
-  for Index := 0 to FTree.Items.Count - 1 do
+  for mIndex := 0 to FTree.Items.Count - 1 do
   begin
-    Node := FTree.Items[Index];
-    Page := PageIndexOf(Node);
-    if (Page < 0) or (Page > High(FNodePages)) then
+    mNode := FTree.Items[mIndex];
+    mPage := PageIndexOf(mNode);
+    if (mPage < 0) or (mPage > High(FNodePages)) then
     begin
       Continue;
     end;
     // Punkt wie an den Einstellungen: Auf dieser Seite ist etwas geändert.
-    mText := FNodePages[Page].Caption;
-    if FMarks.HasMarked(FNodePages[Page].Box) then
+    mText := FNodePages[mPage].Caption;
+    if FMarks.HasMarked(FNodePages[mPage].Box) then
     begin
       mText := TAtlasSettingsMarks.Dot + mText;
     end;
-    if Node.Text <> mText then
+    if mNode.Text <> mText then
     begin
-      Node.Text := mText;
+      mNode.Text := mText;
     end;
   end;
   FTree.Invalidate;
@@ -321,45 +321,45 @@ end;
 
 procedure TAtlasSettingsPageTree.TreeChange(Sender: TObject; Node: TTreeNode);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := PageIndexOf(Node);
-  if (Index < 0) or (Index > High(FNodePages)) or (csDestroying in ComponentState) then
+  mIndex := PageIndexOf(Node);
+  if (mIndex < 0) or (mIndex > High(FNodePages)) or (csDestroying in ComponentState) then
   begin
     Exit;
   end;
-  FPages.ActivePage := FNodePages[Index].Sheet;
-  SheetShown(FNodePages[Index].Sheet);
+  FPages.ActivePage := FNodePages[mIndex].Sheet;
+  SheetShown(FNodePages[mIndex].Sheet);
   // Beim Neuaufbau des Baums wählt er selbst; gemerkt wird nur die Wahl des Nutzers.
   if FFillingTree then
   begin
     Exit;
   end;
-  FLastPage := Index;
+  FLastPage := mIndex;
   FStateKnown := True;
 end;
 
 procedure TAtlasSettingsPageTree.TreeExpanded(Sender: TObject; Node: TTreeNode);
 var
-  Index, Area: Integer;
+  mIndex, mArea: Integer;
 begin
-  Index := PageIndexOf(Node);
-  if FFillingTree or (csDestroying in ComponentState) or (Index < 0) or (Index > High(FNodePages)) then
+  mIndex := PageIndexOf(Node);
+  if FFillingTree or (csDestroying in ComponentState) or (mIndex < 0) or (mIndex > High(FNodePages)) then
   begin
     Exit;
   end;
-  Area := FNodePages[Index].Area;
-  if (Area < 0) or (Area > High(Byte)) then
+  mArea := FNodePages[mIndex].Area;
+  if (mArea < 0) or (mArea > High(Byte)) then
   begin
     Exit;
   end;
   if Node.Expanded then
   begin
-    Include(FExpandedAreas, Byte(Area));
+    Include(FExpandedAreas, Byte(mArea));
   end
   else
   begin
-    Exclude(FExpandedAreas, Byte(Area));
+    Exclude(FExpandedAreas, Byte(mArea));
   end;
   FStateKnown := True;
 end;
@@ -367,12 +367,12 @@ end;
 procedure TAtlasSettingsPageTree.TreeCustomDrawItem(Sender: TCustomTreeView; Node: TTreeNode; State: TCustomDrawState;
   var DefaultDraw: Boolean);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   DefaultDraw := True;
   // Abgeschaltete oder gesperrte Unterpunkte grau.
-  Index := PageIndexOf(Node);
-  if (Index >= 0) and (Index <= High(FNodePages)) and FNodePages[Index].Gray and not (cdsSelected in State) then
+  mIndex := PageIndexOf(Node);
+  if (mIndex >= 0) and (mIndex <= High(FNodePages)) and FNodePages[mIndex].Gray and not (cdsSelected in State) then
   begin
     Sender.Canvas.Font.Color := clGrayText;
   end;
@@ -380,17 +380,17 @@ end;
 
 function TAtlasSettingsPageTree.IsOn(const AName: string): Boolean;
 var
-  Control: TControl;
+  mControl: TControl;
 begin
   // Kontrollkästchen: angehakt; Auswahl (etwa „Beim Öffnen bauen“): ein Eintrag außer dem ersten („nicht …“).
-  Control := FMarks.ControlOfName(AName);
-  if Control is TCheckBox then
+  mControl := FMarks.ControlOfName(AName);
+  if mControl is TCheckBox then
   begin
-    Result := TCheckBox(Control).Checked;
+    Result := TCheckBox(mControl).Checked;
   end
-  else if Control is TAtlasChoiceBox then
+  else if mControl is TAtlasChoiceBox then
   begin
-    Result := TAtlasChoiceBox(Control).Choice > 0;
+    Result := TAtlasChoiceBox(mControl).Choice > 0;
   end
   else
   begin
@@ -405,8 +405,8 @@ end;
 
 function TAtlasSettingsPageTree.LockText(const ALock: TAtlasSettingsLock): string;
 var
-  Page, Entry: Integer;
-  Where, mCaption: string;
+  mPage, mEntry: Integer;
+  mWhere, mCaption: string;
 begin
   Result := '';
   case ALock.Reason of
@@ -419,25 +419,25 @@ begin
         begin
           mCaption := FGroups.KeyOf(ALock.Master);
         end;
-        Where := '';
-        Page := PageOf(FMarks.ControlOfName(ALock.Master));
-        if Page >= 0 then
+        mWhere := '';
+        mPage := PageOf(FMarks.ControlOfName(ALock.Master));
+        if mPage >= 0 then
         begin
-          Where := FSheets[FNodePages[Page].Area].Caption;
-          if FNodePages[Page].Node <> '' then
+          mWhere := FSheets[FNodePages[mPage].Area].Caption;
+          if FNodePages[mPage].Node <> '' then
           begin
-            Where := Where + ' › ' + FNodePages[Page].Caption;
+            mWhere := mWhere + ' › ' + FNodePages[mPage].Caption;
           end;
         end
         else
         begin
-          Entry := Catalog.IndexOfName(ALock.Master);
-          if Entry >= 0 then
+          mEntry := Catalog.IndexOfName(ALock.Master);
+          if mEntry >= 0 then
           begin
-            Where := Catalog.Entries[Entry].Page;
+            mWhere := Catalog.Entries[mEntry].Page;
           end;
         end;
-        Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsLockedMaster, [mCaption, Where]);
+        Result := TAtlasStrings.Fmt(TAtlasTextId.SettingsLockedMaster, [mCaption, mWhere]);
       end;
   else
     // Übrige Werte bewusst ohne Wirkung.
@@ -525,86 +525,86 @@ end;
 
 function TAtlasSettingsPageTree.PageGray(AIndex: Integer): Boolean;
 var
-  Box: TScrollBox;
-  Index: Integer;
-  Control: TControl;
-  Frame: TAtlasSettingsGroup;
-  Any: Boolean;
+  mBox: TScrollBox;
+  mIndex: Integer;
+  mControl: TControl;
+  mFrame: TAtlasSettingsGroup;
+  mAny: Boolean;
 begin
   // Grau, wenn nichts auf der Seite wirkt: jeder Rahmen aus oder gesperrt, jede übrige Einstellung gesperrt.
-  Box := FNodePages[AIndex].Box;
-  Any := False;
-  for Index := 0 to Box.ControlCount - 1 do
+  mBox := FNodePages[AIndex].Box;
+  mAny := False;
+  for mIndex := 0 to mBox.ControlCount - 1 do
   begin
-    Control := Box.Controls[Index];
-    if Control is TAtlasSettingsGroup then
+    mControl := mBox.Controls[mIndex];
+    if mControl is TAtlasSettingsGroup then
     begin
-      Frame := TAtlasSettingsGroup(Control);
-      if IsOverview(Frame) or (Frame.Master = nil) then
+      mFrame := TAtlasSettingsGroup(mControl);
+      if IsOverview(mFrame) or (mFrame.Master = nil) then
       begin
         Continue;
       end;
-      Any := True;
-      if Frame.Master.Enabled and IsOn(Frame.MasterName) then
+      mAny := True;
+      if mFrame.Master.Enabled and IsOn(mFrame.MasterName) then
       begin
         Exit(False);
       end;
     end
-    else if Length(FMarks.NamesWithin(Control)) > 0 then
+    else if Length(FMarks.NamesWithin(mControl)) > 0 then
     begin
-      Any := True;
-      if Control.Enabled then
+      mAny := True;
+      if mControl.Enabled then
       begin
         Exit(False);
       end;
     end;
   end;
-  Result := Any;
+  Result := mAny;
 end;
 
 procedure TAtlasSettingsPageTree.UpdateLocks;
 var
-  Index: Integer;
-  Outside: TArray<string>;
+  mIndex: Integer;
+  mOutside: TArray<string>;
 begin
   if FGroups = nil then
   begin
     Exit;
   end;
-  for Index := 0 to High(FNodePages) do
+  for mIndex := 0 to High(FNodePages) do
   begin
-    Outside := nil;
-    ApplyLocks(FNodePages[Index].Box, False, Outside);
-    FNodePages[Index].Banner.Caption := string.Join(sLineBreak, Outside);
-    FNodePages[Index].Banner.Visible := Length(Outside) > 0;
+    mOutside := nil;
+    ApplyLocks(FNodePages[mIndex].Box, False, mOutside);
+    FNodePages[mIndex].Banner.Caption := string.Join(sLineBreak, mOutside);
+    FNodePages[mIndex].Banner.Visible := Length(mOutside) > 0;
   end;
   // Spiegel in der Übersicht folgen ihrem Hauptschalter.
   FSyncing := True;
   try
-    for Index := 0 to High(FMirrors) do
+    for mIndex := 0 to High(FMirrors) do
     begin
-      FMirrors[Index].Checked := FMirrored[Index].Checked;
-      FMirrors[Index].Enabled := FMirrored[Index].Enabled;
+      FMirrors[mIndex].Checked := FMirrored[mIndex].Checked;
+      FMirrors[mIndex].Enabled := FMirrored[mIndex].Enabled;
     end;
   finally
     FSyncing := False;
   end;
-  for Index := 0 to High(FNodePages) do
+  for mIndex := 0 to High(FNodePages) do
   begin
-    FNodePages[Index].Gray := PageGray(Index);
+    FNodePages[mIndex].Gray := PageGray(mIndex);
   end;
   RefreshTree;
 end;
 
 function TAtlasSettingsPageTree.SheetGray(ASheet: TTabSheet): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(FNodePages) do
+  for mIndex := 0 to High(FNodePages) do
   begin
-    if FNodePages[Index].Sheet = ASheet then
+    if FNodePages[mIndex].Sheet = ASheet then
     begin
-      Exit(FNodePages[Index].Gray);
+      Exit(FNodePages[mIndex].Gray);
     end;
   end;
   Result := False;

@@ -326,17 +326,17 @@ uses
 
 const
   /// <summary>Vorgabebreiten bei 96 dpi.</summary>
-  DefaultWidths: array[TAtlasFindingColumn] of Integer = (24, 70, 110, 320, 260, 130, 150, 130);
+  cDefaultWidths: array[TAtlasFindingColumn] of Integer = (24, 70, 110, 320, 260, 130, 150, 130);
   /// <summary>Breite der Bereichsliste bei 96 dpi; die Klappliste wird so breit wie der längste Eintrag (#1843).
   /// </summary>
   cScopeWidth = 130;
   /// <summary>Hervorhebung neuer Einträge.</summary>
-  NewMs = 1500;
-  IconSize = 16;
+  cNewMs = 1500;
+  cIconSize = 16;
   /// <summary>Symbole der Arten; dahinter dieselben ausgegraut (#1108).</summary>
-  DimmedImageOffset = 3;
-  PinMark = #$D83D#$DCCC;
-  CheckMark = #$2713;
+  cDimmedImageOffset = 3;
+  cPinMark = #$D83D#$DCCC;
+  cCheckMark = #$2713;
 
 { TAtlasProblemsFrame }
 
@@ -366,8 +366,8 @@ end;
 
 procedure TAtlasProblemsFrame.BuildBar;
 var
-  Kind: TAtlasFindingKind;
-  Button: TSpeedButton;
+  mKind: TAtlasFindingKind;
+  mButton: TSpeedButton;
   mLeft: Integer;
 begin
   FBar := TPanel.Create(Self);
@@ -384,22 +384,22 @@ begin
     TAtlasStrings.Text(TAtlasTextId.ProblemsScopeFile), TAtlasStrings.Text(TAtlasTextId.ProblemsScopeProject),
     TAtlasStrings.Text(TAtlasTextId.ProblemsScopeGroup)));
   mLeft := FScope.Left + FScope.Width + MulDiv(6, CurrentPPI, 96);
-  for Kind := Low(TAtlasFindingKind) to High(TAtlasFindingKind) do
+  for mKind := Low(TAtlasFindingKind) to High(TAtlasFindingKind) do
   begin
-    Button := TSpeedButton.Create(Self);
-    Button.Parent := FBar;
-    Button.Top := MulDiv(2, CurrentPPI, 96);
-    Button.Height := MulDiv(22, CurrentPPI, 96);
-    Button.Width := MulDiv(78, CurrentPPI, 96);
-    Button.Left := mLeft;
-    Button.Flat := True;
+    mButton := TSpeedButton.Create(Self);
+    mButton.Parent := FBar;
+    mButton.Top := MulDiv(2, CurrentPPI, 96);
+    mButton.Height := MulDiv(22, CurrentPPI, 96);
+    mButton.Width := MulDiv(78, CurrentPPI, 96);
+    mButton.Left := mLeft;
+    mButton.Flat := True;
     // Je Umschalter eine eigene Gruppe: unabhängig an und aus.
-    Button.GroupIndex := Ord(Kind) + 1;
-    Button.AllowAllUp := True;
-    Button.Down := True;
-    Button.OnClick := ControlsChanged;
-    FKinds[Kind] := Button;
-    Inc(mLeft, Button.Width + MulDiv(2, CurrentPPI, 96));
+    mButton.GroupIndex := Ord(mKind) + 1;
+    mButton.AllowAllUp := True;
+    mButton.Down := True;
+    mButton.OnClick := ControlsChanged;
+    FKinds[mKind] := mButton;
+    Inc(mLeft, mButton.Width + MulDiv(2, CurrentPPI, 96));
   end;
   FCategoryTexts := [TAtlasStrings.Text(TAtlasTextId.ProblemsCategoryAll),
     CategoryText(TAtlasFindingCategory.Bug), CategoryText(TAtlasFindingCategory.Vulnerability),
@@ -428,7 +428,7 @@ begin
   FOpenFirst.Flat := True;
   FOpenFirst.GroupIndex := Ord(High(TAtlasFindingKind)) + 2;
   FOpenFirst.AllowAllUp := True;
-  FOpenFirst.Caption := PinMark + ' ' + TAtlasStrings.Text(TAtlasTextId.ProblemsOpenFirst);
+  FOpenFirst.Caption := cPinMark + ' ' + TAtlasStrings.Text(TAtlasTextId.ProblemsOpenFirst);
   FOpenFirst.Hint := TAtlasStrings.Text(TAtlasTextId.ProblemsOpenFirstHint);
   FOpenFirst.ShowHint := True;
   FOpenFirst.OnClick := OpenFirstClick;
@@ -461,7 +461,7 @@ begin
   FStatus.Caption := '';
 
   FImages := TImageList.Create(Self);
-  FImages.Width := MulDiv(IconSize, CurrentPPI, 96);
+  FImages.Width := MulDiv(cIconSize, CurrentPPI, 96);
   FImages.Height := FImages.Width;
 
   BuildMenu;
@@ -503,7 +503,7 @@ begin
 
   FNewTimer := TTimer.Create(Self);
   FNewTimer.Enabled := False;
-  FNewTimer.Interval := NewMs;
+  FNewTimer.Interval := cNewMs;
   FNewTimer.OnTimer := NewTimerTick;
 end;
 
@@ -533,19 +533,19 @@ end;
 
 procedure TAtlasProblemsFrame.CreateWnd;
 var
-  Category: Integer;
+  mCategory: Integer;
 begin
   inherited CreateWnd;
   // Die Einträge der Auswahllisten brauchen ein Fenster: erst jetzt füllen, Auswahl aus dem Modell.
-  Category := 0;
+  mCategory := 0;
   if FView.Filter.OneCategory then
   begin
-    Category := Ord(FView.Filter.Category) + 1;
+    mCategory := Ord(FView.Filter.Category) + 1;
   end;
   FUpdating := True;
   try
     FScopeBox.Fill;
-    FillCombo(FCategory, FCategoryTexts, Category);
+    FillCombo(FCategory, FCategoryTexts, mCategory);
     FillCombo(FGrouping, FGroupingTexts, Ord(FView.Grouping));
   finally
     FUpdating := False;
@@ -613,9 +613,9 @@ end;
 
 procedure TAtlasProblemsFrameList.BuildImages;
 var
-  Kind: TAtlasFindingKind;
-  Bitmap: TBitmap;
-  Size, Pass: Integer;
+  mKind: TAtlasFindingKind;
+  mBitmap: TBitmap;
+  mSize, mPass: Integer;
   mSignals: TAtlasSignals;
   mSignal: TAtlasSignal;
 begin
@@ -623,29 +623,29 @@ begin
   // abgedunkelt zur Fläche der Liste, damit Fehler weiter von Warnungen unterscheidbar bleiben.
   FImagesBack := ListBack;
   FImages.Clear;
-  Size := FImages.Width;
+  mSize := FImages.Width;
   // Signalfarben der Liste (#1255): hell kräftig mit dunklem Rand, dunkel hell mit dunklem Zeichen.
   mSignals := TAtlasColors.ForBackground(TAtlasColor(FImagesBack)).Signals;
-  for Pass := 0 to 1 do
+  for mPass := 0 to 1 do
   begin
-    for Kind := Low(TAtlasFindingKind) to High(TAtlasFindingKind) do
+    for mKind := Low(TAtlasFindingKind) to High(TAtlasFindingKind) do
     begin
-      mSignal := mSignals.Get(TAtlasFindingIcon.SignalOf(Kind));
-      if Pass = 1 then
+      mSignal := mSignals.Get(TAtlasFindingIcon.SignalOf(mKind));
+      if mPass = 1 then
       begin
         mSignal.Fill := DimmedIconColor(mSignal.Fill, TAtlasColor(FImagesBack));
         mSignal.Ring := DimmedIconColor(mSignal.Ring, TAtlasColor(FImagesBack));
         mSignal.Mark := DimmedIconColor(mSignal.Mark, TAtlasColor(FImagesBack));
       end;
-      Bitmap := TBitmap.Create;
+      mBitmap := TBitmap.Create;
       try
-        Bitmap.SetSize(Size, Size);
-        Bitmap.Canvas.Brush.Color := clFuchsia;
-        Bitmap.Canvas.FillRect(Rect(0, 0, Size, Size));
-        TAtlasFindingIcon.Draw(Bitmap.Canvas, Rect(0, 0, Size, Size), Kind, mSignal);
-        FImages.AddMasked(Bitmap, clFuchsia);
+        mBitmap.SetSize(mSize, mSize);
+        mBitmap.Canvas.Brush.Color := clFuchsia;
+        mBitmap.Canvas.FillRect(Rect(0, 0, mSize, mSize));
+        TAtlasFindingIcon.Draw(mBitmap.Canvas, Rect(0, 0, mSize, mSize), mKind, mSignal);
+        FImages.AddMasked(mBitmap, clFuchsia);
       finally
-        Bitmap.Free;
+        mBitmap.Free;
       end;
     end;
   end;
@@ -708,7 +708,7 @@ function ColumnWidth(const AColumns: TArray<TAtlasFindingColumnState>; AColumn: 
 var
   mState: TAtlasFindingColumnState;
 begin
-  Result := DefaultWidths[AColumn];
+  Result := cDefaultWidths[AColumn];
   for mState in AColumns do
   begin
     if (mState.Column = AColumn) and (mState.Width > 0) then
@@ -720,30 +720,30 @@ end;
 
 procedure TAtlasProblemsFrameList.BuildColumns;
 var
-  State: TAtlasFindingColumnState;
-  Column: TListColumn;
-  Index, Position: Integer;
-  Item: TMenuItem;
+  mState: TAtlasFindingColumnState;
+  mColumn: TListColumn;
+  mIndex, mPosition: Integer;
+  mItem: TMenuItem;
 begin
   // Das Icon ist immer Spalte 0 (SmallImages zeichnet nur dort); die Reihenfolge der Anzeige setzt die
   // Spaltenreihenfolge des Kopfs.
   FShown := [TAtlasFindingColumn.Icon];
-  for State in FColumns do
+  for mState in FColumns do
   begin
-    if State.Visible and (State.Column <> TAtlasFindingColumn.Icon) and
-      (FShowCompilerCode or (State.Column <> TAtlasFindingColumn.Compiler)) then
+    if mState.Visible and (mState.Column <> TAtlasFindingColumn.Icon) and
+      (FShowCompilerCode or (mState.Column <> TAtlasFindingColumn.Compiler)) then
     begin
-      FShown := FShown + [State.Column];
+      FShown := FShown + [mState.Column];
     end;
   end;
   FList.Columns.BeginUpdate;
   try
     FList.Columns.Clear;
-    for Index := 0 to High(FShown) do
+    for mIndex := 0 to High(FShown) do
     begin
-      Column := FList.Columns.Add;
-      Column.Caption := ColumnCaption(FShown[Index]);
-      Column.Width := MulDiv(ColumnWidth(FColumns, FShown[Index]), CurrentPPI, 96);
+      mColumn := FList.Columns.Add;
+      mColumn.Caption := ColumnCaption(FShown[mIndex]);
+      mColumn.Width := MulDiv(ColumnWidth(FColumns, FShown[mIndex]), CurrentPPI, 96);
     end;
   finally
     FList.Columns.EndUpdate;
@@ -752,14 +752,14 @@ begin
   ApplyOrder;
   // Menü „Spalten“: nur die abwählbaren.
   FColumnsItem.Clear;
-  for Position := 0 to High(FColumns) do
+  for mPosition := 0 to High(FColumns) do
   begin
-    if not TAtlasFindings.IsMandatory(FColumns[Position].Column) and
-      (FShowCompilerCode or (FColumns[Position].Column <> TAtlasFindingColumn.Compiler)) then
+    if not TAtlasFindings.IsMandatory(FColumns[mPosition].Column) and
+      (FShowCompilerCode or (FColumns[mPosition].Column <> TAtlasFindingColumn.Compiler)) then
     begin
-      Item := AddMenuItem(FColumnsItem, ColumnCaption(FColumns[Position].Column), ColumnToggleClick);
-      Item.Checked := FColumns[Position].Visible;
-      Item.Tag := Ord(FColumns[Position].Column);
+      mItem := AddMenuItem(FColumnsItem, ColumnCaption(FColumns[mPosition].Column), ColumnToggleClick);
+      mItem.Checked := FColumns[mPosition].Visible;
+      mItem.Tag := Ord(FColumns[mPosition].Column);
     end;
   end;
   FList.Invalidate;
@@ -767,9 +767,9 @@ end;
 
 procedure TAtlasProblemsFrameList.ApplyOrder;
 var
-  Order: TArray<Integer>;
-  State: TAtlasFindingColumnState;
-  Index: Integer;
+  mOrder: TArray<Integer>;
+  mState: TAtlasFindingColumnState;
+  mIndex: Integer;
 begin
   if not FList.HandleAllocated or (not FOrderPending and (FList.Handle = FOrderHandle)) then
   begin
@@ -777,30 +777,30 @@ begin
   end;
   FOrderPending := False;
   FOrderHandle := FList.Handle;
-  Order := nil;
-  for State in FColumns do
+  mOrder := nil;
+  for mState in FColumns do
   begin
-    for Index := 0 to High(FShown) do
+    for mIndex := 0 to High(FShown) do
     begin
-      if FShown[Index] = State.Column then
+      if FShown[mIndex] = mState.Column then
       begin
-        Order := Order + [Index];
+        mOrder := mOrder + [mIndex];
       end;
     end;
   end;
-  if Length(Order) = Length(FShown) then
+  if Length(mOrder) = Length(FShown) then
   begin
-    ListView_SetColumnOrderArray(FList.Handle, Length(Order), PInteger(@Order[0]));
+    ListView_SetColumnOrderArray(FList.Handle, Length(mOrder), PInteger(@mOrder[0]));
   end;
 end;
 
 procedure TAtlasProblemsFrameList.ReadColumns;
 var
-  Order: TArray<Integer>;
-  Next: TArray<TAtlasFindingColumnState>;
-  State: TAtlasFindingColumnState;
-  Index: Integer;
-  Seen: Boolean;
+  mOrder: TArray<Integer>;
+  mNext: TArray<TAtlasFindingColumnState>;
+  mState: TAtlasFindingColumnState;
+  mIndex: Integer;
+  mSeen: Boolean;
 begin
   // Noch nicht gesetzt oder Fenster neu: FColumns ist der Stand.
   if FOrderPending or not FList.HandleAllocated or (FList.Handle <> FOrderHandle) or
@@ -808,37 +808,37 @@ begin
   begin
     Exit;
   end;
-  SetLength(Order, Length(FShown));
-  if not ListView_GetColumnOrderArray(FList.Handle, Length(Order), PInteger(@Order[0])) then
+  SetLength(mOrder, Length(FShown));
+  if not ListView_GetColumnOrderArray(FList.Handle, Length(mOrder), PInteger(@mOrder[0])) then
   begin
     Exit;
   end;
-  Next := nil;
-  for Index in Order do
+  mNext := nil;
+  for mIndex in mOrder do
   begin
-    if (Index >= 0) and (Index <= High(FShown)) then
+    if (mIndex >= 0) and (mIndex <= High(FShown)) then
     begin
-      Next := Next + [TAtlasFindingColumnState.Create(FShown[Index],
-        MulDiv(FList.Columns[Index].Width, 96, CurrentPPI), True)];
+      mNext := mNext + [TAtlasFindingColumnState.Create(FShown[mIndex],
+        MulDiv(FList.Columns[mIndex].Width, 96, CurrentPPI), True)];
     end;
   end;
   // Ausgeblendete behalten ihren Platz hinten mit ihrer Breite.
-  for State in FColumns do
+  for mState in FColumns do
   begin
-    Seen := False;
-    for Index := 0 to High(Next) do
+    mSeen := False;
+    for mIndex := 0 to High(mNext) do
     begin
-      if Next[Index].Column = State.Column then
+      if mNext[mIndex].Column = mState.Column then
       begin
-        Seen := True;
+        mSeen := True;
       end;
     end;
-    if not Seen then
+    if not mSeen then
     begin
-      Next := Next + [State];
+      mNext := mNext + [mState];
     end;
   end;
-  FColumns := Next;
+  FColumns := mNext;
 end;
 
 function TAtlasProblemsFrameList.ColumnsText: string;
@@ -862,7 +862,7 @@ end;
 procedure TAtlasProblemsFrame.ApplySettings(AScope: TAtlasFindingScope; AGrouping: TAtlasFindingGrouping;
   const AColumns: string; ACompiler: Boolean);
 var
-  Filter: TAtlasFindingFilter;
+  mFilter: TAtlasFindingFilter;
 begin
   FUpdating := True;
   try
@@ -874,10 +874,10 @@ begin
   finally
     FUpdating := False;
   end;
-  Filter := FView.Filter;
-  Filter.Scope := AScope;
-  Filter.Compiler := ACompiler;
-  FView.Filter := Filter;
+  mFilter := FView.Filter;
+  mFilter.Scope := AScope;
+  mFilter.Compiler := ACompiler;
+  FView.Filter := mFilter;
   FView.Grouping := AGrouping;
   FColumns := TAtlasFindings.ParseColumns(AColumns);
   BuildColumns;
@@ -929,27 +929,27 @@ end;
 procedure TAtlasProblemsFrame.SetOpenFiles(const AActive: string; const AOpen: TArray<string>;
   AActiveChecked: Boolean);
 var
-  Before: string;
+  mBefore: string;
 begin
-  Before := FView.ActiveFile;
+  mBefore := FView.ActiveFile;
   FView.SetOpenFiles(AActive, AOpen, AActiveChecked);
   Refill;
-  KeepInView(Before);
+  KeepInView(mBefore);
 end;
 
 procedure TAtlasProblemsFrame.KeepInView(const ABefore: string);
 var
-  Selected: Integer;
+  mSelected: Integer;
 begin
   if SameText(ABefore, FView.ActiveFile) or (FList.Items.Count = 0) then
   begin
     Exit;
   end;
   // Editorwechsel: Die ausgewählte Zeile bleibt sichtbar; ohne Auswahl steht die angepinnte Unit oben.
-  Selected := FView.SelectedRow;
-  if (Selected >= 0) and (FList.Items[Selected] <> nil) then
+  mSelected := FView.SelectedRow;
+  if (mSelected >= 0) and (FList.Items[mSelected] <> nil) then
   begin
-    FList.Items[Selected].MakeVisible(False);
+    FList.Items[mSelected].MakeVisible(False);
   end
   else if FList.Items[0] <> nil then
   begin
@@ -988,15 +988,15 @@ end;
 
 function TAtlasProblemsFrame.FilterFromControls: TAtlasFindingFilter;
 var
-  Kind: TAtlasFindingKind;
+  mKind: TAtlasFindingKind;
 begin
   Result := FView.Filter;
   Result.Kinds := [];
-  for Kind := Low(TAtlasFindingKind) to High(TAtlasFindingKind) do
+  for mKind := Low(TAtlasFindingKind) to High(TAtlasFindingKind) do
   begin
-    if FKinds[Kind].Down then
+    if FKinds[mKind].Down then
     begin
-      Include(Result.Kinds, Kind);
+      Include(Result.Kinds, mKind);
     end;
   end;
   Result.OneCategory := FCategory.ItemIndex > 0;
@@ -1010,14 +1010,14 @@ end;
 procedure TAtlasProblemsFrame.SetFindings(const AFindings: TArray<TAtlasFinding>; const ACurrentFile: string;
   const AFiles: TArray<string>);
 var
-  Filter: TAtlasFindingFilter;
+  mFilter: TAtlasFindingFilter;
 begin
   FView.BeginUpdate;
   try
-    Filter := FView.Filter;
-    Filter.CurrentFile := ACurrentFile;
-    Filter.Files := AFiles;
-    FView.Filter := Filter;
+    mFilter := FView.Filter;
+    mFilter.CurrentFile := ACurrentFile;
+    mFilter.Files := AFiles;
+    FView.Filter := mFilter;
     FView.SetFindings(AFindings);
   finally
     FView.EndUpdate;
@@ -1028,39 +1028,39 @@ end;
 procedure TAtlasProblemsFrame.SetFindings(const AFindings: TArray<TAtlasFinding>; const ACurrentFile: string;
   const AFiles, AOpen: TArray<string>; AActiveChecked: Boolean);
 var
-  Filter: TAtlasFindingFilter;
-  Before: string;
+  mFilter: TAtlasFindingFilter;
+  mBefore: string;
 begin
-  Before := FView.ActiveFile;
+  mBefore := FView.ActiveFile;
   FView.BeginUpdate;
   try
-    Filter := FView.Filter;
-    Filter.CurrentFile := ACurrentFile;
-    Filter.Files := AFiles;
-    FView.Filter := Filter;
+    mFilter := FView.Filter;
+    mFilter.CurrentFile := ACurrentFile;
+    mFilter.Files := AFiles;
+    FView.Filter := mFilter;
     FView.SetFindings(AFindings);
     FView.SetOpenFiles(ACurrentFile, AOpen, AActiveChecked);
   finally
     FView.EndUpdate;
   end;
   FindingsChanged;
-  KeepInView(Before);
+  KeepInView(mBefore);
 end;
 
 procedure TAtlasProblemsFrame.FindingsChanged;
 var
-  Row: TAtlasFindingRow;
-  HasNew: Boolean;
+  mRow: TAtlasFindingRow;
+  mHasNew: Boolean;
 begin
-  HasNew := False;
-  for Row in FView.Rows do
+  mHasNew := False;
+  for mRow in FView.Rows do
   begin
-    if Row.IsNew then
+    if mRow.IsNew then
     begin
-      HasNew := True;
+      mHasNew := True;
     end;
   end;
-  if HasNew then
+  if mHasNew then
   begin
     // Neu starten: die Hervorhebung dauert ab dem letzten Zugang.
     FNewTimer.Enabled := False;
@@ -1071,14 +1071,14 @@ end;
 
 procedure TAtlasProblemsFrameList.UpdateKindCaptions;
 var
-  Counts: TAtlasFindingCounts;
-  Kind: TAtlasFindingKind;
+  mCounts: TAtlasFindingCounts;
+  mKind: TAtlasFindingKind;
 begin
-  Counts := FView.Counts;
-  for Kind := Low(TAtlasFindingKind) to High(TAtlasFindingKind) do
+  mCounts := FView.Counts;
+  for mKind := Low(TAtlasFindingKind) to High(TAtlasFindingKind) do
   begin
-    FKinds[Kind].Caption := TAtlasStrings.Fmt(TAtlasTextId.ProblemsKindCount, [KindText(Kind),
-      Counts.OfKind(Kind)]);
+    FKinds[mKind].Caption := TAtlasStrings.Fmt(TAtlasTextId.ProblemsKindCount, [KindText(mKind),
+      mCounts.OfKind(mKind)]);
   end;
 end;
 
@@ -1092,8 +1092,8 @@ end;
 
 procedure TAtlasProblemsFrameList.Refill;
 var
-  Selected: Integer;
-  Count: Integer;
+  mSelected: Integer;
+  mCount: Integer;
 begin
   // Gezogene Spalten merken, bevor ein neues Fenster der Liste (Andocken) sie vergisst; dann wieder setzen.
   ReadColumns;
@@ -1105,22 +1105,22 @@ begin
   ApplyOrder;
   FUpdating := True;
   try
-    Count := Length(FView.Rows);
+    mCount := Length(FView.Rows);
     // Virtuelle Liste: nur die Anzahl ändert sich; Bildlauf bleibt.
-    if FList.Items.Count <> Count then
+    if FList.Items.Count <> mCount then
     begin
-      FList.Items.Count := Count;
+      FList.Items.Count := mCount;
     end;
-    Selected := FView.SelectedRow;
-    if Selected <> FList.ItemIndex then
+    mSelected := FView.SelectedRow;
+    if mSelected <> FList.ItemIndex then
     begin
       ClearListSelection;
-      if Selected >= 0 then
+      if mSelected >= 0 then
       begin
-        FList.ItemIndex := Selected;
-        if FList.Items[Selected] <> nil then
+        FList.ItemIndex := mSelected;
+        if FList.Items[mSelected] <> nil then
         begin
-          FList.Items[Selected].Focused := True;
+          FList.Items[mSelected].Focused := True;
         end;
       end;
     end;
@@ -1129,7 +1129,7 @@ begin
     FUpdating := False;
   end;
   UpdateKindCaptions;
-  FEmpty.Visible := Count = 0;
+  FEmpty.Visible := mCount = 0;
   FList.Visible := not FEmpty.Visible;
 end;
 
@@ -1160,10 +1160,10 @@ end;
 
 procedure TAtlasProblemsFrame.FollowCursor(const AFileName: string; ALine: Integer);
 var
-  Before: string;
+  mBefore: string;
 begin
-  Before := FView.SelectedKey;
-  if FView.SelectAt(AFileName, ALine) and (FView.SelectedKey <> Before) then
+  mBefore := FView.SelectedKey;
+  if FView.SelectAt(AFileName, ALine) and (FView.SelectedKey <> mBefore) then
   begin
     Refill;
     if (FView.SelectedRow >= 0) and (FList.Items[FView.SelectedRow] <> nil) then
@@ -1189,14 +1189,14 @@ end;
 
 function TAtlasProblemsFrameList.GroupColumn: TAtlasFindingColumn;
 var
-  State: TAtlasFindingColumnState;
+  mState: TAtlasFindingColumnState;
 begin
   Result := TAtlasFindingColumn.Kind;
-  for State in FColumns do
+  for mState in FColumns do
   begin
-    if State.Visible and (State.Column <> TAtlasFindingColumn.Icon) then
+    if mState.Visible and (mState.Column <> TAtlasFindingColumn.Icon) then
     begin
-      Exit(State.Column);
+      Exit(mState.Column);
     end;
   end;
 end;
@@ -1214,7 +1214,7 @@ begin
   end;
   if ARow.Pinned then
   begin
-    Result := Result + PinMark + ' ';
+    Result := Result + cPinMark + ' ';
   end;
   Result := Result + ARow.Caption + ' (' + IntToStr(ARow.Count) + ')';
   if ARow.Pinned then
@@ -1282,17 +1282,17 @@ begin
   begin
     if ARow.Checking then
     begin
-      Result := PinMark + ' ' + TAtlasStrings.Fmt(TAtlasTextId.ProblemsCheckingActive, [ARow.Caption]);
+      Result := cPinMark + ' ' + TAtlasStrings.Fmt(TAtlasTextId.ProblemsCheckingActive, [ARow.Caption]);
     end
     else
     begin
-      Result := PinMark + ' ' + CheckMark + ' ' + TAtlasStrings.Fmt(TAtlasTextId.ProblemsCleanActive, [ARow.Caption]);
+      Result := cPinMark + ' ' + cCheckMark + ' ' + TAtlasStrings.Fmt(TAtlasTextId.ProblemsCleanActive, [ARow.Caption]);
     end;
     Exit;
   end;
   case ARow.Tier of
     TAtlasFindingTier.Active:
-      Result := PinMark + ' ' + TAtlasStrings.Fmt(TAtlasTextId.ProblemsSectionActive, [ARow.Caption]);
+      Result := cPinMark + ' ' + TAtlasStrings.Fmt(TAtlasTextId.ProblemsSectionActive, [ARow.Caption]);
     TAtlasFindingTier.Open:
       Result := TAtlasStrings.Fmt(TAtlasTextId.ProblemsSectionOpen, [ARow.Units, ARow.Count]);
   else
@@ -1302,23 +1302,23 @@ end;
 
 procedure TAtlasProblemsFrameList.DrawSection(ACanvas: TCanvas; AItem: TListItem; const ARow: TAtlasFindingRow);
 var
-  Bounds: TRect;
+  mBounds: TRect;
   mText: string;
-  Back: TColor;
+  mBack: TColor;
 begin
   // Trennzeile über die ganze Breite: Linie oben, Text klein und fett in Sekundärfarbe; die aktive Unit ohne
   // Befunde wie eine angepinnte Gruppe, „Keine Befunde“ mit grünem Haken.
-  Bounds := AItem.DisplayRect(drBounds);
-  Back := ListBack;
+  mBounds := AItem.DisplayRect(drBounds);
+  mBack := ListBack;
   if ARow.Pinned then
   begin
-    Back := TColor(PinnedBackColor(TAtlasColor(Back)));
+    mBack := TColor(PinnedBackColor(TAtlasColor(mBack)));
   end;
-  ACanvas.Brush.Color := Back;
-  ACanvas.FillRect(Bounds);
+  ACanvas.Brush.Color := mBack;
+  ACanvas.FillRect(mBounds);
   ACanvas.Pen.Color := TColor(TAtlasColorMath.Mix(TAtlasColor(ListText), TAtlasColor(ListBack), 0.2));
-  ACanvas.MoveTo(Bounds.Left, Bounds.Top);
-  ACanvas.LineTo(Bounds.Right, Bounds.Top);
+  ACanvas.MoveTo(mBounds.Left, mBounds.Top);
+  ACanvas.LineTo(mBounds.Right, mBounds.Top);
   ACanvas.Font.Style := [fsBold];
   if ARow.IsCleanActive and not ARow.Checking then
   begin
@@ -1326,25 +1326,25 @@ begin
   end
   else
   begin
-    ACanvas.Font.Color := TColor(DimmedTextColor(TAtlasColor(ListText), TAtlasColor(Back)));
+    ACanvas.Font.Color := TColor(DimmedTextColor(TAtlasColor(ListText), TAtlasColor(mBack)));
   end;
   mText := SectionText(ARow);
-  Inc(Bounds.Left, MulDiv(6, CurrentPPI, 96));
+  Inc(mBounds.Left, MulDiv(6, CurrentPPI, 96));
   ACanvas.Brush.Style := bsClear;
-  DrawText(ACanvas.Handle, PChar(mText), Length(mText), Bounds, DT_SINGLELINE or DT_VCENTER or DT_END_ELLIPSIS or
+  DrawText(ACanvas.Handle, PChar(mText), Length(mText), mBounds, DT_SINGLELINE or DT_VCENTER or DT_END_ELLIPSIS or
     DT_NOPREFIX);
   ACanvas.Brush.Style := bsSolid;
 end;
 
 function TAtlasProblemsFrameList.RowAt(AIndex: Integer; out ARow: TAtlasFindingRow): Boolean;
 var
-  Rows: TArray<TAtlasFindingRow>;
+  mRows: TArray<TAtlasFindingRow>;
 begin
-  Rows := FView.Rows;
-  Result := (AIndex >= 0) and (AIndex <= High(Rows));
+  mRows := FView.Rows;
+  Result := (AIndex >= 0) and (AIndex <= High(mRows));
   if Result then
   begin
-    ARow := Rows[AIndex];
+    ARow := mRows[AIndex];
   end
   else
   begin
@@ -1354,40 +1354,40 @@ end;
 
 procedure TAtlasProblemsFrameList.ListData(Sender: TObject; Item: TListItem);
 var
-  Row: TAtlasFindingRow;
-  Index: Integer;
+  mRow: TAtlasFindingRow;
+  mIndex: Integer;
 begin
-  if not RowAt(Item.Index, Row) then
+  if not RowAt(Item.Index, mRow) then
   begin
     Exit;
   end;
   Item.ImageIndex := -1;
-  if not Row.IsGroup and not Row.IsSection then
+  if not mRow.IsGroup and not mRow.IsSection then
   begin
-    Item.ImageIndex := Ord(FView.Finding(Row.Finding).Kind);
-    if Row.Dimmed then
+    Item.ImageIndex := Ord(FView.Finding(mRow.Finding).Kind);
+    if mRow.Dimmed then
     begin
-      Item.ImageIndex := Item.ImageIndex + DimmedImageOffset;
+      Item.ImageIndex := Item.ImageIndex + cDimmedImageOffset;
     end;
   end;
   Item.Caption := '';
   Item.SubItems.Clear;
-  for Index := 1 to High(FShown) do
+  for mIndex := 1 to High(FShown) do
   begin
-    Item.SubItems.Add(CellText(Row, FShown[Index]));
+    Item.SubItems.Add(CellText(mRow, FShown[mIndex]));
   end;
 end;
 
 procedure TAtlasProblemsFrame.ListSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
 var
-  Row: TAtlasFindingRow;
+  mRow: TAtlasFindingRow;
 begin
   if FUpdating or not Selected or (Item = nil) then
   begin
     Exit;
   end;
   // Trennzeilen (#1108) sind nicht wählbar.
-  if RowAt(Item.Index, Row) and Row.IsSection then
+  if RowAt(Item.Index, mRow) and mRow.IsSection then
   begin
     FUpdating := True;
     try
@@ -1402,18 +1402,18 @@ end;
 
 procedure TAtlasProblemsFrame.ListMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
-  Hit: TListItem;
-  Row: TAtlasFindingRow;
+  mHit: TListItem;
+  mRow: TAtlasFindingRow;
 begin
   // Klick auf eine Gruppe klappt sie; Mehrfachauswahl mit Strg/Umschalt bleibt.
   if (Button <> mbLeft) or (Shift * [ssCtrl, ssShift] <> []) then
   begin
     Exit;
   end;
-  Hit := FList.GetItemAt(X, Y);
-  if (Hit <> nil) and RowAt(Hit.Index, Row) and Row.IsGroup and not Row.IsSection then
+  mHit := FList.GetItemAt(X, Y);
+  if (mHit <> nil) and RowAt(mHit.Index, mRow) and mRow.IsGroup and not mRow.IsSection then
   begin
-    FView.Toggle(Hit.Index);
+    FView.Toggle(mHit.Index);
     Refill;
   end;
 end;
@@ -1428,9 +1428,9 @@ end;
 
 procedure TAtlasProblemsFrame.ListDblClick(Sender: TObject);
 var
-  Row: TAtlasFindingRow;
+  mRow: TAtlasFindingRow;
 begin
-  if RowAt(FList.ItemIndex, Row) and not Row.IsGroup and not Row.IsSection then
+  if RowAt(FList.ItemIndex, mRow) and not mRow.IsGroup and not mRow.IsSection then
   begin
     Fire(FOnOpen);
   end;
@@ -1536,44 +1536,44 @@ end;
 
 procedure TAtlasProblemsFrameList.ListInfoTip(Sender: TObject; Item: TListItem; var InfoTip: string);
 var
-  Row: TAtlasFindingRow;
-  Finding: TAtlasFinding;
+  mRow: TAtlasFindingRow;
+  mFinding: TAtlasFinding;
 begin
   InfoTip := '';
-  if (Item = nil) or not RowAt(Item.Index, Row) or Row.IsGroup or Row.IsSection then
+  if (Item = nil) or not RowAt(Item.Index, mRow) or mRow.IsGroup or mRow.IsSection then
   begin
     Exit;
   end;
   // Ganze Zeile und ganze Meldung.
-  Finding := FView.Finding(Row.Finding);
-  InfoTip := Finding.MessageText(FShowCompilerCode);
-  if Finding.Problem.Confirmed then
+  mFinding := FView.Finding(mRow.Finding);
+  InfoTip := mFinding.MessageText(FShowCompilerCode);
+  if mFinding.Problem.Confirmed then
   begin
-    InfoTip := InfoTip + sLineBreak + TAtlasStrings.CompilerConfirmed(Finding.Problem.ConfirmedCode, FShowCompilerCode);
+    InfoTip := InfoTip + sLineBreak + TAtlasStrings.CompilerConfirmed(mFinding.Problem.ConfirmedCode, FShowCompilerCode);
   end;
-  if Finding.LineText <> '' then
+  if mFinding.LineText <> '' then
   begin
-    InfoTip := InfoTip + sLineBreak + Finding.LineText;
+    InfoTip := InfoTip + sLineBreak + mFinding.LineText;
   end;
 end;
 
 procedure TAtlasProblemsFrameList.ListCustomDrawItem(Sender: TCustomListView; Item: TListItem;
   State: TCustomDrawState; var DefaultDraw: Boolean);
 var
-  Row: TAtlasFindingRow;
+  mRow: TAtlasFindingRow;
 begin
   DefaultDraw := True;
-  if (Item = nil) or not RowAt(Item.Index, Row) then
+  if (Item = nil) or not RowAt(Item.Index, mRow) then
   begin
     Exit;
   end;
-  if Row.IsSection then
+  if mRow.IsSection then
   begin
-    DrawSection(Sender.Canvas, Item, Row);
+    DrawSection(Sender.Canvas, Item, mRow);
     DefaultDraw := False;
     Exit;
   end;
-  if Row.IsGroup then
+  if mRow.IsGroup then
   begin
     Sender.Canvas.Font.Style := [fsBold];
   end
@@ -1594,16 +1594,16 @@ begin
     Sender.Canvas.Brush.Color := ListBack;
     Sender.Canvas.Font.Color := ListText;
     // Offene Units zuerst (#1108): aktive Unit hinterlegt, nicht geöffnete ausgegraut.
-    if Row.Pinned then
+    if mRow.Pinned then
     begin
       Sender.Canvas.Brush.Color := TColor(PinnedBackColor(TAtlasColor(ListBack)));
     end;
-    if Row.Dimmed then
+    if mRow.Dimmed then
     begin
       Sender.Canvas.Font.Color := TColor(DimmedTextColor(TAtlasColor(ListText), TAtlasColor(ListBack)));
     end;
     // Neu dazugekommen: kurz hinterlegt.
-    if Row.IsNew then
+    if mRow.IsNew then
     begin
       Sender.Canvas.Brush.Color := TColor(NewBackColor(TAtlasColor(ListBack)));
     end;
@@ -1629,18 +1629,18 @@ end;
 
 procedure TAtlasProblemsFrame.ScopeChange(Sender: TObject);
 var
-  Filter: TAtlasFindingFilter;
+  mFilter: TAtlasFindingFilter;
 begin
   if FUpdating or not FScopeBox.Pick then
   begin
     Exit;
   end;
-  Filter := FilterFromControls;
-  Filter.Scope := FScopeBox.Choice.Scope;
-  FView.Filter := Filter;
+  mFilter := FilterFromControls;
+  mFilter.Scope := FScopeBox.Choice.Scope;
+  FView.Filter := mFilter;
   if Assigned(FOnScope) then
   begin
-    FOnScope(Filter.Scope);
+    FOnScope(mFilter.Scope);
   end;
   Refill;
   if Assigned(FOnLayout) then
@@ -1678,25 +1678,25 @@ end;
 
 function TAtlasProblemsFrameMenu.SelectedRows: TArray<Integer>;
 var
-  Item: TListItem;
+  mItem: TListItem;
 begin
   Result := nil;
-  Item := FList.Selected;
-  while Item <> nil do
+  mItem := FList.Selected;
+  while mItem <> nil do
   begin
-    Result := Result + [Item.Index];
-    Item := FList.GetNextItem(Item, sdAll, [isSelected]);
+    Result := Result + [mItem.Index];
+    mItem := FList.GetNextItem(mItem, sdAll, [isSelected]);
   end;
 end;
 
 function TAtlasProblemsFrameMenu.Current(out AFinding: TAtlasFinding): Boolean;
 var
-  Row: TAtlasFindingRow;
+  mRow: TAtlasFindingRow;
 begin
-  Result := RowAt(FList.ItemIndex, Row) and not Row.IsGroup and not Row.IsSection;
+  Result := RowAt(FList.ItemIndex, mRow) and not mRow.IsGroup and not mRow.IsSection;
   if Result then
   begin
-    AFinding := FView.Finding(Row.Finding);
+    AFinding := FView.Finding(mRow.Finding);
   end
   else
   begin
@@ -1725,11 +1725,11 @@ end;
 
 procedure TAtlasProblemsFrameMenu.Fire(const AEvent: TAtlasFindingEvent);
 var
-  Finding: TAtlasFinding;
+  mFinding: TAtlasFinding;
 begin
-  if Assigned(AEvent) and Current(Finding) then
+  if Assigned(AEvent) and Current(mFinding) then
   begin
-    AEvent(Finding);
+    AEvent(mFinding);
   end;
 end;
 
@@ -1751,28 +1751,28 @@ end;
 
 procedure TAtlasProblemsFrameMenu.MenuPopup(Sender: TObject);
 var
-  Finding: TAtlasFinding;
-  Has, Rule: Boolean;
-  Count: Integer;
+  mFinding: TAtlasFinding;
+  mHas, mRule: Boolean;
+  mCount: Integer;
 begin
-  Has := Current(Finding);
-  Rule := Has and IsRule(Finding);
-  FOpenItem.Enabled := Has;
-  if Has and (Finding.Problem.FixTitle <> '') then
+  mHas := Current(mFinding);
+  mRule := mHas and IsRule(mFinding);
+  FOpenItem.Enabled := mHas;
+  if mHas and (mFinding.Problem.FixTitle <> '') then
   begin
-    FFixItem.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProblemsMenuFix, [Finding.Problem.FixTitle]);
+    FFixItem.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProblemsMenuFix, [mFinding.Problem.FixTitle]);
   end
   else
   begin
     FFixItem.Caption := TAtlasStrings.Text(TAtlasTextId.ProblemsMenuFixNone);
   end;
-  FFixItem.Enabled := Has and (Finding.Problem.FixTitle <> '');
+  FFixItem.Enabled := mHas and (mFinding.Problem.FixTitle <> '');
   // Sammelkorrektur (#1352): je Regel; welche Treffer sicher sind, entscheidet der Server.
   FFixAllItem.Visible := Assigned(FOnFixAll) and Assigned(FCanFixAll) and FCanFixAll();
-  FFixAllItem.Enabled := Rule;
-  if Rule then
+  FFixAllItem.Enabled := mRule;
+  if mRule then
   begin
-    FFixAllItem.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProblemsMenuFixAll, [Finding.Rule]);
+    FFixAllItem.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProblemsMenuFixAll, [mFinding.Rule]);
   end
   else
   begin
@@ -1780,15 +1780,15 @@ begin
   end;
   // Regel-Aktionen liefert das Modul Prüfregeln (#1755); Syntaxfehler (#1022) lassen sich nicht per Kommentar
   // unterdrücken.
-  ShowRuleActions(Rule and Finding.Problem.CanSuppress, Rule);
-  FExplainItem.Enabled := Rule;
+  ShowRuleActions(mRule and mFinding.Problem.CanSuppress, mRule);
+  FExplainItem.Enabled := mRule;
   // Issue anlegen (#1268): auch für Compilermeldungen; mehrere markierte ergeben ein Issue mit Liste.
-  Count := Length(SelectedFindings);
+  mCount := Length(SelectedFindings);
   FIssueItem.Visible := Assigned(FOnCreateIssue) and Assigned(FCanCreateIssue) and FCanCreateIssue();
-  FIssueItem.Enabled := Count > 0;
-  if Count > 1 then
+  FIssueItem.Enabled := mCount > 0;
+  if mCount > 1 then
   begin
-    FIssueItem.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProblemsMenuCreateIssueMany, [Count]);
+    FIssueItem.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProblemsMenuCreateIssueMany, [mCount]);
   end
   else
   begin
@@ -1856,16 +1856,16 @@ end;
 
 procedure TAtlasProblemsFrameList.ColumnToggleClick(Sender: TObject);
 var
-  Column: TAtlasFindingColumn;
-  Index: Integer;
+  mColumn: TAtlasFindingColumn;
+  mIndex: Integer;
 begin
   ReadColumns;
-  Column := TAtlasFindingColumn(TMenuItem(Sender).Tag);
-  for Index := 0 to High(FColumns) do
+  mColumn := TAtlasFindingColumn(TMenuItem(Sender).Tag);
+  for mIndex := 0 to High(FColumns) do
   begin
-    if FColumns[Index].Column = Column then
+    if FColumns[mIndex].Column = mColumn then
     begin
-      FColumns[Index].Visible := not FColumns[Index].Visible;
+      FColumns[mIndex].Visible := not FColumns[mIndex].Visible;
     end;
   end;
   BuildColumns;

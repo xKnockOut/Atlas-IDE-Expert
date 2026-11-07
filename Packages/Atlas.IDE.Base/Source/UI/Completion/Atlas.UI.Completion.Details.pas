@@ -124,21 +124,21 @@ class function TAtlasDetailView.DocOf(const ADetails: TAtlasItemDetails): TAtlas
 
   procedure Add(AKind: TAtlasDocSectionKind; const AName, AText: string);
   var
-    Section: TAtlasDocSection;
+    mSection: TAtlasDocSection;
   begin
     if Trim(AText) = '' then
     begin
       Exit;
     end;
-    Section := Default(TAtlasDocSection);
-    Section.Kind := AKind;
-    Section.Name := AName;
-    Section.Runs := TAtlasDoc.FromText(AText).Sections[0].Runs;
-    Result.Sections := Result.Sections + [Section];
+    mSection := Default(TAtlasDocSection);
+    mSection.Kind := AKind;
+    mSection.Name := AName;
+    mSection.Runs := TAtlasDoc.FromText(AText).Sections[0].Runs;
+    Result.Sections := Result.Sections + [mSection];
   end;
 
 var
-  Entry: TAtlasDocEntry;
+  mEntry: TAtlasDocEntry;
 begin
   Result := ADetails.Doc;
   if not Result.IsEmpty then
@@ -146,14 +146,14 @@ begin
     Exit;
   end;
   Add(TAtlasDocSectionKind.Summary, '', ADetails.Summary);
-  for Entry in ADetails.Params do
+  for mEntry in ADetails.Params do
   begin
-    Add(TAtlasDocSectionKind.Param, Entry.Name, Entry.Text);
+    Add(TAtlasDocSectionKind.Param, mEntry.Name, mEntry.Text);
   end;
   Add(TAtlasDocSectionKind.Returns, '', ADetails.Returns);
-  for Entry in ADetails.Exceptions do
+  for mEntry in ADetails.Exceptions do
   begin
-    Add(TAtlasDocSectionKind.Exception, Entry.Name, Entry.Text);
+    Add(TAtlasDocSectionKind.Exception, mEntry.Name, mEntry.Text);
   end;
   Add(TAtlasDocSectionKind.Remarks, '', ADetails.Remarks);
 end;

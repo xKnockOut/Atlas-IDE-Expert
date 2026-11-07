@@ -79,12 +79,12 @@ uses
 
 function TextOf(AObject: TJSONObject; const AName: string): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := AObject.GetValue(AName);
-  if Value is TJSONString then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONString then
   begin
-    Result := TJSONString(Value).Value;
+    Result := TJSONString(mValue).Value;
   end
   else
   begin
@@ -94,12 +94,12 @@ end;
 
 function NumberOf(AObject: TJSONObject; const AName: string): Integer;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := AObject.GetValue(AName);
-  if Value is TJSONNumber then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONNumber then
   begin
-    Result := TJSONNumber(Value).AsInt;
+    Result := TJSONNumber(mValue).AsInt;
   end
   else
   begin
@@ -109,28 +109,28 @@ end;
 
 function JsonText(const AValue: string): string;
 var
-  Value: TJSONString;
+  mValue: TJSONString;
 begin
-  Value := TJSONString.Create(AValue);
+  mValue := TJSONString.Create(AValue);
   try
-    Result := Value.ToJSON;
+    Result := mValue.ToJSON;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 /// <summary>AValue an AList anhängen, wenn es nicht leer und noch nicht drin ist (Groß-/Kleinschreibung egal).</summary>
 procedure AddDistinct(var AList: TArray<string>; const AValue: string);
 var
-  Item: string;
+  mItem: string;
 begin
   if AValue = '' then
   begin
     Exit;
   end;
-  for Item in AList do
+  for mItem in AList do
   begin
-    if SameText(Item, AValue) then
+    if SameText(mItem, AValue) then
     begin
       Exit;
     end;
@@ -175,18 +175,18 @@ end;
 /// <summary>Objekte von AArray in Reihenfolge; andere Werte fallen weg; leer ohne Array.</summary>
 function ObjectsOf(AArray: TJSONArray): TArray<TJSONObject>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := nil;
   if AArray = nil then
   begin
     Exit;
   end;
-  for Index := 0 to AArray.Count - 1 do
+  for mIndex := 0 to AArray.Count - 1 do
   begin
-    if AArray.Items[Index] is TJSONObject then
+    if AArray.Items[mIndex] is TJSONObject then
     begin
-      Result := Result + [TJSONObject(AArray.Items[Index])];
+      Result := Result + [TJSONObject(AArray.Items[mIndex])];
     end;
   end;
 end;
@@ -238,59 +238,59 @@ end;
 
 function TAtlasTodoFilter.ToJson: string;
 var
-  Clean: TAtlasTodoFilter;
-  Parts: TArray<string>;
+  mClean: TAtlasTodoFilter;
+  mParts: TArray<string>;
 
   procedure Add(const AName, AValue: string);
   begin
     if AValue <> '' then
     begin
-      Parts := Parts + [JsonText(AName) + ': ' + JsonText(AValue)];
+      mParts := mParts + [JsonText(AName) + ': ' + JsonText(AValue)];
     end;
   end;
 
 begin
-  Clean := Trimmed;
-  Parts := nil;
-  Add('category', Clean.Category);
-  Add('owner', Clean.Owner);
-  Add('unit', Clean.UnitName);
-  Add('keyword', Clean.Keyword);
-  if Clean.IncludeDone then
+  mClean := Trimmed;
+  mParts := nil;
+  Add('category', mClean.Category);
+  Add('owner', mClean.Owner);
+  Add('unit', mClean.UnitName);
+  Add('keyword', mClean.Keyword);
+  if mClean.IncludeDone then
   begin
-    Parts := Parts + ['"includeDone": true'];
+    mParts := mParts + ['"includeDone": true'];
   end;
-  Result := '{' + string.Join(', ', Parts) + '}';
+  Result := '{' + string.Join(', ', mParts) + '}';
 end;
 
 function TAtlasTodoFilter.Describe: string;
 var
-  Clean: TAtlasTodoFilter;
-  Parts: TArray<string>;
+  mClean: TAtlasTodoFilter;
+  mParts: TArray<string>;
 begin
-  Clean := Trimmed;
-  Parts := nil;
-  if Clean.Category <> '' then
+  mClean := Trimmed;
+  mParts := nil;
+  if mClean.Category <> '' then
   begin
-    Parts := Parts + ['-c' + Clean.Category];
+    mParts := mParts + ['-c' + mClean.Category];
   end;
-  if Clean.Owner <> '' then
+  if mClean.Owner <> '' then
   begin
-    Parts := Parts + ['-o' + Clean.Owner];
+    mParts := mParts + ['-o' + mClean.Owner];
   end;
-  if Clean.UnitName <> '' then
+  if mClean.UnitName <> '' then
   begin
-    Parts := Parts + [Clean.UnitName];
+    mParts := mParts + [mClean.UnitName];
   end;
-  if Clean.Keyword <> '' then
+  if mClean.Keyword <> '' then
   begin
-    Parts := Parts + [UpperCase(Clean.Keyword)];
+    mParts := mParts + [UpperCase(mClean.Keyword)];
   end;
-  if Clean.IncludeDone then
+  if mClean.IncludeDone then
   begin
-    Parts := Parts + ['DONE'];
+    mParts := mParts + ['DONE'];
   end;
-  Result := string.Join(', ', Parts);
+  Result := string.Join(', ', mParts);
 end;
 
 { TAtlasTodoList }
@@ -298,25 +298,25 @@ end;
 class function TAtlasTodoList.Caption(const AKeyword: string; APriority: Integer; const ACategory, AOwner,
   AText: string): string;
 var
-  Details: string;
+  mDetails: string;
 begin
   Result := AKeyword;
   if APriority > 0 then
   begin
     Result := Result + ' ' + IntToStr(APriority);
   end;
-  Details := ACategory;
+  mDetails := ACategory;
   if AOwner <> '' then
   begin
-    if Details <> '' then
+    if mDetails <> '' then
     begin
-      Details := Details + ', ';
+      mDetails := mDetails + ', ';
     end;
-    Details := Details + AOwner;
+    mDetails := mDetails + AOwner;
   end;
-  if Details <> '' then
+  if mDetails <> '' then
   begin
-    Result := Result + ' [' + Details + ']';
+    Result := Result + ' [' + mDetails + ']';
   end;
   if AText <> '' then
   begin
@@ -326,73 +326,73 @@ end;
 
 class function TAtlasTodoList.FullPath(const ARoot, APath: string): string;
 var
-  Path: string;
+  mPath: string;
 begin
-  Path := StringReplace(APath, '/', '\', [rfReplaceAll]);
+  mPath := StringReplace(APath, '/', '\', [rfReplaceAll]);
   // Laufwerk (C:\…) oder UNC (\\server\…): schon absolut.
-  if ((Length(Path) >= 2) and (Path[2] = ':')) or ((Length(Path) >= 1) and (Path[1] = '\')) or (ARoot = '') then
+  if ((Length(mPath) >= 2) and (mPath[2] = ':')) or ((Length(mPath) >= 1) and (mPath[1] = '\')) or (ARoot = '') then
   begin
-    Exit(Path);
+    Exit(mPath);
   end;
   Result := StringReplace(ARoot, '/', '\', [rfReplaceAll]);
   if Result[Length(Result)] <> '\' then
   begin
     Result := Result + '\';
   end;
-  Result := Result + Path;
+  Result := Result + mPath;
 end;
 
 class function TAtlasTodoList.Entries(const AJson: string; out AEntries: TArray<TAtlasResultEntry>): Boolean;
 var
-  Value: TJSONValue;
-  Files: TJSONArray;
-  FileItem, Todo: TJSONObject;
-  FileName, RootPath: string;
+  mValue: TJSONValue;
+  mFiles: TJSONArray;
+  mFileItem, mTodo: TJSONObject;
+  mFileName, mRootPath: string;
 begin
   AEntries := nil;
-  Value := ParseJson(AJson);
+  mValue := ParseJson(AJson);
   try
-    Files := ArrayOf(Value, 'files');
-    Result := Files <> nil;
+    mFiles := ArrayOf(mValue, 'files');
+    Result := mFiles <> nil;
     if not Result then
     begin
       Exit;
     end;
-    RootPath := TextOf(TJSONObject(Value), 'root');
-    for FileItem in ObjectsOf(Files) do
+    mRootPath := TextOf(TJSONObject(mValue), 'root');
+    for mFileItem in ObjectsOf(mFiles) do
     begin
-      FileName := FullPath(RootPath, TextOf(FileItem, 'file'));
-      for Todo in ObjectsOf(ArrayOf(FileItem, 'todos')) do
+      mFileName := FullPath(mRootPath, TextOf(mFileItem, 'file'));
+      for mTodo in ObjectsOf(ArrayOf(mFileItem, 'todos')) do
       begin
-        AEntries := AEntries + [TodoEntryOf(FileName, Todo)];
+        AEntries := AEntries + [TodoEntryOf(mFileName, mTodo)];
       end;
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 class function TAtlasTodoList.Choices(const AJson: string; out AChoices: TAtlasTodoChoices): Boolean;
 var
-  Value: TJSONValue;
-  Files: TJSONArray;
-  FileItem, Todo: TJSONObject;
+  mValue: TJSONValue;
+  mFiles: TJSONArray;
+  mFileItem, mTodo: TJSONObject;
 begin
   AChoices := Default(TAtlasTodoChoices);
-  Value := ParseJson(AJson);
+  mValue := ParseJson(AJson);
   try
-    Files := ArrayOf(Value, 'files');
-    Result := Files <> nil;
+    mFiles := ArrayOf(mValue, 'files');
+    Result := mFiles <> nil;
     if not Result then
     begin
       Exit;
     end;
-    for FileItem in ObjectsOf(Files) do
+    for mFileItem in ObjectsOf(mFiles) do
     begin
-      AddDistinct(AChoices.Units, TextOf(FileItem, 'unit'));
-      for Todo in ObjectsOf(ArrayOf(FileItem, 'todos')) do
+      AddDistinct(AChoices.Units, TextOf(mFileItem, 'unit'));
+      for mTodo in ObjectsOf(ArrayOf(mFileItem, 'todos')) do
       begin
-        AddTodoChoices(AChoices, Todo);
+        AddTodoChoices(AChoices, mTodo);
       end;
     end;
     SortTexts(AChoices.Categories);
@@ -400,7 +400,7 @@ begin
     SortTexts(AChoices.Units);
     SortTexts(AChoices.Keywords);
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 

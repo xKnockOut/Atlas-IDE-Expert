@@ -81,8 +81,8 @@ uses
   Atlas.UI.Popup.Accessibility;
 
 const
-  Pad = 8;
-  ListMax = 300;
+  cPad = 8;
+  cListMax = 300;
 
 { TAtlasPeekWindow }
 
@@ -148,7 +148,7 @@ begin
   Result := 0;
   if (FView <> nil) and (FView.Count > 1) then
   begin
-    Result := Min(Scale(ListMax), ClientWidth div 3);
+    Result := Min(Scale(cListMax), ClientWidth div 3);
   end;
 end;
 
@@ -189,21 +189,21 @@ end;
 
 procedure TAtlasPeekWindow.PrepareTokens;
 var
-  Rows: TArray<TAtlasPeekRow>;
-  Lines: TArray<string>;
-  Index: Integer;
+  mRows: TArray<TAtlasPeekRow>;
+  mLines: TArray<string>;
+  mIndex: Integer;
 begin
   if (FView = nil) or (FView.Count = 0) or (FTokensOf = FView.Selected) then
   begin
     Exit;
   end;
-  Rows := FView.Current.Rows;
-  SetLength(Lines, Length(Rows));
-  for Index := 0 to High(Rows) do
+  mRows := FView.Current.Rows;
+  SetLength(mLines, Length(mRows));
+  for mIndex := 0 to High(mRows) do
   begin
-    Lines[Index] := Rows[Index].Text;
+    mLines[mIndex] := mRows[mIndex].Text;
   end;
-  FTokens := TAtlasSyntax.LineTokens(Lines);
+  FTokens := TAtlasSyntax.LineTokens(mLines);
   FTokensOf := FView.Selected;
 end;
 
@@ -223,17 +223,17 @@ end;
 
 procedure TAtlasPeekWindow.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   inherited;
   if Button <> mbLeft then
   begin
     Exit;
   end;
-  Index := EntryAt(Point(X, Y));
-  if (Index >= 0) and (Index <> FView.Selected) then
+  mIndex := EntryAt(Point(X, Y));
+  if (mIndex >= 0) and (mIndex <> FView.Selected) then
   begin
-    FView.Select(Index);
+    FView.Select(mIndex);
     ViewChanged;
   end;
 end;
@@ -249,34 +249,34 @@ end;
 
 procedure TAtlasPeekWindow.PaintHeader;
 var
-  Area: TRect;
-  KeysHint: string;
-  HintWidth: Integer;
+  mArea: TRect;
+  mKeysHint: string;
+  mHintWidth: Integer;
 begin
-  Area := Rect(0, 0, ClientWidth, HeaderHeight);
+  mArea := Rect(0, 0, ClientWidth, HeaderHeight);
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ToColor(Colors.Gutter);
-  Canvas.FillRect(Area);
+  Canvas.FillRect(mArea);
   Canvas.Pen.Color := ToColor(Colors.Line);
-  Canvas.MoveTo(0, Area.Bottom);
-  Canvas.LineTo(ClientWidth, Area.Bottom);
+  Canvas.MoveTo(0, mArea.Bottom);
+  Canvas.LineTo(ClientWidth, mArea.Bottom);
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Assign(UIFont);
-  KeysHint := TAtlasStrings.Text(TAtlasTextId.PeekKeysHint);
+  mKeysHint := TAtlasStrings.Text(TAtlasTextId.PeekKeysHint);
   Canvas.Font.Color := ToColor(Colors.Muted);
-  HintWidth := Canvas.TextWidth(KeysHint);
-  Area.Inflate(-Scale(Pad), 0);
-  if HintWidth < Area.Width div 2 then
+  mHintWidth := Canvas.TextWidth(mKeysHint);
+  mArea.Inflate(-Scale(cPad), 0);
+  if mHintWidth < mArea.Width div 2 then
   begin
-    DrawText(Canvas.Handle, PChar(KeysHint), Length(KeysHint), Area,
+    DrawText(Canvas.Handle, PChar(mKeysHint), Length(mKeysHint), mArea,
       DT_RIGHT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
-    Dec(Area.Right, HintWidth + Scale(Pad));
+    Dec(mArea.Right, mHintWidth + Scale(cPad));
   end;
   Canvas.Font.Color := ToColor(Colors.Text);
   Canvas.Font.Style := [fsBold];
   if FView <> nil then
   begin
-    DrawText(Canvas.Handle, PChar(FView.Title), Length(FView.Title), Area,
+    DrawText(Canvas.Handle, PChar(FView.Title), Length(FView.Title), mArea,
       DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
   end;
   Canvas.Font.Style := [];
@@ -284,10 +284,10 @@ end;
 
 procedure TAtlasPeekWindow.PaintList;
 var
-  mWidth, mHeight, Index, mTop, Half: Integer;
-  Area, Line: TRect;
-  Entry: TAtlasPeekEntry;
-  Place: string;
+  mWidth, mHeight, mIndex, mTop, mHalf: Integer;
+  mArea, mLine: TRect;
+  mEntry: TAtlasPeekEntry;
+  mPlace: string;
 begin
   mWidth := ListWidth;
   if mWidth = 0 then
@@ -295,48 +295,48 @@ begin
     Exit;
   end;
   mHeight := EntryHeight;
-  Area := Rect(0, HeaderHeight + 1, mWidth, ClientHeight);
+  mArea := Rect(0, HeaderHeight + 1, mWidth, ClientHeight);
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ToColor(Colors.Gutter);
-  Canvas.FillRect(Area);
+  Canvas.FillRect(mArea);
   Canvas.Pen.Color := ToColor(Colors.Line);
-  Canvas.MoveTo(mWidth, Area.Top);
+  Canvas.MoveTo(mWidth, mArea.Top);
   Canvas.LineTo(mWidth, ClientHeight);
   Canvas.Font.Assign(UIFont);
-  Half := Canvas.TextHeight('Wg');
+  mHalf := Canvas.TextHeight('Wg');
   // Die gewählte Zeile bleibt sichtbar: bei langen Listen weiterschieben.
   mTop := 0;
-  if (FView.Selected + 1) * mHeight > Area.Height then
+  if (FView.Selected + 1) * mHeight > mArea.Height then
   begin
-    mTop := FView.Selected - Area.Height div mHeight + 1;
+    mTop := FView.Selected - mArea.Height div mHeight + 1;
   end;
-  for Index := mTop to FView.Count - 1 do
+  for mIndex := mTop to FView.Count - 1 do
   begin
-    Line := Rect(0, Area.Top + (Index - mTop) * mHeight, mWidth, Area.Top + (Index - mTop + 1) * mHeight);
-    if Line.Top >= ClientHeight then
+    mLine := Rect(0, mArea.Top + (mIndex - mTop) * mHeight, mWidth, mArea.Top + (mIndex - mTop + 1) * mHeight);
+    if mLine.Top >= ClientHeight then
     begin
       Break;
     end;
-    Entry := FView.Entry(Index);
-    if Index = FView.Selected then
+    mEntry := FView.Entry(mIndex);
+    if mIndex = FView.Selected then
     begin
       Canvas.Brush.Style := bsSolid;
       Canvas.Brush.Color := ToColor(Colors.Selection);
-      Canvas.FillRect(Line);
+      Canvas.FillRect(mLine);
     end;
     Canvas.Brush.Style := bsClear;
-    Line.Inflate(-Scale(Pad), 0);
-    Place := Format('%s:%d', [ExtractFileName(Entry.Target.Place.FileName), Entry.Target.Place.Line + 1]);
+    mLine.Inflate(-Scale(cPad), 0);
+    mPlace := Format('%s:%d', [ExtractFileName(mEntry.Target.Place.FileName), mEntry.Target.Place.Line + 1]);
     Canvas.Font.Color := ToColor(Colors.Text);
     Canvas.Font.Style := [fsBold];
-    Line.Top := Line.Top + Scale(4);
-    Line.Bottom := Line.Top + Half;
-    DrawText(Canvas.Handle, PChar(Place), Length(Place), Line,
+    mLine.Top := mLine.Top + Scale(4);
+    mLine.Bottom := mLine.Top + mHalf;
+    DrawText(Canvas.Handle, PChar(mPlace), Length(mPlace), mLine,
       DT_LEFT or DT_TOP or DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
     Canvas.Font.Style := [];
     Canvas.Font.Color := ToColor(Colors.Muted);
-    Line.Offset(0, Half);
-    DrawText(Canvas.Handle, PChar(Entry.Excerpt), Length(Entry.Excerpt), Line,
+    mLine.Offset(0, mHalf);
+    DrawText(Canvas.Handle, PChar(mEntry.Excerpt), Length(mEntry.Excerpt), mLine,
       DT_LEFT or DT_TOP or DT_SINGLELINE or DT_NOPREFIX or DT_END_ELLIPSIS);
   end;
 end;
@@ -359,7 +359,7 @@ begin
   mRows := FView.Current.Rows;
   mHeight := RowHeight;
   Canvas.Font.Assign(Font);
-  mGutter := Canvas.TextWidth('99999') + Scale(Pad);
+  mGutter := Canvas.TextWidth('99999') + Scale(cPad);
   for mIndex := FView.Top to Min(High(mRows), FView.Top + FView.PageRows - 1) do
   begin
     mRow := Rect(mArea.Left, mArea.Top + (mIndex - FView.Top) * mHeight, mArea.Right,
@@ -389,8 +389,8 @@ var
   mNumber: TRect;
 begin
   Canvas.Pen.Color := ToColor(Colors.Line);
-  Canvas.MoveTo(ARect.Left + Scale(Pad), ARect.CenterPoint.Y);
-  Canvas.LineTo(ARect.Right - Scale(Pad), ARect.CenterPoint.Y);
+  Canvas.MoveTo(ARect.Left + Scale(cPad), ARect.CenterPoint.Y);
+  Canvas.LineTo(ARect.Right - Scale(cPad), ARect.CenterPoint.Y);
   Canvas.Font.Assign(UIFont);
   Canvas.Font.Color := ToColor(Colors.Muted);
   mValue := ' ' + TAtlasStrings.Fmt(TAtlasTextId.PeekImplementation, [ExtractFileName(ARow.FileName), ARow.Line + 1]) +
@@ -415,7 +415,7 @@ begin
   // Zeilennummer, 1-basiert wie im Editor.
   Canvas.Font.Assign(Font);
   Canvas.Font.Color := ToColor(Colors.Muted);
-  mNumber := Rect(ARect.Left, ARect.Top, ARect.Left + AGutter - Scale(Pad div 2), ARect.Bottom);
+  mNumber := Rect(ARect.Left, ARect.Top, ARect.Left + AGutter - Scale(cPad div 2), ARect.Bottom);
   mValue := IntToStr(ARow.Line + 1);
   DrawText(Canvas.Handle, PChar(mValue), Length(mValue), mNumber, DT_RIGHT or DT_VCENTER or DT_SINGLELINE or
     DT_NOPREFIX);

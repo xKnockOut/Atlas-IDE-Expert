@@ -38,11 +38,11 @@ implementation
 
 class function TAtlasLineTail.Has(AOwner: Pointer): Boolean;
 var
-  Owner: Pointer;
+  mOwner: Pointer;
 begin
-  for Owner in FOwners do
+  for mOwner in FOwners do
   begin
-    if Owner = AOwner then
+    if mOwner = AOwner then
     begin
       Exit(True);
     end;

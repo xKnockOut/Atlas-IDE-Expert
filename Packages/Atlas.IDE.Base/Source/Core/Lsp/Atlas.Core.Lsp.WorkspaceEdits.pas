@@ -139,22 +139,22 @@ end;
 
 function ReadPosition(const ARange: TJSONObject; const AName: string; out APosition: TLspTextPosition): Boolean;
 var
-  Position: TJSONObject;
+  mPosition: TJSONObject;
 begin
-  Result := ARange.TryGetValue<TJSONObject>(AName, Position) and
-    Position.TryGetValue<Integer>('line', APosition.Line) and
-    Position.TryGetValue<Integer>('character', APosition.Character);
+  Result := ARange.TryGetValue<TJSONObject>(AName, mPosition) and
+    mPosition.TryGetValue<Integer>('line', APosition.Line) and
+    mPosition.TryGetValue<Integer>('character', APosition.Character);
 end;
 
 { TLspTextEdit }
 
 class function TLspTextEdit.FromJson(const AEdit: TJSONValue; out AResult: TLspTextEdit): Boolean;
 var
-  Range: TJSONObject;
+  mRange: TJSONObject;
 begin
   AResult := Default(TLspTextEdit);
-  Result := (AEdit is TJSONObject) and TJSONObject(AEdit).TryGetValue<TJSONObject>('range', Range) and
-    ReadPosition(Range, 'start', AResult.StartPos) and ReadPosition(Range, 'end', AResult.EndPos) and
+  Result := (AEdit is TJSONObject) and TJSONObject(AEdit).TryGetValue<TJSONObject>('range', mRange) and
+    ReadPosition(mRange, 'start', AResult.StartPos) and ReadPosition(mRange, 'end', AResult.EndPos) and
     TJSONObject(AEdit).TryGetValue<string>('newText', AResult.NewText);
 end;
 
@@ -162,12 +162,12 @@ end;
 
 function TLspWorkspaceEdit.EditCount: Integer;
 var
-  FileEdits: TLspFileEdits;
+  mFileEdits: TLspFileEdits;
 begin
   Result := 0;
-  for FileEdits in Files do
+  for mFileEdits in Files do
   begin
-    Inc(Result, Length(FileEdits.Edits));
+    Inc(Result, Length(mFileEdits.Edits));
   end;
 end;
 
@@ -178,31 +178,31 @@ end;
 
 function TLspWorkspaceEdit.ProjectFile: string;
 var
-  FileEdits: TLspFileEdits;
+  mFileEdits: TLspFileEdits;
 begin
   Result := '';
-  for FileEdits in Files do
+  for mFileEdits in Files do
   begin
-    if SameText(ExtractFileExt(FileEdits.FileName), '.dproj') then
+    if SameText(ExtractFileExt(mFileEdits.FileName), '.dproj') then
     begin
-      Exit(FileEdits.FileName);
+      Exit(mFileEdits.FileName);
     end;
   end;
 end;
 
 function TLspWorkspaceEdit.WithoutProject(const AProject: string): TLspWorkspaceEdit;
 var
-  FileEdits: TLspFileEdits;
+  mFileEdits: TLspFileEdits;
 begin
   Result := Self;
   Result.Files := nil;
-  for FileEdits in Files do
+  for mFileEdits in Files do
   begin
-    if not SameText(FileEdits.FileName, AProject) and
-      not SameText(FileEdits.FileName, ChangeFileExt(AProject, '.dpr')) and
-      not SameText(FileEdits.FileName, ChangeFileExt(AProject, '.dpk')) then
+    if not SameText(mFileEdits.FileName, AProject) and
+      not SameText(mFileEdits.FileName, ChangeFileExt(AProject, '.dpr')) and
+      not SameText(mFileEdits.FileName, ChangeFileExt(AProject, '.dpk')) then
     begin
-      Result.Files := Result.Files + [FileEdits];
+      Result.Files := Result.Files + [mFileEdits];
     end;
   end;
 end;
@@ -232,24 +232,24 @@ end;
 /// kein Pfad ist.</summary>
 function ReadFileOperationFiles(const AValue: TJSONObject; var AResult: TLspFileOperation): Boolean;
 var
-  Uri, NewUri: string;
+  mUri, mNewUri: string;
 begin
   if AResult.Kind = TLspFileOperationKind.Rename then
   begin
-    Result := AValue.TryGetValue<string>('oldUri', Uri) and AValue.TryGetValue<string>('newUri', NewUri);
+    Result := AValue.TryGetValue<string>('oldUri', mUri) and AValue.TryGetValue<string>('newUri', mNewUri);
     if Result then
     begin
-      AResult.NewFileName := TLspUris.ToPath(NewUri);
+      AResult.NewFileName := TLspUris.ToPath(mNewUri);
       Result := AResult.NewFileName <> '';
     end;
   end
   else
   begin
-    Result := AValue.TryGetValue<string>('uri', Uri);
+    Result := AValue.TryGetValue<string>('uri', mUri);
   end;
   if Result then
   begin
-    AResult.FileName := TLspUris.ToPath(Uri);
+    AResult.FileName := TLspUris.ToPath(mUri);
     Result := AResult.FileName <> '';
   end;
 end;
@@ -257,14 +257,14 @@ end;
 /// <summary>Liest options; overwrite gewinnt über ignoreIfExists (LSP 3.17).</summary>
 procedure ReadFileOperationOptions(const AValue: TJSONObject; var AResult: TLspFileOperation);
 var
-  Options: TJSONObject;
+  mOptions: TJSONObject;
 begin
-  if AValue.TryGetValue<TJSONObject>('options', Options) then
+  if AValue.TryGetValue<TJSONObject>('options', mOptions) then
   begin
-    Options.TryGetValue<Boolean>('overwrite', AResult.Overwrite);
-    Options.TryGetValue<Boolean>('ignoreIfExists', AResult.IgnoreIfExists);
-    Options.TryGetValue<Boolean>('ignoreIfNotExists', AResult.IgnoreIfNotExists);
-    Options.TryGetValue<Boolean>('recursive', AResult.Recursive);
+    mOptions.TryGetValue<Boolean>('overwrite', AResult.Overwrite);
+    mOptions.TryGetValue<Boolean>('ignoreIfExists', AResult.IgnoreIfExists);
+    mOptions.TryGetValue<Boolean>('ignoreIfNotExists', AResult.IgnoreIfNotExists);
+    mOptions.TryGetValue<Boolean>('recursive', AResult.Recursive);
   end;
   if AResult.Overwrite then
   begin
@@ -274,10 +274,10 @@ end;
 
 class function TLspFileOperation.FromJson(const AValue: TJSONObject; out AResult: TLspFileOperation): Boolean;
 var
-  Kind: string;
+  mKind: string;
 begin
   AResult := Default(TLspFileOperation);
-  Result := AValue.TryGetValue<string>('kind', Kind) and FileOperationKindOf(Kind, AResult.Kind) and
+  Result := AValue.TryGetValue<string>('kind', mKind) and FileOperationKindOf(mKind, AResult.Kind) and
     ReadFileOperationFiles(AValue, AResult);
   if Result then
   begin
@@ -287,8 +287,8 @@ end;
 
 function ReadEdits(const AUri: string; const AEdits: TJSONArray; out AFile: TLspFileEdits): Boolean;
 var
-  Item: TJSONValue;
-  Edit: TLspTextEdit;
+  mItem: TJSONValue;
+  mEdit: TLspTextEdit;
 begin
   AFile.FileName := TLspUris.ToPath(AUri);
   AFile.Edits := nil;
@@ -296,11 +296,11 @@ begin
   begin
     Exit(False);
   end;
-  for Item in AEdits do
+  for mItem in AEdits do
   begin
-    if TLspTextEdit.FromJson(Item, Edit) then
+    if TLspTextEdit.FromJson(mItem, mEdit) then
     begin
-      AFile.Edits := AFile.Edits + [Edit];
+      AFile.Edits := AFile.Edits + [mEdit];
     end;
   end;
   Result := Length(AFile.Edits) > 0;
@@ -309,25 +309,25 @@ end;
 /// <summary>Stellen aus atlasUnchanged, die die Änderung nicht anpasst (mit Sicherheit).</summary>
 function UnchangedPlacesOf(const AEdit: TJSONObject): TArray<TLspUnchangedPlace>;
 var
-  Unchanged: TJSONArray;
-  Item: TJSONValue;
-  Uri: string;
-  Place: TLspUnchangedPlace;
+  mUnchanged: TJSONArray;
+  mItem: TJSONValue;
+  mUri: string;
+  mPlace: TLspUnchangedPlace;
 begin
   Result := nil;
-  if not AEdit.TryGetValue<TJSONArray>('atlasUnchanged', Unchanged) then
+  if not AEdit.TryGetValue<TJSONArray>('atlasUnchanged', mUnchanged) then
   begin
     Exit;
   end;
-  for Item in Unchanged do
+  for mItem in mUnchanged do
   begin
-    if (Item is TJSONObject) and TJSONObject(Item).TryGetValue<string>('uri', Uri) then
+    if (mItem is TJSONObject) and TJSONObject(mItem).TryGetValue<string>('uri', mUri) then
     begin
-      Place.FileName := TLspUris.ToPath(Uri);
-      Place.Line := TJSONObject(Item).GetValue<Integer>('range.start.line', 0);
-      Place.Character := TJSONObject(Item).GetValue<Integer>('range.start.character', 0);
-      Place.Confidence := TAtlasConfidence.FromJson(Item);
-      Result := Result + [Place];
+      mPlace.FileName := TLspUris.ToPath(mUri);
+      mPlace.Line := TJSONObject(mItem).GetValue<Integer>('range.start.line', 0);
+      mPlace.Character := TJSONObject(mItem).GetValue<Integer>('range.start.character', 0);
+      mPlace.Confidence := TAtlasConfidence.FromJson(mItem);
+      Result := Result + [mPlace];
     end;
   end;
 end;
@@ -335,72 +335,72 @@ end;
 /// <summary>Ein Eintrag aus documentChanges: Dateioperation (mit kind) oder Textänderungen einer Datei.</summary>
 procedure ReadDocumentChange(const AItem: TJSONObject; var AResult: TLspWorkspaceEdit);
 var
-  Document: TJSONObject;
-  Edits: TJSONArray;
-  Uri: string;
-  FileEdits: TLspFileEdits;
-  Operation: TLspFileOperation;
+  mDocument: TJSONObject;
+  mEdits: TJSONArray;
+  mUri: string;
+  mFileEdits: TLspFileEdits;
+  mOperation: TLspFileOperation;
 begin
   if AItem.GetValue('kind') <> nil then
   begin
-    if TLspFileOperation.FromJson(AItem, Operation) then
+    if TLspFileOperation.FromJson(AItem, mOperation) then
     begin
-      AResult.Operations := AResult.Operations + [Operation];
+      AResult.Operations := AResult.Operations + [mOperation];
     end
     else
     begin
       Inc(AResult.Unsupported);
     end;
   end
-  else if AItem.TryGetValue<TJSONObject>('textDocument', Document) and Document.TryGetValue<string>('uri', Uri) and
-    AItem.TryGetValue<TJSONArray>('edits', Edits) and ReadEdits(Uri, Edits, FileEdits) then
+  else if AItem.TryGetValue<TJSONObject>('textDocument', mDocument) and mDocument.TryGetValue<string>('uri', mUri) and
+    AItem.TryGetValue<TJSONArray>('edits', mEdits) and ReadEdits(mUri, mEdits, mFileEdits) then
   begin
-    AResult.Files := AResult.Files + [FileEdits];
+    AResult.Files := AResult.Files + [mFileEdits];
   end;
 end;
 
 /// <summary>Textänderungen aus changes (URI auf Liste von Änderungen).</summary>
 procedure ReadChanges(const AChanges: TJSONObject; var AResult: TLspWorkspaceEdit);
 var
-  Pair: TJSONPair;
-  FileEdits: TLspFileEdits;
+  mPair: TJSONPair;
+  mFileEdits: TLspFileEdits;
 begin
-  for Pair in AChanges do
+  for mPair in AChanges do
   begin
-    if (Pair.JsonValue is TJSONArray) and ReadEdits(Pair.JsonString.Value, TJSONArray(Pair.JsonValue), FileEdits) then
+    if (mPair.JsonValue is TJSONArray) and ReadEdits(mPair.JsonString.Value, TJSONArray(mPair.JsonValue), mFileEdits) then
     begin
-      AResult.Files := AResult.Files + [FileEdits];
+      AResult.Files := AResult.Files + [mFileEdits];
     end;
   end;
 end;
 
 class function TLspWorkspaceEdit.FromJson(const AValue: TJSONValue): TLspWorkspaceEdit;
 var
-  Edit, Changes: TJSONObject;
-  DocumentChanges: TJSONArray;
-  Item: TJSONValue;
+  mEdit, mChanges: TJSONObject;
+  mDocumentChanges: TJSONArray;
+  mItem: TJSONValue;
 begin
   Result := Default(TLspWorkspaceEdit);
   if not (AValue is TJSONObject) then
   begin
     Exit;
   end;
-  Edit := TJSONObject(AValue);
-  Result.Unchanged := UnchangedPlacesOf(Edit);
+  mEdit := TJSONObject(AValue);
+  Result.Unchanged := UnchangedPlacesOf(mEdit);
   // documentChanges hat Vorrang, wenn der Server beides schickt.
-  if Edit.TryGetValue<TJSONArray>('documentChanges', DocumentChanges) then
+  if mEdit.TryGetValue<TJSONArray>('documentChanges', mDocumentChanges) then
   begin
-    for Item in DocumentChanges do
+    for mItem in mDocumentChanges do
     begin
-      if Item is TJSONObject then
+      if mItem is TJSONObject then
       begin
-        ReadDocumentChange(TJSONObject(Item), Result);
+        ReadDocumentChange(TJSONObject(mItem), Result);
       end;
     end;
   end
-  else if Edit.TryGetValue<TJSONObject>('changes', Changes) then
+  else if mEdit.TryGetValue<TJSONObject>('changes', mChanges) then
   begin
-    ReadChanges(Changes, Result);
+    ReadChanges(mChanges, Result);
   end;
 end;
 
@@ -414,32 +414,32 @@ type
 
 class function TLspEdits.Ordered(const AText: string; const AEdits: TArray<TLspTextEdit>): TArray<TLspTextRange>;
 var
-  Items: TArray<TIndexedRange>;
-  Index: Integer;
-  LastLine: Integer;
-  Lines: TLineTable;
+  mItems: TArray<TIndexedRange>;
+  mIndex: Integer;
+  mLastLine: Integer;
+  mLines: TLineTable;
 begin
   // Letzte gültige Zeile: Positionen dahinter sind ein Fehler, nicht still das Textende.
-  Lines := TLineTable.Build(AText);
-  LastLine := Lines.LineCount - 1;
-  SetLength(Items, Length(AEdits));
-  for Index := 0 to High(AEdits) do
+  mLines := TLineTable.Build(AText);
+  mLastLine := mLines.LineCount - 1;
+  SetLength(mItems, Length(AEdits));
+  for mIndex := 0 to High(AEdits) do
   begin
-    if (AEdits[Index].StartPos.Line > LastLine) or (AEdits[Index].EndPos.Line > LastLine) then
+    if (AEdits[mIndex].StartPos.Line > mLastLine) or (AEdits[mIndex].EndPos.Line > mLastLine) then
     begin
       raise ELspEditError.CreateFmt(UiText(TWorkspaceEditsText.ChangeInLineTheText),
-        [AEdits[Index].EndPos.Line + 1, LastLine + 1]);
+        [AEdits[mIndex].EndPos.Line + 1, mLastLine + 1]);
     end;
-    Items[Index].Range.StartOffset := TLspTextChanges.OffsetOf(Lines, AEdits[Index].StartPos);
-    Items[Index].Range.EndOffset := TLspTextChanges.OffsetOf(Lines, AEdits[Index].EndPos);
-    Items[Index].Range.NewText := AEdits[Index].NewText;
-    Items[Index].Index := Index;
-    if Items[Index].Range.EndOffset < Items[Index].Range.StartOffset then
+    mItems[mIndex].Range.StartOffset := TLspTextChanges.OffsetOf(mLines, AEdits[mIndex].StartPos);
+    mItems[mIndex].Range.EndOffset := TLspTextChanges.OffsetOf(mLines, AEdits[mIndex].EndPos);
+    mItems[mIndex].Range.NewText := AEdits[mIndex].NewText;
+    mItems[mIndex].Index := mIndex;
+    if mItems[mIndex].Range.EndOffset < mItems[mIndex].Range.StartOffset then
     begin
-      raise ELspEditError.CreateFmt(UiText(TWorkspaceEditsText.ChangeEndsBeforeItsStart), [Index + 1]);
+      raise ELspEditError.CreateFmt(UiText(TWorkspaceEditsText.ChangeEndsBeforeItsStart), [mIndex + 1]);
     end;
   end;
-  TArray.Sort<TIndexedRange>(Items, TComparer<TIndexedRange>.Construct(
+  TArray.Sort<TIndexedRange>(mItems, TComparer<TIndexedRange>.Construct(
     function(const A, B: TIndexedRange): Integer
     begin
       Result := A.Range.StartOffset - B.Range.StartOffset;
@@ -448,38 +448,38 @@ begin
         Result := A.Index - B.Index;
       end;
     end));
-  SetLength(Result, Length(Items));
-  for Index := 0 to High(Items) do
+  SetLength(Result, Length(mItems));
+  for mIndex := 0 to High(mItems) do
   begin
-    if (Index > 0) and (Items[Index].Range.StartOffset < Items[Index - 1].Range.EndOffset) then
+    if (mIndex > 0) and (mItems[mIndex].Range.StartOffset < mItems[mIndex - 1].Range.EndOffset) then
     begin
       raise ELspEditError.Create(UiText(TWorkspaceEditsText.ChangesOverlap));
     end;
-    Result[Index] := Items[Index].Range;
+    Result[mIndex] := mItems[mIndex].Range;
   end;
 end;
 
 class function TLspEdits.Apply(const AText: string; const AEdits: TArray<TLspTextEdit>): string;
 var
-  Ranges: TArray<TLspTextRange>;
-  Range: TLspTextRange;
-  Builder: TStringBuilder;
-  Position: Integer;
+  mRanges: TArray<TLspTextRange>;
+  mRange: TLspTextRange;
+  mBuilder: TStringBuilder;
+  mPosition: Integer;
 begin
-  Ranges := Ordered(AText, AEdits);
-  Builder := TStringBuilder.Create(Length(AText));
+  mRanges := Ordered(AText, AEdits);
+  mBuilder := TStringBuilder.Create(Length(AText));
   try
-    Position := 0;
-    for Range in Ranges do
+    mPosition := 0;
+    for mRange in mRanges do
     begin
-      Builder.Append(AText, Position, Range.StartOffset - Position);
-      Builder.Append(Range.NewText);
-      Position := Range.EndOffset;
+      mBuilder.Append(AText, mPosition, mRange.StartOffset - mPosition);
+      mBuilder.Append(mRange.NewText);
+      mPosition := mRange.EndOffset;
     end;
-    Builder.Append(AText, Position, Length(AText) - Position);
-    Result := Builder.ToString;
+    mBuilder.Append(AText, mPosition, Length(AText) - mPosition);
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 

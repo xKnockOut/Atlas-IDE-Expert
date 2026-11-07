@@ -382,26 +382,26 @@ end;
 
 class function TAtlasKeyMapForm.HintText(const AItems: TArray<TAtlasKeyItem>; AIndex: Integer): string;
 var
-  Item: TAtlasKeyItem;
+  mItem: TAtlasKeyItem;
 begin
   Result := '';
   if (AIndex < 0) or (AIndex > High(AItems)) or not AItems[AIndex].Conflict then
   begin
     Exit;
   end;
-  Item := AItems[AIndex];
-  if Item.Winner < 0 then
+  mItem := AItems[AIndex];
+  if mItem.Winner < 0 then
   begin
     Result := ReasonText(TAtlasKeyReason.NoneActive);
   end
-  else if Item.Wins then
+  else if mItem.Wins then
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.KeyMapWins, [ReasonText(Item.Reason)]);
+    Result := TAtlasStrings.Fmt(TAtlasTextId.KeyMapWins, [ReasonText(mItem.Reason)]);
   end
   else
   begin
-    Result := TAtlasStrings.Fmt(TAtlasTextId.KeyMapLoses, [AItems[Item.Winner].Command,
-      OriginText(AItems[Item.Winner]), ReasonText(Item.Reason)]);
+    Result := TAtlasStrings.Fmt(TAtlasTextId.KeyMapLoses, [AItems[mItem.Winner].Command,
+      OriginText(AItems[mItem.Winner]), ReasonText(mItem.Reason)]);
   end;
 end;
 
@@ -445,30 +445,30 @@ end;
 
 function TAtlasKeyMapWindow.ExportHtml(const ACreated: string): string;
 var
-  Rows: TArray<TAtlasKeyHtmlRow>;
-  Index: Integer;
-  Subtitle: string;
+  mRows: TArray<TAtlasKeyHtmlRow>;
+  mIndex: Integer;
+  mSubtitle: string;
 begin
-  Rows := nil;
-  for Index in FShown do
+  mRows := nil;
+  for mIndex in FShown do
   begin
-    Rows := Rows + [TAtlasKeyHtmlRow.Create(Cells(FItems, Index), FItems[Index].Conflict)];
+    mRows := mRows + [TAtlasKeyHtmlRow.Create(Cells(FItems, mIndex), FItems[mIndex].Conflict)];
   end;
-  Subtitle := TAtlasStrings.Fmt(TAtlasTextId.KeyMapCreated, [ACreated,
+  mSubtitle := TAtlasStrings.Fmt(TAtlasTextId.KeyMapCreated, [ACreated,
     SummaryText(Length(FShown), Length(FItems), TAtlasKeyMap.ConflictCount(FItems))]);
   if Trim(FSearch.Text) <> '' then
   begin
-    Subtitle := Subtitle + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.KeyMapFilter, [Trim(FSearch.Text)]);
+    mSubtitle := mSubtitle + ' · ' + TAtlasStrings.Fmt(TAtlasTextId.KeyMapFilter, [Trim(FSearch.Text)]);
   end;
   if TAtlasStrings.Language = TAtlasLanguage.German then
   begin
-    Result := TAtlasKeyMap.Html('de', TAtlasStrings.Text(TAtlasTextId.KeyMapTitle), Subtitle,
-      TAtlasStrings.Text(TAtlasTextId.KeyMapPrint), Headers, Rows);
+    Result := TAtlasKeyMap.Html('de', TAtlasStrings.Text(TAtlasTextId.KeyMapTitle), mSubtitle,
+      TAtlasStrings.Text(TAtlasTextId.KeyMapPrint), Headers, mRows);
   end
   else
   begin
-    Result := TAtlasKeyMap.Html('en', TAtlasStrings.Text(TAtlasTextId.KeyMapTitle), Subtitle,
-      TAtlasStrings.Text(TAtlasTextId.KeyMapPrint), Headers, Rows);
+    Result := TAtlasKeyMap.Html('en', TAtlasStrings.Text(TAtlasTextId.KeyMapTitle), mSubtitle,
+      TAtlasStrings.Text(TAtlasTextId.KeyMapPrint), Headers, mRows);
   end;
 end;
 
@@ -517,18 +517,18 @@ end;
 
 procedure TAtlasKeyMapWindow.ListData(Sender: TObject; Item: TListItem);
 var
-  Values: TArray<string>;
-  Index: Integer;
+  mValues: TArray<string>;
+  mIndex: Integer;
 begin
   if (Item.Index < 0) or (Item.Index > High(FShown)) then
   begin
     Exit;
   end;
-  Values := Cells(FItems, FShown[Item.Index]);
-  Item.Caption := Values[0];
-  for Index := 1 to High(Values) do
+  mValues := Cells(FItems, FShown[Item.Index]);
+  Item.Caption := mValues[0];
+  for mIndex := 1 to High(mValues) do
   begin
-    Item.SubItems.Add(Values[Index]);
+    Item.SubItems.Add(mValues[mIndex]);
   end;
 end;
 

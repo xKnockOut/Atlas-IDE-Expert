@@ -128,8 +128,8 @@ type
       Screen: TRect;
     end;
   private const
-    QuietMs = 300;
-    HoverMs = 300;
+    cQuietMs = 300;
+    cHoverMs = 300;
   private class var
     FClickFile: string;
     FClickLine: Integer;
@@ -156,7 +156,7 @@ type
     procedure LayersChanged;
     function AnyActive: Boolean;
     function GuardFeature: TAtlasFeature;
-    function RowAt(X, Y: Integer; out ARow: TRow): Boolean;
+    function RowAt(AX, AY: Integer; out ARow: TRow): Boolean;
     procedure Tick(Sender: TObject);
     procedure Track;
     procedure CheckHover;
@@ -314,7 +314,7 @@ end;
 
 constructor TAtlasIdeGutterMarks.Create;
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
   inherited Create;
   FIndex := -1;
@@ -328,9 +328,9 @@ begin
   FEvents.OnEditorPaintGutter := PaintGutter;
   FEvents.OnEditorMouseMove := EditorMouseMove;
   FEvents.OnEditorMouseDown := EditorMouseDown;
-  if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    FIndex := Services.AddEditorEventsNotifier(FEventsRef);
+    FIndex := mServices.AddEditorEventsNotifier(FEventsRef);
   end;
   FTimer := TTimer.Create(nil);
   FTimer.Interval := 100;
@@ -342,13 +342,13 @@ end;
 
 destructor TAtlasIdeGutterMarks.Destroy;
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
   FTimer.Free;
   // Erst abmelden, dann freigeben (#493).
-  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    Services.RemoveEditorEventsNotifier(FIndex);
+    mServices.RemoveEditorEventsNotifier(FIndex);
   end;
   if FEvents <> nil then
   begin
@@ -428,23 +428,23 @@ end;
 
 class procedure TAtlasIdeGutterMarks.Invalidate;
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    TAtlasIdeEditorRefresh.InvalidateTop(Services);
+    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
   end;
 end;
 
 class function TAtlasIdeGutterMarks.IconRect(const AGutter: TRect; ASlot: Integer): TRect;
 var
-  Height, Width, Top, Left: Integer;
+  mHeight, mWidth, mTop, mLeft: Integer;
 begin
-  Height := Max(6, Min(AGutter.Height - 4, 14));
-  Width := Max(5, (Height * 4) div 5);
-  Top := AGutter.Top + (AGutter.Height - Height) div 2;
-  Left := AGutter.Left + 2 + Max(0, ASlot) * (Width + 2);
-  Result := TRect.Create(Left, Top, Left + Width, Top + Height);
+  mHeight := Max(6, Min(AGutter.Height - 4, 14));
+  mWidth := Max(5, (mHeight * 4) div 5);
+  mTop := AGutter.Top + (AGutter.Height - mHeight) div 2;
+  mLeft := AGutter.Left + 2 + Max(0, ASlot) * (mWidth + 2);
+  Result := TRect.Create(mLeft, mTop, mLeft + mWidth, mTop + mHeight);
 end;
 
 class procedure TAtlasIdeGutterMarks.RememberLine(const AFileName: string; ALine: Integer);
@@ -476,12 +476,12 @@ end;
 
 function TAtlasIdeGutterMarks.AnyActive: Boolean;
 var
-  Layer: IAtlasGutterLayer;
+  mLayer: IAtlasGutterLayer;
 begin
   Result := False;
-  for Layer in FLayers do
+  for mLayer in FLayers do
   begin
-    if LayerActive(Layer) then
+    if LayerActive(mLayer) then
     begin
       Exit(True);
     end;
@@ -491,14 +491,14 @@ end;
 
 function TAtlasIdeGutterMarks.GuardFeature: TAtlasFeature;
 var
-  Layer: IAtlasGutterLayer;
+  mLayer: IAtlasGutterLayer;
 begin
   // Fehler außerhalb einer Schicht (Puffer lesen, Tooltip) gehen an die erste aktive Schicht.
-  for Layer in FLayers do
+  for mLayer in FLayers do
   begin
-    if LayerActive(Layer) then
+    if LayerActive(mLayer) then
     begin
-      Exit(Layer.Feature);
+      Exit(mLayer.Feature);
     end;
   end;
   if Length(FLayers) > 0 then
@@ -566,7 +566,7 @@ begin
   end
   // Nach der Tipp-Pause neu verankern; nur Dateien mit Markierungen kosten etwas. Auch ohne Bewegung neu
   // zeichnen: Die Zeile einer Markierung wurde vielleicht nur bearbeitet.
-  else if (FTrackedText <> FText) and (TThread.GetTickCount64 - FChangedAt >= QuietMs) then
+  else if (FTrackedText <> FText) and (TThread.GetTickCount64 - FChangedAt >= cQuietMs) then
   begin
     FTrackedText := FText;
     if TrackLayers(FLayers, FFileName, FText, True) then
@@ -576,29 +576,29 @@ begin
   end;
 end;
 
-function TAtlasIdeGutterMarks.RowAt(X, Y: Integer; out ARow: TRow): Boolean;
+function TAtlasIdeGutterMarks.RowAt(AX, AY: Integer; out ARow: TRow): Boolean;
 var
-  Row: TRow;
-  View: IOTAEditView;
+  mRow: TRow;
+  mView: IOTAEditView;
 begin
   ARow := Default(TRow);
   ARow.Line := -1;
   Result := False;
-  View := TopEditView;
-  if (View = nil) or (View.Buffer = nil) then
+  mView := TopEditView;
+  if (mView = nil) or (mView.Buffer = nil) then
   begin
     Exit;
   end;
-  for Row in FRows.Values do
+  for mRow in FRows.Values do
   begin
-    if PtInRect(Row.Gutter, Point(X, Y)) then
+    if PtInRect(mRow.Gutter, Point(AX, AY)) then
     begin
       // Nur, wenn die Zeile noch dort steht: gleiche Datei, nicht gescrollt.
-      if not SameText(Row.FileName, View.Buffer.FileName) or (Row.TopRow <> View.TopRow) then
+      if not SameText(mRow.FileName, mView.Buffer.FileName) or (mRow.TopRow <> mView.TopRow) then
       begin
         Exit;
       end;
-      ARow := Row;
+      ARow := mRow;
       Exit(True);
     end;
   end;
@@ -667,45 +667,45 @@ end;
 
 procedure TAtlasIdeGutterMarks.EditorMouseMove(const Editor: TWinControl; Shift: TShiftState; X, Y: Integer);
 var
-  Row: TRow;
-  Icon: TMark;
-  Found: Integer;
+  mRow: TRow;
+  mIcon: TMark;
+  mFound: Integer;
 begin
   try
-    Found := -1;
-    if AnyActive and RowAt(X, Y, Row) then
+    mFound := -1;
+    if AnyActive and RowAt(X, Y, mRow) then
     begin
-      for Icon in Row.Marks do
+      for mIcon in mRow.Marks do
       begin
-        if PtInRect(Icon.Rect, Point(X, Y)) then
+        if PtInRect(mIcon.Rect, Point(X, Y)) then
         begin
-          Found := Icon.Layer;
+          mFound := mIcon.Layer;
           Break;
         end;
       end;
     end;
-    if Found < 0 then
+    if mFound < 0 then
     begin
       FHover.Active := False;
       HideTip;
       Exit;
     end;
-    if FHover.Active and (FHover.Layer = Found) and SameText(FHover.Row.FileName, Row.FileName) and
-      (FHover.Row.Line = Row.Line) then
+    if FHover.Active and (FHover.Layer = mFound) and SameText(FHover.Row.FileName, mRow.FileName) and
+      (FHover.Row.Line = mRow.Line) then
     begin
       Exit;
     end;
     HideTip;
-    FHover.Row := Row;
-    FHover.Layer := Found;
+    FHover.Row := mRow;
+    FHover.Layer := mFound;
     FHover.Active := True;
     FHover.Since := TThread.GetTickCount64;
-    for Icon in Row.Marks do
+    for mIcon in mRow.Marks do
     begin
-      if Icon.Layer = Found then
+      if mIcon.Layer = mFound then
       begin
-        FHover.Screen := TRect.Create(Editor.ClientToScreen(Icon.Rect.TopLeft),
-          Editor.ClientToScreen(Icon.Rect.BottomRight));
+        FHover.Screen := TRect.Create(Editor.ClientToScreen(mIcon.Rect.TopLeft),
+          Editor.ClientToScreen(mIcon.Rect.BottomRight));
       end;
     end;
   except
@@ -717,15 +717,15 @@ end;
 procedure TAtlasIdeGutterMarks.EditorMouseDown(const Editor: TWinControl; Button: TMouseButton; Shift: TShiftState;
   X, Y: Integer);
 var
-  Row: TRow;
+  mRow: TRow;
 begin
   try
     HideTip;
     FHover.Active := False;
     // Rechtsklick in die Rinne: Diese Zeile gilt für die Befehle im Kontextmenü.
-    if (Button = mbRight) and AnyActive and RowAt(X, Y, Row) and (Row.Line >= 0) then
+    if (Button = mbRight) and AnyActive and RowAt(X, Y, mRow) and (mRow.Line >= 0) then
     begin
-      RememberLine(Row.FileName, Row.Line);
+      RememberLine(mRow.FileName, mRow.Line);
     end
     else
     begin
@@ -739,21 +739,21 @@ end;
 
 procedure TAtlasIdeGutterMarks.CheckHover;
 var
-  Inside: Boolean;
+  mInside: Boolean;
 begin
   if not FHover.Active then
   begin
     Exit;
   end;
   // Maus hat das Symbol verlassen, ohne dass der Editor es gemeldet hat (anderes Fenster).
-  Inside := PtInRect(FHover.Screen, Mouse.CursorPos) or (FTip.IsShown and PtInRect(FTip.BoundsRect, Mouse.CursorPos));
-  if not Inside then
+  mInside := PtInRect(FHover.Screen, Mouse.CursorPos) or (FTip.IsShown and PtInRect(FTip.BoundsRect, Mouse.CursorPos));
+  if not mInside then
   begin
     FHover.Active := False;
     HideTip;
     Exit;
   end;
-  if not FTip.IsShown and (TThread.GetTickCount64 - FHover.Since >= HoverMs) then
+  if not FTip.IsShown and (TThread.GetTickCount64 - FHover.Since >= cHoverMs) then
   begin
     ShowTip;
   end;
@@ -761,34 +761,34 @@ end;
 
 procedure TAtlasIdeGutterMarks.ShowTip;
 var
-  Layer: IAtlasGutterLayer;
-  Title, Text, FileName: string;
-  Line: Integer;
+  mLayer: IAtlasGutterLayer;
+  mTitle, mText, mFileName: string;
+  mLine: Integer;
 begin
   if (FHover.Layer < 0) or (FHover.Layer > High(FLayers)) then
   begin
     FHover.Active := False;
     Exit;
   end;
-  Layer := FLayers[FHover.Layer];
-  if not LayerActive(Layer) or not Layer.TipText(FHover.Row.FileName, FHover.Row.Line, Title, Text) then
+  mLayer := FLayers[FHover.Layer];
+  if not LayerActive(mLayer) or not mLayer.TipText(FHover.Row.FileName, FHover.Row.Line, mTitle, mText) then
   begin
     FHover.Active := False;
     Exit;
   end;
-  FTip.GuardFeature := Layer.Feature;
-  FileName := FHover.Row.FileName;
-  Line := FHover.Row.Line;
+  FTip.GuardFeature := mLayer.Feature;
+  mFileName := FHover.Row.FileName;
+  mLine := FHover.Row.Line;
   // Ein Klick auf einen Link geht an die Schicht; danach schließt der Tooltip.
   FTip.OnLink :=
     procedure(AIndex: Integer)
     begin
       HideTip;
       FHover.Active := False;
-      Layer.OpenLink(FileName, Line, AIndex);
+      mLayer.OpenLink(mFileName, mLine, AIndex);
     end;
   TAtlasIdeStyle.Apply(FTip, FHover.Screen);
-  FTip.ShowNote(Title, Text, Layer.TipLinks(FileName, Line), Point(FHover.Screen.Right + 4, FHover.Screen.Bottom + 2));
+  FTip.ShowNote(mTitle, mText, mLayer.TipLinks(mFileName, mLine), Point(FHover.Screen.Right + 4, FHover.Screen.Bottom + 2));
 end;
 
 procedure TAtlasIdeGutterMarks.HideTip;

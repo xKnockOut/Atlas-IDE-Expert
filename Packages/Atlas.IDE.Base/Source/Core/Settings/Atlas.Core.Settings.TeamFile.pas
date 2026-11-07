@@ -247,7 +247,7 @@ uses
   Atlas.Core.Localization.Language;
 
 const
-  NamingKeys: array[TAtlasNamingKind] of string = ('field', 'parameter', 'local', 'constant');
+  cNamingKeys: array[TAtlasNamingKind] of string = ('field', 'parameter', 'local', 'constant');
 
 function IsSeparator(ACh: Char): Boolean;
 begin
@@ -271,16 +271,16 @@ end;
 /// <summary>Übergeordneter Ordner; '' oberhalb von Laufwerk oder Server.</summary>
 function ParentOf(const AFolder: string): string;
 var
-  Path: string;
-  Index: Integer;
+  mPath: string;
+  mIndex: Integer;
 begin
   Result := '';
-  Path := WithoutTrailing(AFolder);
-  for Index := Length(Path) downto 1 do
+  mPath := WithoutTrailing(AFolder);
+  for mIndex := Length(mPath) downto 1 do
   begin
-    if IsSeparator(Path[Index]) then
+    if IsSeparator(mPath[mIndex]) then
     begin
-      Result := Copy(Path, 1, Index - 1);
+      Result := Copy(mPath, 1, mIndex - 1);
       Break;
     end;
   end;
@@ -294,16 +294,16 @@ end;
 /// </summary>
 function RepositoryRoot(const AFolder: string; const AExists: TAtlasTeamFileExists): string;
 var
-  Folder: string;
+  mFolder: string;
 begin
-  Folder := WithoutTrailing(AFolder);
-  while Folder <> '' do
+  mFolder := WithoutTrailing(AFolder);
+  while mFolder <> '' do
   begin
-    if AExists(JoinPath(Folder, '.git')) or AExists(JoinPath(Folder, '.svn')) then
+    if AExists(JoinPath(mFolder, '.git')) or AExists(JoinPath(mFolder, '.svn')) then
     begin
-      Exit(Folder);
+      Exit(mFolder);
     end;
-    Folder := ParentOf(Folder);
+    mFolder := ParentOf(mFolder);
   end;
   Result := '';
 end;
@@ -311,23 +311,23 @@ end;
 /// <summary>Ist AFolder derselbe Ordner wie AChild oder liegt AChild darunter?</summary>
 function FolderContains(const AFolder, AChild: string): Boolean;
 var
-  Folder, Child: string;
+  mFolder, mChild: string;
 begin
-  Folder := WithoutTrailing(AFolder);
-  Child := WithoutTrailing(AChild);
-  Result := (Folder <> '') and (SameText(Folder, Child) or
-    SameText(Folder + '\', Copy(Child, 1, Length(Folder) + 1)));
+  mFolder := WithoutTrailing(AFolder);
+  mChild := WithoutTrailing(AChild);
+  Result := (mFolder <> '') and (SameText(mFolder, mChild) or
+    SameText(mFolder + '\', Copy(mChild, 1, Length(mFolder) + 1)));
 end;
 
 function FolderOf(const AFileName: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := Length(AFileName) downto 1 do
+  for mIndex := Length(AFileName) downto 1 do
   begin
-    if IsSeparator(AFileName[Index]) then
+    if IsSeparator(AFileName[mIndex]) then
     begin
-      Exit(Copy(AFileName, 1, Index - 1));
+      Exit(Copy(AFileName, 1, mIndex - 1));
     end;
   end;
   Result := '';
@@ -335,11 +335,11 @@ end;
 
 function IsPrefixText(const AText: string): Boolean;
 var
-  Ch: Char;
+  mCh: Char;
 begin
-  for Ch in AText do
+  for mCh in AText do
   begin
-    if not CharInSet(Ch, ['A'..'Z', 'a'..'z', '0'..'9', '_']) then
+    if not CharInSet(mCh, ['A'..'Z', 'a'..'z', '0'..'9', '_']) then
     begin
       Exit(False);
     end;
@@ -349,10 +349,10 @@ end;
 
 function IsHttpUrl(const AText: string): Boolean;
 var
-  Lower: string;
+  mLower: string;
 begin
-  Lower := LowerCase(AText);
-  Result := (Copy(Lower, 1, 7) = 'http://') or (Copy(Lower, 1, 8) = 'https://');
+  mLower := LowerCase(AText);
+  Result := (Copy(mLower, 1, 7) = 'http://') or (Copy(mLower, 1, 8) = 'https://');
 end;
 
 { TAtlasTeamIssue }
@@ -417,13 +417,13 @@ end;
 
 function TAtlasTeamSettings.IndexOfProfile(const AName: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(StartProfiles) do
+  for mIndex := 0 to High(StartProfiles) do
   begin
-    if SameText(StartProfiles[Index].Name, AName) then
+    if SameText(StartProfiles[mIndex].Name, AName) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -503,13 +503,13 @@ end;
 
 procedure TTeamReader.Invalid(ALine, AColumn: Integer);
 var
-  Issue: TAtlasTeamIssue;
+  mIssue: TAtlasTeamIssue;
 begin
   FTeam.Valid := False;
-  Issue := TAtlasTeamIssue.Create(TAtlasTeamIssueKind.Syntax, '');
-  Issue.Line := ALine;
-  Issue.Column := AColumn;
-  FTeam.Issues := FTeam.Issues + [Issue];
+  mIssue := TAtlasTeamIssue.Create(TAtlasTeamIssueKind.Syntax, '');
+  mIssue.Line := ALine;
+  mIssue.Column := AColumn;
+  FTeam.Issues := FTeam.Issues + [mIssue];
 end;
 
 function TTeamReader.IsCredential(const AKey, APath: string): Boolean;
@@ -523,25 +523,25 @@ end;
 
 procedure TTeamReader.ScanCredentials(AValue: TJSONValue; const APath: string);
 var
-  Index: Integer;
-  Key: string;
+  mIndex: Integer;
+  mKey: string;
 begin
   if AValue is TJSONObject then
   begin
-    for Index := 0 to TJSONObject(AValue).Count - 1 do
+    for mIndex := 0 to TJSONObject(AValue).Count - 1 do
     begin
-      Key := TJSONObject(AValue).Pairs[Index].JsonString.Value;
-      if not IsCredential(Key, APath + '.' + Key) then
+      mKey := TJSONObject(AValue).Pairs[mIndex].JsonString.Value;
+      if not IsCredential(mKey, APath + '.' + mKey) then
       begin
-        ScanCredentials(TJSONObject(AValue).Pairs[Index].JsonValue, APath + '.' + Key);
+        ScanCredentials(TJSONObject(AValue).Pairs[mIndex].JsonValue, APath + '.' + mKey);
       end;
     end;
   end
   else if AValue is TJSONArray then
   begin
-    for Index := 0 to TJSONArray(AValue).Count - 1 do
+    for mIndex := 0 to TJSONArray(AValue).Count - 1 do
     begin
-      ScanCredentials(TJSONArray(AValue).Items[Index], APath);
+      ScanCredentials(TJSONArray(AValue).Items[mIndex], APath);
     end;
   end
   else if (AValue is TJSONString) and TTextCheckin.HasUrlCredentials(TJSONString(AValue).Value) then
@@ -605,8 +605,8 @@ end;
 
 function TTeamReader.ReadNames(AValue: TJSONValue; const APath: string): TArray<string>;
 var
-  Index: Integer;
-  Item, Text: string;
+  mIndex: Integer;
+  mItem, mText: string;
 begin
   Result := nil;
   if not (AValue is TJSONArray) then
@@ -614,20 +614,20 @@ begin
     Report(TAtlasTeamIssueKind.WrongType, APath);
     Exit;
   end;
-  for Index := 0 to TJSONArray(AValue).Count - 1 do
+  for mIndex := 0 to TJSONArray(AValue).Count - 1 do
   begin
-    Item := Format('%s[%d]', [APath, Index]);
-    if not ReadString(TJSONArray(AValue).Items[Index], Item, Text) then
+    mItem := Format('%s[%d]', [APath, mIndex]);
+    if not ReadString(TJSONArray(AValue).Items[mIndex], mItem, mText) then
     begin
       Continue;
     end;
-    if Text = '' then
+    if mText = '' then
     begin
-      Report(TAtlasTeamIssueKind.InvalidValue, Item);
+      Report(TAtlasTeamIssueKind.InvalidValue, mItem);
     end
     else
     begin
-      Result := Result + [Text];
+      Result := Result + [mText];
     end;
   end;
 end;
@@ -639,7 +639,7 @@ var
 begin
   for mKind := Low(TAtlasNamingKind) to High(TAtlasNamingKind) do
   begin
-    if AKey <> NamingKeys[mKind] then
+    if AKey <> cNamingKeys[mKind] then
     begin
       Continue;
     end;
@@ -760,9 +760,9 @@ end;
 function TTeamReader.ReadEnvironment(AValue: TJSONValue; const APath: string;
   out AVariables: TArray<TAtlasTeamVariable>): Boolean;
 var
-  Index: Integer;
-  Variable: TAtlasTeamVariable;
-  Path: string;
+  mIndex: Integer;
+  mVariable: TAtlasTeamVariable;
+  mPath: string;
 begin
   AVariables := nil;
   if not (AValue is TJSONObject) then
@@ -771,28 +771,28 @@ begin
     Exit(False);
   end;
   Result := True;
-  for Index := 0 to TJSONObject(AValue).Count - 1 do
+  for mIndex := 0 to TJSONObject(AValue).Count - 1 do
   begin
-    Variable.Name := TJSONObject(AValue).Pairs[Index].JsonString.Value;
-    Path := APath + '.' + Variable.Name;
-    if TTextCheckin.IsCredentialName(Variable.Name) then
+    mVariable.Name := TJSONObject(AValue).Pairs[mIndex].JsonString.Value;
+    mPath := APath + '.' + mVariable.Name;
+    if TTextCheckin.IsCredentialName(mVariable.Name) then
     begin
-      Report(TAtlasTeamIssueKind.Credential, Path);
+      Report(TAtlasTeamIssueKind.Credential, mPath);
       Result := False;
       Continue;
     end;
-    if not ReadString(TJSONObject(AValue).Pairs[Index].JsonValue, Path, Variable.Value) then
+    if not ReadString(TJSONObject(AValue).Pairs[mIndex].JsonValue, mPath, mVariable.Value) then
     begin
       Result := False;
       Continue;
     end;
-    if TTextCheckin.ContainsMachinePath(Variable.Value) then
+    if TTextCheckin.ContainsMachinePath(mVariable.Value) then
     begin
-      Report(TAtlasTeamIssueKind.AbsolutePath, Path);
+      Report(TAtlasTeamIssueKind.AbsolutePath, mPath);
       Result := False;
       Continue;
     end;
-    AVariables := AVariables + [Variable];
+    AVariables := AVariables + [mVariable];
   end;
 end;
 
@@ -884,27 +884,27 @@ end;
 
 procedure TTeamReader.ReadStartProfiles(AValue: TJSONValue);
 var
-  Index: Integer;
-  Profile: TAtlasStartProfile;
+  mIndex: Integer;
+  mProfile: TAtlasStartProfile;
 begin
   if not (AValue is TJSONArray) then
   begin
     Report(TAtlasTeamIssueKind.WrongType, 'startProfiles');
     Exit;
   end;
-  for Index := 0 to TJSONArray(AValue).Count - 1 do
+  for mIndex := 0 to TJSONArray(AValue).Count - 1 do
   begin
-    if not ReadStartProfile(TJSONArray(AValue).Items[Index], Format('startProfiles[%d]', [Index]), Profile) then
+    if not ReadStartProfile(TJSONArray(AValue).Items[mIndex], Format('startProfiles[%d]', [mIndex]), mProfile) then
     begin
       Continue;
     end;
-    if FTeam.IndexOfProfile(Profile.Name) >= 0 then
+    if FTeam.IndexOfProfile(mProfile.Name) >= 0 then
     begin
-      Report(TAtlasTeamIssueKind.InvalidValue, Format('startProfiles[%s]', [Profile.Name]));
+      Report(TAtlasTeamIssueKind.InvalidValue, Format('startProfiles[%s]', [mProfile.Name]));
     end
     else
     begin
-      FTeam.StartProfiles := FTeam.StartProfiles + [Profile];
+      FTeam.StartProfiles := FTeam.StartProfiles + [mProfile];
     end;
   end;
 end;
@@ -1278,21 +1278,21 @@ end;
 
 procedure TTeamReader.ReadVersion(AValue: TJSONValue);
 var
-  Version: Integer;
+  mVersion: Integer;
 begin
   if not (AValue is TJSONNumber) then
   begin
     Report(TAtlasTeamIssueKind.WrongType, 'version');
     Exit;
   end;
-  Version := TJSONNumber(AValue).AsInt;
-  if Version < 1 then
+  mVersion := TJSONNumber(AValue).AsInt;
+  if mVersion < 1 then
   begin
     Report(TAtlasTeamIssueKind.InvalidValue, 'version');
     Exit;
   end;
-  FTeam.Version := Version;
-  if Version > TAtlasTeamFile.CurrentVersion then
+  FTeam.Version := mVersion;
+  if mVersion > TAtlasTeamFile.CurrentVersion then
   begin
     Report(TAtlasTeamIssueKind.Version, 'version');
   end;
@@ -1420,86 +1420,86 @@ end;
 class function TAtlasTeamFile.Locate(const AProjectFolder, AGroupFolder: string;
   const AExists: TAtlasTeamFileExists): string;
 var
-  Folder, Limit, Group: string;
+  mFolder, mLimit, mGroup: string;
 begin
   Result := '';
-  Folder := WithoutTrailing(AProjectFolder);
-  Group := WithoutTrailing(AGroupFolder);
-  if Folder = '' then
+  mFolder := WithoutTrailing(AProjectFolder);
+  mGroup := WithoutTrailing(AGroupFolder);
+  if mFolder = '' then
   begin
     Exit;
   end;
   // Grenze der Suche aufwärts: Wurzel des Repositorys, ohne Repository die Gruppe darüber, sonst nur der Ordner.
-  Limit := RepositoryRoot(Folder, AExists);
-  if (Limit = '') and FolderContains(Group, Folder) then
+  mLimit := RepositoryRoot(mFolder, AExists);
+  if (mLimit = '') and FolderContains(mGroup, mFolder) then
   begin
-    Limit := Group;
+    mLimit := mGroup;
   end;
-  if Limit = '' then
+  if mLimit = '' then
   begin
-    Limit := Folder;
+    mLimit := mFolder;
   end;
-  while Folder <> '' do
+  while mFolder <> '' do
   begin
-    if AExists(JoinPath(Folder, FileName)) then
+    if AExists(JoinPath(mFolder, FileName)) then
     begin
-      Exit(JoinPath(Folder, FileName));
+      Exit(JoinPath(mFolder, FileName));
     end;
-    if SameText(Folder, Limit) then
+    if SameText(mFolder, mLimit) then
     begin
       Break;
     end;
-    Folder := ParentOf(Folder);
+    mFolder := ParentOf(mFolder);
   end;
   // Die Gruppe kann außerhalb des Repositorys liegen (darüber oder daneben).
-  if (Group <> '') and AExists(JoinPath(Group, FileName)) then
+  if (mGroup <> '') and AExists(JoinPath(mGroup, FileName)) then
   begin
-    Result := JoinPath(Group, FileName);
+    Result := JoinPath(mGroup, FileName);
   end;
 end;
 
 class function TAtlasTeamFile.Parse(const AText, AFileName, ARoot: string): TAtlasTeamSettings;
 var
-  Reader: TTeamReader;
-  Value: TJSONValue;
-  Offset, Line, Column: Integer;
+  mReader: TTeamReader;
+  mValue: TJSONValue;
+  mOffset, mLine, mColumn: Integer;
 begin
-  Reader := TTeamReader.Create(AFileName, ARoot);
+  mReader := TTeamReader.Create(AFileName, ARoot);
   try
-    Value := nil;
+    mValue := nil;
     if Trim(AText) <> '' then
     begin
-      Value := TJSONObject.ParseJSONValue(TJsoncScanner.StripComments(AText));
+      mValue := TJSONObject.ParseJSONValue(TJsoncScanner.StripComments(AText));
     end;
     try
-      if Value is TJSONObject then
+      if mValue is TJSONObject then
       begin
-        Reader.Read(TJSONObject(Value));
+        mReader.Read(TJSONObject(mValue));
       end
       else
       begin
         // Wo es hakt, sagt die Meldung mit Zeile und Spalte (sonst sucht man in der Datei nach dem Fehler).
-        Line := 0;
-        Column := 0;
-        Offset := TJsoncScanner.SyntaxError(AText);
-        if Offset > 0 then
+        mLine := 0;
+        mColumn := 0;
+        mOffset := TJsoncScanner.SyntaxError(AText);
+        if mOffset > 0 then
         begin
-          TJsoncScanner.LineColumn(AText, Offset, Line, Column);
+          TJsoncScanner.LineColumn(AText, mOffset, mLine, mColumn);
         end;
-        Reader.Invalid(Line, Column);
+        mReader.Invalid(mLine, mColumn);
       end;
     finally
-      Value.Free;
+      mValue.Free;
     end;
-    Result := Reader.Team;
+    Result := mReader.Team;
   finally
-    Reader.Free;
+    mReader.Free;
   end;
 end;
 
 class function TAtlasTeamFile.Skeleton: string;
 const
-  Lines: array[TAtlasLanguage, 0..33] of string = (
+  cLines: array[TAtlasLanguage, 0..33] of string = (
     ('{',
      '  // Projekteinstellungen von Atlas für alle im Team (eingecheckt). Persönliche',
      '  // Einstellungen stehen unter Tools > Optionen > Atlas; ein Wert aus dieser',
@@ -1572,9 +1572,9 @@ var
   mIndex: Integer;
 begin
   Result := '';
-  for mIndex := Low(Lines[TAtlasLanguage.German]) to High(Lines[TAtlasLanguage.German]) do
+  for mIndex := Low(cLines[TAtlasLanguage.German]) to High(cLines[TAtlasLanguage.German]) do
   begin
-    Result := Result + Lines[TAtlasTextLanguage.Current, mIndex] + #13#10;
+    Result := Result + cLines[TAtlasTextLanguage.Current, mIndex] + #13#10;
   end;
 end;
 
@@ -1590,24 +1590,24 @@ end;
 
 class function TAtlasTeamFile.MergeNames(const ATeam, APersonal: TArray<string>): TArray<string>;
 var
-  Item, Known: string;
-  Found: Boolean;
+  mItem, mKnown: string;
+  mFound: Boolean;
 begin
   Result := nil;
-  for Item in ATeam + APersonal do
+  for mItem in ATeam + APersonal do
   begin
-    Found := False;
-    for Known in Result do
+    mFound := False;
+    for mKnown in Result do
     begin
-      if SameText(Known, Item) then
+      if SameText(mKnown, mItem) then
       begin
-        Found := True;
+        mFound := True;
         Break;
       end;
     end;
-    if not Found then
+    if not mFound then
     begin
-      Result := Result + [Item];
+      Result := Result + [mItem];
     end;
   end;
 end;
@@ -1615,24 +1615,24 @@ end;
 class function TAtlasTeamFile.MergeFormatFunctions(const ATeam,
   APersonal: TArray<TAtlasFormatFunction>): TArray<TAtlasFormatFunction>;
 var
-  Item, Known: TAtlasFormatFunction;
-  Found: Boolean;
+  mItem, mKnown: TAtlasFormatFunction;
+  mFound: Boolean;
 begin
   Result := nil;
-  for Item in ATeam + APersonal do
+  for mItem in ATeam + APersonal do
   begin
-    Found := False;
-    for Known in Result do
+    mFound := False;
+    for mKnown in Result do
     begin
-      if SameText(Known.Name, Item.Name) then
+      if SameText(mKnown.Name, mItem.Name) then
       begin
-        Found := True;
+        mFound := True;
         Break;
       end;
     end;
-    if not Found then
+    if not mFound then
     begin
-      Result := Result + [Item];
+      Result := Result + [mItem];
     end;
   end;
 end;
@@ -1640,24 +1640,24 @@ end;
 class function TAtlasTeamFile.MergeStartProfiles(const ATeam,
   APersonal: TArray<TAtlasStartProfile>): TArray<TAtlasStartProfile>;
 var
-  Item, Known: TAtlasStartProfile;
-  Found: Boolean;
+  mItem, mKnown: TAtlasStartProfile;
+  mFound: Boolean;
 begin
   Result := nil;
-  for Item in ATeam + APersonal do
+  for mItem in ATeam + APersonal do
   begin
-    Found := False;
-    for Known in Result do
+    mFound := False;
+    for mKnown in Result do
     begin
-      if SameText(Known.Name, Item.Name) then
+      if SameText(mKnown.Name, mItem.Name) then
       begin
-        Found := True;
+        mFound := True;
         Break;
       end;
     end;
-    if not Found then
+    if not mFound then
     begin
-      Result := Result + [Item];
+      Result := Result + [mItem];
     end;
   end;
 end;
@@ -1762,7 +1762,7 @@ begin
   begin
     if ATeam.HasNaming[mKind] then
     begin
-      AddValue(Result, 'naming.' + NamingKeys[mKind], '"' + ATeam.Naming[mKind] + '"');
+      AddValue(Result, 'naming.' + cNamingKeys[mKind], '"' + ATeam.Naming[mKind] + '"');
     end;
   end;
   if ATeam.Snippets <> '' then
@@ -1792,7 +1792,7 @@ end;
 
 class function TAtlasTeamFile.NamingKey(AKind: TAtlasNamingKind): string;
 begin
-  Result := NamingKeys[AKind];
+  Result := cNamingKeys[AKind];
 end;
 
 /// <summary>Teil eines Pfads anhängen: '' und '.' entfallen, '..' nimmt den letzten Teil weg (nie den ersten).

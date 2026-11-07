@@ -36,34 +36,34 @@ uses
 class function TAtlasVcsDetection.Find(const AFolder: string; AProvider: TAtlasVcsProvider;
   const ADirExists, AFileExists: TAtlasVcsPathExists): TAtlasVcsWorkingCopy;
 var
-  Dir, Parent, Candidate: string;
-  WantGit, WantSvn: Boolean;
+  mDir, mParent, mCandidate: string;
+  mWantGit, mWantSvn: Boolean;
 begin
   Result := TAtlasVcsWorkingCopy.Empty;
-  WantGit := (AProvider = TAtlasVcsProvider.Auto) or (AProvider = TAtlasVcsProvider.Git);
-  WantSvn := (AProvider = TAtlasVcsProvider.Auto) or (AProvider = TAtlasVcsProvider.Svn);
-  Dir := VcsNormalizeDir(AFolder);
-  while (Dir <> '') and (WantGit or WantSvn) do
+  mWantGit := (AProvider = TAtlasVcsProvider.Auto) or (AProvider = TAtlasVcsProvider.Git);
+  mWantSvn := (AProvider = TAtlasVcsProvider.Auto) or (AProvider = TAtlasVcsProvider.Svn);
+  mDir := VcsNormalizeDir(AFolder);
+  while (mDir <> '') and (mWantGit or mWantSvn) do
   begin
-    Candidate := IncludeTrailingPathDelimiter(Dir);
-    if WantGit and (ADirExists(Candidate + '.git') or AFileExists(Candidate + '.git')) then
+    mCandidate := IncludeTrailingPathDelimiter(mDir);
+    if mWantGit and (ADirExists(mCandidate + '.git') or AFileExists(mCandidate + '.git')) then
     begin
       Result.Kind := TAtlasVcsKind.Git;
-      Result.Root := Dir;
+      Result.Root := mDir;
       Exit;
     end;
-    if WantSvn and ADirExists(Candidate + '.svn') then
+    if mWantSvn and ADirExists(mCandidate + '.svn') then
     begin
       Result.Kind := TAtlasVcsKind.Svn;
-      Result.Root := Dir;
+      Result.Root := mDir;
       Exit;
     end;
-    Parent := VcsNormalizeDir(ExtractFileDir(Dir));
-    if (Parent = Dir) or (Length(Parent) >= Length(Dir)) then
+    mParent := VcsNormalizeDir(ExtractFileDir(mDir));
+    if (mParent = mDir) or (Length(mParent) >= Length(mDir)) then
     begin
       Break;
     end;
-    Dir := Parent;
+    mDir := mParent;
   end;
 end;
 

@@ -94,9 +94,9 @@ type
 implementation
 
 const
-  OutcomeKeys: array[TAtlasCiOutcome] of string = ('unknown', 'success', 'unstable', 'failure', 'aborted',
+  cOutcomeKeys: array[TAtlasCiOutcome] of string = ('unknown', 'success', 'unstable', 'failure', 'aborted',
     'notBuilt');
-  ErrorKeys: array[TAtlasCiFetchError] of string = ('', 'notConfigured', 'network', 'timeout', 'unauthorized',
+  cErrorKeys: array[TAtlasCiFetchError] of string = ('', 'notConfigured', 'network', 'timeout', 'unauthorized',
     'notFound', 'server', 'invalid', 'cancelled', 'unknownProvider', 'noCredentials');
 
 { TAtlasCiBuild }
@@ -109,18 +109,18 @@ end;
 
 class function TAtlasCiBuild.OutcomeKey(AOutcome: TAtlasCiOutcome): string;
 begin
-  Result := OutcomeKeys[AOutcome];
+  Result := cOutcomeKeys[AOutcome];
 end;
 
 class function TAtlasCiBuild.OutcomeOf(const AKey: string): TAtlasCiOutcome;
 var
-  Outcome: TAtlasCiOutcome;
+  mOutcome: TAtlasCiOutcome;
 begin
-  for Outcome := Low(TAtlasCiOutcome) to High(TAtlasCiOutcome) do
+  for mOutcome := Low(TAtlasCiOutcome) to High(TAtlasCiOutcome) do
   begin
-    if SameText(OutcomeKeys[Outcome], AKey) then
+    if SameText(cOutcomeKeys[mOutcome], AKey) then
     begin
-      Exit(Outcome);
+      Exit(mOutcome);
     end;
   end;
   Result := TAtlasCiOutcome.Unknown;
@@ -128,22 +128,22 @@ end;
 
 class function TAtlasCiBuild.ErrorKey(AError: TAtlasCiFetchError): string;
 begin
-  Result := ErrorKeys[AError];
+  Result := cErrorKeys[AError];
 end;
 
 class function TAtlasCiBuild.ErrorOf(const AKey: string): TAtlasCiFetchError;
 var
-  Error: TAtlasCiFetchError;
+  mError: TAtlasCiFetchError;
 begin
   if AKey = '' then
   begin
     Exit(TAtlasCiFetchError.None);
   end;
-  for Error := Succ(Low(TAtlasCiFetchError)) to High(TAtlasCiFetchError) do
+  for mError := Succ(Low(TAtlasCiFetchError)) to High(TAtlasCiFetchError) do
   begin
-    if SameText(ErrorKeys[Error], AKey) then
+    if SameText(cErrorKeys[mError], AKey) then
     begin
-      Exit(Error);
+      Exit(mError);
     end;
   end;
   // Unbekannte Kennung aus einer neueren Fassung: als Netzfehler zeigen.
@@ -195,35 +195,35 @@ end;
 
 function TAtlasCiJob.Server: string;
 var
-  Rest: string;
-  Scheme: string;
-  Index: Integer;
+  mRest: string;
+  mScheme: string;
+  mIndex: Integer;
 begin
   Result := '';
   if SameText(Copy(Url, 1, 8), 'https://') then
   begin
-    Scheme := 'https://';
+    mScheme := 'https://';
   end
   else if SameText(Copy(Url, 1, 7), 'http://') then
   begin
-    Scheme := 'http://';
+    mScheme := 'http://';
   end
   else
   begin
     Exit;
   end;
-  Rest := Copy(Url, Length(Scheme) + 1, MaxInt);
-  Index := Pos('/', Rest);
-  if Index > 0 then
+  mRest := Copy(Url, Length(mScheme) + 1, MaxInt);
+  mIndex := Pos('/', mRest);
+  if mIndex > 0 then
   begin
-    Rest := Copy(Rest, 1, Index - 1);
+    mRest := Copy(mRest, 1, mIndex - 1);
   end;
   // Benutzer in der Adresse („user@host“) lässt .atlas nicht zu; hier trotzdem nie übernehmen.
-  if (Rest = '') or (Pos('@', Rest) > 0) or (Pos(' ', Rest) > 0) then
+  if (mRest = '') or (Pos('@', mRest) > 0) or (Pos(' ', mRest) > 0) then
   begin
     Exit;
   end;
-  Result := LowerCase(Scheme + Rest);
+  Result := LowerCase(mScheme + mRest);
 end;
 
 function TAtlasCiJob.CredentialTarget: string;

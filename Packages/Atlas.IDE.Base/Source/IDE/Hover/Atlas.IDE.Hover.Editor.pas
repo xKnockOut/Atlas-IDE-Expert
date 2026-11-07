@@ -112,7 +112,7 @@ type
     function WindowState: TAtlasEditorWindowState;
     procedure EditorMouseMove(const Editor: TWinControl; Shift: TShiftState; X, Y: Integer);
     /// <summary>Stelle unter der Maus in einer Datei, die Atlas bedient; False sonst.</summary>
-    function MousePos(const AEditor: TWinControl; X, Y: Integer; out APos: TAtlasHoverMousePos): Boolean;
+    function MousePos(const AEditor: TWinControl; AX, AY: Integer; out APos: TAtlasHoverMousePos): Boolean;
     /// <summary>Schlüssel des Bezeichners an APos ('' ohne); ein neuer setzt Wort, Ausdruck und Wortrechteck.
     /// </summary>
     function WordKey(const APos: TAtlasHoverMousePos): string;
@@ -370,7 +370,7 @@ begin
   end;
 end;
 
-function TAtlasEditorHover.MousePos(const AEditor: TWinControl; X, Y: Integer; out APos: TAtlasHoverMousePos):
+function TAtlasEditorHover.MousePos(const AEditor: TWinControl; AX, AY: Integer; out APos: TAtlasHoverMousePos):
   Boolean;
 var
   mServices: INTACodeEditorServices;
@@ -381,7 +381,7 @@ begin
   if Result then
   begin
     APos.State := mServices.EditorState[AEditor];
-    Result := (APos.State <> nil) and APos.State.PointToCharacterPos(Point(X, Y), APos.Column, APos.VisibleLine);
+    Result := (APos.State <> nil) and APos.State.PointToCharacterPos(Point(AX, AY), APos.Column, APos.VisibleLine);
   end;
   if not Result then
   begin
@@ -626,21 +626,21 @@ end;
 
 function TAtlasEditorHover.WindowState: TAtlasEditorWindowState;
 var
-  View: IOTAEditView;
+  mView: IOTAEditView;
 begin
   Result := Default(TAtlasEditorWindowState);
   Result.AppActive := Application.Active;
   Result.Focus := GetFocus;
-  View := CurrentEditView;
-  if View = nil then
+  mView := CurrentEditView;
+  if mView = nil then
   begin
     Exit;
   end;
-  Result.TopRow := View.TopRow;
-  Result.Rows := View.ViewSize.cy;
-  if View.Buffer <> nil then
+  Result.TopRow := mView.TopRow;
+  Result.Rows := mView.ViewSize.cy;
+  if mView.Buffer <> nil then
   begin
-    Result.FileName := View.Buffer.FileName;
+    Result.FileName := mView.Buffer.FileName;
   end;
 end;
 

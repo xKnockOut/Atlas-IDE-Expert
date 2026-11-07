@@ -133,19 +133,19 @@ end;
 
 function TAtlasSettingsPageSheets.AddTextLine(const ACaption: string): TEdit;
 var
-  Panel: TWinControl;
-  Heading: TLabel;
+  mPanel: TWinControl;
+  mHeading: TLabel;
 begin
-  Panel := AddPanel(20);
-  Heading := TLabel.Create(Self);
-  Heading.Parent := Panel;
-  Heading.Caption := ACaption;
-  Heading.Left := 0;
-  Heading.Top := 3;
+  mPanel := AddPanel(20);
+  mHeading := TLabel.Create(Self);
+  mHeading.Parent := mPanel;
+  mHeading.Caption := ACaption;
+  mHeading.Left := 0;
+  mHeading.Top := 3;
   // Eigene Zeile für das Feld: Adressen und Pfade brauchen die Breite.
-  Panel := AddPanel(26);
+  mPanel := AddPanel(26);
   Result := TEdit.Create(Self);
-  Result.Parent := Panel;
+  Result.Parent := mPanel;
   Result.Left := 0;
   Result.Top := 1;
   Result.Width := 466;
@@ -173,12 +173,12 @@ end;
 
 procedure TAtlasSettingsPageSheets.AddTitleText(const ACaption: string);
 var
-  Panel: TWinControl;
+  mPanel: TWinControl;
   mCaption: TLabel;
 begin
-  Panel := AddPanel(22);
+  mPanel := AddPanel(22);
   mCaption := TLabel.Create(Self);
-  mCaption.Parent := Panel;
+  mCaption.Parent := mPanel;
   mCaption.Caption := ACaption;
   mCaption.Font.Style := [fsBold];
   mCaption.Left := 0;
@@ -187,17 +187,17 @@ end;
 
 function TAtlasSettingsPageSheets.AddChoice(const ACaption: string; const AItems: array of string): TAtlasChoiceBox;
 var
-  Panel: TWinControl;
+  mPanel: TWinControl;
   mCaption: TLabel;
 begin
-  Panel := AddPanel(26);
+  mPanel := AddPanel(26);
   mCaption := TLabel.Create(Self);
-  mCaption.Parent := Panel;
+  mCaption.Parent := mPanel;
   mCaption.Caption := ACaption;
   mCaption.Left := 0;
   mCaption.Top := 5;
   Result := TAtlasChoiceBox.Create(Self);
-  Result.Parent := Panel;
+  Result.Parent := mPanel;
   Result.Left := FieldLeft;
   Result.Top := 1;
   Result.Width := 180;
@@ -230,18 +230,18 @@ end;
 
 function TAtlasSettingsPageSheets.AddKey(const ACaption: string): TEdit;
 var
-  Panel: TWinControl;
+  mPanel: TWinControl;
   mCaption: TLabel;
 begin
-  Panel := AddPanel(26);
+  mPanel := AddPanel(26);
   mCaption := TLabel.Create(Self);
-  mCaption.Parent := Panel;
+  mCaption.Parent := mPanel;
   mCaption.Caption := StringReplace(ACaption, '…', '', []);
   mCaption.Left := 0;
   mCaption.Top := 5;
   // Als Text wie im Menü ("Strg+Umschalt+P"); leer = keine Taste.
   Result := TEdit.Create(Self);
-  Result.Parent := Panel;
+  Result.Parent := mPanel;
   Result.Left := FieldLeft;
   Result.Top := 1;
   Result.Width := 140;
@@ -249,17 +249,17 @@ end;
 
 function TAtlasSettingsPageSheets.AddNumber(const ACaption: string): TEdit;
 var
-  Panel: TWinControl;
+  mPanel: TWinControl;
   mCaption: TLabel;
 begin
-  Panel := AddPanel(26);
+  mPanel := AddPanel(26);
   mCaption := TLabel.Create(Self);
-  mCaption.Parent := Panel;
+  mCaption.Parent := mPanel;
   mCaption.Caption := ACaption;
   mCaption.Left := 0;
   mCaption.Top := 5;
   Result := TEdit.Create(Self);
-  Result.Parent := Panel;
+  Result.Parent := mPanel;
   Result.Left := FieldLeft;
   Result.Top := 1;
   Result.Width := 60;
@@ -268,11 +268,11 @@ end;
 
 function TAtlasSettingsPageSheets.AddWrappedLabel(AHeight: Integer; const ACaption: string): TLabel;
 var
-  Panel: TWinControl;
+  mPanel: TWinControl;
 begin
-  Panel := AddPanel(AHeight);
+  mPanel := AddPanel(AHeight);
   Result := TLabel.Create(Self);
-  Result.Parent := Panel;
+  Result.Parent := mPanel;
   Result.AutoSize := False;
   Result.Align := alClient;
   Result.WordWrap := True;

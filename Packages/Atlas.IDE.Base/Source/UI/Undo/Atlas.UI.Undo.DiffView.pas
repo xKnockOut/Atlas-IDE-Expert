@@ -37,8 +37,8 @@ uses
 
 constructor TAtlasUndoDiffView.CreateView(AOwner: TComponent; const ATitle: string; const ALines: TArray<string>);
 var
-  Bottom: TPanel;
-  Line: string;
+  mBottom: TPanel;
+  mLine: string;
 begin
   inherited CreateNew(AOwner);
   Caption := ATitle;
@@ -49,20 +49,20 @@ begin
   ClientWidth := ScaleValue(760);
   ClientHeight := ScaleValue(480);
   KeyPreview := True;
-  Bottom := TPanel.Create(Self);
-  Bottom.Parent := Self;
-  Bottom.Align := alBottom;
-  Bottom.BevelOuter := bvNone;
-  Bottom.Height := ScaleValue(40);
+  mBottom := TPanel.Create(Self);
+  mBottom.Parent := Self;
+  mBottom.Align := alBottom;
+  mBottom.BevelOuter := bvNone;
+  mBottom.Height := ScaleValue(40);
   FClose := TButton.Create(Self);
-  FClose.Parent := Bottom;
+  FClose.Parent := mBottom;
   FClose.Caption := TAtlasStrings.Text(TAtlasTextId.UndoClose);
   FClose.ModalResult := mrCancel;
   FClose.Cancel := True;
   FClose.Default := True;
   FClose.Anchors := [akTop, akRight];
   FClose.Top := ScaleValue(8);
-  FClose.Left := Bottom.Width - FClose.Width - ScaleValue(8);
+  FClose.Left := mBottom.Width - FClose.Width - ScaleValue(8);
   FLines := TMemo.Create(Self);
   FLines.Parent := Self;
   FLines.Align := alClient;
@@ -73,9 +73,9 @@ begin
   FLines.Font.Name := 'Consolas';
   FLines.Lines.BeginUpdate;
   try
-    for Line in ALines do
+    for mLine in ALines do
     begin
-      FLines.Lines.Add(Line);
+      FLines.Lines.Add(mLine);
     end;
   finally
     FLines.Lines.EndUpdate;
@@ -84,13 +84,13 @@ end;
 
 class procedure TAtlasUndoDiffView.Execute(const ATitle: string; const ALines: TArray<string>);
 var
-  View: TAtlasUndoDiffView;
+  mView: TAtlasUndoDiffView;
 begin
-  View := TAtlasUndoDiffView.CreateView(nil, ATitle, ALines);
+  mView := TAtlasUndoDiffView.CreateView(nil, ATitle, ALines);
   try
-    View.ShowModal;
+    mView.ShowModal;
   finally
-    View.Free;
+    mView.Free;
   end;
 end;
 

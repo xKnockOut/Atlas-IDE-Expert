@@ -82,7 +82,7 @@ end;
 
 class function TAtlasXmlDoc.IsTagContext(const ALineBefore: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := False;
   if not TrimLeft(ALineBefore).StartsWith('///') then
@@ -90,37 +90,37 @@ begin
     Exit;
   end;
   // Angefangenen Tagnamen überspringen, dann muss "<" stehen.
-  Index := Length(ALineBefore);
-  while (Index > 0) and CharInSet(ALineBefore[Index], ['A'..'Z', 'a'..'z']) do
+  mIndex := Length(ALineBefore);
+  while (mIndex > 0) and CharInSet(ALineBefore[mIndex], ['A'..'Z', 'a'..'z']) do
   begin
-    Dec(Index);
+    Dec(mIndex);
   end;
-  Result := (Index > 0) and (ALineBefore[Index] = '<');
+  Result := (mIndex > 0) and (ALineBefore[mIndex] = '<');
 end;
 
 class function TAtlasXmlDoc.FollowingDeclaration(const AText: string; ALine: Integer): string;
 var
-  All: TArray<string>;
-  Index, Depth, Position: Integer;
-  Line: string;
+  mAll: TArray<string>;
+  mIndex, mDepth, mPosition: Integer;
+  mLine: string;
 begin
   Result := '';
-  All := Lines(AText);
-  Depth := 0;
-  for Index := ALine + 1 to Min(High(All), ALine + 12) do
+  mAll := Lines(AText);
+  mDepth := 0;
+  for mIndex := ALine + 1 to Min(High(mAll), ALine + 12) do
   begin
-    Line := Trim(All[Index]);
-    if Line.StartsWith('///') or ((Result = '') and ((Line = '') or Line.StartsWith('['))) then
+    mLine := Trim(mAll[mIndex]);
+    if mLine.StartsWith('///') or ((Result = '') and ((mLine = '') or mLine.StartsWith('['))) then
     begin
       Continue;
     end;
-    Result := Result + ' ' + Line;
-    for Position := 1 to Length(Line) do
-      case Line[Position] of
-        '(': Inc(Depth);
-        ')': Dec(Depth);
+    Result := Result + ' ' + mLine;
+    for mPosition := 1 to Length(mLine) do
+      case mLine[mPosition] of
+        '(': Inc(mDepth);
+        ')': Dec(mDepth);
         ';':
-          if Depth <= 0 then
+          if mDepth <= 0 then
           begin
             Exit(Trim(Result));
           end;
@@ -131,46 +131,46 @@ end;
 
 class function TAtlasXmlDoc.ParamNames(const ADeclaration: string): TArray<string>;
 var
-  Open, Close, Index: Integer;
-  Inner, Group, Names, Name: string;
+  mOpen, mClose, mIndex: Integer;
+  mInner, mGroup, mNames, mName: string;
 begin
   Result := nil;
-  Open := Pos('(', ADeclaration);
-  if Open = 0 then
+  mOpen := Pos('(', ADeclaration);
+  if mOpen = 0 then
   begin
     Exit;
   end;
-  Close := Open;
-  Index := 0;
+  mClose := mOpen;
+  mIndex := 0;
   repeat
-    case ADeclaration[Close] of
-      '(': Inc(Index);
-      ')': Dec(Index);
+    case ADeclaration[mClose] of
+      '(': Inc(mIndex);
+      ')': Dec(mIndex);
     end;
-    Inc(Close);
-  until (Index = 0) or (Close > Length(ADeclaration));
-  Inner := Copy(ADeclaration, Open + 1, Close - Open - 2);
-  for Group in Inner.Split([';']) do
+    Inc(mClose);
+  until (mIndex = 0) or (mClose > Length(ADeclaration));
+  mInner := Copy(ADeclaration, mOpen + 1, mClose - mOpen - 2);
+  for mGroup in mInner.Split([';']) do
   begin
     // "const A, B: string = ''" → A, B
-    Names := Group;
-    if Pos(':', Names) > 0 then
+    mNames := mGroup;
+    if Pos(':', mNames) > 0 then
     begin
-      Names := Copy(Names, 1, Pos(':', Names) - 1);
+      mNames := Copy(mNames, 1, Pos(':', mNames) - 1);
     end;
-    Names := Trim(Names);
-    for Name in ['const ', 'var ', 'out ', 'constref '] do
+    mNames := Trim(mNames);
+    for mName in ['const ', 'var ', 'out ', 'constref '] do
     begin
-      if StartsText(Name, Names) then
+      if StartsText(mName, mNames) then
       begin
-        Names := Trim(Copy(Names, Length(Name) + 1, MaxInt));
+        mNames := Trim(Copy(mNames, Length(mName) + 1, MaxInt));
       end;
     end;
-    for Name in Names.Split([',']) do
+    for mName in mNames.Split([',']) do
     begin
-      if Trim(Name) <> '' then
+      if Trim(mName) <> '' then
       begin
-        Result := Result + [Trim(Name)];
+        Result := Result + [Trim(mName)];
       end;
     end;
   end;
@@ -178,27 +178,27 @@ end;
 
 class function TAtlasXmlDoc.TagItems(const ADeclaration: string): TAtlasCompletionItems;
 var
-  Name: string;
-  Rank: Integer;
-  IsFunction: Boolean;
+  mName: string;
+  mRank: Integer;
+  mIsFunction: Boolean;
 begin
-  Rank := 0;
-  Result := [Tag('summary', 'summary>$0</summary>', Rank)];
-  for Name in ParamNames(ADeclaration) do
+  mRank := 0;
+  Result := [Tag('summary', 'summary>$0</summary>', mRank)];
+  for mName in ParamNames(ADeclaration) do
   begin
-    Inc(Rank);
-    Result := Result + [Tag(Format('param name="%s"', [Name]), Format('param name="%s">$0</param>', [Name]), Rank)];
+    Inc(mRank);
+    Result := Result + [Tag(Format('param name="%s"', [mName]), Format('param name="%s">$0</param>', [mName]), mRank)];
   end;
-  IsFunction := StartsText('function ', TrimLeft(ADeclaration)) or StartsText('class function ', TrimLeft(ADeclaration));
-  if IsFunction then
+  mIsFunction := StartsText('function ', TrimLeft(ADeclaration)) or StartsText('class function ', TrimLeft(ADeclaration));
+  if mIsFunction then
   begin
-    Result := Result + [Tag('returns', 'returns>$0</returns>', Rank + 1)];
+    Result := Result + [Tag('returns', 'returns>$0</returns>', mRank + 1)];
   end;
-  Result := Result + [Tag('remarks', 'remarks>$0</remarks>', Rank + 2),
-    Tag('exception cref=""', 'exception cref="$0"></exception>', Rank + 3),
-    Tag('see cref=""', 'see cref="$0"/>', Rank + 4), Tag('value', 'value>$0</value>', Rank + 5),
-    Tag('para', 'para>$0</para>', Rank + 6), Tag('c', 'c>$0</c>', Rank + 7),
-    Tag('code', 'code>$0</code>', Rank + 8)];
+  Result := Result + [Tag('remarks', 'remarks>$0</remarks>', mRank + 2),
+    Tag('exception cref=""', 'exception cref="$0"></exception>', mRank + 3),
+    Tag('see cref=""', 'see cref="$0"/>', mRank + 4), Tag('value', 'value>$0</value>', mRank + 5),
+    Tag('para', 'para>$0</para>', mRank + 6), Tag('c', 'c>$0</c>', mRank + 7),
+    Tag('code', 'code>$0</code>', mRank + 8)];
 end;
 
 { TAtlasXmlDocCompletionProvider }
@@ -217,16 +217,16 @@ end;
 function TAtlasXmlDocCompletionProvider.Fetch(const AContext: TAtlasContext; AData: TObject;
   const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc; out AState: TAtlasFetchState): TAtlasCompletionItems;
 var
-  All: TArray<string>;
+  mAll: TArray<string>;
 begin
   AState := Default(TAtlasFetchState);
   Result := nil;
-  All := Lines(AContext.Text);
-  if (AContext.Line < 0) or (AContext.Line > High(All)) then
+  mAll := Lines(AContext.Text);
+  if (AContext.Line < 0) or (AContext.Line > High(mAll)) then
   begin
     Exit;
   end;
-  if not TAtlasXmlDoc.IsTagContext(Copy(All[AContext.Line], 1, AContext.Character)) then
+  if not TAtlasXmlDoc.IsTagContext(Copy(mAll[AContext.Line], 1, AContext.Character)) then
   begin
     Exit;
   end;

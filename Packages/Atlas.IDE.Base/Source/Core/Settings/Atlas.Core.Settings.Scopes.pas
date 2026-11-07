@@ -171,13 +171,13 @@ end;
 
 class function TAtlasSettingsScopes.TryRouted(const AName: string; out ASetting: TAtlasRoutedSetting): Boolean;
 var
-  Item: TAtlasRoutedSetting;
+  mItem: TAtlasRoutedSetting;
 begin
-  for Item in Routed do
+  for mItem in Routed do
   begin
-    if SameText(Item.Name, AName) then
+    if SameText(mItem.Name, AName) then
     begin
-      ASetting := Item;
+      ASetting := mItem;
       Exit(True);
     end;
   end;
@@ -187,12 +187,12 @@ end;
 
 class function TAtlasSettingsScopes.IdeManagedPaths: TArray<string>;
 var
-  Item: TAtlasRoutedSetting;
+  mItem: TAtlasRoutedSetting;
 begin
   Result := [DelphiVersionPath];
-  for Item in Routed do
+  for mItem in Routed do
   begin
-    Result := Result + [Item.Path];
+    Result := Result + [mItem.Path];
   end;
 end;
 
@@ -234,83 +234,83 @@ end;
 
 function TAtlasRoutedSettingsStore.JsonValue(const APath: string): string;
 var
-  Root: TJSONObject;
+  mRoot: TJSONObject;
 begin
   Result := '';
-  Root := TAtlasJsonText.Parse(FText);
+  mRoot := TAtlasJsonText.Parse(FText);
   try
-    if Root <> nil then
+    if mRoot <> nil then
     begin
-      Result := TAtlasJsonText.ValueAt(Root, APath);
+      Result := TAtlasJsonText.ValueAt(mRoot, APath);
     end;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 function TAtlasRoutedSettingsStore.Writable: Boolean;
 var
-  Root: TJSONObject;
+  mRoot: TJSONObject;
 begin
   // Eine kaputte Datei wird nicht angefasst; die Werte bleiben dann für diese Sitzung.
   if Trim(FText) = '' then
   begin
     Exit(True);
   end;
-  Root := TAtlasJsonText.Parse(FText);
-  Result := Root <> nil;
-  Root.Free;
+  mRoot := TAtlasJsonText.Parse(FText);
+  Result := mRoot <> nil;
+  mRoot.Free;
 end;
 
 procedure TAtlasRoutedSettingsStore.WriteJson(const APath, AValue: string);
 var
-  Value: TJSONValue;
-  Json: string;
+  mValue: TJSONValue;
+  mJson: string;
 begin
-  Value := TJSONObject.ParseJSONValue(Trim(AValue));
+  mValue := TJSONObject.ParseJSONValue(Trim(AValue));
   try
     // Nur Liste oder Objekt; kaputter Text wird nie in die Datei geschrieben.
-    if not ((Value is TJSONArray) or (Value is TJSONObject)) then
+    if not ((mValue is TJSONArray) or (mValue is TJSONObject)) then
     begin
       Exit;
     end;
-    Json := Value.ToJSON;
-    if JsonValue(APath) = Json then
+    mJson := mValue.ToJSON;
+    if JsonValue(APath) = mJson then
     begin
       Exit;
     end;
     // Eine leere Liste ist der Standard und steht nur in der Datei, wenn dort schon eine Liste stand.
-    if (Json = '[]') and (JsonValue(APath) = '') then
+    if (mJson = '[]') and (JsonValue(APath) = '') then
     begin
       Exit;
     end;
     FText := TAtlasJsonText.SetValue(FText, APath, Trim(AValue));
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 function TAtlasRoutedSettingsStore.ReadInteger(const AName: string; ADefault: Integer): Integer;
 var
-  Routed: TAtlasRoutedSetting;
-  Value: string;
+  mRouted: TAtlasRoutedSetting;
+  mValue: string;
 begin
-  if not TAtlasSettingsScopes.TryRouted(AName, Routed) then
+  if not TAtlasSettingsScopes.TryRouted(AName, mRouted) then
   begin
     Exit(FInner.ReadInteger(AName, ADefault));
   end;
-  Value := JsonValue(Routed.Path);
-  if Value = 'true' then
+  mValue := JsonValue(mRouted.Path);
+  if mValue = 'true' then
   begin
     Result := 1;
   end
-  else if Value = 'false' then
+  else if mValue = 'false' then
   begin
     Result := 0;
   end
-  else if Value <> '' then
+  else if mValue <> '' then
   begin
-    Result := StrToIntDef(Value, ADefault);
+    Result := StrToIntDef(mValue, ADefault);
   end
   else
   begin
@@ -321,33 +321,33 @@ end;
 
 procedure TAtlasRoutedSettingsStore.WriteInteger(const AName: string; AValue: Integer);
 var
-  Routed: TAtlasRoutedSetting;
-  Json: string;
+  mRouted: TAtlasRoutedSetting;
+  mJson: string;
 begin
-  if not TAtlasSettingsScopes.TryRouted(AName, Routed) or not Writable then
+  if not TAtlasSettingsScopes.TryRouted(AName, mRouted) or not Writable then
   begin
     FInner.WriteInteger(AName, AValue);
     Exit;
   end;
-  if Routed.Legacy then
+  if mRouted.Legacy then
   begin
     Exit;
   end;
-  if not Routed.Flag then
+  if not mRouted.Flag then
   begin
-    Json := IntToStr(AValue);
+    mJson := IntToStr(AValue);
   end
   else if AValue <> 0 then
   begin
-    Json := 'true';
+    mJson := 'true';
   end
   else
   begin
-    Json := 'false';
+    mJson := 'false';
   end;
-  if JsonValue(Routed.Path) <> Json then
+  if JsonValue(mRouted.Path) <> mJson then
   begin
-    FText := TAtlasJsonText.SetValue(FText, Routed.Path, Json);
+    FText := TAtlasJsonText.SetValue(FText, mRouted.Path, mJson);
   end;
 end;
 
@@ -378,27 +378,27 @@ end;
 
 procedure TAtlasRoutedSettingsStore.WriteString(const AName, AValue: string);
 var
-  Routed: TAtlasRoutedSetting;
-  Json: string;
+  mRouted: TAtlasRoutedSetting;
+  mJson: string;
 begin
-  if not TAtlasSettingsScopes.TryRouted(AName, Routed) or not (Routed.Text or Routed.Json) or not Writable then
+  if not TAtlasSettingsScopes.TryRouted(AName, mRouted) or not (mRouted.Text or mRouted.Json) or not Writable then
   begin
     FInner.WriteString(AName, AValue);
     Exit;
   end;
-  if Routed.Legacy then
+  if mRouted.Legacy then
   begin
     Exit;
   end;
-  if Routed.Json then
+  if mRouted.Json then
   begin
-    WriteJson(Routed.Path, AValue);
+    WriteJson(mRouted.Path, AValue);
     Exit;
   end;
-  Json := TAtlasJsonText.Quote(AValue);
-  if JsonValue(Routed.Path) <> Json then
+  mJson := TAtlasJsonText.Quote(AValue);
+  if JsonValue(mRouted.Path) <> mJson then
   begin
-    FText := TAtlasJsonText.SetValue(FText, Routed.Path, Json);
+    FText := TAtlasJsonText.SetValue(FText, mRouted.Path, mJson);
   end;
 end;
 

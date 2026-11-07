@@ -74,7 +74,7 @@ uses
 
 procedure TAtlasSettingsEditorViewPart.Build;
 var
-  Panel: TWinControl;
+  mPanel: TWinControl;
 begin
   AddSheet(TAtlasTextId.SettingsTabEditor);
   BindCheck('HoverTooltip', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsHover)));
@@ -127,15 +127,15 @@ begin
     TAtlasStrings.Text(TAtlasTextId.EditorToolbarPositionAbove),
     TAtlasStrings.Text(TAtlasTextId.EditorToolbarPositionInline)]);
   FEditorToolbarItems := AddTextLine(TAtlasStrings.Text(TAtlasTextId.SettingsEditorToolbarItems));
-  Panel := AddPanel(32);
+  mPanel := AddPanel(32);
   FEditorToolbarCustomize := TButton.Create(FPage);
-  FEditorToolbarCustomize.Parent := Panel;
+  FEditorToolbarCustomize.Parent := mPanel;
   FEditorToolbarCustomize.Caption := TAtlasStrings.Text(TAtlasTextId.SettingsEditorToolbarCustomize);
   FEditorToolbarCustomize.Left := 0;
   FEditorToolbarCustomize.Top := 3;
   FEditorToolbarCustomize.Width := 180;
   FEditorToolbarCustomize.OnClick := EditorToolbarCustomizeClick;
-  Attach(Panel, FEditorToolbarItems);
+  Attach(mPanel, FEditorToolbarItems);
   BindCheck('EditorToolbarReturnButton', AddCheck(TAtlasStrings.Text(TAtlasTextId.SettingsEditorToolbarReturnButton)));
   FEditorToolbarLabels := BindCheck('EditorToolbarLabels', AddCheck(TAtlasStrings.Text(TAtlasTextId.EditorToolbarLabels)));
 end;
@@ -265,25 +265,25 @@ end;
 /// </summary>
 procedure TAtlasSettingsEditorViewPart.EditorToolbarCustomizeClick(Sender: TObject);
 var
-  Commands: TArray<TAtlasToolbarCommandInfo>;
-  Config: TAtlasToolbarConfig;
+  mCommands: TArray<TAtlasToolbarCommandInfo>;
+  mConfig: TAtlasToolbarConfig;
 begin
-  Commands := nil;
+  mCommands := nil;
   if Assigned(FOnToolbarCommands) then
   begin
-    Commands := FOnToolbarCommands();
+    mCommands := FOnToolbarCommands();
   end;
-  Config.Items := TAtlasToolbarItems.Parse(FEditorToolbarItems.Text);
-  Config.Labels := FEditorToolbarLabels.Checked;
-  Config.Position := AtlasToolbarPositions[EnsureRange(FEditorToolbarPosition.Choice, 0,
+  mConfig.Items := TAtlasToolbarItems.Parse(FEditorToolbarItems.Text);
+  mConfig.Labels := FEditorToolbarLabels.Checked;
+  mConfig.Position := AtlasToolbarPositions[EnsureRange(FEditorToolbarPosition.Choice, 0,
     High(AtlasToolbarPositions))];
-  if not TAtlasToolbarCustomizeDialog.Execute(Commands, Config) then
+  if not TAtlasToolbarCustomizeDialog.Execute(mCommands, mConfig) then
   begin
     Exit;
   end;
-  FEditorToolbarItems.Text := TAtlasToolbarItems.Format(Config.Items);
-  FEditorToolbarLabels.Checked := Config.Labels;
-  FEditorToolbarPosition.Choice := Max(0, IndexText(Config.Position, AtlasToolbarPositions));
+  FEditorToolbarItems.Text := TAtlasToolbarItems.Format(mConfig.Items);
+  FEditorToolbarLabels.Checked := mConfig.Labels;
+  FEditorToolbarPosition.Choice := Max(0, IndexText(mConfig.Position, AtlasToolbarPositions));
 end;
 
 end.

@@ -172,10 +172,10 @@ end;
 
 procedure TAtlasIdeDiagnosticMode.Rebind;
 var
-  Settings: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
 begin
-  Settings := TAtlasIdeSettings.Current;
-  FKey.Rebind(Word(Settings.DiagnosticModeKey), Settings.DiagnosticModeKeyPriority,
+  mSettings := TAtlasIdeSettings.Current;
+  FKey.Rebind(Word(mSettings.DiagnosticModeKey), mSettings.DiagnosticModeKeyPriority,
     TAtlasStrings.Text(TAtlasTextId.SettingsDiagnosticModeKey));
 end;
 
@@ -191,18 +191,18 @@ end;
 
 procedure TAtlasIdeDiagnosticMode.ApplySettings;
 var
-  Wanted: Boolean;
+  mWanted: Boolean;
 begin
-  Wanted := TAtlasIdeSettings.Current.DiagnosticMode;
+  mWanted := TAtlasIdeSettings.Current.DiagnosticMode;
   // Schalter und Schwelle der Plugin-Zeiten gelten auch bei unverändertem Modus.
-  FPlugin.Apply(Wanted, TAtlasIdeTimingWindow.ExistingFrame);
-  if Wanted = FActive then
+  FPlugin.Apply(mWanted, TAtlasIdeTimingWindow.ExistingFrame);
+  if mWanted = FActive then
   begin
     Exit;
   end;
-  FActive := Wanted;
-  TAtlasQueryTimings.Enabled := Wanted;
-  if Wanted then
+  FActive := mWanted;
+  TAtlasQueryTimings.Enabled := mWanted;
+  if mWanted then
   begin
     TAtlasGuard.Log('Diagnosemodus an (#479)');
     FShownVersion := -1;
@@ -268,12 +268,12 @@ end;
 
 procedure TAtlasIdeDiagnosticMode.ShowWindow;
 var
-  Frame: TAtlasDiagnosticsFrame;
+  mFrame: TAtlasDiagnosticsFrame;
 begin
-  Frame := TAtlasIdeTimingWindow.Show;
-  if Frame <> nil then
+  mFrame := TAtlasIdeTimingWindow.Show;
+  if mFrame <> nil then
   begin
-    Refresh(Frame, True);
+    Refresh(mFrame, True);
   end;
 end;
 
@@ -320,23 +320,23 @@ end;
 
 procedure TAtlasIdeDiagnosticMode.Refresh(AFrame: TAtlasDiagnosticsFrame; AForce: Boolean);
 var
-  Version: Integer;
+  mVersion: Integer;
 begin
   if AFrame = nil then
   begin
     Exit;
   end;
   FPlugin.Refresh(AFrame, AForce);
-  Version := TAtlasQueryTimings.Shared.Version;
+  mVersion := TAtlasQueryTimings.Shared.Version;
   if AForce then
   begin
     AFrame.SetColors(TAtlasIdeStyle.Colors);
   end
-  else if Version = FShownVersion then
+  else if mVersion = FShownVersion then
   begin
     Exit;
   end;
-  FShownVersion := Version;
+  FShownVersion := mVersion;
   AFrame.Completion.SetQueries(TAtlasQueryTimings.Shared.Snapshot);
 end;
 
@@ -365,14 +365,14 @@ end;
 
 procedure TAtlasIdeDiagnosticMode.CopyReport(AFileNames: Boolean);
 var
-  Frame: TAtlasDiagnosticsFrame;
+  mFrame: TAtlasDiagnosticsFrame;
 begin
   Clipboard.AsText := Report(AFileNames);
-  Frame := TAtlasIdeTimingWindow.ExistingFrame;
-  if Frame <> nil then
+  mFrame := TAtlasIdeTimingWindow.ExistingFrame;
+  if mFrame <> nil then
   begin
-    Frame.Completion.ShowNote(TAtlasStrings.Text(TAtlasTextId.DiagnosticCopied));
-    Frame.Bar.ShowNote(TAtlasStrings.Text(TAtlasTextId.DiagnosticCopied));
+    mFrame.Completion.ShowNote(TAtlasStrings.Text(TAtlasTextId.DiagnosticCopied));
+    mFrame.Bar.ShowNote(TAtlasStrings.Text(TAtlasTextId.DiagnosticCopied));
   end;
 end;
 
@@ -398,35 +398,35 @@ end;
 
 function SettingsJson: string;
 var
-  Values: TJSONObject;
+  mValues: TJSONObject;
 begin
-  Values := TAtlasMemorySettingsStore.FromSettings(TAtlasIdeSettings.Current).ToJson;
+  mValues := TAtlasMemorySettingsStore.FromSettings(TAtlasIdeSettings.Current).ToJson;
   try
-    Result := Values.Format(2);
+    Result := mValues.Format(2);
   finally
-    Values.Free;
+    mValues.Free;
   end;
 end;
 
 class function TAtlasIdeDiagnosticMode.Report(AFileNames: Boolean): string;
 var
-  Input: TAtlasTimingReportInput;
+  mInput: TAtlasTimingReportInput;
 begin
-  Input := Default(TAtlasTimingReportInput);
-  Input.AtlasVersion := TAtlasPluginVersion.Version;
-  Input.IdeVersion := TAtlasUpdates.IdeVersion;
+  mInput := Default(TAtlasTimingReportInput);
+  mInput.AtlasVersion := TAtlasPluginVersion.Version;
+  mInput.IdeVersion := TAtlasUpdates.IdeVersion;
   {$IFDEF WIN64}
-  Input.Platform := 'Win64';
+  mInput.Platform := 'Win64';
   {$ELSE}
-  Input.Platform := 'Win32';
+  mInput.Platform := 'Win32';
   {$ENDIF}
-  Input.Settings := SettingsJson;
-  Input.Identity := [GetEnvironmentVariable('USERNAME'), GetEnvironmentVariable('COMPUTERNAME'),
+  mInput.Settings := SettingsJson;
+  mInput.Identity := [GetEnvironmentVariable('USERNAME'), GetEnvironmentVariable('COMPUTERNAME'),
     GetEnvironmentVariable('USERDOMAIN')];
-  Input.FileNames := AFileNames;
-  Input.Created := Now;
-  Input.Plugin := TAtlasIdePluginTimings.Report;
-  Result := TAtlasTimingReport.Build(TAtlasQueryTimings.Shared.Snapshot, Input);
+  mInput.FileNames := AFileNames;
+  mInput.Created := Now;
+  mInput.Plugin := TAtlasIdePluginTimings.Report;
+  Result := TAtlasTimingReport.Build(TAtlasQueryTimings.Shared.Snapshot, mInput);
 end;
 
 class function TAtlasIdeDiagnosticMode.LastDataFile: string;
@@ -436,16 +436,16 @@ end;
 
 procedure TAtlasIdeDiagnosticMode.SaveLastData;
 var
-  Version: Integer;
+  mVersion: Integer;
 begin
-  Version := DataVersion;
+  mVersion := DataVersion;
   FSavedAt := TThread.GetTickCount64;
-  if (Version = FSavedVersion) or ((Length(TAtlasQueryTimings.Shared.Snapshot) = 0) and
+  if (mVersion = FSavedVersion) or ((Length(TAtlasQueryTimings.Shared.Snapshot) = 0) and
     (TAtlasIdePluginTimings.Version = 0)) then
   begin
     Exit;
   end;
-  FSavedVersion := Version;
+  FSavedVersion := mVersion;
   try
     ForceDirectories(ExtractFileDir(LastDataFile));
     // Ohne Dateinamen: Die Datei soll ohne Rückfrage in ein Diagnosepaket dürfen (#766).

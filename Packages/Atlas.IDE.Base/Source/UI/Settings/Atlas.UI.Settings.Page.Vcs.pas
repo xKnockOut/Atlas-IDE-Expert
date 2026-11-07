@@ -72,15 +72,15 @@ end;
 
 procedure TAtlasSettingsVcsPart.Build2;
 var
-  Panel: TWinControl;
+  mPanel: TWinControl;
 begin
   // Seiten, die die Anzeige steuern: Verhalten unter vcs.*, dort nur, ob etwas erscheint (wie #1280).
   AddTitle(TAtlasTextId.SettingsVcsLinksTitle);
   AddWrappedLabel(36, TAtlasStrings.Text(TAtlasTextId.SettingsVcsLinksHint)).Font.Color := clGrayText;
-  Panel := AddPanel(32);
-  FVcsLinkEditor := AddVcsLink(Panel, 0, TAtlasTextId.SettingsVcsLinkEditor);
-  FVcsLinkWelcome := AddVcsLink(Panel, 156, TAtlasTextId.SettingsVcsLinkWelcome);
-  FVcsLinkIssues := AddVcsLink(Panel, 312, TAtlasTextId.SettingsVcsLinkIssues);
+  mPanel := AddPanel(32);
+  FVcsLinkEditor := AddVcsLink(mPanel, 0, TAtlasTextId.SettingsVcsLinkEditor);
+  FVcsLinkWelcome := AddVcsLink(mPanel, 156, TAtlasTextId.SettingsVcsLinkWelcome);
+  FVcsLinkIssues := AddVcsLink(mPanel, 312, TAtlasTextId.SettingsVcsLinkIssues);
 end;
 
 function TAtlasSettingsVcsPart.AddVcsLink(AParent: TWinControl; ALeft: Integer; ACaption: TAtlasTextId): TButton;

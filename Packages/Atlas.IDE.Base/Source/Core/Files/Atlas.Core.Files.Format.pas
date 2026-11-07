@@ -88,20 +88,20 @@ end;
 
 class function TAtlasFileFormats.EncodingText(AEncoding: TAtlasFileEncoding): string;
 const
-  Names: array[TAtlasLanguage, TAtlasFileEncoding] of string = (
+  cNames: array[TAtlasLanguage, TAtlasFileEncoding] of string = (
     ('UTF-8 ohne BOM', 'UTF-8 mit BOM', 'ANSI', 'UTF-16 LE', 'UTF-16 BE'),
     ('UTF-8 without BOM', 'UTF-8 with BOM', 'ANSI', 'UTF-16 LE', 'UTF-16 BE'));
 begin
-  Result := Names[TAtlasTextLanguage.Current, AEncoding];
+  Result := cNames[TAtlasTextLanguage.Current, AEncoding];
 end;
 
 class function TAtlasFileFormats.LineBreakText(ALineBreak: TAtlasLineBreak): string;
 const
-  Names: array[TAtlasLanguage, TAtlasLineBreak] of string = (
+  cNames: array[TAtlasLanguage, TAtlasLineBreak] of string = (
     ('ohne Zeilenende', 'CRLF', 'LF', 'CR', 'gemischte Zeilenenden'),
     ('no line break', 'CRLF', 'LF', 'CR', 'mixed line breaks'));
 begin
-  Result := Names[TAtlasTextLanguage.Current, ALineBreak];
+  Result := cNames[TAtlasTextLanguage.Current, ALineBreak];
 end;
 
 class function TAtlasFileFormats.IsUtf8(const ABytes: TBytes; AStart: Integer): Boolean;
@@ -197,20 +197,20 @@ end;
 
 class function TAtlasFileFormats.Encode(const AText: string; const ATarget: TAtlasFileFormat): TBytes;
 var
-  Text: string;
+  mText: string;
 begin
-  Text := NormalizeLineBreaks(AText, ATarget.LineBreak);
+  mText := NormalizeLineBreaks(AText, ATarget.LineBreak);
   case ATarget.Encoding of
     TAtlasFileEncoding.Utf8Bom:
-      Result := TEncoding.UTF8.GetPreamble + TEncoding.UTF8.GetBytes(Text);
+      Result := TEncoding.UTF8.GetPreamble + TEncoding.UTF8.GetBytes(mText);
     TAtlasFileEncoding.Ansi:
-      Result := TEncoding.ANSI.GetBytes(Text);
+      Result := TEncoding.ANSI.GetBytes(mText);
     TAtlasFileEncoding.Utf16LE:
-      Result := TEncoding.Unicode.GetPreamble + TEncoding.Unicode.GetBytes(Text);
+      Result := TEncoding.Unicode.GetPreamble + TEncoding.Unicode.GetBytes(mText);
     TAtlasFileEncoding.Utf16BE:
-      Result := TEncoding.BigEndianUnicode.GetPreamble + TEncoding.BigEndianUnicode.GetBytes(Text);
+      Result := TEncoding.BigEndianUnicode.GetPreamble + TEncoding.BigEndianUnicode.GetBytes(mText);
   else
-    Result := TEncoding.UTF8.GetBytes(Text);
+    Result := TEncoding.UTF8.GetBytes(mText);
   end;
 end;
 
@@ -226,29 +226,29 @@ end;
 
 class function TAtlasFileFormats.Satisfies(const ABytes: TBytes; const ATarget: TAtlasFileFormat): Boolean;
 var
-  Actual: TAtlasFileFormat;
-  SameEncoding: Boolean;
+  mActual: TAtlasFileFormat;
+  mSameEncoding: Boolean;
 begin
-  Actual := Detect(ABytes);
-  SameEncoding := Actual.Encoding = ATarget.Encoding;
-  if not SameEncoding and (Actual.Encoding = TAtlasFileEncoding.Utf8) and
+  mActual := Detect(ABytes);
+  mSameEncoding := mActual.Encoding = ATarget.Encoding;
+  if not mSameEncoding and (mActual.Encoding = TAtlasFileEncoding.Utf8) and
     (ATarget.Encoding = TAtlasFileEncoding.Ansi) then
   begin
-    SameEncoding := IsAscii(ABytes);
+    mSameEncoding := IsAscii(ABytes);
   end;
-  Result := SameEncoding and ((Actual.LineBreak = ATarget.LineBreak) or (Actual.LineBreak = TAtlasLineBreak.None));
+  Result := mSameEncoding and ((mActual.LineBreak = ATarget.LineBreak) or (mActual.LineBreak = TAtlasLineBreak.None));
 end;
 
 class function TAtlasFileFormats.AnsiLosses(const AText: string): Integer;
 var
-  Back: string;
-  Index: Integer;
+  mBack: string;
+  mIndex: Integer;
 begin
-  Back := TEncoding.ANSI.GetString(TEncoding.ANSI.GetBytes(AText));
-  Result := Abs(Length(Back) - Length(AText));
-  for Index := 1 to Length(AText) do
+  mBack := TEncoding.ANSI.GetString(TEncoding.ANSI.GetBytes(AText));
+  Result := Abs(Length(mBack) - Length(AText));
+  for mIndex := 1 to Length(AText) do
   begin
-    if (Index <= Length(Back)) and (Back[Index] <> AText[Index]) then
+    if (mIndex <= Length(mBack)) and (mBack[mIndex] <> AText[mIndex]) then
     begin
       Inc(Result);
     end;

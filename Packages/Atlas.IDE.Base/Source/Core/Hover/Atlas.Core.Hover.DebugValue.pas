@@ -84,7 +84,7 @@ uses
 
 const
   // Reservierte Wörter von Delphi; Direktiven (override, virtual …) wertet der Debugger ohnehin nicht aus.
-  ReservedWords: array[0..65] of string = ('and', 'array', 'as', 'asm', 'begin', 'case', 'class', 'const',
+  cReservedWords: array[0..65] of string = ('and', 'array', 'as', 'asm', 'begin', 'case', 'class', 'const',
     'constructor', 'destructor', 'dispinterface', 'div', 'do', 'downto', 'else', 'end', 'except', 'exports',
     'file', 'finalization', 'finally', 'for', 'function', 'goto', 'if', 'implementation', 'in', 'inherited',
     'initialization', 'inline', 'interface', 'is', 'label', 'library', 'mod', 'nil', 'not', 'object', 'of',
@@ -166,7 +166,7 @@ end;
 
 class function TAtlasDebugExpression.IsReserved(const AWord: string): Boolean;
 begin
-  Result := MatchText(AWord, ReservedWords);
+  Result := MatchText(AWord, cReservedWords);
 end;
 
 type
@@ -363,24 +363,24 @@ end;
 
 class function TAtlasDebugExpression.AtCharacter(const ALine: string; AIndex: Integer): string;
 var
-  Start, Stop: Integer;
+  mStart, mStop: Integer;
 begin
   Result := '';
   if (AIndex < 0) or (AIndex >= Length(ALine)) or not IsIdentifierChar(ALine[AIndex + 1]) then
   begin
     Exit;
   end;
-  Start := AIndex;
-  while (Start > 0) and IsIdentifierChar(ALine[Start]) do
+  mStart := AIndex;
+  while (mStart > 0) and IsIdentifierChar(ALine[mStart]) do
   begin
-    Dec(Start);
+    Dec(mStart);
   end;
-  Stop := AIndex + 1;
-  while (Stop < Length(ALine)) and IsIdentifierChar(ALine[Stop + 1]) do
+  mStop := AIndex + 1;
+  while (mStop < Length(ALine)) and IsIdentifierChar(ALine[mStop + 1]) do
   begin
-    Inc(Stop);
+    Inc(mStop);
   end;
-  Result := At(ALine, Start, Stop);
+  Result := At(ALine, mStart, mStop);
 end;
 
 class function TAtlasDebugExpression.Shorten(const AText: string; AMaxLength: Integer): string;

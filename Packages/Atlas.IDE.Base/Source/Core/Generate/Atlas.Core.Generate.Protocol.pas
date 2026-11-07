@@ -112,14 +112,14 @@ end;
 
 function SpotArray(const ASpot: TAtlasGenerateSpot): TJSONArray;
 var
-  Position: TJSONObject;
+  mPosition: TJSONObject;
 begin
-  Position := TJSONObject.Create;
-  Position.AddPair('line', TJSONNumber.Create(ASpot.Line));
-  Position.AddPair('character', TJSONNumber.Create(ASpot.Character));
+  mPosition := TJSONObject.Create;
+  mPosition.AddPair('line', TJSONNumber.Create(ASpot.Line));
+  mPosition.AddPair('character', TJSONNumber.Create(ASpot.Character));
   Result := TJSONArray.Create;
   Result.Add(ASpot.Uri);
-  Result.AddElement(Position);
+  Result.AddElement(mPosition);
   Result.Add(ASpot.EndLine);
 end;
 
@@ -139,42 +139,42 @@ end;
 
 class function TAtlasGenerateProtocol.ChoicesArguments(const ASpot: TAtlasGenerateSpot; const AName: string): string;
 var
-  Values: TJSONArray;
+  mValues: TJSONArray;
 begin
-  Values := SpotArray(ASpot);
-  Values.Add(AName);
-  Result := ArrayText(Values);
+  mValues := SpotArray(ASpot);
+  mValues.Add(AName);
+  Result := ArrayText(mValues);
 end;
 
 class function TAtlasGenerateProtocol.RunArguments(const ASpot: TAtlasGenerateSpot; const AName,
   AArgument: string): string;
 var
-  Values: TJSONArray;
+  mValues: TJSONArray;
 begin
-  Values := SpotArray(ASpot);
-  Values.Add(AName);
-  Values.Add(AArgument);
-  Result := ArrayText(Values);
+  mValues := SpotArray(ASpot);
+  mValues.Add(AName);
+  mValues.Add(AArgument);
+  Result := ArrayText(mValues);
 end;
 
 function StringOf(AObject: TJSONObject; const AName: string): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := '';
-  Value := AObject.GetValue(AName);
-  if Value is TJSONString then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONString then
   begin
-    Result := TJSONString(Value).Value;
+    Result := TJSONString(mValue).Value;
   end;
 end;
 
 function FlagOf(AObject: TJSONObject; const AName: string): Boolean;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := AObject.GetValue(AName);
-  Result := (Value is TJSONBool) and TJSONBool(Value).AsBoolean;
+  mValue := AObject.GetValue(AName);
+  Result := (mValue is TJSONBool) and TJSONBool(mValue).AsBoolean;
 end;
 
 function PlacesOf(const AValue: TJSONValue): TArray<string>;
@@ -247,9 +247,9 @@ begin
 end;
 class function TAtlasGenerateProtocol.ParseMenu(const AValue: TJSONValue): TAtlasGenerateServerMenu;
 var
-  Root: TJSONObject;
-  Value: TJSONValue;
-  Entry: TAtlasGenerateEntry;
+  mRoot: TJSONObject;
+  mValue: TJSONValue;
+  mEntry: TAtlasGenerateEntry;
 begin
   Result := Default(TAtlasGenerateServerMenu);
   Result.Places := nil;
@@ -258,16 +258,16 @@ begin
   begin
     Exit;
   end;
-  Root := TJSONObject(AValue);
-  Result.Enabled := FlagOf(Root, 'enabled');
-  Result.Places := PlacesOf(Root.GetValue('places'));
-  if Root.GetValue('commands') is TJSONArray then
+  mRoot := TJSONObject(AValue);
+  Result.Enabled := FlagOf(mRoot, 'enabled');
+  Result.Places := PlacesOf(mRoot.GetValue('places'));
+  if mRoot.GetValue('commands') is TJSONArray then
   begin
-    for Value in TJSONArray(Root.GetValue('commands')) do
+    for mValue in TJSONArray(mRoot.GetValue('commands')) do
     begin
-      if TryMenuEntry(Value, Entry) then
+      if TryMenuEntry(mValue, mEntry) then
       begin
-        Result.Entries := Result.Entries + [Entry];
+        Result.Entries := Result.Entries + [mEntry];
       end;
     end;
   end;
@@ -275,16 +275,16 @@ end;
 
 class function TAtlasGenerateProtocol.ParseChoices(const AValue: TJSONValue): TArray<string>;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := nil;
   if AValue is TJSONArray then
   begin
-    for Value in TJSONArray(AValue) do
+    for mValue in TJSONArray(AValue) do
     begin
-      if Value is TJSONString then
+      if mValue is TJSONString then
       begin
-        Result := Result + [TJSONString(Value).Value];
+        Result := Result + [TJSONString(mValue).Value];
       end;
     end;
   end;
@@ -293,9 +293,9 @@ end;
 class function TAtlasGenerateProtocol.ParseRun(const AValue: TJSONValue; out AEdits: TArray<TLspTextEdit>;
   out AReason: string): Boolean;
 var
-  Root: TJSONObject;
-  Value: TJSONValue;
-  Edit: TLspTextEdit;
+  mRoot: TJSONObject;
+  mValue: TJSONValue;
+  mEdit: TLspTextEdit;
 begin
   AEdits := nil;
   AReason := '';
@@ -305,15 +305,15 @@ begin
     AReason := UiText(TProtocolText.NoAnswerFromTheServer);
     Exit;
   end;
-  Root := TJSONObject(AValue);
-  AReason := StringOf(Root, 'reason');
-  if Root.GetValue('edits') is TJSONArray then
+  mRoot := TJSONObject(AValue);
+  AReason := StringOf(mRoot, 'reason');
+  if mRoot.GetValue('edits') is TJSONArray then
   begin
-    for Value in TJSONArray(Root.GetValue('edits')) do
+    for mValue in TJSONArray(mRoot.GetValue('edits')) do
     begin
-      if TLspTextEdit.FromJson(Value, Edit) then
+      if TLspTextEdit.FromJson(mValue, mEdit) then
       begin
-        AEdits := AEdits + [Edit];
+        AEdits := AEdits + [mEdit];
       end;
     end;
   end;
@@ -327,8 +327,8 @@ end;
 class function TAtlasGenerateProtocol.FromSnippets(const ASnippets: TAtlasSnippetList;
   const APlaces: TArray<string>): TArray<TAtlasGenerateEntry>;
 var
-  Index: Integer;
-  Entry: TAtlasGenerateEntry;
+  mIndex: Integer;
+  mEntry: TAtlasGenerateEntry;
 begin
   Result := nil;
   // Kein Ort: Kommentar, String oder asm; dort passt keine Vorlage.
@@ -336,43 +336,43 @@ begin
   begin
     Exit;
   end;
-  for Index := 0 to High(ASnippets) do
+  for mIndex := 0 to High(ASnippets) do
   begin
     // Dateivorlagen (#759) gehören zu „Neu mit Atlas“, nicht an den Cursor.
-    if ASnippets[Index].Postfix or (ASnippets[Index].FileKind <> '') or
-      not TAtlasSnippets.FitsContext(ASnippets[Index].Context, APlaces) then
+    if ASnippets[mIndex].Postfix or (ASnippets[mIndex].FileKind <> '') or
+      not TAtlasSnippets.FitsContext(ASnippets[mIndex].Context, APlaces) then
     begin
       Continue;
     end;
-    Entry := TAtlasGenerateEntry.Create(TAtlasGenerateKind.Snippet, TAtlasGenerateGroup.Templates,
-      ASnippets[Index].Prefix, ASnippets[Index].Name);
-    if Entry.Caption = '' then
+    mEntry := TAtlasGenerateEntry.Create(TAtlasGenerateKind.Snippet, TAtlasGenerateGroup.Templates,
+      ASnippets[mIndex].Prefix, ASnippets[mIndex].Name);
+    if mEntry.Caption = '' then
     begin
-      Entry.Caption := ASnippets[Index].Prefix;
+      mEntry.Caption := ASnippets[mIndex].Prefix;
     end;
-    Entry.Detail := ASnippets[Index].Description;
-    Entry.Source := Index;
-    Result := Result + [Entry];
+    mEntry.Detail := ASnippets[mIndex].Description;
+    mEntry.Source := mIndex;
+    Result := Result + [mEntry];
   end;
 end;
 
 class function TAtlasGenerateProtocol.FromActions(const AActions: TArray<TLspCodeAction>):
   TArray<TAtlasGenerateEntry>;
 var
-  Index: Integer;
-  Entry: TAtlasGenerateEntry;
+  mIndex: Integer;
+  mEntry: TAtlasGenerateEntry;
 begin
   Result := nil;
-  for Index := 0 to High(AActions) do
+  for mIndex := 0 to High(AActions) do
   begin
-    if (AActions[Index].Disabled <> '') or not AActions[Index].Kind.StartsWith('refactor') then
+    if (AActions[mIndex].Disabled <> '') or not AActions[mIndex].Kind.StartsWith('refactor') then
     begin
       Continue;
     end;
-    Entry := TAtlasGenerateEntry.Create(TAtlasGenerateKind.Action, TAtlasGenerateGroup.Generate,
-      AActions[Index].Title, AActions[Index].Title);
-    Entry.Source := Index;
-    Result := Result + [Entry];
+    mEntry := TAtlasGenerateEntry.Create(TAtlasGenerateKind.Action, TAtlasGenerateGroup.Generate,
+      AActions[mIndex].Title, AActions[mIndex].Title);
+    mEntry.Source := mIndex;
+    Result := Result + [mEntry];
   end;
 end;
 

@@ -106,18 +106,18 @@ end;
 
 procedure TAtlasUsage.Record_(const AItem: TAtlasCompletionItem);
 var
-  Entry: TEntry;
-  Key: string;
+  mEntry: TEntry;
+  mKey: string;
 begin
-  Key := KeyOf(AItem);
-  if not FEntries.TryGetValue(Key, Entry) then
+  mKey := KeyOf(AItem);
+  if not FEntries.TryGetValue(mKey, mEntry) then
   begin
-    Entry := Default(TEntry);
+    mEntry := Default(TEntry);
   end;
-  Inc(Entry.Count);
+  Inc(mEntry.Count);
   Inc(FClock);
-  Entry.Last := FClock;
-  FEntries.AddOrSetValue(Key, Entry);
+  mEntry.Last := FClock;
+  FEntries.AddOrSetValue(mKey, mEntry);
   FRecent.AddOrSetValue(TypeOf(AItem), LowerCase(AItem.Name));
   FChanged := True;
   if FEntries.Count > MaxEntries then
@@ -128,32 +128,32 @@ end;
 
 procedure TAtlasUsage.Evict;
 var
-  Pairs: TArray<TPair<string, TEntry>>;
-  Index: Integer;
+  mPairs: TArray<TPair<string, TEntry>>;
+  mIndex: Integer;
 begin
   // Älteste zuerst entfernen, bis wieder Platz ist (ein Zehntel Luft, damit nicht bei jeder Übernahme sortiert wird).
-  Pairs := FEntries.ToArray;
-  TArray.Sort<TPair<string, TEntry>>(Pairs, TComparer<TPair<string, TEntry>>.Construct(
+  mPairs := FEntries.ToArray;
+  TArray.Sort<TPair<string, TEntry>>(mPairs, TComparer<TPair<string, TEntry>>.Construct(
     function(const A, B: TPair<string, TEntry>): Integer
     begin
       Result := CompareValue(A.Value.Last, B.Value.Last);
     end));
-  for Index := 0 to Length(Pairs) - MaxEntries + MaxEntries div 10 - 1 do
+  for mIndex := 0 to Length(mPairs) - MaxEntries + MaxEntries div 10 - 1 do
   begin
-    FEntries.Remove(Pairs[Index].Key);
+    FEntries.Remove(mPairs[mIndex].Key);
   end;
 end;
 
 function TAtlasUsage.Boost(const AItem: TAtlasCompletionItem): Integer;
 var
-  Entry: TEntry;
+  mEntry: TEntry;
 begin
   Result := 0;
-  if not FEntries.TryGetValue(KeyOf(AItem), Entry) then
+  if not FEntries.TryGetValue(KeyOf(AItem), mEntry) then
   begin
     Exit;
   end;
-  Result := Min(60, Entry.Count * 15);
+  Result := Min(60, mEntry.Count * 15);
   if Mark(AItem) = TAtlasUsageMark.Recent then
   begin
     Inc(Result, 30);
@@ -162,15 +162,15 @@ end;
 
 function TAtlasUsage.Mark(const AItem: TAtlasCompletionItem): TAtlasUsageMark;
 var
-  Entry: TEntry;
-  Name: string;
+  mEntry: TEntry;
+  mName: string;
 begin
   Result := TAtlasUsageMark.None;
-  if FRecent.TryGetValue(TypeOf(AItem), Name) and (Name = LowerCase(AItem.Name)) then
+  if FRecent.TryGetValue(TypeOf(AItem), mName) and (mName = LowerCase(AItem.Name)) then
   begin
     Exit(TAtlasUsageMark.Recent);
   end;
-  if FEntries.TryGetValue(KeyOf(AItem), Entry) and (Entry.Count >= FrequentCount) then
+  if FEntries.TryGetValue(KeyOf(AItem), mEntry) and (mEntry.Count >= FrequentCount) then
   begin
     Result := TAtlasUsageMark.Frequent;
   end;
@@ -276,39 +276,39 @@ end;
 
 function TAtlasUsage.SaveToFile(const AFileName: string): Boolean;
 var
-  Root, Item, Recent: TJSONObject;
-  Items: TJSONArray;
-  Pair: TPair<string, TEntry>;
-  RecentPair: TPair<string, string>;
+  mRoot, mItem, mRecent: TJSONObject;
+  mItems: TJSONArray;
+  mPair: TPair<string, TEntry>;
+  mRecentPair: TPair<string, string>;
 begin
   Result := not SameFileName(AFileName, FKept);
   if not Result then
   begin
     Exit;
   end;
-  Root := TJSONObject.Create;
+  mRoot := TJSONObject.Create;
   try
-    Root.AddPair('version', TJSONNumber.Create(1));
-    Items := TJSONArray.Create;
-    Root.AddPair('entries', Items);
-    for Pair in FEntries do
+    mRoot.AddPair('version', TJSONNumber.Create(1));
+    mItems := TJSONArray.Create;
+    mRoot.AddPair('entries', mItems);
+    for mPair in FEntries do
     begin
-      Item := TJSONObject.Create;
-      Item.AddPair('key', Pair.Key);
-      Item.AddPair('count', TJSONNumber.Create(Pair.Value.Count));
-      Item.AddPair('last', TJSONNumber.Create(Pair.Value.Last));
-      Items.AddElement(Item);
+      mItem := TJSONObject.Create;
+      mItem.AddPair('key', mPair.Key);
+      mItem.AddPair('count', TJSONNumber.Create(mPair.Value.Count));
+      mItem.AddPair('last', TJSONNumber.Create(mPair.Value.Last));
+      mItems.AddElement(mItem);
     end;
-    Recent := TJSONObject.Create;
-    Root.AddPair('recent', Recent);
-    for RecentPair in FRecent do
+    mRecent := TJSONObject.Create;
+    mRoot.AddPair('recent', mRecent);
+    for mRecentPair in FRecent do
     begin
-      Recent.AddPair(RecentPair.Key, RecentPair.Value);
+      mRecent.AddPair(mRecentPair.Key, mRecentPair.Value);
     end;
-    TAtlasDataFile.Write(AFileName, Root.ToJSON);
+    TAtlasDataFile.Write(AFileName, mRoot.ToJSON);
     FChanged := False;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 

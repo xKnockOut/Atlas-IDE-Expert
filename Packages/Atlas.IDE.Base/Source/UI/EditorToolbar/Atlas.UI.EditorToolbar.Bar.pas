@@ -160,9 +160,9 @@ type
     /// <summary>Lage der Teile nach dem Layout (Client).</summary>
     function Places: TAtlasToolbarPlaces;
     /// <summary>Tooltip über dem Punkt (Client); '' = keiner.</summary>
-    function HintAt(X, Y: Integer): string;
+    function HintAt(AX, AY: Integer): string;
     /// <summary>Klick wie mit der Maus (für Tests): Knopf, Rücksprung, », Zahnrad unter dem Punkt.</summary>
-    procedure ClickAt(X, Y: Integer);
+    procedure ClickAt(AX, AY: Integer);
     property Labels: Boolean read FLabels write SetLabels;
     /// <summary>In der Brotkrumenzeile: ohne eigene Fläche unten, Trennlinie links.</summary>
     property InlineMode: Boolean read FInline write SetInline;
@@ -183,9 +183,9 @@ uses
   Atlas.UI.EditorToolbar.Glyphs;
 
 const
-  BaseButton = 24;
-  BaseSeparator = 9;
-  Margin = 4;
+  cBaseButton = 24;
+  cBaseSeparator = 9;
+  cMargin = 4;
   PartReturn = TAtlasToolbarPlaces.PartReturn;
   PartMore = TAtlasToolbarPlaces.PartMore;
   PartGear = TAtlasToolbarPlaces.PartGear;
@@ -382,9 +382,9 @@ function TAtlasToolbarMeasure.ButtonWidth(const AButton: TAtlasToolbarButton): I
 begin
   if AButton.IsSeparator then
   begin
-    Exit(Bar.Scale(BaseSeparator));
+    Exit(Bar.Scale(cBaseSeparator));
   end;
-  Result := Bar.Scale(BaseButton);
+  Result := Bar.Scale(cBaseButton);
   if Bar.FLabels and (AButton.Caption <> '') then
   begin
     Bar.Canvas.Font := Bar.Font;
@@ -702,10 +702,10 @@ begin
   mMeasure.Bar := Self;
   mOrder := mMeasure.Entries;
   mSlots := mMeasure.Slots(mOrder);
-  mWidth := Scale(BaseButton);
+  mWidth := Scale(cBaseButton);
   FPlaces := TAtlasToolbarPlaces.Create(FButtons);
-  FPlaces.Arrange(mOrder, mSlots, TAtlasToolbarLayout.Fit(mSlots, ClientWidth - 2 * Scale(Margin) - mWidth, mWidth),
-    Rect(Scale(Margin), Scale(1), ClientWidth - Scale(Margin), ClientHeight - Scale(1)), mWidth);
+  FPlaces.Arrange(mOrder, mSlots, TAtlasToolbarLayout.Fit(mSlots, ClientWidth - 2 * Scale(cMargin) - mWidth, mWidth),
+    Rect(Scale(cMargin), Scale(1), ClientWidth - Scale(cMargin), ClientHeight - Scale(1)), mWidth);
 end;
 
 function TAtlasEditorToolbar.PreferredWidth: Integer;
@@ -713,10 +713,10 @@ var
   mMeasure: TAtlasToolbarMeasure;
 begin
   mMeasure.Bar := Self;
-  Result := TAtlasToolbarLayout.FullWidth(mMeasure.Slots(mMeasure.Entries)) + 2 * Scale(Margin) + Scale(BaseButton);
+  Result := TAtlasToolbarLayout.FullWidth(mMeasure.Slots(mMeasure.Entries)) + 2 * Scale(cMargin) + Scale(cBaseButton);
   if FInline then
   begin
-    Inc(Result, Scale(Margin));
+    Inc(Result, Scale(cMargin));
   end;
 end;
 
@@ -757,9 +757,9 @@ begin
   Result := (APart < 0) or FButtons[APart].Enabled;
 end;
 
-function TAtlasEditorToolbar.HintAt(X, Y: Integer): string;
+function TAtlasEditorToolbar.HintAt(AX, AY: Integer): string;
 begin
-  Result := PartHint(PartAt(X, Y));
+  Result := PartHint(PartAt(AX, AY));
 end;
 
 procedure TAtlasEditorToolbar.Paint;
@@ -806,9 +806,9 @@ begin
   mPainter.Button(FPlaces.Gear, TAtlasToolbarButton.Create('', '', '', TAtlasToolbarIcon.Gear), Hot = PartGear, '');
 end;
 
-procedure TAtlasEditorToolbar.ClickAt(X, Y: Integer);
+procedure TAtlasEditorToolbar.ClickAt(AX, AY: Integer);
 begin
-  Fire(PartAt(X, Y));
+  Fire(PartAt(AX, AY));
 end;
 
 procedure TAtlasEditorToolbar.PartClicked(APart: Integer; AShift: TShiftState; X, Y: Integer);

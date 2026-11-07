@@ -56,17 +56,17 @@ uses
 
 function ArgumentsOf(const AJson: string): TJSONArray;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := nil;
-  Value := TJSONObject.ParseJSONValue(AJson);
-  if Value is TJSONArray then
+  mValue := TJSONObject.ParseJSONValue(AJson);
+  if mValue is TJSONArray then
   begin
-    Result := TJSONArray(Value);
+    Result := TJSONArray(mValue);
   end
   else
   begin
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
@@ -75,21 +75,21 @@ end;
 class function TAtlasSearchPathRequest.TryParse(const AArgumentsJson: string;
   out ARequest: TAtlasSearchPathRequest): Boolean;
 var
-  Arguments: TJSONArray;
+  mArguments: TJSONArray;
 begin
   ARequest := Default(TAtlasSearchPathRequest);
-  Arguments := ArgumentsOf(AArgumentsJson);
+  mArguments := ArgumentsOf(AArgumentsJson);
   try
-    Result := (Arguments <> nil) and (Arguments.Count >= 2);
+    Result := (mArguments <> nil) and (mArguments.Count >= 2);
     if not Result then
     begin
       Exit;
     end;
-    ARequest.ProjectFile := Arguments.Items[0].Value;
-    ARequest.Folder := Trim(Arguments.Items[1].Value);
-    if Arguments.Count > 2 then
+    ARequest.ProjectFile := mArguments.Items[0].Value;
+    ARequest.Folder := Trim(mArguments.Items[1].Value);
+    if mArguments.Count > 2 then
     begin
-      ARequest.Config := Trim(Arguments.Items[2].Value);
+      ARequest.Config := Trim(mArguments.Items[2].Value);
     end;
     if SameText(ARequest.Config, TAtlasSearchPaths.BaseConfig) then
     begin
@@ -97,7 +97,7 @@ begin
     end;
     Result := (ARequest.ProjectFile <> '') and (ARequest.Folder <> '') and (Pos(';', ARequest.Folder) = 0);
   finally
-    Arguments.Free;
+    mArguments.Free;
   end;
 end;
 
@@ -106,21 +106,21 @@ end;
 class function TAtlasAddUnitRequest.TryParse(const AArgumentsJson: string; out ARequest: TAtlasAddUnitRequest):
   Boolean;
 var
-  Arguments: TJSONArray;
+  mArguments: TJSONArray;
 begin
   ARequest := Default(TAtlasAddUnitRequest);
-  Arguments := ArgumentsOf(AArgumentsJson);
+  mArguments := ArgumentsOf(AArgumentsJson);
   try
-    Result := (Arguments <> nil) and (Arguments.Count >= 2);
+    Result := (mArguments <> nil) and (mArguments.Count >= 2);
     if not Result then
     begin
       Exit;
     end;
-    ARequest.ProjectFile := Arguments.Items[0].Value;
-    ARequest.FileName := Arguments.Items[1].Value;
+    ARequest.ProjectFile := mArguments.Items[0].Value;
+    ARequest.FileName := mArguments.Items[1].Value;
     Result := (ARequest.ProjectFile <> '') and SameText(ExtractFileExt(ARequest.FileName), '.pas');
   finally
-    Arguments.Free;
+    mArguments.Free;
   end;
 end;
 
@@ -128,17 +128,17 @@ end;
 
 class function TAtlasSearchPaths.TryParseInfo(const AArgumentsJson: string; out AText: string): Boolean;
 var
-  Arguments: TJSONArray;
+  mArguments: TJSONArray;
 begin
   AText := '';
-  Arguments := ArgumentsOf(AArgumentsJson);
+  mArguments := ArgumentsOf(AArgumentsJson);
   try
-    if (Arguments <> nil) and (Arguments.Count > 0) then
+    if (mArguments <> nil) and (mArguments.Count > 0) then
     begin
-      AText := Arguments.Items[0].Value;
+      AText := mArguments.Items[0].Value;
     end;
   finally
-    Arguments.Free;
+    mArguments.Free;
   end;
   Result := AText <> '';
 end;
@@ -154,11 +154,11 @@ end;
 
 class function TAtlasSearchPaths.Contains(const AValue, AFolder: string): Boolean;
 var
-  Item: string;
+  mItem: string;
 begin
-  for Item in AValue.Split([';']) do
+  for mItem in AValue.Split([';']) do
   begin
-    if SameText(Normalized(Item), Normalized(AFolder)) then
+    if SameText(Normalized(mItem), Normalized(AFolder)) then
     begin
       Exit(True);
     end;

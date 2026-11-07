@@ -88,43 +88,43 @@ type
 implementation
 
 const
-  NamingKeys: array[TAtlasProjectNamingKind] of string = ('field', 'parameter', 'local', 'constant');
+  cNamingKeys: array[TAtlasProjectNamingKind] of string = ('field', 'parameter', 'local', 'constant');
 
 function JsonList(const AItems: TArray<string>): TJSONArray;
 var
-  Item: string;
+  mItem: string;
 begin
   Result := TJSONArray.Create;
-  for Item in AItems do
+  for mItem in AItems do
   begin
-    Result.Add(Item);
+    Result.Add(mItem);
   end;
 end;
 
 class function TAtlasProjectContext.List(const AValue: string): TArray<string>;
 var
-  Item: string;
+  mItem: string;
 begin
   Result := nil;
-  for Item in AValue.Split([';']) do
+  for mItem in AValue.Split([';']) do
   begin
-    if Trim(Item) <> '' then
+    if Trim(mItem) <> '' then
     begin
-      Result := Result + [Trim(Item)];
+      Result := Result + [Trim(mItem)];
     end;
   end;
 end;
 
 class function TAtlasProjectContext.VersionOfRegistryKey(const AKey: string): string;
 var
-  Key: string;
+  mKey: string;
 begin
-  Key := AKey;
-  while Key.EndsWith('\') do
+  mKey := AKey;
+  while mKey.EndsWith('\') do
   begin
-    Key := Copy(Key, 1, Length(Key) - 1);
+    mKey := Copy(mKey, 1, Length(mKey) - 1);
   end;
-  Result := Copy(Key, LastDelimiter('\', Key) + 1, MaxInt);
+  Result := Copy(mKey, LastDelimiter('\', mKey) + 1, MaxInt);
   // Nur eine Versionsnummer; ein eigenes Profil (-r) heißt anders.
   if (Result = '') or not CharInSet(Result[1], ['0'..'9']) then
   begin
@@ -148,15 +148,15 @@ end;
 
 function TAtlasProjectContext.Describe: string;
 var
-  Origin: string;
+  mOrigin: string;
 begin
-  Origin := Source;
-  if Origin = '' then
+  mOrigin := Source;
+  if mOrigin = '' then
   begin
-    Origin := 'keine Optionen';
+    mOrigin := 'keine Optionen';
   end;
   Result := Format('%s %s/%s (%s, BDS %s): Defines %s; %d Suchpfade, %d Namespaces, %d Bibliothekspfade',
-    [ExtractFileName(Project), Configuration, Platform, Origin, BdsVersion, string.Join(';', Defines),
+    [ExtractFileName(Project), Configuration, Platform, mOrigin, BdsVersion, string.Join(';', Defines),
     Length(SearchPaths), Length(Namespaces), Length(LibraryPaths)]);
   if Active then
   begin
@@ -166,31 +166,31 @@ end;
 
 function TAtlasProjectContext.Key: string;
 var
-  Kind: TAtlasProjectNamingKind;
-  Item: TAtlasProjectFormatFunction;
+  mKind: TAtlasProjectNamingKind;
+  mItem: TAtlasProjectFormatFunction;
 begin
   Result := AnsiUpperCase(Project) + '|' + Configuration + '|' + Platform + '|' + BdsVersion + '|' +
     string.Join(';', Defines) + '|' + string.Join(';', SearchPaths) + '|' + string.Join(';', Namespaces) + '|' +
     string.Join(';', LibraryPaths) + '|' + BoolToStr(Active, True);
-  for Kind := Low(TAtlasProjectNamingKind) to High(TAtlasProjectNamingKind) do
+  for mKind := Low(TAtlasProjectNamingKind) to High(TAtlasProjectNamingKind) do
   begin
-    if HasNaming[Kind] then
+    if HasNaming[mKind] then
     begin
-      Result := Result + '|' + NamingKeys[Kind] + '=' + Naming[Kind];
+      Result := Result + '|' + cNamingKeys[mKind] + '=' + Naming[mKind];
     end;
   end;
-  for Item in FormatFunctions do
+  for mItem in FormatFunctions do
   begin
-    Result := Result + '|format=' + Item.Name + ':' + IntToStr(Item.FormatIndex);
+    Result := Result + '|format=' + mItem.Name + ':' + IntToStr(mItem.FormatIndex);
   end;
 end;
 
 function TAtlasProjectContext.ToJson: TJSONObject;
 var
-  Kind: TAtlasProjectNamingKind;
-  Prefixes, Entry: TJSONObject;
-  Functions: TJSONArray;
-  Item: TAtlasProjectFormatFunction;
+  mKind: TAtlasProjectNamingKind;
+  mPrefixes, mEntry: TJSONObject;
+  mFunctions: TJSONArray;
+  mItem: TAtlasProjectFormatFunction;
 begin
   Result := TJSONObject.Create;
   Result.AddPair('project', Project);
@@ -208,29 +208,29 @@ begin
     Result.AddPair('libraryPaths', JsonList(LibraryPaths));
   end;
   Result.AddPair('active', TJSONBool.Create(Active));
-  Prefixes := nil;
-  for Kind := Low(TAtlasProjectNamingKind) to High(TAtlasProjectNamingKind) do
+  mPrefixes := nil;
+  for mKind := Low(TAtlasProjectNamingKind) to High(TAtlasProjectNamingKind) do
   begin
-    if HasNaming[Kind] then
+    if HasNaming[mKind] then
     begin
-      if Prefixes = nil then
+      if mPrefixes = nil then
       begin
-        Prefixes := TJSONObject.Create;
-        Result.AddPair('naming', Prefixes);
+        mPrefixes := TJSONObject.Create;
+        Result.AddPair('naming', mPrefixes);
       end;
-      Prefixes.AddPair(NamingKeys[Kind], Naming[Kind]);
+      mPrefixes.AddPair(cNamingKeys[mKind], Naming[mKind]);
     end;
   end;
   if Length(FormatFunctions) > 0 then
   begin
-    Functions := TJSONArray.Create;
-    Result.AddPair('formatFunctions', Functions);
-    for Item in FormatFunctions do
+    mFunctions := TJSONArray.Create;
+    Result.AddPair('formatFunctions', mFunctions);
+    for mItem in FormatFunctions do
     begin
-      Entry := TJSONObject.Create;
-      Functions.AddElement(Entry);
-      Entry.AddPair('name', Item.Name);
-      Entry.AddPair('formatIndex', TJSONNumber.Create(Item.FormatIndex));
+      mEntry := TJSONObject.Create;
+      mFunctions.AddElement(mEntry);
+      mEntry.AddPair('name', mItem.Name);
+      mEntry.AddPair('formatIndex', TJSONNumber.Create(mItem.FormatIndex));
     end;
   end;
 end;

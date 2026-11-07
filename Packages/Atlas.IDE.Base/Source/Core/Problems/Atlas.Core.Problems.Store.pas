@@ -205,11 +205,11 @@ end;
 
 class function TAtlasColumnSpan.Contains(const ASpans: TArray<TAtlasColumnSpan>; AColumn: Integer): Boolean;
 var
-  Span: TAtlasColumnSpan;
+  mSpan: TAtlasColumnSpan;
 begin
-  for Span in ASpans do
+  for mSpan in ASpans do
   begin
-    if (AColumn >= Span.First) and (AColumn <= Span.Last) then
+    if (AColumn >= mSpan.First) and (AColumn <= mSpan.Last) then
     begin
       Exit(True);
     end;
@@ -219,11 +219,11 @@ end;
 
 class function TAtlasColumnSpan.Covers(const ASpans: TArray<TAtlasColumnSpan>; AColumn, ACount: Integer): Boolean;
 var
-  Column: Integer;
+  mColumn: Integer;
 begin
-  for Column := AColumn to AColumn + ACount - 1 do
+  for mColumn := AColumn to AColumn + ACount - 1 do
   begin
-    if not Contains(ASpans, Column) then
+    if not Contains(ASpans, mColumn) then
     begin
       Exit(False);
     end;
@@ -249,17 +249,17 @@ end;
 
 procedure TAtlasProblemStore.SetCompilerMerge(AValue: Boolean);
 var
-  Entry: TEntry;
+  mEntry: TEntry;
 begin
   if FCompilerMerge = AValue then
   begin
     Exit;
   end;
   FCompilerMerge := AValue;
-  for Entry in FEntries.Values do
+  for mEntry in FEntries.Values do
   begin
-    Entry.VisibleValid := False;
-    Touch(Entry);
+    mEntry.VisibleValid := False;
+    Touch(mEntry);
   end;
   Inc(FVersion);
 end;
@@ -268,18 +268,18 @@ end;
 /// CompilerCodes); -1 ohne.</summary>
 function ConfirmingIndex(const AProblems: TArray<TAtlasProblem>; const AProblem: TAtlasProblem): Integer;
 var
-  Index: Integer;
-  Code: string;
+  mIndex: Integer;
+  mCode: string;
 begin
-  for Index := 0 to High(AProblems) do
+  for mIndex := 0 to High(AProblems) do
   begin
-    if AProblems[Index].IsCompiler and (AProblems[Index].StartLine = AProblem.StartLine) then
+    if AProblems[mIndex].IsCompiler and (AProblems[mIndex].StartLine = AProblem.StartLine) then
     begin
-      for Code in AProblem.CompilerCodes do
+      for mCode in AProblem.CompilerCodes do
       begin
-        if SameText(Code, AProblems[Index].Code) then
+        if SameText(mCode, AProblems[mIndex].Code) then
         begin
-          Exit(Index);
+          Exit(mIndex);
         end;
       end;
     end;
@@ -326,70 +326,70 @@ end;
 
 function TAtlasProblemStore.Stamp(const AFileName: string): Integer;
 var
-  Entry: TEntry;
+  mEntry: TEntry;
 begin
-  Entry := Find(AFileName);
-  if Entry = nil then
+  mEntry := Find(AFileName);
+  if mEntry = nil then
   begin
     Result := 0;
   end
   else
   begin
-    Result := Entry.Stamp;
+    Result := mEntry.Stamp;
   end;
 end;
 
 procedure TAtlasProblemStore.Update(const AFileName, AText: string; ATextKnown: Boolean;
   const AProblems: TArray<TAtlasProblem>; const AResultId: string; AReplaceCompiler: Boolean);
 var
-  Entry: TEntry;
-  IsNew: Boolean;
-  Problem: TAtlasProblem;
-  Compiler: TArray<TAtlasProblem>;
+  mEntry: TEntry;
+  mIsNew: Boolean;
+  mProblem: TAtlasProblem;
+  mCompiler: TArray<TAtlasProblem>;
 begin
   // Eine Datei, die bisher nur Tests hatte, ist für den Server neu.
-  Entry := Find(AFileName);
-  IsNew := (Entry = nil) or not Entry.FromServer;
-  Entry := Ensure(AFileName);
+  mEntry := Find(AFileName);
+  mIsNew := (mEntry = nil) or not mEntry.FromServer;
+  mEntry := Ensure(AFileName);
   // Behaltene Compilermeldungen auf den neuen Text bringen.
-  if not IsNew and Entry.TextKnown and ATextKnown and (Entry.Text <> AText) then
+  if not mIsNew and mEntry.TextKnown and ATextKnown and (mEntry.Text <> AText) then
   begin
-    Shift(Entry, AText);
+    Shift(mEntry, AText);
   end;
-  Entry.Atlas := nil;
-  Compiler := nil;
-  for Problem in AProblems do
+  mEntry.Atlas := nil;
+  mCompiler := nil;
+  for mProblem in AProblems do
   begin
-    if Problem.IsCompiler then
+    if mProblem.IsCompiler then
     begin
-      Compiler := Compiler + [Problem];
+      mCompiler := mCompiler + [mProblem];
     end
     else
     begin
-      Entry.Atlas := Entry.Atlas + [Problem];
+      mEntry.Atlas := mEntry.Atlas + [mProblem];
     end;
   end;
-  if IsNew or AReplaceCompiler then
+  if mIsNew or AReplaceCompiler then
   begin
-    Entry.Compiler := Compiler;
+    mEntry.Compiler := mCompiler;
   end;
-  Entry.Text := AText;
-  Entry.LinesValid := False;
-  Entry.TextKnown := ATextKnown;
-  Entry.ResultId := AResultId;
-  Entry.FromServer := True;
-  Entry.VisibleValid := False;
-  Touch(Entry);
-  Entry.InactiveValid := False;
-  Entry.UsesValid := False;
+  mEntry.Text := AText;
+  mEntry.LinesValid := False;
+  mEntry.TextKnown := ATextKnown;
+  mEntry.ResultId := AResultId;
+  mEntry.FromServer := True;
+  mEntry.VisibleValid := False;
+  Touch(mEntry);
+  mEntry.InactiveValid := False;
+  mEntry.UsesValid := False;
   Inc(FVersion);
 end;
 
 class procedure TAtlasProblemEntries.Shift(AEntry: TEntry; const ANewText: string);
 var
-  OldCount, NewCount, Prefix, Suffix, ChangedEnd, Delta, Index: Integer;
-  Kept: TArray<TAtlasProblem>;
-  Problem: TAtlasProblem;
+  mOldCount, mNewCount, mPrefix, mSuffix, mChangedEnd, mDelta, mIndex: Integer;
+  mKept: TArray<TAtlasProblem>;
+  mProblem: TAtlasProblem;
 
   procedure Map(var AProblem: TAtlasProblem; ACompiler: Boolean);
   begin
@@ -397,56 +397,56 @@ var
     begin
       AProblem.Stale := True;
     end;
-    if AProblem.EndLine < Prefix then
+    if AProblem.EndLine < mPrefix then
     begin
       Exit;
     end;
-    if AProblem.StartLine >= ChangedEnd then
+    if AProblem.StartLine >= mChangedEnd then
     begin
-      Inc(AProblem.StartLine, Delta);
-      Inc(AProblem.EndLine, Delta);
+      Inc(AProblem.StartLine, mDelta);
+      Inc(AProblem.EndLine, mDelta);
       Exit;
     end;
     // In der geänderten Stelle: bleibt stehen, aber blass und im Text.
     AProblem.Stale := True;
-    AProblem.StartLine := EnsureRange(AProblem.StartLine, 0, Max(0, NewCount - 1));
-    AProblem.EndLine := EnsureRange(AProblem.EndLine, AProblem.StartLine, Max(0, NewCount - 1));
+    AProblem.StartLine := EnsureRange(AProblem.StartLine, 0, Max(0, mNewCount - 1));
+    AProblem.EndLine := EnsureRange(AProblem.EndLine, AProblem.StartLine, Max(0, mNewCount - 1));
   end;
 
 begin
   // Ohne die Texte in Zeilen zu zerlegen: Das läuft im Hauptthread nach jeder Änderung.
-  TTextDiff.CommonPrefixSuffix(AEntry.Text, ANewText, Prefix, Suffix, OldCount, NewCount);
-  ChangedEnd := OldCount - Suffix;
-  Delta := NewCount - OldCount;
-  for Index := 0 to High(AEntry.Atlas) do
+  TTextDiff.CommonPrefixSuffix(AEntry.Text, ANewText, mPrefix, mSuffix, mOldCount, mNewCount);
+  mChangedEnd := mOldCount - mSuffix;
+  mDelta := mNewCount - mOldCount;
+  for mIndex := 0 to High(AEntry.Atlas) do
   begin
-    Map(AEntry.Atlas[Index], False);
+    Map(AEntry.Atlas[mIndex], False);
   end;
-  for Index := 0 to High(AEntry.Compiler) do
+  for mIndex := 0 to High(AEntry.Compiler) do
   begin
-    Map(AEntry.Compiler[Index], True);
+    Map(AEntry.Compiler[mIndex], True);
   end;
-  for Index := 0 to High(AEntry.Tests) do
+  for mIndex := 0 to High(AEntry.Tests) do
   begin
-    Map(AEntry.Tests[Index], False);
+    Map(AEntry.Tests[mIndex], False);
   end;
   // Befunde von Aufgaben gelten für den Stand, den das Werkzeug sah: in der geänderten Stelle fallen sie weg.
-  Kept := nil;
-  for Index := 0 to High(AEntry.Tasks) do
+  mKept := nil;
+  for mIndex := 0 to High(AEntry.Tasks) do
   begin
-    Problem := AEntry.Tasks[Index];
-    if (Problem.EndLine >= Prefix) and (Problem.StartLine < ChangedEnd) then
+    mProblem := AEntry.Tasks[mIndex];
+    if (mProblem.EndLine >= mPrefix) and (mProblem.StartLine < mChangedEnd) then
     begin
       Continue;
     end;
-    if Problem.StartLine >= ChangedEnd then
+    if mProblem.StartLine >= mChangedEnd then
     begin
-      Inc(Problem.StartLine, Delta);
-      Inc(Problem.EndLine, Delta);
+      Inc(mProblem.StartLine, mDelta);
+      Inc(mProblem.EndLine, mDelta);
     end;
-    Kept := Kept + [Problem];
+    mKept := mKept + [mProblem];
   end;
-  AEntry.Tasks := Kept;
+  AEntry.Tasks := mKept;
   AEntry.Text := ANewText;
   AEntry.LinesValid := False;
   AEntry.VisibleValid := False;
@@ -456,55 +456,55 @@ end;
 
 function TAtlasProblemStore.Inactive(const AFileName: string): TArray<TAtlasProblem>;
 var
-  Entry: TEntry;
-  Problem: TAtlasProblem;
+  mEntry: TEntry;
+  mProblem: TAtlasProblem;
 begin
   Result := nil;
-  Entry := Find(AFileName);
-  if Entry = nil then
+  mEntry := Find(AFileName);
+  if mEntry = nil then
   begin
     Exit;
   end;
   // Zeichnen fragt je Textlauf: nicht jedes Mal alle Meldungen durchgehen.
-  if Entry.InactiveValid then
+  if mEntry.InactiveValid then
   begin
-    Exit(Entry.InactiveList);
+    Exit(mEntry.InactiveList);
   end;
-  for Problem in Entry.Atlas do
+  for mProblem in mEntry.Atlas do
   begin
-    if Problem.Unnecessary and not Problem.IsUses then
+    if mProblem.Unnecessary and not mProblem.IsUses then
     begin
-      Result := Result + [Problem];
+      Result := Result + [mProblem];
     end;
   end;
-  Entry.InactiveList := Result;
-  Entry.InactiveValid := True;
+  mEntry.InactiveList := Result;
+  mEntry.InactiveValid := True;
 end;
 
 function TAtlasProblemStore.UnusedUses(const AFileName: string): TArray<TAtlasProblem>;
 var
-  Entry: TEntry;
-  Problem: TAtlasProblem;
+  mEntry: TEntry;
+  mProblem: TAtlasProblem;
 begin
   Result := nil;
-  Entry := Find(AFileName);
-  if Entry = nil then
+  mEntry := Find(AFileName);
+  if mEntry = nil then
   begin
     Exit;
   end;
-  if Entry.UsesValid then
+  if mEntry.UsesValid then
   begin
-    Exit(Entry.UsesList);
+    Exit(mEntry.UsesList);
   end;
-  for Problem in Entry.Atlas do
+  for mProblem in mEntry.Atlas do
   begin
-    if Problem.UsesState = TAtlasProblem.UsesUnused then
+    if mProblem.UsesState = TAtlasProblem.UsesUnused then
     begin
-      Result := Result + [Problem];
+      Result := Result + [mProblem];
     end;
   end;
-  Entry.UsesList := Result;
-  Entry.UsesValid := True;
+  mEntry.UsesList := Result;
+  mEntry.UsesValid := True;
 end;
 
 function TAtlasProblemStore.UsesSpans(const AFileName: string; ALine, ATabWidth: Integer): TArray<TAtlasColumnSpan>;
@@ -514,20 +514,20 @@ end;
 
 function TAtlasProblemStore.UsesAt(const AFileName: string; ALine, ACharacter: Integer): TArray<TAtlasProblem>;
 var
-  Entry: TEntry;
-  Problem: TAtlasProblem;
+  mEntry: TEntry;
+  mProblem: TAtlasProblem;
 begin
   Result := nil;
-  Entry := Find(AFileName);
-  if Entry = nil then
+  mEntry := Find(AFileName);
+  if mEntry = nil then
   begin
     Exit;
   end;
-  for Problem in Entry.Atlas do
+  for mProblem in mEntry.Atlas do
   begin
-    if Problem.IsUses and Problem.Contains(ALine, ACharacter) then
+    if mProblem.IsUses and mProblem.Contains(ALine, ACharacter) then
     begin
-      Result := Result + [Problem];
+      Result := Result + [mProblem];
     end;
   end;
 end;
@@ -602,30 +602,30 @@ end;
 
 function TAtlasProblemStore.InactiveAt(const AFileName: string; ALine, ACharacter: Integer): TArray<TAtlasProblem>;
 var
-  Problem: TAtlasProblem;
+  mProblem: TAtlasProblem;
 begin
   Result := nil;
-  for Problem in Inactive(AFileName) do
+  for mProblem in Inactive(AFileName) do
   begin
     // Das Ende gehört schon zur schließenden Direktive.
-    if Problem.Contains(ALine, ACharacter) and
-      ((ALine < Problem.EndLine) or (ACharacter < Problem.EndCharacter)) then
+    if mProblem.Contains(ALine, ACharacter) and
+      ((ALine < mProblem.EndLine) or (ACharacter < mProblem.EndCharacter)) then
     begin
-      Result := Result + [Problem];
+      Result := Result + [mProblem];
     end;
   end;
 end;
 
 function TAtlasProblemStore.LineInactive(const AFileName: string; ALine: Integer): Boolean;
 var
-  Problem: TAtlasProblem;
+  mProblem: TAtlasProblem;
 begin
   // Ein Bereich beginnt hinter der Direktive, die den Zweig abschaltet, und endet vor der nächsten:
   // Die Zeilen dazwischen sind ganz inaktiv, die Zeilen der Direktiven selbst nicht.
   Result := False;
-  for Problem in Inactive(AFileName) do
+  for mProblem in Inactive(AFileName) do
   begin
-    if (ALine > Problem.StartLine) and (ALine < Problem.EndLine) then
+    if (ALine > mProblem.StartLine) and (ALine < mProblem.EndLine) then
     begin
       Exit(True);
     end;
@@ -634,24 +634,24 @@ end;
 
 procedure TAtlasProblemStore.Edit(const AFileName, ANewText: string);
 var
-  Entry: TEntry;
+  mEntry: TEntry;
 begin
-  Entry := Find(AFileName);
-  if (Entry = nil) or (Entry.TextKnown and (Entry.Text = ANewText)) then
+  mEntry := Find(AFileName);
+  if (mEntry = nil) or (mEntry.TextKnown and (mEntry.Text = ANewText)) then
   begin
     Exit;
   end;
-  if not Entry.TextKnown then
+  if not mEntry.TextKnown then
   begin
     // Positionen kamen ohne bekannten Text (Platte): ab jetzt diesen Text zugrunde legen.
-    Entry.Text := ANewText;
-    Entry.LinesValid := False;
-    Entry.TextKnown := True;
-    Touch(Entry);
+    mEntry.Text := ANewText;
+    mEntry.LinesValid := False;
+    mEntry.TextKnown := True;
+    Touch(mEntry);
     Exit;
   end;
-  Shift(Entry, ANewText);
-  Touch(Entry);
+  Shift(mEntry, ANewText);
+  Touch(mEntry);
   Inc(FVersion);
 end;
 
@@ -677,50 +677,50 @@ end;
 
 function TAtlasProblemStore.Contains(const AFileName: string): Boolean;
 var
-  Entry: TEntry;
+  mEntry: TEntry;
 begin
-  Entry := Find(AFileName);
-  Result := (Entry <> nil) and Entry.FromServer;
+  mEntry := Find(AFileName);
+  Result := (mEntry <> nil) and mEntry.FromServer;
 end;
 
 procedure TAtlasProblemEntries.DropEmpty;
 var
-  Entry: TEntry;
-  Emptied: TArray<string>;
-  FileName: string;
+  mEntry: TEntry;
+  mEmptied: TArray<string>;
+  mFileName: string;
 begin
-  Emptied := nil;
-  for Entry in FEntries.Values do
+  mEmptied := nil;
+  for mEntry in FEntries.Values do
   begin
-    if not Entry.FromServer and (Length(Entry.Tests) = 0) and (Length(Entry.Tasks) = 0) then
+    if not mEntry.FromServer and (Length(mEntry.Tests) = 0) and (Length(mEntry.Tasks) = 0) then
     begin
-      Emptied := Emptied + [Entry.FileName];
+      mEmptied := mEmptied + [mEntry.FileName];
     end;
   end;
-  for FileName in Emptied do
+  for mFileName in mEmptied do
   begin
-    FEntries.Remove(Key(FileName));
+    FEntries.Remove(Key(mFileName));
   end;
 end;
 
 procedure TAtlasProblemStore.ClearTests;
 var
-  Entry: TEntry;
-  Changed: Boolean;
+  mEntry: TEntry;
+  mChanged: Boolean;
 begin
-  Changed := False;
-  for Entry in FEntries.Values do
+  mChanged := False;
+  for mEntry in FEntries.Values do
   begin
-    if Length(Entry.Tests) > 0 then
+    if Length(mEntry.Tests) > 0 then
     begin
-      Entry.Tests := nil;
-      Entry.VisibleValid := False;
-      Touch(Entry);
-      Changed := True;
+      mEntry.Tests := nil;
+      mEntry.VisibleValid := False;
+      Touch(mEntry);
+      mChanged := True;
     end;
   end;
   DropEmpty;
-  if Changed then
+  if mChanged then
   begin
     Inc(FVersion);
   end;
@@ -728,32 +728,32 @@ end;
 
 procedure TAtlasProblemStore.ClearTask(const ATask: string);
 var
-  Entry: TEntry;
-  Kept: TArray<TAtlasProblem>;
-  Problem: TAtlasProblem;
-  Changed: Boolean;
+  mEntry: TEntry;
+  mKept: TArray<TAtlasProblem>;
+  mProblem: TAtlasProblem;
+  mChanged: Boolean;
 begin
-  Changed := False;
-  for Entry in FEntries.Values do
+  mChanged := False;
+  for mEntry in FEntries.Values do
   begin
-    Kept := nil;
-    for Problem in Entry.Tasks do
+    mKept := nil;
+    for mProblem in mEntry.Tasks do
     begin
-      if not SameText(Problem.Source, ATask) then
+      if not SameText(mProblem.Source, ATask) then
       begin
-        Kept := Kept + [Problem];
+        mKept := mKept + [mProblem];
       end;
     end;
-    if Length(Kept) <> Length(Entry.Tasks) then
+    if Length(mKept) <> Length(mEntry.Tasks) then
     begin
-      Entry.Tasks := Kept;
-      Entry.VisibleValid := False;
-      Touch(Entry);
-      Changed := True;
+      mEntry.Tasks := mKept;
+      mEntry.VisibleValid := False;
+      Touch(mEntry);
+      mChanged := True;
     end;
   end;
   DropEmpty;
-  if Changed then
+  if mChanged then
   begin
     Inc(FVersion);
   end;
@@ -761,22 +761,22 @@ end;
 
 procedure TAtlasProblemStore.ClearTasks;
 var
-  Entry: TEntry;
-  Changed: Boolean;
+  mEntry: TEntry;
+  mChanged: Boolean;
 begin
-  Changed := False;
-  for Entry in FEntries.Values do
+  mChanged := False;
+  for mEntry in FEntries.Values do
   begin
-    if Length(Entry.Tasks) > 0 then
+    if Length(mEntry.Tasks) > 0 then
     begin
-      Entry.Tasks := nil;
-      Entry.VisibleValid := False;
-      Touch(Entry);
-      Changed := True;
+      mEntry.Tasks := nil;
+      mEntry.VisibleValid := False;
+      Touch(mEntry);
+      mChanged := True;
     end;
   end;
   DropEmpty;
-  if Changed then
+  if mChanged then
   begin
     Inc(FVersion);
   end;
@@ -785,19 +785,19 @@ end;
 procedure TAtlasProblemStore.SetTaskProblems(const ATask: string;
   const AProblems: TArray<TPair<string, TAtlasProblem>>);
 var
-  Item: TPair<string, TAtlasProblem>;
-  Entry: TEntry;
-  Problem: TAtlasProblem;
+  mItem: TPair<string, TAtlasProblem>;
+  mEntry: TEntry;
+  mProblem: TAtlasProblem;
 begin
   ClearTask(ATask);
-  for Item in AProblems do
+  for mItem in AProblems do
   begin
-    Entry := Ensure(Item.Key);
-    Problem := Item.Value;
-    Problem.Source := ATask;
-    Entry.Tasks := Entry.Tasks + [Problem];
-    Entry.VisibleValid := False;
-    Touch(Entry);
+    mEntry := Ensure(mItem.Key);
+    mProblem := mItem.Value;
+    mProblem.Source := ATask;
+    mEntry.Tasks := mEntry.Tasks + [mProblem];
+    mEntry.VisibleValid := False;
+    Touch(mEntry);
   end;
   if Length(AProblems) > 0 then
   begin
@@ -807,11 +807,11 @@ end;
 
 function TAtlasProblemStore.TaskHidden(const ATask: string): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
-  for Name in FHiddenTasks do
+  for mName in FHiddenTasks do
   begin
-    if SameText(Name, ATask) then
+    if SameText(mName, ATask) then
     begin
       Exit(True);
     end;
@@ -821,9 +821,9 @@ end;
 
 procedure TAtlasProblemStore.SetTaskHidden(const ATask: string; AHidden: Boolean);
 var
-  Kept: TArray<string>;
-  Name: string;
-  Entry: TEntry;
+  mKept: TArray<string>;
+  mName: string;
+  mEntry: TEntry;
 begin
   if TaskHidden(ATask) = AHidden then
   begin
@@ -835,47 +835,47 @@ begin
   end
   else
   begin
-    Kept := nil;
-    for Name in FHiddenTasks do
+    mKept := nil;
+    for mName in FHiddenTasks do
     begin
-      if not SameText(Name, ATask) then
+      if not SameText(mName, ATask) then
       begin
-        Kept := Kept + [Name];
+        mKept := mKept + [mName];
       end;
     end;
-    FHiddenTasks := Kept;
+    FHiddenTasks := mKept;
   end;
-  for Entry in FEntries.Values do
+  for mEntry in FEntries.Values do
   begin
-    Entry.VisibleValid := False;
-    Touch(Entry);
+    mEntry.VisibleValid := False;
+    Touch(mEntry);
   end;
   Inc(FVersion);
 end;
 
 function TAtlasProblemStore.TaskNames: TArray<string>;
 var
-  Entry: TEntry;
-  Problem: TAtlasProblem;
-  Name: string;
-  Known: Boolean;
+  mEntry: TEntry;
+  mProblem: TAtlasProblem;
+  mName: string;
+  mKnown: Boolean;
 begin
   Result := nil;
-  for Entry in FEntries.Values do
+  for mEntry in FEntries.Values do
   begin
-    for Problem in Entry.Tasks do
+    for mProblem in mEntry.Tasks do
     begin
-      Known := False;
-      for Name in Result do
+      mKnown := False;
+      for mName in Result do
       begin
-        if SameText(Name, Problem.Source) then
+        if SameText(mName, mProblem.Source) then
         begin
-          Known := True;
+          mKnown := True;
         end;
       end;
-      if not Known then
+      if not mKnown then
       begin
-        Result := Result + [Problem.Source];
+        Result := Result + [mProblem.Source];
       end;
     end;
   end;
@@ -888,15 +888,15 @@ end;
 
 function TAtlasProblemStore.TaskCount(const ATask: string): Integer;
 var
-  Entry: TEntry;
-  Problem: TAtlasProblem;
+  mEntry: TEntry;
+  mProblem: TAtlasProblem;
 begin
   Result := 0;
-  for Entry in FEntries.Values do
+  for mEntry in FEntries.Values do
   begin
-    for Problem in Entry.Tasks do
+    for mProblem in mEntry.Tasks do
     begin
-      if SameText(Problem.Source, ATask) then
+      if SameText(mProblem.Source, ATask) then
       begin
         Inc(Result);
       end;
@@ -906,19 +906,19 @@ end;
 
 procedure TAtlasProblemStore.SetTests(const AProblems: TArray<TPair<string, TAtlasProblem>>);
 var
-  Item: TPair<string, TAtlasProblem>;
-  Entry: TEntry;
-  Problem: TAtlasProblem;
+  mItem: TPair<string, TAtlasProblem>;
+  mEntry: TEntry;
+  mProblem: TAtlasProblem;
 begin
   ClearTests;
-  for Item in AProblems do
+  for mItem in AProblems do
   begin
-    Entry := Ensure(Item.Key);
-    Problem := Item.Value;
-    Problem.Source := TestSource;
-    Entry.Tests := Entry.Tests + [Problem];
-    Entry.VisibleValid := False;
-    Touch(Entry);
+    mEntry := Ensure(mItem.Key);
+    mProblem := mItem.Value;
+    mProblem.Source := TestSource;
+    mEntry.Tests := mEntry.Tests + [mProblem];
+    mEntry.VisibleValid := False;
+    Touch(mEntry);
   end;
   if Length(AProblems) > 0 then
   begin
@@ -928,53 +928,53 @@ end;
 
 function TAtlasProblemStore.ResultId(const AFileName: string): string;
 var
-  Entry: TEntry;
+  mEntry: TEntry;
 begin
-  Entry := Find(AFileName);
-  if Entry = nil then
+  mEntry := Find(AFileName);
+  if mEntry = nil then
   begin
     Result := '';
   end
   else
   begin
-    Result := Entry.ResultId;
+    Result := mEntry.ResultId;
   end;
 end;
 
 function TAtlasProblemStore.TextOf(const AFileName: string): string;
 var
-  Entry: TEntry;
+  mEntry: TEntry;
 begin
-  Entry := Find(AFileName);
-  if (Entry = nil) or not Entry.TextKnown then
+  mEntry := Find(AFileName);
+  if (mEntry = nil) or not mEntry.TextKnown then
   begin
     Result := '';
   end
   else
   begin
-    Result := Entry.Text;
+    Result := mEntry.Text;
   end;
 end;
 
 function TAtlasProblemStore.LineText(const AFileName: string; ALine: Integer; out AText: string): Boolean;
 var
-  Entry: TEntry;
+  mEntry: TEntry;
 begin
   AText := '';
-  Entry := Find(AFileName);
-  if (Entry = nil) or not Entry.TextKnown then
+  mEntry := Find(AFileName);
+  if (mEntry = nil) or not mEntry.TextKnown then
   begin
     Exit(False);
   end;
-  if not Entry.LinesValid then
+  if not mEntry.LinesValid then
   begin
-    Entry.Lines := Entry.Text.Split([#10]);
-    Entry.LinesValid := True;
+    mEntry.Lines := mEntry.Text.Split([#10]);
+    mEntry.LinesValid := True;
   end;
-  Result := (ALine >= 0) and (ALine <= High(Entry.Lines));
+  Result := (ALine >= 0) and (ALine <= High(mEntry.Lines));
   if Result then
   begin
-    AText := Entry.Lines[ALine].TrimRight([#13]);
+    AText := mEntry.Lines[ALine].TrimRight([#13]);
   end;
 end;
 
@@ -1092,42 +1092,42 @@ end;
 
 function TAtlasProblemStore.OnLine(const AFileName: string; ALine: Integer): TArray<TAtlasProblem>;
 var
-  Problem: TAtlasProblem;
+  mProblem: TAtlasProblem;
 begin
   Result := nil;
-  for Problem in ForFile(AFileName) do
+  for mProblem in ForFile(AFileName) do
   begin
-    if (ALine >= Problem.StartLine) and (ALine <= Problem.EndLine) then
+    if (ALine >= mProblem.StartLine) and (ALine <= mProblem.EndLine) then
     begin
-      Result := Result + [Problem];
+      Result := Result + [mProblem];
     end;
   end;
 end;
 
 function TAtlasProblemStore.At(const AFileName: string; ALine, ACharacter: Integer): TArray<TAtlasProblem>;
 var
-  Problem: TAtlasProblem;
+  mProblem: TAtlasProblem;
 begin
   Result := nil;
-  for Problem in ForFile(AFileName) do
+  for mProblem in ForFile(AFileName) do
   begin
-    if Problem.Contains(ALine, ACharacter) then
+    if mProblem.Contains(ALine, ACharacter) then
     begin
-      Result := Result + [Problem];
+      Result := Result + [mProblem];
     end;
   end;
 end;
 
 function TAtlasProblemStore.AllFiles: TArray<string>;
 var
-  Entry: TEntry;
+  mEntry: TEntry;
 begin
   Result := nil;
-  for Entry in FEntries.Values do
+  for mEntry in FEntries.Values do
   begin
-    if Entry.FromServer then
+    if mEntry.FromServer then
     begin
-      Result := Result + [Entry.FileName];
+      Result := Result + [mEntry.FileName];
     end;
   end;
   TArray.Sort<string>(Result, TComparer<string>.Construct(
@@ -1139,14 +1139,14 @@ end;
 
 function TAtlasProblemStore.Files: TArray<string>;
 var
-  Entry: TEntry;
+  mEntry: TEntry;
 begin
   Result := nil;
-  for Entry in FEntries.Values do
+  for mEntry in FEntries.Values do
   begin
-    if Length(ForFile(Entry.FileName)) > 0 then
+    if Length(ForFile(mEntry.FileName)) > 0 then
     begin
-      Result := Result + [Entry.FileName];
+      Result := Result + [mEntry.FileName];
     end;
   end;
   TArray.Sort<string>(Result, TComparer<string>.Construct(

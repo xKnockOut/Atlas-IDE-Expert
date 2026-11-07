@@ -78,11 +78,11 @@ end;
 
 class procedure TAtlasIdeFavorites.Remove(const AKeys: TArray<string>);
 var
-  Key: string;
+  mKey: string;
 begin
-  for Key in AKeys do
+  for mKey in AKeys do
   begin
-    Instance.Remove(Key);
+    Instance.Remove(mKey);
   end;
   Save;
 end;

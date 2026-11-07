@@ -85,7 +85,7 @@ type
   TAtlasInlayHintClicks = class
   private const
     /// <summary>Mehr gemerkte Flächen: alle vergessen (der Editor zeichnet sie ohnehin neu).</summary>
-    MaxHits = 500;
+    cMaxHits = 500;
   private
     FStore: TAtlasInlayHintStore;
     FMethodActions: TProc;
@@ -93,7 +93,7 @@ type
     /// <summary>Ist die Art von AHit noch an, und steht eine Marke „braucht kein Self“ noch im Speicher?</summary>
     function StillShown(const AHit: TAtlasInlayPillHit): Boolean;
     /// <summary>Gemerkte Fläche unter X, Y in der Ansicht AView, die noch gilt.</summary>
-    function HitAt(const AView: IOTAEditView; X, Y: Integer; out AHit: TAtlasInlayPillHit): Boolean;
+    function HitAt(const AView: IOTAEditView; AX, AY: Integer; out AHit: TAtlasInlayPillHit): Boolean;
     /// <summary>Sprung zum Ziel von AHit, bei einer Marke „braucht kein Self“ danach die Code-Aktionen.</summary>
     procedure Open(const AHit: TAtlasInlayPillHit);
   public
@@ -103,7 +103,7 @@ type
     procedure Remember(const AHit: TAtlasInlayPillHit);
     procedure Clear;
     /// <summary>Mausklick im Editor an X, Y; nur ein Linksklick ohne Umschalt, Strg und Alt zählt.</summary>
-    procedure Click(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+    procedure Click(AButton: TMouseButton; AShift: TShiftState; AX, AY: Integer);
   end;
 
   TAtlasEditorInlayHints = class
@@ -133,9 +133,9 @@ type
       MethodCharacter: Integer;
     end;
   private const
-    QuietMs = 300;
-    TimeoutMs = 5000;
-    RetryMs = 5000;
+    cQuietMs = 300;
+    cTimeoutMs = 5000;
+    cRetryMs = 5000;
   private
     FSession: TAtlasInlayHintsSessionFunc;
     FStore: TAtlasInlayHintStore;
@@ -214,25 +214,25 @@ uses
 /// Fläche aller Pillen, leer ohne.</summary>
 function DrawPills(ADC: HDC; const ALabels: TArray<string>; ATop, AHeight: Integer; var AX: Integer): TRect;
 var
-  Name: string;
-  Size: TSize;
-  Pill: TRect;
+  mName: string;
+  mSize: TSize;
+  mPill: TRect;
 begin
   Result := TRect.Empty;
-  for Name in ALabels do
+  for mName in ALabels do
   begin
-    GetTextExtentPoint32W(ADC, PChar(Name), Length(Name), Size);
-    Pill := TRect.Create(AX, ATop, AX + Size.cx + 8, ATop + AHeight + 2);
-    RoundRect(ADC, Pill.Left, Pill.Top, Pill.Right, Pill.Bottom, 6, 6);
-    TextOutW(ADC, Pill.Left + 4, Pill.Top + 1, PChar(Name), Length(Name));
-    AX := Pill.Right + 4;
+    GetTextExtentPoint32W(ADC, PChar(mName), Length(mName), mSize);
+    mPill := TRect.Create(AX, ATop, AX + mSize.cx + 8, ATop + AHeight + 2);
+    RoundRect(ADC, mPill.Left, mPill.Top, mPill.Right, mPill.Bottom, 6, 6);
+    TextOutW(ADC, mPill.Left + 4, mPill.Top + 1, PChar(mName), Length(mName));
+    AX := mPill.Right + 4;
     if Result.IsEmpty then
     begin
-      Result := Pill;
+      Result := mPill;
     end
     else
     begin
-      Result.Union(Pill);
+      Result.Union(mPill);
     end;
   end;
 end;
@@ -253,7 +253,7 @@ end;
 
 constructor TAtlasEditorInlayHints.Create(const ASession: TAtlasInlayHintsSessionFunc; const AMethodActions: TProc);
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
   inherited Create;
   FSession := ASession;
@@ -266,9 +266,9 @@ begin
   FEventsRef := FEvents;
   FEvents.OnEditorPaintLine := PaintLine;
   FEvents.OnEditorMouseDown := EditorMouseDown;
-  if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    FIndex := Services.AddEditorEventsNotifier(FEventsRef);
+    FIndex := mServices.AddEditorEventsNotifier(FEventsRef);
   end;
   FTimer := TTimer.Create(nil);
   FTimer.Interval := 150;
@@ -278,15 +278,15 @@ end;
 
 destructor TAtlasEditorInlayHints.Destroy;
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
   FTimer.Free;
   // Laufenden Abruf abwarten; seine Antwort verfällt.
   FRequest.Free;
   // Erst abmelden, dann freigeben (#493).
-  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    Services.RemoveEditorEventsNotifier(FIndex);
+    mServices.RemoveEditorEventsNotifier(FIndex);
   end;
   if FEvents <> nil then
   begin
@@ -303,20 +303,20 @@ end;
 
 class procedure TAtlasEditorInlayHints.Invalidate;
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    TAtlasIdeEditorRefresh.InvalidateTop(Services);
+    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
   end;
 end;
 
 function IsSource(const AFileName: string): Boolean;
 var
-  Extension: string;
+  mExtension: string;
 begin
-  Extension := LowerCase(ExtractFileExt(AFileName));
-  Result := (Extension = '.pas') or (Extension = '.dpr') or (Extension = '.dpk') or (Extension = '.inc');
+  mExtension := LowerCase(ExtractFileExt(AFileName));
+  Result := (mExtension = '.pas') or (mExtension = '.dpr') or (mExtension = '.dpk') or (mExtension = '.inc');
 end;
 
 /// <summary>Ist eine der Arten eingeschaltet (Namen, Typen, Include-Symbole, Steuerzeichen, ohne Self,
@@ -407,7 +407,7 @@ begin
       mView := TopSourceView;
     end;
     // Erst nach der Tipp-Pause; bis dahin bleiben die Marken unveränderter Zeilen stehen.
-    if (mView <> nil) and not SnapshotChanged(mView) and (GetTickCount - FChangedAt >= QuietMs) and
+    if (mView <> nil) and not SnapshotChanged(mView) and (GetTickCount - FChangedAt >= cQuietMs) and
       (GetTickCount >= FRetryAt) then
     begin
       Fetch(mView);
@@ -440,7 +440,7 @@ begin
   // Server indexiert: Er antwortet erst danach (#874). Später noch einmal.
   if mSession.Indexing(mPercent) then
   begin
-    FRetryAt := GetTickCount + RetryMs;
+    FRetryAt := GetTickCount + cRetryMs;
     Exit;
   end;
   // Im Hauptthread: Die Sitzung führt ihre Dokumentstände nicht threadsicher.
@@ -453,7 +453,7 @@ begin
   FRequest.Start(
     procedure
     begin
-      mHints := mSession.InlayHints(mFileName, mFrom, mTill, mMinLines, TimeoutMs);
+      mHints := mSession.InlayHints(mFileName, mFrom, mTill, mMinLines, cTimeoutMs);
     end,
     procedure(AOk: Boolean; const AError: string)
     begin
@@ -466,7 +466,7 @@ procedure TAtlasEditorInlayHints.Fetched(AOk: Boolean; const AFileName, AText: s
 begin
   if not AOk then
   begin
-    FRetryAt := GetTickCount + RetryMs;
+    FRetryAt := GetTickCount + cRetryMs;
     Exit;
   end;
   // Der Speicher gilt je Datei und Textstand; eine Antwort für einen älteren Stand zeichnet nichts Falsches.
@@ -498,34 +498,34 @@ end;
 
 procedure TAtlasEditorInlayHints.EnsureColors(ABack: COLORREF);
 var
-  Colors: TAtlasHintColors;
+  mColors: TAtlasHintColors;
 begin
   if FBackKnown and (FBack = ABack) then
   begin
     Exit;
   end;
   FreeColors;
-  Colors := TAtlasColors.InlayHint(TAtlasColor(ABack));
-  FTextColor := COLORREF(ColorToRGB(TColor(Colors.Text)));
-  FPen := CreatePen(PS_SOLID, 1, ColorToRGB(TColor(Colors.Pen)));
-  FBrush := CreateSolidBrush(ColorToRGB(TColor(Colors.Fill)));
+  mColors := TAtlasColors.InlayHint(TAtlasColor(ABack));
+  FTextColor := COLORREF(ColorToRGB(TColor(mColors.Text)));
+  FPen := CreatePen(PS_SOLID, 1, ColorToRGB(TColor(mColors.Pen)));
+  FBrush := CreateSolidBrush(ColorToRGB(TColor(mColors.Fill)));
   FBack := ABack;
   FBackKnown := True;
 end;
 
 procedure TAtlasEditorInlayHints.EnsureHintFont(const AEditorFont: TFont);
 var
-  Key: string;
+  mKey: string;
 begin
-  Key := AEditorFont.Name + '|' + IntToStr(AEditorFont.Size) + '|' + IntToStr(AEditorFont.PixelsPerInch);
-  if Key = FFontKey then
+  mKey := AEditorFont.Name + '|' + IntToStr(AEditorFont.Size) + '|' + IntToStr(AEditorFont.PixelsPerInch);
+  if mKey = FFontKey then
   begin
     Exit;
   end;
   FHintFont.Assign(AEditorFont);
   FHintFont.Size := Max(6, AEditorFont.Size - 1);
   FHintFont.Style := [];
-  FFontKey := Key;
+  FFontKey := mKey;
 end;
 
 type
@@ -793,7 +793,7 @@ begin
       Exit;
     end;
   end;
-  if Length(FHits) >= MaxHits then
+  if Length(FHits) >= cMaxHits then
   begin
     FHits := nil;
   end;
@@ -813,7 +813,7 @@ begin
     (mCharacter = AHit.TargetCharacter);
 end;
 
-function TAtlasInlayHintClicks.HitAt(const AView: IOTAEditView; X, Y: Integer; out AHit: TAtlasInlayPillHit): Boolean;
+function TAtlasInlayHintClicks.HitAt(const AView: IOTAEditView; AX, AY: Integer; out AHit: TAtlasInlayPillHit): Boolean;
 var
   mHit: TAtlasInlayPillHit;
 begin
@@ -821,7 +821,7 @@ begin
   begin
     // Nur, wenn die Marke noch dort steht (gleiche Datei, nicht gescrollt) und ihre Art noch an ist.
     if SameText(mHit.FileName, AView.Buffer.FileName) and (mHit.TopRow = AView.TopRow) and
-      PtInRect(mHit.Rect, Point(X, Y)) and StillShown(mHit) then
+      PtInRect(mHit.Rect, Point(AX, AY)) and StillShown(mHit) then
     begin
       AHit := mHit;
       Exit(True);
@@ -854,13 +854,13 @@ begin
     end);
 end;
 
-procedure TAtlasInlayHintClicks.Click(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+procedure TAtlasInlayHintClicks.Click(AButton: TMouseButton; AShift: TShiftState; AX, AY: Integer);
 var
   mEditors: IOTAEditorServices;
   mView: IOTAEditView;
   mHit: TAtlasInlayPillHit;
 begin
-  if (Button <> mbLeft) or (Shift * [ssShift, ssCtrl, ssAlt] <> []) or (Length(FHits) = 0) then
+  if (AButton <> mbLeft) or (AShift * [ssShift, ssCtrl, ssAlt] <> []) or (Length(FHits) = 0) then
   begin
     Exit;
   end;
@@ -869,7 +869,7 @@ begin
   begin
     mView := mEditors.TopView;
   end;
-  if (mView <> nil) and (mView.Buffer <> nil) and HitAt(mView, X, Y, mHit) then
+  if (mView <> nil) and (mView.Buffer <> nil) and HitAt(mView, AX, AY, mHit) then
   begin
     Open(mHit);
   end;

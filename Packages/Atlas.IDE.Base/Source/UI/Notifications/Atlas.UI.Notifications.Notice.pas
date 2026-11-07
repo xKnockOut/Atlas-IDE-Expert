@@ -81,14 +81,14 @@ uses
   Atlas.UI.Popup.Accessibility;
 
 const
-  Pad = 10;
-  RowGap = 4;
-  Separator = '  ·  ';
-  CloseText = '×';
+  cPad = 10;
+  cRowGap = 4;
+  cSeparator = '  ·  ';
+  cCloseText = '×';
   /// <summary>HitTest: Schließen.</summary>
-  HitClose = -2;
+  cHitClose = -2;
   /// <summary>HitTest: nichts.</summary>
-  HitNone = -1;
+  cHitNone = -1;
 
 { TAtlasNoticeWindow }
 
@@ -97,7 +97,7 @@ begin
   inherited Create(AOwner);
   GuardFeature := TAtlasFeature.Files;
   SetAccessible(UiaToolTipControlType, 'Atlas');
-  FHot := HitNone;
+  FHot := cHitNone;
   FTimer := TTimer.Create(Self);
   FTimer.Enabled := False;
   FTimer.Interval := VisibleMs;
@@ -107,12 +107,12 @@ end;
 class function TAtlasNoticeWindow.PlaceCorner(const AArea: TRect; AWidth, AHeight, AMargin: Integer;
   const AWorkArea: TRect): TRect;
 var
-  mLeft, mTop, Right, Bottom: Integer;
+  mLeft, mTop, mRight, mBottom: Integer;
 begin
-  Right := Min(AArea.Right, AWorkArea.Right) - AMargin;
-  Bottom := Min(AArea.Bottom, AWorkArea.Bottom) - AMargin;
-  mLeft := Max(Right - AWidth, AWorkArea.Left);
-  mTop := Max(Bottom - AHeight, AWorkArea.Top);
+  mRight := Min(AArea.Right, AWorkArea.Right) - AMargin;
+  mBottom := Min(AArea.Bottom, AWorkArea.Bottom) - AMargin;
+  mLeft := Max(mRight - AWidth, AWorkArea.Left);
+  mTop := Max(mBottom - AHeight, AWorkArea.Top);
   Result := Rect(mLeft, mTop, mLeft + AWidth, mTop + AHeight);
 end;
 
@@ -121,19 +121,19 @@ var
   mLine: string;
 begin
   Canvas.Font.Style := [fsBold];
-  Result := Scale(Pad) + Canvas.TextWidth(FTitle);
+  Result := Scale(cPad) + Canvas.TextWidth(FTitle);
   Canvas.Font.Style := [];
   // „×“ rechts neben der Überschrift; die endgültige Lage folgt der Breite.
-  Result := Result + Scale(Pad) * 2 + Canvas.TextWidth(CloseText);
+  Result := Result + Scale(cPad) * 2 + Canvas.TextWidth(cCloseText);
   for mLine in FText.Split([sLineBreak]) do
   begin
-    Result := Max(Result, Scale(Pad) + Canvas.TextWidth(mLine));
+    Result := Max(Result, Scale(cPad) + Canvas.TextWidth(mLine));
   end;
   if Length(FActions) > 0 then
   begin
-    Result := Max(Result, Scale(Pad) + Canvas.TextWidth(string.Join(Separator, FActions)));
+    Result := Max(Result, Scale(cPad) + Canvas.TextWidth(string.Join(cSeparator, FActions)));
   end;
-  Result := Result + Scale(Pad);
+  Result := Result + Scale(cPad);
 end;
 
 procedure TAtlasNoticeWindow.PutText(ADraw: Boolean; AX, AY: Integer; const AText: string; AColor: TAtlasColor);
@@ -154,8 +154,8 @@ begin
   begin
     if mIndex > 0 then
     begin
-      PutText(ADraw, mX, AY, Separator, Colors.Muted);
-      Inc(mX, Canvas.TextWidth(Separator));
+      PutText(ADraw, mX, AY, cSeparator, Colors.Muted);
+      Inc(mX, Canvas.TextWidth(cSeparator));
     end;
     FActionRects[mIndex] := Rect(mX, AY, mX + Canvas.TextWidth(FActions[mIndex]), AY + ATextHeight);
     if ADraw and (FHot = mIndex) then
@@ -180,31 +180,31 @@ begin
   begin
     Canvas.Brush.Style := bsClear;
   end;
-  mX := Scale(Pad);
-  mY := Scale(Pad);
+  mX := Scale(cPad);
+  mY := Scale(cPad);
   mWidth := MeasureWidth;
   Canvas.Font.Style := [fsBold];
   PutText(ADraw, mX, mY, FTitle, Colors.Text);
   Canvas.Font.Style := [];
-  FCloseRect := Rect(mWidth - Scale(Pad) - Canvas.TextWidth(CloseText), mY, mWidth - Scale(Pad), mY + mTextHeight);
+  FCloseRect := Rect(mWidth - Scale(cPad) - Canvas.TextWidth(cCloseText), mY, mWidth - Scale(cPad), mY + mTextHeight);
   mCloseColor := Colors.Muted;
-  if FHot = HitClose then
+  if FHot = cHitClose then
   begin
     mCloseColor := Colors.Text;
   end;
-  PutText(ADraw, FCloseRect.Left, FCloseRect.Top, CloseText, mCloseColor);
+  PutText(ADraw, FCloseRect.Left, FCloseRect.Top, cCloseText, mCloseColor);
   if FText <> '' then
   begin
     for mLine in FText.Split([sLineBreak]) do
     begin
-      mY := mY + mTextHeight + Scale(RowGap);
+      mY := mY + mTextHeight + Scale(cRowGap);
       PutText(ADraw, mX, mY, mLine, Colors.Muted);
     end;
   end;
   SetLength(FActionRects, Length(FActions));
   if Length(FActions) > 0 then
   begin
-    mY := mY + mTextHeight + Scale(RowGap) * 2;
+    mY := mY + mTextHeight + Scale(cRowGap) * 2;
     LayoutActions(ADraw, mX, mY, mTextHeight);
   end;
   if ADraw then
@@ -212,21 +212,21 @@ begin
     Canvas.Brush.Style := bsSolid;
   end;
   Result.cx := mWidth;
-  Result.cy := mY + mTextHeight + Scale(Pad);
+  Result.cy := mY + mTextHeight + Scale(cPad);
 end;
 
 procedure TAtlasNoticeWindow.ShowNotice(const ATitle, AText: string; const AActions: TArray<string>;
   const AArea: TRect);
 var
-  Size: TSize;
+  mSize: TSize;
 begin
   FTitle := ATitle;
   FText := AText;
   FActions := AActions;
-  FHot := HitNone;
+  FHot := cHitNone;
   HandleNeeded;
-  Size := Layout(False);
-  ShowAt(PlaceCorner(AArea, Size.cx, Size.cy, Scale(Margin), WorkAreaAt(AArea.BottomRight)));
+  mSize := Layout(False);
+  ShowAt(PlaceCorner(AArea, mSize.cx, mSize.cy, Scale(Margin), WorkAreaAt(AArea.BottomRight)));
   Announce(Trim(ATitle + ' ' + AText));
   FTimer.Enabled := False;
   FTimer.Interval := VisibleMs;
@@ -236,7 +236,7 @@ end;
 procedure TAtlasNoticeWindow.Dismiss;
 begin
   FTimer.Enabled := False;
-  FHot := HitNone;
+  FHot := cHitNone;
   HidePopup;
 end;
 
@@ -269,18 +269,18 @@ end;
 
 function TAtlasNoticeWindow.HitTest(const APoint: TPoint): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Result := HitNone;
+  Result := cHitNone;
   if not FCloseRect.IsEmpty and PtInRect(FCloseRect, APoint) then
   begin
-    Exit(HitClose);
+    Exit(cHitClose);
   end;
-  for Index := 0 to High(FActionRects) do
+  for mIndex := 0 to High(FActionRects) do
   begin
-    if PtInRect(FActionRects[Index], APoint) then
+    if PtInRect(FActionRects[mIndex], APoint) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
 end;
@@ -311,31 +311,31 @@ end;
 
 procedure TAtlasNoticeWindow.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
-  Hit: Integer;
+  mHit: Integer;
 begin
   inherited;
   if Button <> mbLeft then
   begin
     Exit;
   end;
-  Hit := HitTest(Point(X, Y));
-  if Hit = HitClose then
+  mHit := HitTest(Point(X, Y));
+  if mHit = cHitClose then
   begin
     Dismiss;
   end
-  else if Hit >= 0 then
+  else if mHit >= 0 then
   begin
-    ClickAction(Hit);
+    ClickAction(mHit);
   end;
 end;
 
 procedure TAtlasNoticeWindow.MouseMove(Shift: TShiftState; X, Y: Integer);
 var
-  Hit: Integer;
+  mHit: Integer;
 begin
   inherited;
-  Hit := HitTest(Point(X, Y));
-  if Hit = HitNone then
+  mHit := HitTest(Point(X, Y));
+  if mHit = cHitNone then
   begin
     Cursor := crDefault;
   end
@@ -343,9 +343,9 @@ begin
   begin
     Cursor := crHandPoint;
   end;
-  if Hit <> FHot then
+  if mHit <> FHot then
   begin
-    FHot := Hit;
+    FHot := mHit;
     Invalidate;
   end;
 end;
@@ -353,9 +353,9 @@ end;
 procedure TAtlasNoticeWindow.CMMouseLeave(var Message: TMessage);
 begin
   inherited;
-  if FHot <> HitNone then
+  if FHot <> cHitNone then
   begin
-    FHot := HitNone;
+    FHot := cHitNone;
     Invalidate;
   end;
 end;

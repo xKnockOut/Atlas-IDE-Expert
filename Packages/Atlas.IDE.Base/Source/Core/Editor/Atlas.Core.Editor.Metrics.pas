@@ -237,13 +237,13 @@ end;
 
 function TAtlasFileMetrics.IndexAt(ALine: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(Methods) do
+  for mIndex := 0 to High(Methods) do
   begin
-    if Methods[Index].Line = ALine then
+    if Methods[mIndex].Line = ALine then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -251,13 +251,13 @@ end;
 
 function TAtlasFileMetrics.StructureAt(ALine: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(Structures) do
+  for mIndex := 0 to High(Structures) do
   begin
-    if Structures[Index].Line = ALine then
+    if Structures[mIndex].Line = ALine then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -265,14 +265,14 @@ end;
 
 function TAtlasFileMetrics.StructuresAt(ALine: Integer): TArray<TAtlasStructureItem>;
 var
-  Item: TAtlasStructureItem;
+  mItem: TAtlasStructureItem;
 begin
   Result := nil;
-  for Item in Structures do
+  for mItem in Structures do
   begin
-    if Item.Line = ALine then
+    if mItem.Line = ALine then
     begin
-      Result := Result + [Item];
+      Result := Result + [mItem];
     end;
   end;
 end;
@@ -324,38 +324,38 @@ end;
 
 class function TAtlasMetricsReportFile.FileName(const AFolder, AProject: string): string;
 var
-  Name: string;
+  mName: string;
 begin
-  Name := ChangeFileExt(ExtractFileName(AProject), '');
-  if Name = '' then
+  mName := ChangeFileExt(ExtractFileName(AProject), '');
+  if mName = '' then
   begin
-    Name := 'Metriken';
+    mName := 'Metriken';
   end
   else
   begin
-    Name := 'Metriken-' + Name;
+    mName := 'Metriken-' + mName;
   end;
-  Result := IncludeTrailingPathDelimiter(AFolder) + Name + '.md';
+  Result := IncludeTrailingPathDelimiter(AFolder) + mName + '.md';
 end;
 
 class function TAtlasMetricsReportFile.MarkdownFrom(const AJson: string; out AText: string): Boolean;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   AText := '';
   try
-    Value := TJSONObject.ParseJSONValue(AJson);
+    mValue := TJSONObject.ParseJSONValue(AJson);
   except
     on Exception do
-      Value := nil;
+      mValue := nil;
   end;
   try
-    if Value is TJSONString then
+    if mValue is TJSONString then
     begin
-      AText := TJSONString(Value).Value;
+      AText := TJSONString(mValue).Value;
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
   Result := Trim(AText) <> '';
 end;

@@ -103,17 +103,17 @@ end;
 
 function TAtlasSelectionMatchList.OnLine(ALine: Integer): TArray<TAtlasSelectionMatch>;
 var
-  Match: TAtlasSelectionMatch;
+  mMatch: TAtlasSelectionMatch;
 begin
   Result := nil;
   // Matches ist nach Zeile und Zeichen sortiert.
-  for Match in Matches do
+  for mMatch in Matches do
   begin
-    if Match.Line = ALine then
+    if mMatch.Line = ALine then
     begin
-      Result := Result + [Match];
+      Result := Result + [mMatch];
     end
-    else if Match.Line > ALine then
+    else if mMatch.Line > ALine then
     begin
       Break;
     end;
@@ -145,30 +145,30 @@ end;
 /// ALine.</summary>
 function Positions(const ALine, ANeedle: string; const AOptions: TAtlasSelectionMatchOptions): TArray<Integer>;
 var
-  Haystack: string;
-  Index: Integer;
+  mHaystack: string;
+  mIndex: Integer;
 begin
   Result := nil;
   if (ANeedle = '') or (Length(ALine) < Length(ANeedle)) then
   begin
     Exit;
   end;
-  Haystack := ALine;
+  mHaystack := ALine;
   if not AOptions.CaseSensitive then
   begin
-    Haystack := AnsiUpperCase(ALine);
+    mHaystack := AnsiUpperCase(ALine);
   end;
-  Index := Pos(ANeedle, Haystack);
-  while Index > 0 do
+  mIndex := Pos(ANeedle, mHaystack);
+  while mIndex > 0 do
   begin
-    if Bounded(ALine, Index, Length(ANeedle), AOptions.WholeWord) then
+    if Bounded(ALine, mIndex, Length(ANeedle), AOptions.WholeWord) then
     begin
-      Result := Result + [Index];
-      Index := Pos(ANeedle, Haystack, Index + Length(ANeedle));
+      Result := Result + [mIndex];
+      mIndex := Pos(ANeedle, mHaystack, mIndex + Length(ANeedle));
     end
     else
     begin
-      Index := Pos(ANeedle, Haystack, Index + 1);
+      mIndex := Pos(ANeedle, mHaystack, mIndex + 1);
     end;
   end;
 end;
@@ -204,29 +204,29 @@ end;
 class function TAtlasSelectionMatches.Find(const ALines: TArray<string>; const ATerm: string;
   const AOptions: TAtlasSelectionMatchOptions; AFirstLine, ALastLine: Integer): TAtlasSelectionMatchList;
 var
-  Needle: string;
-  Line, Index: Integer;
-  Match: TAtlasSelectionMatch;
+  mNeedle: string;
+  mLine, mIndex: Integer;
+  mMatch: TAtlasSelectionMatch;
 begin
   Result := Default(TAtlasSelectionMatchList);
   if ATerm = '' then
   begin
     Exit;
   end;
-  Needle := NeedleOf(ATerm, AOptions);
-  for Line := Max(0, AFirstLine) to Min(High(ALines), ALastLine) do
+  mNeedle := NeedleOf(ATerm, AOptions);
+  for mLine := Max(0, AFirstLine) to Min(High(ALines), ALastLine) do
   begin
-    for Index in Positions(ALines[Line], Needle, AOptions) do
+    for mIndex in Positions(ALines[mLine], mNeedle, AOptions) do
     begin
       if Result.Count >= Max(1, AOptions.MaxMatches) then
       begin
         Result.Truncated := True;
         Exit;
       end;
-      Match.Line := Line;
-      Match.Character := Index - 1;
-      Match.Length := Length(ATerm);
-      Result.Matches := Result.Matches + [Match];
+      mMatch.Line := mLine;
+      mMatch.Character := mIndex - 1;
+      mMatch.Length := Length(ATerm);
+      Result.Matches := Result.Matches + [mMatch];
     end;
   end;
 end;
@@ -303,14 +303,14 @@ end;
 
 class function TAtlasSelectionMatches.Lines(const AList: TAtlasSelectionMatchList): TArray<Integer>;
 var
-  Match: TAtlasSelectionMatch;
+  mMatch: TAtlasSelectionMatch;
 begin
   Result := nil;
-  for Match in AList.Matches do
+  for mMatch in AList.Matches do
   begin
-    if (Length(Result) = 0) or (Result[High(Result)] <> Match.Line) then
+    if (Length(Result) = 0) or (Result[High(Result)] <> mMatch.Line) then
     begin
-      Result := Result + [Match.Line];
+      Result := Result + [mMatch.Line];
     end;
   end;
 end;

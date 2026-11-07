@@ -812,7 +812,7 @@ uses
   System.SysUtils;
 
 const
-  Texts: array[TAtlasLanguage, TAtlasTextId] of string = (
+  cTexts: array[TAtlasLanguage, TAtlasTextId] of string = (
     ('Enter übernehmen · Esc schließen', '%d von %d', 'Keine Treffer für „%s“', 'Rücktaste erweitert die Suche',
      'Keine Vorschläge an dieser Stelle', 'Esc schließt', 'Keine Details zu diesem Eintrag', 'Überladung',
      'Veraltet: %s', 'Veraltet.', 'Geerbt von %s', 'Geerbt', 'optional, Standard %s',
@@ -4452,12 +4452,12 @@ end;
 
 class function TAtlasStrings.Text(AId: TAtlasTextId): string;
 begin
-  Result := Texts[TAtlasTextLanguage.Current, AId];
+  Result := cTexts[TAtlasTextLanguage.Current, AId];
 end;
 
 class function TAtlasStrings.Fmt(AId: TAtlasTextId; const AArgs: array of const): string;
 begin
-  Result := Format(Texts[TAtlasTextLanguage.Current, AId], AArgs);
+  Result := Format(cTexts[TAtlasTextLanguage.Current, AId], AArgs);
 end;
 
 class function TAtlasStrings.FormatKind(AType: Char): string;
@@ -4568,73 +4568,73 @@ end;
 
 class function TAtlasStrings.TypeArgHeading(const AParam, AConstraint, AHint: string): string;
 var
-  Explanation: string;
+  mExplanation: string;
 begin
   if AHint = 'classes' then
   begin
-    Explanation := Text(TAtlasTextId.TypeArgOnlyClasses);
+    mExplanation := Text(TAtlasTextId.TypeArgOnlyClasses);
   end
   else if AHint = 'values' then
   begin
-    Explanation := Text(TAtlasTextId.TypeArgOnlyValues);
+    mExplanation := Text(TAtlasTextId.TypeArgOnlyValues);
   end
   else if AHint = 'constructible' then
   begin
-    Explanation := Text(TAtlasTextId.TypeArgOnlyConstructible);
+    mExplanation := Text(TAtlasTextId.TypeArgOnlyConstructible);
   end
   else if AHint.StartsWith('implements:') then
   begin
-    Explanation := Fmt(TAtlasTextId.TypeArgImplements, [Copy(AHint, Length('implements:') + 1, MaxInt)]);
+    mExplanation := Fmt(TAtlasTextId.TypeArgImplements, [Copy(AHint, Length('implements:') + 1, MaxInt)]);
   end
   else if AHint.StartsWith('descends:') then
   begin
-    Explanation := Fmt(TAtlasTextId.TypeArgDescends, [Copy(AHint, Length('descends:') + 1, MaxInt)]);
+    mExplanation := Fmt(TAtlasTextId.TypeArgDescends, [Copy(AHint, Length('descends:') + 1, MaxInt)]);
   end
   else
   begin
-    Explanation := '';
+    mExplanation := '';
   end;
-  if (AConstraint = '') or (Explanation = '') then
+  if (AConstraint = '') or (mExplanation = '') then
   begin
     Exit(Fmt(TAtlasTextId.TypeArgHeaderPlain, [AParam]));
   end;
-  Result := Fmt(TAtlasTextId.TypeArgHeader, [AParam, AConstraint, Explanation]);
+  Result := Fmt(TAtlasTextId.TypeArgHeader, [AParam, AConstraint, mExplanation]);
 end;
 
 class function TAtlasStrings.TypeArgHidden(const AKinds: string): string;
 var
-  Kind: string;
-  Names: TArray<string>;
+  mKind: string;
+  mNames: TArray<string>;
 begin
-  Names := nil;
-  for Kind in AKinds.Split([',']) do
+  mNames := nil;
+  for mKind in AKinds.Split([',']) do
   begin
-    if Kind = 'classes' then
+    if mKind = 'classes' then
     begin
-      Names := Names + [Text(TAtlasTextId.TypeArgKindClasses)];
+      mNames := mNames + [Text(TAtlasTextId.TypeArgKindClasses)];
     end
-    else if Kind = 'records' then
+    else if mKind = 'records' then
     begin
-      Names := Names + [Text(TAtlasTextId.TypeArgKindRecords)];
+      mNames := mNames + [Text(TAtlasTextId.TypeArgKindRecords)];
     end
-    else if Kind = 'interfaces' then
+    else if mKind = 'interfaces' then
     begin
-      Names := Names + [Text(TAtlasTextId.TypeArgKindInterfaces)];
+      mNames := mNames + [Text(TAtlasTextId.TypeArgKindInterfaces)];
     end
-    else if Kind = 'enums' then
+    else if mKind = 'enums' then
     begin
-      Names := Names + [Text(TAtlasTextId.TypeArgKindEnums)];
+      mNames := mNames + [Text(TAtlasTextId.TypeArgKindEnums)];
     end
-    else if Kind = 'basic' then
+    else if mKind = 'basic' then
     begin
-      Names := Names + [Text(TAtlasTextId.TypeArgKindBasic)];
+      mNames := mNames + [Text(TAtlasTextId.TypeArgKindBasic)];
     end;
   end;
-  if Length(Names) = 0 then
+  if Length(mNames) = 0 then
   begin
     Exit('');
   end;
-  Result := Fmt(TAtlasTextId.TypeArgHiddenFooter, [string.Join(', ', Names)]);
+  Result := Fmt(TAtlasTextId.TypeArgHiddenFooter, [string.Join(', ', mNames)]);
 end;
 
 class function TAtlasStrings.UsesHidden(const AUnits: TArray<string>): string;
@@ -4673,73 +4673,73 @@ end;
 
 class function TAtlasStrings.UsesCycle(const AChain: string): string;
 var
-  Parts: TArray<string>;
+  mParts: TArray<string>;
 begin
-  Parts := AChain.Split([' → ']);
-  if Length(Parts) < 2 then
+  mParts := AChain.Split([' → ']);
+  if Length(mParts) < 2 then
   begin
     Exit('');
   end;
-  if Length(Parts) = 2 then
+  if Length(mParts) = 2 then
   begin
-    Exit(Fmt(TAtlasTextId.UsesCycleDirect, [Parts[0]]));
+    Exit(Fmt(TAtlasTextId.UsesCycleDirect, [mParts[0]]));
   end;
-  Result := Fmt(TAtlasTextId.UsesCycleChain, [Parts[0], string.Join(', ', Copy(Parts, 1, Length(Parts) - 2))]);
+  Result := Fmt(TAtlasTextId.UsesCycleChain, [mParts[0], string.Join(', ', Copy(mParts, 1, Length(mParts) - 2))]);
 end;
 
 class function TAtlasStrings.BuildCounts(AWarnings, AHints: Integer): string;
 var
-  Warnings, Hints: string;
+  mWarnings, mHints: string;
 begin
-  Warnings := '';
-  Hints := '';
+  mWarnings := '';
+  mHints := '';
   if AWarnings = 1 then
   begin
-    Warnings := Text(TAtlasTextId.BuildCountWarning);
+    mWarnings := Text(TAtlasTextId.BuildCountWarning);
   end
   else if AWarnings > 1 then
   begin
-    Warnings := Fmt(TAtlasTextId.BuildCountWarnings, [AWarnings]);
+    mWarnings := Fmt(TAtlasTextId.BuildCountWarnings, [AWarnings]);
   end;
   if AHints = 1 then
   begin
-    Hints := Text(TAtlasTextId.BuildCountHint);
+    mHints := Text(TAtlasTextId.BuildCountHint);
   end
   else if AHints > 1 then
   begin
-    Hints := Fmt(TAtlasTextId.BuildCountHints, [AHints]);
+    mHints := Fmt(TAtlasTextId.BuildCountHints, [AHints]);
   end;
-  if (Warnings <> '') and (Hints <> '') then
+  if (mWarnings <> '') and (mHints <> '') then
   begin
-    Result := Fmt(TAtlasTextId.BuildCountJoin, [Warnings, Hints]);
+    Result := Fmt(TAtlasTextId.BuildCountJoin, [mWarnings, mHints]);
   end
   else
   begin
-    Result := Warnings + Hints;
+    Result := mWarnings + mHints;
   end;
 end;
 
 class function TAtlasStrings.Confidence(const AName: string): string;
 var
-  Level: TAtlasTextId;
+  mLevel: TAtlasTextId;
 begin
   if SameText(AName, 'high') then
   begin
-    Level := TAtlasTextId.ConfidenceHigh;
+    mLevel := TAtlasTextId.ConfidenceHigh;
   end
   else if SameText(AName, 'medium') then
   begin
-    Level := TAtlasTextId.ConfidenceMedium;
+    mLevel := TAtlasTextId.ConfidenceMedium;
   end
   else if SameText(AName, 'low') then
   begin
-    Level := TAtlasTextId.ConfidenceLow;
+    mLevel := TAtlasTextId.ConfidenceLow;
   end
   else
   begin
     Exit('');
   end;
-  Result := Fmt(TAtlasTextId.ProblemsConfidence, [Text(Level)]);
+  Result := Fmt(TAtlasTextId.ProblemsConfidence, [Text(mLevel)]);
 end;
 
 initialization

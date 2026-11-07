@@ -32,27 +32,27 @@ uses
   System.SysUtils;
 
 const
-  Names: array[TAtlasOverviewKind] of string = ('diagnostics', 'search', 'changes', 'breakpoints', 'bookmarks',
+  cNames: array[TAtlasOverviewKind] of string = ('diagnostics', 'search', 'changes', 'breakpoints', 'bookmarks',
     'cursor');
 
 class function TAtlasOverviewKindNames.Name(AKind: TAtlasOverviewKind): string;
 begin
-  Result := Names[AKind];
+  Result := cNames[AKind];
 end;
 
 class function TAtlasOverviewKindNames.Parse(const AText: string): TAtlasOverviewKinds;
 var
-  Part: string;
-  Kind: TAtlasOverviewKind;
+  mPart: string;
+  mKind: TAtlasOverviewKind;
 begin
   Result := [];
-  for Part in AText.Split([',', ';', ' ']) do
+  for mPart in AText.Split([',', ';', ' ']) do
   begin
-    for Kind := Low(TAtlasOverviewKind) to High(TAtlasOverviewKind) do
+    for mKind := Low(TAtlasOverviewKind) to High(TAtlasOverviewKind) do
     begin
-      if SameText(Trim(Part), Names[Kind]) then
+      if SameText(Trim(mPart), cNames[mKind]) then
       begin
-        Include(Result, Kind);
+        Include(Result, mKind);
       end;
     end;
   end;
@@ -60,18 +60,18 @@ end;
 
 class function TAtlasOverviewKindNames.Text(AKinds: TAtlasOverviewKinds): string;
 var
-  Kind: TAtlasOverviewKind;
+  mKind: TAtlasOverviewKind;
 begin
   Result := '';
-  for Kind := Low(TAtlasOverviewKind) to High(TAtlasOverviewKind) do
+  for mKind := Low(TAtlasOverviewKind) to High(TAtlasOverviewKind) do
   begin
-    if Kind in AKinds then
+    if mKind in AKinds then
     begin
       if Result <> '' then
       begin
         Result := Result + ',';
       end;
-      Result := Result + Names[Kind];
+      Result := Result + cNames[mKind];
     end;
   end;
 end;

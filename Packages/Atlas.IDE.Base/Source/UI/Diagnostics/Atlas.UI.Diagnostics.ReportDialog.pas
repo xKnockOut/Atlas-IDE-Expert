@@ -132,46 +132,46 @@ uses
 /// <summary>Eingebautes Fenster für den Inhalt einer Datei.</summary>
 procedure ShowTextWindow(const AName, AText: string);
 var
-  Viewer: TForm;
-  Memo: TMemo;
-  Bottom: TPanel;
-  Button: TButton;
+  mViewer: TForm;
+  mMemo: TMemo;
+  mBottom: TPanel;
+  mButton: TButton;
 begin
-  Viewer := TForm.CreateNew(nil);
+  mViewer := TForm.CreateNew(nil);
   try
-    Viewer.Caption := TAtlasStrings.Fmt(TAtlasTextId.ReportViewerTitle, [AName]);
-    Viewer.BorderStyle := bsSizeable;
-    Viewer.Position := poMainFormCenter;
-    Viewer.Width := 900;
-    Viewer.Height := 600;
-    Bottom := TPanel.Create(Viewer);
-    Bottom.Parent := Viewer;
-    Bottom.Align := alBottom;
-    Bottom.Height := 44;
-    Bottom.BevelOuter := bvNone;
-    Button := TButton.Create(Viewer);
-    Button.Parent := Bottom;
-    Button.Width := 100;
-    Button.Align := alRight;
-    Button.AlignWithMargins := True;
-    Button.Margins.SetBounds(8, 8, 8, 8);
-    Button.Caption := TAtlasStrings.Text(TAtlasTextId.ReportClose);
-    Button.Cancel := True;
-    Button.Default := True;
-    Button.ModalResult := mrOk;
-    Memo := TMemo.Create(Viewer);
-    Memo.Parent := Viewer;
-    Memo.Align := alClient;
-    Memo.AlignWithMargins := True;
-    Memo.ReadOnly := True;
-    Memo.ScrollBars := ssBoth;
-    Memo.WordWrap := False;
-    Memo.Font.Name := 'Consolas';
-    Memo.Font.Size := 9;
-    Memo.Lines.Text := AText;
-    Viewer.ShowModal;
+    mViewer.Caption := TAtlasStrings.Fmt(TAtlasTextId.ReportViewerTitle, [AName]);
+    mViewer.BorderStyle := bsSizeable;
+    mViewer.Position := poMainFormCenter;
+    mViewer.Width := 900;
+    mViewer.Height := 600;
+    mBottom := TPanel.Create(mViewer);
+    mBottom.Parent := mViewer;
+    mBottom.Align := alBottom;
+    mBottom.Height := 44;
+    mBottom.BevelOuter := bvNone;
+    mButton := TButton.Create(mViewer);
+    mButton.Parent := mBottom;
+    mButton.Width := 100;
+    mButton.Align := alRight;
+    mButton.AlignWithMargins := True;
+    mButton.Margins.SetBounds(8, 8, 8, 8);
+    mButton.Caption := TAtlasStrings.Text(TAtlasTextId.ReportClose);
+    mButton.Cancel := True;
+    mButton.Default := True;
+    mButton.ModalResult := mrOk;
+    mMemo := TMemo.Create(mViewer);
+    mMemo.Parent := mViewer;
+    mMemo.Align := alClient;
+    mMemo.AlignWithMargins := True;
+    mMemo.ReadOnly := True;
+    mMemo.ScrollBars := ssBoth;
+    mMemo.WordWrap := False;
+    mMemo.Font.Name := 'Consolas';
+    mMemo.Font.Size := 9;
+    mMemo.Lines.Text := AText;
+    mViewer.ShowModal;
   finally
-    Viewer.Free;
+    mViewer.Free;
   end;
 end;
 
@@ -345,14 +345,14 @@ end;
 
 function TAtlasReportDialog.Parts: TAtlasPackageParts;
 var
-  Part: TAtlasPackagePart;
+  mPart: TAtlasPackagePart;
 begin
   Result := [];
-  for Part := Low(TAtlasPackagePart) to High(TAtlasPackagePart) do
+  for mPart := Low(TAtlasPackagePart) to High(TAtlasPackagePart) do
   begin
-    if FParts.Checks[Part].Checked and FParts.Checks[Part].Enabled then
+    if FParts.Checks[mPart].Checked and FParts.Checks[mPart].Enabled then
     begin
-      Include(Result, Part);
+      Include(Result, mPart);
     end;
   end;
 end;
@@ -375,8 +375,8 @@ end;
 
 procedure TAtlasReportDialog.Reload;
 var
-  Item: TAtlasPackageFile;
-  Row: TListItem;
+  mItem: TAtlasPackageFile;
+  mRow: TListItem;
 begin
   if FParts.List = nil then
   begin
@@ -389,11 +389,11 @@ begin
   FParts.List.Items.BeginUpdate;
   try
     FParts.List.Items.Clear;
-    for Item in FFiles do
+    for mItem in FFiles do
     begin
-      Row := FParts.List.Items.Add;
-      Row.Caption := Item.Name;
-      Row.SubItems.Add(SizeText(Item.Size));
+      mRow := FParts.List.Items.Add;
+      mRow.Caption := mItem.Name;
+      mRow.SubItems.Add(SizeText(mItem.Size));
     end;
   finally
     FParts.List.Items.EndUpdate;
@@ -423,17 +423,17 @@ end;
 
 procedure TAtlasReportDialog.FootResize(Sender: TObject);
 var
-  Right: Integer;
+  mRight: Integer;
 begin
-  Right := (Sender as TPanel).ClientWidth - Gap;
-  FParts.ViewButton.SetBounds(Right - 110, 4, 110, 28);
+  mRight := (Sender as TPanel).ClientWidth - Gap;
+  FParts.ViewButton.SetBounds(mRight - 110, 4, 110, 28);
   FParts.Summary.SetBounds(Gap, 10, Max(0, FParts.ViewButton.Left - 2 * Gap), 17);
-  FParts.FolderButton.SetBounds(Right - 110, 38, 110, 28);
+  FParts.FolderButton.SetBounds(mRight - 110, 38, 110, 28);
   FParts.FolderLabel.SetBounds(Gap, 44, Max(0, FParts.FolderButton.Left - 2 * Gap), 17);
-  FParts.Status.SetBounds(Gap, 74, Max(0, Right - Gap), 17);
+  FParts.Status.SetBounds(Gap, 74, Max(0, mRight - Gap), 17);
   FParts.ZipButton.SetBounds(Gap, 98, 130, 28);
   FParts.IssueButton.SetBounds(2 * Gap + 130, 98, 160, 28);
-  FParts.CloseButton.SetBounds(Right - 100, 98, 100, 28);
+  FParts.CloseButton.SetBounds(mRight - 100, 98, 100, 28);
 end;
 
 procedure TAtlasReportDialog.ListSelectItem(Sender: TObject; Item: TListItem; Selected: Boolean);
@@ -469,39 +469,39 @@ end;
 
 procedure TAtlasReportDialog.FolderClick(Sender: TObject);
 var
-  Picked: string;
-  Dialog: TFileOpenDialog;
+  mPicked: string;
+  mDialog: TFileOpenDialog;
 begin
-  Picked := '';
+  mPicked := '';
   if Assigned(FActions.PickFolder) then
   begin
-    Picked := FActions.PickFolder(FFolder);
+    mPicked := FActions.PickFolder(FFolder);
   end
   else
   begin
-    Dialog := TFileOpenDialog.Create(Self);
+    mDialog := TFileOpenDialog.Create(Self);
     try
-      Dialog.Options := Dialog.Options + [fdoPickFolders, fdoPathMustExist];
-      Dialog.DefaultFolder := FFolder;
-      if Dialog.Execute then
+      mDialog.Options := mDialog.Options + [fdoPickFolders, fdoPathMustExist];
+      mDialog.DefaultFolder := FFolder;
+      if mDialog.Execute then
       begin
-        Picked := Dialog.FileName;
+        mPicked := mDialog.FileName;
       end;
     finally
-      Dialog.Free;
+      mDialog.Free;
     end;
   end;
-  if Picked = '' then
+  if mPicked = '' then
   begin
     Exit;
   end;
-  FFolder := Picked;
+  FFolder := mPicked;
   ShowFolder;
 end;
 
 function TAtlasReportDialog.CreateZip: Boolean;
 var
-  Target: string;
+  mTarget: string;
 begin
   Result := False;
   if Length(FFiles) = 0 then
@@ -510,12 +510,12 @@ begin
   end;
   try
     ForceDirectories(FFolder);
-    Target := TAtlasDiagnosticPackage.ZipTarget(FFolder, Now,
+    mTarget := TAtlasDiagnosticPackage.ZipTarget(FFolder, Now,
       function(AFileName: string): Boolean
       begin
         Result := FileExists(AFileName);
       end);
-    TAtlasDiagnosticPackage.WriteZip(FFiles, Target);
+    TAtlasDiagnosticPackage.WriteZip(FFiles, mTarget);
   except
     on E: Exception do
     begin
@@ -523,11 +523,11 @@ begin
       Exit;
     end;
   end;
-  FZipFile := Target;
-  FParts.Status.Caption := TAtlasStrings.Fmt(TAtlasTextId.ReportZipDone, [ExtractFileName(Target)]);
+  FZipFile := mTarget;
+  FParts.Status.Caption := TAtlasStrings.Fmt(TAtlasTextId.ReportZipDone, [ExtractFileName(mTarget)]);
   if Assigned(FActions.ShowFile) then
   begin
-    FActions.ShowFile(Target);
+    FActions.ShowFile(mTarget);
   end;
   Result := True;
 end;
@@ -540,13 +540,13 @@ end;
 
 procedure TAtlasReportDialog.OpenIssue;
 var
-  Url: string;
+  mUrl: string;
 begin
-  Url := FReportUrl;
+  mUrl := FReportUrl;
   // Nur Webadressen an den Browser; sonst die Issue-Seite des Atlas-Repositorys.
-  if not TAtlasDiagnosticPackage.IsWebUrl(Url) then
+  if not TAtlasDiagnosticPackage.IsWebUrl(mUrl) then
   begin
-    Url := TAtlasPluginSettings.DefaultHelpReportUrl;
+    mUrl := TAtlasPluginSettings.DefaultHelpReportUrl;
   end;
   if Assigned(FActions.CopyText) then
   begin
@@ -554,7 +554,7 @@ begin
   end;
   if Assigned(FActions.OpenUrl) then
   begin
-    FActions.OpenUrl(Url);
+    FActions.OpenUrl(mUrl);
   end;
   FParts.Status.Caption := TAtlasStrings.Text(TAtlasTextId.ReportIssueDone);
 end;
@@ -572,13 +572,13 @@ end;
 class procedure TAtlasReportDialog.Execute(const AInput: TAtlasPackageInput; const AFolder, AReportUrl: string;
   const AActions: TAtlasReportActions);
 var
-  Dialog: TAtlasReportDialog;
+  mDialog: TAtlasReportDialog;
 begin
-  Dialog := TAtlasReportDialog.CreateDialog(nil, AInput, AFolder, AReportUrl, AActions);
+  mDialog := TAtlasReportDialog.CreateDialog(nil, AInput, AFolder, AReportUrl, AActions);
   try
-    Dialog.ShowModal;
+    mDialog.ShowModal;
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 

@@ -36,22 +36,22 @@ uses
   Atlas.IDE.Editor.NamedRefactoring;
 
 const
-  ApplyCommand = 'atlas.server.anonymousMethod';
+  cApplyCommand = 'atlas.server.anonymousMethod';
 
 class procedure TAtlasIdeAnonymousMethod.Execute(ASession: TLspSession; const AArgumentsJson: string;
   APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
 var
-  Texts: TAtlasNamedRefactoringTexts;
+  mTexts: TAtlasNamedRefactoringTexts;
 begin
-  Texts.Title := TAtlasTextId.AnonymousMethodTitle;
-  Texts.Prompt := TAtlasTextId.AnonymousMethodPrompt;
-  Texts.Failed := TAtlasTextId.AnonymousMethodFailed;
-  Texts.Nothing := TAtlasTextId.AnonymousMethodNothing;
-  Texts.PreviewHint := TAtlasTextId.AnonymousMethodPreviewHint;
-  Texts.Apply := TAtlasTextId.AnonymousMethodApply;
-  Texts.Done := TAtlasTextId.AnonymousMethodDone;
-  Texts.Warning := TAtlasTextId.AnonymousMethodWarning;
-  TAtlasIdeNamedRefactoring.Execute(ASession, AArgumentsJson, ApplyCommand, Texts, APolicy, AMessage);
+  mTexts.Title := TAtlasTextId.AnonymousMethodTitle;
+  mTexts.Prompt := TAtlasTextId.AnonymousMethodPrompt;
+  mTexts.Failed := TAtlasTextId.AnonymousMethodFailed;
+  mTexts.Nothing := TAtlasTextId.AnonymousMethodNothing;
+  mTexts.PreviewHint := TAtlasTextId.AnonymousMethodPreviewHint;
+  mTexts.Apply := TAtlasTextId.AnonymousMethodApply;
+  mTexts.Done := TAtlasTextId.AnonymousMethodDone;
+  mTexts.Warning := TAtlasTextId.AnonymousMethodWarning;
+  TAtlasIdeNamedRefactoring.Execute(ASession, AArgumentsJson, cApplyCommand, mTexts, APolicy, AMessage);
 end;
 
 end.

@@ -49,21 +49,21 @@ uses
 
 const
   // Wie TDiagnosticLogFolder.cFilePattern im Server; die Map-Dateien heißen diag-map-*.txt.
-  LogPattern = 'diag-*.log';
+  cLogPattern = 'diag-*.log';
 
 function ReadShared(const AFileName: string): TBytes;
 var
-  Stream: TFileStream;
+  mStream: TFileStream;
 begin
-  Stream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
+  mStream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
   try
-    SetLength(Result, Stream.Size);
+    SetLength(Result, mStream.Size);
     if Length(Result) > 0 then
     begin
-      Stream.ReadBuffer(Result, Length(Result));
+      mStream.ReadBuffer(Result, Length(Result));
     end;
   finally
-    Stream.Free;
+    mStream.Free;
   end;
 end;
 
@@ -77,9 +77,9 @@ end;
 
 class function TAtlasDiagnosticExport.Files(const AFolder: string; ADays: Integer; ANow: TDateTime): TArray<string>;
 var
-  FileName: string;
-  Limit: TDateTime;
-  List: TList<string>;
+  mFileName: string;
+  mLimit: TDateTime;
+  mList: TList<string>;
 begin
   Result := nil;
   if (AFolder = '') or not TDirectory.Exists(AFolder) then
@@ -90,20 +90,20 @@ begin
   begin
     ADays := DefaultDays;
   end;
-  Limit := IncDay(ANow, -ADays);
-  List := TList<string>.Create;
+  mLimit := IncDay(ANow, -ADays);
+  mList := TList<string>.Create;
   try
-    for FileName in TDirectory.GetFiles(AFolder, LogPattern) do
+    for mFileName in TDirectory.GetFiles(AFolder, cLogPattern) do
     begin
-      if not ExtractFileName(FileName).StartsWith('diag-map-', True) and (TFile.GetLastWriteTime(FileName) >= Limit) then
+      if not ExtractFileName(mFileName).StartsWith('diag-map-', True) and (TFile.GetLastWriteTime(mFileName) >= mLimit) then
       begin
-        List.Add(FileName);
+        mList.Add(mFileName);
       end;
     end;
-    List.Sort;
-    Result := List.ToArray;
+    mList.Sort;
+    Result := mList.ToArray;
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 
@@ -114,40 +114,40 @@ end;
 
 class function TAtlasDiagnosticExport.Preview(const AFiles: TArray<string>; AMaxLines: Integer): string;
 var
-  Builder: TStringBuilder;
-  FileName, Line: string;
-  Bytes: TBytes;
-  Shown, Total: Integer;
-  Lines: TArray<string>;
+  mBuilder: TStringBuilder;
+  mFileName, mLine: string;
+  mBytes: TBytes;
+  mShown, mTotal: Integer;
+  mLines: TArray<string>;
 begin
-  Builder := TStringBuilder.Create;
+  mBuilder := TStringBuilder.Create;
   try
-    Shown := 0;
-    Total := 0;
-    for FileName in AFiles do
+    mShown := 0;
+    mTotal := 0;
+    for mFileName in AFiles do
     begin
-      Bytes := ReadShared(FileName);
-      Lines := TEncoding.UTF8.GetString(Bytes).Split([#13#10, #10], TStringSplitOptions.ExcludeEmpty);
-      Inc(Total, Length(Lines));
-      Builder.Append('== ').Append(ExtractFileName(FileName)).Append(' (').Append(Length(Lines))
+      mBytes := ReadShared(mFileName);
+      mLines := TEncoding.UTF8.GetString(mBytes).Split([#13#10, #10], TStringSplitOptions.ExcludeEmpty);
+      Inc(mTotal, Length(mLines));
+      mBuilder.Append('== ').Append(ExtractFileName(mFileName)).Append(' (').Append(Length(mLines))
         .Append(' Zeilen) ==').Append(sLineBreak);
-      for Line in Lines do
+      for mLine in mLines do
       begin
-        if Shown >= AMaxLines then
+        if mShown >= AMaxLines then
         begin
           Break;
         end;
-        Builder.Append(Line).Append(sLineBreak);
-        Inc(Shown);
+        mBuilder.Append(mLine).Append(sLineBreak);
+        Inc(mShown);
       end;
     end;
-    if Total > Shown then
+    if mTotal > mShown then
     begin
-      Builder.Append(Format('… %d weitere Zeilen', [Total - Shown])).Append(sLineBreak);
+      mBuilder.Append(Format('… %d weitere Zeilen', [mTotal - mShown])).Append(sLineBreak);
     end;
-    Result := Builder.ToString;
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
@@ -169,38 +169,38 @@ end;
 
 class procedure TAtlasDiagnosticExport.WriteZip(const AFiles: TArray<string>; const ATarget, AInfo: string);
 var
-  Zip: TZipFile;
-  FileName: string;
-  Content: TBytesStream;
+  mZip: TZipFile;
+  mFileName: string;
+  mContent: TBytesStream;
 begin
   if FileExists(ATarget) then
   begin
     System.SysUtils.DeleteFile(ATarget);
   end;
-  Zip := TZipFile.Create;
+  mZip := TZipFile.Create;
   try
-    Zip.Open(ATarget, TZipMode.zmWrite);
+    mZip.Open(ATarget, TZipMode.zmWrite);
     if AInfo <> '' then
     begin
-      Content := TBytesStream.Create(TEncoding.UTF8.GetBytes(AInfo));
+      mContent := TBytesStream.Create(TEncoding.UTF8.GetBytes(AInfo));
       try
-        Zip.Add(Content, InfoFileName);
+        mZip.Add(mContent, InfoFileName);
       finally
-        Content.Free;
+        mContent.Free;
       end;
     end;
-    for FileName in AFiles do
+    for mFileName in AFiles do
     begin
-      Content := TBytesStream.Create(ReadShared(FileName));
+      mContent := TBytesStream.Create(ReadShared(mFileName));
       try
-        Zip.Add(Content, ExtractFileName(FileName));
+        mZip.Add(mContent, ExtractFileName(mFileName));
       finally
-        Content.Free;
+        mContent.Free;
       end;
     end;
-    Zip.Close;
+    mZip.Close;
   finally
-    Zip.Free;
+    mZip.Free;
   end;
 end;
 

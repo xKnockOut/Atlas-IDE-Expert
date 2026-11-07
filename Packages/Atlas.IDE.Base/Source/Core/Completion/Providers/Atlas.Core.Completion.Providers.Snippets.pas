@@ -43,35 +43,35 @@ implementation
 
 const
   /// <summary>Hinter den Einträgen des Servers, wenn beide gleich gut passen.</summary>
-  SnippetRank = 1000000;
+  cSnippetRank = 1000000;
 
 /// <summary>Zeile ALine (0-basiert) aus AText, ohne den ganzen Text zu zerlegen.</summary>
 function LineOf(const AText: string; ALine: Integer): string;
 var
-  Index, Line, Start: Integer;
+  mIndex, mLine, mStart: Integer;
 begin
-  Line := 0;
-  Start := 1;
-  Index := 1;
-  while (Line < ALine) and (Index <= Length(AText)) do
+  mLine := 0;
+  mStart := 1;
+  mIndex := 1;
+  while (mLine < ALine) and (mIndex <= Length(AText)) do
   begin
-    if AText[Index] = #10 then
+    if AText[mIndex] = #10 then
     begin
-      Inc(Line);
-      Start := Index + 1;
+      Inc(mLine);
+      mStart := mIndex + 1;
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
-  if Line < ALine then
+  if mLine < ALine then
   begin
     Exit('');
   end;
-  Index := Start;
-  while (Index <= Length(AText)) and (AText[Index] <> #10) and (AText[Index] <> #13) do
+  mIndex := mStart;
+  while (mIndex <= Length(AText)) and (AText[mIndex] <> #10) and (AText[mIndex] <> #13) do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Result := Copy(AText, Start, Index - Start);
+  Result := Copy(AText, mStart, mIndex - mStart);
 end;
 
 { TAtlasSnippetCompletionProvider }
@@ -114,58 +114,58 @@ end;
 
 class function TAtlasSnippetCompletionProvider.IsSnippetContext(const ALineBefore, APrefix: string): Boolean;
 var
-  Before: string;
-  Index: Integer;
-  Quoted: Boolean;
+  mBefore: string;
+  mIndex: Integer;
+  mQuoted: Boolean;
 begin
   Result := False;
   if Length(APrefix) > Length(ALineBefore) then
   begin
     Exit;
   end;
-  Before := Copy(ALineBefore, 1, Length(ALineBefore) - Length(APrefix));
+  mBefore := Copy(ALineBefore, 1, Length(ALineBefore) - Length(APrefix));
   // Nur Einrückung vor dem Wort; damit auch kein Punkt, kein String und kein //-Kommentar davor.
-  for Index := 1 to Length(Before) do
+  for mIndex := 1 to Length(mBefore) do
   begin
-    if (Before[Index] <> ' ') and (Before[Index] <> #9) then
+    if (mBefore[mIndex] <> ' ') and (mBefore[mIndex] <> #9) then
     begin
       Exit;
     end;
   end;
-  Quoted := False;
-  for Index := 1 to Length(APrefix) do
+  mQuoted := False;
+  for mIndex := 1 to Length(APrefix) do
   begin
-    if APrefix[Index] = '''' then
+    if APrefix[mIndex] = '''' then
     begin
-      Quoted := not Quoted;
+      mQuoted := not mQuoted;
     end;
   end;
-  Result := not Quoted;
+  Result := not mQuoted;
 end;
 
 class function TAtlasSnippetCompletionProvider.Items(const ASnippets: TAtlasSnippetList): TAtlasCompletionItems;
 var
-  Index: Integer;
-  Item: TAtlasCompletionItem;
-  Snippet: TAtlasSnippet;
+  mIndex: Integer;
+  mItem: TAtlasCompletionItem;
+  mSnippet: TAtlasSnippet;
 begin
   Result := nil;
-  for Index := 0 to High(ASnippets) do
+  for mIndex := 0 to High(ASnippets) do
   begin
-    Snippet := ASnippets[Index];
-    Item := Default(TAtlasCompletionItem);
-    Item.Name := Snippet.Prefix;
-    Item.Kind := TAtlasItemKind.Snippet;
-    Item.Signature := Snippet.Name;
-    Item.Documentation := TAtlasSnippets.PlainText(Snippet.Body);
-    if Snippet.Description <> '' then
+    mSnippet := ASnippets[mIndex];
+    mItem := Default(TAtlasCompletionItem);
+    mItem.Name := mSnippet.Prefix;
+    mItem.Kind := TAtlasItemKind.Snippet;
+    mItem.Signature := mSnippet.Name;
+    mItem.Documentation := TAtlasSnippets.PlainText(mSnippet.Body);
+    if mSnippet.Description <> '' then
     begin
-      Item.Documentation := Snippet.Description + #10#10 + Item.Documentation;
+      mItem.Documentation := mSnippet.Description + #10#10 + mItem.Documentation;
     end;
-    Item.Snippet := Snippet.Body;
-    Item.UnitUsed := True;
-    Item.Rank := SnippetRank + Index;
-    Result := Result + [Item];
+    mItem.Snippet := mSnippet.Body;
+    mItem.UnitUsed := True;
+    mItem.Rank := cSnippetRank + mIndex;
+    Result := Result + [mItem];
   end;
 end;
 
@@ -178,7 +178,7 @@ end;
 function TAtlasSnippetCompletionProvider.Fetch(const AContext: TAtlasContext; AData: TObject;
   const ACancelled: TAtlasCancelledFunc; const AEmit: TAtlasEmitProc; out AState: TAtlasFetchState): TAtlasCompletionItems;
 var
-  Snippets: TAtlasSnippetList;
+  mSnippets: TAtlasSnippetList;
 begin
   AState := Default(TAtlasFetchState);
   Result := nil;
@@ -188,11 +188,11 @@ begin
   end;
   FSnippetLock.Enter;
   try
-    Snippets := FSnippets;
+    mSnippets := FSnippets;
   finally
     FSnippetLock.Leave;
   end;
-  Result := Items(Snippets);
+  Result := Items(mSnippets);
 end;
 
 end.

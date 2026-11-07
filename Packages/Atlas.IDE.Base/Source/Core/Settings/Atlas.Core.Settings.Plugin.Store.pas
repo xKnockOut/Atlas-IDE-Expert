@@ -81,14 +81,14 @@ uses
 
 function NormalizedIssuesText(const AText: string; ATrim: Boolean): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := AText;
-  for Index := 1 to Length(Result) do
+  for mIndex := 1 to Length(Result) do
   begin
-    if Ord(Result[Index]) < 32 then
+    if Ord(Result[mIndex]) < 32 then
     begin
-      Result[Index] := ' ';
+      Result[mIndex] := ' ';
     end;
   end;
   if ATrim then
@@ -103,13 +103,13 @@ end;
 
 function Choice(const AValue: string; const AAllowed: array of string): string;
 var
-  Item: string;
+  mItem: string;
 begin
-  for Item in AAllowed do
+  for mItem in AAllowed do
   begin
-    if SameText(Trim(AValue), Item) then
+    if SameText(Trim(AValue), mItem) then
     begin
-      Exit(Item);
+      Exit(mItem);
     end;
   end;
   Result := AAllowed[0];

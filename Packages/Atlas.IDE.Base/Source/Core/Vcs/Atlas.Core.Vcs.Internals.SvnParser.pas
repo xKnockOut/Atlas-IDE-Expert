@@ -1002,24 +1002,24 @@ end;
 
 class function TAtlasSvnParser.BranchOf(const ARelativeUrl: string): string;
 var
-  Parts: TArray<string>;
-  Index: Integer;
-  Part: string;
+  mParts: TArray<string>;
+  mIndex: Integer;
+  mPart: string;
 begin
-  Parts := ARelativeUrl.Split(['/'], TStringSplitOptions.ExcludeEmpty);
-  for Index := 0 to High(Parts) do
+  mParts := ARelativeUrl.Split(['/'], TStringSplitOptions.ExcludeEmpty);
+  for mIndex := 0 to High(mParts) do
   begin
-    Part := LowerCase(Parts[Index]);
-    if Part = 'trunk' then
+    mPart := LowerCase(mParts[mIndex]);
+    if mPart = 'trunk' then
     begin
-      Exit(Parts[Index]);
+      Exit(mParts[mIndex]);
     end;
-    if ((Part = 'branches') or (Part = 'tags')) and (Index < High(Parts)) then
+    if ((mPart = 'branches') or (mPart = 'tags')) and (mIndex < High(mParts)) then
     begin
-      Exit(Parts[Index] + '/' + Parts[Index + 1]);
+      Exit(mParts[mIndex] + '/' + mParts[mIndex + 1]);
     end;
   end;
-  Result := string.Join('/', Parts);
+  Result := string.Join('/', mParts);
 end;
 
 class function TAtlasSvnParser.KindOf(const AItem, AProps: string; out AKind: TAtlasVcsChangeKind): Boolean;

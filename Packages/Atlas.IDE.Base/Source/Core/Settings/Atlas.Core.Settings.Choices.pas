@@ -65,7 +65,7 @@ type
   end;
 
 const
-  Products: array[0..9] of TDelphiProduct = (
+  cProducts: array[0..9] of TDelphiProduct = (
     (Version: '37.0'; Product: 'Delphi 13'),
     (Version: '23.0'; Product: 'Delphi 12'),
     (Version: '22.0'; Product: 'Delphi 11'),
@@ -79,43 +79,43 @@ const
 
 function VersionNumber(const AVersion: string): Double;
 var
-  Settings: TFormatSettings;
+  mSettings: TFormatSettings;
 begin
-  Settings := TFormatSettings.Invariant;
-  Result := StrToFloatDef(AVersion, 0, Settings);
+  mSettings := TFormatSettings.Invariant;
+  Result := StrToFloatDef(AVersion, 0, mSettings);
 end;
 
 /// <summary>Wert des Attributs AName im Tag ab APos; '' ohne.</summary>
 function AttributeAfter(const AText, AName: string; APos: Integer): string;
 var
-  Start, Stop, TagEnd: Integer;
+  mStart, mStop, mTagEnd: Integer;
 begin
   Result := '';
-  TagEnd := Pos('>', AText, APos);
-  Start := Pos(AName + '="', AText, APos);
-  if (Start = 0) or ((TagEnd > 0) and (Start > TagEnd)) then
+  mTagEnd := Pos('>', AText, APos);
+  mStart := Pos(AName + '="', AText, APos);
+  if (mStart = 0) or ((mTagEnd > 0) and (mStart > mTagEnd)) then
   begin
     Exit;
   end;
-  Inc(Start, Length(AName) + 2);
-  Stop := Pos('"', AText, Start);
-  if Stop > Start then
+  Inc(mStart, Length(AName) + 2);
+  mStop := Pos('"', AText, mStart);
+  if mStop > mStart then
   begin
-    Result := Copy(AText, Start, Stop - Start);
+    Result := Copy(AText, mStart, mStop - mStart);
   end;
 end;
 
 procedure AddUnique(var AList: TArray<string>; const AValue: string);
 var
-  Item: string;
+  mItem: string;
 begin
   if AValue = '' then
   begin
     Exit;
   end;
-  for Item in AList do
+  for mItem in AList do
   begin
-    if SameText(Item, AValue) then
+    if SameText(mItem, AValue) then
     begin
       Exit;
     end;
@@ -135,56 +135,56 @@ end;
 
 class function TAtlasSettingChoices.DelphiProduct(const ARegistryVersion: string): string;
 var
-  Product: TDelphiProduct;
+  mProduct: TDelphiProduct;
 begin
   Result := '';
-  for Product in Products do
+  for mProduct in cProducts do
   begin
-    if Product.Version = Trim(ARegistryVersion) then
+    if mProduct.Version = Trim(ARegistryVersion) then
     begin
-      Exit(Product.Product);
+      Exit(mProduct.Product);
     end;
   end;
 end;
 
 class function TAtlasSettingChoices.DelphiCaption(const ARegistryVersion: string): string;
 var
-  Product: string;
+  mProduct: string;
 begin
-  Product := DelphiProduct(ARegistryVersion);
-  if Product = '' then
+  mProduct := DelphiProduct(ARegistryVersion);
+  if mProduct = '' then
   begin
     Result := Trim(ARegistryVersion);
   end
   else
   begin
-    Result := Format('%s (%s)', [Product, Trim(ARegistryVersion)]);
+    Result := Format('%s (%s)', [mProduct, Trim(ARegistryVersion)]);
   end;
 end;
 
 class function TAtlasSettingChoices.KnownVersions: TArray<string>;
 var
-  Product: TDelphiProduct;
+  mProduct: TDelphiProduct;
 begin
   Result := nil;
-  for Product in Products do
+  for mProduct in cProducts do
   begin
-    Result := Result + [Product.Version];
+    Result := Result + [mProduct.Version];
   end;
 end;
 
 class function TAtlasSettingChoices.DelphiVersions(const AInstalled: TArray<string>): TArray<TAtlasSettingChoice>;
 var
-  Versions: TArray<string>;
-  Version: string;
-  List: TList<string>;
+  mVersions: TArray<string>;
+  mVersion: string;
+  mList: TList<string>;
 begin
-  Versions := nil;
-  for Version in AInstalled do
+  mVersions := nil;
+  for mVersion in AInstalled do
   begin
-    AddUnique(Versions, Trim(Version));
+    AddUnique(mVersions, Trim(mVersion));
   end;
-  List := TList<string>.Create(TComparer<string>.Construct(
+  mList := TList<string>.Create(TComparer<string>.Construct(
     function(const A, B: string): Integer
     begin
       // Neueste zuerst.
@@ -202,110 +202,110 @@ begin
       end;
     end));
   try
-    List.AddRange(Versions);
-    List.Sort;
+    mList.AddRange(mVersions);
+    mList.Sort;
     Result := nil;
-    for Version in List do
+    for mVersion in mList do
     begin
-      Result := Result + [TAtlasSettingChoice.Create(DelphiCaption(Version), TAtlasJsonText.Quote(Version))];
+      Result := Result + [TAtlasSettingChoice.Create(DelphiCaption(mVersion), TAtlasJsonText.Quote(mVersion))];
     end;
   finally
-    List.Free;
+    mList.Free;
   end;
 end;
 
 class function TAtlasSettingChoices.DprojConfigs(const ADprojText: string): TArray<string>;
 var
-  Position: Integer;
-  Name: string;
+  mPosition: Integer;
+  mName: string;
 begin
   Result := nil;
-  Position := Pos('<BuildConfiguration ', ADprojText);
-  while Position > 0 do
+  mPosition := Pos('<BuildConfiguration ', ADprojText);
+  while mPosition > 0 do
   begin
-    Name := AttributeAfter(ADprojText, 'Include', Position);
-    if not SameText(Name, 'Base') then
+    mName := AttributeAfter(ADprojText, 'Include', mPosition);
+    if not SameText(mName, 'Base') then
     begin
-      AddUnique(Result, Name);
+      AddUnique(Result, mName);
     end;
-    Position := Pos('<BuildConfiguration ', ADprojText, Position + 1);
+    mPosition := Pos('<BuildConfiguration ', ADprojText, mPosition + 1);
   end;
 end;
 
 class function TAtlasSettingChoices.DprojPlatforms(const ADprojText: string): TArray<string>;
 var
-  Position, Close, Stop: Integer;
-  Name, Value: string;
+  mPosition, mClose, mStop: Integer;
+  mName, mValue: string;
 begin
   Result := nil;
-  Position := Pos('<Platform value=', ADprojText);
-  while Position > 0 do
+  mPosition := Pos('<Platform value=', ADprojText);
+  while mPosition > 0 do
   begin
-    Name := AttributeAfter(ADprojText, 'value', Position);
-    Close := Pos('>', ADprojText, Position);
-    Stop := Pos('</Platform>', ADprojText, Close);
-    Value := '';
-    if (Close > 0) and (Stop > Close) then
+    mName := AttributeAfter(ADprojText, 'value', mPosition);
+    mClose := Pos('>', ADprojText, mPosition);
+    mStop := Pos('</Platform>', ADprojText, mClose);
+    mValue := '';
+    if (mClose > 0) and (mStop > mClose) then
     begin
-      Value := Trim(Copy(ADprojText, Close + 1, Stop - Close - 1));
+      mValue := Trim(Copy(ADprojText, mClose + 1, mStop - mClose - 1));
     end;
-    if SameText(Value, 'True') then
+    if SameText(mValue, 'True') then
     begin
-      AddUnique(Result, Name);
+      AddUnique(Result, mName);
     end;
-    Position := Pos('<Platform value=', ADprojText, Position + 1);
+    mPosition := Pos('<Platform value=', ADprojText, mPosition + 1);
   end;
 end;
 
 class function TAtlasSettingChoices.Profiles(const AProfilesJson: string): TArray<string>;
 var
-  Name: string;
-  Value: TJSONValue;
-  Pair: TJSONPair;
+  mName: string;
+  mValue: TJSONValue;
+  mPair: TJSONPair;
 begin
   Result := nil;
-  for Name in AtlasBuiltInProfiles do
+  for mName in AtlasBuiltInProfiles do
   begin
-    AddUnique(Result, Name);
+    AddUnique(Result, mName);
   end;
   if AProfilesJson = '' then
   begin
     Exit;
   end;
-  Value := TJSONObject.ParseJSONValue(AProfilesJson);
+  mValue := TJSONObject.ParseJSONValue(AProfilesJson);
   try
-    if Value is TJSONObject then
+    if mValue is TJSONObject then
     begin
-      for Pair in TJSONObject(Value) do
+      for mPair in TJSONObject(mValue) do
       begin
-        AddUnique(Result, Pair.JsonString.Value);
+        AddUnique(Result, mPair.JsonString.Value);
       end;
     end;
   finally
-    Value.Free;
+    mValue.Free;
   end;
 end;
 
 class function TAtlasSettingChoices.FromTexts(const ATexts: TArray<string>): TArray<TAtlasSettingChoice>;
 var
-  Text: string;
+  mText: string;
 begin
   Result := nil;
-  for Text in ATexts do
+  for mText in ATexts do
   begin
-    Result := Result + [TAtlasSettingChoice.Create(Text, TAtlasJsonText.Quote(Text))];
+    Result := Result + [TAtlasSettingChoice.Create(mText, TAtlasJsonText.Quote(mText))];
   end;
 end;
 
 class function TAtlasSettingChoices.IndexOf(const AChoices: TArray<TAtlasSettingChoice>; const AJson: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(AChoices) do
+  for mIndex := 0 to High(AChoices) do
   begin
-    if AChoices[Index].Json = AJson then
+    if AChoices[mIndex].Json = AJson then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;

@@ -261,10 +261,10 @@ begin
 end;
 
 const
-  StepNames: array[TAtlasLanguage, TAtlasTimingStep] of string = (
+  cStepNames: array[TAtlasLanguage, TAtlasTimingStep] of string = (
     ('Kontext', 'Quelle', 'Filtern und Sortieren', 'Zeichnen', 'Bis zur Liste'),
     ('Context', 'Source', 'Filter and sort', 'Draw', 'Until the list'));
-  NoValue = '–';
+  cNoValue = '–';
 
 function Invariant: TFormatSettings;
 begin
@@ -300,7 +300,7 @@ end;
 
 function TAtlasQueryTiming.Value(AStep: TAtlasTimingStep): Double;
 var
-  Provider: TAtlasProviderTiming;
+  mProvider: TAtlasProviderTiming;
 begin
   case AStep of
     TAtlasTimingStep.Context:
@@ -308,9 +308,9 @@ begin
     TAtlasTimingStep.Provider:
       begin
         Result := -1;
-        for Provider in Providers do
+        for mProvider in Providers do
         begin
-          Result := Max(Result, Provider.Ms);
+          Result := Max(Result, mProvider.Ms);
         end;
       end;
     TAtlasTimingStep.FilterSort:
@@ -336,11 +336,11 @@ end;
 
 function TAtlasQueryTiming.Exceeded: Boolean;
 var
-  Step: TAtlasTimingStep;
+  mStep: TAtlasTimingStep;
 begin
-  for Step := Low(TAtlasTimingStep) to High(TAtlasTimingStep) do
+  for mStep := Low(TAtlasTimingStep) to High(TAtlasTimingStep) do
   begin
-    if TAtlasTimingBudget.Exceeded(Step, Value(Step)) then
+    if TAtlasTimingBudget.Exceeded(mStep, Value(mStep)) then
     begin
       Exit(True);
     end;
@@ -392,53 +392,53 @@ end;
 
 class function TAtlasTimingStats.From(const AQueries: TArray<TAtlasQueryTiming>): TAtlasTimingStats;
 var
-  Query: TAtlasQueryTiming;
-  Provider: TAtlasProviderTiming;
-  Step: TAtlasTimingStep;
-  Index: Integer;
+  mQuery: TAtlasQueryTiming;
+  mProvider: TAtlasProviderTiming;
+  mStep: TAtlasTimingStep;
+  mIndex: Integer;
 begin
   Result := Default(TAtlasTimingStats);
   Result.ProviderNames := nil;
   Result.Providers := nil;
-  for Query in AQueries do
+  for mQuery in AQueries do
   begin
     Inc(Result.Queries);
-    for Step := Low(TAtlasTimingStep) to High(TAtlasTimingStep) do
+    for mStep := Low(TAtlasTimingStep) to High(TAtlasTimingStep) do
     begin
-      Result.Steps[Step].Add(Query.Value(Step));
+      Result.Steps[mStep].Add(mQuery.Value(mStep));
     end;
-    if Query.Count > 0 then
+    if mQuery.Count > 0 then
     begin
-      Result.Entries.Add(Query.Count);
+      Result.Entries.Add(mQuery.Count);
     end;
-    for Provider in Query.Providers do
+    for mProvider in mQuery.Providers do
     begin
-      Index := Length(Result.ProviderNames) - 1;
-      while (Index >= 0) and (Result.ProviderNames[Index] <> Provider.Name) do
+      mIndex := Length(Result.ProviderNames) - 1;
+      while (mIndex >= 0) and (Result.ProviderNames[mIndex] <> mProvider.Name) do
       begin
-        Dec(Index);
+        Dec(mIndex);
       end;
-      if Index < 0 then
+      if mIndex < 0 then
       begin
-        Result.ProviderNames := Result.ProviderNames + [Provider.Name];
+        Result.ProviderNames := Result.ProviderNames + [mProvider.Name];
         SetLength(Result.Providers, Length(Result.Providers) + 1);
         Result.Providers[High(Result.Providers)] := Default(TAtlasTimingStat);
-        Index := High(Result.Providers);
+        mIndex := High(Result.Providers);
       end;
-      Result.Providers[Index].Add(Provider.Ms);
+      Result.Providers[mIndex].Add(mProvider.Ms);
     end;
   end;
 end;
 
 function TAtlasTimingStats.Provider(const AName: string): TAtlasTimingStat;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(ProviderNames) do
+  for mIndex := 0 to High(ProviderNames) do
   begin
-    if ProviderNames[Index] = AName then
+    if ProviderNames[mIndex] = AName then
     begin
-      Exit(Providers[Index]);
+      Exit(Providers[mIndex]);
     end;
   end;
   Result := Default(TAtlasTimingStat);
@@ -463,61 +463,61 @@ end;
 
 class function TAtlasTimingRows.Build(const AQueries: TArray<TAtlasQueryTiming>): TArray<TAtlasTimingRow>;
 var
-  Stats: TAtlasTimingStats;
-  Last: TAtlasQueryTiming;
-  Row: TAtlasTimingRow;
-  Index, At: Integer;
-  Step: TAtlasTimingStep;
+  mStats: TAtlasTimingStats;
+  mLast: TAtlasQueryTiming;
+  mRow: TAtlasTimingRow;
+  mIndex, mAt: Integer;
+  mStep: TAtlasTimingStep;
 begin
   Result := nil;
-  Stats := TAtlasTimingStats.From(AQueries);
-  Last := Default(TAtlasQueryTiming);
-  Last.ContextMs := -1;
-  Last.FilterSortMs := -1;
-  Last.DrawMs := -1;
-  Last.FirstVisibleMs := -1;
-  Last.Providers := nil;
+  mStats := TAtlasTimingStats.From(AQueries);
+  mLast := Default(TAtlasQueryTiming);
+  mLast.ContextMs := -1;
+  mLast.FilterSortMs := -1;
+  mLast.DrawMs := -1;
+  mLast.FirstVisibleMs := -1;
+  mLast.Providers := nil;
   if Length(AQueries) > 0 then
   begin
-    Last := AQueries[High(AQueries)];
+    mLast := AQueries[High(AQueries)];
   end;
-  Result := Result + [StepRow(TAtlasTimingStep.Context, Last.ContextMs, Stats.Steps[TAtlasTimingStep.Context])];
+  Result := Result + [StepRow(TAtlasTimingStep.Context, mLast.ContextMs, mStats.Steps[TAtlasTimingStep.Context])];
   // Je Quelle eine Zeile mit ihrem Namen; fehlt sie in der letzten Abfrage, bleibt „letzte“ leer.
-  for Index := 0 to High(Stats.ProviderNames) do
+  for mIndex := 0 to High(mStats.ProviderNames) do
   begin
-    Row := StepRow(TAtlasTimingStep.Provider, -1, Stats.Providers[Index]);
-    Row.Kind := TAtlasTimingRowKind.Provider;
-    Row.Name := Stats.ProviderNames[Index];
-    At := Last.ProviderIndex(Row.Name);
-    if At >= 0 then
+    mRow := StepRow(TAtlasTimingStep.Provider, -1, mStats.Providers[mIndex]);
+    mRow.Kind := TAtlasTimingRowKind.Provider;
+    mRow.Name := mStats.ProviderNames[mIndex];
+    mAt := mLast.ProviderIndex(mRow.Name);
+    if mAt >= 0 then
     begin
-      Row.Last := Last.Providers[At].Ms;
+      mRow.Last := mLast.Providers[mAt].Ms;
     end;
-    Row.LastWarn := TAtlasTimingBudget.Exceeded(TAtlasTimingStep.Provider, Row.Last);
-    Result := Result + [Row];
+    mRow.LastWarn := TAtlasTimingBudget.Exceeded(TAtlasTimingStep.Provider, mRow.Last);
+    Result := Result + [mRow];
   end;
-  for Step in [TAtlasTimingStep.FilterSort, TAtlasTimingStep.Draw, TAtlasTimingStep.FirstVisible] do
+  for mStep in [TAtlasTimingStep.FilterSort, TAtlasTimingStep.Draw, TAtlasTimingStep.FirstVisible] do
   begin
-    Result := Result + [StepRow(Step, Last.Value(Step), Stats.Steps[Step])];
+    Result := Result + [StepRow(mStep, mLast.Value(mStep), mStats.Steps[mStep])];
   end;
-  Row := Default(TAtlasTimingRow);
-  Row.Kind := TAtlasTimingRowKind.Entries;
-  Row.Name := '';
-  Row.Last := -1;
+  mRow := Default(TAtlasTimingRow);
+  mRow.Kind := TAtlasTimingRowKind.Entries;
+  mRow.Name := '';
+  mRow.Last := -1;
   if Length(AQueries) > 0 then
   begin
-    Row.Last := Last.Count;
+    mRow.Last := mLast.Count;
   end;
-  Row.Mean := Stats.Entries.Mean;
-  Row.Maximum := Stats.Entries.Peak;
-  Result := Result + [Row];
+  mRow.Mean := mStats.Entries.Mean;
+  mRow.Maximum := mStats.Entries.Peak;
+  Result := Result + [mRow];
 end;
 
 class function TAtlasTimingRows.Ms(AValue: Double): string;
 begin
   if AValue < 0 then
   begin
-    Result := NoValue;
+    Result := cNoValue;
   end
   else
   begin
@@ -529,7 +529,7 @@ class function TAtlasTimingRows.CountText(AValue: Double): string;
 begin
   if AValue < 0 then
   begin
-    Result := NoValue;
+    Result := cNoValue;
   end
   else
   begin
@@ -587,38 +587,38 @@ end;
 
 function TAtlasQueryTimings.BeginQuery(AStart: Int64; const AKind, AFileName: string): Integer;
 var
-  Query: TAtlasQueryTiming;
+  mQuery: TAtlasQueryTiming;
 begin
-  Query := Default(TAtlasQueryTiming);
-  Query.Started := Now;
-  Query.Kind := AKind;
-  Query.FileName := AFileName;
-  Query.ContextMs := -1;
+  mQuery := Default(TAtlasQueryTiming);
+  mQuery.Started := Now;
+  mQuery.Kind := AKind;
+  mQuery.FileName := AFileName;
+  mQuery.ContextMs := -1;
   if AStart <> 0 then
   begin
-    Query.ContextMs := MsSince(AStart);
+    mQuery.ContextMs := MsSince(AStart);
   end;
-  Query.Providers := nil;
-  Query.FilterSortMs := -1;
-  Query.DrawMs := -1;
-  Query.FirstVisibleMs := -1;
+  mQuery.Providers := nil;
+  mQuery.FilterSortMs := -1;
+  mQuery.DrawMs := -1;
+  mQuery.FirstVisibleMs := -1;
   FLock.Enter;
   try
     Inc(FNextId);
-    Query.Id := FNextId;
-    FCurrent := Query.Id;
+    mQuery.Id := FNextId;
+    FCurrent := mQuery.Id;
     FCurrentStart := AStart;
     if FCurrentStart = 0 then
     begin
       FCurrentStart := Stamp;
     end;
-    FQueries.Add(Query);
+    FQueries.Add(mQuery);
     while FQueries.Count > Capacity do
     begin
       FQueries.Delete(0);
     end;
     Inc(FVersion);
-    Result := Query.Id;
+    Result := mQuery.Id;
   finally
     FLock.Leave;
   end;
@@ -636,33 +636,33 @@ end;
 
 procedure TAtlasQueryTimings.ProviderDone(AId: Integer; const AName: string; AMs: Double; ACount: Integer);
 var
-  Index, At: Integer;
-  Query: TAtlasQueryTiming;
-  Provider: TAtlasProviderTiming;
+  mIndex, mAt: Integer;
+  mQuery: TAtlasQueryTiming;
+  mProvider: TAtlasProviderTiming;
 begin
   FLock.Enter;
   try
-    Index := IndexOf(AId);
-    if Index < 0 then
+    mIndex := IndexOf(AId);
+    if mIndex < 0 then
     begin
       Exit;
     end;
-    Query := FQueries[Index];
-    Provider.Name := AName;
-    Provider.Ms := AMs;
-    Provider.Count := ACount;
+    mQuery := FQueries[mIndex];
+    mProvider.Name := AName;
+    mProvider.Ms := AMs;
+    mProvider.Count := ACount;
     // Neu fragen (#431) ersetzt die Zeit derselben Quelle; die Liste wird kopiert, die Momentaufnahmen bleiben.
-    Query.Providers := Copy(Query.Providers);
-    At := Query.ProviderIndex(AName);
-    if At >= 0 then
+    mQuery.Providers := Copy(mQuery.Providers);
+    mAt := mQuery.ProviderIndex(AName);
+    if mAt >= 0 then
     begin
-      Query.Providers[At] := Provider;
+      mQuery.Providers[mAt] := mProvider;
     end
     else
     begin
-      Query.Providers := Query.Providers + [Provider];
+      mQuery.Providers := mQuery.Providers + [mProvider];
     end;
-    FQueries[Index] := Query;
+    FQueries[mIndex] := mQuery;
     Inc(FVersion);
   finally
     FLock.Leave;
@@ -671,22 +671,22 @@ end;
 
 procedure TAtlasQueryTimings.FilterSorted(AMs: Double; ACount, AShown: Integer);
 var
-  Index: Integer;
-  Query: TAtlasQueryTiming;
+  mIndex: Integer;
+  mQuery: TAtlasQueryTiming;
 begin
   FLock.Enter;
   try
-    Index := IndexOf(FCurrent);
-    if Index < 0 then
+    mIndex := IndexOf(FCurrent);
+    if mIndex < 0 then
     begin
       Exit;
     end;
-    Query := FQueries[Index];
-    Query.FilterSortMs := Max(Query.FilterSortMs, AMs);
-    Inc(Query.FilterSortSteps);
-    Query.Count := ACount;
-    Query.Shown := AShown;
-    FQueries[Index] := Query;
+    mQuery := FQueries[mIndex];
+    mQuery.FilterSortMs := Max(mQuery.FilterSortMs, AMs);
+    Inc(mQuery.FilterSortSteps);
+    mQuery.Count := ACount;
+    mQuery.Shown := AShown;
+    FQueries[mIndex] := mQuery;
     Inc(FVersion);
   finally
     FLock.Leave;
@@ -695,19 +695,19 @@ end;
 
 procedure TAtlasQueryTimings.ListShown;
 var
-  Index: Integer;
-  Query: TAtlasQueryTiming;
+  mIndex: Integer;
+  mQuery: TAtlasQueryTiming;
 begin
   FLock.Enter;
   try
-    Index := IndexOf(FCurrent);
-    if (Index < 0) or (FQueries[Index].FirstVisibleMs >= 0) then
+    mIndex := IndexOf(FCurrent);
+    if (mIndex < 0) or (FQueries[mIndex].FirstVisibleMs >= 0) then
     begin
       Exit;
     end;
-    Query := FQueries[Index];
-    Query.FirstVisibleMs := MsSince(FCurrentStart);
-    FQueries[Index] := Query;
+    mQuery := FQueries[mIndex];
+    mQuery.FirstVisibleMs := MsSince(FCurrentStart);
+    FQueries[mIndex] := mQuery;
     Inc(FVersion);
   finally
     FLock.Leave;
@@ -716,20 +716,20 @@ end;
 
 procedure TAtlasQueryTimings.Drawn(AMs: Double);
 var
-  Index: Integer;
-  Query: TAtlasQueryTiming;
+  mIndex: Integer;
+  mQuery: TAtlasQueryTiming;
 begin
   FLock.Enter;
   try
-    Index := IndexOf(FCurrent);
-    if Index < 0 then
+    mIndex := IndexOf(FCurrent);
+    if mIndex < 0 then
     begin
       Exit;
     end;
-    Query := FQueries[Index];
-    Query.DrawMs := Max(Query.DrawMs, AMs);
-    Inc(Query.DrawSteps);
-    FQueries[Index] := Query;
+    mQuery := FQueries[mIndex];
+    mQuery.DrawMs := Max(mQuery.DrawMs, AMs);
+    Inc(mQuery.DrawSteps);
+    FQueries[mIndex] := mQuery;
     Inc(FVersion);
   finally
     FLock.Leave;
@@ -784,8 +784,8 @@ end;
 
 function QueryLine(const AQuery: TAtlasQueryTiming; AFileNames: Boolean): string;
 var
-  Provider: TAtlasProviderTiming;
-  Step: TAtlasTimingStep;
+  mProvider: TAtlasProviderTiming;
+  mStep: TAtlasTimingStep;
 begin
   Result := FormatDateTime('hh":"nn":"ss', AQuery.Started) + ' ' + AQuery.Kind;
   if AFileNames and (AQuery.FileName <> '') then
@@ -794,16 +794,16 @@ begin
   end;
   Result := Result + UiText(TTimingText.Context) + TAtlasTimingRows.Ms(AQuery.ContextMs) +
     Mark(TAtlasTimingBudget.Exceeded(TAtlasTimingStep.Context, AQuery.ContextMs));
-  for Provider in AQuery.Providers do
+  for mProvider in AQuery.Providers do
   begin
-    Result := Result + ' | ' + Provider.Name + ' ' + TAtlasTimingRows.Ms(Provider.Ms) +
-      Mark(TAtlasTimingBudget.Exceeded(TAtlasTimingStep.Provider, Provider.Ms)) + ' (' + IntToStr(Provider.Count) +
+    Result := Result + ' | ' + mProvider.Name + ' ' + TAtlasTimingRows.Ms(mProvider.Ms) +
+      Mark(TAtlasTimingBudget.Exceeded(TAtlasTimingStep.Provider, mProvider.Ms)) + ' (' + IntToStr(mProvider.Count) +
       ')';
   end;
-  for Step in [TAtlasTimingStep.FilterSort, TAtlasTimingStep.Draw, TAtlasTimingStep.FirstVisible] do
+  for mStep in [TAtlasTimingStep.FilterSort, TAtlasTimingStep.Draw, TAtlasTimingStep.FirstVisible] do
   begin
-    Result := Result + ' | ' + StepNames[TAtlasTextLanguage.Current, Step] + ' ' + TAtlasTimingRows.Ms(AQuery.Value(Step)) +
-      Mark(TAtlasTimingBudget.Exceeded(Step, AQuery.Value(Step)));
+    Result := Result + ' | ' + cStepNames[TAtlasTextLanguage.Current, mStep] + ' ' + TAtlasTimingRows.Ms(AQuery.Value(mStep)) +
+      Mark(TAtlasTimingBudget.Exceeded(mStep, AQuery.Value(mStep)));
   end;
   Result := Result + UiText(TTimingText.Entries) + IntToStr(AQuery.Count) + UiText(TTimingText.Visible) + IntToStr(AQuery.Shown);
 end;
@@ -816,7 +816,7 @@ begin
     TAtlasTimingRowKind.Entries:
       Result := UiText(TTimingText.Entries2);
   else
-    Result := StepNames[TAtlasTextLanguage.Current, ARow.Step];
+    Result := cStepNames[TAtlasTextLanguage.Current, ARow.Step];
   end;
 end;
 
@@ -825,7 +825,7 @@ begin
   if ARow.Kind = TAtlasTimingRowKind.Entries then
   begin
     Result := RowCaption(ARow) + ' | ' + TAtlasTimingRows.CountText(ARow.Last) + ' | ' +
-      TAtlasTimingRows.CountText(ARow.Mean) + ' | ' + TAtlasTimingRows.CountText(ARow.Maximum) + ' | ' + NoValue;
+      TAtlasTimingRows.CountText(ARow.Mean) + ' | ' + TAtlasTimingRows.CountText(ARow.Maximum) + ' | ' + cNoValue;
   end
   else
   begin
@@ -851,48 +851,48 @@ end;
 class function TAtlasTimingReport.Build(const AQueries: TArray<TAtlasQueryTiming>;
   const AInput: TAtlasTimingReportInput): string;
 var
-  Lines: TStringList;
-  Index: Integer;
-  Settings: string;
+  mLines: TStringList;
+  mIndex: Integer;
+  mSettings: string;
 begin
-  Lines := TStringList.Create;
+  mLines := TStringList.Create;
   try
-    Lines.Add(UiText(TTimingText.AtlasDiagnosticMode479));
-    Lines.Add('');
-    Lines.Add(UiText(TTimingText.Created) + FormatDateTime('yyyy-mm-dd hh":"nn', AInput.Created));
-    Lines.Add('Atlas: ' + AInput.AtlasVersion + ', IDE: ' + AInput.IdeVersion + UiText(TTimingText.Platform) + AInput.Platform);
-    Lines.Add(Format(UiText(TTimingText.Budget409ContextMsSource), [TAtlasTimingBudget.ContextMs, TAtlasTimingBudget.ProviderMs,
+    mLines.Add(UiText(TTimingText.AtlasDiagnosticMode479));
+    mLines.Add('');
+    mLines.Add(UiText(TTimingText.Created) + FormatDateTime('yyyy-mm-dd hh":"nn', AInput.Created));
+    mLines.Add('Atlas: ' + AInput.AtlasVersion + ', IDE: ' + AInput.IdeVersion + UiText(TTimingText.Platform) + AInput.Platform);
+    mLines.Add(Format(UiText(TTimingText.Budget409ContextMsSource), [TAtlasTimingBudget.ContextMs, TAtlasTimingBudget.ProviderMs,
       TAtlasTimingBudget.FilterSortMs, TAtlasTimingBudget.DrawMs, TAtlasTimingBudget.FirstVisibleMs]));
-    Lines.Add(UiText(TTimingText.ContainsNoSourceCodeFile) + BoolToStr(AInput.FileNames, True) + '.');
-    Lines.Add('');
-    Lines.Add(Format(UiText(TTimingText.TimesInMsLastQuery),
+    mLines.Add(UiText(TTimingText.ContainsNoSourceCodeFile) + BoolToStr(AInput.FileNames, True) + '.');
+    mLines.Add('');
+    mLines.Add(Format(UiText(TTimingText.TimesInMsLastQuery),
       [Length(AQueries)]));
-    Lines.Add('');
-    AddStepTable(Lines, AQueries);
-    Lines.Add('');
-    Lines.Add(UiText(TTimingText.QueriesNewestFirst));
-    Lines.Add('');
-    for Index := High(AQueries) downto 0 do
+    mLines.Add('');
+    AddStepTable(mLines, AQueries);
+    mLines.Add('');
+    mLines.Add(UiText(TTimingText.QueriesNewestFirst));
+    mLines.Add('');
+    for mIndex := High(AQueries) downto 0 do
     begin
-      Lines.Add(QueryLine(AQueries[Index], AInput.FileNames));
+      mLines.Add(QueryLine(AQueries[mIndex], AInput.FileNames));
     end;
     if Length(AQueries) = 0 then
     begin
-      Lines.Add(UiText(TTimingText.NoQueryMeasuredYet));
+      mLines.Add(UiText(TTimingText.NoQueryMeasuredYet));
     end;
-    Lines.Add('');
+    mLines.Add('');
     if AInput.Plugin <> '' then
     begin
-      Lines.Add(AInput.Plugin);
+      mLines.Add(AInput.Plugin);
     end;
-    Lines.Add(UiText(TTimingText.Settings));
-    Lines.Add('');
+    mLines.Add(UiText(TTimingText.Settings));
+    mLines.Add('');
     // Pfade (Serverpfad u. a.) wie im Fehlerbericht kürzen; Benutzer- und Rechnername ersetzen.
-    Settings := TAtlasBugReport.AnonymizePaths(AInput.Settings, nil, AInput.Identity);
-    Lines.Add(Settings);
-    Result := Lines.Text;
+    mSettings := TAtlasBugReport.AnonymizePaths(AInput.Settings, nil, AInput.Identity);
+    mLines.Add(mSettings);
+    Result := mLines.Text;
   finally
-    Lines.Free;
+    mLines.Free;
   end;
 end;
 

@@ -46,14 +46,14 @@ uses
 const
   /// <summary>Werte von problems.window.scope und problems.window.groupBy in der Reihenfolge der Auswahl (#909).
   /// </summary>
-  ScopeValues: array[0..2] of string = ('file', 'project', 'group');
-  GroupByValues: array[0..3] of string = ('none', 'file', 'rule', 'category');
+  cScopeValues: array[0..2] of string = ('file', 'project', 'group');
+  cGroupByValues: array[0..3] of string = ('none', 'file', 'rule', 'category');
   /// <summary>Werte von problems.window.closedUnits in der Reihenfolge der Auswahl (#1108).</summary>
-  ClosedUnitsValues: array[0..2] of string = ('dimmed', 'normal', 'hidden');
+  cClosedUnitsValues: array[0..2] of string = ('dimmed', 'normal', 'hidden');
   /// <summary>Werte von problems.compilerMerge in der Reihenfolge der Auswahl (#1024).</summary>
-  CompilerMergeValues: array[0..1] of string = ('merge', 'both');
+  cCompilerMergeValues: array[0..1] of string = ('merge', 'both');
   /// <summary>Werte von problems.update in der Reihenfolge der Auswahl (wie TAtlasProblemsRefresh).</summary>
-  ProblemsUpdateValues: array[0..2] of string = ('live', 'save', 'manual');
+  cProblemsUpdateValues: array[0..2] of string = ('live', 'save', 'manual');
 
 { TAtlasSettingsRulesPart }
 
@@ -106,34 +106,34 @@ end;
 
 procedure TAtlasSettingsRulesPart.Load(const ASettings: TAtlasPluginSettings);
 begin
-  FProblemsWindowScope.Choice := Max(0, IndexText(ASettings.ProblemsWindowScope, ScopeValues));
-  FProblemsWindowGroupBy.Choice := Max(0, IndexText(ASettings.ProblemsWindowGroupBy, GroupByValues));
-  FProblemsWindowClosedUnits.Choice := Max(0, IndexText(ASettings.ProblemsWindowClosedUnits, ClosedUnitsValues));
-  FProblemsCompilerMerge.Choice := Max(0, IndexText(ASettings.ProblemsCompilerMerge, CompilerMergeValues));
-  FProblemsUpdate.Choice := Max(0, IndexText(ASettings.ProblemsUpdate, ProblemsUpdateValues));
+  FProblemsWindowScope.Choice := Max(0, IndexText(ASettings.ProblemsWindowScope, cScopeValues));
+  FProblemsWindowGroupBy.Choice := Max(0, IndexText(ASettings.ProblemsWindowGroupBy, cGroupByValues));
+  FProblemsWindowClosedUnits.Choice := Max(0, IndexText(ASettings.ProblemsWindowClosedUnits, cClosedUnitsValues));
+  FProblemsCompilerMerge.Choice := Max(0, IndexText(ASettings.ProblemsCompilerMerge, cCompilerMergeValues));
+  FProblemsUpdate.Choice := Max(0, IndexText(ASettings.ProblemsUpdate, cProblemsUpdateValues));
 end;
 
 procedure TAtlasSettingsRulesPart.Save(var ASettings: TAtlasPluginSettings);
 begin
-  if (FProblemsWindowScope.Choice >= 0) and (FProblemsWindowScope.Choice <= High(ScopeValues)) then
+  if (FProblemsWindowScope.Choice >= 0) and (FProblemsWindowScope.Choice <= High(cScopeValues)) then
   begin
-    ASettings.ProblemsWindowScope := ScopeValues[FProblemsWindowScope.Choice];
+    ASettings.ProblemsWindowScope := cScopeValues[FProblemsWindowScope.Choice];
   end;
-  if (FProblemsWindowGroupBy.Choice >= 0) and (FProblemsWindowGroupBy.Choice <= High(GroupByValues)) then
+  if (FProblemsWindowGroupBy.Choice >= 0) and (FProblemsWindowGroupBy.Choice <= High(cGroupByValues)) then
   begin
-    ASettings.ProblemsWindowGroupBy := GroupByValues[FProblemsWindowGroupBy.Choice];
+    ASettings.ProblemsWindowGroupBy := cGroupByValues[FProblemsWindowGroupBy.Choice];
   end;
-  if (FProblemsWindowClosedUnits.Choice >= 0) and (FProblemsWindowClosedUnits.Choice <= High(ClosedUnitsValues)) then
+  if (FProblemsWindowClosedUnits.Choice >= 0) and (FProblemsWindowClosedUnits.Choice <= High(cClosedUnitsValues)) then
   begin
-    ASettings.ProblemsWindowClosedUnits := ClosedUnitsValues[FProblemsWindowClosedUnits.Choice];
+    ASettings.ProblemsWindowClosedUnits := cClosedUnitsValues[FProblemsWindowClosedUnits.Choice];
   end;
-  if (FProblemsCompilerMerge.Choice >= 0) and (FProblemsCompilerMerge.Choice <= High(CompilerMergeValues)) then
+  if (FProblemsCompilerMerge.Choice >= 0) and (FProblemsCompilerMerge.Choice <= High(cCompilerMergeValues)) then
   begin
-    ASettings.ProblemsCompilerMerge := CompilerMergeValues[FProblemsCompilerMerge.Choice];
+    ASettings.ProblemsCompilerMerge := cCompilerMergeValues[FProblemsCompilerMerge.Choice];
   end;
-  if (FProblemsUpdate.Choice >= 0) and (FProblemsUpdate.Choice <= High(ProblemsUpdateValues)) then
+  if (FProblemsUpdate.Choice >= 0) and (FProblemsUpdate.Choice <= High(cProblemsUpdateValues)) then
   begin
-    ASettings.ProblemsUpdate := ProblemsUpdateValues[FProblemsUpdate.Choice];
+    ASettings.ProblemsUpdate := cProblemsUpdateValues[FProblemsUpdate.Choice];
   end;
 end;
 

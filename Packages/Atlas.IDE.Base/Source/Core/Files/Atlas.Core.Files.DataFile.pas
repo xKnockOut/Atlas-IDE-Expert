@@ -68,7 +68,7 @@ type
     /// <summary>Protokolliert, dass die Datei der Art AKind nicht geschrieben werden konnte, einmal je Art und
     /// Sitzung: die Klasse der Ausnahme, deren Meldung den Pfad enthalten kann; bei EAtlasTextFileError (ohne
     /// Pfad) auch die Meldung.</summary>
-    class procedure ReportNotWritten(const AKind: string; E: Exception); static;
+    class procedure ReportNotWritten(const AKind: string; AE: Exception); static;
     /// <summary>Vergisst, welche Arten schon als nicht lesbar bzw. nicht geschrieben gemeldet sind (für Tests).
     /// </summary>
     class procedure ForgetReports; static;
@@ -91,19 +91,19 @@ var
 /// <summary>Schreibt AText ins Protokoll, wenn AKey in dieser Sitzung noch nicht gemeldet ist.</summary>
 procedure ReportOnce(const AKey, AText: string);
 var
-  First: Boolean;
+  mFirst: Boolean;
 begin
   ReportLock.Enter;
   try
-    First := Reported.IndexOf(AKey) < 0;
-    if First then
+    mFirst := Reported.IndexOf(AKey) < 0;
+    if mFirst then
     begin
       Reported.Add(AKey);
     end;
   finally
     ReportLock.Leave;
   end;
-  if First then
+  if mFirst then
   begin
     TAtlasGuard.Log(AText);
   end;
@@ -148,9 +148,9 @@ end;
 
 class function TAtlasDataFile.Load(const AFileName, AKind: string; const AParse: TAtlasDataParse): TAtlasDataLoad;
 var
-  Text, Reason: string;
+  mText, mReason: string;
 begin
-  if not TryRead(AFileName, Text) then
+  if not TryRead(AFileName, mText) then
   begin
     // Zwischen Prüfen und Öffnen gelöscht: wie ohne Datei.
     if not FileExists(AFileName) then
@@ -161,7 +161,7 @@ begin
     Exit(TAtlasDataLoad.Kept);
   end;
   try
-    if AParse(Text) then
+    if AParse(mText) then
     begin
       Exit(TAtlasDataLoad.Loaded);
     end;
@@ -174,16 +174,16 @@ begin
       Exit(TAtlasDataLoad.Kept);
     end;
   end;
-  if Trim(Text) = '' then
+  if Trim(mText) = '' then
   begin
-    Reason := 'leer';
+    mReason := 'leer';
   end
   else
   begin
-    Reason := 'kein gültiger Inhalt';
+    mReason := 'kein gültiger Inhalt';
   end;
   // Fort: Ein zweiter Leser (anderer Thread, zweite IDE) hat sie eben beiseitegelegt.
-  if SetAside(AFileName, AKind, Reason) or not FileExists(AFileName) then
+  if SetAside(AFileName, AKind, mReason) or not FileExists(AFileName) then
   begin
     Result := TAtlasDataLoad.Renewed;
   end
@@ -200,10 +200,10 @@ end;
 
 class procedure TAtlasDataFile.Write(const AFileName, AText: string);
 var
-  Folder: string;
+  mFolder: string;
 begin
-  Folder := ExtractFileDir(AFileName);
-  if (Folder <> '') and not ForceDirectories(Folder) then
+  mFolder := ExtractFileDir(AFileName);
+  if (mFolder <> '') and not ForceDirectories(mFolder) then
   begin
     raise EInOutError.Create('Ordner der Datendatei lässt sich nicht anlegen');
   end;
@@ -212,12 +212,12 @@ end;
 
 class function TAtlasDataFile.SetAside(const AFileName, AKind, AReason: string): Boolean;
 var
-  Target: string;
+  mTarget: string;
 begin
-  Target := AFileName + DefectExtension;
+  mTarget := AFileName + DefectExtension;
   // Eine ältere beiseitegelegte Datei wird in einem Schritt ersetzt: Die jüngere hat den neueren Stand. Erst
   // löschen, dann umbenennen konnte zwei Lesern die eben beiseitegelegte Datei kosten.
-  Result := MoveFileEx(PChar(AFileName), PChar(Target), MOVEFILE_REPLACE_EXISTING);
+  Result := MoveFileEx(PChar(AFileName), PChar(mTarget), MOVEFILE_REPLACE_EXISTING);
   if Result then
   begin
     TAtlasGuard.Log(Format('Datendatei %s: %s; beiseitegelegt als *%s, Atlas beginnt sie neu',
@@ -229,16 +229,16 @@ begin
   end;
 end;
 
-class procedure TAtlasDataFile.ReportNotWritten(const AKind: string; E: Exception);
+class procedure TAtlasDataFile.ReportNotWritten(const AKind: string; AE: Exception);
 var
-  Reason: string;
+  mReason: string;
 begin
-  Reason := E.ClassName;
-  if E is EAtlasTextFileError then
+  mReason := AE.ClassName;
+  if AE is EAtlasTextFileError then
   begin
-    Reason := Reason + ': ' + TAtlasGuard.SafeMessage(E.Message);
+    mReason := mReason + ': ' + TAtlasGuard.SafeMessage(AE.Message);
   end;
-  ReportOnce('w:' + AKind, Format('Datendatei %s nicht gespeichert (%s)', [AKind, Reason]));
+  ReportOnce('w:' + AKind, Format('Datendatei %s nicht gespeichert (%s)', [AKind, mReason]));
 end;
 
 class procedure TAtlasDataFile.ForgetReports;

@@ -165,62 +165,62 @@ end;
 
 class function TAtlasDiagnosticPackage.ReadShared(const AFileName: string): TBytes;
 var
-  Stream: TFileStream;
+  mStream: TFileStream;
 begin
   Result := nil;
   if (AFileName = '') or not FileExists(AFileName) then
   begin
     Exit;
   end;
-  Stream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
+  mStream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
   try
-    SetLength(Result, Stream.Size);
+    SetLength(Result, mStream.Size);
     if Length(Result) > 0 then
     begin
-      Stream.ReadBuffer(Result[0], Length(Result));
+      mStream.ReadBuffer(Result[0], Length(Result));
     end;
   finally
-    Stream.Free;
+    mStream.Free;
   end;
 end;
 
 /// <summary>Text einer Datei als UTF-8 (ein BOM fällt weg).</summary>
 function ReadText(const AFileName: string): string;
 var
-  Bytes: TBytes;
-  Start: Integer;
+  mBytes: TBytes;
+  mStart: Integer;
 begin
-  Bytes := TAtlasDiagnosticPackage.ReadShared(AFileName);
-  Start := 0;
-  if (Length(Bytes) >= 3) and (Bytes[0] = $EF) and (Bytes[1] = $BB) and (Bytes[2] = $BF) then
+  mBytes := TAtlasDiagnosticPackage.ReadShared(AFileName);
+  mStart := 0;
+  if (Length(mBytes) >= 3) and (mBytes[0] = $EF) and (mBytes[1] = $BB) and (mBytes[2] = $BF) then
   begin
-    Start := 3;
+    mStart := 3;
   end;
-  Result := TEncoding.UTF8.GetString(Bytes, Start, Length(Bytes) - Start);
+  Result := TEncoding.UTF8.GetString(mBytes, mStart, Length(mBytes) - mStart);
 end;
 
 /// <summary>Die letzten ACount Zeilen von AText.</summary>
 function LastLines(const AText: string; ACount: Integer): TArray<string>;
 var
-  Lines: TArray<string>;
-  First, Index: Integer;
+  mLines: TArray<string>;
+  mFirst, mIndex: Integer;
 begin
-  Lines := AText.Replace(#13#10, #10).Split([#10]);
+  mLines := AText.Replace(#13#10, #10).Split([#10]);
   // Zeilenumbruch am Ende: keine leere letzte Zeile.
-  if (Length(Lines) > 0) and (Lines[High(Lines)] = '') then
+  if (Length(mLines) > 0) and (mLines[High(mLines)] = '') then
   begin
-    SetLength(Lines, Length(Lines) - 1);
+    SetLength(mLines, Length(mLines) - 1);
   end;
-  First := Length(Lines) - ACount;
-  if First < 0 then
+  mFirst := Length(mLines) - ACount;
+  if mFirst < 0 then
   begin
-    First := 0;
+    mFirst := 0;
   end;
   Result := nil;
-  SetLength(Result, Length(Lines) - First);
-  for Index := First to High(Lines) do
+  SetLength(Result, Length(mLines) - mFirst);
+  for mIndex := mFirst to High(mLines) do
   begin
-    Result[Index - First] := Lines[Index];
+    Result[mIndex - mFirst] := mLines[mIndex];
   end;
 end;
 
@@ -370,54 +370,54 @@ end;
 class function TAtlasDiagnosticPackage.Build(const AInput: TAtlasPackageInput;
   AParts: TAtlasPackageParts): TAtlasPackageFiles;
 var
-  Files: TAtlasPackageFiles;
-  FileName, Text, Line: string;
-  Builder: TStringBuilder;
+  mFiles: TAtlasPackageFiles;
+  mFileName, mText, mLine: string;
+  mBuilder: TStringBuilder;
 begin
-  Files := nil;
+  mFiles := nil;
   if TAtlasPackagePart.Versions in AParts then
   begin
-    Files := Files + [TAtlasPackageFile.Create(InfoFileName, TAtlasPackagePart.Versions,
+    mFiles := mFiles + [TAtlasPackageFile.Create(InfoFileName, TAtlasPackagePart.Versions,
       Anonymize(Info(AInput), AInput.Roots, AInput.Identity))];
   end;
   if TAtlasPackagePart.Settings in AParts then
   begin
-    Text := Anonymize(TTextAnonymizer.AnonymizeJsonValues(SettingsWithoutPaths(AInput.SettingsJson)), AInput.Roots,
+    mText := Anonymize(TTextAnonymizer.AnonymizeJsonValues(SettingsWithoutPaths(AInput.SettingsJson)), AInput.Roots,
       AInput.Identity);
-    Files := Files + [TAtlasPackageFile.Create(SettingsFileName, TAtlasPackagePart.Settings, Text)];
+    mFiles := mFiles + [TAtlasPackageFile.Create(SettingsFileName, TAtlasPackagePart.Settings, mText)];
   end;
   if TAtlasPackagePart.Logs in AParts then
   begin
     if FileExists(AInput.PluginLog) then
     begin
-      Builder := TStringBuilder.Create;
+      mBuilder := TStringBuilder.Create;
       try
-        for Line in LastLines(ReadText(AInput.PluginLog), PluginLogLines) do
+        for mLine in LastLines(ReadText(AInput.PluginLog), PluginLogLines) do
         begin
-          Builder.Append(AnonymizeLog(Line, AInput.Roots, AInput.Identity)).Append(sLineBreak);
+          mBuilder.Append(AnonymizeLog(mLine, AInput.Roots, AInput.Identity)).Append(sLineBreak);
         end;
-        Text := Builder.ToString;
+        mText := mBuilder.ToString;
       finally
-        Builder.Free;
+        mBuilder.Free;
       end;
-      Files := Files + [TAtlasPackageFile.Create(PluginFolder + '/' + ExtractFileName(AInput.PluginLog),
-        TAtlasPackagePart.Logs, Text)];
+      mFiles := mFiles + [TAtlasPackageFile.Create(PluginFolder + '/' + ExtractFileName(AInput.PluginLog),
+        TAtlasPackagePart.Logs, mText)];
     end;
-    for FileName in AInput.ServerLogs do
+    for mFileName in AInput.ServerLogs do
     begin
-      if FileExists(FileName) then
+      if FileExists(mFileName) then
       begin
-        Files := Files + [TAtlasPackageFile.Create(ServerFolder + '/' + ExtractFileName(FileName),
-          TAtlasPackagePart.Logs, Anonymize(ReadText(FileName), AInput.Roots, AInput.Identity))];
+        mFiles := mFiles + [TAtlasPackageFile.Create(ServerFolder + '/' + ExtractFileName(mFileName),
+          TAtlasPackagePart.Logs, Anonymize(ReadText(mFileName), AInput.Roots, AInput.Identity))];
       end;
     end;
   end;
   if (TAtlasPackagePart.LastData in AParts) and FileExists(AInput.LastDataFile) then
   begin
-    Files := Files + [TAtlasPackageFile.Create(LastDataFileName, TAtlasPackagePart.LastData,
+    mFiles := mFiles + [TAtlasPackageFile.Create(LastDataFileName, TAtlasPackagePart.LastData,
       Anonymize(ReadText(AInput.LastDataFile), AInput.Roots, AInput.Identity))];
   end;
-  Result := Files;
+  Result := mFiles;
 end;
 
 class function TAtlasDiagnosticPackage.ZipName(ANow: TDateTime): string;
@@ -428,87 +428,87 @@ end;
 class function TAtlasDiagnosticPackage.ZipTarget(const AFolder: string; ANow: TDateTime;
   const AExists: TFunc<string, Boolean>): string;
 var
-  Folder: string;
-  Number: Integer;
+  mFolder: string;
+  mNumber: Integer;
 begin
-  Folder := IncludeTrailingPathDelimiter(AFolder);
-  Result := Folder + ZipName(ANow);
-  Number := 2;
+  mFolder := IncludeTrailingPathDelimiter(AFolder);
+  Result := mFolder + ZipName(ANow);
+  mNumber := 2;
   while Assigned(AExists) and AExists(Result) do
   begin
-    Result := Folder + ZipPrefix + FormatDateTime('yyyy"-"mm"-"dd', ANow) + '-' + IntToStr(Number) + '.zip';
-    Inc(Number);
+    Result := mFolder + ZipPrefix + FormatDateTime('yyyy"-"mm"-"dd', ANow) + '-' + IntToStr(mNumber) + '.zip';
+    Inc(mNumber);
   end;
 end;
 
 class procedure TAtlasDiagnosticPackage.WriteZip(const AFiles: TAtlasPackageFiles; const ATarget: string);
 var
-  Zip: TZipFile;
-  Item: TAtlasPackageFile;
-  Content: TBytesStream;
+  mZip: TZipFile;
+  mItem: TAtlasPackageFile;
+  mContent: TBytesStream;
 begin
   if FileExists(ATarget) then
   begin
     System.SysUtils.DeleteFile(ATarget);
   end;
-  Zip := TZipFile.Create;
+  mZip := TZipFile.Create;
   try
-    Zip.Open(ATarget, TZipMode.zmWrite);
-    for Item in AFiles do
+    mZip.Open(ATarget, TZipMode.zmWrite);
+    for mItem in AFiles do
     begin
-      Content := TBytesStream.Create(Item.Content);
+      mContent := TBytesStream.Create(mItem.Content);
       try
-        Zip.Add(Content, Item.Name);
+        mZip.Add(mContent, mItem.Name);
       finally
-        Content.Free;
+        mContent.Free;
       end;
     end;
-    Zip.Close;
+    mZip.Close;
   finally
-    Zip.Free;
+    mZip.Free;
   end;
 end;
 
 class function TAtlasDiagnosticPackage.TotalSize(const AFiles: TAtlasPackageFiles): Int64;
 var
-  Item: TAtlasPackageFile;
+  mItem: TAtlasPackageFile;
 begin
   Result := 0;
-  for Item in AFiles do
+  for mItem in AFiles do
   begin
-    Inc(Result, Item.Size);
+    Inc(Result, mItem.Size);
   end;
 end;
 
 class function TAtlasDiagnosticPackage.Leaks(const AFiles: TAtlasPackageFiles; const ARoots,
   AIdentity: TArray<string>): TArray<string>;
 var
-  Item: TAtlasPackageFile;
-  Text, Value: string;
-  Found: Boolean;
+  mItem: TAtlasPackageFile;
+  mText, mValue: string;
+  mFound: Boolean;
 begin
   Result := nil;
-  for Item in AFiles do
+  for mItem in AFiles do
   begin
-    Text := LowerCase(Item.Text);
-    Found := False;
-    for Value in ARoots do
+    mText := LowerCase(mItem.Text);
+    mFound := False;
+    for mValue in ARoots do
     begin
-      if (Trim(Value) <> '') and (Pos(LowerCase(ExcludeTrailingPathDelimiter(Trim(Value))), Text) > 0) then
+      if (Trim(mValue) <> '') and (Pos(LowerCase(ExcludeTrailingPathDelimiter(Trim(mValue))), mText) > 0) then
       begin
-        Found := True;
+        mFound := True;
       end;
     end;
-    for Value in AIdentity do
+    for mValue in AIdentity do
     begin
-      if (Length(Trim(Value)) >= 3) and (Pos(LowerCase(Trim(Value)), Text) > 0) then
+      if (Length(Trim(mValue)) >= 3) and (Pos(LowerCase(Trim(mValue)), mText) > 0) then
       begin
-        Found := True;
+        mFound := True;
       end;
     end;
-    if Found then
+    if mFound then
     begin
-      Result := Result + [Item.Name];
+      Result := Result + [mItem.Name];
     end;
   end;
 end;
@@ -591,30 +591,30 @@ end;
 
 class function TAtlasDiagnosticPackage.IsWebUrl(const AUrl: string): Boolean;
 var
-  Rest: string;
-  Index: Integer;
+  mRest: string;
+  mIndex: Integer;
 begin
   Result := False;
   if StartsText('https://', AUrl) then
   begin
-    Rest := Copy(AUrl, 9, MaxInt);
+    mRest := Copy(AUrl, 9, MaxInt);
   end
   else if StartsText('http://', AUrl) then
   begin
-    Rest := Copy(AUrl, 8, MaxInt);
+    mRest := Copy(AUrl, 8, MaxInt);
   end
   else
   begin
     Exit;
   end;
   // Ein Host muss folgen.
-  if (Rest = '') or CharInSet(Rest[1], ['/', '?', '#', ':']) then
+  if (mRest = '') or CharInSet(mRest[1], ['/', '?', '#', ':']) then
   begin
     Exit;
   end;
-  for Index := 1 to Length(AUrl) do
+  for mIndex := 1 to Length(AUrl) do
   begin
-    if (Ord(AUrl[Index]) <= 32) or CharInSet(AUrl[Index], ['"', '<', '>', '\', '`', '^', '{', '}', '|']) then
+    if (Ord(AUrl[mIndex]) <= 32) or CharInSet(AUrl[mIndex], ['"', '<', '>', '\', '`', '^', '{', '}', '|']) then
     begin
       Exit;
     end;

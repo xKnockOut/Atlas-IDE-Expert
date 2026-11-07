@@ -1057,9 +1057,9 @@ function Sync-Unit([string] $Path, [string[]] $Lines) {
 }
 function Text-Unit([string] $UnitName, [string[]] $Comment, [string] $Summary, [string] $FunctionName, [string] $Source) {
     return @("unit $UnitName;", '') + $Comment + @('', 'interface', '', "/// <summary>$Summary</summary>", "function $FunctionName`: string;", '',
-        'implementation', '', 'const') + (Pascal-Chunks 'Chunks' $Source) +
+        'implementation', '', 'const') + (Pascal-Chunks 'cChunks' $Source) +
         @('', "function $FunctionName`: string;", 'var', '  mChunk: string;', 'begin', "  Result := '';",
-        '  for mChunk in Chunks do', '  begin', '    Result := Result + mChunk;', '  end;', 'end;', '', 'end.')
+        '  for mChunk in cChunks do', '  begin', '    Result := Result + mChunk;', '  end;', 'end;', '', 'end.')
 }
 $SettingsFolder = Join-Path $Root 'Packages/Atlas.IDE.Base/Source/Core/Settings'
 
@@ -1089,17 +1089,17 @@ $ProfileLines = @('unit Atlas.Core.Settings.ProfileData;', '',
     'function AtlasProfileJson(const AFileName: string): string;', '',
     'implementation', '', 'uses', '  System.SysUtils;', '', 'const')
 for ($Index = 0; $Index -lt $Profiles.Count; $Index++) {
-    $ProfileLines += Pascal-Lines "Profile$Index" ([IO.File]::ReadAllText($Profiles[$Index].FullName, $Utf8))
+    $ProfileLines += Pascal-Lines "cProfile$Index" ([IO.File]::ReadAllText($Profiles[$Index].FullName, $Utf8))
 }
-$ProfileLines += @('', 'function Joined(const ALines: array of string): string;', 'var', '  Line: string;', 'begin', "  Result := '';",
-    '  for Line in ALines do', '  begin', '    Result := Result + Line + #10;', '  end;', 'end;', '',
+$ProfileLines += @('', 'function Joined(const ALines: array of string): string;', 'var', '  mLine: string;', 'begin', "  Result := '';",
+    '  for mLine in ALines do', '  begin', '    Result := Result + mLine + #10;', '  end;', 'end;', '',
     'function AtlasProfileFiles: TArray<string>;', 'begin', "  SetLength(Result, $($Profiles.Count));")
 for ($Index = 0; $Index -lt $Profiles.Count; $Index++) { $ProfileLines += "  Result[$Index] := '$($Profiles[$Index].Name)';" }
 $ProfileLines += @('end;', '', 'function AtlasProfileJson(const AFileName: string): string;', 'begin', "  Result := '';")
 for ($Index = 0; $Index -lt $Profiles.Count; $Index++) {
     $ProfileLines += "  if SameText(AFileName, '$($Profiles[$Index].Name)') then"
     $ProfileLines += '  begin'
-    $ProfileLines += "    Result := Joined(Profile$Index);"
+    $ProfileLines += "    Result := Joined(cProfile$Index);"
     $ProfileLines += '  end;'
 }
 $ProfileLines += @('end;', '', 'end.')

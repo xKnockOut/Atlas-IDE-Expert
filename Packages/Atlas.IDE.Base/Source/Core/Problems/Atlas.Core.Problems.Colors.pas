@@ -63,24 +63,24 @@ end;
 
 function DimmedTextColor(AText, ABack: TAtlasColor): TAtlasColor;
 var
-  Alpha: Double;
-  Steps: Integer;
+  mAlpha: Double;
+  mSteps: Integer;
 begin
-  Alpha := AtlasMixDimmedText;
-  Result := TAtlasColorMath.Mix(AText, ABack, Alpha);
+  mAlpha := AtlasMixDimmedText;
+  Result := TAtlasColorMath.Mix(AText, ABack, mAlpha);
   // Schrittweise zurück zum vollen Text, bis der Kontrast reicht; der volle Text ist die Untergrenze.
-  while (TAtlasColorMath.Contrast(Result, ABack) < AtlasDimmedMinContrast) and (Alpha < 1) do
+  while (TAtlasColorMath.Contrast(Result, ABack) < AtlasDimmedMinContrast) and (mAlpha < 1) do
   begin
-    Alpha := Alpha + 0.05;
-    if Alpha > 1 then
+    mAlpha := mAlpha + 0.05;
+    if mAlpha > 1 then
     begin
-      Alpha := 1;
+      mAlpha := 1;
     end;
-    Result := TAtlasColorMath.Mix(AText, ABack, Alpha);
+    Result := TAtlasColorMath.Mix(AText, ABack, mAlpha);
   end;
   // Schon der volle Text ist zu blass (manche Themen): vom Hintergrund weg verstärken.
-  Steps := 0;
-  while (TAtlasColorMath.Contrast(Result, ABack) < AtlasDimmedMinContrast) and (Steps < 20) do
+  mSteps := 0;
+  while (TAtlasColorMath.Contrast(Result, ABack) < AtlasDimmedMinContrast) and (mSteps < 20) do
   begin
     if TAtlasColorMath.IsDark(ABack) then
     begin
@@ -90,7 +90,7 @@ begin
     begin
       Result := TAtlasColorMath.Darken(Result, 0.05);
     end;
-    Inc(Steps);
+    Inc(mSteps);
   end;
 end;
 

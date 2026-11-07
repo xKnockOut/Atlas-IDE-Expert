@@ -45,10 +45,10 @@ uses
   Atlas.IDE.Foundation.Navigation;
 
 const
-  PrepareCommand = 'atlas.server.moveMember.prepare';
-  ApplyCommand = 'atlas.server.moveMember';
+  cPrepareCommand = 'atlas.server.moveMember.prepare';
+  cApplyCommand = 'atlas.server.moveMember';
   // Verweise suchen und Namen auflösen dauert; wie beim Umbenennen.
-  TimeoutMs = 60000;
+  cTimeoutMs = 60000;
 
 /// <summary>„… in Vorfahr verschieben“ bzw. „… in Nachfahren verschieben“ je nach Richtung von AModel.</summary>
 function TitleOf(AModel: TAtlasClassExtractionModel): string;
@@ -77,8 +77,8 @@ begin
     AMessage(TAtlasStrings.Text(TAtlasTextId.MenuIndexNoServer));
     Exit;
   end;
-  if not TAtlasIdeClassExtraction.Choose(ASession, TAtlasServerEditCommand.Create(PrepareCommand, AArgumentsJson,
-    TimeoutMs, TAtlasTextId.MoveMemberFailed),
+  if not TAtlasIdeClassExtraction.Choose(ASession, TAtlasServerEditCommand.Create(cPrepareCommand, AArgumentsJson,
+    cTimeoutMs, TAtlasTextId.MoveMemberFailed),
     function(AModel: TAtlasClassExtractionModel): string
     begin
       Result := TitleOf(AModel);
@@ -89,8 +89,8 @@ begin
   mTargetFile := '';
   mMoved := 0;
   mTargetLine := 0;
-  if not TAtlasIdeServerEdit.Fetch(ASession, TAtlasServerEditCommand.Create(ApplyCommand, mChoice.ApplyArguments,
-    TimeoutMs, TAtlasTextId.MoveMemberFailed),
+  if not TAtlasIdeServerEdit.Fetch(ASession, TAtlasServerEditCommand.Create(cApplyCommand, mChoice.ApplyArguments,
+    cTimeoutMs, TAtlasTextId.MoveMemberFailed),
     procedure(const AReply: TJSONObject)
     begin
       mTargetFile := TAtlasIdeServerEdit.TextOf(AReply, 'file');

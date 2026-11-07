@@ -115,10 +115,10 @@ end;
 
 class function TLspTextChanges.PositionOf(const ALines: TLineTable; AOffset: Integer): TLspTextPosition;
 var
-  Position: TTextPosition;
+  mPosition: TTextPosition;
 begin
-  Position := ALines.PositionAt(AOffset);
-  Result := TLspTextPosition.Create(Position.Line, Position.Character);
+  mPosition := ALines.PositionAt(AOffset);
+  Result := TLspTextPosition.Create(mPosition.Line, mPosition.Character);
 end;
 
 class function TLspTextChanges.PositionOf(const AText: string; AOffset: Integer): TLspTextPosition;
@@ -138,47 +138,47 @@ end;
 
 class function TLspTextChanges.Between(const AOld, ANew: string): TLspTextChange;
 var
-  Prefix, Suffix, MaxSuffix: Integer;
-  Lines: TLineTable;
+  mPrefix, mSuffix, mMaxSuffix: Integer;
+  mLines: TLineTable;
 begin
-  Prefix := 0;
-  while (Prefix < Length(AOld)) and (Prefix < Length(ANew)) and (AOld[Prefix + 1] = ANew[Prefix + 1]) do
+  mPrefix := 0;
+  while (mPrefix < Length(AOld)) and (mPrefix < Length(ANew)) and (AOld[mPrefix + 1] = ANew[mPrefix + 1]) do
   begin
-    Inc(Prefix);
+    Inc(mPrefix);
   end;
   // Nicht zwischen CR und LF und nicht hinter einem hohen Surrogat enden.
-  if (Prefix > 0) and ((AOld[Prefix] = #13) or IsHighSurrogate(AOld[Prefix])) then
+  if (mPrefix > 0) and ((AOld[mPrefix] = #13) or IsHighSurrogate(AOld[mPrefix])) then
   begin
-    Dec(Prefix);
+    Dec(mPrefix);
   end;
-  Suffix := 0;
-  MaxSuffix := Length(AOld) - Prefix;
-  if Length(ANew) - Prefix < MaxSuffix then
+  mSuffix := 0;
+  mMaxSuffix := Length(AOld) - mPrefix;
+  if Length(ANew) - mPrefix < mMaxSuffix then
   begin
-    MaxSuffix := Length(ANew) - Prefix;
+    mMaxSuffix := Length(ANew) - mPrefix;
   end;
-  while (Suffix < MaxSuffix) and (AOld[Length(AOld) - Suffix] = ANew[Length(ANew) - Suffix]) do
+  while (mSuffix < mMaxSuffix) and (AOld[Length(AOld) - mSuffix] = ANew[Length(ANew) - mSuffix]) do
   begin
-    Inc(Suffix);
+    Inc(mSuffix);
   end;
   // Das gleiche Ende darf nicht mit LF hinter einem CR des Bereichs beginnen und nicht mit
   // einem tiefen Surrogat.
-  if Suffix > 0 then
+  if mSuffix > 0 then
   begin
-    if (AOld[Length(AOld) - Suffix + 1] = #10) and (Length(AOld) - Suffix > 0) and
-      (AOld[Length(AOld) - Suffix] = #13) then
+    if (AOld[Length(AOld) - mSuffix + 1] = #10) and (Length(AOld) - mSuffix > 0) and
+      (AOld[Length(AOld) - mSuffix] = #13) then
     begin
-      Dec(Suffix);
+      Dec(mSuffix);
     end
-    else if IsLowSurrogate(AOld[Length(AOld) - Suffix + 1]) then
+    else if IsLowSurrogate(AOld[Length(AOld) - mSuffix + 1]) then
     begin
-      Dec(Suffix);
+      Dec(mSuffix);
     end;
   end;
-  Lines := TLineTable.Build(AOld);
-  Result.StartPos := PositionOf(Lines, Prefix);
-  Result.EndPos := PositionOf(Lines, Length(AOld) - Suffix);
-  Result.Text := Copy(ANew, Prefix + 1, Length(ANew) - Prefix - Suffix);
+  mLines := TLineTable.Build(AOld);
+  Result.StartPos := PositionOf(mLines, mPrefix);
+  Result.EndPos := PositionOf(mLines, Length(AOld) - mSuffix);
+  Result.Text := Copy(ANew, mPrefix + 1, Length(ANew) - mPrefix - mSuffix);
 end;
 
 end.

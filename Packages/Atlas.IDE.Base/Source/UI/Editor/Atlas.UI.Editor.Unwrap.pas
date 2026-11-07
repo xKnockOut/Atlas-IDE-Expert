@@ -93,11 +93,11 @@ uses
   Atlas.UI.Popup.Accessibility;
 
 const
-  Pad = 10;
-  RowGap = 4;
-  Separator = '  ·  ';
-  Marker = '› ';
-  Dash = ' – ';
+  cPad = 10;
+  cRowGap = 4;
+  cSeparator = '  ·  ';
+  cMarker = '› ';
+  cDash = ' – ';
 
 { TAtlasUnwrapWindow }
 
@@ -116,7 +116,7 @@ type
   end;
 
 const
-  KindTexts: array[0..9] of TKindText = (
+  cKindTexts: array[0..9] of TKindText = (
     (Kind: 'beginEnd'; Text: TAtlasTextId.UnwrapBeginEnd),
     (Kind: 'tryFinally'; Text: TAtlasTextId.UnwrapTryFinally),
     (Kind: 'tryExcept'; Text: TAtlasTextId.UnwrapTryExcept),
@@ -137,7 +137,7 @@ begin
   begin
     Exit(TAtlasStrings.Text(TAtlasTextId.UnwrapIfElse));
   end;
-  for mItem in KindTexts do
+  for mItem in cKindTexts do
   begin
     if mItem.Kind = AEntry.Kind then
     begin
@@ -199,7 +199,7 @@ begin
   mSuffix := VariantSuffix(AEntry);
   if mSuffix <> '' then
   begin
-    Result := Result + Dash + mSuffix;
+    Result := Result + cDash + mSuffix;
   end;
 end;
 
@@ -253,9 +253,9 @@ var
   mColor: TAtlasColor;
 begin
   mEntry := FEntries[AIndex];
-  AY := AY + ATextHeight + Scale(RowGap);
+  AY := AY + ATextHeight + Scale(cRowGap);
   mTop := AY;
-  mX := Scale(Pad);
+  mX := Scale(cPad);
   mText := EntryCaption(mEntry);
   mColor := Colors.Muted;
   if mEntry.Available then
@@ -264,20 +264,20 @@ begin
   end;
   if AIndex = FRow then
   begin
-    mText := Marker + mText;
+    mText := cMarker + mText;
     mColor := Colors.Accent;
   end
   else
   begin
-    mX := mX + Canvas.TextWidth(Marker);
+    mX := mX + Canvas.TextWidth(cMarker);
   end;
   Put(ADraw, mX, AY, mText, mColor);
   Inc(mX, Canvas.TextWidth(mText));
-  mLine := Separator + TAtlasStrings.Fmt(TAtlasTextId.UnwrapLine, [mEntry.Line + 1]);
+  mLine := cSeparator + TAtlasStrings.Fmt(TAtlasTextId.UnwrapLine, [mEntry.Line + 1]);
   Put(ADraw, mX, AY, mLine, Colors.Muted);
   Inc(mX, Canvas.TextWidth(mLine));
   AWidth := Max(AWidth, mX);
-  FRowRects[AIndex] := Rect(Scale(Pad), mTop, mX, AY + ATextHeight);
+  FRowRects[AIndex] := Rect(Scale(cPad), mTop, mX, AY + ATextHeight);
 end;
 
 /// <summary>Eintrag AIndex: Zeile (nicht in der Kurzform) und Hinweis darunter.</summary>
@@ -296,8 +296,8 @@ begin
   begin
     Exit;
   end;
-  AY := AY + ATextHeight + Scale(RowGap);
-  mX := Scale(Pad) + 2 * Canvas.TextWidth(Marker);
+  AY := AY + ATextHeight + Scale(cRowGap);
+  mX := Scale(cPad) + 2 * Canvas.TextWidth(cMarker);
   Put(ADraw, mX, AY, mNote, Colors.Warn);
   AWidth := Max(AWidth, mX + Canvas.TextWidth(mNote));
   if not FCompact then
@@ -313,7 +313,7 @@ var
   mAccept, mCancel: string;
   mColor: TAtlasColor;
 begin
-  mX := Scale(Pad);
+  mX := Scale(cPad);
   mAccept := TAtlasStrings.Text(TAtlasTextId.UnwrapAccept);
   mCancel := TAtlasStrings.Text(TAtlasTextId.UnwrapCancel);
   FAcceptRect := Rect(mX, AY, mX + Canvas.TextWidth(mAccept), AY + ATextHeight);
@@ -323,8 +323,8 @@ begin
     mColor := Colors.Accent;
   end;
   Put(ADraw, mX, AY, mAccept, mColor);
-  Put(ADraw, FAcceptRect.Right, AY, Separator, Colors.Muted);
-  mX := FAcceptRect.Right + Canvas.TextWidth(Separator);
+  Put(ADraw, FAcceptRect.Right, AY, cSeparator, Colors.Muted);
+  mX := FAcceptRect.Right + Canvas.TextWidth(cSeparator);
   FCancelRect := Rect(mX, AY, mX + Canvas.TextWidth(mCancel), AY + ATextHeight);
   Put(ADraw, mX, AY, mCancel, Colors.Accent);
   AWidth := Max(AWidth, FCancelRect.Right);
@@ -341,47 +341,47 @@ begin
   begin
     Canvas.Brush.Style := bsClear;
   end;
-  mY := Scale(Pad);
+  mY := Scale(cPad);
   mTitle := Title;
   Canvas.Font.Style := [fsBold];
-  Put(ADraw, Scale(Pad), mY, mTitle, Colors.Text);
-  mWidth := Scale(Pad) + Canvas.TextWidth(mTitle);
+  Put(ADraw, Scale(cPad), mY, mTitle, Colors.Text);
+  mWidth := Scale(cPad) + Canvas.TextWidth(mTitle);
   Canvas.Font.Style := [];
   SetLength(FRowRects, Length(FEntries));
   for mIndex := 0 to High(FEntries) do
   begin
     LayoutEntry(ADraw, mIndex, mTextHeight, mY, mWidth);
   end;
-  mY := mY + mTextHeight + Scale(RowGap) * 2;
+  mY := mY + mTextHeight + Scale(cRowGap) * 2;
   LayoutFooter(ADraw, mY, mTextHeight, mWidth);
   if ADraw then
   begin
     Canvas.Brush.Style := bsSolid;
   end;
-  Result.cx := mWidth + Scale(Pad);
-  Result.cy := mY + mTextHeight + Scale(Pad);
+  Result.cx := mWidth + Scale(cPad);
+  Result.cy := mY + mTextHeight + Scale(cPad);
 end;
 
 procedure TAtlasUnwrapWindow.ShowFor(const AEntries: TArray<TAtlasUnwrapEntry>; const APoint: TPoint);
 var
-  Size: TSize;
-  Area: TRect;
+  mSize: TSize;
+  mArea: TRect;
   mLeft, mTop: Integer;
 begin
   FEntries := AEntries;
   FCompact := TAtlasUnwrap.SingleEntry(FEntries);
   FRow := TAtlasUnwrap.NextAvailable(FEntries, 0, 1);
   HandleNeeded;
-  Size := Layout(False);
-  Area := WorkAreaAt(APoint);
-  mLeft := Min(APoint.X, Area.Right - Size.cx);
+  mSize := Layout(False);
+  mArea := WorkAreaAt(APoint);
+  mLeft := Min(APoint.X, mArea.Right - mSize.cx);
   mTop := APoint.Y + Scale(Gap);
-  if mTop + Size.cy > Area.Bottom then
+  if mTop + mSize.cy > mArea.Bottom then
   begin
-    mTop := APoint.Y - Scale(Gap) - Size.cy;
+    mTop := APoint.Y - Scale(Gap) - mSize.cy;
   end;
-  ShowAt(Rect(Max(mLeft, Area.Left), Max(mTop, Area.Top), Max(mLeft, Area.Left) + Size.cx,
-    Max(mTop, Area.Top) + Size.cy));
+  ShowAt(Rect(Max(mLeft, mArea.Left), Max(mTop, mArea.Top), Max(mLeft, mArea.Left) + mSize.cx,
+    Max(mTop, mArea.Top) + mSize.cy));
   Announce(Title);
   if FRow >= 0 then
   begin
@@ -418,13 +418,13 @@ end;
 
 function TAtlasUnwrapWindow.MoveRow(ADelta: Integer): Boolean;
 var
-  Next: Integer;
+  mNext: Integer;
 begin
-  Next := TAtlasUnwrap.NextAvailable(FEntries, FRow + ADelta, ADelta);
-  Result := Next >= 0;
+  mNext := TAtlasUnwrap.NextAvailable(FEntries, FRow + ADelta, ADelta);
+  Result := mNext >= 0;
   if Result then
   begin
-    Select(Next);
+    Select(mNext);
   end;
 end;
 
@@ -444,17 +444,17 @@ end;
 
 procedure TAtlasUnwrapWindow.Accept;
 var
-  Chosen: Integer;
+  mChosen: Integer;
 begin
-  Chosen := FRow;
-  if (Chosen < 0) or (Chosen > High(FEntries)) or not FEntries[Chosen].Available then
+  mChosen := FRow;
+  if (mChosen < 0) or (mChosen > High(FEntries)) or not FEntries[mChosen].Available then
   begin
     Exit;
   end;
   Dismiss;
   if Assigned(FOnAccept) then
   begin
-    FOnAccept(Chosen);
+    FOnAccept(mChosen);
   end;
 end;
 
@@ -478,30 +478,30 @@ end;
 
 procedure TAtlasUnwrapWindow.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
-  Index: Integer;
-  Point: TPoint;
+  mIndex: Integer;
+  mPoint: TPoint;
 begin
   inherited;
   if Button <> mbLeft then
   begin
     Exit;
   end;
-  Point := TPoint.Create(X, Y);
-  if PtInRect(FAcceptRect, Point) then
+  mPoint := TPoint.Create(X, Y);
+  if PtInRect(FAcceptRect, mPoint) then
   begin
     Accept;
     Exit;
   end;
-  if PtInRect(FCancelRect, Point) then
+  if PtInRect(FCancelRect, mPoint) then
   begin
     Cancel;
     Exit;
   end;
-  for Index := 0 to High(FRowRects) do
+  for mIndex := 0 to High(FRowRects) do
   begin
-    if PtInRect(FRowRects[Index], Point) and FEntries[Index].Available then
+    if PtInRect(FRowRects[mIndex], mPoint) and FEntries[mIndex].Available then
     begin
-      Select(Index);
+      Select(mIndex);
       Accept;
       Exit;
     end;
@@ -510,23 +510,23 @@ end;
 
 procedure TAtlasUnwrapWindow.MouseMove(Shift: TShiftState; X, Y: Integer);
 var
-  Index: Integer;
-  Hot: Boolean;
-  Point: TPoint;
+  mIndex: Integer;
+  mHot: Boolean;
+  mPoint: TPoint;
 begin
   inherited;
-  Point := TPoint.Create(X, Y);
-  Hot := PtInRect(FAcceptRect, Point) or PtInRect(FCancelRect, Point);
+  mPoint := TPoint.Create(X, Y);
+  mHot := PtInRect(FAcceptRect, mPoint) or PtInRect(FCancelRect, mPoint);
   // Überfahren wählt den Eintrag und wechselt die Vorschau.
-  for Index := 0 to High(FRowRects) do
+  for mIndex := 0 to High(FRowRects) do
   begin
-    if PtInRect(FRowRects[Index], Point) and FEntries[Index].Available then
+    if PtInRect(FRowRects[mIndex], mPoint) and FEntries[mIndex].Available then
     begin
-      Hot := True;
-      Select(Index);
+      mHot := True;
+      Select(mIndex);
     end;
   end;
-  if Hot then
+  if mHot then
   begin
     Cursor := crHandPoint;
   end

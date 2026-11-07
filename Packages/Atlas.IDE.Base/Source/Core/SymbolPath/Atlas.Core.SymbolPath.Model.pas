@@ -122,45 +122,45 @@ implementation
 
 function StringOf(AObject: TJSONObject; const AName: string): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := '';
-  Value := AObject.GetValue(AName);
-  if Value is TJSONString then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONString then
   begin
-    Result := Value.Value;
+    Result := mValue.Value;
   end;
 end;
 
 function IntegerOf(AObject: TJSONObject; const AName: string): Integer;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := 0;
-  Value := AObject.GetValue(AName);
-  if Value is TJSONNumber then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONNumber then
   begin
-    Result := TJSONNumber(Value).AsInt;
+    Result := TJSONNumber(mValue).AsInt;
   end;
 end;
 
 function BoolOf(AObject: TJSONObject; const AName: string): Boolean;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := AObject.GetValue(AName);
-  Result := (Value is TJSONBool) and TJSONBool(Value).AsBoolean;
+  mValue := AObject.GetValue(AName);
+  Result := (mValue is TJSONBool) and TJSONBool(mValue).AsBoolean;
 end;
 
 function ArrayOf(AObject: TJSONObject; const AName: string): TJSONArray;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := nil;
-  Value := AObject.GetValue(AName);
-  if Value is TJSONArray then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONArray then
   begin
-    Result := TJSONArray(Value);
+    Result := TJSONArray(mValue);
   end;
 end;
 
@@ -191,33 +191,33 @@ end;
 
 function NodesOf(AArray: TJSONArray): TArray<TAtlasSymbolPathNode>;
 var
-  Item: TJSONValue;
+  mItem: TJSONValue;
 begin
   Result := nil;
   if AArray = nil then
   begin
     Exit;
   end;
-  for Item in AArray do
+  for mItem in AArray do
   begin
-    if Item is TJSONObject then
+    if mItem is TJSONObject then
     begin
-      Result := Result + [NodeOf(TJSONObject(Item))];
+      Result := Result + [NodeOf(TJSONObject(mItem))];
     end;
   end;
 end;
 
 function StatusOf(const AText: string; out AStatus: TAtlasSymbolPathStatus): Boolean;
 const
-  Names: array[TAtlasSymbolPathStatus] of string = ('found', 'noPath', 'aborted', 'ambiguous', 'notFound');
+  cNames: array[TAtlasSymbolPathStatus] of string = ('found', 'noPath', 'aborted', 'ambiguous', 'notFound');
 var
-  Status: TAtlasSymbolPathStatus;
+  mStatus: TAtlasSymbolPathStatus;
 begin
-  for Status := Low(TAtlasSymbolPathStatus) to High(TAtlasSymbolPathStatus) do
+  for mStatus := Low(TAtlasSymbolPathStatus) to High(TAtlasSymbolPathStatus) do
   begin
-    if Names[Status] = AText then
+    if cNames[mStatus] = AText then
     begin
-      AStatus := Status;
+      AStatus := mStatus;
       Exit(True);
     end;
   end;
@@ -229,20 +229,20 @@ end;
 
 function TAtlasSymbolPathRoute.UnitNames: TArray<string>;
 var
-  Node: TAtlasSymbolPathNode;
+  mNode: TAtlasSymbolPathNode;
 begin
   Result := nil;
-  for Node in Nodes do
+  for mNode in Nodes do
   begin
-    if Node.UnitName = '' then
+    if mNode.UnitName = '' then
     begin
       Continue;
     end;
-    if (Length(Result) > 0) and SameText(Result[High(Result)], Node.UnitName) then
+    if (Length(Result) > 0) and SameText(Result[High(Result)], mNode.UnitName) then
     begin
       Continue;
     end;
-    Result := Result + [Node.UnitName];
+    Result := Result + [mNode.UnitName];
   end;
 end;
 
@@ -451,24 +451,24 @@ end;
 class function TAtlasSymbolPathCommands.Arguments(const AProjectUri, AFrom, ATo: string; AMaxSteps: Integer;
   AAll: Boolean): string;
 var
-  Values: TJSONArray;
-  Options: TJSONObject;
+  mValues: TJSONArray;
+  mOptions: TJSONObject;
 begin
-  Values := TJSONArray.Create;
+  mValues := TJSONArray.Create;
   try
-    Values.Add(AProjectUri);
-    Options := TJSONObject.Create;
-    Values.AddElement(Options);
-    Options.AddPair('from', Trim(AFrom));
-    Options.AddPair('to', Trim(ATo));
+    mValues.Add(AProjectUri);
+    mOptions := TJSONObject.Create;
+    mValues.AddElement(mOptions);
+    mOptions.AddPair('from', Trim(AFrom));
+    mOptions.AddPair('to', Trim(ATo));
     if (AMaxSteps >= 1) and (AMaxSteps <= MaxSteps) then
     begin
-      Options.AddPair('maxSteps', TJSONNumber.Create(AMaxSteps));
+      mOptions.AddPair('maxSteps', TJSONNumber.Create(AMaxSteps));
     end;
-    Options.AddPair('all', TJSONBool.Create(AAll));
-    Result := Values.ToJSON;
+    mOptions.AddPair('all', TJSONBool.Create(AAll));
+    Result := mValues.ToJSON;
   finally
-    Values.Free;
+    mValues.Free;
   end;
 end;
 

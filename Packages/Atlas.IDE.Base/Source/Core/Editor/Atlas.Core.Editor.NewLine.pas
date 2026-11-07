@@ -77,14 +77,14 @@ uses
 
 const
   // Öffnen einen Block bzw. Abschnitt: Grenze der Anweisung (eingeschlossen) und unterhalb eine Ebene tiefer.
-  IndentOpeners: array[0..20] of string = ('begin', 'then', 'else', 'do', 'try', 'finally', 'except', 'repeat',
+  cIndentOpeners: array[0..20] of string = ('begin', 'then', 'else', 'do', 'try', 'finally', 'except', 'repeat',
     'asm', 'record', 'private', 'protected', 'public', 'published', 'var', 'const', 'type', 'uses', 'label',
     'resourcestring', 'threadvar');
   // Weitere Grenzen ohne eigenen Einzug.
-  OtherBoundaries: array[0..5] of string = ('of', 'end', 'initialization', 'finalization', 'implementation',
+  cOtherBoundaries: array[0..5] of string = ('of', 'end', 'initialization', 'finalization', 'implementation',
     'interface');
   // Schließen den Block davor: Anweisung endet vor ihnen, oberhalb eine Ebene tiefer.
-  Closers: array[0..9] of string = ('end', 'until', 'except', 'finally', 'else', 'private', 'protected', 'public',
+  cClosers: array[0..9] of string = ('end', 'until', 'except', 'finally', 'else', 'private', 'protected', 'public',
     'published', 'strict');
 
 type
@@ -92,16 +92,16 @@ type
 
 function InList(const AToken: TAtlasCodeToken; const AWords: array of string): Boolean;
 var
-  Word: string;
+  mWord: string;
 begin
   Result := False;
   if not AToken.IsWord then
   begin
     Exit;
   end;
-  for Word in AWords do
+  for mWord in AWords do
   begin
-    if AToken.Text = Word then
+    if AToken.Text = mWord then
     begin
       Exit(True);
     end;
@@ -161,31 +161,31 @@ end;
 
 function IsOpener(const ATokens: TCodeTokens; AIndex: Integer): Boolean;
 begin
-  Result := InList(ATokens[AIndex], IndentOpeners) or IsTypeOpener(ATokens, AIndex);
+  Result := InList(ATokens[AIndex], cIndentOpeners) or IsTypeOpener(ATokens, AIndex);
 end;
 
 function IsBoundary(const ATokens: TCodeTokens; AIndex: Integer): Boolean;
 begin
-  Result := (ATokens[AIndex].Text = ';') or IsOpener(ATokens, AIndex) or InList(ATokens[AIndex], OtherBoundaries);
+  Result := (ATokens[AIndex].Text = ';') or IsOpener(ATokens, AIndex) or InList(ATokens[AIndex], cOtherBoundaries);
 end;
 
 /// <summary>Klammerebene vor jedem Token; "(" und "[" haben die äußere, ")" und "]" auch.</summary>
 function DepthsOf(const ATokens: TCodeTokens): TArray<Integer>;
 var
-  Index, Depth: Integer;
+  mIndex, mDepth: Integer;
 begin
   SetLength(Result, Length(ATokens));
-  Depth := 0;
-  for Index := 0 to High(ATokens) do
+  mDepth := 0;
+  for mIndex := 0 to High(ATokens) do
   begin
-    if (ATokens[Index].Text = ')') or (ATokens[Index].Text = ']') then
+    if (ATokens[mIndex].Text = ')') or (ATokens[mIndex].Text = ']') then
     begin
-      Depth := Max(0, Depth - 1);
+      mDepth := Max(0, mDepth - 1);
     end;
-    Result[Index] := Depth;
-    if (ATokens[Index].Text = '(') or (ATokens[Index].Text = '[') then
+    Result[mIndex] := mDepth;
+    if (ATokens[mIndex].Text = '(') or (ATokens[mIndex].Text = '[') then
     begin
-      Inc(Depth);
+      Inc(mDepth);
     end;
   end;
 end;
@@ -193,21 +193,21 @@ end;
 /// <summary>Erstes und letztes Token in ALine; False ohne.</summary>
 function LineTokens(const ATokens: TCodeTokens; ALine: Integer; out AFirst, ALast: Integer): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   AFirst := -1;
   ALast := -1;
-  for Index := 0 to High(ATokens) do
+  for mIndex := 0 to High(ATokens) do
   begin
-    if ATokens[Index].StartPos.Line = ALine then
+    if ATokens[mIndex].StartPos.Line = ALine then
     begin
       if AFirst < 0 then
       begin
-        AFirst := Index;
+        AFirst := mIndex;
       end;
-      ALast := Index;
+      ALast := mIndex;
     end
-    else if ATokens[Index].StartPos.Line > ALine then
+    else if ATokens[mIndex].StartPos.Line > ALine then
     begin
       Break;
     end;
@@ -220,7 +220,7 @@ end;
 procedure Extent(const ATokens: TCodeTokens; const ADepths: TArray<Integer>; AIndex: Integer;
   out AStart, AStop: Integer);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   AStart := AIndex;
   while (AStart > 0) and not ((ADepths[AStart - 1] = 0) and IsBoundary(ATokens, AStart - 1)) do
@@ -228,20 +228,20 @@ begin
     Dec(AStart);
   end;
   AStop := High(ATokens);
-  for Index := AIndex to High(ATokens) do
+  for mIndex := AIndex to High(ATokens) do
   begin
-    if ADepths[Index] > 0 then
+    if ADepths[mIndex] > 0 then
     begin
       Continue;
     end;
-    if (Index > AIndex) and InList(ATokens[Index], Closers) then
+    if (mIndex > AIndex) and InList(ATokens[mIndex], cClosers) then
     begin
-      AStop := Index - 1;
+      AStop := mIndex - 1;
       Break;
     end;
-    if IsBoundary(ATokens, Index) then
+    if IsBoundary(ATokens, mIndex) then
     begin
-      AStop := Index;
+      AStop := mIndex;
       Break;
     end;
   end;
@@ -249,14 +249,14 @@ end;
 
 function LeadingWhitespace(const ALine: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := 1;
-  while (Index <= Length(ALine)) and CharInSet(ALine[Index], [' ', #9]) do
+  mIndex := 1;
+  while (mIndex <= Length(ALine)) and CharInSet(ALine[mIndex], [' ', #9]) do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Result := Copy(ALine, 1, Index - 1);
+  Result := Copy(ALine, 1, mIndex - 1);
 end;
 
 /// <summary>Steht unter den Tokens AFirst..ALast das Wort AWord?</summary>
@@ -291,7 +291,7 @@ begin
   Result := False;
   if LineTokens(ATokens, ALine, mFirst, mLast) then
   begin
-    if InList(ATokens[mLast], IndentOpeners) then
+    if InList(ATokens[mLast], cIndentOpeners) then
     begin
       Result := True;
     end
@@ -309,21 +309,21 @@ end;
 /// <summary>Oberhalb von ALine eine Ebene tiefer?</summary>
 function IndentsAbove(const ATokens: TCodeTokens; ALine: Integer): Boolean;
 var
-  First, Last: Integer;
+  mFirst, mLast: Integer;
 begin
-  Result := LineTokens(ATokens, ALine, First, Last) and InList(ATokens[First], Closers);
+  Result := LineTokens(ATokens, ALine, mFirst, mLast) and InList(ATokens[mFirst], cClosers);
 end;
 
 /// <summary>Liegt der Anfang von ALine in einem Blockkommentar, der davor beginnt?</summary>
 function InsideBlockComment(const ALines: TArray<string>; ALine: Integer): Boolean;
 var
-  Span: TAtlasCommentSpan;
+  mSpan: TAtlasCommentSpan;
 begin
   Result := False;
-  for Span in TAtlasBlockComment.Spans(ALines) do
+  for mSpan in TAtlasBlockComment.Spans(ALines) do
   begin
-    if (Span.Kind in [TAtlasCommentSpanKind.BraceComment, TAtlasCommentSpanKind.ParenComment]) and
-      (Span.StartPos.Line < ALine) and (Span.EndPos.Line >= ALine) then
+    if (mSpan.Kind in [TAtlasCommentSpanKind.BraceComment, TAtlasCommentSpanKind.ParenComment]) and
+      (mSpan.StartPos.Line < ALine) and (mSpan.EndPos.Line >= ALine) then
     begin
       Exit(True);
     end;
@@ -334,27 +334,27 @@ end;
 /// nicht fortgesetzt wird ("///" immer).</summary>
 function LineCommentPrefix(const ALine: string; ALineComments: Boolean; out APrefix: string): Boolean;
 var
-  Indent, Rest: string;
-  Index: Integer;
+  mIndent, mRest: string;
+  mIndex: Integer;
 begin
   APrefix := '';
-  Indent := LeadingWhitespace(ALine);
-  Rest := Copy(ALine, Length(Indent) + 1, MaxInt);
-  Result := Rest.StartsWith('///') or (ALineComments and Rest.StartsWith('//'));
+  mIndent := LeadingWhitespace(ALine);
+  mRest := Copy(ALine, Length(mIndent) + 1, MaxInt);
+  Result := mRest.StartsWith('///') or (ALineComments and mRest.StartsWith('//'));
   if not Result then
   begin
     Exit;
   end;
-  Index := 1;
-  while (Index <= Length(Rest)) and (Rest[Index] = '/') do
+  mIndex := 1;
+  while (mIndex <= Length(mRest)) and (mRest[mIndex] = '/') do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  while (Index <= Length(Rest)) and CharInSet(Rest[Index], [' ', #9]) do
+  while (mIndex <= Length(mRest)) and CharInSet(mRest[mIndex], [' ', #9]) do
   begin
-    Inc(Index);
+    Inc(mIndex);
   end;
-  APrefix := Indent + Copy(Rest, 1, Index - 1);
+  APrefix := mIndent + Copy(mRest, 1, mIndex - 1);
 end;
 
 function InsertLine(const ALines: TArray<string>; AIndex: Integer; const AText: string): TArray<string>;
@@ -441,27 +441,27 @@ end;
 class function TAtlasNewLine.StatementLines(const ALines: TArray<string>; ALine: Integer;
   ADirection: TAtlasNewLineDirection; out AFirstLine, ALastLine: Integer): Boolean;
 var
-  Tokens: TCodeTokens;
-  First, Last, Start, Stop: Integer;
+  mTokens: TCodeTokens;
+  mFirst, mLast, mStart, mStop: Integer;
 begin
   AFirstLine := ALine;
   ALastLine := ALine;
-  Tokens := TAtlasBlockComment.Tokens(ALines);
-  Result := LineTokens(Tokens, ALine, First, Last);
+  mTokens := TAtlasBlockComment.Tokens(ALines);
+  Result := LineTokens(mTokens, ALine, mFirst, mLast);
   if not Result then
   begin
     Exit;
   end;
   if ADirection = TAtlasNewLineDirection.Below then
   begin
-    Extent(Tokens, DepthsOf(Tokens), Last, Start, Stop);
+    Extent(mTokens, DepthsOf(mTokens), mLast, mStart, mStop);
   end
   else
   begin
-    Extent(Tokens, DepthsOf(Tokens), First, Start, Stop);
+    Extent(mTokens, DepthsOf(mTokens), mFirst, mStart, mStop);
   end;
-  AFirstLine := Tokens[Start].StartPos.Line;
-  ALastLine := Tokens[Stop].StartPos.Line;
+  AFirstLine := mTokens[mStart].StartPos.Line;
+  ALastLine := mTokens[mStop].StartPos.Line;
 end;
 
 class function TAtlasNewLine.Insert(const ALines: TArray<string>; ALine: Integer;

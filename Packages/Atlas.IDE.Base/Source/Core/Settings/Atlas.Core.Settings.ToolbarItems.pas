@@ -65,7 +65,7 @@ uses
   System.StrUtils;
 
 const
-  DefaultItems: array[0..14] of string = (TAtlasToolbarItems.GotoInterface, TAtlasToolbarItems.GotoImplementation,
+  cDefaultItems: array[0..14] of string = (TAtlasToolbarItems.GotoInterface, TAtlasToolbarItems.GotoImplementation,
     TAtlasToolbarItems.Separator, 'Atlas.NavBack', 'Atlas.NavForward', 'Atlas.ToggleMethod', 'Atlas.SwitchTestUnit',
     TAtlasToolbarItems.Separator, 'Atlas.UnitSearch', TAtlasToolbarItems.FindMethod, TAtlasToolbarItems.Separator,
     'Atlas.CodeActions', 'Atlas.FormatCode', 'Atlas.ProblemsWindow', TAtlasToolbarItems.CommandPalette);
@@ -90,14 +90,14 @@ end;
 
 class function TAtlasToolbarItems.Parse(const AText: string): TArray<string>;
 var
-  Part: string;
+  mPart: string;
 begin
   Result := nil;
-  for Part in AText.Split([Delimiter]) do
+  for mPart in AText.Split([Delimiter]) do
   begin
-    if Trim(Part) <> '' then
+    if Trim(mPart) <> '' then
     begin
-      Result := Result + [Trim(Part)];
+      Result := Result + [Trim(mPart)];
     end;
   end;
 end;
@@ -137,12 +137,12 @@ end;
 
 class function TAtlasToolbarItems.Default: TArray<string>;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  SetLength(Result, Length(DefaultItems));
-  for Index := 0 to High(DefaultItems) do
+  SetLength(Result, Length(cDefaultItems));
+  for mIndex := 0 to High(cDefaultItems) do
   begin
-    Result[Index] := DefaultItems[Index];
+    Result[mIndex] := cDefaultItems[mIndex];
   end;
 end;
 
@@ -168,7 +168,7 @@ end;
 
 class function TAtlasToolbarItems.Add(var AItems: TArray<string>; const AId: string; AIndex: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := -1;
   if Trim(AId) = '' then
@@ -177,9 +177,9 @@ begin
   end;
   if not IsSeparator(AId) then
   begin
-    for Index := 0 to High(AItems) do
+    for mIndex := 0 to High(AItems) do
     begin
-      if SameText(AItems[Index], AId) then
+      if SameText(AItems[mIndex], AId) then
       begin
         Exit;
       end;
@@ -204,19 +204,19 @@ end;
 
 class function TAtlasToolbarItems.Move(var AItems: TArray<string>; AIndex, ADelta: Integer): Integer;
 var
-  Target: Integer;
-  Item: string;
+  mTarget: Integer;
+  mItem: string;
 begin
   Result := AIndex;
-  Target := AIndex + ADelta;
-  if (AIndex < 0) or (AIndex > High(AItems)) or (Target < 0) or (Target > High(AItems)) then
+  mTarget := AIndex + ADelta;
+  if (AIndex < 0) or (AIndex > High(AItems)) or (mTarget < 0) or (mTarget > High(AItems)) then
   begin
     Exit;
   end;
-  Item := AItems[AIndex];
-  AItems[AIndex] := AItems[Target];
-  AItems[Target] := Item;
-  Result := Target;
+  mItem := AItems[AIndex];
+  AItems[AIndex] := AItems[mTarget];
+  AItems[mTarget] := mItem;
+  Result := mTarget;
 end;
 
 end.

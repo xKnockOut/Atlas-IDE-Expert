@@ -183,16 +183,16 @@ uses
   Atlas.Core.Projects.Summary.Json;
 
 const
-  SetupKeys: array[0..2] of string = ('dismissed', 'dismissedAt', 'paths');
-  TestsKeys: array[0..9] of string = ('at', 'project', 'configuration', 'platform', 'passed', 'failed', 'errors',
+  cSetupKeys: array[0..2] of string = ('dismissed', 'dismissedAt', 'paths');
+  cTestsKeys: array[0..9] of string = ('at', 'project', 'configuration', 'platform', 'passed', 'failed', 'errors',
     'skipped', 'durationMs', 'failures');
-  ReleaseKeys: array[0..6] of string = ('checkedAt', 'configuration', 'platform', 'findings', 'blocked', 'rules',
+  cReleaseKeys: array[0..6] of string = ('checkedAt', 'configuration', 'platform', 'findings', 'blocked', 'rules',
     'builds');
-  CiKeys: array[0..14] of string = ('provider', 'server', 'job', 'branch', 'attempt', 'error', 'at', 'number',
+  cCiKeys: array[0..14] of string = ('provider', 'server', 'job', 'branch', 'attempt', 'error', 'at', 'number',
     'result', 'started', 'durationMs', 'passed', 'failed', 'skipped', 'failures');
-  CiFailureKeys: array[0..1] of string = ('test', 'message');
-  ReleaseBuildKeys: array[0..3] of string = ('configuration', 'platform', 'version', 'at');
-  PathsKeys: array[0..10] of string = ('at', 'files', 'unreadable', 'missingUnits', 'undefinedDefines', 'units',
+  cCiFailureKeys: array[0..1] of string = ('test', 'message');
+  cReleaseBuildKeys: array[0..3] of string = ('configuration', 'platform', 'version', 'at');
+  cPathsKeys: array[0..10] of string = ('at', 'files', 'unreadable', 'missingUnits', 'undefinedDefines', 'units',
     'defines', 'uncertainUnits', 'uncertainDefines', 'skippedMacros', 'hints');
 
 { TAtlasProjectSetup }
@@ -212,67 +212,67 @@ end;
 /// <summary>Funde aus einem Array [{"name", "file", "line", "count"}]; Einträge ohne Namen fallen weg.</summary>
 function SetupFindingsOf(AValue: TJSONValue): TArray<TAtlasSetupFinding>;
 var
-  Index: Integer;
-  Item: TJSONValue;
-  Finding: TAtlasSetupFinding;
+  mIndex: Integer;
+  mItem: TJSONValue;
+  mFinding: TAtlasSetupFinding;
 begin
   Result := nil;
   if not (AValue is TJSONArray) then
   begin
     Exit;
   end;
-  for Index := 0 to TJSONArray(AValue).Count - 1 do
+  for mIndex := 0 to TJSONArray(AValue).Count - 1 do
   begin
-    Item := TJSONArray(AValue).Items[Index];
-    if not (Item is TJSONObject) then
+    mItem := TJSONArray(AValue).Items[mIndex];
+    if not (mItem is TJSONObject) then
     begin
       Continue;
     end;
-    Finding.Name := TextOf(TJSONObject(Item), 'name');
-    Finding.FileName := TextOf(TJSONObject(Item), 'file');
-    Finding.Line := NumberOf(TJSONObject(Item), 'line', 0);
-    Finding.Count := NumberOf(TJSONObject(Item), 'count', 1);
-    Finding.Uncertain := FlagOf(TJSONObject(Item), 'uncertain');
-    Finding.Note := TextOf(TJSONObject(Item), 'note');
-    Finding.Project := '';
-    if (Finding.Name <> '') and (Length(Result) < TAtlasProjectSetup.MaxFindings) then
+    mFinding.Name := TextOf(TJSONObject(mItem), 'name');
+    mFinding.FileName := TextOf(TJSONObject(mItem), 'file');
+    mFinding.Line := NumberOf(TJSONObject(mItem), 'line', 0);
+    mFinding.Count := NumberOf(TJSONObject(mItem), 'count', 1);
+    mFinding.Uncertain := FlagOf(TJSONObject(mItem), 'uncertain');
+    mFinding.Note := TextOf(TJSONObject(mItem), 'note');
+    mFinding.Project := '';
+    if (mFinding.Name <> '') and (Length(Result) < TAtlasProjectSetup.MaxFindings) then
     begin
-      Result := Result + [Finding];
+      Result := Result + [mFinding];
     end;
   end;
 end;
 
 function SetupFindingsJson(const AFindings: TArray<TAtlasSetupFinding>): TJSONArray;
 var
-  Index: Integer;
-  Item: TJSONObject;
+  mIndex: Integer;
+  mItem: TJSONObject;
 begin
   Result := TJSONArray.Create;
-  for Index := 0 to High(AFindings) do
+  for mIndex := 0 to High(AFindings) do
   begin
-    if Index >= TAtlasProjectSetup.MaxFindings then
+    if mIndex >= TAtlasProjectSetup.MaxFindings then
     begin
       Break;
     end;
-    Item := TJSONObject.Create;
-    Result.AddElement(Item);
-    Item.AddPair('name', AFindings[Index].Name);
-    if AFindings[Index].FileName <> '' then
+    mItem := TJSONObject.Create;
+    Result.AddElement(mItem);
+    mItem.AddPair('name', AFindings[mIndex].Name);
+    if AFindings[mIndex].FileName <> '' then
     begin
-      Item.AddPair('file', AFindings[Index].FileName);
+      mItem.AddPair('file', AFindings[mIndex].FileName);
     end;
-    if AFindings[Index].Line > 0 then
+    if AFindings[mIndex].Line > 0 then
     begin
-      Item.AddPair('line', TJSONNumber.Create(AFindings[Index].Line));
+      mItem.AddPair('line', TJSONNumber.Create(AFindings[mIndex].Line));
     end;
-    Item.AddPair('count', TJSONNumber.Create(AFindings[Index].Count));
-    if AFindings[Index].Uncertain then
+    mItem.AddPair('count', TJSONNumber.Create(AFindings[mIndex].Count));
+    if AFindings[mIndex].Uncertain then
     begin
-      Item.AddPair('uncertain', TJSONBool.Create(True));
+      mItem.AddPair('uncertain', TJSONBool.Create(True));
     end;
-    if AFindings[Index].Note <> '' then
+    if AFindings[mIndex].Note <> '' then
     begin
-      Item.AddPair('note', AFindings[Index].Note);
+      mItem.AddPair('note', AFindings[mIndex].Note);
     end;
   end;
 end;
@@ -280,21 +280,21 @@ end;
 /// <summary>Texte aus einem Array von Zeichenketten; anderes (auch Zahlen) fällt weg.</summary>
 function TextsOfSetup(AValue: TJSONValue): TArray<string>;
 var
-  Index: Integer;
-  Item: TJSONValue;
+  mIndex: Integer;
+  mItem: TJSONValue;
 begin
   Result := nil;
   if not (AValue is TJSONArray) then
   begin
     Exit;
   end;
-  for Index := 0 to TJSONArray(AValue).Count - 1 do
+  for mIndex := 0 to TJSONArray(AValue).Count - 1 do
   begin
-    Item := TJSONArray(AValue).Items[Index];
+    mItem := TJSONArray(AValue).Items[mIndex];
     // TJSONNumber erbt von TJSONString.
-    if (Item is TJSONString) and not (Item is TJSONNumber) and (Item.Value <> '') then
+    if (mItem is TJSONString) and not (mItem is TJSONNumber) and (mItem.Value <> '') then
     begin
-      Result := Result + [Item.Value];
+      Result := Result + [mItem.Value];
     end;
   end;
 end;
@@ -302,7 +302,7 @@ end;
 /// <summary>Abschnitt "setup"; leer ohne Abschnitt.</summary>
 class function TAtlasSummarySections.SetupOf(ASection: TJSONObject): TAtlasProjectSetup;
 var
-  Paths: TJSONObject;
+  mPaths: TJSONObject;
 begin
   Result := TAtlasProjectSetup.Empty;
   if ASection = nil then
@@ -312,48 +312,48 @@ begin
   Result.Known := True;
   Result.Dismissed := FlagOf(ASection, 'dismissed');
   Result.DismissedAt := SummaryTimeOf(TextOf(ASection, 'dismissedAt'));
-  Paths := ObjectOf(ASection, 'paths');
-  if Paths = nil then
+  mPaths := ObjectOf(ASection, 'paths');
+  if mPaths = nil then
   begin
     Exit;
   end;
   Result.Checked := True;
-  Result.CheckedAt := SummaryTimeOf(TextOf(Paths, 'at'));
-  Result.Files := NumberOf(Paths, 'files', 0);
-  Result.Unreadable := NumberOf(Paths, 'unreadable', 0);
-  Result.MissingUnits := SetupFindingsOf(Paths.GetValue('units'));
-  Result.UndefinedDefines := SetupFindingsOf(Paths.GetValue('defines'));
-  Result.Hints := SetupFindingsOf(Paths.GetValue('hints'));
+  Result.CheckedAt := SummaryTimeOf(TextOf(mPaths, 'at'));
+  Result.Files := NumberOf(mPaths, 'files', 0);
+  Result.Unreadable := NumberOf(mPaths, 'unreadable', 0);
+  Result.MissingUnits := SetupFindingsOf(mPaths.GetValue('units'));
+  Result.UndefinedDefines := SetupFindingsOf(mPaths.GetValue('defines'));
+  Result.Hints := SetupFindingsOf(mPaths.GetValue('hints'));
   // Die Zähler sind nie kleiner als die gespeicherten Funde.
-  Result.MissingUnitCount := NumberOf(Paths, 'missingUnits', 0);
+  Result.MissingUnitCount := NumberOf(mPaths, 'missingUnits', 0);
   if Result.MissingUnitCount < Length(Result.MissingUnits) then
   begin
     Result.MissingUnitCount := Length(Result.MissingUnits);
   end;
-  Result.UndefinedDefineCount := NumberOf(Paths, 'undefinedDefines', 0);
+  Result.UndefinedDefineCount := NumberOf(mPaths, 'undefinedDefines', 0);
   if Result.UndefinedDefineCount < Length(Result.UndefinedDefines) then
   begin
     Result.UndefinedDefineCount := Length(Result.UndefinedDefines);
   end;
   // Unsichere nie mehr als alle.
-  Result.UncertainUnitCount := NumberOf(Paths, 'uncertainUnits', 0);
+  Result.UncertainUnitCount := NumberOf(mPaths, 'uncertainUnits', 0);
   if Result.UncertainUnitCount > Result.MissingUnitCount then
   begin
     Result.UncertainUnitCount := Result.MissingUnitCount;
   end;
-  Result.UncertainDefineCount := NumberOf(Paths, 'uncertainDefines', 0);
+  Result.UncertainDefineCount := NumberOf(mPaths, 'uncertainDefines', 0);
   if Result.UncertainDefineCount > Result.UndefinedDefineCount then
   begin
     Result.UncertainDefineCount := Result.UndefinedDefineCount;
   end;
-  Result.SkippedMacros := TextsOfSetup(Paths.GetValue('skippedMacros'));
+  Result.SkippedMacros := TextsOfSetup(mPaths.GetValue('skippedMacros'));
 end;
 
 class function TAtlasSummarySections.SetupJson(const ASetup: TAtlasProjectSetup; AOriginal: TJSONObject): TJSONObject;
 var
-  Paths: TJSONObject;
-  Macros: TJSONArray;
-  Macro: string;
+  mPaths: TJSONObject;
+  mMacros: TJSONArray;
+  mMacro: string;
 begin
   Result := TJSONObject.Create;
   if ASetup.Dismissed then
@@ -363,39 +363,39 @@ begin
   end;
   if ASetup.Checked then
   begin
-    Paths := TJSONObject.Create;
-    Result.AddPair('paths', Paths);
-    AddTime(Paths, 'at', ASetup.CheckedAt);
-    Paths.AddPair('files', TJSONNumber.Create(ASetup.Files));
-    Paths.AddPair('unreadable', TJSONNumber.Create(ASetup.Unreadable));
-    Paths.AddPair('missingUnits', TJSONNumber.Create(ASetup.MissingUnitCount));
-    Paths.AddPair('undefinedDefines', TJSONNumber.Create(ASetup.UndefinedDefineCount));
+    mPaths := TJSONObject.Create;
+    Result.AddPair('paths', mPaths);
+    AddTime(mPaths, 'at', ASetup.CheckedAt);
+    mPaths.AddPair('files', TJSONNumber.Create(ASetup.Files));
+    mPaths.AddPair('unreadable', TJSONNumber.Create(ASetup.Unreadable));
+    mPaths.AddPair('missingUnits', TJSONNumber.Create(ASetup.MissingUnitCount));
+    mPaths.AddPair('undefinedDefines', TJSONNumber.Create(ASetup.UndefinedDefineCount));
     if ASetup.UncertainUnitCount > 0 then
     begin
-      Paths.AddPair('uncertainUnits', TJSONNumber.Create(ASetup.UncertainUnitCount));
+      mPaths.AddPair('uncertainUnits', TJSONNumber.Create(ASetup.UncertainUnitCount));
     end;
     if ASetup.UncertainDefineCount > 0 then
     begin
-      Paths.AddPair('uncertainDefines', TJSONNumber.Create(ASetup.UncertainDefineCount));
+      mPaths.AddPair('uncertainDefines', TJSONNumber.Create(ASetup.UncertainDefineCount));
     end;
     if Length(ASetup.SkippedMacros) > 0 then
     begin
-      Macros := TJSONArray.Create;
-      Paths.AddPair('skippedMacros', Macros);
-      for Macro in ASetup.SkippedMacros do
+      mMacros := TJSONArray.Create;
+      mPaths.AddPair('skippedMacros', mMacros);
+      for mMacro in ASetup.SkippedMacros do
       begin
-        Macros.Add(Macro);
+        mMacros.Add(mMacro);
       end;
     end;
-    Paths.AddPair('units', SetupFindingsJson(ASetup.MissingUnits));
-    Paths.AddPair('defines', SetupFindingsJson(ASetup.UndefinedDefines));
+    mPaths.AddPair('units', SetupFindingsJson(ASetup.MissingUnits));
+    mPaths.AddPair('defines', SetupFindingsJson(ASetup.UndefinedDefines));
     if Length(ASetup.Hints) > 0 then
     begin
-      Paths.AddPair('hints', SetupFindingsJson(ASetup.Hints));
+      mPaths.AddPair('hints', SetupFindingsJson(ASetup.Hints));
     end;
-    KeepUnknown(Paths, ObjectOf(AOriginal, 'paths'), PathsKeys);
+    KeepUnknown(mPaths, ObjectOf(AOriginal, 'paths'), cPathsKeys);
   end;
-  KeepUnknown(Result, AOriginal, SetupKeys);
+  KeepUnknown(Result, AOriginal, cSetupKeys);
 end;
 
 { TAtlasProjectTests }
@@ -408,28 +408,28 @@ end;
 
 function TAtlasProjectTests.FailedTests: TArray<string>;
 var
-  Failure: TAtlasProjectTestFailure;
-  Name: string;
-  Seen: Boolean;
+  mFailure: TAtlasProjectTestFailure;
+  mName: string;
+  mSeen: Boolean;
 begin
   Result := nil;
-  for Failure in Failures do
+  for mFailure in Failures do
   begin
-    if Failure.Test = '' then
+    if mFailure.Test = '' then
     begin
       Continue;
     end;
-    Seen := False;
-    for Name in Result do
+    mSeen := False;
+    for mName in Result do
     begin
-      if SameText(Name, Failure.Test) then
+      if SameText(mName, mFailure.Test) then
       begin
-        Seen := True;
+        mSeen := True;
       end;
     end;
-    if not Seen then
+    if not mSeen then
     begin
-      Result := Result + [Failure.Test];
+      Result := Result + [mFailure.Test];
     end;
   end;
 end;
@@ -441,9 +441,9 @@ end;
 
 class function TAtlasSummarySections.TestsOf(ASection: TJSONObject): TAtlasProjectTests;
 var
-  Items: TJSONValue;
-  Item: TJSONValue;
-  Failure: TAtlasProjectTestFailure;
+  mItems: TJSONValue;
+  mItem: TJSONValue;
+  mFailure: TAtlasProjectTestFailure;
 begin
   Result := TAtlasProjectTests.Empty;
   if ASection = nil then
@@ -460,34 +460,34 @@ begin
   Result.Errors := NumberOf(ASection, 'errors', 0);
   Result.Skipped := NumberOf(ASection, 'skipped', 0);
   Result.DurationMs := NumberOf(ASection, 'durationMs', 0);
-  Items := ASection.GetValue('failures');
-  if not (Items is TJSONArray) then
+  mItems := ASection.GetValue('failures');
+  if not (mItems is TJSONArray) then
   begin
     Exit;
   end;
-  for Item in TJSONArray(Items) do
+  for mItem in TJSONArray(mItems) do
   begin
-    if not (Item is TJSONObject) or (Length(Result.Failures) >= TAtlasProjectTests.MaxFailures) then
+    if not (mItem is TJSONObject) or (Length(Result.Failures) >= TAtlasProjectTests.MaxFailures) then
     begin
       Continue;
     end;
-    Failure := Default(TAtlasProjectTestFailure);
-    Failure.Test := TextOf(TJSONObject(Item), 'test');
-    Failure.Message := TextOf(TJSONObject(Item), 'message');
-    Failure.FileName := TextOf(TJSONObject(Item), 'file');
-    Failure.Line := NumberOf(TJSONObject(Item), 'line', 0);
-    if Failure.Test <> '' then
+    mFailure := Default(TAtlasProjectTestFailure);
+    mFailure.Test := TextOf(TJSONObject(mItem), 'test');
+    mFailure.Message := TextOf(TJSONObject(mItem), 'message');
+    mFailure.FileName := TextOf(TJSONObject(mItem), 'file');
+    mFailure.Line := NumberOf(TJSONObject(mItem), 'line', 0);
+    if mFailure.Test <> '' then
     begin
-      Result.Failures := Result.Failures + [Failure];
+      Result.Failures := Result.Failures + [mFailure];
     end;
   end;
 end;
 
 class function TAtlasSummarySections.TestsJson(const ATests: TAtlasProjectTests; AOriginal: TJSONObject): TJSONObject;
 var
-  Items: TJSONArray;
-  Item: TJSONObject;
-  Index: Integer;
+  mItems: TJSONArray;
+  mItem: TJSONObject;
+  mIndex: Integer;
 begin
   Result := TJSONObject.Create;
   AddTime(Result, 'at', ATests.At);
@@ -505,31 +505,31 @@ begin
   Result.AddPair('errors', TJSONNumber.Create(ATests.Errors));
   Result.AddPair('skipped', TJSONNumber.Create(ATests.Skipped));
   Result.AddPair('durationMs', TJSONNumber.Create(ATests.DurationMs));
-  Items := TJSONArray.Create;
-  Result.AddPair('failures', Items);
-  for Index := 0 to High(ATests.Failures) do
+  mItems := TJSONArray.Create;
+  Result.AddPair('failures', mItems);
+  for mIndex := 0 to High(ATests.Failures) do
   begin
-    if Index >= TAtlasProjectTests.MaxFailures then
+    if mIndex >= TAtlasProjectTests.MaxFailures then
     begin
       Break;
     end;
-    Item := TJSONObject.Create;
-    Items.AddElement(Item);
-    Item.AddPair('test', ATests.Failures[Index].Test);
-    if ATests.Failures[Index].Message <> '' then
+    mItem := TJSONObject.Create;
+    mItems.AddElement(mItem);
+    mItem.AddPair('test', ATests.Failures[mIndex].Test);
+    if ATests.Failures[mIndex].Message <> '' then
     begin
-      Item.AddPair('message', ATests.Failures[Index].Message);
+      mItem.AddPair('message', ATests.Failures[mIndex].Message);
     end;
-    if ATests.Failures[Index].FileName <> '' then
+    if ATests.Failures[mIndex].FileName <> '' then
     begin
-      Item.AddPair('file', ATests.Failures[Index].FileName);
+      mItem.AddPair('file', ATests.Failures[mIndex].FileName);
     end;
-    if ATests.Failures[Index].Line > 0 then
+    if ATests.Failures[mIndex].Line > 0 then
     begin
-      Item.AddPair('line', TJSONNumber.Create(ATests.Failures[Index].Line));
+      mItem.AddPair('line', TJSONNumber.Create(ATests.Failures[mIndex].Line));
     end;
   end;
-  KeepUnknown(Result, AOriginal, TestsKeys);
+  KeepUnknown(Result, AOriginal, cTestsKeys);
 end;
 
 { TAtlasProjectRelease }
@@ -543,47 +543,47 @@ end;
 
 function TAtlasProjectRelease.VersionOf(const AConfiguration, APlatform: string): string;
 var
-  Build: TAtlasProjectReleaseBuild;
+  mBuild: TAtlasProjectReleaseBuild;
 begin
   Result := '';
-  for Build in Builds do
+  for mBuild in Builds do
   begin
-    if SameText(Build.Configuration, AConfiguration) and SameText(Build.Platform, APlatform) then
+    if SameText(mBuild.Configuration, AConfiguration) and SameText(mBuild.Platform, APlatform) then
     begin
-      Exit(Build.Version);
+      Exit(mBuild.Version);
     end;
   end;
 end;
 
 procedure TAtlasProjectRelease.Remember(const AConfiguration, APlatform, AVersion: string; AAtUtc: TDateTime);
 var
-  Entry: TAtlasProjectReleaseBuild;
-  Kept: TArray<TAtlasProjectReleaseBuild>;
-  Build: TAtlasProjectReleaseBuild;
+  mEntry: TAtlasProjectReleaseBuild;
+  mKept: TArray<TAtlasProjectReleaseBuild>;
+  mBuild: TAtlasProjectReleaseBuild;
 begin
-  Entry.Configuration := AConfiguration;
-  Entry.Platform := APlatform;
-  Entry.Version := AVersion;
-  Entry.At := AAtUtc;
-  Kept := nil;
-  Kept := Kept + [Entry];
-  for Build in Builds do
+  mEntry.Configuration := AConfiguration;
+  mEntry.Platform := APlatform;
+  mEntry.Version := AVersion;
+  mEntry.At := AAtUtc;
+  mKept := nil;
+  mKept := mKept + [mEntry];
+  for mBuild in Builds do
   begin
-    if (Length(Kept) < MaxBuilds) and
-      not (SameText(Build.Configuration, AConfiguration) and SameText(Build.Platform, APlatform)) then
+    if (Length(mKept) < MaxBuilds) and
+      not (SameText(mBuild.Configuration, AConfiguration) and SameText(mBuild.Platform, APlatform)) then
     begin
-      Kept := Kept + [Build];
+      mKept := mKept + [mBuild];
     end;
   end;
-  Builds := Kept;
+  Builds := mKept;
   Known := True;
 end;
 
 class function TAtlasSummarySections.ReleaseOf(ASection: TJSONObject): TAtlasProjectRelease;
 var
-  Items: TJSONValue;
-  Item: TJSONValue;
-  Build: TAtlasProjectReleaseBuild;
+  mItems: TJSONValue;
+  mItem: TJSONValue;
+  mBuild: TAtlasProjectReleaseBuild;
 begin
   Result := TAtlasProjectRelease.Empty;
   if ASection = nil then
@@ -596,36 +596,36 @@ begin
   Result.Platform := TextOf(ASection, 'platform');
   Result.Findings := NumberOf(ASection, 'findings', 0);
   Result.Blocked := FlagOf(ASection, 'blocked');
-  Items := ASection.GetValue('rules');
-  if Items is TJSONArray then
+  mItems := ASection.GetValue('rules');
+  if mItems is TJSONArray then
   begin
-    for Item in TJSONArray(Items) do
+    for mItem in TJSONArray(mItems) do
     begin
-      if (Item is TJSONString) and (TJSONString(Item).Value <> '') then
+      if (mItem is TJSONString) and (TJSONString(mItem).Value <> '') then
       begin
-        Result.Rules := Result.Rules + [TJSONString(Item).Value];
+        Result.Rules := Result.Rules + [TJSONString(mItem).Value];
       end;
     end;
   end;
-  Items := ASection.GetValue('builds');
-  if not (Items is TJSONArray) then
+  mItems := ASection.GetValue('builds');
+  if not (mItems is TJSONArray) then
   begin
     Exit;
   end;
-  for Item in TJSONArray(Items) do
+  for mItem in TJSONArray(mItems) do
   begin
-    if not (Item is TJSONObject) or (Length(Result.Builds) >= TAtlasProjectRelease.MaxBuilds) then
+    if not (mItem is TJSONObject) or (Length(Result.Builds) >= TAtlasProjectRelease.MaxBuilds) then
     begin
       Continue;
     end;
-    Build := Default(TAtlasProjectReleaseBuild);
-    Build.Configuration := TextOf(TJSONObject(Item), 'configuration');
-    Build.Platform := TextOf(TJSONObject(Item), 'platform');
-    Build.Version := TextOf(TJSONObject(Item), 'version');
-    Build.At := SummaryTimeOf(TextOf(TJSONObject(Item), 'at'));
-    if Build.Configuration <> '' then
+    mBuild := Default(TAtlasProjectReleaseBuild);
+    mBuild.Configuration := TextOf(TJSONObject(mItem), 'configuration');
+    mBuild.Platform := TextOf(TJSONObject(mItem), 'platform');
+    mBuild.Version := TextOf(TJSONObject(mItem), 'version');
+    mBuild.At := SummaryTimeOf(TextOf(TJSONObject(mItem), 'at'));
+    if mBuild.Configuration <> '' then
     begin
-      Result.Builds := Result.Builds + [Build];
+      Result.Builds := Result.Builds + [mBuild];
     end;
   end;
 end;
@@ -633,25 +633,25 @@ end;
 /// <summary>Eintrag in "builds" zu AConfiguration/APlatform aus dem gelesenen Text (für unbekannte Felder).</summary>
 function OriginalReleaseBuild(AOriginal: TJSONObject; const AConfiguration, APlatform: string): TJSONObject;
 var
-  Items: TJSONValue;
-  Item: TJSONValue;
+  mItems: TJSONValue;
+  mItem: TJSONValue;
 begin
   Result := nil;
   if AOriginal = nil then
   begin
     Exit;
   end;
-  Items := AOriginal.GetValue('builds');
-  if not (Items is TJSONArray) then
+  mItems := AOriginal.GetValue('builds');
+  if not (mItems is TJSONArray) then
   begin
     Exit;
   end;
-  for Item in TJSONArray(Items) do
+  for mItem in TJSONArray(mItems) do
   begin
-    if (Item is TJSONObject) and SameText(TextOf(TJSONObject(Item), 'configuration'), AConfiguration) and
-      SameText(TextOf(TJSONObject(Item), 'platform'), APlatform) then
+    if (mItem is TJSONObject) and SameText(TextOf(TJSONObject(mItem), 'configuration'), AConfiguration) and
+      SameText(TextOf(TJSONObject(mItem), 'platform'), APlatform) then
     begin
-      Exit(TJSONObject(Item));
+      Exit(TJSONObject(mItem));
     end;
   end;
 end;
@@ -659,10 +659,10 @@ end;
 class function TAtlasSummarySections.ReleaseJson(const ARelease: TAtlasProjectRelease;
   AOriginal: TJSONObject): TJSONObject;
 var
-  Items: TJSONArray;
-  Item: TJSONObject;
-  Rule: string;
-  Build: TAtlasProjectReleaseBuild;
+  mItems: TJSONArray;
+  mItem: TJSONObject;
+  mRule: string;
+  mBuild: TAtlasProjectReleaseBuild;
 begin
   Result := TJSONObject.Create;
   if ARelease.CheckedAt > 0 then
@@ -672,26 +672,26 @@ begin
     Result.AddPair('platform', ARelease.Platform);
     Result.AddPair('findings', TJSONNumber.Create(ARelease.Findings));
     Result.AddPair('blocked', TJSONBool.Create(ARelease.Blocked));
-    Items := TJSONArray.Create;
-    Result.AddPair('rules', Items);
-    for Rule in ARelease.Rules do
+    mItems := TJSONArray.Create;
+    Result.AddPair('rules', mItems);
+    for mRule in ARelease.Rules do
     begin
-      Items.Add(Rule);
+      mItems.Add(mRule);
     end;
   end;
-  Items := TJSONArray.Create;
-  Result.AddPair('builds', Items);
-  for Build in ARelease.Builds do
+  mItems := TJSONArray.Create;
+  Result.AddPair('builds', mItems);
+  for mBuild in ARelease.Builds do
   begin
-    Item := TJSONObject.Create;
-    Items.AddElement(Item);
-    Item.AddPair('configuration', Build.Configuration);
-    Item.AddPair('platform', Build.Platform);
-    Item.AddPair('version', Build.Version);
-    AddTime(Item, 'at', Build.At);
-    KeepUnknown(Item, OriginalReleaseBuild(AOriginal, Build.Configuration, Build.Platform), ReleaseBuildKeys);
+    mItem := TJSONObject.Create;
+    mItems.AddElement(mItem);
+    mItem.AddPair('configuration', mBuild.Configuration);
+    mItem.AddPair('platform', mBuild.Platform);
+    mItem.AddPair('version', mBuild.Version);
+    AddTime(mItem, 'at', mBuild.At);
+    KeepUnknown(mItem, OriginalReleaseBuild(AOriginal, mBuild.Configuration, mBuild.Platform), cReleaseBuildKeys);
   end;
-  KeepUnknown(Result, AOriginal, ReleaseKeys);
+  KeepUnknown(Result, AOriginal, cReleaseKeys);
 end;
 
 { TAtlasProjectCi }
@@ -715,9 +715,9 @@ end;
 
 class function TAtlasSummarySections.CiOf(ASection: TJSONObject): TAtlasProjectCi;
 var
-  Items: TJSONValue;
-  Item: TJSONValue;
-  Failure: TAtlasCiFailure;
+  mItems: TJSONValue;
+  mItem: TJSONValue;
+  mFailure: TAtlasCiFailure;
 begin
   Result := TAtlasProjectCi.Empty;
   if ASection = nil then
@@ -740,26 +740,26 @@ begin
   Result.Build.Outcome := TAtlasCiBuild.OutcomeOf(TextOf(ASection, 'result'));
   Result.Build.StartedUtc := SummaryTimeOf(TextOf(ASection, 'started'));
   Result.Build.DurationMs := NumberOf(ASection, 'durationMs', 0);
-  Items := ASection.GetValue('failures');
-  Result.Build.TestsKnown := (ASection.GetValue('passed') is TJSONNumber) or (Items is TJSONArray);
+  mItems := ASection.GetValue('failures');
+  Result.Build.TestsKnown := (ASection.GetValue('passed') is TJSONNumber) or (mItems is TJSONArray);
   Result.Build.Passed := NumberOf(ASection, 'passed', 0);
   Result.Build.Failed := NumberOf(ASection, 'failed', 0);
   Result.Build.Skipped := NumberOf(ASection, 'skipped', 0);
-  if not (Items is TJSONArray) then
+  if not (mItems is TJSONArray) then
   begin
     Exit;
   end;
-  for Item in TJSONArray(Items) do
+  for mItem in TJSONArray(mItems) do
   begin
-    if not (Item is TJSONObject) or (Length(Result.Build.Failures) >= TAtlasCiBuild.MaxFailures) then
+    if not (mItem is TJSONObject) or (Length(Result.Build.Failures) >= TAtlasCiBuild.MaxFailures) then
     begin
       Continue;
     end;
-    Failure.Test := TextOf(TJSONObject(Item), 'test');
-    Failure.Message := TextOf(TJSONObject(Item), 'message');
-    if Failure.Test <> '' then
+    mFailure.Test := TextOf(TJSONObject(mItem), 'test');
+    mFailure.Message := TextOf(TJSONObject(mItem), 'message');
+    if mFailure.Test <> '' then
     begin
-      Result.Build.Failures := Result.Build.Failures + [Failure];
+      Result.Build.Failures := Result.Build.Failures + [mFailure];
     end;
   end;
 end;
@@ -767,24 +767,24 @@ end;
 /// <summary>Eintrag in "failures" zu ATest aus dem gelesenen Text (für unbekannte Felder).</summary>
 function OriginalCiFailure(AOriginal: TJSONObject; const ATest: string): TJSONObject;
 var
-  Items: TJSONValue;
-  Item: TJSONValue;
+  mItems: TJSONValue;
+  mItem: TJSONValue;
 begin
   Result := nil;
   if AOriginal = nil then
   begin
     Exit;
   end;
-  Items := AOriginal.GetValue('failures');
-  if not (Items is TJSONArray) then
+  mItems := AOriginal.GetValue('failures');
+  if not (mItems is TJSONArray) then
   begin
     Exit;
   end;
-  for Item in TJSONArray(Items) do
+  for mItem in TJSONArray(mItems) do
   begin
-    if (Item is TJSONObject) and (TextOf(TJSONObject(Item), 'test') = ATest) then
+    if (mItem is TJSONObject) and (TextOf(TJSONObject(mItem), 'test') = ATest) then
     begin
-      Exit(TJSONObject(Item));
+      Exit(TJSONObject(mItem));
     end;
   end;
 end;
@@ -793,20 +793,20 @@ end;
 /// AOriginal (Abschnitt "ci", darf nil sein) bleiben erhalten.</summary>
 function CiFailuresJson(const AFailures: TArray<TAtlasCiFailure>; AOriginal: TJSONObject): TJSONArray;
 var
-  Item: TJSONObject;
-  Index: Integer;
+  mItem: TJSONObject;
+  mIndex: Integer;
 begin
   Result := TJSONArray.Create;
-  for Index := 0 to Min(High(AFailures), TAtlasCiBuild.MaxFailures - 1) do
+  for mIndex := 0 to Min(High(AFailures), TAtlasCiBuild.MaxFailures - 1) do
   begin
-    Item := TJSONObject.Create;
-    Result.AddElement(Item);
-    Item.AddPair('test', AFailures[Index].Test);
-    if AFailures[Index].Message <> '' then
+    mItem := TJSONObject.Create;
+    Result.AddElement(mItem);
+    mItem.AddPair('test', AFailures[mIndex].Test);
+    if AFailures[mIndex].Message <> '' then
     begin
-      Item.AddPair('message', AFailures[Index].Message);
+      mItem.AddPair('message', AFailures[mIndex].Message);
     end;
-    KeepUnknown(Item, OriginalCiFailure(AOriginal, AFailures[Index].Test), CiFailureKeys);
+    KeepUnknown(mItem, OriginalCiFailure(AOriginal, AFailures[mIndex].Test), cCiFailureKeys);
   end;
 end;
 
@@ -843,7 +843,7 @@ begin
       Result.AddPair('failures', CiFailuresJson(ACi.Build.Failures, AOriginal));
     end;
   end;
-  KeepUnknown(Result, AOriginal, CiKeys);
+  KeepUnknown(Result, AOriginal, cCiKeys);
 end;
 
 end.

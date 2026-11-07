@@ -129,7 +129,7 @@ type
     /// <summary>Teil im Element unter APoint: Zähler bzw. Zusatzfeld; -1 sonst.</summary>
     function SubAt(const APoint: TPoint; AHeight: Integer): Integer;
     /// <summary>Index des Zählers unter X; -1 ohne.</summary>
-    function KindAt(X: Integer): Integer;
+    function KindAt(AX: Integer): Integer;
   end;
 
   /// <summary>Menütexte: Elemente in der Reihenfolge von TAtlasStatusBarItems.All, Tooltip des Zahnrads
@@ -159,7 +159,7 @@ type
   TAtlasEditorStatusBar = class(TAtlasEditorBar)
   private const
     /// <summary>Teile je Element im Vorfahr: einer ohne Unterteil und je Zähler bzw. Zusatzfeld einer.</summary>
-    SubSlots = 32;
+    cSubSlots = 32;
   private
     FView: TAtlasStatusBarView;
     FPlaces: TAtlasStatusBarPlaces;
@@ -168,7 +168,7 @@ type
     FTexts: TAtlasStatusBarTexts;
     FEvents: TAtlasStatusBarEvents;
     procedure Layout;
-    function ElementAt(X, Y: Integer): TAtlasStatusBarPart;
+    function ElementAt(AX, AY: Integer): TAtlasStatusBarPart;
     procedure CMFontChanged(var Message: TMessage); message CM_FONTCHANGED;
   protected
     function PartAt(X, Y: Integer): Integer; override;
@@ -191,11 +191,11 @@ type
     /// <summary>Fläche des Zusatzfelds AIndex (View.Extras, Client); leer ohne.</summary>
     function ExtraRect(AIndex: Integer): TRect;
     /// <summary>Tooltip über dem Punkt (Client); '' = keiner.</summary>
-    function HintAt(X, Y: Integer): string;
+    function HintAt(AX, AY: Integer): string;
     /// <summary>Klick wie mit der Maus (für Tests).</summary>
-    procedure ClickAt(X, Y: Integer);
+    procedure ClickAt(AX, AY: Integer);
     /// <summary>Doppelklick wie mit der Maus (für Tests).</summary>
-    procedure DoubleClickAt(X, Y: Integer);
+    procedure DoubleClickAt(AX, AY: Integer);
     /// <summary>Menü „Leiste anpassen“ aufbauen, ohne es zu zeigen (für Tests und Popup).</summary>
     function BuildMenu: TPopupMenu;
     property View: TAtlasStatusBarView read FView;
@@ -230,23 +230,23 @@ uses
 
 const
   /// <summary>Zähler von links nach rechts; Index wie in KindSpans.</summary>
-  Kinds: array[0..2] of TAtlasFindingKind = (TAtlasFindingKind.Error, TAtlasFindingKind.Warning,
+  cKinds: array[0..2] of TAtlasFindingKind = (TAtlasFindingKind.Error, TAtlasFindingKind.Warning,
     TAtlasFindingKind.Info);
 
 const
-  BaseGap = 13;
-  BaseGear = 22;
-  Margin = 4;
+  cBaseGap = 13;
+  cBaseGear = 22;
+  cMargin = 4;
   /// <summary>Innenabstand je Feld; eigener Name, weil TControl.Padding in den Methoden die Konstante verdeckt.</summary>
-  SlotPadding = 4;
+  cSlotPadding = 4;
   /// <summary>Kürzstufen: die Methode zuerst, die Zähler nie.</summary>
-  ShrinkMethod = 1;
-  ShrinkLive = 2;
-  ShrinkExtra = 2;
-  ShrinkStatus = 3;
-  ShrinkFindings = 4;
-  MethodSign = #$0192;
-  Ellipsis = #$2026;
+  cShrinkMethod = 1;
+  cShrinkLive = 2;
+  cShrinkExtra = 2;
+  cShrinkStatus = 3;
+  cShrinkFindings = 4;
+  cMethodSign = #$0192;
+  cEllipsis = #$2026;
 
 function ToColor(AColor: TAtlasColor): TColor;
 begin
@@ -335,7 +335,7 @@ var
 begin
   for mIndex := 0 to High(KindSpans) do
   begin
-    if Kinds[mIndex] = AKind then
+    if cKinds[mIndex] = AKind then
     begin
       Exit(Rect(KindSpans[mIndex].Left, 0, KindSpans[mIndex].Right, AHeight));
     end;
@@ -403,9 +403,9 @@ begin
   end;
 end;
 
-function TAtlasStatusBarPlaces.KindAt(X: Integer): Integer;
+function TAtlasStatusBarPlaces.KindAt(AX: Integer): Integer;
 begin
-  Result := TAtlasStatusBarLayout.IndexAt(KindSpans, X);
+  Result := TAtlasStatusBarLayout.IndexAt(KindSpans, AX);
 end;
 
 { TAtlasStatusBarTexts }
@@ -468,7 +468,7 @@ type
     procedure Finding(ASub: Integer);
     /// <summary>Zusatzfeld ASub (Index in View.Extras), nur mit Klick.</summary>
     procedure Extra(ASub: Integer);
-    procedure Run(X, Y: Integer);
+    procedure Run(AX, AY: Integer);
   end;
 
   /// <summary>Menü „Leiste anpassen“: je Element ein Haken, darunter „Statusleiste ausblenden“.</summary>
@@ -486,7 +486,7 @@ type
 
 function TAtlasStatusBarMeasure.Gap: Integer;
 begin
-  Result := Bar.Scale(BaseGap);
+  Result := Bar.Scale(cBaseGap);
 end;
 
 function TAtlasStatusBarMeasure.DotSize: Integer;
@@ -519,10 +519,10 @@ function TAtlasStatusBarMeasure.KindWidths: TArray<Integer>;
 var
   mIndex: Integer;
 begin
-  SetLength(Result, Length(Kinds));
-  for mIndex := 0 to High(Kinds) do
+  SetLength(Result, Length(cKinds));
+  for mIndex := 0 to High(cKinds) do
   begin
-    Result[mIndex] := KindWidth(Kinds[mIndex]);
+    Result[mIndex] := KindWidth(cKinds[mIndex]);
   end;
 end;
 
@@ -530,8 +530,8 @@ function TAtlasStatusBarMeasure.TextSlot(AMark: Integer; const AText: string; AS
 var
   mFixed: Integer;
 begin
-  mFixed := 2 * Bar.Scale(SlotPadding) + AMark;
-  Result := TAtlasStatusSlot.Create(mFixed + TextWidthOf(AText, False), mFixed + TextWidthOf(Ellipsis, False),
+  mFixed := 2 * Bar.Scale(cSlotPadding) + AMark;
+  Result := TAtlasStatusSlot.Create(mFixed + TextWidthOf(AText, False), mFixed + TextWidthOf(cEllipsis, False),
     AShrink);
 end;
 
@@ -540,13 +540,13 @@ var
   mFixed: Integer;
 begin
   // Methode: Zeichen, Name (kürzbar), Kennzahlen (bleiben).
-  mFixed := 2 * Bar.Scale(SlotPadding) + TextWidthOf(MethodSign, True) + Bar.Scale(4);
+  mFixed := 2 * Bar.Scale(cSlotPadding) + TextWidthOf(cMethodSign, True) + Bar.Scale(4);
   if Bar.FView.MethodDetail <> '' then
   begin
     Inc(mFixed, Bar.Scale(6) + TextWidthOf(Bar.FView.MethodDetail, False));
   end;
   Result := TAtlasStatusSlot.Create(mFixed + TextWidthOf(Bar.FView.MethodName, False),
-    mFixed + TextWidthOf(Ellipsis, False), ShrinkMethod);
+    mFixed + TextWidthOf(cEllipsis, False), cShrinkMethod);
 end;
 
 function TAtlasStatusBarMeasure.SlotOf(APart: TAtlasStatusBarPart; ASub: Integer): TAtlasStatusSlot;
@@ -555,26 +555,26 @@ var
 begin
   case APart of
     TAtlasStatusBarPart.Status:
-      Result := TextSlot(DotSize + Bar.Scale(5), Bar.FView.StatusText, ShrinkStatus);
+      Result := TextSlot(DotSize + Bar.Scale(5), Bar.FView.StatusText, cShrinkStatus);
     TAtlasStatusBarPart.Badge:
       begin
-        mWidth := 2 * Bar.Scale(SlotPadding) + Max(Bar.Scale(18), TextWidthOf(Bar.FView.BadgeText, True) +
+        mWidth := 2 * Bar.Scale(cSlotPadding) + Max(Bar.Scale(18), TextWidthOf(Bar.FView.BadgeText, True) +
           Bar.Scale(10));
-        Result := TAtlasStatusSlot.Create(mWidth, mWidth, ShrinkFindings);
+        Result := TAtlasStatusSlot.Create(mWidth, mWidth, cShrinkFindings);
       end;
     TAtlasStatusBarPart.Findings:
       begin
-        mWidth := Bar.Scale(SlotPadding);
-        for mIndex := 0 to High(Kinds) do
+        mWidth := Bar.Scale(cSlotPadding);
+        for mIndex := 0 to High(cKinds) do
         begin
-          Inc(mWidth, KindWidth(Kinds[mIndex]));
+          Inc(mWidth, KindWidth(cKinds[mIndex]));
         end;
-        Result := TAtlasStatusSlot.Create(mWidth, mWidth, ShrinkFindings);
+        Result := TAtlasStatusSlot.Create(mWidth, mWidth, cShrinkFindings);
       end;
     TAtlasStatusBarPart.LiveCheck:
-      Result := TextSlot(IconSize + Bar.Scale(4), Bar.FView.LiveText, ShrinkLive);
+      Result := TextSlot(IconSize + Bar.Scale(4), Bar.FView.LiveText, cShrinkLive);
     TAtlasStatusBarPart.Extra:
-      Result := TextSlot(0, Bar.FView.Extras[ASub].Text, ShrinkExtra);
+      Result := TextSlot(0, Bar.FView.Extras[ASub].Text, cShrinkExtra);
   else
     Result := MethodSlot;
   end;
@@ -619,7 +619,7 @@ begin
   begin
     if SameText(mId, TAtlasStatusBarItems.Status) then
     begin
-      AddStatus(Bar.FView, AParts, ASubs, TAtlasEditorStatusBar.SubSlots);
+      AddStatus(Bar.FView, AParts, ASubs, TAtlasEditorStatusBar.cSubSlots);
     end
     else if SameText(mId, TAtlasStatusBarItems.Findings) and Bar.FView.FindingsShown then
     begin
@@ -654,7 +654,7 @@ begin
   begin
     Exit(TAtlasStatusBarPart.None);
   end;
-  Result := TAtlasStatusBarPart(Bar.Hot div TAtlasEditorStatusBar.SubSlots);
+  Result := TAtlasStatusBarPart(Bar.Hot div TAtlasEditorStatusBar.cSubSlots);
 end;
 
 function TAtlasStatusBarPainter.HotKind: Integer;
@@ -663,7 +663,7 @@ begin
   begin
     Exit(-1);
   end;
-  Result := Bar.Hot mod TAtlasEditorStatusBar.SubSlots - 1;
+  Result := Bar.Hot mod TAtlasEditorStatusBar.cSubSlots - 1;
 end;
 
 procedure TAtlasStatusBarPainter.Hot(const ARect: TRect);
@@ -681,7 +681,7 @@ var
   mPart: TRect;
 begin
   mCenter := (ARect.Top + ARect.Bottom) div 2;
-  mLeft := ARect.Left + Bar.Scale(SlotPadding);
+  mLeft := ARect.Left + Bar.Scale(cSlotPadding);
   mDot := Measure.DotSize;
   Canvas.Brush.Style := bsSolid;
   // Signalfarbe der Leistenfläche mit Rand (#1255).
@@ -691,7 +691,7 @@ begin
   Canvas.Font := Bar.Font;
   Canvas.Font.Color := ToColor(Colors.Text);
   Canvas.Brush.Style := bsClear;
-  mPart := Rect(mLeft + mDot + Bar.Scale(5), ARect.Top, ARect.Right - Bar.Scale(SlotPadding), ARect.Bottom);
+  mPart := Rect(mLeft + mDot + Bar.Scale(5), ARect.Top, ARect.Right - Bar.Scale(cSlotPadding), ARect.Bottom);
   DrawText(Canvas.Handle, PChar(Bar.FView.StatusText), -1, mPart, DT_LEFT or DT_VCENTER or DT_SINGLELINE or
     DT_NOPREFIX or DT_END_ELLIPSIS);
 end;
@@ -715,8 +715,8 @@ begin
       Hot(Rect(mSpans[mIndex].Left - Bar.Scale(2), ARect.Top, mSpans[mIndex].Right - Bar.Scale(2), ARect.Bottom));
     end;
     mIcon := Rect(mSpans[mIndex].Left, mTop, mSpans[mIndex].Left + Measure.IconSize, mTop + Measure.IconSize);
-    TAtlasFindingIcon.Draw(Canvas, mIcon, Kinds[mIndex], Colors.Signals.Get(TAtlasFindingIcon.SignalOf(Kinds[mIndex])));
-    mCount := Bar.FView.Counts[Kinds[mIndex]];
+    TAtlasFindingIcon.Draw(Canvas, mIcon, cKinds[mIndex], Colors.Signals.Get(TAtlasFindingIcon.SignalOf(cKinds[mIndex])));
+    mCount := Bar.FView.Counts[cKinds[mIndex]];
     Canvas.Font := Bar.Font;
     // Null gedämpft: Nichts zu tun.
     Canvas.Font.Color := ToColor(Colors.Text);
@@ -766,8 +766,8 @@ begin
   mText := Bar.FView.BadgeText;
   mHeight := Bar.Scale(16);
   mWidth := Max(mHeight, Measure.TextWidthOf(mText, True) + Bar.Scale(10));
-  mPill := Rect(ARect.Left + Bar.Scale(SlotPadding), ARect.Top + (ARect.Height - mHeight) div 2,
-    ARect.Left + Bar.Scale(SlotPadding) + mWidth, ARect.Top + (ARect.Height - mHeight) div 2 + mHeight);
+  mPill := Rect(ARect.Left + Bar.Scale(cSlotPadding), ARect.Top + (ARect.Height - mHeight) div 2,
+    ARect.Left + Bar.Scale(cSlotPadding) + mWidth, ARect.Top + (ARect.Height - mHeight) div 2 + mHeight);
   Canvas.Brush.Style := bsSolid;
   // Plakettenfarbe mit lesbarer Zahl darauf (#1255): hell dunkle Fläche mit Weiß, dunkel helle Fläche mit Dunkel.
   Canvas.Brush.Color := ToColor(Colors.Signals.ForStatus(Bar.FView.BadgeState).Solid);
@@ -787,7 +787,7 @@ var
   mTop: Integer;
 begin
   mTop := ARect.Top + (ARect.Height - Measure.IconSize) div 2;
-  mIcon := Rect(ARect.Left + Bar.Scale(SlotPadding), mTop, ARect.Left + Bar.Scale(SlotPadding) + Measure.IconSize,
+  mIcon := Rect(ARect.Left + Bar.Scale(cSlotPadding), mTop, ARect.Left + Bar.Scale(cSlotPadding) + Measure.IconSize,
     mTop + Measure.IconSize);
   if Bar.FView.LiveBusy then
   begin
@@ -800,7 +800,7 @@ begin
   Canvas.Font := Bar.Font;
   Canvas.Font.Color := ToColor(Colors.Text);
   Canvas.Brush.Style := bsClear;
-  mPart := Rect(mIcon.Right + Bar.Scale(4), ARect.Top, ARect.Right - Bar.Scale(SlotPadding), ARect.Bottom);
+  mPart := Rect(mIcon.Right + Bar.Scale(4), ARect.Top, ARect.Right - Bar.Scale(cSlotPadding), ARect.Bottom);
   DrawText(Canvas.Handle, PChar(Bar.FView.LiveText), -1, mPart, DT_LEFT or DT_VCENTER or DT_SINGLELINE or
     DT_NOPREFIX or DT_END_ELLIPSIS);
 end;
@@ -820,14 +820,14 @@ begin
   begin
     mTone := ToColor(Colors.Text);
   end;
-  mLeft := ARect.Left + Bar.Scale(SlotPadding);
+  mLeft := ARect.Left + Bar.Scale(cSlotPadding);
   Canvas.Brush.Style := bsClear;
   Canvas.Font := Bar.Font;
   Canvas.Font.Style := [fsBold];
   Canvas.Font.Color := mTone;
   mPart := Rect(mLeft, ARect.Top, ARect.Right, ARect.Bottom);
-  DrawText(Canvas.Handle, PChar(MethodSign), -1, mPart, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
-  Inc(mLeft, Measure.TextWidthOf(MethodSign, True) + Bar.Scale(4));
+  DrawText(Canvas.Handle, PChar(cMethodSign), -1, mPart, DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
+  Inc(mLeft, Measure.TextWidthOf(cMethodSign, True) + Bar.Scale(4));
   Canvas.Font := Bar.Font;
   Canvas.Font.Color := mTone;
   mDetail := 0;
@@ -836,7 +836,7 @@ begin
     mDetail := Bar.Scale(6) + Measure.TextWidthOf(Bar.FView.MethodDetail, False);
   end;
   // Erst die Kennzahlen rechts, der Name kürzt sich davor.
-  mPart := Rect(mLeft, ARect.Top, Max(mLeft, ARect.Right - Bar.Scale(SlotPadding) - mDetail), ARect.Bottom);
+  mPart := Rect(mLeft, ARect.Top, Max(mLeft, ARect.Right - Bar.Scale(cSlotPadding) - mDetail), ARect.Bottom);
   DrawText(Canvas.Handle, PChar(Bar.FView.MethodName), -1, mPart, DT_LEFT or DT_VCENTER or DT_SINGLELINE or
     DT_NOPREFIX or DT_END_ELLIPSIS);
   if mDetail = 0 then
@@ -849,7 +849,7 @@ begin
     Canvas.Font.Color := ToColor(Colors.Muted);
   end;
   mPart := Rect(Min(mLeft + Measure.TextWidthOf(Bar.FView.MethodName, False), mPart.Right) + Bar.Scale(6),
-    ARect.Top, ARect.Right - Bar.Scale(SlotPadding), ARect.Bottom);
+    ARect.Top, ARect.Right - Bar.Scale(cSlotPadding), ARect.Bottom);
   DrawText(Canvas.Handle, PChar(Bar.FView.MethodDetail), -1, mPart, DT_LEFT or DT_VCENTER or DT_SINGLELINE or
     DT_NOPREFIX);
 end;
@@ -865,7 +865,7 @@ begin
   Canvas.Font := Bar.Font;
   Canvas.Font.Color := ToColor(Colors.Text);
   Canvas.Brush.Style := bsClear;
-  mPart := Rect(ARect.Left + Bar.Scale(SlotPadding), ARect.Top, ARect.Right - Bar.Scale(SlotPadding), ARect.Bottom);
+  mPart := Rect(ARect.Left + Bar.Scale(cSlotPadding), ARect.Top, ARect.Right - Bar.Scale(cSlotPadding), ARect.Bottom);
   DrawText(Canvas.Handle, PChar(Bar.FView.Extras[AIndex].Text), -1, mPart, DT_LEFT or DT_VCENTER or DT_SINGLELINE or
     DT_NOPREFIX or DT_END_ELLIPSIS);
 end;
@@ -1011,18 +1011,18 @@ begin
   begin
     mSlots[mIndex] := mMeasure.SlotOf(FPlaces.Parts[mIndex], FPlaces.Subs[mIndex]);
   end;
-  mGear := Scale(BaseGear);
+  mGear := Scale(cBaseGear);
   FPlaces.Spans := TAtlasStatusBarLayout.Place(TAtlasStatusBarLayout.Fit(mSlots,
-    Max(0, ClientWidth - 2 * Scale(Margin) - mGear - mMeasure.Gap), mMeasure.Gap), Scale(Margin), mMeasure.Gap);
+    Max(0, ClientWidth - 2 * Scale(cMargin) - mGear - mMeasure.Gap), mMeasure.Gap), Scale(cMargin), mMeasure.Gap);
   for mIndex := 0 to High(FPlaces.Parts) do
   begin
     if (FPlaces.Parts[mIndex] = TAtlasStatusBarPart.Findings) and not FPlaces.Spans[mIndex].IsEmpty then
     begin
       FPlaces.KindSpans := TAtlasStatusBarLayout.Place(mMeasure.KindWidths,
-        FPlaces.Spans[mIndex].Left + Scale(SlotPadding), 0);
+        FPlaces.Spans[mIndex].Left + Scale(cSlotPadding), 0);
     end;
   end;
-  FPlaces.Gear := Rect(ClientWidth - Scale(Margin) - mGear, 0, ClientWidth - Scale(Margin), ClientHeight);
+  FPlaces.Gear := Rect(ClientWidth - Scale(cMargin) - mGear, 0, ClientWidth - Scale(cMargin), ClientHeight);
 end;
 
 function TAtlasEditorStatusBar.PartRect(APart: TAtlasStatusBarPart): TRect;
@@ -1043,10 +1043,10 @@ begin
   Result := FPlaces.ExtraRect(AIndex, ClientHeight);
 end;
 
-function TAtlasEditorStatusBar.ElementAt(X, Y: Integer): TAtlasStatusBarPart;
+function TAtlasEditorStatusBar.ElementAt(AX, AY: Integer): TAtlasStatusBarPart;
 begin
   Layout;
-  Result := FPlaces.ElementAt(Point(X, Y), ClientHeight);
+  Result := FPlaces.ElementAt(Point(AX, AY), ClientHeight);
 end;
 
 /// <summary>Tooltip des Elements APart (Zusatzfeld: ASub); das Zahnrad nennt ACustomize.</summary>
@@ -1080,10 +1080,10 @@ begin
   end;
 end;
 
-function TAtlasEditorStatusBar.HintAt(X, Y: Integer): string;
+function TAtlasEditorStatusBar.HintAt(AX, AY: Integer): string;
 begin
   Layout;
-  Result := ElementHint(FView, ElementAt(X, Y), FPlaces.SubAt(Point(X, Y), ClientHeight), FTexts.Customize);
+  Result := ElementHint(FView, ElementAt(AX, AY), FPlaces.SubAt(Point(AX, AY), ClientHeight), FTexts.Customize);
 end;
 
 function TAtlasEditorStatusBar.PartAt(X, Y: Integer): Integer;
@@ -1095,7 +1095,7 @@ begin
   begin
     Exit(PartNone);
   end;
-  Result := Ord(mElement) * SubSlots + FPlaces.SubAt(Point(X, Y), ClientHeight) + 1;
+  Result := Ord(mElement) * cSubSlots + FPlaces.SubAt(Point(X, Y), ClientHeight) + 1;
 end;
 
 function TAtlasEditorStatusBar.PartHint(APart: Integer): string;
@@ -1104,7 +1104,7 @@ begin
   begin
     Exit('');
   end;
-  Result := ElementHint(FView, TAtlasStatusBarPart(APart div SubSlots), APart mod SubSlots - 1, FTexts.Customize);
+  Result := ElementHint(FView, TAtlasStatusBarPart(APart div cSubSlots), APart mod cSubSlots - 1, FTexts.Customize);
 end;
 
 function TAtlasEditorStatusBar.PartEnabled(APart: Integer): Boolean;
@@ -1116,8 +1116,8 @@ begin
   begin
     Exit(False);
   end;
-  mElement := TAtlasStatusBarPart(APart div SubSlots);
-  mSub := APart mod SubSlots - 1;
+  mElement := TAtlasStatusBarPart(APart div cSubSlots);
+  mSub := APart mod cSubSlots - 1;
   case mElement of
     TAtlasStatusBarPart.Method:
       Result := FView.MethodFound;
@@ -1194,12 +1194,12 @@ begin
   BuildMenu.Popup(ClientToScreen(APoint).X, ClientToScreen(APoint).Y);
 end;
 
-procedure TAtlasEditorStatusBar.ClickAt(X, Y: Integer);
+procedure TAtlasEditorStatusBar.ClickAt(AX, AY: Integer);
 var
   mClick: TAtlasStatusBarClick;
 begin
   mClick.Bar := Self;
-  mClick.Run(X, Y);
+  mClick.Run(AX, AY);
 end;
 
 procedure TAtlasEditorStatusBar.PartClicked(APart: Integer; AShift: TShiftState; X, Y: Integer);
@@ -1207,13 +1207,13 @@ begin
   ClickAt(X, Y);
 end;
 
-procedure TAtlasEditorStatusBar.DoubleClickAt(X, Y: Integer);
+procedure TAtlasEditorStatusBar.DoubleClickAt(AX, AY: Integer);
 begin
-  if (ElementAt(X, Y) = TAtlasStatusBarPart.Findings) and Assigned(FEvents.FindingsOpen) then
+  if (ElementAt(AX, AY) = TAtlasStatusBarPart.Findings) and Assigned(FEvents.FindingsOpen) then
   begin
     FEvents.FindingsOpen();
   end
-  else if (ElementAt(X, Y) = TAtlasStatusBarPart.Status) and Assigned(FEvents.StatusOpen) then
+  else if (ElementAt(AX, AY) = TAtlasStatusBarPart.Status) and Assigned(FEvents.StatusOpen) then
   begin
     FEvents.StatusOpen();
   end;
@@ -1266,7 +1266,7 @@ procedure TAtlasStatusBarClick.Finding(ASub: Integer);
 begin
   if (ASub >= 0) and Assigned(Bar.FEvents.Finding) then
   begin
-    Bar.FEvents.Finding(Kinds[ASub]);
+    Bar.FEvents.Finding(cKinds[ASub]);
   end;
 end;
 
@@ -1278,13 +1278,13 @@ begin
   end;
 end;
 
-procedure TAtlasStatusBarClick.Run(X, Y: Integer);
+procedure TAtlasStatusBarClick.Run(AX, AY: Integer);
 var
   mPart: TAtlasStatusBarPart;
   mSub: Integer;
 begin
-  mPart := Bar.ElementAt(X, Y);
-  mSub := Bar.FPlaces.SubAt(Point(X, Y), Bar.ClientHeight);
+  mPart := Bar.ElementAt(AX, AY);
+  mSub := Bar.FPlaces.SubAt(Point(AX, AY), Bar.ClientHeight);
   case mPart of
     TAtlasStatusBarPart.Findings:
       Finding(mSub);

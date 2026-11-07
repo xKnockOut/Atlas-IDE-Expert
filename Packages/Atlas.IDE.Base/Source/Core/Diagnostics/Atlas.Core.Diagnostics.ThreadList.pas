@@ -62,31 +62,31 @@ end;
 
 procedure TAtlasThreadList.Prune;
 var
-  Done: TList<TThread>;
-  Thread: TThread;
-  Index: Integer;
+  mDone: TList<TThread>;
+  mThread: TThread;
+  mIndex: Integer;
 begin
-  Done := TList<TThread>.Create;
+  mDone := TList<TThread>.Create;
   try
     FLock.Enter;
     try
-      for Index := FThreads.Count - 1 downto 0 do
+      for mIndex := FThreads.Count - 1 downto 0 do
       begin
-        if FThreads[Index].Finished then
+        if FThreads[mIndex].Finished then
         begin
-          Done.Add(FThreads[Index]);
-          FThreads.Delete(Index);
+          mDone.Add(FThreads[mIndex]);
+          FThreads.Delete(mIndex);
         end;
       end;
     finally
       FLock.Leave;
     end;
-    for Thread in Done do
+    for mThread in mDone do
     begin
-      Thread.Free;
+      mThread.Free;
     end;
   finally
-    Done.Free;
+    mDone.Free;
   end;
 end;
 
@@ -116,27 +116,27 @@ end;
 
 function TAtlasThreadList.StopAll(AMs: Cardinal): Boolean;
 var
-  Threads: TArray<TThread>;
-  Thread: TThread;
+  mThreads: TArray<TThread>;
+  mThread: TThread;
 begin
   FLock.Enter;
   try
-    Threads := FThreads.ToArray;
+    mThreads := FThreads.ToArray;
     FThreads.Clear;
   finally
     FLock.Leave;
   end;
-  Result := TAtlasShutdown.WaitForThreads(Threads, AMs);
-  for Thread in Threads do
+  Result := TAtlasShutdown.WaitForThreads(mThreads, AMs);
+  for mThread in mThreads do
   begin
-    if Thread.Finished then
+    if mThread.Finished then
     begin
-      Thread.Free;
+      mThread.Free;
     end
     else
     begin
       // Wie TAtlasTimeLimit.StopAll: Liest der Thread FreeOnTerminate vor dem Setzen, bleibt höchstens ein Leck.
-      Thread.FreeOnTerminate := True;
+      mThread.FreeOnTerminate := True;
     end;
   end;
 end;

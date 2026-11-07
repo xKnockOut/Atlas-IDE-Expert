@@ -273,17 +273,17 @@ end;
 
 procedure TAtlasCompletionProviders.TPartSink.Complete;
 var
-  Timings: TAtlasQueryTimings;
+  mTimings: TAtlasQueryTimings;
 begin
   if TInterlocked.Exchange(FDone, 1) <> 0 then
   begin
     Exit;
   end;
   // Vor PartDone: Das Popup soll die Zeit der Quelle schon kennen, wenn die Liste fertig ist.
-  Timings := TAtlasQueryTimings.Shared;
-  if (FTimingId > 0) and TAtlasQueryTimings.Enabled and (Timings <> nil) then
+  mTimings := TAtlasQueryTimings.Shared;
+  if (FTimingId > 0) and TAtlasQueryTimings.Enabled and (mTimings <> nil) then
   begin
-    Timings.ProviderDone(FTimingId, FName, TAtlasQueryTimings.MsSince(FStarted),
+    mTimings.ProviderDone(FTimingId, FName, TAtlasQueryTimings.MsSince(FStarted),
       TInterlocked.CompareExchange(FCount, 0, 0));
   end;
   FState.PartDone;
@@ -312,20 +312,20 @@ end;
 
 procedure TAtlasCompletionProviders.Add(const AProvider: IAtlasCompletionProvider);
 var
-  Entry: TEntry;
-  Named: IAtlasNamedProvider;
+  mEntry: TEntry;
+  mNamed: IAtlasNamedProvider;
 begin
-  Entry.Provider := AProvider;
-  Entry.Name := DefaultName;
-  if Supports(AProvider, IAtlasNamedProvider, Named) and (Named.ProviderName <> '') then
+  mEntry.Provider := AProvider;
+  mEntry.Name := DefaultName;
+  if Supports(AProvider, IAtlasNamedProvider, mNamed) and (mNamed.ProviderName <> '') then
   begin
-    Entry.Name := Named.ProviderName;
+    mEntry.Name := mNamed.ProviderName;
   end;
-  Entry.Running := TRunning.Create;
-  Entry.RunningRef := Entry.Running;
+  mEntry.Running := TRunning.Create;
+  mEntry.RunningRef := mEntry.Running;
   FLock.Enter;
   try
-    FProviders := FProviders + [Entry];
+    FProviders := FProviders + [mEntry];
   finally
     FLock.Leave;
   end;
@@ -384,89 +384,89 @@ end;
 procedure TAtlasCompletionProviders.QueryOne(const AEntry: TEntry; const AContext: TAtlasContext;
   const APart: IAtlasCompletionSink);
 var
-  Part: IAtlasCompletionSink;
-  Running: TRunning;
-  Error: string;
+  mPart: IAtlasCompletionSink;
+  mRunning: TRunning;
+  mError: string;
 begin
   if TAtlasGuard.ProviderDisabled(AEntry.Name) then
   begin
     APart.Complete;
     Exit;
   end;
-  Running := AEntry.Running;
+  mRunning := AEntry.Running;
   // Der vorige Aufruf läuft noch: keinen weiteren Arbeiter belegen, diesmal ohne diese Quelle.
-  if TInterlocked.CompareExchange(Running.Active, 1, 0) <> 0 then
+  if TInterlocked.CompareExchange(mRunning.Active, 1, 0) <> 0 then
   begin
     APart.Complete;
     TAtlasGuard.ReportProviderSlow(AEntry.Name, Format('vorige Anfrage läuft seit %d ms, übersprungen',
-      [Int64(TThread.GetTickCount64) - TInterlocked.Read(Running.Started)]));
+      [Int64(TThread.GetTickCount64) - TInterlocked.Read(mRunning.Started)]));
     Exit;
   end;
-  TInterlocked.Exchange(Running.Started, Int64(TThread.GetTickCount64));
-  Part := APart;
-  case TAtlasTimeLimit.Run(Work(AEntry, AContext, APart), Error, FTimeLimitMs) of
+  TInterlocked.Exchange(mRunning.Started, Int64(TThread.GetTickCount64));
+  mPart := APart;
+  case TAtlasTimeLimit.Run(Work(AEntry, AContext, APart), mError, FTimeLimitMs) of
     TAtlasTimedOutcome.Done:
       ;
     TAtlasTimedOutcome.Failed:
       begin
         // Auch ohne gestarteten Aufruf (Atlas wird beendet) wieder frei.
-        TInterlocked.Exchange(Running.Active, 0);
-        Part.Complete;
-        TAtlasGuard.ReportProvider(AEntry.Name, Error);
+        TInterlocked.Exchange(mRunning.Active, 0);
+        mPart.Complete;
+        TAtlasGuard.ReportProvider(AEntry.Name, mError);
       end;
   else
-    Abandon(AEntry, Part);
+    Abandon(AEntry, mPart);
   end;
 end;
 
 procedure TAtlasCompletionProviders.Query(const AContext: TAtlasContext; const ASink: IAtlasCompletionSink);
 var
-  Providers: TArray<TEntry>;
-  State: TQueryState;
-  StateRef: IInterface;
-  Entry: TEntry;
-  Part: IAtlasCompletionSink;
-  TimingId: Integer;
+  mProviders: TArray<TEntry>;
+  mState: TQueryState;
+  mStateRef: IInterface;
+  mEntry: TEntry;
+  mPart: IAtlasCompletionSink;
+  mTimingId: Integer;
 begin
   Cancel;
   // Diagnosemodus (#479): Zeiten gehören zur laufenden Abfrage; aus wird nichts gemessen.
-  TimingId := 0;
+  mTimingId := 0;
   if TAtlasQueryTimings.Enabled and (TAtlasQueryTimings.Shared <> nil) then
   begin
-    TimingId := TAtlasQueryTimings.Shared.Current;
+    mTimingId := TAtlasQueryTimings.Shared.Current;
   end;
   FLock.Enter;
   try
-    Providers := FProviders;
-    State := TQueryState.Create(ASink, Length(Providers));
-    StateRef := State;
-    FCurrent := State;
-    FCurrentRef := StateRef;
+    mProviders := FProviders;
+    mState := TQueryState.Create(ASink, Length(mProviders));
+    mStateRef := mState;
+    FCurrent := mState;
+    FCurrentRef := mStateRef;
   finally
     FLock.Leave;
   end;
-  if Length(Providers) = 0 then
+  if Length(mProviders) = 0 then
   begin
     ASink.Complete;
     Exit;
   end;
-  for Entry in Providers do
+  for mEntry in mProviders do
   begin
     // Nicht direkt an den const-Parameter übergeben, sonst zählt niemand die Referenz.
-    Part := TPartSink.Create(State, Entry.Name, TimingId);
-    QueryOne(Entry, AContext, Part);
+    mPart := TPartSink.Create(mState, mEntry.Name, mTimingId);
+    QueryOne(mEntry, AContext, mPart);
   end;
 end;
 
 procedure TAtlasCompletionProviders.Cancel;
 var
-  Providers: TArray<TEntry>;
-  Entry: TEntry;
-  Provider: IAtlasCompletionProvider;
+  mProviders: TArray<TEntry>;
+  mEntry: TEntry;
+  mProvider: IAtlasCompletionProvider;
 begin
   FLock.Enter;
   try
-    Providers := FProviders;
+    mProviders := FProviders;
     if FCurrent <> nil then
     begin
       FCurrent.Cancel;
@@ -477,13 +477,13 @@ begin
   finally
     FLock.Leave;
   end;
-  for Entry in Providers do
+  for mEntry in mProviders do
   begin
-    Provider := Entry.Provider;
-    TAtlasGuard.RunProvider(Entry.Name,
+    mProvider := mEntry.Provider;
+    TAtlasGuard.RunProvider(mEntry.Name,
       procedure
       begin
-        Provider.Cancel;
+        mProvider.Cancel;
       end);
   end;
 end;

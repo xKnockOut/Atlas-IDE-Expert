@@ -155,7 +155,7 @@ begin
 end;
 
 const
-  SyncDelayMs = 500;
+  cSyncDelayMs = 500;
 
 function Key(const AFileName: string): string;
 begin
@@ -164,24 +164,24 @@ end;
 
 function FormEditors: TArray<IOTAFormEditor>;
 var
-  Services: IOTAModuleServices;
-  Index, FileIndex: Integer;
-  Module: IOTAModule;
-  Editor: IOTAFormEditor;
+  mServices: IOTAModuleServices;
+  mIndex, mFileIndex: Integer;
+  mModule: IOTAModule;
+  mEditor: IOTAFormEditor;
 begin
   Result := nil;
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Services) then
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mServices) then
   begin
     Exit;
   end;
-  for Index := 0 to Services.ModuleCount - 1 do
+  for mIndex := 0 to mServices.ModuleCount - 1 do
   begin
-    Module := Services.Modules[Index];
-    for FileIndex := 0 to Module.ModuleFileCount - 1 do
+    mModule := mServices.Modules[mIndex];
+    for mFileIndex := 0 to mModule.ModuleFileCount - 1 do
     begin
-      if Supports(Module.ModuleFileEditors[FileIndex], IOTAFormEditor, Editor) then
+      if Supports(mModule.ModuleFileEditors[mFileIndex], IOTAFormEditor, mEditor) then
       begin
-        Result := Result + [Editor];
+        Result := Result + [mEditor];
       end;
     end;
   end;
@@ -189,91 +189,91 @@ end;
 
 function EditorOf(const AFileName: string): IOTAFormEditor;
 var
-  Editor: IOTAFormEditor;
+  mEditor: IOTAFormEditor;
 begin
   Result := nil;
-  for Editor in FormEditors do
+  for mEditor in FormEditors do
   begin
-    if SameText(Editor.FileName, AFileName) then
+    if SameText(mEditor.FileName, AFileName) then
     begin
-      Exit(Editor);
+      Exit(mEditor);
     end;
   end;
 end;
 
 function RootOf(const AEditor: IOTAFormEditor): TComponent;
 var
-  Component: INTAComponent;
+  mComponent: INTAComponent;
 begin
   Result := nil;
-  if (AEditor <> nil) and Supports(AEditor.GetRootComponent, INTAComponent, Component) then
+  if (AEditor <> nil) and Supports(AEditor.GetRootComponent, INTAComponent, mComponent) then
   begin
-    Result := Component.GetComponent;
+    Result := mComponent.GetComponent;
   end;
 end;
 
 function DesignerOf(const AEditor: IOTAFormEditor): IDesigner;
 var
-  Native: INTAFormEditor;
+  mNative: INTAFormEditor;
 begin
   Result := nil;
-  if Supports(AEditor, INTAFormEditor, Native) then
+  if Supports(AEditor, INTAFormEditor, mNative) then
   begin
-    Result := Native.FormDesigner;
+    Result := mNative.FormDesigner;
   end;
 end;
 
 function TextOf(const AEditor: IOTAFormEditor): string;
 var
-  Root: TComponent;
-  Designer: IDesigner;
+  mRoot: TComponent;
+  mDesigner: IDesigner;
 begin
   Result := '';
-  Root := RootOf(AEditor);
-  Designer := DesignerOf(AEditor);
-  if (Root = nil) or (Designer = nil) then
+  mRoot := RootOf(AEditor);
+  mDesigner := DesignerOf(AEditor);
+  if (mRoot = nil) or (mDesigner = nil) then
   begin
     Exit;
   end;
-  Result := TAtlasFormText.Write(Root,
+  Result := TAtlasFormText.Write(mRoot,
     function(AMethod: TMethod): string
     begin
-      Result := Designer.GetMethodName(AMethod);
+      Result := mDesigner.GetMethodName(AMethod);
     end);
 end;
 
 const
   /// <summary>PropInfo.Default ohne default-Angabe (wie in System.Classes).</summary>
-  NoDefaultValue = Integer($80000000);
+  cNoDefaultValue = Integer($80000000);
 
 /// <summary>Löst APath (auch Font.Name) an AComponent auf; '' oder der Grund.</summary>
 function ResolveProperty(AComponent: TObject; const APath: string; out AInstance: TObject;
   out AProp: PPropInfo): string;
 var
-  Parts: TArray<string>;
-  Index: Integer;
+  mParts: TArray<string>;
+  mIndex: Integer;
 begin
   AInstance := AComponent;
   AProp := nil;
-  Parts := APath.Split(['.']);
-  if Length(Parts) = 0 then
+  mParts := APath.Split(['.']);
+  if Length(mParts) = 0 then
   begin
     Exit('ohne Eigenschaft');
   end;
-  for Index := 0 to High(Parts) - 1 do
+  for mIndex := 0 to High(mParts) - 1 do
   begin
-    AProp := GetPropInfo(AInstance, Parts[Index]);
+    AProp := GetPropInfo(AInstance, mParts[mIndex]);
     if (AProp = nil) or (AProp^.PropType^.Kind <> tkClass) then
     begin
-      Exit(Format(UiText(TDesignerText.IsNotAnObjectProperty), [Parts[Index]]));
+      Exit(Format(UiText(TDesignerText.IsNotAnObjectProperty), [mParts[mIndex]]));
     end;
     AInstance := GetObjectProp(AInstance, AProp);
     if AInstance = nil then
     begin
-      Exit(Format(UiText(TDesignerText.IsNotSet), [Parts[Index]]));
+      Exit(Format(UiText(TDesignerText.IsNotSet), [mParts[mIndex]]));
     end;
   end;
-  AProp := GetPropInfo(AInstance, Parts[High(Parts)]);
+  AProp := GetPropInfo(AInstance, mParts[High(mParts)]);
   if (AProp = nil) or (AProp^.SetProc = nil) then
   begin
     Exit(Format(UiText(TDesignerText.CannotBeSet), [APath]));
@@ -288,7 +288,7 @@ var
 begin
   Result := '';
   mKind := AProp^.PropType^.Kind;
-  if (mKind in [tkInteger, tkChar, tkWChar, tkEnumeration, tkSet]) and (AProp^.Default <> NoDefaultValue) then
+  if (mKind in [tkInteger, tkChar, tkWChar, tkEnumeration, tkSet]) and (AProp^.Default <> cNoDefaultValue) then
   begin
     if not ACheckOnly then
     begin
@@ -557,19 +557,19 @@ end;
 
 procedure TAtlasIdeForms.TNotification.DesignerClosed(const ADesigner: IDesigner; AGoingDormant: Boolean);
 var
-  Owner: TAtlasIdeForms;
-  Root: TComponent;
+  mOwner: TAtlasIdeForms;
+  mRoot: TComponent;
 begin
-  Owner := FOwner;
-  if (Owner = nil) or (ADesigner = nil) then
+  mOwner := FOwner;
+  if (mOwner = nil) or (ADesigner = nil) then
   begin
     Exit;
   end;
-  Root := ADesigner.Root;
+  mRoot := ADesigner.Root;
   TAtlasGuard.Run(TAtlasFeature.Forms,
     procedure
     begin
-      Owner.Closed(Root);
+      mOwner.Closed(mRoot);
     end);
 end;
 
@@ -588,7 +588,7 @@ begin
   FNotificationRef := FNotification;
   RegisterDesignNotification(FNotificationRef);
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := SyncDelayMs;
+  FTimer.Interval := cSyncDelayMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
   FDirty := True;
@@ -648,25 +648,25 @@ end;
 
 procedure TAtlasIdeForms.Tick(Sender: TObject);
 var
-  Session: TLspSession;
+  mSession: TLspSession;
 begin
   TAtlasGuard.Run(TAtlasFeature.Forms,
     procedure
     begin
-      Session := nil;
+      mSession := nil;
       if Assigned(FSessionOf) then
       begin
-        Session := FSessionOf();
+        mSession := FSessionOf();
       end;
-      if Session = nil then
+      if mSession = nil then
       begin
         FLastSession := nil;
         Exit;
       end;
       // Neue Sitzung (Serverstart, Neustart): alles neu schicken.
-      if Session <> FLastSession then
+      if mSession <> FLastSession then
       begin
-        FLastSession := Session;
+        FLastSession := mSession;
         FTexts.Clear;
         FDirty := True;
         FAll := True;
@@ -678,11 +678,11 @@ begin
       FDirty := False;
       if FAll then
       begin
-        SyncAll(Session);
+        SyncAll(mSession);
       end
       else
       begin
-        SyncDirty(Session);
+        SyncDirty(mSession);
       end;
     end);
 end;
@@ -745,26 +745,26 @@ end;
 
 procedure TAtlasIdeForms.Closed(ARoot: TComponent);
 var
-  FileName: string;
-  Session: TLspSession;
+  mFileName: string;
+  mSession: TLspSession;
 begin
-  if not FRoots.TryGetValue(ARoot, FileName) then
+  if not FRoots.TryGetValue(ARoot, mFileName) then
   begin
     Exit;
   end;
   FRoots.Remove(ARoot);
-  FTexts.Remove(Key(FileName));
-  Session := nil;
+  FTexts.Remove(Key(mFileName));
+  mSession := nil;
   if Assigned(FSessionOf) then
   begin
-    Session := FSessionOf();
+    mSession := FSessionOf();
   end;
-  if Session <> nil then
+  if mSession <> nil then
     try
-      Session.Close(FileName);
+      mSession.Close(mFileName);
     except
       on E: Exception do
-        Log(Format('Formular %s nicht abgemeldet: %s', [ExtractFileName(FileName), E.Message]));
+        Log(Format('Formular %s nicht abgemeldet: %s', [ExtractFileName(mFileName), E.Message]));
     end;
 end;
 
@@ -803,25 +803,25 @@ end;
 class function TAtlasIdeForms.Check(const AFileName: string; const AEdits: TArray<TLspTextEdit>;
   out AChanges: TArray<TAtlasFormEventChange>; out AProperties: TArray<TAtlasFormPropertyChange>): string;
 var
-  Sent, Edited, Reason: string;
+  mSent, mEdited, mReason: string;
 begin
   AChanges := nil;
   AProperties := nil;
   // Die Positionen des Servers beziehen sich auf den Text, den Atlas zuletzt geschickt hat.
-  if (FCurrent = nil) or not FCurrent.FTexts.TryGetValue(Key(AFileName), Sent) then
+  if (FCurrent = nil) or not FCurrent.FTexts.TryGetValue(Key(AFileName), mSent) then
   begin
     Exit(UiText(TDesignerText.OpenInTheDesignerBut));
   end;
   try
-    Edited := TLspEdits.Apply(Sent, AEdits);
+    mEdited := TLspEdits.Apply(mSent, AEdits);
   except
     on E: ELspEditError do
       Exit(E.Message);
   end;
-  if not TAtlasFormChanges.Diff(Sent, Edited, AChanges, AProperties, Reason) then
+  if not TAtlasFormChanges.Diff(mSent, mEdited, AChanges, AProperties, mReason) then
   begin
     Exit(Format(UiText(TDesignerText.OpenInTheDesignerThere),
-      [Reason]));
+      [mReason]));
   end;
   Result := '';
 end;

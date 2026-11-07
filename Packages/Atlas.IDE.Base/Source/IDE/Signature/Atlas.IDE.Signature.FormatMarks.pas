@@ -26,7 +26,7 @@ type
   TAtlasIdeFormatMarks = class
   private const
     /// <summary>Deckkraft der Farbe über dem Text (0–255).</summary>
-    MarkAlpha = 70;
+    cMarkAlpha = 70;
   private type
     TEvents = class(TNTACodeEditorNotifier)
     protected
@@ -41,7 +41,7 @@ type
     FLines: TArray<string>;
     FTabWidth: Integer;
     FByLine: TDictionary<Integer, TArray<TAtlasFormatMark>>;
-    procedure PaintMarks(const Rect: TRect; const Context: INTACodeEditorPaintContext; const AText: string;
+    procedure PaintMarks(const ARect: TRect; const AContext: INTACodeEditorPaintContext; const AText: string;
       const AMarks: TArray<TAtlasFormatMark>; ABack: TAtlasColor);
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
@@ -81,7 +81,7 @@ end;
 
 constructor TAtlasIdeFormatMarks.Create;
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
   inherited Create;
   FIndex := -1;
@@ -89,29 +89,29 @@ begin
   FEvents := TEvents.Create;
   FEventsRef := FEvents;
   FEvents.OnEditorPaintLine := PaintLine;
-  if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    FIndex := Services.AddEditorEventsNotifier(FEventsRef);
+    FIndex := mServices.AddEditorEventsNotifier(FEventsRef);
   end;
 end;
 
 destructor TAtlasIdeFormatMarks.Destroy;
 var
-  Services: INTACodeEditorServices;
-  Painted: Boolean;
+  mServices: INTACodeEditorServices;
+  mPainted: Boolean;
 begin
   // Erst abmelden, dann freigeben (#493).
-  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    Services.RemoveEditorEventsNotifier(FIndex);
+    mServices.RemoveEditorEventsNotifier(FIndex);
   end;
   FEvents.OnEditorPaintLine := nil;
   FEventsRef := nil;
-  Painted := FByLine.Count > 0;
+  mPainted := FByLine.Count > 0;
   FByLine.Clear;
   FLines := nil;
   FreeAndNil(FByLine);
-  if Painted then
+  if mPainted then
   begin
     Invalidate;
   end;
@@ -120,22 +120,22 @@ end;
 
 class procedure TAtlasIdeFormatMarks.Invalidate;
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    TAtlasIdeEditorRefresh.InvalidateTop(Services);
+    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
   end;
 end;
 
 procedure TAtlasIdeFormatMarks.Show(const AFileName, AText: string; ATabWidth: Integer;
   const AMarks: TArray<TAtlasFormatMark>);
 var
-  Mark: TAtlasFormatMark;
-  Marks: TArray<TAtlasFormatMark>;
-  Painted: Boolean;
+  mMark: TAtlasFormatMark;
+  mMarks: TArray<TAtlasFormatMark>;
+  mPainted: Boolean;
 begin
-  Painted := FByLine.Count > 0;
+  mPainted := FByLine.Count > 0;
   FByLine.Clear;
   FFileName := AFileName;
   FTabWidth := ATabWidth;
@@ -144,15 +144,15 @@ begin
   begin
     FLines := TTextLines.SplitLines(AText);
   end;
-  for Mark in AMarks do
+  for mMark in AMarks do
   begin
-    if not FByLine.TryGetValue(Mark.Line, Marks) then
+    if not FByLine.TryGetValue(mMark.Line, mMarks) then
     begin
-      Marks := nil;
+      mMarks := nil;
     end;
-    FByLine.AddOrSetValue(Mark.Line, Marks + [Mark]);
+    FByLine.AddOrSetValue(mMark.Line, mMarks + [mMark]);
   end;
-  if Painted or (FByLine.Count > 0) then
+  if mPainted or (FByLine.Count > 0) then
   begin
     Invalidate;
   end;
@@ -170,44 +170,44 @@ begin
   Invalidate;
 end;
 
-procedure TAtlasIdeFormatMarks.PaintMarks(const Rect: TRect; const Context: INTACodeEditorPaintContext;
+procedure TAtlasIdeFormatMarks.PaintMarks(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
   const AText: string; const AMarks: TArray<TAtlasFormatMark>; ABack: TAtlasColor);
 var
-  Mark: TAtlasFormatMark;
-  Colors: TAtlasColors;
-  First, Last, Code: TRect;
-  DC: HDC;
-  Saved: Integer;
+  mMark: TAtlasFormatMark;
+  mColors: TAtlasColors;
+  mFirst, mLast, mCode: TRect;
+  mDC: HDC;
+  mSaved: Integer;
 begin
-  Colors := TAtlasColors.ForBackground(ABack);
-  DC := Context.Canvas.Handle;
-  Code := Context.LineState.CodeRect;
-  Saved := SaveDC(DC);
+  mColors := TAtlasColors.ForBackground(ABack);
+  mDC := AContext.Canvas.Handle;
+  mCode := AContext.LineState.CodeRect;
+  mSaved := SaveDC(mDC);
   try
-    if Code.Right > Code.Left then
+    if mCode.Right > mCode.Left then
     begin
-      IntersectClipRect(DC, Code.Left, Rect.Top, Rect.Right, Rect.Bottom);
+      IntersectClipRect(mDC, mCode.Left, ARect.Top, ARect.Right, ARect.Bottom);
     end;
-    for Mark in AMarks do
+    for mMark in AMarks do
     begin
-      First := Context.EditorState.GetCharacterPosPx(TLspSession.IndexToColumn(AText, Mark.Start, FTabWidth),
-        Context.EditorLineNum);
-      Last := Context.EditorState.GetCharacterPosPx(TLspSession.IndexToColumn(AText, Mark.Stop, FTabWidth),
-        Context.EditorLineNum);
-      TAtlasIdeStyle.Blend(DC, TRect.Create(First.Left, Rect.Top, Max(Last.Left, First.Left + 1), Rect.Bottom),
-        COLORREF(ColorToRGB(TColor(Colors.Placeholders[Mark.Slot]))), MarkAlpha);
+      mFirst := AContext.EditorState.GetCharacterPosPx(TLspSession.IndexToColumn(AText, mMark.Start, FTabWidth),
+        AContext.EditorLineNum);
+      mLast := AContext.EditorState.GetCharacterPosPx(TLspSession.IndexToColumn(AText, mMark.Stop, FTabWidth),
+        AContext.EditorLineNum);
+      TAtlasIdeStyle.Blend(mDC, TRect.Create(mFirst.Left, ARect.Top, Max(mLast.Left, mFirst.Left + 1), ARect.Bottom),
+        COLORREF(ColorToRGB(TColor(mColors.Placeholders[mMark.Slot]))), cMarkAlpha);
     end;
   finally
-    RestoreDC(DC, Saved);
+    RestoreDC(mDC, mSaved);
   end;
 end;
 
 procedure TAtlasIdeFormatMarks.PaintLine(const Rect: TRect; const Stage: TPaintLineStage;
   const BeforeEvent: Boolean; var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
 var
-  LineState: INTACodeEditorLineState;
-  Marks: TArray<TAtlasFormatMark>;
-  Line: Integer;
+  mLineState: INTACodeEditorLineState;
+  mMarks: TArray<TAtlasFormatMark>;
+  mLine: Integer;
 begin
   if BeforeEvent or (Stage <> plsEndPaint) or (Context = nil) or (FByLine.Count = 0) or
     TAtlasGuard.Disabled(TAtlasFeature.Signature) then
@@ -219,18 +219,18 @@ begin
     begin
       Exit;
     end;
-    Line := Context.LogicalLineNum - 1;
-    if (Line < 0) or (Line >= Length(FLines)) or not FByLine.TryGetValue(Line, Marks) then
+    mLine := Context.LogicalLineNum - 1;
+    if (mLine < 0) or (mLine >= Length(FLines)) or not FByLine.TryGetValue(mLine, mMarks) then
     begin
       Exit;
     end;
-    LineState := Context.LineState;
+    mLineState := Context.LineState;
     // Nur, wenn die Zeile im Editor dem angefragten Stand entspricht.
-    if (LineState = nil) or (TrimRight(LineState.Text) <> TrimRight(FLines[Line])) then
+    if (mLineState = nil) or (TrimRight(mLineState.Text) <> TrimRight(FLines[mLine])) then
     begin
       Exit;
     end;
-    PaintMarks(Rect, Context, FLines[Line], Marks, TAtlasIdeStyle.SampleBack(Context.Canvas, Rect.Right - 2,
+    PaintMarks(Rect, Context, FLines[mLine], mMarks, TAtlasIdeStyle.SampleBack(Context.Canvas, Rect.Right - 2,
       Rect.Top + 1));
   except
     on E: Exception do

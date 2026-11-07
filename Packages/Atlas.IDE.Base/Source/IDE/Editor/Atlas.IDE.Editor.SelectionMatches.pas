@@ -38,13 +38,13 @@ uses
 type
   TAtlasIdeSelectionMatches = class
   private const
-    TickMs = 100;
+    cTickMs = 100;
     /// <summary>Deckkraft der Treffer über dem Text (0–255).</summary>
-    MatchAlpha = 60;
+    cMatchAlpha = 60;
     /// <summary>Anteil der Akzentfarbe am Hintergrund der Anzahl.</summary>
-    MarkStrength = 0.16;
+    cMarkStrength = 0.16;
     /// <summary>Innenabstand der Anzahl links und rechts in Pixeln.</summary>
-    MarkPadding = 4;
+    cMarkPadding = 4;
   private type
     TEvents = class(TNTACodeEditorNotifier)
     protected
@@ -85,9 +85,9 @@ type
     procedure BuildIndex;
     procedure EnsureFont(const AEditorFont: TFont);
     function CountText: string;
-    procedure PaintMatches(const Rect: TRect; const Context: INTACodeEditorPaintContext; const AText: string;
+    procedure PaintMatches(const ARect: TRect; const AContext: INTACodeEditorPaintContext; const AText: string;
       const AMatches: TArray<TAtlasSelectionMatch>; ABack: TAtlasColor);
-    procedure PaintCount(const Rect: TRect; const Context: INTACodeEditorPaintContext; const AText: string;
+    procedure PaintCount(const ARect: TRect; const AContext: INTACodeEditorPaintContext; const AText: string;
       ABack: TAtlasColor);
     procedure PaintLine(const Rect: TRect; const Stage: TPaintLineStage; const BeforeEvent: Boolean;
       var AllowDefaultPainting: Boolean; const Context: INTACodeEditorPaintContext);
@@ -138,7 +138,7 @@ end;
 
 constructor TAtlasIdeSelectionMatches.Create;
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
   inherited Create;
   FIndex := -1;
@@ -148,34 +148,34 @@ begin
   FEvents := TEvents.Create;
   FEventsRef := FEvents;
   FEvents.OnEditorPaintLine := PaintLine;
-  if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    FIndex := Services.AddEditorEventsNotifier(FEventsRef);
+    FIndex := mServices.AddEditorEventsNotifier(FEventsRef);
   end;
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := TickMs;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := TimerTick;
   FTimer.Enabled := True;
 end;
 
 destructor TAtlasIdeSelectionMatches.Destroy;
 var
-  Services: INTACodeEditorServices;
-  Painted: Boolean;
+  mServices: INTACodeEditorServices;
+  mPainted: Boolean;
 begin
   FreeAndNil(FTimer);
   // Erst abmelden, dann freigeben (#493).
-  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if (FIndex >= 0) and Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    Services.RemoveEditorEventsNotifier(FIndex);
+    mServices.RemoveEditorEventsNotifier(FIndex);
   end;
   FEvents.OnEditorPaintLine := nil;
   FEventsRef := nil;
-  Painted := FState.Term <> '';
+  mPainted := FState.Term <> '';
   Clear;
   FreeAndNil(FByLine);
   FreeAndNil(FFont);
-  if Painted then
+  if mPainted then
   begin
     Invalidate;
   end;
@@ -184,11 +184,11 @@ end;
 
 class procedure TAtlasIdeSelectionMatches.Invalidate;
 var
-  Services: INTACodeEditorServices;
+  mServices: INTACodeEditorServices;
 begin
-  if Supports(BorlandIDEServices, INTACodeEditorServices, Services) then
+  if Supports(BorlandIDEServices, INTACodeEditorServices, mServices) then
   begin
-    TAtlasIdeEditorRefresh.InvalidateTop(Services);
+    TAtlasIdeEditorRefresh.InvalidateTop(mServices);
   end;
 end;
 
@@ -207,17 +207,17 @@ end;
 
 procedure TAtlasIdeSelectionMatches.BuildIndex;
 var
-  Match: TAtlasSelectionMatch;
-  Matches: TArray<TAtlasSelectionMatch>;
+  mMatch: TAtlasSelectionMatch;
+  mMatches: TArray<TAtlasSelectionMatch>;
 begin
   FByLine.Clear;
-  for Match in FMatches.Matches do
+  for mMatch in FMatches.Matches do
   begin
-    if not FByLine.TryGetValue(Match.Line, Matches) then
+    if not FByLine.TryGetValue(mMatch.Line, mMatches) then
     begin
-      Matches := nil;
+      mMatches := nil;
     end;
-    FByLine.AddOrSetValue(Match.Line, Matches + [Match]);
+    FByLine.AddOrSetValue(mMatch.Line, mMatches + [mMatch]);
   end;
 end;
 
@@ -330,16 +330,16 @@ end;
 
 procedure TAtlasIdeSelectionMatches.EnsureFont(const AEditorFont: TFont);
 var
-  Key: string;
+  mKey: string;
 begin
-  Key := AEditorFont.Name + '|' + IntToStr(AEditorFont.Size) + '|' + IntToStr(AEditorFont.PixelsPerInch);
-  if Key = FFontKey then
+  mKey := AEditorFont.Name + '|' + IntToStr(AEditorFont.Size) + '|' + IntToStr(AEditorFont.PixelsPerInch);
+  if mKey = FFontKey then
   begin
     Exit;
   end;
   FFont.Assign(AEditorFont);
   FFont.Style := [];
-  FFontKey := Key;
+  FFontKey := mKey;
 end;
 
 function TAtlasIdeSelectionMatches.CountText: string;
@@ -362,81 +362,81 @@ begin
   end;
 end;
 
-procedure TAtlasIdeSelectionMatches.PaintMatches(const Rect: TRect; const Context: INTACodeEditorPaintContext;
+procedure TAtlasIdeSelectionMatches.PaintMatches(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
   const AText: string; const AMatches: TArray<TAtlasSelectionMatch>; ABack: TAtlasColor);
 var
-  Match: TAtlasSelectionMatch;
-  First, Last, Code: TRect;
-  Color: COLORREF;
-  DC: HDC;
-  Saved: Integer;
+  mMatch: TAtlasSelectionMatch;
+  mFirst, mLast, mCode: TRect;
+  mColor: COLORREF;
+  mDC: HDC;
+  mSaved: Integer;
 begin
-  Color := COLORREF(ColorToRGB(TColor(TAtlasColors.ForBackground(ABack).Accent)));
-  DC := Context.Canvas.Handle;
-  Code := Context.LineState.CodeRect;
-  Saved := SaveDC(DC);
+  mColor := COLORREF(ColorToRGB(TColor(TAtlasColors.ForBackground(ABack).Accent)));
+  mDC := AContext.Canvas.Handle;
+  mCode := AContext.LineState.CodeRect;
+  mSaved := SaveDC(mDC);
   try
-    if Code.Right > Code.Left then
+    if mCode.Right > mCode.Left then
     begin
-      IntersectClipRect(DC, Code.Left, Rect.Top, Rect.Right, Rect.Bottom);
+      IntersectClipRect(mDC, mCode.Left, ARect.Top, ARect.Right, ARect.Bottom);
     end;
-    for Match in AMatches do
+    for mMatch in AMatches do
     begin
       // Die Markierung selbst zeichnet die IDE.
-      if TAtlasSelectionMatches.IsSelection(Match, FState.SelectionLine, FState.SelectionStart,
+      if TAtlasSelectionMatches.IsSelection(mMatch, FState.SelectionLine, FState.SelectionStart,
         FState.SelectionStop) then
       begin
         Continue;
       end;
-      First := Context.EditorState.GetCharacterPosPx(TLspSession.IndexToColumn(AText, Match.Character, FTabWidth),
-        Context.EditorLineNum);
-      Last := Context.EditorState.GetCharacterPosPx(
-        TLspSession.IndexToColumn(AText, Match.Character + Match.Length, FTabWidth), Context.EditorLineNum);
-      TAtlasIdeStyle.Blend(DC, TRect.Create(First.Left, Rect.Top, Max(Last.Left, First.Left + 1), Rect.Bottom), Color,
-        MatchAlpha);
+      mFirst := AContext.EditorState.GetCharacterPosPx(TLspSession.IndexToColumn(AText, mMatch.Character, FTabWidth),
+        AContext.EditorLineNum);
+      mLast := AContext.EditorState.GetCharacterPosPx(
+        TLspSession.IndexToColumn(AText, mMatch.Character + mMatch.Length, FTabWidth), AContext.EditorLineNum);
+      TAtlasIdeStyle.Blend(mDC, TRect.Create(mFirst.Left, ARect.Top, Max(mLast.Left, mFirst.Left + 1), ARect.Bottom), mColor,
+        cMatchAlpha);
     end;
   finally
-    RestoreDC(DC, Saved);
+    RestoreDC(mDC, mSaved);
   end;
 end;
 
-procedure TAtlasIdeSelectionMatches.PaintCount(const Rect: TRect; const Context: INTACodeEditorPaintContext;
+procedure TAtlasIdeSelectionMatches.PaintCount(const ARect: TRect; const AContext: INTACodeEditorPaintContext;
   const AText: string; ABack: TAtlasColor);
 var
-  Caption, Key: string;
-  Cell, Mark: TRect;
-  Colors: TAtlasColors;
-  DC: HDC;
-  Saved, X, Top: Integer;
-  Size: TSize;
-  Brush: HBRUSH;
+  mCaption, mKey: string;
+  mCell, mMark: TRect;
+  mColors: TAtlasColors;
+  mDC: HDC;
+  mSaved, X, mTop: Integer;
+  mSize: TSize;
+  mBrush: HBRUSH;
 begin
-  Caption := CountText;
-  Cell := Context.EditorState.GetCharacterPosPx(
-    TLspSession.IndexToColumn(AText, Length(TrimRight(AText)), FTabWidth) + 2, Context.EditorLineNum);
-  Key := TAtlasLineTail.KeyOf(Context.FileName, Context.LogicalLineNum, Context.EditorLineNum, Rect.Top);
-  X := TAtlasLineTail.Start(Self, Key, Cell.Left);
-  Colors := TAtlasColors.ForBackground(ABack);
-  EnsureFont(Context.Canvas.Font);
-  DC := Context.Canvas.Handle;
-  Saved := SaveDC(DC);
-  Brush := CreateSolidBrush(COLORREF(ColorToRGB(TColor(TAtlasColorMath.Mix(Colors.Accent, ABack, MarkStrength)))));
+  mCaption := CountText;
+  mCell := AContext.EditorState.GetCharacterPosPx(
+    TLspSession.IndexToColumn(AText, Length(TrimRight(AText)), FTabWidth) + 2, AContext.EditorLineNum);
+  mKey := TAtlasLineTail.KeyOf(AContext.FileName, AContext.LogicalLineNum, AContext.EditorLineNum, ARect.Top);
+  X := TAtlasLineTail.Start(Self, mKey, mCell.Left);
+  mColors := TAtlasColors.ForBackground(ABack);
+  EnsureFont(AContext.Canvas.Font);
+  mDC := AContext.Canvas.Handle;
+  mSaved := SaveDC(mDC);
+  mBrush := CreateSolidBrush(COLORREF(ColorToRGB(TColor(TAtlasColorMath.Mix(mColors.Accent, ABack, cMarkStrength)))));
   try
-    SelectObject(DC, FFont.Handle);
-    GetTextExtentPoint32W(DC, PChar(Caption), Length(Caption), Size);
-    Top := Rect.Top + Max(0, (Rect.Bottom - Rect.Top - Size.cy) div 2);
-    Mark := TRect.Create(X, Rect.Top + 1, X + Size.cx + 2 * MarkPadding, Rect.Bottom - 1);
-    FillRect(DC, Mark, Brush);
-    SetTextColor(DC, COLORREF(ColorToRGB(TColor(Colors.Accent))));
-    SetBkMode(DC, TRANSPARENT);
-    TextOutW(DC, X + MarkPadding, Top, PChar(Caption), Length(Caption));
+    SelectObject(mDC, FFont.Handle);
+    GetTextExtentPoint32W(mDC, PChar(mCaption), Length(mCaption), mSize);
+    mTop := ARect.Top + Max(0, (ARect.Bottom - ARect.Top - mSize.cy) div 2);
+    mMark := TRect.Create(X, ARect.Top + 1, X + mSize.cx + 2 * cMarkPadding, ARect.Bottom - 1);
+    FillRect(mDC, mMark, mBrush);
+    SetTextColor(mDC, COLORREF(ColorToRGB(TColor(mColors.Accent))));
+    SetBkMode(mDC, TRANSPARENT);
+    TextOutW(mDC, X + cMarkPadding, mTop, PChar(mCaption), Length(mCaption));
   finally
-    DeleteObject(Brush);
-    RestoreDC(DC, Saved);
+    DeleteObject(mBrush);
+    RestoreDC(mDC, mSaved);
   end;
-  TAtlasLineTail.Finish(Self, Key, Mark.Right);
-  TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.SelectionMatches, Context.FileName,
-    FState.SelectionLine, AText), Mark, Context.EditView.TopRow, Rect.Height);
+  TAtlasLineTail.Finish(Self, mKey, mMark.Right);
+  TAtlasIdeElements.Painted(TAtlasIdeElements.Target(TAtlasDrawnElement.SelectionMatches, AContext.FileName,
+    FState.SelectionLine, AText), mMark, AContext.EditView.TopRow, ARect.Height);
 end;
 
 procedure TAtlasIdeSelectionMatches.PaintLine(const Rect: TRect; const Stage: TPaintLineStage;

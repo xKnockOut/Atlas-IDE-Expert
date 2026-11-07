@@ -259,46 +259,46 @@ end;
 
 function TAtlasIdeStatusLines.StartQuery(const ADone: TProc): Boolean;
 var
-  Units: TUnits;
-  Holder: IInterface;
-  Registry: IAtlasStatusRegistry;
-  Done: TProc;
+  mUnits: TUnits;
+  mHolder: IInterface;
+  mRegistry: IAtlasStatusRegistry;
+  mDone: TProc;
 begin
-  Units := FUnits;
-  Holder := FUnitsRef;
-  Registry := FRegistry;
-  Done := ADone;
+  mUnits := FUnits;
+  mHolder := FUnitsRef;
+  mRegistry := FRegistry;
+  mDone := ADone;
   Result := FSources.Query(
     procedure(AJson: string)
     var
       Count: Integer;
     begin
       // Im Hintergrund-Thread; Holder hält das Ergebnis am Leben.
-      if Holder = nil then
+      if mHolder = nil then
       begin
         Exit;
       end;
       Count := TAtlasStatusLines.UnitsOf(AJson);
       if Count >= 0 then
       begin
-        AtomicExchange(Units.Value, Count);
+        AtomicExchange(mUnits.Value, Count);
       end;
       if AJson <> '' then
       begin
-        TMonitor.Enter(Units);
+        TMonitor.Enter(mUnits);
         try
-          Units.Json := AJson;
+          mUnits.Json := AJson;
         finally
-          TMonitor.Exit(Units);
+          TMonitor.Exit(mUnits);
         end;
       end;
-      Registry.Changed;
-      if Assigned(Done) then
+      mRegistry.Changed;
+      if Assigned(mDone) then
       begin
         TAtlasMainThread.Queue(TAtlasFeature.Status,
           procedure
           begin
-            Done();
+            mDone();
           end);
       end;
     end);
@@ -313,13 +313,13 @@ end;
 
 procedure TAtlasIdeStatusLines.RefreshServer;
 var
-  Info: TAtlasServerInfo;
+  mInfo: TAtlasServerInfo;
 begin
-  Info := FSources.ServerInfo();
-  FServer.Update(TAtlasStatusLines.ServerText(Info), TAtlasStatusLines.ServerState(Info),
-    TAtlasStatusLines.ServerSummary(Info), TAtlasStatusLines.ServerBrief(Info), TAtlasStatusLines.ServerDetail(Info));
+  mInfo := FSources.ServerInfo();
+  FServer.Update(TAtlasStatusLines.ServerText(mInfo), TAtlasStatusLines.ServerState(mInfo),
+    TAtlasStatusLines.ServerSummary(mInfo), TAtlasStatusLines.ServerBrief(mInfo), TAtlasStatusLines.ServerDetail(mInfo));
   // Nach einem Neustart sind die Units erst wieder nach der nächsten Abfrage bekannt.
-  if Info.Phase <> TAtlasServerPhase.Running then
+  if mInfo.Phase <> TAtlasServerPhase.Running then
   begin
     AtomicExchange(FUnits.Value, -1);
     TMonitor.Enter(FUnits);
@@ -333,156 +333,156 @@ end;
 
 procedure TAtlasIdeStatusLines.RefreshIndex;
 var
-  Info: TAtlasIndexInfo;
-  Running, Indexing: Boolean;
-  Percent, Units: Integer;
+  mInfo: TAtlasIndexInfo;
+  mRunning, mIndexing: Boolean;
+  mPercent, mUnits: Integer;
 begin
-  Running := FSources.ServerInfo().Phase = TAtlasServerPhase.Running;
-  Percent := -1;
-  Indexing := Running and FSources.Indexing(Percent);
-  Units := -1;
-  if Running then
+  mRunning := FSources.ServerInfo().Phase = TAtlasServerPhase.Running;
+  mPercent := -1;
+  mIndexing := mRunning and FSources.Indexing(mPercent);
+  mUnits := -1;
+  if mRunning then
   begin
-    Units := FUnits.Value;
+    mUnits := FUnits.Value;
   end;
   // Letzten Stand merken; geschrieben wird nur bei einer Änderung und wenn der Server aufhört (#754).
-  if FTracker.Observe(Running, Indexing, Units, Now) then
+  if FTracker.Observe(mRunning, mIndexing, mUnits, Now) then
   begin
     TAtlasIndexStore.Save(FIndexFile, FTracker.Snapshot);
   end;
   // Ohne laufenden Server die gespeicherten Werte mit „Stand vom …“.
-  Info := FTracker.Info(Running, Indexing, Percent, Units);
-  FIndex.Update(TAtlasStatusLines.IndexText(Info), TAtlasStatusLines.IndexState(Info),
-    TAtlasStatusLines.IndexSummary(Info), TAtlasStatusLines.IndexBrief(Info), TAtlasStatusLines.IndexDetail(Info));
+  mInfo := FTracker.Info(mRunning, mIndexing, mPercent, mUnits);
+  FIndex.Update(TAtlasStatusLines.IndexText(mInfo), TAtlasStatusLines.IndexState(mInfo),
+    TAtlasStatusLines.IndexSummary(mInfo), TAtlasStatusLines.IndexBrief(mInfo), TAtlasStatusLines.IndexDetail(mInfo));
 end;
 
 function TAtlasIdeStatusLines.ActiveFile: string;
 var
-  Editor: IOTAEditorServices;
-  Buffer: IOTAEditBuffer;
+  mEditor: IOTAEditorServices;
+  mBuffer: IOTAEditBuffer;
 begin
   Result := '';
-  if not Supports(BorlandIDEServices, IOTAEditorServices, Editor) then
+  if not Supports(BorlandIDEServices, IOTAEditorServices, mEditor) then
   begin
     Exit;
   end;
-  Buffer := Editor.TopBuffer;
-  if Buffer <> nil then
+  mBuffer := mEditor.TopBuffer;
+  if mBuffer <> nil then
   begin
-    Result := Buffer.FileName;
+    Result := mBuffer.FileName;
   end;
 end;
 
 function TAtlasIdeStatusLines.DiskFormat(const AFileName: string; out AFormat: TAtlasFileFormat): Boolean;
 var
-  Cached: TCached;
-  Stamp: TDateTime;
+  mCached: TCached;
+  mStamp: TDateTime;
 begin
   Result := (AFileName <> '') and FileExists(AFileName);
   if not Result then
   begin
     Exit;
   end;
-  Stamp := TFile.GetLastWriteTime(AFileName);
-  if FCache.TryGetValue(Key(AFileName), Cached) and (Cached.Stamp = Stamp) then
+  mStamp := TFile.GetLastWriteTime(AFileName);
+  if FCache.TryGetValue(Key(AFileName), mCached) and (mCached.Stamp = mStamp) then
   begin
-    AFormat := Cached.Format;
+    AFormat := mCached.Format;
     Exit;
   end;
   try
-    Cached.Format := TAtlasFileFormats.Detect(TAtlasTextFile.ReadAllBytes(AFileName));
+    mCached.Format := TAtlasFileFormats.Detect(TAtlasTextFile.ReadAllBytes(AFileName));
   except
     on Exception do
       Exit(False);
   end;
-  Cached.Stamp := Stamp;
-  FCache.AddOrSetValue(Key(AFileName), Cached);
-  AFormat := Cached.Format;
+  mCached.Stamp := mStamp;
+  FCache.AddOrSetValue(Key(AFileName), mCached);
+  AFormat := mCached.Format;
 end;
 
 procedure TAtlasIdeStatusLines.RefreshFile;
 var
-  Info: TAtlasFileInfo;
-  Bytes: TBytes;
+  mInfo: TAtlasFileInfo;
+  mBytes: TBytes;
 begin
   FActiveFile := ActiveFile;
-  Info := Default(TAtlasFileInfo);
-  Info.Name := ExtractFileName(FActiveFile);
-  Info.Known := DiskFormat(FActiveFile, Info.Format);
-  Info.HasTarget := Info.Known and FTargets.TryGetValue(Key(FActiveFile), Info.Target);
-  if Info.HasTarget then
+  mInfo := Default(TAtlasFileInfo);
+  mInfo.Name := ExtractFileName(FActiveFile);
+  mInfo.Known := DiskFormat(FActiveFile, mInfo.Format);
+  mInfo.HasTarget := mInfo.Known and FTargets.TryGetValue(Key(FActiveFile), mInfo.Target);
+  if mInfo.HasTarget then
   begin
     // Schon im gewählten Format: kein Pfeil.
     try
-      Bytes := TAtlasTextFile.ReadAllBytes(FActiveFile);
-      Info.HasTarget := not TAtlasFileFormats.Satisfies(Bytes, Info.Target);
+      mBytes := TAtlasTextFile.ReadAllBytes(FActiveFile);
+      mInfo.HasTarget := not TAtlasFileFormats.Satisfies(mBytes, mInfo.Target);
     except
       on Exception do
         ;
     end;
   end;
-  FFile.Update(TAtlasStatusLines.FileText(Info), TAtlasStatusLines.FileState(Info));
+  FFile.Update(TAtlasStatusLines.FileText(mInfo), TAtlasStatusLines.FileState(mInfo));
 end;
 
 procedure TAtlasIdeStatusLines.ShowFormatMenu;
 var
-  Format, Current: TAtlasFileFormat;
-  Item: TMenuItem;
-  Index: Integer;
-  Targets: TArray<TAtlasFileFormat>;
+  mFormat, mCurrent: TAtlasFileFormat;
+  mItem: TMenuItem;
+  mIndex: Integer;
+  mTargets: TArray<TAtlasFileFormat>;
 begin
   FMenuFile := ActiveFile;
-  if not DiskFormat(FMenuFile, Current) then
+  if not DiskFormat(FMenuFile, mCurrent) then
   begin
     Exit;
   end;
-  FTargets.TryGetValue(Key(FMenuFile), Current);
+  FTargets.TryGetValue(Key(FMenuFile), mCurrent);
   FreeAndNil(FMenu);
   FMenu := TPopupMenu.Create(nil);
-  Targets := TAtlasFileFormats.Targets;
-  for Index := 0 to High(Targets) do
+  mTargets := TAtlasFileFormats.Targets;
+  for mIndex := 0 to High(mTargets) do
   begin
-    Format := Targets[Index];
-    Item := TMenuItem.Create(FMenu);
-    Item.Caption := Format.Text;
-    Item.Tag := Index;
-    Item.RadioItem := True;
-    Item.Checked := Format.Equals(Current);
-    Item.OnClick := FormatClick;
-    FMenu.Items.Add(Item);
+    mFormat := mTargets[mIndex];
+    mItem := TMenuItem.Create(FMenu);
+    mItem.Caption := mFormat.Text;
+    mItem.Tag := mIndex;
+    mItem.RadioItem := True;
+    mItem.Checked := mFormat.Equals(mCurrent);
+    mItem.OnClick := FormatClick;
+    FMenu.Items.Add(mItem);
   end;
   FMenu.Popup(Mouse.CursorPos.X, Mouse.CursorPos.Y);
 end;
 
 procedure TAtlasIdeStatusLines.FormatClick(Sender: TObject);
 var
-  Targets: TArray<TAtlasFileFormat>;
-  Index: Integer;
+  mTargets: TArray<TAtlasFileFormat>;
+  mIndex: Integer;
 begin
-  Targets := TAtlasFileFormats.Targets;
-  Index := (Sender as TMenuItem).Tag;
-  if (Index < 0) or (Index > High(Targets)) or (FMenuFile = '') then
+  mTargets := TAtlasFileFormats.Targets;
+  mIndex := (Sender as TMenuItem).Tag;
+  if (mIndex < 0) or (mIndex > High(mTargets)) or (FMenuFile = '') then
   begin
     Exit;
   end;
   TAtlasGuard.Run(TAtlasFeature.Status,
     procedure
     begin
-      SetTarget(FMenuFile, Targets[Index]);
+      SetTarget(FMenuFile, mTargets[mIndex]);
     end);
 end;
 
 procedure TAtlasIdeStatusLines.SetTarget(const AFileName: string; const ATarget: TAtlasFileFormat);
 var
-  Bytes: TBytes;
-  Losses: Integer;
+  mBytes: TBytes;
+  mLosses: Integer;
 begin
   if (AFileName = '') or not FileExists(AFileName) then
   begin
     Exit;
   end;
-  Bytes := TAtlasTextFile.ReadAllBytes(AFileName);
-  if TAtlasFileFormats.Satisfies(Bytes, ATarget) then
+  mBytes := TAtlasTextFile.ReadAllBytes(AFileName);
+  if TAtlasFileFormats.Satisfies(mBytes, ATarget) then
   begin
     FTargets.Remove(Key(AFileName));
   end
@@ -491,12 +491,12 @@ begin
     FTargets.AddOrSetValue(Key(AFileName), ATarget);
     if ATarget.Encoding = TAtlasFileEncoding.Ansi then
     begin
-      Losses := TAtlasFileFormats.AnsiLosses(TAtlasFileFormats.Decode(Bytes,
-        TAtlasFileFormats.Detect(Bytes).Encoding));
-      if (Losses > 0) and Assigned(FSources.Report) then
+      mLosses := TAtlasFileFormats.AnsiLosses(TAtlasFileFormats.Decode(mBytes,
+        TAtlasFileFormats.Detect(mBytes).Encoding));
+      if (mLosses > 0) and Assigned(FSources.Report) then
       begin
         FSources.Report(System.SysUtils.Format(UiText(TIdeStatusLinesText.CharactersCannotBeRepresentedIn),
-          [ExtractFileName(AFileName), Losses]));
+          [ExtractFileName(AFileName), mLosses]));
       end;
     end;
     // Die IDE soll speichern wollen: gewählt ist eine Änderung der Datei.
@@ -507,52 +507,52 @@ end;
 
 procedure TAtlasIdeStatusLines.MarkModified(const AFileName: string);
 var
-  Modules: IOTAModuleServices;
-  Module: IOTAModule;
-  Source: IOTASourceEditor;
-  Index: Integer;
+  mModules: IOTAModuleServices;
+  mModule: IOTAModule;
+  mSource: IOTASourceEditor;
+  mIndex: Integer;
 begin
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
   begin
     Exit;
   end;
-  Module := Modules.FindModule(AFileName);
-  if Module = nil then
+  mModule := mModules.FindModule(AFileName);
+  if mModule = nil then
   begin
     Exit;
   end;
-  for Index := 0 to Module.ModuleFileCount - 1 do
+  for mIndex := 0 to mModule.ModuleFileCount - 1 do
   begin
-    if Supports(Module.ModuleFileEditors[Index], IOTASourceEditor, Source) and
-      SameText(Source.FileName, AFileName) then
+    if Supports(mModule.ModuleFileEditors[mIndex], IOTASourceEditor, mSource) and
+      SameText(mSource.FileName, AFileName) then
     begin
-      Source.MarkModified;
+      mSource.MarkModified;
     end;
   end;
 end;
 
 procedure TAtlasIdeStatusLines.Saved(const AFileName: string);
 var
-  Target: TAtlasFileFormat;
-  Bytes: TBytes;
-  Stamp: TDateTime;
+  mTarget: TAtlasFileFormat;
+  mBytes: TBytes;
+  mStamp: TDateTime;
 begin
-  if not FTargets.TryGetValue(Key(AFileName), Target) or not FileExists(AFileName) then
+  if not FTargets.TryGetValue(Key(AFileName), mTarget) or not FileExists(AFileName) then
   begin
     Exit;
   end;
-  Bytes := TAtlasTextFile.ReadAllBytes(AFileName);
-  if not TAtlasFileFormats.Satisfies(Bytes, Target) then
+  mBytes := TAtlasTextFile.ReadAllBytes(AFileName);
+  if not TAtlasFileFormats.Satisfies(mBytes, mTarget) then
   begin
-    Stamp := TFile.GetLastWriteTime(AFileName);
+    mStamp := TFile.GetLastWriteTime(AFileName);
     // Atomar (Bericht N3): An Ort und Stelle geschrieben, kostete ein Abbruch die Quelltextdatei.
-    TAtlasTextFile.Replace(AFileName, TAtlasFileFormats.Convert(Bytes, Target));
+    TAtlasTextFile.Replace(AFileName, TAtlasFileFormats.Convert(mBytes, mTarget));
     // Zeitstempel des Speicherns der IDE behalten: sonst meldet sie die Datei als extern geändert.
-    TFile.SetLastWriteTime(AFileName, Stamp);
+    TFile.SetLastWriteTime(AFileName, mStamp);
     FCache.Remove(Key(AFileName));
     if Assigned(FSources.Report) then
     begin
-      FSources.Report(Format(UiText(TIdeStatusLinesText.SavedAs), [ExtractFileName(AFileName), Target.Text]));
+      FSources.Report(Format(UiText(TIdeStatusLinesText.SavedAs), [ExtractFileName(AFileName), mTarget.Text]));
     end;
   end;
   if SameText(AFileName, FActiveFile) then

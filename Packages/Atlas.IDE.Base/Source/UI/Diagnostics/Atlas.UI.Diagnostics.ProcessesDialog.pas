@@ -347,8 +347,8 @@ end;
 
 procedure TAtlasProcessesDialog.Reload;
 var
-  Alive: TAtlasProcessesAlive;
-  Keep: IInterface;
+  mAlive: TAtlasProcessesAlive;
+  mKeep: IInterface;
 begin
   FParts.Status.Caption := TAtlasStrings.Text(TAtlasTextId.ProcessesAsking);
   ShowDirty;
@@ -356,13 +356,13 @@ begin
   begin
     Exit;
   end;
-  Alive := FAlive;
-  Keep := FAliveRef;
+  mAlive := FAlive;
+  mKeep := FAliveRef;
   FActions.Fetch(
     procedure(AAnswer: TJSONValue)
     begin
       // Keep hält die Marke am Leben, bis die Antwort da ist.
-      if Assigned(Keep) and Alive.Alive then
+      if Assigned(mKeep) and mAlive.Alive then
       begin
         ShowAnswer(AAnswer);
       end;
@@ -371,7 +371,7 @@ end;
 
 procedure TAtlasProcessesDialog.ShowAnswer(const AAnswer: TJSONValue);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   FWorkspaces := TAtlasProcessesView.Parse(AAnswer);
   FMarkdown := TAtlasProcessesView.Markdown(AAnswer);
@@ -401,9 +401,9 @@ begin
   FParts.Choice.Items.BeginUpdate;
   try
     FParts.Choice.Items.Clear;
-    for Index := 0 to High(FWorkspaces) do
+    for mIndex := 0 to High(FWorkspaces) do
     begin
-      FParts.Choice.Items.Add(FWorkspaces[Index].Name);
+      FParts.Choice.Items.Add(FWorkspaces[mIndex].Name);
     end;
   finally
     FParts.Choice.Items.EndUpdate;
@@ -419,8 +419,8 @@ end;
 
 procedure TAtlasProcessesDialog.ShowWorkspace(AIndex: Integer);
 var
-  Workspace: TAtlasProcessWorkspace;
-  Line: TAtlasProcessLogLine;
+  mWorkspace: TAtlasProcessWorkspace;
+  mLine: TAtlasProcessLogLine;
 begin
   FParts.List.Items.BeginUpdate;
   FParts.Log.Lines.BeginUpdate;
@@ -437,34 +437,34 @@ begin
       FParts.Count.Caption := '';
       Exit;
     end;
-    Workspace := FWorkspaces[AIndex];
-    FParts.CacheValue.Caption := Workspace.Cache;
-    if Workspace.LockHolder = '' then
+    mWorkspace := FWorkspaces[AIndex];
+    FParts.CacheValue.Caption := mWorkspace.Cache;
+    if mWorkspace.LockHolder = '' then
     begin
       FParts.LockValue.Caption := TAtlasStrings.Text(TAtlasTextId.ProcessesFree);
     end
     else
     begin
-      FParts.LockValue.Caption := Workspace.LockHolder;
+      FParts.LockValue.Caption := mWorkspace.LockHolder;
     end;
     // Marke „schreibt“ hinter dem Halter der Sperre; das Label misst sich selbst (AutoSize, ohne Fenster).
-    FParts.WriterTag.Visible := Workspace.LockHolder <> '';
+    FParts.WriterTag.Visible := mWorkspace.LockHolder <> '';
     FParts.WriterTag.Left := FParts.LockValue.Left + FParts.LockValue.Width + 2 * Gap;
     FParts.WriterTag.Top := FParts.LockValue.Top;
-    FParts.StateValue.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProcessesSaved, [Workspace.Saved, Workspace.Format]);
-    FillProcesses(FParts.List, Workspace.Processes);
-    if Workspace.BuiltOnce then
+    FParts.StateValue.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProcessesSaved, [mWorkspace.Saved, mWorkspace.Format]);
+    FillProcesses(FParts.List, mWorkspace.Processes);
+    if mWorkspace.BuiltOnce then
     begin
-      FParts.BuiltOnce.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProcessesBuiltOnce, [Workspace.Units]);
+      FParts.BuiltOnce.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProcessesBuiltOnce, [mWorkspace.Units]);
     end
     else
     begin
-      FParts.BuiltOnce.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProcessesUnits, [Workspace.Units]);
+      FParts.BuiltOnce.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProcessesUnits, [mWorkspace.Units]);
     end;
-    FParts.Count.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProcessesCount, [Length(Workspace.Processes)]);
-    for Line in Workspace.Events do
+    FParts.Count.Caption := TAtlasStrings.Fmt(TAtlasTextId.ProcessesCount, [Length(mWorkspace.Processes)]);
+    for mLine in mWorkspace.Events do
     begin
-      FParts.Log.Lines.Add(Line.Time + '  ' + Line.Text);
+      FParts.Log.Lines.Add(mLine.Time + '  ' + mLine.Text);
     end;
   finally
     FParts.Log.Lines.EndUpdate;
@@ -474,46 +474,46 @@ end;
 
 procedure TAtlasProcessesDialog.ShowDirty;
 var
-  Names: TArray<string>;
-  mName, Mcp: string;
-  Item: TListItem;
-  HasMcp: Boolean;
-  Workspace: TAtlasProcessWorkspace;
+  mNames: TArray<string>;
+  mName, mMcp: string;
+  mItem: TListItem;
+  mHasMcp: Boolean;
+  mWorkspace: TAtlasProcessWorkspace;
 begin
-  Names := nil;
+  mNames := nil;
   if Assigned(FActions.ModifiedFiles) then
   begin
-    Names := TAtlasProcessesView.DirtyNames(FActions.ModifiedFiles());
+    mNames := TAtlasProcessesView.DirtyNames(FActions.ModifiedFiles());
   end;
-  HasMcp := False;
-  for Workspace in FWorkspaces do
+  mHasMcp := False;
+  for mWorkspace in FWorkspaces do
   begin
-    HasMcp := HasMcp or Workspace.HasMcp;
+    mHasMcp := mHasMcp or mWorkspace.HasMcp;
   end;
   // Ohne MCP-Prozess gibt es niemanden, der den gespeicherten Stand liest.
-  Mcp := '';
-  if HasMcp then
+  mMcp := '';
+  if mHasMcp then
   begin
-    Mcp := TAtlasStrings.Text(TAtlasTextId.ProcessesDirtyMcpText);
+    mMcp := TAtlasStrings.Text(TAtlasTextId.ProcessesDirtyMcpText);
   end;
   FParts.Dirty.Items.BeginUpdate;
   try
     FParts.Dirty.Items.Clear;
-    for mName in Names do
+    for mName in mNames do
     begin
-      Item := FParts.Dirty.Items.Add;
-      Item.Caption := mName;
-      Item.SubItems.Add(TAtlasStrings.Text(TAtlasTextId.ProcessesDirtyIdeText));
-      Item.SubItems.Add(Mcp);
+      mItem := FParts.Dirty.Items.Add;
+      mItem.Caption := mName;
+      mItem.SubItems.Add(TAtlasStrings.Text(TAtlasTextId.ProcessesDirtyIdeText));
+      mItem.SubItems.Add(mMcp);
     end;
   finally
     FParts.Dirty.Items.EndUpdate;
   end;
-  if Length(Names) = 0 then
+  if Length(mNames) = 0 then
   begin
     FParts.DirtyNote.Caption := TAtlasStrings.Text(TAtlasTextId.ProcessesDirtyNone);
   end
-  else if HasMcp then
+  else if mHasMcp then
   begin
     FParts.DirtyNote.Caption := TAtlasStrings.Text(TAtlasTextId.ProcessesDirtyNote);
   end
@@ -543,14 +543,14 @@ end;
 
 class procedure TAtlasProcessesDialog.Execute(const AActions: TAtlasProcessesActions);
 var
-  Dialog: TAtlasProcessesDialog;
+  mDialog: TAtlasProcessesDialog;
 begin
-  Dialog := TAtlasProcessesDialog.CreateDialog(nil, AActions);
+  mDialog := TAtlasProcessesDialog.CreateDialog(nil, AActions);
   try
-    Dialog.Reload;
-    Dialog.ShowModal;
+    mDialog.Reload;
+    mDialog.ShowModal;
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 

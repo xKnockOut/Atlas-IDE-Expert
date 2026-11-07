@@ -70,9 +70,9 @@ uses
   Atlas.IDE.Editor.MinimapNotice;
 
 const
-  TickMs = 100;
+  cTickMs = 100;
   /// <summary>Tipp-Pause, bevor der Text neu zerlegt wird.</summary>
-  QuietMs = 300;
+  cQuietMs = 300;
 
 type
   TMinimapState = class
@@ -141,10 +141,10 @@ end;
 /// <summary>Minimap an den Rand ASide ihres Eltern-Steuerelements.</summary>
 procedure PlaceView(AView: TAtlasMinimapView; ASide: TAtlasMinimapSide);
 var
-  Parent: TWinControl;
+  mParent: TWinControl;
 begin
-  Parent := AView.Parent;
-  if Parent = nil then
+  mParent := AView.Parent;
+  if mParent = nil then
   begin
     Exit;
   end;
@@ -157,7 +157,7 @@ begin
   end
   else
   begin
-    AView.Left := Parent.ClientWidth;
+    AView.Left := mParent.ClientWidth;
     AView.Align := alRight;
   end;
 end;
@@ -227,7 +227,7 @@ begin
   FFolds := TAtlasIdeMinimapFolds.Create;
   FNotice := TAtlasIdeMinimapNotice.Create(HideIdeAction(), TurnOffAction());
   FTimer := TTimer.Create(nil);
-  FTimer.Interval := TickMs;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
   FTimer.Enabled := True;
 end;
@@ -259,19 +259,19 @@ end;
 
 procedure TMinimapState.ApplySettings;
 var
-  Options: TAtlasMinimapOptions;
+  mOptions: TAtlasMinimapOptions;
 begin
-  Options := CurrentOptions;
-  if SameOptions(Options, FOptions) then
+  mOptions := CurrentOptions;
+  if SameOptions(mOptions, FOptions) then
   begin
     Exit;
   end;
   // Andere höchste Spalte: neu zerlegen.
-  if Options.MaxColumn <> FOptions.MaxColumn then
+  if mOptions.MaxColumn <> FOptions.MaxColumn then
   begin
     FHasContent := False;
   end;
-  FOptions := Options;
+  FOptions := mOptions;
   FHost.ForEach(
     procedure(ABar: TControl)
     begin
@@ -307,36 +307,36 @@ end;
 /// <summary>Eigene Methode: Jeder Streifen braucht seine eigene gefangene Variable.</summary>
 function TMinimapState.CreateView: TAtlasMinimapView;
 var
-  View: TAtlasMinimapView;
+  mView: TAtlasMinimapView;
 begin
-  View := TAtlasMinimapView.Create(nil);
-  Result := View;
-  View.SetOptions(FOptions);
-  View.SetColors(TAtlasIdeStyle.Colors);
-  View.OnScroll :=
+  mView := TAtlasMinimapView.Create(nil);
+  Result := mView;
+  mView.SetOptions(FOptions);
+  mView.SetColors(TAtlasIdeStyle.Colors);
+  mView.OnScroll :=
     procedure(ATopLine: Integer)
     begin
       TAtlasGuard.Run(TAtlasFeature.Minimap,
         procedure
         begin
-          Scroll(View, ATopLine);
+          Scroll(mView, ATopLine);
         end);
     end;
-  View.OnJump :=
+  mView.OnJump :=
     procedure(ALine: Integer)
     begin
       TAtlasGuard.Run(TAtlasFeature.Minimap,
         procedure
         begin
-          Jump(View, ALine);
+          Jump(mView, ALine);
         end);
     end;
 end;
 
 procedure TMinimapState.StartWorker(const AText: string; AVersion: Cardinal; AMaxColumn, ATabWidth: Integer);
 var
-  Request: Integer;
-  FileName: string;
+  mRequest: Integer;
+  mFileName: string;
 begin
   if FWorker <> nil then
   begin
@@ -344,8 +344,8 @@ begin
     FreeAndNil(FWorker);
   end;
   Inc(FRequest);
-  Request := FRequest;
-  FileName := FFileName;
+  mRequest := FRequest;
+  mFileName := FFileName;
   FWorking := True;
   FWorker := TThread.CreateAnonymousThread(
     procedure
@@ -371,7 +371,7 @@ begin
               begin
                 if TAtlasIdeMinimap.FState <> nil then
                 begin
-                  TMinimapState(TAtlasIdeMinimap.FState).Accept(Request, FileName, AVersion, Lines, Runs);
+                  TMinimapState(TAtlasIdeMinimap.FState).Accept(mRequest, mFileName, AVersion, Lines, Runs);
                 end;
               end);
           end;
@@ -384,7 +384,7 @@ end;
 procedure TMinimapState.Accept(ARequest: Integer; const AFileName: string; AVersion: Cardinal;
   const ALines: TArray<string>; const ARuns: TAtlasMinimapLines);
 var
-  Minimap: TAtlasMinimapView;
+  mMinimap: TAtlasMinimapView;
 begin
   if ARequest <> FRequest then
   begin
@@ -401,26 +401,26 @@ begin
   FHasContent := True;
   // Neue Treffer zum neuen Text.
   FTermVersion := 0;
-  Minimap := ActiveMinimap;
-  if Minimap <> nil then
+  mMinimap := ActiveMinimap;
+  if mMinimap <> nil then
   begin
-    Minimap.SetContent(FLines, FRuns, FTabWidth);
-    FContentView := Minimap;
+    mMinimap.SetContent(FLines, FRuns, FTabWidth);
+    FContentView := mMinimap;
   end;
 end;
 
 procedure TMinimapState.UpdateContent(const AView: IOTAEditView; AMinimap: TAtlasMinimapView);
 var
-  Snapshot: TAtlasEditorSnapshot;
-  First: Boolean;
+  mSnapshot: TAtlasEditorSnapshot;
+  mFirst: Boolean;
 begin
-  Snapshot := TAtlasEditorSnapshots.Get(AView);
-  First := not SameText(Snapshot.FileName, FFileName);
-  if First then
+  mSnapshot := TAtlasEditorSnapshots.Get(AView);
+  mFirst := not SameText(mSnapshot.FileName, FFileName);
+  if mFirst then
   begin
-    FFileName := Snapshot.FileName;
+    FFileName := mSnapshot.FileName;
     FHasContent := False;
-    FVersion := Snapshot.Version;
+    FVersion := mSnapshot.Version;
     FLines := nil;
     FRuns := nil;
     FFolds.Reset;
@@ -432,45 +432,45 @@ begin
     AMinimap.SetContent(nil, nil, FTabWidth);
     FContentView := AMinimap;
   end;
-  if Snapshot.Version <> FVersion then
+  if mSnapshot.Version <> FVersion then
   begin
-    FVersion := Snapshot.Version;
+    FVersion := mSnapshot.Version;
     FChangedAt := TThread.GetTickCount64;
   end;
   // Erster Stand sofort, Änderungen nach der Tipp-Pause; nie zwei Zerleger zugleich.
   if not FWorking and (not FHasContent or ((FAppliedVersion <> FVersion) and
-    (TThread.GetTickCount64 - FChangedAt >= QuietMs))) then
+    (TThread.GetTickCount64 - FChangedAt >= cQuietMs))) then
   begin
     FTabWidth := TAtlasEditorBuffer.TabWidth(AView.Buffer);
-    StartWorker(Snapshot.Text, FVersion, FOptions.MaxColumn, FTabWidth);
+    StartWorker(mSnapshot.Text, FVersion, FOptions.MaxColumn, FTabWidth);
   end;
 end;
 
 procedure TMinimapState.UpdateMarks(const AView: IOTAEditView; AMinimap: TAtlasMinimapView; ALineCount: Integer);
 var
-  Block: IOTAEditBlock;
-  Term: string;
+  mBlock: IOTAEditBlock;
+  mTerm: string;
 begin
   if not FOptions.Markers then
   begin
     AMinimap.SetMarks(nil);
     Exit;
   end;
-  Term := '';
-  Block := AView.Block;
-  if (Block <> nil) and Block.IsValid and (Block.Size > 0) and (Block.StartingRow = Block.EndingRow) then
+  mTerm := '';
+  mBlock := AView.Block;
+  if (mBlock <> nil) and mBlock.IsValid and (mBlock.Size > 0) and (mBlock.StartingRow = mBlock.EndingRow) then
   begin
-    TAtlasOverview.SearchTerm(Block.Text, Term);
+    TAtlasOverview.SearchTerm(mBlock.Text, mTerm);
   end;
-  if Term = '' then
+  if mTerm = '' then
   begin
     FSearchLines := nil;
   end
-  else if (Term <> FTerm) or (FTermVersion <> FAppliedVersion) then
+  else if (mTerm <> FTerm) or (FTermVersion <> FAppliedVersion) then
   begin
-    FSearchLines := TAtlasOverview.Occurrences(FLines, Term);
+    FSearchLines := TAtlasOverview.Occurrences(FLines, mTerm);
   end;
-  FTerm := Term;
+  FTerm := mTerm;
   FTermVersion := FAppliedVersion;
   AMinimap.SetMarks(TAtlasIdeOverviewRuler.CollectMarks(AView, ALineCount, TAtlasMinimap.MarkerKinds, FTerm,
     FSearchLines));
@@ -478,15 +478,15 @@ end;
 
 procedure TMinimapState.Update;
 var
-  Minimap: TAtlasMinimapView;
-  View: IOTAEditView;
-  LineCount: Integer;
+  mMinimap: TAtlasMinimapView;
+  mView: IOTAEditView;
+  mLineCount: Integer;
 begin
   ApplySettings;
   FHost.Ensure;
-  Minimap := ActiveMinimap;
-  View := TAtlasEditorBuffer.ActiveView;
-  if (Minimap = nil) or (View = nil) or (View.Buffer = nil) then
+  mMinimap := ActiveMinimap;
+  mView := TAtlasEditorBuffer.ActiveView;
+  if (mMinimap = nil) or (mView = nil) or (mView.Buffer = nil) then
   begin
     Exit;
   end;
@@ -495,23 +495,23 @@ begin
     ApplyTheme;
     FColorsSet := True;
   end;
-  LineCount := View.Buffer.GetLinesInBuffer;
+  mLineCount := mView.Buffer.GetLinesInBuffer;
   // Anderes Editorfenster vorn: Es übernimmt Inhalt und Gliederung.
-  if Minimap <> FContentView then
+  if mMinimap <> FContentView then
   begin
-    Minimap.SetContent(FLines, FRuns, FTabWidth);
-    FContentView := Minimap;
+    mMinimap.SetContent(FLines, FRuns, FTabWidth);
+    FContentView := mMinimap;
     FStamp := 0;
   end;
-  UpdateContent(View, Minimap);
-  Minimap.SetFolds(FFolds.Update(FFileName, LineCount));
-  if not Minimap.SliderDragging then
+  UpdateContent(mView, mMinimap);
+  mMinimap.SetFolds(FFolds.Update(FFileName, mLineCount));
+  if not mMinimap.SliderDragging then
   begin
-    Minimap.SetView(View.TopRow - 1, View.BottomRow - 1, View.CursorPos.Line - 1);
+    mMinimap.SetView(mView.TopRow - 1, mView.BottomRow - 1, mView.CursorPos.Line - 1);
   end;
-  UpdateOutline(View, Minimap);
-  UpdateMarks(View, Minimap, LineCount);
-  FNotice.Check(Minimap);
+  UpdateOutline(mView, mMinimap);
+  UpdateMarks(mView, mMinimap, mLineCount);
+  FNotice.Check(mMinimap);
 end;
 
 /// <summary>Überschriften und Routine am Cursor aus der Gliederung, wenn sie neu ist.</summary>
@@ -534,31 +534,31 @@ end;
 
 procedure TMinimapState.Scroll(AMinimap: TAtlasMinimapView; ATopLine: Integer);
 var
-  View: IOTAEditView;
-  Rows: Integer;
+  mView: IOTAEditView;
+  mRows: Integer;
 begin
-  View := TAtlasEditorBuffer.ActiveView;
-  if (AMinimap <> ActiveMinimap) or (View = nil) or (View.Buffer = nil) or (ATopLine < 0) then
+  mView := TAtlasEditorBuffer.ActiveView;
+  if (AMinimap <> ActiveMinimap) or (mView = nil) or (mView.Buffer = nil) or (ATopLine < 0) then
   begin
     Exit;
   end;
-  Rows := View.BottomRow - View.TopRow;
-  View.SetTopLeft(ATopLine + 1, View.LeftColumn);
-  View.Paint;
+  mRows := mView.BottomRow - mView.TopRow;
+  mView.SetTopLeft(ATopLine + 1, mView.LeftColumn);
+  mView.Paint;
   // Sofort nachführen, damit das Ziehen flüssig bleibt.
-  AMinimap.SetView(ATopLine, ATopLine + Rows, View.CursorPos.Line - 1);
+  AMinimap.SetView(ATopLine, ATopLine + mRows, mView.CursorPos.Line - 1);
 end;
 
 procedure TMinimapState.Jump(AMinimap: TAtlasMinimapView; ALine: Integer);
 var
-  View: IOTAEditView;
+  mView: IOTAEditView;
 begin
-  View := TAtlasEditorBuffer.ActiveView;
-  if (AMinimap <> ActiveMinimap) or (View = nil) or (View.Buffer = nil) or (ALine < 0) then
+  mView := TAtlasEditorBuffer.ActiveView;
+  if (AMinimap <> ActiveMinimap) or (mView = nil) or (mView.Buffer = nil) or (ALine < 0) then
   begin
     Exit;
   end;
-  TAtlasIdeNavigation.GoToLocation(View.Buffer.FileName, ALine, 0);
+  TAtlasIdeNavigation.GoToLocation(mView.Buffer.FileName, ALine, 0);
 end;
 
 procedure TMinimapState.HideIdeMinimap;

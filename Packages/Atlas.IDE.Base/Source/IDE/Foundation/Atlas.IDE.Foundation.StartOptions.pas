@@ -80,8 +80,8 @@ uses
   Atlas.IDE.Foundation.Host;
 
 const
-  RunAction = 'RunRunCommand';
-  RunNoDebugAction = 'RunRunNoDebugCommand';
+  cRunAction = 'RunRunCommand';
+  cRunNoDebugAction = 'RunRunNoDebugCommand';
 
 { TAtlasIdeStartOptions }
 
@@ -229,11 +229,11 @@ begin
   AReason := '';
   if ADebugger then
   begin
-    mName := RunAction;
+    mName := cRunAction;
   end
   else
   begin
-    mName := RunNoDebugAction;
+    mName := cRunNoDebugAction;
   end;
   if Supports(BorlandIDEServices, INTAServices, mActions) and (mActions.ActionList <> nil) then
   begin

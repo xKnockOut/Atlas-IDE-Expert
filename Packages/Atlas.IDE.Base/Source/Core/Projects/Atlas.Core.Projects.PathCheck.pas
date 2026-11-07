@@ -209,12 +209,12 @@ uses
 const
   // IMPLICITBUILDING setzt die IDE beim impliziten Bauen eines Packages (steht in jeder .dpk-Vorlage);
   // TESTINSIGHT und CI fragt die Projektvorlage von DUnitX ab, gesetzt werden sie vom jeweiligen Werkzeug.
-  ForeignSymbols: array[0..15] of string = ('FPC', 'CLR', 'KYLIX', 'LCL', 'DOTNET', 'UNIX', 'DARWIN', 'WINDOWS',
+  cForeignSymbols: array[0..15] of string = ('FPC', 'CLR', 'KYLIX', 'LCL', 'DOTNET', 'UNIX', 'DARWIN', 'WINDOWS',
     'BSD', 'FREEBSD', 'HAIKU', 'WASI', 'EMBEDDED', 'IMPLICITBUILDING', 'TESTINSIGHT', 'CI');
   // Präfixe von Symbolen, die Free Pascal bzw. Lazarus je Ziel setzt (CPUX86_64, ENDIAN_BIG, FPC_FULLVERSION, LCLgtk2).
-  ForeignPrefixes: array[0..3] of string = ('CPU', 'ENDIAN_', 'FPC_', 'LCL');
-  ScriptExtensions: array[0..4] of string = ('.sh', '.cmd', '.bat', '.lpi', '.lpk');
-  AlwaysThere: array[0..1] of string = ('SYSTEM', 'SYSINIT');
+  cForeignPrefixes: array[0..3] of string = ('CPU', 'ENDIAN_', 'FPC_', 'LCL');
+  cScriptExtensions: array[0..4] of string = ('.sh', '.cmd', '.bat', '.lpi', '.lpk');
+  cAlwaysThere: array[0..1] of string = ('SYSTEM', 'SYSINIT');
 
 { TAtlasPathCheckResult }
 
@@ -226,12 +226,12 @@ end;
 
 class function TAtlasPathCheckResult.UncertainIn(const AFindings: TArray<TAtlasPathFinding>): Integer;
 var
-  Finding: TAtlasPathFinding;
+  mFinding: TAtlasPathFinding;
 begin
   Result := 0;
-  for Finding in AFindings do
+  for mFinding in AFindings do
   begin
-    if Finding.Uncertain then
+    if mFinding.Uncertain then
     begin
       Inc(Result);
     end;
@@ -248,13 +248,13 @@ end;
 
 function TAtlasPathMacros.IndexOf(const AName: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(FNames) do
+  for mIndex := 0 to High(FNames) do
   begin
-    if SameText(FNames[Index], Trim(AName)) then
+    if SameText(FNames[mIndex], Trim(AName)) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -262,16 +262,16 @@ end;
 
 procedure TAtlasPathMacros.Add(const AName, AValue: string);
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   if (Trim(AName) = '') or (Trim(AValue) = '') then
   begin
     Exit;
   end;
-  Index := IndexOf(AName);
-  if Index >= 0 then
+  mIndex := IndexOf(AName);
+  if mIndex >= 0 then
   begin
-    FValues[Index] := AValue;
+    FValues[mIndex] := AValue;
   end
   else
   begin
@@ -299,23 +299,23 @@ end;
 
 procedure TAtlasPathMacros.AddBds(const ABdsDir: string);
 var
-  Bds: string;
+  mBds: string;
 begin
-  Bds := WithoutSlash(ABdsDir);
-  if Bds = '' then
+  mBds := WithoutSlash(ABdsDir);
+  if mBds = '' then
   begin
     Exit;
   end;
-  AddDefault('BDS', Bds);
-  AddDefault('BDSLIB', Bds + '\lib');
-  AddDefault('BDSBIN', Bds + '\bin');
-  AddDefault('BDSINCLUDE', Bds + '\include');
+  AddDefault('BDS', mBds);
+  AddDefault('BDSLIB', mBds + '\lib');
+  AddDefault('BDSBIN', mBds + '\bin');
+  AddDefault('BDSINCLUDE', mBds + '\include');
 end;
 
 procedure TAtlasPathMacros.AddProject(const AProject, APlatform, AConfig: string);
 var
-  Folder, FileName, Name, NoRoot: string;
-  Index: Integer;
+  mFolder, mFileName, mName, mNoRoot: string;
+  mIndex: Integer;
 begin
   Add('Platform', APlatform);
   Add('Config', AConfig);
@@ -323,56 +323,56 @@ begin
   begin
     Exit;
   end;
-  Folder := '';
-  FileName := Trim(AProject);
-  for Index := Length(FileName) downto 1 do
+  mFolder := '';
+  mFileName := Trim(AProject);
+  for mIndex := Length(mFileName) downto 1 do
   begin
-    if CharInSet(FileName[Index], ['\', '/']) then
+    if CharInSet(mFileName[mIndex], ['\', '/']) then
     begin
-      Folder := Copy(FileName, 1, Index - 1);
-      FileName := Copy(FileName, Index + 1, MaxInt);
+      mFolder := Copy(mFileName, 1, mIndex - 1);
+      mFileName := Copy(mFileName, mIndex + 1, MaxInt);
       Break;
     end;
   end;
-  Name := FileName;
-  for Index := Length(Name) downto 1 do
+  mName := mFileName;
+  for mIndex := Length(mName) downto 1 do
   begin
-    if Name[Index] = '.' then
+    if mName[mIndex] = '.' then
     begin
-      Name := Copy(Name, 1, Index - 1);
+      mName := Copy(mName, 1, mIndex - 1);
       Break;
     end;
   end;
   // ProjectDir wie bei MSBuild ohne abschließenden Trenner; Combine verträgt doppelte „\“.
-  Add('ProjectDir', Folder);
-  Add('ProjectPath', Folder);
-  Add('ProjectName', Name);
-  Add('ProjectFilename', FileName);
-  Add('MSBuildProjectDirectory', Folder);
-  Add('MSBuildProjectName', Name);
-  Add('MSBuildProjectFile', FileName);
+  Add('ProjectDir', mFolder);
+  Add('ProjectPath', mFolder);
+  Add('ProjectName', mName);
+  Add('ProjectFilename', mFileName);
+  Add('MSBuildProjectDirectory', mFolder);
+  Add('MSBuildProjectName', mName);
+  Add('MSBuildProjectFile', mFileName);
   Add('MSBuildProjectFullPath', Trim(AProject));
-  Add('MSBuildThisFileDirectory', Folder + '\');
-  NoRoot := Folder;
-  if (Length(NoRoot) >= 2) and (NoRoot[2] = ':') then
+  Add('MSBuildThisFileDirectory', mFolder + '\');
+  mNoRoot := mFolder;
+  if (Length(mNoRoot) >= 2) and (mNoRoot[2] = ':') then
   begin
-    Delete(NoRoot, 1, 2);
+    Delete(mNoRoot, 1, 2);
   end;
-  while (NoRoot <> '') and CharInSet(NoRoot[1], ['\', '/']) do
+  while (mNoRoot <> '') and CharInSet(mNoRoot[1], ['\', '/']) do
   begin
-    Delete(NoRoot, 1, 1);
+    Delete(mNoRoot, 1, 1);
   end;
-  Add('MSBuildProjectDirectoryNoRoot', NoRoot);
+  Add('MSBuildProjectDirectoryNoRoot', mNoRoot);
 end;
 
 function TAtlasPathMacros.Value(const AName: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  Index := IndexOf(AName);
-  if Index >= 0 then
+  mIndex := IndexOf(AName);
+  if mIndex >= 0 then
   begin
-    Exit(FValues[Index]);
+    Exit(FValues[mIndex]);
   end;
   Result := '';
   if Assigned(FEnvironment) and (Trim(AName) <> '') then
@@ -383,13 +383,13 @@ end;
 
 function TAtlasPathMacros.Variable: TAtlasPathVariable;
 var
-  Macros: TAtlasPathMacros;
+  mMacros: TAtlasPathMacros;
 begin
-  Macros := Self;
+  mMacros := Self;
   Result :=
     function(const AName: string): string
     begin
-      Result := Macros.Value(AName);
+      Result := mMacros.Value(AName);
     end;
 end;
 
@@ -414,104 +414,104 @@ end;
 /// <summary>APath ohne „.“ und leere Teile, „..“ nimmt den Teil davor weg; Trenner „\“, ohne Rand.</summary>
 function WithoutDots(const APath: string): string;
 var
-  Part: string;
-  Parts: TList<string>;
+  mPart: string;
+  mParts: TList<string>;
 begin
-  Parts := TList<string>.Create;
+  mParts := TList<string>.Create;
   try
-    for Part in APath.Split(['\']) do
+    for mPart in APath.Split(['\']) do
     begin
-      if (Part = '..') and (Parts.Count > 0) then
+      if (mPart = '..') and (mParts.Count > 0) then
       begin
-        Parts.Delete(Parts.Count - 1);
+        mParts.Delete(mParts.Count - 1);
       end
-      else if (Part <> '') and (Part <> '.') and (Part <> '..') then
+      else if (mPart <> '') and (mPart <> '.') and (mPart <> '..') then
       begin
-        Parts.Add(Part);
+        mParts.Add(mPart);
       end;
     end;
-    Result := string.Join('\', Parts.ToArray);
+    Result := string.Join('\', mParts.ToArray);
   finally
-    Parts.Free;
+    mParts.Free;
   end;
 end;
 
 class function TAtlasPathCheck.Combine(const AFolder, AName: string): string;
 var
-  Path, Prefix: string;
+  mPath, mPrefix: string;
 begin
-  Path := StringReplace(Trim(AName), '/', '\', [rfReplaceAll]);
-  if not IsAbsolute(Path) then
+  mPath := StringReplace(Trim(AName), '/', '\', [rfReplaceAll]);
+  if not IsAbsolute(mPath) then
   begin
-    Prefix := StringReplace(Trim(AFolder), '/', '\', [rfReplaceAll]);
-    if (Prefix <> '') and not Prefix.EndsWith('\') then
+    mPrefix := StringReplace(Trim(AFolder), '/', '\', [rfReplaceAll]);
+    if (mPrefix <> '') and not mPrefix.EndsWith('\') then
     begin
-      Prefix := Prefix + '\';
+      mPrefix := mPrefix + '\';
     end;
-    Path := Prefix + Path;
+    mPath := mPrefix + mPath;
   end;
   // Laufwerk bzw. \\Server bleibt vorn, der Rest wird aufgelöst.
-  Prefix := '';
-  if (Length(Path) >= 2) and (Path[2] = ':') then
+  mPrefix := '';
+  if (Length(mPath) >= 2) and (mPath[2] = ':') then
   begin
-    Prefix := Copy(Path, 1, 2);
-    Delete(Path, 1, 2);
+    mPrefix := Copy(mPath, 1, 2);
+    Delete(mPath, 1, 2);
   end
-  else if Path.StartsWith('\\') then
+  else if mPath.StartsWith('\\') then
   begin
-    Prefix := '\';
-    Delete(Path, 1, 1);
+    mPrefix := '\';
+    Delete(mPath, 1, 1);
   end;
-  Result := Prefix + '\' + WithoutDots(Path);
+  Result := mPrefix + '\' + WithoutDots(mPath);
 end;
 
 class function TAtlasPathCheck.ExpandPath(const APath, ABaseDir: string; const AVariable: TAtlasPathVariable): string;
 var
-  Unknown: string;
+  mUnknown: string;
 begin
-  Result := ExpandPath(APath, ABaseDir, AVariable, Unknown);
+  Result := ExpandPath(APath, ABaseDir, AVariable, mUnknown);
 end;
 
 class function TAtlasPathCheck.ExpandPath(const APath, ABaseDir: string; const AVariable: TAtlasPathVariable;
   out AUnknown: string): string;
 var
-  Text, Name, Value: string;
-  Open, Close, Count: Integer;
+  mText, mName, mValue: string;
+  mOpen, mClose, mCount: Integer;
 begin
   Result := '';
   AUnknown := '';
-  Text := Trim(APath);
-  if Text = '' then
+  mText := Trim(APath);
+  if mText = '' then
   begin
     Exit;
   end;
-  Count := 0;
-  Open := Pos('$(', Text);
-  while Open > 0 do
+  mCount := 0;
+  mOpen := Pos('$(', mText);
+  while mOpen > 0 do
   begin
-    Close := Pos(')', Text, Open + 2);
-    if Close = 0 then
+    mClose := Pos(')', mText, mOpen + 2);
+    if mClose = 0 then
     begin
-      AUnknown := Copy(Text, Open + 2, MaxInt);
+      AUnknown := Copy(mText, mOpen + 2, MaxInt);
       Exit;
     end;
-    Name := Trim(Copy(Text, Open + 2, Close - Open - 2));
-    Value := '';
-    Inc(Count);
-    if Assigned(AVariable) and (Count <= MaxExpansions) then
+    mName := Trim(Copy(mText, mOpen + 2, mClose - mOpen - 2));
+    mValue := '';
+    Inc(mCount);
+    if Assigned(AVariable) and (mCount <= MaxExpansions) then
     begin
-      Value := AVariable(Name);
+      mValue := AVariable(mName);
     end;
-    if Value = '' then
+    if mValue = '' then
     begin
-      AUnknown := Name;
+      AUnknown := mName;
       Exit;
     end;
     // Ab derselben Stelle weiter: Der Wert kann selbst $(…) enthalten.
-    Text := Copy(Text, 1, Open - 1) + Value + Copy(Text, Close + 1, MaxInt);
-    Open := Pos('$(', Text, Open);
+    mText := Copy(mText, 1, mOpen - 1) + mValue + Copy(mText, mClose + 1, MaxInt);
+    mOpen := Pos('$(', mText, mOpen);
   end;
-  Result := Combine(ABaseDir, Text);
+  Result := Combine(ABaseDir, mText);
   if Result.EndsWith('\') and (Length(Result) > 3) then
   begin
     Delete(Result, Length(Result), 1);
@@ -521,87 +521,87 @@ end;
 class function TAtlasPathCheck.ExpandPaths(const ARaw: TArray<string>; const ABaseDir: string;
   const AVariable: TAtlasPathVariable; var ASkipped: TArray<string>): TArray<string>;
 var
-  Raw, Path, Unknown, Known: string;
-  Seen: Boolean;
+  mRaw, mPath, mUnknown, mKnown: string;
+  mSeen: Boolean;
 begin
   Result := nil;
-  for Raw in ARaw do
+  for mRaw in ARaw do
   begin
-    Path := ExpandPath(Raw, ABaseDir, AVariable, Unknown);
-    if Path <> '' then
+    mPath := ExpandPath(mRaw, ABaseDir, AVariable, mUnknown);
+    if mPath <> '' then
     begin
-      Result := Result + [Path];
+      Result := Result + [mPath];
       Continue;
     end;
-    if Unknown = '' then
+    if mUnknown = '' then
     begin
       Continue;
     end;
-    Seen := False;
-    for Known in ASkipped do
+    mSeen := False;
+    for mKnown in ASkipped do
     begin
-      if SameText(Known, Unknown) then
+      if SameText(mKnown, mUnknown) then
       begin
-        Seen := True;
+        mSeen := True;
       end;
     end;
-    if not Seen then
+    if not mSeen then
     begin
-      ASkipped := ASkipped + [Unknown];
+      ASkipped := ASkipped + [mUnknown];
     end;
   end;
 end;
 
 class function TAtlasPathCheck.DprojDefines(const ADprojText: string): TArray<string>;
 const
-  OpenTag = '<DCC_DEFINE>';
-  CloseTag = '</DCC_DEFINE>';
+  cOpenTag = '<DCC_DEFINE>';
+  cCloseTag = '</DCC_DEFINE>';
 var
-  Upper, Item: string;
-  Start, Stop: Integer;
-  Seen: TDictionary<string, Boolean>;
+  mUpper, mItem: string;
+  mStart, mStop: Integer;
+  mSeen: TDictionary<string, Boolean>;
 begin
   Result := nil;
-  Upper := UpperCase(ADprojText);
-  Seen := TDictionary<string, Boolean>.Create;
+  mUpper := UpperCase(ADprojText);
+  mSeen := TDictionary<string, Boolean>.Create;
   try
-    Start := Pos(OpenTag, Upper);
-    while Start > 0 do
+    mStart := Pos(cOpenTag, mUpper);
+    while mStart > 0 do
     begin
-      Stop := Pos(CloseTag, Upper, Start);
-      if Stop = 0 then
+      mStop := Pos(cCloseTag, mUpper, mStart);
+      if mStop = 0 then
       begin
         Break;
       end;
-      for Item in Copy(ADprojText, Start + Length(OpenTag), Stop - Start - Length(OpenTag)).Split([';']) do
+      for mItem in Copy(ADprojText, mStart + Length(cOpenTag), mStop - mStart - Length(cOpenTag)).Split([';']) do
       begin
-        if (Trim(Item) <> '') and (Pos('$(', Item) = 0) and not Seen.ContainsKey(UpperCase(Trim(Item))) then
+        if (Trim(mItem) <> '') and (Pos('$(', mItem) = 0) and not mSeen.ContainsKey(UpperCase(Trim(mItem))) then
         begin
-          Seen.Add(UpperCase(Trim(Item)), True);
-          Result := Result + [Trim(Item)];
+          mSeen.Add(UpperCase(Trim(mItem)), True);
+          Result := Result + [Trim(mItem)];
         end;
       end;
-      Start := Pos(OpenTag, Upper, Stop);
+      mStart := Pos(cOpenTag, mUpper, mStop);
     end;
   finally
-    Seen.Free;
+    mSeen.Free;
   end;
 end;
 
 class function TAtlasPathCheck.IsForeignSymbol(const AName: string): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
-  for Name in ForeignSymbols do
+  for mName in cForeignSymbols do
   begin
-    if SameText(Name, Trim(AName)) then
+    if SameText(mName, Trim(AName)) then
     begin
       Exit(True);
     end;
   end;
-  for Name in ForeignPrefixes do
+  for mName in cForeignPrefixes do
   begin
-    if StartsText(Name, Trim(AName)) then
+    if StartsText(mName, Trim(AName)) then
     begin
       Exit(True);
     end;
@@ -611,22 +611,22 @@ end;
 
 class function TAtlasPathCheck.DprojConfigDefines(const ADprojText, AConfig, APlatform: string): TArray<string>;
 var
-  Keys: TArray<string>;
-  Key, Value, Inherited_, Part: string;
-  Match: TMatch;
+  mKeys: TArray<string>;
+  mKey, mValue, mInherited_, mPart: string;
+  mMatch: TMatch;
 
   function DefineOf(const AKey: string; out AValue: string): Boolean;
   var
-    Group, Define: TMatch;
+    mGroup, mDefine: TMatch;
   begin
     // <PropertyGroup Condition="'$(Key)'!=''"> … <DCC_Define>…</DCC_Define>
-    for Group in TRegEx.Matches(ADprojText, '<PropertyGroup\s+Condition="''\$\(' + AKey +
+    for mGroup in TRegEx.Matches(ADprojText, '<PropertyGroup\s+Condition="''\$\(' + AKey +
       '\)''!=''''"\s*>(.*?)</PropertyGroup>', [roIgnoreCase, roSingleLine]) do
     begin
-      Define := TRegEx.Match(Group.Groups[1].Value, '<DCC_Define>(.*?)</DCC_Define>', [roIgnoreCase, roSingleLine]);
-      if Define.Success then
+      mDefine := TRegEx.Match(mGroup.Groups[1].Value, '<DCC_Define>(.*?)</DCC_Define>', [roIgnoreCase, roSingleLine]);
+      if mDefine.Success then
       begin
-        AValue := Define.Groups[1].Value;
+        AValue := mDefine.Groups[1].Value;
         Exit(True);
       end;
     end;
@@ -637,43 +637,43 @@ var
 begin
   Result := nil;
   // Debug → Cfg_1: <BuildConfiguration Include="Debug"><Key>Cfg_1</Key>.
-  Key := '';
-  Match := TRegEx.Match(ADprojText, '<BuildConfiguration\s+Include="' + TRegEx.Escape(AConfig) +
+  mKey := '';
+  mMatch := TRegEx.Match(ADprojText, '<BuildConfiguration\s+Include="' + TRegEx.Escape(AConfig) +
     '"\s*>\s*<Key>(\w+)</Key>', [roIgnoreCase]);
-  if Match.Success then
+  if mMatch.Success then
   begin
-    Key := Match.Groups[1].Value;
+    mKey := mMatch.Groups[1].Value;
   end;
-  Keys := ['Base'];
-  if (Key <> '') and not SameText(Key, 'Base') then
+  mKeys := ['Base'];
+  if (mKey <> '') and not SameText(mKey, 'Base') then
   begin
-    Keys := Keys + [Key];
+    mKeys := mKeys + [mKey];
     if APlatform <> '' then
     begin
-      Keys := Keys + [Key + '_' + APlatform];
+      mKeys := mKeys + [mKey + '_' + APlatform];
     end;
   end;
-  Inherited_ := '';
-  for Key in Keys do
+  mInherited_ := '';
+  for mKey in mKeys do
   begin
-    if DefineOf(Key, Value) then
+    if DefineOf(mKey, mValue) then
     begin
-      Inherited_ := StringReplace(Value, '$(DCC_Define)', Inherited_, [rfReplaceAll, rfIgnoreCase]);
+      mInherited_ := StringReplace(mValue, '$(DCC_Define)', mInherited_, [rfReplaceAll, rfIgnoreCase]);
     end;
   end;
-  for Part in Inherited_.Split([';']) do
+  for mPart in mInherited_.Split([';']) do
   begin
-    if (Trim(Part) <> '') and (Pos('$(', Part) = 0) and (IndexText(Trim(Part), Result) < 0) then
+    if (Trim(mPart) <> '') and (Pos('$(', mPart) = 0) and (IndexText(Trim(mPart), Result) < 0) then
     begin
-      Result := Result + [Trim(Part)];
+      Result := Result + [Trim(mPart)];
     end;
   end;
 end;
 
 class function TAtlasPathCheck.ScriptDefines(const AFileName, AText: string): TArray<string>;
 var
-  Match: TMatch;
-  Part, Ext: string;
+  mMatch: TMatch;
+  mPart, mExt: string;
 
   procedure Add(const AName: string);
   begin
@@ -686,18 +686,18 @@ var
 begin
   Result := nil;
   // -dX auf der Kommandozeile (fpc -dX, dcc32 -DX); X beginnt mit Buchstabe oder _.
-  for Match in TRegEx.Matches(AText, '(?<![\w-])-[dD]([A-Za-z_]\w*)') do
+  for mMatch in TRegEx.Matches(AText, '(?<![\w-])-[dD]([A-Za-z_]\w*)') do
   begin
-    Add(Match.Groups[1].Value);
+    Add(mMatch.Groups[1].Value);
   end;
-  Ext := LowerCase(ExtractFileExt(AFileName));
-  if (Ext = '.lpi') or (Ext = '.lpk') then
+  mExt := LowerCase(ExtractFileExt(AFileName));
+  if (mExt = '.lpi') or (mExt = '.lpk') then
   begin
-    for Match in TRegEx.Matches(AText, '<ConditionalDefines\s+Value="([^"]*)"', [roIgnoreCase]) do
+    for mMatch in TRegEx.Matches(AText, '<ConditionalDefines\s+Value="([^"]*)"', [roIgnoreCase]) do
     begin
-      for Part in Match.Groups[1].Value.Split([';', ',', ' ']) do
+      for mPart in mMatch.Groups[1].Value.Split([';', ',', ' ']) do
       begin
-        Add(Trim(Part));
+        Add(Trim(mPart));
       end;
     end;
   end;
@@ -707,31 +707,31 @@ class function TAtlasPathCheck.Suggest(const AName: string; const AKnown: TArray
 
   function Distance(const A, B: string): Integer;
   var
-    Row, Prev: TArray<Integer>;
-    I, J, Cost: Integer;
+    mRow, mPrev: TArray<Integer>;
+    I, J, mCost: Integer;
   begin
-    SetLength(Prev, Length(B) + 1);
-    SetLength(Row, Length(B) + 1);
+    SetLength(mPrev, Length(B) + 1);
+    SetLength(mRow, Length(B) + 1);
     for J := 0 to Length(B) do
     begin
-      Prev[J] := J;
+      mPrev[J] := J;
     end;
     for I := 1 to Length(A) do
     begin
-      Row[0] := I;
+      mRow[0] := I;
       for J := 1 to Length(B) do
       begin
-        Cost := Ord(UpCase(A[I]) <> UpCase(B[J]));
-        Row[J] := Min(Min(Row[J - 1] + 1, Prev[J] + 1), Prev[J - 1] + Cost);
+        mCost := Ord(UpCase(A[I]) <> UpCase(B[J]));
+        mRow[J] := Min(Min(mRow[J - 1] + 1, mPrev[J] + 1), mPrev[J - 1] + mCost);
       end;
-      Prev := Copy(Row);
+      mPrev := Copy(mRow);
     end;
-    Result := Prev[Length(B)];
+    Result := mPrev[Length(B)];
   end;
 
 var
-  Known: string;
-  Best, Value: Integer;
+  mKnown: string;
+  mBest, mValue: Integer;
 begin
   Result := '';
   // Kurze Namen (X, C) gleichen fast allem; erst ab vier Zeichen.
@@ -739,16 +739,16 @@ begin
   begin
     Exit;
   end;
-  Best := 3;
-  for Known in AKnown do
+  mBest := 3;
+  for mKnown in AKnown do
   begin
-    if (Known <> '') and not SameText(Known, AName) and (Abs(Length(Known) - Length(AName)) <= 2) then
+    if (mKnown <> '') and not SameText(mKnown, AName) and (Abs(Length(mKnown) - Length(AName)) <= 2) then
     begin
-      Value := Distance(AName, Known);
-      if Value < Best then
+      mValue := Distance(AName, mKnown);
+      if mValue < mBest then
       begin
-        Best := Value;
-        Result := Known;
+        mBest := mValue;
+        Result := mKnown;
       end;
     end;
   end;
@@ -782,23 +782,23 @@ end;
 
 function TFolderCache.Has(const AFolder, AFileName: string): Boolean;
 var
-  Key, Name: string;
-  Names: TDictionary<string, Boolean>;
+  mKey, mName: string;
+  mNames: TDictionary<string, Boolean>;
 begin
-  Key := UpperCase(TAtlasPathCheck.Combine(AFolder, ''));
-  if not FFolders.TryGetValue(Key, Names) then
+  mKey := UpperCase(TAtlasPathCheck.Combine(AFolder, ''));
+  if not FFolders.TryGetValue(mKey, mNames) then
   begin
-    Names := TDictionary<string, Boolean>.Create;
+    mNames := TDictionary<string, Boolean>.Create;
     if Assigned(FList) then
     begin
-      for Name in FList(TAtlasPathCheck.Combine(AFolder, '')) do
+      for mName in FList(TAtlasPathCheck.Combine(AFolder, '')) do
       begin
-        Names.AddOrSetValue(UpperCase(Name), True);
+        mNames.AddOrSetValue(UpperCase(mName), True);
       end;
     end;
-    FFolders.Add(Key, Names);
+    FFolders.Add(mKey, mNames);
   end;
-  Result := Names.ContainsKey(UpperCase(AFileName));
+  Result := mNames.ContainsKey(UpperCase(AFileName));
 end;
 
 type
@@ -856,28 +856,28 @@ end;
 
 procedure TFindingList.Add(const AName, AFileName: string; ALine: Integer; AUncertain: Boolean);
 var
-  Key: string;
-  Index: Integer;
-  Finding: TAtlasPathFinding;
+  mKey: string;
+  mIndex: Integer;
+  mFinding: TAtlasPathFinding;
 begin
-  Key := UpperCase(AName);
-  if FIndex.TryGetValue(Key, Index) then
+  mKey := UpperCase(AName);
+  if FIndex.TryGetValue(mKey, mIndex) then
   begin
-    Finding := FItems[Index];
-    Inc(Finding.Count);
+    mFinding := FItems[mIndex];
+    Inc(mFinding.Count);
     // Sicher, sobald eine Stelle sicher fehlt.
-    Finding.Uncertain := Finding.Uncertain and AUncertain;
-    FItems[Index] := Finding;
+    mFinding.Uncertain := mFinding.Uncertain and AUncertain;
+    FItems[mIndex] := mFinding;
     Exit;
   end;
-  Finding := Default(TAtlasPathFinding);
-  Finding.Uncertain := AUncertain;
-  Finding.Name := AName;
-  Finding.FileName := AFileName;
-  Finding.Line := ALine;
-  Finding.Count := 1;
-  FIndex.Add(Key, FItems.Count);
-  FItems.Add(Finding);
+  mFinding := Default(TAtlasPathFinding);
+  mFinding.Uncertain := AUncertain;
+  mFinding.Name := AName;
+  mFinding.FileName := AFileName;
+  mFinding.Line := ALine;
+  mFinding.Count := 1;
+  FIndex.Add(mKey, FItems.Count);
+  FItems.Add(mFinding);
 end;
 
 function TFindingList.ToArray: TArray<TAtlasPathFinding>;
@@ -888,36 +888,36 @@ end;
 /// <summary>ANames groß und ohne Leerraum am Rand als Schlüssel in AKeys.</summary>
 procedure AddKeys(AKeys: TDictionary<string, Boolean>; const ANames: TArray<string>);
 var
-  Name: string;
+  mName: string;
 begin
-  for Name in ANames do
+  for mName in ANames do
   begin
-    AKeys.AddOrSetValue(UpperCase(Trim(Name)), True);
+    AKeys.AddOrSetValue(UpperCase(Trim(mName)), True);
   end;
 end;
 
 /// <summary>AName und AName mit jedem Namespace davor (SysUtils → System.SysUtils).</summary>
 function UnitNames(const AName: string; const ANamespaces: TArray<string>): TArray<string>;
 var
-  Namespace: string;
+  mNamespace: string;
 begin
   Result := [AName];
-  for Namespace in ANamespaces do
+  for mNamespace in ANamespaces do
   begin
-    if Trim(Namespace) <> '' then
+    if Trim(mNamespace) <> '' then
     begin
-      Result := Result + [Trim(Namespace) + '.' + AName];
+      Result := Result + [Trim(mNamespace) + '.' + AName];
     end;
   end;
 end;
 
 function InFolders(const AFolder: string; const AFolders: TArray<string>): Boolean;
 var
-  Each: string;
+  mEach: string;
 begin
-  for Each in AFolders do
+  for mEach in AFolders do
   begin
-    if (Trim(Each) <> '') and SameText(ExcludeTrailingPathDelimiter(Each), ExcludeTrailingPathDelimiter(AFolder)) then
+    if (Trim(mEach) <> '') and SameText(ExcludeTrailingPathDelimiter(mEach), ExcludeTrailingPathDelimiter(AFolder)) then
     begin
       Exit(True);
     end;
@@ -1025,33 +1025,33 @@ end;
 
 function TPathRun.Folders(const AFrom: string): TArray<string>;
 var
-  All: TArray<string>;
-  Dir: string;
+  mAll: TArray<string>;
+  mDir: string;
 begin
-  All := [AFrom, FProjectDir] + FInput.SearchPaths + FInput.LibraryPaths;
+  mAll := [AFrom, FProjectDir] + FInput.SearchPaths + FInput.LibraryPaths;
   Result := nil;
-  for Dir in All do
+  for mDir in mAll do
   begin
-    if Trim(Dir) <> '' then
+    if Trim(mDir) <> '' then
     begin
-      Result := Result + [Dir];
+      Result := Result + [mDir];
     end;
   end;
 end;
 
 function TPathRun.IsKnownUnit(const AName: string): Boolean;
 var
-  Text: string;
+  mText: string;
 begin
   Result := FProjectNames.ContainsKey(UpperCase(AName)) or FRequired.ContainsKey(UpperCase(AName)) or
-    (IndexText(AName, AlwaysThere) >= 0);
+    (IndexText(AName, cAlwaysThere) >= 0);
   if Result then
   begin
     Exit;
   end;
-  for Text in FDcpTexts do
+  for mText in FDcpTexts do
   begin
-    if Pos(UpperCase(AName), Text) > 0 then
+    if Pos(UpperCase(AName), mText) > 0 then
     begin
       Exit(True);
     end;
@@ -1060,27 +1060,27 @@ end;
 
 function TPathRun.Resolves(const AUnit: TAtlasUsedUnit; const AFrom: string): Boolean;
 var
-  Names: TArray<string>;
-  Each, Dir, Path: string;
+  mNames: TArray<string>;
+  mEach, mDir, mPath: string;
 begin
   if AUnit.InFile <> '' then
   begin
-    Path := TAtlasPathCheck.Combine(AFrom, AUnit.InFile);
-    Exit(FCache.Has(ExtractFileDir(Path), ExtractFileName(Path)));
+    mPath := TAtlasPathCheck.Combine(AFrom, AUnit.InFile);
+    Exit(FCache.Has(ExtractFileDir(mPath), ExtractFileName(mPath)));
   end;
-  Names := UnitNames(AUnit.Name, FInput.Namespaces);
-  for Each in Names do
+  mNames := UnitNames(AUnit.Name, FInput.Namespaces);
+  for mEach in mNames do
   begin
-    if IsKnownUnit(Each) then
+    if IsKnownUnit(mEach) then
     begin
       Exit(True);
     end;
   end;
-  for Dir in Folders(AFrom) do
+  for mDir in Folders(AFrom) do
   begin
-    for Each in Names do
+    for mEach in mNames do
     begin
-      if FCache.Has(Dir, Each + '.pas') or FCache.Has(Dir, Each + '.dcu') then
+      if FCache.Has(mDir, mEach + '.pas') or FCache.Has(mDir, mEach + '.dcu') then
       begin
         Exit(True);
       end;
@@ -1091,19 +1091,19 @@ end;
 
 function TPathRun.FindInclude(const AName, AFrom: string; out APath: string): Boolean;
 var
-  Dir, Each: string;
-  Names: TArray<string>;
+  mDir, mEach: string;
+  mNames: TArray<string>;
 begin
-  Names := [AName];
+  mNames := [AName];
   if ExtractFileExt(AName) = '' then
   begin
-    Names := Names + [AName + '.inc', AName + '.pas'];
+    mNames := mNames + [AName + '.inc', AName + '.pas'];
   end;
-  for Dir in Folders(AFrom) do
+  for mDir in Folders(AFrom) do
   begin
-    for Each in Names do
+    for mEach in mNames do
     begin
-      APath := TAtlasPathCheck.Combine(Dir, Each);
+      APath := TAtlasPathCheck.Combine(mDir, mEach);
       if FCache.Has(ExtractFileDir(APath), ExtractFileName(APath)) then
       begin
         Exit(True);
@@ -1116,7 +1116,7 @@ end;
 
 procedure TPathRun.Hint(const APackage, AUnit, AFileName: string; ALine: Integer);
 var
-  Item: TAtlasPathFinding;
+  mItem: TAtlasPathFinding;
 begin
   // Ein Hinweis je Package.
   if FHintedPackages.ContainsKey(UpperCase(APackage)) then
@@ -1124,35 +1124,35 @@ begin
     Exit;
   end;
   FHintedPackages.Add(UpperCase(APackage), True);
-  Item := Default(TAtlasPathFinding);
-  Item.Name := APackage;
-  Item.Note := AUnit;
-  Item.FileName := AFileName;
-  Item.Line := ALine;
-  Item.Count := 1;
-  FHints.Add(Item);
+  mItem := Default(TAtlasPathFinding);
+  mItem.Name := APackage;
+  mItem.Note := AUnit;
+  mItem.FileName := AFileName;
+  mItem.Line := ALine;
+  mItem.Count := 1;
+  FHints.Add(mItem);
 end;
 
 function TPathRun.RequireFromGroup(const APackage: TAtlasUsedUnit; const AFrom: string): Boolean;
 var
-  Project, Dpk, PackageText: string;
-  Contained: TAtlasSourceScan;
-  Item: TAtlasUsedUnit;
+  mProject, mDpk, mPackageText: string;
+  mContained: TAtlasSourceScan;
+  mItem: TAtlasUsedUnit;
 begin
-  for Project in FInput.GroupProjects do
+  for mProject in FInput.GroupProjects do
   begin
-    Dpk := ChangeFileExt(Project, '.dpk');
-    if SameText(ChangeFileExt(ExtractFileName(Project), ''), APackage.Name) and ReadText(Dpk, PackageText) then
+    mDpk := ChangeFileExt(mProject, '.dpk');
+    if SameText(ChangeFileExt(ExtractFileName(mProject), ''), APackage.Name) and ReadText(mDpk, mPackageText) then
     begin
-      Contained := TAtlasPathCheck.Scan(PackageText, FInput.ActiveDefines);
-      for Item in Contained.Units do
+      mContained := TAtlasPathCheck.Scan(mPackageText, FInput.ActiveDefines);
+      for mItem in mContained.Units do
       begin
-        FRequired.AddOrSetValue(UpperCase(Item.Name), APackage.Name);
+        FRequired.AddOrSetValue(UpperCase(mItem.Name), APackage.Name);
         // Quellordner des Packages zusätzlich im Suchpfad: doppelt gefunden, Hinweis.
-        if (Item.InFile <> '') and InFolders(ExtractFileDir(TAtlasPathCheck.Combine(ExtractFileDir(Dpk),
-          Item.InFile)), FInput.SearchPaths) then
+        if (mItem.InFile <> '') and InFolders(ExtractFileDir(TAtlasPathCheck.Combine(ExtractFileDir(mDpk),
+          mItem.InFile)), FInput.SearchPaths) then
         begin
-          Hint(APackage.Name, Item.Name, AFrom, APackage.Line);
+          Hint(APackage.Name, mItem.Name, AFrom, APackage.Line);
         end;
       end;
       Exit(True);
@@ -1163,15 +1163,15 @@ end;
 
 function TPathRun.RequireFromDcp(const APackage: string; const AFolders: TArray<string>): Boolean;
 var
-  Dir, PackageText: string;
+  mDir, mPackageText: string;
 begin
-  for Dir in AFolders do
+  for mDir in AFolders do
   begin
-    if (Trim(Dir) <> '') and FCache.Has(Dir, APackage + '.dcp') then
+    if (Trim(mDir) <> '') and FCache.Has(mDir, APackage + '.dcp') then
     begin
-      if ReadText(TAtlasPathCheck.Combine(Dir, APackage + '.dcp'), PackageText) then
+      if ReadText(TAtlasPathCheck.Combine(mDir, APackage + '.dcp'), mPackageText) then
       begin
-        FDcpTexts.Add(UpperCase(PackageText));
+        FDcpTexts.Add(UpperCase(mPackageText));
       end;
       Exit(True);
     end;
@@ -1181,7 +1181,7 @@ end;
 
 procedure TPathRun.Require(const APackage: TAtlasUsedUnit; const AFrom: string);
 var
-  Own: TArray<string>;
+  mOwn: TArray<string>;
 begin
   if RequireFromGroup(APackage, AFrom) then
   begin
@@ -1193,8 +1193,8 @@ begin
   begin
     Exit;
   end;
-  Own := [FProjectDir] + FInput.SearchPaths;
-  if RequireFromDcp(APackage.Name, Own) then
+  mOwn := [FProjectDir] + FInput.SearchPaths;
+  if RequireFromDcp(APackage.Name, mOwn) then
   begin
     Hint(APackage.Name, '', AFrom, APackage.Line);
   end;
@@ -1202,19 +1202,19 @@ end;
 
 procedure TPathRun.AddProduced;
 var
-  Source, Text: string;
-  Scanned: TAtlasSourceScan;
-  Used: TAtlasUsedUnit;
+  mSource, mText: string;
+  mScanned: TAtlasSourceScan;
+  mUsed: TAtlasUsedUnit;
 begin
   // Units, die ein anderes Projekt der Gruppe in einen Ordner des Suchpfads übersetzt.
-  for Source in FInput.ProducedBy do
+  for mSource in FInput.ProducedBy do
   begin
-    if ReadText(ChangeFileExt(Source, '.dpk'), Text) or ReadText(ChangeFileExt(Source, '.dpr'), Text) then
+    if ReadText(ChangeFileExt(mSource, '.dpk'), mText) or ReadText(ChangeFileExt(mSource, '.dpr'), mText) then
     begin
-      Scanned := TAtlasPathCheck.Scan(Text, FInput.ActiveDefines);
-      for Used in Scanned.Units do
+      mScanned := TAtlasPathCheck.Scan(mText, FInput.ActiveDefines);
+      for mUsed in mScanned.Units do
       begin
-        FRequired.AddOrSetValue(UpperCase(Used.Name), ChangeFileExt(ExtractFileName(Source), ''));
+        FRequired.AddOrSetValue(UpperCase(mUsed.Name), ChangeFileExt(ExtractFileName(mSource), ''));
       end;
     end;
   end;
@@ -1222,21 +1222,21 @@ end;
 
 procedure TPathRun.AddRequires;
 var
-  Source, Text: string;
-  Scanned: TAtlasSourceScan;
-  Used: TAtlasUsedUnit;
+  mSource, mText: string;
+  mScanned: TAtlasSourceScan;
+  mUsed: TAtlasUsedUnit;
 begin
   // requires der Packages zuerst: Ihre Units sind beim Prüfen der uses schon bekannt.
-  for Source in FInput.Sources do
+  for mSource in FInput.Sources do
   begin
-    if SameText(ExtractFileExt(Source), '.dpk') and ReadText(Source, Text) then
+    if SameText(ExtractFileExt(mSource), '.dpk') and ReadText(mSource, mText) then
     begin
-      Scanned := TAtlasPathCheck.Scan(Text, FInput.ActiveDefines);
-      for Used in Scanned.Requires do
+      mScanned := TAtlasPathCheck.Scan(mText, FInput.ActiveDefines);
+      for mUsed in mScanned.Requires do
       begin
-        if Used.State = TAtlasBranchState.Active then
+        if mUsed.State = TAtlasBranchState.Active then
         begin
-          Require(Used, Source);
+          Require(mUsed, mSource);
         end;
       end;
     end;
@@ -1245,21 +1245,21 @@ end;
 
 procedure TPathRun.AddScriptDefines;
 var
-  Folder, Name, Text: string;
+  mFolder, mName, mText: string;
 begin
   // Build-Skripte und Lazarus-Projekte: -dX und ConditionalDefines sind Quellen.
-  for Folder in FInput.ScriptFolders do
+  for mFolder in FInput.ScriptFolders do
   begin
-    if Trim(Folder) = '' then
+    if Trim(mFolder) = '' then
     begin
       Continue;
     end;
-    for Name in FList(Folder) do
+    for mName in FList(mFolder) do
     begin
-      if (IndexText(ExtractFileExt(Name), ScriptExtensions) >= 0) and
-        ReadText(TAtlasPathCheck.Combine(Folder, Name), Text) then
+      if (IndexText(ExtractFileExt(mName), cScriptExtensions) >= 0) and
+        ReadText(TAtlasPathCheck.Combine(mFolder, mName), mText) then
       begin
-        AddKeys(FKnown, TAtlasPathCheck.ScriptDefines(Name, Text));
+        AddKeys(FKnown, TAtlasPathCheck.ScriptDefines(mName, mText));
       end;
     end;
   end;
@@ -1267,120 +1267,120 @@ end;
 
 procedure TPathRun.ScanSource(const ASource: string);
 var
-  Text, Folder, Include: string;
-  Scanned: TAtlasSourceScan;
-  Used: TAtlasUsedUnit;
-  Use: TAtlasSymbolUse;
+  mText, mFolder, mInclude: string;
+  mScanned: TAtlasSourceScan;
+  mUsed: TAtlasUsedUnit;
+  mUse: TAtlasSymbolUse;
 begin
   if FVisited.ContainsKey(UpperCase(ASource)) then
   begin
     Exit;
   end;
   FVisited.Add(UpperCase(ASource), True);
-  if not ReadText(ASource, Text) then
+  if not ReadText(ASource, mText) then
   begin
     Inc(FResult.Unreadable);
     Exit;
   end;
   Inc(FResult.Files);
-  Folder := ExtractFileDir(ASource);
-  Scanned := TAtlasPathCheck.Scan(Text, FInput.ActiveDefines);
-  for Used in Scanned.Units do
+  mFolder := ExtractFileDir(ASource);
+  mScanned := TAtlasPathCheck.Scan(mText, FInput.ActiveDefines);
+  for mUsed in mScanned.Units do
   begin
-    if (Used.State = TAtlasBranchState.Active) and not Resolves(Used, Folder) then
+    if (mUsed.State = TAtlasBranchState.Active) and not Resolves(mUsed, mFolder) then
     begin
       // Mit "in 'Pfad'" zählt kein Suchpfad: dann sicher.
-      FMissing.Add(Used.Name, ASource, Used.Line, FSkipped and (Used.InFile = ''));
+      FMissing.Add(mUsed.Name, ASource, mUsed.Line, FSkipped and (mUsed.InFile = ''));
     end;
   end;
-  for Use in Scanned.Referenced do
+  for mUse in mScanned.Referenced do
   begin
-    FUses.Add(SymbolAt(ASource, Use));
+    FUses.Add(SymbolAt(ASource, mUse));
   end;
-  AddKeys(FKnown, Scanned.Defined);
-  for Include in Scanned.Includes do
+  AddKeys(FKnown, mScanned.Defined);
+  for mInclude in mScanned.Includes do
   begin
-    FQueue.Add(IncludeRef(Include, Folder));
+    FQueue.Add(IncludeRef(mInclude, mFolder));
   end;
 end;
 
 procedure TPathRun.ScanIncludes;
 var
-  Index: Integer;
-  Pair: TIncludeRef;
-  Candidate, Text, Include: string;
-  Scanned: TAtlasSourceScan;
+  mIndex: Integer;
+  mPair: TIncludeRef;
+  mCandidate, mText, mInclude: string;
+  mScanned: TAtlasSourceScan;
 begin
   // Eingebundene Dateien nur nach $DEFINE durchsuchen.
-  Index := 0;
-  while (Index < FQueue.Count) and (Index < TAtlasPathCheck.MaxIncludes) do
+  mIndex := 0;
+  while (mIndex < FQueue.Count) and (mIndex < TAtlasPathCheck.MaxIncludes) do
   begin
-    Pair := FQueue[Index];
-    Inc(Index);
-    if not FindInclude(Pair.Name, Pair.Folder, Candidate) then
+    mPair := FQueue[mIndex];
+    Inc(mIndex);
+    if not FindInclude(mPair.Name, mPair.Folder, mCandidate) then
     begin
       FIncludeMissing := True;
       Continue;
     end;
-    if FVisited.ContainsKey(UpperCase(Candidate)) then
+    if FVisited.ContainsKey(UpperCase(mCandidate)) then
     begin
       Continue;
     end;
-    FVisited.Add(UpperCase(Candidate), True);
-    if not ReadText(Candidate, Text) then
+    FVisited.Add(UpperCase(mCandidate), True);
+    if not ReadText(mCandidate, mText) then
     begin
       Continue;
     end;
-    Scanned := TAtlasPathCheck.Scan(Text, FInput.ActiveDefines);
-    AddKeys(FKnown, Scanned.Defined);
-    for Include in Scanned.Includes do
+    mScanned := TAtlasPathCheck.Scan(mText, FInput.ActiveDefines);
+    AddKeys(FKnown, mScanned.Defined);
+    for mInclude in mScanned.Includes do
     begin
-      FQueue.Add(IncludeRef(Include, ExtractFileDir(Candidate)));
+      FQueue.Add(IncludeRef(mInclude, ExtractFileDir(mCandidate)));
     end;
   end;
 end;
 
 procedure TPathRun.CollectUndefined;
 var
-  Item: TSymbolAt;
-  Known: TArray<string>;
-  Index: Integer;
+  mItem: TSymbolAt;
+  mKnown: TArray<string>;
+  mIndex: Integer;
 begin
-  for Item in FUses do
+  for mItem in FUses do
   begin
-    if not FKnown.ContainsKey(UpperCase(Item.Use.Name)) and not TTextDefines.IsCompilerSymbol(Item.Use.Name) and
-      not TAtlasPathCheck.IsForeignSymbol(Item.Use.Name) then
+    if not FKnown.ContainsKey(UpperCase(mItem.Use.Name)) and not TTextDefines.IsCompilerSymbol(mItem.Use.Name) and
+      not TAtlasPathCheck.IsForeignSymbol(mItem.Use.Name) then
     begin
       // Fehlt eine eingebundene Datei und fiel ein Suchpfad weg, kann das $DEFINE dort stehen.
-      FUndefined.Add(Item.Use.Name, Item.FileName, Item.Use.Line, FSkipped and FIncludeMissing);
+      FUndefined.Add(mItem.Use.Name, mItem.FileName, mItem.Use.Line, FSkipped and FIncludeMissing);
     end;
   end;
   FResult.UndefinedDefines := FUndefined.ToArray;
   // Tippfehler? Ein ähnlich geschriebenes bekanntes Symbol vorschlagen.
-  Known := FKnown.Keys.ToArray;
-  for Index := 0 to High(FResult.UndefinedDefines) do
+  mKnown := FKnown.Keys.ToArray;
+  for mIndex := 0 to High(FResult.UndefinedDefines) do
   begin
-    FResult.UndefinedDefines[Index].Note := TAtlasPathCheck.Suggest(FResult.UndefinedDefines[Index].Name, Known);
+    FResult.UndefinedDefines[mIndex].Note := TAtlasPathCheck.Suggest(FResult.UndefinedDefines[mIndex].Name, mKnown);
   end;
 end;
 
 function TPathRun.Execute: TAtlasPathCheckResult;
 var
-  Source: string;
+  mSource: string;
 begin
   FResult := Default(TAtlasPathCheckResult);
   FResult.SkippedMacros := FInput.SkippedMacros;
-  for Source in FInput.Sources do
+  for mSource in FInput.Sources do
   begin
-    FProjectNames.AddOrSetValue(UpperCase(ChangeFileExt(ExtractFileName(Source), '')), True);
+    FProjectNames.AddOrSetValue(UpperCase(ChangeFileExt(ExtractFileName(mSource), '')), True);
   end;
   AddKeys(FKnown, FInput.ActiveDefines + FInput.ProjectDefines);
   AddProduced;
   AddRequires;
   AddScriptDefines;
-  for Source in FInput.Sources do
+  for mSource in FInput.Sources do
   begin
-    ScanSource(Source);
+    ScanSource(mSource);
   end;
   ScanIncludes;
   CollectUndefined;
@@ -1392,13 +1392,13 @@ end;
 class function TAtlasPathCheck.Run(const AInput: TAtlasPathCheckInput; const ARead: TAtlasPathReadText;
   const AList: TAtlasPathListFolder): TAtlasPathCheckResult;
 var
-  Check: TPathRun;
+  mCheck: TPathRun;
 begin
-  Check := TPathRun.Create(AInput, ARead, AList);
+  mCheck := TPathRun.Create(AInput, ARead, AList);
   try
-    Result := Check.Execute;
+    Result := mCheck.Execute;
   finally
-    Check.Free;
+    mCheck.Free;
   end;
 end;
 

@@ -101,7 +101,7 @@ uses
 
 const
   // Ohne "of": in "array of", "set of" begänne sonst eine Anweisung.
-  StatementStarts: array[0..14] of string = ('begin', 'then', 'else', 'do', 'try', 'finally', 'except', 'repeat',
+  cStatementStarts: array[0..14] of string = ('begin', 'then', 'else', 'do', 'try', 'finally', 'except', 'repeat',
     'asm', 'var', 'const', 'type', 'uses', 'initialization', 'finalization');
 
 function Pos2(ALine, ACharacter: Integer): TLspTextPosition;
@@ -116,16 +116,16 @@ end;
 
 function IsStatementStart(const AToken: TAtlasCodeToken): Boolean;
 var
-  Word: string;
+  mWord: string;
 begin
   Result := AToken.Text = ';';
   if Result or not AToken.IsWord then
   begin
     Exit;
   end;
-  for Word in StatementStarts do
+  for mWord in cStatementStarts do
   begin
-    if AToken.Text = Word then
+    if AToken.Text = mWord then
     begin
       Exit(True);
     end;
@@ -417,7 +417,7 @@ end;
 
 function TextOf(const ALines: TArray<string>; const AStart, AEnd: TLspTextPosition): string;
 var
-  Line: Integer;
+  mLine: Integer;
 begin
   Result := '';
   if Cmp(AStart, AEnd) >= 0 then
@@ -429,9 +429,9 @@ begin
     Exit(Copy(ALines[AStart.Line], AStart.Character + 1, AEnd.Character - AStart.Character));
   end;
   Result := Copy(ALines[AStart.Line], AStart.Character + 1, MaxInt);
-  for Line := AStart.Line + 1 to AEnd.Line - 1 do
+  for mLine := AStart.Line + 1 to AEnd.Line - 1 do
   begin
-    Result := Result + #10 + ALines[Line];
+    Result := Result + #10 + ALines[mLine];
   end;
   Result := Result + #10 + Copy(ALines[AEnd.Line], 1, AEnd.Character);
 end;
@@ -523,30 +523,30 @@ end;
 
 class function TAtlasBlockComment.Spans(const ALines: TArray<string>): TArray<TAtlasCommentSpan>;
 var
-  Found: TArray<TAtlasCodeToken>;
+  mFound: TArray<TAtlasCodeToken>;
 begin
-  Lex(ALines, Result, Found);
+  Lex(ALines, Result, mFound);
 end;
 
 class function TAtlasBlockComment.Tokens(const ALines: TArray<string>): TArray<TAtlasCodeToken>;
 var
-  Found: TArray<TAtlasCommentSpan>;
+  mFound: TArray<TAtlasCommentSpan>;
 begin
-  Lex(ALines, Found, Result);
+  Lex(ALines, mFound, Result);
 end;
 
 class function TAtlasBlockComment.CommentAt(const ALines: TArray<string>; const APos: TLspTextPosition;
   out ASpan: TAtlasCommentSpan): Boolean;
 var
-  Span: TAtlasCommentSpan;
+  mSpan: TAtlasCommentSpan;
 begin
   ASpan := Default(TAtlasCommentSpan);
-  for Span in Spans(ALines) do
+  for mSpan in Spans(ALines) do
   begin
-    if (Span.Kind in [TAtlasCommentSpanKind.BraceComment, TAtlasCommentSpanKind.ParenComment]) and
-      (Cmp(Span.StartPos, APos) <= 0) and (Cmp(APos, Span.EndPos) <= 0) then
+    if (mSpan.Kind in [TAtlasCommentSpanKind.BraceComment, TAtlasCommentSpanKind.ParenComment]) and
+      (Cmp(mSpan.StartPos, APos) <= 0) and (Cmp(APos, mSpan.EndPos) <= 0) then
     begin
-      ASpan := Span;
+      ASpan := mSpan;
       Exit(True);
     end;
   end;
@@ -829,35 +829,35 @@ end;
 function AddLineComments(const ALines: TArray<string>; AFirst, ALast: Integer; const AStart,
   AEnd: TLspTextPosition): TAtlasBlockCommentResult;
 var
-  Lines: TArray<string>;
-  Line, Indent: Integer;
+  mLines: TArray<string>;
+  mLine, mIndent: Integer;
 begin
   Result.Kind := TAtlasBlockCommentKind.LineComments;
-  Lines := Copy(ALines);
+  mLines := Copy(ALines);
   Result.SelectionStart := AStart;
   Result.SelectionEnd := AEnd;
-  for Line := AFirst to ALast do
+  for mLine := AFirst to ALast do
   begin
-    if Trim(Lines[Line]) = '' then
+    if Trim(mLines[mLine]) = '' then
     begin
       Continue;
     end;
-    Indent := LeadingSpace(Lines[Line]);
-    Insert('// ', Lines[Line], Indent + 1);
-    Result.SelectionStart := AfterInsert(Result.SelectionStart, Line, Indent, 3, True);
-    Result.SelectionEnd := AfterInsert(Result.SelectionEnd, Line, Indent, 3, True);
+    mIndent := LeadingSpace(mLines[mLine]);
+    Insert('// ', mLines[mLine], mIndent + 1);
+    Result.SelectionStart := AfterInsert(Result.SelectionStart, mLine, mIndent, 3, True);
+    Result.SelectionEnd := AfterInsert(Result.SelectionEnd, mLine, mIndent, 3, True);
   end;
-  Result.Lines := Lines;
+  Result.Lines := mLines;
 end;
 
 function IsOnlyDirective(const ALines: TArray<string>; const AStart, AEnd: TLspTextPosition): Boolean;
 var
-  Span: TAtlasCommentSpan;
+  mSpan: TAtlasCommentSpan;
 begin
-  for Span in TAtlasBlockComment.Spans(ALines) do
+  for mSpan in TAtlasBlockComment.Spans(ALines) do
   begin
-    if (Span.Kind = TAtlasCommentSpanKind.Directive) and (Cmp(Span.StartPos, AStart) = 0) and
-      (Cmp(Span.EndPos, AEnd) = 0) then
+    if (mSpan.Kind = TAtlasCommentSpanKind.Directive) and (Cmp(mSpan.StartPos, AStart) = 0) and
+      (Cmp(mSpan.EndPos, AEnd) = 0) then
     begin
       Exit(True);
     end;

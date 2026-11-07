@@ -121,7 +121,7 @@ uses
   Atlas.UI.Popup.Accessibility;
 
 const
-  TextFlags = DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX;
+  cTextFlags = DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX;
   /// <summary>Logische Bildpunkte bei 96 dpi: Rand oben und unten, Abstand links und rechts, Einzug der
   /// Folgezeilen, Breite des Akzentbalkens.</summary>
   cPad = 4;
@@ -310,9 +310,9 @@ end;
 function TAtlasSignatureHint.HasDocLine: Boolean;
 var
   mName, mText: string;
-  Documented: Boolean;
+  mDocumented: Boolean;
 begin
-  Result := TooMany or ParameterDocOf(FHelp, FSignature, FParameter, mName, mText, Documented) or
+  Result := TooMany or ParameterDocOf(FHelp, FSignature, FParameter, mName, mText, mDocumented) or
     (FormatText <> '');
 end;
 
@@ -325,81 +325,81 @@ end;
 
 function TAtlasSignatureHint.DocHeight: Integer;
 var
-  Rows: Integer;
-  Name, Text: string;
-  Documented: Boolean;
+  mRows: Integer;
+  mName, mText: string;
+  mDocumented: Boolean;
 begin
   // Fehlerzeile allein; sonst Überschrift, Parameter und ggf. die Beschreibung der Methode.
-  Rows := 1;
+  mRows := 1;
   if not TooMany then
   begin
-    Rows := 2;
+    mRows := 2;
     if SummaryOf(FHelp, FSignature) <> '' then
     begin
-      Inc(Rows);
+      Inc(mRows);
     end;
   end;
   // Platzhalter-Zeile (#451) oben; ohne Parameter-Doku steht sie allein.
   if FormatText <> '' then
   begin
-    Inc(Rows);
-    if not TooMany and not ParameterDocOf(FHelp, FSignature, FParameter, Name, Text, Documented) then
+    Inc(mRows);
+    if not TooMany and not ParameterDocOf(FHelp, FSignature, FParameter, mName, mText, mDocumented) then
     begin
-      Rows := 1;
+      mRows := 1;
     end;
   end;
-  Result := Rows * DocRowHeight + Scale(8);
+  Result := mRows * DocRowHeight + Scale(8);
 end;
 
 function TAtlasSignatureHint.Layout(AIndex, AAvailable: Integer): TArray<TPoint>;
 var
-  Label_: string;
-  Breaks: TArray<Integer>;
-  Index, LineStart, Candidate, Last, Limit: Integer;
+  mLabel_: string;
+  mBreaks: TArray<Integer>;
+  mIndex, mLineStart, mCandidate, mLast, mLimit: Integer;
 begin
-  Label_ := FHelp.Signatures[AIndex].Label_;
+  mLabel_ := FHelp.Signatures[AIndex].Label_;
   // Mögliche Umbrüche: hinter "; " (zwischen Parametern).
-  Breaks := nil;
-  for Index := 1 to Length(Label_) - 1 do
+  mBreaks := nil;
+  for mIndex := 1 to Length(mLabel_) - 1 do
   begin
-    if (Label_[Index] = ';') and (Label_[Index + 1] = ' ') then
+    if (mLabel_[mIndex] = ';') and (mLabel_[mIndex + 1] = ' ') then
     begin
-      Breaks := Breaks + [Index + 1];
+      mBreaks := mBreaks + [mIndex + 1];
     end;
   end;
-  Breaks := Breaks + [Length(Label_)];
+  mBreaks := mBreaks + [Length(mLabel_)];
   Result := nil;
-  LineStart := 0;
-  Last := -1;
+  mLineStart := 0;
+  mLast := -1;
   Canvas.Font := Font;
-  for Candidate in Breaks do
+  for mCandidate in mBreaks do
   begin
     if Length(Result) = 0 then
     begin
-      Limit := AAvailable;
+      mLimit := AAvailable;
     end
     else
     begin
-      Limit := AAvailable - Scale(cIndent);
+      mLimit := AAvailable - Scale(cIndent);
     end;
-    if (Last >= 0) and (FStyled[AIndex].Width(Canvas, LineStart, Candidate) > Limit) then
+    if (mLast >= 0) and (FStyled[AIndex].Width(Canvas, mLineStart, mCandidate) > mLimit) then
     begin
-      Result := Result + [Point(LineStart, Last)];
-      LineStart := Last;
+      Result := Result + [Point(mLineStart, mLast)];
+      mLineStart := mLast;
     end;
-    Last := Candidate;
+    mLast := mCandidate;
   end;
-  Result := Result + [Point(LineStart, Length(Label_))];
+  Result := Result + [Point(mLineStart, Length(mLabel_))];
 end;
 
 function TAtlasSignatureHint.TotalRows: Integer;
 var
-  Lines: TArray<TPoint>;
+  mLines: TArray<TPoint>;
 begin
   Result := 0;
-  for Lines in FLayouts do
+  for mLines in FLayouts do
   begin
-    Inc(Result, Length(Lines));
+    Inc(Result, Length(mLines));
   end;
   if Length(FHelp.Signatures) > MaxSignatures then
   begin
@@ -409,29 +409,29 @@ end;
 
 procedure TAtlasSignatureHint.Prepare;
 var
-  Index: Integer;
-  Signature: TAtlasSignature;
-  Range: TPoint;
+  mIndex: Integer;
+  mSignature: TAtlasSignature;
+  mRange: TPoint;
 begin
   // Eingefärbte Labels; aktiver Parameter nur in passenden Überladungen, Fläche nur in der gewählten.
   SetLength(FStyled, ShownCount(FHelp));
-  for Index := 0 to ShownCount(FHelp) - 1 do
+  for mIndex := 0 to ShownCount(FHelp) - 1 do
   begin
-    Signature := FHelp.Signatures[Index];
-    FStyled[Index] := TAtlasStyledText.Create(Signature.Label_);
-    FStyled[Index].ActiveFill := Index = FSignature;
-    if Fits(Index) and (FParameter >= 0) and (FParameter <= High(Signature.Parameters)) and
-      (Signature.Parameters[FParameter].Start >= 0) and
-      (Signature.Parameters[FParameter].Stop > Signature.Parameters[FParameter].Start) then
+    mSignature := FHelp.Signatures[mIndex];
+    FStyled[mIndex] := TAtlasStyledText.Create(mSignature.Label_);
+    FStyled[mIndex].ActiveFill := mIndex = FSignature;
+    if Fits(mIndex) and (FParameter >= 0) and (FParameter <= High(mSignature.Parameters)) and
+      (mSignature.Parameters[FParameter].Start >= 0) and
+      (mSignature.Parameters[FParameter].Stop > mSignature.Parameters[FParameter].Start) then
     begin
-      FStyled[Index].ActiveStart := Signature.Parameters[FParameter].Start;
-      FStyled[Index].ActiveStop := Signature.Parameters[FParameter].Stop;
+      FStyled[mIndex].ActiveStart := mSignature.Parameters[FParameter].Start;
+      FStyled[mIndex].ActiveStop := mSignature.Parameters[FParameter].Stop;
       // Der Standardwert steht gedämpft hinter der Pille (#441).
-      for Range in FStyled[Index].MutedRanges do
+      for mRange in FStyled[mIndex].MutedRanges do
       begin
-        if (Range.X >= FStyled[Index].ActiveStart) and (Range.X < FStyled[Index].ActiveStop) then
+        if (mRange.X >= FStyled[mIndex].ActiveStart) and (mRange.X < FStyled[mIndex].ActiveStop) then
         begin
-          FStyled[Index].ActiveStop := Range.X;
+          FStyled[mIndex].ActiveStop := mRange.X;
         end;
       end;
     end;
@@ -517,7 +517,7 @@ end;
 
 procedure TAtlasSignatureHint.ShowSignature(const AHelp: TAtlasSignatureHelp; ASignature, AParameter: Integer);
 var
-  Spoken: string;
+  mSpoken: string;
 begin
   if (ASignature < 0) or (ASignature > High(AHelp.Signatures)) then
   begin
@@ -544,17 +544,17 @@ begin
   // Sprachausgabe (#447): Signatur und aktueller Parameter.
   SetAccessible(UiaToolTipControlType, TAtlasStrings.Text(TAtlasTextId.AccessSignature));
   GuardFeature := TAtlasFeature.Signature;
-  Spoken := AHelp.Signatures[ASignature].Label_;
+  mSpoken := AHelp.Signatures[ASignature].Label_;
   if (AParameter >= 0) and (AParameter <= High(AHelp.Signatures[ASignature].Parameters)) then
   begin
-    Spoken := Spoken + '. ' + TAtlasStrings.Fmt(TAtlasTextId.AccessParameter, [AParameter + 1,
+    mSpoken := mSpoken + '. ' + TAtlasStrings.Fmt(TAtlasTextId.AccessParameter, [AParameter + 1,
       AHelp.Signatures[ASignature].Parameters[AParameter].Text(AHelp.Signatures[ASignature].Label_)]);
   end;
   if FormatText <> '' then
   begin
-    Spoken := Spoken + '. ' + FormatText;
+    mSpoken := mSpoken + '. ' + FormatText;
   end;
-  Announce(Spoken);
+  Announce(mSpoken);
 end;
 
 procedure TAtlasSignatureHint.SetPath(const AOuter: TArray<string>; const ACallName: string);
@@ -575,30 +575,30 @@ end;
 
 procedure TAtlasSignatureHint.PaintCrumb;
 var
-  Band, Part: TRect;
-  Parts: TArray<string>;
-  Index, X: Integer;
+  mBand, mPart: TRect;
+  mParts: TArray<string>;
+  mIndex, X: Integer;
   mText: string;
 begin
   if CrumbHeight = 0 then
   begin
     Exit;
   end;
-  Band := Rect(0, 0, ClientWidth, CrumbHeight);
+  mBand := Rect(0, 0, ClientWidth, CrumbHeight);
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ToColor(Colors.Gutter);
-  Canvas.FillRect(Band);
+  Canvas.FillRect(mBand);
   Canvas.Pen.Color := ToColor(Colors.Line);
-  Canvas.MoveTo(0, Band.Bottom - 1);
-  Canvas.LineTo(ClientWidth, Band.Bottom - 1);
+  Canvas.MoveTo(0, mBand.Bottom - 1);
+  Canvas.LineTo(ClientWidth, mBand.Bottom - 1);
   Canvas.Brush.Style := bsClear;
   Canvas.Font := Font;
-  Parts := CrumbPartsOf(FOuter, FCallName);
+  mParts := CrumbPartsOf(FOuter, FCallName);
   X := Scale(cGap) + Scale(cBar);
-  for Index := 0 to High(Parts) do
+  for mIndex := 0 to High(mParts) do
   begin
     // Äußere Aufrufe gedämpft, der gezeigte in Textfarbe.
-    if Index = High(Parts) then
+    if mIndex = High(mParts) then
     begin
       Canvas.Font.Color := ToColor(Colors.Text);
     end
@@ -606,13 +606,13 @@ begin
     begin
       Canvas.Font.Color := ToColor(Colors.Muted);
     end;
-    mText := Parts[Index];
-    if Index < High(Parts) then
+    mText := mParts[mIndex];
+    if mIndex < High(mParts) then
     begin
       mText := mText + ' › ';
     end;
-    Part := Rect(X, Band.Top, ClientWidth - Scale(cGap), Band.Bottom - 1);
-    DrawText(Canvas.Handle, PChar(mText), -1, Part, TextFlags or DT_END_ELLIPSIS);
+    mPart := Rect(X, mBand.Top, ClientWidth - Scale(cGap), mBand.Bottom - 1);
+    DrawText(Canvas.Handle, PChar(mText), -1, mPart, cTextFlags or DT_END_ELLIPSIS);
     Inc(X, Canvas.TextWidth(mText));
   end;
   Canvas.Brush.Style := bsSolid;
@@ -647,7 +647,7 @@ begin
   Canvas.Font.Height := MulDiv(UIFont.Height, 85, 100);
   Canvas.Font.Style := [fsBold];
   Canvas.Font.Color := ToColor(Colors.Muted);
-  DrawText(Canvas.Handle, PChar(mHeading), -1, APart, TextFlags or DT_END_ELLIPSIS);
+  DrawText(Canvas.Handle, PChar(mHeading), -1, APart, cTextFlags or DT_END_ELLIPSIS);
   mRuleY := (APart.Top + APart.Bottom) div 2;
   Canvas.Pen.Color := ToColor(Colors.Line);
   Canvas.MoveTo(APart.Left + Canvas.TextWidth(mHeading) + Scale(8), mRuleY);
@@ -656,7 +656,7 @@ begin
   Canvas.Font := Font;
   Canvas.Font.Style := [fsBold];
   Canvas.Font.Color := ToColor(Colors.Accent);
-  DrawText(Canvas.Handle, PChar(mName), -1, APart, TextFlags or DT_END_ELLIPSIS);
+  DrawText(Canvas.Handle, PChar(mName), -1, APart, cTextFlags or DT_END_ELLIPSIS);
   APart.Left := APart.Left + Canvas.TextWidth(mName) + Scale(8);
   Canvas.Font := UIFont;
   if mDocumented then
@@ -668,7 +668,7 @@ begin
     Canvas.Font.Style := [fsItalic];
     Canvas.Font.Color := ToColor(Colors.Muted);
   end;
-  DrawText(Canvas.Handle, PChar(mText), -1, APart, TextFlags or DT_END_ELLIPSIS);
+  DrawText(Canvas.Handle, PChar(mText), -1, APart, cTextFlags or DT_END_ELLIPSIS);
   mSummary := SummaryOf(FHelp, FSignature);
   if mSummary <> '' then
   begin
@@ -676,37 +676,37 @@ begin
     OffsetRect(APart, 0, ARow);
     Canvas.Font := UIFont;
     Canvas.Font.Color := ToColor(AFore);
-    DrawText(Canvas.Handle, PChar(mSummary), -1, APart, TextFlags or DT_END_ELLIPSIS);
+    DrawText(Canvas.Handle, PChar(mSummary), -1, APart, cTextFlags or DT_END_ELLIPSIS);
   end;
 end;
 
 procedure TAtlasSignatureHint.PaintDocLine(ATop: Integer);
 var
-  Band, Part: TRect;
-  X, Row: Integer;
-  Back, Fore: TAtlasColor;
+  mBand, mPart: TRect;
+  X, mRow: Integer;
+  mBack, mFore: TAtlasColor;
 begin
   if TooMany then
   begin
-    Back := Colors.ErrorSoft;
-    Fore := Colors.Error;
+    mBack := Colors.ErrorSoft;
+    mFore := Colors.Error;
   end
   else
   begin
-    Back := Colors.Gutter;
-    Fore := Colors.Muted;
+    mBack := Colors.Gutter;
+    mFore := Colors.Muted;
   end;
-  Band := Rect(0, ATop, ClientWidth, ClientHeight);
+  mBand := Rect(0, ATop, ClientWidth, ClientHeight);
   Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := ToColor(Back);
-  Canvas.FillRect(Band);
+  Canvas.Brush.Color := ToColor(mBack);
+  Canvas.FillRect(mBand);
   Canvas.Pen.Color := ToColor(Colors.Line);
   Canvas.MoveTo(0, ATop);
   Canvas.LineTo(ClientWidth, ATop);
   Canvas.Brush.Style := bsClear;
   X := Scale(cGap) + Scale(cBar);
-  Row := DocRowHeight;
-  Part := Rect(X, ATop + Scale(4), ClientWidth - Scale(cGap), ATop + Scale(4) + Row);
+  mRow := DocRowHeight;
+  mPart := Rect(X, ATop + Scale(4), ClientWidth - Scale(cGap), ATop + Scale(4) + mRow);
   // Platzhalter (#451) zuerst: Problem in Fehlerfarbe, sonst Akzent.
   if FormatText <> '' then
   begin
@@ -719,19 +719,19 @@ begin
     begin
       Canvas.Font.Color := ToColor(Colors.Accent);
     end;
-    DrawText(Canvas.Handle, PChar(FormatText), -1, Part, TextFlags or DT_END_ELLIPSIS);
-    OffsetRect(Part, 0, Row);
+    DrawText(Canvas.Handle, PChar(FormatText), -1, mPart, cTextFlags or DT_END_ELLIPSIS);
+    OffsetRect(mPart, 0, mRow);
   end;
   if TooMany then
   begin
     Canvas.Font := UIFont;
-    Canvas.Font.Color := ToColor(Fore);
-    DrawText(Canvas.Handle, PChar(TAtlasStrings.Fmt(TAtlasTextId.NoOverloadWith, [FParameter + 1])), -1, Part,
-      TextFlags or DT_END_ELLIPSIS);
+    Canvas.Font.Color := ToColor(mFore);
+    DrawText(Canvas.Handle, PChar(TAtlasStrings.Fmt(TAtlasTextId.NoOverloadWith, [FParameter + 1])), -1, mPart,
+      cTextFlags or DT_END_ELLIPSIS);
   end
   else
   begin
-    PaintParameterDoc(Part, Row, Fore);
+    PaintParameterDoc(mPart, mRow, mFore);
   end;
   Canvas.Brush.Style := bsSolid;
   Canvas.Font := Font;
@@ -739,8 +739,8 @@ end;
 
 procedure TAtlasSignatureHint.Paint;
 var
-  Row, Part: TRect;
-  mHeight, Index, Line, RowIndex, mLeft, Right, X, mTop: Integer;
+  mRow, mPart: TRect;
+  mHeight, mIndex, mLine, mRowIndex, mLeft, mRight, X, mTop: Integer;
 begin
   Canvas.Font := Font;
   Canvas.Brush.Style := bsSolid;
@@ -753,30 +753,30 @@ begin
   end;
   mHeight := LineHeight;
   mLeft := Scale(cBar) + Scale(cGap);
-  Right := ClientWidth - Scale(cGap);
-  RowIndex := 0;
+  mRight := ClientWidth - Scale(cGap);
+  mRowIndex := 0;
   PaintCrumb;
   mTop := CrumbHeight + Scale(cPad);
-  for Index := 0 to High(FLayouts) do
+  for mIndex := 0 to High(FLayouts) do
   begin
     // Akzentbalken links neben der gewählten Überladung.
-    if Index = FSignature then
+    if mIndex = FSignature then
     begin
-      FillRounded(Rect(Scale(3), mTop + RowIndex * mHeight + Scale(3), Scale(3) + Scale(cBar),
-        mTop + (RowIndex + Length(FLayouts[Index])) * mHeight - Scale(3)), Colors.Accent, 1);
+      FillRounded(Rect(Scale(3), mTop + mRowIndex * mHeight + Scale(3), Scale(3) + Scale(cBar),
+        mTop + (mRowIndex + Length(FLayouts[mIndex])) * mHeight - Scale(3)), Colors.Accent, 1);
     end;
-    for Line := 0 to High(FLayouts[Index]) do
+    for mLine := 0 to High(FLayouts[mIndex]) do
     begin
-      Row := Rect(mLeft, mTop + RowIndex * mHeight, Right, mTop + (RowIndex + 1) * mHeight);
-      if Line > 0 then
+      mRow := Rect(mLeft, mTop + mRowIndex * mHeight, mRight, mTop + (mRowIndex + 1) * mHeight);
+      if mLine > 0 then
       begin
-        Inc(Row.Left, Scale(cIndent));
+        Inc(mRow.Left, Scale(cIndent));
       end;
-      X := Row.Left;
+      X := mRow.Left;
       Canvas.Font := Font;
-      FStyled[Index].Draw(TAtlasStyledTarget.Create(Canvas, Colors, Scale(3)), FLayouts[Index][Line], X,
-        Rect(Row.Left, Row.Top + Scale(2), Row.Right, Row.Bottom - Scale(2)), not Fits(Index));
-      Inc(RowIndex);
+      FStyled[mIndex].Draw(TAtlasStyledTarget.Create(Canvas, Colors, Scale(3)), FLayouts[mIndex][mLine], X,
+        Rect(mRow.Left, mRow.Top + Scale(2), mRow.Right, mRow.Bottom - Scale(2)), not Fits(mIndex));
+      Inc(mRowIndex);
     end;
   end;
   if Length(FHelp.Signatures) > MaxSignatures then
@@ -784,35 +784,35 @@ begin
     Canvas.Font := UIFont;
     Canvas.Font.Color := ToColor(Colors.Muted);
     Canvas.Brush.Style := bsClear;
-    Part := Rect(mLeft, mTop + RowIndex * mHeight, Right, mTop + (RowIndex + 1) * mHeight);
-    DrawText(Canvas.Handle, PChar(TAtlasStrings.Fmt(TAtlasTextId.MoreOverloads, [Length(FHelp.Signatures) - MaxSignatures])), -1, Part,
-      TextFlags);
-    Inc(RowIndex);
+    mPart := Rect(mLeft, mTop + mRowIndex * mHeight, mRight, mTop + (mRowIndex + 1) * mHeight);
+    DrawText(Canvas.Handle, PChar(TAtlasStrings.Fmt(TAtlasTextId.MoreOverloads, [Length(FHelp.Signatures) - MaxSignatures])), -1, mPart,
+      cTextFlags);
+    Inc(mRowIndex);
   end;
   if HasDocLine then
   begin
-    PaintDocLine(mTop + RowIndex * mHeight + Scale(cPad));
+    PaintDocLine(mTop + mRowIndex * mHeight + Scale(cPad));
   end;
   PaintBorder;
 end;
 
 procedure TAtlasSignatureHint.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
-  Row, Index: Integer;
+  mRow, mIndex: Integer;
 begin
   inherited;
   if (Button <> mbLeft) or not Assigned(FOnSelect) or (Y < CrumbHeight + Scale(cPad)) then
   begin
     Exit;
   end;
-  Row := (Y - CrumbHeight - Scale(cPad)) div LineHeight;
-  for Index := High(FFirstRows) downto 0 do
+  mRow := (Y - CrumbHeight - Scale(cPad)) div LineHeight;
+  for mIndex := High(FFirstRows) downto 0 do
   begin
-    if Row >= FFirstRows[Index] then
+    if mRow >= FFirstRows[mIndex] then
     begin
-      if Row < FFirstRows[Index] + Length(FLayouts[Index]) then
+      if mRow < FFirstRows[mIndex] + Length(FLayouts[mIndex]) then
       begin
-        FOnSelect(Index);
+        FOnSelect(mIndex);
       end;
       Exit;
     end;

@@ -171,8 +171,8 @@ uses
 
 const
   // Tag der Menüeinträge: gelesen bzw. Verhalten (ModeTag + Ord).
-  MarkReadTag = 1;
-  ModeTag = 10;
+  cMarkReadTag = 1;
+  cModeTag = 10;
   /// <summary>Höhe des Fußes mit den Knöpfen und größte Höhe der Liste, logische Pixel.</summary>
   cButtonsHeight = 40;
   cMaxListHeight = 420;
@@ -776,48 +776,48 @@ end;
 
 procedure TAtlasNotificationsWindow.FillFilter;
 var
-  Source: string;
-  Sources: TArray<string>;
-  Index, Found: Integer;
+  mSource: string;
+  mSources: TArray<string>;
+  mIndex, mFound: Integer;
 begin
   FFilter.Updating := True;
   try
-    Sources := nil;
+    mSources := nil;
     if FCenter <> nil then
     begin
-      Sources := FCenter.Sources;
+      mSources := FCenter.Sources;
     end;
     // Gewählte Quelle ohne Einträge (z. B. nach „Liste leeren“) bleibt wählbar.
-    Found := -1;
-    for Index := 0 to High(Sources) do
+    mFound := -1;
+    for mIndex := 0 to High(mSources) do
     begin
-      if SameText(Sources[Index], FFilter.Source) then
+      if SameText(mSources[mIndex], FFilter.Source) then
       begin
-        Found := Index;
+        mFound := mIndex;
       end;
     end;
-    if (FFilter.Source <> '') and (Found < 0) then
+    if (FFilter.Source <> '') and (mFound < 0) then
     begin
-      Sources := Sources + [FFilter.Source];
+      mSources := mSources + [FFilter.Source];
     end;
-    FFilter.Sources := [''] + Sources;
+    FFilter.Sources := [''] + mSources;
     FParts.FilterBox.Items.BeginUpdate;
     try
       FParts.FilterBox.Items.Clear;
       FParts.FilterBox.Items.Add(TAtlasStrings.Text(TAtlasTextId.NotificationsFilterAll));
-      for Source in Sources do
+      for mSource in mSources do
       begin
-        FParts.FilterBox.Items.Add(TAtlasNotificationTexts.SourceCaption(Source));
+        FParts.FilterBox.Items.Add(TAtlasNotificationTexts.SourceCaption(mSource));
       end;
     finally
       FParts.FilterBox.Items.EndUpdate;
     end;
     FParts.FilterBox.ItemIndex := 0;
-    for Index := 1 to High(FFilter.Sources) do
+    for mIndex := 1 to High(FFilter.Sources) do
     begin
-      if SameText(FFilter.Sources[Index], FFilter.Source) then
+      if SameText(FFilter.Sources[mIndex], FFilter.Source) then
       begin
-        FParts.FilterBox.ItemIndex := Index;
+        FParts.FilterBox.ItemIndex := mIndex;
       end;
     end;
   finally
@@ -978,12 +978,12 @@ end;
 
 function TAtlasNotificationsWindow.BuildMenu(ARow: Integer): TPopupMenu;
 var
-  Item: TMenuItem;
-  Mode: TAtlasNotificationMode;
-  Current: TAtlasNotificationMode;
-  Source: string;
+  mItem: TMenuItem;
+  mMode: TAtlasNotificationMode;
+  mCurrent: TAtlasNotificationMode;
+  mSource: string;
 const
-  ModeTexts: array[TAtlasNotificationMode] of TAtlasTextId = (TAtlasTextId.NotificationsModeShow,
+  cModeTexts: array[TAtlasNotificationMode] of TAtlasTextId = (TAtlasTextId.NotificationsModeShow,
     TAtlasTextId.NotificationsModeCollect, TAtlasTextId.NotificationsModeOff);
 begin
   Result := FParts.Menu;
@@ -994,30 +994,30 @@ begin
     Exit;
   end;
   FState.MenuRow := ARow;
-  Source := FRows.Items[ARow].Source;
-  Item := TMenuItem.Create(FParts.Menu);
-  Item.Caption := TAtlasStrings.Text(TAtlasTextId.NotificationsMarkRead);
-  Item.Tag := MarkReadTag;
-  Item.Enabled := not FRows.Items[ARow].Read;
-  Item.OnClick := MenuClick;
-  FParts.Menu.Items.Add(Item);
+  mSource := FRows.Items[ARow].Source;
+  mItem := TMenuItem.Create(FParts.Menu);
+  mItem.Caption := TAtlasStrings.Text(TAtlasTextId.NotificationsMarkRead);
+  mItem.Tag := cMarkReadTag;
+  mItem.Enabled := not FRows.Items[ARow].Read;
+  mItem.OnClick := MenuClick;
+  FParts.Menu.Items.Add(mItem);
   FParts.Menu.Items.Add(NewLine);
-  Item := TMenuItem.Create(FParts.Menu);
-  Item.Caption := TAtlasStrings.Fmt(TAtlasTextId.NotificationsModeMenu,
-    [TAtlasNotificationTexts.SourceCaption(Source)]);
-  Item.Enabled := False;
-  FParts.Menu.Items.Add(Item);
-  Current := FCenter.ModeOf(Source);
-  for Mode := Low(TAtlasNotificationMode) to High(TAtlasNotificationMode) do
+  mItem := TMenuItem.Create(FParts.Menu);
+  mItem.Caption := TAtlasStrings.Fmt(TAtlasTextId.NotificationsModeMenu,
+    [TAtlasNotificationTexts.SourceCaption(mSource)]);
+  mItem.Enabled := False;
+  FParts.Menu.Items.Add(mItem);
+  mCurrent := FCenter.ModeOf(mSource);
+  for mMode := Low(TAtlasNotificationMode) to High(TAtlasNotificationMode) do
   begin
-    Item := TMenuItem.Create(FParts.Menu);
-    Item.Caption := TAtlasStrings.Text(ModeTexts[Mode]);
-    Item.Tag := ModeTag + Ord(Mode);
-    Item.RadioItem := True;
-    Item.GroupIndex := 1;
-    Item.Checked := Mode = Current;
-    Item.OnClick := MenuClick;
-    FParts.Menu.Items.Add(Item);
+    mItem := TMenuItem.Create(FParts.Menu);
+    mItem.Caption := TAtlasStrings.Text(cModeTexts[mMode]);
+    mItem.Tag := cModeTag + Ord(mMode);
+    mItem.RadioItem := True;
+    mItem.GroupIndex := 1;
+    mItem.Checked := mMode = mCurrent;
+    mItem.OnClick := MenuClick;
+    FParts.Menu.Items.Add(mItem);
   end;
 end;
 
@@ -1033,17 +1033,17 @@ begin
     Exit;
   end;
   mTag := (Sender as TMenuItem).Tag;
-  if mTag = MarkReadTag then
+  if mTag = cMarkReadTag then
   begin
     ClickRow(FState.MenuRow);
     Exit;
   end;
-  if (mTag < ModeTag) or (mTag > ModeTag + Ord(High(TAtlasNotificationMode))) then
+  if (mTag < cModeTag) or (mTag > cModeTag + Ord(High(TAtlasNotificationMode))) then
   begin
     Exit;
   end;
   mSource := FRows.Items[FState.MenuRow].Source;
-  mMode := TAtlasNotificationMode(mTag - ModeTag);
+  mMode := TAtlasNotificationMode(mTag - cModeTag);
   FCenter.SetMode(mSource, mMode);
   mHandler := FOnModeChange;
   if Assigned(mHandler) then

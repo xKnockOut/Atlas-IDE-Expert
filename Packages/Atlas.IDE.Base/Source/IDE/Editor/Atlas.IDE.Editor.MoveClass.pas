@@ -38,9 +38,9 @@ uses
   Atlas.IDE.Foundation.Navigation;
 
 const
-  ApplyCommand = 'atlas.server.moveClass';
+  cApplyCommand = 'atlas.server.moveClass';
   // Alle verwendenden Units suchen dauert; wie beim Umbenennen.
-  TimeoutMs = 60000;
+  cTimeoutMs = 60000;
 
 class procedure TAtlasIdeMoveClass.Execute(ASession: TLspSession; const AArgumentsJson: string;
   APolicy: TAtlasUnopenedPolicy; const AMessage: TProc<string>);
@@ -61,7 +61,7 @@ begin
     Exit;
   end;
   mNewFile := '';
-  if not TAtlasIdeServerEdit.Fetch(ASession, TAtlasServerEditCommand.Create(ApplyCommand, mApplyArguments, TimeoutMs,
+  if not TAtlasIdeServerEdit.Fetch(ASession, TAtlasServerEditCommand.Create(cApplyCommand, mApplyArguments, cTimeoutMs,
     TAtlasTextId.MoveClassFailed),
     procedure(const AReply: TJSONObject)
     begin

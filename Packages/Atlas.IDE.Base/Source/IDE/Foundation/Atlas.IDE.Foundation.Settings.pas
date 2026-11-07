@@ -325,21 +325,21 @@ var
 /// einmal im Protokoll.</summary>
 procedure ApplyRenames;
 var
-  Registry: TRegistryStore;
-  Store: IAtlasSettingsStore;
-  Catalog: TAtlasSettingsCatalog;
-  Rename: TAtlasSettingsRename;
+  mRegistry: TRegistryStore;
+  mStore: IAtlasSettingsStore;
+  mCatalog: TAtlasSettingsCatalog;
+  mRename: TAtlasSettingsRename;
 begin
-  Registry := TRegistryStore.Create(True);
-  Store := Registry;
-  Catalog := TAtlasSettingsCatalog.CreateDefault;
+  mRegistry := TRegistryStore.Create(True);
+  mStore := mRegistry;
+  mCatalog := TAtlasSettingsCatalog.CreateDefault;
   try
-    for Rename in TAtlasSettingsRenames.Apply(Store, Registry, Catalog) do
+    for mRename in TAtlasSettingsRenames.Apply(mStore, mRegistry, mCatalog) do
     begin
-      TAtlasGuard.Log(Rename.LogLine);
+      TAtlasGuard.Log(mRename.LogLine);
     end;
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
 end;
 
@@ -379,14 +379,14 @@ end;
 
 procedure SaveHistory;
 var
-  Snapshots: TAtlasSettingsHistory;
+  mSnapshots: TAtlasSettingsHistory;
 begin
   // Erst laden: Das setzt GState.HistoryKept.
-  Snapshots := TAtlasIdeSettings.History;
+  mSnapshots := TAtlasIdeSettings.History;
   // Gesperrt gelesene Datei nicht mit den Ständen dieser Sitzung allein überschreiben.
   if not GState.HistoryKept then
   begin
-    TAtlasDataFile.Write(HistoryFile, Snapshots.ToJson);
+    TAtlasDataFile.Write(HistoryFile, mSnapshots.ToJson);
   end;
 end;
 
@@ -427,17 +427,17 @@ end;
 
 class procedure TAtlasIdeSettings.SaveGlobal(const AContent: TAtlasTextFileContent; const AText: string);
 var
-  Content: TAtlasTextFileContent;
+  mContent: TAtlasTextFileContent;
 begin
   if (GlobalFile = '') or (AText = AContent.Text) then
   begin
     Exit;
   end;
-  Content := AContent;
-  Content.Text := AText;
+  mContent := AContent;
+  mContent.Text := AText;
   try
     ForceDirectories(ExtractFileDir(GlobalFile));
-    TAtlasTextFile.Save(GlobalFile, Content);
+    TAtlasTextFile.Save(GlobalFile, mContent);
   except
     // Ohne Schreibrecht oder bei fremder Sperre (Bericht M5) bleiben die Werte für diese Sitzung bestehen. Ins
     // Protokoll ohne Pfad: Die Meldung von EAtlasTextFileError nennt keinen, andere nur mit Klasse.
@@ -450,10 +450,10 @@ end;
 
 class procedure TAtlasIdeSettings.EnsureLoaded;
 var
-  Content: TAtlasTextFileContent;
-  Readable: Boolean;
-  Routed: TAtlasRoutedSettingsStore;
-  Store: IAtlasSettingsStore;
+  mContent: TAtlasTextFileContent;
+  mReadable: Boolean;
+  mRouted: TAtlasRoutedSettingsStore;
+  mStore: IAtlasSettingsStore;
   mChanged: Boolean;
   mMigration: TAtlasSettingsQueryMigration;
 begin
@@ -463,41 +463,41 @@ begin
   end;
   GState.Stored := TAtlasPluginSettings.Defaults;
   ApplyRenames;
-  Readable := LoadGlobal(Content);
-  Routed := TAtlasRoutedSettingsStore.Create(TRegistryStore.Create(False), Content.Text);
-  Store := Routed;
+  mReadable := LoadGlobal(mContent);
+  mRouted := TAtlasRoutedSettingsStore.Create(TRegistryStore.Create(False), mContent.Text);
+  mStore := mRouted;
   // Einmalig: Werte, die bis hierher in der Registry lagen, nach settings.json.
-  mChanged := Routed.Migrate;
+  mChanged := mRouted.Migrate;
   mMigration := Default(TAtlasSettingsQueryMigration);
   // Eine nicht lesbare Datei wird nicht geschrieben: dann bleibt auch issues.query in der Registry.
-  if Readable and MigrateQuery(Store, mMigration) then
+  if mReadable and MigrateQuery(mStore, mMigration) then
   begin
     mChanged := True;
   end;
-  if mChanged and Readable then
+  if mChanged and mReadable then
   begin
-    SaveGlobal(Content, Routed.Text);
+    SaveGlobal(mContent, mRouted.Text);
   end;
-  if Readable then
+  if mReadable then
   begin
     RemoveLegacyQuery(mMigration);
   end;
-  GState.Stored.Load(Store);
+  GState.Stored.Load(mStore);
   GState.Loaded := True;
   GState.Effective := EffectiveSettings;
 end;
 
 class function TAtlasIdeSettings.ExperimentalEntries: TArray<TAtlasCatalogEntry>;
 var
-  Catalog: TAtlasSettingsCatalog;
+  mCatalog: TAtlasSettingsCatalog;
 begin
   if not GState.ExperimentalRead then
   begin
-    Catalog := TAtlasSettingsCatalog.CreateDefault;
+    mCatalog := TAtlasSettingsCatalog.CreateDefault;
     try
-      GState.Experimental := TAtlasExperimental.PluginEntries(Catalog);
+      GState.Experimental := TAtlasExperimental.PluginEntries(mCatalog);
     finally
-      Catalog.Free;
+      mCatalog.Free;
     end;
     GState.ExperimentalRead := True;
   end;
@@ -531,14 +531,14 @@ end;
 
 class function TAtlasIdeSettings.ActiveExperimental: TArray<string>;
 var
-  Catalog: TAtlasSettingsCatalog;
+  mCatalog: TAtlasSettingsCatalog;
 begin
   EnsureLoaded;
-  Catalog := TAtlasSettingsCatalog.CreateDefault;
+  mCatalog := TAtlasSettingsCatalog.CreateDefault;
   try
-    Result := TAtlasExperimental.Active(GState.Session.Apply(GState.Stored, QuickToggles), GlobalText, Catalog);
+    Result := TAtlasExperimental.Active(GState.Session.Apply(GState.Stored, QuickToggles), GlobalText, mCatalog);
   finally
-    Catalog.Free;
+    mCatalog.Free;
   end;
 end;
 
@@ -682,54 +682,54 @@ end;
 
 class procedure TAtlasIdeSettings.Update(const ASettings: TAtlasPluginSettings);
 var
-  Content: TAtlasTextFileContent;
-  Readable: Boolean;
-  Routed: TAtlasRoutedSettingsStore;
-  Store: IAtlasSettingsStore;
-  Next: TAtlasPluginSettings;
+  mContent: TAtlasTextFileContent;
+  mReadable: Boolean;
+  mRouted: TAtlasRoutedSettingsStore;
+  mStore: IAtlasSettingsStore;
+  mNext: TAtlasPluginSettings;
 begin
   EnsureLoaded;
-  Next := ASettings;
-  Next.Normalize;
+  mNext := ASettings;
+  mNext.Normalize;
   // Alten Stand merken (#722); Fehler beim Schreiben der Datei stören das Speichern nicht.
   try
-    History.Push(GState.Stored, Next, TTimeZone.Local.ToUniversalTime(Now), Next.SafeKeepSettingsHistory);
+    History.Push(GState.Stored, mNext, TTimeZone.Local.ToUniversalTime(Now), mNext.SafeKeepSettingsHistory);
     SaveHistory;
   except
     // Der Grund steht einmal im Protokoll (ohne Pfad).
     on E: Exception do
       TAtlasDataFile.ReportNotWritten('Einstellungsverlauf', E);
   end;
-  GState.Stored := Next;
+  GState.Stored := mNext;
   GState.Loaded := True;
   // settings.json frisch lesen: Der Dialog der globalen Einstellungen schreibt dieselbe Datei.
-  Readable := LoadGlobal(Content);
-  Routed := TAtlasRoutedSettingsStore.Create(TRegistryStore.Create(True), Content.Text);
-  Store := Routed;
-  GState.Stored.Save(Store);
-  if Readable then
+  mReadable := LoadGlobal(mContent);
+  mRouted := TAtlasRoutedSettingsStore.Create(TRegistryStore.Create(True), mContent.Text);
+  mStore := mRouted;
+  GState.Stored.Save(mStore);
+  if mReadable then
   begin
-    SaveGlobal(Content, Routed.Text);
+    SaveGlobal(mContent, mRouted.Text);
   end;
   Changed;
 end;
 
 class function TAtlasIdeSettings.GlobalText: string;
 var
-  Content: TAtlasTextFileContent;
+  mContent: TAtlasTextFileContent;
 begin
-  LoadGlobal(Content);
-  Result := Content.Text;
+  LoadGlobal(mContent);
+  Result := mContent.Text;
 end;
 
 class function TAtlasIdeSettings.SaveGlobalText(const AText: string): Boolean;
 var
-  Content: TAtlasTextFileContent;
+  mContent: TAtlasTextFileContent;
 begin
-  Result := LoadGlobal(Content);
+  Result := LoadGlobal(mContent);
   if Result then
   begin
-    SaveGlobal(Content, AText);
+    SaveGlobal(mContent, AText);
   end;
 end;
 
@@ -789,13 +789,13 @@ end;
 
 class function TAtlasIdeSettings.QuickToggles: TArray<TAtlasQuickToggle>;
 var
-  English: Boolean;
+  mEnglish: Boolean;
 begin
-  English := TAtlasStrings.Language = TAtlasLanguage.English;
-  if not GState.TogglesBuilt or (English <> GState.TogglesEnglish) then
+  mEnglish := TAtlasStrings.Language = TAtlasLanguage.English;
+  if not GState.TogglesBuilt or (mEnglish <> GState.TogglesEnglish) then
   begin
-    GState.Toggles := TAtlasQuickToggles.Build(TAtlasQuickToggles.PluginCatalog, AtlasSchemaJson, English);
-    GState.TogglesEnglish := English;
+    GState.Toggles := TAtlasQuickToggles.Build(TAtlasQuickToggles.PluginCatalog, AtlasSchemaJson, mEnglish);
+    GState.TogglesEnglish := mEnglish;
     GState.TogglesBuilt := True;
   end;
   Result := GState.Toggles;

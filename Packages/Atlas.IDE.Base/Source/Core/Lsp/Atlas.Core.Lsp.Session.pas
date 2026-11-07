@@ -160,35 +160,35 @@ implementation
 /// <summary>Die Werte von AValues mit Komma verbunden.</summary>
 function JoinedValues(AValues: TJSONArray): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := '';
-  for Value in AValues do
+  for mValue in AValues do
   begin
     if Result <> '' then
     begin
       Result := Result + ', ';
     end;
-    Result := Result + Value.Value;
+    Result := Result + mValue.Value;
   end;
 end;
 
 /// <summary>Beschriftung eines Inlay Hints: label ist ein String oder eine Liste von InlayHintLabelPart.</summary>
 function InlayLabelOf(AEntry: TJSONObject): string;
 var
-  Parts, Part: TJSONValue;
+  mParts, mPart: TJSONValue;
 begin
-  Parts := AEntry.GetValue('label');
-  if not (Parts is TJSONArray) then
+  mParts := AEntry.GetValue('label');
+  if not (mParts is TJSONArray) then
   begin
     Exit(Trim(AEntry.GetValue<string>('label', '')));
   end;
   Result := '';
-  for Part in TJSONArray(Parts) do
+  for mPart in TJSONArray(mParts) do
   begin
-    if Part is TJSONObject then
+    if mPart is TJSONObject then
     begin
-      Result := Result + TJSONObject(Part).GetValue<string>('value', '');
+      Result := Result + TJSONObject(mPart).GetValue<string>('value', '');
     end;
   end;
   Result := Trim(Result);
@@ -199,13 +199,13 @@ end;
 /// Sprache der IDE.</summary>
 function ReadPlainInlayHint(AEntry: TJSONObject; var AHint: TAtlasInlayHint; var AText: string): Boolean;
 var
-  Names: TJSONArray;
+  mNames: TJSONArray;
 begin
   Result := True;
-  if AEntry.TryGetValue<TJSONArray>('data.includeDefines.names', Names) then
+  if AEntry.TryGetValue<TJSONArray>('data.includeDefines.names', mNames) then
   begin
     AHint.DefineHint := True;
-    AText := JoinedValues(Names);
+    AText := JoinedValues(mNames);
   end
   else if AEntry.GetValue<Integer>('data.controlChar.code', -1) >= 0 then
   begin
@@ -231,15 +231,15 @@ end;
 /// für andere Arten, ohne Position oder ohne Beschriftung.</summary>
 function InlayHintOf(AEntry: TJSONObject; out AHint: TAtlasInlayHint): Boolean;
 var
-  Text: string;
-  Kind: Integer;
+  mText: string;
+  mKind: Integer;
 begin
   AHint := Default(TAtlasInlayHint);
-  Kind := AEntry.GetValue<Integer>('kind', 0);
-  Text := InlayLabelOf(AEntry);
-  case Kind of
+  mKind := AEntry.GetValue<Integer>('kind', 0);
+  mText := InlayLabelOf(AEntry);
+  case mKind of
     0:
-      if not ReadPlainInlayHint(AEntry, AHint, Text) then
+      if not ReadPlainInlayHint(AEntry, AHint, mText) then
       begin
         Exit(False);
       end;
@@ -247,38 +247,38 @@ begin
       begin
         // ": TStringList" ohne Doppelpunkt.
         AHint.TypeHint := True;
-        if Text.StartsWith(':') then
+        if mText.StartsWith(':') then
         begin
-          Text := Trim(Copy(Text, 2, MaxInt));
+          mText := Trim(Copy(mText, 2, MaxInt));
         end;
       end;
     2:
-      if Text.EndsWith(':') then
+      if mText.EndsWith(':') then
       begin
-        Text := TrimRight(Copy(Text, 1, Length(Text) - 1));
+        mText := TrimRight(Copy(mText, 1, Length(mText) - 1));
       end;
   else
     Exit(False);
   end;
   AHint.Line := AEntry.GetValue<Integer>('position.line', -1);
   AHint.Character := AEntry.GetValue<Integer>('position.character', 0);
-  AHint.Name := Text;
+  AHint.Name := mText;
   Result := (AHint.Line >= 0) and (AHint.Name <> '');
 end;
 
 /// <summary>Parameter von textDocument/inlayHint für die Zeilen AFromLine bis AToLine.</summary>
 function InlayHintParams(const AUri: string; AFromLine, AToLine, AEndMarkerMinLines: Integer): TJSONObject;
 var
-  Range: TJSONObject;
+  mRange: TJSONObject;
 begin
-  Range := TJSONObject.Create;
-  Range.AddPair('start', TJSONObject.Create.AddPair('line', TJSONNumber.Create(AFromLine))
+  mRange := TJSONObject.Create;
+  mRange.AddPair('start', TJSONObject.Create.AddPair('line', TJSONNumber.Create(AFromLine))
     .AddPair('character', TJSONNumber.Create(0)));
-  Range.AddPair('end', TJSONObject.Create.AddPair('line', TJSONNumber.Create(AToLine + 1))
+  mRange.AddPair('end', TJSONObject.Create.AddPair('line', TJSONNumber.Create(AToLine + 1))
     .AddPair('character', TJSONNumber.Create(0)));
   Result := TJSONObject.Create;
   Result.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', AUri)));
-  Result.AddPair('range', Range);
+  Result.AddPair('range', mRange);
   if AEndMarkerMinLines > 0 then
   begin
     Result.AddPair('atlas', TJSONObject.Create(TJSONPair.Create('endMarkerMinLines',
@@ -289,41 +289,41 @@ end;
 function TLspSession.InlayHints(const AFileName: string; AFromLine, AToLine, AEndMarkerMinLines: Integer;
   ATimeoutMs: Cardinal): TArray<TAtlasInlayHint>;
 var
-  Response, Item: TJSONValue;
-  Hint: TAtlasInlayHint;
+  mResponse, mItem: TJSONValue;
+  mHint: TAtlasInlayHint;
 begin
   Result := nil;
-  Response := FClient.Request('textDocument/inlayHint',
+  mResponse := FClient.Request('textDocument/inlayHint',
     InlayHintParams(PathToUri(AFileName), AFromLine, AToLine, AEndMarkerMinLines), ATimeoutMs);
   try
-    if not (Response is TJSONArray) then
+    if not (mResponse is TJSONArray) then
     begin
       Exit;
     end;
-    for Item in TJSONArray(Response) do
+    for mItem in TJSONArray(mResponse) do
     begin
-      if (Item is TJSONObject) and InlayHintOf(TJSONObject(Item), Hint) then
+      if (mItem is TJSONObject) and InlayHintOf(TJSONObject(mItem), mHint) then
       begin
-        Result := Result + [Hint];
+        Result := Result + [mHint];
       end;
     end;
   finally
-    Response.Free;
+    mResponse.Free;
   end;
 end;
 
 /// <summary>previousResultIds für workspace/diagnostic aus den bekannten Berichten.</summary>
 function PreviousResultIds(const APrevious: TArray<TLspDiagnosticReport>): TJSONArray;
 var
-  Known: TLspDiagnosticReport;
+  mKnown: TLspDiagnosticReport;
 begin
   Result := TJSONArray.Create;
-  for Known in APrevious do
+  for mKnown in APrevious do
   begin
-    if Known.ResultId <> '' then
+    if mKnown.ResultId <> '' then
     begin
-      Result.AddElement(TJSONObject.Create.AddPair('uri', TLspSessionJson.PathToUri(Known.FileName))
-        .AddPair('value', Known.ResultId));
+      Result.AddElement(TJSONObject.Create.AddPair('uri', TLspSessionJson.PathToUri(mKnown.FileName))
+        .AddPair('value', mKnown.ResultId));
     end;
   end;
 end;
@@ -331,24 +331,24 @@ end;
 /// <summary>Berichte aus items der Antwort auf workspace/diagnostic; Berichte ohne Datei fallen weg.</summary>
 function DiagnosticReportsOf(const AItems: TJSONValue): TArray<TLspDiagnosticReport>;
 var
-  Item: TJSONValue;
-  Report: TLspDiagnosticReport;
+  mItem: TJSONValue;
+  mReport: TLspDiagnosticReport;
 begin
   Result := nil;
   if not (AItems is TJSONArray) then
   begin
     Exit;
   end;
-  for Item in TJSONArray(AItems) do
+  for mItem in TJSONArray(AItems) do
   begin
-    if not (Item is TJSONObject) then
+    if not (mItem is TJSONObject) then
     begin
       Continue;
     end;
-    Report := TLspDiagnosticReport.FromJson(TJSONObject(Item), '');
-    if Report.FileName <> '' then
+    mReport := TLspDiagnosticReport.FromJson(TJSONObject(mItem), '');
+    if mReport.FileName <> '' then
     begin
-      Result := Result + [Report];
+      Result := Result + [mReport];
     end;
   end;
 end;
@@ -356,20 +356,20 @@ end;
 function TLspSession.WorkspaceDiagnostics(const APrevious: TArray<TLspDiagnosticReport>; ATimeoutMs: Cardinal;
   out ARun: TLspWorkspaceRun): TArray<TLspDiagnosticReport>;
 var
-  Response: TJSONValue;
+  mResponse: TJSONValue;
 begin
   Result := nil;
   ARun := Default(TLspWorkspaceRun);
-  Response := FClient.Request('workspace/diagnostic',
+  mResponse := FClient.Request('workspace/diagnostic',
     TJSONObject.Create(TJSONPair.Create('previousResultIds', PreviousResultIds(APrevious))), ATimeoutMs);
   try
-    if Response is TJSONObject then
+    if mResponse is TJSONObject then
     begin
-      ARun := TLspWorkspaceRun.FromJson(Response);
-      Result := DiagnosticReportsOf(TJSONObject(Response).GetValue('items'));
+      ARun := TLspWorkspaceRun.FromJson(mResponse);
+      Result := DiagnosticReportsOf(TJSONObject(mResponse).GetValue('items'));
     end;
   finally
-    Response.Free;
+    mResponse.Free;
   end;
 end;
 
@@ -384,176 +384,176 @@ end;
 function TLspSession.InlineValues(const AFileName: string; AFromLine, AToLine, AStoppedLine: Integer;
   ATimeoutMs: Cardinal): TAtlasInlineValueRefs;
 var
-  Params, Range, Stopped: TJSONObject;
-  Response: TJSONValue;
+  mParams, mRange, mStopped: TJSONObject;
+  mResponse: TJSONValue;
 begin
-  Range := TJSONObject.Create;
-  Range.AddPair('start', TJSONObject.Create.AddPair('line', TJSONNumber.Create(AFromLine))
+  mRange := TJSONObject.Create;
+  mRange.AddPair('start', TJSONObject.Create.AddPair('line', TJSONNumber.Create(AFromLine))
     .AddPair('character', TJSONNumber.Create(0)));
-  Range.AddPair('end', TJSONObject.Create.AddPair('line', TJSONNumber.Create(AToLine + 1))
+  mRange.AddPair('end', TJSONObject.Create.AddPair('line', TJSONNumber.Create(AToLine + 1))
     .AddPair('character', TJSONNumber.Create(0)));
-  Stopped := TJSONObject.Create;
-  Stopped.AddPair('start', TJSONObject.Create.AddPair('line', TJSONNumber.Create(AStoppedLine))
+  mStopped := TJSONObject.Create;
+  mStopped.AddPair('start', TJSONObject.Create.AddPair('line', TJSONNumber.Create(AStoppedLine))
     .AddPair('character', TJSONNumber.Create(0)));
-  Stopped.AddPair('end', TJSONObject.Create.AddPair('line', TJSONNumber.Create(AStoppedLine))
+  mStopped.AddPair('end', TJSONObject.Create.AddPair('line', TJSONNumber.Create(AStoppedLine))
     .AddPair('character', TJSONNumber.Create(0)));
-  Params := TJSONObject.Create;
-  Params.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))));
-  Params.AddPair('range', Range);
-  Params.AddPair('context', TJSONObject.Create.AddPair('frameId', TJSONNumber.Create(0))
-    .AddPair('stoppedLocation', Stopped));
-  Response := FClient.Request('textDocument/inlineValue', Params, ATimeoutMs);
+  mParams := TJSONObject.Create;
+  mParams.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))));
+  mParams.AddPair('range', mRange);
+  mParams.AddPair('context', TJSONObject.Create.AddPair('frameId', TJSONNumber.Create(0))
+    .AddPair('stoppedLocation', mStopped));
+  mResponse := FClient.Request('textDocument/inlineValue', mParams, ATimeoutMs);
   try
-    Result := InlineValueRefsOf(Response);
+    Result := InlineValueRefsOf(mResponse);
   finally
-    Response.Free;
+    mResponse.Free;
   end;
 end;
 
 function TLspSession.CompilerSwitches(const AFileName: string; ALine, ACharacter: Integer;
   ATimeoutMs: Cardinal): TJSONValue;
 var
-  Params: TJSONObject;
+  mParams: TJSONObject;
 begin
-  Params := TJSONObject.Create;
-  Params.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))));
-  Params.AddPair('position', TJSONObject.Create.AddPair('line', TJSONNumber.Create(ALine))
+  mParams := TJSONObject.Create;
+  mParams.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))));
+  mParams.AddPair('position', TJSONObject.Create.AddPair('line', TJSONNumber.Create(ALine))
     .AddPair('character', TJSONNumber.Create(ACharacter)));
-  Result := FClient.Request('atlas/compilerSwitches', Params, ATimeoutMs);
+  Result := FClient.Request('atlas/compilerSwitches', mParams, ATimeoutMs);
 end;
 
 function TLspSession.DebugUnavailable(const AFileName: string; ALine: Integer; const AName: string;
   ATimeoutMs: Cardinal): TJSONValue;
 var
-  Params: TJSONObject;
+  mParams: TJSONObject;
 begin
-  Params := TJSONObject.Create;
-  Params.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))));
-  Params.AddPair('position', TJSONObject.Create.AddPair('line', TJSONNumber.Create(ALine))
+  mParams := TJSONObject.Create;
+  mParams.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))));
+  mParams.AddPair('position', TJSONObject.Create.AddPair('line', TJSONNumber.Create(ALine))
     .AddPair('character', TJSONNumber.Create(0)));
-  Params.AddPair('name', AName);
-  Result := FClient.Request('atlas/debugUnavailable', Params, ATimeoutMs);
+  mParams.AddPair('name', AName);
+  Result := FClient.Request('atlas/debugUnavailable', mParams, ATimeoutMs);
 end;
 
 function TLspSession.AccessChains(const AFileName: string; ALine, APointerSize: Integer;
   ATimeoutMs: Cardinal): TAtlasAvChains;
 var
-  Response: TJSONValue;
+  mResponse: TJSONValue;
 begin
-  Response := FClient.Request(TAtlasAvJson.Method, TAtlasAvJson.Params(AFileName, ALine, APointerSize), ATimeoutMs);
+  mResponse := FClient.Request(TAtlasAvJson.Method, TAtlasAvJson.Params(AFileName, ALine, APointerSize), ATimeoutMs);
   try
-    Result := TAtlasAvJson.Parse(Response);
+    Result := TAtlasAvJson.Parse(mResponse);
   finally
-    Response.Free;
+    mResponse.Free;
   end;
 end;
 
 function TLspSession.ExpressionCompletion(const AFileName: string; ALine: Integer; const AExpression: string;
   ACharacter: Integer; ATimeoutMs: Cardinal): TJSONValue;
 var
-  Params: TJSONObject;
+  mParams: TJSONObject;
 begin
-  Params := TJSONObject.Create;
-  Params.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))));
-  Params.AddPair('position', TJSONObject.Create.AddPair('line', TJSONNumber.Create(ALine))
+  mParams := TJSONObject.Create;
+  mParams.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))));
+  mParams.AddPair('position', TJSONObject.Create.AddPair('line', TJSONNumber.Create(ALine))
     .AddPair('character', TJSONNumber.Create(0)));
-  Params.AddPair('expression', AExpression);
-  Params.AddPair('character', TJSONNumber.Create(ACharacter));
-  Result := FClient.Request('atlas/expressionCompletion', Params, ATimeoutMs);
+  mParams.AddPair('expression', AExpression);
+  mParams.AddPair('character', TJSONNumber.Create(ACharacter));
+  Result := FClient.Request('atlas/expressionCompletion', mParams, ATimeoutMs);
 end;
 
 function TLspSession.PrepareHierarchy(ADirection: TAtlasHierarchyDirection; const AFileName: string; ALine,
   ACharacter: Integer): TArray<TAtlasHierarchyItem>;
 var
-  Method: string;
-  Response, Item: TJSONValue;
+  mMethod: string;
+  mResponse, mItem: TJSONValue;
 begin
   Result := nil;
-  Method := 'textDocument/prepareTypeHierarchy';
+  mMethod := 'textDocument/prepareTypeHierarchy';
   if ADirection in [TAtlasHierarchyDirection.Incoming, TAtlasHierarchyDirection.Outgoing] then
   begin
-    Method := 'textDocument/prepareCallHierarchy';
+    mMethod := 'textDocument/prepareCallHierarchy';
   end;
-  Response := FClient.Request(Method, PositionParams(AFileName, ALine, ACharacter), FTimeoutMs * 10);
+  mResponse := FClient.Request(mMethod, PositionParams(AFileName, ALine, ACharacter), FTimeoutMs * 10);
   try
-    if Response is TJSONArray then
+    if mResponse is TJSONArray then
     begin
-      for Item in TJSONArray(Response) do
+      for mItem in TJSONArray(mResponse) do
       begin
-        if Item is TJSONObject then
+        if mItem is TJSONObject then
         begin
-          Result := Result + [HierarchyItemOf(Item)];
+          Result := Result + [HierarchyItemOf(mItem)];
         end;
       end;
     end;
   finally
-    Response.Free;
+    mResponse.Free;
   end;
 end;
 
 function TLspSession.HierarchyChildren(ADirection: TAtlasHierarchyDirection;
   const AItem: TAtlasHierarchyItem): TArray<TAtlasHierarchyItem>;
 const
-  Methods: array[TAtlasHierarchyDirection] of string = ('callHierarchy/incomingCalls',
+  cMethods: array[TAtlasHierarchyDirection] of string = ('callHierarchy/incomingCalls',
     'callHierarchy/outgoingCalls', 'typeHierarchy/supertypes', 'typeHierarchy/subtypes');
   // Aufrufe stecken in {from|to, fromRanges}; Typen kommen direkt.
-  Members: array[TAtlasHierarchyDirection] of string = ('from', 'to', '', '');
+  cMembers: array[TAtlasHierarchyDirection] of string = ('from', 'to', '', '');
 var
-  Raw, Response, Item, Inner: TJSONValue;
-  Child: TAtlasHierarchyItem;
+  mRaw, mResponse, mItem, mInner: TJSONValue;
+  mChild: TAtlasHierarchyItem;
 begin
   Result := nil;
-  Raw := TJSONObject.ParseJSONValue(AItem.Raw);
-  if not (Raw is TJSONObject) then
+  mRaw := TJSONObject.ParseJSONValue(AItem.Raw);
+  if not (mRaw is TJSONObject) then
   begin
-    Raw.Free;
+    mRaw.Free;
     Exit;
   end;
-  Response := FClient.Request(Methods[ADirection], TJSONObject.Create(TJSONPair.Create('item', Raw)), FTimeoutMs * 10);
+  mResponse := FClient.Request(cMethods[ADirection], TJSONObject.Create(TJSONPair.Create('item', mRaw)), FTimeoutMs * 10);
   try
-    if not (Response is TJSONArray) then
+    if not (mResponse is TJSONArray) then
     begin
       Exit;
     end;
-    for Item in TJSONArray(Response) do
+    for mItem in TJSONArray(mResponse) do
     begin
-      Inner := Item;
-      if (Members[ADirection] <> '') and (Item is TJSONObject) then
+      mInner := mItem;
+      if (cMembers[ADirection] <> '') and (mItem is TJSONObject) then
       begin
-        Inner := TJSONObject(Item).GetValue(Members[ADirection]);
+        mInner := TJSONObject(mItem).GetValue(cMembers[ADirection]);
       end;
-      if Inner is TJSONObject then
+      if mInner is TJSONObject then
       begin
-        Child := HierarchyItemOf(Inner);
+        mChild := HierarchyItemOf(mInner);
         // Eingehende Aufrufe (#1119): atlasConfidence steht am Aufruf, nicht am Element.
-        Child.Confidence := TAtlasConfidence.FromJson(Item);
+        mChild.Confidence := TAtlasConfidence.FromJson(mItem);
         // Aufruf über Interface oder virtuelle Methode (#1122), ebenfalls am Aufruf.
-        if Item is TJSONObject then
+        if mItem is TJSONObject then
         begin
-          Child.Dispatch := TJSONObject(Item).GetValue<string>('atlasDispatch.kind', '');
-          Child.Implementations := TJSONObject(Item).GetValue<Integer>('atlasDispatch.implementations', 0);
+          mChild.Dispatch := TJSONObject(mItem).GetValue<string>('atlasDispatch.kind', '');
+          mChild.Implementations := TJSONObject(mItem).GetValue<Integer>('atlasDispatch.implementations', 0);
         end;
-        Result := Result + [Child];
+        Result := Result + [mChild];
       end;
     end;
   finally
-    Response.Free;
+    mResponse.Free;
   end;
 end;
 
 function TLspSession.Impact(const AFileName: string; ALine, ACharacter, ADepth: Integer): TAtlasImpact;
 var
-  Params: TJSONObject;
-  Response: TJSONValue;
+  mParams: TJSONObject;
+  mResponse: TJSONValue;
 begin
-  Params := PositionParams(AFileName, ALine, ACharacter);
-  Params.AddPair('depth', TJSONNumber.Create(ADepth));
+  mParams := PositionParams(AFileName, ALine, ACharacter);
+  mParams.AddPair('depth', TJSONNumber.Create(ADepth));
   // Mehrere Referenzsuchen über das ganze Projekt; der Server begrenzt die Zeit selbst und meldet es.
-  Response := FClient.Request('atlas/impact', Params, FTimeoutMs * 30);
+  mResponse := FClient.Request('atlas/impact', mParams, FTimeoutMs * 30);
   try
-    Result := ImpactFromJson(Response);
+    Result := ImpactFromJson(mResponse);
   finally
-    Response.Free;
+    mResponse.Free;
   end;
 end;
 
@@ -577,34 +577,34 @@ end;
 
 function TLspSession.DataFlow(const ARequest: TAtlasDataFlowRequest): TAtlasDataFlowResult;
 var
-  Response: TJSONValue;
+  mResponse: TJSONValue;
 begin
   // Projektweit über die Referenzsuche; dafür so viel Zeit wie für die Hierarchien.
-  Response := FClient.Request(TAtlasDataFlowJson.Method, TAtlasDataFlowJson.Params(ARequest), FTimeoutMs * 10);
+  mResponse := FClient.Request(TAtlasDataFlowJson.Method, TAtlasDataFlowJson.Params(ARequest), FTimeoutMs * 10);
   try
-    Result := TAtlasDataFlowJson.Parse(Response);
+    Result := TAtlasDataFlowJson.Parse(mResponse);
   finally
-    Response.Free;
+    mResponse.Free;
   end;
 end;
 
 function TLspSession.DocumentDiagnostics(const AFileName, APreviousResultId: string;
   ATimeoutMs: Cardinal): TLspDiagnosticReport;
 var
-  Params: TJSONObject;
-  Response: TJSONValue;
+  mParams: TJSONObject;
+  mResponse: TJSONValue;
 begin
-  Params := TJSONObject.Create;
-  Params.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))));
+  mParams := TJSONObject.Create;
+  mParams.AddPair('textDocument', TJSONObject.Create(TJSONPair.Create('uri', PathToUri(AFileName))));
   if APreviousResultId <> '' then
   begin
-    Params.AddPair('previousResultId', APreviousResultId);
+    mParams.AddPair('previousResultId', APreviousResultId);
   end;
-  Response := FClient.Request('textDocument/diagnostic', Params, ATimeoutMs);
+  mResponse := FClient.Request('textDocument/diagnostic', mParams, ATimeoutMs);
   try
-    if Response is TJSONObject then
+    if mResponse is TJSONObject then
     begin
-      Result := TLspDiagnosticReport.FromJson(TJSONObject(Response), AFileName);
+      Result := TLspDiagnosticReport.FromJson(TJSONObject(mResponse), AFileName);
     end
     else
     begin
@@ -612,7 +612,7 @@ begin
       Result.FileName := AFileName;
     end;
   finally
-    Response.Free;
+    mResponse.Free;
   end;
 end;
 

@@ -98,45 +98,45 @@ end;
 
 class function TAtlasSymbolImages.Load(AVariant: TAtlasSymbolVariant; ASize: Integer): TWICImage;
 var
-  Stream: TResourceStream;
+  mStream: TResourceStream;
 begin
   Result := nil;
   if not Exists(AVariant, ASize) then
   begin
     Exit;
   end;
-  Stream := TResourceStream.Create(ResourceModule, TAtlasSymbol.ResourceName(AVariant, ASize), RT_RCDATA);
+  mStream := TResourceStream.Create(ResourceModule, TAtlasSymbol.ResourceName(AVariant, ASize), RT_RCDATA);
   try
     Result := TWICImage.Create;
     try
-      Result.LoadFromStream(Stream);
+      Result.LoadFromStream(mStream);
     except
       FreeAndNil(Result);
       raise;
     end;
   finally
-    Stream.Free;
+    mStream.Free;
   end;
 end;
 
 class function TAtlasSymbolImages.Cached(AVariant: TAtlasSymbolVariant; ALogicalSize,
   APixelsPerInch: Integer): TWICImage;
 var
-  Size: Integer;
-  Name: string;
+  mSize: Integer;
+  mName: string;
 begin
-  Size := TAtlasSymbol.SizeFor(ALogicalSize, APixelsPerInch);
-  Name := TAtlasSymbol.ResourceName(AVariant, Size);
+  mSize := TAtlasSymbol.SizeFor(ALogicalSize, APixelsPerInch);
+  mName := TAtlasSymbol.ResourceName(AVariant, mSize);
   if Cache = nil then
   begin
     Cache := TObjectDictionary<string, TWICImage>.Create([doOwnsValues]);
   end;
-  if not Cache.TryGetValue(Name, Result) then
+  if not Cache.TryGetValue(mName, Result) then
   begin
-    Result := Load(AVariant, Size);
+    Result := Load(AVariant, mSize);
     if Result <> nil then
     begin
-      Cache.Add(Name, Result);
+      Cache.Add(mName, Result);
     end;
   end;
 end;
@@ -144,47 +144,47 @@ end;
 class function TAtlasSymbolImages.Bitmap(AVariant: TAtlasSymbolVariant; ALogicalSize,
   APixelsPerInch: Integer): HBITMAP;
 var
-  Image: TWICImage;
-  Converter: IWICFormatConverter;
-  Info: TBitmapInfo;
-  Bits: Pointer;
-  Width, Height: Integer;
+  mImage: TWICImage;
+  mConverter: IWICFormatConverter;
+  mInfo: TBitmapInfo;
+  mBits: Pointer;
+  mWidth, mHeight: Integer;
 begin
   Result := 0;
-  Image := Load(AVariant, TAtlasSymbol.SizeFor(ALogicalSize, APixelsPerInch));
-  if Image = nil then
+  mImage := Load(AVariant, TAtlasSymbol.SizeFor(ALogicalSize, APixelsPerInch));
+  if mImage = nil then
   begin
     Exit;
   end;
   try
-    if Failed(TWICImage.ImagingFactory.CreateFormatConverter(Converter)) then
+    if Failed(TWICImage.ImagingFactory.CreateFormatConverter(mConverter)) then
     begin
       Exit;
     end;
-    if Failed(Converter.Initialize(Image.Handle, GUID_WICPixelFormat32bppPBGRA, WICBitmapDitherTypeNone, nil, 0,
+    if Failed(mConverter.Initialize(mImage.Handle, GUID_WICPixelFormat32bppPBGRA, WICBitmapDitherTypeNone, nil, 0,
       WICBitmapPaletteTypeCustom)) then
     begin
       Exit;
     end;
-    Width := Image.Width;
-    Height := Image.Height;
-    FillChar(Info, SizeOf(Info), 0);
-    Info.bmiHeader.biSize := SizeOf(TBitmapInfoHeader);
-    Info.bmiHeader.biWidth := Width;
+    mWidth := mImage.Width;
+    mHeight := mImage.Height;
+    FillChar(mInfo, SizeOf(mInfo), 0);
+    mInfo.bmiHeader.biSize := SizeOf(TBitmapInfoHeader);
+    mInfo.bmiHeader.biWidth := mWidth;
     // Negativ: Zeilen von oben nach unten wie bei WIC.
-    Info.bmiHeader.biHeight := -Height;
-    Info.bmiHeader.biPlanes := 1;
-    Info.bmiHeader.biBitCount := 32;
-    Info.bmiHeader.biCompression := BI_RGB;
-    Bits := nil;
-    Result := CreateDIBSection(0, Info, DIB_RGB_COLORS, Bits, 0, 0);
-    if (Result <> 0) and Failed(Converter.CopyPixels(nil, Width * 4, Width * Height * 4, PByte(Bits))) then
+    mInfo.bmiHeader.biHeight := -mHeight;
+    mInfo.bmiHeader.biPlanes := 1;
+    mInfo.bmiHeader.biBitCount := 32;
+    mInfo.bmiHeader.biCompression := BI_RGB;
+    mBits := nil;
+    Result := CreateDIBSection(0, mInfo, DIB_RGB_COLORS, mBits, 0, 0);
+    if (Result <> 0) and Failed(mConverter.CopyPixels(nil, mWidth * 4, mWidth * mHeight * 4, PByte(mBits))) then
     begin
       DeleteObject(Result);
       Result := 0;
     end;
   finally
-    Image.Free;
+    mImage.Free;
   end;
 end;
 
@@ -192,24 +192,24 @@ class function TAtlasSymbolImages.Collection(AOwner: TComponent): TImageCollecti
 
   procedure AddVariant(AVariant: TAtlasSymbolVariant; const AName: string);
   var
-    Item: TImageCollectionItem;
-    Index: Integer;
-    Stream: TResourceStream;
+    mItem: TImageCollectionItem;
+    mIndex: Integer;
+    mStream: TResourceStream;
   begin
-    Item := Result.Images.Add;
-    Item.Name := AName;
-    for Index := 0 to TAtlasSymbol.SizeCount - 1 do
+    mItem := Result.Images.Add;
+    mItem.Name := AName;
+    for mIndex := 0 to TAtlasSymbol.SizeCount - 1 do
     begin
-      if not Exists(AVariant, TAtlasSymbol.Size(Index)) then
+      if not Exists(AVariant, TAtlasSymbol.Size(mIndex)) then
       begin
         Continue;
       end;
-      Stream := TResourceStream.Create(ResourceModule, TAtlasSymbol.ResourceName(AVariant, TAtlasSymbol.Size(Index)),
+      mStream := TResourceStream.Create(ResourceModule, TAtlasSymbol.ResourceName(AVariant, TAtlasSymbol.Size(mIndex)),
         RT_RCDATA);
       try
-        Item.SourceImages.Add.Image.LoadFromStream(Stream);
+        mItem.SourceImages.Add.Image.LoadFromStream(mStream);
       finally
-        Stream.Free;
+        mStream.Free;
       end;
     end;
   end;
@@ -261,10 +261,10 @@ end;
 
 procedure TAtlasSymbolImage.UpdateSize;
 var
-  Pixels: Integer;
+  mPixels: Integer;
 begin
-  Pixels := TAtlasSymbol.PixelSize(FLogicalSize, CurrentPPI);
-  SetBounds(Left, Top, Pixels, Pixels);
+  mPixels := TAtlasSymbol.PixelSize(FLogicalSize, CurrentPPI);
+  SetBounds(Left, Top, mPixels, mPixels);
 end;
 
 procedure TAtlasSymbolImage.ChangeScale(M, D: Integer; isDpiChange: Boolean);
@@ -275,28 +275,28 @@ end;
 
 procedure TAtlasSymbolImage.Paint;
 var
-  Image: TWICImage;
-  Pixels: Integer;
-  Target: TRect;
+  mImage: TWICImage;
+  mPixels: Integer;
+  mTarget: TRect;
 begin
   FShownVariant := TAtlasSymbolImages.VariantOf(Self);
-  Image := TAtlasSymbolImages.Cached(FShownVariant, FLogicalSize, CurrentPPI);
-  if Image = nil then
+  mImage := TAtlasSymbolImages.Cached(FShownVariant, FLogicalSize, CurrentPPI);
+  if mImage = nil then
   begin
     Exit;
   end;
-  FShownSize := Image.Width;
-  Pixels := TAtlasSymbol.PixelSize(FLogicalSize, CurrentPPI);
-  Target := Rect(0, 0, Pixels, Pixels);
-  OffsetRect(Target, (Width - Pixels) div 2, (Height - Pixels) div 2);
+  FShownSize := mImage.Width;
+  mPixels := TAtlasSymbol.PixelSize(FLogicalSize, CurrentPPI);
+  mTarget := Rect(0, 0, mPixels, mPixels);
+  OffsetRect(mTarget, (Width - mPixels) div 2, (Height - mPixels) div 2);
   // Gleich groß: ungestreckt und damit scharf; sonst die nächstgrößere Datei verkleinert.
-  if Image.Width = Pixels then
+  if mImage.Width = mPixels then
   begin
-    Canvas.Draw(Target.Left, Target.Top, Image);
+    Canvas.Draw(mTarget.Left, mTarget.Top, mImage);
   end
   else
   begin
-    Canvas.StretchDraw(Target, Image);
+    Canvas.StretchDraw(mTarget, mImage);
   end;
 end;
 

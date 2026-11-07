@@ -513,14 +513,14 @@ end;
 /// am Rand bleibt (' * ').</summary>
 function NormalizedBlockPrefix(const AText: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := Copy(AText, 1, 8);
-  for Index := 1 to Length(Result) do
+  for mIndex := 1 to Length(Result) do
   begin
-    if Ord(Result[Index]) < 32 then
+    if Ord(Result[mIndex]) < 32 then
     begin
-      Result[Index] := ' ';
+      Result[mIndex] := ' ';
     end;
   end;
   // Nur Leerraum ist kein Präfix.
