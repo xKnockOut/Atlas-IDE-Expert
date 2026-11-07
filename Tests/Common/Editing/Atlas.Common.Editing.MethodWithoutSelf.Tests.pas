@@ -22,6 +22,9 @@ type
     procedure ImplicitFieldIsNoCandidate;
     [Test]
     procedure VirtualFormAndInterfaceAreNoCandidates;
+    /// <summary>Methoden mit Attribut ([Test]) und published-Methoden ruft RTTI an der Instanz auf.</summary>
+    [Test]
+    procedure AttributeAndPublishedAreNoCandidates;
     [Test]
     procedure MethodPointerIsNoCandidate;
     [Test]
@@ -323,6 +326,51 @@ begin
     Assert.IsTrue(Pos('Formulardatei', Reason) > 0, Reason);
   finally
     Tree.Free;
+  end;
+end;
+
+procedure TMethodWithoutSelfTests.AttributeAndPublishedAreNoCandidates;
+const
+  cSource =
+    'unit U;'#10 +
+    'interface'#10 +
+    'type'#10 +
+    '  TA = class'#10 +
+    '  public'#10 +
+    '    [Test]'#10 +
+    '    procedure Pruefe;'#10 +
+    '    procedure Frei;'#10 +
+    '  published'#10 +
+    '    procedure Alt;'#10 +
+    '  end;'#10 +
+    'implementation'#10 +
+    'procedure TA.Pruefe;'#10 +                                // 12
+    'begin'#10 +
+    'end;'#10 +
+    'procedure TA.Frei;'#10 +                                  // 15
+    'begin'#10 +
+    'end;'#10 +
+    'procedure TA.Alt;'#10 +                                   // 18
+    'begin'#10 +
+    'end;'#10 +
+    'end.'#10;
+var
+  mTarget: TMethodTarget;
+  mReason: string;
+  mTree: TSyntaxTree;
+  mLookup: TMethodLookup;
+begin
+  mTree := TPascalParser.Parse(cSource);
+  try
+    mLookup := TMethodLookup.FromTree(mTree);
+    Assert.IsFalse(TMethodWithoutSelf.Target(cSource, mTree, TTextPosition.Create(12, 13), mLookup, mTarget, mReason));
+    Assert.IsTrue(Pos('RTTI', mReason) > 0, mReason);
+    Assert.IsTrue(TMethodWithoutSelf.Target(cSource, mTree, TTextPosition.Create(15, 13), mLookup, mTarget, mReason),
+      mReason);
+    Assert.IsFalse(TMethodWithoutSelf.Target(cSource, mTree, TTextPosition.Create(18, 13), mLookup, mTarget, mReason));
+    Assert.IsTrue(Pos('RTTI', mReason) > 0, mReason);
+  finally
+    mTree.Free;
   end;
 end;
 
