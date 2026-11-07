@@ -34,14 +34,14 @@ var
 
 class function TWindowsStackGuard.ResetGuardPage: Boolean;
 var
-  Module: HMODULE;
+  mModule: HMODULE;
 begin
   if not Looked then
   begin
-    Module := LoadLibrary('msvcrt.dll');
-    if Module <> 0 then
+    mModule := LoadLibrary('msvcrt.dll');
+    if mModule <> 0 then
     begin
-      @ResetFunction := GetProcAddress(Module, '_resetstkoflw');
+      @ResetFunction := GetProcAddress(mModule, '_resetstkoflw');
     end;
     Looked := True;
   end;

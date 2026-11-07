@@ -272,7 +272,7 @@ begin
   begin
     mText := mText + ' #' + IntToStr(mIndex) + ',';
   end;
-  Assert.AreEqual(Integer(TAtlasTrackerLinks.MaxTextDependencies),
+  Assert.AreEqual(Integer(TAtlasTrackerLinks.cMaxTextDependencies),
     Integer(Length(TAtlasTrackerLinks.TextDependencies(mText))));
   Assert.AreEqual(Integer(0), Integer(Length(TAtlasTrackerLinks.TextDependencies(''))));
 end;

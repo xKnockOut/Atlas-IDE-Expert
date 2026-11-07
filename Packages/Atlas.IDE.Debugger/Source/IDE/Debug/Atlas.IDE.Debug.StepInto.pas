@@ -44,10 +44,10 @@ type
   TAtlasIdeStepInto = class
   private const
     /// <summary>Die Namensauflösung je Aufruf braucht etwas länger als eine einfache Anfrage.</summary>
-    TimeoutMs = 10000;
+    cTimeoutMs = 10000;
     /// <summary>Zeitlimit je Auswertung des Laufzeittyps.</summary>
-    EvaluateMs = 1500;
-    TickMs = 100;
+    cEvaluateMs = 1500;
+    cTickMs = 100;
   private type
     TJumpState = record
       Running: Boolean;
@@ -75,7 +75,7 @@ type
     /// <summary>Vorübergehende Haltepunkte auf Ziel und Folgeanweisung.</summary>
     FBreaks: TArray<IOTABreakpoint>;
     procedure AppMessage(var Msg: TMsg; var Handled: Boolean);
-    procedure KeyDown(const Msg: TMsg; var Handled: Boolean);
+    procedure KeyDown(const AMsg: TMsg; var AHandled: Boolean);
     procedure Tick(Sender: TObject);
     function Execute: Boolean;
     /// <summary>Aufrufe der Zeile ALine von FFileName (Text AText) beim Server erfragen; False mit Meldung.</summary>
@@ -141,10 +141,10 @@ uses
 
 function IsEditorWindow(AWnd: HWND): Boolean;
 var
-  Control: TWinControl;
+  mControl: TWinControl;
 begin
-  Control := FindControl(AWnd);
-  Result := (Control <> nil) and Control.ClassNameIs('TEditControl');
+  mControl := FindControl(AWnd);
+  Result := (mControl <> nil) and mControl.ClassNameIs('TEditControl');
 end;
 
 /// <summary>Taste AKey in der offenen Liste ausführen; False, wenn die Liste sie nicht kennt.</summary>
@@ -174,14 +174,14 @@ end;
 /// Ausführungspunkt).</summary>
 function CaretPoint: TPoint;
 var
-  Focus: HWND;
+  mFocus: HWND;
 begin
   Result := Mouse.CursorPos;
-  Focus := GetFocus;
-  if (Focus <> 0) and GetCaretPos(Result) then
+  mFocus := GetFocus;
+  if (mFocus <> 0) and GetCaretPos(Result) then
   begin
     Inc(Result.Y, 16);
-    Winapi.Windows.ClientToScreen(Focus, Result);
+    Winapi.Windows.ClientToScreen(mFocus, Result);
   end;
 end;
 
@@ -197,7 +197,7 @@ begin
   FMessages.OnMessage := AppMessage;
   FTimer := TTimer.Create(nil);
   FTimer.Enabled := False;
-  FTimer.Interval := TickMs;
+  FTimer.Interval := cTickMs;
   FTimer.OnTimer := Tick;
 end;
 
@@ -228,10 +228,10 @@ end;
 
 class function TAtlasIdeStepInto.Enabled: Boolean;
 var
-  Settings: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
 begin
-  Settings := TAtlasIdeSettings.Current;
-  Result := Settings.Enabled and Settings.DebugStepIntoTarget;
+  mSettings := TAtlasIdeSettings.Current;
+  Result := mSettings.Enabled and mSettings.DebugStepIntoTarget;
 end;
 
 class function TAtlasIdeStepInto.Stopped: Boolean;
@@ -290,12 +290,12 @@ end;
 
 function TAtlasIdeStepInto.SourceText(const AFileName: string; out AText: string): Boolean;
 var
-  Buffer: IOTAEditBuffer;
+  mBuffer: IOTAEditBuffer;
 begin
-  Buffer := TAtlasIdeFiles.BufferOf(AFileName);
-  if Buffer <> nil then
+  mBuffer := TAtlasIdeFiles.BufferOf(AFileName);
+  if mBuffer <> nil then
   begin
-    AText := TAtlasEditorBuffer.Text(Buffer);
+    AText := TAtlasEditorBuffer.Text(mBuffer);
     Exit(True);
   end;
   try
@@ -311,41 +311,41 @@ end;
 
 class function TAtlasIdeStepInto.CanBreak(const AFileName: string): Boolean;
 var
-  Services: IOTAServices;
-  Modules: IOTAModuleServices;
-  Project: IOTAProject;
-  Root, Value: string;
+  mServices: IOTAServices;
+  mModules: IOTAModuleServices;
+  mProject: IOTAProject;
+  mRoot, mValue: string;
 begin
   Result := True;
-  if not Supports(BorlandIDEServices, IOTAServices, Services) then
+  if not Supports(BorlandIDEServices, IOTAServices, mServices) then
   begin
     Exit;
   end;
-  Root := Services.GetRootDirectory;
-  if not TAtlasStepInto.IsLibraryFile(AFileName, Root) then
+  mRoot := mServices.GetRootDirectory;
+  if not TAtlasStepInto.IsLibraryFile(AFileName, mRoot) then
   begin
     Exit;
   end;
   // RTL, VCL und FMX: Haltepunkte greifen nur mit Debug-DCUs.
   Result := False;
-  if not Supports(BorlandIDEServices, IOTAModuleServices, Modules) then
+  if not Supports(BorlandIDEServices, IOTAModuleServices, mModules) then
   begin
     Exit;
   end;
-  Project := Modules.GetActiveProject;
-  if Project = nil then
+  mProject := mModules.GetActiveProject;
+  if mProject = nil then
   begin
     Exit;
   end;
-  Value := TAtlasIdeProjectContext.ConfigurationValue(Project, Project.CurrentConfiguration, Project.CurrentPlatform,
-    'DCC_DebugDCUs');
-  Result := SameText(Trim(Value), 'true');
+  mValue := TAtlasIdeProjectContext.ConfigurationValue(mProject, mProject.CurrentConfiguration,
+    mProject.CurrentPlatform, 'DCC_DebugDCUs');
+  Result := SameText(Trim(mValue), 'true');
 end;
 
 class function TAtlasIdeStepInto.Evaluate(const AExpression: string; out AValue: string): Boolean;
 begin
   // ClassName ist eine Klassenfunktion: Aufrufe erlauben. Der Empfänger selbst ruft nichts auf (receiverSimple).
-  Result := TAtlasIdeDebugEvaluator.Evaluate(AExpression, TAtlasVisualizerEvaluation.Calls, EvaluateMs, AValue);
+  Result := TAtlasIdeDebugEvaluator.Evaluate(AExpression, TAtlasVisualizerEvaluation.Calls, cEvaluateMs, AValue);
 end;
 
 function TAtlasIdeStepInto.Execute: Boolean;
@@ -394,8 +394,8 @@ begin
   end;
   try
     mSession.Sync(FFileName, AText);
-    mAnswer := mSession.RunCommand(TAtlasStepInto.Command,
-      TAtlasStepInto.Arguments(TLspSession.PathToUri(FFileName), ALine), TimeoutMs);
+    mAnswer := mSession.RunCommand(TAtlasStepInto.cCommand,
+      TAtlasStepInto.Arguments(TLspSession.PathToUri(FFileName), ALine), cTimeoutMs);
     try
       if not TAtlasStepInto.ReadAnswer(mAnswer, FAnswer) then
       begin
@@ -480,12 +480,12 @@ end;
 
 procedure TAtlasIdeStepInto.StepInto;
 var
-  Process: IOTAProcess;
+  mProcess: IOTAProcess;
 begin
-  Process := TAtlasIdeBreakpoints.StoppedProcess;
-  if Process <> nil then
+  mProcess := TAtlasIdeBreakpoints.StoppedProcess;
+  if mProcess <> nil then
   begin
-    Process.Run(ormStmtStepInto);
+    mProcess.Run(ormStmtStepInto);
   end;
 end;
 
@@ -510,15 +510,15 @@ end;
 
 procedure TAtlasIdeStepInto.Launch(const ARow: TAtlasStepRow);
 var
-  Process: IOTAProcess;
+  mProcess: IOTAProcess;
 begin
-  Process := TAtlasIdeBreakpoints.StoppedProcess;
-  if Process = nil then
+  mProcess := TAtlasIdeBreakpoints.StoppedProcess;
+  if mProcess = nil then
   begin
     Report(TAtlasDebugStrings.Text(TAtlasDebugTextId.StepIntoTargetNotStopped));
     Exit;
   end;
-  TAtlasIdeBreakpoints.Position(Process.CurrentThread, FJump.StartFile, FJump.StartLine);
+  TAtlasIdeBreakpoints.Position(mProcess.CurrentThread, FJump.StartFile, FJump.StartLine);
   FJump.Target := ARow.Target;
   FJump.Caption := ARow.Caption;
   FJump.FollowLine := FAnswer.FollowLine;
@@ -532,7 +532,7 @@ begin
   FJump.Running := True;
   FJump.SeenRunning := False;
   FTimer.Enabled := True;
-  Process.Run(ormRun);
+  mProcess.Run(ormRun);
 end;
 
 procedure TAtlasIdeStepInto.RemoveBreakpoints;
@@ -616,7 +616,7 @@ begin
   end;
 end;
 
-procedure TAtlasIdeStepInto.KeyDown(const Msg: TMsg; var Handled: Boolean);
+procedure TAtlasIdeStepInto.KeyDown(const AMsg: TMsg; var AHandled: Boolean);
 var
   mKey: Word;
 begin
@@ -624,14 +624,14 @@ begin
   begin
     Exit;
   end;
-  mKey := Word(Msg.wParam);
+  mKey := Word(AMsg.wParam);
   if (mKey = VK_SHIFT) or (mKey = VK_CONTROL) or (mKey = VK_MENU) then
   begin
     Exit;
   end;
   if (GetKeyState(VK_CONTROL) >= 0) and (GetKeyState(VK_MENU) >= 0) and ListKey(FWindow, mKey) then
   begin
-    Handled := True;
+    AHandled := True;
   end
   else
   begin

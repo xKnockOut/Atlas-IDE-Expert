@@ -31,18 +31,18 @@ uses
 
 function DocumentationFile: string;
 var
-  Folder: string;
+  mFolder: string;
 begin
   // Vom Testprogramm aufwärts bis zum Repository.
-  Folder := ExtractFileDir(ParamStr(0));
-  while Folder <> ExtractFileDir(Folder) do
+  mFolder := ExtractFileDir(ParamStr(0));
+  while mFolder <> ExtractFileDir(mFolder) do
   begin
-    Result := TPath.Combine(Folder, 'docs\MCP.md');
+    Result := TPath.Combine(mFolder, 'docs\MCP.md');
     if FileExists(Result) then
     begin
       Exit;
     end;
-    Folder := ExtractFileDir(Folder);
+    mFolder := ExtractFileDir(mFolder);
   end;
   Result := '';
 end;
@@ -67,69 +67,69 @@ end;
 
 procedure TMcpShellTests.ToolsListMatchesDocumentation;
 var
-  Listed, Documented: TArray<string>;
-  Match: TMatch;
-  Name: string;
-  FileName: string;
+  mListed, mDocumented: TArray<string>;
+  mMatch: TMatch;
+  mName: string;
+  mFileName: string;
 begin
-  FileName := DocumentationFile;
-  Assert.IsTrue(FileName <> '', 'docs\MCP.md nicht gefunden');
-  Documented := nil;
-  for Match in TRegEx.Matches(ToolSection(TFile.ReadAllText(FileName, TEncoding.UTF8)), '^\| `(\w+)` \|', [roMultiLine]) do
+  mFileName := DocumentationFile;
+  Assert.IsTrue(mFileName <> '', 'docs\MCP.md nicht gefunden');
+  mDocumented := nil;
+  for mMatch in TRegEx.Matches(ToolSection(TFile.ReadAllText(mFileName, TEncoding.UTF8)), '^\| `(\w+)` \|', [roMultiLine]) do
   begin
-    Documented := Documented + [Match.Groups[1].Value];
+    mDocumented := mDocumented + [mMatch.Groups[1].Value];
   end;
-  Listed := TMcpShell.ToolNames;
-  Assert.IsTrue(Length(Listed) >= 11, 'zu wenige Werkzeuge registriert');
-  for Name in Documented do
+  mListed := TMcpShell.ToolNames;
+  Assert.IsTrue(Length(mListed) >= 11, 'zu wenige Werkzeuge registriert');
+  for mName in mDocumented do
   begin
-    Assert.Contains(string.Join(' ', Listed), Name, 'in docs/MCP.md, aber nicht in tools/list: ' + Name);
+    Assert.Contains(string.Join(' ', mListed), mName, 'in docs/MCP.md, aber nicht in tools/list: ' + mName);
   end;
-  for Name in Listed do
+  for mName in mListed do
   begin
-    Assert.Contains(string.Join(' ', Documented), Name, 'in tools/list, aber nicht in docs/MCP.md: ' + Name);
+    Assert.Contains(string.Join(' ', mDocumented), mName, 'in tools/list, aber nicht in docs/MCP.md: ' + mName);
   end;
 end;
 
 procedure TMcpShellTests.ListsArchitectureTool;
 var
-  Name: string;
-  Found: Boolean;
+  mName: string;
+  mFound: Boolean;
 begin
-  Found := False;
-  for Name in TMcpShell.ToolNames do
+  mFound := False;
+  for mName in TMcpShell.ToolNames do
   begin
-    Found := Found or (Name = 'get_architecture');
+    mFound := mFound or (mName = 'get_architecture');
   end;
-  Assert.IsTrue(Found, 'get_architecture fehlt in tools/list');
+  Assert.IsTrue(mFound, 'get_architecture fehlt in tools/list');
 end;
 
 procedure TMcpShellTests.ListsFindPathTool;
 var
-  Name: string;
-  Found: Boolean;
+  mName: string;
+  mFound: Boolean;
 begin
   // Weg zwischen Symbolen (#1117).
-  Found := False;
-  for Name in TMcpShell.ToolNames do
+  mFound := False;
+  for mName in TMcpShell.ToolNames do
   begin
-    Found := Found or (Name = 'find_path');
+    mFound := mFound or (mName = 'find_path');
   end;
-  Assert.IsTrue(Found, 'find_path fehlt in tools/list');
+  Assert.IsTrue(mFound, 'find_path fehlt in tools/list');
 end;
 
 procedure TMcpShellTests.ListsHotspotsTool;
 var
-  Name: string;
-  Found: Boolean;
+  mName: string;
+  mFound: Boolean;
 begin
   // Hotspots (#1354).
-  Found := False;
-  for Name in TMcpShell.ToolNames do
+  mFound := False;
+  for mName in TMcpShell.ToolNames do
   begin
-    Found := Found or (Name = 'get_hotspots');
+    mFound := mFound or (mName = 'get_hotspots');
   end;
-  Assert.IsTrue(Found, 'get_hotspots fehlt in tools/list');
+  Assert.IsTrue(mFound, 'get_hotspots fehlt in tools/list');
 end;
 
 initialization

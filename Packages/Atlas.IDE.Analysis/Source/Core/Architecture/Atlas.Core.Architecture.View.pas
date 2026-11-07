@@ -13,10 +13,10 @@ uses
 type
   TAtlasArchitectureView = record
   public const
-    MinScale = 0.05;
-    MaxScale = 8.0;
+    cMinScale = 0.05;
+    cMaxScale = 8.0;
     /// <summary>Rand beim Einpassen in Bildpunkten.</summary>
-    Margin = 20;
+    cMargin = 20;
   public
     Scale: Double;
     OffsetX: Double;
@@ -46,8 +46,8 @@ uses
 
 procedure TAtlasArchitectureView.Fit(const AModel: TAtlasArchitectureModel; AWidth, AHeight: Integer);
 var
-  Subsystem: TAtlasArchSubsystem;
-  Left, Top, Right, Bottom: Double;
+  mSubsystem: TAtlasArchSubsystem;
+  mLeft, mTop, mRight, mBottom: Double;
 begin
   Scale := 1;
   OffsetX := AWidth / 2;
@@ -56,21 +56,22 @@ begin
   begin
     Exit;
   end;
-  Left := MaxDouble;
-  Top := MaxDouble;
-  Right := -MaxDouble;
-  Bottom := -MaxDouble;
-  for Subsystem in AModel.Subsystems do
+  mLeft := MaxDouble;
+  mTop := MaxDouble;
+  mRight := -MaxDouble;
+  mBottom := -MaxDouble;
+  for mSubsystem in AModel.Subsystems do
   begin
-    Left := Min(Left, Subsystem.X - Subsystem.R);
-    Top := Min(Top, Subsystem.Y - Subsystem.R);
-    Right := Max(Right, Subsystem.X + Subsystem.R);
-    Bottom := Max(Bottom, Subsystem.Y + Subsystem.R);
+    mLeft := Min(mLeft, mSubsystem.X - mSubsystem.R);
+    mTop := Min(mTop, mSubsystem.Y - mSubsystem.R);
+    mRight := Max(mRight, mSubsystem.X + mSubsystem.R);
+    mBottom := Max(mBottom, mSubsystem.Y + mSubsystem.R);
   end;
-  Scale := Min(Min((AWidth - 2 * Margin) / Max(1, Right - Left), (AHeight - 2 * Margin) / Max(1, Bottom - Top)), 2);
-  Scale := EnsureRange(Scale, MinScale, MaxScale);
-  OffsetX := AWidth / 2 - (Left + Right) / 2 * Scale;
-  OffsetY := AHeight / 2 - (Top + Bottom) / 2 * Scale;
+  Scale := Min(Min((AWidth - 2 * cMargin) / Max(1, mRight - mLeft), (AHeight - 2 * cMargin) / Max(1, mBottom - mTop)),
+    2);
+  Scale := EnsureRange(Scale, cMinScale, cMaxScale);
+  OffsetX := AWidth / 2 - (mLeft + mRight) / 2 * Scale;
+  OffsetY := AHeight / 2 - (mTop + mBottom) / 2 * Scale;
 end;
 
 function TAtlasArchitectureView.ScreenX(AX: Double): Double;
@@ -95,12 +96,12 @@ end;
 
 procedure TAtlasArchitectureView.ZoomAt(AFactor: Double; AX, AY: Double);
 var
-  Next: Double;
+  mNext: Double;
 begin
-  Next := EnsureRange(Scale * AFactor, MinScale, MaxScale);
-  OffsetX := AX - (AX - OffsetX) * Next / Scale;
-  OffsetY := AY - (AY - OffsetY) * Next / Scale;
-  Scale := Next;
+  mNext := EnsureRange(Scale * AFactor, cMinScale, cMaxScale);
+  OffsetX := AX - (AX - OffsetX) * mNext / Scale;
+  OffsetY := AY - (AY - OffsetY) * mNext / Scale;
+  Scale := mNext;
 end;
 
 procedure TAtlasArchitectureView.Pan(ADX, ADY: Double);
@@ -117,23 +118,23 @@ end;
 function TAtlasArchitectureView.UnitAt(const AModel: TAtlasArchitectureModel; AX, AY: Double;
   const AHidden: TArray<Boolean>): Integer;
 var
-  Index: Integer;
-  X, Y, Radius: Double;
+  mIndex: Integer;
+  X, Y, mRadius: Double;
 begin
   X := WorldX(AX);
   Y := WorldY(AY);
   // Rückwärts: Später gezeichnete Units liegen oben.
-  for Index := High(AModel.Units) downto 0 do
+  for mIndex := High(AModel.Units) downto 0 do
   begin
-    if AModel.IsHidden(Index, AHidden) then
+    if AModel.IsHidden(mIndex, AHidden) then
     begin
       Continue;
     end;
     // Mindestens 4 Bildpunkte, damit kleine Units weit herausgezoomt treffbar bleiben.
-    Radius := Max(AModel.NodeRadius(Index), 4 / Scale);
-    if Sqr(AModel.Units[Index].X - X) + Sqr(AModel.Units[Index].Y - Y) <= Sqr(Radius) then
+    mRadius := Max(AModel.NodeRadius(mIndex), 4 / Scale);
+    if Sqr(AModel.Units[mIndex].X - X) + Sqr(AModel.Units[mIndex].Y - Y) <= Sqr(mRadius) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;

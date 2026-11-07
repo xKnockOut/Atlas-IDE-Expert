@@ -63,7 +63,7 @@ type
   public const
     /// <summary>Beim Start festgehaltene Projektoptionen (#840): Debug-Informationen, lokale Symbole,
     /// Optimierung, Debug-DCUs.</summary>
-    LaunchOptionNames: array[0..3] of string = ('DCC_DebugInformation', 'DCC_LocalDebugSymbols', 'DCC_Optimize',
+    cLaunchOptionNames: array[0..3] of string = ('DCC_DebugInformation', 'DCC_LocalDebugSymbols', 'DCC_Optimize',
       'DCC_DebugDCUs');
   private type
     TNotifier = class(TNotifierObject, IOTADebuggerNotifier, IOTADebuggerNotifier90)
@@ -246,8 +246,8 @@ end;
 
 function TAtlasIdeDebugSession.TNotifier.BeforeProgramLaunch(const Project: IOTAProject): Boolean;
 var
-  Options: IOTAProjectOptionsConfigurations;
-  Index: Integer;
+  mOptions: IOTAProjectOptionsConfigurations;
+  mIndex: Integer;
 begin
   // Nie den Start verhindern.
   Result := True;
@@ -255,9 +255,9 @@ begin
     TAtlasIdeDebugSession.FProject := '';
     TAtlasIdeDebugSession.FConfiguration := '';
     TAtlasIdeDebugSession.FPlatform := '';
-    for Index := Low(TAtlasIdeDebugSession.FLaunchValues) to High(TAtlasIdeDebugSession.FLaunchValues) do
+    for mIndex := Low(TAtlasIdeDebugSession.FLaunchValues) to High(TAtlasIdeDebugSession.FLaunchValues) do
     begin
-      TAtlasIdeDebugSession.FLaunchValues[Index] := '';
+      TAtlasIdeDebugSession.FLaunchValues[mIndex] := '';
     end;
     if Project = nil then
     begin
@@ -265,16 +265,16 @@ begin
     end;
     TAtlasIdeDebugSession.FProject := Project.FileName;
     TAtlasIdeDebugSession.FPlatform := Project.CurrentPlatform;
-    if Supports(Project.ProjectOptions, IOTAProjectOptionsConfigurations, Options) and
-      (Options.ActiveConfiguration <> nil) then
+    if Supports(Project.ProjectOptions, IOTAProjectOptionsConfigurations, mOptions) and
+      (mOptions.ActiveConfiguration <> nil) then
     begin
-      TAtlasIdeDebugSession.FConfiguration := Options.ActiveConfiguration.Name;
+      TAtlasIdeDebugSession.FConfiguration := mOptions.ActiveConfiguration.Name;
     end;
-    for Index := Low(TAtlasIdeDebugSession.LaunchOptionNames) to High(TAtlasIdeDebugSession.LaunchOptionNames) do
+    for mIndex := Low(TAtlasIdeDebugSession.cLaunchOptionNames) to High(TAtlasIdeDebugSession.cLaunchOptionNames) do
     begin
-      TAtlasIdeDebugSession.FLaunchValues[Index] := Trim(TAtlasIdeProjectContext.ConfigurationValue(Project,
+      TAtlasIdeDebugSession.FLaunchValues[mIndex] := Trim(TAtlasIdeProjectContext.ConfigurationValue(Project,
         TAtlasIdeDebugSession.FConfiguration, TAtlasIdeDebugSession.FPlatform,
-        TAtlasIdeDebugSession.LaunchOptionNames[Index]));
+        TAtlasIdeDebugSession.cLaunchOptionNames[mIndex]));
     end;
   except
     // Nur Merkwerte; der Start geht in jedem Fall weiter.
@@ -289,8 +289,8 @@ end;
 
 class procedure TAtlasIdeDebugSession.Start;
 var
-  Services: IOTADebuggerServices;
-  Notifier: IOTADebuggerNotifier;
+  mServices: IOTADebuggerServices;
+  mNotifier: IOTADebuggerNotifier;
 begin
   if FListeners = nil then
   begin
@@ -300,28 +300,28 @@ begin
   begin
     Exit;
   end;
-  Services := Debugger;
-  if Services = nil then
+  mServices := Debugger;
+  if mServices = nil then
   begin
     Exit;
   end;
   // Index + 1, damit 0 „nicht angemeldet“ heißt.
-  Notifier := TNotifier.Create;
-  FNotifierIndex := Services.AddNotifier(Notifier) + 1;
-  FProcesses := Services.ProcessCount;
-  FStopped := (Services.CurrentProcess <> nil) and IsStoppedState(Services.CurrentProcess.ProcessState);
+  mNotifier := TNotifier.Create;
+  FNotifierIndex := mServices.AddNotifier(mNotifier) + 1;
+  FProcesses := mServices.ProcessCount;
+  FStopped := (mServices.CurrentProcess <> nil) and IsStoppedState(mServices.CurrentProcess.ProcessState);
 end;
 
 class procedure TAtlasIdeDebugSession.Stop;
 var
-  Services: IOTADebuggerServices;
+  mServices: IOTADebuggerServices;
 begin
   if FNotifierIndex > 0 then
   begin
-    Services := Debugger;
-    if Services <> nil then
+    mServices := Debugger;
+    if mServices <> nil then
     begin
-      Services.RemoveNotifier(FNotifierIndex - 1);
+      mServices.RemoveNotifier(FNotifierIndex - 1);
     end;
     FNotifierIndex := 0;
   end;
@@ -366,23 +366,23 @@ end;
 
 class procedure TAtlasIdeDebugSession.NotifyListeners(const AEvent: TProc<IAtlasIdeDebugListener>);
 var
-  Listeners: TArray<IAtlasIdeDebugListener>;
-  Listener: IAtlasIdeDebugListener;
+  mListeners: TArray<IAtlasIdeDebugListener>;
+  mListener: IAtlasIdeDebugListener;
 begin
   if FListeners = nil then
   begin
     Exit;
   end;
   // Kopie: Ein Zuhörer darf sich beim Ereignis ab- oder einen anderen anmelden.
-  Listeners := FListeners.ToArray;
-  for Listener in Listeners do
+  mListeners := FListeners.ToArray;
+  for mListener in mListeners do
   begin
     TAtlasGuard.Run(TAtlasFeature.Debugger,
       procedure
       begin
-        if (FListeners <> nil) and (FListeners.IndexOf(Listener) >= 0) then
+        if (FListeners <> nil) and (FListeners.IndexOf(mListener) >= 0) then
         begin
-          AEvent(Listener);
+          AEvent(mListener);
         end;
       end);
   end;
@@ -390,28 +390,28 @@ end;
 
 class procedure TAtlasIdeDebugSession.StateChanged(const AProcess: IOTAProcess);
 var
-  State: TOTAProcessState;
-  Stop: TAtlasDebugStop;
+  mState: TOTAProcessState;
+  mStop: TAtlasDebugStop;
 begin
   if (AProcess = nil) or (FInternal > 0) then
   begin
     Exit;
   end;
-  State := AProcess.ProcessState;
-  if IsStoppedState(State) then
+  mState := AProcess.ProcessState;
+  if IsStoppedState(mState) then
   begin
-    case State of
+    case mState of
       psException:
-        Stop := TAtlasDebugStop.Exception;
+        mStop := TAtlasDebugStop.Exception;
       psFault, psResFault:
-        Stop := TAtlasDebugStop.Fault;
+        mStop := TAtlasDebugStop.Fault;
     else
-      Stop := TAtlasDebugStop.Paused;
+      mStop := TAtlasDebugStop.Paused;
     end;
     FStopped := True;
     Inc(FStopCount);
     // Erst nach der Benachrichtigung des Debuggers melden; ist der Halt bis dahin vorbei, entfällt er.
-    FPendingStop := Stop;
+    FPendingStop := mStop;
     FPendingCount := FStopCount;
     if FStopTimer = nil then
     begin
@@ -423,7 +423,7 @@ begin
     end;
     FStopTimer.Enabled := True;
   end
-  else if (State = psRunning) and FStopped then
+  else if (mState = psRunning) and FStopped then
   begin
     FStopped := False;
     NotifyListeners(
@@ -436,7 +436,7 @@ end;
 
 class procedure TAtlasIdeDebugSession.StopTick;
 var
-  Stop: TAtlasDebugStop;
+  mStop: TAtlasDebugStop;
 begin
   FStopTimer.Enabled := False;
   // Weitergelaufen oder schon ein neuer Halt (der meldet sich selbst): dieser entfällt.
@@ -444,11 +444,11 @@ begin
   begin
     Exit;
   end;
-  Stop := FPendingStop;
+  mStop := FPendingStop;
   NotifyListeners(
     procedure(AListener: IAtlasIdeDebugListener)
     begin
-      AListener.DebugStopped(Stop);
+      AListener.DebugStopped(mStop);
     end);
 end;
 
@@ -469,25 +469,25 @@ end;
 
 class function TAtlasIdeDebugSession.Process: IOTAProcess;
 var
-  Services: IOTADebuggerServices;
+  mServices: IOTADebuggerServices;
 begin
   Result := nil;
-  Services := Debugger;
-  if Services <> nil then
+  mServices := Debugger;
+  if mServices <> nil then
   begin
-    Result := Services.CurrentProcess;
+    Result := mServices.CurrentProcess;
   end;
 end;
 
 class function TAtlasIdeDebugSession.StoppedThread: IOTAThread;
 var
-  Current: IOTAProcess;
+  mCurrent: IOTAProcess;
 begin
   Result := nil;
-  Current := Process;
-  if (Current <> nil) and IsStoppedState(Current.ProcessState) then
+  mCurrent := Process;
+  if (mCurrent <> nil) and IsStoppedState(mCurrent.ProcessState) then
   begin
-    Result := Current.CurrentThread;
+    Result := mCurrent.CurrentThread;
   end;
 end;
 
@@ -513,14 +513,14 @@ end;
 
 class function TAtlasIdeDebugSession.LaunchValue(const AName: string): string;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := '';
-  for Index := Low(LaunchOptionNames) to High(LaunchOptionNames) do
+  for mIndex := Low(cLaunchOptionNames) to High(cLaunchOptionNames) do
   begin
-    if SameText(LaunchOptionNames[Index], AName) then
+    if SameText(cLaunchOptionNames[mIndex], AName) then
     begin
-      Exit(FLaunchValues[Index]);
+      Exit(FLaunchValues[mIndex]);
     end;
   end;
 end;
@@ -663,13 +663,13 @@ end;
 
 class function TAtlasIdeDebugSession.RunMode(ARunMode: TOTARunMode): Boolean;
 var
-  Current: IOTAProcess;
+  mCurrent: IOTAProcess;
 begin
-  Current := Process;
-  Result := (Current <> nil) and IsStoppedState(Current.ProcessState);
+  mCurrent := Process;
+  Result := (mCurrent <> nil) and IsStoppedState(mCurrent.ProcessState);
   if Result then
   begin
-    Current.Run(ARunMode);
+    mCurrent.Run(ARunMode);
   end;
 end;
 

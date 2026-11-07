@@ -14,7 +14,7 @@ type
   TMcpConventions = class
   public
     /// <summary>Uri der Ressource.</summary>
-    const Uri = 'delphi://conventions';
+    const cUri = 'delphi://conventions';
     /// <summary>Meldet die Ressource an AServer an; gelesen wird erst beim Abruf, mit den Einstellungen von
     /// AWorkspace zu diesem Zeitpunkt.</summary>
     class procedure Register(AServer: TMcpServer; AWorkspace: TShellWorkspace); static;
@@ -61,7 +61,7 @@ end;
 
 class procedure TMcpConventions.Register(AServer: TMcpServer; AWorkspace: TShellWorkspace);
 begin
-  AServer.AddResource(Uri, cTexts[TMcpConventionsText.Name].Text, cTexts[TMcpConventionsText.Description].Text,
+  AServer.AddResource(cUri, cTexts[TMcpConventionsText.Name].Text, cTexts[TMcpConventionsText.Description].Text,
     'text/markdown', ConventionsOf(AWorkspace));
 end;
 

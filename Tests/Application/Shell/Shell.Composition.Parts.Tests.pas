@@ -61,7 +61,7 @@ var
   mUsesContext: TUsesContext;
 begin
   Assert.IsNull(FParts.Index);
-  Assert.AreEqual(Cardinal(TShellParts.RequestTimeoutMs), FParts.CurrentRequestTimeout);
+  Assert.AreEqual(Cardinal(TShellParts.cRequestTimeoutMs), FParts.CurrentRequestTimeout);
   Assert.IsFalse(FParts.TestUnitContextFor('file:///C:/Projekt/A.pas', mTestContext));
   Assert.IsFalse(FParts.UsesContextFor('file:///C:/Projekt/A.pas', mUsesContext));
 end;

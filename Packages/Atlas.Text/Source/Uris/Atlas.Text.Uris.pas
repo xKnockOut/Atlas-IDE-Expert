@@ -34,71 +34,71 @@ type
 implementation
 
 const
-  Scheme = 'file://';
-  HexDigits = '0123456789ABCDEF';
+  cScheme = 'file://';
+  cHexDigits = '0123456789ABCDEF';
 
 { TTextUris }
 
 class function TTextUris.PercentDecode(const AValue: string): string;
 var
-  Bytes, Chunk: TBytes;
-  Count, Index, Code: Integer;
+  mBytes, mChunk: TBytes;
+  mCount, mIndex, mCode: Integer;
 begin
   if Pos('%', AValue) = 0 then
   begin
     Exit(AValue);
   end;
-  Bytes := nil;
-  SetLength(Bytes, Length(AValue) * 3);
-  Count := 0;
-  Index := 1;
-  while Index <= Length(AValue) do
+  mBytes := nil;
+  SetLength(mBytes, Length(AValue) * 3);
+  mCount := 0;
+  mIndex := 1;
+  while mIndex <= Length(AValue) do
   begin
-    if (AValue[Index] = '%') and (Index + 2 <= Length(AValue)) then
+    if (AValue[mIndex] = '%') and (mIndex + 2 <= Length(AValue)) then
     begin
-      Code := StrToIntDef('$' + Copy(AValue, Index + 1, 2), -1);
-      if Code >= 0 then
+      mCode := StrToIntDef('$' + Copy(AValue, mIndex + 1, 2), -1);
+      if mCode >= 0 then
       begin
-        Bytes[Count] := Code;
-        Inc(Count);
-        Inc(Index, 3);
+        mBytes[mCount] := mCode;
+        Inc(mCount);
+        Inc(mIndex, 3);
         Continue;
       end;
     end;
-    Chunk := TEncoding.UTF8.GetBytes(AValue[Index]);
-    if Length(Chunk) > 0 then
+    mChunk := TEncoding.UTF8.GetBytes(AValue[mIndex]);
+    if Length(mChunk) > 0 then
     begin
-      Move(Chunk[0], Bytes[Count], Length(Chunk));
+      Move(mChunk[0], mBytes[mCount], Length(mChunk));
     end;
-    Inc(Count, Length(Chunk));
-    Inc(Index);
+    Inc(mCount, Length(mChunk));
+    Inc(mIndex);
   end;
-  Result := TEncoding.UTF8.GetString(Bytes, 0, Count);
+  Result := TEncoding.UTF8.GetString(mBytes, 0, mCount);
 end;
 
 class function TTextUris.PercentEncode(const AValue: string): string;
 var
-  Bytes: TBytes;
-  Value: Byte;
-  Builder: TStringBuilder;
+  mBytes: TBytes;
+  mValue: Byte;
+  mBuilder: TStringBuilder;
 begin
-  Bytes := TEncoding.UTF8.GetBytes(AValue);
-  Builder := TStringBuilder.Create;
+  mBytes := TEncoding.UTF8.GetBytes(AValue);
+  mBuilder := TStringBuilder.Create;
   try
-    for Value in Bytes do
+    for mValue in mBytes do
     begin
-      if (Value < $80) and CharInSet(Char(Value), ['A'..'Z', 'a'..'z', '0'..'9', '-', '.', '_', '~', '/']) then
+      if (mValue < $80) and CharInSet(Char(mValue), ['A'..'Z', 'a'..'z', '0'..'9', '-', '.', '_', '~', '/']) then
       begin
-        Builder.Append(Char(Value));
+        mBuilder.Append(Char(mValue));
       end
       else
       begin
-        Builder.Append('%').Append(HexDigits[(Value shr 4) + 1]).Append(HexDigits[(Value and 15) + 1]);
+        mBuilder.Append('%').Append(cHexDigits[(mValue shr 4) + 1]).Append(cHexDigits[(mValue and 15) + 1]);
       end;
     end;
-    Result := Builder.ToString;
+    Result := mBuilder.ToString;
   finally
-    Builder.Free;
+    mBuilder.Free;
   end;
 end;
 
@@ -109,24 +109,24 @@ end;
 
 class function TTextUris.ToPath(const AUri: string): string;
 var
-  Rest, Host: string;
-  Slash: Integer;
+  mRest, mHost: string;
+  mSlash: Integer;
 begin
-  if not SameText(Copy(AUri, 1, Length(Scheme)), Scheme) then
+  if not SameText(Copy(AUri, 1, Length(cScheme)), cScheme) then
   begin
     Exit('');
   end;
-  Rest := Copy(AUri, Length(Scheme) + 1, MaxInt);
-  Slash := Pos('/', Rest);
-  if Slash = 0 then
+  mRest := Copy(AUri, Length(cScheme) + 1, MaxInt);
+  mSlash := Pos('/', mRest);
+  if mSlash = 0 then
   begin
-    Slash := Length(Rest) + 1;
+    mSlash := Length(mRest) + 1;
   end;
-  Host := Copy(Rest, 1, Slash - 1);
-  Result := PercentDecode(Copy(Rest, Slash, MaxInt));
-  if (Host <> '') and not SameText(Host, 'localhost') then
+  mHost := Copy(mRest, 1, mSlash - 1);
+  Result := PercentDecode(Copy(mRest, mSlash, MaxInt));
+  if (mHost <> '') and not SameText(mHost, 'localhost') then
   begin
-    Exit('\\' + PercentDecode(Host) + StringReplace(Result, '/', '\', [rfReplaceAll]));
+    Exit('\\' + PercentDecode(mHost) + StringReplace(Result, '/', '\', [rfReplaceAll]));
   end;
   // /c:/... → c:\...
   if (Length(Result) >= 3) and (Result[1] = '/') and (Result[3] = ':') then
@@ -137,18 +137,18 @@ end;
 
 class function TTextUris.FromPath(const APath: string): string;
 var
-  Path: string;
+  mPath: string;
 begin
-  Path := StringReplace(NormalizePath(APath), '\', '/', [rfReplaceAll]);
-  if Copy(Path, 1, 2) = '//' then
+  mPath := StringReplace(NormalizePath(APath), '\', '/', [rfReplaceAll]);
+  if Copy(mPath, 1, 2) = '//' then
   begin
-    Exit(Scheme + PercentEncode(Copy(Path, 3, MaxInt)));
+    Exit(cScheme + PercentEncode(Copy(mPath, 3, MaxInt)));
   end;
-  if (Length(Path) >= 2) and (Path[2] = ':') then
+  if (Length(mPath) >= 2) and (mPath[2] = ':') then
   begin
-    Path := '/' + LowerCase(Path[1]) + ':' + Copy(Path, 3, MaxInt);
+    mPath := '/' + LowerCase(mPath[1]) + ':' + Copy(mPath, 3, MaxInt);
   end;
-  Result := Scheme + PercentEncode(Path);
+  Result := cScheme + PercentEncode(mPath);
 end;
 
 // Lange Pfade: \\?\C:\... und \\?\UNC\server\... in die kurze Form.

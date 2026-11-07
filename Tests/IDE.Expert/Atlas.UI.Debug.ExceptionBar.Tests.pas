@@ -109,100 +109,100 @@ end;
 
 procedure TAtlasDebugExceptionBarTests.ButtonsInOrder;
 var
-  BreakRect, ContinueRect, ClassRect, LocationRect, CopyRect: TRect;
+  mBreakRect, mContinueRect, mClassRect, mLocationRect, mCopyRect: TRect;
 begin
   FBar.SetInfo(SampleInfo(True));
-  BreakRect := FBar.ActionRect(TAtlasDebugBarAction.BreakHere);
-  ContinueRect := FBar.ActionRect(TAtlasDebugBarAction.Continue);
-  ClassRect := FBar.ActionRect(TAtlasDebugBarAction.IgnoreClass);
-  LocationRect := FBar.ActionRect(TAtlasDebugBarAction.IgnoreLocation);
-  CopyRect := FBar.ActionRect(TAtlasDebugBarAction.Copy);
-  Assert.IsFalse(BreakRect.IsEmpty);
-  Assert.IsTrue(BreakRect.Right < ContinueRect.Left);
-  Assert.IsTrue(ContinueRect.Right < ClassRect.Left);
-  Assert.IsTrue(ClassRect.Right < LocationRect.Left);
-  Assert.IsTrue(LocationRect.Right < CopyRect.Left);
-  Assert.IsTrue(BreakRect.Bottom <= FBar.ClientHeight, 'Knöpfe in der Leiste');
-  Assert.IsTrue(BreakRect.Top > FBar.ActionRect(TAtlasDebugBarAction.Open).Bottom - 1, 'unter der Ortszeile');
+  mBreakRect := FBar.ActionRect(TAtlasDebugBarAction.BreakHere);
+  mContinueRect := FBar.ActionRect(TAtlasDebugBarAction.Continue);
+  mClassRect := FBar.ActionRect(TAtlasDebugBarAction.IgnoreClass);
+  mLocationRect := FBar.ActionRect(TAtlasDebugBarAction.IgnoreLocation);
+  mCopyRect := FBar.ActionRect(TAtlasDebugBarAction.Copy);
+  Assert.IsFalse(mBreakRect.IsEmpty);
+  Assert.IsTrue(mBreakRect.Right < mContinueRect.Left);
+  Assert.IsTrue(mContinueRect.Right < mClassRect.Left);
+  Assert.IsTrue(mClassRect.Right < mLocationRect.Left);
+  Assert.IsTrue(mLocationRect.Right < mCopyRect.Left);
+  Assert.IsTrue(mBreakRect.Bottom <= FBar.ClientHeight, 'Knöpfe in der Leiste');
+  Assert.IsTrue(mBreakRect.Top > FBar.ActionRect(TAtlasDebugBarAction.Open).Bottom - 1, 'unter der Ortszeile');
 end;
 
 procedure TAtlasDebugExceptionBarTests.IgnoreLocationOnlyWithLocation;
 var
-  Info: TAtlasDebugBannerInfo;
-  Reported: TAtlasDebugBarAction;
+  mInfo: TAtlasDebugBannerInfo;
+  mReported: TAtlasDebugBarAction;
 begin
   FBar.SetInfo(SampleInfo(False));
   Assert.IsTrue(FBar.ActionRect(TAtlasDebugBarAction.IgnoreLocation).IsEmpty);
-  Reported := TAtlasDebugBarAction.None;
+  mReported := TAtlasDebugBarAction.None;
   FBar.OnAction :=
     procedure(AAction: TAtlasDebugBarAction)
     begin
-      Reported := AAction;
+      mReported := AAction;
     end;
   FBar.Trigger(TAtlasDebugBarAction.IgnoreLocation);
-  Assert.AreEqual(Ord(TAtlasDebugBarAction.None), Ord(Reported), 'ohne Knopf keine Aktion');
-  Info := SampleInfo(False);
-  Info.FileName := '';
-  Info.Line := 0;
-  FBar.SetInfo(Info);
+  Assert.AreEqual(Ord(TAtlasDebugBarAction.None), Ord(mReported), 'ohne Knopf keine Aktion');
+  mInfo := SampleInfo(False);
+  mInfo.FileName := '';
+  mInfo.Line := 0;
+  FBar.SetInfo(mInfo);
   Assert.IsTrue(FBar.ActionRect(TAtlasDebugBarAction.Open).IsEmpty, 'ohne Datei kein Sprung');
   FBar.Trigger(TAtlasDebugBarAction.Open);
-  Assert.AreEqual(Ord(TAtlasDebugBarAction.None), Ord(Reported));
+  Assert.AreEqual(Ord(TAtlasDebugBarAction.None), Ord(mReported));
   FBar.OnAction := nil;
 end;
 
 procedure TAtlasDebugExceptionBarTests.ClickReportsActionOnRelease;
 var
-  Reported: TAtlasDebugBarAction;
-  Area, Other: TRect;
+  mReported: TAtlasDebugBarAction;
+  mArea, mOther: TRect;
 begin
   FBar.SetInfo(SampleInfo(True));
-  Reported := TAtlasDebugBarAction.None;
+  mReported := TAtlasDebugBarAction.None;
   FBar.OnAction :=
     procedure(AAction: TAtlasDebugBarAction)
     begin
-      Reported := AAction;
+      mReported := AAction;
     end;
-  Area := FBar.ActionRect(TAtlasDebugBarAction.Continue);
-  Assert.AreEqual(Ord(TAtlasDebugBarAction.Continue), Ord(FBar.ActionAt(Area.CenterPoint.X, Area.CenterPoint.Y)));
+  mArea := FBar.ActionRect(TAtlasDebugBarAction.Continue);
+  Assert.AreEqual(Ord(TAtlasDebugBarAction.Continue), Ord(FBar.ActionAt(mArea.CenterPoint.X, mArea.CenterPoint.Y)));
   // Drücken auf „Fortsetzen“, Loslassen auf „Anhalten“: nichts.
-  Other := FBar.ActionRect(TAtlasDebugBarAction.BreakHere);
-  TBarAccess(FBar).MouseDown(mbLeft, [], Area.CenterPoint.X, Area.CenterPoint.Y);
-  TBarAccess(FBar).MouseUp(mbLeft, [], Other.CenterPoint.X, Other.CenterPoint.Y);
-  Assert.AreEqual(Ord(TAtlasDebugBarAction.None), Ord(Reported));
-  TBarAccess(FBar).MouseDown(mbLeft, [], Area.CenterPoint.X, Area.CenterPoint.Y);
-  TBarAccess(FBar).MouseUp(mbLeft, [], Area.CenterPoint.X, Area.CenterPoint.Y);
-  Assert.AreEqual(Ord(TAtlasDebugBarAction.Continue), Ord(Reported));
+  mOther := FBar.ActionRect(TAtlasDebugBarAction.BreakHere);
+  TBarAccess(FBar).MouseDown(mbLeft, [], mArea.CenterPoint.X, mArea.CenterPoint.Y);
+  TBarAccess(FBar).MouseUp(mbLeft, [], mOther.CenterPoint.X, mOther.CenterPoint.Y);
+  Assert.AreEqual(Ord(TAtlasDebugBarAction.None), Ord(mReported));
+  TBarAccess(FBar).MouseDown(mbLeft, [], mArea.CenterPoint.X, mArea.CenterPoint.Y);
+  TBarAccess(FBar).MouseUp(mbLeft, [], mArea.CenterPoint.X, mArea.CenterPoint.Y);
+  Assert.AreEqual(Ord(TAtlasDebugBarAction.Continue), Ord(mReported));
   FBar.OnAction := nil;
 end;
 
 procedure TAtlasDebugExceptionBarTests.ExplanationGrowsAndAddsButtons;
 var
-  Explanation: TAtlasDebugBannerExplanation;
-  Reported: TAtlasDebugBarAction;
-  Index: Integer;
+  mExplanation: TAtlasDebugBannerExplanation;
+  mReported: TAtlasDebugBarAction;
+  mIndex: Integer;
 begin
   FBar.SetInfo(SampleInfo(True));
   // Während der Prüfung: eine Zeile mehr, keine Knöpfe der Erklärung.
-  Explanation := Default(TAtlasDebugBannerExplanation);
-  Explanation.Active := True;
-  Explanation.Busy := True;
-  Explanation.Headline := 'Atlas prüft';
-  Explanation.WhereName := 'Kunde';
-  FBar.SetExplanation(Explanation);
+  mExplanation := Default(TAtlasDebugBannerExplanation);
+  mExplanation.Active := True;
+  mExplanation.Busy := True;
+  mExplanation.Headline := 'Atlas prüft';
+  mExplanation.WhereName := 'Kunde';
+  FBar.SetExplanation(mExplanation);
   Assert.AreEqual(4, FBar.Rows);
   Assert.AreEqual(TAtlasDebugExceptionBar.BarHeight(FBar.CurrentPPI, 4), FBar.Height);
   Assert.IsTrue(FBar.ActionRect(TAtlasDebugBarAction.WhereAssigned).IsEmpty);
   // Fertig: Ergebniszeile, 8 Glieder (6 gezeigt, „… 2 weitere“), Knopfzeile.
-  Explanation.Busy := False;
-  Explanation.Headline := 'Auftrag.Kunde ist nil';
-  for Index := 1 to 8 do
+  mExplanation.Busy := False;
+  mExplanation.Headline := 'Auftrag.Kunde ist nil';
+  for mIndex := 1 to 8 do
   begin
-    Explanation.Lines := Explanation.Lines + [TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Ok,
-      'Glied ' + IntToStr(Index))];
+    mExplanation.Lines := mExplanation.Lines + [TAtlasDebugBannerLine.Create(TAtlasDebugBannerMark.Ok,
+      'Glied ' + IntToStr(mIndex))];
   end;
-  Explanation.CopyText := 'Text';
-  FBar.SetExplanation(Explanation);
+  mExplanation.CopyText := 'Text';
+  FBar.SetExplanation(mExplanation);
   Assert.AreEqual(3 + 1 + 6 + 1 + 1, FBar.Rows);
   Assert.IsFalse(FBar.ActionRect(TAtlasDebugBarAction.WhereAssigned).IsEmpty);
   Assert.IsTrue(FBar.ActionRect(TAtlasDebugBarAction.Evaluate).IsEmpty, 'ohne Ausdruck kein Knopf');
@@ -210,16 +210,16 @@ begin
     FBar.ActionRect(TAtlasDebugBarAction.CopyExplanation).Left);
   Assert.IsTrue(FBar.ActionRect(TAtlasDebugBarAction.WhereAssigned).Bottom <=
     FBar.ActionRect(TAtlasDebugBarAction.Continue).Top, 'über den Knöpfen der Leiste');
-  Reported := TAtlasDebugBarAction.None;
+  mReported := TAtlasDebugBarAction.None;
   FBar.OnAction :=
     procedure(AAction: TAtlasDebugBarAction)
     begin
-      Reported := AAction;
+      mReported := AAction;
     end;
   FBar.Trigger(TAtlasDebugBarAction.Evaluate);
-  Assert.AreEqual(Ord(TAtlasDebugBarAction.None), Ord(Reported));
+  Assert.AreEqual(Ord(TAtlasDebugBarAction.None), Ord(mReported));
   FBar.Trigger(TAtlasDebugBarAction.CopyExplanation);
-  Assert.AreEqual(Ord(TAtlasDebugBarAction.CopyExplanation), Ord(Reported));
+  Assert.AreEqual(Ord(TAtlasDebugBarAction.CopyExplanation), Ord(mReported));
   FBar.OnAction := nil;
   // Ohne Erklärung wieder drei Zeilen.
   FBar.SetExplanation(Default(TAtlasDebugBannerExplanation));

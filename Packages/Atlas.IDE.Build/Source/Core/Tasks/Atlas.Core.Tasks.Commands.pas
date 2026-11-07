@@ -43,14 +43,14 @@ end;
 
 function JoinPath(const AFolder, AName: string): string;
 var
-  Folder: string;
+  mFolder: string;
 begin
-  Folder := AFolder;
-  while (Folder <> '') and CharInSet(Folder[Length(Folder)], ['\', '/']) do
+  mFolder := AFolder;
+  while (mFolder <> '') and CharInSet(mFolder[Length(mFolder)], ['\', '/']) do
   begin
-    SetLength(Folder, Length(Folder) - 1);
+    SetLength(mFolder, Length(mFolder) - 1);
   end;
-  Result := Folder + '\' + AName;
+  Result := mFolder + '\' + AName;
   // Unter Linux (Tests unter FPC) gilt / als Trenner.
   if PathDelim <> '\' then
   begin
@@ -152,73 +152,73 @@ end;
 
 class function TAtlasTaskCommands.MergeEnvironment(const ACurrent, ANames, AValues: TArray<string>): TArray<string>;
 var
-  Index, Item, Split: Integer;
-  Found: Boolean;
+  mIndex, mItem, mSplit: Integer;
+  mFound: Boolean;
 begin
   Result := Copy(ACurrent);
-  for Index := 0 to High(ANames) do
+  for mIndex := 0 to High(ANames) do
   begin
-    if (Trim(ANames[Index]) = '') or (Index > High(AValues)) then
+    if (Trim(ANames[mIndex]) = '') or (mIndex > High(AValues)) then
     begin
       Continue;
     end;
-    Found := False;
-    for Item := 0 to High(Result) do
+    mFound := False;
+    for mItem := 0 to High(Result) do
     begin
       // Einträge wie „=C:=C:\“ beginnen mit „=“ und gehören zum Prozess.
-      Split := Pos('=', Copy(Result[Item], 2, MaxInt)) + 1;
-      if (Split > 1) and SameText(Copy(Result[Item], 1, Split - 1), ANames[Index]) then
+      mSplit := Pos('=', Copy(Result[mItem], 2, MaxInt)) + 1;
+      if (mSplit > 1) and SameText(Copy(Result[mItem], 1, mSplit - 1), ANames[mIndex]) then
       begin
-        Result[Item] := ANames[Index] + '=' + AValues[Index];
-        Found := True;
+        Result[mItem] := ANames[mIndex] + '=' + AValues[mIndex];
+        mFound := True;
         Break;
       end;
     end;
-    if not Found then
+    if not mFound then
     begin
-      Result := Result + [ANames[Index] + '=' + AValues[Index]];
+      Result := Result + [ANames[mIndex] + '=' + AValues[mIndex]];
     end;
   end;
 end;
 
 class function TAtlasTaskCommands.QuoteArgument(const AArgument: string): string;
 var
-  Index, Backslashes: Integer;
+  mIndex, mBackslashes: Integer;
 begin
   if (AArgument <> '') and (LastDelimiter(' '#9'"', AArgument) = 0) then
   begin
     Exit(AArgument);
   end;
   Result := '"';
-  Backslashes := 0;
-  for Index := 1 to Length(AArgument) do
+  mBackslashes := 0;
+  for mIndex := 1 to Length(AArgument) do
   begin
-    if AArgument[Index] = '\' then
+    if AArgument[mIndex] = '\' then
     begin
-      Inc(Backslashes);
+      Inc(mBackslashes);
     end
     else
     begin
-      if AArgument[Index] = '"' then
+      if AArgument[mIndex] = '"' then
       begin
-        Result := Result + StringOfChar('\', Backslashes + 1);
+        Result := Result + StringOfChar('\', mBackslashes + 1);
       end;
-      Backslashes := 0;
+      mBackslashes := 0;
     end;
-    Result := Result + AArgument[Index];
+    Result := Result + AArgument[mIndex];
   end;
-  Result := Result + StringOfChar('\', Backslashes) + '"';
+  Result := Result + StringOfChar('\', mBackslashes) + '"';
 end;
 
 class function TAtlasTaskCommands.BuildCommandLine(const AProgram: string; const AArgs: TArray<string>;
   ABatch: Boolean): string;
 var
-  Arg: string;
+  mArg: string;
 begin
   Result := QuoteArgument(AProgram);
-  for Arg in AArgs do
+  for mArg in AArgs do
   begin
-    Result := Result + ' ' + QuoteArgument(Arg);
+    Result := Result + ' ' + QuoteArgument(mArg);
   end;
   // /s: cmd nimmt nur die äußeren Anführungszeichen weg, der Rest bleibt wie geschrieben.
   if ABatch then

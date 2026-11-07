@@ -81,11 +81,11 @@ type
 
   TAtlasStepInto = class
   public const
-    Command = 'atlas.server.stepTargets';
+    cCommand = 'atlas.server.stepTargets';
     /// <summary>Höchstens so viele Stufen ClassParent beim Suchen der Überschreibung.</summary>
-    MaxAncestors = 16;
+    cMaxAncestors = 16;
     /// <summary>Mit 1–9 direkt wählbar.</summary>
-    MaxDigit = 9;
+    cMaxDigit = 9;
   private
     class function KindOf(const AText: string): TAtlasStepKind; static;
     /// <summary>Ziele eines Aufrufs aus "targets"; ohne Datei oder Zeile fällt ein Eintrag weg.</summary>
@@ -141,15 +141,15 @@ end;
 
 class function TAtlasStepInto.Arguments(const AUri: string; ALine: Integer): string;
 var
-  Items: TJSONArray;
+  mItems: TJSONArray;
 begin
-  Items := TJSONArray.Create;
+  mItems := TJSONArray.Create;
   try
-    Items.Add(AUri);
-    Items.Add(ALine);
-    Result := Items.ToJSON;
+    mItems.Add(AUri);
+    mItems.Add(ALine);
+    Result := mItems.ToJSON;
   finally
-    Items.Free;
+    mItems.Free;
   end;
 end;
 
@@ -224,10 +224,10 @@ end;
 
 class function TAtlasStepInto.ReadAnswer(AJson: TJSONValue; out AAnswer: TAtlasStepAnswer): Boolean;
 var
-  Root: TJSONObject;
-  Calls: TJSONArray;
-  Index: Integer;
-  Call: TAtlasStepCall;
+  mRoot: TJSONObject;
+  mCalls: TJSONArray;
+  mIndex: Integer;
+  mCall: TAtlasStepCall;
 begin
   AAnswer := Default(TAtlasStepAnswer);
   AAnswer.FollowLine := -1;
@@ -236,27 +236,27 @@ begin
   begin
     Exit;
   end;
-  Root := TJSONObject(AJson);
-  if Root.GetValue<Integer>('format', 0) <> 1 then
+  mRoot := TJSONObject(AJson);
+  if mRoot.GetValue<Integer>('format', 0) <> 1 then
   begin
     Exit;
   end;
-  AAnswer.Line := Root.GetValue<Integer>('line', -1);
-  AAnswer.FollowLine := Root.GetValue<Integer>('followLine', -1);
-  if not Root.TryGetValue<TJSONArray>('calls', Calls) then
+  AAnswer.Line := mRoot.GetValue<Integer>('line', -1);
+  AAnswer.FollowLine := mRoot.GetValue<Integer>('followLine', -1);
+  if not mRoot.TryGetValue<TJSONArray>('calls', mCalls) then
   begin
     Exit(True);
   end;
-  for Index := 0 to Calls.Count - 1 do
+  for mIndex := 0 to mCalls.Count - 1 do
   begin
-    if not (Calls.Items[Index] is TJSONObject) then
+    if not (mCalls.Items[mIndex] is TJSONObject) then
     begin
       Continue;
     end;
-    Call := ReadCall(TJSONObject(Calls.Items[Index]));
-    if Call.Name <> '' then
+    mCall := ReadCall(TJSONObject(mCalls.Items[mIndex]));
+    if mCall.Name <> '' then
     begin
-      AAnswer.Calls := AAnswer.Calls + [Call];
+      AAnswer.Calls := AAnswer.Calls + [mCall];
     end;
   end;
   Result := True;
@@ -264,18 +264,18 @@ end;
 
 class function TAtlasStepInto.ShortName(const ATypeName: string): string;
 var
-  Angle, Dot: Integer;
+  mAngle, mDot: Integer;
 begin
   Result := Trim(ATypeName);
-  Angle := Pos('<', Result);
-  if Angle > 0 then
+  mAngle := Pos('<', Result);
+  if mAngle > 0 then
   begin
-    Result := Copy(Result, 1, Angle - 1);
+    Result := Copy(Result, 1, mAngle - 1);
   end;
-  Dot := LastDelimiter('.', Result);
-  if Dot > 0 then
+  mDot := LastDelimiter('.', Result);
+  if mDot > 0 then
   begin
-    Result := Copy(Result, Dot + 1, MaxInt);
+    Result := Copy(Result, mDot + 1, MaxInt);
   end;
 end;
 
@@ -290,7 +290,7 @@ end;
 
 class function TAtlasStepInto.ClassExpression(const ACall: TAtlasStepCall; ADepth: Integer): string;
 var
-  Level: Integer;
+  mLevel: Integer;
 begin
   Result := '';
   if (ACall.Receiver = '') or not ACall.ReceiverSimple then
@@ -305,7 +305,7 @@ begin
   begin
     Result := ACall.Receiver;
   end;
-  for Level := 1 to ADepth do
+  for mLevel := 1 to ADepth do
   begin
     Result := Result + '.ClassParent';
   end;
@@ -331,41 +331,41 @@ end;
 class function TAtlasStepInto.PickTarget(const ACall: TAtlasStepCall; const AEvaluate: TAtlasStepEvaluate;
   out ATarget: TAtlasStepTarget): Boolean;
 var
-  Depth: Integer;
-  Expression, Value, Name: string;
-  Done: Boolean;
+  mDepth: Integer;
+  mExpression, mValue, mName: string;
+  mDone: Boolean;
 begin
   Result := False;
   if not Assigned(AEvaluate) then
   begin
     Exit;
   end;
-  Depth := 0;
-  Done := False;
-  while not Done and (Depth <= MaxAncestors) do
+  mDepth := 0;
+  mDone := False;
+  while not mDone and (mDepth <= cMaxAncestors) do
   begin
-    Expression := ClassExpression(ACall, Depth);
-    Name := '';
-    if (Expression <> '') and AEvaluate(Expression, Value) then
+    mExpression := ClassExpression(ACall, mDepth);
+    mName := '';
+    if (mExpression <> '') and AEvaluate(mExpression, mValue) then
     begin
-      Name := Unquote(Value);
+      mName := Unquote(mValue);
     end;
     // Die nächste Klasse mit eigenem Rumpf gewinnt; ohne Namen oder bei TObject endet die Suche.
-    Result := (Name <> '') and MatchTarget(ACall, Name, ATarget);
-    Done := Result or (Name = '') or SameText(Name, 'TObject');
-    Inc(Depth);
+    Result := (mName <> '') and MatchTarget(ACall, mName, ATarget);
+    mDone := Result or (mName = '') or SameText(mName, 'TObject');
+    Inc(mDepth);
   end;
 end;
 
 class function TAtlasStepInto.RowOf(const AAnswer: TAtlasStepAnswer; ACall: Integer;
   const ATarget: TAtlasStepTarget; AHasTarget: Boolean; const ACanBreak: TAtlasStepCanBreak): TAtlasStepRow;
 var
-  Call: TAtlasStepCall;
+  mCall: TAtlasStepCall;
 begin
-  Call := AAnswer.Calls[ACall];
+  mCall := AAnswer.Calls[ACall];
   Result := Default(TAtlasStepRow);
   Result.Call := ACall;
-  Result.Kind := Call.Kind;
+  Result.Kind := mCall.Kind;
   Result.HasTarget := AHasTarget;
   Result.Target := ATarget;
   if AHasTarget then
@@ -386,17 +386,17 @@ begin
   end
   else
   begin
-    if Call.Container <> '' then
+    if mCall.Container <> '' then
     begin
-      Result.Caption := Call.Container + '.' + Call.Name;
+      Result.Caption := mCall.Container + '.' + mCall.Name;
     end
     else
     begin
-      Result.Caption := Call.Name;
+      Result.Caption := mCall.Name;
     end;
-    if (Call.DeclFile <> '') and (Call.DeclLine >= 0) then
+    if (mCall.DeclFile <> '') and (mCall.DeclLine >= 0) then
     begin
-      Result.Location := ExtractFileName(Call.DeclFile) + ':' + IntToStr(Call.DeclLine + 1);
+      Result.Location := ExtractFileName(mCall.DeclFile) + ':' + IntToStr(mCall.DeclLine + 1);
     end;
     Result.Unavailable := TAtlasStepUnavailable.NoSource;
   end;
@@ -405,35 +405,35 @@ end;
 class function TAtlasStepInto.Rows(const AAnswer: TAtlasStepAnswer; const AEvaluate: TAtlasStepEvaluate;
   const ACanBreak: TAtlasStepCanBreak): TArray<TAtlasStepRow>;
 var
-  Index: Integer;
-  Call: TAtlasStepCall;
-  Target: TAtlasStepTarget;
-  Row: TAtlasStepRow;
+  mIndex: Integer;
+  mCall: TAtlasStepCall;
+  mTarget: TAtlasStepTarget;
+  mRow: TAtlasStepRow;
 begin
   Result := nil;
-  for Index := 0 to High(AAnswer.Calls) do
+  for mIndex := 0 to High(AAnswer.Calls) do
   begin
-    Call := AAnswer.Calls[Index];
-    if Length(Call.Targets) = 0 then
+    mCall := AAnswer.Calls[mIndex];
+    if Length(mCall.Targets) = 0 then
     begin
-      Result := Result + [RowOf(AAnswer, Index, Default(TAtlasStepTarget), False, ACanBreak)];
+      Result := Result + [RowOf(AAnswer, mIndex, Default(TAtlasStepTarget), False, ACanBreak)];
     end
-    else if not Call.IsVirtual or (Length(Call.Targets) = 1) then
+    else if not mCall.IsVirtual or (Length(mCall.Targets) = 1) then
     begin
-      Result := Result + [RowOf(AAnswer, Index, Call.Targets[0], True, ACanBreak)];
+      Result := Result + [RowOf(AAnswer, mIndex, mCall.Targets[0], True, ACanBreak)];
     end
-    else if PickTarget(Call, AEvaluate, Target) then
+    else if PickTarget(mCall, AEvaluate, mTarget) then
     begin
-      Result := Result + [RowOf(AAnswer, Index, Target, True, ACanBreak)];
+      Result := Result + [RowOf(AAnswer, mIndex, mTarget, True, ACanBreak)];
     end
     else
     begin
       // Laufzeittyp unbekannt: jede Überschreibung zur Wahl.
-      for Target in Call.Targets do
+      for mTarget in mCall.Targets do
       begin
-        Row := RowOf(AAnswer, Index, Target, True, ACanBreak);
-        Row.Candidate := True;
-        Result := Result + [Row];
+        mRow := RowOf(AAnswer, mIndex, mTarget, True, ACanBreak);
+        mRow.Candidate := True;
+        Result := Result + [mRow];
       end;
     end;
   end;
@@ -441,28 +441,28 @@ end;
 
 class function TAtlasStepInto.NextAvailable(const ARows: TArray<TAtlasStepRow>; AFrom, ADelta: Integer): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   Result := -1;
   if ADelta = 0 then
   begin
     Exit;
   end;
-  Index := AFrom;
-  while (Index >= 0) and (Index <= High(ARows)) do
+  mIndex := AFrom;
+  while (mIndex >= 0) and (mIndex <= High(ARows)) do
   begin
-    if ARows[Index].Available then
+    if ARows[mIndex].Available then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
-    Inc(Index, ADelta);
+    Inc(mIndex, ADelta);
   end;
 end;
 
 class function TAtlasStepInto.DigitRow(const ARows: TArray<TAtlasStepRow>; ADigit: Integer): Integer;
 begin
   Result := -1;
-  if (ADigit >= 1) and (ADigit <= MaxDigit) and (ADigit <= Length(ARows)) and ARows[ADigit - 1].Available then
+  if (ADigit >= 1) and (ADigit <= cMaxDigit) and (ADigit <= Length(ARows)) and ARows[ADigit - 1].Available then
   begin
     Result := ADigit - 1;
   end;
@@ -475,7 +475,7 @@ end;
 
 class function TAtlasStepInto.IsLibraryFile(const AFileName, ARoot: string): Boolean;
 var
-  Source: string;
+  mSource: string;
 begin
   Result := False;
   if (AFileName = '') or (ARoot = '') then
@@ -483,12 +483,12 @@ begin
     Exit;
   end;
   // Beide Trenner gelten, die IDE meldet Pfade nicht immer gleich.
-  Source := ARoot.Replace('/', '\');
-  if not EndsText('\', Source) then
+  mSource := ARoot.Replace('/', '\');
+  if not EndsText('\', mSource) then
   begin
-    Source := Source + '\';
+    mSource := mSource + '\';
   end;
-  Result := StartsText(Source + 'source\', AFileName.Replace('/', '\'));
+  Result := StartsText(mSource + 'source\', AFileName.Replace('/', '\'));
 end;
 
 end.

@@ -91,8 +91,8 @@ type
   TAtlasIssueDevelopmentRequest = record
   public const
     /// <summary>Höchstens so viele Commits bzw. Branches.</summary>
-    DefaultMaxCommits = 200;
-    MaxBranches = 10;
+    cDefaultMaxCommits = 200;
+    cMaxBranches = 10;
   public
     /// <summary>Anbieter des Trackers ("github", "youtrack").</summary>
     Provider: string;
@@ -177,7 +177,7 @@ type
   /// <summary>Letzter Stand je Tracker und Kennung im Speicher, zuletzt benutzte zuerst.</summary>
   TAtlasIssueDevelopmentCache = class
   public const
-    MaxEntries = 50;
+    cMaxEntries = 50;
   private
     FKeys: TList<string>;
     FItems: TDictionary<string, TAtlasIssueDevelopment>;
@@ -241,7 +241,7 @@ begin
   Result.Key := Trim(AKey);
   Result.Bases := ABases;
   Result.Projects := AProjects;
-  Result.MaxCommits := DefaultMaxCommits;
+  Result.MaxCommits := cDefaultMaxCommits;
 end;
 
 { TAtlasIssueDevelopment }
@@ -330,7 +330,7 @@ var
 begin
   // GitHub: das Projekt ist "owner/repo" und spielt für die Nummer keine Rolle.
   mProject := '';
-  if SameText(ARequest.Provider, TAtlasTrackerTarget.YouTrack) then
+  if SameText(ARequest.Provider, TAtlasTrackerTarget.cYouTrack) then
   begin
     mProject := ARequest.Project;
   end;
@@ -412,7 +412,7 @@ begin
     end;
   end;
   Result := -1;
-  if Length(ABranches) < TAtlasIssueDevelopmentRequest.MaxBranches then
+  if Length(ABranches) < TAtlasIssueDevelopmentRequest.cMaxBranches then
   begin
     mBranch := Default(TAtlasIssueBranch);
     mBranch.Name := ALocalName;
@@ -690,7 +690,7 @@ begin
   mMax := ARequest.MaxCommits;
   if mMax < 1 then
   begin
-    mMax := TAtlasIssueDevelopmentRequest.DefaultMaxCommits;
+    mMax := TAtlasIssueDevelopmentRequest.cDefaultMaxCommits;
   end;
   Result := mHistory.SearchLog(SearchText(ARequest.Key), mMax, mEntries);
   ADevelopment.VcsOutcome := Result;
@@ -824,7 +824,7 @@ begin
   FKeys.Remove(mKey);
   FKeys.Insert(0, mKey);
   FItems.AddOrSetValue(mKey, ADevelopment);
-  while FKeys.Count > MaxEntries do
+  while FKeys.Count > cMaxEntries do
   begin
     FItems.Remove(FKeys[FKeys.Count - 1]);
     FKeys.Delete(FKeys.Count - 1);

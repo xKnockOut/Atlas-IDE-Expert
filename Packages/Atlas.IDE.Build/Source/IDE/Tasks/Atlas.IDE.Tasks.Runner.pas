@@ -122,26 +122,26 @@ type
     end;
 
     TJob = class
-      Id: Integer;
-      Name: string;
-      Project: string;
-      Worker: TWorker;
+      FId: Integer;
+      FName: string;
+      FProject: string;
+      FWorker: TWorker;
       /// <summary>Lauf gehört zu einer Reihe (Batch); 0 = einzeln.</summary>
-      Batch: Integer;
-      Mode: TAtlasTaskBeforeBuild;
-      Done: Boolean;
+      FBatch: Integer;
+      FMode: TAtlasTaskBeforeBuild;
+      FDone: Boolean;
       destructor Destroy; override;
     end;
 
     /// <summary>Mehrere Läufe: „Alle Prüfungen“ bzw. vor dem Build; nacheinander oder gleichzeitig.</summary>
     TBatch = class
-      Id: Integer;
-      Project: string;
-      PreBuild: Boolean;
-      Waiting: TAtlasTaskDefinitions;
-      WaitingModes: TArray<TAtlasTaskBeforeBuild>;
-      Running: Integer;
-      Entries: TArray<TAtlasTaskGateEntry>;
+      FId: Integer;
+      FProject: string;
+      FPreBuild: Boolean;
+      FWaiting: TAtlasTaskDefinitions;
+      FWaitingModes: TArray<TAtlasTaskBeforeBuild>;
+      FRunning: Integer;
+      FEntries: TArray<TAtlasTaskGateEntry>;
     end;
 
     /// <summary>Laufende und fertige Läufe und Reihen.</summary>
@@ -451,7 +451,7 @@ begin
     FPendingFindings := FPendingFindings + [mFinding];
   end;
   // Die Anzeige kappt selbst; gemerkt werden höchstens so viele Zeilen wie dort.
-  if FLineCount < TAtlasIdeTaskOutput.MaxLines then
+  if FLineCount < TAtlasIdeTaskOutput.cMaxLines then
   begin
     FRun.Lines := FRun.Lines + [ALine];
   end;
@@ -527,11 +527,11 @@ end;
 
 destructor TAtlasIdeTasks.TJob.Destroy;
 begin
-  if Worker <> nil then
+  if FWorker <> nil then
   begin
-    Worker.Cancel;
-    Worker.WaitFor;
-    FreeAndNil(Worker);
+    FWorker.Cancel;
+    FWorker.WaitFor;
+    FreeAndNil(FWorker);
   end;
   inherited Destroy;
 end;
@@ -694,7 +694,7 @@ var
 begin
   for mJob in FRuns.Jobs do
   begin
-    if not mJob.Done and SameText(mJob.Name, AName) and SameText(mJob.Project, AProject) then
+    if not mJob.FDone and SameText(mJob.FName, AName) and SameText(mJob.FProject, AProject) then
     begin
       Exit(True);
     end;
@@ -708,7 +708,7 @@ var
 begin
   for mJob in FRuns.Jobs do
   begin
-    if not mJob.Done then
+    if not mJob.FDone then
     begin
       Exit(True);
     end;
@@ -723,7 +723,7 @@ var
 begin
   for mJob in AJobs.ToArray do
   begin
-    if mJob.Done then
+    if mJob.FDone then
     begin
       AJobs.Remove(mJob);
     end;
@@ -746,15 +746,15 @@ begin
   mProjectFiles := TAtlasIdeTaskProjects.ProjectFilesOf(AProject, mSearchPath);
   Inc(FRuns.NextId);
   mJob := TJob.Create;
-  mJob.Id := FRuns.NextId;
-  mJob.Name := ATask.Name;
-  mJob.Project := TAtlasIdeTaskProjects.KeyOf(AProject);
-  mJob.Batch := ABatch;
-  mJob.Mode := AMode;
+  mJob.FId := FRuns.NextId;
+  mJob.FName := ATask.Name;
+  mJob.FProject := TAtlasIdeTaskProjects.KeyOf(AProject);
+  mJob.FBatch := ABatch;
+  mJob.FMode := AMode;
   FRuns.Jobs.Add(mJob);
-  FOutput.Started(mJob.Id, mTask.Name, mTask.CommandLine, mTask.TimeoutSec, AShow);
-  mJob.Worker := TWorker.Create(Self, mJob.Id, mTask, mProjectFiles, mSearchPath);
-  mJob.Worker.Start;
+  FOutput.Started(mJob.FId, mTask.Name, mTask.CommandLine, mTask.TimeoutSec, AShow);
+  mJob.FWorker := TWorker.Create(Self, mJob.FId, mTask, mProjectFiles, mSearchPath);
+  mJob.FWorker.Start;
   if ABatch = 0 then
   begin
     FLast.Name := ATask.Name;
@@ -860,11 +860,11 @@ var
 begin
   Inc(FRuns.NextId);
   mBatch := TBatch.Create;
-  mBatch.Id := FRuns.NextId;
-  mBatch.Project := AProject;
-  mBatch.PreBuild := APreBuild;
-  mBatch.Waiting := ATasks;
-  mBatch.WaitingModes := AModes;
+  mBatch.FId := FRuns.NextId;
+  mBatch.FProject := AProject;
+  mBatch.FPreBuild := APreBuild;
+  mBatch.FWaiting := ATasks;
+  mBatch.FWaitingModes := AModes;
   FRuns.Batches.Add(mBatch);
   StartNextOf(mBatch);
 end;
@@ -876,22 +876,22 @@ var
   mParallel: Boolean;
 begin
   mParallel := TAtlasIdeSettings.Current.TasksRunChecksParallel;
-  while Length(ABatch.Waiting) > 0 do
+  while Length(ABatch.FWaiting) > 0 do
   begin
-    mTask := ABatch.Waiting[0];
-    mMode := ABatch.WaitingModes[0];
-    Delete(ABatch.Waiting, 0, 1);
-    Delete(ABatch.WaitingModes, 0, 1);
-    if Start(ABatch.Project, mTask, ABatch.Id, mMode, not ABatch.PreBuild) then
+    mTask := ABatch.FWaiting[0];
+    mMode := ABatch.FWaitingModes[0];
+    Delete(ABatch.FWaiting, 0, 1);
+    Delete(ABatch.FWaitingModes, 0, 1);
+    if Start(ABatch.FProject, mTask, ABatch.FId, mMode, not ABatch.FPreBuild) then
     begin
-      Inc(ABatch.Running);
+      Inc(ABatch.FRunning);
       if not mParallel then
       begin
         Exit;
       end;
     end;
   end;
-  if ABatch.Running = 0 then
+  if ABatch.FRunning = 0 then
   begin
     BatchDone(ABatch);
   end;
@@ -903,7 +903,7 @@ var
 begin
   for mBatch in ABatches do
   begin
-    if mBatch.Id = AId then
+    if mBatch.FId = AId then
     begin
       Exit(mBatch);
     end;
@@ -939,12 +939,12 @@ var
   mRun: TAtlasTaskRun;
   mProject: TAtlasCompileProject;
 begin
-  if not ABatch.PreBuild then
+  if not ABatch.FPreBuild then
   begin
     FRuns.Batches.Remove(ABatch);
     Exit;
   end;
-  mDecision := TAtlasTaskGate.Decide(ABatch.Entries);
+  mDecision := TAtlasTaskGate.Decide(ABatch.FEntries);
   FRuns.Batches.Remove(ABatch);
   for mRun in mDecision.Blocking do
   begin
@@ -1034,7 +1034,7 @@ begin
   Result := nil;
   for mItem in AJobs do
   begin
-    if mItem.Id = AId then
+    if mItem.FId = AId then
     begin
       Result := mItem;
     end;
@@ -1053,24 +1053,24 @@ begin
   begin
     Exit;
   end;
-  mJob.Done := True;
+  mJob.FDone := True;
   // Der Thread hat nach diesem Eintrag nichts mehr zu tun.
-  if mJob.Worker <> nil then
+  if mJob.FWorker <> nil then
   begin
-    mJob.Worker.WaitFor;
-    FreeAndNil(mJob.Worker);
+    mJob.FWorker.WaitFor;
+    FreeAndNil(mJob.FWorker);
   end;
   FOutput.Finished(AId, ARun);
-  FHistory.Data.Remember(mJob.Project, ARun);
+  FHistory.Data.Remember(mJob.FProject, ARun);
   SaveHistory(FHistory);
-  ApplyProblems(ARun, FHistory.Data.IsHidden(mJob.Project, ARun.Name));
-  if SameText(mJob.Project, FLoaded.Project) or ((FLoaded.Project = '') and
-    (mJob.Project = TAtlasIdeTaskProjects.NoProject)) then
+  ApplyProblems(ARun, FHistory.Data.IsHidden(mJob.FProject, ARun.Name));
+  if SameText(mJob.FProject, FLoaded.Project) or ((FLoaded.Project = '') and
+    (mJob.FProject = TAtlasIdeTaskProjects.cNoProject)) then
   begin
     UpdateStatus(ARun.Name);
   end;
-  mProject := mJob.Project;
-  if mProject = TAtlasIdeTaskProjects.NoProject then
+  mProject := mJob.FProject;
+  if mProject = TAtlasIdeTaskProjects.cNoProject then
   begin
     mProject := '';
   end;
@@ -1079,18 +1079,18 @@ begin
     FHandlers.OnFinished(mProject, ARun);
   end;
   mBatch := nil;
-  if mJob.Batch <> 0 then
+  if mJob.FBatch <> 0 then
   begin
-    mBatch := FindBatch(FRuns.Batches, mJob.Batch);
+    mBatch := FindBatch(FRuns.Batches, mJob.FBatch);
   end;
   if mBatch = nil then
   begin
     Exit;
   end;
-  mEntry.Mode := mJob.Mode;
+  mEntry.Mode := mJob.FMode;
   mEntry.Run := ARun;
-  mBatch.Entries := mBatch.Entries + [mEntry];
-  Dec(mBatch.Running);
+  mBatch.FEntries := mBatch.FEntries + [mEntry];
+  Dec(mBatch.FRunning);
   StartNextOf(mBatch);
 end;
 
@@ -1173,8 +1173,8 @@ procedure StopWaiting(ABatch: TAtlasIdeTasks.TBatch);
 begin
   if ABatch <> nil then
   begin
-    ABatch.Waiting := nil;
-    ABatch.WaitingModes := nil;
+    ABatch.FWaiting := nil;
+    ABatch.FWaitingModes := nil;
   end;
 end;
 
@@ -1186,18 +1186,18 @@ begin
   mCount := 0;
   for mJob in FRuns.Jobs do
   begin
-    if not mJob.Done and (mJob.Worker <> nil) then
+    if not mJob.FDone and (mJob.FWorker <> nil) then
     begin
-      mJob.Worker.Cancel;
+      mJob.FWorker.Cancel;
       Inc(mCount);
     end;
   end;
   // Wartende Aufgaben einer Reihe starten nicht mehr; ein abgebrochener Lauf vor dem Build baut nicht neu.
   for mJob in FRuns.Jobs do
   begin
-    if not mJob.Done and (mJob.Batch <> 0) then
+    if not mJob.FDone and (mJob.FBatch <> 0) then
     begin
-      StopWaiting(FindBatch(FRuns.Batches, mJob.Batch));
+      StopWaiting(FindBatch(FRuns.Batches, mJob.FBatch));
     end;
   end;
   if FPreBuild.Running then

@@ -37,7 +37,7 @@ uses
   Atlas.Common.Diagnostics.CrashReserve;
 
 type
-  /// <summary>Künstlicher Absturz des Testschalters TShellCrashCases.TestVariable.</summary>
+  /// <summary>Künstlicher Absturz des Testschalters TShellCrashCases.cTestVariable.</summary>
   ECrashTest = class(Exception);
 
   /// <summary>Einstellungsdateien (Pfade) zur Datei AUri: settings.json und die atlas.json ihres Ordners.</summary>
@@ -54,7 +54,7 @@ type
     Initialize: TFunc<string>;
   end;
 
-  /// <summary>Testschalter TShellCrashCases.TestVariable: Methode, die künstlich abstürzt ('' = keine).</summary>
+  /// <summary>Testschalter TShellCrashCases.cTestVariable: Methode, die künstlich abstürzt ('' = keine).</summary>
   TShellCrashTest = record
     Method: string;
     /// <summary>Als echter Stapelüberlauf statt ECrashTest.</summary>
@@ -65,13 +65,13 @@ type
 
   TShellCrashCases = class
   public const
-    CaseNotification = 'atlas/crashCase';
-    SkipNotification = 'atlas/crashSkip';
-    RetryCommand = 'atlas.crash.retry';
-    SkipsFileName = 'uebersprungen.json';
+    cCaseNotification = 'atlas/crashCase';
+    cSkipNotification = 'atlas/crashSkip';
+    cRetryCommand = 'atlas.crash.retry';
+    cSkipsFileName = 'uebersprungen.json';
     /// <summary>Testschalter (Umgebungsvariable): „textDocument/hover“ lässt jede Hover-Anfrage mit ECrashTest
     /// abstürzen, „textDocument/hover:overflow“ mit einem echten Stapelüberlauf.</summary>
-    TestVariable = 'ATLAS_CRASH_TEST';
+    cTestVariable = 'ATLAS_CRASH_TEST';
   private
     FRoot: string;
     FLogger: ILogger;
@@ -132,7 +132,7 @@ type
     property AtlasVersion: string read FInfo.AtlasVersion write FInfo.AtlasVersion;
     /// <summary>clientInfo aus initialize, etwa „RAD Studio 37.0“.</summary>
     property Client: string read FInfo.Client write FInfo.Client;
-    /// <summary>Testschalter: Methode, die künstlich abstürzt ('' = keine); Vorgabe aus TestVariable.</summary>
+    /// <summary>Testschalter: Methode, die künstlich abstürzt ('' = keine); Vorgabe aus cTestVariable.</summary>
     property TestMethod: string read FTest.Method write FTest.Method;
     /// <summary>Testschalter: als echter Stapelüberlauf statt ECrashTest.</summary>
     property TestOverflow: Boolean read FTest.Overflow write FTest.Overflow;
@@ -176,7 +176,7 @@ end;
 
 function SkipsFileOf(const ARoot: string): string;
 begin
-  Result := TPath.Combine(ARoot, TShellCrashCases.SkipsFileName);
+  Result := TPath.Combine(ARoot, TShellCrashCases.cSkipsFileName);
 end;
 
 /// <summary>Text von AUri: aus dem Editor, sonst von der Platte.</summary>
@@ -274,7 +274,7 @@ begin
       FLogger.Warning('Absturzfälle: Merker nicht lesbar, beginne leer: ' + E.ClassName);
   end;
   FReserve := TCrashReserve.Create;
-  FTest.Method := GetEnvironmentVariable(TestVariable);
+  FTest.Method := GetEnvironmentVariable(cTestVariable);
   FTest.Overflow := EndsText(':overflow', FTest.Method);
   if FTest.Overflow then
   begin
@@ -282,7 +282,7 @@ begin
   end;
   if FTest.Method <> '' then
   begin
-    FLogger.Warning(Format('Testschalter %s gesetzt: %s stürzt künstlich ab', [TestVariable, FTest.Method]));
+    FLogger.Warning(Format('Testschalter %s gesetzt: %s stürzt künstlich ab', [cTestVariable, FTest.Method]));
   end;
 end;
 
@@ -403,7 +403,7 @@ begin
   mParams.AddPair('version', ACase.AtlasVersion);
   mParams.AddPair('skipping', TJSONBool.Create(ASkipping));
   try
-    FNotify(CaseNotification, mParams);
+    FNotify(cCaseNotification, mParams);
   except
     on E: Exception do
       FLogger.Warning('Absturzfall: Meldung an den Client fehlgeschlagen: ' + E.ClassName);
@@ -434,7 +434,7 @@ begin
   mParams.AddPair('exception', AEntry.ExceptionClass);
   mParams.AddPair('folder', AEntry.CaseFolder);
   try
-    FNotify(SkipNotification, mParams);
+    FNotify(cSkipNotification, mParams);
   except
     on E: Exception do
       FLogger.Warning('Überspringen: Meldung an den Client fehlgeschlagen: ' + E.ClassName);
@@ -565,12 +565,12 @@ begin
   begin
     Exit;
   end;
-  ALogger.Warning(Format('Testschalter %s: künstlicher Absturz in %s', [TShellCrashCases.TestVariable, AMethod]));
+  ALogger.Warning(Format('Testschalter %s: künstlicher Absturz in %s', [TShellCrashCases.cTestVariable, AMethod]));
   if Overflow then
   begin
     Deeper(0);
   end;
-  raise ECrashTest.Create(cTexts[TCrashCaseText.TestCrash].Fmt([TShellCrashCases.TestVariable]));
+  raise ECrashTest.Create(cTexts[TCrashCaseText.TestCrash].Fmt([TShellCrashCases.cTestVariable]));
 end;
 
 procedure TShellCrashCases.Guard(const AMethod: string; const AParams: TJSONValue);
