@@ -190,12 +190,12 @@ var
 begin
   mResult := Default(TReplayResult);
   mResult.Outcome := TReplayOutcome.Reproduced;
-  Assert.AreEqual(TShellReplay.ExitReproduced, TShellReplay.ExitCodeOf(mResult));
+  Assert.AreEqual(TShellReplay.cExitReproduced, TShellReplay.ExitCodeOf(mResult));
   mResult.Outcome := TReplayOutcome.NotReproduced;
-  Assert.AreEqual(TShellReplay.ExitNotReproduced, TShellReplay.ExitCodeOf(mResult));
+  Assert.AreEqual(TShellReplay.cExitNotReproduced, TShellReplay.ExitCodeOf(mResult));
   Assert.IsTrue(mResult.Text.StartsWith('nicht reproduziert'));
   mResult.Outcome := TReplayOutcome.Unreadable;
-  Assert.AreEqual(TShellReplay.ExitUnreadable, TShellReplay.ExitCodeOf(mResult));
+  Assert.AreEqual(TShellReplay.cExitUnreadable, TShellReplay.ExitCodeOf(mResult));
 end;
 
 procedure TShellReplayTests.IsolatedRunSendsSnapshotAndRequest;
@@ -219,7 +219,7 @@ var
 begin
   mResult := TShellReplay.Run(TPath.Combine(TPath.GetTempPath, 'gibts-nicht-' + TGUID.NewGuid.ToString + '.json'),
     nil, FakeServer(0, '', mMethods));
-  Assert.AreEqual(TShellReplay.ExitUnreadable, TShellReplay.ExitCodeOf(mResult));
+  Assert.AreEqual(TShellReplay.cExitUnreadable, TShellReplay.ExitCodeOf(mResult));
 end;
 
 initialization

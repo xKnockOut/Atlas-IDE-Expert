@@ -30,7 +30,7 @@ type
   TShellStdio = class
   public const
     /// <summary>Protokoll der Sitzung im Speicher für Fehlerbericht und Diagnosepaket (#1356).</summary>
-    SessionLogLines = 10000;
+    cSessionLogLines = 10000;
   public
     /// <summary>Stacktraces und Schutzseiten der Plattform, Logger, Transport, window/logMessage und die Warnungen
     /// der Befehlszeile.</summary>
@@ -97,7 +97,7 @@ begin
   Result.AddSink(TStreamLogSink.Create(TStdStreams.CreateError, True), TLogLevel.Error);
   // Auszug für den Fehlerbericht (#108) und das Protokoll der Sitzung im Diagnosepaket (#1356), unabhängig von
   // --log.
-  mRecentSink := TRecentLogSink.Create(SessionLogLines);
+  mRecentSink := TRecentLogSink.Create(cSessionLogLines);
   ARecentLog := mRecentSink;
   Result.AddSink(mRecentSink, TLogLevel.Info);
   TShellDiagnostics.AddLogFile(Result, AOptions.LogFile, IntToStr(TParentWatcher.CurrentProcessId),
