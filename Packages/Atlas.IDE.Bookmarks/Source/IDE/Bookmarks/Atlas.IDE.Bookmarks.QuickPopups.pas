@@ -41,10 +41,10 @@ type
 
   TAtlasIdeQuickMenu = class
   private const
-    MenuName = 20;
-    MenuRemove = 21;
-    MenuRemoveFile = 22;
-    MenuWindow = 23;
+    cMenuName = 20;
+    cMenuRemove = 21;
+    cMenuRemoveFile = 22;
+    cMenuWindow = 23;
   private
     FMenu: TPopupMenu;
     FFileName: string;
@@ -219,7 +219,7 @@ begin
   mTargets := TAtlasIdeQuickBookmarks.NumberTargets(AFileName);
   mNumbers := AddItem(FMenu.Items, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.QuickBookmarkMenuNumber), 0);
   mNumbers.OnClick := nil;
-  for mNumber := 1 to TAtlasQuickBookmarks.MaxNumber do
+  for mNumber := 1 to TAtlasQuickBookmarks.cMaxNumber do
   begin
     // Belegte Nummern zeigen ihr Ziel; die eigene ist abgehakt (Klick nimmt sie weg).
     if (mNumber < Length(mTargets)) and (mTargets[mNumber] <> '') and (mNumber <> mCurrent) then
@@ -233,15 +233,15 @@ begin
     end;
     mItem.Checked := mNumber = mCurrent;
   end;
-  AddItem(FMenu.Items, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.QuickBookmarkMenuName), MenuName);
+  AddItem(FMenu.Items, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.QuickBookmarkMenuName), cMenuName);
   mItem := AddItem(FMenu.Items, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.QuickBookmarkMenuRemove),
-    MenuRemove);
+    cMenuRemove);
   mItem.Enabled := Length(AMarks) > 0;
   mItem := AddItem(FMenu.Items, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.QuickBookmarkMenuRemoveFile),
-    MenuRemoveFile);
+    cMenuRemoveFile);
   mItem.Enabled := TAtlasIdeQuickBookmarks.HasColumnMarks(AFileName);
   AddItem(FMenu.Items, '-', -1).OnClick := nil;
-  AddItem(FMenu.Items, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.QuickBookmarkMenuWindow), MenuWindow);
+  AddItem(FMenu.Items, TAtlasBookmarksStrings.Text(TAtlasBookmarksTextId.QuickBookmarkMenuWindow), cMenuWindow);
   FMenu.Popup(APoint.X, APoint.Y);
 end;
 
@@ -257,15 +257,15 @@ begin
     procedure
     begin
       case mCommand of
-        1..TAtlasQuickBookmarks.MaxNumber:
+        1..TAtlasQuickBookmarks.cMaxNumber:
           TAtlasIdeQuickBookmarks.ColumnAssign(mFileName, mLine, mCommand);
-        MenuName:
+        cMenuName:
           TAtlasIdeQuickBookmarks.ColumnName(mFileName, mLine);
-        MenuRemove:
+        cMenuRemove:
           TAtlasIdeQuickBookmarks.ColumnRemove(mFileName, mLine);
-        MenuRemoveFile:
+        cMenuRemoveFile:
           TAtlasIdeQuickBookmarks.ColumnRemoveFile(mFileName);
-        MenuWindow:
+        cMenuWindow:
           TAtlasIdeBookmarks.ShowWindow;
       end;
     end);

@@ -1625,7 +1625,7 @@ begin
     Exit;
   end;
   mRun := string.Join(',', AResult.RunNames);
-  if Length(mRun) > TDUnitXCommandLine.MaxRunLength then
+  if Length(mRun) > TDUnitXCommandLine.cMaxRunLength then
   begin
     Exit(False);
   end;

@@ -29,10 +29,10 @@ type
 
   TAtlasCommitHook = class
   public const
-    HookName = 'prepare-commit-msg';
-    PrefixFile = 'atlas-commit-prefix';
+    cHookName = 'prepare-commit-msg';
+    cPrefixFile = 'atlas-commit-prefix';
     /// <summary>Zweite Zeile des eigenen Hooks.</summary>
-    Marker = '# atlas-commit-prefix (#765)';
+    cMarker = '# atlas-commit-prefix (#765)';
   public
     /// <summary>Inhalt des Hooks, Zeilenende LF (sh von Git für Windows); die Kommentarzeilen in der Sprache der
     /// Oberfläche (AEnglish, #1458).</summary>
@@ -60,7 +60,7 @@ uses
   Atlas.Core.Tracker.Files;
 
 const
-  Lf = #10;
+  cLf = #10;
   /// <summary>So viel liest State vom Hook; die Marke steht in den ersten Zeilen.</summary>
   cMaxHookBytes = 4096;
   cMaxPrefixBytes = 1024;
@@ -74,36 +74,36 @@ const
 class function TAtlasCommitHook.Script(AEnglish: Boolean): string;
 begin
   Result :=
-    '#!/bin/sh' + Lf +
-    Marker + Lf +
-    cHookComment[AEnglish, 0] + Lf +
-    cHookComment[AEnglish, 1] + Lf +
-    'case "$2" in merge|squash|commit) exit 0 ;; esac' + Lf +
-    'dir=$(git rev-parse --git-dir 2>/dev/null) || exit 0' + Lf +
-    'file="$dir/' + PrefixFile + '"' + Lf +
-    '[ -f "$file" ] || exit 0' + Lf +
-    'prefix=$(cat "$file")' + Lf +
-    '[ -n "$prefix" ] || exit 0' + Lf +
-    'bare=$(printf ''%s'' "$prefix" | sed ''s/[[:space:]]*$//'')' + Lf +
-    'first=$(head -n 1 "$1")' + Lf +
-    'case "$first" in "$bare"*) exit 0 ;; esac' + Lf +
-    '{ printf ''%s'' "$prefix"; cat "$1"; } > "$1.atlas" && mv "$1.atlas" "$1"' + Lf +
-    'exit 0' + Lf;
+    '#!/bin/sh' + cLf +
+    cMarker + cLf +
+    cHookComment[AEnglish, 0] + cLf +
+    cHookComment[AEnglish, 1] + cLf +
+    'case "$2" in merge|squash|commit) exit 0 ;; esac' + cLf +
+    'dir=$(git rev-parse --git-dir 2>/dev/null) || exit 0' + cLf +
+    'file="$dir/' + cPrefixFile + '"' + cLf +
+    '[ -f "$file" ] || exit 0' + cLf +
+    'prefix=$(cat "$file")' + cLf +
+    '[ -n "$prefix" ] || exit 0' + cLf +
+    'bare=$(printf ''%s'' "$prefix" | sed ''s/[[:space:]]*$//'')' + cLf +
+    'first=$(head -n 1 "$1")' + cLf +
+    'case "$first" in "$bare"*) exit 0 ;; esac' + cLf +
+    '{ printf ''%s'' "$prefix"; cat "$1"; } > "$1.atlas" && mv "$1.atlas" "$1"' + cLf +
+    'exit 0' + cLf;
 end;
 
 class function TAtlasCommitHook.IsOwn(const AContent: string): Boolean;
 begin
-  Result := Pos(Marker, Copy(AContent, 1, 200)) > 0;
+  Result := Pos(cMarker, Copy(AContent, 1, 200)) > 0;
 end;
 
 class function TAtlasCommitHook.HookFile(const AHooksDir: string): string;
 begin
-  Result := IncludeTrailingPathDelimiter(AHooksDir) + HookName;
+  Result := IncludeTrailingPathDelimiter(AHooksDir) + cHookName;
 end;
 
 class function TAtlasCommitHook.PrefixFileOf(const AGitDir: string): string;
 begin
-  Result := IncludeTrailingPathDelimiter(AGitDir) + PrefixFile;
+  Result := IncludeTrailingPathDelimiter(AGitDir) + cPrefixFile;
 end;
 
 /// <summary>Höchstens AMax Bytes vom Anfang als UTF-8.</summary>

@@ -86,7 +86,7 @@ procedure TAtlasLinkDialogsTests.LinkNeedsOtherKey;
 var
   mDialog: TAtlasIssueLinkDialog;
 begin
-  mDialog := TAtlasIssueLinkDialog.CreateDialog(nil, 'ATL-130', TAtlasTrackerTarget.YouTrack);
+  mDialog := TAtlasIssueLinkDialog.CreateDialog(nil, 'ATL-130', TAtlasTrackerTarget.cYouTrack);
   try
     Assert.AreEqual('ATL-130 verknüpfen', mDialog.Caption);
     Assert.IsFalse(mDialog.OkButton.Enabled);
@@ -109,7 +109,7 @@ procedure TAtlasLinkDialogsTests.LinkKindAndGitHubKeys;
 var
   mDialog: TAtlasIssueLinkDialog;
 begin
-  mDialog := TAtlasIssueLinkDialog.CreateDialog(nil, '#753', TAtlasTrackerTarget.GitHub);
+  mDialog := TAtlasIssueLinkDialog.CreateDialog(nil, '#753', TAtlasTrackerTarget.cGitHub);
   try
     Assert.AreEqual('#753 hängt ab von …', mDialog.DependsOnButton.Caption);
     Assert.AreEqual('#753 blockiert …', mDialog.BlocksButton.Caption);

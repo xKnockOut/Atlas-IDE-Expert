@@ -358,7 +358,7 @@ begin
   Assert.AreEqual('', ASettings.IssuesAttachLogFiles);
   Assert.AreEqual(1920, ASettings.IssuesAttachMaxImageWidth);
   // Die Einstellungen kennen den Bereich nicht (A-09): dieselben Werte wie dort.
-  Assert.AreEqual(TAtlasTrackerNaming.CommitPattern, ASettings.IssuesCommitPattern);
+  Assert.AreEqual(TAtlasTrackerNaming.cCommitPattern, ASettings.IssuesCommitPattern);
   Assert.AreEqual(TAtlasMyIssues.StartName(TAtlasIssueStart.Branch), TAtlasPluginSettings.IssuesStartBranch);
   Assert.AreEqual(TAtlasMyIssues.StartName(TAtlasIssueStart.Remember),
     TAtlasPluginSettings.IssuesStartRemember);

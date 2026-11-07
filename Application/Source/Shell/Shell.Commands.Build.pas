@@ -79,27 +79,27 @@ uses
 
 class function TSelectBuildArgs.Parse(const AArguments: TJSONArray): TSelectBuildArgs;
 var
-  Options: TJSONObject;
-  DefinesValue, Define: TJSONValue;
+  mOptions: TJSONObject;
+  mDefinesValue, mDefine: TJSONValue;
 begin
   Result := Default(TSelectBuildArgs);
   if (AArguments = nil) or (AArguments.Count = 0) or not (AArguments.Items[0] is TJSONObject) then
   begin
     Exit;
   end;
-  Options := TJSONObject(AArguments.Items[0]);
-  Options.TryGetValue<string>('config', Result.Config);
-  Options.TryGetValue<string>('platform', Result.Platform);
-  Options.TryGetValue<string>('uri', Result.Uri);
-  DefinesValue := Options.GetValue('defines');
-  if DefinesValue is TJSONArray then
+  mOptions := TJSONObject(AArguments.Items[0]);
+  mOptions.TryGetValue<string>('config', Result.Config);
+  mOptions.TryGetValue<string>('platform', Result.Platform);
+  mOptions.TryGetValue<string>('uri', Result.Uri);
+  mDefinesValue := mOptions.GetValue('defines');
+  if mDefinesValue is TJSONArray then
   begin
     Result.HasDefines := True;
-    for Define in TJSONArray(DefinesValue) do
+    for mDefine in TJSONArray(mDefinesValue) do
     begin
-      if Define is TJSONString then
+      if mDefine is TJSONString then
       begin
-        Result.Defines := Result.Defines + [TJSONString(Define).Value];
+        Result.Defines := Result.Defines + [TJSONString(mDefine).Value];
       end;
     end;
   end;
@@ -114,21 +114,21 @@ end;
 
 class function TSelectProjectArgs.Parse(const AArguments: TJSONArray): TSelectProjectArgs;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
   Result := Default(TSelectProjectArgs);
   if (AArguments = nil) or (AArguments.Count = 0) or not (AArguments.Items[0] is TJSONObject) then
   begin
     Exit;
   end;
-  Value := TJSONObject(AArguments.Items[0]).GetValue('project');
+  mValue := TJSONObject(AArguments.Items[0]).GetValue('project');
   // TJSONNumber erbt von TJSONString.
-  Result.HasProject := (Value is TJSONString) and not (Value is TJSONNumber);
+  Result.HasProject := (mValue is TJSONString) and not (mValue is TJSONNumber);
   if not Result.HasProject then
   begin
     Exit;
   end;
-  Result.Project := Trim(Value.Value);
+  Result.Project := Trim(mValue.Value);
   if Result.Project.StartsWith('file:', True) then
   begin
     Result.Project := TDocumentUris.ToPath(Result.Project);
@@ -139,13 +139,13 @@ end;
 
 class function TBuildCommands.FindProject(const AItems: TArray<TProjectChoiceItem>; const ATarget: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(AItems) do
+  for mIndex := 0 to High(AItems) do
   begin
-    if SameText(AItems[Index].Project, ATarget) or SameText(AItems[Index].Name, ATarget) then
+    if SameText(AItems[mIndex].Project, ATarget) or SameText(AItems[mIndex].Name, ATarget) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -153,69 +153,69 @@ end;
 
 class function TBuildCommands.ProjectChoices(const AItems: TArray<TProjectChoiceItem>): TJSONObject;
 var
-  Item: TProjectChoiceItem;
-  Entry: TJSONObject;
-  Items: TJSONArray;
-  Selected, Active: string;
+  mItem: TProjectChoiceItem;
+  mEntry: TJSONObject;
+  mItems: TJSONArray;
+  mSelected, mActive: string;
 begin
-  Selected := '';
-  Active := '';
-  Items := TJSONArray.Create;
-  for Item in AItems do
+  mSelected := '';
+  mActive := '';
+  mItems := TJSONArray.Create;
+  for mItem in AItems do
   begin
-    Entry := TJSONObject.Create;
-    Entry.AddPair('name', Item.Name);
-    Entry.AddPair('project', Item.Project);
-    Entry.AddPair('active', TJSONBool.Create(Item.Active));
-    Entry.AddPair('selected', TJSONBool.Create(Item.Selected));
-    Items.AddElement(Entry);
-    if Item.Selected and (Selected = '') then
+    mEntry := TJSONObject.Create;
+    mEntry.AddPair('name', mItem.Name);
+    mEntry.AddPair('project', mItem.Project);
+    mEntry.AddPair('active', TJSONBool.Create(mItem.Active));
+    mEntry.AddPair('selected', TJSONBool.Create(mItem.Selected));
+    mItems.AddElement(mEntry);
+    if mItem.Selected and (mSelected = '') then
     begin
-      Selected := Item.Project;
+      mSelected := mItem.Project;
     end;
-    if Item.Active and (Active = '') then
+    if mItem.Active and (mActive = '') then
     begin
-      Active := Item.Project;
+      mActive := mItem.Project;
     end;
   end;
   Result := TJSONObject.Create;
-  Result.AddPair('selected', Selected);
-  Result.AddPair('active', Active);
-  Result.AddPair('projects', Items);
+  Result.AddPair('selected', mSelected);
+  Result.AddPair('active', mActive);
+  Result.AddPair('projects', mItems);
 end;
 
 
 class function TBuildCommands.StringsToJson(const AValues: TArray<string>): TJSONArray;
 var
-  Value: string;
+  mValue: string;
 begin
   Result := TJSONArray.Create;
-  for Value in AValues do
+  for mValue in AValues do
   begin
-    Result.Add(Value);
+    Result.Add(mValue);
   end;
 end;
 
 class function TBuildCommands.ProjectItem(const AFolder: string; const AProject: TProjectInfo;
   const AArgs: TSelectBuildArgs): TJSONObject;
 var
-  Config, Platform: string;
+  mConfig, mPlatform: string;
 begin
-  Config := AArgs.Config;
-  if Config = '' then
+  mConfig := AArgs.Config;
+  if mConfig = '' then
   begin
-    Config := AProject.Config;
+    mConfig := AProject.Config;
   end;
-  Platform := AArgs.Platform;
-  if Platform = '' then
+  mPlatform := AArgs.Platform;
+  if mPlatform = '' then
   begin
-    Platform := AProject.Platform;
+    mPlatform := AProject.Platform;
   end;
   Result := TJSONObject.Create;
   Result.AddPair('folder', AFolder);
   Result.AddPair('project', AProject.FileName);
-  Result.AddPair('config', Config);
-  Result.AddPair('platform', Platform);
+  Result.AddPair('config', mConfig);
+  Result.AddPair('platform', mPlatform);
   Result.AddPair('configs', StringsToJson(AProject.Configs));
   Result.AddPair('platforms', StringsToJson(AProject.Platforms));
 end;
@@ -223,7 +223,7 @@ end;
 class function TBuildCommands.FormFiles(const AArguments: TJSONArray; const AProjectSources: TArray<string>;
   const AExists: TFunc<string, Boolean>): TArray<string>;
 var
-  FileName, Extension: string;
+  mFileName, mExtension: string;
 begin
   Result := nil;
   if (AArguments <> nil) and (AArguments.Count > 0) and (AArguments.Items[0] is TJSONString) then
@@ -232,13 +232,13 @@ begin
     Result := [TDocumentUris.ToPath(AArguments.Items[0].Value)];
     Exit;
   end;
-  for FileName in AProjectSources do
+  for mFileName in AProjectSources do
   begin
-    for Extension in TArray<string>.Create('.dfm', '.fmx') do
+    for mExtension in TArray<string>.Create('.dfm', '.fmx') do
     begin
-      if AExists(ChangeFileExt(FileName, Extension)) then
+      if AExists(ChangeFileExt(mFileName, mExtension)) then
       begin
-        Result := Result + [ChangeFileExt(FileName, Extension)];
+        Result := Result + [ChangeFileExt(mFileName, mExtension)];
       end;
     end;
   end;
@@ -247,23 +247,23 @@ end;
 class function TBuildCommands.ConvertForms(const AFiles: TArray<string>; const ALogger: ILogger;
   out ABackups: Integer): Integer;
 var
-  Form, Backup: string;
+  mForm, mBackup: string;
 begin
   Result := 0;
   ABackups := 0;
-  for Form in AFiles do
+  for mForm in AFiles do
     try
-      if TDfmBinary.ConvertFile(Form, Backup) then
+      if TDfmBinary.ConvertFile(mForm, mBackup) then
       begin
         Inc(Result);
-        if Backup <> '' then
+        if mBackup <> '' then
         begin
           Inc(ABackups);
         end;
       end;
     except
       on E: Exception do
-        ALogger.Warning(Format('%s nicht umgewandelt: %s', [TLogMarks.Path(Form), TLogMarks.Text(E.Message)]));
+        ALogger.Warning(Format('%s nicht umgewandelt: %s', [TLogMarks.Path(mForm), TLogMarks.Text(E.Message)]));
     end;
 end;
 

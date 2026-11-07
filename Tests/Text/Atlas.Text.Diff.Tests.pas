@@ -43,30 +43,30 @@ uses
 
 procedure TTextDiffTests.PrefixSuffixNoOverlap;
 var
-  Prefix, Suffix: Integer;
+  mPrefix, mSuffix: Integer;
 begin
-  TTextDiff.CommonPrefixSuffix(['a', 'b', 'a'], ['a', 'b', 'x', 'b', 'a'], Prefix, Suffix);
-  Assert.AreEqual<Integer>(2, Prefix);
-  Assert.AreEqual<Integer>(1, Suffix);
-  TTextDiff.CommonPrefixSuffix(['a', 'a'], ['a', 'a', 'a'], Prefix, Suffix);
-  Assert.AreEqual<Integer>(2, Prefix);
-  Assert.AreEqual<Integer>(0, Suffix);
+  TTextDiff.CommonPrefixSuffix(['a', 'b', 'a'], ['a', 'b', 'x', 'b', 'a'], mPrefix, mSuffix);
+  Assert.AreEqual<Integer>(2, mPrefix);
+  Assert.AreEqual<Integer>(1, mSuffix);
+  TTextDiff.CommonPrefixSuffix(['a', 'a'], ['a', 'a', 'a'], mPrefix, mSuffix);
+  Assert.AreEqual<Integer>(2, mPrefix);
+  Assert.AreEqual<Integer>(0, mSuffix);
 end;
 
 procedure TTextDiffTests.HunksLcs;
 var
-  Hunks: TArray<TTextLineHunk>;
+  mHunks: TArray<TTextLineHunk>;
 begin
-  Hunks := TTextDiff.Hunks(['a', 'b', 'c', 'd', 'e'], ['a', 'X', 'c', 'd', 'Y', 'Z', 'e']);
-  Assert.AreEqual<Integer>(2, Length(Hunks));
-  Assert.AreEqual<Integer>(1, Hunks[0].OldStart);
-  Assert.AreEqual<Integer>(1, Hunks[0].OldCount);
-  Assert.AreEqual<Integer>(1, Hunks[0].NewStart);
-  Assert.AreEqual<Integer>(1, Hunks[0].NewCount);
-  Assert.AreEqual<Integer>(4, Hunks[1].OldStart);
-  Assert.AreEqual<Integer>(0, Hunks[1].OldCount);
-  Assert.AreEqual<Integer>(4, Hunks[1].NewStart);
-  Assert.AreEqual<Integer>(2, Hunks[1].NewCount);
+  mHunks := TTextDiff.Hunks(['a', 'b', 'c', 'd', 'e'], ['a', 'X', 'c', 'd', 'Y', 'Z', 'e']);
+  Assert.AreEqual<Integer>(2, Length(mHunks));
+  Assert.AreEqual<Integer>(1, mHunks[0].OldStart);
+  Assert.AreEqual<Integer>(1, mHunks[0].OldCount);
+  Assert.AreEqual<Integer>(1, mHunks[0].NewStart);
+  Assert.AreEqual<Integer>(1, mHunks[0].NewCount);
+  Assert.AreEqual<Integer>(4, mHunks[1].OldStart);
+  Assert.AreEqual<Integer>(0, mHunks[1].OldCount);
+  Assert.AreEqual<Integer>(4, mHunks[1].NewStart);
+  Assert.AreEqual<Integer>(2, mHunks[1].NewCount);
 end;
 
 procedure TTextDiffTests.HunksEqualIsEmpty;
@@ -76,58 +76,58 @@ end;
 
 procedure TTextDiffTests.HunksTooLargeOneBlock;
 var
-  Old, New: TArray<string>;
-  Hunks: TArray<TTextLineHunk>;
-  Index: Integer;
+  mOld, mNew: TArray<string>;
+  mHunks: TArray<TTextLineHunk>;
+  mIndex: Integer;
 begin
-  Old := nil;
-  New := nil;
-  SetLength(Old, 2100);
-  SetLength(New, 2100);
-  for Index := 0 to High(Old) do
+  mOld := nil;
+  mNew := nil;
+  SetLength(mOld, 2100);
+  SetLength(mNew, 2100);
+  for mIndex := 0 to High(mOld) do
   begin
-    Old[Index] := 'a' + IntToStr(Index);
-    New[Index] := 'b' + IntToStr(Index);
+    mOld[mIndex] := 'a' + IntToStr(mIndex);
+    mNew[mIndex] := 'b' + IntToStr(mIndex);
   end;
-  Hunks := TTextDiff.Hunks(Old, New);
-  Assert.AreEqual<Integer>(1, Length(Hunks));
-  Assert.AreEqual<Integer>(2100, Hunks[0].OldCount);
-  Assert.AreEqual<Integer>(2100, Hunks[0].NewCount);
+  mHunks := TTextDiff.Hunks(mOld, mNew);
+  Assert.AreEqual<Integer>(1, Length(mHunks));
+  Assert.AreEqual<Integer>(2100, mHunks[0].OldCount);
+  Assert.AreEqual<Integer>(2100, mHunks[0].NewCount);
 end;
 
 procedure TTextDiffTests.ChangedLinesSameCount;
 var
-  Lines: TArray<string>;
+  mLines: TArray<string>;
 begin
-  Lines := TTextDiff.ChangedLines(['a', 'b', 'c'], ['a', 'B', 'c']);
-  Assert.AreEqual<Integer>(3, Length(Lines));
-  Assert.AreEqual('Zeile 2:', Lines[0]);
-  Assert.AreEqual('- b', Lines[1]);
-  Assert.AreEqual('+ B', Lines[2]);
+  mLines := TTextDiff.ChangedLines(['a', 'b', 'c'], ['a', 'B', 'c']);
+  Assert.AreEqual<Integer>(3, Length(mLines));
+  Assert.AreEqual('Zeile 2:', mLines[0]);
+  Assert.AreEqual('- b', mLines[1]);
+  Assert.AreEqual('+ B', mLines[2]);
 end;
 
 procedure TTextDiffTests.ChangedLinesBlock;
 var
-  Lines: TArray<string>;
+  mLines: TArray<string>;
 begin
-  Lines := TTextDiff.ChangedLines(['a', 'b', 'c'], ['a', 'x', 'y', 'c']);
-  Assert.AreEqual<Integer>(4, Length(Lines));
-  Assert.AreEqual('ab Zeile 2:', Lines[0]);
-  Assert.AreEqual('- b', Lines[1]);
-  Assert.AreEqual('+ x', Lines[2]);
-  Assert.AreEqual('+ y', Lines[3]);
+  mLines := TTextDiff.ChangedLines(['a', 'b', 'c'], ['a', 'x', 'y', 'c']);
+  Assert.AreEqual<Integer>(4, Length(mLines));
+  Assert.AreEqual('ab Zeile 2:', mLines[0]);
+  Assert.AreEqual('- b', mLines[1]);
+  Assert.AreEqual('+ x', mLines[2]);
+  Assert.AreEqual('+ y', mLines[3]);
 end;
 
 procedure TTextDiffTests.ChangedLinesLimit;
 var
-  Lines: TArray<string>;
+  mLines: TArray<string>;
 begin
-  Lines := TTextDiff.ChangedLines(['a'], ['b', 'c', 'd', 'e'], 3);
-  Assert.AreEqual<Integer>(4, Length(Lines));
-  Assert.AreEqual('ab Zeile 1:', Lines[0]);
-  Assert.AreEqual('- a', Lines[1]);
-  Assert.AreEqual('+ b', Lines[2]);
-  Assert.AreEqual('…', Lines[3]);
+  mLines := TTextDiff.ChangedLines(['a'], ['b', 'c', 'd', 'e'], 3);
+  Assert.AreEqual<Integer>(4, Length(mLines));
+  Assert.AreEqual('ab Zeile 1:', mLines[0]);
+  Assert.AreEqual('- a', mLines[1]);
+  Assert.AreEqual('+ b', mLines[2]);
+  Assert.AreEqual('…', mLines[3]);
 end;
 
 procedure TTextDiffTests.ChangedLinesEqualIsEmpty;

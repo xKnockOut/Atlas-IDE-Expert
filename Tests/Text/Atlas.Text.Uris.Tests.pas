@@ -85,15 +85,15 @@ end;
 
 procedure TTextUrisTests.RoundTrip;
 const
-  Paths: array[0..3] of string = ('C:\Mein Projekt\' + #$00DC + 'bung.pas', '\\server\share\a b\#1.pas',
+  cPaths: array[0..3] of string = ('C:\Mein Projekt\' + #$00DC + 'bung.pas', '\\server\share\a b\#1.pas',
     '/home/a/x%y.pas', 'd:\x\.\y\..\z.inc');
 var
-  Path: string;
+  mPath: string;
 begin
-  for Path in Paths do
+  for mPath in cPaths do
   begin
-    Assert.AreEqual(TTextUris.NormalizePath(Path), TTextUris.NormalizePath(TTextUris.ToPath(TTextUris.FromPath(Path))),
-      Path);
+    Assert.AreEqual(TTextUris.NormalizePath(mPath),
+      TTextUris.NormalizePath(TTextUris.ToPath(TTextUris.FromPath(mPath))), mPath);
   end;
 end;
 

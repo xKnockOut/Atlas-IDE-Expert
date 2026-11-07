@@ -52,11 +52,11 @@ type
   TAtlasIdeIssueDevelopment = class(TInterfacedObject)
   public const
     /// <summary>Zeitgrenze je Aufruf von git bzw. svn.</summary>
-    VcsTimeoutMs = 10000;
+    cVcsTimeoutMs = 10000;
     /// <summary>Zeitgrenze für den Tracker.</summary>
-    TrackerTimeoutMs = 10000;
+    cTrackerTimeoutMs = 10000;
     /// <summary>Höchstens so viele Dateien im Diff eines Commits.</summary>
-    MaxDiffFiles = 30;
+    cMaxDiffFiles = 30;
   private
     FHooks: TAtlasIssueDevelopmentHooks;
     FCache: TAtlasIssueDevelopmentCache;
@@ -509,7 +509,7 @@ begin
     if AJob.Project <> '' then
     begin
       TAtlasIssueDevelopmentQuery.Collect(TAtlasIdeVcs.ForFolder(ExtractFileDir(AJob.Project),
-        TAtlasIdeIssueDevelopment.VcsTimeoutMs), AJob.Request, AResult);
+        TAtlasIdeIssueDevelopment.cVcsTimeoutMs), AJob.Request, AResult);
     end;
   except
     on E: Exception do
@@ -538,7 +538,7 @@ begin
   end;
   try
     AResult.TrackerLoaded := AJob.Provider.Development(AJob.Target, AJob.Transport, AJob.Request.Key,
-      TAtlasIdeIssueDevelopment.TrackerTimeoutMs, mDevelopment, mError);
+      TAtlasIdeIssueDevelopment.cTrackerTimeoutMs, mDevelopment, mError);
     if AResult.TrackerLoaded then
     begin
       AResult.Tracker := mDevelopment;
@@ -703,7 +703,7 @@ begin
   Result := TAtlasVcsOutcome.Ok;
   for mFile in AEntry.Files do
   begin
-    if Length(AFiles) >= MaxDiffFiles then
+    if Length(AFiles) >= cMaxDiffFiles then
     begin
       Break;
     end;
@@ -749,7 +749,7 @@ begin
     var
       mHistory: IAtlasVcsHistory;
     begin
-      if Supports(TAtlasIdeVcs.ForFolder(mFolder, VcsTimeoutMs), IAtlasVcsHistory, mHistory) then
+      if Supports(TAtlasIdeVcs.ForFolder(mFolder, cVcsTimeoutMs), IAtlasVcsHistory, mHistory) then
       begin
         mOutcome := CommitDiff(mHistory, mEntry, mFiles);
       end
@@ -828,7 +828,7 @@ begin
       mHistory: IAtlasVcsHistory;
       mBefore, mAfter: string;
     begin
-      if Supports(TAtlasIdeVcs.ForFolder(mFolder, VcsTimeoutMs), IAtlasVcsHistory, mHistory) and
+      if Supports(TAtlasIdeVcs.ForFolder(mFolder, cVcsTimeoutMs), IAtlasVcsHistory, mHistory) and
         (ReadContent(mHistory, mEntry.Revision, mFile, True, mBefore) = TAtlasVcsOutcome.Ok) and
         (ReadContent(mHistory, mEntry.Revision, mFile, False, mAfter) = TAtlasVcsOutcome.Ok) then
       begin
@@ -885,7 +885,7 @@ begin
       mVcs: IAtlasVersionControl;
       mList: TArray<TAtlasVcsChange>;
     begin
-      mVcs := TAtlasIdeVcs.ForFolder(mFolder, VcsTimeoutMs);
+      mVcs := TAtlasIdeVcs.ForFolder(mFolder, cVcsTimeoutMs);
       if (mVcs <> nil) and (mVcs.Changes(mList) = TAtlasVcsOutcome.Ok) then
       begin
         mChanges := Length(mList);
@@ -928,7 +928,7 @@ begin
     var
       mBranching: IAtlasVcsBranching;
     begin
-      if Supports(TAtlasIdeVcs.ForFolder(mFolder, VcsTimeoutMs), IAtlasVcsBranching, mBranching) then
+      if Supports(TAtlasIdeVcs.ForFolder(mFolder, cVcsTimeoutMs), IAtlasVcsBranching, mBranching) then
       begin
         mOutcome := mBranching.SwitchBranch(mBranch.Name);
       end

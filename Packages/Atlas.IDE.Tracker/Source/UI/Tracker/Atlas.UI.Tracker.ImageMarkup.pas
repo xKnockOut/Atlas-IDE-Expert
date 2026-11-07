@@ -42,11 +42,11 @@ type
 
   TAtlasImageMarkup = record
   public const
-    LineWidth = 3;
-    MarkColor = clRed;
+    cLineWidth = 3;
+    cMarkColor = clRed;
     /// <summary>Länge der Pfeilspitze in Pixeln.</summary>
-    HeadLength = 16;
-    MinSize = 3;
+    cHeadLength = 16;
+    cMinSize = 3;
   public
     /// <summary>AShape auf ACanvas, Bildkoordinaten mal AScale.</summary>
     class procedure Draw(ACanvas: TCanvas; const AShape: TAtlasMarkupShape; AScale: Double); static;
@@ -65,7 +65,7 @@ type
     FDragging: Boolean;
     FDrag: TAtlasMarkupShape;
     function Scale: Double;
-    function ToImage(X, Y: Integer): TPoint;
+    function ToImage(AX, AY: Integer): TPoint;
     procedure BoxPaint(Sender: TObject);
     procedure BoxMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure BoxMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
@@ -99,7 +99,7 @@ uses
   Atlas.UI.Strings,  Atlas.UI.Tracker.Strings;
 
 const
-  Gap = 8;
+  cGap = 8;
 
 { TAtlasMarkupShape }
 
@@ -118,8 +118,8 @@ end;
 
 function TAtlasMarkupShape.Tiny: Boolean;
 begin
-  Result := (Abs(EndPoint.X - StartPoint.X) < TAtlasImageMarkup.MinSize) and
-    (Abs(EndPoint.Y - StartPoint.Y) < TAtlasImageMarkup.MinSize);
+  Result := (Abs(EndPoint.X - StartPoint.X) < TAtlasImageMarkup.cMinSize) and
+    (Abs(EndPoint.Y - StartPoint.Y) < TAtlasImageMarkup.cMinSize);
 end;
 
 { TAtlasImageMarkup }
@@ -144,8 +144,8 @@ begin
     TAtlasMarkupTool.Rectangle:
       begin
         ACanvas.Brush.Style := bsClear;
-        ACanvas.Pen.Color := MarkColor;
-        ACanvas.Pen.Width := Max(1, Round(LineWidth * AScale));
+        ACanvas.Pen.Color := cMarkColor;
+        ACanvas.Pen.Width := Max(1, Round(cLineWidth * AScale));
         ACanvas.Pen.Style := psSolid;
         ACanvas.Rectangle(mRect);
         ACanvas.Brush.Style := bsSolid;
@@ -154,21 +154,21 @@ begin
       begin
         mFrom := Point(Round(AShape.StartPoint.X * AScale), Round(AShape.StartPoint.Y * AScale));
         mTo := Point(Round(AShape.EndPoint.X * AScale), Round(AShape.EndPoint.Y * AScale));
-        ACanvas.Pen.Color := MarkColor;
-        ACanvas.Pen.Width := Max(1, Round(LineWidth * AScale));
+        ACanvas.Pen.Color := cMarkColor;
+        ACanvas.Pen.Width := Max(1, Round(cLineWidth * AScale));
         ACanvas.Pen.Style := psSolid;
         ACanvas.MoveTo(mFrom.X, mFrom.Y);
         ACanvas.LineTo(mTo.X, mTo.Y);
         // Spitze am Ende: Dreieck in Richtung der Linie.
         mAngle := ArcTan2(mTo.Y - mFrom.Y, mTo.X - mFrom.X);
-        mHead := HeadLength * AScale;
+        mHead := cHeadLength * AScale;
         mHeadPoints[0] := mTo;
         mHeadPoints[1] := Point(Round(mTo.X - mHead * Cos(mAngle - Pi / 7)),
           Round(mTo.Y - mHead * Sin(mAngle - Pi / 7)));
         mHeadPoints[2] := Point(Round(mTo.X - mHead * Cos(mAngle + Pi / 7)),
           Round(mTo.Y - mHead * Sin(mAngle + Pi / 7)));
         ACanvas.Brush.Style := bsSolid;
-        ACanvas.Brush.Color := MarkColor;
+        ACanvas.Brush.Color := cMarkColor;
         ACanvas.Polygon(mHeadPoints);
       end;
   end;
@@ -206,7 +206,7 @@ begin
   FBox.Parent := Self;
   FBox.Align := alClient;
   FBox.AlignWithMargins := True;
-  FBox.Margins.SetBounds(Gap, 0, Gap, 0);
+  FBox.Margins.SetBounds(cGap, 0, cGap, 0);
   FBox.Cursor := crCross;
   FBox.OnPaint := BoxPaint;
   FBox.OnMouseDown := BoxMouseDown;
@@ -218,7 +218,7 @@ end;
 /// <summary>Leiste oben: Werkzeuge und „Rückgängig“.</summary>
 procedure TAtlasImageMarkupForm.AddToolBar;
 const
-  ToolText: array[TAtlasMarkupTool] of TAtlasTrackerTextId = (TAtlasTrackerTextId.AttachMarkupRectangle,
+  cToolText: array[TAtlasMarkupTool] of TAtlasTrackerTextId = (TAtlasTrackerTextId.AttachMarkupRectangle,
     TAtlasTrackerTextId.AttachMarkupArrow, TAtlasTrackerTextId.AttachMarkupBlacken);
 var
   mTop: TPanel;
@@ -230,20 +230,20 @@ begin
   mTop.Align := alTop;
   mTop.Height := 40;
   mTop.BevelOuter := bvNone;
-  mLeft := Gap;
+  mLeft := cGap;
   for mTool := Low(TAtlasMarkupTool) to High(TAtlasMarkupTool) do
   begin
     FToolButtons[mTool] := TButton.Create(Self);
     FToolButtons[mTool].Parent := mTop;
     FToolButtons[mTool].SetBounds(mLeft, 6, 110, 28);
-    FToolButtons[mTool].Caption := TAtlasTrackerStrings.Text(ToolText[mTool]);
+    FToolButtons[mTool].Caption := TAtlasTrackerStrings.Text(cToolText[mTool]);
     FToolButtons[mTool].Tag := Ord(mTool);
     FToolButtons[mTool].OnClick := ToolClick;
-    Inc(mLeft, 110 + Gap div 2);
+    Inc(mLeft, 110 + cGap div 2);
   end;
   FUndo := TButton.Create(Self);
   FUndo.Parent := mTop;
-  FUndo.SetBounds(mLeft + Gap, 6, 110, 28);
+  FUndo.SetBounds(mLeft + cGap, 6, 110, 28);
   FUndo.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachMarkupUndo);
   FUndo.OnClick := UndoClick;
 end;
@@ -261,14 +261,14 @@ begin
   mBottom.BevelOuter := bvNone;
   mButton := TButton.Create(Self);
   mButton.Parent := mBottom;
-  mButton.SetBounds(mBottom.Width - 2 * (110 + Gap), 8, 110, 28);
+  mButton.SetBounds(mBottom.Width - 2 * (110 + cGap), 8, 110, 28);
   mButton.Anchors := [akTop, akRight];
   mButton.Caption := TAtlasTrackerStrings.Text(TAtlasTrackerTextId.AttachMarkupApply);
   mButton.Default := True;
   mButton.ModalResult := mrOk;
   mButton := TButton.Create(Self);
   mButton.Parent := mBottom;
-  mButton.SetBounds(mBottom.Width - (110 + Gap), 8, 110, 28);
+  mButton.SetBounds(mBottom.Width - (110 + cGap), 8, 110, 28);
   mButton.Anchors := [akTop, akRight];
   mButton.Caption := TAtlasStrings.Text(TAtlasTextId.ProjectSettingsCancel);
   mButton.Cancel := True;
@@ -309,12 +309,12 @@ begin
   Result := Min(1, Min(FBox.Width / FBitmap.Width, FBox.Height / FBitmap.Height));
 end;
 
-function TAtlasImageMarkupForm.ToImage(X, Y: Integer): TPoint;
+function TAtlasImageMarkupForm.ToImage(AX, AY: Integer): TPoint;
 var
   mScale: Double;
 begin
   mScale := Scale;
-  Result := Point(EnsureRange(Round(X / mScale), 0, FBitmap.Width), EnsureRange(Round(Y / mScale), 0,
+  Result := Point(EnsureRange(Round(AX / mScale), 0, FBitmap.Width), EnsureRange(Round(AY / mScale), 0,
     FBitmap.Height));
 end;
 

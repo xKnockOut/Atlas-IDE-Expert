@@ -107,7 +107,7 @@ var
   mFile: TUpdateFile;
 begin
   Assert.IsTrue(TUpdateManifests.TryParse('{"version": "2.0.1", "packages": {' +
-    '"37.0": {"url": "http://example.org/a.zip", "sha256": "' + cSha + '"},' +
+    '"37.0": {"url": "http://example.org/a.zip", "sha256": "' + cSha + '"},' + // lsp-ignore: security-insecure-http
     '"36.0": {"url": "https://example.org/b.zip", "sha256": "123"}},' +
     '"source": {"url": "https://example.org/s zip", "sha256": "' + cSha + '"}}', 'https://example.org/releases',
     mManifest));
@@ -146,14 +146,14 @@ begin
   Assert.AreEqual('Atlas.IDE.Debugger', TUpdateVersions.PackageName('C:\Atlas\Win32\Atlas.IDE.Debugger370.bpl'));
   Assert.AreEqual('Atlas.IDE.Base', TUpdateVersions.PackageName('Atlas.IDE.Base290'));
   Assert.IsTrue(TUpdateVersions.IsRequiredPackage('atlas.ide.base'));
-  Assert.IsTrue(TUpdateVersions.IsRequiredPackage(TUpdateVersions.ContractsPackage));
+  Assert.IsTrue(TUpdateVersions.IsRequiredPackage(TUpdateVersions.cContractsPackage));
   Assert.IsFalse(TUpdateVersions.IsRequiredPackage('Atlas.IDE.Debugger'));
 end;
 
 procedure TTextUpdatesTests.SafeUrls;
 begin
   Assert.IsTrue(TUpdateVersions.IsSafeUrl('https://github.com/x'));
-  Assert.IsFalse(TUpdateVersions.IsSafeUrl('http://github.com/x'));
+  Assert.IsFalse(TUpdateVersions.IsSafeUrl('http://github.com/x')); // lsp-ignore: security-insecure-http
   Assert.IsFalse(TUpdateVersions.IsSafeUrl('https://github.com/x y'));
   Assert.IsFalse(TUpdateVersions.IsSafeUrl('https://github.com/x'#10));
   Assert.IsTrue(TUpdateVersions.IsSha256(cSha));

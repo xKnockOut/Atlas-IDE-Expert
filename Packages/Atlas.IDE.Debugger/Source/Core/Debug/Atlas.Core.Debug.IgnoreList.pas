@@ -34,8 +34,8 @@ type
 
   TAtlasDebugIgnoreList = record
   public const
-    Format = 1;
-    FileName = 'debug-ignore.json';
+    cFormat = 1;
+    cFileName = 'debug-ignore.json';
   public
     Classes: TArray<string>;
     Locations: TArray<TAtlasDebugIgnoredLocation>;
@@ -99,11 +99,11 @@ end;
 
 function TAtlasDebugIgnoreList.IgnoresClass(const AClass: string): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
-  for Name in Classes do
+  for mName in Classes do
   begin
-    if SameText(Name, AClass) then
+    if SameText(mName, AClass) then
     begin
       Exit(True);
     end;
@@ -122,13 +122,13 @@ end;
 
 function TAtlasDebugIgnoreList.RemoveClass(const AClass: string): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := High(Classes) downto 0 do
+  for mIndex := High(Classes) downto 0 do
   begin
-    if SameText(Classes[Index], AClass) then
+    if SameText(Classes[mIndex], AClass) then
     begin
-      Delete(Classes, Index, 1);
+      Delete(Classes, mIndex, 1);
       Exit(True);
     end;
   end;
@@ -137,11 +137,11 @@ end;
 
 function TAtlasDebugIgnoreList.IgnoresLocation(const AProject, AClass, AFileName: string; ALine: Integer): Boolean;
 var
-  Location: TAtlasDebugIgnoredLocation;
+  mLocation: TAtlasDebugIgnoredLocation;
 begin
-  for Location in Locations do
+  for mLocation in Locations do
   begin
-    if Location.Matches(AProject, AClass, AFileName, ALine) then
+    if mLocation.Matches(AProject, AClass, AFileName, ALine) then
     begin
       Exit(True);
     end;
@@ -161,13 +161,13 @@ end;
 
 function TAtlasDebugIgnoreList.RemoveLocation(const AProject, AClass, AFileName: string; ALine: Integer): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := High(Locations) downto 0 do
+  for mIndex := High(Locations) downto 0 do
   begin
-    if Locations[Index].Matches(AProject, AClass, AFileName, ALine) then
+    if Locations[mIndex].Matches(AProject, AClass, AFileName, ALine) then
     begin
-      Delete(Locations, Index, 1);
+      Delete(Locations, mIndex, 1);
       Exit(True);
     end;
   end;
@@ -181,59 +181,59 @@ end;
 
 function TAtlasDebugIgnoreList.LocationsOf(const AProject: string): TArray<TAtlasDebugIgnoredLocation>;
 var
-  Location: TAtlasDebugIgnoredLocation;
+  mLocation: TAtlasDebugIgnoredLocation;
 begin
   Result := nil;
-  for Location in Locations do
+  for mLocation in Locations do
   begin
-    if SamePath(Location.Project, AProject) then
+    if SamePath(mLocation.Project, AProject) then
     begin
-      Result := Result + [Location];
+      Result := Result + [mLocation];
     end;
   end;
 end;
 
 function TAtlasDebugIgnoreList.ToJson: string;
 var
-  Root, Item: TJSONObject;
-  List: TJSONArray;
-  Name: string;
-  Location: TAtlasDebugIgnoredLocation;
+  mRoot, mItem: TJSONObject;
+  mList: TJSONArray;
+  mName: string;
+  mLocation: TAtlasDebugIgnoredLocation;
 begin
-  Root := TJSONObject.Create;
+  mRoot := TJSONObject.Create;
   try
-    Root.AddPair('format', TJSONNumber.Create(Format));
-    List := TJSONArray.Create;
-    for Name in Classes do
+    mRoot.AddPair('format', TJSONNumber.Create(cFormat));
+    mList := TJSONArray.Create;
+    for mName in Classes do
     begin
-      List.Add(Name);
+      mList.Add(mName);
     end;
-    Root.AddPair('classes', List);
-    List := TJSONArray.Create;
-    for Location in Locations do
+    mRoot.AddPair('classes', mList);
+    mList := TJSONArray.Create;
+    for mLocation in Locations do
     begin
-      Item := TJSONObject.Create;
-      Item.AddPair('project', Location.Project);
-      Item.AddPair('class', Location.ExceptionClass);
-      Item.AddPair('file', Location.FileName);
-      Item.AddPair('line', TJSONNumber.Create(Location.Line));
-      List.AddElement(Item);
+      mItem := TJSONObject.Create;
+      mItem.AddPair('project', mLocation.Project);
+      mItem.AddPair('class', mLocation.ExceptionClass);
+      mItem.AddPair('file', mLocation.FileName);
+      mItem.AddPair('line', TJSONNumber.Create(mLocation.Line));
+      mList.AddElement(mItem);
     end;
-    Root.AddPair('locations', List);
-    Result := Root.Format(2);
+    mRoot.AddPair('locations', mList);
+    Result := mRoot.Format(2);
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 function StringOf(AObject: TJSONObject; const AName: string): string;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := AObject.GetValue(AName);
-  if Value is TJSONString then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONString then
   begin
-    Result := TJSONString(Value).Value;
+    Result := TJSONString(mValue).Value;
   end
   else
   begin
@@ -243,12 +243,12 @@ end;
 
 function IntegerOf(AObject: TJSONObject; const AName: string): Integer;
 var
-  Value: TJSONValue;
+  mValue: TJSONValue;
 begin
-  Value := AObject.GetValue(AName);
-  if Value is TJSONNumber then
+  mValue := AObject.GetValue(AName);
+  if mValue is TJSONNumber then
   begin
-    Result := TJSONNumber(Value).AsInt;
+    Result := TJSONNumber(mValue).AsInt;
   end
   else
   begin
@@ -258,69 +258,69 @@ end;
 
 class function TAtlasDebugIgnoreList.Parse(const AText: string; out AValid: Boolean): TAtlasDebugIgnoreList;
 var
-  Root: TJSONValue;
-  Value: TJSONValue;
-  Item: TJSONValue;
-  Location: TJSONObject;
+  mRoot: TJSONValue;
+  mValue: TJSONValue;
+  mItem: TJSONValue;
+  mLocation: TJSONObject;
 begin
   Result := Empty;
   AValid := False;
-  Root := TJSONObject.ParseJSONValue(AText);
+  mRoot := TJSONObject.ParseJSONValue(AText);
   try
-    if not (Root is TJSONObject) then
+    if not (mRoot is TJSONObject) then
     begin
       Exit;
     end;
     AValid := True;
-    Value := TJSONObject(Root).GetValue('classes');
-    if Value is TJSONArray then
+    mValue := TJSONObject(mRoot).GetValue('classes');
+    if mValue is TJSONArray then
     begin
-      for Item in TJSONArray(Value) do
+      for mItem in TJSONArray(mValue) do
       begin
-        if Item is TJSONString then
+        if mItem is TJSONString then
         begin
-          Result.AddClass(TJSONString(Item).Value);
+          Result.AddClass(TJSONString(mItem).Value);
         end;
       end;
     end;
-    Value := TJSONObject(Root).GetValue('locations');
-    if Value is TJSONArray then
+    mValue := TJSONObject(mRoot).GetValue('locations');
+    if mValue is TJSONArray then
     begin
-      for Item in TJSONArray(Value) do
+      for mItem in TJSONArray(mValue) do
       begin
-        if Item is TJSONObject then
+        if mItem is TJSONObject then
         begin
-          Location := TJSONObject(Item);
-          Result.AddLocation(StringOf(Location, 'project'), StringOf(Location, 'class'),
-            StringOf(Location, 'file'), IntegerOf(Location, 'line'));
+          mLocation := TJSONObject(mItem);
+          Result.AddLocation(StringOf(mLocation, 'project'), StringOf(mLocation, 'class'),
+            StringOf(mLocation, 'file'), IntegerOf(mLocation, 'line'));
         end;
       end;
     end;
   finally
-    Root.Free;
+    mRoot.Free;
   end;
 end;
 
 class function TAtlasDebugIgnoreList.Load(const AFolder: string): TAtlasDebugIgnoreList;
 var
-  List: TAtlasDebugIgnoreList;
-  Valid: Boolean;
+  mList: TAtlasDebugIgnoreList;
+  mValid: Boolean;
 begin
   Result := Empty;
   if AFolder = '' then
   begin
     Exit;
   end;
-  List := Empty;
-  Valid := False;
-  if TAtlasDataFile.Load(TPath.Combine(AFolder, FileName), 'Exceptions ignorieren',
+  mList := Empty;
+  mValid := False;
+  if TAtlasDataFile.Load(TPath.Combine(AFolder, cFileName), 'Exceptions ignorieren',
     function(const AText: string): Boolean
     begin
-      List := Parse(AText, Valid);
-      Result := Valid;
+      mList := Parse(AText, mValid);
+      Result := mValid;
     end) = TAtlasDataLoad.Loaded then
   begin
-    Result := List;
+    Result := mList;
   end;
 end;
 
@@ -332,7 +332,7 @@ begin
     Exit;
   end;
   try
-    TAtlasDataFile.Write(TPath.Combine(AFolder, FileName), AList.ToJson);
+    TAtlasDataFile.Write(TPath.Combine(AFolder, cFileName), AList.ToJson);
     Result := True;
   except
     on E: Exception do

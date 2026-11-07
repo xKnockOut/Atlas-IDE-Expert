@@ -81,206 +81,206 @@ end;
 
 procedure TAtlasSymbolPathUiTests.ChainShowsNodesAndSteps;
 var
-  Chain: TAtlasSymbolPathChain;
-  Lines: TArray<string>;
+  mChain: TAtlasSymbolPathChain;
+  mLines: TArray<string>;
 begin
-  Chain := TAtlasSymbolPathChain.Create(FForm);
-  Chain.Parent := FForm;
-  Chain.Width := 600;
-  Chain.SetAnswer(Sample);
-  Lines := Chain.Lines;
-  Assert.AreEqual(7, Integer(Length(Lines)));
-  Assert.AreEqual('1  TKundenForm · uKundenForm · uKundenForm.pas:5', Lines[0]);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeContains), Lines[1]);
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeCalls) + ' · uKundenForm.pas:21', Lines[3]);
+  mChain := TAtlasSymbolPathChain.Create(FForm);
+  mChain.Parent := FForm;
+  mChain.Width := 600;
+  mChain.SetAnswer(Sample);
+  mLines := mChain.Lines;
+  Assert.AreEqual(7, Integer(Length(mLines)));
+  Assert.AreEqual('1  TKundenForm · uKundenForm · uKundenForm.pas:5', mLines[0]);
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeContains), mLines[1]);
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeCalls) + ' · uKundenForm.pas:21', mLines[3]);
   // Erschlossene Kante mit Kennzeichen.
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeImplementedBy) + ' [' +
-    TAtlasStrings.Text(TAtlasTextId.SymbolPathInferred) + '] · uKundenRepo.pas:8', Lines[5]);
+    TAtlasStrings.Text(TAtlasTextId.SymbolPathInferred) + '] · uKundenRepo.pas:8', mLines[5]);
   // Die Kette wächst mit ihrem Inhalt; Zeilen liegen untereinander.
-  Assert.IsTrue(Chain.RowRect(6).Bottom <= Chain.Height);
-  Assert.IsTrue(Chain.RowRect(1).Top >= Chain.RowRect(0).Bottom);
-  Chain.PaintTo(FForm.Canvas.Handle, 0, 0);
+  Assert.IsTrue(mChain.RowRect(6).Bottom <= mChain.Height);
+  Assert.IsTrue(mChain.RowRect(1).Top >= mChain.RowRect(0).Bottom);
+  mChain.PaintTo(FForm.Canvas.Handle, 0, 0);
 end;
 
 procedure TAtlasSymbolPathUiTests.ChainSelectsAndOpens;
 var
-  Chain: TAtlasSymbolPathChain;
-  Key: Word;
-  Bounds: TRect;
+  mChain: TAtlasSymbolPathChain;
+  mKey: Word;
+  mBounds: TRect;
 begin
-  Chain := TAtlasSymbolPathChain.Create(FForm);
-  Chain.Parent := FForm;
-  Chain.Width := 600;
-  Chain.OnOpen :=
+  mChain := TAtlasSymbolPathChain.Create(FForm);
+  mChain.Parent := FForm;
+  mChain.Width := 600;
+  mChain.OnOpen :=
     procedure(const AFileName: string; ALine, ACharacter: Integer)
     begin
       FOpened := AFileName;
       FLine := ALine;
     end;
-  Chain.SetAnswer(Sample);
-  Assert.AreEqual(0, Chain.Selected);
+  mChain.SetAnswer(Sample);
+  Assert.AreEqual(0, mChain.Selected);
   // Treffer unter der Maus.
-  Bounds := Chain.RowRect(3);
-  Assert.AreEqual(3, Chain.RowAt(Bounds.Top + 1));
-  Assert.AreEqual(-1, Chain.RowAt(Chain.Height + 10));
-  Chain.Selected := 3;
-  Key := VK_RETURN;
-  TAtlasSymbolPathChainAccess(Chain).KeyDown(Key, []);
+  mBounds := mChain.RowRect(3);
+  Assert.AreEqual(3, mChain.RowAt(mBounds.Top + 1));
+  Assert.AreEqual(-1, mChain.RowAt(mChain.Height + 10));
+  mChain.Selected := 3;
+  mKey := VK_RETURN;
+  TAtlasSymbolPathChainAccess(mChain).KeyDown(mKey, []);
   Assert.AreEqual('C:\P\uKundenForm.pas', FOpened);
   Assert.AreEqual(20, FLine);
-  Key := VK_DOWN;
-  TAtlasSymbolPathChainAccess(Chain).KeyDown(Key, []);
-  Assert.AreEqual(4, Chain.Selected);
-  Key := VK_UP;
-  TAtlasSymbolPathChainAccess(Chain).KeyDown(Key, []);
+  mKey := VK_DOWN;
+  TAtlasSymbolPathChainAccess(mChain).KeyDown(mKey, []);
+  Assert.AreEqual(4, mChain.Selected);
+  mKey := VK_UP;
+  TAtlasSymbolPathChainAccess(mChain).KeyDown(mKey, []);
   // KeyDown setzt Key auf 0 (verarbeitet).
-  Key := VK_UP;
-  TAtlasSymbolPathChainAccess(Chain).KeyDown(Key, []);
-  Assert.AreEqual(2, Chain.Selected);
+  mKey := VK_UP;
+  TAtlasSymbolPathChainAccess(mChain).KeyDown(mKey, []);
+  Assert.AreEqual(2, mChain.Selected);
 end;
 
 procedure TAtlasSymbolPathUiTests.StatusTexts;
 var
-  Answer: TAtlasSymbolPathAnswer;
+  mAnswer: TAtlasSymbolPathAnswer;
 begin
-  Answer := Sample;
+  mAnswer := Sample;
   Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SymbolPathFound, [3, 42, 7]),
-    TAtlasSymbolPathChain.StatusText(Answer));
-  Answer.Routes := Answer.Routes + [Answer.Routes[0]];
-  Answer.MoreRoutes := True;
+    TAtlasSymbolPathChain.StatusText(mAnswer));
+  mAnswer.Routes := mAnswer.Routes + [mAnswer.Routes[0]];
+  mAnswer.MoreRoutes := True;
   Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SymbolPathFoundMany, [3, 2, 42, 7]) +
-    TAtlasStrings.Text(TAtlasTextId.SymbolPathMoreRoutes), TAtlasSymbolPathChain.StatusText(Answer));
-  Answer.Status := TAtlasSymbolPathStatus.NoPath;
-  Answer.Routes := nil;
-  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SymbolPathNoPath, [8, 42]), TAtlasSymbolPathChain.StatusText(Answer));
-  Answer.Status := TAtlasSymbolPathStatus.Aborted;
-  Answer.AbortReason := 'Zeitlimit';
+    TAtlasStrings.Text(TAtlasTextId.SymbolPathMoreRoutes), TAtlasSymbolPathChain.StatusText(mAnswer));
+  mAnswer.Status := TAtlasSymbolPathStatus.NoPath;
+  mAnswer.Routes := nil;
+  Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SymbolPathNoPath, [8, 42]), TAtlasSymbolPathChain.StatusText(mAnswer));
+  mAnswer.Status := TAtlasSymbolPathStatus.Aborted;
+  mAnswer.AbortReason := 'Zeitlimit';
   Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SymbolPathAborted, [3, 42, 'Zeitlimit']),
-    TAtlasSymbolPathChain.StatusText(Answer));
-  Answer.Status := TAtlasSymbolPathStatus.Ambiguous;
-  Answer.Subject := 'Laden';
+    TAtlasSymbolPathChain.StatusText(mAnswer));
+  mAnswer.Status := TAtlasSymbolPathStatus.Ambiguous;
+  mAnswer.Subject := 'Laden';
   Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SymbolPathAmbiguous, ['Laden']),
-    TAtlasSymbolPathChain.StatusText(Answer));
-  Answer.Status := TAtlasSymbolPathStatus.NotFound;
+    TAtlasSymbolPathChain.StatusText(mAnswer));
+  mAnswer.Status := TAtlasSymbolPathStatus.NotFound;
   Assert.AreEqual(TAtlasStrings.Fmt(TAtlasTextId.SymbolPathNotFound, ['Laden']),
-    TAtlasSymbolPathChain.StatusText(Answer));
+    TAtlasSymbolPathChain.StatusText(mAnswer));
 end;
 
 procedure TAtlasSymbolPathUiTests.StepCaptionsFollowKind;
 var
-  Step: TAtlasSymbolPathStep;
+  mStep: TAtlasSymbolPathStep;
 begin
-  Step := Default(TAtlasSymbolPathStep);
-  Step.Kind := 'uses';
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeUses), TAtlasSymbolPathChain.StepCaption(Step));
-  Step.Implementation_ := True;
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeUsesImpl), TAtlasSymbolPathChain.StepCaption(Step));
-  Step := Default(TAtlasSymbolPathStep);
-  Step.Kind := 'implements';
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeImplements), TAtlasSymbolPathChain.StepCaption(Step));
-  Step.Reverse := True;
+  mStep := Default(TAtlasSymbolPathStep);
+  mStep.Kind := 'uses';
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeUses), TAtlasSymbolPathChain.StepCaption(mStep));
+  mStep.Implementation_ := True;
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeUsesImpl), TAtlasSymbolPathChain.StepCaption(mStep));
+  mStep := Default(TAtlasSymbolPathStep);
+  mStep.Kind := 'implements';
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeImplements), TAtlasSymbolPathChain.StepCaption(mStep));
+  mStep.Reverse := True;
   Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeImplementedBy),
-    TAtlasSymbolPathChain.StepCaption(Step));
-  Step := Default(TAtlasSymbolPathStep);
-  Step.Kind := 'hasField';
-  Step.Caption := 'vom Typ';
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeOfType), TAtlasSymbolPathChain.StepCaption(Step));
-  Step.Caption := 'hat Feld';
-  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeHasField), TAtlasSymbolPathChain.StepCaption(Step));
-  Step.Kind := 'neu';
-  Step.Caption := 'vom Server';
-  Assert.AreEqual('vom Server', TAtlasSymbolPathChain.StepCaption(Step));
+    TAtlasSymbolPathChain.StepCaption(mStep));
+  mStep := Default(TAtlasSymbolPathStep);
+  mStep.Kind := 'hasField';
+  mStep.Caption := 'vom Typ';
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeOfType), TAtlasSymbolPathChain.StepCaption(mStep));
+  mStep.Caption := 'hat Feld';
+  Assert.AreEqual(TAtlasStrings.Text(TAtlasTextId.SymbolPathEdgeHasField), TAtlasSymbolPathChain.StepCaption(mStep));
+  mStep.Kind := 'neu';
+  mStep.Caption := 'vom Server';
+  Assert.AreEqual('vom Server', TAtlasSymbolPathChain.StepCaption(mStep));
   Assert.AreEqual('', TAtlasSymbolPathChain.LocationText('', 3));
   Assert.AreEqual('Kunden.pas:4', TAtlasSymbolPathChain.LocationText('C:\P\Kunden.pas', 3));
 end;
 
 procedure TAtlasSymbolPathUiTests.DialogValidatesAndSuggests;
 var
-  Dialog: TAtlasSymbolPathDialog;
-  Input: TAtlasSymbolPathRequestInput;
+  mDialog: TAtlasSymbolPathDialog;
+  mInput: TAtlasSymbolPathRequestInput;
 begin
-  Dialog := TAtlasSymbolPathDialog.CreateDialog(FForm,
+  mDialog := TAtlasSymbolPathDialog.CreateDialog(FForm,
     function(const APattern: string): TArray<string>
     begin
       Result := TArray<string>.Create(APattern + 'Form', APattern + 'Form', 'TKundenRepo.Laden');
     end);
   try
     // Ohne beide Angaben bleibt der Dialog offen und sagt, was fehlt.
-    Assert.IsFalse(Dialog.Validate);
-    Assert.AreEqual(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathMissing), Dialog.MessageLabel.Caption);
-    Input := Default(TAtlasSymbolPathRequestInput);
-    Input.From := 'TKundenForm';
-    Input.MaxSteps := 40;
-    Dialog.Input := Input;
-    Assert.IsFalse(Dialog.Validate);
-    Assert.AreEqual(8, Dialog.Input.MaxSteps, 'außerhalb 1–16: Vorgabe');
+    Assert.IsFalse(mDialog.Validate);
+    Assert.AreEqual(TAtlasAnalysisStrings.Text(TAtlasAnalysisTextId.SymbolPathMissing), mDialog.MessageLabel.Caption);
+    mInput := Default(TAtlasSymbolPathRequestInput);
+    mInput.From := 'TKundenForm';
+    mInput.MaxSteps := 40;
+    mDialog.Input := mInput;
+    Assert.IsFalse(mDialog.Validate);
+    Assert.AreEqual(8, mDialog.Input.MaxSteps, 'außerhalb 1–16: Vorgabe');
     // Vorschläge ohne Doppelte, Übernahme ins Feld.
-    Dialog.ToEdit.Text := 'TKunden';
-    Dialog.Suggest(Dialog.ToEdit);
-    Assert.IsTrue(Dialog.SuggestionList.Visible);
-    Assert.AreEqual(2, Dialog.SuggestionList.Items.Count);
-    Dialog.SuggestionList.ItemIndex := 1;
-    Dialog.TakeSuggestion;
-    Assert.AreEqual('TKundenRepo.Laden', Dialog.ToEdit.Text);
-    Assert.IsFalse(Dialog.SuggestionList.Visible);
-    Assert.IsTrue(Dialog.Validate);
-    Dialog.AllCheck.Checked := True;
-    Dialog.StepsEdit.Text := '5';
-    Input := Dialog.Input;
-    Assert.AreEqual('TKundenForm', Input.From);
-    Assert.AreEqual('TKundenRepo.Laden', Input.To_);
-    Assert.AreEqual(5, Input.MaxSteps);
-    Assert.IsTrue(Input.All);
+    mDialog.ToEdit.Text := 'TKunden';
+    mDialog.Suggest(mDialog.ToEdit);
+    Assert.IsTrue(mDialog.SuggestionList.Visible);
+    Assert.AreEqual(2, mDialog.SuggestionList.Items.Count);
+    mDialog.SuggestionList.ItemIndex := 1;
+    mDialog.TakeSuggestion;
+    Assert.AreEqual('TKundenRepo.Laden', mDialog.ToEdit.Text);
+    Assert.IsFalse(mDialog.SuggestionList.Visible);
+    Assert.IsTrue(mDialog.Validate);
+    mDialog.AllCheck.Checked := True;
+    mDialog.StepsEdit.Text := '5';
+    mInput := mDialog.Input;
+    Assert.AreEqual('TKundenForm', mInput.From);
+    Assert.AreEqual('TKundenRepo.Laden', mInput.To_);
+    Assert.AreEqual(5, mInput.MaxSteps);
+    Assert.IsTrue(mInput.All);
     // Leeres Feld: keine Vorschläge.
-    Dialog.ToEdit.Text := '';
-    Dialog.Suggest(Dialog.ToEdit);
-    Assert.IsFalse(Dialog.SuggestionList.Visible);
+    mDialog.ToEdit.Text := '';
+    mDialog.Suggest(mDialog.ToEdit);
+    Assert.IsFalse(mDialog.SuggestionList.Visible);
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 
 procedure TAtlasSymbolPathUiTests.ResultsFrameShowsChain;
 var
-  Frame: TAtlasResultsFrame;
-  Answer: TAtlasSymbolPathAnswer;
+  mFrame: TAtlasResultsFrame;
+  mAnswer: TAtlasSymbolPathAnswer;
 begin
-  Frame := TAtlasResultsFrame.Create(FForm);
-  Frame.Parent := FForm;
-  Frame.Align := alClient;
-  Frame.OnOpen :=
+  mFrame := TAtlasResultsFrame.Create(FForm);
+  mFrame.Parent := FForm;
+  mFrame.Align := alClient;
+  mFrame.OnOpen :=
     procedure(const AFileName: string; ALine, ACharacter: Integer)
     begin
       FOpened := AFileName;
       FLine := ALine;
     end;
-  Frame.Path.OnShowRoute :=
+  mFrame.Path.OnShowRoute :=
     procedure(const AUnits: TArray<string>)
     begin
       FRoute := AUnits;
     end;
-  Answer := Sample;
-  Frame.Path.Show('Weg', Answer, True);
-  Assert.IsTrue(Frame.Path.Shows);
-  Assert.IsFalse(Frame.Tree.Visible);
-  Assert.AreEqual(TAtlasSymbolPathChain.StatusText(Answer), Frame.Path.Status.Caption);
-  Assert.IsTrue(Frame.Path.MapButton.Visible);
-  Frame.Path.MapButton.Click;
+  mAnswer := Sample;
+  mFrame.Path.Show('Weg', mAnswer, True);
+  Assert.IsTrue(mFrame.Path.Shows);
+  Assert.IsFalse(mFrame.Tree.Visible);
+  Assert.AreEqual(TAtlasSymbolPathChain.StatusText(mAnswer), mFrame.Path.Status.Caption);
+  Assert.IsTrue(mFrame.Path.MapButton.Visible);
+  mFrame.Path.MapButton.Click;
   Assert.AreEqual('uKundenForm,uRepoIntf,uKundenRepo', string.Join(',', FRoute));
   // Doppelklick in der Kette geht an OnOpen des Ergebnisfensters.
-  Frame.Path.Chain.Selected := 6;
-  TAtlasSymbolPathChainAccess(Frame.Path.Chain).DblClick;
+  mFrame.Path.Chain.Selected := 6;
+  TAtlasSymbolPathChainAccess(mFrame.Path.Chain).DblClick;
   Assert.AreEqual('C:\P\uKundenRepo.pas', FOpened);
   // Ohne Architekturübersicht kein Knopf; Hinweis ohne Kette.
-  Frame.Path.Show('Weg', Answer, False);
-  Assert.IsFalse(Frame.Path.MapButton.Visible);
-  Frame.Path.ShowText('Weg', 'Suche …');
-  Assert.AreEqual('Suche …', Frame.Path.Status.Caption);
-  Assert.AreEqual(0, Integer(Length(Frame.Path.Chain.Rows)));
+  mFrame.Path.Show('Weg', mAnswer, False);
+  Assert.IsFalse(mFrame.Path.MapButton.Visible);
+  mFrame.Path.ShowText('Weg', 'Suche …');
+  Assert.AreEqual('Suche …', mFrame.Path.Status.Caption);
+  Assert.AreEqual(0, Integer(Length(mFrame.Path.Chain.Rows)));
   // Andere Listen zeigen wieder den Baum.
-  Frame.Entries.Show('Referenzen', nil);
-  Assert.IsFalse(Frame.Path.Shows);
-  Assert.IsTrue(Frame.Tree.Visible);
+  mFrame.Entries.Show('Referenzen', nil);
+  Assert.IsFalse(mFrame.Path.Shows);
+  Assert.IsTrue(mFrame.Tree.Visible);
 end;
 
 initialization

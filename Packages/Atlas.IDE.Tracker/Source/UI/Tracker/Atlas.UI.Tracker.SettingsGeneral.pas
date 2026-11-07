@@ -127,7 +127,7 @@ begin
   FView.Tracker := FRows.AddChoice('issues.tracker',
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesTracker),
     TArray<string>.Create(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesTrackerTeam), cGitHubCaption,
-    cYouTrackCaption), TArray<string>.Create('', TAtlasTrackerTarget.GitHub, TAtlasTrackerTarget.YouTrack));
+    cYouTrackCaption), TArray<string>.Create('', TAtlasTrackerTarget.cGitHub, TAtlasTrackerTarget.cYouTrack));
   FView.Start := FRows.AddChoice('issues.start', TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesStart),
     TArray<string>.Create(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesStartBranch),
     TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesStartRemember)),

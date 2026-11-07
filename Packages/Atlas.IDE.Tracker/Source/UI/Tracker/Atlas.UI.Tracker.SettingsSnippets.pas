@@ -105,11 +105,11 @@ end;
 procedure TAtlasTrackerSnippetsPart.BuildFields;
 begin
   FView.Name := FRows.NewEdit(NameChange);
-  FView.Name.MaxLength := TAtlasCommentSnippets.MaxName;
+  FView.Name.MaxLength := TAtlasCommentSnippets.cMaxName;
   FRows.Attach(FRows.AddTallLabelled(TAtlasTrackerStrings.Text(TAtlasTrackerTextId.SettingsIssuesSnippetName),
     FView.Name, TRows.cRowHeight), FAnchor);
   FView.Text := TMemo.Create(FRows.Owner);
-  FView.Text.MaxLength := TAtlasCommentSnippets.MaxText;
+  FView.Text.MaxLength := TAtlasCommentSnippets.cMaxText;
   FView.Text.ScrollBars := ssVertical;
   FView.Text.WantReturns := True;
   FView.Text.OnChange := TextChange;

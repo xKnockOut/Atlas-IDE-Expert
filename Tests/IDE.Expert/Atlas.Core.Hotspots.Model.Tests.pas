@@ -176,10 +176,10 @@ begin
   mBubbles := TAtlasHotspotChart.Layout(mModel.Units, mModel.Filter(''), 400, 300, 1);
   Assert.AreEqual(3, Integer(Length(mBubbles)));
   Assert.AreEqual(0, mBubbles[0].Entry, 'größte zuerst');
-  Assert.AreEqual(TAtlasHotspotChart.MaxRadius, mBubbles[0].Radius);
+  Assert.AreEqual(TAtlasHotspotChart.cMaxRadius, mBubbles[0].Radius);
   mKern := mBubbles[0];
-  Assert.AreEqual(400 - TAtlasHotspotChart.MarginRight, mKern.X, 'meiste Änderungen ganz rechts');
-  Assert.AreEqual(TAtlasHotspotChart.MarginTop, mKern.Y, 'höchste Komplexität ganz oben');
+  Assert.AreEqual(400 - TAtlasHotspotChart.cMarginRight, mKern.X, 'meiste Änderungen ganz rechts');
+  Assert.AreEqual(TAtlasHotspotChart.cMarginTop, mKern.Y, 'höchste Komplexität ganz oben');
   Assert.AreEqual(0, TAtlasHotspotChart.HitTest(mBubbles, mKern.X, mKern.Y));
   Assert.AreEqual(-1, TAtlasHotspotChart.HitTest(mBubbles, 0, 0));
   // Kleine Blase in einer großen: die kleine gewinnt.
@@ -187,7 +187,7 @@ begin
   Assert.AreEqual(mBubble.Entry, TAtlasHotspotChart.HitTest(TArray<TAtlasHotspotBubble>.Create(mKern,
     mBubble), mBubble.X, mBubble.Y));
   Assert.AreEqual(0, Integer(Length(TAtlasHotspotChart.Layout(mModel.Units, mModel.Filter(''), 0, 300, 1))));
-  Assert.AreEqual(2 * TAtlasHotspotChart.MaxRadius, TAtlasHotspotChart.Layout(mModel.Units, mModel.Filter(''), 800,
+  Assert.AreEqual(2 * TAtlasHotspotChart.cMaxRadius, TAtlasHotspotChart.Layout(mModel.Units, mModel.Filter(''), 800,
     600, 2)[0].Radius, 'hohe Auflösung');
 end;
 

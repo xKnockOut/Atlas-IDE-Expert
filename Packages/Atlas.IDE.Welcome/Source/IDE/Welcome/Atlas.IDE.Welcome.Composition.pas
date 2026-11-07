@@ -248,7 +248,7 @@ begin
   Result := Default(TAtlasModuleInfo);
   Result.Id := cModuleId;
   Result.Name := 'Willkommensseite';
-  Result.Version := TAtlasVersion.Version;
+  Result.Version := TAtlasVersion.cVersion;
   Result.Handle := HInstance;
   // Die Seite startet keinen Server und liest nur lokale Daten: auch im abgesicherten Start.
   Result.MinLevel := TAtlasSafeLevel.Safe;
