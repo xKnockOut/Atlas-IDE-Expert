@@ -40,30 +40,30 @@ end;
 
 procedure TAtlasDebugAttributesTests.AttributesCarryTheirText;
 var
-  Context: TRttiContext;
-  Attribute: TCustomAttribute;
-  Template, Names: string;
+  mContext: TRttiContext;
+  mAttribute: TCustomAttribute;
+  mTemplate, mNames: string;
 begin
-  Template := '';
-  Names := '';
-  Context := TRttiContext.Create;
+  mTemplate := '';
+  mNames := '';
+  mContext := TRttiContext.Create;
   try
-    for Attribute in Context.GetType(TBeispiel).GetAttributes do
+    for mAttribute in mContext.GetType(TBeispiel).GetAttributes do
     begin
-      if Attribute is AtlasDebugDisplayAttribute then
+      if mAttribute is AtlasDebugDisplayAttribute then
       begin
-        Template := AtlasDebugDisplayAttribute(Attribute).Template;
+        mTemplate := AtlasDebugDisplayAttribute(mAttribute).Template;
       end
-      else if Attribute is AtlasDebugChildrenAttribute then
+      else if mAttribute is AtlasDebugChildrenAttribute then
       begin
-        Names := AtlasDebugChildrenAttribute(Attribute).Names;
+        mNames := AtlasDebugChildrenAttribute(mAttribute).Names;
       end;
     end;
   finally
-    Context.Free;
+    mContext.Free;
   end;
-  Assert.AreEqual('{Name}, {Ort}', Template);
-  Assert.AreEqual('Name, Ort', Names);
+  Assert.AreEqual('{Name}, {Ort}', mTemplate);
+  Assert.AreEqual('Name, Ort', mNames);
 end;
 
 initialization
