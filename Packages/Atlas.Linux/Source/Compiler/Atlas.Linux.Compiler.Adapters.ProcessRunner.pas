@@ -35,7 +35,7 @@ implementation
 
 const
   /// <summary>Exit-Code eines über Cancel beendeten Prozesses.</summary>
-  CancelledExitCode = 1;
+  cCancelledExitCode = 1;
 
 { TProcessRunner }
 
@@ -89,15 +89,15 @@ end;
 
 procedure TProcessRunner.Cancel;
 var
-  Running: TProcess;
+  mRunning: TProcess;
 begin
   TMonitor.Enter(FLock);
   try
     FCancelled := True;
     // Unter der Sperre: Run entfernt einen Prozess erst (Untrack), bevor es ihn freigibt.
-    for Running in FRunning do
+    for mRunning in FRunning do
     begin
-      Running.Terminate(CancelledExitCode);
+      mRunning.Terminate(cCancelledExitCode);
     end;
   finally
     TMonitor.Exit(FLock);
@@ -205,7 +205,7 @@ begin
     StartChild(mChild, ARequest);
     if not Track(mChild) then
     begin
-      mChild.Terminate(CancelledExitCode);
+      mChild.Terminate(cCancelledExitCode);
     end;
     try
       ReadOutput(mChild, AOnLine);
