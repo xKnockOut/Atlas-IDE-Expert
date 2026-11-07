@@ -117,7 +117,7 @@ begin
     end);
 end;
 
-function KeyboardProc(ACode: Integer; AWParam: AWParam; ALParam: ALParam): LRESULT; stdcall;
+function KeyboardProc(ACode: Integer; AWParam: WPARAM; ALParam: LPARAM): LRESULT; stdcall;
 var
   mClient: TAtlasKeyClient;
   mShift: TShiftState;

@@ -89,7 +89,7 @@ begin
   Result := not Application.Terminated and (Application.MainForm <> nil) and Application.MainForm.Visible;
 end;
 
-function InternalGetWindowText(AHWnd: AHWnd; APString: PWideChar; ACchMaxCount: Integer): Integer; stdcall;
+function InternalGetWindowText(AHWnd: HWND; APString: PWideChar; ACchMaxCount: Integer): Integer; stdcall;
   external user32 name 'InternalGetWindowText';
 
 { TAtlasWatchdog.TWatchThread }

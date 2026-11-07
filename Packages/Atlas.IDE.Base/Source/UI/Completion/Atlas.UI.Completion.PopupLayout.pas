@@ -104,7 +104,7 @@ begin
   end
   else if Collapsed then
   begin
-    Result := Scale(CollapsedPanelWidth);
+    Result := Scale(cCollapsedPanelWidth);
   end
   else
   begin
@@ -394,7 +394,7 @@ begin
   mWidest := Max(mWidest, Canvas.TextWidth(TAtlasStrings.Text(TAtlasTextId.FooterKeys) + '    ' +
     TAtlasStrings.Fmt(TAtlasTextId.CountFits, [999, 9999])) + Scale(18));
   Canvas.Font := Font;
-  Result := TAtlasPopupWidth.Fit(mWidest, Scale(MinWidth), Scale(cMaxWidth));
+  Result := TAtlasPopupWidth.Fit(mWidest, Scale(cMinWidth), Scale(cMaxWidth));
 end;
 
 procedure TAtlasCompletionPopupLayout.PlaceAndShow;

@@ -1650,6 +1650,7 @@ uses
   Shell.Composition.ServerCommands in '..\Application\Source\Shell\Shell.Composition.ServerCommands.pas',
   Shell.Composition.CodeActions in '..\Application\Source\Shell\Shell.Composition.CodeActions.pas',
   Shell.Composition.Status in '..\Application\Source\Shell\Shell.Composition.Status.pas',
+  Shell.Composition.Status.Contract in '..\Application\Source\Shell\Shell.Composition.Status.Contract.pas',
   Shell.Composition.Slash in '..\Application\Source\Shell\Shell.Composition.Slash.pas',
   Shell.Composition.Contract in '..\Application\Source\Shell\Shell.Composition.Contract.pas',
   Shell.Composition.UnitSearch in '..\Application\Source\Shell\Shell.Composition.UnitSearch.pas',
