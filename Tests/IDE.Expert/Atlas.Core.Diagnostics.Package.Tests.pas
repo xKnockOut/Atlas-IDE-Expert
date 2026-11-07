@@ -402,7 +402,7 @@ var
 begin
   Install := IncludeTrailingPathDelimiter(FFolder);
   Plugin := Install + 'Win32' + PathDelim;
-  Local := Install + TAtlasHelp.DocsFolder + PathDelim + TAtlasHelp.DocsIndex;
+  Local := Install + TAtlasHelp.cDocsFolder + PathDelim + TAtlasHelp.cDocsIndex;
   Exists :=
     function(AFileName: string): Boolean
     begin
@@ -413,12 +413,12 @@ begin
   // BPL direkt im Installationsordner.
   Assert.AreEqual(Local, TAtlasHelp.DocsTarget(Install, Exists));
   // Ohne Installation: Doku-Seite des Repositorys.
-  Assert.AreEqual(TAtlasHelp.DocsUrl, TAtlasHelp.DocsTarget(Plugin,
+  Assert.AreEqual(TAtlasHelp.cDocsUrl, TAtlasHelp.DocsTarget(Plugin,
     function(AFileName: string): Boolean
     begin
       Result := False;
     end));
-  Assert.AreEqual(TAtlasHelp.DocsUrl, TAtlasHelp.DocsTarget('', Exists));
+  Assert.AreEqual(TAtlasHelp.cDocsUrl, TAtlasHelp.DocsTarget('', Exists));
   Assert.IsTrue(TAtlasHelp.Enabled(TAtlasHelpButton.Docs, False));
   Assert.IsTrue(TAtlasHelp.Enabled(TAtlasHelpButton.Report, False));
   Assert.IsFalse(TAtlasHelp.Enabled(TAtlasHelpButton.Keys, False), 'ohne Übersicht (#520)');

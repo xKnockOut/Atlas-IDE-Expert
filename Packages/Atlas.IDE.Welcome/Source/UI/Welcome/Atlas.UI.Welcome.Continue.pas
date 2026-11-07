@@ -140,11 +140,11 @@ type
   /// …“ und der Hinweis der Quelle; selbst gezeichnet.</summary>
   TAtlasContinueRecentView = class(TPanel)
   public const
-    RowHeight = 44;
-    LineHeight = 20;
-    Indent = 8;
-    ButtonHeight = 22;
-    ButtonPadding = 10;
+    cRowHeight = 44;
+    cLineHeight = 20;
+    cIndent = 8;
+    cButtonHeight = 22;
+    cButtonPadding = 10;
   private
     FFrame: TAtlasWelcomeSectionFrame;
     FSource: IAtlasContinueSource;
@@ -177,7 +177,7 @@ type
     /// <summary>Höhe der Zeilen, des Abschnitts „Neu seit …“ und des Hinweises.</summary>
     function ContentHeight: Integer;
     /// <summary>Zeile, Schaltfläche bzw. Commit an X, Y (Koordinaten der Zeichenfläche).</summary>
-    function HitTest(X, Y: Integer): TAtlasContinueHit;
+    function HitTest(AX, AY: Integer): TAtlasContinueHit;
     /// <summary>Klick wie mit der Maus (auch für Tests): „Fortsetzen“ bzw. Commit.</summary>
     procedure ClickAt(const AHit: TAtlasContinueHit);
     /// <summary>Oberkante der Zeile ARow (Koordinaten der Zeichenfläche).</summary>
@@ -196,15 +196,15 @@ type
 
   TAtlasWelcomeContinueFrame = class(TAtlasWelcomeSectionFrame)
   public const
-    RowHeight = TAtlasContinueRecentView.RowHeight;
-    LineHeight = TAtlasContinueRecentView.LineHeight;
-    Indent = TAtlasContinueRecentView.Indent;
-    TabHeight = 26;
-    FilterHeight = 28;
+    cRowHeight = TAtlasContinueRecentView.cRowHeight;
+    cLineHeight = TAtlasContinueRecentView.cLineHeight;
+    cIndent = TAtlasContinueRecentView.cIndent;
+    cTabHeight = 26;
+    cFilterHeight = 28;
     /// <summary>Sichtbare Zeilen der Liste „Gemerkt“ (logische Pixel je Zeile: LineHeight).</summary>
-    SavedRows = 8;
-    PageRecent = 0;
-    PageSaved = 1;
+    cSavedRows = 8;
+    cPageRecent = 0;
+    cPageSaved = 1;
   private
     FSource: IAtlasContinueSource;
     FTabs: TTabControl;
@@ -249,10 +249,10 @@ uses
   Atlas.UI.Welcome.Strings;
 
 const
-  Separator = ' · ';
-  Arrow = ' ' + #$203A + ' ';
-  Dash = ' ' + #$2014 + ' ';
-  NoticeColor = TColor($001A8CC9);
+  cSeparator = ' · ';
+  cArrow = ' ' + #$203A + ' ';
+  cDash = ' ' + #$2014 + ' ';
+  cNoticeColor = TColor($001A8CC9);
 
 type
   /// <summary>Farben des IDE-Themas (hell oder dunkel) für den Reiter „Zuletzt“.</summary>
@@ -373,111 +373,111 @@ end;
 
 class function TAtlasContinueTexts.AgeText(AAtUtc, ANowUtc: TDateTime): string;
 var
-  AtLocal: TDateTime;
-  Value: Integer;
+  mAtLocal: TDateTime;
+  mValue: Integer;
 begin
   Result := '';
   if AAtUtc <= 0 then
   begin
     Exit;
   end;
-  AtLocal := TTimeZone.Local.ToLocalTime(AAtUtc);
-  case TAtlasWelcomeContinue.Age(AtLocal, TTimeZone.Local.ToLocalTime(ANowUtc), Value) of
+  mAtLocal := TTimeZone.Local.ToLocalTime(AAtUtc);
+  case TAtlasWelcomeContinue.Age(mAtLocal, TTimeZone.Local.ToLocalTime(ANowUtc), mValue) of
     TAtlasContinueAge.JustNow:
       Result := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueJustNow);
     TAtlasContinueAge.Minutes:
-      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueMinutes, [Value]);
+      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueMinutes, [mValue]);
     TAtlasContinueAge.Hours:
-      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueHours, [Value]);
+      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueHours, [mValue]);
     TAtlasContinueAge.Yesterday:
-      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueYesterday, [FormatDateTime('t', AtLocal)]);
+      Result := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueYesterday, [FormatDateTime('t', mAtLocal)]);
   else
-    Result := FormatDateTime('ddddd t', AtLocal);
+    Result := FormatDateTime('ddddd t', mAtLocal);
   end;
 end;
 
 class function TAtlasContinueTexts.TitleText(const AEntry: TAtlasContinueEntry): string;
 begin
-  Result := AEntry.Name + Separator + TabsText(AEntry.State.TabCount);
+  Result := AEntry.Name + cSeparator + TabsText(AEntry.State.TabCount);
 end;
 
 class function TAtlasContinueTexts.DetailText(const AEntry: TAtlasContinueEntry): string;
 var
-  Tab: TAtlasWorkTab;
+  mTab: TAtlasWorkTab;
 begin
-  Tab := AEntry.LastTab;
-  Result := TAtlasWelcomeContinue.FileNameOf(Tab.FileName);
-  if Tab.Method <> '' then
+  mTab := AEntry.LastTab;
+  Result := TAtlasWelcomeContinue.FileNameOf(mTab.FileName);
+  if mTab.Method <> '' then
   begin
-    Result := Result + Arrow + Tab.Method;
+    Result := Result + cArrow + mTab.Method;
   end;
 end;
 
 class function TAtlasContinueTexts.CommitText(const ACommit: TAtlasContinueCommit): string;
 var
-  Names: TArray<string>;
-  FileName: string;
+  mNames: TArray<string>;
+  mFileName: string;
 begin
-  Names := nil;
-  for FileName in ACommit.Files do
+  mNames := nil;
+  for mFileName in ACommit.Files do
   begin
-    Names := Names + [TAtlasWelcomeContinue.FileNameOf(FileName)];
+    mNames := mNames + [TAtlasWelcomeContinue.FileNameOf(mFileName)];
   end;
-  Result := ACommit.Commit.ShortHash + '  ' + ACommit.Commit.Summary + Dash + ACommit.Commit.Author;
-  if Length(Names) > 0 then
+  Result := ACommit.Commit.ShortHash + '  ' + ACommit.Commit.Summary + cDash + ACommit.Commit.Author;
+  if Length(mNames) > 0 then
   begin
-    Result := Result + Separator + string.Join(', ', Names);
+    Result := Result + cSeparator + string.Join(', ', mNames);
   end;
 end;
 
 class function TAtlasContinueTexts.CommitHint(const ACommit: TAtlasContinueCommit): string;
 var
-  Lines: TStringList;
+  mLines: TStringList;
 begin
-  Lines := TStringList.Create;
+  mLines := TStringList.Create;
   try
-    Lines.Add(ACommit.Commit.ShortHash + ' ' + ACommit.Commit.Summary);
-    Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueCommitAuthor, [ACommit.Commit.Author]));
-    Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueCommitDate,
+    mLines.Add(ACommit.Commit.ShortHash + ' ' + ACommit.Commit.Summary);
+    mLines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueCommitAuthor, [ACommit.Commit.Author]));
+    mLines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueCommitDate,
       [LocalText(ACommit.Commit.Date)]));
-    Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueCommitAffects,
+    mLines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueCommitAffects,
       [string.Join(', ', ACommit.Files)]));
-    Lines.Add(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueCommitClick));
-    Result := TrimRight(Lines.Text);
+    mLines.Add(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueCommitClick));
+    Result := TrimRight(mLines.Text);
   finally
-    Lines.Free;
+    mLines.Free;
   end;
 end;
 
 class function TAtlasContinueTexts.HintFor(const AEntry: TAtlasContinueEntry): string;
 var
-  Lines: TStringList;
-  Tab: TAtlasWorkTab;
-  Place: string;
+  mLines: TStringList;
+  mTab: TAtlasWorkTab;
+  mPlace: string;
 begin
-  Lines := TStringList.Create;
+  mLines := TStringList.Create;
   try
-    Lines.Add(AEntry.Project);
-    Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueHintSaved, [TabsText(AEntry.State.TabCount),
+    mLines.Add(AEntry.Project);
+    mLines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueHintSaved, [TabsText(AEntry.State.TabCount),
       LocalText(AEntry.State.At)]));
-    Tab := AEntry.LastTab;
-    if Tab.FileName <> '' then
+    mTab := AEntry.LastTab;
+    if mTab.FileName <> '' then
     begin
-      Place := Tab.FileName;
-      if Tab.Line > 0 then
+      mPlace := mTab.FileName;
+      if mTab.Line > 0 then
       begin
-        Place := Place + ':' + IntToStr(Tab.Line);
+        mPlace := mPlace + ':' + IntToStr(mTab.Line);
       end;
-      if Tab.Method <> '' then
+      if mTab.Method <> '' then
       begin
-        Place := Place + Arrow + Tab.Method;
+        mPlace := mPlace + cArrow + mTab.Method;
       end;
-      Lines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueHintLast, [Place]));
+      mLines.Add(TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueHintLast, [mPlace]));
     end;
-    Lines.Add(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueHintResume));
-    Result := TrimRight(Lines.Text);
+    mLines.Add(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueHintResume));
+    Result := TrimRight(mLines.Text);
   finally
-    Lines.Free;
+    mLines.Free;
   end;
 end;
 
@@ -495,19 +495,19 @@ end;
 
 class function TAtlasContinueTexts.SavedCells(const AItem: TAtlasSavedItem): TArray<string>;
 var
-  mText, Project: string;
+  mText, mProject: string;
 begin
   mText := AItem.Text;
   if AItem.Lost then
   begin
     mText := mText + ' ' + TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSavedLost);
   end;
-  Project := AItem.ProjectName;
+  mProject := AItem.ProjectName;
   if AItem.Kind = TAtlasSavedKind.Favorite then
   begin
-    Project := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSavedAllProjects);
+    mProject := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSavedAllProjects);
   end;
-  Result := [KindText(AItem.Kind), mText, AItem.Place, Project];
+  Result := [KindText(AItem.Kind), mText, AItem.Place, mProject];
 end;
 
 
@@ -542,7 +542,7 @@ begin
   Canvas.Brush.Style := bsClear;
   Canvas.Font.Color := clWhite;
   Canvas.TextOut(mRect.Left + Scaled(6), mRect.Top + (mRect.Height - Canvas.TextHeight(AText)) div 2, AText);
-  Result := mRect.Left - Scaled(TAtlasContinueRecentView.Indent);
+  Result := mRect.Left - Scaled(TAtlasContinueRecentView.cIndent);
 end;
 
 function TContinuePainter.PaintAge(ARow, ATop, ALimit: Integer): Integer;
@@ -557,7 +557,7 @@ begin
   if mAge <> '' then
   begin
     Canvas.TextOut(ALimit - Canvas.TextWidth(mAge), ATop + Scaled(3), mAge);
-    Result := ALimit - Canvas.TextWidth(mAge) - Scaled(TAtlasContinueRecentView.Indent);
+    Result := ALimit - Canvas.TextWidth(mAge) - Scaled(TAtlasContinueRecentView.cIndent);
   end;
 end;
 
@@ -569,9 +569,9 @@ begin
   if ARow = Active then
   begin
     // Schnellaktionen (#764): Knöpfe statt des Zeitpunkts links von „Fortsetzen“.
-    Result := View.FQuick.LayoutRow(Canvas, ARow, Rect(Scaled(TAtlasContinueRecentView.Indent) + Scaled(80), ATop,
-      ALimit, ATop + Scaled(TAtlasContinueRecentView.RowHeight) - Scaled(2))) -
-      Scaled(TAtlasContinueRecentView.Indent);
+    Result := View.FQuick.LayoutRow(Canvas, ARow, Rect(Scaled(TAtlasContinueRecentView.cIndent) + Scaled(80), ATop,
+      ALimit, ATop + Scaled(TAtlasContinueRecentView.cRowHeight) - Scaled(2))) -
+      Scaled(TAtlasContinueRecentView.cIndent);
     Exit;
   end;
   // Stand der letzten Schnellaktion als Marke („baut … 12 s“), sonst der Zeitpunkt.
@@ -592,7 +592,7 @@ var
   mLeft, mDetailLimit: Integer;
 begin
   mEntry := View.FEntries[ARow];
-  mLeft := Scaled(TAtlasContinueRecentView.Indent);
+  mLeft := Scaled(TAtlasContinueRecentView.cIndent);
   PlainFont;
   Canvas.Font.Color := Colors.Text;
   Canvas.Font.Style := [fsBold];
@@ -603,14 +603,14 @@ begin
   begin
     Canvas.Font.Color := Colors.Muted;
     Canvas.TextRect(Rect(mLeft, ATop + Scaled(3), ALimit, ATop + Scaled(21)), mLeft, ATop + Scaled(3),
-      Separator + TAtlasContinueTexts.TabsText(mEntry.State.TabCount));
+      cSeparator + TAtlasContinueTexts.TabsText(mEntry.State.TabCount));
   end;
   // Zweite Zeile: Datei und Methode; ohne Knöpfe bis vor „Fortsetzen“.
-  mLeft := Scaled(TAtlasContinueRecentView.Indent);
+  mLeft := Scaled(TAtlasContinueRecentView.cIndent);
   mDetailLimit := ALimit;
   if ARow <> Active then
   begin
-    mDetailLimit := View.FButtonRects[ARow].Left - Scaled(TAtlasContinueRecentView.Indent);
+    mDetailLimit := View.FButtonRects[ARow].Left - Scaled(TAtlasContinueRecentView.cIndent);
   end;
   Canvas.Font.Color := Colors.Muted;
   Canvas.TextRect(Rect(mLeft, ATop + Scaled(23), mDetailLimit, ATop + Scaled(41)), mLeft, ATop + Scaled(23),
@@ -637,10 +637,10 @@ var
   mTop, mLimit: Integer;
 begin
   mTop := View.RowTop(ARow);
-  mLimit := View.FButtonRects[ARow].Left - Scaled(TAtlasContinueRecentView.Indent);
+  mLimit := View.FButtonRects[ARow].Left - Scaled(TAtlasContinueRecentView.cIndent);
   // Schnellaktionen (#764): aktive Zeile hinterlegt.
   View.FQuick.PaintBackground(Canvas, ARow, Rect(0, mTop, View.FBox.Width,
-    mTop + Scaled(TAtlasContinueRecentView.RowHeight) - Scaled(2)));
+    mTop + Scaled(TAtlasContinueRecentView.cRowHeight) - Scaled(2)));
   mLimit := PaintRight(ARow, mTop, mLimit);
   PaintTexts(ARow, mTop, mLimit);
   PaintButton(ARow);
@@ -656,10 +656,10 @@ var
   mTop, mLine: Integer;
 begin
   mTop := View.IncomingTop;
-  mLine := Scaled(TAtlasContinueRecentView.LineHeight);
+  mLine := Scaled(TAtlasContinueRecentView.cLineHeight);
   Canvas.Font.Color := AColor;
-  Canvas.TextRect(Rect(Scaled(TAtlasContinueRecentView.Indent), mTop + ALine * mLine,
-    View.FBox.Width - Scaled(TAtlasContinueRecentView.Indent), mTop + (ALine + 1) * mLine), AX, mTop + ALine * mLine,
+  Canvas.TextRect(Rect(Scaled(TAtlasContinueRecentView.cIndent), mTop + ALine * mLine,
+    View.FBox.Width - Scaled(TAtlasContinueRecentView.cIndent), mTop + (ALine + 1) * mLine), AX, mTop + ALine * mLine,
     AText);
 end;
 
@@ -667,7 +667,7 @@ procedure TContinuePainter.PaintIncomingTail(var ALine: Integer);
 var
   mX: Integer;
 begin
-  mX := 2 * Scaled(TAtlasContinueRecentView.Indent);
+  mX := 2 * Scaled(TAtlasContinueRecentView.cIndent);
   if View.FIncoming.More then
   begin
     PaintLine(ALine, mX, Colors.Muted, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueIncomingMore));
@@ -706,11 +706,11 @@ begin
   end;
   PlainFont;
   Canvas.Font.Style := [fsBold];
-  PaintLine(0, Scaled(TAtlasContinueRecentView.Indent), Colors.Text,
+  PaintLine(0, Scaled(TAtlasContinueRecentView.cIndent), Colors.Text,
     TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeContinueIncomingTitle, [mUpstream]));
   Result := 1;
   Canvas.Font.Style := [];
-  mX := 2 * Scaled(TAtlasContinueRecentView.Indent);
+  mX := 2 * Scaled(TAtlasContinueRecentView.cIndent);
   for mCommit in View.FIncoming.Commits do
   begin
     PaintLine(Result, mX, Colors.Link, TAtlasContinueTexts.CommitText(mCommit));
@@ -738,7 +738,7 @@ begin
   if Length(View.FEntries) = 0 then
   begin
     Canvas.Font.Color := Colors.Muted;
-    Canvas.TextOut(Scaled(TAtlasContinueRecentView.Indent), View.RowTop(0) + Scaled(4),
+    Canvas.TextOut(Scaled(TAtlasContinueRecentView.cIndent), View.RowTop(0) + Scaled(4),
       TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueEmpty));
   end;
   View.LayoutButtons;
@@ -751,7 +751,7 @@ begin
   if View.FNotice <> '' then
   begin
     PlainFont;
-    PaintLine(mLine, Scaled(TAtlasContinueRecentView.Indent), NoticeColor, View.FNotice);
+    PaintLine(mLine, Scaled(TAtlasContinueRecentView.cIndent), cNoticeColor, View.FNotice);
   end;
 end;
 
@@ -829,23 +829,23 @@ end;
 
 procedure TAtlasContinueSavedPage.RefillSaved;
 var
-  Item: TAtlasSavedItem;
-  Row: TListItem;
-  Cells: TArray<string>;
-  Index: Integer;
+  mItem: TAtlasSavedItem;
+  mRow: TListItem;
+  mCells: TArray<string>;
+  mIndex: Integer;
 begin
   FShownSaved := TAtlasWelcomeSaved.Filter(FSaved, FFilter.Text);
   FList.Items.BeginUpdate;
   try
     FList.Items.Clear;
-    for Item in FShownSaved do
+    for mItem in FShownSaved do
     begin
-      Cells := TAtlasContinueTexts.SavedCells(Item);
-      Row := FList.Items.Add;
-      Row.Caption := Cells[0];
-      for Index := 1 to High(Cells) do
+      mCells := TAtlasContinueTexts.SavedCells(mItem);
+      mRow := FList.Items.Add;
+      mRow.Caption := mCells[0];
+      for mIndex := 1 to High(mCells) do
       begin
-        Row.SubItems.Add(Cells[Index]);
+        mRow.SubItems.Add(mCells[mIndex]);
       end;
     end;
   finally
@@ -904,25 +904,25 @@ end;
 procedure TAtlasContinueSavedPage.OpenSelected;
 var
   mSource: IAtlasContinueSource;
-  Item: TAtlasSavedItem;
-  Index: Integer;
+  mItem: TAtlasSavedItem;
+  mIndex: Integer;
 begin
   if (FSource = nil) or (FList.Selected = nil) then
   begin
     Exit;
   end;
-  Index := FList.Selected.Index;
-  if (Index < 0) or (Index > High(FShownSaved)) then
+  mIndex := FList.Selected.Index;
+  if (mIndex < 0) or (mIndex > High(FShownSaved)) then
   begin
     Exit;
   end;
   mSource := FSource;
-  Item := FShownSaved[Index];
+  mItem := FShownSaved[mIndex];
   // Die Quelle öffnet Projekt und Datei: nicht im eigenen Ereignis.
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      mSource.OpenSaved(Item);
+      mSource.OpenSaved(mItem);
     end);
 end;
 
@@ -1001,43 +1001,45 @@ begin
   begin
     Inc(mLines);
   end;
-  Result := mRows * FFrame.ScaleValue(RowHeight) + mLines * FFrame.ScaleValue(LineHeight) + FFrame.ScaleValue(Indent);
+  Result := mRows * FFrame.ScaleValue(cRowHeight) + mLines * FFrame.ScaleValue(cLineHeight) +
+    FFrame.ScaleValue(cIndent);
   if mLines > 0 then
   begin
-    Inc(Result, FFrame.ScaleValue(Indent));
+    Inc(Result, FFrame.ScaleValue(cIndent));
   end;
 end;
 
 procedure TAtlasContinueRecentView.QuickOpenRow(ARow: Integer);
 var
-  Hit: TAtlasContinueHit;
+  mHit: TAtlasContinueHit;
 begin
   // Enter ohne Knopf setzt fort (wie „Fortsetzen“).
-  Hit.Row := ARow;
-  Hit.Button := True;
-  Hit.Commit := -1;
-  ClickAt(Hit);
+  mHit.Row := ARow;
+  mHit.Button := True;
+  mHit.Commit := -1;
+  ClickAt(mHit);
 end;
 
 procedure TAtlasContinueRecentView.QuickRowMenu(ARow: Integer);
 var
-  Position: TPoint;
+  mPosition: TPoint;
 begin
   if (ARow < 0) or (ARow > High(FEntries)) then
   begin
     Exit;
   end;
-  Position := FBox.ClientToScreen(Point(FFrame.ScaleValue(Indent), RowTop(ARow) + FFrame.ScaleValue(RowHeight) div 2));
+  mPosition := FBox.ClientToScreen(Point(FFrame.ScaleValue(cIndent), RowTop(ARow) +
+    FFrame.ScaleValue(cRowHeight) div 2));
   FMenu.PopupComponent := FBox;
-  FMenu.Popup(Position.X, Position.Y);
+  FMenu.Popup(mPosition.X, mPosition.Y);
 end;
 
 procedure TAtlasContinueRecentView.MenuPopup(Sender: TObject);
 var
-  Position: TPoint;
+  mPosition: TPoint;
 begin
-  Position := FBox.ScreenToClient(FMenu.PopupPoint);
-  FMenuRow := HitTest(Position.X, Position.Y).Row;
+  mPosition := FBox.ScreenToClient(FMenu.PopupPoint);
+  FMenuRow := HitTest(mPosition.X, mPosition.Y).Row;
   FResumeItem.Enabled := FMenuRow >= 0;
   // Schnellaktionen der Zeile: nur eingestellte Knöpfe, gesperrte grau.
   FQuick.Menus.Prepare(FMenuRow);
@@ -1050,44 +1052,44 @@ end;
 
 procedure TAtlasContinueRecentView.LayoutButtons;
 var
-  Row, mWidth, mTop, Right: Integer;
-  Canvas: TCanvas;
+  mRow, mWidth, mTop, mRight: Integer;
+  mCanvas: TCanvas;
   mText: string;
 begin
   // „Fortsetzen“ rechts, mittig in der Zeile; die Rechtecke dienen auch dem Treffertest. Nur beim Zeichnen.
   SetLength(FButtonRects, Length(FEntries));
-  Canvas := FBox.Canvas;
-  Canvas.Font.Assign(FFrame.Font);
+  mCanvas := FBox.Canvas;
+  mCanvas.Font.Assign(FFrame.Font);
   mText := TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueResume);
-  Right := FBox.Width - FFrame.ScaleValue(Indent);
-  for Row := 0 to High(FEntries) do
+  mRight := FBox.Width - FFrame.ScaleValue(cIndent);
+  for mRow := 0 to High(FEntries) do
   begin
-    mWidth := Canvas.TextWidth(mText) + 2 * FFrame.ScaleValue(ButtonPadding);
-    mTop := RowTop(Row) + (FFrame.ScaleValue(RowHeight) - FFrame.ScaleValue(ButtonHeight)) div 2;
-    FButtonRects[Row] := Rect(Right - mWidth, mTop, Right, mTop + FFrame.ScaleValue(ButtonHeight));
+    mWidth := mCanvas.TextWidth(mText) + 2 * FFrame.ScaleValue(cButtonPadding);
+    mTop := RowTop(mRow) + (FFrame.ScaleValue(cRowHeight) - FFrame.ScaleValue(cButtonHeight)) div 2;
+    FButtonRects[mRow] := Rect(mRight - mWidth, mTop, mRight, mTop + FFrame.ScaleValue(cButtonHeight));
   end;
 end;
 
 function TAtlasContinueRecentView.RowTop(ARow: Integer): Integer;
 begin
-  Result := FFrame.ScaleValue(Indent) div 2 + ARow * FFrame.ScaleValue(RowHeight);
+  Result := FFrame.ScaleValue(cIndent) div 2 + ARow * FFrame.ScaleValue(cRowHeight);
 end;
 
 function TAtlasContinueRecentView.IncomingTop: Integer;
 var
-  Rows: Integer;
+  mRows: Integer;
 begin
-  Rows := Length(FEntries);
-  if Rows < 1 then
+  mRows := Length(FEntries);
+  if mRows < 1 then
   begin
-    Rows := 1;
+    mRows := 1;
   end;
-  Result := RowTop(Rows) + FFrame.ScaleValue(Indent);
+  Result := RowTop(mRows) + FFrame.ScaleValue(cIndent);
 end;
 
-function TAtlasContinueRecentView.HitTest(X, Y: Integer): TAtlasContinueHit;
+function TAtlasContinueRecentView.HitTest(AX, AY: Integer): TAtlasContinueHit;
 var
-  Line: Integer;
+  mLine: Integer;
 begin
   Result.Row := -1;
   Result.Button := False;
@@ -1097,27 +1099,27 @@ begin
   begin
     Exit;
   end;
-  if (Y >= RowTop(0)) and (Y < RowTop(Length(FEntries))) then
+  if (AY >= RowTop(0)) and (AY < RowTop(Length(FEntries))) then
   begin
-    Result.Row := (Y - RowTop(0)) div FFrame.ScaleValue(RowHeight);
+    Result.Row := (AY - RowTop(0)) div FFrame.ScaleValue(cRowHeight);
     if (Result.Row >= 0) and (Result.Row <= High(FButtonRects)) then
     begin
-      Result.Button := FButtonRects[Result.Row].Contains(Point(X, Y));
+      Result.Button := FButtonRects[Result.Row].Contains(Point(AX, AY));
     end;
     Exit;
   end;
-  if not ShowsIncoming(Self) or (Y < IncomingTop) then
+  if not ShowsIncoming(Self) or (AY < IncomingTop) then
   begin
     Exit;
   end;
   // Zeile 0 ist die Überschrift, danach die Commits.
-  Line := (Y - IncomingTop) div FFrame.ScaleValue(LineHeight) - 1;
-  if (Line >= 0) and (Line <= High(FIncoming.Commits)) then
+  mLine := (AY - IncomingTop) div FFrame.ScaleValue(cLineHeight) - 1;
+  if (mLine >= 0) and (mLine <= High(FIncoming.Commits)) then
   begin
-    Result.Commit := Line;
+    Result.Commit := mLine;
   end;
   // Hinweis „Anmeldung nötig“: nach den Commits (bzw. „Keine …“) und „… weitere“.
-  if FIncoming.LoginNeeded and (Line = LoginLine(FIncoming)) then
+  if FIncoming.LoginNeeded and (mLine = LoginLine(FIncoming)) then
   begin
     Result.Login := True;
   end;
@@ -1126,8 +1128,8 @@ end;
 procedure TAtlasContinueRecentView.ClickAt(const AHit: TAtlasContinueHit);
 var
   mSource: IAtlasContinueSource;
-  Project: string;
-  Commit: TAtlasContinueCommit;
+  mProject: string;
+  mCommit: TAtlasContinueCommit;
 begin
   if FSource = nil then
   begin
@@ -1136,33 +1138,33 @@ begin
   mSource := FSource;
   if AHit.Button and (AHit.Row >= 0) and (AHit.Row <= High(FEntries)) then
   begin
-    Project := FEntries[AHit.Row].Project;
+    mProject := FEntries[AHit.Row].Project;
     // Die Quelle füllt den Bereich danach neu: nicht im eigenen Mausereignis.
     TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
       procedure
       begin
-        mSource.Resume(Project);
+        mSource.Resume(mProject);
       end);
     Exit;
   end;
   if AHit.Login then
   begin
-    Project := FIncoming.Project;
+    mProject := FIncoming.Project;
     TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
       procedure
       begin
-        mSource.ShowServerAccess(Project);
+        mSource.ShowServerAccess(mProject);
       end);
     Exit;
   end;
   if (AHit.Commit >= 0) and (AHit.Commit <= High(FIncoming.Commits)) then
   begin
-    Project := FIncoming.Project;
-    Commit := FIncoming.Commits[AHit.Commit];
+    mProject := FIncoming.Project;
+    mCommit := FIncoming.Commits[AHit.Commit];
     TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
       procedure
       begin
-        mSource.ShowCommit(Project, Commit);
+        mSource.ShowCommit(mProject, mCommit);
       end);
   end;
 end;
@@ -1266,7 +1268,7 @@ begin
   begin
     FTabs.Tabs.Add(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueTabRecent));
     FTabs.Tabs.Add(TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeContinueTabSaved));
-    FTabs.TabIndex := PageRecent;
+    FTabs.TabIndex := cPageRecent;
   end;
 end;
 
@@ -1276,7 +1278,7 @@ begin
   FTabs := TTabControl.Create(Self);
   FTabs.Parent := Body;
   FTabs.Align := alTop;
-  FTabs.Height := ScaleValue(TabHeight);
+  FTabs.Height := ScaleValue(cTabHeight);
   // Reiter erst in CreateWnd: TTabControl braucht dafür ein Fenster („kein übergeordnetes Fenster“).
   FTabs.OnChange := TabsChange;
 
@@ -1322,22 +1324,22 @@ end;
 
 function TAtlasWelcomeContinueFrame.GetPage: Integer;
 begin
-  Result := PageRecent;
-  if TabsShown and (FTabs.TabIndex = PageSaved) then
+  Result := cPageRecent;
+  if TabsShown and (FTabs.TabIndex = cPageSaved) then
   begin
-    Result := PageSaved;
+    Result := cPageSaved;
   end;
 end;
 
 procedure TAtlasWelcomeContinueFrame.SetPage(AValue: Integer);
 begin
-  if (AValue = PageSaved) and TabsShown then
+  if (AValue = cPageSaved) and TabsShown then
   begin
-    FTabs.TabIndex := PageSaved;
+    FTabs.TabIndex := cPageSaved;
   end
   else
   begin
-    FTabs.TabIndex := PageRecent;
+    FTabs.TabIndex := cPageRecent;
   end;
   ShowPage;
 end;
@@ -1352,7 +1354,7 @@ var
   mSaved: Boolean;
 begin
   FTabs.Visible := TabsShown;
-  mSaved := Page = PageSaved;
+  mSaved := Page = cPageSaved;
   if mSaved and not FSavedPage.IsRead then
   begin
     FSavedPage.LoadSaved;
@@ -1378,13 +1380,13 @@ begin
   FTabs.Visible := TabsShown;
   // „Gemerkt“ neu lesen, wenn der Reiter offen ist; sonst erst beim Wechsel dorthin.
   FSavedPage.IsRead := False;
-  if Page = PageSaved then
+  if Page = cPageSaved then
   begin
     FSavedPage.LoadSaved;
   end;
-  FSavedPage.Visible := Page = PageSaved;
-  FRecent.Visible := Page = PageRecent;
-  FRecent.Quick.Sink.Visible := Page = PageRecent;
+  FSavedPage.Visible := Page = cPageSaved;
+  FRecent.Visible := Page = cPageRecent;
+  FRecent.Quick.Sink.Visible := Page = cPageRecent;
   inherited;
   // Andere Höhe: Der Frame „Atlas“ ordnet die Spalten neu.
   if mHeight <> FRecent.ContentHeight then
@@ -1398,11 +1400,11 @@ begin
   Result := 0;
   if TabsShown then
   begin
-    Inc(Result, ScaleValue(TabHeight));
+    Inc(Result, ScaleValue(cTabHeight));
   end;
-  if Page = PageSaved then
+  if Page = cPageSaved then
   begin
-    Inc(Result, ScaleValue(FilterHeight) + (SavedRows + 1) * ScaleValue(LineHeight) + ScaleValue(Indent));
+    Inc(Result, ScaleValue(cFilterHeight) + (cSavedRows + 1) * ScaleValue(cLineHeight) + ScaleValue(cIndent));
   end
   else
   begin

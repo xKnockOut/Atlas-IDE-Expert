@@ -164,7 +164,7 @@ uses
   Atlas.Core.Welcome.HostLayout;
 
 const
-  WelcomePath = 'Software\Embarcadero\BDS\23.0\WelcomePage';
+  cWelcomePath = 'Software\Embarcadero\BDS\23.0\WelcomePage';
 
 function Section(const AId: string; AOrder: Integer; AColumn: TAtlasWelcomeColumn): TAtlasWelcomeSection;
 begin
@@ -173,18 +173,18 @@ end;
 
 function Joined(const AIds: TArray<string>): string;
 var
-  Id: string;
+  mId: string;
 begin
   Result := '';
-  for Id in AIds do
+  for mId in AIds do
   begin
     if Result = '' then
     begin
-      Result := Id;
+      Result := mId;
     end
     else
     begin
-      Result := Result + ',' + Id;
+      Result := Result + ',' + mId;
     end;
   end;
 end;
@@ -197,56 +197,56 @@ end;
 /// <summary>Kachel AId an APlace: Zeile, Spalte, Zeilen- und Spaltenspanne.</summary>
 procedure AddItem(ALayout: TAtlasRegKey; AIndex: Integer; const AId: string; const APlace: array of Integer);
 var
-  Item: TAtlasRegKey;
+  mItem: TAtlasRegKey;
 begin
   Assert.AreEqual(4, Integer(Length(APlace)), 'Zeile, Spalte, Zeilenspanne, Spaltenspanne');
-  Item := ALayout.AddKey('Item ' + IntToStr(AIndex));
-  Item.SetValue(TAtlasRegValue.Create('PluginID', TAtlasRegKind.Text, AId));
-  Item.SetValue(Number('Row', APlace[0]));
-  Item.SetValue(Number('Column', APlace[1]));
-  Item.SetValue(Number('RowSpan', APlace[2]));
-  Item.SetValue(Number('ColumnSpan', APlace[3]));
+  mItem := ALayout.AddKey('Item ' + IntToStr(AIndex));
+  mItem.SetValue(TAtlasRegValue.Create('PluginID', TAtlasRegKind.Text, AId));
+  mItem.SetValue(Number('Row', APlace[0]));
+  mItem.SetValue(Number('Column', APlace[1]));
+  mItem.SetValue(Number('RowSpan', APlace[2]));
+  mItem.SetValue(Number('ColumnSpan', APlace[3]));
 end;
 
 /// <summary>Schlüssel WelcomePage wie in Marcos Export aus Delphi 12 (BDS 23.0).</summary>
 function Delphi12Export: TAtlasRegKey;
 var
-  Layout, Available: TAtlasRegKey;
+  mLayout, mAvailable: TAtlasRegKey;
 begin
   Result := TAtlasRegKey.Create('WelcomePage');
   Result.SetValue(TAtlasRegValue.Create('Background_Dark', TAtlasRegKind.Text,
     'C:\ProgramData\Embarcadero\BDS\23.0\Background images\Lights at the Night Circus.jpg'));
   Result.SetValue(TAtlasRegValue.Create('Background_Light', TAtlasRegKind.Text, ''));
-  Available := Result.AddKey('AvailablePlugins');
-  Available.SetValue(TAtlasRegValue.Create('0', TAtlasRegKind.Text, 'Embarcadero.WelcomePagePlugin.GetItPromoted'));
-  Available.SetValue(TAtlasRegValue.Create('1', TAtlasRegKind.Text, 'Embarcadero.WelcomePagePlugin.CreateNew'));
-  Layout := Result.AddKey('Layout');
-  Layout.SetValue(Number('RowsCount', 2));
-  Layout.SetValue(Number('ColumnsCount', 3));
-  AddItem(Layout, 0, 'Embarcadero.WelcomePagePlugin.GetItNewIn', [0, 0, 2, 1]);
-  AddItem(Layout, 1, 'Embarcadero.WelcomePagePlugin.OpenRecent', [0, 1, 2, 1]);
-  AddItem(Layout, 2, 'Embarcadero.WelcomePagePlugin.Learn', [0, 2, 2, 1]);
+  mAvailable := Result.AddKey('AvailablePlugins');
+  mAvailable.SetValue(TAtlasRegValue.Create('0', TAtlasRegKind.Text, 'Embarcadero.WelcomePagePlugin.GetItPromoted'));
+  mAvailable.SetValue(TAtlasRegValue.Create('1', TAtlasRegKind.Text, 'Embarcadero.WelcomePagePlugin.CreateNew'));
+  mLayout := Result.AddKey('Layout');
+  mLayout.SetValue(Number('RowsCount', 2));
+  mLayout.SetValue(Number('ColumnsCount', 3));
+  AddItem(mLayout, 0, 'Embarcadero.WelcomePagePlugin.GetItNewIn', [0, 0, 2, 1]);
+  AddItem(mLayout, 1, 'Embarcadero.WelcomePagePlugin.OpenRecent', [0, 1, 2, 1]);
+  AddItem(mLayout, 2, 'Embarcadero.WelcomePagePlugin.Learn', [0, 2, 2, 1]);
 end;
 
 /// <summary>Schlüssel WelcomePage nach „Atlas-Layout anwenden“ früherer Fassungen: „Atlas“ oben über zwei
 /// Zeilen, die Bereiche der IDE darunter, „Neu in Atlas“ ausgeblendet.</summary>
 function OldAtlasLayout: TAtlasRegKey;
 var
-  Layout, Available: TAtlasRegKey;
+  mLayout, mAvailable: TAtlasRegKey;
 begin
   Result := TAtlasRegKey.Create('WelcomePage');
   Result.SetValue(TAtlasRegValue.Create('Background_Dark', TAtlasRegKind.Text, 'Nacht.jpg'));
-  Available := Result.AddKey('AvailablePlugins');
-  Available.SetValue(TAtlasRegValue.Create('0', TAtlasRegKind.Text, 'Embarcadero.WelcomePagePlugin.GetItPromoted'));
-  Available.SetValue(TAtlasRegValue.Create('1', TAtlasRegKind.Text, 'Atlas.Welcome.news'));
-  Available.SetValue(TAtlasRegValue.Create('2', TAtlasRegKind.Text, 'Embarcadero.WelcomePagePlugin.CreateNew'));
-  Layout := Result.AddKey('Layout');
-  Layout.SetValue(Number('RowsCount', 4));
-  Layout.SetValue(Number('ColumnsCount', 3));
-  AddItem(Layout, 0, 'Atlas.Welcome.board', [0, 0, 2, 3]);
-  AddItem(Layout, 1, 'Embarcadero.WelcomePagePlugin.GetItNewIn', [2, 0, 2, 1]);
-  AddItem(Layout, 2, 'Embarcadero.WelcomePagePlugin.OpenRecent', [2, 1, 2, 1]);
-  AddItem(Layout, 3, 'Embarcadero.WelcomePagePlugin.Learn', [2, 2, 2, 1]);
+  mAvailable := Result.AddKey('AvailablePlugins');
+  mAvailable.SetValue(TAtlasRegValue.Create('0', TAtlasRegKind.Text, 'Embarcadero.WelcomePagePlugin.GetItPromoted'));
+  mAvailable.SetValue(TAtlasRegValue.Create('1', TAtlasRegKind.Text, 'Atlas.Welcome.news'));
+  mAvailable.SetValue(TAtlasRegValue.Create('2', TAtlasRegKind.Text, 'Embarcadero.WelcomePagePlugin.CreateNew'));
+  mLayout := Result.AddKey('Layout');
+  mLayout.SetValue(Number('RowsCount', 4));
+  mLayout.SetValue(Number('ColumnsCount', 3));
+  AddItem(mLayout, 0, 'Atlas.Welcome.board', [0, 0, 2, 3]);
+  AddItem(mLayout, 1, 'Embarcadero.WelcomePagePlugin.GetItNewIn', [2, 0, 2, 1]);
+  AddItem(mLayout, 2, 'Embarcadero.WelcomePagePlugin.OpenRecent', [2, 1, 2, 1]);
+  AddItem(mLayout, 3, 'Embarcadero.WelcomePagePlugin.Learn', [2, 2, 2, 1]);
 end;
 
 function ReadLayout(AKey: TAtlasRegKey): TAtlasHostLayout;
@@ -262,101 +262,101 @@ end;
 
 procedure TAtlasWelcomeSectionsTests.SortsByOrderThenId;
 var
-  Sections: TAtlasWelcomeSections;
+  mSections: TAtlasWelcomeSections;
 begin
-  Sections := TAtlasWelcomeSections.Create;
+  mSections := TAtlasWelcomeSections.Create;
   try
-    Sections.Add(Section('atlas.news', 20, TAtlasWelcomeColumn.Right));
-    Sections.Add(Section('atlas.continue', 10, TAtlasWelcomeColumn.Left));
-    Sections.Add(Section('atlas.b', 30, TAtlasWelcomeColumn.Left));
-    Sections.Add(Section('atlas.a', 30, TAtlasWelcomeColumn.Left));
-    Assert.AreEqual('atlas.continue,atlas.news,atlas.a,atlas.b', Joined(Sections.VisibleIds));
+    mSections.Add(Section('atlas.news', 20, TAtlasWelcomeColumn.Right));
+    mSections.Add(Section('atlas.continue', 10, TAtlasWelcomeColumn.Left));
+    mSections.Add(Section('atlas.b', 30, TAtlasWelcomeColumn.Left));
+    mSections.Add(Section('atlas.a', 30, TAtlasWelcomeColumn.Left));
+    Assert.AreEqual('atlas.continue,atlas.news,atlas.a,atlas.b', Joined(mSections.VisibleIds));
   finally
-    Sections.Free;
+    mSections.Free;
   end;
 end;
 
 procedure TAtlasWelcomeSectionsTests.AddReplacesSameId;
 var
-  Sections: TAtlasWelcomeSections;
-  Found: TAtlasWelcomeSection;
+  mSections: TAtlasWelcomeSections;
+  mFound: TAtlasWelcomeSection;
 begin
-  Sections := TAtlasWelcomeSections.Create;
+  mSections := TAtlasWelcomeSections.Create;
   try
-    Sections.Add(Section('atlas.news', 20, TAtlasWelcomeColumn.Right));
-    Sections.Add(TAtlasWelcomeSection.Create('ATLAS.NEWS', 'Neu in Atlas', 5, TAtlasWelcomeColumn.Right, nil));
-    Assert.AreEqual(1, Integer(Length(Sections.All)));
-    Assert.IsTrue(Sections.Find('atlas.news', Found));
-    Assert.AreEqual('Neu in Atlas', Found.Title);
-    Sections.Remove('atlas.news');
-    Assert.IsFalse(Sections.Find('atlas.news', Found));
-    Assert.AreEqual('', Found.Id);
+    mSections.Add(Section('atlas.news', 20, TAtlasWelcomeColumn.Right));
+    mSections.Add(TAtlasWelcomeSection.Create('ATLAS.NEWS', 'Neu in Atlas', 5, TAtlasWelcomeColumn.Right, nil));
+    Assert.AreEqual(1, Integer(Length(mSections.All)));
+    Assert.IsTrue(mSections.Find('atlas.news', mFound));
+    Assert.AreEqual('Neu in Atlas', mFound.Title);
+    mSections.Remove('atlas.news');
+    Assert.IsFalse(mSections.Find('atlas.news', mFound));
+    Assert.AreEqual('', mFound.Id);
   finally
-    Sections.Free;
+    mSections.Free;
   end;
 end;
 
 procedure TAtlasWelcomeSectionsTests.VisibleFollowsSwitch;
 var
-  Sections: TAtlasWelcomeSections;
-  Shown: Boolean;
+  mSections: TAtlasWelcomeSections;
+  mShown: Boolean;
 begin
-  Shown := False;
-  Sections := TAtlasWelcomeSections.Create;
+  mShown := False;
+  mSections := TAtlasWelcomeSections.Create;
   try
-    Sections.Add(TAtlasWelcomeSection.Create('atlas.tests', 'Tests', 10, TAtlasWelcomeColumn.Right,
+    mSections.Add(TAtlasWelcomeSection.Create('atlas.tests', 'Tests', 10, TAtlasWelcomeColumn.Right,
       function: Boolean
       begin
-        Result := Shown;
+        Result := mShown;
       end));
-    Sections.Add(Section('atlas.help', 20, TAtlasWelcomeColumn.Right));
-    Assert.AreEqual('atlas.help', Joined(Sections.VisibleIds), 'Schalter aus');
-    Shown := True;
-    Assert.AreEqual('atlas.tests,atlas.help', Joined(Sections.VisibleIds), 'Schalter an');
-    Assert.AreEqual(2, Integer(Length(Sections.All)));
+    mSections.Add(Section('atlas.help', 20, TAtlasWelcomeColumn.Right));
+    Assert.AreEqual('atlas.help', Joined(mSections.VisibleIds), 'Schalter aus');
+    mShown := True;
+    Assert.AreEqual('atlas.tests,atlas.help', Joined(mSections.VisibleIds), 'Schalter an');
+    Assert.AreEqual(2, Integer(Length(mSections.All)));
   finally
-    Sections.Free;
+    mSections.Free;
   end;
 end;
 
 procedure TAtlasWelcomeSectionsTests.ListenersHearChanges;
 var
-  Sections: TAtlasWelcomeSections;
-  Heard: TList<string>;
-  Handle, Version: Integer;
+  mSections: TAtlasWelcomeSections;
+  mHeard: TList<string>;
+  mHandle, mVersion: Integer;
 begin
-  Heard := TList<string>.Create;
-  Sections := TAtlasWelcomeSections.Create;
+  mHeard := TList<string>.Create;
+  mSections := TAtlasWelcomeSections.Create;
   try
-    Handle := Sections.AddListener(
+    mHandle := mSections.AddListener(
       procedure(AId: string)
       begin
-        Heard.Add(AId);
+        mHeard.Add(AId);
       end);
-    Version := Sections.Version;
-    Sections.Add(Section('atlas.state', 10, TAtlasWelcomeColumn.Right));
-    Sections.Changed('atlas.state');
-    Sections.Changed;
-    Assert.AreEqual(3, Integer(Heard.Count));
-    Assert.AreEqual('', Heard[0], 'Hinzufügen ändert die Menge');
-    Assert.AreEqual('atlas.state', Heard[1], 'Inhalt eines Bereichs');
-    Assert.AreEqual('', Heard[2]);
-    Assert.AreEqual(Version + 3, Sections.Version);
-    Sections.RemoveListener(Handle);
-    Sections.Changed;
-    Assert.AreEqual(3, Integer(Heard.Count), 'abgemeldet');
+    mVersion := mSections.Version;
+    mSections.Add(Section('atlas.state', 10, TAtlasWelcomeColumn.Right));
+    mSections.Changed('atlas.state');
+    mSections.Changed;
+    Assert.AreEqual(3, Integer(mHeard.Count));
+    Assert.AreEqual('', mHeard[0], 'Hinzufügen ändert die Menge');
+    Assert.AreEqual('atlas.state', mHeard[1], 'Inhalt eines Bereichs');
+    Assert.AreEqual('', mHeard[2]);
+    Assert.AreEqual(mVersion + 3, mSections.Version);
+    mSections.RemoveListener(mHandle);
+    mSections.Changed;
+    Assert.AreEqual(3, Integer(mHeard.Count), 'abgemeldet');
   finally
-    Sections.Free;
-    Heard.Free;
+    mSections.Free;
+    mHeard.Free;
   end;
 end;
 
 procedure TAtlasWelcomeSectionsTests.PluginIdsRoundTrip;
 begin
-  Assert.AreEqual('Atlas.Welcome.state', TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.State));
-  Assert.AreEqual('Atlas.Welcome.board', TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.Board));
-  Assert.AreEqual(TAtlasWelcomeIds.Header, TAtlasWelcomeIds.SectionOf('Atlas.Welcome.header'));
-  Assert.AreEqual(TAtlasWelcomeIds.Header, TAtlasWelcomeIds.SectionOf('atlas.welcome.HEADER'));
+  Assert.AreEqual('Atlas.Welcome.state', TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.cState));
+  Assert.AreEqual('Atlas.Welcome.board', TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.cBoard));
+  Assert.AreEqual(TAtlasWelcomeIds.cHeader, TAtlasWelcomeIds.SectionOf('Atlas.Welcome.header'));
+  Assert.AreEqual(TAtlasWelcomeIds.cHeader, TAtlasWelcomeIds.SectionOf('atlas.welcome.HEADER'));
   Assert.AreEqual('', TAtlasWelcomeIds.SectionOf('Embarcadero.WelcomePagePlugin.OpenRecent'));
 end;
 
@@ -364,33 +364,33 @@ end;
 
 function MockupSections: TArray<TAtlasWelcomeSection>;
 begin
-  Result := [Section(TAtlasWelcomeIds.State, 10, TAtlasWelcomeColumn.Right),
-    Section(TAtlasWelcomeIds.Continue, 20, TAtlasWelcomeColumn.Left),
-    Section(TAtlasWelcomeIds.Projects, 30, TAtlasWelcomeColumn.Left),
-    Section(TAtlasWelcomeIds.History, 40, TAtlasWelcomeColumn.Left),
-    Section(TAtlasWelcomeIds.News, 50, TAtlasWelcomeColumn.Right),
-    Section(TAtlasWelcomeIds.Discover, 60, TAtlasWelcomeColumn.Right),
-    Section(TAtlasWelcomeIds.Setup, 70, TAtlasWelcomeColumn.Right)];
+  Result := [Section(TAtlasWelcomeIds.cState, 10, TAtlasWelcomeColumn.Right),
+    Section(TAtlasWelcomeIds.cContinue, 20, TAtlasWelcomeColumn.Left),
+    Section(TAtlasWelcomeIds.cProjects, 30, TAtlasWelcomeColumn.Left),
+    Section(TAtlasWelcomeIds.cHistory, 40, TAtlasWelcomeColumn.Left),
+    Section(TAtlasWelcomeIds.cNews, 50, TAtlasWelcomeColumn.Right),
+    Section(TAtlasWelcomeIds.cDiscover, 60, TAtlasWelcomeColumn.Right),
+    Section(TAtlasWelcomeIds.cSetup, 70, TAtlasWelcomeColumn.Right)];
 end;
 
 procedure TAtlasWelcomeLayoutTests.AtlasLayoutMatchesMockup;
 var
-  Columns: TArray<TArray<string>>;
+  mColumns: TArray<TArray<string>>;
 begin
-  Columns := TAtlasWelcomeLayout.Atlas.Arrange(MockupSections, 2);
-  Assert.AreEqual(2, Integer(Length(Columns)));
-  Assert.AreEqual('atlas.continue,atlas.projects,atlas.history', Joined(Columns[0]));
-  Assert.AreEqual('atlas.state,atlas.news,atlas.discover,atlas.setup', Joined(Columns[1]));
+  mColumns := TAtlasWelcomeLayout.Atlas.Arrange(MockupSections, 2);
+  Assert.AreEqual(2, Integer(Length(mColumns)));
+  Assert.AreEqual('atlas.continue,atlas.projects,atlas.history', Joined(mColumns[0]));
+  Assert.AreEqual('atlas.state,atlas.news,atlas.discover,atlas.setup', Joined(mColumns[1]));
 end;
 
 procedure TAtlasWelcomeLayoutTests.OneColumnStacksRightUnderLeft;
 var
-  Columns: TArray<TArray<string>>;
+  mColumns: TArray<TArray<string>>;
 begin
-  Columns := TAtlasWelcomeLayout.Atlas.Arrange(MockupSections, 1);
-  Assert.AreEqual(1, Integer(Length(Columns)));
+  mColumns := TAtlasWelcomeLayout.Atlas.Arrange(MockupSections, 1);
+  Assert.AreEqual(1, Integer(Length(mColumns)));
   Assert.AreEqual('atlas.continue,atlas.projects,atlas.history,atlas.state,atlas.news,atlas.discover,atlas.setup',
-    Joined(Columns[0]));
+    Joined(mColumns[0]));
   // Null Spalten gibt es nicht; mehr als drei auch nicht.
   Assert.AreEqual(1, Integer(Length(TAtlasWelcomeLayout.Atlas.Arrange(MockupSections, 0))));
   Assert.AreEqual(3, Integer(Length(TAtlasWelcomeLayout.Atlas.Arrange(MockupSections, 9))));
@@ -398,77 +398,77 @@ end;
 
 procedure TAtlasWelcomeLayoutTests.UnknownSectionGoesToItsColumn;
 var
-  Columns: TArray<TArray<string>>;
+  mColumns: TArray<TArray<string>>;
 begin
   // Bereiche, die das Layout nicht kennt (fremde Plugins, spätere Versionen), nach ihrer Vorzugsspalte.
-  Columns := TAtlasWelcomeLayout.Atlas.Arrange(MockupSections + [Section('plugin.right', 80,
+  mColumns := TAtlasWelcomeLayout.Atlas.Arrange(MockupSections + [Section('plugin.right', 80,
     TAtlasWelcomeColumn.Right), Section('plugin.left', 5, TAtlasWelcomeColumn.Left)], 2);
-  Assert.AreEqual('atlas.continue,atlas.projects,atlas.history,plugin.left', Joined(Columns[0]));
-  Assert.AreEqual('atlas.state,atlas.news,atlas.discover,atlas.setup,plugin.right', Joined(Columns[1]));
+  Assert.AreEqual('atlas.continue,atlas.projects,atlas.history,plugin.left', Joined(mColumns[0]));
+  Assert.AreEqual('atlas.state,atlas.news,atlas.discover,atlas.setup,plugin.right', Joined(mColumns[1]));
 end;
 
 procedure TAtlasWelcomeLayoutTests.HiddenSectionsLeaveNoGap;
 var
-  Columns: TArray<TArray<string>>;
+  mColumns: TArray<TArray<string>>;
 begin
-  Columns := TAtlasWelcomeLayout.Atlas.Arrange([Section(TAtlasWelcomeIds.History, 40, TAtlasWelcomeColumn.Left),
-    Section(TAtlasWelcomeIds.Setup, 70, TAtlasWelcomeColumn.Right)], 2);
-  Assert.AreEqual('atlas.history', Joined(Columns[0]));
-  Assert.AreEqual('atlas.setup', Joined(Columns[1]));
-  Columns := TAtlasWelcomeLayout.Atlas.Arrange(nil, 2);
-  Assert.AreEqual(2, Integer(Length(Columns)));
-  Assert.AreEqual(0, Integer(Length(Columns[0])));
+  mColumns := TAtlasWelcomeLayout.Atlas.Arrange([Section(TAtlasWelcomeIds.cHistory, 40, TAtlasWelcomeColumn.Left),
+    Section(TAtlasWelcomeIds.cSetup, 70, TAtlasWelcomeColumn.Right)], 2);
+  Assert.AreEqual('atlas.history', Joined(mColumns[0]));
+  Assert.AreEqual('atlas.setup', Joined(mColumns[1]));
+  mColumns := TAtlasWelcomeLayout.Atlas.Arrange(nil, 2);
+  Assert.AreEqual(2, Integer(Length(mColumns)));
+  Assert.AreEqual(0, Integer(Length(mColumns[0])));
 end;
 
 procedure TAtlasWelcomeLayoutTests.JsonRoundTrip;
 var
-  Layout, Loaded: TAtlasWelcomeLayout;
+  mLayout, mLoaded: TAtlasWelcomeLayout;
 begin
-  Layout := TAtlasWelcomeLayout.Atlas;
-  Layout.Name := 'Eigenes';
-  Layout.Columns := 3;
-  Layout.Slots := Layout.Slots + [TAtlasWelcomeSlot.Create('plugin.extra', 2)];
-  Assert.IsTrue(TAtlasWelcomeLayout.FromJson(Layout.ToJson, Loaded));
-  Assert.IsTrue(TAtlasWelcomeLayout.Same(Layout, Loaded));
-  Assert.AreEqual('Eigenes', Loaded.Name);
-  Assert.IsFalse(TAtlasWelcomeLayout.Same(TAtlasWelcomeLayout.Atlas, Loaded));
+  mLayout := TAtlasWelcomeLayout.Atlas;
+  mLayout.Name := 'Eigenes';
+  mLayout.Columns := 3;
+  mLayout.Slots := mLayout.Slots + [TAtlasWelcomeSlot.Create('plugin.extra', 2)];
+  Assert.IsTrue(TAtlasWelcomeLayout.FromJson(mLayout.ToJson, mLoaded));
+  Assert.IsTrue(TAtlasWelcomeLayout.Same(mLayout, mLoaded));
+  Assert.AreEqual('Eigenes', mLoaded.Name);
+  Assert.IsFalse(TAtlasWelcomeLayout.Same(TAtlasWelcomeLayout.Atlas, mLoaded));
 end;
 
 procedure TAtlasWelcomeLayoutTests.InvalidJsonGivesAtlas;
 var
-  Loaded: TAtlasWelcomeLayout;
+  mLoaded: TAtlasWelcomeLayout;
 begin
-  Assert.IsFalse(TAtlasWelcomeLayout.FromJson('kein JSON', Loaded));
-  Assert.IsTrue(TAtlasWelcomeLayout.Same(TAtlasWelcomeLayout.Atlas, Loaded));
-  Assert.IsFalse(TAtlasWelcomeLayout.FromJson('{"slots":[{"column":1}]}', Loaded), 'Platz ohne Kennung');
-  Assert.IsTrue(TAtlasWelcomeLayout.Same(TAtlasWelcomeLayout.Atlas, Loaded));
+  Assert.IsFalse(TAtlasWelcomeLayout.FromJson('kein JSON', mLoaded));
+  Assert.IsTrue(TAtlasWelcomeLayout.Same(TAtlasWelcomeLayout.Atlas, mLoaded));
+  Assert.IsFalse(TAtlasWelcomeLayout.FromJson('{"slots":[{"column":1}]}', mLoaded), 'Platz ohne Kennung');
+  Assert.IsTrue(TAtlasWelcomeLayout.Same(TAtlasWelcomeLayout.Atlas, mLoaded));
   // Spalten außerhalb des Bereichs werden begrenzt.
-  Assert.IsTrue(TAtlasWelcomeLayout.FromJson('{"columns":7,"slots":[{"id":"atlas.news","column":9}]}', Loaded));
-  Assert.AreEqual(TAtlasWelcomeLayout.MaxColumns, Loaded.Columns);
-  Assert.AreEqual(TAtlasWelcomeLayout.MaxColumns - 1, Loaded.Slots[0].Column);
+  Assert.IsTrue(TAtlasWelcomeLayout.FromJson('{"columns":7,"slots":[{"id":"atlas.news","column":9}]}', mLoaded));
+  Assert.AreEqual(TAtlasWelcomeLayout.cMaxColumns, mLoaded.Columns);
+  Assert.AreEqual(TAtlasWelcomeLayout.cMaxColumns - 1, mLoaded.Slots[0].Column);
 end;
 
 procedure TAtlasWelcomeLayoutTests.MovedToTopLeadsFirstColumn;
 var
-  Moved: TAtlasWelcomeLayout;
-  Columns: TArray<TArray<string>>;
-  Sections: TArray<TAtlasWelcomeSection>;
+  mMoved: TAtlasWelcomeLayout;
+  mColumns: TArray<TArray<string>>;
+  mSections: TArray<TAtlasWelcomeSection>;
 begin
   // #756: Nach einem Update steht „Neu in Atlas“ oben links statt in der rechten Spalte.
-  Moved := TAtlasWelcomeLayout.Atlas.MovedToTop(TAtlasWelcomeIds.News);
-  Assert.AreEqual(Integer(Length(TAtlasWelcomeLayout.Atlas.Slots)), Integer(Length(Moved.Slots)));
-  Sections := [Section(TAtlasWelcomeIds.Continue, 10, TAtlasWelcomeColumn.Left),
-    Section(TAtlasWelcomeIds.State, 40, TAtlasWelcomeColumn.Right),
-    Section(TAtlasWelcomeIds.News, 50, TAtlasWelcomeColumn.Right)];
-  Columns := Moved.Arrange(Sections, 2);
-  Assert.AreEqual('atlas.news,atlas.continue', Joined(Columns[0]));
-  Assert.AreEqual('atlas.state', Joined(Columns[1]));
-  Columns := TAtlasWelcomeLayout.Atlas.Arrange(Sections, 2);
-  Assert.AreEqual('atlas.continue', Joined(Columns[0]));
-  Assert.AreEqual('atlas.state,atlas.news', Joined(Columns[1]));
+  mMoved := TAtlasWelcomeLayout.Atlas.MovedToTop(TAtlasWelcomeIds.cNews);
+  Assert.AreEqual(Integer(Length(TAtlasWelcomeLayout.Atlas.Slots)), Integer(Length(mMoved.Slots)));
+  mSections := [Section(TAtlasWelcomeIds.cContinue, 10, TAtlasWelcomeColumn.Left),
+    Section(TAtlasWelcomeIds.cState, 40, TAtlasWelcomeColumn.Right),
+    Section(TAtlasWelcomeIds.cNews, 50, TAtlasWelcomeColumn.Right)];
+  mColumns := mMoved.Arrange(mSections, 2);
+  Assert.AreEqual('atlas.news,atlas.continue', Joined(mColumns[0]));
+  Assert.AreEqual('atlas.state', Joined(mColumns[1]));
+  mColumns := TAtlasWelcomeLayout.Atlas.Arrange(mSections, 2);
+  Assert.AreEqual('atlas.continue', Joined(mColumns[0]));
+  Assert.AreEqual('atlas.state,atlas.news', Joined(mColumns[1]));
   // Eine Spalte: ganz oben.
-  Columns := Moved.Arrange(Sections, 1);
-  Assert.AreEqual('atlas.news,atlas.continue,atlas.state', Joined(Columns[0]));
+  mColumns := mMoved.Arrange(mSections, 1);
+  Assert.AreEqual('atlas.news,atlas.continue,atlas.state', Joined(mColumns[0]));
   // Unbekannte Kennung kommt dazu, das Original bleibt unverändert.
   Assert.AreEqual(Integer(Length(TAtlasWelcomeLayout.Atlas.Slots)) + 1,
     Integer(Length(TAtlasWelcomeLayout.Atlas.MovedToTop('atlas.neu').Slots)));
@@ -513,100 +513,100 @@ end;
 
 procedure TAtlasWelcomeBackupTests.RestoresEveryKindExactly;
 var
-  Registry: IAtlasRegistryAccess;
-  Original, Changed, Restored: TAtlasRegKey;
-  Snapshot: string;
-  Multi: TAtlasRegValue;
+  mRegistry: IAtlasRegistryAccess;
+  mOriginal, mChanged, mRestored: TAtlasRegKey;
+  mSnapshot: string;
+  mMulti: TAtlasRegValue;
 begin
-  Registry := TAtlasMemoryRegistry.Create;
-  Original := Delphi12Export;
+  mRegistry := TAtlasMemoryRegistry.Create;
+  mOriginal := Delphi12Export;
   try
-    Original.SetValue(TAtlasRegValue.Create('Pfad', TAtlasRegKind.ExpandText, '%APPDATA%\Atlas'));
-    Multi := TAtlasRegValue.Create('Liste', TAtlasRegKind.MultiText, '');
-    Multi.Lines := ['eins', '', 'drei'];
-    Original.SetValue(Multi);
-    Original.SetValue(TAtlasRegValue.Create('Groß', TAtlasRegKind.Number64, '18446744073709551615'));
-    Original.SetValue(TAtlasRegValue.Create('Daten', TAtlasRegKind.Binary, '00FF10'));
-    Original.SetValue(TAtlasRegValue.Create('Leer', TAtlasRegKind.Binary, ''));
-    Original.SetValue(TAtlasRegValue.Create('Höchst', TAtlasRegKind.Number, '4294967295'));
-    Registry.Replace(WelcomePath, Original);
-    Snapshot := TAtlasWelcomeBackup.Snapshot(Registry, WelcomePath);
+    mOriginal.SetValue(TAtlasRegValue.Create('Pfad', TAtlasRegKind.ExpandText, '%APPDATA%\Atlas'));
+    mMulti := TAtlasRegValue.Create('Liste', TAtlasRegKind.MultiText, '');
+    mMulti.Lines := ['eins', '', 'drei'];
+    mOriginal.SetValue(mMulti);
+    mOriginal.SetValue(TAtlasRegValue.Create('Groß', TAtlasRegKind.Number64, '18446744073709551615'));
+    mOriginal.SetValue(TAtlasRegValue.Create('Daten', TAtlasRegKind.Binary, '00FF10'));
+    mOriginal.SetValue(TAtlasRegValue.Create('Leer', TAtlasRegKind.Binary, ''));
+    mOriginal.SetValue(TAtlasRegValue.Create('Höchst', TAtlasRegKind.Number, '4294967295'));
+    mRegistry.Replace(cWelcomePath, mOriginal);
+    mSnapshot := TAtlasWelcomeBackup.Snapshot(mRegistry, cWelcomePath);
     // Atlas ändert das Layout …
-    Changed := TAtlasRegKey.Create('WelcomePage');
+    mChanged := TAtlasRegKey.Create('WelcomePage');
     try
-      Changed.SetValue(Number('Fremd', 1));
-      Registry.Replace(WelcomePath, Changed);
+      mChanged.SetValue(Number('Fremd', 1));
+      mRegistry.Replace(cWelcomePath, mChanged);
     finally
-      Changed.Free;
+      mChanged.Free;
     end;
     // … und die Sicherung bringt den alten Stand exakt zurück.
-    Assert.IsTrue(TAtlasWelcomeBackup.Restore(Registry, Snapshot));
-    Restored := Registry.Read(WelcomePath);
+    Assert.IsTrue(TAtlasWelcomeBackup.Restore(mRegistry, mSnapshot));
+    mRestored := mRegistry.Read(cWelcomePath);
     try
-      Assert.IsTrue(Original.SameAs(Restored));
-      Assert.IsTrue(Restored.SameAs(Original));
+      Assert.IsTrue(mOriginal.SameAs(mRestored));
+      Assert.IsTrue(mRestored.SameAs(mOriginal));
     finally
-      Restored.Free;
+      mRestored.Free;
     end;
   finally
-    Original.Free;
+    mOriginal.Free;
   end;
 end;
 
 procedure TAtlasWelcomeBackupTests.RemovesKeyThatDidNotExist;
 var
-  Registry: IAtlasRegistryAccess;
-  Snapshot: string;
-  Key, Read: TAtlasRegKey;
+  mRegistry: IAtlasRegistryAccess;
+  mSnapshot: string;
+  mKey, mRead: TAtlasRegKey;
 begin
-  Registry := TAtlasMemoryRegistry.Create;
-  Snapshot := TAtlasWelcomeBackup.Snapshot(Registry, WelcomePath);
-  Assert.IsTrue(Pos('"existed":false', Snapshot) > 0);
-  Key := Delphi12Export;
+  mRegistry := TAtlasMemoryRegistry.Create;
+  mSnapshot := TAtlasWelcomeBackup.Snapshot(mRegistry, cWelcomePath);
+  Assert.IsTrue(Pos('"existed":false', mSnapshot) > 0);
+  mKey := Delphi12Export;
   try
-    Registry.Replace(WelcomePath, Key);
+    mRegistry.Replace(cWelcomePath, mKey);
   finally
-    Key.Free;
+    mKey.Free;
   end;
-  Assert.IsTrue(TAtlasWelcomeBackup.Restore(Registry, Snapshot));
-  Read := Registry.Read(WelcomePath);
-  Assert.IsNull(Read, 'vorher gab es den Schlüssel nicht');
-  Read.Free;
+  Assert.IsTrue(TAtlasWelcomeBackup.Restore(mRegistry, mSnapshot));
+  mRead := mRegistry.Read(cWelcomePath);
+  Assert.IsNull(mRead, 'vorher gab es den Schlüssel nicht');
+  mRead.Free;
 end;
 
 procedure TAtlasWelcomeBackupTests.MatchesDetectsChanges;
 var
-  Registry: IAtlasRegistryAccess;
-  Snapshot: string;
-  Key: TAtlasRegKey;
+  mRegistry: IAtlasRegistryAccess;
+  mSnapshot: string;
+  mKey: TAtlasRegKey;
 begin
-  Registry := TAtlasMemoryRegistry.Create;
-  Key := Delphi12Export;
+  mRegistry := TAtlasMemoryRegistry.Create;
+  mKey := Delphi12Export;
   try
-    Registry.Replace(WelcomePath, Key);
-    Snapshot := TAtlasWelcomeBackup.Snapshot(Registry, WelcomePath);
-    Assert.IsTrue(TAtlasWelcomeBackup.Matches(Registry, Snapshot));
-    Key.FindKey('Layout').SetValue(Number('RowsCount', 4));
-    Registry.Replace(WelcomePath, Key);
-    Assert.IsFalse(TAtlasWelcomeBackup.Matches(Registry, Snapshot), 'Raster geändert');
-    Registry.Replace(WelcomePath, nil);
-    Assert.IsFalse(TAtlasWelcomeBackup.Matches(Registry, Snapshot), 'Schlüssel fehlt');
+    mRegistry.Replace(cWelcomePath, mKey);
+    mSnapshot := TAtlasWelcomeBackup.Snapshot(mRegistry, cWelcomePath);
+    Assert.IsTrue(TAtlasWelcomeBackup.Matches(mRegistry, mSnapshot));
+    mKey.FindKey('Layout').SetValue(Number('RowsCount', 4));
+    mRegistry.Replace(cWelcomePath, mKey);
+    Assert.IsFalse(TAtlasWelcomeBackup.Matches(mRegistry, mSnapshot), 'Raster geändert');
+    mRegistry.Replace(cWelcomePath, nil);
+    Assert.IsFalse(TAtlasWelcomeBackup.Matches(mRegistry, mSnapshot), 'Schlüssel fehlt');
   finally
-    Key.Free;
+    mKey.Free;
   end;
-  Snapshot := TAtlasWelcomeBackup.Snapshot(Registry, WelcomePath);
-  Assert.IsTrue(TAtlasWelcomeBackup.Matches(Registry, Snapshot), 'fehlt wie gesichert');
+  mSnapshot := TAtlasWelcomeBackup.Snapshot(mRegistry, cWelcomePath);
+  Assert.IsTrue(TAtlasWelcomeBackup.Matches(mRegistry, mSnapshot), 'fehlt wie gesichert');
 end;
 
 procedure TAtlasWelcomeBackupTests.RejectsInvalidSnapshot;
 var
-  Registry: IAtlasRegistryAccess;
+  mRegistry: IAtlasRegistryAccess;
 begin
-  Registry := TAtlasMemoryRegistry.Create;
-  Assert.IsFalse(TAtlasWelcomeBackup.Restore(Registry, ''));
-  Assert.IsFalse(TAtlasWelcomeBackup.Restore(Registry, '{"existed":true}'), 'ohne Pfad');
-  Assert.IsFalse(TAtlasWelcomeBackup.Restore(Registry, '{"path":"x","key":{"values":[{"kind":"neu"}]}}'));
-  Assert.IsFalse(TAtlasWelcomeBackup.Matches(Registry, 'kaputt'));
+  mRegistry := TAtlasMemoryRegistry.Create;
+  Assert.IsFalse(TAtlasWelcomeBackup.Restore(mRegistry, ''));
+  Assert.IsFalse(TAtlasWelcomeBackup.Restore(mRegistry, '{"existed":true}'), 'ohne Pfad');
+  Assert.IsFalse(TAtlasWelcomeBackup.Restore(mRegistry, '{"path":"x","key":{"values":[{"kind":"neu"}]}}'));
+  Assert.IsFalse(TAtlasWelcomeBackup.Matches(mRegistry, 'kaputt'));
 end;
 
 procedure TAtlasWelcomeBackupTests.KeyAndFileNames;
@@ -621,259 +621,259 @@ end;
 
 procedure TAtlasHostLayoutTests.ReadsDelphi12Export;
 var
-  Key: TAtlasRegKey;
-  Layout: TAtlasHostLayout;
+  mKey: TAtlasRegKey;
+  mLayout: TAtlasHostLayout;
 begin
-  Key := Delphi12Export;
+  mKey := Delphi12Export;
   try
-    Assert.IsTrue(TAtlasHostLayout.Read(Key, Layout));
-    Assert.AreEqual(2, Layout.Rows);
-    Assert.AreEqual(3, Layout.Columns);
-    Assert.AreEqual(3, Integer(Length(Layout.Items)));
-    Assert.AreEqual(1, Layout.IndexOf('embarcadero.welcomepageplugin.openrecent'));
-    Assert.AreEqual(2, Layout.Items[2].Column);
-    Assert.AreEqual(2, Layout.Items[2].RowSpan);
+    Assert.IsTrue(TAtlasHostLayout.Read(mKey, mLayout));
+    Assert.AreEqual(2, mLayout.Rows);
+    Assert.AreEqual(3, mLayout.Columns);
+    Assert.AreEqual(3, Integer(Length(mLayout.Items)));
+    Assert.AreEqual(1, mLayout.IndexOf('embarcadero.welcomepageplugin.openrecent'));
+    Assert.AreEqual(2, mLayout.Items[2].Column);
+    Assert.AreEqual(2, mLayout.Items[2].RowSpan);
     Assert.AreEqual('Embarcadero.WelcomePagePlugin.GetItPromoted,Embarcadero.WelcomePagePlugin.CreateNew',
-      Joined(Layout.Available));
+      Joined(mLayout.Available));
   finally
-    Key.Free;
+    mKey.Free;
   end;
 end;
 
 procedure TAtlasHostLayoutTests.NoLayoutKeyMeansNoGrid;
 var
-  Key: TAtlasRegKey;
-  Layout: TAtlasHostLayout;
+  mKey: TAtlasRegKey;
+  mLayout: TAtlasHostLayout;
 begin
-  Key := TAtlasRegKey.Create('WelcomePage');
+  mKey := TAtlasRegKey.Create('WelcomePage');
   try
-    Assert.IsFalse(TAtlasHostLayout.Read(Key, Layout));
-    Assert.IsFalse(TAtlasHostLayout.Read(nil, Layout));
+    Assert.IsFalse(TAtlasHostLayout.Read(mKey, mLayout));
+    Assert.IsFalse(TAtlasHostLayout.Read(nil, mLayout));
   finally
-    Key.Free;
+    mKey.Free;
   end;
 end;
 
 procedure TAtlasHostLayoutTests.WithoutAtlasRemovesBoardAndMovesUp;
 var
-  Layout, Cleaned, Export: TAtlasHostLayout;
-  Index: Integer;
+  mLayout, mCleaned, mExport: TAtlasHostLayout;
+  mIndex: Integer;
 begin
-  Layout := ReadLayout(OldAtlasLayout);
-  Assert.IsTrue(Layout.ContainsAtlas(TAtlasWelcomeIds.PluginPrefix));
-  Cleaned := Layout.WithoutAtlas(TAtlasWelcomeIds.PluginPrefix);
-  Assert.IsFalse(Cleaned.ContainsAtlas(TAtlasWelcomeIds.PluginPrefix));
+  mLayout := ReadLayout(OldAtlasLayout);
+  Assert.IsTrue(mLayout.ContainsAtlas(TAtlasWelcomeIds.cPluginPrefix));
+  mCleaned := mLayout.WithoutAtlas(TAtlasWelcomeIds.cPluginPrefix);
+  Assert.IsFalse(mCleaned.ContainsAtlas(TAtlasWelcomeIds.cPluginPrefix));
   // Wieder wie vor dem Atlas-Layout: drei Bereiche nebeneinander, zwei Zeilen hoch, oben.
-  Export := ReadLayout(Delphi12Export);
-  Assert.AreEqual(Export.Rows, Cleaned.Rows);
-  Assert.AreEqual(Export.Columns, Cleaned.Columns);
-  Assert.AreEqual(Integer(Length(Export.Items)), Integer(Length(Cleaned.Items)));
-  for Index := 0 to High(Export.Items) do
+  mExport := ReadLayout(Delphi12Export);
+  Assert.AreEqual(mExport.Rows, mCleaned.Rows);
+  Assert.AreEqual(mExport.Columns, mCleaned.Columns);
+  Assert.AreEqual(Integer(Length(mExport.Items)), Integer(Length(mCleaned.Items)));
+  for mIndex := 0 to High(mExport.Items) do
   begin
-    Assert.AreEqual(Export.Items[Index].PluginId, Cleaned.Items[Index].PluginId);
-    Assert.AreEqual(Export.Items[Index].Row, Cleaned.Items[Index].Row);
-    Assert.AreEqual(Export.Items[Index].Column, Cleaned.Items[Index].Column);
-    Assert.AreEqual(Export.Items[Index].RowSpan, Cleaned.Items[Index].RowSpan);
+    Assert.AreEqual(mExport.Items[mIndex].PluginId, mCleaned.Items[mIndex].PluginId);
+    Assert.AreEqual(mExport.Items[mIndex].Row, mCleaned.Items[mIndex].Row);
+    Assert.AreEqual(mExport.Items[mIndex].Column, mCleaned.Items[mIndex].Column);
+    Assert.AreEqual(mExport.Items[mIndex].RowSpan, mCleaned.Items[mIndex].RowSpan);
   end;
-  Assert.AreEqual(Joined(Export.Available), Joined(Cleaned.Available), 'ausgeblendete ohne Atlas');
+  Assert.AreEqual(Joined(mExport.Available), Joined(mCleaned.Available), 'ausgeblendete ohne Atlas');
 end;
 
 procedure TAtlasHostLayoutTests.WithoutAtlasDropsSingleAndHiddenSections;
 var
-  Layout, Cleaned: TAtlasHostLayout;
+  mLayout, mCleaned: TAtlasHostLayout;
 begin
-  Layout := ReadLayout(Delphi12Export);
-  Assert.IsFalse(Layout.ContainsAtlas(TAtlasWelcomeIds.PluginPrefix));
+  mLayout := ReadLayout(Delphi12Export);
+  Assert.IsFalse(mLayout.ContainsAtlas(TAtlasWelcomeIds.cPluginPrefix));
   // Einzelne Atlas-Bereiche, wie sie die IDE ohne Atlas-Layout selbst unten anordnete.
-  Layout.Rows := 3;
-  Layout.Items := Layout.Items + [TAtlasHostItem.Create('Atlas.Welcome.state', 2, 0, 1, 1),
+  mLayout.Rows := 3;
+  mLayout.Items := mLayout.Items + [TAtlasHostItem.Create('Atlas.Welcome.state', 2, 0, 1, 1),
     TAtlasHostItem.Create('ATLAS.WELCOME.continue', 2, 1, 1, 2)];
-  Layout.Available := Layout.Available + ['Atlas.Welcome.header'];
-  Assert.IsTrue(Layout.ContainsAtlas(TAtlasWelcomeIds.PluginPrefix));
-  Cleaned := Layout.WithoutAtlas(TAtlasWelcomeIds.PluginPrefix);
-  Assert.AreEqual(2, Cleaned.Rows, 'die leere Zeile entfällt');
-  Assert.AreEqual(3, Integer(Length(Cleaned.Items)));
-  Assert.IsFalse(Cleaned.Contains('Atlas.Welcome.state'));
-  Assert.IsFalse(Cleaned.Contains('Atlas.Welcome.continue'), 'Groß-/Kleinschreibung egal');
+  mLayout.Available := mLayout.Available + ['Atlas.Welcome.header'];
+  Assert.IsTrue(mLayout.ContainsAtlas(TAtlasWelcomeIds.cPluginPrefix));
+  mCleaned := mLayout.WithoutAtlas(TAtlasWelcomeIds.cPluginPrefix);
+  Assert.AreEqual(2, mCleaned.Rows, 'die leere Zeile entfällt');
+  Assert.AreEqual(3, Integer(Length(mCleaned.Items)));
+  Assert.IsFalse(mCleaned.Contains('Atlas.Welcome.state'));
+  Assert.IsFalse(mCleaned.Contains('Atlas.Welcome.continue'), 'Groß-/Kleinschreibung egal');
   Assert.AreEqual('Embarcadero.WelcomePagePlugin.GetItPromoted,Embarcadero.WelcomePagePlugin.CreateNew',
-    Joined(Cleaned.Available));
+    Joined(mCleaned.Available));
 end;
 
 procedure TAtlasHostLayoutTests.WithoutAtlasClosesGapInTheMiddle;
 var
-  Layout, Cleaned: TAtlasHostLayout;
+  mLayout, mCleaned: TAtlasHostLayout;
 begin
-  Layout.Rows := 4;
-  Layout.Columns := 2;
-  Layout.Items := [TAtlasHostItem.Create('A', 0, 0, 1, 2), TAtlasHostItem.Create('Atlas.Welcome.board', 1, 0, 2, 2),
+  mLayout.Rows := 4;
+  mLayout.Columns := 2;
+  mLayout.Items := [TAtlasHostItem.Create('A', 0, 0, 1, 2), TAtlasHostItem.Create('Atlas.Welcome.board', 1, 0, 2, 2),
     TAtlasHostItem.Create('B', 3, 1, 1, 1), TAtlasHostItem.Create('C', 3, 0, 1, 1)];
-  Layout.Available := nil;
-  Cleaned := Layout.WithoutAtlas(TAtlasWelcomeIds.PluginPrefix);
-  Assert.AreEqual(2, Cleaned.Rows);
-  Assert.AreEqual(0, Cleaned.Items[Cleaned.IndexOf('A')].Row);
-  Assert.AreEqual(1, Cleaned.Items[Cleaned.IndexOf('B')].Row, 'rückt über die Lücke nach oben');
-  Assert.AreEqual(1, Cleaned.Items[Cleaned.IndexOf('C')].Row);
-  Assert.AreEqual(1, Cleaned.Items[Cleaned.IndexOf('B')].Column, 'Spalte bleibt');
+  mLayout.Available := nil;
+  mCleaned := mLayout.WithoutAtlas(TAtlasWelcomeIds.cPluginPrefix);
+  Assert.AreEqual(2, mCleaned.Rows);
+  Assert.AreEqual(0, mCleaned.Items[mCleaned.IndexOf('A')].Row);
+  Assert.AreEqual(1, mCleaned.Items[mCleaned.IndexOf('B')].Row, 'rückt über die Lücke nach oben');
+  Assert.AreEqual(1, mCleaned.Items[mCleaned.IndexOf('C')].Row);
+  Assert.AreEqual(1, mCleaned.Items[mCleaned.IndexOf('B')].Column, 'Spalte bleibt');
   // Ohne Atlas ändert sich nichts.
-  Layout := Cleaned.WithoutAtlas(TAtlasWelcomeIds.PluginPrefix);
-  Assert.AreEqual(2, Layout.Rows);
-  Assert.AreEqual(3, Integer(Length(Layout.Items)));
+  mLayout := mCleaned.WithoutAtlas(TAtlasWelcomeIds.cPluginPrefix);
+  Assert.AreEqual(2, mLayout.Rows);
+  Assert.AreEqual(3, Integer(Length(mLayout.Items)));
 end;
 
 procedure TAtlasHostLayoutTests.WriteKeepsBackgroundValues;
 var
-  Key: TAtlasRegKey;
-  Layout, Cleaned, Read: TAtlasHostLayout;
-  Value: TAtlasRegValue;
+  mKey: TAtlasRegKey;
+  mLayout, mCleaned, mRead: TAtlasHostLayout;
+  mValue: TAtlasRegValue;
 begin
-  Key := OldAtlasLayout;
+  mKey := OldAtlasLayout;
   try
-    TAtlasHostLayout.Read(Key, Layout);
-    Cleaned := Layout.WithoutAtlas(TAtlasWelcomeIds.PluginPrefix);
-    Cleaned.WriteTo(Key);
-    Assert.IsTrue(Key.FindValue('Background_Dark', Value), 'Hintergrund bleibt');
-    Assert.IsNotNull(Key.FindKey('Layout').FindKey('Item 2'));
-    Assert.IsNull(Key.FindKey('Layout').FindKey('Item 3'), 'alte Einträge entfallen');
-    Assert.IsTrue(TAtlasHostLayout.Read(Key, Read));
-    Assert.AreEqual(Cleaned.Rows, Read.Rows);
-    Assert.AreEqual(Integer(Length(Cleaned.Items)), Integer(Length(Read.Items)));
-    Assert.AreEqual(Joined(Cleaned.Available), Joined(Read.Available));
+    TAtlasHostLayout.Read(mKey, mLayout);
+    mCleaned := mLayout.WithoutAtlas(TAtlasWelcomeIds.cPluginPrefix);
+    mCleaned.WriteTo(mKey);
+    Assert.IsTrue(mKey.FindValue('Background_Dark', mValue), 'Hintergrund bleibt');
+    Assert.IsNotNull(mKey.FindKey('Layout').FindKey('Item 2'));
+    Assert.IsNull(mKey.FindKey('Layout').FindKey('Item 3'), 'alte Einträge entfallen');
+    Assert.IsTrue(TAtlasHostLayout.Read(mKey, mRead));
+    Assert.AreEqual(mCleaned.Rows, mRead.Rows);
+    Assert.AreEqual(Integer(Length(mCleaned.Items)), Integer(Length(mRead.Items)));
+    Assert.AreEqual(Joined(mCleaned.Available), Joined(mRead.Available));
   finally
-    Key.Free;
+    mKey.Free;
   end;
 end;
 
 procedure TAtlasHostLayoutTests.WriteWithoutSectionsDropsGrid;
 var
-  Key: TAtlasRegKey;
-  Layout, Cleaned: TAtlasHostLayout;
-  Value: TAtlasRegValue;
+  mKey: TAtlasRegKey;
+  mLayout, mCleaned: TAtlasHostLayout;
+  mValue: TAtlasRegValue;
 begin
-  Key := TAtlasRegKey.Create('WelcomePage');
+  mKey := TAtlasRegKey.Create('WelcomePage');
   try
-    Key.SetValue(TAtlasRegValue.Create('Background_Light', TAtlasRegKind.Text, 'Tag.jpg'));
-    Layout.Rows := 2;
-    Layout.Columns := 1;
-    Layout.Items := [TAtlasHostItem.Create('Atlas.Welcome.board', 0, 0, 2, 1)];
-    Layout.Available := nil;
-    Layout.WriteTo(Key);
-    Cleaned := Layout.WithoutAtlas(TAtlasWelcomeIds.PluginPrefix);
-    Assert.AreEqual(0, Integer(Length(Cleaned.Items)));
-    Cleaned.WriteTo(Key);
-    Assert.IsNull(Key.FindKey('Layout'), 'ohne Raster zeigt die IDE ihre Vorgabe');
-    Assert.IsFalse(TAtlasHostLayout.Read(Key, Layout));
-    Assert.IsTrue(Key.FindValue('Background_Light', Value));
+    mKey.SetValue(TAtlasRegValue.Create('Background_Light', TAtlasRegKind.Text, 'Tag.jpg'));
+    mLayout.Rows := 2;
+    mLayout.Columns := 1;
+    mLayout.Items := [TAtlasHostItem.Create('Atlas.Welcome.board', 0, 0, 2, 1)];
+    mLayout.Available := nil;
+    mLayout.WriteTo(mKey);
+    mCleaned := mLayout.WithoutAtlas(TAtlasWelcomeIds.cPluginPrefix);
+    Assert.AreEqual(0, Integer(Length(mCleaned.Items)));
+    mCleaned.WriteTo(mKey);
+    Assert.IsNull(mKey.FindKey('Layout'), 'ohne Raster zeigt die IDE ihre Vorgabe');
+    Assert.IsFalse(TAtlasHostLayout.Read(mKey, mLayout));
+    Assert.IsTrue(mKey.FindValue('Background_Light', mValue));
   finally
-    Key.Free;
+    mKey.Free;
   end;
 end;
 
 procedure TAtlasHostLayoutTests.IdeDefaultMatchesDelphi12Export;
 var
-  Layout, IdeLayout: TAtlasHostLayout;
+  mLayout, mIdeLayout: TAtlasHostLayout;
 begin
   // Die Vorgabe der IDE gleicht dem frischen Export.
-  Layout := ReadLayout(Delphi12Export);
-  IdeLayout := TAtlasHostLayout.IdeDefault;
-  Assert.AreEqual(Layout.Rows, IdeLayout.Rows);
-  Assert.AreEqual(Layout.Columns, IdeLayout.Columns);
-  Assert.AreEqual(Integer(Length(Layout.Items)), Integer(Length(IdeLayout.Items)));
-  Assert.AreEqual(Joined(Layout.Available), Joined(IdeLayout.Available));
+  mLayout := ReadLayout(Delphi12Export);
+  mIdeLayout := TAtlasHostLayout.IdeDefault;
+  Assert.AreEqual(mLayout.Rows, mIdeLayout.Rows);
+  Assert.AreEqual(mLayout.Columns, mIdeLayout.Columns);
+  Assert.AreEqual(Integer(Length(mLayout.Items)), Integer(Length(mIdeLayout.Items)));
+  Assert.AreEqual(Joined(mLayout.Available), Joined(mIdeLayout.Available));
 end;
 
 procedure TAtlasHostLayoutTests.AtlasOnTopShiftsOtherSections;
 var
-  Layout, Placed: TAtlasHostLayout;
+  mLayout, mPlaced: TAtlasHostLayout;
 begin
-  Layout := ReadLayout(Delphi12Export);
-  Placed := Layout.WithAtlasOnTop('Atlas.Welcome.board', TAtlasWelcomeIds.PluginPrefix);
-  Assert.AreEqual(2 + TAtlasHostLayout.BoardRows, Placed.Rows);
-  Assert.AreEqual(3, Placed.Columns);
-  Assert.AreEqual(4, Integer(Length(Placed.Items)));
-  Assert.AreEqual('Atlas.Welcome.board', Placed.Items[0].PluginId);
-  Assert.AreEqual(0, Placed.Items[0].Row);
-  Assert.AreEqual(0, Placed.Items[0].Column);
-  Assert.AreEqual(TAtlasHostLayout.BoardRows, Placed.Items[0].RowSpan);
-  Assert.AreEqual(3, Placed.Items[0].ColumnSpan, 'über alle Spalten');
-  Assert.AreEqual(TAtlasHostLayout.BoardRows, Placed.Items[Placed.IndexOf('Embarcadero.WelcomePagePlugin.Learn')].Row);
-  Assert.AreEqual(2, Placed.Items[Placed.IndexOf('Embarcadero.WelcomePagePlugin.Learn')].Column);
-  Assert.IsTrue(Placed.HasAtlasOnTop('Atlas.Welcome.board', TAtlasWelcomeIds.PluginPrefix));
-  Assert.IsFalse(Layout.HasAtlasOnTop('Atlas.Welcome.board', TAtlasWelcomeIds.PluginPrefix));
+  mLayout := ReadLayout(Delphi12Export);
+  mPlaced := mLayout.WithAtlasOnTop('Atlas.Welcome.board', TAtlasWelcomeIds.cPluginPrefix);
+  Assert.AreEqual(2 + TAtlasHostLayout.cBoardRows, mPlaced.Rows);
+  Assert.AreEqual(3, mPlaced.Columns);
+  Assert.AreEqual(4, Integer(Length(mPlaced.Items)));
+  Assert.AreEqual('Atlas.Welcome.board', mPlaced.Items[0].PluginId);
+  Assert.AreEqual(0, mPlaced.Items[0].Row);
+  Assert.AreEqual(0, mPlaced.Items[0].Column);
+  Assert.AreEqual(TAtlasHostLayout.cBoardRows, mPlaced.Items[0].RowSpan);
+  Assert.AreEqual(3, mPlaced.Items[0].ColumnSpan, 'über alle Spalten');
+  Assert.AreEqual(TAtlasHostLayout.cBoardRows, mPlaced.Items[mPlaced.IndexOf('Embarcadero.WelcomePagePlugin.Learn')].Row);
+  Assert.AreEqual(2, mPlaced.Items[mPlaced.IndexOf('Embarcadero.WelcomePagePlugin.Learn')].Column);
+  Assert.IsTrue(mPlaced.HasAtlasOnTop('Atlas.Welcome.board', TAtlasWelcomeIds.cPluginPrefix));
+  Assert.IsFalse(mLayout.HasAtlasOnTop('Atlas.Welcome.board', TAtlasWelcomeIds.cPluginPrefix));
   // Zweimal anwenden ändert nichts mehr an der Lage.
-  Placed := Placed.WithAtlasOnTop('Atlas.Welcome.board', TAtlasWelcomeIds.PluginPrefix);
-  Assert.AreEqual(4, Integer(Length(Placed.Items)));
+  mPlaced := mPlaced.WithAtlasOnTop('Atlas.Welcome.board', TAtlasWelcomeIds.cPluginPrefix);
+  Assert.AreEqual(4, Integer(Length(mPlaced.Items)));
 end;
 
 procedure TAtlasHostLayoutTests.AtlasOnTopDropsSingleAtlasSections;
 var
-  Layout, Placed: TAtlasHostLayout;
+  mLayout, mPlaced: TAtlasHostLayout;
 begin
-  Layout := TAtlasHostLayout.IdeDefault;
-  Layout.Items := Layout.Items + [TAtlasHostItem.Create('Atlas.Welcome.state', 2, 0, 1, 1)];
-  Layout.Available := Layout.Available + ['Atlas.Welcome.news', 'Atlas.Welcome.board'];
-  Placed := Layout.WithAtlasOnTop('Atlas.Welcome.board', TAtlasWelcomeIds.PluginPrefix);
-  Assert.IsFalse(Placed.Contains('Atlas.Welcome.state'));
+  mLayout := TAtlasHostLayout.IdeDefault;
+  mLayout.Items := mLayout.Items + [TAtlasHostItem.Create('Atlas.Welcome.state', 2, 0, 1, 1)];
+  mLayout.Available := mLayout.Available + ['Atlas.Welcome.news', 'Atlas.Welcome.board'];
+  mPlaced := mLayout.WithAtlasOnTop('Atlas.Welcome.board', TAtlasWelcomeIds.cPluginPrefix);
+  Assert.IsFalse(mPlaced.Contains('Atlas.Welcome.state'));
   Assert.AreEqual('Embarcadero.WelcomePagePlugin.GetItPromoted,Embarcadero.WelcomePagePlugin.CreateNew',
-    Joined(Placed.Available), 'Atlas weder ausgeblendet noch einzeln');
+    Joined(mPlaced.Available), 'Atlas weder ausgeblendet noch einzeln');
 end;
 
 procedure TAtlasHostLayoutTests.DetectsMovedBoard;
 var
-  Placed: TAtlasHostLayout;
-  Item: TAtlasHostItem;
+  mPlaced: TAtlasHostLayout;
+  mItem: TAtlasHostItem;
 begin
-  Placed := TAtlasHostLayout.IdeDefault.WithAtlasOnTop('Atlas.Welcome.board', TAtlasWelcomeIds.PluginPrefix);
-  Item := Placed.Items[0];
-  Item.Row := 2;
-  Placed.Items[0] := Item;
-  Assert.IsFalse(Placed.HasAtlasOnTop('Atlas.Welcome.board', TAtlasWelcomeIds.PluginPrefix), 'verschoben');
-  Placed := TAtlasHostLayout.IdeDefault.WithAtlasOnTop('Atlas.Welcome.board', TAtlasWelcomeIds.PluginPrefix);
-  Placed.Available := Placed.Available + ['Atlas.Welcome.board'];
-  Assert.IsFalse(Placed.HasAtlasOnTop('Atlas.Welcome.board', TAtlasWelcomeIds.PluginPrefix), 'ausgeblendet');
+  mPlaced := TAtlasHostLayout.IdeDefault.WithAtlasOnTop('Atlas.Welcome.board', TAtlasWelcomeIds.cPluginPrefix);
+  mItem := mPlaced.Items[0];
+  mItem.Row := 2;
+  mPlaced.Items[0] := mItem;
+  Assert.IsFalse(mPlaced.HasAtlasOnTop('Atlas.Welcome.board', TAtlasWelcomeIds.cPluginPrefix), 'verschoben');
+  mPlaced := TAtlasHostLayout.IdeDefault.WithAtlasOnTop('Atlas.Welcome.board', TAtlasWelcomeIds.cPluginPrefix);
+  mPlaced.Available := mPlaced.Available + ['Atlas.Welcome.board'];
+  Assert.IsFalse(mPlaced.HasAtlasOnTop('Atlas.Welcome.board', TAtlasWelcomeIds.cPluginPrefix), 'ausgeblendet');
 end;
 
 procedure TAtlasHostLayoutTests.WithoutAtlasUndoesAtlasOnTop;
 var
-  Layout, Placed, Back: TAtlasHostLayout;
-  Index: Integer;
+  mLayout, mPlaced, mBack: TAtlasHostLayout;
+  mIndex: Integer;
 begin
   // Abschalten (welcomePage.ideWelcomePage, #761) ohne Sicherung: wieder das Raster von vorher.
-  Layout := TAtlasHostLayout.IdeDefault;
-  Placed := Layout.WithAtlasOnTop('Atlas.Welcome.board', TAtlasWelcomeIds.PluginPrefix);
-  Back := Placed.WithoutAtlas(TAtlasWelcomeIds.PluginPrefix);
-  Assert.AreEqual(Layout.Rows, Back.Rows);
-  Assert.AreEqual(Layout.Columns, Back.Columns);
-  Assert.AreEqual(Integer(Length(Layout.Items)), Integer(Length(Back.Items)));
-  for Index := 0 to High(Layout.Items) do
+  mLayout := TAtlasHostLayout.IdeDefault;
+  mPlaced := mLayout.WithAtlasOnTop('Atlas.Welcome.board', TAtlasWelcomeIds.cPluginPrefix);
+  mBack := mPlaced.WithoutAtlas(TAtlasWelcomeIds.cPluginPrefix);
+  Assert.AreEqual(mLayout.Rows, mBack.Rows);
+  Assert.AreEqual(mLayout.Columns, mBack.Columns);
+  Assert.AreEqual(Integer(Length(mLayout.Items)), Integer(Length(mBack.Items)));
+  for mIndex := 0 to High(mLayout.Items) do
   begin
-    Assert.AreEqual(Layout.Items[Index].PluginId, Back.Items[Index].PluginId);
-    Assert.AreEqual(Layout.Items[Index].Row, Back.Items[Index].Row);
-    Assert.AreEqual(Layout.Items[Index].Column, Back.Items[Index].Column);
+    Assert.AreEqual(mLayout.Items[mIndex].PluginId, mBack.Items[mIndex].PluginId);
+    Assert.AreEqual(mLayout.Items[mIndex].Row, mBack.Items[mIndex].Row);
+    Assert.AreEqual(mLayout.Items[mIndex].Column, mBack.Items[mIndex].Column);
   end;
-  Assert.AreEqual(Joined(Layout.Available), Joined(Back.Available));
+  Assert.AreEqual(Joined(mLayout.Available), Joined(mBack.Available));
 end;
 
 { TAtlasIdePageStepsTests }
 
 function Steps(const ASteps: TArray<TAtlasIdePageStep>): string;
 var
-  Step: TAtlasIdePageStep;
+  mStep: TAtlasIdePageStep;
 begin
   Result := '';
-  for Step in ASteps do
+  for mStep in ASteps do
   begin
-    Result := Result + IntToStr(Ord(Step)) + ';';
+    Result := Result + IntToStr(Ord(mStep)) + ';';
   end;
 end;
 
 function Expected(const ASteps: array of TAtlasIdePageStep): string;
 var
-  Step: TAtlasIdePageStep;
+  mStep: TAtlasIdePageStep;
 begin
   Result := '';
-  for Step in ASteps do
+  for mStep in ASteps do
   begin
-    Result := Result + IntToStr(Ord(Step)) + ';';
+    Result := Result + IntToStr(Ord(mStep)) + ';';
   end;
 end;
 
@@ -914,107 +914,107 @@ end;
 
 procedure TAtlasWelcomeRetireTests.RestoresBackup;
 var
-  Registry: IAtlasRegistryAccess;
-  Key, Read: TAtlasRegKey;
-  Backup, Snapshot: string;
+  mRegistry: IAtlasRegistryAccess;
+  mKey, mRead: TAtlasRegKey;
+  mBackup, mSnapshot: string;
 begin
-  Registry := TAtlasMemoryRegistry.Create;
-  Key := Delphi12Export;
+  mRegistry := TAtlasMemoryRegistry.Create;
+  mKey := Delphi12Export;
   try
-    Registry.Replace(WelcomePath, Key);
+    mRegistry.Replace(cWelcomePath, mKey);
   finally
-    Key.Free;
+    mKey.Free;
   end;
-  Backup := TAtlasWelcomeBackup.Snapshot(Registry, WelcomePath);
-  Key := OldAtlasLayout;
+  mBackup := TAtlasWelcomeBackup.Snapshot(mRegistry, cWelcomePath);
+  mKey := OldAtlasLayout;
   try
-    Registry.Replace(WelcomePath, Key);
+    mRegistry.Replace(cWelcomePath, mKey);
   finally
-    Key.Free;
+    mKey.Free;
   end;
   Assert.AreEqual(Ord(TAtlasRetireResult.Restored),
-    Ord(TAtlasWelcomeRetire.Run(Registry, WelcomePath, Backup, TAtlasWelcomeIds.PluginPrefix, Snapshot)));
-  Assert.AreEqual(Backup, Snapshot, 'die Sicherung ist der gewünschte Stand');
-  Read := Registry.Read(WelcomePath);
-  Key := Delphi12Export;
+    Ord(TAtlasWelcomeRetire.Run(mRegistry, cWelcomePath, mBackup, TAtlasWelcomeIds.cPluginPrefix, mSnapshot)));
+  Assert.AreEqual(mBackup, mSnapshot, 'die Sicherung ist der gewünschte Stand');
+  mRead := mRegistry.Read(cWelcomePath);
+  mKey := Delphi12Export;
   try
-    Assert.IsTrue(Key.SameAs(Read), 'exakt wie vor dem Atlas-Layout');
+    Assert.IsTrue(mKey.SameAs(mRead), 'exakt wie vor dem Atlas-Layout');
   finally
-    Key.Free;
-    Read.Free;
+    mKey.Free;
+    mRead.Free;
   end;
 end;
 
 procedure TAtlasWelcomeRetireTests.RemovesAtlasWithoutBackup;
 var
-  Registry: IAtlasRegistryAccess;
-  Key: TAtlasRegKey;
-  Snapshot: string;
-  Layout: TAtlasHostLayout;
+  mRegistry: IAtlasRegistryAccess;
+  mKey: TAtlasRegKey;
+  mSnapshot: string;
+  mLayout: TAtlasHostLayout;
 begin
-  Registry := TAtlasMemoryRegistry.Create;
-  Key := OldAtlasLayout;
+  mRegistry := TAtlasMemoryRegistry.Create;
+  mKey := OldAtlasLayout;
   try
-    Registry.Replace(WelcomePath, Key);
+    mRegistry.Replace(cWelcomePath, mKey);
   finally
-    Key.Free;
+    mKey.Free;
   end;
   Assert.AreEqual(Ord(TAtlasRetireResult.Removed),
-    Ord(TAtlasWelcomeRetire.Run(Registry, WelcomePath, '', TAtlasWelcomeIds.PluginPrefix, Snapshot)));
-  Assert.IsTrue(TAtlasWelcomeBackup.Matches(Registry, Snapshot), 'Marke = geschriebener Stand');
-  Layout := ReadLayout(Registry.Read(WelcomePath));
-  Assert.IsFalse(Layout.ContainsAtlas(TAtlasWelcomeIds.PluginPrefix));
-  Assert.AreEqual(2, Layout.Rows);
+    Ord(TAtlasWelcomeRetire.Run(mRegistry, cWelcomePath, '', TAtlasWelcomeIds.cPluginPrefix, mSnapshot)));
+  Assert.IsTrue(TAtlasWelcomeBackup.Matches(mRegistry, mSnapshot), 'Marke = geschriebener Stand');
+  mLayout := ReadLayout(mRegistry.Read(cWelcomePath));
+  Assert.IsFalse(mLayout.ContainsAtlas(TAtlasWelcomeIds.cPluginPrefix));
+  Assert.AreEqual(2, mLayout.Rows);
   // Ein zweiter Start findet nichts mehr.
   Assert.AreEqual(Ord(TAtlasRetireResult.Nothing),
-    Ord(TAtlasWelcomeRetire.Run(Registry, WelcomePath, '', TAtlasWelcomeIds.PluginPrefix, Snapshot)));
-  Assert.AreEqual('', Snapshot);
+    Ord(TAtlasWelcomeRetire.Run(mRegistry, cWelcomePath, '', TAtlasWelcomeIds.cPluginPrefix, mSnapshot)));
+  Assert.AreEqual('', mSnapshot);
 end;
 
 procedure TAtlasWelcomeRetireTests.BrokenBackupFallsBackToRemoving;
 var
-  Registry: IAtlasRegistryAccess;
-  Key: TAtlasRegKey;
-  Snapshot: string;
+  mRegistry: IAtlasRegistryAccess;
+  mKey: TAtlasRegKey;
+  mSnapshot: string;
 begin
-  Registry := TAtlasMemoryRegistry.Create;
-  Key := OldAtlasLayout;
+  mRegistry := TAtlasMemoryRegistry.Create;
+  mKey := OldAtlasLayout;
   try
-    Registry.Replace(WelcomePath, Key);
+    mRegistry.Replace(cWelcomePath, mKey);
   finally
-    Key.Free;
+    mKey.Free;
   end;
   Assert.AreEqual(Ord(TAtlasRetireResult.Removed),
-    Ord(TAtlasWelcomeRetire.Run(Registry, WelcomePath, 'kaputt', TAtlasWelcomeIds.PluginPrefix, Snapshot)));
-  Assert.IsFalse(ReadLayout(Registry.Read(WelcomePath)).ContainsAtlas(TAtlasWelcomeIds.PluginPrefix));
+    Ord(TAtlasWelcomeRetire.Run(mRegistry, cWelcomePath, 'kaputt', TAtlasWelcomeIds.cPluginPrefix, mSnapshot)));
+  Assert.IsFalse(ReadLayout(mRegistry.Read(cWelcomePath)).ContainsAtlas(TAtlasWelcomeIds.cPluginPrefix));
 end;
 
 procedure TAtlasWelcomeRetireTests.CleanLayoutStaysUntouched;
 var
-  Registry: IAtlasRegistryAccess;
-  Key, Read: TAtlasRegKey;
-  Snapshot: string;
+  mRegistry: IAtlasRegistryAccess;
+  mKey, mRead: TAtlasRegKey;
+  mSnapshot: string;
 begin
-  Registry := TAtlasMemoryRegistry.Create;
+  mRegistry := TAtlasMemoryRegistry.Create;
   Assert.AreEqual(Ord(TAtlasRetireResult.Nothing),
-    Ord(TAtlasWelcomeRetire.Run(Registry, WelcomePath, '', TAtlasWelcomeIds.PluginPrefix, Snapshot)), 'kein Schlüssel');
-  Read := Registry.Read(WelcomePath);
-  Assert.IsNull(Read, 'legt nichts an');
-  Read.Free;
-  Key := Delphi12Export;
+    Ord(TAtlasWelcomeRetire.Run(mRegistry, cWelcomePath, '', TAtlasWelcomeIds.cPluginPrefix, mSnapshot)), 'kein Schlüssel');
+  mRead := mRegistry.Read(cWelcomePath);
+  Assert.IsNull(mRead, 'legt nichts an');
+  mRead.Free;
+  mKey := Delphi12Export;
   try
-    Registry.Replace(WelcomePath, Key);
+    mRegistry.Replace(cWelcomePath, mKey);
     Assert.AreEqual(Ord(TAtlasRetireResult.Nothing),
-      Ord(TAtlasWelcomeRetire.Run(Registry, WelcomePath, '', TAtlasWelcomeIds.PluginPrefix, Snapshot)));
-    Assert.AreEqual('', Snapshot);
-    Read := Registry.Read(WelcomePath);
+      Ord(TAtlasWelcomeRetire.Run(mRegistry, cWelcomePath, '', TAtlasWelcomeIds.cPluginPrefix, mSnapshot)));
+    Assert.AreEqual('', mSnapshot);
+    mRead := mRegistry.Read(cWelcomePath);
     try
-      Assert.IsTrue(Key.SameAs(Read));
+      Assert.IsTrue(mKey.SameAs(mRead));
     finally
-      Read.Free;
+      mRead.Free;
     end;
   finally
-    Key.Free;
+    mKey.Free;
   end;
 end;
 
@@ -1047,12 +1047,12 @@ end;
 
 function TMemoryStore.ReadInteger(const AName: string; ADefault: Integer): Integer;
 var
-  Text: string;
+  mText: string;
 begin
   Result := ADefault;
-  if FValues.TryGetValue(AName, Text) then
+  if FValues.TryGetValue(AName, mText) then
   begin
-    Result := StrToIntDef(Text, ADefault);
+    Result := StrToIntDef(mText, ADefault);
   end;
 end;
 
@@ -1076,114 +1076,114 @@ end;
 
 procedure TAtlasWelcomeSettingsTests.DefaultsOpenWindowOnlyOnRequest;
 var
-  Settings: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
 begin
-  Settings := TAtlasPluginSettings.Defaults;
-  Assert.IsTrue(Settings.WelcomePage);
+  mSettings := TAtlasPluginSettings.Defaults;
+  Assert.IsTrue(mSettings.WelcomePage);
   // #1114: „Atlas-Start“ öffnet nur auf Wunsch (Menü, Palette, Desktop).
-  Assert.IsFalse(Settings.WelcomePageOpenOnStart);
-  Assert.IsTrue(Settings.WelcomePageHeader);
-  Assert.IsTrue(Settings.WelcomePageGreeting);
-  Assert.AreEqual('afterUpdate', Settings.WelcomePageWhatsNew);
-  Assert.AreEqual('', Settings.WhatsNewSeen, 'vor dem ersten Start nichts gesehen');
+  Assert.IsFalse(mSettings.WelcomePageOpenOnStart);
+  Assert.IsTrue(mSettings.WelcomePageHeader);
+  Assert.IsTrue(mSettings.WelcomePageGreeting);
+  Assert.AreEqual('afterUpdate', mSettings.WelcomePageWhatsNew);
+  Assert.AreEqual('', mSettings.WhatsNewSeen, 'vor dem ersten Start nichts gesehen');
   // #754: Zustandskachel an, auch bei allem grün.
-  Assert.IsTrue(Settings.WelcomePageStatusTile);
-  Assert.IsFalse(Settings.WelcomePageStatusTileOnlyProblems);
+  Assert.IsTrue(mSettings.WelcomePageStatusTile);
+  Assert.IsFalse(mSettings.WelcomePageStatusTileOnlyProblems);
   // #757: Karte „Atlas entdecken“ an, Nutzung lokal zählen an.
-  Assert.IsTrue(Settings.WelcomePageDiscover);
-  Assert.IsTrue(Settings.TipsUsageTracking);
+  Assert.IsTrue(mSettings.WelcomePageDiscover);
+  Assert.IsTrue(mSettings.TipsUsageTracking);
   // #766: Bereich „Hilfe und Rückmeldung“ an, Issue-Seite des Repositorys, Desktop.
-  Assert.IsTrue(Settings.WelcomePageHelp);
-  Assert.AreEqual(TAtlasPluginSettings.DefaultHelpReportUrl, Settings.WelcomePageHelpReportUrl);
-  Assert.AreEqual('https://github.com/xKnockOut/Atlas-IDE-Expert/issues/new', Settings.WelcomePageHelpReportUrl);
-  Assert.AreEqual('', Settings.WelcomePageHelpReportFolder, 'leer = Desktop');
+  Assert.IsTrue(mSettings.WelcomePageHelp);
+  Assert.AreEqual(TAtlasPluginSettings.DefaultHelpReportUrl, mSettings.WelcomePageHelpReportUrl);
+  Assert.AreEqual('https://github.com/xKnockOut/Atlas-IDE-Expert/issues/new', mSettings.WelcomePageHelpReportUrl);
+  Assert.AreEqual('', mSettings.WelcomePageHelpReportFolder, 'leer = Desktop');
   // #759: Einrichtungskarte und „Neu mit Atlas“ an.
-  Assert.IsTrue(Settings.WelcomePageProjectSetup);
-  Assert.IsTrue(Settings.WelcomePageNewFromTemplate);
+  Assert.IsTrue(mSettings.WelcomePageProjectSetup);
+  Assert.IsTrue(mSettings.WelcomePageNewFromTemplate);
   // #755: Weiterarbeiten an mit 5 Arbeitsständen, eingehende Commits an, fetch aus, „Gemerkt“ an.
-  Assert.IsTrue(Settings.WelcomePageContinue);
-  Assert.AreEqual(5, Settings.WelcomePageContinueCount);
-  Assert.IsTrue(Settings.WelcomePageContinueIncoming);
-  Assert.IsFalse(Settings.WelcomePageContinueFetch, 'kein Netzzugriff ohne Zustimmung');
-  Assert.IsTrue(Settings.WelcomePageSaved);
+  Assert.IsTrue(mSettings.WelcomePageContinue);
+  Assert.AreEqual(5, mSettings.WelcomePageContinueCount);
+  Assert.IsTrue(mSettings.WelcomePageContinueIncoming);
+  Assert.IsFalse(mSettings.WelcomePageContinueFetch, 'kein Netzzugriff ohne Zustimmung');
+  Assert.IsTrue(mSettings.WelcomePageSaved);
   // #767: frei anordnen an, zwei Spalten, Vorgabe-Layout „Standard“ (leer gespeichert).
-  Assert.IsTrue(Settings.WelcomePageCustomLayout);
-  Assert.AreEqual(2, Settings.WelcomePageColumns);
-  Assert.AreEqual('', Settings.WelcomePageLayouts);
-  Assert.AreEqual('Standard', Settings.WelcomePageActiveLayout);
+  Assert.IsTrue(mSettings.WelcomePageCustomLayout);
+  Assert.AreEqual(2, mSettings.WelcomePageColumns);
+  Assert.AreEqual('', mSettings.WelcomePageLayouts);
+  Assert.AreEqual('Standard', mSettings.WelcomePageActiveLayout);
 end;
 
 procedure TAtlasWelcomeSettingsTests.DefaultsShowSectionsOnIdePage;
 var
-  Settings: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
 begin
-  Settings := TAtlasPluginSettings.Defaults;
+  mSettings := TAtlasPluginSettings.Defaults;
   // #761: wieder auf der Willkommensseite der IDE, das Layout der IDE bleibt, bis man es anwendet.
-  Assert.IsTrue(Settings.WelcomePageIdePage);
-  Assert.AreEqual('off', Settings.WelcomePageLayout);
+  Assert.IsTrue(mSettings.WelcomePageIdePage);
+  Assert.AreEqual('off', mSettings.WelcomePageLayout);
   // Das Fenster bleibt unabhängig davon (#1114).
-  Assert.IsFalse(Settings.WelcomePageOpenOnStart);
-  Assert.IsTrue(Settings.WelcomePageOpenWhenNoProject);
+  Assert.IsFalse(mSettings.WelcomePageOpenOnStart);
+  Assert.IsTrue(mSettings.WelcomePageOpenWhenNoProject);
 end;
 
 procedure TAtlasWelcomeSettingsTests.NormalizeMapsUnknownValues;
 var
-  Settings: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
 begin
-  Settings := TAtlasPluginSettings.Defaults;
-  Settings.WelcomePageLayout := ' Atlas ';
-  Settings.Normalize;
-  Assert.AreEqual('atlas', Settings.WelcomePageLayout);
-  Settings.WelcomePageLayout := 'eigen';
-  Settings.Normalize;
-  Assert.AreEqual('off', Settings.WelcomePageLayout);
-  Settings.WelcomePageWhatsNew := ' ALWAYS ';
-  Settings.WhatsNewSeen := ' 1.1.0 ';
-  Settings.Normalize;
-  Assert.AreEqual('always', Settings.WelcomePageWhatsNew);
-  Assert.AreEqual('1.1.0', Settings.WhatsNewSeen);
-  Settings.WelcomePageWhatsNew := 'manchmal';
-  Settings.Normalize;
-  Assert.AreEqual('afterUpdate', Settings.WelcomePageWhatsNew);
-  Settings.WelcomePageWhatsNew := 'Off';
-  Settings.Normalize;
-  Assert.AreEqual('off', Settings.WelcomePageWhatsNew);
+  mSettings := TAtlasPluginSettings.Defaults;
+  mSettings.WelcomePageLayout := ' Atlas ';
+  mSettings.Normalize;
+  Assert.AreEqual('atlas', mSettings.WelcomePageLayout);
+  mSettings.WelcomePageLayout := 'eigen';
+  mSettings.Normalize;
+  Assert.AreEqual('off', mSettings.WelcomePageLayout);
+  mSettings.WelcomePageWhatsNew := ' ALWAYS ';
+  mSettings.WhatsNewSeen := ' 1.1.0 ';
+  mSettings.Normalize;
+  Assert.AreEqual('always', mSettings.WelcomePageWhatsNew);
+  Assert.AreEqual('1.1.0', mSettings.WhatsNewSeen);
+  mSettings.WelcomePageWhatsNew := 'manchmal';
+  mSettings.Normalize;
+  Assert.AreEqual('afterUpdate', mSettings.WelcomePageWhatsNew);
+  mSettings.WelcomePageWhatsNew := 'Off';
+  mSettings.Normalize;
+  Assert.AreEqual('off', mSettings.WelcomePageWhatsNew);
   // #766: Ziel der Issue-Seite nur als Webadresse, sonst die Vorgabe; Leerzeichen weg.
-  Settings.WelcomePageHelpReportUrl := '  https://example.org/issues/new  ';
-  Settings.WelcomePageHelpReportFolder := '  D:\Diagnose  ';
-  Settings.Normalize;
-  Assert.AreEqual('https://example.org/issues/new', Settings.WelcomePageHelpReportUrl);
-  Assert.AreEqual('D:\Diagnose', Settings.WelcomePageHelpReportFolder);
-  Settings.WelcomePageHelpReportUrl := 'http://intern/issues';
-  Settings.Normalize;
-  Assert.AreEqual('http://intern/issues', Settings.WelcomePageHelpReportUrl);
-  Settings.WelcomePageHelpReportUrl := 'file:///C:/Windows/System32/cmd.exe';
-  Settings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.DefaultHelpReportUrl, Settings.WelcomePageHelpReportUrl, 'keine Datei');
-  Settings.WelcomePageHelpReportUrl := 'cmd.exe';
-  Settings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.DefaultHelpReportUrl, Settings.WelcomePageHelpReportUrl, 'kein Programm');
-  Settings.WelcomePageHelpReportUrl := '';
-  Settings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.DefaultHelpReportUrl, Settings.WelcomePageHelpReportUrl, 'leer = Vorgabe');
+  mSettings.WelcomePageHelpReportUrl := '  https://example.org/issues/new  ';
+  mSettings.WelcomePageHelpReportFolder := '  D:\Diagnose  ';
+  mSettings.Normalize;
+  Assert.AreEqual('https://example.org/issues/new', mSettings.WelcomePageHelpReportUrl);
+  Assert.AreEqual('D:\Diagnose', mSettings.WelcomePageHelpReportFolder);
+  mSettings.WelcomePageHelpReportUrl := 'http://intern/issues';
+  mSettings.Normalize;
+  Assert.AreEqual('http://intern/issues', mSettings.WelcomePageHelpReportUrl);
+  mSettings.WelcomePageHelpReportUrl := 'file:///C:/Windows/System32/cmd.exe';
+  mSettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.DefaultHelpReportUrl, mSettings.WelcomePageHelpReportUrl, 'keine Datei');
+  mSettings.WelcomePageHelpReportUrl := 'cmd.exe';
+  mSettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.DefaultHelpReportUrl, mSettings.WelcomePageHelpReportUrl, 'kein Programm');
+  mSettings.WelcomePageHelpReportUrl := '';
+  mSettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.DefaultHelpReportUrl, mSettings.WelcomePageHelpReportUrl, 'leer = Vorgabe');
   // #755: Anzahl der Arbeitsstände 1–20.
-  Settings.WelcomePageContinueCount := 0;
-  Settings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MinContinueCount, Settings.WelcomePageContinueCount);
-  Settings.WelcomePageContinueCount := 99;
-  Settings.Normalize;
-  Assert.AreEqual(TAtlasPluginSettings.MaxContinueCount, Settings.WelcomePageContinueCount);
+  mSettings.WelcomePageContinueCount := 0;
+  mSettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MinContinueCount, mSettings.WelcomePageContinueCount);
+  mSettings.WelcomePageContinueCount := 99;
+  mSettings.Normalize;
+  Assert.AreEqual(TAtlasPluginSettings.MaxContinueCount, mSettings.WelcomePageContinueCount);
   // #767: Spalten 1–3, leeres aktives Layout = „Standard“.
-  Settings.WelcomePageColumns := 0;
-  Settings.WelcomePageActiveLayout := '  ';
-  Settings.Normalize;
-  Assert.AreEqual(1, Settings.WelcomePageColumns);
-  Assert.AreEqual('Standard', Settings.WelcomePageActiveLayout);
-  Settings.WelcomePageColumns := 9;
-  Settings.WelcomePageActiveLayout := ' Arbeit ';
-  Settings.Normalize;
-  Assert.AreEqual(3, Settings.WelcomePageColumns);
-  Assert.AreEqual('Arbeit', Settings.WelcomePageActiveLayout);
+  mSettings.WelcomePageColumns := 0;
+  mSettings.WelcomePageActiveLayout := '  ';
+  mSettings.Normalize;
+  Assert.AreEqual(1, mSettings.WelcomePageColumns);
+  Assert.AreEqual('Standard', mSettings.WelcomePageActiveLayout);
+  mSettings.WelcomePageColumns := 9;
+  mSettings.WelcomePageActiveLayout := ' Arbeit ';
+  mSettings.Normalize;
+  Assert.AreEqual(3, mSettings.WelcomePageColumns);
+  Assert.AreEqual('Arbeit', mSettings.WelcomePageActiveLayout);
 end;
 
 /// <summary>Einstellungen der Willkommensseite, alle abweichend von der Vorgabe.</summary>
@@ -1304,16 +1304,16 @@ end;
 
 procedure TAtlasWelcomeSettingsTests.SaveAndLoadRoundTrip;
 var
-  Store: IAtlasSettingsStore;
-  Saved, Loaded: TAtlasPluginSettings;
+  mStore: IAtlasSettingsStore;
+  mSaved, mLoaded: TAtlasPluginSettings;
 begin
-  Store := TMemoryStore.Create;
-  Saved := ChangedWelcomeSettings;
-  Saved.Save(Store);
-  AssertWelcomeStored(Store);
-  Loaded := Default(TAtlasPluginSettings);
-  Loaded.Load(Store);
-  AssertWelcomeLoaded(Loaded);
+  mStore := TMemoryStore.Create;
+  mSaved := ChangedWelcomeSettings;
+  mSaved.Save(mStore);
+  AssertWelcomeStored(mStore);
+  mLoaded := Default(TAtlasPluginSettings);
+  mLoaded.Load(mStore);
+  AssertWelcomeLoaded(mLoaded);
 end;
 
 initialization

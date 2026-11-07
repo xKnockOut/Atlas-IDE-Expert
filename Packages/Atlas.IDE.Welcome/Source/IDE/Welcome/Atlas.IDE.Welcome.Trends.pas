@@ -25,7 +25,7 @@ type
   TAtlasIdeTrends = class(TInterfacedObject, IAtlasTrendsSource)
   public const
     /// <summary>Reihenfolge außerhalb des Atlas-Layouts: gleich nach „Projekte“.</summary>
-    Order = 22;
+    cOrder = 22;
   private
     FProjects: IAtlasProjectsSource;
     FStarted: Boolean;
@@ -70,17 +70,17 @@ end;
 
 procedure TAtlasIdeTrends.Start;
 var
-  Keep: IAtlasTrendsSource;
+  mKeep: IAtlasTrendsSource;
 begin
   FStarted := True;
-  Keep := Self;
-  TAtlasWelcomeViews.Register(TAtlasWelcomeIds.History,
+  mKeep := Self;
+  TAtlasWelcomeViews.Register(TAtlasWelcomeIds.cHistory,
     function(AOwner: TComponent): TAtlasWelcomeSectionFrame
     var
       Frame: TAtlasWelcomeTrendsFrame;
     begin
       Frame := TAtlasWelcomeTrendsFrame.Create(AOwner);
-      Frame.Source := Keep;
+      Frame.Source := mKeep;
       Result := Frame;
     end);
   FTitle := '';
@@ -94,14 +94,14 @@ begin
     Exit;
   end;
   FStarted := False;
-  TAtlasWelcomeViews.Unregister(TAtlasWelcomeIds.History);
-  TAtlasWelcomeSections.Default.Remove(TAtlasWelcomeIds.History);
+  TAtlasWelcomeViews.Unregister(TAtlasWelcomeIds.cHistory);
+  TAtlasWelcomeSections.Default.Remove(TAtlasWelcomeIds.cHistory);
   FProjects := nil;
 end;
 
 function TAtlasIdeTrends.Section: TAtlasWelcomeSection;
 begin
-  Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.History, TAtlasWelcomeTrendsFrame.TitleText, Order,
+  Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.cHistory, TAtlasWelcomeTrendsFrame.TitleText, cOrder,
     TAtlasWelcomeColumn.Left,
     function: Boolean
     begin
@@ -111,19 +111,19 @@ end;
 
 procedure TAtlasIdeTrends.Refresh;
 var
-  Next: TAtlasWelcomeSection;
+  mNext: TAtlasWelcomeSection;
 begin
   if not FStarted then
   begin
     Exit;
   end;
-  Next := Section;
+  mNext := Section;
   // Nur beim ersten Mal (oder nach einem Sprachwechsel) anmelden: Add meldet allen Beobachtern.
-  if Next.Title <> FTitle then
+  if mNext.Title <> FTitle then
   begin
-    FTitle := Next.Title;
+    FTitle := mNext.Title;
     FActive := Active;
-    TAtlasWelcomeSections.Default.Add(Next);
+    TAtlasWelcomeSections.Default.Add(mNext);
     Exit;
   end;
   // welcomePage.trends umgeschaltet: Auswahl der Bereiche neu; sonst nur Reihen und Punkte.
@@ -132,35 +132,35 @@ begin
     FActive := Active;
     TAtlasWelcomeSections.Default.Changed;
   end;
-  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.History);
+  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cHistory);
 end;
 
 function TAtlasIdeTrends.View: TAtlasTrendView;
 var
-  Entries: TAtlasProjectEntries;
-  Paths: TArray<string>;
-  Chosen: string;
-  Index: Integer;
-  Series: TAtlasTrendSeriesList;
+  mEntries: TAtlasProjectEntries;
+  mPaths: TArray<string>;
+  mChosen: string;
+  mIndex: Integer;
+  mSeries: TAtlasTrendSeriesList;
 begin
   Result := Default(TAtlasTrendView);
   if not FStarted or (FProjects = nil) or not Active then
   begin
     Exit;
   end;
-  Entries := FProjects.Entries;
-  Paths := nil;
-  for Index := 0 to High(Entries) do
+  mEntries := FProjects.Entries;
+  mPaths := nil;
+  for mIndex := 0 to High(mEntries) do
   begin
-    Paths := Paths + [Entries[Index].Project];
+    mPaths := mPaths + [mEntries[mIndex].Project];
   end;
-  Chosen := TAtlasWelcomeTrends.Choose(Paths, FProjects.Selected);
-  for Index := 0 to High(Entries) do
+  mChosen := TAtlasWelcomeTrends.Choose(mPaths, FProjects.Selected);
+  for mIndex := 0 to High(mEntries) do
   begin
-    if Entries[Index].Project = Chosen then
+    if mEntries[mIndex].Project = mChosen then
     begin
-      Series := TAtlasWelcomeTrends.ParseSeries(TAtlasIdeSettings.Current.WelcomePageTrendsSeries);
-      Exit(TAtlasWelcomeTrends.View(Entries[Index].Summary, Series,
+      mSeries := TAtlasWelcomeTrends.ParseSeries(TAtlasIdeSettings.Current.WelcomePageTrendsSeries);
+      Exit(TAtlasWelcomeTrends.View(mEntries[mIndex].Summary, mSeries,
         TAtlasIdeSettings.Current.WelcomePageTrendsPoints));
     end;
   end;

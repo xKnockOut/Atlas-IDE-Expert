@@ -108,12 +108,12 @@ var
 
 procedure Theme(AFrame: TFrame);
 var
-  Theming: IOTAIDEThemingServices;
+  mTheming: IOTAIDEThemingServices;
 begin
-  if (AFrame <> nil) and Supports(BorlandIDEServices, IOTAIDEThemingServices, Theming) and
-    Theming.IDEThemingEnabled then
+  if (AFrame <> nil) and Supports(BorlandIDEServices, IOTAIDEThemingServices, mTheming) and
+    mTheming.IDEThemingEnabled then
   begin
-    Theming.ApplyTheme(AFrame);
+    mTheming.ApplyTheme(AFrame);
   end;
 end;
 
@@ -182,7 +182,7 @@ end;
 
 function TPlugin.CreateView: TFrame;
 var
-  Caption: INTAWelcomePageCaptionFrame;
+  mCaption: INTAWelcomePageCaptionFrame;
 begin
   if FView = nil then
   begin
@@ -191,7 +191,7 @@ begin
     begin
       FView.FreeNotification(FWatch);
     end;
-    if Supports(FView, INTAWelcomePageCaptionFrame, Caption) then
+    if Supports(FView, INTAWelcomePageCaptionFrame, mCaption) then
     begin
       TAtlasGuard.Run(TAtlasFeature.WelcomePage,
         procedure
@@ -201,7 +201,7 @@ begin
           if FClient <> nil then
           begin
             FClient.FreeNotification(FWatch);
-            Caption.SetClientFrame(FClient);
+            mCaption.SetClientFrame(FClient);
             Theme(FClient);
             FClient.UpdateContent;
           end;
@@ -213,7 +213,7 @@ end;
 
 procedure TPlugin.DestroyView;
 var
-  View: TFrame;
+  mView: TFrame;
 begin
   if FClient <> nil then
   begin
@@ -221,12 +221,12 @@ begin
   end;
   FClient := nil;
   // Nur einen Rahmen freigeben, der noch lebt; hat die IDE ihn schon freigegeben, ist FView nil (TViewWatch).
-  View := FView;
+  mView := FView;
   FView := nil;
-  if View <> nil then
+  if mView <> nil then
   begin
-    View.RemoveFreeNotification(FWatch);
-    View.Free;
+    mView.RemoveFreeNotification(FWatch);
+    mView.Free;
   end;
 end;
 
@@ -260,7 +260,7 @@ end;
 class procedure TAtlasIdeWelcomePage.Register(const APluginId, ACaption: string;
   const AFactory: TAtlasWelcomeClientFactory);
 var
-  Plugin: TPlugin;
+  mPlugin: TPlugin;
 begin
   if not Available then
   begin
@@ -271,10 +271,10 @@ begin
   begin
     Plugins := TDictionary<string, TPlugin>.Create;
   end;
-  Plugin := TPlugin.Create(APluginId, ACaption, AFactory);
-  Plugins.Add(LowerCase(APluginId), Plugin);
+  mPlugin := TPlugin.Create(APluginId, ACaption, AFactory);
+  Plugins.Add(LowerCase(APluginId), mPlugin);
   ServiceGone := False;
-  WelcomePagePluginService.RegisterPluginCreator(Plugin);
+  WelcomePagePluginService.RegisterPluginCreator(mPlugin);
 end;
 
 class procedure TAtlasIdeWelcomePage.Unregister(const APluginId: string);
@@ -292,75 +292,75 @@ end;
 
 class procedure TAtlasIdeWelcomePage.RemoveAll;
 var
-  Id: string;
-  Plugin: TPlugin;
-  Client: TAtlasWelcomeFrame;
+  mId: string;
+  mPlugin: TPlugin;
+  mClient: TAtlasWelcomeFrame;
 begin
   // Nur den Inhalt (Atlas-Klasse) freigeben, nicht den Rahmen: Der gehört der IDE und kann noch in ihrer Seite
   // stehen. Der Inhalt nimmt sich beim Freigeben selbst aus dem Rahmen.
   if Plugins <> nil then
   begin
-    for Plugin in Plugins.Values do
+    for mPlugin in Plugins.Values do
     begin
-      Client := Plugin.FClient;
-      Plugin.FClient := nil;
-      if Client <> nil then
+      mClient := mPlugin.FClient;
+      mPlugin.FClient := nil;
+      if mClient <> nil then
       begin
-        Client.RemoveFreeNotification(Plugin.FWatch);
-        Client.Free;
+        mClient.RemoveFreeNotification(mPlugin.FWatch);
+        mClient.Free;
       end;
     end;
   end;
-  for Id in Registered do
+  for mId in Registered do
   begin
-    Unregister(Id);
+    Unregister(mId);
   end;
   FreeAndNil(Plugins);
 end;
 
 class function TAtlasIdeWelcomePage.Registered: TArray<string>;
 var
-  Plugin: TPlugin;
+  mPlugin: TPlugin;
 begin
   Result := nil;
   if Plugins <> nil then
   begin
-    for Plugin in Plugins.Values do
+    for mPlugin in Plugins.Values do
     begin
-      Result := Result + [Plugin.FId];
+      Result := Result + [mPlugin.FId];
     end;
   end;
 end;
 
 class function TAtlasIdeWelcomePage.Client(const APluginId: string): TAtlasWelcomeFrame;
 var
-  Plugin: TPlugin;
+  mPlugin: TPlugin;
 begin
   Result := nil;
-  if (Plugins <> nil) and Plugins.TryGetValue(LowerCase(APluginId), Plugin) then
+  if (Plugins <> nil) and Plugins.TryGetValue(LowerCase(APluginId), mPlugin) then
   begin
-    Result := Plugin.FClient;
+    Result := mPlugin.FClient;
   end;
 end;
 
 class procedure TAtlasIdeWelcomePage.ApplyTheme;
 var
-  Plugin: TPlugin;
+  mPlugin: TPlugin;
 begin
   if Plugins = nil then
   begin
     Exit;
   end;
-  for Plugin in Plugins.Values do
+  for mPlugin in Plugins.Values do
   begin
-    if Plugin.FClient <> nil then
+    if mPlugin.FClient <> nil then
     begin
-      Theme(Plugin.FClient);
-      Plugin.FClient.UpdateContent;
+      Theme(mPlugin.FClient);
+      mPlugin.FClient.UpdateContent;
       // Auch Panels und Überschriften, nicht nur die Zeichenflächen: sonst bleibt der alte Hintergrund stehen.
-      if Plugin.FClient.HandleAllocated then
+      if mPlugin.FClient.HandleAllocated then
       begin
-        RedrawWindow(Plugin.FClient.Handle, nil, 0, RDW_ERASE or RDW_INVALIDATE or RDW_ALLCHILDREN or RDW_FRAME);
+        RedrawWindow(mPlugin.FClient.Handle, nil, 0, RDW_ERASE or RDW_INVALIDATE or RDW_ALLCHILDREN or RDW_FRAME);
       end;
     end;
   end;

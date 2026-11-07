@@ -51,7 +51,7 @@ type
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
   public
     function RowHeight: Integer;
-    function RowAt(Y: Integer): Integer;
+    function RowAt(AY: Integer): Integer;
   end;
 
   TAtlasWelcomeSearchBox = class(TCustomPanel)
@@ -110,8 +110,8 @@ uses
   Atlas.UI.Welcome.Strings;
 
 const
-  VisibleRows = 18;
-  ListWidth = 460;
+  cVisibleRows = 18;
+  cListWidth = 460;
 
 function ToColor(AColor: TAtlasColor): TColor;
 begin
@@ -149,9 +149,9 @@ begin
   Result := Canvas.TextHeight('Wg') + MulDiv(8, Screen.PixelsPerInch, 96);
 end;
 
-function TAtlasWelcomeSearchList.RowAt(Y: Integer): Integer;
+function TAtlasWelcomeSearchList.RowAt(AY: Integer): Integer;
 begin
-  Result := Y div RowHeight;
+  Result := AY div RowHeight;
   if (Result < 0) or (Result > High(FBox.FRows)) then
   begin
     Result := -1;
@@ -160,55 +160,55 @@ end;
 
 procedure TAtlasWelcomeSearchList.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
-  Row: Integer;
+  mRow: Integer;
 begin
   inherited;
-  Row := RowAt(Y);
-  if (Row < 0) or (FBox.FRows[Row].Kind <> TAtlasWelcomeRowKind.Hit) then
+  mRow := RowAt(Y);
+  if (mRow < 0) or (FBox.FRows[mRow].Kind <> TAtlasWelcomeRowKind.Hit) then
   begin
     Exit;
   end;
-  FBox.Select(FBox.FRows[Row].Index);
+  FBox.Select(FBox.FRows[mRow].Index);
   FBox.OpenSelected;
 end;
 
 procedure TAtlasWelcomeSearchList.DrawRow(ARow: Integer; const ARect: TRect);
 var
-  Row: TAtlasWelcomeSearchRow;
+  mRow: TAtlasWelcomeSearchRow;
   mText: string;
-  Part: TRect;
+  mPart: TRect;
 begin
-  Row := FBox.FRows[ARow];
-  Part := ARect;
-  InflateRect(Part, -MulDiv(10, Screen.PixelsPerInch, 96), 0);
+  mRow := FBox.FRows[ARow];
+  mPart := ARect;
+  InflateRect(mPart, -MulDiv(10, Screen.PixelsPerInch, 96), 0);
   Canvas.Brush.Style := bsClear;
-  case Row.Kind of
+  case mRow.Kind of
     TAtlasWelcomeRowKind.Group:
       begin
         Canvas.Font.Style := [fsBold];
         Canvas.Font.Color := ToColor(FBox.FColors.Muted);
-        mText := TAtlasWelcomeSearchBox.GroupCaption(Row.Group);
-        DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
+        mText := TAtlasWelcomeSearchBox.GroupCaption(mRow.Group);
+        DrawText(Canvas.Handle, PChar(mText), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
         Canvas.Font.Style := [];
       end;
     TAtlasWelcomeRowKind.Hint, TAtlasWelcomeRowKind.More:
       begin
         Canvas.Font.Style := [fsItalic];
         Canvas.Font.Color := ToColor(FBox.FColors.Muted);
-        if Row.Kind = TAtlasWelcomeRowKind.Hint then
+        if mRow.Kind = TAtlasWelcomeRowKind.Hint then
         begin
-          mText := Row.Text;
+          mText := mRow.Text;
         end
         else
         begin
-          mText := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSearchMore, [Row.Index]);
+          mText := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSearchMore, [mRow.Index]);
         end;
-        Inc(Part.Left, MulDiv(12, Screen.PixelsPerInch, 96));
-        DrawText(Canvas.Handle, PChar(mText), -1, Part, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
+        Inc(mPart.Left, MulDiv(12, Screen.PixelsPerInch, 96));
+        DrawText(Canvas.Handle, PChar(mText), -1, mPart, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
         Canvas.Font.Style := [];
       end;
   else
-    DrawHit(Row.Index, ARect, Part);
+    DrawHit(mRow.Index, ARect, mPart);
   end;
   Canvas.Brush.Style := bsSolid;
 end;
@@ -231,7 +231,8 @@ begin
   Canvas.Font.Color := ToColor(FBox.FColors.Text);
   mWidth := Min(Canvas.TextWidth(mHit.Caption) + MulDiv(4, Screen.PixelsPerInch, 96), APart.Width);
   mCell := Rect(APart.Left, APart.Top, APart.Left + mWidth, APart.Bottom);
-  DrawText(Canvas.Handle, PChar(mHit.Caption), -1, mCell, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or DT_END_ELLIPSIS);
+  DrawText(Canvas.Handle, PChar(mHit.Caption), -1, mCell, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or
+    DT_END_ELLIPSIS);
   if mHit.Detail <> '' then
   begin
     Canvas.Font.Color := ToColor(FBox.FColors.Muted);
@@ -243,15 +244,15 @@ end;
 
 procedure TAtlasWelcomeSearchList.Paint;
 var
-  Row, Height_: Integer;
+  mRow, mHeight_: Integer;
 begin
   Canvas.Font := Font;
   Canvas.Brush.Color := ToColor(FBox.FColors.Surface);
   Canvas.FillRect(ClientRect);
-  Height_ := RowHeight;
-  for Row := 0 to Min(High(FBox.FRows), VisibleRows - 1) do
+  mHeight_ := RowHeight;
+  for mRow := 0 to Min(High(FBox.FRows), cVisibleRows - 1) do
   begin
-    DrawRow(Row, Rect(0, Row * Height_, ClientWidth, (Row + 1) * Height_));
+    DrawRow(mRow, Rect(0, mRow * mHeight_, ClientWidth, (mRow + 1) * mHeight_));
   end;
 end;
 
@@ -391,26 +392,26 @@ end;
 
 procedure TAtlasWelcomeSearchBox.OpenSelected;
 var
-  Hit: TAtlasWelcomeHit;
-  Handler: TAtlasWelcomeSearchOpen;
-  Open: TThreadProcedure;
+  mHit: TAtlasWelcomeHit;
+  mHandler: TAtlasWelcomeSearchOpen;
+  mOpen: TThreadProcedure;
 begin
   if (FSelected < 0) or (FSelected > High(FHits)) then
   begin
     Exit;
   end;
-  Hit := FHits[FSelected];
-  Handler := FOnOpen;
+  mHit := FHits[FSelected];
+  mHandler := FOnOpen;
   Clear;
   // Erst nach dem Schließen öffnen: Projekt laden kann dauern und Dialoge zeigen.
-  if Assigned(Handler) then
+  if Assigned(mHandler) then
   begin
-    Open :=
+    mOpen :=
       procedure
       begin
-        Handler(Hit);
+        mHandler(mHit);
       end;
-    TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage, Open);
+    TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage, mOpen);
   end;
 end;
 
@@ -454,9 +455,9 @@ end;
 
 procedure TAtlasWelcomeSearchBox.ShowList;
 var
-  Origin: TPoint;
-  Area: TRect;
-  Width_, Height_: Integer;
+  mOrigin: TPoint;
+  mArea: TRect;
+  mWidth_, mHeight_: Integer;
 begin
   if not FEdit.HandleAllocated then
   begin
@@ -474,19 +475,19 @@ begin
     FList.ParentWindow := FList.FOwnerWindow;
     FList.DoubleBuffered := True;
   end;
-  Origin := FEdit.ClientToScreen(Point(0, FEdit.Height));
-  Width_ := Max(FEdit.Width, MulDiv(ListWidth, Screen.PixelsPerInch, 96));
-  Height_ := Min(Length(FRows), VisibleRows) * FList.RowHeight + 2;
-  Area := Screen.MonitorFromPoint(Origin).WorkareaRect;
+  mOrigin := FEdit.ClientToScreen(Point(0, FEdit.Height));
+  mWidth_ := Max(FEdit.Width, MulDiv(cListWidth, Screen.PixelsPerInch, 96));
+  mHeight_ := Min(Length(FRows), cVisibleRows) * FList.RowHeight + 2;
+  mArea := Screen.MonitorFromPoint(mOrigin).WorkareaRect;
   // Rechts bündig unter dem Feld (es steht rechts im Kopf), nie über den Bildschirm hinaus.
-  Origin.X := Max(Area.Left, Min(Origin.X + FEdit.Width - Width_, Area.Right - Width_));
-  if Origin.Y + Height_ > Area.Bottom then
+  mOrigin.X := Max(mArea.Left, Min(mOrigin.X + FEdit.Width - mWidth_, mArea.Right - mWidth_));
+  if mOrigin.Y + mHeight_ > mArea.Bottom then
   begin
-    Origin.Y := Max(Area.Top, Origin.Y - FEdit.Height - Height_);
+    mOrigin.Y := Max(mArea.Top, mOrigin.Y - FEdit.Height - mHeight_);
   end;
-  FList.SetBounds(Origin.X, Origin.Y, Width_, Height_);
+  FList.SetBounds(mOrigin.X, mOrigin.Y, mWidth_, mHeight_);
   // SWP_NOOWNERZORDER: nicht die ganze Owner-Gruppe umsortieren (Hänger wie in TAtlasPopupWindow.ShowAt).
-  SetWindowPos(FList.Handle, HWND_TOP, Origin.X, Origin.Y, Width_, Height_,
+  SetWindowPos(FList.Handle, HWND_TOP, mOrigin.X, mOrigin.Y, mWidth_, mHeight_,
     SWP_SHOWWINDOW or SWP_NOACTIVATE or SWP_NOOWNERZORDER);
   FList.Invalidate;
 end;

@@ -18,13 +18,13 @@ type
   TAtlasWelcomeScroll = record
   public const
     /// <summary>WHEEL_DELTA: ein Raster des Mausrads.</summary>
-    WheelDelta = 120;
+    cWheelDelta = 120;
     /// <summary>Höhe einer Zeile beim Mausrad in logischen Pixeln (96 dpi).</summary>
-    LineHeight = 20;
+    cLineHeight = 20;
     /// <summary>Breite des Randstreifens, in dem beim Ziehen gescrollt wird (logische Pixel).</summary>
-    EdgeWidth = 32;
+    cEdgeWidth = 32;
     /// <summary>Größter Schritt je Takt beim Scrollen am Rand (logische Pixel).</summary>
-    EdgeStep = 24;
+    cEdgeStep = 24;
   public
     /// <summary>Höchste Position: Inhalt AContent in einer Fläche der Höhe APage; 0, wenn alles passt.</summary>
     class function MaxPosition(AContent, APage: Integer): Integer; static;
@@ -116,8 +116,8 @@ begin
   end;
   mTotal := ARest + ADelta;
   // Pixel = Raster × Schritt; ganze Pixel nach außen geben, den Bruchteil behalten.
-  Result := -((mTotal * mStep) div WheelDelta);
-  ARest := mTotal - ((-Result) * WheelDelta) div mStep;
+  Result := -((mTotal * mStep) div cWheelDelta);
+  ARest := mTotal - ((-Result) * cWheelDelta) div mStep;
 end;
 
 class function TAtlasWelcomeScroll.WheelLines(var ARest: Integer; ADelta, ALines: Integer): Integer;
@@ -133,8 +133,8 @@ begin
     ALines := 3;
   end;
   mTotal := ARest + ADelta;
-  Result := -((mTotal * ALines) div WheelDelta);
-  ARest := mTotal - ((-Result) * WheelDelta) div ALines;
+  Result := -((mTotal * ALines) div cWheelDelta);
+  ARest := mTotal - ((-Result) * cWheelDelta) div ALines;
 end;
 
 class function TAtlasWelcomeScroll.KeyPosition(AKey: TAtlasWelcomeScrollKey; APosition, AMax, APage,

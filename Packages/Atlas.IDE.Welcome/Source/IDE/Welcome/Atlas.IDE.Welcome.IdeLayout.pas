@@ -86,7 +86,7 @@ end;
 
 function BoardId: string;
 begin
-  Result := TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.Board);
+  Result := TAtlasWelcomeIds.PluginId(TAtlasWelcomeIds.cBoard);
 end;
 
 { TAtlasIdeWelcomeIdeLayout }
@@ -116,7 +116,7 @@ begin
   mKey := FAccess.Read(WelcomeKey);
   try
     Result := (mKey <> nil) and TAtlasHostLayout.Read(mKey, mLayout) and
-      mLayout.HasAtlasOnTop(BoardId, TAtlasWelcomeIds.PluginPrefix);
+      mLayout.HasAtlasOnTop(BoardId, TAtlasWelcomeIds.cPluginPrefix);
   finally
     mKey.Free;
   end;
@@ -138,10 +138,10 @@ begin
     begin
       mLayout := TAtlasHostLayout.IdeDefault;
     end;
-    Result := not mLayout.HasAtlasOnTop(BoardId, TAtlasWelcomeIds.PluginPrefix);
+    Result := not mLayout.HasAtlasOnTop(BoardId, TAtlasWelcomeIds.cPluginPrefix);
     if Result then
     begin
-      mLayout.WithAtlasOnTop(BoardId, TAtlasWelcomeIds.PluginPrefix).WriteTo(mKey);
+      mLayout.WithAtlasOnTop(BoardId, TAtlasWelcomeIds.cPluginPrefix).WriteTo(mKey);
       FAccess.Replace(WelcomeKey, mKey);
     end;
   finally
@@ -206,7 +206,7 @@ begin
       begin
         mSaved := ReadText(mBackup);
       end;
-      mOutcome := TAtlasWelcomeRetire.Run(FAccess, WelcomeKey, mSaved, TAtlasWelcomeIds.PluginPrefix, mSnapshot);
+      mOutcome := TAtlasWelcomeRetire.Run(FAccess, WelcomeKey, mSaved, TAtlasWelcomeIds.cPluginPrefix, mSnapshot);
       // Die Sicherung hat ausgedient, auch wenn sie nicht mehr lesbar war.
       if FileExists(mBackup) then
       begin

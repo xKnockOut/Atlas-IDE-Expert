@@ -71,7 +71,7 @@ uses
   Atlas.Core.Welcome.Discover;
 
 const
-  Catalog =
+  cCatalog =
     '{"format":1,"tips":[' +
     '{"id":"codeActions","command":"Atlas.CodeActions","title":"Code-Aktionen","titleEn":"Code actions",' +
       '"text":"Strg+. zeigt, was Atlas hier kann.","textEn":"Ctrl+. shows what Atlas can do here.",' +
@@ -95,7 +95,7 @@ end;
 
 function Tips: TAtlasTips;
 begin
-  Result := TAtlasTipCatalog.Parse(Catalog);
+  Result := TAtlasTipCatalog.Parse(cCatalog);
 end;
 
 function NoState: TAtlasDiscoverState;
@@ -107,96 +107,96 @@ end;
 
 procedure TAtlasTipCatalogTests.ParsesTipsWithDefaults;
 var
-  List: TAtlasTips;
+  mList: TAtlasTips;
 begin
-  List := Tips;
-  Assert.AreEqual(4, Integer(Length(List)));
-  Assert.AreEqual('codeActions', List[0].Id);
-  Assert.AreEqual('Atlas.CodeActions', List[0].Command);
-  Assert.AreEqual('Code-Aktionen', List[0].TitleIn(False));
-  Assert.AreEqual('Code actions', List[0].TitleIn(True));
-  Assert.AreEqual('Ctrl+. shows what Atlas can do here.', List[0].TextIn(True));
-  Assert.AreEqual('Tipps\code-aktionen.png', List[0].Image);
-  Assert.AreEqual('Beispiele\Entdecken.pas', List[0].Sample);
-  Assert.AreEqual(12, List[0].Line);
-  Assert.AreEqual(5, List[0].Column);
-  Assert.AreEqual('Atlas.CodeActions', Joined(List[0].UsageIds), 'ohne usage zählt der Befehl');
-  Assert.AreEqual('Atlas.ExpandSelection,Atlas.ShrinkSelection', Joined(List[1].UsageIds));
-  Assert.AreEqual('Auswahl erweitern', List[1].TitleIn(True), 'ohne Englisch der deutsche Titel');
-  Assert.AreEqual('UndoMultiFile', List[2].Setting);
-  Assert.AreEqual('Atlas.ChangeList', List[2].TryId, '„Ausprobieren“ mit eigenem Befehl');
-  Assert.AreEqual('Atlas.CodeActions', List[0].TryId, 'ohne try der Befehl');
-  Assert.AreEqual('Atlas.SymbolSearch', List[3].Id, 'ohne id gilt der Befehl');
+  mList := Tips;
+  Assert.AreEqual(4, Integer(Length(mList)));
+  Assert.AreEqual('codeActions', mList[0].Id);
+  Assert.AreEqual('Atlas.CodeActions', mList[0].Command);
+  Assert.AreEqual('Code-Aktionen', mList[0].TitleIn(False));
+  Assert.AreEqual('Code actions', mList[0].TitleIn(True));
+  Assert.AreEqual('Ctrl+. shows what Atlas can do here.', mList[0].TextIn(True));
+  Assert.AreEqual('Tipps\code-aktionen.png', mList[0].Image);
+  Assert.AreEqual('Beispiele\Entdecken.pas', mList[0].Sample);
+  Assert.AreEqual(12, mList[0].Line);
+  Assert.AreEqual(5, mList[0].Column);
+  Assert.AreEqual('Atlas.CodeActions', Joined(mList[0].UsageIds), 'ohne usage zählt der Befehl');
+  Assert.AreEqual('Atlas.ExpandSelection,Atlas.ShrinkSelection', Joined(mList[1].UsageIds));
+  Assert.AreEqual('Auswahl erweitern', mList[1].TitleIn(True), 'ohne Englisch der deutsche Titel');
+  Assert.AreEqual('UndoMultiFile', mList[2].Setting);
+  Assert.AreEqual('Atlas.ChangeList', mList[2].TryId, '„Ausprobieren“ mit eigenem Befehl');
+  Assert.AreEqual('Atlas.CodeActions', mList[0].TryId, 'ohne try der Befehl');
+  Assert.AreEqual('Atlas.SymbolSearch', mList[3].Id, 'ohne id gilt der Befehl');
 end;
 
 procedure TAtlasTipCatalogTests.SkipsInvalidAndDuplicateTips;
 var
-  List: TAtlasTips;
+  mList: TAtlasTips;
 begin
   Assert.AreEqual(0, Integer(Length(TAtlasTipCatalog.Parse('kein JSON'))));
   Assert.AreEqual(0, Integer(Length(TAtlasTipCatalog.Parse('{"tips":{}}'))));
   Assert.AreEqual(0, Integer(Length(TAtlasTipCatalog.Parse(''))));
-  List := TAtlasTipCatalog.Parse('{"tips":[1,{"title":"ohne Befehl"},{"id":"a"},' +
+  mList := TAtlasTipCatalog.Parse('{"tips":[1,{"title":"ohne Befehl"},{"id":"a"},' +
     '{"id":"a","title":"Erster","usage":"Atlas.X","line":-3},{"id":"A","title":"Doppelt"},' +
     '{"id":"b","title":"Zweiter","futureField":true}]}');
-  Assert.AreEqual(2, Integer(Length(List)));
-  Assert.AreEqual('Erster', List[0].Title, 'die erste von doppelten Kennungen gilt');
-  Assert.AreEqual('Atlas.X', Joined(List[0].UsageIds), 'usage auch als Text');
-  Assert.AreEqual(0, List[0].Line, 'negative Zeile wird 0');
-  Assert.AreEqual('b', List[1].Id);
+  Assert.AreEqual(2, Integer(Length(mList)));
+  Assert.AreEqual('Erster', mList[0].Title, 'die erste von doppelten Kennungen gilt');
+  Assert.AreEqual('Atlas.X', Joined(mList[0].UsageIds), 'usage auch als Text');
+  Assert.AreEqual(0, mList[0].Line, 'negative Zeile wird 0');
+  Assert.AreEqual('b', mList[1].Id);
 end;
 
 procedure TAtlasTipCatalogTests.FindsTipByCommand;
 var
-  Tip: TAtlasTip;
+  mTip: TAtlasTip;
 begin
-  Assert.IsTrue(TAtlasTipCatalog.FindByCommand(Tips, 'atlas.codeactions', Tip));
-  Assert.AreEqual('codeActions', Tip.Id);
-  Assert.IsFalse(TAtlasTipCatalog.FindByCommand(Tips, 'Atlas.Unbekannt', Tip));
-  Assert.IsFalse(TAtlasTipCatalog.FindByCommand(Tips, '', Tip));
+  Assert.IsTrue(TAtlasTipCatalog.FindByCommand(Tips, 'atlas.codeactions', mTip));
+  Assert.AreEqual('codeActions', mTip.Id);
+  Assert.IsFalse(TAtlasTipCatalog.FindByCommand(Tips, 'Atlas.Unbekannt', mTip));
+  Assert.IsFalse(TAtlasTipCatalog.FindByCommand(Tips, '', mTip));
   Assert.AreEqual(1, TAtlasTipCatalog.IndexOf(Tips, 'EXPAND'));
   Assert.AreEqual(-1, TAtlasTipCatalog.IndexOf(Tips, 'nichts'));
 end;
 
 procedure TAtlasTipCatalogTests.FileStaysInInstallFolder;
 var
-  Folder: string;
+  mFolder: string;
 begin
-  Folder := TPath.Combine(TPath.GetTempPath, 'Atlas');
-  Assert.AreEqual(IncludeTrailingPathDelimiter(Folder) + 'Tipps' + PathDelim + 'a.png',
-    TAtlasTipCatalog.FileIn(Folder, 'Tipps\a.png'));
-  Assert.AreEqual(IncludeTrailingPathDelimiter(Folder) + 'Tipps' + PathDelim + 'a.png',
-    TAtlasTipCatalog.FileIn(Folder, 'Tipps/a.png'));
-  Assert.AreEqual('', TAtlasTipCatalog.FileIn(Folder, '..\Windows\a.png'));
-  Assert.AreEqual('', TAtlasTipCatalog.FileIn(Folder, 'C:\a.png'));
-  Assert.AreEqual('', TAtlasTipCatalog.FileIn(Folder, '\a.png'));
-  Assert.AreEqual('', TAtlasTipCatalog.FileIn(Folder, ''));
+  mFolder := TPath.Combine(TPath.GetTempPath, 'Atlas');
+  Assert.AreEqual(IncludeTrailingPathDelimiter(mFolder) + 'Tipps' + PathDelim + 'a.png',
+    TAtlasTipCatalog.FileIn(mFolder, 'Tipps\a.png'));
+  Assert.AreEqual(IncludeTrailingPathDelimiter(mFolder) + 'Tipps' + PathDelim + 'a.png',
+    TAtlasTipCatalog.FileIn(mFolder, 'Tipps/a.png'));
+  Assert.AreEqual('', TAtlasTipCatalog.FileIn(mFolder, '..\Windows\a.png'));
+  Assert.AreEqual('', TAtlasTipCatalog.FileIn(mFolder, 'C:\a.png'));
+  Assert.AreEqual('', TAtlasTipCatalog.FileIn(mFolder, '\a.png'));
+  Assert.AreEqual('', TAtlasTipCatalog.FileIn(mFolder, ''));
   Assert.AreEqual('', TAtlasTipCatalog.FileIn('', 'Tipps\a.png'));
 end;
 
 procedure TAtlasTipCatalogTests.HighDpiImageWhenScaledAndPresent;
 var
-  Folder, Small, Large, Lone: string;
+  mFolder, mSmall, mLarge, mLone: string;
 begin
   Assert.AreEqual('Tipps\a@2x.png', TAtlasTipCatalog.HighDpiName('Tipps\a.png'));
   Assert.AreEqual('', TAtlasTipCatalog.HighDpiName(''));
-  Folder := TPath.Combine(TPath.GetTempPath, 'AtlasTipImages' + IntToStr(Random(1000000)));
-  ForceDirectories(Folder);
+  mFolder := TPath.Combine(TPath.GetTempPath, 'AtlasTipImages' + IntToStr(Random(1000000)));
+  ForceDirectories(mFolder);
   try
-    Small := TPath.Combine(Folder, 'a.png');
-    Large := TPath.Combine(Folder, 'a@2x.png');
-    Lone := TPath.Combine(Folder, 'b.png');
-    TFile.WriteAllText(Small, 'x');
-    TFile.WriteAllText(Large, 'x');
-    TFile.WriteAllText(Lone, 'x');
-    Assert.AreEqual(Small, TAtlasTipCatalog.ImageFor(Small, 320), '100 %: die einfache Datei Pixel für Pixel');
-    Assert.AreEqual(Small, TAtlasTipCatalog.ImageFor(Small, 250), 'schmale Spalte: verkleinert');
-    Assert.AreEqual(Large, TAtlasTipCatalog.ImageFor(Small, 400), '125 %: doppelte Auflösung, verkleinert');
-    Assert.AreEqual(Large, TAtlasTipCatalog.ImageFor(Small, 640), '200 %: doppelte Auflösung Pixel für Pixel');
-    Assert.AreEqual(Lone, TAtlasTipCatalog.ImageFor(Lone, 640), 'ohne @2x die einfache Datei');
+    mSmall := TPath.Combine(mFolder, 'a.png');
+    mLarge := TPath.Combine(mFolder, 'a@2x.png');
+    mLone := TPath.Combine(mFolder, 'b.png');
+    TFile.WriteAllText(mSmall, 'x');
+    TFile.WriteAllText(mLarge, 'x');
+    TFile.WriteAllText(mLone, 'x');
+    Assert.AreEqual(mSmall, TAtlasTipCatalog.ImageFor(mSmall, 320), '100 %: die einfache Datei Pixel für Pixel');
+    Assert.AreEqual(mSmall, TAtlasTipCatalog.ImageFor(mSmall, 250), 'schmale Spalte: verkleinert');
+    Assert.AreEqual(mLarge, TAtlasTipCatalog.ImageFor(mSmall, 400), '125 %: doppelte Auflösung, verkleinert');
+    Assert.AreEqual(mLarge, TAtlasTipCatalog.ImageFor(mSmall, 640), '200 %: doppelte Auflösung Pixel für Pixel');
+    Assert.AreEqual(mLone, TAtlasTipCatalog.ImageFor(mLone, 640), 'ohne @2x die einfache Datei');
     Assert.AreEqual('', TAtlasTipCatalog.ImageFor('', 640));
   finally
-    TDirectory.Delete(Folder, True);
+    TDirectory.Delete(mFolder, True);
   end;
 end;
 
@@ -209,240 +209,240 @@ end;
 
 procedure TAtlasDiscoverTests.NeverUsedComesBeforeUsed;
 var
-  Usage: TAtlasCommandUsage;
-  Order: TArray<string>;
+  mUsage: TAtlasCommandUsage;
+  mOrder: TArray<string>;
 begin
   // Akzeptanz: Ein Befehl, der nie benutzt wurde, wird vor einem bereits benutzten vorgeschlagen.
-  Usage := TAtlasCommandUsage.Create;
+  mUsage := TAtlasCommandUsage.Create;
   try
-    Usage.Count('Atlas.CodeActions', TAtlasCommandInput.Mouse, Moment(10, 9));
-    Usage.Count('Atlas.ShrinkSelection', TAtlasCommandInput.Keyboard, Moment(11, 9));
-    Order := TAtlasDiscover.Order(Tips, Usage, NoState, nil, True);
-    Assert.AreEqual('undo,Atlas.SymbolSearch,codeActions,expand', Joined(Order),
+    mUsage.Count('Atlas.CodeActions', TAtlasCommandInput.Mouse, Moment(10, 9));
+    mUsage.Count('Atlas.ShrinkSelection', TAtlasCommandInput.Keyboard, Moment(11, 9));
+    mOrder := TAtlasDiscover.Order(Tips, mUsage, NoState, nil, True);
+    Assert.AreEqual('undo,Atlas.SymbolSearch,codeActions,expand', Joined(mOrder),
       'erst nie benutzte, dann am längsten nicht benutzte; Auswahl erweitern zählt über Verkleinern');
-    Assert.IsTrue(TAtlasDiscover.NeverUsed(Tips[2], Usage));
-    Assert.IsFalse(TAtlasDiscover.NeverUsed(Tips[1], Usage));
+    Assert.IsTrue(TAtlasDiscover.NeverUsed(Tips[2], mUsage));
+    Assert.IsFalse(TAtlasDiscover.NeverUsed(Tips[1], mUsage));
     Assert.IsTrue(TAtlasDiscover.NeverUsed(Tips[0], nil), 'ohne Zählung gilt alles als nie benutzt');
   finally
-    Usage.Free;
+    mUsage.Free;
   end;
 end;
 
 procedure TAtlasDiscoverTests.UsedCommandIsNoLongerNeverUsedAfterRestart;
 var
-  Usage, Loaded: TAtlasCommandUsage;
-  Folder, TipsFile, UsageFile: string;
-  Order: TArray<string>;
-  Age: TAtlasDiscoverAge;
+  mUsage, mLoaded: TAtlasCommandUsage;
+  mFolder, mTipsFile, mUsageFile: string;
+  mOrder: TArray<string>;
+  mAge: TAtlasDiscoverAge;
 begin
   // Akzeptanz: Nach Benutzen des vorgeschlagenen Befehls kommt er beim nächsten Start nicht mehr als
   // „noch nie benutzt“.
-  Folder := TPath.Combine(TPath.GetTempPath, 'atlas-discover-' + FormatDateTime('hhnnsszzz', Now));
-  TipsFile := TAtlasCommandUsage.DefaultFile(Folder);
-  UsageFile := TAtlasCommandUsage.DefaultUsageFile(Folder);
-  Usage := TAtlasCommandUsage.Create;
-  Loaded := TAtlasCommandUsage.Create;
+  mFolder := TPath.Combine(TPath.GetTempPath, 'atlas-discover-' + FormatDateTime('hhnnsszzz', Now));
+  mTipsFile := TAtlasCommandUsage.DefaultFile(mFolder);
+  mUsageFile := TAtlasCommandUsage.DefaultUsageFile(mFolder);
+  mUsage := TAtlasCommandUsage.Create;
+  mLoaded := TAtlasCommandUsage.Create;
   try
-    Order := TAtlasDiscover.Order(Tips, Usage, NoState, nil, True);
-    Assert.AreEqual('codeActions', Order[0]);
-    Age := TAtlasDiscover.UsageAge(Tips[0], Usage, True, Moment(15, 10));
-    Assert.IsTrue(Age.Kind = TAtlasDiscoverAgeKind.Never);
+    mOrder := TAtlasDiscover.Order(Tips, mUsage, NoState, nil, True);
+    Assert.AreEqual('codeActions', mOrder[0]);
+    mAge := TAtlasDiscover.UsageAge(Tips[0], mUsage, True, Moment(15, 10));
+    Assert.IsTrue(mAge.Kind = TAtlasDiscoverAgeKind.Never);
     // „Ausprobieren“ führt den Befehl über die Palette aus: Das zählt als Aufruf.
-    Usage.Count('Atlas.CodeActions', TAtlasCommandInput.Mouse, Moment(15, 10));
-    Usage.SaveToFiles(TipsFile, UsageFile);
+    mUsage.Count('Atlas.CodeActions', TAtlasCommandInput.Mouse, Moment(15, 10));
+    mUsage.SaveToFiles(mTipsFile, mUsageFile);
     // Nächster Start.
-    Loaded.LoadFromFiles(TipsFile, UsageFile);
-    Order := TAtlasDiscover.Order(Tips, Loaded, NoState, nil, True);
-    Assert.AreEqual('expand,undo,Atlas.SymbolSearch,codeActions', Joined(Order));
-    Age := TAtlasDiscover.UsageAge(Tips[0], Loaded, True, Moment(16, 9));
-    Assert.IsTrue(Age.Kind = TAtlasDiscoverAgeKind.Yesterday, 'nicht mehr „noch nie benutzt“');
+    mLoaded.LoadFromFiles(mTipsFile, mUsageFile);
+    mOrder := TAtlasDiscover.Order(Tips, mLoaded, NoState, nil, True);
+    Assert.AreEqual('expand,undo,Atlas.SymbolSearch,codeActions', Joined(mOrder));
+    mAge := TAtlasDiscover.UsageAge(Tips[0], mLoaded, True, Moment(16, 9));
+    Assert.IsTrue(mAge.Kind = TAtlasDiscoverAgeKind.Yesterday, 'nicht mehr „noch nie benutzt“');
   finally
-    Loaded.Free;
-    Usage.Free;
-    if TDirectory.Exists(Folder) then
+    mLoaded.Free;
+    mUsage.Free;
+    if TDirectory.Exists(mFolder) then
     begin
-      TDirectory.Delete(Folder, True);
+      TDirectory.Delete(mFolder, True);
     end;
   end;
 end;
 
 procedure TAtlasDiscoverTests.LongestUnusedComesFirst;
 var
-  Usage: TAtlasCommandUsage;
+  mUsage: TAtlasCommandUsage;
 begin
-  Usage := TAtlasCommandUsage.Create;
+  mUsage := TAtlasCommandUsage.Create;
   try
-    Usage.Count('Atlas.CodeActions', TAtlasCommandInput.Mouse, Moment(14, 9));
-    Usage.Count('Atlas.ExpandSelection', TAtlasCommandInput.Mouse, Moment(1, 9));
-    Usage.Count('Atlas.UndoChange', TAtlasCommandInput.Mouse, Moment(7, 9));
-    Usage.Count('Atlas.SymbolSearch', TAtlasCommandInput.Mouse, Moment(7, 9));
+    mUsage.Count('Atlas.CodeActions', TAtlasCommandInput.Mouse, Moment(14, 9));
+    mUsage.Count('Atlas.ExpandSelection', TAtlasCommandInput.Mouse, Moment(1, 9));
+    mUsage.Count('Atlas.UndoChange', TAtlasCommandInput.Mouse, Moment(7, 9));
+    mUsage.Count('Atlas.SymbolSearch', TAtlasCommandInput.Mouse, Moment(7, 9));
     Assert.AreEqual('expand,undo,Atlas.SymbolSearch,codeActions',
-      Joined(TAtlasDiscover.Order(Tips, Usage, NoState, nil, True)), 'Gleichstand: wie in tips.json');
+      Joined(TAtlasDiscover.Order(Tips, mUsage, NoState, nil, True)), 'Gleichstand: wie in tips.json');
   finally
-    Usage.Free;
+    mUsage.Free;
   end;
 end;
 
 procedure TAtlasDiscoverTests.BlockedAndDisabledTipsNeverAppear;
 var
-  Usage: TAtlasCommandUsage;
-  State: TAtlasDiscoverState;
-  Order: TArray<string>;
+  mUsage: TAtlasCommandUsage;
+  mState: TAtlasDiscoverState;
+  mOrder: TArray<string>;
 begin
   // Akzeptanz: „Nicht mehr zeigen“ sperrt den Tipp dauerhaft; abgeschaltete Funktionen erscheinen nie.
-  Usage := TAtlasCommandUsage.Create;
+  mUsage := TAtlasCommandUsage.Create;
   try
-    State := NoState;
-    State.Block('CODEACTIONS');
-    State.Block('codeActions');
-    State.Block('');
-    Assert.AreEqual(1, Integer(Length(State.Blocked)));
-    Order := TAtlasDiscover.Order(Tips, Usage, State,
+    mState := NoState;
+    mState.Block('CODEACTIONS');
+    mState.Block('codeActions');
+    mState.Block('');
+    Assert.AreEqual(1, Integer(Length(mState.Blocked)));
+    mOrder := TAtlasDiscover.Order(Tips, mUsage, mState,
       function(ATip: TAtlasTip): Boolean
       begin
         // Einstellung UndoMultiFile aus.
         Result := ATip.Setting <> 'UndoMultiFile';
       end, True);
-    Assert.AreEqual('expand,Atlas.SymbolSearch', Joined(Order));
-    Order := TAtlasDiscover.Order(Tips, Usage, State,
+    Assert.AreEqual('expand,Atlas.SymbolSearch', Joined(mOrder));
+    mOrder := TAtlasDiscover.Order(Tips, mUsage, mState,
       function(ATip: TAtlasTip): Boolean
       begin
         Result := False;
       end, False);
-    Assert.AreEqual(0, Integer(Length(Order)), 'auch ohne Zählung nie');
+    Assert.AreEqual(0, Integer(Length(mOrder)), 'auch ohne Zählung nie');
     // Dauerhaft: der Zustand übersteht das Speichern.
-    State := TAtlasDiscoverState.Parse(State.ToJson);
-    Assert.IsTrue(State.IsBlocked('codeactions'));
+    mState := TAtlasDiscoverState.Parse(mState.ToJson);
+    Assert.IsTrue(mState.IsBlocked('codeactions'));
   finally
-    Usage.Free;
+    mUsage.Free;
   end;
 end;
 
 procedure TAtlasDiscoverTests.EnabledFollowsSettingAndCommand;
 var
-  List: TAtlasTips;
-  SettingOn, CommandExists: TFunc<string, Boolean>;
-  Order: TArray<string>;
+  mList: TAtlasTips;
+  mSettingOn, mCommandExists: TFunc<string, Boolean>;
+  mOrder: TArray<string>;
 begin
-  List := Tips;
+  mList := Tips;
   // Nur UndoMultiFile ist eine bekannte Einstellung, und sie ist aus; die Palette kennt keine Symbolsuche.
-  SettingOn :=
+  mSettingOn :=
     function(AName: string): Boolean
     begin
       Result := False;
     end;
-  CommandExists :=
+  mCommandExists :=
     function(AId: string): Boolean
     begin
       Result := not SameText(AId, 'Atlas.SymbolSearch');
     end;
-  Assert.IsTrue(TAtlasDiscover.IsEnabled(List[0], SettingOn, CommandExists), 'ohne Einstellung: Befehl zählt');
-  Assert.IsFalse(TAtlasDiscover.IsEnabled(List[2], SettingOn, CommandExists), 'Einstellung aus');
-  Assert.IsFalse(TAtlasDiscover.IsEnabled(List[3], SettingOn, CommandExists), 'Befehl nicht in der Palette');
-  Assert.IsTrue(TAtlasDiscover.IsEnabled(List[2], nil, nil), 'ohne Prüfung alles');
-  Order := TAtlasDiscover.Order(List, nil, NoState,
+  Assert.IsTrue(TAtlasDiscover.IsEnabled(mList[0], mSettingOn, mCommandExists), 'ohne Einstellung: Befehl zählt');
+  Assert.IsFalse(TAtlasDiscover.IsEnabled(mList[2], mSettingOn, mCommandExists), 'Einstellung aus');
+  Assert.IsFalse(TAtlasDiscover.IsEnabled(mList[3], mSettingOn, mCommandExists), 'Befehl nicht in der Palette');
+  Assert.IsTrue(TAtlasDiscover.IsEnabled(mList[2], nil, nil), 'ohne Prüfung alles');
+  mOrder := TAtlasDiscover.Order(mList, nil, NoState,
     function(ATip: TAtlasTip): Boolean
     begin
-      Result := TAtlasDiscover.IsEnabled(ATip, SettingOn, CommandExists);
+      Result := TAtlasDiscover.IsEnabled(ATip, mSettingOn, mCommandExists);
     end, True);
-  Assert.AreEqual('codeActions,expand', Joined(Order));
-  SettingOn :=
+  Assert.AreEqual('codeActions,expand', Joined(mOrder));
+  mSettingOn :=
     function(AName: string): Boolean
     begin
       Result := SameText(AName, 'UndoMultiFile');
     end;
-  Assert.IsTrue(TAtlasDiscover.IsEnabled(List[2], SettingOn, CommandExists), 'Einstellung an');
+  Assert.IsTrue(TAtlasDiscover.IsEnabled(mList[2], mSettingOn, mCommandExists), 'Einstellung an');
   // Die Closures liegen im selben Rahmen wie die Variablen, die sie halten: Kreis lösen.
-  SettingOn := nil;
-  CommandExists := nil;
+  mSettingOn := nil;
+  mCommandExists := nil;
 end;
 
 procedure TAtlasDiscoverTests.SettingOnReadsSwitchesAndChoices;
 var
-  Settings: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
 begin
-  Settings := TAtlasPluginSettings.Defaults;
-  Settings.UndoMultiFile := True;
-  Settings.KeyOverview := False;
-  Assert.IsTrue(TAtlasDiscover.SettingOn(Settings, 'UndoMultiFile'));
-  Assert.IsTrue(TAtlasDiscover.SettingOn(Settings, 'undomultifile'), 'ohne Groß/klein');
-  Assert.IsFalse(TAtlasDiscover.SettingOn(Settings, 'KeyOverview'));
+  mSettings := TAtlasPluginSettings.Defaults;
+  mSettings.UndoMultiFile := True;
+  mSettings.KeyOverview := False;
+  Assert.IsTrue(TAtlasDiscover.SettingOn(mSettings, 'UndoMultiFile'));
+  Assert.IsTrue(TAtlasDiscover.SettingOn(mSettings, 'undomultifile'), 'ohne Groß/klein');
+  Assert.IsFalse(TAtlasDiscover.SettingOn(mSettings, 'KeyOverview'));
   // Auswahl: alles außer „off“ heißt an.
-  Settings.WelcomePageWhatsNew := 'afterUpdate';
-  Assert.IsTrue(TAtlasDiscover.SettingOn(Settings, 'WelcomePageWhatsNew'));
-  Settings.WelcomePageWhatsNew := 'off';
-  Assert.IsFalse(TAtlasDiscover.SettingOn(Settings, 'WelcomePageWhatsNew'));
-  Assert.IsFalse(TAtlasDiscover.SettingOn(Settings, 'GibtEsNicht'), 'unbekannt: aus');
-  Assert.IsFalse(TAtlasDiscover.SettingOn(Settings, ''));
+  mSettings.WelcomePageWhatsNew := 'afterUpdate';
+  Assert.IsTrue(TAtlasDiscover.SettingOn(mSettings, 'WelcomePageWhatsNew'));
+  mSettings.WelcomePageWhatsNew := 'off';
+  Assert.IsFalse(TAtlasDiscover.SettingOn(mSettings, 'WelcomePageWhatsNew'));
+  Assert.IsFalse(TAtlasDiscover.SettingOn(mSettings, 'GibtEsNicht'), 'unbekannt: aus');
+  Assert.IsFalse(TAtlasDiscover.SettingOn(mSettings, ''));
 end;
 
 procedure TAtlasDiscoverTests.NewStartBeginsAfterLastShownTip;
 var
-  Usage: TAtlasCommandUsage;
-  State: TAtlasDiscoverState;
+  mUsage: TAtlasCommandUsage;
+  mState: TAtlasDiscoverState;
 begin
   // Je IDE-Start ein anderer Tipp: die nie benutzten beginnen nach dem zuletzt gezeigten.
-  Usage := TAtlasCommandUsage.Create;
+  mUsage := TAtlasCommandUsage.Create;
   try
-    State := NoState;
-    State.Last := 'expand';
+    mState := NoState;
+    mState.Last := 'expand';
     Assert.AreEqual('undo,Atlas.SymbolSearch,codeActions,expand',
-      Joined(TAtlasDiscover.Order(Tips, Usage, State, nil, True)));
-    State.Last := 'Atlas.SymbolSearch';
+      Joined(TAtlasDiscover.Order(Tips, mUsage, mState, nil, True)));
+    mState.Last := 'Atlas.SymbolSearch';
     Assert.AreEqual('codeActions,expand,undo,Atlas.SymbolSearch',
-      Joined(TAtlasDiscover.Order(Tips, Usage, State, nil, True)));
+      Joined(TAtlasDiscover.Order(Tips, mUsage, mState, nil, True)));
     // Der zuletzt gezeigte ist inzwischen benutzt: Die nie benutzten beginnen trotzdem nach ihm.
-    Usage.Count('Atlas.ExpandSelection', TAtlasCommandInput.Mouse, Moment(15, 9));
-    State.Last := 'expand';
+    mUsage.Count('Atlas.ExpandSelection', TAtlasCommandInput.Mouse, Moment(15, 9));
+    mState.Last := 'expand';
     Assert.AreEqual('undo,Atlas.SymbolSearch,codeActions,expand',
-      Joined(TAtlasDiscover.Order(Tips, Usage, State, nil, True)));
-    State.Last := 'gibt-es-nicht';
+      Joined(TAtlasDiscover.Order(Tips, mUsage, mState, nil, True)));
+    mState.Last := 'gibt-es-nicht';
     Assert.AreEqual('codeActions,undo,Atlas.SymbolSearch,expand',
-      Joined(TAtlasDiscover.Order(Tips, Usage, State, nil, True)));
+      Joined(TAtlasDiscover.Order(Tips, mUsage, mState, nil, True)));
   finally
-    Usage.Free;
+    mUsage.Free;
   end;
 end;
 
 procedure TAtlasDiscoverTests.WithoutTrackingTipsComeInOrder;
 var
-  Usage: TAtlasCommandUsage;
-  State: TAtlasDiscoverState;
-  Age: TAtlasDiscoverAge;
+  mUsage: TAtlasCommandUsage;
+  mState: TAtlasDiscoverState;
+  mAge: TAtlasDiscoverAge;
 begin
   // tips.usageTracking aus: der Reihe nach, ohne Bezug zur Nutzung.
-  Usage := TAtlasCommandUsage.Create;
+  mUsage := TAtlasCommandUsage.Create;
   try
-    Usage.Count('Atlas.CodeActions', TAtlasCommandInput.Mouse, Moment(14, 9));
-    State := NoState;
+    mUsage.Count('Atlas.CodeActions', TAtlasCommandInput.Mouse, Moment(14, 9));
+    mState := NoState;
     Assert.AreEqual('codeActions,expand,undo,Atlas.SymbolSearch',
-      Joined(TAtlasDiscover.Order(Tips, Usage, State, nil, False)));
-    State.Last := 'codeActions';
+      Joined(TAtlasDiscover.Order(Tips, mUsage, mState, nil, False)));
+    mState.Last := 'codeActions';
     Assert.AreEqual('expand,undo,Atlas.SymbolSearch,codeActions',
-      Joined(TAtlasDiscover.Order(Tips, Usage, State, nil, False)));
-    Age := TAtlasDiscover.UsageAge(Tips[0], Usage, False, Moment(15, 9));
-    Assert.IsTrue(Age.Kind = TAtlasDiscoverAgeKind.None, 'kein Hinweis zur Nutzung');
+      Joined(TAtlasDiscover.Order(Tips, mUsage, mState, nil, False)));
+    mAge := TAtlasDiscover.UsageAge(Tips[0], mUsage, False, Moment(15, 9));
+    Assert.IsTrue(mAge.Kind = TAtlasDiscoverAgeKind.None, 'kein Hinweis zur Nutzung');
     Assert.AreEqual('codeActions,expand,undo,Atlas.SymbolSearch',
       Joined(TAtlasDiscover.Order(Tips, nil, NoState, nil, True)), 'ohne Zählung (nil) ebenso');
   finally
-    Usage.Free;
+    mUsage.Free;
   end;
 end;
 
 procedure TAtlasDiscoverTests.WithoutTrackingNothingIsCounted;
 var
-  Usage: TAtlasCommandUsage;
+  mUsage: TAtlasCommandUsage;
 begin
   // Akzeptanz: Mit tips.usageTracking aus wird nichts gezählt.
-  Usage := TAtlasCommandUsage.Create;
+  mUsage := TAtlasCommandUsage.Create;
   try
-    Usage.Tracking := False;
-    Usage.Count('Atlas.CodeActions', TAtlasCommandInput.Mouse, Moment(14, 9));
-    Assert.IsTrue(TAtlasDiscover.NeverUsed(Tips[0], Usage));
-    Assert.IsFalse(Usage.CountsChanged);
-    Assert.DoesNotContain(Usage.CountsToJson, 'Atlas.CodeActions');
+    mUsage.Tracking := False;
+    mUsage.Count('Atlas.CodeActions', TAtlasCommandInput.Mouse, Moment(14, 9));
+    Assert.IsTrue(TAtlasDiscover.NeverUsed(Tips[0], mUsage));
+    Assert.IsFalse(mUsage.CountsChanged);
+    Assert.DoesNotContain(mUsage.CountsToJson, 'Atlas.CodeActions');
   finally
-    Usage.Free;
+    mUsage.Free;
   end;
 end;
 
@@ -450,85 +450,85 @@ procedure TAtlasDiscoverTests.AgeTextsFollowCalendarDays;
 
   procedure Check(ALastUsed, ANow: TDateTime; AKind: TAtlasDiscoverAgeKind; ACount: Integer; const AMessage: string);
   var
-    Age: TAtlasDiscoverAge;
+    mAge: TAtlasDiscoverAge;
   begin
-    Age := TAtlasDiscover.AgeOf(ALastUsed, ANow);
-    Assert.IsTrue(Age.Kind = AKind, AMessage);
-    Assert.AreEqual(ACount, Age.Count, AMessage);
+    mAge := TAtlasDiscover.AgeOf(ALastUsed, ANow);
+    Assert.IsTrue(mAge.Kind = AKind, AMessage);
+    Assert.AreEqual(ACount, mAge.Count, AMessage);
   end;
 
 var
-  Now_: TDateTime;
+  mNow_: TDateTime;
 begin
-  Now_ := EncodeDate(2026, 10, 15) + EncodeTime(9, 0, 0, 0);
-  Check(0, Now_, TAtlasDiscoverAgeKind.Never, 0, 'nie');
-  Check(Now_ - 1 / 24, Now_, TAtlasDiscoverAgeKind.Today, 0, 'heute');
-  Check(EncodeDate(2026, 10, 14) + EncodeTime(23, 0, 0, 0), Now_, TAtlasDiscoverAgeKind.Yesterday, 1, 'gestern');
-  Check(Now_ - 5, Now_, TAtlasDiscoverAgeKind.Days, 5, 'Tage');
-  Check(Now_ - 13, Now_, TAtlasDiscoverAgeKind.Days, 13, 'Tage');
-  Check(Now_ - 21, Now_, TAtlasDiscoverAgeKind.Weeks, 3, 'vor 3 Wochen');
-  Check(Now_ - 59, Now_, TAtlasDiscoverAgeKind.Weeks, 8, 'Wochen');
-  Check(Now_ - 95, Now_, TAtlasDiscoverAgeKind.Months, 3, 'Monate');
-  Check(Now_ - 400, Now_, TAtlasDiscoverAgeKind.Years, 1, 'Jahr');
-  Check(Now_ + 1, Now_, TAtlasDiscoverAgeKind.Today, 0, 'Uhr zurückgestellt');
+  mNow_ := EncodeDate(2026, 10, 15) + EncodeTime(9, 0, 0, 0);
+  Check(0, mNow_, TAtlasDiscoverAgeKind.Never, 0, 'nie');
+  Check(mNow_ - 1 / 24, mNow_, TAtlasDiscoverAgeKind.Today, 0, 'heute');
+  Check(EncodeDate(2026, 10, 14) + EncodeTime(23, 0, 0, 0), mNow_, TAtlasDiscoverAgeKind.Yesterday, 1, 'gestern');
+  Check(mNow_ - 5, mNow_, TAtlasDiscoverAgeKind.Days, 5, 'Tage');
+  Check(mNow_ - 13, mNow_, TAtlasDiscoverAgeKind.Days, 13, 'Tage');
+  Check(mNow_ - 21, mNow_, TAtlasDiscoverAgeKind.Weeks, 3, 'vor 3 Wochen');
+  Check(mNow_ - 59, mNow_, TAtlasDiscoverAgeKind.Weeks, 8, 'Wochen');
+  Check(mNow_ - 95, mNow_, TAtlasDiscoverAgeKind.Months, 3, 'Monate');
+  Check(mNow_ - 400, mNow_, TAtlasDiscoverAgeKind.Years, 1, 'Jahr');
+  Check(mNow_ + 1, mNow_, TAtlasDiscoverAgeKind.Today, 0, 'Uhr zurückgestellt');
 end;
 
 procedure TAtlasDiscoverTests.QueueStaysStableWithinSession;
 var
-  Queue, Allowed: TArray<string>;
-  Current: string;
+  mQueue, mAllowed: TArray<string>;
+  mCurrent: string;
 begin
-  Queue := ['a', 'b', 'c', 'd'];
-  Allowed := Queue;
-  Current := TAtlasDiscover.Pick(Queue, Allowed, '');
-  Assert.AreEqual('a', Current, 'je Start der erste');
-  Current := TAtlasDiscover.NextAfter(Queue, Allowed, Current);
-  Assert.AreEqual('b', Current, '„Nächster Tipp“');
+  mQueue := ['a', 'b', 'c', 'd'];
+  mAllowed := mQueue;
+  mCurrent := TAtlasDiscover.Pick(mQueue, mAllowed, '');
+  Assert.AreEqual('a', mCurrent, 'je Start der erste');
+  mCurrent := TAtlasDiscover.NextAfter(mQueue, mAllowed, mCurrent);
+  Assert.AreEqual('b', mCurrent, '„Nächster Tipp“');
   // „Nicht mehr zeigen“ auf b: der nächste rückt nach.
-  Allowed := ['a', 'c', 'd'];
-  Assert.AreEqual('c', TAtlasDiscover.Pick(Queue, Allowed, Current));
+  mAllowed := ['a', 'c', 'd'];
+  Assert.AreEqual('c', TAtlasDiscover.Pick(mQueue, mAllowed, mCurrent));
   // Funktion von d abgeschaltet, eine neue Funktion e eingeschaltet: e hinten an.
-  Allowed := ['a', 'c', 'e'];
-  Assert.AreEqual('a,c,e', Joined(TAtlasDiscover.Effective(Queue, Allowed)));
-  Assert.AreEqual('e', TAtlasDiscover.NextAfter(Queue, Allowed, 'c'));
-  Assert.AreEqual('a', TAtlasDiscover.NextAfter(Queue, Allowed, 'e'), 'am Ende wieder vorn');
-  Assert.AreEqual('a', TAtlasDiscover.Pick(Queue, Allowed, 'd'), 'nach d kommt wieder a');
-  Assert.AreEqual('', TAtlasDiscover.Pick(Queue, nil, 'a'), 'nichts mehr übrig');
-  Assert.AreEqual('', TAtlasDiscover.NextAfter(Queue, nil, 'a'));
-  Assert.AreEqual(2, TAtlasDiscover.IndexIn(Queue, 'C'));
+  mAllowed := ['a', 'c', 'e'];
+  Assert.AreEqual('a,c,e', Joined(TAtlasDiscover.Effective(mQueue, mAllowed)));
+  Assert.AreEqual('e', TAtlasDiscover.NextAfter(mQueue, mAllowed, 'c'));
+  Assert.AreEqual('a', TAtlasDiscover.NextAfter(mQueue, mAllowed, 'e'), 'am Ende wieder vorn');
+  Assert.AreEqual('a', TAtlasDiscover.Pick(mQueue, mAllowed, 'd'), 'nach d kommt wieder a');
+  Assert.AreEqual('', TAtlasDiscover.Pick(mQueue, nil, 'a'), 'nichts mehr übrig');
+  Assert.AreEqual('', TAtlasDiscover.NextAfter(mQueue, nil, 'a'));
+  Assert.AreEqual(2, TAtlasDiscover.IndexIn(mQueue, 'C'));
 end;
 
 procedure TAtlasDiscoverTests.StateRoundTripsThroughTipsFile;
 var
-  Usage, Loaded: TAtlasCommandUsage;
-  State: TAtlasDiscoverState;
-  Folder, TipsFile, UsageFile: string;
+  mUsage, mLoaded: TAtlasCommandUsage;
+  mState: TAtlasDiscoverState;
+  mFolder, mTipsFile, mUsageFile: string;
 begin
-  Folder := TPath.Combine(TPath.GetTempPath, 'atlas-discover-' + FormatDateTime('hhnnsszzz', Now) + '-s');
-  TipsFile := TAtlasCommandUsage.DefaultFile(Folder);
-  UsageFile := TAtlasCommandUsage.DefaultUsageFile(Folder);
-  Usage := TAtlasCommandUsage.Create;
-  Loaded := TAtlasCommandUsage.Create;
+  mFolder := TPath.Combine(TPath.GetTempPath, 'atlas-discover-' + FormatDateTime('hhnnsszzz', Now) + '-s');
+  mTipsFile := TAtlasCommandUsage.DefaultFile(mFolder);
+  mUsageFile := TAtlasCommandUsage.DefaultUsageFile(mFolder);
+  mUsage := TAtlasCommandUsage.Create;
+  mLoaded := TAtlasCommandUsage.Create;
   try
-    State := NoState;
-    State.Block('rename');
-    State.Last := 'codeActions';
-    Usage.SetSection(TAtlasDiscover.SectionName, State.ToJson);
-    Usage.SaveToFiles(TipsFile, UsageFile);
-    Assert.IsFalse(TFile.Exists(UsageFile), 'ohne Zählung keine usage.json');
-    Loaded.LoadFromFiles(TipsFile, UsageFile);
-    State := TAtlasDiscoverState.Parse(Loaded.Section(TAtlasDiscover.SectionName));
-    Assert.IsTrue(State.IsBlocked('rename'));
-    Assert.AreEqual('codeActions', State.Last);
-    State := TAtlasDiscoverState.Parse('{kaputt');
-    Assert.AreEqual(0, Integer(Length(State.Blocked)));
-    Assert.AreEqual('', State.Last);
+    mState := NoState;
+    mState.Block('rename');
+    mState.Last := 'codeActions';
+    mUsage.SetSection(TAtlasDiscover.cSectionName, mState.ToJson);
+    mUsage.SaveToFiles(mTipsFile, mUsageFile);
+    Assert.IsFalse(TFile.Exists(mUsageFile), 'ohne Zählung keine usage.json');
+    mLoaded.LoadFromFiles(mTipsFile, mUsageFile);
+    mState := TAtlasDiscoverState.Parse(mLoaded.Section(TAtlasDiscover.cSectionName));
+    Assert.IsTrue(mState.IsBlocked('rename'));
+    Assert.AreEqual('codeActions', mState.Last);
+    mState := TAtlasDiscoverState.Parse('{kaputt');
+    Assert.AreEqual(0, Integer(Length(mState.Blocked)));
+    Assert.AreEqual('', mState.Last);
   finally
-    Loaded.Free;
-    Usage.Free;
-    if TDirectory.Exists(Folder) then
+    mLoaded.Free;
+    mUsage.Free;
+    if TDirectory.Exists(mFolder) then
     begin
-      TDirectory.Delete(Folder, True);
+      TDirectory.Delete(mFolder, True);
     end;
   end;
 end;
