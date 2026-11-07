@@ -482,7 +482,7 @@ begin
     // Konfidenz als eigenes Feld, nicht im Meldungstext (#144).
     Assert.AreEqual('Meldung', Item.GetValue<string>('message'));
     Assert.AreEqual('medium', Item.GetValue<string>('data.confidence'));
-    Assert.AreEqual(RuleDocumentationBaseUri + Finding.RuleId, Item.GetValue<string>('codeDescription.href'));
+    Assert.AreEqual(cRuleDocumentationBaseUri + Finding.RuleId, Item.GetValue<string>('codeDescription.href'));
   finally
     Item.Free;
   end;

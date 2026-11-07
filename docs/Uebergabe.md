@@ -1,3 +1,11 @@
+﻿## Präfixe und Zeilenlänge in Atlas.Common (06./07.11.2026, Branch `claude/project-thread-i9dwl9` auf `Pilot-2.0.0-beta.1`)
+- Wunsch Marco: naming-prefix und line-length im Code beheben, je Package ein PR; öffentliche Konstanten bekommen auch `c` (Marco 06.11. 18:48), mit allen Verwendungen in allen Packages.
+- Lokale Namen über die Umbenennen-Korrektur der Regel (`--fix naming-prefix` mit einem Server, dessen Korrektur als safeFix markiert ist, nur lokal gebaut), der Rest über MCP `rename_symbol` als Vorschau und gesammelt angewendet; lange Zeilen mit eigenem Umbrecher. Werkzeuge und Fallen: `/mnt/project-files/werkzeuge/naming/ANLEITUNG.md`.
+- Falle: rename_symbol lässt Stellen aus, die es nicht sicher zuordnen kann (Array-Grenzen, `Unit.Name`, unbekannte Ausdruckstypen, Unit-Konstanten in anderen Units); nachgezogen per Übersetzen und Grep. Parallele schreibende rename_symbol-Aufrufe überschreiben sich.
+- `Tools/Update-RuleCatalog.ps1` erzeugt jetzt `cCatalogLines*`.
+- Geprüft (Cloud): AtlasServer übersetzt; FPC-Tests aller Common-Testunits wie auf Pilot (gleiche Fehlschläge, keine neuen); Check-Skripte grün. IDE-Packages nicht übersetzbar in der Cloud: Delphi-Build nötig.
+- Offen: Atlas.IDE.Base (dieser Thread), danach je Modul ein Thread über den Koordinator.
+
 ## Release 2.0.0-beta.1 vorbereitet (05.11.2026, Branch `claude/project-thread-a48wa8` auf `Pilot-2.0.0-beta.1`)
 - Version stand schon überall auf 2.0.0-beta.1 (Marco, c03f26ed). CHANGELOG: alles aus [Unveröffentlicht] in den Abschnitt `[2.0.0-beta.1]` übernommen, nachgetragen: Modulaufteilung (#1454–#1456), Einstellungen in den Modulen (#1743), interner Umbau für 0 Atlas-Befunde; der veraltete Eintrag „Grundstock der Modul-Verträge … noch nicht verdrahtet“ entfällt. [Unveröffentlicht] ist leer: Einträge von PRs, die noch in die Beta sollen (#1751, Server-Überlastung), vor dem Tag in den Abschnitt 2.0.0-beta.1 verschieben.
 - Sieben Karten „Neu in Atlas“ für 2.0 mit titleEn/textEn (Module, Update-Installer, Sprache, dfm-reference-unit-missing, Taste „Datei jetzt prüfen“, anonyme Diagnose, problems.update). `Update-WhatsNew.ps1` grün.
