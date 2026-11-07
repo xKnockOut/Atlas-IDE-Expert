@@ -124,37 +124,37 @@ end;
 
 procedure TDUnitXSourceTests.FindsFixtureTestsAndLines;
 var
-  Found: TDUnitXUnit;
+  mFound: TDUnitXUnit;
 begin
-  Found := TDUnitXSource.Scan(Sample);
-  Assert.AreEqual('Rechner.Tests', Found.UnitName);
-  Assert.AreEqual(1, Integer(Length(Found.Fixtures)));
-  Assert.AreEqual('TRechnerTests', Found.Fixtures[0].Name);
-  Assert.AreEqual(9, Found.Fixtures[0].Line);
-  Assert.AreEqual(8, Found.Fixtures[0].AttributeLine);
-  Assert.AreEqual(2, Integer(Length(Found.Fixtures[0].Tests)), 'Addiert und Summe; Setup und Hilfe nicht');
-  Assert.AreEqual(2, Found.TestCount);
-  Assert.AreEqual('Addiert', Found.Fixtures[0].Tests[0].Method);
-  Assert.AreEqual(16, Found.Fixtures[0].Tests[0].Line);
-  Assert.AreEqual(15, Found.Fixtures[0].Tests[0].AttributeLine);
-  Assert.AreEqual(30, Found.Fixtures[0].Tests[0].BodyLine);
-  Assert.AreEqual('Summe', Found.Fixtures[0].Tests[1].Method);
-  Assert.AreEqual(17, Found.Fixtures[0].Tests[1].AttributeLine);
-  Assert.AreEqual(35, Found.Fixtures[0].Tests[1].BodyLine);
+  mFound := TDUnitXSource.Scan(Sample);
+  Assert.AreEqual('Rechner.Tests', mFound.UnitName);
+  Assert.AreEqual(1, Integer(Length(mFound.Fixtures)));
+  Assert.AreEqual('TRechnerTests', mFound.Fixtures[0].Name);
+  Assert.AreEqual(9, mFound.Fixtures[0].Line);
+  Assert.AreEqual(8, mFound.Fixtures[0].AttributeLine);
+  Assert.AreEqual(2, Integer(Length(mFound.Fixtures[0].Tests)), 'Addiert und Summe; Setup und Hilfe nicht');
+  Assert.AreEqual(2, mFound.TestCount);
+  Assert.AreEqual('Addiert', mFound.Fixtures[0].Tests[0].Method);
+  Assert.AreEqual(16, mFound.Fixtures[0].Tests[0].Line);
+  Assert.AreEqual(15, mFound.Fixtures[0].Tests[0].AttributeLine);
+  Assert.AreEqual(30, mFound.Fixtures[0].Tests[0].BodyLine);
+  Assert.AreEqual('Summe', mFound.Fixtures[0].Tests[1].Method);
+  Assert.AreEqual(17, mFound.Fixtures[0].Tests[1].AttributeLine);
+  Assert.AreEqual(35, mFound.Fixtures[0].Tests[1].BodyLine);
 end;
 
 procedure TDUnitXSourceTests.TestCasesAndIgnore;
 var
-  Found: TDUnitXUnit;
-  Test: TDUnitXTest;
+  mFound: TDUnitXUnit;
+  mTest: TDUnitXTest;
 begin
-  Found := TDUnitXSource.Scan(Sample);
-  Test := Found.Fixtures[0].Tests[1];
-  Assert.AreEqual(2, Integer(Length(Test.Cases)));
-  Assert.AreEqual('Klein', Test.Cases[0]);
-  Assert.AreEqual('Gross', Test.Cases[1]);
-  Assert.IsFalse(Test.Ignored);
-  Found := TDUnitXSource.Scan([
+  mFound := TDUnitXSource.Scan(Sample);
+  mTest := mFound.Fixtures[0].Tests[1];
+  Assert.AreEqual(2, Integer(Length(mTest.Cases)));
+  Assert.AreEqual('Klein', mTest.Cases[0]);
+  Assert.AreEqual('Gross', mTest.Cases[1]);
+  Assert.IsFalse(mTest.Ignored);
+  mFound := TDUnitXSource.Scan([
     'unit U;', 'interface', 'type',
     '  [TestFixture]', '  TT = class',
     '  public',
@@ -162,16 +162,16 @@ begin
     '    procedure Spaeter;',
     '  end;',
     'implementation', 'end.']);
-  Assert.AreEqual(1, Found.TestCount);
-  Assert.IsTrue(Found.Fixtures[0].Tests[0].Ignored);
-  Assert.AreEqual(-1, Found.Fixtures[0].Tests[0].BodyLine, 'ohne Rumpf');
+  Assert.AreEqual(1, mFound.TestCount);
+  Assert.IsTrue(mFound.Fixtures[0].Tests[0].Ignored);
+  Assert.AreEqual(-1, mFound.Fixtures[0].Tests[0].BodyLine, 'ohne Rumpf');
 end;
 
 procedure TDUnitXSourceTests.SetupAndDisabledTestsAreNoTests;
 var
-  Found: TDUnitXUnit;
+  mFound: TDUnitXUnit;
 begin
-  Found := TDUnitXSource.Scan([
+  mFound := TDUnitXSource.Scan([
     'unit U;', 'interface', 'type',
     '  [TestFixture]', '  TT = class',
     '  public',
@@ -183,17 +183,17 @@ begin
     '    [Test] class procedure Klasse;',
     '  end;',
     'implementation', 'end.']);
-  Assert.AreEqual(1, Found.TestCount);
-  Assert.AreEqual('An', Found.Fixtures[0].Tests[0].Method);
-  Assert.AreEqual(10, Found.Fixtures[0].Tests[0].Line);
-  Assert.AreEqual(10, Found.Fixtures[0].Tests[0].AttributeLine, 'Attribut in derselben Zeile');
+  Assert.AreEqual(1, mFound.TestCount);
+  Assert.AreEqual('An', mFound.Fixtures[0].Tests[0].Method);
+  Assert.AreEqual(10, mFound.Fixtures[0].Tests[0].Line);
+  Assert.AreEqual(10, mFound.Fixtures[0].Tests[0].AttributeLine, 'Attribut in derselben Zeile');
 end;
 
 procedure TDUnitXSourceTests.RegisteredClassWithoutAttributeIsFixture;
 var
-  Found: TDUnitXUnit;
+  mFound: TDUnitXUnit;
 begin
-  Found := TDUnitXSource.Scan([
+  mFound := TDUnitXSource.Scan([
     'unit U;', 'interface', 'uses DUnitX.TestFramework;', 'type',
     '  TOhneAttribut = class(TObject)',
     '  public',
@@ -205,16 +205,16 @@ begin
     'initialization',
     '  TDUnitX.RegisterTestFixture(TOhneAttribut);',
     'end.']);
-  Assert.AreEqual(1, Integer(Length(Found.Fixtures)));
-  Assert.AreEqual(4, Found.Fixtures[0].AttributeLine, 'ohne Attribut die Klassenzeile');
-  Assert.AreEqual(10, Found.Fixtures[0].Tests[0].BodyLine);
+  Assert.AreEqual(1, Integer(Length(mFound.Fixtures)));
+  Assert.AreEqual(4, mFound.Fixtures[0].AttributeLine, 'ohne Attribut die Klassenzeile');
+  Assert.AreEqual(10, mFound.Fixtures[0].Tests[0].BodyLine);
 end;
 
 procedure TDUnitXSourceTests.ClassWithoutFixtureIsIgnored;
 var
-  Found: TDUnitXUnit;
+  mFound: TDUnitXUnit;
 begin
-  Found := TDUnitXSource.Scan([
+  mFound := TDUnitXSource.Scan([
     'unit U;', 'interface', 'type',
     '  TVorwaerts = class;',
     '  TKlasse = class of TObject;',
@@ -231,17 +231,17 @@ begin
     '    [Test] procedure Aussen;',
     '  end;',
     'implementation', 'end.']);
-  Assert.AreEqual(1, Integer(Length(Found.Fixtures)), 'THelfer ist weder markiert noch registriert');
-  Assert.AreEqual('TT', Found.Fixtures[0].Name);
-  Assert.AreEqual(1, Integer(Length(Found.Fixtures[0].Tests)), 'Methoden innerer Klassen zählen nicht');
-  Assert.AreEqual('Aussen', Found.Fixtures[0].Tests[0].Method);
+  Assert.AreEqual(1, Integer(Length(mFound.Fixtures)), 'THelfer ist weder markiert noch registriert');
+  Assert.AreEqual('TT', mFound.Fixtures[0].Name);
+  Assert.AreEqual(1, Integer(Length(mFound.Fixtures[0].Tests)), 'Methoden innerer Klassen zählen nicht');
+  Assert.AreEqual('Aussen', mFound.Fixtures[0].Tests[0].Method);
 end;
 
 procedure TDUnitXSourceTests.PublishedMethodsAreTests;
 var
-  Found: TDUnitXUnit;
+  mFound: TDUnitXUnit;
 begin
-  Found := TDUnitXSource.Scan([
+  mFound := TDUnitXSource.Scan([
     'unit U;', 'interface', 'type',
     '  [TestFixture]',
     '  TT = class',
@@ -252,15 +252,15 @@ begin
     '    procedure KeinTest;',
     '  end;',
     'implementation', 'end.']);
-  Assert.AreEqual(1, Found.TestCount);
-  Assert.AreEqual('OhneAttribut', Found.Fixtures[0].Tests[0].Method);
+  Assert.AreEqual(1, mFound.TestCount);
+  Assert.AreEqual('OhneAttribut', mFound.Fixtures[0].Tests[0].Method);
 end;
 
 procedure TDUnitXSourceTests.CommentsAndStringsAreSkipped;
 var
-  Found: TDUnitXUnit;
+  mFound: TDUnitXUnit;
 begin
-  Found := TDUnitXSource.Scan([
+  mFound := TDUnitXSource.Scan([
     'unit U;', 'interface', 'type',
     '  // [TestFixture] TFalsch = class',
     '  { [TestFixture]',
@@ -277,17 +277,17 @@ begin
     '  Writeln(''procedure TT.Fall'');',
     'end;',
     'end.']);
-  Assert.AreEqual(1, Integer(Length(Found.Fixtures)));
-  Assert.AreEqual(1, Found.TestCount);
-  Assert.AreEqual('A;b', Found.Fixtures[0].Tests[0].Cases[0]);
-  Assert.AreEqual(13, Found.Fixtures[0].Tests[0].BodyLine);
+  Assert.AreEqual(1, Integer(Length(mFound.Fixtures)));
+  Assert.AreEqual(1, mFound.TestCount);
+  Assert.AreEqual('A;b', mFound.Fixtures[0].Tests[0].Cases[0]);
+  Assert.AreEqual(13, mFound.Fixtures[0].Tests[0].BodyLine);
 end;
 
 procedure TDUnitXSourceTests.FieldAttributeDoesNotMakeTest;
 var
-  Found: TDUnitXUnit;
+  mFound: TDUnitXUnit;
 begin
-  Found := TDUnitXSource.Scan([
+  mFound := TDUnitXSource.Scan([
     'unit U;', 'interface', 'type',
     '  [TestFixture]',
     '  TT = class',
@@ -299,35 +299,35 @@ begin
     '    [Test] procedure Langsam;',
     '  end;',
     'implementation', 'end.']);
-  Assert.AreEqual(1, Found.TestCount, '[Test] am Feld gilt nicht für die nächste Methode');
-  Assert.AreEqual('Langsam', Found.Fixtures[0].Tests[0].Method);
-  Assert.AreEqual(9, Found.Fixtures[0].Tests[0].AttributeLine, 'erstes Attribut');
+  Assert.AreEqual(1, mFound.TestCount, '[Test] am Feld gilt nicht für die nächste Methode');
+  Assert.AreEqual('Langsam', mFound.Fixtures[0].Tests[0].Method);
+  Assert.AreEqual(9, mFound.Fixtures[0].Tests[0].AttributeLine, 'erstes Attribut');
 end;
 
 procedure TDUnitXSourceTests.AtLineFindsFixtureAndTest;
 var
-  Found: TDUnitXUnit;
-  FixtureIndex, TestIndex: Integer;
+  mFound: TDUnitXUnit;
+  mFixtureIndex, mTestIndex: Integer;
 begin
-  Found := TDUnitXSource.Scan(Sample);
-  Assert.IsTrue(Found.AtLine(8, FixtureIndex, TestIndex));
-  Assert.AreEqual(0, FixtureIndex);
-  Assert.AreEqual(-1, TestIndex);
-  Assert.IsTrue(Found.AtLine(16, FixtureIndex, TestIndex));
-  Assert.AreEqual(0, TestIndex);
-  Assert.IsTrue(Found.AtLine(17, FixtureIndex, TestIndex));
-  Assert.AreEqual(1, TestIndex);
-  Assert.IsFalse(Found.AtLine(14, FixtureIndex, TestIndex), 'Setup ist kein Test');
-  Assert.IsTrue(Found.Find('trechnertests', 'SUMME', FixtureIndex, TestIndex));
-  Assert.AreEqual(1, TestIndex);
-  Assert.IsTrue(Found.Find('TRechnerTests', '', FixtureIndex, TestIndex));
-  Assert.AreEqual(-1, TestIndex);
-  Assert.IsFalse(Found.Find('TAndere', 'Addiert', FixtureIndex, TestIndex));
+  mFound := TDUnitXSource.Scan(Sample);
+  Assert.IsTrue(mFound.AtLine(8, mFixtureIndex, mTestIndex));
+  Assert.AreEqual(0, mFixtureIndex);
+  Assert.AreEqual(-1, mTestIndex);
+  Assert.IsTrue(mFound.AtLine(16, mFixtureIndex, mTestIndex));
+  Assert.AreEqual(0, mTestIndex);
+  Assert.IsTrue(mFound.AtLine(17, mFixtureIndex, mTestIndex));
+  Assert.AreEqual(1, mTestIndex);
+  Assert.IsFalse(mFound.AtLine(14, mFixtureIndex, mTestIndex), 'Setup ist kein Test');
+  Assert.IsTrue(mFound.Find('trechnertests', 'SUMME', mFixtureIndex, mTestIndex));
+  Assert.AreEqual(1, mTestIndex);
+  Assert.IsTrue(mFound.Find('TRechnerTests', '', mFixtureIndex, mTestIndex));
+  Assert.AreEqual(-1, mTestIndex);
+  Assert.IsFalse(mFound.Find('TAndere', 'Addiert', mFixtureIndex, mTestIndex));
   // Zeile eines Ergebnisses: Methodenkopf, sonst Fixture.
-  Assert.AreEqual(35, Found.LineOf('TRechnerTests', 'Summe'));
-  Assert.AreEqual(9, Found.LineOf('TRechnerTests', 'Unbekannt'), 'unbekannte Methode: Fixture');
-  Assert.AreEqual(9, Found.LineOf('TRechnerTests', ''));
-  Assert.AreEqual(-1, Found.LineOf('TAndere', 'Addiert'));
+  Assert.AreEqual(35, mFound.LineOf('TRechnerTests', 'Summe'));
+  Assert.AreEqual(9, mFound.LineOf('TRechnerTests', 'Unbekannt'), 'unbekannte Methode: Fixture');
+  Assert.AreEqual(9, mFound.LineOf('TRechnerTests', ''));
+  Assert.AreEqual(-1, mFound.LineOf('TAndere', 'Addiert'));
 end;
 
 procedure TDUnitXSourceTests.DetectsDUnitXProgram;
@@ -342,32 +342,32 @@ end;
 
 procedure TDUnitXSourceTests.CommandLineWithAndWithoutFilter;
 var
-  Arguments: TArray<string>;
+  mArguments: TArray<string>;
 begin
   Assert.AreEqual('Rechner.Tests.TRechnerTests.Addiert',
     TDUnitXCommandLine.TestName('Rechner.Tests', 'TRechnerTests', 'Addiert'));
   Assert.AreEqual('Rechner.Tests.TRechnerTests', TDUnitXCommandLine.TestName('Rechner.Tests', 'TRechnerTests', ''));
-  Arguments := TDUnitXCommandLine.Arguments('C:\Temp\r.xml', nil);
-  Assert.AreEqual(2, Integer(Length(Arguments)));
-  Assert.AreEqual('--exitbehavior:Continue', Arguments[0]);
-  Assert.AreEqual('--xmlfile:C:\Temp\r.xml', Arguments[1]);
-  Arguments := TDUnitXCommandLine.Arguments('r.xml', ['A.T.X', '', 'A.T.Y']);
-  Assert.AreEqual(3, Integer(Length(Arguments)));
-  Assert.AreEqual('--run:A.T.X,A.T.Y', Arguments[2]);
-  Arguments := TDUnitXCommandLine.Arguments('r.xml', [StringOfChar('x', TDUnitXCommandLine.MaxRunLength + 1)]);
-  Assert.AreEqual(2, Integer(Length(Arguments)), 'zu lang: alle Tests');
+  mArguments := TDUnitXCommandLine.Arguments('C:\Temp\r.xml', nil);
+  Assert.AreEqual(2, Integer(Length(mArguments)));
+  Assert.AreEqual('--exitbehavior:Continue', mArguments[0]);
+  Assert.AreEqual('--xmlfile:C:\Temp\r.xml', mArguments[1]);
+  mArguments := TDUnitXCommandLine.Arguments('r.xml', ['A.T.X', '', 'A.T.Y']);
+  Assert.AreEqual(3, Integer(Length(mArguments)));
+  Assert.AreEqual('--run:A.T.X,A.T.Y', mArguments[2]);
+  mArguments := TDUnitXCommandLine.Arguments('r.xml', [StringOfChar('x', TDUnitXCommandLine.cMaxRunLength + 1)]);
+  Assert.AreEqual(2, Integer(Length(mArguments)), 'zu lang: alle Tests');
 end;
 
 procedure TDUnitXSourceTests.BodyRangeSkipsLocalRoutinesAndTypes;
 var
-  Found: TDUnitXUnit;
+  mFound: TDUnitXUnit;
 begin
-  Found := TDUnitXSource.Scan(Sample);
-  Assert.AreEqual(32, Found.Fixtures[0].Tests[0].BeginLine, 'erste Anweisung');
-  Assert.AreEqual(33, Found.Fixtures[0].Tests[0].EndLine);
-  Assert.AreEqual(36, Found.Fixtures[0].Tests[1].BeginLine, 'ohne Anweisung: begin');
-  Assert.AreEqual(37, Found.Fixtures[0].Tests[1].EndLine);
-  Found := TDUnitXSource.Scan([
+  mFound := TDUnitXSource.Scan(Sample);
+  Assert.AreEqual(32, mFound.Fixtures[0].Tests[0].BeginLine, 'erste Anweisung');
+  Assert.AreEqual(33, mFound.Fixtures[0].Tests[0].EndLine);
+  Assert.AreEqual(36, mFound.Fixtures[0].Tests[1].BeginLine, 'ohne Anweisung: begin');
+  Assert.AreEqual(37, mFound.Fixtures[0].Tests[1].EndLine);
+  mFound := TDUnitXSource.Scan([
     'unit U;',                                                  // 0
     'interface',                                                // 1
     'type',                                                     // 2
@@ -402,32 +402,32 @@ begin
     '  end;',                                                   // 31
     'end;',                                                     // 32
     'end.']);                                                   // 33
-  Assert.AreEqual(3, Found.TestCount);
-  Assert.AreEqual(11, Found.Fixtures[0].Tests[0].BodyLine);
-  Assert.AreEqual(22, Found.Fixtures[0].Tests[0].BeginLine, 'nach lokaler Routine und Typen');
-  Assert.AreEqual(23, Found.Fixtures[0].Tests[0].EndLine);
-  Assert.AreEqual(26, Found.Fixtures[0].Tests[1].BeginLine);
-  Assert.AreEqual(32, Found.Fixtures[0].Tests[1].EndLine, 'try und case haben ein eigenes end');
-  Assert.AreEqual(-1, Found.Fixtures[0].Tests[2].BeginLine, 'ohne Rumpf');
-  Assert.AreEqual(-1, Found.Fixtures[0].Tests[2].EndLine);
+  Assert.AreEqual(3, mFound.TestCount);
+  Assert.AreEqual(11, mFound.Fixtures[0].Tests[0].BodyLine);
+  Assert.AreEqual(22, mFound.Fixtures[0].Tests[0].BeginLine, 'nach lokaler Routine und Typen');
+  Assert.AreEqual(23, mFound.Fixtures[0].Tests[0].EndLine);
+  Assert.AreEqual(26, mFound.Fixtures[0].Tests[1].BeginLine);
+  Assert.AreEqual(32, mFound.Fixtures[0].Tests[1].EndLine, 'try und case haben ein eigenes end');
+  Assert.AreEqual(-1, mFound.Fixtures[0].Tests[2].BeginLine, 'ohne Rumpf');
+  Assert.AreEqual(-1, mFound.Fixtures[0].Tests[2].EndLine);
 end;
 
 procedure TDUnitXSourceTests.CaseLinesAndMarks;
 var
-  Found: TDUnitXUnit;
+  mFound: TDUnitXUnit;
 begin
-  Found := TDUnitXSource.Scan(Sample);
-  Assert.AreEqual(2, Integer(Length(Found.Fixtures[0].Tests[1].CaseLines)));
-  Assert.AreEqual(18, Found.Fixtures[0].Tests[1].CaseLines[0]);
-  Assert.AreEqual(19, Found.Fixtures[0].Tests[1].CaseLines[1]);
-  Assert.IsTrue(Found.CaseHasOwnLine(0, 1, 0));
-  Assert.IsTrue(Found.CaseHasOwnLine(0, 1, 1));
-  Assert.IsFalse(Found.CaseHasOwnLine(0, 1, 2), 'ungültiger Fall');
-  Assert.AreEqual(8, Found.MarkLine(0, -1), 'Fixture: ihr Attribut');
-  Assert.AreEqual(15, Found.MarkLine(0, 0), 'Test: sein Attribut');
-  Assert.AreEqual(17, Found.MarkLine(0, 1), '[Test] vor den Fällen');
-  Assert.AreEqual(-1, Found.MarkLine(1, -1));
-  Found := TDUnitXSource.Scan([
+  mFound := TDUnitXSource.Scan(Sample);
+  Assert.AreEqual(2, Integer(Length(mFound.Fixtures[0].Tests[1].CaseLines)));
+  Assert.AreEqual(18, mFound.Fixtures[0].Tests[1].CaseLines[0]);
+  Assert.AreEqual(19, mFound.Fixtures[0].Tests[1].CaseLines[1]);
+  Assert.IsTrue(mFound.CaseHasOwnLine(0, 1, 0));
+  Assert.IsTrue(mFound.CaseHasOwnLine(0, 1, 1));
+  Assert.IsFalse(mFound.CaseHasOwnLine(0, 1, 2), 'ungültiger Fall');
+  Assert.AreEqual(8, mFound.MarkLine(0, -1), 'Fixture: ihr Attribut');
+  Assert.AreEqual(15, mFound.MarkLine(0, 0), 'Test: sein Attribut');
+  Assert.AreEqual(17, mFound.MarkLine(0, 1), '[Test] vor den Fällen');
+  Assert.AreEqual(-1, mFound.MarkLine(1, -1));
+  mFound := TDUnitXSource.Scan([
     'unit U;', 'interface', 'type',
     '  [TestFixture]', '  TT = class',
     '  public',
@@ -439,75 +439,75 @@ begin
     '    [TestCase(''E'', ''1'')] procedure MitKopf(X: Integer);', // 11
     '  end;',
     'implementation', 'end.']);
-  Assert.AreEqual(3, Found.TestCount);
-  Assert.AreEqual(8, Found.MarkLine(0, 0), 'erster Fall hat die Zeile: Marke des Tests an der Deklaration');
-  Assert.IsFalse(Found.CaseHasOwnLine(0, 1, 0), 'zwei Fälle in einer Zeile');
-  Assert.AreEqual(9, Found.MarkLine(0, 1), 'Fälle ohne eigene Zeile: Marke am Attribut');
-  Assert.IsFalse(Found.CaseHasOwnLine(0, 2, 0), 'Fall in der Zeile der Deklaration');
-  Assert.AreEqual(11, Found.MarkLine(0, 2), 'eine Marke für den Test');
+  Assert.AreEqual(3, mFound.TestCount);
+  Assert.AreEqual(8, mFound.MarkLine(0, 0), 'erster Fall hat die Zeile: Marke des Tests an der Deklaration');
+  Assert.IsFalse(mFound.CaseHasOwnLine(0, 1, 0), 'zwei Fälle in einer Zeile');
+  Assert.AreEqual(9, mFound.MarkLine(0, 1), 'Fälle ohne eigene Zeile: Marke am Attribut');
+  Assert.IsFalse(mFound.CaseHasOwnLine(0, 2, 0), 'Fall in der Zeile der Deklaration');
+  Assert.AreEqual(11, mFound.MarkLine(0, 2), 'eine Marke für den Test');
 end;
 
 procedure TDUnitXSourceTests.TestAtFindsCaseTestFixtureAndBody;
 var
-  Found: TDUnitXUnit;
-  FixtureIndex, TestIndex, CaseIndex: Integer;
+  mFound: TDUnitXUnit;
+  mFixtureIndex, mTestIndex, mCaseIndex: Integer;
 begin
-  Found := TDUnitXSource.Scan(Sample);
-  Assert.IsTrue(Found.TestAt(8, FixtureIndex, TestIndex, CaseIndex));
-  Assert.AreEqual(0, FixtureIndex);
-  Assert.AreEqual(-1, TestIndex, 'Fixture');
-  Assert.IsTrue(Found.TestAt(9, FixtureIndex, TestIndex, CaseIndex));
-  Assert.AreEqual(-1, TestIndex);
-  Assert.IsTrue(Found.TestAt(18, FixtureIndex, TestIndex, CaseIndex));
-  Assert.AreEqual(1, TestIndex);
-  Assert.AreEqual(0, CaseIndex, 'Zeile des Falls Klein');
-  Assert.IsTrue(Found.TestAt(19, FixtureIndex, TestIndex, CaseIndex));
-  Assert.AreEqual(1, CaseIndex);
-  Assert.IsTrue(Found.TestAt(17, FixtureIndex, TestIndex, CaseIndex));
-  Assert.AreEqual(1, TestIndex);
-  Assert.AreEqual(-1, CaseIndex, '[Test]: alle Fälle');
-  Assert.IsTrue(Found.TestAt(20, FixtureIndex, TestIndex, CaseIndex));
-  Assert.AreEqual(-1, CaseIndex);
-  Assert.IsTrue(Found.TestAt(32, FixtureIndex, TestIndex, CaseIndex));
-  Assert.AreEqual(0, TestIndex, 'im Rumpf von Addiert');
-  Assert.IsTrue(Found.TestAt(30, FixtureIndex, TestIndex, CaseIndex));
-  Assert.AreEqual(0, TestIndex, 'Methodenkopf');
-  Assert.IsTrue(Found.TestAt(37, FixtureIndex, TestIndex, CaseIndex));
-  Assert.AreEqual(1, TestIndex, 'end von Summe');
-  Assert.IsFalse(Found.TestAt(14, FixtureIndex, TestIndex, CaseIndex), 'Setup ist kein Test');
-  Assert.IsFalse(Found.TestAt(27, FixtureIndex, TestIndex, CaseIndex), 'Rumpf von Setup');
-  Assert.IsFalse(Found.TestAt(40, FixtureIndex, TestIndex, CaseIndex), 'Rumpf von Hilfe');
-  Assert.IsFalse(Found.TestAt(34, FixtureIndex, TestIndex, CaseIndex), 'zwischen den Rümpfen');
-  Assert.AreEqual(-1, FixtureIndex);
-  Assert.AreEqual(-1, TestIndex);
+  mFound := TDUnitXSource.Scan(Sample);
+  Assert.IsTrue(mFound.TestAt(8, mFixtureIndex, mTestIndex, mCaseIndex));
+  Assert.AreEqual(0, mFixtureIndex);
+  Assert.AreEqual(-1, mTestIndex, 'Fixture');
+  Assert.IsTrue(mFound.TestAt(9, mFixtureIndex, mTestIndex, mCaseIndex));
+  Assert.AreEqual(-1, mTestIndex);
+  Assert.IsTrue(mFound.TestAt(18, mFixtureIndex, mTestIndex, mCaseIndex));
+  Assert.AreEqual(1, mTestIndex);
+  Assert.AreEqual(0, mCaseIndex, 'Zeile des Falls Klein');
+  Assert.IsTrue(mFound.TestAt(19, mFixtureIndex, mTestIndex, mCaseIndex));
+  Assert.AreEqual(1, mCaseIndex);
+  Assert.IsTrue(mFound.TestAt(17, mFixtureIndex, mTestIndex, mCaseIndex));
+  Assert.AreEqual(1, mTestIndex);
+  Assert.AreEqual(-1, mCaseIndex, '[Test]: alle Fälle');
+  Assert.IsTrue(mFound.TestAt(20, mFixtureIndex, mTestIndex, mCaseIndex));
+  Assert.AreEqual(-1, mCaseIndex);
+  Assert.IsTrue(mFound.TestAt(32, mFixtureIndex, mTestIndex, mCaseIndex));
+  Assert.AreEqual(0, mTestIndex, 'im Rumpf von Addiert');
+  Assert.IsTrue(mFound.TestAt(30, mFixtureIndex, mTestIndex, mCaseIndex));
+  Assert.AreEqual(0, mTestIndex, 'Methodenkopf');
+  Assert.IsTrue(mFound.TestAt(37, mFixtureIndex, mTestIndex, mCaseIndex));
+  Assert.AreEqual(1, mTestIndex, 'end von Summe');
+  Assert.IsFalse(mFound.TestAt(14, mFixtureIndex, mTestIndex, mCaseIndex), 'Setup ist kein Test');
+  Assert.IsFalse(mFound.TestAt(27, mFixtureIndex, mTestIndex, mCaseIndex), 'Rumpf von Setup');
+  Assert.IsFalse(mFound.TestAt(40, mFixtureIndex, mTestIndex, mCaseIndex), 'Rumpf von Hilfe');
+  Assert.IsFalse(mFound.TestAt(34, mFixtureIndex, mTestIndex, mCaseIndex), 'zwischen den Rümpfen');
+  Assert.AreEqual(-1, mFixtureIndex);
+  Assert.AreEqual(-1, mTestIndex);
 end;
 
 procedure TDUnitXSourceTests.RunNamesPerCaseAndFixture;
 var
-  Found: TDUnitXUnit;
-  Names: TArray<string>;
+  mFound: TDUnitXUnit;
+  mNames: TArray<string>;
 begin
   Assert.AreEqual('U.TT.M.Fall', TDUnitXCommandLine.CaseName('U', 'TT', 'M', 'Fall'));
   Assert.AreEqual('U.TT.M(1,2)', TDUnitXCommandLine.CaseName('U', 'TT', 'M', '(1,2)'), 'AutoNameTestCase');
   Assert.AreEqual('U.TT.M', TDUnitXCommandLine.CaseName('U', 'TT', 'M', ''));
-  Found := TDUnitXSource.Scan(Sample);
-  Names := TDUnitXCommandLine.RunNames(Found, 0, 0, -1);
-  Assert.AreEqual(1, Integer(Length(Names)));
-  Assert.AreEqual('Rechner.Tests.TRechnerTests.Addiert', Names[0]);
+  mFound := TDUnitXSource.Scan(Sample);
+  mNames := TDUnitXCommandLine.RunNames(mFound, 0, 0, -1);
+  Assert.AreEqual(1, Integer(Length(mNames)));
+  Assert.AreEqual('Rechner.Tests.TRechnerTests.Addiert', mNames[0]);
   // [TestCase]: Unit.Fixture.Methode trifft keinen Fall, darum je Fall ein Name.
-  Names := TDUnitXCommandLine.RunNames(Found, 0, 1, -1);
-  Assert.AreEqual(2, Integer(Length(Names)));
-  Assert.AreEqual('Rechner.Tests.TRechnerTests.Summe.Klein', Names[0]);
-  Assert.AreEqual('Rechner.Tests.TRechnerTests.Summe.Gross', Names[1]);
-  Names := TDUnitXCommandLine.RunNames(Found, 0, 1, 1);
-  Assert.AreEqual(1, Integer(Length(Names)));
-  Assert.AreEqual('Rechner.Tests.TRechnerTests.Summe.Gross', Names[0]);
-  Names := TDUnitXCommandLine.RunNames(Found, 0, -1, -1);
-  Assert.AreEqual(1, Integer(Length(Names)));
-  Assert.AreEqual('Rechner.Tests.TRechnerTests', Names[0]);
-  Assert.AreEqual(0, Integer(Length(TDUnitXCommandLine.RunNames(Found, 1, -1, -1))), 'ungültige Fixture');
-  Assert.AreEqual(0, Integer(Length(TDUnitXCommandLine.RunNames(Found, 0, 5, -1))), 'ungültiger Test');
-  Found := TDUnitXSource.Scan([
+  mNames := TDUnitXCommandLine.RunNames(mFound, 0, 1, -1);
+  Assert.AreEqual(2, Integer(Length(mNames)));
+  Assert.AreEqual('Rechner.Tests.TRechnerTests.Summe.Klein', mNames[0]);
+  Assert.AreEqual('Rechner.Tests.TRechnerTests.Summe.Gross', mNames[1]);
+  mNames := TDUnitXCommandLine.RunNames(mFound, 0, 1, 1);
+  Assert.AreEqual(1, Integer(Length(mNames)));
+  Assert.AreEqual('Rechner.Tests.TRechnerTests.Summe.Gross', mNames[0]);
+  mNames := TDUnitXCommandLine.RunNames(mFound, 0, -1, -1);
+  Assert.AreEqual(1, Integer(Length(mNames)));
+  Assert.AreEqual('Rechner.Tests.TRechnerTests', mNames[0]);
+  Assert.AreEqual(0, Integer(Length(TDUnitXCommandLine.RunNames(mFound, 1, -1, -1))), 'ungültige Fixture');
+  Assert.AreEqual(0, Integer(Length(TDUnitXCommandLine.RunNames(mFound, 0, 5, -1))), 'ungültiger Test');
+  mFound := TDUnitXSource.Scan([
     'unit U;', 'interface', 'type',
     '  [TestFixture]', '  TT = class',
     '  public',
@@ -522,16 +522,16 @@ begin
     '  end;',
     'implementation', 'end.']);
   // TT ist der Anfang von TTMehr: U.TT liefe beide; also die Tests von TT einzeln.
-  Names := TDUnitXCommandLine.RunNames(Found, 0, -1, -1);
-  Assert.AreEqual(2, Integer(Length(Names)));
-  Assert.AreEqual('U.TT.Eins', Names[0]);
-  Assert.AreEqual('U.TT.Spaeter', Names[1], '[Ignore] mit Fällen: ein Test ohne Fall');
-  Names := TDUnitXCommandLine.RunNames(Found, 0, 1, 0);
-  Assert.AreEqual(1, Integer(Length(Names)));
-  Assert.AreEqual('U.TT.Spaeter', Names[0]);
-  Names := TDUnitXCommandLine.RunNames(Found, 1, -1, -1);
-  Assert.AreEqual(1, Integer(Length(Names)));
-  Assert.AreEqual('U.TTMehr', Names[0]);
+  mNames := TDUnitXCommandLine.RunNames(mFound, 0, -1, -1);
+  Assert.AreEqual(2, Integer(Length(mNames)));
+  Assert.AreEqual('U.TT.Eins', mNames[0]);
+  Assert.AreEqual('U.TT.Spaeter', mNames[1], '[Ignore] mit Fällen: ein Test ohne Fall');
+  mNames := TDUnitXCommandLine.RunNames(mFound, 0, 1, 0);
+  Assert.AreEqual(1, Integer(Length(mNames)));
+  Assert.AreEqual('U.TT.Spaeter', mNames[0]);
+  mNames := TDUnitXCommandLine.RunNames(mFound, 1, -1, -1);
+  Assert.AreEqual(1, Integer(Length(mNames)));
+  Assert.AreEqual('U.TTMehr', mNames[0]);
 end;
 
 initialization

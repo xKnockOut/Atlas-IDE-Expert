@@ -74,7 +74,7 @@ type
   /// <summary>Vorschlagsliste an der Schreibmarke: Benutzer nach "@", Issues nach "#…" bzw. "ATL-…".</summary>
   TAtlasCommentSuggest = class
   public const
-    ListWidth = 340;
+    cListWidth = 340;
   private
     FEditor: TAtlasCommentEditor;
     FList: TListBox;
@@ -118,7 +118,7 @@ type
   TAtlasCommentDraft = class
   public const
     /// <summary>Wartezeit nach der letzten Änderung bis zum Speichern.</summary>
-    DelayMs = 2000;
+    cDelayMs = 2000;
   private
     FEditor: TAtlasCommentEditor;
     FTimer: TTimer;
@@ -167,7 +167,7 @@ type
   TAtlasCommentEditor = class(TCustomPanel)
   public const
     /// <summary>Wartezeit nach der letzten Eingabe bis zur Anfrage.</summary>
-    DelayMs = 300;
+    cDelayMs = 300;
   private
     FParts: TAtlasCommentEditorParts;
     FSuggest: TAtlasCommentSuggest;
@@ -300,12 +300,12 @@ begin
   inherited Create;
   FEditor := AEditor;
   FSelected := -1;
-  FRequestDelay := TAtlasCommentEditor.DelayMs;
+  FRequestDelay := TAtlasCommentEditor.cDelayMs;
   FTrigger := TAtlasCommentTrigger.None;
   // Der Zeitgeber gehört dem Feld; die Liste legt PlaceList auf der Form an.
   FTimer := TTimer.Create(AEditor);
   FTimer.Enabled := False;
-  FTimer.Interval := TAtlasCommentEditor.DelayMs;
+  FTimer.Interval := TAtlasCommentEditor.cDelayMs;
   FTimer.OnTimer := TimerTick;
 end;
 
@@ -423,7 +423,7 @@ begin
   begin
     Exit;
   end;
-  FUsers := Copy(AUsers, 0, TAtlasCommentEditing.MaxSuggestions);
+  FUsers := Copy(AUsers, 0, TAtlasCommentEditing.cMaxSuggestions);
   FIssues := nil;
   SetLength(mRows, Length(FUsers));
   for mIndex := 0 to High(FUsers) do
@@ -442,7 +442,7 @@ begin
   begin
     Exit;
   end;
-  FIssues := Copy(AIssues, 0, TAtlasCommentEditing.MaxSuggestions);
+  FIssues := Copy(AIssues, 0, TAtlasCommentEditing.cMaxSuggestions);
   FUsers := nil;
   SetLength(mRows, Length(FIssues));
   for mIndex := 0 to High(FIssues) do
@@ -526,8 +526,8 @@ begin
   FillList(FList, FRows, FSelected);
   // Unter dem getippten Wort; passt es nicht, darüber.
   mLine := MulDiv(Abs(mMemo.Font.Size), mMemo.CurrentPPI, 72) + MulDiv(6, mMemo.CurrentPPI, 96);
-  mWidth := MulDiv(ListWidth, mMemo.CurrentPPI, 96);
-  mHeight := Min(Length(FRows), TAtlasCommentEditing.MaxSuggestions) * FList.ItemHeight + 4;
+  mWidth := MulDiv(cListWidth, mMemo.CurrentPPI, 96);
+  mHeight := Min(Length(FRows), TAtlasCommentEditing.cMaxSuggestions) * FList.ItemHeight + 4;
   mCaret := mForm.ScreenToClient(mMemo.ClientToScreen(WordPoint(mMemo, FTrigger.Start)));
   mLeft := Max(0, Min(mCaret.X, mForm.ClientWidth - mWidth));
   mTop := mCaret.Y + mLine;
@@ -612,7 +612,7 @@ begin
   // Zeitgeber und Knopf gehören dem Feld.
   FTimer := TTimer.Create(AEditor);
   FTimer.Enabled := False;
-  FTimer.Interval := DelayMs;
+  FTimer.Interval := cDelayMs;
   FTimer.OnTimer := TimerTick;
   AEditor.FParts.DraftButton.OnClick := ButtonClick;
 end;
@@ -1075,10 +1075,10 @@ begin
   case AStyle of
     TAtlasCommentStyle.Bold:
       mText := TAtlasCommentEditing.ToggleInline(mMemo.Text, mMemo.SelStart, mMemo.SelLength,
-        TAtlasCommentEditing.BoldMarker, mStart, mLength);
+        TAtlasCommentEditing.cBoldMarker, mStart, mLength);
     TAtlasCommentStyle.Italic:
       mText := TAtlasCommentEditing.ToggleInline(mMemo.Text, mMemo.SelStart, mMemo.SelLength,
-        TAtlasCommentEditing.ItalicMarker, mStart, mLength);
+        TAtlasCommentEditing.cItalicMarker, mStart, mLength);
   else
     mText := TAtlasCommentEditing.CodeBlock(mMemo.Text, mMemo.SelStart, mMemo.SelLength, mStart, mLength);
   end;
@@ -1319,9 +1319,9 @@ begin
     TCommentKey.Down:
       AEditor.FSuggest.Move(1);
     TCommentKey.PageUp:
-      AEditor.FSuggest.Move(-TAtlasCommentEditing.MaxSuggestions);
+      AEditor.FSuggest.Move(-TAtlasCommentEditing.cMaxSuggestions);
     TCommentKey.PageDown:
-      AEditor.FSuggest.Move(TAtlasCommentEditing.MaxSuggestions);
+      AEditor.FSuggest.Move(TAtlasCommentEditing.cMaxSuggestions);
     TCommentKey.Accept:
       AEditor.FSuggest.Accept(AEditor.FSuggest.Selected);
     TCommentKey.CloseList, TCommentKey.LeaveWord:

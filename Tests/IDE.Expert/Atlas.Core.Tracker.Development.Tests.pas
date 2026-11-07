@@ -335,12 +335,12 @@ begin
   Assert.IsFalse(TAtlasIssueDevelopmentQuery.BranchMatches(mRequest, 'feature/KASSE-123'));
   // Höchstens MaxBranches.
   mRefs := nil;
-  for mIndex := 1 to TAtlasIssueDevelopmentRequest.MaxBranches + 3 do
+  for mIndex := 1 to TAtlasIssueDevelopmentRequest.cMaxBranches + 3 do
   begin
     mRefs := mRefs + [Ref('ATL-123-v' + IntToStr(mIndex), 'ATL-123-v' + IntToStr(mIndex), True, False)];
   end;
   mBranches := TAtlasIssueDevelopmentQuery.BranchesOf(mRequest, mRefs);
-  Assert.AreEqual(TAtlasIssueDevelopmentRequest.MaxBranches, Integer(Length(mBranches)));
+  Assert.AreEqual(TAtlasIssueDevelopmentRequest.cMaxBranches, Integer(Length(mBranches)));
 end;
 
 procedure TAtlasIssueDevelopmentTests.UnitsGroupedByProject;
@@ -461,7 +461,7 @@ begin
     Assert.IsFalse(mCache.Get(mOther, 'ATL-1', mDevelopment), 'je Tracker');
     Assert.IsTrue(mDevelopment.VcsOutcome = TAtlasVcsOutcome.NoWorkingCopy, 'ohne Treffer leer');
     // ATL-1 bleibt, weil zuletzt gelesen; das älteste andere fällt heraus.
-    for mIndex := 2 to TAtlasIssueDevelopmentCache.MaxEntries do
+    for mIndex := 2 to TAtlasIssueDevelopmentCache.cMaxEntries do
     begin
       mDevelopment := TAtlasIssueDevelopment.Empty;
       mDevelopment.Key := 'ATL-' + IntToStr(mIndex);
@@ -471,7 +471,7 @@ begin
     mDevelopment := TAtlasIssueDevelopment.Empty;
     mDevelopment.Key := 'ATL-999';
     mCache.Put(mTarget, mDevelopment);
-    Assert.AreEqual(TAtlasIssueDevelopmentCache.MaxEntries, mCache.Count);
+    Assert.AreEqual(TAtlasIssueDevelopmentCache.cMaxEntries, mCache.Count);
     Assert.IsTrue(mCache.Get(mTarget, 'ATL-1', mDevelopment));
     Assert.IsFalse(mCache.Get(mTarget, 'ATL-2', mDevelopment));
     mCache.Clear;

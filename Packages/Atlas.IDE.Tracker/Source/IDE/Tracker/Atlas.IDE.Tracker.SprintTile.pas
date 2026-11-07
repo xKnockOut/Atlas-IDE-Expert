@@ -238,12 +238,12 @@ end;
 
 function TAtlasSprintJob.LoadCurrent: Boolean;
 begin
-  Result := Boards.LoadBoard(TAtlasBoardRequest.Create(Target, Transport, BoardId, '', TAtlasTrackerBoard.TimeoutMs),
+  Result := Boards.LoadBoard(TAtlasBoardRequest.Create(Target, Transport, BoardId, '', TAtlasTrackerBoard.cTimeoutMs),
     Outcome.Snapshot, Outcome.Error);
   // Board weg (gelöscht, kein Zugriff mehr): das erste des Projekts.
   if not Result and (BoardId <> '') and (Outcome.Error = TAtlasCiFetchError.NotFound) then
   begin
-    Result := Boards.LoadBoard(TAtlasBoardRequest.Create(Target, Transport, '', '', TAtlasTrackerBoard.TimeoutMs),
+    Result := Boards.LoadBoard(TAtlasBoardRequest.Create(Target, Transport, '', '', TAtlasTrackerBoard.cTimeoutMs),
       Outcome.Snapshot, Outcome.Error);
   end;
 end;
@@ -252,7 +252,7 @@ procedure TAtlasSprintJob.LoadWorkDays;
 var
   mDays: TArray<Integer>;
 begin
-  if (WorkDays <> nil) and WorkDays.WorkDays(Target, Transport, TAtlasTrackerBoard.TimeoutMs, mDays) then
+  if (WorkDays <> nil) and WorkDays.WorkDays(Target, Transport, TAtlasTrackerBoard.cTimeoutMs, mDays) then
   begin
     Outcome.Calendar := TAtlasSprintCalendar.Create(mDays);
     Outcome.CalendarKnown := True;
@@ -268,10 +268,10 @@ var
   mLeft: Int64;
 begin
   for mSprint in TAtlasTrackerSprint.PreviousSprints(Outcome.Snapshot.Sprints, Outcome.Snapshot.Sprint,
-    TAtlasTrackerSprint.VelocitySprints) do
+    TAtlasTrackerSprint.cVelocitySprints) do
   begin
     // Abgeschlossene Sprints ändern sich nicht: einmal fragen, dann aus dem Zwischenspeicher.
-    mLeft := TAtlasTrackerSprint.TimeoutMs - Watch.ElapsedMilliseconds;
+    mLeft := TAtlasTrackerSprint.cTimeoutMs - Watch.ElapsedMilliseconds;
     if TAtlasIdeSprint.CachedSummary(Folder, Target, Outcome.Snapshot.Board.Id, mSprint.Id, mSummary) then
     begin
       Outcome.Previous := Outcome.Previous + [mSummary];
@@ -473,7 +473,7 @@ begin
   end;
   // Vorsprints nur aus dem Zwischenspeicher; fehlt einer, holt ihn die nächste Abfrage.
   for mSprint in TAtlasTrackerSprint.PreviousSprints(FState.Snapshot.Sprints, FState.Snapshot.Sprint,
-    TAtlasTrackerSprint.VelocitySprints) do
+    TAtlasTrackerSprint.cVelocitySprints) do
   begin
     if CachedSummary(FCacheFolder, ATarget, FState.Snapshot.Board.Id, mSprint.Id, mSummary) then
     begin
