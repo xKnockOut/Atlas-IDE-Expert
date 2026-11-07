@@ -178,18 +178,26 @@ end;
 /// <summary>Wertet ANode aus; Ergebnis: ab diesem Kind weiter absteigen (ChildCount: gar nicht).</summary>
 function TUseAfterFreeCheck.FirstChildToVisit(ANode: TSyntaxNode): Integer;
 begin
-  Result := 0;
   case ANode.Kind of
     TSyntaxKind.AnonymousMethod, TSyntaxKind.RoutineDecl:
       Result := ANode.ChildCount;
     TSyntaxKind.MemberAccess, TSyntaxKind.IndexAccess, TSyntaxKind.Dereference:
       Result := VisitAccess(ANode);
     TSyntaxKind.Call:
-      VisitCall(ANode);
+      begin
+        VisitCall(ANode);
+        Result := 0;
+      end;
     TSyntaxKind.AddressOf:
       Result := VisitAddress(ANode);
     TSyntaxKind.BinaryExpr:
-      VisitBinary(ANode);
+      begin
+        VisitBinary(ANode);
+        Result := 0;
+      end;
+  else
+    // Alle anderen Knoten: sämtliche Kinder besuchen.
+    Result := 0;
   end;
 end;
 

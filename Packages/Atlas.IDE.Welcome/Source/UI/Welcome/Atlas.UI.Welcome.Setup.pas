@@ -895,9 +895,14 @@ begin
   begin
     Exit;
   end;
-  for mTemplate := Low(TAtlasSetupTemplate) to High(TAtlasSetupTemplate) do
-  begin
-    FTemplate.Items.Add(TAtlasSetupTexts.TemplateCaption(mTemplate));
+  FTemplate.Items.BeginUpdate;
+  try
+    for mTemplate := Low(TAtlasSetupTemplate) to High(TAtlasSetupTemplate) do
+    begin
+      FTemplate.Items.Add(TAtlasSetupTexts.TemplateCaption(mTemplate));
+    end;
+  finally
+    FTemplate.Items.EndUpdate;
   end;
   FTemplate.ItemIndex := FTemplateIndex;
 end;

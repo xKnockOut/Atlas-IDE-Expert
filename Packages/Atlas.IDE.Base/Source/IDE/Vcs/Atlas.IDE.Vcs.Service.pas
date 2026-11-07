@@ -105,14 +105,12 @@ type
       const ADone: TProc<TAtlasVcsToolCheck>): Boolean; static;
     /// <summary>Stand für das Projekt AProjectFile (.groupproj bzw. .dproj; Arbeitskopie seines Ordners) im
     /// Hintergrund, ADone im Hauptthread (#1285, „Aktuelles Projekt“). Ohne Projekt, ohne Arbeitskopie oder
-    /// abgeschaltet kommt ADone sofort. False, wenn nichts gestartet wurde.</summary>
-    class function QueryProject(const AProjectFile: string; const ADone: TProc<TAtlasVcsProjectState>): Boolean;
-      overload; static;
-    /// <summary>Wie oben für das aktive Projekt AProjectFile (.dproj) in der geöffneten .groupproj AGroupFile: Art
+    /// abgeschaltet kommt ADone sofort. False, wenn nichts gestartet wurde.
+    /// Für das aktive Projekt AProjectFile (.dproj) in der geöffneten .groupproj AGroupFile (leer ohne): Art
     /// und Hauptbranch nach vcs.projects und .atlas (#1286); ProjectFile im Ergebnis ist die Gruppe, sonst die
     /// .dproj.</summary>
     class function QueryProject(const AProjectFile, AGroupFile: string;
-      const ADone: TProc<TAtlasVcsProjectState>): Boolean; overload; static;
+      const ADone: TProc<TAtlasVcsProjectState>): Boolean; static;
     /// <summary>Zugang zum Server für die Arbeitskopie von AFolder prüfen (#1287): einmal im Hintergrund,
     /// Zeitgrenze 10 s, ohne Rückfrage; ADone im Hauptthread, das Ergebnis merkt sich die Sitzung. Ohne
     /// Arbeitskopie kommt ADone sofort. False, wenn nichts gestartet wurde.</summary>
@@ -732,12 +730,6 @@ begin
   end;
   Logins.Add(mProcess.hProcess, AClosed);
   Result := True;
-end;
-
-class function TAtlasIdeVcs.QueryProject(const AProjectFile: string;
-  const ADone: TProc<TAtlasVcsProjectState>): Boolean;
-begin
-  Result := QueryProject(AProjectFile, '', ADone);
 end;
 
 /// <summary>Art, Wurzel und Outcome ohne Prozess; die leere Umsetzung kennt sie nicht, die Erkennung schon.</summary>

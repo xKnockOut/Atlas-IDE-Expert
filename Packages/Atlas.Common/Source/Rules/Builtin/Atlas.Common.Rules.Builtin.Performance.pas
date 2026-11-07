@@ -674,11 +674,34 @@ begin
     ATypes.FieldType(ATypes.ChainType(mReceiver, ATokens[ADot].StartPos), AName, mType);
 end;
 
+/// <summary>Öffnende Klammer zur schließenden ] oder ) bei AClose; unter 0, wenn sie fehlt.</summary>
+function GroupStart(const ATokens: TTokens; AClose: Integer): Integer;
+var
+  mDepth: Integer;
+begin
+  Result := AClose;
+  mDepth := 0;
+  repeat
+    if ATokens[Result].IsSymbol(']') or ATokens[Result].IsSymbol(')') then
+    begin
+      Inc(mDepth);
+    end
+    else if ATokens[Result].IsSymbol('[') or ATokens[Result].IsSymbol('(') then
+    begin
+      Dec(mDepth);
+    end;
+    if mDepth > 0 then
+    begin
+      Dec(Result);
+    end;
+  until (mDepth = 0) or (Result < 0);
+end;
+
 /// <summary>Erstes Token des Empfängers vor dem Punkt ADot: Bezeichner, Punkte und Klammergruppen
 /// (ATokens[mIndex + 1].Text, Token(Result).Text).</summary>
 function ReceiverStart(const ATokens: TTokens; ADot: Integer): Integer;
 var
-  mIndex, mDepth: Integer;
+  mIndex: Integer;
 begin
   Result := ADot;
   mIndex := PreviousCode(ATokens, ADot);
@@ -686,21 +709,7 @@ begin
   begin
     if ATokens[mIndex].IsSymbol(']') or ATokens[mIndex].IsSymbol(')') then
     begin
-      mDepth := 0;
-      repeat
-        if ATokens[mIndex].IsSymbol(']') or ATokens[mIndex].IsSymbol(')') then
-        begin
-          Inc(mDepth);
-        end
-        else if ATokens[mIndex].IsSymbol('[') or ATokens[mIndex].IsSymbol('(') then
-        begin
-          Dec(mDepth);
-        end;
-        if mDepth > 0 then
-        begin
-          Dec(mIndex);
-        end;
-      until (mDepth = 0) or (mIndex < 0);
+      mIndex := GroupStart(ATokens, mIndex);
     end
     else if (ATokens[mIndex].Kind <> TPascalTokenKind.Identifier) and not ATokens[mIndex].IsSymbol('.') then
     begin

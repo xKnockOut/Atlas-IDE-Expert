@@ -187,33 +187,47 @@ begin
   Result := (mNext <= High(ATokens)) and ATokens[mNext].IsSymbol('.');
 end;
 
+/// <summary>Teil am Dateianfang: interface bei einer Unit, sonst implementation (Programm, Package).</summary>
+function FirstPart(const ATokens: TArray<TPascalToken>): Integer;
+var
+  mIndex: Integer;
+begin
+  Result := cInImplementationPart;
+  for mIndex := 0 to High(ATokens) do
+  begin
+    if not (ATokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
+    begin
+      if ATokens[mIndex].IsKeyword('unit') then
+      begin
+        Result := cInInterfacePart;
+      end;
+      Exit;
+    end;
+  end;
+end;
+
+/// <summary>Nimmt APart in die Bitmaske von AKey auf.</summary>
+procedure AddUsage(AMap: TDictionary<string, Integer>; const AKey: string; APart: Integer);
+var
+  mMask: Integer;
+begin
+  if not AMap.TryGetValue(AKey, mMask) then
+  begin
+    mMask := 0;
+  end;
+  AMap.AddOrSetValue(AKey, mMask or APart);
+end;
+
 /// <summary>Bezeichner außerhalb der uses-Listen mit Bitmaske des Teils (interface/implementation). Steht ein
 /// Punkt dahinter (Qualifizierer wie SysUtils.Format), zählt er zusätzlich unter "." + Name.</summary>
 function CollectIdentifiers(const ATokens: TArray<TPascalToken>;
   const AClauses: TArray<TUsesClauseInfo>): TDictionary<string, Integer>;
 var
-  mIndex, mClauseIndex, mPart, mMask: Integer;
-  mIsUnit: Boolean;
+  mIndex, mClauseIndex, mPart: Integer;
   mKey: string;
 begin
   Result := TDictionary<string, Integer>.Create;
-  mIsUnit := False;
-  for mIndex := 0 to High(ATokens) do
-  begin
-    if not (ATokens[mIndex].Kind in [TPascalTokenKind.Comment, TPascalTokenKind.Directive]) then
-    begin
-      mIsUnit := ATokens[mIndex].IsKeyword('unit');
-      Break;
-    end;
-  end;
-  if mIsUnit then
-  begin
-    mPart := cInInterfacePart;
-  end
-  else
-  begin
-    mPart := cInImplementationPart;
-  end;
+  mPart := FirstPart(ATokens);
   mClauseIndex := 0;
   mIndex := 0;
   while mIndex <= High(ATokens) do
@@ -231,19 +245,10 @@ begin
     else if ATokens[mIndex].Kind = TPascalTokenKind.Identifier then
     begin
       mKey := LowerCase(Bare(ATokens[mIndex].Text));
-      if not Result.TryGetValue(mKey, mMask) then
-      begin
-        mMask := 0;
-      end;
-      Result.AddOrSetValue(mKey, mMask or mPart);
+      AddUsage(Result, mKey, mPart);
       if DotFollows(ATokens, mIndex) then
       begin
-        mKey := cQualifierKey + mKey;
-        if not Result.TryGetValue(mKey, mMask) then
-        begin
-          mMask := 0;
-        end;
-        Result.AddOrSetValue(mKey, mMask or mPart);
+        AddUsage(Result, cQualifierKey + mKey, mPart);
       end;
     end;
     Inc(mIndex);

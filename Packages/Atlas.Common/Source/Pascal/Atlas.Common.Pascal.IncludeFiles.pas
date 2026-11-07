@@ -30,9 +30,6 @@ type
     /// <summary>Resolver für den Präprozessor. Ohne AFileExists/AReadText gilt das Dateisystem.</summary>
     class function Resolver(const ASearchPaths: TArray<string>; const AFileExists: TIncludeFileExists;
       const AReadText: TIncludeReadText): TIncludeResolver; overload; static;
-    /// <summary>Wie oben mit AReadText = nil.</summary>
-    class function Resolver(const ASearchPaths: TArray<string>;
-      const AFileExists: TIncludeFileExists): TIncludeResolver; overload; static;
     /// <summary>Wie oben über das Dateisystem (AFileExists = nil, AReadText = nil).</summary>
     class function Resolver(const ASearchPaths: TArray<string>): TIncludeResolver; overload; static;
     /// <summary>Liest eine Datei über TFileEncoding; False, wenn sie fehlt oder nicht lesbar ist.</summary>
@@ -149,12 +146,6 @@ begin
     begin
       Result := TIncludeFiles.ReadFile(AFileName, AText);
     end;
-end;
-
-class function TIncludeFiles.Resolver(const ASearchPaths: TArray<string>;
-  const AFileExists: TIncludeFileExists): TIncludeResolver;
-begin
-  Result := Resolver(ASearchPaths, AFileExists, nil);
 end;
 
 class function TIncludeFiles.Resolver(const ASearchPaths: TArray<string>): TIncludeResolver;
