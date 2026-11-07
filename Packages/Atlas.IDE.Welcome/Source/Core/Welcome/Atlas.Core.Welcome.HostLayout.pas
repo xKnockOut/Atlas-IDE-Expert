@@ -33,11 +33,11 @@ type
 
   TAtlasHostLayout = record
   public const
-    LayoutKey = 'Layout';
-    AvailableKey = 'AvailablePlugins';
-    ItemPrefix = 'Item ';
+    cLayoutKey = 'Layout';
+    cAvailableKey = 'AvailablePlugins';
+    cItemPrefix = 'Item ';
     /// <summary>Höhe des Bereichs „Atlas“ in Rasterzeilen.</summary>
-    BoardRows = 2;
+    cBoardRows = 2;
   public
     Rows: Integer;
     Columns: Integer;
@@ -111,23 +111,23 @@ end;
 
 function NumberOf(AKey: TAtlasRegKey; const AName: string; ADefault: Integer): Integer;
 var
-  Value: TAtlasRegValue;
+  mValue: TAtlasRegValue;
 begin
   Result := ADefault;
-  if AKey.FindValue(AName, Value) and (Value.Kind in [TAtlasRegKind.Number, TAtlasRegKind.Number64]) then
+  if AKey.FindValue(AName, mValue) and (mValue.Kind in [TAtlasRegKind.Number, TAtlasRegKind.Number64]) then
   begin
-    Result := StrToIntDef(Value.Data, ADefault);
+    Result := StrToIntDef(mValue.Data, ADefault);
   end;
 end;
 
 function TextOf(AKey: TAtlasRegKey; const AName: string): string;
 var
-  Value: TAtlasRegValue;
+  mValue: TAtlasRegValue;
 begin
   Result := '';
-  if AKey.FindValue(AName, Value) and (Value.Kind in [TAtlasRegKind.Text, TAtlasRegKind.ExpandText]) then
+  if AKey.FindValue(AName, mValue) and (mValue.Kind in [TAtlasRegKind.Text, TAtlasRegKind.ExpandText]) then
   begin
-    Result := Value.Data;
+    Result := mValue.Data;
   end;
 end;
 
@@ -138,10 +138,10 @@ end;
 
 class function TAtlasHostLayout.Read(AWelcomeKey: TAtlasRegKey; out ALayout: TAtlasHostLayout): Boolean;
 var
-  Layout, Available, Item: TAtlasRegKey;
-  Value: TAtlasRegValue;
-  Index: Integer;
-  Id: string;
+  mLayout, mAvailable, mItem: TAtlasRegKey;
+  mValue: TAtlasRegValue;
+  mIndex: Integer;
+  mId: string;
 begin
   ALayout.Rows := 0;
   ALayout.Columns := 0;
@@ -152,41 +152,41 @@ begin
   begin
     Exit;
   end;
-  Layout := AWelcomeKey.FindKey(LayoutKey);
-  if Layout = nil then
+  mLayout := AWelcomeKey.FindKey(cLayoutKey);
+  if mLayout = nil then
   begin
     Exit;
   end;
-  ALayout.Rows := NumberOf(Layout, 'RowsCount', 0);
-  ALayout.Columns := NumberOf(Layout, 'ColumnsCount', 0);
+  ALayout.Rows := NumberOf(mLayout, 'RowsCount', 0);
+  ALayout.Columns := NumberOf(mLayout, 'ColumnsCount', 0);
   // Nach der Nummer im Namen, damit die Reihenfolge der IDE erhalten bleibt.
-  Index := 0;
+  mIndex := 0;
   while True do
   begin
-    Item := Layout.FindKey(ItemPrefix + IntToStr(Index));
-    if Item = nil then
+    mItem := mLayout.FindKey(cItemPrefix + IntToStr(mIndex));
+    if mItem = nil then
     begin
       Break;
     end;
-    Id := TextOf(Item, 'PluginID');
-    if Id <> '' then
+    mId := TextOf(mItem, 'PluginID');
+    if mId <> '' then
     begin
-      ALayout.Items := ALayout.Items + [TAtlasHostItem.Create(Id, NumberOf(Item, 'Row', 0),
-        NumberOf(Item, 'Column', 0), NumberOf(Item, 'RowSpan', 1), NumberOf(Item, 'ColumnSpan', 1))];
+      ALayout.Items := ALayout.Items + [TAtlasHostItem.Create(mId, NumberOf(mItem, 'Row', 0),
+        NumberOf(mItem, 'Column', 0), NumberOf(mItem, 'RowSpan', 1), NumberOf(mItem, 'ColumnSpan', 1))];
     end;
-    Inc(Index);
+    Inc(mIndex);
   end;
-  Available := AWelcomeKey.FindKey(AvailableKey);
-  if Available <> nil then
+  mAvailable := AWelcomeKey.FindKey(cAvailableKey);
+  if mAvailable <> nil then
   begin
-    Index := 0;
-    while Available.FindValue(IntToStr(Index), Value) do
+    mIndex := 0;
+    while mAvailable.FindValue(IntToStr(mIndex), mValue) do
     begin
-      if Value.Data <> '' then
+      if mValue.Data <> '' then
       begin
-        ALayout.Available := ALayout.Available + [Value.Data];
+        ALayout.Available := ALayout.Available + [mValue.Data];
       end;
-      Inc(Index);
+      Inc(mIndex);
     end;
   end;
   Result := (ALayout.Rows > 0) and (ALayout.Columns > 0);
@@ -194,51 +194,51 @@ end;
 
 procedure TAtlasHostLayout.WriteTo(AWelcomeKey: TAtlasRegKey);
 var
-  Layout, Available, Key: TAtlasRegKey;
-  Index: Integer;
+  mLayout, mAvailable, mKey: TAtlasRegKey;
+  mIndex: Integer;
 begin
-  Index := AWelcomeKey.Keys.IndexOf(AWelcomeKey.FindKey(LayoutKey));
-  if Index >= 0 then
+  mIndex := AWelcomeKey.Keys.IndexOf(AWelcomeKey.FindKey(cLayoutKey));
+  if mIndex >= 0 then
   begin
-    AWelcomeKey.Keys.Delete(Index);
+    AWelcomeKey.Keys.Delete(mIndex);
   end;
-  Index := AWelcomeKey.Keys.IndexOf(AWelcomeKey.FindKey(AvailableKey));
-  if Index >= 0 then
+  mIndex := AWelcomeKey.Keys.IndexOf(AWelcomeKey.FindKey(cAvailableKey));
+  if mIndex >= 0 then
   begin
-    AWelcomeKey.Keys.Delete(Index);
+    AWelcomeKey.Keys.Delete(mIndex);
   end;
-  Available := AWelcomeKey.AddKey(AvailableKey);
-  for Index := 0 to High(Self.Available) do
+  mAvailable := AWelcomeKey.AddKey(cAvailableKey);
+  for mIndex := 0 to High(Self.Available) do
   begin
-    Available.SetValue(TAtlasRegValue.Create(IntToStr(Index), TAtlasRegKind.Text, Self.Available[Index]));
+    mAvailable.SetValue(TAtlasRegValue.Create(IntToStr(mIndex), TAtlasRegKind.Text, Self.Available[mIndex]));
   end;
   if Items = nil then
   begin
     Exit;
   end;
-  Layout := AWelcomeKey.AddKey(LayoutKey);
-  Layout.SetValue(Number('RowsCount', Rows));
-  Layout.SetValue(Number('ColumnsCount', Columns));
-  for Index := 0 to High(Items) do
+  mLayout := AWelcomeKey.AddKey(cLayoutKey);
+  mLayout.SetValue(Number('RowsCount', Rows));
+  mLayout.SetValue(Number('ColumnsCount', Columns));
+  for mIndex := 0 to High(Items) do
   begin
-    Key := Layout.AddKey(ItemPrefix + IntToStr(Index));
-    Key.SetValue(TAtlasRegValue.Create('PluginID', TAtlasRegKind.Text, Items[Index].PluginId));
-    Key.SetValue(Number('Row', Items[Index].Row));
-    Key.SetValue(Number('Column', Items[Index].Column));
-    Key.SetValue(Number('RowSpan', Items[Index].RowSpan));
-    Key.SetValue(Number('ColumnSpan', Items[Index].ColumnSpan));
+    mKey := mLayout.AddKey(cItemPrefix + IntToStr(mIndex));
+    mKey.SetValue(TAtlasRegValue.Create('PluginID', TAtlasRegKind.Text, Items[mIndex].PluginId));
+    mKey.SetValue(Number('Row', Items[mIndex].Row));
+    mKey.SetValue(Number('Column', Items[mIndex].Column));
+    mKey.SetValue(Number('RowSpan', Items[mIndex].RowSpan));
+    mKey.SetValue(Number('ColumnSpan', Items[mIndex].ColumnSpan));
   end;
 end;
 
 function TAtlasHostLayout.IndexOf(const APluginId: string): Integer;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
-  for Index := 0 to High(Items) do
+  for mIndex := 0 to High(Items) do
   begin
-    if SameText(Items[Index].PluginId, APluginId) then
+    if SameText(Items[mIndex].PluginId, APluginId) then
     begin
-      Exit(Index);
+      Exit(mIndex);
     end;
   end;
   Result := -1;
@@ -256,20 +256,20 @@ end;
 
 function TAtlasHostLayout.ContainsAtlas(const APrefix: string): Boolean;
 var
-  Item: TAtlasHostItem;
-  Id: string;
+  mItem: TAtlasHostItem;
+  mId: string;
 begin
   Result := True;
-  for Item in Items do
+  for mItem in Items do
   begin
-    if StartsWith(Item.PluginId, APrefix) then
+    if StartsWith(mItem.PluginId, APrefix) then
     begin
       Exit;
     end;
   end;
-  for Id in Available do
+  for mId in Available do
   begin
-    if StartsWith(Id, APrefix) then
+    if StartsWith(mId, APrefix) then
     begin
       Exit;
     end;
@@ -332,25 +332,25 @@ end;
 
 function TAtlasHostLayout.WithoutAtlas(const APrefix: string): TAtlasHostLayout;
 var
-  Item: TAtlasHostItem;
-  Id: string;
+  mItem: TAtlasHostItem;
+  mId: string;
 begin
   Result.Columns := Columns;
   Result.Rows := Rows;
   Result.Items := nil;
-  for Item in Items do
+  for mItem in Items do
   begin
-    if not StartsWith(Item.PluginId, APrefix) then
+    if not StartsWith(mItem.PluginId, APrefix) then
     begin
-      Result.Items := Result.Items + [Item];
+      Result.Items := Result.Items + [mItem];
     end;
   end;
   Result.Available := nil;
-  for Id in Available do
+  for mId in Available do
   begin
-    if not StartsWith(Id, APrefix) then
+    if not StartsWith(mId, APrefix) then
     begin
-      Result.Available := Result.Available + [Id];
+      Result.Available := Result.Available + [mId];
     end;
   end;
   CompactRows(Result);
@@ -358,60 +358,60 @@ end;
 
 function TAtlasHostLayout.WithAtlasOnTop(const ABoardId, APrefix: string): TAtlasHostLayout;
 var
-  Item: TAtlasHostItem;
-  Id: string;
+  mItem: TAtlasHostItem;
+  mId: string;
 begin
   Result.Columns := Columns;
   if Result.Columns < 1 then
   begin
     Result.Columns := 1;
   end;
-  Result.Rows := Rows + BoardRows;
-  Result.Items := [TAtlasHostItem.Create(ABoardId, 0, 0, BoardRows, Result.Columns)];
-  for Item in Items do
+  Result.Rows := Rows + cBoardRows;
+  Result.Items := [TAtlasHostItem.Create(ABoardId, 0, 0, cBoardRows, Result.Columns)];
+  for mItem in Items do
   begin
-    if not SameText(Item.PluginId, ABoardId) and not StartsWith(Item.PluginId, APrefix) then
+    if not SameText(mItem.PluginId, ABoardId) and not StartsWith(mItem.PluginId, APrefix) then
     begin
-      Result.Items := Result.Items + [TAtlasHostItem.Create(Item.PluginId, Item.Row + BoardRows, Item.Column,
-        Item.RowSpan, Item.ColumnSpan)];
+      Result.Items := Result.Items + [TAtlasHostItem.Create(mItem.PluginId, mItem.Row + cBoardRows, mItem.Column,
+        mItem.RowSpan, mItem.ColumnSpan)];
     end;
   end;
   Result.Available := nil;
-  for Id in Available do
+  for mId in Available do
   begin
-    if not SameText(Id, ABoardId) and not StartsWith(Id, APrefix) then
+    if not SameText(mId, ABoardId) and not StartsWith(mId, APrefix) then
     begin
-      Result.Available := Result.Available + [Id];
+      Result.Available := Result.Available + [mId];
     end;
   end;
 end;
 
 function TAtlasHostLayout.HasAtlasOnTop(const ABoardId, APrefix: string): Boolean;
 var
-  Index: Integer;
-  Item: TAtlasHostItem;
-  Id: string;
+  mIndex: Integer;
+  mItem: TAtlasHostItem;
+  mId: string;
 begin
-  Index := IndexOf(ABoardId);
-  if Index < 0 then
+  mIndex := IndexOf(ABoardId);
+  if mIndex < 0 then
   begin
     Exit(False);
   end;
-  Item := Items[Index];
-  if (Item.Row <> 0) or (Item.Column <> 0) or (Item.ColumnSpan < Columns) then
+  mItem := Items[mIndex];
+  if (mItem.Row <> 0) or (mItem.Column <> 0) or (mItem.ColumnSpan < Columns) then
   begin
     Exit(False);
   end;
-  for Item in Items do
+  for mItem in Items do
   begin
-    if not SameText(Item.PluginId, ABoardId) and StartsWith(Item.PluginId, APrefix) then
+    if not SameText(mItem.PluginId, ABoardId) and StartsWith(mItem.PluginId, APrefix) then
     begin
       Exit(False);
     end;
   end;
-  for Id in Available do
+  for mId in Available do
   begin
-    if SameText(Id, ABoardId) then
+    if SameText(mId, ABoardId) then
     begin
       Exit(False);
     end;
@@ -434,14 +434,14 @@ end;
 class function TAtlasIdePageSteps.After(AStarted, AWasShown, AShown: Boolean; const ALastLayout, ALayout: string)
   : TArray<TAtlasIdePageStep>;
 var
-  Atlas: Boolean;
+  mAtlas: Boolean;
 begin
   Result := nil;
   if not AStarted then
   begin
     Exit;
   end;
-  Atlas := SameText(ALayout, 'atlas');
+  mAtlas := SameText(ALayout, 'atlas');
   if AWasShown and not AShown then
   begin
     // Abgeschaltet: Sicherung zurück bzw. Atlas aus dem Raster der IDE nehmen.
@@ -451,14 +451,14 @@ begin
   begin
     // Wieder eingeschaltet: Der beim Abschalten gemerkte Stand ohne Atlas gilt nicht mehr.
     Result := [TAtlasIdePageStep.ClearPending];
-    if Atlas then
+    if mAtlas then
     begin
       Result := Result + [TAtlasIdePageStep.PlaceBoard];
     end;
   end
   else if AShown and not SameText(ALastLayout, ALayout) then
   begin
-    if Atlas then
+    if mAtlas then
     begin
       Result := [TAtlasIdePageStep.PlaceBoard];
     end
@@ -474,8 +474,8 @@ end;
 class function TAtlasWelcomeRetire.Run(const AAccess: IAtlasRegistryAccess; const AWelcomePath, ABackup,
   APrefix: string; out ASnapshot: string): TAtlasRetireResult;
 var
-  Key: TAtlasRegKey;
-  Layout, Cleaned: TAtlasHostLayout;
+  mKey: TAtlasRegKey;
+  mLayout, mCleaned: TAtlasHostLayout;
 begin
   ASnapshot := '';
   Result := TAtlasRetireResult.Nothing;
@@ -486,17 +486,17 @@ begin
     Result := TAtlasRetireResult.Restored;
     Exit;
   end;
-  Key := AAccess.Read(AWelcomePath);
+  mKey := AAccess.Read(AWelcomePath);
   try
-    if (Key = nil) or not TAtlasHostLayout.Read(Key, Layout) or not Layout.ContainsAtlas(APrefix) then
+    if (mKey = nil) or not TAtlasHostLayout.Read(mKey, mLayout) or not mLayout.ContainsAtlas(APrefix) then
     begin
       Exit;
     end;
-    Cleaned := Layout.WithoutAtlas(APrefix);
-    Cleaned.WriteTo(Key);
-    AAccess.Replace(AWelcomePath, Key);
+    mCleaned := mLayout.WithoutAtlas(APrefix);
+    mCleaned.WriteTo(mKey);
+    AAccess.Replace(AWelcomePath, mKey);
   finally
-    Key.Free;
+    mKey.Free;
   end;
   ASnapshot := TAtlasWelcomeBackup.Snapshot(AAccess, AWelcomePath);
   Result := TAtlasRetireResult.Removed;

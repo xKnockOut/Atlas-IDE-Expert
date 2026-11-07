@@ -39,7 +39,7 @@ type
   TAtlasIdeWelcomeState = class(TInterfacedObject, IAtlasStateSource)
   public const
     /// <summary>Reihenfolge außerhalb des Atlas-Layouts.</summary>
-    Order = 10;
+    cOrder = 10;
   private
     FRegistry: IAtlasStatusRegistry;
     FActions: TAtlasStateActions;
@@ -104,18 +104,18 @@ end;
 
 procedure TAtlasIdeWelcomeState.Start;
 var
-  Keep: IAtlasStateSource;
+  mKeep: IAtlasStateSource;
 begin
   FStopped := False;
   Current := Self;
-  Keep := Self;
-  TAtlasWelcomeViews.Register(TAtlasWelcomeIds.State,
+  mKeep := Self;
+  TAtlasWelcomeViews.Register(TAtlasWelcomeIds.cState,
     function(AOwner: TComponent): TAtlasWelcomeSectionFrame
     var
       Frame: TAtlasWelcomeStateFrame;
     begin
       Frame := TAtlasWelcomeStateFrame.Create(AOwner);
-      Frame.Source := Keep;
+      Frame.Source := mKeep;
       Result := Frame;
     end);
   FSignature := TAtlasWelcomeState.Signature(Rows);
@@ -167,24 +167,24 @@ begin
     FRegistry.RemoveListener(FListener);
   end;
   FListener := -1;
-  TAtlasWelcomeViews.Unregister(TAtlasWelcomeIds.State);
-  TAtlasWelcomeSections.Default.Remove(TAtlasWelcomeIds.State);
+  TAtlasWelcomeViews.Unregister(TAtlasWelcomeIds.cState);
+  TAtlasWelcomeSections.Default.Remove(TAtlasWelcomeIds.cState);
 end;
 
 function TAtlasIdeWelcomeState.ShouldShow(const ARows: TAtlasStateRows): Boolean;
 var
-  Settings: TAtlasPluginSettings;
+  mSettings: TAtlasPluginSettings;
 begin
-  Settings := TAtlasIdeSettings.Current;
-  Result := TAtlasWelcomeState.Visible(Settings.WelcomePageStatusTile, Settings.WelcomePageStatusTileOnlyProblems,
+  mSettings := TAtlasIdeSettings.Current;
+  Result := TAtlasWelcomeState.Visible(mSettings.WelcomePageStatusTile, mSettings.WelcomePageStatusTileOnlyProblems,
     ARows);
 end;
 
 function TAtlasIdeWelcomeState.Section: TAtlasWelcomeSection;
 begin
-  Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.State,
+  Result := TAtlasWelcomeSection.Create(TAtlasWelcomeIds.cState,
     TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeStateTitle),
-    Order, TAtlasWelcomeColumn.Right,
+    cOrder, TAtlasWelcomeColumn.Right,
     function: Boolean
     begin
       // welcomePage.statusTile; mit onlyProblems nur bei einer gelben oder roten Zeile.
@@ -199,9 +199,9 @@ end;
 
 procedure TAtlasIdeWelcomeState.Check;
 var
-  Next: TAtlasStateRows;
-  Signature: string;
-  Shown: Boolean;
+  mNext: TAtlasStateRows;
+  mSignature: string;
+  mShown: Boolean;
 begin
   if FStopped then
   begin
@@ -212,24 +212,24 @@ begin
   begin
     Exit;
   end;
-  Next := Rows;
-  Signature := TAtlasWelcomeState.Signature(Next);
-  Shown := ShouldShow(Next);
-  if Shown <> FShown then
+  mNext := Rows;
+  mSignature := TAtlasWelcomeState.Signature(mNext);
+  mShown := ShouldShow(mNext);
+  if mShown <> FShown then
   begin
     // onlyProblems: Die Kachel erscheint oder verschwindet; die Willkommensseite ordnet neu.
-    FShown := Shown;
-    FSignature := Signature;
+    FShown := mShown;
+    FSignature := mSignature;
     TAtlasWelcomeSections.Default.Changed;
     Exit;
   end;
-  if Signature = FSignature then
+  if mSignature = FSignature then
   begin
     Exit;
   end;
-  FSignature := Signature;
+  FSignature := mSignature;
   // Nur dieser Bereich: Die Frames lesen die Zeilen neu und zeichnen (Invalidate).
-  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.State);
+  TAtlasWelcomeSections.Default.Changed(TAtlasWelcomeIds.cState);
 end;
 
 function TAtlasIdeWelcomeState.Rows: TAtlasStateRows;
@@ -243,27 +243,27 @@ end;
 
 procedure TAtlasIdeWelcomeState.RunRow(const AId: string);
 var
-  Item: IAtlasStatusItem;
+  mItem: IAtlasStatusItem;
 begin
   if FStopped or (FRegistry = nil) then
   begin
     Exit;
   end;
-  Item := FRegistry.Find(AId);
-  if (Item = nil) or not Item.HasAction then
+  mItem := FRegistry.Find(AId);
+  if (mItem = nil) or not mItem.HasAction then
   begin
     Exit;
   end;
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
     begin
-      Item.Execute;
+      mItem.Execute;
     end);
 end;
 
 procedure TAtlasIdeWelcomeState.Run(AButton: TAtlasStateButton);
 var
-  Action: TProc;
+  mAction: TProc;
 begin
   if FStopped then
   begin
@@ -271,22 +271,22 @@ begin
   end;
   case AButton of
     TAtlasStateButton.Restart:
-      Action := FActions.Restart;
+      mAction := FActions.Restart;
     TAtlasStateButton.Settings:
-      Action := FActions.Settings;
+      mAction := FActions.Settings;
     TAtlasStateButton.LogFolder:
-      Action := FActions.LogFolder;
+      mAction := FActions.LogFolder;
   else
-    Action := FActions.Update;
+    mAction := FActions.Update;
   end;
-  if not Assigned(Action) then
+  if not Assigned(mAction) then
   begin
     Exit;
   end;
   TAtlasGuard.Run(TAtlasFeature.WelcomePage,
     procedure
     begin
-      Action();
+      mAction();
     end);
 end;
 

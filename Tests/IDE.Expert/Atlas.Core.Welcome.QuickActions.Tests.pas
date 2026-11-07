@@ -84,8 +84,8 @@ type
   end;
 
 const
-  DUnitXProgram = 'program App.Tests;'#10'uses'#10'  DUnitX.TestFramework,'#10'  App.Tests.Core;'#10'begin'#10'end.';
-  PlainProgram = 'program App;'#10'uses'#10'  Vcl.Forms;'#10'begin'#10'end.';
+  cDUnitXProgram = 'program App.Tests;'#10'uses'#10'  DUnitX.TestFramework,'#10'  App.Tests.Core;'#10'begin'#10'end.';
+  cPlainProgram = 'program App;'#10'uses'#10'  Vcl.Forms;'#10'begin'#10'end.';
 
 function Vcs(AKnown: Boolean; const AKind: string; AChanged: Integer): TAtlasProjectVcs;
 begin
@@ -118,12 +118,12 @@ end;
 
 function TFakeFiles.Exists(const AName: string): Boolean;
 var
-  Name: string;
+  mName: string;
 begin
   Result := False;
-  for Name in Names do
+  for mName in Names do
   begin
-    if SameText(Name, AName) then
+    if SameText(mName, AName) then
     begin
       Exit(True);
     end;
@@ -132,15 +132,15 @@ end;
 
 function TFakeFiles.Read(const AName: string; out ALines: TArray<string>): Boolean;
 var
-  Index: Integer;
+  mIndex: Integer;
 begin
   ALines := nil;
   Result := False;
-  for Index := 0 to High(Names) do
+  for mIndex := 0 to High(Names) do
   begin
-    if SameText(Names[Index], AName) then
+    if SameText(Names[mIndex], AName) then
     begin
-      ALines := Texts[Index].Split([#10]);
+      ALines := Texts[mIndex].Split([#10]);
       Exit(True);
     end;
   end;
@@ -150,10 +150,10 @@ end;
 
 procedure TAtlasWelcomeQuickActionsTests.ItemsParseAndNormalize;
 var
-  Items: TAtlasQuickActions;
+  mItems: TAtlasQuickActions;
 begin
-  Items := TAtlasWelcomeQuickActions.ParseItems(TAtlasWelcomeQuickActions.DefaultItems);
-  Assert.IsTrue(Items = [TAtlasQuickAction.Build, TAtlasQuickAction.Tests, TAtlasQuickAction.Run,
+  mItems := TAtlasWelcomeQuickActions.ParseItems(TAtlasWelcomeQuickActions.cDefaultItems);
+  Assert.IsTrue(mItems = [TAtlasQuickAction.Build, TAtlasQuickAction.Tests, TAtlasQuickAction.Run,
     TAtlasQuickAction.Pull, TAtlasQuickAction.Folder, TAtlasQuickAction.Console, TAtlasQuickAction.Tasks],
     'Vorgabe: alle');
   Assert.AreEqual('tests,tasks', TAtlasWelcomeQuickActions.NormalizedItems('Tasks tests'));
@@ -166,34 +166,34 @@ end;
 
 procedure TAtlasWelcomeQuickActionsTests.ItemsWithoutConsoleDropOnlyThatButton;
 var
-  Buttons: TAtlasQuickActionButtons;
+  mButtons: TAtlasQuickActionButtons;
 begin
-  Buttons := TAtlasWelcomeQuickActions.Buttons(TAtlasWelcomeQuickActions.ParseItems('build,tests,run,pull,folder'),
+  mButtons := TAtlasWelcomeQuickActions.Buttons(TAtlasWelcomeQuickActions.ParseItems('build,tests,run,pull,folder'),
     Vcs(True, 'git', 0), False);
-  Assert.AreEqual(5, Integer(Length(Buttons)));
-  Assert.IsTrue(Buttons[0].Action = TAtlasQuickAction.Build);
-  Assert.IsTrue(Buttons[1].Action = TAtlasQuickAction.Tests);
-  Assert.IsTrue(Buttons[2].Action = TAtlasQuickAction.Run);
-  Assert.IsTrue(Buttons[3].Action = TAtlasQuickAction.Pull);
-  Assert.IsTrue(Buttons[4].Action = TAtlasQuickAction.Folder);
-  Assert.AreEqual(-1, TAtlasWelcomeQuickActions.IndexOf(Buttons, TAtlasQuickAction.Console));
-  Assert.IsTrue(Buttons[0].HasMenu and Buttons[2].HasMenu, 'Konfiguration bzw. Startprofil wählbar');
-  Assert.IsFalse(Buttons[1].HasMenu);
-  Assert.IsTrue(Buttons[0].Enabled and Buttons[1].Enabled and Buttons[3].Enabled);
+  Assert.AreEqual(5, Integer(Length(mButtons)));
+  Assert.IsTrue(mButtons[0].Action = TAtlasQuickAction.Build);
+  Assert.IsTrue(mButtons[1].Action = TAtlasQuickAction.Tests);
+  Assert.IsTrue(mButtons[2].Action = TAtlasQuickAction.Run);
+  Assert.IsTrue(mButtons[3].Action = TAtlasQuickAction.Pull);
+  Assert.IsTrue(mButtons[4].Action = TAtlasQuickAction.Folder);
+  Assert.AreEqual(-1, TAtlasWelcomeQuickActions.IndexOf(mButtons, TAtlasQuickAction.Console));
+  Assert.IsTrue(mButtons[0].HasMenu and mButtons[2].HasMenu, 'Konfiguration bzw. Startprofil wählbar');
+  Assert.IsFalse(mButtons[1].HasMenu);
+  Assert.IsTrue(mButtons[0].Enabled and mButtons[1].Enabled and mButtons[3].Enabled);
   // „Aufgaben ▾“ (#900): Auswahl der Aufgabe; braucht die IDE nicht, geht also auch, wenn sie beschäftigt ist.
-  Buttons := TAtlasWelcomeQuickActions.Buttons([TAtlasQuickAction.Tasks], Vcs(True, 'git', 0), False, True);
-  Assert.AreEqual(1, Integer(Length(Buttons)));
-  Assert.IsTrue(Buttons[0].HasMenu and Buttons[0].Enabled);
+  mButtons := TAtlasWelcomeQuickActions.Buttons([TAtlasQuickAction.Tasks], Vcs(True, 'git', 0), False, True);
+  Assert.AreEqual(1, Integer(Length(mButtons)));
+  Assert.IsTrue(mButtons[0].HasMenu and mButtons[0].Enabled);
   Assert.IsFalse(TAtlasWelcomeQuickActions.UsesIde(TAtlasQuickAction.Tasks));
-  Buttons := TAtlasWelcomeQuickActions.Buttons([TAtlasQuickAction.Tasks], Vcs(True, 'git', 0), True);
-  Assert.IsFalse(Buttons[0].Enabled, 'auf dem Projekt läuft schon eine Aktion');
+  mButtons := TAtlasWelcomeQuickActions.Buttons([TAtlasQuickAction.Tasks], Vcs(True, 'git', 0), True);
+  Assert.IsFalse(mButtons[0].Enabled, 'auf dem Projekt läuft schon eine Aktion');
   Assert.AreEqual(0, Integer(Length(TAtlasWelcomeQuickActions.Buttons([], Vcs(True, 'git', 0), False))));
 end;
 
 procedure TAtlasWelcomeQuickActionsTests.PullBlockedByLocalChanges;
 var
-  Buttons: TAtlasQuickActionButtons;
-  Index: Integer;
+  mButtons: TAtlasQuickActionButtons;
+  mIndex: Integer;
 begin
   Assert.IsTrue(TAtlasWelcomeQuickActions.PullBlock(Vcs(True, 'git', 2)) = TAtlasPullBlock.LocalChanges);
   Assert.IsTrue(TAtlasWelcomeQuickActions.PullBlock(Vcs(True, 'svn', 1)) = TAtlasPullBlock.LocalChanges);
@@ -201,61 +201,61 @@ begin
   // Unbekannter Stand sperrt nicht: Pull prüft selbst.
   Assert.IsTrue(TAtlasWelcomeQuickActions.PullBlock(Vcs(True, 'git', -1)) = TAtlasPullBlock.None);
   Assert.IsTrue(TAtlasWelcomeQuickActions.PullBlock(Vcs(False, '', 0)) = TAtlasPullBlock.None);
-  Buttons := TAtlasWelcomeQuickActions.Buttons(TAtlasWelcomeQuickActions.ParseItems('pull,folder'),
+  mButtons := TAtlasWelcomeQuickActions.Buttons(TAtlasWelcomeQuickActions.ParseItems('pull,folder'),
     Vcs(True, 'git', 3), False);
-  Index := TAtlasWelcomeQuickActions.IndexOf(Buttons, TAtlasQuickAction.Pull);
-  Assert.AreEqual(0, Index);
-  Assert.IsFalse(Buttons[Index].Enabled, 'gesperrt bei lokalen Änderungen');
-  Assert.IsTrue(Buttons[Index].Block = TAtlasPullBlock.LocalChanges);
-  Assert.IsTrue(Buttons[1].Enabled, 'Ordner bleibt nutzbar');
+  mIndex := TAtlasWelcomeQuickActions.IndexOf(mButtons, TAtlasQuickAction.Pull);
+  Assert.AreEqual(0, mIndex);
+  Assert.IsFalse(mButtons[mIndex].Enabled, 'gesperrt bei lokalen Änderungen');
+  Assert.IsTrue(mButtons[mIndex].Block = TAtlasPullBlock.LocalChanges);
+  Assert.IsTrue(mButtons[1].Enabled, 'Ordner bleibt nutzbar');
 end;
 
 procedure TAtlasWelcomeQuickActionsTests.PullBlockedWithoutWorkingCopyOrWhileBusy;
 var
-  Buttons: TAtlasQuickActionButtons;
+  mButtons: TAtlasQuickActionButtons;
 begin
   Assert.IsTrue(TAtlasWelcomeQuickActions.PullBlock(Vcs(True, 'none', 0)) = TAtlasPullBlock.NoWorkingCopy);
-  Buttons := TAtlasWelcomeQuickActions.Buttons([TAtlasQuickAction.Pull], Vcs(True, 'git', 0), True);
-  Assert.IsFalse(Buttons[0].Enabled);
-  Assert.IsTrue(Buttons[0].Block = TAtlasPullBlock.Busy);
+  mButtons := TAtlasWelcomeQuickActions.Buttons([TAtlasQuickAction.Pull], Vcs(True, 'git', 0), True);
+  Assert.IsFalse(mButtons[0].Enabled);
+  Assert.IsTrue(mButtons[0].Block = TAtlasPullBlock.Busy);
   // Lokale Änderungen gehen als Grund vor.
-  Buttons := TAtlasWelcomeQuickActions.Buttons([TAtlasQuickAction.Pull], Vcs(True, 'git', 1), True);
-  Assert.IsTrue(Buttons[0].Block = TAtlasPullBlock.LocalChanges);
+  mButtons := TAtlasWelcomeQuickActions.Buttons([TAtlasQuickAction.Pull], Vcs(True, 'git', 1), True);
+  Assert.IsTrue(mButtons[0].Block = TAtlasPullBlock.LocalChanges);
 end;
 
 procedure TAtlasWelcomeQuickActionsTests.SvnButtonIsUpdate;
 var
-  Buttons: TAtlasQuickActionButtons;
+  mButtons: TAtlasQuickActionButtons;
 begin
-  Buttons := TAtlasWelcomeQuickActions.Buttons([TAtlasQuickAction.Pull], Vcs(True, 'svn', 0), False);
-  Assert.IsTrue(Buttons[0].Update, 'SVN: „Aktualisieren“');
-  Assert.IsTrue(Buttons[0].Enabled);
-  Buttons := TAtlasWelcomeQuickActions.Buttons([TAtlasQuickAction.Pull], Vcs(True, 'git', 0), False);
-  Assert.IsFalse(Buttons[0].Update, 'Git: „Pull“');
+  mButtons := TAtlasWelcomeQuickActions.Buttons([TAtlasQuickAction.Pull], Vcs(True, 'svn', 0), False);
+  Assert.IsTrue(mButtons[0].Update, 'SVN: „Aktualisieren“');
+  Assert.IsTrue(mButtons[0].Enabled);
+  mButtons := TAtlasWelcomeQuickActions.Buttons([TAtlasQuickAction.Pull], Vcs(True, 'git', 0), False);
+  Assert.IsFalse(mButtons[0].Update, 'Git: „Pull“');
   Assert.IsFalse(TAtlasWelcomeQuickActions.IsUpdate(Vcs(False, 'svn', 0)), 'unbekannt: „Pull“');
 end;
 
 procedure TAtlasWelcomeQuickActionsTests.BusyKeepsFolderAndConsole;
 var
-  Buttons: TAtlasQuickActionButtons;
-  Button: TAtlasQuickActionButton;
+  mButtons: TAtlasQuickActionButtons;
+  mButton: TAtlasQuickActionButton;
 begin
-  Buttons := TAtlasWelcomeQuickActions.Buttons(TAtlasWelcomeQuickActions.ParseItems(
-    TAtlasWelcomeQuickActions.DefaultItems), Vcs(True, 'git', 0), True);
-  for Button in Buttons do
+  mButtons := TAtlasWelcomeQuickActions.Buttons(TAtlasWelcomeQuickActions.ParseItems(
+    TAtlasWelcomeQuickActions.cDefaultItems), Vcs(True, 'git', 0), True);
+  for mButton in mButtons do
   begin
-    Assert.IsTrue(((Button.Action = TAtlasQuickAction.Folder) or (Button.Action = TAtlasQuickAction.Console)) =
-      Button.Enabled, TAtlasWelcomeQuickActions.Names[Button.Action]);
+    Assert.IsTrue(((mButton.Action = TAtlasQuickAction.Folder) or (mButton.Action = TAtlasQuickAction.Console)) =
+      mButton.Enabled, TAtlasWelcomeQuickActions.cNames[mButton.Action]);
   end;
   // Aktion eines anderen Projekts in der IDE: nur die Knöpfe, die die IDE brauchen, sind gesperrt.
-  Buttons := TAtlasWelcomeQuickActions.Buttons(TAtlasWelcomeQuickActions.ParseItems(
-    TAtlasWelcomeQuickActions.DefaultItems), Vcs(True, 'git', 0), False, True);
-  for Button in Buttons do
+  mButtons := TAtlasWelcomeQuickActions.Buttons(TAtlasWelcomeQuickActions.ParseItems(
+    TAtlasWelcomeQuickActions.cDefaultItems), Vcs(True, 'git', 0), False, True);
+  for mButton in mButtons do
   begin
-    Assert.IsTrue(TAtlasWelcomeQuickActions.UsesIde(Button.Action) <> Button.Enabled,
-      TAtlasWelcomeQuickActions.Names[Button.Action]);
+    Assert.IsTrue(TAtlasWelcomeQuickActions.UsesIde(mButton.Action) <> mButton.Enabled,
+      TAtlasWelcomeQuickActions.cNames[mButton.Action]);
   end;
-  Assert.IsTrue(Buttons[TAtlasWelcomeQuickActions.IndexOf(Buttons, TAtlasQuickAction.Pull)].Block =
+  Assert.IsTrue(mButtons[TAtlasWelcomeQuickActions.IndexOf(mButtons, TAtlasQuickAction.Pull)].Block =
     TAtlasPullBlock.None);
 end;
 
@@ -278,112 +278,112 @@ end;
 
 procedure TAtlasWelcomeQuickActionsTests.TestProjectByNamePattern;
 var
-  Files: TFakeFiles;
-  Candidates: TArray<string>;
+  mFiles: TFakeFiles;
+  mCandidates: TArray<string>;
 begin
-  Files := TFakeFiles.Create;
+  mFiles := TFakeFiles.Create;
   try
-    Files.Add('C:\Src\App\App.dproj', '');
-    Files.Add('C:\Src\App\App.dpr', PlainProgram);
-    Files.Add('C:\Src\Tests\App.Tests.dproj', '');
-    Files.Add('C:\Src\Tests\App.Tests.dpr', DUnitXProgram);
-    Assert.AreEqual('C:\Src\Tests\App.Tests.dproj', TestFor(Files, 'C:\Src\App\App.dproj', Candidates),
+    mFiles.Add('C:\Src\App\App.dproj', '');
+    mFiles.Add('C:\Src\App\App.dpr', cPlainProgram);
+    mFiles.Add('C:\Src\Tests\App.Tests.dproj', '');
+    mFiles.Add('C:\Src\Tests\App.Tests.dpr', cDUnitXProgram);
+    Assert.AreEqual('C:\Src\Tests\App.Tests.dproj', TestFor(mFiles, 'C:\Src\App\App.dproj', mCandidates),
       '..\Tests\App.Tests.dproj');
-    Assert.AreEqual(1, Integer(Length(Candidates)));
+    Assert.AreEqual(1, Integer(Length(mCandidates)));
     // Näher liegendes Muster gewinnt.
-    Files.Add('C:\Src\App\Tests\AppTests.dproj', '');
-    Files.Add('C:\Src\App\Tests\AppTests.dpr', DUnitXProgram);
-    Assert.AreEqual('C:\Src\App\Tests\AppTests.dproj', TestFor(Files, 'C:\Src\App\App.dproj', Candidates));
-    Assert.AreEqual(2, Integer(Length(Candidates)));
+    mFiles.Add('C:\Src\App\Tests\AppTests.dproj', '');
+    mFiles.Add('C:\Src\App\Tests\AppTests.dpr', cDUnitXProgram);
+    Assert.AreEqual('C:\Src\App\Tests\AppTests.dproj', TestFor(mFiles, 'C:\Src\App\App.dproj', mCandidates));
+    Assert.AreEqual(2, Integer(Length(mCandidates)));
   finally
-    Files.Free;
+    mFiles.Free;
   end;
 end;
 
 procedure TAtlasWelcomeQuickActionsTests.TestProjectIsProjectItself;
 var
-  Files: TFakeFiles;
-  Candidates: TArray<string>;
+  mFiles: TFakeFiles;
+  mCandidates: TArray<string>;
 begin
-  Files := TFakeFiles.Create;
+  mFiles := TFakeFiles.Create;
   try
-    Files.Add('C:\Src\App.Tests.dpr', DUnitXProgram);
-    Assert.AreEqual('C:\Src\App.Tests.dproj', TestFor(Files, 'C:\Src\App.Tests.dproj', Candidates),
+    mFiles.Add('C:\Src\App.Tests.dpr', cDUnitXProgram);
+    Assert.AreEqual('C:\Src\App.Tests.dproj', TestFor(mFiles, 'C:\Src\App.Tests.dproj', mCandidates),
       'ein DUnitX-Programm ist sein eigenes Testprojekt');
   finally
-    Files.Free;
+    mFiles.Free;
   end;
 end;
 
 procedure TAtlasWelcomeQuickActionsTests.TestProjectNeedsDUnitX;
 var
-  Files: TFakeFiles;
-  Candidates: TArray<string>;
+  mFiles: TFakeFiles;
+  mCandidates: TArray<string>;
 begin
-  Files := TFakeFiles.Create;
+  mFiles := TFakeFiles.Create;
   try
-    Files.Add('C:\Src\App.dpr', PlainProgram);
+    mFiles.Add('C:\Src\App.dpr', cPlainProgram);
     // Passender Name, aber kein DUnitX (z. B. DUnit oder ein Werkzeug).
-    Files.Add('C:\Src\App.Test.dproj', '');
-    Files.Add('C:\Src\App.Test.dpr', PlainProgram);
-    Assert.AreEqual('', TestFor(Files, 'C:\Src\App.dproj', Candidates));
-    Assert.AreEqual(0, Integer(Length(Candidates)));
+    mFiles.Add('C:\Src\App.Test.dproj', '');
+    mFiles.Add('C:\Src\App.Test.dpr', cPlainProgram);
+    Assert.AreEqual('', TestFor(mFiles, 'C:\Src\App.dproj', mCandidates));
+    Assert.AreEqual(0, Integer(Length(mCandidates)));
     // .dproj ohne .dpr zählt nicht.
-    Files.Add('C:\Src\AppTests.dproj', '');
-    Assert.AreEqual('', TestFor(Files, 'C:\Src\App.dproj', Candidates));
-    Assert.AreEqual('', TestFor(Files, '', Candidates));
+    mFiles.Add('C:\Src\AppTests.dproj', '');
+    Assert.AreEqual('', TestFor(mFiles, 'C:\Src\App.dproj', mCandidates));
+    Assert.AreEqual('', TestFor(mFiles, '', mCandidates));
   finally
-    Files.Free;
+    mFiles.Free;
   end;
 end;
 
 procedure TAtlasWelcomeQuickActionsTests.TestProjectOfGroup;
 var
-  Files: TFakeFiles;
-  Candidates: TArray<string>;
+  mFiles: TFakeFiles;
+  mCandidates: TArray<string>;
 begin
-  Files := TFakeFiles.Create;
+  mFiles := TFakeFiles.Create;
   try
-    Files.Add('C:\Src\Suite.groupproj',
+    mFiles.Add('C:\Src\Suite.groupproj',
       '<Project>'#10'  <ItemGroup>'#10'    <Projects Include="App\App.dproj">'#10'    </Projects>'#10 +
       '    <Projects Include="Tests\Core.Tests.dproj"/>'#10'  </ItemGroup>'#10'</Project>');
-    Files.Add('C:\Src\App\App.dpr', PlainProgram);
-    Files.Add('C:\Src\Tests\Core.Tests.dpr', DUnitXProgram);
-    Assert.AreEqual('C:\Src\Tests\Core.Tests.dproj', TestFor(Files, 'C:\Src\Suite.groupproj', Candidates),
+    mFiles.Add('C:\Src\App\App.dpr', cPlainProgram);
+    mFiles.Add('C:\Src\Tests\Core.Tests.dpr', cDUnitXProgram);
+    Assert.AreEqual('C:\Src\Tests\Core.Tests.dproj', TestFor(mFiles, 'C:\Src\Suite.groupproj', mCandidates),
       'einziges DUnitX-Projekt der Gruppe');
     // Zwei Testprojekte: das nach der Gruppe benannte.
-    Files.Names[0] := 'C:\Src\Old.groupproj';
-    Files.Add('C:\Src\Suite.groupproj',
+    mFiles.Names[0] := 'C:\Src\Old.groupproj';
+    mFiles.Add('C:\Src\Suite.groupproj',
       '<Projects Include="Tests\Core.Tests.dproj"/>'#10'<Projects Include="Tests\Suite.Tests.dproj"/>');
-    Files.Add('C:\Src\Tests\Suite.Tests.dpr', DUnitXProgram);
-    Assert.AreEqual('C:\Src\Tests\Suite.Tests.dproj', TestFor(Files, 'C:\Src\Suite.groupproj', Candidates));
-    Assert.AreEqual(2, Integer(Length(Candidates)));
+    mFiles.Add('C:\Src\Tests\Suite.Tests.dpr', cDUnitXProgram);
+    Assert.AreEqual('C:\Src\Tests\Suite.Tests.dproj', TestFor(mFiles, 'C:\Src\Suite.groupproj', mCandidates));
+    Assert.AreEqual(2, Integer(Length(mCandidates)));
     // Zwei ohne passenden Namen: die IDE fragt.
-    Files.Add('C:\Src\Other.groupproj',
+    mFiles.Add('C:\Src\Other.groupproj',
       '<Projects Include="Tests\Core.Tests.dproj"/>'#10'<Projects Include="Tests\Suite.Tests.dproj"/>');
-    Assert.AreEqual('', TestFor(Files, 'C:\Src\Other.groupproj', Candidates));
-    Assert.AreEqual(2, Integer(Length(Candidates)), 'Kandidaten für die Auswahl');
+    Assert.AreEqual('', TestFor(mFiles, 'C:\Src\Other.groupproj', mCandidates));
+    Assert.AreEqual(2, Integer(Length(mCandidates)), 'Kandidaten für die Auswahl');
   finally
-    Files.Free;
+    mFiles.Free;
   end;
 end;
 
 procedure TAtlasWelcomeQuickActionsTests.TestCandidatesOrder;
 var
-  Candidates: TArray<string>;
+  mCandidates: TArray<string>;
 begin
-  Candidates := TAtlasWelcomeQuickActions.TestCandidates('C:\Src\App\App.dproj');
-  Assert.AreEqual(20, Integer(Length(Candidates)), '4 Muster in 5 Ordnern');
-  Assert.AreEqual('C:\Src\App\App.Tests.dproj', Candidates[0]);
-  Assert.AreEqual('C:\Src\App\AppTests.dproj', Candidates[1]);
-  Assert.AreEqual('C:\Src\App\Tests\App.Tests.dproj', Candidates[4]);
-  Assert.AreEqual('C:\Src\Tests\App.Tests.dproj', Candidates[12]);
-  Assert.AreEqual('C:\Src\Test\AppTest.dproj', Candidates[19]);
+  mCandidates := TAtlasWelcomeQuickActions.TestCandidates('C:\Src\App\App.dproj');
+  Assert.AreEqual(20, Integer(Length(mCandidates)), '4 Muster in 5 Ordnern');
+  Assert.AreEqual('C:\Src\App\App.Tests.dproj', mCandidates[0]);
+  Assert.AreEqual('C:\Src\App\AppTests.dproj', mCandidates[1]);
+  Assert.AreEqual('C:\Src\App\Tests\App.Tests.dproj', mCandidates[4]);
+  Assert.AreEqual('C:\Src\Tests\App.Tests.dproj', mCandidates[12]);
+  Assert.AreEqual('C:\Src\Test\AppTest.dproj', mCandidates[19]);
 end;
 
 procedure TAtlasWelcomeQuickActionsTests.TargetsFromDproj;
 const
-  Dproj =
+  cDproj =
     '<Project>'#10 +
     '  <PropertyGroup>'#10 +
     '    <Config Condition="''$(Config)''==''''">Debug</Config>'#10 +
@@ -401,48 +401,48 @@ const
     '  </Platforms></BorlandProject></ProjectExtensions>'#10 +
     '</Project>';
 var
-  Targets: TAtlasProjectTargets;
+  mTargets: TAtlasProjectTargets;
 begin
-  Targets := TAtlasWelcomeQuickActions.ReadTargets(Dproj);
-  Assert.AreEqual(2, Integer(Length(Targets.Configurations)), 'ohne Base, jede einmal');
-  Assert.AreEqual('Debug', Targets.Configurations[0]);
-  Assert.AreEqual('Release', Targets.Configurations[1]);
-  Assert.AreEqual(2, Integer(Length(Targets.Platforms)), 'nur eingeschaltete Plattformen');
-  Assert.AreEqual('Win32', Targets.Platforms[0]);
-  Assert.AreEqual('Win64', Targets.Platforms[1]);
-  Assert.IsTrue(Targets.HasConfiguration('release'));
-  Assert.IsFalse(Targets.HasPlatform('Linux64'));
-  Targets := TAtlasWelcomeQuickActions.ReadTargets('');
-  Assert.AreEqual(0, Integer(Length(Targets.Configurations)));
-  Assert.AreEqual(0, Integer(Length(Targets.Platforms)));
+  mTargets := TAtlasWelcomeQuickActions.ReadTargets(cDproj);
+  Assert.AreEqual(2, Integer(Length(mTargets.Configurations)), 'ohne Base, jede einmal');
+  Assert.AreEqual('Debug', mTargets.Configurations[0]);
+  Assert.AreEqual('Release', mTargets.Configurations[1]);
+  Assert.AreEqual(2, Integer(Length(mTargets.Platforms)), 'nur eingeschaltete Plattformen');
+  Assert.AreEqual('Win32', mTargets.Platforms[0]);
+  Assert.AreEqual('Win64', mTargets.Platforms[1]);
+  Assert.IsTrue(mTargets.HasConfiguration('release'));
+  Assert.IsFalse(mTargets.HasPlatform('Linux64'));
+  mTargets := TAtlasWelcomeQuickActions.ReadTargets('');
+  Assert.AreEqual(0, Integer(Length(mTargets.Configurations)));
+  Assert.AreEqual(0, Integer(Length(mTargets.Platforms)));
 end;
 
 procedure TAtlasWelcomeQuickActionsTests.ChooseTargetPrefersLastUsed;
 var
-  Targets: TAtlasProjectTargets;
-  Configuration, Platform: string;
+  mTargets: TAtlasProjectTargets;
+  mConfiguration, mPlatform: string;
 begin
-  Targets.Configurations := ['Debug', 'Release'];
-  Targets.Platforms := ['Win32', 'Win64'];
-  TAtlasWelcomeQuickActions.ChooseTarget(Targets, 'debug', 'WIN64', Configuration, Platform);
-  Assert.AreEqual('Debug', Configuration, 'Schreibweise der Datei');
-  Assert.AreEqual('Win64', Platform);
-  TAtlasWelcomeQuickActions.ChooseTarget(Targets, 'Profiling', '', Configuration, Platform);
-  Assert.AreEqual('', Configuration, 'unbekannt: aktive der IDE');
-  Assert.AreEqual('', Platform);
+  mTargets.Configurations := ['Debug', 'Release'];
+  mTargets.Platforms := ['Win32', 'Win64'];
+  TAtlasWelcomeQuickActions.ChooseTarget(mTargets, 'debug', 'WIN64', mConfiguration, mPlatform);
+  Assert.AreEqual('Debug', mConfiguration, 'Schreibweise der Datei');
+  Assert.AreEqual('Win64', mPlatform);
+  TAtlasWelcomeQuickActions.ChooseTarget(mTargets, 'Profiling', '', mConfiguration, mPlatform);
+  Assert.AreEqual('', mConfiguration, 'unbekannt: aktive der IDE');
+  Assert.AreEqual('', mPlatform);
 end;
 
 procedure TAtlasWelcomeQuickActionsTests.GroupProjectsResolvePaths;
 var
-  Projects: TArray<string>;
+  mProjects: TArray<string>;
 begin
-  Projects := TAtlasWelcomeQuickActions.GroupProjects(
+  mProjects := TAtlasWelcomeQuickActions.GroupProjects(
     '<Projects Include="App\App.dproj"/>'#10'<Projects Include="..\Lib\Lib.dproj"/>'#10 +
     '<Projects Include="D:\Other\X.dproj"/>'#10'<Projects Include="App\App.dproj"/>', 'C:\Src\Group');
-  Assert.AreEqual(3, Integer(Length(Projects)));
-  Assert.AreEqual('C:\Src\Group\App\App.dproj', Projects[0]);
-  Assert.AreEqual('C:\Src\Lib\Lib.dproj', Projects[1]);
-  Assert.AreEqual('D:\Other\X.dproj', Projects[2]);
+  Assert.AreEqual(3, Integer(Length(mProjects)));
+  Assert.AreEqual('C:\Src\Group\App\App.dproj', mProjects[0]);
+  Assert.AreEqual('C:\Src\Lib\Lib.dproj', mProjects[1]);
+  Assert.AreEqual('D:\Other\X.dproj', mProjects[2]);
   Assert.IsTrue(TAtlasWelcomeQuickActions.IsGroup('C:\A\B.GroupProj'));
   Assert.IsFalse(TAtlasWelcomeQuickActions.IsGroup('C:\A\B.dproj'));
 end;
@@ -457,43 +457,43 @@ end;
 
 procedure TAtlasWelcomeQuickActionsTests.ConsoleCommandPerProgram;
 var
-  FileName, Parameters: string;
+  mFileName, mParameters: string;
 begin
-  Assert.IsTrue(TAtlasWelcomeQuickActions.ConsoleCommand('', 'C:\Src\App', FileName, Parameters));
-  Assert.AreEqual('wt.exe', FileName, 'Vorgabe Windows-Terminal');
-  Assert.AreEqual('-d "C:\Src\App"', Parameters);
-  Assert.IsTrue(TAtlasWelcomeQuickActions.ConsoleCommand('cmd.exe', 'C:\', FileName, Parameters));
-  Assert.AreEqual('/K cd /d "C:\."', Parameters, 'Backslash vor dem Anführungszeichen');
-  Assert.IsTrue(TAtlasWelcomeQuickActions.ConsoleCommand('C:\Tools\pwsh.exe', 'C:\O''Neil', FileName, Parameters));
-  Assert.AreEqual('C:\Tools\pwsh.exe', FileName);
-  Assert.AreEqual('-NoExit -Command Set-Location -LiteralPath ''C:\O''''Neil''', Parameters);
-  Assert.IsTrue(TAtlasWelcomeQuickActions.ConsoleCommand('ConEmu64.exe', 'C:\Src', FileName, Parameters));
-  Assert.AreEqual('', Parameters, 'anderes Programm: nur Arbeitsordner');
-  Assert.IsFalse(TAtlasWelcomeQuickActions.ConsoleCommand('wt.exe', '', FileName, Parameters));
+  Assert.IsTrue(TAtlasWelcomeQuickActions.ConsoleCommand('', 'C:\Src\App', mFileName, mParameters));
+  Assert.AreEqual('wt.exe', mFileName, 'Vorgabe Windows-Terminal');
+  Assert.AreEqual('-d "C:\Src\App"', mParameters);
+  Assert.IsTrue(TAtlasWelcomeQuickActions.ConsoleCommand('cmd.exe', 'C:\', mFileName, mParameters));
+  Assert.AreEqual('/K cd /d "C:\."', mParameters, 'Backslash vor dem Anführungszeichen');
+  Assert.IsTrue(TAtlasWelcomeQuickActions.ConsoleCommand('C:\Tools\pwsh.exe', 'C:\O''Neil', mFileName, mParameters));
+  Assert.AreEqual('C:\Tools\pwsh.exe', mFileName);
+  Assert.AreEqual('-NoExit -Command Set-Location -LiteralPath ''C:\O''''Neil''', mParameters);
+  Assert.IsTrue(TAtlasWelcomeQuickActions.ConsoleCommand('ConEmu64.exe', 'C:\Src', mFileName, mParameters));
+  Assert.AreEqual('', mParameters, 'anderes Programm: nur Arbeitsordner');
+  Assert.IsFalse(TAtlasWelcomeQuickActions.ConsoleCommand('wt.exe', '', mFileName, mParameters));
 end;
 
 procedure TAtlasWelcomeQuickActionsTests.KeysBuildAndTest;
 var
-  Action: TAtlasQuickAction;
-  All: TAtlasQuickActions;
+  mAction: TAtlasQuickAction;
+  mAll: TAtlasQuickActions;
 begin
-  All := TAtlasWelcomeQuickActions.ParseItems(TAtlasWelcomeQuickActions.DefaultItems);
-  Assert.IsTrue(TAtlasWelcomeQuickActions.ActionForKey($4042, $4042, $4054, All, Action));
-  Assert.IsTrue(Action = TAtlasQuickAction.Build, 'Strg+B');
-  Assert.IsTrue(TAtlasWelcomeQuickActions.ActionForKey($4054, $4042, $4054, All, Action));
-  Assert.IsTrue(Action = TAtlasQuickAction.Tests, 'Strg+T');
-  Assert.IsFalse(TAtlasWelcomeQuickActions.ActionForKey($4054, $4042, $4054, [TAtlasQuickAction.Build], Action),
+  mAll := TAtlasWelcomeQuickActions.ParseItems(TAtlasWelcomeQuickActions.cDefaultItems);
+  Assert.IsTrue(TAtlasWelcomeQuickActions.ActionForKey($4042, $4042, $4054, mAll, mAction));
+  Assert.IsTrue(mAction = TAtlasQuickAction.Build, 'Strg+B');
+  Assert.IsTrue(TAtlasWelcomeQuickActions.ActionForKey($4054, $4042, $4054, mAll, mAction));
+  Assert.IsTrue(mAction = TAtlasQuickAction.Tests, 'Strg+T');
+  Assert.IsFalse(TAtlasWelcomeQuickActions.ActionForKey($4054, $4042, $4054, [TAtlasQuickAction.Build], mAction),
     'Knopf nicht eingestellt');
-  Assert.IsFalse(TAtlasWelcomeQuickActions.ActionForKey($4042, 0, $4054, All, Action), 'Taste abgeschaltet');
-  Assert.IsFalse(TAtlasWelcomeQuickActions.ActionForKey(0, 0, 0, All, Action));
+  Assert.IsFalse(TAtlasWelcomeQuickActions.ActionForKey($4042, 0, $4054, mAll, mAction), 'Taste abgeschaltet');
+  Assert.IsFalse(TAtlasWelcomeQuickActions.ActionForKey(0, 0, 0, mAll, mAction));
   // Geänderte Taste (#399).
-  Assert.IsTrue(TAtlasWelcomeQuickActions.ActionForKey($6042, $6042, $4054, All, Action));
-  Assert.IsTrue(Action = TAtlasQuickAction.Build);
+  Assert.IsTrue(TAtlasWelcomeQuickActions.ActionForKey($6042, $6042, $4054, mAll, mAction));
+  Assert.IsTrue(mAction = TAtlasQuickAction.Build);
 end;
 
 procedure TAtlasWelcomeQuickActionsTests.ArrowsMoveRowAndButton;
 var
-  Buttons: TAtlasQuickActionButtons;
+  mButtons: TAtlasQuickActionButtons;
 begin
   Assert.AreEqual(-1, TAtlasWelcomeQuickActions.MoveRow(0, 1, 0));
   Assert.AreEqual(0, TAtlasWelcomeQuickActions.MoveRow(-1, 1, 3), 'ohne Auswahl: erste Zeile');
@@ -501,29 +501,29 @@ begin
   Assert.AreEqual(2, TAtlasWelcomeQuickActions.MoveRow(2, 1, 3), 'bleibt am Ende');
   Assert.AreEqual(0, TAtlasWelcomeQuickActions.MoveRow(0, -1, 3));
   // Alle Knöpfe, Pull (Index 3) wegen lokaler Änderungen gesperrt.
-  Buttons := TAtlasWelcomeQuickActions.Buttons(TAtlasWelcomeQuickActions.ParseItems(
-    TAtlasWelcomeQuickActions.DefaultItems), Vcs(True, 'git', 1), False);
-  Assert.AreEqual(7, Integer(Length(Buttons)));
-  Assert.AreEqual(0, TAtlasWelcomeQuickActions.MoveButton(Buttons, -1, 1), 'rechts: erster Knopf');
-  Assert.AreEqual(6, TAtlasWelcomeQuickActions.MoveButton(Buttons, -1, -1), 'links: letzter Knopf');
-  Assert.AreEqual(4, TAtlasWelcomeQuickActions.MoveButton(Buttons, 2, 1), 'überspringt gesperrten Pull');
-  Assert.AreEqual(2, TAtlasWelcomeQuickActions.MoveButton(Buttons, 4, -1));
-  Assert.AreEqual(6, TAtlasWelcomeQuickActions.MoveButton(Buttons, 6, 1), 'bleibt am Ende');
+  mButtons := TAtlasWelcomeQuickActions.Buttons(TAtlasWelcomeQuickActions.ParseItems(
+    TAtlasWelcomeQuickActions.cDefaultItems), Vcs(True, 'git', 1), False);
+  Assert.AreEqual(7, Integer(Length(mButtons)));
+  Assert.AreEqual(0, TAtlasWelcomeQuickActions.MoveButton(mButtons, -1, 1), 'rechts: erster Knopf');
+  Assert.AreEqual(6, TAtlasWelcomeQuickActions.MoveButton(mButtons, -1, -1), 'links: letzter Knopf');
+  Assert.AreEqual(4, TAtlasWelcomeQuickActions.MoveButton(mButtons, 2, 1), 'überspringt gesperrten Pull');
+  Assert.AreEqual(2, TAtlasWelcomeQuickActions.MoveButton(mButtons, 4, -1));
+  Assert.AreEqual(6, TAtlasWelcomeQuickActions.MoveButton(mButtons, 6, 1), 'bleibt am Ende');
   Assert.AreEqual(-1, TAtlasWelcomeQuickActions.MoveButton(nil, -1, 1));
 end;
 
 procedure TAtlasWelcomeQuickActionsTests.StateElapsedSeconds;
 var
-  State: TAtlasQuickActionState;
+  mState: TAtlasQuickActionState;
 begin
-  State := TAtlasQuickActionState.Idle;
-  Assert.IsFalse(State.Running);
-  Assert.AreEqual(0, State.ElapsedSeconds(5000));
-  State := TAtlasQuickActionState.Started(TAtlasQuickAction.Build, 1000);
-  Assert.IsTrue(State.Running);
-  Assert.IsTrue(State.Action = TAtlasQuickAction.Build);
-  Assert.AreEqual(12, State.ElapsedSeconds(13500), '„baut … 12 s“');
-  Assert.AreEqual(0, State.ElapsedSeconds(500));
+  mState := TAtlasQuickActionState.Idle;
+  Assert.IsFalse(mState.Running);
+  Assert.AreEqual(0, mState.ElapsedSeconds(5000));
+  mState := TAtlasQuickActionState.Started(TAtlasQuickAction.Build, 1000);
+  Assert.IsTrue(mState.Running);
+  Assert.IsTrue(mState.Action = TAtlasQuickAction.Build);
+  Assert.AreEqual(12, mState.ElapsedSeconds(13500), '„baut … 12 s“');
+  Assert.AreEqual(0, mState.ElapsedSeconds(500));
 end;
 
 initialization

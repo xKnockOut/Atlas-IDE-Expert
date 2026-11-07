@@ -45,12 +45,12 @@ type
 
   TAtlasWelcomeStateFrame = class(TAtlasWelcomeSectionFrame)
   public const
-    RowHeight = 22;
-    Indent = 8;
-    DotSize = 10;
-    ButtonHeight = 24;
-    ButtonGap = 6;
-    ButtonPadding = 16;
+    cRowHeight = 22;
+    cIndent = 8;
+    cDotSize = 10;
+    cButtonHeight = 24;
+    cButtonGap = 6;
+    cButtonPadding = 16;
   private
     FSource: IAtlasStateSource;
     FBox: TAtlasWelcomeCanvas;
@@ -76,7 +76,7 @@ type
     constructor Create(AOwner: TComponent); override;
     procedure UpdateContent; override;
     /// <summary>Zeile an Y (Koordinaten der Zeichenfläche); -1 = keine.</summary>
-    function HitTest(Y: Integer): Integer;
+    function HitTest(AY: Integer): Integer;
     /// <summary>Klick auf eine Zeile wie mit der Maus (auch für Tests); nur Zeilen mit Aktion.</summary>
     procedure ClickRow(ARow: Integer);
     /// <summary>Klick auf einen Knopf wie mit der Maus (auch für Tests).</summary>
@@ -109,7 +109,7 @@ uses
 
 constructor TAtlasWelcomeStateFrame.Create(AOwner: TComponent);
 var
-  Kind: TAtlasStateButton;
+  mKind: TAtlasStateButton;
 begin
   inherited Create(AOwner);
   FHintRow := -1;
@@ -120,15 +120,15 @@ begin
   FBar.BevelOuter := bvNone;
   FBar.ParentBackground := True;
   FBar.Height := BarHeight;
-  for Kind := Low(TAtlasStateButton) to High(TAtlasStateButton) do
+  for mKind := Low(TAtlasStateButton) to High(TAtlasStateButton) do
   begin
-    FButtons[Kind] := TButton.Create(Self);
-    FButtons[Kind].Parent := FBar;
-    FButtons[Kind].Caption := ButtonCaption(Kind);
-    FButtons[Kind].Tag := Ord(Kind);
-    FButtons[Kind].OnClick := ButtonClick;
+    FButtons[mKind] := TButton.Create(Self);
+    FButtons[mKind].Parent := FBar;
+    FButtons[mKind].Caption := ButtonCaption(mKind);
+    FButtons[mKind].Tag := Ord(mKind);
+    FButtons[mKind].OnClick := ButtonClick;
     // „Jetzt aktualisieren“ nur mit Update.
-    FButtons[Kind].Visible := Kind <> TAtlasStateButton.Update;
+    FButtons[mKind].Visible := mKind <> TAtlasStateButton.Update;
   end;
   // Erst jetzt: Die Größenänderung ordnet die Knöpfe an.
   FBar.OnResize := BarResize;
@@ -168,43 +168,43 @@ end;
 
 procedure TAtlasWelcomeStateFrame.UpdateContent;
 var
-  Count: Integer;
-  Kind: TAtlasStateButton;
-  Wanted: array[TAtlasStateButton] of Boolean;
-  Changed: Boolean;
+  mCount: Integer;
+  mKind: TAtlasStateButton;
+  mWanted: array[TAtlasStateButton] of Boolean;
+  mChanged: Boolean;
 begin
-  Count := Length(FRows);
+  mCount := Length(FRows);
   FRows := nil;
   if FSource <> nil then
   begin
     FRows := FSource.Rows;
   end;
   // Knöpfe nach den Zeilen: „Jetzt aktualisieren“ nur mit Update.
-  for Kind := Low(TAtlasStateButton) to High(TAtlasStateButton) do
+  for mKind := Low(TAtlasStateButton) to High(TAtlasStateButton) do
   begin
-    Wanted[Kind] := False;
+    mWanted[mKind] := False;
   end;
-  for Kind in TAtlasWelcomeState.Buttons(FRows) do
+  for mKind in TAtlasWelcomeState.Buttons(FRows) do
   begin
-    Wanted[Kind] := True;
+    mWanted[mKind] := True;
   end;
-  Changed := False;
-  for Kind := Low(TAtlasStateButton) to High(TAtlasStateButton) do
+  mChanged := False;
+  for mKind := Low(TAtlasStateButton) to High(TAtlasStateButton) do
   begin
-    if FButtons[Kind].Visible <> Wanted[Kind] then
+    if FButtons[mKind].Visible <> mWanted[mKind] then
     begin
-      FButtons[Kind].Visible := Wanted[Kind];
-      Changed := True;
+      FButtons[mKind].Visible := mWanted[mKind];
+      mChanged := True;
     end;
   end;
-  if Changed then
+  if mChanged then
   begin
     BarResize(FBar);
   end;
   FHintRow := -1;
   FBox.Invalidate;
   inherited;
-  if Count <> Length(FRows) then
+  if mCount <> Length(FRows) then
   begin
     HeightChanged;
   end;
@@ -212,12 +212,12 @@ end;
 
 function TAtlasWelcomeStateFrame.RowTop(ARow: Integer): Integer;
 begin
-  Result := ScaleValue(Indent) div 2 + ARow * ScaleValue(RowHeight);
+  Result := ScaleValue(cIndent) div 2 + ARow * ScaleValue(cRowHeight);
 end;
 
 function TAtlasWelcomeStateFrame.BarHeight: Integer;
 begin
-  Result := FBarRows * (ScaleValue(ButtonHeight) + ScaleValue(ButtonGap)) + ScaleValue(ButtonGap);
+  Result := FBarRows * (ScaleValue(cButtonHeight) + ScaleValue(cButtonGap)) + ScaleValue(cButtonGap);
 end;
 
 function TAtlasWelcomeStateFrame.BodyHeight: Integer;
@@ -225,56 +225,56 @@ var
   mRows: Integer;
 begin
   mRows := Max(Length(FRows), 1);
-  Result := mRows * ScaleValue(RowHeight) + ScaleValue(Indent) + BarHeight;
+  Result := mRows * ScaleValue(cRowHeight) + ScaleValue(cIndent) + BarHeight;
 end;
 
 function TAtlasWelcomeStateFrame.LayoutButtons: Integer;
 var
-  Kind: TAtlasStateButton;
-  mLeft, mTop, mWidth, Right: Integer;
-  Measure: TBitmap;
+  mKind: TAtlasStateButton;
+  mLeft, mTop, mWidth, mRight: Integer;
+  mMeasure: TBitmap;
 begin
   Result := 1;
-  mLeft := ScaleValue(Indent);
-  mTop := ScaleValue(ButtonGap);
-  Right := FBar.ClientWidth - ScaleValue(Indent);
+  mLeft := ScaleValue(cIndent);
+  mTop := ScaleValue(cButtonGap);
+  mRight := FBar.ClientWidth - ScaleValue(cIndent);
   // Messen auf einer Bitmap: Der Frame hat beim Anlegen noch kein Fenster.
-  Measure := TBitmap.Create;
+  mMeasure := TBitmap.Create;
   try
-    Measure.Canvas.Font.Assign(Font);
-    for Kind := Low(TAtlasStateButton) to High(TAtlasStateButton) do
+    mMeasure.Canvas.Font.Assign(Font);
+    for mKind := Low(TAtlasStateButton) to High(TAtlasStateButton) do
     begin
-      if not FButtons[Kind].Visible then
+      if not FButtons[mKind].Visible then
       begin
         Continue;
       end;
-      mWidth := Measure.Canvas.TextWidth(FButtons[Kind].Caption) + 2 * ScaleValue(ButtonPadding);
+      mWidth := mMeasure.Canvas.TextWidth(FButtons[mKind].Caption) + 2 * ScaleValue(cButtonPadding);
       // Zu schmal: nächste Reihe (nicht für den ersten Knopf einer Reihe).
-      if (mLeft > ScaleValue(Indent)) and (Right > 0) and (mLeft + mWidth > Right) then
+      if (mLeft > ScaleValue(cIndent)) and (mRight > 0) and (mLeft + mWidth > mRight) then
       begin
-        mLeft := ScaleValue(Indent);
-        Inc(mTop, ScaleValue(ButtonHeight) + ScaleValue(ButtonGap));
+        mLeft := ScaleValue(cIndent);
+        Inc(mTop, ScaleValue(cButtonHeight) + ScaleValue(cButtonGap));
         Inc(Result);
       end;
-      FButtons[Kind].SetBounds(mLeft, mTop, mWidth, ScaleValue(ButtonHeight));
-      Inc(mLeft, mWidth + ScaleValue(ButtonGap));
+      FButtons[mKind].SetBounds(mLeft, mTop, mWidth, ScaleValue(cButtonHeight));
+      Inc(mLeft, mWidth + ScaleValue(cButtonGap));
     end;
   finally
-    Measure.Free;
+    mMeasure.Free;
   end;
 end;
 
 procedure TAtlasWelcomeStateFrame.BarResize(Sender: TObject);
 var
-  BarRows: Integer;
+  mBarRows: Integer;
 begin
-  BarRows := LayoutButtons;
-  if BarRows = FBarRows then
+  mBarRows := LayoutButtons;
+  if mBarRows = FBarRows then
   begin
     Exit;
   end;
   // Mehr oder weniger Reihen Knöpfe: Der Frame „Atlas“ ordnet die Spalten neu.
-  FBarRows := BarRows;
+  FBarRows := mBarRows;
   FBar.Height := BarHeight;
   HeightChanged;
 end;
@@ -336,7 +336,7 @@ begin
   mMutedColor := StyleServices(Self).GetSystemColor(clGrayText);
   for mIndex := 0 to High(FRows) do
   begin
-    PaintRow(mCanvas, mIndex, FBox.Width - ScaleValue(Indent), mTextColor, mMutedColor);
+    PaintRow(mCanvas, mIndex, FBox.Width - ScaleValue(cIndent), mTextColor, mMutedColor);
   end;
 end;
 
@@ -349,15 +349,15 @@ var
   mText: string;
 begin
   mRow := FRows[AIndex];
-  mDot := ScaleValue(DotSize);
+  mDot := ScaleValue(cDotSize);
   mTop := RowTop(AIndex);
-  mLeft := ScaleValue(Indent);
-  mTextTop := mTop + (ScaleValue(RowHeight) - ACanvas.TextHeight('Wg')) div 2;
+  mLeft := ScaleValue(cIndent);
+  mTextTop := mTop + (ScaleValue(cRowHeight) - ACanvas.TextHeight('Wg')) div 2;
   ACanvas.Brush.Style := bsSolid;
   ACanvas.Brush.Color := DotColor(mRow.State);
   ACanvas.Pen.Color := ACanvas.Brush.Color;
-  ACanvas.Ellipse(mLeft, mTop + (ScaleValue(RowHeight) - mDot) div 2, mLeft + mDot,
-    mTop + (ScaleValue(RowHeight) - mDot) div 2 + mDot);
+  ACanvas.Ellipse(mLeft, mTop + (ScaleValue(cRowHeight) - mDot) div 2, mLeft + mDot,
+    mTop + (ScaleValue(cRowHeight) - mDot) div 2 + mDot);
   ACanvas.Brush.Style := bsClear;
   Inc(mLeft, mDot + ScaleValue(6));
   // Zusatz rechtsbündig in der gedämpften Farbe, Text davor gekürzt.
@@ -385,14 +385,14 @@ begin
   ACanvas.Font.Style := [];
 end;
 
-function TAtlasWelcomeStateFrame.HitTest(Y: Integer): Integer;
+function TAtlasWelcomeStateFrame.HitTest(AY: Integer): Integer;
 begin
   Result := -1;
-  if (Y < RowTop(0)) or (Length(FRows) = 0) then
+  if (AY < RowTop(0)) or (Length(FRows) = 0) then
   begin
     Exit;
   end;
-  Result := (Y - RowTop(0)) div ScaleValue(RowHeight);
+  Result := (AY - RowTop(0)) div ScaleValue(cRowHeight);
   if Result > High(FRows) then
   begin
     Result := -1;
@@ -402,19 +402,19 @@ end;
 procedure TAtlasWelcomeStateFrame.ClickRow(ARow: Integer);
 var
   mSource: IAtlasStateSource;
-  Id: string;
+  mId: string;
 begin
   if (FSource = nil) or (ARow < 0) or (ARow > High(FRows)) or not FRows[ARow].HasAction then
   begin
     Exit;
   end;
   mSource := FSource;
-  Id := FRows[ARow].Id;
+  mId := FRows[ARow].Id;
   // Die Aktion öffnet Fenster oder ändert den Zustand: nicht im eigenen Mausereignis.
   TAtlasMainThread.ForceQueue(TAtlasFeature.WelcomePage,
     procedure
     begin
-      mSource.RunRow(Id);
+      mSource.RunRow(mId);
     end);
 end;
 
@@ -441,10 +441,10 @@ end;
 
 procedure TAtlasWelcomeStateFrame.BoxMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
 var
-  Row: Integer;
+  mRow: Integer;
 begin
-  Row := HitTest(Y);
-  if (Row >= 0) and FRows[Row].HasAction then
+  mRow := HitTest(Y);
+  if (mRow >= 0) and FRows[mRow].HasAction then
   begin
     FBox.Cursor := crHandPoint;
   end
@@ -452,14 +452,14 @@ begin
   begin
     FBox.Cursor := crDefault;
   end;
-  if Row = FHintRow then
+  if mRow = FHintRow then
   begin
     Exit;
   end;
-  FHintRow := Row;
-  if (Row >= 0) and FRows[Row].Present then
+  FHintRow := mRow;
+  if (mRow >= 0) and FRows[mRow].Present then
   begin
-    FBox.Hint := FRows[Row].Hint;
+    FBox.Hint := FRows[mRow].Hint;
   end
   else
   begin

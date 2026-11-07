@@ -10,6 +10,11 @@
 - `TAtlasVersion.Version` heißt jetzt `cVersion`; die Versionsskripte (Check-/Set-Version, Build-Docs, Workflow) suchen weiter `Version\s*=\s*'` und treffen damit auch `cVersion`.
 - Testdaten mit `http://` in `Tests/Text` tragen `lsp-ignore: security-insecure-http`.
 - Geprüft (Cloud): AtlasServer übersetzt (FPC trunk); FPC-Tests aller Text-Testunits und der Common-Update-Tests wie auf main-merging (226, gleicher Fehlschlag `SplitHelperDropsTrailingEmpty`); Atlas mit naming-prefix, line-length und Metriken über Package und Tests: 0 Befunde. IDE-Units nicht übersetzt: Delphi-Build nötig.
+## Präfixe und Zeilenlänge in Atlas.IDE.Welcome (07.11.2026, Branch `claude/project-thread-q5i0jf` auf `main-merging`)
+- Vorgehen nach `/mnt/project-files/werkzeuge/naming/ANLEITUNG.md`: lokale Namen, Felder und Parameter über `--fix naming-prefix` (safeFix-Server), 192 öffentliche Konstanten über `rename_symbol` (Vorschau, gesammelt angewendet), klassenqualifizierte Verwendungen (`TAtlasWelcomeIds.cHeader` usw., auch in Base-Kommentaren und Testunits anderer Bereiche) per Regex nachgezogen; alle 192 Konstanten gehören zu Klassen oder Records.
+- Mit eingeschalteten Regeln naming-prefix und line-length: Package (Atlas.IDE.Welcome.dproj) und die 31 Testunits mit `[Category('Atlas.IDE.Welcome')]` 0 Befunde.
+- Geprüft (Cloud): FPC-Harness für die übersetzbaren Core-Testunits wie auf main-merging (gleiche Fehlschläge, keine neuen); viele Core-Testunits übersetzen im Harness schon auf main-merging nicht. UI- und IDE-Units nicht übersetzbar: Delphi-Build nötig.
+
 ## Präfixe und Zeilenlänge in Atlas.Linux (07.11.2026, Branch `claude/project-thread-64k5j8` auf `main-merging`)
 ## Präfixe und Zeilenlänge in Atlas.Windows (07.11.2026, Branch `claude/project-thread-1v6ywd` auf `main-merging`)
 - 76 naming-prefix und 3 line-length in Atlas.Windows, 42 naming-prefix und 1 line-length in `Tests/Windows`; lokale Namen und Parameter über `--fix naming-prefix` (Server mit safeFix, nur lokal), Rest von Hand.

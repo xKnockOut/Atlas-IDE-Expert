@@ -54,102 +54,102 @@ begin
 end;
 procedure TAtlasWelcomeSearchBoxTests.HeaderShowsAndHidesSearch;
 var
-  Header: TAtlasWelcomeHeaderFrame;
+  mHeader: TAtlasWelcomeHeaderFrame;
 begin
-  Header := TAtlasWelcomeHeaderFrame.Create(nil);
+  mHeader := TAtlasWelcomeHeaderFrame.Create(nil);
   try
-    Assert.IsNull(Header.Search);
-    Assert.AreEqual(0, Header.SearchHost.Width);
-    Header.ShowSearch(True);
-    Assert.IsNotNull(Header.Search);
-    Assert.IsTrue(Header.Search.Visible);
-    Assert.IsTrue(Header.SearchHost.Width > 0);
-    Header.Search.Edit.Text := 'wel';
-    Header.ShowSearch(False);
-    Assert.IsFalse(Header.Search.Visible);
-    Assert.AreEqual('', Header.Search.Edit.Text);
-    Assert.AreEqual(0, Header.SearchHost.Width);
+    Assert.IsNull(mHeader.Search);
+    Assert.AreEqual(0, mHeader.SearchHost.Width);
+    mHeader.ShowSearch(True);
+    Assert.IsNotNull(mHeader.Search);
+    Assert.IsTrue(mHeader.Search.Visible);
+    Assert.IsTrue(mHeader.SearchHost.Width > 0);
+    mHeader.Search.Edit.Text := 'wel';
+    mHeader.ShowSearch(False);
+    Assert.IsFalse(mHeader.Search.Visible);
+    Assert.AreEqual('', mHeader.Search.Edit.Text);
+    Assert.AreEqual(0, mHeader.SearchHost.Width);
   finally
-    Header.Free;
+    mHeader.Free;
   end;
 end;
 procedure TAtlasWelcomeSearchBoxTests.QueryFillsHitsAndRows;
 var
-  Box: TAtlasWelcomeSearchBox;
+  mBox: TAtlasWelcomeSearchBox;
 begin
-  Box := TAtlasWelcomeSearchBox.Create(nil);
+  mBox := TAtlasWelcomeSearchBox.Create(nil);
   try
-    Box.OnQuery := SampleQuery();
-    Box.Edit.Text := 'wel';
-    Box.Query;
+    mBox.OnQuery := SampleQuery();
+    mBox.Edit.Text := 'wel';
+    mBox.Query;
     // Dateien (2), Symbole mit Hinweis, Befehle (1).
-    Assert.AreEqual(3, Integer(Length(Box.Hits)));
-    Assert.AreEqual(3, Integer(Length(Box.Results)));
-    Assert.AreEqual(7, Integer(Length(Box.Rows)));
-    Assert.AreEqual(0, Box.Selected);
-    Box.Edit.Text := '';
-    Assert.AreEqual(0, Integer(Length(Box.Hits)));
-    Assert.AreEqual(-1, Box.Selected);
+    Assert.AreEqual(3, Integer(Length(mBox.Hits)));
+    Assert.AreEqual(3, Integer(Length(mBox.Results)));
+    Assert.AreEqual(7, Integer(Length(mBox.Rows)));
+    Assert.AreEqual(0, mBox.Selected);
+    mBox.Edit.Text := '';
+    Assert.AreEqual(0, Integer(Length(mBox.Hits)));
+    Assert.AreEqual(-1, mBox.Selected);
   finally
-    Box.Free;
+    mBox.Free;
   end;
 end;
 procedure TAtlasWelcomeSearchBoxTests.SelectStaysInRange;
 var
-  Box: TAtlasWelcomeSearchBox;
+  mBox: TAtlasWelcomeSearchBox;
 begin
-  Box := TAtlasWelcomeSearchBox.Create(nil);
+  mBox := TAtlasWelcomeSearchBox.Create(nil);
   try
-    Box.OnQuery := SampleQuery();
-    Box.Edit.Text := 'wel';
-    Box.Query;
-    Box.Select(-5);
-    Assert.AreEqual(0, Box.Selected);
-    Box.Select(2);
-    Assert.AreEqual(2, Box.Selected);
-    Box.Select(9);
-    Assert.AreEqual(2, Box.Selected);
+    mBox.OnQuery := SampleQuery();
+    mBox.Edit.Text := 'wel';
+    mBox.Query;
+    mBox.Select(-5);
+    Assert.AreEqual(0, mBox.Selected);
+    mBox.Select(2);
+    Assert.AreEqual(2, mBox.Selected);
+    mBox.Select(9);
+    Assert.AreEqual(2, mBox.Selected);
   finally
-    Box.Free;
+    mBox.Free;
   end;
 end;
 procedure TAtlasWelcomeSearchBoxTests.OpenSelectedHandsHitAndClears;
 var
-  Box: TAtlasWelcomeSearchBox;
-  Opened: string;
+  mBox: TAtlasWelcomeSearchBox;
+  mOpened: string;
 begin
-  Opened := '';
-  Box := TAtlasWelcomeSearchBox.Create(nil);
+  mOpened := '';
+  mBox := TAtlasWelcomeSearchBox.Create(nil);
   try
-    Box.OnQuery := SampleQuery();
-    Box.OnOpen :=
+    mBox.OnQuery := SampleQuery();
+    mBox.OnOpen :=
       procedure(const AHit: TAtlasWelcomeHit)
       begin
-        Opened := AHit.Target;
+        mOpened := AHit.Target;
       end;
-    Box.Edit.Text := 'wel';
-    Box.Query;
-    Box.Select(2);
-    Box.OpenSelected;
+    mBox.Edit.Text := 'wel';
+    mBox.Query;
+    mBox.Select(2);
+    mBox.OpenSelected;
     // Geöffnet wird nach dem Schließen der Liste über die Warteschlange.
-    Assert.AreEqual('', Box.Edit.Text);
-    Assert.AreEqual(0, Integer(Length(Box.Hits)));
+    Assert.AreEqual('', mBox.Edit.Text);
+    Assert.AreEqual(0, Integer(Length(mBox.Hits)));
     CheckSynchronize;
-    Assert.AreEqual('Atlas.WelcomeStart', Opened);
+    Assert.AreEqual('Atlas.WelcomeStart', mOpened);
     // Esc bzw. Clear ohne Treffer öffnet nichts.
-    Opened := '';
-    Box.OpenSelected;
+    mOpened := '';
+    mBox.OpenSelected;
     CheckSynchronize;
-    Assert.AreEqual('', Opened);
+    Assert.AreEqual('', mOpened);
   finally
-    Box.Free;
+    mBox.Free;
   end;
 end;
 procedure TAtlasWelcomeSearchBoxTests.GroupCaptionsFollowLanguage;
 var
-  Saved: TAtlasLanguage;
+  mSaved: TAtlasLanguage;
 begin
-  Saved := TAtlasStrings.Language;
+  mSaved := TAtlasStrings.Language;
   try
     TAtlasStrings.Language := TAtlasLanguage.German;
     Assert.AreEqual('Projekte', TAtlasWelcomeSearchBox.GroupCaption(TAtlasWelcomeSearchGroup.Projects));
@@ -158,7 +158,7 @@ begin
     Assert.AreEqual('Files', TAtlasWelcomeSearchBox.GroupCaption(TAtlasWelcomeSearchGroup.Files));
     Assert.AreEqual('Symbols', TAtlasWelcomeSearchBox.GroupCaption(TAtlasWelcomeSearchGroup.Symbols));
   finally
-    TAtlasStrings.Language := Saved;
+    TAtlasStrings.Language := mSaved;
   end;
 end;
 

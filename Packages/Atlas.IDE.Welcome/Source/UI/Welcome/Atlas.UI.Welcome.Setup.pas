@@ -82,7 +82,7 @@ type
     Texts: array[TAtlasSetupStep] of TLabel;
     BaselineInfo: TLabel;
     PathsInfo: TLabel;
-    Findings: array[0..TAtlasWelcomeSetup.MaxLines - 1] of TLabel;
+    Findings: array[0..TAtlasWelcomeSetup.cMaxLines - 1] of TLabel;
     More: TLabel;
     Dismiss: TLabel;
     NewRow: TLabel;
@@ -90,14 +90,14 @@ type
 
   TAtlasWelcomeSetupFrame = class(TAtlasWelcomeSectionFrame)
   public const
-    Indent = 8;
-    Gap = 6;
-    MarkWidth = 18;
-    ButtonHeight = 24;
-    ButtonPadding = 16;
-    ComboWidth = 170;
+    cIndent = 8;
+    cGap = 6;
+    cMarkWidth = 18;
+    cButtonHeight = 24;
+    cButtonPadding = 16;
+    cComboWidth = 170;
     /// <summary>Grün wie die Marken der Projekte (#592), lesbar im hellen und im dunklen Thema.</summary>
-    DoneColor = TColor($0043A02E);
+    cDoneColor = TColor($0043A02E);
   private
     FSource: IAtlasSetupSource;
     FCard: TAtlasSetupCard;
@@ -157,8 +157,8 @@ uses
   Atlas.UI.Welcome.Strings;
 
 const
-  CheckMark = #$2713;
-  OpenBox = #$2610;
+  cCheckMark = #$2713;
+  cOpenBox = #$2610;
 
 type
   /// <summary>Überträgt die Karte auf die Steuerelemente: Farben, Schritte, Knöpfe, Ergebnisse, Funde.</summary>
@@ -297,12 +297,12 @@ begin
     mText.Visible := FShow;
     if FFrame.FCard.StepDone(mStep) then
     begin
-      mMark.Caption := CheckMark;
-      mMark.Font.Color := TAtlasWelcomeSetupFrame.DoneColor;
+      mMark.Caption := cCheckMark;
+      mMark.Font.Color := TAtlasWelcomeSetupFrame.cDoneColor;
     end
     else
     begin
-      mMark.Caption := OpenBox;
+      mMark.Caption := cOpenBox;
       mMark.Font.Color := Themed(clWindowText);
     end;
     mText.Font.Color := mMark.Font.Color;
@@ -417,10 +417,10 @@ constructor TSetupLayout.Create(AFrame: TAtlasWelcomeSetupFrame);
 begin
   FFrame := AFrame;
   // Breite des Frames statt der Inhaltsfläche: Die richtet sich erst später nach dem Frame aus.
-  FLeft := Scaled(TAtlasWelcomeSetupFrame.Indent);
-  FTextLeft := FLeft + Scaled(TAtlasWelcomeSetupFrame.MarkWidth);
-  FRight := AFrame.ClientWidth - Scaled(TAtlasWelcomeSetupFrame.Indent);
-  FTop := Scaled(TAtlasWelcomeSetupFrame.Gap) div 2;
+  FLeft := Scaled(TAtlasWelcomeSetupFrame.cIndent);
+  FTextLeft := FLeft + Scaled(TAtlasWelcomeSetupFrame.cMarkWidth);
+  FRight := AFrame.ClientWidth - Scaled(TAtlasWelcomeSetupFrame.cIndent);
+  FTop := Scaled(TAtlasWelcomeSetupFrame.cGap) div 2;
   FRowHeight := 0;
   FX := FTextLeft;
   FMeasure := TBitmap.Create;
@@ -439,7 +439,7 @@ end;
 
 function TSetupLayout.ButtonWidth(AButton: TButton): Integer;
 begin
-  Result := FMeasure.Canvas.TextWidth(AButton.Caption) + 2 * Scaled(TAtlasWelcomeSetupFrame.ButtonPadding);
+  Result := FMeasure.Canvas.TextWidth(AButton.Caption) + 2 * Scaled(TAtlasWelcomeSetupFrame.cButtonPadding);
 end;
 
 procedure TSetupLayout.Place(AControl: TControl; AWidth, AHeight: Integer);
@@ -447,11 +447,11 @@ begin
   if (FX > FTextLeft) and (FX + AWidth > FRight) then
   begin
     FX := FTextLeft;
-    Inc(FTop, FRowHeight + Scaled(TAtlasWelcomeSetupFrame.Gap) div 2);
+    Inc(FTop, FRowHeight + Scaled(TAtlasWelcomeSetupFrame.cGap) div 2);
     FRowHeight := 0;
   end;
   AControl.SetBounds(FX, FTop, AWidth, AHeight);
-  Inc(FX, AWidth + Scaled(TAtlasWelcomeSetupFrame.Gap));
+  Inc(FX, AWidth + Scaled(TAtlasWelcomeSetupFrame.cGap));
   FRowHeight := Max(FRowHeight, AHeight);
 end;
 
@@ -462,7 +462,7 @@ begin
   mButton := FFrame.FButtons[AButton];
   if mButton.Visible then
   begin
-    Place(mButton, ButtonWidth(mButton), Scaled(TAtlasWelcomeSetupFrame.ButtonHeight));
+    Place(mButton, ButtonWidth(mButton), Scaled(TAtlasWelcomeSetupFrame.cButtonHeight));
   end;
 end;
 
@@ -470,7 +470,7 @@ procedure TSetupLayout.NextRow;
 begin
   if FRowHeight > 0 then
   begin
-    Inc(FTop, FRowHeight + Scaled(TAtlasWelcomeSetupFrame.Gap) div 2);
+    Inc(FTop, FRowHeight + Scaled(TAtlasWelcomeSetupFrame.cGap) div 2);
   end;
   FRowHeight := 0;
   FX := FTextLeft;
@@ -493,17 +493,17 @@ var
 begin
   mMark := FFrame.FLabels.Marks[AStep];
   mText := FFrame.FLabels.Texts[AStep];
-  mMark.SetBounds(FLeft, FTop + Scaled(4), Scaled(TAtlasWelcomeSetupFrame.MarkWidth), mMark.Height);
+  mMark.SetBounds(FLeft, FTop + Scaled(4), Scaled(TAtlasWelcomeSetupFrame.cMarkWidth), mMark.Height);
   FX := FTextLeft;
   Place(mText, FMeasure.Canvas.TextWidth(mText.Caption), mText.Height);
   // Text etwas tiefer, damit er mittig neben den Knöpfen steht.
   mText.Top := FTop + Scaled(4);
-  FRowHeight := Max(FRowHeight, Scaled(TAtlasWelcomeSetupFrame.ButtonHeight));
+  FRowHeight := Max(FRowHeight, Scaled(TAtlasWelcomeSetupFrame.cButtonHeight));
   case AStep of
     TAtlasSetupStep.Config:
       if FFrame.FTemplate.Visible then
       begin
-        Place(FFrame.FTemplate, Scaled(TAtlasWelcomeSetupFrame.ComboWidth), FFrame.FTemplate.Height);
+        Place(FFrame.FTemplate, Scaled(TAtlasWelcomeSetupFrame.cComboWidth), FFrame.FTemplate.Height);
         PlaceButton(TAtlasSetupButton.CreateConfig);
       end;
     TAtlasSetupStep.Baseline:
@@ -564,13 +564,13 @@ var
   mNewRow: TLabel;
 begin
   mNewRow := FFrame.FLabels.NewRow;
-  Inc(FTop, Scaled(TAtlasWelcomeSetupFrame.Gap) div 2);
+  Inc(FTop, Scaled(TAtlasWelcomeSetupFrame.cGap) div 2);
   FX := FLeft;
   Place(mNewRow, FMeasure.Canvas.TextWidth(mNewRow.Caption), mNewRow.Height);
   mNewRow.Left := FLeft;
   mNewRow.Top := FTop + Scaled(4);
-  FRowHeight := Max(FRowHeight, Scaled(TAtlasWelcomeSetupFrame.ButtonHeight));
-  FX := FLeft + FMeasure.Canvas.TextWidth(mNewRow.Caption) + Scaled(TAtlasWelcomeSetupFrame.Gap);
+  FRowHeight := Max(FRowHeight, Scaled(TAtlasWelcomeSetupFrame.cButtonHeight));
+  FX := FLeft + FMeasure.Canvas.TextWidth(mNewRow.Caption) + Scaled(TAtlasWelcomeSetupFrame.cGap);
   for mKind := Low(TAtlasNewFileKind) to High(TAtlasNewFileKind) do
   begin
     PlaceButton(TAtlasSetupButton(Ord(TAtlasSetupButton.NewUnit) + Ord(mKind)));
@@ -588,44 +588,44 @@ begin
   begin
     PlaceNew;
   end;
-  Result := FTop + Scaled(TAtlasWelcomeSetupFrame.Gap) div 2;
+  Result := FTop + Scaled(TAtlasWelcomeSetupFrame.cGap) div 2;
 end;
 
 { TAtlasWelcomeSetupFrame }
 
 constructor TAtlasWelcomeSetupFrame.Create(AOwner: TComponent);
 var
-  Step: TAtlasSetupStep;
-  Kind: TAtlasSetupButton;
-  Index: Integer;
+  mStep: TAtlasSetupStep;
+  mKind: TAtlasSetupButton;
+  mIndex: Integer;
 begin
   inherited Create(AOwner);
   FCard := TAtlasSetupCard.Empty;
-  for Step := Low(TAtlasSetupStep) to High(TAtlasSetupStep) do
+  for mStep := Low(TAtlasSetupStep) to High(TAtlasSetupStep) do
   begin
-    FLabels.Marks[Step] := NewLabel;
-    FLabels.Marks[Step].Font.Style := [fsBold];
-    FLabels.Texts[Step] := NewLabel;
+    FLabels.Marks[mStep] := NewLabel;
+    FLabels.Marks[mStep].Font.Style := [fsBold];
+    FLabels.Texts[mStep] := NewLabel;
   end;
   FTemplate := TComboBox.Create(Self);
   FTemplate.Parent := Body;
   FTemplate.Style := csDropDownList;
   FTemplate.OnChange := TemplateChange;
   FTemplateIndex := Ord(TAtlasSetupTemplate.Existing);
-  for Kind := Low(TAtlasSetupButton) to High(TAtlasSetupButton) do
+  for mKind := Low(TAtlasSetupButton) to High(TAtlasSetupButton) do
   begin
-    if Kind <> TAtlasSetupButton.Dismiss then
+    if mKind <> TAtlasSetupButton.Dismiss then
     begin
-      FButtons[Kind] := NewButton(Kind);
+      FButtons[mKind] := NewButton(mKind);
     end;
   end;
   FLabels.BaselineInfo := NewLabel;
   FLabels.PathsInfo := NewLabel;
-  for Index := Low(FLabels.Findings) to High(FLabels.Findings) do
+  for mIndex := Low(FLabels.Findings) to High(FLabels.Findings) do
   begin
-    FLabels.Findings[Index] := NewLabel;
-    FLabels.Findings[Index].Cursor := crHandPoint;
-    FLabels.Findings[Index].OnClick := FindingClick;
+    FLabels.Findings[mIndex] := NewLabel;
+    FLabels.Findings[mIndex].Cursor := crHandPoint;
+    FLabels.Findings[mIndex].OnClick := FindingClick;
   end;
   FLabels.More := NewLabel;
   FLabels.Dismiss := NewLabel;
@@ -814,34 +814,34 @@ end;
 
 class function TAtlasSetupTexts.PathsCaption(const ACard: TAtlasSetupCard): string;
 var
-  Setup: TAtlasProjectSetup;
-  Parts: TArray<string>;
-  Uncertain: Integer;
+  mSetup: TAtlasProjectSetup;
+  mParts: TArray<string>;
+  mUncertain: Integer;
 begin
   if ACard.Paths = TAtlasSetupRun.Failed then
   begin
     Exit(ACard.PathsError);
   end;
-  Parts := nil;
-  Setup := ACard.Facts.Setup;
+  mParts := nil;
+  mSetup := ACard.Facts.Setup;
   // Projektgruppe: noch nicht alle Projekte geprüft.
   if (ACard.GroupProjects > 0) and (ACard.GroupChecked < ACard.GroupProjects) then
   begin
-    Parts := Parts + [TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupPathsGroup, [ACard.GroupChecked,
+    mParts := mParts + [TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupPathsGroup, [ACard.GroupChecked,
       ACard.GroupProjects])];
   end;
-  if (Setup.Checked or (ACard.GroupChecked > 0)) and (Setup.MissingUnitCount + Setup.UndefinedDefineCount > 0) then
+  if (mSetup.Checked or (ACard.GroupChecked > 0)) and (mSetup.MissingUnitCount + mSetup.UndefinedDefineCount > 0) then
   begin
-    Parts := Parts + [TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupPathsSummary, [Setup.MissingUnitCount,
-      Setup.UndefinedDefineCount, Setup.Files])];
+    mParts := mParts + [TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupPathsSummary, [mSetup.MissingUnitCount,
+      mSetup.UndefinedDefineCount, mSetup.Files])];
   end;
-  Uncertain := Setup.UncertainUnitCount + Setup.UncertainDefineCount;
-  if Uncertain > 0 then
+  mUncertain := mSetup.UncertainUnitCount + mSetup.UncertainDefineCount;
+  if mUncertain > 0 then
   begin
-    Parts := Parts + [TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupPathsUncertain, [Uncertain,
-      TAtlasWelcomeSetup.MacroList(Setup.SkippedMacros)])];
+    mParts := mParts + [TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupPathsUncertain, [mUncertain,
+      TAtlasWelcomeSetup.MacroList(mSetup.SkippedMacros)])];
   end;
-  Result := string.Join(sLineBreak, Parts);
+  Result := string.Join(sLineBreak, mParts);
 end;
 
 function TAtlasWelcomeSetupFrame.Button(AButton: TAtlasSetupButton): TButton;
@@ -889,16 +889,16 @@ end;
 
 procedure TAtlasWelcomeSetupFrame.FillTemplates;
 var
-  Template: TAtlasSetupTemplate;
+  mTemplate: TAtlasSetupTemplate;
 begin
   // Die Liste braucht ein Fenster; Arrange ruft das erst mit Fenster.
   if FTemplate.Items.Count > 0 then
   begin
     Exit;
   end;
-  for Template := Low(TAtlasSetupTemplate) to High(TAtlasSetupTemplate) do
+  for mTemplate := Low(TAtlasSetupTemplate) to High(TAtlasSetupTemplate) do
   begin
-    FTemplate.Items.Add(TAtlasSetupTexts.TemplateCaption(Template));
+    FTemplate.Items.Add(TAtlasSetupTexts.TemplateCaption(mTemplate));
   end;
   FTemplate.ItemIndex := FTemplateIndex;
 end;
@@ -916,9 +916,9 @@ end;
 
 procedure TAtlasWelcomeSetupFrame.UpdateContent;
 var
-  OldHeight: Integer;
+  mOldHeight: Integer;
 begin
-  OldHeight := FContentHeight;
+  mOldHeight := FContentHeight;
   if FSource <> nil then
   begin
     FCard := FSource.Card;
@@ -930,7 +930,7 @@ begin
   TSetupCardView.Create(Self).Apply;
   Arrange;
   inherited;
-  if OldHeight <> FContentHeight then
+  if mOldHeight <> FContentHeight then
   begin
     HeightChanged;
   end;
@@ -938,12 +938,12 @@ end;
 
 procedure TAtlasWelcomeSetupFrame.BodyResize(Sender: TObject);
 var
-  OldHeight: Integer;
+  mOldHeight: Integer;
 begin
-  OldHeight := FContentHeight;
+  mOldHeight := FContentHeight;
   Arrange;
   // Andere Reihen bei neuer Breite: Der Frame „Atlas“ ordnet die Spalten neu.
-  if OldHeight <> FContentHeight then
+  if mOldHeight <> FContentHeight then
   begin
     HeightChanged;
   end;
@@ -981,7 +981,7 @@ end;
 
 procedure TAtlasWelcomeSetupFrame.TimerTick(Sender: TObject);
 var
-  Step: TAtlasSetupStep;
+  mStep: TAtlasSetupStep;
 begin
   if not Running then
   begin
@@ -989,9 +989,9 @@ begin
     Exit;
   end;
   // Nur die Sekunden des laufenden Schritts; die Höhe bleibt.
-  for Step := TAtlasSetupStep.Baseline to TAtlasSetupStep.Paths do
+  for mStep := TAtlasSetupStep.Baseline to TAtlasSetupStep.Paths do
   begin
-    FLabels.Texts[Step].Caption := TAtlasSetupTexts.StepCaption(Step, FCard, TThread.GetTickCount64);
+    FLabels.Texts[mStep].Caption := TAtlasSetupTexts.StepCaption(mStep, FCard, TThread.GetTickCount64);
   end;
 end;
 

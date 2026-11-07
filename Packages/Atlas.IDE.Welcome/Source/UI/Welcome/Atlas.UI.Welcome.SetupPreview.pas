@@ -19,8 +19,8 @@ uses
 type
   TAtlasSetupPreviewDialog = class(TForm)
   public const
-    DialogWidth = 560;
-    ContentHeight = 300;
+    cDialogWidth = 560;
+    cContentHeight = 300;
   private
     FIntro: TLabel;
     FContent: TMemo;
@@ -47,14 +47,14 @@ uses
   Atlas.UI.Welcome.Strings;
 
 const
-  Gap = 8;
+  cGap = 8;
 
 { TAtlasSetupPreviewDialog }
 
 constructor TAtlasSetupPreviewDialog.CreateDialog(AOwner: TComponent; const AConfigName, AProjectName,
   ATemplate, AText: string);
 var
-  Buttons: TFlowPanel;
+  mButtons: TFlowPanel;
 begin
   inherited CreateNew(AOwner);
   Caption := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupPreviewTitle, [AConfigName]);
@@ -62,13 +62,13 @@ begin
   Position := poMainFormCenter;
   Font.Name := 'Segoe UI';
   Font.Size := 9;
-  ClientWidth := ScaleValue(DialogWidth);
+  ClientWidth := ScaleValue(cDialogWidth);
 
   FIntro := TLabel.Create(Self);
   FIntro.Parent := Self;
   FIntro.Align := alTop;
   FIntro.AlignWithMargins := True;
-  FIntro.Margins.SetBounds(Gap, Gap, Gap, 0);
+  FIntro.Margins.SetBounds(cGap, cGap, cGap, 0);
   FIntro.WordWrap := True;
   FIntro.ShowAccelChar := False;
   FIntro.Caption := TAtlasWelcomeStrings.Fmt(TAtlasWelcomeTextId.WelcomeSetupPreviewIntro, [AConfigName, AProjectName,
@@ -78,31 +78,31 @@ begin
   FContent.Parent := Self;
   FContent.Align := alTop;
   FContent.AlignWithMargins := True;
-  FContent.Margins.SetBounds(Gap, Gap, Gap, 0);
+  FContent.Margins.SetBounds(cGap, cGap, cGap, 0);
   FContent.Top := FIntro.Top + FIntro.Height + 1;
-  FContent.Height := ScaleValue(ContentHeight);
+  FContent.Height := ScaleValue(cContentHeight);
   FContent.ReadOnly := True;
   FContent.ScrollBars := ssBoth;
   FContent.WordWrap := False;
   FContent.Font.Name := 'Consolas';
   FContent.Text := AText;
 
-  Buttons := TFlowPanel.Create(Self);
-  Buttons.Parent := Self;
-  Buttons.Align := alTop;
-  Buttons.AutoSize := True;
-  Buttons.BevelOuter := bvNone;
-  Buttons.AlignWithMargins := True;
-  Buttons.Margins.SetBounds(Gap, Gap, Gap, Gap);
-  Buttons.Top := FContent.Top + FContent.Height + 1;
-  FCreate := AddButton(Buttons, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupPreviewCreate));
+  mButtons := TFlowPanel.Create(Self);
+  mButtons.Parent := Self;
+  mButtons.Align := alTop;
+  mButtons.AutoSize := True;
+  mButtons.BevelOuter := bvNone;
+  mButtons.AlignWithMargins := True;
+  mButtons.Margins.SetBounds(cGap, cGap, cGap, cGap);
+  mButtons.Top := FContent.Top + FContent.Height + 1;
+  FCreate := AddButton(mButtons, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupPreviewCreate));
   FCreate.ModalResult := mrOk;
   FCreate.Default := True;
-  FCancel := AddButton(Buttons, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupPreviewCancel));
+  FCancel := AddButton(mButtons, TAtlasWelcomeStrings.Text(TAtlasWelcomeTextId.WelcomeSetupPreviewCancel));
   FCancel.ModalResult := mrCancel;
   FCancel.Cancel := True;
   ActiveControl := FCreate;
-  ClientHeight := Buttons.Top + Buttons.Height + Gap;
+  ClientHeight := mButtons.Top + mButtons.Height + cGap;
 end;
 
 function TAtlasSetupPreviewDialog.AddButton(AParent: TWinControl; const ACaption: string): TButton;
@@ -113,23 +113,23 @@ begin
   Canvas.Font := Font;
   Result.Width := Canvas.TextWidth(ACaption) + ScaleValue(32);
   Result.AlignWithMargins := True;
-  Result.Margins.SetBounds(0, 0, Gap, Gap div 2);
+  Result.Margins.SetBounds(0, 0, cGap, cGap div 2);
 end;
 
 class function TAtlasSetupPreviewDialog.Confirm(const AConfigName, AProjectName, ATemplate, AText: string;
   const APrepare: TProc<TForm>): Boolean;
 var
-  Dialog: TAtlasSetupPreviewDialog;
+  mDialog: TAtlasSetupPreviewDialog;
 begin
-  Dialog := TAtlasSetupPreviewDialog.CreateDialog(nil, AConfigName, AProjectName, ATemplate, AText);
+  mDialog := TAtlasSetupPreviewDialog.CreateDialog(nil, AConfigName, AProjectName, ATemplate, AText);
   try
     if Assigned(APrepare) then
     begin
-      APrepare(Dialog);
+      APrepare(mDialog);
     end;
-    Result := Dialog.ShowModal = mrOk;
+    Result := mDialog.ShowModal = mrOk;
   finally
-    Dialog.Free;
+    mDialog.Free;
   end;
 end;
 

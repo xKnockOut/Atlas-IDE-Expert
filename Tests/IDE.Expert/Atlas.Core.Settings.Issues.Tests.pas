@@ -609,10 +609,10 @@ begin
   Assert.AreEqual($4042, Settings.WelcomePageQuickActionsBuildKey, 'Strg+B');
   Assert.AreEqual($4054, Settings.WelcomePageQuickActionsTestKey, 'Strg+T');
   // Die Einstellungen kennen die Willkommensseite nicht (A-09): dieselben Vorgaben und Namen wie dort.
-  Assert.AreEqual(TAtlasWelcomeQuickActions.DefaultItems, Settings.WelcomePageQuickActionsItems);
-  Assert.AreEqual(TAtlasWelcomeQuickActions.DefaultConsole, Settings.WelcomePageQuickActionsConsole);
-  Assert.AreEqual(TAtlasWelcomeQuickActions.DefaultBuildKey, Settings.WelcomePageQuickActionsBuildKey);
-  Assert.AreEqual(TAtlasWelcomeQuickActions.DefaultTestKey, Settings.WelcomePageQuickActionsTestKey);
+  Assert.AreEqual(TAtlasWelcomeQuickActions.cDefaultItems, Settings.WelcomePageQuickActionsItems);
+  Assert.AreEqual(TAtlasWelcomeQuickActions.cDefaultConsole, Settings.WelcomePageQuickActionsConsole);
+  Assert.AreEqual(TAtlasWelcomeQuickActions.cDefaultBuildKey, Settings.WelcomePageQuickActionsBuildKey);
+  Assert.AreEqual(TAtlasWelcomeQuickActions.cDefaultTestKey, Settings.WelcomePageQuickActionsTestKey);
   Settings.WelcomePageQuickActionsItems := 'folder,unbekannt;RUN tests console pull build';
   Settings.Normalize;
   Assert.AreEqual(TAtlasWelcomeQuickActions.NormalizedItems('folder,unbekannt;RUN tests console pull build'),
@@ -624,7 +624,7 @@ begin
   Settings.WelcomePageQuickActionsTestKey := $1FFFF;
   Settings.Normalize;
   Assert.AreEqual('build,pull,console', Settings.WelcomePageQuickActionsItems);
-  Assert.AreEqual(TAtlasWelcomeQuickActions.DefaultConsole, Settings.WelcomePageQuickActionsConsole);
+  Assert.AreEqual(TAtlasWelcomeQuickActions.cDefaultConsole, Settings.WelcomePageQuickActionsConsole);
   Assert.AreEqual(0, Settings.WelcomePageQuickActionsBuildKey);
   Assert.AreEqual($FFFF, Settings.WelcomePageQuickActionsTestKey);
   // Leere Liste bleibt leer (kein Knopf).
